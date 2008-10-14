@@ -272,7 +272,7 @@ subroutine RegionRead(region,fid,option)
   ierr = 0
   do
   
-    call fiReadFlotranString(IUNIT1,string,ierr)
+    call fiReadFlotranString(fid,string,ierr)
     if (ierr /= 0) exit
 
     call fiReadWord(string,word,.true.,ierr)
@@ -285,7 +285,7 @@ subroutine RegionRead(region,fid,option)
         call fiReadInt(string,region%i1,ierr) 
         if (ierr /= 0) then
           ierr = 0
-          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadFlotranString(fid,string,ierr)
           call fiReadStringErrorMsg(option%myrank,'REGION',ierr)
           call fiReadInt(string,region%i1,ierr) 
         endif
@@ -305,7 +305,7 @@ subroutine RegionRead(region,fid,option)
         call fiReadDouble(string,region%coordinates(ONE_INTEGER)%x,ierr) 
         if (ierr /= 0) then
           ierr = 0
-          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadFlotranString(fid,string,ierr)
           call fiReadStringErrorMsg(option%myrank,'REGION',ierr)
           call fiReadDouble(string,region%coordinates(ONE_INTEGER)%x,ierr) 
         endif
@@ -317,7 +317,7 @@ subroutine RegionRead(region,fid,option)
       case('COORDINATES')
         icount = 0
         do
-          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadFlotranString(fid,string,ierr)
           call fiReadStringErrorMsg(option%myrank,'REGION',ierr)
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
               fiStringCompare(string,'END',THREE_INTEGER)) exit              
@@ -443,7 +443,7 @@ subroutine RegionReadFromFileId(region,fid)
   continuation_flag = .true.
   do
     if (.not.continuation_flag) exit
-    call fiReadFlotranString(IUNIT1,string,ierr)
+    call fiReadFlotranString(fid,string,ierr)
     if (ierr /= 0) exit
     continuation_flag = .false.
     if (index(string,backslash) > 0) continuation_flag = .true.

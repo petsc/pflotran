@@ -25,8 +25,8 @@ module Coupler_module
     PetscReal, pointer :: flow_aux_real_var(:,:)        ! auxilliary array for real values
     PetscInt, pointer :: tran_aux_int_var(:,:)          ! auxilliary array for integer value
     PetscReal, pointer :: tran_aux_real_var(:,:)        ! auxilliary array for real values
-    type(condition_type), pointer :: flow_condition     ! pointer to condition in condition array/list
-    type(condition_type), pointer :: tran_condition     ! pointer to condition in condition array/list
+    type(flow_condition_type), pointer :: flow_condition     ! pointer to condition in condition array/list
+    type(tran_condition_type), pointer :: tran_condition     ! pointer to condition in condition array/list
     type(region_type), pointer :: region                ! pointer to region in region array/list
     type(connection_set_type), pointer :: connection_set ! pointer to an array/list of connections
     type(coupler_type), pointer :: next                 ! pointer to next coupler
@@ -218,7 +218,7 @@ subroutine CouplerRead(coupler,fid,option)
   ierr = 0
   do
   
-    call fiReadFlotranString(IUNIT1,string,ierr)
+    call fiReadFlotranString(fid,string,ierr)
     if (ierr /= 0) exit
 
     call fiReadWord(string,word,.true.,ierr)

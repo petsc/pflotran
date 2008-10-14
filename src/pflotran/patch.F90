@@ -242,7 +242,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   type(patch_type) :: patch
   type(material_type), pointer :: materials
   type(condition_list_type) :: flow_conditions
-  type(condition_list_type) :: transport_conditions
+  type(tran_condition_list_type) :: transport_conditions
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -274,24 +274,14 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
                  ' not found in boundary condition list'
         call printErrMsg(option,string)
       endif
-      if (coupler%flow_condition%iclass /= FLOW_CLASS) then
-        string = 'Condition ' // trim(coupler%flow_condition_name) // &
-                 ' is not of the FLOW class'
-        call printErrMsg(option,string)
-      endif
     endif
     ! pointer to transport condition
     if (len_trim(coupler%tran_condition_name) > 0) then
       coupler%tran_condition => &
-        ConditionGetPtrFromList(coupler%tran_condition_name,transport_conditions)
+        TranConditionGetPtrFromList(coupler%tran_condition_name,transport_conditions)
       if (.not.associated(coupler%tran_condition)) then
         string = 'Condition ' // trim(coupler%tran_condition_name) // &
                  ' not found in boundary condition list'
-        call printErrMsg(option,string)
-      endif
-      if (coupler%tran_condition%iclass /= TRANSPORT_CLASS) then
-        string = 'Condition ' // trim(coupler%tran_condition_name) // &
-                 ' is not of the TRAN class'
         call printErrMsg(option,string)
       endif
     endif
@@ -320,24 +310,14 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
                  ' not found in initial condition list'
         call printErrMsg(option,string)
       endif
-      if (coupler%flow_condition%iclass /= FLOW_CLASS) then
-        string = 'Condition ' // trim(coupler%flow_condition_name) // &
-                 ' is not of the FLOW class'
-        call printErrMsg(option,string)
-      endif
     endif
     ! pointer to transport condition
     if (len_trim(coupler%tran_condition_name) > 0) then
       coupler%tran_condition => &
-        ConditionGetPtrFromList(coupler%tran_condition_name,transport_conditions)
+        TranConditionGetPtrFromList(coupler%tran_condition_name,transport_conditions)
       if (.not.associated(coupler%tran_condition)) then
         string = 'Condition ' // trim(coupler%tran_condition_name) // &
                  ' not found in initial condition list'
-        call printErrMsg(option,string)
-      endif
-      if (coupler%tran_condition%iclass /= TRANSPORT_CLASS) then
-        string = 'Condition ' // trim(coupler%tran_condition_name) // &
-                 ' is not of the TRAN class'
         call printErrMsg(option,string)
       endif
     endif
@@ -365,24 +345,14 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
                  ' not found in source/sink condition list'
         call printErrMsg(option,string)
       endif
-      if (coupler%flow_condition%iclass /= FLOW_CLASS) then
-        string = 'Condition ' // trim(coupler%flow_condition_name) // &
-                 ' is not of the FLOW class'
-        call printErrMsg(option,string)
-      endif
     endif
     ! pointer to transport condition
     if (len_trim(coupler%tran_condition_name) > 0) then
       coupler%tran_condition => &
-        ConditionGetPtrFromList(coupler%tran_condition_name,transport_conditions)
+        TranConditionGetPtrFromList(coupler%tran_condition_name,transport_conditions)
       if (.not.associated(coupler%tran_condition)) then
         string = 'Condition ' // trim(coupler%tran_condition_name) // &
                  ' not found in source/sink condition list'
-        call printErrMsg(option,string)
-      endif
-      if (coupler%tran_condition%iclass /= TRANSPORT_CLASS) then
-        string = 'Condition ' // trim(coupler%tran_condition_name) // &
-                 ' is not of the TRAN class'
         call printErrMsg(option,string)
       endif
     endif
@@ -610,7 +580,8 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   type(option_type) :: option
   
   type(coupler_type), pointer :: coupler
-  type(condition_type), pointer :: condition
+  type(flow_condition_type), pointer :: flow_condition
+  type(tran_condition_type), pointer :: tran_condition
   logical :: update
   
   PetscInt :: idof, num_connections
@@ -627,35 +598,35 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
         
       num_connections = coupler%connection_set%num_connections
 
-      condition => coupler%flow_condition
+      flow_condition => coupler%flow_condition
 
       update = .false.
       select case(option%iflowmode)
         case(THC_MODE,MPH_MODE)
           if (force_update_flag .or. &
-              condition%pressure%dataset%is_transient .or. &
-              condition%pressure%gradient%is_transient .or. &
-              condition%pressure%datum%is_transient .or. &
-              condition%temperature%dataset%is_transient .or. &
-              condition%temperature%gradient%is_transient .or. &
-              condition%temperature%datum%is_transient .or. &
-              condition%concentration%dataset%is_transient .or. &
-              condition%concentration%gradient%is_transient .or. &
-              condition%concentration%datum%is_transient) then
+              flow_condition%pressure%dataset%is_transient .or. &
+              flow_condition%pressure%gradient%is_transient .or. &
+              flow_condition%pressure%datum%is_transient .or. &
+              flow_condition%temperature%dataset%is_transient .or. &
+              flow_condition%temperature%gradient%is_transient .or. &
+              flow_condition%temperature%datum%is_transient .or. &
+              flow_condition%concentration%dataset%is_transient .or. &
+              flow_condition%concentration%gradient%is_transient .or. &
+              flow_condition%concentration%datum%is_transient) then
             update = .true.
           endif
         case(RICHARDS_MODE)
           if (force_update_flag .or. &
-              condition%pressure%dataset%is_transient .or. &
-              condition%pressure%gradient%is_transient .or. &
-              condition%pressure%datum%is_transient) then
+              flow_condition%pressure%dataset%is_transient .or. &
+              flow_condition%pressure%gradient%is_transient .or. &
+              flow_condition%pressure%datum%is_transient) then
             update = .true.
           endif
       end select
       
       if (update) then
-        if (associated(condition%pressure)) then
-          select case(condition%pressure%itype)
+        if (associated(flow_condition%pressure)) then
+          select case(flow_condition%pressure%itype)
             case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE_SS,ZERO_GRADIENT_BC, &
                  VOLUMETRIC_RATE_SS)
 !              do idof = 1, condition%num_sub_conditions
@@ -667,25 +638,25 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
               select case(option%iflowmode)
                 case(MPH_MODE)
                   coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
-                    condition%pressure%dataset%cur_value(1)  ! <-- Chuan Fix
+                    flow_condition%pressure%dataset%cur_value(1)  ! <-- Chuan Fix
                    coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
-                    condition%temperature%dataset%cur_value(1)! <-- Chuan Fix
+                    flow_condition%temperature%dataset%cur_value(1)! <-- Chuan Fix
                   coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
-                    condition%concentration%dataset%cur_value(1)! <-- Chuan Fix
+                    flow_condition%concentration%dataset%cur_value(1)! <-- Chuan Fix
                   coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-                    condition%iphase
+                    flow_condition%iphase
                 case(THC_MODE)
                   coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
-                    condition%pressure%dataset%cur_value(1)
+                    flow_condition%pressure%dataset%cur_value(1)
                   coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
-                    condition%temperature%dataset%cur_value(1)
+                    flow_condition%temperature%dataset%cur_value(1)
                   coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
-                    condition%concentration%dataset%cur_value(1)
+                    flow_condition%concentration%dataset%cur_value(1)
                   coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-                    condition%iphase
+                    flow_condition%iphase
                 case(RICHARDS_MODE)
                   coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
-                    condition%pressure%dataset%cur_value(1)
+                    flow_condition%pressure%dataset%cur_value(1)
               end select
             case(HYDROSTATIC_BC,SEEPAGE_BC)
     !          call HydrostaticUpdateCoupler(coupler,patch%option,patch%grid)
@@ -701,26 +672,26 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
     
       num_connections = coupler%connection_set%num_connections
 
-      condition => coupler%tran_condition
+      tran_condition => coupler%tran_condition
 
       update = .false.
       if (force_update_flag) then
         update = .true.
       else 
         do idof = 1, option%ntrandof
-          if (condition%transport_concentrations(idof)%ptr%dataset%is_transient .or. &
-              condition%transport_concentrations(idof)%ptr%gradient%is_transient .or. &
-              condition%transport_concentrations(idof)%ptr%datum%is_transient) then
-            update = .true.
-            exit
-          endif
+!          if (tran_condition%transport_concentrations(idof)%ptr%dataset%is_transient .or. &
+!              tran_condition%transport_concentrations(idof)%ptr%gradient%is_transient .or. &
+!              tran_condition%transport_concentrations(idof)%ptr%datum%is_transient) then
+!            update = .true.
+!            exit
+!          endif
         enddo
       endif
       
       if (update) then ! for now, everything transport is dirichlet-type
         do idof = 1, option%ntrandof
-          coupler%tran_aux_real_var(idof,1:num_connections) = &
-            condition%transport_concentrations(idof)%ptr%dataset%cur_value(1)
+!          coupler%tran_aux_real_var(idof,1:num_connections) = &
+!            tran_condition%transport_concentrations(idof)%ptr%dataset%cur_value(1)
         enddo
       endif
       

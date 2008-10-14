@@ -80,10 +80,11 @@ PetscInt, parameter :: CONCENTRATION_SS = 9
 PetscInt, parameter :: EQUILIBRIUM_SS = 10
 
 ! concentration subcondition types
-PetscInt, parameter :: CONDITION_FREE_CONCENTRATION = 1
-PetscInt, parameter :: CONDITION_TOTAL_CONCENTRATION = 2
-PetscInt, parameter :: CONDITION_P_CONCENTRATION = 3
-PetscInt, parameter :: CONDITION_EQ_CONCENTRATION = 4
+PetscInt, parameter :: CONSTRAINT_FREE = 1
+PetscInt, parameter :: CONSTRAINT_TOTAL = 2
+PetscInt, parameter :: CONSTRAINT_P = 3
+PetscInt, parameter :: CONSTRAINT_MINERAL = 4
+PetscInt, parameter :: CONSTRAINT_GAS = 5
 
 ! coupler types
 PetscInt, parameter :: INITIAL_COUPLER_TYPE = 1

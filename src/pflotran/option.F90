@@ -15,6 +15,9 @@ module Option_module
     PetscMPIInt :: myrank                    ! rank in PETSC_COMM_WORLD
     PetscMPIInt :: commsize                  ! size of PETSC_COMM_WORLD
   
+    PetscInt :: fid_in
+    PetscInt :: fid_out
+    
     ! defines the mode (e.g. mph, richards, vadose, etc.
     character(len=MAXWORDLENGTH) :: flowmode
     PetscInt :: iflowmode
@@ -165,6 +168,9 @@ function OptionCreate()
   option%comm = 0
   option%myrank = 0
   option%commsize = 0
+  
+  option%fid_in = 0
+  option%fid_out = 0
 
   option%iflag = 0
   

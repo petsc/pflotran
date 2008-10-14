@@ -48,7 +48,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   
   PetscReal, parameter :: patm = 101325.d0
   
-  type(condition_type), pointer :: condition
+  type(flow_condition_type), pointer :: condition
   
   type(connection_set_type), pointer :: cur_connection_set
   
@@ -231,7 +231,7 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
   PetscReal :: pressure_gradient(3), piezometric_head_gradient(3), datum(3)
   PetscReal :: temperature_gradient(3), concentration_gradient(3)
   
-  type(condition_type), pointer :: condition
+  type(flow_condition_type), pointer :: condition
   
   type(connection_set_type), pointer :: cur_connection_set
   

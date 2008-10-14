@@ -337,6 +337,7 @@ subroutine Init(simulation,filename)
   call RealizationLocalizeRegions(realization)
   ! link conditions with regions through couplers and generate connectivity
   call RealizationProcessCouplers(realization)
+  call RealizationProcessConditions(realization)
   call assignMaterialPropToRegions(realization)
   call RealizationInitAllCouplerAuxVars(realization)
 
@@ -424,27 +425,27 @@ subroutine Init(simulation,filename)
   ! print info
   if (associated(flow_stepper)) then
     string = 'Flow Stepper:'
-    call TimestepperPrintInfo(flow_stepper,IUNIT2,string,option)
+    call TimestepperPrintInfo(flow_stepper,option%fid_out,string,option)
   endif    
   if (associated(tran_stepper)) then
     string = 'Transport Stepper:'
-    call TimestepperPrintInfo(tran_stepper,IUNIT2,string,option)
+    call TimestepperPrintInfo(tran_stepper,option%fid_out,string,option)
   endif    
   if (associated(flow_solver)) then
     string = 'Flow Newton Solver:'
-    call SolverPrintNewtonInfo(flow_solver,IUNIT2,string,option%myrank)
+    call SolverPrintNewtonInfo(flow_solver,option%fid_out,string,option%myrank)
   endif    
   if (associated(tran_solver)) then
     string = 'Transport Newton Solver:'
-    call SolverPrintNewtonInfo(tran_solver,IUNIT2,string,option%myrank)
+    call SolverPrintNewtonInfo(tran_solver,option%fid_out,string,option%myrank)
   endif    
   if (associated(flow_solver)) then
     string = 'Flow Linear Solver:'
-    call SolverPrintLinearInfo(flow_solver,IUNIT2,string,option%myrank)
+    call SolverPrintLinearInfo(flow_solver,option%fid_out,string,option%myrank)
   endif    
   if (associated(tran_solver)) then
     string = 'Transport Linear Solver'
-    call SolverPrintLinearInfo(tran_solver,IUNIT2,string,option%myrank)
+    call SolverPrintLinearInfo(tran_solver,option%fid_out,string,option%myrank)
   endif    
 
   if (debug%print_couplers) then
@@ -501,8 +502,10 @@ subroutine readRequiredCardsFromInput(realization,filename)
   option => realization%option
   discretization => realization%discretization
   
-  open(IUNIT1, file=filename, action="read", status="old") 
-  open(IUNIT2, file='pflotran.out', action="write", status="unknown")
+  option%fid_in = IUNIT1
+  option%fid_out = IUNIT2
+  open(option%fid_in, file=filename, action="read", status="old") 
+  open(option%fid_out, file='pflotran.out', action="write", status="unknown")
 
 ! we initialize the word to blanks to avoid error reported by valgrind
   do i=1,MAXWORDLENGTH
@@ -515,7 +518,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
 
   ! MODE information
   string = "MODE"
-  call fiFindStringInFile(IUNIT1,string,ierr)
+  call fiFindStringInFile(option%fid_in,string,ierr)
 
   if (ierr == 0) then  
     ! strip card from front of string
@@ -530,10 +533,10 @@ subroutine readRequiredCardsFromInput(realization,filename)
 
   ! GRID information
   string = "GRID"
-  call fiFindStringInFile(IUNIT1,string,ierr)
+  call fiFindStringInFile(option%fid_in,string,ierr)
   call fiFindStringErrorMsg(option%myrank,string,ierr)
 
-  call DiscretizationRead(discretization,IUNIT1,option)
+  call DiscretizationRead(discretization,option%fid_in,option)
   
   select case(discretization%itype)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
@@ -557,7 +560,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
     
     ! PROC information
     string = "PROC"
-    call fiFindStringInFile(IUNIT1,string,ierr)
+    call fiFindStringInFile(option%fid_in,string,ierr)
 
     if (ierr == 0) then
 
@@ -571,7 +574,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
       call fiDefaultMsg(option%myrank,'npz',ierr)
  
       if (option%myrank == 0) &
-        write(IUNIT2,'(/," *PROC",/, &
+        write(option%fid_out,'(/," *PROC",/, &
           & "  npx   = ",3x,i4,/, &
           & "  npy   = ",3x,i4,/, &
           & "  npz   = ",3x,i4)') grid%structured_grid%npx, &
@@ -593,11 +596,11 @@ subroutine readRequiredCardsFromInput(realization,filename)
 
   ! COMP information
   string = "CHEMISTRY"
-  call fiFindStringInFile(IUNIT1,string,ierr)
+  call fiFindStringInFile(option%fid_in,string,ierr)
 
   if (ierr == 0) then
     realization%reaction => ReactionCreate()
-    call ReactionRead(realization%reaction,IUNIT1,option)
+    call ReactionRead(realization%reaction,option%fid_in,option)
     option%ntrandof = GetPrimarySpeciesCount(realization%reaction)
     option%comp_names => GetPrimarySpeciesNames(realization%reaction)
     option%ncomp = option%ntrandof
@@ -611,7 +614,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
 
   ! COMP information
   string = "COMP"
-  call fiFindStringInFile(IUNIT1,string,ierr)
+  call fiFindStringInFile(option%fid_in,string,ierr)
 
   if (ierr == 0) then
     ! enter src here
@@ -621,7 +624,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
 
   ! COMP information
   string = "PHAS"
-  call fiFindStringInFile(IUNIT1,string,ierr)
+  call fiFindStringInFile(option%fid_in,string,ierr)
 
   if (ierr == 0) then
     ! enter src here
@@ -631,7 +634,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
 
   ! TRAN information
   string = "TRAN"
-  call fiFindStringInFile(IUNIT1,string,ierr)
+  call fiFindStringInFile(option%fid_in,string,ierr)
 
   if (ierr == 0) then
 
@@ -708,7 +711,9 @@ subroutine readInput(simulation,filename)
 !           SOLV, THRM, PCKR, PHIK, INIT, TIME, DTST, BCON, SOUR, BRK, RCTR
 
   type(region_type), pointer :: region
-  type(condition_type), pointer :: condition
+  type(flow_condition_type), pointer :: flow_condition
+  type(tran_condition_type), pointer :: tran_condition
+  type(tran_constraint_type), pointer :: tran_constraint
   type(coupler_type), pointer :: coupler
   type(strata_type), pointer :: strata
   type(breakthrough_type), pointer :: breakthrough
@@ -759,10 +764,10 @@ subroutine readInput(simulation,filename)
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
                           ! is a double quote as in c/c++
                               
-  rewind(IUNIT1)  
+  rewind(option%fid_in)  
     
   do
-    call fiReadFlotranString(IUNIT1, string, ierr)
+    call fiReadFlotranString(option%fid_in, string, ierr)
     if (ierr /= 0) exit
 
     call fiReadWord(string,word,.false.,ierr)
@@ -780,12 +785,12 @@ subroutine readInput(simulation,filename)
 
 !....................
       case ('GRID')
-        call DiscretizationRead(realization%discretization,IUNIT1,option)
+        call DiscretizationRead(realization%discretization,option%fid_in,option)
 
 !....................
       case ('CHEMISTRY')
         do
-          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadFlotranString(option%fid_in,string,ierr)
           call fiReadStringErrorMsg(option%myrank,card,ierr)
           string2 = string
           call fiReadWord(string2,word,.true.,ierr)
@@ -793,11 +798,11 @@ subroutine readInput(simulation,filename)
           select case(word)
             case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
                  'MINERALS')
-              call fiSkipToEND(IUNIT1,option%myrank,card)
+              call fiSkipToEND(option%fid_in,option%myrank,card)
             case('MINERAL_RATES')
-              call ReactionReadMineralRates(realization%reaction,IUNIT1,option)
+              call ReactionReadMineralRates(realization%reaction,option%fid_in,option)
             case('SURFACE_COMPLEXES')
-              call ReactionReadSurfaceComplexes(realization%reaction,IUNIT1, &
+              call ReactionReadSurfaceComplexes(realization%reaction,option%fid_in, &
               option)
           end select
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
@@ -818,7 +823,7 @@ subroutine readInput(simulation,filename)
       
 !....................
       case ('DEBUG','PFLOW_DEBUG')
-        call DebugRead(realization%debug,IUNIT1,option%myrank)
+        call DebugRead(realization%debug,option%fid_in,option%myrank)
         
 !....................
       case ('GENERALIZED_GRID')
@@ -834,47 +839,69 @@ subroutine readInput(simulation,filename)
         call fiReadWord(string,region%name,.true.,ierr)
         call fiErrorMsg(option%myrank,'name','REGION',ierr) 
         call printMsg(option,region%name)
-        call RegionRead(region,IUNIT1,option)
+        call RegionRead(region,option%fid_in,option)
         ! we don't copy regions down to patches quite yet, since we
         ! don't want to duplicate IO in reading the regions
-        call RegionAddToList(region,realization%regions)      
+        call RegionAddToList(region,realization%regions)   
+        nullify(region)   
 
 !....................
-      case ('CONDITION','COND')
-        condition => ConditionCreate(option)
-        call fiReadWord(string,condition%name,.true.,ierr)
-        call fiErrorMsg(option%myrank,'cond','name',ierr) 
-        call printMsg(option,condition%name)
-        call ConditionRead(condition,option,IUNIT1)
-        if (condition%iclass == FLOW_CLASS) then
-          call ConditionAddToList(condition,realization%flow_conditions)
-        else
-          call ConditionAddToList(condition,realization%transport_conditions)
-        endif  
+      case ('FLOW_CONDITION')
+        flow_condition => ConditionCreate(option)
+        call fiReadWord(string,flow_condition%name,.true.,ierr)
+        call fiErrorMsg(option%myrank,'FLOW_CONDITION','name',ierr) 
+        call printMsg(option,flow_condition%name)
+        call ConditionRead(flow_condition,option,option%fid_in)
+        call ConditionAddToList(flow_condition,realization%flow_conditions)
+        nullify(flow_condition)
         
+!....................
+      case ('TRANSPORT_CONDITION')
+        tran_condition => TranConditionCreate(option)
+        call fiReadWord(string,tran_condition%name,.true.,ierr)
+        call fiErrorMsg(option%myrank,'TRANSPORT_CONDITION','name',ierr) 
+        call printMsg(option,tran_condition%name)
+        call TranConditionRead(tran_condition,option,option%fid_in)
+        call TranConditionAddToList(tran_condition,realization%transport_conditions)
+        nullify(tran_condition)
+
+!....................
+      case('CONSTRAINT')
+        tran_constraint => TranConstraintCreate(option)
+        call fiReadWord(string,tran_constraint%name,.true.,ierr)
+        call fiErrorMsg(option%myrank,'constraint','name',ierr) 
+        call printMsg(option,tran_constraint%name)
+        call TranConstraintRead(tran_constraint,option,option%fid_in)
+        call TranConstraintAddToList(tran_constraint,realization%transport_constraints)
+        nullify(tran_constraint)
+
 !....................
       case ('BOUNDARY_CONDITION')
         coupler => CouplerCreate(BOUNDARY_COUPLER_TYPE)
-        call CouplerRead(coupler,IUNIT1,option)
+        call CouplerRead(coupler,option%fid_in,option)
         call RealizationAddCoupler(realization,coupler)
+        nullify(coupler)
       
 !....................
       case ('INITIAL_CONDITION')
         coupler => CouplerCreate(INITIAL_COUPLER_TYPE)
-        call CouplerRead(coupler,IUNIT1,option)
+        call CouplerRead(coupler,option%fid_in,option)
         call RealizationAddCoupler(realization,coupler)
+        nullify(coupler)        
       
 !....................
       case ('SOURCE_SINK')
         coupler => CouplerCreate(SRC_SINK_COUPLER_TYPE)
-        call CouplerRead(coupler,IUNIT1,option)
+        call CouplerRead(coupler,option%fid_in,option)
         call RealizationAddCoupler(realization,coupler)
+        nullify(coupler)        
       
 !....................
       case ('STRATIGRAPHY','STRATA')
         strata => StrataCreate()
-        call StrataRead(strata,IUNIT1,option)
+        call StrataRead(strata,option%fid_in,option)
         call RealizationAddStrata(realization,strata)
+        nullify(strata)
       
 !.....................
       case ('DATASET') 
@@ -897,11 +924,11 @@ subroutine readInput(simulation,filename)
         
 !.....................
       case ('COMP') 
-        call fiSkipToEND(IUNIT1,option%myrank,card)
+        call fiSkipToEND(option%fid_in,option%myrank,card)
         
 !.....................
       case ('PHAS')
-        call fiSkipToEND(IUNIT1,option%myrank,card)
+        call fiSkipToEND(option%fid_in,option%myrank,card)
       
 !....................
 
@@ -914,7 +941,7 @@ subroutine readInput(simulation,filename)
         call fiDefaultMsg(option%myrank,'isync',ierr)
 
         if (option%myrank == 0) &
-          write(IUNIT2,'(/," *COUP",/, &
+          write(option%fid_out,'(/," *COUP",/, &
             & "  isync      = ",3x,i2 &
             & )') idum
 
@@ -939,7 +966,7 @@ subroutine readInput(simulation,filename)
         endif
 
         if (option%myrank == 0) &
-          write(IUNIT2,'(/," *GRAV",/, &
+          write(option%fid_out,'(/," *GRAV",/, &
             & "  gravity    = "," [m/s^2]",3x,3pe12.4 &
             & )') option%gravity(1:3)
 
@@ -965,7 +992,7 @@ subroutine readInput(simulation,filename)
         enddo
 
         if (option%myrank == 0) &
-          write(IUNIT2,'(/," *HDF5",10x,l1,/)') realization%output_option%print_hdf5
+          write(option%fid_out,'(/," *HDF5",10x,l1,/)') realization%output_option%print_hdf5
 
 !.....................
       case ('INVERT_Z','INVERTZ')
@@ -996,7 +1023,7 @@ subroutine readInput(simulation,filename)
         enddo
 
         if (option%myrank == 0) &
-          write(IUNIT2,'(/," *TECP",10x,l1,/)') realization%output_option%print_tecplot
+          write(option%fid_out,'(/," *TECP",10x,l1,/)') realization%output_option%print_tecplot
 
 !....................
 
@@ -1039,7 +1066,7 @@ subroutine readInput(simulation,filename)
         endif
 
         idum = 0
-        if (option%myrank==0) write(IUNIT2,'(/," *TOLR ",/, &
+        if (option%myrank==0) write(option%fid_out,'(/," *TOLR ",/, &
           &"  steps  = ",i6,/,      &
           &"  iaccel     = ",i3,/,      &
           &"  newtmx     = ",i3,/,      &
@@ -1095,7 +1122,7 @@ subroutine readInput(simulation,filename)
         call fiReadDouble(string,option%delhaq,ierr)
         call fiDefaultMsg(option%myrank,'delhaq',ierr)
 
-        if (option%myrank==0) write(IUNIT2,'(/," *DIFF ",/, &
+        if (option%myrank==0) write(option%fid_out,'(/," *DIFF ",/, &
           &"  difaq       = ",1pe12.4,"[m^2/s]",/, &
           &"  delhaq      = ",1pe12.4,"[kJ/mol]")') &
           option%difaq,option%delhaq
@@ -1139,7 +1166,7 @@ subroutine readInput(simulation,filename)
         call fiDefaultMsg(option%myrank,'wfmts',ierr)
 
         if (option%myrank == 0) &
-        write(IUNIT2,'(/," *RCTR",/, &
+        write(option%fid_out,'(/," *RCTR",/, &
           & "  ityp   = ",3x,i3,/, &
           & "  rk     = ",3x,1pe12.4," [mol/cm^2/s]",/, &
           & "  phis0  = ",3x,1pe12.4," [-]",/, &
@@ -1172,7 +1199,7 @@ subroutine readInput(simulation,filename)
         call fiReadDouble(string,option%fc,ierr)
         call fiDefaultMsg(option%myrank,'fc',ierr)
 
-        if (option%myrank==0) write(IUNIT2,'(/," *RADN ",/, &
+        if (option%myrank==0) write(option%fid_out,'(/," *RADN ",/, &
           &"  ret     = ",1pe12.4,/, &
           &"  fc      = ",1pe12.4)') &
           option%ret,option%fc
@@ -1187,7 +1214,7 @@ subroutine readInput(simulation,filename)
 
         call fiReadDouble(string,option%qu_kin,ierr)
         call fiDefaultMsg(option%myrank,'TransReaction',ierr)
-        if (option%myrank==0) write(IUNIT2,'(/," *PHAR ",1pe12.4)')option%qu_kin
+        if (option%myrank==0) write(option%fid_out,'(/," *PHAR ",1pe12.4)')option%qu_kin
         option%yh2o_in_co2 = 0.d0
         if (option%qu_kin > 0.d0) option%yh2o_in_co2 = 1.d-2 ! check this number!
 #endif     
@@ -1256,15 +1283,15 @@ subroutine readInput(simulation,filename)
         select case(word)
           case('TRAN','TRANSPORT')
             if (associated(tran_solver)) then
-              call TimestepperRead(tran_stepper,IUNIT1,option)
+              call TimestepperRead(tran_stepper,option%fid_in,option)
             else
-              call fiSkipToEND(IUNIT1,option%myrank,card)
+              call fiSkipToEND(option%fid_in,option%myrank,card)
             endif
           case default
             if (associated(flow_solver)) then
-              call TimestepperRead(flow_stepper,IUNIT1,option)
+              call TimestepperRead(flow_stepper,option%fid_in,option)
             else
-              call fiSkipToEND(IUNIT1,option%myrank,card)
+              call fiSkipToEND(option%fid_in,option%myrank,card)
             endif
         end select
 
@@ -1277,15 +1304,15 @@ subroutine readInput(simulation,filename)
         select case(word)
           case('TRAN','TRANSPORT')
             if (associated(tran_solver)) then
-              call SolverReadLinear(tran_solver,IUNIT1,option%myrank)
+              call SolverReadLinear(tran_solver,option%fid_in,option%myrank)
             else
-              call fiSkipToEND(IUNIT1,option%myrank,card)
+              call fiSkipToEND(option%fid_in,option%myrank,card)
             endif
           case default
             if (associated(flow_solver)) then
-              call SolverReadLinear(flow_solver,IUNIT1,option%myrank)
+              call SolverReadLinear(flow_solver,option%fid_in,option%myrank)
             else
-              call fiSkipToEND(IUNIT1,option%myrank,card)
+              call fiSkipToEND(option%fid_in,option%myrank,card)
             endif
         end select
 
@@ -1298,15 +1325,15 @@ subroutine readInput(simulation,filename)
         select case(word)
           case('TRAN','TRANSPORT')
             if (associated(tran_stepper)) then
-              call SolverReadNewton(tran_solver,IUNIT1,option%myrank)
+              call SolverReadNewton(tran_solver,option%fid_in,option%myrank)
             else
-              call fiSkipToEND(IUNIT1,option%myrank,card)
+              call fiSkipToEND(option%fid_in,option%myrank,card)
             endif
           case default
             if (associated(flow_stepper)) then
-              call SolverReadNewton(flow_solver,IUNIT1,option%myrank)
+              call SolverReadNewton(flow_solver,option%fid_in,option%myrank)
             else
-              call fiSkipToEND(IUNIT1,option%myrank,card)
+              call fiSkipToEND(option%fid_in,option%myrank,card)
             endif
         end select
 
@@ -1318,7 +1345,7 @@ subroutine readInput(simulation,filename)
         
         count = 0
         do
-          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadFlotranString(option%fid_in,string,ierr)
           call fiReadStringErrorMsg(option%myrank,'FLUID_PROPERTIES',ierr)
           
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
@@ -1341,7 +1368,7 @@ subroutine readInput(simulation,filename)
 
         count = 0
         do
-          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadFlotranString(option%fid_in,string,ierr)
           call fiReadStringErrorMsg(option%myrank,'THRM',ierr)
 
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
@@ -1431,13 +1458,13 @@ subroutine readInput(simulation,filename)
         enddo
       
         if (option%myrank==0) then
-          write(IUNIT2,'(/," *THRM: ",i3)') count
-          write(IUNIT2,'("  itm rock_density  cpr        ckdry", &
+          write(option%fid_out,'(/," *THRM: ",i3)') count
+          write(option%fid_out,'("  itm rock_density  cpr        ckdry", &
             &                 "     ckwet       tau       cdiff     cexp")')
-          write(IUNIT2,'("        [kg/m^3]  [J/kg/K]   [J/m/K/s]", &
+          write(option%fid_out,'("        [kg/m^3]  [J/kg/K]   [J/m/K/s]", &
             &              "     [J/m/K/s]     [-]        [m^2/s]       [-]")')
           do i = 1, count
-            write(IUNIT2,'(i4,1p7e11.4)') i,option%rock_density(i), &
+            write(option%fid_out,'(i4,1p7e11.4)') i,option%rock_density(i), &
             option%cpr(i),option%ckdry(i),option%ckwet(i), &
             option%tau(i),option%cdiff(i),option%cexp(i)
           enddo
@@ -1449,7 +1476,7 @@ subroutine readInput(simulation,filename)
       
         count = 0
         do
-          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadFlotranString(option%fid_in,string,ierr)
           call fiReadStringErrorMsg(option%myrank,'PCKR',ierr)
 
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
@@ -1570,17 +1597,17 @@ subroutine readInput(simulation,filename)
 #endif
       
         if (option%myrank==0) then
-          write(IUNIT2,'(/," *PCKR: ",i3)') count
-          write(IUNIT2,'("  icp swir    lambda         alpha")')
+          write(option%fid_out,'(/," *PCKR: ",i3)') count
+          write(option%fid_out,'("  icp swir    lambda         alpha")')
           do j = 1, count
             if (option%iflowmode == MPH_MODE .or. &
                 option%iflowmode == THC_MODE .or. &
                 option%iflowmode == RICHARDS_MODE) then
-              write(IUNIT2,'(i4,1p8e12.4)') option%icaptype(j),(option%sir(np,j),np=1, &
+              write(option%fid_out,'(i4,1p8e12.4)') option%icaptype(j),(option%sir(np,j),np=1, &
                 option%nphase),option%lambda(j),option%alpha(j), &
                 option%pcwmax(j),option%pcbetac(j),option%pwrprm(j)
             else
-              write(IUNIT2,'(i4,1p7e12.4)') option%icaptype(j),option%swir(j), &
+              write(option%fid_out,'(i4,1p7e12.4)') option%icaptype(j),option%swir(j), &
                 option%lambda(j),option%alpha(j),option%pcwmax(j), &
                 option%pcbetac(j),option%pwrprm(j)
             endif
@@ -1604,7 +1631,7 @@ subroutine readInput(simulation,filename)
 
         count = 0
         do
-          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadFlotranString(option%fid_in,string,ierr)
           call fiReadStringErrorMsg(option%myrank,'PHIK',ierr)
 
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
@@ -1714,7 +1741,7 @@ subroutine readInput(simulation,filename)
         continuation_flag = .true.
         do
           if (.not.continuation_flag) exit
-          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadFlotranString(option%fid_in,string,ierr)
           if (ierr /= 0) exit
           continuation_flag = .false.
           if (index(string,backslash) > 0) continuation_flag = .true.
@@ -1762,7 +1789,7 @@ subroutine readInput(simulation,filename)
         temp_int = 0       
         do
           if (.not.continuation_flag) exit
-          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadFlotranString(option%fid_in,string,ierr)
           if (ierr /= 0) exit
           continuation_flag = .false.
           if (index(string,backslash) > 0) continuation_flag = .true.
@@ -1791,7 +1818,7 @@ subroutine readInput(simulation,filename)
 !....................
       case ('BRK','BREAKTHROUGH')
         breakthrough => BreakthroughCreate()
-        call BreakthroughRead(breakthrough,IUNIT1,option)
+        call BreakthroughRead(breakthrough,option%fid_in,option)
         call RealizationAddBreakthrough(realization,breakthrough)        
       
 !....................
@@ -1805,7 +1832,7 @@ subroutine readInput(simulation,filename)
           call fiReadDouble(string,master_stepper%steady_eps(j),ierr)
           call fiDefaultMsg(option%myrank,'steady tol',ierr)
         enddo
-        if (option%myrank==0) write(IUNIT2,'(/," *SDST ",/, &
+        if (option%myrank==0) write(option%fid_out,'(/," *SDST ",/, &
           &"  dpdt        = ",1pe12.4,/, &
           &"  dtmpdt        = ",1pe12.4,/, &
           &"  dcdt        = ",1pe12.4)') &
@@ -1835,7 +1862,7 @@ subroutine readInput(simulation,filename)
 
   enddo
 
-  close(IUNIT1)
+  close(option%fid_in)
   
 end subroutine readInput
 
@@ -2180,10 +2207,10 @@ subroutine assignInitialConditions(realization)
                 endif
               endif
               ! minerals              
-              if (associated(initial_condition%tran_condition%mineral_concentrations)) then
+              if (associated(initial_condition%tran_condition%cur_constraint_coupler%constraint%minerals)) then
                 do idof = 1, option%nmnrl
                   cur_patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
-                    initial_condition%tran_condition%mineral_concentrations(idof)%ptr%dataset%cur_value(1)
+                    initial_condition%tran_condition%cur_constraint_coupler%constraint%minerals%basis_conc(idof)
                 enddo
               endif
             enddo
@@ -2197,10 +2224,10 @@ subroutine assignInitialConditions(realization)
                 endif
               endif
               ! minerals              
-              if (associated(initial_condition%tran_condition%mineral_concentrations)) then
+              if (associated(initial_condition%tran_condition%cur_constraint_coupler%constraint%minerals)) then
                 do idof = 1, option%nmnrl
                   cur_patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
-                    initial_condition%tran_condition%mineral_concentrations(idof)%ptr%dataset%cur_value(1)
+                    initial_condition%tran_condition%cur_constraint_coupler%constraint%minerals%basis_conc(idof)
                 enddo
               endif
             enddo

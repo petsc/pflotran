@@ -1,5 +1,7 @@
 module Condition_module
  
+  use Reactive_Transport_Aux_module
+  
   implicit none
 
   private
@@ -10,72 +12,120 @@ module Condition_module
   PetscInt, parameter :: STEP = 1
   PetscInt, parameter :: LINEAR = 2
 
-  type, public :: condition_dataset_type
+  type, public :: flow_condition_dataset_type
     PetscInt :: rank
-    logical :: is_transient
-    logical :: is_cyclic
+    PetscTruth :: is_transient
+    PetscTruth :: is_cyclic
     PetscInt :: interpolation_method
     PetscReal, pointer :: times(:)
     PetscReal, pointer :: values(:,:)
     PetscReal, pointer :: cur_value(:)
     PetscInt :: cur_time_index
     PetscInt :: max_time_index
-  end type condition_dataset_type
+  end type flow_condition_dataset_type
   
-  type, public :: condition_type
+  type, public :: flow_condition_type
     PetscInt :: id                                 ! id from which condition can be referenced
-    character(len=MAXWORDLENGTH) :: class         ! character string describing class of condition
-    PetscInt :: iclass                            ! integer id for class
-    logical :: sync_time_with_update
+    PetscTruth :: sync_time_with_update
     character(len=MAXWORDLENGTH) :: name          ! name of condition (e.g. initial, recharge)
     PetscInt :: num_sub_conditions
     PetscInt :: iphase
     PetscInt, pointer :: itype(:)
     character(len=MAXWORDLENGTH) :: time_units
     character(len=MAXWORDLENGTH) :: length_units
-    type(sub_condition_type), pointer :: pressure
-    type(sub_condition_type), pointer :: mass_rate
-    type(sub_condition_type), pointer :: temperature
-    type(sub_condition_type), pointer :: concentration
-    type(sub_condition_ptr_type), pointer :: transport_concentrations(:)
-    type(sub_condition_ptr_type), pointer :: mineral_concentrations(:)
-    type(sub_condition_type), pointer :: enthalpy
+    type(flow_sub_condition_type), pointer :: pressure
+    type(flow_sub_condition_type), pointer :: mass_rate
+    type(flow_sub_condition_type), pointer :: temperature
+    type(flow_sub_condition_type), pointer :: concentration
+    type(flow_sub_condition_type), pointer :: enthalpy
     type(sub_condition_ptr_type), pointer :: sub_condition_ptr(:)
-    type(condition_type), pointer :: next         ! pointer to next condition_type for linked-lists
-  end type condition_type
+    type(flow_condition_type), pointer :: next         ! pointer to next condition_type for linked-lists
+  end type flow_condition_type
   
-  type, public :: sub_condition_type
+  type, public :: flow_sub_condition_type
     PetscInt :: itype                  ! integer describing type of condition
     character(len=MAXWORDLENGTH) :: ctype ! character string describing type of condition
     character(len=MAXWORDLENGTH) :: units      ! units
     character(len=MAXWORDLENGTH) :: name
-    type(condition_dataset_type) :: datum
-    type(condition_dataset_type) :: gradient
-    type(condition_dataset_type) :: dataset
-    character(len=MAXWORDLENGTH) :: aux_word
-    PetscInt :: aux_int
-  end type sub_condition_type
+    type(flow_condition_dataset_type) :: datum
+    type(flow_condition_dataset_type) :: gradient
+    type(flow_condition_dataset_type) :: dataset
+  end type flow_sub_condition_type
   
   type, public :: sub_condition_ptr_type
-    type(sub_condition_type), pointer :: ptr
+    type(flow_sub_condition_type), pointer :: ptr
   end type sub_condition_ptr_type
     
   type, public :: condition_ptr_type
-    type(condition_type), pointer :: ptr
+    type(flow_condition_type), pointer :: ptr
   end type condition_ptr_type
   
   type, public :: condition_list_type
     PetscInt :: num_conditions
-    type(condition_type), pointer :: first
-    type(condition_type), pointer :: last
+    type(flow_condition_type), pointer :: first
+    type(flow_condition_type), pointer :: last
     type(condition_ptr_type), pointer :: array(:)    
   end type condition_list_type
   
-  PetscInt, save :: condition_count = 0
+  type, public :: tran_condition_type
+    PetscInt :: id                                ! id from which condition can be referenced
+    PetscInt :: itype                  ! integer describing type of condition
+    PetscTruth :: sync_time_with_update
+    PetscTruth :: is_transient
+    character(len=MAXWORDLENGTH) :: name          ! name of condition (e.g. initial, recharge)
+    type(tran_constraint_coupler_type), pointer :: constraint_coupler_list
+    type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
+    type(tran_condition_type), pointer :: next
+  end type tran_condition_type
+  
+  type, public :: tran_condition_ptr_type
+    type(tran_condition_type), pointer :: ptr
+  end type tran_condition_ptr_type
+  
+  type, public :: tran_condition_list_type
+    PetscInt :: num_conditions
+    type(tran_condition_type), pointer :: first
+    type(tran_condition_type), pointer :: last
+    type(tran_condition_ptr_type), pointer :: array(:)    
+  end type tran_condition_list_type
+  
+  type, public :: tran_constraint_type
+    PetscInt :: id
+    character(len=MAXWORDLENGTH) :: name         
+    type(rt_condition_auxvar_type), pointer :: aqueous_species
+    type(rt_condition_auxvar_type), pointer :: minerals
+    type(tran_constraint_type), pointer :: next    
+  end type tran_constraint_type
+  
+  type, public :: tran_constraint_ptr_type
+    type(tran_constraint_type), pointer :: ptr
+  end type tran_constraint_ptr_type
+  
+  type, public :: tran_constraint_list_type
+    PetscInt :: num_constraints
+    type(tran_constraint_type), pointer :: first
+    type(tran_constraint_type), pointer :: last
+    type(tran_constraint_ptr_type), pointer :: array(:)    
+  end type tran_constraint_list_type
+  
+  type, public :: tran_constraint_coupler_type
+    character(len=MAXWORDLENGTH) :: constraint_name   
+    PetscReal :: time
+    character(len=MAXWORDLENGTH) :: time_units
+    type(tran_constraint_type), pointer :: constraint
+    type(tran_constraint_coupler_type), pointer :: next    
+  end type tran_constraint_coupler_type
   
   public :: ConditionCreate, ConditionDestroy, ConditionRead, &
             ConditionAddToList, ConditionInitList, ConditionDestroyList, &
-            ConditionGetPtrFromList, ConditionUpdate
+            ConditionGetPtrFromList, ConditionUpdate, &
+            TranConditionCreate, TranConstraintCreate, &
+            TranConditionAddToList, TranConditionInitList, &
+            TranConditionDestroyList, TranConditionGetPtrFromList, &
+            TranConstraintAddToList, TranConstraintInitList, &
+            TranConstraintDestroyList, TranConstraintGetPtrFromList, &
+            TranConditionRead, TranConstraintRead, &
+            TranConditionUpdate 
     
 contains
 
@@ -93,9 +143,9 @@ function ConditionCreate(option)
   implicit none
   
   type(option_type) :: option
-  type(condition_type), pointer :: ConditionCreate
+  type(flow_condition_type), pointer :: ConditionCreate
   
-  type(condition_type), pointer :: condition
+  type(flow_condition_type), pointer :: condition
   
   allocate(condition)
   nullify(condition%pressure)
@@ -103,8 +153,6 @@ function ConditionCreate(option)
   nullify(condition%temperature)
   nullify(condition%concentration)
   nullify(condition%enthalpy)
-  nullify(condition%transport_concentrations)
-  nullify(condition%mineral_concentrations)
   nullify(condition%sub_condition_ptr)
   nullify(condition%itype)
   nullify(condition%next)
@@ -114,16 +162,103 @@ function ConditionCreate(option)
   condition%id = 0
   condition%iphase = 0
   condition%num_sub_conditions = 0
-  condition%class = ''
-  condition%iclass = NULL_CLASS
   condition%name = ''
-
-  condition_count = condition_count + 1
-  condition%id = condition_count
   
   ConditionCreate => condition
 
 end function ConditionCreate
+
+! ************************************************************************** !
+!
+! TranConditionCreate: Creates a transport condition
+! author: Glenn Hammond
+! date: 10/23/07
+!
+! ************************************************************************** !
+function TranConditionCreate(option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  type(tran_condition_type), pointer :: TranConditionCreate
+  
+  type(tran_condition_type), pointer :: condition
+  
+  allocate(condition)
+  nullify(condition%constraint_coupler_list)
+  nullify(condition%cur_constraint_coupler)
+  nullify(condition%next)
+  condition%id = 0
+  condition%itype = 0
+  condition%sync_time_with_update = .false.
+  condition%name = ''
+
+  TranConditionCreate => condition
+
+end function TranConditionCreate
+
+! ************************************************************************** !
+!
+! TranConstraintCreate: Creates a transport constraint (set of concentrations
+!                       and constraints for setting boundary or initial 
+!                       condition).
+! author: Glenn Hammond
+! date: 10/14/08
+!
+! ************************************************************************** !
+function TranConstraintCreate(option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  type(tran_constraint_type), pointer :: TranConstraintCreate
+  
+  type(tran_constraint_type), pointer :: constraint
+  
+  allocate(constraint)
+  nullify(constraint%aqueous_species)
+  nullify(constraint%minerals)
+  nullify(constraint%next)
+  constraint%id = 0
+  constraint%name = ''
+
+  TranConstraintCreate => constraint
+
+end function TranConstraintCreate
+
+! ************************************************************************** !
+!
+! TranConstraintCouplerCreate: Creates a coupler that ties a constraint to a
+!                              transport condition
+! author: Glenn Hammond
+! date: 10/14/08
+!
+! ************************************************************************** !
+function TranConstraintCouplerCreate(option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  type(tran_constraint_coupler_type), pointer :: TranConstraintCouplerCreate
+  
+  type(tran_constraint_coupler_type), pointer :: coupler
+  
+  allocate(coupler)
+  nullify(coupler%constraint)
+  nullify(coupler%next)
+  coupler%constraint_name = ''
+  coupler%time = 0.d0
+  coupler%time_units = ''
+  
+  TranConstraintCouplerCreate => coupler
+
+end function TranConstraintCouplerCreate
 
 ! ************************************************************************** !
 !
@@ -138,19 +273,17 @@ function SubConditionCreate(ndof)
   
   implicit none
   
-  type(sub_condition_type), pointer :: SubConditionCreate
+  type(flow_sub_condition_type), pointer :: SubConditionCreate
   
   PetscInt :: ndof
   
-  type(sub_condition_type), pointer :: sub_condition
+  type(flow_sub_condition_type), pointer :: sub_condition
   
   allocate(sub_condition)
   sub_condition%units = ''
   sub_condition%itype = 0
   sub_condition%ctype = ''
   sub_condition%name = ''
-  sub_condition%aux_int = 0
-  sub_condition%aux_word = ''
 
   call ConditionDatasetInit(sub_condition%dataset)
   sub_condition%dataset%rank = ndof
@@ -177,7 +310,7 @@ function GetSubConditionFromArrayByName(sub_condition_ptr_list,name)
   
   implicit none
   
-  type(sub_condition_type), pointer :: GetSubConditionFromArrayByName
+  type(flow_sub_condition_type), pointer :: GetSubConditionFromArrayByName
   type(sub_condition_ptr_type), pointer :: sub_condition_ptr_list(:)
   character(len=MAXWORDLENGTH) :: name
   
@@ -205,7 +338,7 @@ subroutine ConditionDatasetInit(dataset)
 
   implicit none
   
-  type(condition_dataset_type) :: dataset
+  type(flow_condition_dataset_type) :: dataset
 
   nullify(dataset%times)
   nullify(dataset%values)
@@ -239,18 +372,18 @@ subroutine SubConditionVerify(option, condition, sub_condition_name, &
   implicit none
   
   type(option_type) :: option
-  type(condition_type) :: condition
+  type(flow_condition_type) :: condition
   character(len=MAXWORDLENGTH) :: sub_condition_name
-  type(sub_condition_type), pointer :: sub_condition
+  type(flow_sub_condition_type), pointer :: sub_condition
   character(len=MAXWORDLENGTH) :: default_ctype
   PetscInt :: default_itype
   PetscTruth :: default_cyclic
   PetscInt :: default_interpolation
   PetscReal :: default_time
   PetscInt :: default_iphase
-  type(condition_dataset_type) :: default_dataset
-  type(condition_dataset_type) :: default_datum
-  type(condition_dataset_type) :: default_gradient
+  type(flow_condition_dataset_type) :: default_dataset
+  type(flow_condition_dataset_type) :: default_datum
+  type(flow_condition_dataset_type) :: default_gradient
   PetscTruth :: destroy_if_null
 
   PetscInt :: array_size
@@ -297,8 +430,8 @@ subroutine ConditionDatasetVerify(option, condition_name, sub_condition_name, &
   character(len=MAXWORDLENGTH) :: sub_condition_name
   character(len=MAXWORDLENGTH) :: size1, size2
   PetscReal :: default_time
-  type(condition_dataset_type) :: dataset
-  type(condition_dataset_type) :: default_dataset
+  type(flow_condition_dataset_type) :: dataset
+  type(flow_condition_dataset_type) :: default_dataset
   
   PetscInt :: array_size
   
@@ -369,30 +502,27 @@ subroutine ConditionRead(condition,option,fid)
   
   implicit none
   
-  type(condition_type) :: condition
+  type(flow_condition_type) :: condition
   type(option_type) :: option
   PetscInt :: fid
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
-  type(sub_condition_type), pointer :: pressure, flux, temperature, &
+  type(flow_sub_condition_type), pointer :: pressure, flux, temperature, &
                                        concentration, enthalpy, mass_rate, &
                                        sub_condition_ptr
-  type(sub_condition_ptr_type), pointer :: transport_concentrations(:)
-  type(sub_condition_ptr_type), pointer :: mineral_concentrations(:)
   PetscReal :: default_time = 0.d0
   PetscInt :: default_iphase = 0
-  type(condition_dataset_type) :: default_dataset
-  type(condition_dataset_type) :: default_datum
-  type(condition_dataset_type) :: default_gradient
+  type(flow_condition_dataset_type) :: default_dataset
+  type(flow_condition_dataset_type) :: default_datum
+  type(flow_condition_dataset_type) :: default_gradient
   character(len=MAXWORDLENGTH) :: default_ctype
   PetscInt :: default_itype
   PetscInt :: array_size, length, idof
   logical :: found
-  PetscTruth :: minerals_exist
   PetscErrorCode :: ierr
 
-  call PetscLogEventBegin(logging%event_condition_read, &
+  call PetscLogEventBegin(logging%event_flow_condition_read, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
 
@@ -420,29 +550,6 @@ subroutine ConditionRead(condition,option,fid)
   concentration%units = 'M'
   enthalpy%units = 'KJ/mol'
   
-  if (option%ntrandof > 0) then
-    allocate(transport_concentrations(option%ntrandof))
-    do idof = 1, option%ntrandof
-      transport_concentrations(idof)%ptr => SubConditionCreate(ONE_INTEGER)
-      transport_concentrations(idof)%ptr%name = option%comp_names(idof)
-      transport_concentrations(idof)%ptr%units = 'M'
-    enddo
-  else
-    nullify(transport_concentrations)
-  endif
-  
-  minerals_exist = PETSC_FALSE
-  if (option%nmnrl > 0) then
-    allocate(mineral_concentrations(option%nmnrl))
-    do idof = 1, option%nmnrl
-      mineral_concentrations(idof)%ptr => SubConditionCreate(ONE_INTEGER)
-      mineral_concentrations(idof)%ptr%name = option%mnrl_names(idof)
-      mineral_concentrations(idof)%ptr%units = '-'
-    enddo
-  else
-    nullify(mineral_concentrations)
-  endif
-
   default_ctype = 'dirichlet'
   default_itype = DIRICHLET_BC
 
@@ -450,7 +557,7 @@ subroutine ConditionRead(condition,option,fid)
   ierr = 0
   do
   
-    call fiReadFlotranString(IUNIT1,string,ierr)
+    call fiReadFlotranString(fid,string,ierr)
     call fiReadStringErrorMsg(option%myrank,'CONDITION',ierr)
           
     if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
@@ -479,31 +586,11 @@ subroutine ConditionRead(condition,option,fid)
             case('C','K')
               temperature%units = trim(word)
             case('M','mol/L')
-              if (condition%iclass == TRANSPORT_CLASS) then
-                do idof = 1, option%ntrandof
-                  transport_concentrations(idof)%ptr%units = trim(word)
-                enddo
-              else
-                concentration%units = trim(word)
-              endif
+              concentration%units = trim(word)
             case('KJ/mol')
               enthalpy%units = trim(word)
           end select
         enddo
-      case('CLASS') ! read condition class (flow vs. transport)
-        call fiReadWord(string,word,.true.,ierr)
-        call fiErrorMsg(option%myrank,'CLASS','CONDITION', ierr)   
-        length = len_trim(word)
-        call fiCharsToLower(word,length)
-        condition%class = word
-        select case(word)
-          case('flow')
-            condition%iclass = FLOW_CLASS
-          case('tran','transport')
-            condition%iclass = TRANSPORT_CLASS
-          case default
-            call printErrMsg(option,'class: '//word//' not recognized in condition')
-        end select
       case('CYCLIC')
         default_dataset%is_cyclic = .true.
       case('INTERPOLATION')
@@ -519,7 +606,7 @@ subroutine ConditionRead(condition,option,fid)
         end select
       case('TYPE') ! read condition type (dirichlet, neumann, etc) for each dof
         do
-          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadFlotranString(fid,string,ierr)
           call fiReadStringErrorMsg(option%myrank,'CONDITION',ierr)
           
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
@@ -538,24 +625,7 @@ subroutine ConditionRead(condition,option,fid)
             case('TEMP','TEMPERATURE')
               sub_condition_ptr => temperature
             case('CONC','CONCENTRATION')
-              if (condition%iclass == TRANSPORT_CLASS) then
-                call fiReadWord(string,word,.true.,ierr)
-                call fiErrorMsg(option%myrank,'name','CONDITION,CONCENTRATION', ierr)
-                nullify(sub_condition_ptr)
-                if (option%ntrandof > 0) then
-                  sub_condition_ptr => &
-                    GetSubConditionFromArrayByName(transport_concentrations,word)
-                  if (.not.associated(sub_condition_ptr)) then
-                    string = 'solute name "' // trim(word) // &
-                             '" not recognized in condition'
-                    call printErrMsg(option,string)
-                  endif
-                else
-                  sub_condition_ptr => concentration
-                endif
-              else            
-                sub_condition_ptr => concentration
-              endif
+              sub_condition_ptr => concentration
             case('H','ENTHALPY')
               sub_condition_ptr => enthalpy
             case default
@@ -584,6 +654,7 @@ subroutine ConditionRead(condition,option,fid)
             case('volume','volumetric','volumetric_rate')
               sub_condition_ptr%itype = VOLUMETRIC_RATE_SS
             case('concentration')
+#if 0            
               sub_condition_ptr%itype = CONCENTRATION_SS
               call fiReadWord(string,word,.true.,ierr)
               call fiDefaultMsg(option%myrank,'CONDITION,TYPE,CONCENTRATION',ierr)
@@ -608,6 +679,7 @@ subroutine ConditionRead(condition,option,fid)
                     call printErrMsg(option,string)              
                 end select
               endif
+#endif              
             case('equilibrium')
               sub_condition_ptr%itype = EQUILIBRIUM_SS
             case default
@@ -625,7 +697,7 @@ subroutine ConditionRead(condition,option,fid)
         call ConditionReadValues(option,word,string,default_datum,word)
       case('GRADIENT','GRAD')
         do
-          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadFlotranString(fid,string,ierr)
           call fiReadStringErrorMsg(option%myrank,'CONDITION',ierr)
           
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
@@ -644,24 +716,7 @@ subroutine ConditionRead(condition,option,fid)
             case('TEMP','TEMPERATURE')
               sub_condition_ptr => temperature
             case('CONC','CONCENTRATION')
-              if (condition%iclass == TRANSPORT_CLASS) then
-                call fiReadWord(string,word,.true.,ierr)
-                call fiErrorMsg(option%myrank,'name','CONDITION,CONCENTRATION', ierr)
-                nullify(sub_condition_ptr)
-                if (option%ntrandof > 0) then                
-                  sub_condition_ptr => &
-                    GetSubConditionFromArrayByName(transport_concentrations,word)
-                  if (.not.associated(sub_condition_ptr)) then
-                    string = 'solute name "' // trim(word) // &
-                             '" not recognized in condition'
-                    call printErrMsg(option,string)
-                  endif
-                else
-                  sub_condition_ptr => concentration
-                endif
-              else            
-                sub_condition_ptr => concentration
-              endif
+              sub_condition_ptr => concentration
             case('H','ENTHALPY')
               sub_condition_ptr => enthalpy
             case default
@@ -677,66 +732,21 @@ subroutine ConditionRead(condition,option,fid)
         call ConditionReadValues(option,word,string,enthalpy%dataset, &
                                  enthalpy%units)
       case('PRESSURE','PRES','PRESS')
-        if (condition%iclass == NULL_CLASS) condition%iclass = FLOW_CLASS
         call ConditionReadValues(option,word,string,pressure%dataset, &
                                  pressure%units)
       case('MASS','MASS_RATE')
-        if (condition%iclass == NULL_CLASS) condition%iclass = FLOW_CLASS
         call ConditionReadValues(option,word,string,mass_rate%dataset, &
                                  mass_rate%units)
       case('FLUX','VELOCITY','VEL')
         call ConditionReadValues(option,word,string,pressure%dataset, &
                                  pressure%units)
       case('CONC','CONCENTRATION')
-        if (condition%iclass == TRANSPORT_CLASS) then
-          call fiReadWord(string,word,.true.,ierr)
-          call fiErrorMsg(option%myrank,'name','CONDITION,CONCENTRATION', ierr)
-          nullify(sub_condition_ptr)
-          if (option%ntrandof > 0) then           
-            sub_condition_ptr => &
-              GetSubConditionFromArrayByName(transport_concentrations,word)
-            if (.not.associated(sub_condition_ptr)) then
-              string = 'solute name "' // trim(word) // &
-                       '" not recognized in condition'
-              call printErrMsg(option,string)
-            endif
-          else
-            sub_condition_ptr => concentration
-          endif
-        else
-          sub_condition_ptr => concentration
-        endif
-        call ConditionReadValues(option,word,string,sub_condition_ptr%dataset, &
+        call ConditionReadValues(option,word,string,concentration%dataset, &
                                  sub_condition_ptr%units)
-      case('MINERAL')
-        if (condition%iclass == TRANSPORT_CLASS) then
-          call fiReadWord(string,word,.true.,ierr)
-          call fiErrorMsg(option%myrank,'name','CONDITION,MINERAL', ierr)
-          nullify(sub_condition_ptr)
-          if (option%nmnrl > 0) then           
-            minerals_exist = PETSC_TRUE
-            sub_condition_ptr => &
-              GetSubConditionFromArrayByName(mineral_concentrations,word)
-            if (.not.associated(sub_condition_ptr)) then
-              string = 'mineral name "' // trim(word) // &
-                       '" not recognized in condition'
-              call printErrMsg(option,string)
-            endif
-          endif
-        endif
-        if (associated(sub_condition_ptr)) then
-          call ConditionReadValues(option,word,string,sub_condition_ptr%dataset, &
-                                   sub_condition_ptr%units)
-        endif
     end select 
   
   enddo  
   
-  ! check to ensure that class and type have been set
-  if (len_trim(condition%class) < 1) then
-    call printErrMsg(option,'"class" not set in condition')
-  endif
-
   ! check whether
   if (default_iphase == 0) then
     call printWrnMsg(option,'"iphase" not set in condition; set to 1')
@@ -756,179 +766,382 @@ subroutine ConditionRead(condition,option,fid)
     default_gradient%interpolation_method = default_dataset%interpolation_method
 
   ! verify the datasets
-  if (condition%iclass == FLOW_CLASS) then
-    word = 'pressure'
-    call SubConditionVerify(option,condition,word,pressure,default_time, &
-                            default_ctype, default_itype, &
-                            default_dataset, &
-                            default_datum, default_gradient,PETSC_TRUE)
-    word = 'mass_rate'
-    call SubConditionVerify(option,condition,word,mass_rate,default_time, &
-                            default_ctype, default_itype, &
-                            default_dataset, &
-                            default_datum, default_gradient,PETSC_TRUE)
-    word = 'temperature'
-    call SubConditionVerify(option,condition,word,temperature,default_time, &
-                            default_ctype, default_itype, &
-                            default_dataset, &
-                            default_datum, default_gradient,PETSC_TRUE)
-    word = 'concentration'
-    call SubConditionVerify(option,condition,word,concentration,default_time, &
-                            default_ctype, default_itype, &
-                            default_dataset, &
-                            default_datum, default_gradient,PETSC_TRUE)
-    word = 'enthalpy'
-    call SubConditionVerify(option,condition,word,enthalpy,default_time, &
-                            default_ctype, default_itype, &
-                            default_dataset, &
-                            default_datum, default_gradient,PETSC_TRUE)
-    ! these are not used with flow
-    do idof = 1, option%ntrandof
-      if (associated(transport_concentrations(idof)%ptr)) &
-        call SubConditionDestroy(transport_concentrations(idof)%ptr)
-    enddo
-    if (associated(transport_concentrations)) deallocate(transport_concentrations)
-    nullify(transport_concentrations)
-    do idof = 1, option%nmnrl
-      if (associated(mineral_concentrations(idof)%ptr)) &
-        call SubConditionDestroy(mineral_concentrations(idof)%ptr)
-    enddo
-    if (associated(mineral_concentrations)) deallocate(mineral_concentrations)
-    nullify(mineral_concentrations)
-  else
-    do idof = 1, option%ntrandof
-      word = 'solute concentration: ' // trim(transport_concentrations(idof)%ptr%name)
-      call SubConditionVerify(option,condition,word,transport_concentrations(idof)%ptr,default_time, &
-                              default_ctype, default_itype, &
-                              default_dataset, &
-                              default_datum, default_gradient,PETSC_FALSE)
-    enddo
-    do idof = 1, option%nmnrl
-      word = 'mineral concentration: ' // trim(mineral_concentrations(idof)%ptr%name)
-      call SubConditionVerify(option,condition,word,mineral_concentrations(idof)%ptr,default_time, &
-                              default_ctype, default_itype, &
-                              default_dataset, &
-                              default_datum, default_gradient,PETSC_FALSE)
-    enddo
-    ! these are not used with transport
-    if (associated(pressure)) call SubConditionDestroy(pressure)
-    if (associated(mass_rate)) call SubConditionDestroy(mass_rate)
-    if (associated(temperature)) call SubConditionDestroy(temperature)
-    if (associated(concentration)) call SubConditionDestroy(concentration)
-    if (associated(enthalpy)) call SubConditionDestroy(enthalpy)    
-  endif
+  word = 'pressure'
+  call SubConditionVerify(option,condition,word,pressure,default_time, &
+                          default_ctype, default_itype, &
+                          default_dataset, &
+                          default_datum, default_gradient,PETSC_TRUE)
+  word = 'mass_rate'
+  call SubConditionVerify(option,condition,word,mass_rate,default_time, &
+                          default_ctype, default_itype, &
+                          default_dataset, &
+                          default_datum, default_gradient,PETSC_TRUE)
+  word = 'temperature'
+  call SubConditionVerify(option,condition,word,temperature,default_time, &
+                          default_ctype, default_itype, &
+                          default_dataset, &
+                          default_datum, default_gradient,PETSC_TRUE)
+  word = 'concentration'
+  call SubConditionVerify(option,condition,word,concentration,default_time, &
+                          default_ctype, default_itype, &
+                          default_dataset, &
+                          default_datum, default_gradient,PETSC_TRUE)
+  word = 'enthalpy'
+  call SubConditionVerify(option,condition,word,enthalpy,default_time, &
+                          default_ctype, default_itype, &
+                          default_dataset, &
+                          default_datum, default_gradient,PETSC_TRUE)
     
-  if (condition%iclass == FLOW_CLASS) then
-    select case(option%iflowmode)
-      case(THC_MODE,MPH_MODE)
-        if (.not.associated(pressure) .and. .not.associated(mass_rate)) then
-          call printErrMsg(option,'pressure and mass_rate condition null in condition: ' // &
-                           condition%name)
-        endif                         
-        if (associated(pressure)) then
-          condition%pressure => pressure
-        endif                         
-        if (associated(mass_rate)) then
-          condition%mass_rate => mass_rate
-        endif                         
-        if (.not.associated(temperature)) then
-          call printErrMsg(option,'temperature condition null in condition: ' // &
-                           condition%name)
-        endif                         
-        condition%temperature => temperature
-        if (.not.associated(concentration)) then
-          call printErrMsg(option,'concentration condition null in condition: ' // &
-                           condition%name)
-        endif                         
-        condition%concentration => concentration
-        if (.not.associated(enthalpy)) then
-          call printWrnMsg(option,'enthalpy condition null in condition: ' // &
-                           condition%name)
-        endif                         
-        condition%enthalpy => enthalpy
-        condition%num_sub_conditions = 4
-        allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
-        do idof = 1, 4
-          nullify(condition%sub_condition_ptr(idof)%ptr)
-        enddo
-        ! must be in this order, which matches the dofs i problem
-        if (associated(mass_rate)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => mass_rate
-        if (associated(pressure)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
-        condition%sub_condition_ptr(TWO_INTEGER)%ptr => temperature
-        condition%sub_condition_ptr(THREE_INTEGER)%ptr => concentration
-        if (associated(enthalpy)) condition%sub_condition_ptr(FOUR_INTEGER)%ptr => enthalpy
-        
-        allocate(condition%itype(FIVE_INTEGER))
-        condition%itype = 0
-        if (associated(mass_rate)) condition%itype(ONE_INTEGER) = mass_rate%itype
-        if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
-        condition%itype(TWO_INTEGER) = temperature%itype
-        condition%itype(THREE_INTEGER) = concentration%itype
-        if (associated(enthalpy)) condition%itype(FOUR_INTEGER) = concentration%itype
-        
-      case(RICHARDS_MODE)
-        if (.not.associated(pressure) .and. .not.associated(mass_rate)) then
-          call printErrMsg(option,'pressure and mass_rate condition null in condition: ' // &
-                           condition%name)
-        endif                         
-        if (associated(pressure)) then
-          condition%pressure => pressure
-        endif                         
-        if (associated(mass_rate)) then
-          condition%mass_rate => mass_rate
-        endif                         
-        condition%num_sub_conditions = 1
-        allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
-        condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
-
-        allocate(condition%itype(ONE_INTEGER))
-        if (associated(mass_rate)) condition%itype(ONE_INTEGER) = mass_rate%itype
-        if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
-        
-        ! these are not used with richards
-        if (associated(temperature)) call SubConditionDestroy(temperature)
-        if (associated(concentration)) call SubConditionDestroy(concentration)
-        if (associated(enthalpy)) call SubConditionDestroy(enthalpy)
-        
-    end select
-  else
-    condition%num_sub_conditions = option%ntrandof
-    if (minerals_exist) then
-      condition%num_sub_conditions = condition%num_sub_conditions + option%nmnrl
-    endif
-    allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
-  
-    allocate(condition%itype(option%ntrandof))
-    condition%transport_concentrations => transport_concentrations
-    do idof = 1, option%ntrandof
-      condition%sub_condition_ptr(idof)%ptr => transport_concentrations(idof)%ptr
-      condition%itype(idof) = transport_concentrations(idof)%ptr%itype
-    enddo
-
-    if (minerals_exist) then
-      do idof = 1, option%nmnrl
-        condition%sub_condition_ptr(idof+option%ntrandof)%ptr => mineral_concentrations(idof)%ptr
+  select case(option%iflowmode)
+    case(THC_MODE,MPH_MODE)
+      if (.not.associated(pressure) .and. .not.associated(mass_rate)) then
+        call printErrMsg(option,'pressure and mass_rate condition null in condition: ' // &
+                         condition%name)
+      endif                         
+      if (associated(pressure)) then
+        condition%pressure => pressure
+      endif                         
+      if (associated(mass_rate)) then
+        condition%mass_rate => mass_rate
+      endif                         
+      if (.not.associated(temperature)) then
+        call printErrMsg(option,'temperature condition null in condition: ' // &
+                         condition%name)
+      endif                         
+      condition%temperature => temperature
+      if (.not.associated(concentration)) then
+        call printErrMsg(option,'concentration condition null in condition: ' // &
+                         condition%name)
+      endif                         
+      condition%concentration => concentration
+      if (.not.associated(enthalpy)) then
+        call printWrnMsg(option,'enthalpy condition null in condition: ' // &
+                         condition%name)
+      endif                         
+      condition%enthalpy => enthalpy
+      condition%num_sub_conditions = 4
+      allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
+      do idof = 1, 4
+        nullify(condition%sub_condition_ptr(idof)%ptr)
       enddo
-      condition%mineral_concentrations => mineral_concentrations
-    else
-      do idof = 1, option%nmnrl
-        if (associated(mineral_concentrations(idof)%ptr)) &
-          call SubConditionDestroy(mineral_concentrations(idof)%ptr)
-      enddo
-      if (associated(mineral_concentrations)) deallocate(mineral_concentrations)
-      nullify(mineral_concentrations)
-    endif
-  endif
+      ! must be in this order, which matches the dofs i problem
+      if (associated(mass_rate)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => mass_rate
+      if (associated(pressure)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
+      condition%sub_condition_ptr(TWO_INTEGER)%ptr => temperature
+      condition%sub_condition_ptr(THREE_INTEGER)%ptr => concentration
+      if (associated(enthalpy)) condition%sub_condition_ptr(FOUR_INTEGER)%ptr => enthalpy
+      
+      allocate(condition%itype(FIVE_INTEGER))
+      condition%itype = 0
+      if (associated(mass_rate)) condition%itype(ONE_INTEGER) = mass_rate%itype
+      if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
+      condition%itype(TWO_INTEGER) = temperature%itype
+      condition%itype(THREE_INTEGER) = concentration%itype
+      if (associated(enthalpy)) condition%itype(FOUR_INTEGER) = concentration%itype
+      
+    case(RICHARDS_MODE)
+      if (.not.associated(pressure) .and. .not.associated(mass_rate)) then
+        call printErrMsg(option,'pressure and mass_rate condition null in condition: ' // &
+                         condition%name)
+      endif                         
+      if (associated(pressure)) then
+        condition%pressure => pressure
+      endif                         
+      if (associated(mass_rate)) then
+        condition%mass_rate => mass_rate
+      endif                         
+      condition%num_sub_conditions = 1
+      allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
+      condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
+
+      allocate(condition%itype(ONE_INTEGER))
+      if (associated(mass_rate)) condition%itype(ONE_INTEGER) = mass_rate%itype
+      if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
+      
+      ! these are not used with richards
+      if (associated(temperature)) call SubConditionDestroy(temperature)
+      if (associated(concentration)) call SubConditionDestroy(concentration)
+      if (associated(enthalpy)) call SubConditionDestroy(enthalpy)
+      
+  end select
   
   call ConditionDatasetDestroy(default_dataset)
   call ConditionDatasetDestroy(default_datum)
   call ConditionDatasetDestroy(default_gradient)
     
-  call PetscLogEventEnd(logging%event_condition_read, &
+  call PetscLogEventEnd(logging%event_flow_condition_read, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
 
 end subroutine ConditionRead
+
+! ************************************************************************** !
+!
+! TranConditionRead: Reads a transport condition from the input file
+! author: Glenn Hammond
+! date: 10/14/08
+!
+! ************************************************************************** !
+subroutine TranConditionRead(condition,option,fid)
+
+  use Option_module
+  use Fileio_module
+  use Logging_module  
+  
+  implicit none
+  
+  type(tran_condition_type) :: condition
+  type(option_type) :: option
+  PetscInt :: fid
+  
+  type(tran_constraint_type), pointer :: constraint
+  type(tran_constraint_coupler_type), pointer :: constraint_coupler, cur_coupler
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  PetscReal :: default_time = 0.d0
+  PetscInt :: default_iphase = 0
+  character(len=MAXWORDLENGTH) :: default_ctype
+  PetscInt :: default_itype
+  logical :: found
+  PetscInt :: icomp
+  PetscInt :: length
+  PetscTruth :: minerals_exist
+  PetscErrorCode :: ierr
+
+  call PetscLogEventBegin(logging%event_tran_condition_read, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+
+  default_ctype = 'dirichlet'
+  default_itype = DIRICHLET_BC
+
+  ! read the condition
+  ierr = 0
+  do
+  
+    call fiReadFlotranString(fid,string,ierr)
+    call fiReadStringErrorMsg(option%myrank,'CONDITION',ierr)
+          
+    if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
+        fiStringCompare(string,'END',THREE_INTEGER)) exit  
+
+    call fiReadWord(string,word,.true.,ierr)
+    call fiErrorMsg(option%myrank,'keyword','CONDITION', ierr)   
+      
+    select case(trim(word))
+    
+      case('UNITS') ! read default units for condition arguments
+      case('TYPE') ! read condition type (dirichlet, neumann, etc) for each dof
+        call fiReadWord(string,word,.true.,ierr)
+        call fiErrorMsg(option%myrank,'INTERPOLATION','CONDITION', ierr)   
+        length = len_trim(word)
+        call fiCharsToLower(word,length)
+        select case(word)
+            case('dirichlet')
+              condition%itype = DIRICHLET_BC
+            case('neumann')
+              condition%itype = NEUMANN_BC
+            case('mole','mole_rate')
+              condition%itype = MASS_RATE_SS
+            case('zero_gradient')
+              condition%itype = ZERO_GRADIENT_BC
+            case default
+              call printErrMsg(option,'keyword not recognized in condition,type')
+        end select
+      case('TIME','TIMES')
+        call fiReadDouble(string,default_time,ierr)
+        call fiErrorMsg(option%myrank,'TIME','CONDITION', ierr)   
+      case('CONSTRAINT_LIST')
+        do
+          call fiReadFlotranString(fid,string,ierr)
+          call fiReadStringErrorMsg(option%myrank,'CONSTRAINT',ierr)
+              
+          if (fiCheckExit(string)) exit  
+
+          constraint_coupler => TranConstraintCouplerCreate(option)
+          call fiReadDouble(string,constraint_coupler%time,ierr)
+          call fiErrorMsg(option%myrank,'time','CONSTRAINT_LIST', ierr)   
+          call fiReadWord(string,constraint_coupler%constraint_name,.true.,ierr)
+          call fiErrorMsg(option%myrank,'constraint name','CONSTRAINT_LIST', ierr) 
+          ! add to end of list
+          if (.not.associated(condition%constraint_coupler_list)) then
+            condition%constraint_coupler_list => constraint_coupler
+          else
+            cur_coupler => condition%constraint_coupler_list
+            do
+              if (.not.associated(cur_coupler%next)) exit
+              cur_coupler => cur_coupler%next
+            enddo
+            cur_coupler%next => constraint_coupler
+          endif
+        enddo
+      case('CONSTRAINT')
+        constraint => TranConstraintCreate(option)
+        constraint_coupler => TranConstraintCouplerCreate(option)
+        constraint_coupler%constraint => constraint
+        call fiReadWord(string,constraint%name,.true.,ierr)
+        call fiErrorMsg(option%myrank,'constraint','name',ierr) 
+        call printMsg(option,constraint%name)
+        call TranConstraintRead(constraint,option,fid)
+        ! add to end of list
+        if (.not.associated(condition%constraint_coupler_list)) then
+          condition%constraint_coupler_list => constraint_coupler
+        else
+          cur_coupler => condition%constraint_coupler_list
+          do
+            if (.not.associated(cur_coupler%next)) exit
+            cur_coupler => cur_coupler%next
+          enddo
+          cur_coupler%next => constraint_coupler
+        endif
+      case default
+        string = 'Keyword: ' // trim(word) // &
+                 ' not recognized in transport condition'
+        call printErrMsg(option,string)
+    end select 
+  
+  enddo  
+  
+  call PetscLogEventEnd(logging%event_tran_condition_read, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+
+end subroutine TranConditionRead
+
+! ************************************************************************** !
+!
+! TranConstraintRead: Reads a transport constraint from the input file
+! author: Glenn Hammond
+! date: 10/14/08
+!
+! ************************************************************************** !
+subroutine TranConstraintRead(constraint,option,fid)
+
+  use Option_module
+  use Fileio_module
+  use Logging_module  
+  
+  implicit none
+  
+  type(tran_constraint_type) :: constraint
+  type(option_type) :: option
+  PetscInt :: fid
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: icomp
+  PetscInt :: length
+  PetscErrorCode :: ierr
+
+  call PetscLogEventBegin(logging%event_tran_constraint_read, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+
+  ! read the constraint
+  ierr = 0
+  do
+  
+    call fiReadFlotranString(fid,string,ierr)
+    call fiReadStringErrorMsg(option%myrank,'CONSTRAINT',ierr)
+        
+    if (fiCheckExit(string)) exit  
+
+    call fiReadWord(string,word,.true.,ierr)
+    call fiErrorMsg(option%myrank,'keyword','CONSTRAINT', ierr)   
+      
+    select case(trim(word))
+    
+      case('CONC','CONCENTRATIONS')
+        if (associated(constraint%aqueous_species)) &
+          call RTConditionAuxVarDestroy(constraint%aqueous_species)
+        constraint%aqueous_species => RTConditionAuxCreate()
+        call RTConditionAuxVarInit(constraint%aqueous_species,option%ncomp)
+        icomp = 0
+        do
+          call fiReadFlotranString(fid,string,ierr)
+          call fiReadStringErrorMsg(option%myrank,'CONSTRAINT,CONCENTRATIONS',ierr)
+          
+          if (fiCheckExit(string)) exit          
+          
+          icomp = icomp + 1
+          
+          call fiReadWord(string,constraint%aqueous_species%spec(icomp), &
+                          PETSC_TRUE,ierr)
+          call fiErrorMsg(option%myrank,'aqueous species name', &
+                          'CONSTRAINT,CONCENTRATIONS', ierr)  
+          call fiReadDouble(string, &
+                            constraint%aqueous_species%conc(icomp), &
+                            ierr)
+          call fiErrorMsg(option%myrank,'concentration', &
+                          'CONSTRAINT,CONCENTRATIONS', ierr)          
+          call fiReadWord(string,word,PETSC_TRUE,ierr)
+          call fiDefaultMsg(option%myrank, &
+                            'CONSTRAINT,CONCENTRATION,constraint_type', ierr)
+          length = len_trim(word)
+          if (length > 0) then
+            call fiCharsToUpper(word,length)
+            select case(word)
+              case('F','FREE')
+                constraint%aqueous_species%constraint_type(icomp) = CONSTRAINT_FREE
+              case('T','Total')
+                constraint%aqueous_species%constraint_type(icomp) = CONSTRAINT_TOTAL
+              case('P')
+                constraint%aqueous_species%constraint_type(icomp) = CONSTRAINT_P
+              case('MINERAL','MNRL') 
+                constraint%aqueous_species%constraint_type(icomp) = CONSTRAINT_MINERAL
+              case('GAS') 
+                constraint%aqueous_species%constraint_type(icomp) = CONSTRAINT_GAS
+              case default
+                string = 'Keyword: ' // trim(word) // &
+                         ' not recognized in constraint,concentration'
+                call printErrMsg(option,string)
+            end select 
+            if (constraint%aqueous_species%constraint_type(icomp) == &
+                CONSTRAINT_MINERAL .or. &
+                constraint%aqueous_species%constraint_type(icomp) == &
+                CONSTRAINT_GAS) then
+              call fiReadWord(string,constraint%aqueous_species%constraint_spec_name(icomp), &
+                              PETSC_FALSE,ierr)
+              call fiErrorMsg(option%myrank,'constraint name', &
+                              'CONSTRAINT,CONCENTRATIONS', ierr) 
+            endif
+          else
+            constraint%aqueous_species%constraint_type(icomp) = CONSTRAINT_TOTAL
+          endif  
+        enddo   
+      case('MNRL','MINERALS')
+        if (associated(constraint%minerals)) &
+          call RTConditionAuxVarDestroy(constraint%minerals)
+        constraint%minerals => RTConditionAuxCreate()
+        call RTConditionAuxVarInit(constraint%minerals,option%nmnrl)
+        icomp = 0
+        do
+          call fiReadFlotranString(fid,string,ierr)
+          call fiReadStringErrorMsg(option%myrank,'CONSTRAINT,MINERALS',ierr)
+          
+          if (fiCheckExit(string)) exit          
+          
+          icomp = icomp + 1
+          
+          call fiReadWord(string,constraint%minerals%spec(icomp), &
+                          PETSC_TRUE,ierr)
+          call fiErrorMsg(option%myrank,'mineral name', &
+                          'CONSTRAINT,CONCENTRATIONS', ierr)  
+          call fiReadDouble(string, &
+                            constraint%minerals%conc(icomp), &
+                            ierr)
+          call fiErrorMsg(option%myrank,'concentration', &
+                          'CONSTRAINT,CONCENTRATIONS', ierr)          
+        enddo              
+    end select 
+  
+  enddo  
+  
+  call PetscLogEventEnd(logging%event_tran_constraint_read, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+
+end subroutine TranConstraintRead
 
 ! ************************************************************************** !
 !
@@ -948,7 +1161,7 @@ subroutine ConditionReadValues(option,keyword,string,dataset,units)
   type(option_type) :: option
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: keyword
-  type(condition_dataset_type) :: dataset
+  type(flow_condition_dataset_type) :: dataset
   character(len=MAXWORDLENGTH) :: units
   
   character(len=MAXSTRINGLENGTH) :: string2
@@ -957,7 +1170,7 @@ subroutine ConditionReadValues(option,keyword,string,dataset,units)
   PetscInt :: length, irank
   PetscErrorCode :: ierr
 
-  call PetscLogEventBegin(logging%event_condition_read_values, &
+  call PetscLogEventBegin(logging%event_flow_condition_read_values, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
   ierr = 0
@@ -988,7 +1201,7 @@ subroutine ConditionReadValues(option,keyword,string,dataset,units)
     units = trim(word)
   endif
 
-  call PetscLogEventEnd(logging%event_condition_read_values, &
+  call PetscLogEventEnd(logging%event_flow_condition_read_values, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
 
@@ -1010,7 +1223,7 @@ subroutine ConditionReadValuesFromFile(filename,dataset,option)
   implicit none
   
   type(option_type) :: option
-  type(condition_dataset_type) :: dataset
+  type(flow_condition_dataset_type) :: dataset
   character(len=MAXWORDLENGTH) :: filename
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -1126,7 +1339,7 @@ end subroutine ConditionReadValuesFromFile
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-subroutine ConditionUpdate(condition_list,option,time,iclass)
+subroutine ConditionUpdate(condition_list,option,time)
 
   use Option_module
   
@@ -1135,33 +1348,27 @@ subroutine ConditionUpdate(condition_list,option,time,iclass)
   type(condition_list_type) :: condition_list
   type(option_type) :: option
   PetscReal :: time
-  PetscInt :: iclass
   
-  type(condition_type), pointer :: condition
-  type(sub_condition_type), pointer :: sub_condition
+  type(flow_condition_type), pointer :: condition
+  type(flow_sub_condition_type), pointer :: sub_condition
   PetscInt :: isub_condition  
   
   condition => condition_list%first
   do
     if (.not.associated(condition)) exit
     
-    if (iclass == NULL_CLASS .or. &
-        iclass == condition%iclass) then
-    
-      do isub_condition = 1, condition%num_sub_conditions
+    do isub_condition = 1, condition%num_sub_conditions
 
-        sub_condition => condition%sub_condition_ptr(isub_condition)%ptr
-        
-        if (associated(sub_condition)) then
-          call SubConditionUpdateDataset(option,time,sub_condition%dataset)
-          call SubConditionUpdateDataset(option,time,sub_condition%datum)
-          call SubConditionUpdateDataset(option,time,sub_condition%gradient)
-        endif
-        
-      enddo
+      sub_condition => condition%sub_condition_ptr(isub_condition)%ptr
       
-    endif
-        
+      if (associated(sub_condition)) then
+        call SubConditionUpdateDataset(option,time,sub_condition%dataset)
+        call SubConditionUpdateDataset(option,time,sub_condition%datum)
+        call SubConditionUpdateDataset(option,time,sub_condition%gradient)
+      endif
+      
+    enddo
+      
     condition => condition%next
     
   enddo
@@ -1185,7 +1392,7 @@ subroutine SubConditionUpdateDataset(option,time,dataset)
   PetscReal :: time
   logical :: is_cyclic
   PetscInt :: interpolation_method
-  type(condition_dataset_type) :: dataset
+  type(flow_condition_dataset_type) :: dataset
   
   PetscInt :: irank
   PetscInt :: cur_time_index
@@ -1257,6 +1464,41 @@ end subroutine SubConditionUpdateDataset
 
 ! ************************************************************************** !
 !
+! TranConditionUpdate: Updates a transient transport condition
+! author: Glenn Hammond
+! date: 11/02/07
+!
+! ************************************************************************** !
+subroutine TranConditionUpdate(condition_list,option,time)
+
+  use Option_module
+  
+  implicit none
+  
+  type(tran_condition_list_type) :: condition_list
+  type(option_type) :: option
+  PetscReal :: time
+  
+  type(tran_condition_type), pointer :: condition
+  
+  condition => condition_list%first
+  do
+    if (.not.associated(condition)) exit
+    
+    if (associated(condition%cur_constraint_coupler%next)) then
+      if (time >= condition%cur_constraint_coupler%next%time) then
+        condition%cur_constraint_coupler => &
+          condition%cur_constraint_coupler%next
+      endif
+    endif
+    condition => condition%next
+    
+  enddo
+  
+end subroutine TranConditionUpdate
+
+! ************************************************************************** !
+!
 ! ConditionInitList: Initializes a condition list
 ! author: Glenn Hammond
 ! date: 11/01/07
@@ -1286,7 +1528,7 @@ subroutine ConditionAddToList(new_condition,list)
 
   implicit none
   
-  type(condition_type), pointer :: new_condition
+  type(flow_condition_type), pointer :: new_condition
   type(condition_list_type) :: list
   
   list%num_conditions = list%num_conditions + 1
@@ -1311,12 +1553,12 @@ function ConditionGetPtrFromList(condition_name,condition_list)
 
   implicit none
   
-  type(condition_type), pointer :: ConditionGetPtrFromList
+  type(flow_condition_type), pointer :: ConditionGetPtrFromList
   character(len=MAXWORDLENGTH) :: condition_name
   type(condition_list_type) :: condition_list
  
   PetscInt :: length
-  type(condition_type), pointer :: condition
+  type(flow_condition_type), pointer :: condition
     
   nullify(ConditionGetPtrFromList)
   condition => condition_list%first
@@ -1337,6 +1579,167 @@ end function ConditionGetPtrFromList
 
 ! ************************************************************************** !
 !
+! TranConditionInitList: Initializes a transport condition list
+! author: Glenn Hammond
+! date: 10/13/08
+!
+! ************************************************************************** !
+subroutine TranConditionInitList(list)
+
+  implicit none
+
+  type(tran_condition_list_type) :: list
+  
+  nullify(list%first)
+  nullify(list%last)
+  nullify(list%array)
+  list%num_conditions = 0
+
+end subroutine TranConditionInitList
+
+! ************************************************************************** !
+!
+! TranConstraintInitList: Initializes a transport constraint list
+! author: Glenn Hammond
+! date: 10/14/08
+!
+! ************************************************************************** !
+subroutine TranConstraintInitList(list)
+
+  implicit none
+
+  type(tran_constraint_list_type) :: list
+  
+  nullify(list%first)
+  nullify(list%last)
+  nullify(list%array)
+  list%num_constraints = 0
+
+end subroutine TranConstraintInitList
+
+! ************************************************************************** !
+!
+! TranConditionAddToList: Adds a new condition to a transport condition list
+! author: Glenn Hammond
+! date: 10/13/08
+!
+! ************************************************************************** !
+subroutine TranConditionAddToList(new_condition,list)
+
+  implicit none
+  
+  type(tran_condition_type), pointer :: new_condition
+  type(tran_condition_list_type) :: list
+  
+  list%num_conditions = list%num_conditions + 1
+  new_condition%id = list%num_conditions
+  if (.not.associated(list%first)) list%first => new_condition
+  if (associated(list%last)) list%last%next => new_condition
+  list%last => new_condition
+  
+end subroutine TranConditionAddToList
+
+! ************************************************************************** !
+!
+! TranConstraintAddToList: Adds a new constraint to a transport constraint
+!                          list
+! author: Glenn Hammond
+! date: 10/14/08
+!
+! ************************************************************************** !
+subroutine TranConstraintAddToList(new_constraint,list)
+
+  implicit none
+  
+  type(tran_constraint_type), pointer :: new_constraint
+  type(tran_constraint_list_type) :: list
+  
+  list%num_constraints = list%num_constraints + 1
+  new_constraint%id = list%num_constraints
+  if (.not.associated(list%first)) list%first => new_constraint
+  if (associated(list%last)) list%last%next => new_constraint
+  list%last => new_constraint
+  
+end subroutine TranConstraintAddToList
+
+! ************************************************************************** !
+!
+! TranConditionGetPtrFromList: Returns a pointer to the condition matching
+!                              condition_name
+! author: Glenn Hammond
+! date: 10/13/08
+!
+! ************************************************************************** !
+function TranConditionGetPtrFromList(condition_name,condition_list)
+
+  use Fileio_module
+
+  implicit none
+  
+  type(tran_condition_type), pointer :: TranConditionGetPtrFromList
+  character(len=MAXWORDLENGTH) :: condition_name
+  type(tran_condition_list_type) :: condition_list
+ 
+  PetscInt :: length
+  type(tran_condition_type), pointer :: condition
+    
+  nullify(TranConditionGetPtrFromList)
+  condition => condition_list%first
+  
+  do 
+    if (.not.associated(condition)) exit
+    length = len_trim(condition_name)
+    if (length == len_trim(condition%name) .and. &
+        fiStringCompare(condition%name,condition_name, &
+                        length)) then
+      TranConditionGetPtrFromList => condition
+      return
+    endif
+    condition => condition%next
+  enddo
+  
+end function TranConditionGetPtrFromList
+
+! ************************************************************************** !
+!
+! TranConstraintGetPtrFromList: Returns a pointer to the constraint matching
+!                               constraint_name
+! author: Glenn Hammond
+! date: 10/13/08
+!
+! ************************************************************************** !
+function TranConstraintGetPtrFromList(constraint_name,constraint_list)
+
+  use Fileio_module
+
+  implicit none
+  
+  type(tran_constraint_type), pointer :: TranConstraintGetPtrFromList
+  character(len=MAXWORDLENGTH) :: constraint_name
+  type(tran_constraint_list_type) :: constraint_list
+ 
+  PetscInt :: length
+  type(tran_constraint_type), pointer :: constraint
+    
+  nullify(TranConstraintGetPtrFromList)
+  constraint => constraint_list%first
+  
+  do 
+    if (.not.associated(constraint)) exit
+    length = len_trim(constraint_name)
+    if (length == len_trim(constraint%name) .and. &
+        fiStringCompare(constraint%name,constraint_name, &
+                        length)) then
+      TranConstraintGetPtrFromList => constraint
+      return
+    endif
+    constraint => constraint%next
+  enddo
+  
+end function TranConstraintGetPtrFromList
+
+! ************************************************************************** !
+!
 ! ConditionDestroyList: Deallocates a list of conditions
 ! author: Glenn Hammond
 ! date: 11/01/07
@@ -1348,7 +1751,7 @@ subroutine ConditionDestroyList(condition_list)
   
   type(condition_list_type), pointer :: condition_list
   
-  type(condition_type), pointer :: condition, prev_condition
+  type(flow_condition_type), pointer :: condition, prev_condition
   
   if (.not.associated(condition_list)) return
   
@@ -1382,7 +1785,7 @@ subroutine ConditionDestroy(condition)
 
   implicit none
   
-  type(condition_type), pointer :: condition
+  type(flow_condition_type), pointer :: condition
   
   PetscInt :: i
   
@@ -1395,25 +1798,6 @@ subroutine ConditionDestroy(condition)
     deallocate(condition%sub_condition_ptr)
     nullify(condition%sub_condition_ptr)
   endif
-
-  if (associated(condition%transport_concentrations)) then
-! this is performed under sub_condition_ptr
-!    do i = 1, size(condition%transport_concentrations)
-!      call SubConditionDestroy(condition%transport_concentrations(i)%ptr)
-!    enddo
-    deallocate(condition%transport_concentrations)
-    nullify(condition%transport_concentrations)
-  endif
-  
-  if (associated(condition%mineral_concentrations)) then
-! this is performed under sub_condition_ptr
-!    do i = 1, size(condition%mineral_concentrations)
-!      call SubConditionDestroy(condition%mineral_concentrations(i)%ptr)
-!    enddo
-    deallocate(condition%mineral_concentrations)
-    nullify(condition%mineral_concentrations)
-  endif
-
 
   if (associated(condition%itype)) deallocate(condition%itype)
   nullify(condition%itype)
@@ -1442,7 +1826,7 @@ subroutine SubConditionDestroy(sub_condition)
 
   implicit none
   
-  type(sub_condition_type), pointer :: sub_condition
+  type(flow_sub_condition_type), pointer :: sub_condition
   
   if (.not.associated(sub_condition)) return
   
@@ -1466,7 +1850,7 @@ subroutine ConditionDatasetDestroy(dataset)
 
   implicit none
   
-  type(condition_dataset_type) :: dataset
+  type(flow_condition_dataset_type) :: dataset
   
   if (associated(dataset%times)) deallocate(dataset%times)
   nullify(dataset%times)
@@ -1474,5 +1858,160 @@ subroutine ConditionDatasetDestroy(dataset)
   nullify(dataset%values)  
 
 end subroutine ConditionDatasetDestroy
+
+! ************************************************************************** !
+!
+! TranConditionDestroyList: Deallocates a list of conditions
+! author: Glenn Hammond
+! date: 11/01/07
+!
+! ************************************************************************** !
+subroutine TranConditionDestroyList(condition_list)
+
+  implicit none
+  
+  type(tran_condition_list_type), pointer :: condition_list
+  
+  type(tran_condition_type), pointer :: condition, prev_condition
+  
+  if (.not.associated(condition_list)) return
+  
+  condition => condition_list%first
+  do 
+    if (.not.associated(condition)) exit
+    prev_condition => condition
+    condition => condition%next
+    call TranConditionDestroy(prev_condition)
+  enddo
+  
+  condition_list%num_conditions = 0
+  nullify(condition_list%first)
+  nullify(condition_list%last)
+  if (associated(condition_list%array)) deallocate(condition_list%array)
+  nullify(condition_list%array)
+  
+  deallocate(condition_list)
+  nullify(condition_list)
+
+end subroutine TranConditionDestroyList
+
+! ************************************************************************** !
+!
+! TranConstraintDestroy: Deallocates a constraint
+! author: Glenn Hammond
+! date: 10/14/08
+!
+! ************************************************************************** !
+subroutine TranConstraintDestroy(constraint)
+
+  implicit none
+  
+  type(tran_constraint_type), pointer :: constraint
+  
+  if (.not.associated(constraint)) return
+  
+  if (associated(constraint%aqueous_species)) &
+    call RTConditionAuxVarDestroy(constraint%aqueous_species)
+  nullify(constraint%aqueous_species)
+  if (associated(constraint%minerals)) &
+    call RTConditionAuxVarDestroy(constraint%minerals)
+  nullify(constraint%minerals)
+  
+  deallocate(constraint)
+  nullify(constraint)
+
+end subroutine TranConstraintDestroy
+
+! ************************************************************************** !
+!
+! TranConstraintDestroyList: Deallocates a list of constraints
+! author: Glenn Hammond
+! date: 10/14/08
+!
+! ************************************************************************** !
+subroutine TranConstraintDestroyList(constraint_list)
+
+  implicit none
+  
+  type(tran_constraint_list_type), pointer :: constraint_list
+  
+  type(tran_constraint_type), pointer :: constraint, prev_constraint
+  
+  if (.not.associated(constraint_list)) return
+  
+  constraint => constraint_list%first
+  do 
+    if (.not.associated(constraint)) exit
+    prev_constraint => constraint
+    constraint => constraint%next
+    call TranConstraintDestroy(prev_constraint)
+  enddo
+  
+  constraint_list%num_constraints = 0
+  nullify(constraint_list%first)
+  nullify(constraint_list%last)
+  if (associated(constraint_list%array)) deallocate(constraint_list%array)
+  nullify(constraint_list%array)
+  
+  deallocate(constraint_list)
+  nullify(constraint_list)
+
+end subroutine TranConstraintDestroyList
+
+! ************************************************************************** !
+!
+! TranConditionDestroy: Deallocates a condition
+! author: Glenn Hammond
+! date: 10/23/07
+!
+! ************************************************************************** !
+subroutine TranConditionDestroy(condition)
+
+  implicit none
+  
+  type(tran_condition_type), pointer :: condition
+  
+  if (.not.associated(condition)) return
+  
+  if (associated(condition%constraint_coupler_list)) &
+    call TranConstraintCouplerDestroy(condition%constraint_coupler_list)
+
+  deallocate(condition)
+  nullify(condition)
+
+end subroutine TranConditionDestroy
+
+! ************************************************************************** !
+!
+! TranConstraintCouplerDestroy: Destroys a constraint coupler linked list
+! author: Glenn Hammond
+! date: 10/14/08
+!
+! ************************************************************************** !
+subroutine TranConstraintCouplerDestroy(coupler_list)
+
+  use Option_module
+  
+  implicit none
+  
+  type(tran_constraint_coupler_type), pointer :: coupler_list
+  
+  type(tran_constraint_coupler_type), pointer :: cur_coupler, prev_coupler
+  
+  cur_coupler => coupler_list
+  
+  do
+    if (.not.associated(cur_coupler)) exit
+    prev_coupler => cur_coupler
+    cur_coupler => cur_coupler%next
+    nullify(prev_coupler%constraint)
+    nullify(prev_coupler%next)
+    deallocate(prev_coupler)
+    nullify(prev_coupler)
+  enddo
+  
+  nullify(coupler_list)
+  
+end subroutine TranConstraintCouplerDestroy
 
 end module Condition_module

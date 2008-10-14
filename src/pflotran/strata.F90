@@ -154,7 +154,7 @@ subroutine StrataRead(strata,fid,option)
   ierr = 0
   do
   
-    call fiReadFlotranString(IUNIT1,string,ierr)
+    call fiReadFlotranString(fid,string,ierr)
     
     if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
         fiStringCompare(string,'END',THREE_INTEGER)) exit  

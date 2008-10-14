@@ -137,7 +137,7 @@ subroutine DiscretizationRead(discretization,fid,option)
 
   do
   
-    call fiReadFlotranString(IUNIT1,string,ierr)
+    call fiReadFlotranString(fid,string,ierr)
     if (ierr /= 0) exit
 
     call fiReadWord(string,word,.true.,ierr)
@@ -200,9 +200,9 @@ subroutine DiscretizationRead(discretization,fid,option)
           call fiErrorMsg(option%myrank,'Z direction','Origin',ierr)        
         case('FILE')
         case('DXYZ')
-          call fiSkipToEND(IUNIT1,option%myrank,word) 
+          call fiSkipToEND(fid,option%myrank,word) 
         case('BOUNDS')
-          call fiSkipToEND(IUNIT1,option%myrank,word) 
+          call fiSkipToEND(fid,option%myrank,word) 
         case('END','/','.')
           exit
       end select 
@@ -215,14 +215,14 @@ subroutine DiscretizationRead(discretization,fid,option)
         case('DXYZ')
           select case(discretization%itype)
             case(STRUCTURED_GRID)
-              call StructuredGridReadDXYZ(discretization%grid%structured_grid,option)
+              call StructuredGridReadDXYZ(discretization%grid%structured_grid,fid,option)
             case(AMR_GRID)
-              call AMRGridReadDXYZ(discretization%amrgrid,option)
+              call AMRGridReadDXYZ(discretization%amrgrid,fid,option)
             case default
               string = 'ERROR: Keyword "DXYZ" not supported for unstructured grid'
               call printErrMsg(option,string)
           end select
-          call fiReadFlotranString(IUNIT1,string,ierr) ! z-direction
+          call fiReadFlotranString(fid,string,ierr) ! z-direction
           call fiReadStringErrorMsg(option%myrank,'DISCRETIZATION,BOUNDS,Z',ierr)
           if (.not.(string(1:1) == '.' .or. string(1:1) == '/' .or. &
                     fiStringCompare(string,'END',THREE_INTEGER))) then
@@ -237,7 +237,7 @@ subroutine DiscretizationRead(discretization,fid,option)
               if (grid%structured_grid%itype == CARTESIAN_GRID .or. &
                   grid%structured_grid%itype == CYLINDRICAL_GRID .or. &
                   grid%structured_grid%itype == SPHERICAL_GRID) then
-                call fiReadFlotranString(IUNIT1,string,ierr) ! x-direction
+                call fiReadFlotranString(fid,string,ierr) ! x-direction
                 call fiReadStringErrorMsg(option%myrank,'DISCRETIZATION,BOUNDS,X or R',ierr)
                 call fiReadDouble(string,grid%structured_grid%bounds(X_DIRECTION,LOWER),ierr)
                 call fiErrorMsg(option%myrank,'Lower X or R','BOUNDS',ierr)
@@ -245,7 +245,7 @@ subroutine DiscretizationRead(discretization,fid,option)
                 call fiErrorMsg(option%myrank,'Upper X or R','BOUNDS',ierr)
               endif
               if (grid%structured_grid%itype == CARTESIAN_GRID) then
-                call fiReadFlotranString(IUNIT1,string,ierr) ! y-direction
+                call fiReadFlotranString(fid,string,ierr) ! y-direction
                 call fiReadStringErrorMsg(option%myrank,'DISCRETIZATION,BOUNDS,Y',ierr)
                 call fiReadDouble(string,grid%structured_grid%bounds(Y_DIRECTION,LOWER),ierr)
                 call fiErrorMsg(option%myrank,'Lower Y','BOUNDS',ierr)
@@ -254,14 +254,14 @@ subroutine DiscretizationRead(discretization,fid,option)
               endif
               if (grid%structured_grid%itype == CARTESIAN_GRID .or. &
                   grid%structured_grid%itype == CYLINDRICAL_GRID) then
-                call fiReadFlotranString(IUNIT1,string,ierr) ! z-direction
+                call fiReadFlotranString(fid,string,ierr) ! z-direction
                 call fiReadStringErrorMsg(option%myrank,'DISCRETIZATION,BOUNDS,Z',ierr)
                 call fiReadDouble(string,grid%structured_grid%bounds(Z_DIRECTION,LOWER),ierr)
                 call fiErrorMsg(option%myrank,'Lower Z','BOUNDS',ierr)
                 call fiReadDouble(string,grid%structured_grid%bounds(Z_DIRECTION,UPPER),ierr)
                 call fiErrorMsg(option%myrank,'Upper Z','BOUNDS',ierr)
               endif
-              call fiReadFlotranString(IUNIT1,string,ierr) ! z-direction
+              call fiReadFlotranString(fid,string,ierr) ! z-direction
               call fiReadStringErrorMsg(option%myrank,'DISCRETIZATION,BOUNDS,Z',ierr)
               if (.not.(string(1:1) == '.' .or. string(1:1) == '/' .or. &
                         fiStringCompare(string,'END',THREE_INTEGER))) then

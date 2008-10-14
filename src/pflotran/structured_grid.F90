@@ -337,13 +337,14 @@ end subroutine StructuredGridCreateVecFromDA
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridReadDXYZ(structured_grid,option)
+subroutine StructuredGridReadDXYZ(structured_grid,fid,option)
 
   use Option_module
   
   implicit none
   
   type(structured_grid_type) :: structured_grid
+  PetscInt :: fid
   type(option_type) :: option
   
   PetscInt :: i
@@ -356,17 +357,17 @@ subroutine StructuredGridReadDXYZ(structured_grid,option)
   structured_grid%dz_global = 0.d0
 
   call StructuredGridReadArray(structured_grid%dx_global, &
-                               structured_grid%nx,option)
+                               structured_grid%nx,fid,option)
   call StructuredGridReadArray(structured_grid%dy_global, &
-                               structured_grid%ny,option)
+                               structured_grid%ny,fid,option)
   call StructuredGridReadArray(structured_grid%dz_global, &
-                               structured_grid%nz,option)
+                               structured_grid%nz,fid,option)
     
   if (option%myrank==0) then
-    write(IUNIT2,'(/," *DXYZ ")')
-    write(IUNIT2,'("  dx  ",/,(1p10e12.4))') &
+    write(option%fid_out,'(/," *DXYZ ")')
+    write(option%fid_out,'("  dx  ",/,(1p10e12.4))') &
       (structured_grid%dx_global(i),i=1,structured_grid%nx)
-    write(IUNIT2,'("  dy  ",/,(1p10e12.4))') &
+    write(option%fid_out,'("  dy  ",/,(1p10e12.4))') &
       (structured_grid%dy_global(i),i=1,structured_grid%ny)
     write(IUNIT2,'("  dz  ",/,(1p10e12.4))') &
       (structured_grid%dz_global(i),i=1,structured_grid%nz)
@@ -382,7 +383,7 @@ end subroutine StructuredGridReadDXYZ
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridReadArray(a,n,option)
+subroutine StructuredGridReadArray(a,n,fid,option)
 
   use Fileio_module
   use Option_module
@@ -390,6 +391,7 @@ subroutine StructuredGridReadArray(a,n,option)
   implicit none
   
   type(option_type) :: option
+  PetscInt :: fid
   PetscInt :: n
   PetscInt :: i, i1, i2, m
   PetscInt ::  nvalue=10
@@ -409,7 +411,7 @@ subroutine StructuredGridReadArray(a,n,option)
     i1 = i2+1
     i2 = i2+nvalue
     if (i2.gt.n) i2 = n
-    call fiReadFlotranString(IUNIT1,string,ierr)
+    call fiReadFlotranString(fid,string,ierr)
     call fiReadStringErrorMsg(option%myrank,'DXYZ',ierr)
     do i = i1, i2
       call fiReadDouble(string, a(i), ierr)

@@ -35,6 +35,15 @@ module Reactive_Transport_Aux_module
     PetscReal, pointer :: sec_act_coef(:)
   end type reactive_transport_auxvar_type
   
+  type, public :: rt_condition_auxvar_type
+    character(len=MAXNAMELENGTH), pointer :: spec(:)
+    PetscReal, pointer :: basis_conc(:)
+    PetscReal, pointer :: conc(:)
+    PetscInt, pointer :: constraint_type(:)
+    character(len=MAXNAMELENGTH), pointer :: constraint_spec_name(:)
+    PetscInt, pointer :: constraint_spec_id(:)
+  end type rt_condition_auxvar_type
+  
   type, public :: reactive_transport_type
     PetscInt :: num_aux, num_aux_bc
     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
@@ -46,7 +55,9 @@ module Reactive_Transport_Aux_module
   end type reactive_transport_type
 
   public :: RTAuxCreate, RTAuxDestroy, &
-            RTAuxVarInit, RTAuxVarCopy, RTAuxVarDestroy
+            RTAuxVarInit, RTAuxVarCopy, RTAuxVarDestroy, &
+            RTConditionAuxCreate, RTConditionAuxVarDestroy, &
+            RTConditionAuxVarInit
 
 contains
 
@@ -82,6 +93,36 @@ function RTAuxCreate()
   RTAuxCreate => aux
   
 end function RTAuxCreate
+
+! ************************************************************************** !
+!
+! RTConditionAuxCreate: Allocate and initialize auxilliary object for a 
+!                       condition
+! author: Glenn Hammond
+! date: 10/13/08
+!
+! ************************************************************************** !
+function RTConditionAuxCreate()
+
+  use Option_module
+
+  implicit none
+  
+  type(rt_condition_auxvar_type), pointer :: RTConditionAuxCreate
+  
+  type(rt_condition_auxvar_type), pointer :: aux
+
+  allocate(aux)
+  nullify(aux%basis_conc)
+  nullify(aux%spec)
+  nullify(aux%conc)
+  nullify(aux%constraint_type)
+  nullify(aux%constraint_spec_name)
+  nullify(aux%constraint_spec_id)
+
+  RTConditionAuxCreate => aux
+  
+end function RTConditionAuxCreate
 
 ! ************************************************************************** !
 !
@@ -127,6 +168,35 @@ subroutine RTAuxVarInit(aux_var,option)
   aux_var%sec_act_coef = 1.d0
   
 end subroutine RTAuxVarInit
+
+! ************************************************************************** !
+!
+! RTConditionAuxVarInit: Initialize auxilliary object for a condition
+! author: Glenn Hammond
+! date: 10/13/08
+!
+! ************************************************************************** !
+subroutine RTConditionAuxVarInit(aux_var,ncomp)
+
+  implicit none
+  
+  type(rt_condition_auxvar_type) :: aux_var
+  PetscInt :: ncomp
+  
+  allocate(aux_var%basis_conc(ncomp))
+  aux_var%basis_conc = 0.d0
+  allocate(aux_var%spec(ncomp))
+  aux_var%spec = ''
+  allocate(aux_var%conc(ncomp))
+  aux_var%conc = 0.d0
+  allocate(aux_var%constraint_type(ncomp))
+  aux_var%constraint_type = 0
+  allocate(aux_var%constraint_spec_name(ncomp))
+  aux_var%constraint_spec_name = ''
+  allocate(aux_var%constraint_spec_id(ncomp))
+  aux_var%constraint_spec_id = 0
+  
+end subroutine RTConditionAuxVarInit
 
 ! ************************************************************************** !
 !
@@ -200,6 +270,41 @@ subroutine RTAuxVarDestroy(aux_var)
   nullify(aux_var%sec_act_coef)
 
 end subroutine RTAuxVarDestroy
+
+! ************************************************************************** !
+!
+! RTConditionAuxVarDestroy: Deallocates a reactive transport auxilliary 
+!                           object for a condition
+! author: Glenn Hammond
+! date: 10/13/08
+!
+! ************************************************************************** !
+subroutine RTConditionAuxVarDestroy(aux_var)
+
+  implicit none
+
+  type(rt_condition_auxvar_type) :: aux_var
+  
+  if (associated(aux_var%basis_conc)) &
+    deallocate(aux_var%basis_conc)
+  nullify(aux_var%basis_conc)
+  if (associated(aux_var%spec)) &
+    deallocate(aux_var%spec)
+  nullify(aux_var%spec)
+  if (associated(aux_var%conc)) &
+    deallocate(aux_var%conc)
+  nullify(aux_var%conc)
+  if (associated(aux_var%constraint_type)) &
+    deallocate(aux_var%constraint_type)
+  nullify(aux_var%constraint_type)
+  if (associated(aux_var%constraint_spec_name)) &
+    deallocate(aux_var%constraint_spec_name)
+  nullify(aux_var%constraint_spec_name)
+  if (associated(aux_var%constraint_spec_id)) &
+    deallocate(aux_var%constraint_spec_id)
+  nullify(aux_var%constraint_spec_id)
+
+end subroutine RTConditionAuxVarDestroy
 
 ! ************************************************************************** !
 !

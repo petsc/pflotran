@@ -521,7 +521,7 @@ subroutine AMRGridComputeGeometryInformation(amrgrid, origin_global, field, &
 
 end subroutine AMRGridComputeGeometryInformation
 
-subroutine AMRGridReadDXYZ(amrgrid, option)
+subroutine AMRGridReadDXYZ(amrgrid, fid, option)
   use Option_module
 
   implicit none
@@ -545,6 +545,7 @@ subroutine AMRGridReadDXYZ(amrgrid, option)
   end interface
 
   type(amrgrid_type), pointer:: amrgrid
+  integer, intent(in) :: fid
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
 
@@ -570,11 +571,11 @@ subroutine AMRGridReadDXYZ(amrgrid, option)
         if(islocal) then
            grid => amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr
            if(readdxyz) then
-              BACKSPACE(UNIT=IUNIT1)
-              BACKSPACE(UNIT=IUNIT1)
-              BACKSPACE(UNIT=IUNIT1)
+              BACKSPACE(UNIT=fid)
+              BACKSPACE(UNIT=fid)
+              BACKSPACE(UNIT=fid)
            endif
-           call StructuredGridReadDXYZ(grid%structured_grid,option)
+           call StructuredGridReadDXYZ(grid%structured_grid,fid,option)
            readdxyz = .TRUE.
         endif
      end do

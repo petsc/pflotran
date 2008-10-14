@@ -33,7 +33,8 @@ private
 
     type(region_list_type), pointer :: regions
     type(condition_list_type), pointer :: flow_conditions
-    type(condition_list_type), pointer :: transport_conditions
+    type(tran_condition_list_type), pointer :: transport_conditions
+    type(tran_constraint_list_type), pointer :: transport_constraints
     
     type(reaction_type), pointer :: reaction
     
@@ -51,6 +52,7 @@ private
   public :: RealizationCreate, RealizationDestroy, &
             RealizationProcessCouplers, &
             RealizationInitAllCouplerAuxVars, &
+            RealizationProcessConditions, &
             RealizationUpdate, RealizationAddWaypointsToList, &
             RealizationCreateDiscretization, &
             RealizationLocalizeRegions, &
@@ -93,7 +95,9 @@ function RealizationCreate()
   allocate(realization%flow_conditions)
   call ConditionInitList(realization%flow_conditions)
   allocate(realization%transport_conditions)
-  call ConditionInitList(realization%transport_conditions)
+  call TranConditionInitList(realization%transport_conditions)
+  allocate(realization%transport_constraints)
+  call TranConstraintInitList(realization%transport_constraints)
 
   nullify(realization%materials)
   nullify(realization%material_array)
@@ -439,6 +443,103 @@ end subroutine RealizationProcessCouplers
 
 ! ************************************************************************** !
 !
+! RealizationProcessConditions: Sets up auxilliary data associated with 
+!                               conditions
+! author: Glenn Hammond
+! date: 10/14/08
+!
+! ************************************************************************** !
+subroutine RealizationProcessConditions(realization)
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  call RealProcessTranConditions(realization)
+ 
+end subroutine RealizationProcessConditions
+
+
+! ************************************************************************** !
+!
+! RealProcessTranConditions: Sets up auxilliary data associated with 
+!                            transport conditions
+! author: Glenn Hammond
+! date: 10/14/08
+!
+! ************************************************************************** !
+subroutine RealProcessTranConditions(realization)
+
+  use Fileio_module
+  
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  
+  PetscTruth :: found
+  type(tran_condition_type), pointer :: cur_condition
+  type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
+  type(tran_constraint_type), pointer :: cur_constraint, another_constraint
+  
+  ! loop over condition list, find any constraints in conditions that need
+  ! to be added to realization%transport_constraint list
+  cur_condition => realization%transport_conditions%first
+  do 
+    if (.not.associated(cur_condition)) exit
+    cur_constraint_coupler => cur_condition%constraint_coupler_list
+    do 
+      if (.not.associated(cur_constraint_coupler)) exit
+      cur_constraint => realization%transport_constraints%first
+      found = PETSC_FALSE
+      do
+        if (.not.associated(cur_constraint)) exit
+        if (associated(cur_constraint,cur_constraint_coupler%constraint)) then
+          found = PETSC_TRUE
+        endif
+        cur_constraint => cur_constraint%next
+      enddo
+      if (.not.found) then
+        call TranConstraintAddToList(cur_constraint,realization%transport_constraints)
+      endif
+      cur_constraint_coupler => cur_constraint_coupler%next
+    enddo
+    cur_condition => cur_condition%next
+  enddo
+  
+  ! check for duplicate constraint names
+  cur_constraint => realization%transport_constraints%first
+  do
+    if (.not.associated(cur_constraint)) exit
+      another_constraint => cur_constraint%next
+      ! now compare names
+      found = PETSC_FALSE
+      do
+        if (.not.associated(another_constraint)) exit
+        if (fiStringCompare(cur_constraint%name,another_constraint%name, &
+            MAXNAMELENGTH)) then
+          found = PETSC_TRUE
+        endif
+        another_constraint => another_constraint%next
+      enddo
+      if (found) then
+        call printErrMsg(realization%option,'Duplicate constraints'//cur_constraint%name)
+      endif
+    cur_constraint => cur_constraint%next
+  enddo
+  
+  ! initialize constraints
+  cur_constraint => realization%transport_constraints%first
+  do
+    if (.not.associated(cur_constraint)) exit
+    !call ReactionInitializeConstraints(realization%reaction,cur_constraint)
+    cur_constraint => cur_constraint%next
+  enddo
+ 
+end subroutine RealProcessTranConditions
+
+! ************************************************************************** !
+!
 ! RealizationInitCouplerAuxVars: Initializes coupler auxillary variables 
 !                                within list
 ! author: Glenn Hammond
@@ -522,9 +623,10 @@ subroutine RealizationUpdate(realization)
   
   ! must update conditions first
   call ConditionUpdate(realization%flow_conditions,realization%option, &
-                       realization%option%time,NULL_CLASS)
-  call ConditionUpdate(realization%transport_conditions,realization%option, &
-                       realization%option%time,NULL_CLASS)
+                       realization%option%time)
+  call TranConditionUpdate(realization%transport_conditions, &
+                           realization%option, &
+                           realization%option%time)
   call RealizUpdateAllCouplerAuxVars(realization,force_update_flag)
 ! currently don't use aux_vars, just condition for src/sinks
 !  call RealizationUpdateSrcSinks(realization)
@@ -638,7 +740,7 @@ subroutine RealizAssignFlowInitCond(realization)
             endif
             do idof = 1, option%nflowdof
               xx_p(ibegin+idof-1) = &
-                initial_condition%flow_condition%transport_concentrations(idof)%ptr%dataset%cur_value(1)
+                initial_condition%flow_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
             enddo
             iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
           enddo
@@ -756,7 +858,7 @@ subroutine RealizAssignTransportInitCond(realization)
             endif
             do idof = 1, option%ntrandof ! primary aqueous concentrations
               xx_p(ibegin+idof-1) = &
-                initial_condition%tran_condition%transport_concentrations(idof)%ptr%dataset%cur_value(1)
+                initial_condition%tran_condition%cur_constraint_coupler%constraint%aqueous_species%basis_conc(idof)
             enddo
           enddo
         else
@@ -912,8 +1014,10 @@ subroutine RealizationAddWaypointsToList(realization)
   
   character(len=MAXSTRINGLENGTH) :: string
   type(waypoint_list_type), pointer :: waypoint_list
-  type(condition_type), pointer :: cur_condition
-  type(sub_condition_type), pointer :: sub_condition
+  type(flow_condition_type), pointer :: cur_flow_condition
+  type(tran_condition_type), pointer :: cur_tran_condition
+  type(flow_sub_condition_type), pointer :: sub_condition
+  type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
   type(waypoint_type), pointer :: waypoint
   type(option_type), pointer :: option
   PetscInt :: itime, isub_condition
@@ -921,12 +1025,12 @@ subroutine RealizationAddWaypointsToList(realization)
   option => realization%option
   waypoint_list => realization%waypoints
 
-  cur_condition => realization%flow_conditions%first
+  cur_flow_condition => realization%flow_conditions%first
   do
-    if (.not.associated(cur_condition)) exit
-    if (cur_condition%sync_time_with_update) then
-      do isub_condition = 1, cur_condition%num_sub_conditions
-        sub_condition => cur_condition%sub_condition_ptr(isub_condition)%ptr
+    if (.not.associated(cur_flow_condition)) exit
+    if (cur_flow_condition%sync_time_with_update) then
+      do isub_condition = 1, cur_flow_condition%num_sub_conditions
+        sub_condition => cur_flow_condition%sub_condition_ptr(isub_condition)%ptr
         itime = 1
         if (sub_condition%dataset%max_time_index == 1 .and. &
             sub_condition%dataset%times(itime) > 1.d-40) then
@@ -938,27 +1042,27 @@ subroutine RealizationAddWaypointsToList(realization)
         endif
       enddo
     endif
-    cur_condition => cur_condition%next
+    cur_flow_condition => cur_flow_condition%next
   enddo
       
-  cur_condition => realization%transport_conditions%first
+  cur_tran_condition => realization%transport_conditions%first
   do
-    if (.not.associated(cur_condition)) exit
-    if (cur_condition%sync_time_with_update) then
-      do isub_condition = 1, option%ntrandof
-        sub_condition => cur_condition%transport_concentrations(isub_condition)%ptr
-        itime = 1
-        if (sub_condition%dataset%max_time_index == 1 .and. &
-            sub_condition%dataset%times(itime) > 1.d-40) then
+    if (.not.associated(cur_tran_condition)) exit
+    if (cur_tran_condition%sync_time_with_update .and. &
+        cur_tran_condition%is_transient) then
+      cur_constraint_coupler => cur_tran_condition%constraint_coupler_list
+      do
+        if (.not.associated(cur_constraint_coupler)) exit
+        if (cur_constraint_coupler%time > 1.d-40) then
           waypoint => WaypointCreate()
-          waypoint%time = sub_condition%dataset%times(itime)
+          waypoint%time = cur_constraint_coupler%time
           waypoint%update_bcs = .true.
           call WaypointInsertInList(waypoint,waypoint_list)
-          exit
         endif
+        cur_constraint_coupler => cur_constraint_coupler%next
       enddo
     endif
-    cur_condition => cur_condition%next
+    cur_tran_condition => cur_tran_condition%next
   enddo
       
 end subroutine RealizationAddWaypointsToList
@@ -1099,7 +1203,8 @@ subroutine RealizationDestroy(realization)
   call RegionDestroyList(realization%regions)
   
   call ConditionDestroyList(realization%flow_conditions)
-  call ConditionDestroyList(realization%transport_conditions)
+  call TranConditionDestroyList(realization%transport_conditions)
+  call TranConstraintDestroyList(realization%transport_constraints)
 
   call LevelDestroyList(realization%level_list)
 

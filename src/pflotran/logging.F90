@@ -27,8 +27,10 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 5
     PetscLogEvent :: event_restart
     PetscLogEvent :: event_checkpoint
 
-    PetscLogEvent :: event_condition_read
-    PetscLogEvent :: event_condition_read_values
+    PetscLogEvent :: event_flow_condition_read
+    PetscLogEvent :: event_tran_condition_read
+    PetscLogEvent :: event_tran_constraint_read
+    PetscLogEvent :: event_flow_condition_read_values
 
     PetscLogEvent :: event_h5dread_f
     PetscLogEvent :: event_h5dwrite_f
@@ -110,12 +112,18 @@ subroutine LoggingCreate()
                              logging%class_pflotran, &
                              logging%event_checkpoint,ierr)
 
-  call PetscLogEventRegister('ConditionRead', &
+  call PetscLogEventRegister('FlowCondRead', &
                              logging%class_pflotran, &
-                             logging%event_condition_read,ierr)
-  call PetscLogEventRegister('ConditionRdVals', &
+                             logging%event_flow_condition_read,ierr)
+  call PetscLogEventRegister('TranCondRead', &
                              logging%class_pflotran, &
-                             logging%event_condition_read_values,ierr)
+                             logging%event_tran_condition_read,ierr)
+  call PetscLogEventRegister('TranConstraintRd', &
+                             logging%class_pflotran, &
+                             logging%event_tran_constraint_read,ierr)
+  call PetscLogEventRegister('FlowCondReadVals', &
+                             logging%class_pflotran, &
+                             logging%event_flow_condition_read_values,ierr)
 
   call PetscLogEventRegister('H5DRead_F', &
                              logging%class_pflotran, &

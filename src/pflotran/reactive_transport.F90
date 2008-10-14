@@ -788,23 +788,23 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
       endif
       
       do istart = 1, option%ncomp
-        select case(source_sink%tran_condition%transport_concentrations(istart)%ptr%itype)
+        select case(source_sink%tran_condition%itype)
           case(EQUILIBRIUM_SS)
             ! units should be mol/sec
             Res(istart) = -1.d-6* &
                           porosity_loc_p(ghosted_id)* &
                           saturation_loc_p(ghosted_id)* &
                           volume_p(local_id)* & ! convert m^3 water -> L water
-                          (source_sink%tran_condition%transport_concentrations(istart)%ptr%dataset%cur_value(1)* &
+                          (source_sink%tran_condition%cur_constraint_coupler%constraint%aqueous_species%basis_conc(istart)* &
                            aux_vars(ghosted_id)%den(1) - & 
                            aux_vars(ghosted_id)%total(istart,iphase)*1000.d0) ! convert kg water/L water -> kg water/m^3 water
           case(MASS_RATE_SS)
-            Res(istart) = -source_sink%tran_condition%transport_concentrations(istart)%ptr%dataset%cur_value(1)
+            Res(istart) = -source_sink%tran_condition%cur_constraint_coupler%constraint%aqueous_species%basis_conc(istart)
           case(CONCENTRATION_SS)
             if (qsrc > 0) then ! injection
               Res(istart) = -qsrc* &
                             aux_vars(ghosted_id)%den(1)* &
-                            source_sink%tran_condition%transport_concentrations(istart)%ptr%dataset%cur_value(1)
+                            source_sink%tran_condition%cur_constraint_coupler%constraint%aqueous_species%basis_conc(istart)
             else ! extraction
               Res(istart) = -qsrc* &
                             aux_vars(ghosted_id)%total(istart,iphase)*1000.d0 ! convert kg water/L water -> kg water/m^3 water
@@ -890,7 +890,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
 
-      call TBCFlux(boundary_condition%tran_condition%itype(1), &
+      call TBCFlux(boundary_condition%tran_condition%itype, &
                    aux_vars_bc(sum_connection), &
                    aux_vars(ghosted_id), &
                    porosity_loc_p(ghosted_id), &
@@ -1139,7 +1139,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       
       Jup = 0.d0
       do istart = 1, option%ncomp
-        select case(source_sink%tran_condition%transport_concentrations(istart)%ptr%itype)
+        select case(source_sink%tran_condition%itype)
           case(EQUILIBRIUM_SS)
             Jup(istart,istart) = 1.d-6* &
                                  porosity_loc_p(ghosted_id)* &
@@ -1234,7 +1234,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
 
-      call TBCFluxDerivative(boundary_condition%tran_condition%itype(1), &
+      call TBCFluxDerivative(boundary_condition%tran_condition%itype, &
                    aux_vars_bc(sum_connection), &
                    aux_vars(ghosted_id), &
                    porosity_loc_p(ghosted_id), &
@@ -1415,7 +1415,7 @@ subroutine RTUpdateAuxVarsPatch(realization)
       endif
 
       do idof=1,option%ncomp
-        select case(boundary_condition%tran_condition%itype(idof))
+        select case(boundary_condition%tran_condition%itype)
           case(CONCENTRATION_SS,DIRICHLET_BC,NEUMANN_BC)
             xxbc(idof) = boundary_condition%tran_aux_real_var(idof,iconn)
           case(ZERO_GRADIENT_BC)

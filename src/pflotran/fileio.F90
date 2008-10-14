@@ -19,7 +19,7 @@ module Fileio_module
             fiReadInt, fiReadDouble, fiReadMultDouble, &
             fiDefaultMsg, fiErrorMsg, fiReadStringErrorMsg, &
             fiStringCompare, fiFindStringInFile, fiReadQuotedNChars, &
-            fiFindStringErrorMsg, fiSkipToEND
+            fiFindStringErrorMsg, fiSkipToEND, fiCheckExit
 
   public :: fiReadDBaseString, fiReadDBaseName, fiReadDBaseInt, &
             fiReadDBaseDouble, fiReadDBaseMultDouble
@@ -1084,12 +1084,34 @@ subroutine fiSkipToEND(fid,myrank,card)
   PetscErrorCode :: ierr
 
   do
-    call fiReadFlotranString(IUNIT1,string,ierr)
+    call fiReadFlotranString(fid,string,ierr)
     call fiReadStringErrorMsg(myrank,card,ierr)
-    if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-        fiStringCompare(string,'END',THREE_INTEGER)) exit
+    if (fiCheckExit(string)) exit
   enddo
 
 end subroutine fiSkipToEND
+
+! ************************************************************************** !
+!
+! fiCheckExit: Checks whether an end character (.,/,'END') has been found 
+! author: Glenn Hammond
+! date: 10/14/08
+!
+! ************************************************************************** !
+function fiCheckExit(string)
+
+  implicit none
+  
+  PetscTruth :: fiCheckExit
+  character(len=*) :: string
+
+  if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
+      fiStringCompare(string,'END',THREE_INTEGER)) then
+    fiCheckExit = PETSC_TRUE
+  else
+    fiCheckExit = PETSC_FALSE
+  endif
+
+end function fiCheckExit
 
 end module Fileio_module
