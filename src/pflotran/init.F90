@@ -478,7 +478,9 @@ subroutine readRequiredCardsFromInput(realization,filename)
   use Level_module
   use Realization_module
   use AMR_Grid_module
-  use Reaction_module
+
+  use Reaction_module  
+  use Reaction_Aux_module  
 
   implicit none
 
@@ -861,7 +863,8 @@ subroutine readInput(simulation,filename)
         call fiReadWord(string,tran_condition%name,.true.,ierr)
         call fiErrorMsg(option%myrank,'TRANSPORT_CONDITION','name',ierr) 
         call printMsg(option,tran_condition%name)
-        call TranConditionRead(tran_condition,option,option%fid_in)
+        call TranConditionRead(tran_condition,realization%transport_constraints, &
+                               option,option%fid_in)
         call TranConditionAddToList(tran_condition,realization%transport_conditions)
         nullify(tran_condition)
 
@@ -2207,12 +2210,14 @@ subroutine assignInitialConditions(realization)
                 endif
               endif
               ! minerals              
+#if 0
               if (associated(initial_condition%tran_condition%cur_constraint_coupler%constraint%minerals)) then
                 do idof = 1, option%nmnrl
                   cur_patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
-                    initial_condition%tran_condition%cur_constraint_coupler%constraint%minerals%basis_conc(idof)
+                    initial_condition%tran_condition%cur_constraint_coupler%constraint%minerals%conc(idof)
                 enddo
               endif
+#endif              
             enddo
           else
             do iconn=1,initial_condition%connection_set%num_connections
@@ -2223,13 +2228,15 @@ subroutine assignInitialConditions(realization)
                   cycle
                 endif
               endif
-              ! minerals              
+              ! minerals 
+#if 0                           
               if (associated(initial_condition%tran_condition%cur_constraint_coupler%constraint%minerals)) then
                 do idof = 1, option%nmnrl
                   cur_patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
-                    initial_condition%tran_condition%cur_constraint_coupler%constraint%minerals%basis_conc(idof)
+                    initial_condition%tran_condition%cur_constraint_coupler%constraint%minerals%conc(idof)
                 enddo
               endif
+#endif              
             enddo
           endif
           initial_condition => initial_condition%next

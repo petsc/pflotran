@@ -9,7 +9,7 @@ module Realization_module
   use Debug_module
   use Waypoint_module
   
-  use Reaction_module
+  use Reaction_Aux_module
   
   use Level_module
   use Patch_module
@@ -471,6 +471,7 @@ end subroutine RealizationProcessConditions
 subroutine RealProcessTranConditions(realization)
 
   use Fileio_module
+  use Reaction_module
   
   implicit none
   
@@ -481,31 +482,6 @@ subroutine RealProcessTranConditions(realization)
   type(tran_condition_type), pointer :: cur_condition
   type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
   type(tran_constraint_type), pointer :: cur_constraint, another_constraint
-  
-  ! loop over condition list, find any constraints in conditions that need
-  ! to be added to realization%transport_constraint list
-  cur_condition => realization%transport_conditions%first
-  do 
-    if (.not.associated(cur_condition)) exit
-    cur_constraint_coupler => cur_condition%constraint_coupler_list
-    do 
-      if (.not.associated(cur_constraint_coupler)) exit
-      cur_constraint => realization%transport_constraints%first
-      found = PETSC_FALSE
-      do
-        if (.not.associated(cur_constraint)) exit
-        if (associated(cur_constraint,cur_constraint_coupler%constraint)) then
-          found = PETSC_TRUE
-        endif
-        cur_constraint => cur_constraint%next
-      enddo
-      if (.not.found) then
-        call TranConstraintAddToList(cur_constraint,realization%transport_constraints)
-      endif
-      cur_constraint_coupler => cur_constraint_coupler%next
-    enddo
-    cur_condition => cur_condition%next
-  enddo
   
   ! check for duplicate constraint names
   cur_constraint => realization%transport_constraints%first
@@ -532,10 +508,63 @@ subroutine RealProcessTranConditions(realization)
   cur_constraint => realization%transport_constraints%first
   do
     if (.not.associated(cur_constraint)) exit
-    !call ReactionInitializeConstraints(realization%reaction,cur_constraint)
+    call ReactionInitializeConstraint(cur_constraint%name, &
+                                      cur_constraint%aqueous_species, &
+                                      cur_constraint%minerals, &
+                                      realization%option)
     cur_constraint => cur_constraint%next
   enddo
+  
+  ! tie constraints to couplers, if not already associated
+  cur_condition => realization%transport_conditions%first
+  do
+    if (.not.associated(cur_condition)) exit
+    cur_constraint_coupler => cur_condition%constraint_coupler_list
+    do
+      if (.not.associated(cur_constraint_coupler)) exit
+      if (.not.associated(cur_constraint_coupler%aqueous_species)) then
+        cur_constraint => realization%transport_constraints%first
+        do
+          if (.not.associated(cur_constraint)) exit
+          if (fiStringCompare(cur_constraint%name, &
+                              cur_constraint_coupler%constraint_name, &
+                              MAXNAMELENGTH)) then
+            cur_constraint_coupler%aqueous_species => cur_constraint%aqueous_species
+            cur_constraint_coupler%minerals => cur_constraint%minerals
+            exit
+          endif
+          cur_constraint => cur_constraint%next
+        enddo
+        if (.not.associated(cur_constraint_coupler%aqueous_species)) then
+          call printErrMsg(realization%option,'Duplicate constraints'//cur_constraint%name)
+        endif
+      endif
+      cur_constraint_coupler => cur_constraint_coupler%next
+    enddo
+    if (associated(cur_condition%constraint_coupler_list%next)) then ! more than one
+      cur_condition%is_transient = PETSC_TRUE
+    else
+      cur_condition%is_transient = PETSC_FALSE
+    endif
+    cur_condition => cur_condition%next
+  enddo
  
+  ! final details for setup
+  cur_condition => realization%transport_conditions%first
+  do
+    if (.not.associated(cur_condition)) exit
+    ! is the condition transient?
+    if (associated(cur_condition%constraint_coupler_list%next)) then ! more than one
+      cur_condition%is_transient = PETSC_TRUE
+    else
+      cur_condition%is_transient = PETSC_FALSE
+    endif
+    ! set pointer to first constraint coupler
+    cur_condition%cur_constraint_coupler => cur_condition%constraint_coupler_list
+    
+    cur_condition => cur_condition%next
+  enddo
+
 end subroutine RealProcessTranConditions
 
 ! ************************************************************************** !
@@ -858,7 +887,7 @@ subroutine RealizAssignTransportInitCond(realization)
             endif
             do idof = 1, option%ntrandof ! primary aqueous concentrations
               xx_p(ibegin+idof-1) = &
-                initial_condition%tran_condition%cur_constraint_coupler%constraint%aqueous_species%basis_conc(idof)
+                initial_condition%tran_condition%cur_constraint_coupler%aqueous_species%basis_conc(idof)
             enddo
           enddo
         else

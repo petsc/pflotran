@@ -674,24 +674,10 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
 
       tran_condition => coupler%tran_condition
 
-      update = .false.
-      if (force_update_flag) then
-        update = .true.
-      else 
+      if (force_update_flag .or. tran_condition%is_transient) then ! for now, everything transport is dirichlet-type
         do idof = 1, option%ntrandof
-!          if (tran_condition%transport_concentrations(idof)%ptr%dataset%is_transient .or. &
-!              tran_condition%transport_concentrations(idof)%ptr%gradient%is_transient .or. &
-!              tran_condition%transport_concentrations(idof)%ptr%datum%is_transient) then
-!            update = .true.
-!            exit
-!          endif
-        enddo
-      endif
-      
-      if (update) then ! for now, everything transport is dirichlet-type
-        do idof = 1, option%ntrandof
-!          coupler%tran_aux_real_var(idof,1:num_connections) = &
-!            tran_condition%transport_concentrations(idof)%ptr%dataset%cur_value(1)
+          coupler%tran_aux_real_var(idof,1:num_connections) = &
+            tran_condition%cur_constraint_coupler%aqueous_species%basis_conc(idof)
         enddo
       endif
       

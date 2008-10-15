@@ -3,6 +3,7 @@ module Reactive_Transport_module
   use Transport_module
   use Reaction_module
   use Reactive_Transport_Aux_module
+  use Reaction_Aux_module
   
   implicit none
   
@@ -795,16 +796,16 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
                           porosity_loc_p(ghosted_id)* &
                           saturation_loc_p(ghosted_id)* &
                           volume_p(local_id)* & ! convert m^3 water -> L water
-                          (source_sink%tran_condition%cur_constraint_coupler%constraint%aqueous_species%basis_conc(istart)* &
+                          (source_sink%tran_condition%cur_constraint_coupler%aqueous_species%conc(istart)* &
                            aux_vars(ghosted_id)%den(1) - & 
                            aux_vars(ghosted_id)%total(istart,iphase)*1000.d0) ! convert kg water/L water -> kg water/m^3 water
           case(MASS_RATE_SS)
-            Res(istart) = -source_sink%tran_condition%cur_constraint_coupler%constraint%aqueous_species%basis_conc(istart)
+            Res(istart) = -source_sink%tran_condition%cur_constraint_coupler%aqueous_species%conc(istart)
           case(CONCENTRATION_SS)
             if (qsrc > 0) then ! injection
               Res(istart) = -qsrc* &
-                            aux_vars(ghosted_id)%den(1)* &
-                            source_sink%tran_condition%cur_constraint_coupler%constraint%aqueous_species%basis_conc(istart)
+                            aux_vars(ghosted_id)%den(1) * &
+                            source_sink%tran_condition%cur_constraint_coupler%aqueous_species%conc(istart)
             else ! extraction
               Res(istart) = -qsrc* &
                             aux_vars(ghosted_id)%total(istart,iphase)*1000.d0 ! convert kg water/L water -> kg water/m^3 water

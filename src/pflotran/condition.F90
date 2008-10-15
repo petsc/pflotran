@@ -1,6 +1,6 @@
 module Condition_module
  
-  use Reactive_Transport_Aux_module
+  use Reaction_Aux_module
   
   implicit none
 
@@ -92,8 +92,8 @@ module Condition_module
   type, public :: tran_constraint_type
     PetscInt :: id
     character(len=MAXWORDLENGTH) :: name         
-    type(rt_condition_auxvar_type), pointer :: aqueous_species
-    type(rt_condition_auxvar_type), pointer :: minerals
+    type(aq_species_constraint_type), pointer :: aqueous_species
+    type(mineral_constraint_type), pointer :: minerals
     type(tran_constraint_type), pointer :: next    
   end type tran_constraint_type
   
@@ -112,10 +112,11 @@ module Condition_module
     character(len=MAXWORDLENGTH) :: constraint_name   
     PetscReal :: time
     character(len=MAXWORDLENGTH) :: time_units
-    type(tran_constraint_type), pointer :: constraint
-    type(tran_constraint_coupler_type), pointer :: next    
+    type(aq_species_constraint_type), pointer :: aqueous_species
+    type(mineral_constraint_type), pointer :: minerals
+    type(tran_constraint_coupler_type), pointer :: next   
   end type tran_constraint_coupler_type
-  
+      
   public :: ConditionCreate, ConditionDestroy, ConditionRead, &
             ConditionAddToList, ConditionInitList, ConditionDestroyList, &
             ConditionGetPtrFromList, ConditionUpdate, &
@@ -250,7 +251,8 @@ function TranConstraintCouplerCreate(option)
   type(tran_constraint_coupler_type), pointer :: coupler
   
   allocate(coupler)
-  nullify(coupler%constraint)
+  nullify(coupler%aqueous_species)
+  nullify(coupler%minerals)
   nullify(coupler%next)
   coupler%constraint_name = ''
   coupler%time = 0.d0
@@ -653,33 +655,6 @@ subroutine ConditionRead(condition,option,fid)
               sub_condition_ptr%itype = SEEPAGE_BC
             case('volume','volumetric','volumetric_rate')
               sub_condition_ptr%itype = VOLUMETRIC_RATE_SS
-            case('concentration')
-#if 0            
-              sub_condition_ptr%itype = CONCENTRATION_SS
-              call fiReadWord(string,word,.true.,ierr)
-              call fiDefaultMsg(option%myrank,'CONDITION,TYPE,CONCENTRATION',ierr)
-              length = len_trim(word)
-              if (length > 0) then
-                call fiCharsToUpper(word,length)
-                select case(word)
-                  case('F','FREE')
-                    sub_condition_ptr%aux_int = CONDITION_FREE_CONCENTRATION
-                  case('T','Total')
-                    sub_condition_ptr%aux_int = CONDITION_TOTAL_CONCENTRATION
-                  case('P')
-                    sub_condition_ptr%aux_int = CONDITION_P_CONCENTRATION
-                  case('EQ')
-                    sub_condition_ptr%aux_int = CONDITION_EQ_CONCENTRATION
-                    call fiReadWord(string,word,.true.,ierr)
-                    call fiErrorMsg(option%myrank,'TYPE,CONCENTRATION,TYPE','CONDITION', ierr)   
-                    sub_condition_ptr%aux_word = trim(word)
-                  case default
-                    string = 'concentration type "' // trim(word) // &
-                             '" not recognized in type,concentration,condition,type'
-                    call printErrMsg(option,string)              
-                end select
-              endif
-#endif              
             case('equilibrium')
               sub_condition_ptr%itype = EQUILIBRIUM_SS
             case default
@@ -882,7 +857,7 @@ end subroutine ConditionRead
 ! date: 10/14/08
 !
 ! ************************************************************************** !
-subroutine TranConditionRead(condition,option,fid)
+subroutine TranConditionRead(condition,constraint_list,option,fid)
 
   use Option_module
   use Fileio_module
@@ -891,6 +866,7 @@ subroutine TranConditionRead(condition,option,fid)
   implicit none
   
   type(tran_condition_type) :: condition
+  type(tran_constraint_list_type) :: constraint_list
   type(option_type) :: option
   PetscInt :: fid
   
@@ -899,6 +875,7 @@ subroutine TranConditionRead(condition,option,fid)
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   PetscReal :: default_time = 0.d0
+  character(len=MAXWORDLENGTH) :: default_time_units
   PetscInt :: default_iphase = 0
   character(len=MAXWORDLENGTH) :: default_ctype
   PetscInt :: default_itype
@@ -914,6 +891,7 @@ subroutine TranConditionRead(condition,option,fid)
 
   default_ctype = 'dirichlet'
   default_itype = DIRICHLET_BC
+  default_time_units = ''
 
   ! read the condition
   ierr = 0
@@ -930,7 +908,6 @@ subroutine TranConditionRead(condition,option,fid)
       
     select case(trim(word))
     
-      case('UNITS') ! read default units for condition arguments
       case('TYPE') ! read condition type (dirichlet, neumann, etc) for each dof
         call fiReadWord(string,word,.true.,ierr)
         call fiErrorMsg(option%myrank,'INTERPOLATION','CONDITION', ierr)   
@@ -948,9 +925,17 @@ subroutine TranConditionRead(condition,option,fid)
             case default
               call printErrMsg(option,'keyword not recognized in condition,type')
         end select
-      case('TIME','TIMES')
+      case('TIME')
         call fiReadDouble(string,default_time,ierr)
-        call fiErrorMsg(option%myrank,'TIME','CONDITION', ierr)   
+        call fiErrorMsg(option%myrank,'TIME','CONDITION', ierr) 
+      case('UNITS') 
+        call fiReadWord(string,word,PETSC_TRUE,ierr) 
+        call fiErrorMsg(option%myrank,'UNITS','CONDITION', ierr)   
+        call fiWordToLower(word)
+        select case(trim(word))     
+          case('s','sec','min','hr','d','day','y','yr')
+            default_time_units = trim(word)         
+        end select          
       case('CONSTRAINT_LIST')
         do
           call fiReadFlotranString(fid,string,ierr)
@@ -960,9 +945,18 @@ subroutine TranConditionRead(condition,option,fid)
 
           constraint_coupler => TranConstraintCouplerCreate(option)
           call fiReadDouble(string,constraint_coupler%time,ierr)
-          call fiErrorMsg(option%myrank,'time','CONSTRAINT_LIST', ierr)   
-          call fiReadWord(string,constraint_coupler%constraint_name,.true.,ierr)
+          call fiErrorMsg(option%myrank,'time','CONSTRAINT_LIST', ierr) 
+          ! time units are optional  
+          call fiReadWord(string,word,.true.,ierr)
           call fiErrorMsg(option%myrank,'constraint name','CONSTRAINT_LIST', ierr) 
+          ! read constraint name
+          call fiReadWord(string,constraint_coupler%constraint_name,.true.,ierr)
+          if (ierr /= 0) then
+            constraint_coupler%time_units = default_time_units
+            constraint_coupler%constraint_name = trim(word)
+          else
+            constraint_coupler%time_units = word
+          endif
           ! add to end of list
           if (.not.associated(condition%constraint_coupler_list)) then
             condition%constraint_coupler_list => constraint_coupler
@@ -978,12 +972,12 @@ subroutine TranConditionRead(condition,option,fid)
       case('CONSTRAINT')
         constraint => TranConstraintCreate(option)
         constraint_coupler => TranConstraintCouplerCreate(option)
-        constraint_coupler%constraint => constraint
         call fiReadWord(string,constraint%name,.true.,ierr)
         call fiErrorMsg(option%myrank,'constraint','name',ierr) 
         call printMsg(option,constraint%name)
         call TranConstraintRead(constraint,option,fid)
-        ! add to end of list
+        call TranConstraintAddToList(constraint,constraint_list)
+        ! add to end of coupler list
         if (.not.associated(condition%constraint_coupler_list)) then
           condition%constraint_coupler_list => constraint_coupler
         else
@@ -993,7 +987,7 @@ subroutine TranConditionRead(condition,option,fid)
             cur_coupler => cur_coupler%next
           enddo
           cur_coupler%next => constraint_coupler
-        endif
+        endif        
       case default
         string = 'Keyword: ' // trim(word) // &
                  ' not recognized in transport condition'
@@ -1029,8 +1023,10 @@ subroutine TranConstraintRead(constraint,option,fid)
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
-  PetscInt :: icomp
   PetscInt :: length
+  PetscInt :: icomp
+  type(aq_species_constraint_type), pointer :: aq_species_constraint
+  type(mineral_constraint_type), pointer :: mineral_constraint
   PetscErrorCode :: ierr
 
   call PetscLogEventBegin(logging%event_tran_constraint_read, &
@@ -1050,28 +1046,25 @@ subroutine TranConstraintRead(constraint,option,fid)
     call fiErrorMsg(option%myrank,'keyword','CONSTRAINT', ierr)   
       
     select case(trim(word))
-    
+
       case('CONC','CONCENTRATIONS')
-        if (associated(constraint%aqueous_species)) &
-          call RTConditionAuxVarDestroy(constraint%aqueous_species)
-        constraint%aqueous_species => RTConditionAuxCreate()
-        call RTConditionAuxVarInit(constraint%aqueous_species,option%ncomp)
+
+        aq_species_constraint => AqueousSpeciesConstraintCreate(option)
+
         icomp = 0
         do
           call fiReadFlotranString(fid,string,ierr)
           call fiReadStringErrorMsg(option%myrank,'CONSTRAINT,CONCENTRATIONS',ierr)
           
-          if (fiCheckExit(string)) exit          
+          if (fiCheckExit(string)) exit  
           
-          icomp = icomp + 1
+          icomp = icomp + 1        
           
-          call fiReadWord(string,constraint%aqueous_species%spec(icomp), &
+          call fiReadWord(string,aq_species_constraint%names(icomp), &
                           PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'aqueous species name', &
                           'CONSTRAINT,CONCENTRATIONS', ierr)  
-          call fiReadDouble(string, &
-                            constraint%aqueous_species%conc(icomp), &
-                            ierr)
+          call fiReadDouble(string,aq_species_constraint%conc(icomp),ierr)
           call fiErrorMsg(option%myrank,'concentration', &
                           'CONSTRAINT,CONCENTRATIONS', ierr)          
           call fiReadWord(string,word,PETSC_TRUE,ierr)
@@ -1082,38 +1075,41 @@ subroutine TranConstraintRead(constraint,option,fid)
             call fiCharsToUpper(word,length)
             select case(word)
               case('F','FREE')
-                constraint%aqueous_species%constraint_type(icomp) = CONSTRAINT_FREE
+                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_FREE
               case('T','Total')
-                constraint%aqueous_species%constraint_type(icomp) = CONSTRAINT_TOTAL
+                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_TOTAL
               case('P')
-                constraint%aqueous_species%constraint_type(icomp) = CONSTRAINT_P
+                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_P
               case('MINERAL','MNRL') 
-                constraint%aqueous_species%constraint_type(icomp) = CONSTRAINT_MINERAL
+                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_MINERAL
               case('GAS') 
-                constraint%aqueous_species%constraint_type(icomp) = CONSTRAINT_GAS
+                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_GAS
               case default
                 string = 'Keyword: ' // trim(word) // &
                          ' not recognized in constraint,concentration'
                 call printErrMsg(option,string)
             end select 
-            if (constraint%aqueous_species%constraint_type(icomp) == &
-                CONSTRAINT_MINERAL .or. &
-                constraint%aqueous_species%constraint_type(icomp) == &
-                CONSTRAINT_GAS) then
-              call fiReadWord(string,constraint%aqueous_species%constraint_spec_name(icomp), &
-                              PETSC_FALSE,ierr)
+            if (aq_species_constraint%constraint_type(icomp) == CONSTRAINT_MINERAL .or. &
+                aq_species_constraint%constraint_type(icomp) == CONSTRAINT_GAS) then
+             call fiReadWord(string,aq_species_constraint%constraint_spec_name(icomp), &
+                             PETSC_FALSE,ierr)
               call fiErrorMsg(option%myrank,'constraint name', &
                               'CONSTRAINT,CONCENTRATIONS', ierr) 
             endif
           else
-            constraint%aqueous_species%constraint_type(icomp) = CONSTRAINT_TOTAL
+            aq_species_constraint%constraint_type(icomp) = CONSTRAINT_TOTAL
           endif  
-        enddo   
+        
+        enddo  
+        
+        if (associated(constraint%aqueous_species)) &
+          call AqueousSpeciesConstraintDestroy(constraint%aqueous_species)
+        constraint%aqueous_species => aq_species_constraint 
+        
       case('MNRL','MINERALS')
-        if (associated(constraint%minerals)) &
-          call RTConditionAuxVarDestroy(constraint%minerals)
-        constraint%minerals => RTConditionAuxCreate()
-        call RTConditionAuxVarInit(constraint%minerals,option%nmnrl)
+
+        mineral_constraint => MineralConstraintCreate(option)
+
         icomp = 0
         do
           call fiReadFlotranString(fid,string,ierr)
@@ -1123,16 +1119,21 @@ subroutine TranConstraintRead(constraint,option,fid)
           
           icomp = icomp + 1
           
-          call fiReadWord(string,constraint%minerals%spec(icomp), &
+          call fiReadWord(string,mineral_constraint%names(icomp), &
                           PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'mineral name', &
                           'CONSTRAINT,CONCENTRATIONS', ierr)  
-          call fiReadDouble(string, &
-                            constraint%minerals%conc(icomp), &
-                            ierr)
+          call fiReadDouble(string,mineral_constraint%conc(icomp),ierr)
           call fiErrorMsg(option%myrank,'concentration', &
                           'CONSTRAINT,CONCENTRATIONS', ierr)          
-        enddo              
+        
+        enddo  
+        
+        if (associated(constraint%minerals)) then
+          call MineralConstraintDestroy(constraint%minerals)
+        endif
+        constraint%minerals => mineral_constraint 
+                            
     end select 
   
   enddo  
@@ -1485,12 +1486,18 @@ subroutine TranConditionUpdate(condition_list,option,time)
   do
     if (.not.associated(condition)) exit
     
-    if (associated(condition%cur_constraint_coupler%next)) then
-      if (time >= condition%cur_constraint_coupler%next%time) then
-        condition%cur_constraint_coupler => &
-          condition%cur_constraint_coupler%next
+    do
+      if (associated(condition%cur_constraint_coupler%next)) then
+        if (time >= condition%cur_constraint_coupler%next%time) then
+          condition%cur_constraint_coupler => &
+            condition%cur_constraint_coupler%next
+        else
+          exit
+        endif
+      else 
+        exit
       endif
-    endif
+    enddo
     condition => condition%next
     
   enddo
@@ -1909,14 +1916,13 @@ subroutine TranConstraintDestroy(constraint)
   type(tran_constraint_type), pointer :: constraint
   
   if (.not.associated(constraint)) return
-  
+
   if (associated(constraint%aqueous_species)) &
-    call RTConditionAuxVarDestroy(constraint%aqueous_species)
+    call AqueousSpeciesConstraintDestroy(constraint%aqueous_species)
   nullify(constraint%aqueous_species)
   if (associated(constraint%minerals)) &
-    call RTConditionAuxVarDestroy(constraint%minerals)
+    call MineralConstraintDestroy(constraint%minerals)
   nullify(constraint%minerals)
-  
   deallocate(constraint)
   nullify(constraint)
 
@@ -2004,7 +2010,8 @@ subroutine TranConstraintCouplerDestroy(coupler_list)
     if (.not.associated(cur_coupler)) exit
     prev_coupler => cur_coupler
     cur_coupler => cur_coupler%next
-    nullify(prev_coupler%constraint)
+    nullify(prev_coupler%aqueous_species)
+    nullify(prev_coupler%minerals)
     nullify(prev_coupler%next)
     deallocate(prev_coupler)
     nullify(prev_coupler)

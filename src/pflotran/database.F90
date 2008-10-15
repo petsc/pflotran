@@ -1,6 +1,7 @@
 module Database_module
 
   use Reaction_module
+  use Reaction_Aux_module
 
   implicit none
   
