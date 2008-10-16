@@ -18,7 +18,7 @@ END
 MINERALS
 Calcite
 END
-MINERAL_RATES
+MINERAL_KINETICS
 Calcite 1.d-6
 END
 DATABASE ../../database/hanford.dat

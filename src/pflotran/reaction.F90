@@ -11,7 +11,7 @@ module Reaction_module
   public :: ReactionCreate, &
             ReactionRead, &
             CarbonateTestProblemCreate, &
-            ReactionReadMineralRates, &
+            ReactionReadMineralKinetics, &
             ReactionReadSurfaceComplexes, &
             ReactionInitializeConstraint
 
@@ -271,7 +271,7 @@ subroutine ReactionRead(reaction,fid,option)
           prev_mineral => mineral
           nullify(mineral)
         enddo
-      case('MINERAL_RATES')
+      case('MINERAL_KINETICS')
         call fiSkipToEND(fid,option%myrank,word)
       case('SORPTION')
         do
@@ -375,12 +375,12 @@ end subroutine ReactionInitializeConstraint
 
 ! ************************************************************************** !
 !
-! ReactionRead: Reads chemical species
+! ReactionReadMineralKinetics: Reads mineral kinetics
 ! author: Glenn Hammond
-! date: 05/02/08
+! date: 10/16/08
 !
 ! ************************************************************************** !
-subroutine ReactionReadMineralRates(reaction,fid,option)
+subroutine ReactionReadMineralKinetics(reaction,fid,option)
 
   use Fileio_module
   use Option_module
@@ -423,6 +423,7 @@ subroutine ReactionReadMineralRates(reaction,fid,option)
         if (.not.associated(cur_mineral%tstrxn)) then
           cur_mineral%tstrxn => TransitionStateTheoryRxnCreate()
         endif
+        ! read rate
         call fiReadDouble(string,cur_mineral%tstrxn%rate,ierr)
         cur_mineral%id = abs(cur_mineral%id)
         exit
@@ -443,12 +444,13 @@ subroutine ReactionReadMineralRates(reaction,fid,option)
     cur_mineral => cur_mineral%next
   enddo
   
-end subroutine ReactionReadMineralRates
+end subroutine ReactionReadMineralKinetics
+
 ! ************************************************************************** !
 !
-! ReactionRead: Reads chemical species
-! author: Glenn Hammond
-! date: 05/02/08
+! ReactionReadSurfaceComplexes: Reads surface complexation reactions
+! author: Peter Lichtner
+! date: 10/16/08
 !
 ! ************************************************************************** !
 subroutine ReactionReadSurfaceComplexes(reaction,fid,option)

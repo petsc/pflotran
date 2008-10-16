@@ -801,8 +801,8 @@ subroutine readInput(simulation,filename)
             case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
                  'MINERALS')
               call fiSkipToEND(option%fid_in,option%myrank,card)
-            case('MINERAL_RATES')
-              call ReactionReadMineralRates(realization%reaction,option%fid_in,option)
+            case('MINERAL_KINETICS')
+              call ReactionReadMineralKinetics(realization%reaction,option%fid_in,option)
             case('SURFACE_COMPLEXES')
               call ReactionReadSurfaceComplexes(realization%reaction,option%fid_in, &
               option)

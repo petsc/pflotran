@@ -207,7 +207,7 @@ subroutine DiscretizationRead(discretization,fid,option)
           call fiSkipToEND(fid,option%myrank,word) 
         case default
           string = 'Keyword: ' // trim(word) // &
-                   ' not recognized in DISCRETIZATION'
+                   ' not recognized in DISCRETIZATION, first read.'
           call printErrMsg(option,string)          
       end select 
     else ! should be the second time it is read
@@ -300,7 +300,7 @@ subroutine DiscretizationRead(discretization,fid,option)
           discretization%origin(Z_DIRECTION) = grid%structured_grid%bounds(Z_DIRECTION,LOWER)
         case default
           string = 'Keyword: ' // trim(word) // &
-                   ' not recognized in DISCRETIZATION'
+                   ' not recognized in DISCRETIZATION, second read.'
           call printErrMsg(option,string)          
       end select 
     endif
