@@ -274,7 +274,8 @@ subroutine RegionRead(region,fid,option)
   
     call fiReadFlotranString(fid,string,ierr)
     if (ierr /= 0) exit
-
+    if (fiCheckExit(string)) exit
+    
     call fiReadWord(string,word,.true.,ierr)
     call fiErrorMsg(option%myrank,'keyword','REGION', ierr)
     call fiWordToUpper(word)   
@@ -319,8 +320,7 @@ subroutine RegionRead(region,fid,option)
         do
           call fiReadFlotranString(fid,string,ierr)
           call fiReadStringErrorMsg(option%myrank,'REGION',ierr)
-          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-              fiStringCompare(string,'END',THREE_INTEGER)) exit              
+          if (fiCheckExit(string)) exit              
           icount = icount + 1
           call fiReadDouble(string,coordinates(icount)%x,ierr) 
           call fiErrorMsg(option%myrank,'x-coordinate','REGION', ierr)
@@ -359,8 +359,6 @@ subroutine RegionRead(region,fid,option)
           case('TOP')
             region%iface = TOP_FACE
         end select
-      case('END','/','.')
-        exit        
       case default
         call printErrMsg(option,'REGION keyword: '//trim(word)//' not recognized')
     end select

@@ -1500,144 +1500,144 @@ subroutine BasisPrint(reaction,title,option)
 140 format(a,f5.2)
 
   if (option%myrank == 0) then
-    write(IUNIT2,*)
-    write(IUNIT2,*) '! *************************************************' // &
+    write(option%fid_out,*)
+    write(option%fid_out,*) '! *************************************************' // &
                     '************************* !'
-    write(IUNIT2,*)
-    write(IUNIT2,*) trim(title)
-    write(IUNIT2,*)
+    write(option%fid_out,*)
+    write(option%fid_out,*) trim(title)
+    write(option%fid_out,*)
 
-    write(IUNIT2,*) 'Primary Components:'
+    write(option%fid_out,*) 'Primary Components:'
     cur_aq_spec => reaction%primary_species_list
     do
       if (.not.associated(cur_aq_spec)) exit
-      write(IUNIT2,100) '  ' // trim(cur_aq_spec%name)
-      write(IUNIT2,140) '    Charge: ', cur_aq_spec%Z
-      write(IUNIT2,110) '    Molar Weight: ', cur_aq_spec%molar_weight
-      write(IUNIT2,110) '    Debye-Huckel a0: ', cur_aq_spec%a0
+      write(option%fid_out,100) '  ' // trim(cur_aq_spec%name)
+      write(option%fid_out,140) '    Charge: ', cur_aq_spec%Z
+      write(option%fid_out,110) '    Molar Weight: ', cur_aq_spec%molar_weight
+      write(option%fid_out,110) '    Debye-Huckel a0: ', cur_aq_spec%a0
       if (associated(cur_aq_spec%eqrxn)) then
-        write(IUNIT2,100) '    Equilibrium Aqueous Reaction: '
-        write(IUNIT2,120) '      ', -1.d0, cur_aq_spec%name
+        write(option%fid_out,100) '    Equilibrium Aqueous Reaction: '
+        write(option%fid_out,120) '      ', -1.d0, cur_aq_spec%name
         do ispec = 1, cur_aq_spec%eqrxn%nspec
-          write(IUNIT2,120) '      ', cur_aq_spec%eqrxn%stoich(ispec), &
+          write(option%fid_out,120) '      ', cur_aq_spec%eqrxn%stoich(ispec), &
                           cur_aq_spec%eqrxn%spec_name(ispec)
         enddo
-        write(IUNIT2,130) '      logK:', (cur_aq_spec%eqrxn%logK(itemp),itemp=1, &
+        write(option%fid_out,130) '      logK:', (cur_aq_spec%eqrxn%logK(itemp),itemp=1, &
                                        reaction%num_dbase_temperatures)
       endif
-      write(IUNIT2,*)
+      write(option%fid_out,*)
       cur_aq_spec => cur_aq_spec%next
     enddo
     
     cur_aq_spec => reaction%secondary_species_list
     if (associated(cur_aq_spec)) then
-      write(IUNIT2,*)
-      write(IUNIT2,*) 'Secondary Components:'
+      write(option%fid_out,*)
+      write(option%fid_out,*) 'Secondary Components:'
     else
-      write(IUNIT2,*)
-      write(IUNIT2,*) 'Secondary Components: None'
+      write(option%fid_out,*)
+      write(option%fid_out,*) 'Secondary Components: None'
     endif
     do
       if (.not.associated(cur_aq_spec)) exit
-      write(IUNIT2,100) '  ' // trim(cur_aq_spec%name)
-      write(IUNIT2,140) '    Charge: ', cur_aq_spec%Z
-      write(IUNIT2,110) '    Molar Weight: ', cur_aq_spec%molar_weight
-      write(IUNIT2,110) '    Debye-Huckel a0: ', cur_aq_spec%a0
+      write(option%fid_out,100) '  ' // trim(cur_aq_spec%name)
+      write(option%fid_out,140) '    Charge: ', cur_aq_spec%Z
+      write(option%fid_out,110) '    Molar Weight: ', cur_aq_spec%molar_weight
+      write(option%fid_out,110) '    Debye-Huckel a0: ', cur_aq_spec%a0
       if (associated(cur_aq_spec%eqrxn)) then
-        write(IUNIT2,100) '    Equilibrium Aqueous Reaction: '
-        write(IUNIT2,120) '      ', -1.d0, cur_aq_spec%name
+        write(option%fid_out,100) '    Equilibrium Aqueous Reaction: '
+        write(option%fid_out,120) '      ', -1.d0, cur_aq_spec%name
         do ispec = 1, cur_aq_spec%eqrxn%nspec
-          write(IUNIT2,120) '      ', cur_aq_spec%eqrxn%stoich(ispec), &
+          write(option%fid_out,120) '      ', cur_aq_spec%eqrxn%stoich(ispec), &
                           cur_aq_spec%eqrxn%spec_name(ispec)
         enddo
-        write(IUNIT2,130) '      logK:', (cur_aq_spec%eqrxn%logK(itemp),itemp=1, &
+        write(option%fid_out,130) '      logK:', (cur_aq_spec%eqrxn%logK(itemp),itemp=1, &
                                        reaction%num_dbase_temperatures)
       endif
-      write(IUNIT2,*)
+      write(option%fid_out,*)
       cur_aq_spec => cur_aq_spec%next
     enddo
     
     cur_gas_spec => reaction%gas_species_list
     if (associated(cur_gas_spec)) then
-      write(IUNIT2,*)
-      write(IUNIT2,*) 'Gas Components:'
+      write(option%fid_out,*)
+      write(option%fid_out,*) 'Gas Components:'
     else
-      write(IUNIT2,*)
-      write(IUNIT2,*) 'Gas Components: None'
+      write(option%fid_out,*)
+      write(option%fid_out,*) 'Gas Components: None'
     endif
     do
       if (.not.associated(cur_gas_spec)) exit
-      write(IUNIT2,100) '  ' // trim(cur_gas_spec%name)
-      write(IUNIT2,110) '    Molar Weight: ', cur_gas_spec%molar_weight
+      write(option%fid_out,100) '  ' // trim(cur_gas_spec%name)
+      write(option%fid_out,110) '    Molar Weight: ', cur_gas_spec%molar_weight
       if (associated(cur_gas_spec%eqrxn)) then
-        write(IUNIT2,100) '    Gas Reaction: '
-        write(IUNIT2,120) '      ', -1.d0, cur_gas_spec%name
+        write(option%fid_out,100) '    Gas Reaction: '
+        write(option%fid_out,120) '      ', -1.d0, cur_gas_spec%name
         do ispec = 1, cur_gas_spec%eqrxn%nspec
-          write(IUNIT2,120) '      ', cur_gas_spec%eqrxn%stoich(ispec), &
+          write(option%fid_out,120) '      ', cur_gas_spec%eqrxn%stoich(ispec), &
                           cur_gas_spec%eqrxn%spec_name(ispec)
         enddo
-        write(IUNIT2,130) '      logK:', (cur_gas_spec%eqrxn%logK(itemp),itemp=1, &
+        write(option%fid_out,130) '      logK:', (cur_gas_spec%eqrxn%logK(itemp),itemp=1, &
                                        reaction%num_dbase_temperatures)
       endif
-      write(IUNIT2,*)
+      write(option%fid_out,*)
       cur_gas_spec => cur_gas_spec%next
     enddo
     
     cur_mineral => reaction%mineral_list
     if (associated(cur_mineral)) then    
-      write(IUNIT2,*)
-      write(IUNIT2,*) 'Minerals:'
+      write(option%fid_out,*)
+      write(option%fid_out,*) 'Minerals:'
     else
-      write(IUNIT2,*)
-      write(IUNIT2,*) 'Minerals: None'    
+      write(option%fid_out,*)
+      write(option%fid_out,*) 'Minerals: None'    
     endif
     do
       if (.not.associated(cur_mineral)) exit
-      write(IUNIT2,100) '  ' // trim(cur_mineral%name)
-      write(IUNIT2,110) '    Molar Weight: ', cur_mineral%molar_weight
-      write(IUNIT2,110) '    Molar Volume: ', cur_mineral%molar_volume
+      write(option%fid_out,100) '  ' // trim(cur_mineral%name)
+      write(option%fid_out,110) '    Molar Weight: ', cur_mineral%molar_weight
+      write(option%fid_out,110) '    Molar Volume: ', cur_mineral%molar_volume
       if (associated(cur_mineral%tstrxn)) then
-        write(IUNIT2,100) '    Mineral Reaction: '
-        write(IUNIT2,120) '      ', -1.d0, cur_mineral%name
+        write(option%fid_out,100) '    Mineral Reaction: '
+        write(option%fid_out,120) '      ', -1.d0, cur_mineral%name
         do ispec = 1, cur_mineral%tstrxn%nspec
-          write(IUNIT2,120) '      ', cur_mineral%tstrxn%stoich(ispec), &
+          write(option%fid_out,120) '      ', cur_mineral%tstrxn%stoich(ispec), &
                           cur_mineral%tstrxn%spec_name(ispec)
         enddo
-        write(IUNIT2,130) '      logK:', (cur_mineral%tstrxn%logK(itemp),itemp=1, &
+        write(option%fid_out,130) '      logK:', (cur_mineral%tstrxn%logK(itemp),itemp=1, &
                                        reaction%num_dbase_temperatures)
       endif
-      write(IUNIT2,*)
+      write(option%fid_out,*)
       cur_mineral => cur_mineral%next
     enddo
     
     cur_surfcplx => reaction%surface_complex_list
     if (associated(cur_surfcplx)) then
-      write(IUNIT2,*)
-      write(IUNIT2,*) 'Surface Complexes:'
+      write(option%fid_out,*)
+      write(option%fid_out,*) 'Surface Complexes:'
     else
-      write(IUNIT2,*)
-      write(IUNIT2,*) 'Surface Complexes: None'
+      write(option%fid_out,*)
+      write(option%fid_out,*) 'Surface Complexes: None'
     endif
     do
       if (.not.associated(cur_surfcplx)) exit
-      write(IUNIT2,100) '  ' // trim(cur_surfcplx%name)
-      write(IUNIT2,140) '    Charge: ', cur_surfcplx%Z
-      write(IUNIT2,100) '    Surface Complex Reaction: '
-      write(IUNIT2,120) '      ', -1.d0, cur_surfcplx%name
+      write(option%fid_out,100) '  ' // trim(cur_surfcplx%name)
+      write(option%fid_out,140) '    Charge: ', cur_surfcplx%Z
+      write(option%fid_out,100) '    Surface Complex Reaction: '
+      write(option%fid_out,120) '      ', -1.d0, cur_surfcplx%name
       do ispec = 1, cur_surfcplx%nspec
-        write(IUNIT2,120) '      ', cur_surfcplx%stoich(ispec), &
+        write(option%fid_out,120) '      ', cur_surfcplx%stoich(ispec), &
                         cur_surfcplx%spec_name(ispec)
       enddo
-      write(IUNIT2,130) '      logK:', (cur_surfcplx%logK(itemp),itemp=1, &
+      write(option%fid_out,130) '      logK:', (cur_surfcplx%logK(itemp),itemp=1, &
                                      reaction%num_dbase_temperatures)
-      write(IUNIT2,*)
+      write(option%fid_out,*)
       cur_surfcplx => cur_surfcplx%next
     enddo
     
-    write(IUNIT2,*)
-    write(IUNIT2,*) '! *************************************************' // &
+    write(option%fid_out,*)
+    write(option%fid_out,*) '! *************************************************' // &
                     '************************* !'
-    write(IUNIT2,*)
+    write(option%fid_out,*)
   endif
 
 end subroutine BasisPrint

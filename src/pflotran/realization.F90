@@ -479,6 +479,7 @@ subroutine RealProcessTranConditions(realization)
   
   
   PetscTruth :: found
+  character(len=MAXSTRINGLENGTH) :: string
   type(tran_condition_type), pointer :: cur_condition
   type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
   type(tran_constraint_type), pointer :: cur_constraint, another_constraint
@@ -499,7 +500,9 @@ subroutine RealProcessTranConditions(realization)
         another_constraint => another_constraint%next
       enddo
       if (found) then
-        call printErrMsg(realization%option,'Duplicate constraints'//cur_constraint%name)
+        string = 'Duplicate transport constraints named "' // &
+                 trim(cur_constraint%name) // '"'
+        call printErrMsg(realization%option,string)
       endif
     cur_constraint => cur_constraint%next
   enddo
@@ -537,7 +540,7 @@ subroutine RealProcessTranConditions(realization)
           cur_constraint => cur_constraint%next
         enddo
         if (.not.associated(cur_constraint_coupler%aqueous_species)) then
-          call printErrMsg(realization%option,'Duplicate constraints'//cur_constraint%name)
+          call printErrMsg(realization%option,'Duplicate transport condition constraints'//cur_constraint%name)
         endif
       endif
       cur_constraint_coupler => cur_constraint_coupler%next

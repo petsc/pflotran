@@ -220,7 +220,8 @@ subroutine CouplerRead(coupler,fid,option)
   
     call fiReadFlotranString(fid,string,ierr)
     if (ierr /= 0) exit
-
+    if (fiCheckExit(string)) exit
+    
     call fiReadWord(string,word,.true.,ierr)
     call fiErrorMsg(option%myrank,'keyword','COUPLER', ierr)   
       
@@ -267,8 +268,6 @@ subroutine CouplerRead(coupler,fid,option)
             print *, 'ERROR: FACE option (', trim(word), ') not recognized.'
             stop
         end select
-      case('END','/','.')
-        exit
       case default
         string = 'Coupler card (' // trim(word) // ') not recognized.'
         call printErrMsg(option,string)        

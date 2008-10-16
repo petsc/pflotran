@@ -122,8 +122,7 @@ subroutine DebugReadPflow(debug,fid,myrank)
   
     call fiReadFlotranString(fid,string,ierr)
 
-    if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-        fiStringCompare(string,'END',THREE_INTEGER)) exit  
+    if (fiCheckExit(string)) exit  
 
     call fiReadWord(string,keyword,.true.,ierr)
     call fiErrorMsg(myrank,'keyword','DEBUG', ierr)   

@@ -369,7 +369,7 @@ subroutine StructuredGridReadDXYZ(structured_grid,fid,option)
       (structured_grid%dx_global(i),i=1,structured_grid%nx)
     write(option%fid_out,'("  dy  ",/,(1p10e12.4))') &
       (structured_grid%dy_global(i),i=1,structured_grid%ny)
-    write(IUNIT2,'("  dz  ",/,(1p10e12.4))') &
+    write(option%fid_out,'("  dz  ",/,(1p10e12.4))') &
       (structured_grid%dz_global(i),i=1,structured_grid%nz)
   endif
 

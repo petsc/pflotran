@@ -3565,7 +3565,7 @@ subroutine ComputeFlowMassBalance(realization)
                  &"Std Dev:",1es12.4,/)') trim(string), &
                                           average,max,max_loc+1, &
                                           min,min_loc+1,std_dev
-    write(IUNIT2,'(/,a,/, &
+    write(option%fid_out,'(/,a,/, &
                  &"Average:",1es12.4,/, &
                  &"Max:    ",1es12.4,"  Location:",i11,/, &
                  &"Min:    ",1es12.4,"  Location:",i11,/, &
@@ -3906,7 +3906,7 @@ subroutine ComputeFlowCellVelocityStats(realization)
                      &"Std Dev:",1es12.4,/)') trim(string), &
                                               average,max,max_loc+1, &
                                               min,min_loc+1,std_dev
-        write(IUNIT2,'(/,a,/, &
+        write(option%fid_out,'(/,a,/, &
                      &"Average:",1es12.4,/, &
                      &"Max:    ",1es12.4,"  Location:",i11,/, &
                      &"Min:    ",1es12.4,"  Location:",i11,/, &
@@ -4036,7 +4036,7 @@ subroutine ComputeFlowFluxVelocityStats(realization)
                      &"Std Dev:",1es12.4,/)') trim(string), &
                                               average,max,max_loc+1, &
                                               min,min_loc+1,std_dev
-        write(IUNIT2,'(/,a,/, &
+        write(option%fid_out,'(/,a,/, &
                      &"Average:",1es12.4,/, &
                      &"Max:    ",1es12.4,"  Location:",i11,/, &
                      &"Min:    ",1es12.4,"  Location:",i11,/, &

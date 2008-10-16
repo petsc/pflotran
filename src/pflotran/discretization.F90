@@ -140,6 +140,8 @@ subroutine DiscretizationRead(discretization,fid,option)
     call fiReadFlotranString(fid,string,ierr)
     if (ierr /= 0) exit
 
+    if (fiCheckExit(string)) exit
+
     call fiReadWord(string,word,.true.,ierr)
     call fiErrorMsg(option%myrank,'keyword','GRID', ierr)   
     length = len_trim(word)
@@ -203,8 +205,10 @@ subroutine DiscretizationRead(discretization,fid,option)
           call fiSkipToEND(fid,option%myrank,word) 
         case('BOUNDS')
           call fiSkipToEND(fid,option%myrank,word) 
-        case('END','/','.')
-          exit
+        case default
+          string = 'Keyword: ' // trim(word) // &
+                   ' not recognized in DISCRETIZATION'
+          call printErrMsg(option,string)          
       end select 
     else ! should be the second time it is read
       select case(trim(word))
@@ -224,8 +228,7 @@ subroutine DiscretizationRead(discretization,fid,option)
           end select
           call fiReadFlotranString(fid,string,ierr) ! z-direction
           call fiReadStringErrorMsg(option%myrank,'DISCRETIZATION,BOUNDS,Z',ierr)
-          if (.not.(string(1:1) == '.' .or. string(1:1) == '/' .or. &
-                    fiStringCompare(string,'END',THREE_INTEGER))) then
+          if (.not.(fiCheckExit(string))) then
             string = 'Card DXYZ should include either 3 entires (one for ' // &
                      'each grid direction or NX+NY+NZ entries'
             call printErrMsg(option,string)
@@ -263,8 +266,7 @@ subroutine DiscretizationRead(discretization,fid,option)
               endif
               call fiReadFlotranString(fid,string,ierr) ! z-direction
               call fiReadStringErrorMsg(option%myrank,'DISCRETIZATION,BOUNDS,Z',ierr)
-              if (.not.(string(1:1) == '.' .or. string(1:1) == '/' .or. &
-                        fiStringCompare(string,'END',THREE_INTEGER))) then
+              if (.not.(fiCheckExit(string))) then
                 if (option%myrank == 0) then
                   if (grid%structured_grid%itype == CARTESIAN_GRID) then
                     print *, 'BOUNDS card for a cartesian structured grid must include ' // &
@@ -296,8 +298,10 @@ subroutine DiscretizationRead(discretization,fid,option)
           discretization%origin(X_DIRECTION) = grid%structured_grid%bounds(X_DIRECTION,LOWER)
           discretization%origin(Y_DIRECTION) = grid%structured_grid%bounds(Y_DIRECTION,LOWER)
           discretization%origin(Z_DIRECTION) = grid%structured_grid%bounds(Z_DIRECTION,LOWER)
-        case('END','/','.')
-          exit
+        case default
+          string = 'Keyword: ' // trim(word) // &
+                   ' not recognized in DISCRETIZATION'
+          call printErrMsg(option,string)          
       end select 
     endif
   

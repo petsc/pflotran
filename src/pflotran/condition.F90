@@ -562,8 +562,7 @@ subroutine ConditionRead(condition,option,fid)
     call fiReadFlotranString(fid,string,ierr)
     call fiReadStringErrorMsg(option%myrank,'CONDITION',ierr)
           
-    if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-        fiStringCompare(string,'END',THREE_INTEGER)) exit  
+    if (fiCheckExit(string)) exit  
 
     call fiReadWord(string,word,.true.,ierr)
     call fiErrorMsg(option%myrank,'keyword','CONDITION', ierr)   
@@ -611,8 +610,7 @@ subroutine ConditionRead(condition,option,fid)
           call fiReadFlotranString(fid,string,ierr)
           call fiReadStringErrorMsg(option%myrank,'CONDITION',ierr)
           
-          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-              fiStringCompare(string,'END',THREE_INTEGER)) exit          
+          if (fiCheckExit(string)) exit          
           
           if (ierr /= 0) exit
           call fiReadWord(string,word,.true.,ierr)
@@ -675,8 +673,7 @@ subroutine ConditionRead(condition,option,fid)
           call fiReadFlotranString(fid,string,ierr)
           call fiReadStringErrorMsg(option%myrank,'CONDITION',ierr)
           
-          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-              fiStringCompare(string,'END',THREE_INTEGER)) exit          
+          if (fiCheckExit(string)) exit          
           
           if (ierr /= 0) exit
           call fiReadWord(string,word,.true.,ierr)
@@ -904,8 +901,7 @@ subroutine TranConditionRead(condition,constraint_list,option,fid)
     call fiReadFlotranString(fid,string,ierr)
     call fiReadStringErrorMsg(option%myrank,'CONDITION',ierr)
           
-    if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-        fiStringCompare(string,'END',THREE_INTEGER)) exit  
+    if (fiCheckExit(string)) exit  
 
     call fiReadWord(string,word,.true.,ierr)
     call fiErrorMsg(option%myrank,'keyword','CONDITION', ierr)   

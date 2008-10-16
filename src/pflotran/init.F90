@@ -807,8 +807,7 @@ subroutine readInput(simulation,filename)
               call ReactionReadSurfaceComplexes(realization%reaction,option%fid_in, &
               option)
           end select
-          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-              fiStringCompare(string,'END',THREE_INTEGER)) exit
+          if (fiCheckExit(string)) exit
         enddo
 
 !....................
@@ -1351,8 +1350,7 @@ subroutine readInput(simulation,filename)
           call fiReadFlotranString(option%fid_in,string,ierr)
           call fiReadStringErrorMsg(option%myrank,'FLUID_PROPERTIES',ierr)
           
-          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-              fiStringCompare(string,'END',THREE_INTEGER)) exit
+          if (fiCheckExit(string)) exit
          
           count = count + 1 
           if (count > option%nphase) exit              
@@ -1374,8 +1372,7 @@ subroutine readInput(simulation,filename)
           call fiReadFlotranString(option%fid_in,string,ierr)
           call fiReadStringErrorMsg(option%myrank,'THRM',ierr)
 
-          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-              fiStringCompare(string,'END',THREE_INTEGER)) exit
+          if (fiCheckExit(string)) exit
        
           count = count + 1
           thermal_property => ThermalPropertyCreate()
@@ -1482,8 +1479,7 @@ subroutine readInput(simulation,filename)
           call fiReadFlotranString(option%fid_in,string,ierr)
           call fiReadStringErrorMsg(option%myrank,'PCKR',ierr)
 
-          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-              fiStringCompare(string,'END',THREE_INTEGER)) exit
+          if (fiCheckExit(string)) exit
        
           count = count + 1
           saturation_function => SaturationFunctionCreate(option)
@@ -1637,8 +1633,7 @@ subroutine readInput(simulation,filename)
           call fiReadFlotranString(option%fid_in,string,ierr)
           call fiReadStringErrorMsg(option%myrank,'PHIK',ierr)
 
-          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-              fiStringCompare(string,'END',THREE_INTEGER)) exit
+          if (fiCheckExit(string)) exit
        
           count = count + 1
           material => MaterialCreate()

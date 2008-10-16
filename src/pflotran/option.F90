@@ -363,6 +363,7 @@ subroutine printErrMsg(option,string)
   PetscErrorCode :: ierr
   
   if (option%myrank == 0) then
+    print *
     print *, 'ERROR: ' // trim(string)
     print *, 'Stopping!'
   endif    

@@ -183,7 +183,8 @@ subroutine ReactionRead(reaction,fid,option)
   
     call fiReadFlotranString(fid,string,ierr)
     if (ierr /= 0) exit
-
+    if (fiCheckExit(string)) exit
+    
     call fiReadWord(string,word,.true.,ierr)
     call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)
     call fiWordToUpper(word)   
@@ -195,8 +196,7 @@ subroutine ReactionRead(reaction,fid,option)
         do
           call fiReadFlotranString(fid,string,ierr)
           if (ierr /= 0) exit
-          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-              fiStringCompare(string,'END',THREE_INTEGER)) exit
+          if (fiCheckExit(string)) exit
           species => AqueousSpeciesCreate()
           call fiReadWord(string,species%name,.true.,ierr)  
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,PRIMARY_SPECIES', ierr)    
@@ -216,8 +216,7 @@ subroutine ReactionRead(reaction,fid,option)
         do
           call fiReadFlotranString(fid,string,ierr)
           if (ierr /= 0) exit
-          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-              fiStringCompare(string,'END',THREE_INTEGER)) exit
+          if (fiCheckExit(string)) exit
           species => AqueousSpeciesCreate()
           call fiReadWord(string,species%name,.true.,ierr)  
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,PRIMARY_SPECIES', ierr)    
@@ -237,8 +236,7 @@ subroutine ReactionRead(reaction,fid,option)
         do
           call fiReadFlotranString(fid,string,ierr)
           if (ierr /= 0) exit
-          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-              fiStringCompare(string,'END',THREE_INTEGER)) exit
+          if (fiCheckExit(string)) exit
           gas => GasSpeciesCreate()
           call fiReadWord(string,gas%name,.true.,ierr)  
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,GAS_SPECIES', ierr)    
@@ -258,8 +256,7 @@ subroutine ReactionRead(reaction,fid,option)
         do
           call fiReadFlotranString(fid,string,ierr)
           if (ierr /= 0) exit
-          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-              fiStringCompare(string,'END',THREE_INTEGER)) exit
+          if (fiCheckExit(string)) exit
           mineral => MineralCreate()
           call fiReadWord(string,mineral%name,.true.,ierr)  
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,MINERAL', ierr)    
@@ -280,8 +277,7 @@ subroutine ReactionRead(reaction,fid,option)
         do
           call fiReadFlotranString(fid,string,ierr)
           if (ierr /= 0) exit
-          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-              fiStringCompare(string,'END',THREE_INTEGER)) exit
+          if (fiCheckExit(string)) exit
 
           call fiReadWord(string,word,.true.,ierr)
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SORPTION', ierr)
@@ -299,8 +295,6 @@ subroutine ReactionRead(reaction,fid,option)
       case('DATABASE')
         call fiReadNChars(string,reaction%database_filename,MAXSTRINGLENGTH,.true.,ierr)  
         call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,DATABASE FILENAME', ierr)          
-      case('END','/','.')
-        exit
       case default
         call printErrMsg(option,'CHEMISTRY keyword: '//trim(word)//' not recognized')
     end select
@@ -417,8 +411,7 @@ subroutine ReactionReadMineralRates(reaction,fid,option)
     call fiReadFlotranString(fid,string,ierr)
     if (ierr /= 0) exit
 
-    if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-        fiStringCompare(string,'END',THREE_INTEGER)) exit  
+    if (fiCheckExit(string)) exit  
 
     call fiReadNChars(string,name,MAXNAMELENGTH,.true.,ierr)
     call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)
@@ -489,8 +482,7 @@ subroutine ReactionReadSurfaceComplexes(reaction,fid,option)
     call fiReadFlotranString(fid,string,ierr)
     if (ierr /= 0) exit
 
-    if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-        fiStringCompare(string,'END',THREE_INTEGER)) exit  
+    if (fiCheckExit(string)) exit  
 
     call fiReadNChars(string,name,MAXNAMELENGTH,.true.,ierr)
     call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)

@@ -103,8 +103,7 @@ subroutine TimestepperRead(stepper,fid,option)
   
     call fiReadFlotranString(fid,string,ierr)
 
-    if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-        fiStringCompare(string,'END',THREE_INTEGER)) exit  
+    if (fiCheckExit(string)) exit  
 
     call fiReadWord(string,keyword,.true.,ierr)
     call fiErrorMsg(option%myrank,'keyword','TIMESTEPPER', ierr)
@@ -320,7 +319,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
             istep,flow_stepper%newton_cum,flow_stepper%linear_cum, &
             flow_stepper%icutcum
 
-      write(IUNIT2,'(/," FLOW steps = ",i6," newton = ",i6," linear = ",i6, &
+      write(option%fid_out,'(/," FLOW steps = ",i6," newton = ",i6," linear = ",i6, &
             & " cuts = ",i6)') &
             istep,flow_stepper%newton_cum,flow_stepper%linear_cum, &
             flow_stepper%icutcum
@@ -331,7 +330,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
             istep,tran_stepper%newton_cum,tran_stepper%linear_cum, &
             tran_stepper%icutcum
 
-      write(IUNIT2,'(/," TRAN steps = ",i6," newton = ",i6," linear = ",i6, &
+      write(option%fid_out,'(/," TRAN steps = ",i6," newton = ",i6," linear = ",i6, &
             & " cuts = ",i6)') &
             istep,tran_stepper%newton_cum,tran_stepper%linear_cum, &
             tran_stepper%icutcum
@@ -775,7 +774,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
                num_linear_iterations,num_newton_iterations
       print *,' --> SNES Residual: ', fnorm, scaled_fnorm, inorm 
        
-      write(IUNIT2, '(" FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
+      write(option%fid_out, '(" FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
         & "]"," snes_conv_reason: ",i4,/,"  newton = ",i2," [",i6,"]", &
         & " linear = ",i5," [",i8,"]"," cuts = ",i2," [",i4,"]")') stepper%steps, &
         option%flow_time/realization%output_option%tconv, &
@@ -794,7 +793,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax, option%dcmax
         
-        write(IUNIT2,'("  --> max chng: dpmx= ",1pe12.4, &
+        write(option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax,option%dcmax
       endif
@@ -805,7 +804,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
       if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
         
-        write(IUNIT2,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
+        write(option%fid_out,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
       endif
     endif
   else if (option%iflowmode == MPH_MODE) then
@@ -817,7 +816,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
         
-        write(IUNIT2,'("  --> max chng: dpmx= ",1pe12.4, &
+        write(option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
       endif
@@ -1042,7 +1041,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
                num_linear_iterations,num_newton_iterations
       print *,' --> SNES Residual: ', fnorm, scaled_fnorm, inorm 
        
-      write(IUNIT2, '(" TRAN ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
+      write(option%fid_out, '(" TRAN ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
         & "]"," snes_conv_reason: ",i4,/,"  newton = ",i2," [",i6,"]", &
         & " linear = ",i5," [",i8,"]"," cuts = ",i2," [",i4,"]")') stepper%steps, &
         option%flow_time/realization%output_option%tconv, &
@@ -1058,7 +1057,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
     if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
       write(*,'("  --> max chng: dcmx= ",1pe12.4)') option%dcmax
         
-      write(IUNIT2,'("  --> max chng: dcmx= ",1pe12.4)') option%dcmax
+      write(option%fid_out,'("  --> max chng: dcmx= ",1pe12.4)') option%dcmax
     endif
   endif
 

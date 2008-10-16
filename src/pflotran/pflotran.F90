@@ -45,6 +45,8 @@
 
   PetscMPIInt :: myrank, commsize
 
+  PetscInt :: out_unit
+
   PetscInt :: ierr
   PetscInt :: stage(10)
   PetscTruth :: option_found  ! For testing presence of a command-line option.
@@ -68,6 +70,8 @@
   option%comm = PETSC_COMM_WORLD
   option%myrank = myrank
   option%commsize = commsize
+
+  out_unit = option%fid_out
 
   call PetscOptionsGetString(PETSC_NULL_CHARACTER, "-pflotranin", &
                              pflotranin, option_found, ierr)
@@ -103,18 +107,18 @@
       timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
       (timex_wall(2)-timex_wall(1))/3600.d0
 
-    write(IUNIT2,'(/," CPU Time:", 1pe12.4, " [sec] ", &
+    write(out_unit,'(/," CPU Time:", 1pe12.4, " [sec] ", &
     & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
       timex(2)-timex(1), (timex(2)-timex(1))/60.d0, &
       (timex(2)-timex(1))/3600.d0
 
-    write(IUNIT2,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
+    write(out_unit,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
     & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
       timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
       (timex_wall(2)-timex_wall(1))/3600.d0
   endif
 
-  close(IUNIT2)
+  close(out_unit)
 
   call LoggingDestroy()
   call PetscFinalize (ierr)
