@@ -56,6 +56,7 @@ util_obj  = ${common_src}fileio.o \
 pflotran_obj = ${common_src}option.o \
 	${common_src}logging.o \
 	${common_src}reactive_transport_aux.o\
+	${common_src}reaction_aux.o\
 	${common_src}thc_aux.o\
 	${common_src}richards_aux.o\
 	${common_src}mphase_aux.o\
@@ -180,7 +181,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	co2_span_wagner_spline.o co2_sw.o \
 	coupler.o strata.o pckr_mod.o field.o mphase.o \
 	richards.o thc.o discretization.o logging.o mass_balance.o \
-	database.o
+	database.o reaction_aux.o
 unstructured_grid.o : option.o connection.o 
 structured_grid.o : connection.o option.o fileio.o 
 general_grid.o : grid.o realization.o hdf5.o logging.o
@@ -193,10 +194,10 @@ material.o : region.o option.o fileio.o field.o
 coupler.o : condition.o connection.o region.o fileio.o grid.o
 breakthrough.o : region.o option.o fileio.o
 convergence.o : option.o solver.o
-condition.o : fileio.o utility.o option.o field.o logging.o
+condition.o : fileio.o utility.o option.o field.o logging.o reaction_aux.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
 	     strata.o waypoint.o field.o hydrostatic.o debug.o breakthrough.o \
-             patch.o level.o discretization.o reaction.o
+             patch.o level.o discretization.o reaction.o reaction_aux.o
 level.o : patch.o option.o
 patch.o : option.o grid.o coupler.o breakthrough.o strata.o region.o \
           auxilliary.o
@@ -209,7 +210,8 @@ output.o : grid.o structured_grid.o option.o realization.o field.o \
 					 reactive_transport.o \
            thc.o richards.o mphase.o \
 					 discretization.o logging.o
-reaction.o : reactive_transport_aux.o option.o
+reaction.o : reactive_transport_aux.o reaction_aux.o option.o
+reaction_aux.o : option.o
 transport.o : reactive_transport_aux.o option.o
 reactive_transport.o : realization.o reaction.o transport.o \
                        reactive_transport_aux.o
@@ -231,4 +233,4 @@ timestepper.o : thc.o richards.o mphase.o \
 hdf5.o : realization.o option.o logging.o
 checkpoint.o : realization.o logging.o
 mass_balance.o : realization.o option.o field.o solver.o logging.o thc.o
-database.o : reaction.o fileio.o option.o utility.o
+database.o : reaction.o fileio.o option.o utility.o reaction_aux.o

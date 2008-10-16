@@ -508,7 +508,8 @@ subroutine RealProcessTranConditions(realization)
   cur_constraint => realization%transport_constraints%first
   do
     if (.not.associated(cur_constraint)) exit
-    call ReactionInitializeConstraint(cur_constraint%name, &
+    call ReactionInitializeConstraint(realization%reaction, &
+                                      cur_constraint%name, &
                                       cur_constraint%aqueous_species, &
                                       cur_constraint%minerals, &
                                       realization%option)

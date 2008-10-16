@@ -316,7 +316,7 @@ end subroutine ReactionRead
 ! date: 10/014/08
 !
 ! ************************************************************************** !
-subroutine ReactionInitializeConstraint(constraint_name, &
+subroutine ReactionInitializeConstraint(reaction,constraint_name, &
                                         aq_species_constraint, &
                                         mineral_constraint,option)
   use Option_module
@@ -324,6 +324,7 @@ subroutine ReactionInitializeConstraint(constraint_name, &
   
   implicit none
   
+  type(reaction_type), pointer :: reaction
   character(len=MAXNAMELENGTH) :: constraint_name
   type(aq_species_constraint_type), pointer :: aq_species_constraint
   type(mineral_constraint_type), pointer :: mineral_constraint
