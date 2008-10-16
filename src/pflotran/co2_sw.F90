@@ -296,11 +296,12 @@ module co2_sw_module
                      
  ! 2-d function interpolation     
   subroutine interp(x1,x2,y)
+
       use span_wagner_module, only: vappr, co2_span_wagner
       implicit none 
   
- 
-          
+#include "include/finclude/petsc.h"
+  
       real*8:: x1,x2,y(15)   
       
       real*8 factor(1:4), fac(2,2) , iindex, jindex
@@ -309,10 +310,10 @@ module co2_sw_module
       real*8 ps, tmp, tmp2, ntab_t, ntab_p, dt_tab, dp_tab, p0_tab, t0_tab 
       integer isucc, i1,i2,j1,j2, icross, i,j
       
-       ifinetable = .false.
+       ifinetable = PETSC_FALSE
        if( x2 <= co2_sw_f_t1_tab .and. x1<= co2_sw_f_p1_tab )then
        ! within the fine grid table 
-         ifinetable = .true.
+         ifinetable = PETSC_TRUE
                 
 	   endif   
 	  

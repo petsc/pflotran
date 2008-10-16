@@ -157,7 +157,7 @@ function ConditionCreate(option)
   nullify(condition%sub_condition_ptr)
   nullify(condition%itype)
   nullify(condition%next)
-  condition%sync_time_with_update = .false.
+  condition%sync_time_with_update = PETSC_FALSE
   condition%time_units = ''
   condition%length_units = ''
   condition%id = 0
@@ -193,7 +193,7 @@ function TranConditionCreate(option)
   nullify(condition%next)
   condition%id = 0
   condition%itype = 0
-  condition%sync_time_with_update = .false.
+  condition%sync_time_with_update = PETSC_FALSE
   condition%name = ''
 
   TranConditionCreate => condition
@@ -348,8 +348,8 @@ subroutine ConditionDatasetInit(dataset)
   dataset%cur_time_index = 0
   dataset%max_time_index = 0
   dataset%rank = 0
-  dataset%is_cyclic = .false.
-  dataset%is_transient = .false.
+  dataset%is_cyclic = PETSC_FALSE
+  dataset%is_transient = PETSC_FALSE
   dataset%interpolation_method = NULL
     
 end subroutine ConditionDatasetInit
@@ -437,7 +437,7 @@ subroutine ConditionDatasetVerify(option, condition_name, sub_condition_name, &
   
   PetscInt :: array_size
   
-  if (default_dataset%is_cyclic) dataset%is_cyclic = .true.
+  if (default_dataset%is_cyclic) dataset%is_cyclic = PETSC_TRUE
   if (dataset%interpolation_method == NULL) &
     dataset%interpolation_method = default_dataset%interpolation_method
   
@@ -477,9 +477,9 @@ subroutine ConditionDatasetVerify(option, condition_name, sub_condition_name, &
                        'condition: ' // trim(condition_name) // &
                        'subcondition: ' // trim(sub_condition_name)) 
     endif
-    dataset%is_transient = .true.
+    dataset%is_transient = PETSC_TRUE
   else
-    dataset%is_transient = .false.
+    dataset%is_transient = PETSC_FALSE
   endif  
   dataset%cur_time_index = 1
   
@@ -531,7 +531,7 @@ subroutine ConditionRead(condition,option,fid)
   call ConditionDatasetInit(default_dataset)
   default_dataset%rank = 1
   default_dataset%interpolation_method = STEP
-  default_dataset%is_cyclic = .false.
+  default_dataset%is_cyclic = PETSC_FALSE
   call ConditionDatasetInit(default_datum)
   default_datum%rank = 3
   call ConditionDatasetInit(default_gradient)
@@ -564,14 +564,14 @@ subroutine ConditionRead(condition,option,fid)
           
     if (fiCheckExit(string)) exit  
 
-    call fiReadWord(string,word,.true.,ierr)
+    call fiReadWord(string,word,PETSC_TRUE,ierr)
     call fiErrorMsg(option%myrank,'keyword','CONDITION', ierr)   
       
     select case(trim(word))
     
       case('UNITS') ! read default units for condition arguments
         do
-          call fiReadWord(string,word,.true.,ierr)
+          call fiReadWord(string,word,PETSC_TRUE,ierr)
           if (ierr /= 0) exit
           select case(trim(word))
             case('s','sec','min','hr','d','day','y','yr')
@@ -593,9 +593,9 @@ subroutine ConditionRead(condition,option,fid)
           end select
         enddo
       case('CYCLIC')
-        default_dataset%is_cyclic = .true.
+        default_dataset%is_cyclic = PETSC_TRUE
       case('INTERPOLATION')
-        call fiReadWord(string,word,.true.,ierr)
+        call fiReadWord(string,word,PETSC_TRUE,ierr)
         call fiErrorMsg(option%myrank,'INTERPOLATION','CONDITION', ierr)   
         length = len_trim(word)
         call fiCharsToLower(word,length)
@@ -613,7 +613,7 @@ subroutine ConditionRead(condition,option,fid)
           if (fiCheckExit(string)) exit          
           
           if (ierr /= 0) exit
-          call fiReadWord(string,word,.true.,ierr)
+          call fiReadWord(string,word,PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'keyword','CONDITION,TYPE', ierr)   
           select case(trim(word))
             case('PRES','PRESS','PRESSURE')
@@ -631,7 +631,7 @@ subroutine ConditionRead(condition,option,fid)
             case default
               call printErrMsg(option,'keyword not recognized in condition,type')
           end select
-          call fiReadWord(string,word,.true.,ierr)
+          call fiReadWord(string,word,PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'TYPE','CONDITION', ierr)   
           length = len_trim(word)
           call fiCharsToLower(word,length)
@@ -676,7 +676,7 @@ subroutine ConditionRead(condition,option,fid)
           if (fiCheckExit(string)) exit          
           
           if (ierr /= 0) exit
-          call fiReadWord(string,word,.true.,ierr)
+          call fiReadWord(string,word,PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'keyword','CONDITION,TYPE', ierr)   
           select case(trim(word))
             case('PRES','PRESS','PRESSURE')
@@ -733,8 +733,8 @@ subroutine ConditionRead(condition,option,fid)
   
   ! update datum and gradient defaults, if null, based on dataset default
   if (default_dataset%is_cyclic) then
-    default_datum%is_cyclic = .true.
-    default_gradient%is_cyclic = .true.
+    default_datum%is_cyclic = PETSC_TRUE
+    default_gradient%is_cyclic = PETSC_TRUE
   endif
   if (default_datum%interpolation_method == NULL) &
     default_datum%interpolation_method = default_dataset%interpolation_method
@@ -903,13 +903,13 @@ subroutine TranConditionRead(condition,constraint_list,option,fid)
           
     if (fiCheckExit(string)) exit  
 
-    call fiReadWord(string,word,.true.,ierr)
+    call fiReadWord(string,word,PETSC_TRUE,ierr)
     call fiErrorMsg(option%myrank,'keyword','CONDITION', ierr)   
       
     select case(trim(word))
     
       case('TYPE') ! read condition type (dirichlet, neumann, etc) for each dof
-        call fiReadWord(string,word,.true.,ierr)
+        call fiReadWord(string,word,PETSC_TRUE,ierr)
         call fiErrorMsg(option%myrank,'INTERPOLATION','CONDITION', ierr)   
         length = len_trim(word)
         call fiCharsToLower(word,length)
@@ -947,10 +947,10 @@ subroutine TranConditionRead(condition,constraint_list,option,fid)
           call fiReadDouble(string,constraint_coupler%time,ierr)
           call fiErrorMsg(option%myrank,'time','CONSTRAINT_LIST', ierr) 
           ! time units are optional  
-          call fiReadWord(string,word,.true.,ierr)
+          call fiReadWord(string,word,PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'constraint name','CONSTRAINT_LIST', ierr) 
           ! read constraint name
-          call fiReadWord(string,constraint_coupler%constraint_name,.true.,ierr)
+          call fiReadWord(string,constraint_coupler%constraint_name,PETSC_TRUE,ierr)
           if (ierr /= 0) then
             constraint_coupler%time_units = default_time_units
             constraint_coupler%constraint_name = trim(word)
@@ -972,7 +972,7 @@ subroutine TranConditionRead(condition,constraint_list,option,fid)
       case('CONSTRAINT')
         constraint => TranConstraintCreate(option)
         constraint_coupler => TranConstraintCouplerCreate(option)
-        call fiReadWord(string,constraint%name,.true.,ierr)
+        call fiReadWord(string,constraint%name,PETSC_TRUE,ierr)
         call fiErrorMsg(option%myrank,'constraint','name',ierr) 
         call printMsg(option,constraint%name)
         call TranConstraintRead(constraint,option,fid)
@@ -1045,7 +1045,7 @@ subroutine TranConstraintRead(constraint,option,fid)
         
     if (fiCheckExit(string)) exit  
 
-    call fiReadWord(string,word,.true.,ierr)
+    call fiReadWord(string,word,PETSC_TRUE,ierr)
     call fiErrorMsg(option%myrank,'keyword','CONSTRAINT', ierr)   
       
     select case(trim(word))
@@ -1179,12 +1179,12 @@ subroutine ConditionReadValues(option,keyword,string,dataset,units)
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
   ierr = 0
   string2 = trim(string)
-  call fiReadWord(string,word,.true.,ierr)
+  call fiReadWord(string,word,PETSC_TRUE,ierr)
   call fiErrorMsg(option%myrank,'file or value','CONDITION', ierr)
   length = len_trim(word)
   call fiCharsToLower(word,length)
   if (fiStringCompare(word,'file',FOUR_INTEGER)) then
-    call fiReadWord(string,word,.true.,ierr)
+    call fiReadWord(string,word,PETSC_TRUE,ierr)
     error_string = keyword // ' FILE'
     call fiErrorMsg(option%myrank,error_string,'CONDITION', ierr)
     call ConditionReadValuesFromFile(word,dataset,option)
@@ -1197,7 +1197,7 @@ subroutine ConditionReadValues(option,keyword,string,dataset,units)
       call fiErrorMsg(option%myrank,error_string,'CONDITION', ierr) 
     enddo
   endif
-  call fiReadWord(string,word,.true.,ierr)
+  call fiReadWord(string,word,PETSC_TRUE,ierr)
   if (ierr /= 0) then
     word = trim(keyword) // ' UNITS'
     call fiDefaultMsg(option%myrank,word, ierr)

@@ -105,7 +105,7 @@ subroutine TimestepperRead(stepper,fid,option)
 
     if (fiCheckExit(string)) exit  
 
-    call fiReadWord(string,keyword,.true.,ierr)
+    call fiReadWord(string,keyword,PETSC_TRUE,ierr)
     call fiErrorMsg(option%myrank,'keyword','TIMESTEPPER', ierr)
     call fiWordToUpper(keyword)   
       
@@ -198,9 +198,9 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     master_stepper => tran_stepper
   endif
 
-  plot_flag = .false.
-  timestep_cut_flag = .false.
-  stop_flag = .false.
+  plot_flag = PETSC_FALSE
+  timestep_cut_flag = PETSC_FALSE
+  stop_flag = PETSC_FALSE
   num_const_timesteps = 0  
 
   if (option%restart_flag) then
@@ -232,7 +232,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
   ! print initial condition output if not a restarted sim
   if (realization%output_option%plot_number == 0) then
-    plot_flag = .true.
+    plot_flag = PETSC_TRUE
     call Output(realization,plot_flag)
   endif
            
@@ -241,8 +241,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   do istep = start_step, master_stepper%nstepmax
 
     prev_waypoint => master_stepper%cur_waypoint
-    timestep_cut_flag = .false.
-    plot_flag = .false.
+    timestep_cut_flag = PETSC_FALSE
+    plot_flag = PETSC_FALSE
     call StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag)
   
     if (associated(flow_stepper)) then
@@ -266,7 +266,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     ! if they changed. 
     if (timestep_cut_flag) then
       master_stepper%cur_waypoint => prev_waypoint
-      plot_flag = .false.
+      plot_flag = PETSC_FALSE
     endif
 
     if (option%compute_mass_balance) then
@@ -289,7 +289,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       if (average_step_time + current_time > option%wallclock_stop_time) then
         call printMsg(option,"Wallclock stop time exceeded.  Exiting!!!")
         call printMsg(option,"")
-        stop_flag = .true.
+        stop_flag = PETSC_TRUE
       endif
     endif
 
@@ -506,7 +506,7 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag)
       time = time + dt
     else
       time = cur_waypoint%time
-      if (cur_waypoint%print_output) plot_flag = .true.
+      if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
       cur_waypoint => cur_waypoint%next
       if (associated(cur_waypoint)) &
         dt_max = cur_waypoint%dt_max
@@ -516,7 +516,7 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag)
     if (associated(cur_waypoint)) &
       dt_max = cur_waypoint%dt_max
   else if (steps >= nstepmax) then
-    plot_flag = .true.
+    plot_flag = PETSC_TRUE
     nullify(cur_waypoint)
   endif
     
@@ -691,7 +691,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
     if (snes_reason <= 0 .or. update_reason <= 0) then
       ! The Newton solver diverged, so try reducing the time step.
       icut = icut + 1
-      timestep_cut_flag = .true.
+      timestep_cut_flag = PETSC_TRUE
 
       if (icut > stepper%icut_max .or. option%flow_dt<1.d-20) then
         if (option%myrank == 0) then
@@ -702,7 +702,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
           print *,"Stopping execution!"
         endif
         realization%output_option%plot_name = 'cut_to_failure'
-        plot_flag = .true.
+        plot_flag = PETSC_TRUE
         call Output(realization,plot_flag)
         call PetscFinalize(ierr)
         stop
@@ -986,7 +986,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
     if (snes_reason <= 0) then
       ! The Newton solver diverged, so try reducing the time step.
       icut = icut + 1
-      timestep_cut_flag = .true.
+      timestep_cut_flag = PETSC_TRUE
 
       if (icut > stepper%icut_max .or. option%tran_dt<1.d-20) then
         if (option%myrank == 0) then
@@ -996,7 +996,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
           print *,"Stopping execution!"
         endif
         realization%output_option%plot_name = 'cut_to_failure'
-        plot_flag = .true.
+        plot_flag = PETSC_TRUE
         call Output(realization,plot_flag)
         call PetscFinalize(ierr)
         stop

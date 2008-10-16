@@ -144,7 +144,7 @@ subroutine fiReadInt(string, int, ierr)
   PetscInt :: int
   PetscErrorCode :: ierr
 
-  call fiReadWord(string,word,.true.,ierr)
+  call fiReadWord(string,word,PETSC_TRUE,ierr)
   
   if (ierr == 0) then
     read(word,*,iostat=ierr) int
@@ -168,7 +168,7 @@ subroutine fiReadDouble(string, double, ierr)
   PetscReal :: double
   PetscErrorCode :: ierr
 
-  call fiReadWord(string,word,.true.,ierr)
+  call fiReadWord(string,word,PETSC_TRUE,ierr)
   if (ierr == 0) then
     read(word,*,iostat=ierr) double
   endif
@@ -197,7 +197,7 @@ subroutine fiReadMultDouble(fid, string, doubles, n, variable_name, keyword, &
 
   i = 1
   ierr = 0
-  newline = .false.
+  newline = PETSC_FALSE
   do
     call fiReadDouble(string,doubles(i),ierr)
     if (ierr /= 0) then
@@ -210,9 +210,9 @@ subroutine fiReadMultDouble(fid, string, doubles, n, variable_name, keyword, &
       ierr = 0
       call fiReadFlotranString(fid,string,ierr)
       call fiReadStringErrorMsg(0,subroutine_name,ierr)
-      newline = .true.
+      newline = PETSC_TRUE
     else
-      newline = .false.
+      newline = PETSC_FALSE
       i = i + 1
       if (i > n) exit
     endif
@@ -274,7 +274,7 @@ subroutine fiReadFlotranString(fid, string, ierr)
     if (string(1:1) == ':' .or. string(1:1) == '!') cycle
 
     tempstring = string
-    call fiReadWord(tempstring,word,.true.,ierr)
+    call fiReadWord(tempstring,word,PETSC_TRUE,ierr)
     call fiWordToUpper(word)
     if (word(1:4) == 'SKIP') then
       do 
@@ -284,7 +284,7 @@ subroutine fiReadFlotranString(fid, string, ierr)
           print *, 'SKIP encountered without matching NOSKIP.'
           stop
         endif
-        call fiReadWord(tempstring,word,.false.,ierr)
+        call fiReadWord(tempstring,word,PETSC_FALSE,ierr)
         call fiWordToUpper(word)
         if (word(1:4) == 'NOSK') exit
       enddo
@@ -489,12 +489,12 @@ logical function fiStringCompare(string1,string2,n)
   
   do i=1,n
     if (string1(i:i) /= string2(i:i)) then
-      fiStringCompare = .false.
+      fiStringCompare = PETSC_FALSE
       return
     endif
   enddo
 
-  fiStringCompare = .true.
+  fiStringCompare = PETSC_TRUE
   return
 
 end function fiStringCompare
@@ -636,9 +636,9 @@ logical function fiIsAlpha(c)
 
   if ((c >= 'A' .and. c <= 'Z') .or. &
       (c >= 'a' .and. c <= 'z')) then
-    fiIsAlpha = .true.
+    fiIsAlpha = PETSC_TRUE
   else
-    fiIsAlpha = .false.
+    fiIsAlpha = PETSC_FALSE
   endif
 
 end function fiIsAlpha
@@ -670,7 +670,7 @@ subroutine fiReadDBaseString(fid, string, ierr)
     read(fid,'(a256)',iostat=ierr) string
     if (ierr /= 0) exit
     tempstring = string
-    call fiReadDBaseWord(fid,tempstring,word,.true.,ierr)
+    call fiReadDBaseWord(fid,tempstring,word,PETSC_TRUE,ierr)
     call fiWordToUpper(word)
     if (word(1:4) == 'SKIP') then
       do 
@@ -680,7 +680,7 @@ subroutine fiReadDBaseString(fid, string, ierr)
           print *, 'SKIP encountered without matching NOSKIP.'
           stop
         endif
-        call fiReadDBaseWord(fid,tempstring,word,.false.,ierr)
+        call fiReadDBaseWord(fid,tempstring,word,PETSC_FALSE,ierr)
         if (word(1:4) == 'NOSK') exit
       enddo
     else if (word(1:1) /= ':' .and. word(1:1) /= ' ' .and. &
@@ -730,7 +730,7 @@ subroutine fiReadDBaseName(fid, string, name, return_blank_error, ierr)
 
   if (ierr /= 0) return
 
-  openquotefound = .false.
+  openquotefound = PETSC_FALSE
   ! Initialize character string to blank.
   do i=1,len_trim(name)
     name(i:i) = ' '
@@ -752,7 +752,7 @@ subroutine fiReadDBaseName(fid, string, name, return_blank_error, ierr)
   enddo
 
   if (string(i:i) == "'") then
-    openquotefound = .true.
+    openquotefound = PETSC_TRUE
     i=i+1
   endif
 
@@ -871,7 +871,7 @@ subroutine fiReadDBaseInt(fid, string, int, ierr)
     call fiReadStringErrorMsg(0,'trdatbse',ierr)
   endif
 
-  call fiReadDBaseWord(fid,string,word,.false.,ierr)
+  call fiReadDBaseWord(fid,string,word,PETSC_FALSE,ierr)
   if (ierr == 0) then
     read(word,*,iostat=ierr) int
   endif
@@ -900,7 +900,7 @@ subroutine fiReadDBaseDouble(fid, string, double, ierr)
     call fiReadStringErrorMsg(0,'trdatbse',ierr)
   endif
 
-  call fiReadDBaseWord(fid,string,word,.false.,ierr)
+  call fiReadDBaseWord(fid,string,word,PETSC_FALSE,ierr)
   if (ierr == 0) then
     read(word,*,iostat=ierr) double
   endif
@@ -962,7 +962,7 @@ end subroutine fiReadDBaseDouble
   do 
     call fiReadFlotranString(fid,string2,ierr)
     string3 = string2
-    call fiReadWord(string2,word,.true.,ierr)
+    call fiReadWord(string2,word,PETSC_TRUE,ierr)
     if (ierr /= 0) exit
     length2 = len_trim(word)
     if (length1 == length2 .and. fiStringCompare(string,word,length1)) exit
@@ -977,7 +977,7 @@ end subroutine fiReadDBaseDouble
     do 
       call fiReadFlotranString(fid,string2,ierr)
       string3 = string2
-      call fiReadWord(string2,word,.true.,ierr)
+      call fiReadWord(string2,word,PETSC_TRUE,ierr)
       if (ierr /= 0) exit
       length2 = len_trim(word)
       if (length1 == length2 .and. fiStringCompare(string,word,length1)) exit

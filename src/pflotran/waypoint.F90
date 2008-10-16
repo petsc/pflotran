@@ -56,12 +56,12 @@ function WaypointCreate()
   
   allocate(waypoint)
   waypoint%time = 0.d0
-  waypoint%print_output = .false.
-  waypoint%final = .false.
+  waypoint%print_output = PETSC_FALSE
+  waypoint%final = PETSC_FALSE
 !  waypoint%output_option => OutputOptionCreate()
   nullify(waypoint%output_option)
-  waypoint%update_bcs = .false.
-  waypoint%update_srcs = .false.
+  waypoint%update_bcs = PETSC_FALSE
+  waypoint%update_srcs = PETSC_FALSE
   waypoint%dt_max = 0.d0
   nullify(waypoint%next)
   nullify(waypoint%prev)
@@ -309,21 +309,21 @@ subroutine WaypointMerge(old_waypoint,new_waypoint)
 !    logical :: final  ! any waypoint after this will be deleted
     
   if (old_waypoint%print_output .or. new_waypoint%print_output) then
-    old_waypoint%print_output = .true.
+    old_waypoint%print_output = PETSC_TRUE
   else
-    old_waypoint%print_output = .false.
+    old_waypoint%print_output = PETSC_FALSE
   endif
 
   if (old_waypoint%update_bcs .or. new_waypoint%update_bcs) then
-    old_waypoint%update_bcs = .true.
+    old_waypoint%update_bcs = PETSC_TRUE
   else
-    old_waypoint%update_bcs = .false.
+    old_waypoint%update_bcs = PETSC_FALSE
   endif
 
   if (old_waypoint%update_srcs .or. new_waypoint%update_srcs) then
-    old_waypoint%update_srcs = .true.
+    old_waypoint%update_srcs = PETSC_TRUE
   else
-    old_waypoint%update_srcs = .false.
+    old_waypoint%update_srcs = PETSC_FALSE
   endif
 
   if (new_waypoint%dt_max > 0.d0) then
@@ -331,9 +331,9 @@ subroutine WaypointMerge(old_waypoint,new_waypoint)
   endif
   
   if (old_waypoint%final .or. new_waypoint%final) then
-    old_waypoint%final = .true.
+    old_waypoint%final = PETSC_TRUE
   else
-    old_waypoint%final = .false.
+    old_waypoint%final = PETSC_FALSE
   endif
 
   ! deallocate new waypoint

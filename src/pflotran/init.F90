@@ -524,10 +524,10 @@ subroutine readRequiredCardsFromInput(realization,filename)
 
   if (ierr == 0) then  
     ! strip card from front of string
-    call fiReadWord(string,word,.false.,ierr)
+    call fiReadWord(string,word,PETSC_FALSE,ierr)
  
     ! read in keyword 
-    call fiReadWord(string,option%flowmode,.true.,ierr)
+    call fiReadWord(string,option%flowmode,PETSC_TRUE,ierr)
     call fiErrorMsg(option%myrank,'flowmode','mode',ierr)
   endif
 
@@ -567,7 +567,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
     if (ierr == 0) then
 
       ! strip card from front of string
-      call fiReadWord(string,word,.false.,ierr)
+      call fiReadWord(string,word,PETSC_FALSE,ierr)
       call fiReadInt(string,grid%structured_grid%npx,ierr)
       call fiDefaultMsg(option%myrank,'npx',ierr)
       call fiReadInt(string,grid%structured_grid%npy,ierr)
@@ -641,7 +641,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
   if (ierr == 0) then
 
     ! strip card from front of string
-    call fiReadWord(string,word,.false.,ierr)
+    call fiReadWord(string,word,PETSC_FALSE,ierr)
 
     call fiReadInt(string,option%ntrandof,ierr)
     call fiDefaultMsg(option%myrank,'ntrandof',ierr)
@@ -700,7 +700,7 @@ subroutine readInput(simulation,filename)
   PetscReal :: rdum
 
   logical :: continuation_flag
-  logical :: periodic_output_flag = .false.
+  logical :: periodic_output_flag = PETSC_FALSE
   PetscReal :: periodic_rate = 0.d0
   
   character(len=1) :: backslash
@@ -772,7 +772,7 @@ subroutine readInput(simulation,filename)
     call fiReadFlotranString(option%fid_in, string, ierr)
     if (ierr /= 0) exit
 
-    call fiReadWord(string,word,.false.,ierr)
+    call fiReadWord(string,word,PETSC_FALSE,ierr)
     length = len_trim(word)
     call fiCharsToUpper(word,length)
 !    call fiReadCard(word,card,ierr)
@@ -795,7 +795,7 @@ subroutine readInput(simulation,filename)
           call fiReadFlotranString(option%fid_in,string,ierr)
           call fiReadStringErrorMsg(option%myrank,card,ierr)
           string2 = string
-          call fiReadWord(string2,word,.true.,ierr)
+          call fiReadWord(string2,word,PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'word','CHEMISTRY',ierr) 
           select case(word)
             case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
@@ -828,8 +828,8 @@ subroutine readInput(simulation,filename)
         
 !....................
       case ('GENERALIZED_GRID')
-        option%use_generalized_grid = .true.
-        call fiReadWord(string,option%generalized_grid,.true.,ierr)
+        option%use_generalized_grid = PETSC_TRUE
+        call fiReadWord(string,option%generalized_grid,PETSC_TRUE,ierr)
 
 !....................
       case ('PROC')
@@ -837,7 +837,7 @@ subroutine readInput(simulation,filename)
 !....................
       case ('REGION')
         region => RegionCreate()
-        call fiReadWord(string,region%name,.true.,ierr)
+        call fiReadWord(string,region%name,PETSC_TRUE,ierr)
         call fiErrorMsg(option%myrank,'name','REGION',ierr) 
         call printMsg(option,region%name)
         call RegionRead(region,option%fid_in,option)
@@ -849,7 +849,7 @@ subroutine readInput(simulation,filename)
 !....................
       case ('FLOW_CONDITION')
         flow_condition => ConditionCreate(option)
-        call fiReadWord(string,flow_condition%name,.true.,ierr)
+        call fiReadWord(string,flow_condition%name,PETSC_TRUE,ierr)
         call fiErrorMsg(option%myrank,'FLOW_CONDITION','name',ierr) 
         call printMsg(option,flow_condition%name)
         call ConditionRead(flow_condition,option,option%fid_in)
@@ -859,7 +859,7 @@ subroutine readInput(simulation,filename)
 !....................
       case ('TRANSPORT_CONDITION')
         tran_condition => TranConditionCreate(option)
-        call fiReadWord(string,tran_condition%name,.true.,ierr)
+        call fiReadWord(string,tran_condition%name,PETSC_TRUE,ierr)
         call fiErrorMsg(option%myrank,'TRANSPORT_CONDITION','name',ierr) 
         call printMsg(option,tran_condition%name)
         call TranConditionRead(tran_condition,realization%transport_constraints, &
@@ -870,7 +870,7 @@ subroutine readInput(simulation,filename)
 !....................
       case('CONSTRAINT')
         tran_constraint => TranConstraintCreate(option)
-        call fiReadWord(string,tran_constraint%name,.true.,ierr)
+        call fiReadWord(string,tran_constraint%name,PETSC_TRUE,ierr)
         call fiErrorMsg(option%myrank,'constraint','name',ierr) 
         call printMsg(option,tran_constraint%name)
         call TranConstraintRead(tran_constraint,option,option%fid_in)
@@ -907,20 +907,20 @@ subroutine readInput(simulation,filename)
       
 !.....................
       case ('DATASET') 
-        call fiReadWord(string,word,.true.,ierr)
+        call fiReadWord(string,word,PETSC_TRUE,ierr)
         call fiErrorMsg(option%myrank,'dataset','name',ierr) 
         call printMsg(option,word)
         length = len_trim(word)
         call fiCharsToLower(word,length)        
         select case(word)
           case('permx')
-            call fiReadWord(string,option%permx_filename,.true.,ierr)
+            call fiReadWord(string,option%permx_filename,PETSC_TRUE,ierr)
             call fiErrorMsg(option%myrank,'dataset','permx_filename',ierr) 
           case('permy')
-            call fiReadWord(string,option%permy_filename,.true.,ierr)
+            call fiReadWord(string,option%permy_filename,PETSC_TRUE,ierr)
             call fiErrorMsg(option%myrank,'dataset','permy_filename',ierr) 
           case('permz')
-            call fiReadWord(string,option%permz_filename,.true.,ierr)
+            call fiReadWord(string,option%permz_filename,PETSC_TRUE,ierr)
             call fiErrorMsg(option%myrank,'dataset','permz_filename',ierr) 
         end select          
         
@@ -975,9 +975,9 @@ subroutine readInput(simulation,filename)
 !....................
 
       case ('HDF5')
-        realization%output_option%print_hdf5 = .true.
+        realization%output_option%print_hdf5 = PETSC_TRUE
         do
-          call fiReadWord(string,word,.true.,ierr)
+          call fiReadWord(string,word,PETSC_TRUE,ierr)
           if (ierr /= 0) exit
           length = len_trim(word)
           call fiCharsToUpper(word,length)
@@ -985,9 +985,9 @@ subroutine readInput(simulation,filename)
 
           select case(card)
             case('VELO')
-              realization%output_option%print_hdf5_velocities = .true.
+              realization%output_option%print_hdf5_velocities = PETSC_TRUE
             case('FLUX')
-              realization%output_option%print_hdf5_flux_velocities = .true.
+              realization%output_option%print_hdf5_flux_velocities = PETSC_TRUE
             case default
           end select
             
@@ -999,16 +999,16 @@ subroutine readInput(simulation,filename)
 !.....................
       case ('INVERT_Z','INVERTZ')
         if (associated(grid%structured_grid)) then
-          grid%structured_grid%invert_z_axis = .true.
+          grid%structured_grid%invert_z_axis = PETSC_TRUE
           option%gravity(3) = -1.d0*option%gravity(3)
         endif
       
 !....................
 
       case ('TECP')
-        realization%output_option%print_tecplot = .true.
+        realization%output_option%print_tecplot = PETSC_TRUE
         do
-          call fiReadWord(string,word,.true.,ierr)
+          call fiReadWord(string,word,PETSC_TRUE,ierr)
           if (ierr /= 0) exit
           length = len_trim(word)
           call fiCharsToUpper(word,length)
@@ -1016,9 +1016,9 @@ subroutine readInput(simulation,filename)
 
           select case(card)
             case('VELO')
-              realization%output_option%print_tecplot_velocities = .true.
+              realization%output_option%print_tecplot_velocities = PETSC_TRUE
             case('FLUX')
-              realization%output_option%print_tecplot_flux_velocities = .true.
+              realization%output_option%print_tecplot_flux_velocities = PETSC_TRUE
             case default
           end select
           
@@ -1234,7 +1234,7 @@ subroutine readInput(simulation,filename)
         call fiReadDouble(string,option%m_nacl,ierr)
         call fiDefaultMsg(option%myrank,'NaCl Concentration',ierr) 
 
-        call fiReadWord(string,word,.false.,ierr)
+        call fiReadWord(string,word,PETSC_FALSE,ierr)
         call fiWordToUpper(word)
         select case(word(1:len_trim(word)))
           case('MOLAL')
@@ -1251,7 +1251,7 @@ subroutine readInput(simulation,filename)
 
       case ('RESTART')
         option%restart_flag = PETSC_TRUE
-        call fiReadWord(string,option%restart_file,.true.,ierr)
+        call fiReadWord(string,option%restart_file,PETSC_TRUE,ierr)
         call fiErrorMsg(option%myrank,'RESTART','Restart file name',ierr) 
         call fiReadDouble(string,option%restart_time,ierr)
         call fiDefaultMsg(option%myrank,'Restart time',ierr) 
@@ -1266,20 +1266,20 @@ subroutine readInput(simulation,filename)
 !......................
 
       case ('NUMERICAL_JACOBIAN')
-        option%numerical_derivatives = .true.
+        option%numerical_derivatives = PETSC_TRUE
 
 !......................
 
       case ('COMPUTE_STATISTICS','STATISTICS')
-        option%compute_statistics = .true.
+        option%compute_statistics = PETSC_TRUE
 
       case ('COMPUTE_MASS_BALANCE','MASS_BALANCE')
-        option%compute_mass_balance = .true.
+        option%compute_mass_balance = PETSC_TRUE
 
 !....................
 
       case ('TIMESTEPPER')
-        call fiReadWord(string,word,.false.,ierr)
+        call fiReadWord(string,word,PETSC_FALSE,ierr)
         length = len_trim(word)
         call fiCharsToUpper(word,length)
         select case(word)
@@ -1300,7 +1300,7 @@ subroutine readInput(simulation,filename)
 !....................
 
       case ('LINEAR_SOLVER')
-        call fiReadWord(string,word,.false.,ierr)
+        call fiReadWord(string,word,PETSC_FALSE,ierr)
         length = len_trim(word)
         call fiCharsToUpper(word,length)
         select case(word)
@@ -1321,7 +1321,7 @@ subroutine readInput(simulation,filename)
 !....................
 
       case ('NEWTON_SOLVER')
-        call fiReadWord(string,word,.false.,ierr)
+        call fiReadWord(string,word,PETSC_FALSE,ierr)
         length = len_trim(word)
         call fiCharsToUpper(word,length)
         select case(word)
@@ -1638,7 +1638,7 @@ subroutine readInput(simulation,filename)
           count = count + 1
           material => MaterialCreate()
 
-          call fiReadWord(string,material%name,.true.,ierr)
+          call fiReadWord(string,material%name,PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'name','PHIK', ierr)
                 
           call fiReadInt(string,material%id,ierr)
@@ -1680,7 +1680,7 @@ subroutine readInput(simulation,filename)
 !....................
 
       case ('USE_TOUCH_OPTIONS')
-        option%use_touch_options = .true.
+        option%use_touch_options = PETSC_TRUE
 
       case ('MPI_IO')
         string = '-viewer_binary_mpiio'
@@ -1691,16 +1691,16 @@ subroutine readInput(simulation,filename)
         call fiErrorMsg(option%myrank,'io_handshake_buffer_size','HANDSHAKE_IO', ierr)
 
       case ('OVERWRITE_RESTART_TRANSPORT')
-        option%overwrite_restart_transport = .true.
+        option%overwrite_restart_transport = PETSC_TRUE
 
       case ('OVERWRITE_RESTART_FLOW_PARAMS')
-        option%overwrite_restart_flow_params = .true.
+        option%overwrite_restart_flow_params = PETSC_TRUE
 
       case ('TIME')
 
         call fiReadStringErrorMsg(option%myrank,'TIME',ierr)
       
-        call fiReadWord(string,word,.false.,ierr)
+        call fiReadWord(string,word,PETSC_FALSE,ierr)
       
         realization%output_option%tunit = trim(word)
 
@@ -1727,22 +1727,22 @@ subroutine readInput(simulation,filename)
         endif
 
 
-        call fiReadWord(string,word,.false.,ierr)
+        call fiReadWord(string,word,PETSC_FALSE,ierr)
         if (ierr == 0) then
           call fiWordToUpper(word)
           if (fiStringCompare(word,'EVERY',FIVE_INTEGER)) then
-            periodic_output_flag = .true.
+            periodic_output_flag = PETSC_TRUE
             call fiReadDouble(string,periodic_rate,ierr)
           endif
         endif
 
-        continuation_flag = .true.
+        continuation_flag = PETSC_TRUE
         do
           if (.not.continuation_flag) exit
           call fiReadFlotranString(option%fid_in,string,ierr)
           if (ierr /= 0) exit
-          continuation_flag = .false.
-          if (index(string,backslash) > 0) continuation_flag = .true.
+          continuation_flag = PETSC_FALSE
+          if (index(string,backslash) > 0) continuation_flag = PETSC_TRUE
           ierr = 0
           do
             if (ierr /= 0) exit
@@ -1750,14 +1750,14 @@ subroutine readInput(simulation,filename)
             if (ierr == 0) then
               waypoint => WaypointCreate()
               waypoint%time = temp_real
-              waypoint%print_output = .true.              
+              waypoint%print_output = PETSC_TRUE              
               call WaypointInsertInList(waypoint,realization%waypoints)
             endif
           enddo
         enddo
         
         ! make last waypoint final
-        waypoint%final = .true.
+        waypoint%final = PETSC_TRUE
         
         if (periodic_output_flag) then
           temp_real2 = waypoint%time   ! final simulation time
@@ -1767,7 +1767,7 @@ subroutine readInput(simulation,filename)
             
             waypoint => WaypointCreate()
             waypoint%time = temp_real
-            waypoint%print_output = .true.              
+            waypoint%print_output = PETSC_TRUE              
             call WaypointInsertInList(waypoint,realization%waypoints)
             
             temp_real = temp_real + periodic_rate
@@ -1783,14 +1783,14 @@ subroutine readInput(simulation,filename)
         call fiReadDouble(string,master_stepper%dt_min,ierr)
         call fiDefaultMsg(option%myrank,'dt_min',ierr)
             
-        continuation_flag = .true.
+        continuation_flag = PETSC_TRUE
         temp_int = 0       
         do
           if (.not.continuation_flag) exit
           call fiReadFlotranString(option%fid_in,string,ierr)
           if (ierr /= 0) exit
-          continuation_flag = .false.
-          if (index(string,backslash) > 0) continuation_flag = .true.
+          continuation_flag = PETSC_FALSE
+          if (index(string,backslash) > 0) continuation_flag = PETSC_TRUE
           ierr = 0
           do
             if (ierr /= 0) exit

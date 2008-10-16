@@ -185,7 +185,7 @@ subroutine ReactionRead(reaction,fid,option)
     if (ierr /= 0) exit
     if (fiCheckExit(string)) exit
     
-    call fiReadWord(string,word,.true.,ierr)
+    call fiReadWord(string,word,PETSC_TRUE,ierr)
     call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)
     call fiWordToUpper(word)   
 
@@ -198,7 +198,7 @@ subroutine ReactionRead(reaction,fid,option)
           if (ierr /= 0) exit
           if (fiCheckExit(string)) exit
           species => AqueousSpeciesCreate()
-          call fiReadWord(string,species%name,.true.,ierr)  
+          call fiReadWord(string,species%name,PETSC_TRUE,ierr)  
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,PRIMARY_SPECIES', ierr)    
           if (.not.associated(reaction%primary_species_list)) then
             reaction%primary_species_list => species
@@ -218,7 +218,7 @@ subroutine ReactionRead(reaction,fid,option)
           if (ierr /= 0) exit
           if (fiCheckExit(string)) exit
           species => AqueousSpeciesCreate()
-          call fiReadWord(string,species%name,.true.,ierr)  
+          call fiReadWord(string,species%name,PETSC_TRUE,ierr)  
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,PRIMARY_SPECIES', ierr)    
           if (.not.associated(reaction%secondary_species_list)) then
             reaction%secondary_species_list => species
@@ -238,7 +238,7 @@ subroutine ReactionRead(reaction,fid,option)
           if (ierr /= 0) exit
           if (fiCheckExit(string)) exit
           gas => GasSpeciesCreate()
-          call fiReadWord(string,gas%name,.true.,ierr)  
+          call fiReadWord(string,gas%name,PETSC_TRUE,ierr)  
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,GAS_SPECIES', ierr)    
           if (.not.associated(reaction%gas_species_list)) then
             reaction%gas_species_list => gas
@@ -258,7 +258,7 @@ subroutine ReactionRead(reaction,fid,option)
           if (ierr /= 0) exit
           if (fiCheckExit(string)) exit
           mineral => MineralCreate()
-          call fiReadWord(string,mineral%name,.true.,ierr)  
+          call fiReadWord(string,mineral%name,PETSC_TRUE,ierr)  
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,MINERAL', ierr)    
           if (.not.associated(reaction%mineral_list)) then
             reaction%mineral_list => mineral
@@ -279,7 +279,7 @@ subroutine ReactionRead(reaction,fid,option)
           if (ierr /= 0) exit
           if (fiCheckExit(string)) exit
 
-          call fiReadWord(string,word,.true.,ierr)
+          call fiReadWord(string,word,PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SORPTION', ierr)
           call fiWordToUpper(word)   
 
@@ -293,7 +293,7 @@ subroutine ReactionRead(reaction,fid,option)
           end select
         enddo
       case('DATABASE')
-        call fiReadNChars(string,reaction%database_filename,MAXSTRINGLENGTH,.true.,ierr)  
+        call fiReadNChars(string,reaction%database_filename,MAXSTRINGLENGTH,PETSC_TRUE,ierr)  
         call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,DATABASE FILENAME', ierr)          
       case default
         call printErrMsg(option,'CHEMISTRY keyword: '//trim(word)//' not recognized')
@@ -413,7 +413,7 @@ subroutine ReactionReadMineralKinetics(reaction,fid,option)
 
     if (fiCheckExit(string)) exit  
 
-    call fiReadNChars(string,name,MAXNAMELENGTH,.true.,ierr)
+    call fiReadNChars(string,name,MAXNAMELENGTH,PETSC_TRUE,ierr)
     call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)
     
     cur_mineral => reaction%mineral_list
@@ -486,7 +486,7 @@ subroutine ReactionReadSurfaceComplexes(reaction,fid,option)
 
     if (fiCheckExit(string)) exit  
 
-    call fiReadNChars(string,name,MAXNAMELENGTH,.true.,ierr)
+    call fiReadNChars(string,name,MAXNAMELENGTH,PETSC_TRUE,ierr)
     call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)
     
     cur_srfcmplx => reaction%surface_complex_list

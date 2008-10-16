@@ -447,7 +447,7 @@ subroutine PatchInitAllCouplerAuxVars(patch,option)
   type(patch_type) :: patch
   type(option_type) :: option
   
-  logical :: force_update_flag = .true.
+  logical :: force_update_flag = PETSC_TRUE
   
   call PatchInitCouplerAuxVars(patch,patch%boundary_conditions,option)
   call PatchInitCouplerAuxVars(patch,patch%initial_conditions,option)
@@ -600,7 +600,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
 
       flow_condition => coupler%flow_condition
 
-      update = .false.
+      update = PETSC_FALSE
       select case(option%iflowmode)
         case(THC_MODE,MPH_MODE)
           if (force_update_flag .or. &
@@ -613,14 +613,14 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
               flow_condition%concentration%dataset%is_transient .or. &
               flow_condition%concentration%gradient%is_transient .or. &
               flow_condition%concentration%datum%is_transient) then
-            update = .true.
+            update = PETSC_TRUE
           endif
         case(RICHARDS_MODE)
           if (force_update_flag .or. &
               flow_condition%pressure%dataset%is_transient .or. &
               flow_condition%pressure%gradient%is_transient .or. &
               flow_condition%pressure%datum%is_transient) then
-            update = .true.
+            update = PETSC_TRUE
           endif
       end select
       

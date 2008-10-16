@@ -156,7 +156,7 @@ function StructuredGridCreate()
   structured_grid%origin = -1.d20
   structured_grid%bounds = -1.d20
   
-  structured_grid%invert_z_axis = .false.
+  structured_grid%invert_z_axis = PETSC_FALSE
   
   structured_grid%p_samr_patch=0
 

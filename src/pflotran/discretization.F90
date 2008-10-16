@@ -142,7 +142,7 @@ subroutine DiscretizationRead(discretization,fid,option)
 
     if (fiCheckExit(string)) exit
 
-    call fiReadWord(string,word,.true.,ierr)
+    call fiReadWord(string,word,PETSC_TRUE,ierr)
     call fiErrorMsg(option%myrank,'keyword','GRID', ierr)   
     length = len_trim(word)
     call fiCharsToUpper(word,length)
@@ -151,14 +151,14 @@ subroutine DiscretizationRead(discretization,fid,option)
         .not.associated(discretization%amrgrid)) then
       select case(trim(word))
         case('TYPE')
-          call fiReadWord(string,discretization%ctype,.true.,ierr)
+          call fiReadWord(string,discretization%ctype,PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'type','GRID', ierr)   
           length = len_trim(discretization%ctype)
           call fiCharsToLower(discretization%ctype,length)
           select case(trim(discretization%ctype))
             case('structured')
               discretization%itype = STRUCTURED_GRID
-              call fiReadWord(string,structured_grid_ctype,.true.,ierr)
+              call fiReadWord(string,structured_grid_ctype,PETSC_TRUE,ierr)
               call fiDefaultMsg(option%myrank,'structured_grid_type',ierr)   
               length = len_trim(structured_grid_ctype)
               call fiCharsToLower(structured_grid_ctype,length)

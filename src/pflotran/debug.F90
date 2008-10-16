@@ -53,15 +53,15 @@ function DebugCreatePflow()
   
   allocate(debug)
   
-  debug%vecview_residual = .false.
-  debug%vecview_solution = .false.
-  debug%matview_Jacobian = .false.
-  debug%matview_Jacobian_detailed = .false.
-  debug%norm_Jacobian = .false.
+  debug%vecview_residual = PETSC_FALSE
+  debug%vecview_solution = PETSC_FALSE
+  debug%matview_Jacobian = PETSC_FALSE
+  debug%matview_Jacobian_detailed = PETSC_FALSE
+  debug%norm_Jacobian = PETSC_FALSE
   
-  debug%print_numerical_derivatives = .false.
+  debug%print_numerical_derivatives = PETSC_FALSE
   
-  debug%print_couplers = .false.
+  debug%print_couplers = PETSC_FALSE
 
   DebugCreatePflow => debug
 
@@ -83,13 +83,13 @@ function DebugCreatePtran()
   type(ptran_debug_type), pointer :: debug
   
   allocate(debug)
-  debug%vecview_residual = .false.
-  debug%vecview_solution = .false.
-  debug%matview_Jacobian = .false.
-  debug%matview_Jacobian_detailed = .false.
-  debug%norm_Jacobian = .false.
+  debug%vecview_residual = PETSC_FALSE
+  debug%vecview_solution = PETSC_FALSE
+  debug%matview_Jacobian = PETSC_FALSE
+  debug%matview_Jacobian_detailed = PETSC_FALSE
+  debug%norm_Jacobian = PETSC_FALSE
   
-  debug%print_couplers = .false.
+  debug%print_couplers = PETSC_FALSE
 
   
   DebugCreatePtran => debug
@@ -124,25 +124,25 @@ subroutine DebugReadPflow(debug,fid,myrank)
 
     if (fiCheckExit(string)) exit  
 
-    call fiReadWord(string,keyword,.true.,ierr)
+    call fiReadWord(string,keyword,PETSC_TRUE,ierr)
     call fiErrorMsg(myrank,'keyword','DEBUG', ierr)   
       
     select case(trim(keyword))
     
       case('PRINT_SOLUTION','VECVIEW_SOLUTION','VIEW_SOLUTION')
-        debug%vecview_solution = .true.
+        debug%vecview_solution = PETSC_TRUE
       case('PRINT_RESIDUAL','VECVIEW_RESIDUAL','VIEW_RESIDUAL')
-        debug%vecview_residual = .true.
+        debug%vecview_residual = PETSC_TRUE
       case('PRINT_JACOBIAN','MATVIEW_JACOBIAN','VIEW_JACOBIAN')
-        debug%matview_Jacobian = .true.
+        debug%matview_Jacobian = PETSC_TRUE
       case('PRINT_JACOBIAN_NORM','NORM_JACOBIAN')
-        debug%norm_Jacobian = .true.
+        debug%norm_Jacobian = PETSC_TRUE
       case('PRINT_COUPLERS','PRINT_COUPLER')
-        debug%print_couplers = .true.
+        debug%print_couplers = PETSC_TRUE
       case('PRINT_JACOBIAN_DETAILED','MATVIEW_JACOBIAN_DETAILED','VIEW_JACOBIAN_DETAILED')
-        debug%matview_Jacobian_detailed = .true.
+        debug%matview_Jacobian_detailed = PETSC_TRUE
       case('PRINT_NUMERICAL_DERIVATIVES','VIEW_NUMERICAL_DERIVATIVES')
-        debug%print_numerical_derivatives = .true.
+        debug%print_numerical_derivatives = PETSC_TRUE
 
     end select 
   

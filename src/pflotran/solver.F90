@@ -270,14 +270,14 @@ subroutine SolverReadLinear(solver,fid,myrank)
 
     if (fiCheckExit(string)) exit  
 
-    call fiReadWord(string,keyword,.true.,ierr)
+    call fiReadWord(string,keyword,PETSC_TRUE,ierr)
     call fiErrorMsg(myrank,'keyword','LINEAR SOLVER', ierr)
     call fiWordToUpper(keyword)   
       
     select case(trim(keyword))
     
       case('SOLVER_TYPE','SOLVER','KRYLOV_TYPE','KRYLOV','KSP','KSP_TYPE')
-        call fiReadWord(string,word,.true.,ierr)
+        call fiReadWord(string,word,PETSC_TRUE,ierr)
         call fiErrorMsg(myrank,'ksp_type','SOLVER', ierr)   
         call fiWordToUpper(word)
         select case(trim(word))
@@ -298,7 +298,7 @@ subroutine SolverReadLinear(solver,fid,myrank)
         end select
 
       case('PRECONDITIONER_TYPE','PRECONDITIONER','PC','PC_TYPE')
-        call fiReadWord(string,word,.true.,ierr)
+        call fiReadWord(string,word,PETSC_TRUE,ierr)
         call fiErrorMsg(myrank,'pc_type','SOLVER', ierr)   
         call fiWordToUpper(word)
         select case(trim(word))
@@ -372,14 +372,14 @@ subroutine SolverReadNewton(solver,fid,myrank)
 
     if (fiCheckExit(string)) exit  
 
-    call fiReadWord(string,keyword,.true.,ierr)
+    call fiReadWord(string,keyword,PETSC_TRUE,ierr)
     call fiErrorMsg(myrank,'keyword','NEWTON SOLVER', ierr)
     call fiWordToUpper(keyword)   
       
     select case(trim(keyword))
     
       case ('INEXACT_NEWTON')
-        solver%inexact_newton = .true.
+        solver%inexact_newton = PETSC_TRUE
 
       case ('NO_PRINT_CONVERGENCE')
         solver%print_convergence = PETSC_FALSE
@@ -426,7 +426,7 @@ subroutine SolverReadNewton(solver,fid,myrank)
         call fiDefaultMsg(myrank,'newton_maxf',ierr)
 
       case('MATRIX_TYPE')
-        call fiReadWord(string,word,.true.,ierr)
+        call fiReadWord(string,word,PETSC_TRUE,ierr)
         call fiErrorMsg(myrank,'mat_type','SOLVER', ierr)   
         call fiWordToUpper(word)
         select case(trim(word))
@@ -443,7 +443,7 @@ subroutine SolverReadNewton(solver,fid,myrank)
         end select
         
       case('PRECONDITIONER_MATRIX_TYPE')
-        call fiReadWord(string,word,.true.,ierr)
+        call fiReadWord(string,word,PETSC_TRUE,ierr)
         call fiErrorMsg(myrank,'mat_type','SOLVER', ierr)   
         call fiWordToUpper(word)
         select case(trim(word))

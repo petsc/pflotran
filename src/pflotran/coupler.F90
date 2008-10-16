@@ -222,19 +222,19 @@ subroutine CouplerRead(coupler,fid,option)
     if (ierr /= 0) exit
     if (fiCheckExit(string)) exit
     
-    call fiReadWord(string,word,.true.,ierr)
+    call fiReadWord(string,word,PETSC_TRUE,ierr)
     call fiErrorMsg(option%myrank,'keyword','COUPLER', ierr)   
       
     select case(trim(word))
     
       case('REGION')
-        call fiReadWord(string,coupler%region_name,.true.,ierr)
+        call fiReadWord(string,coupler%region_name,PETSC_TRUE,ierr)
       case('FLOW_CONDITION')
-        call fiReadWord(string,coupler%flow_condition_name,.true.,ierr)
+        call fiReadWord(string,coupler%flow_condition_name,PETSC_TRUE,ierr)
       case('TRANSPORT_CONDITION')
-        call fiReadWord(string,coupler%tran_condition_name,.true.,ierr)
+        call fiReadWord(string,coupler%tran_condition_name,PETSC_TRUE,ierr)
       case('TYPE')
-        call fiReadWord(string,coupler%ctype,.true.,ierr)
+        call fiReadWord(string,coupler%ctype,PETSC_TRUE,ierr)
         length = len_trim(coupler%ctype)
         call fiCharsToLower(coupler%ctype,length)
         select case(trim(coupler%ctype))
@@ -248,7 +248,7 @@ subroutine CouplerRead(coupler,fid,option)
             call printErrMsg(option,'coupler type: '//trim(coupler%ctype)//' not recognized.')
         end select    
       case('FACE')
-        call fiReadWord(string,word,.true.,ierr)
+        call fiReadWord(string,word,PETSC_TRUE,ierr)
         length = len_trim(word)
         call fiCharsToUpper(word,length)
         select case(word)

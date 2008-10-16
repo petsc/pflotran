@@ -123,13 +123,13 @@ subroutine BreakthroughRead(breakthrough,fid,option)
     
     if (fiCheckExit(string)) exit  
 
-    call fiReadWord(string,keyword,.true.,ierr)
+    call fiReadWord(string,keyword,PETSC_TRUE,ierr)
     call fiErrorMsg(option%myrank,'keyword','BREAKTHROUGH', ierr)   
       
     select case(trim(keyword))
     
       case('REGION')
-        call fiReadWord(string,breakthrough%region_name,.true.,ierr)
+        call fiReadWord(string,breakthrough%region_name,PETSC_TRUE,ierr)
         call fiErrorMsg(option%myrank,'region name','BREAKTHROUGH', ierr)
       case('VELOCITY')
         breakthrough%print_velocities = PETSC_TRUE

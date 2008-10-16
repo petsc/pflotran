@@ -652,7 +652,7 @@ subroutine RealizationUpdate(realization)
   
   type(realization_type) :: realization
   
-  logical :: force_update_flag = .false.
+  logical :: force_update_flag = PETSC_FALSE
   
   ! must update conditions first
   call ConditionUpdate(realization%flow_conditions,realization%option, &
@@ -1069,7 +1069,7 @@ subroutine RealizationAddWaypointsToList(realization)
             sub_condition%dataset%times(itime) > 1.d-40) then
           waypoint => WaypointCreate()
           waypoint%time = sub_condition%dataset%times(itime)
-          waypoint%update_bcs = .true.
+          waypoint%update_bcs = PETSC_TRUE
           call WaypointInsertInList(waypoint,waypoint_list)
           exit
         endif
@@ -1089,7 +1089,7 @@ subroutine RealizationAddWaypointsToList(realization)
         if (cur_constraint_coupler%time > 1.d-40) then
           waypoint => WaypointCreate()
           waypoint%time = cur_constraint_coupler%time
-          waypoint%update_bcs = .true.
+          waypoint%update_bcs = PETSC_TRUE
           call WaypointInsertInList(waypoint,waypoint_list)
         endif
         cur_constraint_coupler => cur_constraint_coupler%next

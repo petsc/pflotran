@@ -87,7 +87,7 @@ subroutine DatabaseRead(reaction,option)
   ! read temperatures
   call fiReadDBaseString(dbase_id,string,ierr)
   ! remove comment
-  call fiReadDBaseName(dbase_id,string,name,.true.,ierr)
+  call fiReadDBaseName(dbase_id,string,name,PETSC_TRUE,ierr)
   call fiReadDBaseInt(dbase_id,string,reaction%num_dbase_temperatures,ierr)
   call fiErrorMsg(option%myrank,'Number of database temperatures','DATABASE',ierr)  
   allocate(reaction%dbase_temperatures(reaction%num_dbase_temperatures))
@@ -103,7 +103,7 @@ subroutine DatabaseRead(reaction,option)
     call fiReadDBaseString(dbase_id,string,ierr)
     call fiReadStringErrorMsg(option%myrank,'DATABASE',ierr)
 
-    call fiReadDBaseName(dbase_id,string,name,.true.,ierr)
+    call fiReadDBaseName(dbase_id,string,name,PETSC_TRUE,ierr)
     ! 'null's mark the end of a section in the database.  We count these 
     ! to determine which species we are reading.
     ! --
@@ -172,7 +172,7 @@ subroutine DatabaseRead(reaction,option)
           do ispec = 1, cur_aq_spec%eqrxn%nspec
             call fiReadDBaseDouble(dbase_id,string,cur_aq_spec%eqrxn%stoich(ispec),ierr)
             call fiErrorMsg(option%myrank,'EQRXN species stoichiometry','DATABASE',ierr)            
-            call fiReadDBaseName(dbase_id,string,cur_aq_spec%eqrxn%spec_name(ispec),.true.,ierr)
+            call fiReadDBaseName(dbase_id,string,cur_aq_spec%eqrxn%spec_name(ispec),PETSC_TRUE,ierr)
             call fiErrorMsg(option%myrank,'EQRXN species name','DATABASE',ierr)            
           enddo
           do itemp = 1, reaction%num_dbase_temperatures
@@ -229,7 +229,7 @@ subroutine DatabaseRead(reaction,option)
         do ispec = 1, cur_gas_spec%eqrxn%nspec
           call fiReadDBaseDouble(dbase_id,string,cur_gas_spec%eqrxn%stoich(ispec),ierr)
           call fiErrorMsg(option%myrank,'GAS species stoichiometry','DATABASE',ierr)            
-          call fiReadDBaseName(dbase_id,string,cur_gas_spec%eqrxn%spec_name(ispec),.true.,ierr)
+          call fiReadDBaseName(dbase_id,string,cur_gas_spec%eqrxn%spec_name(ispec),PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'GAS species name','DATABASE',ierr)            
         enddo
         do itemp = 1, reaction%num_dbase_temperatures
@@ -279,7 +279,7 @@ subroutine DatabaseRead(reaction,option)
         do ispec = 1, cur_mineral%tstrxn%nspec
           call fiReadDBaseDouble(dbase_id,string,cur_mineral%tstrxn%stoich(ispec),ierr)
           call fiErrorMsg(option%myrank,'MINERAL species stoichiometry','DATABASE',ierr)            
-          call fiReadDBaseName(dbase_id,string,cur_mineral%tstrxn%spec_name(ispec),.true.,ierr)
+          call fiReadDBaseName(dbase_id,string,cur_mineral%tstrxn%spec_name(ispec),PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'MINERAL species name','DATABASE',ierr)            
         enddo
         do itemp = 1, reaction%num_dbase_temperatures
@@ -323,7 +323,7 @@ subroutine DatabaseRead(reaction,option)
         do ispec = 1, cur_surfcplx%nspec
           call fiReadDBaseDouble(dbase_id,string,cur_surfcplx%stoich(ispec),ierr)
           call fiErrorMsg(option%myrank,'SURFACE COMPLEX species stoichiometry','DATABASE',ierr)            
-          call fiReadDBaseName(dbase_id,string,cur_surfcplx%spec_name(ispec),.true.,ierr)
+          call fiReadDBaseName(dbase_id,string,cur_surfcplx%spec_name(ispec),PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'SURFACE COMPLEX species name','DATABASE',ierr)            
         enddo
         do itemp = 1, reaction%num_dbase_temperatures

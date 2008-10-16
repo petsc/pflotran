@@ -1701,9 +1701,9 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
     
     ! check whether enthalpy dof is included
     if (source_sink%flow_condition%num_sub_conditions > THC_CONCENTRATION_DOF) then
-      enthalpy_flag = .true.
+      enthalpy_flag = PETSC_TRUE
     else
-      enthalpy_flag = .false.
+      enthalpy_flag = PETSC_FALSE
     endif
 
     qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
@@ -2156,9 +2156,9 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     
     ! check whether enthalpy dof is included
     if (source_sink%flow_condition%num_sub_conditions > THC_CONCENTRATION_DOF) then
-      enthalpy_flag = .true.
+      enthalpy_flag = PETSC_TRUE
     else
-      enthalpy_flag = .false.
+      enthalpy_flag = PETSC_FALSE
     endif
 
     qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
@@ -2506,7 +2506,7 @@ subroutine THCCreateZeroArray(patch,option)
 
   call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
                      option%comm,ierr)
-  if (flag > 0) patch%aux%THC%inactive_cells_exist = .true.
+  if (flag > 0) patch%aux%THC%inactive_cells_exist = PETSC_TRUE
 
   if (ncount /= n_zero_rows) then
     print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows

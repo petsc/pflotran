@@ -276,7 +276,7 @@ subroutine RegionRead(region,fid,option)
     if (ierr /= 0) exit
     if (fiCheckExit(string)) exit
     
-    call fiReadWord(string,word,.true.,ierr)
+    call fiReadWord(string,word,PETSC_TRUE,ierr)
     call fiErrorMsg(option%myrank,'keyword','REGION', ierr)
     call fiWordToUpper(word)   
 
@@ -336,13 +336,13 @@ subroutine RegionRead(region,fid,option)
           region%coordinates(icount)%z = coordinates(icount)%z
         enddo
       case('FILE')
-        call fiReadWord(string,word,.true.,ierr)
+        call fiReadWord(string,word,PETSC_TRUE,ierr)
         call fiErrorMsg(option%myrank,'filename','REGION', ierr)
         region%filename = word
       case('LIST')
         call printErrMsg(option,'REGION LIST currently not implemented')
       case('FACE')
-        call fiReadWord(string,word,.true.,ierr)
+        call fiReadWord(string,word,PETSC_TRUE,ierr)
         call fiErrorMsg(option%myrank,'face','REGION', ierr)
         call fiWordToUpper(word)
         select case(word)
@@ -438,13 +438,13 @@ subroutine RegionReadFromFileId(region,fid)
   temp_int_array = 0
   
   count = 0
-  continuation_flag = .true.
+  continuation_flag = PETSC_TRUE
   do
     if (.not.continuation_flag) exit
     call fiReadFlotranString(fid,string,ierr)
     if (ierr /= 0) exit
-    continuation_flag = .false.
-    if (index(string,backslash) > 0) continuation_flag = .true.
+    continuation_flag = PETSC_FALSE
+    if (index(string,backslash) > 0) continuation_flag = PETSC_TRUE
     ierr = 0
     do
       if (ierr /= 0) exit

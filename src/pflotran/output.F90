@@ -60,7 +60,7 @@ subroutine Output(realization,plot_flag)
       word = 'plot'
       if (OptionCheckTouch(realization%option,word)) then
         realization%output_option%plot_name = 'plot'
-        plot_flag = .true.
+        plot_flag = PETSC_TRUE
       endif
     endif
 
@@ -109,7 +109,7 @@ subroutine Output(realization,plot_flag)
   
   call OutputBreakthrough(realization)
 
-  plot_flag = .false.
+  plot_flag = PETSC_FALSE
 
   call PetscLogStagePop(ierr)
   
@@ -1491,7 +1491,7 @@ subroutine OutputBreakthroughTecplot(realization)
   type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
   type(breakthrough_type), pointer :: breakthrough
-  logical, save :: first = .true.
+  logical, save :: first = PETSC_TRUE
 
   call PetscLogEventBegin(logging%event_output_breakthrough, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -1522,7 +1522,7 @@ subroutine OutputBreakthroughTecplot(realization)
     ! open file
     fid = 86
     if (first) then
-      first = .false.
+      first = PETSC_FALSE
       open(unit=fid,file=filename,action="write",status="replace")
       ! write header
       ! write title
@@ -2550,7 +2550,7 @@ subroutine OutputHDF5(realization)
   
   character(len=MAXWORDLENGTH) :: filename = "pflotran.h5"
   character(len=MAXSTRINGLENGTH) :: string
-  logical, save :: first = .true.
+  logical, save :: first = PETSC_TRUE
   PetscReal, pointer :: array(:)
   PetscInt :: i
   
@@ -2837,7 +2837,7 @@ subroutine OutputHDF5(realization)
   call h5gclose_f(grp_id,hdf5_err)
   call h5fclose_f(file_id,hdf5_err)
   call h5close_f(hdf5_err)
-  first = .false.
+  first = PETSC_FALSE
 #endif
 end subroutine OutputHDF5
 
@@ -2885,10 +2885,10 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   PetscReal, allocatable :: array(:)
   PetscReal, pointer :: vec_ptr(:)
 
-  logical, save :: first = .true.
-  logical, save :: trick_flux_vel_x = .false.
-  logical, save :: trick_flux_vel_y = .false.
-  logical, save :: trick_flux_vel_z = .false.
+  logical, save :: first = PETSC_TRUE
+  logical, save :: trick_flux_vel_x = PETSC_FALSE
+  logical, save :: trick_flux_vel_y = PETSC_FALSE
+  logical, save :: trick_flux_vel_z = PETSC_FALSE
 
   Vec :: global_vec
 
@@ -2915,17 +2915,17 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
       nx_local = grid%structured_grid%nlx-1
     endif
     call MPI_Allreduce(nx_local,i,ONE_INTEGER,MPI_INTEGER,MPI_MIN,option%comm,ierr)
-    if (i == 0) trick_flux_vel_x = .true.
+    if (i == 0) trick_flux_vel_x = PETSC_TRUE
     if (grid%structured_grid%ngye-grid%structured_grid%nye == 0) then
       ny_local = grid%structured_grid%nly-1
     endif
     call MPI_Allreduce(ny_local,j,ONE_INTEGER,MPI_INTEGER,MPI_MIN,option%comm,ierr)
-    if (j == 0) trick_flux_vel_y = .true.
+    if (j == 0) trick_flux_vel_y = PETSC_TRUE
     if (grid%structured_grid%ngze-grid%structured_grid%nze == 0) then
       nz_local = grid%structured_grid%nlz-1
     endif
     call MPI_Allreduce(nz_local,k,ONE_INTEGER,MPI_INTEGER,MPI_MIN,option%comm,ierr)
-    if (k == 0) trick_flux_vel_z = .true.
+    if (k == 0) trick_flux_vel_z = PETSC_TRUE
   endif
 
   nx_local = grid%structured_grid%nlx
@@ -2941,19 +2941,19 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
       if (grid%structured_grid%ngxe-grid%structured_grid%nxe == 0) then
         nx_local = grid%structured_grid%nlx-1
       endif
-      if (trick_flux_vel_x) trick_hdf5 = .true.
+      if (trick_flux_vel_x) trick_hdf5 = PETSC_TRUE
     case(Y_DIRECTION)
       ny_global = grid%structured_grid%ny-1
       if (grid%structured_grid%ngye-grid%structured_grid%nye == 0) then
         ny_local = grid%structured_grid%nly-1
       endif
-      if (trick_flux_vel_y) trick_hdf5 = .true.
+      if (trick_flux_vel_y) trick_hdf5 = PETSC_TRUE
     case(Z_DIRECTION)
       nz_global = grid%structured_grid%nz-1
       if (grid%structured_grid%ngze-grid%structured_grid%nze == 0) then
         nz_local = grid%structured_grid%nlz-1
       endif
-      if (trick_flux_vel_z) trick_hdf5 = .true.
+      if (trick_flux_vel_z) trick_hdf5 = PETSC_TRUE
   end select  
   allocate(array(nx_local*ny_local*nz_local))
 
@@ -3004,8 +3004,8 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
 !GEH - Structured Grid Dependence - End
 
   deallocate(array)
-  trick_hdf5 = .false.
-  first = .false.
+  trick_hdf5 = PETSC_FALSE
+  first = PETSC_FALSE
 
 end subroutine WriteHDF5FluxVelocities
 

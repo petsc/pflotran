@@ -198,7 +198,7 @@ subroutine ImmisSetupPatch(realization)
   enddo
   patch%aux%Immis%aux_vars_bc => aux_vars_bc
   patch%aux%Immis%num_aux_bc = sum_connection
-  option%numerical_derivatives = .true.
+  option%numerical_derivatives = PETSC_TRUE
 
   print *,' ims setup get AuxBc point'
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
@@ -1447,9 +1447,9 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
     !print *, 'RES s/s begin'
     ! check whether enthalpy dof is included
   !  if (source_sink%flow_condition%num_sub_conditions > 3) then
-      enthalpy_flag = .true.
+      enthalpy_flag = PETSC_TRUE
    ! else
-   !   enthalpy_flag = .false.
+   !   enthalpy_flag = PETSC_FALSE
    ! endif
       
     psrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
@@ -1911,9 +1911,9 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     
     ! check whether enthalpy dof is included
   !  if (source_sink%flow_condition%num_sub_conditions > 3) then
-      enthalpy_flag = .true.
+      enthalpy_flag = PETSC_TRUE
    ! else
-   !   enthalpy_flag = .false.
+   !   enthalpy_flag = PETSC_FALSE
    ! endif
 
     psrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
@@ -2373,7 +2373,7 @@ print *,'zero rows point 3'
 print *,'zero rows point 4'
   call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
                      option%comm,ierr)
-  if (flag > 0) patch%aux%Immis%inactive_cells_exist = .true.
+  if (flag > 0) patch%aux%Immis%inactive_cells_exist = PETSC_TRUE
 
   if (ncount /= n_zero_rows) then
     print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows

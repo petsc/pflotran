@@ -60,7 +60,7 @@ function StrataCreate1()
   
   allocate(strata)
   strata%id = 0
-  strata%active = .true.
+  strata%active = PETSC_TRUE
   strata%material_name = ""
   strata%region_name = ""
   strata%iregion = 0
@@ -158,20 +158,20 @@ subroutine StrataRead(strata,fid,option)
     
     if (fiCheckExit(string)) exit  
 
-    call fiReadWord(string,keyword,.true.,ierr)
+    call fiReadWord(string,keyword,PETSC_TRUE,ierr)
     call fiErrorMsg(option%myrank,'keyword','STRATA', ierr)   
       
     select case(trim(keyword))
     
       case('REGION')
-        call fiReadWord(string,strata%region_name,.true.,ierr)
+        call fiReadWord(string,strata%region_name,PETSC_TRUE,ierr)
         call fiErrorMsg(option%myrank,'region name','STRATA', ierr)
       case('MATERIAL')
-        call fiReadWord(string,word,.true.,ierr)
+        call fiReadWord(string,word,PETSC_TRUE,ierr)
         call fiErrorMsg(option%myrank,'material name','STRATA', ierr)
         strata%material_name = word
       case('INACTIVE')
-        strata%active = .false.
+        strata%active = PETSC_FALSE
     end select 
   
   enddo  

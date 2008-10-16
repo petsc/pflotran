@@ -2008,7 +2008,7 @@ subroutine RichardsCreateZeroArray(patch,option)
   
   call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
                      option%comm,ierr)
-  if (flag > 0) patch%aux%Richards%inactive_cells_exist = .true.
+  if (flag > 0) patch%aux%Richards%inactive_cells_exist = PETSC_TRUE
 
   if (ncount /= n_zero_rows) then
     print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows

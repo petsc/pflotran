@@ -242,7 +242,7 @@ function OptionCreate()
   option%disp = 0.d0
   
   option%generalized_grid = ""
-  option%use_generalized_grid = .false.
+  option%use_generalized_grid = PETSC_FALSE
 
   option%restart_flag = PETSC_FALSE
   option%restart_file = ""
@@ -256,13 +256,13 @@ function OptionCreate()
   
   option%log_stage = 0
   
-  option%numerical_derivatives = .false.
-  option%compute_statistics = .false.
-  option%compute_mass_balance = .false.
+  option%numerical_derivatives = PETSC_FALSE
+  option%compute_statistics = PETSC_FALSE
+  option%compute_mass_balance = PETSC_FALSE
 
-  option%use_touch_options = .false.
-  option%overwrite_restart_transport = .false.
-  option%overwrite_restart_flow_params = .false.
+  option%use_touch_options = PETSC_FALSE
+  option%overwrite_restart_transport = PETSC_FALSE
+  option%overwrite_restart_flow_params = PETSC_FALSE
 
   
   option%io_handshake_buffer_size = 0
@@ -291,12 +291,12 @@ function OutputOptionCreate()
   type(output_option_type), pointer :: output_option
   
   allocate(output_option)
-  output_option%print_hdf5 = .false.
-  output_option%print_hdf5_velocities = .false.
-  output_option%print_hdf5_flux_velocities = .false.
-  output_option%print_tecplot = .false.
-  output_option%print_tecplot_velocities = .false.
-  output_option%print_tecplot_flux_velocities = .false.
+  output_option%print_hdf5 = PETSC_FALSE
+  output_option%print_hdf5_velocities = PETSC_FALSE
+  output_option%print_hdf5_flux_velocities = PETSC_FALSE
+  output_option%print_tecplot = PETSC_FALSE
+  output_option%print_tecplot_velocities = PETSC_FALSE
+  output_option%print_tecplot_flux_velocities = PETSC_FALSE
   output_option%plot_number = 0
   output_option%plot_name = ""
 
@@ -485,7 +485,7 @@ function OptionCheckTouch(option,filename)
   logical :: OptionCheckTouch
   PetscErrorCode :: ierr
   
-  OptionCheckTouch = .false.
+  OptionCheckTouch = PETSC_FALSE
 
   if (option%myrank == 0) &
     open(unit=fid,file=trim(filename),status='old',iostat=ios)
@@ -493,7 +493,7 @@ function OptionCheckTouch(option,filename)
 
   if (ios == 0) then
     if (option%myrank == 0) close(fid,status='delete')
-    OptionCheckTouch = .true.
+    OptionCheckTouch = PETSC_TRUE
   endif
 
 end function OptionCheckTouch

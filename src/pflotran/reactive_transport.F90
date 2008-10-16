@@ -1981,7 +1981,7 @@ subroutine RKineticMineralDerivative(Res,Jac,auxvar,volume,reaction,option)
   PetscInt :: icomp, jcomp
 
   if (option%numerical_derivatives) then
-! if (.true.) then
+! if (PETSC_TRUE) then
     call RTAuxVarInit(auxvar_pert,option)
     call RTAuxVarCopy(auxvar_pert,auxvar,option)
     call RKineticMineral(Res_orig,Jac_dummy,PETSC_FALSE,auxvar,volume,reaction,option)
