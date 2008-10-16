@@ -2210,14 +2210,12 @@ subroutine assignInitialConditions(realization)
                 endif
               endif
               ! minerals              
-#if 0
-              if (associated(initial_condition%tran_condition%cur_constraint_coupler%constraint%minerals)) then
+              if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
                 do idof = 1, option%nmnrl
                   cur_patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
-                    initial_condition%tran_condition%cur_constraint_coupler%constraint%minerals%conc(idof)
+                    initial_condition%tran_condition%cur_constraint_coupler%minerals%conc(idof)
                 enddo
               endif
-#endif              
             enddo
           else
             do iconn=1,initial_condition%connection_set%num_connections
@@ -2229,14 +2227,12 @@ subroutine assignInitialConditions(realization)
                 endif
               endif
               ! minerals 
-#if 0                           
-              if (associated(initial_condition%tran_condition%cur_constraint_coupler%constraint%minerals)) then
+              if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
                 do idof = 1, option%nmnrl
                   cur_patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
-                    initial_condition%tran_condition%cur_constraint_coupler%constraint%minerals%conc(idof)
+                    initial_condition%tran_condition%cur_constraint_coupler%minerals%conc(idof)
                 enddo
               endif
-#endif              
             enddo
           endif
           initial_condition => initial_condition%next

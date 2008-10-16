@@ -155,7 +155,8 @@ subroutine DatabaseRead(reaction,option)
         
         if (num_nulls > 0) then ! secondary species in database
           ! create aqueous equilibrium reaction
-          cur_aq_spec%eqrxn => EquilibriumRxnCreate()
+          if (.not.associated(cur_aq_spec%eqrxn)) &
+            cur_aq_spec%eqrxn => EquilibriumRxnCreate()
           ! read the number of primary species in secondary rxn
           call fiReadDBaseInt(dbase_id,string,cur_aq_spec%eqrxn%nspec,ierr)
           call fiErrorMsg(option%myrank,'Number of species in aqueous complex', &
@@ -211,7 +212,8 @@ subroutine DatabaseRead(reaction,option)
         call fiReadDBaseDouble(dbase_id,string,cur_gas_spec%molar_volume,ierr)
         call fiErrorMsg(option%myrank,'GAS molar volume','DATABASE',ierr)            
         ! create aqueous equilibrium reaction
-        cur_gas_spec%eqrxn => EquilibriumRxnCreate()
+        if (.not.associated(cur_gas_spec%eqrxn)) &
+          cur_gas_spec%eqrxn => EquilibriumRxnCreate()
         ! read the number of aqueous species in secondary rxn
         call fiReadDBaseInt(dbase_id,string,cur_gas_spec%eqrxn%nspec,ierr)
         call fiErrorMsg(option%myrank,'Number of species in gas reaction', &
@@ -260,7 +262,8 @@ subroutine DatabaseRead(reaction,option)
         call fiReadDBaseDouble(dbase_id,string,cur_mineral%molar_volume,ierr)
         call fiErrorMsg(option%myrank,'MINERAL molar volume','DATABASE',ierr)            
         ! create mienral reaction
-        cur_mineral%tstrxn => TransitionStateTheoryRxnCreate()
+!        if (.not.associated(cur_mineral%tstrxn)) &
+          cur_mineral%tstrxn => TransitionStateTheoryRxnCreate()
         ! read the number of aqueous species in mineral rxn
         call fiReadDBaseInt(dbase_id,string,cur_mineral%tstrxn%nspec,ierr)
         call fiErrorMsg(option%myrank,'Number of species in mineral reaction', &

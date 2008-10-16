@@ -718,6 +718,10 @@ subroutine ConditionRead(condition,option,fid)
       case('CONC','CONCENTRATION')
         call ConditionReadValues(option,word,string,concentration%dataset, &
                                  sub_condition_ptr%units)
+      case default
+        string = 'Keyword: ' // trim(word) // &
+                 ' not recognized in flow condition'
+        call printErrMsg(option,string)                                 
     end select 
   
   enddo  
@@ -977,6 +981,9 @@ subroutine TranConditionRead(condition,constraint_list,option,fid)
         call printMsg(option,constraint%name)
         call TranConstraintRead(constraint,option,fid)
         call TranConstraintAddToList(constraint,constraint_list)
+        constraint_coupler%aqueous_species => constraint%aqueous_species
+        constraint_coupler%minerals => constraint%minerals
+        constraint_coupler%time = default_time
         ! add to end of coupler list
         if (.not.associated(condition%constraint_coupler_list)) then
           condition%constraint_coupler_list => constraint_coupler

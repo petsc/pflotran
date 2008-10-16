@@ -325,8 +325,8 @@ subroutine ReactionInitializeConstraint(constraint_name, &
   implicit none
   
   character(len=MAXNAMELENGTH) :: constraint_name
-  type(aq_species_constraint_type) :: aq_species_constraint
-  type(mineral_constraint_type) :: mineral_constraint
+  type(aq_species_constraint_type), pointer :: aq_species_constraint
+  type(mineral_constraint_type), pointer :: mineral_constraint
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -354,25 +354,27 @@ subroutine ReactionInitializeConstraint(constraint_name, &
     endif
   enddo
   
-  do icomp = 1, option%nmnrl
-    found = PETSC_FALSE
-    do jcomp = 1, option%nmnrl
-      if (fiStringCompare(mineral_constraint%names(icomp), &
-                          option%mnrl_names(jcomp), &
-                          MAXNAMELENGTH)) then
-        found = PETSC_TRUE
-        exit
-      endif
+  if (associated(mineral_constraint)) then
+    do icomp = 1, option%nmnrl
+      found = PETSC_FALSE
+      do jcomp = 1, option%nmnrl
+        if (fiStringCompare(mineral_constraint%names(icomp), &
+                            option%mnrl_names(jcomp), &
+                            MAXNAMELENGTH)) then
+          found = PETSC_TRUE
+          exit
+        endif
+      enddo
+      if (.not.found) then
+        string = 'Mineral ' // trim(mineral_constraint%names(icomp)) // &
+                 'from CONSTRAINT ' // trim(constraint_name) // &
+                 ' not found among primary species.'
+        call printErrMsg(option,string)
+      else
+        mineral_constraint%basis_conc(jcomp) = mineral_constraint%conc(icomp)
+      endif  
     enddo
-    if (.not.found) then
-      string = 'Mineral ' // trim(mineral_constraint%names(icomp)) // &
-               'from CONSTRAINT ' // trim(constraint_name) // &
-               ' not found among primary species.'
-      call printErrMsg(option,string)
-    else
-      mineral_constraint%basis_conc(jcomp) = mineral_constraint%conc(icomp)
-    endif  
-  enddo
+  endif
 
 end subroutine ReactionInitializeConstraint
 
