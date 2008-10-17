@@ -6,6 +6,7 @@ PRIMARY_SPECIES
 Na+
 K+
 Ca++
+Mg++
 Al(OH)4-
 H+
 UO2++
@@ -23,6 +24,9 @@ CO3--
 CaCO3(aq)
 CaHCO3+
 CaSO4(aq)
+MgCO3(aq)
+MgHCO3+
+MgSO4(aq)
 NaCl(aq)
 NaOH(aq)
 NaHCO3(aq)
@@ -116,8 +120,12 @@ END
 END
 END
 noskip
+:DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
 DATABASE ../../database/hanford.dat
 /
+:
+:      steps    iaccel newtmx icutmx    dpmx   dtmpmx   dcmx      dsmx
+:TOLR   50000        5     16      16      1.e4     2.   .25e-1    0.1
 :
 :NUMERICAL_JACOBIAN
 :INEXACT_NEWTON
@@ -187,12 +195,12 @@ Soil1   1  1    1    0.25 0.5 1.d-12    1.d-12    1.d-13    1.d0
 :
 :TIME d every 10
 TIME y
-1.
+1.e-3
 :
 :DTST 1.d-6
 DTST 1.d-6
 :50. 1.0d0 
-50. 0.1d0 
+50. 0.1d-0 
 :
 REGION all
 BLOCK 1 10 1 1 1 1
@@ -261,35 +269,37 @@ END
 
 CONSTRAINT Inlet
 CONCENTRATIONS
-Na+ 1.e-3
-K+ 1.e-4
-H+ 1.4207389178d-5
-HCO3- 1.0027999691d-3
-Ca++ 1.d-40
-Al(OH)4- 1.e-8
-Cl- 1.e-3
-NO3- 1.e-4
-SO4-- 1.e-4
-UO2++ 1.e-8
-SiO2(aq) 1.e-4
-O2(aq) 1.e-6
+Ca++     1.26734e-4       T
+Mg++     4.80169e-4       T
+Na+      9.89662e-4       T
+K+       1.77629e-4       T
+H+       5.01187e-8       T
+NO3-     3.4012e-4        T
+SO4--    5.56801e-5       T
+Cl-      6.54794e-4       T
+HCO3-    2.56907e-3       T
+Al(OH)4- 1.e-8            T
+UO2++    1.85272e-7       T
+SiO2(aq) 1.e-4            T
+O2(aq)   3.58138e-4       T
 /
 /
 
 CONSTRAINT initial
 CONCENTRATIONS
-Na+ 0.1
-K+ 1.e-4
-H+ 1.4207389178d-8
-HCO3- 1.0027999691d-3
-Ca++ 1.0027999691d-5
-Al(OH)4- 1.e-8
-Cl- 0.1
-NO3- 1.e-4
-SO4-- 1.e-4
-UO2++ 1.e-8
-SiO2(aq) 1.e-4
-O2(aq) 1.e-6
+Ca++     1.26734e-4       T
+Mg++     4.80169e-4       T
+Na+      9.89662e-4       T
+K+       1.77629e-4       T
+H+       5.01187e-8       T
+NO3-     3.4012e-4        T
+SO4--    5.56801e-5       T
+Cl-      6.54794e-4       T
+HCO3-    2.56907e-3       T
+Al(OH)4- 1.e-8            T
+UO2++    1.85272e-7       T
+SiO2(aq) 1.e-4            T
+O2(aq)   3.58138e-4       T
 /
 MINERALS
 Calcite 0.001
