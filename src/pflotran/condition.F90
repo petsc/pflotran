@@ -1066,7 +1066,8 @@ subroutine TranConstraintRead(constraint,option,fid)
           call fiReadWord(string,aq_species_constraint%names(icomp), &
                           PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'aqueous species name', &
-                          'CONSTRAINT,CONCENTRATIONS', ierr)  
+                          'CONSTRAINT,CONCENTRATIONS', ierr) 
+          call printMsg(option,trim(aq_species_constraint%names(icomp)))
           call fiReadDouble(string,aq_species_constraint%conc(icomp),ierr)
           call fiErrorMsg(option%myrank,'concentration', &
                           'CONSTRAINT,CONCENTRATIONS', ierr)          
@@ -1126,6 +1127,7 @@ subroutine TranConstraintRead(constraint,option,fid)
                           PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'mineral name', &
                           'CONSTRAINT,CONCENTRATIONS', ierr)  
+          call printMsg(option,trim(mineral_constraint%names(icomp)))
           call fiReadDouble(string,mineral_constraint%conc(icomp),ierr)
           call fiErrorMsg(option%myrank,'concentration', &
                           'CONSTRAINT,CONCENTRATIONS', ierr)          

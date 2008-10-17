@@ -116,7 +116,7 @@ END
 END
 END
 noskip
-DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
+DATABASE ../../database/hanford.dat
 /
 :
 :NUMERICAL_JACOBIAN
@@ -168,7 +168,7 @@ TECP VELO !FLUX
 DIFF  1.D-9       12.6
 :
 : Richards Equation Pref
-RICH 101325.
+REFERENCE_PRESSURE 101325.
 :
 SATURATION_FUNCTIONS
 :id itype swir   lambda alpha     pcwmax betac pwr
@@ -292,8 +292,8 @@ SiO2(aq) 1.e-4
 O2(aq) 1.e-6
 /
 MINERALS
-MINERAL Calcite 0.001
-MINERAL Kaolinite 0.0
+Calcite 0.001
+Kaolinite 0.0
 /
 
 BOUNDARY_CONDITION

@@ -80,6 +80,7 @@ PetscInt, parameter :: CONCENTRATION_SS = 9
 PetscInt, parameter :: EQUILIBRIUM_SS = 10
 
 ! concentration subcondition types
+PetscInt, parameter :: CONSTRAINT_NULL = 0
 PetscInt, parameter :: CONSTRAINT_FREE = 1
 PetscInt, parameter :: CONSTRAINT_TOTAL = 2
 PetscInt, parameter :: CONSTRAINT_P = 3

@@ -112,65 +112,6 @@ module Reaction_Aux_module
     PetscReal, pointer :: basis_conc(:)
   end type mineral_constraint_type
 
-#if 0
-! ************************************************************************** !
-!
-! AqueousSpeciesConstraintCreate: Creates an aqueous species constraint 
-!                                 object
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
-function AqueousSpeciesConstraintCreate(option)
-
-  use Option_module
-  
-  implicit none
-  
-  type(aq_species_constraint_type), pointer :: constraint
-  
-  type(aq_species_constraint_type), pointer :: AqueousSpeciesConstraintCreate
-
-  allocate(constraint)
-  nullify(constraint%names)
-  nullify(constraint%conc)
-  nullify(constraint%basis_conc)
-  nullify(constraint%constraint_type)
-  nullify(constraint%constraint_spec_name)
-
-  AqueousSpeciesConstraintCreate => constraint
-
-end function AqueousSpeciesConstraintCreate
-
-! ************************************************************************** !
-!
-! MineralConstraintCreate: Creates a mineral constraint object
-! author: Glenn Hammond
-! date: 10/14/08
-!
-! ************************************************************************** !
-function MineralConstraintCreate(option)
-
-  use Option_module
-  
-  implicit none
-  
-  type(mineral_constraint_type), pointer :: constraint
-  
-  type(mineral_constraint_type), pointer :: MineralConstraintCreate
-
-  allocate(constraint)
-  nullify(constraint%names)
-  nullify(constraint%conc)
-  nullify(constraint%basis_conc)
-  nullify(constraint%constraint_type)
-  nullify(constraint%constraint_spec_name)
-
-  MineralConstraintCreate => constraint
-
-end function MineralConstraintCreate
-#endif
-
   type, public :: reaction_type
     character(len=MAXSTRINGLENGTH) :: database_filename
     PetscInt :: num_dbase_temperatures
@@ -238,6 +179,7 @@ end function MineralConstraintCreate
     PetscReal, pointer :: kinsurfcmplx_Z(:)  ! valence
 #endif    
     ! mineral reactions
+    PetscInt :: nmnrl
     character(len=MAXNAMELENGTH), pointer :: mineral_names(:)
       ! for saturation states
     PetscInt, pointer :: mnrlspecid(:,:)
@@ -246,6 +188,7 @@ end function MineralConstraintCreate
     PetscReal, pointer :: mnrl_molar_vol(:)
       ! for kinetic reactions
     PetscInt :: nkinmnrl
+    character(len=MAXNAMELENGTH), pointer :: kinmnrl_names(:)
     PetscInt, pointer :: kinmnrlspecid(:,:)
     PetscReal, pointer :: kinmnrlstoich(:,:)
     PetscInt, pointer :: kinmnrlh2oid(:)
@@ -323,6 +266,7 @@ function ReactionCreate()
   nullify(reaction%surface_complex_names)
   nullify(reaction%ion_exchange_names)
   nullify(reaction%mineral_names)
+  nullify(reaction%kinmnrl_names)
   
   reaction%ncomp = 0
   nullify(reaction%primary_spec_a0)
@@ -376,6 +320,7 @@ function ReactionCreate()
   nullify(reaction%kinsurfcmplx_Z)
 #endif
 
+  reaction%nmnrl = 0  
   nullify(reaction%mnrlspecid)
   nullify(reaction%mnrlstoich)
   nullify(reaction%mnrl_logK)
@@ -1179,6 +1124,8 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%surface_complex_names)
   if (associated(reaction%mineral_names)) deallocate(reaction%mineral_names)
   nullify(reaction%mineral_names)
+  if (associated(reaction%kinmnrl_names)) deallocate(reaction%kinmnrl_names)
+  nullify(reaction%kinmnrl_names)
   
   if (associated(reaction%primary_spec_a0)) deallocate(reaction%primary_spec_a0)
   nullify(reaction%primary_spec_a0)

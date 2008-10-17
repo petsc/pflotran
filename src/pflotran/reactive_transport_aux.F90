@@ -161,6 +161,7 @@ subroutine RTAuxVarCopy(aux_var, aux_var2,option)
 
 end subroutine RTAuxVarCopy
 
+
 ! ************************************************************************** !
 !
 ! RTAuxVarDestroy: Deallocates a reactive transport auxilliary object
