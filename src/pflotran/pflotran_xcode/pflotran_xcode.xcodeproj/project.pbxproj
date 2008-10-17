@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
+		231D7CA50EA8DAEE00EA586F /* reaction_aux.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = reaction_aux.F90; path = ../reaction_aux.F90; sourceTree = SOURCE_ROOT; };
 		2329A3DA0DC0F3F900AB44B2 /* amrgrid.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = amrgrid.F90; path = ../amrgrid.F90; sourceTree = SOURCE_ROOT; };
 		2329A3DB0DC0F3F900AB44B2 /* amrstubs.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = amrstubs.F90; path = ../amrstubs.F90; sourceTree = SOURCE_ROOT; };
 		2329A3DC0DC0F3F900AB44B2 /* auxilliary.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = auxilliary.F90; path = ../auxilliary.F90; sourceTree = SOURCE_ROOT; };
@@ -169,6 +170,7 @@
 				2366A7C00D86058C0003BB1F /* ptran_speciation.F90 */,
 				2366A7C10D86058C0003BB1F /* ptran_update.F90 */,
 				2366A7C30D86058C0003BB1F /* reaction.F90 */,
+				231D7CA50EA8DAEE00EA586F /* reaction_aux.F90 */,
 				2366A7C50D86058C0003BB1F /* reactive_transport.F90 */,
 				2366A7C40D86058C0003BB1F /* reactive_transport_aux.F90 */,
 				2366A7C60D86058C0003BB1F /* realization.F90 */,
