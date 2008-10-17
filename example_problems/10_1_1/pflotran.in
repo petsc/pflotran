@@ -82,9 +82,6 @@ TECP VELO !FLUX
 :
 DIFF  1.D-9       12.6
 :
-: Richards Equation Pref
-RICH 101325.
-:
 SATURATION_FUNCTIONS
 :id itype swir   lambda alpha     pcwmax betac pwr
  1  2     0.10   2.67   2.042d-4  1.e8   0.d0  1.d0

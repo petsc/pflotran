@@ -1222,10 +1222,10 @@ subroutine readInput(simulation,filename)
 #endif     
 !......................
 
-      case('RICH')
-        call fiReadStringErrorMsg(option%myrank,'RICH',ierr)
+      case('REFERENCE_PRESSURE')
+        call fiReadStringErrorMsg(option%myrank,'REFERENCE_PRESSURE',ierr)
         call fiReadDouble(string,option%pref,ierr)
-        call fiDefaultMsg(option%myrank,'Ref. Pressure',ierr) 
+        call fiDefaultMsg(option%myrank,'Reference Pressure',ierr) 
 
 !......................
 

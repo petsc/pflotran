@@ -46,8 +46,6 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   
   PetscReal :: structured_pressure(grid%structured_grid%nz)
   
-  PetscReal, parameter :: patm = 101325.d0
-  
   type(flow_condition_type), pointer :: condition
   
   type(connection_set_type), pointer :: cur_connection_set
@@ -103,7 +101,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       coupler%aux_real_var(2,iconn) = temperature
       coupler%aux_real_var(3,iconn) = condition%cur_value(3)
 
-      if (pressure > patm) then
+      if (pressure > option%pref) then
         coupler%aux_int_var(1,iconn) = condition%iphase
       else
         coupler%aux_int_var(1,iconn) = 3

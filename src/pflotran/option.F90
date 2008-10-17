@@ -76,14 +76,14 @@ module Option_module
     
     PetscInt :: ideriv
     PetscInt :: idt_switch = -1
-    PetscReal :: tref,pref
+    PetscReal :: tref
+    PetscReal :: pref
     
     PetscReal :: disp
     
 !   table lookup
     PetscInt :: itable=0
     PetscInt :: co2eos=EOS_SPAN_WAGNER
-    
 
     PetscTruth :: restart_flag
     PetscReal :: restart_time
@@ -204,6 +204,9 @@ function OptionCreate()
       ! seems good practice to set them to sensible values when a pflowGrid
       ! is created.
 !-----------------------------------------------------------------------
+  option%pref = 101325.d0
+  option%tref = 25.d0
+  
   allocate(option%tfac(13))
       
   option%tfac(1)  = 2.0d0; option%tfac(2)  = 2.0d0
