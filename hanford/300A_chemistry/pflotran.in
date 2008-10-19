@@ -1,6 +1,7 @@
 :Description: 1D problem for testing geochemistry
-:
+ 
 MODE RICHARDS
+
 CHEMISTRY
 PRIMARY_SPECIES
 Na+
@@ -63,11 +64,25 @@ CO2(g)
 /
 MINERALS
 Calcite
+Magnesite
+Gibbsite
 Kaolinite
+K-Feldspar
+Muscovite
+Quartz
+Chalcedony
+SiO2(am)
 /
 MINERAL_KINETICS
 Calcite 1.d-6
+Magnesite  0.0
+Gibbsite   0.0
 Kaolinite 1.e-12
+K-Feldspar 0.0
+Muscovite  0.0
+Quartz     0.0
+Chalcedony 0.0
+SiO2(am)   0.0
 /
 skip
 SORPTION
@@ -77,56 +92,60 @@ SITE >SOH(w) 1.e-6
 COMPLEXES
 >NPPSOUO2OH
 >NPPSOUO2(HCO3)2-
-END
-END
+/
+/
 SURFACE_COMPLEXATION_RXN
 MINERAL Calcite 10.
 SITE >SOH(s) 1.e-6
 COMPLEXES
 >NPPSOUO2OH
 >NPPSOUO2(HCO3)2-
-END
-END
+/
+/
 SURFACE_COMPLEXATION_RXN
 MINERAL Kaolinite 5.
 SITE >SOH(w) 1.e-6
 COMPLEXES
 >NPPSOUO2OH
 >NPPSOUO2(HCO3)2-
-END
-END
+/
+/
 SURFACE_COMPLEXATION_RXN
 MINERAL Kaolinite 5.
 SITE >SOH(s) 1.e-6
 COMPLEXES
 >NPPSOUO2OH
 >NPPSOUO2(HCO3)2-
-END
-END
+/
+/
 ION_EXCHANGE_RXN
 MINERAL Calcite
 CEC 1.e-1
 CATION Na+ 1.
 CATION K+  1.e-3
 CATION Ca++ 1.e-4
-END
-END
+/
+/
 ION_EXCHANGE_RXN
 MINERAL Kaolinite
 CEC 1.e-3
 CATION Na+  1.
 CATION Ca++ 1.e-6
-END
-END
-END
+/
+/
+/
 noskip
-:DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
-DATABASE ../../database/hanford.dat
+DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
+:DATABASE ../../database/hanford.dat
 /
 :
-:      steps    iaccel newtmx icutmx    dpmx   dtmpmx   dcmx      dsmx
-:TOLR   50000        5     16      16      1.e4     2.   .25e-1    0.1
-:
+:CHECKPOINT 1
+:RESTART pflotran.chk1
+
+TIMESTEPPER
+:MAX_STEPS 5
+/
+
 :NUMERICAL_JACOBIAN
 :INEXACT_NEWTON
 :STATISTICS
@@ -150,7 +169,9 @@ DXYZ
 /
 /
 :
-NEWTON_SOLVER
+NEWTON_SOLVER FLOW
+:MATRIX_TYPE MFFD
+:PRECONDITIONER_MATRIX_TYPE AIJ
 :RTOL 1.d-8
 ATOL 1.d-6
 NO_INFINITY_NORM
@@ -158,14 +179,15 @@ NO_INFINITY_NORM
 :PRINT_DETAILED_CONVERGENCE
 /
 :
-LINEAR_SOLVER
-KSP_TYPE PREONLY
-PC_TYPE LU
+LINEAR_SOLVER FLOW
+:KSP_TYPE FGMRES
+:KSP_TYPE PREONLY
+:PC_TYPE LU
 /
 :
 LINEAR_SOLVER TRANSPORT
-KSP_TYPE PREONLY
-PC_TYPE LU
+:KSP_TYPE PREONLY
+:PC_TYPE LU
 /
 :
 :STATISTICS
@@ -174,9 +196,6 @@ PC_TYPE LU
 TECP VELO !FLUX
 :
 DIFF  1.D-9       12.6
-:
-: Richards Equation Pref
-REFERENCE_PRESSURE 101325.
 :
 SATURATION_FUNCTIONS
 :id itype swir   lambda alpha     pcwmax betac pwr
@@ -195,12 +214,12 @@ Soil1   1  1    1    0.25 0.5 1.d-12    1.d-12    1.d-13    1.d0
 :
 :TIME d every 10
 TIME y
-1.e-3
+10.
 :
 :DTST 1.d-6
 DTST 1.d-6
 :50. 1.0d0 
-50. 0.1d-0 
+50. 0.1d0 
 :
 REGION all
 BLOCK 1 10 1 1 1 1
@@ -258,14 +277,14 @@ TRANSPORT_CONDITION Inlet_c
 TYPE dirichlet
 CONSTRAINT_LIST
 0.d0 Inlet
-END
-END
+/
+/
 TRANSPORT_CONDITION initial_c
 TYPE dirichlet
 CONSTRAINT_LIST
 0.d0 initial
-END
-END
+/
+/
 
 CONSTRAINT Inlet
 CONCENTRATIONS
@@ -274,13 +293,13 @@ Mg++     4.80169e-4       T
 Na+      9.89662e-4       T
 K+       1.77629e-4       T
 H+       5.01187e-8       T
-NO3-     3.4012e-4        T
+NO3-     9.19247e-4       T
 SO4--    5.56801e-5       T
 Cl-      6.54794e-4       T
 HCO3-    2.56907e-3       T
-Al(OH)4- 1.e-8            T
+Al(OH)4- 1.e-9            T
 UO2++    1.85272e-7       T
-SiO2(aq) 1.e-4            T
+SiO2(aq) 5.36989e-4       T
 O2(aq)   3.58138e-4       T
 /
 /
@@ -292,18 +311,25 @@ Mg++     4.80169e-4       T
 Na+      9.89662e-4       T
 K+       1.77629e-4       T
 H+       5.01187e-8       T
-NO3-     3.4012e-4        T
+NO3-     9.19247e-4       T
 SO4--    5.56801e-5       T
 Cl-      6.54794e-4       T
 HCO3-    2.56907e-3       T
-Al(OH)4- 1.e-8            T
+Al(OH)4- 1.e-9            T
 UO2++    1.85272e-7       T
-SiO2(aq) 1.e-4            T
+SiO2(aq) 5.36989e-4       T
 O2(aq)   3.58138e-4       T
 /
 MINERALS
-Calcite 0.001
-Kaolinite 0.0
+Calcite    0.1
+Magnesite  0.0
+Gibbsite   0.0
+Kaolinite  0.0
+K-Feldspar 0.0
+Muscovite  0.0
+Quartz     0.0
+Chalcedony 0.0
+SiO2(am)   0.0
 /
 
 BOUNDARY_CONDITION
