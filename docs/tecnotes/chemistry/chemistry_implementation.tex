@@ -932,7 +932,68 @@ END
 
 \setcounter{equation}{0}
 
-The above formulation for heterogeneous reactions also apply to colloids. This presents an added complication since now the solid phase is moving with the fluid. In this case the primary species transport equation contains contributions from both reactions with stationary solid grains and colloids. The aqueous phase primary species transport equations thus have the form
+The above formulation for heterogeneous reactions also apply to colloids, represented as $\A_c$. This presents an added complication since now the solid phase is moving with the fluid. In this case the primary species transport equation contains contributions from both reactions with stationary solid grains and colloids. The colloids themselves may react with the fluid through mineral precipitation and dissolution reactions. In addition, sorption through ion exchange and surface complexation may occur on the surfaces of colloids. These processes are described through the reactions
+\EQ
+\sum_j\nu_{jc}\A_j\arrows\A_c,
+\EN
+for precipitation and dissolution (formation and degradation), and
+\EQ
+>\!\!X_c + \sum_j\nu_{ji}^c\A_j\arrows >\!\!\A_i^c,
+\EN
+for surface complexation, and
+\EQ
+\dfrac{1}{z_j} \A_j + \dfrac{1}{z_i} X_{z_i}^c\A_i \arrows \dfrac{1}{z_i} \A_i + \dfrac{1}{z_j} X_{z_j}^c\A_j,
+\EN
+for ion exchange, with sorption sites $X_c$ and $X_{z_l}^c$.
+
+The colloid concentration $C_c$ is equal to the number of moles of colloids of type $c$, $N_c^{\rm coll}$, divided by the pore volume $V_p$
+\EQ
+C_c\eq\frac{N_c^{\rm coll}}{V_p}.
+\EN
+In the case of surface complexation reactions, the site concentration equal to the number of sorption sites $N_c^{\rm sites}$ associated with colloid $\A_c$ divided by the pore volume is defined as
+\EQ
+\omega_c\eq\frac{N_c^{\rm srf}}{V_p}.
+\EN
+The site concentration is related to the colloid concentration according to the equation
+\BA
+\omega_c &\eq\frac{N_c^{\rm srf}}{A_c}\frac{A_c}{M_c}\frac{M_c}{N_c^{\rm coll}}\frac{N_c^{\rm coll}}{V_p},\\
+&\eq \eta_c A_c^M W_c^{} C_c^{},\\
+&\eq\Gamma_c C_c,
+\EA
+where $\eta_c$ denotes the site density, $A_c^M$ the colloid area per mass of colloid, and $W_c$ represents the formula weight of the colloid, and $\Gamma_c$ is defined as
+\EQ
+\Gamma_c\eq\frac{N_c^{\rm sites}}{N_c^{\rm coll}}\eq \eta_c A_c^M W_c.
+\EN
+From the site conservation equation
+\EQ
+\omega_c\eq S_c + \sum_i S_i^c,
+\EN
+and mass action equation
+\EQ
+K_i^c\eq \frac{S_i^c}{S_c Q_i^c},
+\EN
+where
+\EQ
+Q_i^c\eq\prod_j \big(\gamma_j C_j\big)^{\nu_{ji}^c},
+\EN
+the free site and surface complex concentrations are found to be
+\EQ
+S_c\eq\frac{\Gamma_c C_c}{1+\sum_i K_i^cQ_i^c},
+\EN
+and
+\EQ
+S_i^c\eq \frac{K_i^cQ_i^c}{1+\sum_i K_{i'}^cQ_{i'}^c}\Gamma_c C_c .
+\EN
+
+In the case of ion exchange, the cation exchange capacity is related to the colloid concentration by the expression
+\BA
+Q_c &\eq \frac{N_c^{\rm ex}}{V_p},\\
+&\eq \frac{N_c^{\rm ex}}{M_c} \frac{M_c}{N_c^{\rm coll}}\frac{N_c^{\rm coll}}{V_p},\\
+&\eq {\rm CEC}_c W_c C_c,
+\EA
+where ${\rm CEC}_c$ denotes the cation exchange capacity in units of mol sites/kg colloid.
+
+The aqueous phase primary species transport equations thus have the form
 \EQ
 \frac{\p}{\p t}\varphi \Psi_j + \bnabla\bdot\bOmega_j \eq 
 -\sum_m\nu_{jm} \big(I_m +I_m^c\big) 
