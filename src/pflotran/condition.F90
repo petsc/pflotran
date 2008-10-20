@@ -1139,6 +1139,10 @@ subroutine TranConstraintRead(constraint,option,fid)
         endif
         constraint%minerals => mineral_constraint 
                             
+      case default
+        string = 'Keyword: ' // trim(word) // &
+                 ' not recognized in transport constraint'
+        call printErrMsg(option,string)
     end select 
   
   enddo  
