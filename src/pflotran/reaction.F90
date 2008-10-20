@@ -635,16 +635,18 @@ subroutine RReactionDerivative(Res,Jac,auxvar,volume,reaction,option)
 
   if (.not.option%numerical_derivatives) then ! analytical derivative
     compute_derivative = PETSC_TRUE
+    ! #1: add new reactions here
     if (reaction%nkinmnrl > 0) then
       call RKineticMineral(Res,Jac,compute_derivative,auxvar,volume,reaction,option)
     endif
-    ! #1: add new reactions here
   else ! numerical derivative
     compute_derivative = PETSC_FALSE
     call RTAuxVarInit(auxvar_pert,option)
     call RTAuxVarCopy(auxvar_pert,auxvar,option)
-    call RKineticMineral(Res_orig,Jac_dummy,compute_derivative,auxvar,volume,reaction,option)
     ! #2: add new reactions here
+    if (reaction%nkinmnrl > 0) then
+      call RKineticMineral(Res_orig,Jac_dummy,compute_derivative,auxvar,volume,reaction,option)
+    endif
     do jcomp = 1, reaction%ncomp
       call RTAuxVarCopy(auxvar_pert,auxvar,option)
       pert = auxvar_pert%primary_molal(jcomp)*perturbation_tolerance
@@ -657,11 +659,11 @@ subroutine RReactionDerivative(Res,Jac,auxvar,volume,reaction,option)
       call RTotal(auxvar_pert,reaction,option)
       !
 
+      ! #3: add new reactions here
       if (reaction%nkinmnrl > 0) then
         call RKineticMineral(Res_pert,Jac_dummy,compute_derivative,auxvar_pert, &
                              volume,reaction,option)
       endif
-      ! #3: add new reactions here
       do icomp = 1, reaction%ncomp
         Jac(icomp,jcomp) = Jac(icomp,jcomp) + (Res_pert(icomp)-Res_orig(icomp))/pert
       enddo
