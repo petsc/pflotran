@@ -628,15 +628,19 @@ subroutine RReactionDerivative(Res,Jac,auxvar,volume,reaction,option)
   PetscReal :: Jac_dummy(reaction%ncomp,reaction%ncomp)
   PetscReal :: pert
   type(reactive_transport_auxvar_type) :: auxvar_pert
+  PetscTruth :: compute_derivative
 
-  if (.not.option%numerical_derivatives) then
+  if (.not.option%numerical_derivatives) then ! analytical derivative
+    compute_derivative = PETSC_TRUE
+    ! add all reaction here and in "numerical derivative" condition too
     if (reaction%nkinmnrl > 0) then
-      call RKineticMineral(Res,Jac,PETSC_TRUE,auxvar,volume,reaction,option)
+      call RKineticMineral(Res,Jac,compute_derivative,auxvar,volume,reaction,option)
     endif
-  else
+  else ! numerical derivative
+    compute_derivative = PETSC_FALSE
     call RTAuxVarInit(auxvar_pert,option)
     call RTAuxVarCopy(auxvar_pert,auxvar,option)
-    call RKineticMineral(Res_orig,Jac_dummy,PETSC_FALSE,auxvar,volume,reaction,option)
+    call RKineticMineral(Res_orig,Jac_dummy,compute_derivative,auxvar,volume,reaction,option)
     do jcomp = 1, reaction%ncomp
       call RTAuxVarCopy(auxvar_pert,auxvar,option)
       pert = auxvar_pert%primary_molal(jcomp)*perturbation_tolerance
@@ -650,7 +654,7 @@ subroutine RReactionDerivative(Res,Jac,auxvar,volume,reaction,option)
       !
 
       if (reaction%nkinmnrl > 0) then
-        call RKineticMineral(Res_pert,Jac_dummy,PETSC_FALSE,auxvar_pert, &
+        call RKineticMineral(Res_pert,Jac_dummy,compute_derivative,auxvar_pert, &
                              volume,reaction,option)
       endif
       do icomp = 1, reaction%ncomp
@@ -809,13 +813,14 @@ end subroutine RTotal
 ! date: 09/04/08
 !
 ! ************************************************************************** !
-subroutine RKineticMineral(Res,Jac,derivative,auxvar,volume,reaction,option)
+subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
+                           reaction,option)
 
   use Option_module
   
   type(option_type) :: option
   type(reaction_type) :: reaction
-  PetscTruth :: derivative
+  PetscTruth :: compute_derivative
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
   PetscReal :: volume
@@ -931,7 +936,7 @@ subroutine RKineticMineral(Res,Jac,derivative,auxvar,volume,reaction,option)
       Res(icomp) = Res(icomp) + reaction%kinmnrlstoich(i,imnrl)*Im
     enddo 
     
-    if (.not. derivative) cycle   
+    if (.not. compute_derivative) cycle   
 
     ! calculate derivatives of rate with respect to free
     ! units = mol/sec
