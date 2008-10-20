@@ -144,6 +144,7 @@ module Reaction_Aux_module
     PetscReal :: debyeB  ! Debye-Huckel B coefficient
     PetscReal :: debyeBdot  ! Debye-Huckel Bdot coefficient
     ! ionx exchange reactions
+    PetscInt :: neqionx
     character(len=MAXNAMELENGTH), pointer :: ion_exchange_names(:)
     PetscInt, pointer :: eqionx_ncation(:)
     PetscReal, pointer :: eqionx_CEC(:)
@@ -156,6 +157,7 @@ module Reaction_Aux_module
     PetscInt, pointer :: kinionx_cationid(:)
     PetscInt, pointer :: kinionx_rxn_offset(:)
     ! surface complexation reactions
+    PetscInt :: neqsurfcmplx
     character(len=MAXNAMELENGTH), pointer :: surface_complex_names(:)
     PetscInt, pointer :: eqsurfcmplxspecid(:,:)
     PetscReal, pointer :: eqsurfcmplxstoich(:,:)
@@ -286,6 +288,7 @@ function ReactionCreate()
   reaction%debyeB = 0.d0
   reaction%debyeBdot = 0.d0
   
+  reaction%neqionx = 0
   nullify(reaction%eqionx_ncation)
   nullify(reaction%eqionx_CEC)
   nullify(reaction%eqionx_k)
@@ -298,6 +301,7 @@ function ReactionCreate()
   nullify(reaction%kinionx_cationid)
   nullify(reaction%kinionx_rxn_offset)
   
+  reaction%neqsurfcmplx = 0
   nullify(reaction%eqsurfcmplxspecid)
   nullify(reaction%eqsurfcmplxstoich)
   nullify(reaction%eqsurfcmplxh2oid)
