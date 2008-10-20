@@ -932,11 +932,12 @@ END
 
 \setcounter{equation}{0}
 
-The above formulation for heterogeneous reactions also apply to colloids, represented as $\A_c$. This presents an added complication since now the solid phase is moving with the fluid. In this case the primary species transport equation contains contributions from both reactions with stationary solid grains and colloids. The colloids themselves may react with the fluid through mineral precipitation and dissolution reactions. In addition, sorption through ion exchange and surface complexation may occur on the surfaces of colloids. These processes are described through the reactions
+The above formulation for heterogeneous reactions involving mineral precipitation/dissolution, ion exchange and surface complexation, also apply to colloids. This presents an added complication since now the solid phase is moving with the fluid. 
+In this case the primary species transport equation contains contributions from both reactions with stationary solid grains which may include filtered colloids and mobile colloids in solution. The colloids themselves may react with the fluid through mineral precipitation and dissolution reactions and sorption reactions through ion exchange and surface complexation at the colloid surface. In addition, sorption on colloids competes with the host rock minerals. These processes are described through the reactions
 \EQ
 \sum_j\nu_{jc}\A_j\arrows\A_c,
 \EN
-for precipitation and dissolution (formation and degradation), and
+for colloid $\A_c$, describing precipitation and dissolution (formation and degradation of colloid $\A_c$), and
 \EQ
 >\!\!X_c + \sum_j\nu_{ji}^c\A_j\arrows >\!\!\A_i^c,
 \EN
@@ -944,7 +945,11 @@ for surface complexation, and
 \EQ
 \dfrac{1}{z_j} \A_j + \dfrac{1}{z_i} X_{z_i}^c\A_i \arrows \dfrac{1}{z_i} \A_i + \dfrac{1}{z_j} X_{z_j}^c\A_j,
 \EN
-for ion exchange, with sorption sites $X_c$ and $X_{z_l}^c$.
+for ion exchange, with sorption sites $X_c$ and $X_{z_l}^c$. Finally, filtration processes may occur in which a mobile colloid becomes filtered by the porous rock matrix and becomes stationary. Conversely, stationary colloids may be remobilized into solution. These processes are described by a reaction of the form
+\EQ
+\A_c^f \arrows \A_c^s,
+\EN
+where $\A_c^f$ and $\A_c^s$ refer to mobile colloids in the fluid phase and stationary colloids, respectively.
 
 The colloid concentration $C_c$ is equal to the number of moles of colloids of type $c$, $N_c^{\rm coll}$, divided by the pore volume $V_p$
 \EQ
@@ -985,40 +990,81 @@ and
 S_i^c\eq \frac{K_i^cQ_i^c}{1+\sum_i K_{i'}^cQ_{i'}^c}\Gamma_c C_c .
 \EN
 
-In the case of ion exchange, the cation exchange capacity is related to the colloid concentration by the expression
+In the case of ion exchange, the site concentration is related to the colloid concentration and cation exchange capacity by the expression
 \BA
-Q_c &\eq \frac{N_c^{\rm ex}}{V_p},\\
+\omega_c^{\rm ex} &\eq \frac{N_c^{\rm ex}}{V_p},\\
 &\eq \frac{N_c^{\rm ex}}{M_c} \frac{M_c}{N_c^{\rm coll}}\frac{N_c^{\rm coll}}{V_p},\\
-&\eq {\rm CEC}_c W_c C_c,
+&\eq \Q_c W_c C_c,
 \EA
-where ${\rm CEC}_c$ denotes the cation exchange capacity in units of mol sites/kg colloid.
+where $\Q_c$ denotes the cation exchange capacity in units of mol sites/kg colloid.
 
-The aqueous phase primary species transport equations thus have the form
+Mass conservation equations for colloids, minerals, sorbed and aqueous species can now be written in the following forms. The colloid mass conservation equation has the form
 \EQ
-\frac{\p}{\p t}\varphi \Psi_j + \bnabla\bdot\bOmega_j \eq 
--\sum_m\nu_{jm} \big(I_m +I_m^c\big) 
-- \sum_k\nu_{jk}\big(I_k+I_k^c\big) 
+\frac{\p}{\p t}\varphi C_c^l + \bnabla\cdot\bF_c^l \eq -I_c^{ls} - I_c^l,
+\EN
+for mobile (liquid phase) colloids with concentration $C_c^l$, and
+\EQ
+\frac{\p C_c^s}{\p t} \eq I_c^{ls} - I_c^s,
+\EN
+for immobile colloids with concentration $C_c^s$ belonging to the solid phase. Combining these two equations leads to an alternative form in which the reaction rate does not appear explicitly
+\EQ
+\frac{\p}{\p t}\left(\varphi C_c^l + C_c^s\right) + \bnabla\cdot\bF_c^l \eq -I_c^f-I_c^s.
+\EN
+Surface complexes and free sorption sites for mobile and immobile colloids obey the conservation equations
+\EQ
+\frac{\p}{\p t}\varphi S_{ic}^l + \bnabla\cdot\bq_c S_{ic}^l \eq I_{ic}^l,
+\EN
+\EQ
+\frac{\p}{\p t}\varphi S_{ic}^s \eq I_{ic}^s,
+\EN
+\EQ
+\frac{\p}{\p t}\varphi S_{c}^l + \bnabla\cdot\bq_c S_{c}^l \eq -\sum_i I_{ic}^l,
+\EN
+and
+\EQ
+\frac{\p}{\p t}\varphi S_{c}^s \eq -\sum_i I_{ic}^s.
+\EN
+Aqueous phase primary species transport equations have the form
+\BA
+\frac{\p}{\p t}\varphi \Psi_j &+ \bnabla\bdot\bOmega_j \eq 
+-\sum_m\nu_{jm} I_m -\sum_{im}\nu_{ji}^mI_{im} \nonumber\\
+&-\sum_c \nu_{jc}^{} \big(I_c^l+I_c^s\big) 
+- \sum_{ic}^{}\nu_{ji}^c\big(I_{ic}^l+I_{ic}^s\big) 
 + \sum_r\nu_{jr}^{\kin}I_r^{\rm kin},
-\EN
-where mineral precipitation and dissolution and surface complexation reactions are considered. The superscript $c$ refers to colloids.  Ion exchange can be handled similarly. In addition to the stationary solid inventory, transport equations for colloids are needed of the form
-\EQ
-\frac{\p}{\p t} \varphi\R_c\varphi_m^c + \bnabla\bdot(\bq \varphi_m^c) \eq \overline V_m^{} I_m^c,
-\EN
-and for surface complexes
-\EQ
-\frac{\p}{\p t} \varphi\R_c S_k^c + \bnabla\bdot(\bq S_k^c) \eq I_k^c,
-\EN
-analogous to Eqns.\eqref{phim} and \eqref{surfcmplx} for stationary solid phases, but with an added flux term. The factor $\R_c$ in the accumulation term represents retardation of colloids due to filtration. Eliminating the surface complexation rates gives
-\BA\label{pricolloid}
-\frac{\p}{\p t}\bigg(\varphi\Psi_j + \sum_k\nu_{jk} \big(S_k+\varphi\R_c S_k^c\big)\bigg) + \bnabla\bdot\bigg(\bOmega_j +\bq \sum_k\nu_{jk}S_k^c\bigg) \eq &-\sum_m\nu_{jm} \big(I_m +I_m^c\big) \nonumber\\
-&+ \sum_r\nu_{jr}^{\kin}I_r^{\rm kin}.
 \EA
-Note that colloids are only transported by advection and not diffusion in this formulation. The same Darcy flow rate is assumed for the colloids as for the fluid phase, although colloids have been shown to actually move slightly faster because of their tendency to be concentrated away from the pore walls due to electrostatic repulsion.
+where mineral precipitation and dissolution and surface complexation reactions are considered. The superscript $c$ refers to colloids.  Ion exchange can be handled similarly. 
 
-From the primary species transport equations it is possible to define a retardation factor assuming constant aqueous and sorbed concentrations and neglecting diffusion. It follows that the transport equations can be expressed in the form
+Eliminating the surface complexation rates gives
+\BA\label{pricolloid}
+\frac{\p}{\p t}\bigg(\varphi\Psi_j + \sum_{im} \nu_{ji}^m S_{im} &+ \sum_{ic} \nu_{ji}^c \big(\varphi S_{ic}^l+S_{ic}^s\big)\bigg) + \bnabla\bdot\bigg(\bOmega_j +\bq_c \sum_{ic}\nu_{ji}^c S_{ic}^l\bigg) \eq \nonumber\\
+&-\sum_m\nu_{jm} I_m - \sum_{c}\nu_{jc}^{} \big(I_{c}^l+I_{c}^s\big) + \sum_r\nu_{jr}^{\kin}I_r^{\rm kin}.
+\EA
+Note that colloids are only transported by advection and not diffusion in this formulation. A different Darcy flow rate is assumed for the colloids compared to the fluid phase, because colloids have been shown to actually move slightly faster because of their tendency to be concentrated away from the pore walls due to electrostatic repulsion.
+
+From the primary species transport equations it is possible to define a retardation factor assuming constant aqueous and sorbed concentrations and neglecting diffusion by writing the transport equations in the form
+\BA\label{retcolloid}
+\frac{\p}{\p t}\big(\varphi \Psi_j\big) &+ \bnabla\bdot\bigg(\frac{\bq}{R_j} \Psi_j\bigg) \eq \nonumber\\
+&-\frac{1}{1+K_j^s + K_j^l}\left[\sum_m\nu_{jm} I_m + \sum_{c}\nu_{jc}^{} \big(I_{c}^l+I_{c}^s\big) - \sum_r\nu_{jr}^{\kin}I_r^{\rm kin}\right],
+\EA
+where the retardation factor $R_j$ is defined as
+\EQ
+R_j\eq 1+\dfrac{K_j^s}{1+K_j^l},
+\EN
+where the distribution coefficients $K_j$ for the stationary solid phase including contributions from minerals and colloids, and $K_j^l$ for colloids present in the aqueous phase are defined by
+\EQ
+K_j^s \eq \frac{1}{\varphi\Psi_j} \left[\sum_{im}\nu_{ji}^m S_{im} + \sum_{ic}\nu_{ji}^c S_{ic}^s\right],
+\EN
+and
+\EQ
+K_j^l \eq \frac{1}{\Psi_j} \sum_{ic}\nu_{ji}^c S_{ic}^l.
+\EN
+Note that if $K_j^l \!\geq\! K_j^s \!\gg\! 1$, $R_j\!\leq\! 2$, and there is little or no retardation. However, there still remains a reduction in kinetic homogeneous and heterogeneous rates. Finally, it should be noted that if colloids are to compete with stationary solid phase, they must be sufficiently concentrated to provide an equivalent surface site density (or cation exchange capacity).
+
+\begin{comment}
+From the primary species transport equations it is possible to define a retardation factor assuming constant aqueous and sorbed concentrations and neglecting diffusion by writing the transport equations in the form
 \EQ\label{retcolloid}
 \frac{\p}{\p t}\big(\varphi \Psi_j\big) + \bnabla\bdot\bigg(\frac{\bq}{R_j} \Psi_j\bigg) \eq -\frac{1}{1+K_j + \R_c K_j^c}\left[\sum_m\nu_{jm} \big(I_m +I_m^c\big) 
-+ \sum_r\nu_{jr}^{\kin}I_r^{\rm kin}\right],
+- \sum_r\nu_{jr}^{\kin}I_r^{\rm kin}\right],
 \EN
 where the retardation factor $R_j$ is defined as
 \EQ\label{retcol}
@@ -1037,6 +1083,7 @@ For $\R_c\!=\!1$, Eqn.\eqref{retcol} reduces to
 R_j\eq 1+\dfrac{K_j}{1+K_j^c},
 \EN
 Note that if $K_j^c \!\geq\! K_j \!\gg\! 1$, $R_j\!\leq\! 2$, and there is little or no retardation. However, there still remains a reduction in kinetic homogeneous and heterogeneous rates. Finally, it should be noted that if colloids are to compete with stationary solid phase, they must be sufficiently concentrated to provide an equivalent surface site density (or cation exchange capacity).
+\end{comment}
 
 \section{Solid Solutions}
 
