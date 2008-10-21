@@ -99,12 +99,6 @@ module Reaction_Aux_module
     PetscInt :: mineral_id
     character(len=MAXNAMELENGTH) :: mineral_name
     PetscReal :: site_density
-    PetscInt :: nspec
-    character(len=MAXNAMELENGTH), pointer :: spec_name(:)
-    PetscReal, pointer :: stoich(:)
-    PetscReal :: free_site_stoich
-    PetscReal, pointer :: logK(:)
-    PetscReal :: Z
     type(surface_complex_type), pointer :: complex_list
     type (surface_complexation_rxn_type), pointer :: next
   end type surface_complexation_rxn_type    
@@ -149,7 +143,7 @@ module Reaction_Aux_module
     type(gas_species_type), pointer :: gas_species_list
     type(mineral_type), pointer :: mineral_list
     type(ion_exchange_rxn_type), pointer :: ion_exchange_list
-    type(surface_complexation_rxn_type), pointer :: surface_complex_list
+    type(surface_complexation_rxn_type), pointer :: surface_complexation_rxn_list
     ! compressed arrays for efficient computation
     ! primary aqueous complexes
     PetscInt :: ncomp
@@ -257,7 +251,8 @@ module Reaction_Aux_module
             AqueousSpeciesConstraintDestroy, &
             MineralConstraintDestroy, &
             AqueousSpeciesConstraintCreate, &
-            MineralConstraintCreate
+            MineralConstraintCreate, &
+            SurfaceComplexCreate
              
 contains
 
@@ -289,7 +284,7 @@ function ReactionCreate()
   nullify(reaction%gas_species_list)
   nullify(reaction%mineral_list)
   nullify(reaction%ion_exchange_list)
-  nullify(reaction%surface_complex_list)
+  nullify(reaction%surface_complexation_rxn_list)
   
   nullify(reaction%primary_species_names)
   nullify(reaction%secondary_species_names)
@@ -570,18 +565,25 @@ function SurfaceComplexationRxnCreate()
 end function SurfaceComplexationRxnCreate
 #endif
 
+! ************************************************************************** !
+!
+! SurfaceComplexationRxnCreate: Allocate and initialize a surface complexation
+!                               reaction
+! author: Peter Lichtner
+! date: 10/21/08
+!
+! ************************************************************************** !
 function SurfaceComplexationRxnCreate()
 
   implicit none
     
   type(surface_complexation_rxn_type), pointer :: SurfaceComplexationRxnCreate
+
   type(surface_complexation_rxn_type), pointer :: surfcplxrxn
-  type(surface_complex_type) :: complex_list
   
   allocate(surfcplxrxn)
   surfcplxrxn%free_site_id = 0
   surfcplxrxn%free_site_name = ''
-! surfcplxrxn%free_site_stoich = 0
   surfcplxrxn%mineral_id = 0
   surfcplxrxn%mineral_name = ''
   surfcplxrxn%site_density = 0.d0
@@ -589,24 +591,24 @@ function SurfaceComplexationRxnCreate()
   nullify(surfcplxrxn%complex_list)
   nullify(surfcplxrxn%next)
   
-! surfcplxrxn%nspec = 0
-! surfcplxrxn%Z = 0.d0
-! nullify(surfcplxrxn%spec_name)
-! nullify(surfcplxrxn%stoich)
-! nullify(surfcplxrxn%spec_ids)
-! nullify(surfcplxrxn%logK)
-  
   SurfaceComplexationRxnCreate => surfcplxrxn
   
 end function SurfaceComplexationRxnCreate
 
+! ************************************************************************** !
+!
+! SurfaceComplexCreate: Allocate and initialize a surface complexreaction
+! author: Peter Lichtner
+! date: 10/21/08
+!
+! ************************************************************************** !
 function SurfaceComplexCreate()
 
   implicit none
     
   type(surface_complex_type), pointer :: SurfaceComplexCreate
+
   type(surface_complex_type), pointer :: srfcmplx
-  type(equilibrium_rxn_type), pointer :: eqrxn
   
   allocate(srfcmplx)
   srfcmplx%id = 0
@@ -615,19 +617,9 @@ function SurfaceComplexCreate()
   nullify(srfcmplx%eqrxn)
   nullify(srfcmplx%next)
   
-! srfcplx%mineral_id = 0
-! srfcplx%mineral_name = ''
-! srfcplx%free_site_stoich = 0
-! srfcplx%nspec = 0
-! nullify(srfcplx%spec_name)
-! nullify(srfcplx%stoich)
-! nullify(srfcplx%spec_ids)
-! nullify(srfcplx%logK)
-  
   SurfaceComplexCreate => srfcmplx
   
 end function SurfaceComplexCreate
-
 
 ! ************************************************************************** !
 !
@@ -1034,32 +1026,59 @@ end subroutine IonExchangeRxnDestroy
 !
 ! SurfaceComplexationRxnDestroy: Deallocates a surface complexation reaction
 ! author: Glenn Hammond
-! date: 05/29/08
+! date: 10/21/08
 !
 ! ************************************************************************** !
-#if 0
 subroutine SurfaceComplexationRxnDestroy(surfcplxrxn)
 
   implicit none
     
   type(surface_complexation_rxn_type), pointer :: surfcplxrxn
 
+  type(surface_complex_type), pointer :: cur_surfcplx, prev_surfcplx
+  
   if (.not.associated(surfcplxrxn)) return
   
-  if (associated(surfcplxrxn%spec_name)) deallocate(surfcplxrxn%spec_name)
-  nullify(surfcplxrxn%spec_name)
-  if (associated(surfcplxrxn%spec_ids)) deallocate(surfcplxrxn%spec_ids)
-  nullify(surfcplxrxn%spec_ids)
-  if (associated(surfcplxrxn%stoich)) deallocate(surfcplxrxn%stoich)
-  nullify(surfcplxrxn%stoich)
-  if (associated(surfcplxrxn%logK)) deallocate(surfcplxrxn%logK)
-  nullify(surfcplxrxn%logK)
-
+  cur_surfcplx => surfcplxrxn%complex_list
+  do
+    if (.not.associated(cur_surfcplx)) exit
+    prev_surfcplx => cur_surfcplx
+    cur_surfcplx => cur_surfcplx%next
+    call SurfaceComplexDestroy(prev_surfcplx)
+    nullify(prev_surfcplx)
+  enddo
+  
   deallocate(surfcplxrxn)  
   nullify(surfcplxrxn)
 
 end subroutine SurfaceComplexationRxnDestroy
-#endif
+
+! ************************************************************************** !
+!
+! SurfaceComplexDestroy: Deallocates a surface complex
+! author: Glenn Hammond
+! date: 10/21/08
+!
+! ************************************************************************** !
+subroutine SurfaceComplexDestroy(surfcplx)
+
+  implicit none
+    
+  type(surface_complex_type), pointer :: surfcplx
+
+  if (.not.associated(surfcplx)) return
+  
+  call EquilibriumRxnDestroy(surfcplx%eqrxn)
+  nullify(surfcplx%eqrxn)
+  nullify(surfcplx%next)
+
+  deallocate(surfcplx)  
+  nullify(surfcplx)
+
+end subroutine SurfaceComplexDestroy
+
+
+#if 0
 
 subroutine SurfaceComplexationRxnDestroy(surfcplxrxn)
 
@@ -1096,6 +1115,7 @@ subroutine SurfaceComplexDestroy(srfcmplx)
   nullify(srfcmplx)
 
 end subroutine SurfaceComplexDestroy
+#endif
 
 ! ************************************************************************** !
 !
@@ -1236,14 +1256,14 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%ion_exchange_list)
 
   ! surface complexation reactions
-  surfcplxrxn => reaction%surface_complex_list
+  surfcplxrxn => reaction%surface_complexation_rxn_list
   do
     if (.not.associated(surfcplxrxn)) exit
     prev_surfcplxrxn => surfcplxrxn
     surfcplxrxn => surfcplxrxn%next
     call SurfaceComplexationRxnDestroy(prev_surfcplxrxn)
   enddo    
-  nullify(reaction%surface_complex_list)
+  nullify(reaction%surface_complexation_rxn_list)
   
   if (associated(reaction%primary_species_names)) deallocate(reaction%primary_species_names)
   nullify(reaction%primary_species_names)

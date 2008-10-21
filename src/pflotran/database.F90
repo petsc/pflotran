@@ -33,7 +33,8 @@ subroutine DatabaseRead(reaction,option)
   type(aq_species_type), pointer :: cur_aq_spec, cur_aq_spec2
   type(gas_species_type), pointer :: cur_gas_spec, cur_gas_spec2
   type(mineral_type), pointer :: cur_mineral, cur_mineral2
-  type(surface_complexation_rxn_type), pointer :: cur_surfcplx, cur_surfcplx2
+type(surface_complexation_rxn_type), pointer :: cur_surfcplx_rxn
+  type(surface_complex_type), pointer :: cur_surfcplx, cur_surfcplx2
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXNAMELENGTH) :: name
@@ -71,11 +72,16 @@ subroutine DatabaseRead(reaction,option)
     cur_mineral%id = -cur_mineral%id
     cur_mineral => cur_mineral%next
   enddo
-  cur_surfcplx => reaction%surface_complex_list
+  cur_surfcplx_rxn => reaction%surface_complexation_rxn_list
   do
-    if (.not.associated(cur_surfcplx)) exit
-    cur_surfcplx%id = -cur_surfcplx%id
-    cur_surfcplx => cur_surfcplx%next
+    if (.not.associated(cur_surfcplx_rxn)) exit
+    cur_surfcplx => cur_surfcplx_rxn%complex_list
+    do  
+      if (.not.associated(cur_surfcplx)) exit
+      cur_surfcplx%id = -cur_surfcplx%id
+      cur_surfcplx => cur_surfcplx%next
+    enddo
+    cur_surfcplx_rxn => cur_surfcplx_rxn%next
   enddo  
   
   open(unit=dbase_id,file=reaction%database_filename,status='old',iostat=ierr)
@@ -292,42 +298,49 @@ subroutine DatabaseRead(reaction,option)
         
         
       case(4) ! surface complexes
-        cur_surfcplx => reaction%surface_complex_list
-        if (.not.associated(cur_surfcplx)) cycle
+        cur_surfcplx_rxn => reaction%surface_complexation_rxn_list
         found = PETSC_FALSE
         do
-          if (.not.associated(cur_surfcplx)) exit
-          if (fiStringCompare(name,cur_surfcplx%name,MAXNAMELENGTH)) then
-            found = PETSC_TRUE          
-          ! change negative id to positive, indicating it was found in database
-            cur_surfcplx%id = abs(cur_surfcplx%id)
-            exit
-          endif
-          cur_surfcplx => cur_surfcplx%next
+          if (.not.associated(cur_surfcplx_rxn) .and. .not.found) exit
+          cur_surfcplx => cur_surfcplx_rxn%complex_list
+          do
+            if (.not.associated(cur_surfcplx)) exit
+            if (fiStringCompare(name,cur_surfcplx%name,MAXNAMELENGTH)) then
+              found = PETSC_TRUE          
+            ! change negative id to positive, indicating it was found in database
+              cur_surfcplx%id = abs(cur_surfcplx%id)
+              exit
+            endif
+            cur_surfcplx => cur_surfcplx%next
+          enddo
+          cur_surfcplx_rxn => cur_surfcplx_rxn%next
         enddo
         
         if (.not.found) cycle ! go to next line in database
-        
+
+        if (.not.associated(cur_surfcplx%eqrxn)) &
+          cur_surfcplx%eqrxn => EquilibriumRxnCreate()
+            
         ! read the number of aqueous species in surface complexation rxn
-        call fiReadDBaseInt(dbase_id,string,cur_surfcplx%nspec,ierr)
+        call fiReadDBaseInt(dbase_id,string,cur_surfcplx%eqrxn%nspec,ierr)
         call fiErrorMsg(option%myrank,'Number of species in surface complexation reaction', &
                         'DATABASE',ierr)  
         ! allocate arrays for rxn
-        allocate(cur_surfcplx%spec_name(cur_surfcplx%nspec))
-        cur_surfcplx%spec_name = ''
-        allocate(cur_surfcplx%stoich(cur_surfcplx%nspec))
-        cur_surfcplx%stoich = 0.d0
-        allocate(cur_surfcplx%logK(reaction%num_dbase_temperatures))
-        cur_surfcplx%logK = 0.d0
+        allocate(cur_surfcplx%eqrxn%spec_name(cur_surfcplx%eqrxn%nspec))
+        cur_surfcplx%eqrxn%spec_name = ''
+        allocate(cur_surfcplx%eqrxn%stoich(cur_surfcplx%eqrxn%nspec))
+        cur_surfcplx%eqrxn%stoich = 0.d0
+        allocate(cur_surfcplx%eqrxn%logK(reaction%num_dbase_temperatures))
+        cur_surfcplx%eqrxn%logK = 0.d0
         ! read in species and stoichiometries
-        do ispec = 1, cur_surfcplx%nspec
-          call fiReadDBaseDouble(dbase_id,string,cur_surfcplx%stoich(ispec),ierr)
+        do ispec = 1, cur_surfcplx%eqrxn%nspec
+          call fiReadDBaseDouble(dbase_id,string,cur_surfcplx%eqrxn%stoich(ispec),ierr)
           call fiErrorMsg(option%myrank,'SURFACE COMPLEX species stoichiometry','DATABASE',ierr)            
-          call fiReadDBaseName(dbase_id,string,cur_surfcplx%spec_name(ispec),PETSC_TRUE,ierr)
+          call fiReadDBaseName(dbase_id,string,cur_surfcplx%eqrxn%spec_name(ispec),PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'SURFACE COMPLEX species name','DATABASE',ierr)            
         enddo
         do itemp = 1, reaction%num_dbase_temperatures
-          call fiReadDBaseDouble(dbase_id,string,cur_surfcplx%logK(itemp),ierr)
+          call fiReadDBaseDouble(dbase_id,string,cur_surfcplx%eqrxn%logK(itemp),ierr)
           call fiErrorMsg(option%myrank,'SURFACE COMPLEX logKs','DATABASE',ierr)            
         enddo
         ! skip molar weight
@@ -468,25 +481,30 @@ subroutine DatabaseRead(reaction,option)
   enddo
   
   ! surface complexes
-  cur_surfcplx => reaction%surface_complex_list
+  cur_surfcplx_rxn => reaction%surface_complexation_rxn_list
   do
-    if (.not.associated(cur_surfcplx)) exit
-    cur_surfcplx2 => cur_surfcplx%next
+    if (.not.associated(cur_surfcplx_rxn)) exit
+    cur_surfcplx => cur_surfcplx_rxn%complex_list
     do
-      if (.not.associated(cur_surfcplx2)) exit
-      if (cur_surfcplx%id /= cur_surfcplx2%id .and. &
-          fiStringCompare(cur_surfcplx%name, &
-                          cur_surfcplx2%name,MAXNAMELENGTH)) then
-        flag = PETSC_TRUE
-        string = 'Mineral (' // trim(cur_surfcplx2%name) // &
-                 ') duplicated in input file.'
-        call printMsg(option,string)                          
-      endif
-      cur_surfcplx2 => cur_surfcplx2%next
+      if (.not.associated(cur_surfcplx)) exit
+      cur_surfcplx2 => cur_surfcplx%next
+      do
+        if (.not.associated(cur_surfcplx2)) exit
+        if (cur_surfcplx%id /= cur_surfcplx2%id .and. &
+            fiStringCompare(cur_surfcplx%name, &
+                            cur_surfcplx2%name,MAXNAMELENGTH)) then
+          flag = PETSC_TRUE
+          string = 'Surface complex (' // trim(cur_surfcplx2%name) // &
+                   ') duplicated in input file surface complex reaction.'
+          call printMsg(option,string)                          
+        endif
+        cur_surfcplx2 => cur_surfcplx2%next
+      enddo
+      cur_surfcplx => cur_surfcplx%next
     enddo
-    cur_surfcplx => cur_surfcplx%next
-  enddo
-  
+    cur_surfcplx_rxn => cur_surfcplx_rxn%next
+  enddo  
+    
   if (flag) call printErrMsg(option,'Species duplicated in input file.')
   
   ! check that all species, etc. were read
@@ -535,18 +553,23 @@ subroutine DatabaseRead(reaction,option)
     endif
     cur_mineral => cur_mineral%next
   enddo
-  cur_surfcplx => reaction%surface_complex_list
+  cur_surfcplx_rxn => reaction%surface_complexation_rxn_list
   do
-    if (.not.associated(cur_surfcplx)) exit
-    if (cur_surfcplx%id < 0) then
-      flag = PETSC_TRUE
-      string = 'Surface species (' // trim(cur_surfcplx%name) // &
-               ') not found in database.'
-      call printMsg(option,string)
-    endif
-    cur_surfcplx => cur_surfcplx%next
-  enddo  
-  
+    if (.not.associated(cur_surfcplx_rxn)) exit
+    cur_surfcplx => cur_surfcplx_rxn%complex_list
+    do
+      if (.not.associated(cur_surfcplx)) exit
+      if (cur_surfcplx%id < 0) then
+        flag = PETSC_TRUE
+        string = 'Surface species (' // trim(cur_surfcplx%name) // &
+                 ') not found in database.'
+        call printMsg(option,string)
+      endif
+      cur_surfcplx => cur_surfcplx%next
+    enddo  
+    cur_surfcplx_rxn => cur_surfcplx_rxn%next
+  enddo 
+    
   if (flag) call printErrMsg(option,'Species not found in database.')
 
   close(dbase_id)
@@ -1489,7 +1512,8 @@ subroutine BasisPrint(reaction,title,option)
   type(aq_species_type), pointer :: cur_aq_spec
   type(gas_species_type), pointer :: cur_gas_spec
   type(mineral_type), pointer :: cur_mineral
-  type(surface_complexation_rxn_type), pointer :: cur_surfcplx
+  type(surface_complexation_rxn_type), pointer :: cur_surfcplx_rxn
+  type(surface_complex_type), pointer :: cur_surfcplx
 
   PetscInt :: ispec, itemp
 
@@ -1610,28 +1634,40 @@ subroutine BasisPrint(reaction,title,option)
       cur_mineral => cur_mineral%next
     enddo
     
-    cur_surfcplx => reaction%surface_complex_list
+    cur_surfcplx_rxn => reaction%surface_complexation_rxn_list
     if (associated(cur_surfcplx)) then
       write(option%fid_out,*)
-      write(option%fid_out,*) 'Surface Complexes:'
+      write(option%fid_out,*) 'Surface Complexation Reactions:'
     else
       write(option%fid_out,*)
-      write(option%fid_out,*) 'Surface Complexes: None'
+      write(option%fid_out,*) 'Surface Complexation Reactions: None'
     endif
     do
-      if (.not.associated(cur_surfcplx)) exit
-      write(option%fid_out,100) '  ' // trim(cur_surfcplx%name)
-      write(option%fid_out,140) '    Charge: ', cur_surfcplx%Z
-      write(option%fid_out,100) '    Surface Complex Reaction: '
-      write(option%fid_out,120) '      ', -1.d0, cur_surfcplx%name
-      do ispec = 1, cur_surfcplx%nspec
-        write(option%fid_out,120) '      ', cur_surfcplx%stoich(ispec), &
-                        cur_surfcplx%spec_name(ispec)
+      if (.not.associated(cur_surfcplx_rxn)) exit
+      cur_surfcplx => cur_surfcplx_rxn%complex_list
+      if (associated(cur_surfcplx)) then
+        write(option%fid_out,*)
+        write(option%fid_out,*) 'Surface Complexes:'
+      else
+        write(option%fid_out,*)
+        write(option%fid_out,*) 'Surface Complexes: None'
+      endif
+      do
+        if (.not.associated(cur_surfcplx)) exit
+        write(option%fid_out,100) '  ' // trim(cur_surfcplx%name)
+        write(option%fid_out,140) '    Charge: ', cur_surfcplx%Z
+        write(option%fid_out,100) '    Surface Complex Reaction: '
+        write(option%fid_out,120) '      ', -1.d0, cur_surfcplx%name
+        do ispec = 1, cur_surfcplx%eqrxn%nspec
+          write(option%fid_out,120) '      ', cur_surfcplx%eqrxn%stoich(ispec), &
+                          cur_surfcplx%eqrxn%spec_name(ispec)
+        enddo
+        write(option%fid_out,130) '      logK:', (cur_surfcplx%eqrxn%logK(itemp),itemp=1, &
+                                       reaction%num_dbase_temperatures)
+        write(option%fid_out,*)
+        cur_surfcplx => cur_surfcplx%next
       enddo
-      write(option%fid_out,130) '      logK:', (cur_surfcplx%logK(itemp),itemp=1, &
-                                     reaction%num_dbase_temperatures)
-      write(option%fid_out,*)
-      cur_surfcplx => cur_surfcplx%next
+      cur_surfcplx_rxn => cur_surfcplx_rxn%next
     enddo
     
     write(option%fid_out,*)

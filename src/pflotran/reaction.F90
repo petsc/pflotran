@@ -185,6 +185,7 @@ subroutine ReactionRead(reaction,fid,option)
   type(surface_complex_type), pointer :: srfcmplx, prev_srfcmplx
   type(surface_complexation_rxn_type), pointer :: srfcmplx_rxn, prev_srfcmplx_rxn
   PetscInt :: length
+  PetscInt :: srfcmplx_count = 0
   PetscErrorCode :: ierr
 
   ierr = 0
@@ -268,7 +269,7 @@ subroutine ReactionRead(reaction,fid,option)
           if (fiCheckExit(string)) exit
           mineral => MineralCreate()
           call fiReadWord(string,mineral%name,PETSC_TRUE,ierr)  
-          call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,MINERAL', ierr)    
+          call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,MINERALS', ierr)    
           if (.not.associated(reaction%mineral_list)) then
             reaction%mineral_list => mineral
             mineral%id = 1
@@ -310,25 +311,38 @@ subroutine ReactionRead(reaction,fid,option)
                 select case(trim(word))
                   case('MINERAL')
                     call fiReadNChars(string,srfcmplx_rxn%mineral_name,MAXNAMELENGTH,PETSC_TRUE,ierr)
-                    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)
+                    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,MINERAL', ierr)
                   case('SITE')
                     call fiReadNChars(string,srfcmplx_rxn%free_site_name,MAXNAMELENGTH,PETSC_TRUE,ierr)
-                    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)
+                    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,SITE', ierr)
                     call fiReadDouble(string,srfcmplx_rxn%site_density,ierr)
                   case('COMPLEXES')
+                    nullify(srfcmplx)
                     do
                       call fiReadFlotranString(fid,string,ierr)
                       if (ierr /= 0) exit
                       if (fiCheckExit(string)) exit
+                      
+                      srfcmplx_count = srfcmplx_count + 1
+                      srfcmplx => SurfaceComplexCreate()
+                      srfcmplx%id = srfcmplx_count
                       call fiReadNChars(string,srfcmplx%name,MAXNAMELENGTH,PETSC_TRUE,ierr)
-                      call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)
+                      call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEXES', ierr)
+                
+                      if (.not.associated(srfcmplx_rxn%complex_list)) then
+                        srfcmplx_rxn%complex_list => srfcmplx
+                      endif
+                      if (associated(prev_srfcmplx_rxn)) then
+                        prev_srfcmplx%next => srfcmplx
+                      endif
+                      prev_srfcmplx => srfcmplx
+                      nullify(srfcmplx)
+                
                     enddo
                 end select
 
-                call fiReadWord(string,srfcmplx%name,.true.,ierr)  
-                call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SURFACE_CMPLX', ierr)    
-                if (.not.associated(reaction%surface_complex_list)) then
-                  reaction%surface_complex_list => srfcmplx_rxn
+                if (.not.associated(reaction%surface_complexation_rxn_list)) then
+                  reaction%surface_complexation_rxn_list => srfcmplx_rxn
                   srfcmplx%id = 1
                 endif
                 if (associated(prev_srfcmplx_rxn)) then

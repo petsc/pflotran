@@ -84,7 +84,7 @@ Quartz     0.0
 Chalcedony 0.0
 SiO2(am)   0.0
 /
-skip
+:skip
 SORPTION
 SURFACE_COMPLEXATION_RXN
 MINERAL Calcite 10.
@@ -118,6 +118,8 @@ COMPLEXES
 >NPPSOUO2(HCO3)2-
 /
 /
+:noskip
+skip
 ION_EXCHANGE_RXN
 MINERAL Calcite
 CEC 1.e-1
