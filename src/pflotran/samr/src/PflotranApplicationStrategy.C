@@ -95,10 +95,8 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
    d_soln_refine_op =  d_grid_geometry->lookupRefineOperator(d_solution,
                                                              "CCELL_CONSTANT_REFINE");
 
-#if 0
    d_soln_coarsen_op = d_grid_geometry->lookupCoarsenOperator(d_solution,
                                                               "CONSERVATIVE_COARSEN");
-#endif
    
    d_GlobalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
    d_LocalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());

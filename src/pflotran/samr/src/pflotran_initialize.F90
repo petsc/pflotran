@@ -31,6 +31,7 @@ subroutine f_initialize_simulation(simulation)
   realization => simulation%realization
   option => realization%option
 
+  option%comm    = PETSC_COMM_WORLD
   option%myrank = myrank
   option%commsize = commsize
 

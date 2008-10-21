@@ -58,6 +58,7 @@ extern "C"{
 #include "PflotranApplicationStrategy.h" 
 #include "PflotranApplicationParameters.h" 
 #include "CCellDoubleConstantRefine.h"
+#include "CartesianCCellDoubleWeightedAverage.h"
 #include "fc_interface.h"
 #include "SAMRAIDriver.h"
 /*#include "pims_local_struct.h"*/
@@ -130,6 +131,8 @@ int main( int argc, char *argv[] )
       pdat::CCellDoubleConstantRefine<NDIM> *ccell_const_refine_op = new pdat::CCellDoubleConstantRefine<NDIM>();
       grid_geometry->addSpatialRefineOperator(ccell_const_refine_op);
 
+      geom::CartesianCCellDoubleWeightedAverage<NDIM> *ccell_cons_coarsen_op = new geom::CartesianCCellDoubleWeightedAverage<NDIM>();
+      grid_geometry->addSpatialCoarsenOperator(ccell_cons_coarsen_op);
       PflotranApplicationParameters *params  =new PflotranApplicationParameters(app_database);
       params->d_hierarchy = hierarchy;
 
