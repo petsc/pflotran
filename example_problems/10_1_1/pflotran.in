@@ -173,17 +173,17 @@ END
 
 CONSTRAINT Inlet
 CONCENTRATIONS
-H+ 6 P
-HCO3- 1.d-3 T
-Ca++ 1.d-40 T
+H+ 6 pH
+HCO3- 1.d-3 F
+Ca++ 1.d-40 F
 END
 END
 
 CONSTRAINT initial
 CONCENTRATIONS
-H+ 8 P
-HCO3- 1.d-3 T
-Ca++ 1.d-5 T
+H+ 8 pH
+HCO3- 1.d-3 F
+Ca++ 1.d-5 F
 END
 MINERALS
 Calcite 0.001

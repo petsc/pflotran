@@ -417,7 +417,7 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
   PetscInt :: num_it
   PetscReal :: norm
   PetscReal :: prev_molal(reaction%ncomp)
-  PetscReal, parameter :: tol = 1.d-6
+  PetscReal, parameter :: tol = 1.d-12
     
   ! aqueous species
   do icomp = 1, option%ncomp
@@ -441,8 +441,12 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
       conc(jcomp) = aq_species_constraint%conc(icomp)
     endif
   enddo
-  
+
+#ifdef GEH  
   if (.not.associated(reaction)) then ! simply tracer transport
+#else
+  if (PETSC_TRUE) then
+#endif
     aq_species_constraint%basis_conc = conc
   else
     if (associated(mineral_constraint)) then
@@ -475,8 +479,8 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
           free_conc(icomp) = 1.d-9
         case(CONSTRAINT_FREE)
           free_conc(icomp) = conc(icomp)
-        case(CONSTRAINT_P)
-          free_conc(icomp) = 10**(-1.d0*conc(icomp))
+        case(CONSTRAINT_LOG)
+          free_conc(icomp) = 10**conc(icomp)
         case(CONSTRAINT_MINERAL,CONSTRAINT_GAS)
           free_conc(icomp) = conc(icomp) ! guess
       end select
@@ -500,10 +504,10 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
       do icomp = 1, reaction%ncomp
         select case(constraint_type(icomp))
           case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
-          case(CONSTRAINT_FREE,CONSTRAINT_P)
+          case(CONSTRAINT_FREE,CONSTRAINT_LOG)
             Res(icomp) = 0.d0
             Jac(icomp,:) = 0.d0
-            Jac(:,icomp) = 0.d0
+!            Jac(:,icomp) = 0.d0
             Jac(icomp,icomp) = 1.d0
           case(CONSTRAINT_MINERAL)
           case(CONSTRAINT_GAS)

@@ -83,7 +83,7 @@ PetscInt, parameter :: EQUILIBRIUM_SS = 10
 PetscInt, parameter :: CONSTRAINT_NULL = 0
 PetscInt, parameter :: CONSTRAINT_FREE = 1
 PetscInt, parameter :: CONSTRAINT_TOTAL = 2
-PetscInt, parameter :: CONSTRAINT_P = 3
+PetscInt, parameter :: CONSTRAINT_LOG = 3
 PetscInt, parameter :: CONSTRAINT_MINERAL = 4
 PetscInt, parameter :: CONSTRAINT_GAS = 5
 

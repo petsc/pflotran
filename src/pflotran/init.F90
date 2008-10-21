@@ -609,6 +609,8 @@ subroutine readRequiredCardsFromInput(realization,filename)
     option%ncmplx = GetSecondarySpeciesCount(realization%reaction)
     option%nmnrl = GetMineralCount(realization%reaction)
     option%mnrl_names => GetMineralNames(realization%reaction)
+    option%nsorb = realization%reaction%neqsurfcmplx + &
+                   realization%reaction%neqionx
     realization%reaction%ncomp = option%ntrandof
   endif
 
