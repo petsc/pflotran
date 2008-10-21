@@ -322,6 +322,7 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
                                         mineral_constraint,option)
   use Option_module
   use Fileio_module
+  use Utility_module  
   
   implicit none
   
@@ -336,8 +337,22 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
   PetscInt :: icomp, jcomp
   PetscInt :: imnrl, jmnrl
   PetscReal :: value
-  PetscReal :: primary_conc(option%ncomp)
-  
+  PetscReal :: conc(option%ncomp)
+  PetscInt :: constraint_type(option%ncomp)
+  character(len=MAXNAMELENGTH) :: constraint_spec_name(option%ncomp)
+
+
+  type(reactive_transport_auxvar_type) :: auxvar
+  PetscReal :: Res(reaction%ncomp)
+  PetscReal :: total_conc(reaction%ncomp)
+  PetscReal :: free_conc(reaction%ncomp)
+  PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
+  PetscInt :: indices(reaction%ncomp)
+  PetscInt :: num_it
+  PetscReal :: norm
+  PetscReal :: prev_molal(reaction%ncomp)
+  PetscReal, parameter :: tol = 1.d-6
+    
   ! aqueous species
   do icomp = 1, option%ncomp
     found = PETSC_FALSE
@@ -355,12 +370,14 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
                ' not found among primary species.'
       call printErrMsg(option,string)
     else
-      primary_conc(icomp) = aq_species_constraint%conc(icomp)
+      constraint_type(jcomp) = aq_species_constraint%constraint_type(icomp)
+      constraint_spec_name(jcomp) = aq_species_constraint%constraint_spec_name(icomp)
+      conc(jcomp) = aq_species_constraint%conc(icomp)
     endif
   enddo
   
   if (.not.associated(reaction)) then ! simply tracer transport
-    aq_species_constraint%basis_conc = primary_conc
+    aq_species_constraint%basis_conc = conc
   else
     if (associated(mineral_constraint)) then
       do imnrl = 1, reaction%nmnrl
@@ -383,37 +400,87 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
         endif  
       enddo
     endif
-    aq_species_constraint%basis_conc = primary_conc
-  endif
 
-#if 0
-  ! PetscInt, parameter :: CONSTRAINT_NULL = 0
-  ! PetscInt, parameter :: CONSTRAINT_FREE = 1
-  ! PetscInt, parameter :: CONSTRAINT_TOTAL = 2
-  ! PetscInt, parameter :: CONSTRAINT_P = 3
-  ! PetscInt, parameter :: CONSTRAINT_MINERAL = 4
-  ! PetscInt, parameter :: CONSTRAINT_GAS = 5
-        select case(aq_species_constraint%constraint_type(icomp))
+    total_conc = 0.d0
+    do icomp = 1, reaction%ncomp
+      select case(constraint_type(icomp))
+        case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
+          total_conc(icomp) = conc(icomp)
+          free_conc(icomp) = 1.d-9
+        case(CONSTRAINT_FREE)
+          free_conc(icomp) = conc(icomp)
+        case(CONSTRAINT_P)
+          free_conc(icomp) = 10**(-1.d0*conc(icomp))
+        case(CONSTRAINT_MINERAL,CONSTRAINT_GAS)
+          free_conc(icomp) = conc(icomp) ! guess
+      end select
+    enddo
+    
+    call RTAuxVarInit(auxvar,option)
+    auxvar%den(1) = 997.d0
+    auxvar%primary_molal = free_conc
+
+    num_it = 0
+    
+    do
+
+      auxvar%primary_spec = auxvar%primary_molal* &
+                            auxvar%den(1)*1.d-3
+      call RTotal(auxvar,reaction,option)
+      
+      Res = auxvar%total(:,1)
+      Jac = auxvar%dtotal(:,:,1)
+          
+      do icomp = 1, reaction%ncomp
+        select case(constraint_type(icomp))
           case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
-            value = aq_species_constraint%conc(icomp)
-          case(CONSTRAINT_FREE)
-            value = aq_species_constraint%conc(icomp)
-          case(CONSTRAINT_P)
-            value = aq_species_constraint%conc(icomp)
+          case(CONSTRAINT_FREE,CONSTRAINT_P)
+            Res(icomp) = 0.d0
+            Jac(icomp,:) = 0.d0
+            Jac(:,icomp) = 0.d0
+            Jac(icomp,icomp) = 1.d0
           case(CONSTRAINT_MINERAL)
-            value = aq_species_constraint%conc(icomp)
           case(CONSTRAINT_GAS)
-            value = aq_species_constraint%conc(icomp)
-          case default 
-            write(string,*) 'Constraint type ', &
-              aq_species_constraint%constraint_type(icomp), &
-              ' not recognized.'
-            call printErrMsg(option,string)               
         end select
-        aq_species_constraint%basis_conc(jcomp) = primary_conc(jcomp)
+      enddo
+      
+      Res = 1.d0*(total_conc - Res)
 
-#endif
+      ! scale Jacobian
+      do icomp = 1, reaction%ncomp
+        norm = max(1.d0,maxval(abs(Jac(icomp,:))))
+        norm = 1.d0/norm
+        Res(icomp) = Res(icomp)*norm
+        Jac(icomp,:) = Jac(icomp,:)*norm
+      enddo
+        
+      ! for derivatives with respect to ln conc
+      do icomp = 1, reaction%ncomp
+        Jac(:,icomp) = Jac(:,icomp)*auxvar%primary_spec(icomp)
+      enddo
+      call ludcmp(Jac,reaction%ncomp,indices,icomp)
+      call lubksb(Jac,reaction%ncomp,indices,Res)
 
+      prev_molal = auxvar%primary_molal
+
+      Res = dsign(1.d0,Res)*min(dabs(Res),5.d0)
+        
+      auxvar%primary_molal = auxvar%primary_molal*exp(Res)
+    
+      num_it = num_it + 1
+      print *, num_it, Res
+      
+      ! check for convergence
+      if (maxval(dabs(auxvar%primary_molal-prev_molal)/ &
+                 auxvar%primary_molal) < tol) exit
+                       
+    enddo
+    
+    aq_species_constraint%basis_conc = auxvar%primary_molal
+
+    call RTAuxVarDestroy(auxvar)
+
+  endif
 
 end subroutine ReactionInitializeConstraint
 
@@ -814,6 +881,68 @@ end subroutine RTotal
 
 ! ************************************************************************** !
 !
+! RInitConcentration: Initializaes concentrations based on constraints
+! author: Glenn Hammond
+! date: 10/20/08
+!
+! ************************************************************************** !
+subroutine RInitConcentration(auxvar,reaction,option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(reactive_transport_auxvar_type) :: auxvar
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+  
+  type(reactive_transport_auxvar_type) :: auxvar_tmp
+  PetscReal :: Res(reaction%ncomp)
+  PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
+  PetscReal :: update(reaction%ncomp)
+  PetscInt :: num_it
+  PetscInt :: iphase
+  PetscInt :: icomp
+  PetscReal :: norm
+  PetscReal :: prev_molal(reaction%ncomp)
+  PetscReal, parameter :: tol = 1.d-12
+
+  call RTAuxVarInit(auxvar_tmp,option)
+  call RTAuxVarCopy(auxvar_tmp,auxvar,option)
+
+  num_it = 0
+  do
+  
+    call RTotal(auxvar_tmp,reaction,option)
+
+    Res = 0.d0
+    Jac = 0.d0
+    do iphase = 1, option%nphase
+      Res =  auxvar_tmp%total(:,iphase) - auxvar%total(:,iphase)
+      Jac = Jac + auxvar_tmp%dtotal(:,:,iphase)
+    enddo
+    
+    call RSolve(Res,Jac,update,auxvar_tmp%primary_spec,reaction%ncomp)
+ 
+    auxvar_tmp%primary_molal = auxvar_tmp%primary_molal*exp(update)
+    
+    num_it = num_it + 1
+    
+    ! check for convergence
+    if (maxval(dabs(auxvar_tmp%primary_molal-prev_molal)/ &
+               auxvar_tmp%primary_molal) < tol) exit
+    
+  enddo
+
+  auxvar%primary_molal = auxvar_tmp%primary_molal
+  auxvar%primary_spec = auxvar_tmp%primary_spec
+
+  call RTAuxVarDestroy(auxvar_tmp)
+
+end subroutine RInitConcentration
+
+! ************************************************************************** !
+!
 ! RKineticMineral: Computes the kinetic mineral precipitation/dissolution
 !                  rates
 ! author: Glenn Hammond
@@ -1031,5 +1160,48 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
   enddo  ! loop over minerals
     
 end subroutine RKineticMineral
+
+! ************************************************************************** !
+!
+! RSolve: Computes the kinetic mineral precipitation/dissolution
+!                  rates
+! author: Glenn Hammond
+! date: 09/04/08
+!
+! ************************************************************************** !
+subroutine RSolve(Res,Jac,conc,update,ncomp)
+
+  use Utility_module
+  
+  implicit none
+
+  PetscInt :: ncomp
+  PetscReal :: Res(ncomp)
+  PetscReal :: Jac(ncomp,ncomp)
+  PetscReal :: update(ncomp)
+  PetscReal :: conc(ncomp)
+  
+  PetscInt :: indices(ncomp)
+  PetscInt :: icomp
+  PetscReal :: norm
+
+  ! scale Jacobian
+  do icomp = 1, ncomp
+    norm = max(1.d0,maxval(abs(Jac(icomp,:))))
+    norm = 1.d0/norm
+    res(icomp) = res(icomp)*norm
+    Jac(icomp,:) = Jac(icomp,:)*norm
+  enddo
+    
+  ! for derivatives with respect to ln conc
+  do icomp = 1, ncomp
+    Jac(:,icomp) = Jac(:,icomp)*conc(icomp)
+  enddo
+  call ludcmp(Jac,ncomp,indices,icomp)
+  call lubksb(Jac,ncomp,indices,res)
+
+  update = dsign(1.d0,res)*min(dabs(res),5.d0)
+  
+end subroutine RSolve
 
 end module Reaction_module
