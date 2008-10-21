@@ -1080,10 +1080,13 @@ subroutine TranConstraintRead(constraint,option,fid)
             select case(word)
               case('F','FREE')
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_FREE
-              case('T','Total')
+              case('T','TOTAL')
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_TOTAL
-              case('P')
-                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_P
+              case('PH')
+                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_LOG
+                aq_species_constraint%conc(icomp) = -1.d0*aq_species_constraint%conc(icomp)
+              case('LOG')
+                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_LOG
               case('MINERAL','MNRL') 
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_MINERAL
               case('GAS') 
