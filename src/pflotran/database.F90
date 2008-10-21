@@ -51,25 +51,25 @@ type(surface_complexation_rxn_type), pointer :: cur_surfcplx_rxn
   cur_aq_spec => reaction%primary_species_list
   do
     if (.not.associated(cur_aq_spec)) exit
-    cur_aq_spec%id = -cur_aq_spec%id
+    cur_aq_spec%id = -abs(cur_aq_spec%id)
     cur_aq_spec => cur_aq_spec%next
   enddo
   cur_aq_spec => reaction%secondary_species_list
   do
     if (.not.associated(cur_aq_spec)) exit
-    cur_aq_spec%id = -cur_aq_spec%id
+    cur_aq_spec%id = -abs(cur_aq_spec%id)
     cur_aq_spec => cur_aq_spec%next
   enddo  
   cur_gas_spec => reaction%gas_species_list
   do
     if (.not.associated(cur_gas_spec)) exit
-    cur_gas_spec%id = -cur_gas_spec%id
+    cur_gas_spec%id = -abs(cur_gas_spec%id)
     cur_gas_spec => cur_gas_spec%next
   enddo  
   cur_mineral => reaction%mineral_list
   do
     if (.not.associated(cur_mineral)) exit
-    cur_mineral%id = -cur_mineral%id
+    cur_mineral%id = -abs(cur_mineral%id)
     cur_mineral => cur_mineral%next
   enddo
   cur_surfcplx_rxn => reaction%surface_complexation_rxn_list
@@ -78,7 +78,7 @@ type(surface_complexation_rxn_type), pointer :: cur_surfcplx_rxn
     cur_surfcplx => cur_surfcplx_rxn%complex_list
     do  
       if (.not.associated(cur_surfcplx)) exit
-      cur_surfcplx%id = -cur_surfcplx%id
+      cur_surfcplx%id = -abs(cur_surfcplx%id)
       cur_surfcplx => cur_surfcplx%next
     enddo
     cur_surfcplx_rxn => cur_surfcplx_rxn%next

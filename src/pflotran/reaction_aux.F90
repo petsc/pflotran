@@ -162,6 +162,9 @@ module Reaction_Aux_module
     PetscInt, pointer :: kinionx_rxn_offset(:)
     ! surface complexation reactions
     PetscInt :: neqsurfcmplx
+    PetscInt :: neqsurfsites
+    PetscInt, pointer :: eqsurfsite_to_mineral(:)
+    character(len=MAXNAMELENGTH), pointer :: surface_site_names(:)
     character(len=MAXNAMELENGTH), pointer :: surface_complex_names(:)
     PetscInt, pointer :: eqsurfcmplxspecid(:,:)
     PetscReal, pointer :: eqsurfcmplxstoich(:,:)
@@ -307,6 +310,11 @@ function ReactionCreate()
   nullify(reaction%kinionx_rxn_offset)
   
   reaction%neqsurfcmplx = 0
+  reaction%neqsurfsites = 0
+  nullify(reaction%eqsurfsite_to_mineral)
+  nullify(reaction%surface_site_names)
+  nullify(reaction%surface_complex_names)
+  nullify(reaction%eqsurfcmplxspecid)
   nullify(reaction%eqsurfcmplxspecid)
   nullify(reaction%eqsurfcmplxstoich)
   nullify(reaction%eqsurfcmplxh2oid)
@@ -1050,7 +1058,8 @@ subroutine SurfaceComplexDestroy(surfcplx)
 
   if (.not.associated(surfcplx)) return
   
-  call EquilibriumRxnDestroy(surfcplx%eqrxn)
+  if (associated(surfcplx%eqrxn)) &
+    call EquilibriumRxnDestroy(surfcplx%eqrxn)
   nullify(surfcplx%eqrxn)
   nullify(surfcplx%next)
 
@@ -1058,46 +1067,6 @@ subroutine SurfaceComplexDestroy(surfcplx)
   nullify(surfcplx)
 
 end subroutine SurfaceComplexDestroy
-
-
-#if 0
-
-subroutine SurfaceComplexationRxnDestroy(surfcplxrxn)
-
-  implicit none
-    
-  type(surface_complexation_rxn_type), pointer :: surfcplxrxn
-
-  if (.not.associated(surfcplxrxn)) return
-  
-  if (associated(surfcplxrxn%complex_list)) deallocate(surfcplxrxn%complex_list)
-  nullify(surfcplxrxn%complex_list)
-  if (associated(surfcplxrxn%next)) deallocate(surfcplxrxn%next)
-  nullify(surfcplxrxn%next)
-
-  deallocate(surfcplxrxn)  
-  nullify(surfcplxrxn)
-
-end subroutine SurfaceComplexationRxnDestroy
-
-subroutine SurfaceComplexDestroy(srfcmplx)
-
-  implicit none
-    
-  type(surface_complex_type), pointer :: srfcmplx
-
-  if (.not.associated(srfcmplx)) return
-  
-  if (associated(srfcmplx%eqrxn)) deallocate(srfcmplx%eqrxn)
-  nullify(srfcmplx%eqrxn)
-  if (associated(srfcmplx%next)) deallocate(srfcmplx%next)
-  nullify(srfcmplx%next)
-
-  deallocate(srfcmplx)  
-  nullify(srfcmplx)
-
-end subroutine SurfaceComplexDestroy
-#endif
 
 ! ************************************************************************** !
 !
@@ -1304,6 +1273,12 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%kinionx_rxn_offset)) deallocate(reaction%kinionx_rxn_offset)
   nullify(reaction%kinionx_rxn_offset)
   
+  if (associated(reaction%eqsurfsite_to_mineral)) deallocate(reaction%eqsurfsite_to_mineral)
+  nullify(reaction%eqsurfsite_to_mineral)
+  if (associated(reaction%surface_site_names)) deallocate(reaction%surface_site_names)
+  nullify(reaction%surface_site_names)
+  if (associated(reaction%surface_complex_names)) deallocate(reaction%surface_complex_names)
+  nullify(reaction%surface_complex_names)
   if (associated(reaction%eqsurfcmplxspecid)) deallocate(reaction%eqsurfcmplxspecid)
   nullify(reaction%eqsurfcmplxspecid)
   if (associated(reaction%eqsurfcmplxstoich)) deallocate(reaction%eqsurfcmplxstoich)

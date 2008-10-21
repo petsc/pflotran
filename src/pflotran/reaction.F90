@@ -297,6 +297,7 @@ subroutine ReactionRead(reaction,fid,option)
             case('SURFACE_COMPLEXATION_RXN')
           !   call SurfaceComplexRXNRead
           
+              srfcmplx_rxn => SurfaceComplexationRXNCreate()
               nullify(prev_srfcmplx)
               do
                 call fiReadFlotranString(fid,string,ierr)
@@ -307,15 +308,15 @@ subroutine ReactionRead(reaction,fid,option)
                 call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)
                 call fiWordToUpper(word)
                 
-                srfcmplx_rxn => SurfaceComplexationRXNCreate()
                 select case(trim(word))
                   case('MINERAL')
                     call fiReadNChars(string,srfcmplx_rxn%mineral_name,MAXNAMELENGTH,PETSC_TRUE,ierr)
-                    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,MINERAL', ierr)
+                    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,MINERAL_NAME', ierr)
                   case('SITE')
                     call fiReadNChars(string,srfcmplx_rxn%free_site_name,MAXNAMELENGTH,PETSC_TRUE,ierr)
-                    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,SITE', ierr)
+                    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,SITE_NAME', ierr)
                     call fiReadDouble(string,srfcmplx_rxn%site_density,ierr)
+                    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,SITE_DENSITY',ierr)                   
                   case('COMPLEXES')
                     nullify(srfcmplx)
                     do
@@ -327,7 +328,7 @@ subroutine ReactionRead(reaction,fid,option)
                       srfcmplx => SurfaceComplexCreate()
                       srfcmplx%id = srfcmplx_count
                       call fiReadNChars(string,srfcmplx%name,MAXNAMELENGTH,PETSC_TRUE,ierr)
-                      call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEXES', ierr)
+                      call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_NAME', ierr)
                 
                       if (.not.associated(srfcmplx_rxn%complex_list)) then
                         srfcmplx_rxn%complex_list => srfcmplx
