@@ -83,9 +83,36 @@ module Reaction_Aux_module
     type (ion_exchange_rxn_type), pointer :: next
   end type ion_exchange_rxn_type
 
-  type, public :: surface_complexation_rxn_type
+  type, public :: surface_complex_type
     PetscInt :: id
     character(len=MAXNAMELENGTH) :: name
+    PetscReal :: Z
+    type(equilibrium_rxn_type), pointer :: eqrxn
+    type(surface_complex_type), pointer :: next
+  end type surface_complex_type
+
+  type, public :: surface_complexation_rxn_type
+    PetscInt :: id
+    character(len=MAXNAMELENGTH) :: name ! surface complex
+    PetscInt :: free_site_id
+    character(len=MAXNAMELENGTH) :: free_site_name
+    PetscInt :: mineral_id
+    character(len=MAXNAMELENGTH) :: mineral_name
+    PetscReal :: site_density
+    PetscInt :: nspec
+    character(len=MAXNAMELENGTH), pointer :: spec_name(:)
+    PetscReal, pointer :: stoich(:)
+    PetscReal :: free_site_stoich
+    PetscReal, pointer :: logK(:)
+    PetscReal :: Z
+    type(surface_complex_type), pointer :: complex_list
+    type (surface_complexation_rxn_type), pointer :: next
+  end type surface_complexation_rxn_type    
+
+#if 0
+  type, public :: surface_complexation_rxn_type
+    PetscInt :: id
+    character(len=MAXNAMELENGTH) :: name ! surface complex
     PetscInt :: mineral_id
     character(len=MAXNAMELENGTH) :: mineral_name
     PetscInt :: nspec
@@ -97,6 +124,7 @@ module Reaction_Aux_module
     PetscReal :: Z
     type (surface_complexation_rxn_type), pointer :: next
   end type surface_complexation_rxn_type
+#endif
 
   type, public :: aq_species_constraint_type
     character(len=MAXNAMELENGTH), pointer :: names(:)
@@ -515,6 +543,7 @@ end function TransitionStateTheoryRxnCreate
 ! date: 09/01/08
 !
 ! ************************************************************************** !
+#if 0
 function SurfaceComplexationRxnCreate()
 
   implicit none
@@ -539,6 +568,66 @@ function SurfaceComplexationRxnCreate()
   SurfaceComplexationRxnCreate => surfcplxrxn
   
 end function SurfaceComplexationRxnCreate
+#endif
+
+function SurfaceComplexationRxnCreate()
+
+  implicit none
+    
+  type(surface_complexation_rxn_type), pointer :: SurfaceComplexationRxnCreate
+  type(surface_complexation_rxn_type), pointer :: surfcplxrxn
+  type(surface_complex_type) :: complex_list
+  
+  allocate(surfcplxrxn)
+  surfcplxrxn%free_site_id = 0
+  surfcplxrxn%free_site_name = ''
+! surfcplxrxn%free_site_stoich = 0
+  surfcplxrxn%mineral_id = 0
+  surfcplxrxn%mineral_name = ''
+  surfcplxrxn%site_density = 0.d0
+  
+  nullify(surfcplxrxn%complex_list)
+  nullify(surfcplxrxn%next)
+  
+! surfcplxrxn%nspec = 0
+! surfcplxrxn%Z = 0.d0
+! nullify(surfcplxrxn%spec_name)
+! nullify(surfcplxrxn%stoich)
+! nullify(surfcplxrxn%spec_ids)
+! nullify(surfcplxrxn%logK)
+  
+  SurfaceComplexationRxnCreate => surfcplxrxn
+  
+end function SurfaceComplexationRxnCreate
+
+function SurfaceComplexCreate()
+
+  implicit none
+    
+  type(surface_complex_type), pointer :: SurfaceComplexCreate
+  type(surface_complex_type), pointer :: srfcmplx
+  type(equilibrium_rxn_type), pointer :: eqrxn
+  
+  allocate(srfcmplx)
+  srfcmplx%id = 0
+  srfcmplx%name = ''
+  srfcmplx%Z = 0.d0
+  nullify(srfcmplx%eqrxn)
+  nullify(srfcmplx%next)
+  
+! srfcplx%mineral_id = 0
+! srfcplx%mineral_name = ''
+! srfcplx%free_site_stoich = 0
+! srfcplx%nspec = 0
+! nullify(srfcplx%spec_name)
+! nullify(srfcplx%stoich)
+! nullify(srfcplx%spec_ids)
+! nullify(srfcplx%logK)
+  
+  SurfaceComplexCreate => srfcmplx
+  
+end function SurfaceComplexCreate
+
 
 ! ************************************************************************** !
 !
@@ -948,6 +1037,7 @@ end subroutine IonExchangeRxnDestroy
 ! date: 05/29/08
 !
 ! ************************************************************************** !
+#if 0
 subroutine SurfaceComplexationRxnDestroy(surfcplxrxn)
 
   implicit none
@@ -969,6 +1059,43 @@ subroutine SurfaceComplexationRxnDestroy(surfcplxrxn)
   nullify(surfcplxrxn)
 
 end subroutine SurfaceComplexationRxnDestroy
+#endif
+
+subroutine SurfaceComplexationRxnDestroy(surfcplxrxn)
+
+  implicit none
+    
+  type(surface_complexation_rxn_type), pointer :: surfcplxrxn
+
+  if (.not.associated(surfcplxrxn)) return
+  
+  if (associated(surfcplxrxn%complex_list)) deallocate(surfcplxrxn%complex_list)
+  nullify(surfcplxrxn%complex_list)
+  if (associated(surfcplxrxn%next)) deallocate(surfcplxrxn%next)
+  nullify(surfcplxrxn%next)
+
+  deallocate(surfcplxrxn)  
+  nullify(surfcplxrxn)
+
+end subroutine SurfaceComplexationRxnDestroy
+
+subroutine SurfaceComplexDestroy(srfcmplx)
+
+  implicit none
+    
+  type(surface_complex_type), pointer :: srfcmplx
+
+  if (.not.associated(srfcmplx)) return
+  
+  if (associated(srfcmplx%eqrxn)) deallocate(srfcmplx%eqrxn)
+  nullify(srfcmplx%eqrxn)
+  if (associated(srfcmplx%next)) deallocate(srfcmplx%next)
+  nullify(srfcmplx%next)
+
+  deallocate(srfcmplx)  
+  nullify(srfcmplx)
+
+end subroutine SurfaceComplexDestroy
 
 ! ************************************************************************** !
 !

@@ -135,8 +135,8 @@ CATION Ca++ 1.e-6
 /
 /
 noskip
-DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
-:DATABASE ../../database/hanford.dat
+:DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
+DATABASE ../../database/hanford.dat
 /
 :
 :CHECKPOINT 1
@@ -330,6 +330,7 @@ Muscovite  0.0
 Quartz     0.0
 Chalcedony 0.0
 SiO2(am)   0.0
+/
 /
 
 BOUNDARY_CONDITION

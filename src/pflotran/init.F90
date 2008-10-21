@@ -803,9 +803,9 @@ subroutine readInput(simulation,filename)
               call fiSkipToEND(option%fid_in,option%myrank,card)
             case('MINERAL_KINETICS')
               call ReactionReadMineralKinetics(realization%reaction,option%fid_in,option)
-            case('SURFACE_COMPLEXES')
-              call ReactionReadSurfaceComplexes(realization%reaction,option%fid_in, &
-              option)
+!           case('SURFACE_COMPLEXES')
+!             call ReactionReadSurfaceComplexes(realization%reaction,option%fid_in, &
+!             option)
           end select
           if (fiCheckExit(string)) exit
         enddo
