@@ -86,6 +86,7 @@ module Reaction_Aux_module
   type, public :: surface_complex_type
     PetscInt :: id
     character(len=MAXNAMELENGTH) :: name
+    PetscReal :: free_site_stoich
     PetscReal :: Z
     type(equilibrium_rxn_type), pointer :: eqrxn
     type(surface_complex_type), pointer :: next
@@ -164,6 +165,7 @@ module Reaction_Aux_module
     PetscInt :: neqsurfcmplx
     PetscInt :: neqsurfsites
     PetscInt, pointer :: eqsurfsite_to_mineral(:)
+    PetscReal, pointer :: eqsurfcmplx_site_density(:)
     character(len=MAXNAMELENGTH), pointer :: surface_site_names(:)
     character(len=MAXNAMELENGTH), pointer :: surface_complex_names(:)
     PetscInt, pointer :: eqsurfcmplxspecid(:,:)
@@ -237,7 +239,8 @@ module Reaction_Aux_module
             MineralConstraintDestroy, &
             AqueousSpeciesConstraintCreate, &
             MineralConstraintCreate, &
-            SurfaceComplexCreate
+            SurfaceComplexCreate, &
+            GetMineralIDFromName
              
 contains
 
@@ -313,8 +316,8 @@ function ReactionCreate()
   reaction%neqsurfsites = 0
   nullify(reaction%eqsurfsite_to_mineral)
   nullify(reaction%surface_site_names)
+  nullify(reaction%eqsurfcmplx_site_density)
   nullify(reaction%surface_complex_names)
-  nullify(reaction%eqsurfcmplxspecid)
   nullify(reaction%eqsurfcmplxspecid)
   nullify(reaction%eqsurfcmplxstoich)
   nullify(reaction%eqsurfcmplxh2oid)
@@ -524,41 +527,6 @@ end function TransitionStateTheoryRxnCreate
 !
 ! SurfaceComplexationRxnCreate: Allocate and initialize a surface complexation
 !                               reaction
-! author: Glenn Hammond
-! date: 09/01/08
-!
-! ************************************************************************** !
-#if 0
-function SurfaceComplexationRxnCreate()
-
-  implicit none
-    
-  type(surface_complexation_rxn_type), pointer :: SurfaceComplexationRxnCreate
-
-  type(surface_complexation_rxn_type), pointer :: surfcplxrxn
-  
-  allocate(surfcplxrxn)
-  surfcplxrxn%id = 0
-  surfcplxrxn%name = ''
-  surfcplxrxn%mineral_id = 0
-  surfcplxrxn%mineral_name = ''
-  surfcplxrxn%free_site_stoich = 0
-  surfcplxrxn%nspec = 0
-  surfcplxrxn%Z = 0.d0
-  nullify(surfcplxrxn%spec_name)
-  nullify(surfcplxrxn%stoich)
-  nullify(surfcplxrxn%spec_ids)
-  nullify(surfcplxrxn%logK)
-  
-  SurfaceComplexationRxnCreate => surfcplxrxn
-  
-end function SurfaceComplexationRxnCreate
-#endif
-
-! ************************************************************************** !
-!
-! SurfaceComplexationRxnCreate: Allocate and initialize a surface complexation
-!                               reaction
 ! author: Peter Lichtner
 ! date: 10/21/08
 !
@@ -574,6 +542,7 @@ function SurfaceComplexationRxnCreate()
   allocate(surfcplxrxn)
   surfcplxrxn%free_site_id = 0
   surfcplxrxn%free_site_name = ''
+
   surfcplxrxn%mineral_id = 0
   surfcplxrxn%mineral_name = ''
   surfcplxrxn%site_density = 0.d0
@@ -604,6 +573,7 @@ function SurfaceComplexCreate()
   srfcmplx%id = 0
   srfcmplx%name = ''
   srfcmplx%Z = 0.d0
+  srfcmplx%free_site_stoich = 0.d0
   nullify(srfcmplx%eqrxn)
   nullify(srfcmplx%next)
   
@@ -856,6 +826,39 @@ function GetMineralCount(reaction)
   enddo
 
 end function GetMineralCount
+
+! ************************************************************************** !
+!
+! GetMineralNames: Returns the names of minerals in an array
+! author: Glenn Hammond
+! date: 09/04/08
+!
+! ************************************************************************** !
+function GetMineralIDFromName(reaction,name)
+
+  use Fileio_module
+  
+  implicit none
+  
+  type(reaction_type) :: reaction
+  character(len=MAXNAMELENGTH) :: name
+
+  PetscInt :: GetMineralIDFromName
+  type(mineral_type), pointer :: mineral
+
+  GetMineralIDFromName = -1
+ 
+  mineral => reaction%mineral_list
+  do
+    if (.not.associated(mineral)) exit
+    if (fiStringCompare(name,mineral%name,MAXNAMELENGTH)) then
+      GetMineralIDFromName = mineral%id
+      exit
+    endif
+    mineral => mineral%next
+  enddo
+
+end function GetMineralIDFromName
 
 ! ************************************************************************** !
 !
@@ -1277,6 +1280,8 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%eqsurfsite_to_mineral)
   if (associated(reaction%surface_site_names)) deallocate(reaction%surface_site_names)
   nullify(reaction%surface_site_names)
+  if (associated(reaction%eqsurfcmplx_site_density)) deallocate(reaction%eqsurfcmplx_site_density)
+  nullify(reaction%eqsurfcmplx_site_density)
   if (associated(reaction%surface_complex_names)) deallocate(reaction%surface_complex_names)
   nullify(reaction%surface_complex_names)
   if (associated(reaction%eqsurfcmplxspecid)) deallocate(reaction%eqsurfcmplxspecid)

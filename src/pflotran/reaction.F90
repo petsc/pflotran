@@ -284,6 +284,7 @@ subroutine ReactionRead(reaction,fid,option)
       case('MINERAL_KINETICS')
         call fiSkipToEND(fid,option%myrank,word)
       case('SORPTION')
+        nullify(prev_srfcmplx_rxn)
         do
           call fiReadFlotranString(fid,string,ierr)
           if (ierr /= 0) exit
@@ -298,42 +299,42 @@ subroutine ReactionRead(reaction,fid,option)
           !   call SurfaceComplexRXNRead
           
               srfcmplx_rxn => SurfaceComplexationRXNCreate()
-              nullify(prev_srfcmplx)
               do
                 call fiReadFlotranString(fid,string,ierr)
                 if (ierr /= 0) exit
                 if (fiCheckExit(string)) exit
 
-                call fiReadNChars(string,word,MAXNAMELENGTH,.true.,ierr)
+                call fiReadWord(string,word,.true.,ierr)
                 call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)
                 call fiWordToUpper(word)
                 
                 select case(trim(word))
                   case('MINERAL')
-                    call fiReadNChars(string,srfcmplx_rxn%mineral_name,MAXNAMELENGTH,PETSC_TRUE,ierr)
+                    call fiReadWord(string,srfcmplx_rxn%mineral_name,PETSC_TRUE,ierr)
                     call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,MINERAL_NAME', ierr)
                   case('SITE')
-                    call fiReadNChars(string,srfcmplx_rxn%free_site_name,MAXNAMELENGTH,PETSC_TRUE,ierr)
+                    call fiReadWord(string,srfcmplx_rxn%free_site_name,PETSC_TRUE,ierr)
                     call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,SITE_NAME', ierr)
                     call fiReadDouble(string,srfcmplx_rxn%site_density,ierr)
                     call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,SITE_DENSITY',ierr)                   
                   case('COMPLEXES')
-                    nullify(srfcmplx)
+                    nullify(prev_srfcmplx)
                     do
                       call fiReadFlotranString(fid,string,ierr)
                       if (ierr /= 0) exit
                       if (fiCheckExit(string)) exit
                       
                       srfcmplx_count = srfcmplx_count + 1
+                      reaction%neqsurfcmplx = srfcmplx_count
                       srfcmplx => SurfaceComplexCreate()
                       srfcmplx%id = srfcmplx_count
-                      call fiReadNChars(string,srfcmplx%name,MAXNAMELENGTH,PETSC_TRUE,ierr)
+                      call fiReadWord(string,srfcmplx%name,PETSC_TRUE,ierr)
                       call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_NAME', ierr)
                 
                       if (.not.associated(srfcmplx_rxn%complex_list)) then
                         srfcmplx_rxn%complex_list => srfcmplx
                       endif
-                      if (associated(prev_srfcmplx_rxn)) then
+                      if (associated(prev_srfcmplx)) then
                         prev_srfcmplx%next => srfcmplx
                       endif
                       prev_srfcmplx => srfcmplx
@@ -342,17 +343,22 @@ subroutine ReactionRead(reaction,fid,option)
                     enddo
                 end select
 
-                if (.not.associated(reaction%surface_complexation_rxn_list)) then
-                  reaction%surface_complexation_rxn_list => srfcmplx_rxn
-                  srfcmplx%id = 1
-                endif
-                if (associated(prev_srfcmplx_rxn)) then
-                  prev_srfcmplx_rxn%next => srfcmplx_rxn
-                  srfcmplx%id = prev_srfcmplx%id + 1
-                endif
-                prev_srfcmplx_rxn => srfcmplx_rxn
-                nullify(srfcmplx_rxn)
               enddo
+              if (.not.associated(reaction%surface_complexation_rxn_list)) then
+                reaction%surface_complexation_rxn_list => srfcmplx_rxn
+                srfcmplx_rxn%id = 1
+              endif
+              if (associated(prev_srfcmplx_rxn)) then
+                prev_srfcmplx_rxn%next => srfcmplx_rxn
+                srfcmplx_rxn%id = prev_srfcmplx_rxn%id + 1
+              endif
+              prev_srfcmplx_rxn => srfcmplx_rxn
+
+              srfcmplx_rxn%free_site_id = srfcmplx_rxn%id
+              reaction%neqsurfsites = srfcmplx_rxn%id
+
+              nullify(srfcmplx_rxn)
+
             case('ION_EXCHANGE_RXN')
           !   call IonExchangeRXNRead
             case('DISTRIBUTION_COEF')
