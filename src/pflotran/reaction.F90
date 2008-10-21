@@ -15,7 +15,7 @@ module Reaction_module
             ReactionRead, &
             CarbonateTestProblemCreate, &
             ReactionReadMineralKinetics, &
-            ReactionReadSurfaceComplexes, &
+!           ReactionReadSurfaceComplexes, &
             ReactionInitializeConstraint, &
             RTotal, &
             RActivity, &
@@ -182,6 +182,8 @@ subroutine ReactionRead(reaction,fid,option)
   type(aq_species_type), pointer :: species, prev_species
   type(gas_species_type), pointer :: gas, prev_gas
   type(mineral_type), pointer :: mineral, prev_mineral
+  type(surface_complex_type), pointer :: srfcmplx, prev_srfcmplx
+  type(surface_complexation_rxn_type), pointer :: srfcmplx_rxn, prev_srfcmplx_rxn
   PetscInt :: length
   PetscErrorCode :: ierr
 
@@ -293,6 +295,49 @@ subroutine ReactionRead(reaction,fid,option)
           select case(trim(word))
             case('SURFACE_COMPLEXATION_RXN')
           !   call SurfaceComplexRXNRead
+          
+              nullify(prev_srfcmplx)
+              do
+                call fiReadFlotranString(fid,string,ierr)
+                if (ierr /= 0) exit
+                if (fiCheckExit(string)) exit
+
+                call fiReadNChars(string,word,MAXNAMELENGTH,.true.,ierr)
+                call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)
+                call fiWordToUpper(word)
+                
+                srfcmplx_rxn => SurfaceComplexationRXNCreate()
+                select case(trim(word))
+                  case('MINERAL')
+                    call fiReadNChars(string,srfcmplx_rxn%mineral_name,MAXNAMELENGTH,PETSC_TRUE,ierr)
+                    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)
+                  case('SITE')
+                    call fiReadNChars(string,srfcmplx_rxn%free_site_name,MAXNAMELENGTH,PETSC_TRUE,ierr)
+                    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)
+                    call fiReadDouble(string,srfcmplx_rxn%site_density,ierr)
+                  case('COMPLEXES')
+                    do
+                      call fiReadFlotranString(fid,string,ierr)
+                      if (ierr /= 0) exit
+                      if (fiCheckExit(string)) exit
+                      call fiReadNChars(string,srfcmplx%name,MAXNAMELENGTH,PETSC_TRUE,ierr)
+                      call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)
+                    enddo
+                end select
+
+                call fiReadWord(string,srfcmplx%name,.true.,ierr)  
+                call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SURFACE_CMPLX', ierr)    
+                if (.not.associated(reaction%surface_complex_list)) then
+                  reaction%surface_complex_list => srfcmplx_rxn
+                  srfcmplx%id = 1
+                endif
+                if (associated(prev_srfcmplx_rxn)) then
+                  prev_srfcmplx_rxn%next => srfcmplx_rxn
+                  srfcmplx%id = prev_srfcmplx%id + 1
+                endif
+                prev_srfcmplx_rxn => srfcmplx_rxn
+                nullify(srfcmplx_rxn)
+              enddo
             case('ION_EXCHANGE_RXN')
           !   call IonExchangeRXNRead
             case('DISTRIBUTION_COEF')
@@ -577,6 +622,7 @@ end subroutine ReactionReadMineralKinetics
 ! date: 10/16/08
 !
 ! ************************************************************************** !
+#if 0
 subroutine ReactionReadSurfaceComplexes(reaction,fid,option)
 
   use Fileio_module
@@ -641,6 +687,7 @@ subroutine ReactionReadSurfaceComplexes(reaction,fid,option)
   enddo
   
 end subroutine ReactionReadSurfaceComplexes
+#endif
 
 ! ************************************************************************** !
 !
