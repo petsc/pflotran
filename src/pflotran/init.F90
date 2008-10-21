@@ -794,20 +794,40 @@ subroutine readInput(simulation,filename)
         do
           call fiReadFlotranString(option%fid_in,string,ierr)
           call fiReadStringErrorMsg(option%myrank,card,ierr)
-          string2 = string
-          call fiReadWord(string2,word,PETSC_TRUE,ierr)
+          if (fiCheckExit(string)) exit
+          call fiReadWord(string,word,PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'word','CHEMISTRY',ierr) 
-          select case(word)
+          select case(trim(word))
             case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
                  'MINERALS')
               call fiSkipToEND(option%fid_in,option%myrank,card)
             case('MINERAL_KINETICS')
               call ReactionReadMineralKinetics(realization%reaction,option%fid_in,option)
-!           case('SURFACE_COMPLEXES')
-!             call ReactionReadSurfaceComplexes(realization%reaction,option%fid_in, &
-!             option)
+            case('SORPTION')
+              do
+                call fiReadFlotranString(option%fid_in,string,ierr)
+                call fiReadStringErrorMsg(option%myrank,card,ierr)
+                if (fiCheckExit(string)) exit
+                call fiReadWord(string,word,PETSC_TRUE,ierr)
+                call fiErrorMsg(option%myrank,'word','CHEMISTRY,SORPTION',ierr) 
+                select case(trim(word))
+                  case('SURFACE_COMPLEXATION_RXN')
+                    do
+                      call fiReadFlotranString(option%fid_in,string,ierr)
+                      call fiReadStringErrorMsg(option%myrank,card,ierr)
+                      if (fiCheckExit(string)) exit
+                      call fiReadWord(string,word,PETSC_TRUE,ierr)
+                      call fiErrorMsg(option%myrank,'word','CHEMISTRY,SORPTION',ierr)
+                      select case(trim(word))
+                        case('COMPLEXES')
+                          call fiSkipToEND(option%fid_in,option%myrank,card)
+                      end select 
+                    enddo
+                  case('ION_EXCHANGE_RXN')
+                  case('DISTRIBUTION_COEF')
+                end select
+              enddo
           end select
-          if (fiCheckExit(string)) exit
         enddo
 
 !....................
