@@ -93,7 +93,6 @@ module Reaction_Aux_module
 
   type, public :: surface_complexation_rxn_type
     PetscInt :: id
-    character(len=MAXNAMELENGTH) :: name ! surface complex
     PetscInt :: free_site_id
     character(len=MAXNAMELENGTH) :: free_site_name
     PetscInt :: mineral_id
@@ -102,23 +101,6 @@ module Reaction_Aux_module
     type(surface_complex_type), pointer :: complex_list
     type (surface_complexation_rxn_type), pointer :: next
   end type surface_complexation_rxn_type    
-
-#if 0
-  type, public :: surface_complexation_rxn_type
-    PetscInt :: id
-    character(len=MAXNAMELENGTH) :: name ! surface complex
-    PetscInt :: mineral_id
-    character(len=MAXNAMELENGTH) :: mineral_name
-    PetscInt :: nspec
-    character(len=MAXNAMELENGTH), pointer :: spec_name(:)
-    PetscInt, pointer :: spec_ids(:)
-    PetscReal, pointer :: stoich(:)
-    PetscReal :: free_site_stoich
-    PetscReal, pointer :: logK(:)
-    PetscReal :: Z
-    type (surface_complexation_rxn_type), pointer :: next
-  end type surface_complexation_rxn_type
-#endif
 
   type, public :: aq_species_constraint_type
     character(len=MAXNAMELENGTH), pointer :: names(:)
