@@ -15,6 +15,9 @@ CO2(aq)
 CaHCO3+
 CaCO3(aq)
 END
+GAS_SPECIES
+CO2(g)
+END
 MINERALS
 Calcite
 END
@@ -173,17 +176,22 @@ END
 
 CONSTRAINT Inlet
 CONCENTRATIONS
-H+ 6 pH
-HCO3- 1.d-3 F
-Ca++ 1.d-40 F
+:H+ 6 pH
+H+ 5.098663587877577E-008 F
+:H+ 1.d-4 T
+:HCO3- 1.d-3 T
+HCO3- 1.d-3 GAS CO2(g)
+:Ca++ 1.d-40 T
+Ca++ 1.d-5 MINERAL Calcite
 END
 END
 
 CONSTRAINT initial
 CONCENTRATIONS
-H+ 8 pH
-HCO3- 1.d-3 F
-Ca++ 1.d-5 F
+:H+ 8 pH
+H+ 1.d-4 T
+HCO3- 1.d-3 T
+Ca++ 1.d-5 T
 END
 MINERALS
 Calcite 0.001

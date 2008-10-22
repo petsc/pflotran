@@ -1068,7 +1068,7 @@ subroutine TranConstraintRead(constraint,option,fid)
           call fiErrorMsg(option%myrank,'aqueous species name', &
                           'CONSTRAINT,CONCENTRATIONS', ierr) 
           call printMsg(option,trim(aq_species_constraint%names(icomp)))
-          call fiReadDouble(string,aq_species_constraint%conc(icomp),ierr)
+          call fiReadDouble(string,aq_species_constraint%constraint_conc(icomp),ierr)
           call fiErrorMsg(option%myrank,'concentration', &
                           'CONSTRAINT,CONCENTRATIONS', ierr)          
           call fiReadWord(string,word,PETSC_TRUE,ierr)
@@ -1084,7 +1084,8 @@ subroutine TranConstraintRead(constraint,option,fid)
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_TOTAL
               case('PH')
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_LOG
-                aq_species_constraint%conc(icomp) = -1.d0*aq_species_constraint%conc(icomp)
+                aq_species_constraint%constraint_conc(icomp) = &
+                  -1.d0*aq_species_constraint%constraint_conc(icomp)
               case('LOG')
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_LOG
               case('MINERAL','MNRL') 
@@ -1131,7 +1132,7 @@ subroutine TranConstraintRead(constraint,option,fid)
           call fiErrorMsg(option%myrank,'mineral name', &
                           'CONSTRAINT,CONCENTRATIONS', ierr)  
           call printMsg(option,trim(mineral_constraint%names(icomp)))
-          call fiReadDouble(string,mineral_constraint%conc(icomp),ierr)
+          call fiReadDouble(string,mineral_constraint%constraint_mol_frac(icomp),ierr)
           call fiErrorMsg(option%myrank,'concentration', &
                           'CONSTRAINT,CONCENTRATIONS', ierr)          
         

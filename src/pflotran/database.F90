@@ -647,7 +647,7 @@ subroutine BasisInit(reaction,option)
   PetscInt :: ncomp_h2o
   PetscInt :: icount_old, icount_new
   PetscInt :: i, j, irow, icol
-  PetscInt :: ipri_spec, isec_spec, imnrl
+  PetscInt :: ipri_spec, isec_spec, imnrl, igas_spec
   PetscInt :: i_old, i_new
   PetscInt :: isurfcplx, isite
   PetscInt :: idum
@@ -1201,6 +1201,25 @@ subroutine BasisInit(reaction,option)
 
   ! fill reaction arrays, swapping if necessary
   allocate(reaction%primary_species_names(reaction%ncomp))
+  allocate(reaction%primary_spec_Z(reaction%ncomp))
+  allocate(reaction%primary_spec_a0(reaction%ncomp))
+  
+    ! pack in reaction arrays
+  cur_pri_aq_spec => reaction%primary_species_list
+  ispec = 1
+  do
+    if (.not.associated(cur_pri_aq_spec)) exit
+    reaction%primary_species_names(ispec) = &
+      cur_pri_aq_spec%name
+    reaction%primary_spec_Z(ispec) = &
+      cur_pri_aq_spec%Z
+    reaction%primary_spec_a0(ispec) = &
+      cur_pri_aq_spec%a0
+    ispec = ispec + 1
+    cur_pri_aq_spec => cur_pri_aq_spec%next
+  enddo
+  nullify(cur_pri_aq_spec)
+  ispec = -1 ! to catch bugs
   
   ! secondary aqueous complexes
   reaction%neqcmplx = GetSecondarySpeciesCount(reaction)
@@ -1262,8 +1281,61 @@ subroutine BasisInit(reaction,option)
   endif
   nullify(cur_sec_aq_spec)
   isec_spec = -1 ! to catch bugs
-! right now, gas complexes are not set up in the reaction object
+
   ! gas complexes
+  reaction%ngas = GetSecondarySpeciesCount(reaction)
+  
+  if (reaction%ngas > 0) then
+    allocate(reaction%gas_species_names(reaction%ngas))
+    allocate(reaction%eqgasspecid(0:reaction%ncomp,reaction%ngas))
+    reaction%eqgasspecid = 0
+    allocate(reaction%eqgasstoich(0:reaction%ncomp,reaction%ngas))
+    reaction%eqgasstoich = 0.d0
+    allocate(reaction%eqgash2oid(reaction%ngas))
+    reaction%eqgash2oid = 0
+    allocate(reaction%eqgash2ostoich(reaction%ngas))
+    reaction%eqgash2ostoich = 0.d0
+    allocate(reaction%eqgas_logK(reaction%ngas))
+    reaction%eqgas_logK = 0.d0
+    allocate(reaction%eqgas_logKcoef(reaction%num_dbase_temperatures,reaction%ngas))
+    reaction%eqgas_logKcoef = 0.d0
+
+    ! pack in reaction arrays
+    cur_gas_spec => reaction%gas_species_list
+    igas_spec = 1
+    do
+      if (.not.associated(cur_gas_spec)) exit
+
+      reaction%gas_species_names(igas_spec) = &
+        cur_gas_spec%name
+      ispec = 0
+      do i = 1, cur_gas_spec%eqrxn%nspec
+        if (cur_gas_spec%eqrxn%spec_ids(i) /= h2o_id) then
+          ispec = ispec + 1
+          spec_id = cur_gas_spec%eqrxn%spec_ids(i)
+          if (spec_id > h2o_id) spec_id = spec_id - 1
+          reaction%eqgasspecid(ispec,igas_spec) = spec_id
+          reaction%eqgasstoich(ispec,igas_spec) = &
+            cur_gas_spec%eqrxn%stoich(i)
+            
+        else ! fill in h2o id and stoich
+          reaction%eqgash2oid(igas_spec) = h2o_id
+          reaction%eqgash2ostoich(igas_spec) = &
+            cur_gas_spec%eqrxn%stoich(i)
+        endif
+      enddo
+      reaction%eqgasspecid(0,igas_spec) = ispec
+      reaction%eqgas_logKcoef(:,igas_spec) = &
+        cur_gas_spec%eqrxn%logK
+      reaction%eqgas_logK(igas_spec) = cur_gas_spec%eqrxn%logK(2)
+  
+      igas_spec = igas_spec + 1
+      cur_gas_spec => cur_gas_spec%next
+    enddo
+
+  endif
+  nullify(cur_gas_spec)
+  igas_spec = -1 ! to catch bugs
 
   ! minerals
   reaction%nkinmnrl = GetMineralCount(reaction)
