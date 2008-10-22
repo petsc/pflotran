@@ -240,6 +240,8 @@ subroutine ReactionRead(reaction,fid,option)
         call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,DATABASE FILENAME', ierr)  
       case('LOG_FORMULATION')
         option%use_log_formulation = PETSC_TRUE        
+      case('ACTIVITY')
+        reaction%compute_activity = PETSC_TRUE        
       case default
         call printErrMsg(option,'CHEMISTRY keyword: '//trim(word)//' not recognized')
     end select
@@ -473,7 +475,7 @@ subroutine ReactionEquilibrateConstraint(reaction,constraint_name, &
   do
 
     auxvar%primary_spec = auxvar%primary_molal ! assume a density of 1 kg/L
-    call RActivity(auxvar,reaction,option)
+    if (reaction%compute_activity) call RActivity(auxvar,reaction,option)
     call RTotal(auxvar,reaction,option)
     
     Res = auxvar%total(:,1)

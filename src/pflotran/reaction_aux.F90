@@ -128,6 +128,7 @@ module Reaction_Aux_module
     type(mineral_type), pointer :: mineral_list
     type(ion_exchange_rxn_type), pointer :: ion_exchange_list
     type(surface_complexation_rxn_type), pointer :: surface_complexation_rxn_list
+    PetscTruth :: compute_activity
     ! compressed arrays for efficient computation
     ! primary aqueous complexes
     PetscInt :: ncomp
@@ -280,6 +281,8 @@ function ReactionCreate()
   reaction%num_dbase_temperatures = 0
   nullify(reaction%dbase_temperatures)
 
+  reaction%compute_activity = PETSC_FALSE
+  
   nullify(reaction%primary_species_list)
   nullify(reaction%secondary_species_list)
   nullify(reaction%gas_species_list)
