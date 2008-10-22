@@ -100,7 +100,7 @@ end function DiscretizationCreate
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine DiscretizationRead(discretization,fid,option)
+subroutine DiscretizationRead(discretization,fid,first_time, option)
 
   use Fileio_module
   use Option_module
@@ -109,9 +109,9 @@ subroutine DiscretizationRead(discretization,fid,option)
   implicit none
 
   type(option_type), pointer :: option
-  type(discretization_type) :: discretization
+  type(discretization_type),pointer :: discretization
   PetscInt :: fid
-  
+  PetscTruth :: first_time
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   type(grid_type), pointer :: grid
@@ -123,7 +123,6 @@ subroutine DiscretizationRead(discretization,fid,option)
   PetscInt :: nx, ny, nz
   PetscErrorCode :: ierr
   PetscInt :: i
-
   nx = 0
   ny = 0
   nz = 0
@@ -147,8 +146,7 @@ subroutine DiscretizationRead(discretization,fid,option)
     length = len_trim(word)
     call fiCharsToUpper(word,length)
       
-    if (.not.associated(discretization%grid) .and. & ! first time read
-        .not.associated(discretization%amrgrid)) then
+    if (first_time) then ! first time read
       select case(trim(word))
         case('TYPE')
           call fiReadWord(string,discretization%ctype,PETSC_TRUE,ierr)
@@ -307,8 +305,7 @@ subroutine DiscretizationRead(discretization,fid,option)
   
   enddo  
 
-  if (.not.associated(discretization%grid) .and. & ! first time read
-      .not.associated(discretization%amrgrid)) then
+  if (first_time) then ! first time read
 
     select case(discretization%itype)
       case(UNSTRUCTURED_GRID,STRUCTURED_GRID)

@@ -538,7 +538,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
   call fiFindStringInFile(option%fid_in,string,ierr)
   call fiFindStringErrorMsg(option%myrank,string,ierr)
 
-  call DiscretizationRead(discretization,option%fid_in,option)
+  call DiscretizationRead(discretization,option%fid_in,PETSC_TRUE, option)
   
   select case(discretization%itype)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
@@ -791,7 +791,7 @@ subroutine readInput(simulation,filename)
 
 !....................
       case ('GRID')
-        call DiscretizationRead(realization%discretization,option%fid_in,option)
+        call DiscretizationRead(realization%discretization,option%fid_in,PETSC_FALSE,option)
 
 !....................
       case ('CHEMISTRY')

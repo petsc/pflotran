@@ -95,10 +95,8 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
    d_soln_refine_op =  d_grid_geometry->lookupRefineOperator(d_solution,
                                                              "CCELL_CONSTANT_REFINE");
 
-#if 0
    d_soln_coarsen_op = d_grid_geometry->lookupCoarsenOperator(d_solution,
                                                               "CONSERVATIVE_COARSEN");
-#endif
    
    d_GlobalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
    d_LocalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
@@ -485,6 +483,24 @@ PflotranApplicationStrategy::interpolateGlobalToLocalVector(tbox::Pointer< solv:
                                                       idx);     
           }
       }
+
+#if 0
+      for (hier::PatchLevel<NDIM>::Iterator p(level); p; p++) 
+      {
+         tbox::Pointer<hier::Patch<NDIM> > patch = level->getPatch(p());
+         
+#ifdef DEBUG_CHECK_ASSERTIONS
+         assert(!patch.isNull());
+#endif
+
+
+         tbox::Pointer< pdat::CCellData<NDIM, double > > src = patch->getPatchData(src_id);
+         tbox::Pointer< pdat::CCellData<NDIM, double > > dst = patch->getPatchData(dest_id);
+         tbox::pout << "debug code" << std::endl;
+         
+      }
+#endif
+  
     }
 
     // should add code to coarsen variables
