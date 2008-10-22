@@ -119,6 +119,9 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
 
    d_math_op = new math::HierarchyCCellDataOpsReal< NDIM, double >(d_hierarchy,
                                                                    0, d_hierarchy->getFinestLevelNumber());
+
+   d_visit_writer = new appu::VisItDataWriter<NDIM>("rmhd visit writer", d_viz_directory);
+   
 }
 
 PflotranApplicationStrategy::~PflotranApplicationStrategy()
@@ -153,15 +156,17 @@ PflotranApplicationStrategy::getFromInput(tbox::Pointer<tbox::Database> db,
    if (db->keyExists("nl_tangential_coarse_fine_scheme")) {
       d_nl_tangential_interp_scheme=RefinementBoundaryInterpolation::lookupInterpolationScheme(db->getString("nl_tangential_coarse_fine_scheme"));
    }
-
+   
    if (db->keyExists("nl_normal_coarse_fine_scheme")) {
       d_nl_normal_interp_scheme = RefinementBoundaryInterpolation::lookupInterpolationScheme(db->getString("nl_normal_coarse_fine_scheme"));
    }
-
-    if (db->keyExists("number_solution_components")) {
-       d_number_solution_components = db->getInteger("number_solution_components");
+   
+   if (db->keyExists("number_solution_components")) {
+      d_number_solution_components = db->getInteger("number_solution_components");
    }
-  
+   
+   d_viz_directory = db->getStringWithDefault("viz_directory", "viz");
+   
 }
 
 /**
@@ -583,6 +588,13 @@ PflotranApplicationStrategy::createVector(int &dof, bool &use_ghost, Vec *vec)
                             d_math_op);
 
    *vec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM,double>::createPETScVector(samrai_vec, PETSC_COMM_WORLD);
+}
+
+void
+PflotranApplicationStrategy::writePlotData(int time_step,
+                                           double sim_time)
+{
+   d_visit_writer->writePlotData(d_hierarchy, time_step, sim_time);
 }
 
 }

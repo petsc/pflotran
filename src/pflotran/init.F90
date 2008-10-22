@@ -277,14 +277,14 @@ subroutine Init(simulation,filename)
     endif
 
     call DiscretizationCreateJacobian(discretization,NTRANDOF, &
-                                      tran_solver%J_mat_type, &
+                                      tran_solver%Jpre_mat_type, &
                                       tran_solver%Jpre,option)
 
     if (tran_solver%J_mat_type /= MATMFFD) then
       tran_solver%J = tran_solver%Jpre
     endif
     
-    call MatSetOptionsPrefix(tran_solver%J, "tran_", ierr)
+    call MatSetOptionsPrefix(tran_solver%Jpre, "tran_", ierr)
     
     if (tran_solver%use_galerkin_mg) then
       call DiscretizationCreateInterpolation(discretization,NTRANDOF, &

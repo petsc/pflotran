@@ -28,6 +28,7 @@
 #include "PflotranJacobianMultilevelOperator.h"
 #include "BoundaryConditionStrategy.h"
 #include "HierarchyDataOpsReal.h"
+#include "VisItDataWriter.h"
 
 namespace SAMRAI{
 
@@ -132,6 +133,7 @@ public:
 
    void createVector(int &dof, bool &use_ghost, Vec *vec);
 
+   void writePlotData(int time_step, double sim_time);
 protected:
 
 private:
@@ -203,6 +205,12 @@ private:
    BoundaryConditionStrategy  *d_refine_patch_strategy;
 
    tbox::Pointer< math::HierarchyDataOpsReal< NDIM, double > > d_math_op;
+
+   /* 
+    * Viz data writers.
+    */
+   std::string d_viz_directory;
+   appu::VisItDataWriter<NDIM>* d_visit_writer;
 
 };
 
