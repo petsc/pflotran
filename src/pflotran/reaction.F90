@@ -246,6 +246,9 @@ subroutine ReactionRead(reaction,fid,option)
         call printErrMsg(option,'CHEMISTRY keyword: '//trim(word)//' not recognized')
     end select
   enddo
+  
+  if (len_trim(reaction%database_filename) < 2) &
+    reaction%compute_activity = PETSC_FALSE
  
 end subroutine ReactionRead
 
