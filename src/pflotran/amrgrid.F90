@@ -389,6 +389,9 @@ subroutine AMRGridInitialize(amrgrid)
               struct_grid%origin(X_DIRECTION)=x0
               struct_grid%origin(Y_DIRECTION)=y0
               struct_grid%origin(Z_DIRECTION)=z0
+! for now all AMR grids are going to be cartesian though we can generalize later
+              struct_grid%itype = CARTESIAN_GRID
+              struct_grid%ctype = 'cartesian'
            else              
               nullify(gridlevel(ln+1)%grids(pn+1)%grid_ptr)
            endif
