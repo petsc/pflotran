@@ -105,16 +105,17 @@ module Reaction_Aux_module
 
   type, public :: aq_species_constraint_type
     character(len=MAXNAMELENGTH), pointer :: names(:)
-    PetscReal, pointer :: conc(:)
-    PetscReal, pointer :: basis_conc(:)
+    PetscReal, pointer :: constraint_conc(:)
+    PetscReal, pointer :: basis_molarity(:)
     PetscInt, pointer :: constraint_type(:)
+    PetscInt, pointer :: constraint_spec_id(:)
     character(len=MAXNAMELENGTH), pointer :: constraint_spec_name(:)
   end type aq_species_constraint_type
 
   type, public :: mineral_constraint_type
     character(len=MAXNAMELENGTH), pointer :: names(:)
-    PetscReal, pointer :: conc(:)
-    PetscReal, pointer :: basis_conc(:)
+    PetscReal, pointer :: constraint_mol_frac(:)
+    PetscReal, pointer :: basis_mol_frac(:)
   end type mineral_constraint_type
 
   type, public :: reaction_type
@@ -148,6 +149,15 @@ module Reaction_Aux_module
     PetscReal :: debyeA  ! Debye-Huckel A coefficient
     PetscReal :: debyeB  ! Debye-Huckel B coefficient
     PetscReal :: debyeBdot  ! Debye-Huckel Bdot coefficient
+    ! gas species
+    PetscInt :: ngas
+    character(len=MAXNAMELENGTH), pointer :: gas_species_names(:)
+    PetscInt, pointer :: eqgasspecid(:,:)   ! (0:ncomp in rxn)
+    PetscReal, pointer :: eqgasstoich(:,:)
+    PetscInt, pointer :: eqgash2oid(:)       ! id of water, if present
+    PetscReal, pointer :: eqgash2ostoich(:)  ! stoichiometry of water, if present
+    PetscReal, pointer :: eqgas_logK(:)
+    PetscReal, pointer :: eqgas_logKcoef(:,:)
     ! ionx exchange reactions
     PetscInt :: neqionx
     character(len=MAXNAMELENGTH), pointer :: ion_exchange_names(:)
@@ -228,8 +238,12 @@ module Reaction_Aux_module
             GetPrimarySpeciesNames, &
             GetSecondarySpeciesCount, &
             GetSecondarySpeciesNames, &
+            GetGasCount, &
+            GetGasNames, &
+            GetGasIDFromName, &
             GetMineralCount, &
             GetMineralNames, &
+            GetMineralIDFromName, &
             EquilibriumRxnCreate, &
             EquilibriumRxnDestroy, &
             TransitionStateTheoryRxnCreate, &
@@ -239,8 +253,7 @@ module Reaction_Aux_module
             MineralConstraintDestroy, &
             AqueousSpeciesConstraintCreate, &
             MineralConstraintCreate, &
-            SurfaceComplexCreate, &
-            GetMineralIDFromName
+            SurfaceComplexCreate
              
 contains
 
@@ -276,6 +289,7 @@ function ReactionCreate()
   
   nullify(reaction%primary_species_names)
   nullify(reaction%secondary_species_names)
+  nullify(reaction%gas_species_names)
   nullify(reaction%surface_complex_names)
   nullify(reaction%ion_exchange_names)
   nullify(reaction%mineral_names)
@@ -284,6 +298,14 @@ function ReactionCreate()
   reaction%ncomp = 0
   nullify(reaction%primary_spec_a0)
   nullify(reaction%primary_spec_Z)
+
+  reaction%ngas = 0
+  nullify(reaction%eqgasspecid)
+  nullify(reaction%eqgasstoich)
+  nullify(reaction%eqgash2oid)
+  nullify(reaction%eqgash2ostoich)
+  nullify(reaction%eqgas_logK)
+  nullify(reaction%eqgas_logKcoef)
   
   reaction%neqcmplx = 0
   nullify(reaction%eqcmplxspecid)
@@ -295,10 +317,10 @@ function ReactionCreate()
   nullify(reaction%eqcmplx_logK)
   nullify(reaction%eqcmplx_logKcoef)
   
-  reaction%debyeA = 0.d0
-  reaction%debyeB = 0.d0
-  reaction%debyeBdot = 0.d0
-  
+  reaction%debyeA = 0.5114d0 
+  reaction%debyeB = 0.3288d0 
+  reaction%debyeBdot = 0.0410d0 
+
   reaction%neqionx = 0
   nullify(reaction%eqionx_ncation)
   nullify(reaction%eqionx_CEC)
@@ -603,10 +625,12 @@ function AqueousSpeciesConstraintCreate(option)
   allocate(constraint)
   allocate(constraint%names(option%ncomp))
   constraint%names = ''
-  allocate(constraint%conc(option%ncomp))
-  constraint%conc = 0.d0
-  allocate(constraint%basis_conc(option%ncomp))
-  constraint%basis_conc = 0.d0
+  allocate(constraint%constraint_conc(option%ncomp))
+  constraint%constraint_conc = 0.d0
+  allocate(constraint%basis_molarity(option%ncomp))
+  constraint%basis_molarity = 0.d0
+  allocate(constraint%constraint_spec_id(option%ncomp))
+  constraint%constraint_spec_id = 0
   allocate(constraint%constraint_type(option%ncomp))
   constraint%constraint_type = 0
   allocate(constraint%constraint_spec_name(option%ncomp))
@@ -638,10 +662,10 @@ function MineralConstraintCreate(option)
   allocate(constraint)
   allocate(constraint%names(option%nmnrl))
   constraint%names = ''
-  allocate(constraint%conc(option%nmnrl))
-  constraint%conc = 0.d0
-  allocate(constraint%basis_conc(option%nmnrl))
-  constraint%basis_conc = 0.d0
+  allocate(constraint%constraint_mol_frac(option%nmnrl))
+  constraint%constraint_mol_frac = 0.d0
+  allocate(constraint%basis_mol_frac(option%nmnrl))
+  constraint%basis_mol_frac = 0.d0
 
   MineralConstraintCreate => constraint
 
@@ -769,6 +793,99 @@ end function GetSecondarySpeciesCount
 
 ! ************************************************************************** !
 !
+! GetGasNames: Returns the names of gases in an array
+! author: Glenn Hammond
+! date: 10/21/08
+!
+! ************************************************************************** !
+function GetGasNames(reaction)
+
+  implicit none
+  
+  character(len=MAXWORDLENGTH), pointer :: GetGasNames(:)
+  type(reaction_type) :: reaction
+
+  PetscInt :: count
+  character(len=MAXWORDLENGTH), pointer :: names(:)
+  type(gas_species_type), pointer :: gas
+
+  count = GetGasCount(reaction)
+  allocate(names(count))
+  
+  count = 1
+  gas => reaction%gas_species_list
+  do
+    if (.not.associated(gas)) exit
+    names(count) = gas%name
+    count = count + 1
+    gas => gas%next
+  enddo
+
+  GetGasNames => names
+  
+end function GetGasNames
+
+! ************************************************************************** !
+!
+! GetGasCount: Returns the number of primary species
+! author: Glenn Hammond
+! date: 06/02/08
+!
+! ************************************************************************** !
+function GetGasCount(reaction)
+
+  implicit none
+  
+  integer :: GetGasCount
+  type(reaction_type) :: reaction
+
+  type(gas_species_type), pointer :: gas
+
+  GetGasCount = 0
+  gas => reaction%gas_species_list
+  do
+    if (.not.associated(gas)) exit
+    GetGasCount = GetGasCount + 1
+    gas => gas%next
+  enddo
+
+end function GetGasCount
+
+! ************************************************************************** !
+!
+! GetGasIDFromName: Returns the id of gas with the corresponding name
+! author: Glenn Hammond
+! date: 09/04/08
+!
+! ************************************************************************** !
+function GetGasIDFromName(reaction,name)
+
+  use Fileio_module
+  
+  implicit none
+  
+  type(reaction_type) :: reaction
+  character(len=MAXNAMELENGTH) :: name
+
+  PetscInt :: GetGasIDFromName
+  type(gas_species_type), pointer :: gas
+
+  GetGasIDFromName = -1
+ 
+  gas => reaction%gas_species_list
+  do
+    if (.not.associated(gas)) exit
+    if (fiStringCompare(name,gas%name,MAXNAMELENGTH)) then
+      GetGasIDFromName = gas%id
+      exit
+    endif
+    gas => gas%next
+  enddo
+
+end function GetGasIDFromName
+
+! ************************************************************************** !
+!
 ! GetMineralNames: Returns the names of minerals in an array
 ! author: Glenn Hammond
 ! date: 09/04/08
@@ -829,7 +946,7 @@ end function GetMineralCount
 
 ! ************************************************************************** !
 !
-! GetMineralNames: Returns the names of minerals in an array
+! GetMineralIDFromName: Returns the id of mineral with the corresponding name
 ! author: Glenn Hammond
 ! date: 09/04/08
 !
@@ -1090,15 +1207,18 @@ subroutine AqueousSpeciesConstraintDestroy(constraint)
   if (associated(constraint%names)) &
     deallocate(constraint%names)
   nullify(constraint%names)
-  if (associated(constraint%conc)) &
-    deallocate(constraint%conc)
-  nullify(constraint%conc)
-  if (associated(constraint%basis_conc)) &
-    deallocate(constraint%basis_conc)
-  nullify(constraint%basis_conc)
+  if (associated(constraint%constraint_conc)) &
+    deallocate(constraint%constraint_conc)
+  nullify(constraint%constraint_conc)
+  if (associated(constraint%basis_molarity)) &
+    deallocate(constraint%basis_molarity)
+  nullify(constraint%basis_molarity)
   if (associated(constraint%constraint_type)) &
     deallocate(constraint%constraint_type)
   nullify(constraint%constraint_type)
+  if (associated(constraint%constraint_spec_id)) &
+    deallocate(constraint%constraint_spec_id)
+  nullify(constraint%constraint_spec_id)
   if (associated(constraint%constraint_spec_name)) &
     deallocate(constraint%constraint_spec_name)
   nullify(constraint%constraint_spec_name)
@@ -1126,12 +1246,12 @@ subroutine MineralConstraintDestroy(constraint)
   if (associated(constraint%names)) &
     deallocate(constraint%names)
   nullify(constraint%names)
-  if (associated(constraint%conc)) &
-    deallocate(constraint%conc)
-  nullify(constraint%conc)
-  if (associated(constraint%basis_conc)) &
-    deallocate(constraint%basis_conc)
-  nullify(constraint%basis_conc)
+  if (associated(constraint%constraint_mol_frac)) &
+    deallocate(constraint%constraint_mol_frac)
+  nullify(constraint%constraint_mol_frac)
+  if (associated(constraint%basis_mol_frac)) &
+    deallocate(constraint%basis_mol_frac)
+  nullify(constraint%basis_mol_frac)
 
   deallocate(constraint)
   nullify(constraint)
@@ -1223,6 +1343,8 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%primary_species_names)
   if (associated(reaction%secondary_species_names)) deallocate(reaction%secondary_species_names)
   nullify(reaction%secondary_species_names)
+  if (associated(reaction%gas_species_names)) deallocate(reaction%gas_species_names)
+  nullify(reaction%gas_species_names)
   if (associated(reaction%ion_exchange_names)) deallocate(reaction%ion_exchange_names)
   nullify(reaction%ion_exchange_names)
   if (associated(reaction%surface_complex_names)) deallocate(reaction%surface_complex_names)
@@ -1253,6 +1375,19 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%eqcmplx_logK)
   if (associated(reaction%eqcmplx_logKcoef)) deallocate(reaction%eqcmplx_logKcoef)
   nullify(reaction%eqcmplx_logKcoef)
+  
+  if (associated(reaction%eqgasspecid)) deallocate(reaction%eqgasspecid)
+  nullify(reaction%eqgasspecid)
+  if (associated(reaction%eqgasstoich)) deallocate(reaction%eqgasstoich)
+  nullify(reaction%eqgasstoich)
+  if (associated(reaction%eqgash2oid)) deallocate(reaction%eqgash2oid)
+  nullify(reaction%eqgash2oid)
+  if (associated(reaction%eqgash2ostoich)) deallocate(reaction%eqgash2ostoich)
+  nullify(reaction%eqgash2ostoich)
+  if (associated(reaction%eqgas_logK)) deallocate(reaction%eqgas_logK)
+  nullify(reaction%eqgas_logK)
+  if (associated(reaction%eqgas_logKcoef)) deallocate(reaction%eqgas_logKcoef)
+  nullify(reaction%eqgas_logKcoef)
   
   if (associated(reaction%eqionx_ncation)) deallocate(reaction%eqionx_ncation)
   nullify(reaction%eqionx_ncation)

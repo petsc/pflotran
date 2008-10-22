@@ -134,6 +134,7 @@ noskip
 /
 :DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
 DATABASE ../../database/hanford.dat
+LOG_FORMULATION
 /
 :
 :CHECKPOINT 1

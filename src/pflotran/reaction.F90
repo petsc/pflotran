@@ -13,7 +13,6 @@ module Reaction_module
   
   public :: ReactionCreate, &
             ReactionRead, &
-            CarbonateTestProblemCreate, &
             ReactionReadMineralKinetics, &
 !           ReactionReadSurfaceComplexes, &
             ReactionInitializeConstraint, &
@@ -23,141 +22,6 @@ module Reaction_module
             RReactionDerivative
 
 contains
-
-! ************************************************************************** !
-!
-! CarbonateTestProblemCreate: Creates a carbonate test problem for reactive
-!                             transport
-! author: Glenn Hammond
-! date: 08/28/08
-!
-! ************************************************************************** !
-subroutine CarbonateTestProblemCreate(reaction,option)
-
-  use Option_module
-  
-  type(reaction_type), pointer :: reaction
-  type(option_type) :: option
-
-  PetscInt :: icomp, irxn
-  
-  ! Assumes primary components
-  ! 1 H+
-  ! 2 HCO3-
-  ! 3 Ca+2
-  
-  ! aqueous complexes
-  ! CO2(aq) (combined with H2CO3(aq)
-  ! CO3-2
-  ! CaCO3(aq)
-  
-  ! minerals
-  ! CaCO3(s)
-  reaction%debyeA = 0.5114d0
-  reaction%debyeB = 0.3288d0
-  reaction%debyeBdot = 0.0410d0 
-  reaction%num_dbase_temperatures = 1
-  
-  reaction%ncomp = option%ncomp
-  allocate(reaction%primary_spec_Z(option%ncomp))
-  reaction%primary_spec_Z(1) = 1.d0
-  reaction%primary_spec_Z(2) = -1.d0
-  reaction%primary_spec_Z(3) = 2.d0
-  allocate(reaction%primary_spec_a0(option%ncomp))
-  reaction%primary_spec_a0(1) = 9.d0
-  reaction%primary_spec_a0(2) = 4.d0
-  reaction%primary_spec_a0(3) = 6.d0
-  
-  reaction%neqcmplx = 5
-  allocate(reaction%eqcmplxspecid(0:option%ncomp,reaction%neqcmplx))
-  reaction%eqcmplxspecid = 0
-  allocate(reaction%eqcmplxstoich(option%ncomp,reaction%neqcmplx))
-  reaction%eqcmplxstoich = 0.d0
-  allocate(reaction%eqcmplx_logK(reaction%neqcmplx))
-  reaction%eqcmplx_logK = 0.d0
-  allocate(reaction%eqcmplx_Z(reaction%neqcmplx))
-  reaction%eqcmplx_Z = 0.d0
-  allocate(reaction%eqcmplx_a0(reaction%neqcmplx))
-  reaction%eqcmplx_a0 = 0.d0
-  
-  ! CO2(aq)
-  irxn = 1
-  reaction%eqcmplxspecid(0,irxn) = 2
-  reaction%eqcmplxspecid(1,irxn) = 1    ! H+
-  reaction%eqcmplxspecid(2,irxn) = 2    ! HCO3-
-  reaction%eqcmplxstoich(1,irxn) = 1.d0 ! H+
-  reaction%eqcmplxstoich(2,irxn) = 1.d0 ! HCO3-
-  reaction%eqcmplx_logK(irxn) = -6.3447d0
-  reaction%eqcmplx_Z(irxn) = 0.d0
-  reaction%eqcmplx_a0(irxn) = 3.d0
-  
-  ! CO3-2
-  irxn = 2
-  reaction%eqcmplxspecid(0,irxn) = 2
-  reaction%eqcmplxspecid(1,irxn) = 1    ! H+
-  reaction%eqcmplxspecid(2,irxn) = 2    ! HCO3-
-  reaction%eqcmplxstoich(1,irxn) = -1.d0 ! H+
-  reaction%eqcmplxstoich(2,irxn) = 1.d0 ! HCO3-
-  reaction%eqcmplx_logK(irxn) = 10.3288d0
-  reaction%eqcmplx_z(irxn) = -2.d0
-  reaction%eqcmplx_a0(irxn) = 4.5d0
-  
-  ! CaCO3(aq)
-  irxn = 3
-  reaction%eqcmplxspecid(0,irxn) = 3
-  reaction%eqcmplxspecid(1,irxn) = 1    ! H+
-  reaction%eqcmplxspecid(2,irxn) = 2    ! HCO3-
-  reaction%eqcmplxspecid(3,irxn) = 3    ! Ca+2
-  reaction%eqcmplxstoich(1,irxn) = -1.d0 ! H+
-  reaction%eqcmplxstoich(2,irxn) = 1.d0 ! HCO3-
-  reaction%eqcmplxstoich(3,irxn) = 1.d0 ! Ca+2
-  reaction%eqcmplx_logK(irxn) = 7.0017d0
-  reaction%eqcmplx_z(irxn) = 0.d0
-  reaction%eqcmplx_a0(irxn) = 3.d0
-
-  ! CaHCO3+
-  irxn = 4
-  reaction%eqcmplxspecid(0,irxn) = 2
-  reaction%eqcmplxspecid(1,irxn) = 2    ! HCO3-
-  reaction%eqcmplxspecid(2,irxn) = 3    ! Ca+2
-  reaction%eqcmplxstoich(1,irxn) = 1.d0 ! HCO3-
-  reaction%eqcmplxstoich(2,irxn) = 1.d0 ! Ca+2
-  reaction%eqcmplx_logK(irxn) = -1.0467d0
-  reaction%eqcmplx_z(irxn) = 1.d0
-  reaction%eqcmplx_a0(irxn) = 4.d0
-
-  ! OH-
-  irxn = 5
-  reaction%eqcmplxspecid(0,irxn) = 1
-  reaction%eqcmplxspecid(1,irxn) = 1    ! H+
-  reaction%eqcmplxstoich(1,irxn) = -1.d0 ! H+
-  reaction%eqcmplx_logK(irxn) = 13.9951
-  reaction%eqcmplx_z(irxn) = -1.d0
-  reaction%eqcmplx_a0(irxn) = 3.5d0
-  
-  reaction%nkinmnrl = 1
-  allocate(reaction%kinmnrlspecid(0:option%ncomp,reaction%nkinmnrl))
-  allocate(reaction%kinmnrlstoich(option%ncomp,reaction%nkinmnrl))
-  allocate(reaction%kinmnrl_logK(reaction%nkinmnrl))
-  allocate(reaction%kinmnrl_rate(1,reaction%nkinmnrl))
-  allocate(reaction%mnrl_molar_vol(reaction%nkinmnrl))
-  allocate(reaction%kinmnrl_num_prefactors(reaction%nkinmnrl))
-  
-  ! CaCO3(s)
-  irxn = 1
-  reaction%kinmnrlspecid(0,irxn) = 3
-  reaction%kinmnrlspecid(1,irxn) = 1    ! H+
-  reaction%kinmnrlspecid(2,irxn) = 2    ! HCO3-
-  reaction%kinmnrlspecid(3,irxn) = 3    ! Ca+2
-  reaction%kinmnrlstoich(1,irxn) = -1.d0 ! H+
-  reaction%kinmnrlstoich(2,irxn) = 1.d0 ! HCO3-
-  reaction%kinmnrlstoich(3,irxn) = 1.d0 ! Ca+2
-  reaction%kinmnrl_logK(irxn) = 1.8487d0
-  reaction%kinmnrl_rate(1,irxn) = 1.d-6
-  reaction%mnrl_molar_vol(irxn) = 36.9340d0/1.d6  ! based on 36.934 cm^3/mol
-  reaction%kinmnrl_num_prefactors(irxn) = 0
-  
-end subroutine CarbonateTestProblemCreate
 
 ! ************************************************************************** !
 !
@@ -247,6 +111,9 @@ subroutine ReactionRead(reaction,fid,option)
           call fiReadFlotranString(fid,string,ierr)
           if (ierr /= 0) exit
           if (fiCheckExit(string)) exit
+
+          reaction%ngas = reaction%ngas + 1
+          
           gas => GasSpeciesCreate()
           call fiReadWord(string,gas%name,PETSC_TRUE,ierr)  
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,GAS_SPECIES', ierr)    
@@ -267,6 +134,9 @@ subroutine ReactionRead(reaction,fid,option)
           call fiReadFlotranString(fid,string,ierr)
           if (ierr /= 0) exit
           if (fiCheckExit(string)) exit
+          
+          reaction%nmnrl = reaction%nmnrl + 1
+          
           mineral => MineralCreate()
           call fiReadWord(string,mineral%name,PETSC_TRUE,ierr)  
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,MINERALS', ierr)    
@@ -367,7 +237,9 @@ subroutine ReactionRead(reaction,fid,option)
         enddo
       case('DATABASE')
         call fiReadNChars(string,reaction%database_filename,MAXSTRINGLENGTH,PETSC_TRUE,ierr)  
-        call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,DATABASE FILENAME', ierr)          
+        call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,DATABASE FILENAME', ierr)  
+      case('LOG_FORMULATION')
+        option%use_log_formulation = PETSC_TRUE        
       case default
         call printErrMsg(option,'CHEMISTRY keyword: '//trim(word)//' not recognized')
     end select
@@ -380,7 +252,7 @@ end subroutine ReactionRead
 ! ReactionInitializeConstraint: Initializes constraints based on primary
 !                               species in system
 ! author: Glenn Hammond
-! date: 10/014/08
+! date: 10/14/08
 !
 ! ************************************************************************** !
 subroutine ReactionInitializeConstraint(reaction,constraint_name, &
@@ -402,23 +274,18 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
   PetscTruth :: found
   PetscInt :: icomp, jcomp
   PetscInt :: imnrl, jmnrl
+  PetscReal :: igas
   PetscReal :: value
-  PetscReal :: conc(option%ncomp)
+  PetscReal :: constraint_conc(option%ncomp)
   PetscInt :: constraint_type(option%ncomp)
   character(len=MAXNAMELENGTH) :: constraint_spec_name(option%ncomp)
-
-
-  type(reactive_transport_auxvar_type) :: auxvar
-  PetscReal :: Res(reaction%ncomp)
-  PetscReal :: total_conc(reaction%ncomp)
-  PetscReal :: free_conc(reaction%ncomp)
-  PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
-  PetscInt :: indices(reaction%ncomp)
-  PetscInt :: num_it
-  PetscReal :: norm
-  PetscReal :: prev_molal(reaction%ncomp)
-  PetscReal, parameter :: tol = 1.d-12
+  PetscInt :: constraint_id(option%ncomp)
     
+  constraint_id = 0
+  constraint_spec_name = ''
+  constraint_type = 0
+  constraint_conc = 0.d0
+  
   ! aqueous species
   do icomp = 1, option%ncomp
     found = PETSC_FALSE
@@ -438,17 +305,63 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
     else
       constraint_type(jcomp) = aq_species_constraint%constraint_type(icomp)
       constraint_spec_name(jcomp) = aq_species_constraint%constraint_spec_name(icomp)
-      conc(jcomp) = aq_species_constraint%conc(icomp)
+      constraint_conc(jcomp) = aq_species_constraint%constraint_conc(icomp)
+      
+      ! link constraint species
+      select case(constraint_type(jcomp))
+        case(CONSTRAINT_MINERAL)
+          found = PETSC_FALSE
+          do imnrl = 1, reaction%nmnrl
+            if (fiStringCompare(constraint_spec_name(jcomp), &
+                                reaction%mineral_names(imnrl), &
+                                MAXNAMELENGTH)) then
+              constraint_id(jcomp) = imnrl
+              found = PETSC_TRUE
+              exit
+            endif
+          enddo
+          if (.not.found) then
+            string = 'Constraint mineral: ' // &
+                     trim(constraint_spec_name(jcomp)) // &
+                     ' for aqueous species: ' // &
+                     trim(option%comp_names(jcomp)) // &
+                     ' in constraint: ' // &
+                     trim(constraint_name) // ' not found.' 
+            call printErrMsg(option,string)         
+          endif
+        case(CONSTRAINT_GAS)
+          found = PETSC_FALSE
+          do igas = 1, reaction%ngas
+            if (fiStringCompare(constraint_spec_name(jcomp), &
+                                reaction%gas_species_names(igas), &
+                                MAXNAMELENGTH)) then
+              constraint_id(jcomp) = igas
+              found = PETSC_TRUE
+              exit
+            endif
+          enddo
+          if (.not.found) then
+            string = 'Constraint gas: ' // &
+                     trim(constraint_spec_name(jcomp)) // &
+                     ' for aqueous species: ' // &
+                     trim(option%comp_names(jcomp)) // &
+                     ' in constraint: ' // &
+                     trim(constraint_name) // ' not found.' 
+            call printErrMsg(option,string)         
+          endif
+      end select
+
     endif
   enddo
+  
+  ! place ordered constraint parameters back in original arrays
+  aq_species_constraint%constraint_type = constraint_type
+  aq_species_constraint%constraint_spec_name = constraint_spec_name
+  aq_species_constraint%constraint_spec_id = constraint_id
+  aq_species_constraint%constraint_conc = constraint_conc
 
-#ifdef GEH  
-  if (.not.associated(reaction)) then ! simply tracer transport
-#else
-  if (PETSC_TRUE) then
-#endif
-    aq_species_constraint%basis_conc = conc
-  else
+  ! minerals
+  if (associated(reaction)) then
     if (associated(mineral_constraint)) then
       do imnrl = 1, reaction%nmnrl
         found = PETSC_FALSE
@@ -466,93 +379,210 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
                    ' not found among primary species.'
           call printErrMsg(option,string)
         else
-          mineral_constraint%basis_conc(jmnrl) = mineral_constraint%conc(imnrl)
+          mineral_constraint%basis_mol_frac(jmnrl) = &
+            mineral_constraint%constraint_mol_frac(imnrl)
         endif  
       enddo
     endif
+  endif
+  
+  call ReactionEquilibrateConstraint(reaction,constraint_name, &
+                                     aq_species_constraint, &
+                                     option)
+  
+end subroutine ReactionInitializeConstraint
 
-    total_conc = 0.d0
+! ************************************************************************** !
+!
+! ReactionEquilibrateConstraint: Equilibrates constraint concentrations
+!                                with prescribed geochemistry
+! author: Glenn Hammond
+! date: 10/22/08
+!
+! ************************************************************************** !
+subroutine ReactionEquilibrateConstraint(reaction,constraint_name, &
+                                         aq_species_constraint, &
+                                         option)
+  use Option_module
+  use Fileio_module
+  use Utility_module  
+  
+  implicit none
+  
+  type(reaction_type), pointer :: reaction
+  character(len=MAXNAMELENGTH) :: constraint_name
+  type(aq_species_constraint_type), pointer :: aq_species_constraint
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: icomp, jcomp
+  PetscInt :: imnrl, jmnrl
+  PetscReal :: igas
+  PetscReal :: conc(option%ncomp)
+  PetscInt :: constraint_type(option%ncomp)
+  character(len=MAXNAMELENGTH) :: constraint_spec_name(option%ncomp)
+
+  type(reactive_transport_auxvar_type) :: auxvar
+  PetscReal :: Res(reaction%ncomp)
+  PetscReal :: total_conc(reaction%ncomp)
+  PetscReal :: free_conc(reaction%ncomp)
+  PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
+  PetscInt :: indices(reaction%ncomp)
+  PetscInt :: num_it
+  PetscReal :: norm
+  PetscReal :: prev_molal(reaction%ncomp)
+  PetscReal, parameter :: tol = 1.d-12
+
+  PetscInt :: constraint_id(reaction%ncomp)
+  PetscReal :: ln_act_h2o
+  PetscReal :: lnQK, QK
+  PetscInt :: comp_id
+  PetscReal, parameter :: log_to_ln = 2.30258509299d0
+    
+  if (.not.associated(reaction)) return
+  
+  constraint_type = aq_species_constraint%constraint_type
+  constraint_spec_name = aq_species_constraint%constraint_spec_name
+  constraint_id = aq_species_constraint%constraint_spec_id
+  conc = aq_species_constraint%constraint_conc
+  
+  total_conc = 0.d0
+  constraint_id = 0
+  do icomp = 1, reaction%ncomp
+    select case(constraint_type(icomp))
+      case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
+        total_conc(icomp) = conc(icomp)
+        free_conc(icomp) = 1.d-9
+      case(CONSTRAINT_FREE)
+        free_conc(icomp) = conc(icomp)
+      case(CONSTRAINT_LOG)
+        free_conc(icomp) = 10**conc(icomp)
+      case(CONSTRAINT_MINERAL)
+        free_conc(icomp) = conc(icomp) ! guess
+      case(CONSTRAINT_GAS)
+        free_conc(icomp) = conc(icomp) ! guess
+    end select
+  enddo
+  
+  call RTAuxVarInit(auxvar,option)
+  auxvar%den(1) = 1000.d0 ! assume a density of 1 kg/L (1000 kg/m^3)
+  auxvar%primary_molal = free_conc
+
+  num_it = 0
+  
+  do
+
+    auxvar%primary_spec = auxvar%primary_molal ! assume a density of 1 kg/L
+    call RActivity(auxvar,reaction,option)
+    call RTotal(auxvar,reaction,option)
+    
+    Res = auxvar%total(:,1)
+    ! dtotal must be scaled by 1.d-3 to scale density in RTotal from kg/m^3 -> kg/L
+    Jac = auxvar%dtotal(:,:,1)*1.d-3
+        
     do icomp = 1, reaction%ncomp
       select case(constraint_type(icomp))
         case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
-          total_conc(icomp) = conc(icomp)
-          free_conc(icomp) = 1.d-9
-        case(CONSTRAINT_FREE)
-          free_conc(icomp) = conc(icomp)
-        case(CONSTRAINT_LOG)
-          free_conc(icomp) = 10**conc(icomp)
-        case(CONSTRAINT_MINERAL,CONSTRAINT_GAS)
-          free_conc(icomp) = conc(icomp) ! guess
+        case(CONSTRAINT_FREE,CONSTRAINT_LOG)
+          Res(icomp) = 0.d0
+          Jac(icomp,:) = 0.d0
+          Jac(:,icomp) = 0.d0
+          Jac(icomp,icomp) = 1.d0
+        case(CONSTRAINT_MINERAL)
+
+          ln_act_h2o = 0.d0
+  
+          imnrl = constraint_id(icomp)
+          ! compute secondary species concentration
+          lnQK = -1.d0*reaction%kinmnrl_logK(imnrl)*log_to_ln
+
+          ! activity of water
+          if (reaction%kinmnrlh2oid(imnrl) > 0) then
+            lnQK = lnQK + reaction%kinmnrlh2ostoich(imnrl)*ln_act_h2o
+          endif
+
+          do jcomp = 1, reaction%kinmnrlspecid(0,imnrl)
+            comp_id = reaction%kinmnrlspecid(jcomp,imnrl)
+            lnQK = lnQK + reaction%kinmnrlstoich(jcomp,imnrl)* &
+                          log(auxvar%primary_spec(comp_id)*auxvar%pri_act_coef(comp_id))
+          enddo
+          QK = exp(lnQK)
+          
+          Res(icomp) = 1.d0 - QK
+          Jac(icomp,:) = 0.d0
+          do jcomp = 1,reaction%kinmnrlspecid(0,imnrl)
+            comp_id = reaction%kinmnrlspecid(jcomp,imnrl)
+            Jac(icomp,comp_id) = -exp(lnQK-log(auxvar%primary_molal(comp_id)))* &
+                                 reaction%kinmnrlstoich(jcomp,imnrl)
+          enddo
+        case(CONSTRAINT_GAS)
+
+          ln_act_h2o = 0.d0
+  
+          igas = constraint_id(icomp)
+          ! compute secondary species concentration
+          lnQK = -1.d0*reaction%eqgas_logK(igas)*log_to_ln
+
+          ! activity of water
+          if (reaction%eqgash2oid(igas) > 0) then
+            lnQK = lnQK + reaction%eqgash2ostoich(igas)*ln_act_h2o
+          endif
+
+          do jcomp = 1, reaction%eqgasspecid(0,igas)
+            comp_id = reaction%eqgasspecid(jcomp,igas)
+            lnQK = lnQK + reaction%eqgasstoich(jcomp,igas)* &
+                          log(auxvar%primary_spec(comp_id)*auxvar%pri_act_coef(comp_id))
+          enddo
+          QK = exp(lnQK)
+          
+          Res(icomp) = 1.d0 - QK
+          Jac(icomp,:) = 0.d0
+          do jcomp = 1,reaction%eqgasspecid(0,igas)
+            comp_id = reaction%eqgasspecid(jcomp,igas)
+            Jac(icomp,comp_id) = -exp(lnQK-log(auxvar%primary_molal(comp_id)))* &
+                                 reaction%eqgasstoich(jcomp,igas)
+          enddo
       end select
     enddo
     
-    call RTAuxVarInit(auxvar,option)
-    auxvar%den(1) = 997.d0
-    auxvar%primary_molal = free_conc
+    Res = total_conc - Res
 
-    num_it = 0
-    
-    do
-
-      auxvar%primary_spec = auxvar%primary_molal* &
-                            auxvar%den(1)*1.d-3
-      call RTotal(auxvar,reaction,option)
-      
-      Res = auxvar%total(:,1)
-      Jac = auxvar%dtotal(:,:,1)
-          
-      do icomp = 1, reaction%ncomp
-        select case(constraint_type(icomp))
-          case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
-          case(CONSTRAINT_FREE,CONSTRAINT_LOG)
-            Res(icomp) = 0.d0
-            Jac(icomp,:) = 0.d0
-!            Jac(:,icomp) = 0.d0
-            Jac(icomp,icomp) = 1.d0
-          case(CONSTRAINT_MINERAL)
-          case(CONSTRAINT_GAS)
-        end select
-      enddo
-      
-      Res = 1.d0*(total_conc - Res)
-
-      ! scale Jacobian
-      do icomp = 1, reaction%ncomp
-        norm = max(1.d0,maxval(abs(Jac(icomp,:))))
-        norm = 1.d0/norm
-        Res(icomp) = Res(icomp)*norm
-        Jac(icomp,:) = Jac(icomp,:)*norm
-      enddo
-        
-      ! for derivatives with respect to ln conc
-      do icomp = 1, reaction%ncomp
-        Jac(:,icomp) = Jac(:,icomp)*auxvar%primary_spec(icomp)
-      enddo
-      call ludcmp(Jac,reaction%ncomp,indices,icomp)
-      call lubksb(Jac,reaction%ncomp,indices,Res)
-
-      prev_molal = auxvar%primary_molal
-
-      Res = dsign(1.d0,Res)*min(dabs(Res),5.d0)
-        
-      auxvar%primary_molal = auxvar%primary_molal*exp(Res)
-    
-      num_it = num_it + 1
-      print *, num_it, Res
-      
-      ! check for convergence
-      if (maxval(dabs(auxvar%primary_molal-prev_molal)/ &
-                 auxvar%primary_molal) < tol) exit
-                       
+    ! scale Jacobian
+    do icomp = 1, reaction%ncomp
+      norm = max(1.d0,maxval(abs(Jac(icomp,:))))
+      norm = 1.d0/norm
+      Res(icomp) = Res(icomp)*norm
+      Jac(icomp,:) = Jac(icomp,:)*norm
     enddo
+      
+    ! for derivatives with respect to ln conc
+    do icomp = 1, reaction%ncomp
+      Jac(:,icomp) = Jac(:,icomp)*auxvar%primary_spec(icomp)
+    enddo
+
+    call ludcmp(Jac,reaction%ncomp,indices,icomp)
+    call lubksb(Jac,reaction%ncomp,indices,Res)
+
+    prev_molal = auxvar%primary_molal
+
+    Res = dsign(1.d0,Res)*min(dabs(Res),5.d0)
+      
+    auxvar%primary_molal = auxvar%primary_molal*exp(Res)
+
+    num_it = num_it + 1
     
-    aq_species_constraint%basis_conc = auxvar%primary_molal
+    ! check for convergence
+    if (maxval(dabs(auxvar%primary_molal-prev_molal)/ &
+               auxvar%primary_molal) < tol) exit
+                     
+  enddo
+  
+  ! remember that a density of 1 kg/L was assumed, thus molal and molarity are equal
+  aq_species_constraint%basis_molarity = auxvar%primary_molal
 
-    call RTAuxVarDestroy(auxvar)
+  call RTAuxVarDestroy(auxvar)
 
-  endif
-
-end subroutine ReactionInitializeConstraint
+end subroutine ReactionEquilibrateConstraint
 
 ! ************************************************************************** !
 !

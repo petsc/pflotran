@@ -277,14 +277,14 @@ subroutine Init(simulation,filename)
     endif
 
     call DiscretizationCreateJacobian(discretization,NTRANDOF, &
-                                      tran_solver%J_mat_type, &
+                                      tran_solver%Jpre_mat_type, &
                                       tran_solver%Jpre,option)
 
     if (tran_solver%J_mat_type /= MATMFFD) then
       tran_solver%J = tran_solver%Jpre
     endif
     
-    call MatSetOptionsPrefix(tran_solver%J, "tran_", ierr)
+    call MatSetOptionsPrefix(tran_solver%Jpre, "tran_", ierr)
     
     if (tran_solver%use_galerkin_mg) then
       call DiscretizationCreateInterpolation(discretization,NTRANDOF, &
@@ -363,6 +363,7 @@ subroutine Init(simulation,filename)
   if (associated(flow_stepper)) flow_stepper%cur_waypoint => realization%waypoints%first
   if (associated(tran_stepper)) tran_stepper%cur_waypoint => realization%waypoints%first
   
+  ! initialize FLOW
   ! set up auxillary variable arrays
   if (option%nflowdof > 0) then
     select case(option%iflowmode)
@@ -373,16 +374,10 @@ subroutine Init(simulation,filename)
       case(MPH_MODE)
         call MphaseSetup(realization)
     end select
-  endif
-  if (option%ntrandof > 0) then
-    call RTSetup(realization)
-  endif
   
-  ! assign initial conditions
-  call assignInitialConditions(realization)
+    ! assign initial conditions
+    call RealizAssignFlowInitCond(realization)
   
-  ! update auxilliary variables based on initial conditions
-  if (option%nflowdof > 0) then
     select case(option%iflowmode)
       case(THC_MODE)
         call THCUpdateAuxVars(realization)
@@ -392,7 +387,10 @@ subroutine Init(simulation,filename)
         call MphaseUpdateAuxVars(realization)
     end select
   endif
+
   if (option%ntrandof > 0) then
+    call RTSetup(realization)
+
     if (dabs(option%uniform_velocity(1)) + dabs(option%uniform_velocity(2)) + &
         dabs(option%uniform_velocity(3)) >  0.d0) then
       call RealizAssignUniformVelocity(realization)
@@ -418,6 +416,8 @@ subroutine Init(simulation,filename)
 
     ! map densities and saturations to reactive transport aux vars
     call RealizBridgeFlowAndTransport(realization) 
+    ! initial concentrations must be assigned after densities are set !!!
+    call RealizAssignTransportInitCond(realization)
     call RTUpdateAuxVars(realization)
 
   endif
@@ -607,6 +607,8 @@ subroutine readRequiredCardsFromInput(realization,filename)
     option%comp_names => GetPrimarySpeciesNames(realization%reaction)
     option%ncomp = option%ntrandof
     option%ncmplx = GetSecondarySpeciesCount(realization%reaction)
+    option%ngas = GetGasCount(realization%reaction)
+!    option%gas_names => GetGasNames(realization%reaction)
     option%nmnrl = GetMineralCount(realization%reaction)
     option%mnrl_names => GetMineralNames(realization%reaction)
     option%nsorb = realization%reaction%neqsurfcmplx + &
@@ -2154,6 +2156,7 @@ subroutine assignMaterialPropToRegions(realization)
 
 end subroutine assignMaterialPropToRegions
 
+#if 0
 ! ************************************************************************** !
 !
 ! assignInitialConditions: Assigns initial conditions to regions of realization
@@ -2230,7 +2233,8 @@ subroutine assignInitialConditions(realization)
               if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
                 do idof = 1, option%nmnrl
                   cur_patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
-                    initial_condition%tran_condition%cur_constraint_coupler%minerals%conc(idof)
+                    initial_condition%tran_condition%cur_constraint_coupler% &
+                      minerals%basis_mol_frac(idof)
                 enddo
               endif
             enddo
@@ -2247,7 +2251,8 @@ subroutine assignInitialConditions(realization)
               if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
                 do idof = 1, option%nmnrl
                   cur_patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
-                    initial_condition%tran_condition%cur_constraint_coupler%minerals%conc(idof)
+                    initial_condition%tran_condition%cur_constraint_coupler% &
+                      minerals%basis_mol_frac(idof)
                 enddo
               endif
             enddo
@@ -2262,7 +2267,7 @@ subroutine assignInitialConditions(realization)
   enddo
 
 end subroutine assignInitialConditions  
-
+#endif
 
 ! ************************************************************************** !
 !

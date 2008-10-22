@@ -521,8 +521,9 @@ subroutine PatchInitCouplerAuxVars(patch,coupler_list,option)
       ! TRANSPORT   
       if (associated(coupler%tran_condition)) then
 
-        allocate(coupler%tran_aux_real_var(option%ntrandof,num_connections))
-        coupler%tran_aux_real_var = 0.d0
+! geh - don't believe that we need this for now.
+!        allocate(coupler%tran_aux_real_var(option%ntrandof,num_connections))
+!        coupler%tran_aux_real_var = 0.d0
 
       endif
       
@@ -659,8 +660,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                     flow_condition%pressure%dataset%cur_value(1)
               end select
             case(HYDROSTATIC_BC,SEEPAGE_BC)
-    !          call HydrostaticUpdateCoupler(coupler,patch%option,patch%grid)
-              call HydrostaticUpdateCouplerBetter(coupler,option,patch%grid)
+              call HydrostaticUpdateCoupler(coupler,option,patch%grid)
           end select
         endif
       endif
@@ -677,7 +677,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
       if (force_update_flag .or. tran_condition%is_transient) then ! for now, everything transport is dirichlet-type
         do idof = 1, option%ntrandof
           coupler%tran_aux_real_var(idof,1:num_connections) = &
-            tran_condition%cur_constraint_coupler%aqueous_species%basis_conc(idof)
+            tran_condition%cur_constraint_coupler%aqueous_species%basis_molarity(idof)
         enddo
       endif
       

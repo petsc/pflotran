@@ -32,6 +32,7 @@ module Option_module
     PetscInt :: ncomp      ! # of primary aqueous species
     PetscInt :: ncmplx     ! # of secondary aqueous species
     PetscInt :: nmnrl      ! # of minerals
+    PetscInt :: ngas
     PetscInt :: nsorb      ! # of primary sorbed species
     character(len=MAXWORDLENGTH), pointer :: comp_names(:)
     character(len=MAXWORDLENGTH), pointer :: mnrl_names(:)
@@ -189,6 +190,7 @@ function OptionCreate()
   option%ncomp = 0
   option%ncmplx = 0
   option%nmnrl = 0
+  option%ngas = 0
   option%nsorb = 0
   nullify(option%comp_names)
   nullify(option%mnrl_names)

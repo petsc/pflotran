@@ -698,7 +698,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   PetscInt :: sum_connection, iconn
   PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
   PetscReal :: fraction_upwind, distance, dist_up, dist_dn
-  PetscReal :: qsrc
+  PetscReal :: qsrc, molality
   PetscReal :: Jup(realization%option%ncomp,realization%option%ncomp)
   
   option => realization%option
@@ -761,6 +761,8 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
       endif
       
       do istart = 1, option%ncomp
+        molality = source_sink%tran_condition%cur_constraint_coupler% &
+           aqueous_species%basis_molarity(istart)/aux_vars(ghosted_id)%den(1)*1000.d0
         select case(source_sink%tran_condition%itype)
           case(EQUILIBRIUM_SS)
             ! units should be mol/sec
@@ -768,16 +770,15 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
                           porosity_loc_p(ghosted_id)* &
                           saturation_loc_p(ghosted_id)* &
                           volume_p(local_id)* & ! convert m^3 water -> L water
-                          (source_sink%tran_condition%cur_constraint_coupler%aqueous_species%conc(istart)* &
-                           aux_vars(ghosted_id)%den(1) - & 
+                          (molality*aux_vars(ghosted_id)%den(1) - & 
                            aux_vars(ghosted_id)%total(istart,iphase)*1000.d0) ! convert kg water/L water -> kg water/m^3 water
           case(MASS_RATE_SS)
-            Res(istart) = -source_sink%tran_condition%cur_constraint_coupler%aqueous_species%conc(istart)
+            Res(istart) = -molality
           case(CONCENTRATION_SS)
             if (qsrc > 0) then ! injection
               Res(istart) = -qsrc* &
                             aux_vars(ghosted_id)%den(1) * &
-                            source_sink%tran_condition%cur_constraint_coupler%aqueous_species%conc(istart)
+                            molality
             else ! extraction
               Res(istart) = -qsrc* &
                             aux_vars(ghosted_id)%total(istart,iphase)*1000.d0 ! convert kg water/L water -> kg water/m^3 water
@@ -1351,6 +1352,7 @@ subroutine RTUpdateAuxVarsPatch(realization)
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
   PetscReal, pointer :: xx_loc_p(:), density_loc_p(:)
   PetscReal :: xxbc(realization%option%ncomp)
+  PetscReal, pointer :: basis_molarity_p(:)
   PetscErrorCode :: ierr
   
   option => realization%option
@@ -1382,6 +1384,10 @@ subroutine RTUpdateAuxVarsPatch(realization)
   do 
     if (.not.associated(boundary_condition)) exit
     cur_connection_set => boundary_condition%connection_set
+
+    basis_molarity_p => boundary_condition%tran_condition% &
+      cur_constraint_coupler%aqueous_species%basis_molarity
+
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
@@ -1390,14 +1396,19 @@ subroutine RTUpdateAuxVarsPatch(realization)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
 
-      do idof=1,option%ncomp
-        select case(boundary_condition%tran_condition%itype)
-          case(CONCENTRATION_SS,DIRICHLET_BC,NEUMANN_BC)
-            xxbc(idof) = boundary_condition%tran_aux_real_var(idof,iconn)
-          case(ZERO_GRADIENT_BC)
+      select case(boundary_condition%tran_condition%itype)
+        case(CONCENTRATION_SS,DIRICHLET_BC,NEUMANN_BC)
+          ! since basis_molarity is in molarity, must convert to molality
+          ! by dividing by density of water (mol/L -> mol/kg)
+          xxbc(1:option%ncomp) = basis_molarity_p(1:option%ncomp) / &
+            patch%aux%RT%aux_vars_bc(sum_connection)%den(1) * 1000.d0
+!          xxbc(1:option%ncomp)
+!            boundary_condition%tran_aux_real_var(1:option%ncomp,iconn)
+        case(ZERO_GRADIENT_BC)
+          do idof=1,option%ncomp
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ncomp+idof)
-        end select
-      enddo
+          enddo
+      end select
       ! no need to update boundary fluid density since it is already set
       call RTAuxVarCompute(xxbc, &
                            patch%aux%RT%aux_vars_bc(sum_connection), &

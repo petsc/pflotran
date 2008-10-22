@@ -49,20 +49,28 @@ private
     
   end type realization_type
 
-  public :: RealizationCreate, RealizationDestroy, &
+  public :: RealizationCreate, &
+            RealizationDestroy, &
             RealizationProcessCouplers, &
             RealizationInitAllCouplerAuxVars, &
             RealizationProcessConditions, &
-            RealizationUpdate, RealizationAddWaypointsToList, &
+            RealizationUpdate, &
+            RealizationAddWaypointsToList, &
             RealizationCreateDiscretization, &
             RealizationLocalizeRegions, &
-            RealizationAddCoupler, RealizationAddStrata, &
-            RealizationAddBreakthrough, RealizAssignInitialConditions, &
-            RealizAssignUniformVelocity, RealizAssignTransportInitCond, &
-            RealizationRevertFlowParameters, RealizBridgeFlowAndTransport, &
-            RealizationGetDataset, RealizGetDatasetValueAtCell, &
+            RealizationAddCoupler, &
+            RealizationAddStrata, &
+            RealizationAddBreakthrough, &
+            RealizAssignInitialConditions, &
+            RealizAssignFlowInitCond, &
+            RealizAssignTransportInitCond, &
+            RealizAssignUniformVelocity, &
+            RealizationRevertFlowParameters, &
+            RealizBridgeFlowAndTransport, &
+            RealizationGetDataset, &
+            RealizGetDatasetValueAtCell, &
             RealizationSetDataset
-  
+            
 contains
   
 ! ************************************************************************** !
@@ -758,7 +766,7 @@ subroutine RealizAssignFlowInitCond(realization)
       
         if (.not.associated(initial_condition)) exit
 
-        if (.not.associated(initial_condition%connection_set)) then
+        if (.not.associated(initial_condition%flow_aux_real_var)) then
           do icell=1,initial_condition%region%num_cells
             local_id = initial_condition%region%cell_ids(icell)
             ghosted_id = grid%nL2G(local_id)
@@ -830,6 +838,7 @@ subroutine RealizAssignTransportInitCond(realization)
   use Condition_module
   use Grid_module
   use Patch_module
+  use Reactive_Transport_Aux_module
   
   implicit none
 
@@ -851,7 +860,7 @@ subroutine RealizAssignTransportInitCond(realization)
   type(coupler_type), pointer :: initial_condition
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
-
+  type(reactive_transport_auxvar_type), pointer :: aux_vars(:)
   option => realization%option
   discretization => realization%discretization
   field => realization%field
@@ -866,6 +875,7 @@ subroutine RealizAssignTransportInitCond(realization)
       if (.not.associated(cur_patch)) exit
 
       grid => cur_patch%grid
+      aux_vars => cur_patch%aux%RT%aux_vars
 
       ! assign initial conditions values to domain
       call GridVecGetArrayF90(grid, field%tran_xx,xx_p, ierr); CHKERRQ(ierr)
@@ -877,7 +887,7 @@ subroutine RealizAssignTransportInitCond(realization)
       
         if (.not.associated(initial_condition)) exit
 
-        if (.not.associated(initial_condition%connection_set)) then
+        if (.not.associated(initial_condition%tran_aux_real_var)) then
           do icell=1,initial_condition%region%num_cells
             local_id = initial_condition%region%cell_ids(icell)
             ghosted_id = grid%nL2G(local_id)
@@ -891,8 +901,17 @@ subroutine RealizAssignTransportInitCond(realization)
             endif
             do idof = 1, option%ntrandof ! primary aqueous concentrations
               xx_p(ibegin+idof-1) = &
-                initial_condition%tran_condition%cur_constraint_coupler%aqueous_species%basis_conc(idof)
+                initial_condition%tran_condition%cur_constraint_coupler% &
+                  aqueous_species%basis_molarity(idof) / &
+                  aux_vars(ghosted_id)%den(1)*1000 ! convert molarity -> molality
             enddo
+            if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
+              do idof = 1, option%nmnrl
+                aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
+                  initial_condition%tran_condition%cur_constraint_coupler% &
+                    minerals%basis_mol_frac(idof)
+              enddo
+            endif
           enddo
         else
           do iconn=1,initial_condition%connection_set%num_connections
@@ -907,7 +926,16 @@ subroutine RealizAssignTransportInitCond(realization)
               endif
             endif
             xx_p(ibegin:iend) = &
-              initial_condition%tran_aux_real_var(1:option%ntrandof,iconn)
+              initial_condition%tran_aux_real_var(1:option%ntrandof,iconn) / &
+              aux_vars(ghosted_id)%den(1)*1000 ! convert molarity -> molality
+              ! minerals 
+            if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
+              do idof = 1, option%nmnrl
+                aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
+                  initial_condition%tran_condition%cur_constraint_coupler% &
+                    minerals%basis_mol_frac(idof)
+              enddo
+            endif
           enddo
         endif
         initial_condition => initial_condition%next
