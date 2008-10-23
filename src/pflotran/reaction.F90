@@ -279,7 +279,7 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
   PetscTruth :: found
   PetscInt :: icomp, jcomp
   PetscInt :: imnrl, jmnrl
-  PetscReal :: igas
+  PetscInt :: igas
   PetscReal :: value
   PetscReal :: constraint_conc(option%ncomp)
   PetscInt :: constraint_type(option%ncomp)
@@ -422,7 +422,7 @@ subroutine ReactionEquilibrateConstraint(reaction,constraint_name, &
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: icomp, jcomp
   PetscInt :: imnrl, jmnrl
-  PetscReal :: igas
+  PetscInt :: igas
   PetscReal :: conc(option%ncomp)
   PetscInt :: constraint_type(option%ncomp)
   character(len=MAXNAMELENGTH) :: constraint_spec_name(option%ncomp)
@@ -452,7 +452,6 @@ subroutine ReactionEquilibrateConstraint(reaction,constraint_name, &
   conc = aq_species_constraint%constraint_conc
   
   total_conc = 0.d0
-  constraint_id = 0
   do icomp = 1, reaction%ncomp
     select case(constraint_type(icomp))
       case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)

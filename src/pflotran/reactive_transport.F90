@@ -547,6 +547,8 @@ subroutine RTAccumulation(aux_var,por,sat,vol,option,Res)
   do icomp=1,option%ncomp
     Res(icomp) = psv_t*aux_var%total(icomp,iphase) 
   enddo
+  
+  
 
 end subroutine RTAccumulation
 
