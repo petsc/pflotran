@@ -1,0 +1,331 @@
+module Richards_Aux_module
+
+  implicit none
+  
+  private 
+
+#include "definitions.h"
+
+  type, public :: richards_auxvar_type
+    PetscReal, pointer :: pres(:)
+    PetscReal, pointer :: temp(:)
+    PetscReal, pointer :: sat(:)
+    PetscReal, pointer :: den(:)
+    PetscReal, pointer :: den_kg(:)
+    PetscReal, pointer :: avgmw(:)
+    PetscReal, pointer :: pc(:)
+!    PetscReal :: vis
+!    PetscReal :: dvis_dp
+!    PetscReal :: kr
+!    PetscReal :: dkr_dp
+    PetscReal, pointer :: kvr(:)
+    PetscReal, pointer :: dsat_dp(:)
+    PetscReal, pointer :: dden_dp(:)
+    PetscReal, pointer :: dkvr_dp(:)
+    PetscInt :: n
+  end type richards_auxvar_type
+  
+  type, public :: richards_type
+    PetscInt :: n_zero_rows
+    PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
+
+    PetscTruth :: aux_vars_up_to_date
+    PetscTruth :: inactive_cells_exist
+    PetscInt :: num_aux, num_aux_bc
+    type(richards_auxvar_type), pointer :: aux_vars
+    type(richards_auxvar_type), pointer :: aux_vars_bc(:)
+  end type richards_type
+
+  public :: RichardsAuxCreate, RichardsAuxDestroy, &
+            RichardsAuxVarCompute, RichardsAuxVarInit, &
+            RichardsAuxVarCopy
+
+contains
+
+
+! ************************************************************************** !
+!
+! RichardsAuxVarCreate: Allocate and initialize auxilliary object
+! author: Glenn Hammond
+! date: 02/14/08
+!
+! ************************************************************************** !
+function RichardsAuxCreate()
+
+  use Option_module
+
+  implicit none
+  
+  type(richards_type), pointer :: RichardsAuxCreate
+  
+  type(richards_type), pointer :: aux
+
+  allocate(aux) 
+  aux%aux_vars_up_to_date = PETSC_FALSE
+  aux%inactive_cells_exist = PETSC_FALSE
+  aux%num_aux = 0
+  aux%num_aux_bc = 0
+  nullify(aux%aux_vars)
+  nullify(aux%aux_vars_bc)
+  aux%n_zero_rows = 0
+  nullify(aux%zero_rows_local)
+  nullify(aux%zero_rows_local_ghosted)
+
+  RichardsAuxCreate => aux
+  
+end function RichardsAuxCreate
+
+! ************************************************************************** !
+!
+! RichardsAuxVarInit: Initialize auxilliary object
+! author: Glenn Hammond
+! date: 02/14/08
+!
+! ************************************************************************** !
+subroutine RichardsAuxVarInit(aux_var,n,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(richards_auxvar_type) :: aux_var
+  type(option_type) :: option
+  PetscInt :: n
+  
+  aux_var%n = n
+  allocate(aux_var%pres(aux_var%n))
+  allocate(aux_var%temp(aux_var%n))
+  allocate(aux_var%sat(aux_var%n))
+  allocate(aux_var%den(aux_var%n))
+  allocate(aux_var%den_kg(aux_var%n))
+  allocate(aux_var%avgmw(aux_var%n))
+  allocate(aux_var%pc(aux_var%n))
+!  aux_var%kr = 0.d0
+!  aux_var%dkr_dp = 0.d0
+!  aux_var%vis = 0.d0
+!  aux_var%dvis_dp = 0.d0
+  allocate(aux_var%kvr(aux_var%n))
+  allocate(aux_var%dsat_dp(aux_var%n))
+  allocate(aux_var%dden_dp(aux_var%n))
+  allocate(aux_var%dkvr_dp(aux_var%n))
+  
+  aux_var%pres = 0.d0
+  aux_var%temp = 0.d0
+  aux_var%sat = 0.d0
+  aux_var%den = 0.d0
+  aux_var%den_kg = 0.d0
+  aux_var%avgmw = 0.d0
+  aux_var%pc = 0.d0
+!  aux_var%kr = 0.d0
+!  aux_var%dkr_dp = 0.d0
+!  aux_var%vis = 0.d0
+!  aux_var%dvis_dp = 0.d0
+  aux_var%kvr = 0.d0
+  aux_var%dsat_dp = 0.d0
+  aux_var%dden_dp = 0.d0
+  aux_var%dkvr_dp = 0.d0
+
+end subroutine RichardsAuxVarInit
+
+! ************************************************************************** !
+!
+! RichardsAuxVarCopy: Copies an auxilliary variable
+! author: Glenn Hammond
+! date: 12/13/07
+!
+! ************************************************************************** !  
+subroutine RichardsAuxVarCopy(aux_var,aux_var2,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(richards_auxvar_type) :: aux_var, aux_var2
+  type(option_type) :: option
+
+  aux_var2%pres = aux_var%pres
+  aux_var2%temp = aux_var%temp
+  aux_var2%sat = aux_var%sat
+  aux_var2%den = aux_var%den
+  aux_var2%den_kg = aux_var%den_kg
+  aux_var2%avgmw = aux_var%avgmw
+  aux_var2%pc = aux_var%pc
+!  aux_var2%kr = aux_var%kr
+!  aux_var2%dkr_dp = aux_var%dkr_dp
+!  aux_var2%vis = aux_var%vis
+!  aux_var2%dvis_dp = aux_var%dvis_dp
+  aux_var2%kvr = aux_var%kvr
+  aux_var2%dsat_dp = aux_var%dsat_dp
+  aux_var2%dden_dp = aux_var%dden_dp
+  aux_var2%dkvr_dp = aux_var%dkvr_dp
+
+end subroutine RichardsAuxVarCopy
+  
+! ************************************************************************** !
+!
+! RichardsAuxVarCompute: Computes auxilliary variables for each grid cell
+! author: Glenn Hammond
+! date: 02/22/08
+!
+! ************************************************************************** !
+subroutine RichardsAuxVarCompute(x,aux_var,iactive,iphase,icap, &
+                                 saturation_function_array, &
+                                     por,perm,option)
+
+  use Option_module
+  use water_eos_module
+  use Material_module
+  
+  implicit none
+
+  type(option_type) :: option
+  PetscReal :: icap(:)
+  type(saturation_function_ptr_type) :: saturation_function_array(:)
+  PetscInt :: iactive(:)
+  PetscReal :: x(:)
+  type(richards_auxvar_type) :: aux_var
+  PetscReal :: iphase(:)
+  PetscReal :: por(:), perm(:)
+
+  PetscErrorCode :: ierr
+  PetscReal :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
+  PetscReal :: kr, ds_dp, dkr_dp
+  PetscReal :: dvis_dt, dvis_dp, dvis_dpsat
+  PetscReal :: dw_dp, dw_dt, hw_dp, hw_dt
+  PetscInt :: i
+  
+  aux_var%sat = 0.d0
+  aux_var%den = 0.d0
+  aux_var%den_kg = 0.d0
+  aux_var%avgmw = 0.d0
+  aux_var%kvr = 0.d0
+  kr = 0.d0
+  
+  aux_var%pres = x
+  aux_var%temp = 25.d0
+ 
+  aux_var%pc = option%pref - aux_var%pres
+  aux_var%avgmw = 18.0153d0
+
+  do i=1,aux_var%n
+
+    if (iactive(i) <= 0) cycle ! inactive
+! ***************  Liquid phase properties **************************
+  !geh aux_var%avgmw = option%fmwh2o  ! hardwire for comparison with old code
+
+    pw = option%pref
+    ds_dp = 0.d0
+    dkr_dp = 0.d0
+!  if (aux_var%pc > 0.d0) then
+    if (aux_var%pc(i) > 1.d0) then
+      iphase(i) = 3.d0
+      call SaturationFunctionCompute(aux_var%pres(i),aux_var%sat(i),kr, &
+                                     ds_dp,dkr_dp, &
+                                     saturation_function_array(int(icap(i)))%ptr, &
+                                     por(i),perm(i),option)
+    else
+      iphase(i) = 1.d0
+      aux_var%pc(i) = 0.d0
+      aux_var%sat(i) = 1.d0  
+      kr = 1.d0    
+      pw = aux_var%pres(i)
+    endif  
+
+!  call wateos_noderiv(option%temp,pw,dw_kg,dw_mol,hw,option%scale,ierr)
+    call wateos(aux_var%temp(i),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
+                option%scale,ierr)
+
+! may need to compute dpsat_dt to pass to VISW
+    call psat(aux_var%temp(i),sat_pressure,ierr)
+!  call VISW_noderiv(option%temp,pw,sat_pressure,visl,ierr)
+    call VISW(aux_var%temp(i),pw,sat_pressure,visl,dvis_dt,dvis_dp,ierr) 
+    dvis_dpsat = -dvis_dp 
+    if (iphase(i) > 1.d0) then !kludge since pw is constant in the unsat zone
+      dvis_dp = 0.d0
+      dw_dp = 0.d0
+      hw_dp = 0.d0
+    endif
+ 
+    aux_var%den(i) = dw_mol
+    aux_var%den_kg(i) = dw_kg
+    aux_var%kvr(i) = kr/visl
+    
+  !  aux_var%vis = visl
+  !  aux_var%dvis_dp = dvis_dp
+  !  aux_var%kr = kr
+  !  aux_var%dkr_dp = dkr_dp
+    aux_var%dsat_dp(i) = ds_dp
+
+    aux_var%dden_dp(i) = dw_dp
+    
+    aux_var%dkvr_dp(i) = dkr_dp/visl - kr/(visl*visl)*dvis_dp
+  
+  enddo
+
+end subroutine RichardsAuxVarCompute
+
+! ************************************************************************** !
+!
+! AuxVarDestroy: Deallocates a richards auxilliary object
+! author: Glenn Hammond
+! date: 02/14/08
+!
+! ************************************************************************** !
+subroutine AuxVarDestroy(aux_var)
+
+  implicit none
+
+  type(richards_auxvar_type) :: aux_var
+  
+  deallocate(aux_var%pres)
+  deallocate(aux_var%temp)
+  deallocate(aux_var%sat)
+  deallocate(aux_var%den)
+  deallocate(aux_var%den_kg)
+  deallocate(aux_var%avgmw)
+  deallocate(aux_var%pc)
+!  aux_var%kr = 0.d0
+!  aux_var%dkr_dp = 0.d0
+!  aux_var%vis = 0.d0
+!  aux_var%dvis_dp = 0.d0
+  deallocate(aux_var%kvr)
+  deallocate(aux_var%dsat_dp)
+  deallocate(aux_var%dden_dp)
+  deallocate(aux_var%dkvr_dp)
+
+
+end subroutine AuxVarDestroy
+
+! ************************************************************************** !
+!
+! RichardsAuxDestroy: Deallocates a richards auxilliary object
+! author: Glenn Hammond
+! date: 02/14/08
+!
+! ************************************************************************** !
+subroutine RichardsAuxDestroy(aux)
+
+  implicit none
+
+  type(richards_type), pointer :: aux
+  PetscInt :: iaux
+  
+  if (.not.associated(aux)) return
+  
+  call AuxVarDestroy(aux%aux_vars)
+  do iaux = 1, aux%num_aux_bc
+    call AuxVarDestroy(aux%aux_vars_bc(iaux))
+  enddo  
+  
+  if (associated(aux%aux_vars)) deallocate(aux%aux_vars)
+  nullify(aux%aux_vars)
+  if (associated(aux%aux_vars_bc)) deallocate(aux%aux_vars_bc)
+  nullify(aux%aux_vars_bc)
+  if (associated(aux%zero_rows_local)) deallocate(aux%zero_rows_local)
+  nullify(aux%zero_rows_local)
+  if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
+  nullify(aux%zero_rows_local_ghosted)
+    
+end subroutine RichardsAuxDestroy
+
+end module Richards_Aux_module

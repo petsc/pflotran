@@ -174,8 +174,9 @@ module Reaction_Aux_module
     PetscInt, pointer :: kinionx_rxn_offset(:)
     ! surface complexation reactions
     PetscInt :: neqsurfcmplx
-    PetscInt :: neqsurfsites
+    PetscInt :: neqsurfsites  
     PetscInt, pointer :: eqsurfsite_to_mineral(:)
+    PetscInt, pointer :: eqsurfsite_to_surfcmplx(:,:)
     PetscReal, pointer :: eqsurfcmplx_site_density(:)
     character(len=MAXNAMELENGTH), pointer :: surface_site_names(:)
     character(len=MAXNAMELENGTH), pointer :: surface_complex_names(:)
@@ -340,6 +341,7 @@ function ReactionCreate()
   reaction%neqsurfcmplx = 0
   reaction%neqsurfsites = 0
   nullify(reaction%eqsurfsite_to_mineral)
+  nullify(reaction%eqsurfsite_to_surfcmplx)
   nullify(reaction%surface_site_names)
   nullify(reaction%eqsurfcmplx_site_density)
   nullify(reaction%surface_complex_names)
@@ -1416,6 +1418,10 @@ subroutine ReactionDestroy(reaction)
   
   if (associated(reaction%eqsurfsite_to_mineral)) deallocate(reaction%eqsurfsite_to_mineral)
   nullify(reaction%eqsurfsite_to_mineral)
+
+  if (associated(reaction%eqsurfsite_to_surfcmplx)) deallocate(reaction%eqsurfsite_to_surfcmplx)
+  nullify(reaction%eqsurfsite_to_surfcmplx)
+
   if (associated(reaction%surface_site_names)) deallocate(reaction%surface_site_names)
   nullify(reaction%surface_site_names)
   if (associated(reaction%eqsurfcmplx_site_density)) deallocate(reaction%eqsurfcmplx_site_density)
