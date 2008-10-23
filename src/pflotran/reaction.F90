@@ -988,6 +988,100 @@ end subroutine RTotal
 
 ! ************************************************************************** !
 !
+! RTotalSorb: Computes the total sorbed component concentrations and 
+!             derivative with respect to free-ion
+! author: Glenn Hammond
+! date: 10/22/08
+!
+! ************************************************************************** !
+subroutine RTotalSorb(auxvar,reaction,option)
+
+  use Option_module
+  
+  type(reactive_transport_auxvar_type) :: auxvar
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+  
+  PetscInt :: i, j, icplx, icomp, jcomp, iphase, ncomp
+  PetscReal :: ln_conc(reaction%ncomp)
+  PetscReal :: ln_act(reaction%ncomp)
+  PetscReal :: surfcmplx_conc(reaction%neqsurfcmplx)
+  PetscReal :: ln_act_h2o
+  PetscReal :: lnQK, tempreal
+  PetscReal, parameter :: log_to_ln = 2.30258509299d0
+
+  iphase = 1                         
+
+  ln_conc = log(auxvar%primary_spec)
+  ln_act = ln_conc+log(auxvar%pri_act_coef)
+  ln_act_h2o = 0.d0  ! assume act h2o = 1 for now
+
+#if 0
+  nullify(reaction%eqsurfsite_to_mineral)
+  nullify(reaction%surface_site_names)
+  nullify(reaction%eqsurfcmplx_site_density)
+  nullify(reaction%surface_complex_names)
+  nullify(reaction%eqsurfcmplxspecid)
+  nullify(reaction%eqsurfcmplxstoich)
+  nullify(reaction%eqsurfcmplxh2oid)
+  nullify(reaction%eqsurfcmplxh2ostoich)
+  nullify(reaction%eqsurfcmplx_mineral_id)
+  nullify(reaction%eqsurfcmplx_free_site_id)
+  nullify(reaction%eqsurfcmplx_free_site_stoich)
+  nullify(reaction%eqsurfcmplx_logK)
+  nullify(reaction%eqsurfcmplx_logKcoef)
+  nullify(reaction%eqsurfcmplx_Z)
+#endif
+    
+  auxvar%total_sorb(:) = 0.d0
+  ! initialize derivatives
+  auxvar%dtotal_sorb = 0.d0
+
+  do icplx = 1, reaction%neqsurfcmplx ! for each secondary species
+    ! compute secondary species concentration
+    lnQK = -1.d0*reaction%eqsurfcmplx_logK(icplx)*log_to_ln
+
+    ! activity of water
+    if (reaction%eqsurfcmplxh2oid(icplx) > 0) then
+      lnQK = lnQK + reaction%eqsurfcmplxh2ostoich(icplx)*ln_act_h2o
+    endif
+
+    ncomp = reaction%eqsurfcmplxspecid(0,icplx)
+    do i = 1, ncomp
+      icomp = reaction%eqsurfcmplxspecid(i,icplx)
+      lnQK = lnQK + reaction%eqsurfcmplxstoich(i,icplx)*ln_act(icomp)
+    enddo
+    surfcmplx_conc(icplx) = exp(lnQK)
+  
+    ! add contribution to primary totals
+    ! units of total = mol/L
+    do i = 1, ncomp
+      icomp = reaction%eqsurfcmplxspecid(i,icplx)
+      auxvar%total_sorb(icomp) = auxvar%total_sorb(icomp) + &
+                                 reaction%eqsurfcmplxstoich(i,icplx)* &
+                                 surfcmplx_conc(icplx)
+    enddo
+    
+    ! add contribution to derivatives of total with respect to free
+    do j = 1, ncomp
+      jcomp = reaction%eqsurfcmplxspecid(j,icplx)
+      tempreal = reaction%eqsurfcmplxstoich(j,icplx)*exp(lnQK-ln_conc(jcomp))
+      do i = 1, ncomp
+        icomp = reaction%eqsurfcmplxspecid(i,icplx)
+        auxvar%dtotal_sorb(icomp,jcomp) = auxvar%dtotal_sorb(icomp,jcomp) + &
+                                      reaction%eqsurfcmplxstoich(i,icplx)*tempreal
+      enddo
+    enddo
+  enddo
+  
+  ! convert from dpsi/dc to dpsi/dm where c = rho*m
+  ! units of dtotal = kg water/m^3 water
+  auxvar%dtotal_sorb = auxvar%dtotal_sorb*auxvar%den(iphase)
+  
+end subroutine RTotalSorb
+
+! ************************************************************************** !
+!
 ! RInitConcentration: Initializaes concentrations based on constraints
 ! author: Glenn Hammond
 ! date: 10/20/08
