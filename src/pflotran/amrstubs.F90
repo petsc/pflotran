@@ -1,4 +1,4 @@
-subroutine create_samrai_vec(p_application, dof, use_ghost, vec)
+subroutine create_samrai_vec(p_application, dof, use_ghost, use_components, vec)
 implicit none
 
 #include "include/finclude/petsc.h"
@@ -8,6 +8,7 @@ implicit none
 PetscFortranAddr :: p_application
 PetscInt :: dof
 PetscTruth :: use_ghost
+PetscTruth :: use_components
 Vec :: vec
 end subroutine create_samrai_vec
 
@@ -215,3 +216,27 @@ end subroutine samr_mpi_max
 
 subroutine SAMRBarrier()
 end subroutine SAMRBarrier 
+
+subroutine SAMRCopyVecToVecComponent(vec,svec, component)
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+  Vec :: vec, svec
+  PetscInt :: component
+end subroutine SAMRCopyVecToVecComponent
+
+subroutine SAMRRegisterForViz(ptr,vec,component,dname,dnamec)
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+  PetscFortranAddr :: ptr
+  Vec :: vec
+  PetscInt :: component
+  PetscInt :: dname, dnamec
+end subroutine SAMRRegisterForViz
+
+subroutine SAMRWritePlotData(ptr, time)
+#include "include/finclude/petsc.h"
+  PetscFortranAddr :: ptr
+  PetscReal :: time
+end subroutine SAMRWritePlotData

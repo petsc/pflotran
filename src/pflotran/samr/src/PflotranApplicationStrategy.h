@@ -131,9 +131,12 @@ public:
 
    tbox::Pointer< hier::PatchHierarchy<NDIM> > getHierarchy(void) { return d_hierarchy; }
 
-   void createVector(int &dof, bool &use_ghost, Vec *vec);
+   void createVector(int &dof, bool &use_ghost, bool &use_components, Vec *vec);
 
    void writePlotData(int time_step, double sim_time);
+
+   appu::VisItDataWriter<NDIM>* getVizWriter(void){return d_visit_writer; }
+
 protected:
 
 private:

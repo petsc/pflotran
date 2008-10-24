@@ -471,7 +471,7 @@ subroutine DiscretizationCreateVector(discretization,dm_index,vector, &
         case(NTRANDOF)
            ndof = option%ntrandof
       end select
-      call AMRGridCreateVector(discretization%amrgrid, ndof, vector, vector_type)
+      call AMRGridCreateVector(discretization%amrgrid, ndof, vector, vector_type, PETSC_FALSE)
   end select
   call VecSet(vector,0.d0,ierr)
   

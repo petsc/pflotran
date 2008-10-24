@@ -409,12 +409,12 @@ end subroutine AMRGridInitialize
 ! date: 03/10/08
 !
 ! ************************************************************************** !
-subroutine AMRGridCreateVector(amrgrid, dof,vector,vector_type)
+subroutine AMRGridCreateVector(amrgrid, dof, vector,vector_type, use_components)
 
   implicit none
 
   interface
-     subroutine create_samrai_vec(p_application, dof, use_ghost, vec)
+     subroutine create_samrai_vec(p_application, dof, use_ghost, use_components, vec)
        implicit none
        
 #include "include/finclude/petsc.h"
@@ -424,6 +424,7 @@ subroutine AMRGridCreateVector(amrgrid, dof,vector,vector_type)
        PetscFortranAddr :: p_application
        integer :: dof
        PetscTruth :: use_ghost
+       PetscTruth :: use_components
        Vec :: vec
      end subroutine create_samrai_vec
   end interface
@@ -432,6 +433,7 @@ subroutine AMRGridCreateVector(amrgrid, dof,vector,vector_type)
   DM :: dm_ptr
   Vec :: vector
   PetscInt :: vector_type
+  PetscTruth :: use_components
   PetscErrorCode :: ierr
   PetscInt :: dof
   PetscTruth:: use_ghost
@@ -439,10 +441,10 @@ subroutine AMRGridCreateVector(amrgrid, dof,vector,vector_type)
   select case (vector_type)
     case(GLOBAL)
       use_ghost=PETSC_FALSE
-      call create_samrai_vec(amrgrid%p_application, dof, use_ghost, vector)
+      call create_samrai_vec(amrgrid%p_application, dof, use_ghost, use_components, vector)
     case(LOCAL)
        use_ghost=PETSC_TRUE
-      call create_samrai_vec(amrgrid%p_application, dof, use_ghost, vector)
+      call create_samrai_vec(amrgrid%p_application, dof, use_ghost, use_components, vector)
     case(NATURAL)
        print *, 'ERROR::SAMRAI will not create PETSc Natural Vecs!!'
        stop

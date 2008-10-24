@@ -3,11 +3,35 @@
 #include "PatchLevel.h"
 #include "PETSc_SAMRAIVectorReal.h"
 #include "CCellData.h"
+#include "CellData.h"
+#include "CellIndex.h"
 #include "CartesianGridGeometry.h"
 #include "CartesianPatchGeometry.h"
 #include "PflotranApplicationStrategy.h"
 #include "PflotranJacobianMultilevelOperator.h"
 #include "PflotranJacobianMultilevelOperatorParameters.h"
+
+#define X_COORDINATE  1
+#define Y_COORDINATE  2
+#define Z_COORDINATE  3
+#define TEMPERATURE  4
+#define PRESSURE  5
+#define LIQUID_SATURATION  6
+#define GAS_SATURATION  7
+#define LIQUID_DENSITY  8
+#define GAS_DENSITY  9
+#define LIQUID_ENERGY  10
+#define GAS_ENERGY  11
+#define LIQUID_MOLE_FRACTION  12
+#define GAS_MOLE_FRACTION  13
+#define PHASE  14
+#define MATERIAL_ID  15
+
+#define PRIMARY_SPEC_CONCENTRATION  16
+#define SECONDARY_SPEC_CONCENTRATION  17
+#define TOTAL_CONCENTRATION  18
+#define MINERAL_VOLUME_FRACTION  19
+#define MINERAL_SURFACE_AREA  20
 
 extern "C" {
 #include "petscvec.h"
@@ -35,6 +59,7 @@ int level_number_patches_(SAMRAI::PflotranApplicationStrategy **application_stra
 
 bool is_local_patch_(SAMRAI::PflotranApplicationStrategy **application_strategy, int *ln, int *pn)
 {
+
    SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->getHierarchy();
    SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > level = hierarchy->getPatchLevel(*ln);
    return(level->getProcessorMapping().isMappingLocal(*pn));
@@ -251,10 +276,11 @@ samrsetcurrentjacobianpatch_( Mat *mat, SAMRAI::hier::Patch<NDIM> **patch)
 void create_samrai_vec_(SAMRAI::PflotranApplicationStrategy **application_strategy,
                         int &dof, 
                         bool &use_ghost,
+                        bool &use_components,
                         Vec *vec)
 {
 
-   (*application_strategy)->createVector(dof, use_ghost, vec);
+   (*application_strategy)->createVector(dof, use_ghost, use_components, vec);
 }
 
 void
@@ -301,6 +327,122 @@ samr_mpi_max_(double *x, double *y, double *z)
 void samrbarrier_(void)
 {
    SAMRAI::tbox::SAMRAI_MPI::barrier();
+}
+
+void samrcopyvectoveccomponent_(Vec *svec, Vec *dvec, int *comp)
+{
+   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > srcVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(*svec);
+   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > dstVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(*dvec);
+   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = srcVec->getPatchHierarchy();
+
+   for(int ln=0; ln<hierarchy->getNumberOfLevels(); ln++)
+   {
+      SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > level = hierarchy->getPatchLevel(ln);
+
+      for (SAMRAI::hier::PatchLevel<NDIM>::Iterator p(level); p; p++) 
+      {
+         SAMRAI::tbox::Pointer<hier::Patch<NDIM> > patch = level->getPatch(p());
+         
+#ifdef DEBUG_CHECK_ASSERTIONS
+         assert(!patch.isNull());
+#endif
+         SAMRAI::tbox::Pointer< SAMRAI::pdat::CCellData<NDIM, double> > srcData = srcVec->getComponentPatchData(0,*patch);	
+         SAMRAI::tbox::Pointer< SAMRAI::pdat::CellData<NDIM, double> > dstData = dstVec->getComponentPatchData(*comp,*patch);
+
+         SAMRAI::hier::Box<NDIM> pbox = patch->getBox();
+         for (SAMRAI::pdat::CellIterator<NDIM> ic(pbox); ic; ic++) 
+         {
+           SAMRAI::pdat::CellIndex<NDIM> cell = ic();
+           (*dstData)(cell) = (*srcData)(cell);
+         }
+      }
+   }   
+}
+
+void samrregisterforviz_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
+                         Vec *svec, 
+                         int *component,
+                         int *dname,
+                         int *inx)
+{
+   SAMRAI::appu::VisItDataWriter<NDIM>* vizWriter = (*application_strategy)->getVizWriter();
+   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > srcVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(*svec);
+
+   int data_id = srcVec->getComponentDescriptorIndex(*component);
+
+   std::string inxStr;
+   if(*inx>0)
+   {
+      std::ostringstream cbuffer;
+      cbuffer<<(long)(*inx);
+      inxStr = cbuffer.str();
+   }
+
+   if(vizWriter!=NULL)
+   {
+      std::string vName;
+
+      switch(*dname)
+      {
+         case TEMPERATURE:
+            vName = "Temperature";
+            break;
+         case PRESSURE:
+            vName = "Pressure";
+            break;
+         case LIQUID_SATURATION:
+            vName = "Liquid Saturation";
+            break;
+         case GAS_SATURATION:
+            vName = "Gas Saturation";
+            break;
+         case LIQUID_ENERGY:
+            vName = "Liquid Energy";
+            break;
+         case GAS_ENERGY:
+            vName = "Gas Energy";
+            break;
+         case LIQUID_MOLE_FRACTION:
+            vName = "Liquid Mole Fraction "+inxStr;
+            break;
+         case GAS_MOLE_FRACTION:
+            vName = "Gas Mole Fraction "+inxStr;
+            break;
+         case PHASE:
+            vName = "Phase";
+            break;
+         case PRIMARY_SPEC_CONCENTRATION:
+            vName = "Primary Spec Concentration "+inxStr;
+            break;
+         case MINERAL_VOLUME_FRACTION:
+            vName = "Mineral Vol Fraction "+inxStr;
+            break;
+         case TOTAL_CONCENTRATION:
+            vName = "Total Concentration "+inxStr;
+            break;
+         case MATERIAL_ID:
+            vName = "Material_ID";
+            break;
+         default:
+            abort();
+            break;
+      }
+
+      vizWriter->registerPlotQuantity(vName, "SCALAR", data_id,0, 1.0, "CELL");
+      
+   }
+
+}
+
+void 
+samrwriteplotdata_(SAMRAI::PflotranApplicationStrategy **application_strategy,
+                   double *time)
+{
+   static int step = 0;
+   SAMRAI::appu::VisItDataWriter<NDIM>* vizWriter = (*application_strategy)->getVizWriter();
+   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->getHierarchy();
+   vizWriter->writePlotData(hierarchy, step, *time);
+   step++;
 }
 
 #ifdef __cplusplus
