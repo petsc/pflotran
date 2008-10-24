@@ -496,18 +496,24 @@ subroutine RTAccumulationDerivative(aux_var,por,sat,vol,option,J)
   PetscReal :: J(option%ncomp,option%ncomp)
   
   PetscInt :: icomp, iphase
-  PetscReal :: psv_t, psvd_t
+  PetscReal :: psv_t, psvd_t, v_t
   
   iphase = 1
   ! units = (m^3 por/m^3 bulk)*(m^3 water/m^3 por)*(m^3 bulk)/(sec)
   !         *(kg water/m^3 water) = kg water/sec
   ! all Jacobian entries should be in kg water/sec
-  psv_t = por*sat*vol/option%dt  
   if (associated(aux_var%dtotal)) then ! units of dtotal = kg water/m^3 water
-    J = aux_var%dtotal(:,:,iphase)*psv_t
+    if (associated(aux_var%dtotal_sorb)) then
+      v_t = vol/option%dt   
+      psv_t = por*sat*v_t
+      J = aux_var%dtotal(:,:,iphase)*psv_t + aux_var%dtotal_sorb(:,:)*v_t
+    else
+      psv_t = por*sat*vol/option%dt  
+      J = aux_var%dtotal(:,:,iphase)*psv_t
+    endif
   else
     J = 0.d0
-    psvd_t = psv_t*aux_var%den(iphase) ! units of den = kg water/m^3 water
+    psvd_t = por*sat*vol*aux_var%den(iphase)/option%dt ! units of den = kg water/m^3 water
     do icomp=1,option%ncomp
       J(icomp,icomp) = psvd_t
     enddo
@@ -534,19 +540,24 @@ subroutine RTAccumulation(aux_var,por,sat,vol,option,Res)
   type(option_type) :: option
   PetscReal :: Res(option%ncomp)
   
-  PetscInt :: icomp
   PetscInt :: iphase
   PetscReal :: psv_t
+  PetscReal :: v_t
   
   iphase = 1
   ! units = (mol solute/L water)*(m^3 por/m^3 bulk)*(m^3 water/m^3 por)*
   !         (m^3 bulk)*(1000L water/m^3 water)/(sec) = mol/sec
   ! 1000.d0 converts vol from m^3 -> L
   ! all residual entries should be in mol/sec
-  psv_t = por*sat*vol*1000.d0/option%dt  
-  do icomp=1,option%ncomp
-    Res(icomp) = psv_t*aux_var%total(icomp,iphase) 
-  enddo
+  if (associated(aux_var%total_sorb)) then
+    v_t = vol*1000.d0/option%dt
+    psv_t = por*sat*v_t
+    Res(:) = psv_t*aux_var%total(:,iphase) +  v_t*aux_var%total_sorb(:)
+  else
+    psv_t = por*sat*vol*1000.d0/option%dt  
+    Res(:) = psv_t*aux_var%total(:,iphase) 
+  endif
+  
 
 end subroutine RTAccumulation
 
@@ -1610,6 +1621,7 @@ subroutine RTAuxVarCompute(x,aux_var,reaction,option)
   den = aux_var%den(1)*1.d-3 ! convert kg water/m^3 water -> kg water/L water
   aux_var%primary_spec = aux_var%primary_molal*den
   call RTotal(aux_var,reaction,option)
+  if (reaction%neqsurfcmplxrxn > 0) call RTotalSorb(aux_var,reaction,option)
   
 end subroutine RTAuxVarCompute
 

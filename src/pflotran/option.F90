@@ -34,6 +34,8 @@ module Option_module
     PetscInt :: nmnrl      ! # of minerals
     PetscInt :: ngas
     PetscInt :: nsorb      ! # of primary sorbed species
+    PetscInt :: neqsurfcmplxrxn ! # of surface complexation reactions
+    PetscInt :: neqsurfcmplx ! # of surface complexes
     character(len=MAXWORDLENGTH), pointer :: comp_names(:)
     character(len=MAXWORDLENGTH), pointer :: mnrl_names(:)
     PetscTruth :: use_log_formulation ! flag for solving for the change in the log of the concentration
@@ -191,6 +193,8 @@ function OptionCreate()
   option%nmnrl = 0
   option%ngas = 0
   option%nsorb = 0
+  option%neqsurfcmplxrxn = 0
+  option%neqsurfcmplx = 0
   nullify(option%comp_names)
   nullify(option%mnrl_names)
   option%use_log_formulation = PETSC_FALSE

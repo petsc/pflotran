@@ -269,7 +269,7 @@ subroutine DatabaseRead(reaction,option)
         call fiReadDBaseDouble(dbase_id,string,cur_mineral%molar_volume,ierr)
         call fiErrorMsg(option%myrank,'MINERAL molar volume','DATABASE',ierr)            
         ! create mienral reaction
-!        if (.not.associated(cur_mineral%tstrxn)) &
+        if (.not.associated(cur_mineral%tstrxn)) &
           cur_mineral%tstrxn => TransitionStateTheoryRxnCreate()
         ! read the number of aqueous species in mineral rxn
         call fiReadDBaseInt(dbase_id,string,cur_mineral%tstrxn%nspec,ierr)
@@ -645,11 +645,11 @@ subroutine BasisInit(reaction,option)
   PetscInt :: ispec, itemp
   PetscInt :: spec_id
   PetscInt :: ncomp_h2o
-  PetscInt :: icount_old, icount_new
+  PetscInt :: icount_old, icount_new, icount
   PetscInt :: i, j, irow, icol
   PetscInt :: ipri_spec, isec_spec, imnrl, igas_spec
   PetscInt :: i_old, i_new
-  PetscInt :: isurfcplx, isite
+  PetscInt :: isurfcplx, irxn
   PetscInt :: idum
   
   PetscTruth :: compute_new_basis
@@ -1396,12 +1396,33 @@ subroutine BasisInit(reaction,option)
   
   if (reaction%neqsurfcmplx > 0) then
   
-    allocate(reaction%eqsurfsite_to_mineral(reaction%neqsurfsites))
-    reaction%eqsurfsite_to_mineral = 0
-    allocate(reaction%surface_site_names(reaction%neqsurfsites))
+    ! determine max # complexes for a given site
+    icount = 0
+    cur_surfcplx_rxn => reaction%surface_complexation_rxn_list
+    do
+      if (.not.associated(cur_surfcplx_rxn)) exit
+      isurfcplx = 0
+      cur_surfcplx => cur_surfcplx_rxn%complex_list
+      do
+        if (.not.associated(cur_surfcplx)) exit
+        isurfcplx = isurfcplx + 1
+        cur_surfcplx => cur_surfcplx%next
+      enddo
+      if (isurfcplx > icount) icount = isurfcplx
+      cur_surfcplx_rxn => cur_surfcplx_rxn%next
+    enddo
+    nullify(cur_surfcplx_rxn)  
+
+    allocate(reaction%eqsurfcmplx_rxn_to_mineral(reaction%neqsurfcmplxrxn))
+    reaction%eqsurfcmplx_rxn_to_mineral = 0
+    allocate(reaction%eqsurfcmplx_rxn_to_complex(0:icount,reaction%neqsurfcmplxrxn))
+    reaction%eqsurfcmplx_rxn_to_complex = 0
+    allocate(reaction%surface_site_names(reaction%neqsurfcmplxrxn))
     reaction%surface_site_names = ''
-    allocate(reaction%eqsurfcmplx_site_density(reaction%neqsurfsites))
-    reaction%eqsurfcmplx_site_density = 0.d0
+    allocate(reaction%eqsurfcmplx_rxn_site_density(reaction%neqsurfcmplxrxn))
+    reaction%eqsurfcmplx_rxn_site_density = 0.d0
+    allocate(reaction%eqsurfcmplx_rxn_stoich_flag(reaction%neqsurfcmplxrxn))
+    reaction%eqsurfcmplx_rxn_stoich_flag = PETSC_FALSE
     allocate(reaction%surface_complex_names(reaction%neqsurfcmplx))
     reaction%surface_complex_names = ''
     allocate(reaction%eqsurfcmplxspecid(0:reaction%ncomp,reaction%neqsurfcmplx))
@@ -1426,16 +1447,16 @@ subroutine BasisInit(reaction,option)
     reaction%eqsurfcmplx_Z = 0.d0
 
     isurfcplx = 0
-    isite = 0
+    irxn = 0
     cur_surfcplx_rxn => reaction%surface_complexation_rxn_list
     do
       if (.not.associated(cur_surfcplx_rxn)) exit
       
-      isite = isite + 1
-      reaction%surface_site_names(isite) = cur_surfcplx_rxn%free_site_name
-      reaction%eqsurfsite_to_mineral(isite) = &
+      irxn = irxn + 1
+      reaction%surface_site_names(irxn) = cur_surfcplx_rxn%free_site_name
+      reaction%eqsurfcmplx_rxn_to_mineral(irxn) = &
         GetMineralIDFromName(reaction,cur_surfcplx_rxn%mineral_name)
-      reaction%eqsurfcmplx_site_density(isite) = cur_surfcplx_rxn%site_density
+      reaction%eqsurfcmplx_rxn_site_density(irxn) = cur_surfcplx_rxn%site_density
             
       cur_surfcplx => cur_surfcplx_rxn%complex_list
       do
@@ -1443,10 +1464,21 @@ subroutine BasisInit(reaction,option)
         
         isurfcplx = isurfcplx + 1
         
+        ! set up integer pointers from site to complexes
+        ! increment count for site
+        reaction%eqsurfcmplx_rxn_to_complex(0,irxn) = &
+          reaction%eqsurfcmplx_rxn_to_complex(0,irxn) + 1
+        reaction%eqsurfcmplx_rxn_to_complex( &
+          reaction%eqsurfcmplx_rxn_to_complex(0,irxn),irxn) = isurfcplx 
+        
         reaction%surface_complex_names(isurfcplx) = cur_surfcplx%name
         reaction%eqsurfcmplx_free_site_id(isurfcplx) = cur_surfcplx_rxn%free_site_id
         reaction%eqsurfcmplx_free_site_stoich(isurfcplx) =  &
           cur_surfcplx%free_site_stoich
+          
+        if (cur_surfcplx%free_site_stoich > 1.d0) then
+          reaction%eqsurfcmplx_rxn_stoich_flag(irxn) = PETSC_TRUE
+        endif
  
         ispec = 0
         do i = 1, cur_surfcplx%eqrxn%nspec
