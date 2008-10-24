@@ -174,10 +174,11 @@ module Reaction_Aux_module
     PetscInt, pointer :: kinionx_rxn_offset(:)
     ! surface complexation reactions
     PetscInt :: neqsurfcmplx
-    PetscInt :: neqsurfsites  
-    PetscInt, pointer :: eqsurfsite_to_mineral(:)
-    PetscInt, pointer :: eqsurfsite_to_surfcmplx(:,:)
-    PetscReal, pointer :: eqsurfcmplx_site_density(:)
+    PetscInt :: neqsurfcmplxrxn 
+    PetscInt, pointer :: eqsurfcmplx_rxn_to_mineral(:)
+    PetscInt, pointer :: eqsurfcmplx_rxn_to_complex(:,:)
+    PetscReal, pointer :: eqsurfcmplx_rxn_site_density(:)
+    PetscTruth, pointer :: eqsurfcmplx_rxn_stoich_flag(:)
     character(len=MAXNAMELENGTH), pointer :: surface_site_names(:)
     character(len=MAXNAMELENGTH), pointer :: surface_complex_names(:)
     PetscInt, pointer :: eqsurfcmplxspecid(:,:)
@@ -339,11 +340,12 @@ function ReactionCreate()
   nullify(reaction%kinionx_rxn_offset)
   
   reaction%neqsurfcmplx = 0
-  reaction%neqsurfsites = 0
-  nullify(reaction%eqsurfsite_to_mineral)
-  nullify(reaction%eqsurfsite_to_surfcmplx)
+  reaction%neqsurfcmplxrxn = 0
+  nullify(reaction%eqsurfcmplx_rxn_to_mineral)
+  nullify(reaction%eqsurfcmplx_rxn_to_complex)
+  nullify(reaction%eqsurfcmplx_rxn_site_density)
+  nullify(reaction%eqsurfcmplx_rxn_stoich_flag) 
   nullify(reaction%surface_site_names)
-  nullify(reaction%eqsurfcmplx_site_density)
   nullify(reaction%surface_complex_names)
   nullify(reaction%eqsurfcmplxspecid)
   nullify(reaction%eqsurfcmplxstoich)
@@ -1416,16 +1418,18 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%kinionx_rxn_offset)) deallocate(reaction%kinionx_rxn_offset)
   nullify(reaction%kinionx_rxn_offset)
   
-  if (associated(reaction%eqsurfsite_to_mineral)) deallocate(reaction%eqsurfsite_to_mineral)
-  nullify(reaction%eqsurfsite_to_mineral)
+  if (associated(reaction%eqsurfcmplx_rxn_to_mineral)) deallocate(reaction%eqsurfcmplx_rxn_to_mineral)
+  nullify(reaction%eqsurfcmplx_rxn_to_mineral)
+  if (associated(reaction%eqsurfcmplx_rxn_to_complex)) deallocate(reaction%eqsurfcmplx_rxn_to_complex)
+  nullify(reaction%eqsurfcmplx_rxn_to_complex)
 
-  if (associated(reaction%eqsurfsite_to_surfcmplx)) deallocate(reaction%eqsurfsite_to_surfcmplx)
-  nullify(reaction%eqsurfsite_to_surfcmplx)
+  if (associated(reaction%eqsurfcmplx_rxn_site_density)) deallocate(reaction%eqsurfcmplx_rxn_site_density)
+  nullify(reaction%eqsurfcmplx_rxn_site_density)
+  if (associated(reaction%eqsurfcmplx_rxn_stoich_flag)) deallocate(reaction%eqsurfcmplx_rxn_stoich_flag)
+  nullify(reaction%eqsurfcmplx_rxn_stoich_flag) 
 
   if (associated(reaction%surface_site_names)) deallocate(reaction%surface_site_names)
   nullify(reaction%surface_site_names)
-  if (associated(reaction%eqsurfcmplx_site_density)) deallocate(reaction%eqsurfcmplx_site_density)
-  nullify(reaction%eqsurfcmplx_site_density)
   if (associated(reaction%surface_complex_names)) deallocate(reaction%surface_complex_names)
   nullify(reaction%surface_complex_names)
   if (associated(reaction%eqsurfcmplxspecid)) deallocate(reaction%eqsurfcmplxspecid)

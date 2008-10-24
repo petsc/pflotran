@@ -613,6 +613,8 @@ subroutine readRequiredCardsFromInput(realization,filename)
     option%mnrl_names => GetMineralNames(realization%reaction)
     option%nsorb = realization%reaction%neqsurfcmplx + &
                    realization%reaction%neqionx
+    option%neqsurfcmplxrxn = realization%reaction%neqsurfcmplxrxn
+    option%neqsurfcmplx = realization%reaction%neqsurfcmplx
     realization%reaction%ncomp = option%ntrandof
   endif
 

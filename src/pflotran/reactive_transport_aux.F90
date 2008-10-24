@@ -24,10 +24,11 @@ module Reactive_Transport_Aux_module
     ! aqueous complexes
     PetscReal, pointer :: secondary_spec(:)
     ! sorption reactions
-    PetscReal, pointer :: kinsurfcmplx_spec(:)
-    PetscReal, pointer :: kinionx_molfrac(:)
+    ! PetscReal, pointer :: kinsurfcmplx_spec(:)
+    ! PetscReal, pointer :: kinionx_molfrac(:)
     PetscReal, pointer :: eqsurfcmplx_spec(:)
-    PetscReal, pointer :: eqionx_molfrac(:)
+    PetscReal, pointer :: eqsurfcmplx_freesite_conc(:)
+    ! PetscReal, pointer :: eqionx_molfrac(:)
     ! mineral reactions
     PetscReal, pointer :: mnrl_volfrac(:)
     PetscReal, pointer :: mnrl_area0(:)
@@ -123,6 +124,16 @@ subroutine RTAuxVarInit(aux_var,option)
     nullify(aux_var%dtotal_sorb)
   endif    
   
+  if (option%neqsurfcmplxrxn > 0) then
+    allocate(aux_var%eqsurfcmplx_spec(option%neqsurfcmplx))
+    aux_var%eqsurfcmplx_spec = 0.d0
+    allocate(aux_var%eqsurfcmplx_freesite_conc(option%neqsurfcmplxrxn))
+    aux_var%eqsurfcmplx_freesite_conc = 1.d-9 ! initialize to guess
+  else
+    nullify(aux_var%eqsurfcmplx_spec)
+    nullify(aux_var%eqsurfcmplx_freesite_conc)
+  endif
+  
   allocate(aux_var%primary_spec(option%ncomp))
   aux_var%primary_spec = 0.d0
   allocate(aux_var%secondary_spec(option%ncmplx))
@@ -170,14 +181,21 @@ subroutine RTAuxVarCopy(aux_var, aux_var2,option)
   aux_var%primary_molal = aux_var2%primary_molal
   aux_var%total = aux_var2%total
   aux_var%dtotal = aux_var2%dtotal
-  aux_var%total_sorb = aux_var2%total_sorb
-  aux_var%dtotal_sorb = aux_var2%dtotal_sorb
+  if (option%nsorb > 0) then  
+    aux_var%total_sorb = aux_var2%total_sorb
+    aux_var%dtotal_sorb = aux_var2%dtotal_sorb
+  endif
+  if (option%neqsurfcmplxrxn > 0) then
+    aux_var%eqsurfcmplx_spec = aux_var2%eqsurfcmplx_spec
+    aux_var%eqsurfcmplx_freesite_conc = aux_var2%eqsurfcmplx_freesite_conc
+  endif
   aux_var%primary_spec = aux_var2%primary_spec
   aux_var%secondary_spec = aux_var2%secondary_spec
-  aux_var%mnrl_volfrac = aux_var2%mnrl_volfrac
-  aux_var%mnrl_area0 = aux_var2%mnrl_area0
-  aux_var%mnrl_rate = aux_var2%mnrl_rate
-
+  if (option%nmnrl > 0) then
+    aux_var%mnrl_volfrac = aux_var2%mnrl_volfrac
+    aux_var%mnrl_area0 = aux_var2%mnrl_area0
+    aux_var%mnrl_rate = aux_var2%mnrl_rate
+  endif
   aux_var%act_h2o = aux_var2%act_h2o
   aux_var%pri_act_coef = aux_var2%pri_act_coef
   aux_var%sec_act_coef = aux_var2%sec_act_coef
