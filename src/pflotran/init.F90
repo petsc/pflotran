@@ -304,6 +304,8 @@ subroutine Init(simulation,filename)
     call SNESSetJacobian(tran_solver%snes,tran_solver%J,tran_solver%Jpre, &
                          RTJacobian,realization, ierr)
 
+    ! this could be changed in the future if there is a way to ensure that the linesearch
+    ! update does not perturb concentrations negative.
     call SNESLineSearchSet(tran_solver%snes,SNESLineSearchNo,PETSC_NULL_OBJECT,ierr)
 
     call SolverSetSNESOptions(tran_solver)
@@ -319,6 +321,12 @@ subroutine Init(simulation,filename)
     call SNESSetConvergenceTest(tran_solver%snes,ConvergenceTest, &
                                 tran_stepper%convergence_context, &
                                 PETSC_NULL_FUNCTION,ierr) 
+
+    ! this update check must be in place, otherwise reactive transport is likely
+    ! to fail
+    call SNESLineSearchSetPreCheck(tran_solver%snes, &
+                                   ConvergenceRTUpdateCheck, &
+                                   realization,ierr)
 
     call printMsg(option,"  Finished setting up TRAN SNES ")
   
