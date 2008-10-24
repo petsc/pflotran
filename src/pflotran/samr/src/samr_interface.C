@@ -287,7 +287,7 @@ void
 samrpetscobjectstateincrease_(Vec *vec)
 {
 #ifdef DEBUG_CHECK_ASSERTIONS
-   TBOX_ASSERT(!(vec == (Vec)NULL));
+   TBOX_ASSERT(!(vec == (Vec*)NULL));
 #endif
    int ierr = PetscObjectStateIncrease(reinterpret_cast<PetscObject>(*vec)); PETSC_SAMRAI_ERROR(ierr);
 }

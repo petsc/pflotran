@@ -2725,7 +2725,9 @@ subroutine OutputHDF5(realization)
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
           else
              call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             call SAMRRegisterForViz(app_ptr,samr_vec,current_component,TEMPERATURE,ZERO_INTEGER)
+             if(first) then
+                call SAMRRegisterForViz(app_ptr,samr_vec,current_component,TEMPERATURE,ZERO_INTEGER)
+             endif
              current_component=current_component+1
           endif
       end select
@@ -2739,7 +2741,9 @@ subroutine OutputHDF5(realization)
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
           else
              call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             call SAMRRegisterForViz(app_ptr,samr_vec,current_component,PRESSURE,ZERO_INTEGER)
+             if(first) then
+                call SAMRRegisterForViz(app_ptr,samr_vec,current_component,PRESSURE,ZERO_INTEGER)
+             endif
              current_component=current_component+1
           endif
       end select
@@ -2753,7 +2757,9 @@ subroutine OutputHDF5(realization)
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)  
           else
              call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             call SAMRRegisterForViz(app_ptr,samr_vec,current_component,LIQUID_SATURATION,ZERO_INTEGER)
+             if(first) then
+                call SAMRRegisterForViz(app_ptr,samr_vec,current_component,LIQUID_SATURATION,ZERO_INTEGER)
+             endif
              current_component=current_component+1
           endif
       end select
@@ -2767,7 +2773,9 @@ subroutine OutputHDF5(realization)
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
           else
              call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             call SAMRRegisterForViz(app_ptr,samr_vec,current_component,GAS_SATURATION,ZERO_INTEGER)
+             if(first) then
+                call SAMRRegisterForViz(app_ptr,samr_vec,current_component,GAS_SATURATION,ZERO_INTEGER)
+             endif
              current_component=current_component+1
           endif
       end select
@@ -2781,7 +2789,9 @@ subroutine OutputHDF5(realization)
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
              call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             call SAMRRegisterForViz(app_ptr,samr_vec,current_component,LIQUID_ENERGY,ZERO_INTEGER)
+             if(first) then
+                call SAMRRegisterForViz(app_ptr,samr_vec,current_component,LIQUID_ENERGY,ZERO_INTEGER)
+             endif
              current_component=current_component+1
           endif
       end select
@@ -2795,7 +2805,9 @@ subroutine OutputHDF5(realization)
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
              call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             call SAMRRegisterForViz(app_ptr,samr_vec,current_component,GAS_ENERGY,ZERO_INTEGER)
+             if(first) then
+                call SAMRRegisterForViz(app_ptr,samr_vec,current_component,GAS_ENERGY,ZERO_INTEGER)
+             endif
              current_component=current_component+1
           endif
       end select
@@ -2810,7 +2822,9 @@ subroutine OutputHDF5(realization)
                call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
             else
                call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-               call SAMRRegisterForViz(app_ptr,samr_vec,current_component,LIQUID_MOLE_FRACTION,i)
+             if(first) then
+                call SAMRRegisterForViz(app_ptr,samr_vec,current_component,LIQUID_MOLE_FRACTION,i)
+             endif
                current_component=current_component+1
             endif
           enddo
@@ -2826,7 +2840,9 @@ subroutine OutputHDF5(realization)
                 call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
             else
                call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-               call SAMRRegisterForViz(app_ptr,samr_vec,current_component,GAS_MOLE_FRACTION,i)
+             if(first) then
+                call SAMRRegisterForViz(app_ptr,samr_vec,current_component,GAS_MOLE_FRACTION,i)
+             endif
                current_component=current_component+1
             endif
           enddo
@@ -2848,7 +2864,9 @@ subroutine OutputHDF5(realization)
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
           else
              call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             call SAMRRegisterForViz(app_ptr,samr_vec,current_component,PHASE,ZERO_INTEGER)
+             if(first) then
+                call SAMRRegisterForViz(app_ptr,samr_vec,current_component,PHASE,ZERO_INTEGER)
+             endif
              current_component=current_component+1
           endif
                 
@@ -2867,7 +2885,9 @@ subroutine OutputHDF5(realization)
            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         else
            call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-           call SAMRRegisterForViz(app_ptr,samr_vec,current_component,PRIMARY_SPEC_CONCENTRATION,i)
+           if(first) then
+              call SAMRRegisterForViz(app_ptr,samr_vec,current_component,PRIMARY_SPEC_CONCENTRATION,i)
+           endif
            current_component=current_component+1
         endif
       enddo
@@ -2878,7 +2898,9 @@ subroutine OutputHDF5(realization)
            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         else
            call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-           call SAMRRegisterForViz(app_ptr,samr_vec,current_component,MINERAL_VOLUME_FRACTION,i)
+           if(first) then
+              call SAMRRegisterForViz(app_ptr,samr_vec,current_component,MINERAL_VOLUME_FRACTION,i)
+           endif
            current_component=current_component+1
         endif
       enddo
@@ -2890,7 +2912,9 @@ subroutine OutputHDF5(realization)
            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         else
            call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-           call SAMRRegisterForViz(app_ptr,samr_vec,current_component,TOTAL_CONCENTRATION,i)
+           if(first) then
+              call SAMRRegisterForViz(app_ptr,samr_vec,current_component,TOTAL_CONCENTRATION,i)
+           endif
            current_component=current_component+1
         endif
       enddo
@@ -2905,7 +2929,9 @@ subroutine OutputHDF5(realization)
        call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
     else
        call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-       call SAMRRegisterForViz(app_ptr,samr_vec,current_component,MATERIAL_ID,ZERO_INTEGER)
+       if(first) then
+          call SAMRRegisterForViz(app_ptr,samr_vec,current_component,MATERIAL_ID,ZERO_INTEGER)
+       endif
        current_component=current_component+1
     endif
   endif
