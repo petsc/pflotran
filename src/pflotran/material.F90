@@ -75,6 +75,7 @@ module Material_module
             MaterialAddToList, ThermalAddPropertyToList, &
             SaturationFunctionAddToList, &
             MaterialGetPtrFromList, &
+            MaterialGetPtrFromArray, &
             SaturationFunctionCompute, &
             SaturatFuncConvertListToArray, &
             MaterialConvertListToArray, &
@@ -662,6 +663,40 @@ function MaterialGetPtrFromList(material_name,material_list)
   enddo
   
 end function MaterialGetPtrFromList
+
+! ************************************************************************** !
+!
+! MaterialGetPtrFromArray: Returns a pointer to the material matching 
+!                          material_name
+! author: Glenn Hammond
+! date: 11/02/07
+!
+! ************************************************************************** !
+function MaterialGetPtrFromArray(material_name,material_array)
+
+  use Fileio_module
+
+  implicit none
+  
+  type(material_type), pointer :: MaterialGetPtrFromArray
+  character(len=MAXWORDLENGTH) :: material_name
+  type(material_ptr_type), pointer :: material_array(:)
+  PetscInt :: length
+  PetscInt :: imaterial
+    
+  nullify(MaterialGetPtrFromArray)
+  
+  do imaterial = 1, size(material_array)
+    length = len_trim(material_name)
+    if (length == len_trim(material_array(imaterial)%ptr%name) .and. &
+        fiStringCompare(material_array(imaterial)%ptr%name, &
+                        material_name,length)) then
+      MaterialGetPtrFromArray => material_array(imaterial)%ptr
+      return
+    endif
+  enddo
+  
+end function MaterialGetPtrFromArray
 
 ! ************************************************************************** !
 !

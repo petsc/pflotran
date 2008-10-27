@@ -360,7 +360,8 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
     istart = iend-option%ncomp+1
 
     aux_vars(ghosted_id)%den(1) = density_loc_p(ghosted_id)
-    call RTAuxVarCompute(xx_p(istart:iend),aux_vars(ghosted_id),reaction,option)
+    call RTAuxVarCompute(xx_p(istart:iend),aux_vars(ghosted_id),reaction, &
+                         option)
     call RTAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
                         saturation_loc_p(ghosted_id), &
                         volume_p(local_id), &
@@ -1621,7 +1622,9 @@ subroutine RTAuxVarCompute(x,aux_var,reaction,option)
   den = aux_var%den(1)*1.d-3 ! convert kg water/m^3 water -> kg water/L water
   aux_var%primary_spec = aux_var%primary_molal*den
   call RTotal(aux_var,reaction,option)
-  if (reaction%neqsurfcmplxrxn > 0) call RTotalSorb(aux_var,reaction,option)
+  if (reaction%nsorb > 0) then
+    call RTotalSorb(aux_var,reaction,option)
+  endif
   
 end subroutine RTAuxVarCompute
 

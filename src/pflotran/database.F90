@@ -628,6 +628,8 @@ subroutine BasisInit(reaction,option)
   type(surface_complexation_rxn_type), pointer :: cur_surfcplx_rxn
   type(surface_complex_type), pointer :: cur_surfcplx
   type(surface_complex_type), pointer :: cur_surfcplx2
+  type(ion_exchange_rxn_type), pointer :: cur_ionx_rxn
+  type(ion_exchange_cation_type), pointer :: cur_cation
   
   character(len=MAXNAMELENGTH), allocatable :: old_basis_names(:)
   character(len=MAXNAMELENGTH), allocatable :: new_basis_names(:)
@@ -650,6 +652,7 @@ subroutine BasisInit(reaction,option)
   PetscInt :: ipri_spec, isec_spec, imnrl, igas_spec
   PetscInt :: i_old, i_new
   PetscInt :: isurfcplx, irxn
+  PetscInt :: ication
   PetscInt :: idum
   
   PetscTruth :: compute_new_basis
@@ -1511,6 +1514,84 @@ subroutine BasisInit(reaction,option)
   
   endif
 
+  if (reaction%neqionxrxn > 0) then
+
+    ! determine max # cations for a given ionx exchange rxn
+    icount = 0
+    cur_ionx_rxn => reaction%ion_exchange_rxn_list
+    do
+      if (.not.associated(cur_ionx_rxn)) exit
+      ication = 0
+      cur_cation => cur_ionx_rxn%cation_list
+      do
+        if (.not.associated(cur_cation)) exit
+        ication = ication + 1
+        cur_cation => cur_cation%next
+      enddo
+      if (ication > icount) icount = ication
+      cur_ionx_rxn => cur_ionx_rxn%next
+    enddo
+    nullify(cur_ionx_rxn)
+    
+    allocate(reaction%eqionx_rxn_cationid(0:icount,reaction%neqionxrxn))
+    reaction%eqionx_rxn_cationid = 0
+    allocate(reaction%eqionx_rxn_Z_flag(reaction%neqionxrxn))
+    reaction%eqionx_rxn_Z_flag = PETSC_FALSE
+    allocate(reaction%eqionx_rxn_CEC(reaction%neqionxrxn))
+    reaction%eqionx_rxn_CEC = 0.d0
+    allocate(reaction%eqionx_rxn_k(icount,reaction%neqionxrxn))
+    reaction%eqionx_rxn_k = 0.d0
+
+    irxn = 0
+    cur_ionx_rxn => reaction%ion_exchange_rxn_list
+    do
+      if (.not.associated(cur_ionx_rxn)) exit
+      irxn = irxn + 1
+      ication = 0
+      reaction%eqionx_rxn_CEC(irxn) = cur_ionx_rxn%CEC
+      cur_cation => cur_ionx_rxn%cation_list
+      do
+        if (.not.associated(cur_cation)) exit
+        ication = ication + 1
+        reaction%eqionx_rxn_k(ication,irxn) = cur_cation%k
+        found = PETSC_FALSE
+        do i = 1, reaction%ncomp
+          if (fiStringCompare(cur_cation%name, &
+                              new_basis_names(i), &
+                              MAXNAMELENGTH)) then
+            reaction%eqionx_rxn_cationid(ication,irxn) = i
+            found = PETSC_TRUE        
+          endif
+        enddo
+        if (.not.found) then
+          string = 'Cation ' // trim(cur_cation%name) // &
+                   'in ion exchange reaction' // &
+                   ' not found in swapped basis.'
+          call printErrMsg(option,string)     
+        endif
+        cur_cation => cur_cation%next
+      enddo
+      reaction%eqionx_rxn_cationid(0,irxn) = ication
+      ! Find any Zi /= Zj for all species i, j
+      found = PETSC_FALSE
+      do i = 1, reaction%eqionx_rxn_cationid(0,irxn)
+        do j = 1, reaction%eqionx_rxn_cationid(0,irxn)
+          if (abs(reaction%primary_spec_Z(reaction%eqionx_rxn_cationid(i,irxn))- &
+                  reaction%primary_spec_Z(reaction%eqionx_rxn_cationid(j,irxn))) > &
+              0.1d0) then
+            found = PETSC_TRUE
+            exit
+          endif
+        enddo
+        if (found) exit
+      enddo
+      reaction%eqionx_rxn_Z_flag(irxn) = found
+      cur_ionx_rxn => cur_ionx_rxn%next
+    enddo
+    nullify(cur_ionx_rxn)
+
+  endif
+
   call BasisPrint(reaction,'Final Basis',option)
   
   if (allocated(new_basis)) deallocate(new_basis)
@@ -1817,14 +1898,17 @@ subroutine BasisPrint(reaction,title,option)
   type(mineral_type), pointer :: cur_mineral
   type(surface_complexation_rxn_type), pointer :: cur_surfcplx_rxn
   type(surface_complex_type), pointer :: cur_surfcplx
+  type(ion_exchange_rxn_type), pointer :: cur_ionx_rxn
+  type(ion_exchange_cation_type), pointer :: cur_cation
 
   PetscInt :: ispec, itemp
 
 100 format(a)
 110 format(a,f8.4)
-120 format(a,f5.2,2x,a)
+120 format(a,f6.2,2x,a)
 130 format(a,100f9.4)
-140 format(a,f5.2)
+140 format(a,f6.2)
+150 format(a,es11.4)
 
   if (option%myrank == 0) then
     write(option%fid_out,*)
@@ -1950,10 +2034,10 @@ subroutine BasisPrint(reaction,title,option)
       cur_surfcplx => cur_surfcplx_rxn%complex_list
       if (associated(cur_surfcplx)) then
         write(option%fid_out,*)
-        write(option%fid_out,*) 'Surface Complexes:'
+        write(option%fid_out,*) '  Surface Complexes:'
       else
         write(option%fid_out,*)
-        write(option%fid_out,*) 'Surface Complexes: None'
+        write(option%fid_out,*) '  Surface Complexes: None'
       endif
       do
         if (.not.associated(cur_surfcplx)) exit
@@ -1973,6 +2057,33 @@ subroutine BasisPrint(reaction,title,option)
         cur_surfcplx => cur_surfcplx%next
       enddo
       cur_surfcplx_rxn => cur_surfcplx_rxn%next
+    enddo
+    
+    cur_ionx_rxn => reaction%ion_exchange_rxn_list
+    if (associated(cur_ionx_rxn)) then
+      write(option%fid_out,*)
+      write(option%fid_out,*) 'Ion Exchange Reactions:'
+    else
+      write(option%fid_out,*)
+      write(option%fid_out,*) 'Ion Exchange Reactions: None'
+    endif
+    do
+      if (.not.associated(cur_ionx_rxn)) exit
+      write(option%fid_out,*) '  Mineral: ', trim(cur_ionx_rxn%mineral_name)
+      write(option%fid_out,150) '      CEC: ', cur_ionx_rxn%CEC
+      cur_cation => cur_ionx_rxn%cation_list
+      if (associated(cur_cation)) then
+        write(option%fid_out,*) '  Cations:'
+      else
+        write(option%fid_out,*) '  Cations: None'
+      endif
+      do
+        if (.not.associated(cur_cation)) exit
+        write(option%fid_out,150) '      ' // trim(cur_cation%name), cur_cation%k
+        cur_cation => cur_cation%next
+      enddo
+      write(option%fid_out,*)
+      cur_ionx_rxn => cur_ionx_rxn%next
     enddo
     
     write(option%fid_out,*)

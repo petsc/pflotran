@@ -73,15 +73,18 @@ module Reaction_Aux_module
   end type transition_state_rxn_type
   
   type, public :: ion_exchange_rxn_type
-    character(len=MAXNAMELENGTH) :: reference_cation_name
-    character(len=MAXNAMELENGTH) :: mnrl_name
-    PetscInt :: ncation
-    character(len=MAXNAMELENGTH), pointer :: cation_name(:)
-    PetscInt, pointer :: cation_ids(:)
-    PetscReal, pointer :: k(:)  ! selectivity coefficient
+    PetscInt :: id
+    character(len=MAXNAMELENGTH) :: mineral_name
+    type(ion_exchange_cation_type), pointer :: cation_list
     PetscReal :: CEC
     type (ion_exchange_rxn_type), pointer :: next
   end type ion_exchange_rxn_type
+
+  type, public :: ion_exchange_cation_type
+    character(len=MAXNAMELENGTH) :: name
+    PetscReal :: k
+    type (ion_exchange_cation_type), pointer :: next
+  end type ion_exchange_cation_type
 
   type, public :: surface_complex_type
     PetscInt :: id
@@ -126,7 +129,7 @@ module Reaction_Aux_module
     type(aq_species_type), pointer :: secondary_species_list
     type(gas_species_type), pointer :: gas_species_list
     type(mineral_type), pointer :: mineral_list
-    type(ion_exchange_rxn_type), pointer :: ion_exchange_list
+    type(ion_exchange_rxn_type), pointer :: ion_exchange_rxn_list
     type(surface_complexation_rxn_type), pointer :: surface_complexation_rxn_list
     PetscTruth :: compute_activity
     ! compressed arrays for efficient computation
@@ -160,18 +163,17 @@ module Reaction_Aux_module
     PetscReal, pointer :: eqgas_logK(:)
     PetscReal, pointer :: eqgas_logKcoef(:,:)
     ! ionx exchange reactions
-    PetscInt :: neqionx
-    character(len=MAXNAMELENGTH), pointer :: ion_exchange_names(:)
-    PetscInt, pointer :: eqionx_ncation(:)
-    PetscReal, pointer :: eqionx_CEC(:)
-    PetscReal, pointer :: eqionx_k(:,:)
-    PetscInt, pointer :: eqionx_cationid(:)
-    PetscInt, pointer :: eqionx_rxn_offset(:)
-    PetscInt, pointer :: kinionx_ncation(:)
-    PetscReal, pointer :: kinionx_CEC(:)
-    PetscReal, pointer :: kinionx_k(:,:)
-    PetscInt, pointer :: kinionx_cationid(:)
-    PetscInt, pointer :: kinionx_rxn_offset(:)
+    PetscInt :: nsorb
+    PetscInt :: neqionxrxn
+    PetscTruth, pointer :: eqionx_rxn_Z_flag(:)
+    PetscReal, pointer :: eqionx_rxn_CEC(:)
+    PetscReal, pointer :: eqionx_rxn_k(:,:)
+    PetscInt, pointer :: eqionx_rxn_cationid(:,:)
+#if 0    
+    PetscReal, pointer :: kinionx_rxn_CEC(:)
+    PetscReal, pointer :: kinionx_rxn_k(:,:)
+    PetscInt, pointer :: kinionx_rxn_cationid(:)
+#endif    
     ! surface complexation reactions
     PetscInt :: neqsurfcmplx
     PetscInt :: neqsurfcmplxrxn 
@@ -256,7 +258,9 @@ module Reaction_Aux_module
             MineralConstraintDestroy, &
             AqueousSpeciesConstraintCreate, &
             MineralConstraintCreate, &
-            SurfaceComplexCreate
+            SurfaceComplexCreate, &
+            IonExchangeRxnCreate, &
+            IonExchangeCationCreate
              
 contains
 
@@ -289,14 +293,13 @@ function ReactionCreate()
   nullify(reaction%secondary_species_list)
   nullify(reaction%gas_species_list)
   nullify(reaction%mineral_list)
-  nullify(reaction%ion_exchange_list)
+  nullify(reaction%ion_exchange_rxn_list)
   nullify(reaction%surface_complexation_rxn_list)
   
   nullify(reaction%primary_species_names)
   nullify(reaction%secondary_species_names)
   nullify(reaction%gas_species_names)
   nullify(reaction%surface_complex_names)
-  nullify(reaction%ion_exchange_names)
   nullify(reaction%mineral_names)
   nullify(reaction%kinmnrl_names)
   
@@ -326,19 +329,18 @@ function ReactionCreate()
   reaction%debyeB = 0.3288d0 
   reaction%debyeBdot = 0.0410d0 
 
-  reaction%neqionx = 0
-  nullify(reaction%eqionx_ncation)
-  nullify(reaction%eqionx_CEC)
-  nullify(reaction%eqionx_k)
-  nullify(reaction%eqionx_cationid)
-  nullify(reaction%eqionx_rxn_offset)
-  
-  nullify(reaction%kinionx_ncation)
+  reaction%neqionxrxn = 0
+  nullify(reaction%eqionx_rxn_Z_flag)
+  nullify(reaction%eqionx_rxn_CEC)
+  nullify(reaction%eqionx_rxn_k)
+  nullify(reaction%eqionx_rxn_cationid)
+#if 0  
   nullify(reaction%kinionx_CEC)
   nullify(reaction%kinionx_k)
   nullify(reaction%kinionx_cationid)
-  nullify(reaction%kinionx_rxn_offset)
-  
+#endif
+
+  reaction%nsorb = 0
   reaction%neqsurfcmplx = 0
   reaction%neqsurfcmplxrxn = 0
   nullify(reaction%eqsurfcmplx_rxn_to_mineral)
@@ -609,6 +611,57 @@ function SurfaceComplexCreate()
   SurfaceComplexCreate => srfcmplx
   
 end function SurfaceComplexCreate
+
+! ************************************************************************** !
+!
+! IonExchangeRxnCreate: Allocate and initialize an ion exchange reaction
+! author: Peter Lichtner
+! date: 10/24/08
+!
+! ************************************************************************** !
+function IonExchangeRxnCreate()
+
+  implicit none
+    
+  type(ion_exchange_rxn_type), pointer :: IonExchangeRxnCreate
+
+  type(ion_exchange_rxn_type), pointer :: ionxrxn
+  
+  allocate(ionxrxn)
+  ionxrxn%id = 0
+  ionxrxn%mineral_name = ''
+  ionxrxn%CEC = 0.d0
+  nullify(ionxrxn%cation_list)
+  nullify(ionxrxn%next)
+  
+  IonExchangeRxnCreate => ionxrxn
+  
+end function IonExchangeRxnCreate
+
+! ************************************************************************** !
+!
+! IonExchangeCationCreate: Allocate and initialize a cation associated with
+!                          an ion exchange reaction
+! author: Peter Lichtner
+! date: 10/24/08
+!
+! ************************************************************************** !
+function IonExchangeCationCreate()
+
+  implicit none
+    
+  type(ion_exchange_cation_type), pointer :: IonExchangeCationCreate
+
+  type(ion_exchange_cation_type), pointer :: cation
+  
+  allocate(cation)
+  cation%name = ''
+  cation%k = 0.d0
+  nullify(cation%next)
+  
+  IonExchangeCationCreate => cation
+  
+end function IonExchangeCationCreate
 
 ! ************************************************************************** !
 !
@@ -1114,33 +1167,6 @@ end subroutine TransitionStateTheoryRxnDestroy
 
 ! ************************************************************************** !
 !
-! IonExchangeRxnDestroy: Deallocates an ion exchange reaction
-! author: Glenn Hammond
-! date: 05/29/08
-!
-! ************************************************************************** !
-subroutine IonExchangeRxnDestroy(ionxrxn)
-
-  implicit none
-    
-  type(ion_exchange_rxn_type), pointer :: ionxrxn
-
-  if (.not.associated(ionxrxn)) return
-  
-  if (associated(ionxrxn%cation_name)) deallocate(ionxrxn%cation_name)
-  nullify(ionxrxn%cation_name)
-  if (associated(ionxrxn%cation_ids)) deallocate(ionxrxn%cation_ids)
-  nullify(ionxrxn%cation_ids)
-  if (associated(ionxrxn%k)) deallocate(ionxrxn%k)
-  nullify(ionxrxn%k)
-
-  deallocate(ionxrxn)  
-  nullify(ionxrxn)
-
-end subroutine IonExchangeRxnDestroy
-
-! ************************************************************************** !
-!
 ! SurfaceComplexationRxnDestroy: Deallocates a surface complexation reaction
 ! author: Glenn Hammond
 ! date: 10/21/08
@@ -1194,6 +1220,39 @@ subroutine SurfaceComplexDestroy(surfcplx)
   nullify(surfcplx)
 
 end subroutine SurfaceComplexDestroy
+
+! ************************************************************************** !
+!
+! IonExchangeRxnDestroy: Deallocates an ion exchange reaction
+! author: Glenn Hammond
+! date: 10/24/08
+!
+! ************************************************************************** !
+subroutine IonExchangeRxnDestroy(ionxrxn)
+
+  implicit none
+    
+  type(ion_exchange_rxn_type), pointer :: ionxrxn
+  
+  type(ion_exchange_cation_type), pointer :: cur_cation, prev_cation
+
+  if (.not.associated(ionxrxn)) return
+  
+  cur_cation => ionxrxn%cation_list
+  do
+    if (.not.associated(cur_cation)) exit
+    prev_cation => cur_cation
+    cur_cation => cur_cation%next
+    deallocate(prev_cation)
+    nullify(prev_cation)
+  enddo
+  
+  nullify(ionxrxn%next)
+
+  deallocate(ionxrxn)  
+  nullify(ionxrxn)
+
+end subroutine IonExchangeRxnDestroy
 
 ! ************************************************************************** !
 !
@@ -1327,14 +1386,14 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%mineral_list)
   
   ! ionx exchange reactions
-  ionxrxn => reaction%ion_exchange_list
+  ionxrxn => reaction%ion_exchange_rxn_list
   do
     if (.not.associated(ionxrxn)) exit
     prev_ionxrxn => ionxrxn
     ionxrxn => ionxrxn%next
     call IonExchangeRxnDestroy(prev_ionxrxn)
   enddo    
-  nullify(reaction%ion_exchange_list)
+  nullify(reaction%ion_exchange_rxn_list)
 
   ! surface complexation reactions
   surfcplxrxn => reaction%surface_complexation_rxn_list
@@ -1352,8 +1411,6 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%secondary_species_names)
   if (associated(reaction%gas_species_names)) deallocate(reaction%gas_species_names)
   nullify(reaction%gas_species_names)
-  if (associated(reaction%ion_exchange_names)) deallocate(reaction%ion_exchange_names)
-  nullify(reaction%ion_exchange_names)
   if (associated(reaction%surface_complex_names)) deallocate(reaction%surface_complex_names)
   nullify(reaction%surface_complex_names)
   if (associated(reaction%mineral_names)) deallocate(reaction%mineral_names)
@@ -1396,27 +1453,23 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%eqgas_logKcoef)) deallocate(reaction%eqgas_logKcoef)
   nullify(reaction%eqgas_logKcoef)
   
-  if (associated(reaction%eqionx_ncation)) deallocate(reaction%eqionx_ncation)
-  nullify(reaction%eqionx_ncation)
-  if (associated(reaction%eqionx_CEC)) deallocate(reaction%eqionx_CEC)
-  nullify(reaction%eqionx_CEC)
-  if (associated(reaction%eqionx_k)) deallocate(reaction%eqionx_k)
-  nullify(reaction%eqionx_k)
-  if (associated(reaction%eqionx_cationid)) deallocate(reaction%eqionx_cationid)
-  nullify(reaction%eqionx_cationid)
-  if (associated(reaction%eqionx_cationid)) deallocate(reaction%eqionx_cationid)
-  nullify(reaction%eqionx_rxn_offset)
-  
-  if (associated(reaction%kinionx_ncation)) deallocate(reaction%kinionx_ncation)
-  nullify(reaction%kinionx_ncation)
+  if (associated(reaction%eqionx_rxn_Z_flag)) deallocate(reaction%eqionx_rxn_Z_flag)
+  nullify(reaction%eqionx_rxn_Z_flag)
+  if (associated(reaction%eqionx_rxn_CEC)) deallocate(reaction%eqionx_rxn_CEC)
+  nullify(reaction%eqionx_rxn_CEC)
+  if (associated(reaction%eqionx_rxn_k)) deallocate(reaction%eqionx_rxn_k)
+  nullify(reaction%eqionx_rxn_k)
+  if (associated(reaction%eqionx_rxn_cationid)) deallocate(reaction%eqionx_rxn_cationid)
+  nullify(reaction%eqionx_rxn_cationid)
+
+#if 0  
   if (associated(reaction%kinionx_CEC)) deallocate(reaction%kinionx_CEC)
   nullify(reaction%kinionx_CEC)
   if (associated(reaction%kinionx_k)) deallocate(reaction%kinionx_k)
   nullify(reaction%kinionx_k)
   if (associated(reaction%kinionx_cationid)) deallocate(reaction%kinionx_cationid)
   nullify(reaction%kinionx_cationid)
-  if (associated(reaction%kinionx_rxn_offset)) deallocate(reaction%kinionx_rxn_offset)
-  nullify(reaction%kinionx_rxn_offset)
+#endif
   
   if (associated(reaction%eqsurfcmplx_rxn_to_mineral)) deallocate(reaction%eqsurfcmplx_rxn_to_mineral)
   nullify(reaction%eqsurfcmplx_rxn_to_mineral)

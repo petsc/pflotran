@@ -49,6 +49,8 @@ subroutine ReactionRead(reaction,fid,option)
   type(mineral_type), pointer :: mineral, prev_mineral
   type(surface_complex_type), pointer :: srfcmplx, prev_srfcmplx
   type(surface_complexation_rxn_type), pointer :: srfcmplx_rxn, prev_srfcmplx_rxn
+  type(ion_exchange_rxn_type), pointer :: ionx_rxn, prev_ionx_rxn
+  type(ion_exchange_cation_type), pointer :: cation, prev_cation
   PetscInt :: length
   PetscInt :: srfcmplx_count = 0
   PetscErrorCode :: ierr
@@ -176,7 +178,7 @@ subroutine ReactionRead(reaction,fid,option)
                 if (fiCheckExit(string)) exit
 
                 call fiReadWord(string,word,.true.,ierr)
-                call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)
+                call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN', ierr)
                 call fiWordToUpper(word)
                 
                 select case(trim(word))
@@ -232,6 +234,60 @@ subroutine ReactionRead(reaction,fid,option)
 
             case('ION_EXCHANGE_RXN')
           !   call IonExchangeRXNRead
+              ionx_rxn => IonExchangeRxnCreate()
+              do
+                call fiReadFlotranString(fid,string,ierr)
+                if (ierr /= 0) exit
+                if (fiCheckExit(string)) exit
+
+                call fiReadWord(string,word,.true.,ierr)
+                call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,ION_EXCHANGE_RXN', ierr)
+                call fiWordToUpper(word)
+                
+                select case(trim(word))
+                  case('MINERAL')
+                    call fiReadWord(string,ionx_rxn%mineral_name,PETSC_TRUE,ierr)
+                    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,ION_EXCHANGE_RXN,MINERAL_NAME', ierr)
+                  case('CEC')
+                    call fiReadDouble(string,ionx_rxn%CEC,ierr)
+                    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,ION_EXCHANGE_RXN,CEC',ierr)                   
+                  case('CATIONS')
+                    nullify(prev_cation)
+                    do
+                      call fiReadFlotranString(fid,string,ierr)
+                      if (ierr /= 0) exit
+                      if (fiCheckExit(string)) exit
+                      
+                      cation => IonExchangeCationCreate()
+                      call fiReadWord(string,cation%name,PETSC_TRUE,ierr)
+                      call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,ION_EXCHANGE_RXN,CATION_NAME', ierr)
+                      call fiReadDouble(string,cation%k,ierr)
+                      call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,ION_EXCHANGE_RXN,K',ierr)                   
+    
+                      if (.not.associated(ionx_rxn%cation_list)) then
+                        ionx_rxn%cation_list => cation
+                      endif
+                      if (associated(prev_cation)) then
+                        prev_cation%next => cation
+                      endif
+                      prev_cation => cation
+                      nullify(cation)
+                    enddo
+                end select
+              enddo
+              if (.not.associated(reaction%ion_exchange_rxn_list)) then
+                reaction%ion_exchange_rxn_list => ionx_rxn
+                ionx_rxn%id = 1
+              endif
+              if (associated(prev_ionx_rxn)) then
+                prev_ionx_rxn%next => ionx_rxn
+                ionx_rxn%id = prev_ionx_rxn%id + 1
+              endif
+              prev_ionx_rxn => ionx_rxn
+
+              reaction%neqionxrxn = ionx_rxn%id
+
+              nullify(ionx_rxn)          
             case('DISTRIBUTION_COEF')
           !   call DistributionCoefRead
           end select
@@ -247,6 +303,8 @@ subroutine ReactionRead(reaction,fid,option)
         call printErrMsg(option,'CHEMISTRY keyword: '//trim(word)//' not recognized')
     end select
   enddo
+  
+  reaction%nsorb = reaction%neqsurfcmplxrxn + reaction%neqionxrxn
   
   if (len_trim(reaction%database_filename) < 2) &
     reaction%compute_activity = PETSC_FALSE
@@ -480,7 +538,7 @@ subroutine ReactionEquilibrateConstraint(reaction,constraint_name, &
     auxvar%primary_spec = auxvar%primary_molal ! assume a density of 1 kg/L
     if (reaction%compute_activity) call RActivity(auxvar,reaction,option)
     call RTotal(auxvar,reaction,option)
-    if (reaction%neqsurfcmplxrxn > 0) call RTotalSorb(auxvar,reaction,option)
+    if (reaction%nsorb > 0) call RTotalSorb(auxvar,reaction,option)
     
     Res = auxvar%total(:,1)
     Jac = auxvar%dtotal(:,:,1)
@@ -819,6 +877,7 @@ subroutine RReactionDerivative(Res,Jac,auxvar,volume,reaction,option)
     endif
   else ! numerical derivative
     compute_derivative = PETSC_FALSE
+    Res_orig = 0.d0
     call RTAuxVarInit(auxvar_pert,option)
     call RTAuxVarCopy(auxvar_pert,auxvar,option)
     ! #2: add new reactions here
@@ -826,6 +885,7 @@ subroutine RReactionDerivative(Res,Jac,auxvar,volume,reaction,option)
       call RKineticMineral(Res_orig,Jac_dummy,compute_derivative,auxvar,volume,reaction,option)
     endif
     do jcomp = 1, reaction%ncomp
+      Res_pert = 0.d0
       call RTAuxVarCopy(auxvar_pert,auxvar,option)
       pert = auxvar_pert%primary_molal(jcomp)*perturbation_tolerance
       auxvar_pert%primary_molal(jcomp) = auxvar_pert%primary_molal(jcomp) + pert
@@ -835,7 +895,7 @@ subroutine RReactionDerivative(Res,Jac,auxvar,volume,reaction,option)
       auxvar_pert%primary_spec = auxvar_pert%primary_molal* &
                                  auxvar_pert%den(1)*1.d-3
       call RTotal(auxvar_pert,reaction,option)
-      if (reaction%neqsurfcmplxrxn > 0) call RTotalSorb(auxvar_pert,reaction,option)
+      if (reaction%nsorb > 0) call RTotalSorb(auxvar_pert,reaction,option)
 
       ! #3: add new reactions here
       if (reaction%nkinmnrl > 0) then
@@ -844,6 +904,11 @@ subroutine RReactionDerivative(Res,Jac,auxvar,volume,reaction,option)
       endif
       do icomp = 1, reaction%ncomp
         Jac(icomp,jcomp) = Jac(icomp,jcomp) + (Res_pert(icomp)-Res_orig(icomp))/pert
+      enddo
+    enddo
+    do icomp = 1, reaction%ncomp
+      do jcomp = 1, reaction%ncomp
+        if (dabs(Jac(icomp,jcomp)) < 1.d-40)  Jac(icomp,jcomp) = 0.d0
       enddo
     enddo
     call RTAuxVarDestroy(auxvar_pert)
@@ -1013,12 +1078,22 @@ subroutine RTotalSorb(auxvar,reaction,option)
   PetscReal :: free_site_conc
   PetscReal :: ln_free_site(reaction%neqsurfcmplxrxn)
   PetscReal :: ln_act_h2o
-  PetscReal :: lnQK, tempreal, total
+  PetscReal :: lnQK, tempreal, tempreal1, tempreal2, total
   PetscInt :: irxn
   PetscReal, parameter :: log_to_ln = 2.30258509299d0
   PetscReal, parameter :: tol = 1.d-12
   PetscTruth :: one_more
   PetscReal :: res, dres_dfree_site, dfree_site_conc
+  
+  PetscReal :: omega
+  PetscReal :: ref_cation_X, ref_cation_conc, ref_cation_Z, ref_cation_k, &
+               ref_cation_quotient
+  PetscReal :: cation_X(reaction%ncomp)
+  PetscReal :: dres_dref_cation_X, dref_cation_X
+  PetscReal :: sumZX
+  
+  PetscReal :: total_pert, ref_cation_X_pert, pert
+  PetscReal :: ref_cation_quotient_pert, dres_dref_cation_X_pert
 
   iphase = 1                         
 
@@ -1026,28 +1101,12 @@ subroutine RTotalSorb(auxvar,reaction,option)
   ln_act = ln_conc+log(auxvar%pri_act_coef)
   ln_act_h2o = 0.d0  ! assume act h2o = 1 for now
   ln_free_site = log(auxvar%eqsurfcmplx_freesite_conc)
-
-#if 0
-  nullify(reaction%eqsurfsite_to_mineral)
-  nullify(reaction%surface_site_names)
-  nullify(reaction%eqsurfcmplx_site_density)
-  nullify(reaction%surface_complex_names)
-  nullify(reaction%eqsurfcmplxspecid)
-  nullify(reaction%eqsurfcmplxstoich)
-  nullify(reaction%eqsurfcmplxh2oid)
-  nullify(reaction%eqsurfcmplxh2ostoich)
-  nullify(reaction%eqsurfcmplx_mineral_id)
-  nullify(reaction%eqsurfcmplx_free_site_id)
-  nullify(reaction%eqsurfcmplx_free_site_stoich)
-  nullify(reaction%eqsurfcmplx_logK)
-  nullify(reaction%eqsurfcmplx_logKcoef)
-  nullify(reaction%eqsurfcmplx_Z)
-#endif
     
   auxvar%total_sorb(:) = 0.d0
   ! initialize derivatives
   auxvar%dtotal_sorb = 0.d0
 
+  ! Surface Complexation
   do irxn = 1, reaction%neqsurfcmplxrxn
   
     ncplx = reaction%eqsurfcmplx_rxn_to_complex(0,irxn)
@@ -1103,7 +1162,9 @@ subroutine RTotalSorb(auxvar,reaction,option)
         dfree_site_conc = res / dres_dfree_site
         free_site_conc = free_site_conc - dfree_site_conc
       
-        if (dfree_site_conc < tol) one_more = PETSC_TRUE
+        if (dabs(dfree_site_conc/free_site_conc) < tol) then
+          one_more = PETSC_TRUE
+        endif
       
       else
       
@@ -1143,6 +1204,129 @@ subroutine RTotalSorb(auxvar,reaction,option)
     enddo
   enddo
   
+  ! Ion Exchange
+  do irxn = 1, reaction%neqionxrxn
+
+    ncomp = reaction%eqionx_rxn_cationid(0,irxn)
+
+    ! for now we assume that omega is equal to CEC.
+    omega = reaction%eqionx_rxn_CEC(irxn)
+
+    icomp = reaction%eqionx_rxn_cationid(1,irxn)
+    ref_cation_conc = auxvar%primary_spec(icomp)
+    ref_cation_Z = reaction%primary_spec_Z(icomp)
+    ref_cation_k = reaction%eqionx_rxn_k(1,irxn)
+    ref_cation_X = ref_cation_Z*auxvar%eqionx_ref_cation_sorbed_conc(irxn)/omega
+
+    one_more = PETSC_FALSE
+    cation_X = 0.d0
+    do
+
+      if (ref_cation_X <= 0.d0) ref_cation_X = 0.99d0
+      cation_X(1) = ref_cation_X
+      ref_cation_quotient = ref_cation_X*ref_cation_k/ref_cation_conc
+      total = ref_cation_X
+
+      if (reaction%eqionx_rxn_Z_flag(irxn)) then ! Zi /= Zj for any i,j
+
+        do j = 2, ncomp
+          icomp = reaction%eqionx_rxn_cationid(j,irxn)
+          cation_X(j) = auxvar%primary_spec(icomp)/reaction%eqionx_rxn_k(j,irxn)* &
+                        ref_cation_quotient** &
+                        (reaction%primary_spec_Z(icomp)/ref_cation_Z)
+          total = total + cation_X(j)
+        enddo
+        
+        if (one_more) exit
+        
+        res = 1.d0-total
+          
+        dres_dref_cation_X = 1.d0
+
+#if 0
+! test derivative
+      pert = 1.d-6 * ref_cation_X
+      ref_cation_X_pert = ref_cation_X + pert
+      ref_cation_quotient_pert = ref_cation_X_pert*ref_cation_k/ref_cation_conc
+      total_pert = ref_cation_X
+
+        do j = 2, ncomp
+          icomp = reaction%eqionx_rxn_cationid(j,irxn)
+          total_pert = total_pert + &
+                       auxvar%primary_spec(icomp)/reaction%eqionx_rxn_k(j,irxn)* &
+                       ref_cation_quotient_pert** &
+                       (reaction%primary_spec_Z(icomp)/ref_cation_Z)
+        enddo
+      dres_dref_cation_X_pert = (1.d0-total_pert-res)/pert
+! test
+#endif
+
+        do j = 2, ncomp
+          icomp = reaction%eqionx_rxn_cationid(j,irxn)
+          dres_dref_cation_X = dres_dref_cation_X + &
+            (reaction%primary_spec_Z(icomp)/ref_cation_Z)* &
+            cation_X(j)/ref_cation_X
+        enddo
+
+        dref_cation_X = res / -dres_dref_cation_X
+!        dref_cation_X = res / dres_dref_cation_X_pert
+        ref_cation_X = ref_cation_X - dref_cation_X
+      
+        if (dabs(dref_cation_X/ref_cation_X) < tol) then
+          one_more = PETSC_TRUE
+        endif
+    
+      else
+      
+        do j = 2, ncomp  ! Zi == Zj for all i,j
+          icomp = reaction%eqionx_rxn_cationid(j,irxn)
+          cation_X(j) = auxvar%primary_spec(icomp)/reaction%eqionx_rxn_k(j,irxn)* &
+                        ref_cation_quotient
+          total = total + cation_X(j)
+        enddo
+        
+        if (one_more) exit
+        
+        total = total / ref_cation_X
+        ref_cation_X = omega / total  
+        
+        one_more = PETSC_TRUE 
+      
+      endif
+      
+    enddo
+    auxvar%eqionx_ref_cation_sorbed_conc(irxn) = ref_cation_X*omega/ref_cation_Z
+
+    ! sum up charges
+    do i = 1, ncomp
+    icomp = reaction%eqionx_rxn_cationid(i,irxn)
+      sumZX = sumZX + reaction%primary_spec_Z(icomp)*cation_X(i)
+    enddo
+
+    ! compute totals based on sorbed ions
+    do j = 1, ncomp
+      jcomp = reaction%eqionx_rxn_cationid(j,irxn)
+      tempreal1 = cation_X(j)*omega/reaction%primary_spec_Z(jcomp)
+      ! residual function entry
+      auxvar%total_sorb(jcomp) = auxvar%total_sorb(jcomp) + tempreal1
+
+      tempreal2 = reaction%primary_spec_Z(jcomp)/sumZX
+      do i = 1, ncomp
+        icomp = reaction%eqionx_rxn_cationid(i,irxn)
+        if (i == j) then
+          auxvar%dtotal_sorb(icomp,jcomp) = auxvar%dtotal_sorb(icomp,jcomp) + &
+                                            tempreal1*(1.d0-(tempreal2*cation_X(i)))/ &
+                                            auxvar%primary_spec(icomp)
+        else
+          auxvar%dtotal_sorb(icomp,jcomp) = auxvar%dtotal_sorb(icomp,jcomp) + &
+                                            -tempreal1*tempreal2*cation_X(i)/ &
+                                            auxvar%primary_spec(icomp)
+        endif
+      enddo
+    enddo    
+
+  enddo
+
   ! convert from dpsi/dc to dpsi/dm where c = rho*m
   ! units of dtotal = kg water/m^3 water
   auxvar%dtotal_sorb = auxvar%dtotal_sorb*auxvar%den(iphase)

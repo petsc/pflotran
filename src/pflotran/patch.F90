@@ -6,6 +6,7 @@ module Patch_module
   use Breakthrough_module
   use Strata_module
   use Region_module
+  use Material_module
   
   use Auxilliary_module
 
@@ -22,6 +23,7 @@ module Patch_module
     ! thiese arrays will be used by all modes, mode-specific arrays should
     ! go in the auxilliary data stucture for that mode
     PetscInt, pointer :: imat(:)
+    type(material_ptr_type), pointer :: material_array(:)
     PetscReal, pointer :: internal_velocities(:,:)
     PetscReal, pointer :: boundary_velocities(:,:)
     
@@ -83,6 +85,7 @@ function PatchCreate()
 
   patch%id = 0
   nullify(patch%imat)
+  nullify(patch%material_array)
   nullify(patch%internal_velocities)
   nullify(patch%boundary_velocities)
 
@@ -230,7 +233,7 @@ end subroutine PatchLocalizeRegions
 !
 ! ************************************************************************** !
 subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
-                                materials,option)
+                                material_array,option)
 
   use Option_module
   use Material_module
@@ -240,7 +243,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   implicit none
   
   type(patch_type) :: patch
-  type(material_type), pointer :: materials
+  type(material_ptr_type), pointer :: material_array(:)
   type(condition_list_type) :: flow_conditions
   type(tran_condition_list_type) :: transport_conditions
   type(option_type) :: option
@@ -252,6 +255,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   type(breakthrough_type), pointer :: breakthrough, next_breakthrough
   
   PetscInt :: temp_int
+  
+  patch%material_array => material_array
   
   ! boundary conditions
   coupler => patch%boundary_conditions%first
@@ -378,8 +383,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       endif
       if (strata%active) then
         ! pointer to material
-        strata%material => MaterialGetPtrFromList(strata%material_name, &
-                                                  materials)
+        strata%material => MaterialGetPtrFromArray(strata%material_name, &
+                                                   material_array)
         if (.not.associated(strata%material)) then
           string = 'Material ' // trim(strata%material_name) // &
                    ' not found in material list'

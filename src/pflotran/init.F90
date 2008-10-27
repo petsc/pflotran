@@ -132,7 +132,8 @@ subroutine Init(simulation,filename)
   ! read reaction database
   if (associated(realization%reaction)) then
     if (option%ncmplx > 0 .or. &
-        option%nmnrl > 0) then
+        option%nmnrl > 0 .or. &
+        option%nsorb > 0) then
       call DatabaseRead(realization%reaction,option)
       call BasisInit(realization%reaction,option)    
     endif
@@ -620,9 +621,10 @@ subroutine readRequiredCardsFromInput(realization,filename)
     option%nmnrl = GetMineralCount(realization%reaction)
     option%mnrl_names => GetMineralNames(realization%reaction)
     option%nsorb = realization%reaction%neqsurfcmplx + &
-                   realization%reaction%neqionx
+                   realization%reaction%neqionxrxn
     option%neqsurfcmplxrxn = realization%reaction%neqsurfcmplxrxn
     option%neqsurfcmplx = realization%reaction%neqsurfcmplx
+    option%neqionxrxn = realization%reaction%neqionxrxn
     realization%reaction%ncomp = option%ntrandof
   endif
 
@@ -825,7 +827,7 @@ subroutine readInput(simulation,filename)
                 call fiReadWord(string,word,PETSC_TRUE,ierr)
                 call fiErrorMsg(option%myrank,'word','CHEMISTRY,SORPTION',ierr) 
                 select case(trim(word))
-                  case('SURFACE_COMPLEXATION_RXN')
+                  case('SURFACE_COMPLEXATION_RXN','ION_EXCHANGE_RXN')
                     do
                       call fiReadFlotranString(option%fid_in,string,ierr)
                       call fiReadStringErrorMsg(option%myrank,card,ierr)
@@ -833,11 +835,10 @@ subroutine readInput(simulation,filename)
                       call fiReadWord(string,word,PETSC_TRUE,ierr)
                       call fiErrorMsg(option%myrank,'word','CHEMISTRY,SORPTION',ierr)
                       select case(trim(word))
-                        case('COMPLEXES')
+                        case('COMPLEXES','CATIONS')
                           call fiSkipToEND(option%fid_in,option%myrank,card)
                       end select 
                     enddo
-                  case('ION_EXCHANGE_RXN')
                   case('DISTRIBUTION_COEF')
                 end select
               enddo
