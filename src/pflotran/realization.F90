@@ -549,7 +549,10 @@ subroutine RealProcessTranConditions(realization)
           cur_constraint => cur_constraint%next
         enddo
         if (.not.associated(cur_constraint_coupler%aqueous_species)) then
-          call printErrMsg(realization%option,'Duplicate transport condition constraints'//cur_constraint%name)
+          string = 'Transport constraint "' // &
+                   trim(cur_constraint_coupler%constraint_name) // &
+                   '" not found in input file constraints.'
+          call printErrMsg(realization%option,string)
         endif
       endif
       cur_constraint_coupler => cur_constraint_coupler%next

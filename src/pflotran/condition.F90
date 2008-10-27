@@ -916,6 +916,8 @@ subroutine TranConditionRead(condition,constraint_list,option,fid)
         select case(word)
             case('dirichlet')
               condition%itype = DIRICHLET_BC
+            case('equilibrium')
+              condition%itype = EQUILIBRIUM_SS
             case('neumann')
               condition%itype = NEUMANN_BC
             case('mole','mole_rate')

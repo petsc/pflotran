@@ -786,7 +786,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
                            aux_vars(ghosted_id)%total(istart,iphase)*1000.d0) ! convert kg water/L water -> kg water/m^3 water
           case(MASS_RATE_SS)
             Res(istart) = -molality
-          case(CONCENTRATION_SS)
+          case(DIRICHLET_BC)
             if (qsrc > 0) then ! injection
               Res(istart) = -qsrc* &
                             aux_vars(ghosted_id)%den(1) * &
@@ -1133,7 +1133,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                  aux_vars(ghosted_id)%den(1)* &
                                  volume_p(local_id)
           case(MASS_RATE_SS)
-          case(CONCENTRATION_SS)
+          case(DIRICHLET_BC)
             if (qsrc < 0) then ! extraction
               Jup(istart,istart) = -qsrc
             endif
