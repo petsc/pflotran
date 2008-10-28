@@ -1,0 +1,408 @@
+IFC 10-16-08 Average Groundwater Composition
+McKinley
+:       geometry  nx  ny  nz  mode iprint iwarn idebug idbg1 idbg2
+GRID     XYZ       1   1   1    0    1      0     0      1     1
+:
+DBASe
+:/Users/lichtner/flotran/database/rundepu.V8R6
+/Users/lichtner/flotran/database/hanford.dat
+:
+OPTS
+:   idata istart imod iexact iscale ihrmc isst iscreen iapp
+    0     0       1   0      0      0     -1   0       0
+:
+:   itmax ihalmax ndtmx iaccel ndamp icomprs icase
+    16    32     0      3      0     1       0
+:
+:   method iops ifor isurf iact loglin icon cournr pulse wtup pwrsrf
+    1      0    2    1     1    0      1    1000. 
+:
+:    isync ipor iperm permfac porfac icksat ucutoff iread pwrpor pwrperm
+COUPle  0    0    0     0.       0.      0      0.     0     1.    -1.
+:
+PLTFiles 
+:iplot  a  s  t  m si sf  v  z  b in  e ex ti  g itex
+    1   1  1  1  1  0  0  1  0  2  0  0  1  0  0   0
+:
+:    tol    ttol  tolneg tolmin tolexp dthalf qkmax tolstdst tolc dcmx
+TOLR 1.d-12 5.e-3 1.e0   1.e-11 5.d0   0.5    590.  1.e-6   1.e-20  0.1
+:
+:        mcyc  cc  c   flx r  sp  qk  pk  rk  a1  a2  a3
+DEBUg     0     1  1   0   1   1   1   1   1
+:
+:      iphas isothrm iread por0 phir sat  w  lambda toldelt  tolpor
+ISYStem  1    0      0     0.37 1.  1.   .5   1.    1.e-3    1.e-3
+:
+:     vlx0  vly0  vlz0  vgx0 vgy0 vgz0[m/yr]  along  atrans alphaz[m]
+FLOW  0.    0.    0.    0.   0.   0.          0.       0.     0.
+:
+:   d0[cm^2/s] delhaq[kJ/mol] dgas[cm^2/s] dgexp tortaq tortg exps  idif
+:DIFF   1.d-5     12.6            2.13d-1    1.8   1.d0   1.d0  0
+DIFF 2.35791e-4  12.6            2.13d-1    1.8   1.d0   1.d0  0
+:
+:flag 1: T(x)   = d x^3 + a x^2 + b x + c (meters)
+:     2: T(x)   = a + (b-a) exp[-((x-x0)/c)^2] + (d - a) * x / xlen
+:   3:T(x,t)=a+1/2(b-a)(erf[(x+c-x0)/2sqr(dt)]-erf[(x-c-x0)/2sqr(dt)])
+:      p[Pa] temp flag  a    b    c    d   x0   xlen
+PTINit 1.e5  25.   0   25  300  250  125  1000.  2.d3
+:
+:master species for controlling time stepping
+Master H+
+:
+DXYZ
+1.
+1.
+1.
+:
+:   isolv level north nitmax idetail rmaxtol rtwotol smaxtol
+SOLV    1   1     1    100      0     1.e-20  1.e-20  1.e-12
+:
+:initial and boundary conditions: 1-conc., 2-flux, 3-zero gradient 
+COMP
+:
+:i1  i2  j1  j2  k1  k2
+  1   1   1   1   1   1
+.
+:
+:species      itype   ctot        mineral
+Al+++           3     1.e-8       K-Feldspar
+Ca++            1     1.26734e-4
+Mg++            1     4.80169e-4
+Na+             1     9.89662e-4
+K+              1     1.77629e-4
+NO3-            1     9.19247e-4
+SO4--           1     5.56801e-5
+Cl-             1     6.54794e-4
+:HCO3-           7     2.56907e-3
+:HCO3-           4    -3.5          CO2(g)
+HCO3-          -1    -3.5          CO2(g)
+H+              8     7.3
+:HPO4--          1     1.e-16
+UO2++           1     1.85272e-7
+SiO2(aq)        1     5.36989e-4
+O2(aq)          1     3.58138e-4
+.
+.
+:
+skip
+PROFile 36
+Ca++
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+HCO3-
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+H+
+6.5 6.6 6.7 6.8 6.9 7.0 7.1 7.2 7.3 7.4 
+7.5 7.6 7.7 7.8 7.9 8.0 8.1 8.2 8.3 8.4 
+8.5 8.6 8.7 8.8 8.9 9.0 9.1 9.2 9.3 9.4 
+9.5 9.6 9.7 9.8 9.9 10.
+Cl-
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+UO2++
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+:O2(aq)
+:0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+:0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+:0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+:0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+:0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+:0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+:
+noskip
+skip
+BCON
+:ibndtyp ifacx tmpbc dist area vell velg  por  sl  porm  slm  imtx
+    1      1    25.    0.   0.   0.   0.   0.   0.   0.   0.   1
+:i1  i2  j1  j2  k1  k2
+  1   1   1   1   1   1
+.
+:
+:species      itype   ctot        mineral     guess
+Ca++            1     0.2e-3
+Na+             1     1.6e-3
+HCO3-           1     1.0e-3      CO2(g)
+NO3-            1     0.4e-3
+SO4--           1     0.3e-3
+Al(OH)4-        3     5.68e-4     Kaolinite
+Fe(OH)4-        3     7.62e-16    Goethite
+Ni++            1     1.62e-16
+K+              1     2.73e-16
+H+             -1     4.
+Cl-             1     1.e-16
+HPO4--          1     1.e-16
+SiO2(aq)        1     5.36989e-4    Quartz
+Cs+             1     1.e-16
+:UO2++           3     0.114     Autunite-H
+UO2++           1     4.2e-6     (UO2)3(PO4)2.4H2O
+O2(aq)          4     0.2        O2(g)
+Tracer          1     1.e-0
+:
+:ibndtyp ifacx tmpbc dist area vell velg  por  sl  porm  slm  imtx
+    3      2    25.    0.   0.   0.   0.   0.   0.   0.   0.   1
+:i1  i2  j1  j2  k1  k2
+100 100   1   1   1   1
+.
+:
+:species      itype   ctot    mineral     guess
+Ca++            1     0.2e-3
+Na+             1     1.6e-3
+HCO3-           1     1.0e-3      CO2(g)
+NO3-            1     0.4e-3
+SO4--           1     0.3e-3
+Al(OH)4-        3     5.68e-4  Kaolinite
+Fe(OH)4-        1     1.e-16
+Ni++            1     1.e-16
+K+              1     1.e-16
+H+             -1     4.
+Cl-             1     1.e-16
+HPO4--          1     1.e-16
+SiO2(aq)        3     4.05e-3  Quartz
+Cs+             1     1.e-16
+:UO2++           3     0.114    Autunite-H
+UO2++           1     1.e-16    (UO2)3(PO4)2.4H2O
+O2(aq)          4     0.2      O2(g)
+Tracer          1     1.e-16
+.
+noskip
+:
+:STOL 1. 1. 1. 1. 1. 1. 1. 1. 1. 1.
+:1. 1. 1. 1. 1. 1. 1.
+:
+AQCX
+OH-
+CO3--
+CO2(aq)
+CaCO3(aq)
+CaHCO3+
+CaSO4(aq)
+CaCl+
+CaCl2(aq)
+MgCO3(aq)
+MgHCO3+
+MgSO4(aq)
+MgCl+
+NaCl(aq)
+NaOH(aq)
+NaSO4-
+NaHCO3(aq)
+:NaHSiO3(aq)
+NaNO3(aq)
+NaNO2(aq)
+ KCl(aq)
+ KHSO4(aq)
+ KOH(aq)
+ KSO4-
+ HSO4-
+ H2SO4(aq)
+ HCl(aq)
+NO2-
+NH3(aq)
+HN3(aq)
+N3-
+:H2PO4-
+:P2O7----
+:PO4---
+:H3PO4(aq)
+:O2(aq)
+AlOH++
+Al(OH)2+
+Al(OH)3(aq)
+Al(OH)4-
+H3SiO4-
+H2SiO4--
+U+++
+U++++
+UO2+
+(UO2)2(OH)2++
+:(UO2)3(CO3)6(6-)
+UO2CO3(aq)
+UO2(CO3)2--
+UO2(CO3)3----
+:UO2Cl+
+UO2OH+
+Ca2UO2(CO3)3(aq)
+ CaUO2(CO3)3--
+(UO2)2CO3(OH)3-
+UO2(OH)2(aq)
+(UO2)4(OH)7+
+(UO2)3(OH)5+
+:25 C
+skip
+CaH2PO4+
+CaPO4-
+CaHPO4(aq)
+CaP2O7--
+UO2(H2PO4)(H3PO4)+
+UO2(H2PO4)2(aq)
+UO2(OH)3-
+UO2(OH)4--
+UO2HPO4(aq)
+UO2H2PO4+
+UO2H3PO4++
+UO2PO4-
+noskip
+.
+:         
+MNRL
+Quartz
+SiO2(am)
+Chalcedony
+Calcite
+Magnesite
+ Dolomite
+ Dolomite-dis
+ Dolomite-ord
+ Brucite
+ Nesquehonite
+ Gypsum
+K-Feldspar
+Albite
+Muscovite
+Kaolinite
+Anorthite
+Analcime
+Paragonite
+Gibbsite
+Rutherfordine
+Schoepite
+:(UO2)3(PO4)2
+:(UO2)3(PO4)2.4H2O
+UO2(OH)2(beta)
+UO2CO3
+:UO2(PO3)2
+CaUO4
+ Boltwoodite
+ Boltwoodite-Na
+ Boltwoodite_PNNL
+ Boltwoodite-Na_PNNL
+ Soddyite
+ Soddyite_PNNL
+ Uraninite
+ Uranophane
+ Uranophane_PNNL
+ Weeksite
+ Weeksite_PNNL
+ Weeksite-Na_PNNL
+.
+GASES
+CO2(g)
+O2(g)
+.
+:
+MNIR
+:mineral   npar fkin delh  tau  acorr bcorr tafel rlim
+Calcite    1   1.    35. 1.e-3
+:itypkin npri  nsec  sig rk
+   25     0     0    1.  -8.
+:i1  i2  j1  j2  k1  k2
+  1   1   1   1   1   1  0.0  1.
+.
+skip
+Gibbsite     1   1.  35. 1.e-5
+:itypkin npri  nsec  sig rk
+   25     0     0    1.  -10.
+:i1  i2  j1  j2  k1  k2
+  1 100   1   1   1   1  0.   1.
+.
+Muscovite    1   1.  35. 1.e-5
+:itypkin npri  nsec  sig rk
+   25     0     0    1.  -10.
+:i1  i2  j1  j2  k1  k2
+  1 100   1   1   1   1  0.   1.
+.
+SiO2(am)     1   1.  35. 1.e-3
+:itypkin npri  nsec  sig rk
+   20     0     0    1.  -10.
+:i1  i2  j1  j2  k1  k2
+  1 100   1   1   1   1  0.   1.
+.
+K-Feldspar   1   1.  35. 1.e-5
+:itypkin npri  nsec  sig rk
+   25     0     0    1.  -10.
+:i1  i2  j1  j2  k1  k2
+  1 100   1   1   1   1  0.   1.
+.
+Kaolinite   1   1.   35. 1.e-5
+:itypkin npri  nsec  sig rk
+   25     0     0    1.  -10.
+:i1  i2  j1  j2  k1  k2
+  1 100   1   1   1   1  0.   1.
+.
+Nepheline   1   1.   35. 1.e-5
+:itypkin npri  nsec  sig rk
+   25     0     0    1.  -10.
+:i1  i2  j1  j2  k1  k2
+  1 100   1   1   1   1  0.   1.
+.
+Analcime   1   1.   35.  1.e-5
+:itypkin npri  nsec  sig rk
+   25     0     0    1.  -10.
+:i1  i2  j1  j2  k1  k2
+  1 100   1   1   1   1  0.   1.
+.
+Goethite   1   1.   35.  1.e-5
+:itypkin npri  nsec  sig rk
+   25     0     0    1.  -14.
+:i1  i2  j1  j2  k1  k2
+  1 100   1   1   1   1  0.0001   1.
+.
+:skip
+Na4UO2(CO3)3      1   1.   35.  1.e-3
+:itypkin npri  nsec  sig rk
+   25     0     0    1.  -7.
+:i1  i2  j1  j2  k1  k2
+  1 100   1   1   1   1  0.   1.
+.
+Haiweeite      1   1.   35.  1.e-3
+:itypkin npri  nsec  sig rk
+   25     0     0    1.  -20.
+:i1  i2  j1  j2  k1  k2
+  1 100   1   1   1   1  0.   1.
+.
+:noskip
+CaUO4      1   1.   35.  1.e-3
+:itypkin npri  nsec  sig rk
+   20     0     0    1.  -18.
+:i1  i2  j1  j2  k1  k2
+  1 100   1   1   1   1  0.   100.
+.
+noskip
+.
+:noskip
+:
+skip
+SORP  0
+:mineral   area[m^2/g]
+:Goethite     14.059
+Goethite     5.
+:site      site density[sites/nm^2]
+>FeOH         2.31
+>FeO-
+>FeOH2+
+>FeOHUO3
+>FeOHUO2++
+/
+/
+/
+noskip
+:
+BRKP   1
+1 1 1 
+:
+DTSTep[y]  1 3.e-8
+1.e-8        1.
+:
+TIME 1 10. 
+:
+ENDS
