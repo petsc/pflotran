@@ -1268,7 +1268,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
             cation_X(j)/ref_cation_X
         enddo
 
-        dref_cation_X = res / -dres_dref_cation_X
+        dref_cation_X = res / (-dres_dref_cation_X)
 !        dref_cation_X = res / dres_dref_cation_X_pert
         ref_cation_X = ref_cation_X - dref_cation_X
       
@@ -1319,7 +1319,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
                                             auxvar%primary_spec(icomp)
         else
           auxvar%dtotal_sorb(icomp,jcomp) = auxvar%dtotal_sorb(icomp,jcomp) + &
-                                            -tempreal1*tempreal2*cation_X(i)/ &
+                                            (-tempreal1)*tempreal2*cation_X(i)/ &
                                             auxvar%primary_spec(icomp)
         endif
       enddo
