@@ -712,7 +712,8 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   PetscReal :: fraction_upwind, distance, dist_up, dist_dn
   PetscReal :: qsrc, molality
   PetscReal :: Jup(realization%option%ncomp,realization%option%ncomp)
-  
+  PetscTruth :: volumetric
+
   option => realization%option
   field => realization%field
   patch => realization%patch
@@ -759,17 +760,23 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
     
     cur_connection_set => source_sink%connection_set
     
+    if (associated(source_sink%flow_condition) .and. &
+        associated(source_sink%flow_condition%pressure)) then
+      qsrc = source_sink%flow_condition%pressure%dataset%cur_value(1)
+      if (source_sink%flow_condition%pressure%itype == &
+          VOLUMETRIC_RATE_SS) then
+        volumetric = PETSC_TRUE
+      else
+        volumetric = PETSC_FALSE
+      endif
+    endif
+      
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
-      endif
-      
-      if (associated(source_sink%flow_condition) .and. &
-          associated(source_sink%flow_condition%pressure)) then
-        qsrc = source_sink%flow_condition%pressure%dataset%cur_value(1)
       endif
       
       do istart = 1, option%ncomp
@@ -785,15 +792,23 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
                           (molality*aux_vars(ghosted_id)%den(1) - & 
                            aux_vars(ghosted_id)%total(istart,iphase)*1000.d0) ! convert kg water/L water -> kg water/m^3 water
           case(MASS_RATE_SS)
-            Res(istart) = -molality
+            Res(istart) = -molality ! actually moles/sec
           case(DIRICHLET_BC)
             if (qsrc > 0) then ! injection
-              Res(istart) = -qsrc* &
-                            aux_vars(ghosted_id)%den(1) * &
-                            molality
+              if (volumetric) then ! qsrc is volumetric; must be converted to mass
+                Res(istart) = -qsrc*aux_vars(ghosted_id)%den(1) * &
+                              molality
+              else
+                 Res(istart) = -qsrc*molality
+              endif
             else ! extraction
-              Res(istart) = -qsrc* &
-                            aux_vars(ghosted_id)%total(istart,iphase)*1000.d0 ! convert kg water/L water -> kg water/m^3 water
+              if (volumetric) then ! qsrc is volumetric; must be converted to mass
+                Res(istart) = -qsrc*aux_vars(ghosted_id)%den(1)* &
+                              aux_vars(ghosted_id)%total(istart,iphase)
+              else
+                Res(istart) = -qsrc* &
+                              aux_vars(ghosted_id)%total(istart,iphase)/aux_vars(ghosted_id)%den(1)*1000.d0 ! convert kg water/L water -> kg water/m^3 water
+              endif
             endif
           case default
         end select
@@ -1069,6 +1084,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
   PetscReal :: fraction_upwind, distance, dist_up, dist_dn, rdum
   PetscReal :: qsrc
+  PetscTruth :: volumetric
   PetscViewer :: viewer
   
   option => realization%option
@@ -1110,17 +1126,23 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     
     cur_connection_set => source_sink%connection_set
     
+    if (associated(source_sink%flow_condition) .and. &
+        associated(source_sink%flow_condition%pressure)) then
+      qsrc = source_sink%flow_condition%pressure%dataset%cur_value(1)
+      if (source_sink%flow_condition%pressure%itype == &
+          VOLUMETRIC_RATE_SS) then
+        volumetric = PETSC_TRUE
+      else
+        volumetric = PETSC_FALSE
+      endif
+    endif
+      
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
-      endif
-      
-      if (associated(source_sink%flow_condition) .and. &
-          associated(source_sink%flow_condition%pressure)) then
-        qsrc = source_sink%flow_condition%pressure%dataset%cur_value(1)
       endif
       
       Jup = 0.d0
@@ -1135,7 +1157,11 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
           case(MASS_RATE_SS)
           case(DIRICHLET_BC)
             if (qsrc < 0) then ! extraction
-              Jup(istart,istart) = -qsrc
+              if (volumetric) then ! qsrc is volumetric; must be converted to mass
+                Jup(istart,istart) = -qsrc*aux_vars(ghosted_id)%den(1)
+              else
+                Jup(istart,istart) = -qsrc
+              endif
             endif
           case default
         end select
