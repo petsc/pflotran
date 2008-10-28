@@ -1329,10 +1329,11 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
 
       select case(source_sink%flow_condition%pressure%itype)
         case(MASS_RATE_SS)
-          r_p(local_id) = r_p(local_id) - qsrc1*option%flow_dt
+          r_p(local_id) = r_p(local_id) - qsrc1*option%flow_dt ! kg/sec
         case(VOLUMETRIC_RATE_SS)  ! assume local density for now
+          ! qsrc1 = m^3/sec
           r_p(local_id) = r_p(local_id) - qsrc1*aux_vars(ghosted_id)%den_kg* &
-                                          option%flow_dt
+                                          option%flow_dt 
       end select
 
     enddo
