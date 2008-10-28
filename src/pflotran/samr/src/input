@@ -64,6 +64,42 @@ PflotranApplicationStrategy{
 	       use_cf_interpolant              = TRUE
    }
 
+   PflotranFlowPreconditioner{
+
+     preconditioner_print_flag = FALSE
+
+     pc_solver{
+       solver_name                      =  "FAC"
+       max_iterations                   =  0
+       max_error                        =  1.0e-12
+       print_info_level                 =  0
+       presolve_iterations              =  1
+       postsolve_iterations             =  1
+       use_visit                        =  FALSE
+       viz_directory                    =  "fac_viz"
+       zero_initial_guess               =  TRUE
+
+       level_solver_0 {
+            solver_name                = "CellHYPRELevelSolver"
+            print_info_level           = 0
+            max_iterations             = 1
+            max_error                  = 1.0e-12
+            num_presweeps              = 2
+            num_postsweeps             = 2
+       }
+
+       level_solver_1 {
+            solver_name                 =  "CellLevelSmoother"
+            smoother_type               =  "Red-black Gauss-Seidel"
+            print_info_level            =  0
+            max_iterations              =  1
+            max_error                   =  1.0e-12
+            num_sweeps                  =  3
+       }
+     }
+        
+   }
+
 }
 
 PIMS{

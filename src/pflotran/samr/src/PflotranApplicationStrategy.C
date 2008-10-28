@@ -531,6 +531,16 @@ PflotranApplicationStrategy::setRefinementBoundaryInterpolant(RefinementBoundary
       d_TransportJacobian->setRefinementBoundaryInterpolant(cf_interpolant);
    }
 
+   if(d_FlowPreconditioner.get()!=NULL)
+   {
+      d_FlowPreconditioner->setRefinementBoundaryInterpolant(cf_interpolant);
+   }
+
+   if(d_TransportPreconditioner.get()!=NULL)
+   {
+      d_TransportPreconditioner->setRefinementBoundaryInterpolant(cf_interpolant);
+   }
+
 }
 
 void
@@ -629,6 +639,45 @@ PflotranApplicationStrategy::writePlotData(int time_step,
                                            double sim_time)
 {
    d_visit_writer->writePlotData(d_hierarchy, time_step, sim_time);
+}
+
+void
+PflotranApplicationStrategy::initializePreconditioner(int *which_pc, PC *pc)
+{
+   if(*which_pc==0)
+   {
+      if(d_FlowPreconditioner.get()==NULL)
+      {
+         tbox::Pointer<tbox::Database> application_db = this->getDatabase();
+         tbox::Pointer<tbox::Database> pc_db = application_db->getDatabase("PflotranFlowPreconditioner");
+         PflotranFlowPreconditionerParameters *parameters = new PflotranFlowPreconditionerParameters(pc_db);
+         parameters->d_hierarchy = d_hierarchy;
+         parameters->d_pc = pc;
+         parameters->d_cf_interpolant = this->getRefinementBoundaryInterpolant();
+
+         SAMRAI::PflotranFlowPreconditioner *pFlowPC = new SAMRAI::PflotranFlowPreconditioner(parameters);
+         d_FlowPreconditioner.reset(pFlowPC);
+         d_FlowPreconditioner->setOperator(d_FlowJacobian.get());
+      }
+
+   }
+   else
+   {
+      if(d_TransportPreconditioner.get()==NULL)
+      {
+         tbox::Pointer<tbox::Database> application_db = this->getDatabase();
+         tbox::Pointer<tbox::Database> pc_db = application_db->getDatabase("PflotranTransportPreconditioner");
+         PflotranTransportPreconditionerParameters *parameters = new PflotranTransportPreconditionerParameters(pc_db);
+         parameters->d_hierarchy = d_hierarchy;
+         parameters->d_pc = pc;
+         parameters->d_cf_interpolant = this->getRefinementBoundaryInterpolant();
+
+         SAMRAI::PflotranTransportPreconditioner *pTransportPC = new SAMRAI::PflotranTransportPreconditioner(parameters);
+         d_TransportPreconditioner.reset(pTransportPC);
+         d_TransportPreconditioner->setOperator(d_TransportJacobian.get());
+      }
+
+   }
 }
 
 }

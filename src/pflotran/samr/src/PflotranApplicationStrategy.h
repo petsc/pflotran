@@ -29,7 +29,13 @@
 #include "BoundaryConditionStrategy.h"
 #include "HierarchyDataOpsReal.h"
 #include "VisItDataWriter.h"
+#include "PflotranFlowPreconditioner.h"
+#include "PflotranTransportPreconditioner.h"
 
+extern"C"{
+#include "petsc.h"
+#include "petscpc.h"
+}
 namespace SAMRAI{
 
 class PflotranApplicationStrategy: public ApplicationStrategy
@@ -137,6 +143,8 @@ public:
 
    appu::VisItDataWriter<NDIM>* getVizWriter(void){return d_visit_writer; }
 
+   void initializePreconditioner(int *which_pc, PC *pc);
+
 protected:
 
 private:
@@ -205,6 +213,10 @@ private:
 
    std::auto_ptr<PflotranJacobianMultilevelOperator> d_TransportJacobian;
 
+   std::auto_ptr<PflotranFlowPreconditioner> d_FlowPreconditioner;
+
+   std::auto_ptr<PflotranTransportPreconditioner> d_TransportPreconditioner;
+
    BoundaryConditionStrategy  *d_refine_patch_strategy;
 
    tbox::Pointer< math::HierarchyDataOpsReal< NDIM, double > > d_math_op;
@@ -214,6 +226,8 @@ private:
     */
    std::string d_viz_directory;
    appu::VisItDataWriter<NDIM>* d_visit_writer;
+
+   
 
 };
 

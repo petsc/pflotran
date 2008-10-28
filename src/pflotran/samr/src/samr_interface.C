@@ -445,6 +445,12 @@ samrwriteplotdata_(SAMRAI::PflotranApplicationStrategy **application_strategy,
    step++;
 }
 
+void samrinitializepreconditioner_(SAMRAI::PflotranApplicationStrategy **application_strategy,
+                                   int *which_pc,
+                                   PC *pc)
+{
+   (*application_strategy)->initializePreconditioner(which_pc, pc);
+}
 #ifdef __cplusplus
 }
 #endif
