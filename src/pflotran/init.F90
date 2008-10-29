@@ -29,6 +29,7 @@ subroutine Init(simulation,filename)
   use Simulation_module
   use Option_module
   use Grid_module
+  use AMR_Grid_module
   use Solver_module
   use Discretization_module
   use Realization_module
@@ -75,6 +76,18 @@ subroutine Init(simulation,filename)
   Vec :: global_vec
   PetscInt :: temp_int
   PetscErrorCode :: ierr
+
+  interface
+
+     subroutine SAMRInitializePreconditioner(p_application, which_pc, pc)
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscpc.h"
+       PC :: pc
+       PetscFortranAddr :: p_application
+       PetscInt :: which_pc
+     end subroutine SAMRInitializePreconditioner
+
+  end interface
 
   call PetscLogStagePush(logging%stage(INIT_STAGE),ierr)
   call PetscLogEventBegin(logging%event_init,PETSC_NULL_OBJECT, &
@@ -243,6 +256,12 @@ subroutine Init(simulation,filename)
     end select
     
     call SolverSetSNESOptions(flow_solver)
+
+    ! setup a shell preconditioner and initialize in the case of AMR
+    if(associated(discretization%amrgrid)) then
+       flow_solver%pc_type = PCSHELL
+       call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 0, flow_solver%pc)
+    endif
 
     string = 'Solver: ' // trim(flow_solver%ksp_type)
     call printMsg(option,string)

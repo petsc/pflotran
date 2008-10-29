@@ -240,3 +240,11 @@ subroutine SAMRWritePlotData(ptr, time)
   PetscFortranAddr :: ptr
   PetscReal :: time
 end subroutine SAMRWritePlotData
+
+subroutine SAMRInitializePreconditioner(p_application, which_pc, pc)
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscpc.h"
+  PC :: pc
+  PetscFortranAddr :: p_application
+  PetscInt :: which_pc
+end subroutine SAMRInitializePreconditioner
