@@ -165,7 +165,9 @@ module Reaction_Aux_module
     ! ionx exchange reactions
     PetscInt :: nsorb
     PetscInt :: neqionxrxn
+    PetscInt :: neqionxcation 
     PetscTruth, pointer :: eqionx_rxn_Z_flag(:)
+    PetscInt, pointer :: eqionx_rxn_cation_X_offset(:)
     PetscReal, pointer :: eqionx_rxn_CEC(:)
     PetscReal, pointer :: eqionx_rxn_k(:,:)
     PetscInt, pointer :: eqionx_rxn_cationid(:,:)
@@ -330,7 +332,9 @@ function ReactionCreate()
   reaction%debyeBdot = 0.0410d0 
 
   reaction%neqionxrxn = 0
+  reaction%neqionxcation = 0
   nullify(reaction%eqionx_rxn_Z_flag)
+  nullify(reaction%eqionx_rxn_cation_X_offset)
   nullify(reaction%eqionx_rxn_CEC)
   nullify(reaction%eqionx_rxn_k)
   nullify(reaction%eqionx_rxn_cationid)
@@ -671,29 +675,30 @@ end function IonExchangeCationCreate
 ! date: 10/14/08
 !
 ! ************************************************************************** !
-function AqueousSpeciesConstraintCreate(option)
+function AqueousSpeciesConstraintCreate(reaction,option)
 
   use Option_module
   
   implicit none
   
+  type(reaction_type) :: reaction
   type(option_type) :: option
   type(aq_species_constraint_type), pointer :: AqueousSpeciesConstraintCreate
 
   type(aq_species_constraint_type), pointer :: constraint
   
   allocate(constraint)
-  allocate(constraint%names(option%ncomp))
+  allocate(constraint%names(reaction%ncomp))
   constraint%names = ''
-  allocate(constraint%constraint_conc(option%ncomp))
+  allocate(constraint%constraint_conc(reaction%ncomp))
   constraint%constraint_conc = 0.d0
-  allocate(constraint%basis_molarity(option%ncomp))
+  allocate(constraint%basis_molarity(reaction%ncomp))
   constraint%basis_molarity = 0.d0
-  allocate(constraint%constraint_spec_id(option%ncomp))
+  allocate(constraint%constraint_spec_id(reaction%ncomp))
   constraint%constraint_spec_id = 0
-  allocate(constraint%constraint_type(option%ncomp))
+  allocate(constraint%constraint_type(reaction%ncomp))
   constraint%constraint_type = 0
-  allocate(constraint%constraint_spec_name(option%ncomp))
+  allocate(constraint%constraint_spec_name(reaction%ncomp))
   constraint%constraint_spec_name = ''
 
   AqueousSpeciesConstraintCreate => constraint
@@ -707,12 +712,13 @@ end function AqueousSpeciesConstraintCreate
 ! date: 10/14/08
 !
 ! ************************************************************************** !
-function MineralConstraintCreate(option)
+function MineralConstraintCreate(reaction,option)
 
   use Option_module
   
   implicit none
   
+  type(reaction_type) :: reaction
   type(option_type) :: option
   type(mineral_constraint_type), pointer :: MineralConstraintCreate
 
@@ -720,11 +726,11 @@ function MineralConstraintCreate(option)
 
   allocate(constraint)
   allocate(constraint)
-  allocate(constraint%names(option%nmnrl))
+  allocate(constraint%names(reaction%nmnrl))
   constraint%names = ''
-  allocate(constraint%constraint_mol_frac(option%nmnrl))
+  allocate(constraint%constraint_mol_frac(reaction%nmnrl))
   constraint%constraint_mol_frac = 0.d0
-  allocate(constraint%basis_mol_frac(option%nmnrl))
+  allocate(constraint%basis_mol_frac(reaction%nmnrl))
   constraint%basis_mol_frac = 0.d0
 
   MineralConstraintCreate => constraint
@@ -1455,6 +1461,8 @@ subroutine ReactionDestroy(reaction)
   
   if (associated(reaction%eqionx_rxn_Z_flag)) deallocate(reaction%eqionx_rxn_Z_flag)
   nullify(reaction%eqionx_rxn_Z_flag)
+  if (associated(reaction%eqionx_rxn_cation_X_offset)) deallocate(reaction%eqionx_rxn_cation_X_offset)
+  nullify(reaction%eqionx_rxn_cation_X_offset)
   if (associated(reaction%eqionx_rxn_CEC)) deallocate(reaction%eqionx_rxn_CEC)
   nullify(reaction%eqionx_rxn_CEC)
   if (associated(reaction%eqionx_rxn_k)) deallocate(reaction%eqionx_rxn_k)

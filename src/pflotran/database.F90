@@ -1537,23 +1537,31 @@ subroutine BasisInit(reaction,option)
     reaction%eqionx_rxn_cationid = 0
     allocate(reaction%eqionx_rxn_Z_flag(reaction%neqionxrxn))
     reaction%eqionx_rxn_Z_flag = PETSC_FALSE
+    allocate(reaction%eqionx_rxn_cation_X_offset(reaction%neqionxrxn))
+    reaction%eqionx_rxn_cation_X_offset = 0
     allocate(reaction%eqionx_rxn_CEC(reaction%neqionxrxn))
     reaction%eqionx_rxn_CEC = 0.d0
     allocate(reaction%eqionx_rxn_k(icount,reaction%neqionxrxn))
     reaction%eqionx_rxn_k = 0.d0
 
     irxn = 0
+    icount = 0
     cur_ionx_rxn => reaction%ion_exchange_rxn_list
     do
       if (.not.associated(cur_ionx_rxn)) exit
       irxn = irxn + 1
       ication = 0
       reaction%eqionx_rxn_CEC(irxn) = cur_ionx_rxn%CEC
+        ! compute the offset to the first cation in rxn
+      reaction%eqionx_rxn_cation_X_offset(irxn) = icount
+        
       cur_cation => cur_ionx_rxn%cation_list
       do
         if (.not.associated(cur_cation)) exit
         ication = ication + 1
+        icount = icount + 1
         reaction%eqionx_rxn_k(ication,irxn) = cur_cation%k
+
         found = PETSC_FALSE
         do i = 1, reaction%ncomp
           if (fiStringCompare(cur_cation%name, &

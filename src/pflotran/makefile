@@ -216,7 +216,7 @@ reaction_aux.o : option.o
 transport.o : reactive_transport_aux.o option.o
 reactive_transport.o : realization.o reaction.o transport.o \
                        reactive_transport_aux.o
-reactive_transport_aux.o : option.o
+reactive_transport_aux.o : option.o reaction_aux.o
 thc.o : thc_aux.o realization.o
 richards.o : richards_aux.o realization.o
 thc_aux.o : option.o material.o water_eos.o

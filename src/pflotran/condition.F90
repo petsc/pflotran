@@ -1054,7 +1054,7 @@ subroutine TranConstraintRead(constraint,option,fid)
 
       case('CONC','CONCENTRATIONS')
 
-        aq_species_constraint => AqueousSpeciesConstraintCreate(option)
+ !geh       aq_species_constraint => AqueousSpeciesConstraintCreate(option)
 
         icomp = 0
         do
@@ -1118,7 +1118,7 @@ subroutine TranConstraintRead(constraint,option,fid)
         
       case('MNRL','MINERALS')
 
-        mineral_constraint => MineralConstraintCreate(option)
+!geh        mineral_constraint => MineralConstraintCreate(option)
 
         icomp = 0
         do

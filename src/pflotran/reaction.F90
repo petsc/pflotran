@@ -20,7 +20,8 @@ module Reaction_module
             RTotalSorb, &
             RActivity, &
             RReaction, &
-            RReactionDerivative
+            RReactionDerivative, &
+            RPrintConstraint
 
 contains
 
@@ -259,6 +260,7 @@ subroutine ReactionRead(reaction,fid,option)
                       if (fiCheckExit(string)) exit
                       
                       cation => IonExchangeCationCreate()
+                      reaction%neqionxcation = reaction%neqionxcation + 1
                       call fiReadWord(string,cation%name,PETSC_TRUE,ierr)
                       call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,ION_EXCHANGE_RXN,CATION_NAME', ierr)
                       call fiReadDouble(string,cation%k,ierr)
@@ -334,16 +336,17 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
   type(mineral_constraint_type), pointer :: mineral_constraint
   type(option_type) :: option
   
+  type(reactive_transport_auxvar_type) :: auxvar
   character(len=MAXSTRINGLENGTH) :: string
   PetscTruth :: found
   PetscInt :: icomp, jcomp
   PetscInt :: imnrl, jmnrl
   PetscInt :: igas
   PetscReal :: value
-  PetscReal :: constraint_conc(option%ncomp)
-  PetscInt :: constraint_type(option%ncomp)
-  character(len=MAXNAMELENGTH) :: constraint_spec_name(option%ncomp)
-  PetscInt :: constraint_id(option%ncomp)
+  PetscReal :: constraint_conc(reaction%ncomp)
+  PetscInt :: constraint_type(reaction%ncomp)
+  character(len=MAXNAMELENGTH) :: constraint_spec_name(reaction%ncomp)
+  PetscInt :: constraint_id(reaction%ncomp)
     
   constraint_id = 0
   constraint_spec_name = ''
@@ -351,11 +354,11 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
   constraint_conc = 0.d0
   
   ! aqueous species
-  do icomp = 1, option%ncomp
+  do icomp = 1, reaction%ncomp
     found = PETSC_FALSE
-    do jcomp = 1, option%ncomp
+    do jcomp = 1, reaction%ncomp
       if (fiStringCompare(aq_species_constraint%names(icomp), &
-                          option%comp_names(jcomp), &
+                          reaction%primary_species_names(jcomp), &
                           MAXNAMELENGTH)) then
         found = PETSC_TRUE
         exit
@@ -388,7 +391,7 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
             string = 'Constraint mineral: ' // &
                      trim(constraint_spec_name(jcomp)) // &
                      ' for aqueous species: ' // &
-                     trim(option%comp_names(jcomp)) // &
+                     trim(reaction%primary_species_names(jcomp)) // &
                      ' in constraint: ' // &
                      trim(constraint_name) // ' not found.' 
             call printErrMsg(option,string)         
@@ -408,7 +411,7 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
             string = 'Constraint gas: ' // &
                      trim(constraint_spec_name(jcomp)) // &
                      ' for aqueous species: ' // &
-                     trim(option%comp_names(jcomp)) // &
+                     trim(reaction%primary_species_names(jcomp)) // &
                      ' in constraint: ' // &
                      trim(constraint_name) // ' not found.' 
             call printErrMsg(option,string)         
@@ -450,10 +453,12 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
     endif
   endif
   
-  call ReactionEquilibrateConstraint(reaction,constraint_name, &
+  call RTAuxVarInit(auxvar,option)
+  call ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
                                      aq_species_constraint, &
                                      option)
-  
+  call RTAuxVarDestroy(auxvar)
+
 end subroutine ReactionInitializeConstraint
 
 ! ************************************************************************** !
@@ -464,7 +469,7 @@ end subroutine ReactionInitializeConstraint
 ! date: 10/22/08
 !
 ! ************************************************************************** !
-subroutine ReactionEquilibrateConstraint(reaction,constraint_name, &
+subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
                                          aq_species_constraint, &
                                          option)
   use Option_module
@@ -473,6 +478,7 @@ subroutine ReactionEquilibrateConstraint(reaction,constraint_name, &
   
   implicit none
   
+  type(reactive_transport_auxvar_type) :: auxvar
   type(reaction_type), pointer :: reaction
   character(len=MAXNAMELENGTH) :: constraint_name
   type(aq_species_constraint_type), pointer :: aq_species_constraint
@@ -482,11 +488,10 @@ subroutine ReactionEquilibrateConstraint(reaction,constraint_name, &
   PetscInt :: icomp, jcomp
   PetscInt :: imnrl, jmnrl
   PetscInt :: igas
-  PetscReal :: conc(option%ncomp)
-  PetscInt :: constraint_type(option%ncomp)
-  character(len=MAXNAMELENGTH) :: constraint_spec_name(option%ncomp)
+  PetscReal :: conc(reaction%ncomp)
+  PetscInt :: constraint_type(reaction%ncomp)
+  character(len=MAXNAMELENGTH) :: constraint_spec_name(reaction%ncomp)
 
-  type(reactive_transport_auxvar_type) :: auxvar
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: total_conc(reaction%ncomp)
   PetscReal :: free_conc(reaction%ncomp)
@@ -496,6 +501,8 @@ subroutine ReactionEquilibrateConstraint(reaction,constraint_name, &
   PetscReal :: norm
   PetscReal :: prev_molal(reaction%ncomp)
   PetscReal, parameter :: tol = 1.d-12
+  PetscReal, parameter :: tol_loose = 1.d-6
+  PetscTruth :: compute_activity
 
   PetscInt :: constraint_id(reaction%ncomp)
   PetscReal :: ln_act_h2o
@@ -527,16 +534,18 @@ subroutine ReactionEquilibrateConstraint(reaction,constraint_name, &
     end select
   enddo
   
-  call RTAuxVarInit(auxvar,option)
   auxvar%den(1) = 1000.d0 ! assume a density of 1 kg/L (1000 kg/m^3)
   auxvar%primary_molal = free_conc
 
   num_it = 0
+  compute_activity = PETSC_FALSE
   
   do
 
     auxvar%primary_spec = auxvar%primary_molal ! assume a density of 1 kg/L
-    if (reaction%compute_activity) call RActivity(auxvar,reaction,option)
+    if (reaction%compute_activity .and. compute_activity) then
+      call RActivity(auxvar,reaction,option)
+    endif
     call RTotal(auxvar,reaction,option)
     if (reaction%nsorb > 0) call RTotalSorb(auxvar,reaction,option)
     
@@ -637,6 +646,12 @@ subroutine ReactionEquilibrateConstraint(reaction,constraint_name, &
 
     num_it = num_it + 1
     
+    ! need some sort of convergence before we kick in activities
+    if (maxval(dabs(auxvar%primary_molal-prev_molal)/ &
+               auxvar%primary_molal) < tol_loose) then
+      compute_activity = PETSC_TRUE
+    endif
+
     ! check for convergence
     if (maxval(dabs(auxvar%primary_molal-prev_molal)/ &
                auxvar%primary_molal) < tol) exit
@@ -646,9 +661,163 @@ subroutine ReactionEquilibrateConstraint(reaction,constraint_name, &
   ! remember that a density of 1 kg/L was assumed, thus molal and molarity are equal
   aq_species_constraint%basis_molarity = auxvar%primary_molal
 
-  call RTAuxVarDestroy(auxvar)
-
 end subroutine ReactionEquilibrateConstraint
+
+! ************************************************************************** !
+!
+! RPrintConstraint: Prints a constraint associated with reactive transport
+! author: Glenn Hammond
+! date: 10/28/08
+!
+! ************************************************************************** !
+subroutine RPrintConstraint(constraint_coupler,reaction,option)
+
+  use Option_module
+  use Condition_module
+
+  implicit none
+  
+  type(option_type) :: option
+  type(tran_constraint_coupler_type) :: constraint_coupler
+  type(reaction_type), pointer :: reaction
+  
+  type(reactive_transport_auxvar_type) :: auxvar
+  type(aq_species_constraint_type), pointer :: aq_species_constraint
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: i, icomp
+  PetscInt :: icplx, icplx2
+  PetscInt :: eqcmplxsort(reaction%neqcmplx)
+  PetscInt :: eqsurfcmplxsort(reaction%neqsurfcmplx+reaction%neqsurfcmplxrxn)
+  PetscTruth :: finished
+  PetscReal :: conc, conc2
+
+  aq_species_constraint => constraint_coupler%aqueous_species
+
+99 format(80('-'))
+100 format(a)
+
+  write(option%fid_out,100) '  Constraint: ' // trim(constraint_coupler%constraint_name)
+101 format(/,'  species       molality    total       act coef  constraint')  
+  write(option%fid_out,101)
+  write(option%fid_out,99)
+  
+ call RTAuxVarInit(auxvar,option)
+  
+102 format(2x,a12,es12.4,es12.4,f8.4,4x,a)
+
+  call ReactionEquilibrateConstraint(auxvar,reaction, &
+                                     constraint_coupler%constraint_name, &
+                                     aq_species_constraint, &
+                                     option)
+                                     
+  do icomp = 1, reaction%ncomp
+    select case(aq_species_constraint%constraint_type(icomp))
+      case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
+        string = 'total'
+      case(CONSTRAINT_FREE)
+        string = 'free'
+      case(CONSTRAINT_LOG)
+        string = 'log'
+      case(CONSTRAINT_MINERAL,CONSTRAINT_GAS)
+        string = aq_species_constraint%constraint_spec_name(icomp)
+    end select
+    write(option%fid_out,102) reaction%primary_species_names(icomp), &
+                              auxvar%primary_molal(icomp), &
+                              auxvar%total(icomp,1)/auxvar%den(1)*1000.d0, &
+                              auxvar%pri_act_coef(icomp), &
+                              trim(string)
+  enddo  
+      
+  if (reaction%neqcmplx > 0) then    
+    ! sort complex concentrations from largest to smallest
+    do i = 1, reaction%neqcmplx
+      eqcmplxsort(i) = i
+    enddo
+    do
+      finished = PETSC_TRUE
+      do i = 1, reaction%neqcmplx-1
+        icplx = eqcmplxsort(i)
+        icplx2 = eqcmplxsort(i+1)
+        if (auxvar%secondary_spec(icplx) < &
+            auxvar%secondary_spec(icplx2)) then
+          eqcmplxsort(i) = icplx2
+          eqcmplxsort(i+1) = icplx
+          finished = PETSC_FALSE
+        endif
+      enddo
+      if (finished) exit
+    enddo
+            
+  103 format(/,'  complex       molality    act coef  logK')  
+    write(option%fid_out,103)
+    write(option%fid_out,99)
+  104 format(2x,a12,es12.4,f8.4,2x,es12.4)
+    do i = 1, reaction%neqcmplx ! for each secondary species
+      icplx = eqcmplxsort(i)
+      write(option%fid_out,104) reaction%secondary_species_names(icplx), &
+                                auxvar%secondary_spec(icplx)/ &
+                                auxvar%den(1)*1000.d0, &
+                                auxvar%sec_act_coef(icplx), &
+                                reaction%eqcmplx_logK(icplx)
+    enddo 
+  endif 
+          
+  if (reaction%neqsurfcmplxrxn > 0) then
+    ! sort surface complex concentrations from largest to smallest
+    ! note that we include free site concentrations; their ids negated
+    do i = 1, reaction%neqsurfcmplx
+      eqsurfcmplxsort(i) = i
+    enddo
+    do i = 1, reaction%neqsurfcmplxrxn
+      eqsurfcmplxsort(reaction%neqsurfcmplx+i) = -i
+    enddo
+    do
+      finished = PETSC_TRUE
+      do i = 1, reaction%neqsurfcmplx+reaction%neqsurfcmplxrxn-1
+        icplx = eqsurfcmplxsort(i)
+        icplx2 = eqsurfcmplxsort(i+1)
+        if (icplx > 0) then
+          conc = auxvar%eqsurfcmplx_spec(icplx)
+        else
+          conc = auxvar%eqsurfcmplx_freesite_conc(-icplx)
+        endif
+        if (icplx2 > 0) then
+          conc2 = auxvar%eqsurfcmplx_spec(icplx2)
+        else
+          conc2 = auxvar%eqsurfcmplx_freesite_conc(-icplx2)
+        endif
+        if (conc < conc2) then
+          eqsurfcmplxsort(i) = icplx2
+          eqsurfcmplxsort(i+1) = icplx
+          finished = PETSC_FALSE
+        endif
+      enddo
+      if (finished) exit
+    enddo
+            
+  105 format(/,'  surf complex  molality    logK')  
+    write(option%fid_out,105)
+    write(option%fid_out,99)
+  106 format(2x,a12,es12.4,es12.4)
+  107 format(2x,a12,es12.4,'  free site')
+    do i = 1, reaction%neqsurfcmplx+reaction%neqsurfcmplxrxn
+      icplx = eqsurfcmplxsort(i)
+      if (icplx > 0) then
+        write(option%fid_out,106) reaction%surface_complex_names(icplx), &
+                                  auxvar%eqsurfcmplx_spec(icplx)/ &
+                                  auxvar%den(1)*1000.d0, &
+                                  reaction%eqsurfcmplx_logK(icplx)
+      else
+        write(option%fid_out,107) reaction%surface_site_names(-icplx), &
+                                  auxvar%eqsurfcmplx_freesite_conc(-icplx)/ &
+                                  auxvar%den(1)*1000.d0
+      endif
+    enddo 
+  endif
+          
+  call RTAuxVarDestroy(auxvar)
+            
+end subroutine RPrintConstraint
 
 ! ************************************************************************** !
 !
@@ -948,13 +1117,15 @@ subroutine RActivity(auxvar,reaction,option)
     I = I + auxvar%secondary_spec(icplx)*reaction%eqcmplx_Z(icplx)* &
                                          reaction%eqcmplx_Z(icplx)
   enddo
+  I = I/auxvar%den(1)*1000.d0 ! molarity -> molality
   I = 0.5d0*I
   sqrt_I = sqrt(I)
   
   ! compute activity coefficients
   ! primary species
   do icomp = 1, reaction%ncomp
-    auxvar%pri_act_coef(icomp) = exp((reaction%primary_spec_Z(icomp)* &
+    auxvar%pri_act_coef(icomp) = exp((-1.d0* &
+                                      reaction%primary_spec_Z(icomp)* &
                                       reaction%primary_spec_Z(icomp)* &
                                       sqrt_I*reaction%debyeA/ &
                                       (1.d0+reaction%primary_spec_a0(icomp)* &
@@ -965,7 +1136,8 @@ subroutine RActivity(auxvar,reaction,option)
                 
   ! secondary species
   do icplx = 1, reaction%neqcmplx
-    auxvar%sec_act_coef(icplx) = exp((reaction%eqcmplx_Z(icplx)* &
+    auxvar%sec_act_coef(icplx) = exp((-1.d0* &
+                                      reaction%eqcmplx_Z(icplx)* &
                                       reaction%eqcmplx_Z(icplx)* &
                                       sqrt_I*reaction%debyeA/ &
                                       (1.d0+reaction%eqcmplx_a0(icplx)* &
