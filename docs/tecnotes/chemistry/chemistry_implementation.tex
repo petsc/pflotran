@@ -101,6 +101,7 @@
 \newcommand{\bD}{\boldsymbol{D}}
 \newcommand{\bE}{\boldsymbol{E}}
 \newcommand{\bF}{\boldsymbol{F}}
+\newcommand{\bg}{\boldsymbol{g}}
 \newcommand{\bi}{\boldsymbol{i}}
 \newcommand{\bI}{\boldsymbol{I}}
 \newcommand{\bJ}{\boldsymbol{J}}
@@ -169,7 +170,7 @@
 
 \bcr
 
-\section*{Chemistry Implementation in PFLOTRAN: Colloids, Surface Complexation, Ion Exchange, Biogeochemistry with Monode Kinetics, Precipitation/Dissolution, Solid Solutions, Species-Dependent Diffusion, Pitzer Model, Multiple Interacting Continua\ldots}
+\section*{Chemistry Implementation in PFLOTRAN: Colloids, Surface Complexation, Ion Exchange, Biogeochemistry with Monode Kinetics, Precipitation/Dissolution, Solid Solutions, Species-Dependent Diffusion, Pitzer Model, Multiple Interacting Continua, Hydration-Dehydration Reactions, Electrical Conductivity, Multiphase Systems \ldots}
 
 P.C. Lichtner (LANL, \today)
 
@@ -1532,6 +1533,36 @@ The flux at the primary continuum-matrix interface is presumed to only involve d
 where $\bn_\b$ denotes the outward normal to the interface.
 The matrix equation is quite general and applies to various geometries including spheres and linear domains. As an approximation cubes and irregular shaped domains may be used. Because of computational considerations, the sub-grid domain equations are reduced to an equivalent 1D problem. 
 For further discussion of numerical techniques for efficiently solving the multi-scale equations see Lichtner (2006).
+
+\section{Electrical Conductivity}
+
+\section{Hydration-Dehydration Reactions}
+
+\section{Multiphase Systems}
+
+For a multiphase system characterized with phase saturation $s_\a$, and Darcy velocity $\bq_\a$ the transport equations generalize to
+\EQ
+\frac{\p}{\p t}\left(\varphi\sum_\a s_\a\Psi_j^\a\right) + \bnabla\cdot\sum_\a\bOmega_j^\a \eq \R_j,
+\EN
+where the total concentration for each phase is defined as
+\EQ
+\Psi_j^\a \eq \delta_{l\a} C_j^l + \sum_i\nu_{ji}^\a C_i^\a.
+\EN
+The total flux (for species-independent diffusion) is given by
+\EQ
+\bOmega_j^\a \eq \bq_\a \Psi_j^\a -\varphi s_\a D_\a \bnabla \Psi_j^\a,
+\EN
+for Darcy velocity $\bq_a$ defined in terms of relative permeability $k_\a$ as
+\EQ
+\bq_\a \eq \frac{kk_\a}{\mu_\a}\bnabla(p_\a -\rho_\a \bg z),
+\EN
+with bulk permeability $k$, fluid density $\rho_\a$, and acceleration of gravity $\bg$. The fluid pressure $p_\a$ satisfies the relations
+\EQ
+p_\a-p_\b \eq p_{\a\b}^c,
+\EN
+for capillary pressure $p_{\a\b}^c$.
+
+The Kronecker delta function appears in the expression for the total concentration $\Psi_j^\a$ multiplying the primary species concentration because it is assumed that all primary species belong to the aqueous phase. This condition could be relaxed, but it would require introducing variable switching at phase boundaries where phase changes take place. In the current implementation, if the aqueous phase completely disappears it is necessary to ``freeze'' the total aqueous concentration at some arbitrarily chosen minimum threshold value for the liquid saturation $s_l^{\rm min}$:  $(s_l^{}\!\leq\!s_l^{\rm min})$. If the system resaturates $(s_l^{}\!>\!s_l^{\rm min})$, this ``frozen'' total aqueous concentration must be released back into the system.
 
 \section{References}
 
