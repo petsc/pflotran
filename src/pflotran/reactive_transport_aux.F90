@@ -123,6 +123,8 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   if (reaction%neqcmplx > 0) then
     allocate(aux_var%secondary_spec(reaction%neqcmplx))
     aux_var%secondary_spec = 0.d0
+  else
+    nullify(aux_var%secondary_spec)
   endif
   
   if (reaction%nsorb > 0) then  
@@ -171,6 +173,8 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   if (reaction%neqcmplx > 0) then
     allocate(aux_var%sec_act_coef(reaction%neqcmplx))
     aux_var%sec_act_coef = 1.d0
+  else
+    nullify(aux_var%sec_act_coef)
   endif
   
 end subroutine RTAuxVarInit
