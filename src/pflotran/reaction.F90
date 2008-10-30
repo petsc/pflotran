@@ -547,6 +547,8 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
         free_conc(icomp) = conc(icomp)
       case(CONSTRAINT_LOG)
         free_conc(icomp) = 10**conc(icomp)
+      case(CONSTRAINT_PH)
+        free_conc(icomp) = 10**(-1.d0*conc(icomp))
       case(CONSTRAINT_MINERAL)
         free_conc(icomp) = conc(icomp) ! guess
       case(CONSTRAINT_GAS)
@@ -580,7 +582,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
 !          if (reaction%neqsurfcmplxrxn > 0) then
 !            Jac(icomp,:) = Jac(icomp,:) + auxvar%dtotal_sorb(icomp,:)
 !          endif
-        case(CONSTRAINT_FREE,CONSTRAINT_LOG)
+        case(CONSTRAINT_FREE,CONSTRAINT_LOG,CONSTRAINT_PH)
           Res(icomp) = 0.d0
           Jac(icomp,:) = 0.d0
 !          Jac(:,icomp) = 0.d0
@@ -750,6 +752,8 @@ subroutine RPrintConstraint(constraint_coupler,reaction,option)
           string = 'free'
         case(CONSTRAINT_LOG)
           string = 'log'
+        case(CONSTRAINT_PH)
+          string = 'pH'
         case(CONSTRAINT_MINERAL,CONSTRAINT_GAS)
           string = aq_species_constraint%constraint_spec_name(icomp)
       end select

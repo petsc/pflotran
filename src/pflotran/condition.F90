@@ -1084,11 +1084,9 @@ subroutine TranConstraintRead(constraint,reaction,option)
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_FREE
               case('T','TOTAL')
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_TOTAL
-              case('PH')
-                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_LOG
-                aq_species_constraint%constraint_conc(icomp) = &
-                  -1.d0*aq_species_constraint%constraint_conc(icomp)
-              case('LOG')
+              case('P','PH')
+                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_PH
+              case('L','LOG')
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_LOG
               case('M','MINERAL','MNRL') 
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_MINERAL
