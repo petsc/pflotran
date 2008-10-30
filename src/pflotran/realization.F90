@@ -594,90 +594,129 @@ end subroutine RealProcessTranConditions
 subroutine RealizationPrintCouplers(realization)
 
   use Coupler_module
-  use Reaction_module
   
   implicit none
   
   type(realization_type) :: realization
   
-  character(len=MAXSTRINGLENGTH) :: string
-  
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(coupler_type), pointer :: cur_coupler
-  type(flow_condition_type), pointer :: flow_condition
-  type(tran_condition_type), pointer :: tran_condition
-  type(region_type), pointer :: region
   type(option_type), pointer :: option
-  type(tran_constraint_coupler_type), pointer :: constraint_coupler
-
+  type(reaction_type), pointer :: reaction
  
   option => realization%option
+  reaction => realization%reaction
  
   if (option%myrank /= 0) return
   
-98 format(40('=+'))
-99 format(80('-'))
-100 format(a)
-  
-  write(option%fid_out,*)
   cur_level => realization%level_list%first
   do 
     if (.not.associated(cur_level)) exit
     cur_patch => cur_level%patch_list%first
     do
       if (.not.associated(cur_patch)) exit
+
       cur_coupler => cur_patch%initial_conditions%first
       do
         if (.not.associated(cur_coupler)) exit
-        
-        flow_condition => cur_coupler%flow_condition
-        tran_condition => cur_coupler%tran_condition
-        region => cur_coupler%region
-
-        write(option%fid_out,98)
-101 format(5x,'     Flow Condition: ',2x,a)
-        if (associated(flow_condition)) write(option%fid_out,101) trim(flow_condition%name)
-102 format(5x,'Transport Condition: ',2x,a)
-        if (associated(tran_condition)) write(option%fid_out,102) trim(tran_condition%name)
-103 format(5x,'             Region: ',2x,a)
-        if (associated(region)) write(option%fid_out,103) trim(region%name)
-        write(option%fid_out,99)
-        
-        if (associated(flow_condition)) then
-          write(option%fid_out,99)
-          write(option%fid_out,100) '  Flow Parameters:'
-104 format(a,f10.1)
-          write(option%fid_out,104) '    pressure = ', &
-            flow_condition%pressure%dataset%cur_value(1)
-105 format(a,f5.1)
-          if (associated(flow_condition%temperature)) then
-            write(option%fid_out,105) '    temperature = ', &
-              flow_condition%temperature%dataset%cur_value(1)
-          endif
-106 format(a,es12.4)
-          if (associated(flow_condition%concentration)) then
-            write(option%fid_out,106) '    concentration = ', &
-              flow_condition%concentration%dataset%cur_value(1)
-          endif
-        endif
-        if (associated(tran_condition)) then
-          constraint_coupler => tran_condition%cur_constraint_coupler
-          write(option%fid_out,99) 
-          write(option%fid_out,100) '  Transport Parameters:'
-          if (associated(realization%reaction)) then
-            call RPrintConstraint(constraint_coupler,realization%reaction, &
-                                  option)
-          endif
-        endif
+        call RealizationPrintCoupler(cur_coupler,reaction,option)    
         cur_coupler => cur_coupler%next
       enddo
+     
+      cur_coupler => cur_patch%boundary_conditions%first
+      do
+        if (.not.associated(cur_coupler)) exit
+        call RealizationPrintCoupler(cur_coupler,reaction,option)    
+        cur_coupler => cur_coupler%next
+      enddo
+     
+      cur_coupler => cur_patch%source_sinks%first
+      do
+        if (.not.associated(cur_coupler)) exit
+        call RealizationPrintCoupler(cur_coupler,reaction,option)    
+        cur_coupler => cur_coupler%next
+      enddo
+
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo            
  
 end subroutine RealizationPrintCouplers
+
+! ************************************************************************** !
+!
+! RealizationPrintCoupler: Prints boundary and initial condition coupler 
+! author: Glenn Hammond
+! date: 10/28/08
+!
+! ************************************************************************** !
+subroutine RealizationPrintCoupler(coupler,reaction,option)
+
+  use Coupler_module
+  use Reaction_module
+  
+  implicit none
+  
+  type(coupler_type) :: coupler
+  type(option_type) :: option
+  type(reaction_type), pointer :: reaction
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  
+  type(flow_condition_type), pointer :: flow_condition
+  type(tran_condition_type), pointer :: tran_condition
+  type(region_type), pointer :: region
+  type(tran_constraint_coupler_type), pointer :: constraint_coupler
+
+   
+98 format(40('=+'))
+99 format(80('-'))
+100 format(a)
+  
+  flow_condition => coupler%flow_condition
+  tran_condition => coupler%tran_condition
+  region => coupler%region
+
+  write(option%fid_out,*)
+  write(option%fid_out,98)
+101 format(5x,'     Flow Condition: ',2x,a)
+  if (associated(flow_condition)) write(option%fid_out,101) trim(flow_condition%name)
+102 format(5x,'Transport Condition: ',2x,a)
+  if (associated(tran_condition)) write(option%fid_out,102) trim(tran_condition%name)
+103 format(5x,'             Region: ',2x,a)
+  if (associated(region)) write(option%fid_out,103) trim(region%name)
+  write(option%fid_out,98)
+  
+  if (associated(flow_condition)) then
+!    write(option%fid_out,99)
+    write(option%fid_out,100) '  Flow Parameters:'
+104 format(a,f10.1)
+    write(option%fid_out,104) '    pressure = ', &
+      flow_condition%pressure%dataset%cur_value(1)
+105 format(a,f5.1)
+    if (associated(flow_condition%temperature)) then
+      write(option%fid_out,105) '    temperature = ', &
+        flow_condition%temperature%dataset%cur_value(1)
+    endif
+106 format(a,es12.4)
+    if (associated(flow_condition%concentration)) then
+      write(option%fid_out,106) '    concentration = ', &
+        flow_condition%concentration%dataset%cur_value(1)
+    endif
+  endif
+  if (associated(tran_condition)) then
+    constraint_coupler => tran_condition%cur_constraint_coupler
+    write(option%fid_out,99) 
+    write(option%fid_out,100) '  Transport Parameters:'
+    if (associated(reaction)) then
+      call RPrintConstraint(constraint_coupler,reaction, &
+                            option)
+    endif
+  endif
+ 
+end subroutine RealizationPrintCoupler
 
 ! ************************************************************************** !
 !

@@ -32,7 +32,7 @@ module Option_module
   
     PetscInt :: iflag
     
-!    PetscInt, pointer :: garbage ! for some reason, Intel will not compile without this
+    PetscInt, pointer :: garbage ! for some reason, Intel will not compile without this
 
     PetscReal :: uniform_velocity(3)
 

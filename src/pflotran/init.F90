@@ -144,9 +144,7 @@ subroutine Init(simulation,filename)
   
   ! read reaction database
   if (associated(realization%reaction)) then
-    if (realization%reaction%neqcmplx > 0 .or. &
-        realization%reaction%nmnrl > 0 .or. &
-        realization%reaction%nsorb > 0) then
+    if (realization%reaction%use_full_geochemistry) then
       call DatabaseRead(realization%reaction,option)
       call BasisInit(realization%reaction,option)    
     endif

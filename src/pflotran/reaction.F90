@@ -313,6 +313,11 @@ subroutine ReactionRead(reaction,fid,option)
   enddo
   
   reaction%nsorb = reaction%neqsurfcmplxrxn + reaction%neqionxrxn
+
+  if (reaction%neqcmplx + reaction%nsorb + reaction%nmnrl > 0) then
+    reaction%use_full_geochemistry = PETSC_TRUE
+  endif
+
   
   if (len_trim(reaction%database_filename) < 2) &
     reaction%compute_activity = PETSC_FALSE
@@ -434,7 +439,7 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
   aq_species_constraint%constraint_conc = constraint_conc
 
   ! minerals
-  if (associated(reaction)) then
+  if (reaction%use_full_geochemistry) then
     if (associated(mineral_constraint)) then
       do imnrl = 1, reaction%nmnrl
         found = PETSC_FALSE
@@ -516,12 +521,15 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
   PetscInt :: comp_id
   PetscReal, parameter :: log_to_ln = 2.30258509299d0
     
-  if (.not.associated(reaction)) return
-  
   constraint_type = aq_species_constraint%constraint_type
   constraint_spec_name = aq_species_constraint%constraint_spec_name
   constraint_id = aq_species_constraint%constraint_spec_id
   conc = aq_species_constraint%constraint_conc
+
+  if (.not.reaction%use_full_geochemistry) then
+    aq_species_constraint%basis_molarity = conc
+    return
+  endif
   
   total_conc = 0.d0
   do icomp = 1, reaction%ncomp
@@ -703,36 +711,45 @@ subroutine RPrintConstraint(constraint_coupler,reaction,option)
 100 format(a)
 
   write(option%fid_out,100) '  Constraint: ' // trim(constraint_coupler%constraint_name)
-101 format(/,'  species       molality    total       act coef  constraint')  
-  write(option%fid_out,101)
-  write(option%fid_out,99)
+  call RTAuxVarInit(auxvar,reaction,option)
   
- call RTAuxVarInit(auxvar,reaction,option)
+  if (.not.reaction%use_full_geochemistry) then
+101 format(/,'  species       molality')  
+    write(option%fid_out,101)
+102 format(2x,a12,es12.4)
+    do icomp = 1, reaction%ncomp
+      write(option%fid_out,102) reaction%primary_species_names(icomp), &
+                                auxvar%primary_molal(icomp)
+    enddo
+  else
+103 format(/,'  species       molality    total       act coef  constraint')  
+    write(option%fid_out,103)
+    write(option%fid_out,99)
   
-102 format(2x,a12,es12.4,es12.4,f8.4,4x,a)
-
-  call ReactionEquilibrateConstraint(auxvar,reaction, &
-                                     constraint_coupler%constraint_name, &
-                                     aq_species_constraint, &
-                                     option)
-                                     
-  do icomp = 1, reaction%ncomp
-    select case(aq_species_constraint%constraint_type(icomp))
-      case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
-        string = 'total'
-      case(CONSTRAINT_FREE)
-        string = 'free'
-      case(CONSTRAINT_LOG)
-        string = 'log'
-      case(CONSTRAINT_MINERAL,CONSTRAINT_GAS)
-        string = aq_species_constraint%constraint_spec_name(icomp)
-    end select
-    write(option%fid_out,102) reaction%primary_species_names(icomp), &
-                              auxvar%primary_molal(icomp), &
-                              auxvar%total(icomp,1)/auxvar%den(1)*1000.d0, &
-                              auxvar%pri_act_coef(icomp), &
-                              trim(string)
-  enddo  
+    call ReactionEquilibrateConstraint(auxvar,reaction, &
+                                       constraint_coupler%constraint_name, &
+                                       aq_species_constraint, &
+                                       option)
+                                       
+104 format(2x,a12,es12.4,es12.4,f8.4,4x,a)
+    do icomp = 1, reaction%ncomp
+      select case(aq_species_constraint%constraint_type(icomp))
+        case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
+          string = 'total'
+        case(CONSTRAINT_FREE)
+          string = 'free'
+        case(CONSTRAINT_LOG)
+          string = 'log'
+        case(CONSTRAINT_MINERAL,CONSTRAINT_GAS)
+          string = aq_species_constraint%constraint_spec_name(icomp)
+      end select
+      write(option%fid_out,104) reaction%primary_species_names(icomp), &
+                                auxvar%primary_molal(icomp), &
+                                auxvar%total(icomp,1)/auxvar%den(1)*1000.d0, &
+                                auxvar%pri_act_coef(icomp), &
+                                trim(string)
+    enddo 
+  endif 
       
   if (reaction%neqcmplx > 0) then    
     ! sort complex concentrations from largest to smallest
@@ -754,13 +771,13 @@ subroutine RPrintConstraint(constraint_coupler,reaction,option)
       if (finished) exit
     enddo
             
-  103 format(/,'  complex       molality    act coef  logK')  
-    write(option%fid_out,103)
+  105 format(/,'  complex       molality    act coef  logK')  
+    write(option%fid_out,105)
     write(option%fid_out,99)
-  104 format(2x,a12,es12.4,f8.4,2x,es12.4)
+  106 format(2x,a12,es12.4,f8.4,2x,es12.4)
     do i = 1, reaction%neqcmplx ! for each secondary species
       icplx = eqcmplxsort(i)
-      write(option%fid_out,104) reaction%secondary_species_names(icplx), &
+      write(option%fid_out,106) reaction%secondary_species_names(icplx), &
                                 auxvar%secondary_spec(icplx)/ &
                                 auxvar%den(1)*1000.d0, &
                                 auxvar%sec_act_coef(icplx), &
@@ -801,20 +818,20 @@ subroutine RPrintConstraint(constraint_coupler,reaction,option)
       if (finished) exit
     enddo
             
-  105 format(/,'  surf complex  molality    logK')  
-    write(option%fid_out,105)
+  107 format(/,'  surf complex  molality    logK')  
+    write(option%fid_out,107)
     write(option%fid_out,99)
-  106 format(2x,a12,es12.4,es12.4)
-  107 format(2x,a12,es12.4,'  free site')
+  108 format(2x,a12,es12.4,es12.4)
+  109 format(2x,a12,es12.4,'  free site')
     do i = 1, reaction%neqsurfcmplx+reaction%neqsurfcmplxrxn
       icplx = eqsurfcmplxsort(i)
       if (icplx > 0) then
-        write(option%fid_out,106) reaction%surface_complex_names(icplx), &
+        write(option%fid_out,108) reaction%surface_complex_names(icplx), &
                                   auxvar%eqsurfcmplx_spec(icplx)/ &
                                   auxvar%den(1)*1000.d0, &
                                   reaction%eqsurfcmplx_logK(icplx)
       else
-        write(option%fid_out,107) reaction%surface_site_names(-icplx), &
+        write(option%fid_out,109) reaction%surface_site_names(-icplx), &
                                   auxvar%eqsurfcmplx_freesite_conc(-icplx)/ &
                                   auxvar%den(1)*1000.d0
       endif
