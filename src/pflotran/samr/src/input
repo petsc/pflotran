@@ -80,15 +80,6 @@ PflotranApplicationStrategy{
        zero_initial_guess               =  TRUE
 
        level_solver_0 {
-            solver_name                = "CellHYPRELevelSolver"
-            print_info_level           = 0
-            max_iterations             = 1
-            max_error                  = 1.0e-12
-            num_presweeps              = 2
-            num_postsweeps             = 2
-       }
-
-       level_solver_1 {
             solver_name                 =  "CellLevelSmoother"
             smoother_type               =  "Red-black Gauss-Seidel"
             print_info_level            =  0
@@ -102,16 +93,3 @@ PflotranApplicationStrategy{
 
 }
 
-PIMS{
-  pims_file = "pflotran.in"
-}
-
-
-
-PredictorCorrector{
-   initial_time = 0.0
-   final_time = 100
-   max_integrator_steps = 1000000
-   initial_timestep = 0.01
-   c1 = 0.005
-}

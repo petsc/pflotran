@@ -258,6 +258,7 @@ subroutine Init(simulation,filename)
     ! setup a shell preconditioner and initialize in the case of AMR
     if(associated(discretization%amrgrid)) then
        flow_solver%pc_type = PCSHELL
+       call KSPSetPreconditionerSide(flow_solver%ksp, PC_RIGHT)
        call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 0, flow_solver%pc)
     endif
 

@@ -211,14 +211,14 @@ PetscErrorCode
 PflotranFlowPreconditioner::wrapperSetupPreconditioner( void *ptr)
 {
    PflotranFlowPreconditioner *pc = (PflotranFlowPreconditioner *)ptr;
-
-   pc->setupPreconditioner();
+   PreconditionerParameters* params = NULL;
+   pc->setupPreconditioner(params);
 
    return(0);
 }
 
 int
-PflotranFlowPreconditioner::setupPreconditioner(void)
+PflotranFlowPreconditioner::setupPreconditioner(PreconditionerParameters* parameters)
 {
    static tbox::Pointer<tbox::Timer> t_setup_pc = tbox::TimerManager::getManager()->getTimer("PflotranFlowPreconditioner::setupPreconditioner");
    t_setup_pc->start();
