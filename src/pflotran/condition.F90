@@ -1090,9 +1090,9 @@ subroutine TranConstraintRead(constraint,reaction,option)
                   -1.d0*aq_species_constraint%constraint_conc(icomp)
               case('LOG')
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_LOG
-              case('MINERAL','MNRL') 
+              case('M','MINERAL','MNRL') 
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_MINERAL
-              case('GAS') 
+              case('G','GAS') 
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_GAS
               case default
                 string = 'Keyword: ' // trim(word) // &
