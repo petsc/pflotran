@@ -646,5 +646,40 @@ PflotranJacobianMultilevelOperator::initializeScratchVector( Vec x )
     t_interpolate_variable->stop();
 }
 
+int
+PflotranJacobianMultilevelOperator::getVariableIndex(std::string &name, 
+                                                     tbox::Pointer<hier::VariableContext> &context,
+                                                     tbox::Pointer<hier::Variable<NDIM> > &variable,
+                                                     hier::IntVector<NDIM> nghosts,
+                                                     int depth,
+                                                     bool bOverride,
+                                                     std::string centering)
+{
+   int v_id = -1;
+
+   if(bOverride)
+   {
+      tbox::pout << "PflotranJacobianMultilevelOperator::getVariableIndex does not currently override centering" << std::endl;
+      abort();
+   }
+   else
+   {
+      hier::VariableDatabase<NDIM>* variable_db = hier::VariableDatabase<NDIM>::getDatabase();
+      variable = variable_db->getVariable(name);
+
+      if(!variable)
+      {
+         variable = new  pdat::CCellVariable<NDIM,double>(name,depth);
+      }
+
+      v_id = variable_db->registerVariableAndContext(variable,
+                                                     context,
+                                                     nghosts);
+      
+   }
+
+   return v_id;
+}
+
 }
 
