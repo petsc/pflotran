@@ -230,7 +230,7 @@ subroutine RealizationCreateDiscretization(realization)
     call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_xx_loc, &
                                     LOCAL,option)
                                     
-    if (option%use_log_formulation) then
+    if (realization%reaction%use_log_formulation) then
       call DiscretizationDuplicateVector(discretization,field%tran_xx, &
                                          field%tran_log_xx)
       call DiscretizationDuplicateVector(discretization,field%tran_xx_loc, &
@@ -601,7 +601,6 @@ subroutine RealizationPrintCouplers(realization)
   type(realization_type) :: realization
   
   character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXSTRINGLENGTH) :: breakline, breakline2
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -611,15 +610,15 @@ subroutine RealizationPrintCouplers(realization)
   type(region_type), pointer :: region
   type(option_type), pointer :: option
   type(tran_constraint_coupler_type), pointer :: constraint_coupler
-  
-  breakline = '=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+' // &
-              '=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+'
-  breakline2 = '----------------------------------------' // &
-               '----------------------------------------'
 
-100 format(a)
-  
+ 
   option => realization%option
+ 
+  if (option%myrank /= 0) return
+  
+98 format(40('=+'))
+99 format(80('-'))
+100 format(a)
   
   write(option%fid_out,*)
   cur_level => realization%level_list%first
@@ -636,17 +635,17 @@ subroutine RealizationPrintCouplers(realization)
         tran_condition => cur_coupler%tran_condition
         region => cur_coupler%region
 
-        write(option%fid_out,100) trim(breakline)
+        write(option%fid_out,98)
 101 format(5x,'     Flow Condition: ',2x,a)
         if (associated(flow_condition)) write(option%fid_out,101) trim(flow_condition%name)
 102 format(5x,'Transport Condition: ',2x,a)
         if (associated(tran_condition)) write(option%fid_out,102) trim(tran_condition%name)
 103 format(5x,'             Region: ',2x,a)
         if (associated(region)) write(option%fid_out,103) trim(region%name)
-        write(option%fid_out,100) trim(breakline)
+        write(option%fid_out,99)
         
         if (associated(flow_condition)) then
-          write(option%fid_out,100) trim(breakline2)
+          write(option%fid_out,99)
           write(option%fid_out,100) '  Flow Parameters:'
 104 format(a,f10.1)
           write(option%fid_out,104) '    pressure = ', &
@@ -664,7 +663,7 @@ subroutine RealizationPrintCouplers(realization)
         endif
         if (associated(tran_condition)) then
           constraint_coupler => tran_condition%cur_constraint_coupler
-          write(option%fid_out,100) trim(breakline2)
+          write(option%fid_out,99) 
           write(option%fid_out,100) '  Transport Parameters:'
           if (associated(realization%reaction)) then
             call RPrintConstraint(constraint_coupler,realization%reaction, &
@@ -940,6 +939,7 @@ subroutine RealizAssignTransportInitCond(realization)
   use Grid_module
   use Patch_module
   use Reactive_Transport_Aux_module
+  use Reaction_Aux_module
   
   implicit none
 
@@ -961,12 +961,14 @@ subroutine RealizAssignTransportInitCond(realization)
   type(coupler_type), pointer :: initial_condition
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
+  type(reaction_type), pointer :: reaction
   type(reactive_transport_auxvar_type), pointer :: aux_vars(:)
   option => realization%option
   discretization => realization%discretization
   field => realization%field
   patch => realization%patch
   grid => patch%grid
+  reaction => realization%reaction
   
   cur_level => realization%level_list%first
   do 
@@ -1007,7 +1009,7 @@ subroutine RealizAssignTransportInitCond(realization)
                   aux_vars(ghosted_id)%den(1)*1000 ! convert molarity -> molality
             enddo
             if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
-              do idof = 1, option%nmnrl
+              do idof = 1, reaction%nmnrl
                 aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
                   initial_condition%tran_condition%cur_constraint_coupler% &
                     minerals%basis_mol_frac(idof)
@@ -1031,7 +1033,7 @@ subroutine RealizAssignTransportInitCond(realization)
               aux_vars(ghosted_id)%den(1)*1000 ! convert molarity -> molality
               ! minerals 
             if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
-              do idof = 1, option%nmnrl
+              do idof = 1, reaction%nmnrl
                 aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
                   initial_condition%tran_condition%cur_constraint_coupler% &
                     minerals%basis_mol_frac(idof)

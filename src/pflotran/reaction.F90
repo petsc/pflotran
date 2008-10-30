@@ -75,6 +75,9 @@ subroutine ReactionRead(reaction,fid,option)
           call fiReadFlotranString(fid,string,ierr)
           if (ierr /= 0) exit
           if (fiCheckExit(string)) exit
+          
+          reaction%ncomp = reaction%ncomp + 1
+          
           species => AqueousSpeciesCreate()
           call fiReadWord(string,species%name,PETSC_TRUE,ierr)  
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,PRIMARY_SPECIES', ierr)    
@@ -95,6 +98,9 @@ subroutine ReactionRead(reaction,fid,option)
           call fiReadFlotranString(fid,string,ierr)
           if (ierr /= 0) exit
           if (fiCheckExit(string)) exit
+          
+          reaction%neqcmplx = reaction%neqcmplx + 1
+          
           species => AqueousSpeciesCreate()
           call fiReadWord(string,species%name,PETSC_TRUE,ierr)  
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,PRIMARY_SPECIES', ierr)    
@@ -298,7 +304,7 @@ subroutine ReactionRead(reaction,fid,option)
         call fiReadNChars(string,reaction%database_filename,MAXSTRINGLENGTH,PETSC_TRUE,ierr)  
         call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,DATABASE FILENAME', ierr)  
       case('LOG_FORMULATION')
-        option%use_log_formulation = PETSC_TRUE        
+        reaction%use_log_formulation = PETSC_TRUE        
       case('ACTIVITY')
         reaction%compute_activity = PETSC_TRUE        
       case default
@@ -453,7 +459,7 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
     endif
   endif
   
-  call RTAuxVarInit(auxvar,option)
+  call RTAuxVarInit(auxvar,reaction,option)
   call ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
                                      aq_species_constraint, &
                                      option)
@@ -701,7 +707,7 @@ subroutine RPrintConstraint(constraint_coupler,reaction,option)
   write(option%fid_out,101)
   write(option%fid_out,99)
   
- call RTAuxVarInit(auxvar,option)
+ call RTAuxVarInit(auxvar,reaction,option)
   
 102 format(2x,a12,es12.4,es12.4,f8.4,4x,a)
 
@@ -1047,7 +1053,7 @@ subroutine RReactionDerivative(Res,Jac,auxvar,volume,reaction,option)
   else ! numerical derivative
     compute_derivative = PETSC_FALSE
     Res_orig = 0.d0
-    call RTAuxVarInit(auxvar_pert,option)
+    call RTAuxVarInit(auxvar_pert,reaction,option)
     call RTAuxVarCopy(auxvar_pert,auxvar,option)
     ! #2: add new reactions here
     if (reaction%nkinmnrl > 0) then

@@ -858,7 +858,7 @@ end subroutine ConditionRead
 ! date: 10/14/08
 !
 ! ************************************************************************** !
-subroutine TranConditionRead(condition,constraint_list,option,fid)
+subroutine TranConditionRead(condition,constraint_list,reaction,option)
 
   use Option_module
   use Fileio_module
@@ -868,8 +868,8 @@ subroutine TranConditionRead(condition,constraint_list,option,fid)
   
   type(tran_condition_type) :: condition
   type(tran_constraint_list_type) :: constraint_list
+  type(reaction_type) :: reaction
   type(option_type) :: option
-  PetscInt :: fid
   
   type(tran_constraint_type), pointer :: constraint
   type(tran_constraint_coupler_type), pointer :: constraint_coupler, cur_coupler
@@ -898,7 +898,7 @@ subroutine TranConditionRead(condition,constraint_list,option,fid)
   ierr = 0
   do
   
-    call fiReadFlotranString(fid,string,ierr)
+    call fiReadFlotranString(option%fid_in,string,ierr)
     call fiReadStringErrorMsg(option%myrank,'CONDITION',ierr)
           
     if (fiCheckExit(string)) exit  
@@ -940,7 +940,7 @@ subroutine TranConditionRead(condition,constraint_list,option,fid)
         end select          
       case('CONSTRAINT_LIST')
         do
-          call fiReadFlotranString(fid,string,ierr)
+          call fiReadFlotranString(option%fid_in,string,ierr)
           call fiReadStringErrorMsg(option%myrank,'CONSTRAINT',ierr)
               
           if (fiCheckExit(string)) exit  
@@ -977,7 +977,7 @@ subroutine TranConditionRead(condition,constraint_list,option,fid)
         call fiReadWord(string,constraint%name,PETSC_TRUE,ierr)
         call fiErrorMsg(option%myrank,'constraint','name',ierr) 
         call printMsg(option,constraint%name)
-        call TranConstraintRead(constraint,option,fid)
+        call TranConstraintRead(constraint,reaction,option)
         call TranConstraintAddToList(constraint,constraint_list)
         constraint_coupler%aqueous_species => constraint%aqueous_species
         constraint_coupler%minerals => constraint%minerals
@@ -1014,17 +1014,17 @@ end subroutine TranConditionRead
 ! date: 10/14/08
 !
 ! ************************************************************************** !
-subroutine TranConstraintRead(constraint,option,fid)
+subroutine TranConstraintRead(constraint,reaction,option)
 
   use Option_module
   use Fileio_module
-  use Logging_module  
+  use Logging_module
   
   implicit none
   
   type(tran_constraint_type) :: constraint
+  type(reaction_type) :: reaction
   type(option_type) :: option
-  PetscInt :: fid
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
@@ -1042,7 +1042,7 @@ subroutine TranConstraintRead(constraint,option,fid)
   ierr = 0
   do
   
-    call fiReadFlotranString(fid,string,ierr)
+    call fiReadFlotranString(option%fid_in,string,ierr)
     call fiReadStringErrorMsg(option%myrank,'CONSTRAINT',ierr)
         
     if (fiCheckExit(string)) exit  
@@ -1054,11 +1054,11 @@ subroutine TranConstraintRead(constraint,option,fid)
 
       case('CONC','CONCENTRATIONS')
 
- !geh       aq_species_constraint => AqueousSpeciesConstraintCreate(option)
+        aq_species_constraint => AqueousSpeciesConstraintCreate(reaction,option)
 
         icomp = 0
         do
-          call fiReadFlotranString(fid,string,ierr)
+          call fiReadFlotranString(option%fid_in,string,ierr)
           call fiReadStringErrorMsg(option%myrank,'CONSTRAINT,CONCENTRATIONS',ierr)
           
           if (fiCheckExit(string)) exit  
@@ -1118,11 +1118,11 @@ subroutine TranConstraintRead(constraint,option,fid)
         
       case('MNRL','MINERALS')
 
-!geh        mineral_constraint => MineralConstraintCreate(option)
+        mineral_constraint => MineralConstraintCreate(reaction,option)
 
         icomp = 0
         do
-          call fiReadFlotranString(fid,string,ierr)
+          call fiReadFlotranString(option%fid_in,string,ierr)
           call fiReadStringErrorMsg(option%myrank,'CONSTRAINT,MINERALS',ierr)
           
           if (fiCheckExit(string)) exit          

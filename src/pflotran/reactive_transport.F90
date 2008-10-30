@@ -111,6 +111,7 @@ subroutine RTSetupPatch(realization)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
+  type(reaction_type), pointer :: reaction
   type(coupler_type), pointer :: boundary_condition
 
   PetscInt :: ghosted_id, iconn, sum_connection
@@ -118,13 +119,14 @@ subroutine RTSetupPatch(realization)
   option => realization%option
   patch => realization%patch
   grid => patch%grid
+  reaction => realization%reaction
 
   patch%aux%RT => RTAuxCreate()
     
   ! allocate aux_var data structures for all grid cells
   allocate(patch%aux%RT%aux_vars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
-    call RTAuxVarInit(patch%aux%RT%aux_vars(ghosted_id),option)
+    call RTAuxVarInit(patch%aux%RT%aux_vars(ghosted_id),reaction,option)
   enddo
   patch%aux%RT%num_aux = grid%ngmax
   
@@ -140,13 +142,13 @@ subroutine RTSetupPatch(realization)
   enddo
   allocate(patch%aux%RT%aux_vars_bc(sum_connection))
   do iconn = 1, sum_connection
-    call RTAuxVarInit(patch%aux%RT%aux_vars_bc(iconn),option)
+    call RTAuxVarInit(patch%aux%RT%aux_vars_bc(iconn),reaction,option)
   enddo
   patch%aux%RT%num_aux_bc = sum_connection
 
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
-  call RTCreateZeroArray(patch,option)
+  call RTCreateZeroArray(patch,reaction,option)
   
 end subroutine RTSetupPatch
 
@@ -288,9 +290,9 @@ subroutine RTUpdateSolutionPatch(realization)
   endif
 
   ! update mineral volume fractions
-  if (option%nmnrl > 0) then
+  if (reaction%nmnrl > 0) then
     do ghosted_id = 1, grid%ngmax
-      do imnrl = 1, option%nmnrl
+      do imnrl = 1, reaction%nmnrl
         aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = aux_vars(ghosted_id)%mnrl_volfrac(imnrl) + &
                                                    aux_vars(ghosted_id)%mnrl_rate(imnrl)* &
                                                    reaction%mnrl_molar_vol(imnrl)* &
@@ -356,8 +358,8 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
-    iend = local_id*option%ncomp
-    istart = iend-option%ncomp+1
+    iend = local_id*reaction%ncomp
+    istart = iend-reaction%ncomp+1
 
     aux_vars(ghosted_id)%den(1) = density_loc_p(ghosted_id)
     call RTAuxVarCompute(xx_p(istart:iend),aux_vars(ghosted_id),reaction, &
@@ -365,7 +367,7 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
     call RTAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
                         saturation_loc_p(ghosted_id), &
                         volume_p(local_id), &
-                        option,accum_p(istart:iend)) 
+                        reaction,option,accum_p(istart:iend)) 
   enddo
 
   call GridVecRestoreArrayF90(grid,field%tran_xx,xx_p, ierr)
@@ -484,7 +486,7 @@ end subroutine RTNumericalJacobianTest
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine RTAccumulationDerivative(aux_var,por,sat,vol,option,J)
+subroutine RTAccumulationDerivative(aux_var,por,sat,vol,reaction,option,J)
 
   use Reactive_Transport_Aux_module
   use Option_module
@@ -494,7 +496,8 @@ subroutine RTAccumulationDerivative(aux_var,por,sat,vol,option,J)
   type(reactive_transport_auxvar_type) :: aux_var
   PetscReal :: por, sat, vol
   type(option_type) :: option
-  PetscReal :: J(option%ncomp,option%ncomp)
+  type(reaction_type) :: reaction
+  PetscReal :: J(reaction%ncomp,reaction%ncomp)
   
   PetscInt :: icomp, iphase
   PetscReal :: psv_t, psvd_t, v_t
@@ -515,7 +518,7 @@ subroutine RTAccumulationDerivative(aux_var,por,sat,vol,option,J)
   else
     J = 0.d0
     psvd_t = por*sat*vol*aux_var%den(iphase)/option%dt ! units of den = kg water/m^3 water
-    do icomp=1,option%ncomp
+    do icomp=1,reaction%ncomp
       J(icomp,icomp) = psvd_t
     enddo
   endif
@@ -529,7 +532,7 @@ end subroutine RTAccumulationDerivative
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine RTAccumulation(aux_var,por,sat,vol,option,Res)
+subroutine RTAccumulation(aux_var,por,sat,vol,reaction,option,Res)
 
   use Reactive_Transport_Aux_module
   use Option_module
@@ -539,7 +542,8 @@ subroutine RTAccumulation(aux_var,por,sat,vol,option,Res)
   type(reactive_transport_auxvar_type) :: aux_var
   PetscReal :: por, sat, vol
   type(option_type) :: option
-  PetscReal :: Res(option%ncomp)
+  type(reaction_type) :: reaction
+  PetscReal :: Res(reaction%ncomp)
   
   PetscInt :: iphase
   PetscReal :: psv_t
@@ -608,7 +612,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   discretization => realization%discretization
   
   ! Communication -----------------------------------------
-  if (realization%option%use_log_formulation) then
+  if (realization%reaction%use_log_formulation) then
     ! have to convert the log concentration to non-log form
     cur_level => realization%level_list%first
     do
@@ -701,7 +705,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   type(patch_type), pointer :: patch
   type(reaction_type), pointer :: reaction
   type(reactive_transport_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
-  PetscReal :: Res(realization%option%ncomp)
+  PetscReal :: Res(realization%reaction%ncomp)
   PetscViewer :: viewer
   
   type(coupler_type), pointer :: boundary_condition, source_sink
@@ -711,7 +715,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
   PetscReal :: fraction_upwind, distance, dist_up, dist_dn
   PetscReal :: qsrc, molality
-  PetscReal :: Jup(realization%option%ncomp,realization%option%ncomp)
+  PetscReal :: Jup(realization%reaction%ncomp,realization%reaction%ncomp)
   PetscTruth :: volumetric
 
   option => realization%option
@@ -743,12 +747,12 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
-    iend = local_id*option%ncomp
-    istart = iend-option%ncomp+1
+    iend = local_id*reaction%ncomp
+    istart = iend-reaction%ncomp+1
     call RTAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
                         saturation_loc_p(ghosted_id), &
-                        volume_p(local_id),option,Res) 
-    r_p(istart:iend) = r_p(istart:iend) + Res(1:option%ncomp)
+                        volume_p(local_id),reaction,option,Res) 
+    r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)
   enddo
 #endif
 #if 1
@@ -779,7 +783,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
       
-      do istart = 1, option%ncomp
+      do istart = 1, reaction%ncomp
         molality = source_sink%tran_condition%cur_constraint_coupler% &
            aqueous_species%basis_molarity(istart)/aux_vars(ghosted_id)%den(1)*1000.d0
         select case(source_sink%tran_condition%itype)
@@ -813,9 +817,9 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
           case default
         end select
       enddo
-      iend = local_id*option%ncomp
-      istart = iend-option%ncomp+1
-      r_p(istart:iend) = r_p(istart:iend) + Res(1:option%ncomp)                                  
+      iend = local_id*reaction%ncomp
+      istart = iend-reaction%ncomp+1
+      r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)                                  
     enddo
     source_sink => source_sink%next
   enddo
@@ -857,15 +861,15 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
                  patch%internal_velocities(:,iconn),Res)
 
       if (local_id_up>0) then
-        iend = local_id_up*option%ncomp
-        istart = iend-option%ncomp+1
-        r_p(istart:iend) = r_p(istart:iend) + Res(1:option%ncomp)
+        iend = local_id_up*reaction%ncomp
+        istart = iend-reaction%ncomp+1
+        r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)
       endif
    
       if (local_id_dn>0) then
-        iend = local_id_dn*option%ncomp
-        istart = iend-option%ncomp+1
-        r_p(istart:iend) = r_p(istart:iend) - Res(1:option%ncomp)
+        iend = local_id_dn*reaction%ncomp
+        istart = iend-reaction%ncomp+1
+        r_p(istart:iend) = r_p(istart:iend) - Res(1:reaction%ncomp)
       endif
 
     enddo
@@ -901,9 +905,9 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
                    cur_connection_set%area(iconn), &
                    option,patch%boundary_velocities(:,sum_connection),Res)
  
-      iend = local_id*option%ncomp
-      istart = iend-option%ncomp+1
-      r_p(istart:iend)= r_p(istart:iend) - Res(1:option%ncomp)
+      iend = local_id*reaction%ncomp
+      istart = iend-reaction%ncomp+1
+      r_p(istart:iend)= r_p(istart:iend) - Res(1:reaction%ncomp)
  
     enddo
     boundary_condition => boundary_condition%next
@@ -918,13 +922,13 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-      iend = local_id*option%ncomp
-      istart = iend-option%ncomp+1
+      iend = local_id*reaction%ncomp
+      istart = iend-reaction%ncomp+1
       Res = 0.d0
       Jup = 0.d0
       call RReaction(Res,Jup,PETSC_FALSE,aux_vars(ghosted_id), &
                      volume_p(local_id),reaction,option)
-      r_p(istart:iend) = r_p(istart:iend) + Res(1:option%ncomp)                    
+      r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)                    
     enddo
   endif
 #endif
@@ -1019,7 +1023,7 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
 
-  if (realization%option%use_log_formulation) then
+  if (realization%reaction%use_log_formulation) then
     call MatDiagonalScaleLocal(J,realization%field%tran_work_loc,ierr)
 
     if (realization%debug%matview_Jacobian) then
@@ -1073,9 +1077,9 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(reaction_type), pointer :: reaction
       
   type(reactive_transport_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
-  PetscReal :: Jup(realization%option%ncomp,realization%option%ncomp)
-  PetscReal :: Jdn(realization%option%ncomp,realization%option%ncomp)
-  PetscReal :: Res(realization%option%ncomp)  
+  PetscReal :: Jup(realization%reaction%ncomp,realization%reaction%ncomp)
+  PetscReal :: Jdn(realization%reaction%ncomp,realization%reaction%ncomp)
+  PetscReal :: Res(realization%reaction%ncomp)  
   
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
@@ -1110,11 +1114,11 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
-    iend = local_id*option%ncomp
-    istart = iend-option%ncomp+1
+    iend = local_id*reaction%ncomp
+    istart = iend-reaction%ncomp+1
     call RTAccumulationDerivative(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
                                   saturation_loc_p(ghosted_id), &
-                                  volume_p(local_id),option,Jup) 
+                                  volume_p(local_id),reaction,option,Jup) 
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
   enddo
 #endif
@@ -1146,7 +1150,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       endif
       
       Jup = 0.d0
-      do istart = 1, option%ncomp
+      do istart = 1, reaction%ncomp
         select case(source_sink%tran_condition%itype)
           case(EQUILIBRIUM_SS)
             Jup(istart,istart) = 1.d-6* &
@@ -1273,8 +1277,8 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-      iend = local_id*option%ncomp
-      istart = iend-option%ncomp+1
+      iend = local_id*reaction%ncomp
+      istart = iend-reaction%ncomp+1
       Res = 0.d0
       Jup = 0.d0
       call RReactionDerivative(Res,Jup,aux_vars(ghosted_id), &
@@ -1285,11 +1289,11 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   endif
 #endif
  
-  if (option%use_log_formulation) then
+  if (reaction%use_log_formulation) then
     call GridVecGetArrayF90(grid,field%tran_work_loc, work_loc_p, ierr)
     do ghosted_id = 1, grid%ngmax  ! For each local node do...
-      iend = ghosted_id*option%ncomp
-      istart = iend-option%ncomp+1
+      iend = ghosted_id*reaction%ncomp
+      istart = iend-reaction%ncomp+1
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) then
           work_loc_p(istart:iend) = 1.d0
@@ -1389,7 +1393,7 @@ subroutine RTUpdateAuxVarsPatch(realization)
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
   PetscReal, pointer :: xx_loc_p(:), density_loc_p(:)
-  PetscReal :: xxbc(realization%option%ncomp)
+  PetscReal :: xxbc(realization%reaction%ncomp)
   PetscReal, pointer :: basis_molarity_p(:)
   PetscErrorCode :: ierr
   
@@ -1408,8 +1412,8 @@ subroutine RTUpdateAuxVarsPatch(realization)
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
-    iend = ghosted_id*option%ncomp
-    istart = iend-option%ncomp+1
+    iend = ghosted_id*reaction%ncomp
+    istart = iend-reaction%ncomp+1
     
     patch%aux%RT%aux_vars(ghosted_id)%den(1) = density_loc_p(ghosted_id)
     call RTAuxVarCompute(xx_loc_p(istart:iend), &
@@ -1438,13 +1442,13 @@ subroutine RTUpdateAuxVarsPatch(realization)
         case(CONCENTRATION_SS,DIRICHLET_BC,NEUMANN_BC)
           ! since basis_molarity is in molarity, must convert to molality
           ! by dividing by density of water (mol/L -> mol/kg)
-          xxbc(1:option%ncomp) = basis_molarity_p(1:option%ncomp) / &
+          xxbc(1:reaction%ncomp) = basis_molarity_p(1:reaction%ncomp) / &
             patch%aux%RT%aux_vars_bc(sum_connection)%den(1) * 1000.d0
-!          xxbc(1:option%ncomp)
-!            boundary_condition%tran_aux_real_var(1:option%ncomp,iconn)
+!          xxbc(1:reaction%ncomp)
+!            boundary_condition%tran_aux_real_var(1:reaction%ncomp,iconn)
         case(ZERO_GRADIENT_BC)
-          do idof=1,option%ncomp
-            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ncomp+idof)
+          do idof=1,reaction%ncomp
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
           enddo
       end select
       ! no need to update boundary fluid density since it is already set
@@ -1469,7 +1473,7 @@ end subroutine RTUpdateAuxVarsPatch
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RTCreateZeroArray(patch,option)
+subroutine RTCreateZeroArray(patch,reaction,option)
 
   use Patch_module
   use Grid_module
@@ -1478,6 +1482,7 @@ subroutine RTCreateZeroArray(patch,option)
   implicit none
 
   type(patch_type) :: patch
+  type(reaction_type) :: reaction
   type(option_type) :: option
   
   PetscInt :: ncount, idof
@@ -1498,7 +1503,7 @@ subroutine RTCreateZeroArray(patch,option)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) then
-        n_zero_rows = n_zero_rows + option%ncomp
+        n_zero_rows = n_zero_rows + reaction%ncomp
       else
       endif
     enddo
@@ -1516,10 +1521,10 @@ subroutine RTCreateZeroArray(patch,option)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) <= 0) then
-        do icomp = 1, option%ncomp
+        do icomp = 1, reaction%ncomp
           ncount = ncount + 1
-          zero_rows_local(ncount) = (local_id-1)*option%ncomp+icomp
-          zero_rows_local_ghosted(ncount) = (ghosted_id-1)*option%ncomp+icomp-1
+          zero_rows_local(ncount) = (local_id-1)*reaction%ncomp+icomp
+          zero_rows_local_ghosted(ncount) = (ghosted_id-1)*reaction%ncomp+icomp-1
         enddo
       else
       endif
@@ -1600,18 +1605,20 @@ function RTGetTecplotHeader(realization)
   
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(option_type), pointer :: option
+  type(reaction_type), pointer :: reaction
   PetscInt :: i
   
   option => realization%option
+  reaction => realization%reaction
   
   string = '' 
   do i=1,option%ntrandof
-    write(string2,'('',"'',a,''"'')') trim(option%comp_names(i))
+    write(string2,'('',"'',a,''"'')') trim(reaction%primary_species_names(i))
     string = trim(string) // trim(string2)
   enddo
   
   do i=1,realization%reaction%nkinmnrl
-    write(string2,'('',"'',a,''"'')') trim(option%mnrl_names(i))
+    write(string2,'('',"'',a,''"'')') trim(reaction%mineral_names(i))
     string = trim(string) // trim(string2)
   enddo
   
@@ -1634,8 +1641,8 @@ subroutine RTAuxVarCompute(x,aux_var,reaction,option)
   implicit none
   
   type(option_type) :: option
-  PetscReal :: x(option%ncomp)
   type(reaction_type) :: reaction
+  PetscReal :: x(reaction%ncomp)
   type(reactive_transport_auxvar_type) :: aux_var
   
   PetscReal :: den ! kg water/L water

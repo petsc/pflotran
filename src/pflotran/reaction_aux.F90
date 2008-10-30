@@ -123,6 +123,7 @@ module Reaction_Aux_module
 
   type, public :: reaction_type
     character(len=MAXSTRINGLENGTH) :: database_filename
+    PetscTruth :: use_log_formulation ! flag for solving for the change in the log of the concentration
     PetscInt :: num_dbase_temperatures
     PetscReal, pointer :: dbase_temperatures(:)
     type(aq_species_type), pointer :: primary_species_list
@@ -290,6 +291,7 @@ function ReactionCreate()
   nullify(reaction%dbase_temperatures)
 
   reaction%compute_activity = PETSC_FALSE
+  reaction%use_log_formulation = PETSC_FALSE
   
   nullify(reaction%primary_species_list)
   nullify(reaction%secondary_species_list)

@@ -1203,6 +1203,8 @@ subroutine BasisInit(reaction,option)
   nullify(cur_surfcplx_rxn)  
 
   ! fill reaction arrays, swapping if necessary
+  if (associated(reaction%primary_species_names)) &
+    deallocate(reaction%primary_species_names)
   allocate(reaction%primary_species_names(reaction%ncomp))
   allocate(reaction%primary_spec_Z(reaction%ncomp))
   allocate(reaction%primary_spec_a0(reaction%ncomp))

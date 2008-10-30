@@ -43,7 +43,7 @@ subroutine TFlux(aux_var_up,por_up,tor_up,sat_up,dist_up, &
   PetscReal :: area
   PetscReal :: velocity(1)
   type(option_type) :: option
-  PetscReal :: Res(option%ncomp)
+  PetscReal :: Res(option%ntrandof)
   
   PetscInt :: icomp
   PetscInt :: iphase
@@ -83,8 +83,8 @@ subroutine TFlux(aux_var_up,por_up,tor_up,sat_up,dist_up, &
   coef_dn = coef_dn*area*1000.d0
   
   ! units = (L water/sec)*(mol/L) = mol/s
-  Res(1:option%ncomp) = coef_up*aux_var_up%total(1:option%ncomp,iphase) + &
-                        coef_dn*aux_var_dn%total(1:option%ncomp,iphase)
+  Res(1:option%ntrandof) = coef_up*aux_var_up%total(1:option%ntrandof,iphase) + &
+                        coef_dn*aux_var_dn%total(1:option%ntrandof,iphase)
                         
 end subroutine TFlux
 
@@ -110,7 +110,7 @@ subroutine TFluxDerivative(aux_var_up,por_up,tor_up,sat_up,dist_up, &
   PetscReal :: area
   PetscReal :: velocity(1)
   type(option_type) :: option
-  PetscReal :: J_up(option%ncomp,option%ncomp), J_dn(option%ncomp,option%ncomp)
+  PetscReal :: J_up(option%ntrandof,option%ntrandof), J_dn(option%ntrandof,option%ntrandof)
   
   PetscInt :: icomp
   PetscInt :: iphase
@@ -156,7 +156,7 @@ subroutine TFluxDerivative(aux_var_up,por_up,tor_up,sat_up,dist_up, &
   else  
     J_up = 0.d0
     J_dn = 0.d0
-    do icomp = 1, option%ncomp
+    do icomp = 1, option%ntrandof
       J_up(icomp,icomp) = coef_up*aux_var_up%den(iphase)
       J_dn(icomp,icomp) = coef_dn*aux_var_dn%den(iphase)
     enddo
@@ -186,7 +186,7 @@ subroutine TBCFlux(ibndtype, &
   PetscReal :: area
   PetscReal :: velocity(1)
   type(option_type) :: option
-  PetscReal :: Res(option%ncomp)
+  PetscReal :: Res(option%ntrandof)
   
   PetscInt :: icomp
   PetscInt :: iphase
@@ -229,8 +229,8 @@ subroutine TBCFlux(ibndtype, &
   coef_dn = coef_dn*area*1000.d0
 
   ! units = (L water/sec)*(mol/L) = mol/s  
-  Res(1:option%ncomp) = coef_up*aux_var_up%total(1:option%ncomp,iphase) + &
-                        coef_dn*aux_var_dn%total(1:option%ncomp,iphase)  
+  Res(1:option%ntrandof) = coef_up*aux_var_up%total(1:option%ntrandof,iphase) + &
+                        coef_dn*aux_var_dn%total(1:option%ntrandof,iphase)  
 
 end subroutine TBCFlux
 
@@ -258,7 +258,7 @@ subroutine TBCFluxDerivative(ibndtype, &
   PetscReal :: area
   PetscReal :: velocity(1)
   type(option_type) :: option
-  PetscReal :: J_dn(option%ncomp,option%ncomp)
+  PetscReal :: J_dn(option%ntrandof,option%ntrandof)
   
   PetscInt :: icomp
   PetscInt :: iphase
@@ -302,7 +302,7 @@ subroutine TBCFluxDerivative(ibndtype, &
     J_dn = aux_var_dn%dtotal(:,:,iphase)*coef_dn
   else
     J_dn = 0.d0
-    do icomp = 1, option%ncomp
+    do icomp = 1, option%ntrandof
       J_dn(icomp,icomp) = coef_dn*aux_var_dn%den(iphase)
     enddo
   endif

@@ -23,26 +23,17 @@ module Option_module
     PetscInt :: iflowmode
     character(len=MAXWORDLENGTH) :: tranmode
     PetscInt :: itranmode
-  
+
     PetscInt :: nphase
     PetscInt :: nflowdof
     PetscInt :: nflowspec
 
     PetscInt :: ntrandof
-    PetscInt :: ncomp      ! # of primary aqueous species
-    PetscInt :: ncmplx     ! # of secondary aqueous species
-    PetscInt :: nmnrl      ! # of minerals
-    PetscInt :: ngas
-    PetscInt :: nsorb      ! # of primary sorbed species
-    PetscInt :: neqsurfcmplxrxn ! # of surface complexation reactions
-    PetscInt :: neqsurfcmplx ! # of surface complexes
-    PetscInt :: neqionxrxn    
-    character(len=MAXWORDLENGTH), pointer :: comp_names(:)
-    character(len=MAXWORDLENGTH), pointer :: mnrl_names(:)
-    PetscTruth :: use_log_formulation ! flag for solving for the change in the log of the concentration
-
+  
     PetscInt :: iflag
     
+    PetscInt, pointer :: garbage ! for some reason, Intel will not compile without this
+
     PetscReal :: uniform_velocity(3)
 
     ! Program options
@@ -67,11 +58,9 @@ module Option_module
     PetscReal :: dpmax,dtmpmax,dsmax,dcmax
     
     PetscReal :: scale
-    PetscReal, pointer :: rock_density(:),cpr(:),dencpr(:),ckdry(:),ckwet(:), &
-                       tau(:),cdiff(:),cexp(:)
-    PetscReal, pointer :: swir(:),lambda(:),alpha(:),pckrm(:),pcwmax(:),pcbetac(:), &
-                       pwrprm(:),sir(:,:)
-    PetscInt, pointer:: icaptype(:)
+    PetscReal, pointer :: dencpr(:),ckwet(:)
+    PetscReal, pointer :: sir(:,:)
+
 
     PetscReal :: m_nacl
     PetscReal :: difaq, delhaq, gravity(3), fmwh2o= 18.0153D0, fmwa=28.96D0, &
@@ -189,18 +178,6 @@ function OptionCreate()
   option%itranmode = NULL_MODE
   option%ntrandof = 0
   
-  option%ncomp = 0
-  option%ncmplx = 0
-  option%nmnrl = 0
-  option%ngas = 0
-  option%nsorb = 0
-  option%neqsurfcmplxrxn = 0
-  option%neqsurfcmplx = 0
-  option%neqionxrxn = 0
-  nullify(option%comp_names)
-  nullify(option%mnrl_names)
-  option%use_log_formulation = PETSC_FALSE
-
   option%uniform_velocity = 0.d0
   option%imod = 1
    
@@ -540,46 +517,13 @@ subroutine OptionDestroy(option)
   
   ! all kinds of stuff needs to be added here.
 
-  if (associated(option%comp_names)) deallocate(option%comp_names)
-  nullify(option%comp_names)
-  if (associated(option%mnrl_names)) deallocate(option%mnrl_names)
-  nullify(option%mnrl_names)
-  
   ! all the below should be placed somewhere other than option.F90
-  if (associated(option%rock_density)) deallocate(option%rock_density)
-  nullify(option%rock_density)
-  if (associated(option%cpr)) deallocate(option%cpr)
-  nullify(option%cpr)
   if (associated(option%dencpr)) deallocate(option%dencpr)
   nullify(option%dencpr)
-  if (associated(option%ckdry)) deallocate(option%ckdry)
-  nullify(option%ckdry)
   if (associated(option%ckwet)) deallocate(option%ckwet)
   nullify(option%ckwet)
-  if (associated(option%tau)) deallocate(option%tau)
-  nullify(option%tau)
-  if (associated(option%cdiff)) deallocate(option%cdiff)
-  nullify(option%cdiff)
-  if (associated(option%cexp)) deallocate(option%cexp)
-  nullify(option%cexp)
-  if (associated(option%swir)) deallocate(option%swir)
-  nullify(option%swir)
-  if (associated(option%lambda)) deallocate(option%lambda)
-  nullify(option%lambda)
-  if (associated(option%alpha)) deallocate(option%alpha)
-  nullify(option%alpha)
-  if (associated(option%pckrm)) deallocate(option%pckrm)
-  nullify(option%pckrm)
-  if (associated(option%pcwmax)) deallocate(option%pcwmax)
-  nullify(option%pcwmax)
-  if (associated(option%pcbetac)) deallocate(option%pcbetac)
-  nullify(option%pcbetac)
-  if (associated(option%pwrprm)) deallocate(option%pwrprm)
-  nullify(option%pwrprm)
   if (associated(option%sir)) deallocate(option%sir)
   nullify(option%sir)
-  if (associated(option%icaptype)) deallocate(option%icaptype)
-  nullify(option%icaptype)
   if (associated(option%tfac)) deallocate(option%tfac)
   nullify(option%tfac)
   

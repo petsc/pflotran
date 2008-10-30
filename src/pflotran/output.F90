@@ -167,6 +167,7 @@ subroutine OutputTecplot(realization)
   use Richards_module
   
   use Reactive_Transport_module
+  use Reaction_Aux_module
  
   implicit none
 
@@ -179,7 +180,8 @@ subroutine OutputTecplot(realization)
   type(option_type), pointer :: option
   type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
-  type(patch_type), pointer :: patch  
+  type(patch_type), pointer :: patch 
+  type(reaction_type), pointer :: reaction 
   type(output_option_type), pointer :: output_option
   PetscReal, pointer :: vec_ptr(:)
   Vec :: global_vec
@@ -190,6 +192,7 @@ subroutine OutputTecplot(realization)
   grid => patch%grid
   option => realization%option
   field => realization%field
+  reaction => realization%reaction
   output_option => realization%output_option
   
   ! open file
@@ -408,7 +411,7 @@ subroutine OutputTecplot(realization)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       enddo
     else
-      do i=1,option%nmnrl
+      do i=1,reaction%nmnrl
         call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
         call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -2498,6 +2501,8 @@ subroutine OutputHDF5(realization)
   use Grid_module
   use Field_module
   use Patch_module
+  use Reaction_Aux_module
+  
   use AMR_Grid_Module
  
 #ifndef USE_HDF5
@@ -2571,6 +2576,7 @@ subroutine OutputHDF5(realization)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
+  type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option
   
   Vec :: global_vec
@@ -2592,6 +2598,7 @@ subroutine OutputHDF5(realization)
   grid => patch%grid
   option => realization%option
   field => realization%field
+  reaction => realization%reaction
   output_option => realization%output_option
 
   if(.not.(associated(discretization%amrgrid))) then
@@ -2694,7 +2701,7 @@ subroutine OutputHDF5(realization)
         if (associated(realization%reaction)) then
            nviz_tran = option%ntrandof+realization%reaction%nkinmnrl
         else
-           nviz_tran = option%nmnrl
+           nviz_tran = reaction%nmnrl
         endif
      endif
 
@@ -2881,7 +2888,7 @@ subroutine OutputHDF5(realization)
       do i=1,option%ntrandof
         call OutputGetVarFromArray(realization,global_vec,PRIMARY_SPEC_CONCENTRATION,i)
         if(.not.(associated(discretization%amrgrid))) then
-           write(string,'(a)') option%comp_names(i)
+           write(string,'(a)') reaction%primary_species_names(i)
            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         else
            call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
@@ -2894,7 +2901,7 @@ subroutine OutputHDF5(realization)
       do i=1,realization%reaction%nkinmnrl
         call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
         if(.not.(associated(discretization%amrgrid))) then
-           write(string,'(a)') option%mnrl_names(i)
+           write(string,'(a)') reaction%mineral_names(i)
            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         else
            call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
@@ -2905,10 +2912,10 @@ subroutine OutputHDF5(realization)
         endif
       enddo
     else
-      do i=1,option%nmnrl
+      do i=1,reaction%nmnrl
         call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
         if(.not.(associated(discretization%amrgrid))) then
-           write(string,'(a)') option%comp_names(i)
+           write(string,'(a)') reaction%primary_species_names(i)
            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         else
            call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)

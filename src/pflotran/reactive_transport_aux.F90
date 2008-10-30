@@ -95,64 +95,69 @@ end function RTAuxCreate
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-subroutine RTAuxVarInit(aux_var,option)
+subroutine RTAuxVarInit(aux_var,reaction,option)
 
   use Option_module
+  use Reaction_Aux_module
 
   implicit none
   
   type(reactive_transport_auxvar_type) :: aux_var
+  type(reaction_type) :: reaction
   type(option_type) :: option  
   
   allocate(aux_var%den(option%nphase))
   aux_var%den = 0.d0
   allocate(aux_var%sat(option%nphase))
   aux_var%sat = 0.d0
-  allocate(aux_var%primary_molal(option%ncomp))
+  allocate(aux_var%primary_molal(reaction%ncomp))
   aux_var%primary_molal = 0.d0
-  allocate(aux_var%total(option%ncomp,option%nphase))
+  allocate(aux_var%total(reaction%ncomp,option%nphase))
   aux_var%total = 0.d0
-  allocate(aux_var%dtotal(option%ncomp,option%ncomp,option%nphase))
+  allocate(aux_var%dtotal(reaction%ncomp,reaction%ncomp,option%nphase))
   aux_var%dtotal = 0.d0
   
-  allocate(aux_var%primary_spec(option%ncomp))
+  allocate(aux_var%primary_spec(reaction%ncomp))
   aux_var%primary_spec = 0.d0
-  allocate(aux_var%secondary_spec(option%ncmplx))
-  aux_var%secondary_spec = 0.d0
   
-  if (option%nsorb > 0) then  
-    allocate(aux_var%total_sorb(option%ncomp))
+  if (reaction%neqcmplx > 0) then
+    allocate(aux_var%secondary_spec(reaction%neqcmplx))
+    aux_var%secondary_spec = 0.d0
+  endif
+  
+  if (reaction%nsorb > 0) then  
+    allocate(aux_var%total_sorb(reaction%ncomp))
     aux_var%total_sorb = 0.d0
-    allocate(aux_var%dtotal_sorb(option%ncomp,option%ncomp))
+    allocate(aux_var%dtotal_sorb(reaction%ncomp,reaction%ncomp))
     aux_var%dtotal_sorb = 0.d0
   else
     nullify(aux_var%total_sorb)
     nullify(aux_var%dtotal_sorb)
   endif    
   
-  if (option%neqsurfcmplxrxn > 0) then
-    allocate(aux_var%eqsurfcmplx_spec(option%neqsurfcmplx))
+  if (reaction%neqsurfcmplxrxn > 0) then
+    allocate(aux_var%eqsurfcmplx_spec(reaction%neqsurfcmplx))
     aux_var%eqsurfcmplx_spec = 0.d0
-    allocate(aux_var%eqsurfcmplx_freesite_conc(option%neqsurfcmplxrxn))
+    allocate(aux_var%eqsurfcmplx_freesite_conc(reaction%neqsurfcmplxrxn))
     aux_var%eqsurfcmplx_freesite_conc = 1.d-9 ! initialize to guess
   else
     nullify(aux_var%eqsurfcmplx_spec)
     nullify(aux_var%eqsurfcmplx_freesite_conc)
   endif
   
-  if (option%neqionxrxn > 0) then
-    allocate(aux_var%eqionx_ref_cation_sorbed_conc(option%neqionxrxn))
+  if (reaction%neqionxrxn > 0) then
+    allocate(aux_var%eqionx_ref_cation_sorbed_conc(reaction%neqionxrxn))
     aux_var%eqionx_ref_cation_sorbed_conc = 1.d-9 ! initialize to guess
   else
     nullify(aux_var%eqionx_ref_cation_sorbed_conc)
   endif
   
-  if (option%nmnrl > 0) then
-    allocate(aux_var%mnrl_volfrac(option%nmnrl))
+  if (reaction%nmnrl > 0) then
+    allocate(aux_var%mnrl_volfrac(reaction%nmnrl))
     aux_var%mnrl_volfrac = 0.d0
-    allocate(aux_var%mnrl_area0(option%nmnrl))
+    allocate(aux_var%mnrl_area0(reaction%nmnrl))
     aux_var%mnrl_area0 = 1.d0 ! Hardwired for now - geh
-    allocate(aux_var%mnrl_rate(option%nmnrl))
+    allocate(aux_var%mnrl_rate(reaction%nmnrl))
     aux_var%mnrl_rate = 0.d0
   else
     nullify(aux_var%mnrl_volfrac)
@@ -161,10 +166,12 @@ subroutine RTAuxVarInit(aux_var,option)
   endif
   
   aux_var%act_h2o = 1.d0
-  allocate(aux_var%pri_act_coef(option%ncomp))
+  allocate(aux_var%pri_act_coef(reaction%ncomp))
   aux_var%pri_act_coef = 1.d0
-  allocate(aux_var%sec_act_coef(option%ncmplx))
-  aux_var%sec_act_coef = 1.d0
+  if (reaction%neqcmplx > 0) then
+    allocate(aux_var%sec_act_coef(reaction%neqcmplx))
+    aux_var%sec_act_coef = 1.d0
+  endif
   
 end subroutine RTAuxVarInit
 
@@ -175,7 +182,7 @@ end subroutine RTAuxVarInit
 ! date: 09/05/08
 !
 ! ************************************************************************** !
-subroutine RTAuxVarCopy(aux_var, aux_var2,option)
+subroutine RTAuxVarCopy(aux_var,aux_var2,option)
 
   use Option_module
 
@@ -190,26 +197,28 @@ subroutine RTAuxVarCopy(aux_var, aux_var2,option)
   aux_var%total = aux_var2%total
   aux_var%dtotal = aux_var2%dtotal
   aux_var%primary_spec = aux_var2%primary_spec
-  aux_var%secondary_spec = aux_var2%secondary_spec
-  if (option%nsorb > 0) then  
+  if (associated(aux_var%secondary_spec)) &
+    aux_var%secondary_spec = aux_var2%secondary_spec
+  if (associated(aux_var%total_sorb)) then  
     aux_var%total_sorb = aux_var2%total_sorb
     aux_var%dtotal_sorb = aux_var2%dtotal_sorb
   endif
-  if (option%neqsurfcmplxrxn > 0) then
+  if (associated(aux_var%eqsurfcmplx_spec)) then
     aux_var%eqsurfcmplx_spec = aux_var2%eqsurfcmplx_spec
     aux_var%eqsurfcmplx_freesite_conc = aux_var2%eqsurfcmplx_freesite_conc
   endif
-  if (option%neqionxrxn > 0) then
+  if (associated(aux_var%eqionx_ref_cation_sorbed_conc)) then
     aux_var%eqionx_ref_cation_sorbed_conc = aux_var2%eqionx_ref_cation_sorbed_conc
   endif  
-  if (option%nmnrl > 0) then
+  if (associated(aux_var%mnrl_volfrac)) then
     aux_var%mnrl_volfrac = aux_var2%mnrl_volfrac
     aux_var%mnrl_area0 = aux_var2%mnrl_area0
     aux_var%mnrl_rate = aux_var2%mnrl_rate
   endif
   aux_var%act_h2o = aux_var2%act_h2o
   aux_var%pri_act_coef = aux_var2%pri_act_coef
-  aux_var%sec_act_coef = aux_var2%sec_act_coef
+  if (associated(aux_var%sec_act_coef)) &
+    aux_var%sec_act_coef = aux_var2%sec_act_coef
 
 end subroutine RTAuxVarCopy
 

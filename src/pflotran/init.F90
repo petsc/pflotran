@@ -29,7 +29,7 @@ subroutine Init(simulation,filename)
   use Simulation_module
   use Option_module
   use Grid_module
-  use AMR_Grid_module
+!  use AMR_Grid_module
   use Solver_module
   use Discretization_module
   use Realization_module
@@ -144,9 +144,9 @@ subroutine Init(simulation,filename)
   
   ! read reaction database
   if (associated(realization%reaction)) then
-    if (option%ncmplx > 0 .or. &
-        option%nmnrl > 0 .or. &
-        option%nsorb > 0) then
+    if (realization%reaction%neqcmplx > 0 .or. &
+        realization%reaction%nmnrl > 0 .or. &
+        realization%reaction%nsorb > 0) then
       call DatabaseRead(realization%reaction,option)
       call BasisInit(realization%reaction,option)    
     endif
@@ -527,6 +527,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
   type(level_type), pointer :: level
   type(grid_type), pointer :: grid
   type(discretization_type), pointer :: discretization
+  type(reaction_type), pointer :: reaction
   type(option_type), pointer :: option
   
   patch => realization%patch
@@ -630,22 +631,11 @@ subroutine readRequiredCardsFromInput(realization,filename)
   call fiFindStringInFile(option%fid_in,string,ierr)
 
   if (ierr == 0) then
-    realization%reaction => ReactionCreate()
-    call ReactionRead(realization%reaction,option%fid_in,option)
-    option%ntrandof = GetPrimarySpeciesCount(realization%reaction)
-    option%comp_names => GetPrimarySpeciesNames(realization%reaction)
-    option%ncomp = option%ntrandof
-    option%ncmplx = GetSecondarySpeciesCount(realization%reaction)
-    option%ngas = GetGasCount(realization%reaction)
-!    option%gas_names => GetGasNames(realization%reaction)
-    option%nmnrl = GetMineralCount(realization%reaction)
-    option%mnrl_names => GetMineralNames(realization%reaction)
-    option%nsorb = realization%reaction%neqsurfcmplx + &
-                   realization%reaction%neqionxrxn
-    option%neqsurfcmplxrxn = realization%reaction%neqsurfcmplxrxn
-    option%neqsurfcmplx = realization%reaction%neqsurfcmplx
-    option%neqionxrxn = realization%reaction%neqionxrxn
-    realization%reaction%ncomp = option%ntrandof
+    reaction => ReactionCreate()
+    realization%reaction => reaction
+    call ReactionRead(reaction,option%fid_in,option)
+    reaction%primary_species_names => GetPrimarySpeciesNames(reaction)
+    option%ntrandof = GetPrimarySpeciesCount(reaction)
   endif
 
 !.........................................................................
@@ -681,8 +671,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
 
     call fiReadInt(string,option%ntrandof,ierr)
     call fiDefaultMsg(option%myrank,'ntrandof',ierr)
-    option%ncomp = option%ntrandof
-
+  
   endif          
 
     
@@ -717,6 +706,7 @@ subroutine readInput(simulation,filename)
   use Debug_module
   use Patch_module
   use Reaction_module
+  use Reaction_Aux_module
   use Discretization_module
  
   implicit none
@@ -773,6 +763,7 @@ subroutine readInput(simulation,filename)
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
   type(stepper_type), pointer :: master_stepper
+  type(reaction_type), pointer :: reaction
   
   
   nullify(flow_stepper)
@@ -785,6 +776,7 @@ subroutine readInput(simulation,filename)
   grid => patch%grid
   option => realization%option
   field => realization%field
+  reaction => realization%reaction
 
   tran_stepper => simulation%tran_stepper
   if (associated(tran_stepper)) tran_solver => tran_stepper%solver
@@ -838,7 +830,7 @@ subroutine readInput(simulation,filename)
                  'MINERALS')
               call fiSkipToEND(option%fid_in,option%myrank,card)
             case('MINERAL_KINETICS')
-              call ReactionReadMineralKinetics(realization%reaction,option%fid_in,option)
+              call ReactionReadMineralKinetics(reaction,option%fid_in,option)
             case('SORPTION')
               do
                 call fiReadFlotranString(option%fid_in,string,ierr)
@@ -918,7 +910,7 @@ subroutine readInput(simulation,filename)
         call fiErrorMsg(option%myrank,'TRANSPORT_CONDITION','name',ierr) 
         call printMsg(option,tran_condition%name)
         call TranConditionRead(tran_condition,realization%transport_constraints, &
-                               option,option%fid_in)
+                               reaction,option)
         call TranConditionAddToList(tran_condition,realization%transport_conditions)
         nullify(tran_condition)
 
@@ -928,7 +920,7 @@ subroutine readInput(simulation,filename)
         call fiReadWord(string,tran_constraint%name,PETSC_TRUE,ierr)
         call fiErrorMsg(option%myrank,'constraint','name',ierr) 
         call printMsg(option,tran_constraint%name)
-        call TranConstraintRead(tran_constraint,option,option%fid_in)
+        call TranConstraintRead(tran_constraint,reaction,option)
         call TranConstraintAddToList(tran_constraint,realization%transport_constraints)
         nullify(tran_constraint)
 
@@ -1469,14 +1461,8 @@ subroutine readInput(simulation,filename)
         enddo
         
         ! allocate dynamic arrays holding saturation function information
-        allocate(option%rock_density(count))
-        allocate(option%cpr(count))
         allocate(option%dencpr(count))
-        allocate(option%ckdry(count))
         allocate(option%ckwet(count))
-        allocate(option%tau(count))
-        allocate(option%cdiff(count))
-        allocate(option%cexp(count))
         
         ! fill arrays with values from linked list
         thermal_property => realization%thermal_properties
@@ -1491,40 +1477,14 @@ subroutine readInput(simulation,filename)
                                     &number of thermal properties')
           endif
                     
-          option%rock_density(id) = thermal_property%rock_density
-          option%cpr(id) = thermal_property%spec_heat
           option%dencpr(id) = thermal_property%rock_density * &
                               thermal_property%spec_heat
-          option%ckdry(id) = thermal_property%therm_cond_dry
           option%ckwet(id) = thermal_property%therm_cond_wet
-          option%tau(id) = thermal_property%tort_bin_diff
-          option%cdiff(id) = thermal_property%vap_air_diff_coef
-          option%cexp(id) = thermal_property%exp_binary_diff
           
           thermal_property => thermal_property%next
           
         enddo
         
-        do i=1,count
-          if (option%rock_density(i) < 1.d-40) then
-            call printErrMsg(option,'Thermal property ids must be numbered &
-                             &consecutively from 1 to N')
-          endif
-        enddo
-      
-        if (option%myrank==0) then
-          write(option%fid_out,'(/," *THRM: ",i3)') count
-          write(option%fid_out,'("  itm rock_density  cpr        ckdry", &
-            &                 "     ckwet       tau       cdiff     cexp")')
-          write(option%fid_out,'("        [kg/m^3]  [J/kg/K]   [J/m/K/s]", &
-            &              "     [J/m/K/s]     [-]        [m^2/s]       [-]")')
-          do i = 1, count
-            write(option%fid_out,'(i4,1p7e11.4)') i,option%rock_density(i), &
-            option%cpr(i),option%ckdry(i),option%ckwet(i), &
-            option%tau(i),option%cdiff(i),option%cexp(i)
-          enddo
-        endif
-
 !....................
 
       case ('PCKR','SATURATION_FUNCTION','SATURATION_FUNCTIONS')
@@ -1580,23 +1540,12 @@ subroutine readInput(simulation,filename)
         enddo
         
         ! allocate dynamic arrays holding saturation function information
-        allocate(option%icaptype(count))
-        option%icaptype = 0
-  
         select case(option%iflowmode)
           case(MPH_MODE,THC_MODE,RICHARDS_MODE)
             allocate(option%sir(1:option%nphase,count))
           case default
-            allocate(option%swir(count))
         end select
   
-        allocate(option%lambda(count))
-        allocate(option%alpha(count))
-        allocate(option%pckrm(count))
-        allocate(option%pcwmax(count))
-        allocate(option%pcbetac(count))
-        allocate(option%pwrprm(count))
-
         ! fill arrays with values from linked list
         saturation_function => realization%saturation_functions
         do 
@@ -1610,72 +1559,18 @@ subroutine readInput(simulation,filename)
                                     &number of saturation functions')
           endif
           
-          option%icaptype(id) = saturation_function%saturation_function_itype
           select case(option%iflowmode)
             case(MPH_MODE,THC_MODE,RICHARDS_MODE)
               do i=1,option%nphase
                 option%sir(i,id) = saturation_function%Sr(i)
               enddo
             case default
-              option%swir(id) = saturation_function%Sr(1)
           end select
-          option%lambda(id) = saturation_function%lambda
-          option%alpha(id) = saturation_function%alpha
-          option%pckrm(id) = saturation_function%m
-          option%pcwmax(id) = saturation_function%pcwmax
-          option%pcbetac(id) = saturation_function%betac
-          option%pwrprm(id) = saturation_function%power
           
           saturation_function => saturation_function%next
           
         enddo
         
-        ! check to ensure that all saturation functions were set based on id
-        do id = 1,count
-          if (option%icaptype(id) == 0) then
-            call printErrMsg(option,'Saturation function ids must be numbered &
-                               &consecutively from 1 to N')
-          endif
-        enddo
-
-      !clu removed on 05/21/08
-#if 0
-        if (option%iflowmode == MPH_MODE .or. &
-            option%iflowmode == THC_MODE .or. &
-            option%iflowmode == RICHARDS_MODE) then
-          call pckr_init(option%nphase,count,grid%nlmax, &
-                         option%icaptype,option%sir, option%pckrm, &
-                         option%lambda,option%alpha,option%pcwmax, &
-                         option%pcbetac,option%pwrprm)
-        endif 
-#endif
-      
-        if (option%myrank==0) then
-          write(option%fid_out,'(/," *PCKR: ",i3)') count
-          write(option%fid_out,'("  icp swir    lambda         alpha")')
-          do j = 1, count
-            if (option%iflowmode == MPH_MODE .or. &
-                option%iflowmode == THC_MODE .or. &
-                option%iflowmode == RICHARDS_MODE) then
-              write(option%fid_out,'(i4,1p8e12.4)') option%icaptype(j),(option%sir(np,j),np=1, &
-                option%nphase),option%lambda(j),option%alpha(j), &
-                option%pcwmax(j),option%pcbetac(j),option%pwrprm(j)
-            else
-              write(option%fid_out,'(i4,1p7e12.4)') option%icaptype(j),option%swir(j), &
-                option%lambda(j),option%alpha(j),option%pcwmax(j), &
-                option%pcbetac(j),option%pwrprm(j)
-            endif
-          enddo
-        end if
-
-        if (option%iflowmode == MPH_MODE .or. &
-            option%iflowmode == THC_MODE .or. &
-            option%iflowmode == RICHARDS_MODE) then
-          deallocate(option%icaptype, option%pckrm, option%lambda, &
-                     option%alpha,option%pcwmax, option%pcbetac, &
-                     option%pwrprm)
-        endif 
- 
         call SaturatFuncConvertListToArray(realization%saturation_functions, &
                                            realization%saturation_function_array)
         
@@ -2262,7 +2157,7 @@ subroutine assignInitialConditions(realization)
               endif
               ! minerals              
               if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
-                do idof = 1, option%nmnrl
+                do idof = 1, reaction%nmnrl
                   cur_patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
                     initial_condition%tran_condition%cur_constraint_coupler% &
                       minerals%basis_mol_frac(idof)
@@ -2280,7 +2175,7 @@ subroutine assignInitialConditions(realization)
               endif
               ! minerals 
               if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
-                do idof = 1, option%nmnrl
+                do idof = 1, reaction%nmnrl
                   cur_patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
                     initial_condition%tran_condition%cur_constraint_coupler% &
                       minerals%basis_mol_frac(idof)
