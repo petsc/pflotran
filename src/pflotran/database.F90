@@ -37,8 +37,8 @@ subroutine DatabaseRead(reaction,option)
   type(surface_complex_type), pointer :: cur_surfcplx, cur_surfcplx2
   
   character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXNAMELENGTH) :: name
-  character(len=MAXNAMELENGTH) :: null_name
+  character(len=MAXWORDLENGTH) :: name
+  character(len=MAXWORDLENGTH) :: null_name
   
   PetscTruth :: flag, found
   PetscInt :: ispec, itemp, i
@@ -126,7 +126,7 @@ subroutine DatabaseRead(reaction,option)
     ! null
     ! --
     
-    if (fiStringCompare(name,null_name,MAXNAMELENGTH)) then
+    if (fiStringCompare(name,null_name,MAXWORDLENGTH)) then
       num_nulls = num_nulls + 1
       if (num_nulls >= 5) exit
       cycle
@@ -138,7 +138,7 @@ subroutine DatabaseRead(reaction,option)
         found = PETSC_FALSE
         do
           if (found .or. .not.associated(cur_aq_spec)) exit
-          if (fiStringCompare(name,cur_aq_spec%name,MAXNAMELENGTH)) then
+          if (fiStringCompare(name,cur_aq_spec%name,MAXWORDLENGTH)) then
             found = PETSC_TRUE
             ! change negative id to positive, indicating it was found in database
             cur_aq_spec%id = abs(cur_aq_spec%id)
@@ -149,7 +149,7 @@ subroutine DatabaseRead(reaction,option)
         if (.not.found) cur_aq_spec => reaction%secondary_species_list
         do
           if (found .or. .not.associated(cur_aq_spec)) exit
-          if (fiStringCompare(name,cur_aq_spec%name,MAXNAMELENGTH)) then
+          if (fiStringCompare(name,cur_aq_spec%name,MAXWORDLENGTH)) then
             found = PETSC_TRUE          
           ! change negative id to positive, indicating it was found in database
             cur_aq_spec%id = abs(cur_aq_spec%id)
@@ -204,7 +204,7 @@ subroutine DatabaseRead(reaction,option)
         found = PETSC_FALSE
         do
           if (found .or. .not.associated(cur_gas_spec)) exit
-          if (fiStringCompare(name,cur_gas_spec%name,MAXNAMELENGTH)) then
+          if (fiStringCompare(name,cur_gas_spec%name,MAXWORDLENGTH)) then
             found = PETSC_TRUE          
           ! change negative id to positive, indicating it was found in database
             cur_gas_spec%id = abs(cur_gas_spec%id)
@@ -254,7 +254,7 @@ subroutine DatabaseRead(reaction,option)
         found = PETSC_FALSE
         do
           if (found .or. .not.associated(cur_mineral)) exit
-          if (fiStringCompare(name,cur_mineral%name,MAXNAMELENGTH)) then
+          if (fiStringCompare(name,cur_mineral%name,MAXWORDLENGTH)) then
             found = PETSC_TRUE          
           ! change negative id to positive, indicating it was found in database
             cur_mineral%id = abs(cur_mineral%id)
@@ -306,7 +306,7 @@ subroutine DatabaseRead(reaction,option)
           cur_surfcplx => cur_surfcplx_rxn%complex_list
           do
             if (.not.associated(cur_surfcplx)) exit
-            if (fiStringCompare(name,cur_surfcplx%name,MAXNAMELENGTH)) then
+            if (fiStringCompare(name,cur_surfcplx%name,MAXWORDLENGTH)) then
               found = PETSC_TRUE          
             ! change negative id to positive, indicating it was found in database
               cur_surfcplx%id = abs(cur_surfcplx%id)
@@ -344,7 +344,7 @@ subroutine DatabaseRead(reaction,option)
           call fiErrorMsg(option%myrank,'SURFACE COMPLEX species stoichiometry','DATABASE',ierr)            
           call fiReadDBaseName(dbase_id,string,name,PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'SURFACE COMPLEX species name','DATABASE',ierr)            
-          if (fiStringCompare(name,cur_surfcplx_rxn%free_site_name,MAXNAMELENGTH)) then
+          if (fiStringCompare(name,cur_surfcplx_rxn%free_site_name,MAXWORDLENGTH)) then
             found = PETSC_TRUE
             cur_surfcplx%free_site_stoich = stoich
           else
@@ -385,7 +385,7 @@ subroutine DatabaseRead(reaction,option)
       if (.not.associated(cur_aq_spec2)) exit
       if (cur_aq_spec%id /= cur_aq_spec2%id .and. &
           fiStringCompare(cur_aq_spec%name, &
-                          cur_aq_spec2%name,MAXNAMELENGTH)) then
+                          cur_aq_spec2%name,MAXWORDLENGTH)) then
         flag = PETSC_TRUE
         string = 'Aqueous primary species (' // trim(cur_aq_spec%name) // &
                  ') duplicated in input file.'
@@ -398,7 +398,7 @@ subroutine DatabaseRead(reaction,option)
     do
       if (.not.associated(cur_aq_spec2)) exit
       if (fiStringCompare(cur_aq_spec%name, &
-                          cur_aq_spec2%name,MAXNAMELENGTH)) then
+                          cur_aq_spec2%name,MAXWORDLENGTH)) then
         flag = PETSC_TRUE
         string = 'Aqueous primary species (' // trim(cur_aq_spec%name) // &
                  ') duplicated as secondary species in input file.'
@@ -411,7 +411,7 @@ subroutine DatabaseRead(reaction,option)
     do
       if (.not.associated(cur_gas_spec2)) exit
       if (fiStringCompare(cur_aq_spec%name, &
-                          cur_gas_spec2%name,MAXNAMELENGTH)) then
+                          cur_gas_spec2%name,MAXWORDLENGTH)) then
         flag = PETSC_TRUE
         string = 'Aqueous primary species (' // trim(cur_aq_spec%name) // &
                  ') duplicated as gas species in input file.'
@@ -434,7 +434,7 @@ subroutine DatabaseRead(reaction,option)
       if (.not.associated(cur_aq_spec2)) exit
       if (cur_aq_spec%id /= cur_aq_spec2%id .and. &
           fiStringCompare(cur_aq_spec%name, &
-                          cur_aq_spec2%name,MAXNAMELENGTH)) then
+                          cur_aq_spec2%name,MAXWORDLENGTH)) then
         flag = PETSC_TRUE
         string = 'Aqueous secondary species (' // trim(cur_aq_spec%name) // &
                  ') duplicated in input file.'
@@ -447,7 +447,7 @@ subroutine DatabaseRead(reaction,option)
     do
       if (.not.associated(cur_gas_spec2)) exit
       if (fiStringCompare(cur_aq_spec%name, &
-                          cur_gas_spec2%name,MAXNAMELENGTH)) then
+                          cur_gas_spec2%name,MAXWORDLENGTH)) then
         flag = PETSC_TRUE
         string = 'Aqueous secondary species (' // trim(cur_aq_spec%name) // &
                  ') duplicated as gas species in input file.'
@@ -471,7 +471,7 @@ subroutine DatabaseRead(reaction,option)
       if (.not.associated(cur_gas_spec2)) exit
       if (cur_gas_spec%id /= cur_gas_spec2%id .and. &
           fiStringCompare(cur_aq_spec%name, &
-                          cur_gas_spec2%name,MAXNAMELENGTH)) then
+                          cur_gas_spec2%name,MAXWORDLENGTH)) then
         flag = PETSC_TRUE
         string = 'Gas species (' // trim(cur_aq_spec%name) // &
                  ') duplicated in input file.'
@@ -491,7 +491,7 @@ subroutine DatabaseRead(reaction,option)
       if (.not.associated(cur_mineral2)) exit
       if (cur_mineral%id /= cur_mineral2%id .and. &
           fiStringCompare(cur_mineral%name, &
-                          cur_mineral2%name,MAXNAMELENGTH)) then
+                          cur_mineral2%name,MAXWORDLENGTH)) then
         flag = PETSC_TRUE
         string = 'Mineral (' // trim(cur_mineral%name) // &
                  ') duplicated in input file.'
@@ -514,7 +514,7 @@ subroutine DatabaseRead(reaction,option)
         if (.not.associated(cur_surfcplx2)) exit
         if (cur_surfcplx%id /= cur_surfcplx2%id .and. &
             fiStringCompare(cur_surfcplx%name, &
-                            cur_surfcplx2%name,MAXNAMELENGTH)) then
+                            cur_surfcplx2%name,MAXWORDLENGTH)) then
           flag = PETSC_TRUE
           string = 'Surface complex (' // trim(cur_surfcplx2%name) // &
                    ') duplicated in input file surface complex reaction.'
@@ -631,10 +631,10 @@ subroutine BasisInit(reaction,option)
   type(ion_exchange_rxn_type), pointer :: cur_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cur_cation
   
-  character(len=MAXNAMELENGTH), allocatable :: old_basis_names(:)
-  character(len=MAXNAMELENGTH), allocatable :: new_basis_names(:)
+  character(len=MAXWORDLENGTH), allocatable :: old_basis_names(:)
+  character(len=MAXWORDLENGTH), allocatable :: new_basis_names(:)
 
-  character(len=MAXNAMELENGTH), parameter :: h2oname = 'H2O'
+  character(len=MAXWORDLENGTH), parameter :: h2oname = 'H2O'
   PetscInt, parameter :: h2o_id = 1
 
   character(len=MAXSTRINGLENGTH) :: string
@@ -706,7 +706,7 @@ subroutine BasisInit(reaction,option)
     found = PETSC_FALSE
     do i_new = 1, icount_new
       if (fiStringCompare(old_basis_names(i_old), &
-                          new_basis_names(i_new),MAXNAMELENGTH)) then
+                          new_basis_names(i_new),MAXWORDLENGTH)) then
         found = PETSC_TRUE
         exit
       endif
@@ -744,7 +744,7 @@ subroutine BasisInit(reaction,option)
       if (.not.associated(cur_pri_aq_spec)) exit
       do irow = 1, ncomp_h2o
         if (fiStringCompare(cur_pri_aq_spec%name,new_basis_names(irow), &
-                            MAXNAMELENGTH)) then
+                            MAXWORDLENGTH)) then
           if (associated(cur_pri_aq_spec%eqrxn)) then
             logKvector(:,ipri_spec) = &
               cur_pri_aq_spec%eqrxn%logK(:)
@@ -752,7 +752,7 @@ subroutine BasisInit(reaction,option)
               do icol = 1, icount_old
                 if (fiStringCompare(cur_pri_aq_spec%eqrxn%spec_name(i), &
                                     old_basis_names(icol), &
-                                    MAXNAMELENGTH)) then
+                                    MAXWORDLENGTH)) then
                   new_basis(irow,icol) = cur_pri_aq_spec%eqrxn%stoich(i)
                   exit
                 endif
@@ -763,7 +763,7 @@ subroutine BasisInit(reaction,option)
             do icol = 1, icount_old
               if (fiStringCompare(new_basis_names(irow), &
                                   old_basis_names(icol), &
-                                  MAXNAMELENGTH)) then
+                                  MAXWORDLENGTH)) then
                 new_basis(irow,icol) = 1.d0
                 exit
               endif            
@@ -809,7 +809,7 @@ subroutine BasisInit(reaction,option)
         found = PETSC_FALSE
         do icol = 1, icount_old
           if (fiStringCompare(cur_sec_aq_spec%name, &
-                              old_basis_names(icol),MAXNAMELENGTH)) then
+                              old_basis_names(icol),MAXWORDLENGTH)) then
             stoich_prev(icol) = 1.d0
             found = PETSC_TRUE
             exit
@@ -898,7 +898,7 @@ subroutine BasisInit(reaction,option)
           if (ispec > cur_gas_spec2%eqrxn%nspec) exit
           if (fiStringCompare(cur_gas_spec1%name, &
                               cur_gas_spec2%eqrxn%spec_name(ispec), &
-                              MAXNAMELENGTH)) then
+                              MAXWORDLENGTH)) then
             call BasisSubSpeciesInGasOrSecRxn(cur_gas_spec1%name, &
                                               cur_gas_spec1%eqrxn, &
                                               cur_gas_spec2%eqrxn)
@@ -922,7 +922,7 @@ subroutine BasisInit(reaction,option)
           if (ispec > cur_sec_aq_spec2%eqrxn%nspec) exit
           if (fiStringCompare(cur_gas_spec1%name, &
                               cur_sec_aq_spec2%eqrxn%spec_name(ispec), &
-                              MAXNAMELENGTH)) then
+                              MAXWORDLENGTH)) then
             call BasisSubSpeciesInGasOrSecRxn(cur_gas_spec1%name, &
                                               cur_gas_spec1%eqrxn, &
                                               cur_sec_aq_spec2%eqrxn)
@@ -946,7 +946,7 @@ subroutine BasisInit(reaction,option)
           if (ispec > cur_mineral%tstrxn%nspec) exit
           if (fiStringCompare(cur_gas_spec1%name, &
                               cur_mineral%tstrxn%spec_name(ispec), &
-                              MAXNAMELENGTH)) then
+                              MAXWORDLENGTH)) then
             call BasisSubSpeciesInMineralRxn(cur_gas_spec1%name, &
                                              cur_gas_spec1%eqrxn, &
                                              cur_mineral%tstrxn)
@@ -973,7 +973,7 @@ subroutine BasisInit(reaction,option)
             if (ispec > cur_surfcplx2%eqrxn%nspec) exit
             if (fiStringCompare(cur_gas_spec1%name, &
                                 cur_surfcplx2%eqrxn%spec_name(ispec), &
-                                MAXNAMELENGTH)) then
+                                MAXWORDLENGTH)) then
               call BasisSubSpeciesInGasOrSecRxn(cur_gas_spec1%name, &
                                                 cur_gas_spec1%eqrxn, &
                                                 cur_surfcplx2%eqrxn)
@@ -1027,7 +1027,7 @@ subroutine BasisInit(reaction,option)
           if (ispec > cur_gas_spec2%eqrxn%nspec) exit
           if (fiStringCompare(cur_sec_aq_spec1%name, &
                               cur_gas_spec2%eqrxn%spec_name(ispec), &
-                              MAXNAMELENGTH)) then
+                              MAXWORDLENGTH)) then
             call BasisSubSpeciesInGasOrSecRxn(cur_sec_aq_spec1%name, &
                                               cur_sec_aq_spec1%eqrxn, &
                                               cur_gas_spec2%eqrxn)
@@ -1051,7 +1051,7 @@ subroutine BasisInit(reaction,option)
           if (ispec > cur_sec_aq_spec2%eqrxn%nspec) exit
           if (fiStringCompare(cur_sec_aq_spec1%name, &
                               cur_sec_aq_spec2%eqrxn%spec_name(ispec), &
-                              MAXNAMELENGTH)) then
+                              MAXWORDLENGTH)) then
             call BasisSubSpeciesInGasOrSecRxn(cur_sec_aq_spec1%name, &
                                               cur_sec_aq_spec1%eqrxn, &
                                               cur_sec_aq_spec2%eqrxn)
@@ -1075,7 +1075,7 @@ subroutine BasisInit(reaction,option)
           if (ispec > cur_mineral%tstrxn%nspec) exit
           if (fiStringCompare(cur_sec_aq_spec1%name, &
                               cur_mineral%tstrxn%spec_name(ispec), &
-                              MAXNAMELENGTH)) then
+                              MAXWORDLENGTH)) then
             call BasisSubSpeciesInMineralRxn(cur_sec_aq_spec1%name, &
                                              cur_sec_aq_spec1%eqrxn, &
                                              cur_mineral%tstrxn)
@@ -1101,7 +1101,7 @@ subroutine BasisInit(reaction,option)
             if (ispec > cur_surfcplx2%eqrxn%nspec) exit
             if (fiStringCompare(cur_sec_aq_spec1%name, &
                                 cur_surfcplx2%eqrxn%spec_name(ispec), &
-                                MAXNAMELENGTH)) then
+                                MAXWORDLENGTH)) then
               call BasisSubSpeciesInGasOrSecRxn(cur_sec_aq_spec1%name, &
                                                 cur_sec_aq_spec1%eqrxn, &
                                                 cur_surfcplx2%eqrxn)
@@ -1568,7 +1568,7 @@ subroutine BasisInit(reaction,option)
         do i = 1, reaction%ncomp
           if (fiStringCompare(cur_cation%name, &
                               new_basis_names(i), &
-                              MAXNAMELENGTH)) then
+                              MAXWORDLENGTH)) then
             reaction%eqionx_rxn_cationid(ication,irxn) = i
             found = PETSC_TRUE        
           endif
@@ -1635,9 +1635,9 @@ subroutine BasisAlignSpeciesInRxn(num_basis_species,basis_names, &
   implicit none
   
   PetscInt :: num_basis_species
-  character(len=MAXNAMELENGTH) :: basis_names(num_basis_species)
+  character(len=MAXWORDLENGTH) :: basis_names(num_basis_species)
   PetscInt :: num_rxn_species
-  character(len=MAXNAMELENGTH) :: rxn_species_names(num_rxn_species)
+  character(len=MAXWORDLENGTH) :: rxn_species_names(num_rxn_species)
   PetscReal :: rxn_stoich(num_rxn_species)
   PetscInt :: rxn_species_ids(num_rxn_species)
   type(option_type) :: option
@@ -1654,7 +1654,7 @@ subroutine BasisAlignSpeciesInRxn(num_basis_species,basis_names, &
     do i_basis_species = 1, num_basis_species
       if (fiStringCompare(rxn_species_names(i_rxn_species), &
                             basis_names(i_basis_species), &
-                            MAXNAMELENGTH)) then
+                            MAXWORDLENGTH)) then
         stoich_new(i_basis_species) = rxn_stoich(i_rxn_species)
         found = PETSC_TRUE
         exit
@@ -1706,12 +1706,12 @@ subroutine BasisSubSpeciesInGasOrSecRxn(name1,eqrxn1,eqrxn2)
   
   implicit none
   
-  character(len=MAXNAMELENGTH) :: name1
+  character(len=MAXWORDLENGTH) :: name1
   type(equilibrium_rxn_type) :: eqrxn1
   type(equilibrium_rxn_type) :: eqrxn2
   
   PetscInt :: i, j, tempcount, prevcount
-  character(len=MAXNAMELENGTH) :: tempnames(20)
+  character(len=MAXWORDLENGTH) :: tempnames(20)
   PetscReal :: tempstoich(20)
   PetscReal :: scale
   PetscTruth :: found
@@ -1725,7 +1725,7 @@ subroutine BasisSubSpeciesInGasOrSecRxn(name1,eqrxn1,eqrxn2)
   do i=1,eqrxn2%nspec
     if (.not.fiStringCompare(name1, &
                              eqrxn2%spec_name(i), &
-                             MAXNAMELENGTH)) then
+                             MAXWORDLENGTH)) then
       tempcount = tempcount + 1
       tempnames(tempcount) = eqrxn2%spec_name(i)
       tempstoich(tempcount) = eqrxn2%stoich(i)
@@ -1741,7 +1741,7 @@ subroutine BasisSubSpeciesInGasOrSecRxn(name1,eqrxn1,eqrxn2)
     do i=1,tempcount
       if (fiStringCompare(tempnames(i), &
                           eqrxn1%spec_name(j), &
-                          MAXNAMELENGTH)) then
+                          MAXWORDLENGTH)) then
         tempstoich(i) = tempstoich(i) + scale*eqrxn1%stoich(j)
         found = PETSC_TRUE
         exit
@@ -1803,12 +1803,12 @@ subroutine BasisSubSpeciesInMineralRxn(name,eqrxn,tstrxn)
   
   implicit none
   
-  character(len=MAXNAMELENGTH) :: name
+  character(len=MAXWORDLENGTH) :: name
   type(equilibrium_rxn_type) :: eqrxn
   type(transition_state_rxn_type) :: tstrxn
   
   PetscInt :: i, j, tempcount, prevcount
-  character(len=MAXNAMELENGTH) :: tempnames(20)
+  character(len=MAXWORDLENGTH) :: tempnames(20)
   PetscReal :: tempstoich(20)
   PetscReal :: scale
   PetscTruth :: found
@@ -1822,7 +1822,7 @@ subroutine BasisSubSpeciesInMineralRxn(name,eqrxn,tstrxn)
   do i=1,tstrxn%nspec
     if (.not.fiStringCompare(name, &
                              tstrxn%spec_name(i), &
-                             MAXNAMELENGTH)) then
+                             MAXWORDLENGTH)) then
       tempcount = tempcount + 1
       tempnames(tempcount) = tstrxn%spec_name(i)
       tempstoich(tempcount) = tstrxn%stoich(i)
@@ -1838,7 +1838,7 @@ subroutine BasisSubSpeciesInMineralRxn(name,eqrxn,tstrxn)
     do i=1,tstrxn%nspec
       if (fiStringCompare(tempnames(i), &
                           eqrxn%spec_name(j), &
-                          MAXNAMELENGTH)) then
+                          MAXWORDLENGTH)) then
         tempstoich(i) = tempstoich(i) + scale*eqrxn%stoich(j)
         found = PETSC_TRUE
         exit

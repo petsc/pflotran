@@ -8,7 +8,7 @@ module Reaction_Aux_module
   
   type, public :: aq_species_type
     PetscInt :: id
-    character(len=MAXNAMELENGTH) :: name
+    character(len=MAXWORDLENGTH) :: name
     PetscReal :: a0
     PetscReal :: molar_weight
     PetscReal :: Z
@@ -18,7 +18,7 @@ module Reaction_Aux_module
 
   type, public :: gas_species_type
     PetscInt :: id
-    character(len=MAXNAMELENGTH) :: name
+    character(len=MAXWORDLENGTH) :: name
     PetscReal :: molar_volume
     PetscReal :: molar_weight
     type(equilibrium_rxn_type), pointer :: eqrxn
@@ -27,7 +27,7 @@ module Reaction_Aux_module
 
   type, public :: equilibrium_rxn_type
     PetscInt :: nspec
-    character(len=MAXNAMELENGTH), pointer :: spec_name(:)
+    character(len=MAXWORDLENGTH), pointer :: spec_name(:)
     PetscReal, pointer :: stoich(:)
     PetscInt, pointer :: spec_ids(:)
     PetscReal, pointer :: logK(:)
@@ -35,7 +35,7 @@ module Reaction_Aux_module
 
   type, public :: kinetic_rxn_type
     PetscInt :: nspec
-    character(len=MAXNAMELENGTH), pointer :: spec_name(:)
+    character(len=MAXWORDLENGTH), pointer :: spec_name(:)
     PetscReal, pointer :: stoich(:)
     PetscInt, pointer :: spec_ids(:)
     PetscReal, pointer :: logK(:)
@@ -45,7 +45,7 @@ module Reaction_Aux_module
 
   type, public :: mineral_type
     PetscInt :: id
-    character(len=MAXNAMELENGTH) :: name
+    character(len=MAXWORDLENGTH) :: name
     PetscReal :: molar_volume
     PetscReal :: molar_weight
     type(transition_state_rxn_type), pointer :: tstrxn
@@ -54,16 +54,16 @@ module Reaction_Aux_module
 
   type, public :: transition_state_rxn_type
     PetscInt :: nspec
-    character(len=MAXNAMELENGTH), pointer :: spec_name(:)
+    character(len=MAXWORDLENGTH), pointer :: spec_name(:)
     PetscInt, pointer :: spec_ids(:)
     PetscReal, pointer :: stoich(:)
     PetscReal, pointer :: logK(:)
     PetscInt :: nspec_primary_prefactor
-    character(len=MAXNAMELENGTH), pointer :: spec_name_primary_prefactor(:)
+    character(len=MAXWORDLENGTH), pointer :: spec_name_primary_prefactor(:)
     PetscInt, pointer :: spec_ids_primary_prefactor(:)
     PetscReal, pointer :: stoich_primary_prefactor(:)
     PetscInt :: nspec_secondary_prefactor
-    character(len=MAXNAMELENGTH), pointer :: spec_name_secondary_prefactor(:)
+    character(len=MAXWORDLENGTH), pointer :: spec_name_secondary_prefactor(:)
     PetscInt, pointer :: spec_ids_secondary_prefactor(:)
     PetscReal, pointer :: stoich_secondary_prefactor(:)
     PetscReal :: affinity_factor_sigma
@@ -74,21 +74,21 @@ module Reaction_Aux_module
   
   type, public :: ion_exchange_rxn_type
     PetscInt :: id
-    character(len=MAXNAMELENGTH) :: mineral_name
+    character(len=MAXWORDLENGTH) :: mineral_name
     type(ion_exchange_cation_type), pointer :: cation_list
     PetscReal :: CEC
     type (ion_exchange_rxn_type), pointer :: next
   end type ion_exchange_rxn_type
 
   type, public :: ion_exchange_cation_type
-    character(len=MAXNAMELENGTH) :: name
+    character(len=MAXWORDLENGTH) :: name
     PetscReal :: k
     type (ion_exchange_cation_type), pointer :: next
   end type ion_exchange_cation_type
 
   type, public :: surface_complex_type
     PetscInt :: id
-    character(len=MAXNAMELENGTH) :: name
+    character(len=MAXWORDLENGTH) :: name
     PetscReal :: free_site_stoich
     PetscReal :: Z
     type(equilibrium_rxn_type), pointer :: eqrxn
@@ -98,25 +98,25 @@ module Reaction_Aux_module
   type, public :: surface_complexation_rxn_type
     PetscInt :: id
     PetscInt :: free_site_id
-    character(len=MAXNAMELENGTH) :: free_site_name
+    character(len=MAXWORDLENGTH) :: free_site_name
     PetscInt :: mineral_id
-    character(len=MAXNAMELENGTH) :: mineral_name
+    character(len=MAXWORDLENGTH) :: mineral_name
     PetscReal :: site_density
     type(surface_complex_type), pointer :: complex_list
     type (surface_complexation_rxn_type), pointer :: next
   end type surface_complexation_rxn_type    
 
   type, public :: aq_species_constraint_type
-    character(len=MAXNAMELENGTH), pointer :: names(:)
+    character(len=MAXWORDLENGTH), pointer :: names(:)
     PetscReal, pointer :: constraint_conc(:)
     PetscReal, pointer :: basis_molarity(:)
     PetscInt, pointer :: constraint_type(:)
     PetscInt, pointer :: constraint_spec_id(:)
-    character(len=MAXNAMELENGTH), pointer :: constraint_spec_name(:)
+    character(len=MAXWORDLENGTH), pointer :: constraint_spec_name(:)
   end type aq_species_constraint_type
 
   type, public :: mineral_constraint_type
-    character(len=MAXNAMELENGTH), pointer :: names(:)
+    character(len=MAXWORDLENGTH), pointer :: names(:)
     PetscReal, pointer :: constraint_mol_frac(:)
     PetscReal, pointer :: basis_mol_frac(:)
   end type mineral_constraint_type
@@ -136,12 +136,12 @@ module Reaction_Aux_module
     ! compressed arrays for efficient computation
     ! primary aqueous complexes
     PetscInt :: ncomp
-    character(len=MAXNAMELENGTH), pointer :: primary_species_names(:)
+    character(len=MAXWORDLENGTH), pointer :: primary_species_names(:)
     PetscReal, pointer :: primary_spec_a0(:)
     PetscReal, pointer :: primary_spec_Z(:)
     ! aqueous complexes
     PetscInt :: neqcmplx
-    character(len=MAXNAMELENGTH), pointer :: secondary_species_names(:)
+    character(len=MAXWORDLENGTH), pointer :: secondary_species_names(:)
     PetscInt, pointer :: eqcmplxspecid(:,:)   ! (0:ncomp in rxn)
     PetscReal, pointer :: eqcmplxstoich(:,:)
     PetscInt, pointer :: eqcmplxh2oid(:)       ! id of water, if present
@@ -156,7 +156,7 @@ module Reaction_Aux_module
     PetscReal :: debyeBdot  ! Debye-Huckel Bdot coefficient
     ! gas species
     PetscInt :: ngas
-    character(len=MAXNAMELENGTH), pointer :: gas_species_names(:)
+    character(len=MAXWORDLENGTH), pointer :: gas_species_names(:)
     PetscInt, pointer :: eqgasspecid(:,:)   ! (0:ncomp in rxn)
     PetscReal, pointer :: eqgasstoich(:,:)
     PetscInt, pointer :: eqgash2oid(:)       ! id of water, if present
@@ -184,8 +184,8 @@ module Reaction_Aux_module
     PetscInt, pointer :: eqsurfcmplx_rxn_to_complex(:,:)
     PetscReal, pointer :: eqsurfcmplx_rxn_site_density(:)
     PetscTruth, pointer :: eqsurfcmplx_rxn_stoich_flag(:)
-    character(len=MAXNAMELENGTH), pointer :: surface_site_names(:)
-    character(len=MAXNAMELENGTH), pointer :: surface_complex_names(:)
+    character(len=MAXWORDLENGTH), pointer :: surface_site_names(:)
+    character(len=MAXWORDLENGTH), pointer :: surface_complex_names(:)
     PetscInt, pointer :: eqsurfcmplxspecid(:,:)
     PetscReal, pointer :: eqsurfcmplxstoich(:,:)
     PetscInt, pointer :: eqsurfcmplxh2oid(:)
@@ -209,7 +209,7 @@ module Reaction_Aux_module
 #endif    
     ! mineral reactions
     PetscInt :: nmnrl
-    character(len=MAXNAMELENGTH), pointer :: mineral_names(:)
+    character(len=MAXWORDLENGTH), pointer :: mineral_names(:)
       ! for saturation states
     PetscInt, pointer :: mnrlspecid(:,:)
     PetscReal, pointer :: mnrlstoich(:,:)
@@ -217,7 +217,7 @@ module Reaction_Aux_module
     PetscReal, pointer :: mnrl_molar_vol(:)
       ! for kinetic reactions
     PetscInt :: nkinmnrl
-    character(len=MAXNAMELENGTH), pointer :: kinmnrl_names(:)
+    character(len=MAXWORDLENGTH), pointer :: kinmnrl_names(:)
     PetscInt, pointer :: kinmnrlspecid(:,:)
     PetscReal, pointer :: kinmnrlstoich(:,:)
     PetscInt, pointer :: kinmnrlh2oid(:)
@@ -933,7 +933,7 @@ function GetGasIDFromName(reaction,name)
   implicit none
   
   type(reaction_type) :: reaction
-  character(len=MAXNAMELENGTH) :: name
+  character(len=MAXWORDLENGTH) :: name
 
   PetscInt :: GetGasIDFromName
   type(gas_species_type), pointer :: gas
@@ -943,7 +943,7 @@ function GetGasIDFromName(reaction,name)
   gas => reaction%gas_species_list
   do
     if (.not.associated(gas)) exit
-    if (fiStringCompare(name,gas%name,MAXNAMELENGTH)) then
+    if (fiStringCompare(name,gas%name,MAXWORDLENGTH)) then
       GetGasIDFromName = gas%id
       exit
     endif
@@ -1026,7 +1026,7 @@ function GetMineralIDFromName(reaction,name)
   implicit none
   
   type(reaction_type) :: reaction
-  character(len=MAXNAMELENGTH) :: name
+  character(len=MAXWORDLENGTH) :: name
 
   PetscInt :: GetMineralIDFromName
   type(mineral_type), pointer :: mineral
@@ -1036,7 +1036,7 @@ function GetMineralIDFromName(reaction,name)
   mineral => reaction%mineral_list
   do
     if (.not.associated(mineral)) exit
-    if (fiStringCompare(name,mineral%name,MAXNAMELENGTH)) then
+    if (fiStringCompare(name,mineral%name,MAXWORDLENGTH)) then
       GetMineralIDFromName = mineral%id
       exit
     endif

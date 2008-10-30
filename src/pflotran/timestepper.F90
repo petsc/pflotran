@@ -244,7 +244,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     timestep_cut_flag = PETSC_FALSE
     plot_flag = PETSC_FALSE
     call StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag)
-    ! plot_flag = PETSC_TRUE ! not sure why this was put here... geh.
+
     if (associated(flow_stepper)) then
       call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
       call StepperStepFlowDT(realization,flow_stepper,timestep_cut_flag, &

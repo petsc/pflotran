@@ -337,7 +337,7 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
   implicit none
   
   type(reaction_type), pointer :: reaction
-  character(len=MAXNAMELENGTH) :: constraint_name
+  character(len=MAXWORDLENGTH) :: constraint_name
   type(aq_species_constraint_type), pointer :: aq_species_constraint
   type(mineral_constraint_type), pointer :: mineral_constraint
   type(option_type) :: option
@@ -351,7 +351,7 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
   PetscReal :: value
   PetscReal :: constraint_conc(reaction%ncomp)
   PetscInt :: constraint_type(reaction%ncomp)
-  character(len=MAXNAMELENGTH) :: constraint_spec_name(reaction%ncomp)
+  character(len=MAXWORDLENGTH) :: constraint_spec_name(reaction%ncomp)
   PetscInt :: constraint_id(reaction%ncomp)
     
   constraint_id = 0
@@ -365,7 +365,7 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
     do jcomp = 1, reaction%ncomp
       if (fiStringCompare(aq_species_constraint%names(icomp), &
                           reaction%primary_species_names(jcomp), &
-                          MAXNAMELENGTH)) then
+                          MAXWORDLENGTH)) then
         found = PETSC_TRUE
         exit
       endif
@@ -387,7 +387,7 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
           do imnrl = 1, reaction%nmnrl
             if (fiStringCompare(constraint_spec_name(jcomp), &
                                 reaction%mineral_names(imnrl), &
-                                MAXNAMELENGTH)) then
+                                MAXWORDLENGTH)) then
               constraint_id(jcomp) = imnrl
               found = PETSC_TRUE
               exit
@@ -407,7 +407,7 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
           do igas = 1, reaction%ngas
             if (fiStringCompare(constraint_spec_name(jcomp), &
                                 reaction%gas_species_names(igas), &
-                                MAXNAMELENGTH)) then
+                                MAXWORDLENGTH)) then
               constraint_id(jcomp) = igas
               found = PETSC_TRUE
               exit
@@ -441,7 +441,7 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
         do jmnrl = 1, reaction%nmnrl
           if (fiStringCompare(mineral_constraint%names(imnrl), &
                               reaction%mineral_names(jmnrl), &
-                              MAXNAMELENGTH)) then
+                              MAXWORDLENGTH)) then
             found = PETSC_TRUE
             exit
           endif
@@ -486,7 +486,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
   
   type(reactive_transport_auxvar_type) :: auxvar
   type(reaction_type), pointer :: reaction
-  character(len=MAXNAMELENGTH) :: constraint_name
+  character(len=MAXWORDLENGTH) :: constraint_name
   type(aq_species_constraint_type), pointer :: aq_species_constraint
   type(option_type) :: option
   
@@ -496,7 +496,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
   PetscInt :: igas
   PetscReal :: conc(reaction%ncomp)
   PetscInt :: constraint_type(reaction%ncomp)
-  character(len=MAXNAMELENGTH) :: constraint_spec_name(reaction%ncomp)
+  character(len=MAXWORDLENGTH) :: constraint_spec_name(reaction%ncomp)
 
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: total_conc(reaction%ncomp)
@@ -845,7 +845,7 @@ subroutine ReactionReadMineralKinetics(reaction,fid,option)
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
-  character(len=MAXNAMELENGTH) :: name
+  character(len=MAXWORDLENGTH) :: name
   
   type(mineral_type), pointer :: cur_mineral
   PetscInt :: imnrl
@@ -866,13 +866,13 @@ subroutine ReactionReadMineralKinetics(reaction,fid,option)
 
     if (fiCheckExit(string)) exit  
 
-    call fiReadNChars(string,name,MAXNAMELENGTH,PETSC_TRUE,ierr)
+    call fiReadWord(string,name,PETSC_TRUE,ierr)
     call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)
     
     cur_mineral => reaction%mineral_list
     do 
       if (.not.associated(cur_mineral)) exit
-      if (fiStringCompare(cur_mineral%name,name,MAXNAMELENGTH)) then
+      if (fiStringCompare(cur_mineral%name,name,MAXWORDLENGTH)) then
         if (.not.associated(cur_mineral%tstrxn)) then
           cur_mineral%tstrxn => TransitionStateTheoryRxnCreate()
         endif
@@ -932,7 +932,7 @@ subroutine ReactionReadSurfaceComplexes(reaction,fid,option)
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
-  character(len=MAXNAMELENGTH) :: name
+  character(len=MAXWORDLENGTH) :: name
   
   type(surface_complexation_rxn_type), pointer :: cur_srfcmplx
   PetscErrorCode :: ierr
@@ -952,13 +952,13 @@ subroutine ReactionReadSurfaceComplexes(reaction,fid,option)
 
     if (fiCheckExit(string)) exit  
 
-    call fiReadNChars(string,name,MAXNAMELENGTH,PETSC_TRUE,ierr)
+    call fiReadWord(string,name,PETSC_TRUE,ierr)
     call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)
     
     cur_srfcmplx => reaction%surface_complex_list
     do 
       if (.not.associated(cur_srfcmplx)) exit
-      if (fiStringCompare(cur_srfcmplx%name,name,MAXNAMELENGTH)) then
+      if (fiStringCompare(cur_srfcmplx%name,name,MAXWORDLENGTH)) then
 !       if (.not.associated(cur_srfcmplx%tstrxn)) then
 !         cur_srfcmplx%tstrxn => TransitionStateTheoryRxnCreate()
 !       endif

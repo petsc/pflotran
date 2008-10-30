@@ -504,7 +504,7 @@ subroutine RealProcessTranConditions(realization)
       do
         if (.not.associated(another_constraint)) exit
         if (fiStringCompare(cur_constraint%name,another_constraint%name, &
-            MAXNAMELENGTH)) then
+            MAXWORDLENGTH)) then
           found = PETSC_TRUE
         endif
         another_constraint => another_constraint%next
@@ -542,7 +542,7 @@ subroutine RealProcessTranConditions(realization)
           if (.not.associated(cur_constraint)) exit
           if (fiStringCompare(cur_constraint%name, &
                               cur_constraint_coupler%constraint_name, &
-                              MAXNAMELENGTH)) then
+                              MAXWORDLENGTH)) then
             cur_constraint_coupler%aqueous_species => cur_constraint%aqueous_species
             cur_constraint_coupler%minerals => cur_constraint%minerals
             exit

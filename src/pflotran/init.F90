@@ -521,7 +521,6 @@ subroutine readRequiredCardsFromInput(realization,filename)
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: name
-  character(len=MAXCARDLENGTH) :: card
   
   type(patch_type), pointer :: patch 
   type(level_type), pointer :: level
