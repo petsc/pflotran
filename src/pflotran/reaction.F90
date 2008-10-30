@@ -357,6 +357,7 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
   PetscReal :: constraint_conc(reaction%ncomp)
   PetscInt :: constraint_type(reaction%ncomp)
   character(len=MAXWORDLENGTH) :: constraint_spec_name(reaction%ncomp)
+  character(len=MAXWORDLENGTH) :: constraint_mnrl_name(reaction%nmnrl)
   PetscInt :: constraint_id(reaction%ncomp)
     
   constraint_id = 0
@@ -439,29 +440,31 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
   aq_species_constraint%constraint_conc = constraint_conc
 
   ! minerals
-  if (reaction%use_full_geochemistry) then
-    if (associated(mineral_constraint)) then
-      do imnrl = 1, reaction%nmnrl
-        found = PETSC_FALSE
-        do jmnrl = 1, reaction%nmnrl
-          if (fiStringCompare(mineral_constraint%names(imnrl), &
-                              reaction%mineral_names(jmnrl), &
-                              MAXWORDLENGTH)) then
-            found = PETSC_TRUE
-            exit
-          endif
-        enddo
-        if (.not.found) then
-          string = 'Mineral ' // trim(mineral_constraint%names(imnrl)) // &
-                   'from CONSTRAINT ' // trim(constraint_name) // &
-                   ' not found among primary species.'
-          call printErrMsg(option,string)
-        else
-          mineral_constraint%basis_mol_frac(jmnrl) = &
-            mineral_constraint%constraint_mol_frac(imnrl)
-        endif  
+  if (reaction%use_full_geochemistry .and. associated(mineral_constraint)) then
+    constraint_mnrl_name = ''
+    do imnrl = 1, reaction%nmnrl
+      found = PETSC_FALSE
+      do jmnrl = 1, reaction%nmnrl
+        if (fiStringCompare(mineral_constraint%names(imnrl), &
+                            reaction%mineral_names(jmnrl), &
+                            MAXWORDLENGTH)) then
+          found = PETSC_TRUE
+          exit
+        endif
       enddo
-    endif
+      if (.not.found) then
+        string = 'Mineral ' // trim(mineral_constraint%names(imnrl)) // &
+                 'from CONSTRAINT ' // trim(constraint_name) // &
+                 ' not found among primary species.'
+        call printErrMsg(option,string)
+      else
+        mineral_constraint%basis_mol_frac(jmnrl) = &
+          mineral_constraint%constraint_mol_frac(imnrl)
+        constraint_mnrl_name(jmnrl) = mineral_constraint%names(imnrl)
+      endif  
+    enddo
+    mineral_constraint%names = constraint_mnrl_name
+    mineral_constraint%constraint_mol_frac = mineral_constraint%basis_mol_frac
   endif
   
   call RTAuxVarInit(auxvar,reaction,option)
@@ -697,41 +700,44 @@ subroutine RPrintConstraint(constraint_coupler,reaction,option)
   
   type(reactive_transport_auxvar_type) :: auxvar
   type(aq_species_constraint_type), pointer :: aq_species_constraint
+  type(mineral_constraint_type), pointer :: mineral_constraint
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: i, icomp
   PetscInt :: icplx, icplx2
+  PetscInt :: imnrl
   PetscInt :: eqcmplxsort(reaction%neqcmplx)
   PetscInt :: eqsurfcmplxsort(reaction%neqsurfcmplx+reaction%neqsurfcmplxrxn)
   PetscTruth :: finished
   PetscReal :: conc, conc2
 
   aq_species_constraint => constraint_coupler%aqueous_species
+  mineral_constraint => constraint_coupler%minerals
 
-99 format(80('-'))
-100 format(a)
+90 format(80('-'))
+91 format(a)
 
-  write(option%fid_out,100) '  Constraint: ' // trim(constraint_coupler%constraint_name)
+  write(option%fid_out,91) '  Constraint: ' // trim(constraint_coupler%constraint_name)
   call RTAuxVarInit(auxvar,reaction,option)
   
   if (.not.reaction%use_full_geochemistry) then
-101 format(/,'  species       molality')  
-    write(option%fid_out,101)
-102 format(2x,a12,es12.4)
+100 format(/,'  species       molality')  
+    write(option%fid_out,100)
+101 format(2x,a12,es12.4)
     do icomp = 1, reaction%ncomp
-      write(option%fid_out,102) reaction%primary_species_names(icomp), &
+      write(option%fid_out,101) reaction%primary_species_names(icomp), &
                                 auxvar%primary_molal(icomp)
     enddo
   else
-103 format(/,'  species       molality    total       act coef  constraint')  
-    write(option%fid_out,103)
-    write(option%fid_out,99)
+102 format(/,'  species       molality    total       act coef  constraint')  
+    write(option%fid_out,102)
+    write(option%fid_out,90)
   
     call ReactionEquilibrateConstraint(auxvar,reaction, &
                                        constraint_coupler%constraint_name, &
                                        aq_species_constraint, &
                                        option)
                                        
-104 format(2x,a12,es12.4,es12.4,f8.4,4x,a)
+103 format(2x,a12,es12.4,es12.4,f8.4,4x,a)
     do icomp = 1, reaction%ncomp
       select case(aq_species_constraint%constraint_type(icomp))
         case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
@@ -743,7 +749,7 @@ subroutine RPrintConstraint(constraint_coupler,reaction,option)
         case(CONSTRAINT_MINERAL,CONSTRAINT_GAS)
           string = aq_species_constraint%constraint_spec_name(icomp)
       end select
-      write(option%fid_out,104) reaction%primary_species_names(icomp), &
+      write(option%fid_out,103) reaction%primary_species_names(icomp), &
                                 auxvar%primary_molal(icomp), &
                                 auxvar%total(icomp,1)/auxvar%den(1)*1000.d0, &
                                 auxvar%pri_act_coef(icomp), &
@@ -771,13 +777,13 @@ subroutine RPrintConstraint(constraint_coupler,reaction,option)
       if (finished) exit
     enddo
             
-  105 format(/,'  complex       molality    act coef  logK')  
-    write(option%fid_out,105)
-    write(option%fid_out,99)
-  106 format(2x,a12,es12.4,f8.4,2x,es12.4)
+  110 format(/,'  complex       molality    act coef  logK')  
+    write(option%fid_out,110)
+    write(option%fid_out,90)
+  111 format(2x,a12,es12.4,f8.4,2x,es12.4)
     do i = 1, reaction%neqcmplx ! for each secondary species
       icplx = eqcmplxsort(i)
-      write(option%fid_out,106) reaction%secondary_species_names(icplx), &
+      write(option%fid_out,111) reaction%secondary_species_names(icplx), &
                                 auxvar%secondary_spec(icplx)/ &
                                 auxvar%den(1)*1000.d0, &
                                 auxvar%sec_act_coef(icplx), &
@@ -818,26 +824,37 @@ subroutine RPrintConstraint(constraint_coupler,reaction,option)
       if (finished) exit
     enddo
             
-  107 format(/,'  surf complex  molality    logK')  
-    write(option%fid_out,107)
-    write(option%fid_out,99)
-  108 format(2x,a12,es12.4,es12.4)
-  109 format(2x,a12,es12.4,'  free site')
+  120 format(/,'  surf complex  molality    logK')  
+    write(option%fid_out,120)
+    write(option%fid_out,90)
+  121 format(2x,a12,es12.4,es12.4)
+  122 format(2x,a12,es12.4,'  free site')
     do i = 1, reaction%neqsurfcmplx+reaction%neqsurfcmplxrxn
       icplx = eqsurfcmplxsort(i)
       if (icplx > 0) then
-        write(option%fid_out,108) reaction%surface_complex_names(icplx), &
+        write(option%fid_out,121) reaction%surface_complex_names(icplx), &
                                   auxvar%eqsurfcmplx_spec(icplx)/ &
                                   auxvar%den(1)*1000.d0, &
                                   reaction%eqsurfcmplx_logK(icplx)
       else
-        write(option%fid_out,109) reaction%surface_site_names(-icplx), &
+        write(option%fid_out,122) reaction%surface_site_names(-icplx), &
                                   auxvar%eqsurfcmplx_freesite_conc(-icplx)/ &
                                   auxvar%den(1)*1000.d0
       endif
     enddo 
   endif
           
+  if (reaction%nmnrl > 0 .and. associated(mineral_constraint)) then
+  130 format(/,'  mineral       volume fraction')
+    write(option%fid_out,130)
+    write(option%fid_out,90)
+  131 format(2x,a12,f8.4)
+    do imnrl = 1, reaction%nmnrl
+      write(option%fid_out,131) mineral_constraint%names(imnrl), &
+        mineral_constraint%basis_mol_frac(imnrl)
+    enddo
+  endif
+            
   call RTAuxVarDestroy(auxvar)
             
 end subroutine RPrintConstraint
