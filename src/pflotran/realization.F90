@@ -669,6 +669,8 @@ subroutine RealizationPrintCoupler(coupler,reaction,option)
   type(tran_condition_type), pointer :: tran_condition
   type(region_type), pointer :: region
   type(tran_constraint_coupler_type), pointer :: constraint_coupler
+  PetscReal :: pressure
+  PetscReal :: temperature
 
    
 98 format(40('=+'))
@@ -689,20 +691,32 @@ subroutine RealizationPrintCoupler(coupler,reaction,option)
   if (associated(region)) write(option%fid_out,103) trim(region%name)
   write(option%fid_out,98)
   
+  pressure = option%pref
+  temperature = option%tref
+  
   if (associated(flow_condition)) then
 !    write(option%fid_out,99)
     write(option%fid_out,100) '  Flow Parameters:'
-104 format(a,f10.1)
-    write(option%fid_out,104) '    pressure = ', &
-      flow_condition%pressure%dataset%cur_value(1)
-105 format(a,f5.1)
-    if (associated(flow_condition%temperature)) then
-      write(option%fid_out,105) '    temperature = ', &
-        flow_condition%temperature%dataset%cur_value(1)
+    if (flow_condition%pressure%itype == DIRICHLET_BC .or. &
+        flow_condition%pressure%itype == HYDROSTATIC_BC .or. &
+        flow_condition%pressure%itype == SEEPAGE_BC) then
+110 format(a,f10.1)
+      write(option%fid_out,110) '    pressure = ', &
+        flow_condition%pressure%dataset%cur_value(1)
+      pressure = flow_condition%pressure%dataset%cur_value(1)
+    else if (flow_condition%pressure%itype == NEUMANN_BC) then
+      write(option%fid_out,110) '    flux = ', &
+        flow_condition%pressure%dataset%cur_value(1)
     endif
-106 format(a,es12.4)
+120 format(a,f5.1)
+    if (associated(flow_condition%temperature)) then
+      write(option%fid_out,120) '    temperature = ', &
+        flow_condition%temperature%dataset%cur_value(1)
+      temperature = flow_condition%temperature%dataset%cur_value(1)
+    endif
+130 format(a,es12.4)
     if (associated(flow_condition%concentration)) then
-      write(option%fid_out,106) '    concentration = ', &
+      write(option%fid_out,130) '    concentration = ', &
         flow_condition%concentration%dataset%cur_value(1)
     endif
   endif
@@ -711,8 +725,8 @@ subroutine RealizationPrintCoupler(coupler,reaction,option)
     write(option%fid_out,99) 
     write(option%fid_out,100) '  Transport Parameters:'
     if (associated(reaction)) then
-      call RPrintConstraint(constraint_coupler,reaction, &
-                            option)
+      call RPrintConstraint(constraint_coupler,pressure,temperature, &
+                            reaction,option)
     endif
   endif
  

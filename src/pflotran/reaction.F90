@@ -10,6 +10,9 @@ module Reaction_module
 #include "definitions.h"
 
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
+  PetscReal, parameter :: log_to_ln = 2.30258509299d0
+  PetscReal, parameter :: ln_to_log = 0.434294481904d0  
+  PetscReal, parameter :: ideal_gas_const = 8.314472d0   
   
   public :: ReactionCreate, &
             ReactionRead, &
@@ -352,7 +355,7 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
   PetscTruth :: found
   PetscInt :: icomp, jcomp
   PetscInt :: imnrl, jmnrl
-  PetscInt :: igas
+  PetscInt :: igas, dummy_int
   PetscReal :: value
   PetscReal :: constraint_conc(reaction%ncomp)
   PetscInt :: constraint_type(reaction%ncomp)
@@ -469,7 +472,7 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
   
   call RTAuxVarInit(auxvar,reaction,option)
   call ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
-                                     aq_species_constraint, &
+                                     aq_species_constraint,dummy_int, &
                                      option)
   call RTAuxVarDestroy(auxvar)
 
@@ -485,7 +488,7 @@ end subroutine ReactionInitializeConstraint
 ! ************************************************************************** !
 subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
                                          aq_species_constraint, &
-                                         option)
+                                         num_iterations,option)
   use Option_module
   use Fileio_module
   use Utility_module  
@@ -496,6 +499,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
   type(reaction_type), pointer :: reaction
   character(len=MAXWORDLENGTH) :: constraint_name
   type(aq_species_constraint_type), pointer :: aq_species_constraint
+  PetscInt :: num_iterations
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -512,11 +516,10 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
   PetscReal :: free_conc(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
   PetscInt :: indices(reaction%ncomp)
-  PetscInt :: num_it
   PetscReal :: norm
   PetscReal :: prev_molal(reaction%ncomp)
   PetscReal, parameter :: tol = 1.d-12
-  PetscReal, parameter :: tol_loose = 1.d-6
+  PetscReal, parameter :: tol_loose = 1.d0
   PetscTruth :: compute_activity
 
   PetscInt :: constraint_id(reaction%ncomp)
@@ -573,14 +576,14 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
       case(CONSTRAINT_MINERAL)
         free_conc(icomp) = conc(icomp) ! guess
       case(CONSTRAINT_GAS)
-        free_conc(icomp) = conc(icomp) ! guess
+        free_conc(icomp) = 1.d-9 ! guess
     end select
   enddo
   
   auxvar%den(1) = 1000.d0 ! assume a density of 1 kg/L (1000 kg/m^3)
   auxvar%primary_molal = free_conc
 
-  num_it = 0
+  num_iterations = 0
   compute_activity = PETSC_FALSE
   
   do
@@ -614,8 +617,8 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
           Jac(icomp,:) = 0.d0
 !          Jac(:,icomp) = 0.d0
           Jac(icomp,icomp) = 1.d0
-          if (reaction%h_ion_id > 0) then ! free_conc(icomp) = 10**-pH
-            auxvar%primary_molal(icomp) = free_conc(icomp) / &
+          if (reaction%h_ion_id > 0) then ! conc(icomp) = 10**-pH
+            auxvar%primary_molal(icomp) = conc(icomp) / &
                                           auxvar%pri_act_coef(icomp)
           else ! H+ is a complex
           
@@ -638,7 +641,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
                             log(auxvar%primary_spec(comp_id)* &
                             auxvar%pri_act_coef(comp_id))
             enddo
-            lnQK = lnQK - log(free_conc(icomp)) ! this is log activity H+
+            lnQK = lnQK - log(conc(icomp)) ! this is log activity H+
             QK = exp(lnQK)
             
             Res(icomp) = 1.d0 - QK
@@ -685,7 +688,9 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
           igas = constraint_id(icomp)
           ! compute secondary species concentration
           lnQK = -1.d0*reaction%eqgas_logK(igas)*log_to_ln
-
+          ! divide K by RT
+          lnQK = lnQK + log((auxvar%temp+273.15d0)*ideal_gas_const)
+          
           ! activity of water
           if (reaction%eqgash2oid(igas) > 0) then
             lnQK = lnQK + reaction%eqgash2ostoich(igas)*ln_act_h2o
@@ -696,13 +701,18 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
             lnQK = lnQK + reaction%eqgasstoich(jcomp,igas)* &
                           log(auxvar%primary_spec(comp_id)*auxvar%pri_act_coef(comp_id))
           enddo
+          if (conc(icomp) <= 0.d0) then ! already in log form?
+            lnQK = lnQK - conc(icomp)*log_to_ln ! this log10 partial pressure gas
+          else
+            lnQK = lnQK - log(conc(icomp)) ! this is partial pressure gas
+          endif
           QK = exp(lnQK)
           
           Res(icomp) = 1.d0 - QK
           Jac(icomp,:) = 0.d0
           do jcomp = 1,reaction%eqgasspecid(0,igas)
             comp_id = reaction%eqgasspecid(jcomp,igas)
-            Jac(icomp,comp_id) = -exp(lnQK-log(auxvar%primary_molal(comp_id)))* &
+            Jac(icomp,comp_id) = -exp(lnQK-log(auxvar%primary_spec(comp_id)))* &
                                  reaction%eqgasstoich(jcomp,igas)
           enddo
       end select
@@ -730,7 +740,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
       
     auxvar%primary_molal = auxvar%primary_molal*exp(-Res)
 
-    num_it = num_it + 1
+    num_iterations = num_iterations + 1
     
     ! need some sort of convergence before we kick in activities
     if (maxval(dabs(auxvar%primary_molal-prev_molal)/ &
@@ -756,7 +766,8 @@ end subroutine ReactionEquilibrateConstraint
 ! date: 10/28/08
 !
 ! ************************************************************************** !
-subroutine RPrintConstraint(constraint_coupler,reaction,option)
+subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
+                            reaction,option)
 
   use Option_module
   use Condition_module
@@ -764,6 +775,8 @@ subroutine RPrintConstraint(constraint_coupler,reaction,option)
   implicit none
   
   type(option_type) :: option
+  PetscReal :: pressure
+  PetscReal :: temperature
   type(tran_constraint_coupler_type) :: constraint_coupler
   type(reaction_type), pointer :: reaction
   
@@ -778,6 +791,11 @@ subroutine RPrintConstraint(constraint_coupler,reaction,option)
   PetscInt :: eqsurfcmplxsort(reaction%neqsurfcmplx+reaction%neqsurfcmplxrxn)
   PetscTruth :: finished
   PetscReal :: conc, conc2
+  PetscInt :: num_iterations
+  PetscReal :: lnQK, QK
+  PetscReal :: ln_act_h2o
+  PetscReal :: charge_balance
+  PetscInt :: comp_id, jcomp
 
   aq_species_constraint => constraint_coupler%aqueous_species
   mineral_constraint => constraint_coupler%minerals
@@ -787,6 +805,7 @@ subroutine RPrintConstraint(constraint_coupler,reaction,option)
 
   write(option%fid_out,91) '  Constraint: ' // trim(constraint_coupler%constraint_name)
   call RTAuxVarInit(auxvar,reaction,option)
+  auxvar%temp = temperature
   
   if (.not.reaction%use_full_geochemistry) then
 100 format(/,'  species       molality')  
@@ -797,15 +816,44 @@ subroutine RPrintConstraint(constraint_coupler,reaction,option)
                                 auxvar%primary_molal(icomp)
     enddo
   else
+    call ReactionEquilibrateConstraint(auxvar,reaction, &
+                                       constraint_coupler%constraint_name, &
+                                       aq_species_constraint, &
+                                       num_iterations,option)
+                                       
+200 format('')
+201 format(a20,i5)
+202 format(a20,f10.2)
+203 format(a20,f8.2)
+204 format(a20,es12.4)
+    write(option%fid_out,90)
+    write(option%fid_out,201) '      iterations: ', num_iterations
+    if (reaction%h_ion_id > 0) then
+      write(option%fid_out,203) '              pH: ', &
+        -log10(auxvar%primary_spec(reaction%h_ion_id)* &
+               auxvar%pri_act_coef(reaction%h_ion_id))
+    else if (reaction%h_ion_id < 0) then
+      write(option%fid_out,203) '              pH: ', &
+        -log10(auxvar%secondary_spec(abs(reaction%h_ion_id))* &
+               auxvar%sec_act_coef(abs(reaction%h_ion_id)))
+    endif
+    
+    charge_balance = 0.d0
+    do icomp = 1, reaction%ncomp
+      charge_balance = charge_balance + auxvar%total(icomp,1)* &
+                                        reaction%primary_spec_Z(icomp)
+    enddo    
+    
+    write(option%fid_out,204) '  charge balance: ', charge_balance
+    
+    write(option%fid_out,202) '        pressure: ', pressure
+    write(option%fid_out,203) '     temperature: ', temperature
+    write(option%fid_out,90)
+
 102 format(/,'  species       molality    total       act coef  constraint')  
     write(option%fid_out,102)
     write(option%fid_out,90)
   
-    call ReactionEquilibrateConstraint(auxvar,reaction, &
-                                       constraint_coupler%constraint_name, &
-                                       aq_species_constraint, &
-                                       option)
-                                       
 103 format(2x,a12,es12.4,es12.4,f8.4,4x,a)
     do icomp = 1, reaction%ncomp
       select case(aq_species_constraint%constraint_type(icomp))
@@ -916,13 +964,25 @@ subroutine RPrintConstraint(constraint_coupler,reaction,option)
   endif
           
   if (reaction%nmnrl > 0 .and. associated(mineral_constraint)) then
-  130 format(/,'  mineral       volume fraction')
+  130 format(/,'  mineral       vol frac  saturation')
     write(option%fid_out,130)
     write(option%fid_out,90)
-  131 format(2x,a12,f8.4)
+  131 format(2x,a12,f8.4,2x,f8.4)
     do imnrl = 1, reaction%nmnrl
+      ! compute saturation
+      ln_act_h2o = 0.d0
+      lnQK = -1.d0*reaction%kinmnrl_logK(imnrl)*log_to_ln
+      if (reaction%kinmnrlh2oid(imnrl) > 0) then
+        lnQK = lnQK + reaction%kinmnrlh2ostoich(imnrl)*ln_act_h2o
+      endif
+      do jcomp = 1, reaction%kinmnrlspecid(0,imnrl)
+        comp_id = reaction%kinmnrlspecid(jcomp,imnrl)
+        lnQK = lnQK + reaction%kinmnrlstoich(jcomp,imnrl)* &
+                      log(auxvar%primary_spec(comp_id)*auxvar%pri_act_coef(comp_id))
+      enddo
+      QK = exp(lnQK)    
       write(option%fid_out,131) mineral_constraint%names(imnrl), &
-        mineral_constraint%basis_mol_frac(imnrl)
+        mineral_constraint%basis_mol_frac(imnrl),QK
     enddo
   endif
             
@@ -1213,8 +1273,7 @@ subroutine RActivity(auxvar,reaction,option)
   
   PetscInt :: icplx, icomp
   PetscReal :: I, sqrt_I
-  PetscReal, parameter :: log_to_ln = 2.30258509299d0
-  PetscReal, parameter :: ln_to_log = 0.434294481904d0
+
   ! compute ionic strength
   ! primary species
   I = 0.d0
