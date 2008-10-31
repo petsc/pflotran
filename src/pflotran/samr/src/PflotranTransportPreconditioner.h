@@ -38,7 +38,7 @@ public:
 
    ~PflotranTransportPreconditioner();
    
-   int setupPreconditioner( void );
+   int setupPreconditioner(  PreconditionerParameters* parameters );
    
    int applyPreconditioner( tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> > r,
                             tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> > z );

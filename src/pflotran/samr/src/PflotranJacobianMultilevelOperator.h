@@ -183,6 +183,14 @@ public:
 
    void setCurrentPatch(hier::Patch <NDIM> *patch){d_patch = patch;}
 
+   int getVariableIndex(std::string &name, 
+                        tbox::Pointer<hier::VariableContext> &context,
+                        tbox::Pointer<hier::Variable<NDIM> > &var,
+                        hier::IntVector<NDIM> nghosts = hier::IntVector<NDIM>(0),
+                        int depth=1,
+                        bool bOverride=false,
+                        std::string centering="");
+
 protected:
 
    void initializePetscMatInterface(void);
