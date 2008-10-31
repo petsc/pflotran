@@ -191,7 +191,6 @@ public:
                         bool bOverride=false,
                         std::string centering="");
 
-
 protected:
 
    void initializePetscMatInterface(void);

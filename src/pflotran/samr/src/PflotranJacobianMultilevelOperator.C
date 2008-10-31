@@ -648,15 +648,14 @@ PflotranJacobianMultilevelOperator::initializeScratchVector( Vec x )
 
 int
 PflotranJacobianMultilevelOperator::getVariableIndex(std::string &name, 
-                                tbox::Pointer<hier::VariableContext> &context,
-                                tbox::Pointer<hier::Variable<NDIM> > &var,
-                                hier::IntVector<NDIM> nghosts,
-                                int depth,
-                                bool bOverride,
-                                std::string centering)
+                                                     tbox::Pointer<hier::VariableContext> &context,
+                                                     tbox::Pointer<hier::Variable<NDIM> > &variable,
+                                                     hier::IntVector<NDIM> nghosts,
+                                                     int depth,
+                                                     bool bOverride,
+                                                     std::string centering)
 {
    int var_id = -1;
-
    if(!bOverride)
    {
       hier::VariableDatabase<NDIM>* variable_db = hier::VariableDatabase<NDIM>::getDatabase();
@@ -678,6 +677,7 @@ PflotranJacobianMultilevelOperator::getVariableIndex(std::string &name,
    }
 
    return var_id;
+
 }
 
 }

@@ -29,14 +29,13 @@ subroutine Init(simulation,filename)
   use Simulation_module
   use Option_module
   use Grid_module
-!  use AMR_Grid_module
   use Solver_module
   use Discretization_module
   use Realization_module
   use Material_module
   use Timestepper_module
   use Field_module
-  use Connection_module
+  use Connection_module   
   use Coupler_module
   use General_Grid_module
   use Debug_module
