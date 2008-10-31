@@ -11,7 +11,7 @@ module Init_module
 #include "include/finclude/petscmat.h"
 #include "include/finclude/petscmat.h90"
 #include "include/finclude/petscsnes.h"
-
+#include "include/finclude/petscpc.h"
 
   public :: Init
 
@@ -76,6 +76,7 @@ subroutine Init(simulation,filename)
   Vec :: global_vec
   PetscInt :: temp_int
   PetscErrorCode :: ierr
+  PCSide:: pcside
 
   interface
 
@@ -258,7 +259,8 @@ subroutine Init(simulation,filename)
     ! setup a shell preconditioner and initialize in the case of AMR
     if(associated(discretization%amrgrid)) then
        flow_solver%pc_type = PCSHELL
-       call KSPSetPreconditionerSide(flow_solver%ksp, PC_RIGHT)
+       pcside = PC_RIGHT
+       call KSPSetPreconditionerSide(flow_solver%ksp, pcside, ierr)
        call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 0, flow_solver%pc)
     endif
 

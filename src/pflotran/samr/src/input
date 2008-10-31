@@ -70,7 +70,7 @@ PflotranApplicationStrategy{
 
      pc_solver{
        solver_name                      =  "FAC"
-       max_iterations                   =  0
+       max_iterations                   =  2
        max_error                        =  1.0e-12
        print_info_level                 =  0
        presolve_iterations              =  1
@@ -79,13 +79,23 @@ PflotranApplicationStrategy{
        viz_directory                    =  "fac_viz"
        zero_initial_guess               =  TRUE
 
+       level_solver_1 {
+            solver_name                = "CellHYPRELevelSolver"
+            print_info_level           = 0
+            max_iterations             = 1
+            max_error                  = 1.0e-12
+            num_presweeps              = 2
+            num_postsweeps             = 2
+            preprocess_rhs             = FALSE
+       }
+
        level_solver_0 {
             solver_name                 =  "CellLevelSmoother"
-            smoother_type               =  "Red-black Gauss-Seidel"
+            smoother_type               =  "Gauss-Seidel"
             print_info_level            =  0
             max_iterations              =  1
             max_error                   =  1.0e-12
-            num_sweeps                  =  3
+            num_sweeps                  =  10
        }
      }
         
