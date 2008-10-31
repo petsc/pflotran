@@ -126,6 +126,8 @@ module Reaction_Aux_module
     PetscTruth :: use_full_geochemistry
     PetscTruth :: use_log_formulation ! flag for solving for the change in the log of the concentration
     PetscInt :: num_dbase_temperatures
+    PetscInt :: h_ion_id
+    PetscInt :: o2_gas_id
     PetscReal, pointer :: dbase_temperatures(:)
     type(aq_species_type), pointer :: primary_species_list
     type(aq_species_type), pointer :: secondary_species_list
@@ -295,6 +297,9 @@ function ReactionCreate()
   reaction%use_log_formulation = PETSC_FALSE
   reaction%use_full_geochemistry = PETSC_FALSE
   
+  reaction%h_ion_id = 0
+  reaction%o2_gas_id = 0
+
   nullify(reaction%primary_species_list)
   nullify(reaction%secondary_species_list)
   nullify(reaction%gas_species_list)

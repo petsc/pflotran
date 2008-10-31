@@ -1065,6 +1065,13 @@ subroutine TranConstraintRead(constraint,reaction,option)
           
           icomp = icomp + 1        
           
+          if (icomp > reaction%ncomp) then
+            string = 'Number of constraints exceeds number of primary ' // &
+                     'chemical components in constraint: ' // &
+                     trim(constraint%name)
+            call printErrMsg(option,string)
+          endif
+          
           call fiReadWord(string,aq_species_constraint%names(icomp), &
                           PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'aqueous species name', &
@@ -1084,11 +1091,9 @@ subroutine TranConstraintRead(constraint,reaction,option)
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_FREE
               case('T','TOTAL')
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_TOTAL
-              case('PH')
-                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_LOG
-                aq_species_constraint%constraint_conc(icomp) = &
-                  -1.d0*aq_species_constraint%constraint_conc(icomp)
-              case('LOG')
+              case('P','PH')
+                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_PH
+              case('L','LOG')
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_LOG
               case('M','MINERAL','MNRL') 
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_MINERAL
@@ -1128,6 +1133,12 @@ subroutine TranConstraintRead(constraint,reaction,option)
           if (fiCheckExit(string)) exit          
           
           icomp = icomp + 1
+
+          if (icomp > reaction%nmnrl) then
+            string = 'Number of constraints exceeds number of minerals ' // &
+                     'in constraint: ' // trim(constraint%name)
+            call printErrMsg(option,string)
+          endif
           
           call fiReadWord(string,mineral_constraint%names(icomp), &
                           PETSC_TRUE,ierr)

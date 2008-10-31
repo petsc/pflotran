@@ -635,6 +635,8 @@ subroutine BasisInit(reaction,option)
   character(len=MAXWORDLENGTH), allocatable :: new_basis_names(:)
 
   character(len=MAXWORDLENGTH), parameter :: h2oname = 'H2O'
+  character(len=MAXWORDLENGTH) :: word
+  
   PetscInt, parameter :: h2o_id = 1
 
   character(len=MAXSTRINGLENGTH) :: string
@@ -1603,6 +1605,37 @@ subroutine BasisInit(reaction,option)
   endif
 
   call BasisPrint(reaction,'Final Basis',option)
+  
+  ! locate specific species
+  do ispec = 1, reaction%ncomp
+    if (reaction%h_ion_id == 0) then
+      word = 'H+'
+      if (fiStringCompare(reaction%primary_species_names(ispec), &
+                          word,MAXWORDLENGTH)) then
+        reaction%h_ion_id = ispec
+      endif
+    endif
+  enddo
+  
+  do ispec = 1, reaction%neqcmplx
+    if (reaction%h_ion_id == 0) then
+      word = 'H+'
+      if (fiStringCompare(reaction%secondary_species_names(ispec), &
+                          word,MAXWORDLENGTH)) then
+        reaction%h_ion_id = -ispec
+      endif
+    endif
+  enddo
+
+  do ispec = 1, reaction%ngas
+    if (reaction%o2_gas_id == 0) then
+      word = 'O2(g)'
+      if (fiStringCompare(reaction%gas_species_names(ispec), &
+                          word,MAXWORDLENGTH)) then
+        reaction%o2_gas_id = ispec
+      endif
+    endif
+  enddo
   
   if (allocated(new_basis)) deallocate(new_basis)
   if (allocated(old_basis)) deallocate(old_basis)

@@ -169,7 +169,7 @@ CATION Ca++ 1.e-6
 noskip
 DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
 :DATABASE ../../database/hanford.dat
-:ACTIVITY
+ACTIVITY
 LOG_FORMULATION
 /
 :
@@ -326,7 +326,8 @@ Ca++     1.26734e-4       T
 Mg++     4.80169e-4       T
 Na+      9.89662e-4       T
 K+       1.77629e-4       T
-H+       5.01187e-8       F
+:H+       5.01187e-8       F
+H+       5.3280e-8       F
 NO3-     9.19247e-4       T
 SO4--    5.56801e-5       T
 Cl-      6.54794e-4       T
@@ -345,7 +346,8 @@ Ca++     1.26734e-4       T
 Mg++     4.80169e-4       T
 Na+      9.89662e-4       T
 K+       1.77629e-4       T
-H+       5.01187e-8       F
+:H+       5.01187e-8       F
+H+       5.3280e-8       F
 NO3-     9.19247e-4       T
 SO4--    5.56801e-5       T
 Cl-      6.54794e-4       T

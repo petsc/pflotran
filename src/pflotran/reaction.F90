@@ -305,7 +305,7 @@ subroutine ReactionRead(reaction,fid,option)
         call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,DATABASE FILENAME', ierr)  
       case('LOG_FORMULATION')
         reaction%use_log_formulation = PETSC_TRUE        
-      case('ACTIVITY')
+      case('ACTIVITY_COEFFICIENTS')
         reaction%compute_activity = PETSC_TRUE        
       case default
         call printErrMsg(option,'CHEMISTRY keyword: '//trim(word)//' not recognized')
@@ -499,8 +499,9 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
-  PetscInt :: icomp, jcomp
+  PetscInt :: icomp, jcomp, kcomp
   PetscInt :: imnrl, jmnrl
+  PetscInt :: icplx
   PetscInt :: igas
   PetscReal :: conc(reaction%ncomp)
   PetscInt :: constraint_type(reaction%ncomp)
@@ -523,6 +524,9 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
   PetscReal :: lnQK, QK
   PetscInt :: comp_id
   PetscReal, parameter :: log_to_ln = 2.30258509299d0
+
+  PetscReal :: Jac_num(reaction%ncomp)
+  PetscReal :: Res_pert, pert, prev_value
     
   constraint_type = aq_species_constraint%constraint_type
   constraint_spec_name = aq_species_constraint%constraint_spec_name
@@ -544,6 +548,28 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
         free_conc(icomp) = conc(icomp)
       case(CONSTRAINT_LOG)
         free_conc(icomp) = 10**conc(icomp)
+      case(CONSTRAINT_PH)
+        ! check if h+ id set
+        if (reaction%h_ion_id /= 0) then
+          ! check if icomp is h+
+          if (reaction%h_ion_id /= icomp) then
+            string = 'OH-'
+            if (.not.fiStringCompare(reaction%primary_species_names(icomp), &
+                                     string,MAXWORDLENGTH)) then
+              string = 'pH specified as constraint (constraint =' // &
+                       trim(constraint_name) // &
+                       ') for species other than H+ or OH-: ' // &
+                       trim(reaction%primary_species_names(icomp))
+              call printErrMsg(option,string)
+            endif
+          endif
+          free_conc(icomp) = 10**(-1.d0*conc(icomp))
+        else
+          string = 'pH specified as constraint (constraint =' // &
+                   trim(constraint_name) // &
+                   '), but H+ not found in chemical species.'
+          call printErrMsg(option,string)
+        endif        
       case(CONSTRAINT_MINERAL)
         free_conc(icomp) = conc(icomp) ! guess
       case(CONSTRAINT_GAS)
@@ -564,22 +590,66 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
       call RActivity(auxvar,reaction,option)
     endif
     call RTotal(auxvar,reaction,option)
-    if (reaction%nsorb > 0) call RTotalSorb(auxvar,reaction,option)
+!    if (reaction%nsorb > 0) call RTotalSorb(auxvar,reaction,option)
     
-    Res = auxvar%total(:,1)
-    Jac = auxvar%dtotal(:,:,1)
-    if (reaction%neqsurfcmplxrxn > 0) Jac = Jac + auxvar%dtotal_sorb(:,:)
-    ! dtotal must be scaled by 1.d-3 to scale density in RTotal from kg/m^3 -> kg/L
-    Jac = Jac * 1.d-3
+    Jac = 0.d0
         
     do icomp = 1, reaction%ncomp
       select case(constraint_type(icomp))
         case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
+          Res(icomp) = auxvar%total(icomp,1) - total_conc(icomp)
+          ! dtotal must be scaled by 1.d-3 to scale density in RTotal from kg/m^3 -> kg/L
+          Jac(icomp,:) = auxvar%dtotal(icomp,:,1)*1.d-3
+!          if (reaction%neqsurfcmplxrxn > 0) then
+!            Jac(icomp,:) = Jac(icomp,:) + auxvar%dtotal_sorb(icomp,:)
+!          endif
         case(CONSTRAINT_FREE,CONSTRAINT_LOG)
           Res(icomp) = 0.d0
           Jac(icomp,:) = 0.d0
-          Jac(:,icomp) = 0.d0
+!          Jac(:,icomp) = 0.d0
           Jac(icomp,icomp) = 1.d0
+          
+        case(CONSTRAINT_PH)
+          Res(icomp) = 0.d0
+          Jac(icomp,:) = 0.d0
+!          Jac(:,icomp) = 0.d0
+          Jac(icomp,icomp) = 1.d0
+          if (reaction%h_ion_id > 0) then ! free_conc(icomp) = 10**-pH
+            auxvar%primary_molal(icomp) = free_conc(icomp) / &
+                                          auxvar%pri_act_coef(icomp)
+          else ! H+ is a complex
+          
+            ln_act_h2o = 0.d0
+          
+            icplx = abs(reaction%h_ion_id)
+            
+            ! compute secondary species concentration
+            ! *note that the sign was flipped below
+            lnQK = -reaction%eqcmplx_logK(icplx)*log_to_ln
+
+            ! activity of water
+            if (reaction%eqcmplxh2oid(icplx) > 0) then
+              lnQK = lnQK + reaction%eqcmplxh2ostoich(icplx)*ln_act_h2o
+            endif
+
+            do jcomp = 1, reaction%eqcmplxspecid(0,icplx)
+              comp_id = reaction%eqcmplxspecid(jcomp,icplx)
+              lnQK = lnQK + reaction%eqcmplxstoich(jcomp,icplx)* &
+                            log(auxvar%primary_spec(comp_id)* &
+                            auxvar%pri_act_coef(comp_id))
+            enddo
+            lnQK = lnQK - log(free_conc(icomp)) ! this is log activity H+
+            QK = exp(lnQK)
+            
+            Res(icomp) = 1.d0 - QK
+
+            do jcomp = 1,reaction%eqcmplxspecid(0,icplx)
+              comp_id = reaction%eqcmplxspecid(jcomp,icplx)
+              Jac(icomp,comp_id) = -exp(lnQK-log(auxvar%primary_spec(comp_id)))* &
+                                        reaction%eqcmplxstoich(jcomp,icplx)
+            enddo
+          endif
+                      
         case(CONSTRAINT_MINERAL)
 
           ln_act_h2o = 0.d0
@@ -601,12 +671,13 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
           QK = exp(lnQK)
           
           Res(icomp) = 1.d0 - QK
-          Jac(icomp,:) = 0.d0
+
           do jcomp = 1,reaction%kinmnrlspecid(0,imnrl)
             comp_id = reaction%kinmnrlspecid(jcomp,imnrl)
-            Jac(icomp,comp_id) = -exp(lnQK-log(auxvar%primary_molal(comp_id)))* &
+            Jac(icomp,comp_id) = -exp(lnQK-log(auxvar%primary_spec(comp_id)))* &
                                  reaction%kinmnrlstoich(jcomp,imnrl)
           enddo
+  
         case(CONSTRAINT_GAS)
 
           ln_act_h2o = 0.d0
@@ -637,8 +708,6 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
       end select
     enddo
     
-    Res = total_conc - Res
-
     ! scale Jacobian
     do icomp = 1, reaction%ncomp
       norm = max(1.d0,maxval(abs(Jac(icomp,:))))
@@ -646,7 +715,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
       Res(icomp) = Res(icomp)*norm
       Jac(icomp,:) = Jac(icomp,:)*norm
     enddo
-      
+
     ! for derivatives with respect to ln conc
     do icomp = 1, reaction%ncomp
       Jac(:,icomp) = Jac(:,icomp)*auxvar%primary_spec(icomp)
@@ -659,7 +728,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
 
     Res = dsign(1.d0,Res)*min(dabs(Res),5.d0)
       
-    auxvar%primary_molal = auxvar%primary_molal*exp(Res)
+    auxvar%primary_molal = auxvar%primary_molal*exp(-Res)
 
     num_it = num_it + 1
     
@@ -746,6 +815,8 @@ subroutine RPrintConstraint(constraint_coupler,reaction,option)
           string = 'free'
         case(CONSTRAINT_LOG)
           string = 'log'
+        case(CONSTRAINT_PH)
+          string = 'pH'
         case(CONSTRAINT_MINERAL,CONSTRAINT_GAS)
           string = aq_species_constraint%constraint_spec_name(icomp)
       end select
@@ -1164,26 +1235,34 @@ subroutine RActivity(auxvar,reaction,option)
   ! compute activity coefficients
   ! primary species
   do icomp = 1, reaction%ncomp
-    auxvar%pri_act_coef(icomp) = exp((-1.d0* &
-                                      reaction%primary_spec_Z(icomp)* &
-                                      reaction%primary_spec_Z(icomp)* &
-                                      sqrt_I*reaction%debyeA/ &
-                                      (1.d0+reaction%primary_spec_a0(icomp)* &
-                                            reaction%debyeB*sqrt_I)+ &
-                                      reaction%debyeBdot*I)* &
-                                     log_to_ln)
+    if (dabs(reaction%primary_spec_Z(icomp)) > 1.d-10) then
+      auxvar%pri_act_coef(icomp) = exp((-1.d0* &
+                                        reaction%primary_spec_Z(icomp)* &
+                                        reaction%primary_spec_Z(icomp)* &
+                                        sqrt_I*reaction%debyeA/ &
+                                        (1.d0+reaction%primary_spec_a0(icomp)* &
+                                              reaction%debyeB*sqrt_I)+ &
+                                        reaction%debyeBdot*I)* &
+                                       log_to_ln)
+    else
+      auxvar%pri_act_coef(icomp) = 1.d0
+    endif
   enddo
                 
   ! secondary species
   do icplx = 1, reaction%neqcmplx
-    auxvar%sec_act_coef(icplx) = exp((-1.d0* &
-                                      reaction%eqcmplx_Z(icplx)* &
-                                      reaction%eqcmplx_Z(icplx)* &
-                                      sqrt_I*reaction%debyeA/ &
-                                      (1.d0+reaction%eqcmplx_a0(icplx)* &
-                                            reaction%debyeB*sqrt_I)+ &
-                                      reaction%debyeBdot*I)* &
-                                     log_to_ln)
+    if (dabs(reaction%eqcmplx_Z(icplx)) > 1.d-10) then
+      auxvar%sec_act_coef(icplx) = exp((-1.d0* &
+                                        reaction%eqcmplx_Z(icplx)* &
+                                        reaction%eqcmplx_Z(icplx)* &
+                                        sqrt_I*reaction%debyeA/ &
+                                        (1.d0+reaction%eqcmplx_a0(icplx)* &
+                                              reaction%debyeB*sqrt_I)+ &
+                                        reaction%debyeBdot*I)* &
+                                       log_to_ln)
+    else
+      auxvar%sec_act_coef(icplx) = 1.d0
+    endif
   enddo
   
 end subroutine RActivity

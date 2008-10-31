@@ -15,7 +15,7 @@ OPTS
     16    32     0      3      0     1       0
 :
 :   method iops ifor isurf iact loglin icon cournr pulse wtup pwrsrf
-    1      0    2    1     0    0      1    1000. 
+    1      0    2    1     1    0      1    1000. 
 :
 :    isync ipor iperm permfac porfac icksat ucutoff iread pwrpor pwrperm
 COUPle  0    0    0     0.       0.      0      0.     0     1.    -1.
