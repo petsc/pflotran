@@ -1065,6 +1065,13 @@ subroutine TranConstraintRead(constraint,reaction,option)
           
           icomp = icomp + 1        
           
+          if (icomp > reaction%ncomp) then
+            string = 'Number of constraints exceeds number of primary ' // &
+                     'chemical components in constraint: ' // &
+                     trim(constraint%name)
+            call printErrMsg(option,string)
+          endif
+          
           call fiReadWord(string,aq_species_constraint%names(icomp), &
                           PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'aqueous species name', &
@@ -1126,6 +1133,12 @@ subroutine TranConstraintRead(constraint,reaction,option)
           if (fiCheckExit(string)) exit          
           
           icomp = icomp + 1
+
+          if (icomp > reaction%nmnrl) then
+            string = 'Number of constraints exceeds number of minerals ' // &
+                     'in constraint: ' // trim(constraint%name)
+            call printErrMsg(option,string)
+          endif
           
           call fiReadWord(string,mineral_constraint%names(icomp), &
                           PETSC_TRUE,ierr)
