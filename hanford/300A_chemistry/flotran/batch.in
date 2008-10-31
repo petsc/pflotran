@@ -15,7 +15,7 @@ OPTS
     16    32     0      3      0     1       0
 :
 :   method iops ifor isurf iact loglin icon cournr pulse wtup pwrsrf
-    1      0    2    1     1    0      1    1000. 
+    1      0    2    1     0    0      1    1000. 
 :
 :    isync ipor iperm permfac porfac icksat ucutoff iread pwrpor pwrperm
 COUPle  0    0    0     0.       0.      0      0.     0     1.    -1.
@@ -65,20 +65,20 @@ COMP
 .
 :
 :species      itype   ctot        mineral
-Al+++           3     1.e-8       K-Feldspar
-Ca++            1     1.26734e-4
-Mg++            1     4.80169e-4
 Na+             1     9.89662e-4
 K+              1     1.77629e-4
+Ca++            1     1.26734e-4
+Mg++            1     4.80169e-4
+Al+++           3     1.e-8       K-Feldspar
+H+              8     7.3
+UO2++           1     1.85272e-7
+HCO3-           1     2.56907e-3
+:HCO3-           4    -3.5          CO2(g)
+:HCO3-          -1    -3.5          CO2(g)
+:HPO4--          1     1.e-16
+Cl-             1     6.54794e-4
 NO3-            1     9.19247e-4
 SO4--           1     5.56801e-5
-Cl-             1     6.54794e-4
-:HCO3-           7     2.56907e-3
-:HCO3-           4    -3.5          CO2(g)
-HCO3-          -1    -3.5          CO2(g)
-H+              8     7.3
-:HPO4--          1     1.e-16
-UO2++           1     1.85272e-7
 SiO2(aq)        1     5.36989e-4
 O2(aq)          1     3.58138e-4
 .

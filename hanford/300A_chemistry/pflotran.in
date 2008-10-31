@@ -8,7 +8,7 @@ Na+
 K+
 Ca++
 Mg++
-Al(OH)4-
+Al+++
 H+
 UO2++
 HCO3-
@@ -18,53 +18,84 @@ SO4--
 SiO2(aq)
 O2(aq)
 /
-:skip
 SECONDARY_SPECIES
 OH-
-CO2(aq)
 CO3--
+CO2(aq)
 CaCO3(aq)
 CaHCO3+
 CaSO4(aq)
+CaCl+
+CaCl2(aq)
 MgCO3(aq)
 MgHCO3+
 MgSO4(aq)
+MgCl+
 NaCl(aq)
 NaOH(aq)
+NaSO4-
 NaHCO3(aq)
-NaHSiO3(aq)
+:NaHSiO3(aq)
 NaNO3(aq)
 NaNO2(aq)
-HSO4-
-KSO4-
-HNO3(aq)
+ KCl(aq)
+ KHSO4(aq)
+ KOH(aq)
+ KSO4-
+ HSO4-
+ H2SO4(aq)
+ HCl(aq)
 NO2-
 NH3(aq)
 HN3(aq)
 N3-
+:H2PO4-
+:P2O7----
+:PO4---
+:H3PO4(aq)
+:O2(aq)
+AlOH++
+Al(OH)2+
+Al(OH)3(aq)
+Al(OH)4-
 H3SiO4-
 H2SiO4--
-Al+++
-Al(OH)2+
-:Al(OH)4-
-:AlO2-
-AlOH++
 U+++
 U++++
 UO2+
 (UO2)2(OH)2++
+:(UO2)3(CO3)6(6-)
 UO2CO3(aq)
 UO2(CO3)2--
 UO2(CO3)3----
-UO2Cl+
+:UO2Cl+
 UO2OH+
+Ca2UO2(CO3)3(aq)
+ CaUO2(CO3)3--
+(UO2)2CO3(OH)3-
+UO2(OH)2(aq)
+(UO2)4(OH)7+
+(UO2)3(OH)5+
+:25 C
+skip
+CaH2PO4+
+CaPO4-
+CaHPO4(aq)
+CaP2O7--
+UO2(H2PO4)(H3PO4)+
+UO2(H2PO4)2(aq)
+UO2(OH)3-
+UO2(OH)4--
+UO2HPO4(aq)
+UO2H2PO4+
+UO2H3PO4++
+UO2PO4-
+noskip
 /
-:noskip
 GAS_SPECIES
 O2(g)
 CO2(g)
 /
-:skip
 MINERALS
 Calcite
 Magnesite
@@ -87,10 +118,8 @@ Quartz     0.0
 Chalcedony 0.0
 SiO2(am)   0.0
 /
-:noskip
-:skip
+skip
 SORPTION
-:skip
 SURFACE_COMPLEXATION_RXN
 MINERAL Calcite 10.
 SITE >SOH 1.e-6
@@ -123,24 +152,24 @@ COMPLEXES
 ION_EXCHANGE_RXN
 MINERAL Calcite
 CEC 1.e-1
-CATIONS
-Na+ 1.
-K+  1.e-3
-Ca++ 1.e-4
+CATION Na+ 1.
+CATION K+  1.e-3
+CATION Ca++ 1.e-4
 /
 /
 ION_EXCHANGE_RXN
 MINERAL Kaolinite
 CEC 1.e-3
-CATIONS
-Na+  1.
-Ca++ 1.e-6
+CATION Na+  1.
+CATION Ca++ 1.e-6
 /
 /
 :noskip
 /
-:DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
-DATABASE ../../database/hanford.dat
+noskip
+DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
+:DATABASE ../../database/hanford.dat
+:ACTIVITY
 LOG_FORMULATION
 /
 :
@@ -297,12 +326,13 @@ Ca++     1.26734e-4       T
 Mg++     4.80169e-4       T
 Na+      9.89662e-4       T
 K+       1.77629e-4       T
-H+       5.01187e-8       T
+H+       5.01187e-8       F
 NO3-     9.19247e-4       T
 SO4--    5.56801e-5       T
 Cl-      6.54794e-4       T
 HCO3-    2.56907e-3       T
-Al(OH)4- 1.e-9            T
+:Al(OH)4- 1.e-9            T
+Al+++    1.e-9            M K-Feldspar
 UO2++    1.85272e-7       T
 SiO2(aq) 5.36989e-4       T
 O2(aq)   3.58138e-4       T
@@ -315,17 +345,17 @@ Ca++     1.26734e-4       T
 Mg++     4.80169e-4       T
 Na+      9.89662e-4       T
 K+       1.77629e-4       T
-H+       5.01187e-8       T
+H+       5.01187e-8       F
 NO3-     9.19247e-4       T
 SO4--    5.56801e-5       T
 Cl-      6.54794e-4       T
 HCO3-    2.56907e-3       T
-Al(OH)4- 1.e-9            T
+:Al(OH)4- 1.e-9            T
+Al+++    1.e-9            M K-Feldspar
 UO2++    1.85272e-7       T
 SiO2(aq) 5.36989e-4       T
 O2(aq)   3.58138e-4       T
 /
-:skip
 MINERALS
 Calcite    0.1
 Magnesite  0.0
@@ -337,7 +367,6 @@ Quartz     0.0
 Chalcedony 0.0
 SiO2(am)   0.0
 /
-:noskip
 /
 
 BOUNDARY_CONDITION
