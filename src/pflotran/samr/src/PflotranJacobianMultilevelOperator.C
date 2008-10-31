@@ -129,6 +129,17 @@ PflotranJacobianMultilevelOperator::apply(const int coarse_ln,
                                           const double a,
                                           const double b)
 {
+   
+   // this version does not compute correctly at c-f interfaces
+   for(int ln=fine_ln; ln>=coarse_ln; ln--)
+   {
+#ifdef DEBUG_CHECK_ASSERTIONS
+      assert(d_level_operators[ln]!=NULL);
+#endif
+      d_level_operators[ln]->apply(f_id, u_id, r_id, f_idx, u_idx, r_idx, a, b);
+      
+   }
+
 }
 
 void
@@ -649,7 +660,7 @@ PflotranJacobianMultilevelOperator::initializeScratchVector( Vec x )
 int
 PflotranJacobianMultilevelOperator::getVariableIndex(std::string &name, 
                                                      tbox::Pointer<hier::VariableContext> &context,
-                                                     tbox::Pointer<hier::Variable<NDIM> > &variable,
+                                                     tbox::Pointer<hier::Variable<NDIM> > &var,
                                                      hier::IntVector<NDIM> nghosts,
                                                      int depth,
                                                      bool bOverride,
