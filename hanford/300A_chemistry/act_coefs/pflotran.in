@@ -7,12 +7,15 @@ PRIMARY_SPECIES
 Na+
 K+
 Ca++
+:Cu++
 Mg++
-Al+++
+:Al+++
+Al(OH)4-
 H+
 UO2++
 HCO3-
 Cl-
+:F-
 NO3-
 SO4--
 SiO2(aq)
@@ -35,7 +38,7 @@ NaCl(aq)
 NaOH(aq)
 NaSO4-
 NaHCO3(aq)
-:NaHSiO3(aq)
+NaHSiO3(aq)
 NaNO3(aq)
 NaNO2(aq)
  KCl(aq)
@@ -54,28 +57,50 @@ N3-
 :PO4---
 :H3PO4(aq)
 :O2(aq)
+Al+++
 AlOH++
 Al(OH)2+
 Al(OH)3(aq)
-Al(OH)4-
+:Al(OH)4-
 H3SiO4-
 H2SiO4--
+:
+:uranium species
 U+++
 U++++
 UO2+
-(UO2)2(OH)2++
 :(UO2)3(CO3)6(6-)
+:
+UO2OH+
+UO2(OH)2(aq)
+UO2(OH)3-
+UO2(OH)4--
+(UO2)2OH+++
+(UO2)2(OH)2++
+(UO2)3(OH)4++
+(UO2)3(OH)5+
+(UO2)3(OH)7-
+(UO2)4(OH)7+
+:
 UO2CO3(aq)
 UO2(CO3)2--
 UO2(CO3)3----
-:UO2Cl+
-UO2OH+
-Ca2UO2(CO3)3(aq)
- CaUO2(CO3)3--
 (UO2)2CO3(OH)3-
-UO2(OH)2(aq)
-(UO2)4(OH)7+
-(UO2)3(OH)5+
+:
+Ca2UO2(CO3)3(aq)
+CaUO2(CO3)3--
+:
+UO2NO3+
+UO2Cl+
+UO2Cl2(aq)
+UO2SO4(aq)
+UO2(SO4)2--
+:
+:UO2F+
+:UO2F2(aq)
+:UO2F3-
+:UO2F4--
+:
 :25 C
 skip
 CaH2PO4+
@@ -97,31 +122,91 @@ O2(g)
 CO2(g)
 /
 MINERALS
+Quartz
+SiO2(am)
+Chalcedony
 Calcite
 Magnesite
-Gibbsite
-Kaolinite
+ Dolomite
+ Dolomite-dis
+ Dolomite-ord
+ Brucite
+ Nesquehonite
+ Gypsum
 K-Feldspar
+Albite
 Muscovite
-Quartz
-Chalcedony
-SiO2(am)
+Kaolinite
+Anorthite
+Analcime
+Paragonite
+Gibbsite
+Rutherfordine
+Schoepite
+:(UO2)3(PO4)2
+:(UO2)3(PO4)2.4H2O
+UO2(OH)2(beta)
+UO2CO3
+:UO2(PO3)2
+CaUO4
+ Boltwoodite
+ Boltwoodite-Na
+ Boltwoodite_PNNL
+ Boltwoodite-Na_PNNL
+ Soddyite
+ Soddyite_PNNL
+ Uraninite
+ Uranophane
+ Uranophane_PNNL
+ Weeksite
+ Weeksite_PNNL
+ Weeksite-Na_PNNL
 /
 MINERAL_KINETICS
-Calcite 1.d-6
-Magnesite  0.0
-Gibbsite   0.0
-Kaolinite 1.e-12
-K-Feldspar 0.0
-Muscovite  0.0
-Quartz     0.0
-Chalcedony 0.0
-SiO2(am)   0.0
+Quartz 0.
+SiO2(am) 0.
+Chalcedony 0.
+Calcite 0.
+Magnesite 0.
+ Dolomite 0.
+ Dolomite-dis 0.
+ Dolomite-ord 0.
+ Brucite 0.
+ Nesquehonite 0.
+ Gypsum 0.
+K-Feldspar 0.
+Albite 0.
+Muscovite 0.
+Kaolinite 0.
+Anorthite 0.
+Analcime 0.
+Paragonite 0.
+Gibbsite 0.
+Rutherfordine 0.
+Schoepite 0.
+:(UO2)3(PO4)2 0.
+:(UO2)3(PO4)2.4H2O 0.
+UO2(OH)2(beta) 0.
+UO2CO3 0.
+:UO2(PO3)2 0.
+CaUO4 0.
+ Boltwoodite 0.
+ Boltwoodite-Na 0.
+ Boltwoodite_PNNL 0.
+ Boltwoodite-Na_PNNL 0.
+ Soddyite 0.
+ Soddyite_PNNL 0.
+ Uraninite 0.
+ Uranophane 0.
+ Uranophane_PNNL 0.
+ Weeksite 0.
+ Weeksite_PNNL 0.
+ Weeksite-Na_PNNL 0.
 /
 skip
 SORPTION
 SURFACE_COMPLEXATION_RXN
-MINERAL Calcite 10.
+MINERAL Calcite
 SITE >SOH 1.e-6
 COMPLEXES
 >NPPSOUO2+
@@ -131,7 +216,7 @@ COMPLEXES
 /
 /
 SURFACE_COMPLEXATION_RXN
-MINERAL Kaolinite 5.
+MINERAL Kaolinite
 SITE >S1OH 1.e-6
 COMPLEXES
 >S1OUO2OHB1
@@ -140,7 +225,7 @@ COMPLEXES
 /
 /
 SURFACE_COMPLEXATION_RXN
-MINERAL Kaolinite 5.
+MINERAL Kaolinite
 SITE >S2OH 1.e-6
 COMPLEXES
 >S2OUO2OHB2
@@ -169,8 +254,8 @@ CATION Ca++ 1.e-6
 noskip
 DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
 :DATABASE ../../database/hanford.dat
-ACTIVITY
 LOG_FORMULATION
+ACTIVITY_COEFFICIENTS
 /
 :
 :CHECKPOINT 1
@@ -195,9 +280,9 @@ DEBUG
 :
 GRID
 TYPE structured
-NXYZ 10 1 1
+NXYZ 100 1 1
 DXYZ
-1.
+0.1
 1.
 1.
 /
@@ -242,21 +327,20 @@ THERMAL_PROPERTIES
 /
 :
 MATERIALS
-:name   id icap ithm por  tau permx     permy     permz     permpwr
-Soil1   1  1    1    0.25 0.5 1.d-12    1.d-12    1.d-13    1.d0
+:name   id icap ithm por  tau   permx     permy     permz     permpwr
+Soil1   1  1    1    0.5  0.5   1.d-12    1.d-12    1.d-13    1.d0
 /
 :
 :TIME d every 10
 TIME y
-10.
+1.
 :
-:DTST 1.d-6
-DTST 1.d-6
+DTST 1.d-8
 :50. 1.0d0 
-50. 0.1d0 
+50. 0.01d0 
 :
 REGION all
-BLOCK 1 10 1 1 1 1
+BLOCK 1 100 1 1 1 1
 /
 
 REGION West
@@ -265,7 +349,7 @@ FACE west
 /
 
 REGION East
-BLOCK 10 10 1 1 1 1
+BLOCK 100 100 1 1 1 1
 FACE east
 /
 
@@ -289,14 +373,16 @@ FLOW_CONDITION Inlet
 TYPE
 FLUX neumann
 /
-FLUX 2.8935185d-7 ! 0.1 m/day pore water
+:FLUX 2.8935185d-7 ! 0.1 m/day pore water
+FLUX 0.317098d-7 ! 0.1 m/day pore water
 /
 
 FLOW_CONDITION Outlet
 TYPE
 FLUX neumann
 /
-FLUX -2.8935185d-7
+:FLUX -2.8935185d-7
+FLUX -0.317098d-7 ! 0.1 m/day pore water
 /
 
 FLOW_CONDITION initial
@@ -326,15 +412,16 @@ Ca++     1.26734e-4       T
 Mg++     4.80169e-4       T
 Na+      9.89662e-4       T
 K+       1.77629e-4       T
-:H+       5.01187e-8       F
-H+       5.3280e-8       F
+:H+       7.3            pH
+H+       5.2895e-8        F
 NO3-     9.19247e-4       T
 SO4--    5.56801e-5       T
 Cl-      6.54794e-4       T
-HCO3-    2.56907e-3       T
-:Al(OH)4- 1.e-9            T
-Al+++    1.e-9            M K-Feldspar
-UO2++    1.85272e-7       T
+:HCO3-    3.6163e-4       T
+HCO3-    1.e-3            G CO2(g)
+Al(OH)4- 1.e-9            M K-Feldspar
+:Al+++    1.e-9           M K-Feldspar
+UO2++    1.e-16           T
 SiO2(aq) 5.36989e-4       T
 O2(aq)   3.58138e-4       T
 /
@@ -346,28 +433,59 @@ Ca++     1.26734e-4       T
 Mg++     4.80169e-4       T
 Na+      9.89662e-4       T
 K+       1.77629e-4       T
-:H+       5.01187e-8       F
-H+       5.3280e-8       F
+H+       7.3             pH
+:H+       5.2895e-8       F
 NO3-     9.19247e-4       T
 SO4--    5.56801e-5       T
 Cl-      6.54794e-4       T
-HCO3-    2.56907e-3       T
-:Al(OH)4- 1.e-9            T
-Al+++    1.e-9            M K-Feldspar
+:HCO3-    3.6163e-4       T
+HCO3-    1.e-3            G CO2(g)
+Al(OH)4- 1.e-9            M K-Feldspar
+:Al+++    1.e-9           M K-Feldspar
 UO2++    1.85272e-7       T
 SiO2(aq) 5.36989e-4       T
 O2(aq)   3.58138e-4       T
 /
 MINERALS
-Calcite    0.1
-Magnesite  0.0
-Gibbsite   0.0
-Kaolinite  0.0
-K-Feldspar 0.0
-Muscovite  0.0
-Quartz     0.0
-Chalcedony 0.0
-SiO2(am)   0.0
+Quartz 0.
+SiO2(am) 0.
+Chalcedony 0.
+Calcite 0.
+Magnesite 0.
+ Dolomite 0.
+ Dolomite-dis 0.
+ Dolomite-ord 0.
+ Brucite 0.
+ Nesquehonite 0.
+ Gypsum 0.
+K-Feldspar 0.
+Albite 0.
+Muscovite 0.
+Kaolinite 0.
+Anorthite 0.
+Analcime 0.
+Paragonite 0.
+Gibbsite 0.
+Rutherfordine 0.
+Schoepite 0.
+:(UO2)3(PO4)2 0.
+:(UO2)3(PO4)2.4H2O 0.
+UO2(OH)2(beta) 0.
+UO2CO3 0.
+:UO2(PO3)2 0.
+CaUO4 0.
+ Boltwoodite 0.
+ Boltwoodite-Na 0.
+ Boltwoodite_PNNL 0.
+ Boltwoodite-Na_PNNL 0.
+ Soddyite 0.
+ Soddyite_PNNL 0.
+ Uraninite 0.
+ Uranophane 0.
+ Uranophane_PNNL 0.
+ Weeksite 0.
+ Weeksite_PNNL 0.
+ Weeksite-Na_PNNL 0.
 /
 /
 
