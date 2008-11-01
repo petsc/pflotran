@@ -786,7 +786,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: i, icomp
   PetscInt :: icplx, icplx2
-  PetscInt :: imnrl
+  PetscInt :: imnrl,igas
   PetscInt :: eqcmplxsort(reaction%neqcmplx)
   PetscInt :: eqminsort(reaction%nmnrl)
   PetscInt :: eqsurfcmplxsort(reaction%neqsurfcmplx+reaction%neqsurfcmplxrxn)
@@ -1011,7 +1011,18 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
     
   130 format(/,'  mineral       vol frac  log SI      log K')
   131 format(2x,a12,f8.4,2x,f8.4,2x,1pe12.4,2x,1pe12.4)
-            
+
+  if (reaction%ngas > 0) then
+    write(option%fid_out,132)
+    write(option%fid_out,90)
+    do igas = 1, reaction%ngas
+      write(option%fid_out,133) reaction%eqgas_logK(igas)
+    enddo
+  endif
+  
+  132 format(/,'  gas   log partial pressure   partial pressure [bars]  log K')
+  133 format(1pe12.4)
+  
   call RTAuxVarDestroy(auxvar)
             
 end subroutine RPrintConstraint
