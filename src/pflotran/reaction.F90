@@ -1006,7 +1006,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
     do imnrl = 1, reaction%nmnrl
       i = eqminsort(imnrl)
       write(option%fid_out,131) mineral_constraint%names(i), &
-        mineral_constraint%basis_mol_frac(i),lnQK(i)/2.30259d0,reaction%kinmnrl_logK(i)
+        mineral_constraint%basis_mol_frac(i),lnQK(i)*ln_to_log,reaction%kinmnrl_logK(i)
     enddo
   endif
     
