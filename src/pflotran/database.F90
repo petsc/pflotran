@@ -327,7 +327,7 @@ subroutine DatabaseRead(reaction,option)
         call fiReadDBaseInt(dbase_id,string,cur_surfcplx%eqrxn%nspec,ierr)
         call fiErrorMsg(option%myrank,'Number of species in surface complexation reaction', &
                         'DATABASE',ierr)  
-        ! decrement number of species since free site will note be included
+        ! decrement number of species since free site will not be included
         cur_surfcplx%eqrxn%nspec = cur_surfcplx%eqrxn%nspec - 1
         ! allocate arrays for rxn
         allocate(cur_surfcplx%eqrxn%spec_name(cur_surfcplx%eqrxn%nspec))
@@ -372,7 +372,7 @@ subroutine DatabaseRead(reaction,option)
   enddo
   
   ! check for duplicate species
- flag = PETSC_FALSE
+  flag = PETSC_FALSE
  
   ! aqueous primary species
   cur_aq_spec => reaction%primary_species_list
