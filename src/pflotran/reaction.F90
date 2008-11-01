@@ -17,7 +17,6 @@ module Reaction_module
   public :: ReactionCreate, &
             ReactionRead, &
             ReactionReadMineralKinetics, &
-!           ReactionReadSurfaceComplexes, &
             ReactionInitializeConstraint, &
             RTotal, &
             RTotalSorb, &
@@ -1102,80 +1101,6 @@ subroutine ReactionReadMineralKinetics(reaction,fid,option)
   enddo
   
 end subroutine ReactionReadMineralKinetics
-
-! ************************************************************************** !
-!
-! ReactionReadSurfaceComplexes: Reads surface complexation reactions
-! author: Peter Lichtner
-! date: 10/16/08
-!
-! ************************************************************************** !
-#if 0
-subroutine ReactionReadSurfaceComplexes(reaction,fid,option)
-
-  use Fileio_module
-  use Option_module
-  
-  implicit none
-  
-  type(reaction_type) :: reaction
-  type(option_type) :: option
-  PetscInt :: fid
-  
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: word
-  character(len=MAXWORDLENGTH) :: name
-  
-  type(surface_complexation_rxn_type), pointer :: cur_srfcmplx
-  PetscErrorCode :: ierr
-
-  cur_srfcmplx => reaction%surface_complex_list
-  do 
-    if (.not.associated(cur_srfcmplx)) exit
-    cur_srfcmplx%id = -1*abs(cur_srfcmplx%id)
-    cur_srfcmplx => cur_srfcmplx%next
-  enddo
-
-  ierr = 0
-  do
-  
-    call fiReadFlotranString(fid,string,ierr)
-    if (ierr /= 0) exit
-
-    if (fiCheckExit(string)) exit  
-
-    call fiReadWord(string,name,PETSC_TRUE,ierr)
-    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)
-    
-    cur_srfcmplx => reaction%surface_complex_list
-    do 
-      if (.not.associated(cur_srfcmplx)) exit
-      if (fiStringCompare(cur_srfcmplx%name,name,MAXWORDLENGTH)) then
-!       if (.not.associated(cur_srfcmplx%tstrxn)) then
-!         cur_srfcmplx%tstrxn => TransitionStateTheoryRxnCreate()
-!       endif
-!       call fiReadDouble(string,cur_srfcmplx%tstrxn%rate,ierr)
-!       cur_srfcmplx%id = abs(cur_srfcmplx%id)
-        exit
-      endif
-      cur_srfcmplx => cur_srfcmplx%next
-    enddo
-    
-  enddo
- 
-  cur_srfcmplx => reaction%surface_complex_list
-  do 
-    if (.not.associated(cur_srfcmplx)) exit
-    if (cur_srfcmplx%id < 0) then
-      string = 'No surface complex site density provided for mineral: ' // &
-               trim(cur_srfcmplx%name) // '.'
-      call printErrMsg(option,string)
-    endif
-    cur_srfcmplx => cur_srfcmplx%next
-  enddo
-  
-end subroutine ReactionReadSurfaceComplexes
-#endif
 
 ! ************************************************************************** !
 !
