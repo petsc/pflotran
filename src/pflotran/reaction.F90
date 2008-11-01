@@ -981,7 +981,6 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       QK(imnrl) = exp(lnQK(imnrl))    
     enddo
 
-!#if 0
     ! sort mineral saturation indices from largest to smallest
     do i = 1, reaction%nmnrl
       eqminsort(i) = i
@@ -999,7 +998,6 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       enddo
       if (finished) exit
     enddo
-!#endif
 
     write(option%fid_out,130)
     write(option%fid_out,90)
@@ -1007,7 +1005,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
     do imnrl = 1, reaction%nmnrl
       i = eqminsort(imnrl)
       write(option%fid_out,131) mineral_constraint%names(i), &
-        mineral_constraint%basis_mol_frac(i),QK(imnrl),lnQK(i)/2.30259d0,reaction%kinmnrl_logK(i)
+        mineral_constraint%basis_mol_frac(i),QK(i),lnQK(i)/2.30259d0,reaction%kinmnrl_logK(i)
     enddo
   endif
     
