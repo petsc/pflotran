@@ -618,7 +618,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
 !          Jac(:,icomp) = 0.d0
           Jac(icomp,icomp) = 1.d0
           if (reaction%h_ion_id > 0) then ! conc(icomp) = 10**-pH
-            auxvar%primary_molal(icomp) = conc(icomp) / &
+            auxvar%primary_molal(icomp) = 10**(-conc(icomp)) / &
                                           auxvar%pri_act_coef(icomp)
           else ! H+ is a complex
           
