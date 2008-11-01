@@ -6,6 +6,8 @@ syntax: glob
 *.log
 *.lot
 *.out
+*.tec
+*.xyp
 *.toc
 *.bst
 *.sty
