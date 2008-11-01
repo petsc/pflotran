@@ -788,11 +788,12 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   PetscInt :: icplx, icplx2
   PetscInt :: imnrl
   PetscInt :: eqcmplxsort(reaction%neqcmplx)
+  PetscInt :: eqminsort(reaction%nmnrl)
   PetscInt :: eqsurfcmplxsort(reaction%neqsurfcmplx+reaction%neqsurfcmplxrxn)
   PetscTruth :: finished
   PetscReal :: conc, conc2
   PetscInt :: num_iterations
-  PetscReal :: lnQK, QK
+  PetscReal :: lnQK(reaction%nmnrl), QK(reaction%nmnrl)
   PetscReal :: ln_act_h2o
   PetscReal :: charge_balance
   PetscInt :: comp_id, jcomp
@@ -964,27 +965,54 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   endif
           
   if (reaction%nmnrl > 0 .and. associated(mineral_constraint)) then
-  130 format(/,'  mineral       vol frac  saturation')
-    write(option%fid_out,130)
-    write(option%fid_out,90)
-  131 format(2x,a12,f8.4,2x,f8.4)
+  
     do imnrl = 1, reaction%nmnrl
       ! compute saturation
       ln_act_h2o = 0.d0
-      lnQK = -1.d0*reaction%kinmnrl_logK(imnrl)*log_to_ln
+      lnQK(imnrl) = -reaction%kinmnrl_logK(imnrl)*log_to_ln
       if (reaction%kinmnrlh2oid(imnrl) > 0) then
-        lnQK = lnQK + reaction%kinmnrlh2ostoich(imnrl)*ln_act_h2o
+        lnQK(imnrl) = lnQK(imnrl) + reaction%kinmnrlh2ostoich(imnrl)*ln_act_h2o
       endif
       do jcomp = 1, reaction%kinmnrlspecid(0,imnrl)
         comp_id = reaction%kinmnrlspecid(jcomp,imnrl)
-        lnQK = lnQK + reaction%kinmnrlstoich(jcomp,imnrl)* &
+        lnQK(imnrl) = lnQK(imnrl) + reaction%kinmnrlstoich(jcomp,imnrl)* &
                       log(auxvar%primary_spec(comp_id)*auxvar%pri_act_coef(comp_id))
       enddo
-      QK = exp(lnQK)    
-      write(option%fid_out,131) mineral_constraint%names(imnrl), &
-        mineral_constraint%basis_mol_frac(imnrl),QK
+      QK(imnrl) = exp(lnQK(imnrl))    
+    enddo
+
+!#if 0
+    ! sort mineral saturation indices from largest to smallest
+    do i = 1, reaction%nmnrl
+      eqminsort(i) = i
+    enddo
+    do
+      finished = PETSC_TRUE
+      do i = 1, reaction%nmnrl-1
+        icplx = eqminsort(i)
+        icplx2 = eqminsort(i+1)
+        if (QK(icplx) < QK(icplx2)) then
+          eqminsort(i) = icplx2
+          eqminsort(i+1) = icplx
+          finished = PETSC_FALSE
+        endif
+      enddo
+      if (finished) exit
+    enddo
+!#endif
+
+    write(option%fid_out,130)
+    write(option%fid_out,90)
+  
+    do imnrl = 1, reaction%nmnrl
+      i = eqminsort(imnrl)
+      write(option%fid_out,131) mineral_constraint%names(i), &
+        mineral_constraint%basis_mol_frac(i),QK(imnrl),lnQK(i)/2.30259d0,reaction%kinmnrl_logK(i)
     enddo
   endif
+    
+  130 format(/,'  mineral       vol frac  saturation  log SI        log K')
+  131 format(2x,a12,f8.4,2x,f8.4,2x,1pe12.4,2x,1pe12.4)
             
   call RTAuxVarDestroy(auxvar)
             
