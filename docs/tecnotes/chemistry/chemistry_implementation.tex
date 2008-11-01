@@ -246,6 +246,30 @@ where
 
 Given various constraints imposed on an aqueous solution, the equilibrium concentration of all species in the system are determined. These constraints may consist of charge balance, mineral and gas equilibria, free ion concentration, pH, redox potential specified by Eh, pe, or $f_{\rm O_2}$, and total species concentration which may include sorption.
 
+\subsubsection{Reaction Types}
+
+\begin{description}
+
+\item[Homogeneous]
+\EQ
+\sum_j\nu_{ji}\A_j\arrows\A_i.
+\EN
+
+\item[Heterogeneous: mineral]
+\EQ
+\sum_j\nu_{jm}\A_j\arrows\M_m.
+\EN
+
+\item[Heterogeneous: gas]
+\EQ
+\sum_j\nu_{ji}^g\A_j^{}\arrows\G_i.
+\EN
+\EQ
+C_i^g \eq \frac{P_i}{RT} \eq \frac{K_i}{RT}\prod \left(\gamma_jC_j\right)^{\nu_{ji}^g}
+\EN
+
+\end{description}
+
 \subsubsection{Constraint Conditions}
 
 \begin{description}

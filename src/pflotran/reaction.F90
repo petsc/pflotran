@@ -659,7 +659,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
   
           imnrl = constraint_id(icomp)
           ! compute secondary species concentration
-          lnQK = -1.d0*reaction%kinmnrl_logK(imnrl)*log_to_ln
+          lnQK = -reaction%kinmnrl_logK(imnrl)*log_to_ln
 
           ! activity of water
           if (reaction%kinmnrlh2oid(imnrl) > 0) then
@@ -677,7 +677,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
 
           do jcomp = 1,reaction%kinmnrlspecid(0,imnrl)
             comp_id = reaction%kinmnrlspecid(jcomp,imnrl)
-            Jac(icomp,comp_id) = -exp(lnQK-log(auxvar%primary_spec(comp_id)))* &
+            Jac(icomp,comp_id) = -QK/auxvar%primary_spec(comp_id)* &
                                  reaction%kinmnrlstoich(jcomp,imnrl)
           enddo
   
@@ -686,10 +686,12 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
           ln_act_h2o = 0.d0
   
           igas = constraint_id(icomp)
+          
           ! compute secondary species concentration
-          lnQK = -1.d0*reaction%eqgas_logK(igas)*log_to_ln
+          lnQK = -reaction%eqgas_logK(igas)*log_to_ln
+          
           ! divide K by RT
-          lnQK = lnQK + log((auxvar%temp+273.15d0)*ideal_gas_const)
+          !lnQK = lnQK - log((auxvar%temp+273.15d0)*ideal_gas_const)
           
           ! activity of water
           if (reaction%eqgash2oid(igas) > 0) then
@@ -701,18 +703,17 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
             lnQK = lnQK + reaction%eqgasstoich(jcomp,igas)* &
                           log(auxvar%primary_spec(comp_id)*auxvar%pri_act_coef(comp_id))
           enddo
-          if (conc(icomp) <= 0.d0) then ! already in log form?
-            lnQK = lnQK - conc(icomp)*log_to_ln ! this log10 partial pressure gas
-          else
-            lnQK = lnQK - log(conc(icomp)) ! this is partial pressure gas
-          endif
-          QK = exp(lnQK)
           
-          Res(icomp) = 1.d0 - QK
+          QK = exp(lnQK)
+          if (conc(icomp) <= 0.d0) then ! log form
+            conc(icomp) = 10**conc(icomp) ! conc log10 partial pressure gas
+          endif
+          
+          Res(icomp) = QK - conc(icomp)
           Jac(icomp,:) = 0.d0
           do jcomp = 1,reaction%eqgasspecid(0,igas)
             comp_id = reaction%eqgasspecid(jcomp,igas)
-            Jac(icomp,comp_id) = -exp(lnQK-log(auxvar%primary_spec(comp_id)))* &
+            Jac(icomp,comp_id) = QK/auxvar%primary_spec(comp_id)* &
                                  reaction%eqgasstoich(jcomp,igas)
           enddo
       end select
