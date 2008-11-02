@@ -549,7 +549,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
       case(CONSTRAINT_FREE)
         free_conc(icomp) = conc(icomp)
       case(CONSTRAINT_LOG)
-        free_conc(icomp) = 10**conc(icomp)
+        free_conc(icomp) = 10.d0**conc(icomp)
       case(CONSTRAINT_PH)
         ! check if h+ id set
         if (reaction%h_ion_id /= 0) then
@@ -565,7 +565,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
               call printErrMsg(option,string)
             endif
           endif
-          free_conc(icomp) = 10**(-1.d0*conc(icomp))
+          free_conc(icomp) = 10.d0**(-1.d0*conc(icomp))
         else
           string = 'pH specified as constraint (constraint =' // &
                    trim(constraint_name) // &
@@ -575,6 +575,9 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
       case(CONSTRAINT_MINERAL)
         free_conc(icomp) = conc(icomp) ! guess
       case(CONSTRAINT_GAS)
+        if (conc(icomp) <= 0.d0) then ! log form
+          conc(icomp) = 10.d0**conc(icomp) ! conc log10 partial pressure gas
+        endif
         free_conc(icomp) = 1.d-9 ! guess
     end select
   enddo
@@ -617,7 +620,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
 !          Jac(:,icomp) = 0.d0
           Jac(icomp,icomp) = 1.d0
           if (reaction%h_ion_id > 0) then ! conc(icomp) = 10**-pH
-            auxvar%primary_molal(icomp) = 10**(-conc(icomp)) / &
+            auxvar%primary_molal(icomp) = 10.d0**(-conc(icomp)) / &
                                           auxvar%pri_act_coef(icomp)
           else ! H+ is a complex
           
@@ -704,9 +707,6 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
           enddo
           
           QK = exp(lnQK)
-          if (conc(icomp) <= 0.d0) then ! log form
-            conc(icomp) = 10**conc(icomp) ! conc log10 partial pressure gas
-          endif
           
           Res(icomp) = QK - conc(icomp)
           Jac(icomp,:) = 0.d0

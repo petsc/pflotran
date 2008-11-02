@@ -1290,7 +1290,7 @@ subroutine BasisInit(reaction,option)
   isec_spec = -1 ! to catch bugs
 
   ! gas complexes
-  reaction%ngas = GetSecondarySpeciesCount(reaction)
+  reaction%ngas = GetGasCount(reaction)
   
   if (reaction%ngas > 0) then
     allocate(reaction%gas_species_names(reaction%ngas))
