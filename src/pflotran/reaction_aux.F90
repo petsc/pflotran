@@ -145,6 +145,7 @@ module Reaction_Aux_module
     ! aqueous complexes
     PetscInt :: neqcmplx
     character(len=MAXWORDLENGTH), pointer :: secondary_species_names(:)
+    character(len=MAXWORDLENGTH), pointer :: eqcmplx_basis_names(:,:)
     PetscInt, pointer :: eqcmplxspecid(:,:)   ! (0:ncomp in rxn)
     PetscReal, pointer :: eqcmplxstoich(:,:)
     PetscInt, pointer :: eqcmplxh2oid(:)       ! id of water, if present
@@ -309,6 +310,7 @@ function ReactionCreate()
   
   nullify(reaction%primary_species_names)
   nullify(reaction%secondary_species_names)
+  nullify(reaction%eqcmplx_basis_names)
   nullify(reaction%gas_species_names)
   nullify(reaction%surface_complex_names)
   nullify(reaction%mineral_names)

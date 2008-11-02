@@ -770,6 +770,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
                             reaction,option)
 
   use Option_module
+  use Fileio_module
   use Condition_module
 
   implicit none
@@ -784,7 +785,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   type(aq_species_constraint_type), pointer :: aq_species_constraint
   type(mineral_constraint_type), pointer :: mineral_constraint
   character(len=MAXSTRINGLENGTH) :: string
-  PetscInt :: i, icomp
+  PetscInt :: i, icomp, j, ncomp
   PetscInt :: icplx, icplx2
   PetscInt :: imnrl,igas
   PetscInt :: eqcmplxsort(reaction%neqcmplx)
@@ -797,7 +798,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   PetscReal :: ln_act_h2o
   PetscReal :: charge_balance
   PetscReal :: totj, percent
-  PetscInt :: comp_id, jcomp
+  PetscInt :: comp_id, jcomp, ifound
 
   aq_species_constraint => constraint_coupler%aqueous_species
   mineral_constraint => constraint_coupler%minerals
@@ -1047,38 +1048,44 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   132 format(/,'  gas   log partial pressure  partial pressure [bars]  log K')
   133 format(a8,2x,1pe12.4,8x,1pe12.4,8x,1pe12.4)
 
-#if 0
   !print speciation precentages
   write(option%fid_out,92)
   92 format(/)
-  write(option%fid_out,90)
   do jcomp = 1, reaction%ncomp
     totj = auxvar%total(jcomp,1)
     totj = abs(totj)
+    write(option%fid_out,90)
     write(option%fid_out,135) reaction%primary_species_names(jcomp),totj
     write(option%fid_out,134)
     write(option%fid_out,90)
+    percent = auxvar%primary_molal(jcomp)/totj*100.d0
     write(option%fid_out,136) reaction%primary_species_names(jcomp), &
-      auxvar%primary_molal(jcomp), &
-      auxvar%primary_molal(jcomp)/totj*100.d0
+    percent,auxvar%primary_molal(jcomp)
     do icplx = 1, reaction%neqcmplx
       ncomp = reaction%eqcmplxspecid(0,icplx)
+      ifound = 0
       do j = 1, ncomp
-        if (reaction%primary_species_names(jcomp) == )
-        if (abs(reaction%eqcmplxstoich(jcomp,icplx)) > 1.d-6) then
-          percent = abs(reaction%eqcmplxstoich(jcomp,icplx))* &
-          auxvar%secondary_spec(icplx)/totj*100.d0
-          if (percent > 0.001) then
-            write(option%fid_out,136) reaction%secondary_species_names(icplx), &
-            auxvar%secondary_spec(icplx),percent,reaction%eqcmplxstoich(jcomp,icplx)
-          endif
+!       print *,'reaction: ',jcomp,j,icplx,ncomp,reaction%primary_species_names(jcomp), &
+!       reaction%eqcmplx_basis_names(j,icplx)
+        if (fiStringCompare(reaction%primary_species_names(jcomp), &
+          reaction%eqcmplx_basis_names(j,icplx),MAXWORDLENGTH)) then
+          ifound = 1
+          exit
         endif
+      enddo
+      if (ifound == 1) then
+        percent = abs(reaction%eqcmplxstoich(j,icplx))* &
+        auxvar%secondary_spec(icplx)/totj*100.d0
+        if (percent > 0.01) then
+          write(option%fid_out,136) reaction%secondary_species_names(icplx), &
+          percent,auxvar%secondary_spec(icplx) !,reaction%eqcmplxstoich(j,icplx)
+        endif
+      endif
     enddo
   enddo
-  134 format(/,'species  concentration  percent')
+  134 format('species       percent    concentration')
   135 format('primary species: ',a12,2x,' total conc: ',1pe12.4)
-  136 format(a12,2x,1pe12.4,2x,1p2e12.4)
-#endif
+  136 format(a12,2x,f6.2,2x,1pe12.4,1p2e12.4)
   
   call RTAuxVarDestroy(auxvar)
             

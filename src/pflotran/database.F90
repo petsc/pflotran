@@ -1233,6 +1233,7 @@ subroutine BasisInit(reaction,option)
   
   if (reaction%neqcmplx > 0) then
     allocate(reaction%secondary_species_names(reaction%neqcmplx))
+    allocate(reaction%eqcmplx_basis_names(reaction%ncomp,reaction%neqcmplx))
     allocate(reaction%eqcmplxspecid(0:reaction%ncomp,reaction%neqcmplx))
     reaction%eqcmplxspecid = 0
     allocate(reaction%eqcmplxstoich(0:reaction%ncomp,reaction%neqcmplx))
@@ -1260,11 +1261,15 @@ subroutine BasisInit(reaction,option)
         cur_sec_aq_spec%name
       ispec = 0
       do i = 1, cur_sec_aq_spec%eqrxn%nspec
+      
+!       print *,'database: ',i,cur_sec_aq_spec%eqrxn%spec_name(i)
+        
         if (cur_sec_aq_spec%eqrxn%spec_ids(i) /= h2o_id) then
           ispec = ispec + 1
           spec_id = cur_sec_aq_spec%eqrxn%spec_ids(i)
           if (spec_id > h2o_id) spec_id = spec_id - 1
           reaction%eqcmplxspecid(ispec,isec_spec) = spec_id
+          reaction%eqcmplx_basis_names(ispec,isec_spec) = cur_sec_aq_spec%eqrxn%spec_name(i)
           reaction%eqcmplxstoich(ispec,isec_spec) = &
             cur_sec_aq_spec%eqrxn%stoich(i)
             
