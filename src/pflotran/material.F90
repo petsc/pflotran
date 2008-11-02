@@ -279,10 +279,10 @@ subroutine SaturationFunctionComputeSpline(option,saturation_function)
   A(3,4) = 3.d0*pressure_high**2.d0
   A(4,4) = 3.d0*pressure_low**2.d0
   
-  b(1) = (pressure_high*alpha)**(-1.d0*saturation_function%lambda)
+  b(1) = (pressure_high*alpha)**(-saturation_function%lambda)
   b(2) = 1.d0
-  b(3) = -1.d0*saturation_function%lambda/pressure_high* &
-        (pressure_high*alpha)**(-1.d0*saturation_function%lambda)
+  b(3) = -saturation_function%lambda/pressure_high* &
+        (pressure_high*alpha)**(-saturation_function%lambda)
   b(4) = 0.d0
   
   call ludcmp(A,4,indx,d)

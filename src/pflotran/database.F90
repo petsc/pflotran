@@ -1947,7 +1947,7 @@ subroutine BasisPrint(reaction,title,option)
   PetscInt :: ispec, itemp
 
 100 format(a)
-110 format(a,f8.4)
+110 format(a,f9.4)
 120 format(a,f6.2,2x,a)
 130 format(a,100f9.4)
 140 format(a,f6.2)

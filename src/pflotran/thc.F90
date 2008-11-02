@@ -2286,8 +2286,8 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                       Jdn,ADD_VALUES,ierr)
       endif
       if (local_id_dn > 0) then
-        Jup = -1.d0*Jup
-        Jdn = -1.d0*Jdn
+        Jup = -Jup
+        Jdn = -Jdn
         call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
                                       Jdn,ADD_VALUES,ierr)
         call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
@@ -2355,7 +2355,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                 distance_gravity,option, &
                                 realization%saturation_function_array(icap_dn)%ptr,&
                                 Jdn)
-      Jdn = -1.d0*Jdn
+      Jdn = -Jdn
       
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn,ADD_VALUES,ierr)
  

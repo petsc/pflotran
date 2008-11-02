@@ -66,8 +66,8 @@ contains
     
     aln10 = log(10.d0)
     ! neglects deriv of psat(T)
-    vwt = 1.d-7*1.0467d0*(P-PS)*1.d-11*241.4d0*pwr + &
-          1.d-7*PHI*(-1.d0*pswt)*1.d-11*241.4d0*pwr - & 
+    vwt = 1.d-7*1.0467d0*(P-PS)*1.d-11*241.4d0*pwr - &
+          1.d-7*PHI*pswt*1.d-11*241.4d0*pwr - & 
           aln10*247.8d0/(t+133.15d0)**2*vw
     vwp = 1.d-7*phi*1.d-11*241.4d0*pwr
     ierr = 0

@@ -742,7 +742,7 @@ subroutine readInput(simulation,filename)
       case ('INVERT_Z','INVERTZ')
         if (associated(grid%structured_grid)) then
           grid%structured_grid%invert_z_axis = .true.
-          option%gravity(3) = -1.d0*option%gravity(3)
+          option%gravity(3) = -option%gravity(3)
         endif
       
 !....................

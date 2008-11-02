@@ -1219,8 +1219,8 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       endif
    
       if (local_id_dn>0) then
-        Jup = -1.d0*Jup
-        Jdn = -1.d0*Jdn
+        Jup = -Jup
+        Jdn = -Jdn
         call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
                                       Jdn,ADD_VALUES,ierr)
         call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
@@ -1260,7 +1260,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                    cur_connection_set%area(iconn), &
                    option,patch%boundary_velocities(:,sum_connection),Jdn)
  
-      Jdn = -1.d0*Jdn
+      Jdn = -Jdn
       
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn,ADD_VALUES,ierr)
  

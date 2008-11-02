@@ -565,7 +565,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
               call printErrMsg(option,string)
             endif
           endif
-          free_conc(icomp) = 10.d0**(-1.d0*conc(icomp))
+          free_conc(icomp) = 10.d0**(-conc(icomp))
         else
           string = 'pH specified as constraint (constraint =' // &
                    trim(constraint_name) // &
@@ -796,6 +796,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   PetscReal :: lnQK(reaction%nmnrl), QK(reaction%nmnrl)
   PetscReal :: ln_act_h2o
   PetscReal :: charge_balance
+  PetscReal :: totj, percent
   PetscInt :: comp_id, jcomp
 
   aq_species_constraint => constraint_coupler%aqueous_species
@@ -1016,12 +1017,68 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
     write(option%fid_out,132)
     write(option%fid_out,90)
     do igas = 1, reaction%ngas
-      write(option%fid_out,133) reaction%eqgas_logK(igas)
+
+          ln_act_h2o = 0.d0
+          
+          ! compute gas partial pressure
+          lnQK(igas) = -reaction%eqgas_logK(igas)*log_to_ln
+          
+          ! divide K by RT
+          !lnQK = lnQK - log((auxvar%temp+273.15d0)*ideal_gas_const)
+          
+          ! activity of water
+          if (reaction%eqgash2oid(igas) > 0) then
+            lnQK(igas) = lnQK(igas) + reaction%eqgash2ostoich(igas)*ln_act_h2o
+          endif
+
+          do jcomp = 1, reaction%eqgasspecid(0,igas)
+            comp_id = reaction%eqgasspecid(jcomp,igas)
+            lnQK(igas) = lnQK(igas) + reaction%eqgasstoich(jcomp,igas)* &
+                          log(auxvar%primary_spec(comp_id)*auxvar%pri_act_coef(comp_id))
+          enddo
+          
+          QK(igas) = exp(lnQK(igas))
+          
+      write(option%fid_out,133) reaction%gas_species_names(igas),lnQK(igas),QK(igas), &
+      reaction%eqgas_logK(igas)
     enddo
   endif
   
-  132 format(/,'  gas   log partial pressure   partial pressure [bars]  log K')
-  133 format(1pe12.4)
+  132 format(/,'  gas   log partial pressure  partial pressure [bars]  log K')
+  133 format(a8,2x,1pe12.4,8x,1pe12.4,8x,1pe12.4)
+
+#if 0
+  !print speciation precentages
+  write(option%fid_out,92)
+  92 format(/)
+  write(option%fid_out,90)
+  do jcomp = 1, reaction%ncomp
+    totj = auxvar%total(jcomp,1)
+    totj = abs(totj)
+    write(option%fid_out,135) reaction%primary_species_names(jcomp),totj
+    write(option%fid_out,134)
+    write(option%fid_out,90)
+    write(option%fid_out,136) reaction%primary_species_names(jcomp), &
+      auxvar%primary_molal(jcomp), &
+      auxvar%primary_molal(jcomp)/totj*100.d0
+    do icplx = 1, reaction%neqcmplx
+      ncomp = reaction%eqcmplxspecid(0,icplx)
+      do j = 1, ncomp
+        if (reaction%primary_species_names(jcomp) == )
+        if (abs(reaction%eqcmplxstoich(jcomp,icplx)) > 1.d-6) then
+          percent = abs(reaction%eqcmplxstoich(jcomp,icplx))* &
+          auxvar%secondary_spec(icplx)/totj*100.d0
+          if (percent > 0.001) then
+            write(option%fid_out,136) reaction%secondary_species_names(icplx), &
+            auxvar%secondary_spec(icplx),percent,reaction%eqcmplxstoich(jcomp,icplx)
+          endif
+        endif
+    enddo
+  enddo
+  134 format(/,'species  concentration  percent')
+  135 format('primary species: ',a12,2x,' total conc: ',1pe12.4)
+  136 format(a12,2x,1pe12.4,2x,1p2e12.4)
+#endif
   
   call RTAuxVarDestroy(auxvar)
             
@@ -1258,8 +1315,7 @@ subroutine RActivity(auxvar,reaction,option)
   ! primary species
   do icomp = 1, reaction%ncomp
     if (dabs(reaction%primary_spec_Z(icomp)) > 1.d-10) then
-      auxvar%pri_act_coef(icomp) = exp((-1.d0* &
-                                        reaction%primary_spec_Z(icomp)* &
+      auxvar%pri_act_coef(icomp) = exp((-reaction%primary_spec_Z(icomp)* &
                                         reaction%primary_spec_Z(icomp)* &
                                         sqrt_I*reaction%debyeA/ &
                                         (1.d0+reaction%primary_spec_a0(icomp)* &
@@ -1274,8 +1330,7 @@ subroutine RActivity(auxvar,reaction,option)
   ! secondary species
   do icplx = 1, reaction%neqcmplx
     if (dabs(reaction%eqcmplx_Z(icplx)) > 1.d-10) then
-      auxvar%sec_act_coef(icplx) = exp((-1.d0* &
-                                        reaction%eqcmplx_Z(icplx)* &
+      auxvar%sec_act_coef(icplx) = exp((-reaction%eqcmplx_Z(icplx)* &
                                         reaction%eqcmplx_Z(icplx)* &
                                         sqrt_I*reaction%debyeA/ &
                                         (1.d0+reaction%eqcmplx_a0(icplx)* &
@@ -1326,7 +1381,7 @@ subroutine RTotal(auxvar,reaction,option)
   
   do icplx = 1, reaction%neqcmplx ! for each secondary species
     ! compute secondary species concentration
-    lnQK = -1.d0*reaction%eqcmplx_logK(icplx)*log_to_ln
+    lnQK = -reaction%eqcmplx_logK(icplx)*log_to_ln
 
     ! activity of water
     if (reaction%eqcmplxh2oid(icplx) > 0) then
@@ -1435,7 +1490,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
       do j = 1, ncplx
         icplx = reaction%eqsurfcmplx_rxn_to_complex(j,irxn)
         ! compute secondary species concentration
-        lnQK = -1.d0*reaction%eqsurfcmplx_logK(icplx)*log_to_ln
+        lnQK = -reaction%eqsurfcmplx_logK(icplx)*log_to_ln
 
         ! activity of water
         if (reaction%eqsurfcmplxh2oid(icplx) > 0) then
@@ -1694,7 +1749,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
   
   do imnrl = 1, reaction%nkinmnrl ! for each mineral
     ! compute secondary species concentration
-    lnQK = -1.d0*reaction%kinmnrl_logK(imnrl)*log_to_ln
+    lnQK = -reaction%kinmnrl_logK(imnrl)*log_to_ln
 
     ! activity of water
     if (reaction%kinmnrlh2oid(imnrl) > 0) then
@@ -1753,7 +1808,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
       ! area = cm^2 mnrl/cm^3 bulk
       ! volume = m^3 bulk
       ! units = cm^2 mnrl/m^3 bulk
-      Im_const = -1.d0*auxvar%mnrl_area0(imnrl)*1.d6 ! convert cm^3->m^3
+      Im_const = -auxvar%mnrl_area0(imnrl)*1.d6 ! convert cm^3->m^3
       ! units = mol/sec/m^3 bulk
       if (associated(reaction%kinmnrl_affinity_power)) then
         Im = Im_const*sign_*abs(affinity_factor)**reaction%kinmnrl_affinity_power(imnrl)*sum_prefactor_rate
@@ -1782,9 +1837,9 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
     ! calculate derivatives of rate with respect to free
     ! units = mol/sec
     if (associated(reaction%kinmnrl_affinity_power)) then
-      dIm_dQK = -1.d0*Im*reaction%kinmnrl_affinity_power(imnrl)/abs(affinity_factor)
+      dIm_dQK = -Im*reaction%kinmnrl_affinity_power(imnrl)/abs(affinity_factor)
     else
-      dIm_dQK = -1.d0*Im_const*sum_prefactor_rate
+      dIm_dQK = -Im_const*sum_prefactor_rate
     endif
     if (associated(reaction%kinmnrl_Tempkin_const)) then
       dIm_dQK = dIm_dQK*(1/reaction%kinmnrl_Tempkin_const(imnrl))/QK
@@ -1819,7 +1874,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
           dprefactor_dcomp_numerator = reaction%kinmnrl_pri_pref_alpha_stoich(j,ipref,imnrl)* &
                                        prefactor(ipref)/auxvar%primary_spec(jcomp) ! dR_dc
           ! denominator
-          dprefactor_dcomp_denominator = -1.d0*prefactor(ipref)/ &
+          dprefactor_dcomp_denominator = -prefactor(ipref)/ &
                                          ((1.d0+reaction%kinmnrl_pri_pref_atten_coef(j,ipref,imnrl))* &
                                            exp(reaction%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)* &
                                                ln_act(jcomp)))* & 
@@ -1841,7 +1896,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
                                        prefactor(ipref)/(auxvar%secondary_spec(kcplx)* &
                                                          auxvar%sec_act_coef(kcplx)) ! dR_dax
           ! denominator
-          dprefactor_dcomp_denominator = -1.d0*prefactor(ipref)/ &
+          dprefactor_dcomp_denominator = -prefactor(ipref)/ &
                                          (1.d0+reaction%kinmnrl_sec_pref_atten_coef(k,ipref,imnrl)* &
                                           exp(reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
                                               ln_sec_act(kcplx)))* &

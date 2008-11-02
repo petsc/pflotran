@@ -395,8 +395,8 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
             print *, '    solution_vec min: ', imin_solution(i), min_solution_val(i)
           endif
           if (print_upd_norm_info) then ! since update is -dx, need to invert
-            print *, '    update_vec max:   ', imin_update(i), -1.d0*min_update_val(i)
-            print *, '    update_vec min:   ', imax_update(i), -1.d0*max_update_val(i)
+            print *, '    update_vec max:   ', imin_update(i), -min_update_val(i)
+            print *, '    update_vec min:   ', imax_update(i), -max_update_val(i)
           endif
           if (print_res_norm_info) then
             print *, '    residual_vec max: ', imax_residual(i), max_residual_val(i)
