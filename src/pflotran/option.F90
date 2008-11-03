@@ -113,6 +113,7 @@ module Option_module
     logical :: print_hdf5_flux_velocities
 
     logical :: print_tecplot 
+    PetscInt :: tecplot_format
     logical :: print_tecplot_velocities
     logical :: print_tecplot_flux_velocities
     
@@ -217,7 +218,6 @@ function OptionCreate()
   option%delhaq = 12.6d0 ! kJ/mol read from input file
   option%gravity(:) = 0.d0
   option%gravity(3) = -9.8068d0    ! m/s^2
-  option%tref   = 50.D0
   option%fmwh2o = 18.01534d0 ! kg H2O/mol H2O
   option%fmwco2 = 44.0098d0
   option%eqkair = 1.d10 ! Henry's constant for air: Xl = eqkair * pa
@@ -281,6 +281,7 @@ function OutputOptionCreate()
   output_option%print_hdf5_velocities = PETSC_FALSE
   output_option%print_hdf5_flux_velocities = PETSC_FALSE
   output_option%print_tecplot = PETSC_FALSE
+  output_option%tecplot_format = 0
   output_option%print_tecplot_velocities = PETSC_FALSE
   output_option%print_tecplot_flux_velocities = PETSC_FALSE
   output_option%plot_number = 0

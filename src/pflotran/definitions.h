@@ -17,7 +17,7 @@ PetscInt, parameter :: THREE_INTEGER = 3
 PetscInt, parameter :: FOUR_INTEGER = 4
 PetscInt, parameter :: FIVE_INTEGER = 5
 PetscInt, parameter :: SIX_INTEGER = 6
-PetscInt, parameter :: SEVERN_INTEGER = 7
+PetscInt, parameter :: SEVEN_INTEGER = 7
 PetscInt, parameter :: NEG_ONE_INTEGER = -1
 
 PetscInt, parameter :: X_DIRECTION = 1
@@ -145,5 +145,9 @@ PetscInt, parameter :: EOS_MRK = 2
 ! HDF5 stuff
 PetscInt, parameter :: HDF5_READ_BUFFER_SIZE = 1000000
 !#define HDF5_BROADCAST
+
+! Tecplot stuff
+PetscInt, parameter :: TECPLOT_POINT_FORMAT = 1
+PetscInt, parameter :: TECPLOT_BLOCK_FORMAT = 2
 
 #define HASH

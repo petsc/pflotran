@@ -32,8 +32,10 @@ module Reactive_Transport_Aux_module
     PetscReal, pointer :: eqionx_ref_cation_sorbed_conc(:)
     ! PetscReal, pointer :: eqionx_molfrac(:)
     ! mineral reactions
+    PetscReal, pointer :: mnrl_volfrac0(:)
     PetscReal, pointer :: mnrl_volfrac(:)
     PetscReal, pointer :: mnrl_area0(:)
+    PetscReal, pointer :: mnrl_area(:)
     PetscReal, pointer :: mnrl_rate(:)
     ! activity coefficients
     PetscReal :: act_h2o

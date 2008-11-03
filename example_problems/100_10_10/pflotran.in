@@ -50,7 +50,7 @@ KSP_TYPE BCGS
 END
 
 HDF5 !VELO FLUX
-TECP !VELO FLUX
+TECPLOT BLOCK VELO FLUX
 :
 :  d0[m^2/s] delhaq[kJ/mol]
 DIFF  1.D-9       12.6

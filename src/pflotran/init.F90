@@ -1051,8 +1051,32 @@ subroutine readInput(simulation,filename)
       
 !....................
 
-      case ('TECP')
+      case ('TECP','TECPLOT')
         realization%output_option%print_tecplot = PETSC_TRUE
+
+        if (fiStringCompare(card,'TECPLOT',SEVEN_INTEGER)) then
+          call fiReadWord(string,word,PETSC_TRUE,ierr)
+          call fiErrorMsg(option%myrank,'TECPLOT','type',ierr) 
+          call fiWordToUpper(word)
+          select case(trim(word))
+            case('POINT')
+              realization%output_option%tecplot_format = TECPLOT_POINT_FORMAT
+            case('BLOCK')
+              realization%output_option%tecplot_format = TECPLOT_BLOCK_FORMAT
+            case default
+              string = 'TECPLOT format (' // trim(word) // ') not recongnized.'
+              call printErrMsg(option,string)
+          end select
+        else
+          realization%output_option%tecplot_format = TECPLOT_BLOCK_FORMAT
+        endif
+        
+        ! safety catch: only block supported in parallel
+        if (realization%output_option%tecplot_format == TECPLOT_POINT_FORMAT .and. &
+            option%commsize > 1) then
+          realization%output_option%tecplot_format = TECPLOT_BLOCK_FORMAT
+        endif
+          
         do
           call fiReadWord(string,word,PETSC_TRUE,ierr)
           if (ierr /= 0) exit
@@ -1064,6 +1088,10 @@ subroutine readInput(simulation,filename)
             case('VELO')
               realization%output_option%print_tecplot_velocities = PETSC_TRUE
             case('FLUX')
+              if (realization%output_option%tecplot_format == TECPLOT_POINT_FORMAT) then
+                string = 'Printing of fluxes not supported in TECPLOT POINT format.'
+                call printErrMsg(option,string)
+              endif
               realization%output_option%print_tecplot_flux_velocities = PETSC_TRUE
             case default
           end select
