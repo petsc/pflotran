@@ -1454,7 +1454,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
   PetscReal :: ln_act(reaction%ncomp)
   PetscReal :: surfcmplx_conc(reaction%neqsurfcmplx)
   PetscReal :: free_site_conc
-  PetscReal :: ln_free_site(reaction%neqsurfcmplxrxn)
+  PetscReal :: ln_free_site
   PetscReal :: ln_act_h2o
   PetscReal :: lnQK, tempreal, tempreal1, tempreal2, total
   PetscInt :: irxn
@@ -1478,7 +1478,6 @@ subroutine RTotalSorb(auxvar,reaction,option)
   ln_conc = log(auxvar%primary_spec)
   ln_act = ln_conc+log(auxvar%pri_act_coef)
   ln_act_h2o = 0.d0  ! assume act h2o = 1 for now
-  ln_free_site = log(auxvar%eqsurfcmplx_freesite_conc)
     
   auxvar%total_sorb(:) = 0.d0
   ! initialize derivatives
@@ -1497,6 +1496,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
     do
 
       total = free_site_conc
+      ln_free_site = log(free_site_conc)
       do j = 1, ncplx
         icplx = reaction%eqsurfcmplx_rxn_to_complex(j,irxn)
         ! compute secondary species concentration
@@ -1508,7 +1508,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
         endif
 
         lnQK = lnQK + reaction%eqsurfcmplx_free_site_stoich(icplx)* &
-                      ln_free_site(irxn)
+                      ln_free_site
       
         ncomp = reaction%eqsurfcmplxspecid(0,icplx)
         do i = 1, ncomp
