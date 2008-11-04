@@ -1288,7 +1288,7 @@ subroutine RReactionDerivative(Res,Jac,auxvar,volume,reaction,option)
   ! add new reactions in the 3 locations below
 
   if (.not.option%numerical_derivatives) then ! analytical derivative
-!  if (PETSC_FALSE) then
+  !if (PETSC_FALSE) then
     compute_derivative = PETSC_TRUE
     ! #1: add new reactions here
     if (reaction%nkinmnrl > 0) then
@@ -1502,6 +1502,8 @@ subroutine RTotalSorb(auxvar,reaction,option)
   PetscReal :: ln_conc(reaction%ncomp)
   PetscReal :: ln_act(reaction%ncomp)
   PetscReal :: surfcmplx_conc(reaction%neqsurfcmplx)
+  PetscReal :: dSx_dCi(reaction%ncomp)
+  PetscReal :: dSi_dSx
   PetscReal :: free_site_conc
   PetscReal :: ln_free_site
   PetscReal :: ln_act_h2o
@@ -1522,7 +1524,6 @@ subroutine RTotalSorb(auxvar,reaction,option)
   PetscReal :: total_pert, ref_cation_X_pert, pert
   PetscReal :: ref_cation_quotient_pert, dres_dref_cation_X_pert
 
-  PetscReal :: den, sumj(reaction%ncomp)
   iphase = 1                         
 
   ln_conc = log(auxvar%primary_spec)
@@ -1605,19 +1606,33 @@ subroutine RTotalSorb(auxvar,reaction,option)
 
     enddo
     
-    den = free_site_conc
-    sumj = 0.d0
-    do i = 1, ncplx
-      icplx = reaction%eqsurfcmplx_rxn_to_complex(i,irxn)
-      den = den + reaction%eqsurfcmplx_free_site_stoich(icplx)**2 * surfcmplx_conc(icplx)
-      ncomp = reaction%eqsurfcmplxspecid(0,icplx)
-      do j = 1, ncomp
-        sumj(j) = sumj(j) + reaction%eqsurfcmplxstoich(j,icplx)* &
-        reaction%eqsurfcmplx_free_site_stoich(icplx)*surfcmplx_conc(icplx)
-      enddo
-    enddo
-    
     auxvar%eqsurfcmplx_freesite_conc(irxn) = free_site_conc
+ 
+    dSx_dCi = 0.d0
+    tempreal = 0.d0
+    do j = 1, ncplx
+      icplx = reaction%eqsurfcmplx_rxn_to_complex(j,irxn)
+      ncomp = reaction%eqsurfcmplxspecid(0,icplx)
+      do i = 1, ncomp
+        icomp = reaction%eqsurfcmplxspecid(i,icplx)
+        ! numerator of 4.39
+        dSx_dCi(icomp) = dSx_dCi(icomp) + reaction%eqsurfcmplxstoich(i,icplx)* &
+                                          reaction%eqsurfcmplx_free_site_stoich(icplx)* &
+                                          surfcmplx_conc(icplx)
+      enddo
+      ! denominator of 4.39
+      tempreal = tempreal + reaction%eqsurfcmplx_free_site_stoich(icplx)* & 
+                            reaction%eqsurfcmplx_free_site_stoich(icplx)* &
+                            surfcmplx_conc(icplx)
+    enddo 
+    ! divide denominator by Sx
+    tempreal = tempreal / free_site_conc
+    ! add 1.d0 to denominator
+    tempreal = tempreal + 1.d0
+    ! divide numerator by denominator
+    dSx_dCi = -dSx_dCi / tempreal
+    ! convert from dlogC to dC
+    dSx_dCi = dSx_dCi / auxvar%primary_spec
  
     do k = 1, ncplx
       icplx = reaction%eqsurfcmplx_rxn_to_complex(k,irxn)
@@ -1631,15 +1646,21 @@ subroutine RTotalSorb(auxvar,reaction,option)
           reaction%eqsurfcmplxstoich(i,icplx)*surfcmplx_conc(icplx)
       enddo
       
+      dSi_dSx = reaction%eqsurfcmplx_free_site_stoich(icplx)* &
+                surfcmplx_conc(icplx)/ &
+                free_site_conc
+
       do j = 1, ncomp
         jcomp = reaction%eqsurfcmplxspecid(j,icplx)
         tempreal = reaction%eqsurfcmplxstoich(j,icplx)*surfcmplx_conc(icplx) / &
-          auxvar%primary_spec(jcomp)
+                   auxvar%primary_spec(jcomp)+ &
+                   dSi_dSx*dSx_dCi(jcomp)
+                  
         do i = 1, ncomp
           icomp = reaction%eqsurfcmplxspecid(i,icplx)
           auxvar%dtotal_sorb(icomp,jcomp) = auxvar%dtotal_sorb(icomp,jcomp) + &
-            reaction%eqsurfcmplxstoich(i,icplx)*tempreal &
-          - sumj(i)*sumj(j)/den/auxvar%primary_spec(jcomp)
+                                            reaction%eqsurfcmplxstoich(i,icplx)* &
+                                            tempreal
         enddo
       enddo
     enddo
