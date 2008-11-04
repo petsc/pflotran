@@ -755,7 +755,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
   enddo
 
   ! once equilibrated, compute sorbed concentrations
-  call RTotalSorb(auxvar,reaction,option)
+  if (reaction%nsorb > 0) call RTotalSorb(auxvar,reaction,option)
   
   ! remember that a density of 1 kg/L was assumed, thus molal and molarity are equal
   aq_species_constraint%basis_molarity = auxvar%primary_molal
