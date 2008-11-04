@@ -207,7 +207,7 @@ CaUO4 0.
 SORPTION
 SURFACE_COMPLEXATION_RXN
 MINERAL Calcite
-SITE >SOH 1.e-6
+SITE >SOH 1.0395E-04
 COMPLEXES
 >SOUO2OH
 >SOUO2CO3
@@ -215,8 +215,8 @@ COMPLEXES
 /
 /
 :noskip
-DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
-:DATABASE ../../../database/hanford.dat
+:DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
+DATABASE ../../../database/hanford.dat
 LOG_FORMULATION
 ACTIVITY_COEFFICIENTS
 /

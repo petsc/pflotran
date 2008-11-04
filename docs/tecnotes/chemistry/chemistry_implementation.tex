@@ -170,7 +170,21 @@
 
 \bcr
 
-\section*{Chemistry Implementation in PFLOTRAN: Colloids, Surface Complexation, Ion Exchange, Biogeochemistry with Monode Kinetics, Precipitation/Dissolution, Solid Solutions, Species-Dependent Diffusion, Pitzer Model, Multiple Interacting Continua, Hydration-Dehydration Reactions, Electrical Conductivity, Multiphase Systems \ldots}
+\section*{Chemistry Implementation in PFLOTRAN: \\
+Colloids,\\ 
+Surface Complexation, \\
+Ion Exchange, \\
+Biogeochemistry with Monode Kinetics, \\
+Precipitation/Dissolution, \\
+Solid Solutions, \\
+Species-Dependent Diffusion, \\
+Pitzer Model, \\
+Multiple Interacting Continua, \\
+Hydration-Dehydration Reactions, \\
+Electrical Conductivity, \\
+Multiphase Systems, \\
+Isotopic Exchange, \\
+\ldots}
 
 P.C. Lichtner (LANL, \today)
 
@@ -647,7 +661,7 @@ Implementing surface complexation involves summing over complexes associated wit
 S_i^\a \eq K_i^\a Q_i^\a (S_X^\a)^{\nu_i^\a},
 \EN
 \EQ
-Q_i^\a\eq \prod_j a_j^{\nu_{ji}^\a},
+Q_i^\a\eq \prod_j \big(a_j\big)^{\nu_{ji}^\a},
 \EN
 \EQ
 \omega_\a = S_X^\a + \sum_{i} \nu_i^\a (S_X^\a)^{\nu_i^\a} K_i^\a Q_i^\a.
@@ -655,7 +669,7 @@ Q_i^\a\eq \prod_j a_j^{\nu_{ji}^\a},
 
 \noindent Jacobian:
 \EQ
-C_l\frac{\p S_X}{\p C_l} \eq -\dfrac{\displaystyle\sum\nu_{li}\nu_iS_i}{1+\dfrac{1}{S_X}\displaystyle\sum\nu_i^2 S_i}
+C_l\frac{\p S_X}{\p C_l} \eq -\dfrac{\displaystyle\sum_i\nu_{li}\nu_iS_i}{1+\dfrac{1}{S_X}\displaystyle\sum_i\nu_i^2 S_i}
 \EN
 \BA
 C_l\frac{\p S_i}{\p C_l} &\eq \nu_{li} S_i + \nu_iS_i \frac{C_l}{S_X}\frac{\p S_X}{\p C_l},\\
@@ -680,13 +694,13 @@ S_i^\a \eq \frac{\omega_\a K_i^\a Q_i^\a}{1+\sum_{i'} K_{i'}^\a Q_{i'}^\a}
 \EN
 \BA
 C_l\frac{\p S_i}{\p C_l} &\eq \nu_{li} S_i - \frac{\omega Q_i^\a}{\big(1+\sum Q_{i'}\big)^2}\sum\nu_{li'}Q_{i'}^\a,\\
-&\eq \nu_{li} S_i - S_i \frac{1}{\omega}\sum \nu_{li'} S_{i'},\\
-&\eq S_i \left[\nu_{li} - \frac{1}{\omega}\sum \nu_{li'} S_{i'}\right].
+&\eq \nu_{li} S_i - S_i \frac{1}{\omega}\sum_{i'} \nu_{li'} S_{i'},\\
+&\eq S_i \left[\nu_{li} - \frac{1}{\omega}\sum_{i'} \nu_{li'} S_{i'}\right].
 \EA
 \BA
 C_l\frac{\p\Psi_j^S}{\p C_l} &\eq C_l\sum_i \nu_{ji} \frac{\p S_i}{\p C_l},\\
-&\eq \sum_i \nu_{ji} S_i \left[\nu_{li} - \frac{1}{\omega}\sum \nu_{li'} S_{i'}\right],\\
-&\eq \sum_i \nu_{ji} \nu_{li} S_i - \frac{1}{\omega}\left(\sum\nu_{ji}S_i\right) \left(\sum \nu_{li'} S_{i'}\right).
+&\eq \sum_i \nu_{ji} S_i \left[\nu_{li} - \frac{1}{\omega}\sum_{i'} \nu_{li'} S_{i'}\right],\\
+&\eq \sum_i \nu_{ji} \nu_{li} S_i - \frac{1}{\omega}\left(\sum_i\nu_{ji}S_i\right) \left(\sum_{i'} \nu_{li'} S_{i'}\right).
 \EA
 
 \noindent
