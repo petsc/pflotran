@@ -1522,6 +1522,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
   PetscReal :: total_pert, ref_cation_X_pert, pert
   PetscReal :: ref_cation_quotient_pert, dres_dref_cation_X_pert
 
+  PetscReal :: den, sumj(reaction%ncomp)
   iphase = 1                         
 
   ln_conc = log(auxvar%primary_spec)
@@ -1604,6 +1605,18 @@ subroutine RTotalSorb(auxvar,reaction,option)
 
     enddo
     
+    den = free_site_conc
+    sumj = 0.d0
+    do i = 1, ncplx
+      icplx = reaction%eqsurfcmplx_rxn_to_complex(i,irxn)
+      den = den + reaction%eqsurfcmplx_free_site_stoich(icplx)**2 * surfcmplx_conc(icplx)
+      ncomp = reaction%eqsurfcmplxspecid(0,icplx)
+      do j = 1, ncomp
+        sumj(j) = sumj(j) + reaction%eqsurfcmplxstoich(j,icplx)* &
+        reaction%eqsurfcmplx_free_site_stoich(icplx)*surfcmplx_conc(icplx)
+      enddo
+    enddo
+    
     auxvar%eqsurfcmplx_freesite_conc(irxn) = free_site_conc
  
     do k = 1, ncplx
@@ -1625,7 +1638,8 @@ subroutine RTotalSorb(auxvar,reaction,option)
         do i = 1, ncomp
           icomp = reaction%eqsurfcmplxspecid(i,icplx)
           auxvar%dtotal_sorb(icomp,jcomp) = auxvar%dtotal_sorb(icomp,jcomp) + &
-                                        reaction%eqsurfcmplxstoich(i,icplx)*tempreal
+            reaction%eqsurfcmplxstoich(i,icplx)*tempreal &
+          - sumj(i)*sumj(j)/den/auxvar%primary_spec(jcomp)
         enddo
       enddo
     enddo

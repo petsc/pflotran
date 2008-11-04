@@ -404,7 +404,8 @@ subroutine OutputTecplotBlock(realization)
   if (option%ntrandof > 0) then
     if (associated(realization%reaction)) then
       do i=1,option%ntrandof
-        call OutputGetVarFromArray(realization,global_vec,PRIMARY_SPEC_CONCENTRATION,i)
+!       call OutputGetVarFromArray(realization,global_vec,PRIMARY_SPEC_CONCENTRATION,i)
+        call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
         call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       enddo
@@ -1181,7 +1182,9 @@ subroutine OutputTecplotPoint(realization)
     if (option%ntrandof > 0) then
       if (associated(realization%reaction)) then
         do i=1,option%ntrandof
-          value = RealizGetDatasetValueAtCell(realization,PRIMARY_SPEC_CONCENTRATION, &
+!         value = RealizGetDatasetValueAtCell(realization,PRIMARY_SPEC_CONCENTRATION, &
+!                                             i,ghosted_id)
+          value = RealizGetDatasetValueAtCell(realization,TOTAL_CONCENTRATION, &
                                               i,ghosted_id)
           write(IUNIT3,1000,advance='no') value
         enddo
