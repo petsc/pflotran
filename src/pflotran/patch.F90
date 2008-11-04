@@ -233,7 +233,7 @@ end subroutine PatchLocalizeRegions
 !
 ! ************************************************************************** !
 subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
-                                material_array,option)
+                                materials,option)
 
   use Option_module
   use Material_module
@@ -243,7 +243,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   implicit none
   
   type(patch_type) :: patch
-  type(material_ptr_type), pointer :: material_array(:)
+  type(material_type), pointer :: materials
   type(condition_list_type) :: flow_conditions
   type(tran_condition_list_type) :: transport_conditions
   type(option_type) :: option
@@ -256,7 +256,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   
   PetscInt :: temp_int
   
-  patch%material_array => material_array
+  call MaterialConvertListToArray(materials,patch%material_array)
   
   ! boundary conditions
   coupler => patch%boundary_conditions%first
@@ -384,7 +384,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       if (strata%active) then
         ! pointer to material
         strata%material => MaterialGetPtrFromArray(strata%material_name, &
-                                                   material_array)
+                                                   patch%material_array)
         if (.not.associated(strata%material)) then
           string = 'Material ' // trim(strata%material_name) // &
                    ' not found in material list'

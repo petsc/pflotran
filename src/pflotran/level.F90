@@ -160,7 +160,7 @@ end subroutine LevelConvertListToArray
 !
 ! ************************************************************************** !
 subroutine LevelProcessCouplers(level,flow_conditions,transport_conditions, &
-                                material_array,option)
+                                materials,option)
 
   use Option_module
   use Material_module
@@ -169,7 +169,7 @@ subroutine LevelProcessCouplers(level,flow_conditions,transport_conditions, &
   implicit none
   
   type(level_type) :: level
-  type(material_ptr_type), pointer :: material(:)
+  type(material_type), pointer :: materials(:)
   type(condition_list_type) :: flow_conditions
   type(condition_list_type) :: transport_conditions
   type(option_type) :: option  
@@ -180,7 +180,7 @@ subroutine LevelProcessCouplers(level,flow_conditions,transport_conditions, &
   do 
     if (.not.associated(cur_patch)) exit
     call PatchProcessCouplers(cur_patch,flow_conditions,transport_conditions, &
-                              material_array,option)
+                              materials,option)
     cur_patch => cur_patch%next
   enddo
  
