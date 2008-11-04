@@ -1612,7 +1612,8 @@ subroutine RTotalSorb(auxvar,reaction,option)
       den = den + reaction%eqsurfcmplx_free_site_stoich(icplx)**2 * surfcmplx_conc(icplx)
       ncomp = reaction%eqsurfcmplxspecid(0,icplx)
       do j = 1, ncomp
-        sumj(j) = sumj(j) + reaction%eqsurfcmplxstoich(j,icplx)*surfcmplx_conc(icplx)
+        sumj(j) = sumj(j) + reaction%eqsurfcmplxstoich(j,icplx)* &
+        reaction%eqsurfcmplx_free_site_stoich(icplx)*surfcmplx_conc(icplx)
       enddo
     enddo
     
@@ -1638,7 +1639,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
           icomp = reaction%eqsurfcmplxspecid(i,icplx)
           auxvar%dtotal_sorb(icomp,jcomp) = auxvar%dtotal_sorb(icomp,jcomp) + &
             reaction%eqsurfcmplxstoich(i,icplx)*tempreal &
-          - sumj(i)*sumj(j)/den
+          - sumj(i)*sumj(j)/den/auxvar%primary_spec(icomp)
         enddo
       enddo
     enddo
