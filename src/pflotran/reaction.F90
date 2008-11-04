@@ -806,17 +806,17 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   aq_species_constraint => constraint_coupler%aqueous_species
   mineral_constraint => constraint_coupler%minerals
 
-90 format(80('-'))
-91 format(a)
+  90 format(80('-'))
+  91 format(a)
 
   write(option%fid_out,91) '  Constraint: ' // trim(constraint_coupler%constraint_name)
   call RTAuxVarInit(auxvar,reaction,option)
   auxvar%temp = temperature
   
   if (.not.reaction%use_full_geochemistry) then
-100 format(/,'  species       molality')  
+    100 format(/,'  species       molality')  
     write(option%fid_out,100)
-101 format(2x,a12,es12.4)
+    101 format(2x,a12,es12.4)
     do icomp = 1, reaction%ncomp
       write(option%fid_out,101) reaction%primary_species_names(icomp), &
                                 auxvar%primary_molal(icomp)
@@ -827,11 +827,11 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
                                        aq_species_constraint, &
                                        num_iterations,option)
                                        
-200 format('')
-201 format(a20,i5)
-202 format(a20,f10.2)
-203 format(a20,f8.2)
-204 format(a20,es12.4)
+    200 format('')
+    201 format(a20,i5)
+    202 format(a20,f10.2)
+    203 format(a20,f8.2)
+    204 format(a20,es12.4)
     write(option%fid_out,90)
     write(option%fid_out,201) '      iterations: ', num_iterations
     if (reaction%h_ion_id > 0) then
@@ -856,11 +856,11 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
     write(option%fid_out,203) '     temperature: ', temperature
     write(option%fid_out,90)
 
-102 format(/,'  species       molality    total       act coef  constraint')  
+    102 format(/,'  species       molality    total       act coef  constraint')  
     write(option%fid_out,102)
     write(option%fid_out,90)
   
-103 format(2x,a12,es12.4,es12.4,f8.4,4x,a)
+    103 format(2x,a12,es12.4,es12.4,f8.4,4x,a)
     do icomp = 1, reaction%ncomp
       select case(aq_species_constraint%constraint_type(icomp))
         case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
@@ -902,10 +902,10 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       if (finished) exit
     enddo
             
-  110 format(/,'  complex       molality    act coef  logK')  
+    110 format(/,'  complex       molality    act coef  logK')  
     write(option%fid_out,110)
     write(option%fid_out,90)
-  111 format(2x,a12,es12.4,f8.4,2x,es12.4)
+    111 format(2x,a12,es12.4,f8.4,2x,es12.4)
     do i = 1, reaction%neqcmplx ! for each secondary species
       icplx = eqcmplxsort(i)
       write(option%fid_out,111) reaction%secondary_species_names(icplx), &
@@ -914,6 +914,46 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
                                 auxvar%sec_act_coef(icplx), &
                                 reaction%eqcmplx_logK(icplx)
     enddo 
+
+    !print speciation precentages
+    write(option%fid_out,92)
+    92 format(/)
+    134 format('species       percent    concentration')
+    135 format('primary species: ',a12,2x,' total conc: ',1pe12.4)
+    136 format(a12,2x,f6.2,2x,1pe12.4,1p2e12.4)
+    do jcomp = 1, reaction%ncomp
+      totj = auxvar%total(jcomp,1)
+      totj = abs(totj)
+      write(option%fid_out,90)
+      write(option%fid_out,135) reaction%primary_species_names(jcomp),totj
+      write(option%fid_out,134)
+      write(option%fid_out,90)
+      percent = auxvar%primary_molal(jcomp)/totj*100.d0
+      write(option%fid_out,136) reaction%primary_species_names(jcomp), &
+      percent,auxvar%primary_molal(jcomp)
+      do icplx = 1, reaction%neqcmplx
+        ncomp = reaction%eqcmplxspecid(0,icplx)
+        ifound = 0
+        do j = 1, ncomp
+  !       print *,'reaction: ',jcomp,j,icplx,ncomp,reaction%primary_species_names(jcomp), &
+  !       reaction%eqcmplx_basis_names(j,icplx)
+          if (fiStringCompare(reaction%primary_species_names(jcomp), &
+            reaction%eqcmplx_basis_names(j,icplx),MAXWORDLENGTH)) then
+            ifound = 1
+            exit
+          endif
+        enddo
+        if (ifound == 1) then
+          percent = abs(reaction%eqcmplxstoich(j,icplx))* &
+          auxvar%secondary_spec(icplx)/totj*100.d0
+          if (percent > 0.01) then
+            write(option%fid_out,136) reaction%secondary_species_names(icplx), &
+            percent,auxvar%secondary_spec(icplx) !,reaction%eqcmplxstoich(j,icplx)
+          endif
+        endif
+      enddo
+    enddo
+
   endif 
           
   if (reaction%neqsurfcmplxrxn > 0) then
@@ -949,11 +989,11 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       if (finished) exit
     enddo
             
-  120 format(/,'  surf complex  molality    logK')  
+    120 format(/,'  surf complex  molality    logK')  
     write(option%fid_out,120)
     write(option%fid_out,90)
-  121 format(2x,a12,es12.4,es12.4)
-  122 format(2x,a12,es12.4,'  free site')
+    121 format(2x,a12,es12.4,es12.4)
+    122 format(2x,a12,es12.4,'  free site')
     do i = 1, reaction%neqsurfcmplx+reaction%neqsurfcmplxrxn
       icplx = eqsurfcmplxsort(i)
       if (icplx > 0) then
@@ -971,6 +1011,9 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
           
   if (reaction%nmnrl > 0 .and. associated(mineral_constraint)) then
   
+    130 format(/,'  mineral       vol frac  log SI      log K')
+    131 format(2x,a12,f8.4,2x,f8.4,2x,1pe12.4,2x,1pe12.4)
+
     do imnrl = 1, reaction%nmnrl
       ! compute saturation
       ln_act_h2o = 0.d0
@@ -1014,82 +1057,42 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
     enddo
   endif
     
-  130 format(/,'  mineral       vol frac  log SI      log K')
-  131 format(2x,a12,f8.4,2x,f8.4,2x,1pe12.4,2x,1pe12.4)
-
   if (reaction%ngas > 0) then
+    
+    132 format(/,'  gas   log partial pressure  partial pressure [bars]  log K')
+    133 format(a8,2x,1pe12.4,8x,1pe12.4,8x,1pe12.4)
+    
     write(option%fid_out,132)
     write(option%fid_out,90)
     do igas = 1, reaction%ngas
 
-          ln_act_h2o = 0.d0
-          
-          ! compute gas partial pressure
-          lnQK(igas) = -reaction%eqgas_logK(igas)*log_to_ln
-          
-          ! divide K by RT
-          !lnQK = lnQK - log((auxvar%temp+273.15d0)*ideal_gas_const)
-          
-          ! activity of water
-          if (reaction%eqgash2oid(igas) > 0) then
-            lnQK(igas) = lnQK(igas) + reaction%eqgash2ostoich(igas)*ln_act_h2o
-          endif
+      ln_act_h2o = 0.d0
+      
+      ! compute gas partial pressure
+      lnQK(igas) = -reaction%eqgas_logK(igas)*log_to_ln
+      
+      ! divide K by RT
+      !lnQK = lnQK - log((auxvar%temp+273.15d0)*ideal_gas_const)
+      
+      ! activity of water
+      if (reaction%eqgash2oid(igas) > 0) then
+        lnQK(igas) = lnQK(igas) + reaction%eqgash2ostoich(igas)*ln_act_h2o
+      endif
 
-          do jcomp = 1, reaction%eqgasspecid(0,igas)
-            comp_id = reaction%eqgasspecid(jcomp,igas)
-            lnQK(igas) = lnQK(igas) + reaction%eqgasstoich(jcomp,igas)* &
-                          log(auxvar%primary_spec(comp_id)*auxvar%pri_act_coef(comp_id))
-          enddo
-          
-          QK(igas) = exp(lnQK(igas))
+      do jcomp = 1, reaction%eqgasspecid(0,igas)
+        comp_id = reaction%eqgasspecid(jcomp,igas)
+        lnQK(igas) = lnQK(igas) + reaction%eqgasstoich(jcomp,igas)* &
+                      log(auxvar%primary_spec(comp_id)*auxvar%pri_act_coef(comp_id))
+      enddo
+      
+      QK(igas) = exp(lnQK(igas))
           
       write(option%fid_out,133) reaction%gas_species_names(igas),lnQK(igas),QK(igas), &
       reaction%eqgas_logK(igas)
     enddo
   endif
   
-  132 format(/,'  gas   log partial pressure  partial pressure [bars]  log K')
-  133 format(a8,2x,1pe12.4,8x,1pe12.4,8x,1pe12.4)
 
-  !print speciation precentages
-  write(option%fid_out,92)
-  92 format(/)
-  do jcomp = 1, reaction%ncomp
-    totj = auxvar%total(jcomp,1)
-    totj = abs(totj)
-    write(option%fid_out,90)
-    write(option%fid_out,135) reaction%primary_species_names(jcomp),totj
-    write(option%fid_out,134)
-    write(option%fid_out,90)
-    percent = auxvar%primary_molal(jcomp)/totj*100.d0
-    write(option%fid_out,136) reaction%primary_species_names(jcomp), &
-    percent,auxvar%primary_molal(jcomp)
-    do icplx = 1, reaction%neqcmplx
-      ncomp = reaction%eqcmplxspecid(0,icplx)
-      ifound = 0
-      do j = 1, ncomp
-!       print *,'reaction: ',jcomp,j,icplx,ncomp,reaction%primary_species_names(jcomp), &
-!       reaction%eqcmplx_basis_names(j,icplx)
-        if (fiStringCompare(reaction%primary_species_names(jcomp), &
-          reaction%eqcmplx_basis_names(j,icplx),MAXWORDLENGTH)) then
-          ifound = 1
-          exit
-        endif
-      enddo
-      if (ifound == 1) then
-        percent = abs(reaction%eqcmplxstoich(j,icplx))* &
-        auxvar%secondary_spec(icplx)/totj*100.d0
-        if (percent > 0.01) then
-          write(option%fid_out,136) reaction%secondary_species_names(icplx), &
-          percent,auxvar%secondary_spec(icplx) !,reaction%eqcmplxstoich(j,icplx)
-        endif
-      endif
-    enddo
-  enddo
-  134 format('species       percent    concentration')
-  135 format('primary species: ',a12,2x,' total conc: ',1pe12.4)
-  136 format(a12,2x,f6.2,2x,1pe12.4,1p2e12.4)
-  
   call RTAuxVarDestroy(auxvar)
             
 end subroutine RPrintConstraint
