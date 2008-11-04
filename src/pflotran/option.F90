@@ -47,6 +47,7 @@ module Option_module
     logical :: use_generalized_grid
       
     PetscReal :: flow_time, tran_time, time  ! The time elapsed in the simulation.
+    PetscReal :: tran_weight_t0, tran_weight_t1
     PetscReal :: flow_dt, tran_dt, dt ! The size of the time step.
   
 !    PetscReal, pointer :: tplot(:)
@@ -250,7 +251,15 @@ function OptionCreate()
   option%overwrite_restart_transport = PETSC_FALSE
   option%overwrite_restart_flow_params = PETSC_FALSE
 
-  
+  option%flow_time = 0.d0
+  option%tran_time = 0.d0
+  option%time = 0.d0
+  option%tran_weight_t0 = 0.d0
+  option%tran_weight_t1 = 0.d0
+  option%flow_dt = 0.d0
+  option%tran_dt = 0.d0
+  option%dt = 0.d0
+
   option%io_handshake_buffer_size = 0
   
   option%permx_filename = ""

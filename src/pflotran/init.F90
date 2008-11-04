@@ -438,12 +438,14 @@ subroutine Init(simulation,filename)
       call VecDestroy(global_vec,ierr)
     else
       call VecSet(field%saturation_loc,1.d0,ierr)
-      call VecCopy(field%saturation_loc,field%saturation0_loc,ierr)
       call VecSet(field%density_loc,997.160290931658d0,ierr)
-      call VecCopy(field%density_loc,field%density0_loc,ierr)
     endif
 
+    call VecCopy(field%saturation_loc,field%saturation0_loc,ierr)
+    call VecCopy(field%density_loc,field%density0_loc,ierr)
+
     ! map densities and saturations to reactive transport aux vars
+    call RTUpdateDenAndSat(realization,0.d0)
     call RealizBridgeFlowAndTransport(realization) 
     ! initial concentrations must be assigned after densities are set !!!
     call RealizAssignTransportInitCond(realization)

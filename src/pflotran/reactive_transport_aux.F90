@@ -159,15 +159,21 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   endif
   
   if (reaction%nmnrl > 0) then
+    allocate(aux_var%mnrl_volfrac0(reaction%nmnrl))
+    aux_var%mnrl_volfrac0 = 0.d0
     allocate(aux_var%mnrl_volfrac(reaction%nmnrl))
     aux_var%mnrl_volfrac = 0.d0
     allocate(aux_var%mnrl_area0(reaction%nmnrl))
     aux_var%mnrl_area0 = 1.d0 ! Hardwired for now - geh
+    allocate(aux_var%mnrl_area(reaction%nmnrl))
+    aux_var%mnrl_area = 0.d0
     allocate(aux_var%mnrl_rate(reaction%nmnrl))
     aux_var%mnrl_rate = 0.d0
   else
+    nullify(aux_var%mnrl_volfrac0)
     nullify(aux_var%mnrl_volfrac)
     nullify(aux_var%mnrl_area0)
+    nullify(aux_var%mnrl_area)
     nullify(aux_var%mnrl_rate)
   endif
   
@@ -220,8 +226,10 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
     aux_var%eqionx_ref_cation_sorbed_conc = aux_var2%eqionx_ref_cation_sorbed_conc
   endif  
   if (associated(aux_var%mnrl_volfrac)) then
+    aux_var%mnrl_volfrac0 = aux_var2%mnrl_volfrac0
     aux_var%mnrl_volfrac = aux_var2%mnrl_volfrac
     aux_var%mnrl_area0 = aux_var2%mnrl_area0
+    aux_var%mnrl_area = aux_var2%mnrl_area
     aux_var%mnrl_rate = aux_var2%mnrl_rate
   endif
   aux_var%act_h2o = aux_var2%act_h2o
@@ -265,10 +273,14 @@ subroutine RTAuxVarDestroy(aux_var)
   nullify(aux_var%dtotal_sorb)
   if (associated(aux_var%eqionx_ref_cation_sorbed_conc)) deallocate(aux_var%eqionx_ref_cation_sorbed_conc)
   nullify(aux_var%eqionx_ref_cation_sorbed_conc)  
+  if (associated(aux_var%mnrl_volfrac0))deallocate(aux_var%mnrl_volfrac0)
+  nullify(aux_var%mnrl_volfrac0)
   if (associated(aux_var%mnrl_volfrac))deallocate(aux_var%mnrl_volfrac)
   nullify(aux_var%mnrl_volfrac)
   if (associated(aux_var%mnrl_area0))deallocate(aux_var%mnrl_area0)
   nullify(aux_var%mnrl_area0)
+  if (associated(aux_var%mnrl_area))deallocate(aux_var%mnrl_area)
+  nullify(aux_var%mnrl_area)
   if (associated(aux_var%mnrl_rate))deallocate(aux_var%mnrl_rate)
   nullify(aux_var%mnrl_rate)
   if (associated(aux_var%pri_act_coef))deallocate(aux_var%pri_act_coef)

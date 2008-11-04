@@ -23,7 +23,7 @@ module Reactive_Transport_module
   
   public :: RTTimeCut, RTSetup, RTMaxChange, RTUpdateSolution, RTResidual, &
             RTJacobian, RTInitializeTimestep, RTGetTecplotHeader, &
-            RTUpdateAuxVars
+            RTUpdateAuxVars, RTUpdateDenAndSat
   
 contains
 
@@ -50,6 +50,8 @@ subroutine RTTimeCut(realization)
  
   call VecCopy(field%tran_xx,field%tran_yy,ierr)
   call RTInitializeTimestep(realization)  
+  ! set densities and weights to t+dt
+  call RTUpdateDenAndSat(realization,realization%option%tran_weight_t1)
  
 end subroutine RTTimeCut
 
@@ -200,6 +202,8 @@ subroutine RTInitializeTimestepPatch(realization)
   
   type(realization_type) :: realization
 
+  ! set densities and weights to t, as opposed to t+dt
+  call RTUpdateDenAndSatPatch(realization,realization%option%tran_weight_t0)
   call RTUpdateFixedAccumulationPatch(realization)
 
 end subroutine RTInitializeTimestepPatch
@@ -345,12 +349,12 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
 
   call GridVecGetArrayF90(grid,field%tran_xx,xx_p, ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
-  call GridVecGetArrayF90(grid,field%saturation0_loc,saturation_loc_p,ierr)
-  call GridVecGetArrayF90(grid,field%density0_loc,density_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%tor_loc,tor_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
 
   call GridVecGetArrayF90(grid,field%tran_accum, accum_p, ierr)
+
+  call RTUpdateAuxVarsPatch(realization,PETSC_FALSE)
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -361,19 +365,15 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
     iend = local_id*reaction%ncomp
     istart = iend-reaction%ncomp+1
 
-    aux_vars(ghosted_id)%den(1) = density_loc_p(ghosted_id)
     call RTAuxVarCompute(xx_p(istart:iend),aux_vars(ghosted_id),reaction, &
                          option)
     call RTAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
-                        saturation_loc_p(ghosted_id), &
                         volume_p(local_id), &
                         reaction,option,accum_p(istart:iend)) 
   enddo
 
   call GridVecRestoreArrayF90(grid,field%tran_xx,xx_p, ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
-  call GridVecRestoreArrayF90(grid,field%saturation0_loc,saturation_loc_p,ierr)
-  call GridVecRestoreArrayF90(grid,field%density0_loc,density_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%tor_loc,tor_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
 
@@ -486,7 +486,7 @@ end subroutine RTNumericalJacobianTest
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine RTAccumulationDerivative(aux_var,por,sat,vol,reaction,option,J)
+subroutine RTAccumulationDerivative(aux_var,por,vol,reaction,option,J)
 
   use Reactive_Transport_Aux_module
   use Option_module
@@ -494,7 +494,7 @@ subroutine RTAccumulationDerivative(aux_var,por,sat,vol,reaction,option,J)
   implicit none
   
   type(reactive_transport_auxvar_type) :: aux_var
-  PetscReal :: por, sat, vol
+  PetscReal :: por, vol
   type(option_type) :: option
   type(reaction_type) :: reaction
   PetscReal :: J(reaction%ncomp,reaction%ncomp)
@@ -509,15 +509,15 @@ subroutine RTAccumulationDerivative(aux_var,por,sat,vol,reaction,option,J)
   if (associated(aux_var%dtotal)) then ! units of dtotal = kg water/m^3 water
     if (associated(aux_var%dtotal_sorb)) then
       v_t = vol/option%dt   
-      psv_t = por*sat*v_t
+      psv_t = por*aux_var%sat(iphase)*v_t
       J = aux_var%dtotal(:,:,iphase)*psv_t + aux_var%dtotal_sorb(:,:)*v_t
     else
-      psv_t = por*sat*vol/option%dt  
+      psv_t = por*aux_var%sat(iphase)*vol/option%dt  
       J = aux_var%dtotal(:,:,iphase)*psv_t
     endif
   else
     J = 0.d0
-    psvd_t = por*sat*vol*aux_var%den(iphase)/option%dt ! units of den = kg water/m^3 water
+    psvd_t = por*aux_var%sat(iphase)*vol*aux_var%den(iphase)/option%dt ! units of den = kg water/m^3 water
     do icomp=1,reaction%ncomp
       J(icomp,icomp) = psvd_t
     enddo
@@ -532,7 +532,7 @@ end subroutine RTAccumulationDerivative
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine RTAccumulation(aux_var,por,sat,vol,reaction,option,Res)
+subroutine RTAccumulation(aux_var,por,vol,reaction,option,Res)
 
   use Reactive_Transport_Aux_module
   use Option_module
@@ -540,7 +540,7 @@ subroutine RTAccumulation(aux_var,por,sat,vol,reaction,option,Res)
   implicit none
   
   type(reactive_transport_auxvar_type) :: aux_var
-  PetscReal :: por, sat, vol
+  PetscReal :: por, vol
   type(option_type) :: option
   type(reaction_type) :: reaction
   PetscReal :: Res(reaction%ncomp)
@@ -556,10 +556,10 @@ subroutine RTAccumulation(aux_var,por,sat,vol,reaction,option,Res)
   ! all residual entries should be in mol/sec
   if (associated(aux_var%total_sorb)) then
     v_t = vol*1000.d0/option%dt
-    psv_t = por*sat*v_t
+    psv_t = por*aux_var%sat(iphase)*v_t
     Res(:) = psv_t*aux_var%total(:,iphase) +  v_t*aux_var%total_sorb(:)
   else
-    psv_t = por*sat*vol*1000.d0/option%dt  
+    psv_t = por*aux_var%sat(iphase)*vol*1000.d0/option%dt  
     Res(:) = psv_t*aux_var%total(:,iphase) 
   endif
   
@@ -726,7 +726,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   aux_vars => patch%aux%RT%aux_vars
   aux_vars_bc => patch%aux%RT%aux_vars_bc
   
-  call RTUpdateAuxVarsPatch(realization)
+  call RTUpdateAuxVarsPatch(realization,PETSC_TRUE)
   patch%aux%RT%aux_vars_up_to_date = PETSC_FALSE 
 
   ! Get pointer to Vector data
@@ -750,7 +750,6 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
     iend = local_id*reaction%ncomp
     istart = iend-reaction%ncomp+1
     call RTAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
-                        saturation_loc_p(ghosted_id), &
                         volume_p(local_id),reaction,option,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)
   enddo
@@ -1117,7 +1116,6 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     iend = local_id*reaction%ncomp
     istart = iend-reaction%ncomp+1
     call RTAccumulationDerivative(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
-                                  saturation_loc_p(ghosted_id), &
                                   volume_p(local_id),reaction,option,Jup) 
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
   enddo
@@ -1328,6 +1326,111 @@ end subroutine RTJacobianPatch
 
 ! ************************************************************************** !
 !
+! RTUpdateDenAndSat: Updates the densities and saturations in auxilliary 
+!                    variables associated with reactive transport
+! author: Glenn Hammond
+! date: 11/03/08
+!
+! ************************************************************************** !
+subroutine RTUpdateDenAndSat(realization,weight)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+
+  type(realization_type) :: realization
+  PetscReal :: weight
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RTUpdateDenAndSatPatch(realization,weight)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+  
+end subroutine RTUpdateDenAndSat
+
+! ************************************************************************** !
+!
+! RTUpdateDenAndSatPatch: Updates the densities and saturations in auxilliary 
+!                         variables associated with reactive transport
+! author: Glenn Hammond
+! date: 11/03/08
+!
+! ************************************************************************** !
+subroutine RTUpdateDenAndSatPatch(realization,weight)
+
+  use Realization_module
+  use Patch_module
+  use Reactive_Transport_Aux_module
+  use Grid_module
+  use Coupler_module
+  use Connection_module
+  use Option_module
+  use Field_module
+  
+  implicit none
+
+  type(realization_type) :: realization
+  PetscReal :: weight
+  
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+
+  PetscInt :: ghosted_id, local_id
+  PetscReal, pointer :: density_loc_p(:)
+  PetscReal, pointer :: density0_loc_p(:)
+  PetscReal, pointer :: saturation_loc_p(:)
+  PetscReal, pointer :: saturation0_loc_p(:)
+  PetscErrorCode :: ierr
+  
+  option => realization%option
+  patch => realization%patch  
+  grid => patch%grid
+  field => realization%field
+  
+  call GridVecGetArrayF90(grid,field%density0_loc,density0_loc_p,ierr)
+  call GridVecGetArrayF90(grid,field%density_loc, density_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%saturation0_loc,saturation0_loc_p,ierr)
+  call GridVecGetArrayF90(grid,field%saturation_loc,saturation_loc_p,ierr)
+
+  do ghosted_id = 1, grid%ngmax
+    if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
+
+    ! interpolate density and saturation based on weight
+    patch%aux%RT%aux_vars(ghosted_id)%den(1) = &
+      (weight*density_loc_p(ghosted_id)+ &
+       (1.d0-weight)*density0_loc_p(ghosted_id))
+    patch%aux%RT%aux_vars(ghosted_id)%sat(1) = &
+      (weight*saturation_loc_p(ghosted_id)+ &
+       (1.d0-weight)*saturation0_loc_p(ghosted_id))
+       
+  enddo    
+  
+  call GridVecRestoreArrayF90(grid,field%density0_loc, density0_loc_p, ierr)  
+  call GridVecRestoreArrayF90(grid,field%density_loc, density_loc_p, ierr)  
+  call GridVecRestoreArrayF90(grid,field%saturation0_loc, saturation0_loc_p, ierr)  
+  call GridVecRestoreArrayF90(grid,field%saturation_loc, saturation_loc_p, ierr)  
+  
+end subroutine RTUpdateDenAndSatPatch
+
+! ************************************************************************** !
+!
 ! RTUpdateAuxVars: Updates the auxilliary variables associated with 
 !                  reactive transport
 ! author: Glenn Hammond
@@ -1352,7 +1455,7 @@ subroutine RTUpdateAuxVars(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RTUpdateAuxVarsPatch(realization)
+      call RTUpdateAuxVarsPatch(realization,PETSC_FALSE)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -1368,7 +1471,7 @@ end subroutine RTUpdateAuxVars
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine RTUpdateAuxVarsPatch(realization)
+subroutine RTUpdateAuxVarsPatch(realization,update_bcs)
 
   use Realization_module
   use Patch_module
@@ -1382,6 +1485,8 @@ subroutine RTUpdateAuxVarsPatch(realization)
   implicit none
 
   type(realization_type) :: realization
+  PetscTruth :: update_bcs
+  PetscTruth :: time0
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -1392,9 +1497,10 @@ subroutine RTUpdateAuxVarsPatch(realization)
   type(connection_set_type), pointer :: cur_connection_set
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
-  PetscReal, pointer :: xx_loc_p(:), density_loc_p(:)
+  PetscReal, pointer :: xx_loc_p(:)
   PetscReal :: xxbc(realization%reaction%ncomp)
   PetscReal, pointer :: basis_molarity_p(:)
+  PetscReal :: weight
   PetscErrorCode :: ierr
   
   option => realization%option
@@ -1404,7 +1510,6 @@ subroutine RTUpdateAuxVarsPatch(realization)
   reaction => realization%reaction
   
   call GridVecGetArrayF90(grid,field%tran_xx_loc,xx_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%density_loc, density_loc_p, ierr)
 
   do ghosted_id = 1, grid%ngmax
     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
@@ -1415,54 +1520,56 @@ subroutine RTUpdateAuxVarsPatch(realization)
     iend = ghosted_id*reaction%ncomp
     istart = iend-reaction%ncomp+1
     
-    patch%aux%RT%aux_vars(ghosted_id)%den(1) = density_loc_p(ghosted_id)
     call RTAuxVarCompute(xx_loc_p(istart:iend), &
                          patch%aux%RT%aux_vars(ghosted_id),reaction, &
                          option)
   enddo
 
-  boundary_condition => patch%boundary_conditions%first
-  sum_connection = 0    
-  do 
-    if (.not.associated(boundary_condition)) exit
-    cur_connection_set => boundary_condition%connection_set
+  if (update_bcs) then
+  
+    boundary_condition => patch%boundary_conditions%first
+    sum_connection = 0    
+    do 
+      if (.not.associated(boundary_condition)) exit
+      cur_connection_set => boundary_condition%connection_set
 
-    basis_molarity_p => boundary_condition%tran_condition% &
-      cur_constraint_coupler%aqueous_species%basis_molarity
+      basis_molarity_p => boundary_condition%tran_condition% &
+        cur_constraint_coupler%aqueous_species%basis_molarity
 
-    do iconn = 1, cur_connection_set%num_connections
-      sum_connection = sum_connection + 1
-      local_id = cur_connection_set%id_dn(iconn)
-      ghosted_id = grid%nL2G(local_id)
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      do iconn = 1, cur_connection_set%num_connections
+        sum_connection = sum_connection + 1
+        local_id = cur_connection_set%id_dn(iconn)
+        ghosted_id = grid%nL2G(local_id)
+        if (associated(patch%imat)) then
+          if (patch%imat(ghosted_id) <= 0) cycle
+        endif
 
-      select case(boundary_condition%tran_condition%itype)
-        case(CONCENTRATION_SS,DIRICHLET_BC,NEUMANN_BC)
-          ! since basis_molarity is in molarity, must convert to molality
-          ! by dividing by density of water (mol/L -> mol/kg)
-          xxbc(1:reaction%ncomp) = basis_molarity_p(1:reaction%ncomp) / &
-            patch%aux%RT%aux_vars_bc(sum_connection)%den(1) * 1000.d0
-!          xxbc(1:reaction%ncomp)
-!            boundary_condition%tran_aux_real_var(1:reaction%ncomp,iconn)
-        case(ZERO_GRADIENT_BC)
-          do idof=1,reaction%ncomp
-            xxbc(idof) = xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
-          enddo
-      end select
-      ! no need to update boundary fluid density since it is already set
-      call RTAuxVarCompute(xxbc, &
-                           patch%aux%RT%aux_vars_bc(sum_connection), &
-                           reaction,option)
+        select case(boundary_condition%tran_condition%itype)
+          case(CONCENTRATION_SS,DIRICHLET_BC,NEUMANN_BC)
+            ! since basis_molarity is in molarity, must convert to molality
+            ! by dividing by density of water (mol/L -> mol/kg)
+            xxbc(1:reaction%ncomp) = basis_molarity_p(1:reaction%ncomp) / &
+              patch%aux%RT%aux_vars_bc(sum_connection)%den(1) * 1000.d0
+  !          xxbc(1:reaction%ncomp)
+  !            boundary_condition%tran_aux_real_var(1:reaction%ncomp,iconn)
+          case(ZERO_GRADIENT_BC)
+            do idof=1,reaction%ncomp
+              xxbc(idof) = xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
+            enddo
+        end select
+        ! no need to update boundary fluid density since it is already set
+        call RTAuxVarCompute(xxbc, &
+                             patch%aux%RT%aux_vars_bc(sum_connection), &
+                             reaction,option)
+      enddo
+      boundary_condition => boundary_condition%next
     enddo
-    boundary_condition => boundary_condition%next
-  enddo
 
-  patch%aux%RT%aux_vars_up_to_date = PETSC_TRUE
+    patch%aux%RT%aux_vars_up_to_date = PETSC_TRUE
 
+  endif 
+  
   call GridVecRestoreArrayF90(grid,field%tran_xx_loc,xx_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%density_loc, density_loc_p, ierr)  
   
 end subroutine RTUpdateAuxVarsPatch
 

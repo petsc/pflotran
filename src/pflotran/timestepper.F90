@@ -873,8 +873,10 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   PetscInt :: sum_newton_iterations, sum_linear_iterations, num_linear_iterations
   PetscInt :: n, nmax_inf
   PetscReal :: fnorm, scaled_fnorm, inorm
+  PetscReal :: start_time, end_time, dt_orig
   logical :: plot_flag  
   PetscReal, pointer :: r_p(:), xx_p(:), log_xx_p(:)
+  PetscReal, parameter :: time_tol = 1.d-10
 
   PetscInt, save :: linear_solver_divergence_count = 0
 
@@ -905,165 +907,205 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
     option%tran_time = option%flow_time
     option%tran_dt = option%flow_dt
     option%time = option%flow_time
-    option%dt = option%flow_dt
   endif
   
-  call RTInitializeTimestep(realization)
-
-  if (option%myrank == 0) then
-    write(*,'(/,2("=")" TRANSPORT ",47("="))')
-  endif
+  end_time = option%tran_time
+  start_time = end_time-option%tran_dt
+  dt_orig = option%tran_dt
+  
+  ! test
+  !option%tran_time = option%tran_time - option%tran_dt
+  !option%tran_dt = option%tran_dt * 0.5d0
+  !option%tran_time = option%tran_time + option%tran_dt
   
   do
-   
-    if (realization%reaction%use_log_formulation) then
-      if (associated(realization%patch%grid%structured_grid) .and. &
-          (.not.(realization%patch%grid%structured_grid%p_samr_patch.eq.0))) then
-        cur_level => realization%level_list%first
-        do 
-          if (.not.associated(cur_level)) exit
-          cur_patch => cur_level%patch_list%first
-          do
-            if (.not.associated(cur_patch)) exit
-            call GridVecGetArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
-            call GridVecGetArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
-            log_xx_p(:) = log(xx_p(:))
-            call GridVecRestoreArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
-            call GridVecRestoreArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
-            cur_patch => cur_patch%next
-          enddo
-          cur_level => cur_level%next
-        enddo
-      else
-        call VecCopy(field%tran_xx,field%tran_log_xx,ierr)
-        call VecLog(field%tran_log_xx,ierr)
-      endif
-        
-      call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_log_xx, ierr)
-        
-      if (associated(realization%patch%grid%structured_grid) .and. &
-          (.not.(realization%patch%grid%structured_grid%p_samr_patch.eq.0))) then
-        cur_level => realization%level_list%first
-        do 
-          if (.not.associated(cur_level)) exit
-          cur_patch => cur_level%patch_list%first
-          do
-            if (.not.associated(cur_patch)) exit
-            call GridVecGetArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
-            call GridVecGetArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
-            xx_p(:) = exp(log_xx_p(:))
-            call GridVecRestoreArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
-            call GridVecRestoreArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
-            cur_patch => cur_patch%next
-          enddo
-          cur_level => cur_level%next
-        enddo
-      else
-        call VecCopy(field%tran_log_xx,field%tran_xx,ierr)
-        call VecExp(field%tran_xx,ierr)
-      endif
-    else
-      call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_xx, ierr)
-    endif
-
-! do we really need all this? - geh 
-    call SNESGetIterationNumber(solver%snes,num_newton_iterations, ierr)
-    call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations, ierr)
-    call VecNorm(field%tran_r,NORM_2,fnorm,ierr) 
-    call VecNorm(field%tran_r,NORM_INFINITY,inorm,ierr)
-    ! the grid pointer is null if we are working with SAMRAI
-    if(associated(discretization%grid)) then
-       scaled_fnorm = fnorm/discretization%grid%nmax   
-    else
-       scaled_fnorm = fnorm
-    endif
-
-    call SNESGetConvergedReason(solver%snes, snes_reason, ierr)
-
-    sum_newton_iterations = sum_newton_iterations + num_newton_iterations
-    sum_linear_iterations = sum_linear_iterations + num_linear_iterations
-    
-    if (snes_reason <= 0) then
-      ! The Newton solver diverged, so try reducing the time step.
-      icut = icut + 1
-      timestep_cut_flag = PETSC_TRUE
-
-      if (icut > stepper%icut_max .or. option%tran_dt<1.d-20) then
-        if (option%myrank == 0) then
-          print *,"--> icut_max exceeded: icut/icutmax= ",icut,stepper%icut_max, &
-                  "t= ",option%tran_time/realization%output_option%tconv, " dt= ", &
-                  option%tran_dt/realization%output_option%tconv
-          print *,"Stopping execution!"
-        endif
-        realization%output_option%plot_name = 'cut_to_failure'
-        plot_flag = PETSC_TRUE
-        call Output(realization,plot_flag)
-        call PetscFinalize(ierr)
-        stop
-      endif
-
-      option%tran_time = option%tran_time - option%tran_dt
-      option%tran_dt = 0.5d0 * option%tran_dt
-      option%tran_time = option%tran_time + option%tran_dt
-    
-      if (option%myrank == 0) write(*,'('' -> Cut time step: snes='',i3, &
-        &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.4, '' dt= '', &
-        &   1pe12.4,i3)')  snes_reason,icut,stepper%icutcum, &
-            option%tran_time/realization%output_option%tconv, &
-            option%tran_dt/realization%output_option%tconv,timestep_cut_flag
-
-      call RTTimeCut(realization)
-
-    else
-      ! The Newton solver converged, so we can exit.
-      stepper%steps = stepper%steps + 1      
-      exit
-    endif
-  enddo
-
-  stepper%newton_cum = stepper%newton_cum + sum_newton_iterations
-  stepper%linear_cum = stepper%linear_cum + sum_linear_iterations
-  stepper%icutcum = stepper%icutcum + icut
-
-! print screen output
-  if (option%myrank == 0) then
-    if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
-      write(*, '(/," TRAN ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
-        & " snes_conv_reason: ",i4,/,"  newton = ",i2," [",i6,"]", &
-        & " linear = ",i5," [",i8,"]"," cuts = ",i2," [",i4,"]")') &
-        stepper%steps,option%flow_time/realization%output_option%tconv, &
-        option%flow_dt/realization%output_option%tconv, &
-        realization%output_option%tunit,snes_reason,num_newton_iterations, &
-        stepper%newton_cum,num_linear_iterations,stepper%linear_cum,icut, &
-        stepper%icutcum
-
-      print *,' --> SNES Linear/Non-Linear Interations = ', &
-               num_linear_iterations,num_newton_iterations
-      print *,' --> SNES Residual: ', fnorm, scaled_fnorm, inorm 
-       
-      write(option%fid_out, '(" TRAN ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
-        & "]"," snes_conv_reason: ",i4,/,"  newton = ",i2," [",i6,"]", &
-        & " linear = ",i5," [",i8,"]"," cuts = ",i2," [",i4,"]")') stepper%steps, &
-        option%flow_time/realization%output_option%tconv, &
-        option%flow_dt/realization%output_option%tconv, &
-        realization%output_option%tunit,snes_reason,num_newton_iterations, &
-        stepper%newton_cum,num_linear_iterations,stepper%linear_cum,icut, &
-        stepper%icutcum
-    endif
-  endif
   
-  call RTMaxChange(realization)
-  if (option%myrank==0) then
-    if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
-      write(*,'("  --> max chng: dcmx= ",1pe12.4)') option%dcmax
-        
-      write(option%fid_out,'("  --> max chng: dcmx= ",1pe12.4)') option%dcmax
-    endif
-  endif
+    option%dt = option%tran_dt
+    option%tran_weight_t0 = (option%tran_time-option%tran_dt-start_time)/ &
+                            (end_time-start_time)
+    option%tran_weight_t1 = (option%tran_time-start_time)/ &
+                            (end_time-start_time)
 
-  if (option%myrank == 0 .and. mod(stepper%steps,option%imod) == 0) then
-    print *, ""
-  endif
+    call RTInitializeTimestep(realization)
+    ! set densities and weights to t+dt
+    call RTUpdateDenAndSat(realization,option%tran_weight_t1)
+
+    if (option%myrank == 0) then
+      write(*,'(/,2("=")" TRANSPORT ",47("="))')
+    endif
+
+    do
+     
+      if (realization%reaction%use_log_formulation) then
+        if (associated(realization%patch%grid%structured_grid) .and. &
+            (.not.(realization%patch%grid%structured_grid%p_samr_patch.eq.0))) then
+          cur_level => realization%level_list%first
+          do 
+            if (.not.associated(cur_level)) exit
+            cur_patch => cur_level%patch_list%first
+            do
+              if (.not.associated(cur_patch)) exit
+              call GridVecGetArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
+              call GridVecGetArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
+              log_xx_p(:) = log(xx_p(:))
+              call GridVecRestoreArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
+              call GridVecRestoreArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
+              cur_patch => cur_patch%next
+            enddo
+            cur_level => cur_level%next
+          enddo
+        else
+          call VecCopy(field%tran_xx,field%tran_log_xx,ierr)
+          call VecLog(field%tran_log_xx,ierr)
+        endif
+          
+        call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_log_xx, ierr)
+          
+        if (associated(realization%patch%grid%structured_grid) .and. &
+            (.not.(realization%patch%grid%structured_grid%p_samr_patch.eq.0))) then
+          cur_level => realization%level_list%first
+          do 
+            if (.not.associated(cur_level)) exit
+            cur_patch => cur_level%patch_list%first
+            do
+              if (.not.associated(cur_patch)) exit
+              call GridVecGetArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
+              call GridVecGetArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
+              xx_p(:) = exp(log_xx_p(:))
+              call GridVecRestoreArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
+              call GridVecRestoreArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
+              cur_patch => cur_patch%next
+            enddo
+            cur_level => cur_level%next
+          enddo
+        else
+          call VecCopy(field%tran_log_xx,field%tran_xx,ierr)
+          call VecExp(field%tran_xx,ierr)
+        endif
+      else
+        call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_xx, ierr)
+      endif
+
+  ! do we really need all this? - geh 
+      call SNESGetIterationNumber(solver%snes,num_newton_iterations, ierr)
+      call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations, ierr)
+      call VecNorm(field%tran_r,NORM_2,fnorm,ierr) 
+      call VecNorm(field%tran_r,NORM_INFINITY,inorm,ierr)
+      ! the grid pointer is null if we are working with SAMRAI
+      if(associated(discretization%grid)) then
+         scaled_fnorm = fnorm/discretization%grid%nmax   
+      else
+         scaled_fnorm = fnorm
+      endif
+
+      call SNESGetConvergedReason(solver%snes, snes_reason, ierr)
+
+      sum_newton_iterations = sum_newton_iterations + num_newton_iterations
+      sum_linear_iterations = sum_linear_iterations + num_linear_iterations
+      
+      if (snes_reason <= 0) then
+        ! The Newton solver diverged, so try reducing the time step.
+        icut = icut + 1
+        timestep_cut_flag = PETSC_TRUE
+
+        if (icut > stepper%icut_max .or. option%tran_dt<1.d-20) then
+          if (option%myrank == 0) then
+            print *,"--> icut_max exceeded: icut/icutmax= ",icut,stepper%icut_max, &
+                    "t= ",option%tran_time/realization%output_option%tconv, " dt= ", &
+                    option%tran_dt/realization%output_option%tconv
+            print *,"Stopping execution!"
+          endif
+          realization%output_option%plot_name = 'cut_to_failure'
+          plot_flag = PETSC_TRUE
+          call Output(realization,plot_flag)
+          call PetscFinalize(ierr)
+          stop
+        endif
+
+        option%tran_time = option%tran_time - option%tran_dt
+        option%tran_dt = 0.5d0 * option%tran_dt
+        option%tran_time = option%tran_time + option%tran_dt
+      
+        if (option%myrank == 0) write(*,'('' -> Cut time step: snes='',i3, &
+          &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.4, '' dt= '', &
+          &   1pe12.4,i3)')  snes_reason,icut,stepper%icutcum, &
+              option%tran_time/realization%output_option%tconv, &
+              option%tran_dt/realization%output_option%tconv,timestep_cut_flag
+
+        ! recompute weights
+        option%tran_weight_t0 = (option%tran_time-option%tran_dt-start_time)/ &
+                                (end_time-start_time)
+        option%tran_weight_t1 = (option%tran_time-start_time)/ &
+                                (end_time-start_time)
+        call RTTimeCut(realization)
+
+      else
+        ! The Newton solver converged, so we can exit.
+        stepper%steps = stepper%steps + 1      
+        exit
+      endif
+    enddo
+
+    stepper%newton_cum = stepper%newton_cum + sum_newton_iterations
+    stepper%linear_cum = stepper%linear_cum + sum_linear_iterations
+    stepper%icutcum = stepper%icutcum + icut
+
+  ! print screen output
+    if (option%myrank == 0) then
+      if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
+        write(*, '(/," TRAN ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
+          & " snes_conv_reason: ",i4,/,"  newton = ",i2," [",i6,"]", &
+          & " linear = ",i5," [",i8,"]"," cuts = ",i2," [",i4,"]")') &
+          stepper%steps,option%tran_time/realization%output_option%tconv, &
+          option%tran_dt/realization%output_option%tconv, &
+          realization%output_option%tunit,snes_reason,num_newton_iterations, &
+          stepper%newton_cum,num_linear_iterations,stepper%linear_cum,icut, &
+          stepper%icutcum
+
+        print *,' --> SNES Linear/Non-Linear Interations = ', &
+                 num_linear_iterations,num_newton_iterations
+        print *,' --> SNES Residual: ', fnorm, scaled_fnorm, inorm 
+         
+        write(option%fid_out, '(" TRAN ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
+          & "]"," snes_conv_reason: ",i4,/,"  newton = ",i2," [",i6,"]", &
+          & " linear = ",i5," [",i8,"]"," cuts = ",i2," [",i4,"]")') stepper%steps, &
+          option%tran_time/realization%output_option%tconv, &
+          option%tran_dt/realization%output_option%tconv, &
+          realization%output_option%tunit,snes_reason,num_newton_iterations, &
+          stepper%newton_cum,num_linear_iterations,stepper%linear_cum,icut, &
+          stepper%icutcum
+      endif
+    endif
+    
+    call RTMaxChange(realization)
+    if (option%myrank==0) then
+      if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
+        write(*,'("  --> max chng: dcmx= ",1pe12.4)') option%dcmax
+          
+        write(option%fid_out,'("  --> max chng: dcmx= ",1pe12.4)') option%dcmax
+      endif
+    endif
+
+    if (option%myrank == 0 .and. mod(stepper%steps,option%imod) == 0) then
+      print *, ""
+    endif
+    
+    if (option%flow_time - option%tran_time <= time_tol*option%flow_time) exit
+
+    ! if dt is smaller than dt_orig/4, try growing it by 0.25d0
+    if (option%tran_dt < 0.25d0*dt_orig) then
+      option%tran_dt = 1.25d0*option%tran_dt
+    endif
+
+    ! compute next time step
+    if (option%tran_time + 1.2d0*option%tran_dt >= option%flow_dt) then
+      option%tran_dt = option%flow_time - option%tran_time
+      option%tran_time = option%flow_time
+    else
+      option%tran_time = option%tran_time + option%tran_dt
+    endif
+    
+  enddo
 
 end subroutine StepperStepTransportDT
 

@@ -711,12 +711,15 @@ subroutine PatchBridgeFlowAndTransport(patch,option)
   ! loop over all bc aux vars
   select case(option%iflowmode)
     case(RICHARDS_MODE)
+    ! map only bcs for now!!!
+#if 0    
       do iaux = 1, patch%aux%RT%num_aux
         patch%aux%RT%aux_vars(iaux)%den(1) = &
           patch%aux%Richards%aux_vars(iaux)%den_kg
         patch%aux%RT%aux_vars(iaux)%sat = &
           patch%aux%Richards%aux_vars(iaux)%sat
       enddo
+#endif
       do iaux = 1, patch%aux%RT%num_aux_bc
         patch%aux%RT%aux_vars_bc(iaux)%den(1) = &
           patch%aux%Richards%aux_vars_bc(iaux)%den_kg
