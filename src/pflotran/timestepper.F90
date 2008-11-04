@@ -316,24 +316,28 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     if (option%nflowdof > 0) then
       write(*,'(/," FLOW steps = ",i6," newton = ",i6," linear = ",i6, &
             & " cuts = ",i6)') &
-            istep,flow_stepper%newton_cum,flow_stepper%linear_cum, &
-            flow_stepper%icutcum
+!            istep,flow_stepper%newton_cum,flow_stepper%linear_cum, &
+            flow_stepper%steps,flow_stepper%newton_cum, &
+            flow_stepper%linear_cum,flow_stepper%icutcum
 
       write(option%fid_out,'(/," FLOW steps = ",i6," newton = ",i6," linear = ",i6, &
             & " cuts = ",i6)') &
-            istep,flow_stepper%newton_cum,flow_stepper%linear_cum, &
-            flow_stepper%icutcum
+!            istep,flow_stepper%newton_cum,flow_stepper%linear_cum, &
+            flow_stepper%steps,flow_stepper%newton_cum, &
+            flow_stepper%linear_cum,flow_stepper%icutcum
     endif
     if (option%ntrandof > 0) then
       write(*,'(/," TRAN steps = ",i6," newton = ",i6," linear = ",i6, &
             & " cuts = ",i6)') &
-            istep,tran_stepper%newton_cum,tran_stepper%linear_cum, &
-            tran_stepper%icutcum
+!            istep,tran_stepper%newton_cum,tran_stepper%linear_cum, &
+            tran_stepper%steps,tran_stepper%newton_cum, &
+            tran_stepper%linear_cum,tran_stepper%icutcum
 
       write(option%fid_out,'(/," TRAN steps = ",i6," newton = ",i6," linear = ",i6, &
             & " cuts = ",i6)') &
-            istep,tran_stepper%newton_cum,tran_stepper%linear_cum, &
-            tran_stepper%icutcum
+!            istep,tran_stepper%newton_cum,tran_stepper%linear_cum, &
+            tran_stepper%steps,tran_stepper%newton_cum, &
+            tran_stepper%linear_cum,tran_stepper%icutcum
     endif            
   endif
 
@@ -896,10 +900,6 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
 
 ! PetscReal, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
 
-  sum_newton_iterations = 0
-  sum_linear_iterations = 0
-  icut = 0
-
   call DiscretizationLocalToLocal(discretization,field%porosity_loc,field%porosity_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%tor_loc,field%tor_loc,ONEDOF)
 
@@ -914,9 +914,9 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   dt_orig = option%tran_dt
   
   ! test
-  !option%tran_time = option%tran_time - option%tran_dt
-  !option%tran_dt = option%tran_dt * 0.5d0
-  !option%tran_time = option%tran_time + option%tran_dt
+!  option%tran_time = option%tran_time - option%tran_dt
+!  option%tran_dt = option%tran_dt * 0.5d0
+!  option%tran_time = option%tran_time + option%tran_dt
   
   do
   
@@ -933,6 +933,10 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
     if (option%myrank == 0) then
       write(*,'(/,2("=")" TRANSPORT ",47("="))')
     endif
+
+    sum_newton_iterations = 0
+    sum_linear_iterations = 0
+    icut = 0
 
     do
      
@@ -1090,7 +1094,9 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
       print *, ""
     endif
     
-    if (option%flow_time - option%tran_time <= time_tol*option%flow_time) exit
+    ! get out if not simulating flow or time is met
+    if (option%nflowdof == 0 .or. &
+        option%flow_time - option%tran_time <= time_tol*option%flow_time) exit
 
     ! if dt is smaller than dt_orig/4, try growing it by 0.25d0
     if (option%tran_dt < 0.25d0*dt_orig) then
