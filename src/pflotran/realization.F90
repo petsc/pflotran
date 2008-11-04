@@ -442,7 +442,7 @@ subroutine RealizationProcessCouplers(realization)
       if (.not.associated(cur_patch)) exit
       call PatchProcessCouplers(cur_patch,realization%flow_conditions, &
                                 realization%transport_conditions, &
-                                realization%material_array, &
+                                realization%materials, &
                                 realization%option)
       cur_patch => cur_patch%next
     enddo
