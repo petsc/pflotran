@@ -14,6 +14,7 @@ module Checkpoint_Header_module
     integer*8 :: flow_steps
     integer*8 :: flow_newtcum
     integer*8 :: flow_icutcum
+    integer*8 :: flow_linear_cum
     integer*8 :: flow_num_const_timesteps
     integer*8 :: flow_num_newton_iterations
     real*8 :: tran_time
@@ -21,6 +22,7 @@ module Checkpoint_Header_module
     integer*8 :: tran_steps
     integer*8 :: tran_newtcum
     integer*8 :: tran_icutcum
+    integer*8 :: tran_linear_cum
     integer*8 :: tran_num_const_timesteps
     integer*8 :: tran_num_newton_iterations
     integer*8 :: plot_number
@@ -63,9 +65,11 @@ contains
 
 subroutine Checkpoint(realization, &
                       flow_steps,flow_newtcum,flow_icutcum, &
+                      flow_linear_cum, &
                       flow_num_const_timesteps, &
                       flow_num_newton_iterations, &
                       tran_steps,tran_newtcum,tran_icutcum, &
+                      tran_linear_cum, &
                       tran_num_const_timesteps, &
                       tran_num_newton_iterations, &
                       id)
@@ -83,10 +87,10 @@ subroutine Checkpoint(realization, &
   type(realization_type) :: realization
   PetscInt :: flow_num_const_timesteps
   PetscInt :: flow_num_newton_iterations
-  PetscInt :: flow_steps, flow_newtcum, flow_icutcum
+  PetscInt :: flow_steps, flow_newtcum, flow_icutcum, flow_linear_cum
   PetscInt :: tran_num_const_timesteps
   PetscInt :: tran_num_newton_iterations
-  PetscInt :: tran_steps, tran_newtcum, tran_icutcum
+  PetscInt :: tran_steps, tran_newtcum, tran_icutcum, tran_linear_cum
   PetscInt :: id
 #ifdef PetscSizeT
   PetscSizeT :: bagsize
@@ -149,7 +153,7 @@ subroutine Checkpoint(realization, &
   ! We manually specify the number of bytes required for the 
   ! checkpoint header, since sizeof() is not supported by some Fortran 
   ! compilers.  To be on the safe side, we assume an integer is 8 bytes.
-  bagsize = 120
+  bagsize = 136
   call PetscBagCreate(option%comm, bagsize, bag, ierr)
   call PetscBagGetData(bag, header, ierr); CHKERRQ(ierr)
 
@@ -189,6 +193,9 @@ subroutine Checkpoint(realization, &
                             "Total number of flow Newton steps taken",ierr)
   call PetscBagRegisterInt(bag,header%flow_icutcum,flow_icutcum,"flow_icutcum", &
                             "Total number of flow time step cuts",ierr)
+  call PetscBagRegisterInt(bag,header%flow_linear_cum,flow_linear_cum,"flow_linear_cum", &
+                            "Total number of flow linear iterations",ierr)
+                            
   ! TRANSPORT
   call PetscBagRegisterReal(bag,header%tran_time,option%tran_time,"tran_time", &
                             "Transport Simulation time (seconds)",ierr)
@@ -201,6 +208,8 @@ subroutine Checkpoint(realization, &
                             "Total number of transport Newton steps taken",ierr)
   call PetscBagRegisterInt(bag,header%tran_icutcum,tran_icutcum,"tran_icutcum", &
                             "Total number of transport time step cuts",ierr)
+  call PetscBagRegisterInt(bag,header%tran_linear_cum,tran_linear_cum,"tran_linear_cum", &
+                            "Total number of transport linear iterations",ierr)                            
 
   ! Actually write the components of the PetscBag and then free it.
   call PetscBagView(bag, viewer, ierr)
@@ -270,9 +279,11 @@ end subroutine Checkpoint
 
 subroutine Restart(realization, &
                    flow_steps,flow_newtcum,flow_icutcum, &
+                   flow_linear_cum, &
                    flow_num_const_timesteps, &
                    flow_num_newton_iterations, &
                    tran_steps,tran_newtcum,tran_icutcum, &
+                   tran_linear_cum, &
                    tran_num_const_timesteps, &
                    tran_num_newton_iterations)
 
@@ -289,10 +300,10 @@ subroutine Restart(realization, &
   type(realization_type) :: realization
   PetscInt :: flow_num_const_timesteps
   PetscInt :: flow_num_newton_iterations
-  PetscInt :: flow_steps, flow_newtcum, flow_icutcum
+  PetscInt :: flow_steps, flow_newtcum, flow_icutcum, flow_linear_cum
   PetscInt :: tran_num_const_timesteps
   PetscInt :: tran_num_newton_iterations
-  PetscInt :: tran_steps, tran_newtcum, tran_icutcum
+  PetscInt :: tran_steps, tran_newtcum, tran_icutcum, tran_linear_cum
 
   PetscViewer viewer
   PetscBag bag
@@ -335,6 +346,7 @@ subroutine Restart(realization, &
   flow_steps = header%flow_steps
   flow_newtcum = header%flow_newtcum
   flow_icutcum = header%flow_icutcum
+  flow_linear_cum = header%flow_linear_cum
   ! TRANSPORT
   option%tran_time = header%tran_time
   option%tran_dt = header%tran_dt
@@ -343,6 +355,7 @@ subroutine Restart(realization, &
   tran_steps = header%tran_steps
   tran_newtcum = header%tran_newtcum
   tran_icutcum = header%tran_icutcum
+  tran_linear_cum = header%tran_linear_cum
   call PetscBagDestroy(bag, ierr)
   
   ! Load the PETSc vectors.

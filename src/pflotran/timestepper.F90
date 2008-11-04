@@ -1259,9 +1259,9 @@ subroutine StepperCheckpoint(realization,flow_stepper,tran_stepper, &
   PetscInt :: id
 
   type(option_type), pointer :: option
-  PetscInt :: flow_steps, flow_newton_cum, flow_icutcum, &
+  PetscInt :: flow_steps, flow_newton_cum, flow_icutcum, flow_linear_cum, &
               flow_num_const_timesteps, flow_num_newton_iterations
-  PetscInt :: tran_steps, tran_newton_cum, tran_icutcum, &
+  PetscInt :: tran_steps, tran_newton_cum, tran_icutcum, tran_linear_cum, &
               tran_num_const_timesteps, tran_num_newton_iterations
   
   option => realization%option
@@ -1270,6 +1270,7 @@ subroutine StepperCheckpoint(realization,flow_stepper,tran_stepper, &
     flow_steps = flow_stepper%steps
     flow_newton_cum = flow_stepper%newton_cum
     flow_icutcum = flow_stepper%icutcum
+    flow_linear_cum = flow_stepper%linear_cum
     flow_num_const_timesteps = num_const_timesteps
     flow_num_newton_iterations = num_newton_iterations
   endif
@@ -1277,14 +1278,15 @@ subroutine StepperCheckpoint(realization,flow_stepper,tran_stepper, &
     tran_steps = tran_stepper%steps
     tran_newton_cum = tran_stepper%newton_cum
     tran_icutcum = tran_stepper%icutcum
+    tran_linear_cum = tran_stepper%linear_cum
     tran_num_const_timesteps = num_const_timesteps
     tran_num_newton_iterations = num_newton_iterations
   endif
   
   call Checkpoint(realization, &
-                  flow_steps,flow_newton_cum,flow_icutcum, &
+                  flow_steps,flow_newton_cum,flow_icutcum,flow_linear_cum, &
                   flow_num_const_timesteps,flow_num_newton_iterations, &
-                  tran_steps,tran_newton_cum,tran_icutcum, &
+                  tran_steps,tran_newton_cum,tran_icutcum,tran_linear_cum, &
                   tran_num_const_timesteps,tran_num_newton_iterations, &
                   id)
                       
@@ -1313,17 +1315,17 @@ subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
   PetscInt :: num_const_timesteps, num_newton_iterations
 
   type(option_type), pointer :: option
-  PetscInt :: flow_steps, flow_newton_cum, flow_icutcum, &
+  PetscInt :: flow_steps, flow_newton_cum, flow_icutcum, flow_linear_cum ,&
               flow_num_const_timesteps, flow_num_newton_iterations
-  PetscInt :: tran_steps, tran_newton_cum, tran_icutcum, &
+  PetscInt :: tran_steps, tran_newton_cum, tran_icutcum, tran_linear_cum, &
               tran_num_const_timesteps, tran_num_newton_iterations
   
   option => realization%option
 
   call Restart(realization, &
-               flow_steps,flow_newton_cum,flow_icutcum, &
+               flow_steps,flow_newton_cum,flow_icutcum,flow_linear_cum, &
                flow_num_const_timesteps,flow_num_newton_iterations, &
-               tran_steps,tran_newton_cum,tran_icutcum, &
+               tran_steps,tran_newton_cum,tran_icutcum,tran_linear_cum, &
                tran_num_const_timesteps,tran_num_newton_iterations)
   if (option%restart_time < -998.d0) then
     option%time = max(option%flow_time,option%tran_time)
@@ -1331,11 +1333,13 @@ subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
       flow_stepper%steps = flow_steps
       flow_stepper%newton_cum = flow_newton_cum
       flow_stepper%icutcum = flow_icutcum
+      flow_stepper%linear_cum = flow_linear_cum
     endif
     if (associated(tran_stepper)) then
       tran_stepper%steps = tran_steps
       tran_stepper%newton_cum = tran_newton_cum
       tran_stepper%icutcum = tran_icutcum
+      tran_stepper%linear_cum = tran_linear_cum
     endif
     num_const_timesteps = flow_num_const_timesteps
     num_newton_iterations = flow_num_newton_iterations
@@ -1351,11 +1355,13 @@ subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
       flow_stepper%steps = 0
       flow_stepper%newton_cum = 0
       flow_stepper%icutcum = 0
+      flow_stepper%linear_cum = 0
     endif
     if (associated(tran_stepper)) then
       tran_stepper%steps = 0
       tran_stepper%newton_cum = 0
       tran_stepper%icutcum = 0
+      tran_stepper%linear_cum = 0
     endif
     num_const_timesteps = 0
     num_newton_iterations = 0

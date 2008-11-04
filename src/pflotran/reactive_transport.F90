@@ -379,9 +379,6 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
 
   call GridVecRestoreArrayF90(grid,field%tran_accum, accum_p, ierr)
 
-#if 0
-  call RTNumericalJacobianTest(field%tran_xx,realization)
-#endif
 
 end subroutine RTUpdateFixedAccumulationPatch
 
@@ -392,7 +389,7 @@ end subroutine RTUpdateFixedAccumulationPatch
 ! date: 02/20/08
 !
 ! ************************************************************************** !
-subroutine RTNumericalJacobianTest(xx,realization)
+subroutine RTNumericalJacobianTest(realization)
 
   use Realization_module
   use Patch_module
@@ -428,9 +425,9 @@ subroutine RTNumericalJacobianTest(xx,realization)
   patch => realization%patch
   grid => patch%grid
 
-  call VecDuplicate(xx,xx_pert,ierr)
-  call VecDuplicate(xx,res,ierr)
-  call VecDuplicate(xx,res_pert,ierr)
+  call VecDuplicate(field%tran_xx,xx_pert,ierr)
+  call VecDuplicate(field%tran_xx,res,ierr)
+  call VecDuplicate(field%tran_xx,res_pert,ierr)
   
   call MatCreate(option%comm,A,ierr)
   call MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE, &
@@ -439,28 +436,27 @@ subroutine RTNumericalJacobianTest(xx,realization)
   call MatSetType(A,MATAIJ,ierr)
   call MatSetFromOptions(A,ierr)
     
-  call RTResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
+  call RTResidual(PETSC_NULL_OBJECT,field%tran_xx,res,realization,ierr)
   call GridVecGetArrayF90(grid,res,vec2_p,ierr)
-  do icell = 1,grid%nlmax
+  do idof = 1,grid%nlmax*option%ntrandof
+    icell = (idof-1)/option%ntrandof+1
     if (associated(patch%imat)) then
       if (patch%imat(grid%nL2G(icell)) <= 0) cycle
     endif
-    do idof = (icell-1)*option%ntrandof+1,icell*option%ntrandof 
-      call veccopy(xx,xx_pert,ierr)
-      call vecgetarrayf90(xx_pert,vec_p,ierr)
-      perturbation = vec_p(idof)*perturbation_tolerance
-      vec_p(idof) = vec_p(idof)+perturbation
-      call vecrestorearrayf90(xx_pert,vec_p,ierr)
-      call RTResidual(PETSC_NULL_OBJECT,xx_pert,res_pert,realization,ierr)
-      call vecgetarrayf90(res_pert,vec_p,ierr)
-      do idof2 = 1, grid%nlmax*option%ntrandof
-        derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
-        if (dabs(derivative) > 1.d-30) then
-          call matsetvalue(a,idof2-1,idof-1,derivative,insert_values,ierr)
-        endif
-      enddo
-      call GridVecRestoreArrayF90(grid,res_pert,vec_p,ierr)
+    call veccopy(field%tran_xx,xx_pert,ierr)
+    call vecgetarrayf90(xx_pert,vec_p,ierr)
+    perturbation = vec_p(idof)*perturbation_tolerance
+    vec_p(idof) = vec_p(idof)+perturbation
+    call vecrestorearrayf90(xx_pert,vec_p,ierr)
+    call RTResidual(PETSC_NULL_OBJECT,xx_pert,res_pert,realization,ierr)
+    call vecgetarrayf90(res_pert,vec_p,ierr)
+    do idof2 = 1, grid%nlmax*option%ntrandof
+      derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
+      if (dabs(derivative) > 1.d-30) then
+        call matsetvalue(a,idof2-1,idof-1,derivative,insert_values,ierr)
+      endif
     enddo
+    call GridVecRestoreArrayF90(grid,res_pert,vec_p,ierr)
   enddo
   call GridVecRestoreArrayF90(grid,res,vec2_p,ierr)
 
@@ -981,6 +977,9 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
 
+#if 0
+  call RTNumericalJacobianTest(realization)
+#endif
 
   flag = SAME_NONZERO_PATTERN
   call MatGetType(A,mat_type,ierr)
@@ -1097,6 +1096,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   grid => patch%grid
   aux_vars => patch%aux%RT%aux_vars
   aux_vars_bc => patch%aux%RT%aux_vars_bc
+
 
   ! Get pointer to Vector data
   call GridVecGetArrayF90(grid,field%tran_accum, accum_p, ierr)
@@ -1754,6 +1754,16 @@ subroutine RTAuxVarCompute(x,aux_var,reaction,option)
   
   PetscReal :: den ! kg water/L water
 
+#if 0  
+  PetscReal :: Res_orig(reaction%ncomp)
+  PetscReal :: Res_pert(reaction%ncomp)
+  PetscInt :: icomp, jcomp
+  PetscReal :: dtotal(reaction%ncomp,reaction%ncomp)
+  PetscReal :: dtotalsorb(reaction%ncomp,reaction%ncomp)
+  PetscReal :: pert
+  type(reactive_transport_auxvar_type) :: auxvar_pert
+#endif
+
   ! any changes to the below must also be updated in 
   ! Reaction.F90:RReactionDerivative()
   
@@ -1765,6 +1775,52 @@ subroutine RTAuxVarCompute(x,aux_var,reaction,option)
   if (reaction%nsorb > 0) then
     call RTotalSorb(aux_var,reaction,option)
   endif
+
+#if 0  
+! numerical check
+  Res_orig = 0.d0
+  dtotal = 0.d0
+  dtotalsorb = 0.d0
+  call RTAuxVarInit(auxvar_pert,reaction,option)
+  call RTAuxVarCopy(auxvar_pert,aux_var,option)
+  do jcomp = 1, reaction%ncomp
+    Res_pert = 0.d0
+    call RTAuxVarCopy(auxvar_pert,aux_var,option)
+    if (reaction%neqcmplx > 0) then
+      aux_var%secondary_spec = 0.d0
+    endif
+    if (reaction%neqsurfcmplxrxn > 0) then
+      auxvar_pert%eqsurfcmplx_freesite_conc = 1.d-9
+      auxvar_pert%eqsurfcmplx_spec = 0.d0
+    endif
+    if (reaction%neqionxrxn > 0) then
+      aux_var%eqionx_ref_cation_sorbed_conc = 1.d-9
+    endif
+    pert = auxvar_pert%primary_molal(jcomp)*perturbation_tolerance
+    auxvar_pert%primary_molal(jcomp) = auxvar_pert%primary_molal(jcomp) + pert
+    
+    ! this is essentially what RTAuxVarCompute() performs
+!      call RTAuxVarCompute(auxvar_pert%primary_molal,auxvar_pert,option)      
+    auxvar_pert%primary_spec = auxvar_pert%primary_molal*den
+    call RTotal(auxvar_pert,reaction,option)
+    if (reaction%nsorb > 0) call RTotalSorb(auxvar_pert,reaction,option)
+    dtotal(:,jcomp) = (auxvar_pert%total(:,1) - aux_var%total(:,1))/pert
+    if (reaction%nsorb > 0) dtotalsorb(:,jcomp) = (auxvar_pert%total_sorb(:) - aux_var%total_sorb(:))/pert
+  enddo
+  do icomp = 1, reaction%ncomp
+    do jcomp = 1, reaction%ncomp
+      if (dabs(dtotal(icomp,jcomp)) < 1.d-16) dtotal(icomp,jcomp) = 0.d0
+      if (reaction%nsorb > 0) then
+        if (dabs(dtotalsorb(icomp,jcomp)) < 1.d-16) dtotalsorb(icomp,jcomp) = 0.d0
+      endif
+    enddo
+  enddo
+  dtotal = dtotal * 1000.d0
+  if (reaction%nsorb > 0) dtotalsorb = dtotalsorb * 1000.d0
+  aux_var%dtotal(:,:,1) = dtotal
+  if (reaction%nsorb > 0) aux_var%dtotal_sorb = dtotalsorb
+  call RTAuxVarDestroy(auxvar_pert)
+#endif
   
 end subroutine RTAuxVarCompute
 
