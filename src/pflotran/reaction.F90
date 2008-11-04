@@ -791,20 +791,26 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   PetscInt :: i, icomp, j, ncomp
   PetscInt :: icplx, icplx2
   PetscInt :: imnrl,igas
-  PetscInt :: eqcmplxsort(reaction%neqcmplx)
+  PetscInt :: eqcmplxsort(reaction%neqcmplx+1)
+  PetscInt :: eqcmplxid(reaction%neqcmplx+1)
   PetscInt :: eqminsort(reaction%nmnrl)
   PetscInt :: eqsurfcmplxsort(reaction%neqsurfcmplx+reaction%neqsurfcmplxrxn)
-  PetscTruth :: finished
+  PetscTruth :: finished, found
   PetscReal :: conc, conc2
   PetscInt :: num_iterations
   PetscReal :: lnQK(reaction%nmnrl), QK(reaction%nmnrl)
   PetscReal :: ln_act_h2o
   PetscReal :: charge_balance
-  PetscReal :: totj, percent
-  PetscInt :: comp_id, jcomp, ifound
+  PetscReal :: percent(reaction%neqcmplx+1)
+  PetscReal :: totj
+  PetscInt :: comp_id, jcomp
+  PetscInt :: icount
+  PetscInt :: iphase
 
   aq_species_constraint => constraint_coupler%aqueous_species
   mineral_constraint => constraint_coupler%minerals
+  
+  iphase = 1
 
   90 format(80('-'))
   91 format(a)
@@ -921,35 +927,75 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
     134 format('species       percent    concentration')
     135 format('primary species: ',a12,2x,' total conc: ',1pe12.4)
     136 format(a12,2x,f6.2,2x,1pe12.4,1p2e12.4)
-    do jcomp = 1, reaction%ncomp
-      totj = auxvar%total(jcomp,1)
-      totj = abs(totj)
-      write(option%fid_out,90)
-      write(option%fid_out,135) reaction%primary_species_names(jcomp),totj
-      write(option%fid_out,134)
-      write(option%fid_out,90)
-      percent = auxvar%primary_molal(jcomp)/totj*100.d0
-      write(option%fid_out,136) reaction%primary_species_names(jcomp), &
-      percent,auxvar%primary_molal(jcomp)
+    do icomp = 1, reaction%ncomp
+    
+      eqcmplxsort = 0
+      eqcmplxid = 0
+      percent = 0.d0
+      totj = 0.d0
+      
+      icount = 0
       do icplx = 1, reaction%neqcmplx
-        ncomp = reaction%eqcmplxspecid(0,icplx)
-        ifound = 0
-        do j = 1, ncomp
-  !       print *,'reaction: ',jcomp,j,icplx,ncomp,reaction%primary_species_names(jcomp), &
-  !       reaction%eqcmplx_basis_names(j,icplx)
-          if (fiStringCompare(reaction%primary_species_names(jcomp), &
-            reaction%eqcmplx_basis_names(j,icplx),MAXWORDLENGTH)) then
-            ifound = 1
+        found = PETSC_FALSE
+        do i = 1, reaction%ncomp
+          if (reaction%eqcmplxspecid(i,icplx) == icomp) then
+            icount = icount + 1
+            found = PETSC_TRUE
             exit
           endif
         enddo
-        if (ifound == 1) then
-          percent = abs(reaction%eqcmplxstoich(j,icplx))* &
-          auxvar%secondary_spec(icplx)/totj*100.d0
-          if (percent > 0.01) then
-            write(option%fid_out,136) reaction%secondary_species_names(icplx), &
-            percent,auxvar%secondary_spec(icplx) !,reaction%eqcmplxstoich(j,icplx)
+        if (found) then
+          eqcmplxid(icount) = icplx
+          percent(icount) = dabs(auxvar%secondary_spec(icplx)* &
+                                 reaction%eqcmplxstoich(i,icplx))
+          totj = totj + percent(icount)
+        endif
+      enddo
+      icount = icount + 1
+      eqcmplxid(icount) = -icomp
+      percent(icount) = auxvar%primary_spec(icomp)
+      totj = totj + percent(icount)
+      percent = percent / totj
+      
+      eqcmplxsort = 0
+      do i = 1, icount
+        eqcmplxsort(i) = i
+      enddo
+      
+      do
+        finished = PETSC_TRUE
+        do i = 1, icount-1
+          icplx = eqcmplxsort(i)
+          icplx2 = eqcmplxsort(i+1)
+          if (percent(abs(icplx)) < percent(abs(icplx2))) then
+            eqcmplxsort(i) = icplx2
+            eqcmplxsort(i+1) = icplx
+            finished = PETSC_FALSE
           endif
+        enddo
+        if (finished) exit
+      enddo
+
+      write(option%fid_out,90)
+      write(option%fid_out,135) reaction%primary_species_names(icomp), &
+                                auxvar%total(icomp,iphase)
+      write(option%fid_out,134)
+      write(option%fid_out,90)
+      do i = 1, icount
+        j = eqcmplxsort(i)
+        if (percent(j) < 0.0001d0) cycle
+        icplx = eqcmplxid(j)
+        if (icplx < 0) then
+          icplx = abs(icplx)
+          write(option%fid_out,136) reaction%primary_species_names(icplx), &
+                                    percent(j)*100.d0, &
+                                    auxvar%primary_spec(icplx)/ &
+                                    auxvar%den(1)*1000.d0
+        else
+          write(option%fid_out,136) reaction%secondary_species_names(icplx), &
+                                    percent(j)*100.d0, &
+                                    auxvar%secondary_spec(icplx)/ &
+                                    auxvar%den(1)*1000.d0
         endif
       enddo
     enddo
