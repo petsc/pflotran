@@ -1081,7 +1081,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       enddo
       write(option%fid_out,124) reaction%primary_species_names(j),retardation
     enddo
-    124 format(a12,4x,1pe12.4)
+    124 format(2x,a12,4x,1pe12.4)
   endif
           
   if (reaction%nmnrl > 0) then
