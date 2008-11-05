@@ -791,7 +791,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   type(aq_species_constraint_type), pointer :: aq_species_constraint
   type(mineral_constraint_type), pointer :: mineral_constraint
   character(len=MAXSTRINGLENGTH) :: string
-  PetscInt :: i, icomp, j, ncomp
+  PetscInt :: i, icomp, irxn, j, jj, ncomp, ncplx
   PetscInt :: icplx, icplx2
   PetscInt :: imnrl,igas
   PetscInt :: eqcmplxsort(reaction%neqcmplx+1)
@@ -805,7 +805,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   PetscReal :: ln_act_h2o
   PetscReal :: charge_balance
   PetscReal :: percent(reaction%neqcmplx+1)
-  PetscReal :: totj
+  PetscReal :: totj, retardation
   PetscInt :: comp_id, jcomp
   PetscInt :: icount
   PetscInt :: iphase
@@ -1056,6 +1056,34 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
                                   auxvar%den(1)*1000.d0
       endif
     enddo 
+    
+    123 format(/,'  primary species  retardation')  
+    write(option%fid_out,123)
+    write(option%fid_out,90)
+    do j = 1, reaction%ncomp
+      retardation = 1.d0
+      do irxn = 1, reaction%neqsurfcmplxrxn
+        ncplx = reaction%eqsurfcmplx_rxn_to_complex(0,irxn)
+        do i = 1, ncplx
+          icplx = reaction%eqsurfcmplx_rxn_to_complex(i,irxn)
+          ncomp = reaction%eqsurfcmplxspecid(0,icplx)
+          do jj = 1, ncomp
+            jcomp = reaction%eqsurfcmplxspecid(jj,icplx)
+            if (j == jcomp) then
+              retardation = retardation + &
+              reaction%eqsurfcmplxstoich(jj,icplx)*auxvar%eqsurfcmplx_spec(icplx)/ &
+              (auxvar%total(j,iphase)/auxvar%den(iphase)*1000.d0)
+!             print *,j,jcomp,irxn,icplx,retardation, &
+!             reaction%eqsurfcmplxstoich(jj,icplx),auxvar%eqsurfcmplx_spec(icplx)
+              exit
+            endif
+          enddo
+        enddo
+      enddo
+ !    retardation = retardation/(auxvar%total(j,iphase)/auxvar%den(iphase)*1000.d0)
+      write(option%fid_out,124) reaction%primary_species_names(j),retardation
+    enddo
+    124 format(a12,4x,1pe12.4)
   endif
           
   if (reaction%nmnrl > 0) then
