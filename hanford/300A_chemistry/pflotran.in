@@ -109,14 +109,7 @@ SiO2(am)
 /
 MINERAL_KINETICS
 Calcite 1.d-6
-Magnesite  0.0
-Gibbsite   0.0
 Kaolinite 1.e-12
-K-Feldspar 0.0
-Muscovite  0.0
-Quartz     0.0
-Chalcedony 0.0
-SiO2(am)   0.0
 /
 skip
 SORPTION
@@ -357,15 +350,8 @@ SiO2(aq) 5.36989e-4       T
 O2(aq)   3.58138e-4       T
 /
 MINERALS
-Calcite    0.1
-Magnesite  0.0
-Gibbsite   0.0
-Kaolinite  0.0
-K-Feldspar 0.0
-Muscovite  0.0
-Quartz     0.0
-Chalcedony 0.0
-SiO2(am)   0.0
+Calcite    0.1 1.d0
+Kaolinite  0.0 1.d0
 /
 /
 
