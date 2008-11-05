@@ -1072,8 +1072,8 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
             if (j == jcomp) then
               if (auxvar%total(j,iphase) /= 0.d0) &
               retardation = retardation + &
-              reaction%eqsurfcmplxstoich(jj,icplx)*auxvar%eqsurfcmplx_spec(icplx)/ &
-              auxvar%total(j,iphase)
+                            reaction%eqsurfcmplxstoich(jj,icplx)* &
+                            auxvar%eqsurfcmplx_spec(icplx)/auxvar%total(j,iphase)
               exit
             endif
           enddo
