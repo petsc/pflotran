@@ -118,8 +118,10 @@ module Reaction_Aux_module
 
   type, public :: mineral_constraint_type
     character(len=MAXWORDLENGTH), pointer :: names(:)
-    PetscReal, pointer :: constraint_mol_frac(:)
+    PetscReal, pointer :: constraint_vol_frac(:)
+    PetscReal, pointer :: constraint_area(:)
     PetscReal, pointer :: basis_vol_frac(:)
+    PetscReal, pointer :: basis_area(:)
   end type mineral_constraint_type
 
   type, public :: reaction_type
@@ -748,10 +750,14 @@ function MineralConstraintCreate(reaction,option)
   allocate(constraint)
   allocate(constraint%names(reaction%nkinmnrl))
   constraint%names = ''
-  allocate(constraint%constraint_mol_frac(reaction%nkinmnrl))
-  constraint%constraint_mol_frac = 0.d0
+  allocate(constraint%constraint_vol_frac(reaction%nkinmnrl))
+  constraint%constraint_vol_frac = 0.d0
+  allocate(constraint%constraint_area(reaction%nkinmnrl))
+  constraint%constraint_area = 0.d0
   allocate(constraint%basis_vol_frac(reaction%nkinmnrl))
   constraint%basis_vol_frac = 0.d0
+  allocate(constraint%basis_area(reaction%nkinmnrl))
+  constraint%basis_area = 0.d0
 
   MineralConstraintCreate => constraint
 
@@ -1365,12 +1371,18 @@ subroutine MineralConstraintDestroy(constraint)
   if (associated(constraint%names)) &
     deallocate(constraint%names)
   nullify(constraint%names)
-  if (associated(constraint%constraint_mol_frac)) &
-    deallocate(constraint%constraint_mol_frac)
-  nullify(constraint%constraint_mol_frac)
+  if (associated(constraint%constraint_vol_frac)) &
+    deallocate(constraint%constraint_vol_frac)
+  nullify(constraint%constraint_vol_frac)
+  if (associated(constraint%constraint_area)) &
+    deallocate(constraint%constraint_area)
+  nullify(constraint%constraint_area)
   if (associated(constraint%basis_vol_frac)) &
     deallocate(constraint%basis_vol_frac)
   nullify(constraint%basis_vol_frac)
+  if (associated(constraint%basis_area)) &
+    deallocate(constraint%basis_area)
+  nullify(constraint%basis_area)
 
   deallocate(constraint)
   nullify(constraint)

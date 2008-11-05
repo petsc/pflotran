@@ -461,12 +461,15 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
         call printErrMsg(option,string)
       else
         mineral_constraint%basis_vol_frac(jmnrl) = &
-          mineral_constraint%constraint_mol_frac(imnrl)
+          mineral_constraint%constraint_vol_frac(imnrl)
+        mineral_constraint%basis_area(jmnrl) = &
+          mineral_constraint%constraint_area(imnrl)
         constraint_mnrl_name(jmnrl) = mineral_constraint%names(imnrl)
       endif  
     enddo
     mineral_constraint%names = constraint_mnrl_name
-    mineral_constraint%constraint_mol_frac = mineral_constraint%basis_vol_frac
+    mineral_constraint%constraint_vol_frac = mineral_constraint%basis_vol_frac
+    mineral_constraint%constraint_area = mineral_constraint%basis_area
   endif
   
   call RTAuxVarInit(auxvar,reaction,option)

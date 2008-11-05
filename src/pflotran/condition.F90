@@ -1059,7 +1059,7 @@ subroutine TranConstraintRead(constraint,reaction,option)
         icomp = 0
         do
           call fiReadFlotranString(option%fid_in,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,'CONSTRAINT,CONCENTRATIONS',ierr)
+          call fiReadStringErrorMsg(option%myrank,'CONSTRAINT, CONCENTRATIONS',ierr)
           
           if (fiCheckExit(string)) exit  
           
@@ -1075,14 +1075,14 @@ subroutine TranConstraintRead(constraint,reaction,option)
           call fiReadWord(string,aq_species_constraint%names(icomp), &
                           PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'aqueous species name', &
-                          'CONSTRAINT,CONCENTRATIONS', ierr) 
+                          'CONSTRAINT, CONCENTRATIONS', ierr) 
           call printMsg(option,trim(aq_species_constraint%names(icomp)))
           call fiReadDouble(string,aq_species_constraint%constraint_conc(icomp),ierr)
           call fiErrorMsg(option%myrank,'concentration', &
-                          'CONSTRAINT,CONCENTRATIONS', ierr)          
+                          'CONSTRAINT, CONCENTRATIONS', ierr)          
           call fiReadWord(string,word,PETSC_TRUE,ierr)
           call fiDefaultMsg(option%myrank, &
-                            'CONSTRAINT,CONCENTRATION,constraint_type', ierr)
+                            'CONSTRAINT, CONCENTRATION, constraint_type', ierr)
           length = len_trim(word)
           if (length > 0) then
             call fiCharsToUpper(word,length)
@@ -1109,7 +1109,7 @@ subroutine TranConstraintRead(constraint,reaction,option)
              call fiReadWord(string,aq_species_constraint%constraint_spec_name(icomp), &
                              PETSC_FALSE,ierr)
               call fiErrorMsg(option%myrank,'constraint name', &
-                              'CONSTRAINT,CONCENTRATIONS', ierr) 
+                              'CONSTRAINT, CONCENTRATIONS', ierr) 
             endif
           else
             aq_species_constraint%constraint_type(icomp) = CONSTRAINT_TOTAL
@@ -1128,7 +1128,7 @@ subroutine TranConstraintRead(constraint,reaction,option)
         icomp = 0
         do
           call fiReadFlotranString(option%fid_in,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,'CONSTRAINT,MINERALS',ierr)
+          call fiReadStringErrorMsg(option%myrank,'CONSTRAINT, MINERALS',ierr)
           
           if (fiCheckExit(string)) exit          
           
@@ -1143,11 +1143,14 @@ subroutine TranConstraintRead(constraint,reaction,option)
           call fiReadWord(string,mineral_constraint%names(icomp), &
                           PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'mineral name', &
-                          'CONSTRAINT,CONCENTRATIONS', ierr)  
+                          'CONSTRAINT, MINERALS', ierr)  
           call printMsg(option,trim(mineral_constraint%names(icomp)))
-          call fiReadDouble(string,mineral_constraint%constraint_mol_frac(icomp),ierr)
-          call fiErrorMsg(option%myrank,'concentration', &
-                          'CONSTRAINT,CONCENTRATIONS', ierr)          
+          call fiReadDouble(string,mineral_constraint%constraint_vol_frac(icomp),ierr)
+          call fiErrorMsg(option%myrank,'volume fraction', &
+                          'CONSTRAINT, MINERALS', ierr)          
+          call fiReadDouble(string,mineral_constraint%constraint_area(icomp),ierr)
+          call fiErrorMsg(option%myrank,'area', &
+                          'CONSTRAINT, MINERALS', ierr)          
         
         enddo  
         
