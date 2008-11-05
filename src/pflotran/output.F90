@@ -415,7 +415,7 @@ subroutine OutputTecplotBlock(realization)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       enddo
     else
-      do i=1,reaction%nmnrl
+      do i=1,reaction%nkinmnrl
         call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
         call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -3104,7 +3104,7 @@ subroutine OutputHDF5(realization)
         if (associated(realization%reaction)) then
            nviz_tran = option%ntrandof+realization%reaction%nkinmnrl
         else
-           nviz_tran = reaction%nmnrl
+           nviz_tran = reaction%nkinmnrl
         endif
      endif
 
@@ -3315,7 +3315,7 @@ subroutine OutputHDF5(realization)
         endif
       enddo
     else
-      do i=1,reaction%nmnrl
+      do i=1,reaction%nkinmnrl
         call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
         if(.not.(associated(discretization%amrgrid))) then
            write(string,'(a)') reaction%primary_species_names(i)

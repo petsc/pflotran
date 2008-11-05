@@ -1062,10 +1062,10 @@ subroutine RealizAssignTransportInitCond(realization)
                   aux_vars(ghosted_id)%den(1)*1000 ! convert molarity -> molality
             enddo
             if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
-              do idof = 1, reaction%nmnrl
+              do idof = 1, reaction%nkinmnrl
                 aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
                   initial_condition%tran_condition%cur_constraint_coupler% &
-                    minerals%basis_mol_frac(idof)
+                    minerals%basis_vol_frac(idof)
               enddo
             endif
           enddo
@@ -1086,10 +1086,10 @@ subroutine RealizAssignTransportInitCond(realization)
               aux_vars(ghosted_id)%den(1)*1000 ! convert molarity -> molality
               ! minerals 
             if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
-              do idof = 1, reaction%nmnrl
+              do idof = 1, reaction%nkinmnrl
                 aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
                   initial_condition%tran_condition%cur_constraint_coupler% &
-                    minerals%basis_mol_frac(idof)
+                    minerals%basis_vol_frac(idof)
               enddo
             endif
           enddo

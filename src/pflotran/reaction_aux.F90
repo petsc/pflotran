@@ -45,6 +45,7 @@ module Reaction_Aux_module
 
   type, public :: mineral_type
     PetscInt :: id
+    PetscInt :: itype
     character(len=MAXWORDLENGTH) :: name
     PetscReal :: molar_volume
     PetscReal :: molar_weight
@@ -118,7 +119,7 @@ module Reaction_Aux_module
   type, public :: mineral_constraint_type
     character(len=MAXWORDLENGTH), pointer :: names(:)
     PetscReal, pointer :: constraint_mol_frac(:)
-    PetscReal, pointer :: basis_mol_frac(:)
+    PetscReal, pointer :: basis_vol_frac(:)
   end type mineral_constraint_type
 
   type, public :: reaction_type
@@ -217,8 +218,10 @@ module Reaction_Aux_module
       ! for saturation states
     PetscInt, pointer :: mnrlspecid(:,:)
     PetscReal, pointer :: mnrlstoich(:,:)
+    PetscInt, pointer :: mnrlh2oid(:)
+    PetscReal, pointer :: mnrlh2ostoich(:)
     PetscReal, pointer :: mnrl_logK(:)
-    PetscReal, pointer :: mnrl_molar_vol(:)
+    PetscReal, pointer :: mnrl_logKcoef(:,:)
       ! for kinetic reactions
     PetscInt :: nkinmnrl
     character(len=MAXWORDLENGTH), pointer :: kinmnrl_names(:)
@@ -229,6 +232,7 @@ module Reaction_Aux_module
     PetscReal, pointer :: kinmnrl_logK(:)
     PetscReal, pointer :: kinmnrl_logKcoef(:,:)
     PetscReal, pointer :: kinmnrl_rate(:,:)
+    PetscReal, pointer :: kinmnrl_molar_vol(:)
     PetscInt, pointer :: kinmnrl_num_prefactors(:)
     PetscInt, pointer :: kinmnrl_pri_prefactor_id(:,:,:)
     PetscReal, pointer :: kinmnrl_pri_pref_alpha_stoich(:,:,:)
@@ -256,6 +260,7 @@ module Reaction_Aux_module
             GetMineralCount, &
             GetMineralNames, &
             GetMineralIDFromName, &
+            GetKineticMineralCount, &
             EquilibriumRxnCreate, &
             EquilibriumRxnDestroy, &
             TransitionStateTheoryRxnCreate, &
@@ -389,8 +394,10 @@ function ReactionCreate()
   reaction%nmnrl = 0  
   nullify(reaction%mnrlspecid)
   nullify(reaction%mnrlstoich)
-  nullify(reaction%mnrl_logK)
-  nullify(reaction%mnrl_molar_vol)
+  nullify(reaction%mnrlh2oid)
+  nullify(reaction%mnrlstoich)
+  nullify(reaction%mnrlh2ostoich)
+  nullify(reaction%mnrl_logKcoef)
   
   reaction%nkinmnrl = 0  
   nullify(reaction%kinmnrlspecid)
@@ -400,6 +407,7 @@ function ReactionCreate()
   nullify(reaction%kinmnrl_logK)
   nullify(reaction%kinmnrl_logKcoef)
   nullify(reaction%kinmnrl_rate)
+  nullify(reaction%kinmnrl_molar_vol)
   nullify(reaction%kinmnrl_num_prefactors)
   nullify(reaction%kinmnrl_pri_prefactor_id)
   nullify(reaction%kinmnrl_pri_pref_alpha_stoich)
@@ -494,6 +502,7 @@ function MineralCreate()
 
   allocate(mineral)  
   mineral%id = 0
+  mineral%itype = 0
   mineral%name = ''
   mineral%molar_volume = 0.d0
   mineral%molar_weight = 0.d0
@@ -737,12 +746,12 @@ function MineralConstraintCreate(reaction,option)
 
   allocate(constraint)
   allocate(constraint)
-  allocate(constraint%names(reaction%nmnrl))
+  allocate(constraint%names(reaction%nkinmnrl))
   constraint%names = ''
-  allocate(constraint%constraint_mol_frac(reaction%nmnrl))
+  allocate(constraint%constraint_mol_frac(reaction%nkinmnrl))
   constraint%constraint_mol_frac = 0.d0
-  allocate(constraint%basis_mol_frac(reaction%nmnrl))
-  constraint%basis_mol_frac = 0.d0
+  allocate(constraint%basis_vol_frac(reaction%nkinmnrl))
+  constraint%basis_vol_frac = 0.d0
 
   MineralConstraintCreate => constraint
 
@@ -997,7 +1006,7 @@ end function GetMineralNames
 
 ! ************************************************************************** !
 !
-! GetMineralCount: Returns the number of primary species
+! GetMineralCount: Returns the number of minerals
 ! author: Glenn Hammond
 ! date: 06/02/08
 !
@@ -1020,6 +1029,33 @@ function GetMineralCount(reaction)
   enddo
 
 end function GetMineralCount
+
+! ************************************************************************** !
+!
+! GetKineticMineralCount: Returns the number of kinetic minerals
+! author: Glenn Hammond
+! date: 11/04/08
+!
+! ************************************************************************** !
+function GetKineticMineralCount(reaction)
+
+  implicit none
+  
+  integer :: GetKineticMineralCount
+  type(reaction_type) :: reaction
+
+  type(mineral_type), pointer :: mineral
+
+  GetKineticMineralCount = 0
+  mineral => reaction%mineral_list
+  do
+    if (.not.associated(mineral)) exit
+    if (mineral%itype == MINERAL_KINETIC) &
+      GetKineticMineralCount = GetKineticMineralCount + 1
+    mineral => mineral%next
+  enddo
+
+end function GetKineticMineralCount
 
 ! ************************************************************************** !
 !
@@ -1332,9 +1368,9 @@ subroutine MineralConstraintDestroy(constraint)
   if (associated(constraint%constraint_mol_frac)) &
     deallocate(constraint%constraint_mol_frac)
   nullify(constraint%constraint_mol_frac)
-  if (associated(constraint%basis_mol_frac)) &
-    deallocate(constraint%basis_mol_frac)
-  nullify(constraint%basis_mol_frac)
+  if (associated(constraint%basis_vol_frac)) &
+    deallocate(constraint%basis_vol_frac)
+  nullify(constraint%basis_vol_frac)
 
   deallocate(constraint)
   nullify(constraint)
@@ -1544,10 +1580,14 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%mnrlspecid)
   if (associated(reaction%mnrlstoich)) deallocate(reaction%mnrlstoich)
   nullify(reaction%mnrlstoich)
+  if (associated(reaction%mnrlh2oid)) deallocate(reaction%mnrlh2oid)
+  nullify(reaction%mnrlh2oid)
+  if (associated(reaction%mnrlh2ostoich)) deallocate(reaction%mnrlh2ostoich)
+  nullify(reaction%mnrlh2ostoich)
   if (associated(reaction%mnrl_logK)) deallocate(reaction%mnrl_logK)
   nullify(reaction%mnrl_logK)
-  if (associated(reaction%mnrl_molar_vol)) deallocate(reaction%mnrl_molar_vol)
-  nullify(reaction%mnrl_molar_vol)
+  if (associated(reaction%mnrl_logKcoef)) deallocate(reaction%mnrl_logKcoef)
+  nullify(reaction%mnrl_logKcoef)
   
   if (associated(reaction%kinmnrlspecid)) deallocate(reaction%kinmnrlspecid)
   nullify(reaction%kinmnrlspecid)
@@ -1563,6 +1603,8 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%kinmnrl_logKcoef)
   if (associated(reaction%kinmnrl_rate)) deallocate(reaction%kinmnrl_rate)
   nullify(reaction%kinmnrl_rate)
+  if (associated(reaction%kinmnrl_molar_vol)) deallocate(reaction%kinmnrl_molar_vol)
+  nullify(reaction%kinmnrl_molar_vol)  
   if (associated(reaction%kinmnrl_num_prefactors)) deallocate(reaction%kinmnrl_num_prefactors)
   nullify(reaction%kinmnrl_num_prefactors)
   if (associated(reaction%kinmnrl_pri_prefactor_id)) deallocate(reaction%kinmnrl_pri_prefactor_id)

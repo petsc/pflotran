@@ -1134,8 +1134,8 @@ subroutine TranConstraintRead(constraint,reaction,option)
           
           icomp = icomp + 1
 
-          if (icomp > reaction%nmnrl) then
-            string = 'Number of constraints exceeds number of minerals ' // &
+          if (icomp > reaction%nkinmnrl) then
+            string = 'Number of constraints exceeds number of kinetic minerals, ' // &
                      'in constraint: ' // trim(constraint%name)
             call printErrMsg(option,string)
           endif

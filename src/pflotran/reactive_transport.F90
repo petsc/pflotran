@@ -294,12 +294,12 @@ subroutine RTUpdateSolutionPatch(realization)
   endif
 
   ! update mineral volume fractions
-  if (reaction%nmnrl > 0) then
+  if (reaction%nkinmnrl > 0) then
     do ghosted_id = 1, grid%ngmax
-      do imnrl = 1, reaction%nmnrl
+      do imnrl = 1, reaction%nkinmnrl
         aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = aux_vars(ghosted_id)%mnrl_volfrac(imnrl) + &
                                                    aux_vars(ghosted_id)%mnrl_rate(imnrl)* &
-                                                   reaction%mnrl_molar_vol(imnrl)* &
+                                                   reaction%kinmnrl_molar_vol(imnrl)* &
                                                    option%dt
       enddo
     enddo

@@ -359,7 +359,7 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
   PetscReal :: constraint_conc(reaction%ncomp)
   PetscInt :: constraint_type(reaction%ncomp)
   character(len=MAXWORDLENGTH) :: constraint_spec_name(reaction%ncomp)
-  character(len=MAXWORDLENGTH) :: constraint_mnrl_name(reaction%nmnrl)
+  character(len=MAXWORDLENGTH) :: constraint_mnrl_name(reaction%nkinmnrl)
   PetscInt :: constraint_id(reaction%ncomp)
     
   constraint_id = 0
@@ -444,11 +444,11 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
   ! minerals
   if (reaction%use_full_geochemistry .and. associated(mineral_constraint)) then
     constraint_mnrl_name = ''
-    do imnrl = 1, reaction%nmnrl
+    do imnrl = 1, reaction%nkinmnrl
       found = PETSC_FALSE
-      do jmnrl = 1, reaction%nmnrl
+      do jmnrl = 1, reaction%nkinmnrl
         if (fiStringCompare(mineral_constraint%names(imnrl), &
-                            reaction%mineral_names(jmnrl), &
+                            reaction%kinmnrl_names(jmnrl), &
                             MAXWORDLENGTH)) then
           found = PETSC_TRUE
           exit
@@ -457,16 +457,16 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
       if (.not.found) then
         string = 'Mineral ' // trim(mineral_constraint%names(imnrl)) // &
                  'from CONSTRAINT ' // trim(constraint_name) // &
-                 ' not found among primary species.'
+                 ' not found among kinetic minerals.'
         call printErrMsg(option,string)
       else
-        mineral_constraint%basis_mol_frac(jmnrl) = &
+        mineral_constraint%basis_vol_frac(jmnrl) = &
           mineral_constraint%constraint_mol_frac(imnrl)
         constraint_mnrl_name(jmnrl) = mineral_constraint%names(imnrl)
       endif  
     enddo
     mineral_constraint%names = constraint_mnrl_name
-    mineral_constraint%constraint_mol_frac = mineral_constraint%basis_mol_frac
+    mineral_constraint%constraint_mol_frac = mineral_constraint%basis_vol_frac
   endif
   
   call RTAuxVarInit(auxvar,reaction,option)
@@ -661,26 +661,26 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
   
           imnrl = constraint_id(icomp)
           ! compute secondary species concentration
-          lnQK = -reaction%kinmnrl_logK(imnrl)*log_to_ln
+          lnQK = -reaction%mnrl_logK(imnrl)*log_to_ln
 
           ! activity of water
-          if (reaction%kinmnrlh2oid(imnrl) > 0) then
-            lnQK = lnQK + reaction%kinmnrlh2ostoich(imnrl)*ln_act_h2o
+          if (reaction%mnrlh2oid(imnrl) > 0) then
+            lnQK = lnQK + reaction%mnrlh2ostoich(imnrl)*ln_act_h2o
           endif
 
-          do jcomp = 1, reaction%kinmnrlspecid(0,imnrl)
-            comp_id = reaction%kinmnrlspecid(jcomp,imnrl)
-            lnQK = lnQK + reaction%kinmnrlstoich(jcomp,imnrl)* &
+          do jcomp = 1, reaction%mnrlspecid(0,imnrl)
+            comp_id = reaction%mnrlspecid(jcomp,imnrl)
+            lnQK = lnQK + reaction%mnrlstoich(jcomp,imnrl)* &
                           log(auxvar%primary_spec(comp_id)*auxvar%pri_act_coef(comp_id))
           enddo
           QK = exp(lnQK)
           
           Res(icomp) = 1.d0 - QK
 
-          do jcomp = 1,reaction%kinmnrlspecid(0,imnrl)
-            comp_id = reaction%kinmnrlspecid(jcomp,imnrl)
+          do jcomp = 1,reaction%mnrlspecid(0,imnrl)
+            comp_id = reaction%mnrlspecid(jcomp,imnrl)
             Jac(icomp,comp_id) = -QK/auxvar%primary_spec(comp_id)* &
-                                 reaction%kinmnrlstoich(jcomp,imnrl)
+                                 reaction%mnrlstoich(jcomp,imnrl)
           enddo
   
         case(CONSTRAINT_GAS)
@@ -862,11 +862,11 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
     write(option%fid_out,203) '     temperature: ', temperature
     write(option%fid_out,90)
 
-    102 format(/,'  species       molality    total       act coef  constraint')  
+    102 format(/,'  species               molality    total       act coef  constraint')  
     write(option%fid_out,102)
     write(option%fid_out,90)
   
-    103 format(2x,a12,es12.4,es12.4,f8.4,4x,a)
+    103 format(2x,a20,es12.4,es12.4,f8.4,4x,a)
     do icomp = 1, reaction%ncomp
       select case(aq_species_constraint%constraint_type(icomp))
         case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
@@ -908,10 +908,10 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       if (finished) exit
     enddo
             
-    110 format(/,'  complex       molality    act coef  logK')  
+    110 format(/,'  complex               molality    act coef  logK')  
     write(option%fid_out,110)
     write(option%fid_out,90)
-    111 format(2x,a12,es12.4,f8.4,2x,es12.4)
+    111 format(2x,a20,es12.4,f8.4,2x,es12.4)
     do i = 1, reaction%neqcmplx ! for each secondary species
       icplx = eqcmplxsort(i)
       write(option%fid_out,111) reaction%secondary_species_names(icplx), &
@@ -924,9 +924,9 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
     !print speciation precentages
     write(option%fid_out,92)
     92 format(/)
-    134 format('species       percent    concentration')
-    135 format('primary species: ',a12,2x,' total conc: ',1pe12.4)
-    136 format(a12,2x,f6.2,2x,1pe12.4,1p2e12.4)
+    134 format(2x,'complex species       percent   concentration')
+    135 format(2x,'primary species: ',a20,2x,' total conc: ',1pe12.4)
+    136 format(2x,a20,2x,f6.2,2x,1pe12.4,1p2e12.4)
     do icomp = 1, reaction%ncomp
     
       eqcmplxsort = 0
@@ -1035,11 +1035,11 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       if (finished) exit
     enddo
             
-    120 format(/,'  surf complex  molality    logK')  
+    120 format(/,'  surf complex          molality    logK')  
     write(option%fid_out,120)
     write(option%fid_out,90)
-    121 format(2x,a12,es12.4,es12.4)
-    122 format(2x,a12,es12.4,'  free site')
+    121 format(2x,a20,es12.4,es12.4)
+    122 format(2x,a20,es12.4,'  free site')
     do i = 1, reaction%neqsurfcmplx+reaction%neqsurfcmplxrxn
       icplx = eqsurfcmplxsort(i)
       if (icplx > 0) then
@@ -1055,21 +1055,21 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
     enddo 
   endif
           
-  if (reaction%nmnrl > 0 .and. associated(mineral_constraint)) then
+  if (reaction%nmnrl > 0) then
   
-    130 format(/,'  mineral       vol frac  log SI      log K')
-    131 format(2x,a12,f8.4,2x,f8.4,2x,1pe12.4,2x,1pe12.4)
+    130 format(/,'  mineral                 log SI    log K')
+    131 format(2x,a20,2x,f8.4,2x,1pe12.4)
 
     do imnrl = 1, reaction%nmnrl
       ! compute saturation
       ln_act_h2o = 0.d0
-      lnQK(imnrl) = -reaction%kinmnrl_logK(imnrl)*log_to_ln
-      if (reaction%kinmnrlh2oid(imnrl) > 0) then
-        lnQK(imnrl) = lnQK(imnrl) + reaction%kinmnrlh2ostoich(imnrl)*ln_act_h2o
+      lnQK(imnrl) = -reaction%mnrl_logK(imnrl)*log_to_ln
+      if (reaction%mnrlh2oid(imnrl) > 0) then
+        lnQK(imnrl) = lnQK(imnrl) + reaction%mnrlh2ostoich(imnrl)*ln_act_h2o
       endif
-      do jcomp = 1, reaction%kinmnrlspecid(0,imnrl)
-        comp_id = reaction%kinmnrlspecid(jcomp,imnrl)
-        lnQK(imnrl) = lnQK(imnrl) + reaction%kinmnrlstoich(jcomp,imnrl)* &
+      do jcomp = 1, reaction%mnrlspecid(0,imnrl)
+        comp_id = reaction%mnrlspecid(jcomp,imnrl)
+        lnQK(imnrl) = lnQK(imnrl) + reaction%mnrlstoich(jcomp,imnrl)* &
                       log(auxvar%primary_spec(comp_id)*auxvar%pri_act_coef(comp_id))
       enddo
       QK(imnrl) = exp(lnQK(imnrl))    
@@ -1098,15 +1098,16 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   
     do imnrl = 1, reaction%nmnrl
       i = eqminsort(imnrl)
-      write(option%fid_out,131) mineral_constraint%names(i), &
-        mineral_constraint%basis_mol_frac(i),lnQK(i)*ln_to_log,reaction%kinmnrl_logK(i)
+      write(option%fid_out,131) reaction%mineral_names(i), &
+                                lnQK(i)*ln_to_log, &
+                                reaction%mnrl_logK(i)
     enddo
   endif
     
   if (reaction%ngas > 0) then
     
-    132 format(/,'  gas   log partial pressure  partial pressure [bars]  log K')
-    133 format(a8,2x,1pe12.4,8x,1pe12.4,8x,1pe12.4)
+    132 format(/,'  gas           log part. press.  part. press. [bars]   log K')
+    133 format(2x,a10,2x,1pe12.4,6x,1pe12.4,8x,1pe12.4)
     
     write(option%fid_out,132)
     write(option%fid_out,90)
@@ -1191,6 +1192,7 @@ subroutine ReactionReadMineralKinetics(reaction,fid,option)
     do 
       if (.not.associated(cur_mineral)) exit
       if (fiStringCompare(cur_mineral%name,name,MAXWORDLENGTH)) then
+        cur_mineral%itype = MINERAL_KINETIC
         if (.not.associated(cur_mineral%tstrxn)) then
           cur_mineral%tstrxn => TransitionStateTheoryRxnCreate()
         endif
@@ -1215,7 +1217,8 @@ subroutine ReactionReadMineralKinetics(reaction,fid,option)
   imnrl = 0
   do 
     if (.not.associated(cur_mineral)) exit
-    if (cur_mineral%id < 0) then
+    if (cur_mineral%id < 0 .and. &
+        cur_mineral%itype == MINERAL_KINETIC) then
       string = 'No rate provided in input file for mineral: ' // &
                trim(cur_mineral%name) // '.'
       call printErrMsg(option,string)
@@ -1227,6 +1230,13 @@ subroutine ReactionReadMineralKinetics(reaction,fid,option)
     cur_mineral => cur_mineral%next
   enddo
   
+  cur_mineral => reaction%mineral_list
+  do 
+    if (.not.associated(cur_mineral)) exit
+    cur_mineral%id = abs(cur_mineral%id)
+    cur_mineral => cur_mineral%next
+  enddo
+
 end subroutine ReactionReadMineralKinetics
 
 ! ************************************************************************** !

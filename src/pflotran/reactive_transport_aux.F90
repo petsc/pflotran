@@ -158,16 +158,16 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
     nullify(aux_var%eqionx_ref_cation_sorbed_conc)
   endif
   
-  if (reaction%nmnrl > 0) then
-    allocate(aux_var%mnrl_volfrac0(reaction%nmnrl))
+  if (reaction%nkinmnrl > 0) then
+    allocate(aux_var%mnrl_volfrac0(reaction%nkinmnrl))
     aux_var%mnrl_volfrac0 = 0.d0
-    allocate(aux_var%mnrl_volfrac(reaction%nmnrl))
+    allocate(aux_var%mnrl_volfrac(reaction%nkinmnrl))
     aux_var%mnrl_volfrac = 0.d0
-    allocate(aux_var%mnrl_area0(reaction%nmnrl))
+    allocate(aux_var%mnrl_area0(reaction%nkinmnrl))
     aux_var%mnrl_area0 = 1.d0 ! Hardwired for now - geh
-    allocate(aux_var%mnrl_area(reaction%nmnrl))
+    allocate(aux_var%mnrl_area(reaction%nkinmnrl))
     aux_var%mnrl_area = 0.d0
-    allocate(aux_var%mnrl_rate(reaction%nmnrl))
+    allocate(aux_var%mnrl_rate(reaction%nkinmnrl))
     aux_var%mnrl_rate = 0.d0
   else
     nullify(aux_var%mnrl_volfrac0)
