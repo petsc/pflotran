@@ -163,45 +163,7 @@ CaUO4
  Weeksite-Na_PNNL
 /
 MINERAL_KINETICS
-Quartz 0.
-SiO2(am) 0.
-Chalcedony 0.
 Calcite 0.
-Magnesite 0.
- Dolomite 0.
- Dolomite-dis 0.
- Dolomite-ord 0.
- Brucite 0.
- Nesquehonite 0.
- Gypsum 0.
-K-Feldspar 0.
-Albite 0.
-Muscovite 0.
-Kaolinite 0.
-Anorthite 0.
-Analcime 0.
-Paragonite 0.
-Gibbsite 0.
-Rutherfordine 0.
-Schoepite 0.
-:(UO2)3(PO4)2 0.
-:(UO2)3(PO4)2.4H2O 0.
-UO2(OH)2(beta) 0.
-UO2CO3 0.
-:UO2(PO3)2 0.
-CaUO4 0.
- Boltwoodite 0.
- Boltwoodite-Na 0.
- Boltwoodite_PNNL 0.
- Boltwoodite-Na_PNNL 0.
- Soddyite 0.
- Soddyite_PNNL 0.
- Uraninite 0.
- Uranophane 0.
- Uranophane_PNNL 0.
- Weeksite 0.
- Weeksite_PNNL 0.
- Weeksite-Na_PNNL 0.
 /
 :skip
 SORPTION
@@ -409,45 +371,7 @@ SiO2(aq) 5.36989e-4       T
 O2(aq)   3.58138e-4       T
 /
 MINERALS
-Quartz 0.
-SiO2(am) 0.
-Chalcedony 0.
-Calcite 0.1
-Magnesite 0.
- Dolomite 0.
- Dolomite-dis 0.
- Dolomite-ord 0.
- Brucite 0.
- Nesquehonite 0.
- Gypsum 0.
-K-Feldspar 0.
-Albite 0.
-Muscovite 0.
-Kaolinite 0.
-Anorthite 0.
-Analcime 0.
-Paragonite 0.
-Gibbsite 0.
-Rutherfordine 0.
-Schoepite 0.
-:(UO2)3(PO4)2 0.
-:(UO2)3(PO4)2.4H2O 0.
-UO2(OH)2(beta) 0.
-UO2CO3 0.
-:UO2(PO3)2 0.
-CaUO4 0.
- Boltwoodite 0.
- Boltwoodite-Na 0.
- Boltwoodite_PNNL 0.
- Boltwoodite-Na_PNNL 0.
- Soddyite 0.
- Soddyite_PNNL 0.
- Uraninite 0.
- Uranophane 0.
- Uranophane_PNNL 0.
- Weeksite 0.
- Weeksite_PNNL 0.
- Weeksite-Na_PNNL 0.
+Calcite 0.1 1.d0
 /
 /
 
