@@ -79,6 +79,11 @@ PetscInt, parameter :: CONSTRAINT_PH = 4
 PetscInt, parameter :: CONSTRAINT_MINERAL = 5
 PetscInt, parameter :: CONSTRAINT_GAS = 6
 
+! mineral types
+PetscInt, parameter :: MINERAL_REFERENCE = 1
+PetscInt, parameter :: MINERAL_KINETIC = 2
+PetscInt, parameter :: MINERAL_EQUILIBRIUM = 3
+
 ! coupler types
 PetscInt, parameter :: INITIAL_COUPLER_TYPE = 1
 PetscInt, parameter :: BOUNDARY_COUPLER_TYPE = 2
