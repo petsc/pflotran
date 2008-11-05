@@ -164,7 +164,7 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
     allocate(aux_var%mnrl_volfrac(reaction%nkinmnrl))
     aux_var%mnrl_volfrac = 0.d0
     allocate(aux_var%mnrl_area0(reaction%nkinmnrl))
-    aux_var%mnrl_area0 = 1.d0 ! Hardwired for now - geh
+    aux_var%mnrl_area0 = 0.d0
     allocate(aux_var%mnrl_area(reaction%nkinmnrl))
     aux_var%mnrl_area = 0.d0
     allocate(aux_var%mnrl_rate(reaction%nkinmnrl))
