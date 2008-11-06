@@ -169,7 +169,7 @@ Calcite 0.
 SORPTION
 SURFACE_COMPLEXATION_RXN
 MINERAL Calcite
-SITE >SOH 1.0395E-04
+SITE >SOH 1.0395E-05
 COMPLEXES
 >SOUO2OH
 >SOUO2CO3
@@ -257,11 +257,11 @@ Soil1   1  1    1    0.5  0.5   1.d-12    1.d-12    1.d-13    1.d0
 :
 :TIME d every 10
 TIME y
-1.
+1. 2.
 :
 DTST 1.d-8
 :50. 1.0d0 
-50. 0.01d0 
+50. 0.02d0 
 :
 REGION all
 BLOCK 1 100 1 1 1 1
@@ -346,7 +346,8 @@ Cl-      6.54794e-4       T
 HCO3-    1.e-3            G CO2(g)
 Al(OH)4- 1.e-9            M K-Feldspar
 :Al+++    1.e-9           M K-Feldspar
-UO2++    1.e-16           T
+:UO2++    1.e-16           T
+UO2++    1.85272e-7       T
 SiO2(aq) 5.36989e-4       T
 O2(aq)   3.58138e-4       T
 /
@@ -367,7 +368,8 @@ Cl-      6.54794e-4       T
 HCO3-    1.e-3            G CO2(g)
 Al(OH)4- 1.e-9            M K-Feldspar
 :Al+++    1.e-9           M K-Feldspar
-UO2++    1.85272e-7       T
+UO2++    1.e-16           T
+:UO2++    1.85272e-7       T
 SiO2(aq) 5.36989e-4       T
 O2(aq)   3.58138e-4       T
 /
