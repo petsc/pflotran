@@ -312,6 +312,8 @@ subroutine SolverReadLinear(solver,fid,myrank)
             solver%pc_type = PCBJACOBI
           case('ASM','ADDITIVE_SCHWARTZ')
             solver%pc_type = PCASM
+         case('SHELL')
+            solver%pc_type = PCSHELL
           case default
             string  = 'ERROR: Preconditioner type: ' // trim(word) // ' unknown.'
             if (myrank == 0) print *, string

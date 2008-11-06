@@ -138,6 +138,7 @@ PetscInt, parameter :: SECONDARY_SPEC_CONCENTRATION = 17
 PetscInt, parameter :: TOTAL_CONCENTRATION = 18
 PetscInt, parameter :: MINERAL_VOLUME_FRACTION = 19
 PetscInt, parameter :: MINERAL_SURFACE_AREA = 20
+PetscInt, parameter :: PH = 21
 
 ! structured grid faces
 PetscInt, parameter :: WEST_FACE = 1
