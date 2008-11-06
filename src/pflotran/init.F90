@@ -257,10 +257,12 @@ subroutine Init(simulation,filename)
 
     ! setup a shell preconditioner and initialize in the case of AMR
     if(associated(discretization%amrgrid)) then
-       flow_solver%pc_type = PCSHELL
+!       flow_solver%pc_type = PCSHELL
        pcside = PC_RIGHT
-       call KSPSetPreconditionerSide(flow_solver%ksp, pcside, ierr)
-       call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 0, flow_solver%pc)
+       if(flow_solver%pc_type==PCSHELL) then
+          call KSPSetPreconditionerSide(flow_solver%ksp, pcside, ierr)
+          call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 0, flow_solver%pc)
+       endif
     endif
 
     string = 'Solver: ' // trim(flow_solver%ksp_type)
@@ -330,6 +332,15 @@ subroutine Init(simulation,filename)
 
     call SolverSetSNESOptions(tran_solver)
 
+    ! setup a shell preconditioner and initialize in the case of AMR
+    if(associated(discretization%amrgrid)) then
+!       flow_solver%pc_type = PCSHELL
+       pcside = PC_RIGHT
+       if(tran_solver%pc_type==PCSHELL) then
+          call KSPSetPreconditionerSide(tran_solver%ksp, pcside, ierr)
+          call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 1, tran_solver%pc)
+       endif
+    endif
     string = 'Solver: ' // trim(tran_solver%ksp_type)
     call printMsg(option,string)
     string = 'Preconditioner: ' // trim(tran_solver%pc_type)
