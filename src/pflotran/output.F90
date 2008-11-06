@@ -421,6 +421,9 @@ subroutine OutputTecplotBlock(realization)
   
   if (option%ntrandof > 0) then
     if (associated(realization%reaction)) then
+      call OutputGetVarFromArray(realization,global_vec,PH,reaction%h_ion_id)
+      call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       do i=1,option%ntrandof
 !       call OutputGetVarFromArray(realization,global_vec,PRIMARY_SPEC_CONCENTRATION,i)
         call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)

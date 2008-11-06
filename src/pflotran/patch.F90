@@ -983,8 +983,13 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
             enddo
         end select
       endif
-    case(PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION,MINERAL_VOLUME_FRACTION)
+    case(PH,PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION,MINERAL_VOLUME_FRACTION)
       select case(ivar)
+        case(PH)
+          do local_id=1,grid%nlmax
+            vec_ptr(local_id) = -log10(patch%aux%RT%aux_vars(grid%nL2G(local_id))%pri_act_coef(isubvar)* &
+              patch%aux%RT%aux_vars(grid%nL2G(local_id))%primary_spec(isubvar))
+          enddo
         case(PRIMARY_SPEC_CONCENTRATION)
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%primary_spec(isubvar)
