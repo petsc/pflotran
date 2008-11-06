@@ -1193,6 +1193,9 @@ subroutine OutputTecplotPoint(realization)
     
     if (option%ntrandof > 0) then
       if (associated(realization%reaction)) then
+        value = RealizGetDatasetValueAtCell(realization,PH, &
+                                            reaction%h_ion_id,ghosted_id)
+        write(IUNIT3,1000,advance='no') value
         do i=1,option%ntrandof
 !         value = RealizGetDatasetValueAtCell(realization,PRIMARY_SPEC_CONCENTRATION, &
 !                                             i,ghosted_id)
