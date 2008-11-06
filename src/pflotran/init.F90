@@ -1103,6 +1103,35 @@ subroutine readInput(simulation,filename)
         if (option%myrank == 0) &
           write(option%fid_out,'(/," *TECP",10x,l1,/)') realization%output_option%print_tecplot
 
+      case ('VTK')
+        realization%output_option%print_vtk = PETSC_TRUE
+
+        do
+          call fiReadWord(string,word,PETSC_TRUE,ierr)
+          if (ierr /= 0) exit
+          length = len_trim(word)
+          call fiCharsToUpper(word,length)
+          call fiReadCard(word,card,ierr)
+
+          select case(card)
+            case('VELO')
+              realization%output_option%print_vtk_velocities = PETSC_TRUE
+#if 0
+            case('FLUX')
+              if (realization%output_option%tecplot_format == TECPLOT_POINT_FORMAT) then
+                string = 'Printing of fluxes not supported in TECPLOT POINT format.'
+                call printErrMsg(option,string)
+              endif
+              realization%output_option%print_tecplot_flux_velocities = PETSC_TRUE
+#endif
+            case default
+          end select
+          
+        enddo
+
+        if (option%myrank == 0) &
+          write(option%fid_out,'(/," *VTK",10x,l1,/)') realization%output_option%print_vtk
+
 !....................
 
       case ('IMOD')

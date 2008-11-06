@@ -10,6 +10,10 @@ PetscInt, parameter :: HHISTORY_LENGTH = 1000
 ! HHISTORY_LENGTH is the length of the array used to store the differencing
 ! values h.
 
+PetscReal, parameter :: LOG_TO_LN = 2.30258509299d0
+PetscReal, parameter :: LN_TO_LOG = 0.434294481904d0  
+PetscReal, parameter :: IDEAL_GAS_CONST = 8.314472d0   
+
 PetscInt, parameter :: ZERO_INTEGER = 0
 PetscInt, parameter :: ONE_INTEGER = 1
 PetscInt, parameter :: TWO_INTEGER = 2

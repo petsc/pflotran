@@ -16,6 +16,9 @@ module Output_module
   PetscInt, parameter :: TECPLOT_INTEGER = 0
   PetscInt, parameter :: TECPLOT_REAL = 1
 
+  PetscInt, parameter :: VTK_INTEGER = 0
+  PetscInt, parameter :: VTK_REAL = 1
+
   PetscInt, parameter :: TECPLOT_FILE = 0
   PetscInt, parameter ::  HDF5_FILE = 1
 
@@ -99,7 +102,22 @@ subroutine Output(realization,plot_flag)
       if (realization%option%myrank == 0) &
         print *, '      Seconds to write to Tecplot file(s): ', (tend-tstart)
     endif
-  
+
+    if (realization%output_option%print_vtk) then
+      call PetscGetTime(tstart,ierr) 
+      call PetscLogEventBegin(logging%event_output_vtk, &
+                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+      call OutputVTK(realization)
+
+      call PetscLogEventEnd(logging%event_output_vtk, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+      call PetscGetTime(tend,ierr) 
+      if (realization%option%myrank == 0) &
+        print *, '      Seconds to write to VTK file(s): ', (tend-tstart)
+    endif
+      
     if (realization%option%compute_statistics) then
       call ComputeFlowCellVelocityStats(realization)
       call ComputeFlowFluxVelocityStats(realization)
@@ -414,12 +432,6 @@ subroutine OutputTecplotBlock(realization)
         call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       enddo
-    else
-      do i=1,reaction%nkinmnrl
-        call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
-        call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-        call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
-      enddo
     endif
   endif
   
@@ -433,7 +445,7 @@ subroutine OutputTecplotBlock(realization)
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
   
-  close(IUNIT3)
+  if (option%myrank == 0) close(IUNIT3)
   
   if (output_option%print_tecplot_velocities) then
     call OutputVelocitiesTecplotBlock(realization)
@@ -640,7 +652,7 @@ subroutine OutputVelocitiesTecplotBlock(realization)
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
 
-  close(IUNIT3)
+  if (option%myrank == 0) close(IUNIT3)
   
 end subroutine OutputVelocitiesTecplotBlock
 
@@ -960,7 +972,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
   
   deallocate(indices)
 
-  close(IUNIT3)
+  if (option%myrank == 0) close(IUNIT3)
 
   call PetscLogEventEnd(logging%event_output_write_flux_tecplot, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -1214,7 +1226,7 @@ subroutine OutputTecplotPoint(realization)
   enddo
   
   
-  close(IUNIT3)
+  if (option%myrank == 0) close(IUNIT3)
   
   if (output_option%print_tecplot_velocities) then
     call OutputVelocitiesTecplotPoint(realization)
@@ -1363,7 +1375,7 @@ subroutine OutputVelocitiesTecplotPoint(realization)
   call VecDestroy(global_vec_vy,ierr)
   call VecDestroy(global_vec_vz,ierr)
 
-  close(IUNIT3)
+  if (option%myrank == 0) close(IUNIT3)
   
 end subroutine OutputVelocitiesTecplotPoint
 
@@ -2891,7 +2903,774 @@ end function GetVelocityAtCoord
 
 ! ************************************************************************** !
 !
-! OutputHDF5: Print to HDF5 file in Tecplot compatible format
+! OutputVTK: Print to Tecplot file in BLOCK format
+! author: Glenn Hammond
+! date: 10/25/07
+!
+! ************************************************************************** !  
+subroutine OutputVTK(realization)
+
+  use Realization_module
+  use Discretization_module
+  use Grid_module
+  use Structured_Grid_module
+  use Option_module
+  use Field_module
+  use Patch_module
+  
+  use Mphase_module
+  use THC_module
+  use Richards_module
+  
+  use Reactive_Transport_module
+  use Reaction_Aux_module
+ 
+  implicit none
+
+  type(realization_type) :: realization
+  
+  PetscInt :: i, comma_count, quote_count
+  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(discretization_type), pointer :: discretization
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch 
+  type(reaction_type), pointer :: reaction 
+  type(output_option_type), pointer :: output_option
+  PetscReal, pointer :: vec_ptr(:)
+  Vec :: global_vec
+  Vec :: natural_vec
+  
+  discretization => realization%discretization
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+  reaction => realization%reaction
+  output_option => realization%output_option
+  
+  ! open file
+  if (len_trim(output_option%plot_name) > 2) then
+    filename = trim(output_option%plot_name) // '.tec'
+    output_option%plot_name = ''
+  else
+    if (output_option%plot_number < 10) then
+      write(filename,'("pflotran00",i1,".vtk")') output_option%plot_number  
+    else if (output_option%plot_number < 100) then
+      write(filename,'("pflotran0",i2,".vtk")') output_option%plot_number  
+    else if (output_option%plot_number < 1000) then
+      write(filename,'("pflotran",i3,".vtk")') output_option%plot_number  
+    else if (output_option%plot_number < 10000) then
+      write(filename,'("pflotran",i4,".vtk")') output_option%plot_number  
+    endif
+  endif
+  
+  if (option%myrank == 0) then
+    print *, '--> write vtk output file: ', filename
+    open(unit=IUNIT3,file=filename,action="write")
+  
+    ! write header
+    ! write title
+    write(IUNIT3,'(''ASCII'')')
+    write(IUNIT3,'(''DATASET POLYDATA'')')
+  endif
+
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
+                                  option)  
+  call DiscretizationCreateVector(discretization,ONEDOF,natural_vec,NATURAL, &
+                                  option)  
+
+  ! write out coordinates
+  call WriteVTKGrid(IUNIT3,realization)
+
+  select case(option%iflowmode)
+    case(MPH_MODE,THC_MODE,RICHARDS_MODE)
+
+      ! temperature
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE)
+          word = 'Temperature'
+          call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+      end select
+
+      ! pressure
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE)
+          word = 'Pressure'
+          call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+      end select
+
+      ! phase
+      select case(option%iflowmode)
+        case(MPH_MODE)
+          word = 'Phase'
+          call OutputGetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_INTEGER)
+      end select
+
+      ! liquid saturation
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE)
+          word = 'Liquid Saturation'
+          call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+      end select
+
+      ! gas saturation
+      select case(option%iflowmode)
+        case(MPH_MODE)
+          word = 'Gas Saturation'
+          call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+      end select
+    
+      ! liquid energy
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE)
+          word = 'Liquid Energy'
+          call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+      end select
+    
+     ! gas energy
+      select case(option%iflowmode)
+        case(MPH_MODE)
+          word = 'Gas Energy'
+          call OutputGetVarFromArray(realization,global_vec,GAS_ENERGY,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+      end select
+
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE)
+          ! liquid mole fractions
+          do i=1,option%nflowspec
+            write(word,'(''Xl('',i2,'')'')') i
+            call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+            call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+          enddo
+      end select
+  
+      select case(option%iflowmode)
+        case(MPH_MODE)
+          ! gas mole fractions
+          do i=1,option%nflowspec
+            write(word,'(''Xg('',i2,'')'')') i
+            call OutputGetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+            call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
+          enddo
+      end select 
+      
+    case default
+  
+  end select
+  
+  if (option%ntrandof > 0) then
+    if (associated(realization%reaction)) then
+      do i=1,option%ntrandof
+!       call OutputGetVarFromArray(realization,global_vec,PRIMARY_SPEC_CONCENTRATION,i)
+        call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
+        call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+        call WriteVTKDataSetFromVec(IUNIT3,realization,reaction%primary_species_names(i), &
+                                    natural_vec,VTK_REAL)
+      enddo
+      do i=1,realization%reaction%nkinmnrl
+        call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
+        call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+        call WriteVTKDataSetFromVec(IUNIT3,realization,reaction%kinmnrl_names(i), &
+                                    natural_vec,VTK_REAL)
+      enddo
+    endif
+  endif
+  
+  ! material id
+  if (associated(patch%imat)) then
+    word = 'Material ID'
+    call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_INTEGER)
+  endif
+
+  call VecDestroy(natural_vec,ierr)
+  call VecDestroy(global_vec,ierr)
+  
+  if (option%myrank == 0) close(IUNIT3)
+
+#if 0  
+  if (output_option%print_tecplot_velocities) then
+    call OutputVelocitiesVTK(realization)
+  endif
+#endif
+  
+#if 0  
+  if (output_option%print_tecplot_flux_velocities) then
+    if (grid%structured_grid%nx > 1) then
+      call OutputFluxVelocitiesVTK(realization,LIQUID_PHASE, &
+                                          X_DIRECTION)
+      select case(option%iflowmode)
+        case(MPH_MODE)
+          call OutputFluxVelocitiesVTK(realization,GAS_PHASE, &
+                                              X_DIRECTION)
+      end select
+    endif
+    if (grid%structured_grid%ny > 1) then
+      call OutputFluxVelocitiesVTK(realization,LIQUID_PHASE, &
+                                          Y_DIRECTION)
+      select case(option%iflowmode)
+        case(MPH_MODE)
+          call OutputFluxVelocitiesVTK(realization,GAS_PHASE, &
+                                              Y_DIRECTION)
+      end select
+    endif
+    if (grid%structured_grid%nz > 1) then
+      call OutputFluxVelocitiesVTK(realization,LIQUID_PHASE, &
+                                          Z_DIRECTION)
+      select case(option%iflowmode)
+        case(MPH_MODE)
+          call OutputFluxVelocitiesVTK(realization,GAS_PHASE, &
+                                              Z_DIRECTION)
+      end select
+    endif
+  endif
+#endif
+      
+end subroutine OutputVTK
+
+#if 0
+! ************************************************************************** !
+!
+! OutputVelocitiesVTK: Print velocities to Tecplot file in BLOCK format
+! author: Glenn Hammond
+! date: 10/25/07
+!
+! ************************************************************************** !
+subroutine OutputVelocitiesVTK(realization)
+ 
+  use Realization_module
+  use Discretization_module
+  use Grid_module
+  use Option_module
+  use Field_module
+  use Patch_module
+  
+  implicit none
+
+  type(realization_type) :: realization
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(discretization_type), pointer :: discretization
+  type(patch_type), pointer :: patch  
+  type(output_option_type), pointer :: output_option
+  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: string
+  Vec :: global_vec
+  Vec :: natural_vec
+
+  PetscReal, pointer :: vec_ptr(:)
+  
+  patch => realization%patch
+  grid => patch%grid
+  field => realization%field
+  option => realization%option
+  output_option => realization%output_option
+  discretization => realization%discretization
+  
+  ! open file
+  if (output_option%plot_number < 10) then
+    write(filename,'("pflotran_vel00",i1,".vtk")') output_option%plot_number  
+  else if (output_option%plot_number < 100) then
+    write(filename,'("pflotran_vel0",i2,".vtk")') output_option%plot_number  
+  else if (output_option%plot_number < 1000) then
+    write(filename,'("pflotran_vel",i3,".vtk")') output_option%plot_number  
+  else if (output_option%plot_number < 10000) then
+    write(filename,'("pflotran_vel",i4,".vtk")') output_option%plot_number  
+  endif
+  
+  if (option%myrank == 0) then
+    print *, '--> write tecplot velocity output file: ', filename
+    open(unit=IUNIT3,file=filename,action="write")
+  
+    ! write header
+    ! write title
+    write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
+                 option%time/output_option%tconv,output_option%tunit
+    ! write variables
+    string = 'VARIABLES=' // &
+             '"X [m]",' // &
+             '"Y [m]",' // &
+             '"Z [m]",' // &
+             '"vlx [m/' // trim(output_option%tunit) // ']",' // &
+             '"vly [m/' // trim(output_option%tunit) // ']",' // &
+             '"vlz [m/' // trim(output_option%tunit) // ']"'
+    if (option%nphase > 1) then
+      string = trim(string) // &
+               ',"vgx [m/' // trim(output_option%tunit) // ']",' // &
+               '"vgy [m/' // trim(output_option%tunit) // ']",' // &
+               '"vgz [m/' // trim(output_option%tunit) // ']"'
+    endif
+        if (associated(patch%imat)) then
+          string = trim(string) // ',"Material_ID"'
+        endif
+    write(IUNIT3,'(a)') trim(string)
+  
+    ! write zone header
+    if (realization%discretization%itype == STRUCTURED_GRID) then
+      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
+                   &'', K='',i4,'','')') &
+                   option%time/output_option%tconv, &
+                   grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
+      string = trim(string) // ' DATAPACKING=BLOCK'
+      if (associated(patch%imat)) then
+        if (option%nphase > 1) then
+          string = trim(string) // ', VARLOCATION=([4-10]=CELLCENTERED)'
+        else
+          string = trim(string) // ', VARLOCATION=([4-7]=CELLCENTERED)'
+        endif
+      else
+        if (option%nphase > 1) then
+          string = trim(string) // ', VARLOCATION=([4-9]=CELLCENTERED)'
+        else
+          string = trim(string) // ', VARLOCATION=([4-6]=CELLCENTERED)'
+        endif
+      endif
+    else
+      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
+                   &'', K='',i4,'','')') &
+                   option%time/output_option%tconv, &
+                   grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
+      string = trim(string) // ' DATAPACKING=BLOCK'
+    endif
+    write(IUNIT3,'(a)') trim(string)
+
+  endif
+  
+  ! write blocks
+  ! write out data sets  
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
+                                  option)  
+  call DiscretizationCreateVector(discretization,ONEDOF,natural_vec,NATURAL, &
+                                  option)    
+
+  ! write out coordinates
+  call WriteVTKGrid(IUNIT3,realization)
+
+  word = 'velx
+  call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
+  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_REAL)
+
+  call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
+  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_REAL)
+
+  call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
+  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_REAL)
+
+  if (option%nphase > 1) then
+    call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_REAL)
+
+    call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_REAL)
+
+    call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_REAL)
+  endif
+
+  ! material id
+  if (associated(patch%imat)) then
+    call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,VTK_INTEGER)
+  endif
+  
+  call VecDestroy(natural_vec,ierr)
+  call VecDestroy(global_vec,ierr)
+
+  if (option%myrank == 0) close(IUNIT3)
+  
+end subroutine OutputVelocitiesVTK
+#endif
+! ************************************************************************** !
+!
+! WriteVTKGrid: Writes a grid in VTK format
+! author: Glenn Hammond
+! date: 11/05/08
+!
+! ************************************************************************** !
+subroutine WriteVTKGrid(fid,realization)
+
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Patch_module
+
+  implicit none
+  
+  PetscInt :: fid
+  type(realization_type) :: realization
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch  
+  PetscInt :: i, j, k, nx, ny, nz
+  PetscReal :: x, y, z
+  PetscInt :: nxp1Xnyp1, nxp1, nyp1, nzp1
+  PetscInt :: vertex_id
+
+1000 format(es11.4,x,es11.4,x,es11.4)
+1001 format(i1,8(x,i8))
+  
+  call PetscLogEventBegin(logging%event_output_grid_vtk, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+                              
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  
+  if (realization%discretization%itype == STRUCTURED_GRID) then
+
+    nx = grid%structured_grid%nx
+    ny = grid%structured_grid%ny
+    nz = grid%structured_grid%nz
+  
+    nxp1 = nx+1
+    nyp1 = ny+1
+    nyp1 = nz+1
+  
+    if (option%myrank == 0) then
+
+      write(fid,'(''POINTS'',x,i,x,''float'')') (nx+1)*(ny+1)*(nz+1)
+      do k=0,nz
+        if (k > 0) then
+          z = z + grid%structured_grid%dz_global(k)
+        else
+          z = grid%structured_grid%origin(Z_DIRECTION)
+        endif
+        do j=0,ny
+          if (j > 0) then
+            y = y + grid%structured_grid%dy_global(j)
+          else
+            y = grid%structured_grid%origin(Y_DIRECTION)
+          endif
+          x = grid%structured_grid%origin(X_DIRECTION)
+          write(fid,1000) x,y,z
+          do i=1,nx
+            x = x + grid%structured_grid%dx_global(i)
+            write(fid,1000) x,y,z
+          enddo
+        enddo
+      enddo
+
+      write(fid,'(''POLYGONS'',x,i,x,i)') grid%nmax, grid%nmax*8
+      nxp1Xnyp1 = nxp1*nyp1
+      do k=0,nz-1
+        do j=0,ny-1
+          do i=0,nx-1
+            vertex_id = i+j*nxp1+k*nxp1Xnyp1
+            write(fid,1001) 8,vertex_id,vertex_id+1, &
+                            vertex_id+nxp1+1,vertex_id+nxp1, &
+                            vertex_id+nxp1Xnyp1,vertex_id+nxp1Xnyp1+1, &
+                            vertex_id+nxp1Xnyp1+nxp1+1, &
+                            vertex_id+nxp1Xnyp1+nxp1
+          enddo
+        enddo
+      enddo
+
+      write(fid,'(a)') ""
+
+    endif
+  endif
+
+  call PetscLogEventEnd(logging%event_output_grid_vtk, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+                            
+end subroutine WriteVTKGrid
+
+! ************************************************************************** !
+!
+! WriteVTKDataSetFromVec: Writes data from a Petsc Vec within a block
+!                             of a VTK file
+! author: Glenn Hammond
+! date: 10/25/07
+!
+! ************************************************************************** !
+subroutine WriteVTKDataSetFromVec(fid,realization,dataset_name,vec,datatype)
+
+  use Realization_module
+  
+  implicit none
+
+  PetscInt :: fid
+  type(realization_type) :: realization
+  Vec :: vec
+  character(len=MAXWORDLENGTH) :: dataset_name
+  PetscInt :: datatype
+  
+  PetscReal, pointer :: vec_ptr(:)
+  
+  call VecGetArrayF90(vec,vec_ptr,ierr)
+  call WriteVTKDataSet(fid,realization,dataset_name,vec_ptr,datatype, &
+                       ZERO_INTEGER) ! 0 implies grid%nlmax
+  call VecRestoreArrayF90(vec,vec_ptr,ierr)
+  
+end subroutine WriteVTKDataSetFromVec
+
+! ************************************************************************** !
+!
+! WriteVTKDataSet: Writes data from an array within a block
+!                      of a VTK file
+! author: Glenn Hammond
+! date: 10/25/07
+!
+! ************************************************************************** !
+subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
+                           size_flag)
+
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Patch_module
+
+  implicit none
+  
+  PetscInt :: fid
+  type(realization_type) :: realization
+  PetscReal :: array(:)
+  character(len=MAXWORDLENGTH) :: dataset_name
+  PetscInt, save :: max_local_size_saved = -1
+  PetscInt :: datatype
+  PetscInt :: size_flag ! if size_flag /= 0, use size_flag as the local size
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch  
+  PetscInt :: i
+  PetscInt :: max_proc, max_proc_prefetch
+  PetscMPIInt :: iproc, recv_size
+  PetscInt :: max_local_size, local_size
+  PetscInt :: istart, iend, num_in_array
+  PetscInt :: status(MPI_STATUS_SIZE)
+  PetscInt, allocatable :: integer_data(:), integer_data_recv(:)
+  PetscReal, allocatable :: real_data(:), real_data_recv(:)
+
+1001 format(es11.4)
+1002 format(i3)
+  
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+
+  call PetscLogEventBegin(logging%event_output_write_vtk, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+
+  ! maximum number of initial messages  
+#define HANDSHAKE  
+  max_proc = option%io_handshake_buffer_size
+  max_proc_prefetch = option%io_handshake_buffer_size / 10
+
+  if (size_flag /= 0) then
+    call MPI_Allreduce(size_flag,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
+                       option%comm,ierr)
+    local_size = size_flag
+  else 
+  ! if first time, determine the maximum size of any local array across 
+  ! all procs
+    if (max_local_size_saved < 0) then
+      call MPI_Allreduce(grid%nlmax,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
+                         option%comm,ierr)
+      max_local_size_saved = max_local_size
+      if (option%myrank == 0) print *, 'max_local_size_saved: ', max_local_size
+    endif
+    max_local_size = max_local_size_saved
+    local_size = grid%nlmax
+  endif
+  
+  ! transfer the data to an integer or real array
+  if (datatype == VTK_INTEGER) then
+    allocate(integer_data(max_local_size+10))
+    allocate(integer_data_recv(max_local_size))
+    do i=1,local_size
+      integer_data(i) = int(array(i))
+    enddo
+  else
+    allocate(real_data(max_local_size+10))
+    allocate(real_data_recv(max_local_size))
+    do i=1,local_size
+      real_data(i) = array(i)
+    enddo
+  endif
+  
+  ! communicate data to processor 0, round robin style
+  if (option%myrank == 0) then
+
+    write(fid,'(''CELL_DATA'',i8)') grid%nmax
+
+    if (datatype == VTK_INTEGER) then
+      write(fid,'(''SCALARS '',a20,x,i8,'' int 1'')') dataset_name, grid%nmax
+    else
+      write(fid,'(''SCALARS '',a20,x,i8,'' float 1'')') dataset_name, grid%nmax
+    endif
+    
+    write(fid,'(''LOOKUP_TABLE default'')') 
+
+    if (datatype == VTK_INTEGER) then
+      ! This approach makes output files identical, regardless of processor
+      ! distribution.  It is necessary when diffing files.
+      iend = 0
+      do
+        istart = iend+1
+        if (iend+10 > local_size) exit
+        iend = istart+9
+        write(fid,1002) integer_data(istart:iend)
+      enddo
+      ! shift remaining data to front of array
+      integer_data(1:local_size-iend) = integer_data(iend+1:local_size)
+      num_in_array = local_size-iend
+    else
+      iend = 0
+      do
+        istart = iend+1
+        if (iend+10 > local_size) exit
+        iend = istart+9
+        write(fid,1001) real_data(istart:iend)
+      enddo
+      ! shift remaining data to front of array
+      real_data(1:local_size-iend) = real_data(iend+1:local_size)
+      num_in_array = local_size-iend
+    endif
+    do iproc=1,option%commsize-1
+#ifdef HANDSHAKE    
+      if (option%io_handshake_buffer_size > 0 .and. &
+          iproc+max_proc_prefetch >= max_proc) then
+        max_proc = max_proc + option%io_handshake_buffer_size
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,option%comm, &
+                       ierr)
+      endif
+#endif      
+      call MPI_Probe(iproc,MPI_ANY_TAG,option%comm,status,ierr)
+      recv_size = status(MPI_TAG)
+      if (datatype == 0) then
+        call MPI_Recv(integer_data_recv,recv_size,MPI_INTEGER,iproc, &
+                      MPI_ANY_TAG,option%comm,status,ierr)
+        if (recv_size > 0) then
+          integer_data(num_in_array+1:num_in_array+recv_size) = &
+                                             integer_data_recv(1:recv_size)
+          num_in_array = num_in_array+recv_size
+        endif
+        iend = 0
+        do
+          istart = iend+1
+          if (iend+10 > num_in_array) exit
+          iend = istart+9
+          write(fid,1002) integer_data(istart:iend)
+        enddo
+        if (iend > 0) then
+          integer_data(1:num_in_array-iend) = integer_data(iend+1:num_in_array)
+          num_in_array = num_in_array-iend
+        endif
+      else
+        call MPI_Recv(real_data_recv,recv_size,MPI_DOUBLE_PRECISION,iproc, &
+                      MPI_ANY_TAG,option%comm,status,ierr)
+        if (recv_size > 0) then
+          real_data(num_in_array+1:num_in_array+recv_size) = &
+                                             real_data_recv(1:recv_size)
+          num_in_array = num_in_array+recv_size
+        endif
+        iend = 0
+        do
+          istart = iend+1
+          if (iend+10 > num_in_array) exit
+          iend = istart+9
+          write(fid,1001) real_data(istart:iend)
+        enddo
+        if (iend > 0) then
+          real_data(1:num_in_array-iend) = real_data(iend+1:num_in_array)
+          num_in_array = num_in_array-iend
+        endif
+      endif
+    enddo
+#ifdef HANDSHAKE    
+    if (option%io_handshake_buffer_size > 0) then
+      max_proc = -1
+      call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,option%comm, &
+                     ierr)
+    endif
+#endif      
+    ! Print the remaining values, if they exist
+    if (datatype == 0) then
+      if (num_in_array > 0) &
+        write(fid,1002) integer_data(1:num_in_array)
+    else
+      if (num_in_array > 0) &
+        write(fid,1001) real_data(1:num_in_array)
+    endif
+    write(fid,'(/)')
+  else
+#ifdef HANDSHAKE    
+    if (option%io_handshake_buffer_size > 0) then
+      do
+        if (option%myrank < max_proc) exit
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,option%comm, &
+                       ierr)
+      enddo
+    endif
+#endif    
+    if (datatype == VTK_INTEGER) then
+      call MPI_Send(integer_data,local_size,MPI_INTEGER,ZERO_INTEGER,local_size, &
+                    option%comm,ierr)
+    else
+      call MPI_Send(real_data,local_size,MPI_DOUBLE_PRECISION,ZERO_INTEGER,local_size, &
+                    option%comm,ierr)
+    endif
+#ifdef HANDSHAKE    
+    if (option%io_handshake_buffer_size > 0) then
+      do
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,option%comm, &
+                       ierr)
+        if (max_proc < 0) exit
+      enddo
+    endif
+#endif    
+  endif
+      
+  if (datatype == VTK_INTEGER) then
+    deallocate(integer_data)
+  else
+    deallocate(real_data)
+  endif
+
+  call PetscLogEventEnd(logging%event_output_write_vtk, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+
+end subroutine WriteVTKDataSet
+
+! ************************************************************************** !
+!
+! OutputHDF5: Print to HDF5 file
 ! author: Glenn Hammond
 ! date: 10/25/07
 !

@@ -10,9 +10,6 @@ module Reaction_module
 #include "definitions.h"
 
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
-  PetscReal, parameter :: log_to_ln = 2.30258509299d0
-  PetscReal, parameter :: ln_to_log = 0.434294481904d0  
-  PetscReal, parameter :: ideal_gas_const = 8.314472d0   
   
   public :: ReactionCreate, &
             ReactionRead, &
@@ -528,7 +525,6 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
   PetscReal :: ln_act_h2o
   PetscReal :: lnQK, QK
   PetscInt :: comp_id
-  PetscReal, parameter :: log_to_ln = 2.30258509299d0
 
   PetscReal :: Jac_num(reaction%ncomp)
   PetscReal :: Res_pert, pert, prev_value
@@ -633,7 +629,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
             
             ! compute secondary species concentration
             ! *note that the sign was flipped below
-            lnQK = -reaction%eqcmplx_logK(icplx)*log_to_ln
+            lnQK = -reaction%eqcmplx_logK(icplx)*LOG_TO_LN
 
             ! activity of water
             if (reaction%eqcmplxh2oid(icplx) > 0) then
@@ -664,7 +660,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
   
           imnrl = constraint_id(icomp)
           ! compute secondary species concentration
-          lnQK = -reaction%mnrl_logK(imnrl)*log_to_ln
+          lnQK = -reaction%mnrl_logK(imnrl)*LOG_TO_LN
 
           ! activity of water
           if (reaction%mnrlh2oid(imnrl) > 0) then
@@ -693,10 +689,10 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
           igas = constraint_id(icomp)
           
           ! compute secondary species concentration
-          lnQK = -reaction%eqgas_logK(igas)*log_to_ln
+          lnQK = -reaction%eqgas_logK(igas)*LOG_TO_LN
           
           ! divide K by RT
-          !lnQK = lnQK - log((auxvar%temp+273.15d0)*ideal_gas_const)
+          !lnQK = lnQK - log((auxvar%temp+273.15d0)*IDEAL_GAS_CONST)
           
           ! activity of water
           if (reaction%eqgash2oid(igas) > 0) then
@@ -1092,7 +1088,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
     do imnrl = 1, reaction%nmnrl
       ! compute saturation
       ln_act_h2o = 0.d0
-      lnQK(imnrl) = -reaction%mnrl_logK(imnrl)*log_to_ln
+      lnQK(imnrl) = -reaction%mnrl_logK(imnrl)*LOG_TO_LN
       if (reaction%mnrlh2oid(imnrl) > 0) then
         lnQK(imnrl) = lnQK(imnrl) + reaction%mnrlh2ostoich(imnrl)*ln_act_h2o
       endif
@@ -1128,7 +1124,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
     do imnrl = 1, reaction%nmnrl
       i = eqminsort(imnrl)
       write(option%fid_out,131) reaction%mineral_names(i), &
-                                lnQK(i)*ln_to_log, &
+                                lnQK(i)*LN_TO_LOG, &
                                 reaction%mnrl_logK(i)
     enddo
   endif
@@ -1145,10 +1141,10 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       ln_act_h2o = 0.d0
       
       ! compute gas partial pressure
-      lnQK(igas) = -reaction%eqgas_logK(igas)*log_to_ln
+      lnQK(igas) = -reaction%eqgas_logK(igas)*LOG_TO_LN
       
       ! divide K by RT
-      !lnQK = lnQK - log((auxvar%temp+273.15d0)*ideal_gas_const)
+      !lnQK = lnQK - log((auxvar%temp+273.15d0)*IDEAL_GAS_CONST)
       
       ! activity of water
       if (reaction%eqgash2oid(igas) > 0) then
@@ -1419,7 +1415,7 @@ subroutine RActivity(auxvar,reaction,option)
                                         (1.d0+reaction%primary_spec_a0(icomp)* &
                                               reaction%debyeB*sqrt_I)+ &
                                         reaction%debyeBdot*I)* &
-                                       log_to_ln)
+                                       LOG_TO_LN)
     else
       auxvar%pri_act_coef(icomp) = 1.d0
     endif
@@ -1434,7 +1430,7 @@ subroutine RActivity(auxvar,reaction,option)
                                         (1.d0+reaction%eqcmplx_a0(icplx)* &
                                               reaction%debyeB*sqrt_I)+ &
                                         reaction%debyeBdot*I)* &
-                                       log_to_ln)
+                                       LOG_TO_LN)
     else
       auxvar%sec_act_coef(icplx) = 1.d0
     endif
@@ -1463,7 +1459,6 @@ subroutine RTotal(auxvar,reaction,option)
   PetscReal :: ln_act(reaction%ncomp)
   PetscReal :: ln_act_h2o
   PetscReal :: lnQK, tempreal
-  PetscReal, parameter :: log_to_ln = 2.30258509299d0
 
   iphase = 1                         
 
@@ -1479,7 +1474,7 @@ subroutine RTotal(auxvar,reaction,option)
   
   do icplx = 1, reaction%neqcmplx ! for each secondary species
     ! compute secondary species concentration
-    lnQK = -reaction%eqcmplx_logK(icplx)*log_to_ln
+    lnQK = -reaction%eqcmplx_logK(icplx)*LOG_TO_LN
 
     ! activity of water
     if (reaction%eqcmplxh2oid(icplx) > 0) then
@@ -1548,7 +1543,6 @@ subroutine RTotalSorb(auxvar,reaction,option)
   PetscReal :: ln_act_h2o
   PetscReal :: lnQK, tempreal, tempreal1, tempreal2, total
   PetscInt :: irxn
-  PetscReal, parameter :: log_to_ln = 2.30258509299d0
   PetscReal, parameter :: tol = 1.d-12
   PetscTruth :: one_more
   PetscReal :: res, dres_dfree_site, dfree_site_conc
@@ -1590,7 +1584,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
       do j = 1, ncplx
         icplx = reaction%eqsurfcmplx_rxn_to_complex(j,irxn)
         ! compute secondary species concentration
-        lnQK = -reaction%eqsurfcmplx_logK(icplx)*log_to_ln
+        lnQK = -reaction%eqsurfcmplx_logK(icplx)*LOG_TO_LN
 
         ! activity of water
         if (reaction%eqsurfcmplxh2oid(icplx) > 0) then
@@ -1868,7 +1862,6 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
   PetscReal :: ln_sec_act(reaction%neqcmplx)
   PetscReal :: ln_act_h2o
   PetscReal :: QK, lnQK, dQK_dCj, dQK_dmj
-  PetscReal, parameter :: log_to_ln = 2.30258509299d0
   PetscTruth :: prefactor_exists
 
   iphase = 1                         
@@ -1882,7 +1875,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
   
   do imnrl = 1, reaction%nkinmnrl ! for each mineral
     ! compute secondary species concentration
-    lnQK = -reaction%kinmnrl_logK(imnrl)*log_to_ln
+    lnQK = -reaction%kinmnrl_logK(imnrl)*LOG_TO_LN
 
     ! activity of water
     if (reaction%kinmnrlh2oid(imnrl) > 0) then

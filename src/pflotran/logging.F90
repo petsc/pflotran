@@ -50,6 +50,9 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 5
 
     PetscLogEvent :: event_output_tecplot
     PetscLogEvent :: event_output_hdf5
+    PetscLogEvent :: event_output_vtk
+    PetscLogEvent :: event_output_grid_vtk
+    PetscLogEvent :: event_output_write_vtk
     PetscLogEvent :: event_output_str_grid_tecplot
     PetscLogEvent :: event_output_write_tecplot
     PetscLogEvent :: event_output_write_flux_tecplot
@@ -174,15 +177,24 @@ subroutine LoggingCreate()
   call PetscLogEventRegister('OutputTecplot', &
                              logging%class_pflotran, &
                              logging%event_output_tecplot,ierr)
+  call PetscLogEventRegister('OutputVTK', &
+                             logging%class_pflotran, &
+                             logging%event_output_vtk,ierr)
   call PetscLogEventRegister('OutputHDF5', &
                              logging%class_pflotran, &
                              logging%event_output_hdf5,ierr)
   call PetscLogEventRegister('WriteTecStrGrid', &
                              logging%class_pflotran, &
                              logging%event_output_str_grid_tecplot,ierr)
+  call PetscLogEventRegister('WriteVTKGrid', &
+                             logging%class_pflotran, &
+                             logging%event_output_grid_vtk,ierr)
   call PetscLogEventRegister('WriteTecDataSet', &
                              logging%class_pflotran, &
                              logging%event_output_write_tecplot,ierr)
+  call PetscLogEventRegister('WriteVTKDataSet', &
+                             logging%class_pflotran, &
+                             logging%event_output_write_vtk,ierr)
   call PetscLogEventRegister('OutputFluxVelTec', &
                              logging%class_pflotran, &
                              logging%event_output_write_flux_tecplot,ierr)

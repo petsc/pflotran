@@ -118,6 +118,9 @@ module Option_module
     logical :: print_tecplot_velocities
     logical :: print_tecplot_flux_velocities
     
+    logical :: print_vtk 
+    logical :: print_vtk_velocities
+
     PetscInt :: plot_number
     character(len=MAXWORDLENGTH) :: plot_name
 
@@ -293,6 +296,8 @@ function OutputOptionCreate()
   output_option%tecplot_format = 0
   output_option%print_tecplot_velocities = PETSC_FALSE
   output_option%print_tecplot_flux_velocities = PETSC_FALSE
+  output_option%print_vtk = PETSC_FALSE
+  output_option%print_vtk_velocities = PETSC_FALSE
   output_option%plot_number = 0
   output_option%plot_name = ""
 
