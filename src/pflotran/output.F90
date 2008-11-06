@@ -2954,7 +2954,7 @@ subroutine OutputVTK(realization)
   
   ! open file
   if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '.tec'
+    filename = trim(output_option%plot_name) // '.vtk'
     output_option%plot_name = ''
   else
     if (output_option%plot_number < 10) then
@@ -2973,9 +2973,11 @@ subroutine OutputVTK(realization)
     open(unit=IUNIT3,file=filename,action="write")
   
     ! write header
+    write(IUNIT3,'(''# vtk DataFile Version 2.0'')')
     ! write title
+    write(IUNIT3,'(''PFLOTRAN output'')')
     write(IUNIT3,'(''ASCII'')')
-    write(IUNIT3,'(''DATASET POLYDATA'')')
+    write(IUNIT3,'(''DATASET UNSTRUCTURED_GRID'')')
   endif
 
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
@@ -3382,7 +3384,7 @@ subroutine WriteVTKGrid(fid,realization)
         enddo
       enddo
 
-      write(fid,'(''POLYGONS'',x,i,x,i)') grid%nmax, grid%nmax*8
+      write(fid,'(''CELLS'',x,i,x,i)') grid%nmax, grid%nmax*8
       nxp1Xnyp1 = nxp1*nyp1
       do k=0,nz-1
         do j=0,ny-1
@@ -3395,6 +3397,13 @@ subroutine WriteVTKGrid(fid,realization)
                             vertex_id+nxp1Xnyp1+nxp1
           enddo
         enddo
+      enddo
+
+      write(fid,'(a)') ""
+
+      write(fid,'(''CELLS_TYPES'',x,i)') grid%nmax
+      do i=1,grid%nmax
+        write(fid,'(i)') 12
       enddo
 
       write(fid,'(a)') ""
@@ -3475,7 +3484,7 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
   PetscInt, allocatable :: integer_data(:), integer_data_recv(:)
   PetscReal, allocatable :: real_data(:), real_data_recv(:)
 
-1001 format(es11.4)
+1001 format(10(es11.4,x))
 1002 format(i3)
   
   patch => realization%patch

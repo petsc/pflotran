@@ -49,6 +49,8 @@ module Option_module
     PetscReal :: flow_time, tran_time, time  ! The time elapsed in the simulation.
     PetscReal :: tran_weight_t0, tran_weight_t1
     PetscReal :: flow_dt, tran_dt, dt ! The size of the time step.
+    PetscTruth :: match_waypoint
+    PetscReal :: prev_dt
   
 !    PetscReal, pointer :: tplot(:)
     PetscReal, pointer :: tfac(:)
@@ -262,6 +264,8 @@ function OptionCreate()
   option%flow_dt = 0.d0
   option%tran_dt = 0.d0
   option%dt = 0.d0
+  option%match_waypoint = PETSC_FALSE
+  option%prev_dt = 0.d0
 
   option%io_handshake_buffer_size = 0
   

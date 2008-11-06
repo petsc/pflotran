@@ -498,6 +498,15 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag)
     steps = tran_stepper%steps
     nstepmax = tran_stepper%nstepmax
   endif
+  
+  if (option%match_waypoint) then
+    time = time - dt
+    dt = option%prev_dt
+    time = time + dt
+    option%match_waypoint = PETSC_FALSE
+  else
+    option%prev_dt = dt
+  endif
 
 ! If a waypoint calls for a plot or change in src/sinks, adjust time step to match waypoint
   if (time + 0.2*dt >= cur_waypoint%time .and. &
@@ -511,6 +520,7 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag)
     else
       time = cur_waypoint%time
       if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
+      option%match_waypoint = PETSC_TRUE
       cur_waypoint => cur_waypoint%next
       if (associated(cur_waypoint)) &
         dt_max = cur_waypoint%dt_max
