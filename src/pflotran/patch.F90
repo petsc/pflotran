@@ -1123,8 +1123,11 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
             value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%u(1)
         end select
       endif
-    case(PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION,MINERAL_VOLUME_FRACTION)
+    case(PH,PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION,MINERAL_VOLUME_FRACTION)
       select case(ivar)
+        case(PH)
+          value = -log10(patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)* &
+            patch%aux%RT%aux_vars(ghosted_id)%primary_spec(isubvar))
         case(PRIMARY_SPEC_CONCENTRATION)
           value = patch%aux%RT%aux_vars(ghosted_id)%primary_spec(isubvar)
         case(TOTAL_CONCENTRATION)

@@ -1718,14 +1718,17 @@ function RTGetTecplotHeader(realization)
   option => realization%option
   reaction => realization%reaction
   
-  string = '' 
+  string = ''
+  write(string2,'('',"'',a,''"'')') trim('pH')
+  string = trim(string) // trim(string2)
+  
   do i=1,option%ntrandof
     write(string2,'('',"'',a,''"'')') trim(reaction%primary_species_names(i))
     string = trim(string) // trim(string2)
   enddo
   
   do i=1,realization%reaction%nkinmnrl
-    write(string2,'('',"'',a,''"'')') trim(reaction%mineral_names(i))
+    write(string2,'('',"'',a,''"'')') trim(reaction%kinmnrl_names(i))
     string = trim(string) // trim(string2)
   enddo
   
