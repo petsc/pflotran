@@ -1720,7 +1720,7 @@ function RTGetTecplotHeader(realization)
   
   string = ''
   
-  if (realization%reaction%h_ion_id) then
+  if (realization%reaction%h_ion_id > 0) then
     write(string2,'('',"'',a,''"'')') trim('pH')
     string = trim(string) // trim(string2)
   endif
