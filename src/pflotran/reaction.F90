@@ -1877,10 +1877,13 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
   iphase = 1                         
 
   ln_conc = log(auxvar%primary_spec)
-  ln_sec = log(auxvar%secondary_spec)
-  
   ln_act = ln_conc+log(auxvar%pri_act_coef)
-  ln_sec_act = ln_sec+log(auxvar%sec_act_coef)
+
+  if (reaction%neqcmplx > 0) then
+    ln_sec = log(auxvar%secondary_spec)
+    ln_sec_act = ln_sec+log(auxvar%sec_act_coef)
+  endif
+  
   ln_act_h2o = 0.d0
   
   do imnrl = 1, reaction%nkinmnrl ! for each mineral
@@ -1924,15 +1927,17 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
                                  exp(reaction%kinmnrl_pri_pref_beta_stoich(i,ipref,imnrl)* &
                                      ln_act(icomp)))
           enddo
-          do k = 1, reaction%kinmnrl_sec_prefactor_id(0,ipref,imnrl) ! secondary contribution
-            kcplx = reaction%kinmnrl_sec_prefactor_id(k,ipref,imnrl)
-            prefactor(ipref) = prefactor(ipref) * &
-                               exp(reaction%kinmnrl_sec_pref_alpha_stoich(k,ipref,imnrl)* &
-                                   ln_sec_act(kcplx))/ &
-                               ((1.d0+reaction%kinmnrl_sec_pref_atten_coef(i,ipref,imnrl))* &
-                                 exp(reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
-                                     ln_sec_act(kcplx)))
-          enddo
+          if (reaction%neqcmplx > 0) then
+            do k = 1, reaction%kinmnrl_sec_prefactor_id(0,ipref,imnrl) ! secondary contribution
+              kcplx = reaction%kinmnrl_sec_prefactor_id(k,ipref,imnrl)
+              prefactor(ipref) = prefactor(ipref) * &
+                                 exp(reaction%kinmnrl_sec_pref_alpha_stoich(k,ipref,imnrl)* &
+                                     ln_sec_act(kcplx))/ &
+                                 ((1.d0+reaction%kinmnrl_sec_pref_atten_coef(i,ipref,imnrl))* &
+                                   exp(reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
+                                       ln_sec_act(kcplx)))
+            enddo
+          endif
           sum_prefactor_rate = sum_prefactor_rate + prefactor(ipref)*reaction%kinmnrl_rate(ipref,imnrl)
         enddo
       else
@@ -2025,32 +2030,34 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
             Jac(icomp,jcomp) = Jac(icomp,jcomp) + reaction%kinmnrlstoich(i,imnrl)*tempreal
           enddo  ! loop over col
         enddo !loop over row
-        do k = 1, reaction%kinmnrl_sec_prefactor_id(0,ipref,imnrl) ! secondary contribution
-          kcplx = reaction%kinmnrl_sec_prefactor_id(k,ipref,imnrl)
-          ! numerator
-          dprefactor_dcomp_numerator = reaction%kinmnrl_sec_pref_alpha_stoich(k,ipref,imnrl)* &
-                                       prefactor(ipref)/(auxvar%secondary_spec(kcplx)* &
-                                                         auxvar%sec_act_coef(kcplx)) ! dR_dax
-          ! denominator
-          dprefactor_dcomp_denominator = -prefactor(ipref)/ &
-                                         (1.d0+reaction%kinmnrl_sec_pref_atten_coef(k,ipref,imnrl)* &
-                                          exp(reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
-                                              ln_sec_act(kcplx)))* &
-                                         reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
-                                         reaction%kinmnrl_sec_pref_atten_coef(k,ipref,imnrl)* &
-                                         exp((reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)-1.d0)* &
-                                              ln_sec_act(kcplx)) ! dR_dax
-          tempreal = dIm_dprefactor_rate*(dprefactor_dcomp_numerator+dprefactor_dcomp_denominator)*auxvar%den(iphase)
-          do j = 1, reaction%eqcmplxstoich(0,kcplx)
-            jcomp = reaction%eqcmplxstoich(j,kcplx)
-            tempreal2 = reaction%eqcmplxstoich(j,kcplx)*exp(ln_sec_act(kcplx)-ln_conc(jcomp)) !dax_dc
-            do i = 1, ncomp
-              icomp = reaction%kinmnrlspecid(i,imnrl)
-              Jac(icomp,jcomp) = Jac(icomp,jcomp) + reaction%kinmnrlstoich(i,imnrl)*tempreal* &
-                                                    tempreal2
-            enddo  ! loop over col
-          enddo  ! loop over row
-        enddo  ! loop over complexes
+        if (reaction%neqcmplx > 0) then
+          do k = 1, reaction%kinmnrl_sec_prefactor_id(0,ipref,imnrl) ! secondary contribution
+            kcplx = reaction%kinmnrl_sec_prefactor_id(k,ipref,imnrl)
+            ! numerator
+            dprefactor_dcomp_numerator = reaction%kinmnrl_sec_pref_alpha_stoich(k,ipref,imnrl)* &
+                                         prefactor(ipref)/(auxvar%secondary_spec(kcplx)* &
+                                                           auxvar%sec_act_coef(kcplx)) ! dR_dax
+            ! denominator
+            dprefactor_dcomp_denominator = -prefactor(ipref)/ &
+                                           (1.d0+reaction%kinmnrl_sec_pref_atten_coef(k,ipref,imnrl)* &
+                                            exp(reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
+                                                ln_sec_act(kcplx)))* &
+                                           reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
+                                           reaction%kinmnrl_sec_pref_atten_coef(k,ipref,imnrl)* &
+                                           exp((reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)-1.d0)* &
+                                                ln_sec_act(kcplx)) ! dR_dax
+            tempreal = dIm_dprefactor_rate*(dprefactor_dcomp_numerator+dprefactor_dcomp_denominator)*auxvar%den(iphase)
+            do j = 1, reaction%eqcmplxstoich(0,kcplx)
+              jcomp = reaction%eqcmplxstoich(j,kcplx)
+              tempreal2 = reaction%eqcmplxstoich(j,kcplx)*exp(ln_sec_act(kcplx)-ln_conc(jcomp)) !dax_dc
+              do i = 1, ncomp
+                icomp = reaction%kinmnrlspecid(i,imnrl)
+                Jac(icomp,jcomp) = Jac(icomp,jcomp) + reaction%kinmnrlstoich(i,imnrl)*tempreal* &
+                                                      tempreal2
+              enddo  ! loop over col
+            enddo  ! loop over row
+          enddo  ! loop over complexes
+        endif
       enddo  ! loop over prefactors
     endif
   enddo  ! loop over minerals

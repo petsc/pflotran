@@ -217,7 +217,9 @@ subroutine DatabaseRead(reaction,option)
         
         ! read the molar volume
         call fiReadDBaseDouble(dbase_id,string,cur_gas_spec%molar_volume,ierr)
-        call fiErrorMsg(option%myrank,'GAS molar volume','DATABASE',ierr)            
+        call fiErrorMsg(option%myrank,'GAS molar volume','DATABASE',ierr)
+        ! convert from cm^3/mol to m^3/mol
+        cur_gas_spec%molar_volume = cur_gas_spec%molar_volume*1.d-6
         ! create aqueous equilibrium reaction
         if (.not.associated(cur_gas_spec%eqrxn)) &
           cur_gas_spec%eqrxn => EquilibriumRxnCreate()
@@ -268,7 +270,9 @@ subroutine DatabaseRead(reaction,option)
         ! read the molar volume
         call fiReadDBaseDouble(dbase_id,string,cur_mineral%molar_volume,ierr)
         call fiErrorMsg(option%myrank,'MINERAL molar volume','DATABASE',ierr)            
-        ! create mienral reaction
+        ! convert from cm^3/mol to m^3/mol
+        cur_mineral%molar_volume = cur_mineral%molar_volume*1.d-6
+        ! create mineral reaction
         if (.not.associated(cur_mineral%tstrxn)) &
           cur_mineral%tstrxn => TransitionStateTheoryRxnCreate()
         ! read the number of aqueous species in mineral rxn
