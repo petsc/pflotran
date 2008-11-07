@@ -163,7 +163,7 @@ CaUO4
  Weeksite-Na_PNNL
 /
 MINERAL_KINETICS
-Calcite 0.
+Calcite 1.e-7
 /
 :skip
 SORPTION
@@ -176,7 +176,7 @@ COMPLEXES
 /
 /
 :noskip
-:skip
+skip
 ION_EXCHANGE_RXN
 MINERAL Calcite
 CEC 1.e-1
@@ -187,6 +187,7 @@ Ca++ 1.e-4
 Mg++ 1.e-4
 /
 /
+noskip
 /
 noskip
 :DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
@@ -345,7 +346,7 @@ CONSTRAINT_LIST
 
 CONSTRAINT Inlet
 CONCENTRATIONS
-Ca++     1.26734e-4       T
+Ca++     1.26734e-8       T
 Mg++     4.80169e-4       T
 Na+      9.89662e-4       T
 K+       1.77629e-4       T
@@ -367,7 +368,7 @@ O2(aq)   3.58138e-4       T
 
 CONSTRAINT initial
 CONCENTRATIONS
-Ca++     1.26734e-4       T
+Ca++     1.26734e-4       M Calcite
 Mg++     4.80169e-4       T
 Na+      9.89662e-4       T
 K+       1.77629e-4       T
