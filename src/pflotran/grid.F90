@@ -466,16 +466,47 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                       region%coordinates(TWO_INTEGER)%z)
                       
           ! shift box slightly inward
-          shift = 1.d-8*(x_max-x_min)
+          shift = 1.d-8*(grid%x_max_global-grid%x_min_global)
           x_min = x_min+shift            
           x_max = x_max-shift
-          shift = 1.d-8*(y_max-y_min)
+          shift = 1.d-8*(grid%y_max_global-grid%y_min_global)
           y_min = y_min+shift            
           y_max = y_max-shift
-          shift = 1.d-8*(z_max-z_min)
+          shift = 1.d-8*(grid%z_max_global-grid%z_min_global)
           z_min = z_min+shift            
           z_max = z_max-shift
-                      
+               
+          ! if plane or line, ensure it is within the grid cells     
+          if (grid%itype == STRUCTURED_GRID) then
+            if (x_max-x_min < 1.d-10) then
+              shift = 1.d-8*(grid%x_max_global-grid%x_min_global)
+              if (region%iface == WEST_FACE) then
+                x_max = x_max + shift
+              elseif (region%iface == EAST_FACE) then
+                x_max = x_max - shift
+              endif
+              x_min = x_max
+            endif
+            if (y_max-y_min < 1.d-10) then
+              shift = 1.d-8*(grid%y_max_global-grid%y_min_global)
+              if (region%iface == NORTH_FACE) then
+                y_max = y_max + shift
+              elseif (region%iface == SOUTH_FACE) then
+                y_max = y_max - shift
+              endif
+              y_min = y_max
+            endif
+            if (z_max-z_min < 1.d-10) then
+              shift = 1.d-8*(grid%z_max_global-grid%z_min_global)
+              if (region%iface == TOP_FACE) then
+                z_max = z_max + shift
+              elseif (region%iface == BOTTOM_FACE) then
+                z_max = z_max - shift
+              endif
+              z_min = z_max
+            endif
+          endif   
+                   
           ! ensure overlap
           if (x_min <= grid%x_max_local .and. &
               x_max >= grid%x_min_local .and. &

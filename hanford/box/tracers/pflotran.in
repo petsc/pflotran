@@ -1,0 +1,260 @@
+:Description: 3D problem for testing geochemistry
+ 
+MODE RICHARDS
+
+CHEMISTRY
+PRIMARY_SPECIES
+imbibing_tracer
+eluting_tracer
+source_zone_tracer
+/
+SECONDARY_SPECIES
+/
+GAS_SPECIES
+/
+MINERALS
+/
+MINERAL_KINETICS
+/
+SORPTION
+/
+:DATABASE ./hanford.dat
+:ACTIVITY
+:LOG_FORMULATION
+/
+
+:WALLCLOCK_STOP 0.
+:CHECKPOINT 1
+:RESTART filename
+
+:TIMESTEPPER
+:MAX_STEPS 5
+:/
+
+:NUMERICAL_JACOBIAN
+:STATISTICS
+
+:DEBUG
+:MATVIEW_JACOBIAN
+:VECVIEW_RESIDUAL
+:VECVIEW_SOLUTION
+:/
+
+GRID
+TYPE structured
+NXYZ 50 20 20
+DXYZ
+1.d0
+1.d0
+0.5d0
+/
+/
+
+NEWTON_SOLVER FLOW
+:INEXACT_NEWTON
+:MATRIX_TYPE MFFD
+:PRECONDITIONER_MATRIX_TYPE AIJ
+:RTOL 1.d-8
+:ATOL 1.d-6
+:ATOL 1.d-12
+:STOL 1.d-6
+:STOL 1.d-6
+ITOL_UPDATE 1.
+:NO_INFINITY_NORM
+:NO_FORCE_ITERATION
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
+
+LINEAR_SOLVER FLOW
+:SOLVER GMRES
+:PRECONDITIONER BJACOBI
+ATOL 1.d-6
+/
+
+NEWTON_SOLVER TRANSPORT
+:INEXACT_NEWTON
+:MATRIX_TYPE MFFD
+:PRECONDITIONER_MATRIX_TYPE AIJ
+:RTOL 1.d-8
+:ATOL 1.d-6
+:STOL 1.d-6
+:ITOL
+:NO_INFINITY_NORM
+:NO_FORCE_ITERATION
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
+
+LINEAR_SOLVER TRANSPORT
+:SOLVER GMRES
+:PRECONDITIONER BJACOBI
+ATOL 1.d-8
+/
+
+TECPLOT BLOCK VELO !FLUX
+:VTK
+
+DIFF  0.D-9       12.6
+
+SATURATION_FUNCTIONS
+:id itype swir   lambda alpha     pcwmax betac pwr
+ 1  2     0.10   2.67   2.042d-4  1.e8   0.d0  1.d0
+/
+
+THERMAL_PROPERTIES
+:ithm rho    cpr     ckdry cksat tau cdiff   cexp
+  1   2.75e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
+/
+
+MATERIALS
+:name   id icap ithm por  tau permx     permy     permz     permpwr
+Soil1   1  1    1    0.25 0.5 1.d-12    1.d-12    1.d-13    1.d0
+Soil2   2  1    1    0.25 0.5 1.d-13    1.d-13    1.d-13    1.d0
+/
+
+TIME y every 25.
+1000.
+
+:DTST 1.d-6
+DTST 1.d-2
+50. 10.d0 
+
+REGION all
+COORDINATES
+0. 0. 0.
+50. 20. 10.
+/
+/
+
+REGION west
+COORDINATES
+0. 0. 0.
+0. 20. 10.
+/
+FACE west
+/
+
+REGION east
+COORDINATES
+50. 0. 0.
+50. 20. 10.
+/
+FACE east
+/
+
+REGION source_zone
+COORDINATES
+10. 5. 2.5
+20. 15. 7.5
+/
+/
+ 
+REGION low_perm_zone
+COORDINATES
+11. 6. 3.
+19. 14. 7.
+/
+/
+ 
+FLOW_CONDITION inlet
+TYPE
+FLUX neumann
+/
+FLUX 7.92202195d-10 ! 0.1 m/yr pore water
+/
+
+FLOW_CONDITION outlet
+TYPE
+FLUX neumann
+/
+FLUX -7.92202195d-10 ! 0.1 m/yr pore water
+/
+
+FLOW_CONDITION initial
+TYPE
+PRESSURE hydrostatic
+/
+DATUM 0.d0 0.d0 10.d0
+PRESSURE 201325.d0
+/
+
+TRANSPORT_CONDITION inlet_c
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 inlet_constraint
+/
+/
+
+TRANSPORT_CONDITION initial_c
+TYPE zero_gradient
+CONSTRAINT_LIST
+0.d0 initial_constraint
+/
+/
+
+TRANSPORT_CONDITION source_c
+TYPE zero_gradient
+CONSTRAINT_LIST
+0.d0 source_constraint
+/
+/
+
+CONSTRAINT inlet_constraint
+CONCENTRATIONS
+imbibing_tracer 1.d0 T
+eluting_tracer 1.d-20 T
+source_zone_tracer 1.d-20 T
+/
+/
+
+CONSTRAINT initial_constraint
+CONCENTRATIONS
+imbibing_tracer 1.d-20 T
+eluting_tracer 1.d0 T
+source_zone_tracer 1.d-20 T
+/
+/
+
+CONSTRAINT source_constraint
+CONCENTRATIONS
+imbibing_tracer 1.d-20 T
+eluting_tracer 1.d0 T
+source_zone_tracer 1.d0 T
+/
+/
+
+BOUNDARY_CONDITION
+FLOW_CONDITION inlet
+TRANSPORT_CONDITION inlet_c
+REGION west
+/
+
+BOUNDARY_CONDITION
+FLOW_CONDITION outlet
+TRANSPORT_CONDITION initial_c
+REGION east
+/
+
+INITIAL_CONDITION
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial_c
+REGION all
+/
+
+INITIAL_CONDITION
+FLOW_CONDITION initial
+TRANSPORT_CONDITION source_c
+REGION source_zone
+/
+
+STRATA
+MATERIAL Soil1
+REGION all
+/
+
+STRATA
+MATERIAL Soil2
+REGION low_perm_zone
+/
+
