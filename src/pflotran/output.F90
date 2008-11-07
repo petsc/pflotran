@@ -420,17 +420,19 @@ subroutine OutputTecplotBlock(realization)
   end select
   
   if (option%ntrandof > 0) then
-    if (associated(realization%reaction)) then
-      call OutputGetVarFromArray(realization,global_vec,PH,reaction%h_ion_id)
-      call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
-      do i=1,option%ntrandof
+    if (associated(reaction)) then
+      if (reaction%h_ion_id > 0) then
+        call OutputGetVarFromArray(realization,global_vec,PH,reaction%h_ion_id)
+        call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+        call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      endif
+      do i=1,reaction%ncomp
 !       call OutputGetVarFromArray(realization,global_vec,PRIMARY_SPEC_CONCENTRATION,i)
         call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
         call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       enddo
-      do i=1,realization%reaction%nkinmnrl
+      do i=1,reaction%nkinmnrl
         call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
         call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1195,25 +1197,21 @@ subroutine OutputTecplotPoint(realization)
     end select
     
     if (option%ntrandof > 0) then
-      if (associated(realization%reaction)) then
-        value = RealizGetDatasetValueAtCell(realization,PH, &
-                                            reaction%h_ion_id,ghosted_id)
-        write(IUNIT3,1000,advance='no') value
-        do i=1,option%ntrandof
+      if (associated(reaction)) then
+        if (reaction%h_ion_id > 0) then
+          value = RealizGetDatasetValueAtCell(realization,PH, &
+                                              reaction%h_ion_id,ghosted_id)
+          write(IUNIT3,1000,advance='no') value
+        endif
+        do i=1,reaction%ncomp
 !         value = RealizGetDatasetValueAtCell(realization,PRIMARY_SPEC_CONCENTRATION, &
 !                                             i,ghosted_id)
           value = RealizGetDatasetValueAtCell(realization,TOTAL_CONCENTRATION, &
                                               i,ghosted_id)
           write(IUNIT3,1000,advance='no') value
         enddo
-        do i=1,realization%reaction%nkinmnrl
+        do i=1,reaction%nkinmnrl
           value = RealizGetDatasetValueAtCell(realization,MINERAL_VOLUME_FRACTION, &
-                                              i,ghosted_id)
-          write(IUNIT3,1000,advance='no') value
-        enddo
-      else
-        do i=1,option%ntrandof
-          value = RealizGetDatasetValueAtCell(realization,TOTAL_CONCENTRATION, &
                                               i,ghosted_id)
           write(IUNIT3,1000,advance='no') value
         enddo
@@ -2994,6 +2992,8 @@ subroutine OutputVTK(realization)
   ! write out coordinates
   call WriteVTKGrid(IUNIT3,realization)
 
+  write(IUNIT3,'(''CELL_DATA'',i8)') grid%nmax
+
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,RICHARDS_MODE)
 
@@ -3027,7 +3027,7 @@ subroutine OutputVTK(realization)
       ! liquid saturation
       select case(option%iflowmode)
         case(MPH_MODE,THC_MODE,RICHARDS_MODE)
-          word = 'Liquid Saturation'
+          word = 'Liquid_Saturation'
           call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
@@ -3036,7 +3036,7 @@ subroutine OutputVTK(realization)
       ! gas saturation
       select case(option%iflowmode)
         case(MPH_MODE)
-          word = 'Gas Saturation'
+          word = 'Gas_Saturation'
           call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
@@ -3045,7 +3045,7 @@ subroutine OutputVTK(realization)
       ! liquid energy
       select case(option%iflowmode)
         case(MPH_MODE,THC_MODE)
-          word = 'Liquid Energy'
+          word = 'Liquid_Energy'
           call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
@@ -3054,7 +3054,7 @@ subroutine OutputVTK(realization)
      ! gas energy
       select case(option%iflowmode)
         case(MPH_MODE)
-          word = 'Gas Energy'
+          word = 'Gas_Energy'
           call OutputGetVarFromArray(realization,global_vec,GAS_ENERGY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_REAL)
@@ -3087,15 +3087,15 @@ subroutine OutputVTK(realization)
   end select
   
   if (option%ntrandof > 0) then
-    if (associated(realization%reaction)) then
-      do i=1,option%ntrandof
+    if (associated(reaction)) then
+      do i=1,reaction%ncomp
 !       call OutputGetVarFromArray(realization,global_vec,PRIMARY_SPEC_CONCENTRATION,i)
         call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
         call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
         call WriteVTKDataSetFromVec(IUNIT3,realization,reaction%primary_species_names(i), &
                                     natural_vec,VTK_REAL)
       enddo
-      do i=1,realization%reaction%nkinmnrl
+      do i=1,reaction%nkinmnrl
         call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
         call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
         call WriteVTKDataSetFromVec(IUNIT3,realization,reaction%kinmnrl_names(i), &
@@ -3106,7 +3106,7 @@ subroutine OutputVTK(realization)
   
   ! material id
   if (associated(patch%imat)) then
-    word = 'Material ID'
+    word = 'Material_ID'
     call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteVTKDataSetFromVec(IUNIT3,realization,word,natural_vec,VTK_INTEGER)
@@ -3390,7 +3390,7 @@ subroutine WriteVTKGrid(fid,realization)
         enddo
       enddo
 
-      write(fid,'(''CELLS'',x,i,x,i)') grid%nmax, grid%nmax*8
+      write(fid,'(''CELLS'',x,i,x,i)') grid%nmax, grid%nmax*9
       nxp1Xnyp1 = nxp1*nyp1
       do k=0,nz-1
         do j=0,ny-1
@@ -3407,9 +3407,9 @@ subroutine WriteVTKGrid(fid,realization)
 
       write(fid,'(a)') ""
 
-      write(fid,'(''CELLS_TYPES'',x,i)') grid%nmax
+      write(fid,'(''CELL_TYPES'',x,i)') grid%nmax
       do i=1,grid%nmax
-        write(fid,'(i)') 12
+        write(fid,'(i2)') 12
       enddo
 
       write(fid,'(a)') ""
@@ -3541,12 +3541,12 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
   ! communicate data to processor 0, round robin style
   if (option%myrank == 0) then
 
-    write(fid,'(''CELL_DATA'',i8)') grid%nmax
+!    write(fid,'(''CELL_DATA'',i8)') grid%nmax
 
     if (datatype == VTK_INTEGER) then
-      write(fid,'(''SCALARS '',a20,x,i8,'' int 1'')') dataset_name, grid%nmax
+      write(fid,'(''SCALARS '',a20,'' int 1'')') dataset_name
     else
-      write(fid,'(''SCALARS '',a20,x,i8,'' float 1'')') dataset_name, grid%nmax
+      write(fid,'(''SCALARS '',a20,'' float 1'')') dataset_name
     endif
     
     write(fid,'(''LOOKUP_TABLE default'')') 
@@ -3895,8 +3895,8 @@ subroutine OutputHDF5(realization)
      end select
 
      if (option%ntrandof > 0) then
-        if (associated(realization%reaction)) then
-           nviz_tran = option%ntrandof+realization%reaction%nkinmnrl
+        if (associated(reaction)) then
+           nviz_tran = option%ntrandof+reaction%nkinmnrl
         else
            nviz_tran = reaction%nkinmnrl
         endif
@@ -4081,8 +4081,8 @@ subroutine OutputHDF5(realization)
   end select
 
   if (option%ntrandof > 0) then
-    if (associated(realization%reaction)) then
-      do i=1,option%ntrandof
+    if (associated(reaction)) then
+      do i=1,reaction%ncomp
         call OutputGetVarFromArray(realization,global_vec,PRIMARY_SPEC_CONCENTRATION,i)
         if(.not.(associated(discretization%amrgrid))) then
            write(string,'(a)') reaction%primary_species_names(i)
@@ -4095,7 +4095,7 @@ subroutine OutputHDF5(realization)
            current_component=current_component+1
         endif
       enddo
-      do i=1,realization%reaction%nkinmnrl
+      do i=1,reaction%nkinmnrl
         call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
         if(.not.(associated(discretization%amrgrid))) then
            write(string,'(a)') reaction%mineral_names(i)
@@ -4104,20 +4104,6 @@ subroutine OutputHDF5(realization)
            call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
            if(first) then
               call SAMRRegisterForViz(app_ptr,samr_vec,current_component,MINERAL_VOLUME_FRACTION,i)
-           endif
-           current_component=current_component+1
-        endif
-      enddo
-    else
-      do i=1,reaction%nkinmnrl
-        call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
-        if(.not.(associated(discretization%amrgrid))) then
-           write(string,'(a)') reaction%primary_species_names(i)
-           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        else
-           call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-           if(first) then
-              call SAMRRegisterForViz(app_ptr,samr_vec,current_component,TOTAL_CONCENTRATION,i)
            endif
            current_component=current_component+1
         endif

@@ -1719,8 +1719,11 @@ function RTGetTecplotHeader(realization)
   reaction => realization%reaction
   
   string = ''
-  write(string2,'('',"'',a,''"'')') trim('pH')
-  string = trim(string) // trim(string2)
+  
+  if (realization%reaction%h_ion_id) then
+    write(string2,'('',"'',a,''"'')') trim('pH')
+    string = trim(string) // trim(string2)
+  endif
   
   do i=1,option%ntrandof
     write(string2,'('',"'',a,''"'')') trim(reaction%primary_species_names(i))
