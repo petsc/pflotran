@@ -55,6 +55,9 @@ subroutine ReactionRead(reaction,fid,option)
   PetscInt :: srfcmplx_count = 0
   PetscErrorCode :: ierr
 
+  nullify(prev_srfcmplx_rxn)
+  nullify(prev_ionx_rxn)
+
   ierr = 0
   do
   
@@ -220,6 +223,9 @@ subroutine ReactionRead(reaction,fid,option)
                       nullify(srfcmplx)
                 
                     enddo
+                  case default
+                    call printErrMsg(option,'CHEMISTRY, SURFACE_COMPLEXATION_RXN keyword: '// &
+                                     trim(word)//' not recognized')
                 end select
 
               enddo
@@ -280,6 +286,9 @@ subroutine ReactionRead(reaction,fid,option)
                       prev_cation => cation
                       nullify(cation)
                     enddo
+                  case default
+                    call printErrMsg(option,'CHEMISTRY, ION_EXCHANGE_RXN keyword: '// &
+                                     trim(word)//' not recognized')
                 end select
               enddo
               if (.not.associated(reaction%ion_exchange_rxn_list)) then
@@ -1793,6 +1802,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
     auxvar%eqionx_ref_cation_sorbed_conc(irxn) = ref_cation_X*omega/ref_cation_Z
 
     ! sum up charges
+    sumZX = 0.d0
     do i = 1, ncomp
     icomp = reaction%eqionx_rxn_cationid(i,irxn)
       sumZX = sumZX + reaction%primary_spec_Z(icomp)*cation_X(i)
@@ -1934,7 +1944,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
       ! area = cm^2 mnrl/cm^3 bulk
       ! volume = m^3 bulk
       ! units = cm^2 mnrl/m^3 bulk
-      Im_const = -auxvar%mnrl_area0(imnrl)*1.d6 ! convert cm^3->m^3
+      Im_const = -auxvar%mnrl_area(imnrl)*1.d6 ! convert cm^3->m^3
       ! units = mol/sec/m^3 bulk
       if (associated(reaction%kinmnrl_affinity_power)) then
         Im = Im_const*sign_*abs(affinity_factor)**reaction%kinmnrl_affinity_power(imnrl)*sum_prefactor_rate

@@ -70,7 +70,6 @@ module Reaction_Aux_module
     PetscReal :: affinity_factor_sigma
     PetscReal :: affinity_factor_beta
     PetscReal :: rate
-    PetscReal :: area0
   end type transition_state_rxn_type
   
   type, public :: ion_exchange_rxn_type
@@ -574,7 +573,6 @@ function TransitionStateTheoryRxnCreate()
   tstrxn%affinity_factor_sigma = 0.d0
   tstrxn%affinity_factor_beta = 0.d0
   tstrxn%rate = 0.d0
-  tstrxn%area0 = 0.d0
   
   TransitionStateTheoryRxnCreate => tstrxn
   

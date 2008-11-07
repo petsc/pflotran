@@ -1063,9 +1063,15 @@ subroutine RealizAssignTransportInitCond(realization)
             enddo
             if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
               do idof = 1, reaction%nkinmnrl
+                aux_vars(ghosted_id)%mnrl_volfrac0(idof) = &
+                  initial_condition%tran_condition%cur_constraint_coupler% &
+                    minerals%basis_vol_frac(idof)
                 aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
                   initial_condition%tran_condition%cur_constraint_coupler% &
                     minerals%basis_vol_frac(idof)
+                aux_vars(ghosted_id)%mnrl_area0(idof) = &
+                  initial_condition%tran_condition%cur_constraint_coupler% &
+                    minerals%basis_area(idof)
                 aux_vars(ghosted_id)%mnrl_area(idof) = &
                   initial_condition%tran_condition%cur_constraint_coupler% &
                     minerals%basis_area(idof)
@@ -1090,9 +1096,15 @@ subroutine RealizAssignTransportInitCond(realization)
               ! minerals 
             if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
               do idof = 1, reaction%nkinmnrl
+                aux_vars(ghosted_id)%mnrl_volfrac0(idof) = &
+                  initial_condition%tran_condition%cur_constraint_coupler% &
+                    minerals%basis_vol_frac(idof)
                 aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
                   initial_condition%tran_condition%cur_constraint_coupler% &
                     minerals%basis_vol_frac(idof)
+                aux_vars(ghosted_id)%mnrl_area0(idof) = &
+                  initial_condition%tran_condition%cur_constraint_coupler% &
+                    minerals%basis_area(idof)
                 aux_vars(ghosted_id)%mnrl_area(idof) = &
                   initial_condition%tran_condition%cur_constraint_coupler% &
                     minerals%basis_area(idof)
