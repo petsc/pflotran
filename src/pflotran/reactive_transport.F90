@@ -301,6 +301,8 @@ subroutine RTUpdateSolutionPatch(realization)
                                                    aux_vars(ghosted_id)%mnrl_rate(imnrl)* &
                                                    reaction%kinmnrl_molar_vol(imnrl)* &
                                                    option%dt
+        if (aux_vars(ghosted_id)%mnrl_volfrac(imnrl) < 0.d0) &
+          aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = 0.d0
       enddo
     enddo
   endif
