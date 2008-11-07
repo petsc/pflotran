@@ -180,10 +180,11 @@ COMPLEXES
 ION_EXCHANGE_RXN
 MINERAL Calcite
 CEC 1.e-1
-CATION Na+ 1.
-CATION K+  1.e-3
-CATION Ca++ 1.e-4
-CATION Mg++ 1.e-4
+CATIONS
+Na+ 1.
+K+  1.e-3
+Ca++ 1.e-4
+Mg++ 1.e-4
 /
 /
 /
