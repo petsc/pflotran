@@ -41,7 +41,6 @@ Ca++  6.31
 H+   10.
 /
 /
-:noskip
 /
 :noskip
 :DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
@@ -54,7 +53,7 @@ ACTIVITY_COEFFICIENTS
 :RESTART pflotran.chk1
 
 TIMESTEPPER
-:MAX_STEPS 5
+MAX_STEPS 5
 /
 
 :NUMERICAL_JACOBIAN
@@ -205,7 +204,7 @@ K+       2.e-4       T
 Ca++     1.e-10      T
 H+       5.0        pH
 NO3-     1.2e-3      T
-Cl-      1.e-3       T
+Cl-      1.e-3       Z
 /
 /
 
@@ -216,7 +215,7 @@ K+       1.e-10      T
 Ca++     6.e-4       T
 H+       5.0        pH
 NO3-     1.e-10      T
-Cl-      1.e-3       T
+Cl-      1.e-3       Z
 /
 MINERALS
 Halite 0.1 1.d0

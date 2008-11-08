@@ -558,6 +558,8 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
         free_conc(icomp) = conc(icomp)
       case(CONSTRAINT_LOG)
         free_conc(icomp) = 10.d0**conc(icomp)
+      case(CONSTRAINT_CHARGE_BAL)
+        free_conc(icomp) = conc(icomp)
       case(CONSTRAINT_PH)
         ! check if h+ id set
         if (reaction%h_ion_id /= 0) then
@@ -609,20 +611,37 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
         
     do icomp = 1, reaction%ncomp
       select case(constraint_type(icomp))
+      
         case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
+        
           Res(icomp) = auxvar%total(icomp,1) - total_conc(icomp)
           ! dtotal must be scaled by 1.d-3 to scale density in RTotal from kg/m^3 -> kg/L
           Jac(icomp,:) = auxvar%dtotal(icomp,:,1)*1.d-3
 !          if (reaction%neqsurfcmplxrxn > 0) then
 !            Jac(icomp,:) = Jac(icomp,:) + auxvar%dtotal_sorb(icomp,:)
 !          endif
+
         case(CONSTRAINT_FREE,CONSTRAINT_LOG)
+        
           Res(icomp) = 0.d0
           Jac(icomp,:) = 0.d0
 !          Jac(:,icomp) = 0.d0
           Jac(icomp,icomp) = 1.d0
           
+        case(CONSTRAINT_CHARGE_BAL)
+        
+          Res(icomp) = 0.d0
+          Jac(icomp,:) = 0.d0
+          do jcomp = 1, reaction%ncomp
+            Res(icomp) = Res(icomp) + reaction%primary_spec_Z(jcomp)*auxvar%total(jcomp,1)
+            do kcomp = 1, reaction%ncomp
+              Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
+                reaction%primary_spec_Z(kcomp)*auxvar%dtotal(jcomp,kcomp,1)
+            enddo
+          enddo
+          
         case(CONSTRAINT_PH)
+        
           Res(icomp) = 0.d0
           Jac(icomp,:) = 0.d0
 !          Jac(:,icomp) = 0.d0
@@ -881,6 +900,8 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
           string = 'total'
         case(CONSTRAINT_FREE)
           string = 'free'
+        case(CONSTRAINT_CHARGE_BAL)
+          string = 'chrg'
         case(CONSTRAINT_LOG)
           string = 'log'
         case(CONSTRAINT_PH)

@@ -82,6 +82,7 @@ PetscInt, parameter :: CONSTRAINT_LOG = 3
 PetscInt, parameter :: CONSTRAINT_PH = 4
 PetscInt, parameter :: CONSTRAINT_MINERAL = 5
 PetscInt, parameter :: CONSTRAINT_GAS = 6
+PetscInt, parameter :: CONSTRAINT_CHARGE_BAL = 7
 
 ! mineral types
 PetscInt, parameter :: MINERAL_REFERENCE = 1
