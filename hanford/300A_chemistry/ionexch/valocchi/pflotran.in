@@ -1,0 +1,262 @@
+:Description: 1D problem for testing geochemistry
+ 
+MODE RICHARDS
+
+CHEMISTRY
+PRIMARY_SPECIES
+Na+
+K+
+Ca++
+H+
+NO3-
+Cl-
+/
+SECONDARY_SPECIES
+OH-
+CaCl+
+CaCl2(aq)
+NaCl(aq)
+NaOH(aq)
+KCl(aq)
+KOH(aq)
+HCl(aq)
+/
+GAS_SPECIES
+/
+MINERALS
+Halite
+/
+MINERAL_KINETICS
+Halite 1.e-30
+/
+:skip
+SORPTION
+ION_EXCHANGE_RXN
+MINERAL Halite
+CEC 1.1
+CATIONS
+Na+   1.
+K+    5.012
+Ca++  6.31
+H+   10.
+/
+/
+:noskip
+/
+:noskip
+:DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
+DATABASE ../../../../database/hanford.dat
+LOG_FORMULATION
+ACTIVITY_COEFFICIENTS
+/
+:
+:CHECKPOINT 1
+:RESTART pflotran.chk1
+
+TIMESTEPPER
+:MAX_STEPS 5
+/
+
+:NUMERICAL_JACOBIAN
+:INEXACT_NEWTON
+:STATISTICS
+:
+:CHECKPOINT 50
+:WALLCLOCK_STOP 0.05
+:
+DEBUG
+:MATVIEW_JACOBIAN
+:VECVIEW_RESIDUAL
+:VECVIEW_SOLUTION
+/
+:
+GRID
+TYPE structured
+NXYZ 100 1 1
+DXYZ
+0.1
+1.
+1.
+/
+/
+:
+NEWTON_SOLVER FLOW
+:MATRIX_TYPE MFFD
+:PRECONDITIONER_MATRIX_TYPE AIJ
+:RTOL 1.d-8
+ATOL 1.d-6
+NO_INFINITY_NORM
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
+:
+LINEAR_SOLVER FLOW
+:KSP_TYPE FGMRES
+:KSP_TYPE PREONLY
+:PC_TYPE LU
+/
+:
+LINEAR_SOLVER TRANSPORT
+:KSP_TYPE PREONLY
+:PC_TYPE LU
+/
+:
+:STATISTICS
+:
+TECPLOT POINT VELO 
+:
+DIFF  1.D-9       12.6
+:
+SATURATION_FUNCTIONS
+:id itype swir   lambda alpha     pcwmax betac pwr
+ 1  2     0.10   2.67   2.042d-4  1.e8   0.d0  1.d0
+/
+
+THERMAL_PROPERTIES
+:ithm rho    cpr     ckdry cksat tau cdiff   cexp
+  1   2.75e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
+/
+:
+MATERIALS
+:name   id icap ithm por  tau   permx     permy     permz     permpwr
+Soil1   1  1    1    0.5  0.5   1.d-12    1.d-12    1.d-13    1.d0
+/
+:
+:TIME d every 10
+TIME y
+1. 2.
+:
+DTST 1.d-8
+:50. 1.0d0 
+50. 0.02d0 
+:
+REGION all
+BLOCK 1 100 1 1 1 1
+/
+
+REGION West
+BLOCK 1 1 1 1 1 1
+FACE west
+/
+
+REGION East
+BLOCK 100 100 1 1 1 1
+FACE east
+/
+
+skip
+FLOW_CONDITION Inlet
+TYPE
+PRESSURE mass
+/
+PRESSURE 1.d-3
+/
+
+FLOW_CONDITION Outlet
+TYPE
+PRESSURE mass
+/
+PRESSURE -1.d-3
+/
+noskip
+
+FLOW_CONDITION Inlet
+TYPE
+FLUX neumann
+/
+:FLUX 2.8935185d-7 ! 0.1 m/day pore water
+FLUX 0.317098d-7 ! 0.1 m/day pore water
+/
+
+FLOW_CONDITION Outlet
+TYPE
+FLUX neumann
+/
+:FLUX -2.8935185d-7
+FLUX -0.317098d-7 ! 0.1 m/day pore water
+/
+
+FLOW_CONDITION initial
+TYPE
+PRESSURE hydrostatic
+/
+DATUM 0.d0 0.d0 1.d0
+PRESSURE 201325.d0
+/
+
+TRANSPORT_CONDITION Inlet_c
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 Inlet
+/
+/
+TRANSPORT_CONDITION initial_c
+:TYPE dirichlet
+TYPE zero_gradient
+CONSTRAINT_LIST
+0.d0 initial
+/
+/
+
+CONSTRAINT Inlet
+CONCENTRATIONS
+Na+      1.e-3       T
+K+       2.e-4       T
+Ca++     1.e-10      T
+H+       5.0        pH
+NO3-     1.2e-3      T
+Cl-      1.e-3       T
+/
+/
+
+CONSTRAINT initial
+CONCENTRATIONS
+Na+      1.e-10      T
+K+       1.e-10      T
+Ca++     6.e-4       T
+H+       5.0        pH
+NO3-     1.e-10      T
+Cl-      1.e-3       T
+/
+MINERALS
+Halite 0.1 1.d0
+/
+/
+
+BOUNDARY_CONDITION
+FLOW_CONDITION Inlet
+TRANSPORT_CONDITION Inlet_c
+REGION West
+/
+
+BOUNDARY_CONDITION
+FLOW_CONDITION Outlet
+TRANSPORT_CONDITION initial_c
+REGION East
+/
+
+skip
+SOURCE_SINK
+FLOW_CONDITION Inlet
+TRANSPORT_CONDITION Inlet_c
+REGION West
+/
+
+SOURCE_SINK
+FLOW_CONDITION Outlet
+TRANSPORT_CONDITION initial_c
+REGION East
+/
+noskip
+
+INITIAL_CONDITION
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial_c
+REGION all
+/
+
+STRATA
+MATERIAL Soil1
+REGION all
+/
+
