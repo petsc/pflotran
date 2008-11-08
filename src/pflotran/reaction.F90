@@ -700,14 +700,17 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
             lnQK = lnQK + reaction%mnrlstoich(jcomp,imnrl)* &
                           log(auxvar%primary_spec(comp_id)*auxvar%pri_act_coef(comp_id))
           enddo
-          QK = exp(lnQK)
+!         QK = exp(lnQK)
           
-          Res(icomp) = 1.d0 - QK
+!         Res(icomp) = 1.d0 - QK
+          Res(icomp) = lnQK
 
           do jcomp = 1,reaction%mnrlspecid(0,imnrl)
             comp_id = reaction%mnrlspecid(jcomp,imnrl)
-            Jac(icomp,comp_id) = -QK/auxvar%primary_spec(comp_id)* &
-                                 reaction%mnrlstoich(jcomp,imnrl)
+!           Jac(icomp,comp_id) = -QK/auxvar%primary_spec(comp_id)* &
+!                                reaction%mnrlstoich(jcomp,imnrl)
+            Jac(icomp,comp_id) = reaction%mnrlstoich(jcomp,imnrl)/auxvar%primary_spec(comp_id)
+                                 
           enddo
   
         case(CONSTRAINT_GAS)
@@ -733,14 +736,16 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
                           log(auxvar%primary_spec(comp_id)*auxvar%pri_act_coef(comp_id))
           enddo
           
-          QK = exp(lnQK)
+!         QK = exp(lnQK)
           
-          Res(icomp) = QK - conc(icomp)
+!         Res(icomp) = QK - conc(icomp)
+          Res(icomp) = lnQK - log(conc(icomp))
           Jac(icomp,:) = 0.d0
           do jcomp = 1,reaction%eqgasspecid(0,igas)
             comp_id = reaction%eqgasspecid(jcomp,igas)
-            Jac(icomp,comp_id) = QK/auxvar%primary_spec(comp_id)* &
-                                 reaction%eqgasstoich(jcomp,igas)
+!           Jac(icomp,comp_id) = QK/auxvar%primary_spec(comp_id)* &
+!                                reaction%eqgasstoich(jcomp,igas)
+            Jac(icomp,comp_id) = reaction%eqgasstoich(jcomp,igas)/auxvar%primary_spec(comp_id)
           enddo
       end select
     enddo
