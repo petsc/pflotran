@@ -138,12 +138,14 @@ module Reaction_Aux_module
     type(ion_exchange_rxn_type), pointer :: ion_exchange_rxn_list
     type(surface_complexation_rxn_type), pointer :: surface_complexation_rxn_list
     PetscTruth :: compute_activity
+    
     ! compressed arrays for efficient computation
     ! primary aqueous complexes
     PetscInt :: ncomp
     character(len=MAXWORDLENGTH), pointer :: primary_species_names(:)
     PetscReal, pointer :: primary_spec_a0(:)
     PetscReal, pointer :: primary_spec_Z(:)
+    
     ! aqueous complexes
     PetscInt :: neqcmplx
     character(len=MAXWORDLENGTH), pointer :: secondary_species_names(:)
@@ -160,6 +162,7 @@ module Reaction_Aux_module
     PetscReal :: debyeA  ! Debye-Huckel A coefficient
     PetscReal :: debyeB  ! Debye-Huckel B coefficient
     PetscReal :: debyeBdot  ! Debye-Huckel Bdot coefficient
+    
     ! gas species
     PetscInt :: ngas
     character(len=MAXWORDLENGTH), pointer :: gas_species_names(:)
@@ -169,6 +172,7 @@ module Reaction_Aux_module
     PetscReal, pointer :: eqgash2ostoich(:)  ! stoichiometry of water, if present
     PetscReal, pointer :: eqgas_logK(:)
     PetscReal, pointer :: eqgas_logKcoef(:,:)
+    
     ! ionx exchange reactions
     PetscInt :: nsorb
     PetscInt :: neqionxrxn
@@ -183,6 +187,7 @@ module Reaction_Aux_module
     PetscReal, pointer :: kinionx_rxn_k(:,:)
     PetscInt, pointer :: kinionx_rxn_cationid(:)
 #endif    
+
     ! surface complexation reactions
     PetscInt :: neqsurfcmplx
     PetscInt :: neqsurfcmplxrxn 
@@ -212,10 +217,12 @@ module Reaction_Aux_module
     PetscReal, pointer :: kinsurfcmplx_logK(:)
     PetscReal, pointer :: kinsurfcmplx_logKcoef(:,:)
     PetscReal, pointer :: kinsurfcmplx_Z(:)  ! valence
-#endif    
+#endif
+
     ! mineral reactions
     PetscInt :: nmnrl
     character(len=MAXWORDLENGTH), pointer :: mineral_names(:)
+    
       ! for saturation states
     PetscInt, pointer :: mnrlspecid(:,:)
     PetscReal, pointer :: mnrlstoich(:,:)
@@ -223,6 +230,7 @@ module Reaction_Aux_module
     PetscReal, pointer :: mnrlh2ostoich(:)
     PetscReal, pointer :: mnrl_logK(:)
     PetscReal, pointer :: mnrl_logKcoef(:,:)
+    
       ! for kinetic reactions
     PetscInt :: nkinmnrl
     character(len=MAXWORDLENGTH), pointer :: kinmnrl_names(:)
