@@ -1189,8 +1189,8 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       
       QK(igas) = exp(lnQK(igas))
           
-      write(option%fid_out,133) reaction%gas_species_names(igas),lnQK(igas),QK(igas), &
-      reaction%eqgas_logK(igas)
+      write(option%fid_out,133) reaction%gas_species_names(igas),lnQK(igas)*LN_TO_LOG, &
+      QK(igas),reaction%eqgas_logK(igas)
     enddo
   endif
   
