@@ -163,7 +163,7 @@ CaUO4
  Weeksite-Na_PNNL
 /
 MINERAL_KINETICS
-Calcite 1.e-7
+Calcite 1.e-10
 /
 :skip
 SORPTION
@@ -176,7 +176,7 @@ COMPLEXES
 /
 /
 :noskip
-skip
+:skip
 ION_EXCHANGE_RXN
 MINERAL Calcite
 CEC 1.e-1
@@ -187,9 +187,9 @@ Ca++ 1.e-4
 Mg++ 1.e-4
 /
 /
-noskip
+:noskip
 /
-noskip
+:noskip
 :DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
 DATABASE ../../../database/hanford.dat
 LOG_FORMULATION

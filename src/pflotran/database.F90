@@ -1682,18 +1682,24 @@ subroutine BasisInit(reaction,option)
     write(option%fid_out,90)
     write(option%fid_out,100) reaction%ncomp, 'Primary Species'
     write(option%fid_out,110) (reaction%primary_species_names(i),i=1,reaction%ncomp)
+    
     write(option%fid_out,100) reaction%neqcmplx, 'Secondary Complex Species'
-    write(option%fid_out,110) (reaction%gas_species_names(i),i=1,reaction%ngas)
-    write(option%fid_out,100) reaction%ngas, 'Gas Species'
     write(option%fid_out,110) (reaction%secondary_species_names(i),i=1,reaction%neqcmplx)
+    
+    write(option%fid_out,100) reaction%ngas, 'Gas Species'
+    write(option%fid_out,110) (reaction%gas_species_names(i),i=1,reaction%ngas)
+    
     write(option%fid_out,100) reaction%nmnrl, 'Reference Minerals'
     write(option%fid_out,110) (reaction%mineral_names(i),i=1,reaction%nmnrl)
+    
     write(option%fid_out,100) reaction%nkinmnrl, 'Kinetic Mineral Reactions'
     write(option%fid_out,110) (reaction%kinmnrl_names(i),i=1,reaction%nkinmnrl)
+    
     write(option%fid_out,100) reaction%neqsurfcmplxrxn, 'Surface Complexation Reactions'
     write(option%fid_out,110) (reaction%surface_site_names(i),i=1,reaction%neqsurfcmplxrxn)
     write(option%fid_out,100) reaction%neqsurfcmplx, 'Surface Complexes'
     write(option%fid_out,110) (reaction%surface_complex_names(i),i=1,reaction%neqsurfcmplx)
+    
     write(option%fid_out,100) reaction%neqionxrxn, 'Ion Exchange Reactions'
     write(option%fid_out,100) reaction%neqionxcation, 'Ion Exchange Cations'
     write(option%fid_out,90)
