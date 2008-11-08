@@ -36,9 +36,9 @@ Quartz
 Chalcedony
 SiO2(am)
 K-Feldspar
+Muscovite
 Gibbsite
 Kaolinite
-Muscovite
 Albite
 Analcime
 /
@@ -129,8 +129,8 @@ LINEAR_SOLVER TRANSPORT
 :
 :STATISTICS
 :
-:TECPLOT POINT VELO 
-TECPLOT BLOCK VELO 
+TECPLOT POINT VELO 
+:TECPLOT BLOCK VELO 
 :
 DIFF  1.D-9       12.6
 :
