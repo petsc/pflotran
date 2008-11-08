@@ -1768,7 +1768,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
           
         dres_dref_cation_X = 1.d0
 
-#if 0
+#if 1
 ! test derivative
       pert = 1.d-6 * ref_cation_X
       ref_cation_X_pert = ref_cation_X + pert
@@ -1830,23 +1830,23 @@ subroutine RTotalSorb(auxvar,reaction,option)
     enddo
 
     ! compute totals based on sorbed ions
-    do j = 1, ncomp
-      jcomp = reaction%eqionx_rxn_cationid(j,irxn)
-      tempreal1 = cation_X(j)*omega/reaction%primary_spec_Z(jcomp)
+    do i = 1, ncomp
+      icomp = reaction%eqionx_rxn_cationid(i,irxn)
+      tempreal1 = cation_X(i)*omega/reaction%primary_spec_Z(icomp)
       ! residual function entry
-      auxvar%total_sorb(jcomp) = auxvar%total_sorb(jcomp) + tempreal1
+      auxvar%total_sorb(icomp) = auxvar%total_sorb(icomp) + tempreal1
 
-      tempreal2 = reaction%primary_spec_Z(jcomp)/sumZX
-      do i = 1, ncomp
-        icomp = reaction%eqionx_rxn_cationid(i,irxn)
+      tempreal2 = reaction%primary_spec_Z(icomp)/sumZX
+      do j = 1, ncomp
+        jcomp = reaction%eqionx_rxn_cationid(j,irxn)
         if (i == j) then
           auxvar%dtotal_sorb(icomp,jcomp) = auxvar%dtotal_sorb(icomp,jcomp) + &
-                                            tempreal1*(1.d0-(tempreal2*cation_X(i)))/ &
-                                            auxvar%primary_spec(icomp)
+                                            tempreal1*(1.d0-(tempreal2*cation_X(j)))/ &
+                                            auxvar%primary_spec(jcomp)
         else
           auxvar%dtotal_sorb(icomp,jcomp) = auxvar%dtotal_sorb(icomp,jcomp) + &
-                                            (-tempreal1)*tempreal2*cation_X(i)/ &
-                                            auxvar%primary_spec(icomp)
+                                            (-tempreal1)*tempreal2*cation_X(j)/ &
+                                            auxvar%primary_spec(jcomp)
         endif
       enddo
     enddo    
