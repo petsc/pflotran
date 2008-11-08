@@ -1,0 +1,293 @@
+:Description: 1D problem for testing geochemistry
+ 
+MODE RICHARDS
+
+CHEMISTRY
+PRIMARY_SPECIES
+Al+++
+Na+
+K+
+H+
+HCO3-
+SiO2(aq)
+Cl-
+/
+SECONDARY_SPECIES
+OH-
+HCl(aq)
+CO2(aq)
+CO3--
+NaHCO3(aq)
+NaCl(aq)
+NaOH(aq)
+KCl(aq)
+H3SiO4-
+H2SiO4--
+AlOH++
+Al(OH)2+
+Al(OH)3(aq)
+Al(OH)4-
+/
+GAS_SPECIES
+CO2(g)
+/
+MINERALS
+Quartz
+Chalcedony
+SiO2(am)
+K-Feldspar
+Gibbsite
+Kaolinite
+Muscovite
+Albite
+Analcime
+/
+MINERAL_KINETICS
+Quartz     3.16e-18
+K-Feldspar 1.e-14
+Muscovite  1.e-14
+Gibbsite   1.e-14
+Kaolinite  1.e-17
+/
+skip
+SORPTION
+SURFACE_COMPLEXATION_RXN
+MINERAL Calcite
+SITE >SOH 1.e-6
+COMPLEXES
+>SOUO2OH
+>SOUO2CO3
+/
+/
+/
+noskip
+:DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
+DATABASE ../../database/hanford.dat
+LOG_FORMULATION
+ACTIVITY_COEFFICIENTS
+/
+:
+:CHECKPOINT 1
+:RESTART pflotran.chk1
+
+TIMESTEPPER
+:MAX_STEPS 5
+/
+
+:NUMERICAL_JACOBIAN
+:INEXACT_NEWTON
+:STATISTICS
+:
+:CHECKPOINT 50
+:WALLCLOCK_STOP 0.05
+:
+DEBUG
+:MATVIEW_JACOBIAN
+:VECVIEW_RESIDUAL
+:VECVIEW_SOLUTION
+/
+:
+GRID
+TYPE structured
+NXYZ 100 1 1
+DXYZ
+0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01 
+0.02 0.02 0.02 0.02 0.02 0.02 0.02 0.02 0.02 0.02 
+0.04 0.04 0.04 0.04 0.04 0.04 0.04 0.04 0.04 0.04 
+0.08 0.08 0.08 0.08 0.08 0.08 0.08 0.08 0.08 0.08 
+0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 
+0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 
+0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 
+0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 
+0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 
+0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 
+1.
+1.
+/
+/
+:
+NEWTON_SOLVER FLOW
+:MATRIX_TYPE MFFD
+:PRECONDITIONER_MATRIX_TYPE AIJ
+:RTOL 1.d-8
+ATOL 1.d-6
+NO_INFINITY_NORM
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
+:
+LINEAR_SOLVER FLOW
+:KSP_TYPE FGMRES
+:KSP_TYPE PREONLY
+:PC_TYPE LU
+/
+:
+LINEAR_SOLVER TRANSPORT
+:KSP_TYPE PREONLY
+:PC_TYPE LU
+/
+:
+:STATISTICS
+:
+:TECPLOT POINT VELO 
+TECPLOT BLOCK VELO 
+:
+DIFF  1.D-9       12.6
+:
+SATURATION_FUNCTIONS
+:id itype swir   lambda alpha     pcwmax betac pwr
+ 1  2     0.10   2.67   2.042d-4  1.e8   0.d0  1.d0
+/
+
+THERMAL_PROPERTIES
+:ithm rho    cpr     ckdry cksat tau cdiff   cexp
+  1   2.75e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
+/
+:
+MATERIALS
+:name   id icap ithm por  tau   permx     permy     permz     permpwr
+Soil1   1  1    1    0.5  0.5   1.d-12    1.d-12    1.d-13    1.d0
+/
+:
+:TIME d every 10
+TIME y
+2.e4
+:
+DTST 1.d-8
+1.e5 10.d0
+:
+REGION all
+BLOCK 1 100 1 1 1 1
+/
+
+REGION West
+BLOCK 1 1 1 1 1 1
+FACE west
+/
+
+REGION East
+BLOCK 100 100 1 1 1 1
+FACE east
+/
+
+skip
+FLOW_CONDITION Inlet
+TYPE
+PRESSURE mass
+/
+PRESSURE 1.d-3
+/
+
+FLOW_CONDITION Outlet
+TYPE
+PRESSURE mass
+/
+PRESSURE -1.d-3
+/
+noskip
+
+FLOW_CONDITION Inlet
+TYPE
+FLUX neumann
+/
+:FLUX 2.8935185d-7 ! 0.1 m/day pore water
+FLUX 0.317098d-7 ! 0.1 m/day pore water
+/
+
+FLOW_CONDITION Outlet
+TYPE
+FLUX neumann
+/
+:FLUX -2.8935185d-7
+FLUX -0.317098d-7 ! 0.1 m/day pore water
+/
+
+FLOW_CONDITION initial
+TYPE
+PRESSURE hydrostatic
+/
+DATUM 0.d0 0.d0 1.d0
+PRESSURE 201325.d0
+/
+
+TRANSPORT_CONDITION Inlet_c
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 Inlet
+/
+/
+TRANSPORT_CONDITION initial_c
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 initial
+/
+/
+
+CONSTRAINT Inlet
+CONCENTRATIONS
+Al+++    1.e-16           T
+Na+      1.e-2            T
+K+       1.e-6            T
+H+       4.0             pH
+HCO3-    1.e-2            G CO2(g)
+SiO2(aq) 1.e-6            T
+Cl-      1.e-2            Z
+/
+/
+
+CONSTRAINT initial
+CONCENTRATIONS
+Al+++    1.e-16           M K-Feldspar
+Na+      1.e-2            T
+K+       1.e-5            M Muscovite
+H+       7.0             pH
+HCO3-    1.e-3            G CO2(g)
+SiO2(aq) 5.36989e-4       M Quartz
+Cl-      6.54794e-4       Z
+/
+MINERALS
+Quartz     0.6d0 1.d0
+K-Feldspar 0.2d0 1.d0
+Muscovite  0.d0  1.d0
+Gibbsite   0.d0  1.d0
+Kaolinite  0.d0  1.d0
+/
+/
+
+BOUNDARY_CONDITION
+FLOW_CONDITION Inlet
+TRANSPORT_CONDITION Inlet_c
+REGION West
+/
+
+BOUNDARY_CONDITION
+FLOW_CONDITION Outlet
+TRANSPORT_CONDITION initial_c
+REGION East
+/
+
+skip
+SOURCE_SINK
+FLOW_CONDITION Inlet
+TRANSPORT_CONDITION Inlet_c
+REGION West
+/
+
+SOURCE_SINK
+FLOW_CONDITION Outlet
+TRANSPORT_CONDITION initial_c
+REGION East
+/
+noskip
+
+INITIAL_CONDITION
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial_c
+REGION all
+/
+
+STRATA
+MATERIAL Soil1
+REGION all
+/
+

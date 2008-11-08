@@ -1,0 +1,177 @@
+Merced
+                   February 7, 2002
+:
+:       geometry nx  ny  nz    mode  iprint  iwarn idebug ibug1 ibug2
+GRID     XYZ      1   1 100     2      0      0      0      0      0
+:
+DBASe
+/Users/lichtner/flotran/database/thermdata.dat
+:
+OPTS
+:  idata istart imod  iexact  iscale  ihrmc  isst  iscreen  iapp
+   0      0       1       0      0       1     -1      0       0
+:
+:   itmax ihalmax ndtmx iaccel ndamp icomprs icase
+    16    16      0     6      0     1       0
+:
+:  method iops ifor isurf iact loglin iflxtvd cournr tpulse wtup iprecip
+   1      0    2    1     1    0      1       10000. 0.     1.   0
+:
+:    isync ipor iperm permfac porfac icksat ucutoff iread pwrpor pwrperm
+COUPle  0    0    0     0.       0.      0      0.     0   1.    -1.
+:
+PLTFiles 
+:iplot   a  s  t  m si sf  v  z  b in  e ex ti  g itex
+    1    1  1  1  1  0  0  1  0  2  0  0  0  0  0   0
+:
+:    tol   ttol tolneg tolmin tolexp dthalf qkmax tolstdste tolc dcmx
+TOLR 1.d-10 2.0e-0 1.e-0 1.e-10 5.d0  .5     590.  1.e-6  1.e-16 0.1
+:
+:        mcyc  cc  c   flx r  sp  qk  pk  rk  a1  a2  a3
+DEBUg    0       1  1   0   1   1   1   1   1
+:
+:      isat isothrm iread  por0  phir  sat  w  lambda toldelt  tolpor
+ISYStem 1    0      0     .2      1.   1.  0.5   1.    1.e-3    1.e-3
+:
+:     vx0  vy0  vz0  vgx0  vgy0  vgz0[m/yr]  alphax   alphay   alphaz[m]   
+FLOW  0.   0.   1.   0.    0.    0.          0.        0.       0.
+:
+:   d0[cm^2/s]  delhaq[kJ/mol]  dgas[cm^2/s]  dgexp  tortaq  tortg idif
+DIFF   1.d-5     12.6            2.13d-1       1.8   1.d0   1.d0    0
+:
+:      p (Pa) temp flag  a    b    c    d   x0   xlen
+PTINit  1.e5   25.   0   25  300  250  125  1000.  2.d3
+:
+:master species for controlling time stepping
+MASTer ALL
+:
+DXYZ
+1.
+1.
+10*0.01 10*0.02 10*0.04 10*0.08 60*0.1
+:
+:   isolv level north nitmax idetail rmaxtol rtwotol smaxtol
+SOLV  1   1     1    100      0     1.e-20  1.e-20  1.e-12
+:
+:initial and boundary conditions: 1-conc., 2-flux, 3-zero gradient 
+COMP
+:
+:i1  i2  j1  j2  k1  k2
+  1   1   1   1   1 100
+.
+:species itype   ctot     mineral  guess
+Al+++      3     1.e-12   K-Feldspar
+Na+        1     1.e-2
+K+         3     1.e-5    Muscovite
+H+         8     7.0
+HCO3-      4    -3.0      CO2(g)     
+SiO2(aq)   3     9.52e-4  Quartz
+Cl-       -1     1.e-3   
+.        
+.
+:
+BCON
+:ibndtyp ifacx tmpbc dist area vell velg  por  sl  porm  slm  imtx
+    1      3    25.    0.   0.   0.   0.   0.   0.   0.   0.   1
+: i1  i2  j1  j2  k1  k2
+   1   1   1   1   1   1
+.
+:species  itype  ctot     mineral  guess
+Al+++      1     1.e-16    Kaolinite
+Na+        1     1.e-2
+K+         1     1.e-6
+H+         8     4.0
+HCO3-      4    -2.0       CO2(g)     
+SiO2(aq)   1     1.e-6
+Cl-       -1     1.e-3 
+:
+:ibndtyp ifacx tmpbc dist area vell velg  por  sl  porm  slm  imtx
+    3      4    25.    0.   0.   0.   0.   0.   0.   0.   0.   1
+: i1  i2  j1  j2  k1  k2
+   1   1   1   1 100 100
+.
+:species  itype  ctot     mineral
+Al+++      3     1.e-12   K-Feldspar
+Na+        1     1.e-2
+K+         3     1.e-5    Muscovite
+H+         8     7.0
+HCO3-      4    -3.0      CO2(g)     
+SiO2(aq)   3     9.52e-4  Quartz
+Cl-       -1     1.e-3   
+.
+:
+AQCX
+OH-
+HCl(aq)
+CO2(aq)
+CO3--
+NaHCO3(aq)
+NaCl(aq)
+NaOH(aq)
+KCl(aq)
+H3SiO4-
+H2SiO4--
+AlOH++
+Al(OH)2+
+Al(OH)3(aq)
+Al(OH)4-
+.
+:
+MNRL        
+Quartz
+Chalcedony
+SiO2(am)
+K-Feldspar
+Gibbsite
+Kaolinite
+Muscovite
+Albite
+Analcime
+.
+:
+GASEs
+CO2(g)
+.
+:
+MNIR
+:mineral  npar fkin    delh  tau      pwrsrf
+Quartz     1   1.e0     75.   1.e-2   0.666667d0
+:itypkin npri  nsec  sig  rk	beta
+   20     0     0    1.   3.16e-18	1.
+:                      matrix     fracture
+:i1 i2 j1 j2 k1 k2   vol  area  vol  area
+1   1   1  1  1 100   0.6  1.   0.    1.
+.
+K-Feldspar 1   1.e0    35.   1.e-2 0.666667d0
+:itypkin npri  nsec  sig rk	beta
+   20     0     0    1.  -14.	1.
+1   1   1  1  1 100   0.2 1.  0.     2.
+.
+Muscovite  1   1.e0   35.   1.e-2  0.666667d0
+:itypkin npri  nsec  sig rk	beta
+   20     0     0    1.   -14.	1.
+1   1   1  1  1 100   0.   1.   0.     1.
+.
+Gibbsite   1   1.   35.   1.e-2   0.666667d0
+   20     0     0    1.   -14.   
+1   1   1  1  1 100   0.0    1.e0  0.1    1.
+.
+Kaolinite  1   1.   35.   1.e-2  0.666667d0
+:itypkin npri  nsec  sig rk	beta
+   20     0     0    1.   -17.	1.
+1   1   1  1  1 100   0.      1.   0.     1.
+.
+.
+:
+BRKP   2
+1 1 1
+1 1 100
+:
+DTSTep[y]     2 3.e-8 1.e5
+1.e-8          10.d0 1.e2
+:
+TIME[y] 1 2.e4 4.e4 25.e4 3e6
+:
+ENDS
+
+
