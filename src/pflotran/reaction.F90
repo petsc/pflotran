@@ -832,7 +832,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   PetscInt :: num_iterations
   PetscReal :: lnQK(reaction%nmnrl), QK(reaction%nmnrl)
   PetscReal :: ln_act_h2o
-  PetscReal :: charge_balance
+  PetscReal :: charge_balance, ionic_strength
   PetscReal :: percent(reaction%neqcmplx+1)
   PetscReal :: totj, retardation
   PetscInt :: comp_id, jcomp
@@ -882,12 +882,24 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
                auxvar%sec_act_coef(abs(reaction%h_ion_id)))
     endif
     
+    ionic_strength = 0.d0
     charge_balance = 0.d0
     do icomp = 1, reaction%ncomp
       charge_balance = charge_balance + auxvar%total(icomp,1)* &
                                         reaction%primary_spec_Z(icomp)
-    enddo    
+      ionic_strength = ionic_strength + auxvar%primary_molal(icomp)* &
+        reaction%primary_spec_Z(icomp)*reaction%primary_spec_Z(icomp)
+    enddo
     
+    if (reaction%neqcmplx > 0) then    
+      do i = 1, reaction%neqcmplx
+        ionic_strength = ionic_strength + auxvar%secondary_spec(i)* &
+        reaction%eqcmplx_Z(i)*reaction%eqcmplx_Z(i)
+      enddo
+    endif
+    ionic_strength = 0.5d0 * ionic_strength
+    
+    write(option%fid_out,204) '  ionic strength: ', ionic_strength
     write(option%fid_out,204) '  charge balance: ', charge_balance
     
     write(option%fid_out,202) '        pressure: ', pressure
