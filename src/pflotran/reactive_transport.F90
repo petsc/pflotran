@@ -297,6 +297,9 @@ subroutine RTUpdateSolutionPatch(realization)
   if (reaction%nkinmnrl > 0) then
     do ghosted_id = 1, grid%ngmax
       do imnrl = 1, reaction%nkinmnrl
+        ! rate = mol/m^3/sec
+        ! dvolfrac = m^3 mnrl/m^3 bulk = rate (mol mnrl/m^3 bulk/sec) *
+        !                                mol_vol (m^3 mnrl/mol mnrl)
         aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = aux_vars(ghosted_id)%mnrl_volfrac(imnrl) + &
                                                    aux_vars(ghosted_id)%mnrl_rate(imnrl)* &
                                                    reaction%kinmnrl_molar_vol(imnrl)* &
