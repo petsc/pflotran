@@ -791,6 +791,8 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
   
   ! remember that a density of 1 kg/L was assumed, thus molal and molarity are equal
   aq_species_constraint%basis_molarity = auxvar%primary_molal
+  
+  print *,'ReactionEquilibrateConstraint: ',constraint_name,' iterations: ',num_iterations
 
 end subroutine ReactionEquilibrateConstraint
 
@@ -1512,7 +1514,7 @@ subroutine RTotal(auxvar,reaction,option)
   ln_conc = log(auxvar%primary_spec)
   ln_act = ln_conc+log(auxvar%pri_act_coef)
   ln_act_h2o = 0.d0  ! assume act h2o = 1 for now
-  auxvar%total(:,iphase) = auxvar%primary_spec
+  auxvar%total(:,iphase) = auxvar%primary_spec(:)
   ! initialize derivatives
   auxvar%dtotal = 0.d0
   do icomp = 1, reaction%ncomp

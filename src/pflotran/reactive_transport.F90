@@ -285,7 +285,6 @@ subroutine RTUpdateSolutionPatch(realization)
 
   aux_vars => patch%aux%RT%aux_vars
 
-
   ! update activity coefficients
   if (reaction%compute_activity) then
     do ghosted_id = 1, grid%ngmax
