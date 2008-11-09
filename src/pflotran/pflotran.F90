@@ -71,8 +71,6 @@
   option%myrank = myrank
   option%commsize = commsize
 
-  out_unit = option%fid_out
-
   call PetscOptionsGetString(PETSC_NULL_CHARACTER, "-pflotranin", &
                              pflotranin, option_found, ierr)
   if(.not.option_found) pflotranin = "pflotran.in"
@@ -96,6 +94,8 @@
   call PetscGetTime(timex_wall(2), ierr)
   
   if (myrank == 0) then
+
+    out_unit = option%fid_out
   
     write(*,'(/," CPU Time:", 1pe12.4, " [sec] ", &
     & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
