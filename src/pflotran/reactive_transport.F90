@@ -1793,7 +1793,6 @@ subroutine RTAuxVarCompute(x,aux_var,reaction,option)
   dtotal = 0.d0
   dtotalsorb = 0.d0
   call RTAuxVarInit(auxvar_pert,reaction,option)
-  call RTAuxVarCopy(auxvar_pert,aux_var,option)
   do jcomp = 1, reaction%ncomp
     Res_pert = 0.d0
     call RTAuxVarCopy(auxvar_pert,aux_var,option)
