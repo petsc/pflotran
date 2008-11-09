@@ -4,47 +4,65 @@ MODE RICHARDS
 
 CHEMISTRY
 PRIMARY_SPECIES
+Al+++
 Na+
 K+
-Ca++
 H+
-NO3-
+HCO3-
+SiO2(aq)
 Cl-
 /
 SECONDARY_SPECIES
 OH-
-CaCl+
-CaCl2(aq)
+HCl(aq)
+CO2(aq)
+CO3--
+NaHCO3(aq)
 NaCl(aq)
 NaOH(aq)
 KCl(aq)
-KOH(aq)
-HCl(aq)
+H3SiO4-
+H2SiO4--
+AlOH++
+Al(OH)2+
+Al(OH)3(aq)
+Al(OH)4-
 /
 GAS_SPECIES
+CO2(g)
 /
 MINERALS
-Halite
+Quartz
+Chalcedony
+SiO2(am)
+K-Feldspar
+Muscovite
+Gibbsite
+Kaolinite
+Albite
+Analcime
 /
 MINERAL_KINETICS
-Halite 1.e-30
+Quartz     3.16e-18
+K-Feldspar 1.e-14
+Muscovite  1.e-14
+Gibbsite   1.e-14
+Kaolinite  1.e-17
 /
-:skip
+skip
 SORPTION
-ION_EXCHANGE_RXN
-MINERAL Halite
-CEC 1.1
-CATIONS
-Na+   1.
-K+    5.012
-Ca++  6.31
-H+   10.
+SURFACE_COMPLEXATION_RXN
+MINERAL Calcite
+SITE >SOH 1.e-6
+COMPLEXES
+>SOUO2OH
+>SOUO2CO3
 /
 /
 /
-:noskip
+noskip
 :DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
-DATABASE ../../../../database/hanford.dat
+DATABASE ../../database/hanford.dat
 LOG_FORMULATION
 ACTIVITY_COEFFICIENTS
 /
@@ -73,7 +91,16 @@ GRID
 TYPE structured
 NXYZ 100 1 1
 DXYZ
-0.1
+0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.01 
+0.02 0.02 0.02 0.02 0.02 0.02 0.02 0.02 0.02 0.02 
+0.04 0.04 0.04 0.04 0.04 0.04 0.04 0.04 0.04 0.04 
+0.08 0.08 0.08 0.08 0.08 0.08 0.08 0.08 0.08 0.08 
+0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 
+0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 
+0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 
+0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 
+0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 
+0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 0.10 
 1.
 1.
 /
@@ -103,6 +130,7 @@ LINEAR_SOLVER TRANSPORT
 :STATISTICS
 :
 TECPLOT POINT VELO 
+:TECPLOT BLOCK VELO 
 :
 DIFF  1.D-9       12.6
 :
@@ -123,11 +151,10 @@ Soil1   1  1    1    0.5  0.5   1.d-12    1.d-12    1.d-13    1.d0
 :
 :TIME d every 10
 TIME y
-0.1 1. 10.
+2.e4
 :
 DTST 1.d-8
-:50. 1.0d0 
-50. 0.02d0 
+1.e5 10.d0
 :
 REGION all
 BLOCK 1 100 1 1 1 1
@@ -190,8 +217,7 @@ CONSTRAINT_LIST
 /
 /
 TRANSPORT_CONDITION initial_c
-:TYPE dirichlet
-TYPE zero_gradient
+TYPE dirichlet
 CONSTRAINT_LIST
 0.d0 initial
 /
@@ -199,26 +225,32 @@ CONSTRAINT_LIST
 
 CONSTRAINT Inlet
 CONCENTRATIONS
-Na+      1.e-3       T
-K+       2.e-4       T
-Ca++     1.e-10      T
-H+       5.0        pH
-NO3-     1.2e-3      T
-Cl-      1.e-3       Z
+Al+++    1.e-16           T
+Na+      1.e-2            T
+K+       1.e-6            T
+H+       4.0             pH
+HCO3-    1.e-2            G CO2(g)
+SiO2(aq) 1.e-6            T
+Cl-      1.e-2            Z
 /
 /
 
 CONSTRAINT initial
 CONCENTRATIONS
-Na+      1.e-10      T
-K+       1.e-10      T
-Ca++     6.e-4       T
-H+       5.0        pH
-NO3-     1.e-10      T
-Cl-      1.e-3       Z
+Al+++    1.e-16           M K-Feldspar
+Na+      1.e-2            T
+K+       1.e-5            M Muscovite
+H+       7.0             pH
+HCO3-    1.e-3            G CO2(g)
+SiO2(aq) 5.36989e-4       M Quartz
+Cl-      6.54794e-4       Z
 /
 MINERALS
-Halite 0.1 1.d0
+Quartz     0.6d0 1.d0
+K-Feldspar 0.2d0 1.d0
+Muscovite  0.d0  1.d0
+Gibbsite   0.d0  1.d0
+Kaolinite  0.d0  1.d0
 /
 /
 

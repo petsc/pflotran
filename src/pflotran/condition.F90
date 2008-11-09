@@ -1099,6 +1099,8 @@ subroutine TranConstraintRead(constraint,reaction,option)
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_MINERAL
               case('G','GAS') 
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_GAS
+              case('Z','CHG') 
+                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_CHARGE_BAL
               case default
                 string = 'Keyword: ' // trim(word) // &
                          ' not recognized in constraint,concentration'
@@ -1106,7 +1108,7 @@ subroutine TranConstraintRead(constraint,reaction,option)
             end select 
             if (aq_species_constraint%constraint_type(icomp) == CONSTRAINT_MINERAL .or. &
                 aq_species_constraint%constraint_type(icomp) == CONSTRAINT_GAS) then
-             call fiReadWord(string,aq_species_constraint%constraint_spec_name(icomp), &
+              call fiReadWord(string,aq_species_constraint%constraint_spec_name(icomp), &
                              PETSC_FALSE,ierr)
               call fiErrorMsg(option%myrank,'constraint name', &
                               'CONSTRAINT, CONCENTRATIONS', ierr) 

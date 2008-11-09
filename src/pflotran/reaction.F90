@@ -558,6 +558,8 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
         free_conc(icomp) = conc(icomp)
       case(CONSTRAINT_LOG)
         free_conc(icomp) = 10.d0**conc(icomp)
+      case(CONSTRAINT_CHARGE_BAL)
+        free_conc(icomp) = conc(icomp)
       case(CONSTRAINT_PH)
         ! check if h+ id set
         if (reaction%h_ion_id /= 0) then
@@ -609,20 +611,37 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
         
     do icomp = 1, reaction%ncomp
       select case(constraint_type(icomp))
+      
         case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
+        
           Res(icomp) = auxvar%total(icomp,1) - total_conc(icomp)
           ! dtotal must be scaled by 1.d-3 to scale density in RTotal from kg/m^3 -> kg/L
           Jac(icomp,:) = auxvar%dtotal(icomp,:,1)*1.d-3
 !          if (reaction%neqsurfcmplxrxn > 0) then
 !            Jac(icomp,:) = Jac(icomp,:) + auxvar%dtotal_sorb(icomp,:)
 !          endif
+
         case(CONSTRAINT_FREE,CONSTRAINT_LOG)
+        
           Res(icomp) = 0.d0
           Jac(icomp,:) = 0.d0
 !          Jac(:,icomp) = 0.d0
           Jac(icomp,icomp) = 1.d0
           
+        case(CONSTRAINT_CHARGE_BAL)
+        
+          Res(icomp) = 0.d0
+          Jac(icomp,:) = 0.d0
+          do jcomp = 1, reaction%ncomp
+            Res(icomp) = Res(icomp) + reaction%primary_spec_Z(jcomp)*auxvar%total(jcomp,1)
+            do kcomp = 1, reaction%ncomp
+              Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
+                reaction%primary_spec_Z(kcomp)*auxvar%dtotal(jcomp,kcomp,1)
+            enddo
+          enddo
+          
         case(CONSTRAINT_PH)
+        
           Res(icomp) = 0.d0
           Jac(icomp,:) = 0.d0
 !          Jac(:,icomp) = 0.d0
@@ -681,14 +700,17 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
             lnQK = lnQK + reaction%mnrlstoich(jcomp,imnrl)* &
                           log(auxvar%primary_spec(comp_id)*auxvar%pri_act_coef(comp_id))
           enddo
-          QK = exp(lnQK)
+!         QK = exp(lnQK)
           
-          Res(icomp) = 1.d0 - QK
+!         Res(icomp) = 1.d0 - QK
+          Res(icomp) = lnQK
 
           do jcomp = 1,reaction%mnrlspecid(0,imnrl)
             comp_id = reaction%mnrlspecid(jcomp,imnrl)
-            Jac(icomp,comp_id) = -QK/auxvar%primary_spec(comp_id)* &
-                                 reaction%mnrlstoich(jcomp,imnrl)
+!           Jac(icomp,comp_id) = -QK/auxvar%primary_spec(comp_id)* &
+!                                reaction%mnrlstoich(jcomp,imnrl)
+            Jac(icomp,comp_id) = reaction%mnrlstoich(jcomp,imnrl)/auxvar%primary_spec(comp_id)
+                                 
           enddo
   
         case(CONSTRAINT_GAS)
@@ -714,14 +736,16 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
                           log(auxvar%primary_spec(comp_id)*auxvar%pri_act_coef(comp_id))
           enddo
           
-          QK = exp(lnQK)
+!         QK = exp(lnQK)
           
-          Res(icomp) = QK - conc(icomp)
+!         Res(icomp) = QK - conc(icomp)
+          Res(icomp) = lnQK - log(conc(icomp))
           Jac(icomp,:) = 0.d0
           do jcomp = 1,reaction%eqgasspecid(0,igas)
             comp_id = reaction%eqgasspecid(jcomp,igas)
-            Jac(icomp,comp_id) = QK/auxvar%primary_spec(comp_id)* &
-                                 reaction%eqgasstoich(jcomp,igas)
+!           Jac(icomp,comp_id) = QK/auxvar%primary_spec(comp_id)* &
+!                                reaction%eqgasstoich(jcomp,igas)
+            Jac(icomp,comp_id) = reaction%eqgasstoich(jcomp,igas)/auxvar%primary_spec(comp_id)
           enddo
       end select
     enddo
@@ -808,7 +832,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   PetscInt :: num_iterations
   PetscReal :: lnQK(reaction%nmnrl), QK(reaction%nmnrl)
   PetscReal :: ln_act_h2o
-  PetscReal :: charge_balance
+  PetscReal :: charge_balance, ionic_strength
   PetscReal :: percent(reaction%neqcmplx+1)
   PetscReal :: totj, retardation
   PetscInt :: comp_id, jcomp
@@ -858,12 +882,24 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
                auxvar%sec_act_coef(abs(reaction%h_ion_id)))
     endif
     
+    ionic_strength = 0.d0
     charge_balance = 0.d0
     do icomp = 1, reaction%ncomp
       charge_balance = charge_balance + auxvar%total(icomp,1)* &
                                         reaction%primary_spec_Z(icomp)
-    enddo    
+      ionic_strength = ionic_strength + auxvar%primary_molal(icomp)* &
+        reaction%primary_spec_Z(icomp)*reaction%primary_spec_Z(icomp)
+    enddo
     
+    if (reaction%neqcmplx > 0) then    
+      do i = 1, reaction%neqcmplx
+        ionic_strength = ionic_strength + auxvar%secondary_spec(i)* &
+        reaction%eqcmplx_Z(i)*reaction%eqcmplx_Z(i)
+      enddo
+    endif
+    ionic_strength = 0.5d0 * ionic_strength
+    
+    write(option%fid_out,204) '  ionic strength: ', ionic_strength
     write(option%fid_out,204) '  charge balance: ', charge_balance
     
     write(option%fid_out,202) '        pressure: ', pressure
@@ -881,6 +917,8 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
           string = 'total'
         case(CONSTRAINT_FREE)
           string = 'free'
+        case(CONSTRAINT_CHARGE_BAL)
+          string = 'chrg'
         case(CONSTRAINT_LOG)
           string = 'log'
         case(CONSTRAINT_PH)
@@ -1168,8 +1206,8 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       
       QK(igas) = exp(lnQK(igas))
           
-      write(option%fid_out,133) reaction%gas_species_names(igas),lnQK(igas),QK(igas), &
-      reaction%eqgas_logK(igas)
+      write(option%fid_out,133) reaction%gas_species_names(igas),lnQK(igas)*LN_TO_LOG, &
+      QK(igas),reaction%eqgas_logK(igas)
     enddo
   endif
   
