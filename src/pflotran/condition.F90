@@ -1091,6 +1091,8 @@ subroutine TranConstraintRead(constraint,reaction,option)
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_FREE
               case('T','TOTAL')
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_TOTAL
+              case('S','TOTAL_SORB')
+                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_TOTAL_SORB
               case('P','PH')
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_PH
               case('L','LOG')

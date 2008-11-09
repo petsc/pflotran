@@ -551,7 +551,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
   total_conc = 0.d0
   do icomp = 1, reaction%ncomp
     select case(constraint_type(icomp))
-      case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
+      case(CONSTRAINT_NULL,CONSTRAINT_TOTAL,CONSTRAINT_TOTAL_SORB)
         total_conc(icomp) = conc(icomp)
         free_conc(icomp) = 1.d-9
       case(CONSTRAINT_FREE)
@@ -605,7 +605,6 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
       call RActivity(auxvar,reaction,option)
     endif
     call RTotal(auxvar,reaction,option)
-!    if (reaction%nsorb > 0) call RTotalSorb(auxvar,reaction,option)
     
     Jac = 0.d0
         
@@ -617,6 +616,16 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
           Res(icomp) = auxvar%total(icomp,1) - total_conc(icomp)
           ! dtotal must be scaled by 1.d-3 to scale density in RTotal from kg/m^3 -> kg/L
           Jac(icomp,:) = auxvar%dtotal(icomp,:,1)*1.d-3
+!          if (reaction%neqsurfcmplxrxn > 0) then
+!            Jac(icomp,:) = Jac(icomp,:) + auxvar%dtotal_sorb(icomp,:)
+!          endif
+      
+        case(CONSTRAINT_TOTAL_SORB)
+        
+          if (reaction%nsorb > 0) call RTotalSorb(auxvar,reaction,option)
+          Res(icomp) = auxvar%total(icomp,1)+auxvar%total_sorb(icomp) - total_conc(icomp)
+          ! dtotal must be scaled by 1.d-3 to scale density in RTotal from kg/m^3 -> kg/L
+          Jac(icomp,:) = auxvar%dtotal(icomp,:,1)*1.d-3 + auxvar%dtotal_sorb(icomp,:) !*1.d-3
 !          if (reaction%neqsurfcmplxrxn > 0) then
 !            Jac(icomp,:) = Jac(icomp,:) + auxvar%dtotal_sorb(icomp,:)
 !          endif
@@ -917,6 +926,8 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       select case(aq_species_constraint%constraint_type(icomp))
         case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
           string = 'total'
+        case(CONSTRAINT_TOTAL_SORB)
+          string = 'sorb'
         case(CONSTRAINT_FREE)
           string = 'free'
         case(CONSTRAINT_CHARGE_BAL)
