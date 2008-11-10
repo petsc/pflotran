@@ -625,7 +625,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
           if (reaction%nsorb > 0) call RTotalSorb(auxvar,reaction,option)
           Res(icomp) = auxvar%total(icomp,1)+auxvar%total_sorb(icomp) - total_conc(icomp)
           ! dtotal must be scaled by 1.d-3 to scale density in RTotal from kg/m^3 -> kg/L
-          Jac(icomp,:) = auxvar%dtotal(icomp,:,1)*1.d-3 + auxvar%dtotal_sorb(icomp,:) !*1.d-3
+          Jac(icomp,:) = (auxvar%dtotal(icomp,:,1) + auxvar%dtotal_sorb(icomp,:))*1.d-3
 !          if (reaction%neqsurfcmplxrxn > 0) then
 !            Jac(icomp,:) = Jac(icomp,:) + auxvar%dtotal_sorb(icomp,:)
 !          endif
