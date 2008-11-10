@@ -12,12 +12,12 @@ module Discretization_module
 #include "definitions.h"
 
 #include "petscreldefs.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscmat.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+#include "finclude/petscda.h"
+#include "finclude/petscda.h90"
 
   type, public :: discretization_type
     PetscInt :: itype  ! type of discretization (e.g. structured, unstructured, etc.)
@@ -560,9 +560,9 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   interface
 
      subroutine SAMRCreateMatrix(p_application, ndof, stencilsize, flowortransport, p_matrix)
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscmat.h90"
+#include "finclude/petsc.h"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
        PetscFortranAddr :: p_application
        PetscInt :: ndof
        PetscInt :: stencilsize
@@ -587,8 +587,8 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
      
   end interface
 
-#include "include/finclude/petscis.h"
-#include "include/finclude/petscis.h90"
+#include "finclude/petscis.h"
+#include "finclude/petscis.h90"
 
   type(discretization_type) :: discretization
   PetscInt :: dm_index
@@ -740,8 +740,8 @@ subroutine DiscretizationCreateColoring(discretization,dm_index,option,coloring)
   
   implicit none
 
-#include "include/finclude/petscis.h"
-#include "include/finclude/petscis.h90"
+#include "finclude/petscis.h"
+#include "finclude/petscis.h90"
   
   type(discretization_type) :: discretization
   PetscInt :: dm_index
@@ -778,9 +778,9 @@ subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_in
   interface
      subroutine SAMRGlobalToLocal(p_application, gvec, lvec, ierr)
        implicit none
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petsc.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
        PetscFortranAddr :: p_application
        Vec :: lvec
        Vec :: gvec
@@ -856,9 +856,9 @@ subroutine DiscretizationLocalToLocal(discretization,local_vec1,local_vec2,dm_in
   interface
      subroutine SAMRLocalToLocal(p_application, gvec, lvec, ierr)
        implicit none
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petsc.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
        PetscFortranAddr :: p_application
        Vec :: lvec
        Vec :: gvec

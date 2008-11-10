@@ -866,8 +866,8 @@ subroutine RealizAssignFlowInitCond(realization)
   
   implicit none
 
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
   
   type(realization_type) :: realization
   
@@ -996,8 +996,8 @@ subroutine RealizAssignTransportInitCond(realization)
   
   implicit none
 
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
   
   type(realization_type) :: realization
   

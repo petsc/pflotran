@@ -42,12 +42,12 @@ contains
 
   implicit none
 
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscviewer.h"
-!#include "include/finclude/petscda.h"
+#include "finclude/petsc.h"
+#include "finclude/petscmat.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscviewer.h"
+!#include "finclude/petscda.h"
 
   integer :: its,j,jm,jm1,jm2,jn,jng,l,lm1,lm2,lng, &
              m,m1,m2,mm1,mm2,n,n1,n2,nc,ng,nr

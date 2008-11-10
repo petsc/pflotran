@@ -8,13 +8,13 @@ module THC_module
 
 #include "definitions.h"
   
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscmat.h90"
-#include "include/finclude/petscsnes.h"
-#include "include/finclude/petscviewer.h"
-#include "include/finclude/petsclog.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+#include "finclude/petscsnes.h"
+#include "finclude/petscviewer.h"
+#include "finclude/petsclog.h"
 
 
 ! Cutoff parameters
@@ -1523,9 +1523,9 @@ subroutine THCResidual(snes,xx,r,realization,ierr)
   interface
      subroutine samrpetscobjectstateincrease(vec)
        implicit none
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petsc.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
        Vec :: vec
      end subroutine samrpetscobjectstateincrease
      
@@ -1951,9 +1951,9 @@ subroutine THCJacobian(snes,xx,A,B,flag,realization,ierr)
 
   interface
      subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscmat.h90"
+#include "finclude/petsc.h"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
        
        Mat :: mat
        PetscFortranAddr :: patch

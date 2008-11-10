@@ -737,8 +737,8 @@ subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
   
   implicit none
 
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
 
   character(len=32) :: name
   type(realization_type) :: realization
@@ -1088,8 +1088,8 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
   
   implicit none
 
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
   
   type(discretization_type) :: discretization
   type(grid_type) :: grid
@@ -1244,8 +1244,8 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   
   implicit none
 
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
 
   type(realization_type) :: realization
   type(region_type) :: region
@@ -1395,8 +1395,8 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   
   implicit none
 
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
 
   type(realization_type) :: realization
   character(len=MAXWORDLENGTH) :: filename

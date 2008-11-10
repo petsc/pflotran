@@ -6,12 +6,12 @@ module Init_module
 
 #include "definitions.h"
 
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscmat.h90"
-#include "include/finclude/petscsnes.h"
-#include "include/finclude/petscpc.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+#include "finclude/petscsnes.h"
+#include "finclude/petscpc.h"
 
   public :: Init
 
@@ -80,8 +80,8 @@ subroutine Init(simulation,filename)
   interface
 
      subroutine SAMRInitializePreconditioner(p_application, which_pc, pc)
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscpc.h"
+#include "finclude/petsc.h"
+#include "finclude/petscpc.h"
        PC :: pc
        PetscFortranAddr :: p_application
        PetscInt :: which_pc

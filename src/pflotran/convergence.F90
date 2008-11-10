@@ -8,11 +8,11 @@ module Convergence_module
   private
 
 #include "definitions.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscksp.h"
-#include "include/finclude/petscsnes.h"
-#include "include/finclude/petsclog.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscksp.h"
+#include "finclude/petscsnes.h"
+#include "finclude/petsclog.h"
 
   type, public :: convergence_context_type
     type(solver_type), pointer :: solver

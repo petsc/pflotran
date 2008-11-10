@@ -16,12 +16,12 @@ module General_Grid_module
 
 #include "definitions.h"
 !#include "include/petscf90.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
   ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
   ! Otherwise some very strange things will happen and PETSc will give no
   ! indication of what the problem is.
-#include "include/finclude/petsclog.h"
+#include "finclude/petsclog.h"
 
   PetscMPIInt :: hdf5_err
   PetscErrorCode :: ierr

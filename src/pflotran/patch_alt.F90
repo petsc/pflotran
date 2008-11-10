@@ -867,8 +867,8 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
   
   implicit none
 
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
 
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -1046,8 +1046,8 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
 
   implicit none
 
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
 
   PetscReal :: PatchGetDatasetValueAtCell
   type(option_type), pointer :: option
@@ -1172,8 +1172,8 @@ subroutine PatchSetDataset(patch,field,option,vec,ivar,isubvar)
 
   implicit none
 
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
 
   type(option_type), pointer :: option
   type(field_type), pointer :: field

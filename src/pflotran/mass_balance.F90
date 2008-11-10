@@ -25,8 +25,8 @@ subroutine MassBalanceCreate(realization)
   
   implicit none
   
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
 
   type(realization_type) :: realization
   type(field_type), pointer :: field
@@ -65,12 +65,12 @@ subroutine MassBalanceUpdate(realization,flow_solver,tran_solver)
   
   implicit none
   
-#include "include/finclude/petscdef.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petsclog.h"
-#include "include/finclude/petscsys.h"
-#include "include/finclude/petscsnes.h"
+#include "finclude/petscdef.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petsclog.h"
+#include "finclude/petscsys.h"
+#include "finclude/petscsnes.h"
 
   type(realization_type) :: realization
   type(solver_type), pointer :: flow_solver

@@ -35,11 +35,11 @@ contains
    
     implicit none 
 
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscviewer.h"
-#include "include/finclude/petscda.h"
+#include "finclude/petsc.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscviewer.h"
+#include "finclude/petscda.h"
 
     DA    :: da, da_1dof, da_kin
   

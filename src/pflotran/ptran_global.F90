@@ -32,10 +32,10 @@
 
 #define PETSC_AVOID_DECLARATIONS
 #define PETSC_AVOID_MPIF_H
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscda.h"
+#include "finclude/petsc.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscmat.h"
+#include "finclude/petscda.h"
 #undef PETSC_AVOID_MPIF_H
 #undef PETSC_AVOID_DECLARATIONS
 

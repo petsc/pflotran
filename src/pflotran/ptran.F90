@@ -41,7 +41,7 @@
   implicit none
 
 #include "definitions.h"
-#include "include/finclude/petsclog.h"
+#include "finclude/petsclog.h"
 
   PetscLogDouble :: timex(4), timex_wall(4)
 

@@ -9,25 +9,25 @@ module Mphase_module
 #include "definitions.h"
   
 !#include "include/petscf90.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
   ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
   ! Otherwise some very strange things will happen and PETSc will give no
   ! indication of what the problem is.
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscmat.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+#include "finclude/petscda.h"
+#include "finclude/petscda.h90"
 !#ifdef USE_PETSC216
-!#include "include/finclude/petscsles.h"
+!#include "finclude/petscsles.h"
 !#endif
-#include "include/finclude/petscsnes.h"
-#include "include/finclude/petscviewer.h"
-#include "include/finclude/petscsys.h"
-#include "include/finclude/petscis.h"
-#include "include/finclude/petscis.h90"
-#include "include/finclude/petsclog.h"
-#include "include/finclude/petscerror.h"
+#include "finclude/petscsnes.h"
+#include "finclude/petscviewer.h"
+#include "finclude/petscsys.h"
+#include "finclude/petscis.h"
+#include "finclude/petscis.h90"
+#include "finclude/petsclog.h"
+#include "finclude/petscerror.h"
 
 ! Cutoff parameters
   PetscReal, parameter :: formeps   = 1.D-4

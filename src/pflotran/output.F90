@@ -7,11 +7,11 @@ module Output_module
   private
 
 #include "definitions.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
-#include "include/finclude/petsclog.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscda.h"
+#include "finclude/petscda.h90"
+#include "finclude/petsclog.h"
 
   PetscInt, parameter :: TECPLOT_INTEGER = 0
   PetscInt, parameter :: TECPLOT_REAL = 1
@@ -3733,17 +3733,17 @@ subroutine OutputHDF5(realization)
   interface
 
      subroutine SAMRCopyVecToVecComponent(vec,svec, component)
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petsc.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
        Vec :: vec, svec
        PetscInt :: component
      end subroutine SAMRCopyVecToVecComponent
 
      subroutine SAMRRegisterForViz(ptr,vec,component,dname,dnamec)
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petsc.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
        PetscFortranAddr :: ptr
        Vec :: vec
        PetscInt :: component
@@ -3751,7 +3751,7 @@ subroutine OutputHDF5(realization)
      end subroutine SAMRRegisterForViz
 
      subroutine SAMRWritePlotData(ptr, time)
-#include "include/finclude/petsc.h"
+#include "finclude/petsc.h"
        PetscFortranAddr :: ptr
        PetscReal :: time
      end subroutine SAMRWritePlotData

@@ -303,8 +303,8 @@ subroutine GridComputeVolumes(grid,volume,option)
   
   implicit none
 
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
   
   type(grid_type) :: grid
   type(option_type) :: option
@@ -625,8 +625,8 @@ subroutine GridCopyIntegerArrayToPetscVec(array,vector,num_values)
 
   implicit none
 
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
   
   PetscInt :: array(:)
   Vec :: vector
@@ -653,8 +653,8 @@ subroutine GridCopyRealArrayToPetscVec(array,vector,num_values)
 
   implicit none
   
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
     
   PetscReal :: array(:)
   Vec :: vector
@@ -681,8 +681,8 @@ subroutine GridCopyPetscVecToIntegerArray(array,vector,num_values)
 
   implicit none
 
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
   
   PetscInt :: array(:)
   Vec :: vector
@@ -712,8 +712,8 @@ subroutine GridCopyPetscVecToRealArray(array,vector,num_values)
 
   implicit none
   
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
     
   PetscReal :: array(:)
   Vec :: vector
