@@ -314,7 +314,7 @@ subroutine ReactionRead(reaction,fid,option)
       case('LOG_FORMULATION')
         reaction%use_log_formulation = PETSC_TRUE        
       case('ACTIVITY_COEFFICIENTS')
-        reaction%compute_activity = PETSC_TRUE        
+        reaction%compute_activity_coefs = PETSC_TRUE        
       case default
         call printErrMsg(option,'CHEMISTRY keyword: '//trim(word)//' not recognized')
     end select
@@ -328,7 +328,7 @@ subroutine ReactionRead(reaction,fid,option)
 
   
   if (len_trim(reaction%database_filename) < 2) &
-    reaction%compute_activity = PETSC_FALSE
+    reaction%compute_activity_coefs = PETSC_FALSE
  
 end subroutine ReactionRead
 
@@ -528,7 +528,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
   PetscReal :: prev_molal(reaction%ncomp)
   PetscReal, parameter :: tol = 1.d-12
   PetscReal, parameter :: tol_loose = 1.d0
-  PetscTruth :: compute_activity
+  PetscTruth :: compute_activity_coefs
 
   PetscInt :: constraint_id(reaction%ncomp)
   PetscReal :: ln_act_h2o
@@ -596,12 +596,12 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
   auxvar%primary_molal = free_conc
 
   num_iterations = 0
-  compute_activity = PETSC_FALSE
+  compute_activity_coefs = PETSC_FALSE
   
   do
 
     auxvar%primary_spec = auxvar%primary_molal ! assume a density of 1 kg/L
-    if (reaction%compute_activity .and. compute_activity) then
+    if (reaction%compute_activity_coefs .and. compute_activity_coefs) then
       call RActivityCoefficients(auxvar,reaction,option)
     endif
     call RTotal(auxvar,reaction,option)
@@ -780,7 +780,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
     ! need some sort of convergence before we kick in activities
     if (maxval(dabs(auxvar%primary_molal-prev_molal)/ &
                auxvar%primary_molal) < tol_loose) then
-      compute_activity = PETSC_TRUE
+      compute_activity_coefs = PETSC_TRUE
     endif
 
     ! check for convergence

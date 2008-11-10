@@ -460,8 +460,14 @@ subroutine Init(simulation,filename)
     call RealizBridgeFlowAndTransport(realization) 
     ! initial concentrations must be assigned after densities are set !!!
     call RealizAssignTransportInitCond(realization)
-    call RTUpdateSolution(realization)    
     call RTUpdateAuxVars(realization)
+    ! at this point the auxvars have been computed with activity coef = 1.d0
+    ! to use intitial condition with activity coefs /= 1.d0, must update
+    ! activity coefs and recompute auxvars
+    if (realization%reaction%compute_activity_coefs) then
+      call RTUpdateSolution(realization)    
+      call RTUpdateAuxVars(realization)
+    endif
 
   endif
   
