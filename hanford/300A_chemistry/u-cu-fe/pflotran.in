@@ -457,7 +457,7 @@ CONSTRAINT_LIST
 /
 /
 TRANSPORT_CONDITION initial_c
-TYPE dirichlet
+TYPE zero_gradient
 CONSTRAINT_LIST
 0.d0 initial
 /
