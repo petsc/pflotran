@@ -1059,7 +1059,7 @@ subroutine RealizAssignTransportInitCond(realization)
               xx_p(ibegin+idof-1) = &
                 initial_condition%tran_condition%cur_constraint_coupler% &
                   aqueous_species%basis_molarity(idof) / &
-                  aux_vars(ghosted_id)%den(1)*1000 ! convert molarity -> molality
+                  aux_vars(ghosted_id)%den(1)*1000.d0 ! convert molarity -> molality
             enddo
             if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
               do idof = 1, reaction%nkinmnrl
@@ -1092,7 +1092,7 @@ subroutine RealizAssignTransportInitCond(realization)
             endif
             xx_p(ibegin:iend) = &
               initial_condition%tran_aux_real_var(1:option%ntrandof,iconn) / &
-              aux_vars(ghosted_id)%den(1)*1000 ! convert molarity -> molality
+              aux_vars(ghosted_id)%den(1)*1000.d0 ! convert molarity -> molality
               ! minerals 
             if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
               do idof = 1, reaction%nkinmnrl

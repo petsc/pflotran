@@ -286,9 +286,9 @@ subroutine RTUpdateSolutionPatch(realization)
   aux_vars => patch%aux%RT%aux_vars
 
   ! update activity coefficients
-  if (reaction%compute_activity) then
+  if (reaction%compute_activity_coefs) then
     do ghosted_id = 1, grid%ngmax
-      call RActivity(aux_vars(ghosted_id),reaction,option)
+      call RActivityCoefficients(aux_vars(ghosted_id),reaction,option)
     enddo  
   endif
 
