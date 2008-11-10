@@ -27,11 +27,11 @@
 module ptran_psi_module
 
 private 
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscsys.h"
-#include "include/finclude/petsclog.h"
+#include "finclude/petsc.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscsys.h"
+#include "finclude/petsclog.h"
 
 
 public :: trpsi, trdpsi

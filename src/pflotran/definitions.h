@@ -1,4 +1,4 @@
-#include "include/finclude/petsc.h"
+#include "finclude/petsc.h"
 
 PetscInt, parameter :: MAXSTRINGLENGTH = 512
 PetscInt, parameter :: MAXWORDLENGTH = 32

@@ -300,7 +300,7 @@ module co2_sw_module
       use span_wagner_module, only: vappr, co2_span_wagner
       implicit none 
   
-#include "include/finclude/petsc.h"
+#include "finclude/petsc.h"
   
       real*8:: x1,x2,y(15)   
       

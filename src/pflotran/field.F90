@@ -7,8 +7,8 @@ module Field_module
   private
 
 #include "definitions.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
 
   type, public :: field_type 
     

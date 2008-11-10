@@ -178,10 +178,10 @@ subroutine StructuredGridCreateDA(structured_grid,da,ndof,stencil_width, &
         
   implicit none
 
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscda.h"
+#include "finclude/petscda.h90"
 
   type(option_type) :: option
   type(structured_grid_type) :: structured_grid
@@ -219,7 +219,7 @@ subroutine StructGridComputeLocalBounds(structured_grid,da)
      subroutine samr_patch_get_corners(p_patch, nxs, nys, nzs, nlx, nly, nlz)
        implicit none
        
-#include "include/finclude/petsc.h"
+#include "finclude/petsc.h"
 
        PetscFortranAddr :: p_patch
        PetscInt :: nxs, nys, nzs, nlx, nly, nlz
@@ -229,7 +229,7 @@ subroutine StructGridComputeLocalBounds(structured_grid,da)
      subroutine samr_patch_get_ghostcorners(p_patch, nxs, nys, nzs, nlx, nly, nlz)
        implicit none
        
-#include "include/finclude/petsc.h"
+#include "finclude/petsc.h"
        
        PetscFortranAddr :: p_patch
        PetscInt :: nxs, nys, nzs, nlx, nly, nlz
@@ -237,10 +237,10 @@ subroutine StructGridComputeLocalBounds(structured_grid,da)
      end subroutine samr_patch_get_ghostcorners
   end interface
      
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscda.h"
+#include "finclude/petscda.h90"
 
   type(structured_grid_type) :: structured_grid
   DA :: da
@@ -554,7 +554,7 @@ subroutine StructuredGridComputeCoord(structured_grid,option,origin_global, &
   interface
      subroutine samr_patch_get_origin(p_patch, xs, ys, zs)
        implicit none
-#include "include/finclude/petsc.h"
+#include "finclude/petsc.h"
        PetscFortranAddr, intent(inout) :: p_patch
        PetscReal, intent(inout) :: xs
        PetscReal, intent(inout) :: ys
@@ -775,7 +775,7 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
 
   interface
      PetscInt function samr_patch_at_bc(p_patch, axis, dim)
-#include "include/finclude/petsc.h"
+#include "finclude/petsc.h"
        PetscFortranAddr :: p_patch
        PetscInt :: axis,dim
      end function samr_patch_at_bc
@@ -1149,8 +1149,8 @@ subroutine StructuredGridComputeVolumes(radius,structured_grid,option,nL2G,volum
   implicit none
 
 ! These includes are needed for VecRestoreArrayF90() - geh
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
   
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
@@ -1225,7 +1225,7 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
 
   interface
      PetscInt function samr_patch_at_bc(p_patch, axis, dim)
-#include "include/finclude/petsc.h"
+#include "finclude/petsc.h"
        PetscFortranAddr :: p_patch
        PetscInt :: axis,dim
      end function samr_patch_at_bc
@@ -1463,18 +1463,18 @@ subroutine StructuredGridVecGetArrayF90(structured_grid, vec, f90ptr, ierr)
  interface
     subroutine samr_vecgetarrayf90(patch, petscvec, f90wrap)
       implicit none
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petsc.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
       PetscFortranAddr, intent(inout):: patch
       Vec:: petscvec
       PetscFortranAddr :: f90wrap
     end subroutine samr_vecgetarrayf90
  end interface
 
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petsc.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
 
  type(structured_grid_type) :: structured_grid
  Vec:: vec
@@ -1511,9 +1511,9 @@ subroutine StructGridVecRestoreArrayF90(structured_grid, vec, f90ptr, ierr)
 
  implicit none 
 
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petsc.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
 
  type(structured_grid_type) :: structured_grid
  Vec:: vec

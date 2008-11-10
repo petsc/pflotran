@@ -35,16 +35,16 @@ contains
    
   implicit none 
 
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscksp.h"
-#include "include/finclude/petsclog.h"
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscpc.h"
-#include "include/finclude/petscsys.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-!#include "include/finclude/petscviewer.h"
+#include "finclude/petsc.h"
+#include "finclude/petscda.h"
+#include "finclude/petscksp.h"
+#include "finclude/petsclog.h"
+#include "finclude/petscmat.h"
+#include "finclude/petscpc.h"
+#include "finclude/petscsys.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+!#include "finclude/petscviewer.h"
 
   DA    :: da ,da_mat, da_1dof, da_kin
   

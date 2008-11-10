@@ -169,10 +169,10 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   
   implicit none
   
-#include "include/finclude/petscdef.h"
-#include "include/finclude/petsclog.h"
-#include "include/finclude/petscsys.h"
-#include "include/finclude/petscviewer.h"
+#include "finclude/petscdef.h"
+#include "finclude/petsclog.h"
+#include "finclude/petscsys.h"
+#include "finclude/petscviewer.h"
 
   type(realization_type) :: realization
   type(stepper_type), pointer :: flow_stepper
@@ -576,11 +576,11 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   
   implicit none
 
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscviewer.h"
-#include "include/finclude/petscsnes.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscviewer.h"
+#include "finclude/petscsnes.h"
 
   type(realization_type) :: realization
   type(stepper_type) :: stepper
@@ -867,11 +867,11 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   
   implicit none
 
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscviewer.h"
-#include "include/finclude/petscsnes.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscviewer.h"
+#include "finclude/petscsnes.h"
 
   type(realization_type) :: realization
   type(stepper_type) :: stepper

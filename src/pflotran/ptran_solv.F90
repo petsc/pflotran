@@ -41,15 +41,15 @@
 
   implicit none
 
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscksp.h"
-#include "include/finclude/petscpc.h"
-!#include "include/finclude/petscviewer.h"
+#include "finclude/petsc.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscda.h"
+#include "finclude/petscda.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscksp.h"
+#include "finclude/petscpc.h"
+!#include "finclude/petscviewer.h"
 
   DA    :: da, da_mat, da_1dof, da_kin
 

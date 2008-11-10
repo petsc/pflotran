@@ -6,14 +6,14 @@ module Solver_module
  
 #include "definitions.h"
 
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscmat.h90"
-#include "include/finclude/petscksp.h"
-#include "include/finclude/petscpc.h"
-#include "include/finclude/petscsnes.h"
-#include "include/finclude/petscmg.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+#include "finclude/petscksp.h"
+#include "finclude/petscpc.h"
+#include "finclude/petscsnes.h"
+#include "finclude/petscmg.h"
 
   type, public :: solver_type
     PetscReal :: linear_atol       ! absolute tolerance

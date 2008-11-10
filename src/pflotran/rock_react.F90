@@ -4,17 +4,17 @@ module rock_reac_module
   use trdynmem_module
  
 private 
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
+#include "finclude/petsc.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
   ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
   ! Otherwise some very strange things will happen and PETSc will give no
   ! indication of what the problem is.
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
-#include "include/finclude/petscviewer.h"
-#include "include/finclude/petscsys.h"
-#include "include/finclude/petsclog.h"
+#include "finclude/petscda.h"
+#include "finclude/petscda.h90"
+#include "finclude/petscviewer.h"
+#include "finclude/petscsys.h"
+#include "finclude/petsclog.h"
  
  public  Rock_reac
  

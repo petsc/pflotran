@@ -40,17 +40,17 @@ module Checkpoint_module
   public :: Checkpoint, Restart
 
 #include "definitions.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
-#include "include/finclude/petscdef.h"
-#include "include/finclude/petscis.h"
-#include "include/finclude/petscis.h90"
-#include "include/finclude/petsclog.h"
-#include "include/finclude/petscsys.h"
-#include "include/finclude/petscviewer.h"
-#include "include/finclude/petscbag.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscda.h"
+#include "finclude/petscda.h90"
+#include "finclude/petscdef.h"
+#include "finclude/petscis.h"
+#include "finclude/petscis.h90"
+#include "finclude/petsclog.h"
+#include "finclude/petscsys.h"
+#include "finclude/petscviewer.h"
+#include "finclude/petscbag.h"
 
   Interface PetscBagGetData
     Subroutine PetscBagGetData(bag,ctx,ierr)

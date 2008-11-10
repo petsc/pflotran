@@ -33,20 +33,20 @@ module ptran_out_module
   use PetscRelWrappers  ! For petsc-release compatibility.
 
 private
-#include "include/finclude/petsc.h"
+#include "finclude/petsc.h"
 #include "petscreldefs.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
-#include "include/finclude/petscdef.h"
-#include "include/finclude/petscksp.h"
-#include "include/finclude/petscis.h"
-#include "include/finclude/petsclog.h"
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscpc.h"
-#include "include/finclude/petscsys.h"
-#include "include/finclude/petscviewer.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscda.h"
+#include "finclude/petscda.h90"
+#include "finclude/petscdef.h"
+#include "finclude/petscksp.h"
+#include "finclude/petscis.h"
+#include "finclude/petsclog.h"
+#include "finclude/petscmat.h"
+#include "finclude/petscpc.h"
+#include "finclude/petscsys.h"
+#include "finclude/petscviewer.h"
 
 public ptran_out, ptran_psi_out
 contains

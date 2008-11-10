@@ -5,11 +5,11 @@ module Transport_Output_module
   private
 
 #include "definitions.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
-#include "include/finclude/petsclog.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscda.h"
+#include "finclude/petscda.h90"
+#include "finclude/petsclog.h"
 
   PetscInt, parameter :: X_COORDINATE = 1
   PetscInt, parameter :: Y_COORDINATE = 2

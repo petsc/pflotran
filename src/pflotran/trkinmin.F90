@@ -37,11 +37,11 @@ contains
 
   implicit none
 
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscviewer.h"
+#include "finclude/petsc.h"
+#include "finclude/petscmat.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscviewer.h"
 
   integer :: ierr,iflgerr,i,ii,ityprxn,j,jj,l,lp,llp,n,ng,nr,npri,nsec
   
@@ -405,11 +405,11 @@ contains
 
   implicit none
 
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscviewer.h"
+#include "finclude/petsc.h"
+#include "finclude/petscmat.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscviewer.h"
 
   integer :: ierr,iflgerr,i,ii,ityprxn,j,jj,l,lp,llp,n,ng,nr,npri,nsec
   
