@@ -171,20 +171,23 @@
 \bcr
 
 \section*{Chemistry Implementation in PFLOTRAN: \\
-Colloids,\\ 
-Surface Complexation, \\
-Ion Exchange, \\
+$\circ$Colloids,\\ 
+$\bullet$Surface Complexation, \\
+$\bullet$Ion Exchange, \\
 Biogeochemistry with Monode Kinetics, \\
-Precipitation/Dissolution, \\
+$\bullet$Precipitation/Dissolution, \\
 Solid Solutions, \\
 Species-Dependent Diffusion, \\
 Pitzer Model, \\
-Multiple Interacting Continua, \\
+$\circ$Multiple Interacting Continua, \\
 Hydration-Dehydration Reactions, \\
 Electrical Conductivity, \\
-Multiphase Systems, \\
+$\circ$Multiphase Systems, \\
 Isotopic Exchange, \\
 \ldots}
+
+\hfill $\bullet$ substantially completed\\
+\hfill $\circ$ in progress
 
 P.C. Lichtner (LANL, \today)
 
@@ -293,12 +296,17 @@ C_i^g \eq \frac{P_i}{RT} \eq \frac{K_i}{RT}\prod \left(\gamma_jC_j\right)^{\nu_{
 \Psi_j \eq C_j+\sum_i\nu_{ji}C_i \eq \Psi_j^0.
 \EN
 
-\item[Free Ion:]
+\item[Total Sorbed Concentration $\Psi_j^0 + \sum_i\nu_{ji}^{\rm srf}(S_i^{\rm srf})_0 + \sum_i\nu_{ji}^{\rm ex}(S_i^{\rm ex})_0$:]
+\EQ
+\Psi_j^{\rm tot} \eq \Psi_j + \sum_i\nu_{ji}^{\rm srf}S_i^{\rm srf} + \sum_i\nu_{ji}^{\rm ex}S_i^{\rm ex} \eq \Psi_j^0 + \sum_i\nu_{ji}^{\rm srf}(S_i^{\rm srf})_0 + \sum_i\nu_{ji}^{\rm ex}(S_i^{\rm ex})_0.
+\EN
+
+\item[Free Ion: $C_j^0$]
 \EQ
 C_j \eq C_j^0.
 \EN
 
-\item[pH:]
+\item[pH: $C_{\rm H^+}$]
 \begin{subequations}
 \BA
 a_{\rm H^+} &\eq \gamma_{\rm H^+} C_{\rm H^+} \eq 10^{-\rm pH},\\
@@ -312,14 +320,24 @@ a_{\rm OH^-} &\eq \gamma_{\rm OH^-} C_{\rm OH^-} \eq K_{\rm H_2O} a_{\rm H_2O} 1
 \EN
 
 \item[Mineral Equilibria:]
+\begin{subequations}
 \EQ
-K_m \prod_j\left(\gamma_j C_j\right)^{\nu_{jm}}\eq 1.
+K_m \prod_j\left(\gamma_j C_j\right)^{\nu_{jm}}\eq 1,
 \EN
+\EQ
+\ln K_m +\sum_j\nu_{jm}\ln\left(\gamma_j C_j\right)\eq 0.
+\EN
+\end{subequations}
 
-\item[Gaseous Equilibria (Ideal Gas Law):]
+\item[Gaseous Equilibria (Ideal Gas Law): $P_i$]
+\begin{subequations}
 \EQ
-C_i\eq\frac{P_i}{RT}\eq \frac{K_i}{RT}\prod_j\left(\gamma_j C_j\right)^{\nu_{ji}}.
+P_i \eq K_i \prod_j\left(\gamma_j C_j\right)^{\nu_{ji}^g},
 \EN
+\EQ
+\ln P_i \eq \ln K_i+ \sum_j \nu_{ji}^g\ln\left(\gamma_j C_j\right).
+\EN
+\end{subequations}
 
 \end{description}
 
@@ -700,7 +718,8 @@ C_l\frac{\p S_i}{\p C_l} &\eq \nu_{li} S_i - \frac{\omega Q_i^\a}{\big(1+\sum Q_
 \BA
 C_l\frac{\p\Psi_j^S}{\p C_l} &\eq C_l\sum_i \nu_{ji} \frac{\p S_i}{\p C_l},\\
 &\eq \sum_i \nu_{ji} S_i \left[\nu_{li} - \frac{1}{\omega}\sum_{i'} \nu_{li'} S_{i'}\right],\\
-&\eq \sum_i \nu_{ji} \nu_{li} S_i - \frac{1}{\omega}\left(\sum_i\nu_{ji}S_i\right) \left(\sum_{i'} \nu_{li'} S_{i'}\right).
+&\eq \sum_i \nu_{ji} \nu_{li} S_i - \frac{1}{\omega}\left(\sum_i\nu_{ji}S_i\right) \left(\sum_{i'} \nu_{li'} S_{i'}\right)\\
+&\eq \sum_i \nu_{ji} S_i \left[\nu_{li} - \frac{1}{\omega} \sum_{i'} \nu_{li'} S_{i'}\right].
 \EA
 
 \noindent
