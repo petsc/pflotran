@@ -1133,6 +1133,23 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
     enddo
     124 format(2x,a12,4x,1pe12.4)
   endif
+  
+  ! Ion Exchange
+  if (reaction%neqionxrxn > 0) then
+    write(option%fid_out,125)
+    write(option%fid_out,90)
+    125 format(/,2x,'ionexchange reactions',/,2x,'cation  selectivity coef.  sorbed conc.')
+    do irxn = 1, reaction%neqionxrxn
+      write(option%fid_out,126) reaction%eqionx_rxn_CEC(irxn)
+      ncomp = reaction%eqionx_rxn_cationid(0,irxn)
+      do jcomp = 1, ncomp
+        icomp = reaction%eqionx_rxn_cationid(jcomp,irxn)
+        write(option%fid_out,127) jcomp,icomp,reaction%eqionx_rxn_k(jcomp,irxn)
+      enddo
+    enddo
+    126 format(2x,'CEC = ',1pe12.4)
+    127 format(2x,2i3,1p3e12.4)
+  endif
           
   if (reaction%nmnrl > 0) then
   
