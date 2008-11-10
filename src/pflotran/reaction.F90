@@ -17,7 +17,7 @@ module Reaction_module
             ReactionInitializeConstraint, &
             RTotal, &
             RTotalSorb, &
-            RActivity, &
+            RActivityCoefficients, &
             RReaction, &
             RReactionDerivative, &
             RPrintConstraint
@@ -602,7 +602,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
 
     auxvar%primary_spec = auxvar%primary_molal ! assume a density of 1 kg/L
     if (reaction%compute_activity .and. compute_activity) then
-      call RActivity(auxvar,reaction,option)
+      call RActivityCoefficients(auxvar,reaction,option)
     endif
     call RTotal(auxvar,reaction,option)
     
@@ -1443,12 +1443,12 @@ end subroutine RReactionDerivative
                                
 ! ************************************************************************** !
 !
-! RActivity: Computes the ionic strength and activity coefficients
+! RActivityCoefficients: Computes the ionic strength and activity coefficients
 ! author: Glenn Hammond
 ! date: 09/30/08
 !
 ! ************************************************************************** !
-subroutine RActivity(auxvar,reaction,option)
+subroutine RActivityCoefficients(auxvar,reaction,option)
 
   use Option_module
   
@@ -1507,7 +1507,7 @@ subroutine RActivity(auxvar,reaction,option)
     endif
   enddo
   
-end subroutine RActivity
+end subroutine RActivityCoefficients
 
 ! ************************************************************************** !
 !

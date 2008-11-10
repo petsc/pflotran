@@ -460,6 +460,7 @@ subroutine Init(simulation,filename)
     call RealizBridgeFlowAndTransport(realization) 
     ! initial concentrations must be assigned after densities are set !!!
     call RealizAssignTransportInitCond(realization)
+    call RTUpdateSolution(realization)    
     call RTUpdateAuxVars(realization)
 
   endif
