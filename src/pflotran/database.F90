@@ -1606,7 +1606,7 @@ subroutine BasisInit(reaction,option)
         found = PETSC_FALSE
         do i = 1, reaction%ncomp
           if (fiStringCompare(cur_cation%name, &
-                              new_basis_names(i), &
+                              reaction%primary_species_names(i), &
                               MAXWORDLENGTH)) then
             reaction%eqionx_rxn_cationid(ication,irxn) = i
             found = PETSC_TRUE        
@@ -1614,7 +1614,7 @@ subroutine BasisInit(reaction,option)
         enddo
         if (.not.found) then
           string = 'Cation ' // trim(cur_cation%name) // &
-                   'in ion exchange reaction' // &
+                   ' in ion exchange reaction' // &
                    ' not found in swapped basis.'
           call printErrMsg(option,string)     
         endif
