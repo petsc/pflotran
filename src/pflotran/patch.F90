@@ -983,7 +983,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
             enddo
         end select
       endif
-    case(PH,PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION,MINERAL_VOLUME_FRACTION)
+    case(PH,PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION,MINERAL_VOLUME_FRACTION,MINERAL_RATE)
       select case(ivar)
         case(PH)
           do local_id=1,grid%nlmax
@@ -1001,6 +1001,10 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
         case(MINERAL_VOLUME_FRACTION)
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%mnrl_volfrac(isubvar)
+          enddo
+        case(MINERAL_RATE)
+          do local_id=1,grid%nlmax
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%mnrl_rate(isubvar)
           enddo
       end select
     case(PHASE)
@@ -1128,7 +1132,8 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
             value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%u(1)
         end select
       endif
-    case(PH,PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION,MINERAL_VOLUME_FRACTION)
+    case(PH,PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION, &
+         MINERAL_VOLUME_FRACTION,MINERAL_RATE)
       select case(ivar)
         case(PH)
           value = -log10(patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)* &
@@ -1139,6 +1144,8 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
           value = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)
         case(MINERAL_VOLUME_FRACTION)
           value = patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(isubvar)
+        case(MINERAL_RATE)
+          value = patch%aux%RT%aux_vars(ghosted_id)%mnrl_rate(isubvar)
       end select
     case(PHASE)
       call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)

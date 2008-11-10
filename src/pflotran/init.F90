@@ -553,8 +553,6 @@ subroutine readRequiredCardsFromInput(realization,filename)
   option => realization%option
   discretization => realization%discretization
   
-  option%fid_in = IUNIT1
-  option%fid_out = IUNIT2
   open(option%fid_in, file=filename, action="read", status="old") 
   open(option%fid_out, file='pflotran.out', action="write", status="unknown")
 

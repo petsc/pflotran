@@ -66,6 +66,10 @@
   simulation => SimulationCreate()
   realization => simulation%realization
   option => realization%option
+  
+  option%fid_in = IUNIT1
+  option%fid_out = IUNIT2
+  out_unit = option%fid_out
 
   option%comm = PETSC_COMM_WORLD
   option%myrank = myrank
@@ -95,8 +99,6 @@
   
   if (myrank == 0) then
 
-    out_unit = option%fid_out
-  
     write(*,'(/," CPU Time:", 1pe12.4, " [sec] ", &
     & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
       timex(2)-timex(1), (timex(2)-timex(1))/60.d0, &
@@ -118,7 +120,7 @@
       (timex_wall(2)-timex_wall(1))/3600.d0
   endif
 
-  close(out_unit)
+  if (myrank == 0) close(out_unit)
 
   call LoggingDestroy()
   call PetscFinalize (ierr)

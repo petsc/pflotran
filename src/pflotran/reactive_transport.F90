@@ -1735,7 +1735,12 @@ function RTGetTecplotHeader(realization)
   enddo
   
   do i=1,realization%reaction%nkinmnrl
-    write(string2,'('',"'',a,''"'')') trim(reaction%kinmnrl_names(i))
+    write(string2,'('',"'',a,''_vf"'')') trim(reaction%kinmnrl_names(i))
+    string = trim(string) // trim(string2)
+  enddo
+  
+  do i=1,realization%reaction%nkinmnrl
+    write(string2,'('',"'',a,''_rt"'')') trim(reaction%kinmnrl_names(i))
     string = trim(string) // trim(string2)
   enddo
   
