@@ -1070,12 +1070,12 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
         icplx = eqsurfcmplxsort(i)
         icplx2 = eqsurfcmplxsort(i+1)
         if (icplx > 0) then
-          conc = auxvar%eqsurfcmplx_spec(icplx)
+          conc = auxvar%eqsurfcmplx_conc(icplx)
         else
           conc = auxvar%eqsurfcmplx_freesite_conc(-icplx)
         endif
         if (icplx2 > 0) then
-          conc2 = auxvar%eqsurfcmplx_spec(icplx2)
+          conc2 = auxvar%eqsurfcmplx_conc(icplx2)
         else
           conc2 = auxvar%eqsurfcmplx_freesite_conc(-icplx2)
         endif
@@ -1097,7 +1097,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       icplx = eqsurfcmplxsort(i)
       if (icplx > 0) then
         write(option%fid_out,121) reaction%surface_complex_names(icplx), &
-                                  auxvar%eqsurfcmplx_spec(icplx)/ &
+                                  auxvar%eqsurfcmplx_conc(icplx)/ &
                                   auxvar%den(1)*1000.d0, &
                                   reaction%eqsurfcmplx_logK(icplx)
       else
@@ -1106,8 +1106,10 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
                                   auxvar%den(1)*1000.d0
       endif
     enddo 
-    
-    123 format(/,'  primary species  retardation')  
+  endif
+
+! retardation
+  if (reaction%neqsurfcmplxrxn > 0) then
     write(option%fid_out,123)
     write(option%fid_out,90)
     do j = 1, reaction%ncomp
@@ -1123,7 +1125,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
               if (auxvar%total(j,iphase) /= 0.d0) &
               retardation = retardation + &
                             reaction%eqsurfcmplxstoich(jj,icplx)* &
-                            auxvar%eqsurfcmplx_spec(icplx)/auxvar%total(j,iphase)
+                            auxvar%eqsurfcmplx_conc(icplx)/auxvar%total(j,iphase)
               exit
             endif
           enddo
@@ -1131,26 +1133,44 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       enddo
       write(option%fid_out,124) reaction%primary_species_names(j),retardation
     enddo
+    123 format(/,'  primary species  retardation')  
     124 format(2x,a12,4x,1pe12.4)
   endif
   
   ! Ion Exchange
   if (reaction%neqionxrxn > 0) then
-    write(option%fid_out,125)
-    write(option%fid_out,90)
-    125 format(/,2x,'ionexchange reactions',/,2x,'cation  selectivity coef.  sorbed conc.')
     do irxn = 1, reaction%neqionxrxn
+      write(option%fid_out,125)
+      write(option%fid_out,90)
       write(option%fid_out,126) reaction%eqionx_rxn_CEC(irxn)
+      write(option%fid_out,127)
+      write(option%fid_out,90)
       ncomp = reaction%eqionx_rxn_cationid(0,irxn)
       do jcomp = 1, ncomp
         icomp = reaction%eqionx_rxn_cationid(jcomp,irxn)
-        write(option%fid_out,127) jcomp,icomp,reaction%eqionx_rxn_k(jcomp,irxn)
+        write(option%fid_out,128) reaction%primary_species_names(icomp), &
+                                  reaction%eqionx_rxn_k(jcomp,irxn)!,auxvar%eqionx_conc(icomp)
       enddo
     enddo
+    125 format(/,2x,'ion-exchange reactions')
     126 format(2x,'CEC = ',1pe12.4)
-    127 format(2x,2i3,1p3e12.4)
+    127 format(2x,'cation  selectivity coef.  sorbed conc.')
+    128 format(2x,a8,1p3e12.4)
   endif
-          
+  
+  !total retardation from ion exchange and surface complexation
+  if (reaction%neqsurfcmplxrxn > 0 .and. reaction%neqionxrxn > 0) then
+    write(option%fid_out,1128)
+    write(option%fid_out,90)
+    do jcomp = 1, reaction%ncomp
+      if (abs(auxvar%total(jcomp,iphase)) > 0.d0) &
+      retardation = 1.d0 + auxvar%total_sorb(jcomp)/auxvar%total(jcomp,iphase)
+      write(option%fid_out,129) reaction%primary_species_names(jcomp),retardation
+    enddo
+ 1128 format(/,2x,'primary species  total retardation')
+  129 format(2x,a12,8x,1pe12.4)
+  endif
+  
   if (reaction%nmnrl > 0) then
   
     130 format(/,'  mineral                 log SI    log K')
@@ -1741,7 +1761,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
     do k = 1, ncplx
       icplx = reaction%eqsurfcmplx_rxn_to_complex(k,irxn)
 
-      auxvar%eqsurfcmplx_spec(icplx) = surfcmplx_conc(icplx)
+      auxvar%eqsurfcmplx_conc(icplx) = surfcmplx_conc(icplx)
 
       ncomp = reaction%eqsurfcmplxspecid(0,icplx)
       do i = 1, ncomp
@@ -1866,7 +1886,10 @@ subroutine RTotalSorb(auxvar,reaction,option)
     ! sum up charges
     sumZX = 0.d0
     do i = 1, ncomp
-    icomp = reaction%eqionx_rxn_cationid(i,irxn)
+      icomp = reaction%eqionx_rxn_cationid(i,irxn)
+      
+!     auxvar%eqionx_conc(icomp) = cation_X(i)
+
       sumZX = sumZX + reaction%primary_spec_Z(icomp)*cation_X(i)
     enddo
 

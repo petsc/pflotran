@@ -1805,7 +1805,7 @@ subroutine RTAuxVarCompute(x,aux_var,reaction,option)
     endif
     if (reaction%neqsurfcmplxrxn > 0) then
       auxvar_pert%eqsurfcmplx_freesite_conc = 1.d-9
-      auxvar_pert%eqsurfcmplx_spec = 0.d0
+      auxvar_pert%eqsurfcmplx_conc = 0.d0
     endif
     if (reaction%neqionxrxn > 0) then
       aux_var%eqionx_ref_cation_sorbed_conc = 1.d-9
