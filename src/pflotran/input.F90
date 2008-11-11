@@ -202,6 +202,8 @@ end subroutine InputReadDouble
 ! ************************************************************************** !
 subroutine InputReadFlotranString(option, fid, string, ierr)
 
+  use Fileio_module
+  
   implicit none
 
   type(option_type) :: option
