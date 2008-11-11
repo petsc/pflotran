@@ -4739,16 +4739,16 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
       local_id_dn = grid%nG2L(ghosted_id_dn) ! = zero for ghost nodes
       ! velocities are stored as the downwind face of the upwind cell
       area = cur_connection_set%area(iconn)* &
-             dabs(cur_connection_set%dist(direction,iconn))
+             cur_connection_set%dist(direction,iconn)
       velocity = patch%internal_velocities(iphase,sum_connection)* &
                  area
       if (local_id_up > 0) then
         vec_ptr(local_id_up) = vec_ptr(local_id_up) + velocity
-        sum_area(local_id_up) = sum_area(local_id_up) + area
+        sum_area(local_id_up) = sum_area(local_id_up) + dabs(area)
       endif
       if (local_id_dn > 0) then
         vec_ptr(local_id_dn) = vec_ptr(local_id_dn) + velocity
-        sum_area(local_id_dn) = sum_area(local_id_dn) + area
+        sum_area(local_id_dn) = sum_area(local_id_dn) + dabs(area)
       endif
     enddo
     cur_connection_set => cur_connection_set%next
@@ -4764,11 +4764,11 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
       area = cur_connection_set%area(iconn)* &
-             dabs(cur_connection_set%dist(direction,iconn))
+             cur_connection_set%dist(direction,iconn)
       vec_ptr(local_id) = vec_ptr(local_id)+ &
                           patch%boundary_velocities(1,sum_connection)* &
                           area
-      sum_area(local_id) = sum_area(local_id) + area
+      sum_area(local_id) = sum_area(local_id) + dabs(area)
     enddo
     boundary_condition => boundary_condition%next
   enddo
