@@ -469,7 +469,7 @@ subroutine Init(simulation,filename)
     ! at this point the auxvars have been computed with activity coef = 1.d0
     ! to use intitial condition with activity coefs /= 1.d0, must update
     ! activity coefs and recompute auxvars
-    if (realization%reaction%compute_activity_coefs /= ACTIVTY_COEFFICIENTS_OFF) then
+    if (realization%reaction%compute_activity_coefs /= ACTIVITY_COEFFICIENTS_OFF) then
       call RTUpdateSolution(realization)    
       call RTUpdateAuxVars(realization)
     endif

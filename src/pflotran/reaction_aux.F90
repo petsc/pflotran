@@ -308,7 +308,7 @@ function ReactionCreate()
   reaction%num_dbase_temperatures = 0
   nullify(reaction%dbase_temperatures)
 
-  reaction%compute_activity_coefs = ACTIVTY_COEFFICIENTS_OFF
+  reaction%compute_activity_coefs = ACTIVITY_COEFFICIENTS_OFF
   reaction%use_log_formulation = PETSC_FALSE
   reaction%use_full_geochemistry = PETSC_FALSE
   

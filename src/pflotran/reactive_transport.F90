@@ -294,7 +294,7 @@ subroutine RTUpdateSolutionPatch(realization)
   aux_vars => patch%aux%RT%aux_vars
 
   ! update activity coefficients
-  if (reaction%compute_activity_coefs /= ACTIVTY_COEFFICIENTS_OFF) then
+  if (reaction%compute_activity_coefs /= ACTIVITY_COEFFICIENTS_OFF) then
     do ghosted_id = 1, grid%ngmax
       call RActivityCoefficients(aux_vars(ghosted_id),reaction,option)
     enddo  
@@ -749,7 +749,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   r_p = -accum_p
   
   ! update activity coefficients
-  if (reaction%compute_activity_coefs > ACTIVTY_COEFFICIENTS_TIMESTEP) then
+  if (reaction%compute_activity_coefs > ACTIVITY_COEFFICIENTS_TIMESTEP) then
     do ghosted_id = 1, grid%ngmax
       call RActivityCoefficients(aux_vars(ghosted_id),reaction,option)
     enddo  

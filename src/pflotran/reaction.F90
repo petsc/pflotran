@@ -318,11 +318,11 @@ subroutine ReactionRead(reaction,fid,option)
         call fiDefaultMsg(option%myrank,'CHEMISTRY,ACTIVITY COEFFICIENTS',ierr)        
         select case(trim(word))
           case('ITERATION')
-            reaction%compute_activity_coefs = ACTIVTY_COEFFICIENTS_ITERATION    
+            reaction%compute_activity_coefs = ACTIVITY_COEFFICIENTS_ITERATION    
           case('NEWTON')
-            reaction%compute_activity_coefs = ACTIVTY_COEFFICIENTS_NEWTON       
+            reaction%compute_activity_coefs = ACTIVITY_COEFFICIENTS_NEWTON       
           case default
-            reaction%compute_activity_coefs = ACTIVTY_COEFFICIENTS_TIMESTEP        
+            reaction%compute_activity_coefs = ACTIVITY_COEFFICIENTS_TIMESTEP        
         end select
       case default
         call printErrMsg(option,'CHEMISTRY keyword: '//trim(word)//' not recognized')
@@ -337,7 +337,7 @@ subroutine ReactionRead(reaction,fid,option)
 
   
   if (len_trim(reaction%database_filename) < 2) &
-    reaction%compute_activity_coefs = ACTIVTY_COEFFICIENTS_OFF
+    reaction%compute_activity_coefs = ACTIVITY_COEFFICIENTS_OFF
  
 end subroutine ReactionRead
 
@@ -610,7 +610,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
   do
 
     auxvar%primary_spec = auxvar%primary_molal ! assume a density of 1 kg/L
-    if (reaction%compute_activity_coefs /= ACTIVTY_COEFFICIENTS_OFF .and. &
+    if (reaction%compute_activity_coefs /= ACTIVITY_COEFFICIENTS_OFF .and. &
         compute_activity_coefs) then
       call RActivityCoefficients(auxvar,reaction,option)
     endif
@@ -1490,7 +1490,7 @@ subroutine RActivityCoefficients(auxvar,reaction,option)
   PetscReal :: I, sqrt_I
 
 
-!  if (reaction%compute_activity_coefs == ACTIVTY_COEFFICIENTS_NEWTON) then
+!  if (reaction%compute_activity_coefs == ACTIVITY_COEFFICIENTS_NEWTON) then
 !  endif
   
   ! compute ionic strength
