@@ -27,9 +27,10 @@ module Reactive_Transport_Aux_module
     ! sorption reactions
     ! PetscReal, pointer :: kinsurfcmplx_spec(:)
     ! PetscReal, pointer :: kinionx_molfrac(:)
-    PetscReal, pointer :: eqsurfcmplx_spec(:)
+    PetscReal, pointer :: eqsurfcmplx_conc(:)
     PetscReal, pointer :: eqsurfcmplx_freesite_conc(:)
     PetscReal, pointer :: eqionx_ref_cation_sorbed_conc(:)
+    PetscReal, pointer :: eqionx_conc(:)
     ! PetscReal, pointer :: eqionx_molfrac(:)
     ! mineral reactions
     PetscReal, pointer :: mnrl_volfrac0(:)
@@ -142,20 +143,23 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   endif    
   
   if (reaction%neqsurfcmplxrxn > 0) then
-    allocate(aux_var%eqsurfcmplx_spec(reaction%neqsurfcmplx))
-    aux_var%eqsurfcmplx_spec = 0.d0
+    allocate(aux_var%eqsurfcmplx_conc(reaction%neqsurfcmplx))
+    aux_var%eqsurfcmplx_conc = 0.d0
     allocate(aux_var%eqsurfcmplx_freesite_conc(reaction%neqsurfcmplxrxn))
     aux_var%eqsurfcmplx_freesite_conc = 1.d-9 ! initialize to guess
   else
-    nullify(aux_var%eqsurfcmplx_spec)
+    nullify(aux_var%eqsurfcmplx_conc)
     nullify(aux_var%eqsurfcmplx_freesite_conc)
   endif
   
   if (reaction%neqionxrxn > 0) then
     allocate(aux_var%eqionx_ref_cation_sorbed_conc(reaction%neqionxrxn))
     aux_var%eqionx_ref_cation_sorbed_conc = 1.d-9 ! initialize to guess
+    allocate(aux_var%eqionx_conc(reaction%neqionxrxn))
+    aux_var%eqionx_conc = 1.d-9
   else
     nullify(aux_var%eqionx_ref_cation_sorbed_conc)
+    nullify(aux_var%eqionx_conc)
   endif
   
   if (reaction%nkinmnrl > 0) then
@@ -212,19 +216,24 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
   aux_var%total = aux_var2%total
   aux_var%dtotal = aux_var2%dtotal
   aux_var%primary_spec = aux_var2%primary_spec
+  
   if (associated(aux_var%secondary_spec)) &
     aux_var%secondary_spec = aux_var2%secondary_spec
   if (associated(aux_var%total_sorb)) then  
     aux_var%total_sorb = aux_var2%total_sorb
     aux_var%dtotal_sorb = aux_var2%dtotal_sorb
   endif
-  if (associated(aux_var%eqsurfcmplx_spec)) then
-    aux_var%eqsurfcmplx_spec = aux_var2%eqsurfcmplx_spec
+  
+  if (associated(aux_var%eqsurfcmplx_conc)) then
+    aux_var%eqsurfcmplx_conc = aux_var2%eqsurfcmplx_conc
     aux_var%eqsurfcmplx_freesite_conc = aux_var2%eqsurfcmplx_freesite_conc
   endif
+  
   if (associated(aux_var%eqionx_ref_cation_sorbed_conc)) then
     aux_var%eqionx_ref_cation_sorbed_conc = aux_var2%eqionx_ref_cation_sorbed_conc
+    aux_var%eqionx_conc = aux_var2%eqionx_conc
   endif  
+  
   if (associated(aux_var%mnrl_volfrac)) then
     aux_var%mnrl_volfrac0 = aux_var2%mnrl_volfrac0
     aux_var%mnrl_volfrac = aux_var2%mnrl_volfrac
@@ -232,6 +241,7 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
     aux_var%mnrl_area = aux_var2%mnrl_area
     aux_var%mnrl_rate = aux_var2%mnrl_rate
   endif
+  
   aux_var%act_h2o = aux_var2%act_h2o
   aux_var%pri_act_coef = aux_var2%pri_act_coef
   if (associated(aux_var%sec_act_coef)) &
@@ -257,22 +267,30 @@ subroutine RTAuxVarDestroy(aux_var)
   nullify(aux_var%den)
   if (associated(aux_var%sat)) deallocate(aux_var%sat)
   nullify(aux_var%sat)
+  
   if (associated(aux_var%primary_molal)) deallocate(aux_var%primary_molal)
   nullify(aux_var%primary_molal)
+  
   if (associated(aux_var%total)) deallocate(aux_var%total)
   nullify(aux_var%total)
   if (associated(aux_var%dtotal))deallocate(aux_var%dtotal)
   nullify(aux_var%dtotal)
+  
   if (associated(aux_var%primary_spec))deallocate(aux_var%primary_spec)
   nullify(aux_var%primary_spec)
   if (associated(aux_var%secondary_spec))deallocate(aux_var%secondary_spec)
   nullify(aux_var%secondary_spec)
+  
   if (associated(aux_var%total_sorb)) deallocate(aux_var%total_sorb)
   nullify(aux_var%total_sorb)
   if (associated(aux_var%dtotal_sorb))deallocate(aux_var%dtotal_sorb)
   nullify(aux_var%dtotal_sorb)
+  
   if (associated(aux_var%eqionx_ref_cation_sorbed_conc)) deallocate(aux_var%eqionx_ref_cation_sorbed_conc)
-  nullify(aux_var%eqionx_ref_cation_sorbed_conc)  
+  nullify(aux_var%eqionx_ref_cation_sorbed_conc)
+  if (associated(aux_var%eqionx_conc)) deallocate(aux_var%eqionx_conc)
+  nullify(aux_var%eqionx_conc)
+  
   if (associated(aux_var%mnrl_volfrac0))deallocate(aux_var%mnrl_volfrac0)
   nullify(aux_var%mnrl_volfrac0)
   if (associated(aux_var%mnrl_volfrac))deallocate(aux_var%mnrl_volfrac)
@@ -283,6 +301,7 @@ subroutine RTAuxVarDestroy(aux_var)
   nullify(aux_var%mnrl_area)
   if (associated(aux_var%mnrl_rate))deallocate(aux_var%mnrl_rate)
   nullify(aux_var%mnrl_rate)
+  
   if (associated(aux_var%pri_act_coef))deallocate(aux_var%pri_act_coef)
   nullify(aux_var%pri_act_coef)
   if (associated(aux_var%sec_act_coef))deallocate(aux_var%sec_act_coef)
