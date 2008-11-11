@@ -144,10 +144,10 @@ PetscInt, parameter :: MINERAL_SURFACE_AREA = 21
 PetscInt, parameter :: PH = 22
 
 ! activity coefficients
-PetscInt, parameter :: ACTIVTY_COEFFICIENTS_OFF = 0
-PetscInt, parameter :: ACTIVTY_COEFFICIENTS_TIMESTEP = 1
-PetscInt, parameter :: ACTIVTY_COEFFICIENTS_ITERATION = 2
-PetscInt, parameter :: ACTIVTY_COEFFICIENTS_NEWTON = 3
+PetscInt, parameter :: ACTIVITY_COEFFICIENTS_OFF = 0
+PetscInt, parameter :: ACTIVITY_COEFFICIENTS_TIMESTEP = 1
+PetscInt, parameter :: ACTIVITY_COEFFICIENTS_ITERATION = 2
+PetscInt, parameter :: ACTIVITY_COEFFICIENTS_NEWTON = 3
 
 ! structured grid faces
 PetscInt, parameter :: WEST_FACE = 1
