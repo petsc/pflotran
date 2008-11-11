@@ -405,16 +405,16 @@ The flux $\bF_k$ has the usual form with contributions from advection and diffus
 \bF_k \eq \bq C_k - \varphi D \bnabla C_k,
 \EN
 with diffusion/dispersion coefficient $D$ assumed to be identical for all species. This condition is relaxed in the section below on species-dependent diffusion. The concentration of the $i$th secondary species is given by the relation
-\EQ
-m_i \eq \gamma_i^{-1} \prod_j \big(\gamma_j m_j\big)^{\nu_{ji}},
+\EQ\label{mi}
+m_i \eq \gamma_i^{-1}K_i \prod_j \big(\gamma_j m_j\big)^{\nu_{ji}},
 \EN
-where the molality $m_l$ is related to molarity $C_l$ by the approximate expression
+with equilibrium constant $K_i$, where the molality $m_l$ is related to molarity $C_l$ by the approximate expression
 \EQ
 C_l \eq \rho_w m_l,
 \EN
 where $\rho_w$ denotes the density of pure water.
-Activity coefficients $\gamma_l$ are obtained from the Debye-H\"uckel algorithm
-\EQ
+For low ionic strength electrolyte solutions, activity coefficients $\gamma_l$ are obtained from the Debye-H\"uckel algorithm
+\EQ\label{dh}
 \log\,\gamma_i \eq -\frac{z_i^2 A \sqrt{\I}}{1+B \stackrel{\circ}{a}_i \sqrt{\I}}+\dot b \I,
 \EN
 and the Davies algorithm defined by the expression
@@ -422,11 +422,34 @@ and the Davies algorithm defined by the expression
 \log\,\gamma_i \eq -\frac{z_i^2}{2}\left[\frac{\sqrt{\I}}{1+ \sqrt{\I}}-0.3 \I\right].
 \EN
 The ionic strength $\I$ is defined by
-\EQ
+\EQ\label{ionic}
 \I \eq \frac{1}{2} \sum_j z_j^2 m_j + \frac{1}{2} \sum_i z_i^2 m_i,
 \EN
 with molality $m_l$ and valence $z_l$. In the case of the Debye-H\"uckel and Davies algorithms, the activity coeffients are determined by solving a nonlinear equation for the ionic strength.
 For high ionic strength solutions, the Pitzer model must be used which is described in a later section.
+
+\subsection{Debye-H\"uckel Activity Coefficient Algorithm}
+
+For the Debye-H\"uckel model the activity coefficients are functions of the ionic strength $\I$ according to Eqn.\eqref{dh}. The ionic strength, in turn, is a function of the activity coefficients according to the definition Eqn.\eqref{ionic}. This relation defines a nonlinear equation to determine the ionic strength and hence the activity coefficients according to
+\EQ\label{f}
+f(\I)\eq \frac{1}{2} \sum_j z_j^2 m_j + \frac{1}{2} \sum_i z_i^2 m_i(\I) -\I.
+\EN
+The ionic strength is obtained through Newton-Raphson iteration to give
+\EQ
+\I_{k+1} \eq \I_k-\dfrac{f(\I_k)}{\dfrac{df(\I_k)}{d\I}},
+\EN
+for the $k+1$st iteration. From Eqn.\eqref{f}
+\EQ
+\frac{df}{d\I}\eq \frac{1}{2} \sum_i z_i^2 \frac{dm_i(\I)}{d\I} -1,
+\EN
+where, differentiating the logarithm of Eqn.\eqref{mi} for the $i$ secondary species gives
+\EQ
+\frac{1}{m_i}\frac{dm_i}{d\I} \eq -\frac{1}{\gamma_i}\frac{d\gamma_i}{d\I} + \sum_j\nu_{ji}\frac{1}{\gamma_j}\frac{d\gamma_j}{d\I}.
+\EN
+It follow from Eqn.\eqref{dh} that
+\EQ
+\frac{1}{\gamma_i}\frac{d\gamma_i}{d\I}\eq \frac{1}{2} \frac{z_i^2 A \I^{-1/2}}{\left(1+\stackrel{\circ}{a}_i B\sqrt{\I}\right)^2} + \dot b.
+\EN
 
 \section{Mineral Precipitation/Dissolution Reactions}
 
