@@ -660,7 +660,7 @@ PflotranJacobianMultilevelOperator::initializeScratchVector( Vec x )
 int
 PflotranJacobianMultilevelOperator::getVariableIndex(std::string &name, 
                                                      tbox::Pointer<hier::VariableContext> &context,
-                                                     tbox::Pointer<hier::Variable<NDIM> > &var,
+                                                     tbox::Pointer<hier::Variable<NDIM> > &vari,
                                                      hier::IntVector<NDIM> nghosts,
                                                      int depth,
                                                      bool bOverride,
