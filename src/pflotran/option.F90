@@ -74,7 +74,8 @@ module Option_module
     PetscInt :: idt_switch = -1
     PetscReal :: tref
     PetscReal :: pref
-    
+    PetscReal :: den_ref
+        
     PetscReal :: disp
     
 !   table lookup
@@ -198,6 +199,7 @@ function OptionCreate()
 !-----------------------------------------------------------------------
   option%pref = 101325.d0
   option%tref = 25.d0
+  option%den_ref = 0.d0
   
   allocate(option%tfac(13))
       

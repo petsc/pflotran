@@ -731,6 +731,11 @@ subroutine PatchBridgeFlowAndTransport(patch,option)
         print *, 'Bridge of flow and transport densities needs to be implemented.  Ask Glenn'
         stop
       endif
+    case default
+      do iaux = 1, patch%aux%RT%num_aux_bc
+        patch%aux%RT%aux_vars_bc(iaux)%den(1) = option%den_ref
+        patch%aux%RT%aux_vars_bc(iaux)%sat = 1.d0
+      enddo
   end select
 
 end subroutine PatchBridgeFlowAndTransport

@@ -48,10 +48,20 @@ subroutine RTTimeCut(realization)
 
   field => realization%field
  
+  ! copy previous solution back to current solution
   call VecCopy(field%tran_xx,field%tran_yy,ierr)
+  
+  ! set densities and saturations to t
+  if (realization%option%nflowdof > 0) then
+    call RTUpdateDenAndSat(realization,realization%option%tran_weight_t0)
+  endif
+  
   call RTInitializeTimestep(realization)  
-  ! set densities and weights to t+dt
-  call RTUpdateDenAndSat(realization,realization%option%tran_weight_t1)
+  
+  ! set densities and saturations to t+dt
+  if (realization%option%nflowdof > 0) then
+    call RTUpdateDenAndSat(realization,realization%option%tran_weight_t1)
+  endif
  
 end subroutine RTTimeCut
 
@@ -189,7 +199,7 @@ end subroutine RTInitializeTimestep
 
 ! ************************************************************************** !
 !
-! RTInitializeTimestep: Update data in module prior to time step
+! RTInitializeTimestepPatch: Update data in module prior to time step
 ! author: Glenn Hammond
 ! date: 02/20/08
 !
@@ -202,8 +212,6 @@ subroutine RTInitializeTimestepPatch(realization)
   
   type(realization_type) :: realization
 
-  ! set densities and weights to t, as opposed to t+dt
-  call RTUpdateDenAndSatPatch(realization,realization%option%tran_weight_t0)
   call RTUpdateFixedAccumulationPatch(realization)
 
 end subroutine RTInitializeTimestepPatch

@@ -930,15 +930,22 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   
   do
   
-    option%dt = option%tran_dt
-    option%tran_weight_t0 = (option%tran_time-option%tran_dt-start_time)/ &
-                            (end_time-start_time)
-    option%tran_weight_t1 = (option%tran_time-start_time)/ &
-                            (end_time-start_time)
+    if (option%nflowdof > 0) then
+      option%dt = option%tran_dt
+      option%tran_weight_t0 = (option%tran_time-option%tran_dt-start_time)/ &
+                              (end_time-start_time)
+      option%tran_weight_t1 = (option%tran_time-start_time)/ &
+                              (end_time-start_time)
+      ! set densities and saturations to t
+      call RTUpdateDenAndSat(realization,option%tran_weight_t0)
+    endif
 
     call RTInitializeTimestep(realization)
-    ! set densities and weights to t+dt
-    call RTUpdateDenAndSat(realization,option%tran_weight_t1)
+
+    ! set densities and saturations to t+dt
+    if (option%nflowdof > 0) then
+      call RTUpdateDenAndSat(realization,option%tran_weight_t1)
+    endif
 
     if (option%myrank == 0) then
       write(*,'(/,2("=")" TRANSPORT ",47("="))')
@@ -1039,6 +1046,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
         option%tran_time = option%tran_time - option%tran_dt
         option%tran_dt = 0.5d0 * option%tran_dt
         option%tran_time = option%tran_time + option%tran_dt
+        option%dt = option%tran_dt
       
         if (option%myrank == 0) write(*,'('' -> Cut time step: snes='',i3, &
           &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.4, '' dt= '', &
@@ -1047,10 +1055,12 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
               option%tran_dt/realization%output_option%tconv,timestep_cut_flag
 
         ! recompute weights
-        option%tran_weight_t0 = (option%tran_time-option%tran_dt-start_time)/ &
-                                (end_time-start_time)
-        option%tran_weight_t1 = (option%tran_time-start_time)/ &
-                                (end_time-start_time)
+        if (option%nflowdof > 0) then
+          option%tran_weight_t0 = (option%tran_time-option%tran_dt-start_time)/ &
+                                  (end_time-start_time)
+          option%tran_weight_t1 = (option%tran_time-start_time)/ &
+                                  (end_time-start_time)
+        endif
         call RTTimeCut(realization)
 
       else

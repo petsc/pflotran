@@ -52,6 +52,7 @@ subroutine Init(simulation,filename)
   
   use Reactive_Transport_module
 
+  use water_eos_module
   use Utility_module
     
   implicit none
@@ -76,6 +77,7 @@ subroutine Init(simulation,filename)
   PetscInt :: temp_int
   PetscErrorCode :: ierr
   PCSide:: pcside
+  PetscReal :: r1, r2, r3, r4, r5, r6
 
   interface
 
@@ -127,6 +129,7 @@ subroutine Init(simulation,filename)
     call setFlowMode(option)
     flow_solver => flow_stepper%solver
   else
+    option%nphase = 1
     call TimestepperDestroy(simulation%flow_stepper)
     nullify(flow_stepper)
   endif
@@ -449,7 +452,9 @@ subroutine Init(simulation,filename)
       call VecDestroy(global_vec,ierr)
     else
       call VecSet(field%saturation_loc,1.d0,ierr)
-      call VecSet(field%density_loc,997.160290931658d0,ierr)
+      call wateos(option%tref,option%pref,option%den_ref,r1,r2,r3,r4,r5,r6, &
+                  option%scale,ierr)
+      call VecSet(field%density_loc,option%den_ref,ierr)
     endif
 
     call VecCopy(field%saturation_loc,field%saturation0_loc,ierr)
