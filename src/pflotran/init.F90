@@ -1409,6 +1409,12 @@ subroutine readInput(simulation,filename)
         length = len_trim(word)
         call fiCharsToUpper(word,length)
         select case(word)
+          case('FLOW')
+            if (associated(flow_solver)) then
+              call TimestepperRead(flow_stepper,option%fid_in,option)
+            else
+              call fiSkipToEND(option%fid_in,option%myrank,card)
+            endif
           case('TRAN','TRANSPORT')
             if (associated(tran_solver)) then
               call TimestepperRead(tran_stepper,option%fid_in,option)
@@ -1416,8 +1422,8 @@ subroutine readInput(simulation,filename)
               call fiSkipToEND(option%fid_in,option%myrank,card)
             endif
           case default
-            if (associated(flow_solver)) then
-              call TimestepperRead(flow_stepper,option%fid_in,option)
+            if (associated(master_stepper)) then
+              call TimestepperRead(master_stepper,option%fid_in,option)
             else
               call fiSkipToEND(option%fid_in,option%myrank,card)
             endif
@@ -1430,6 +1436,12 @@ subroutine readInput(simulation,filename)
         length = len_trim(word)
         call fiCharsToUpper(word,length)
         select case(word)
+          case('FLOW')
+            if (associated(flow_solver)) then
+              call SolverReadLinear(flow_solver,option%fid_in,option%myrank)
+            else
+              call fiSkipToEND(option%fid_in,option%myrank,card)
+            endif
           case('TRAN','TRANSPORT')
             if (associated(tran_solver)) then
               call SolverReadLinear(tran_solver,option%fid_in,option%myrank)
@@ -1437,8 +1449,8 @@ subroutine readInput(simulation,filename)
               call fiSkipToEND(option%fid_in,option%myrank,card)
             endif
           case default
-            if (associated(flow_solver)) then
-              call SolverReadLinear(flow_solver,option%fid_in,option%myrank)
+            if (associated(master_solver)) then
+              call SolverReadLinear(master_solver,option%fid_in,option%myrank)
             else
               call fiSkipToEND(option%fid_in,option%myrank,card)
             endif
@@ -1451,15 +1463,21 @@ subroutine readInput(simulation,filename)
         length = len_trim(word)
         call fiCharsToUpper(word,length)
         select case(word)
+          case('FLOW')
+            if (associated(flow_solver)) then
+              call SolverReadNewton(flow_solver,option%fid_in,option%myrank)
+            else
+              call fiSkipToEND(option%fid_in,option%myrank,card)
+            endif
           case('TRAN','TRANSPORT')
-            if (associated(tran_stepper)) then
+            if (associated(tran_solver)) then
               call SolverReadNewton(tran_solver,option%fid_in,option%myrank)
             else
               call fiSkipToEND(option%fid_in,option%myrank,card)
             endif
           case default
-            if (associated(flow_stepper)) then
-              call SolverReadNewton(flow_solver,option%fid_in,option%myrank)
+            if (associated(master_solver)) then
+              call SolverReadNewton(master_solver,option%fid_in,option%myrank)
             else
               call fiSkipToEND(option%fid_in,option%myrank,card)
             endif
