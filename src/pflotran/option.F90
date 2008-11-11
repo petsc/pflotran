@@ -14,6 +14,7 @@ module Option_module
     PetscMPIInt :: comm                      ! alternative to PETSC_COMM_WORLD
     PetscMPIInt :: myrank                    ! rank in PETSC_COMM_WORLD
     PetscMPIInt :: commsize                  ! size of PETSC_COMM_WORLD
+    PetscTruth :: broadcast_read
   
     PetscInt :: fid_in
     PetscInt :: fid_out
@@ -167,6 +168,7 @@ function OptionCreate()
   option%comm = 0
   option%myrank = 0
   option%commsize = 0
+  option%broadcast_read = PETSC_FALSE
   
   option%fid_in = 0
   option%fid_out = 0

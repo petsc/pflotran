@@ -200,7 +200,41 @@ end subroutine InputReadDouble
 ! date: 11/10/08
 !
 ! ************************************************************************** !
-subroutine InputReadFlotranString(input, option)
+subroutine InputReadFlotranString(option, fid, string, ierr)
+
+  implicit none
+
+  type(option_type) :: option
+  PetscInt :: fid
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscErrorCode :: ierr, ierr2
+
+  if (option%broadcast_read) then
+    if (option%myrank == 0) then
+      call fiReadFlotranString(fid, string, ierr)
+    endif
+    call mpi_bcast(ierr,ONE_INTEGER,MPI_INTEGER,ZERO_INTEGER, &
+                   option%comm,ierr2)
+    if (ierr == 0) then  
+      call mpi_bcast(string,MAXSTRINGLENGTH,MPI_CHARACTER, &
+                     ZERO_INTEGER,option%comm,ierr2)      
+    endif
+  else
+    call fiReadFlotranString(fid, string, ierr)
+  endif
+
+end subroutine InputReadFlotranString
+
+#if 0
+! ************************************************************************** !
+!
+! InputReadFlotranString2: Reads a string (strlen characters long) from a 
+!                           file while avoiding commented or skipped lines.
+! author: Glenn Hammond
+! date: 11/10/08
+!
+! ************************************************************************** !
+subroutine InputReadFlotranString2(input, option)
 
   implicit none
 
@@ -211,7 +245,7 @@ subroutine InputReadFlotranString(input, option)
 
   if (input%broadcast_read) then
     if (option%myrank == option%io_rank) then
-      call fiReadFlotranStringSlave(input, option)
+      call fiReadFlotranString(input, option)
     endif
     call mpi_bcast(input%ierr,ONE_INTEGER,MPI_INTEGER,option%io_rank, &
                    option%comm,ierr2)
@@ -223,9 +257,8 @@ subroutine InputReadFlotranString(input, option)
     call fiReadFlotranString(input, option)
   endif
 
-end subroutine InputReadFlotranString
+end subroutine InputReadFlotranString2
 
-#if 0
 ! ************************************************************************** !
 !
 ! InputReadFlotranStringSlave: Reads a string (strlen characters long) from a 
