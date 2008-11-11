@@ -294,7 +294,7 @@ subroutine RTUpdateSolutionPatch(realization)
   aux_vars => patch%aux%RT%aux_vars
 
   ! update activity coefficients
-  if (reaction%compute_activity_coefs) then
+  if (reaction%compute_activity_coefs /= ACTIVTY_COEFFICIENTS_OFF) then
     do ghosted_id = 1, grid%ngmax
       call RActivityCoefficients(aux_vars(ghosted_id),reaction,option)
     enddo  
@@ -747,6 +747,14 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
 
   r_p = -accum_p
+  
+  ! update activity coefficients
+  if (reaction%compute_activity_coefs > ACTIVTY_COEFFICIENTS_TIMESTEP) then
+    do ghosted_id = 1, grid%ngmax
+      call RActivityCoefficients(aux_vars(ghosted_id),reaction,option)
+    enddo  
+  endif
+    
 #if 1
   ! Accumulation terms ------------------------------------
   do local_id = 1, grid%nlmax  ! For each local node do...
