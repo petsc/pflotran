@@ -431,13 +431,15 @@ For high ionic strength solutions, the Pitzer model must be used which is descri
 \subsection{Debye-H\"uckel Activity Coefficient Algorithm}
 
 For the Debye-H\"uckel model the activity coefficients are functions of the ionic strength $\I$ according to Eqn.\eqref{dh}. The ionic strength, in turn, is a function of the activity coefficients according to the definition Eqn.\eqref{ionic}. This relation defines a nonlinear equation to determine the ionic strength and hence the activity coefficients according to
-\EQ\label{f}
-f(\I)\eq \frac{1}{2} \sum_j z_j^2 m_j + \frac{1}{2} \sum_i z_i^2 m_i(\I) -\I.
-\EN
+\BA\label{f}
+g(\I) &\eq \frac{1}{2} \sum_j z_j^2 m_j + \frac{1}{2} \sum_i z_i^2 m_i(\I) -\I,\\
+&\eq f(\I)-\I.
+\EA
 The ionic strength is obtained through Newton-Raphson iteration to give
-\EQ
-\I_{k+1} \eq \I_k-\dfrac{f(\I_k)}{\dfrac{df(\I_k)}{d\I}},
-\EN
+\BA
+\I_{k+1} &\eq \I_k-\dfrac{g(\I_k)}{\dfrac{dg(\I_k)}{d\I}},\\
+&\eq \I_k - \dfrac{f(\I_k)-\I_k}{f_k'-1} \eq \dfrac{\I_k f_k'-f_k}{f_k'-1},
+\EA
 for the $k+1$st iteration. From Eqn.\eqref{f}
 \EQ
 \frac{df}{d\I}\eq \frac{1}{2} \sum_i z_i^2 \frac{dm_i(\I)}{d\I} -1,
