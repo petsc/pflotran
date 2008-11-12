@@ -1757,7 +1757,7 @@ subroutine ImmisJacobian(snes,xx,A,B,flag,realization,ierr)
 
   SNES :: snes
   Vec :: xx
-  Mat :: A, B
+  Mat :: A, B, J
   type(realization_type) :: realization
   MatStructure flag
   PetscErrorCode :: ierr
