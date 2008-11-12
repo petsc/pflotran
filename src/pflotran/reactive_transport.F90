@@ -300,6 +300,8 @@ subroutine RTUpdateSolutionPatch(realization)
     enddo  
   endif
 
+  call RTUpdateAuxVarsPatch(realization,PETSC_FALSE)
+  
   ! update mineral volume fractions
   if (reaction%nkinmnrl > 0) then
     do ghosted_id = 1, grid%ngmax
@@ -366,7 +368,8 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
 
   call GridVecGetArrayF90(grid,field%tran_accum, accum_p, ierr)
 
-  call RTUpdateAuxVarsPatch(realization,PETSC_FALSE)
+! The loop below should take care of this. - geh
+!  call RTUpdateAuxVarsPatch(realization,PETSC_FALSE)
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
