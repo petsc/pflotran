@@ -1486,12 +1486,132 @@ subroutine RActivityCoefficients(auxvar,reaction,option)
   type(reaction_type) :: reaction
   type(option_type) :: option
   
-  PetscInt :: icplx, icomp
-  PetscReal :: I, sqrt_I
+  PetscInt :: icplx, icomp, it, j, jcomp, ncomp
+  PetscReal :: I, sqrt_I, II, sqrt_II, f, fpri, didi, dcdi, den, dgamdi, lnQK, sum
+  PetscReal :: ln_conc(reaction%ncomp)
+  PetscReal :: ln_act(reaction%ncomp)
+  PetscReal :: ln_act_h2o
 
 
-!  if (reaction%compute_activity_coefs == ACTIVITY_COEFFICIENTS_NEWTON) then
-!  endif
+  if (reaction%compute_activity_coefs == ACTIVITY_COEFFICIENTS_NEWTON) then
+
+  ln_conc = log(auxvar%primary_spec)
+  ln_act = ln_conc+log(auxvar%pri_act_coef)
+  ln_act_h2o = 0.d0  ! assume act h2o = 1 for now
+  
+  ! compute primary species contribution to ionic strength
+  fpri = 0.d0
+  do j = 1, reaction%ncomp
+    fpri = fpri + auxvar%primary_spec(j)*reaction%primary_spec_Z(j)* &
+                                         reaction%primary_spec_Z(j)
+  enddo
+  
+  it = 0
+  II = 0
+  do
+    it = it + 1
+    if (it > 50) then
+      print *,' too many iterations in computing activity coefficients-stop',it,f,I
+      stop
+    endif
+    
+  ! add secondary species contribution to ionic strength
+    I = fpri
+    do icplx = 1, reaction%neqcmplx ! for each secondary species
+      I = I + auxvar%secondary_spec(icplx)*reaction%eqcmplx_Z(icplx)* &
+                                       reaction%eqcmplx_Z(icplx)
+    enddo
+    I = I/auxvar%den(1)*1000.d0 ! molarity -> molality
+    I = 0.5d0*I
+    
+    if (abs(I-II) < 1.d-6*I) exit
+    
+    if (reaction%neqcmplx > 0) then
+      didi = 0.d0
+      sqrt_I = sqrt(I)
+      do icplx = 1, reaction%neqcmplx
+        if (abs(reaction%eqcmplx_Z(icplx)) > 0.d0) then
+          sum = 0.5d0*reaction%debyeA*reaction%eqcmplx_Z(icplx)*reaction%eqcmplx_Z(icplx) &
+            /(sqrt_I*(1.d0+reaction%debyeB*reaction%eqcmplx_a0(icplx)*sqrt_I)**2) &
+            -reaction%debyeBdot
+          ncomp = reaction%eqcmplxspecid(0,icplx)
+          do jcomp = 1, ncomp
+            j = reaction%eqcmplxspecid(jcomp,icplx)
+            if(abs(reaction%primary_spec_Z(j)) > 0.d0) then
+               dgamdi = -0.5d0*reaction%debyeA*reaction%primary_spec_Z(j)**2/(sqrt_I* &
+                 (1.d0+reaction%debyeB*reaction%primary_spec_a0(j)*sqrt_I)**2)+reaction%debyeBdot 
+               sum = sum + reaction%eqcmplxstoich(jcomp,icplx)*dgamdi
+            endif
+          enddo
+          dcdi = auxvar%secondary_spec(icplx)*LOG_TO_LN*sum
+          didi = didi+0.5d0*reaction%eqcmplx_Z(icplx)*reaction%eqcmplx_Z(icplx)*dcdi
+        endif
+      enddo
+      den = 1.d0-didi
+      if (abs(den) > 0.d0) then
+        II = (f-I*didi)/den
+      else
+        II = f
+      endif
+    else
+      II = f
+    endif    
+    
+    if (II < 0.d0) then
+      print *,'ionic strength negative!',II
+      stop
+    endif
+    
+  ! compute activity coefficients
+  ! primary species
+    I = II
+    sqrt_I = sqrt(I)
+    do icomp = 1, reaction%ncomp
+      if (abs(reaction%primary_spec_Z(icomp)) > 0.d0) then
+        auxvar%pri_act_coef(icomp) = exp((-reaction%primary_spec_Z(icomp)* &
+                                        reaction%primary_spec_Z(icomp)* &
+                                        sqrt_I*reaction%debyeA/ &
+                                        (1.d0+reaction%primary_spec_a0(icomp)* &
+                                              reaction%debyeB*sqrt_I)+ &
+                                        reaction%debyeBdot*I)* &
+                                        LOG_TO_LN)
+      else
+        auxvar%pri_act_coef(icomp) = 1.d0
+      endif
+    enddo
+                
+  ! secondary species
+    do icplx = 1, reaction%neqcmplx
+      if (abs(reaction%eqcmplx_Z(icplx)) > 0.d0) then
+        auxvar%sec_act_coef(icplx) = exp((-reaction%eqcmplx_Z(icplx)* &
+                                        reaction%eqcmplx_Z(icplx)* &
+                                        sqrt_I*reaction%debyeA/ &
+                                        (1.d0+reaction%eqcmplx_a0(icplx)* &
+                                              reaction%debyeB*sqrt_I)+ &
+                                        reaction%debyeBdot*I)* &
+                                        LOG_TO_LN)
+      else
+        auxvar%sec_act_coef(icplx) = 1.d0
+      endif
+    
+    ! compute secondary species concentration
+      lnQK = -reaction%eqcmplx_logK(icplx)*LOG_TO_LN
+
+    ! activity of water
+      if (reaction%eqcmplxh2oid(icplx) > 0) then
+        lnQK = lnQK + reaction%eqcmplxh2ostoich(icplx)*ln_act_h2o
+      endif
+
+      ncomp = reaction%eqcmplxspecid(0,icplx)
+      do jcomp = 1, ncomp
+        icomp = reaction%eqcmplxspecid(jcomp,icplx)
+        lnQK = lnQK + reaction%eqcmplxstoich(jcomp,icplx)*ln_act(icomp)
+      enddo
+      auxvar%secondary_spec(icplx) = exp(lnQK)/auxvar%sec_act_coef(icplx)
+    enddo
+  enddo
+  
+  else
   
   ! compute ionic strength
   ! primary species
@@ -1513,7 +1633,7 @@ subroutine RActivityCoefficients(auxvar,reaction,option)
   ! compute activity coefficients
   ! primary species
   do icomp = 1, reaction%ncomp
-    if (dabs(reaction%primary_spec_Z(icomp)) > 1.d-10) then
+    if (abs(reaction%primary_spec_Z(icomp)) > 1.d-10) then
       auxvar%pri_act_coef(icomp) = exp((-reaction%primary_spec_Z(icomp)* &
                                         reaction%primary_spec_Z(icomp)* &
                                         sqrt_I*reaction%debyeA/ &
@@ -1541,6 +1661,7 @@ subroutine RActivityCoefficients(auxvar,reaction,option)
     endif
   enddo
   
+  endif
 end subroutine RActivityCoefficients
 
 ! ************************************************************************** !
