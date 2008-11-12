@@ -3378,7 +3378,7 @@ subroutine WriteVTKGrid(fid,realization)
   
     if (option%myrank == 0) then
 
-1010 format('POINTS',x,i,x,'float')
+ 1010 format("POINTS",x,i12,x,"float")
       write(fid,1010) (nx+1)*(ny+1)*(nz+1)
       do k=0,nz
         if (k > 0) then
@@ -3401,7 +3401,7 @@ subroutine WriteVTKGrid(fid,realization)
         enddo
       enddo
 
-1020 format('CELLS',x,i,x,i)
+1020 format('CELLS',x,i12,x,i12)
       write(fid,1020) grid%nmax, grid%nmax*9
       nxp1Xnyp1 = nxp1*nyp1
       do k=0,nz-1
@@ -3419,7 +3419,7 @@ subroutine WriteVTKGrid(fid,realization)
 
       write(fid,'(a)') ""
 
-1030 format('CELL_TYPES',x,i)
+1030 format('CELL_TYPES',x,i12)
       write(fid,1030) grid%nmax
       do i=1,grid%nmax
         write(fid,'(i2)') 12
