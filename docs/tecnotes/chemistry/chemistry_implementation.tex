@@ -438,7 +438,7 @@ g(\I) &\eq \frac{1}{2} \sum_j z_j^2 m_j + \frac{1}{2} \sum_i z_i^2 m_i(\I) -\I,\
 The ionic strength is obtained through Newton-Raphson iteration to give
 \BA
 \I_{k+1} &\eq \I_k-\dfrac{g(\I_k)}{\dfrac{dg(\I_k)}{d\I}},\\
-&\eq \I_k - \dfrac{f(\I_k)-\I_k}{f_k'-1} \eq \dfrac{\I_k f_k'-f_k}{f_k'-1},
+&\eq \I_k - \dfrac{f(\I_k)-\I_k}{f_k'-1} \eq \dfrac{f_k-\I_k f_k'}{1-f_k'},
 \EA
 for the $k+1$st iteration. From Eqn.\eqref{f}
 \EQ

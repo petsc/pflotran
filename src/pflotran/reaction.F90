@@ -1513,6 +1513,7 @@ subroutine RActivityCoefficients(auxvar,reaction,option)
   II = 0
   do
     it = it + 1
+
     if (it > 50) then
       print *,' too many iterations in computing activity coefficients-stop',it,f,I
       stop
@@ -1526,6 +1527,7 @@ subroutine RActivityCoefficients(auxvar,reaction,option)
     enddo
     I = I/auxvar%den(1)*1000.d0 ! molarity -> molality
     I = 0.5d0*I
+    f = I
     
     if (abs(I-II) < 1.d-6*I) exit
     
@@ -1558,10 +1560,10 @@ subroutine RActivityCoefficients(auxvar,reaction,option)
       endif
     else
       II = f
-    endif    
+    endif
     
     if (II < 0.d0) then
-      print *,'ionic strength negative!',II
+      print *,'ionic strength negative! it =',it,' I= ',I,II,den,didi,dcdi,sum
       stop
     endif
     
