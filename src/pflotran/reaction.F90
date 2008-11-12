@@ -805,7 +805,9 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
   ! remember that a density of 1 kg/L was assumed, thus molal and molarity are equal
   aq_species_constraint%basis_molarity = auxvar%primary_molal
   
-  print *,'ReactionEquilibrateConstraint: ',constraint_name,' iterations: ',num_iterations
+  if (option%myrank == 0) &
+    print *,'ReactionEquilibrateConstraint: ' // trim(constraint_name) // &
+            '  iterations: ',num_iterations
 
 end subroutine ReactionEquilibrateConstraint
 
@@ -1312,7 +1314,7 @@ subroutine ReactionReadMineralKinetics(reaction,fid,option)
     if (fiCheckExit(string)) exit  
 
     call fiReadWord(string,name,PETSC_TRUE,ierr)
-    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)
+    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,MINERAL_KINETICS', ierr)
     
     cur_mineral => reaction%mineral_list
     do 
@@ -1324,6 +1326,7 @@ subroutine ReactionReadMineralKinetics(reaction,fid,option)
         endif
         ! read rate
         call fiReadDouble(string,cur_mineral%tstrxn%rate,ierr)
+        call fiErrorMsg(option%myrank,'rate','CHEMISTRY,MINERAL_KINETICS', ierr)
         cur_mineral%id = abs(cur_mineral%id)
         reaction%nkinmnrl = reaction%nkinmnrl + 1
         exit
