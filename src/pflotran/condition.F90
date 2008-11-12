@@ -714,7 +714,7 @@ subroutine ConditionRead(condition,option,fid)
                                  pressure%units)
       case('CONC','CONCENTRATION')
         call ConditionReadValues(option,word,string,concentration%dataset, &
-                                 sub_condition_ptr%units)
+                                 concentration%units)
       case default
         string = 'Keyword: ' // trim(word) // &
                  ' not recognized in flow condition'
