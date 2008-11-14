@@ -495,13 +495,13 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
   ! compute saturation
   select case(saturation_function%saturation_function_itype)
     case(VAN_GENUCHTEN)
-      if (pressure >= option%pref) then
+      if (pressure >= option%reference_pressure) then
         saturation = 1.d0
         relative_perm = 1.d0
         return
       else
         alpha = saturation_function%alpha
-        pc = option%pref-pressure
+        pc = option%reference_pressure-pressure
         m = saturation_function%m
         n = 1.d0/(1.d0-m)
         pc_alpha = pc*alpha
@@ -542,7 +542,7 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
     case(BROOKS_COREY)
       alpha = saturation_function%alpha
       one_over_alpha = 1.d0/alpha
-      pc = option%pref-pressure
+      pc = option%reference_pressure-pressure
 #if 0      
       if (pc < saturation_function%BC_pressure_low) then
         saturation = 1.d0
@@ -596,7 +596,7 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
           call printErrMsg(option,"Unknown relative permeabilty function")
       end select
     case(THOMEER_COREY)
-      pc = option%pref-pressure
+      pc = option%reference_pressure-pressure
       por = auxvar1
       perm = auxvar2*1.013202d15 ! convert from m^2 to mD
       Fg = saturation_function%alpha

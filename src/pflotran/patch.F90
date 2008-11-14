@@ -733,8 +733,8 @@ subroutine PatchBridgeFlowAndTransport(patch,option)
       endif
     case default
       do iaux = 1, patch%aux%RT%num_aux_bc
-        patch%aux%RT%aux_vars_bc(iaux)%den(1) = option%den_ref
-        patch%aux%RT%aux_vars_bc(iaux)%sat = 1.d0
+        patch%aux%RT%aux_vars_bc(iaux)%den(1) = option%reference_density
+        patch%aux%RT%aux_vars_bc(iaux)%sat = option%reference_saturation
       enddo
   end select
 
@@ -873,6 +873,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
   PetscInt :: local_id
   type(grid_type), pointer :: grid
   PetscReal, pointer :: vec_ptr(:), vec_ptr2(:)
+  PetscReal :: tempreal
   PetscErrorCode :: ierr
 
   grid => patch%grid
@@ -988,18 +989,42 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
             enddo
         end select
       endif
-    case(PH,PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION,MINERAL_VOLUME_FRACTION,MINERAL_RATE)
+    case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY, &
+         SECONDARY_MOLARITY,TOTAL_MOLALITY,TOTAL_MOLARITY,MINERAL_RATE)
       select case(ivar)
         case(PH)
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = -log10(patch%aux%RT%aux_vars(grid%nL2G(local_id))%pri_act_coef(isubvar)* &
-              patch%aux%RT%aux_vars(grid%nL2G(local_id))%primary_spec(isubvar))
+              patch%aux%RT%aux_vars(grid%nL2G(local_id))%pri_molal(isubvar))
           enddo
-        case(PRIMARY_SPEC_CONCENTRATION)
+        case(PRIMARY_MOLALITY)
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%primary_spec(isubvar)
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%pri_molal(isubvar)
           enddo
-        case(TOTAL_CONCENTRATION)
+        case(PRIMARY_MOLARITY)
+          tempreal = patch%aux%RT%aux_vars(grid%nL2G(local_id))%den(1)/1000.d0
+          do local_id=1,grid%nlmax
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%pri_molal(isubvar)* &
+                                tempreal
+                                
+          enddo
+        case(SECONDARY_MOLALITY)
+          do local_id=1,grid%nlmax
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%sec_molal(isubvar)
+          enddo
+        case(SECONDARY_MOLARITY)
+          tempreal = patch%aux%RT%aux_vars(grid%nL2G(local_id))%den(1)/1000.d0
+          do local_id=1,grid%nlmax
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%sec_molal(isubvar)* &
+                                tempreal
+          enddo
+        case(TOTAL_MOLALITY)
+          tempreal = patch%aux%RT%aux_vars(grid%nL2G(local_id))%den(1)/1000.d0
+          do local_id=1,grid%nlmax
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%total(isubvar,iphase)/ &
+                                tempreal
+          enddo
+        case(TOTAL_MOLARITY)
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%total(isubvar,iphase)
           enddo
@@ -1137,15 +1162,26 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
             value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%u(1)
         end select
       endif
-    case(PH,PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION, &
-         MINERAL_VOLUME_FRACTION,MINERAL_RATE)
+    case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY, &
+         TOTAL_MOLALITY,TOTAL_MOLARITY,MINERAL_VOLUME_FRACTION,MINERAL_RATE)
       select case(ivar)
         case(PH)
           value = -log10(patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)* &
-            patch%aux%RT%aux_vars(ghosted_id)%primary_spec(isubvar))
-        case(PRIMARY_SPEC_CONCENTRATION)
-          value = patch%aux%RT%aux_vars(ghosted_id)%primary_spec(isubvar)
-        case(TOTAL_CONCENTRATION)
+            patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar))
+        case(PRIMARY_MOLALITY)
+          value = patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar)
+        case(PRIMARY_MOLARITY)
+          value = patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar)* &
+                  patch%aux%RT%aux_vars(ghosted_id)%den(1)/1000.d0
+        case(SECONDARY_MOLALITY)
+          value = patch%aux%RT%aux_vars(ghosted_id)%sec_molal(isubvar)
+        case(SECONDARY_MOLARITY)
+          value = patch%aux%RT%aux_vars(ghosted_id)%sec_molal(isubvar)* &
+                  patch%aux%RT%aux_vars(ghosted_id)%den(1)/1000.d0
+        case(TOTAL_MOLALITY)
+          value = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)/ &
+                  patch%aux%RT%aux_vars(ghosted_id)%den(1)*1000.d0
+        case(TOTAL_MOLARITY)
           value = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)
         case(MINERAL_VOLUME_FRACTION)
           value = patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(isubvar)
@@ -1305,13 +1341,13 @@ subroutine PatchSetDataset(patch,field,option,vec,ivar,isubvar)
             enddo
         end select
       endif
-    case(PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION,MINERAL_VOLUME_FRACTION)
+    case(PRIMARY_MOLALITY,TOTAL_MOLARITY,MINERAL_VOLUME_FRACTION)
       select case(ivar)
-        case(PRIMARY_SPEC_CONCENTRATION)
+        case(PRIMARY_MOLALITY)
           do local_id=1,grid%nlmax
-            patch%aux%RT%aux_vars(grid%nL2G(local_id))%primary_spec(isubvar) = vec_ptr(local_id)
+            patch%aux%RT%aux_vars(grid%nL2G(local_id))%pri_molal(isubvar) = vec_ptr(local_id)
           enddo
-        case(TOTAL_CONCENTRATION)
+        case(TOTAL_MOLARITY)
           do local_id=1,grid%nlmax
             patch%aux%RT%aux_vars(grid%nL2G(local_id))%total(isubvar,iphase) = vec_ptr(local_id)
           enddo
@@ -1319,6 +1355,17 @@ subroutine PatchSetDataset(patch,field,option,vec,ivar,isubvar)
           do local_id=1,grid%nlmax
             patch%aux%RT%aux_vars(grid%nL2G(local_id))%mnrl_volfrac(isubvar) = vec_ptr(local_id)
           enddo
+      end select
+    case(PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY,TOTAL_MOLALITY)
+      select case(ivar)
+        case(PRIMARY_MOLARITY)
+          call printErrMsg(option,'Setting of primary molarity at grid cell not supported.')
+        case(SECONDARY_MOLALITY)
+          call printErrMsg(option,'Setting of secondary molality at grid cell not supported.')
+        case(SECONDARY_MOLARITY)
+          call printErrMsg(option,'Setting of secondary molarity at grid cell not supported.')
+        case(TOTAL_MOLALITY)
+          call printErrMsg(option,'Setting of total molality at grid cell not supported.')
       end select
     case(PHASE)
       call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)

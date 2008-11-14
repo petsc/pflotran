@@ -144,6 +144,11 @@ subroutine Init(simulation,filename)
 
   ! read in the remainder of the input file
   call readInput(simulation,filename)
+
+  ! initialize reference density
+  call wateos(option%reference_temperature,option%reference_pressure, &
+              option%reference_density,r1,r2,r3,r4,r5,r6, &
+              option%scale,ierr)
   
   ! read reaction database
   if (associated(realization%reaction)) then
@@ -438,7 +443,7 @@ subroutine Init(simulation,filename)
         dabs(option%uniform_velocity(3)) >  0.d0) then
       call RealizAssignUniformVelocity(realization)
     endif
-    
+
     ! initialize densities and saturations
     if (option%nflowdof > 0) then
       call DiscretizationCreateVector(realization%discretization,ONEDOF, &
@@ -451,10 +456,8 @@ subroutine Init(simulation,filename)
                                        global_vec,field%density_loc,ONEDOF)   
       call VecDestroy(global_vec,ierr)
     else
-      call VecSet(field%saturation_loc,1.d0,ierr)
-      call wateos(option%tref,option%pref,option%den_ref,r1,r2,r3,r4,r5,r6, &
-                  option%scale,ierr)
-      call VecSet(field%density_loc,option%den_ref,ierr)
+      call VecSet(field%saturation_loc,option%reference_saturation,ierr)
+      call VecSet(field%density_loc,option%reference_density,ierr)
     endif
 
     call VecCopy(field%saturation_loc,field%saturation0_loc,ierr)
@@ -1349,14 +1352,35 @@ subroutine readInput(simulation,filename)
 !......................
 
       case('REFERENCE_PRESSURE')
-        call fiReadStringErrorMsg(option%myrank,'REFERENCE_PRESSURE',ierr)
-        call fiReadDouble(string,option%pref,ierr)
+        call fiReadStringErrorMsg(option%myrank,card,ierr)
+        call fiReadDouble(string,option%reference_pressure,ierr)
         call fiDefaultMsg(option%myrank,'Reference Pressure',ierr) 
 
 !......................
 
+      case('REFERENCE_TEMPERATURE')
+        call fiReadStringErrorMsg(option%myrank,card,ierr)
+        call fiReadDouble(string,option%reference_temperature,ierr)
+        call fiDefaultMsg(option%myrank,'Reference Temperature',ierr) 
+
+!......................
+
+      case('REFERENCE_POROSITY')
+        call fiReadStringErrorMsg(option%myrank,card,ierr)
+        call fiReadDouble(string,option%reference_porosity,ierr)
+        call fiDefaultMsg(option%myrank,'Reference Porosity',ierr) 
+
+!......................
+
+      case('REFERENCE_SATURATION')
+        call fiReadStringErrorMsg(option%myrank,card,ierr)
+        call fiReadDouble(string,option%reference_saturation,ierr)
+        call fiDefaultMsg(option%myrank,'Reference Saturation',ierr) 
+
+!......................
+
       case('BRIN','BRINE')
-        call fiReadStringErrorMsg(option%myrank,'BRIN',ierr)
+        call fiReadStringErrorMsg(option%myrank,card,ierr)
         call fiReadDouble(string,option%m_nacl,ierr)
         call fiDefaultMsg(option%myrank,'NaCl Concentration',ierr) 
 

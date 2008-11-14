@@ -427,8 +427,7 @@ subroutine OutputTecplotBlock(realization)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       endif
       do i=1,reaction%ncomp
-!       call OutputGetVarFromArray(realization,global_vec,PRIMARY_SPEC_CONCENTRATION,i)
-        call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
+        call OutputGetVarFromArray(realization,global_vec,TOTAL_MOLARITY,i)
         call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       enddo
@@ -1209,9 +1208,7 @@ subroutine OutputTecplotPoint(realization)
           write(IUNIT3,1000,advance='no') value
         endif
         do i=1,reaction%ncomp
-!         value = RealizGetDatasetValueAtCell(realization,PRIMARY_SPEC_CONCENTRATION, &
-!                                             i,ghosted_id)
-          value = RealizGetDatasetValueAtCell(realization,TOTAL_CONCENTRATION, &
+          value = RealizGetDatasetValueAtCell(realization,TOTAL_MOLARITY, &
                                               i,ghosted_id)
           write(IUNIT3,1000,advance='no') value
         enddo
@@ -3099,8 +3096,7 @@ subroutine OutputVTK(realization)
   if (option%ntrandof > 0) then
     if (associated(reaction)) then
       do i=1,reaction%ncomp
-!       call OutputGetVarFromArray(realization,global_vec,PRIMARY_SPEC_CONCENTRATION,i)
-        call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
+        call OutputGetVarFromArray(realization,global_vec,TOTAL_MOLARITY,i)
         call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
         call WriteVTKDataSetFromVec(IUNIT3,realization,reaction%primary_species_names(i), &
                                     natural_vec,VTK_REAL)
@@ -4096,14 +4092,14 @@ subroutine OutputHDF5(realization)
   if (option%ntrandof > 0) then
     if (associated(reaction)) then
       do i=1,reaction%ncomp
-        call OutputGetVarFromArray(realization,global_vec,PRIMARY_SPEC_CONCENTRATION,i)
+        call OutputGetVarFromArray(realization,global_vec,PRIMARY_MOLARITY,i)
         if(.not.(associated(discretization%amrgrid))) then
            write(string,'(a)') reaction%primary_species_names(i)
            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         else
            call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
            if(first) then
-              call SAMRRegisterForViz(app_ptr,samr_vec,current_component,PRIMARY_SPEC_CONCENTRATION,i)
+              call SAMRRegisterForViz(app_ptr,samr_vec,current_component,PRIMARY_MOLARITY,i)
            endif
            current_component=current_component+1
         endif

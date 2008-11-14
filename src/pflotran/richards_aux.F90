@@ -181,13 +181,13 @@ subroutine RichardsAuxVarCompute(x,aux_var,iphase,saturation_function, &
   aux_var%pres = x(1)
   aux_var%temp = 25.d0
  
-  aux_var%pc = option%pref - aux_var%pres
+  aux_var%pc = option%reference_pressure - aux_var%pres
 
 !***************  Liquid phase properties **************************
   !geh aux_var%avgmw = option%fmwh2o  ! hardwire for comparison with old code
   aux_var%avgmw = 18.0153d0
 
-  pw = option%pref
+  pw = option%reference_pressure
   ds_dp = 0.d0
   dkr_dp = 0.d0
 !  if (aux_var%pc > 0.d0) then

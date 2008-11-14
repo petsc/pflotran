@@ -1203,7 +1203,7 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
         if (ibndtype(THC_PRESSURE_DOF) == SEEPAGE_BC) then
               ! flow in         ! boundary cell is <= pref
-          if (dphi > 0.d0 .and. aux_var_up%pres-option%pref < eps) then
+          if (dphi > 0.d0 .and. aux_var_up%pres-option%reference_pressure < eps) then
             dphi = 0.d0
             dphi_dp_dn = 0.d0
             dphi_dt_dn = 0.d0
@@ -1432,7 +1432,7 @@ subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
         if (ibndtype(THC_PRESSURE_DOF) == SEEPAGE_BC) then
               ! flow in         ! boundary cell is <= pref
-          if (dphi > 0.d0 .and. aux_var_up%pres-option%pref < eps) then
+          if (dphi > 0.d0 .and. aux_var_up%pres-option%reference_pressure < eps) then
             dphi = 0.d0
           endif
         endif

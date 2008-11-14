@@ -135,13 +135,16 @@ PetscInt, parameter :: GAS_MOLE_FRACTION = 13
 PetscInt, parameter :: PHASE = 14
 PetscInt, parameter :: MATERIAL_ID = 15
 
-PetscInt, parameter :: PRIMARY_SPEC_CONCENTRATION = 16
-PetscInt, parameter :: SECONDARY_SPEC_CONCENTRATION = 17
-PetscInt, parameter :: TOTAL_CONCENTRATION = 18
-PetscInt, parameter :: MINERAL_VOLUME_FRACTION = 19
-PetscInt, parameter :: MINERAL_RATE = 20
-PetscInt, parameter :: MINERAL_SURFACE_AREA = 21
-PetscInt, parameter :: PH = 22
+PetscInt, parameter :: PRIMARY_MOLALITY = 16
+PetscInt, parameter :: SECONDARY_MOLALITY = 17
+PetscInt, parameter :: TOTAL_MOLALITY = 18
+PetscInt, parameter :: PRIMARY_MOLARITY = 19
+PetscInt, parameter :: SECONDARY_MOLARITY = 20
+PetscInt, parameter :: TOTAL_MOLARITY = 21
+PetscInt, parameter :: MINERAL_VOLUME_FRACTION = 22
+PetscInt, parameter :: MINERAL_RATE = 23
+PetscInt, parameter :: MINERAL_SURFACE_AREA = 24
+PetscInt, parameter :: PH = 25
 
 ! activity coefficients
 PetscInt, parameter :: ACTIVITY_COEFFICIENTS_OFF = 0

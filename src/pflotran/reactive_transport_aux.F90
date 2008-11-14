@@ -13,7 +13,7 @@ module Reactive_Transport_Aux_module
     PetscReal, pointer :: sat(:)
     PetscReal :: temp
     ! molality
-    PetscReal, pointer :: primary_molal(:) ! kg solute / L water
+    PetscReal, pointer :: pri_molal(:) ! kg solute / L water
     ! phase dependent totals
     PetscReal, pointer :: total(:,:) ! mol solute / L water
     PetscReal, pointer :: dtotal(:,:,:) ! kg water / m^3 water
@@ -21,9 +21,8 @@ module Reactive_Transport_Aux_module
     PetscReal, pointer :: total_sorb(:) ! mol solute / L water
     PetscReal, pointer :: dtotal_sorb(:,:) ! kg water / m^3 water
     ! aqueous species
-    PetscReal, pointer :: primary_spec(:) ! mol solute / L water
     ! aqueous complexes
-    PetscReal, pointer :: secondary_spec(:)
+    PetscReal, pointer :: sec_molal(:)
     ! sorption reactions
     ! PetscReal, pointer :: kinsurfcmplx_spec(:)
     ! PetscReal, pointer :: kinionx_molfrac(:)
@@ -110,26 +109,23 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   type(reaction_type) :: reaction
   type(option_type) :: option  
   
-  aux_var%temp = option%tref
+  aux_var%temp = option%reference_temperature
   allocate(aux_var%den(option%nphase))
   aux_var%den = 0.d0
   allocate(aux_var%sat(option%nphase))
   aux_var%sat = 0.d0
-  allocate(aux_var%primary_molal(reaction%ncomp))
-  aux_var%primary_molal = 0.d0
+  allocate(aux_var%pri_molal(reaction%ncomp))
+  aux_var%pri_molal = 0.d0
   allocate(aux_var%total(reaction%ncomp,option%nphase))
   aux_var%total = 0.d0
   allocate(aux_var%dtotal(reaction%ncomp,reaction%ncomp,option%nphase))
   aux_var%dtotal = 0.d0
   
-  allocate(aux_var%primary_spec(reaction%ncomp))
-  aux_var%primary_spec = 0.d0
-  
   if (reaction%neqcmplx > 0) then
-    allocate(aux_var%secondary_spec(reaction%neqcmplx))
-    aux_var%secondary_spec = 0.d0
+    allocate(aux_var%sec_molal(reaction%neqcmplx))
+    aux_var%sec_molal = 0.d0
   else
-    nullify(aux_var%secondary_spec)
+    nullify(aux_var%sec_molal)
   endif
   
   if (reaction%nsorb > 0) then  
@@ -212,13 +208,12 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
   aux_var%temp = aux_var2%temp
   aux_var%den = aux_var2%den
   aux_var%sat = aux_var2%sat
-  aux_var%primary_molal = aux_var2%primary_molal
+  aux_var%pri_molal = aux_var2%pri_molal
   aux_var%total = aux_var2%total
   aux_var%dtotal = aux_var2%dtotal
-  aux_var%primary_spec = aux_var2%primary_spec
   
-  if (associated(aux_var%secondary_spec)) &
-    aux_var%secondary_spec = aux_var2%secondary_spec
+  if (associated(aux_var%sec_molal)) &
+    aux_var%sec_molal = aux_var2%sec_molal
   if (associated(aux_var%total_sorb)) then  
     aux_var%total_sorb = aux_var2%total_sorb
     aux_var%dtotal_sorb = aux_var2%dtotal_sorb
@@ -268,18 +263,16 @@ subroutine RTAuxVarDestroy(aux_var)
   if (associated(aux_var%sat)) deallocate(aux_var%sat)
   nullify(aux_var%sat)
   
-  if (associated(aux_var%primary_molal)) deallocate(aux_var%primary_molal)
-  nullify(aux_var%primary_molal)
+  if (associated(aux_var%pri_molal)) deallocate(aux_var%pri_molal)
+  nullify(aux_var%pri_molal)
   
   if (associated(aux_var%total)) deallocate(aux_var%total)
   nullify(aux_var%total)
   if (associated(aux_var%dtotal))deallocate(aux_var%dtotal)
   nullify(aux_var%dtotal)
   
-  if (associated(aux_var%primary_spec))deallocate(aux_var%primary_spec)
-  nullify(aux_var%primary_spec)
-  if (associated(aux_var%secondary_spec))deallocate(aux_var%secondary_spec)
-  nullify(aux_var%secondary_spec)
+  if (associated(aux_var%sec_molal))deallocate(aux_var%sec_molal)
+  nullify(aux_var%sec_molal)
   
   if (associated(aux_var%total_sorb)) deallocate(aux_var%total_sorb)
   nullify(aux_var%total_sorb)

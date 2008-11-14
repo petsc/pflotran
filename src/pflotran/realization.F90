@@ -691,8 +691,8 @@ subroutine RealizationPrintCoupler(coupler,reaction,option)
   if (associated(region)) write(option%fid_out,103) trim(region%name)
   write(option%fid_out,98)
   
-  pressure = option%pref
-  temperature = option%tref
+  pressure = option%reference_pressure
+  temperature = option%reference_temperature
   
   if (associated(flow_condition)) then
 !    write(option%fid_out,99)

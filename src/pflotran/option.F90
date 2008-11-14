@@ -72,9 +72,11 @@ module Option_module
     
     PetscInt :: ideriv
     PetscInt :: idt_switch = -1
-    PetscReal :: tref
-    PetscReal :: pref
-    PetscReal :: den_ref
+    PetscReal :: reference_temperature
+    PetscReal :: reference_pressure
+    PetscReal :: reference_density
+    PetscReal :: reference_porosity
+    PetscReal :: reference_saturation
         
     PetscReal :: disp
     
@@ -197,9 +199,11 @@ function OptionCreate()
       ! seems good practice to set them to sensible values when a pflowGrid
       ! is created.
 !-----------------------------------------------------------------------
-  option%pref = 101325.d0
-  option%tref = 25.d0
-  option%den_ref = 0.d0
+  option%reference_pressure = 101325.d0
+  option%reference_temperature = 25.d0
+  option%reference_density = 0.d0
+  option%reference_porosity = 0.25d0
+  option%reference_saturation = 1.d0
   
   allocate(option%tfac(13))
       

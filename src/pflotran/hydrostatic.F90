@@ -214,7 +214,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
     endif
 
     if (condition%pressure%itype == SEEPAGE_BC) then
-      coupler%flow_aux_real_var(1,iconn) = max(pressure,option%pref)
+      coupler%flow_aux_real_var(1,iconn) = max(pressure,option%reference_pressure)
     else
       coupler%flow_aux_real_var(1,iconn) = pressure
     endif

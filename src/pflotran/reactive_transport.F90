@@ -1319,10 +1319,10 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) then
           work_loc_p(istart:iend) = 1.d0
         else
-          work_loc_p(istart:iend) = aux_vars(ghosted_id)%primary_molal(:)
+          work_loc_p(istart:iend) = aux_vars(ghosted_id)%pri_molal(:)
         endif
       else
-        work_loc_p(istart:iend) = aux_vars(ghosted_id)%primary_molal(:)
+        work_loc_p(istart:iend) = aux_vars(ghosted_id)%pri_molal(:)
       endif
     enddo
     call GridVecRestoreArrayF90(grid,field%tran_work_loc, work_loc_p, ierr)
@@ -1801,10 +1801,9 @@ subroutine RTAuxVarCompute(x,aux_var,reaction,option)
   ! any changes to the below must also be updated in 
   ! Reaction.F90:RReactionDerivative()
   
-  aux_var%primary_molal = x
+  aux_var%pri_molal = x
   
   den = aux_var%den(1)*1.d-3 ! convert kg water/m^3 water -> kg water/L water
-  aux_var%primary_spec = aux_var%primary_molal*den
   call RTotal(aux_var,reaction,option)
   if (reaction%nsorb > 0) then
     call RTotalSorb(aux_var,reaction,option)
@@ -1829,12 +1828,12 @@ subroutine RTAuxVarCompute(x,aux_var,reaction,option)
     if (reaction%neqionxrxn > 0) then
       aux_var%eqionx_ref_cation_sorbed_conc = 1.d-9
     endif
-    pert = auxvar_pert%primary_molal(jcomp)*perturbation_tolerance
-    auxvar_pert%primary_molal(jcomp) = auxvar_pert%primary_molal(jcomp) + pert
+    pert = auxvar_pert%pri_molal(jcomp)*perturbation_tolerance
+    auxvar_pert%pri_molal(jcomp) = auxvar_pert%pri_molal(jcomp) + pert
     
     ! this is essentially what RTAuxVarCompute() performs
-!      call RTAuxVarCompute(auxvar_pert%primary_molal,auxvar_pert,option)      
-    auxvar_pert%primary_spec = auxvar_pert%primary_molal*den
+!      call RTAuxVarCompute(auxvar_pert%pri_molal,auxvar_pert,option)      
+    auxvar_pert%primary_spec = auxvar_pert%pri_molal*den
     call RTotal(auxvar_pert,reaction,option)
     if (reaction%nsorb > 0) call RTotalSorb(auxvar_pert,reaction,option)
     dtotal(:,jcomp) = (auxvar_pert%total(:,1) - aux_var%total(:,1))/pert
