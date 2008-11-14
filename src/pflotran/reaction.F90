@@ -582,7 +582,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
       case(CONSTRAINT_LOG)
         free_conc(icomp) = (10.d0**conc(icomp))*convert_molar_to_molal
       case(CONSTRAINT_CHARGE_BAL)
-        free_conc(icomp) = conc(icomp)*convert_molar_to_molal
+        free_conc(icomp) = conc(icomp)*convert_molar_to_molal ! just a guess
       case(CONSTRAINT_PH)
         ! check if h+ id set
         if (reaction%h_ion_id /= 0) then
