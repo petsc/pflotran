@@ -1351,6 +1351,11 @@ subroutine readInput(simulation,filename)
 #endif     
 !......................
 
+      case('MOLAL','MOLALITY')
+        option%initialize_with_molality = PETSC_TRUE
+
+!......................
+
       case('REFERENCE_PRESSURE')
         call fiReadStringErrorMsg(option%myrank,card,ierr)
         call fiReadDouble(string,option%reference_pressure,ierr)

@@ -77,6 +77,8 @@ module Option_module
     PetscReal :: reference_density
     PetscReal :: reference_porosity
     PetscReal :: reference_saturation
+    
+    PetscTruth :: initialize_with_molality
         
     PetscReal :: disp
     
@@ -204,6 +206,7 @@ function OptionCreate()
   option%reference_density = 0.d0
   option%reference_porosity = 0.25d0
   option%reference_saturation = 1.d0
+  option%initialize_with_molality = PETSC_FALSE
   
   allocate(option%tfac(13))
       

@@ -547,6 +547,8 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
   PetscReal :: lnQK, QK
   PetscReal :: tempreal
   PetscInt :: comp_id
+  PetscReal :: convert_molal_to_molar
+  PetscReal :: convert_molar_to_molal
 
   PetscReal :: Jac_num(reaction%ncomp)
   PetscReal :: Res_pert, pert, prev_value
@@ -561,18 +563,26 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
     return
   endif
   
+  if (option%initialize_with_molality) then
+    convert_molal_to_molar = auxvar%den(1)/1000.d0
+    convert_molar_to_molal = 1.d0
+  else
+    convert_molal_to_molar = 1.d0
+    convert_molar_to_molal = 1000.d0/auxvar%den(1)
+  endif
+  
   total_conc = 0.d0
   do icomp = 1, reaction%ncomp
     select case(constraint_type(icomp))
       case(CONSTRAINT_NULL,CONSTRAINT_TOTAL,CONSTRAINT_TOTAL_SORB)
-        total_conc(icomp) = conc(icomp)
+        total_conc(icomp) = conc(icomp)*convert_molal_to_molar
         free_conc(icomp) = 1.d-9
       case(CONSTRAINT_FREE)
-        free_conc(icomp) = conc(icomp)
+        free_conc(icomp) = conc(icomp)*convert_molar_to_molal
       case(CONSTRAINT_LOG)
-        free_conc(icomp) = 10.d0**conc(icomp)
+        free_conc(icomp) = (10.d0**conc(icomp))*convert_molar_to_molal
       case(CONSTRAINT_CHARGE_BAL)
-        free_conc(icomp) = conc(icomp)
+        free_conc(icomp) = conc(icomp)*convert_molar_to_molal
       case(CONSTRAINT_PH)
         ! check if h+ id set
         if (reaction%h_ion_id /= 0) then
@@ -596,7 +606,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
           call printErrMsg(option,string)
         endif        
       case(CONSTRAINT_MINERAL)
-        free_conc(icomp) = conc(icomp) ! guess
+        free_conc(icomp) = conc(icomp)*convert_molar_to_molal ! guess
       case(CONSTRAINT_GAS)
         if (conc(icomp) <= 0.d0) then ! log form
           conc(icomp) = 10.d0**conc(icomp) ! conc log10 partial pressure gas
@@ -760,7 +770,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
 !         QK = exp(lnQK)
           
 !         Res(icomp) = QK - conc(icomp)
-          Res(icomp) = lnQK - log(conc(icomp))
+          Res(icomp) = lnQK - log(conc(icomp)) ! gas pressure
           Jac(icomp,:) = 0.d0
           do jcomp = 1,reaction%eqgasspecid(0,igas)
             comp_id = reaction%eqgasspecid(jcomp,igas)
@@ -811,6 +821,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
   if (reaction%nsorb > 0) call RTotalSorb(auxvar,reaction,option)
   
   ! remember that a density of 1 kg/L was assumed, thus molal and molarity are equal
+  ! do not scale by molal_to_molar since it could be 1.d0 if MOLAL flag set
   aq_species_constraint%basis_molarity = auxvar%pri_molal*auxvar%den(1)/1000.d0
   
   if (option%myrank == 0) &
@@ -880,9 +891,10 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   auxvar%temp = option%reference_temperature
   auxvar%sat = option%reference_saturation
   bulk_vol_to_fluid_vol = option%reference_porosity*option%reference_saturation*1000.d0
+
   molal_to_molar = auxvar%den(1)/1000.d0
   molar_to_molal = 1.d0/molal_to_molar
-  
+    
   if (.not.reaction%use_full_geochemistry) then
     100 format(/,'  species       molality')  
     write(option%fid_out,100)
@@ -926,7 +938,8 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
     if (reaction%neqcmplx > 0) then    
       do i = 1, reaction%neqcmplx
         ionic_strength = ionic_strength + auxvar%sec_molal(i)* &
-        reaction%eqcmplx_Z(i)*reaction%eqcmplx_Z(i)
+                                          reaction%eqcmplx_Z(i)* &
+                                          reaction%eqcmplx_Z(i)
       enddo
     endif
     ionic_strength = 0.5d0 * ionic_strength
