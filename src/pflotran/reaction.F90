@@ -1964,7 +1964,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
     omega = reaction%eqionx_rxn_CEC(irxn)
 
     icomp = reaction%eqionx_rxn_cationid(1,irxn)
-    ref_cation_conc = auxvar%pri_molal(icomp)
+    ref_cation_conc = auxvar%pri_molal(icomp)*auxvar%pri_act_coef(icomp)
     ref_cation_Z = reaction%primary_spec_Z(icomp)
     ref_cation_k = reaction%eqionx_rxn_k(1,irxn)
     ref_cation_X = ref_cation_Z*auxvar%eqionx_ref_cation_sorbed_conc(irxn)/omega
@@ -1982,7 +1982,8 @@ subroutine RTotalSorb(auxvar,reaction,option)
 
         do j = 2, ncomp
           icomp = reaction%eqionx_rxn_cationid(j,irxn)
-          cation_X(j) = auxvar%pri_molal(icomp)/reaction%eqionx_rxn_k(j,irxn)* &
+          cation_X(j) = auxvar%pri_molal(icomp)*auxvar%pri_act_coef(icomp)/ &
+                        reaction%eqionx_rxn_k(j,irxn)* &
                         ref_cation_quotient** &
                         (reaction%primary_spec_Z(icomp)/ref_cation_Z)
           total = total + cation_X(j)
@@ -1994,17 +1995,18 @@ subroutine RTotalSorb(auxvar,reaction,option)
           
         dres_dref_cation_X = 1.d0
 
-#if 1
+#if 0
 ! test derivative
       pert = 1.d-6 * ref_cation_X
       ref_cation_X_pert = ref_cation_X + pert
       ref_cation_quotient_pert = ref_cation_X_pert*ref_cation_k/ref_cation_conc
-      total_pert = ref_cation_X
+      total_pert = ref_cation_X_pert
 
         do j = 2, ncomp
           icomp = reaction%eqionx_rxn_cationid(j,irxn)
           total_pert = total_pert + &
-                       auxvar%pri_molal(icomp)/reaction%eqionx_rxn_k(j,irxn)* &
+                       auxvar%pri_molal(icomp)*auxvar%pri_act_coef(icomp)/ &
+                       reaction%eqionx_rxn_k(j,irxn)* &
                        ref_cation_quotient_pert** &
                        (reaction%primary_spec_Z(icomp)/ref_cation_Z)
         enddo
@@ -2031,7 +2033,8 @@ subroutine RTotalSorb(auxvar,reaction,option)
       
         do j = 2, ncomp  ! Zi == Zj for all i,j
           icomp = reaction%eqionx_rxn_cationid(j,irxn)
-          cation_X(j) = auxvar%pri_molal(icomp)/reaction%eqionx_rxn_k(j,irxn)* &
+          cation_X(j) = auxvar%pri_molal(icomp)*auxvar%pri_act_coef(icomp)/ &
+                        reaction%eqionx_rxn_k(j,irxn)* &
                         ref_cation_quotient
           total = total + cation_X(j)
         enddo
