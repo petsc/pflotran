@@ -1786,8 +1786,6 @@ subroutine RTAuxVarCompute(x,aux_var,reaction,option)
   PetscReal :: x(reaction%ncomp)
   type(reactive_transport_auxvar_type) :: aux_var
   
-  PetscReal :: den ! kg water/L water
-
 #if 0  
   PetscReal :: Res_orig(reaction%ncomp)
   PetscReal :: Res_pert(reaction%ncomp)
@@ -1803,7 +1801,6 @@ subroutine RTAuxVarCompute(x,aux_var,reaction,option)
   
   aux_var%pri_molal = x
   
-  den = aux_var%den(1)*1.d-3 ! convert kg water/m^3 water -> kg water/L water
   call RTotal(aux_var,reaction,option)
   if (reaction%nsorb > 0) then
     call RTotalSorb(aux_var,reaction,option)
@@ -1819,7 +1816,7 @@ subroutine RTAuxVarCompute(x,aux_var,reaction,option)
     Res_pert = 0.d0
     call RTAuxVarCopy(auxvar_pert,aux_var,option)
     if (reaction%neqcmplx > 0) then
-      aux_var%secondary_spec = 0.d0
+      aux_var%sec_molal = 0.d0
     endif
     if (reaction%neqsurfcmplxrxn > 0) then
       auxvar_pert%eqsurfcmplx_freesite_conc = 1.d-9
@@ -1831,9 +1828,6 @@ subroutine RTAuxVarCompute(x,aux_var,reaction,option)
     pert = auxvar_pert%pri_molal(jcomp)*perturbation_tolerance
     auxvar_pert%pri_molal(jcomp) = auxvar_pert%pri_molal(jcomp) + pert
     
-    ! this is essentially what RTAuxVarCompute() performs
-!      call RTAuxVarCompute(auxvar_pert%pri_molal,auxvar_pert,option)      
-    auxvar_pert%primary_spec = auxvar_pert%pri_molal*den
     call RTotal(auxvar_pert,reaction,option)
     if (reaction%nsorb > 0) call RTotalSorb(auxvar_pert,reaction,option)
     dtotal(:,jcomp) = (auxvar_pert%total(:,1) - aux_var%total(:,1))/pert
@@ -1848,7 +1842,7 @@ subroutine RTAuxVarCompute(x,aux_var,reaction,option)
     enddo
   enddo
   dtotal = dtotal * 1000.d0
-  if (reaction%nsorb > 0) dtotalsorb = dtotalsorb * 1000.d0
+!  if (reaction%nsorb > 0) dtotalsorb = dtotalsorb * 1000.d0
   aux_var%dtotal(:,:,1) = dtotal
   if (reaction%nsorb > 0) aux_var%dtotal_sorb = dtotalsorb
   call RTAuxVarDestroy(auxvar_pert)

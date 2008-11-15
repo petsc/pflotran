@@ -1709,8 +1709,11 @@ subroutine RTotal(auxvar,reaction,option)
   PetscReal :: ln_act(reaction%ncomp)
   PetscReal :: ln_act_h2o
   PetscReal :: lnQK, tempreal
+  PetscReal :: den_kg_per_L
 
-  iphase = 1                         
+  iphase = 1           
+  
+  den_kg_per_L = auxvar%den(iphase)*1.d-3              
 
   ln_conc = log(auxvar%pri_molal)
   ln_act = ln_conc+log(auxvar%pri_act_coef)
@@ -1747,10 +1750,6 @@ subroutine RTotal(auxvar,reaction,option)
                                    auxvar%sec_molal(icplx)
     enddo
     
-    ! convert molality -> molarity
-    auxvar%total(:,iphase) = auxvar%total(:,iphase)* &
-                             auxvar%den(iphase)/1000.d0 
-    
     ! add contribution to derivatives of total with respect to free
     ! bear in mind that the water density portion is scaled below
     do j = 1, ncomp
@@ -1764,6 +1763,9 @@ subroutine RTotal(auxvar,reaction,option)
       enddo
     enddo
   enddo
+
+    ! convert molality -> molarity
+  auxvar%total(:,iphase) = auxvar%total(:,iphase)*den_kg_per_L
   
   ! units of dtotal = kg water/L water
   ! need to convert to kg water/m^3 water to avoid all the scaling by water density later

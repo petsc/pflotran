@@ -84,7 +84,7 @@ subroutine TFlux(aux_var_up,por_up,tor_up,sat_up,dist_up, &
   
   ! units = (L water/sec)*(mol/L) = mol/s
   Res(1:option%ntrandof) = coef_up*aux_var_up%total(1:option%ntrandof,iphase) + &
-                        coef_dn*aux_var_dn%total(1:option%ntrandof,iphase)
+                           coef_dn*aux_var_dn%total(1:option%ntrandof,iphase)
                         
 end subroutine TFlux
 
@@ -230,7 +230,7 @@ subroutine TBCFlux(ibndtype, &
 
   ! units = (L water/sec)*(mol/L) = mol/s  
   Res(1:option%ntrandof) = coef_up*aux_var_up%total(1:option%ntrandof,iphase) + &
-                        coef_dn*aux_var_dn%total(1:option%ntrandof,iphase)  
+                           coef_dn*aux_var_dn%total(1:option%ntrandof,iphase)  
 
 end subroutine TBCFlux
 
