@@ -12,6 +12,7 @@ syntax: glob
 *.bst
 *.sty
 *.synctex.gz
+*.pdf
 .DS_Store
 ._.DS_Store
 .hgignore.orig
