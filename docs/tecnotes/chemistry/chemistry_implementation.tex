@@ -220,7 +220,8 @@ Primary Species: & name, $a_0$, $z$, $w$\\
 Secondary Species: & name, nspec, ($\nu$(n), name($n$), $n$=1, nspec), log$K$(1:8) $a_0$, $z$, $w$\\
 Gaseous Species: & name, $\overline V$, nspec, ($\nu$(n), name($n$), $n$=1, nspec), log$K$(1:8), $w$ \\
 Minerals: & name, $\overline V$, nspec, ($\nu$(n), name($n$), $n$=1, nspec), log$K$(1:8), $w$\\
-Surface Complexes: & $>$name, nspec, ($\nu$(n), name($n$), $n$=1, nspec), log$K$(1:8), $z$, $w$\\
+Surface Complexes: & $>$name, nspec, $\nu$, $>$site, 
+($\nu$(n), name($n$), $n$=1, nspec-1), log$K$(1:8), $z$, $w$\\
 \hline
 \end{tabular}
 \end{table}
@@ -282,7 +283,7 @@ Given various constraints imposed on an aqueous solution, the equilibrium concen
 \sum_j\nu_{ji}^g\A_j^{}\arrows\G_i.
 \EN
 \EQ
-C_i^g \eq \frac{P_i}{RT} \eq \frac{K_i}{RT}\prod \left(\gamma_jC_j\right)^{\nu_{ji}^g}
+C_i^g \eq \frac{P_i}{RT} \eq \frac{K_i}{RT}\prod \left(\gamma_j m_j\right)^{\nu_{ji}^g}
 \EN
 
 \end{description}
@@ -293,49 +294,53 @@ C_i^g \eq \frac{P_i}{RT} \eq \frac{K_i}{RT}\prod \left(\gamma_jC_j\right)^{\nu_{
 
 \item[Total Concentration $\Psi_j^0$:]
 \EQ
-\Psi_j \eq C_j+\sum_i\nu_{ji}C_i \eq \Psi_j^0.
+\Psi_j \eq \rho\big(m_j+\sum_i\nu_{ji} m_i\big) \eq \Psi_j^0.
 \EN
 
-\item[Total Sorbed Concentration $\Psi_j^0 + \sum_i\nu_{ji}^{\rm srf}(S_i^{\rm srf})_0 + \sum_i\nu_{ji}^{\rm ex}(S_i^{\rm ex})_0$:]
+\item[Total Sorbed Concentration $\Psi_j^0 + \frac{1}{\varphi}\sum_i\nu_{ji}^{\rm srf}(S_i^{\rm srf})_0 + \frac{1}{\varphi}\sum_i\nu_{ji}^{\rm ex}(S_i^{\rm ex})_0$:]
+\BA
+\Psi_j^{\rm tot} &\eq \Psi_j + \frac{1}{\varphi}\sum_i\nu_{ji}^{\rm srf}S_i^{\rm srf} 
++ \frac{1}{\varphi}\sum_i\nu_{ji}^{\rm ex}S_i^{\rm ex}\nonumber \\
+&\eq \Psi_j^0 
++ \frac{1}{\varphi}\sum_i\nu_{ji}^{\rm srf}(S_i^{\rm srf})_0 
++ \frac{1}{\varphi}\sum_i\nu_{ji}^{\rm ex}(S_i^{\rm ex})_0.
+\EA
+
+\item[Free Ion: $m_j^0$]
 \EQ
-\Psi_j^{\rm tot} \eq \Psi_j + \sum_i\nu_{ji}^{\rm srf}S_i^{\rm srf} + \sum_i\nu_{ji}^{\rm ex}S_i^{\rm ex} \eq \Psi_j^0 + \sum_i\nu_{ji}^{\rm srf}(S_i^{\rm srf})_0 + \sum_i\nu_{ji}^{\rm ex}(S_i^{\rm ex})_0.
+m_j \eq m_j^0.
 \EN
 
-\item[Free Ion: $C_j^0$]
-\EQ
-C_j \eq C_j^0.
-\EN
-
-\item[pH: $C_{\rm H^+}$]
+\item[pH: $m_{\rm H^+}$]
 \begin{subequations}
 \BA
-a_{\rm H^+} &\eq \gamma_{\rm H^+} C_{\rm H^+} \eq 10^{-\rm pH},\\
-a_{\rm OH^-} &\eq \gamma_{\rm OH^-} C_{\rm OH^-} \eq K_{\rm H_2O} a_{\rm H_2O} 10^{\rm pH}.
+a_{\rm H^+} &\eq \gamma_{\rm H^+} m_{\rm H^+} \eq 10^{-\rm pH},\\
+a_{\rm OH^-} &\eq \gamma_{\rm OH^-} m_{\rm OH^-} \eq K_{\rm H_2O} a_{\rm H_2O} 10^{\rm pH}.
 \EA
 \end{subequations}
 
 \item[Charge Balance:]
 \EQ
-\Q \eq \sum_jz_j\Psi_j\eq \sum_j z_j C_j + \sum_i z_i C_i \eq 0.
+\Q \eq \sum_jz_j\Psi_j\eq \sum_j z_j m_j + \sum_i z_i m_i \eq 0.
 \EN
 
 \item[Mineral Equilibria:]
 \begin{subequations}
 \EQ
-K_m \prod_j\left(\gamma_j C_j\right)^{\nu_{jm}}\eq 1,
+K_m \prod_j\left(\gamma_j m_j\right)^{\nu_{jm}}\eq 1,
 \EN
 \EQ
-\ln K_m +\sum_j\nu_{jm}\ln\left(\gamma_j C_j\right)\eq 0.
+\ln K_m +\sum_j\nu_{jm}\ln\left(\gamma_j m_j\right)\eq 0.
 \EN
 \end{subequations}
 
 \item[Gaseous Equilibria (Ideal Gas Law): $P_i$]
 \begin{subequations}
 \EQ
-P_i \eq K_i \prod_j\left(\gamma_j C_j\right)^{\nu_{ji}^g},
+P_i \eq K_i \prod_j\left(\gamma_j m_j\right)^{\nu_{ji}^g},
 \EN
 \EQ
-\ln P_i \eq \ln K_i+ \sum_j \nu_{ji}^g\ln\left(\gamma_j C_j\right).
+\ln P_i \eq \ln K_i+ \sum_j \nu_{ji}^g\ln\left(\gamma_j m_j\right).
 \EN
 \end{subequations}
 
@@ -392,11 +397,41 @@ for secondary species. Noting that the rates $I_i$ for local equilibrium reactio
 \EQ
 \frac{\p}{\p t} \varphi \Psi_j + \bnabla\cdot\bOmega_j \eq \sum_r\widetilde\nu_{jr} I_r,
 \EN
-where the total concentration $\Psi_j$ and flux $\bOmega_j$ are defined by
+where the total concentration $\Psi_j$ is defined by
+\begin{subequations}
+\BA
+\Psi_j &\eq C_j + \sum_i\nu_{ji}C_i,\\
+&\eq\rho_w\big(m_j+\sum_i\nu_{ji}m_i\big),
+\EA
+\end{subequations}
+where $C_l$ refers to the concentration in molarity units and $m_l$ in molality units. Molality $m_l$ is related to molarity $C_l$ by the expression
+\BA
+C_i &\eq \frac{n_i}{V_f} \eq \frac{n_i}{M_w}\frac{M_w}{M_f}\frac{M_f}{V_f},\\
+&\eq m_i x_w\rho_f,
+\EA
+with fluid density $\rho_f\!=\!M_f/V_f$ and mole fraction $x_w\!=\!M_w/M_f$ of H$_2$O.
+Since the fluid density is generally not known, an approximate expression
 \EQ
-\Psi_j \eq C_j + \sum_i\nu_{ji}C_i,
+C_l \simeq \rho_w m_l,
 \EN
-and
+is used, where $\rho_w$ denotes the density of pure water and it is assumed that $x_w\simeq 1$. The activity of the $i$th secondary species is given by the relation
+\EQ
+a_i \eq K_i \prod_j\big(a_j\big)^{\nu_{ji}},
+\EN
+with equilibrium constant $K_i$, with activity $a_l = \gamma_im_l = \lambda_l C_l$. In terms of molality
+\EQ\label{mi}
+m_i \eq \gamma_i^{-1}K_i \prod_j \big(\gamma_j m_j\big)^{\nu_{ji}},
+\EN
+whereas in terms of molarity
+\EQ
+C_i \eq \lambda_i^{-1} K_i \prod_j\big(\lambda_j C_j\big)^{\nu_{ji}},
+\EN
+where the molarity-scale activity coefficients $\lambda_l$ are related to the molality-scale activity coefficients $\gamma_l$ approximately by
+\EQ
+\lambda_l \eq \frac{\gamma_l}{\rho_w}.
+\EN
+
+The total flux $\bOmega_j$ is defined by
 \EQ
 \bOmega_j \eq \bF_j + \sum_i\nu_{ji}\bF_i.
 \EN
@@ -404,15 +439,11 @@ The flux $\bF_k$ has the usual form with contributions from advection and diffus
 \EQ
 \bF_k \eq \bq C_k - \varphi D \bnabla C_k,
 \EN
-with diffusion/dispersion coefficient $D$ assumed to be identical for all species. This condition is relaxed in the section below on species-dependent diffusion. The concentration of the $i$th secondary species is given by the relation
-\EQ\label{mi}
-m_i \eq \gamma_i^{-1}K_i \prod_j \big(\gamma_j m_j\big)^{\nu_{ji}},
-\EN
-with equilibrium constant $K_i$, where the molality $m_l$ is related to molarity $C_l$ by the approximate expression
+with diffusion/dispersion coefficient $D$ assumed to be identical for all species. This condition is relaxed in the section below on species-dependent diffusion. For the case of equal diffusion coefficients the total flux becomes
 \EQ
-C_l \eq \rho_w m_l,
+\bOmega_j \eq \big(\bq -\varphi D\bnabla\big) \Psi_j.
 \EN
-where $\rho_w$ denotes the density of pure water.
+
 For low ionic strength electrolyte solutions, activity coefficients $\gamma_l$ are obtained from the Debye-H\"uckel algorithm
 \EQ\label{dh}
 \log\,\gamma_i \eq -\frac{z_i^2 A \sqrt{\I}}{1+B \stackrel{\circ}{a}_i \sqrt{\I}}+\dot b \I,
@@ -476,7 +507,7 @@ the quantity sgn$_m$ denotes the sign of the affinity factor
 \EN
 where $K_m$ represents the equilibrium constant, $Q_m$ denotes the ion activity product
 \EQ
-Q_m\eq\prod_j\big(\gamma_j C_j\big)^{\nu_{jm}},
+Q_m\eq\prod_j\big(\gamma_j m_j\big)^{\nu_{jm}},
 \EN
 the prefactor $\P_{ml}$ is defined as the product of contributions from primary and secondary species:
 \EQ\label{prefactorm}

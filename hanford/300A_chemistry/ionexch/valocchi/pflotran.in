@@ -33,7 +33,7 @@ Halite 1.e-30
 SORPTION
 ION_EXCHANGE_RXN
 MINERAL Halite
-CEC 1.1
+CEC 1.1e0
 CATIONS
 Na+   1.
 K+    5.012
@@ -73,7 +73,7 @@ GRID
 TYPE structured
 NXYZ 100 1 1
 DXYZ
-0.1
+0.001
 1.
 1.
 /
@@ -118,7 +118,7 @@ THERMAL_PROPERTIES
 :
 MATERIALS
 :name   id icap ithm por  tau   permx     permy     permz     permpwr
-Soil1   1  1    1    0.5  0.5   1.d-12    1.d-12    1.d-13    1.d0
+Soil1   1  1    1    1.0  1.0   1.d-12    1.d-12    1.d-13    1.d0
 /
 :
 :TIME d every 10
@@ -199,22 +199,22 @@ CONSTRAINT_LIST
 
 CONSTRAINT Inlet
 CONCENTRATIONS
-Na+      1.e-3       T
-K+       2.e-4       T
-Ca++     1.e-10      T
+Na+      1.e-10      T
+K+       1.e-10      T
+Ca++     6.e-4       T
 H+       5.0        pH
-NO3-     1.2e-3      T
+NO3-     1.e-10      T
 Cl-      1.e-3       Z
 /
 /
 
 CONSTRAINT initial
 CONCENTRATIONS
-Na+      1.e-10      T
-K+       1.e-10      T
-Ca++     6.e-4       T
+Na+      1.e-3       T
+K+       2.e-4       T
+Ca++     1.e-10      T
 H+       5.0        pH
-NO3-     1.e-10      T
+NO3-     1.2e-3      T
 Cl-      1.e-3       Z
 /
 MINERALS
