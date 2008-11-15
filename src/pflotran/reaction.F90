@@ -1189,7 +1189,8 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       do jcomp = 1, ncomp
         icomp = reaction%eqionx_rxn_cationid(jcomp,irxn)
         write(option%fid_out,128) reaction%primary_species_names(icomp), &
-                                  reaction%eqionx_rxn_k(jcomp,irxn)!,auxvar%eqionx_conc(icomp)
+                                  reaction%eqionx_rxn_k(jcomp,irxn), & !,auxvar%eqionx_conc(icomp)
+                                  auxvar%total_sorb(icomp)
       enddo
     enddo
     125 format(/,2x,'ion-exchange reactions')
@@ -1823,8 +1824,8 @@ subroutine RTotalSorb(auxvar,reaction,option)
   ln_act = ln_conc+log(auxvar%pri_act_coef)
   ln_act_h2o = 0.d0  ! assume act h2o = 1 for now
     
+  ! initialize total sorbed concentrations and derivatives
   auxvar%total_sorb(:) = 0.d0
-  ! initialize derivatives
   auxvar%dtotal_sorb = 0.d0
 
   ! Surface Complexation
@@ -1979,14 +1980,14 @@ subroutine RTotalSorb(auxvar,reaction,option)
 
       if (ref_cation_X <= 0.d0) ref_cation_X = 0.99d0
       cation_X(1) = ref_cation_X
-      ref_cation_quotient = ref_cation_X*ref_cation_k/ref_cation_conc
+      ref_cation_quotient = ref_cation_X/(ref_cation_conc*ref_cation_k)
       total = ref_cation_X
 
       if (reaction%eqionx_rxn_Z_flag(irxn)) then ! Zi /= Zj for any i,j
 
         do j = 2, ncomp
           icomp = reaction%eqionx_rxn_cationid(j,irxn)
-          cation_X(j) = auxvar%pri_molal(icomp)*auxvar%pri_act_coef(icomp)/ &
+          cation_X(j) = auxvar%pri_molal(icomp)*auxvar%pri_act_coef(icomp)* &
                         reaction%eqionx_rxn_k(j,irxn)* &
                         ref_cation_quotient** &
                         (reaction%primary_spec_Z(icomp)/ref_cation_Z)
@@ -2037,7 +2038,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
       
         do j = 2, ncomp  ! Zi == Zj for all i,j
           icomp = reaction%eqionx_rxn_cationid(j,irxn)
-          cation_X(j) = auxvar%pri_molal(icomp)*auxvar%pri_act_coef(icomp)/ &
+          cation_X(j) = auxvar%pri_molal(icomp)*auxvar%pri_act_coef(icomp)* &
                         reaction%eqionx_rxn_k(j,irxn)* &
                         ref_cation_quotient
           total = total + cation_X(j)
