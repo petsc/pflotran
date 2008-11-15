@@ -878,6 +878,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   PetscInt :: icount
   PetscInt :: iphase
   PetscReal :: bulk_vol_to_fluid_vol, molar_to_molal, molal_to_molar
+  PetscReal :: kd
 
   aq_species_constraint => constraint_coupler%aqueous_species
   mineral_constraint => constraint_coupler%minerals
@@ -1188,15 +1189,17 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       ncomp = reaction%eqionx_rxn_cationid(0,irxn)
       do jcomp = 1, ncomp
         icomp = reaction%eqionx_rxn_cationid(jcomp,irxn)
+        kd = auxvar%total_sorb(icomp)/auxvar%total(icomp,iphase)
         write(option%fid_out,128) reaction%primary_species_names(icomp), &
                                   reaction%eqionx_rxn_k(jcomp,irxn), & !,auxvar%eqionx_conc(icomp)
-                                  auxvar%total_sorb(icomp)
+                                  auxvar%total_sorb(icomp), &
+                                  auxvar%total(icomp,iphase)+auxvar%total_sorb(icomp),kd
       enddo
     enddo
     125 format(/,2x,'ion-exchange reactions')
     126 format(2x,'CEC = ',1pe12.4)
-    127 format(2x,'cation  selectivity coef.  sorbed conc.')
-    128 format(2x,a8,1p3e12.4)
+    127 format(2x,'cation  selectivity coef.    sorbed conc.   tot(aq+sorbed)    Kd')
+    128 format(2x,a8,2x,1pe12.4,4x,1pe12.4,4x,1pe12.4,4x,1pe12.4)
   endif
   
   !total retardation from ion exchange and surface complexation
