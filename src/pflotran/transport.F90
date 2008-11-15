@@ -149,10 +149,10 @@ subroutine TFluxDerivative(aux_var_up,por_up,tor_up,sat_up,dist_up, &
   coef_up = coef_up*area
   coef_dn = coef_dn*area
 
-  ! units = (m^3 water/sec)*(kg water/m^3 water) = kg water/sec
+  ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
   if (associated(aux_var_dn%dtotal)) then
-    J_up = aux_var_up%dtotal(:,:,iphase)*coef_up
-    J_dn = aux_var_dn%dtotal(:,:,iphase)*coef_dn
+    J_up = aux_var_up%dtotal(:,:,iphase)*coef_up*1000.d0
+    J_dn = aux_var_dn%dtotal(:,:,iphase)*coef_dn*1000.d0
   else  
     J_up = 0.d0
     J_dn = 0.d0
@@ -297,9 +297,9 @@ subroutine TBCFluxDerivative(ibndtype, &
   !       = m^3 water/sec  
   coef_dn = coef_dn*area
 
-  ! units = (m^3 water/sec)*(kg water/L water) = kg water/sec
+  ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
   if (associated(aux_var_dn%dtotal)) then
-    J_dn = aux_var_dn%dtotal(:,:,iphase)*coef_dn
+    J_dn = aux_var_dn%dtotal(:,:,iphase)*coef_dn*1000.d0
   else
     J_dn = 0.d0
     do icomp = 1, option%ntrandof

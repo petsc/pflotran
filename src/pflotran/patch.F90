@@ -990,7 +990,8 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
         end select
       endif
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY, &
-         SECONDARY_MOLARITY,TOTAL_MOLALITY,TOTAL_MOLARITY,MINERAL_RATE)
+         SECONDARY_MOLARITY,TOTAL_MOLALITY,TOTAL_MOLARITY, &
+         MINERAL_RATE,MINERAL_VOLUME_FRACTION)
       select case(ivar)
         case(PH)
           do local_id=1,grid%nlmax
@@ -1163,7 +1164,8 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
         end select
       endif
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY, &
-         TOTAL_MOLALITY,TOTAL_MOLARITY,MINERAL_VOLUME_FRACTION,MINERAL_RATE)
+         TOTAL_MOLALITY,TOTAL_MOLARITY, &
+         MINERAL_VOLUME_FRACTION,MINERAL_RATE)
       select case(ivar)
         case(PH)
           value = -log10(patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)* &

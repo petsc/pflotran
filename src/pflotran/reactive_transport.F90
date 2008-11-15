@@ -511,24 +511,24 @@ subroutine RTAccumulationDerivative(aux_var,por,vol,reaction,option,J)
   PetscReal :: J(reaction%ncomp,reaction%ncomp)
   
   PetscInt :: icomp, iphase
-  PetscReal :: psv_t, psvd_t, v_t
+  PetscReal :: psvd_t, v_t
   
   iphase = 1
   ! units = (m^3 por/m^3 bulk)*(m^3 water/m^3 por)*(m^3 bulk)/(sec)
-  !         *(kg water/m^3 water) = kg water/sec
+  !         *(kg water/L water)*(1000L water/m^3 water) = kg water/sec
   ! all Jacobian entries should be in kg water/sec
-  if (associated(aux_var%dtotal)) then ! units of dtotal = kg water/m^3 water
-    if (associated(aux_var%dtotal_sorb)) then
+  if (associated(aux_var%dtotal)) then ! units of dtotal = kg water/L water
+    if (associated(aux_var%dtotal_sorb)) then ! unit of dtotal_sorb = kg water/m^3 bulk
       v_t = vol/option%dt   
-      psv_t = por*aux_var%sat(iphase)*v_t
-      J = aux_var%dtotal(:,:,iphase)*psv_t + aux_var%dtotal_sorb(:,:)*v_t
+      psvd_t = por*aux_var%sat(iphase)*1000.d0*v_t
+      J = aux_var%dtotal(:,:,iphase)*psvd_t + aux_var%dtotal_sorb(:,:)*v_t
     else
-      psv_t = por*aux_var%sat(iphase)*vol/option%dt  
-      J = aux_var%dtotal(:,:,iphase)*psv_t
+      psvd_t = por*aux_var%sat(iphase)*1000.d0*vol/option%dt  
+      J = aux_var%dtotal(:,:,iphase)*psvd_t
     endif
   else
     J = 0.d0
-    psvd_t = por*aux_var%sat(iphase)*vol*aux_var%den(iphase)/option%dt ! units of den = kg water/m^3 water
+    psvd_t = por*aux_var%sat(iphase)*aux_var%den(iphase)*vol/option%dt ! units of den = kg water/m^3 water
     do icomp=1,reaction%ncomp
       J(icomp,icomp) = psvd_t
     enddo
@@ -566,11 +566,11 @@ subroutine RTAccumulation(aux_var,por,vol,reaction,option,Res)
   ! 1000.d0 converts vol from m^3 -> L
   ! all residual entries should be in mol/sec
   if (associated(aux_var%total_sorb)) then
-    v_t = vol*1000.d0/option%dt
-    psv_t = por*aux_var%sat(iphase)*v_t
+    v_t = vol/option%dt
+    psv_t = por*aux_var%sat(iphase)*1000.d0*v_t
     Res(:) = psv_t*aux_var%total(:,iphase) +  v_t*aux_var%total_sorb(:)
   else
-    psv_t = por*aux_var%sat(iphase)*vol*1000.d0/option%dt  
+    psv_t = por*aux_var%sat(iphase)*1000.d0*vol/option%dt  
     Res(:) = psv_t*aux_var%total(:,iphase) 
   endif
   
@@ -1806,7 +1806,7 @@ subroutine RTAuxVarCompute(x,aux_var,reaction,option)
     call RTotalSorb(aux_var,reaction,option)
   endif
 
-#if 0  
+#if 0
 ! numerical check
   Res_orig = 0.d0
   dtotal = 0.d0
@@ -1841,8 +1841,6 @@ subroutine RTAuxVarCompute(x,aux_var,reaction,option)
       endif
     enddo
   enddo
-  dtotal = dtotal * 1000.d0
-!  if (reaction%nsorb > 0) dtotalsorb = dtotalsorb * 1000.d0
   aux_var%dtotal(:,:,1) = dtotal
   if (reaction%nsorb > 0) aux_var%dtotal_sorb = dtotalsorb
   call RTAuxVarDestroy(auxvar_pert)

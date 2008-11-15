@@ -637,20 +637,23 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
         case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
           ! units = mol/L water
           Res(icomp) = auxvar%total(icomp,1) - total_conc(icomp)
-          ! dtotal units = kg water/m^3 water
+          ! dtotal units = kg water/L water
+
           ! Jac units = kg water/L water
-          Jac(icomp,:) = auxvar%dtotal(icomp,:,1)*1.d-3 ! converts kg water/m^3 water -> kg water/L water
+          Jac(icomp,:) = auxvar%dtotal(icomp,:,1)
       
         case(CONSTRAINT_TOTAL_SORB)
           ! conversion from m^3 bulk -> L water
           tempreal = option%reference_porosity*option%reference_saturation*1000.d0
-                    ! total = mol/L water  dtotal_sorb = mol/m^3 bulk
+          ! total = mol/L water  total_sorb = mol/m^3 bulk
           Res(icomp) = auxvar%total(icomp,1) + auxvar%total_sorb(icomp)/tempreal - &
                        total_conc(icomp)
-          ! conversion from m^3 bulk -> m^3 water
-          tempreal = option%reference_porosity*option%reference_saturation
-                     ! units = kg water/m^3 water
-          Jac(icomp,:) = auxvar%dtotal(icomp,:,1) + auxvar%dtotal_sorb(icomp,:)/tempreal
+          ! dtotal units = kg water/L water
+          ! dtotal_sorb units = kg water/m^3 bulk
+          ! Jac units = kg water/L water
+          Jac(icomp,:) = auxvar%dtotal(icomp,:,1) + &
+          ! dtotal_sorb units = kg water/m^3 bulk
+                         auxvar%dtotal_sorb(icomp,:)/tempreal
 
         case(CONSTRAINT_FREE,CONSTRAINT_LOG)
         
@@ -667,7 +670,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
             Res(icomp) = Res(icomp) + reaction%primary_spec_Z(jcomp)*auxvar%total(jcomp,1)
             do kcomp = 1, reaction%ncomp
               Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
-                reaction%primary_spec_Z(kcomp)*auxvar%dtotal(jcomp,kcomp,1)*1.d-3
+                reaction%primary_spec_Z(kcomp)*auxvar%dtotal(jcomp,kcomp,1)
             enddo
           enddo
           
@@ -1764,13 +1767,12 @@ subroutine RTotal(auxvar,reaction,option)
     enddo
   enddo
 
-    ! convert molality -> molarity
+  ! convert molality -> molarity
+  ! unit of total = mol/L water
   auxvar%total(:,iphase) = auxvar%total(:,iphase)*den_kg_per_L
   
   ! units of dtotal = kg water/L water
-  ! need to convert to kg water/m^3 water to avoid all the scaling by water density later
-  ! now, units of dtotal = kg water/m^3 water
-  auxvar%dtotal = auxvar%dtotal*auxvar%den(iphase)
+  auxvar%dtotal = auxvar%dtotal*den_kg_per_L
   
 end subroutine RTotal
 
