@@ -484,6 +484,18 @@ It follow from Eqn.\eqref{dh} that
 \frac{1}{\gamma_i}\frac{d\gamma_i}{d\I}\eq \frac{1}{2} \frac{z_i^2 A \I^{-1/2}}{\left(1+\stackrel{\circ}{a}_i B\sqrt{\I}\right)^2} + \dot b.
 \EN
 
+\subsection{Jacobian}
+
+To construct the Jacobian matrix the following derivatives are needed
+\EQ
+\frac{\p\Psi_j}{\p m_l} \eq \delta_{jl} + \frac{1}{m_l}\sum_i\nu_{ji}\nu_{li}m_i.
+\EN
+The logarithmic derivatives are symmetric thereby reducing storage
+\EQ
+\frac{\p\Psi_j}{\p \ln m_l} \eq m_j\delta_{jl} + \sum_i\nu_{ji}\nu_{li}m_i \eq \frac{\p\Psi_l}{\p \ln m_j}.
+\EN
+Finally, the stoichiometric has zero elements and may be reduced in size through compression.
+
 \section{Mineral Precipitation/Dissolution Reactions}
 
 \setcounter{equation}{0}
@@ -875,21 +887,27 @@ END
 Ion exchange reactions may be represented either in terms of bulk- or mineral-specific rock properties.  Changes in bulk sorption properties can be expected as a result of mineral reactions.  However, only the mineral-based formulation enables these effects to be captured in the model.  The bulk rock sorption site concentration $\omega_\a$, in units of moles of sites per bulk sediment volume (mol/dm$^3$), is related to the bulk cation exchange capacity $Q_\a$ (mol/kg) by the expression
 
 Ion exchange reactions can be expressed in the form
+%\EQ\label{ex1}
+%\dfrac{1}{z_j} \A_j + \dfrac{1}{z_i} X_{z_i}^\a\A_i \arrows \dfrac{1}{z_i} \A_i + \dfrac{1}{z_j} X_{z_j}^\a\A_j,
+%\EN
 \EQ\label{ex1}
-\dfrac{1}{z_j} \A_j + \dfrac{1}{z_i} X_{z_i}^\a\A_i \arrows \dfrac{1}{z_i} \A_i + \dfrac{1}{z_j} X_{z_j}^\a\A_j,
+z_i \A_j + z_j X_{z_i}^\a\A_i \arrows z_j \A_i + z_i X_{z_j}^\a\A_j,
 \EN
 with valencies $z_j$, $z_i$ of cations $\A_j$ and $\A_i$, respectively. The reference cation is denoted by the subscript $j$ and the subscript $i\!\ne\! j$ represents all other cations. 
-The mass action equation is given by
-\EQ
-K_{ji} \eq \left(\dfrac{X_j^\a}{a_j}\right)^{1/z_j}\left(\dfrac{a_i}{X_i^\a}\right)^{1/z_i},
+The corresponding mass action equation is given by
+%\EQ
+%K_{ji} \eq \left(\dfrac{X_j^\a}{a_j}\right)^{1/z_j}\left(\dfrac{a_i}{X_i^\a}\right)^{1/z_i},
+%\EN
+\EQ\label{ionexmassact}
+K_{ji}^\a \eq \frac{(k_j^\a)^{z_i}}{(k_i^\a)^{z_j}} \eq \left(\frac{X_j^\a}{a_j}\right)^{z_i} \left(\frac{a_i}{X_i^\a}\right)^{z_j}.
 \EN
-where, using the Gaines-Thomas convention, the equivalent fractions $X_k^\a$ are defined by
+Using the Gaines-Thomas convention, the equivalent fractions $X_k^\a$ are defined by
 \EQ
 X_k^\a = \frac{z_k S_k^\a}{\displaystyle\sum_l z_l S_l^\a} = \frac{z_k}{\omega_\a}S_k^\a,
 \EN
 with 
 \EQ
-\sum_k X_k^\a = 1,
+\sum_k X_k^\a = 1.
 \EN
 The site concentration $\omega_\a$ is defined by
 \EQ
@@ -903,9 +921,51 @@ with solid density $\rho_s$ and porosity $\varphi$.
 
 For equivalent exchange $(z_j\!=\!z_i\!=\!z)$, an explicit expression exists for the sorbed concentrations given by
 \EQ
-S_j^\a \eq \frac{\omega_\a}{z} \frac{k_j^\a C_j^{}}{\sum k_l^\a C_l^{}},
+S_j^\a \eq \frac{\omega_\a}{z} \frac{k_j^\a \gamma_j m_j^{}}{\displaystyle\sum_l k_l^\a \gamma_l m_l^{}},
 \EN
-where $C_k$ denotes the $k$th cation concentration. This expression follows directly from the mass action equations and conservation of exchange sites.
+where $m_k$ denotes the $k$th cation molality. This expression follows directly from the mass action equations and conservation of exchange sites.
+
+In the more general case $(z_i\ne z_j)$ it is necessary to solve the nonlinear equation
+\EQ
+X_j^\a + \sum_{i\ne j} X_i^\a \eq 1,
+\EN
+for the reference cation mole fraction $X_j$. 
+From the mass action equation Eqn.\eqref{ionexmassact}
+it follows that
+\EQ
+X_i^\a\eq k_i^\a a_i\left(\frac{X_j^\a}{k_j^\a a_j}\right)^{z_i/z_j}.
+\EN
+Defining the function
+\EQ
+f(X_j^\a) \eq X_j^\a + \sum_{i\ne j}X_i^\a(X_j^\a)-1,
+\EN
+its derivative is given by
+\EQ
+\frac{df}{dX_j^\a} \eq 1 - \frac{1}{z_jX_j^\a}\sum_{i\ne j} z_i k_i^\a a_i \left(\frac{X_j^\a}{k_j^\a a_j}\right)^{z_i/z_j}.
+\EN
+The reference mole fraction is then obtained by Newton-Raphson iteration
+\EQ
+(X_j^\a)^{k+1} \eq (X_j^\a)^k -\dfrac{f[(X_j^\a)^k]}{\dfrac{df[(X_j^\a)^k]}{dX_j^\a}}.
+\EN
+
+The sorbed concentration for the $j$th cation appearing in the accumulation term is given by
+\EQ
+S_j^\a \eq \frac{\omega_\a}{z_j} X_j^\a,
+\EN
+with the derivatives for $j\ne l$
+\begin{subequations}
+\BA
+\dfrac{\p S_j^\a}{\p m_l} &\eq -\frac{\omega_\a}{m_l} \dfrac{X_j^\a X_l^\a}{\displaystyle\sum_l z_l X_l^\a},\\
+&\eq -\frac{1}{m_l} \dfrac{z_jz_lS_j^\a S_l^\a}{\displaystyle\sum_l z_l^2 S_l^\a},
+\EA
+\end{subequations}
+and for $j=l$
+\begin{subequations}
+\BA
+\dfrac{\p S_j^\a}{\p m_j} &\eq \frac{\omega_\a X_j^\a}{z_j m_j} \left(1-\dfrac{z_j X_j^\a}{\displaystyle\sum_{l} z_{l} X_{l}^\a}\right),\\
+&\eq \frac{S_j^\a}{m_j} \left(1-\dfrac{z_j^2 S_j^\a}{\displaystyle\sum_{l} z_{l}^2 S_{l}^\a}\right).
+\EA
+\end{subequations}
 
 \subsubsection{Kinetic Formulation of Ion Exchange}
 
