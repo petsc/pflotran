@@ -2,8 +2,8 @@
 #
 #    
 #    	G N U P L O T
-#    	Version 4.2 patchlevel 3 
-#    	last modified Mar 2008
+#    	Version 4.2 patchlevel 4 
+#    	last modified Sep 2008
 #    	System: Darwin 9.5.0
 #    
 #    	Copyright (C) 1986 - 1993, 1998, 2004, 2007, 2008
@@ -127,10 +127,10 @@ set cblabel ""
 set cblabel  offset character 0, 0, 0 font "Helvetica, 24" textcolor lt -1 rotate by 90
 set cbrange [ * : * ] noreverse nowriteback  # (currently [-10.0000:10.0000] )
 set zero 1e-08
-set lmargin -1
-set bmargin -1
-set rmargin -1
-set tmargin -1
+set lmargin  -1
+set bmargin  -1
+set rmargin  -1
+set tmargin  -1
 set locale "C"
 set pm3d explicit at s
 set pm3d scansautomatic
@@ -143,16 +143,12 @@ set loadpath
 set fontpath 
 set fit noerrorvariables
 GNUTERM = "aqua"
-set key top right
-set xrange[0:2]
-set logscale y
+set key bottom right
 plot \
-'pflotran001.tec' u 1:13 t 'PFLOTRAN: UO_2^{++} 15 y' w l lw 2,\
-'pflotran002.tec' u 1:13 t 'PFLOTRAN: UO_2^{++} 25 y' w l lw 2,\
-'pflotran003.tec' u 1:13 t 'PFLOTRAN: UO_2^{++} 50 y' w l lw 2,\
-'./flotran/batchpsi1.xyp' u 1:8 t 'FLOTRAN: UO_2^{++} 15 y' w l lw 2,\
-'./flotran/batchpsi2.xyp' u 1:8 t 'FLOTRAN: UO_2^{++} 25 y' w l lw 2,\
-'./flotran/batchpsi3.xyp' u 1:8 t 'FLOTRAN: UO_2^{++} 50 y' w l lw 2
+'./flotran/ionexpsi1.xyp' u 1:2 t 'FLOTRAN: Na^+' w lp lw 2,\
+'pflotran001.tec' u 1:4 t 'PFLOTRAN: Na^+' w lp lw 2,\
+'./flotran/ionexpsi1.xyp' u 1:3 t 'FLOTRAN: K^+' w lp lw 2,\
+'pflotran001.tec' u 1:5 t 'PFLOTRAN: K^+' w lp lw 2,\
+'./flotran/ionexpsi1.xyp' u 1:5 t 'FLOTRAN: Tracer' w lp lw 2,\
+'pflotran001.tec' u 1:7 t 'PFLOTRAN: Tracer' w lp lw 2
 #    EOF
-#'./flotran/batch0psi1.xyp' u 1:8 w l lw 2,\
-#'./flotran/batch0psi2.xyp' u 1:8 w l lw 2,\

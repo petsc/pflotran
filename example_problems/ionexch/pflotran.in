@@ -1,0 +1,216 @@
+:Description: 1D problem for testing geochemistry
+ 
+CHEMISTRY
+PRIMARY_SPECIES
+Na+
+K+
+Cl-
+Tracer
+/
+SECONDARY_SPECIES
+/
+GAS_SPECIES
+/
+MINERALS
+Halite
+/
+MINERAL_KINETICS
+Halite     1.e-30
+/
+
+skip
+SORPTION
+SURFACE_COMPLEXATION_RXN
+MINERAL Halite
+SITE >SOH 1.e3
+COMPLEXES
+>SONa
+>SOK
+/
+/
+/
+noskip
+:skip
+SORPTION
+ION_EXCHANGE_RXN
+MINERAL Halite
+CEC 0.25e2
+CATIONS
+Na+   1.
+K+    1.
+/
+/
+/
+:noskip
+
+:DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
+DATABASE ../../database/hanford.dat
+LOG_FORMULATION
+:ACTIVITY_COEFFICIENTS ITERATION
+:ACTIVITY_COEFFICIENTS NEWTON
+:ACTIVITY_COEFFICIENTS
+/
+
+MOLAL
+
+REFERENCE_POROSITY 0.5d0
+
+:CHECKPOINT 1
+:RESTART pflotran.chk1
+UNIFORM_VELOCITY 0.317098d-7 0.d0 0.d0
+
+TIMESTEPPER
+:MAX_STEPS 5
+TS_ACCELERATION 8
+/
+
+:NUMERICAL_JACOBIAN
+:INEXACT_NEWTON
+:STATISTICS
+:
+:CHECKPOINT 50
+:WALLCLOCK_STOP 0.05
+:
+DEBUG
+:MATVIEW_JACOBIAN
+:VECVIEW_RESIDUAL
+:VECVIEW_SOLUTION
+/
+:
+GRID
+TYPE structured
+NXYZ 100 1 1
+DXYZ
+0.05 
+1.
+1.
+/
+/
+:
+LINEAR_SOLVER TRANSPORT
+:KSP_TYPE PREONLY
+:PC_TYPE LU
+SOLVER GMRES
+/
+:
+NEWTON_SOLVER TRANSPORT
+:MATRIX_TYPE MFFD
+:PRECONDITIONER_MATRIX_TYPE AIJ
+RTOL 1.d-8
+ATOL 1.d-10
+STOL 1.e-60
+DTOL 1.e4
+:NO_INFINITY_NORM
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
+:
+:STATISTICS
+:
+TECPLOT POINT VELO
+:TECPLOT BLOCK VELO
+:
+DIFF  1.D-9       12.6
+:
+SATURATION_FUNCTIONS
+:id itype swir   lambda alpha     pcwmax betac pwr
+ 1  2     0.10   2.67   2.042d-4  1.e8   0.d0  1.d0
+/
+
+THERMAL_PROPERTIES
+:ithm rho    cpr     ckdry cksat tau cdiff   cexp
+  1   2.75e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
+/
+:
+MATERIALS
+:name   id icap ithm por  tau   permx     permy     permz     permpwr
+Soil1   1  1    1    0.5  1.0   1.d-12    1.d-12    1.d-13    1.d0
+/
+:
+:TIME d every 10
+TIME y
+1.
+:
+DTST 1.d-8
+1.e5 0.01
+:
+REGION all
+BLOCK 1 100 1 1 1 1
+/
+
+REGION West
+BLOCK 1 1 1 1 1 1
+FACE west
+/
+
+REGION East
+BLOCK 100 100 1 1 1 1
+FACE east
+/
+
+TRANSPORT_CONDITION Inlet_c
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 Inlet
+/
+/
+TRANSPORT_CONDITION initial_c
+TYPE zero_gradient
+CONSTRAINT_LIST
+0.d0 initial
+/
+/
+
+CONSTRAINT initial
+CONCENTRATIONS
+Na+      0.05             T
+K+       1.e-6            T
+Cl-      1.e-0            Z
+Tracer   1.e-6            T
+/
+MINERALS
+Halite     0.1d0 1.d0
+/
+/
+
+CONSTRAINT Inlet
+CONCENTRATIONS
+Na+      0.05             T
+K+       1.e-2            T
+Cl-      1.e-0            Z
+Tracer   1.e-2            T
+/
+/
+
+BOUNDARY_CONDITION
+TRANSPORT_CONDITION Inlet_c
+REGION West
+/
+
+BOUNDARY_CONDITION
+TRANSPORT_CONDITION initial_c
+REGION East
+/
+
+skip
+SOURCE_SINK
+TRANSPORT_CONDITION Inlet_c
+REGION West
+/
+
+SOURCE_SINK
+TRANSPORT_CONDITION initial_c
+REGION East
+/
+noskip
+
+INITIAL_CONDITION
+TRANSPORT_CONDITION initial_c
+REGION all
+/
+
+STRATA
+MATERIAL Soil1
+REGION all
+/
+

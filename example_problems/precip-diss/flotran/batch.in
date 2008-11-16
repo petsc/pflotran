@@ -12,10 +12,10 @@ OPTS
     0     0       1   0      0      0     -1   0       0
 :
 :   itmax ihalmax ndtmx iaccel ndamp icomprs icase
-    16    32     0      3      0     1       0
+    32    32     0      6      0     1       0
 :
-:   method iops ifor isurf iact loglin icon cournr pulse wtup pwrsrf
-    1      0    2    1     1    0      1    1000. 
+:  method iops ifor isurf iact loglin iflxtvd cournr tpulse wtup iprecip
+   1      0    2    1     1    0      1       10000. 0.     1.   0
 :
 :    isync ipor iperm permfac porfac icksat ucutoff iread pwrpor pwrperm
 COUPle  0    0    0     0.       0.      0      0.     0     1.    -1.
@@ -49,7 +49,7 @@ PTINit 1.e5  25.   0   25  300  250  125  1000.  2.d3
 Master H+
 :
 DXYZ
-100*0.02
+100*0.1
 1.
 1.
 :
@@ -66,13 +66,12 @@ COMP
 :species      itype   ctot        mineral
 Na+             1     9.89662e-4
 K+              1     1.77629e-4
-Ca++            1     1.26734e-4
+Ca++            3     1.26734e-4  Calcite
 Mg++            1     4.80169e-4
 :Al+++           3     1.e-8       K-Feldspar
 Al(OH)4-        3     1.e-8       K-Feldspar
 H+              8     7.3
-:UO2++           1     1.85272e-7
-UO2++           2     1.e-6
+UO2++           1     1.85272e-7
 :HCO3-           1     2.56907e-3
 HCO3-           4    -3.0          CO2(g)
 :HCO3-          -1    -3.5          CO2(g)
@@ -132,13 +131,12 @@ BCON
 :species      itype   ctot        mineral     guess
 Na+             1     9.89662e-4
 K+              1     1.77629e-4
-Ca++            1     1.26734e-4
+Ca++            1     1.26734e-8
 Mg++            1     4.80169e-4
 :Al+++           3     1.e-8       K-Feldspar
 Al(OH)4-        3     1.e-8       K-Feldspar
 H+              8     7.3
-:UO2++           1     1.e-16
-UO2++           1     1.85272e-7
+UO2++           1     1.e-16
 :HCO3-           1     2.56907e-3
 HCO3-           4    -3.0          CO2(g)
 :HCO3-          -1    -3.5          CO2(g)
@@ -324,9 +322,9 @@ O2(g)
 :
 MNIR
 :mineral   npar fkin delh  tau  acorr bcorr tafel rlim
-Calcite    1   1.    35. 1.e-3
+Calcite    1   1.    35. 1.e-2
 :itypkin npri  nsec  sig rk
-   25     0     0    1.  -30.
+   25     0     0    1.  -7.
 :i1  i2  j1  j2  k1  k2
   1 100   1   1   1   1  0.1  1.
 .
@@ -403,10 +401,10 @@ noskip
 .
 :noskip
 :
-:skip
+skip
 SORP  0
 :mineral   area[m^2/g]
-Calcite     1.d-2
+Calcite     100.d0
 :site      site density[sites/nm^2]
 >SOH         2.31
 >SOUO2OH
@@ -414,14 +412,14 @@ Calcite     1.d-2
 /
 /
 /
-:noskip
+noskip
 :
 BRKP   1
 1 1 1 
 :
 DTSTep[y]  1 3.e-8
-1.e-8        0.05
+1.e-8        0.02
 :
-TIME 3 15. 25. 50.
+TIME 2 1. 2.
 :
 ENDS
