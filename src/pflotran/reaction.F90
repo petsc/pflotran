@@ -894,7 +894,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   auxvar%den(1) = option%reference_density
   auxvar%temp = option%reference_temperature
   auxvar%sat = option%reference_saturation
-  bulk_vol_to_fluid_vol = option%reference_porosity*option%reference_saturation*1000.d0
+  bulk_vol_to_fluid_vol = option%reference_porosity*option%reference_saturation !*1000.d0
 
   molal_to_molar = auxvar%den(1)/1000.d0
   molar_to_molal = 1.d0/molal_to_molar
@@ -1129,7 +1129,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       if (finished) exit
     enddo
             
-    120 format(/,'  surf complex          mol/m^3 blk logK')  
+    120 format(/,'  surf complex          mol/dm^3 blk logK')  
     write(option%fid_out,120)
     write(option%fid_out,90)
     121 format(2x,a20,es12.4,es12.4)
@@ -1167,6 +1167,8 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
                             auxvar%eqsurfcmplx_conc(icplx)/ &
                             bulk_vol_to_fluid_vol/ &
                             auxvar%total(j,iphase)
+!             print *,'reaction: ',j,irxn,i,jj,jcomp,bulk_vol_to_fluid_vol, &
+!             auxvar%eqsurfcmplx_conc(icplx),auxvar%total(j,iphase)
               exit
             endif
           enddo
@@ -1208,7 +1210,8 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
     write(option%fid_out,90)
     do jcomp = 1, reaction%ncomp
       if (abs(auxvar%total(jcomp,iphase)) > 0.d0) &
-      retardation = 1.d0 + auxvar%total_sorb(jcomp)/bulk_vol_to_fluid_vol/auxvar%total(jcomp,iphase)
+      retardation = 1.d0 + auxvar%total_sorb(jcomp)/bulk_vol_to_fluid_vol &
+      /auxvar%total(jcomp,iphase)
       write(option%fid_out,129) reaction%primary_species_names(jcomp),retardation
     enddo
  1128 format(/,2x,'primary species  total retardation')
