@@ -143,5 +143,12 @@ set loadpath
 set fontpath 
 set fit noerrorvariables
 GNUTERM = "aqua"
-plot 'pflotran001.tec' u 1:12 w l lw 2,'./flotran/batchpsi1.xyp' u 1:8 w l lw 2,'./flotran/batch0psi1.xyp' u 1:8 w l lw 2,'./flotran/batchpsi1.xyp' u 1:8 w l lw 2,'./flotran/batch0psi2.xyp' u 1:8 w l lw 2,'./flotran/batchpsi2.xyp' u 1:8 w l lw 2,'pflotran002.tec' u 1:12 w l lw 2
+set key bottom right
+plot \
+'pflotran001.tec' u 1:13 t 'PFLOTRAN: UO_2^{++} 1 y' w l lw 2,\
+'pflotran002.tec' u 1:13 t 'PFLOTRAN: UO_2^{++} 2 y' w l lw 2,\
+'./flotran/batchpsi1.xyp' u 1:8 t 'FLOTRAN: UO_2^{++} 1 y' w l lw 2,\
+'./flotran/batchpsi2.xyp' u 1:8 t 'FLOTRAN: UO_2^{++} 2 y' w l lw 2
 #    EOF
+#'./flotran/batch0psi1.xyp' u 1:8 w l lw 2,\
+#'./flotran/batch0psi2.xyp' u 1:8 w l lw 2,\

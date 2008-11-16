@@ -404,7 +404,7 @@ noskip
 :skip
 SORP  0
 :mineral   area[m^2/g]
-Calcite     100.d0
+Calcite     1.d-1
 :site      site density[sites/nm^2]
 >SOH         2.31
 >SOUO2OH

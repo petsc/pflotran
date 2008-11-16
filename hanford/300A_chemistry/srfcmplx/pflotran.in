@@ -169,7 +169,7 @@ Calcite 0.
 SORPTION
 SURFACE_COMPLEXATION_RXN
 MINERAL Calcite
-SITE >SOH 1.0395E-06
+SITE >SOH 1.0395E-4
 COMPLEXES
 >SOUO2OH
 >SOUO2CO3
@@ -182,6 +182,10 @@ DATABASE ../../../database/hanford.dat
 LOG_FORMULATION
 ACTIVITY_COEFFICIENTS
 /
+:
+MOLAL
+:
+REFERENCE_POROSITY 0.5d0
 :
 :CHECKPOINT 1
 :RESTART pflotran.chk1
@@ -232,8 +236,21 @@ LINEAR_SOLVER FLOW
 LINEAR_SOLVER TRANSPORT
 :KSP_TYPE PREONLY
 :PC_TYPE LU
+SOLVER GMRES
 /
 :
+:
+NEWTON_SOLVER TRANSPORT
+:MATRIX_TYPE MFFD
+:PRECONDITIONER_MATRIX_TYPE AIJ
+RTOL 1.d-8
+ATOL 1.d-8
+STOL 1.e-60
+DTOL 1.e4
+:NO_INFINITY_NORM
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
 :STATISTICS
 :
 TECPLOT POINT VELO 
@@ -346,8 +363,8 @@ Cl-      6.54794e-4       T
 HCO3-    1.e-3            G CO2(g)
 Al(OH)4- 1.e-9            M K-Feldspar
 :Al+++    1.e-9           M K-Feldspar
-:UO2++    1.e-16           T
-UO2++    1.85272e-7       T
+UO2++    1.e-16           T
+:UO2++    1.85272e-7       T
 SiO2(aq) 5.36989e-4       T
 O2(aq)   3.58138e-4       T
 /
@@ -368,8 +385,8 @@ Cl-      6.54794e-4       T
 HCO3-    1.e-3            G CO2(g)
 Al(OH)4- 1.e-9            M K-Feldspar
 :Al+++    1.e-9           M K-Feldspar
-UO2++    1.e-16           S
-:UO2++    1.85272e-7       T
+:UO2++    1.e-16           S
+UO2++    1.85272e-7       T
 SiO2(aq) 5.36989e-4       T
 O2(aq)   3.58138e-4       T
 /
