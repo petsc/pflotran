@@ -1191,11 +1191,11 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       ncomp = reaction%eqionx_rxn_cationid(0,irxn)
       do jcomp = 1, ncomp
         icomp = reaction%eqionx_rxn_cationid(jcomp,irxn)
-        kd = auxvar%total_sorb(icomp)/auxvar%total(icomp,iphase)
-        write(option%fid_out,128) reaction%primary_species_names(icomp), &
+        retardation = 1.d0 + auxvar%total_sorb(icomp)/auxvar%total(icomp,iphase) ! not yet correct - pcl
+        write(option%fid_out,128) reaction%primary_species_names(icomp), & ! need to sum over ion exch. contrib.
                                   reaction%eqionx_rxn_k(jcomp,irxn), & !,auxvar%eqionx_conc(icomp)
                                   auxvar%total_sorb(icomp), &
-                                  auxvar%total(icomp,iphase)+auxvar%total_sorb(icomp),kd
+                                  auxvar%total(icomp,iphase)+auxvar%total_sorb(icomp),retardation
       enddo
     enddo
     125 format(/,2x,'ion-exchange reactions')
