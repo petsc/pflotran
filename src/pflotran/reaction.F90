@@ -878,7 +878,6 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   PetscInt :: icount
   PetscInt :: iphase
   PetscReal :: bulk_vol_to_fluid_vol, molar_to_molal, molal_to_molar
-  PetscReal :: kd
 
   aq_species_constraint => constraint_coupler%aqueous_species
   mineral_constraint => constraint_coupler%minerals
