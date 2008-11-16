@@ -893,7 +893,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   auxvar%den(1) = option%reference_density
   auxvar%temp = option%reference_temperature
   auxvar%sat = option%reference_saturation
-  bulk_vol_to_fluid_vol = option%reference_porosity*option%reference_saturation !*1000.d0
+  bulk_vol_to_fluid_vol = option%reference_porosity*option%reference_saturation*1000.d0
 
   molal_to_molar = auxvar%den(1)/1000.d0
   molar_to_molal = 1.d0/molal_to_molar
@@ -1199,7 +1199,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
     enddo
     125 format(/,2x,'ion-exchange reactions')
     126 format(2x,'CEC = ',1pe12.4)
-    127 format(2x,'cation  selectivity coef.    sorbed conc.   tot(aq+sorbed)    Kd')
+    127 format(2x,'cation  selectivity coef.   sorbed conc.   tot(aq+sorbed)  Retardation (1+Kd)')
     128 format(2x,a8,2x,1pe12.4,4x,1pe12.4,4x,1pe12.4,4x,1pe12.4)
   endif
   

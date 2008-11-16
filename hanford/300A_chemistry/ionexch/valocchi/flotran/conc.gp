@@ -145,10 +145,14 @@ set fontpath
 set fit noerrorvariables
 GNUTERM = "aqua"
 plot \
-'ionexpsi3.xyp' u 1:2 t 'Na^+' w l lw 2,\
-'ionexpsi3.xyp' u 1:3 t 'K^+' w l lw 2,\
-'ionexpsi3.xyp' u 1:4 t 'Ca^{2+}' w l lw 2,\
-'ionexpsi3.xyp' u 1:5 t 'H^+'w l lw 2,\
-'ionexaq3.xyp' u 1:2 axes x1y2 t 'pH' w l lw 2,\
+'ionexpsi3.xyp' u 1:2 t 'FLOTRAN: Na^+' w l lw 2,\
+'ionexpsi3.xyp' u 1:3 t 'FLOTRAN: K^+' w l lw 2,\
+'ionexpsi3.xyp' u 1:4 t 'FLOTRAN: Ca^{2+}' w l lw 2,\
+'ionexpsi3.xyp' u 1:5 t 'FLOTRAN: H^+'w l lw 2,\
+'ionexaq3.xyp' u 1:2 axes x1y2 t 'FLOTRAN: pH' w l lw 2,\
+'../pflotran003.tec' u 1:7 t 'PFLOTRAN: Na^+' w l lw 2,\
+'../pflotran003.tec' u 1:8 t 'PFLOTRAN: K^+' w l lw 2,\
+'../pflotran003.tec' u 1:9 t 'PFLOTRAN: Ca^{2+}' w l lw 2,\
+'../pflotran003.tec' u 1:10 t 'PFLOTRAN: H^+' w l lw 2,\
 '../pflotran003.tec' u 1:6 axes x1y2 t 'PFLOTRAN: pH' w l lw 2
 #    EOF
