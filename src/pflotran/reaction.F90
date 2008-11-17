@@ -964,7 +964,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
         case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
           string = 'total'
         case(CONSTRAINT_TOTAL_SORB)
-          string = 'aq+sorb'
+          string = 'sorb'
         case(CONSTRAINT_FREE)
           string = 'free'
         case(CONSTRAINT_CHARGE_BAL)
@@ -1166,8 +1166,6 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
                             auxvar%eqsurfcmplx_conc(icplx)/ &
                             bulk_vol_to_fluid_vol/ &
                             auxvar%total(j,iphase)
-!             print *,'reaction: ',j,irxn,i,jj,jcomp,bulk_vol_to_fluid_vol, &
-!             auxvar%eqsurfcmplx_conc(icplx),auxvar%total(j,iphase)
               exit
             endif
           enddo
@@ -1190,19 +1188,14 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       ncomp = reaction%eqionx_rxn_cationid(0,irxn)
       do jcomp = 1, ncomp
         icomp = reaction%eqionx_rxn_cationid(jcomp,irxn)
-        retardation = 1.d0 + auxvar%total_sorb(icomp)/auxvar%total(icomp,iphase) & ! not yet correct - pcl
-                                    /(bulk_vol_to_fluid_vol*1.d-3)
-
-        write(option%fid_out,128) reaction%primary_species_names(icomp), & ! need to sum over ion exch. contrib.
-                                  reaction%eqionx_rxn_k(jcomp,irxn), & !,auxvar%eqionx_conc(icomp)
-                                  auxvar%total_sorb(icomp), &
-                                  auxvar%total(icomp,iphase)+auxvar%total_sorb(icomp),retardation
+        write(option%fid_out,128) reaction%primary_species_names(icomp), &
+                                  reaction%eqionx_rxn_k(jcomp,irxn)!,auxvar%eqionx_conc(icomp)
       enddo
     enddo
     125 format(/,2x,'ion-exchange reactions')
     126 format(2x,'CEC = ',1pe12.4)
-    127 format(2x,'cation  selectivity coef.   sorbed conc.   tot(aq+sorbed)  retardation (1+Kd)')
-    128 format(2x,a8,2x,1pe12.4,4x,1pe12.4,4x,1pe12.4,4x,1pe12.4)
+    127 format(2x,'cation  selectivity coef.  sorbed conc.')
+    128 format(2x,a8,1p3e12.4)
   endif
   
   !total retardation from ion exchange and surface complexation
@@ -1211,8 +1204,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
     write(option%fid_out,90)
     do jcomp = 1, reaction%ncomp
       if (abs(auxvar%total(jcomp,iphase)) > 0.d0) &
-      retardation = 1.d0 + auxvar%total_sorb(jcomp)/bulk_vol_to_fluid_vol &
-      /auxvar%total(jcomp,iphase)
+      retardation = 1.d0 + auxvar%total_sorb(jcomp)/bulk_vol_to_fluid_vol/auxvar%total(jcomp,iphase)
       write(option%fid_out,129) reaction%primary_species_names(jcomp),retardation
     enddo
  1128 format(/,2x,'primary species  total retardation')
@@ -1820,7 +1812,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
                ref_cation_quotient
   PetscReal :: cation_X(reaction%ncomp)
   PetscReal :: dres_dref_cation_X, dref_cation_X
-  PetscReal :: sumZX
+  PetscReal :: sumZX, sumkm
   
   PetscReal :: total_pert, ref_cation_X_pert, pert
   PetscReal :: ref_cation_quotient_pert, dres_dref_cation_X_pert
@@ -1831,8 +1823,8 @@ subroutine RTotalSorb(auxvar,reaction,option)
   ln_act = ln_conc+log(auxvar%pri_act_coef)
   ln_act_h2o = 0.d0  ! assume act h2o = 1 for now
     
-  ! initialize total sorbed concentrations and derivatives
-  auxvar%total_sorb = 0.d0
+  auxvar%total_sorb(:) = 0.d0
+  ! initialize derivatives
   auxvar%dtotal_sorb = 0.d0
 
   ! Surface Complexation
@@ -1975,26 +1967,26 @@ subroutine RTotalSorb(auxvar,reaction,option)
     ! for now we assume that omega is equal to CEC.
     omega = reaction%eqionx_rxn_CEC(irxn)
 
-    icomp = reaction%eqionx_rxn_cationid(1,irxn)
-    ref_cation_conc = auxvar%pri_molal(icomp)*auxvar%pri_act_coef(icomp)
-    ref_cation_Z = reaction%primary_spec_Z(icomp)
-    ref_cation_k = reaction%eqionx_rxn_k(1,irxn)
-    ref_cation_X = ref_cation_Z*auxvar%eqionx_ref_cation_sorbed_conc(irxn)/omega
+    if (reaction%eqionx_rxn_Z_flag(irxn)) then ! Zi /= Zj for any i,j
 
-    one_more = PETSC_FALSE
-    cation_X = 0.d0
-    do
+      icomp = reaction%eqionx_rxn_cationid(1,irxn)
+      ref_cation_conc = auxvar%pri_molal(icomp)*auxvar%pri_act_coef(icomp)
+      ref_cation_Z = reaction%primary_spec_Z(icomp)
+      ref_cation_k = reaction%eqionx_rxn_k(1,irxn)
+      ref_cation_X = ref_cation_Z*auxvar%eqionx_ref_cation_sorbed_conc(irxn)/omega
 
-      if (ref_cation_X <= 0.d0) ref_cation_X = 0.99d0
-      cation_X(1) = ref_cation_X
-      ref_cation_quotient = ref_cation_X/(ref_cation_conc*ref_cation_k)
-      total = ref_cation_X
+      one_more = PETSC_FALSE
+      cation_X = 0.d0
+      do
 
-      if (reaction%eqionx_rxn_Z_flag(irxn)) then ! Zi /= Zj for any i,j
+        if (ref_cation_X <= 0.d0) ref_cation_X = 0.99d0
+        cation_X(1) = ref_cation_X
+        ref_cation_quotient = ref_cation_X*ref_cation_k/ref_cation_conc
+        total = ref_cation_X
 
         do j = 2, ncomp
           icomp = reaction%eqionx_rxn_cationid(j,irxn)
-          cation_X(j) = auxvar%pri_molal(icomp)*auxvar%pri_act_coef(icomp)* &
+          cation_X(j) = auxvar%pri_molal(icomp)*auxvar%pri_act_coef(icomp)/ &
                         reaction%eqionx_rxn_k(j,irxn)* &
                         ref_cation_quotient** &
                         (reaction%primary_spec_Z(icomp)/ref_cation_Z)
@@ -2007,24 +1999,24 @@ subroutine RTotalSorb(auxvar,reaction,option)
           
         dres_dref_cation_X = 1.d0
 
-#if 0
-! test derivative
-      pert = 1.d-6 * ref_cation_X
-      ref_cation_X_pert = ref_cation_X + pert
-      ref_cation_quotient_pert = ref_cation_X_pert*ref_cation_k/ref_cation_conc
-      total_pert = ref_cation_X_pert
+  #if 0
+  ! test derivative
+        pert = 1.d-6 * ref_cation_X
+        ref_cation_X_pert = ref_cation_X + pert
+        ref_cation_quotient_pert = ref_cation_X_pert*ref_cation_k/ref_cation_conc
+        total_pert = ref_cation_X_pert
 
-        do j = 2, ncomp
-          icomp = reaction%eqionx_rxn_cationid(j,irxn)
-          total_pert = total_pert + &
-                       auxvar%pri_molal(icomp)*auxvar%pri_act_coef(icomp)/ &
-                       reaction%eqionx_rxn_k(j,irxn)* &
-                       ref_cation_quotient_pert** &
-                       (reaction%primary_spec_Z(icomp)/ref_cation_Z)
-        enddo
-      dres_dref_cation_X_pert = (1.d0-total_pert-res)/pert
-! test
-#endif
+          do j = 2, ncomp
+            icomp = reaction%eqionx_rxn_cationid(j,irxn)
+            total_pert = total_pert + &
+                         auxvar%pri_molal(icomp)*auxvar%pri_act_coef(icomp)/ &
+                         reaction%eqionx_rxn_k(j,irxn)* &
+                         ref_cation_quotient_pert** &
+                         (reaction%primary_spec_Z(icomp)/ref_cation_Z)
+          enddo
+        dres_dref_cation_X_pert = (1.d0-total_pert-res)/pert
+  ! test
+  #endif
 
         do j = 2, ncomp
           icomp = reaction%eqionx_rxn_cationid(j,irxn)
@@ -2040,29 +2032,27 @@ subroutine RTotalSorb(auxvar,reaction,option)
         if (dabs(dref_cation_X/ref_cation_X) < tol) then
           one_more = PETSC_TRUE
         endif
-    
-      else
       
-        do j = 2, ncomp  ! Zi == Zj for all i,j
-          icomp = reaction%eqionx_rxn_cationid(j,irxn)
-          cation_X(j) = auxvar%pri_molal(icomp)*auxvar%pri_act_coef(icomp)* &
-                        reaction%eqionx_rxn_k(j,irxn)* &
-                        ref_cation_quotient
-          total = total + cation_X(j)
-        enddo
-        
-        if (one_more) exit
-        
-        total = total / ref_cation_X
-        ref_cation_X = omega / total  
-        
-        one_more = PETSC_TRUE 
-      
-      endif
-      
-    enddo
-    auxvar%eqionx_ref_cation_sorbed_conc(irxn) = ref_cation_X*omega/ref_cation_Z
+      enddo
 
+      auxvar%eqionx_ref_cation_sorbed_conc(irxn) = ref_cation_X*omega/ref_cation_Z
+
+    else ! Zi == Zj for all i,j
+        
+      sumkm = 0.d0
+      cation_X = 0.d0
+      
+      do j = 1, ncomp  
+        icomp = reaction%eqionx_rxn_cationid(j,irxn)
+        cation_X(j) = auxvar%pri_molal(icomp)*auxvar%pri_act_coef(icomp)* &
+                      reaction%eqionx_rxn_k(j,irxn)
+        sumkm = sumkm + cation_X(j)
+      enddo
+          
+      cation_X = cation_X / sumkm
+
+    endif
+                
     ! sum up charges
     sumZX = 0.d0
     do i = 1, ncomp
