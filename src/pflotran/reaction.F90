@@ -2007,7 +2007,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
           
         dres_dref_cation_X = 1.d0
 
-  #if 0
+#if 0
   ! test derivative
         pert = 1.d-6 * ref_cation_X
         ref_cation_X_pert = ref_cation_X + pert
@@ -2024,7 +2024,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
           enddo
         dres_dref_cation_X_pert = (1.d0-total_pert-res)/pert
   ! test
-  #endif
+#endif
 
         do j = 2, ncomp
           icomp = reaction%eqionx_rxn_cationid(j,irxn)
