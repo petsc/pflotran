@@ -73,7 +73,7 @@ Tracer          1     1.e-6
 :
 Bcon        
 :ibndtyp iface temp 
-    1   1 25. 
+    1      1    25. 
 :i1  i2  j1  j2  k1  k2
  1   1   1   1   1   1
 .
@@ -84,15 +84,15 @@ Cl-            -1     1.e-3
 Tracer          1     1.e-2
 :
 :ibndtyp  iface temp
- 3 2 25.
+    3       2    25.
 :i1  i2  j1  j2  k1  k2
 100 100   1   1   1   1
 .
 :species      itype   ctot    mineral     guess
-Na+             1     1.e-3
-K+              1     2.e-4
+Na+             1     0.05
+K+              1     1.e-2
 Cl-            -1     1.e-3
-Tracer          1     1.e-6
+Tracer          1     1.e-2
 .
 :
 AQCX                  

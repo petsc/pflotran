@@ -34,7 +34,7 @@ noskip
 SORPTION
 ION_EXCHANGE_RXN
 MINERAL Halite
-CEC 2.d0
+CEC 0.25e3
 CATIONS
 Na+   1.
 K+    1.
@@ -129,7 +129,7 @@ Soil1   1  1    1    0.5  1.0   1.d-12    1.d-12    1.d-13    1.d0
 :
 :TIME d every 10
 TIME y
-1. 10. 20.
+1.
 :
 DTST 1.d-8
 1.e5 0.01
@@ -163,8 +163,8 @@ CONSTRAINT_LIST
 
 CONSTRAINT initial
 CONCENTRATIONS
-Na+      0.1              T
-K+       1.e-8            T
+Na+      0.05             T
+K+       1.e-6            T
 Cl-      1.e-0            Z
 Tracer   1.e-6            T
 /
@@ -175,8 +175,8 @@ Halite     0.1d0 1.d0
 
 CONSTRAINT Inlet
 CONCENTRATIONS
-Na+      0.1              T
-K+       1.e-4            T
+Na+      0.05             T
+K+       1.e-2            T
 Cl-      1.e-0            Z
 Tracer   1.e-2            T
 /
