@@ -2309,8 +2309,8 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
                                            exp((reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)-1.d0)* &
                                                 ln_sec_act(kcplx)) ! dR_dax
             tempreal = dIm_dprefactor_rate*(dprefactor_dcomp_numerator+dprefactor_dcomp_denominator)*auxvar%den(iphase)
-            do j = 1, reaction%eqcmplxstoich(0,kcplx)
-              jcomp = reaction%eqcmplxstoich(j,kcplx)
+            do j = 1, reaction%eqcmplxspecid(0,kcplx)
+              jcomp = reaction%eqcmplxspecid(j,kcplx)
               tempreal2 = reaction%eqcmplxstoich(j,kcplx)*exp(ln_sec_act(kcplx)-ln_conc(jcomp)) !dax_dc
               do i = 1, ncomp
                 icomp = reaction%kinmnrlspecid(i,imnrl)
