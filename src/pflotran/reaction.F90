@@ -964,7 +964,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
         case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
           string = 'total'
         case(CONSTRAINT_TOTAL_SORB)
-          string = 'sorb'
+          string = 'aq+sorb'
         case(CONSTRAINT_FREE)
           string = 'free'
         case(CONSTRAINT_CHARGE_BAL)
@@ -1166,6 +1166,8 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
                             auxvar%eqsurfcmplx_conc(icplx)/ &
                             bulk_vol_to_fluid_vol/ &
                             auxvar%total(j,iphase)
+!             print *,'reaction: ',j,irxn,i,jj,jcomp,bulk_vol_to_fluid_vol, &
+!             auxvar%eqsurfcmplx_conc(icplx),auxvar%total(j,iphase)
               exit
             endif
           enddo
@@ -1188,14 +1190,19 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       ncomp = reaction%eqionx_rxn_cationid(0,irxn)
       do jcomp = 1, ncomp
         icomp = reaction%eqionx_rxn_cationid(jcomp,irxn)
-        write(option%fid_out,128) reaction%primary_species_names(icomp), &
-                                  reaction%eqionx_rxn_k(jcomp,irxn)!,auxvar%eqionx_conc(icomp)
+        retardation = 1.d0 + auxvar%total_sorb(icomp)/auxvar%total(icomp,iphase) & ! not yet correct - pcl
+                                    /(bulk_vol_to_fluid_vol*1.d-3)
+
+        write(option%fid_out,128) reaction%primary_species_names(icomp), & ! need to sum over ion exch. contrib.
+                                  reaction%eqionx_rxn_k(jcomp,irxn), & !,auxvar%eqionx_conc(icomp)
+                                  auxvar%total_sorb(icomp), &
+                                  auxvar%total(icomp,iphase)+auxvar%total_sorb(icomp),retardation
       enddo
     enddo
     125 format(/,2x,'ion-exchange reactions')
     126 format(2x,'CEC = ',1pe12.4)
-    127 format(2x,'cation  selectivity coef.  sorbed conc.')
-    128 format(2x,a8,1p3e12.4)
+    127 format(2x,'cation  selectivity coef.   sorbed conc.   tot(aq+sorbed)  retardation (1+Kd)')
+    128 format(2x,a8,2x,1pe12.4,4x,1pe12.4,4x,1pe12.4,4x,1pe12.4)
   endif
   
   !total retardation from ion exchange and surface complexation
@@ -1204,7 +1211,8 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
     write(option%fid_out,90)
     do jcomp = 1, reaction%ncomp
       if (abs(auxvar%total(jcomp,iphase)) > 0.d0) &
-      retardation = 1.d0 + auxvar%total_sorb(jcomp)/bulk_vol_to_fluid_vol/auxvar%total(jcomp,iphase)
+      retardation = 1.d0 + auxvar%total_sorb(jcomp)/bulk_vol_to_fluid_vol &
+      /auxvar%total(jcomp,iphase)
       write(option%fid_out,129) reaction%primary_species_names(jcomp),retardation
     enddo
  1128 format(/,2x,'primary species  total retardation')
@@ -1823,8 +1831,8 @@ subroutine RTotalSorb(auxvar,reaction,option)
   ln_act = ln_conc+log(auxvar%pri_act_coef)
   ln_act_h2o = 0.d0  ! assume act h2o = 1 for now
     
-  auxvar%total_sorb(:) = 0.d0
-  ! initialize derivatives
+  ! initialize total sorbed concentrations and derivatives
+  auxvar%total_sorb = 0.d0
   auxvar%dtotal_sorb = 0.d0
 
   ! Surface Complexation
@@ -2086,7 +2094,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
     enddo    
 
   enddo
-
+  
   ! units of total_sorb = mol/m^3
   ! units of dtotal_sorb = kg water/m^3 bulk
   
