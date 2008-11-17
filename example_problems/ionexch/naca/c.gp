@@ -96,8 +96,7 @@ set ytics autofreq  font "Helvetica, 18"
 set ztics border in scale 1,0.5 nomirror norotate  offset character 0, 0, 0
 set ztics autofreq  font "Helvetica, 18"
 set nox2tics
-set y2tics border in scale 1,0.5 nomirror norotate  offset character 0, 0, 0
-set y2tics autofreq 
+set noy2tics
 set cbtics border in scale 1,0.5 mirror norotate  offset character 0, 0, 0
 set cbtics autofreq 
 set title "" 
@@ -109,15 +108,15 @@ set rrange [ * : * ] noreverse nowriteback  # (currently [0.00000:10.0000] )
 set trange [ * : * ] noreverse nowriteback  # (currently [-5.00000:5.00000] )
 set urange [ * : * ] noreverse nowriteback  # (currently [-5.00000:5.00000] )
 set vrange [ * : * ] noreverse nowriteback  # (currently [-5.00000:5.00000] )
-set xlabel "Distance [m]" 
+set xlabel "" 
 set xlabel  offset character 0, 0, 0 font "Helvetica, 24" textcolor lt -1 norotate
 set x2label "" 
 set x2label  offset character 0, 0, 0 font "Helvetica, 24" textcolor lt -1 norotate
 set xrange [ * : * ] noreverse nowriteback  # (currently [-10.0000:10.0000] )
 set x2range [ * : * ] noreverse nowriteback  # (currently [-10.0000:10.0000] )
-set ylabel "Concentration [mol/L]" 
+set ylabel "" 
 set ylabel  offset character 0, 0, 0 font "Helvetica, 24" textcolor lt -1 rotate by 90
-set y2label "pH" 
+set y2label "" 
 set y2label  offset character 0, 0, 0 font "Helvetica, 24" textcolor lt -1 rotate by 90
 set yrange [ * : * ] noreverse nowriteback  # (currently [-10.0000:10.0000] )
 set y2range [ * : * ] noreverse nowriteback  # (currently [-10.0000:10.0000] )
@@ -144,15 +143,12 @@ set loadpath
 set fontpath 
 set fit noerrorvariables
 GNUTERM = "aqua"
+set key bottom right
 plot \
-'ionexpsi3.xyp' u 1:2 t 'FLOTRAN: Na^+' w l lw 2,\
-'ionexpsi3.xyp' u 1:3 t 'FLOTRAN: K^+' w l lw 2,\
-'ionexpsi3.xyp' u 1:4 t 'FLOTRAN: Ca^{2+}' w l lw 2,\
-'ionexpsi3.xyp' u 1:5 t 'FLOTRAN: H^+'w l lw 2,\
-'ionexaq3.xyp' u 1:2 axes x1y2 t 'FLOTRAN: pH' w l lw 2,\
-'../pflotran003.tec' u 1:7 t 'PFLOTRAN: Na^+' w l lw 2,\
-'../pflotran003.tec' u 1:8 t 'PFLOTRAN: K^+' w l lw 2,\
-'../pflotran003.tec' u 1:9 t 'PFLOTRAN: Ca^{2+}' w l lw 2,\
-'../pflotran003.tec' u 1:10 t 'PFLOTRAN: H^+' w l lw 2,\
-'../pflotran003.tec' u 1:6 axes x1y2 t 'PFLOTRAN: pH' w l lw 2
+'./flotran/ionexpsi1.xyp' u 1:2 t 'FLOTRAN: Na^+' w lp lw 2,\
+'pflotran001.tec' u 1:4 t 'PFLOTRAN: Na^+' w lp lw 2,\
+'./flotran/ionexpsi1.xyp' u 1:3 t 'FLOTRAN: K^+' w lp lw 2,\
+'pflotran001.tec' u 1:5 t 'PFLOTRAN: K^+' w lp lw 2,\
+'./flotran/ionexpsi1.xyp' u 1:5 t 'FLOTRAN: Tracer' w lp lw 2,\
+'pflotran001.tec' u 1:7 t 'PFLOTRAN: Tracer' w lp lw 2
 #    EOF

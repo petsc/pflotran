@@ -1,0 +1,142 @@
+ion exchange benchmark problem (Taken from Postma and Appelo)
+Testing with free format and dynamic memory
+:       geometry  nx  ny  nz  mode iprint iwarn idebug idbg1 idbg2
+GRID     XYZ     100   1   1    2    1      0     0      1     1
+:
+DBASe
+:/Users/lichtner/flotran/database/mas25.dat
+/Users/lichtner/flotran/database/hanford.dat
+:
+OPTS
+:   idata istart imod  iexact  iscale  ihrmc isst iscreen iapp
+    0      0      1       0      0       0   0    0       1
+:
+:   itmax ihalmax ndtmx iaccel ndamp icomprs icase
+    16    32     0      3      0     1       0
+:
+:  method iops  ifor   isurf iact  loglin  icon  cournr pulse wtup pwrsrf
+    1      0      2      1      0      0      1    1.
+:
+:    isync ipor iperm permfac porfac icksat ucutoff iread pwrpor pwrperm
+COUPle  0    0    0     0.       0.      0      0.     0     1.    -1.
+:
+PLTFiles 
+:iplot  a  s  t  m si sf  v  z  b in  e ex ti  g itex
+    1   1  1  1  1  0  0  0  0  2  0  0  1  0  0   0
+:
+:    tol    ttol  tolneg tolmin tolexp dthalf qkmax tolstdst tolc dcmx
+TOLR 1.d-12 5.e-3 1.e0   1.e-12 5.d0   0.5    590.  1.e-6   1.e-20  0.1
+:
+:        mcyc  cc  c   flx r  sp  qk  pk  rk  a1  a2  a3
+DEBUg     0     1  1   0   1   1   1   1   1
+:
+:      isat isothrm iread por0 phir sat  w  lambda toldelt  tolpor
+ISYStem  1    0      0     0.5  1.  1.0  .5   1.    1.e-3    1.e-3
+:
+:     vlx0   vly0   vlz0  vgx0 vgy0 vgz0[m/yr]  alphax  alphay alphaz[m]
+FLOW   1.     0.       0.   0.   0.   0.        0.      0.     0.
+:
+:   d0[cm^2/s]  delhaq[kJ/mol]  dgas[cm^2/s]  dgexp  tortaq  tortg  idif
+DIFF   1.d-5     12.6            2.13d-1       1.8   1.d0   1.d0     0
+:
+:flag 1: T(x)   = d x^3 + a x^2 + b x + c (meters)
+:     2: T(x)   = a + (b-a) exp[-((x-x0)/c)^2] + (d - a) * x / xlen
+:   3:T(x,t)=a+1/2(b-a)(erf[(x+c-x0)/2sqr(dt)]-erf[(x-c-x0)/2sqr(dt)])
+:      p[Pa] temp flag  a    b    c    d   x0   xlen
+PTINit 1.e5  25.   0   25  300  250  125  1000.  2.d3
+:
+:master species for controlling time stepping
+Master Na+
+:
+DXYZ
+  100*0.05
+  1.
+  1. 
+:
+:   isolv level north nitmax idetail rmaxtol rtwotol smaxtol
+SOLV    4   1     1    100      0     1.e-20  1.e-20  1.e-12
+:
+:initial and boundary conditions: 1-conc., 2-flux, 3-zero gradient 
+COMP
+:
+:i1  i2  j1  j2  k1  k2
+  1 100   1   1   1   1
+.
+:
+:species      itype   ctot    mineral     guess
+Na+             1     0.05
+:K+              1     1.e-6
+Ca++            1     1.e-6
+Cl-            -1     1.e-3
+Tracer          1     1.e-6
+.
+.
+:
+Bcon        
+:ibndtyp iface temp 
+    1      1    25. 
+:i1  i2  j1  j2  k1  k2
+ 1   1   1   1   1   1
+.
+:species      itype   ctot    mineral     guess
+Na+             1     0.05
+:K+              1     1.e-2
+Ca++            1     1.e-2
+Cl-            -1     1.e-3
+Tracer          1     1.e-2
+:
+:ibndtyp  iface temp
+    3       2    25.
+:i1  i2  j1  j2  k1  k2
+100 100   1   1   1   1
+.
+:species      itype   ctot    mineral     guess
+Na+             1     0.05
+:K+              1     1.e-2
+Ca++            1     1.e-2
+Cl-            -1     1.e-3
+Tracer          1     1.e-2
+.
+:
+AQCX                  
+.
+:         
+MNRL
+Halite       
+.
+GASES
+.
+:
+MNIR
+:mineral   npar fkin delh  tau
+Halite    1   1.   35.   1.e-3
+:itypkin npri  nsec  sig rk
+   20     0     0    1. 1.e-30
+1 100   1  1  1  1   0.462253 1.  0.7455  40.
+.
+.
+:
+:ion-exchange reactions
+:          ionex ilog
+IONX         0     0
+:mineral   
+Halite
+:cec[moles/kg] 
+ 0.25
+:species   selectivity coef.
+ Na+       1.
+:K+        1.
+ Ca++      1.
+.
+.
+.
+:
+:BRKP   1
+:100  1 1 
+:
+DTSTEP[y]  1 3.e-9
+1.e-9        0.01
+:
+TIME 1 1.
+:
+ENDS
