@@ -677,6 +677,14 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
   do i_ghosted=structured_grid%istart,structured_grid%iend
     if (x >= x_lower_face .and. &                   ! since i_ghosted is zero-based
         x <= x_lower_face+structured_grid%dxg_local(i_ghosted+1)) then
+      ! test to prevent multiple procs from including a coordinate located on
+      ! boundary of local decomposition shared by two procs
+      ! if first cell in x-dir on proc
+      if (i_ghosted == structured_grid%istart) then
+        ! located on upwind boundary and ghosted
+        if (x == x_lower_face .and. &
+            structured_grid%nxs /= structured_grid%ngxs) exit
+      endif
       i = i_local 
       exit
     endif
@@ -688,6 +696,14 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
   do j_ghosted=structured_grid%jstart,structured_grid%jend
     if (y >= y_lower_face .and. &
         y <= y_lower_face+structured_grid%dyg_local(j_ghosted+1)) then
+      ! test to prevent multiple procs from including a coordinate located on
+      ! boundary of local decomposition shared by two procs
+      ! if first cell in y-dir on proc
+      if (j_ghosted == structured_grid%jstart) then
+        ! located on upwind boundary and ghosted
+        if (y == y_lower_face .and. &
+            structured_grid%nys /= structured_grid%ngys) exit
+      endif      
       j = j_local
       exit
     endif
@@ -699,6 +715,14 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
   do k_ghosted=structured_grid%kstart,structured_grid%kend
     if (z >= z_lower_face .and. &
         z <= z_lower_face+structured_grid%dzg_local(k_ghosted+1)) then
+      ! test to prevent multiple procs from including a coordinate located on
+      ! boundary of local decomposition shared by two procs
+      ! if first cell in z-dir on proc
+      if (k_ghosted == structured_grid%kstart) then
+        ! if located on upwind boundary and ghosted, skip
+        if (z == z_lower_face .and. &
+            structured_grid%nzs /= structured_grid%ngzs) exit
+      endif          
       k = k_local
       exit
     endif

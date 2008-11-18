@@ -463,14 +463,22 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                                    option%comm,ierr)   
 
 ! the next test as designed will only work on a uniform grid
-                if(grid%structured_grid%p_samr_patch==0) then
-                   if (count /= 1) then
-                      write(string,*) 'Region: (coord)', &
-                           region%coordinates(ONE_INTEGER)%x, &
-                           region%coordinates(ONE_INTEGER)%y, &
-                           region%coordinates(ONE_INTEGER)%z, &
-                           ' not found in global domain.', count
-                      call printErrMsg(option,string)
+                if (grid%structured_grid%p_samr_patch==0) then
+                  if (count == 0) then
+                    write(string,*) 'Region: (coord)', &
+                         region%coordinates(ONE_INTEGER)%x, &
+                         region%coordinates(ONE_INTEGER)%y, &
+                         region%coordinates(ONE_INTEGER)%z, &
+                          ' not found in global domain.', count
+                     call printErrMsg(option,string)
+                   else if (count > 1) then
+                     write(string,*) 'Region: (coord)', &
+                         region%coordinates(ONE_INTEGER)%x, &
+                         region%coordinates(ONE_INTEGER)%y, &
+                         region%coordinates(ONE_INTEGER)%z, &
+                         ' duplicated across ', count, &
+                         ' procs in global domain.'
+                     call printErrMsg(option,string)
                    endif
                 endif
             end select
