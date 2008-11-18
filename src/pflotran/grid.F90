@@ -19,12 +19,36 @@ module Grid_module
     PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
     PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
    
-    !nL2G :  not collective, local processor: local  =>  ghosted local  
-    !nG2L :  not collective, local processor:  ghosted local => local  
-    !nG2N :  collective,  ghosted local => global index , used for   
-    !                     matsetvaluesblocked ( not matsetvaluesblockedlocal)  
-    !nL2A :   collective, local => natural index, used for initialization   
-    !                              and source/sink setup  
+    ! Below, we define several arrays used for mapping between different 
+    ! types of array indices.  Our terminology is as follows:
+    !
+    ! 'Local' indices are used to access arrays containing values that are 
+    ! entirely local to the MPI process -- these arrays contain no "ghost" 
+    ! entries used to hold copies of values that are owned by neighboring 
+    ! processes.
+    !
+    ! 'Ghosted local' (or simply 'ghost') indices are used to access arrays 
+    ! that contain additional entries that hold copies of values that are 
+    ! owned by neighboring processes.  (These entries are filled in by 
+    ! DAGlobalToLocalBegin/End() in the structured grid case.)
+    !
+    ! Entries of a vector created with DACreateGlobalVector() should be 
+    ! indexed using 'local' indices.  The array returned from a call to 
+    ! VecGetArrayF90() on such a vector consists of local entries only and 
+    ! NO ghost points.
+    !
+    ! Entries of a vector created with DACreateLocalVector() should be 
+    ! indexed using 'ghosted local' indices.  The array returned from a call 
+    ! to VecGetArrayF90() on such a vector contains the truly local entries 
+    ! as well as ghost points.
+    !
+    ! The index mapping arrays are the following:
+    ! nL2G :  not collective, local processor: local  =>  ghosted local  
+    ! nG2L :  not collective, local processor:  ghosted local => local  
+    ! nG2N :  collective,  ghosted local => global index , used for   
+    !                      matsetvaluesblocked ( not matsetvaluesblockedlocal)  
+    ! nL2A :   collective, local => natural index, used for initialization   
+    !                               and source/sink setup  
     PetscInt, pointer :: nL2G(:), nG2L(:), nL2A(:)
     PetscInt, pointer :: nG2A(:)
     

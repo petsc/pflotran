@@ -25,10 +25,10 @@ module Structured_Grid_module
     PetscInt :: ngxy, ngxz, ngyz
     
     PetscInt :: istart, jstart, kstart, iend, jend, kend
-      ! istart gives the local x-index of the non-ghosted starting (lower left)
-      ! corner. iend gives the local x-index of the non-ghosted ending 
-      ! corner. jstart, jend correspond to y-index, kstart, kend to z-index.
-      ! these are all zero-based indexing    
+      ! istart gives the ghosted local x-index of the non-ghosted starting 
+      ! (lower left)corner. iend gives the local x-index of the non-ghosted 
+      ! ending corner. jstart, jend correspond to y-index, kstart, kend to 
+      ! z-index.  These are all zero-based indexing    
 
     PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
     PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
