@@ -1,4 +1,4 @@
-#!/sw/bin/gnuplot -persist
+#!/sw/bin/gnuplotx -persist
 #
 #    
 #    	G N U P L O T

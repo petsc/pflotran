@@ -3,7 +3,8 @@
 CHEMISTRY
 PRIMARY_SPECIES
 Na+
-K+
+:K+
+Ca++
 Cl-
 Tracer
 /
@@ -37,14 +38,15 @@ MINERAL Halite
 CEC 0.25e3
 CATIONS
 Na+   1.
-K+    1.
+:K+    1.
+Ca++  1.
 /
 /
 /
 :noskip
 
 :DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
-DATABASE ../../database/hanford.dat
+DATABASE ../../../database/hanford.dat
 LOG_FORMULATION
 :ACTIVITY_COEFFICIENTS ITERATION
 :ACTIVITY_COEFFICIENTS NEWTON
@@ -164,7 +166,8 @@ CONSTRAINT_LIST
 CONSTRAINT initial
 CONCENTRATIONS
 Na+      0.05             T
-K+       1.e-6            T
+:K+       1.e-6            T
+Ca++     1.e-6            T
 Cl-      1.e-0            Z
 Tracer   1.e-6            T
 /
@@ -176,7 +179,8 @@ Halite     0.1d0 1.d0
 CONSTRAINT Inlet
 CONCENTRATIONS
 Na+      0.05             T
-K+       1.e-2            T
+:K+       1.e-2            T
+Ca++     1.e-2            T
 Cl-      1.e-0            Z
 Tracer   1.e-2            T
 /

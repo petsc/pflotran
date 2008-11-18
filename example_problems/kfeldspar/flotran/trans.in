@@ -170,7 +170,7 @@ BRKP   2
 DTSTep[y]     2 3.e-8 1.e5
 1.e-8          10.d0 1.e2
 :
-TIME[y] 1 2.e4 4.e4 25.e4 3e6
+TIME[y] 1 1.e-8 2.e4 4.e4 25.e4 3e6
 :
 ENDS
 
