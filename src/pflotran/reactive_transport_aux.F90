@@ -29,7 +29,7 @@ module Reactive_Transport_Aux_module
     PetscReal, pointer :: eqsurfcmplx_conc(:)
     PetscReal, pointer :: eqsurfcmplx_freesite_conc(:)
     PetscReal, pointer :: eqionx_ref_cation_sorbed_conc(:)
-    PetscReal, pointer :: eqionx_conc(:)
+    PetscReal, pointer :: eqionx_conc(:,:)
     ! PetscReal, pointer :: eqionx_molfrac(:)
     ! mineral reactions
     PetscReal, pointer :: mnrl_volfrac0(:)
@@ -151,7 +151,7 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   if (reaction%neqionxrxn > 0) then
     allocate(aux_var%eqionx_ref_cation_sorbed_conc(reaction%neqionxrxn))
     aux_var%eqionx_ref_cation_sorbed_conc = 1.d-9 ! initialize to guess
-    allocate(aux_var%eqionx_conc(reaction%neqionxrxn))
+    allocate(aux_var%eqionx_conc(reaction%neqionxcation,reaction%neqionxrxn))
     aux_var%eqionx_conc = 1.d-9
   else
     nullify(aux_var%eqionx_ref_cation_sorbed_conc)

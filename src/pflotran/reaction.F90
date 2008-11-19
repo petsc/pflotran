@@ -177,8 +177,8 @@ subroutine ReactionRead(reaction,fid,option)
           call fiWordToUpper(word)   
 
           select case(trim(word))
+          
             case('SURFACE_COMPLEXATION_RXN')
-          !   call SurfaceComplexRXNRead
           
               srfcmplx_rxn => SurfaceComplexationRXNCreate()
               do
@@ -245,7 +245,7 @@ subroutine ReactionRead(reaction,fid,option)
               nullify(srfcmplx_rxn)
 
             case('ION_EXCHANGE_RXN')
-          !   call IonExchangeRXNRead
+            
               ionx_rxn => IonExchangeRxnCreate()
               do
                 call fiReadFlotranString(fid,string,ierr)
@@ -873,7 +873,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   PetscReal :: ln_act_h2o
   PetscReal :: charge_balance, ionic_strength
   PetscReal :: percent(reaction%neqcmplx+1)
-  PetscReal :: totj, retardation
+  PetscReal :: totj, retardation, kd
   PetscInt :: comp_id, jcomp
   PetscInt :: icount
   PetscInt :: iphase
@@ -1166,8 +1166,6 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
                             auxvar%eqsurfcmplx_conc(icplx)/ &
                             bulk_vol_to_fluid_vol/ &
                             auxvar%total(j,iphase)
-!             print *,'reaction: ',j,irxn,i,jj,jcomp,bulk_vol_to_fluid_vol, &
-!             auxvar%eqsurfcmplx_conc(icplx),auxvar%total(j,iphase)
               exit
             endif
           enddo
@@ -1181,8 +1179,8 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   
   ! Ion Exchange
   if (reaction%neqionxrxn > 0) then
+    write(option%fid_out,125)
     do irxn = 1, reaction%neqionxrxn
-      write(option%fid_out,125)
       write(option%fid_out,90)
       write(option%fid_out,126) reaction%eqionx_rxn_CEC(irxn)
       write(option%fid_out,127)
@@ -1190,34 +1188,35 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       ncomp = reaction%eqionx_rxn_cationid(0,irxn)
       do jcomp = 1, ncomp
         icomp = reaction%eqionx_rxn_cationid(jcomp,irxn)
-        retardation = 1.d0 + auxvar%total_sorb(icomp)/auxvar%total(icomp,iphase) & ! not yet correct - pcl
-                                    /(bulk_vol_to_fluid_vol*1.d-3)
-
-        write(option%fid_out,128) reaction%primary_species_names(icomp), & ! need to sum over ion exch. contrib.
-                                  reaction%eqionx_rxn_k(jcomp,irxn), & !,auxvar%eqionx_conc(icomp)
-                                  auxvar%total_sorb(icomp), &
-                                  auxvar%total(icomp,iphase)+auxvar%total_sorb(icomp),retardation
+        kd = auxvar%eqionx_conc(icomp,irxn)/auxvar%total(icomp,iphase) & 
+                      /bulk_vol_to_fluid_vol
+        write(option%fid_out,128) reaction%primary_species_names(icomp), &
+          reaction%eqionx_rxn_k(jcomp,irxn), & 
+          auxvar%eqionx_conc(icomp,irxn), &
+          kd
       enddo
     enddo
     125 format(/,2x,'ion-exchange reactions')
     126 format(2x,'CEC = ',1pe12.4)
-    127 format(2x,'cation  selectivity coef.   sorbed conc.   tot(aq+sorbed)  retardation (1+Kd)')
+    127 format(2x,'cation    selectivity coef.   sorbed conc.     Kd',&
+               /,30x,'[mol/m^3]')
     128 format(2x,a8,2x,1pe12.4,4x,1pe12.4,4x,1pe12.4,4x,1pe12.4)
   endif
   
-  !total retardation from ion exchange and surface complexation
-  if (reaction%neqsurfcmplxrxn > 0 .and. reaction%neqionxrxn > 0) then
-    write(option%fid_out,1128)
-    write(option%fid_out,90)
-    do jcomp = 1, reaction%ncomp
-      if (abs(auxvar%total(jcomp,iphase)) > 0.d0) &
-      retardation = 1.d0 + auxvar%total_sorb(jcomp)/bulk_vol_to_fluid_vol &
+! total retardation from ion exchange and surface complexation
+  write(option%fid_out,1128)
+  write(option%fid_out,90)
+  do jcomp = 1, reaction%ncomp
+    if (abs(auxvar%total(jcomp,iphase)) > 0.d0) &
+    retardation = 1.d0 + auxvar%total_sorb(jcomp)/bulk_vol_to_fluid_vol &
       /auxvar%total(jcomp,iphase)
-      write(option%fid_out,129) reaction%primary_species_names(jcomp),retardation
-    enddo
- 1128 format(/,2x,'primary species  total retardation')
-  129 format(2x,a12,8x,1pe12.4)
-  endif
+    write(option%fid_out,129) reaction%primary_species_names(jcomp), &
+      auxvar%total(jcomp,iphase)+auxvar%total_sorb(jcomp)*1.d-3, &
+      retardation
+  enddo
+ 1128 format(/,2x,'primary species     total(aq+sorbed)    total retardation', &
+             /,25x,'[mol/L]',15x,'1+Kd')
+  129 format(2x,a12,8x,1pe12.4,8x,1pe12.4)
   
   if (reaction%nmnrl > 0) then
   
@@ -1968,6 +1967,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
   enddo
   
   ! Ion Exchange
+  auxvar%eqionx_conc = 0.d0
   do irxn = 1, reaction%neqionxrxn
 
     ncomp = reaction%eqionx_rxn_cationid(0,irxn)
@@ -2065,9 +2065,6 @@ subroutine RTotalSorb(auxvar,reaction,option)
     sumZX = 0.d0
     do i = 1, ncomp
       icomp = reaction%eqionx_rxn_cationid(i,irxn)
-      
-!     auxvar%eqionx_conc(icomp) = cation_X(i)
-
       sumZX = sumZX + reaction%primary_spec_Z(icomp)*cation_X(i)
     enddo
 
@@ -2076,6 +2073,9 @@ subroutine RTotalSorb(auxvar,reaction,option)
       icomp = reaction%eqionx_rxn_cationid(i,irxn)
       tempreal1 = cation_X(i)*omega/reaction%primary_spec_Z(icomp)
       ! residual function entry
+      
+      auxvar%eqionx_conc(icomp,irxn) = auxvar%eqionx_conc(icomp,irxn) + tempreal1
+
       auxvar%total_sorb(icomp) = auxvar%total_sorb(icomp) + tempreal1
 
       tempreal2 = reaction%primary_spec_Z(icomp)/sumZX
