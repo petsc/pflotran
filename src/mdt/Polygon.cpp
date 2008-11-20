@@ -52,6 +52,20 @@ void Polygon::createNorthPondEastTrPolygon() {
 
 }
 
+void Polygon::createIFCPolygon() {
+
+  num_points = 3;
+  x = new PetscReal[num_points];
+  y = new PetscReal[num_points];
+
+  PetscInt n = 0;
+  x[n] = 594234.56; y[n++] = 116094.49;
+  x[n] = 594239.81; y[n++] = 116034.77;
+  x[n] = 594287.74; y[n++] = 116068.8;
+
+}
+
+
 void Polygon::createPlumePolygon() {
 
   num_points = 4;

@@ -9,6 +9,7 @@ PetscMPIInt commsize = 0;
 #include "Hanford300.h"
 #include "Hanford300v2.h"
 #include "TestCase.h"
+#include "IFC.h"
 #include "Output.h"
 
 #undef __FUNCT__
@@ -28,15 +29,17 @@ int main(int argc, char **args) {
   Grid *grid = NULL;
 //  Hanford300 *hanford300 = NULL;
   Hanford300v2 *hanford300 = NULL;
+  IFC *ifc = NULL;
   TestCase *testcase = NULL;
 
 //  hanford300 = new Hanford300(&grid);
-  hanford300 = new Hanford300v2(&grid);
+//  hanford300 = new Hanford300v2(&grid);
+  ifc = new IFC(&grid);
 //  testcase = new TestCase(&grid);
 
   Output *out = new Output(grid);
 
-#if 0
+#if 1
   PetscGetTime(&start);
   out->printGMSGrid();
   PetscGetTime(&end);

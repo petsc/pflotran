@@ -15,6 +15,7 @@ public:
   void createNorthPondWestTrPolygon();
   void createNorthPondEastTrPolygon();
   void createPlumePolygon();
+  void Polygon::createIFCPolygon();
   PetscInt pointInPolygon(PetscReal x_, PetscReal y_);
   
 private:
