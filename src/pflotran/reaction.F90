@@ -1994,7 +1994,7 @@ subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
   enddo
   
   ! Ion Exchange
-  rt_auxvar%eqionx_conc = 0.d0
+  if (associated(rt_auxvar%eqionx_conc)) rt_auxvar%eqionx_conc = 0.d0
   do irxn = 1, reaction%neqionxrxn
 
     ncomp = reaction%eqionx_rxn_cationid(0,irxn)
