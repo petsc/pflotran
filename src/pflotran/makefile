@@ -55,6 +55,7 @@ util_obj  = ${common_src}fileio.o \
 
 pflotran_obj = ${common_src}option.o \
 	${common_src}logging.o \
+	${common_src}global_aux.o\
 	${common_src}reactive_transport_aux.o\
 	${common_src}reaction_aux.o\
 	${common_src}thc_aux.o\
@@ -86,6 +87,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}database.o \
 	${common_src}realization.o \
 	${common_src}hdf5.o \
+	${common_src}global.o \
 	${common_src}mphase.o\
 	${common_src}immis.o\
 	${common_src}transport.o\
@@ -235,3 +237,6 @@ hdf5.o : realization.o option.o logging.o
 checkpoint.o : realization.o logging.o
 mass_balance.o : realization.o option.o field.o solver.o logging.o thc.o
 database.o : reaction.o fileio.o option.o utility.o reaction_aux.o
+global.o : realization.o level.o patch.o global_aux.o connection.o grid.o \
+	   option.o coupler.o
+global_aux.o : option.o

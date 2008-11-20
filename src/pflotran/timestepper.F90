@@ -567,6 +567,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   use Richards_module
   use THC_module
   use Output_module
+  use Global_module
   
   use Realization_module
   use Discretization_module
@@ -620,7 +621,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   ! Perform some global-to-local scatters to update the ghosted vectors.
   ! We have to do this so that the routines for calculating the residual
   ! and the Jacobian will have the ghost points they need.
-  ! Note that we don't do the global-to-local scatter for the ppressure 
+  ! Note that we don't do the global-to-local scatter for the pressure 
   ! vector, as that needs to be done within the residual calculation routine
   ! because that routine may get called several times during one Newton step
   ! if a method such as line search is being used.
@@ -639,16 +640,18 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
     write(*,'(/,2("=")," FLOW ",52("="))')
   endif
 
-  if (field%saturation0_loc /= 0) then ! store initial saturations for transport
-    call DiscretizationCreateVector(realization%discretization,ONEDOF, &
-                                    global_vec,GLOBAL,option)
-    call RealizationGetDataset(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
+  if (option%ntrandof > 0) then ! store initial saturations for transport
+    call RealizationGetDataset(realization,field%work,LIQUID_DENSITY, &
+                               ZERO_INTEGER)
     call DiscretizationGlobalToLocal(realization%discretization, &
-                                     global_vec,field%saturation0_loc,ONEDOF)   
-    call RealizationGetDataset(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
+                                     field%work,field%work_loc,ONEDOF)
+    call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_DENSITY,TIME_T)                                     
+
+    call RealizationGetDataset(realization,field%work,LIQUID_SATURATION, &
+                               ZERO_INTEGER)
     call DiscretizationGlobalToLocal(realization%discretization, &
-                                     global_vec,field%density0_loc,ONEDOF)   
-    call VecDestroy(global_vec,ierr)
+                                     field%work,field%work_loc,ONEDOF)
+    call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_SATURATION,TIME_T)                                     
   endif
   
   select case(option%iflowmode)
@@ -759,19 +762,20 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   stepper%linear_cum = stepper%linear_cum + sum_linear_iterations
   stepper%icutcum = stepper%icutcum + icut
 
-  if (field%saturation_loc /= 0) then ! store final saturations for transport
-    call DiscretizationCreateVector(realization%discretization,ONEDOF, &
-                                    global_vec,GLOBAL,option)
-    call RealizationGetDataset(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
+  if (option%ntrandof > 0) then ! store initial saturations for transport
+    call RealizationGetDataset(realization,field%work,LIQUID_DENSITY, &
+                               ZERO_INTEGER)
     call DiscretizationGlobalToLocal(realization%discretization, &
-                                     global_vec,field%saturation_loc,ONEDOF)   
-    call RealizationGetDataset(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
-    call DiscretizationGlobalToLocal(realization%discretization, &
-                                     global_vec,field%density_loc,ONEDOF)   
-    call VecDestroy(global_vec,ierr)
-    call RealizBridgeFlowAndTransport(realization)
-  endif
+                                     field%work,field%work_loc,ONEDOF)
+    call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_DENSITY,TIME_TpDT)                                     
 
+    call RealizationGetDataset(realization,field%work,LIQUID_SATURATION, &
+                               ZERO_INTEGER)
+    call DiscretizationGlobalToLocal(realization%discretization, &
+                                     field%work,field%work_loc,ONEDOF)
+    call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_SATURATION,TIME_TpDT)                                     
+  endif
+  
 ! print screen output
   if (option%myrank == 0) then
     if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
@@ -864,6 +868,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   use Grid_module
   use Level_module
   use Patch_module
+  use Global_module  
   
   implicit none
 
@@ -937,14 +942,14 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
       option%tran_weight_t1 = (option%tran_time-start_time)/ &
                               (end_time-start_time)
       ! set densities and saturations to t
-      call RTUpdateDenAndSat(realization,option%tran_weight_t0)
+      call GlobalUpdateDenAndSat(realization,option%tran_weight_t0)
     endif
 
     call RTInitializeTimestep(realization)
 
     ! set densities and saturations to t+dt
     if (option%nflowdof > 0) then
-      call RTUpdateDenAndSat(realization,option%tran_weight_t1)
+      call GlobalUpdateDenAndSat(realization,option%tran_weight_t1)
     endif
 
     if (option%myrank == 0) then

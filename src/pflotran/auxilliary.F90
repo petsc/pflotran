@@ -1,5 +1,6 @@
 module Auxilliary_module
   
+  use Global_Aux_module
   use THC_Aux_module
   use Richards_Aux_module
   use Reactive_Transport_Aux_module
@@ -13,6 +14,7 @@ module Auxilliary_module
 #include "definitions.h"
 
   type, public :: auxilliary_type 
+    type(global_type), pointer :: Global
     type(reactive_transport_type), pointer :: RT
     type(thc_type), pointer :: THC
     type(richards_type), pointer :: Richards
@@ -38,6 +40,7 @@ subroutine AuxInit(aux)
   
   type(auxilliary_type) :: aux
   
+  nullify(aux%Global)
   nullify(aux%RT)
   nullify(aux%THC)
   nullify(aux%Richards)
@@ -59,11 +62,13 @@ subroutine AuxDestroy(aux)
   
   type(auxilliary_type) :: aux
   
+  call GlobalAuxDestroy(aux%Global)
   call RTAuxDestroy(aux%RT)
   call THCAuxDestroy(aux%THC)
   call RichardsAuxDestroy(aux%Richards)
   !call MphaseAuxDestroy(aux%Mphase)
   
+  nullify(aux%Global)
   nullify(aux%RT)
   nullify(aux%THC)
   nullify(aux%Richards)

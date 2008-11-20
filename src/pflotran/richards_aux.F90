@@ -7,10 +7,6 @@ module Richards_Aux_module
 #include "definitions.h"
 
   type, public :: richards_auxvar_type
-    PetscReal :: pres
-    PetscReal :: temp
-    PetscReal :: sat
-    PetscReal :: den
     PetscReal :: den_kg
     PetscReal :: avgmw
     PetscReal :: pc
@@ -44,7 +40,7 @@ contains
 
 ! ************************************************************************** !
 !
-! RichardsAuxVarCreate: Allocate and initialize auxilliary object
+! RichardsAuxCreate: Allocate and initialize auxilliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
@@ -90,11 +86,6 @@ subroutine RichardsAuxVarInit(aux_var,option)
   type(richards_auxvar_type) :: aux_var
   type(option_type) :: option
   
-  aux_var%pres = 0.d0
-  aux_var%temp = 0.d0
-  aux_var%sat = 0.d0
-  aux_var%den = 0.d0
-  aux_var%den_kg = 0.d0
   aux_var%avgmw = 0.d0
   aux_var%pc = 0.d0
 !  aux_var%kr = 0.d0
@@ -124,11 +115,6 @@ subroutine RichardsAuxVarCopy(aux_var,aux_var2,option)
   type(richards_auxvar_type) :: aux_var, aux_var2
   type(option_type) :: option
 
-  aux_var2%pres = aux_var%pres
-  aux_var2%temp = aux_var%temp
-  aux_var2%sat = aux_var%sat
-  aux_var2%den = aux_var%den
-  aux_var2%den_kg = aux_var%den_kg
   aux_var2%avgmw = aux_var%avgmw
   aux_var2%pc = aux_var%pc
 !  aux_var2%kr = aux_var%kr
@@ -149,10 +135,11 @@ end subroutine RichardsAuxVarCopy
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine RichardsAuxVarCompute(x,aux_var,iphase,saturation_function, &
-                                     por,perm,option)
+subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,iphase,&
+                                 saturation_function,por,perm,option)
 
   use Option_module
+  use Global_Aux_module
   use water_eos_module
   use Material_module
   
@@ -162,6 +149,7 @@ subroutine RichardsAuxVarCompute(x,aux_var,iphase,saturation_function, &
   type(saturation_function_type) :: saturation_function
   PetscReal :: x(option%nflowdof)
   type(richards_auxvar_type) :: aux_var
+  type(global_auxvar_type) :: global_aux_var
   PetscInt :: iphase
   PetscReal :: por, perm
 
@@ -171,17 +159,17 @@ subroutine RichardsAuxVarCompute(x,aux_var,iphase,saturation_function, &
   PetscReal :: dvis_dt, dvis_dp, dvis_dpsat
   PetscReal :: dw_dp, dw_dt, hw_dp, hw_dt
   
-  aux_var%sat = 0.d0
-  aux_var%den = 0.d0
-  aux_var%den_kg = 0.d0
+  global_aux_var%sat = 0.d0
+  global_aux_var%den = 0.d0
+  global_aux_var%den_kg = 0.d0
   aux_var%avgmw = 0.d0
   aux_var%kvr = 0.d0
   kr = 0.d0
  
-  aux_var%pres = x(1)
-  aux_var%temp = 25.d0
+  global_aux_var%pres = x(1)
+  global_aux_var%temp = 25.d0
  
-  aux_var%pc = option%reference_pressure - aux_var%pres
+  aux_var%pc = option%reference_pressure - global_aux_var%pres(1)
 
 !***************  Liquid phase properties **************************
   !geh aux_var%avgmw = option%fmwh2o  ! hardwire for comparison with old code
@@ -193,26 +181,26 @@ subroutine RichardsAuxVarCompute(x,aux_var,iphase,saturation_function, &
 !  if (aux_var%pc > 0.d0) then
   if (aux_var%pc > 1.d0) then
     iphase = 3
-    call SaturationFunctionCompute(aux_var%pres,aux_var%sat,kr, &
+    call SaturationFunctionCompute(global_aux_var%pres(1),global_aux_var%sat(1),kr, &
                                    ds_dp,dkr_dp, &
                                    saturation_function, &
                                    por,perm,option)
   else
     iphase = 1
     aux_var%pc = 0.d0
-    aux_var%sat = 1.d0  
+    global_aux_var%sat = 1.d0  
     kr = 1.d0    
-    pw = aux_var%pres
+    pw = global_aux_var%pres(1)
   endif  
 
 !  call wateos_noderiv(option%temp,pw,dw_kg,dw_mol,hw,option%scale,ierr)
-  call wateos(aux_var%temp,pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
-              option%scale,ierr)
+  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw, &
+              hw_dp,hw_dt,option%scale,ierr)
 
 ! may need to compute dpsat_dt to pass to VISW
-  call psat(aux_var%temp,sat_pressure,ierr)
+  call psat(global_aux_var%temp(1),sat_pressure,ierr)
 !  call VISW_noderiv(option%temp,pw,sat_pressure,visl,ierr)
-  call VISW(aux_var%temp,pw,sat_pressure,visl,dvis_dt,dvis_dp,ierr) 
+  call VISW(global_aux_var%temp(1),pw,sat_pressure,visl,dvis_dt,dvis_dp,ierr) 
   dvis_dpsat = -dvis_dp 
   if (iphase == 3) then !kludge since pw is constant in the unsat zone
     dvis_dp = 0.d0
@@ -220,8 +208,8 @@ subroutine RichardsAuxVarCompute(x,aux_var,iphase,saturation_function, &
     hw_dp = 0.d0
   endif
  
-  aux_var%den = dw_mol
-  aux_var%den_kg = dw_kg
+  global_aux_var%den = dw_mol
+  global_aux_var%den_kg = dw_kg
   aux_var%kvr = kr/visl
   
 !  aux_var%vis = visl
@@ -249,7 +237,6 @@ subroutine AuxVarDestroy(aux_var)
 
   type(richards_auxvar_type) :: aux_var
   
-
 end subroutine AuxVarDestroy
 
 ! ************************************************************************** !

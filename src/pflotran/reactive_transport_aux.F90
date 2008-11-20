@@ -9,9 +9,6 @@ module Reactive_Transport_Aux_module
 #include "definitions.h"
  
   type, public :: reactive_transport_auxvar_type
-    PetscReal, pointer :: den(:) ! kg water / m^3 water
-    PetscReal, pointer :: sat(:)
-    PetscReal :: temp
     ! molality
     PetscReal, pointer :: pri_molal(:) ! kg solute / L water
     ! phase dependent totals
@@ -109,11 +106,6 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   type(reaction_type) :: reaction
   type(option_type) :: option  
   
-  aux_var%temp = option%reference_temperature
-  allocate(aux_var%den(option%nphase))
-  aux_var%den = 0.d0
-  allocate(aux_var%sat(option%nphase))
-  aux_var%sat = 0.d0
   allocate(aux_var%pri_molal(reaction%ncomp))
   aux_var%pri_molal = 0.d0
   allocate(aux_var%total(reaction%ncomp,option%nphase))
@@ -205,9 +197,6 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
   type(reactive_transport_auxvar_type) :: aux_var, aux_var2
   type(option_type) :: option  
   
-  aux_var%temp = aux_var2%temp
-  aux_var%den = aux_var2%den
-  aux_var%sat = aux_var2%sat
   aux_var%pri_molal = aux_var2%pri_molal
   aux_var%total = aux_var2%total
   aux_var%dtotal = aux_var2%dtotal
@@ -257,11 +246,6 @@ subroutine RTAuxVarDestroy(aux_var)
   implicit none
 
   type(reactive_transport_auxvar_type) :: aux_var
-  
-  if (associated(aux_var%den)) deallocate(aux_var%den)
-  nullify(aux_var%den)
-  if (associated(aux_var%sat)) deallocate(aux_var%sat)
-  nullify(aux_var%sat)
   
   if (associated(aux_var%pri_molal)) deallocate(aux_var%pri_molal)
   nullify(aux_var%pri_molal)

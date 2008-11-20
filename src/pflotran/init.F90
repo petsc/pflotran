@@ -51,6 +51,8 @@ subroutine Init(simulation,filename)
   use THC_module
   
   use Reactive_Transport_module
+  
+  use Global_module
 
   use water_eos_module
   use Utility_module
@@ -130,6 +132,7 @@ subroutine Init(simulation,filename)
     flow_solver => flow_stepper%solver
   else
     option%nphase = 1
+    option%liquid_phase = 1
     call TimestepperDestroy(simulation%flow_stepper)
     nullify(flow_stepper)
   endif
@@ -411,6 +414,9 @@ subroutine Init(simulation,filename)
   if (associated(flow_stepper)) flow_stepper%cur_waypoint => realization%waypoints%first
   if (associated(tran_stepper)) tran_stepper%cur_waypoint => realization%waypoints%first
   
+  ! initialize global auxilliary variable object
+  call GlobalSetup(realization)
+  
   ! initialize FLOW
   ! set up auxillary variable arrays
   if (option%nflowdof > 0) then
@@ -423,7 +429,7 @@ subroutine Init(simulation,filename)
         call MphaseSetup(realization)
     end select
   
-    ! assign initial conditions
+    ! assign initial conditionsRealizAssignFlowInitCond
     call RealizAssignFlowInitCond(realization)
   
     select case(option%iflowmode)
@@ -445,27 +451,18 @@ subroutine Init(simulation,filename)
     endif
 
     ! initialize densities and saturations
-    if (option%nflowdof > 0) then
-      call DiscretizationCreateVector(realization%discretization,ONEDOF, &
-                                      global_vec,GLOBAL,option)
-      call RealizationGetDataset(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
-      call DiscretizationGlobalToLocal(realization%discretization, &
-                                       global_vec,field%saturation_loc,ONEDOF)   
-      call RealizationGetDataset(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
-      call DiscretizationGlobalToLocal(realization%discretization, &
-                                       global_vec,field%density_loc,ONEDOF)   
-      call VecDestroy(global_vec,ierr)
-    else
-      call VecSet(field%saturation_loc,option%reference_saturation,ierr)
-      call VecSet(field%density_loc,option%reference_density,ierr)
+
+    if (option%nflowdof == 0) then
+      call GlobalSetAuxVarScalar(realization,option%reference_pressure, &
+                                 PRESSURE)
+      call GlobalSetAuxVarScalar(realization,option%reference_temperature, &
+                                 TEMPERATURE)
+      call GlobalSetAuxVarScalar(realization,option%reference_saturation, &
+                                 LIQUID_SATURATION)
+      call GlobalSetAuxVarScalar(realization,option%reference_density, &
+                                 LIQUID_DENSITY)
     endif
 
-    call VecCopy(field%saturation_loc,field%saturation0_loc,ierr)
-    call VecCopy(field%density_loc,field%density0_loc,ierr)
-
-    ! map densities and saturations to reactive transport aux vars
-    call RTUpdateDenAndSat(realization,0.d0)
-    call RealizBridgeFlowAndTransport(realization) 
     ! initial concentrations must be assigned after densities are set !!!
     call RealizAssignTransportInitCond(realization)
     call RTUpdateAuxVars(realization)
@@ -1963,16 +1960,20 @@ subroutine setFlowMode(option)
     case('THC')
       option%iflowmode = THC_MODE
       option%nphase = 1
+      option%liquid_phase = 1      
       option%nflowdof = 3
       option%nflowspec = 2
     case('RICHARDS')
       option%iflowmode = RICHARDS_MODE
       option%nphase = 1
+      option%liquid_phase = 1      
       option%nflowdof = 1
       option%nflowspec = 1
     case('MPH','MPHASE')
       option%iflowmode = MPH_MODE
       option%nphase = 2
+      option%liquid_phase = 1      
+      option%gas_phase = 1      
       option%nflowdof = 3
       option%nflowspec = 2
       option%itable = 2

@@ -60,7 +60,6 @@ module Patch_module
             PatchAddToList, PatchConvertListToArray, PatchProcessCouplers, &
             PatchUpdateAllCouplerAuxVars, PatchInitAllCouplerAuxVars, &
             PatchLocalizeRegions, PatchAssignUniformVelocity, &
-            PatchBridgeFlowAndTransport, &
             PatchGetDataset, PatchGetDatasetValueAtCell, &
             PatchSetDataset
 
@@ -695,53 +694,6 @@ end subroutine PatchUpdateCouplerAuxVars
 
 ! ************************************************************************** !
 !
-! PatchBridgeFlowAndTransport: Maps auxilliary data (e.g. density) from flow
-!                              to transport
-! author: Glenn Hammond
-! date: 09/03/08
-!
-! ************************************************************************** !
-subroutine PatchBridgeFlowAndTransport(patch,option)
-
-  type(patch_type), pointer :: patch
-  type(option_type), pointer :: option
-
-  PetscInt :: iaux, iphase
-
-  ! loop over all bc aux vars
-  select case(option%iflowmode)
-    case(RICHARDS_MODE)
-    ! map only bcs for now!!!
-#if 0    
-      do iaux = 1, patch%aux%RT%num_aux
-        patch%aux%RT%aux_vars(iaux)%den(1) = &
-          patch%aux%Richards%aux_vars(iaux)%den_kg
-        patch%aux%RT%aux_vars(iaux)%sat = &
-          patch%aux%Richards%aux_vars(iaux)%sat
-      enddo
-#endif
-      do iaux = 1, patch%aux%RT%num_aux_bc
-        patch%aux%RT%aux_vars_bc(iaux)%den(1) = &
-          patch%aux%Richards%aux_vars_bc(iaux)%den_kg
-        patch%aux%RT%aux_vars_bc(iaux)%sat = &
-          patch%aux%Richards%aux_vars_bc(iaux)%sat
-      enddo
-    case(THC_MODE,MPH_MODE)
-      if (option%myrank == 0) then
-        print *, 'Bridge of flow and transport densities needs to be implemented.  Ask Glenn'
-        stop
-      endif
-    case default
-      do iaux = 1, patch%aux%RT%num_aux_bc
-        patch%aux%RT%aux_vars_bc(iaux)%den(1) = option%reference_density
-        patch%aux%RT%aux_vars_bc(iaux)%sat = option%reference_saturation
-      enddo
-  end select
-
-end subroutine PatchBridgeFlowAndTransport
-
-! ************************************************************************** !
-!
 ! PatchAssignUniformVelocity: Assigns uniform velocity in connection list
 !                        darcy velocities
 ! author: Glenn Hammond
@@ -934,15 +886,18 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
             call printErrMsg(option,'GAS_ENERGY not supported by Richards')
           case(PRESSURE)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Richards%aux_vars(grid%nL2G(local_id))%pres
+              vec_ptr(local_id) = &
+                patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres(1)
             enddo
           case(LIQUID_SATURATION)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Richards%aux_vars(grid%nL2G(local_id))%sat
+              vec_ptr(local_id) = &
+                patch%aux%Global%aux_vars(grid%nL2G(local_id))%sat(1)
             enddo
           case(LIQUID_DENSITY)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Richards%aux_vars(grid%nL2G(local_id))%den_kg
+              vec_ptr(local_id) = &
+                patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(1)
             enddo
         end select
       else if (associated(patch%aux%Mphase)) then
@@ -1003,7 +958,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
             vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%pri_molal(isubvar)
           enddo
         case(PRIMARY_MOLARITY)
-          tempreal = patch%aux%RT%aux_vars(grid%nL2G(local_id))%den(1)/1000.d0
+          tempreal = patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(iphase)/1000.d0
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%pri_molal(isubvar)* &
                                 tempreal
@@ -1014,13 +969,13 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
             vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%sec_molal(isubvar)
           enddo
         case(SECONDARY_MOLARITY)
-          tempreal = patch%aux%RT%aux_vars(grid%nL2G(local_id))%den(1)/1000.d0
+          tempreal = patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(iphase)/1000.d0
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%sec_molal(isubvar)* &
                                 tempreal
           enddo
         case(TOTAL_MOLALITY)
-          tempreal = patch%aux%RT%aux_vars(grid%nL2G(local_id))%den(1)/1000.d0
+          tempreal = patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(iphase)/1000.d0
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%total(isubvar,iphase)/ &
                                 tempreal
@@ -1133,11 +1088,11 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
           case(GAS_ENERGY)
             call printErrMsg(option,'GAS_ENERGY not supported by Richards')
           case(PRESSURE)
-            value = patch%aux%Richards%aux_vars(ghosted_id)%pres
+            value = patch%aux%Global%aux_vars(ghosted_id)%pres(1)
           case(LIQUID_SATURATION)
-            value = patch%aux%Richards%aux_vars(ghosted_id)%sat
+            value = patch%aux%Global%aux_vars(ghosted_id)%sat(1)
           case(LIQUID_DENSITY)
-            value = patch%aux%Richards%aux_vars(ghosted_id)%den_kg
+            value = patch%aux%Global%aux_vars(ghosted_id)%den_kg(1)
         end select
       else if (associated(patch%aux%Mphase)) then
         select case(ivar)
@@ -1174,15 +1129,15 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
           value = patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar)
         case(PRIMARY_MOLARITY)
           value = patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar)* &
-                  patch%aux%RT%aux_vars(ghosted_id)%den(1)/1000.d0
+                  patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0
         case(SECONDARY_MOLALITY)
           value = patch%aux%RT%aux_vars(ghosted_id)%sec_molal(isubvar)
         case(SECONDARY_MOLARITY)
           value = patch%aux%RT%aux_vars(ghosted_id)%sec_molal(isubvar)* &
-                  patch%aux%RT%aux_vars(ghosted_id)%den(1)/1000.d0
+                  patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0
         case(TOTAL_MOLALITY)
           value = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)/ &
-                  patch%aux%RT%aux_vars(ghosted_id)%den(1)*1000.d0
+                  patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)*1000.d0
         case(TOTAL_MOLARITY)
           value = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)
         case(MINERAL_VOLUME_FRACTION)
@@ -1288,15 +1243,15 @@ subroutine PatchSetDataset(patch,field,option,vec,ivar,isubvar)
             call printErrMsg(option,'GAS_ENERGY not supported by Richards')
           case(PRESSURE)
             do local_id=1,grid%nlmax
-              patch%aux%Richards%aux_vars(grid%nL2G(local_id))%pres = vec_ptr(local_id)
+              patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres(1) = vec_ptr(local_id)
             enddo
           case(LIQUID_SATURATION)
             do local_id=1,grid%nlmax
-              patch%aux%Richards%aux_vars(grid%nL2G(local_id))%sat = vec_ptr(local_id)
+              patch%aux%Global%aux_vars(grid%nL2G(local_id))%sat(1) = vec_ptr(local_id)
             enddo
           case(LIQUID_DENSITY)
             do local_id=1,grid%nlmax
-              patch%aux%Richards%aux_vars(grid%nL2G(local_id))%den_kg = vec_ptr(local_id)
+              patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(1) = vec_ptr(local_id)
             enddo
         end select
       else if (associated(patch%aux%Mphase)) then

@@ -2,6 +2,7 @@ module Reaction_module
 
   use Reaction_Aux_module
   use Reactive_Transport_Aux_module
+  use Global_Aux_module
   
   implicit none
   
@@ -364,7 +365,8 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
   type(mineral_constraint_type), pointer :: mineral_constraint
   type(option_type) :: option
   
-  type(reactive_transport_auxvar_type) :: auxvar
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
   character(len=MAXSTRINGLENGTH) :: string
   PetscTruth :: found
   PetscInt :: icomp, jcomp
@@ -487,14 +489,17 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
     mineral_constraint%constraint_area = mineral_constraint%basis_area
   endif
   
-  call RTAuxVarInit(auxvar,reaction,option)
-  auxvar%den(1) = option%reference_density
-  auxvar%temp = option%reference_temperature
-  auxvar%sat = option%reference_saturation  
-  call ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
+  call RTAuxVarInit(rt_auxvar,reaction,option)
+  call GlobalAuxVarInit(global_auxvar,option)
+  global_auxvar%den_kg = option%reference_density
+  global_auxvar%temp = option%reference_temperature
+  global_auxvar%sat = option%reference_saturation  
+  call ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
+                                     reaction,constraint_name, &
                                      aq_species_constraint,dummy_int, &
                                      option)
-  call RTAuxVarDestroy(auxvar)
+  call RTAuxVarDestroy(rt_auxvar)
+  call GlobalAuxVarDestroy(global_auxvar)
 
 end subroutine ReactionInitializeConstraint
 
@@ -506,7 +511,8 @@ end subroutine ReactionInitializeConstraint
 ! date: 10/22/08
 !
 ! ************************************************************************** !
-subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
+subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
+                                         reaction,constraint_name, &
                                          aq_species_constraint, &
                                          num_iterations,option)
   use Option_module
@@ -515,7 +521,8 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
   
   implicit none
   
-  type(reactive_transport_auxvar_type) :: auxvar
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
   type(reaction_type), pointer :: reaction
   character(len=MAXWORDLENGTH) :: constraint_name
   type(aq_species_constraint_type), pointer :: aq_species_constraint
@@ -552,23 +559,27 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
 
   PetscReal :: Jac_num(reaction%ncomp)
   PetscReal :: Res_pert, pert, prev_value
+
+  PetscInt :: iphase
     
   constraint_type = aq_species_constraint%constraint_type
   constraint_spec_name = aq_species_constraint%constraint_spec_name
   constraint_id = aq_species_constraint%constraint_spec_id
   conc = aq_species_constraint%constraint_conc
 
+  iphase = 1
+  
   if (.not.reaction%use_full_geochemistry) then
     aq_species_constraint%basis_molarity = conc
     return
   endif
   
   if (option%initialize_with_molality) then
-    convert_molal_to_molar = auxvar%den(1)/1000.d0
+    convert_molal_to_molar = global_auxvar%den_kg(iphase)/1000.d0
     convert_molar_to_molal = 1.d0
   else
     convert_molal_to_molar = 1.d0
-    convert_molar_to_molal = 1000.d0/auxvar%den(1)
+    convert_molar_to_molal = 1000.d0/global_auxvar%den_kg(iphase)
   endif
   
   total_conc = 0.d0
@@ -615,7 +626,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
     end select
   enddo
   
-  auxvar%pri_molal = free_conc
+  rt_auxvar%pri_molal = free_conc
 
   num_iterations = 0
   compute_activity_coefs = PETSC_FALSE
@@ -624,10 +635,10 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
 
     if (reaction%compute_activity_coefs /= ACTIVITY_COEFFICIENTS_OFF .and. &
         compute_activity_coefs) then
-      call RActivityCoefficients(auxvar,reaction,option)
+      call RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
     endif
-    call RTotal(auxvar,reaction,option)
-    if (reaction%nsorb > 0) call RTotalSorb(auxvar,reaction,option)
+    call RTotal(rt_auxvar,global_auxvar,reaction,option)
+    if (reaction%nsorb > 0) call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
     
     Jac = 0.d0
         
@@ -636,24 +647,24 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
       
         case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
           ! units = mol/L water
-          Res(icomp) = auxvar%total(icomp,1) - total_conc(icomp)
+          Res(icomp) = rt_auxvar%total(icomp,1) - total_conc(icomp)
           ! dtotal units = kg water/L water
 
           ! Jac units = kg water/L water
-          Jac(icomp,:) = auxvar%dtotal(icomp,:,1)
+          Jac(icomp,:) = rt_auxvar%dtotal(icomp,:,1)
       
         case(CONSTRAINT_TOTAL_SORB)
           ! conversion from m^3 bulk -> L water
           tempreal = option%reference_porosity*option%reference_saturation*1000.d0
           ! total = mol/L water  total_sorb = mol/m^3 bulk
-          Res(icomp) = auxvar%total(icomp,1) + auxvar%total_sorb(icomp)/tempreal - &
+          Res(icomp) = rt_auxvar%total(icomp,1) + rt_auxvar%total_sorb(icomp)/tempreal - &
                        total_conc(icomp)
           ! dtotal units = kg water/L water
           ! dtotal_sorb units = kg water/m^3 bulk
           ! Jac units = kg water/L water
-          Jac(icomp,:) = auxvar%dtotal(icomp,:,1) + &
+          Jac(icomp,:) = rt_auxvar%dtotal(icomp,:,1) + &
           ! dtotal_sorb units = kg water/m^3 bulk
-                         auxvar%dtotal_sorb(icomp,:)/tempreal
+                         rt_auxvar%dtotal_sorb(icomp,:)/tempreal
 
         case(CONSTRAINT_FREE,CONSTRAINT_LOG)
         
@@ -667,10 +678,10 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
           Res(icomp) = 0.d0
           Jac(icomp,:) = 0.d0
           do jcomp = 1, reaction%ncomp
-            Res(icomp) = Res(icomp) + reaction%primary_spec_Z(jcomp)*auxvar%total(jcomp,1)
+            Res(icomp) = Res(icomp) + reaction%primary_spec_Z(jcomp)*rt_auxvar%total(jcomp,1)
             do kcomp = 1, reaction%ncomp
               Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
-                reaction%primary_spec_Z(kcomp)*auxvar%dtotal(jcomp,kcomp,1)
+                reaction%primary_spec_Z(kcomp)*rt_auxvar%dtotal(jcomp,kcomp,1)
             enddo
           enddo
           
@@ -681,8 +692,8 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
 !          Jac(:,icomp) = 0.d0
           Jac(icomp,icomp) = 1.d0
           if (reaction%h_ion_id > 0) then ! conc(icomp) = 10**-pH
-            auxvar%pri_molal(icomp) = 10.d0**(-conc(icomp)) / &
-                                          auxvar%pri_act_coef(icomp)
+            rt_auxvar%pri_molal(icomp) = 10.d0**(-conc(icomp)) / &
+                                          rt_auxvar%pri_act_coef(icomp)
           else ! H+ is a complex
           
             ln_act_h2o = 0.d0
@@ -701,8 +712,8 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
             do jcomp = 1, reaction%eqcmplxspecid(0,icplx)
               comp_id = reaction%eqcmplxspecid(jcomp,icplx)
               lnQK = lnQK + reaction%eqcmplxstoich(jcomp,icplx)* &
-                            log(auxvar%pri_molal(comp_id)* &
-                            auxvar%pri_act_coef(comp_id))
+                            log(rt_auxvar%pri_molal(comp_id)* &
+                            rt_auxvar%pri_act_coef(comp_id))
             enddo
             lnQK = lnQK - log(conc(icomp)) ! this is log activity H+
             QK = exp(lnQK)
@@ -711,7 +722,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
 
             do jcomp = 1,reaction%eqcmplxspecid(0,icplx)
               comp_id = reaction%eqcmplxspecid(jcomp,icplx)
-              Jac(icomp,comp_id) = -exp(lnQK-log(auxvar%pri_molal(comp_id)))* &
+              Jac(icomp,comp_id) = -exp(lnQK-log(rt_auxvar%pri_molal(comp_id)))* &
                                         reaction%eqcmplxstoich(jcomp,icplx)
             enddo
           endif
@@ -732,7 +743,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
           do jcomp = 1, reaction%mnrlspecid(0,imnrl)
             comp_id = reaction%mnrlspecid(jcomp,imnrl)
             lnQK = lnQK + reaction%mnrlstoich(jcomp,imnrl)* &
-                          log(auxvar%pri_molal(comp_id)*auxvar%pri_act_coef(comp_id))
+                          log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
           enddo
 !         QK = exp(lnQK)
           
@@ -743,7 +754,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
             comp_id = reaction%mnrlspecid(jcomp,imnrl)
 !           Jac(icomp,comp_id) = -QK/auxvar%primary_spec(comp_id)* &
 !                                reaction%mnrlstoich(jcomp,imnrl)
-            Jac(icomp,comp_id) = reaction%mnrlstoich(jcomp,imnrl)/auxvar%pri_molal(comp_id)
+            Jac(icomp,comp_id) = reaction%mnrlstoich(jcomp,imnrl)/rt_auxvar%pri_molal(comp_id)
                                  
           enddo
   
@@ -767,7 +778,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
           do jcomp = 1, reaction%eqgasspecid(0,igas)
             comp_id = reaction%eqgasspecid(jcomp,igas)
             lnQK = lnQK + reaction%eqgasstoich(jcomp,igas)* &
-                          log(auxvar%pri_molal(comp_id)*auxvar%pri_act_coef(comp_id))
+                          log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
           enddo
           
 !         QK = exp(lnQK)
@@ -779,7 +790,7 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
             comp_id = reaction%eqgasspecid(jcomp,igas)
 !           Jac(icomp,comp_id) = QK/auxvar%primary_spec(comp_id)* &
 !                                reaction%eqgasstoich(jcomp,igas)
-            Jac(icomp,comp_id) = reaction%eqgasstoich(jcomp,igas)/auxvar%pri_molal(comp_id)
+            Jac(icomp,comp_id) = reaction%eqgasstoich(jcomp,igas)/rt_auxvar%pri_molal(comp_id)
           enddo
       end select
     enddo
@@ -794,38 +805,38 @@ subroutine ReactionEquilibrateConstraint(auxvar,reaction,constraint_name, &
 
     ! for derivatives with respect to ln conc
     do icomp = 1, reaction%ncomp
-      Jac(:,icomp) = Jac(:,icomp)*auxvar%pri_molal(icomp)
+      Jac(:,icomp) = Jac(:,icomp)*rt_auxvar%pri_molal(icomp)
     enddo
 
     call ludcmp(Jac,reaction%ncomp,indices,icomp)
     call lubksb(Jac,reaction%ncomp,indices,Res)
 
-    prev_molal = auxvar%pri_molal
+    prev_molal = rt_auxvar%pri_molal
 
     Res = dsign(1.d0,Res)*min(dabs(Res),5.d0)
       
-    auxvar%pri_molal = auxvar%pri_molal*exp(-Res)
+    rt_auxvar%pri_molal = rt_auxvar%pri_molal*exp(-Res)
 
     num_iterations = num_iterations + 1
     
     ! need some sort of convergence before we kick in activities
-    if (maxval(dabs(auxvar%pri_molal-prev_molal)/ &
-               auxvar%pri_molal) < tol_loose) then
+    if (maxval(dabs(rt_auxvar%pri_molal-prev_molal)/ &
+               rt_auxvar%pri_molal) < tol_loose) then
       compute_activity_coefs = PETSC_TRUE
     endif
 
     ! check for convergence
-    if (maxval(dabs(auxvar%pri_molal-prev_molal)/ &
-               auxvar%pri_molal) < tol) exit
+    if (maxval(dabs(rt_auxvar%pri_molal-prev_molal)/ &
+               rt_auxvar%pri_molal) < tol) exit
                      
   enddo
 
   ! once equilibrated, compute sorbed concentrations
-  if (reaction%nsorb > 0) call RTotalSorb(auxvar,reaction,option)
+  if (reaction%nsorb > 0) call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
   
   ! remember that a density of 1 kg/L was assumed, thus molal and molarity are equal
   ! do not scale by molal_to_molar since it could be 1.d0 if MOLAL flag set
-  aq_species_constraint%basis_molarity = auxvar%pri_molal*auxvar%den(1)/1000.d0
+  aq_species_constraint%basis_molarity = rt_auxvar%pri_molal*global_auxvar%den_kg(1)/1000.d0
   
   if (option%myrank == 0) &
     print *,'ReactionEquilibrateConstraint: ' // trim(constraint_name) // &
@@ -855,7 +866,8 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   type(tran_constraint_coupler_type) :: constraint_coupler
   type(reaction_type), pointer :: reaction
   
-  type(reactive_transport_auxvar_type) :: auxvar
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
   type(aq_species_constraint_type), pointer :: aq_species_constraint
   type(mineral_constraint_type), pointer :: mineral_constraint
   character(len=MAXSTRINGLENGTH) :: string
@@ -888,14 +900,15 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   91 format(a)
 
   write(option%fid_out,91) '  Constraint: ' // trim(constraint_coupler%constraint_name)
-  call RTAuxVarInit(auxvar,reaction,option)
+  call RTAuxVarInit(rt_auxvar,reaction,option)
+  call GlobalAuxVarInit(global_auxvar,option)
   
-  auxvar%den(1) = option%reference_density
-  auxvar%temp = option%reference_temperature
-  auxvar%sat = option%reference_saturation
+  global_auxvar%den_kg(iphase) = option%reference_density
+  global_auxvar%temp(1) = option%reference_temperature
+  global_auxvar%sat(iphase) = option%reference_saturation
   bulk_vol_to_fluid_vol = option%reference_porosity*option%reference_saturation*1000.d0
 
-  molal_to_molar = auxvar%den(1)/1000.d0
+  molal_to_molar = global_auxvar%den_kg(iphase)/1000.d0
   molar_to_molal = 1.d0/molal_to_molar
     
   if (.not.reaction%use_full_geochemistry) then
@@ -904,10 +917,10 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
     101 format(2x,a12,es12.4)
     do icomp = 1, reaction%ncomp
       write(option%fid_out,101) reaction%primary_species_names(icomp), &
-                                auxvar%pri_molal(icomp)
+                                rt_auxvar%pri_molal(icomp)
     enddo
   else
-    call ReactionEquilibrateConstraint(auxvar,reaction, &
+    call ReactionEquilibrateConstraint(rt_auxvar,global_auxvar,reaction, &
                                        constraint_coupler%constraint_name, &
                                        aq_species_constraint, &
                                        num_iterations,option)
@@ -921,26 +934,26 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
     write(option%fid_out,201) '      iterations: ', num_iterations
     if (reaction%h_ion_id > 0) then
       write(option%fid_out,203) '              pH: ', &
-        -log10(auxvar%pri_molal(reaction%h_ion_id)* &
-               auxvar%pri_act_coef(reaction%h_ion_id))
+        -log10(rt_auxvar%pri_molal(reaction%h_ion_id)* &
+               rt_auxvar%pri_act_coef(reaction%h_ion_id))
     else if (reaction%h_ion_id < 0) then
       write(option%fid_out,203) '              pH: ', &
-        -log10(auxvar%sec_molal(abs(reaction%h_ion_id))* &
-               auxvar%sec_act_coef(abs(reaction%h_ion_id)))
+        -log10(rt_auxvar%sec_molal(abs(reaction%h_ion_id))* &
+               rt_auxvar%sec_act_coef(abs(reaction%h_ion_id)))
     endif
     
     ionic_strength = 0.d0
     charge_balance = 0.d0
     do icomp = 1, reaction%ncomp
-      charge_balance = charge_balance + auxvar%total(icomp,1)* &
+      charge_balance = charge_balance + rt_auxvar%total(icomp,1)* &
                                         reaction%primary_spec_Z(icomp)
-      ionic_strength = ionic_strength + auxvar%pri_molal(icomp)* &
+      ionic_strength = ionic_strength + rt_auxvar%pri_molal(icomp)* &
         reaction%primary_spec_Z(icomp)*reaction%primary_spec_Z(icomp)
     enddo
     
     if (reaction%neqcmplx > 0) then    
       do i = 1, reaction%neqcmplx
-        ionic_strength = ionic_strength + auxvar%sec_molal(i)* &
+        ionic_strength = ionic_strength + rt_auxvar%sec_molal(i)* &
                                           reaction%eqcmplx_Z(i)* &
                                           reaction%eqcmplx_Z(i)
       enddo
@@ -977,9 +990,9 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
           string = aq_species_constraint%constraint_spec_name(icomp)
       end select
       write(option%fid_out,103) reaction%primary_species_names(icomp), &
-                                auxvar%pri_molal(icomp), &
-                                auxvar%total(icomp,1), &
-                                auxvar%pri_act_coef(icomp), &
+                                rt_auxvar%pri_molal(icomp), &
+                                rt_auxvar%total(icomp,1), &
+                                rt_auxvar%pri_act_coef(icomp), &
                                 trim(string)
     enddo 
   endif 
@@ -994,8 +1007,8 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       do i = 1, reaction%neqcmplx-1
         icplx = eqcmplxsort(i)
         icplx2 = eqcmplxsort(i+1)
-        if (auxvar%sec_molal(icplx) < &
-            auxvar%sec_molal(icplx2)) then
+        if (rt_auxvar%sec_molal(icplx) < &
+            rt_auxvar%sec_molal(icplx2)) then
           eqcmplxsort(i) = icplx2
           eqcmplxsort(i+1) = icplx
           finished = PETSC_FALSE
@@ -1011,8 +1024,8 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
     do i = 1, reaction%neqcmplx ! for each secondary species
       icplx = eqcmplxsort(i)
       write(option%fid_out,111) reaction%secondary_species_names(icplx), &
-                                auxvar%sec_molal(icplx), &
-                                auxvar%sec_act_coef(icplx), &
+                                rt_auxvar%sec_molal(icplx), &
+                                rt_auxvar%sec_act_coef(icplx), &
                                 reaction%eqcmplx_logK(icplx)
     enddo 
 
@@ -1041,14 +1054,14 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
         enddo
         if (found) then
           eqcmplxid(icount) = icplx
-          percent(icount) = dabs(auxvar%sec_molal(icplx)* &
+          percent(icount) = dabs(rt_auxvar%sec_molal(icplx)* &
                                  reaction%eqcmplxstoich(i,icplx))
           totj = totj + percent(icount)
         endif
       enddo
       icount = icount + 1
       eqcmplxid(icount) = -icomp
-      percent(icount) = auxvar%pri_molal(icomp)
+      percent(icount) = rt_auxvar%pri_molal(icomp)
       totj = totj + percent(icount)
       percent = percent / totj
       
@@ -1073,7 +1086,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
 
       write(option%fid_out,90)
       write(option%fid_out,135) reaction%primary_species_names(icomp), &
-                                auxvar%total(icomp,iphase)
+                                rt_auxvar%total(icomp,iphase)
       write(option%fid_out,134)
       write(option%fid_out,90)
       do i = 1, icount
@@ -1084,11 +1097,11 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
           icplx = abs(icplx)
           write(option%fid_out,136) reaction%primary_species_names(icplx), &
                                     percent(j)*100.d0, &
-                                    auxvar%pri_molal(icplx)
+                                    rt_auxvar%pri_molal(icplx)
         else
           write(option%fid_out,136) reaction%secondary_species_names(icplx), &
                                     percent(j)*100.d0, &
-                                    auxvar%sec_molal(icplx)
+                                    rt_auxvar%sec_molal(icplx)
         endif
       enddo
     enddo
@@ -1110,14 +1123,14 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
         icplx = eqsurfcmplxsort(i)
         icplx2 = eqsurfcmplxsort(i+1)
         if (icplx > 0) then
-          conc = auxvar%eqsurfcmplx_conc(icplx)
+          conc = rt_auxvar%eqsurfcmplx_conc(icplx)
         else
-          conc = auxvar%eqsurfcmplx_freesite_conc(-icplx)
+          conc = rt_auxvar%eqsurfcmplx_freesite_conc(-icplx)
         endif
         if (icplx2 > 0) then
-          conc2 = auxvar%eqsurfcmplx_conc(icplx2)
+          conc2 = rt_auxvar%eqsurfcmplx_conc(icplx2)
         else
-          conc2 = auxvar%eqsurfcmplx_freesite_conc(-icplx2)
+          conc2 = rt_auxvar%eqsurfcmplx_freesite_conc(-icplx2)
         endif
         if (conc < conc2) then
           eqsurfcmplxsort(i) = icplx2
@@ -1137,11 +1150,11 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       icplx = eqsurfcmplxsort(i)
       if (icplx > 0) then
         write(option%fid_out,121) reaction%surface_complex_names(icplx), &
-                                  auxvar%eqsurfcmplx_conc(icplx), &
+                                  rt_auxvar%eqsurfcmplx_conc(icplx), &
                                   reaction%eqsurfcmplx_logK(icplx)
       else
         write(option%fid_out,122) reaction%surface_site_names(-icplx), &
-                                  auxvar%eqsurfcmplx_freesite_conc(-icplx)
+                                  rt_auxvar%eqsurfcmplx_freesite_conc(-icplx)
       endif
     enddo 
   endif
@@ -1160,12 +1173,12 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
           do jj = 1, ncomp
             jcomp = reaction%eqsurfcmplxspecid(jj,icplx)
             if (j == jcomp) then
-              if (auxvar%total(j,iphase) /= 0.d0) &
+              if (rt_auxvar%total(j,iphase) /= 0.d0) &
               retardation = retardation + &
                             reaction%eqsurfcmplxstoich(jj,icplx)* &
-                            auxvar%eqsurfcmplx_conc(icplx)/ &
+                            rt_auxvar%eqsurfcmplx_conc(icplx)/ &
                             bulk_vol_to_fluid_vol/ &
-                            auxvar%total(j,iphase)
+                            rt_auxvar%total(j,iphase)
               exit
             endif
           enddo
@@ -1188,11 +1201,11 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       ncomp = reaction%eqionx_rxn_cationid(0,irxn)
       do jcomp = 1, ncomp
         icomp = reaction%eqionx_rxn_cationid(jcomp,irxn)
-        kd = auxvar%eqionx_conc(icomp,irxn)/auxvar%total(icomp,iphase) & 
+        kd = rt_auxvar%eqionx_conc(icomp,irxn)/rt_auxvar%total(icomp,iphase) & 
                       /bulk_vol_to_fluid_vol
         write(option%fid_out,128) reaction%primary_species_names(icomp), &
           reaction%eqionx_rxn_k(jcomp,irxn), & 
-          auxvar%eqionx_conc(icomp,irxn), &
+          rt_auxvar%eqionx_conc(icomp,irxn), &
           kd
       enddo
     enddo
@@ -1204,19 +1217,21 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   endif
   
 ! total retardation from ion exchange and surface complexation
-  write(option%fid_out,1128)
-  write(option%fid_out,90)
-  do jcomp = 1, reaction%ncomp
-    if (abs(auxvar%total(jcomp,iphase)) > 0.d0) &
-    retardation = 1.d0 + auxvar%total_sorb(jcomp)/bulk_vol_to_fluid_vol &
-      /auxvar%total(jcomp,iphase)
-    write(option%fid_out,129) reaction%primary_species_names(jcomp), &
-      auxvar%total(jcomp,iphase)+auxvar%total_sorb(jcomp)*1.d-3, &
-      retardation
-  enddo
- 1128 format(/,2x,'primary species     total(aq+sorbed)    total retardation', &
-             /,25x,'[mol/L]',15x,'1+Kd')
-  129 format(2x,a12,8x,1pe12.4,8x,1pe12.4)
+  if (reaction%nsorb > 0) then
+    write(option%fid_out,1128)
+    write(option%fid_out,90)
+    do jcomp = 1, reaction%ncomp
+      if (abs(rt_auxvar%total(jcomp,iphase)) > 0.d0) &
+      retardation = 1.d0 + rt_auxvar%total_sorb(jcomp)/bulk_vol_to_fluid_vol &
+        /rt_auxvar%total(jcomp,iphase)
+      write(option%fid_out,129) reaction%primary_species_names(jcomp), &
+        rt_auxvar%total(jcomp,iphase)+rt_auxvar%total_sorb(jcomp)*1.d-3, &
+        retardation
+    enddo
+   1128 format(/,2x,'primary species     total(aq+sorbed)    total retardation', &
+               /,25x,'[mol/L]',15x,'1+Kd')
+    129 format(2x,a12,8x,1pe12.4,8x,1pe12.4)
+  endif
   
   if (reaction%nmnrl > 0) then
   
@@ -1233,7 +1248,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       do jcomp = 1, reaction%mnrlspecid(0,imnrl)
         comp_id = reaction%mnrlspecid(jcomp,imnrl)
         lnQK(imnrl) = lnQK(imnrl) + reaction%mnrlstoich(jcomp,imnrl)* &
-                      log(auxvar%pri_molal(comp_id)*auxvar%pri_act_coef(comp_id))
+                      log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
       enddo
       QK(imnrl) = exp(lnQK(imnrl))    
     enddo
@@ -1292,7 +1307,7 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       do jcomp = 1, reaction%eqgasspecid(0,igas)
         comp_id = reaction%eqgasspecid(jcomp,igas)
         lnQK(igas) = lnQK(igas) + reaction%eqgasstoich(jcomp,igas)* &
-                      log(auxvar%pri_molal(comp_id)*auxvar%pri_act_coef(comp_id))
+                      log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
       enddo
       
       QK(igas) = exp(lnQK(igas))
@@ -1303,7 +1318,8 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   endif
   
 
-  call RTAuxVarDestroy(auxvar)
+  call RTAuxVarDestroy(rt_auxvar)
+  call GlobalAuxVarDestroy(global_auxvar)
             
 end subroutine RPrintConstraint
 
@@ -1410,14 +1426,16 @@ end subroutine ReactionReadMineralKinetics
 ! date: 09/30/08
 !
 ! ************************************************************************** !
-subroutine RReaction(Res,Jac,derivative,auxvar,volume,reaction,option)
+subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,volume, &
+                     reaction,option)
 
   use Option_module
   
   implicit none
   
   type(reaction_type), pointer :: reaction
-  type(reactive_transport_auxvar_type) :: auxvar 
+  type(reactive_transport_auxvar_type) :: rt_auxvar 
+  type(global_auxvar_type) :: global_auxvar
   type(option_type) :: option
   PetscTruth :: derivative
   PetscReal :: Res(reaction%ncomp)
@@ -1425,7 +1443,8 @@ subroutine RReaction(Res,Jac,derivative,auxvar,volume,reaction,option)
   PetscReal :: volume
    
   if (reaction%nkinmnrl > 0) then
-    call RKineticMineral(Res,Jac,derivative,auxvar,volume,reaction,option)
+    call RKineticMineral(Res,Jac,derivative,rt_auxvar,global_auxvar,volume, &
+                         reaction,option)
   endif
   ! add new reactions here
 
@@ -1438,14 +1457,16 @@ end subroutine RReaction
 ! date: 09/30/08
 !
 ! ************************************************************************** !
-subroutine RReactionDerivative(Res,Jac,auxvar,volume,reaction,option)
+subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
+                               volume,reaction,option)
 
   use Option_module
   
   implicit none
   
   type(reaction_type), pointer :: reaction
-  type(reactive_transport_auxvar_type) :: auxvar 
+  type(reactive_transport_auxvar_type) :: rt_auxvar 
+  type(global_auxvar_type) :: global_auxvar
   type(option_type) :: option
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
@@ -1456,7 +1477,7 @@ subroutine RReactionDerivative(Res,Jac,auxvar,volume,reaction,option)
   PetscInt :: icomp, jcomp
   PetscReal :: Jac_dummy(reaction%ncomp,reaction%ncomp)
   PetscReal :: pert
-  type(reactive_transport_auxvar_type) :: auxvar_pert
+  type(reactive_transport_auxvar_type) :: rt_auxvar_pert
   PetscTruth :: compute_derivative
 
   ! add new reactions in the 3 locations below
@@ -1466,30 +1487,33 @@ subroutine RReactionDerivative(Res,Jac,auxvar,volume,reaction,option)
     compute_derivative = PETSC_TRUE
     ! #1: add new reactions here
     if (reaction%nkinmnrl > 0) then
-      call RKineticMineral(Res,Jac,compute_derivative,auxvar,volume,reaction,option)
+      call RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
+                           global_auxvar,volume,reaction,option)
     endif
   else ! numerical derivative
     compute_derivative = PETSC_FALSE
     Res_orig = 0.d0
-    call RTAuxVarInit(auxvar_pert,reaction,option)
-    call RTAuxVarCopy(auxvar_pert,auxvar,option)
+    call RTAuxVarInit(rt_auxvar_pert,reaction,option)
+    call RTAuxVarCopy(rt_auxvar_pert,rt_auxvar,option)
     ! #2: add new reactions here
     if (reaction%nkinmnrl > 0) then
-      call RKineticMineral(Res_orig,Jac_dummy,compute_derivative,auxvar,volume,reaction,option)
+      call RKineticMineral(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
+                           global_auxvar,volume,reaction,option)
     endif
     do jcomp = 1, reaction%ncomp
       Res_pert = 0.d0
-      call RTAuxVarCopy(auxvar_pert,auxvar,option)
-      pert = auxvar_pert%pri_molal(jcomp)*perturbation_tolerance
-      auxvar_pert%pri_molal(jcomp) = auxvar_pert%pri_molal(jcomp) + pert
+      call RTAuxVarCopy(rt_auxvar_pert,rt_auxvar,option)
+      pert = rt_auxvar_pert%pri_molal(jcomp)*perturbation_tolerance
+      rt_auxvar_pert%pri_molal(jcomp) = rt_auxvar_pert%pri_molal(jcomp) + pert
       
-      call RTotal(auxvar_pert,reaction,option)
-      if (reaction%nsorb > 0) call RTotalSorb(auxvar_pert,reaction,option)
+      call RTotal(rt_auxvar_pert,global_auxvar,reaction,option)
+      if (reaction%nsorb > 0) call RTotalSorb(rt_auxvar_pert,global_auxvar, &
+                                              reaction,option)
 
       ! #3: add new reactions here
       if (reaction%nkinmnrl > 0) then
-        call RKineticMineral(Res_pert,Jac_dummy,compute_derivative,auxvar_pert, &
-                             volume,reaction,option)
+        call RKineticMineral(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
+                             global_auxvar,volume,reaction,option)
       endif
       do icomp = 1, reaction%ncomp
         Jac(icomp,jcomp) = Jac(icomp,jcomp) + (Res_pert(icomp)-Res_orig(icomp))/pert
@@ -1500,7 +1524,7 @@ subroutine RReactionDerivative(Res,Jac,auxvar,volume,reaction,option)
         if (dabs(Jac(icomp,jcomp)) < 1.d-40)  Jac(icomp,jcomp) = 0.d0
       enddo
     enddo
-    call RTAuxVarDestroy(auxvar_pert)
+    call RTAuxVarDestroy(rt_auxvar_pert)
   endif
 
 end subroutine RReactionDerivative
@@ -1512,11 +1536,12 @@ end subroutine RReactionDerivative
 ! date: 09/30/08
 !
 ! ************************************************************************** !
-subroutine RActivityCoefficients(auxvar,reaction,option)
+subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
 
   use Option_module
   
-  type(reactive_transport_auxvar_type) :: auxvar
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
   type(reaction_type) :: reaction
   type(option_type) :: option
   
@@ -1529,15 +1554,15 @@ subroutine RActivityCoefficients(auxvar,reaction,option)
 
   if (reaction%compute_activity_coefs == ACTIVITY_COEFFICIENTS_NEWTON) then
 
-  ln_conc = log(auxvar%pri_molal)
-  ln_act = ln_conc+log(auxvar%pri_act_coef)
+  ln_conc = log(rt_auxvar%pri_molal)
+  ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
   ln_act_h2o = 0.d0  ! assume act h2o = 1 for now
   
   ! compute primary species contribution to ionic strength
   fpri = 0.d0
   do j = 1, reaction%ncomp
-    fpri = fpri + auxvar%pri_molal(j)*reaction%primary_spec_Z(j)* &
-                                      reaction%primary_spec_Z(j)
+    fpri = fpri + rt_auxvar%pri_molal(j)*reaction%primary_spec_Z(j)* &
+                                         reaction%primary_spec_Z(j)
   enddo
   
   it = 0
@@ -1553,8 +1578,8 @@ subroutine RActivityCoefficients(auxvar,reaction,option)
   ! add secondary species contribution to ionic strength
     I = fpri
     do icplx = 1, reaction%neqcmplx ! for each secondary species
-      I = I + auxvar%sec_molal(icplx)*reaction%eqcmplx_Z(icplx)* &
-                                      reaction%eqcmplx_Z(icplx)
+      I = I + rt_auxvar%sec_molal(icplx)*reaction%eqcmplx_Z(icplx)* &
+                                         reaction%eqcmplx_Z(icplx)
     enddo
     I = 0.5d0*I
     f = I
@@ -1578,7 +1603,7 @@ subroutine RActivityCoefficients(auxvar,reaction,option)
                sum = sum + reaction%eqcmplxstoich(jcomp,icplx)*dgamdi
             endif
           enddo
-          dcdi = auxvar%sec_molal(icplx)*LOG_TO_LN*sum
+          dcdi = rt_auxvar%sec_molal(icplx)*LOG_TO_LN*sum
           didi = didi+0.5d0*reaction%eqcmplx_Z(icplx)*reaction%eqcmplx_Z(icplx)*dcdi
         endif
       enddo
@@ -1603,30 +1628,30 @@ subroutine RActivityCoefficients(auxvar,reaction,option)
     sqrt_I = sqrt(I)
     do icomp = 1, reaction%ncomp
       if (abs(reaction%primary_spec_Z(icomp)) > 0.d0) then
-        auxvar%pri_act_coef(icomp) = exp((-reaction%primary_spec_Z(icomp)* &
-                                        reaction%primary_spec_Z(icomp)* &
-                                        sqrt_I*reaction%debyeA/ &
-                                        (1.d0+reaction%primary_spec_a0(icomp)* &
-                                              reaction%debyeB*sqrt_I)+ &
-                                        reaction%debyeBdot*I)* &
-                                        LOG_TO_LN)
+        rt_auxvar%pri_act_coef(icomp) = exp((-reaction%primary_spec_Z(icomp)* &
+                                           reaction%primary_spec_Z(icomp)* &
+                                           sqrt_I*reaction%debyeA/ &
+                                           (1.d0+reaction%primary_spec_a0(icomp)* &
+                                                 reaction%debyeB*sqrt_I)+ &
+                                           reaction%debyeBdot*I)* &
+                                           LOG_TO_LN)
       else
-        auxvar%pri_act_coef(icomp) = 1.d0
+        rt_auxvar%pri_act_coef(icomp) = 1.d0
       endif
     enddo
                 
   ! secondary species
     do icplx = 1, reaction%neqcmplx
       if (abs(reaction%eqcmplx_Z(icplx)) > 0.d0) then
-        auxvar%sec_act_coef(icplx) = exp((-reaction%eqcmplx_Z(icplx)* &
-                                        reaction%eqcmplx_Z(icplx)* &
-                                        sqrt_I*reaction%debyeA/ &
-                                        (1.d0+reaction%eqcmplx_a0(icplx)* &
-                                              reaction%debyeB*sqrt_I)+ &
-                                        reaction%debyeBdot*I)* &
-                                        LOG_TO_LN)
+        rt_auxvar%sec_act_coef(icplx) = exp((-reaction%eqcmplx_Z(icplx)* &
+                                           reaction%eqcmplx_Z(icplx)* &
+                                           sqrt_I*reaction%debyeA/ &
+                                           (1.d0+reaction%eqcmplx_a0(icplx)* &
+                                                 reaction%debyeB*sqrt_I)+ &
+                                           reaction%debyeBdot*I)* &
+                                           LOG_TO_LN)
       else
-        auxvar%sec_act_coef(icplx) = 1.d0
+        rt_auxvar%sec_act_coef(icplx) = 1.d0
       endif
     
     ! compute secondary species concentration
@@ -1642,7 +1667,7 @@ subroutine RActivityCoefficients(auxvar,reaction,option)
         icomp = reaction%eqcmplxspecid(jcomp,icplx)
         lnQK = lnQK + reaction%eqcmplxstoich(jcomp,icplx)*ln_act(icomp)
       enddo
-      auxvar%sec_molal(icplx) = exp(lnQK)/auxvar%sec_act_coef(icplx)
+      rt_auxvar%sec_molal(icplx) = exp(lnQK)/rt_auxvar%sec_act_coef(icplx)
     enddo
   enddo
   
@@ -1652,14 +1677,14 @@ subroutine RActivityCoefficients(auxvar,reaction,option)
   ! primary species
   I = 0.d0
   do icomp = 1, reaction%ncomp
-    I = I + auxvar%pri_molal(icomp)*reaction%primary_spec_Z(icomp)* &
-                                    reaction%primary_spec_Z(icomp)
+    I = I + rt_auxvar%pri_molal(icomp)*reaction%primary_spec_Z(icomp)* &
+                                       reaction%primary_spec_Z(icomp)
   enddo
   
   ! secondary species
   do icplx = 1, reaction%neqcmplx ! for each secondary species
-    I = I + auxvar%sec_molal(icplx)*reaction%eqcmplx_Z(icplx)* &
-                                    reaction%eqcmplx_Z(icplx)
+    I = I + rt_auxvar%sec_molal(icplx)*reaction%eqcmplx_Z(icplx)* &
+                                       reaction%eqcmplx_Z(icplx)
   enddo
   I = 0.5d0*I
   sqrt_I = sqrt(I)
@@ -1668,30 +1693,30 @@ subroutine RActivityCoefficients(auxvar,reaction,option)
   ! primary species
   do icomp = 1, reaction%ncomp
     if (abs(reaction%primary_spec_Z(icomp)) > 1.d-10) then
-      auxvar%pri_act_coef(icomp) = exp((-reaction%primary_spec_Z(icomp)* &
-                                        reaction%primary_spec_Z(icomp)* &
-                                        sqrt_I*reaction%debyeA/ &
-                                        (1.d0+reaction%primary_spec_a0(icomp)* &
-                                              reaction%debyeB*sqrt_I)+ &
-                                        reaction%debyeBdot*I)* &
-                                       LOG_TO_LN)
+      rt_auxvar%pri_act_coef(icomp) = exp((-reaction%primary_spec_Z(icomp)* &
+                                           reaction%primary_spec_Z(icomp)* &
+                                           sqrt_I*reaction%debyeA/ &
+                                           (1.d0+reaction%primary_spec_a0(icomp)* &
+                                                 reaction%debyeB*sqrt_I)+ &
+                                           reaction%debyeBdot*I)* &
+                                          LOG_TO_LN)
     else
-      auxvar%pri_act_coef(icomp) = 1.d0
+      rt_auxvar%pri_act_coef(icomp) = 1.d0
     endif
   enddo
                 
   ! secondary species
   do icplx = 1, reaction%neqcmplx
     if (dabs(reaction%eqcmplx_Z(icplx)) > 1.d-10) then
-      auxvar%sec_act_coef(icplx) = exp((-reaction%eqcmplx_Z(icplx)* &
-                                        reaction%eqcmplx_Z(icplx)* &
-                                        sqrt_I*reaction%debyeA/ &
-                                        (1.d0+reaction%eqcmplx_a0(icplx)* &
-                                              reaction%debyeB*sqrt_I)+ &
-                                        reaction%debyeBdot*I)* &
-                                       LOG_TO_LN)
+      rt_auxvar%sec_act_coef(icplx) = exp((-reaction%eqcmplx_Z(icplx)* &
+                                           reaction%eqcmplx_Z(icplx)* &
+                                           sqrt_I*reaction%debyeA/ &
+                                           (1.d0+reaction%eqcmplx_a0(icplx)* &
+                                                 reaction%debyeB*sqrt_I)+ &
+                                           reaction%debyeBdot*I)* &
+                                          LOG_TO_LN)
     else
-      auxvar%sec_act_coef(icplx) = 1.d0
+      rt_auxvar%sec_act_coef(icplx) = 1.d0
     endif
   enddo
   
@@ -1706,11 +1731,12 @@ end subroutine RActivityCoefficients
 ! date: 08/28/08
 !
 ! ************************************************************************** !
-subroutine RTotal(auxvar,reaction,option)
+subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 
   use Option_module
   
-  type(reactive_transport_auxvar_type) :: auxvar
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
   type(reaction_type) :: reaction
   type(option_type) :: option
   
@@ -1723,16 +1749,16 @@ subroutine RTotal(auxvar,reaction,option)
 
   iphase = 1           
   
-  den_kg_per_L = auxvar%den(iphase)*1.d-3              
+  den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3              
 
-  ln_conc = log(auxvar%pri_molal)
-  ln_act = ln_conc+log(auxvar%pri_act_coef)
+  ln_conc = log(rt_auxvar%pri_molal)
+  ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
   ln_act_h2o = 0.d0  ! assume act h2o = 1 for now
-  auxvar%total(:,iphase) = auxvar%pri_molal(:)
+  rt_auxvar%total(:,iphase) = rt_auxvar%pri_molal(:)
   ! initialize derivatives
-  auxvar%dtotal = 0.d0
+  rt_auxvar%dtotal = 0.d0
   do icomp = 1, reaction%ncomp
-    auxvar%dtotal(icomp,icomp,iphase) = 1.d0
+    rt_auxvar%dtotal(icomp,icomp,iphase) = 1.d0
   enddo
   
   do icplx = 1, reaction%neqcmplx ! for each secondary species
@@ -1749,15 +1775,15 @@ subroutine RTotal(auxvar,reaction,option)
       icomp = reaction%eqcmplxspecid(i,icplx)
       lnQK = lnQK + reaction%eqcmplxstoich(i,icplx)*ln_act(icomp)
     enddo
-    auxvar%sec_molal(icplx) = exp(lnQK)/auxvar%sec_act_coef(icplx)
+    rt_auxvar%sec_molal(icplx) = exp(lnQK)/rt_auxvar%sec_act_coef(icplx)
   
     ! add contribution to primary totals
     ! units of total = mol/L
     do i = 1, ncomp
       icomp = reaction%eqcmplxspecid(i,icplx)
-      auxvar%total(icomp,iphase) = auxvar%total(icomp,iphase) + &
-                                   reaction%eqcmplxstoich(i,icplx)* &
-                                   auxvar%sec_molal(icplx)
+      rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
+                                      reaction%eqcmplxstoich(i,icplx)* &
+                                      rt_auxvar%sec_molal(icplx)
     enddo
     
     ! add contribution to derivatives of total with respect to free
@@ -1765,21 +1791,21 @@ subroutine RTotal(auxvar,reaction,option)
     do j = 1, ncomp
       jcomp = reaction%eqcmplxspecid(j,icplx)
       tempreal = reaction%eqcmplxstoich(j,icplx)*exp(lnQK-ln_conc(jcomp))/ &
-                                                 auxvar%sec_act_coef(icplx)
+                                                 rt_auxvar%sec_act_coef(icplx)
       do i = 1, ncomp
         icomp = reaction%eqcmplxspecid(i,icplx)
-        auxvar%dtotal(icomp,jcomp,iphase) = auxvar%dtotal(icomp,jcomp,iphase) + &
-                                            reaction%eqcmplxstoich(i,icplx)*tempreal
+        rt_auxvar%dtotal(icomp,jcomp,iphase) = rt_auxvar%dtotal(icomp,jcomp,iphase) + &
+                                               reaction%eqcmplxstoich(i,icplx)*tempreal
       enddo
     enddo
   enddo
 
   ! convert molality -> molarity
   ! unit of total = mol/L water
-  auxvar%total(:,iphase) = auxvar%total(:,iphase)*den_kg_per_L
+  rt_auxvar%total(:,iphase) = rt_auxvar%total(:,iphase)*den_kg_per_L
   
   ! units of dtotal = kg water/L water
-  auxvar%dtotal = auxvar%dtotal*den_kg_per_L
+  rt_auxvar%dtotal = rt_auxvar%dtotal*den_kg_per_L
   
 end subroutine RTotal
 
@@ -1791,11 +1817,12 @@ end subroutine RTotal
 ! date: 10/22/08
 !
 ! ************************************************************************** !
-subroutine RTotalSorb(auxvar,reaction,option)
+subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
 
   use Option_module
   
-  type(reactive_transport_auxvar_type) :: auxvar
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
   type(reaction_type) :: reaction
   type(option_type) :: option
   
@@ -1826,20 +1853,20 @@ subroutine RTotalSorb(auxvar,reaction,option)
 
   iphase = 1                         
 
-  ln_conc = log(auxvar%pri_molal)
-  ln_act = ln_conc+log(auxvar%pri_act_coef)
+  ln_conc = log(rt_auxvar%pri_molal)
+  ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
   ln_act_h2o = 0.d0  ! assume act h2o = 1 for now
     
   ! initialize total sorbed concentrations and derivatives
-  auxvar%total_sorb = 0.d0
-  auxvar%dtotal_sorb = 0.d0
+  rt_auxvar%total_sorb = 0.d0
+  rt_auxvar%dtotal_sorb = 0.d0
 
   ! Surface Complexation
   do irxn = 1, reaction%neqsurfcmplxrxn
   
     ncplx = reaction%eqsurfcmplx_rxn_to_complex(0,irxn)
     
-    free_site_conc = auxvar%eqsurfcmplx_freesite_conc(irxn)
+    free_site_conc = rt_auxvar%eqsurfcmplx_freesite_conc(irxn)
 
     ! get a pointer to the first complex (there will always be at least 1)
     ! in order to grab free site conc
@@ -1906,7 +1933,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
 
     enddo
     
-    auxvar%eqsurfcmplx_freesite_conc(irxn) = free_site_conc
+    rt_auxvar%eqsurfcmplx_freesite_conc(irxn) = free_site_conc
  
     dSx_dmi = 0.d0
     tempreal = 0.d0
@@ -1932,17 +1959,17 @@ subroutine RTotalSorb(auxvar,reaction,option)
     ! divide numerator by denominator
     dSx_dmi = -dSx_dmi / tempreal
     ! convert from dlogm to dm
-    dSx_dmi = dSx_dmi / auxvar%pri_molal
+    dSx_dmi = dSx_dmi / rt_auxvar%pri_molal
  
     do k = 1, ncplx
       icplx = reaction%eqsurfcmplx_rxn_to_complex(k,irxn)
 
-      auxvar%eqsurfcmplx_conc(icplx) = surfcmplx_conc(icplx)
+      rt_auxvar%eqsurfcmplx_conc(icplx) = surfcmplx_conc(icplx)
 
       ncomp = reaction%eqsurfcmplxspecid(0,icplx)
       do i = 1, ncomp
         icomp = reaction%eqsurfcmplxspecid(i,icplx)
-        auxvar%total_sorb(icomp) = auxvar%total_sorb(icomp) + &
+        rt_auxvar%total_sorb(icomp) = rt_auxvar%total_sorb(icomp) + &
           reaction%eqsurfcmplxstoich(i,icplx)*surfcmplx_conc(icplx)
       enddo
       
@@ -1953,21 +1980,21 @@ subroutine RTotalSorb(auxvar,reaction,option)
       do j = 1, ncomp
         jcomp = reaction%eqsurfcmplxspecid(j,icplx)
         tempreal = reaction%eqsurfcmplxstoich(j,icplx)*surfcmplx_conc(icplx) / &
-                   auxvar%pri_molal(jcomp)+ &
+                   rt_auxvar%pri_molal(jcomp)+ &
                    dSi_dSx*dSx_dmi(jcomp)
                   
         do i = 1, ncomp
           icomp = reaction%eqsurfcmplxspecid(i,icplx)
-          auxvar%dtotal_sorb(icomp,jcomp) = auxvar%dtotal_sorb(icomp,jcomp) + &
-                                            reaction%eqsurfcmplxstoich(i,icplx)* &
-                                            tempreal
+          rt_auxvar%dtotal_sorb(icomp,jcomp) = rt_auxvar%dtotal_sorb(icomp,jcomp) + &
+                                               reaction%eqsurfcmplxstoich(i,icplx)* &
+                                               tempreal
         enddo
       enddo
     enddo
   enddo
   
   ! Ion Exchange
-  auxvar%eqionx_conc = 0.d0
+  rt_auxvar%eqionx_conc = 0.d0
   do irxn = 1, reaction%neqionxrxn
 
     ncomp = reaction%eqionx_rxn_cationid(0,irxn)
@@ -1978,10 +2005,10 @@ subroutine RTotalSorb(auxvar,reaction,option)
     if (reaction%eqionx_rxn_Z_flag(irxn)) then ! Zi /= Zj for any i,j
 
       icomp = reaction%eqionx_rxn_cationid(1,irxn)
-      ref_cation_conc = auxvar%pri_molal(icomp)*auxvar%pri_act_coef(icomp)
+      ref_cation_conc = rt_auxvar%pri_molal(icomp)*rt_auxvar%pri_act_coef(icomp)
       ref_cation_Z = reaction%primary_spec_Z(icomp)
       ref_cation_k = reaction%eqionx_rxn_k(1,irxn)
-      ref_cation_X = ref_cation_Z*auxvar%eqionx_ref_cation_sorbed_conc(irxn)/omega
+      ref_cation_X = ref_cation_Z*rt_auxvar%eqionx_ref_cation_sorbed_conc(irxn)/omega
 
       one_more = PETSC_FALSE
       cation_X = 0.d0
@@ -1994,7 +2021,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
 
         do j = 2, ncomp
           icomp = reaction%eqionx_rxn_cationid(j,irxn)
-          cation_X(j) = auxvar%pri_molal(icomp)*auxvar%pri_act_coef(icomp)/ &
+          cation_X(j) = rt_auxvar%pri_molal(icomp)*rt_auxvar%pri_act_coef(icomp)/ &
                         reaction%eqionx_rxn_k(j,irxn)* &
                         ref_cation_quotient** &
                         (reaction%primary_spec_Z(icomp)/ref_cation_Z)
@@ -2017,7 +2044,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
           do j = 2, ncomp
             icomp = reaction%eqionx_rxn_cationid(j,irxn)
             total_pert = total_pert + &
-                         auxvar%pri_molal(icomp)*auxvar%pri_act_coef(icomp)/ &
+                         rt_auxvar%pri_molal(icomp)*rt_auxvar%pri_act_coef(icomp)/ &
                          reaction%eqionx_rxn_k(j,irxn)* &
                          ref_cation_quotient_pert** &
                          (reaction%primary_spec_Z(icomp)/ref_cation_Z)
@@ -2043,7 +2070,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
       
       enddo
 
-      auxvar%eqionx_ref_cation_sorbed_conc(irxn) = ref_cation_X*omega/ref_cation_Z
+      rt_auxvar%eqionx_ref_cation_sorbed_conc(irxn) = ref_cation_X*omega/ref_cation_Z
 
     else ! Zi == Zj for all i,j
         
@@ -2052,7 +2079,7 @@ subroutine RTotalSorb(auxvar,reaction,option)
       
       do j = 1, ncomp  
         icomp = reaction%eqionx_rxn_cationid(j,irxn)
-        cation_X(j) = auxvar%pri_molal(icomp)*auxvar%pri_act_coef(icomp)* &
+        cation_X(j) = rt_auxvar%pri_molal(icomp)*rt_auxvar%pri_act_coef(icomp)* &
                       reaction%eqionx_rxn_k(j,irxn)
         sumkm = sumkm + cation_X(j)
       enddo
@@ -2074,21 +2101,21 @@ subroutine RTotalSorb(auxvar,reaction,option)
       tempreal1 = cation_X(i)*omega/reaction%primary_spec_Z(icomp)
       ! residual function entry
       
-      auxvar%eqionx_conc(icomp,irxn) = auxvar%eqionx_conc(icomp,irxn) + tempreal1
+      rt_auxvar%eqionx_conc(icomp,irxn) = rt_auxvar%eqionx_conc(icomp,irxn) + tempreal1
 
-      auxvar%total_sorb(icomp) = auxvar%total_sorb(icomp) + tempreal1
+      rt_auxvar%total_sorb(icomp) = rt_auxvar%total_sorb(icomp) + tempreal1
 
       tempreal2 = reaction%primary_spec_Z(icomp)/sumZX
       do j = 1, ncomp
         jcomp = reaction%eqionx_rxn_cationid(j,irxn)
         if (i == j) then
-          auxvar%dtotal_sorb(icomp,jcomp) = auxvar%dtotal_sorb(icomp,jcomp) + &
-                                            tempreal1*(1.d0-(tempreal2*cation_X(j)))/ &
-                                            auxvar%pri_molal(jcomp)
+          rt_auxvar%dtotal_sorb(icomp,jcomp) = rt_auxvar%dtotal_sorb(icomp,jcomp) + &
+                                               tempreal1*(1.d0-(tempreal2*cation_X(j)))/ &
+                                               rt_auxvar%pri_molal(jcomp)
         else
-          auxvar%dtotal_sorb(icomp,jcomp) = auxvar%dtotal_sorb(icomp,jcomp) + &
-                                            (-tempreal1)*tempreal2*cation_X(j)/ &
-                                            auxvar%pri_molal(jcomp)
+          rt_auxvar%dtotal_sorb(icomp,jcomp) = rt_auxvar%dtotal_sorb(icomp,jcomp) + &
+                                               (-tempreal1)*tempreal2*cation_X(j)/ &
+                                               rt_auxvar%pri_molal(jcomp)
         endif
       enddo
     enddo    
@@ -2108,8 +2135,8 @@ end subroutine RTotalSorb
 ! date: 09/04/08
 !
 ! ************************************************************************** !
-subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
-                           reaction,option)
+subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
+                           global_auxvar,volume,reaction,option)
 
   use Option_module
   
@@ -2119,7 +2146,8 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
   PetscReal :: volume
-  type(reactive_transport_auxvar_type) :: auxvar
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
   
   PetscInt :: i, j, k, imnrl, icomp, jcomp, kcplx, iphase, ncomp, ipref
   PetscReal :: prefactor(10), sum_prefactor_rate
@@ -2138,12 +2166,12 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
 
   iphase = 1                         
 
-  ln_conc = log(auxvar%pri_molal)
-  ln_act = ln_conc+log(auxvar%pri_act_coef)
+  ln_conc = log(rt_auxvar%pri_molal)
+  ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
 
   if (reaction%neqcmplx > 0) then
-    ln_sec = log(auxvar%sec_molal)
-    ln_sec_act = ln_sec+log(auxvar%sec_act_coef)
+    ln_sec = log(rt_auxvar%sec_molal)
+    ln_sec_act = ln_sec+log(rt_auxvar%sec_act_coef)
   endif
   
   ln_act_h2o = 0.d0
@@ -2172,7 +2200,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
     
     sign_ = sign(1.d0,affinity_factor)
 
-    if (auxvar%mnrl_volfrac(imnrl) > 0 .or. sign_ < 0.d0) then
+    if (rt_auxvar%mnrl_volfrac(imnrl) > 0 .or. sign_ < 0.d0) then
       ! compute prefactor
       if (reaction%kinmnrl_num_prefactors(imnrl) > 0) then
         print *, 'Kinetic mineral reaction prefactor calculations have not been verified.  Ask Glenn.'
@@ -2211,16 +2239,16 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
       ! area = cm^2 mnrl/cm^3 bulk
       ! volume = m^3 bulk
       ! units = cm^2 mnrl/m^3 bulk
-      Im_const = -auxvar%mnrl_area(imnrl)*1.d6 ! convert cm^3->m^3
+      Im_const = -rt_auxvar%mnrl_area(imnrl)*1.d6 ! convert cm^3->m^3
       ! units = mol/sec/m^3 bulk
       if (associated(reaction%kinmnrl_affinity_power)) then
         Im = Im_const*sign_*abs(affinity_factor)**reaction%kinmnrl_affinity_power(imnrl)*sum_prefactor_rate
       else
         Im = Im_const*sign_*abs(affinity_factor)*sum_prefactor_rate
       endif
-      auxvar%mnrl_rate(imnrl) = Im ! mol/sec/m^3
+      rt_auxvar%mnrl_rate(imnrl) = Im ! mol/sec/m^3
     else
-      auxvar%mnrl_rate(imnrl) = 0.d0
+      rt_auxvar%mnrl_rate(imnrl) = 0.d0
       cycle
     endif
     
@@ -2254,7 +2282,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
       ! unit = L water/mol
       dQK_dCj = reaction%kinmnrlstoich(j,imnrl)*exp(lnQK-ln_conc(jcomp))
       ! units = (L water/mol)*(kg water/m^3 water)*(m^3 water/1000 L water) = kg water/mol
-      dQK_dmj = dQK_dCj*auxvar%den(iphase)*1.d-3 ! the multiplication by density could be moved
+      dQK_dmj = dQK_dCj*global_auxvar%den_kg(iphase)*1.d-3 ! the multiplication by density could be moved
                                    ! outside the loop
       do i = 1, ncomp
         icomp = reaction%kinmnrlspecid(i,imnrl)
@@ -2275,7 +2303,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
           jcomp = reaction%kinmnrl_pri_prefactor_id(j,ipref,imnrl)
           ! numerator
           dprefactor_dcomp_numerator = reaction%kinmnrl_pri_pref_alpha_stoich(j,ipref,imnrl)* &
-                                       prefactor(ipref)/auxvar%pri_molal(jcomp) ! dR_dm
+                                       prefactor(ipref)/rt_auxvar%pri_molal(jcomp) ! dR_dm
           ! denominator
           dprefactor_dcomp_denominator = -prefactor(ipref)/ &
                                          ((1.d0+reaction%kinmnrl_pri_pref_atten_coef(j,ipref,imnrl))* &
@@ -2285,8 +2313,9 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
                                          reaction%kinmnrl_pri_pref_atten_coef(j,ipref,imnrl)* &
                                          exp((reaction%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)-1.d0)* &
                                              ln_act(jcomp))* & ! dR_da
-                                         auxvar%pri_act_coef(jcomp) ! da_dc
-          tempreal = dIm_dprefactor_rate*(dprefactor_dcomp_numerator+dprefactor_dcomp_denominator)*auxvar%den(iphase)
+                                         rt_auxvar%pri_act_coef(jcomp) ! da_dc
+          tempreal = dIm_dprefactor_rate*(dprefactor_dcomp_numerator+ &
+                     dprefactor_dcomp_denominator)*global_auxvar%den_kg(iphase)
           do i = 1, ncomp
             icomp = reaction%kinmnrlspecid(i,imnrl)
             Jac(icomp,jcomp) = Jac(icomp,jcomp) + reaction%kinmnrlstoich(i,imnrl)*tempreal
@@ -2297,8 +2326,8 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
             kcplx = reaction%kinmnrl_sec_prefactor_id(k,ipref,imnrl)
             ! numerator
             dprefactor_dcomp_numerator = reaction%kinmnrl_sec_pref_alpha_stoich(k,ipref,imnrl)* &
-                                         prefactor(ipref)/(auxvar%sec_molal(kcplx)* &
-                                                           auxvar%sec_act_coef(kcplx)) ! dR_dax
+                                         prefactor(ipref)/(rt_auxvar%sec_molal(kcplx)* &
+                                                           rt_auxvar%sec_act_coef(kcplx)) ! dR_dax
             ! denominator
             dprefactor_dcomp_denominator = -prefactor(ipref)/ &
                                            (1.d0+reaction%kinmnrl_sec_pref_atten_coef(k,ipref,imnrl)* &
@@ -2308,7 +2337,8 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,auxvar,volume, &
                                            reaction%kinmnrl_sec_pref_atten_coef(k,ipref,imnrl)* &
                                            exp((reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)-1.d0)* &
                                                 ln_sec_act(kcplx)) ! dR_dax
-            tempreal = dIm_dprefactor_rate*(dprefactor_dcomp_numerator+dprefactor_dcomp_denominator)*auxvar%den(iphase)
+            tempreal = dIm_dprefactor_rate*(dprefactor_dcomp_numerator+ &
+                       dprefactor_dcomp_denominator)*global_auxvar%den_kg(iphase)
             do j = 1, reaction%eqcmplxspecid(0,kcplx)
               jcomp = reaction%eqcmplxspecid(j,kcplx)
               tempreal2 = reaction%eqcmplxstoich(j,kcplx)*exp(ln_sec_act(kcplx)-ln_conc(jcomp)) !dax_dc

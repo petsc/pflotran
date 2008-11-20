@@ -26,6 +26,8 @@ module Option_module
     PetscInt :: itranmode
 
     PetscInt :: nphase
+    PetscInt :: liquid_phase
+    PetscInt :: gas_phase
     PetscInt :: nflowdof
     PetscInt :: nflowspec
 
@@ -191,6 +193,10 @@ function OptionCreate()
   option%tranmode = ""
   option%itranmode = NULL_MODE
   option%ntrandof = 0
+  
+  option%nphase = 0
+  option%liquid_phase = 0
+  option%gas_phase = 0
   
   option%uniform_velocity = 0.d0
   option%imod = 1

@@ -1,5 +1,8 @@
 module Transport_module
 
+  use Reactive_Transport_Aux_module
+  use Global_Aux_module
+
   implicit none
   
   private 
@@ -28,18 +31,18 @@ contains
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine TFlux(aux_var_up,por_up,tor_up,sat_up,dist_up, &
-                 aux_var_dn,por_dn,tor_dn,sat_dn,dist_dn, &
+subroutine TFlux(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up, &
+                 rt_aux_var_dn,global_aux_var_dn,por_dn,tor_dn,dist_dn, &
                  area,option,velocity,Res)
 
-  use Reactive_Transport_Aux_module
   use Option_module
 
   implicit none
   
-  type(reactive_transport_auxvar_type) :: aux_var_up, aux_var_dn
-  PetscReal :: por_up, tor_up, sat_up, dist_up
-  PetscReal :: por_dn, tor_dn, sat_dn, dist_dn
+  type(reactive_transport_auxvar_type) :: rt_aux_var_up, rt_aux_var_dn
+  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn 
+  PetscReal :: por_up, tor_up, dist_up
+  PetscReal :: por_dn, tor_dn, dist_dn
   PetscReal :: area
   PetscReal :: velocity(1)
   type(option_type) :: option
@@ -48,6 +51,7 @@ subroutine TFlux(aux_var_up,por_up,tor_up,sat_up,dist_up, &
   PetscInt :: icomp
   PetscInt :: iphase
   PetscReal :: weight
+  PetscReal :: sat_up, sat_dn
   PetscReal :: stp_up, stp_dn
   PetscReal :: coef_up, coef_dn
   PetscReal :: diffusion, q
@@ -56,6 +60,9 @@ subroutine TFlux(aux_var_up,por_up,tor_up,sat_up,dist_up, &
 
   iphase = 1
   q = velocity(iphase)
+  
+  sat_up = global_aux_var_up%sat(iphase)
+  sat_dn = global_aux_var_dn%sat(iphase)
   
   if (sat_up > eps .and. sat_dn > eps) then
     stp_up = sat_up*tor_up*por_up 
@@ -83,8 +90,8 @@ subroutine TFlux(aux_var_up,por_up,tor_up,sat_up,dist_up, &
   coef_dn = coef_dn*area*1000.d0
   
   ! units = (L water/sec)*(mol/L) = mol/s
-  Res(1:option%ntrandof) = coef_up*aux_var_up%total(1:option%ntrandof,iphase) + &
-                           coef_dn*aux_var_dn%total(1:option%ntrandof,iphase)
+  Res(1:option%ntrandof) = coef_up*rt_aux_var_up%total(1:option%ntrandof,iphase) + &
+                           coef_dn*rt_aux_var_dn%total(1:option%ntrandof,iphase)
                         
 end subroutine TFlux
 
@@ -95,18 +102,18 @@ end subroutine TFlux
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine TFluxDerivative(aux_var_up,por_up,tor_up,sat_up,dist_up, &
-                           aux_var_dn,por_dn,tor_dn,sat_dn,dist_dn, &
+subroutine TFluxDerivative(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up, &
+                           rt_aux_var_dn,global_aux_var_dn,por_dn,tor_dn,dist_dn, &
                            area,option,velocity,J_up,J_dn)
 
-  use Reactive_Transport_Aux_module
   use Option_module
 
   implicit none
   
-  type(reactive_transport_auxvar_type) :: aux_var_up, aux_var_dn
-  PetscReal :: por_up, tor_up, sat_up, dist_up
-  PetscReal :: por_dn, tor_dn, sat_dn, dist_dn
+  type(reactive_transport_auxvar_type) :: rt_aux_var_up, rt_aux_var_dn
+  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
+  PetscReal :: por_up, tor_up, dist_up
+  PetscReal :: por_dn, tor_dn, dist_dn
   PetscReal :: area
   PetscReal :: velocity(1)
   type(option_type) :: option
@@ -115,6 +122,7 @@ subroutine TFluxDerivative(aux_var_up,por_up,tor_up,sat_up,dist_up, &
   PetscInt :: icomp
   PetscInt :: iphase
   PetscReal :: weight
+  PetscReal :: sat_up, sat_dn
   PetscReal :: stp_up, stp_dn
   PetscReal :: coef_up, coef_dn
   PetscReal :: diffusion, q
@@ -123,7 +131,10 @@ subroutine TFluxDerivative(aux_var_up,por_up,tor_up,sat_up,dist_up, &
 
   iphase = 1
   q = velocity(iphase)
-  
+
+  sat_up = global_aux_var_up%sat(iphase)
+  sat_dn = global_aux_var_dn%sat(iphase)
+    
   if (sat_up > eps .and. sat_dn > eps) then
     stp_up = sat_up*tor_up*por_up
     stp_dn = sat_dn*tor_dn*por_dn
@@ -150,15 +161,15 @@ subroutine TFluxDerivative(aux_var_up,por_up,tor_up,sat_up,dist_up, &
   coef_dn = coef_dn*area
 
   ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
-  if (associated(aux_var_dn%dtotal)) then
-    J_up = aux_var_up%dtotal(:,:,iphase)*coef_up*1000.d0
-    J_dn = aux_var_dn%dtotal(:,:,iphase)*coef_dn*1000.d0
+  if (associated(rt_aux_var_dn%dtotal)) then
+    J_up = rt_aux_var_up%dtotal(:,:,iphase)*coef_up*1000.d0
+    J_dn = rt_aux_var_dn%dtotal(:,:,iphase)*coef_dn*1000.d0
   else  
     J_up = 0.d0
     J_dn = 0.d0
     do icomp = 1, option%ntrandof
-      J_up(icomp,icomp) = coef_up*aux_var_up%den(iphase)
-      J_dn(icomp,icomp) = coef_dn*aux_var_dn%den(iphase)
+      J_up(icomp,icomp) = coef_up*global_aux_var_up%den_kg(iphase)
+      J_dn(icomp,icomp) = coef_dn*global_aux_var_dn%den_kg(iphase)
     enddo
   endif
 
@@ -172,17 +183,19 @@ end subroutine TFluxDerivative
 !
 ! ************************************************************************** !
 subroutine TBCFlux(ibndtype, &
-                   aux_var_up,aux_var_dn,por_dn,tor_dn,sat_dn,dist_dn, &
+                   rt_aux_var_up,global_aux_var_up, &
+                   rt_aux_var_dn,global_aux_var_dn, &
+                   por_dn,tor_dn,dist_dn, &
                    area,option,velocity,Res)
 
-  use Reactive_Transport_Aux_module
   use Option_module
 
   implicit none
   
   PetscInt :: ibndtype
-  type(reactive_transport_auxvar_type) :: aux_var_up, aux_var_dn
-  PetscReal :: por_dn, tor_dn, sat_dn, dist_dn
+  type(reactive_transport_auxvar_type) :: rt_aux_var_up, rt_aux_var_dn
+  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
+  PetscReal :: por_dn, tor_dn,  dist_dn
   PetscReal :: area
   PetscReal :: velocity(1)
   type(option_type) :: option
@@ -193,13 +206,15 @@ subroutine TBCFlux(ibndtype, &
   PetscReal :: weight
   PetscReal :: coef_up, coef_dn
   PetscReal :: diffusion, q
-  PetscReal :: sat_up
+  PetscReal :: sat_up, sat_dn
   
   diffusion = 0.d0
 
   iphase = 1
   q = velocity(iphase)
-  sat_up = aux_var_up%sat(iphase)
+  
+  sat_up = global_aux_var_up%sat(iphase)
+  sat_dn = global_aux_var_dn%sat(iphase)
 
   select case(ibndtype)
     case(DIRICHLET_BC)
@@ -229,8 +244,8 @@ subroutine TBCFlux(ibndtype, &
   coef_dn = coef_dn*area*1000.d0
 
   ! units = (L water/sec)*(mol/L) = mol/s  
-  Res(1:option%ntrandof) = coef_up*aux_var_up%total(1:option%ntrandof,iphase) + &
-                           coef_dn*aux_var_dn%total(1:option%ntrandof,iphase)  
+  Res(1:option%ntrandof) = coef_up*rt_aux_var_up%total(1:option%ntrandof,iphase) + &
+                           coef_dn*rt_aux_var_dn%total(1:option%ntrandof,iphase)  
 
 end subroutine TBCFlux
 
@@ -243,18 +258,19 @@ end subroutine TBCFlux
 !
 ! ************************************************************************** !
 subroutine TBCFluxDerivative(ibndtype, &
-                             aux_var_up, &
-                             aux_var_dn,por_dn,tor_dn,sat_dn,dist_dn, &
+                             rt_aux_var_up,global_aux_var_up, &
+                             rt_aux_var_dn,global_aux_var_dn, &
+                             por_dn,tor_dn,dist_dn, &
                              area,option,velocity,J_dn)
 
-  use Reactive_Transport_Aux_module
   use Option_module
 
   implicit none
   
   PetscInt :: ibndtype
-  type(reactive_transport_auxvar_type) :: aux_var_up, aux_var_dn
-  PetscReal :: por_dn, tor_dn, sat_dn, dist_dn
+  type(reactive_transport_auxvar_type) :: rt_aux_var_up, rt_aux_var_dn
+  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn 
+  PetscReal :: por_dn, tor_dn, dist_dn
   PetscReal :: area
   PetscReal :: velocity(1)
   type(option_type) :: option
@@ -265,14 +281,16 @@ subroutine TBCFluxDerivative(ibndtype, &
   PetscReal :: weight
   PetscReal :: coef_dn
   PetscReal :: diffusion, q
-  PetscReal :: sat_up  
+  PetscReal :: sat_up, sat_dn  
   
   diffusion = 0.d0
 
   iphase = 1
   q = velocity(iphase)
-  sat_up = aux_var_up%sat(iphase)
-
+  
+  sat_up = global_aux_var_up%sat(iphase)
+  sat_dn = global_aux_var_dn%sat(iphase)
+  
   select case(ibndtype)
     case(DIRICHLET_BC)
       if (sat_up > eps .and. sat_dn > eps) then
@@ -298,12 +316,12 @@ subroutine TBCFluxDerivative(ibndtype, &
   coef_dn = coef_dn*area
 
   ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
-  if (associated(aux_var_dn%dtotal)) then
-    J_dn = aux_var_dn%dtotal(:,:,iphase)*coef_dn*1000.d0
+  if (associated(rt_aux_var_dn%dtotal)) then
+    J_dn = rt_aux_var_dn%dtotal(:,:,iphase)*coef_dn*1000.d0
   else
     J_dn = 0.d0
     do icomp = 1, option%ntrandof
-      J_dn(icomp,icomp) = coef_dn*aux_var_dn%den(iphase)
+      J_dn(icomp,icomp) = coef_dn*global_aux_var_dn%den_kg(iphase)
     enddo
   endif
 

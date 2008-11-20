@@ -66,7 +66,6 @@ private
             RealizAssignTransportInitCond, &
             RealizAssignUniformVelocity, &
             RealizationRevertFlowParameters, &
-            RealizBridgeFlowAndTransport, &
             RealizationGetDataset, &
             RealizGetDatasetValueAtCell, &
             RealizationSetDataset, &
@@ -152,12 +151,18 @@ subroutine RealizationCreateDiscretization(realization)
                                   GLOBAL,option)
   call DiscretizationDuplicateVector(discretization,field%porosity0, &
                                      field%volume)
+
+  call DiscretizationDuplicateVector(discretization,field%porosity0, &
+                                     field%work)
   
   ! 1 degree of freedom, local
   call DiscretizationCreateVector(discretization,ONEDOF,field%porosity_loc, &
                                   LOCAL,option)
   call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
                                      field%tor_loc)
+
+  call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                     field%work_loc)
   
   if (option%nflowdof > 0) then
 
@@ -217,15 +222,6 @@ subroutine RealizationCreateDiscretization(realization)
     call DiscretizationDuplicateVector(discretization,field%tran_xx, &
                                        field%tran_accum)
 
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                       field%saturation_loc)
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                       field%saturation0_loc)
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                       field%density_loc)
-    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
-                                       field%density0_loc)
-    
     ! ndof degrees of freedom, local
     call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_xx_loc, &
                                     LOCAL,option)
@@ -993,6 +989,7 @@ subroutine RealizAssignTransportInitCond(realization)
   use Patch_module
   use Reactive_Transport_Aux_module
   use Reaction_Aux_module
+  use Global_Aux_module
   
   implicit none
 
@@ -1015,13 +1012,19 @@ subroutine RealizAssignTransportInitCond(realization)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(reaction_type), pointer :: reaction
-  type(reactive_transport_auxvar_type), pointer :: aux_vars(:)
+  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  
+  PetscInt :: iphase
+  
   option => realization%option
   discretization => realization%discretization
   field => realization%field
   patch => realization%patch
   grid => patch%grid
   reaction => realization%reaction
+  
+  iphase = 1
   
   cur_level => realization%level_list%first
   do 
@@ -1031,7 +1034,8 @@ subroutine RealizAssignTransportInitCond(realization)
       if (.not.associated(cur_patch)) exit
 
       grid => cur_patch%grid
-      aux_vars => cur_patch%aux%RT%aux_vars
+      rt_aux_vars => cur_patch%aux%RT%aux_vars
+      global_aux_vars => cur_patch%aux%Global%aux_vars
 
       ! assign initial conditions values to domain
       call GridVecGetArrayF90(grid, field%tran_xx,xx_p, ierr); CHKERRQ(ierr)
@@ -1059,20 +1063,20 @@ subroutine RealizAssignTransportInitCond(realization)
               xx_p(ibegin+idof-1) = &
                 initial_condition%tran_condition%cur_constraint_coupler% &
                   aqueous_species%basis_molarity(idof) / &
-                  aux_vars(ghosted_id)%den(1)*1000.d0 ! convert molarity -> molality
+                  global_aux_vars(ghosted_id)%den_kg(iphase)*1000.d0 ! convert molarity -> molality
             enddo
             if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
               do idof = 1, reaction%nkinmnrl
-                aux_vars(ghosted_id)%mnrl_volfrac0(idof) = &
+                rt_aux_vars(ghosted_id)%mnrl_volfrac0(idof) = &
                   initial_condition%tran_condition%cur_constraint_coupler% &
                     minerals%basis_vol_frac(idof)
-                aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
+                rt_aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
                   initial_condition%tran_condition%cur_constraint_coupler% &
                     minerals%basis_vol_frac(idof)
-                aux_vars(ghosted_id)%mnrl_area0(idof) = &
+                rt_aux_vars(ghosted_id)%mnrl_area0(idof) = &
                   initial_condition%tran_condition%cur_constraint_coupler% &
                     minerals%basis_area(idof)
-                aux_vars(ghosted_id)%mnrl_area(idof) = &
+                rt_aux_vars(ghosted_id)%mnrl_area(idof) = &
                   initial_condition%tran_condition%cur_constraint_coupler% &
                     minerals%basis_area(idof)
               enddo
@@ -1092,20 +1096,20 @@ subroutine RealizAssignTransportInitCond(realization)
             endif
             xx_p(ibegin:iend) = &
               initial_condition%tran_aux_real_var(1:option%ntrandof,iconn) / &
-              aux_vars(ghosted_id)%den(1)*1000.d0 ! convert molarity -> molality
+              global_aux_vars(ghosted_id)%den_kg(iphase)*1000.d0 ! convert molarity -> molality
               ! minerals 
             if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
               do idof = 1, reaction%nkinmnrl
-                aux_vars(ghosted_id)%mnrl_volfrac0(idof) = &
+                rt_aux_vars(ghosted_id)%mnrl_volfrac0(idof) = &
                   initial_condition%tran_condition%cur_constraint_coupler% &
                     minerals%basis_vol_frac(idof)
-                aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
+                rt_aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
                   initial_condition%tran_condition%cur_constraint_coupler% &
                     minerals%basis_vol_frac(idof)
-                aux_vars(ghosted_id)%mnrl_area0(idof) = &
+                rt_aux_vars(ghosted_id)%mnrl_area0(idof) = &
                   initial_condition%tran_condition%cur_constraint_coupler% &
                     minerals%basis_area(idof)
-                aux_vars(ghosted_id)%mnrl_area(idof) = &
+                rt_aux_vars(ghosted_id)%mnrl_area(idof) = &
                   initial_condition%tran_condition%cur_constraint_coupler% &
                     minerals%basis_area(idof)
               enddo
@@ -1127,38 +1131,6 @@ subroutine RealizAssignTransportInitCond(realization)
   call VecCopy(field%tran_xx, field%tran_yy, ierr)
 
 end subroutine RealizAssignTransportInitCond
-
-! ************************************************************************** !
-!
-! RealizBridgeFlowAndTransport: Maps auxilliary data (e.g. density) from flow
-!                               to transport
-! author: Glenn Hammond
-! date: 09/03/08
-!
-! ************************************************************************** !
-subroutine RealizBridgeFlowAndTransport(realization)
-  
-  type(realization_type) :: realization
-  
-  type(option_type), pointer :: option
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-
-  option => realization%option
-
-  cur_level => realization%level_list%first
-  do 
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated(cur_patch)) exit
-      call PatchBridgeFlowAndTransport(cur_patch,option)
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo
-
-end subroutine RealizBridgeFlowAndTransport
 
 ! ************************************************************************** !
 !
