@@ -231,7 +231,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   call StepperUpdateSolution(realization)
 
   ! print initial condition output if not a restarted sim
-  if (realization%output_option%plot_number == 0) then
+  if (realization%output_option%plot_number == 0 .and. master_stepper%nstepmax > 0) then
     plot_flag = PETSC_TRUE
     call Output(realization,plot_flag)
   endif
