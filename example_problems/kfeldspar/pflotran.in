@@ -49,23 +49,53 @@ Muscovite  1.e-14
 Gibbsite   1.e-14
 Kaolinite  1.e-17
 /
+
 skip
 SORPTION
 SURFACE_COMPLEXATION_RXN
-MINERAL Calcite
-SITE >SOH 1.e-6
+MINERAL Halite
+SITE >SOH 1.e3
 COMPLEXES
->SOUO2OH
->SOUO2CO3
+>SONa
+>SOK
 /
 /
+/
+:noskip
+:skip
+SORPTION
+ION_EXCHANGE_RXN
+MINERAL Halite
+CEC 0.25e3
+CATIONS
+Na+   1.
+K+    1.
+/
+/
+:skip
+ION_EXCHANGE_RXN
+MINERAL Halite
+CEC 0.1e2
+CATIONS
+Na+    1.
+Ca++   0.1
+Mg++   10.
+/
+/
+:noskip
 /
 noskip
+
 :DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
 DATABASE ../../database/hanford.dat
 LOG_FORMULATION
 ACTIVITY_COEFFICIENTS :ITERATION
 /
+
+MOLAL
+
+REFERENCE_POROSITY 0.5d0
+
 :
 :CHECKPOINT 1
 :RESTART pflotran.chk1
@@ -219,7 +249,7 @@ FLUX neumann
 FLUX -0.317098d-7 ! 0.1 m/day pore water
 /
 
-FLOW_CONDITION initial
+FLOW_CONDITION Initial
 TYPE
 PRESSURE hydrostatic
 /
@@ -233,10 +263,10 @@ CONSTRAINT_LIST
 0.d0 Inlet
 /
 /
-TRANSPORT_CONDITION initial_c
+TRANSPORT_CONDITION Initial_c
 TYPE zero_gradient
 CONSTRAINT_LIST
-0.d0 initial
+0.d0 Initial
 /
 /
 
@@ -252,7 +282,7 @@ Cl-      1.e-2            Z
 /
 /
 
-CONSTRAINT initial
+CONSTRAINT Initial
 CONCENTRATIONS
 Al+++    1.e-16           M K-Feldspar
 Na+      1.e-2            T
@@ -279,7 +309,7 @@ REGION West
 
 BOUNDARY_CONDITION
 FLOW_CONDITION Outlet
-TRANSPORT_CONDITION initial_c
+TRANSPORT_CONDITION Initial_c
 REGION East
 /
 
@@ -292,14 +322,14 @@ REGION West
 
 SOURCE_SINK
 FLOW_CONDITION Outlet
-TRANSPORT_CONDITION initial_c
+TRANSPORT_CONDITION Initial_c
 REGION East
 /
 noskip
 
 INITIAL_CONDITION
-FLOW_CONDITION initial
-TRANSPORT_CONDITION initial_c
+FLOW_CONDITION Initial
+TRANSPORT_CONDITION Initial_c
 REGION all
 /
 

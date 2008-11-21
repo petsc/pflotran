@@ -4,10 +4,17 @@ CHEMISTRY
 PRIMARY_SPECIES
 Na+
 K+
+Ca++
+Mg++
 Cl-
 Tracer
 /
 SECONDARY_SPECIES
+NaCl(aq)
+CaCl2(aq)
+CaCl+
+:MgCl2(aq)
+MgCl+
 /
 GAS_SPECIES
 /
@@ -40,6 +47,17 @@ Na+   1.
 K+    1.
 /
 /
+skip
+ION_EXCHANGE_RXN
+MINERAL Halite
+CEC 0.1e2
+CATIONS
+Na+    1.
+Ca++   0.1
+Mg++   10.
+/
+/
+noskip
 /
 :noskip
 
@@ -48,7 +66,7 @@ DATABASE ../../database/hanford.dat
 LOG_FORMULATION
 :ACTIVITY_COEFFICIENTS ITERATION
 :ACTIVITY_COEFFICIENTS NEWTON
-:ACTIVITY_COEFFICIENTS
+ACTIVITY_COEFFICIENTS
 /
 
 MOLAL
@@ -60,7 +78,7 @@ REFERENCE_POROSITY 0.5d0
 UNIFORM_VELOCITY 0.317098d-7 0.d0 0.d0
 
 TIMESTEPPER
-:MAX_STEPS 5
+MAX_STEPS 0
 TS_ACCELERATION 8
 /
 
@@ -165,7 +183,9 @@ CONSTRAINT initial
 CONCENTRATIONS
 Na+      0.05             T
 K+       1.e-6            T
-Cl-      1.e-0            Z
+Ca++     1.e-3            T
+Mg++     1.e-4            T
+Cl-      0.05             T
 Tracer   1.e-6            T
 /
 MINERALS
@@ -177,7 +197,9 @@ CONSTRAINT Inlet
 CONCENTRATIONS
 Na+      0.05             T
 K+       1.e-2            T
-Cl-      1.e-0            Z
+Ca++     1.e-4            T
+Mg++     1.e-3            T
+Cl-      0.05             T
 Tracer   1.e-2            T
 /
 /
