@@ -836,7 +836,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   
   ! remember that a density of 1 kg/L was assumed, thus molal and molarity are equal
   ! do not scale by molal_to_molar since it could be 1.d0 if MOLAL flag set
-  aq_species_constraint%basis_molarity = rt_auxvar%pri_molal*global_auxvar%den_kg(1)/1000.d0
+  aq_species_constraint%basis_molarity = rt_auxvar%pri_molal* &
+                                         global_auxvar%den_kg(option%liquid_phase)/ &
+                                         1000.d0
   
   if (option%myrank == 0) &
     print *,'ReactionEquilibrateConstraint: ' // trim(constraint_name) // &

@@ -353,8 +353,8 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(reaction_type), pointer :: reaction
-  PetscReal, pointer :: xx_p(:), porosity_loc_p(:), saturation_loc_p(:), &
-                        tor_loc_p(:), volume_p(:), accum_p(:), density_loc_p(:)
+  PetscReal, pointer :: xx_p(:), porosity_loc_p(:), tor_loc_p(:), &
+                        volume_p(:), accum_p(:), density_loc_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: istart, iend
   PetscErrorCode :: ierr
@@ -717,8 +717,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   PetscErrorCode :: ierr
   
   PetscReal, pointer :: r_p(:), accum_p(:)
-  PetscReal, pointer :: porosity_loc_p(:), saturation_loc_p(:), tor_loc_p(:), &
-                        volume_p(:)
+  PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:), volume_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: iphase
   PetscInt :: i, istart, iend                        
@@ -826,28 +825,28 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
             ! units should be mol/sec
             Res(istart) = -1.d-6* &
                           porosity_loc_p(ghosted_id)* &
-                          saturation_loc_p(ghosted_id)* &
+                          global_aux_vars(ghosted_id)%sat(option%liquid_phase)* &
                           volume_p(local_id)* & ! convert m^3 water -> L water
-                          (molality*global_aux_vars(ghosted_id)%den_kg(1) - & 
+                          (molality*global_aux_vars(ghosted_id)%den_kg(option%liquid_phase) - & 
                            rt_aux_vars(ghosted_id)%total(istart,iphase)*1000.d0) ! convert kg water/L water -> kg water/m^3 water
           case(MASS_RATE_SS)
             Res(istart) = -molality ! actually moles/sec
           case(DIRICHLET_BC)
             if (qsrc > 0) then ! injection
               if (volumetric) then ! qsrc is volumetric; must be converted to mass
-                Res(istart) = -qsrc*global_aux_vars(ghosted_id)%den_kg(1) * &
+                Res(istart) = -qsrc*global_aux_vars(ghosted_id)%den_kg(option%liquid_phase) * &
                               molality
               else
                  Res(istart) = -qsrc*molality
               endif
             else ! extraction
               if (volumetric) then ! qsrc is volumetric; must be converted to mass
-                Res(istart) = -qsrc*global_aux_vars(ghosted_id)%den_kg(1)* &
+                Res(istart) = -qsrc*global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
                               rt_aux_vars(ghosted_id)%total(istart,iphase)
               else
                 Res(istart) = -qsrc* &
                               rt_aux_vars(ghosted_id)%total(istart,iphase)/ &
-                              global_aux_vars(ghosted_id)%den_kg(1)*1000.d0 ! convert kg water/L water -> kg water/m^3 water
+                              global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)*1000.d0 ! convert kg water/L water -> kg water/m^3 water
               endif
             endif
           case default
@@ -1106,7 +1105,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscErrorCode :: ierr
   
   PetscReal, pointer :: r_p(:), accum_p(:)
-  PetscReal, pointer :: porosity_loc_p(:), saturation_loc_p(:), tor_loc_p(:), &
+  PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:), &
                         volume_p(:), work_loc_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: istart, iend                        
@@ -1199,14 +1198,14 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
           case(EQUILIBRIUM_SS)
             Jup(istart,istart) = 1.d-6* &
                                  porosity_loc_p(ghosted_id)* &
-                                 saturation_loc_p(ghosted_id)* &
-                                 global_aux_vars(ghosted_id)%den_kg(1)* &
+                                 global_aux_vars(ghosted_id)%sat(option%liquid_phase)* &
+                                 global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
                                  volume_p(local_id)
           case(MASS_RATE_SS)
           case(DIRICHLET_BC)
             if (qsrc < 0) then ! extraction
               if (volumetric) then ! qsrc is volumetric; must be converted to mass
-                Jup(istart,istart) = -qsrc*global_aux_vars(ghosted_id)%den_kg(1)
+                Jup(istart,istart) = -qsrc*global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)
               else
                 Jup(istart,istart) = -qsrc
               endif

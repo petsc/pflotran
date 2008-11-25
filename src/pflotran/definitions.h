@@ -157,6 +157,7 @@ PetscInt, parameter :: ACTIVITY_COEFFICIENTS_ITERATION = 2
 PetscInt, parameter :: ACTIVITY_COEFFICIENTS_NEWTON = 3
 
 ! structured grid faces
+PetscInt, parameter :: NULL_FACE = 0
 PetscInt, parameter :: WEST_FACE = 1
 PetscInt, parameter :: EAST_FACE = 2
 PetscInt, parameter :: SOUTH_FACE = 3
