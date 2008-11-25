@@ -952,7 +952,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
             ghosted_id = grid%nL2G(local_id)
             vec_ptr(local_id) = &
               -log10(patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)* &
-              patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar))
+                     patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar))
           enddo
         case(PRIMARY_MOLALITY)
           do local_id=1,grid%nlmax
@@ -964,7 +964,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
             ghosted_id = grid%nL2G(local_id)
             vec_ptr(local_id) = &
               patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar)* &
-              patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0
+              (patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0)
           enddo
         case(SECONDARY_MOLALITY)
           do local_id=1,grid%nlmax
@@ -977,13 +977,13 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
             ghosted_id = grid%nL2G(local_id)
             vec_ptr(local_id) = &
               patch%aux%RT%aux_vars(ghosted_id)%sec_molal(isubvar)* &
-              patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0
+              (patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0)
           enddo
         case(TOTAL_MOLALITY)
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = &
               patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)/ &
-              patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0
+              (patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0)
           enddo
         case(TOTAL_MOLARITY)
           do local_id=1,grid%nlmax
