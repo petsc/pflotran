@@ -1226,9 +1226,9 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       if (abs(rt_auxvar%total(jcomp,iphase)) > 0.d0) &
       retardation = 1.d0 + rt_auxvar%total_sorb(jcomp)/bulk_vol_to_fluid_vol &
         /rt_auxvar%total(jcomp,iphase)
+      totj = rt_auxvar%total(jcomp,iphase)+rt_auxvar%total_sorb(jcomp)/bulk_vol_to_fluid_vol
       write(option%fid_out,129) reaction%primary_species_names(jcomp), &
-        rt_auxvar%total(jcomp,iphase)+rt_auxvar%total_sorb(jcomp)*1.d-3, &
-        retardation
+        totj,retardation
     enddo
    1128 format(/,2x,'primary species     total(aq+sorbed)    total retardation', &
                /,25x,'[mol/L]',15x,'1+Kd')
