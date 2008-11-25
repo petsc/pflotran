@@ -1069,9 +1069,9 @@ subroutine OutputTecplotPoint(realization)
 
     ! initial portion of header
     string = 'VARIABLES=' // &
-             '"X [m]",' // &
-             '"Y [m]",' // &
-             '"Z [m]"'
+             '"1-X [m]",' // &
+             '"2-Y [m]",' // &
+             '"3-Z [m]"'
 
     ! write flow variables
     string2 = ''

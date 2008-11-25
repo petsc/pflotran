@@ -1664,30 +1664,33 @@ function RTGetTecplotHeader(realization)
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
-  PetscInt :: i
+  PetscInt :: i,iph
   
   option => realization%option
   reaction => realization%reaction
   
   string = ''
   
+  iph = 5
   if (realization%reaction%h_ion_id > 0) then
-    write(string2,'('',"'',a,''"'')') trim('pH')
+    write(string2,'('',"'',a,''"'')') trim('6-pH')
     string = trim(string) // trim(string2)
+    iph = 6
   endif
   
   do i=1,option%ntrandof
-    write(string2,'('',"'',a,''"'')') trim(reaction%primary_species_names(i))
+    write(string2,'('',"'',i2,''-'',a,''"'')') i+iph,trim(reaction%primary_species_names(i))
     string = trim(string) // trim(string2)
   enddo
   
   do i=1,realization%reaction%nkinmnrl
-    write(string2,'('',"'',a,''_vf"'')') trim(reaction%kinmnrl_names(i))
+    write(string2,'('',"'',i2,''-'',a,''_vf"'')') i+iph+option%ntrandof,trim(reaction%kinmnrl_names(i))
     string = trim(string) // trim(string2)
   enddo
   
   do i=1,realization%reaction%nkinmnrl
-    write(string2,'('',"'',a,''_rt"'')') trim(reaction%kinmnrl_names(i))
+    write(string2,'('',"'',i2,''-'',a,''_rt"'')') i+iph+option%ntrandof+realization%reaction%nkinmnrl, &
+      trim(reaction%kinmnrl_names(i))
     string = trim(string) // trim(string2)
   enddo
   
