@@ -822,10 +822,9 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
   PetscInt :: isubvar
   PetscInt :: iphase
 
-  PetscInt :: local_id
+  PetscInt :: local_id, ghosted_id
   type(grid_type), pointer :: grid
   PetscReal, pointer :: vec_ptr(:), vec_ptr2(:)
-  PetscReal :: tempreal
   PetscErrorCode :: ierr
 
   grid => patch%grid
@@ -950,35 +949,41 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
       select case(ivar)
         case(PH)
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = -log10(patch%aux%RT%aux_vars(grid%nL2G(local_id))%pri_act_coef(isubvar)* &
-                                       patch%aux%RT%aux_vars(grid%nL2G(local_id))%pri_molal(isubvar))
+            ghosted_id = grid%nL2G(local_id)
+            vec_ptr(local_id) = &
+              -log10(patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)* &
+              patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar))
           enddo
         case(PRIMARY_MOLALITY)
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%pri_molal(isubvar)
+            vec_ptr(local_id) = &
+              patch%aux%RT%aux_vars(grid%nL2G(local_id))%pri_molal(isubvar)
           enddo
         case(PRIMARY_MOLARITY)
-          tempreal = patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(iphase)/1000.d0
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%pri_molal(isubvar)* &
-                                tempreal
-                                
+            ghosted_id = grid%nL2G(local_id)
+            vec_ptr(local_id) = &
+              patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar)* &
+              patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0
           enddo
         case(SECONDARY_MOLALITY)
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%sec_molal(isubvar)
+            ghosted_id = grid%nL2G(local_id)
+            vec_ptr(local_id) = &
+              patch%aux%RT%aux_vars(ghosted_id)%sec_molal(isubvar)
           enddo
         case(SECONDARY_MOLARITY)
-          tempreal = patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(iphase)/1000.d0
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%sec_molal(isubvar)* &
-                                tempreal
+            ghosted_id = grid%nL2G(local_id)
+            vec_ptr(local_id) = &
+              patch%aux%RT%aux_vars(ghosted_id)%sec_molal(isubvar)* &
+              patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0
           enddo
         case(TOTAL_MOLALITY)
-          tempreal = patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(iphase)/1000.d0
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%total(isubvar,iphase)/ &
-                                tempreal
+            vec_ptr(local_id) = &
+              patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)/ &
+              patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0
           enddo
         case(TOTAL_MOLARITY)
           do local_id=1,grid%nlmax

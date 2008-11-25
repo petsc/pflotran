@@ -2133,8 +2133,8 @@ function RichardsGetTecplotHeader(realization)
   field => realization%field
 
   string = ',' // &
-           '"P [Pa]",' // &
-           '"sl"'
+           '"4-P [Pa]",' // &
+           '"5-sl"'
  
   RichardsGetTecplotHeader = string
 

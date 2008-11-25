@@ -618,6 +618,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
 
     if (ierr == 0) then
 
+      grid => realization%patch%grid
       ! strip card from front of string
       call fiReadWord(string,word,PETSC_FALSE,ierr)
       call fiReadInt(string,grid%structured_grid%npx,ierr)
