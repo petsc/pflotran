@@ -24,7 +24,7 @@ public:
   void computeBottomBoundary(Grid *grid, PetscInt complete);
   void computeEastBoundary(Grid *grid, PetscInt complete);
   void computeWestBoundary(Grid *grid, PetscInt complete);
-  void computeIFCBoundary(Grid *grid, Polygon *p);
+  void computeIFCRegion(Grid *grid, Polygon *p);
   void flagGridCells(Grid *grid);
 
 private:

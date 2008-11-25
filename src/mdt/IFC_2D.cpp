@@ -189,7 +189,7 @@ IFC_2D::IFC_2D(Grid **grid_) {
   computeWestBoundary(grid,1);
   computeTopBoundary(grid,0);
 
-  computeIFCBoundary(grid,ifc_polygon);
+  computeIFCRegion(grid,ifc_polygon);
 
   BoundarySet *river = grid->getBoundarySet("East");
   BoundarySet *west = grid->getBoundarySet("West");
@@ -379,15 +379,16 @@ void IFC_2D::computeTopBoundary(Grid *grid, PetscInt complete) {
 
 }
 
-void IFC_2D::computeIFCBoundary(Grid *grid, Polygon *p) {
+void IFC_2D::computeIFCRegion(Grid *grid, Polygon *p) {
 
-  BoundarySet *plume = new BoundarySet("IFC_Boundary");
+  BoundarySet *plume = new BoundarySet("IFC_Region");
 
   PetscInt count = 0;
   for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) {
     PetscInt local_id = grid->cells[i].getIdLocal();
     if (local_id > -1) {
-      if (grid->cells[i].flag & TOP_DIR_TOP_FACE &&
+      if (grid->cells[i].getZ() >= 104. &&
+          grid->cells[i].getZ() <= 108. &&
           p->pointInPolygon(grid->cells[i].getX(),
                             grid->cells[i].getY())) {
         PetscInt vertex_list[5] = {4,0,0,0,0};
