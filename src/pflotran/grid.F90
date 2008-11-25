@@ -367,7 +367,8 @@ subroutine GridLocalizeRegions(grid,region_list,option)
   PetscInt :: i, j, k, count, local_count, local_ghosted_id, local_id
   PetscInt :: i_min, i_max, j_min, j_max, k_min, k_max
   PetscReal :: x_min, x_max, y_min, y_max, z_min, z_max
-  PetscReal :: shift
+  PetscReal :: x_shift, y_shift, z_shift
+  PetscInt :: iflag = 0
   PetscErrorCode :: ierr
   
   region => region_list%first
@@ -498,42 +499,42 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                       region%coordinates(TWO_INTEGER)%z)
                       
           ! shift box slightly inward
-          shift = 1.d-8*(grid%x_max_global-grid%x_min_global)
-          x_min = x_min+shift            
-          x_max = x_max-shift
-          shift = 1.d-8*(grid%y_max_global-grid%y_min_global)
-          y_min = y_min+shift            
-          y_max = y_max-shift
-          shift = 1.d-8*(grid%z_max_global-grid%z_min_global)
-          z_min = z_min+shift            
-          z_max = z_max-shift
+          x_shift = 1.d-8*(grid%x_max_global-grid%x_min_global)
+          x_min = x_min+x_shift            
+          x_max = x_max-x_shift
+          y_shift = 1.d-8*(grid%y_max_global-grid%y_min_global)
+          y_min = y_min+y_shift            
+          y_max = y_max-y_shift
+          z_shift = 1.d-8*(grid%z_max_global-grid%z_min_global)
+          z_min = z_min+z_shift            
+          z_max = z_max-z_shift
                
           ! if plane or line, ensure it is within the grid cells     
           if (grid%itype == STRUCTURED_GRID) then
             if (x_max-x_min < 1.d-10) then
-              shift = 1.d-8*(grid%x_max_global-grid%x_min_global)
+              x_shift = 1.d-8*(grid%x_max_global-grid%x_min_global)
               if (region%iface == WEST_FACE) then
-                x_max = x_max + shift
+                x_max = x_max + x_shift
               elseif (region%iface == EAST_FACE) then
-                x_max = x_max - shift
+                x_max = x_max - x_shift
               endif
               x_min = x_max
             endif
             if (y_max-y_min < 1.d-10) then
-              shift = 1.d-8*(grid%y_max_global-grid%y_min_global)
+              y_shift = 1.d-8*(grid%y_max_global-grid%y_min_global)
               if (region%iface == NORTH_FACE) then
-                y_max = y_max + shift
+                y_max = y_max + y_shift
               elseif (region%iface == SOUTH_FACE) then
-                y_max = y_max - shift
+                y_max = y_max - y_shift
               endif
               y_min = y_max
             endif
             if (z_max-z_min < 1.d-10) then
-              shift = 1.d-8*(grid%z_max_global-grid%z_min_global)
+              z_shift = 1.d-8*(grid%z_max_global-grid%z_min_global)
               if (region%iface == TOP_FACE) then
-                z_max = z_max + shift
+                z_max = z_max + z_shift
               elseif (region%iface == BOTTOM_FACE) then
-                z_max = z_max - shift
+                z_max = z_max - z_shift
               endif
               z_min = z_max
             endif
@@ -552,14 +553,14 @@ subroutine GridLocalizeRegions(grid,region_list,option)
               case(STRUCTURED_GRID)
                 ! local, non-ghosted i,j,k's are returned
                 call StructGridGetIJKFromCoordinate(grid%structured_grid, &
-                                                    max(x_min,grid%x_min_local), &
-                                                    max(y_min,grid%y_min_local), &
-                                                    max(z_min,grid%z_min_local), &
+                                          max(x_min,grid%x_min_local+x_shift), &
+                                          max(y_min,grid%y_min_local+y_shift), &
+                                          max(z_min,grid%z_min_local+z_shift), &
                                                     i_min,j_min,k_min)
                 call StructGridGetIJKFromCoordinate(grid%structured_grid, &
-                                                    min(x_max,grid%x_max_local), &
-                                                    min(y_max,grid%y_max_local), &
-                                                    min(z_max,grid%z_max_local), &
+                                          min(x_max,grid%x_max_local-x_shift), &
+                                          min(y_max,grid%y_max_local-y_shift), &
+                                          min(z_max,grid%z_max_local-z_shift), &
                                                     i_max,j_max,k_max)
                 if (i_min > 0 .and. j_min > 0 .and. k_min > 0 .and. &
                     i_max > 0 .and. j_max > 0 .and. k_max > 0) then
@@ -581,10 +582,16 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                     enddo
                   enddo
                 else
-                  write(string,*) 'GridLocalizeRegions, between two points'
-                  call printErrMsg(option,string)
+                  iflag = 1
                 endif
             end select
+          endif
+          call MPI_Allreduce(iflag,i,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
+                             option%comm,ierr)
+          iflag = i
+          if (iflag > 0) then
+            write(string,*) 'GridLocalizeRegions, between two points'
+            call printErrMsg(option,string)
           endif
         endif    
       endif 
