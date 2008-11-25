@@ -35,8 +35,8 @@ IFC::IFC(Grid **grid_) {
   PetscReal dy;
   PetscReal dz;// */
 
-  PetscReal len_x = 550.;
-  PetscReal len_y = 750.;
+  PetscReal len_x = 500.;
+  PetscReal len_y = 700.;
   PetscReal len_z = 20.;
 
   dx = len_x/(PetscReal)nx;
@@ -55,6 +55,7 @@ IFC::IFC(Grid **grid_) {
 #if 0
   PetscReal sum_x = 0.;
   PetscReal sum_y = 0.;
+  dx = 0.8470329472543
   PetscReal *dx_array = new double[nx];
   PetscReal *dy_array = new double[ny];
   PetscReal *dz_array = new double[nz];
@@ -63,14 +64,24 @@ IFC::IFC(Grid **grid_) {
   for (int i=0; i<ny; i++)
     dy_array[i] = 10.;
   for (int i=0; i<nz; i++)
-    dz_array[i] = 1.;
+    dz_array[i] = 0.25;
 
-  for (int i=10; i>-1; i--) {
-    dx_array[i] = 10.*pow(1.303527,11.-i);
+  for (int i=11; i<19; i++) {
+    dx_array[i] = 10.*pow(1.30242241518419,(double)(10-i));
     sum_x += dx_array[i];
   }
 
-  for (int i=0; i<10; i++) {
+  for (int i=19; i<89; i++) {
+    dx_array[i] = 1.;
+    sum_x += dx_array[i];
+  }
+
+  for (int i=89; i<97; i++) {
+    dx_array[i] = 10.*pow(1.30242241518419,(double)(i-97));
+    sum_x += dx_array[i];
+  }
+
+  for (int i=97; i<9; i++) {
     dy_array[110+i] = 10.*pow(1.353088,i+1.);
     dy_array[9-i] = 10.*pow(1.353088,i+1.);
     sum_y += dy_array[9-i];

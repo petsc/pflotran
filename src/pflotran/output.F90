@@ -1227,10 +1227,9 @@ subroutine OutputTecplotPoint(realization)
     
     ! material id
     if (associated(patch%imat)) then
-      call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-          value = RealizGetDatasetValueAtCell(realization,MATERIAL_ID, &
+      value = RealizGetDatasetValueAtCell(realization,MATERIAL_ID, &
                                               ZERO_INTEGER,ghosted_id)
-          write(IUNIT3,1001,advance='no') int(value)
+      write(IUNIT3,1001,advance='no') int(value)
     endif
     write(IUNIT3,1009) 
 
