@@ -4361,8 +4361,7 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
       do i=1,nx_local
         count = count + 1
         local_id = i+(j-1)*grid%structured_grid%nlx+(k-1)*grid%structured_grid%nlxy
-        array(count) = vec_ptr(iphase+(direction-1)*option%nphase+ &
-                               3*option%nphase*(local_id-1))
+        array(count) = vec_ptr(local_id) 
       enddo
     enddo
   enddo
