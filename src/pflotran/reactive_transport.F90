@@ -1694,6 +1694,12 @@ function RTGetTecplotHeader(realization)
     string = trim(string) // trim(string2)
   enddo
   
+  do i=1,realization%reaction%neqsurfcmplx
+    write(string2,'('',"'',i2,''-'',a,''"'')') i+iph+option%ntrandof+2*realization%reaction%nkinmnrl, &
+      trim(reaction%surface_complex_names(i))
+    string = trim(string) // trim(string2)
+  enddo
+  
   RTGetTecplotHeader = string
 
 end function RTGetTecplotHeader

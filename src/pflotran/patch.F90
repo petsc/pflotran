@@ -997,6 +997,10 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%mnrl_rate(isubvar)
           enddo
+        case(SURFACE_CMPLX)
+          do local_id=1,grid%nlmax
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%eqsurfcmplx_conc(isubvar)
+          enddo
       end select
     case(PHASE)
       call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
@@ -1059,6 +1063,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
     case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
          LIQUID_DENSITY,GAS_DENSITY)
+         
       if (associated(patch%aux%THC)) then
         select case(ivar)
           case(TEMPERATURE)
@@ -1123,9 +1128,11 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
             value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%u(1)
         end select
       endif
+      
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY, &
          TOTAL_MOLALITY,TOTAL_MOLARITY, &
          MINERAL_VOLUME_FRACTION,MINERAL_RATE)
+         
       select case(ivar)
         case(PH)
           value = -log10(patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)* &
@@ -1149,6 +1156,8 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
           value = patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(isubvar)
         case(MINERAL_RATE)
           value = patch%aux%RT%aux_vars(ghosted_id)%mnrl_rate(isubvar)
+        case(SURFACE_CMPLX)
+          value = patch%aux%RT%aux_vars(ghosted_id)%eqsurfcmplx_conc(isubvar)
       end select
     case(PHASE)
       call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
