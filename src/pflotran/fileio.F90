@@ -191,7 +191,7 @@ subroutine fiReadMultDouble(fid, string, doubles, n, variable_name, keyword, &
   character(len=*) :: variable_name, keyword, subroutine_name
   character(len=MAXWORDLENGTH) :: short_string
   PetscInt :: i, n, fid
-  logical :: newline
+  PetscTruth :: newline
   PetscReal :: doubles(n)
   PetscErrorCode :: ierr
 
@@ -352,7 +352,7 @@ subroutine fiReadWord(string, word, return_blank_error, ierr)
   implicit none
 
   PetscInt :: i, begins, ends
-  logical :: return_blank_error ! Return an error for a blank line
+  PetscTruth :: return_blank_error ! Return an error for a blank line
                                 ! Therefore, a blank line is not acceptable.
   character(len=*) :: string
   character(len=*) :: word
@@ -419,7 +419,7 @@ subroutine fiReadNChars(string, chars, n, return_blank_error, ierr)
   implicit none
 
   PetscInt :: i, n, begins, ends
-  logical :: return_blank_error ! Return an error for a blank line
+  PetscTruth :: return_blank_error ! Return an error for a blank line
                                 ! Therefore, a blank line is not acceptable.
   character(len=*) :: string
   character(len=n) :: chars
@@ -480,7 +480,7 @@ end subroutine fiReadNChars
 ! date: 12/14/06
 !
 ! ************************************************************************** !
-logical function fiStringCompare(string1,string2,n)
+PetscTruth function fiStringCompare(string1,string2,n)
 
   implicit none
 
@@ -628,7 +628,7 @@ end function fiToLower
 ! date: 4/04/01
 !
 ! ************************************************************************** !
-logical function fiIsAlpha(c)
+PetscTruth function fiIsAlpha(c)
       
   implicit none
 
@@ -720,12 +720,12 @@ subroutine fiReadDBaseName(fid, string, name, return_blank_error, ierr)
   implicit none
 
   PetscInt :: i, begins, ends, realends, fid, length
-  logical :: return_blank_error ! Return an error for a blank line
+  PetscTruth :: return_blank_error ! Return an error for a blank line
                                 ! Therefore, a blank line is not acceptable.
   PetscInt, parameter :: n = 20
   character(len=*) :: string
   character(len=*) :: name
-  logical :: openquotefound
+  PetscTruth :: openquotefound
   PetscErrorCode :: ierr
 
   if (ierr /= 0) return
@@ -797,7 +797,7 @@ subroutine fiReadDBaseWord(fid, string, word, return_blank_error, ierr)
   implicit none
 
   PetscInt :: i, begins, ends, fid
-  logical :: return_blank_error ! Return an error for a blank line
+  PetscTruth :: return_blank_error ! Return an error for a blank line
                                 ! Therefore, a blank line is not acceptable.
   character(len=*) :: string
   character(len=*) :: word
@@ -1001,7 +1001,7 @@ subroutine fiReadQuotedNChars(string, chars, n, return_blank_error, ierr)
   implicit none
 
   PetscInt :: i, n, begins, ends
-  logical :: return_blank_error ! Return an error for a blank line
+  PetscTruth :: return_blank_error ! Return an error for a blank line
                                 ! Therefore, a blank line is not acceptable.
   character(len=*) :: string
   character(len=n) :: chars

@@ -257,7 +257,7 @@ subroutine LevelUpdateAllCouplerAuxVars(level,force_update_flag,option)
   implicit none
   
   type(level_type) :: level
-  logical :: force_update_flag
+  PetscTruth :: force_update_flag
   type(option_type) :: option
     
   type(patch_type), pointer :: cur_patch
@@ -286,7 +286,7 @@ subroutine LevelUpdateCouplerAuxVars(level,force_update_flag,option)
   implicit none
   
   type(level_type) :: level
-  logical :: force_update_flag
+  PetscTruth :: force_update_flag
   type(option_type) :: option
     
   type(patch_type), pointer :: cur_patch

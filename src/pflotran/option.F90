@@ -47,7 +47,7 @@ module Option_module
     PetscTruth :: use_isoth
     
     character(len=MAXWORDLENGTH) :: generalized_grid
-    logical :: use_generalized_grid
+    PetscTruth :: use_generalized_grid
       
     PetscReal :: flow_time, tran_time, time  ! The time elapsed in the simulation.
     PetscReal :: tran_weight_t0, tran_weight_t1
@@ -100,12 +100,12 @@ module Option_module
     
     PetscInt :: log_stage(10)
     
-    logical :: numerical_derivatives
-    logical :: compute_statistics
-    logical :: compute_mass_balance
-    logical :: use_touch_options
-    logical :: overwrite_restart_transport
-    logical :: overwrite_restart_flow_params
+    PetscTruth :: numerical_derivatives
+    PetscTruth :: compute_statistics
+    PetscTruth :: compute_mass_balance
+    PetscTruth :: use_touch_options
+    PetscTruth :: overwrite_restart_transport
+    PetscTruth :: overwrite_restart_flow_params
     PetscInt :: io_handshake_buffer_size
     
     character(len=MAXWORDLENGTH) :: permx_filename
@@ -119,17 +119,17 @@ module Option_module
     character(len=2) :: tunit
     PetscReal :: tconv
   
-    logical :: print_hdf5
-    logical :: print_hdf5_velocities
-    logical :: print_hdf5_flux_velocities
+    PetscTruth :: print_hdf5
+    PetscTruth :: print_hdf5_velocities
+    PetscTruth :: print_hdf5_flux_velocities
 
-    logical :: print_tecplot 
+    PetscTruth :: print_tecplot 
     PetscInt :: tecplot_format
-    logical :: print_tecplot_velocities
-    logical :: print_tecplot_flux_velocities
+    PetscTruth :: print_tecplot_velocities
+    PetscTruth :: print_tecplot_flux_velocities
     
-    logical :: print_vtk 
-    logical :: print_vtk_velocities
+    PetscTruth :: print_vtk 
+    PetscTruth :: print_vtk_velocities
 
     PetscInt :: plot_number
     character(len=MAXWORDLENGTH) :: plot_name
@@ -504,7 +504,7 @@ function OptionCheckTouch(option,filename)
   
   PetscInt :: ios
   PetscInt :: fid = 86
-  logical :: OptionCheckTouch
+  PetscTruth :: OptionCheckTouch
   PetscErrorCode :: ierr
   
   OptionCheckTouch = PETSC_FALSE

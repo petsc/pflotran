@@ -521,7 +521,7 @@ subroutine ConditionRead(condition,option,fid)
   character(len=MAXWORDLENGTH) :: default_ctype
   PetscInt :: default_itype
   PetscInt :: array_size, length, idof
-  logical :: found
+  PetscTruth :: found
   PetscErrorCode :: ierr
 
   call PetscLogEventBegin(logging%event_flow_condition_read, &
@@ -880,7 +880,7 @@ subroutine TranConditionRead(condition,constraint_list,reaction,option)
   PetscInt :: default_iphase = 0
   character(len=MAXWORDLENGTH) :: default_ctype
   PetscInt :: default_itype
-  logical :: found
+  PetscTruth :: found
   PetscInt :: icomp
   PetscInt :: length
   PetscTruth :: minerals_exist
@@ -1425,7 +1425,7 @@ subroutine SubConditionUpdateDataset(option,time,dataset)
   
   type(option_type) :: option
   PetscReal :: time
-  logical :: is_cyclic
+  PetscTruth :: is_cyclic
   PetscInt :: interpolation_method
   type(flow_condition_dataset_type) :: dataset
   

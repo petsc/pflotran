@@ -826,7 +826,7 @@ subroutine ImmisSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fla
   PetscReal Res(1:option%nflowdof) 
   PetscReal mmsrc(option%nflowspec), psrc(option%nphase),tsrc,hsrc 
   PetscInt isrctype
-  logical :: energy_flag
+  PetscTruth :: energy_flag
      
   PetscReal :: msrc(option%nflowspec),dw_kg, dw_mol,dddt,dddp
   PetscReal :: enth_src_h2o, enth_src_co2 
@@ -1353,7 +1353,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
-  logical :: enthalpy_flag
+  PetscTruth :: enthalpy_flag
   PetscInt :: ng
   PetscInt :: iconn, idof, istart, iend
   PetscInt :: sum_connection
@@ -1847,7 +1847,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
-  logical :: enthalpy_flag
+  PetscTruth :: enthalpy_flag
   PetscInt :: iconn, idof
   PetscInt :: sum_connection  
   PetscReal :: distance, fraction_upwind

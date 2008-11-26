@@ -48,7 +48,7 @@ subroutine Output(realization,plot_flag)
   implicit none
   
   type(realization_type) :: realization
-  logical :: plot_flag
+  PetscTruth :: plot_flag
 
   character(len=MAXWORDLENGTH) :: word
   PetscErrorCode :: ierr
@@ -1919,7 +1919,7 @@ subroutine OutputBreakthroughTecplot(realization)
   type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
   type(breakthrough_type), pointer :: breakthrough
-  logical, save :: first = PETSC_TRUE
+  PetscTruth, save :: first = PETSC_TRUE
 
   call PetscLogEventBegin(logging%event_output_breakthrough, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -3791,7 +3791,7 @@ subroutine OutputHDF5(realization)
   
   character(len=MAXWORDLENGTH) :: filename = "pflotran.h5"
   character(len=MAXSTRINGLENGTH) :: string
-  logical, save :: first = PETSC_TRUE
+  PetscTruth, save :: first = PETSC_TRUE
   PetscReal, pointer :: array(:)
   PetscInt :: i
   PetscInt :: nviz_flow, nviz_tran, nviz_dof
@@ -4261,10 +4261,10 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   PetscReal, allocatable :: array(:)
   PetscReal, pointer :: vec_ptr(:)
 
-  logical, save :: first = PETSC_TRUE
-  logical, save :: trick_flux_vel_x = PETSC_FALSE
-  logical, save :: trick_flux_vel_y = PETSC_FALSE
-  logical, save :: trick_flux_vel_z = PETSC_FALSE
+  PetscTruth, save :: first = PETSC_TRUE
+  PetscTruth, save :: trick_flux_vel_x = PETSC_FALSE
+  PetscTruth, save :: trick_flux_vel_y = PETSC_FALSE
+  PetscTruth, save :: trick_flux_vel_z = PETSC_FALSE
 
   Vec :: global_vec
 

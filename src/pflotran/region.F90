@@ -417,7 +417,7 @@ subroutine RegionReadFromFileId(region,fid)
   type(region_type), pointer :: region
   PetscInt :: fid
   
-  logical :: continuation_flag
+  PetscTruth :: continuation_flag
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   character(len=1) :: backslash

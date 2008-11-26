@@ -41,7 +41,7 @@ module Structured_Grid_module
     ! grid spacing for each direction for local, ghosted domain
     PetscReal, pointer :: dxg_local(:), dyg_local(:), dzg_local(:)
     
-    logical :: invert_z_axis
+    PetscTruth :: invert_z_axis
     
     PetscReal, pointer :: dx(:), dy(:), dz(:)  ! ghosted grid spacings for each grid cell
     

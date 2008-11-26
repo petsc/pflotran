@@ -118,14 +118,14 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   
   character(len=MAXSTRINGLENGTH) :: string, string2, string3
   character(len=MAXWORDLENGTH) :: word
-  logical :: print_sol_norm_info = PETSC_FALSE
-  logical :: print_upd_norm_info = PETSC_FALSE
-  logical :: print_res_norm_info = PETSC_FALSE
-  logical :: print_norm_by_dof_info = PETSC_FALSE
-  logical :: print_max_val_and_loc_info = PETSC_FALSE
-  logical :: print_1_norm_info = PETSC_FALSE
-  logical :: print_2_norm_info = PETSC_FALSE
-  logical :: print_inf_norm_info = PETSC_FALSE
+  PetscTruth :: print_sol_norm_info = PETSC_FALSE
+  PetscTruth :: print_upd_norm_info = PETSC_FALSE
+  PetscTruth :: print_res_norm_info = PETSC_FALSE
+  PetscTruth :: print_norm_by_dof_info = PETSC_FALSE
+  PetscTruth :: print_max_val_and_loc_info = PETSC_FALSE
+  PetscTruth :: print_1_norm_info = PETSC_FALSE
+  PetscTruth :: print_2_norm_info = PETSC_FALSE
+  PetscTruth :: print_inf_norm_info = PETSC_FALSE
 
 !typedef enum {/* converged */
 !              SNES_CONVERGED_FNORM_ABS         =  2, /* F < F_minabs */

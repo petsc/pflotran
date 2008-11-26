@@ -102,7 +102,7 @@ subroutine StringReadQuotedWord(string, name, return_blank_error, ierr)
                                 ! Therefore, a blank line is not acceptable.
   character(len=*) :: string
   character(len=*) :: name
-  logical :: openquotefound
+  PetscTruth :: openquotefound
   PetscErrorCode :: ierr
 
   if (ierr /= 0) return

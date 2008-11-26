@@ -748,8 +748,8 @@ subroutine readInput(simulation,filename)
   PetscInt :: ibc, ibrk, ir,np
   PetscReal :: rdum
 
-  logical :: continuation_flag
-  logical :: periodic_output_flag = PETSC_FALSE
+  PetscTruth :: continuation_flag
+  PetscTruth :: periodic_output_flag = PETSC_FALSE
   PetscReal :: periodic_rate = 0.d0
   
   character(len=1) :: backslash

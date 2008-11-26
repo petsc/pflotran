@@ -13,7 +13,7 @@ module HDF5_module
   
   PetscErrorCode :: ierr
 
-  logical, public :: trick_hdf5 = PETSC_FALSE
+  PetscTruth, public :: trick_hdf5 = PETSC_FALSE
 
 #ifdef USE_HDF5
   PetscMPIInt :: hdf5_err

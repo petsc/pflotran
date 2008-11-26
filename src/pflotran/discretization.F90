@@ -603,7 +603,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   PetscInt :: flowortransport
   DM :: dm_ptr
   ISLocalToGlobalMapping :: ptmap
-  logical :: islocal
+  PetscTruth :: islocal
 
   dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
     

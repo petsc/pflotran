@@ -182,7 +182,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   type(option_type), pointer :: option
   type(waypoint_type), pointer :: prev_waypoint  
 
-  logical :: plot_flag, timestep_cut_flag, stop_flag
+  PetscTruth :: plot_flag, timestep_cut_flag, stop_flag
   PetscInt :: istep, start_step
   PetscInt :: num_const_timesteps
   PetscInt :: num_newton_iterations, idum
@@ -362,7 +362,7 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option,timestep_cut_flag, &
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
   type(option_type) :: option
-  logical :: timestep_cut_flag
+  PetscTruth :: timestep_cut_flag
   PetscInt :: num_const_timesteps
   PetscInt :: num_newton_iterations
   
@@ -473,7 +473,7 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag)
 
   type(stepper_type), pointer :: flow_stepper, tran_stepper
   type(option_type) :: option
-  logical :: plot_flag
+  PetscTruth :: plot_flag
   
   PetscReal :: time
   PetscReal :: dt
@@ -586,7 +586,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   type(realization_type) :: realization
   type(stepper_type) :: stepper
 
-  logical :: timestep_cut_flag
+  PetscTruth :: timestep_cut_flag
   PetscInt :: num_newton_iterations
   
   character(len=MAXSTRINGLENGTH) :: string, string2, string3
@@ -597,7 +597,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   PetscInt :: sum_newton_iterations, sum_linear_iterations, num_linear_iterations
   PetscReal :: fnorm, scaled_fnorm, inorm
   Vec :: global_vec
-  logical :: plot_flag
+  PetscTruth :: plot_flag
   
   PetscInt, save :: linear_solver_divergence_count = 0
 
@@ -883,7 +883,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
 
   character(len=MAXSTRINGLENGTH) :: string, string2, string3
 
-  logical :: timestep_cut_flag
+  PetscTruth :: timestep_cut_flag
   PetscInt :: num_newton_iterations
   PetscErrorCode :: ierr
   PetscInt :: icut ! Tracks the number of time step reductions applied
@@ -893,7 +893,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   PetscInt :: n, nmax_inf
   PetscReal :: fnorm, scaled_fnorm, inorm
   PetscReal :: start_time, end_time, dt_orig
-  logical :: plot_flag  
+  PetscTruth :: plot_flag  
   PetscReal, pointer :: r_p(:), xx_p(:), log_xx_p(:)
   PetscReal, parameter :: time_tol = 1.d-10
 

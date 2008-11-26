@@ -451,7 +451,7 @@ subroutine PatchInitAllCouplerAuxVars(patch,option)
   type(patch_type) :: patch
   type(option_type) :: option
   
-  logical :: force_update_flag = PETSC_TRUE
+  PetscTruth :: force_update_flag = PETSC_TRUE
   
   call PatchInitCouplerAuxVars(patch,patch%boundary_conditions,option)
   call PatchInitCouplerAuxVars(patch,patch%initial_conditions,option)
@@ -480,7 +480,7 @@ subroutine PatchInitCouplerAuxVars(patch,coupler_list,option)
   type(option_type) :: option
   
   PetscInt :: num_connections
-  logical :: force_update_flag
+  PetscTruth :: force_update_flag
   
   type(coupler_type), pointer :: coupler
   
@@ -552,7 +552,7 @@ subroutine PatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
   implicit none
   
   type(patch_type) :: patch
-  logical :: force_update_flag
+  PetscTruth :: force_update_flag
   type(option_type) :: option
   
   call PatchUpdateCouplerAuxVars(patch,patch%boundary_conditions, &
@@ -581,13 +581,13 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   
   type(patch_type) :: patch
   type(coupler_list_type), pointer :: coupler_list
-  logical :: force_update_flag
+  PetscTruth :: force_update_flag
   type(option_type) :: option
   
   type(coupler_type), pointer :: coupler
   type(flow_condition_type), pointer :: flow_condition
   type(tran_condition_type), pointer :: tran_condition
-  logical :: update
+  PetscTruth :: update
   
   PetscInt :: idof, num_connections
   

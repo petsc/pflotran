@@ -12,7 +12,7 @@ module Strata_module
  
   type, public :: strata_type
     PetscInt :: id                                       ! id of strata
-    logical :: active
+    PetscTruth :: active
     character(len=MAXWORDLENGTH) :: material_name       ! character string defining name of material to be applied
     character(len=MAXWORDLENGTH) :: region_name         ! character string defining name of region to be applied
     PetscInt :: imaterial                                ! id of material in material array/list

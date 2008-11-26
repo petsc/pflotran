@@ -7,24 +7,24 @@ module Debug_module
 #include "definitions.h"
 
   type, public :: pflow_debug_type
-    logical :: vecview_residual
-    logical :: vecview_solution
-    logical :: matview_Jacobian
-    logical :: matview_Jacobian_detailed
-    logical :: norm_Jacobian
+    PetscTruth :: vecview_residual
+    PetscTruth :: vecview_solution
+    PetscTruth :: matview_Jacobian
+    PetscTruth :: matview_Jacobian_detailed
+    PetscTruth :: norm_Jacobian
 
-    logical :: print_numerical_derivatives
+    PetscTruth :: print_numerical_derivatives
 
-    logical :: print_couplers
+    PetscTruth :: print_couplers
   end type pflow_debug_type
   
   type, public :: ptran_debug_type
-    logical :: vecview_residual
-    logical :: vecview_solution
-    logical :: matview_Jacobian
-    logical :: matview_Jacobian_detailed
-    logical :: norm_Jacobian
-    logical :: print_couplers    
+    PetscTruth :: vecview_residual
+    PetscTruth :: vecview_solution
+    PetscTruth :: matview_Jacobian
+    PetscTruth :: matview_Jacobian_detailed
+    PetscTruth :: norm_Jacobian
+    PetscTruth :: print_couplers    
   end type ptran_debug_type
 
   interface DebugRead

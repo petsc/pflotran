@@ -776,7 +776,7 @@ subroutine RealizUpdateAllCouplerAuxVars(realization,force_update_flag)
   implicit none
   
   type(realization_type) :: realization
-  logical :: force_update_flag
+  PetscTruth :: force_update_flag
 
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -809,7 +809,7 @@ subroutine RealizationUpdate(realization)
   
   type(realization_type) :: realization
   
-  logical :: force_update_flag = PETSC_FALSE
+  PetscTruth :: force_update_flag = PETSC_FALSE
   
   ! must update conditions first
   call ConditionUpdate(realization%flow_conditions,realization%option, &
