@@ -1237,8 +1237,8 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   
   if (reaction%nmnrl > 0) then
   
-    130 format(/,'  mineral                 log SI    log K')
-    131 format(2x,a20,2x,f8.4,2x,1pe12.4)
+    130 format(/,'  mineral                   log SI    log K')
+    131 format(2x,a20,2x,f10.4,2x,1pe12.4)
 
     do imnrl = 1, reaction%nmnrl
       ! compute saturation
