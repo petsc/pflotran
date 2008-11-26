@@ -836,6 +836,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
     case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
          LIQUID_DENSITY,GAS_DENSITY)
+         
       if (associated(patch%aux%THC)) then
         select case(ivar)
           case(TEMPERATURE)
@@ -943,9 +944,11 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
             enddo
         end select
       endif
+      
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY, &
          SECONDARY_MOLARITY,TOTAL_MOLALITY,TOTAL_MOLARITY, &
          MINERAL_RATE,MINERAL_VOLUME_FRACTION)
+         
       select case(ivar)
         case(PH)
           do local_id=1,grid%nlmax
@@ -1131,7 +1134,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
       
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY, &
          TOTAL_MOLALITY,TOTAL_MOLARITY, &
-         MINERAL_VOLUME_FRACTION,MINERAL_RATE)
+         MINERAL_VOLUME_FRACTION,MINERAL_RATE,SURFACE_CMPLX)
          
       select case(ivar)
         case(PH)

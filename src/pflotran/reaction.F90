@@ -1966,7 +1966,8 @@ subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
     do k = 1, ncplx
       icplx = reaction%eqsurfcmplx_rxn_to_complex(k,irxn)
 
-      rt_auxvar%eqsurfcmplx_conc(icplx) = surfcmplx_conc(icplx)
+!     rt_auxvar%eqsurfcmplx_conc(icplx) = surfcmplx_conc(icplx)
+      rt_auxvar%eqsurfcmplx_conc(k) = surfcmplx_conc(icplx)
 
       ncomp = reaction%eqsurfcmplxspecid(0,icplx)
       do i = 1, ncomp
