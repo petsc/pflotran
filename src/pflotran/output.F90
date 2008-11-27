@@ -267,7 +267,9 @@ subroutine OutputTecplotBlock(realization)
 
     ! write material ids
     if (associated(patch%imat)) then
-      string = trim(string) // ',"Material_ID"'
+      option%icolumn = option%icolumn + 1
+      write(string2,'('',"'',i2,''-'',a,''"'')') option%icolumn,trim('Material_ID')
+      string = trim(string) // trim(string2)
     endif
 
     write(IUNIT3,'(a)') trim(string)
@@ -1074,9 +1076,9 @@ subroutine OutputTecplotPoint(realization)
 
     ! initial portion of header
     string = 'VARIABLES=' // &
-             '"1-X [m]",' // &
-             '"2-Y [m]",' // &
-             '"3-Z [m]"'
+             '"X [m]",' // &
+             '"Y [m]",' // &
+             '"Z [m]"'
 
     option%icolumn = 3
     
@@ -1101,7 +1103,6 @@ subroutine OutputTecplotPoint(realization)
     ! write material ids
     if (associated(patch%imat)) then
       option%icolumn = option%icolumn + 1
-!     string = trim(string) // ',"Material_ID"'
       write(string2,'('',"'',i2,''-'',a,''"'')') option%icolumn,trim('Material_ID')
       string = trim(string) // trim(string2)
     endif

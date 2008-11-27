@@ -200,6 +200,7 @@ function OptionCreate()
   
   option%uniform_velocity = 0.d0
   option%imod = 1
+  option%icolumn = 3
    
 !-----------------------------------------------------------------------
       ! Initialize some parameters to sensible values.  These are parameters
