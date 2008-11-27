@@ -2131,10 +2131,18 @@ function RichardsGetTecplotHeader(realization)
   
   option => realization%option
   field => realization%field
+  
+  string = ''
+  
+  option%icolumn = option%icolumn + 1
+  write(string2,'('',"'',i2,''-'',a,''"'')') option%icolumn,trim('P [Pa]')
+  string = trim(string) // trim(string2)
+  
+  print *,'RichardsGetTecplotHeader: ',string,string2
 
-  string = ',' // &
-           '"4-P [Pa]",' // &
-           '"5-sl"'
+  option%icolumn = option%icolumn + 1
+  write(string2,'('',"'',i2,''-'',a,''"'')') option%icolumn,trim('sl')
+  string = trim(string) // trim(string2)
  
   RichardsGetTecplotHeader = string
 

@@ -1664,46 +1664,45 @@ function RTGetTecplotHeader(realization)
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
-  PetscInt :: i,isum,isum1
+  PetscInt :: i
   
   option => realization%option
   reaction => realization%reaction
   
   string = ''
   
-  isum = 5
   if (realization%reaction%h_ion_id > 0) then
-    write(string2,'('',"'',a,''"'')') trim('6-pH')
+    option%icolumn = option%icolumn + 1
+    write(string2,'('',"'',i2,''-'',a,''"'')') option%icolumn,trim('pH')
     string = trim(string) // trim(string2)
-    isum = isum+1
   endif
   
-  isum1 = isum
   do i=1,option%ntrandof
-    write(string2,'('',"'',i2,''-'',a,''"'')') i+isum1,trim(reaction%primary_species_names(i))
+    option%icolumn = option%icolumn + 1
+    write(string2,'('',"'',i2,''-'',a,''"'')') option%icolumn, &
+      trim(reaction%primary_species_names(i))
     string = trim(string) // trim(string2)
-    isum = isum+1
   enddo
   
-  isum1 = isum
   do i=1,realization%reaction%nkinmnrl
-    write(string2,'('',"'',i2,''-'',a,''_vf"'')') i+isum1,trim(reaction%kinmnrl_names(i))
+    option%icolumn = option%icolumn + 1
+    write(string2,'('',"'',i2,''-'',a,''_vf"'')') option%icolumn, &
+      trim(reaction%kinmnrl_names(i))
     string = trim(string) // trim(string2)
-    isum = isum+1
   enddo
   
-  isum1 = isum
   do i=1,realization%reaction%nkinmnrl
-    write(string2,'('',"'',i2,''-'',a,''_rt"'')') i+isum1,trim(reaction%kinmnrl_names(i))
+    option%icolumn = option%icolumn + 1
+    write(string2,'('',"'',i2,''-'',a,''_rt"'')') option%icolumn, &
+      trim(reaction%kinmnrl_names(i))
     string = trim(string) // trim(string2)
-    isum = isum+1
   enddo
   
-  isum1 = isum
   do i=1,realization%reaction%neqsurfcmplx
-    write(string2,'('',"'',i2,''-'',a,''"'')') i+isum1,trim(reaction%surface_complex_names(i))
+    option%icolumn = option%icolumn + 1
+    write(string2,'('',"'',i2,''-'',a,''"'')') option%icolumn, &
+      trim(reaction%surface_complex_names(i))
     string = trim(string) // trim(string2)
-    isum = isum+1
   enddo
   
   RTGetTecplotHeader = string

@@ -42,7 +42,7 @@ module Option_module
     ! Program options
     PetscTruth :: use_matrix_free  ! If true, do not form the Jacobian.
     
-    PetscInt :: imod
+    PetscInt :: imod, icolumn
     
     PetscTruth :: use_isoth
     

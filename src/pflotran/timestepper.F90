@@ -952,9 +952,10 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
       call GlobalUpdateDenAndSat(realization,option%tran_weight_t1)
     endif
 
-    if (option%myrank == 0) then
-      write(*,'(/,2("=")" TRANSPORT ",47("="))')
-    endif
+!   if (option%myrank == 0) then
+!     if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) &
+!     write(*,'(/,2("=")" TRANSPORT ",47("="))')
+!   endif
 
     sum_newton_iterations = 0
     sum_linear_iterations = 0
@@ -1081,6 +1082,10 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
 
   ! print screen output
     if (option%myrank == 0) then
+
+      if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) &
+      write(*,'(/,2("=")" TRANSPORT ",47("="))')
+
       if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
         write(*, '(/," TRAN ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
           & " snes_conv_reason: ",i4,/,"  newton = ",i2," [",i6,"]", &
