@@ -546,7 +546,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscReal :: norm
   PetscReal :: prev_molal(reaction%ncomp)
   PetscReal, parameter :: tol = 1.d-12
-  PetscReal, parameter :: tol_loose = 1.d0
+  PetscReal, parameter :: tol_loose = 1.d-6
   PetscTruth :: compute_activity_coefs
 
   PetscInt :: constraint_id(reaction%ncomp)
@@ -820,14 +820,17 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     num_iterations = num_iterations + 1
     
     ! need some sort of convergence before we kick in activities
-    if (maxval(dabs(rt_auxvar%pri_molal-prev_molal)/ &
-               rt_auxvar%pri_molal) < tol_loose) then
+!   if (maxval(dabs(rt_auxvar%pri_molal-prev_molal)/ &
+!              rt_auxvar%pri_molal) < tol_loose) then
+    if (maxval(dabs(res)) < tol) then
       compute_activity_coefs = PETSC_TRUE
     endif
 
     ! check for convergence
-    if (maxval(dabs(rt_auxvar%pri_molal-prev_molal)/ &
-               rt_auxvar%pri_molal) < tol) exit
+    
+!   if (maxval(dabs(rt_auxvar%pri_molal-prev_molal)/ &
+!              rt_auxvar%pri_molal) < tol) exit
+    if (maxval(dabs(res)) < tol) exit
                      
   enddo
 
