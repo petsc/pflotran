@@ -1,0 +1,276 @@
+:Description: 1D problem for testing geochemistry
+ 
+CHEMISTRY
+PRIMARY_SPECIES
+H+
+Ca++
+Mg++
+UO2++
+K+
+Na+
+HCO3-
+:CO2(aq)
+SO4--
+NO3-
+/
+SECONDARY_SPECIES
+OH-
+CO3--
+:HCO3-
+CO2(aq)
+CaCO3(aq)
+CaHCO3+
+CaSO4(aq)
+CaNO3+
+MgCO3(aq)
+MgHCO3+
+MgSO4(aq)
+NaOH(aq)
+NaSO4-
+NaHCO3(aq)
+NaNO3(aq)
+KHSO4(aq)
+KOH(aq)
+KSO4-
+HSO4-
+H2SO4(aq)
+:
+:uranium species
+:VI
+UO2OH+
+UO2(OH)2(aq)
+UO2(OH)3-
+UO2(OH)4--
+(UO2)2OH+++
+(UO2)2(OH)2++
+(UO2)3(OH)4++
+(UO2)3(OH)5+
+(UO2)3(OH)7-
+(UO2)4(OH)7+
+:
+UO2CO3(aq)
+UO2(CO3)2--
+UO2(CO3)3----
+(UO2)2CO3(OH)3-
+:
+Ca2UO2(CO3)3(aq)
+CaUO2(CO3)3--
+:
+UO2NO3+
+UO2SO4(aq)
+UO2(SO4)2--
+/
+GAS_SPECIES
+CO2(g)
+/
+MINERALS
+Calcite
+Magnesite
+ Dolomite
+ Dolomite-dis
+ Dolomite-ord
+ Brucite
+ Nesquehonite
+ Gypsum
+/
+:
+MINERAL_KINETICS
+Calcite 1.e-30 
+/
+:skip
+SORPTION
+SURFACE_COMPLEXATION_RXN
+MINERAL Calcite
+SITE >SOH 3.8418e0
+COMPLEXES
+>SOUO2OH
+>SOUO2CO3
+/
+/
+/
+noskip
+:DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
+DATABASE /Users/lichtner/flotran/database/hanford.dat
+:DATABASE ../../../database/hanford.dat
+LOG_FORMULATION
+:ACTIVITY_COEFFICIENTS
+/
+:
+:MOLAL
+:
+:CHECKPOINT 1
+:RESTART pflotran.chk1
+UNIFORM_VELOCITY 0.317098d-4 0.d0 0.d0
+
+TIMESTEPPER
+MAX_STEPS 10000
+TS_ACCELERATION 3
+/
+
+:NUMERICAL_JACOBIAN
+:INEXACT_NEWTON
+:STATISTICS
+:
+:CHECKPOINT 50
+:WALLCLOCK_STOP 0.05
+:
+DEBUG
+:MATVIEW_JACOBIAN
+:VECVIEW_RESIDUAL
+:VECVIEW_SOLUTION
+/
+:
+GRID
+TYPE structured
+NXYZ 100 1 1
+DXYZ
+5.
+1.
+1.
+/
+/
+:
+LINEAR_SOLVER TRANSPORT
+:KSP_TYPE PREONLY
+:PC_TYPE LU
+SOLVER GMRES
+/
+:
+NEWTON_SOLVER TRANSPORT
+:MATRIX_TYPE MFFD
+:PRECONDITIONER_MATRIX_TYPE AIJ
+RTOL 1.d-8
+ATOL 1.d-10
+STOL 1.e-60
+DTOL 1.e4
+:NO_INFINITY_NORM
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
+:
+:STATISTICS
+:
+TECPLOT POINT VELO
+:TECPLOT BLOCK VELO
+:
+DIFF  1.D-9       12.6
+:
+SATURATION_FUNCTIONS
+:id itype swir   lambda alpha     pcwmax betac pwr
+ 1  2     0.10   2.67   2.042d-4  1.e8   0.d0  1.d0
+/
+
+THERMAL_PROPERTIES
+:ithm rho    cpr     ckdry cksat tau cdiff   cexp
+  1   2.75e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
+/
+:
+MATERIALS
+:name   id icap ithm por  tau   permx     permy     permz     permpwr
+Soil1   1  1    1    0.2  1.0   1.d-12    1.d-12    1.d-13    1.d0
+/
+:
+IMOD 1
+:
+:TIME d every 10
+TIME y
+0.01 1. 10. 50.
+:
+DTST 1.d-8
+1.0 0.01 10. 0.1
+
+:
+REGION all
+BLOCK 1 100 1 1 1 1
+/
+
+REGION West
+BLOCK 1 1 1 1 1 1
+FACE west
+/
+
+REGION East
+BLOCK 100 100 1 1 1 1
+FACE east
+/
+
+TRANSPORT_CONDITION Inlet_c
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 Inlet
+/
+/
+TRANSPORT_CONDITION initial_c
+TYPE zero_gradient
+CONSTRAINT_LIST
+0.d0 initial
+/
+/
+
+CONSTRAINT initial
+CONCENTRATIONS
+H+       8.65       pH
+Ca++     6.e-4       T
+Mg++     1.e-4       T
+UO2++    1.e-6       T
+K+       1.e-4       T
+Na+      8.e-3       T
+:HCO3-    -3.5        G  CO2(g)
+HCO3-    4.e-3       T
+:CO2(aq)  4.e-3       T
+NO3-     3.e-3       T
+SO4--    1.2e-3      T
+/
+MINERALS
+Calcite   0.0184797  1.
+/
+/
+
+CONSTRAINT Inlet
+CONCENTRATIONS
+H+       8.3        pH
+Ca++     6.e-4       T
+Mg++     1.e-4       T
+UO2++    1.e-6       T
+K+       1.e-4       T
+Na+     98.e-3       T
+:HCO3-    -3.5        G  CO2(g)
+HCO3-    4.e-3       T
+:CO2(aq)  4.e-3       T
+NO3-    93.e-3       T
+SO4--    1.2e-3      T
+/
+/
+
+BOUNDARY_CONDITION
+TRANSPORT_CONDITION Inlet_c
+REGION West
+/
+
+BOUNDARY_CONDITION
+TRANSPORT_CONDITION initial_c
+REGION East
+/
+
+skip
+SOURCE_SINK
+TRANSPORT_CONDITION Inlet_c
+REGION West
+/
+
+SOURCE_SINK
+TRANSPORT_CONDITION initial_c
+REGION East
+/
+noskip
+
+INITIAL_CONDITION
+TRANSPORT_CONDITION initial_c
+REGION all
+/
+
+STRATA
+MATERIAL Soil1
+REGION all
+/
+

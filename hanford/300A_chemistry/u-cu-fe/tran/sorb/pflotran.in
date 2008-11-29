@@ -1,7 +1,5 @@
 :Description: 1D problem for testing geochemistry
  
-MODE RICHARDS
-
 CHEMISTRY
 PRIMARY_SPECIES
 H+
@@ -268,13 +266,13 @@ CaUO4
 MINERAL_KINETICS
 Quartz 1.e-22 
 Calcite 1.e-12 
-Metatorbernite 1.e-18 
+Metatorbernite 1.e-17 
 /
 :skip
 SORPTION
 SURFACE_COMPLEXATION_RXN
 MINERAL Calcite
-SITE >SOH 1.e-3
+SITE >SOH 3.8418e0
 COMPLEXES
 >SOUO2OH
 >SOUO2CO3
@@ -286,21 +284,18 @@ noskip
 DATABASE /Users/lichtner/flotran/database/hanford.dat
 :DATABASE ../../../database/hanford.dat
 LOG_FORMULATION
-ACTIVITY_COEFFICIENTS
+:ACTIVITY_COEFFICIENTS
 /
 :
-
 :MOLAL
-
-IMOD 20
-
-REFERENCE_POROSITY 0.5d0
-
+:
 :CHECKPOINT 1
 :RESTART pflotran.chk1
+UNIFORM_VELOCITY 0.317098d-4 0.d0 0.d0
 
 TIMESTEPPER
-MAX_STEPS 5000
+MAX_STEPS 100000
+TS_ACCELERATION 3
 /
 
 :NUMERICAL_JACOBIAN
@@ -320,40 +315,36 @@ GRID
 TYPE structured
 NXYZ 100 1 1
 DXYZ
-5.
+15.
 1.
 1.
 /
-/
-:
-NEWTON_SOLVER FLOW
-:MATRIX_TYPE MFFD
-:PRECONDITIONER_MATRIX_TYPE AIJ
-:RTOL 1.d-8
-ATOL 1.d-6
-NO_INFINITY_NORM
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
-/
-:
-LINEAR_SOLVER FLOW
-:KSP_TYPE FGMRES
-:KSP_TYPE PREONLY
-:PC_TYPE LU
 /
 :
 LINEAR_SOLVER TRANSPORT
 :KSP_TYPE PREONLY
 :PC_TYPE LU
+SOLVER GMRES
+/
+:
+NEWTON_SOLVER TRANSPORT
+:MATRIX_TYPE MFFD
+:PRECONDITIONER_MATRIX_TYPE AIJ
+RTOL 1.d-8
+ATOL 1.d-10
+STOL 1.e-60
+DTOL 1.e4
+:NO_INFINITY_NORM
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
 /
 :
 :STATISTICS
 :
-:HDF5 VELO !FLUX
-TECPLOT POINT VELO 
-:TECPLOT BLOCK VELO 
+TECPLOT POINT VELO
+:TECPLOT BLOCK VELO
 :
-DIFF  1.D-10       12.6
+DIFF  1.D-9       12.6
 :
 SATURATION_FUNCTIONS
 :id itype swir   lambda alpha     pcwmax betac pwr
@@ -367,25 +358,24 @@ THERMAL_PROPERTIES
 :
 MATERIALS
 :name   id icap ithm por  tau   permx     permy     permz     permpwr
-Soil1   1  1    1    0.5  0.5   1.d-11    1.d-11    1.d-11    1.d0
+Soil1   1  1    1    0.2  1.0   1.d-12    1.d-12    1.d-13    1.d0
 /
+:
+IMOD 1
 :
 :TIME d every 10
 TIME y
-1. 10. 50. !100. 250.
+0.1 0.5 1. 2. 5. 10.
 :
-DTST 1.d-12
-:50. 1.0d0 
-50. 0.01d0 
+DTST 1.d-8
+1.0 0.01 10. 0.1
+
 :
 REGION all
 BLOCK 1 100 1 1 1 1
 /
 REGION source
-BLOCK 26 35 1 1 1 1
-/
-REGION down_stream
-BLOCK 36 100 1 1 1 1
+BLOCK 10 20 1 1 1 1
 /
 
 REGION West
@@ -396,48 +386,6 @@ FACE west
 REGION East
 BLOCK 100 100 1 1 1 1
 FACE east
-/
-
-skip
-FLOW_CONDITION Inlet
-TYPE
-PRESSURE mass
-/
-PRESSURE 1.d-3
-/
-
-FLOW_CONDITION Outlet
-TYPE
-PRESSURE mass
-/
-PRESSURE -1.d-3
-/
-noskip
-
-FLOW_CONDITION Inlet
-TYPE
-FLUX neumann
-/
-:FLUX 2.8935185d-7 ! 0.1 m/day pore water
-:FLUX 0.317098d-7 ! 1 m/y
-FLUX  1.58549e-4 ! 5000 m/y = 50 ft/d
-/
-
-FLOW_CONDITION Outlet
-TYPE
-FLUX neumann
-/
-:FLUX -2.8935185d-7 ! 0.1 m/day pore water
-:FLUX -0.317098d-7 ! (1 m/y)
-FLUX -1.58549e-4 ! 5000 m/y = 50 ft/d
-/
-
-FLOW_CONDITION initial
-TYPE
-PRESSURE hydrostatic
-/
-DATUM 0.d0 0.d0 1.d0
-PRESSURE 201325.d0
 /
 
 TRANSPORT_CONDITION Inlet_c
@@ -458,12 +406,6 @@ CONSTRAINT_LIST
 0.d0 initial_src
 /
 /
-TRANSPORT_CONDITION initial_dwn
-TYPE zero_gradient
-CONSTRAINT_LIST
-0.d0 initial_down_stream
-/
-/
 
 CONSTRAINT initial
 CONCENTRATIONS
@@ -475,7 +417,7 @@ Ca++     1.20644e-3       T
 Cu++     1.e-5            T
 Fe++     1.e-9            M Ferrihydrite
 Mg++     5.09772e-4       T
-UO2++    1.e-6            S
+UO2++    1.e-8            S
 K+       1.54789e-4       T
 Na+      1.03498e-3       T
 HCO3-    2.57305e-3       T
@@ -490,35 +432,30 @@ Tracer   1.e-7            F
 MINERALS
 Quartz         0.6  1.
 Calcite        0.1  1.
-Metatorbernite 0.   1.
+Metatorbernite 0.0  1.
 /
 /
 
-CONSTRAINT initial_down_stream
+CONSTRAINT Inlet
 CONCENTRATIONS
-H+       7.3             pH
-O2(aq)   1.78132e-4       T
-Al+++    1.e-9            M K-Feldspar
-Ca++     1.20644e-3       T
-Cu++     1.e-5            M Metatorbernite
-Fe++     1.e-9            M Ferrihydrite
-Mg++     5.09772e-4       T
-UO2++    2.34845e-8       T
-K+       1.54789e-4       T
-Na+      1.03498e-3       T
-HCO3-    2.57305e-3       T
-Cl-      6.97741e-4       T
-F-       2.09491e-5       T
-HPO4--   1.e-4            M Whitlockite
-NO3-     4.69979e-3       T
-SO4--    6.37961e-4       T
+H+       7.8             pH
+O2(aq)   3.52303e-4       T
+Al+++    1.e-12           T
+Ca++     4.49496e-4       T
+Cu++     1.e-8            T
+Fe++     1.e-9            T
+Mg++     1.82316e-4       T
+UO2++    1.e-8            S
+K+       1.905371e-5      T
+Na+      1.00551e-4       T
+HCO3-    1.127881e-3      T
+Cl-      3.3895e-5        T
+F-       6.23269e-6       T
+HPO4--   1.e-6            T
+NO3-     1.e-5            T
+SO4--    9.23943e-5       T
 SiO2(aq) 5.36989e-4       T
-Tracer   1.e-7            F
-/
-MINERALS
-Quartz         0.6   1.
-Calcite        0.1   1.
-Metatorbernite 0.0   1.
+Tracer   1.e-6            F
 /
 /
 
@@ -550,71 +487,36 @@ Metatorbernite 0.0   1.
 /
 /
 
-CONSTRAINT Inlet
-CONCENTRATIONS
-H+       7.8             pH
-O2(aq)   3.52303e-4       T
-Al+++    1.e-12           T
-Ca++     4.49496e-4       T
-Cu++     1.e-8            T
-Fe++     1.e-9            T
-Mg++     1.82316e-4       T
-UO2++    1.e-6            S
-K+       1.905371e-5      T
-Na+      1.00551e-4       T
-HCO3-    1.127881e-3      T
-Cl-      3.3895e-5        T
-F-       6.23269e-6       T
-HPO4--   1.e-6            T
-NO3-     1.e-5            T
-SO4--    9.23943e-5       T
-SiO2(aq) 5.36989e-4       T
-Tracer   1.e-6            F
-/
-/
-
 BOUNDARY_CONDITION
-FLOW_CONDITION Inlet
 TRANSPORT_CONDITION Inlet_c
 REGION West
 /
 
 BOUNDARY_CONDITION
-FLOW_CONDITION Outlet
 TRANSPORT_CONDITION initial_c
 REGION East
 /
 
 skip
 SOURCE_SINK
-FLOW_CONDITION Inlet
 TRANSPORT_CONDITION Inlet_c
 REGION West
 /
 
 SOURCE_SINK
-FLOW_CONDITION Outlet
 TRANSPORT_CONDITION initial_c
 REGION East
 /
 noskip
 
 INITIAL_CONDITION
-FLOW_CONDITION initial
 TRANSPORT_CONDITION initial_c
 REGION all
 /
 
 INITIAL_CONDITION
-FLOW_CONDITION initial
 TRANSPORT_CONDITION initial_s
 REGION source
-/
-
-INITIAL_CONDITION
-FLOW_CONDITION initial
-TRANSPORT_CONDITION initial_dwn
-REGION down_stream
 /
 
 STRATA

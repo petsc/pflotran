@@ -1,0 +1,234 @@
+Colloid transport and surface complexation at NTS
+                   July 23, 1999
+:
+:       geometry  nx  ny  nz    mode  iprint iwarn idebug idbg1 idbg2
+GRID     XYZ       1   1   1     0      1       2     0     1    1
+:
+OPTS
+:   idata istart imod iexact iscale ihrmc isst iscreen iapp
+    0     0      10   0      0      1     -1   0       0
+:
+:   itmax ihalmax ndtmx iaccel ndamp icomprs icase
+    32    32      0     3      0     0       0
+:
+:   method iops ifor isurf iact loglin icon cournr
+    1      0    0    0     1    0      1    1.
+:
+:    isync ipor iperm permfac porfac icksat ucutoff iread pwrpor pwrperm
+COUPle  0    0    0     0.       0.      0      0.     0     1.    -1.
+:
+PLTFiles 
+:iplot   a  s  t  m si sf  v  z  b in  e ex ti  g itex mk err
+    1    1  1  1  0  0  0  0  0  2  0  0  1  0  0   0   0  0
+:
+:    tol    ttol  tolneg tolmin tolhet dthalf qkmax tolstdste tolc dcmx
+TOLR 1.d-13 1.e-1 1.e-0  1.e-12  3.d1   .5    500. 1.e-12    1.e-16 0.1
+:
+:        mcyc  cc  c   flx r  sp  qk  pk  rk  a1  a2  a3
+DEBUg     0     1  1   0   1   1   1   1   1
+:
+:      isat isothrm iread  por0  phir  sat  w  lambda toldelt  tolpor
+ISYStem 1   0      0      0.999794 1.    1.0 0.5   1.0    1.e-3    1.e-3
+:
+:     vx0  vy0  vz0  vgx0  vgy0  vgz0[m/yr]  alphax   alphay   alphaz[m]   
+FLOW  0.   0.   0.   0.    0.    0.          0.       0.       0.
+:
+:   d0[cm^2/s]  delhaq[kJ/mol]  dgas[cm^2/s]  dgexp  tortaq  tortg idif
+DIFF 1.d-5     12.6           2.13d-1      1.8   1.d0   1.d0  2.333  0
+:
+:flag 1: T(x)   = d x^3 + a x^2 + b x + c (meters)
+:     2: T(x)   = a + (b-a) exp[-((x-x0)/c)^2] + (d - a) * x / xlen
+:   3:T(x,t)=a+1/2(b-a)(erf[(x+c-x0)/2sqr(dt)]-erf[(x-c-x0)/2sqr(dt)])
+:       p[Pa] temp flag  a    b    c    d   x0   xlen
+PTINit  1.e5   25.   0   25  300  250  125  1000.  2.d3
+:
+:master species for controlling time stepping
+MASTer ALL
+:
+DXYZ
+1.0
+1.0
+1.0
+:
+:   isolv level north nitmax idetail rmaxtol rtwotol smaxtol
+SOLV    1   1     1    100      0     1.e-15  1.e-15  1.e-15
+:
+:initial and boundary conditions: 1-conc., 2-flux, 3-zero gradient 
+COMP
+:
+:i1  i2  j1  j2  k1  k2
+  1   1   1   1   1   1
+/
+:
+:species  itype   ctot   mineral   guess
+H+          8     8.45
+Ca++        1     6.e-4
+Mg++        1     1.e-4
+UO2++       1     1.e-6
+K+          1     1.e-4
+Na+         1     8.e-3
+:HCO3-       4    -3.5    CO2(g)
+HCO3-       1     4.e-3
+:CO2(aq)     1     4.e-3
+SO4--       1     1.2e-3
+NO3-        1     3.e-3
+:Cl-        -1     1.2e-4
+/
+/
+:
+:skip
+PROFile 19
+H+
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+Ca++
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+Mg++
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+UO2++
+1.e-7 2.e-7 3.e-7 4.e-7 5.e-7 6.e-7 7.e-7 8.e-7 9.e-7 10.e-7
+2.e-6 3.e-6 4.e-6 5.e-6 6.e-6 7.e-6 8.e-6 9.e-6 10.e-6 
+K+
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+Na+
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+HCO3-
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+SO4--
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+NO3-
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+0. 0. 0. 0. 0. 0. 0. 0. 0. 0.
+:
+noskip
+skip
+BCON        
+:ibndtyp ifacx tmpbc dist area vell velg  por  sl  porm  slm  imtx
+  1      1     25.
+:i1  i2  j1  j2  k1  k2
+  1   1   1   1   1   1
+/
+:species  itype  ctot    mineral   guess
+PuO2+       1     1.e-10 Pu(OH)4
+Fe++        3     1.e-10 Goethite
+Ca++        1     1.e-4
+H+          8     8.6
+HCO3-       1     1.e-4  CO2(g)
+Cl-         1     1.e-3
+O2(aq)      4     0.2    O2(g)
+:
+:ibndtyp ifacx tmpbc dist area vell velg  por  sl  porm  slm  imtx
+  3      2     25.
+:i1   i2  j1  j2  k1  k2
+  1    1   1   1   1   1
+/
+:species  itype  ctot    mineral   guess
+PuO2+       1     1.e-30 Pu(OH)4
+Fe++        3     1.e-10 Goethite
+Ca++        1     1.e-4
+H+          8     8.6
+HCO3-       1     1.e-4  CO2(g)
+Cl-         1     1.e-3
+O2(aq)      4     2.e-1  O2(g)
+/
+noskip
+:
+:skip
+AQCX
+OH-
+CO3--
+:HCO3-
+CO2(aq)
+CaCO3(aq)
+CaHCO3+
+CaSO4(aq)
+CaNO3+
+MgCO3(aq)
+MgHCO3+
+MgSO4(aq)
+NaOH(aq)
+NaSO4-
+NaHCO3(aq)
+NaNO3(aq)
+KHSO4(aq)
+KOH(aq)
+KSO4-
+HSO4-
+H2SO4(aq)
+:
+:uranium species
+:VI
+UO2OH+
+UO2(OH)2(aq)
+UO2(OH)3-
+UO2(OH)4--
+(UO2)2OH+++
+(UO2)2(OH)2++
+(UO2)3(OH)4++
+(UO2)3(OH)5+
+(UO2)3(OH)7-
+(UO2)4(OH)7+
+:
+UO2CO3(aq)
+UO2(CO3)2--
+UO2(CO3)3----
+(UO2)2CO3(OH)3-
+:
+Ca2UO2(CO3)3(aq)
+CaUO2(CO3)3--
+:
+UO2NO3+
+UO2SO4(aq)
+/
+:
+GASEs
+CO2(g)
+/
+MNRL
+Calcite
+/
+:
+MNIR
+:mineral   npar fkin delh  tau
+Calcite 1   1.    35.  1.e-2
+   20     0     0    1.    0.
+  1    1   1   1   1  1   0.0184797    1.
+: 1    1   1   1   1  1   0.0002057    1.
+: 1    1   1   1   1  1   0.0005      1.
+/
+/
+:
+:skip
+SORP  0
+:mineral   area[m^2/g]
+Calcite     20.
+:site      site density[sites/nm^2]
+>SOH         2.31
+>SOUO2OH  !-5.152
+>SOUO2CO3 !-0.833
+/
+/
+/
+noskip
+:
+BRKP   1
+   1 1 1
+:
+DTSTep[y] 3 3.e-10 100. 5000.
+1.e-10      2.      25.   100.
+:
+TIME 1 1. 125. 250. 500. 1000.
+:
+DBASe
+:/Users/lichtner/flotran/database/rundepu.V8R6.dat
+:/Users/lichtner/flotran/database/rundepu.V8R6
+/Users/lichtner/flotran/database/hanford.dat
+:/Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
+:
+ENDS
