@@ -2137,8 +2137,6 @@ function RichardsGetTecplotHeader(realization)
   option%icolumn = option%icolumn + 1
   write(string2,'('',"'',i2,''-'',a,''"'')') option%icolumn,trim('P [Pa]')
   string = trim(string) // trim(string2)
-  
-  print *,'RichardsGetTecplotHeader: ',string,string2
 
   option%icolumn = option%icolumn + 1
   write(string2,'('',"'',i2,''-'',a,''"'')') option%icolumn,trim('sl')
