@@ -274,7 +274,7 @@ Metatorbernite 1.e-18
 SORPTION
 SURFACE_COMPLEXATION_RXN
 MINERAL Calcite
-SITE >SOH 1.e-3
+SITE >SOH 3.8418e0
 COMPLEXES
 >SOUO2OH
 >SOUO2CO3
@@ -320,7 +320,7 @@ GRID
 TYPE structured
 NXYZ 100 1 1
 DXYZ
-5.
+15.
 1.
 1.
 /
@@ -372,20 +372,22 @@ Soil1   1  1    1    0.5  0.5   1.d-11    1.d-11    1.d-11    1.d0
 :
 :TIME d every 10
 TIME y
-1. 10. 50. !100. 250.
+0.1 0.5 1. 2. 5. 10.
 :
-DTST 1.d-12
+DTST 1.d-8
 :50. 1.0d0 
-50. 0.01d0 
+1. 0.001d0 \
+10. 0.01
+
 :
 REGION all
 BLOCK 1 100 1 1 1 1
 /
 REGION source
-BLOCK 26 35 1 1 1 1
+BLOCK 10 20 1 1 1 1
 /
 REGION down_stream
-BLOCK 36 100 1 1 1 1
+BLOCK 21 100 1 1 1 1
 /
 
 REGION West
@@ -475,7 +477,7 @@ Ca++     1.20644e-3       T
 Cu++     1.e-5            T
 Fe++     1.e-9            M Ferrihydrite
 Mg++     5.09772e-4       T
-UO2++    1.e-6            S
+UO2++    1.e-8            S
 K+       1.54789e-4       T
 Na+      1.03498e-3       T
 HCO3-    2.57305e-3       T
@@ -546,7 +548,7 @@ Tracer   1.e-6            F
 MINERALS
 Quartz         0.6   1.
 Calcite        0.1   1.
-Metatorbernite 0.0   1.
+Metatorbernite 0.05  1.
 /
 /
 
@@ -559,7 +561,7 @@ Ca++     4.49496e-4       T
 Cu++     1.e-8            T
 Fe++     1.e-9            T
 Mg++     1.82316e-4       T
-UO2++    1.e-6            S
+UO2++    1.e-8            S
 K+       1.905371e-5      T
 Na+      1.00551e-4       T
 HCO3-    1.127881e-3      T
