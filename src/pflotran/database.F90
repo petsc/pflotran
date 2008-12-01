@@ -706,6 +706,93 @@ subroutine BasisInit(reaction,option)
     cur_aq_spec => cur_aq_spec%next
   enddo
 
+  nullify(cur_aq_spec)
+  nullify(cur_pri_aq_spec)
+  nullify(cur_sec_aq_spec)
+  nullify(cur_sec_aq_spec1)
+  nullify(cur_sec_aq_spec2)
+  nullify(cur_gas_spec)
+  nullify(cur_gas_spec1)
+  nullify(cur_gas_spec2)
+  nullify(cur_mineral)
+  nullify(cur_surfcplx_rxn)
+  nullify(cur_surfcplx)
+  nullify(cur_surfcplx2)
+    
+  ! first off, lets remove all the secondary gases from all other reactions
+  cur_gas_spec1 => reaction%gas_species_list
+  do
+    if (.not.associated(cur_gas_spec1)) exit
+    
+    if (.not.associated(cur_gas_spec1%eqrxn)) then
+      cur_gas_spec1 => cur_gas_spec1%next
+      cycle
+    endif
+    
+    ! gases in primary aqueous reactions
+    cur_pri_aq_spec => reaction%primary_species_list
+    do
+      if (.not.associated(cur_pri_aq_spec)) exit
+      
+      if (associated(cur_pri_aq_spec%eqrxn)) then
+        ispec = 1
+        do
+          if (ispec > cur_pri_aq_spec%eqrxn%nspec) exit
+          if (fiStringCompare(cur_gas_spec1%name, &
+                              cur_pri_aq_spec%eqrxn%spec_name(ispec), &
+                              MAXWORDLENGTH)) then
+            call BasisSubSpeciesInGasOrSecRxn(cur_gas_spec1%name, &
+                                              cur_gas_spec1%eqrxn, &
+                                              cur_pri_aq_spec%eqrxn)
+            ispec = 0
+          endif
+          ispec = ispec + 1
+        enddo
+      endif
+      cur_pri_aq_spec => cur_pri_aq_spec%next
+    enddo
+    nullify(cur_pri_aq_spec)
+
+    ! gases in secondary aqueous reactions
+    cur_sec_aq_spec2 => reaction%secondary_species_list
+    do
+      if (.not.associated(cur_sec_aq_spec2)) exit
+      
+      if (associated(cur_sec_aq_spec2%eqrxn)) then
+        ispec = 1
+        do
+          if (ispec > cur_sec_aq_spec2%eqrxn%nspec) exit
+          if (fiStringCompare(cur_gas_spec1%name, &
+                              cur_sec_aq_spec2%eqrxn%spec_name(ispec), &
+                              MAXWORDLENGTH)) then
+            call BasisSubSpeciesInGasOrSecRxn(cur_gas_spec1%name, &
+                                              cur_gas_spec1%eqrxn, &
+                                              cur_sec_aq_spec2%eqrxn)
+            ispec = 0
+          endif
+          ispec = ispec + 1
+        enddo
+      endif
+      cur_sec_aq_spec2 => cur_sec_aq_spec2%next
+    enddo
+    nullify(cur_sec_aq_spec2)
+
+    cur_gas_spec1 => cur_gas_spec1%next
+  enddo
+
+  nullify(cur_aq_spec)
+  nullify(cur_pri_aq_spec)
+  nullify(cur_sec_aq_spec)
+  nullify(cur_sec_aq_spec1)
+  nullify(cur_sec_aq_spec2)
+  nullify(cur_gas_spec)
+  nullify(cur_gas_spec1)
+  nullify(cur_gas_spec2)
+  nullify(cur_mineral)
+  nullify(cur_surfcplx_rxn)
+  nullify(cur_surfcplx)
+  nullify(cur_surfcplx2)
+
   ! check if basis needs to be swapped
   compute_new_basis = PETSC_FALSE
   do i_old = 1, icount_old
