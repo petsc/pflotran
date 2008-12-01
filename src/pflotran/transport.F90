@@ -225,6 +225,17 @@ subroutine TBCFlux(ibndtype, &
         ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
         diffusion = weight*(option%disp+option%difaq)
       endif    
+    case(DIRICHLET_ZERO_GRADIENT_BC)
+      if (q >= 0.d0) then
+        ! same as dirichlet above
+        if (sat_up > eps .and. sat_dn > eps) then
+          ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
+          weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
+          ! need to account for multiple phases
+          ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
+          diffusion = weight*(option%disp+option%difaq)
+        endif    
+      endif
     case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
   end select
 
@@ -300,6 +311,16 @@ subroutine TBCFluxDerivative(ibndtype, &
         ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
         diffusion = weight*(option%disp+option%difaq)
       endif    
+    case(DIRICHLET_ZERO_GRADIENT_BC)
+      if (q >= 0.d0) then
+        if (sat_up > eps .and. sat_dn > eps) then
+          ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
+          weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
+          ! need to account for multiple phases
+          ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
+          diffusion = weight*(option%disp+option%difaq)
+        endif  
+      endif  
     case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
   end select
 

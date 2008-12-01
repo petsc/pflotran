@@ -1500,8 +1500,19 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs)
             ! by dividing by density of water (mol/L -> mol/kg)
             xxbc(1:reaction%ncomp) = basis_molarity_p(1:reaction%ncomp) / &
               patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * 1000.d0
-  !          xxbc(1:reaction%ncomp)
-  !            boundary_condition%tran_aux_real_var(1:reaction%ncomp,iconn)
+          case(DIRICHLET_ZERO_GRADIENT_BC)
+            do iphase = 1, option%nphase
+              if (patch%boundary_velocities(iphase,sum_connection) >= 0.d0) then
+                ! same as dirichlet above
+                xxbc(1:reaction%ncomp) = basis_molarity_p(1:reaction%ncomp) / &
+                  patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * 1000.d0
+              else
+                ! same as zero_gradient below
+                do idof=1,reaction%ncomp
+                  xxbc(idof) = xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
+                enddo
+              endif
+            enddo
           case(ZERO_GRADIENT_BC)
             do idof=1,reaction%ncomp
               xxbc(idof) = xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)

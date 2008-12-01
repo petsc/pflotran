@@ -819,19 +819,13 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 
     num_iterations = num_iterations + 1
     
-    ! need some sort of convergence before we kick in activities
-!   if (maxval(dabs(rt_auxvar%pri_molal-prev_molal)/ &
-!              rt_auxvar%pri_molal) < tol_loose) then
+    ! check for convergence
     if (maxval(dabs(res)) < tol) then
+      ! need some sort of convergence before we kick in activities
+      if (compute_activity_coefs) exit
       compute_activity_coefs = PETSC_TRUE
     endif
 
-    ! check for convergence
-    
-!   if (maxval(dabs(rt_auxvar%pri_molal-prev_molal)/ &
-!              rt_auxvar%pri_molal) < tol) exit
-    if (maxval(dabs(res)) < tol) exit
-                     
   enddo
 
   ! once equilibrated, compute sorbed concentrations
