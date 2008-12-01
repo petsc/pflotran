@@ -195,6 +195,7 @@ subroutine OutputTecplotBlock(realization)
   type(realization_type) :: realization
   
   PetscInt :: i, comma_count, quote_count
+  PetscInt, parameter :: icolumn = -1
   character(len=MAXWORDLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(grid_type), pointer :: grid
@@ -251,25 +252,23 @@ subroutine OutputTecplotBlock(realization)
     string2 = ''
     select case(option%iflowmode)
       case (MPH_MODE)
-        string2 = MphaseGetTecplotHeader(realization)
+        string2 = MphaseGetTecplotHeader(realization,icolumn)
       case(THC_MODE)
-        string2 = THCGetTecplotHeader(realization)
+        string2 = THCGetTecplotHeader(realization,icolumn)
       case(RICHARDS_MODE)
-       string2 = RichardsGetTecplotHeader(realization)
+       string2 = RichardsGetTecplotHeader(realization,icolumn)
     end select
     string = trim(string) // trim(string2)
     
     ! write transport variables
     if (option%ntrandof > 0) then
-      string2 = RTGetTecplotHeader(realization)
+      string2 = RTGetTecplotHeader(realization,icolumn)
       string = trim(string) // trim(string2)
     endif
 
     ! write material ids
     if (associated(patch%imat)) then
-      option%icolumn = option%icolumn + 1
-      write(string2,'('',"'',i2,''-'',a,''"'')') option%icolumn,trim('Material_ID')
-      string = trim(string) // trim(string2)
+      string = trim(string) // ',"Material_ID"'
     endif
 
     write(IUNIT3,'(a)') trim(string)
@@ -1025,6 +1024,7 @@ subroutine OutputTecplotPoint(realization)
   type(realization_type) :: realization
   
   PetscInt :: i, comma_count, quote_count
+  PetscInt :: icolumn
   character(len=MAXWORDLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(grid_type), pointer :: grid
@@ -1080,30 +1080,30 @@ subroutine OutputTecplotPoint(realization)
              '"Y [m]",' // &
              '"Z [m]"'
 
-    option%icolumn = 3
+    icolumn = 3
     
     ! write flow variables
     string2 = ''
     select case(option%iflowmode)
       case (MPH_MODE)
-        string2 = MphaseGetTecplotHeader(realization)
+        string2 = MphaseGetTecplotHeader(realization,icolumn)
       case(THC_MODE)
-        string2 = THCGetTecplotHeader(realization)
+        string2 = THCGetTecplotHeader(realization,icolumn)
       case(RICHARDS_MODE)
-       string2 = RichardsGetTecplotHeader(realization)
+       string2 = RichardsGetTecplotHeader(realization,icolumn)
     end select
     string = trim(string) // trim(string2)
     
     ! write transport variables
     if (option%ntrandof > 0) then
-      string2 = RTGetTecplotHeader(realization)
+      string2 = RTGetTecplotHeader(realization,icolumn)
       string = trim(string) // trim(string2)
     endif
 
     ! write material ids
     if (associated(patch%imat)) then
-      option%icolumn = option%icolumn + 1
-      write(string2,'('',"'',i2,''-'',a,''"'')') option%icolumn,trim('Material_ID')
+      icolumn = icolumn + 1
+      write(string2,'('',"'',i2,''-Material_ID"'')') icolumn
       string = trim(string) // trim(string2)
     endif
 

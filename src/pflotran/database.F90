@@ -706,14 +706,6 @@ subroutine BasisInit(reaction,option)
     cur_aq_spec => cur_aq_spec%next
   enddo
 
-  if (icount_old < icount_new) then
-    string = 'Insufficient number of basis species listed in input file ' // &
-             'to accommodate number of basis species required by ' // &
-             'secondary species (e.g. aq ' // &
-             'complexes, gases, minerals) read from database.'
-    call printErrMsg(option,string)
-  endif
-  
   ! check if basis needs to be swapped
   compute_new_basis = PETSC_FALSE
   do i_old = 1, icount_old
@@ -774,9 +766,25 @@ subroutine BasisInit(reaction,option)
                 endif
               enddo
               if (.not.found) then
-                string = 'Complementary species not found among secondary ' // &
-                         'aqueous for primary species: ' // &
-                         trim(cur_pri_aq_spec%name) // '.'
+                string = 'One or more species not found in problem statement' // &
+                         ' for species: ' // &
+                         trim(cur_pri_aq_spec%name) // ' ('
+                do j=1,cur_pri_aq_spec%eqrxn%nspec
+                  found = PETSC_FALSE
+                  do icol = 1, icount_old
+                    if (fiStringCompare(cur_pri_aq_spec%eqrxn%spec_name(j), &
+                                        old_basis_names(icol), &
+                                      MAXWORDLENGTH)) then
+                      found = PETSC_TRUE
+                      exit
+                    endif
+                  enddo
+                  if (.not.found) then
+                    string = trim(string) // ' ' // &
+                             trim(cur_pri_aq_spec%eqrxn%spec_name(j))
+                  endif
+                enddo
+                string = trim(string) // ' )'
                 call printErrMsg(option,string)             
               endif
             enddo

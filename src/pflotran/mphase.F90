@@ -2902,7 +2902,7 @@ end subroutine MphaseMaxChangePatch
 ! date: 02/13/08
 !
 ! ************************************************************************** !
-function MphaseGetTecplotHeader(realization)
+function MphaseGetTecplotHeader(realization,icolumn)
 
   use Realization_module
   use Option_module
@@ -2912,6 +2912,7 @@ function MphaseGetTecplotHeader(realization)
   
   character(len=MAXSTRINGLENGTH) :: MphaseGetTecplotHeader
   type(realization_type) :: realization
+  PetscInt :: icolumn
   
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(option_type), pointer :: option
@@ -2921,25 +2922,83 @@ function MphaseGetTecplotHeader(realization)
   option => realization%option
   field => realization%field
   
-  string = ',' // &
-           '"T [C]",' // &
-           '"P [Pa]",' // &
-           '"PHASE",' // &
-           '"S(l)",' // &
-           '"S(g)",' // &
-           '"u(l)",'//&
-           '"u(g)",'
+  string = ''
 
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-T [C]"'')') icolumn
+  else
+    write(string2,'('',"T [C]"'')')
+  endif
+  string = trim(string) // trim(string2)
+  
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-P [Pa]"'')') icolumn
+  else
+    write(string2,'('',"P [Pa]"'')')
+  endif
+  string = trim(string) // trim(string2)
+  
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-PHASE"'')') icolumn
+  else
+    write(string2,'('',"PHASE"'')')
+  endif
+  string = trim(string) // trim(string2)
+  
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-S(l)"'')') icolumn
+  else
+    write(string2,'('',"S(l)"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-S(g)"'')') icolumn
+  else
+    write(string2,'('',"S(g)"'')')
+  endif
+  string = trim(string) // trim(string2)
+    
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-u(l)"'')') icolumn
+  else
+    write(string2,'('',"u(l)"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-u(g)"'')') icolumn
+  else
+    write(string2,'('',"u(g)"'')')
+  endif
+  string = trim(string) // trim(string2)
+  
   do i=1,option%nflowspec
-    write(string2,'('',"Xl('',i2,'')"'')') i
+    if (icolumn > -1) then
+      icolumn = icolumn + 1
+      write(string2,'('',"'',i2,''-Xl('',i2,'')"'')') icolumn, i
+    else
+      write(string2,'('',"Xl('',i2,'')"'')') i
+    endif
     string = trim(string) // trim(string2)
   enddo
 
   do i=1,option%nflowspec
-    write(string2,'('',"Xg('',i2,'')"'')') i
+    if (icolumn > -1) then
+      icolumn = icolumn + 1
+      write(string2,'('',"'',i2,''-Xg('',i2,'')"'')') icolumn, i
+    else
+      write(string2,'('',"Xg('',i2,'')"'')') i
+    endif
     string = trim(string) // trim(string2)
   enddo
-
   
   MphaseGetTecplotHeader = string
 

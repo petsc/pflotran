@@ -1662,7 +1662,7 @@ end subroutine RTMaxChange
 ! date: 02/13/08
 !
 ! ************************************************************************** !
-function RTGetTecplotHeader(realization)
+function RTGetTecplotHeader(realization,icolumn)
 
   use Realization_module
   use Option_module
@@ -1671,6 +1671,7 @@ function RTGetTecplotHeader(realization)
   
   character(len=MAXSTRINGLENGTH) :: RTGetTecplotHeader
   type(realization_type) :: realization
+  PetscInt :: icolumn
   
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(option_type), pointer :: option
@@ -1683,36 +1684,56 @@ function RTGetTecplotHeader(realization)
   string = ''
   
   if (realization%reaction%h_ion_id > 0) then
-    option%icolumn = option%icolumn + 1
-    write(string2,'('',"'',i2,''-'',a,''"'')') option%icolumn,trim('pH')
+    if (icolumn > -1) then
+      icolumn = icolumn + 1
+      write(string2,'('',"'',i2,''-pH"'')') icolumn
+    else
+      write(string2,'('',"pH"'')') 
+    endif
     string = trim(string) // trim(string2)
   endif
   
   do i=1,option%ntrandof
-    option%icolumn = option%icolumn + 1
-    write(string2,'('',"'',i2,''-'',a,''"'')') option%icolumn, &
-      trim(reaction%primary_species_names(i))
+    if (icolumn > -1) then
+      icolumn = icolumn + 1
+      write(string2,'('',"'',i2,''-'',a,''"'')') icolumn, &
+        trim(reaction%primary_species_names(i))
+    else
+      write(string2,'('',"'',a,''"'')') trim(reaction%primary_species_names(i))
+    endif
     string = trim(string) // trim(string2)
   enddo
   
   do i=1,realization%reaction%nkinmnrl
-    option%icolumn = option%icolumn + 1
-    write(string2,'('',"'',i2,''-'',a,''_vf"'')') option%icolumn, &
-      trim(reaction%kinmnrl_names(i))
+    if (icolumn > -1) then
+      icolumn = icolumn + 1
+      write(string2,'('',"'',i2,''-'',a,''_vf"'')') icolumn, &
+        trim(reaction%kinmnrl_names(i))
+    else
+      write(string2,'('',"'',a,''_vf"'')') trim(reaction%kinmnrl_names(i))    
+    endif
     string = trim(string) // trim(string2)
   enddo
   
   do i=1,realization%reaction%nkinmnrl
-    option%icolumn = option%icolumn + 1
-    write(string2,'('',"'',i2,''-'',a,''_rt"'')') option%icolumn, &
-      trim(reaction%kinmnrl_names(i))
+    if (icolumn > -1) then
+      icolumn = icolumn + 1
+      write(string2,'('',"'',i2,''-'',a,''_rt"'')') icolumn, &
+        trim(reaction%kinmnrl_names(i))
+    else
+      write(string2,'('',"'',a,''_rt"'')') trim(reaction%kinmnrl_names(i))    
+    endif
     string = trim(string) // trim(string2)
   enddo
   
   do i=1,realization%reaction%neqsurfcmplx
-    option%icolumn = option%icolumn + 1
-    write(string2,'('',"'',i2,''-'',a,''"'')') option%icolumn, &
-      trim(reaction%surface_complex_names(i))
+    if (icolumn > -1) then
+      icolumn = icolumn + 1  
+      write(string2,'('',"'',i2,''-'',a,''"'')') icolumn, &
+        trim(reaction%surface_complex_names(i))
+    else
+      write(string2,'('',"'',a,''"'')') trim(reaction%surface_complex_names(i))
+    endif
     string = trim(string) // trim(string2)
   enddo
   

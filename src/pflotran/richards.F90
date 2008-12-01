@@ -2114,7 +2114,7 @@ end subroutine RichardsMaxChange
 ! date: 02/13/08
 !
 ! ************************************************************************** !
-function RichardsGetTecplotHeader(realization)
+function RichardsGetTecplotHeader(realization,icolumn)
   
   use Realization_module
   use Option_module
@@ -2124,6 +2124,7 @@ function RichardsGetTecplotHeader(realization)
   
   character(len=MAXSTRINGLENGTH) :: RichardsGetTecplotHeader
   type(realization_type) :: realization
+  PetscInt :: icolumn
   
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(option_type), pointer :: option
@@ -2134,12 +2135,20 @@ function RichardsGetTecplotHeader(realization)
   
   string = ''
   
-  option%icolumn = option%icolumn + 1
-  write(string2,'('',"'',i2,''-'',a,''"'')') option%icolumn,trim('P [Pa]')
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-P [Pa]"'')') icolumn
+  else
+    write(string2,'('',"P [Pa]"'')') 
+  endif
   string = trim(string) // trim(string2)
 
-  option%icolumn = option%icolumn + 1
-  write(string2,'('',"'',i2,''-'',a,''"'')') option%icolumn,trim('sl')
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-sl"'')') icolumn
+  else
+    write(string2,'('',"sl"'')') 
+  endif
   string = trim(string) // trim(string2)
  
   RichardsGetTecplotHeader = string
