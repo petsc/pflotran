@@ -8,16 +8,18 @@ Mg++
 UO2++
 K+
 Na+
-HCO3-
-:CO2(aq)
+:HCO3-
+CO2(aq)
 SO4--
 NO3-
+O2(aq)
+:H2O
 /
 SECONDARY_SPECIES
 OH-
 CO3--
-:HCO3-
-CO2(aq)
+HCO3-
+:CO2(aq)
 CaCO3(aq)
 CaHCO3+
 CaSO4(aq)
@@ -34,6 +36,9 @@ KOH(aq)
 KSO4-
 HSO4-
 H2SO4(aq)
+NH3(aq)
+NO2-
+:NH4+
 :
 :uranium species
 :VI
@@ -62,6 +67,7 @@ UO2(SO4)2--
 /
 GAS_SPECIES
 CO2(g)
+O2(g)
 /
 MINERALS
 Calcite
@@ -93,7 +99,7 @@ noskip
 DATABASE /Users/lichtner/flotran/database/hanford.dat
 :DATABASE ../../../database/hanford.dat
 LOG_FORMULATION
-:ACTIVITY_COEFFICIENTS
+ACTIVITY_COEFFICIENTS
 /
 :
 :MOLAL
@@ -216,10 +222,12 @@ UO2++    1.e-6       T
 K+       1.e-4       T
 Na+      8.e-3       T
 :HCO3-    -3.5        G  CO2(g)
-HCO3-    4.e-3       T
-:CO2(aq)  4.e-3       T
+:HCO3-    4.e-3       T
+CO2(aq)  4.e-3       T
 NO3-     3.e-3       T
 SO4--    1.2e-3      T
+O2(aq)   0.2         G  O2(g)
+:H2O      55.5        F
 /
 MINERALS
 Calcite   0.0184797  1.
@@ -235,10 +243,12 @@ UO2++    1.e-6       T
 K+       1.e-4       T
 Na+     98.e-3       T
 :HCO3-    -3.5        G  CO2(g)
-HCO3-    4.e-3       T
-:CO2(aq)  4.e-3       T
+:HCO3-    4.e-3       T
+CO2(aq)  4.e-3       T
 NO3-    93.e-3       T
 SO4--    1.2e-3      T
+O2(aq)   0.2         G  O2(g)
+:H2O      55.5        F
 /
 /
 

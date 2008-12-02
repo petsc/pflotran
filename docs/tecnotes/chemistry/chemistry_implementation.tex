@@ -572,13 +572,13 @@ I_i^\a = k_i^{\a f} (S_X^\a)^{\nu_i^\a} \prod_j a_j^{\nu_{ji}^\a} - k_i^{\a b} S
 \noindent
 The mass conservation equations in the presence of surface complexation reactions have the form
 \BA
-\frac{\p}{\p t} \varphi \Psi_j + \bnabla\cdot\bOmega_j &= -\sum_{i\a} \nu_{ji}^\a I_i^\a,\\
+\frac{\p}{\p t} \varphi \Psi_j + \bnabla\cdot\bOmega_j &= -\sum_{i\a} \nu_{ji}^\a I_i^\a -\sum_m\nu_{jm}I_m,\\
 \frac{\p S_i^\a}{\p t} &= I_i^\a,\\
 \frac{\p S_X^\a}{\p t} &= -\sum_{i} \nu_{i}^\a I_i^\a.
 \EA
 Eliminating the reaction rates $I_i^\a$ leads to the equations
-\EQ
-\frac{\p}{\p t} \left\{\varphi \Psi_j +\sum_{i\a} \nu_{ji}^\a S_i^\a \right\} + \bnabla\cdot\bOmega_j = 0.
+\EQ\label{transsorp}
+\frac{\p}{\p t} \left\{\varphi \Psi_j +\sum_{i\a} \nu_{ji}^\a S_i^\a \right\} + \bnabla\cdot\bOmega_j \eq -\sum_m\nu_{jm}I_m.
 \EN
 
 \subsubsection{Site Conservation}
@@ -604,6 +604,34 @@ precip.\\
 &\eq \eta_m^\a\A_m^{}\rho_m^{}\frac{\p\varphi_m}{\p t},\\
 &\eq \eta_m^\a\A_m^{}\rho_m^{}\overline V_m^{} I_m^{}.
 \EA
+
+\subsubsection{Charge Conservation}
+
+Charge is generally {\em not} conserved by the continuum transport equations Eqns.\eqref{transsorp}. Multiplying this equation through by the valence $z_j$ of the $j$th primary species and summing gives
+\EQ
+\frac{\p}{\p t} \left\{\varphi \sum_j z_j\Psi_j +\sum_{ji\a} z_j\nu_{ji}^\a S_i^\a \right\} + \bnabla\cdot\sum_jz_j\bOmega_j \eq -\sum_{jm} z_j\nu_{jm}I_m.
+\EN
+Noting that
+\EQ
+\sum_j z_j\nu_{jm}\eq 0,
+\EN
+and
+\EQ
+\sum_j z_j \nu_{ji}^\a \eq z_i,
+\EN
+assuming empty surface sites have zero valence, and defining the charge density $\rho_Q \!=\!\F\sum_j z_j\Psi_j$ with Faraday constant $\F$, gives
+\EQ\label{chrgconv}
+\frac{\p}{\p t} \left\{\varphi \rho_Q +\sum_{i\a} z_i S_i^\a \right\} + \bnabla\cdot\bJ_\Q \eq 0,
+\EN
+where the current density $\bJ_\Q$ is given by
+\EQ
+\bJ_Q \eq \F\bq \rho_Q.
+\EN
+Alternatively, Eqn.\eqref{chrgconv} can be written in the form
+\EQ
+\frac{\p}{\p t} \left(\varphi \rho_Q \right) + \bnabla\cdot\bJ_\Q \eq -\F\sum_{i\a} z_i S_i^\a,
+\EN
+and thus charge is conservation only if the right-hand side vanishes.
 
 \subsubsection{Electric Double Layer}
 
