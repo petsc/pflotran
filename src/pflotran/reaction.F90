@@ -681,7 +681,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             Res(icomp) = Res(icomp) + reaction%primary_spec_Z(jcomp)*rt_auxvar%total(jcomp,1)
             do kcomp = 1, reaction%ncomp
               Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
-                reaction%primary_spec_Z(kcomp)*rt_auxvar%dtotal(jcomp,kcomp,1)
+                reaction%primary_spec_Z(kcomp)*rt_auxvar%dtotal(kcomp,jcomp,1)
             enddo
           enddo
           
