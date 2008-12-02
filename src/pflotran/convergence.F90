@@ -182,7 +182,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     call VecNorm(update_vec,NORM_INFINITY,inorm_update,ierr)
 
     if (inorm_residual < solver%newton_inf_res_tol) then
-!      if (option%myrank == 0) print *, 'converged from infinity', inorm_residual
+!      if (option%print_flag) print *, 'converged from infinity', inorm_residual
       reason = 10
     else
 !      if (reason > 0 .and. inorm_residual > 100.d0*solver%newton_inf_res_tol) &
@@ -190,11 +190,11 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     endif
 
     if (inorm_update < solver%newton_inf_upd_tol .and. it > 0) then
-!      if (option%myrank == 0) print *, 'converged from infinity', inorm_residual
+!      if (option%print_flag) print *, 'converged from infinity', inorm_residual
       reason = 11
     endif
 
-    if (option%myrank == 0 .and. solver%print_convergence) then
+    if (option%print_flag .and. solver%print_convergence) then
       i = int(reason)
       select case(i)
         case(2)
@@ -218,7 +218,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
                               trim(string)
     endif
   else
-    if (option%myrank == 0 .and. solver%print_convergence) then
+    if (option%print_flag .and. solver%print_convergence) then
       i = int(reason)
       select case(i)
         case(2)
@@ -316,7 +316,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
       imin_residual(i) = imin_residual(i)/ndof
     enddo
 
-    if (option%myrank == 0) then
+    if (option%print_flag) then
       select case(reason)
         case (10)
           string = "CONVERGED_USER_NORM_INF_REL"

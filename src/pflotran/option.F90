@@ -34,6 +34,7 @@ module Option_module
     PetscInt :: ntrandof
   
     PetscInt :: iflag
+    PetscTruth :: print_flag
     
     PetscInt, pointer :: garbage ! for some reason, Intel will not compile without this
 
@@ -181,8 +182,8 @@ function OptionCreate()
   option%fid_out = 0
 
   option%iflag = 0
+  option%print_flag = PETSC_FALSE
   
-  option%iflag = 0
   option%use_isoth = PETSC_FALSE
   option%use_matrix_free = PETSC_FALSE
   
