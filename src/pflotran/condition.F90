@@ -910,7 +910,7 @@ subroutine TranConditionRead(condition,constraint_list,reaction,option)
     
       case('TYPE') ! read condition type (dirichlet, neumann, etc) for each dof
         call fiReadWord(string,word,PETSC_TRUE,ierr)
-        call fiErrorMsg(option%myrank,'INTERPOLATION','CONDITION', ierr)   
+        call fiErrorMsg(option%myrank,'TYPE','CONDITION', ierr)   
         length = len_trim(word)
         call fiCharsToLower(word,length)
         select case(word)
