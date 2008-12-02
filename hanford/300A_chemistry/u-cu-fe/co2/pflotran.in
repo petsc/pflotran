@@ -1,0 +1,632 @@
+:Description: 1D problem for testing geochemistry
+ 
+MODE RICHARDS
+
+CHEMISTRY
+PRIMARY_SPECIES
+H+
+O2(aq)
+Al+++
+Ca++
+Cu++
+Fe++
+Mg++
+UO2++
+K+
+Na+
+:HCO3-
+CO2(aq)
+Cl-
+F-
+HPO4--
+:NO3-
+SO4--
+SiO2(aq)
+Tracer
+/
+SECONDARY_SPECIES
+OH-
+CO3--
+HCO3-
+:CO2(aq)
+CaCO3(aq)
+CaHCO3+
+CaSO4(aq)
+CaCl+
+CaCl2(aq)
+CaF+
+CaH2PO4+
+CaHPO4(aq)
+:CaNO3+
+CaPO4-
+MgCO3(aq)
+MgHCO3+
+MgSO4(aq)
+MgCl+
+MgF+
+MgH2PO4+
+MgHPO4(aq)
+MgP2O7--
+MgPO4-
+NaCl(aq)
+NaOH(aq)
+NaSO4-
+NaHCO3(aq)
+NaHSiO3(aq)
+:NaNO3(aq)
+:NaNO2(aq)
+NaF(aq)
+NaHP2O7--
+NaHPO4-
+KCl(aq)
+KHPO4-
+KHSO4(aq)
+KOH(aq)
+KP2O7---
+KSO4-
+HSO4-
+H2SO4(aq)
+HCl(aq)
+:NO2-
+:NH3(aq)
+:HN3(aq)
+:N3-
+H2PO4-
+:P2O7----
+PO4---
+H3PO4(aq)
+H2F2(aq)
+H2PO3F(aq)
+:O2(aq)
+:aluminum
+:Al+++
+AlOH++
+Al(OH)2+
+Al(OH)3(aq)
+Al(OH)4-
+AlF++
+AlF2+
+AlF3(aq)
+AlF4-
+AlH2PO4++
+AlHPO4+
+AlSO4+
+:silica
+H3SiO4-
+H2SiO4--
+:
+:copper species
+Cu+
+Cu(CO3)2--
+:Cu(NO2)2(aq)
+CuCO3(OH)2--
+CuCO3(aq)
+CuCl+
+CuCl2(aq)
+CuCl2-
+CuCl3--
+CuCl4--
+CuF+
+CuH2PO4+
+CuHPO4(aq)
+:CuNH3++
+:CuNO2+
+CuO2--
+CuOH+
+CuPO4-
+CuSO4(aq)
+:
+:sulfur
+HS-
+H2S(aq)
+:
+:iron
+Fe+++
+ Fe(SO4)2-
+ Fe2(OH)2++++
+ Fe3(OH)4(5+)
+ Fe(OH)2(aq)
+ Fe(OH)2+
+ Fe(OH)3(aq)
+ Fe(OH)3-
+ Fe(OH)4-
+ Fe(OH)4--
+ FeCO3(aq)
+ FeCO3+
+ FeCl+
+ FeCl++
+ FeCl2(aq)
+ FeCl2+
+ FeCl4-
+ FeCl4--
+ FeF+
+ FeF++
+ FeF2+
+ FeH2PO4+
+ FeH2PO4++
+ FeHCO3+
+ FeHPO4(aq)
+ FeHPO4+
+:FeNO3++
+ FeOH+
+ FeOH++
+ FePO4-
+ FeSO4(aq)
+ FeSO4+
+:
+:uranium species
+U+++
+U++++
+UO2+
+:(UO2)3(CO3)6(6-)
+:
+UO2OH+
+UO2(OH)2(aq)
+UO2(OH)3-
+UO2(OH)4--
+(UO2)2OH+++
+(UO2)2(OH)2++
+(UO2)3(OH)4++
+(UO2)3(OH)5+
+(UO2)3(OH)7-
+(UO2)4(OH)7+
+:
+UO2CO3(aq)
+UO2(CO3)2--
+UO2(CO3)3----
+(UO2)2CO3(OH)3-
+:
+Ca2UO2(CO3)3(aq)
+CaUO2(CO3)3--
+:
+:UO2NO3+
+UO2Cl+
+UO2Cl2(aq)
+UO2SO4(aq)
+UO2(SO4)2--
+:
+UO2F+
+UO2F2(aq)
+UO2F3-
+UO2F4--
+:
+:25 C
+UO2(H2PO4)(H3PO4)+
+UO2(H2PO4)2(aq)
+UO2HPO4(aq)
+UO2H2PO4+
+UO2H3PO4++
+UO2PO4-
+/
+GAS_SPECIES
+O2(g)
+CO2(g)
+/
+MINERALS
+Quartz
+SiO2(am)
+Chalcedony
+Calcite
+Magnesite
+Hematite
+Goethite
+Ferrihydrite
+ Dolomite
+ Dolomite-dis
+ Dolomite-ord
+ Brucite
+ Nesquehonite
+ Gypsum
+K-Feldspar
+Albite
+Muscovite
+Kaolinite
+Anorthite
+Analcime
+Paragonite
+Gibbsite
+Rutherfordine
+Schoepite
+:(UO2)3(PO4)2
+:(UO2)3(PO4)2.4H2O
+UO2(OH)2(beta)
+UO2CO3
+:UO2(PO3)2
+CaUO4
+ Boltwoodite
+ Boltwoodite-Na
+ Boltwoodite_PNNL
+ Boltwoodite-Na_PNNL
+ Soddyite
+ Soddyite_PNNL
+ Uraninite
+ Uranophane
+ Uranophane_PNNL
+ Weeksite
+ Weeksite_PNNL
+ Weeksite-Na_PNNL
+ Bassetite
+ Saleeite
+ Schwertmannite
+ Sepiolite
+ Siderite
+ Stilbite
+ Sylvite
+ Metatorbernite
+ Wairakite
+ Vivianite
+ Whitlockite
+ Chalcanthite
+ Brochantite
+ Chalcocite
+ Antlerite
+ Fluorapatite
+ Fluorite
+ Hydroxylapatite
+ Strengite
+ Torbernite
+/
+:
+MINERAL_KINETICS
+Quartz 1.e-22 
+Calcite 1.e-12 
+Metatorbernite 1.e-18 
+/
+:skip
+SORPTION
+SURFACE_COMPLEXATION_RXN
+MINERAL Calcite
+SITE >SOH 3.8418e0
+COMPLEXES
+>SOUO2OH
+>SOUO2CO3
+/
+/
+/
+noskip
+:DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
+DATABASE /Users/lichtner/flotran/database/hanford.dat
+:DATABASE ../../../database/hanford.dat
+LOG_FORMULATION
+ACTIVITY_COEFFICIENTS
+/
+:
+
+:MOLAL
+
+IMOD 10
+
+REFERENCE_POROSITY 0.5d0
+
+:CHECKPOINT 1
+:RESTART pflotran.chk1
+
+TIMESTEPPER
+MAX_STEPS 5000
+/
+
+:NUMERICAL_JACOBIAN
+:INEXACT_NEWTON
+:STATISTICS
+:
+:CHECKPOINT 50
+:WALLCLOCK_STOP 0.05
+:
+DEBUG
+:MATVIEW_JACOBIAN
+:VECVIEW_RESIDUAL
+:VECVIEW_SOLUTION
+/
+:
+GRID
+TYPE structured
+NXYZ 100 1 1
+DXYZ
+15.
+1.
+1.
+/
+/
+:
+NEWTON_SOLVER FLOW
+:MATRIX_TYPE MFFD
+:PRECONDITIONER_MATRIX_TYPE AIJ
+:RTOL 1.d-8
+ATOL 1.d-6
+NO_INFINITY_NORM
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
+:
+LINEAR_SOLVER FLOW
+:KSP_TYPE FGMRES
+:KSP_TYPE PREONLY
+:PC_TYPE LU
+/
+:
+LINEAR_SOLVER TRANSPORT
+:KSP_TYPE PREONLY
+:PC_TYPE LU
+/
+:
+:STATISTICS
+:
+:HDF5 VELO !FLUX
+TECPLOT POINT VELO 
+:TECPLOT BLOCK VELO 
+:
+DIFF  1.D-10       12.6
+:
+SATURATION_FUNCTIONS
+:id itype swir   lambda alpha     pcwmax betac pwr
+ 1  2     0.10   2.67   2.042d-4  1.e8   0.d0  1.d0
+/
+
+THERMAL_PROPERTIES
+:ithm rho    cpr     ckdry cksat tau cdiff   cexp
+  1   2.75e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
+/
+:
+MATERIALS
+:name   id icap ithm por  tau   permx     permy     permz     permpwr
+Soil1   1  1    1    0.5  0.5   1.d-9    1.d-9    1.d-9    1.d0
+/
+:
+:TIME d every 10
+TIME y
+0.1 0.5 1. 2. 5. 10.
+:
+DTST 1.d-8
+:50. 1.0d0 
+1. 0.001d0 \
+10. 0.01
+
+:
+REGION all
+BLOCK 1 100 1 1 1 1
+/
+REGION source
+BLOCK 10 20 1 1 1 1
+/
+REGION down_stream
+BLOCK 21 100 1 1 1 1
+/
+
+REGION West
+BLOCK 1 1 1 1 1 1
+FACE west
+/
+
+REGION East
+BLOCK 100 100 1 1 1 1
+FACE east
+/
+
+skip
+FLOW_CONDITION Inlet
+TYPE
+PRESSURE mass
+/
+PRESSURE 1.d-3
+/
+
+FLOW_CONDITION Outlet
+TYPE
+PRESSURE mass
+/
+PRESSURE -1.d-3
+/
+noskip
+
+FLOW_CONDITION Inlet
+TYPE
+FLUX neumann
+/
+:FLUX 2.8935185d-7 ! 0.1 m/day pore water
+:FLUX 0.317098d-7 ! 1 m/y
+FLUX  1.58549e-4 ! 5000 m/y = 50 ft/d
+/
+
+FLOW_CONDITION Outlet
+TYPE
+FLUX neumann
+/
+:FLUX -2.8935185d-7 ! 0.1 m/day pore water
+:FLUX -0.317098d-7 ! (1 m/y)
+FLUX -1.58549e-4 ! 5000 m/y = 50 ft/d
+/
+
+FLOW_CONDITION initial
+TYPE
+PRESSURE hydrostatic
+/
+DATUM 0.d0 0.d0 1.d0
+PRESSURE 201325.d0
+/
+
+TRANSPORT_CONDITION Inlet_c
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 Inlet
+/
+/
+TRANSPORT_CONDITION initial_c
+TYPE zero_gradient
+CONSTRAINT_LIST
+0.d0 initial
+/
+/
+TRANSPORT_CONDITION initial_s
+TYPE zero_gradient
+CONSTRAINT_LIST
+0.d0 initial_src
+/
+/
+TRANSPORT_CONDITION initial_dwn
+TYPE zero_gradient
+CONSTRAINT_LIST
+0.d0 initial_down_stream
+/
+/
+
+CONSTRAINT initial
+CONCENTRATIONS
+H+       7.3             pH
+O2(aq)   1.78132e-4       T
+Al+++    1.e-9            M K-Feldspar
+Ca++     1.20644e-3       T
+:Cu++     1.e-5            M Metatorbernite
+Cu++     1.e-5            T
+Fe++     1.e-9            M Ferrihydrite
+Mg++     5.09772e-4       T
+UO2++    1.e-8            S
+K+       1.54789e-4       T
+Na+      1.03498e-3       T
+:HCO3-    2.57305e-3       T
+CO2(aq)  2.57305e-3       T
+Cl-      6.97741e-4       T
+F-       2.09491e-5       T
+HPO4--   1.e-4            M Whitlockite
+:NO3-     4.69979e-3       T
+SO4--    6.37961e-4       T
+SiO2(aq) 5.36989e-4       T
+Tracer   1.e-7            F
+/
+MINERALS
+Quartz         0.6  1.
+Calcite        0.1  1.
+Metatorbernite 0.   1.
+/
+/
+
+CONSTRAINT initial_down_stream
+CONCENTRATIONS
+H+       7.3             pH
+O2(aq)   1.78132e-4       T
+Al+++    1.e-9            M K-Feldspar
+Ca++     1.20644e-3       T
+Cu++     1.e-5            M Metatorbernite
+Fe++     1.e-9            M Ferrihydrite
+Mg++     5.09772e-4       T
+UO2++    2.34845e-8       T
+K+       1.54789e-4       T
+Na+      1.03498e-3       T
+:HCO3-    2.57305e-3       T
+CO2(aq)  2.57305e-3       T
+Cl-      6.97741e-4       T
+F-       2.09491e-5       T
+HPO4--   1.e-4            M Whitlockite
+:NO3-     4.69979e-3       T
+SO4--    6.37961e-4       T
+SiO2(aq) 5.36989e-4       T
+Tracer   1.e-7            F
+/
+MINERALS
+Quartz         0.6   1.
+Calcite        0.1   1.
+Metatorbernite 0.0   1.
+/
+/
+
+CONSTRAINT initial_src
+CONCENTRATIONS
+H+       7.3             pH
+O2(aq)   1.78132e-4       T
+Al+++    1.e-9            M K-Feldspar
+Ca++     1.20644e-3       T
+Cu++     1.e-5            M Metatorbernite
+Fe++     1.e-9            M Ferrihydrite
+Mg++     5.09772e-4       T
+UO2++    2.34845e-7       T
+K+       1.54789e-4       T
+Na+      1.03498e-3       T
+:HCO3-    2.57305e-3       T
+CO2(aq)  2.57305e-3       T
+Cl-      6.97741e-4       T
+F-       2.09491e-5       T
+HPO4--   1.e-4            M Whitlockite
+:NO3-     4.69979e-3       T
+SO4--    6.37961e-4       T
+SiO2(aq) 5.36989e-4       T
+Tracer   1.e-6            F
+/
+MINERALS
+Quartz         0.6   1.
+Calcite        0.1   1.
+Metatorbernite 0.05  1.
+/
+/
+
+CONSTRAINT Inlet
+CONCENTRATIONS
+H+       7.8             pH
+O2(aq)   3.52303e-4       T
+Al+++    1.e-12           T
+Ca++     4.49496e-4       T
+Cu++     1.e-8            T
+Fe++     1.e-9            T
+Mg++     1.82316e-4       T
+UO2++    1.e-8            S
+K+       1.905371e-5      T
+Na+      1.00551e-4       T
+:HCO3-    1.127881e-3      T
+CO2(aq)  1.127881e-3      T
+Cl-      3.3895e-5        T
+F-       6.23269e-6       T
+HPO4--   1.e-6            T
+:NO3-     1.e-5            T
+SO4--    9.23943e-5       T
+SiO2(aq) 5.36989e-4       T
+Tracer   1.e-6            F
+/
+/
+
+BOUNDARY_CONDITION
+FLOW_CONDITION Inlet
+TRANSPORT_CONDITION Inlet_c
+REGION West
+/
+
+BOUNDARY_CONDITION
+FLOW_CONDITION Outlet
+TRANSPORT_CONDITION initial_c
+REGION East
+/
+
+skip
+SOURCE_SINK
+FLOW_CONDITION Inlet
+TRANSPORT_CONDITION Inlet_c
+REGION West
+/
+
+SOURCE_SINK
+FLOW_CONDITION Outlet
+TRANSPORT_CONDITION initial_c
+REGION East
+/
+noskip
+
+INITIAL_CONDITION
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial_c
+REGION all
+/
+
+INITIAL_CONDITION
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial_s
+REGION source
+/
+
+INITIAL_CONDITION
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial_dwn
+REGION down_stream
+/
+
+STRATA
+MATERIAL Soil1
+REGION all
+/
+
