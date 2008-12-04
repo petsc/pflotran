@@ -11,7 +11,6 @@ module Discretization_module
  
 #include "definitions.h"
 
-#include "petscreldefs.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petscmat.h"
