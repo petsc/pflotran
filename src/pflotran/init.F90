@@ -266,6 +266,19 @@ subroutine Init(simulation,filename)
     
     call SolverSetSNESOptions(flow_solver)
 
+    ! If we are using a structured grid, set the corresponding flow DA 
+    ! as the DA for the PCEXOTIC preconditioner, in case we choose to use it.
+    ! The PCExoticSetDA() call is ignored if the PCEXOTIC preconditioner is 
+    ! no used.  We need to put this call after SolverCreateSNES() so that 
+    ! KSPSetFromOptions() will already have been called.
+    ! I also note that this preconditioner is intended only for the flow, 
+    ! solver.  --RTM
+    if (realization%discretization%itype == STRUCTURED_GRID) then
+      write(*,*) 'Calling PCExoticSetDA'
+      call PCExoticSetDA(flow_solver%pc, &
+                         realization%discretization%dm_nflowdof, ierr);
+    endif
+
     ! setup a shell preconditioner and initialize in the case of AMR
     if(associated(discretization%amrgrid)) then
 !       flow_solver%pc_type = PCSHELL
