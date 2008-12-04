@@ -124,10 +124,10 @@ IFC::IFC(Grid **grid_) {
   string *grid_filenames = new string[AsciiGrid::nasciigrids];
 #if 1
   grid_filenames[0].append("./top_basalt_grid.asc");
-  grid_filenames[1].append("./top9_grid.asc");
-  grid_filenames[2].append("./top8_grid.asc");
-  grid_filenames[3].append("./top5_grid.asc");
-  grid_filenames[4].append("./top4_grid.asc");
+  grid_filenames[1].append("./top9_grid_dec08.asc");
+  grid_filenames[2].append("./top8_grid_dec08.asc");
+  grid_filenames[3].append("./top5_grid_dec08.asc");
+  grid_filenames[4].append("./top4_grid_dec08.asc");
   grid_filenames[5].append("./newbath_10mDEM_grid.asc");
 #else
   grid_filenames[0].append("../basalt_PNNL_grid.asc");
