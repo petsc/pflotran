@@ -170,21 +170,23 @@
 
 \bcr
 
-\section*{Chemistry Implementation in PFLOTRAN: \\
-$\circ$Colloids,\\ 
-$\bullet$Surface Complexation, \\
-$\bullet$Ion Exchange, \\
-Biogeochemistry with Monode Kinetics, \\
-$\bullet$Precipitation/Dissolution, \\
-Solid Solutions, \\
-Species-Dependent Diffusion, \\
-Pitzer Model, \\
-$\circ$Multiple Interacting Continua, \\
-Hydration-Dehydration Reactions, \\
-Electrical Conductivity, \\
-$\circ$Multiphase Systems, \\
-Isotopic Exchange, \\
-\ldots}
+\section*{Chemistry Implementation in PFLOTRAN:}
+\begin{tabular}{ll}
+$\circ$ & \bf\large Colloids,\\ 
+$\bullet$ & \bf\large Surface Complexation, \\
+$\bullet$ & \bf\large Ion Exchange, \\
+& \bf\large Biogeochemistry with Monode Kinetics, \\
+$\bullet$ & \bf\large Precipitation/Dissolution, \\
+& \bf\large Solid Solutions, \\
+& \bf\large Species-Dependent Diffusion, \\
+& \bf\large Pitzer Model, \\
+$\circ$ & \bf\large Multiple Interacting Continua, \\
+&\bf\large Hydration-Dehydration Reactions, \\
+&\bf\large Electrical Conductivity, \\
+$\circ$ & \bf\large Multiphase Systems, \\
+&\bf\large Isotopic Exchange, \\
+&\bf\large \ldots
+\end{tabular}
 
 \hfill $\bullet$ substantially completed\\
 \hfill $\circ$ in progress
@@ -235,7 +237,7 @@ The user must first select a set of aqueous primary species in terms of which th
 \EQ
 \varnothing\arrows\sum_i\nu_{ir}\A_i,
 \EN
-with $\varnothing$ representing the null species, the species are partitioned into primary and secondary species leading to the reaction
+with $\varnothing$ representing the null species and equilibrium constant $K_r$. Partitioning the reacting species into primary and secondary species leading to the reaction
 \EQ
 \varnothing\arrows\sum_j\nu_{jr}\A_j + \sum_i\nu_{ir}\A_i.
 \EN
@@ -247,7 +249,13 @@ where
 \EQ
 \widetilde\nu_{ji} \eq -\sum_r\nu_{jr}(\nu^{-1})_{ri}.
 \EN
-These reactions are presumed to apply to both aqueous complexes and gaseous reactions. For mineral reactions, the database form
+These reactions are presumed to apply to both aqueous complexes and gaseous reactions. 
+The equilibrium constant for reaction \ref{canonical} is given by
+\EQ
+\log K_i \eq \sum_r (\nu^{-1})_{ri} \log K_r.
+\EN
+
+For mineral reactions, the database form
 \EQ
 \sum_j\nu_{jm}\A_j + \sum_i\nu_{im}\A_i\arrows\M_m,
 \EN
@@ -258,6 +266,10 @@ is transformed by eliminating the secondary species $\A_i$ using Eqn.\eqref{cano
 where
 \EQ
 \widetilde\nu_{jm}\eq\nu_{jm}+\sum_i\widetilde\nu_{ji}\nu_{im}.
+\EN
+The associated equilibrium constant $K_m'$ is given by
+\EQ
+\log K_m' \eq \log K_m + \sum_i \nu_{im}\log K_i.
 \EN
 
 \subsection{Distribution of Species Calculation}
