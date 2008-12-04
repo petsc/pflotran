@@ -691,10 +691,10 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                  reaction%primary_spec_Z(icomp) < 0.d0)) then
               string = 'Charge balance species ' // &
                        trim(reaction%primary_species_names(icomp)) // &
-                       ' cannot satify constraint ' // &
+                       ' may not satify constraint ' // &
                        trim(constraint_name) // &
                        '.  Molality already below 1.e-20.'
-              call printErrMsg(option,string)
+              call printMsg(option,string)
             endif
           endif
           
