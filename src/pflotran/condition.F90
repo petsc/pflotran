@@ -117,9 +117,9 @@ module Condition_module
     type(tran_constraint_coupler_type), pointer :: next   
   end type tran_constraint_coupler_type
       
-  public :: ConditionCreate, ConditionDestroy, ConditionRead, &
-            ConditionAddToList, ConditionInitList, ConditionDestroyList, &
-            ConditionGetPtrFromList, ConditionUpdate, &
+  public :: FlowConditionCreate, FlowConditionDestroy, FlowConditionRead, &
+            FlowConditionAddToList, FlowConditionInitList, FlowConditionDestroyList, &
+            FlowConditionGetPtrFromList, FlowConditionUpdate, &
             TranConditionCreate, TranConstraintCreate, &
             TranConditionAddToList, TranConditionInitList, &
             TranConditionDestroyList, TranConditionGetPtrFromList, &
@@ -132,19 +132,19 @@ contains
 
 ! ************************************************************************** !
 !
-! ConditionCreate: Creates a condition
+! FlowConditionCreate: Creates a condition
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-function ConditionCreate(option)
+function FlowConditionCreate(option)
 
   use Option_module
   
   implicit none
   
   type(option_type) :: option
-  type(flow_condition_type), pointer :: ConditionCreate
+  type(flow_condition_type), pointer :: FlowConditionCreate
   
   type(flow_condition_type), pointer :: condition
   
@@ -165,9 +165,9 @@ function ConditionCreate(option)
   condition%num_sub_conditions = 0
   condition%name = ''
   
-  ConditionCreate => condition
+  FlowConditionCreate => condition
 
-end function ConditionCreate
+end function FlowConditionCreate
 
 ! ************************************************************************** !
 !
@@ -287,11 +287,11 @@ function SubConditionCreate(ndof)
   sub_condition%ctype = ''
   sub_condition%name = ''
 
-  call ConditionDatasetInit(sub_condition%dataset)
+  call FlowConditionDatasetInit(sub_condition%dataset)
   sub_condition%dataset%rank = ndof
-  call ConditionDatasetInit(sub_condition%gradient)
+  call FlowConditionDatasetInit(sub_condition%gradient)
   sub_condition%gradient%rank = 3
-  call ConditionDatasetInit(sub_condition%datum)
+  call FlowConditionDatasetInit(sub_condition%datum)
   sub_condition%datum%rank = 3
 
   SubConditionCreate => sub_condition
@@ -331,12 +331,12 @@ end function GetSubConditionFromArrayByName
           
 ! ************************************************************************** !
 !
-! ConditionDatasetInit: Initializes a dataset
+! FlowConditionDatasetInit: Initializes a dataset
 ! author: Glenn Hammond
 ! date: 02/04/08
 !
 ! ************************************************************************** !
-subroutine ConditionDatasetInit(dataset)
+subroutine FlowConditionDatasetInit(dataset)
 
   implicit none
   
@@ -352,7 +352,7 @@ subroutine ConditionDatasetInit(dataset)
   dataset%is_transient = PETSC_FALSE
   dataset%interpolation_method = NULL
     
-end subroutine ConditionDatasetInit
+end subroutine FlowConditionDatasetInit
 
 ! ************************************************************************** !
 !
@@ -404,23 +404,26 @@ subroutine SubConditionVerify(option, condition, sub_condition_name, &
     sub_condition%itype = default_itype
   endif
   
-  call ConditionDatasetVerify(option,condition%name,sub_condition_name, &
-                              default_time,sub_condition%dataset,default_dataset)
-  call ConditionDatasetVerify(option,condition%name,sub_condition_name, &
-                              default_time,sub_condition%datum,default_datum)
-  call ConditionDatasetVerify(option,condition%name,sub_condition_name, &
-                              default_time,sub_condition%gradient,default_gradient)
+  call FlowConditionDatasetVerify(option,condition%name,sub_condition_name, &
+                                  default_time,sub_condition%dataset, &
+                                  default_dataset)
+  call FlowConditionDatasetVerify(option,condition%name,sub_condition_name, &
+                                  default_time,sub_condition%datum,&
+                                  default_datum)
+  call FlowConditionDatasetVerify(option,condition%name,sub_condition_name, &
+                                  default_time,sub_condition%gradient, &
+                                  default_gradient)
 
 end subroutine SubConditionVerify
 
 ! ************************************************************************** !
 !
-! ConditionDatasetVerify: Verifies the data in a dataset
+! FlowConditionDatasetVerify: Verifies the data in a dataset
 ! author: Glenn Hammond
 ! date: 02/04/08
 !
 ! ************************************************************************** !
-subroutine ConditionDatasetVerify(option, condition_name, sub_condition_name, &
+subroutine FlowConditionDatasetVerify(option, condition_name, sub_condition_name, &
                                   default_time, &
                                   dataset, default_dataset)
   use Option_module
@@ -487,16 +490,16 @@ subroutine ConditionDatasetVerify(option, condition_name, sub_condition_name, &
   dataset%cur_value(1:dataset%rank) = dataset%values(1:dataset%rank,1)
 
 
-end subroutine ConditionDatasetVerify
+end subroutine FlowConditionDatasetVerify
 
 ! ************************************************************************** !
 !
-! ConditionRead: Reads a condition from the input file
+! FlowConditionRead: Reads a condition from the input file
 ! author: Glenn Hammond
 ! date: 10/31/07
 !
 ! ************************************************************************** !
-subroutine ConditionRead(condition,option,fid)
+subroutine FlowConditionRead(condition,option,fid)
 
   use Option_module
   use Fileio_module
@@ -528,13 +531,13 @@ subroutine ConditionRead(condition,option,fid)
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
 
-  call ConditionDatasetInit(default_dataset)
+  call FlowConditionDatasetInit(default_dataset)
   default_dataset%rank = 1
   default_dataset%interpolation_method = STEP
   default_dataset%is_cyclic = PETSC_FALSE
-  call ConditionDatasetInit(default_datum)
+  call FlowConditionDatasetInit(default_datum)
   default_datum%rank = 3
-  call ConditionDatasetInit(default_gradient)
+  call FlowConditionDatasetInit(default_gradient)
   default_gradient%rank = 3
   
   pressure => SubConditionCreate(option%nphase)
@@ -667,7 +670,7 @@ subroutine ConditionRead(condition,option,fid)
         call fiReadInt(string,default_iphase,ierr)
         call fiErrorMsg(option%myrank,'IPHASE','CONDITION', ierr)   
       case('DATUM','DATM')
-        call ConditionReadValues(option,word,string,default_datum,word)
+        call FlowConditionReadValues(option,word,string,default_datum,word)
       case('GRADIENT','GRAD')
         do
           call fiReadFlotranString(fid,string,ierr)
@@ -694,26 +697,26 @@ subroutine ConditionRead(condition,option,fid)
             case default
               call printErrMsg(option,'keyword not recognized in condition,type')
           end select
-          call ConditionReadValues(option,word,string,sub_condition_ptr%gradient,word)
+          call FlowConditionReadValues(option,word,string,sub_condition_ptr%gradient,word)
           nullify(sub_condition_ptr)
         enddo
       case('TEMPERATURE','TEMP')
-        call ConditionReadValues(option,word,string,temperature%dataset, &
+        call FlowConditionReadValues(option,word,string,temperature%dataset, &
                                  temperature%units)
       case('ENTHALPY','H')
-        call ConditionReadValues(option,word,string,enthalpy%dataset, &
+        call FlowConditionReadValues(option,word,string,enthalpy%dataset, &
                                  enthalpy%units)
       case('PRESSURE','PRES','PRESS')
-        call ConditionReadValues(option,word,string,pressure%dataset, &
+        call FlowConditionReadValues(option,word,string,pressure%dataset, &
                                  pressure%units)
       case('MASS','MASS_RATE')
-        call ConditionReadValues(option,word,string,mass_rate%dataset, &
+        call FlowConditionReadValues(option,word,string,mass_rate%dataset, &
                                  mass_rate%units)
       case('FLUX','VELOCITY','VEL')
-        call ConditionReadValues(option,word,string,pressure%dataset, &
+        call FlowConditionReadValues(option,word,string,pressure%dataset, &
                                  pressure%units)
       case('CONC','CONCENTRATION')
-        call ConditionReadValues(option,word,string,concentration%dataset, &
+        call FlowConditionReadValues(option,word,string,concentration%dataset, &
                                  concentration%units)
       case default
         string = 'Keyword: ' // trim(word) // &
@@ -841,15 +844,15 @@ subroutine ConditionRead(condition,option,fid)
       
   end select
   
-  call ConditionDatasetDestroy(default_dataset)
-  call ConditionDatasetDestroy(default_datum)
-  call ConditionDatasetDestroy(default_gradient)
+  call FlowConditionDatasetDestroy(default_dataset)
+  call FlowConditionDatasetDestroy(default_datum)
+  call FlowConditionDatasetDestroy(default_gradient)
     
   call PetscLogEventEnd(logging%event_flow_condition_read, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
 
-end subroutine ConditionRead
+end subroutine FlowConditionRead
 
 ! ************************************************************************** !
 !
@@ -1182,12 +1185,12 @@ end subroutine TranConstraintRead
 
 ! ************************************************************************** !
 !
-! ConditionReadValues: Read the value(s) of a condition variable
+! FlowConditionReadValues: Read the value(s) of a condition variable
 ! author: Glenn Hammond
 ! date: 10/31/07
 !
 ! ************************************************************************** !
-subroutine ConditionReadValues(option,keyword,string,dataset,units)
+subroutine FlowConditionReadValues(option,keyword,string,dataset,units)
 
   use Fileio_module
   use Option_module
@@ -1220,7 +1223,7 @@ subroutine ConditionReadValues(option,keyword,string,dataset,units)
     call fiReadWord(string,word,PETSC_TRUE,ierr)
     error_string = keyword // ' FILE'
     call fiErrorMsg(option%myrank,error_string,'CONDITION', ierr)
-    call ConditionReadValuesFromFile(word,dataset,option)
+    call FlowConditionReadValuesFromFile(word,dataset,option)
   else
     string = trim(string2)
     allocate(dataset%values(dataset%rank,1))
@@ -1242,16 +1245,16 @@ subroutine ConditionReadValues(option,keyword,string,dataset,units)
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
 
-end subroutine ConditionReadValues
+end subroutine FlowConditionReadValues
 
 ! ************************************************************************** !
 !
-! ConditionReadValuesFromFile: Read values from a external file
+! FlowConditionReadValuesFromFile: Read values from a external file
 ! author: Glenn Hammond
 ! date: 10/31/07
 !
 ! ************************************************************************** !
-subroutine ConditionReadValuesFromFile(filename,dataset,option)
+subroutine FlowConditionReadValuesFromFile(filename,dataset,option)
 
   use Fileio_module
   use Utility_module
@@ -1367,16 +1370,40 @@ subroutine ConditionReadValuesFromFile(filename,dataset,option)
   
   close(fid)
 
-end subroutine ConditionReadValuesFromFile
+end subroutine FlowConditionReadValuesFromFile
 
 ! ************************************************************************** !
 !
-! ConditionUpdate: Updates a transient condition
+! RPrintConstraint: Prints a constraint associated with reactive transport
+! author: Glenn Hammond
+! date: 10/28/08
+!
+! ************************************************************************** !
+subroutine FlowConditionPrint(condition,option)
+
+  use Option_module
+  use Fileio_module
+
+  implicit none
+  
+  type(flow_condition_type) :: condition
+  type(option_type) :: option
+
+#if 0
+  90 format(80('-'))
+  91 format(a)
+#endif    
+            
+end subroutine FlowConditionPrint
+
+! ************************************************************************** !
+!
+! FlowConditionUpdate: Updates a transient condition
 ! author: Glenn Hammond
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-subroutine ConditionUpdate(condition_list,option,time)
+subroutine FlowConditionUpdate(condition_list,option,time)
 
   use Option_module
   
@@ -1410,7 +1437,7 @@ subroutine ConditionUpdate(condition_list,option,time)
     
   enddo
   
-end subroutine ConditionUpdate
+end subroutine FlowConditionUpdate
 
 ! ************************************************************************** !
 !
@@ -1542,12 +1569,12 @@ end subroutine TranConditionUpdate
 
 ! ************************************************************************** !
 !
-! ConditionInitList: Initializes a condition list
+! FlowConditionInitList: Initializes a condition list
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine ConditionInitList(list)
+subroutine FlowConditionInitList(list)
 
   implicit none
 
@@ -1558,16 +1585,16 @@ subroutine ConditionInitList(list)
   nullify(list%array)
   list%num_conditions = 0
 
-end subroutine ConditionInitList
+end subroutine FlowConditionInitList
 
 ! ************************************************************************** !
 !
-! ConditionAddToList: Adds a new condition to a condition list
+! FlowConditionAddToList: Adds a new condition to a condition list
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine ConditionAddToList(new_condition,list)
+subroutine FlowConditionAddToList(new_condition,list)
 
   implicit none
   
@@ -1580,30 +1607,30 @@ subroutine ConditionAddToList(new_condition,list)
   if (associated(list%last)) list%last%next => new_condition
   list%last => new_condition
   
-end subroutine ConditionAddToList
+end subroutine FlowConditionAddToList
 
 ! ************************************************************************** !
 !
-! ConditionGetPtrFromList: Returns a pointer to the condition matching &
+! FlowConditionGetPtrFromList: Returns a pointer to the condition matching &
 !                          condition_name
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-function ConditionGetPtrFromList(condition_name,condition_list)
+function FlowConditionGetPtrFromList(condition_name,condition_list)
 
   use Fileio_module
 
   implicit none
   
-  type(flow_condition_type), pointer :: ConditionGetPtrFromList
+  type(flow_condition_type), pointer :: FlowConditionGetPtrFromList
   character(len=MAXWORDLENGTH) :: condition_name
   type(condition_list_type) :: condition_list
  
   PetscInt :: length
   type(flow_condition_type), pointer :: condition
     
-  nullify(ConditionGetPtrFromList)
+  nullify(FlowConditionGetPtrFromList)
   condition => condition_list%first
   
   do 
@@ -1612,13 +1639,13 @@ function ConditionGetPtrFromList(condition_name,condition_list)
     if (length == len_trim(condition%name) .and. &
         fiStringCompare(condition%name,condition_name, &
                         length)) then
-      ConditionGetPtrFromList => condition
+      FlowConditionGetPtrFromList => condition
       return
     endif
     condition => condition%next
   enddo
   
-end function ConditionGetPtrFromList
+end function FlowConditionGetPtrFromList
 
 ! ************************************************************************** !
 !
@@ -1783,12 +1810,12 @@ end function TranConstraintGetPtrFromList
 
 ! ************************************************************************** !
 !
-! ConditionDestroyList: Deallocates a list of conditions
+! FlowConditionDestroyList: Deallocates a list of conditions
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine ConditionDestroyList(condition_list)
+subroutine FlowConditionDestroyList(condition_list)
 
   implicit none
   
@@ -1803,7 +1830,7 @@ subroutine ConditionDestroyList(condition_list)
     if (.not.associated(condition)) exit
     prev_condition => condition
     condition => condition%next
-    call ConditionDestroy(prev_condition)
+    call FlowConditionDestroy(prev_condition)
   enddo
   
   condition_list%num_conditions = 0
@@ -1815,16 +1842,16 @@ subroutine ConditionDestroyList(condition_list)
   deallocate(condition_list)
   nullify(condition_list)
 
-end subroutine ConditionDestroyList
+end subroutine FlowConditionDestroyList
 
 ! ************************************************************************** !
 !
-! ConditionDestroy: Deallocates a condition
+! FlowConditionDestroy: Deallocates a condition
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine ConditionDestroy(condition)
+subroutine FlowConditionDestroy(condition)
 
   implicit none
   
@@ -1856,7 +1883,7 @@ subroutine ConditionDestroy(condition)
   deallocate(condition)
   nullify(condition)
 
-end subroutine ConditionDestroy
+end subroutine FlowConditionDestroy
 
 ! ************************************************************************** !
 !
@@ -1873,9 +1900,9 @@ subroutine SubConditionDestroy(sub_condition)
   
   if (.not.associated(sub_condition)) return
   
-  call ConditionDatasetDestroy(sub_condition%dataset)
-  call ConditionDatasetDestroy(sub_condition%datum)
-  call ConditionDatasetDestroy(sub_condition%gradient)
+  call FlowConditionDatasetDestroy(sub_condition%dataset)
+  call FlowConditionDatasetDestroy(sub_condition%datum)
+  call FlowConditionDatasetDestroy(sub_condition%gradient)
 
   deallocate(sub_condition)
   nullify(sub_condition)
@@ -1884,12 +1911,12 @@ end subroutine SubConditionDestroy
 
 ! ************************************************************************** !
 !
-! ConditionDatasetDestroy: Destroys a dataset associated with a sub_condition
+! FlowConditionDatasetDestroy: Destroys a dataset associated with a sub_condition
 ! author: Glenn Hammond
 ! date: 02/04/08
 !
 ! ************************************************************************** !
-subroutine ConditionDatasetDestroy(dataset)
+subroutine FlowConditionDatasetDestroy(dataset)
 
   implicit none
   
@@ -1900,7 +1927,7 @@ subroutine ConditionDatasetDestroy(dataset)
   if (associated(dataset%values)) deallocate(dataset%values)
   nullify(dataset%values)  
 
-end subroutine ConditionDatasetDestroy
+end subroutine FlowConditionDatasetDestroy
 
 ! ************************************************************************** !
 !

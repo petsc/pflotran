@@ -272,7 +272,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     ! pointer to flow condition
     if (len_trim(coupler%flow_condition_name) > 0) then
       coupler%flow_condition => &
-        ConditionGetPtrFromList(coupler%flow_condition_name,flow_conditions)
+        FlowConditionGetPtrFromList(coupler%flow_condition_name,flow_conditions)
       if (.not.associated(coupler%flow_condition)) then
         string = 'Condition ' // trim(coupler%flow_condition_name) // &
                  ' not found in boundary condition list'
@@ -308,7 +308,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     ! pointer to flow condition
     if (len_trim(coupler%flow_condition_name) > 0) then
       coupler%flow_condition => &
-        ConditionGetPtrFromList(coupler%flow_condition_name,flow_conditions)
+        FlowConditionGetPtrFromList(coupler%flow_condition_name,flow_conditions)
       if (.not.associated(coupler%flow_condition)) then
         string = 'Condition ' // trim(coupler%flow_condition_name) // &
                  ' not found in initial condition list'
@@ -343,7 +343,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     ! pointer to flow condition
     if (len_trim(coupler%flow_condition_name) > 0) then
       coupler%flow_condition => &
-        ConditionGetPtrFromList(coupler%flow_condition_name,flow_conditions)
+        FlowConditionGetPtrFromList(coupler%flow_condition_name,flow_conditions)
       if (.not.associated(coupler%flow_condition)) then
         string = 'Condition ' // trim(coupler%flow_condition_name) // &
                  ' not found in source/sink condition list'

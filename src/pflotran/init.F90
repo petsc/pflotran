@@ -918,12 +918,12 @@ subroutine readInput(simulation,filename)
 
 !....................
       case ('FLOW_CONDITION')
-        flow_condition => ConditionCreate(option)
+        flow_condition => FlowConditionCreate(option)
         call fiReadWord(string,flow_condition%name,PETSC_TRUE,ierr)
         call fiErrorMsg(option%myrank,'FLOW_CONDITION','name',ierr) 
         call printMsg(option,flow_condition%name)
-        call ConditionRead(flow_condition,option,option%fid_in)
-        call ConditionAddToList(flow_condition,realization%flow_conditions)
+        call FlowConditionRead(flow_condition,option,option%fid_in)
+        call FlowConditionAddToList(flow_condition,realization%flow_conditions)
         nullify(flow_condition)
         
 !....................

@@ -101,7 +101,7 @@ function RealizationCreate()
   call RegionInitList(realization%regions)
 
   allocate(realization%flow_conditions)
-  call ConditionInitList(realization%flow_conditions)
+  call FlowConditionInitList(realization%flow_conditions)
   allocate(realization%transport_conditions)
   call TranConditionInitList(realization%transport_conditions)
   allocate(realization%transport_constraints)
@@ -812,7 +812,7 @@ subroutine RealizationUpdate(realization)
   PetscTruth :: force_update_flag = PETSC_FALSE
   
   ! must update conditions first
-  call ConditionUpdate(realization%flow_conditions,realization%option, &
+  call FlowConditionUpdate(realization%flow_conditions,realization%option, &
                        realization%option%time)
   call TranConditionUpdate(realization%transport_conditions, &
                            realization%option, &
@@ -1409,7 +1409,7 @@ subroutine RealizationDestroy(realization)
   call OptionDestroy(realization%option)
   call RegionDestroyList(realization%regions)
   
-  call ConditionDestroyList(realization%flow_conditions)
+  call FlowConditionDestroyList(realization%flow_conditions)
   call TranConditionDestroyList(realization%transport_conditions)
   call TranConstraintDestroyList(realization%transport_constraints)
 
