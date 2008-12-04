@@ -684,6 +684,19 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                 reaction%primary_spec_Z(kcomp)*rt_auxvar%dtotal(kcomp,jcomp,1)
             enddo
           enddo
+          if (rt_auxvar%pri_molal(icomp) < 1.d-20) then
+            if ((Res(icomp) > 0.d0 .and. &
+                 reaction%primary_spec_Z(icomp) > 0.d0) .or. &
+                (Res(icomp) < 0.d0 .and. &
+                 reaction%primary_spec_Z(icomp) < 0.d0)) then
+              string = 'Charge balance species ' // &
+                       trim(reaction%primary_species_names(icomp)) // &
+                       ' may not satify constraint ' // &
+                       trim(constraint_name) // &
+                       '.  Molality already below 1.e-20.'
+              call printMsg(option,string)
+            endif
+          endif
           
         case(CONSTRAINT_PH)
         
@@ -818,6 +831,16 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     rt_auxvar%pri_molal = rt_auxvar%pri_molal*exp(-Res)
 
     num_iterations = num_iterations + 1
+    
+    if (mod(num_iterations,1000) == 0) then
+100 format('Constraint iteration count has exceeded: ',i5)
+      write(string,100) num_iterations
+      call printMsg(option,string)
+      if (num_iterations >= 10000) then
+        string = 'Stopping due to excessive iteration count!'
+        call printErrMsg(option,string)
+      endif
+    endif
     
     ! check for convergence
     if (maxval(dabs(res)) < tol) then
