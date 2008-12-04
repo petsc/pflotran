@@ -313,10 +313,11 @@ subroutine RTUpdateSolutionPatch(realization)
         ! rate = mol/m^3/sec
         ! dvolfrac = m^3 mnrl/m^3 bulk = rate (mol mnrl/m^3 bulk/sec) *
         !                                mol_vol (m^3 mnrl/mol mnrl)
-        rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) + &
-                                                     rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* &
-                                                     reaction%kinmnrl_molar_vol(imnrl)* &
-                                                     option%dt
+        rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = &
+          rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) + &
+          rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* &
+          reaction%kinmnrl_molar_vol(imnrl)* &
+          option%tran_dt
         if (rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) < 0.d0) &
           rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = 0.d0
       enddo
@@ -530,17 +531,17 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
   ! all Jacobian entries should be in kg water/sec
   if (associated(rt_aux_var%dtotal)) then ! units of dtotal = kg water/L water
     if (associated(rt_aux_var%dtotal_sorb)) then ! unit of dtotal_sorb = kg water/m^3 bulk
-      v_t = vol/option%dt   
+      v_t = vol/option%tran_dt
       psvd_t = por*global_aux_var%sat(iphase)*1000.d0*v_t
       J = rt_aux_var%dtotal(:,:,iphase)*psvd_t + rt_aux_var%dtotal_sorb(:,:)*v_t
     else
-      psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%dt  
+      psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
       J = rt_aux_var%dtotal(:,:,iphase)*psvd_t
     endif
   else
     J = 0.d0
     psvd_t = por*global_aux_var%sat(iphase)* &
-             global_aux_var%den_kg(iphase)*vol/option%dt ! units of den = kg water/m^3 water
+             global_aux_var%den_kg(iphase)*vol/option%tran_dt ! units of den = kg water/m^3 water
     do icomp=1,reaction%ncomp
       J(icomp,icomp) = psvd_t
     enddo
@@ -578,11 +579,11 @@ subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
   ! 1000.d0 converts vol from m^3 -> L
   ! all residual entries should be in mol/sec
   if (associated(rt_aux_var%total_sorb)) then
-    v_t = vol/option%dt
+    v_t = vol/option%tran_dt
     psv_t = por*global_aux_var%sat(iphase)*1000.d0*v_t
     Res(:) = psv_t*rt_aux_var%total(:,iphase) +  v_t*rt_aux_var%total_sorb(:)
   else
-    psv_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%dt  
+    psv_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
     Res(:) = psv_t*rt_aux_var%total(:,iphase) 
   endif
   

@@ -732,13 +732,14 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
 
       option%flow_time = option%flow_time - option%flow_dt
       option%flow_dt = 0.5d0 * option%flow_dt
-      option%flow_time = option%flow_time + option%flow_dt
     
       if (option%print_flag) write(*,'('' -> Cut time step: snes='',i3, &
         &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.4, '' dt= '', &
         &   1pe12.4,i3)')  snes_reason,icut,stepper%icutcum, &
             option%flow_time/realization%output_option%tconv, &
             option%flow_dt/realization%output_option%tconv,timestep_cut_flag
+
+      option%flow_time = option%flow_time + option%flow_dt
 
       select case(option%iflowmode)
         case(THC_MODE)
@@ -932,7 +933,6 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   do
   
     if (option%nflowdof > 0) then
-      option%dt = option%tran_dt
       option%tran_weight_t0 = (option%tran_time-option%tran_dt-start_time)/ &
                               (end_time-start_time)
       option%tran_weight_t1 = (option%tran_time-start_time)/ &
@@ -1044,14 +1044,14 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
 
         option%tran_time = option%tran_time - option%tran_dt
         option%tran_dt = 0.5d0 * option%tran_dt
-        option%tran_time = option%tran_time + option%tran_dt
-        option%dt = option%tran_dt
       
         if (option%print_flag) write(*,'('' -> Cut time step: snes='',i3, &
           &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.4, '' dt= '', &
           &   1pe12.4,i3)')  snes_reason,icut,stepper%icutcum, &
               option%tran_time/realization%output_option%tconv, &
               option%tran_dt/realization%output_option%tconv,timestep_cut_flag
+
+        option%tran_time = option%tran_time + option%tran_dt
 
         ! recompute weights
         if (option%nflowdof > 0) then
