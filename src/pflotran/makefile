@@ -3,8 +3,6 @@
 objdir = ./${PETSC_ARCH}/obj
 srcdir = ./
 pflotran_src = ./
-pflow_src    = ./
-ptran_src    = ./
 common_src   = ./
 bindir = ./${PETSC_ARCH}/bin
 
@@ -34,7 +32,7 @@ ifdef ABSOFT
 FPPFLAGS         += ${MYFLAGS} -p${HDF5_LIB}
 endif
 
-CLEANFILES       = pflow ptran pflotran pflotran_fc
+CLEANFILES       = pflotran pflotran_fc
 
 ifdef petscrel
  include ${PETSC_DIR}/bmake/common/base
