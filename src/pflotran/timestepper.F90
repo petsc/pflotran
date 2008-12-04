@@ -182,7 +182,9 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   type(option_type), pointer :: option
   type(waypoint_type), pointer :: prev_waypoint  
 
-  PetscTruth :: plot_flag, timestep_cut_flag, stop_flag
+  PetscTruth :: plot_flag, stop_flag
+  PetscTruth :: master_timestep_cut_flag
+  PetscTruth :: flow_timestep_cut_flag, tran_timestep_cut_flag
   PetscInt :: istep, start_step
   PetscInt :: num_const_timesteps
   PetscInt :: num_newton_iterations, idum
@@ -199,7 +201,9 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   endif
 
   plot_flag = PETSC_FALSE
-  timestep_cut_flag = PETSC_FALSE
+  master_timestep_cut_flag = PETSC_FALSE
+  flow_timestep_cut_flag = PETSC_FALSE
+  tran_timestep_cut_flag = PETSC_FALSE
   stop_flag = PETSC_FALSE
   num_const_timesteps = 0  
 
@@ -248,22 +252,31 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     endif
 
     prev_waypoint => master_stepper%cur_waypoint
-    timestep_cut_flag = PETSC_FALSE
+    flow_timestep_cut_flag = PETSC_FALSE
+    tran_timestep_cut_flag = PETSC_FALSE
     plot_flag = PETSC_FALSE
     call StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag)
 
     if (associated(flow_stepper)) then
       call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
-      call StepperStepFlowDT(realization,flow_stepper,timestep_cut_flag, &
+      call StepperStepFlowDT(realization,flow_stepper, &
+                             flow_timestep_cut_flag, &
                              num_newton_iterations)
       call PetscLogStagePop(ierr)
     endif
     if (associated(tran_stepper)) then
       call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr)
-      call StepperStepTransportDT(realization,tran_stepper,timestep_cut_flag, &
+      call StepperStepTransportDT(realization,tran_stepper, &
+                                  tran_timestep_cut_flag, &
                                   idum)
       call PetscLogStagePop(ierr)
       if (.not.associated(flow_stepper)) num_newton_iterations = idum
+    endif
+
+    if (associated(flow_stepper)) then
+      master_timestep_cut_flag = flow_timestep_cut_flag
+    else
+      master_timestep_cut_flag = tran_timestep_cut_flag
     endif
 
     ! update solution variables
@@ -271,7 +284,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     
     ! if a time step cut has occured, need to set the below back to original values
     ! if they changed. 
-    if (timestep_cut_flag) then
+    if (master_timestep_cut_flag) then
       master_stepper%cur_waypoint => prev_waypoint
       plot_flag = PETSC_FALSE
     endif
@@ -282,7 +295,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     endif
     call Output(realization,plot_flag)
   
-    call StepperUpdateDT(flow_stepper,tran_stepper,option,timestep_cut_flag, &
+    call StepperUpdateDT(flow_stepper,tran_stepper,option, &
+                         master_timestep_cut_flag, &
                          num_const_timesteps,num_newton_iterations)
 
     ! if a simulation wallclock duration time is set, check to see that the
