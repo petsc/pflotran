@@ -69,7 +69,8 @@ private
             RealizationGetDataset, &
             RealizGetDatasetValueAtCell, &
             RealizationSetDataset, &
-            RealizationPrintCouplers
+            RealizationPrintCouplers, &
+            RealizationInitConstraints
             
 contains
   
@@ -465,7 +466,6 @@ subroutine RealizationProcessConditions(realization)
  
 end subroutine RealizationProcessConditions
 
-
 ! ************************************************************************** !
 !
 ! RealProcessTranConditions: Sets up auxilliary data associated with 
@@ -517,11 +517,11 @@ subroutine RealProcessTranConditions(realization)
   cur_constraint => realization%transport_constraints%first
   do
     if (.not.associated(cur_constraint)) exit
-    call ReactionInitializeConstraint(realization%reaction, &
-                                      cur_constraint%name, &
-                                      cur_constraint%aqueous_species, &
-                                      cur_constraint%minerals, &
-                                      realization%option)
+    call ReactionProcessConstraint(realization%reaction, &
+                                   cur_constraint%name, &
+                                   cur_constraint%aqueous_species, &
+                                   cur_constraint%minerals, &
+                                   realization%option)
     cur_constraint => cur_constraint%next
   enddo
   
@@ -579,6 +579,57 @@ subroutine RealProcessTranConditions(realization)
   enddo
 
 end subroutine RealProcessTranConditions
+
+! ************************************************************************** !
+!
+! RealizationInitConstraints: Initializes constraint concentrations
+! author: Glenn Hammond
+! date: 12/04/08
+!
+! ************************************************************************** !
+subroutine RealizationInitConstraints(realization)
+
+  use Fileio_module
+  use Reaction_module
+  use Reactive_Transport_Aux_module
+  use Reaction_Aux_module
+  use Global_Aux_module
+    
+  implicit none
+
+  type(realization_type) :: realization
+  
+  type(option_type), pointer :: option
+  type(reaction_type), pointer :: reaction
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  type(tran_constraint_type), pointer :: cur_constraint
+  
+  option => realization%option
+  reaction => realization%reaction
+
+  call RTAuxVarInit(rt_auxvar,reaction,option)
+  call GlobalAuxVarInit(global_auxvar,option)
+
+  ! initialize constraints
+  cur_constraint => realization%transport_constraints%first
+  do
+    if (.not.associated(cur_constraint)) exit
+    global_auxvar%den_kg = option%reference_density
+    global_auxvar%temp = option%reference_temperature
+    global_auxvar%sat = option%reference_saturation  
+    call ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
+                                       reaction, &
+                                       cur_constraint%name, &
+                                       cur_constraint%aqueous_species, &
+                                       option)
+    cur_constraint => cur_constraint%next
+  enddo
+
+  call RTAuxVarDestroy(rt_auxvar)
+  call GlobalAuxVarDestroy(global_auxvar)
+
+end subroutine RealizationInitConstraints
 
 ! ************************************************************************** !
 !
@@ -665,9 +716,6 @@ subroutine RealizationPrintCoupler(coupler,reaction,option)
   type(tran_condition_type), pointer :: tran_condition
   type(region_type), pointer :: region
   type(tran_constraint_coupler_type), pointer :: constraint_coupler
-  PetscReal :: pressure
-  PetscReal :: temperature
-
    
 98 format(40('=+'))
 99 format(80('-'))
@@ -679,50 +727,38 @@ subroutine RealizationPrintCoupler(coupler,reaction,option)
 
   write(option%fid_out,*)
   write(option%fid_out,98)
+
+
+  select case(coupler%itype)
+    case(INITIAL_COUPLER_TYPE)
+      string = 'Initial Condition'
+    case(BOUNDARY_COUPLER_TYPE)
+      string = 'Boundary Condition'
+    case(SRC_SINK_COUPLER_TYPE)
+      string = 'Source Sink'
+  end select
+  write(option%fid_out,'(/,2x,a,/)') trim(string)
+
+  write(option%fid_out,99)
 101 format(5x,'     Flow Condition: ',2x,a)
   if (associated(flow_condition)) write(option%fid_out,101) trim(flow_condition%name)
 102 format(5x,'Transport Condition: ',2x,a)
   if (associated(tran_condition)) write(option%fid_out,102) trim(tran_condition%name)
 103 format(5x,'             Region: ',2x,a)
   if (associated(region)) write(option%fid_out,103) trim(region%name)
-  write(option%fid_out,98)
-  
-  pressure = option%reference_pressure
-  temperature = option%reference_temperature
+  write(option%fid_out,99)
   
   if (associated(flow_condition)) then
-!    write(option%fid_out,99)
-    write(option%fid_out,100) '  Flow Parameters:'
-    if (flow_condition%pressure%itype == DIRICHLET_BC .or. &
-        flow_condition%pressure%itype == HYDROSTATIC_BC .or. &
-        flow_condition%pressure%itype == SEEPAGE_BC) then
-110 format(a,f10.1)
-      write(option%fid_out,110) '    pressure = ', &
-        flow_condition%pressure%dataset%cur_value(1)
-      pressure = flow_condition%pressure%dataset%cur_value(1)
-    else if (flow_condition%pressure%itype == NEUMANN_BC) then
-      write(option%fid_out,110) '    flux = ', &
-        flow_condition%pressure%dataset%cur_value(1)
-    endif
-120 format(a,f5.1)
-    if (associated(flow_condition%temperature)) then
-      write(option%fid_out,120) '    temperature = ', &
-        flow_condition%temperature%dataset%cur_value(1)
-      temperature = flow_condition%temperature%dataset%cur_value(1)
-    endif
-130 format(a,es12.4)
-    if (associated(flow_condition%concentration)) then
-      write(option%fid_out,130) '    concentration = ', &
-        flow_condition%concentration%dataset%cur_value(1)
-    endif
+    call FlowConditionPrint(flow_condition,option)
   endif
   if (associated(tran_condition)) then
     constraint_coupler => tran_condition%cur_constraint_coupler
-    write(option%fid_out,99) 
-    write(option%fid_out,100) '  Transport Parameters:'
+    write(option%fid_out,'(/,2x,''Transport Condition: '',a)') &
+      trim(tran_condition%name)
     if (associated(reaction)) then
-      call RPrintConstraint(constraint_coupler,pressure,temperature, &
-                            reaction,option)
+      call ReactionPrintConstraint(constraint_coupler,reaction,option)
+      write(option%fid_out,'(/)')
+      write(option%fid_out,99)
     endif
   endif
  

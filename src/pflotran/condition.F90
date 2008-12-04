@@ -120,6 +120,7 @@ module Condition_module
   public :: FlowConditionCreate, FlowConditionDestroy, FlowConditionRead, &
             FlowConditionAddToList, FlowConditionInitList, FlowConditionDestroyList, &
             FlowConditionGetPtrFromList, FlowConditionUpdate, &
+            FlowConditionPrint, &
             TranConditionCreate, TranConstraintCreate, &
             TranConditionAddToList, TranConditionInitList, &
             TranConditionDestroyList, TranConditionGetPtrFromList, &
@@ -264,18 +265,18 @@ end function TranConstraintCouplerCreate
 
 ! ************************************************************************** !
 !
-! SubConditionCreate: Creates a sub_condition
+! FlowSubConditionCreate: Creates a sub_condition
 ! author: Glenn Hammond
 ! date: 02/04/08
 !
 ! ************************************************************************** !
-function SubConditionCreate(ndof)
+function FlowSubConditionCreate(ndof)
 
   use Option_module
   
   implicit none
   
-  type(flow_sub_condition_type), pointer :: SubConditionCreate
+  type(flow_sub_condition_type), pointer :: FlowSubConditionCreate
   
   PetscInt :: ndof
   
@@ -294,40 +295,40 @@ function SubConditionCreate(ndof)
   call FlowConditionDatasetInit(sub_condition%datum)
   sub_condition%datum%rank = 3
 
-  SubConditionCreate => sub_condition
+  FlowSubConditionCreate => sub_condition
 
-end function SubConditionCreate
+end function FlowSubConditionCreate
 
 ! ************************************************************************** !
 !
-! GetSubConditionFromArrayByName: returns a pointer to a subcondition with
+! GetFlowSubCondFromArrayByName: returns a pointer to a subcondition with
 !                                 matching name
 ! author: Glenn Hammond
 ! date: 06/02/08
 !
 ! ************************************************************************** !
-function GetSubConditionFromArrayByName(sub_condition_ptr_list,name)
+function GetFlowSubCondFromArrayByName(sub_condition_ptr_list,name)
 
   use Fileio_module
   
   implicit none
   
-  type(flow_sub_condition_type), pointer :: GetSubConditionFromArrayByName
+  type(flow_sub_condition_type), pointer :: GetFlowSubCondFromArrayByName
   type(sub_condition_ptr_type), pointer :: sub_condition_ptr_list(:)
   character(len=MAXWORDLENGTH) :: name
   
   PetscInt :: idof
   
-  nullify(GetSubConditionFromArrayByName)
+  nullify(GetFlowSubCondFromArrayByName)
   do idof = 1, size(sub_condition_ptr_list)
     if (len_trim(name) == len_trim(sub_condition_ptr_list(idof)%ptr%name) .and. &
         fiStringCompare(name,sub_condition_ptr_list(idof)%ptr%name,len_trim(name))) then
-      GetSubConditionFromArrayByName => sub_condition_ptr_list(idof)%ptr
+      GetFlowSubCondFromArrayByName => sub_condition_ptr_list(idof)%ptr
       return
     endif
   enddo
   
-end function GetSubConditionFromArrayByName
+end function GetFlowSubCondFromArrayByName
           
 ! ************************************************************************** !
 !
@@ -356,18 +357,18 @@ end subroutine FlowConditionDatasetInit
 
 ! ************************************************************************** !
 !
-! SubConditionVerify: Verifies the data in a subcondition
+! FlowSubConditionVerify: Verifies the data in a subcondition
 ! author: Glenn Hammond
 ! date: 02/04/08
 !
 ! ************************************************************************** !
-subroutine SubConditionVerify(option, condition, sub_condition_name, &
-                              sub_condition, &
-                              default_time, &
-                              default_ctype, default_itype, &
-                              default_dataset, &
-                              default_datum, default_gradient, &
-                              destroy_if_null)
+subroutine FlowSubConditionVerify(option, condition, sub_condition_name, &
+                                  sub_condition, &
+                                  default_time, &
+                                  default_ctype, default_itype, &
+                                  default_dataset, &
+                                  default_datum, default_gradient, &
+                                  destroy_if_null)
 
   use Option_module
 
@@ -393,7 +394,7 @@ subroutine SubConditionVerify(option, condition, sub_condition_name, &
   if (.not.associated(sub_condition)) return
   
   if (.not.associated(sub_condition%dataset%values)) then
-    if (destroy_if_null) call SubConditionDestroy(sub_condition)
+    if (destroy_if_null) call FlowSubConditionDestroy(sub_condition)
     return
   endif
   
@@ -414,7 +415,7 @@ subroutine SubConditionVerify(option, condition, sub_condition_name, &
                                   default_time,sub_condition%gradient, &
                                   default_gradient)
 
-end subroutine SubConditionVerify
+end subroutine FlowSubConditionVerify
 
 ! ************************************************************************** !
 !
@@ -540,12 +541,17 @@ subroutine FlowConditionRead(condition,option,fid)
   call FlowConditionDatasetInit(default_gradient)
   default_gradient%rank = 3
   
-  pressure => SubConditionCreate(option%nphase)
+  pressure => FlowSubConditionCreate(option%nphase)
+  pressure%name = 'pressure'
   flux => pressure
-  mass_rate => SubConditionCreate(option%nflowspec)
-  temperature => SubConditionCreate(ONE_INTEGER)
-  concentration => SubConditionCreate(ONE_INTEGER)
-  enthalpy => SubConditionCreate(option%nphase)
+  mass_rate => FlowSubConditionCreate(option%nflowspec)
+  mass_rate%name = 'mass_rate'
+  temperature => FlowSubConditionCreate(ONE_INTEGER)
+  temperature%name = 'temperature'
+  concentration => FlowSubConditionCreate(ONE_INTEGER)
+  concentration%name = 'concentration'
+  enthalpy => FlowSubConditionCreate(option%nphase)
+  enthalpy%name = 'enthalpy'
 
   condition%time_units = 'yr'
   condition%length_units = 'm'
@@ -702,22 +708,22 @@ subroutine FlowConditionRead(condition,option,fid)
         enddo
       case('TEMPERATURE','TEMP')
         call FlowConditionReadValues(option,word,string,temperature%dataset, &
-                                 temperature%units)
+                                     temperature%units)
       case('ENTHALPY','H')
         call FlowConditionReadValues(option,word,string,enthalpy%dataset, &
-                                 enthalpy%units)
+                                     enthalpy%units)
       case('PRESSURE','PRES','PRESS')
         call FlowConditionReadValues(option,word,string,pressure%dataset, &
-                                 pressure%units)
+                                     pressure%units)
       case('MASS','MASS_RATE')
         call FlowConditionReadValues(option,word,string,mass_rate%dataset, &
-                                 mass_rate%units)
+                                     mass_rate%units)
       case('FLUX','VELOCITY','VEL')
         call FlowConditionReadValues(option,word,string,pressure%dataset, &
-                                 pressure%units)
+                                     pressure%units)
       case('CONC','CONCENTRATION')
         call FlowConditionReadValues(option,word,string,concentration%dataset, &
-                                 concentration%units)
+                                     concentration%units)
       case default
         string = 'Keyword: ' // trim(word) // &
                  ' not recognized in flow condition'
@@ -746,30 +752,30 @@ subroutine FlowConditionRead(condition,option,fid)
 
   ! verify the datasets
   word = 'pressure'
-  call SubConditionVerify(option,condition,word,pressure,default_time, &
-                          default_ctype, default_itype, &
-                          default_dataset, &
-                          default_datum, default_gradient,PETSC_TRUE)
+  call FlowSubConditionVerify(option,condition,word,pressure,default_time, &
+                              default_ctype, default_itype, &
+                              default_dataset, &
+                              default_datum, default_gradient,PETSC_TRUE)
   word = 'mass_rate'
-  call SubConditionVerify(option,condition,word,mass_rate,default_time, &
-                          default_ctype, default_itype, &
-                          default_dataset, &
-                          default_datum, default_gradient,PETSC_TRUE)
+  call FlowSubConditionVerify(option,condition,word,mass_rate,default_time, &
+                              default_ctype, default_itype, &
+                              default_dataset, &
+                              default_datum, default_gradient,PETSC_TRUE)
   word = 'temperature'
-  call SubConditionVerify(option,condition,word,temperature,default_time, &
-                          default_ctype, default_itype, &
-                          default_dataset, &
-                          default_datum, default_gradient,PETSC_TRUE)
+  call FlowSubConditionVerify(option,condition,word,temperature,default_time, &
+                              default_ctype, default_itype, &
+                              default_dataset, &
+                              default_datum, default_gradient,PETSC_TRUE)
   word = 'concentration'
-  call SubConditionVerify(option,condition,word,concentration,default_time, &
-                          default_ctype, default_itype, &
-                          default_dataset, &
-                          default_datum, default_gradient,PETSC_TRUE)
+  call FlowSubConditionVerify(option,condition,word,concentration,default_time, &
+                              default_ctype, default_itype, &
+                              default_dataset, &
+                              default_datum, default_gradient,PETSC_TRUE)
   word = 'enthalpy'
-  call SubConditionVerify(option,condition,word,enthalpy,default_time, &
-                          default_ctype, default_itype, &
-                          default_dataset, &
-                          default_datum, default_gradient,PETSC_TRUE)
+  call FlowSubConditionVerify(option,condition,word,enthalpy,default_time, &
+                              default_ctype, default_itype, &
+                              default_dataset, &
+                              default_datum, default_gradient,PETSC_TRUE)
     
   select case(option%iflowmode)
     case(THC_MODE,MPH_MODE)
@@ -838,9 +844,9 @@ subroutine FlowConditionRead(condition,option,fid)
       if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
       
       ! these are not used with richards
-      if (associated(temperature)) call SubConditionDestroy(temperature)
-      if (associated(concentration)) call SubConditionDestroy(concentration)
-      if (associated(enthalpy)) call SubConditionDestroy(enthalpy)
+      if (associated(temperature)) call FlowSubConditionDestroy(temperature)
+      if (associated(concentration)) call FlowSubConditionDestroy(concentration)
+      if (associated(enthalpy)) call FlowSubConditionDestroy(enthalpy)
       
   end select
   
@@ -1374,9 +1380,9 @@ end subroutine FlowConditionReadValuesFromFile
 
 ! ************************************************************************** !
 !
-! RPrintConstraint: Prints a constraint associated with reactive transport
+! FlowConditionPrint: Prints flow condition info
 ! author: Glenn Hammond
-! date: 10/28/08
+! date: 12/04/08
 !
 ! ************************************************************************** !
 subroutine FlowConditionPrint(condition,option)
@@ -1388,13 +1394,130 @@ subroutine FlowConditionPrint(condition,option)
   
   type(flow_condition_type) :: condition
   type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: i
 
-#if 0
-  90 format(80('-'))
-  91 format(a)
-#endif    
-            
+99 format(/,80('-'))
+
+  write(option%fid_out,'(/,2x,''Flow Condition: '',a)') trim(condition%name)
+
+  if (condition%sync_time_with_update) then
+    string = 'yes'
+  else
+    string = 'no'
+  endif
+  write(option%fid_out,'(4x,''Synchronize time with update: '', a)') trim(string)
+  write(option%fid_out,'(4x,''Time units: '', a)') trim(condition%time_units)
+  write(option%fid_out,'(4x,''Length units: '', a)') trim(condition%length_units)
+  
+  do i=1, condition%num_sub_conditions
+    call FlowConditionPrintSubCondition(condition%sub_condition_ptr(i)%ptr, &
+                                        option)
+  enddo
+  write(option%fid_out,99)
+  
 end subroutine FlowConditionPrint
+
+! ************************************************************************** !
+!
+! FlowConditionPrintSubCondition: Prints flow subcondition info
+! author: Glenn Hammond
+! date: 12/04/08
+!
+! ************************************************************************** !
+subroutine FlowConditionPrintSubCondition(subcondition,option)
+
+  use Option_module
+  use Fileio_module
+
+  implicit none
+  
+  type(flow_sub_condition_type) :: subcondition
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  
+  write(option%fid_out,'(/,4x,''Sub Condition: '',a)') trim(subcondition%name)
+  select case(subcondition%itype)
+    case(DIRICHLET_BC)
+      string = 'dirichlet'
+    case(NEUMANN_BC)
+      string = 'neumann'
+    case(MASS_RATE_SS)
+      string = 'mass_rate'
+    case(HYDROSTATIC_BC)
+      string = 'hydrostatic'
+    case(ZERO_GRADIENT_BC)
+      string = 'zero_gradient'
+    case(PRODUCTION_WELL)
+      string = 'production_well'
+    case(SEEPAGE_BC)
+      string = 'seepage'
+    case(VOLUMETRIC_RATE_SS)
+      string = 'volumetric_rate'
+    case(EQUILIBRIUM_SS)
+      string = 'equilibrium'
+  end select
+  100 format(6x,'Type: ',a12)  
+  write(option%fid_out,100) trim(string)
+  
+  110 format(6x,a)  
+  write(option%fid_out,110) 'Datum:'
+  call FlowConditionPrintDataset(subcondition%datum,option)
+  write(option%fid_out,110) 'Gradient:'
+  call FlowConditionPrintDataset(subcondition%gradient,option)
+  write(option%fid_out,110) 'Dataset:'
+  call FlowConditionPrintDataset(subcondition%dataset,option)
+            
+end subroutine FlowConditionPrintSubCondition
+ 
+! ************************************************************************** !
+!
+! FlowConditionPrintDataset: Prints flow condition dataset info
+! author: Glenn Hammond
+! date: 12/04/08
+!
+! ************************************************************************** !
+subroutine FlowConditionPrintDataset(dataset,option)
+
+  use Option_module
+  use Fileio_module
+
+  implicit none
+  
+  type(flow_condition_dataset_type) :: dataset
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+
+  if (dataset%is_cyclic) then
+    string = 'yes'
+  else
+    string = 'no'
+  endif
+  write(option%fid_out,'(8x,''Is cyclic: '',a)') trim(string)
+
+  100 format(8x,'Is transient: ', a)
+  if (dataset%is_transient) then
+    write(option%fid_out,100) 'yes'
+    write(option%fid_out,'(8x,''  Number of values: '', i7)') &
+      dataset%max_time_index
+    select case(dataset%interpolation_method)
+      case(STEP)
+        string = 'step'
+      case(LINEAR)
+        string = 'linear'
+    end select
+    write(option%fid_out,'(8x,''  Interpolation method: '', a)') trim(string)
+    write(option%fid_out,'(8x,''Start value:'',es16.8)') dataset%cur_value(1)
+  else
+    write(option%fid_out,100) 'no'
+    write(option%fid_out,'(8x,''Value:'',es16.8)') dataset%cur_value(1)
+  endif
+
+            
+end subroutine FlowConditionPrintDataset
 
 ! ************************************************************************** !
 !
@@ -1426,9 +1549,9 @@ subroutine FlowConditionUpdate(condition_list,option,time)
       sub_condition => condition%sub_condition_ptr(isub_condition)%ptr
       
       if (associated(sub_condition)) then
-        call SubConditionUpdateDataset(option,time,sub_condition%dataset)
-        call SubConditionUpdateDataset(option,time,sub_condition%datum)
-        call SubConditionUpdateDataset(option,time,sub_condition%gradient)
+        call FlowSubConditionUpdateDataset(option,time,sub_condition%dataset)
+        call FlowSubConditionUpdateDataset(option,time,sub_condition%datum)
+        call FlowSubConditionUpdateDataset(option,time,sub_condition%gradient)
       endif
       
     enddo
@@ -1441,12 +1564,12 @@ end subroutine FlowConditionUpdate
 
 ! ************************************************************************** !
 !
-! SubConditionUpdateDataset: Updates a transient condition dataset
+! FlowSubConditionUpdateDataset: Updates a transient condition dataset
 ! author: Glenn Hammond
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-subroutine SubConditionUpdateDataset(option,time,dataset)
+subroutine FlowSubConditionUpdateDataset(option,time,dataset)
 
   use Option_module
   
@@ -1524,7 +1647,7 @@ subroutine SubConditionUpdateDataset(option,time,dataset)
     end select 
   endif    
   
-end subroutine SubConditionUpdateDataset
+end subroutine FlowSubConditionUpdateDataset
 
 ! ************************************************************************** !
 !
@@ -1863,7 +1986,7 @@ subroutine FlowConditionDestroy(condition)
   
   if (associated(condition%sub_condition_ptr)) then
     do i=1,condition%num_sub_conditions
-      call SubConditionDestroy(condition%sub_condition_ptr(i)%ptr)
+      call FlowSubConditionDestroy(condition%sub_condition_ptr(i)%ptr)
     enddo
     deallocate(condition%sub_condition_ptr)
     nullify(condition%sub_condition_ptr)
@@ -1887,12 +2010,12 @@ end subroutine FlowConditionDestroy
 
 ! ************************************************************************** !
 !
-! SubConditionDestroy: Destroys a sub_condition
+! FlowSubConditionDestroy: Destroys a sub_condition
 ! author: Glenn Hammond
 ! date: 02/04/08
 !
 ! ************************************************************************** !
-subroutine SubConditionDestroy(sub_condition)
+subroutine FlowSubConditionDestroy(sub_condition)
 
   implicit none
   
@@ -1907,7 +2030,7 @@ subroutine SubConditionDestroy(sub_condition)
   deallocate(sub_condition)
   nullify(sub_condition)
 
-end subroutine SubConditionDestroy
+end subroutine FlowSubConditionDestroy
 
 ! ************************************************************************** !
 !

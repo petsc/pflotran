@@ -388,6 +388,7 @@ subroutine Init(simulation,filename)
   ! link conditions with regions through couplers and generate connectivity
   call RealizationProcessCouplers(realization)
   call RealizationProcessConditions(realization)
+  call RealizationInitConstraints(realization)
   call RealizationPrintCouplers(realization)
   call assignMaterialPropToRegions(realization)
   call RealizationInitAllCouplerAuxVars(realization)
