@@ -501,7 +501,7 @@ end subroutine ReactionProcessConstraint
 subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          reaction,constraint_name, &
                                          aq_species_constraint, &
-                                         option)
+                                         num_iterations,option)
   use Option_module
   use Fileio_module
   use Utility_module  
@@ -851,7 +851,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          global_auxvar%den_kg(option%liquid_phase)/ &
                                          1000.d0
   
-  aq_species_constraint%num_iterations = num_iterations
   if (option%myrank == 0) &
     print *,'ReactionEquilibrateConstraint: ' // trim(constraint_name) // &
             '  iterations: ',num_iterations
@@ -878,8 +877,8 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   type(tran_constraint_coupler_type) :: constraint_coupler
   type(reaction_type), pointer :: reaction
   
-  type(reactive_transport_auxvar_type) :: rt_auxvar
-  type(global_auxvar_type) :: global_auxvar
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvar
+  type(global_auxvar_type), pointer :: global_auxvar
   type(aq_species_constraint_type), pointer :: aq_species_constraint
   type(mineral_constraint_type), pointer :: mineral_constraint
   character(len=MAXSTRINGLENGTH) :: string
@@ -912,8 +911,9 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
 
   write(option%fid_out,'(/,''  Constraint: '',a)') &
     trim(constraint_coupler%constraint_name)
-  call RTAuxVarInit(rt_auxvar,reaction,option)
-  call GlobalAuxVarInit(global_auxvar,option)
+
+  rt_auxvar => constraint_coupler%rt_auxvar
+  global_auxvar => constraint_coupler%global_auxvar
   
   global_auxvar%den_kg(iphase) = option%reference_density
   global_auxvar%temp(1) = option%reference_temperature
@@ -933,14 +933,6 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     enddo
   else
 
-    ! update the reactive transport auxvar
-    rt_auxvar%pri_molal = aq_species_constraint%basis_molarity * molar_to_molal
-    if (reaction%compute_activity_coefs /= ACTIVITY_COEFFICIENTS_OFF) then
-      call RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
-    endif
-    call RTotal(rt_auxvar,global_auxvar,reaction,option)
-    if (reaction%nsorb > 0) call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
-
     200 format('')
     201 format(a20,i5)
     202 format(a20,f10.2)
@@ -948,7 +940,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     204 format(a20,es12.4)
     write(option%fid_out,90)
     write(option%fid_out,201) '      iterations: ', &
-      aq_species_constraint%num_iterations
+      constraint_coupler%num_iterations
     if (reaction%h_ion_id > 0) then
       write(option%fid_out,203) '              pH: ', &
         -log10(rt_auxvar%pri_molal(reaction%h_ion_id)* &
@@ -980,8 +972,8 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     write(option%fid_out,204) '  ionic strength: ', ionic_strength
     write(option%fid_out,204) '  charge balance: ', charge_balance
     
-    write(option%fid_out,202) '        pressure: ', option%reference_pressure
-    write(option%fid_out,203) '     temperature: ', option%reference_temperature
+    write(option%fid_out,202) '        pressure: ', global_auxvar%pres(1)
+    write(option%fid_out,203) '     temperature: ', global_auxvar%temp(1)
     write(option%fid_out,90)
 
     102 format(/,'  species               molality    total       act coef  constraint')  
@@ -1334,9 +1326,6 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     enddo
   endif
 
-  call RTAuxVarDestroy(rt_auxvar)
-  call GlobalAuxVarDestroy(global_auxvar)
-            
 end subroutine ReactionPrintConstraint
 
 ! ************************************************************************** !

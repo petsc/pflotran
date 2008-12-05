@@ -589,46 +589,26 @@ end subroutine RealProcessTranConditions
 ! ************************************************************************** !
 subroutine RealizationInitConstraints(realization)
 
-  use Fileio_module
-  use Reaction_module
-  use Reactive_Transport_Aux_module
-  use Reaction_Aux_module
-  use Global_Aux_module
-    
   implicit none
 
   type(realization_type) :: realization
   
-  type(option_type), pointer :: option
-  type(reaction_type), pointer :: reaction
-  type(reactive_transport_auxvar_type) :: rt_auxvar
-  type(global_auxvar_type) :: global_auxvar
-  type(tran_constraint_type), pointer :: cur_constraint
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
   
-  option => realization%option
-  reaction => realization%reaction
-
-  call RTAuxVarInit(rt_auxvar,reaction,option)
-  call GlobalAuxVarInit(global_auxvar,option)
-
-  ! initialize constraints
-  cur_constraint => realization%transport_constraints%first
-  do
-    if (.not.associated(cur_constraint)) exit
-    global_auxvar%den_kg = option%reference_density
-    global_auxvar%temp = option%reference_temperature
-    global_auxvar%sat = option%reference_saturation  
-    call ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
-                                       reaction, &
-                                       cur_constraint%name, &
-                                       cur_constraint%aqueous_species, &
-                                       option)
-    cur_constraint => cur_constraint%next
-  enddo
-
-  call RTAuxVarDestroy(rt_auxvar)
-  call GlobalAuxVarDestroy(global_auxvar)
-
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      call PatchInitConstraints(cur_patch,realization%reaction, &
+                                realization%option)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo            
+ 
 end subroutine RealizationInitConstraints
 
 ! ************************************************************************** !
@@ -789,7 +769,8 @@ subroutine RealizationInitAllCouplerAuxVars(realization)
     cur_patch => cur_level%patch_list%first
     do
       if (.not.associated(cur_patch)) exit
-      call PatchInitAllCouplerAuxVars(cur_patch,realization%option)
+      call PatchInitAllCouplerAuxVars(cur_patch,realization%reaction, &
+                                      realization%option)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -849,7 +830,7 @@ subroutine RealizationUpdate(realization)
   
   ! must update conditions first
   call FlowConditionUpdate(realization%flow_conditions,realization%option, &
-                       realization%option%time)
+                           realization%option%time)
   call TranConditionUpdate(realization%transport_conditions, &
                            realization%option, &
                            realization%option%time)
@@ -1083,7 +1064,7 @@ subroutine RealizAssignTransportInitCond(realization)
       
         if (.not.associated(initial_condition)) exit
 
-        if (.not.associated(initial_condition%tran_aux_real_var)) then
+!        if (.not.associated(initial_condition%tran_aux_real_var)) then
           do icell=1,initial_condition%region%num_cells
             local_id = initial_condition%region%cell_ids(icell)
             ghosted_id = grid%nL2G(local_id)
@@ -1118,40 +1099,7 @@ subroutine RealizAssignTransportInitCond(realization)
               enddo
             endif
           enddo
-        else
-          do iconn=1,initial_condition%connection_set%num_connections
-            local_id = initial_condition%connection_set%id_dn(iconn)
-            ghosted_id = grid%nL2G(local_id)
-            iend = local_id*option%ntrandof
-            ibegin = iend-option%ntrandof+1
-            if (associated(cur_patch%imat)) then
-              if (cur_patch%imat(ghosted_id) <= 0) then
-                xx_p(ibegin:iend) = 1.d-200
-                cycle
-              endif
-            endif
-            xx_p(ibegin:iend) = &
-              initial_condition%tran_aux_real_var(1:option%ntrandof,iconn) / &
-              global_aux_vars(ghosted_id)%den_kg(iphase)*1000.d0 ! convert molarity -> molality
-              ! minerals 
-            if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
-              do idof = 1, reaction%nkinmnrl
-                rt_aux_vars(ghosted_id)%mnrl_volfrac0(idof) = &
-                  initial_condition%tran_condition%cur_constraint_coupler% &
-                    minerals%basis_vol_frac(idof)
-                rt_aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
-                  initial_condition%tran_condition%cur_constraint_coupler% &
-                    minerals%basis_vol_frac(idof)
-                rt_aux_vars(ghosted_id)%mnrl_area0(idof) = &
-                  initial_condition%tran_condition%cur_constraint_coupler% &
-                    minerals%basis_area(idof)
-                rt_aux_vars(ghosted_id)%mnrl_area(idof) = &
-                  initial_condition%tran_condition%cur_constraint_coupler% &
-                    minerals%basis_area(idof)
-              enddo
-            endif
-          enddo
-        endif
+!        endif
         initial_condition => initial_condition%next
       enddo
       

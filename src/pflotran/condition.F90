@@ -1,6 +1,8 @@
 module Condition_module
  
   use Reaction_Aux_module
+  use Reactive_Transport_Aux_module
+  use Global_Aux_module
   
   implicit none
 
@@ -111,9 +113,13 @@ module Condition_module
   type, public :: tran_constraint_coupler_type
     character(len=MAXWORDLENGTH) :: constraint_name   
     PetscReal :: time
+    PetscInt :: num_iterations
+    PetscInt :: iflag
     character(len=MAXWORDLENGTH) :: time_units
     type(aq_species_constraint_type), pointer :: aqueous_species
     type(mineral_constraint_type), pointer :: minerals
+    type(global_auxvar_type), pointer :: global_auxvar
+    type(reactive_transport_auxvar_type), pointer :: rt_auxvar
     type(tran_constraint_coupler_type), pointer :: next   
   end type tran_constraint_coupler_type
       
@@ -254,6 +260,12 @@ function TranConstraintCouplerCreate(option)
   allocate(coupler)
   nullify(coupler%aqueous_species)
   nullify(coupler%minerals)
+  
+  coupler%num_iterations = 0
+  coupler%iflag = 0
+  nullify(coupler%rt_auxvar)
+  nullify(coupler%global_auxvar)
+  
   nullify(coupler%next)
   coupler%constraint_name = ''
   coupler%time = 0.d0
@@ -2196,6 +2208,14 @@ subroutine TranConstraintCouplerDestroy(coupler_list)
     if (.not.associated(cur_coupler)) exit
     prev_coupler => cur_coupler
     cur_coupler => cur_coupler%next
+    if (associated(prev_coupler%rt_auxvar)) then
+      call RTAuxVarDestroy(prev_coupler%rt_auxvar)
+    endif
+    nullify(prev_coupler%rt_auxvar)
+    if (associated(prev_coupler%global_auxvar)) then
+      call GlobalAuxVarDestroy(prev_coupler%global_auxvar)
+    endif
+    nullify(prev_coupler%global_auxvar)
     nullify(prev_coupler%aqueous_species)
     nullify(prev_coupler%minerals)
     nullify(prev_coupler%next)

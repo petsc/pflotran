@@ -61,7 +61,8 @@ module Patch_module
             PatchUpdateAllCouplerAuxVars, PatchInitAllCouplerAuxVars, &
             PatchLocalizeRegions, PatchAssignUniformVelocity, &
             PatchGetDataset, PatchGetDatasetValueAtCell, &
-            PatchSetDataset
+            PatchSetDataset, &
+            PatchInitConstraints
 
 contains
 
@@ -442,19 +443,25 @@ end subroutine PatchProcessCouplers
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine PatchInitAllCouplerAuxVars(patch,option)
+subroutine PatchInitAllCouplerAuxVars(patch,reaction,option)
 
   use Option_module
+  use Reaction_Aux_module
   
   implicit none
   
   type(patch_type) :: patch
+  type(reaction_type) :: reaction
   type(option_type) :: option
   
   PetscTruth :: force_update_flag = PETSC_TRUE
   
-  call PatchInitCouplerAuxVars(patch,patch%boundary_conditions,option)
-  call PatchInitCouplerAuxVars(patch,patch%initial_conditions,option)
+  call PatchInitCouplerAuxVars(patch%initial_conditions,reaction, &
+                               option)
+  call PatchInitCouplerAuxVars(patch%boundary_conditions,reaction, &
+                               option)
+  call PatchInitCouplerAuxVars(patch%source_sinks,reaction, &
+                               option)
   
   call PatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
 
@@ -468,21 +475,26 @@ end subroutine PatchInitAllCouplerAuxVars
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine PatchInitCouplerAuxVars(patch,coupler_list,option)
+subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
 
   use Option_module
   use Connection_module
+  use Reaction_Aux_module
+  use Reactive_Transport_Aux_module
+  use Global_Aux_module
+  use Condition_module
   
   implicit none
   
-  type(patch_type) :: patch
   type(coupler_list_type), pointer :: coupler_list
+  type(reaction_type) :: reaction
   type(option_type) :: option
   
   PetscInt :: num_connections
   PetscTruth :: force_update_flag
   
   type(coupler_type), pointer :: coupler
+  type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
   
   if (.not.associated(coupler_list)) return
     
@@ -494,7 +506,9 @@ subroutine PatchInitCouplerAuxVars(patch,coupler_list,option)
       num_connections = coupler%connection_set%num_connections
 
       ! FLOW
-      if (associated(coupler%flow_condition)) then
+      if (associated(coupler%flow_condition) .and. &
+          (coupler%itype == INITIAL_COUPLER_TYPE .or. &
+           coupler%itype == BOUNDARY_COUPLER_TYPE)) then
 
         if (associated(coupler%flow_condition%pressure)) then
 
@@ -524,11 +538,16 @@ subroutine PatchInitCouplerAuxVars(patch,coupler_list,option)
       
       ! TRANSPORT   
       if (associated(coupler%tran_condition)) then
-
-! geh - don't believe that we need this for now.
-!        allocate(coupler%tran_aux_real_var(option%ntrandof,num_connections))
-!        coupler%tran_aux_real_var = 0.d0
-
+        cur_constraint_coupler => &
+          coupler%tran_condition%constraint_coupler_list
+        do
+          if (.not.associated(cur_constraint_coupler)) exit
+          allocate(cur_constraint_coupler%global_auxvar)
+          allocate(cur_constraint_coupler%rt_auxvar)
+          call GlobalAuxVarInit(cur_constraint_coupler%global_auxvar,option)
+          call RTAuxVarInit(cur_constraint_coupler%rt_auxvar,reaction,option)
+          cur_constraint_coupler => cur_constraint_coupler%next
+        enddo
       endif
       
     endif
@@ -555,9 +574,11 @@ subroutine PatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
   PetscTruth :: force_update_flag
   type(option_type) :: option
   
+  call PatchUpdateCouplerAuxVars(patch,patch%initial_conditions, &
+                                 force_update_flag,option)
   call PatchUpdateCouplerAuxVars(patch,patch%boundary_conditions, &
                                  force_update_flag,option)
-  call PatchUpdateCouplerAuxVars(patch,patch%initial_conditions, &
+  call PatchUpdateCouplerAuxVars(patch,patch%source_sinks, &
                                  force_update_flag,option)
 
 end subroutine PatchUpdateAllCouplerAuxVars
@@ -672,25 +693,113 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
     endif
       
     ! TRANSPORT
-    if (associated(coupler%tran_aux_real_var)) then
-    
-      num_connections = coupler%connection_set%num_connections
-
-      tran_condition => coupler%tran_condition
-
-      if (force_update_flag .or. tran_condition%is_transient) then ! for now, everything transport is dirichlet-type
-        do idof = 1, option%ntrandof
-          coupler%tran_aux_real_var(idof,1:num_connections) = &
-            tran_condition%cur_constraint_coupler%aqueous_species%basis_molarity(idof)
-        enddo
-      endif
-      
-    endif
+    ! nothing for transport at this point in time
 
     coupler => coupler%next
   enddo
 
 end subroutine PatchUpdateCouplerAuxVars
+
+! ************************************************************************** !
+!
+! PatchInitConstraints: Initializes constraint concentrations
+! author: Glenn Hammond
+! date: 12/04/08
+!
+! ************************************************************************** !
+subroutine PatchInitConstraints(patch,reaction,option)
+
+  use Reaction_Aux_module
+    
+  implicit none
+
+  type(patch_type) :: patch
+  type(option_type) :: option
+  type(reaction_type), pointer :: reaction
+
+  call PatchInitCouplerConstraints(patch%initial_conditions, &
+                                   reaction,option)
+  call PatchInitCouplerConstraints(patch%boundary_conditions, &
+                                   reaction,option)
+  call PatchInitCouplerConstraints(patch%source_sinks, &
+                                   reaction,option)
+
+end subroutine PatchInitConstraints
+
+! ************************************************************************** !
+!
+! PatchInitCouplerConstraints: Initializes constraint concentrations
+!                              for a given coupler
+! author: Glenn Hammond
+! date: 12/04/08
+!
+! ************************************************************************** !
+subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
+
+  use Reaction_module
+  use Reactive_Transport_Aux_module
+  use Reaction_Aux_module
+  use Global_Aux_module
+  use Condition_module
+  use water_eos_module
+    
+  implicit none
+
+  type(coupler_list_type), pointer :: coupler_list
+  type(option_type) :: option
+  type(reaction_type), pointer :: reaction
+
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvar
+  type(global_auxvar_type), pointer :: global_auxvar
+  type(coupler_type), pointer :: cur_coupler
+  type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
+  PetscReal :: r1, r2, r3, r4, r5, r6
+  PetscErrorCode :: ierr
+  
+  cur_coupler => coupler_list%first
+  do
+    if (.not.associated(cur_coupler)) exit
+
+    cur_constraint_coupler => &
+      cur_coupler%tran_condition%constraint_coupler_list
+    do
+      if (.not.associated(cur_constraint_coupler)) exit
+      global_auxvar => cur_constraint_coupler%global_auxvar
+      rt_auxvar => cur_constraint_coupler%rt_auxvar
+      if (associated(cur_coupler%flow_condition)) then
+        if (associated(cur_coupler%flow_condition%pressure)) then
+          global_auxvar%pres = &
+            cur_coupler%flow_condition%pressure%dataset%cur_value(1)
+        else
+          global_auxvar%pres = option%reference_pressure
+        endif
+        if (associated(cur_coupler%flow_condition%temperature)) then
+          global_auxvar%temp = &
+            cur_coupler%flow_condition%temperature%dataset%cur_value(1)
+        else
+          global_auxvar%temp = option%reference_temperature
+        endif
+        call wateos(global_auxvar%temp(1),global_auxvar%pres(1), &
+                    global_auxvar%den_kg(1),r1,r2,r3,r4,r5,r6, &
+                    option%scale,ierr) 
+      else
+        global_auxvar%pres = option%reference_pressure
+        global_auxvar%temp = option%reference_temperature
+        global_auxvar%den_kg = option%reference_density
+      endif     
+      global_auxvar%sat = option%reference_saturation  
+      call ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
+                            reaction,cur_constraint_coupler%constraint_name, &
+                            cur_constraint_coupler%aqueous_species, &
+                            cur_constraint_coupler%num_iterations,option)
+      ! turn on flag indicating constraint has not yet been used
+      cur_constraint_coupler%iflag = ONE_INTEGER
+      cur_constraint_coupler => cur_constraint_coupler%next
+    enddo
+    cur_coupler => cur_coupler%next
+  enddo
+
+end subroutine PatchInitCouplerConstraints
 
 ! ************************************************************************** !
 !

@@ -112,7 +112,6 @@ module Reaction_Aux_module
     PetscReal, pointer :: basis_molarity(:)
     PetscInt, pointer :: constraint_type(:)
     PetscInt, pointer :: constraint_spec_id(:)
-    PetscInt :: num_iterations
     character(len=MAXWORDLENGTH), pointer :: constraint_spec_name(:)
   end type aq_species_constraint_type
 
@@ -717,7 +716,6 @@ function AqueousSpeciesConstraintCreate(reaction,option)
   type(aq_species_constraint_type), pointer :: constraint
   
   allocate(constraint)
-  constraint%num_iterations = 0
   allocate(constraint%names(reaction%ncomp))
   constraint%names = ''
   allocate(constraint%constraint_conc(reaction%ncomp))
