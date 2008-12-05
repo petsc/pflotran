@@ -201,7 +201,8 @@ realization.o : grid.o option.o region.o condition.o coupler.o material.o \
              patch.o level.o discretization.o reaction.o reaction_aux.o
 level.o : patch.o option.o
 patch.o : option.o grid.o coupler.o breakthrough.o strata.o region.o \
-          auxilliary.o
+          auxilliary.o reaction.o condition.o connection.o hydrostatic.o \
+          field.o 
 strata.o : fileio.o region.o material.o
 hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
                 structured_grid.o
