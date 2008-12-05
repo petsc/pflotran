@@ -15,13 +15,14 @@ module Reaction_module
   public :: ReactionCreate, &
             ReactionRead, &
             ReactionReadMineralKinetics, &
-            ReactionInitializeConstraint, &
             RTotal, &
             RTotalSorb, &
             RActivityCoefficients, &
             RReaction, &
             RReactionDerivative, &
-            RPrintConstraint
+            ReactionProcessConstraint, &
+            ReactionEquilibrateConstraint, &
+            ReactionPrintConstraint
 
 contains
 
@@ -344,13 +345,13 @@ end subroutine ReactionRead
 
 ! ************************************************************************** !
 !
-! ReactionInitializeConstraint: Initializes constraints based on primary
-!                               species in system
+! ReactionProcessConstraint: Initializes constraints based on primary
+!                            species in system
 ! author: Glenn Hammond
 ! date: 10/14/08
 !
 ! ************************************************************************** !
-subroutine ReactionInitializeConstraint(reaction,constraint_name, &
+subroutine ReactionProcessConstraint(reaction,constraint_name, &
                                         aq_species_constraint, &
                                         mineral_constraint,option)
   use Option_module
@@ -365,8 +366,6 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
   type(mineral_constraint_type), pointer :: mineral_constraint
   type(option_type) :: option
   
-  type(reactive_transport_auxvar_type) :: rt_auxvar
-  type(global_auxvar_type) :: global_auxvar
   character(len=MAXSTRINGLENGTH) :: string
   PetscTruth :: found
   PetscInt :: icomp, jcomp
@@ -488,20 +487,8 @@ subroutine ReactionInitializeConstraint(reaction,constraint_name, &
     mineral_constraint%constraint_vol_frac = mineral_constraint%basis_vol_frac
     mineral_constraint%constraint_area = mineral_constraint%basis_area
   endif
-  
-  call RTAuxVarInit(rt_auxvar,reaction,option)
-  call GlobalAuxVarInit(global_auxvar,option)
-  global_auxvar%den_kg = option%reference_density
-  global_auxvar%temp = option%reference_temperature
-  global_auxvar%sat = option%reference_saturation  
-  call ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
-                                     reaction,constraint_name, &
-                                     aq_species_constraint,dummy_int, &
-                                     option)
-  call RTAuxVarDestroy(rt_auxvar)
-  call GlobalAuxVarDestroy(global_auxvar)
 
-end subroutine ReactionInitializeConstraint
+end subroutine ReactionProcessConstraint
 
 ! ************************************************************************** !
 !
@@ -556,6 +543,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscInt :: comp_id
   PetscReal :: convert_molal_to_molar
   PetscReal :: convert_molar_to_molal
+  
+  PetscTruth :: charge_balance_warning_flag = PETSC_FALSE
 
   PetscReal :: Jac_num(reaction%ncomp)
   PetscReal :: Res_pert, pert, prev_value
@@ -684,7 +673,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                 reaction%primary_spec_Z(kcomp)*rt_auxvar%dtotal(kcomp,jcomp,1)
             enddo
           enddo
-          if (rt_auxvar%pri_molal(icomp) < 1.d-20) then
+          if (rt_auxvar%pri_molal(icomp) < 1.d-20 .and. &
+              .not.charge_balance_warning_flag) then
             if ((Res(icomp) > 0.d0 .and. &
                  reaction%primary_spec_Z(icomp) > 0.d0) .or. &
                 (Res(icomp) < 0.d0 .and. &
@@ -695,6 +685,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                        trim(constraint_name) // &
                        '.  Molality already below 1.e-20.'
               call printMsg(option,string)
+              charge_balance_warning_flag = PETSC_TRUE
             endif
           endif
           
@@ -868,13 +859,13 @@ end subroutine ReactionEquilibrateConstraint
 
 ! ************************************************************************** !
 !
-! RPrintConstraint: Prints a constraint associated with reactive transport
+! ReactionPrintConstraint: Prints a constraint associated with reactive 
+!                          transport
 ! author: Glenn Hammond
 ! date: 10/28/08
 !
 ! ************************************************************************** !
-subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
-                            reaction,option)
+subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
 
   use Option_module
   use Fileio_module
@@ -883,13 +874,11 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   implicit none
   
   type(option_type) :: option
-  PetscReal :: pressure
-  PetscReal :: temperature
   type(tran_constraint_coupler_type) :: constraint_coupler
   type(reaction_type), pointer :: reaction
   
-  type(reactive_transport_auxvar_type) :: rt_auxvar
-  type(global_auxvar_type) :: global_auxvar
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvar
+  type(global_auxvar_type), pointer :: global_auxvar
   type(aq_species_constraint_type), pointer :: aq_species_constraint
   type(mineral_constraint_type), pointer :: mineral_constraint
   character(len=MAXSTRINGLENGTH) :: string
@@ -902,7 +891,6 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   PetscInt :: eqsurfcmplxsort(reaction%neqsurfcmplx+reaction%neqsurfcmplxrxn)
   PetscTruth :: finished, found
   PetscReal :: conc, conc2
-  PetscInt :: num_iterations
   PetscReal :: lnQK(reaction%nmnrl), QK(reaction%nmnrl)
   PetscReal :: ln_act_h2o
   PetscReal :: charge_balance, ionic_strength
@@ -918,12 +906,14 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
   
   iphase = 1
 
-  90 format(80('-'))
+  90 format(2x,76('-'))
   91 format(a)
 
-  write(option%fid_out,91) '  Constraint: ' // trim(constraint_coupler%constraint_name)
-  call RTAuxVarInit(rt_auxvar,reaction,option)
-  call GlobalAuxVarInit(global_auxvar,option)
+  write(option%fid_out,'(/,''  Constraint: '',a)') &
+    trim(constraint_coupler%constraint_name)
+
+  rt_auxvar => constraint_coupler%rt_auxvar
+  global_auxvar => constraint_coupler%global_auxvar
   
   global_auxvar%den_kg(iphase) = option%reference_density
   global_auxvar%temp(1) = option%reference_temperature
@@ -942,18 +932,15 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
                                 rt_auxvar%pri_molal(icomp)
     enddo
   else
-    call ReactionEquilibrateConstraint(rt_auxvar,global_auxvar,reaction, &
-                                       constraint_coupler%constraint_name, &
-                                       aq_species_constraint, &
-                                       num_iterations,option)
-                                       
+
     200 format('')
     201 format(a20,i5)
     202 format(a20,f10.2)
     203 format(a20,f8.2)
     204 format(a20,es12.4)
     write(option%fid_out,90)
-    write(option%fid_out,201) '      iterations: ', num_iterations
+    write(option%fid_out,201) '      iterations: ', &
+      constraint_coupler%num_iterations
     if (reaction%h_ion_id > 0) then
       write(option%fid_out,203) '              pH: ', &
         -log10(rt_auxvar%pri_molal(reaction%h_ion_id)* &
@@ -985,8 +972,8 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
     write(option%fid_out,204) '  ionic strength: ', ionic_strength
     write(option%fid_out,204) '  charge balance: ', charge_balance
     
-    write(option%fid_out,202) '        pressure: ', pressure
-    write(option%fid_out,203) '     temperature: ', temperature
+    write(option%fid_out,202) '        pressure: ', global_auxvar%pres(1)
+    write(option%fid_out,203) '     temperature: ', global_auxvar%temp(1)
     write(option%fid_out,90)
 
     102 format(/,'  species               molality    total       act coef  constraint')  
@@ -1338,12 +1325,8 @@ subroutine RPrintConstraint(constraint_coupler,pressure,temperature, &
       QK(igas),reaction%eqgas_logK(igas)
     enddo
   endif
-  
 
-  call RTAuxVarDestroy(rt_auxvar)
-  call GlobalAuxVarDestroy(global_auxvar)
-            
-end subroutine RPrintConstraint
+end subroutine ReactionPrintConstraint
 
 ! ************************************************************************** !
 !

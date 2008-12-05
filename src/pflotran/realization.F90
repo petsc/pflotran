@@ -69,7 +69,8 @@ private
             RealizationGetDataset, &
             RealizGetDatasetValueAtCell, &
             RealizationSetDataset, &
-            RealizationPrintCouplers
+            RealizationPrintCouplers, &
+            RealizationInitConstraints
             
 contains
   
@@ -101,7 +102,7 @@ function RealizationCreate()
   call RegionInitList(realization%regions)
 
   allocate(realization%flow_conditions)
-  call ConditionInitList(realization%flow_conditions)
+  call FlowConditionInitList(realization%flow_conditions)
   allocate(realization%transport_conditions)
   call TranConditionInitList(realization%transport_conditions)
   allocate(realization%transport_constraints)
@@ -465,7 +466,6 @@ subroutine RealizationProcessConditions(realization)
  
 end subroutine RealizationProcessConditions
 
-
 ! ************************************************************************** !
 !
 ! RealProcessTranConditions: Sets up auxilliary data associated with 
@@ -517,11 +517,11 @@ subroutine RealProcessTranConditions(realization)
   cur_constraint => realization%transport_constraints%first
   do
     if (.not.associated(cur_constraint)) exit
-    call ReactionInitializeConstraint(realization%reaction, &
-                                      cur_constraint%name, &
-                                      cur_constraint%aqueous_species, &
-                                      cur_constraint%minerals, &
-                                      realization%option)
+    call ReactionProcessConstraint(realization%reaction, &
+                                   cur_constraint%name, &
+                                   cur_constraint%aqueous_species, &
+                                   cur_constraint%minerals, &
+                                   realization%option)
     cur_constraint => cur_constraint%next
   enddo
   
@@ -579,6 +579,37 @@ subroutine RealProcessTranConditions(realization)
   enddo
 
 end subroutine RealProcessTranConditions
+
+! ************************************************************************** !
+!
+! RealizationInitConstraints: Initializes constraint concentrations
+! author: Glenn Hammond
+! date: 12/04/08
+!
+! ************************************************************************** !
+subroutine RealizationInitConstraints(realization)
+
+  implicit none
+
+  type(realization_type) :: realization
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      call PatchInitConstraints(cur_patch,realization%reaction, &
+                                realization%option)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo            
+ 
+end subroutine RealizationInitConstraints
 
 ! ************************************************************************** !
 !
@@ -665,9 +696,6 @@ subroutine RealizationPrintCoupler(coupler,reaction,option)
   type(tran_condition_type), pointer :: tran_condition
   type(region_type), pointer :: region
   type(tran_constraint_coupler_type), pointer :: constraint_coupler
-  PetscReal :: pressure
-  PetscReal :: temperature
-
    
 98 format(40('=+'))
 99 format(80('-'))
@@ -679,50 +707,38 @@ subroutine RealizationPrintCoupler(coupler,reaction,option)
 
   write(option%fid_out,*)
   write(option%fid_out,98)
+
+
+  select case(coupler%itype)
+    case(INITIAL_COUPLER_TYPE)
+      string = 'Initial Condition'
+    case(BOUNDARY_COUPLER_TYPE)
+      string = 'Boundary Condition'
+    case(SRC_SINK_COUPLER_TYPE)
+      string = 'Source Sink'
+  end select
+  write(option%fid_out,'(/,2x,a,/)') trim(string)
+
+  write(option%fid_out,99)
 101 format(5x,'     Flow Condition: ',2x,a)
   if (associated(flow_condition)) write(option%fid_out,101) trim(flow_condition%name)
 102 format(5x,'Transport Condition: ',2x,a)
   if (associated(tran_condition)) write(option%fid_out,102) trim(tran_condition%name)
 103 format(5x,'             Region: ',2x,a)
   if (associated(region)) write(option%fid_out,103) trim(region%name)
-  write(option%fid_out,98)
-  
-  pressure = option%reference_pressure
-  temperature = option%reference_temperature
+  write(option%fid_out,99)
   
   if (associated(flow_condition)) then
-!    write(option%fid_out,99)
-    write(option%fid_out,100) '  Flow Parameters:'
-    if (flow_condition%pressure%itype == DIRICHLET_BC .or. &
-        flow_condition%pressure%itype == HYDROSTATIC_BC .or. &
-        flow_condition%pressure%itype == SEEPAGE_BC) then
-110 format(a,f10.1)
-      write(option%fid_out,110) '    pressure = ', &
-        flow_condition%pressure%dataset%cur_value(1)
-      pressure = flow_condition%pressure%dataset%cur_value(1)
-    else if (flow_condition%pressure%itype == NEUMANN_BC) then
-      write(option%fid_out,110) '    flux = ', &
-        flow_condition%pressure%dataset%cur_value(1)
-    endif
-120 format(a,f5.1)
-    if (associated(flow_condition%temperature)) then
-      write(option%fid_out,120) '    temperature = ', &
-        flow_condition%temperature%dataset%cur_value(1)
-      temperature = flow_condition%temperature%dataset%cur_value(1)
-    endif
-130 format(a,es12.4)
-    if (associated(flow_condition%concentration)) then
-      write(option%fid_out,130) '    concentration = ', &
-        flow_condition%concentration%dataset%cur_value(1)
-    endif
+    call FlowConditionPrint(flow_condition,option)
   endif
   if (associated(tran_condition)) then
     constraint_coupler => tran_condition%cur_constraint_coupler
-    write(option%fid_out,99) 
-    write(option%fid_out,100) '  Transport Parameters:'
+    write(option%fid_out,'(/,2x,''Transport Condition: '',a)') &
+      trim(tran_condition%name)
     if (associated(reaction)) then
-      call RPrintConstraint(constraint_coupler,pressure,temperature, &
-                            reaction,option)
+      call ReactionPrintConstraint(constraint_coupler,reaction,option)
+      write(option%fid_out,'(/)')
+      write(option%fid_out,99)
     endif
   endif
  
@@ -753,7 +769,8 @@ subroutine RealizationInitAllCouplerAuxVars(realization)
     cur_patch => cur_level%patch_list%first
     do
       if (.not.associated(cur_patch)) exit
-      call PatchInitAllCouplerAuxVars(cur_patch,realization%option)
+      call PatchInitAllCouplerAuxVars(cur_patch,realization%reaction, &
+                                      realization%option)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -812,8 +829,8 @@ subroutine RealizationUpdate(realization)
   PetscTruth :: force_update_flag = PETSC_FALSE
   
   ! must update conditions first
-  call ConditionUpdate(realization%flow_conditions,realization%option, &
-                       realization%option%time)
+  call FlowConditionUpdate(realization%flow_conditions,realization%option, &
+                           realization%option%time)
   call TranConditionUpdate(realization%transport_conditions, &
                            realization%option, &
                            realization%option%time)
@@ -1047,7 +1064,7 @@ subroutine RealizAssignTransportInitCond(realization)
       
         if (.not.associated(initial_condition)) exit
 
-        if (.not.associated(initial_condition%tran_aux_real_var)) then
+!        if (.not.associated(initial_condition%tran_aux_real_var)) then
           do icell=1,initial_condition%region%num_cells
             local_id = initial_condition%region%cell_ids(icell)
             ghosted_id = grid%nL2G(local_id)
@@ -1082,40 +1099,7 @@ subroutine RealizAssignTransportInitCond(realization)
               enddo
             endif
           enddo
-        else
-          do iconn=1,initial_condition%connection_set%num_connections
-            local_id = initial_condition%connection_set%id_dn(iconn)
-            ghosted_id = grid%nL2G(local_id)
-            iend = local_id*option%ntrandof
-            ibegin = iend-option%ntrandof+1
-            if (associated(cur_patch%imat)) then
-              if (cur_patch%imat(ghosted_id) <= 0) then
-                xx_p(ibegin:iend) = 1.d-200
-                cycle
-              endif
-            endif
-            xx_p(ibegin:iend) = &
-              initial_condition%tran_aux_real_var(1:option%ntrandof,iconn) / &
-              global_aux_vars(ghosted_id)%den_kg(iphase)*1000.d0 ! convert molarity -> molality
-              ! minerals 
-            if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
-              do idof = 1, reaction%nkinmnrl
-                rt_aux_vars(ghosted_id)%mnrl_volfrac0(idof) = &
-                  initial_condition%tran_condition%cur_constraint_coupler% &
-                    minerals%basis_vol_frac(idof)
-                rt_aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
-                  initial_condition%tran_condition%cur_constraint_coupler% &
-                    minerals%basis_vol_frac(idof)
-                rt_aux_vars(ghosted_id)%mnrl_area0(idof) = &
-                  initial_condition%tran_condition%cur_constraint_coupler% &
-                    minerals%basis_area(idof)
-                rt_aux_vars(ghosted_id)%mnrl_area(idof) = &
-                  initial_condition%tran_condition%cur_constraint_coupler% &
-                    minerals%basis_area(idof)
-              enddo
-            endif
-          enddo
-        endif
+!        endif
         initial_condition => initial_condition%next
       enddo
       
@@ -1409,7 +1393,7 @@ subroutine RealizationDestroy(realization)
   call OptionDestroy(realization%option)
   call RegionDestroyList(realization%regions)
   
-  call ConditionDestroyList(realization%flow_conditions)
+  call FlowConditionDestroyList(realization%flow_conditions)
   call TranConditionDestroyList(realization%transport_conditions)
   call TranConstraintDestroyList(realization%transport_constraints)
 

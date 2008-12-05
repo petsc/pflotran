@@ -22,8 +22,17 @@ module Auxilliary_module
     type(immis_type), pointer :: Immis
   end type auxilliary_type
   
+#if 0
+  type, public :: auxilliary_coupler_type 
+    type(global_auxvar_type), pointer :: global_auxvar
+    type(reactive_transport_auxvar_type), pointer :: rt_auxvar
+  end type auxilliary_coupler_type
+#endif  
+  
   public :: AuxInit, &
             AuxDestroy
+!            AuxCouplerInit, &
+!            AuxCouplerDestroy
 
 contains
 
@@ -76,5 +85,47 @@ subroutine AuxDestroy(aux)
   nullify(aux%Immis)
   
 end subroutine AuxDestroy
+
+#if 0
+! ************************************************************************** !
+!
+! AuxCouplerInit: Nullifies pointers in auxilliary object for a coupler
+! author: Glenn Hammond
+! date: 04/09/08
+!
+! ************************************************************************** !
+subroutine AuxCouplerInit(aux)
+
+  implicit none
+  
+  type(auxilliary_coupler_type) :: aux
+  
+  nullify(aux%global_auxvar)
+  nullify(aux%rt_auxvar)
+  
+end subroutine AuxCouplerInit
+
+! ************************************************************************** !
+!
+! AuxCouplerDestroy: Deallocates any allocated pointers in auxilliary object
+!                    for a coupler
+! author: Glenn Hammond
+! date: 12/05/08
+!
+! ************************************************************************** !
+subroutine AuxCouplerDestroy(aux)
+
+  implicit none
+  
+  type(auxilliary_coupler_type) :: aux
+  
+  call GlobalAuxVarDestroy(aux%global_auxvar)
+  call RTAuxVarDestroy(aux%rt_auxvar)
+  
+  nullify(aux%global_auxvar)
+  nullify(aux%rt_auxvar)
+  
+end subroutine AuxCouplerDestroy
+#endif
 
 end module Auxilliary_module

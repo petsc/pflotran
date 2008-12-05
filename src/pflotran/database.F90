@@ -87,7 +87,7 @@ subroutine DatabaseRead(reaction,option)
   
   open(unit=dbase_id,file=reaction%database_filename,status='old',iostat=ierr)
   if (ierr /= 0) then
-    string = 'DATABASE File: ' // reaction%database_filename // ' not found.'
+    string = 'DATABASE File: ' // trim(reaction%database_filename) // ' not found.'
     call printErrMsg(option,string)  
   endif
 
