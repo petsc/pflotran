@@ -409,8 +409,19 @@ Then run PFLOTRAN with the command-line options:
 -flow\_mat\_type mpiaij 
 -flow\_ksp\_type preonly 
 -flow\_pc\_type lu 
--flow\_pc\_factor\_mat\_solver\_package mumps|
+-flow\_pc\_factor\_mat\_solver\_package mumps
 \end{verbatim}
+
+\subsection{Trilinos}
+
+The Trilinos package for multi-level solvers (ML) may be used with PETSc by configuring petsc-dev with the flag
+
+\begin{verbatim} 
+./config/configure.py ... --download-ml
+\end{verbatim}
+
+When running PFLOTRAN add \verb|-flow_pc_type ml| and/or \verb|-trans_pc_type ml|.
+ML options are given in the manual page for PCML (not tested).
 
 \subsection{Condition Number of the Preconditioned Jacobian Matrix}
 
