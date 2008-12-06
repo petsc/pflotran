@@ -1424,8 +1424,8 @@ subroutine TimestepperPrintInfo(stepper,fid,header,option)
     write(fid,*) 
     write(*,'(a)') trim(header)
     write(fid,'(a)') trim(header)
-    write(*,'("max steps:",i6)') stepper%nstepmax
-    write(fid,'("max steps:",i6)') stepper%nstepmax
+    write(*,'("max steps:",i8)') stepper%nstepmax
+    write(fid,'("max steps:",i8)') stepper%nstepmax
     write(*,'("max const steps:",i4)') stepper%ndtcmx
     write(fid,'("max const steps:",i4)') stepper%ndtcmx
     write(*,'("max cuts:",i4)') stepper%icut_max

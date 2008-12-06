@@ -3,6 +3,7 @@ module Coupler_module
   use Condition_module
   use Connection_module
   use Region_module
+  use Auxilliary_module
  
   implicit none
 
@@ -23,8 +24,6 @@ module Coupler_module
     PetscInt :: iface                                   ! for structured grids only
     PetscInt, pointer :: flow_aux_int_var(:,:)          ! auxilliary array for integer value
     PetscReal, pointer :: flow_aux_real_var(:,:)        ! auxilliary array for real values
-    PetscInt, pointer :: tran_aux_int_var(:,:)          ! auxilliary array for integer value
-    PetscReal, pointer :: tran_aux_real_var(:,:)        ! auxilliary array for real values
     type(flow_condition_type), pointer :: flow_condition     ! pointer to condition in condition array/list
     type(tran_condition_type), pointer :: tran_condition     ! pointer to condition in condition array/list
     type(region_type), pointer :: region                ! pointer to region in region array/list
@@ -84,8 +83,6 @@ function CouplerCreate1()
   coupler%iface = 0
   nullify(coupler%flow_aux_int_var)
   nullify(coupler%flow_aux_real_var)
-  nullify(coupler%tran_aux_int_var)
-  nullify(coupler%tran_aux_real_var)
   nullify(coupler%flow_condition)
   nullify(coupler%tran_condition)
   nullify(coupler%region)
@@ -163,8 +160,6 @@ function CouplerCreateFromCoupler(coupler)
   nullify(coupler%region)
   nullify(coupler%flow_aux_int_var)
   nullify(coupler%flow_aux_real_var)
-  nullify(coupler%tran_aux_int_var)
-  nullify(coupler%tran_aux_real_var)
   nullify(coupler%connection_set)
   nullify(coupler%next)
 
@@ -298,52 +293,6 @@ subroutine CouplerAddToList(new_coupler,list)
   list%last => new_coupler
   
 end subroutine CouplerAddToList
-
-#if 0
-! ************************************************************************** !
-!
-! CouplerListSplitFlowAndTran: Splits a list of mixed flow and transport
-!                              couplers into separate lists
-! author: Glenn Hammond
-! date: 02/19/08
-!
-! ************************************************************************** !
-subroutine CouplerListSplitFlowAndTran(flow_list,transport_list)
-
-  implicit none
-  
-  type(coupler_list_type), pointer :: flow_list 
-  type(coupler_list_type), pointer :: transport_list 
-  
-  type(coupler_type), pointer :: coupler, next_coupler
-  
-! Initially, all couplers are in flow lists.  Need to separate
-! them into flow and transport lists. 
-
-  ! boundary conditions
-  ! get pointer to first in list
-  coupler => flow_list%first
-  ! disassociate list object with list
-  nullify(flow_list%first)
-  ! destroy old list object and reallocate list object
-  call CouplerDestroyList(flow_list)
-  allocate(flow_list)
-  call CouplerInitList(flow_list)
-  ! divvy between lists
-  do
-    if (.not.associated(coupler)) exit
-    next_coupler => coupler%next
-    nullify(coupler%next)
-    if (coupler%flow_condition%iclass == FLOW_CLASS) then
-      call CouplerAddToList(coupler,flow_list)
-    else
-      call CouplerAddToList(coupler,transport_list)
-    endif
-    coupler => next_coupler
-  enddo 
-
-end subroutine CouplerListSplitFlowAndTran
-#endif
 
 ! ************************************************************************** !
 !
@@ -536,10 +485,12 @@ subroutine CouplerDestroy(coupler)
   nullify(coupler%tran_condition)     ! since these are simply pointers to 
   nullify(coupler%region)        ! conditoins in list, nullify
 
-  if (associated(coupler%flow_aux_int_var)) deallocate(coupler%flow_aux_int_var)
-  if (associated(coupler%flow_aux_real_var)) deallocate(coupler%flow_aux_real_var)
-  if (associated(coupler%tran_aux_int_var)) deallocate(coupler%tran_aux_int_var)
-  if (associated(coupler%tran_aux_real_var)) deallocate(coupler%tran_aux_real_var)
+  if (associated(coupler%flow_aux_int_var)) &
+    deallocate(coupler%flow_aux_int_var)
+  nullify(coupler%flow_aux_int_var)
+  if (associated(coupler%flow_aux_real_var)) &
+    deallocate(coupler%flow_aux_real_var)
+  nullify(coupler%flow_aux_real_var)
 
   call ConnectionDestroy(coupler%connection_set)
   nullify(coupler%connection_set)

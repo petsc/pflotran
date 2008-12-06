@@ -266,6 +266,19 @@ subroutine Init(simulation,filename)
     
     call SolverSetSNESOptions(flow_solver)
 
+    ! If we are using a structured grid, set the corresponding flow DA 
+    ! as the DA for the PCEXOTIC preconditioner, in case we choose to use it.
+    ! The PCExoticSetDA() call is ignored if the PCEXOTIC preconditioner is 
+    ! no used.  We need to put this call after SolverCreateSNES() so that 
+    ! KSPSetFromOptions() will already have been called.
+    ! I also note that this preconditioner is intended only for the flow, 
+    ! solver.  --RTM
+    if (realization%discretization%itype == STRUCTURED_GRID) then
+      write(*,*) 'Calling PCExoticSetDA'
+      call PCExoticSetDA(flow_solver%pc, &
+                         realization%discretization%dm_nflowdof, ierr);
+    endif
+
     ! setup a shell preconditioner and initialize in the case of AMR
     if(associated(discretization%amrgrid)) then
 !       flow_solver%pc_type = PCSHELL
@@ -388,9 +401,10 @@ subroutine Init(simulation,filename)
   ! link conditions with regions through couplers and generate connectivity
   call RealizationProcessCouplers(realization)
   call RealizationProcessConditions(realization)
-  call RealizationPrintCouplers(realization)
   call assignMaterialPropToRegions(realization)
   call RealizationInitAllCouplerAuxVars(realization)
+  call RealizationInitConstraints(realization)
+  call RealizationPrintCouplers(realization)
 
   ! should we still support this
   if (option%use_generalized_grid) then 
@@ -918,12 +932,12 @@ subroutine readInput(simulation,filename)
 
 !....................
       case ('FLOW_CONDITION')
-        flow_condition => ConditionCreate(option)
+        flow_condition => FlowConditionCreate(option)
         call fiReadWord(string,flow_condition%name,PETSC_TRUE,ierr)
         call fiErrorMsg(option%myrank,'FLOW_CONDITION','name',ierr) 
         call printMsg(option,flow_condition%name)
-        call ConditionRead(flow_condition,option,option%fid_in)
-        call ConditionAddToList(flow_condition,realization%flow_conditions)
+        call FlowConditionRead(flow_condition,option,option%fid_in)
+        call FlowConditionAddToList(flow_condition,realization%flow_conditions)
         nullify(flow_condition)
         
 !....................
