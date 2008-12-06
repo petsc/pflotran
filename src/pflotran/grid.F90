@@ -816,12 +816,12 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
     if (num_in_hash > num_ids_per_hash) then 
       allocate(temp_hash(2,0:num_ids_per_hash,0:grid%num_hash_bins))
       ! copy old hash
-      temp_hash(1:2,0:num_ids_per_hash,grid%num_hash_bins) = &
-                             hash(1:2,0:num_ids_per_hash,grid%num_hash_bins)
+      temp_hash(1:2,0:num_ids_per_hash,0:grid%num_hash_bins) = &
+                             hash(1:2,0:num_ids_per_hash,0:grid%num_hash_bins)
       deallocate(hash)
       ! recompute hash 20% larger
       num_ids_per_hash = int(dble(num_ids_per_hash)*1.2)
-      allocate(hash(1:2,0:num_ids_per_hash,grid%num_hash_bins))
+      allocate(hash(2,0:num_ids_per_hash,grid%num_hash_bins))
       ! copy old to new
       do hash_id = 1, grid%num_hash_bins
         do id = 1, temp_hash(1,0,hash_id)
