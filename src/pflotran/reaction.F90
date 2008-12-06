@@ -686,7 +686,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                        '.  Molality already below 1.e-20.'
               call printMsg(option,string)
               charge_balance_warning_flag = PETSC_TRUE
-!             rt_auxvar%pri_molal(icomp) = 1.e-3 ! reset guess
+              rt_auxvar%pri_molal(icomp) = 1.e-3 ! reset guess
             endif
           endif
           
@@ -853,8 +853,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          1000.d0
   
   if (option%myrank == 0) &
-    print *,'ReactionEquilibrateConstraint: ' // trim(constraint_name) // &
-            '  iterations: ',num_iterations
+    write(*,111) trim(constraint_name),num_iterations
+    111 format('Equilibrate Constraint: ',a30,i4)
 
 end subroutine ReactionEquilibrateConstraint
 
