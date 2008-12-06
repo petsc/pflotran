@@ -43,7 +43,6 @@
 		2366A7AC0D86058C0003BB1F /* option.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = option.F90; path = ../option.F90; sourceTree = SOURCE_ROOT; };
 		2366A7AD0D86058C0003BB1F /* output.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = output.F90; path = ../output.F90; sourceTree = SOURCE_ROOT; };
 		2366A7AE0D86058C0003BB1F /* patch.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = patch.F90; path = ../patch.F90; sourceTree = SOURCE_ROOT; };
-		2366A7AF0D86058C0003BB1F /* petscreldefs.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = petscreldefs.h; path = ../petscreldefs.h; sourceTree = SOURCE_ROOT; };
 		2366A7B00D86058C0003BB1F /* pflotran.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = pflotran.F90; path = ../pflotran.F90; sourceTree = SOURCE_ROOT; };
 		2366A7C30D86058C0003BB1F /* reaction.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = reaction.F90; path = ../reaction.F90; sourceTree = SOURCE_ROOT; };
 		2366A7C40D86058C0003BB1F /* reactive_transport_aux.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = reactive_transport_aux.F90; path = ../reactive_transport_aux.F90; sourceTree = SOURCE_ROOT; };
@@ -53,20 +52,13 @@
 		2366A7C80D86058C0003BB1F /* remove_ArrayF90.py */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text.script.python; name = remove_ArrayF90.py; path = ../remove_ArrayF90.py; sourceTree = SOURCE_ROOT; };
 		2366A7C90D86058C0003BB1F /* richards_aux.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = richards_aux.F90; path = ../richards_aux.F90; sourceTree = SOURCE_ROOT; };
 		2366A7CC0D86058C0003BB1F /* richards.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = richards.F90; path = ../richards.F90; sourceTree = SOURCE_ROOT; };
-		2366A7CD0D86058C0003BB1F /* rock_react.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = rock_react.F90; path = ../rock_react.F90; sourceTree = SOURCE_ROOT; };
 		2366A7CE0D86058C0003BB1F /* simulation.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = simulation.F90; path = ../simulation.F90; sourceTree = SOURCE_ROOT; };
 		2366A7CF0D86058C0003BB1F /* solver.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = solver.F90; path = ../solver.F90; sourceTree = SOURCE_ROOT; };
 		2366A7D00D86058C0003BB1F /* strata.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = strata.F90; path = ../strata.F90; sourceTree = SOURCE_ROOT; };
 		2366A7D10D86058C0003BB1F /* structured_grid.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = structured_grid.F90; path = ../structured_grid.F90; sourceTree = SOURCE_ROOT; };
 		2366A7D20D86058C0003BB1F /* timestepper.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = timestepper.F90; path = ../timestepper.F90; sourceTree = SOURCE_ROOT; };
 		2366A7D40D86058C0003BB1F /* transport.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = transport.F90; path = ../transport.F90; sourceTree = SOURCE_ROOT; };
-		2366A7D50D86058C0003BB1F /* trdynmem.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = trdynmem.F90; path = ../trdynmem.F90; sourceTree = SOURCE_ROOT; };
-		2366A7D60D86058C0003BB1F /* trgamdh.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = trgamdh.F90; path = ../trgamdh.F90; sourceTree = SOURCE_ROOT; };
-		2366A7D70D86058C0003BB1F /* trionexc.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = trionexc.F90; path = ../trionexc.F90; sourceTree = SOURCE_ROOT; };
-		2366A7D80D86058C0003BB1F /* trkinmin.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = trkinmin.F90; path = ../trkinmin.F90; sourceTree = SOURCE_ROOT; };
-		2366A7D90D86058C0003BB1F /* trstdyst.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = trstdyst.F90; path = ../trstdyst.F90; sourceTree = SOURCE_ROOT; };
 		2366A7DA0D86058C0003BB1F /* unstructured_grid.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = unstructured_grid.F90; path = ../unstructured_grid.F90; sourceTree = SOURCE_ROOT; };
-		2366A7DB0D86058C0003BB1F /* utilities.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = utilities.F90; path = ../utilities.F90; sourceTree = SOURCE_ROOT; };
 		2366A7DC0D86058C0003BB1F /* utility.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = utility.F90; path = ../utility.F90; sourceTree = SOURCE_ROOT; };
 		2366A7DD0D86058C0003BB1F /* water_eos.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = water_eos.F90; path = ../water_eos.F90; sourceTree = SOURCE_ROOT; };
 		2366A7DE0D86058C0003BB1F /* waypoint.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = waypoint.F90; path = ../waypoint.F90; sourceTree = SOURCE_ROOT; };
@@ -135,7 +127,6 @@
 				2366A7AD0D86058C0003BB1F /* output.F90 */,
 				2366A7AE0D86058C0003BB1F /* patch.F90 */,
 				899DEDE60DE337870060475D /* pckr_mod.F90 */,
-				2366A7AF0D86058C0003BB1F /* petscreldefs.h */,
 				2366A7B00D86058C0003BB1F /* pflotran.F90 */,
 				2366A7C30D86058C0003BB1F /* reaction.F90 */,
 				231D7CA50EA8DAEE00EA586F /* reaction_aux.F90 */,
@@ -146,7 +137,6 @@
 				2366A7C80D86058C0003BB1F /* remove_ArrayF90.py */,
 				2366A7CC0D86058C0003BB1F /* richards.F90 */,
 				2366A7C90D86058C0003BB1F /* richards_aux.F90 */,
-				2366A7CD0D86058C0003BB1F /* rock_react.F90 */,
 				2366A7CE0D86058C0003BB1F /* simulation.F90 */,
 				2366A7CF0D86058C0003BB1F /* solver.F90 */,
 				899DEDE90DE337B20060475D /* spline.F90 */,
@@ -157,13 +147,7 @@
 				23A1261D0E9E89BF00C77837 /* thc_aux.F90 */,
 				2366A7D20D86058C0003BB1F /* timestepper.F90 */,
 				2366A7D40D86058C0003BB1F /* transport.F90 */,
-				2366A7D50D86058C0003BB1F /* trdynmem.F90 */,
-				2366A7D60D86058C0003BB1F /* trgamdh.F90 */,
-				2366A7D70D86058C0003BB1F /* trionexc.F90 */,
-				2366A7D80D86058C0003BB1F /* trkinmin.F90 */,
-				2366A7D90D86058C0003BB1F /* trstdyst.F90 */,
 				2366A7DA0D86058C0003BB1F /* unstructured_grid.F90 */,
-				2366A7DB0D86058C0003BB1F /* utilities.F90 */,
 				2366A7DC0D86058C0003BB1F /* utility.F90 */,
 				2366A7DD0D86058C0003BB1F /* water_eos.F90 */,
 				2366A7DE0D86058C0003BB1F /* waypoint.F90 */,
