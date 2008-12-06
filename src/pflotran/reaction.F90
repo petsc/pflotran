@@ -681,11 +681,12 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                  reaction%primary_spec_Z(icomp) < 0.d0)) then
               string = 'Charge balance species ' // &
                        trim(reaction%primary_species_names(icomp)) // &
-                       ' may not satify constraint ' // &
+                       ' may not satisfy constraint ' // &
                        trim(constraint_name) // &
                        '.  Molality already below 1.e-20.'
               call printMsg(option,string)
               charge_balance_warning_flag = PETSC_TRUE
+!             rt_auxvar%pri_molal(icomp) = 1.e-3 ! reset guess
             endif
           endif
           
