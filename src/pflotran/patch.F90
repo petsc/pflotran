@@ -947,7 +947,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
       
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY, &
          SECONDARY_MOLARITY,TOTAL_MOLALITY,TOTAL_MOLARITY, &
-         MINERAL_RATE,MINERAL_VOLUME_FRACTION)
+         MINERAL_RATE,MINERAL_VOLUME_FRACTION,SURFACE_CMPLX)
          
       select case(ivar)
         case(PH)
