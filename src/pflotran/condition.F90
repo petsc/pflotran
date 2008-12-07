@@ -24,6 +24,7 @@ module Condition_module
     PetscReal, pointer :: cur_value(:)
     PetscInt :: cur_time_index
     PetscInt :: max_time_index
+    PetscReal :: time_shift
   end type flow_condition_dataset_type
   
   type, public :: flow_condition_type
@@ -479,7 +480,8 @@ subroutine FlowConditionDatasetVerify(option, condition_name, sub_condition_name
       ! copy default
       array_size = size(default_dataset%values,2)
       allocate(dataset%values(1:dataset%rank,array_size))
-      dataset%values(1:dataset%rank,1:array_size) = default_dataset%values(1:dataset%rank,1:array_size)
+      dataset%values(1:dataset%rank,1:array_size) = &
+        default_dataset%values(1:dataset%rank,1:array_size)
     endif
   endif
   dataset%max_time_index = size(dataset%times,1) 
@@ -502,6 +504,8 @@ subroutine FlowConditionDatasetVerify(option, condition_name, sub_condition_name
   allocate(dataset%cur_value(dataset%rank))
   dataset%cur_value(1:dataset%rank) = dataset%values(1:dataset%rank,1)
 
+  dataset%time_shift = dataset%times(dataset%max_time_index)
+! print *,'condition: ',dataset%max_time_index,dataset%time_shift
 
 end subroutine FlowConditionDatasetVerify
 
@@ -1607,7 +1611,11 @@ subroutine FlowSubConditionUpdateDataset(option,time,dataset)
       
     do cur_time_index = 1, dataset%max_time_index
       dataset%times(cur_time_index) = dataset%times(cur_time_index) + &     
-                               dataset%times(dataset%max_time_index)
+                               dataset%time_shift
+!     print *,'condition: ',cur_time_index,dataset%max_time_index, &
+!       dataset%times(cur_time_index), &     
+!       dataset%times(dataset%max_time_index), dataset%time_shift, &
+!       dataset%times(cur_time_index) + dataset%time_shift
     enddo
     dataset%cur_time_index = 1
   endif
