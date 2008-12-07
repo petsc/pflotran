@@ -373,7 +373,7 @@ subroutine CouplerComputeConnections(grid,option,coupler)
       connection_itype = SRC_SINK_CONNECTION_TYPE
     case(BOUNDARY_COUPLER_TYPE)
       if (option%myrank == 0) &
-        print *, 'Need a check to ensure that boundary conditions connect to exterior boundary'
+        write(*,'('' Need a check to ensure that boundary conditions connect to exterior boundary'',/)')
       connection_itype = BOUNDARY_CONNECTION_TYPE
   end select
   

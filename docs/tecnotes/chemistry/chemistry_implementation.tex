@@ -1829,6 +1829,27 @@ The residual function has the form
 R_{jn}\eq\frac{V_n}{\Delta t}\left[\bigg(\varphi_n\sum_\a s_{\a n} \Psi_{jn}^\a\bigg)_{t+\Delta t} - \bigg(\varphi_n\sum_\a s_{\a n} \Psi_{jn}^\a\bigg)_{t}\right] + \sum_{\a n'}\Omega_{jnn'}^\a A_{nn'} -\R_{jn} V_n.
 \EN
 
+\section{Stress-Strain Relations}
+
+The functional relation of porosity to pore compressibility $c_{rp}$ and expansibility $c_{rT}$ is assumed to have the form
+\EQ
+\varphi \eq \varphi_{0} \big[1+c_{rp} (p-p_{0})-c_{rT} (T-T_{0})\big],
+\EN
+for reference state $\varphi_0$, $p_0$ and $T_0$. It follows that
+\begin{align}\label{dpor}
+\delta \phi &= \varphi_{0} c_{rp} \delta p - \varphi_{0} c_{rT} \delta T,\nonumber\\
+&= \varphi_p \delta p + \varphi_T \delta T,
+\end{align}
+where $\varphi_p$ and $\varphi_T$ are derivatives with respect to pressure and temperature, respectively, and compressivity and thermal expansivity are defined by
+\EQ
+c_{rp} \eq \frac{1}{\varphi} \frac{\p \varphi}{\p p},
+\EN
+and
+\EQ
+c_{rT} \eq -\frac{1}{\varphi} \frac{\p \varphi}{\p T}.
+\EN
+As defined, both quantities $c_{rp}$ and $c_{rT}$ are positive for normal materials.
+
 \section{References}
 
 \end{document}

@@ -854,7 +854,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   
   if (option%myrank == 0) &
     write(*,111) trim(constraint_name),num_iterations
-    111 format('Equilibrate Constraint: ',a30,i4)
+    111 format(' Equilibrate Constraint: ',a30,i4)
 
 end subroutine ReactionEquilibrateConstraint
 
