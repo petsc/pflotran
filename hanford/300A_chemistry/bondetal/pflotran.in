@@ -1,4 +1,4 @@
-:Description: 1D problem for testing geochemistry
+:Table 1, AGW #4 Bond et al. 2007
  
 CHEMISTRY
 PRIMARY_SPECIES
@@ -87,7 +87,9 @@ Calcite 1.e-30
 SORPTION
 SURFACE_COMPLEXATION_RXN
 MINERAL Calcite
-SITE >SOH 3.8418e0
+:SITE >SOH 121.112 ! 20 m^2/g
+:SITE >SOH 164.851 ! 27 m^2/g
+SITE >SOH 152.64 ! 25 m^2/g
 COMPLEXES
 >SOUO2OH
 >SOUO2CO3
@@ -95,8 +97,8 @@ COMPLEXES
 /
 /
 noskip
-:DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
-DATABASE /Users/lichtner/flotran/database/hanford.dat
+DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
+:DATABASE /Users/lichtner/flotran/database/hanford.dat
 :DATABASE ../../../database/hanford.dat
 LOG_FORMULATION
 ACTIVITY_COEFFICIENTS
@@ -173,7 +175,7 @@ THERMAL_PROPERTIES
 :
 MATERIALS
 :name   id icap ithm por  tau   permx     permy     permz     permpwr
-Soil1   1  1    1    0.2  1.0   1.d-12    1.d-12    1.d-13    1.d0
+Soil1   1  1    1    0.4  1.0   1.d-12    1.d-12    1.d-13    1.d0
 /
 :
 IMOD 1
@@ -223,7 +225,8 @@ K+       1.e-4       T
 Na+      8.e-3       T
 :HCO3-    -3.5        G  CO2(g)
 :HCO3-    4.e-3       T
-CO2(aq)  4.e-3       T
+:CO2(aq)  4.e-3       T  CO2(g)
+CO2(aq)  -3.5        G  CO2(g)
 NO3-     3.e-3       T
 SO4--    1.2e-3      T
 O2(aq)   0.2         G  O2(g)
@@ -283,4 +286,3 @@ STRATA
 MATERIAL Soil1
 REGION all
 /
-
