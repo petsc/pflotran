@@ -578,14 +578,11 @@ where the surface site concentration $\omega_\a$ is given by
 \EQ
 \omega_\a \eq \frac{N_\a}{V} \eq \frac{N_\a}{A_m}\frac{A_m}{M_m}\frac{M_m}{V_m}\frac{V_m}{V} \eq \eta_m^\a \A_m \rho_m \varphi_m.
 \EN
-
-\noindent
-The reaction rate:
+Based on bulk rock properties the site concentration is expressed as
 \EQ
-I_i^\a = k_i^{\a f} (S_X^\a)^{\nu_i^\a} \prod_j a_j^{\nu_{ji}^\a} - k_i^{\a b} S_i^\a
+\omega_\a \eq \frac{N_\a}{V} \eq \frac{N_\a}{A_s}\frac{A_s}{M_s}\frac{M_s}{V_s}\frac{V_s}{V} \eq \eta_s^\a \A_s \rho_s (1-\varphi).
 \EN
 
-\noindent
 The mass conservation equations in the presence of surface complexation reactions have the form
 \BA
 \frac{\p}{\p t} \varphi \Psi_j + \bnabla\cdot\bOmega_j &= -\sum_{i\a} \nu_{ji}^\a I_i^\a -\sum_m\nu_{jm}I_m,\\
@@ -596,6 +593,12 @@ Eliminating the reaction rates $I_i^\a$ leads to the equations
 \EQ\label{transsorp}
 \frac{\p}{\p t} \left\{\varphi \Psi_j +\sum_{i\a} \nu_{ji}^\a S_i^\a \right\} + \bnabla\cdot\bOmega_j \eq -\sum_m\nu_{jm}I_m.
 \EN
+
+The sorption reaction rate $I_i^\a$ expressed as an elementary reaction has the form
+\EQ
+I_i^\a = k_i^{\a f} (S_X^\a)^{\nu_i^\a} \prod_j a_j^{\nu_{ji}^\a} - k_i^{\a b} S_i^\a,
+\EN
+with forward and backward rate constants $k_i^{\a f}$ and $k_i^{\a b}$, respectively.
 
 \subsubsection{Site Conservation}
 
