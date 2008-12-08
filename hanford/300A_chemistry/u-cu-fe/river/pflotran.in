@@ -225,11 +225,11 @@ Paragonite
 Gibbsite
 Rutherfordine
 Schoepite
-:(UO2)3(PO4)2
-:(UO2)3(PO4)2.4H2O
 UO2(OH)2(beta)
 UO2CO3
-:UO2(PO3)2
+UO2(PO3)2
+(UO2)3(PO4)2
+(UO2)3(PO4)2.4H2O
 CaUO4
  Boltwoodite
  Boltwoodite-Na
@@ -245,6 +245,12 @@ CaUO4
  Weeksite-Na_PNNL
  UPO5
  UO2SO4
+ UOF4
+ UO3.2H2O
+ UO3.0.9H2O(alpha)
+ UO3(gamma)
+ UO3(beta)
+ UO3(alpha)
  Bassetite
  Saleeite
  Schwertmannite
@@ -272,13 +278,15 @@ CaUO4
 MINERAL_KINETICS
 Quartz 1.e-22 
 Calcite 1.e-12 
-Metatorbernite 1.e-18 
+Metatorbernite 5.e-18 
 /
 :skip
 SORPTION
 SURFACE_COMPLEXATION_RXN
 MINERAL Calcite
-SITE >SOH 3.8418e0
+:SITE >SOH 121.112 ! 20 m^2/g
+:SITE >SOH 164.851 ! 27 m^2/g
+SITE >SOH 152.64 ! 25 m^2/g
 COMPLEXES
 >SOUO2OH
 >SOUO2CO3
@@ -286,8 +294,8 @@ COMPLEXES
 /
 /
 noskip
-DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
-:DATABASE /Users/lichtner/flotran/database/hanford.dat
+:DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
+DATABASE /Users/lichtner/flotran/database/hanford.dat
 :DATABASE ../../../database/hanford.dat
 LOG_FORMULATION
 ACTIVITY_COEFFICIENTS
@@ -296,7 +304,7 @@ ACTIVITY_COEFFICIENTS
 
 :MOLAL
 
-IMOD 10
+IMOD 250
 
 REFERENCE_POROSITY 0.5d0
 
@@ -304,8 +312,8 @@ REFERENCE_POROSITY 0.5d0
 :RESTART pflotran.chk1
 
 TIMESTEPPER
-MAX_STEPS 1
-:MAX_STEPS 1000000
+:MAX_STEPS -1
+MAX_STEPS 1000000
 /
 
 :NUMERICAL_JACOBIAN
@@ -386,12 +394,21 @@ MATERIALS
 Hanford  1  1    1   0.5  0.5   5.d-9    5.d-9    5.d-9    1.d0
 /
 :
-:TIME d every 10
-TIME h
-100. 500. 1000. 2500. 5000. 10000. 15000. 20000. 30000. 50000.
+:skip
+TIME h every 500
+87600.
 :
 DTST 1.d-3
 1000. 1.
+:noskip
+
+skip
+Time s every 900000
+3.1536e6
+:
+DTST 1.
+1.e10 3600.
+noskip
 
 :============================== regions ================================
 
@@ -414,6 +431,18 @@ REGION East
 BLOCK 100 100 1 1 1 1
 FACE east
 /
+
+skip
+REGION breakthrough
+COORDINATES 
+500. 0. 0.
+/
+/
+BREAKTHROUGH 
+REGION breakthrough
+:VELOCITY
+/
+noskip
 
 :========================= flow conditions ==============================
 
