@@ -13,6 +13,7 @@ module Structured_Grid_module
     PetscInt :: nx, ny, nz    ! Global domain dimensions of the grid.
     PetscInt :: nxy, nmax     ! nx * ny, nx * ny * nz
     PetscInt :: npx, npy, npz ! Processor partition in each direction.
+    PetscInt :: npx_final, npy_final, npz_final ! actual decomposition
     PetscInt :: nlx, nly, nlz ! Local grid dimension w/o ghost nodes.
     PetscInt :: ngx, ngy, ngz ! Local grid dimension with ghost nodes.
     PetscInt :: nxs, nys, nzs 
@@ -94,6 +95,10 @@ function StructuredGridCreate()
   structured_grid%npy = PETSC_DECIDE
   structured_grid%npz = PETSC_DECIDE
   
+  structured_grid%npx = 0
+  structured_grid%npy = 0
+  structured_grid%npz = 0
+
   structured_grid%nx = 0
   structured_grid%ny = 0
   structured_grid%nz = 0
@@ -200,6 +205,12 @@ subroutine StructuredGridCreateDA(structured_grid,da,ndof,stencil_width, &
                   ndof,stencil_width, &
                   PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                   da,ierr)
+
+  call DAGetInfo(da,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                 PETSC_NULL_INTEGER,structured_grid%npx_final, &
+                 structured_grid%npy_final,structured_grid%npz_final, &
+                 PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                 PETSC_NULL_INTEGER,ierr)
 
 end subroutine StructuredGridCreateDA
 

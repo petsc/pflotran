@@ -172,9 +172,12 @@ subroutine Init(simulation,filename)
     write(*,'(/,"++++++++++++++++++++++++++++++++++++++++++++++++++++&
       &++++++++")')
     if (realization%discretization%itype == STRUCTURED_GRID) then
-      write(*,'(" number of processors = ",i5,", npx,y,z= ",3i5)') &
+      write(*,'(" Requested processors and decomposition = ",i5,", npx,y,z= ",3i5)') &
         option%commsize,grid%structured_grid%npx,grid%structured_grid%npy, &
         grid%structured_grid%npz
+      write(*,'(" Actual decomposition: npx,y,z= ",3i5)') &
+        grid%structured_grid%npx_final,grid%structured_grid%npy_final, &
+        grid%structured_grid%npz_final
     endif
   endif
 
