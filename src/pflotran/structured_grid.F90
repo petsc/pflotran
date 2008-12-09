@@ -95,9 +95,9 @@ function StructuredGridCreate()
   structured_grid%npy = PETSC_DECIDE
   structured_grid%npz = PETSC_DECIDE
   
-  structured_grid%npx = 0
-  structured_grid%npy = 0
-  structured_grid%npz = 0
+  structured_grid%npx_final = 0
+  structured_grid%npy_final = 0
+  structured_grid%npz_final = 0
 
   structured_grid%nx = 0
   structured_grid%ny = 0
