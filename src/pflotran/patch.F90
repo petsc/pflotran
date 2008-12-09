@@ -536,21 +536,22 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
       
       endif
       
-      ! TRANSPORT   
-      if (associated(coupler%tran_condition)) then
-        cur_constraint_coupler => &
-          coupler%tran_condition%constraint_coupler_list
-        do
-          if (.not.associated(cur_constraint_coupler)) exit
-          allocate(cur_constraint_coupler%global_auxvar)
-          allocate(cur_constraint_coupler%rt_auxvar)
-          call GlobalAuxVarInit(cur_constraint_coupler%global_auxvar,option)
-          call RTAuxVarInit(cur_constraint_coupler%rt_auxvar,reaction,option)
-          cur_constraint_coupler => cur_constraint_coupler%next
-        enddo
-      endif
-      
     endif
+
+    ! TRANSPORT   
+    if (associated(coupler%tran_condition)) then
+      cur_constraint_coupler => &
+        coupler%tran_condition%constraint_coupler_list
+      do
+        if (.not.associated(cur_constraint_coupler)) exit
+        allocate(cur_constraint_coupler%global_auxvar)
+        allocate(cur_constraint_coupler%rt_auxvar)
+        call GlobalAuxVarInit(cur_constraint_coupler%global_auxvar,option)
+        call RTAuxVarInit(cur_constraint_coupler%rt_auxvar,reaction,option)
+        cur_constraint_coupler => cur_constraint_coupler%next
+      enddo
+    endif
+      
     coupler => coupler%next
   enddo
   
