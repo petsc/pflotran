@@ -1973,6 +1973,7 @@ subroutine THCJacobian(snes,xx,A,B,flag,realization,ierr)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
+  type(option_type),  pointer :: option
   PetscReal :: norm
   
   flag = SAME_NONZERO_PATTERN
@@ -2014,12 +2015,16 @@ subroutine THCJacobian(snes,xx,A,B,flag,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   if (realization%debug%norm_Jacobian) then
+    option => realization%option
     call MatNorm(J,NORM_1,norm,ierr)
-    if (realization%option%myrank == 0) print *, '1 norm:', norm
+    write(option%io_buffer,'("1 norm: ",es11.4)') norm
+    call printMsg(option)
     call MatNorm(J,NORM_FROBENIUS,norm,ierr)
-    if (realization%option%myrank == 0) print *, '2 norm:', norm
+    write(option%io_buffer,'("2 norm: ",es11.4)') norm
+    call printMsg(option)
     call MatNorm(J,NORM_INFINITY,norm,ierr)
-    if (realization%option%myrank == 0) print *, 'inf norm:', norm
+    write(option%io_buffer,'("inf norm: ",es11.4)') norm
+    call printMsg(option)
   endif
   
 end subroutine THCJacobian

@@ -134,9 +134,10 @@ subroutine BreakthroughRead(breakthrough,fid,option)
       case('VELOCITY')
         breakthrough%print_velocities = PETSC_TRUE
       case default
-        string = 'Keyword (' // trim(word) // ') not recognized under' // &
-                 ' BREAKTHROUGH.'
-        call printErrMsg(option,string)
+        option%io_buffer = 'Keyword (' // trim(word) // &
+                           ') not recognized under' // &
+                           ' BREAKTHROUGH.'
+        call printErrMsg(option)
     end select 
   
   enddo  

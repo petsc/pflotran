@@ -264,11 +264,13 @@ subroutine Checkpoint(realization, &
   ! We are finished, so clean up.
   call PetscViewerDestroy(viewer, ierr)
 
-  if (option%myrank == 0) &
-    write(*, '(" --> Dump checkpoint file: ", a16)') trim(fname)
+  write(option%io_buffer,'(" --> Dump checkpoint file: ", a16)') trim(fname)
+  call printMsg(option)
+
   call PetscGetTime(tend,ierr) 
-  if (realization%option%myrank == 0) &
-    print *, '      Seconds to write to checkpoint file: ', (tend-tstart)
+  write(option%io_buffer, &
+        '("      Seconds to write to checkpoint file: ", f6.4)') tend-tstart
+  call printMsg(option)
 
   call PetscLogEventEnd(logging%event_checkpoint, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -328,9 +330,9 @@ subroutine Restart(realization, &
   discretization => realization%discretization
   output_option => realization%output_option
   
-  call PetscGetTime(tstart,ierr)   
-  if (option%myrank == 0) &
-    print *,'--> Open checkpoint file: ', trim(option%restart_file)
+  call PetscGetTime(tstart,ierr)
+  option%io_buffer = '--> Open checkpoint file: ' // trim(option%restart_file)
+  call printMsg(option)
   call PetscViewerBinaryOpen(option%comm,option%restart_file, &
                              FILE_MODE_READ,viewer,ierr)
  
@@ -409,8 +411,10 @@ subroutine Restart(realization, &
   ! We are finished, so clean up.
   call PetscViewerDestroy(viewer, ierr)
   call PetscGetTime(tend,ierr) 
-  if (realization%option%myrank == 0) &
-    print *, '      Seconds to read checkpoint file: ', (tend-tstart)
+
+  write(option%io_buffer, &
+        '("      Seconds to read to checkpoint file: ", f6.4)') tend-tstart
+  call printMsg(option)
 
   call PetscLogEventEnd(logging%event_restart, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &

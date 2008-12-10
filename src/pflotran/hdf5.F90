@@ -99,13 +99,11 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
   ! should be a rank=1 data space
   call h5sget_simple_extent_npoints_f(file_space_id,num_cells_in_file,hdf5_err)
   if (dataset_size > 0 .and. num_cells_in_file /= dataset_size) then
-    if (option%myrank == 0) then
-      print *, 'ERROR: ', trim(dataset_name), ' data space dimension (', &
-               num_cells_in_file, ') does not match the dimensions of the ', &
-               'domain (', dataset_size, ').'
-      call PetscFinalize(ierr)
-      stop
-    endif
+    write(option%io_buffer, &
+          '(a," data space dimension (",i9,") does not match the dimension",&
+           &" of the domain (",i9,").")') trim(dataset_name), &
+           num_cells_in_file, dataset_size
+    call printErrMsg(option)    
   endif
   
   allocate(cell_ids(read_block_size))
@@ -145,7 +143,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
     call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset,length, &
                                hdf5_err,stride,stride) 
 #ifdef HDF5_BROADCAST
-    if (option%myrank == 0) then                           
+    if (option%myrank == option%io_rank) then                           
 #endif
       call PetscLogEventBegin(logging%event_h5dread_f, &
                               PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -158,7 +156,8 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
 #ifdef HDF5_BROADCAST
     endif
     if (option%commsize > 1) &
-      call mpi_bcast(cell_ids,dims(1),MPI_INTEGER,ZERO_INTEGER,option%comm,ierr)
+      call mpi_bcast(cell_ids,dims(1),MPI_INTEGER,option%io_rank, &
+                     option%comm,ierr)
 #endif     
   call PetscLogEventBegin(logging%event_hash_map, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -201,11 +200,11 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
   call h5dclose_f(data_set_id,hdf5_err)
 
   if (num_indices > 0 .and. index_count /= num_indices) then
-    if (option%myrank == 0) &
-      print *, 'ERROR: Number of indices read (', index_count, ') does not ', &
-               'match the number of indices requested (', num_indices, ').'
-      call PetscFinalize(ierr)
-      stop
+    write(option%io_buffer, &
+          '("Number of indices read (",i9,") does not match the number",&
+           &" of indices requested (",i9,").")') &
+           index_count, num_indices
+    call printErrMsg(option)        
   endif
   
   if (index_count < indices_array_size .and. num_indices <= 0) then
@@ -276,13 +275,11 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   call h5sget_simple_extent_npoints_f(file_space_id,num_reals_in_file,hdf5_err)
 #if 0
   if (dataset_size > 0 .and. num_reals_in_file /= dataset_size) then
-    if (option%myrank == 0) then
-      print *, 'ERROR: ', trim(dataset_name), ' data space dimension (', &
-               num_reals_in_file, ') does not match the dimensions of the ', &
-               'domain (', grid%nmax, ').'
-      call PetscFinalize(ierr)
-      stop
-    endif
+    write(option%io_buffer, &
+          '(a," data space dimension (",i9,") does not match the dimensions",&
+           &" of the domain (",i9,").")') trim(dataset_name), &
+           num_reals_in_file, grid%nmax
+    call printErrMsg(option)   
   endif
 #endif
   allocate(real_buffer(read_block_size))
@@ -320,7 +317,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
         call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                                    length,hdf5_err,stride,stride) 
 #ifdef HDF5_BROADCAST
-        if (option%myrank == 0) then                           
+        if (option%myrank == option%io_rank) then                           
 #endif
           call PetscLogEventBegin(logging%event_h5dread_f, &
                                   PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -333,8 +330,8 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
 #ifdef HDF5_BROADCAST
         endif
         if (option%commsize > 1) &
-          call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION,ZERO_INTEGER, &
-                         option%comm,ierr)
+          call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION, &
+                         option%io_rank,option%comm,ierr)
 #endif
         prev_real_count = real_count
         real_count = real_count + length(1)                  
@@ -358,7 +355,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
     length(1) = dims(1)
     call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
-    if (option%myrank == 0) then 
+    if (option%myrank == io_rank) then 
       call PetscLogEventBegin(logging%event_h5dread_f, &
                               PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                               PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
@@ -369,8 +366,8 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
     endif
     if (option%commsize > 1) &
-      call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION,ZERO_INTEGER, &
-                     option%comm,ierr)
+      call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION, &
+                     option%io_rank,option%comm,ierr)
     real_count = real_count + length(1)                  
   enddo
 #endif
@@ -440,13 +437,11 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
                                       hdf5_err)
 #if 0
   if (dataset_size > 0 .and. num_integers_in_file /= dataset_size) then
-    if (option%myrank == 0) then
-      print *, 'ERROR: ', trim(dataset_name), ' data space dimension (', &
-               num_integers_in_file, ') does not match the dimensions of ', &
-               'the domain (', dataset_size, ').'
-      call PetscFinalize(ierr)
-      stop
-    endif
+    write(option%io_buffer, &
+          '(a," data space dimension (",i9,") does not match the dimensions",&
+           &" of the domain (",i9,").")') trim(dataset_name), &
+           num_integers_in_file,dataset_size
+    call printErrMsg(option)   
   endif
 #endif
   
@@ -486,7 +481,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
         call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                                    length,hdf5_err,stride,stride) 
 #ifdef HDF5_BROADCAST
-        if (option%myrank == 0) then                           
+        if (option%myrank == option%io_rank) then                           
 #endif
           call PetscLogEventBegin(logging%event_h5dread_f, &
                                   PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -499,7 +494,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
 #ifdef HDF5_BROADCAST
         endif
         if (option%commsize > 1) &
-          call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,ZERO_INTEGER, &
+          call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,option%io_rank, &
                          option%comm,ierr)
 #endif
         prev_integer_count = integer_count
@@ -524,7 +519,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
     length(1) = dims(1)
     call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
-    if (option%myrank == 0) then 
+    if (option%myrank == option%io_rank) then 
       call PetscLogEventBegin(logging%event_h5dread_f, &
                               PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                               PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
@@ -535,7 +530,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
     endif
     if (option%commsize > 1) &
-      call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,ZERO_INTEGER, &
+      call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,option%io_rank, &
                      option%comm,ierr)
     integer_count = integer_count + length(1)                  
   enddo
@@ -605,13 +600,11 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
                                       hdf5_err)
 #if 0
   if (dataset_size > 0 .and. num_integers_in_file /= dataset_size) then
-    if (option%myrank == 0) then
-      print *, 'ERROR: ', trim(dataset_name), ' data space dimension (', &
-               num_integers_in_file, ') does not match the dimensions of ', &
-               'the domain (', dataset_size, ').'
-      call PetscFinalize(ierr)
-      stop
-    endif
+    write(option%io_buffer, &
+          '(a," data space dimension (",i9,") does not match the dimensions",&
+           &" of the domain (",i9,").")') trim(dataset_name), &
+           num_integers_in_file,dataset_size
+    call printErrMsg(option)   
   endif
 #endif
   
@@ -651,7 +644,7 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
         call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                                    length,hdf5_err,stride,stride) 
 #ifdef HDF5_BROADCAST
-        if (option%myrank == 0) then                           
+        if (option%myrank == option%io_rank) then                           
 #endif
           call PetscLogEventBegin(logging%event_h5dread_f, &
                                   PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -664,7 +657,7 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
 #ifdef HDF5_BROADCAST
         endif
         if (option%commsize > 1) &
-          call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,ZERO_INTEGER, &
+          call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,option%io_rank, &
                          option%comm,ierr)
 #endif
         prev_integer_count = integer_count
@@ -689,7 +682,7 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
     length(1) = dims(1)
     call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
-    if (option%myrank == 0) then   
+    if (option%myrank == option%io_rank) then   
       call PetscLogEventBegin(logging%event_h5dread_f, &
                               PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                               PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
@@ -701,7 +694,7 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
     endif
     if (option%commsize > 1) &
-      call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,ZERO_INTEGER, &
+      call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,option%io_rank, &
                      option%comm,ierr)
     integer_count = integer_count + length(1)                  
   enddo
@@ -999,7 +992,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   call mpi_exscan(grid%nlmax,istart,ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%comm,ierr)
   call mpi_scan(grid%nlmax,iend,ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%comm,ierr)
   if (iend /= istart + grid%nlmax) then
-    call printErrMsg(option,'ERROR: iend /= istart+grid%nlmax')
+    call printErrMsg(option,'iend /= istart+grid%nlmax')
   endif
   
   call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
@@ -1007,13 +1000,11 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   ! should be a rank=1 data space
   call h5sget_simple_extent_npoints_f(file_space_id,num_data_in_file,hdf5_err)
   if (dataset_size > 0 .and. num_data_in_file /= dataset_size) then
-    if (option%myrank == 0) then
-      print *, 'ERROR: ', trim(dataset_name), ' data space dimension (', &
-               num_data_in_file, ') does not match the dimensions of the ', &
-               'domain (', dataset_size, ').'
-      call PetscFinalize(ierr)
-      stop
-    endif
+    write(option%io_buffer, &
+          '(a," data space dimension (",i9,") does not match the dimensions",&
+           &" of the domain (",i9,").")') trim(dataset_name), &
+           num_data_in_file,dataset_size
+    call printErrMsg(option)   
   else
     dataset_size = num_data_in_file
   endif  
@@ -1129,13 +1120,11 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
   call h5sget_simple_extent_npoints_f(file_space_id,num_data_in_file,hdf5_err)
 
   if (dataset_size > 0 .and. num_data_in_file /= dataset_size) then
-    if (option%myrank == 0) then
-      print *, 'ERROR: ', trim(dataset_name), ' data space dimension (', &
-               num_data_in_file, ') does not match the dimensions of the ', &
-               'domain (', grid%nmax, ').'
-      call PetscFinalize(ierr)
-      stop
-    endif
+    write(option%io_buffer, &
+          '(a," data space dimension (",i9,") does not match the dimensions",&
+           &" of the domain (",i9,").")') trim(dataset_name), &
+           num_data_in_file,grid%nmax
+    call printErrMsg(option)   
   endif
 
   rank = 1
@@ -1268,14 +1257,10 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   PetscInt, pointer :: integer_array(:)
   
 #ifndef USE_HDF5
-  if (realization%option%myrank == 0) then
-    print *
-    print *, 'PFLOTRAN must be compiled with -DUSE_HDF5 to ', &
-             'read HDF5 formatted structured grids.'
-    print *
-  endif
-  stop
-
+  option => realization%option
+  write(option%io_buffer,'(/,"PFLOTRAN must be compiled with -DUSE_HDF5 to ", &
+                            &"read HDF5 formatted structured grids.",/)')
+  call printErrMsg(option)
 #else
 
 
@@ -1295,7 +1280,8 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   ! initialize fortran hdf5 interface
   call h5open_f(hdf5_err)
 
-  if (option%myrank == 0) print *, 'Opening hdf5 file: ', trim(filename)
+  option%io_buffer = 'Opening hdf5 file: ' // trim(filename)
+  call printMsg(option)
   call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
   call h5pset_fapl_mpio_f(prop_id,option%comm,MPI_INFO_NULL,hdf5_err)
@@ -1306,13 +1292,14 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   allocate(indices(grid%nlmax))
 
   ! Open the Regions group
-  string = 'Regions'
-  if (option%myrank == 0) print *, 'Opening group: ', trim(string)
+  option%io_buffer = 'Opening group: Regions'
+  call printMsg(option)  
   call h5gopen_f(file_id,string,grp_id,hdf5_err)
 
   ! Open the Regions group
-  string = region%name
-  if (option%myrank == 0) print *, 'Opening group: ', trim(string)
+  option%io_buffer = 'Opening group: ' // trim(region%name)
+  call printMsg(option)  
+  
   call h5gopen_f(grp_id,string,grp_id2,hdf5_err)
 
   ! Read Cell Ids
@@ -1325,7 +1312,8 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   allocate(integer_array(num_indices))
   integer_array = 0
   string = "Cell Ids"
-  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  option%io_buffer = 'Reading dataset: ' // trim(string)
+  call printMsg(option)   
   call HDF5ReadIntegerArray(option,grp_id2,string, &
                             ZERO_INTEGER,indices,num_indices, &
                             integer_array)
@@ -1345,7 +1333,8 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   allocate(integer_array(num_indices))
   integer_array = 0
   string = "Face Ids"
-  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  option%io_buffer = 'Reading dataset: ' // trim(string)
+  call printMsg(option)  
   call HDF5ReadIntegerArray(option,grp_id2,string, &
                             ZERO_INTEGER,indices,num_indices, &
                             integer_array)
@@ -1355,11 +1344,14 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   deallocate(indices)
   nullify(indices)
 
-  if (option%myrank == 0) print *, 'Closing group: ' // trim(region%name)
+  option%io_buffer = 'Closing group: ' // trim(region%name)
+  call printMsg(option)  
   call h5gclose_f(grp_id2,hdf5_err)
-  if (option%myrank == 0) print *, 'Closing group: Regions'
+  option%io_buffer = 'Closing group: Regions'
+  call printMsg(option)   
   call h5gclose_f(grp_id,hdf5_err)
-  if (option%myrank == 0) print *, 'Closing hdf5 file: ', filename
+  option%io_buffer = 'Closing hdf5 file: ' // trim(filename)
+  call printMsg(option)   
   call h5fclose_f(file_id,hdf5_err)
    
   call h5close_f(hdf5_err)
@@ -1425,14 +1417,10 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   PetscReal, pointer :: vec_ptr(:)
 
 #ifndef USE_HDF5
-  if (realization%option%myrank == 0) then
-    print *
-    print *, 'PFLOTRAN must be compiled with -DUSE_HDF5 to ', &
-             'read HDF5 formatted structured grids.'
-    print *
-  endif
-  stop
-
+  option => realization%option
+  write(option%io_buffer,'(/,"PFLOTRAN must be compiled with -DUSE_HDF5 to ", &
+                            &"read HDF5 formatted structured grids.",/)')
+  call printErrMsg(option)
 #else
 
   nullify(indices)
@@ -1452,13 +1440,15 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   call PetscGetTime(tstart,ierr)
   call GridCreateNaturalToGhostedHash(grid,option)
   call PetscGetTime(tend,ierr)
-  if (option%myrank == 0) print *, '  Time to create hash:', tend-tstart
+  write(option%io_buffer,'(f6.2," Seconds to create hash.")') tend-tstart
+  call printMsg(option) 
 #endif
 
   ! initialize fortran hdf5 interface
   call h5open_f(hdf5_err)
 
-  if (option%myrank == 0) print *, 'Opening hdf5 file: ', trim(filename)
+  option%io_buffer = 'Opening hdf5 file: ' // trim(filename)
+  call printMsg(option) 
   call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
   call h5pset_fapl_mpio_f(prop_id,option%comm,MPI_INFO_NULL,hdf5_err)
@@ -1471,10 +1461,14 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   call DiscretizationCreateVector(discretization,ONEDOF,local_vec,LOCAL, &
                                   option)
 
-  if (option%myrank == 0) print *, 'Setting up grid cell indices'
+  option%io_buffer = 'Setting up grid cell indices'
+  call printMsg(option) 
+
   ! Open the Materials group
   string = 'Materials'
-  if (option%myrank == 0) print *, 'Opening group: ', trim(string)
+
+  option%io_buffer = 'Opening group: ' // trim(string)
+  call printMsg(option)   
   call h5gopen_f(file_id,string,grp_id,hdf5_err)
 
 ! new approach
@@ -1482,14 +1476,17 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   ! Read Cell Ids
   call PetscGetTime(tstart,ierr)
   string = "Cell Ids"
-  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  option%io_buffer = 'Reading dataset: ' // trim(string)
+  call printMsg(option)   
   call HDF5ReadIndices(grid,option,grp_id,string,grid%nmax,indices)
   call PetscGetTime(tend,ierr)
-  if (option%myrank == 0) print *, '  Time to set up indices:', tend-tstart
+  write(option%io_buffer,'(f6.2," Seconds to set up indices")') tend-tstart
+  call printMsg(option)
 
   call PetscGetTime(tstart,ierr)
   string = "Material Ids"
-  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  option%io_buffer = 'Reading dataset: ' // trim(string)
+  call printMsg(option)   
   call HDF5ReadArray(discretization,grid,option,grp_id,string,grid%nmax, &
                      indices,global_vec,HDF_NATIVE_INTEGER)
 #else  
@@ -1497,16 +1494,20 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   ! Read Cell Ids
   call PetscGetTime(tstart,ierr)
   string = "Cell Ids"
-  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  option%io_buffer = 'Reading dataset: ' // trim(string)
+  call printMsg(option)   
   call HDF5MapLocalToNaturalIndices(grid,option,grp_id,string,grid%nmax, &
                                     indices,grid%nlmax)
   call PetscGetTime(tend,ierr)
-  if (option%myrank == 0) print *, '  Time to map local to natural indices:', tend-tstart
+  write(option%io_buffer,'(f6.2," Seconds to map local to natural indices.")') &
+    tend-tstart
+  call printMsg(option)  
 
   ! Read Material ids
   allocate(integer_array(grid%nlmax))
   string = "Material Ids"
-  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  option%io_buffer = 'Reading dataset: ' // trim(string)
+  call printMsg(option)   
   call PetscGetTime(tstart,ierr)
   call HDF5ReadIntegerArray(option,grp_id,string,grid%nlmax,indices, &
                             grid%nlmax,integer_array)
@@ -1517,15 +1518,19 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)
   call GridCopyPetscVecToIntegerArray(patch%imat,local_vec,grid%ngmax)
   call PetscGetTime(tend,ierr)
-  if (option%myrank == 0) print *, '  Time to read material ids:', tend-tstart
+  write(option%io_buffer,'(f6.2," Seconds to read material ids.")') &
+    tend-tstart
+  call printMsg(option)  
 
   if (associated(indices)) deallocate(indices)
   nullify(indices)
 
-  if (option%myrank == 0) print *, 'Closing group: Materials'
+  option%io_buffer = 'Closing group: Materials'
+  call printMsg(option)   
   call h5gclose_f(grp_id,hdf5_err)
     
-  if (option%myrank == 0) print *, 'Closing hdf5 file: ', filename
+  option%io_buffer = 'Closing hdf5 file: ' // filename
+  call printMsg(option)   
   call h5fclose_f(file_id,hdf5_err)
    
   call h5close_f(hdf5_err)

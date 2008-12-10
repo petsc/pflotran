@@ -14,7 +14,10 @@ module Option_module
     PetscMPIInt :: comm                      ! alternative to PETSC_COMM_WORLD
     PetscMPIInt :: myrank                    ! rank in PETSC_COMM_WORLD
     PetscMPIInt :: commsize                  ! size of PETSC_COMM_WORLD
+    PetscMPIInt :: io_rank
     PetscTruth :: broadcast_read
+    
+    character(len=MAXSTRINGLENGTH) :: io_buffer
   
     PetscInt :: fid_in
     PetscInt :: fid_out
@@ -143,6 +146,21 @@ module Option_module
     module procedure OptionDotProduct3
   end interface
   
+  interface printMsg
+    module procedure printMsg1
+    module procedure printMsg2
+  end interface
+
+  interface printErrMsg
+    module procedure printErrMsg1
+    module procedure printErrMsg2
+  end interface
+  
+  interface printWrnMsg
+    module procedure printWrnMsg1
+    module procedure printWrnMsg2
+  end interface
+    
   public :: OptionCreate, &
             OutputOptionCreate, &
             OptionCheckCommandLine, &
@@ -152,6 +170,7 @@ module Option_module
             OptionDotProduct, &
             OptionDestroy, &
             OptionCheckTouch, &
+            OptionPrint, &
             OutputOptionDestroy
 
 contains
@@ -177,6 +196,8 @@ function OptionCreate()
   option%myrank = 0
   option%commsize = 0
   option%broadcast_read = PETSC_FALSE
+  option%io_rank = 0
+  option%io_buffer = ''
   
   option%fid_in = 0
   option%fid_out = 0
@@ -371,12 +392,37 @@ end subroutine OptionCheckCommandLine
 
 ! ************************************************************************** !
 !
-! printErrMsg: Prints the error message from p0 and stops
+! printErrMsg1: Prints the error message from p0 and stops
 ! author: Glenn Hammond
 ! date: 10/26/07
 !
 ! ************************************************************************** !
-subroutine printErrMsg(option,string)
+subroutine printErrMsg1(option)
+
+  implicit none
+  
+  type(option_type) :: option
+  
+  PetscErrorCode :: ierr
+  
+  if (OptionPrint(option)) then
+    print *
+    print *, 'ERROR: ' // trim(option%io_buffer)
+    print *, 'Stopping!'
+  endif    
+  call PetscFinalize(ierr)
+  stop
+  
+end subroutine printErrMsg1
+
+! ************************************************************************** !
+!
+! printErrMsg2: Prints the error message from p0 and stops
+! author: Glenn Hammond
+! date: 10/26/07
+!
+! ************************************************************************** !
+subroutine printErrMsg2(option,string)
 
   implicit none
   
@@ -385,7 +431,7 @@ subroutine printErrMsg(option,string)
   
   PetscErrorCode :: ierr
   
-  if (option%myrank == 0) then
+  if (OptionPrint(option)) then
     print *
     print *, 'ERROR: ' // trim(string)
     print *, 'Stopping!'
@@ -393,43 +439,77 @@ subroutine printErrMsg(option,string)
   call PetscFinalize(ierr)
   stop
   
-end subroutine printErrMsg
+end subroutine printErrMsg2
  
 ! ************************************************************************** !
 !
-! printWrnMsg: Prints the warning message from p0
+! printWrnMsg1: Prints the warning message from p0
 ! author: Glenn Hammond
 ! date: 10/26/07
 !
 ! ************************************************************************** !
-subroutine printWrnMsg(option,string)
+subroutine printWrnMsg1(option)
+
+  implicit none
+  
+  type(option_type) :: option
+  
+  if (OptionPrint(option)) print *, 'WARNING: ' // trim(option%io_buffer)
+  
+end subroutine printWrnMsg1
+
+! ************************************************************************** !
+!
+! printWrnMsg2: Prints the warning message from p0
+! author: Glenn Hammond
+! date: 10/26/07
+!
+! ************************************************************************** !
+subroutine printWrnMsg2(option,string)
 
   implicit none
   
   type(option_type) :: option
   character(len=*) :: string
   
-  if (option%myrank == 0) print *, 'WARNING: ' // trim(string)
+  if (OptionPrint(option)) print *, 'WARNING: ' // trim(string)
   
-end subroutine printWrnMsg
+end subroutine printWrnMsg2
 
 ! ************************************************************************** !
 !
-! printMsg: Prints the message from p0
+! printMsg1: Prints the message from p0
 ! author: Glenn Hammond
 ! date: 11/14/07
 !
 ! ************************************************************************** !
-subroutine printMsg(option,string)
+subroutine printMsg1(option)
+
+  implicit none
+  
+  type(option_type) :: option
+  
+  if (OptionPrint(option)) print *, trim(option%io_buffer)
+  
+end subroutine printMsg1
+
+! ************************************************************************** !
+!
+! printMsg2: Prints the message from p0
+! author: Glenn Hammond
+! date: 11/14/07
+!
+! ************************************************************************** !
+subroutine printMsg2(option,string)
 
   implicit none
   
   type(option_type) :: option
   character(len=*) :: string
   
-  if (option%myrank == 0) print *, trim(string)
+  if (OptionPrint(option)) print *, trim(string)
   
-end subroutine printMsg
+end subroutine printMsg2
 
 ! ************************************************************************** !
 !
@@ -510,16 +590,39 @@ function OptionCheckTouch(option,filename)
   
   OptionCheckTouch = PETSC_FALSE
 
-  if (option%myrank == 0) &
+  if (option%myrank == option%io_rank) &
     open(unit=fid,file=trim(filename),status='old',iostat=ios)
-  call MPI_Bcast(ios,1,MPI_INTEGER,ZERO_INTEGER,option%comm,ierr)
+  call MPI_Bcast(ios,1,MPI_INTEGER,option%io_rank,option%comm,ierr)
 
   if (ios == 0) then
-    if (option%myrank == 0) close(fid,status='delete')
+    if (option%myrank == option%io_rank) close(fid,status='delete')
     OptionCheckTouch = PETSC_TRUE
   endif
 
 end function OptionCheckTouch
+
+! ************************************************************************** !
+!
+! OptionPrint: Determines whether printing should occur
+! author: Glenn Hammond
+! date: 12/09/08
+!
+! ************************************************************************** !
+function OptionPrint(option)
+
+  implicit none
+
+  type(option_type) :: option
+  
+  PetscTruth :: OptionPrint
+  
+  if (option%myrank == option%io_rank) then
+    OptionPrint = PETSC_TRUE
+  else
+    OptionPrint = PETSC_FALSE
+  endif
+
+end function OptionPrint
 
 ! ************************************************************************** !
 !

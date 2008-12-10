@@ -226,8 +226,9 @@ subroutine ReactionRead(reaction,fid,option)
                 
                     enddo
                   case default
-                    call printErrMsg(option,'CHEMISTRY, SURFACE_COMPLEXATION_RXN keyword: '// &
-                                     trim(word)//' not recognized')
+                    option%io_buffer = 'CHEMISTRY, SURFACE_COMPLEXATION_RXN keyword: '// &
+                                     trim(word)//' not recognized'
+                    call printErrMsg(option)
                 end select
 
               enddo
@@ -289,8 +290,9 @@ subroutine ReactionRead(reaction,fid,option)
                       nullify(cation)
                     enddo
                   case default
-                    call printErrMsg(option,'CHEMISTRY, ION_EXCHANGE_RXN keyword: '// &
-                                     trim(word)//' not recognized')
+                    option%io_buffer = 'CHEMISTRY, ION_EXCHANGE_RXN keyword: '// &
+                                     trim(word)//' not recognized'
+                    call printErrMsg(option)
                 end select
               enddo
               if (.not.associated(reaction%ion_exchange_rxn_list)) then
@@ -327,7 +329,8 @@ subroutine ReactionRead(reaction,fid,option)
             reaction%compute_activity_coefs = ACTIVITY_COEFFICIENTS_TIMESTEP        
         end select
       case default
-        call printErrMsg(option,'CHEMISTRY keyword: '//trim(word)//' not recognized')
+        option%io_buffer = 'CHEMISTRY keyword: '//trim(word)//' not recognized'
+        call printErrMsg(option)
     end select
   enddo
   
@@ -395,10 +398,11 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
       endif
     enddo
     if (.not.found) then
-      string = 'Species ' // trim(aq_species_constraint%names(icomp)) // &
+      option%io_buffer = &
+               'Species ' // trim(aq_species_constraint%names(icomp)) // &
                ' from CONSTRAINT ' // trim(constraint_name) // &
                ' not found among primary species.'
-      call printErrMsg(option,string)
+      call printErrMsg(option)
     else
       constraint_type(jcomp) = aq_species_constraint%constraint_type(icomp)
       constraint_spec_name(jcomp) = aq_species_constraint%constraint_spec_name(icomp)
@@ -418,13 +422,13 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
             endif
           enddo
           if (.not.found) then
-            string = 'Constraint mineral: ' // &
+            option%io_buffer = 'Constraint mineral: ' // &
                      trim(constraint_spec_name(jcomp)) // &
                      ' for aqueous species: ' // &
                      trim(reaction%primary_species_names(jcomp)) // &
                      ' in constraint: ' // &
                      trim(constraint_name) // ' not found.' 
-            call printErrMsg(option,string)         
+            call printErrMsg(option)         
           endif
         case(CONSTRAINT_GAS)
           found = PETSC_FALSE
@@ -438,13 +442,13 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
             endif
           enddo
           if (.not.found) then
-            string = 'Constraint gas: ' // &
+            option%io_buffer = 'Constraint gas: ' // &
                      trim(constraint_spec_name(jcomp)) // &
                      ' for aqueous species: ' // &
                      trim(reaction%primary_species_names(jcomp)) // &
                      ' in constraint: ' // &
                      trim(constraint_name) // ' not found.' 
-            call printErrMsg(option,string)         
+            call printErrMsg(option)         
           endif
       end select
 
@@ -471,10 +475,11 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
         endif
       enddo
       if (.not.found) then
-        string = 'Mineral ' // trim(mineral_constraint%names(imnrl)) // &
+        option%io_buffer = &
+                 'Mineral ' // trim(mineral_constraint%names(imnrl)) // &
                  'from CONSTRAINT ' // trim(constraint_name) // &
                  ' not found among kinetic minerals.'
-        call printErrMsg(option,string)
+        call printErrMsg(option)
       else
         mineral_constraint%basis_vol_frac(jmnrl) = &
           mineral_constraint%constraint_vol_frac(imnrl)
@@ -591,19 +596,21 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             string = 'OH-'
             if (.not.fiStringCompare(reaction%primary_species_names(icomp), &
                                      string,MAXWORDLENGTH)) then
-              string = 'pH specified as constraint (constraint =' // &
+              option%io_buffer = &
+                       'pH specified as constraint (constraint =' // &
                        trim(constraint_name) // &
                        ') for species other than H+ or OH-: ' // &
                        trim(reaction%primary_species_names(icomp))
-              call printErrMsg(option,string)
+              call printErrMsg(option)
             endif
           endif
           free_conc(icomp) = 10.d0**(-conc(icomp))
         else
-          string = 'pH specified as constraint (constraint =' // &
+          option%io_buffer = &
+                   'pH specified as constraint (constraint =' // &
                    trim(constraint_name) // &
                    '), but H+ not found in chemical species.'
-          call printErrMsg(option,string)
+          call printErrMsg(option)
         endif        
       case(CONSTRAINT_MINERAL)
         free_conc(icomp) = conc(icomp)*convert_molar_to_molal ! guess
@@ -679,12 +686,13 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                  reaction%primary_spec_Z(icomp) > 0.d0) .or. &
                 (Res(icomp) < 0.d0 .and. &
                  reaction%primary_spec_Z(icomp) < 0.d0)) then
-              string = 'Charge balance species ' // &
+              option%io_buffer = &
+                       'Charge balance species ' // &
                        trim(reaction%primary_species_names(icomp)) // &
                        ' may not satisfy constraint ' // &
                        trim(constraint_name) // &
                        '.  Molality already below 1.e-20.'
-              call printMsg(option,string)
+              call printMsg(option)
               charge_balance_warning_flag = PETSC_TRUE
               rt_auxvar%pri_molal(icomp) = 1.e-3 ! reset guess
             endif
@@ -826,11 +834,11 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     
     if (mod(num_iterations,1000) == 0) then
 100 format('Constraint iteration count has exceeded: ',i5)
-      write(string,100) num_iterations
-      call printMsg(option,string)
+      write(option%io_buffer,100) num_iterations
+      call printMsg(option)
       if (num_iterations >= 10000) then
-        string = 'Stopping due to excessive iteration count!'
-        call printErrMsg(option,string)
+        option%io_buffer = 'Stopping due to excessive iteration count!'
+        call printErrMsg(option)
       endif
     endif
     
@@ -852,9 +860,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          global_auxvar%den_kg(option%liquid_phase)/ &
                                          1000.d0
   
-  if (option%myrank == 0) &
-    write(*,111) trim(constraint_name),num_iterations
-    111 format(' Equilibrate Constraint: ',a30,i4)
+  write(option%io_buffer,111) trim(constraint_name),num_iterations
+  call printMsg(option)
+111 format(' Equilibrate Constraint: ',a30,i4)
 
 end subroutine ReactionEquilibrateConstraint
 
@@ -1405,9 +1413,9 @@ subroutine ReactionReadMineralKinetics(reaction,fid,option)
     if (.not.associated(cur_mineral)) exit
     if (cur_mineral%id < 0 .and. &
         cur_mineral%itype == MINERAL_KINETIC) then
-      string = 'No rate provided in input file for mineral: ' // &
+      option%io_buffer = 'No rate provided in input file for mineral: ' // &
                trim(cur_mineral%name) // '.'
-      call printErrMsg(option,string)
+      call printErrMsg(option)
     endif
     if (associated(cur_mineral%tstrxn)) then
       imnrl = imnrl + 1

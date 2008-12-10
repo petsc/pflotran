@@ -240,7 +240,8 @@ subroutine CouplerRead(coupler,fid,option)
           case('source_sink')
             coupler%itype = SRC_SINK_COUPLER_TYPE
           case default
-            call printErrMsg(option,'coupler type: '//trim(coupler%ctype)//' not recognized.')
+            option%io_buffer = 'coupler type: '//trim(coupler%ctype)//' not recognized.'
+            call printErrMsg(option)
         end select    
       case('FACE')
         call fiReadWord(string,word,PETSC_TRUE,ierr)
@@ -264,8 +265,8 @@ subroutine CouplerRead(coupler,fid,option)
             stop
         end select
       case default
-        string = 'Coupler card (' // trim(word) // ') not recognized.'
-        call printErrMsg(option,string)        
+        option%io_buffer = 'Coupler card (' // trim(word) // ') not recognized.'
+        call printErrMsg(option)        
     end select 
   
   enddo  
@@ -372,8 +373,6 @@ subroutine CouplerComputeConnections(grid,option,coupler)
     case(SRC_SINK_COUPLER_TYPE)
       connection_itype = SRC_SINK_CONNECTION_TYPE
     case(BOUNDARY_COUPLER_TYPE)
-      if (option%myrank == 0) &
-        write(*,'('' Need a check to ensure that boundary conditions connect to exterior boundary'',/)')
       connection_itype = BOUNDARY_CONNECTION_TYPE
   end select
   

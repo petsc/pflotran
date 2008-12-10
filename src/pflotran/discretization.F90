@@ -175,9 +175,10 @@ subroutine DiscretizationRead(discretization,fid,first_time, option)
             case('amr')
               discretization%itype = AMR_GRID
             case default
-              string = 'Discretization type: ' // trim(discretization%ctype) // &
-                       ' not recognized.'
-              call printErrMsg(option,string)
+              option%io_buffer = 'Discretization type: ' // &
+                                 trim(discretization%ctype) // &
+                                 ' not recognized.'
+              call printErrMsg(option)
           end select    
         case('NXYZ')
           call fiReadInt(string,nx,ierr)
@@ -203,9 +204,9 @@ subroutine DiscretizationRead(discretization,fid,first_time, option)
         case('BOUNDS')
           call fiSkipToEND(fid,option%myrank,word) 
         case default
-          string = 'Keyword: ' // trim(word) // &
+          option%io_buffer = 'Keyword: ' // trim(word) // &
                    ' not recognized in DISCRETIZATION, first read.'
-          call printErrMsg(option,string)          
+          call printErrMsg(option)          
       end select 
     else ! should be the second time it is read
       select case(trim(word))
@@ -220,15 +221,14 @@ subroutine DiscretizationRead(discretization,fid,first_time, option)
             case(AMR_GRID)
               call AMRGridReadDXYZ(discretization%amrgrid,fid,option)
             case default
-              string = 'ERROR: Keyword "DXYZ" not supported for unstructured grid'
-              call printErrMsg(option,string)
+              call printErrMsg(option,'Keyword "DXYZ" not supported for unstructured grid')
           end select
           call fiReadFlotranString(fid,string,ierr) ! z-direction
           call fiReadStringErrorMsg(option%myrank,'DISCRETIZATION,BOUNDS,Z',ierr)
           if (.not.(fiCheckExit(string))) then
-            string = 'Card DXYZ should include either 3 entires (one for ' // &
-                     'each grid direction or NX+NY+NZ entries'
-            call printErrMsg(option,string)
+            option%io_buffer = 'Card DXYZ should include either 3 entires ' // &
+                     '(one for each grid direction or NX+NY+NZ entries'
+            call printErrMsg(option)
           endif
         case('BOUNDS')
           select case(discretization%itype)
@@ -264,7 +264,7 @@ subroutine DiscretizationRead(discretization,fid,first_time, option)
               call fiReadFlotranString(fid,string,ierr) ! z-direction
               call fiReadStringErrorMsg(option%myrank,'DISCRETIZATION,BOUNDS,Z',ierr)
               if (.not.(fiCheckExit(string))) then
-                if (option%myrank == 0) then
+                if (OptionPrint(option)) then
                   if (grid%structured_grid%itype == CARTESIAN_GRID) then
                     print *, 'BOUNDS card for a cartesian structured grid must include ' // &
                              '5 lines.  I.e.'
@@ -296,9 +296,9 @@ subroutine DiscretizationRead(discretization,fid,first_time, option)
           discretization%origin(Y_DIRECTION) = grid%structured_grid%bounds(Y_DIRECTION,LOWER)
           discretization%origin(Z_DIRECTION) = grid%structured_grid%bounds(Z_DIRECTION,LOWER)
         case default
-          string = 'Keyword: ' // trim(word) // &
+          option%io_buffer = 'Keyword: ' // trim(word) // &
                    ' not recognized in DISCRETIZATION, second read.'
-          call printErrMsg(option,string)          
+          call printErrMsg(option)          
       end select 
     endif
   
@@ -311,7 +311,8 @@ subroutine DiscretizationRead(discretization,fid,first_time, option)
         grid => GridCreate()
         select case(discretization%itype)
           case(STRUCTURED_GRID)      
-            if (nx*ny*nz == 0) call printErrMsg(option,'NXYZ not set correctly for structured grid.')
+            if (nx*ny*nz == 0) &
+              call printErrMsg(option,'NXYZ not set correctly for structured grid.')
             str_grid => StructuredGridCreate()
             str_grid%nx = nx
             str_grid%ny = ny

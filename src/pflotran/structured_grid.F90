@@ -1228,7 +1228,7 @@ subroutine StructuredGridComputeVolumes(radius,structured_grid,option,nL2G,volum
   
   call StructGridVecRestoreArrayF90(structured_grid,volume,volume_p, ierr)
   
-  if (option%commsize <= 16) then
+  if (option%commsize > 1 .and. option%commsize <= 16) then
     write(*,'(" rank= ",i3,", nlmax= ",i6,", nlx,y,z= ",3i4, &
       & ", nxs,e = ",2i4,", nys,e = ",2i4,", nzs,e = ",2i4)') &
       option%myrank,structured_grid%nlmax,structured_grid%nlx, &

@@ -477,35 +477,30 @@ end subroutine SolverReadNewton
 ! date: 02/23/08
 !
 ! ************************************************************************** !
-subroutine SolverPrintLinearInfo(solver,fid,header,myrank)
+subroutine SolverPrintLinearInfo(solver,fid,header)
 
   implicit none
   
   type(solver_type) :: solver
   PetscInt :: fid
   character(len=MAXSTRINGLENGTH) :: header  
-  PetscMPIInt :: myrank
-  
-  character(len=MAXSTRINGLENGTH) :: string
 
-  if (myrank == 0) then
-    write(*,*) 
-    write(fid,*) 
-    write(*,'(a)') trim(header)
-    write(fid,'(a)') trim(header)
-    write(*,'(" solver: ",a)') trim(solver%ksp_type)
-    write(fid,'(" solver: ",a)') trim(solver%ksp_type)
-    write(*,'("precond: ",a)') trim(solver%pc_type)
-    write(fid,'("precond: ",a)') trim(solver%pc_type)
-    write(*,'("   atol:",1pe12.4)') solver%linear_atol
-    write(fid,'("   atol:",1pe12.4)') solver%linear_atol
-    write(*,'("   rtol:",1pe12.4)') solver%linear_rtol
-    write(fid,'("   rtol:",1pe12.4)') solver%linear_rtol
-    write(*,'("   dtol:",1pe12.4)') solver%linear_dtol
-    write(fid,'("   dtol:",1pe12.4)') solver%linear_dtol
-    write(*,'("  maxit:",i7)') solver%linear_maxit
-    write(fid,'("  maxit:",i7)') solver%linear_maxit
-  endif
+  write(*,*) 
+  write(fid,*) 
+  write(*,'(a)') trim(header)
+  write(fid,'(a)') trim(header)
+  write(*,'(" solver: ",a)') trim(solver%ksp_type)
+  write(fid,'(" solver: ",a)') trim(solver%ksp_type)
+  write(*,'("precond: ",a)') trim(solver%pc_type)
+  write(fid,'("precond: ",a)') trim(solver%pc_type)
+  write(*,'("   atol:",1pe12.4)') solver%linear_atol
+  write(fid,'("   atol:",1pe12.4)') solver%linear_atol
+  write(*,'("   rtol:",1pe12.4)') solver%linear_rtol
+  write(fid,'("   rtol:",1pe12.4)') solver%linear_rtol
+  write(*,'("   dtol:",1pe12.4)') solver%linear_dtol
+  write(fid,'("   dtol:",1pe12.4)') solver%linear_dtol
+  write(*,'("  maxit:",i7)') solver%linear_maxit
+  write(fid,'("  maxit:",i7)') solver%linear_maxit
 
 end subroutine SolverPrintLinearInfo
 
@@ -517,79 +512,73 @@ end subroutine SolverPrintLinearInfo
 ! date: 02/23/08
 !
 ! ************************************************************************** !
-subroutine SolverPrintNewtonInfo(solver,fid,header,myrank)    
+subroutine SolverPrintNewtonInfo(solver,fid,header)    
 
   implicit none
   
   type(solver_type) :: solver
   PetscInt :: fid
   character(len=MAXSTRINGLENGTH) :: header  
-  PetscMPIInt :: myrank
-  
-  character(len=MAXSTRINGLENGTH) :: string
 
-  if (myrank == 0) then
-  
-    write(*,*) 
-    write(fid,*) 
-    write(*,'(a)') trim(header)
-    write(fid,'(a)') trim(header)
-    write(*,'("     atol:",1pe12.4)') solver%newton_atol
-    write(fid,'("     atol:",1pe12.4)') solver%newton_atol
-    write(*,'("     rtol:",1pe12.4)') solver%newton_rtol
-    write(fid,'("     rtol:",1pe12.4)') solver%newton_rtol
-    write(*,'("     stol:",1pe12.4)') solver%newton_stol
-    write(fid,'("     stol:",1pe12.4)') solver%newton_stol
-    write(*,'("     dtol:",1pe12.4)') solver%newton_dtol
-    write(fid,'("     dtol:",1pe12.4)') solver%newton_dtol
-    write(*,'("inftolres:",1pe12.4)') solver%newton_inf_res_tol
-    write(fid,'("inftolres:",1pe12.4)') solver%newton_inf_res_tol
-    write(*,'("inftolupd:",1pe12.4)') solver%newton_inf_upd_tol
-    write(fid,'("inftolupd:",1pe12.4)') solver%newton_inf_upd_tol
-    write(*,'("    maxit:",i6)') solver%newton_maxit
-    write(fid,'("    maxit:",i6)') solver%newton_maxit
-    write(*,'("     maxf:",i6)') solver%newton_maxf
-    write(fid,'("     maxf:",i6)') solver%newton_maxf
-  
-    if (solver%inexact_newton) then
-      write(*,'("inexact newton: on")')
-      write(fid,'("inexact newton: on")')
-    else
-      write(*,'("inexact newton: off")')
-      write(fid,'("inexact newton: off")')
-    endif
-        
-    if (solver%print_convergence) then
-      write(*,'("print convergence: on")')
-      write(fid,'("print convergence: on")')
-    else
-      write(*,'("print convergence: off")')
-      write(fid,'("print convergence: off")')
-    endif
-        
-    if (solver%print_detailed_convergence) then
-      write(*,'("print detailed convergence: on")')
-      write(fid,'("print detailed convergence: on")')
-    else
-      write(*,'("print detailed convergence: off")')
-      write(fid,'("print detailed convergence: off")')
-    endif
-        
-    if (solver%check_infinity_norm) then
-      write(*,'("check infinity norm: on")')
-      write(fid,'("check infinity norm: on")')
-    else
-      write(*,'("check infinity norm: off")')
-      write(fid,'("check infinity norm: off")')
-    endif
-        
-    if (solver%force_at_least_1_iteration) then
-      write(*,'("force at least 1 iteration: on")')
-      write(fid,'("force at least 1 iteration: on")')
-    else
-      write(*,'("force at least 1 iteration: off")')
-      write(fid,'("force at least 1 iteration: off")')
-    endif
+  write(*,*) 
+  write(fid,*) 
+  write(*,'(a)') trim(header)
+  write(fid,'(a)') trim(header)
+  write(*,'("     atol:",1pe12.4)') solver%newton_atol
+  write(fid,'("     atol:",1pe12.4)') solver%newton_atol
+  write(*,'("     rtol:",1pe12.4)') solver%newton_rtol
+  write(fid,'("     rtol:",1pe12.4)') solver%newton_rtol
+  write(*,'("     stol:",1pe12.4)') solver%newton_stol
+  write(fid,'("     stol:",1pe12.4)') solver%newton_stol
+  write(*,'("     dtol:",1pe12.4)') solver%newton_dtol
+  write(fid,'("     dtol:",1pe12.4)') solver%newton_dtol
+  write(*,'("inftolres:",1pe12.4)') solver%newton_inf_res_tol
+  write(fid,'("inftolres:",1pe12.4)') solver%newton_inf_res_tol
+  write(*,'("inftolupd:",1pe12.4)') solver%newton_inf_upd_tol
+  write(fid,'("inftolupd:",1pe12.4)') solver%newton_inf_upd_tol
+  write(*,'("    maxit:",i6)') solver%newton_maxit
+  write(fid,'("    maxit:",i6)') solver%newton_maxit
+  write(*,'("     maxf:",i6)') solver%newton_maxf
+  write(fid,'("     maxf:",i6)') solver%newton_maxf
+
+  if (solver%inexact_newton) then
+    write(*,'("inexact newton: on")')
+    write(fid,'("inexact newton: on")')
+  else
+    write(*,'("inexact newton: off")')
+    write(fid,'("inexact newton: off")')
+  endif
+      
+  if (solver%print_convergence) then
+    write(*,'("print convergence: on")')
+    write(fid,'("print convergence: on")')
+  else
+    write(*,'("print convergence: off")')
+    write(fid,'("print convergence: off")')
+  endif
+      
+  if (solver%print_detailed_convergence) then
+    write(*,'("print detailed convergence: on")')
+    write(fid,'("print detailed convergence: on")')
+  else
+    write(*,'("print detailed convergence: off")')
+    write(fid,'("print detailed convergence: off")')
+  endif
+      
+  if (solver%check_infinity_norm) then
+    write(*,'("check infinity norm: on")')
+    write(fid,'("check infinity norm: on")')
+  else
+    write(*,'("check infinity norm: off")')
+    write(fid,'("check infinity norm: off")')
+  endif
+      
+  if (solver%force_at_least_1_iteration) then
+    write(*,'("force at least 1 iteration: on")')
+    write(fid,'("force at least 1 iteration: on")')
+  else
+    write(*,'("force at least 1 iteration: off")')
+    write(fid,'("force at least 1 iteration: off")')
   endif
 
 end subroutine SolverPrintNewtonInfo

@@ -65,7 +65,7 @@ subroutine InputDefaultMsg(input, option)
   type(option_type) :: option
 
   if (input%ierr /= 0) then
-    if (option%print_rank) &
+    if (option%io_rank) &
       print *, '"', adjustl(trim(input%err_buf)), &
                '" set to default value.'
     input%ierr = 0
@@ -88,7 +88,7 @@ subroutine InputErrorMsg(input, option)
   type(option_type) :: option
 
   if (input%ierr /= 0) then
-    if (option%print_rank) &
+    if (option%io_rank) &
       print *, 'Error reading "', adjustl(trim(input%err_buf)), &
                '" under keyword: ',adjustl(trim(input%err_buf2)), '.'
     stop
@@ -111,7 +111,7 @@ subroutine InputReadStringErrorMsg(input, option)
   type(option_type) :: option
 
   if (input%ierr /= 0) then
-    if (option%print_rank) &
+    if (option%io_rank) &
       print *, 'Error reading in string in (', &
                adjustl(trim(input%err_buf)), ').'
     stop
@@ -134,7 +134,7 @@ subroutine InputFindStringErrorMsg(input, option)
   type(option_type) :: option
 
   if (input%ierr /= 0) then
-    if (option%print_rank) &
+    if (option%io_rank) &
       print *, 'Error: Card (', adjustl(trim(input%err_buf)), ') not ', &
                'found in file.'
     stop
@@ -212,14 +212,14 @@ subroutine InputReadFlotranString(option, fid, string, ierr)
   PetscErrorCode :: ierr, ierr2
 
   if (option%broadcast_read) then
-    if (option%myrank == 0) then
+    if (option%myrank == option%io_rank) then
       call fiReadFlotranString(fid, string, ierr)
     endif
-    call mpi_bcast(ierr,ONE_INTEGER,MPI_INTEGER,ZERO_INTEGER, &
+    call mpi_bcast(ierr,ONE_INTEGER,MPI_INTEGER,option%io_rank, &
                    option%comm,ierr2)
     if (ierr == 0) then  
       call mpi_bcast(string,MAXSTRINGLENGTH,MPI_CHARACTER, &
-                     ZERO_INTEGER,option%comm,ierr2)      
+                     option%io_rank,option%comm,ierr2)      
     endif
   else
     call fiReadFlotranString(fid, string, ierr)
@@ -299,7 +299,7 @@ subroutine InputReadFlotranStringSlave(input, option)
     if (word(1:4) == 'SKIP') then
       do 
         read(fid,'(a256)',iostat=input%ierr) tempstring
-        if (input%ierr /= 0 .and. option%print_rank) then
+        if (input%ierr /= 0 .and. option%io_rank) then
           print *, 'End of file reached in fiReadFlotranString.'
           print *, 'SKIP encountered without matching NOSKIP.'
         endif

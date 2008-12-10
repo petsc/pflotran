@@ -144,8 +144,9 @@ subroutine TimestepperRead(stepper,fid,option)
         call fiDefaultMsg(option%myrank,'dsmxe',ierr)
 
       case default
-        call printErrMsg(option,'Timestepper option: '//trim(word)// &
-                         ' not recognized.')
+        option%io_buffer = 'Timestepper option: '//trim(word)// &
+                           ' not recognized.'
+        call printErrMsg(option)
     end select 
   
   enddo  
@@ -244,7 +245,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   start_step = master_stepper%steps+1
   do istep = start_step, master_stepper%nstepmax
 
-    if (option%myrank == 0 .and. &
+    if (OptionPrint(option) .and. &
         mod(master_stepper%steps,option%imod) == 0) then
       option%print_flag = PETSC_TRUE
     else
@@ -333,7 +334,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
                            NEG_ONE_INTEGER)  
   endif
 
-  if (option%myrank == 0) then
+  if (OptionPrint(option)) then
     if (option%nflowdof > 0) then
       write(*,'(/," FLOW steps = ",i6," newton = ",i6," linear = ",i6, &
             & " cuts = ",i6)') &
@@ -1419,7 +1420,7 @@ subroutine TimestepperPrintInfo(stepper,fid,header,option)
   
   character(len=MAXSTRINGLENGTH) :: string
 
-  if (option%myrank == 0) then
+  if (OptionPrint(option)) then
     write(*,*) 
     write(fid,*) 
     write(*,'(a)') trim(header)

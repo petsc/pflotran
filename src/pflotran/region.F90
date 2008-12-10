@@ -340,7 +340,8 @@ subroutine RegionRead(region,fid,option)
         call fiErrorMsg(option%myrank,'filename','REGION', ierr)
         region%filename = word
       case('LIST')
-        call printErrMsg(option,'REGION LIST currently not implemented')
+        option%io_buffer = 'REGION LIST currently not implemented'
+        call printErrMsg(option)
       case('FACE')
         call fiReadWord(string,word,PETSC_TRUE,ierr)
         call fiErrorMsg(option%myrank,'face','REGION', ierr)
@@ -360,7 +361,8 @@ subroutine RegionRead(region,fid,option)
             region%iface = TOP_FACE
         end select
       case default
-        call printErrMsg(option,'REGION keyword: '//trim(word)//' not recognized')
+        option%io_buffer = 'REGION keyword: '//trim(word)//' not recognized'
+        call printErrMsg(option)
     end select
   enddo
  

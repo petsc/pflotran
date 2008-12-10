@@ -2300,16 +2300,18 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   endif
   if (realization%debug%norm_Jacobian) then
     call MatNorm(A,NORM_1,norm,ierr)
-    if (option%myrank == 0) print *, '1 norm:', norm
+    write(option%io_buffer,'("1 norm: ",es11.4)') norm
+    call printMsg(option)
     call MatNorm(A,NORM_FROBENIUS,norm,ierr)
-    if (option%myrank == 0) print *, '2 norm:', norm
+    write(option%io_buffer,'("2 norm: ",es11.4)') norm
+    call printMsg(option)
     call MatNorm(A,NORM_INFINITY,norm,ierr)
-    if (option%myrank == 0) print *, 'inf norm:', norm
+    write(option%io_buffer,'("inf norm: ",es11.4)') norm
+    call printMsg(option)
 !    call GridCreateVector(grid,ONEDOF,debug_vec,GLOBAL)
 !    call MatGetRowMaxAbs(A,debug_vec,PETSC_NULL_INTEGER,ierr)
 !    call VecMax(debug_vec,i,norm,ierr)
 !    call VecDestroy(debug_vec,ierr)
-!    if (option%myrank == 0) print *, 'max:', i, norm
   endif
 end subroutine ImmisJacobianPatch
 

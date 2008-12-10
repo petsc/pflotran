@@ -429,8 +429,10 @@ subroutine GridLocalizeRegions(grid,region_list,option)
           region%num_cells = 0
         endif
      
-        if (count /= region%num_cells) &
-          call printErrMsg(option,"Mismatch in number of cells in block region")
+        if (count /= region%num_cells) then
+          option%io_buffer = 'Mismatch in number of cells in block region'
+          call printErrMsg(option)
+        endif
 
       else if (associated(region%coordinates)) then
         if (size(region%coordinates) == ONE_INTEGER) then
@@ -466,20 +468,20 @@ subroutine GridLocalizeRegions(grid,region_list,option)
 ! the next test as designed will only work on a uniform grid
                 if (grid%structured_grid%p_samr_patch==0) then
                   if (count == 0) then
-                    write(string,*) 'Region: (coord)', &
+                    write(option%io_buffer,*) 'Region: (coord)', &
                          region%coordinates(ONE_INTEGER)%x, &
                          region%coordinates(ONE_INTEGER)%y, &
                          region%coordinates(ONE_INTEGER)%z, &
                           ' not found in global domain.', count
-                     call printErrMsg(option,string)
+                     call printErrMsg(option)
                    else if (count > 1) then
-                     write(string,*) 'Region: (coord)', &
+                     write(option%io_buffer,*) 'Region: (coord)', &
                          region%coordinates(ONE_INTEGER)%x, &
                          region%coordinates(ONE_INTEGER)%y, &
                          region%coordinates(ONE_INTEGER)%z, &
                          ' duplicated across ', count, &
                          ' procs in global domain.'
-                     call printErrMsg(option,string)
+                     call printErrMsg(option)
                    endif
                 endif
             end select
@@ -590,8 +592,8 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                              option%comm,ierr)
           iflag = i
           if (iflag > 0) then
-            write(string,*) 'GridLocalizeRegions, between two points'
-            call printErrMsg(option,string)
+            option%io_buffer = 'GridLocalizeRegions, between two points'
+            call printErrMsg(option)
           endif
         endif    
       endif 
@@ -841,7 +843,8 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
 !  call GridPrintHashTable(grid)
   call mpi_allreduce(max_num_ids_per_hash,num_in_hash,ONE_INTEGER,MPI_INTEGER, &
                      MPI_MAX,option%comm,ierr)
-  if (option%myrank == 0) print *, 'max_num_ids_per_hash:', num_in_hash
+  write(option%io_buffer,'("max_num_ids_per_hash: ",i5)')
+  call printMsg(option)
 
   call PetscLogEventEnd(logging%event_hash_create, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &

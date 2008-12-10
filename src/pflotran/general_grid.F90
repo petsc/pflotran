@@ -39,13 +39,10 @@ subroutine ReadStructuredGridHDF5(realization)
 
   type(realization_type) :: realization
 
-  if (realization%option%myrank == 0) then
-    print *
-    print *, 'PFLOTRAN must be compiled with -DUSE_HDF5 to ', &
-             'read HDF5 formatted structured grids.'
-    print *
-  endif
-  stop
+  write(realization%option, &
+        '/,("PFLOTRAN must be compiled with -DUSE_HDF5 "&
+            &"to read HDF5 formatted structured grids.",/)')
+  call printErrMsg(realization%option)
   
 end subroutine ReadStructuredGridHDF5
 
@@ -128,7 +125,8 @@ subroutine ReadStructuredGridHDF5(realization)
   ! initialize fortran hdf5 interface
   call h5open_f(hdf5_err)
 
-  if (option%myrank == 0) print *, 'Opening hdf5 file: ', trim(filename)
+  option%io_buffer = 'Opening hdf5 file: ' // trim(filename)
+  call printMsg(option)
   call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
   call h5pset_fapl_mpio_f(prop_id,option%comm,MPI_INFO_NULL,hdf5_err)
@@ -138,20 +136,23 @@ subroutine ReadStructuredGridHDF5(realization)
 
   ! open the grid cells group
   string = 'Grid Cells'
-  if (option%myrank == 0) print *, 'Opening group: ', trim(string)
+  option%io_buffer = 'Opening group: Grid Cells'
+  call printMsg(option)
   call h5gopen_f(file_id,string,grp_id,hdf5_err)
   
   allocate(indices(grid%nlmax))
   
-  if (option%myrank == 0) print *, 'Setting up grid cell indices'
+  option%io_buffer = 'Setting up grid cell indices'
+  call printMsg(option)
   call PetscGetTime(time3, ierr)
   string = 'Cell Id'
   call HDF5MapLocalToNaturalIndices(grid,option,grp_id,string,grid%nmax, &
                                     indices,grid%nlmax)
   call PetscGetTime(time4, ierr)
   time4 = time4 - time3
-  if (option%myrank == 0) print *, time4, &
-       ' seconds to set up grid cell indices for hdf5 file'
+  write(option%io_buffer, &
+        '(f6.2," seconds to set up grid cell indices for hdf5 file")') time4
+  call printMsg(option)
 
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                   option)
@@ -160,7 +161,8 @@ subroutine ReadStructuredGridHDF5(realization)
   
   allocate(integer_array(grid%nlmax))
   string = "Material Id"
-  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  option%io_buffer = 'Reading dataset: ' // trim(string)
+  call printMsg(option)
   call HDF5ReadIntegerArray(option,grp_id,string,grid%nmax,indices, &
                             grid%nlmax,integer_array)
   call GridCopyIntegerArrayToPetscVec(integer_array,global_vec,grid%nlmax)
@@ -170,7 +172,8 @@ subroutine ReadStructuredGridHDF5(realization)
   
   allocate(real_array(grid%nlmax))
   string = "X-Coordinate"
-  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  option%io_buffer = 'Reading dataset: ' // trim(string)
+  call printMsg(option)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          real_array)
   call GridCopyRealArrayToPetscVec(real_array,global_vec,grid%nlmax)
@@ -178,7 +181,8 @@ subroutine ReadStructuredGridHDF5(realization)
   call GridCopyPetscVecToRealArray(grid%x,local_vec,grid%ngmax)
 
   string = "Y-Coordinate"
-  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  option%io_buffer = 'Reading dataset: ' // trim(string)
+  call printMsg(option)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          real_array)
   call GridCopyRealArrayToPetscVec(real_array,global_vec,grid%nlmax)
@@ -186,7 +190,8 @@ subroutine ReadStructuredGridHDF5(realization)
   call GridCopyPetscVecToRealArray(grid%y,local_vec,grid%ngmax)
 
   string = "Z-Coordinate"
-  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  option%io_buffer = 'Reading dataset: ' // trim(string)
+  call printMsg(option)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          real_array)
   call GridCopyRealArrayToPetscVec(real_array,global_vec,grid%nlmax)
@@ -196,42 +201,48 @@ subroutine ReadStructuredGridHDF5(realization)
   deallocate(real_array)
   
   string = "Volume"
-  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  option%io_buffer = 'Reading dataset: ' // trim(string)
+  call printMsg(option)
   call VecGetArrayF90(field%volume,vec_ptr,ierr); CHKERRQ(ierr)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          vec_ptr)
   call VecRestoreArrayF90(field%volume,vec_ptr,ierr); CHKERRQ(ierr)
   
   string = "X-Permeability"
-  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  option%io_buffer = 'Reading dataset: ' // trim(string)
+  call printMsg(option)
   call VecGetArrayF90(field%perm0_xx,vec_ptr,ierr); CHKERRQ(ierr)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          vec_ptr)
   call VecRestoreArrayF90(field%perm0_xx,vec_ptr,ierr); CHKERRQ(ierr)
   
   string = "Y-Permeability"
-  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  option%io_buffer = 'Reading dataset: ' // trim(string)
+  call printMsg(option)
   call VecGetArrayF90(field%perm0_yy,vec_ptr,ierr); CHKERRQ(ierr)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          vec_ptr)
   call VecRestoreArrayF90(field%perm0_yy,vec_ptr,ierr); CHKERRQ(ierr)
 
   string = "Z-Permeability"
-  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  option%io_buffer = 'Reading dataset: ' // trim(string)
+  call printMsg(option)
   call VecGetArrayF90(field%perm0_zz,vec_ptr,ierr); CHKERRQ(ierr)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          vec_ptr)
   call VecRestoreArrayF90(field%perm0_zz,vec_ptr,ierr); CHKERRQ(ierr)
 
   string = "Porosity"
-  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  option%io_buffer = 'Reading dataset: ' // trim(string)
+  call printMsg(option)
   call VecGetArrayF90(field%porosity0,vec_ptr,ierr); CHKERRQ(ierr)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          vec_ptr)
   call VecRestoreArrayF90(field%porosity0,vec_ptr,ierr); CHKERRQ(ierr)
 
   string = "Tortuosity"
-  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  option%io_buffer = 'Reading dataset: ' // trim(string)
+  call printMsg(option)
   call VecGetArrayF90(global_vec,vec_ptr,ierr); CHKERRQ(ierr)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          vec_ptr)
@@ -245,26 +256,31 @@ subroutine ReadStructuredGridHDF5(realization)
   call UpdateGlobalToLocal(discretization,field)
 
   deallocate(indices)
-  if (option%myrank == 0) print *, 'Closing group: Grid Cells'
+  option%io_buffer = 'Closing group: Grid Cells'
+  call printMsg(option)  
   call h5gclose_f(grp_id,hdf5_err)
   
-  string = 'Connections'
-  if (option%myrank == 0) print *, 'Opening group: ', trim(string)
+  option%io_buffer = 'Opening group: Connections' 
+  call printMsg(option)   
   call h5gopen_f(file_id,string,grp_id,hdf5_err)
 
   allocate(indices(cur_connection_set%num_connections))
 
-  if (option%myrank == 0) print *, 'Setting up connection indices'
+  option%io_buffer = 'Setting up connection indices'
+  call printMsg(option)   
   call PetscGetTime(time3, ierr)
   call SetupConnectionIndices(grid,option,grp_id,indices)
   call PetscGetTime(time4, ierr)
   time4 = time4 - time3
-  if (option%myrank == 0) print *, time4, &
-       ' seconds to set up connection indices for hdf5 file'
+  write(option%io_buffer, &
+        '(f6.2," seconds to set up connection indices for hdf5 file")') &
+        time4
+  call printMsg(option)     
 
   allocate(integer_array(cur_connection_set%num_connections))
   string = "Id Upwind"
-  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  option%io_buffer = 'Reading dataset: ' // trim(string)
+  call printMsg(option)   
   call HDF5ReadIntegerArray(option,grp_id,string, &
                             cur_connection_set%num_connections, &
                             indices,cur_connection_set%num_connections, &
@@ -275,7 +291,8 @@ subroutine ReadStructuredGridHDF5(realization)
   enddo
 
   string = "Id Downwind"
-  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  option%io_buffer = 'Reading dataset: ' // trim(string)
+  call printMsg(option)   
   call HDF5ReadIntegerArray(option,grp_id,string, &
                             cur_connection_set%num_connections, &
                             indices,cur_connection_set%num_connections, &
@@ -288,7 +305,8 @@ subroutine ReadStructuredGridHDF5(realization)
   
   allocate(real_array(cur_connection_set%num_connections))
   string = "Distance Upwind"
-  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  option%io_buffer = 'Reading dataset: ' // trim(string)
+  call printMsg(option)   
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          real_array)
                      
@@ -298,7 +316,8 @@ subroutine ReadStructuredGridHDF5(realization)
     real_array(1:cur_connection_set%num_connections)                      
 
   string = "Distance Downwind"
-  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  option%io_buffer = 'Reading dataset: ' // trim(string)
+  call printMsg(option)   
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          real_array) 
 
@@ -311,7 +330,8 @@ subroutine ReadStructuredGridHDF5(realization)
     cur_connection_set%dist(0,1:cur_connection_set%num_connections)
 
   string = "Area"
-  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  option%io_buffer = 'Reading dataset: ' // trim(string)
+  call printMsg(option)   
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          real_array) 
 
@@ -319,7 +339,8 @@ subroutine ReadStructuredGridHDF5(realization)
     real_array(1:cur_connection_set%num_connections)                      
 
   string = "CosB"
-  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  option%io_buffer = 'Reading dataset: ' // trim(string)
+  call printMsg(option)   
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          real_array) 
   
@@ -330,9 +351,11 @@ subroutine ReadStructuredGridHDF5(realization)
   deallocate(real_array)
   deallocate(indices)
 
-  if (option%myrank == 0) print *, 'Closing group: Connections'
+  option%io_buffer = 'Closing group: Connections'
+  call printMsg(option)
   call h5gclose_f(grp_id,hdf5_err)
-  if (option%myrank == 0) print *, 'Closing hdf5 file: ', filename
+  option%io_buffer = 'Closing hdf5 file: ' // trim(filename)
+  call printMsg(option)  
   call h5fclose_f(file_id,hdf5_err)
    
   call h5close_f(hdf5_err)
@@ -355,9 +378,11 @@ subroutine ReadStructuredGridHDF5(realization)
 
   call PetscGetTime(time1, ierr)
   time1 = time1 - time0
-  if (option%myrank == 0) print *, time1, &
-       ' seconds to read unstructured grid data from hdf5 file'
-     
+  write(option%io_buffer, &
+        '(f6.2," seconds to read unstructured grid data from hdf5 file")') &
+        time1
+  call printMsg(option) 
+       
 end subroutine ReadStructuredGridHDF5
 
 ! ************************************************************************** !
@@ -416,13 +441,11 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
                                       num_connections_in_file,hdf5_err)
 #if 1
   if (num_connections_in_file /= num_internal_connections) then
-    if (option%myrank == 0) then
-      print *, 'ERROR: ', trim(string), ' data space dimension (', &
-               num_connections_in_file, ') does not match the dimensions ', &
-               'of the domain (', num_internal_connections, ').'
-      call PetscFinalize(ierr)
-      stop
-    endif
+    write(option%io_buffer, &
+          '(a," data space dimension (",i9,") does not match the dimension",&
+           &" of the domain (",i9,").")') trim(string), &
+           num_connections_in_file, num_internal_connections
+    call printErrMsg(option)
   endif
 #endif
   
@@ -457,7 +480,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
     call h5sselect_hyperslab_f(file_space_id_up, H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
 #ifdef HDF5_BROADCAST
-    if (option%myrank == 0) then                           
+    if (option%myrank == option%io_rank) then                           
 #endif
       call PetscLogEventBegin(logging%event_h5dread_f, &
                               PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -470,13 +493,13 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
 #ifdef HDF5_BROADCAST
     endif
     if (option%commsize > 1) &
-      call mpi_bcast(upwind_ids,dims(1),MPI_INTEGER,ZERO_INTEGER, &
+      call mpi_bcast(upwind_ids,dims(1),MPI_INTEGER,option%io_rank, &
                      option%comm,ierr)
 #endif    
     call h5sselect_hyperslab_f(file_space_id_down, H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
 #ifdef HDF5_BROADCAST
-    if (option%myrank == 0) then                           
+    if (option%myrank == option%io_rank) then                           
 #endif
       call PetscLogEventBegin(logging%event_h5dread_f, &
                               PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -489,7 +512,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
 #ifdef HDF5_BROADCAST
     endif
     if (option%commsize > 1) &
-      call mpi_bcast(downwind_ids,dims(1),MPI_INTEGER,ZERO_INTEGER, &
+      call mpi_bcast(downwind_ids,dims(1),MPI_INTEGER,option%io_rank, &
                      option%comm,ierr)
 #endif    
     do i=1,dims(1)
@@ -519,11 +542,11 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
   call h5dclose_f(data_set_id_down,hdf5_err)
 
   if (index_count /= num_internal_connections) then
-    if (option%myrank == 0) &
-      print *, 'ERROR: Number of indices read (', index_count, ') does not ', &
-               'match the number of local grid connections (', num_internal_connections, ').'
-      call PetscFinalize(ierr)
-      stop
+    write(option%io_buffer, &
+          '("Number of indices read (",i9,") does not match the number of",&
+           &" local grid connections (",i9,").")') index_count, &
+           num_internal_connections
+    call printErrMsg(option)      
   endif
 
 end subroutine SetupConnectionIndices

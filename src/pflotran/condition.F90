@@ -412,8 +412,9 @@ subroutine FlowSubConditionVerify(option, condition, sub_condition_name, &
   endif
   
   if (len_trim(sub_condition%ctype) < 1) then
-    call printWrnMsg(option,'type of ' // trim(condition%name) // ':' // &
-                     trim(sub_condition_name) // ' set to default')
+    option%io_buffer = 'type of ' // trim(condition%name) // ':' // &
+                     trim(sub_condition_name) // ' set to default'
+    call printWrnMsg(option)
     sub_condition%ctype = default_ctype
     sub_condition%itype = default_itype
   endif
@@ -490,10 +491,11 @@ subroutine FlowConditionDatasetVerify(option, condition_name, sub_condition_name
         dataset%max_time_index) then
       write(size1,*) size(dataset%times,1)
       write(size2,*) size(dataset%values,2)
-      call printErrMsg(option,'times/values ('//trim(size1)//'/'//trim(size2) // &
-                       ') array size mismatch in ' // &
-                       'condition: ' // trim(condition_name) // &
-                       'subcondition: ' // trim(sub_condition_name)) 
+      option%io_buffer = 'times/values ('//trim(size1)//'/'//trim(size2) // &
+                         ') array size mismatch in ' // &
+                         'condition: ' // trim(condition_name) // &
+                         'subcondition: ' // trim(sub_condition_name)
+      call printErrMsg(option) 
     endif
     dataset%is_transient = PETSC_TRUE
   else
@@ -654,7 +656,8 @@ subroutine FlowConditionRead(condition,option,fid)
             case('H','ENTHALPY')
               sub_condition_ptr => enthalpy
             case default
-              call printErrMsg(option,'keyword not recognized in condition,type')
+              option%io_buffer = 'keyword not recognized in condition,type'
+              call printErrMsg(option)
           end select
           call fiReadWord(string,word,PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'TYPE','CONDITION', ierr)   
@@ -681,8 +684,9 @@ subroutine FlowConditionRead(condition,option,fid)
             case('equilibrium')
               sub_condition_ptr%itype = EQUILIBRIUM_SS
             case default
-              string = 'bc type "' // trim(word) // '" not recognized in condition,type'
-              call printErrMsg(option,string)
+              option%io_buffer = 'bc type "' // trim(word) // &
+                                 '" not recognized in condition,type'
+              call printErrMsg(option)
           end select
         enddo
       case('TIME','TIMES')
@@ -717,7 +721,8 @@ subroutine FlowConditionRead(condition,option,fid)
             case('H','ENTHALPY')
               sub_condition_ptr => enthalpy
             case default
-              call printErrMsg(option,'keyword not recognized in condition,type')
+              option%io_buffer = 'keyword not recognized in condition,type'
+              call printErrMsg(option)
           end select
           call FlowConditionReadValues(option,word,string,sub_condition_ptr%gradient,word)
           nullify(sub_condition_ptr)
@@ -741,16 +746,17 @@ subroutine FlowConditionRead(condition,option,fid)
         call FlowConditionReadValues(option,word,string,concentration%dataset, &
                                      concentration%units)
       case default
-        string = 'Keyword: ' // trim(word) // &
-                 ' not recognized in flow condition'
-        call printErrMsg(option,string)                                 
+        option%io_buffer = 'Keyword: ' // trim(word) // &
+                           ' not recognized in flow condition'
+        call printErrMsg(option)                                 
     end select 
   
   enddo  
   
   ! check whether
   if (default_iphase == 0) then
-    call printWrnMsg(option,'"iphase" not set in condition; set to 1')
+    option%io_buffer = '"iphase" not set in condition; set to 1'
+    call printWrnMsg(option)
     condition%iphase = 1
   else
     condition%iphase = default_iphase    
@@ -796,8 +802,9 @@ subroutine FlowConditionRead(condition,option,fid)
   select case(option%iflowmode)
     case(THC_MODE,MPH_MODE)
       if (.not.associated(pressure) .and. .not.associated(mass_rate)) then
-        call printErrMsg(option,'pressure and mass_rate condition null in condition: ' // &
-                         condition%name)
+        option%io_buffer = 'pressure and mass_rate condition null in ' // &
+                           'condition: ' // trim(condition%name)
+        call printErrMsg(option)
       endif                         
       if (associated(pressure)) then
         condition%pressure => pressure
@@ -806,18 +813,21 @@ subroutine FlowConditionRead(condition,option,fid)
         condition%mass_rate => mass_rate
       endif                         
       if (.not.associated(temperature)) then
-        call printErrMsg(option,'temperature condition null in condition: ' // &
-                         condition%name)
+        option%io_buffer = 'temperature condition null in condition: ' // &
+                            trim(condition%name)      
+        call printErrMsg(option)
       endif                         
       condition%temperature => temperature
       if (.not.associated(concentration)) then
-        call printErrMsg(option,'concentration condition null in condition: ' // &
-                         condition%name)
+        option%io_buffer = 'concentration condition null in condition: ' // &
+                            trim(condition%name)      
+        call printErrMsg(option)
       endif                         
       condition%concentration => concentration
       if (.not.associated(enthalpy)) then
-        call printWrnMsg(option,'enthalpy condition null in condition: ' // &
-                         condition%name)
+        option%io_buffer = 'enthalpy condition null in condition: ' // &
+                            trim(condition%name)      
+        call printErrMsg(option)
       endif                         
       condition%enthalpy => enthalpy
       condition%num_sub_conditions = 4
@@ -842,8 +852,9 @@ subroutine FlowConditionRead(condition,option,fid)
       
     case(RICHARDS_MODE)
       if (.not.associated(pressure) .and. .not.associated(mass_rate)) then
-        call printErrMsg(option,'pressure and mass_rate condition null in condition: ' // &
-                         condition%name)
+        option%io_buffer = 'pressure and mass_rate condition null in ' // &
+                           'condition: ' // trim(condition%name)
+        call printErrMsg(option)      
       endif                         
       if (associated(pressure)) then
         condition%pressure => pressure
@@ -952,7 +963,9 @@ subroutine TranConditionRead(condition,constraint_list,reaction,option)
             case('zero_gradient')
               condition%itype = ZERO_GRADIENT_BC
             case default
-              call printErrMsg(option,'keyword not recognized in condition,type')
+              option%io_buffer = 'Keyword ' // trim(word) // &
+                                 ' not recognized in condition,type'
+              call printErrMsg(option)
         end select
       case('TIME')
         call fiReadDouble(string,default_time,ierr)
@@ -1003,7 +1016,8 @@ subroutine TranConditionRead(condition,constraint_list,reaction,option)
         constraint_coupler => TranConstraintCouplerCreate(option)
         call fiReadWord(string,constraint%name,PETSC_TRUE,ierr)
         call fiErrorMsg(option%myrank,'constraint','name',ierr) 
-        call printMsg(option,constraint%name)
+        option%io_buffer = 'Constraint: ' // trim(constraint%name)
+        call printMsg(option)
         call TranConstraintRead(constraint,reaction,option)
         call TranConstraintAddToList(constraint,constraint_list)
         constraint_coupler%aqueous_species => constraint%aqueous_species
@@ -1021,9 +1035,9 @@ subroutine TranConditionRead(condition,constraint_list,reaction,option)
           cur_coupler%next => constraint_coupler
         endif        
       case default
-        string = 'Keyword: ' // trim(word) // &
+        option%io_buffer = 'Keyword: ' // trim(word) // &
                  ' not recognized in transport condition'
-        call printErrMsg(option,string)
+        call printErrMsg(option)
     end select 
   
   enddo  
@@ -1093,17 +1107,20 @@ subroutine TranConstraintRead(constraint,reaction,option)
           icomp = icomp + 1        
           
           if (icomp > reaction%ncomp) then
-            string = 'Number of concentration constraints exceeds number ' // &
-                     'of primary chemical components in constraint: ' // &
-                     trim(constraint%name)
-            call printErrMsg(option,string)
+            option%io_buffer = 'Number of concentration constraints ' // &
+                               'exceeds number of primary chemical ' // &
+                               'components in constraint: ' // &
+                                trim(constraint%name)
+            call printErrMsg(option)
           endif
           
           call fiReadWord(string,aq_species_constraint%names(icomp), &
                           PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'aqueous species name', &
                           'CONSTRAINT, CONCENTRATIONS', ierr) 
-          call printMsg(option,trim(aq_species_constraint%names(icomp)))
+          option%io_buffer = 'Constraint Species: ' // &
+                             trim(aq_species_constraint%names(icomp))
+          call printMsg(option)
           call fiReadDouble(string,aq_species_constraint%constraint_conc(icomp),ierr)
           call fiErrorMsg(option%myrank,'concentration', &
                           'CONSTRAINT, CONCENTRATIONS', ierr)          
@@ -1131,9 +1148,9 @@ subroutine TranConstraintRead(constraint,reaction,option)
               case('Z','CHG') 
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_CHARGE_BAL
               case default
-                string = 'Keyword: ' // trim(word) // &
+                option%io_buffer = 'Keyword: ' // trim(word) // &
                          ' not recognized in constraint,concentration'
-                call printErrMsg(option,string)
+                call printErrMsg(option)
             end select 
             if (aq_species_constraint%constraint_type(icomp) == CONSTRAINT_MINERAL .or. &
                 aq_species_constraint%constraint_type(icomp) == CONSTRAINT_GAS) then
@@ -1166,17 +1183,20 @@ subroutine TranConstraintRead(constraint,reaction,option)
           icomp = icomp + 1
 
           if (icomp > reaction%nkinmnrl) then
-            string = 'Number of mineral constraints exceeds number of ' // &
+            option%io_buffer = &
+                     'Number of mineral constraints exceeds number of ' // &
                      'kinetic minerals in constraint: ' // &
                       trim(constraint%name)
-            call printErrMsg(option,string)
+            call printErrMsg(option)
           endif
           
           call fiReadWord(string,mineral_constraint%names(icomp), &
                           PETSC_TRUE,ierr)
           call fiErrorMsg(option%myrank,'mineral name', &
                           'CONSTRAINT, MINERALS', ierr)  
-          call printMsg(option,trim(mineral_constraint%names(icomp)))
+          option%io_buffer = 'Constraint Minerals: ' // &
+                             trim(mineral_constraint%names(icomp))
+          call printMsg(option)
           call fiReadDouble(string,mineral_constraint%constraint_vol_frac(icomp),ierr)
           call fiErrorMsg(option%myrank,'volume fraction', &
                           'CONSTRAINT, MINERALS', ierr)          
@@ -1192,9 +1212,9 @@ subroutine TranConstraintRead(constraint,reaction,option)
         constraint%minerals => mineral_constraint 
                             
       case default
-        string = 'Keyword: ' // trim(word) // &
+        option%io_buffer = 'Keyword: ' // trim(word) // &
                  ' not recognized in transport constraint'
-        call printErrMsg(option,string)
+        call printErrMsg(option)
     end select 
   
   enddo  

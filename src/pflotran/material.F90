@@ -537,7 +537,8 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
                         (1.d0-(1.d0-Se_one_over_m)**m)
           dkr_pc = dkr_Se*dSe_pc
         case default
-          call printErrMsg(option,"Unknown relative permeabilty function")
+          option%io_buffer = 'Unknown relative permeabilty function' 
+          call printErrMsg(option)
       end select
     case(BROOKS_COREY)
       alpha = saturation_function%alpha
@@ -593,7 +594,8 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
           dkr_Se = power*relative_perm/Se
           dkr_pc = dkr_Se*dSe_pc
         case default
-          call printErrMsg(option,"Unknown relative permeabilty function")
+          option%io_buffer = 'Unknown relative permeabilty function'
+          call printErrMsg(option)
       end select
     case(THOMEER_COREY)
       pc = option%reference_pressure-pressure
@@ -621,7 +623,8 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
         return
       endif
     case default
-      call printErrMsg(option,"Unknown saturation function")
+      option%io_buffer = 'Unknown saturation function'
+      call printErrMsg(option)
   end select
   dsat_pres = -dsat_pc 
   dkr_pres = -dkr_pc

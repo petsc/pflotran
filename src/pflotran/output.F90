@@ -53,15 +53,18 @@ subroutine Output(realization,plot_flag)
   character(len=MAXWORDLENGTH) :: word
   PetscErrorCode :: ierr
   PetscLogDouble :: tstart, tend
+  type(option_type), pointer :: option
+
+  option => realization%option
 
   call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr)
 
   ! check for plot request from active directory
   if (.not.plot_flag) then
 
-    if (realization%option%use_touch_options) then
+    if (option%use_touch_options) then
       word = 'plot'
-      if (OptionCheckTouch(realization%option,word)) then
+      if (OptionCheckTouch(option,word)) then
         realization%output_option%plot_name = 'plot'
         plot_flag = PETSC_TRUE
       endif
@@ -80,9 +83,9 @@ subroutine Output(realization,plot_flag)
       call PetscLogEventEnd(logging%event_output_hdf5, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
-      call PetscGetTime(tend,ierr) 
-      if (realization%option%myrank == 0) &
-        print *, '      Seconds to write to HDF5 file: ', (tend-tstart)
+      call PetscGetTime(tend,ierr)
+      write(option%io_buffer,'(f6.2," Seconds to write HDF5 file.")') tend-tstart
+      call printMsg(option)
     endif
    
     if (realization%output_option%print_tecplot) then
@@ -99,8 +102,9 @@ subroutine Output(realization,plot_flag)
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
       call PetscGetTime(tend,ierr) 
-      if (realization%option%myrank == 0) &
-        print *, '      Seconds to write to Tecplot file(s): ', (tend-tstart)
+      write(option%io_buffer,'(f6.2," Seconds to write to Tecplot file(s)")') &
+            tend-tstart
+      call printMsg(option)        
     endif
 
     if (realization%output_option%print_vtk) then
@@ -114,11 +118,12 @@ subroutine Output(realization,plot_flag)
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
       call PetscGetTime(tend,ierr) 
-      if (realization%option%myrank == 0) &
-        print *, '      Seconds to write to VTK file(s): ', (tend-tstart)
+      write(option%io_buffer,'(f6.2," Seconds to write to VTK file(s)")') &
+            tend-tstart
+      call printMsg(option) 
     endif
       
-    if (realization%option%compute_statistics) then
+    if (option%compute_statistics) then
       call ComputeFlowCellVelocityStats(realization)
       call ComputeFlowFluxVelocityStats(realization)
 !      call OutputMassBalance(realization)
@@ -233,8 +238,9 @@ subroutine OutputTecplotBlock(realization)
     endif
   endif
   
-  if (option%myrank == 0) then
-    print *, '--> write tecplot output file: ', filename
+  if (option%myrank == option%io_rank) then
+    option%io_buffer = '--> write tecplot output file: ' // trim(filename)
+    call printMsg(option)
     open(unit=IUNIT3,file=filename,action="write")
   
     ! write header
@@ -460,7 +466,7 @@ subroutine OutputTecplotBlock(realization)
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
   
-  if (option%myrank == 0) close(IUNIT3)
+  if (option%myrank == option%io_rank) close(IUNIT3)
   
   if (output_option%print_tecplot_velocities) then
     call OutputVelocitiesTecplotBlock(realization)
@@ -549,8 +555,10 @@ subroutine OutputVelocitiesTecplotBlock(realization)
     write(filename,'("pflotran_vel",i4,".tec")') output_option%plot_number  
   endif
   
-  if (option%myrank == 0) then
-    print *, '--> write tecplot velocity output file: ', filename
+  if (option%myrank == option%io_rank) then
+    option%io_buffer = '--> write tecplot velocity output file: ' // &
+                       trim(filename)
+    call printMsg(option)
     open(unit=IUNIT3,file=filename,action="write")
   
     ! write header
@@ -667,7 +675,7 @@ subroutine OutputVelocitiesTecplotBlock(realization)
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
 
-  if (option%myrank == 0) close(IUNIT3)
+  if (option%myrank == option%io_rank) close(IUNIT3)
   
 end subroutine OutputVelocitiesTecplotBlock
 
@@ -768,8 +776,10 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
   
   filename = trim(filename) // trim(string)
   
-  if (option%myrank == 0) then
-    print *, '--> write tecplot velocity flux output file: ', filename
+  if (option%myrank == option%io_rank) then
+    option%io_buffer = '--> write tecplot velocity flux output file: ' // &
+                       trim(filename)
+    call printMsg(option)
     open(unit=IUNIT3,file=filename,action="write")
   
     ! write header
@@ -987,7 +997,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
   
   deallocate(indices)
 
-  if (option%myrank == 0) close(IUNIT3)
+  if (option%myrank == option%io_rank) close(IUNIT3)
 
   call PetscLogEventEnd(logging%event_output_write_flux_tecplot, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -1065,8 +1075,10 @@ subroutine OutputTecplotPoint(realization)
     endif
   endif
   
-  if (option%myrank == 0) then
-    print *, '--> write tecplot output file: ', filename
+  if (option%myrank == option%io_rank) then
+    option%io_buffer = '--> write tecplot output file: ' // &
+                       trim(filename)
+    call printMsg(option)                       
     open(unit=IUNIT3,file=filename,action="write")
   
     ! write header
@@ -1252,7 +1264,7 @@ subroutine OutputTecplotPoint(realization)
   enddo
   
   
-  if (option%myrank == 0) close(IUNIT3)
+  if (option%myrank == option%io_rank) close(IUNIT3)
   
   if (output_option%print_tecplot_velocities) then
     call OutputVelocitiesTecplotPoint(realization)
@@ -1313,8 +1325,10 @@ subroutine OutputVelocitiesTecplotPoint(realization)
     write(filename,'("pflotran_vel",i4,".tec")') output_option%plot_number  
   endif
   
-  if (option%myrank == 0) then
-    print *, '--> write tecplot velocity output file: ', filename
+  if (option%myrank == option%io_rank) then
+    option%io_buffer = '--> write tecplot velocity output file: ' // &
+                       trim(filename)
+    call printMsg(option)                       
     open(unit=IUNIT3,file=filename,action="write")
   
     ! write header
@@ -1401,7 +1415,7 @@ subroutine OutputVelocitiesTecplotPoint(realization)
   call VecDestroy(global_vec_vy,ierr)
   call VecDestroy(global_vec_vz,ierr)
 
-  if (option%myrank == 0) close(IUNIT3)
+  if (option%myrank == option%io_rank) close(IUNIT3)
   
 end subroutine OutputVelocitiesTecplotPoint
 
@@ -1449,8 +1463,9 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   discretization => realization%discretization
   
   ! open file
-  if (option%myrank == 0) then
-    print *, '--> write tecplot output file: ', filename
+  if (option%myrank == option%io_rank) then
+    option%io_buffer = '--> write tecplot output file: ' // trim(filename)
+    call printMsg(option)
     open(unit=fid,file=filename,action="write")
   
     ! write header
@@ -1603,7 +1618,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
   ny = grid%structured_grid%ny
   nz = grid%structured_grid%nz
   
-  if (option%myrank == 0) then
+  if (option%myrank == option%io_rank) then
     ! x-dir
     count = 0
     do k=1,nz+1
@@ -1751,7 +1766,8 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
       call MPI_Allreduce(grid%nlmax,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
                          option%comm,ierr)
       max_local_size_saved = max_local_size
-      if (option%myrank == 0) print *, 'max_local_size_saved: ', max_local_size
+      write(option%io_buffer,'("max_local_size_saved: ",i9)') max_local_size
+      call printMsg(option)
     endif
     max_local_size = max_local_size_saved
     local_size = grid%nlmax
@@ -1773,7 +1789,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   endif
   
   ! communicate data to processor 0, round robin style
-  if (option%myrank == 0) then
+  if (option%myrank == option%io_rank) then
     if (datatype == TECPLOT_INTEGER) then
       ! This approach makes output files identical, regardless of processor
       ! distribution.  It is necessary when diffing files.
@@ -1804,7 +1820,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
       if (option%io_handshake_buffer_size > 0 .and. &
           iproc+max_proc_prefetch >= max_proc) then
         max_proc = max_proc + option%io_handshake_buffer_size
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,option%comm, &
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%comm, &
                        ierr)
       endif
 #endif      
@@ -1853,7 +1869,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
 #ifdef HANDSHAKE    
     if (option%io_handshake_buffer_size > 0) then
       max_proc = -1
-      call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,option%comm, &
+      call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%comm, &
                      ierr)
     endif
 #endif      
@@ -1870,22 +1886,22 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
     if (option%io_handshake_buffer_size > 0) then
       do
         if (option%myrank < max_proc) exit
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,option%comm, &
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%comm, &
                        ierr)
       enddo
     endif
 #endif    
     if (datatype == TECPLOT_INTEGER) then
-      call MPI_Send(integer_data,local_size,MPI_INTEGER,ZERO_INTEGER,local_size, &
+      call MPI_Send(integer_data,local_size,MPI_INTEGER,option%io_rank,local_size, &
                     option%comm,ierr)
     else
-      call MPI_Send(real_data,local_size,MPI_DOUBLE_PRECISION,ZERO_INTEGER,local_size, &
+      call MPI_Send(real_data,local_size,MPI_DOUBLE_PRECISION,option%io_rank,local_size, &
                     option%comm,ierr)
     endif
 #ifdef HANDSHAKE    
     if (option%io_handshake_buffer_size > 0) then
       do
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,option%comm, &
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%comm, &
                        ierr)
         if (max_proc < 0) exit
       enddo
@@ -2994,8 +3010,9 @@ subroutine OutputVTK(realization)
     endif
   endif
   
-  if (option%myrank == 0) then
-    print *, '--> write vtk output file: ', filename
+  if (option%myrank == option%io_rank) then
+    option%io_buffer = '--> write vtk output file: ' // trim(filename)
+    call printMsg(option)    
     open(unit=IUNIT3,file=filename,action="write")
   
     ! write header
@@ -3136,7 +3153,7 @@ subroutine OutputVTK(realization)
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
   
-  if (option%myrank == 0) close(IUNIT3)
+  if (option%myrank == option%io_rank) close(IUNIT3)
 
 #if 0  
   if (output_option%print_tecplot_velocities) then
@@ -3230,8 +3247,10 @@ subroutine OutputVelocitiesVTK(realization)
     write(filename,'("pflotran_vel",i4,".vtk")') output_option%plot_number  
   endif
   
-  if (option%myrank == 0) then
-    print *, '--> write tecplot velocity output file: ', filename
+  if (option%myrank == option%io_rank) then
+   option%io_buffer = '--> write tecplot velocity output file: ' // &
+                      trim(filename)
+    call printMsg(option)                      
     open(unit=IUNIT3,file=filename,action="write")
   
     ! write header
@@ -3335,7 +3354,7 @@ subroutine OutputVelocitiesVTK(realization)
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
 
-  if (option%myrank == 0) close(IUNIT3)
+  if (option%myrank == option%io_rank) close(IUNIT3)
   
 end subroutine OutputVelocitiesVTK
 #endif
@@ -3387,7 +3406,7 @@ subroutine WriteVTKGrid(fid,realization)
     nyp1 = ny+1
     nyp1 = nz+1
   
-    if (option%myrank == 0) then
+    if (option%myrank == option%io_rank) then
 
  1010 format("POINTS",x,i12,x,"float")
       write(fid,1010) (nx+1)*(ny+1)*(nz+1)
@@ -3541,7 +3560,7 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
       call MPI_Allreduce(grid%nlmax,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
                          option%comm,ierr)
       max_local_size_saved = max_local_size
-      if (option%myrank == 0) print *, 'max_local_size_saved: ', max_local_size
+      if (OptionPrint(option)) print *, 'max_local_size_saved: ', max_local_size
     endif
     max_local_size = max_local_size_saved
     local_size = grid%nlmax
@@ -3563,7 +3582,7 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
   endif
   
   ! communicate data to processor 0, round robin style
-  if (option%myrank == 0) then
+  if (option%myrank == option%io_rank) then
 
 !    write(fid,'(''CELL_DATA'',i8)') grid%nmax
 
@@ -3605,7 +3624,7 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
       if (option%io_handshake_buffer_size > 0 .and. &
           iproc+max_proc_prefetch >= max_proc) then
         max_proc = max_proc + option%io_handshake_buffer_size
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,option%comm, &
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%comm, &
                        ierr)
       endif
 #endif      
@@ -3654,7 +3673,7 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
 #ifdef HANDSHAKE    
     if (option%io_handshake_buffer_size > 0) then
       max_proc = -1
-      call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,option%comm, &
+      call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%comm, &
                      ierr)
     endif
 #endif      
@@ -3672,22 +3691,22 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
     if (option%io_handshake_buffer_size > 0) then
       do
         if (option%myrank < max_proc) exit
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,option%comm, &
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%comm, &
                        ierr)
       enddo
     endif
 #endif    
     if (datatype == VTK_INTEGER) then
-      call MPI_Send(integer_data,local_size,MPI_INTEGER,ZERO_INTEGER,local_size, &
-                    option%comm,ierr)
+      call MPI_Send(integer_data,local_size,MPI_INTEGER,option%io_rank, &
+                    local_size,option%comm,ierr)
     else
-      call MPI_Send(real_data,local_size,MPI_DOUBLE_PRECISION,ZERO_INTEGER,local_size, &
-                    option%comm,ierr)
+      call MPI_Send(real_data,local_size,MPI_DOUBLE_PRECISION,option%io_rank, &
+                    local_size,option%comm,ierr)
     endif
 #ifdef HANDSHAKE    
     if (option%io_handshake_buffer_size > 0) then
       do
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,option%comm, &
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%comm, &
                        ierr)
         if (max_proc < 0) exit
       enddo
@@ -3731,14 +3750,10 @@ subroutine OutputHDF5(realization)
   
   type(realization_type) :: realization
 
-  if (realization%option%myrank == 0) then
-    print *
-    print *, 'PFLOTRAN must be compiled with -DUSE_HDF5 to ', &
-             'write to an HDF5 format.'
-    print *
-  endif
-  stop
-
+  write(realization%option%io_buffer, &
+        '(/,"PFLOTRAN must be compiled with -DUSE_HDF5 to ", &
+        &"read HDF5 formatted structured grids.",/)')
+  call printErrMsg(realization%option)
 #else
 
 ! 64-bit stuff
@@ -3840,11 +3855,11 @@ subroutine OutputHDF5(realization)
      call h5pclose_f(prop_id,hdf5_err)
 
      if (first) then
-        if (option%myrank == 0) print *, '--> creating hdf5 output file: ', filename
+       option%io_buffer = '--> creating hdf5 output file: ' // filename
      else
-        if (option%myrank == 0) print *, '--> appending to hdf5 output file: ', &
-             filename
+       option%io_buffer = '--> appending to hdf5 output file: ' // filename
      endif
+     call printMsg(option)
 
      if (first) then
 
@@ -4445,7 +4460,7 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
 #ifndef SERIAL_HDF5
   call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err) ! must be independent and only from p0
 #endif
-  if (option%myrank == 0) then
+  if (option%myrank == option%io_rank) then
     call PetscLogEventBegin(logging%event_h5dwrite_f, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)     
@@ -4948,7 +4963,7 @@ subroutine ComputeFlowMassBalance(realization)
   call VecAYPX(global_vec,-1.d0,mass_vec,ierr)
   call VecNorm(global_vec,NORM_2,std_dev,ierr)
   string = 'Mass Balance'
-  if (option%myrank == 0) then
+  if (option%myrank == option%io_rank) then
     write(*,'(/,a,/, &
                  &"Average:",1es12.4,/, &
                  &"Max:    ",1es12.4,"  Location:",i11,/, &
@@ -5030,8 +5045,9 @@ subroutine OutputMassBalance(realization)
     endif
   endif
   
-  if (option%myrank == 0) then
-    print *, '--> write tecplot output file: ', filename
+  if (option%myrank == option%io_rank) then
+    option%io_buffer = '--> write tecplot output file: ' // trim(filename)
+    call printMsg(option)    
     open(unit=IUNIT3,file=filename,action="write")
   
     ! write header
@@ -5289,7 +5305,7 @@ subroutine ComputeFlowCellVelocityStats(realization)
       string = trim(string) // ' Velocity Statistics [m/' // &
                trim(output_option%tunit) // ']:'
 
-      if (option%myrank == 0) then
+      if (option%myrank == option%io_rank) then
         write(*,'(/,a,/, &
                      &"Average:",1es12.4,/, &
                      &"Max:    ",1es12.4,"  Location:",i11,/, &
@@ -5419,7 +5435,7 @@ subroutine ComputeFlowFluxVelocityStats(realization)
       end select
       string = trim(string) // ' Flux Velocity Statistics [m/' // &
                trim(output_option%tunit) // ']:'
-      if (option%myrank == 0) then
+      if (option%myrank == option%io_rank) then
         write(*,'(/,a,/, &
                      &"Average:",1es12.4,/, &
                      &"Max:    ",1es12.4,"  Location:",i11,/, &

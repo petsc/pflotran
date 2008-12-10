@@ -198,7 +198,8 @@ subroutine WaypointListFillIn(option,waypoint_list)
   enddo
 
   if (dt_max <= 1.d-40) then
-    call printErrMsg(option,'All values of dt_max in input file uninitialized')
+    option%io_buffer = 'All values of dt_max in input file uninitialized'
+    call printErrMsg(option)
   endif
   
   ! assign that value to the first waypoint, if waypoint%dt_max not already > 1.d-40
@@ -258,7 +259,6 @@ subroutine WaypointListRemoveExtraWaypnts(option,waypoint_list)
   type(waypoint_list_type) :: waypoint_list
   
   type(waypoint_type), pointer :: waypoint, prev_waypoint
-  character(len=MAXSTRINGLENGTH) :: string
   
   waypoint => waypoint_list%first
   do
@@ -276,10 +276,10 @@ subroutine WaypointListRemoveExtraWaypnts(option,waypoint_list)
     if (.not.associated(waypoint)) exit
     prev_waypoint => waypoint
     waypoint => waypoint%next
-    write(string,'("Waypoint at time:", 1pe12.4, &
+    write(option%io_buffer,'("Waypoint at time:", 1pe12.4, &
   &       " is beyond the end of simulation")') &
           prev_waypoint%time
-    call printWrnMsg(option,trim(string))
+    call printWrnMsg(option)
     call WaypointDestroy(prev_waypoint)   
   enddo
 

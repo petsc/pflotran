@@ -167,7 +167,7 @@ subroutine Init(simulation,filename)
     call MassBalanceCreate(realization)
   endif  
   
-  if (option%myrank == 0) then
+  if (OptionPrint(option)) then
     ! general print statements for both flow and transport modes
     write(*,'(/,"++++++++++++++++++++++++++++++++++++++++++++++++++++&
       &++++++++")')
@@ -187,13 +187,13 @@ subroutine Init(simulation,filename)
     if (flow_solver%J_mat_type == MATAIJ) then
       select case(option%iflowmode)
         case(MPH_MODE,THC_MODE)
-          call printErrMsg(option,&
-                           'AIJ matrix not supported for current mode: '// &
-                           option%flowmode)
+          option%io_buffer = 'AIJ matrix not supported for current mode: '// &
+                             option%flowmode
+          call printErrMsg(option)
       end select
     endif
 
-    if (option%myrank == 0) then
+    if (OptionPrint(option)) then
       write(*,'(" number of dofs = ",i3,", number of phases = ",i3,i2)') &
         option%nflowdof,option%nphase
       select case(option%iflowmode)
@@ -291,10 +291,10 @@ subroutine Init(simulation,filename)
        endif
     endif
 
-    string = 'Solver: ' // trim(flow_solver%ksp_type)
-    call printMsg(option,string)
-    string = 'Preconditioner: ' // trim(flow_solver%pc_type)
-    call printMsg(option,string)
+    option%io_buffer = 'Solver: ' // trim(flow_solver%ksp_type)
+    call printMsg(option)
+    option%io_buffer = 'Preconditioner: ' // trim(flow_solver%pc_type)
+    call printMsg(option)
 
     ! shell for custom convergence test.  The default SNES convergence test  
     ! is call within this function. 
@@ -367,10 +367,10 @@ subroutine Init(simulation,filename)
           call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 1, tran_solver%pc)
        endif
     endif
-    string = 'Solver: ' // trim(tran_solver%ksp_type)
-    call printMsg(option,string)
-    string = 'Preconditioner: ' // trim(tran_solver%pc_type)
-    call printMsg(option,string)
+    option%io_buffer = 'Solver: ' // trim(tran_solver%ksp_type)
+    call printMsg(option)
+    option%io_buffer = 'Preconditioner: ' // trim(tran_solver%pc_type)
+    call printMsg(option)
 
     ! shell for custom convergence test.  The default SNES convergence test  
     ! is call within this function. 
@@ -389,7 +389,7 @@ subroutine Init(simulation,filename)
   
   endif
 
-  if (option%myrank == 0) write(*,'("++++++++++++++++++++++++++++++++&
+  if (OptionPrint(option)) write(*,'("++++++++++++++++++++++++++++++++&
                      &++++++++++++++++++++++++++++",/)')
 
 
@@ -410,7 +410,7 @@ subroutine Init(simulation,filename)
 
   ! should we still support this
   if (option%use_generalized_grid) then 
-    if (option%myrank == 0) print *, 'Reading structured grid from hdf5' 
+    call printMsg(option,'Reading structured grid from hdf5')
     if (.not.associated(patch%imat)) &
       allocate(patch%imat(grid%ngmax))  ! allocate material id array
     call ReadStructuredGridHDF5(realization)
@@ -501,21 +501,21 @@ subroutine Init(simulation,filename)
     string = 'Transport Stepper:'
     call TimestepperPrintInfo(tran_stepper,option%fid_out,string,option)
   endif    
-  if (associated(flow_solver)) then
+  if (OptionPrint(option) .and. associated(flow_solver)) then
     string = 'Flow Newton Solver:'
-    call SolverPrintNewtonInfo(flow_solver,option%fid_out,string,option%myrank)
+    call SolverPrintNewtonInfo(flow_solver,option%fid_out,string)
   endif    
-  if (associated(tran_solver)) then
+  if (OptionPrint(option) .and. associated(tran_solver)) then
     string = 'Transport Newton Solver:'
-    call SolverPrintNewtonInfo(tran_solver,option%fid_out,string,option%myrank)
+    call SolverPrintNewtonInfo(tran_solver,option%fid_out,string)
   endif    
-  if (associated(flow_solver)) then
+  if (OptionPrint(option) .and. associated(flow_solver)) then
     string = 'Flow Linear Solver:'
-    call SolverPrintLinearInfo(flow_solver,option%fid_out,string,option%myrank)
+    call SolverPrintLinearInfo(flow_solver,option%fid_out,string)
   endif    
-  if (associated(tran_solver)) then
+  if (OptionPrint(option) .and. associated(tran_solver)) then
     string = 'Transport Linear Solver'
-    call SolverPrintLinearInfo(tran_solver,option%fid_out,string,option%myrank)
+    call SolverPrintLinearInfo(tran_solver,option%fid_out,string)
   endif    
 
   if (debug%print_couplers) then
@@ -644,7 +644,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
       call fiReadInt(string,grid%structured_grid%npz,ierr)
       call fiDefaultMsg(option%myrank,'npz',ierr)
  
-      if (option%myrank == 0) &
+      if (option%myrank == option%io_rank) &
         write(option%fid_out,'(/," *PROC",/, &
           & "  npx   = ",3x,i4,/, &
           & "  npy   = ",3x,i4,/, &
@@ -845,7 +845,8 @@ subroutine readInput(simulation,filename)
 !    call fiReadCard(word,card,ierr)
     card = trim(word)
 
-    call printMsg(option,'pflotran card:: '//trim(card))
+    option%io_buffer = 'pflotran card:: ' // trim(card)
+    call printMsg(option)
 
     select case(trim(card))
 
@@ -1028,7 +1029,7 @@ subroutine readInput(simulation,filename)
         call fiReadInt(string,idum,ierr)
         call fiDefaultMsg(option%myrank,'isync',ierr)
 
-        if (option%myrank == 0) &
+        if (option%myrank == option%io_rank) &
           write(option%fid_out,'(/," *COUP",/, &
             & "  isync      = ",3x,i2 &
             & )') idum
@@ -1053,7 +1054,7 @@ subroutine readInput(simulation,filename)
           endif
         endif
 
-        if (option%myrank == 0) &
+        if (option%myrank == option%io_rank) &
           write(option%fid_out,'(/," *GRAV",/, &
             & "  gravity    = "," [m/s^2]",3x,3pe12.4 &
             & )') option%gravity(1:3)
@@ -1079,8 +1080,9 @@ subroutine readInput(simulation,filename)
             
         enddo
 
-        if (option%myrank == 0) &
-          write(option%fid_out,'(/," *HDF5",10x,l1,/)') realization%output_option%print_hdf5
+        if (option%myrank == option%io_rank) &
+          write(option%fid_out,'(/," *HDF5",10x,l1,/)') &
+            realization%output_option%print_hdf5
 
 !.....................
       case ('INVERT_Z','INVERTZ')
@@ -1104,8 +1106,9 @@ subroutine readInput(simulation,filename)
             case('BLOCK')
               realization%output_option%tecplot_format = TECPLOT_BLOCK_FORMAT
             case default
-              string = 'TECPLOT format (' // trim(word) // ') not recongnized.'
-              call printErrMsg(option,string)
+              option%io_buffer = 'TECPLOT format (' // trim(word) // &
+                                 ') not recongnized.'
+              call printErrMsg(option)
           end select
         else
           realization%output_option%tecplot_format = TECPLOT_BLOCK_FORMAT
@@ -1129,8 +1132,9 @@ subroutine readInput(simulation,filename)
               realization%output_option%print_tecplot_velocities = PETSC_TRUE
             case('FLUX')
               if (realization%output_option%tecplot_format == TECPLOT_POINT_FORMAT) then
-                string = 'Printing of fluxes not supported in TECPLOT POINT format.'
-                call printErrMsg(option,string)
+                option%io_buffer = &
+                    'Printing of fluxes not supported in TECPLOT POINT format.'
+                call printErrMsg(option)
               endif
               realization%output_option%print_tecplot_flux_velocities = PETSC_TRUE
             case default
@@ -1138,8 +1142,9 @@ subroutine readInput(simulation,filename)
           
         enddo
 
-        if (option%myrank == 0) &
-          write(option%fid_out,'(/," *TECP",10x,l1,/)') realization%output_option%print_tecplot
+        if (option%myrank == option%io_rank) &
+          write(option%fid_out,'(/," *TECP",10x,l1,/)') &
+            realization%output_option%print_tecplot
 
       case ('VTK')
         realization%output_option%print_vtk = PETSC_TRUE
@@ -1167,8 +1172,9 @@ subroutine readInput(simulation,filename)
           
         enddo
 
-        if (option%myrank == 0) &
-          write(option%fid_out,'(/," *VTK",10x,l1,/)') realization%output_option%print_vtk
+        if (option%myrank == option%io_rank) &
+          write(option%fid_out,'(/," *VTK",10x,l1,/)') &
+            realization%output_option%print_vtk
 
 !....................
 
@@ -1237,9 +1243,8 @@ subroutine readInput(simulation,filename)
         else if(realization%discretization%itype == AMR_GRID) then
           call AMRGridReadDXYZ(realization%discretization%amrgrid,option)
         else
-          if (option%myrank == 0) &
-            print *, 'ERROR: Keyword "DXYZ" not supported for unstructured grid'
-            stop
+          option%io_buffer = 'Keyword "DXYZ" not supported for unstructured grid'
+          call printErrMsg(option)
         endif
 #endif
 
@@ -1310,7 +1315,7 @@ subroutine readInput(simulation,filename)
         call fiReadDouble(string,option%wfmts,ierr)
         call fiDefaultMsg(option%myrank,'wfmts',ierr)
 
-        if (option%myrank == 0) &
+        if (OptionPrint(option)) &
         write(option%fid_out,'(/," *RCTR",/, &
           & "  ityp   = ",3x,i3,/, &
           & "  rk     = ",3x,1pe12.4," [mol/cm^2/s]",/, &
@@ -1415,7 +1420,7 @@ subroutine readInput(simulation,filename)
             print *, 'Wrong unit: ', word(1:len_trim(word))
             stop
          end select 
-         if (option%myrank == 0) print *, option%m_nacl
+         if (OptionPrint(option)) print *, option%m_nacl
 !......................
 
       case ('RESTART')
@@ -1807,7 +1812,7 @@ subroutine readInput(simulation,filename)
         else if (realization%output_option%tunit == 'y') then
           realization%output_option%tconv = 60.d0 * 60.d0 * 24.d0 * 365.d0
         else
-          if (option%myrank == 0) then
+          if (OptionPrint(option)) then
             write(*,'(" Time unit: ",a3,/, &
               &" Error: time units must be one of ",/, &
               &"   s -seconds",/,"   m -minutes",/,"   h -hours",/, &
@@ -1939,12 +1944,9 @@ subroutine readInput(simulation,filename)
 !....................
       case default
     
-        if (option%myrank == 0) then
-          print *, "Error reading input file: keyword (", trim(word), &
-                   ") not found. Terminating."
-        endif
-        call PetscFinalize(ierr)
-        stop
+        option%io_buffer = 'Keyword ' // trim(word) // ' in input file ' // &
+                           'not recognized'
+        call printErrMsg(option)
 
     end select
 
@@ -1995,7 +1997,8 @@ subroutine setFlowMode(option)
       option%nflowspec = 2
       option%itable = 2
     case default
-      call printErrMsg(option,'Mode: '//trim(option%flowmode)//' not recognized.')
+      option%io_buffer = 'Mode: '//trim(option%flowmode)//' not recognized.'
+      call printErrMsg(option)
   end select
   
 end subroutine setFlowMode
@@ -2498,8 +2501,8 @@ subroutine readMaterialsFromFile(realization,filename)
     status = 0
     open(unit=fid,file=filename,status="old",iostat=status)
     if (status /= 0) then
-      string = "File: " // filename // " not found."
-      call printErrMsg(option,string)
+      option%io_buffer = 'File: ' // trim(filename) // ' not found.'
+      call printErrMsg(option)
     endif
     call PetscLogEventBegin(logging%event_hash_map, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -2566,7 +2569,6 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
   PetscReal, pointer :: values(:)
   PetscInt, parameter :: block_size = 10000
   Vec :: natural_vec, global_vec
-  PetscMPIInt :: source = 0
 
   discretization => realization%discretization
   field => realization%field
@@ -2579,8 +2581,8 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
   else
     open(unit=fid,file=filename,status="old",iostat=status)
     if (status /= 0) then
-      string = "File: " // filename // " not found."
-      call printErrMsg(option,string)
+      option%io_buffer = 'File: ' // trim(filename) // ' not found.'
+      call printErrMsg(option)
     endif
     allocate(values(block_size))
     allocate(indices(block_size))
@@ -2594,24 +2596,28 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
         indices(i) = count+i-1 ! zero-based indexing
       enddo
       ierr = 0
-      if (option%myrank == 0) read(fid,*,iostat=ierr) values(1:read_count)
-      call mpi_bcast(ierr,ONE_INTEGER,MPI_INTEGER,source,option%comm,ierr)      
+      if (option%myrank == option%io_rank) &
+        read(fid,*,iostat=ierr) values(1:read_count)
+      call mpi_bcast(ierr,ONE_INTEGER,MPI_INTEGER,option%io_rank, &
+                     option%comm,ierr)      
       if (ierr /= 0) then
-        string = 'Insufficent data in file: ' // filename
-        call printErrMsg(option,string)
+        option%io_buffer = 'Insufficent data in file: ' // filename
+        call printErrMsg(option)
       endif
-      if (option%myrank == 0) then
+      if (option%myrank == option%io_rank) then
         call VecSetValues(natural_vec,read_count,indices,values,INSERT_VALUES, &
                           ierr)
       endif
       count = count + read_count
     enddo
-    call mpi_bcast(count,ONE_INTEGER,MPI_INTEGER,source,option%comm,ierr)      
+    call mpi_bcast(count,ONE_INTEGER,MPI_INTEGER,option%io_rank, &
+                   option%comm,ierr)      
     if (count /= grid%nmax) then
-      write(string,'(a,i8,a,i8,a)') 'Number of data in file (', count, &
-                                    ') does not match size of vector (', &
-                                    grid%nlmax, ')'
-      call printErrMsg(option,string)
+      write(option%io_buffer, &
+            '("Number of data in file (",i8, &
+            &") does not match size of vector (", &
+            &i8,")")'), count, grid%nlmax
+      call printErrMsg(option)
     endif
     close(fid)
     deallocate(values)

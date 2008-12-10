@@ -485,10 +485,12 @@ subroutine RealProcessTranConditions(realization)
   
   
   PetscTruth :: found
-  character(len=MAXSTRINGLENGTH) :: string
+  type(option_type), pointer :: option
   type(tran_condition_type), pointer :: cur_condition
   type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
   type(tran_constraint_type), pointer :: cur_constraint, another_constraint
+  
+  option => realization%option
   
   ! check for duplicate constraint names
   cur_constraint => realization%transport_constraints%first
@@ -506,9 +508,9 @@ subroutine RealProcessTranConditions(realization)
         another_constraint => another_constraint%next
       enddo
       if (found) then
-        string = 'Duplicate transport constraints named "' // &
+        option%io_buffer = 'Duplicate transport constraints named "' // &
                  trim(cur_constraint%name) // '"'
-        call printErrMsg(realization%option,string)
+        call printErrMsg(realization%option)
       endif
     cur_constraint => cur_constraint%next
   enddo
@@ -546,10 +548,10 @@ subroutine RealProcessTranConditions(realization)
           cur_constraint => cur_constraint%next
         enddo
         if (.not.associated(cur_constraint_coupler%aqueous_species)) then
-          string = 'Transport constraint "' // &
+          option%io_buffer = 'Transport constraint "' // &
                    trim(cur_constraint_coupler%constraint_name) // &
                    '" not found in input file constraints.'
-          call printErrMsg(realization%option,string)
+          call printErrMsg(realization%option)
         endif
       endif
       cur_constraint_coupler => cur_constraint_coupler%next

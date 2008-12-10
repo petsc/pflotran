@@ -87,8 +87,10 @@ subroutine DatabaseRead(reaction,option)
   
   open(unit=dbase_id,file=reaction%database_filename,status='old',iostat=ierr)
   if (ierr /= 0) then
-    string = 'DATABASE File: ' // trim(reaction%database_filename) // ' not found.'
-    call printErrMsg(option,string)  
+    option%io_buffer = 'DATABASE File: ' // &
+                       trim(reaction%database_filename) // &
+                       ' not found.'
+    call printErrMsg(option)  
   endif
 
   ! read temperatures
@@ -358,9 +360,11 @@ subroutine DatabaseRead(reaction,option)
           endif
         enddo
         if (.not.found) then
-          string = 'Free site name: ' // trim(cur_surfcplx_rxn%free_site_name) // &
-                   ' not found in surface complex:' // trim(cur_surfcplx%name)
-          call printErrMsg(option,string)
+          option%io_buffer = 'Free site name: ' // &
+                             trim(cur_surfcplx_rxn%free_site_name) // &
+                             ' not found in surface complex:' // &
+                             trim(cur_surfcplx%name)
+          call printErrMsg(option)
         endif
         do itemp = 1, reaction%num_dbase_temperatures
           call fiReadDBaseDouble(dbase_id,string,cur_surfcplx%eqrxn%logK(itemp),ierr)
@@ -391,9 +395,10 @@ subroutine DatabaseRead(reaction,option)
           fiStringCompare(cur_aq_spec%name, &
                           cur_aq_spec2%name,MAXWORDLENGTH)) then
         flag = PETSC_TRUE
-        string = 'Aqueous primary species (' // trim(cur_aq_spec%name) // &
+        option%io_buffer = &
+                 'Aqueous primary species (' // trim(cur_aq_spec%name) // &
                  ') duplicated in input file.'
-        call printMsg(option,string)                          
+        call printMsg(option)                          
       endif
       cur_aq_spec2 => cur_aq_spec2%next
     enddo
@@ -404,9 +409,10 @@ subroutine DatabaseRead(reaction,option)
       if (fiStringCompare(cur_aq_spec%name, &
                           cur_aq_spec2%name,MAXWORDLENGTH)) then
         flag = PETSC_TRUE
-        string = 'Aqueous primary species (' // trim(cur_aq_spec%name) // &
-                 ') duplicated as secondary species in input file.'
-        call printMsg(option,string)                          
+        option%io_buffer = 'Aqueous primary species (' // &
+                           trim(cur_aq_spec%name) // &
+                           ') duplicated as secondary species in input file.'
+        call printMsg(option)                          
       endif
       cur_aq_spec2 => cur_aq_spec2%next
     enddo
@@ -417,9 +423,10 @@ subroutine DatabaseRead(reaction,option)
       if (fiStringCompare(cur_aq_spec%name, &
                           cur_gas_spec2%name,MAXWORDLENGTH)) then
         flag = PETSC_TRUE
-        string = 'Aqueous primary species (' // trim(cur_aq_spec%name) // &
-                 ') duplicated as gas species in input file.'
-        call printMsg(option,string)                          
+        option%io_buffer = 'Aqueous primary species (' // &
+                           trim(cur_aq_spec%name) // &
+                           ') duplicated as gas species in input file.'
+        call printMsg(option)                          
       endif
       cur_gas_spec2 => cur_gas_spec2%next
     enddo
@@ -440,9 +447,10 @@ subroutine DatabaseRead(reaction,option)
           fiStringCompare(cur_aq_spec%name, &
                           cur_aq_spec2%name,MAXWORDLENGTH)) then
         flag = PETSC_TRUE
-        string = 'Aqueous secondary species (' // trim(cur_aq_spec%name) // &
-                 ') duplicated in input file.'
-        call printMsg(option,string)                          
+        option%io_buffer = 'Aqueous secondary species (' // &
+                           trim(cur_aq_spec%name) // &
+                           ') duplicated in input file.'
+        call printMsg(option)                          
       endif
       cur_aq_spec2 => cur_aq_spec2%next
     enddo
@@ -453,9 +461,10 @@ subroutine DatabaseRead(reaction,option)
       if (fiStringCompare(cur_aq_spec%name, &
                           cur_gas_spec2%name,MAXWORDLENGTH)) then
         flag = PETSC_TRUE
-        string = 'Aqueous secondary species (' // trim(cur_aq_spec%name) // &
-                 ') duplicated as gas species in input file.'
-        call printMsg(option,string)                          
+        option%io_buffer = 'Aqueous secondary species (' // &
+                           trim(cur_aq_spec%name) // &
+                           ') duplicated as gas species in input file.'
+        call printMsg(option)                          
       endif
       cur_gas_spec2 => cur_gas_spec2%next
     enddo
@@ -477,9 +486,10 @@ subroutine DatabaseRead(reaction,option)
           fiStringCompare(cur_aq_spec%name, &
                           cur_gas_spec2%name,MAXWORDLENGTH)) then
         flag = PETSC_TRUE
-        string = 'Gas species (' // trim(cur_aq_spec%name) // &
-                 ') duplicated in input file.'
-        call printMsg(option,string)                          
+        option%io_buffer = 'Gas species (' // &
+                           trim(cur_aq_spec%name) // &
+                           ') duplicated in input file.'
+        call printMsg(option)                          
       endif
       cur_gas_spec2 => cur_gas_spec2%next
     enddo
@@ -497,9 +507,10 @@ subroutine DatabaseRead(reaction,option)
           fiStringCompare(cur_mineral%name, &
                           cur_mineral2%name,MAXWORDLENGTH)) then
         flag = PETSC_TRUE
-        string = 'Mineral (' // trim(cur_mineral%name) // &
-                 ') duplicated in input file.'
-        call printMsg(option,string)                          
+        option%io_buffer = 'Mineral (' // &
+                           trim(cur_mineral%name) // &
+                           ') duplicated in input file.'
+        call printMsg(option)                          
       endif
       cur_mineral2 => cur_mineral2%next
     enddo
@@ -520,9 +531,10 @@ subroutine DatabaseRead(reaction,option)
             fiStringCompare(cur_surfcplx%name, &
                             cur_surfcplx2%name,MAXWORDLENGTH)) then
           flag = PETSC_TRUE
-          string = 'Surface complex (' // trim(cur_surfcplx2%name) // &
-                   ') duplicated in input file surface complex reaction.'
-          call printMsg(option,string)                          
+          option%io_buffer = 'Surface complex (' // &
+                             trim(cur_surfcplx2%name) // &
+                      ') duplicated in input file surface complex reaction.'
+          call printMsg(option)                          
         endif
         cur_surfcplx2 => cur_surfcplx2%next
       enddo
@@ -530,9 +542,9 @@ subroutine DatabaseRead(reaction,option)
     enddo
     cur_surfcplx_rxn => cur_surfcplx_rxn%next
   enddo  
-    
-  if (flag) call printErrMsg(option,'Species duplicated in input file.')
   
+  if (flag) call printErrMsg(option,'Species duplicated in input file.')
+
   ! check that all species, etc. were read
   flag = PETSC_FALSE
   cur_aq_spec => reaction%primary_species_list
@@ -540,9 +552,10 @@ subroutine DatabaseRead(reaction,option)
     if (.not.associated(cur_aq_spec)) exit
     if (cur_aq_spec%id < 0) then
       flag = PETSC_TRUE
-      string = 'Aqueous primary species (' // trim(cur_aq_spec%name) // &
+      option%io_buffer = 'Aqueous primary species (' // &
+               trim(cur_aq_spec%name) // &
                ') not found in database.'
-      call printMsg(option,string)
+      call printMsg(option)
     endif
     cur_aq_spec => cur_aq_spec%next
   enddo
@@ -551,9 +564,10 @@ subroutine DatabaseRead(reaction,option)
     if (.not.associated(cur_aq_spec)) exit
     if (cur_aq_spec%id < 0) then
       flag = PETSC_TRUE
-      string = 'Aqueous secondary species (' // trim(cur_aq_spec%name) // &
+      option%io_buffer = &
+               'Aqueous secondary species (' // trim(cur_aq_spec%name) // &
                ') not found in database.'
-      call printMsg(option,string)
+      call printMsg(option)
     endif
     cur_aq_spec => cur_aq_spec%next
   enddo  
@@ -562,9 +576,9 @@ subroutine DatabaseRead(reaction,option)
     if (.not.associated(cur_gas_spec)) exit
     if (cur_gas_spec%id < 0) then
       flag = PETSC_TRUE
-      string = 'Gas species (' // trim(cur_gas_spec%name) // &
-               ') not found in database.'
-      call printMsg(option,string)
+      option%io_buffer = 'Gas species (' // trim(cur_gas_spec%name) // &
+                         ') not found in database.'
+      call printMsg(option)
     endif
     cur_gas_spec => cur_gas_spec%next
   enddo  
@@ -573,9 +587,9 @@ subroutine DatabaseRead(reaction,option)
     if (.not.associated(cur_mineral)) exit
     if (cur_mineral%id < 0) then
       flag = PETSC_TRUE
-      string = 'Mineral (' // trim(cur_mineral%name) // &
+      option%io_buffer = 'Mineral (' // trim(cur_mineral%name) // &
                ') not found in database.'
-      call printMsg(option,string)
+      call printMsg(option)
     endif
     cur_mineral => cur_mineral%next
   enddo
@@ -587,9 +601,9 @@ subroutine DatabaseRead(reaction,option)
       if (.not.associated(cur_surfcplx)) exit
       if (cur_surfcplx%id < 0) then
         flag = PETSC_TRUE
-        string = 'Surface species (' // trim(cur_surfcplx%name) // &
+        option%io_buffer = 'Surface species (' // trim(cur_surfcplx%name) // &
                  ') not found in database.'
-        call printMsg(option,string)
+        call printMsg(option)
       endif
       cur_surfcplx => cur_surfcplx%next
     enddo  
@@ -643,8 +657,6 @@ subroutine BasisInit(reaction,option)
   
   PetscInt, parameter :: h2o_id = 1
 
-  character(len=MAXSTRINGLENGTH) :: string
-  
   PetscReal :: logK(reaction%num_dbase_temperatures)
   PetscReal, allocatable :: transformation(:,:), old_basis(:,:), new_basis(:,:)
   PetscReal, allocatable :: stoich_new(:), stoich_prev(:), logKvector(:,:)
@@ -745,9 +757,10 @@ subroutine BasisInit(reaction,option)
                             cur_pri_aq_spec%name, &
                             pri_names,sec_names,gas_names)
       if (i < 0) then
-        string = 'Primary species ' // trim(cur_pri_aq_spec%name) // &
+        option%io_buffer = 'Primary species ' // &
+                 trim(cur_pri_aq_spec%name) // &
                  ' found in secondary or gas list.'
-        call printErrMsg(option,string)
+        call printErrMsg(option)
       endif
       pri_matrix(icount,i) = -1.d0
       do ispec=1,cur_pri_aq_spec%eqrxn%nspec
@@ -776,10 +789,10 @@ subroutine BasisInit(reaction,option)
                             cur_sec_aq_spec%name, &
                             pri_names,sec_names,gas_names)
       if (i > 0) then
-        string = 'Secondary aqueous species ' // &
+        option%io_buffer = 'Secondary aqueous species ' // &
                  trim(cur_sec_aq_spec%name) // &
                  ' found in primary species list.'
-        call printErrMsg(option,string)
+        call printErrMsg(option)
       endif
       sec_matrix(icount,-i) = -1.d0
       do ispec=1,cur_sec_aq_spec%eqrxn%nspec
@@ -808,10 +821,10 @@ subroutine BasisInit(reaction,option)
                             cur_gas_spec%name, &
                             pri_names,sec_names,gas_names)
       if (i > 0) then
-        string = 'Gas species ' // &
+        option%io_buffer = 'Gas species ' // &
                  trim(cur_gas_spec%name) // &
                  ' found in primary species list.'
-        call printErrMsg(option,string)
+        call printErrMsg(option)
       endif
       sec_matrix(icount,-i) = -1.d0
       do ispec=1,cur_gas_spec%eqrxn%nspec
@@ -2180,10 +2193,10 @@ subroutine BasisInit(reaction,option)
           endif
         enddo
         if (.not.found) then
-          string = 'Cation ' // trim(cur_cation%name) // &
+          option%io_buffer = 'Cation ' // trim(cur_cation%name) // &
                    ' in ion exchange reaction' // &
                    ' not found in swapped basis.'
-          call printErrMsg(option,string)     
+          call printErrMsg(option)     
         endif
         cur_cation => cur_cation%next
       enddo
@@ -2245,7 +2258,7 @@ subroutine BasisInit(reaction,option)
 100 format(/,2x,i3,2x,a)
 110 format(100(/,14x,3(a20,2x)))
 
-  if (option%myrank == 0) then
+  if (OptionPrint(option)) then
     write(option%fid_out,90)
     write(option%fid_out,100) reaction%ncomp, 'Primary Species'
     write(option%fid_out,110) (reaction%primary_species_names(i),i=1,reaction%ncomp)
@@ -2311,7 +2324,6 @@ function GetSpeciesBasisID(reaction,option,ncomp_h2o,reaction_name, &
   character(len=MAXWORDLENGTH) :: gas_names(:)
 
   PetscInt :: GetSpeciesBasisID
-  character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: i
 
   GetSpeciesBasisID = 0
@@ -2338,12 +2350,12 @@ function GetSpeciesBasisID(reaction,option,ncomp_h2o,reaction_name, &
     endif
   enddo
   
-  string = 'Species ' // &
+  option%io_buffer = 'Species ' // &
            trim(species_name) // &
            ' listed in reaction for ' // &
            trim(reaction_name) // &
            ' not found among primary, secondary, or gas species.'
-  call printErrMsg(option,string)
+  call printErrMsg(option)
 
 end function GetSpeciesBasisID
 
@@ -2376,7 +2388,6 @@ subroutine BasisAlignSpeciesInRxn(num_basis_species,basis_names, &
   PetscInt :: i_basis_species
   PetscReal :: stoich_new(num_basis_species)
   PetscTruth :: found
-  character(len=MAXSTRINGLENGTH) :: string  
   
   stoich_new = 0.d0
   do i_rxn_species = 1, num_rxn_species
@@ -2391,9 +2402,9 @@ subroutine BasisAlignSpeciesInRxn(num_basis_species,basis_names, &
       endif
     enddo
     if (.not.found) then
-      string = trim(rxn_species_names(i_rxn_species)) // &
+      option%io_buffer = trim(rxn_species_names(i_rxn_species)) // &
                ' not found in basis (BasisAlignSpeciesInRxn)'
-      call printErrMsg(option,string)
+      call printErrMsg(option)
     endif
   enddo
   
@@ -2414,9 +2425,10 @@ subroutine BasisAlignSpeciesInRxn(num_basis_species,basis_names, &
   enddo
   
   if (i_rxn_species /= num_rxn_species) then
-    write(string,*) 'Number of reaction species does not match original:', &
+    write(option%io_buffer,*) &
+                   'Number of reaction species does not match original:', &
                     i_rxn_species, num_rxn_species
-    call printErrMsg(option,string)
+    call printErrMsg(option)
   endif
 
 end subroutine BasisAlignSpeciesInRxn 
@@ -2650,7 +2662,7 @@ subroutine BasisPrint(reaction,title,option)
 140 format(a,f6.2)
 150 format(a,es11.4)
 
-  if (option%myrank == 0) then
+  if (OptionPrint(option)) then
     write(option%fid_out,*)
     write(option%fid_out,*) '! *************************************************' // &
                     '************************* !'
