@@ -1292,12 +1292,14 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   allocate(indices(grid%nlmax))
 
   ! Open the Regions group
-  option%io_buffer = 'Opening group: Regions'
+  string = 'Regions'
+  option%io_buffer = 'Opening group: ' // trim(string)
   call printMsg(option)  
   call h5gopen_f(file_id,string,grp_id,hdf5_err)
 
   ! Open the Regions group
-  option%io_buffer = 'Opening group: ' // trim(region%name)
+  string = trim(region%name)
+  option%io_buffer = 'Opening group: ' // trim(string)
   call printMsg(option)  
   
   call h5gopen_f(grp_id,string,grp_id2,hdf5_err)

@@ -206,7 +206,7 @@ subroutine Init(simulation,filename)
       end select
     endif
 
-    call printMsg(option,"  Beginning set up of FLOW SNES ")
+    call printMsg(option,"  Beginning setup of FLOW SNES ")
 
     call SolverCreateSNES(flow_solver,option%comm)  
     call SNESSetOptionsPrefix(flow_solver%snes, "flow_", ierr)
@@ -310,7 +310,7 @@ subroutine Init(simulation,filename)
   ! update transport mode based on optional input
   if (option%ntrandof > 0) then
 
-    call printMsg(option,"  Beginning set up of TRAN SNES ")
+    call printMsg(option,"  Beginning setup of TRAN SNES ")
     
     call SolverCreateSNES(tran_solver,option%comm)  
     call SNESSetOptionsPrefix(tran_solver%snes, "tran_", ierr)

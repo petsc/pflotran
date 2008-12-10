@@ -843,7 +843,7 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
 !  call GridPrintHashTable(grid)
   call mpi_allreduce(max_num_ids_per_hash,num_in_hash,ONE_INTEGER,MPI_INTEGER, &
                      MPI_MAX,option%comm,ierr)
-  write(option%io_buffer,'("max_num_ids_per_hash: ",i5)')
+  write(option%io_buffer,'("max_num_ids_per_hash: ",i5)') num_in_hash
   call printMsg(option)
 
   call PetscLogEventEnd(logging%event_hash_create, &
