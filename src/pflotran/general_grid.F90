@@ -39,8 +39,8 @@ subroutine ReadStructuredGridHDF5(realization)
 
   type(realization_type) :: realization
 
-  write(realization%option, &
-        '/,("PFLOTRAN must be compiled with -DUSE_HDF5 "&
+  write(realization%option%io_buffer, &
+        '(/,"PFLOTRAN must be compiled with -DUSE_HDF5 "&
             &"to read HDF5 formatted structured grids.",/)')
   call printErrMsg(realization%option)
   
