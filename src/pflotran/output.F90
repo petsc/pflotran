@@ -2317,10 +2317,10 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
   grid => patch%grid
   field => realization%field
 
-100 format(es13.6)
+100 format(es14.6)
 101 format("i")
-110 format(',',es13.6)
-111 format(',',"i")
+110 format(es14.6)
+111 format("i")
 
   ghosted_id = grid%nL2G(local_id)
   ! write out coorindates
@@ -2450,12 +2450,12 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
   grid => patch%grid
   field => realization%field
 
-100 format(es13.6)
+100 format(es14.6)
 !100 format(es16.9)
 101 format("i")
-110 format(',',es13.6)
+110 format(es14.6)
 !110 format(',',es16.9)
-111 format(',',"i")
+111 format("i")
 
 !print *, 'Fix format statements in output!!!!!'
 
@@ -2657,7 +2657,7 @@ subroutine WriteVelocityAtCell(fid,realization,local_id)
 
   PetscReal :: velocity(1:3)
   
-200 format(3(',',es13.6))
+200 format(3(es14.6))
   
   velocity = GetVelocityAtCell(fid,realization,local_id)
   
@@ -2793,7 +2793,7 @@ subroutine WriteVelocityAtCoord(fid,realization,region)
 
   PetscReal :: velocity(1:3)
   
-200 format(3(',',es13.6))
+200 format(3(es14.6))
   
   velocity = GetVelocityAtCoord(fid,realization,region%cell_ids(1), &
                                 region%coordinates(ONE_INTEGER)%x, &
