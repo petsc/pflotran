@@ -96,6 +96,7 @@ subroutine ReadStructuredGridHDF5(realization)
   type(connection_set_type), pointer :: cur_connection_set
       
   PetscTruth :: option_found
+  PetscErrorCode :: ierr
 
   PetscLogDouble :: time0, time1, time3, time4
 
@@ -422,6 +423,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
   PetscInt :: connection_count
   integer(HSIZE_T) :: num_connections_in_file
   PetscInt :: temp_int, i, num_internal_connections
+  PetscErrorCode :: ierr
   
   PetscMPIInt, allocatable :: upwind_ids(:), downwind_ids(:)
   
@@ -565,26 +567,32 @@ subroutine UpdateGlobalToLocal(discretization,field)
   
   implicit none
   
-  PetscInt :: ierr
   type(discretization_type) :: discretization
   type(field_type) :: field
 
   ! icap
-  call DiscretizationLocalToLocal(discretization,field%icap_loc,field%icap_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%icap_loc, &
+                                  field%icap_loc,ONEDOF)
 
   ! ithrm
-  call DiscretizationLocalToLocal(discretization,field%ithrm_loc,field%ithrm_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
+                                  field%ithrm_loc,ONEDOF)
 
   ! perm_xx, perm_yy, perm_zz
-  call DiscretizationGlobalToLocal(discretization,field%perm0_xx,field%perm_xx_loc,ONEDOF)
-  call DiscretizationGlobalToLocal(discretization,field%perm0_yy,field%perm_yy_loc,ONEDOF)
-  call DiscretizationGlobalToLocal(discretization,field%perm0_zz,field%perm_zz_loc,ONEDOF)
+  call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
+                                   field%perm_xx_loc,ONEDOF)
+  call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
+                                   field%perm_yy_loc,ONEDOF)
+  call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
+                                   field%perm_zz_loc,ONEDOF)
 
   ! tor
-  call DiscretizationLocalToLocal(discretization,field%tor_loc,field%tor_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%tor_loc, &
+                                  field%tor_loc,ONEDOF)
 
   ! por
-  call DiscretizationGlobalToLocal(discretization,field%porosity0,field%porosity_loc,ONEDOF)
+  call DiscretizationGlobalToLocal(discretization,field%porosity0, &
+                                   field%porosity_loc,ONEDOF)
 
 end subroutine UpdateGlobalToLocal
 

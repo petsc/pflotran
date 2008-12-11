@@ -3947,12 +3947,14 @@ subroutine OutputHDF5(realization)
         nviz_dof = nviz_dof+1
      endif
 
-     call AMRGridCreateVector(discretization%amrgrid, nviz_dof, samr_vec, GLOBAL, PETSC_TRUE)
+     call AMRGridCreateVector(discretization%amrgrid, nviz_dof, samr_vec, &
+                              GLOBAL, PETSC_TRUE, option)
      current_component = 0
   endif
 
   ! write out data sets 
-  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL,option)   
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
+                                  option)   
 
   select case(option%iflowmode)
   

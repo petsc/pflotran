@@ -40,7 +40,8 @@ else
  include ${PETSC_DIR}/conf/base
 endif
 
-util_obj  = ${common_src}fileio.o \
+util_obj  = ${common_src}input.o \
+	${common_src}string.o \
 	${common_src}water_eos.o \
 	${common_src}gaseos_mod.o \
 	${common_src}co2eos.o \
@@ -159,8 +160,8 @@ pflotranamr: $(util_obj) $(pflotranamr_obj)
 pflotran : $(util_obj) $(pflotran_obj) ${pflotran_src}pflotran.o
 	${FLINKER}   -o pflotran $(util_obj) $(pflotran_obj) ${pflotran_src}pflotran.o ${PETSC_LIB} ${LIBS}
 
-ascii_to_hdf5: fileio.o hdf5_dataset.o ascii_to_hdf5.o 
-	${FLINKER} -o ascii_to_hdf5 ascii_to_hdf5.o hdf5_dataset.o fileio.o \
+ascii_to_hdf5: input.o hdf5_dataset.o ascii_to_hdf5.o 
+	${FLINKER} -o ascii_to_hdf5 ascii_to_hdf5.o hdf5_dataset.o input.o \
 	$(LIBS)
 
 test: functions.o test.o
@@ -177,25 +178,27 @@ auxilliary.o : thc_aux.o richards_aux.o reactive_transport_aux.o \
 pflotran.o : simulation.o output.o init.o timestepper.o logging.o
 simulation.o : timestepper.o realization.o 
 init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
-	simulation.o fileio.o material.o region.o condition.o convergence.o \
+	simulation.o input.o material.o region.o condition.o convergence.o \
 	waypoint.o field.o general_grid.o co2_span_wagner.o utility.o \
 	co2_span_wagner_spline.o co2_sw.o \
 	coupler.o strata.o pckr_mod.o field.o mphase.o \
 	richards.o thc.o discretization.o logging.o mass_balance.o \
-	database.o reaction_aux.o
+	database.o reaction_aux.o string.o
 unstructured_grid.o : option.o connection.o 
-structured_grid.o : connection.o option.o fileio.o 
+structured_grid.o : connection.o option.o input.o 
 general_grid.o : grid.o realization.o hdf5.o logging.o
 discretization.o : grid.o structured_grid.o unstructured_grid.o option.o \
-                   fileio.o
-grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o
-solver.o : option.o field.o
-region.o : fileio.o utility.o logging.o
-material.o : region.o option.o fileio.o field.o
-coupler.o : condition.o connection.o region.o fileio.o grid.o
-breakthrough.o : region.o option.o fileio.o
+                   input.o string.o
+grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
+         input.o
+input.o : string.o option.o
+solver.o : option.o field.o input.o string.o
+region.o : input.o utility.o logging.o string.o
+material.o : region.o option.o input.o field.o string.o
+coupler.o : condition.o connection.o region.o input.o grid.o
+breakthrough.o : region.o option.o input.o
 convergence.o : option.o solver.o
-condition.o : fileio.o utility.o option.o field.o logging.o reaction_aux.o
+condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o string.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
 	     strata.o waypoint.o field.o hydrostatic.o debug.o breakthrough.o \
              patch.o level.o discretization.o reaction.o reaction_aux.o
@@ -203,7 +206,7 @@ level.o : patch.o option.o
 patch.o : option.o grid.o coupler.o breakthrough.o strata.o region.o \
           auxilliary.o reaction.o condition.o connection.o hydrostatic.o \
           field.o 
-strata.o : fileio.o region.o material.o
+strata.o : input.o region.o material.o
 hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
                 structured_grid.o
 waypoint.o : option.o 
@@ -212,8 +215,8 @@ output.o : grid.o structured_grid.o option.o realization.o field.o \
 					 reactive_transport.o \
            thc.o richards.o mphase.o \
 					 discretization.o logging.o
-reaction.o : reactive_transport_aux.o reaction_aux.o option.o
-reaction_aux.o : option.o
+reaction.o : reactive_transport_aux.o reaction_aux.o option.o string.o
+reaction_aux.o : option.o string.o
 transport.o : reactive_transport_aux.o option.o
 reactive_transport.o : realization.o reaction.o transport.o \
                        reactive_transport_aux.o
@@ -231,11 +234,11 @@ immis_aux.o :  option.o material.o water_eos.o co2_span_wagner.o \
 timestepper.o : thc.o richards.o mphase.o \
                 realization.o grid.o option.o field.o solver.o \
                 output.o convergence.o checkpoint.o waypoint.o logging.o \
-                mass_balance.o
+                mass_balance.o input.o string.o
 hdf5.o : realization.o option.o logging.o
 checkpoint.o : realization.o logging.o
 mass_balance.o : realization.o option.o field.o solver.o logging.o thc.o
-database.o : reaction.o fileio.o option.o utility.o reaction_aux.o
+database.o : reaction.o input.o option.o utility.o reaction_aux.o string.o
 global.o : realization.o level.o patch.o global_aux.o connection.o grid.o \
 	   option.o coupler.o
 global_aux.o : option.o
