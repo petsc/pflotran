@@ -649,11 +649,11 @@ subroutine readRequiredCardsFromInput(realization)
       if (option%myrank == option%io_rank) then
         option%io_buffer = ' Processor Decomposition:'
         call printMsg(option)
-        write(option%io_buffer,'("  npx   = ",3x,i4)') grid%structured_grid%npx_final
+        write(option%io_buffer,'("  npx   = ",3x,i4)') grid%structured_grid%npx
         call printMsg(option)
-        write(option%io_buffer,'("  npy   = ",3x,i4)') grid%structured_grid%npy_final
+        write(option%io_buffer,'("  npy   = ",3x,i4)') grid%structured_grid%npy
         call printMsg(option)
-        write(option%io_buffer,'("  npz   = ",3x,i4)') grid%structured_grid%npz_final
+        write(option%io_buffer,'("  npz   = ",3x,i4)') grid%structured_grid%npz
         call printMsg(option)
       endif
   
