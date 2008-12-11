@@ -159,8 +159,8 @@ subroutine SolverCreateSNES(solver,comm)
   PetscMPIInt :: comm
   PetscErrorCode :: ierr
   
-  call SNESCreate(comm, solver%snes, ierr)
-  call SNESSetFromOptions(solver%snes, ierr) 
+  call SNESCreate(comm,solver%snes,ierr)
+  call SNESSetFromOptions(solver%snes,ierr) 
 
   ! grab handles for ksp and pc
   call SNESGetKSP(solver%snes,solver%ksp,ierr)
@@ -207,31 +207,31 @@ subroutine SolverSetSNESOptions(solver)
   ! Set the tolerances for the Newton solver.
   call SNESSetTolerances(solver%snes, solver%newton_atol, solver%newton_rtol, &
                          solver%newton_stol,solver%newton_maxit, &
-                         solver%newton_maxf, ierr)
+                         solver%newton_maxf,ierr)
 
   ! set inexact newton, currently applies default settings
   if (solver%inexact_newton) &
     call SNESKSPSetUseEW(solver%snes,PETSC_TRUE,ierr)
 
-!  call SNESLineSearchSet(solver%snes,SNESLineSearchNo,PETSC_NULL,ierr)
+!  call SNESLineSearchSet(solver%snes,SNESLineSearchNo,PETSC_NULL)
 
   ! Setup for n-level Galerkin multigrid.
   if (solver%use_galerkin_mg) then
-    call PCSetType(solver%pc, PCMG, ierr)
+    call PCSetType(solver%pc, PCMG,ierr)
     call PCMGSetLevels(solver%pc, solver%galerkin_mg_levels, &
-                       PETSC_NULL_OBJECT, ierr)
+                       PETSC_NULL_OBJECT,ierr)
     do i=1,solver%galerkin_mg_levels-1
-      call PCMGSetInterpolation(solver%pc, i, solver%interpolation(i), ierr)
-      call PCMGSetGalerkin(solver%pc, ierr)
+      call PCMGSetInterpolation(solver%pc, i, solver%interpolation(i),ierr)
+      call PCMGSetGalerkin(solver%pc,ierr)
     enddo
   endif
   
   ! allow override from command line; for some reason must come before
   ! LineSearchParams, or they crash
-  call SNESSetFromOptions(solver%snes, ierr) 
+  call SNESSetFromOptions(solver%snes,ierr) 
     
-  call SNESLineSearchGetParams(solver%snes, alpha, maxstep, steptol, ierr)  
-  call SNESLineSearchSetParams(solver%snes, alpha, maxstep, solver%newton_stol, ierr)  
+  call SNESLineSearchGetParams(solver%snes, alpha, maxstep, steptol,ierr)  
+  call SNESLineSearchSetParams(solver%snes, alpha, maxstep, solver%newton_stol,ierr)  
 
   call SNESGetTolerances(solver%snes,solver%newton_atol,solver%newton_rtol, &
                          solver%newton_stol,solver%newton_maxit, &
@@ -249,37 +249,37 @@ end subroutine SolverSetSNESOptions
 ! date: 12/21/07
 !
 ! ************************************************************************** !
-subroutine SolverReadLinear(solver,fid,myrank)
+subroutine SolverReadLinear(solver,input,option)
 
-  use Fileio_module
+  use Input_module
+  use String_module
+  use Option_module
   
   implicit none
 
   type(solver_type) :: solver
-  PetscInt :: fid
-  PetscMPIInt :: myrank
+  type(input_type) :: input
+  type(option_type) :: option
   
-  character(len=MAXSTRINGLENGTH) :: string, error_string
   character(len=MAXWORDLENGTH) :: keyword, word, word2
-  PetscErrorCode :: ierr
 
-  ierr = 0
+  input%ierr = 0
   do
   
-    call fiReadFlotranString(fid,string,ierr)
+    call InputReadFlotranString(input,option)
 
-    if (fiCheckExit(string)) exit  
+    if (InputCheckExit(input,option)) exit  
 
-    call fiReadWord(string,keyword,PETSC_TRUE,ierr)
-    call fiErrorMsg(myrank,'keyword','LINEAR SOLVER', ierr)
-    call fiWordToUpper(keyword)   
+    call InputReadWord(input,option,keyword,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','LINEAR SOLVER')
+    call StringToUpper(keyword)   
       
     select case(trim(keyword))
     
       case('SOLVER_TYPE','SOLVER','KRYLOV_TYPE','KRYLOV','KSP','KSP_TYPE')
-        call fiReadWord(string,word,PETSC_TRUE,ierr)
-        call fiErrorMsg(myrank,'ksp_type','SOLVER', ierr)   
-        call fiWordToUpper(word)
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'ksp_type','SOLVER')   
+        call StringToUpper(word)
         select case(trim(word))
           case('NONE','PREONLY')
             solver%ksp_type = KSPPREONLY
@@ -292,15 +292,14 @@ subroutine SolverReadLinear(solver,fid,myrank)
           case('IBCGS','IBICGSTAB','IBI-CGSTAB')
             solver%ksp_type = KSPIBCGS
           case default
-            string  = 'ERROR: Krylov solver type: ' // trim(word) // ' unknown.'
-            if (myrank == 0) print *, string
-            stop
+            option%io_buffer  = 'Krylov solver type: ' // trim(word) // ' unknown.'
+            call printErrMsg(option)
         end select
 
       case('PRECONDITIONER_TYPE','PRECONDITIONER','PC','PC_TYPE')
-        call fiReadWord(string,word,PETSC_TRUE,ierr)
-        call fiErrorMsg(myrank,'pc_type','SOLVER', ierr)   
-        call fiWordToUpper(word)
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'pc_type','SOLVER')   
+        call StringToUpper(word)
         select case(trim(word))
           case('NONE','PCNONE')
             solver%pc_type = PCNONE
@@ -315,31 +314,30 @@ subroutine SolverReadLinear(solver,fid,myrank)
          case('SHELL')
             solver%pc_type = PCSHELL
           case default
-            string  = 'ERROR: Preconditioner type: ' // trim(word) // ' unknown.'
-            if (myrank == 0) print *, string
-            stop
+            option%io_buffer  = 'Preconditioner type: ' // trim(word) // ' unknown.'
+            call printErrMsg(option)
         end select
 
       case('ATOL')
-        call fiReadDouble(string,solver%linear_atol,ierr)
-        call fiDefaultMsg(myrank,'linear_atol',ierr)
+        call InputReadDouble(input,option,solver%linear_atol)
+        call InputDefaultMsg(input,option,'linear_atol')
 
       case('RTOL')
-        call fiReadDouble(string,solver%linear_rtol,ierr)
-        call fiDefaultMsg(myrank,'linear_rtol',ierr)
+        call InputReadDouble(input,option,solver%linear_rtol)
+        call InputDefaultMsg(input,option,'linear_rtol')
 
       case('DTOL')
-        call fiReadDouble(string,solver%linear_dtol,ierr)
-        call fiDefaultMsg(myrank,'linear_dtol',ierr)
+        call InputReadDouble(input,option,solver%linear_dtol)
+        call InputDefaultMsg(input,option,'linear_dtol')
    
       case('MAXIT')
-        call fiReadInt(string,solver%linear_maxit,ierr)
-        call fiDefaultMsg(myrank,'linear_maxit',ierr)
+        call InputReadInt(input,option,solver%linear_maxit)
+        call InputDefaultMsg(input,option,'linear_maxit')
 
       case default
-        if (myrank == 0) print *, 'Keyword: '//keyword// &
-                                  &' not recognized in linear solver'    
-
+        option%io_buffer = 'Keyword: ' // keyword // &
+                           ' not recognized in linear solver'    
+        call printErrMsg(option)
     end select 
   
   enddo  
@@ -353,30 +351,30 @@ end subroutine SolverReadLinear
 ! date: 12/21/07
 !
 ! ************************************************************************** !
-subroutine SolverReadNewton(solver,fid,myrank)
+subroutine SolverReadNewton(solver,input,option)
 
-  use Fileio_module
+  use Input_module
+  use String_module
+  use Option_module
   
   implicit none
 
   type(solver_type) :: solver
-  PetscInt :: fid
-  PetscMPIInt :: myrank
+  type(input_type) :: input
+  type(option_type) :: option
   
-  character(len=MAXSTRINGLENGTH) :: string, error_string
   character(len=MAXWORDLENGTH) :: keyword, word, word2
-  PetscErrorCode :: ierr
 
-  ierr = 0
+  input%ierr = 0
   do
   
-    call fiReadFlotranString(fid,string,ierr)
+    call InputReadFlotranString(input,option)
 
-    if (fiCheckExit(string)) exit  
+    if (InputCheckExit(input,option)) exit  
 
-    call fiReadWord(string,keyword,PETSC_TRUE,ierr)
-    call fiErrorMsg(myrank,'keyword','NEWTON SOLVER', ierr)
-    call fiWordToUpper(keyword)   
+    call InputReadWord(input,option,keyword,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','NEWTON SOLVER')
+    call StringToUpper(keyword)   
       
     select case(trim(keyword))
     
@@ -396,41 +394,41 @@ subroutine SolverReadNewton(solver,fid,myrank)
         solver%print_detailed_convergence = PETSC_TRUE
 
       case('ATOL')
-        call fiReadDouble(string,solver%newton_atol,ierr)
-        call fiDefaultMsg(myrank,'newton_atol',ierr)
+        call InputReadDouble(input,option,solver%newton_atol)
+        call InputDefaultMsg(input,option,'newton_atol')
 
       case('RTOL')
-        call fiReadDouble(string,solver%newton_rtol,ierr)
-        call fiDefaultMsg(myrank,'newton_rtol',ierr)
+        call InputReadDouble(input,option,solver%newton_rtol)
+        call InputDefaultMsg(input,option,'newton_rtol')
 
       case('STOL')
-        call fiReadDouble(string,solver%newton_stol,ierr)
-        call fiDefaultMsg(myrank,'newton_stol',ierr)
+        call InputReadDouble(input,option,solver%newton_stol)
+        call InputDefaultMsg(input,option,'newton_stol')
       
       case('DTOL')
-        call fiReadDouble(string,solver%newton_dtol,ierr)
-        call fiDefaultMsg(myrank,'newton_dtol',ierr)
+        call InputReadDouble(input,option,solver%newton_dtol)
+        call InputDefaultMsg(input,option,'newton_dtol')
    
       case('ITOL', 'INF_TOL', 'ITOL_RES', 'INF_TOL_RES')
-        call fiReadDouble(string,solver%newton_inf_res_tol,ierr)
-        call fiDefaultMsg(myrank,'newton_inf_res_tol',ierr)
+        call InputReadDouble(input,option,solver%newton_inf_res_tol)
+        call InputDefaultMsg(input,option,'newton_inf_res_tol')
    
       case('ITOL_UPDATE', 'INF_TOL_UPDATE')
-        call fiReadDouble(string,solver%newton_inf_upd_tol,ierr)
-        call fiDefaultMsg(myrank,'newton_inf_upd_tol',ierr)
+        call InputReadDouble(input,option,solver%newton_inf_upd_tol)
+        call InputDefaultMsg(input,option,'newton_inf_upd_tol')
    
       case('MAXIT')
-        call fiReadInt(string,solver%newton_maxit,ierr)
-        call fiDefaultMsg(myrank,'newton_maxit',ierr)
+        call InputReadInt(input,option,solver%newton_maxit)
+        call InputDefaultMsg(input,option,'newton_maxit')
 
       case('MAXF')
-        call fiReadInt(string,solver%newton_maxf,ierr)
-        call fiDefaultMsg(myrank,'newton_maxf',ierr)
+        call InputReadInt(input,option,solver%newton_maxf)
+        call InputDefaultMsg(input,option,'newton_maxf')
 
       case('MATRIX_TYPE')
-        call fiReadWord(string,word,PETSC_TRUE,ierr)
-        call fiErrorMsg(myrank,'mat_type','SOLVER', ierr)   
-        call fiWordToUpper(word)
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'mat_type','SOLVER')   
+        call StringToUpper(word)
         select case(trim(word))
           case('BAIJ')
             solver%J_mat_type = MATBAIJ
@@ -439,15 +437,14 @@ subroutine SolverReadNewton(solver,fid,myrank)
           case('MFFD','MATRIX_FREE')
             solver%J_mat_type = MATMFFD
           case default
-            string  = 'ERROR: Matrix type: ' // trim(word) // ' unknown.'
-            if (myrank == 0) print *, string
-            stop
+            option%io_buffer = 'Matrix type: ' // trim(word) // ' unknown.'
+            call printErrMsg(option)
         end select
         
       case('PRECONDITIONER_MATRIX_TYPE')
-        call fiReadWord(string,word,PETSC_TRUE,ierr)
-        call fiErrorMsg(myrank,'mat_type','SOLVER', ierr)   
-        call fiWordToUpper(word)
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'mat_type','SOLVER')   
+        call StringToUpper(word)
         select case(trim(word))
           case('BAIJ')
             solver%Jpre_mat_type = MATBAIJ
@@ -456,14 +453,14 @@ subroutine SolverReadNewton(solver,fid,myrank)
           case('MFFD','MATRIX_FREE')
             solver%Jpre_mat_type = MATMFFD
           case default
-            string  = 'ERROR: Preconditioner Matrix type: ' // trim(word) // ' unknown.'
-            if (myrank == 0) print *, string
-            stop
+            option%io_buffer  = 'Preconditioner Matrix type: ' // trim(word) // ' unknown.'
+            call printErrMsg(option)
         end select
         
       case default
-        if (myrank == 0) print *, 'Keyword: '//keyword// &
-                                  &' not recognized in Newton solver'
+        option%io_buffer = 'Keyword: '//keyword// &
+                           ' not recognized in Newton solver'
+        call printErrMsg(option)
     end select 
   
   enddo  
@@ -612,10 +609,10 @@ subroutine SolverCheckCommandLine(solver)
   endif
 
   ! Parse the options to determine if the matrix type has been specified.
-  call PetscOptionsGetString(prefix, '-mat_type', mat_type, is_present, ierr)
+  call PetscOptionsGetString(prefix, '-mat_type', mat_type, is_present,ierr)
   if (is_present) solver%J_mat_type = mat_type
   
-  call PetscOptionsGetString(prefix, '-pre_mat_type', mat_type, is_present, ierr)
+  call PetscOptionsGetString(prefix, '-pre_mat_type', mat_type, is_present,ierr)
   if (is_present) solver%Jpre_mat_type = mat_type
 
   ! Parse the options for the Galerkin multigrid solver.
@@ -635,13 +632,13 @@ subroutine SolverCheckCommandLine(solver)
   endif
 
   call PetscOptionsGetInt(prefix, '-galerkin_mg_x', &
-                          solver%galerkin_mg_levels_x, is_present, ierr)
+                          solver%galerkin_mg_levels_x, is_present,ierr)
   if (is_present) solver%use_galerkin_mg = PETSC_TRUE
   call PetscOptionsGetInt(prefix, '-galerkin_mg_y', &
-                          solver%galerkin_mg_levels_y, is_present, ierr)
+                          solver%galerkin_mg_levels_y, is_present,ierr)
   if (is_present) solver%use_galerkin_mg = PETSC_TRUE
   call PetscOptionsGetInt(prefix, '-galerkin_mg_z', &
-                          solver%galerkin_mg_levels_z, is_present, ierr)
+                          solver%galerkin_mg_levels_z, is_present,ierr)
   if (is_present) solver%use_galerkin_mg = PETSC_TRUE
 
   if (solver%use_galerkin_mg) then
@@ -676,7 +673,7 @@ subroutine SolverDestroy(solver)
   if (solver%Jpre == solver%J) then
     solver%Jpre = 0
   elseif (solver%Jpre /= 0) then
-    call MatDestroy(solver%Jpre,ierr)
+    call MatDestroy(solver%Jpre)
   endif
   if (solver%J /= 0) call MatDestroy(solver%J,ierr)
   if (associated(solver%interpolation)) then
@@ -686,7 +683,7 @@ subroutine SolverDestroy(solver)
     deallocate(solver%interpolation)
   endif
   if (solver%matfdcoloring /= 0) call MatFDColoringDestroy(solver%matfdcoloring,ierr)
-! if (solver%snes /= 0) call SNESDestroy(solver%snes,ierr)
+! if (solver%snes /= 0) call SNESDestroy(solver%snes)
   solver%ksp = 0
   solver%pc = 0
     

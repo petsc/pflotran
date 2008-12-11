@@ -1,6 +1,7 @@
 module Realization_module
 
   use Option_module
+  use Input_module
   use Region_module
   use Condition_module
   use Material_module
@@ -27,6 +28,7 @@ private
     type(patch_type), pointer :: patch
 
     type(option_type), pointer :: option
+    type(input_type), pointer :: input
     type(field_type), pointer :: field
     type(pflow_debug_type), pointer :: debug
     type(output_option_type), pointer :: output_option
@@ -92,6 +94,7 @@ function RealizationCreate()
   allocate(realization)
   realization%discretization => DiscretizationCreate()
   realization%option => OptionCreate()
+  nullify(realization%input)
   realization%field => FieldCreate()
   realization%debug => DebugCreatePflow()
   realization%output_option => OutputOptionCreate()
@@ -243,7 +246,7 @@ subroutine RealizationCreateDiscretization(realization)
 
       ! set up nG2L, NL2G, etc.
       call GridMapIndices(grid)
-      call GridComputeSpacing(grid)
+      call GridComputeSpacing(grid,option)
       call GridComputeCoordinates(grid,discretization%origin,option)
       call GridComputeVolumes(grid,field%volume,option)
       ! set up internal connectivity, distance, etc.
@@ -476,7 +479,7 @@ end subroutine RealizationProcessConditions
 ! ************************************************************************** !
 subroutine RealProcessTranConditions(realization)
 
-  use Fileio_module
+  use String_module
   use Reaction_module
   
   implicit none
@@ -501,7 +504,7 @@ subroutine RealProcessTranConditions(realization)
       found = PETSC_FALSE
       do
         if (.not.associated(another_constraint)) exit
-        if (fiStringCompare(cur_constraint%name,another_constraint%name, &
+        if (StringCompare(cur_constraint%name,another_constraint%name, &
             MAXWORDLENGTH)) then
           found = PETSC_TRUE
         endif
@@ -538,9 +541,9 @@ subroutine RealProcessTranConditions(realization)
         cur_constraint => realization%transport_constraints%first
         do
           if (.not.associated(cur_constraint)) exit
-          if (fiStringCompare(cur_constraint%name, &
-                              cur_constraint_coupler%constraint_name, &
-                              MAXWORDLENGTH)) then
+          if (StringCompare(cur_constraint%name, &
+                             cur_constraint_coupler%constraint_name, &
+                             MAXWORDLENGTH)) then
             cur_constraint_coupler%aqueous_species => cur_constraint%aqueous_species
             cur_constraint_coupler%minerals => cur_constraint%minerals
             exit
@@ -1205,7 +1208,6 @@ subroutine RealizationAddWaypointsToList(realization)
   
   type(realization_type) :: realization
   
-  character(len=MAXSTRINGLENGTH) :: string
   type(waypoint_list_type), pointer :: waypoint_list
   type(flow_condition_type), pointer :: cur_flow_condition
   type(tran_condition_type), pointer :: cur_tran_condition

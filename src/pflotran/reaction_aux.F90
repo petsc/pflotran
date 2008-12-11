@@ -958,7 +958,7 @@ end function GetGasCount
 ! ************************************************************************** !
 function GetGasIDFromName(reaction,name)
 
-  use Fileio_module
+  use String_module
   
   implicit none
   
@@ -973,7 +973,7 @@ function GetGasIDFromName(reaction,name)
   gas => reaction%gas_species_list
   do
     if (.not.associated(gas)) exit
-    if (fiStringCompare(name,gas%name,MAXWORDLENGTH)) then
+    if (StringCompare(name,gas%name,MAXWORDLENGTH)) then
       GetGasIDFromName = gas%id
       exit
     endif
@@ -1078,7 +1078,7 @@ end function GetKineticMineralCount
 ! ************************************************************************** !
 function GetMineralIDFromName(reaction,name)
 
-  use Fileio_module
+  use String_module
   
   implicit none
   
@@ -1093,7 +1093,7 @@ function GetMineralIDFromName(reaction,name)
   mineral => reaction%mineral_list
   do
     if (.not.associated(mineral)) exit
-    if (fiStringCompare(name,mineral%name,MAXWORDLENGTH)) then
+    if (StringCompare(name,mineral%name,MAXWORDLENGTH)) then
       GetMineralIDFromName = mineral%id
       exit
     endif

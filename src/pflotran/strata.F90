@@ -134,41 +134,37 @@ end subroutine StrataInitList
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine StrataRead(strata,fid,option)
+subroutine StrataRead(strata,input,option)
 
-  use Fileio_module
+  use Input_module
   use Option_module
   
   implicit none
   
   type(strata_type) :: strata
-  PetscInt :: fid
+  type(input_type) :: input
   type(option_type) :: option
   
-  character(len=MAXSTRINGLENGTH) :: string, error_string
-  character(len=MAXWORDLENGTH) :: keyword, word, word2
-  PetscReal :: value
-  PetscInt :: count1, material_file_id = 86
-  PetscErrorCode :: ierr
+  character(len=MAXWORDLENGTH) :: keyword, word
 
-  ierr = 0
+  input%ierr = 0
   do
   
-    call fiReadFlotranString(fid,string,ierr)
+    call InputReadFlotranString(input,option)
     
-    if (fiCheckExit(string)) exit  
+    if (InputCheckExit(input,option)) exit  
 
-    call fiReadWord(string,keyword,PETSC_TRUE,ierr)
-    call fiErrorMsg(option%myrank,'keyword','STRATA', ierr)   
+    call InputReadWord(input,option,keyword,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','STRATA')   
       
     select case(trim(keyword))
     
       case('REGION')
-        call fiReadWord(string,strata%region_name,PETSC_TRUE,ierr)
-        call fiErrorMsg(option%myrank,'region name','STRATA', ierr)
+        call InputReadWord(input,option,strata%region_name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'region name','STRATA')
       case('MATERIAL')
-        call fiReadWord(string,word,PETSC_TRUE,ierr)
-        call fiErrorMsg(option%myrank,'material name','STRATA', ierr)
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'material name','STRATA')
         strata%material_name = word
       case('INACTIVE')
         strata%active = PETSC_FALSE

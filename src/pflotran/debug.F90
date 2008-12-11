@@ -103,29 +103,28 @@ end function DebugCreatePtran
 ! date: 12/21/07
 !
 ! ************************************************************************** !
-subroutine DebugReadPflow(debug,fid,myrank)
+subroutine DebugReadPflow(debug,input,option)
 
-  use Fileio_module
+  use Option_module
+  use Input_module
   
   implicit none
     
   type(pflow_debug_type) :: debug
-  PetscInt :: fid
-  PetscMPIInt :: myrank
+  type(input_type) :: input
+  type(option_type) :: option
   
-  character(len=MAXSTRINGLENGTH) :: string, error_string
-  character(len=MAXWORDLENGTH) :: keyword, word, word2
-  PetscErrorCode :: ierr
+  character(len=MAXWORDLENGTH) :: keyword
 
-  ierr = 0
+  input%ierr = 0
   do
   
-    call fiReadFlotranString(fid,string,ierr)
+    call InputReadFlotranString(input,option)
 
-    if (fiCheckExit(string)) exit  
+    if (InputCheckExit(input,option)) exit  
 
-    call fiReadWord(string,keyword,PETSC_TRUE,ierr)
-    call fiErrorMsg(myrank,'keyword','DEBUG', ierr)   
+    call InputReadWord(input,option,keyword,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','DEBUG')   
       
     select case(trim(keyword))
     

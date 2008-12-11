@@ -194,44 +194,42 @@ end subroutine CouplerInitList
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine CouplerRead(coupler,fid,option)
+subroutine CouplerRead(coupler,input,option)
 
-  use Fileio_module
+  use Input_module
+  use String_module
   use Option_module
   
   implicit none
   
   type(option_type) :: option
   type(coupler_type) :: coupler
-  PetscInt :: fid
+  type(input_type) :: input
   
-  character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
-  PetscInt :: length
-  PetscErrorCode :: ierr
 
-  ierr = 0
+  input%ierr = 0
   do
   
-    call fiReadFlotranString(fid,string,ierr)
-    if (ierr /= 0) exit
-    if (fiCheckExit(string)) exit
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
     
-    call fiReadWord(string,word,PETSC_TRUE,ierr)
-    call fiErrorMsg(option%myrank,'keyword','COUPLER', ierr)   
-      
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','COUPLER')   
+    call StringToUpper(word)      
+    
     select case(trim(word))
     
       case('REGION')
-        call fiReadWord(string,coupler%region_name,PETSC_TRUE,ierr)
+        call InputReadWord(input,option,coupler%region_name,PETSC_TRUE)
       case('FLOW_CONDITION')
-        call fiReadWord(string,coupler%flow_condition_name,PETSC_TRUE,ierr)
+        call InputReadWord(input,option,coupler%flow_condition_name,PETSC_TRUE)
       case('TRANSPORT_CONDITION')
-        call fiReadWord(string,coupler%tran_condition_name,PETSC_TRUE,ierr)
+        call InputReadWord(input,option,coupler%tran_condition_name,PETSC_TRUE)
       case('TYPE')
-        call fiReadWord(string,coupler%ctype,PETSC_TRUE,ierr)
-        length = len_trim(coupler%ctype)
-        call fiCharsToLower(coupler%ctype,length)
+        call InputReadWord(input,option,coupler%ctype,PETSC_TRUE)
+        call StringToUpper(coupler%ctype)
         select case(trim(coupler%ctype))
           case('initial')
             coupler%itype = INITIAL_COUPLER_TYPE
@@ -244,9 +242,8 @@ subroutine CouplerRead(coupler,fid,option)
             call printErrMsg(option)
         end select    
       case('FACE')
-        call fiReadWord(string,word,PETSC_TRUE,ierr)
-        length = len_trim(word)
-        call fiCharsToUpper(word,length)
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call StringToUpper(word)
         select case(word)
           case('WEST')
             coupler%iface = 1
@@ -261,8 +258,9 @@ subroutine CouplerRead(coupler,fid,option)
           case('TOP')
             coupler%iface = 6
           case default
-            print *, 'ERROR: FACE option (', trim(word), ') not recognized.'
-            stop
+            option%io_buffer = 'ERROR: FACE option (' // trim(word) // &
+                               ') not recognized.'
+            call printErrMsg(option)
         end select
       case default
         option%io_buffer = 'Coupler card (' // trim(word) // ') not recognized.'

@@ -641,8 +641,8 @@ end subroutine SaturationFunctionCompute
 ! ************************************************************************** !
 function MaterialGetPtrFromList(material_name,material_list)
 
-  use Fileio_module
-
+  use String_module
+  
   implicit none
   
   type(material_type), pointer :: MaterialGetPtrFromList
@@ -658,7 +658,7 @@ function MaterialGetPtrFromList(material_name,material_list)
     if (.not.associated(material)) exit
     length = len_trim(material_name)
     if (length == len_trim(material%name) .and. &
-        fiStringCompare(material%name,material_name,length)) then
+        StringCompare(material%name,material_name,length)) then
       MaterialGetPtrFromList => material
       return
     endif
@@ -677,7 +677,7 @@ end function MaterialGetPtrFromList
 ! ************************************************************************** !
 function MaterialGetPtrFromArray(material_name,material_array)
 
-  use Fileio_module
+  use String_module
 
   implicit none
   
@@ -692,7 +692,7 @@ function MaterialGetPtrFromArray(material_name,material_array)
   do imaterial = 1, size(material_array)
     length = len_trim(material_name)
     if (length == len_trim(material_array(imaterial)%ptr%name) .and. &
-        fiStringCompare(material_array(imaterial)%ptr%name, &
+        StringCompare(material_array(imaterial)%ptr%name, &
                         material_name,length)) then
       MaterialGetPtrFromArray => material_array(imaterial)%ptr
       return

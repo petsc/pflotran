@@ -45,6 +45,7 @@ subroutine Init(simulation,filename)
   use Mass_Balance_module
   use Logging_module  
   use Database_module
+  use Input_module
   
   use MPHASE_module
   use Richards_module
@@ -74,6 +75,7 @@ subroutine Init(simulation,filename)
   type(patch_type), pointer :: patch  
   type(pflow_debug_type), pointer :: debug
   type(waypoint_list_type), pointer :: waypoint_list
+  type(input_type), pointer :: input
   character(len=MAXSTRINGLENGTH) :: string
   Vec :: global_vec
   PetscInt :: temp_int
@@ -106,12 +108,17 @@ subroutine Init(simulation,filename)
   option => realization%option
   field => realization%field
   debug => realization%debug
+  input => realization%input
   
   nullify(flow_solver)
   nullify(tran_solver)
   
-  ! read MODE,GRID,PROC,COMP,PHAS cards
-  call readRequiredCardsFromInput(realization,filename)
+
+  realization%input => InputCreate(IUNIT1,filename)
+  open(option%fid_out, file='pflotran.out', action="write", status="unknown")
+
+  ! read required cards
+  call readRequiredCardsFromInput(realization)
 
   patch => realization%patch
 
@@ -146,7 +153,8 @@ subroutine Init(simulation,filename)
   endif
 
   ! read in the remainder of the input file
-  call readInput(simulation,filename)
+  call readInput(simulation)
+  call InputDestroy(realization%input)
 
   ! initialize reference density
   call wateos(option%reference_temperature,option%reference_pressure, &
@@ -209,7 +217,7 @@ subroutine Init(simulation,filename)
     call printMsg(option,"  Beginning setup of FLOW SNES ")
 
     call SolverCreateSNES(flow_solver,option%comm)  
-    call SNESSetOptionsPrefix(flow_solver%snes, "flow_", ierr)
+    call SNESSetOptionsPrefix(flow_solver%snes, "flow_",ierr)
     call SolverCheckCommandLine(flow_solver)
 
     if (flow_solver%Jpre_mat_type == '') then
@@ -224,7 +232,7 @@ subroutine Init(simulation,filename)
                                       flow_solver%Jpre_mat_type, &
                                       flow_solver%Jpre, &
                                       option)
-    call MatSetOptionsPrefix(flow_solver%Jpre, "flow_", ierr)
+    call MatSetOptionsPrefix(flow_solver%Jpre,"flow_",ierr)
 
     if (flow_solver%J_mat_type /= MATMFFD) then
       flow_solver%J = flow_solver%Jpre
@@ -264,7 +272,7 @@ subroutine Init(simulation,filename)
                              RichardsJacobian,realization,ierr)
       case(MPH_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
-                             MPHASEJacobian,realization, ierr)
+                             MPHASEJacobian,realization,ierr)
     end select
     
     call SolverSetSNESOptions(flow_solver)
@@ -278,7 +286,7 @@ subroutine Init(simulation,filename)
     ! solver.  --RTM
     if (realization%discretization%itype == STRUCTURED_GRID) then
       call PCExoticSetDA(flow_solver%pc, &
-                         realization%discretization%dm_nflowdof, ierr);
+                         realization%discretization%dm_nflowdof,ierr);
     endif
 
     ! setup a shell preconditioner and initialize in the case of AMR
@@ -286,7 +294,7 @@ subroutine Init(simulation,filename)
 !       flow_solver%pc_type = PCSHELL
        pcside = PC_RIGHT
        if(flow_solver%pc_type==PCSHELL) then
-          call KSPSetPreconditionerSide(flow_solver%ksp, pcside, ierr)
+          call KSPSetPreconditionerSide(flow_solver%ksp, pcside,ierr)
           call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 0, flow_solver%pc)
        endif
     endif
@@ -313,7 +321,7 @@ subroutine Init(simulation,filename)
     call printMsg(option,"  Beginning setup of TRAN SNES ")
     
     call SolverCreateSNES(tran_solver,option%comm)  
-    call SNESSetOptionsPrefix(tran_solver%snes, "tran_", ierr)
+    call SNESSetOptionsPrefix(tran_solver%snes, "tran_",ierr)
     call SolverCheckCommandLine(tran_solver)
 
     if (tran_solver%Jpre_mat_type == '') then
@@ -332,7 +340,7 @@ subroutine Init(simulation,filename)
       tran_solver%J = tran_solver%Jpre
     endif
     
-    call MatSetOptionsPrefix(tran_solver%Jpre, "tran_", ierr)
+    call MatSetOptionsPrefix(tran_solver%Jpre,"tran_",ierr)
     
     if (tran_solver%use_galerkin_mg) then
       call DiscretizationCreateInterpolation(discretization,NTRANDOF, &
@@ -343,18 +351,20 @@ subroutine Init(simulation,filename)
                                              option)
     endif
 
-    call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,realization,ierr)
+    call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,&
+                         realization,ierr)
 
     if (tran_solver%J_mat_type == MATMFFD) then
       call MatCreateSNESMF(tran_solver%snes,tran_solver%J,ierr)
     endif
     
     call SNESSetJacobian(tran_solver%snes,tran_solver%J,tran_solver%Jpre, &
-                         RTJacobian,realization, ierr)
+                         RTJacobian,realization,ierr)
 
     ! this could be changed in the future if there is a way to ensure that the linesearch
     ! update does not perturb concentrations negative.
-    call SNESLineSearchSet(tran_solver%snes,SNESLineSearchNo,PETSC_NULL_OBJECT,ierr)
+    call SNESLineSearchSet(tran_solver%snes,SNESLineSearchNo, &
+                           PETSC_NULL_OBJECT,ierr)
 
     call SolverSetSNESOptions(tran_solver)
 
@@ -363,7 +373,7 @@ subroutine Init(simulation,filename)
 !       flow_solver%pc_type = PCSHELL
        pcside = PC_RIGHT
        if(tran_solver%pc_type==PCSHELL) then
-          call KSPSetPreconditionerSide(tran_solver%ksp, pcside, ierr)
+          call KSPSetPreconditionerSide(tran_solver%ksp, pcside,ierr)
           call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 1, tran_solver%pc)
        endif
     endif
@@ -538,16 +548,18 @@ end subroutine Init
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine readRequiredCardsFromInput(realization,filename)
+subroutine readRequiredCardsFromInput(realization)
 
   use Option_module
   use Discretization_module
   use Grid_module
-  use Fileio_module
+  use Input_module
+  use String_module
   use Patch_module
   use Level_module
   use Realization_module
   use AMR_Grid_module
+  use Input_module
 
   use Reaction_module  
   use Reaction_Aux_module  
@@ -555,10 +567,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
   implicit none
 
   type(realization_type) :: realization
-  character(len=MAXWORDLENGTH) :: filename
-  PetscInt ::  idum, i
 
-  PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: name
@@ -569,44 +578,38 @@ subroutine readRequiredCardsFromInput(realization,filename)
   type(discretization_type), pointer :: discretization
   type(reaction_type), pointer :: reaction
   type(option_type), pointer :: option
+  type(input_type), pointer :: input
   
   patch => realization%patch
   option => realization%option
   discretization => realization%discretization
   
-  open(option%fid_in, file=filename, action="read", status="old") 
-  open(option%fid_out, file='pflotran.out', action="write", status="unknown")
-
+  input => realization%input
+  
 ! we initialize the word to blanks to avoid error reported by valgrind
-  do i=1,MAXWORDLENGTH
-    word(i:i) = ' '
-  enddo
-
+  word = ''
 
 ! Read in select required cards
 !.........................................................................
 
   ! MODE information
   string = "MODE"
-  call fiFindStringInFile(option%fid_in,string,ierr)
+  call InputFindStringInFile(input,option,string)
 
-  if (ierr == 0) then  
-    ! strip card from front of string
-    call fiReadWord(string,word,PETSC_FALSE,ierr)
- 
+  if (.not.InputError(input)) then  
     ! read in keyword 
-    call fiReadWord(string,option%flowmode,PETSC_TRUE,ierr)
-    call fiErrorMsg(option%myrank,'flowmode','mode',ierr)
+    call InputReadWord(input,option,option%flowmode,PETSC_TRUE)
+    call InputErrorMsg(input,option,'flowmode','mode')
   endif
 
 !.........................................................................
 
   ! GRID information
   string = "GRID"
-  call fiFindStringInFile(option%fid_in,string,ierr)
-  call fiFindStringErrorMsg(option%myrank,string,ierr)
+  call InputFindStringInFile(input,option,string)
+  call InputFindStringErrorMsg(input,option,string)
 
-  call DiscretizationRead(discretization,option%fid_in,PETSC_TRUE, option)
+  call DiscretizationRead(discretization,input,PETSC_TRUE,option)
   
   select case(discretization%itype)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
@@ -630,35 +633,36 @@ subroutine readRequiredCardsFromInput(realization,filename)
     
     ! PROC information
     string = "PROC"
-    call fiFindStringInFile(option%fid_in,string,ierr)
+    call InputFindStringInFile(input,option,string)
 
-    if (ierr == 0) then
+    if (.not.InputError(input)) then
 
       grid => realization%patch%grid
       ! strip card from front of string
-      call fiReadWord(string,word,PETSC_FALSE,ierr)
-      call fiReadInt(string,grid%structured_grid%npx,ierr)
-      call fiDefaultMsg(option%myrank,'npx',ierr)
-      call fiReadInt(string,grid%structured_grid%npy,ierr)
-      call fiDefaultMsg(option%myrank,'npy',ierr)
-      call fiReadInt(string,grid%structured_grid%npz,ierr)
-      call fiDefaultMsg(option%myrank,'npz',ierr)
+      call InputReadWord(input,option,word,PETSC_FALSE)
+      call InputReadInt(input,option,grid%structured_grid%npx)
+      call InputDefaultMsg(input,option,'npx')
+      call InputReadInt(input,option,grid%structured_grid%npy)
+      call InputDefaultMsg(input,option,'npy')
+      call InputReadInt(input,option,grid%structured_grid%npz)
+      call InputDefaultMsg(input,option,'npz')
  
-      if (option%myrank == option%io_rank) &
-        write(option%fid_out,'(/," *PROC",/, &
+      if (option%myrank == option%io_rank) then
+        write(option%io_buffer,'(/," *PROC",/, &
           & "  npx   = ",3x,i4,/, &
           & "  npy   = ",3x,i4,/, &
           & "  npz   = ",3x,i4)') grid%structured_grid%npx, &
             grid%structured_grid%npy, grid%structured_grid%npz
+        call printMsg(option)
+      endif
   
       if (option%commsize /= grid%structured_grid%npx * &
                              grid%structured_grid%npy * &
                              grid%structured_grid%npz) then
-        if (option%myrank==0) &
-          write(*,*) 'Incorrect number of processors specified: ', &
+        write(option%io_buffer,*) 'Incorrect number of processors specified: ', &
                        grid%structured_grid%npx*grid%structured_grid%npy* &
                        grid%structured_grid%npz,' commsize = ',option%commsize
-        stop
+        call printErrMsg(option)
       endif
     endif
   endif
@@ -667,12 +671,12 @@ subroutine readRequiredCardsFromInput(realization,filename)
 
   ! COMP information
   string = "CHEMISTRY"
-  call fiFindStringInFile(option%fid_in,string,ierr)
+  call InputFindStringInFile(input,option,string)
 
-  if (ierr == 0) then
+  if (.not.InputError(input)) then
     reaction => ReactionCreate()
     realization%reaction => reaction
-    call ReactionRead(reaction,option%fid_in,option)
+    call ReactionRead(reaction,input,option)
     reaction%primary_species_names => GetPrimarySpeciesNames(reaction)
     option%ntrandof = GetPrimarySpeciesCount(reaction)
   endif
@@ -681,9 +685,9 @@ subroutine readRequiredCardsFromInput(realization,filename)
 
   ! COMP information
   string = "COMP"
-  call fiFindStringInFile(option%fid_in,string,ierr)
+  call InputFindStringInFile(input,option,string)
 
-  if (ierr == 0) then
+  if (.not.InputError(input)) then
     ! enter src here
   endif          
 
@@ -691,9 +695,9 @@ subroutine readRequiredCardsFromInput(realization,filename)
 
   ! COMP information
   string = "PHAS"
-  call fiFindStringInFile(option%fid_in,string,ierr)
+  call InputFindStringInFile(input,option,string)
 
-  if (ierr == 0) then
+  if (.not.InputError(input)) then
     ! enter src here
   endif
 
@@ -701,16 +705,11 @@ subroutine readRequiredCardsFromInput(realization,filename)
 
   ! TRAN information
   string = "TRAN"
-  call fiFindStringInFile(option%fid_in,string,ierr)
+  call InputFindStringInFile(input,option,string)
 
-  if (ierr == 0) then
-
-    ! strip card from front of string
-    call fiReadWord(string,word,PETSC_FALSE,ierr)
-
-    call fiReadInt(string,option%ntrandof,ierr)
-    call fiDefaultMsg(option%myrank,'ntrandof',ierr)
-  
+  if (.not.InputError(input)) then
+    call InputReadInt(input,option,option%ntrandof)
+    call InputDefaultMsg(input,option,'ntrandof')
   endif          
 
     
@@ -723,7 +722,7 @@ end subroutine readRequiredCardsFromInput
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine readInput(simulation,filename)
+subroutine readInput(simulation)
 
   use Simulation_module
   use Option_module
@@ -733,7 +732,6 @@ subroutine readInput(simulation,filename)
   use AMR_Grid_module
   use Solver_module
   use Material_module
-  use Fileio_module
   use Realization_module
   use Timestepper_module
   use Region_module
@@ -747,14 +745,14 @@ subroutine readInput(simulation,filename)
   use Reaction_module
   use Reaction_Aux_module
   use Discretization_module
+  use Input_module
+  use String_module
  
   implicit none
   
   type(simulation_type) :: simulation
-  character(len=MAXWORDLENGTH) :: filename
 
   PetscErrorCode :: ierr
-  character(len=MAXSTRINGLENGTH) :: string, string2
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: name
   character(len=MAXWORDLENGTH) :: card
@@ -771,7 +769,6 @@ subroutine readInput(simulation,filename)
   character(len=1) :: backslash
   PetscReal :: temp_real, temp_real2
   PetscInt :: temp_int
-  PetscInt :: length 
   PetscInt :: count, id
   
 ! keywords: GRID, PROC, COUP, GRAV, OPTS, TOLR, DXYZ, DIFF, RADN, HYDR,  
@@ -803,6 +800,7 @@ subroutine readInput(simulation,filename)
   type(stepper_type), pointer :: tran_stepper
   type(stepper_type), pointer :: master_stepper
   type(reaction_type), pointer :: reaction
+  type(input_type), pointer :: input
   
   
   nullify(flow_stepper)
@@ -816,6 +814,7 @@ subroutine readInput(simulation,filename)
   option => realization%option
   field => realization%field
   reaction => realization%reaction
+  input => realization%input
 
   tran_stepper => simulation%tran_stepper
   if (associated(tran_stepper)) tran_solver => tran_stepper%solver
@@ -833,16 +832,14 @@ subroutine readInput(simulation,filename)
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
                           ! is a double quote as in c/c++
                               
-  rewind(option%fid_in)  
+  rewind(input%fid)  
     
   do
-    call fiReadFlotranString(option%fid_in, string, ierr)
-    if (ierr /= 0) exit
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
 
-    call fiReadWord(string,word,PETSC_FALSE,ierr)
-    length = len_trim(word)
-    call fiCharsToUpper(word,length)
-!    call fiReadCard(word,card,ierr)
+    call InputReadWord(input,option,word,PETSC_FALSE)
+    call StringToUpper(word)
     card = trim(word)
 
     option%io_buffer = 'pflotran card:: ' // trim(card)
@@ -855,40 +852,41 @@ subroutine readInput(simulation,filename)
 
 !....................
       case ('GRID')
-        call DiscretizationRead(realization%discretization,option%fid_in,PETSC_FALSE,option)
+        call DiscretizationRead(realization%discretization,input, &
+                                PETSC_FALSE,option)
 
 !....................
       case ('CHEMISTRY')
         do
-          call fiReadFlotranString(option%fid_in,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,card,ierr)
-          if (fiCheckExit(string)) exit
-          call fiReadWord(string,word,PETSC_TRUE,ierr)
-          call fiErrorMsg(option%myrank,'word','CHEMISTRY',ierr) 
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,card)
+          if (InputCheckExit(input,option)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'word','CHEMISTRY') 
           select case(trim(word))
             case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
                  'MINERALS')
-              call fiSkipToEND(option%fid_in,option%myrank,card)
+              call InputSkipToEND(input,option,card)
             case('MINERAL_KINETICS')
-              call ReactionReadMineralKinetics(reaction,option%fid_in,option)
+              call ReactionReadMineralKinetics(reaction,input,option)
             case('SORPTION')
               do
-                call fiReadFlotranString(option%fid_in,string,ierr)
-                call fiReadStringErrorMsg(option%myrank,card,ierr)
-                if (fiCheckExit(string)) exit
-                call fiReadWord(string,word,PETSC_TRUE,ierr)
-                call fiErrorMsg(option%myrank,'word','CHEMISTRY,SORPTION',ierr) 
+                call InputReadFlotranString(input,option)
+                call InputReadStringErrorMsg(input,option,card)
+                if (InputCheckExit(input,option)) exit
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                call InputErrorMsg(input,option,'SORPTION','CHEMISTRY') 
                 select case(trim(word))
                   case('SURFACE_COMPLEXATION_RXN','ION_EXCHANGE_RXN')
                     do
-                      call fiReadFlotranString(option%fid_in,string,ierr)
-                      call fiReadStringErrorMsg(option%myrank,card,ierr)
-                      if (fiCheckExit(string)) exit
-                      call fiReadWord(string,word,PETSC_TRUE,ierr)
-                      call fiErrorMsg(option%myrank,'word','CHEMISTRY,SORPTION',ierr)
+                      call InputReadFlotranString(input,option)
+                      call InputReadStringErrorMsg(input,option,card)
+                      if (InputCheckExit(input,option)) exit
+                      call InputReadWord(input,option,word,PETSC_TRUE)
+                      call InputErrorMsg(input,option,'SORPTION','CHEMISTRY')
                       select case(trim(word))
                         case('COMPLEXES','CATIONS')
-                          call fiSkipToEND(option%fid_in,option%myrank,card)
+                          call InputSkipToEND(input,option,word)
                       end select 
                     enddo
                   case('DISTRIBUTION_COEF')
@@ -902,21 +900,21 @@ subroutine readInput(simulation,filename)
 
 !....................
       case ('UNIFORM_VELOCITY')
-        call fiReadDouble(string,option%uniform_velocity(1),ierr)
-        call fiErrorMsg(option%myrank,'velx','UNIFORM_VELOCITY', ierr)
-        call fiReadDouble(string,option%uniform_velocity(2),ierr)
-        call fiErrorMsg(option%myrank,'vely','UNIFORM_VELOCITY', ierr)
-        call fiReadDouble(string,option%uniform_velocity(3),ierr)
-        call fiErrorMsg(option%myrank,'velz','UNIFORM_VELOCITY', ierr)
+        call InputReadDouble(input,option,option%uniform_velocity(1))
+        call InputErrorMsg(input,option,'velx','UNIFORM_VELOCITY')
+        call InputReadDouble(input,option,option%uniform_velocity(2))
+        call InputErrorMsg(input,option,'vely','UNIFORM_VELOCITY')
+        call InputReadDouble(input,option,option%uniform_velocity(3))
+        call InputErrorMsg(input,option,'velz','UNIFORM_VELOCITY')
       
 !....................
       case ('DEBUG','PFLOW_DEBUG')
-        call DebugRead(realization%debug,option%fid_in,option%myrank)
+        call DebugRead(realization%debug,input,option)
         
 !....................
       case ('GENERALIZED_GRID')
         option%use_generalized_grid = PETSC_TRUE
-        call fiReadWord(string,option%generalized_grid,PETSC_TRUE,ierr)
+        call InputReadWord(input,option,option%generalized_grid,PETSC_TRUE)
 
 !....................
       case ('PROC')
@@ -924,10 +922,10 @@ subroutine readInput(simulation,filename)
 !....................
       case ('REGION')
         region => RegionCreate()
-        call fiReadWord(string,region%name,PETSC_TRUE,ierr)
-        call fiErrorMsg(option%myrank,'name','REGION',ierr) 
+        call InputReadWord(input,option,region%name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'name','REGION') 
         call printMsg(option,region%name)
-        call RegionRead(region,option%fid_in,option)
+        call RegionRead(region,input,option)
         ! we don't copy regions down to patches quite yet, since we
         ! don't want to duplicate IO in reading the regions
         call RegionAddToList(region,realization%regions)   
@@ -936,98 +934,97 @@ subroutine readInput(simulation,filename)
 !....................
       case ('FLOW_CONDITION')
         flow_condition => FlowConditionCreate(option)
-        call fiReadWord(string,flow_condition%name,PETSC_TRUE,ierr)
-        call fiErrorMsg(option%myrank,'FLOW_CONDITION','name',ierr) 
+        call InputReadWord(input,option,flow_condition%name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'FLOW_CONDITION','name') 
         call printMsg(option,flow_condition%name)
-        call FlowConditionRead(flow_condition,option,option%fid_in)
+        call FlowConditionRead(flow_condition,input,option)
         call FlowConditionAddToList(flow_condition,realization%flow_conditions)
         nullify(flow_condition)
         
 !....................
       case ('TRANSPORT_CONDITION')
         tran_condition => TranConditionCreate(option)
-        call fiReadWord(string,tran_condition%name,PETSC_TRUE,ierr)
-        call fiErrorMsg(option%myrank,'TRANSPORT_CONDITION','name',ierr) 
+        call InputReadWord(input,option,tran_condition%name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'TRANSPORT_CONDITION','name') 
         call printMsg(option,tran_condition%name)
         call TranConditionRead(tran_condition,realization%transport_constraints, &
-                               reaction,option)
+                               reaction,input,option)
         call TranConditionAddToList(tran_condition,realization%transport_conditions)
         nullify(tran_condition)
 
 !....................
       case('CONSTRAINT')
         tran_constraint => TranConstraintCreate(option)
-        call fiReadWord(string,tran_constraint%name,PETSC_TRUE,ierr)
-        call fiErrorMsg(option%myrank,'constraint','name',ierr) 
+        call InputReadWord(input,option,tran_constraint%name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'constraint','name') 
         call printMsg(option,tran_constraint%name)
-        call TranConstraintRead(tran_constraint,reaction,option)
+        call TranConstraintRead(tran_constraint,reaction,input,option)
         call TranConstraintAddToList(tran_constraint,realization%transport_constraints)
         nullify(tran_constraint)
 
 !....................
       case ('BOUNDARY_CONDITION')
         coupler => CouplerCreate(BOUNDARY_COUPLER_TYPE)
-        call CouplerRead(coupler,option%fid_in,option)
+        call CouplerRead(coupler,input,option)
         call RealizationAddCoupler(realization,coupler)
         nullify(coupler)
       
 !....................
       case ('INITIAL_CONDITION')
         coupler => CouplerCreate(INITIAL_COUPLER_TYPE)
-        call CouplerRead(coupler,option%fid_in,option)
+        call CouplerRead(coupler,input,option)
         call RealizationAddCoupler(realization,coupler)
         nullify(coupler)        
       
 !....................
       case ('SOURCE_SINK')
         coupler => CouplerCreate(SRC_SINK_COUPLER_TYPE)
-        call CouplerRead(coupler,option%fid_in,option)
+        call CouplerRead(coupler,input,option)
         call RealizationAddCoupler(realization,coupler)
         nullify(coupler)        
       
 !....................
       case ('STRATIGRAPHY','STRATA')
         strata => StrataCreate()
-        call StrataRead(strata,option%fid_in,option)
+        call StrataRead(strata,input,option)
         call RealizationAddStrata(realization,strata)
         nullify(strata)
       
 !.....................
       case ('DATASET') 
-        call fiReadWord(string,word,PETSC_TRUE,ierr)
-        call fiErrorMsg(option%myrank,'dataset','name',ierr) 
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'dataset','name') 
         call printMsg(option,word)
-        length = len_trim(word)
-        call fiCharsToLower(word,length)        
+        call StringToLower(word)        
         select case(word)
           case('permx')
-            call fiReadWord(string,option%permx_filename,PETSC_TRUE,ierr)
-            call fiErrorMsg(option%myrank,'dataset','permx_filename',ierr) 
+            call InputReadWord(input,option,option%permx_filename,PETSC_TRUE)
+            call InputErrorMsg(input,option,'dataset','permx_filename') 
           case('permy')
-            call fiReadWord(string,option%permy_filename,PETSC_TRUE,ierr)
-            call fiErrorMsg(option%myrank,'dataset','permy_filename',ierr) 
+            call InputReadWord(input,option,option%permy_filename,PETSC_TRUE)
+            call InputErrorMsg(input,option,'dataset','permy_filename') 
           case('permz')
-            call fiReadWord(string,option%permz_filename,PETSC_TRUE,ierr)
-            call fiErrorMsg(option%myrank,'dataset','permz_filename',ierr) 
+            call InputReadWord(input,option,option%permz_filename,PETSC_TRUE)
+            call InputErrorMsg(input,option,'dataset','permz_filename') 
         end select          
         
 !.....................
       case ('COMP') 
-        call fiSkipToEND(option%fid_in,option%myrank,card)
+        call InputSkipToEnd(input,option,card)
         
 !.....................
       case ('PHAS')
-        call fiSkipToEND(option%fid_in,option%myrank,card)
+        call InputSkipToEnd(input,option,card)
       
 !....................
 
       case ('COUP')
 
         call printWrnMsg(option,"COUP not currently supported")
-        call fiReadStringErrorMsg(option%myrank,'COUP',ierr)
+        call InputReadStringErrorMsg(input,option,'COUP')
 
-        call fiReadInt(string,idum,ierr)
-        call fiDefaultMsg(option%myrank,'isync',ierr)
+        call InputReadInt(input,option,idum)
+        call InputDefaultMsg(input,option,'isync')
 
         if (option%myrank == option%io_rank) &
           write(option%fid_out,'(/," *COUP",/, &
@@ -1038,19 +1035,19 @@ subroutine readInput(simulation,filename)
 
       case ('GRAV','GRAVITY')
 
-        call fiReadStringErrorMsg(option%myrank,'GRAV',ierr)
+        call InputReadStringErrorMsg(input,option,'GRAV')
 
-        call fiReadDouble(string,temp_real,ierr)
-        if (ierr /= 0) then
-          call fiDefaultMsg(option%myrank,'gravity',ierr)
+        call InputReadDouble(input,option,temp_real)
+        if (InputError(input)) then
+          call InputDefaultMsg(input,option,'gravity')
         else
-          call fiReadDouble(string,option%gravity(2),ierr)
-          if (ierr /= 0) then
+          call InputReadDouble(input,option,option%gravity(2))
+          if (InputError(input)) then
             option%gravity(:) = 0.d0
             option%gravity(3) = temp_real
           else
             option%gravity(1) = temp_real
-            call fiReadDouble(string,option%gravity(3),ierr)
+            call InputReadDouble(input,option,option%gravity(3))
           endif
         endif
 
@@ -1064,13 +1061,11 @@ subroutine readInput(simulation,filename)
       case ('HDF5')
         realization%output_option%print_hdf5 = PETSC_TRUE
         do
-          call fiReadWord(string,word,PETSC_TRUE,ierr)
-          if (ierr /= 0) exit
-          length = len_trim(word)
-          call fiCharsToUpper(word,length)
-          call fiReadCard(word,card,ierr)
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          if (InputError(input)) exit
+          call StringToUpper(word)
 
-          select case(card)
+          select case(word)
             case('VELO')
               realization%output_option%print_hdf5_velocities = PETSC_TRUE
             case('FLUX')
@@ -1096,10 +1091,10 @@ subroutine readInput(simulation,filename)
       case ('TECP','TECPLOT')
         realization%output_option%print_tecplot = PETSC_TRUE
 
-        if (fiStringCompare(card,'TECPLOT',SEVEN_INTEGER)) then
-          call fiReadWord(string,word,PETSC_TRUE,ierr)
-          call fiErrorMsg(option%myrank,'TECPLOT','type',ierr) 
-          call fiWordToUpper(word)
+        if (StringCompare(card,'TECPLOT',SEVEN_INTEGER)) then
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'TECPLOT','type') 
+          call StringToUpper(word)
           select case(trim(word))
             case('POINT')
               realization%output_option%tecplot_format = TECPLOT_POINT_FORMAT
@@ -1121,13 +1116,11 @@ subroutine readInput(simulation,filename)
         endif
           
         do
-          call fiReadWord(string,word,PETSC_TRUE,ierr)
-          if (ierr /= 0) exit
-          length = len_trim(word)
-          call fiCharsToUpper(word,length)
-          call fiReadCard(word,card,ierr)
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          if (InputError(input)) exit
+          call StringToUpper(word)
 
-          select case(card)
+          select case(word)
             case('VELO')
               realization%output_option%print_tecplot_velocities = PETSC_TRUE
             case('FLUX')
@@ -1150,23 +1143,19 @@ subroutine readInput(simulation,filename)
         realization%output_option%print_vtk = PETSC_TRUE
 
         do
-          call fiReadWord(string,word,PETSC_TRUE,ierr)
-          if (ierr /= 0) exit
-          length = len_trim(word)
-          call fiCharsToUpper(word,length)
-          call fiReadCard(word,card,ierr)
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          if (InputError(input)) exit
+          call StringToUpper(word)
 
-          select case(card)
+          select case(word)
             case('VELO')
               realization%output_option%print_vtk_velocities = PETSC_TRUE
-#if 0
             case('FLUX')
               if (realization%output_option%tecplot_format == TECPLOT_POINT_FORMAT) then
-                string = 'Printing of fluxes not supported in TECPLOT POINT format.'
-                call printErrMsg(option,string)
+                call printErrMsg(option,'Printing of fluxes not supported &
+                                         &in TECPLOT POINT format.')
               endif
               realization%output_option%print_tecplot_flux_velocities = PETSC_TRUE
-#endif
             case default
           end select
           
@@ -1179,38 +1168,38 @@ subroutine readInput(simulation,filename)
 !....................
 
       case ('IMOD')
-        call fiReadInt(string,option%imod,ierr)
-        call fiDefaultMsg(option%myrank,'mod',ierr)
+        call InputReadInt(input,option,option%imod)
+        call InputDefaultMsg(input,option,'mod')
 
 !....................
 
       case ('TOLR')
 
-        call fiReadStringErrorMsg(option%myrank,'TOLR',ierr)
+        call InputReadStringErrorMsg(input,option,'TOLR')
 
-        call fiReadInt(string,master_stepper%nstepmax,ierr)
-        call fiDefaultMsg(option%myrank,'nstepmax',ierr)
+        call InputReadInt(input,option,master_stepper%nstepmax)
+        call InputDefaultMsg(input,option,'nstepmax')
   
-        call fiReadInt(string,master_stepper%iaccel,ierr)
-        call fiDefaultMsg(option%myrank,'iaccel',ierr)
+        call InputReadInt(input,option,master_stepper%iaccel)
+        call InputDefaultMsg(input,option,'iaccel')
 
-        call fiReadInt(string,idum,ierr)
-        call fiDefaultMsg(option%myrank,'newton_max',ierr)
+        call InputReadInt(input,option,idum)
+        call InputDefaultMsg(input,option,'newton_max')
 
-        call fiReadInt(string,master_stepper%icut_max,ierr)
-        call fiDefaultMsg(option%myrank,'icut_max',ierr)
+        call InputReadInt(input,option,master_stepper%icut_max)
+        call InputDefaultMsg(input,option,'icut_max')
 
-        call fiReadDouble(string,option%dpmxe,ierr)
-        call fiDefaultMsg(option%myrank,'dpmxe',ierr)
+        call InputReadDouble(input,option,option%dpmxe)
+        call InputDefaultMsg(input,option,'dpmxe')
 
-        call fiReadDouble(string,option%dtmpmxe,ierr)
-        call fiDefaultMsg(option%myrank,'dtmpmxe',ierr)
+        call InputReadDouble(input,option,option%dtmpmxe)
+        call InputDefaultMsg(input,option,'dtmpmxe')
   
-        call fiReadDouble(string,option%dcmxe,ierr)
-        call fiDefaultMsg(option%myrank,'dcmxe',ierr)
+        call InputReadDouble(input,option,option%dcmxe)
+        call InputDefaultMsg(input,option,'dcmxe')
 
-        call fiReadDouble(string,option%dsmxe,ierr)
-        call fiDefaultMsg(option%myrank,'dsmxe',ierr)
+        call InputReadDouble(input,option,option%dsmxe)
+        call InputDefaultMsg(input,option,'dsmxe')
         
         if (associated(tran_stepper)) then
           tran_stepper%icut_max = master_stepper%icut_max
@@ -1252,25 +1241,25 @@ subroutine readInput(simulation,filename)
 
 #if 0
       case('ORIG','ORIGIN')
-        call fiReadDouble(string,realization%discretization%origin(X_DIRECTION),ierr)
-        call fiErrorMsg(option%myrank,'X direction','Origin',ierr)
-        call fiReadDouble(string,realization%discretization%origin(Y_DIRECTION),ierr)
-        call fiErrorMsg(option%myrank,'Y direction','Origin',ierr)
-        call fiReadDouble(string,realization%discretization%origin(Z_DIRECTION),ierr)
-        call fiErrorMsg(option%myrank,'Z direction','Origin',ierr)
+        call InputReadDouble(input,option,realization%discretization%origin(X_DIRECTION))
+        call InputErrorMsg(input,option,'X direction','Origin')
+        call InputReadDouble(input,option,realization%discretization%origin(Y_DIRECTION))
+        call InputErrorMsg(input,option,'Y direction','Origin')
+        call InputReadDouble(input,option,realization%discretization%origin(Z_DIRECTION))
+        call InputErrorMsg(input,option,'Z direction','Origin')
 #endif
         
 !....................
 
       case ('DIFF')
 
-        call fiReadStringErrorMsg(option%myrank,'DIFF',ierr)
+        call InputReadStringErrorMsg(input,option,'DIFF')
 
-        call fiReadDouble(string,option%difaq,ierr)
-        call fiDefaultMsg(option%myrank,'difaq',ierr)
+        call InputReadDouble(input,option,option%difaq)
+        call InputDefaultMsg(input,option,'difaq')
 
-        call fiReadDouble(string,option%delhaq,ierr)
-        call fiDefaultMsg(option%myrank,'delhaq',ierr)
+        call InputReadDouble(input,option,option%delhaq)
+        call InputDefaultMsg(input,option,'delhaq')
 
         if (option%myrank==0) write(option%fid_out,'(/," *DIFF ",/, &
           &"  difaq       = ",1pe12.4,"[m^2/s]",/, &
@@ -1283,37 +1272,37 @@ subroutine readInput(simulation,filename)
 
         call printErrMsg(option,"RCTR currently out of date.  Needs to be reimplemented")
 #if 0
-        call fiReadStringErrorMsg(option%myrank,'RCTR',ierr)
+        call InputReadStringErrorMsg(input,option,'RCTR')
 
-        call fiReadInt(string,option%ityprxn,ierr)
-        call fiDefaultMsg(option%myrank,'ityprxn',ierr)
+        call InputReadInt(input,option,option%ityprxn)
+        call InputDefaultMsg(input,option,'ityprxn')
 
-        call fiReadDouble(string,option%rk,ierr)
-        call fiDefaultMsg(option%myrank,'rk',ierr)
+        call InputReadDouble(input,option,option%rk)
+        call InputDefaultMsg(input,option,'rk')
 
-        call fiReadDouble(string,option%phis0,ierr)
-        call fiDefaultMsg(option%myrank,'phis0',ierr)
+        call InputReadDouble(input,option,option%phis0)
+        call InputDefaultMsg(input,option,'phis0')
 
-        call fiReadDouble(string,option%areas0,ierr)
-        call fiDefaultMsg(option%myrank,'areas0',ierr)
+        call InputReadDouble(input,option,option%areas0)
+        call InputDefaultMsg(input,option,'areas0')
 
-        call fiReadDouble(string,option%pwrsrf,ierr)
-        call fiDefaultMsg(option%myrank,'pwrsrf',ierr)
+        call InputReadDouble(input,option,option%pwrsrf)
+        call InputDefaultMsg(input,option,'pwrsrf')
 
-        call fiReadDouble(string,option%vbars,ierr)
-        call fiDefaultMsg(option%myrank,'vbars',ierr)
+        call InputReadDouble(input,option,option%vbars)
+        call InputDefaultMsg(input,option,'vbars')
 
-        call fiReadDouble(string,option%ceq,ierr)
-        call fiDefaultMsg(option%myrank,'ceq',ierr)
+        call InputReadDouble(input,option,option%ceq)
+        call InputDefaultMsg(input,option,'ceq')
 
-        call fiReadDouble(string,option%delHs,ierr)
-        call fiDefaultMsg(option%myrank,'delHs',ierr)
+        call InputReadDouble(input,option,option%delHs)
+        call InputDefaultMsg(input,option,'delHs')
 
-        call fiReadDouble(string,option%delEs,ierr)
-        call fiDefaultMsg(option%myrank,'delEs',ierr)
+        call InputReadDouble(input,option,option%delEs)
+        call InputDefaultMsg(input,option,'delEs')
 
-        call fiReadDouble(string,option%wfmts,ierr)
-        call fiDefaultMsg(option%myrank,'wfmts',ierr)
+        call InputReadDouble(input,option,option%wfmts)
+        call InputDefaultMsg(input,option,'wfmts')
 
         if (OptionPrint(option)) &
         write(option%fid_out,'(/," *RCTR",/, &
@@ -1341,13 +1330,13 @@ subroutine readInput(simulation,filename)
 
       case ('RADN')
 
-        call fiReadStringErrorMsg(option%myrank,'RADN',ierr)
+        call InputReadStringErrorMsg(input,option,'RADN')
 
-        call fiReadDouble(string,option%ret,ierr)
-        call fiDefaultMsg(option%myrank,'ret',ierr)
+        call InputReadDouble(input,option,option%ret)
+        call InputDefaultMsg(input,option,'ret')
 
-        call fiReadDouble(string,option%fc,ierr)
-        call fiDefaultMsg(option%myrank,'fc',ierr)
+        call InputReadDouble(input,option,option%fc)
+        call InputDefaultMsg(input,option,'fc')
 
         if (option%myrank==0) write(option%fid_out,'(/," *RADN ",/, &
           &"  ret     = ",1pe12.4,/, &
@@ -1360,10 +1349,10 @@ subroutine readInput(simulation,filename)
       case ('PHAR')
         call printWrnMsg(option,"PHAR currently out of date.  Needs to be reimplemented")
 #if 0
-        call fiReadStringErrorMsg(option%myrank,'PHAR',ierr)
+        call InputReadStringErrorMsg(input,option,'PHAR')
 
-        call fiReadDouble(string,option%qu_kin,ierr)
-        call fiDefaultMsg(option%myrank,'TransReaction',ierr)
+        call InputReadDouble(input,option,option%qu_kin)
+        call InputDefaultMsg(input,option,'TransReaction')
         if (option%myrank==0) write(option%fid_out,'(/," *PHAR ",1pe12.4)')option%qu_kin
         option%yh2o_in_co2 = 0.d0
         if (option%qu_kin > 0.d0) option%yh2o_in_co2 = 1.d-2 ! check this number!
@@ -1376,40 +1365,40 @@ subroutine readInput(simulation,filename)
 !......................
 
       case('REFERENCE_PRESSURE')
-        call fiReadStringErrorMsg(option%myrank,card,ierr)
-        call fiReadDouble(string,option%reference_pressure,ierr)
-        call fiDefaultMsg(option%myrank,'Reference Pressure',ierr) 
+        call InputReadStringErrorMsg(input,option,card)
+        call InputReadDouble(input,option,option%reference_pressure)
+        call InputDefaultMsg(input,option,'Reference Pressure') 
 
 !......................
 
       case('REFERENCE_TEMPERATURE')
-        call fiReadStringErrorMsg(option%myrank,card,ierr)
-        call fiReadDouble(string,option%reference_temperature,ierr)
-        call fiDefaultMsg(option%myrank,'Reference Temperature',ierr) 
+        call InputReadStringErrorMsg(input,option,card)
+        call InputReadDouble(input,option,option%reference_temperature)
+        call InputDefaultMsg(input,option,'Reference Temperature') 
 
 !......................
 
       case('REFERENCE_POROSITY')
-        call fiReadStringErrorMsg(option%myrank,card,ierr)
-        call fiReadDouble(string,option%reference_porosity,ierr)
-        call fiDefaultMsg(option%myrank,'Reference Porosity',ierr) 
+        call InputReadStringErrorMsg(input,option,card)
+        call InputReadDouble(input,option,option%reference_porosity)
+        call InputDefaultMsg(input,option,'Reference Porosity') 
 
 !......................
 
       case('REFERENCE_SATURATION')
-        call fiReadStringErrorMsg(option%myrank,card,ierr)
-        call fiReadDouble(string,option%reference_saturation,ierr)
-        call fiDefaultMsg(option%myrank,'Reference Saturation',ierr) 
+        call InputReadStringErrorMsg(input,option,card)
+        call InputReadDouble(input,option,option%reference_saturation)
+        call InputDefaultMsg(input,option,'Reference Saturation') 
 
 !......................
 
       case('BRIN','BRINE')
-        call fiReadStringErrorMsg(option%myrank,card,ierr)
-        call fiReadDouble(string,option%m_nacl,ierr)
-        call fiDefaultMsg(option%myrank,'NaCl Concentration',ierr) 
+        call InputReadStringErrorMsg(input,option,card)
+        call InputReadDouble(input,option,option%m_nacl)
+        call InputDefaultMsg(input,option,'NaCl Concentration') 
 
-        call fiReadWord(string,word,PETSC_FALSE,ierr)
-        call fiWordToUpper(word)
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        call StringToUpper(word)
         select case(word(1:len_trim(word)))
           case('MOLAL')
           case('MASS')
@@ -1425,17 +1414,17 @@ subroutine readInput(simulation,filename)
 
       case ('RESTART')
         option%restart_flag = PETSC_TRUE
-        call fiReadWord(string,option%restart_file,PETSC_TRUE,ierr)
-        call fiErrorMsg(option%myrank,'RESTART','Restart file name',ierr) 
-        call fiReadDouble(string,option%restart_time,ierr)
-        call fiDefaultMsg(option%myrank,'Restart time',ierr) 
+        call InputReadWord(input,option,option%restart_file,PETSC_TRUE)
+        call InputErrorMsg(input,option,'RESTART','Restart file name') 
+        call InputReadDouble(input,option,option%restart_time)
+        call InputDefaultMsg(input,option,'Restart time') 
 
 !......................
 
       case ('CHECKPOINT')
         option%checkpoint_flag = PETSC_TRUE
-        call fiReadInt(string,option%checkpoint_frequency,ierr)
-        call fiErrorMsg(option%myrank,'CHECKPOINT','Checkpoint frequency',ierr) 
+        call InputReadInt(input,option,option%checkpoint_frequency)
+        call InputErrorMsg(input,option,'CHECKPOINT','Checkpoint frequency') 
 
 !......................
 
@@ -1453,81 +1442,78 @@ subroutine readInput(simulation,filename)
 !....................
 
       case ('TIMESTEPPER')
-        call fiReadWord(string,word,PETSC_FALSE,ierr)
-        length = len_trim(word)
-        call fiCharsToUpper(word,length)
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        call StringToUpper(word)
         select case(word)
           case('FLOW')
             if (associated(flow_solver)) then
-              call TimestepperRead(flow_stepper,option%fid_in,option)
+              call TimestepperRead(flow_stepper,input,option)
             else
-              call fiSkipToEND(option%fid_in,option%myrank,card)
+              call InputSkipToEnd(input,option,card)
             endif
           case('TRAN','TRANSPORT')
             if (associated(tran_solver)) then
-              call TimestepperRead(tran_stepper,option%fid_in,option)
+              call TimestepperRead(tran_stepper,input,option)
             else
-              call fiSkipToEND(option%fid_in,option%myrank,card)
+              call InputSkipToEnd(input,option,card)
             endif
           case default
             if (associated(master_stepper)) then
-              call TimestepperRead(master_stepper,option%fid_in,option)
+              call TimestepperRead(master_stepper,input,option)
             else
-              call fiSkipToEND(option%fid_in,option%myrank,card)
+              call InputSkipToEnd(input,option,card)
             endif
         end select
 
 !....................
 
       case ('LINEAR_SOLVER')
-        call fiReadWord(string,word,PETSC_FALSE,ierr)
-        length = len_trim(word)
-        call fiCharsToUpper(word,length)
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        call StringToUpper(word)
         select case(word)
           case('FLOW')
             if (associated(flow_solver)) then
-              call SolverReadLinear(flow_solver,option%fid_in,option%myrank)
+              call SolverReadLinear(flow_solver,input,option)
             else
-              call fiSkipToEND(option%fid_in,option%myrank,card)
+              call InputSkipToEnd(input,option,card)
             endif
           case('TRAN','TRANSPORT')
             if (associated(tran_solver)) then
-              call SolverReadLinear(tran_solver,option%fid_in,option%myrank)
+              call SolverReadLinear(tran_solver,input,option)
             else
-              call fiSkipToEND(option%fid_in,option%myrank,card)
+              call InputSkipToEnd(input,option,card)
             endif
           case default
             if (associated(master_solver)) then
-              call SolverReadLinear(master_solver,option%fid_in,option%myrank)
+              call SolverReadLinear(master_solver,input,option)
             else
-              call fiSkipToEND(option%fid_in,option%myrank,card)
+              call InputSkipToEnd(input,option,card)
             endif
         end select
 
 !....................
 
       case ('NEWTON_SOLVER')
-        call fiReadWord(string,word,PETSC_FALSE,ierr)
-        length = len_trim(word)
-        call fiCharsToUpper(word,length)
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        call StringToUpper(word)
         select case(word)
           case('FLOW')
             if (associated(flow_solver)) then
-              call SolverReadNewton(flow_solver,option%fid_in,option%myrank)
+              call SolverReadNewton(flow_solver,input,option)
             else
-              call fiSkipToEND(option%fid_in,option%myrank,card)
+              call InputSkipToEnd(input,option,card)
             endif
           case('TRAN','TRANSPORT')
             if (associated(tran_solver)) then
-              call SolverReadNewton(tran_solver,option%fid_in,option%myrank)
+              call SolverReadNewton(tran_solver,input,option)
             else
-              call fiSkipToEND(option%fid_in,option%myrank,card)
+              call InputSkipToEnd(input,option,card)
             endif
           case default
             if (associated(master_solver)) then
-              call SolverReadNewton(master_solver,option%fid_in,option%myrank)
+              call SolverReadNewton(master_solver,input,option)
             else
-              call fiSkipToEND(option%fid_in,option%myrank,card)
+              call InputSkipToEnd(input,option,card)
             endif
         end select
 
@@ -1539,19 +1525,19 @@ subroutine readInput(simulation,filename)
         
         count = 0
         do
-          call fiReadFlotranString(option%fid_in,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,'FLUID_PROPERTIES',ierr)
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,'FLUID_PROPERTIES')
           
-          if (fiCheckExit(string)) exit
+          if (InputCheckExit(input,option)) exit
          
           count = count + 1 
           if (count > option%nphase) exit              
                         
-          call fiReadDouble(string,realization%fluid_properties%diff_base(count),ierr)
-          call fiErrorMsg(option%myrank,'diff_base','FLUID_PROPERTIES', ierr)          
+          call InputReadDouble(input,option,realization%fluid_properties%diff_base(count))
+          call InputErrorMsg(input,option,'diff_base','FLUID_PROPERTIES')          
         
-          call fiReadDouble(string,realization%fluid_properties%diff_exp(count),ierr)
-          call fiErrorMsg(option%myrank,'diff_exp','FLUID_PROPERTIES', ierr)          
+          call InputReadDouble(input,option,realization%fluid_properties%diff_exp(count))
+          call InputErrorMsg(input,option,'diff_exp','FLUID_PROPERTIES')          
 
         enddo
         
@@ -1561,37 +1547,37 @@ subroutine readInput(simulation,filename)
 
         count = 0
         do
-          call fiReadFlotranString(option%fid_in,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,'THRM',ierr)
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,'THRM')
 
-          if (fiCheckExit(string)) exit
+          if (InputCheckExit(input,option)) exit
        
           count = count + 1
           thermal_property => ThermalPropertyCreate()
       
-          call fiReadInt(string,thermal_property%id,ierr)
-          call fiErrorMsg(option%myrank,'id','THRM', ierr)
+          call InputReadInt(input,option,thermal_property%id)
+          call InputErrorMsg(input,option,'id','THRM')
 
-          call fiReadDouble(string,thermal_property%rock_density,ierr)
-          call fiErrorMsg(option%myrank,'rock density','THRM', ierr)
+          call InputReadDouble(input,option,thermal_property%rock_density)
+          call InputErrorMsg(input,option,'rock density','THRM')
 
-          call fiReadDouble(string,thermal_property%spec_heat,ierr)
-          call fiErrorMsg(option%myrank,'cpr','THRM', ierr)
+          call InputReadDouble(input,option,thermal_property%spec_heat)
+          call InputErrorMsg(input,option,'cpr','THRM')
         
-          call fiReadDouble(string,thermal_property%therm_cond_dry,ierr)
-          call fiErrorMsg(option%myrank,'ckdry','THRM', ierr)
+          call InputReadDouble(input,option,thermal_property%therm_cond_dry)
+          call InputErrorMsg(input,option,'ckdry','THRM')
         
-          call fiReadDouble(string,thermal_property%therm_cond_wet,ierr)
-          call fiErrorMsg(option%myrank,'ckwet','THRM', ierr)
+          call InputReadDouble(input,option,thermal_property%therm_cond_wet)
+          call InputErrorMsg(input,option,'ckwet','THRM')
         
-          call fiReadDouble(string,thermal_property%tort_bin_diff,ierr)
-          call fiErrorMsg(option%myrank,'tau','THRM', ierr)
+          call InputReadDouble(input,option,thermal_property%tort_bin_diff)
+          call InputErrorMsg(input,option,'tau','THRM')
 
-          call fiReadDouble(string,thermal_property%vap_air_diff_coef,ierr)
-          call fiErrorMsg(option%myrank,'cdiff','THRM', ierr)
+          call InputReadDouble(input,option,thermal_property%vap_air_diff_coef)
+          call InputErrorMsg(input,option,'cdiff','THRM')
 
-          call fiReadDouble(string,thermal_property%exp_binary_diff,ierr)
-          call fiErrorMsg(option%myrank,'cexp','THRM', ierr)
+          call InputReadDouble(input,option,thermal_property%exp_binary_diff)
+          call InputErrorMsg(input,option,'cexp','THRM')
 
         !scale thermal properties
           thermal_property%spec_heat = option%scale * &
@@ -1636,46 +1622,46 @@ subroutine readInput(simulation,filename)
       
         count = 0
         do
-          call fiReadFlotranString(option%fid_in,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,'PCKR',ierr)
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,'PCKR')
 
-          if (fiCheckExit(string)) exit
+          if (InputCheckExit(input,option)) exit
        
           count = count + 1
           saturation_function => SaturationFunctionCreate(option)
           
-          call fiReadInt(string,saturation_function%id,ierr)
-          call fiErrorMsg(option%myrank,'id','PCKR', ierr)
+          call InputReadInt(input,option,saturation_function%id)
+          call InputErrorMsg(input,option,'id','PCKR')
           
-          call fiReadInt(string,saturation_function%saturation_function_itype,ierr)
-          call fiErrorMsg(option%myrank,'icaptype','PCKR', ierr)
+          call InputReadInt(input,option,saturation_function%saturation_function_itype)
+          call InputErrorMsg(input,option,'icaptype','PCKR')
       
           select case(option%iflowmode)
             case(MPH_MODE,THC_MODE,RICHARDS_MODE)
               do np=1, option%nphase
-                call fiReadDouble(string,saturation_function%Sr(np),ierr)
-                call fiErrorMsg(option%myrank,'Sr','PCKR', ierr)
+                call InputReadDouble(input,option,saturation_function%Sr(np))
+                call InputErrorMsg(input,option,'Sr','PCKR')
               enddo 
             case default
-              call fiReadDouble(string,saturation_function%Sr(1),ierr)
-              call fiErrorMsg(option%myrank,'Sr','PCKR', ierr)
+              call InputReadDouble(input,option,saturation_function%Sr(1))
+              call InputErrorMsg(input,option,'Sr','PCKR')
           end select
         
-          call fiReadDouble(string,saturation_function%m,ierr)
-          call fiErrorMsg(option%myrank,'pckrm','PCKR', ierr)
+          call InputReadDouble(input,option,saturation_function%m)
+          call InputErrorMsg(input,option,'pckrm','PCKR')
           saturation_function%lambda = saturation_function%m
 
-          call fiReadDouble(string,saturation_function%alpha,ierr)
-          call fiErrorMsg(option%myrank,'alpha','PCKR', ierr)
+          call InputReadDouble(input,option,saturation_function%alpha)
+          call InputErrorMsg(input,option,'alpha','PCKR')
 
-          call fiReadDouble(string,saturation_function%pcwmax,ierr)
-          call fiErrorMsg(option%myrank,'pcwmax','PCKR', ierr)
+          call InputReadDouble(input,option,saturation_function%pcwmax)
+          call InputErrorMsg(input,option,'pcwmax','PCKR')
       
-          call fiReadDouble(string,saturation_function%betac,ierr)
-          call fiErrorMsg(option%myrank,'pbetac','PCKR', ierr)
+          call InputReadDouble(input,option,saturation_function%betac)
+          call InputErrorMsg(input,option,'pbetac','PCKR')
       
-          call fiReadDouble(string,saturation_function%power,ierr)
-          call fiErrorMsg(option%myrank,'pwrprm','PCKR', ierr)
+          call InputReadDouble(input,option,saturation_function%power)
+          call InputErrorMsg(input,option,'pwrprm','PCKR')
 
           call SaturationFunctionComputeSpline(option,saturation_function)
           
@@ -1725,43 +1711,43 @@ subroutine readInput(simulation,filename)
 
         count = 0
         do
-          call fiReadFlotranString(option%fid_in,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,'PHIK',ierr)
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,'PHIK')
 
-          if (fiCheckExit(string)) exit
+          if (InputCheckExit(input,option)) exit
        
           count = count + 1
           material => MaterialCreate()
 
-          call fiReadWord(string,material%name,PETSC_TRUE,ierr)
-          call fiErrorMsg(option%myrank,'name','PHIK', ierr)
+          call InputReadWord(input,option,material%name,PETSC_TRUE)
+          call InputErrorMsg(input,option,'name','PHIK')
                 
-          call fiReadInt(string,material%id,ierr)
-          call fiErrorMsg(option%myrank,'id','PHIK', ierr)
+          call InputReadInt(input,option,material%id)
+          call InputErrorMsg(input,option,'id','PHIK')
                 
-          call fiReadInt(string,material%icap,ierr)
-          call fiErrorMsg(option%myrank,'icap','PHIK', ierr)
+          call InputReadInt(input,option,material%icap)
+          call InputErrorMsg(input,option,'icap','PHIK')
   
-          call fiReadInt(string,material%ithrm,ierr)
-          call fiErrorMsg(option%myrank,'ithrm','PHIK', ierr)
+          call InputReadInt(input,option,material%ithrm)
+          call InputErrorMsg(input,option,'ithrm','PHIK')
   
-          call fiReadDouble(string,material%porosity,ierr)
-          call fiErrorMsg(option%myrank,'por','PHIK', ierr)
+          call InputReadDouble(input,option,material%porosity)
+          call InputErrorMsg(input,option,'por','PHIK')
           
-          call fiReadDouble(string,material%tortuosity,ierr)
-          call fiErrorMsg(option%myrank,'tor','PHIK', ierr)
+          call InputReadDouble(input,option,material%tortuosity)
+          call InputErrorMsg(input,option,'tor','PHIK')
   
-          call fiReadDouble(string,material%permeability(1,1),ierr)
-          call fiErrorMsg(option%myrank,'permx','PHIK', ierr)
+          call InputReadDouble(input,option,material%permeability(1,1))
+          call InputErrorMsg(input,option,'permx','PHIK')
   
-          call fiReadDouble(string,material%permeability(2,2),ierr)
-          call fiErrorMsg(option%myrank,'permy','PHIK', ierr)
+          call InputReadDouble(input,option,material%permeability(2,2))
+          call InputErrorMsg(input,option,'permy','PHIK')
   
-          call fiReadDouble(string,material%permeability(3,3),ierr)
-          call fiErrorMsg(option%myrank,'permz','PHIK', ierr)
+          call InputReadDouble(input,option,material%permeability(3,3))
+          call InputErrorMsg(input,option,'permz','PHIK')
   
-          call fiReadDouble(string,material%permeability_pwr,ierr)
-          call fiErrorMsg(option%myrank,'permpwr','PHIK', ierr)
+          call InputReadDouble(input,option,material%permeability_pwr)
+          call InputErrorMsg(input,option,'permpwr','PHIK')
           
           material%permeability(1:3,1:3) = material%permeability(1:3,1:3)
           
@@ -1778,12 +1764,11 @@ subroutine readInput(simulation,filename)
         option%use_touch_options = PETSC_TRUE
 
       case ('MPI_IO')
-        string = '-viewer_binary_mpiio'
-!        call PetscOptionsInsertString(string,ierr)
+!        call PetscOptionsInsertString('-viewer_binary_mpiio')
 
       case ('HANDSHAKE_IO')
-        call fiReadInt(string,option%io_handshake_buffer_size,ierr)
-        call fiErrorMsg(option%myrank,'io_handshake_buffer_size','HANDSHAKE_IO', ierr)
+        call InputReadInt(input,option,option%io_handshake_buffer_size)
+        call InputErrorMsg(input,option,'io_handshake_buffer_size','HANDSHAKE_IO')
 
       case ('OVERWRITE_RESTART_TRANSPORT')
         option%overwrite_restart_transport = PETSC_TRUE
@@ -1793,9 +1778,9 @@ subroutine readInput(simulation,filename)
 
       case ('TIME')
 
-        call fiReadStringErrorMsg(option%myrank,'TIME',ierr)
+        call InputReadStringErrorMsg(input,option,'TIME')
       
-        call fiReadWord(string,word,PETSC_FALSE,ierr)
+        call InputReadWord(input,option,word,PETSC_FALSE)
       
         realization%output_option%tunit = trim(word)
 
@@ -1821,28 +1806,27 @@ subroutine readInput(simulation,filename)
           stop
         endif
 
-
-        call fiReadWord(string,word,PETSC_FALSE,ierr)
-        if (ierr == 0) then
-          call fiWordToUpper(word)
-          if (fiStringCompare(word,'EVERY',FIVE_INTEGER)) then
+        call InputReadWord(input,option,word,PETSC_FALSE)
+        if (.not.InputError(input)) then
+          call StringToUpper(word)
+          if (StringCompare(word,'EVERY',FIVE_INTEGER)) then
             periodic_output_flag = PETSC_TRUE
-            call fiReadDouble(string,periodic_rate,ierr)
+            call InputReadDouble(input,option,periodic_rate)
           endif
         endif
 
         continuation_flag = PETSC_TRUE
         do
           if (.not.continuation_flag) exit
-          call fiReadFlotranString(option%fid_in,string,ierr)
-          if (ierr /= 0) exit
+          call InputReadFlotranString(input,option)
+          if (InputError(input)) exit
           continuation_flag = PETSC_FALSE
-          if (index(string,backslash) > 0) continuation_flag = PETSC_TRUE
-          ierr = 0
+          if (index(input%buf,backslash) > 0) continuation_flag = PETSC_TRUE
+          input%ierr = 0
           do
-            if (ierr /= 0) exit
-            call fiReadDouble(string,temp_real,ierr)
-            if (ierr == 0) then
+            if (InputError(input)) exit
+            call InputReadDouble(input,option,temp_real)
+            if (.not.InputError(input)) then
               waypoint => WaypointCreate()
               waypoint%time = temp_real
               waypoint%print_output = PETSC_TRUE              
@@ -1873,28 +1857,28 @@ subroutine readInput(simulation,filename)
 
       case ('DTST')
 
-        call fiReadStringErrorMsg(option%myrank,'DTST',ierr)
+        call InputReadStringErrorMsg(input,option,'DTST')
 
-        call fiReadDouble(string,master_stepper%dt_min,ierr)
-        call fiDefaultMsg(option%myrank,'dt_min',ierr)
+        call InputReadDouble(input,option,master_stepper%dt_min)
+        call InputDefaultMsg(input,option,'dt_min')
             
         continuation_flag = PETSC_TRUE
         temp_int = 0       
         do
           if (.not.continuation_flag) exit
-          call fiReadFlotranString(option%fid_in,string,ierr)
-          if (ierr /= 0) exit
+          call InputReadFlotranString(input,option)
+          if (InputError(input)) exit
           continuation_flag = PETSC_FALSE
-          if (index(string,backslash) > 0) continuation_flag = PETSC_TRUE
-          ierr = 0
+          if (index(input%buf,backslash) > 0) continuation_flag = PETSC_TRUE
+          input%ierr = 0
           do
-            if (ierr /= 0) exit
-            call fiReadDouble(string,temp_real,ierr)
-            if (ierr == 0) then
+            if (InputError(input)) exit
+            call InputReadDouble(input,option,temp_real)
+            if (.not.InputError(input)) then
               waypoint => WaypointCreate()
               waypoint%time = temp_real
-              call fiReadDouble(string,waypoint%dt_max,ierr)
-              call fiErrorMsg(option%myrank,'dt_max','dtst',ierr)
+              call InputReadDouble(input,option,waypoint%dt_max)
+              call InputErrorMsg(input,option,'dt_max','dtst')
               if (temp_int == 0) master_stepper%dt_max = waypoint%dt_max
               call WaypointInsertInList(waypoint,realization%waypoints)
               temp_int = temp_int + 1
@@ -1911,7 +1895,7 @@ subroutine readInput(simulation,filename)
 !....................
       case ('BRK','BREAKTHROUGH')
         breakthrough => BreakthroughCreate()
-        call BreakthroughRead(breakthrough,option%fid_in,option)
+        call BreakthroughRead(breakthrough,input,option)
         call RealizationAddBreakthrough(realization,breakthrough)        
       
 !....................
@@ -1922,8 +1906,8 @@ subroutine readInput(simulation,filename)
 ! Needs implementation         
         allocate(master_stepper%steady_eps(option%nflowdof))
         do j=1,option%nflowdof
-          call fiReadDouble(string,master_stepper%steady_eps(j),ierr)
-          call fiDefaultMsg(option%myrank,'steady tol',ierr)
+          call InputReadDouble(input,option,master_stepper%steady_eps(j))
+          call InputDefaultMsg(input,option,'steady tol')
         enddo
         if (option%myrank==0) write(option%fid_out,'(/," *SDST ",/, &
           &"  dpdt        = ",1pe12.4,/, &
@@ -1935,8 +1919,8 @@ subroutine readInput(simulation,filename)
 !.....................
       case ('WALLCLOCK_STOP')
         option%wallclock_stop_flag = PETSC_TRUE
-        call fiReadDouble(string,option%wallclock_stop_time,ierr)
-        call fiErrorMsg(option%myrank,'stop time','WALLCLOCK_STOP', ierr) 
+        call InputReadDouble(input,option,option%wallclock_stop_time)
+        call InputErrorMsg(input,option,'stop time','WALLCLOCK_STOP') 
         ! convert from hrs to seconds and add to start_time
         option%wallclock_stop_time = option%start_time + &
                                      option%wallclock_stop_time*3600.d0
@@ -1952,8 +1936,6 @@ subroutine readInput(simulation,filename)
 
   enddo
 
-  close(option%fid_in)
-  
 end subroutine readInput
 
 ! ************************************************************************** !
@@ -1966,15 +1948,13 @@ end subroutine readInput
 subroutine setFlowMode(option)
 
   use Option_module
-  use Fileio_module
+  use String_module
 
   implicit none 
 
   type(option_type) :: option
-  PetscInt :: length
   
-  length = len_trim(option%flowmode)
-  call fiCharsToUpper(option%flowmode,length)
+  call StringToUpper(option%flowmode)
   select case(option%flowmode)
     case('THC')
       option%iflowmode = THC_MODE
@@ -2021,7 +2001,6 @@ subroutine assignMaterialPropToRegions(realization)
   use Option_module
   use Grid_module
   use Field_module
-  use Fileio_module
   use Patch_module
   use Level_module
 
@@ -2029,7 +2008,6 @@ subroutine assignMaterialPropToRegions(realization)
   
   type(realization_type) :: realization
   
-  character(len=MAXSTRINGLENGTH) :: string
   PetscReal, pointer :: icap_loc_p(:)
   PetscReal, pointer :: ithrm_loc_p(:)
   PetscReal, pointer :: por0_p(:)
@@ -2041,7 +2019,6 @@ subroutine assignMaterialPropToRegions(realization)
   
   PetscInt :: icell, local_id, ghosted_id, natural_id, material_id
   PetscInt :: istart, iend
-  PetscInt :: fid = 86, status
   PetscErrorCode :: ierr
   
   type(option_type), pointer :: option
@@ -2447,7 +2424,8 @@ subroutine readRegionFiles(realization)
       if (index(region%filename,'.h5') > 0) then
         call HDF5ReadRegionFromFile(realization,region,region%filename)
       else
-        call RegionReadFromFile(region,region%filename)
+        call RegionReadFromFile(region,realization%option, &
+                                region%filename)
       endif
     endif
     region => region%next
@@ -2468,9 +2446,9 @@ subroutine readMaterialsFromFile(realization,filename)
   use Field_module
   use Grid_module
   use Option_module
-  use Fileio_module
   use Patch_module
   use Logging_module
+  use Input_module
 
   use HDF5_module
   
@@ -2483,7 +2461,7 @@ subroutine readMaterialsFromFile(realization,filename)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch   
-  character(len=MAXSTRINGLENGTH) :: string
+  type(input_type), pointer :: input
   PetscInt :: ghosted_id, natural_id, material_id
   PetscInt :: fid = 86
   PetscInt :: status
@@ -2493,6 +2471,7 @@ subroutine readMaterialsFromFile(realization,filename)
   patch => realization%patch
   grid => patch%grid
   option => realization%option
+  input => realization%input
 
   if (index(filename,'.h5') > 0) then
     call HDF5ReadMaterialsFromFile(realization,filename)
@@ -2508,14 +2487,14 @@ subroutine readMaterialsFromFile(realization,filename)
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
     do
-      call fiReadFlotranString(fid,string,ierr)
-      if (ierr /= 0) exit
-      call fiReadInt(string,natural_id,ierr)
-      call fiErrorMsg(option%myrank,'natural id','STRATA', ierr)
+      call InputReadFlotranString(input,option)
+      if (InputError(input)) exit
+      call InputReadInt(input,option,natural_id)
+      call InputErrorMsg(input,option,'natural id','STRATA')
       ghosted_id = GridGetLocalGhostedIdFromHash(grid,natural_id)
       if (ghosted_id > 0) then
-        call fiReadInt(string,material_id,ierr)
-        call fiErrorMsg(option%myrank,'material id','STRATA', ierr)
+        call InputReadInt(input,option,material_id)
+        call InputErrorMsg(input,option,'material id','STRATA')
         patch%imat(ghosted_id) = material_id
       endif
     enddo
@@ -2541,7 +2520,6 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
   use Field_module
   use Grid_module
   use Option_module
-  use Fileio_module
   use Patch_module
   use Logging_module
 
@@ -2559,11 +2537,10 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch   
-  character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: ghosted_id, natural_id, material_id
   PetscInt :: fid = 86
   PetscInt :: status
-  PetscErrorCode :: ierr
+  PetscErrorCode :: ierr, ierr2
   PetscInt :: count, read_count, i
   PetscInt, pointer :: indices(:)
   PetscReal, pointer :: values(:)
@@ -2599,7 +2576,7 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
       if (option%myrank == option%io_rank) &
         read(fid,*,iostat=ierr) values(1:read_count)
       call mpi_bcast(ierr,ONE_INTEGER,MPI_INTEGER,option%io_rank, &
-                     option%comm,ierr)      
+                     option%comm,ierr2)      
       if (ierr /= 0) then
         option%io_buffer = 'Insufficent data in file: ' // filename
         call printErrMsg(option)
@@ -2637,7 +2614,7 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
         call VecDestroy(global_vec,ierr)  
       case(GLOBAL)
         call DiscretizationNaturalToGlobal(discretization,natural_vec, &
-                                          vector,ONEDOF) 
+                                           vector,ONEDOF) 
     end select 
     call VecDestroy(natural_vec,ierr)
   endif

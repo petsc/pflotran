@@ -927,8 +927,7 @@ subroutine MphaseSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fl
             call CO2(tsrc,aux_var%pres, rho,fg, xphi,enth_src_co2)
             enth_src_co2 = enth_src_co2*option%fmwco2*option%scale
       else
-         print *,'pflow mphase ERROR: Need specify CO2 EOS'
-         STOP    
+         call printErrMsg(option,'pflow mphase ERROR: Need specify CO2 EOS')
       endif
               
       Res(jco2) = Res(jco2) + msrc(2)*option%flow_dt

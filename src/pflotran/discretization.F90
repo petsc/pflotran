@@ -99,66 +99,58 @@ end function DiscretizationCreate
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine DiscretizationRead(discretization,fid,first_time, option)
+subroutine DiscretizationRead(discretization,input,first_time,option)
 
-  use Fileio_module
   use Option_module
+  use Input_module
+  use String_module
   use AMR_Grid_module
 
   implicit none
 
   type(option_type), pointer :: option
+  type(input_type), pointer :: input
   type(discretization_type),pointer :: discretization
-  PetscInt :: fid
   PetscTruth :: first_time
-  character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   type(grid_type), pointer :: grid
   type(structured_grid_type), pointer :: str_grid
   type(amrgrid_type), pointer :: amrgrid
   character(len=MAXWORDLENGTH) :: structured_grid_ctype
   PetscInt :: structured_grid_itype
-  PetscInt :: length
   PetscInt :: nx, ny, nz
-  PetscErrorCode :: ierr
   PetscInt :: i
+
   nx = 0
   ny = 0
   nz = 0
 
-  ierr = 0
-
 ! we initialize the word to blanks to avoid error reported by valgrind
-  do i=1,MAXWORDLENGTH
-    word(i:i) = ' '
-  enddo
+  word = ''
 
   do
   
-    call fiReadFlotranString(fid,string,ierr)
-    if (ierr /= 0) exit
+    call InputReadFlotranString(input,option)
+    if (input%ierr /= 0) exit
 
-    if (fiCheckExit(string)) exit
+    if (InputCheckExit(input,option)) exit
 
-    call fiReadWord(string,word,PETSC_TRUE,ierr)
-    call fiErrorMsg(option%myrank,'keyword','GRID', ierr)   
-    length = len_trim(word)
-    call fiCharsToUpper(word,length)
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','GRID')
+    call StringToUpper(word)
       
     if (first_time) then ! first time read
       select case(trim(word))
         case('TYPE')
-          call fiReadWord(string,discretization%ctype,PETSC_TRUE,ierr)
-          call fiErrorMsg(option%myrank,'type','GRID', ierr)   
-          length = len_trim(discretization%ctype)
-          call fiCharsToLower(discretization%ctype,length)
+          call InputReadWord(input,option,discretization%ctype,PETSC_TRUE)
+          call InputErrorMsg(input,option,'type','GRID')   
+          call StringToLower(discretization%ctype)
           select case(trim(discretization%ctype))
             case('structured')
               discretization%itype = STRUCTURED_GRID
-              call fiReadWord(string,structured_grid_ctype,PETSC_TRUE,ierr)
-              call fiDefaultMsg(option%myrank,'structured_grid_type',ierr)   
-              length = len_trim(structured_grid_ctype)
-              call fiCharsToLower(structured_grid_ctype,length)
+              call InputReadWord(input,option,structured_grid_ctype,PETSC_TRUE)
+              call InputDefaultMsg(input,option,'structured_grid_type')   
+              call StringToLower(structured_grid_ctype)
               select case(trim(structured_grid_ctype))
                 case('cartesian')
                   structured_grid_itype = CARTESIAN_GRID
@@ -181,28 +173,28 @@ subroutine DiscretizationRead(discretization,fid,first_time, option)
               call printErrMsg(option)
           end select    
         case('NXYZ')
-          call fiReadInt(string,nx,ierr)
-          call fiErrorMsg(option%myrank,'nx','GRID', ierr)
-          call fiReadInt(string,ny,ierr)
-          call fiErrorMsg(option%myrank,'ny','GRID', ierr)
-          call fiReadInt(string,nz,ierr)
-          call fiErrorMsg(option%myrank,'nz','GRID', ierr)
+          call InputReadInt(input,option,nx)
+          call InputErrorMsg(input,option,'nx','GRID')
+          call InputReadInt(input,option,ny)
+          call InputErrorMsg(input,option,'ny','GRID')
+          call InputReadInt(input,option,nz)
+          call InputErrorMsg(input,option,'nz','GRID')
           if (structured_grid_itype /= CARTESIAN_GRID) then
             ny = 1 ! cylindrical and spherical have 1 cell in Y
             if (structured_grid_itype /= CYLINDRICAL_GRID) nz = 1 ! spherical has 1 cell in Z
           endif
         case('ORIG','ORIGIN')
-          call fiReadDouble(string,discretization%origin(X_DIRECTION),ierr)
-          call fiErrorMsg(option%myrank,'X direction','Origin',ierr)
-          call fiReadDouble(string,discretization%origin(Y_DIRECTION),ierr)
-          call fiErrorMsg(option%myrank,'Y direction','Origin',ierr)
-          call fiReadDouble(string,discretization%origin(Z_DIRECTION),ierr)
-          call fiErrorMsg(option%myrank,'Z direction','Origin',ierr)        
+          call InputReadDouble(input,option,discretization%origin(X_DIRECTION))
+          call InputErrorMsg(input,option,'X direction','Origin')
+          call InputReadDouble(input,option,discretization%origin(Y_DIRECTION))
+          call InputErrorMsg(input,option,'Y direction','Origin')
+          call InputReadDouble(input,option,discretization%origin(Z_DIRECTION))
+          call InputErrorMsg(input,option,'Z direction','Origin')        
         case('FILE')
         case('DXYZ')
-          call fiSkipToEND(fid,option%myrank,word) 
+          call InputSkipToEND(input,option,word) 
         case('BOUNDS')
-          call fiSkipToEND(fid,option%myrank,word) 
+          call InputSkipToEND(input,option,word) 
         case default
           option%io_buffer = 'Keyword: ' // trim(word) // &
                    ' not recognized in DISCRETIZATION, first read.'
@@ -217,15 +209,15 @@ subroutine DiscretizationRead(discretization,fid,first_time, option)
         case('DXYZ')
           select case(discretization%itype)
             case(STRUCTURED_GRID)
-              call StructuredGridReadDXYZ(discretization%grid%structured_grid,fid,option)
+              call StructuredGridReadDXYZ(discretization%grid%structured_grid,input,option)
             case(AMR_GRID)
-              call AMRGridReadDXYZ(discretization%amrgrid,fid,option)
+              call AMRGridReadDXYZ(discretization%amrgrid,input,option)
             case default
               call printErrMsg(option,'Keyword "DXYZ" not supported for unstructured grid')
           end select
-          call fiReadFlotranString(fid,string,ierr) ! z-direction
-          call fiReadStringErrorMsg(option%myrank,'DISCRETIZATION,BOUNDS,Z',ierr)
-          if (.not.(fiCheckExit(string))) then
+          call InputReadFlotranString(input,option) ! z-direction
+          call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Z')
+          if (.not.(InputCheckExit(input,option))) then
             option%io_buffer = 'Card DXYZ should include either 3 entires ' // &
                      '(one for each grid direction or NX+NY+NZ entries'
             call printErrMsg(option)
@@ -237,33 +229,33 @@ subroutine DiscretizationRead(discretization,fid,first_time, option)
               if (grid%structured_grid%itype == CARTESIAN_GRID .or. &
                   grid%structured_grid%itype == CYLINDRICAL_GRID .or. &
                   grid%structured_grid%itype == SPHERICAL_GRID) then
-                call fiReadFlotranString(fid,string,ierr) ! x-direction
-                call fiReadStringErrorMsg(option%myrank,'DISCRETIZATION,BOUNDS,X or R',ierr)
-                call fiReadDouble(string,grid%structured_grid%bounds(X_DIRECTION,LOWER),ierr)
-                call fiErrorMsg(option%myrank,'Lower X or R','BOUNDS',ierr)
-                call fiReadDouble(string,grid%structured_grid%bounds(X_DIRECTION,UPPER),ierr)
-                call fiErrorMsg(option%myrank,'Upper X or R','BOUNDS',ierr)
+                call InputReadFlotranString(input,option) ! x-direction
+                call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,X or R')
+                call InputReadDouble(input,option,grid%structured_grid%bounds(X_DIRECTION,LOWER))
+                call InputErrorMsg(input,option,'Lower X or R','BOUNDS')
+                call InputReadDouble(input,option,grid%structured_grid%bounds(X_DIRECTION,UPPER))
+                call InputErrorMsg(input,option,'Upper X or R','BOUNDS')
               endif
               if (grid%structured_grid%itype == CARTESIAN_GRID) then
-                call fiReadFlotranString(fid,string,ierr) ! y-direction
-                call fiReadStringErrorMsg(option%myrank,'DISCRETIZATION,BOUNDS,Y',ierr)
-                call fiReadDouble(string,grid%structured_grid%bounds(Y_DIRECTION,LOWER),ierr)
-                call fiErrorMsg(option%myrank,'Lower Y','BOUNDS',ierr)
-                call fiReadDouble(string,grid%structured_grid%bounds(Y_DIRECTION,UPPER),ierr)
-                call fiErrorMsg(option%myrank,'Upper Y','BOUNDS',ierr)
+                call InputReadFlotranString(input,option) ! y-direction
+                call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Y')
+                call InputReadDouble(input,option,grid%structured_grid%bounds(Y_DIRECTION,LOWER))
+                call InputErrorMsg(input,option,'Lower Y','BOUNDS')
+                call InputReadDouble(input,option,grid%structured_grid%bounds(Y_DIRECTION,UPPER))
+                call InputErrorMsg(input,option,'Upper Y','BOUNDS')
               endif
               if (grid%structured_grid%itype == CARTESIAN_GRID .or. &
                   grid%structured_grid%itype == CYLINDRICAL_GRID) then
-                call fiReadFlotranString(fid,string,ierr) ! z-direction
-                call fiReadStringErrorMsg(option%myrank,'DISCRETIZATION,BOUNDS,Z',ierr)
-                call fiReadDouble(string,grid%structured_grid%bounds(Z_DIRECTION,LOWER),ierr)
-                call fiErrorMsg(option%myrank,'Lower Z','BOUNDS',ierr)
-                call fiReadDouble(string,grid%structured_grid%bounds(Z_DIRECTION,UPPER),ierr)
-                call fiErrorMsg(option%myrank,'Upper Z','BOUNDS',ierr)
+                call InputReadFlotranString(input,option) ! z-direction
+                call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Z')
+                call InputReadDouble(input,option,grid%structured_grid%bounds(Z_DIRECTION,LOWER))
+                call InputErrorMsg(input,option,'Lower Z','BOUNDS')
+                call InputReadDouble(input,option,grid%structured_grid%bounds(Z_DIRECTION,UPPER))
+                call InputErrorMsg(input,option,'Upper Z','BOUNDS')
               endif
-              call fiReadFlotranString(fid,string,ierr) ! z-direction
-              call fiReadStringErrorMsg(option%myrank,'DISCRETIZATION,BOUNDS,Z',ierr)
-              if (.not.(fiCheckExit(string))) then
+              call InputReadFlotranString(input,option) ! z-direction
+              call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Z')
+              if (.not.(InputCheckExit(input,option))) then
                 if (OptionPrint(option)) then
                   if (grid%structured_grid%itype == CARTESIAN_GRID) then
                     print *, 'BOUNDS card for a cartesian structured grid must include ' // &
@@ -471,7 +463,8 @@ subroutine DiscretizationCreateVector(discretization,dm_index,vector, &
         case(NTRANDOF)
            ndof = option%ntrandof
       end select
-      call AMRGridCreateVector(discretization%amrgrid, ndof, vector, vector_type, PETSC_FALSE)
+      call AMRGridCreateVector(discretization%amrgrid, ndof, vector, &
+                               vector_type, PETSC_FALSE, option)
   end select
   call VecSet(vector,0.d0,ierr)
   

@@ -348,14 +348,15 @@ end subroutine StructuredGridCreateVecFromDA
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridReadDXYZ(structured_grid,fid,option)
+subroutine StructuredGridReadDXYZ(structured_grid,input,option)
 
   use Option_module
+  use Input_module
   
   implicit none
   
   type(structured_grid_type) :: structured_grid
-  PetscInt :: fid
+  type(input_type) :: input
   type(option_type) :: option
   
   PetscInt :: i
@@ -368,13 +369,13 @@ subroutine StructuredGridReadDXYZ(structured_grid,fid,option)
   structured_grid%dz_global = 0.d0
 
   call StructuredGridReadArray(structured_grid%dx_global, &
-                               structured_grid%nx,fid,option)
+                               structured_grid%nx,input,option)
   call StructuredGridReadArray(structured_grid%dy_global, &
-                               structured_grid%ny,fid,option)
+                               structured_grid%ny,input,option)
   call StructuredGridReadArray(structured_grid%dz_global, &
-                               structured_grid%nz,fid,option)
+                               structured_grid%nz,input,option)
     
-  if (option%myrank==0) then
+  if (option%myrank == option%io_rank) then
     write(option%fid_out,'(/," *DXYZ ")')
     write(option%fid_out,'("  dx  ",/,(1p10e12.4))') &
       (structured_grid%dx_global(i),i=1,structured_grid%nx)
@@ -394,21 +395,21 @@ end subroutine StructuredGridReadDXYZ
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridReadArray(a,n,fid,option)
+subroutine StructuredGridReadArray(a,n,input,option)
 
-  use Fileio_module
+  use Input_module
   use Option_module
   
   implicit none
   
   type(option_type) :: option
+  type(input_type) :: input
   PetscInt :: fid
   PetscInt :: n
   PetscInt :: i, i1, i2, m
   PetscInt ::  nvalue=10
   PetscReal, intent(inout) :: a(*)
   character(len=MAXSTRINGLENGTH) :: string 
-  PetscErrorCode :: ierr
 
   save nvalue
 
@@ -422,14 +423,14 @@ subroutine StructuredGridReadArray(a,n,fid,option)
     i1 = i2+1
     i2 = i2+nvalue
     if (i2.gt.n) i2 = n
-    call fiReadFlotranString(fid,string,ierr)
-    call fiReadStringErrorMsg(option%myrank,'DXYZ',ierr)
+    call InputReadFlotranString(input,option)
+    call InputReadStringErrorMsg(input,option,'DXYZ')
     do i = i1, i2
-      call fiReadDouble(string, a(i), ierr)
+      call InputReadDouble(input,option,a(i))
 !geh  ierr, which comes from iostat, will not necessarily be 0 and 1, 
 !geh  it could be another number
 !geh      if (ierr .eq. 1) a(i) = 0.d0
-      if (ierr /= 0) a(i) = 0.d0
+      if (input%ierr /= 0) a(i) = 0.d0
 !     print *,i,i1,i2,nvalue,a(i),n,ierr
 !     call fiDefaultMsg("Error reading grid spacing", ierr)
     enddo
@@ -458,13 +459,16 @@ end subroutine StructuredGridReadArray
 ! date: 10/26/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridComputeSpacing(structured_grid,nG2A,nG2L)
+subroutine StructuredGridComputeSpacing(structured_grid,nG2A,nG2L,option)
 
+  use Option_module
+  
   implicit none
   
   type(structured_grid_type) :: structured_grid
   PetscInt :: nG2A(:)
   PetscInt :: nG2L(:)
+  type(option_type) :: option
   
   PetscInt :: i, j, k, ghosted_id
   PetscErrorCode :: ierr
@@ -480,8 +484,7 @@ subroutine StructuredGridComputeSpacing(structured_grid,nG2A,nG2L)
     if (.not.associated(structured_grid%dx_global)) then
       ! indicates that the grid spacings still need to be computed
       if (structured_grid%bounds(1,1) < -1.d19) then ! bounds have not been initialized
-        print *, 'ERROR: Bounds have not been set for grid and DXYZ does not exist'
-        stop
+        call printErrMsg(option,'Bounds have not been set for grid and DXYZ does not exist')
       endif
       allocate(structured_grid%dx_global(structured_grid%nx))
       allocate(structured_grid%dy_global(structured_grid%ny))

@@ -6,6 +6,7 @@ PetscInt, parameter :: IUNIT1 = 15
 PetscInt, parameter :: IUNIT2 = 16
 PetscInt, parameter :: IUNIT3 = 17
 PetscInt, parameter :: IUNIT4 = 18
+PetscInt, parameter :: IUNIT_TEMP = 86
 PetscInt, parameter :: HHISTORY_LENGTH = 1000
 ! HHISTORY_LENGTH is the length of the array used to store the differencing
 ! values h.

@@ -83,68 +83,67 @@ end function TimestepperCreate
 ! date: 02/23/08
 !
 ! ************************************************************************** !
-subroutine TimestepperRead(stepper,fid,option)
+subroutine TimestepperRead(stepper,input,option)
 
   use Option_module
-  use Fileio_module
+  use String_module
+  use Input_module
   
   implicit none
 
   type(stepper_type) :: stepper
-  PetscInt :: fid
+  type(input_type) :: input
   type(option_type) :: option
   
-  character(len=MAXSTRINGLENGTH) :: string, error_string
-  character(len=MAXWORDLENGTH) :: keyword, word, word2
-  PetscErrorCode :: ierr
+  character(len=MAXWORDLENGTH) :: keyword
 
-  ierr = 0
+  input%ierr = 0
   do
   
-    call fiReadFlotranString(fid,string,ierr)
+    call InputReadFlotranString(input,option)
 
-    if (fiCheckExit(string)) exit  
+    if (InputCheckExit(input,option)) exit  
 
-    call fiReadWord(string,keyword,PETSC_TRUE,ierr)
-    call fiErrorMsg(option%myrank,'keyword','TIMESTEPPER', ierr)
-    call fiWordToUpper(keyword)   
+    call InputReadWord(input,option,keyword,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','TIMESTEPPER')
+    call StringToUpper(keyword)   
       
     select case(trim(keyword))
 
       case('NUM_STEPS_AFTER_TS_CUT')
-        call fiReadInt(string,stepper%ndtcmx,ierr)
-        call fiDefaultMsg(option%myrank,'num_steps_after_ts_cut',ierr)
+        call InputReadInt(input,option,stepper%ndtcmx)
+        call InputDefaultMsg(input,option,'num_steps_after_ts_cut')
 
       case('MAX_STEPS')
-        call fiReadInt(string,stepper%nstepmax,ierr)
-        call fiDefaultMsg(option%myrank,'nstepmax',ierr)
+        call InputReadInt(input,option,stepper%nstepmax)
+        call InputDefaultMsg(input,option,'nstepmax')
   
       case('TS_ACCELERATION')
-        call fiReadInt(string,stepper%iaccel,ierr)
-        call fiDefaultMsg(option%myrank,'iaccel',ierr)
+        call InputReadInt(input,option,stepper%iaccel)
+        call InputDefaultMsg(input,option,'iaccel')
 
       case('MAX_TS_CUTS')
-        call fiReadInt(string,stepper%icut_max,ierr)
-        call fiDefaultMsg(option%myrank,'icut_max',ierr)
+        call InputReadInt(input,option,stepper%icut_max)
+        call InputDefaultMsg(input,option,'icut_max')
 
       case('MAX_PRESSURE_CHANGE')
-        call fiReadDouble(string,option%dpmxe,ierr)
-        call fiDefaultMsg(option%myrank,'dpmxe',ierr)
+        call InputReadDouble(input,option,option%dpmxe)
+        call InputDefaultMsg(input,option,'dpmxe')
 
       case('MAX_TEMPERATURE_CHANGE')
-        call fiReadDouble(string,option%dtmpmxe,ierr)
-        call fiDefaultMsg(option%myrank,'dtmpmxe',ierr)
+        call InputReadDouble(input,option,option%dtmpmxe)
+        call InputDefaultMsg(input,option,'dtmpmxe')
   
       case('MAX_CONCENTRATION_CHANGE')
-        call fiReadDouble(string,option%dcmxe,ierr)
-        call fiDefaultMsg(option%myrank,'dcmxe',ierr)
+        call InputReadDouble(input,option,option%dcmxe)
+        call InputDefaultMsg(input,option,'dcmxe')
 
       case('MAX_SATURATION_CHANGE')
-        call fiReadDouble(string,option%dsmxe,ierr)
-        call fiDefaultMsg(option%myrank,'dsmxe',ierr)
+        call InputReadDouble(input,option,option%dsmxe)
+        call InputDefaultMsg(input,option,'dsmxe')
 
       case default
-        option%io_buffer = 'Timestepper option: '//trim(word)// &
+        option%io_buffer = 'Timestepper option: '//trim(keyword)// &
                            ' not recognized.'
         call printErrMsg(option)
     end select 
@@ -611,7 +610,6 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   PetscTruth :: timestep_cut_flag
   PetscInt :: num_newton_iterations
   
-  character(len=MAXSTRINGLENGTH) :: string, string2, string3
   PetscErrorCode :: ierr
   PetscInt :: icut ! Tracks the number of time step reductions applied
   SNESConvergedReason :: snes_reason 
@@ -892,8 +890,6 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
 
   type(realization_type) :: realization
   type(stepper_type) :: stepper
-
-  character(len=MAXSTRINGLENGTH) :: string, string2, string3
 
   PetscTruth :: timestep_cut_flag
   PetscInt :: num_newton_iterations
@@ -1418,8 +1414,6 @@ subroutine TimestepperPrintInfo(stepper,fid,header,option)
   character(len=MAXSTRINGLENGTH) :: header  
   type(option_type) :: option
   
-  character(len=MAXSTRINGLENGTH) :: string
-
   if (OptionPrint(option)) then
     write(*,*) 
     write(fid,*) 

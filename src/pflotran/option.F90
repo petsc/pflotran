@@ -19,7 +19,6 @@ module Option_module
     
     character(len=MAXSTRINGLENGTH) :: io_buffer
   
-    PetscInt :: fid_in
     PetscInt :: fid_out
     
     ! defines the mode (e.g. mph, richards, vadose, etc.
@@ -199,7 +198,6 @@ function OptionCreate()
   option%io_rank = 0
   option%io_buffer = ''
   
-  option%fid_in = 0
   option%fid_out = 0
 
   option%iflag = 0

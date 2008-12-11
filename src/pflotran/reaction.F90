@@ -33,16 +33,17 @@ contains
 ! date: 05/02/08
 !
 ! ************************************************************************** !
-subroutine ReactionRead(reaction,fid,option)
+subroutine ReactionRead(reaction,input,option)
 
-  use Fileio_module
   use Option_module
+  use String_module
+  use Input_module
   
   implicit none
   
   type(reaction_type) :: reaction
+  type(input_type) :: input
   type(option_type) :: option
-  PetscInt :: fid
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
@@ -53,38 +54,37 @@ subroutine ReactionRead(reaction,fid,option)
   type(surface_complexation_rxn_type), pointer :: srfcmplx_rxn, prev_srfcmplx_rxn
   type(ion_exchange_rxn_type), pointer :: ionx_rxn, prev_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cation, prev_cation
-  PetscInt :: length
   PetscInt :: srfcmplx_count = 0
   PetscErrorCode :: ierr
 
   nullify(prev_srfcmplx_rxn)
   nullify(prev_ionx_rxn)
 
-  ierr = 0
+  input%ierr = 0
   do
   
-    call fiReadFlotranString(fid,string,ierr)
-    if (ierr /= 0) exit
-    if (fiCheckExit(string)) exit
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
     
-    call fiReadWord(string,word,PETSC_TRUE,ierr)
-    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)
-    call fiWordToUpper(word)   
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','CHEMISTRY')
+    call StringToUpper(word)   
 
     select case(trim(word))
     
       case('PRIMARY_SPECIES')
         nullify(prev_species)
         do
-          call fiReadFlotranString(fid,string,ierr)
-          if (ierr /= 0) exit
-          if (fiCheckExit(string)) exit
+          call InputReadFlotranString(input,option)
+          if (InputError(input)) exit
+          if (InputCheckExit(input,option)) exit
           
           reaction%ncomp = reaction%ncomp + 1
           
           species => AqueousSpeciesCreate()
-          call fiReadWord(string,species%name,PETSC_TRUE,ierr)  
-          call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,PRIMARY_SPECIES', ierr)    
+          call InputReadWord(input,option,species%name,PETSC_TRUE)  
+          call InputErrorMsg(input,option,'keyword','CHEMISTRY,PRIMARY_SPECIES')    
           if (.not.associated(reaction%primary_species_list)) then
             reaction%primary_species_list => species
             species%id = 1
@@ -99,15 +99,15 @@ subroutine ReactionRead(reaction,fid,option)
       case('SECONDARY_SPECIES')
         nullify(prev_species)
         do
-          call fiReadFlotranString(fid,string,ierr)
-          if (ierr /= 0) exit
-          if (fiCheckExit(string)) exit
+          call InputReadFlotranString(input,option)
+          if (InputError(input)) exit
+          if (InputCheckExit(input,option)) exit
           
           reaction%neqcmplx = reaction%neqcmplx + 1
           
           species => AqueousSpeciesCreate()
-          call fiReadWord(string,species%name,PETSC_TRUE,ierr)  
-          call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,PRIMARY_SPECIES', ierr)    
+          call InputReadWord(input,option,species%name,PETSC_TRUE)  
+          call InputErrorMsg(input,option,'keyword','CHEMISTRY,PRIMARY_SPECIES')    
           if (.not.associated(reaction%secondary_species_list)) then
             reaction%secondary_species_list => species
             species%id = 1
@@ -122,15 +122,15 @@ subroutine ReactionRead(reaction,fid,option)
       case('GAS_SPECIES')
         nullify(prev_gas)
         do
-          call fiReadFlotranString(fid,string,ierr)
-          if (ierr /= 0) exit
-          if (fiCheckExit(string)) exit
+          call InputReadFlotranString(input,option)
+          if (InputError(input)) exit
+          if (InputCheckExit(input,option)) exit
 
           reaction%ngas = reaction%ngas + 1
           
           gas => GasSpeciesCreate()
-          call fiReadWord(string,gas%name,PETSC_TRUE,ierr)  
-          call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,GAS_SPECIES', ierr)    
+          call InputReadWord(input,option,gas%name,PETSC_TRUE)  
+          call InputErrorMsg(input,option,'keyword','CHEMISTRY,GAS_SPECIES')    
           if (.not.associated(reaction%gas_species_list)) then
             reaction%gas_species_list => gas
             gas%id = 1
@@ -145,15 +145,15 @@ subroutine ReactionRead(reaction,fid,option)
       case('MINERALS')
         nullify(prev_mineral)
         do
-          call fiReadFlotranString(fid,string,ierr)
-          if (ierr /= 0) exit
-          if (fiCheckExit(string)) exit
+          call InputReadFlotranString(input,option)
+          if (InputError(input)) exit
+          if (InputCheckExit(input,option)) exit
           
           reaction%nmnrl = reaction%nmnrl + 1
           
           mineral => MineralCreate()
-          call fiReadWord(string,mineral%name,PETSC_TRUE,ierr)  
-          call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,MINERALS', ierr)    
+          call InputReadWord(input,option,mineral%name,PETSC_TRUE)  
+          call InputErrorMsg(input,option,'keyword','CHEMISTRY,MINERALS')    
           if (.not.associated(reaction%mineral_list)) then
             reaction%mineral_list => mineral
             mineral%id = 1
@@ -166,17 +166,17 @@ subroutine ReactionRead(reaction,fid,option)
           nullify(mineral)
         enddo
       case('MINERAL_KINETICS')
-        call fiSkipToEND(fid,option%myrank,word)
+        call InputSkipToEnd(input,option,word)
       case('SORPTION')
         nullify(prev_srfcmplx_rxn)
         do
-          call fiReadFlotranString(fid,string,ierr)
-          if (ierr /= 0) exit
-          if (fiCheckExit(string)) exit
+          call InputReadFlotranString(input,option)
+          if (InputError(input)) exit
+          if (InputCheckExit(input,option)) exit
 
-          call fiReadWord(string,word,PETSC_TRUE,ierr)
-          call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SORPTION', ierr)
-          call fiWordToUpper(word)   
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword','CHEMISTRY,SORPTION')
+          call StringToUpper(word)   
 
           select case(trim(word))
           
@@ -184,36 +184,36 @@ subroutine ReactionRead(reaction,fid,option)
           
               srfcmplx_rxn => SurfaceComplexationRXNCreate()
               do
-                call fiReadFlotranString(fid,string,ierr)
-                if (ierr /= 0) exit
-                if (fiCheckExit(string)) exit
+                call InputReadFlotranString(input,option)
+                if (InputError(input)) exit
+                if (InputCheckExit(input,option)) exit
 
-                call fiReadWord(string,word,.true.,ierr)
-                call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN', ierr)
-                call fiWordToUpper(word)
+                call InputReadWord(input,option,word,.true.)
+                call InputErrorMsg(input,option,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN')
+                call StringToUpper(word)
                 
                 select case(trim(word))
                   case('MINERAL')
-                    call fiReadWord(string,srfcmplx_rxn%mineral_name,PETSC_TRUE,ierr)
-                    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,MINERAL_NAME', ierr)
+                    call InputReadWord(input,option,srfcmplx_rxn%mineral_name,PETSC_TRUE)
+                    call InputErrorMsg(input,option,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,MINERAL_NAME')
                   case('SITE')
-                    call fiReadWord(string,srfcmplx_rxn%free_site_name,PETSC_TRUE,ierr)
-                    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,SITE_NAME', ierr)
-                    call fiReadDouble(string,srfcmplx_rxn%site_density,ierr)
-                    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,SITE_DENSITY',ierr)                   
+                    call InputReadWord(input,option,srfcmplx_rxn%free_site_name,PETSC_TRUE)
+                    call InputErrorMsg(input,option,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,SITE_NAME')
+                    call InputReadDouble(input,option,srfcmplx_rxn%site_density)
+                    call InputErrorMsg(input,option,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,SITE_DENSITY')                   
                   case('COMPLEXES')
                     nullify(prev_srfcmplx)
                     do
-                      call fiReadFlotranString(fid,string,ierr)
-                      if (ierr /= 0) exit
-                      if (fiCheckExit(string)) exit
+                      call InputReadFlotranString(input,option)
+                      if (InputError(input)) exit
+                      if (InputCheckExit(input,option)) exit
                       
                       srfcmplx_count = srfcmplx_count + 1
                       reaction%neqsurfcmplx = srfcmplx_count
                       srfcmplx => SurfaceComplexCreate()
                       srfcmplx%id = srfcmplx_count
-                      call fiReadWord(string,srfcmplx%name,PETSC_TRUE,ierr)
-                      call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_NAME', ierr)
+                      call InputReadWord(input,option,srfcmplx%name,PETSC_TRUE)
+                      call InputErrorMsg(input,option,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_NAME')
                 
                       if (.not.associated(srfcmplx_rxn%complex_list)) then
                         srfcmplx_rxn%complex_list => srfcmplx
@@ -251,34 +251,34 @@ subroutine ReactionRead(reaction,fid,option)
             
               ionx_rxn => IonExchangeRxnCreate()
               do
-                call fiReadFlotranString(fid,string,ierr)
-                if (ierr /= 0) exit
-                if (fiCheckExit(string)) exit
+                call InputReadFlotranString(input,option)
+                if (InputError(input)) exit
+                if (InputCheckExit(input,option)) exit
 
-                call fiReadWord(string,word,.true.,ierr)
-                call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,ION_EXCHANGE_RXN', ierr)
-                call fiWordToUpper(word)
+                call InputReadWord(input,option,word,.true.)
+                call InputErrorMsg(input,option,'keyword','CHEMISTRY,ION_EXCHANGE_RXN')
+                call StringToUpper(word)
                 
                 select case(trim(word))
                   case('MINERAL')
-                    call fiReadWord(string,ionx_rxn%mineral_name,PETSC_TRUE,ierr)
-                    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,ION_EXCHANGE_RXN,MINERAL_NAME', ierr)
+                    call InputReadWord(input,option,ionx_rxn%mineral_name,PETSC_TRUE)
+                    call InputErrorMsg(input,option,'keyword','CHEMISTRY,ION_EXCHANGE_RXN,MINERAL_NAME')
                   case('CEC')
-                    call fiReadDouble(string,ionx_rxn%CEC,ierr)
-                    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,ION_EXCHANGE_RXN,CEC',ierr)                   
+                    call InputReadDouble(input,option,ionx_rxn%CEC)
+                    call InputErrorMsg(input,option,'keyword','CHEMISTRY,ION_EXCHANGE_RXN,CEC')                   
                   case('CATIONS')
                     nullify(prev_cation)
                     do
-                      call fiReadFlotranString(fid,string,ierr)
-                      if (ierr /= 0) exit
-                      if (fiCheckExit(string)) exit
+                      call InputReadFlotranString(input,option)
+                      if (InputError(input)) exit
+                      if (InputCheckExit(input,option)) exit
                       
                       cation => IonExchangeCationCreate()
                       reaction%neqionxcation = reaction%neqionxcation + 1
-                      call fiReadWord(string,cation%name,PETSC_TRUE,ierr)
-                      call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,ION_EXCHANGE_RXN,CATION_NAME', ierr)
-                      call fiReadDouble(string,cation%k,ierr)
-                      call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,ION_EXCHANGE_RXN,K',ierr)                   
+                      call InputReadWord(input,option,cation%name,PETSC_TRUE)
+                      call InputErrorMsg(input,option,'keyword','CHEMISTRY,ION_EXCHANGE_RXN,CATION_NAME')
+                      call InputReadDouble(input,option,cation%k)
+                      call InputErrorMsg(input,option,'keyword','CHEMISTRY,ION_EXCHANGE_RXN,K')                   
     
                       if (.not.associated(ionx_rxn%cation_list)) then
                         ionx_rxn%cation_list => cation
@@ -313,13 +313,15 @@ subroutine ReactionRead(reaction,fid,option)
           end select
         enddo
       case('DATABASE')
-        call fiReadNChars(string,reaction%database_filename,MAXSTRINGLENGTH,PETSC_TRUE,ierr)  
-        call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,DATABASE FILENAME', ierr)  
+        call InputReadNChars(input,option,reaction%database_filename, &
+                             MAXSTRINGLENGTH,PETSC_TRUE)  
+        call InputErrorMsg(input,option,'keyword', &
+                           'CHEMISTRY,DATABASE FILENAME')  
       case('LOG_FORMULATION')
         reaction%use_log_formulation = PETSC_TRUE        
       case('ACTIVITY_COEFFICIENTS')
-        call fiReadWord(string,word,PETSC_TRUE,ierr)
-        call fiDefaultMsg(option%myrank,'CHEMISTRY,ACTIVITY COEFFICIENTS',ierr)        
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputDefaultMsg(input,option,'CHEMISTRY,ACTIVITY COEFFICIENTS')        
         select case(trim(word))
           case('ITERATION')
             reaction%compute_activity_coefs = ACTIVITY_COEFFICIENTS_ITERATION    
@@ -358,7 +360,8 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
                                         aq_species_constraint, &
                                         mineral_constraint,option)
   use Option_module
-  use Fileio_module
+  use Input_module
+  use String_module
   use Utility_module  
   
   implicit none
@@ -369,7 +372,6 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   type(mineral_constraint_type), pointer :: mineral_constraint
   type(option_type) :: option
   
-  character(len=MAXSTRINGLENGTH) :: string
   PetscTruth :: found
   PetscInt :: icomp, jcomp
   PetscInt :: imnrl, jmnrl
@@ -390,9 +392,9 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   do icomp = 1, reaction%ncomp
     found = PETSC_FALSE
     do jcomp = 1, reaction%ncomp
-      if (fiStringCompare(aq_species_constraint%names(icomp), &
-                          reaction%primary_species_names(jcomp), &
-                          MAXWORDLENGTH)) then
+      if (StringCompare(aq_species_constraint%names(icomp), &
+                        reaction%primary_species_names(jcomp), &
+                        MAXWORDLENGTH)) then
         found = PETSC_TRUE
         exit
       endif
@@ -413,7 +415,7 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
         case(CONSTRAINT_MINERAL)
           found = PETSC_FALSE
           do imnrl = 1, reaction%nmnrl
-            if (fiStringCompare(constraint_spec_name(jcomp), &
+            if (StringCompare(constraint_spec_name(jcomp), &
                                 reaction%mineral_names(imnrl), &
                                 MAXWORDLENGTH)) then
               constraint_id(jcomp) = imnrl
@@ -433,7 +435,7 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
         case(CONSTRAINT_GAS)
           found = PETSC_FALSE
           do igas = 1, reaction%ngas
-            if (fiStringCompare(constraint_spec_name(jcomp), &
+            if (StringCompare(constraint_spec_name(jcomp), &
                                 reaction%gas_species_names(igas), &
                                 MAXWORDLENGTH)) then
               constraint_id(jcomp) = igas
@@ -467,7 +469,7 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
     do imnrl = 1, reaction%nkinmnrl
       found = PETSC_FALSE
       do jmnrl = 1, reaction%nkinmnrl
-        if (fiStringCompare(mineral_constraint%names(imnrl), &
+        if (StringCompare(mineral_constraint%names(imnrl), &
                             reaction%kinmnrl_names(jmnrl), &
                             MAXWORDLENGTH)) then
           found = PETSC_TRUE
@@ -508,7 +510,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          aq_species_constraint, &
                                          num_iterations,option)
   use Option_module
-  use Fileio_module
+  use Input_module
+  use String_module  
   use Utility_module  
   
   implicit none
@@ -594,8 +597,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           ! check if icomp is h+
           if (reaction%h_ion_id /= icomp) then
             string = 'OH-'
-            if (.not.fiStringCompare(reaction%primary_species_names(icomp), &
-                                     string,MAXWORDLENGTH)) then
+            if (.not.StringCompare(reaction%primary_species_names(icomp), &
+                                   string,MAXWORDLENGTH)) then
               option%io_buffer = &
                        'pH specified as constraint (constraint =' // &
                        trim(constraint_name) // &
@@ -877,7 +880,8 @@ end subroutine ReactionEquilibrateConstraint
 subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
 
   use Option_module
-  use Fileio_module
+  use Input_module
+  use String_module
   use Condition_module
 
   implicit none
@@ -1344,16 +1348,17 @@ end subroutine ReactionPrintConstraint
 ! date: 10/16/08
 !
 ! ************************************************************************** !
-subroutine ReactionReadMineralKinetics(reaction,fid,option)
+subroutine ReactionReadMineralKinetics(reaction,input,option)
 
-  use Fileio_module
+  use Input_module
+  use String_module  
   use Option_module
   
   implicit none
   
   type(reaction_type) :: reaction
+  type(input_type) :: input
   type(option_type) :: option
-  PetscInt :: fid
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
@@ -1361,7 +1366,6 @@ subroutine ReactionReadMineralKinetics(reaction,fid,option)
   
   type(mineral_type), pointer :: cur_mineral
   PetscInt :: imnrl
-  PetscErrorCode :: ierr
 
   cur_mineral => reaction%mineral_list
   do 
@@ -1370,28 +1374,28 @@ subroutine ReactionReadMineralKinetics(reaction,fid,option)
     cur_mineral => cur_mineral%next
   enddo
 
-  ierr = 0
+  input%ierr = 0
   do
   
-    call fiReadFlotranString(fid,string,ierr)
-    if (ierr /= 0) exit
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
 
-    if (fiCheckExit(string)) exit  
+    if (InputCheckExit(input,option)) exit  
 
-    call fiReadWord(string,name,PETSC_TRUE,ierr)
-    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,MINERAL_KINETICS', ierr)
+    call InputReadWord(input,option,name,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','CHEMISTRY,MINERAL_KINETICS')
     
     cur_mineral => reaction%mineral_list
     do 
       if (.not.associated(cur_mineral)) exit
-      if (fiStringCompare(cur_mineral%name,name,MAXWORDLENGTH)) then
+      if (StringCompare(cur_mineral%name,name,MAXWORDLENGTH)) then
         cur_mineral%itype = MINERAL_KINETIC
         if (.not.associated(cur_mineral%tstrxn)) then
           cur_mineral%tstrxn => TransitionStateTheoryRxnCreate()
         endif
         ! read rate
-        call fiReadDouble(string,cur_mineral%tstrxn%rate,ierr)
-        call fiErrorMsg(option%myrank,'rate','CHEMISTRY,MINERAL_KINETICS', ierr)
+        call InputReadDouble(input,option,cur_mineral%tstrxn%rate)
+        call InputErrorMsg(input,option,'rate','CHEMISTRY,MINERAL_KINETICS')
         cur_mineral%id = abs(cur_mineral%id)
         reaction%nkinmnrl = reaction%nkinmnrl + 1
         exit

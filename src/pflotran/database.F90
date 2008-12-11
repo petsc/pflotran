@@ -23,7 +23,8 @@ contains
 subroutine DatabaseRead(reaction,option)
 
   use Option_module
-  use Fileio_module
+  use Input_module
+  use String_module
   
   implicit none
   
@@ -43,10 +44,9 @@ subroutine DatabaseRead(reaction,option)
   PetscTruth :: flag, found
   PetscInt :: ispec, itemp, i
   PetscReal :: stoich
-  PetscInt, parameter :: dbase_id = 86
+  type(input_type), pointer :: input
   PetscInt :: iostat
   PetscInt :: num_nulls
-  PetscErrorCode :: ierr
   
   ! negate ids for use as flags
   cur_aq_spec => reaction%primary_species_list
@@ -85,34 +85,28 @@ subroutine DatabaseRead(reaction,option)
     cur_surfcplx_rxn => cur_surfcplx_rxn%next
   enddo  
   
-  open(unit=dbase_id,file=reaction%database_filename,status='old',iostat=ierr)
-  if (ierr /= 0) then
-    option%io_buffer = 'DATABASE File: ' // &
-                       trim(reaction%database_filename) // &
-                       ' not found.'
-    call printErrMsg(option)  
-  endif
+  input => InputCreate(IUNIT_TEMP,reaction%database_filename)
 
   ! read temperatures
-  call fiReadDBaseString(dbase_id,string,ierr)
+  call InputReadFlotranString(input,option)
   ! remove comment
-  call fiReadDBaseName(dbase_id,string,name,PETSC_TRUE,ierr)
-  call fiReadDBaseInt(dbase_id,string,reaction%num_dbase_temperatures,ierr)
-  call fiErrorMsg(option%myrank,'Number of database temperatures','DATABASE',ierr)  
+  call InputReadQuotedWord(input,option,name,PETSC_TRUE)
+  call InputReadInt(input,option,reaction%num_dbase_temperatures)
+  call InputErrorMsg(input,option,'Number of database temperatures','DATABASE')  
   allocate(reaction%dbase_temperatures(reaction%num_dbase_temperatures))
   reaction%dbase_temperatures = 0.d0  
   do itemp = 1, reaction%num_dbase_temperatures
-    call fiReadDBaseDouble(dbase_id,string,reaction%dbase_temperatures(itemp),ierr)
-    call fiErrorMsg(option%myrank,'Database temperatures','DATABASE',ierr)            
+    call InputReadDouble(input,option,reaction%dbase_temperatures(itemp))
+    call InputErrorMsg(input,option,'Database temperatures','DATABASE')            
   enddo
 
   num_nulls = 0
   null_name = 'null'
   do ! loop over every entry in the database
-    call fiReadDBaseString(dbase_id,string,ierr)
-    call fiReadStringErrorMsg(option%myrank,'DATABASE',ierr)
+    call InputReadFlotranString(input,option)
+    call InputReadStringErrorMsg(input,option,'DATABASE')
 
-    call fiReadDBaseName(dbase_id,string,name,PETSC_TRUE,ierr)
+    call InputReadQuotedWord(input,option,name,PETSC_TRUE)
     ! 'null's mark the end of a section in the database.  We count these 
     ! to determine which species we are reading.
     ! --
@@ -128,7 +122,7 @@ subroutine DatabaseRead(reaction,option)
     ! null
     ! --
     
-    if (fiStringCompare(name,null_name,MAXWORDLENGTH)) then
+    if (StringCompare(name,null_name,MAXWORDLENGTH)) then
       num_nulls = num_nulls + 1
       if (num_nulls >= 5) exit
       cycle
@@ -140,7 +134,7 @@ subroutine DatabaseRead(reaction,option)
         found = PETSC_FALSE
         do
           if (found .or. .not.associated(cur_aq_spec)) exit
-          if (fiStringCompare(name,cur_aq_spec%name,MAXWORDLENGTH)) then
+          if (StringCompare(name,cur_aq_spec%name,MAXWORDLENGTH)) then
             found = PETSC_TRUE
             ! change negative id to positive, indicating it was found in database
             cur_aq_spec%id = abs(cur_aq_spec%id)
@@ -151,7 +145,7 @@ subroutine DatabaseRead(reaction,option)
         if (.not.found) cur_aq_spec => reaction%secondary_species_list
         do
           if (found .or. .not.associated(cur_aq_spec)) exit
-          if (fiStringCompare(name,cur_aq_spec%name,MAXWORDLENGTH)) then
+          if (StringCompare(name,cur_aq_spec%name,MAXWORDLENGTH)) then
             found = PETSC_TRUE          
           ! change negative id to positive, indicating it was found in database
             cur_aq_spec%id = abs(cur_aq_spec%id)
@@ -167,9 +161,9 @@ subroutine DatabaseRead(reaction,option)
           if (.not.associated(cur_aq_spec%eqrxn)) &
             cur_aq_spec%eqrxn => EquilibriumRxnCreate()
           ! read the number of primary species in secondary rxn
-          call fiReadDBaseInt(dbase_id,string,cur_aq_spec%eqrxn%nspec,ierr)
-          call fiErrorMsg(option%myrank,'Number of species in aqueous complex', &
-                          'DATABASE',ierr)  
+          call InputReadInt(input,option,cur_aq_spec%eqrxn%nspec)
+          call InputErrorMsg(input,option,'Number of species in aqueous complex', &
+                          'DATABASE')  
           ! allocate arrays for rxn
           allocate(cur_aq_spec%eqrxn%spec_name(cur_aq_spec%eqrxn%nspec))
           cur_aq_spec%eqrxn%spec_name = ''
@@ -179,25 +173,25 @@ subroutine DatabaseRead(reaction,option)
           cur_aq_spec%eqrxn%logK = 0.d0
           ! read in species and stoichiometries
           do ispec = 1, cur_aq_spec%eqrxn%nspec
-            call fiReadDBaseDouble(dbase_id,string,cur_aq_spec%eqrxn%stoich(ispec),ierr)
-            call fiErrorMsg(option%myrank,'EQRXN species stoichiometry','DATABASE',ierr)            
-            call fiReadDBaseName(dbase_id,string,cur_aq_spec%eqrxn%spec_name(ispec),PETSC_TRUE,ierr)
-            call fiErrorMsg(option%myrank,'EQRXN species name','DATABASE',ierr)            
+            call InputReadDouble(input,option,cur_aq_spec%eqrxn%stoich(ispec))
+            call InputErrorMsg(input,option,'EQRXN species stoichiometry','DATABASE')            
+            call InputReadQuotedWord(input,option,cur_aq_spec%eqrxn%spec_name(ispec),PETSC_TRUE)
+            call InputErrorMsg(input,option,'EQRXN species name','DATABASE')            
           enddo
           do itemp = 1, reaction%num_dbase_temperatures
-            call fiReadDBaseDouble(dbase_id,string,cur_aq_spec%eqrxn%logK(itemp),ierr)
-            call fiErrorMsg(option%myrank,'EQRXN logKs','DATABASE',ierr)            
+            call InputReadDouble(input,option,cur_aq_spec%eqrxn%logK(itemp))
+            call InputErrorMsg(input,option,'EQRXN logKs','DATABASE')            
           enddo
         endif 
         ! read the Debye-Huckel ion size parameter (a0)
-        call fiReadDBaseDouble(dbase_id,string,cur_aq_spec%a0,ierr)
-        call fiErrorMsg(option%myrank,'AQ Species a0','DATABASE',ierr)            
+        call InputReadDouble(input,option,cur_aq_spec%a0)
+        call InputErrorMsg(input,option,'AQ Species a0','DATABASE')            
         ! read the valence
-        call fiReadDBaseDouble(dbase_id,string,cur_aq_spec%Z,ierr)
-        call fiErrorMsg(option%myrank,'AQ Species Z','DATABASE',ierr)            
+        call InputReadDouble(input,option,cur_aq_spec%Z)
+        call InputErrorMsg(input,option,'AQ Species Z','DATABASE')            
         ! read the molar weight
-        call fiReadDBaseDouble(dbase_id,string,cur_aq_spec%molar_weight,ierr)
-        call fiErrorMsg(option%myrank,'AQ Species molar weight','DATABASE',ierr)
+        call InputReadDouble(input,option,cur_aq_spec%molar_weight)
+        call InputErrorMsg(input,option,'AQ Species molar weight','DATABASE')
         
                     
       case(2) ! gas species
@@ -206,7 +200,7 @@ subroutine DatabaseRead(reaction,option)
         found = PETSC_FALSE
         do
           if (found .or. .not.associated(cur_gas_spec)) exit
-          if (fiStringCompare(name,cur_gas_spec%name,MAXWORDLENGTH)) then
+          if (StringCompare(name,cur_gas_spec%name,MAXWORDLENGTH)) then
             found = PETSC_TRUE          
           ! change negative id to positive, indicating it was found in database
             cur_gas_spec%id = abs(cur_gas_spec%id)
@@ -218,17 +212,17 @@ subroutine DatabaseRead(reaction,option)
         if (.not.found) cycle ! go to next line in database
         
         ! read the molar volume
-        call fiReadDBaseDouble(dbase_id,string,cur_gas_spec%molar_volume,ierr)
-        call fiErrorMsg(option%myrank,'GAS molar volume','DATABASE',ierr)
+        call InputReadDouble(input,option,cur_gas_spec%molar_volume)
+        call InputErrorMsg(input,option,'GAS molar volume','DATABASE')
         ! convert from cm^3/mol to m^3/mol
         cur_gas_spec%molar_volume = cur_gas_spec%molar_volume*1.d-6
         ! create aqueous equilibrium reaction
         if (.not.associated(cur_gas_spec%eqrxn)) &
           cur_gas_spec%eqrxn => EquilibriumRxnCreate()
         ! read the number of aqueous species in secondary rxn
-        call fiReadDBaseInt(dbase_id,string,cur_gas_spec%eqrxn%nspec,ierr)
-        call fiErrorMsg(option%myrank,'Number of species in gas reaction', &
-                        'DATABASE',ierr)  
+        call InputReadInt(input,option,cur_gas_spec%eqrxn%nspec)
+        call InputErrorMsg(input,option,'Number of species in gas reaction', &
+                        'DATABASE')  
         ! allocate arrays for rxn
         allocate(cur_gas_spec%eqrxn%spec_name(cur_gas_spec%eqrxn%nspec))
         cur_gas_spec%eqrxn%spec_name = ''
@@ -238,18 +232,18 @@ subroutine DatabaseRead(reaction,option)
         cur_gas_spec%eqrxn%logK = 0.d0
         ! read in species and stoichiometries
         do ispec = 1, cur_gas_spec%eqrxn%nspec
-          call fiReadDBaseDouble(dbase_id,string,cur_gas_spec%eqrxn%stoich(ispec),ierr)
-          call fiErrorMsg(option%myrank,'GAS species stoichiometry','DATABASE',ierr)            
-          call fiReadDBaseName(dbase_id,string,cur_gas_spec%eqrxn%spec_name(ispec),PETSC_TRUE,ierr)
-          call fiErrorMsg(option%myrank,'GAS species name','DATABASE',ierr)            
+          call InputReadDouble(input,option,cur_gas_spec%eqrxn%stoich(ispec))
+          call InputErrorMsg(input,option,'GAS species stoichiometry','DATABASE')            
+          call InputReadQuotedWord(input,option,cur_gas_spec%eqrxn%spec_name(ispec),PETSC_TRUE)
+          call InputErrorMsg(input,option,'GAS species name','DATABASE')            
         enddo
         do itemp = 1, reaction%num_dbase_temperatures
-          call fiReadDBaseDouble(dbase_id,string,cur_gas_spec%eqrxn%logK(itemp),ierr)
-          call fiErrorMsg(option%myrank,'GAS logKs','DATABASE',ierr)            
+          call InputReadDouble(input,option,cur_gas_spec%eqrxn%logK(itemp))
+          call InputErrorMsg(input,option,'GAS logKs','DATABASE')            
         enddo
         ! read the molar weight
-        call fiReadDBaseDouble(dbase_id,string,cur_gas_spec%molar_weight,ierr)
-        call fiErrorMsg(option%myrank,'GAS molar weight','DATABASE',ierr)     
+        call InputReadDouble(input,option,cur_gas_spec%molar_weight)
+        call InputErrorMsg(input,option,'GAS molar weight','DATABASE')     
         
                
       case(3) ! minerals
@@ -258,7 +252,7 @@ subroutine DatabaseRead(reaction,option)
         found = PETSC_FALSE
         do
           if (found .or. .not.associated(cur_mineral)) exit
-          if (fiStringCompare(name,cur_mineral%name,MAXWORDLENGTH)) then
+          if (StringCompare(name,cur_mineral%name,MAXWORDLENGTH)) then
             found = PETSC_TRUE          
           ! change negative id to positive, indicating it was found in database
             cur_mineral%id = abs(cur_mineral%id)
@@ -270,17 +264,17 @@ subroutine DatabaseRead(reaction,option)
         if (.not.found) cycle ! go to next line in database
         
         ! read the molar volume
-        call fiReadDBaseDouble(dbase_id,string,cur_mineral%molar_volume,ierr)
-        call fiErrorMsg(option%myrank,'MINERAL molar volume','DATABASE',ierr)            
+        call InputReadDouble(input,option,cur_mineral%molar_volume)
+        call InputErrorMsg(input,option,'MINERAL molar volume','DATABASE')            
         ! convert from cm^3/mol to m^3/mol
         cur_mineral%molar_volume = cur_mineral%molar_volume*1.d-6
         ! create mineral reaction
         if (.not.associated(cur_mineral%tstrxn)) &
           cur_mineral%tstrxn => TransitionStateTheoryRxnCreate()
         ! read the number of aqueous species in mineral rxn
-        call fiReadDBaseInt(dbase_id,string,cur_mineral%tstrxn%nspec,ierr)
-        call fiErrorMsg(option%myrank,'Number of species in mineral reaction', &
-                        'DATABASE',ierr)  
+        call InputReadInt(input,option,cur_mineral%tstrxn%nspec)
+        call InputErrorMsg(input,option,'Number of species in mineral reaction', &
+                        'DATABASE')  
         ! allocate arrays for rxn
         allocate(cur_mineral%tstrxn%spec_name(cur_mineral%tstrxn%nspec))
         cur_mineral%tstrxn%spec_name = ''
@@ -290,18 +284,18 @@ subroutine DatabaseRead(reaction,option)
         cur_mineral%tstrxn%logK = 0.d0
         ! read in species and stoichiometries
         do ispec = 1, cur_mineral%tstrxn%nspec
-          call fiReadDBaseDouble(dbase_id,string,cur_mineral%tstrxn%stoich(ispec),ierr)
-          call fiErrorMsg(option%myrank,'MINERAL species stoichiometry','DATABASE',ierr)            
-          call fiReadDBaseName(dbase_id,string,cur_mineral%tstrxn%spec_name(ispec),PETSC_TRUE,ierr)
-          call fiErrorMsg(option%myrank,'MINERAL species name','DATABASE',ierr)            
+          call InputReadDouble(input,option,cur_mineral%tstrxn%stoich(ispec))
+          call InputErrorMsg(input,option,'MINERAL species stoichiometry','DATABASE')            
+          call InputReadQuotedWord(input,option,cur_mineral%tstrxn%spec_name(ispec),PETSC_TRUE)
+          call InputErrorMsg(input,option,'MINERAL species name','DATABASE')            
         enddo
         do itemp = 1, reaction%num_dbase_temperatures
-          call fiReadDBaseDouble(dbase_id,string,cur_mineral%tstrxn%logK(itemp),ierr)
-          call fiErrorMsg(option%myrank,'MINERAL logKs','DATABASE',ierr)            
+          call InputReadDouble(input,option,cur_mineral%tstrxn%logK(itemp))
+          call InputErrorMsg(input,option,'MINERAL logKs','DATABASE')            
         enddo
         ! read the molar weight
-        call fiReadDBaseDouble(dbase_id,string,cur_mineral%molar_weight,ierr)
-        call fiErrorMsg(option%myrank,'MINERAL molar weight','DATABASE',ierr)            
+        call InputReadDouble(input,option,cur_mineral%molar_weight)
+        call InputErrorMsg(input,option,'MINERAL molar weight','DATABASE')            
         
         
       case(4) ! surface complexes
@@ -312,7 +306,7 @@ subroutine DatabaseRead(reaction,option)
           cur_surfcplx => cur_surfcplx_rxn%complex_list
           do
             if (.not.associated(cur_surfcplx)) exit
-            if (fiStringCompare(name,cur_surfcplx%name,MAXWORDLENGTH)) then
+            if (StringCompare(name,cur_surfcplx%name,MAXWORDLENGTH)) then
               found = PETSC_TRUE          
             ! change negative id to positive, indicating it was found in database
               cur_surfcplx%id = abs(cur_surfcplx%id)
@@ -330,9 +324,9 @@ subroutine DatabaseRead(reaction,option)
           cur_surfcplx%eqrxn => EquilibriumRxnCreate()
             
         ! read the number of aqueous species in surface complexation rxn
-        call fiReadDBaseInt(dbase_id,string,cur_surfcplx%eqrxn%nspec,ierr)
-        call fiErrorMsg(option%myrank,'Number of species in surface complexation reaction', &
-                        'DATABASE',ierr)  
+        call InputReadInt(input,option,cur_surfcplx%eqrxn%nspec)
+        call InputErrorMsg(input,option,'Number of species in surface complexation reaction', &
+                        'DATABASE')  
         ! decrement number of species since free site will not be included
         cur_surfcplx%eqrxn%nspec = cur_surfcplx%eqrxn%nspec - 1
         ! allocate arrays for rxn
@@ -346,11 +340,11 @@ subroutine DatabaseRead(reaction,option)
         ispec = 0
         found = PETSC_FALSE
         do i = 1, cur_surfcplx%eqrxn%nspec+1 ! recall that nspec was decremented above
-          call fiReadDBaseDouble(dbase_id,string,stoich,ierr)
-          call fiErrorMsg(option%myrank,'SURFACE COMPLEX species stoichiometry','DATABASE',ierr)            
-          call fiReadDBaseName(dbase_id,string,name,PETSC_TRUE,ierr)
-          call fiErrorMsg(option%myrank,'SURFACE COMPLEX species name','DATABASE',ierr)            
-          if (fiStringCompare(name,cur_surfcplx_rxn%free_site_name,MAXWORDLENGTH)) then
+          call InputReadDouble(input,option,stoich)
+          call InputErrorMsg(input,option,'SURFACE COMPLEX species stoichiometry','DATABASE')            
+          call InputReadQuotedWord(input,option,name,PETSC_TRUE)
+          call InputErrorMsg(input,option,'SURFACE COMPLEX species name','DATABASE')            
+          if (StringCompare(name,cur_surfcplx_rxn%free_site_name,MAXWORDLENGTH)) then
             found = PETSC_TRUE
             cur_surfcplx%free_site_stoich = stoich
           else
@@ -367,12 +361,12 @@ subroutine DatabaseRead(reaction,option)
           call printErrMsg(option)
         endif
         do itemp = 1, reaction%num_dbase_temperatures
-          call fiReadDBaseDouble(dbase_id,string,cur_surfcplx%eqrxn%logK(itemp),ierr)
-          call fiErrorMsg(option%myrank,'SURFACE COMPLEX logKs','DATABASE',ierr)            
+          call InputReadDouble(input,option,cur_surfcplx%eqrxn%logK(itemp))
+          call InputErrorMsg(input,option,'SURFACE COMPLEX logKs','DATABASE')            
         enddo
         ! read the valence
-        call fiReadDBaseDouble(dbase_id,string,cur_surfcplx%Z,ierr)
-        call fiErrorMsg(option%myrank,'Surface Complex Z','DATABASE',ierr)            
+        call InputReadDouble(input,option,cur_surfcplx%Z)
+        call InputErrorMsg(input,option,'Surface Complex Z','DATABASE')            
 
       
     end select
@@ -392,7 +386,7 @@ subroutine DatabaseRead(reaction,option)
     do
       if (.not.associated(cur_aq_spec2)) exit
       if (cur_aq_spec%id /= cur_aq_spec2%id .and. &
-          fiStringCompare(cur_aq_spec%name, &
+          StringCompare(cur_aq_spec%name, &
                           cur_aq_spec2%name,MAXWORDLENGTH)) then
         flag = PETSC_TRUE
         option%io_buffer = &
@@ -406,7 +400,7 @@ subroutine DatabaseRead(reaction,option)
     cur_aq_spec2 => reaction%secondary_species_list
     do
       if (.not.associated(cur_aq_spec2)) exit
-      if (fiStringCompare(cur_aq_spec%name, &
+      if (StringCompare(cur_aq_spec%name, &
                           cur_aq_spec2%name,MAXWORDLENGTH)) then
         flag = PETSC_TRUE
         option%io_buffer = 'Aqueous primary species (' // &
@@ -420,7 +414,7 @@ subroutine DatabaseRead(reaction,option)
     cur_gas_spec2 => reaction%gas_species_list
     do
       if (.not.associated(cur_gas_spec2)) exit
-      if (fiStringCompare(cur_aq_spec%name, &
+      if (StringCompare(cur_aq_spec%name, &
                           cur_gas_spec2%name,MAXWORDLENGTH)) then
         flag = PETSC_TRUE
         option%io_buffer = 'Aqueous primary species (' // &
@@ -444,7 +438,7 @@ subroutine DatabaseRead(reaction,option)
     do
       if (.not.associated(cur_aq_spec2)) exit
       if (cur_aq_spec%id /= cur_aq_spec2%id .and. &
-          fiStringCompare(cur_aq_spec%name, &
+          StringCompare(cur_aq_spec%name, &
                           cur_aq_spec2%name,MAXWORDLENGTH)) then
         flag = PETSC_TRUE
         option%io_buffer = 'Aqueous secondary species (' // &
@@ -458,7 +452,7 @@ subroutine DatabaseRead(reaction,option)
     cur_gas_spec2 => reaction%gas_species_list
     do
       if (.not.associated(cur_gas_spec2)) exit
-      if (fiStringCompare(cur_aq_spec%name, &
+      if (StringCompare(cur_aq_spec%name, &
                           cur_gas_spec2%name,MAXWORDLENGTH)) then
         flag = PETSC_TRUE
         option%io_buffer = 'Aqueous secondary species (' // &
@@ -483,7 +477,7 @@ subroutine DatabaseRead(reaction,option)
     do
       if (.not.associated(cur_gas_spec2)) exit
       if (cur_gas_spec%id /= cur_gas_spec2%id .and. &
-          fiStringCompare(cur_aq_spec%name, &
+          StringCompare(cur_aq_spec%name, &
                           cur_gas_spec2%name,MAXWORDLENGTH)) then
         flag = PETSC_TRUE
         option%io_buffer = 'Gas species (' // &
@@ -504,7 +498,7 @@ subroutine DatabaseRead(reaction,option)
     do
       if (.not.associated(cur_mineral2)) exit
       if (cur_mineral%id /= cur_mineral2%id .and. &
-          fiStringCompare(cur_mineral%name, &
+          StringCompare(cur_mineral%name, &
                           cur_mineral2%name,MAXWORDLENGTH)) then
         flag = PETSC_TRUE
         option%io_buffer = 'Mineral (' // &
@@ -528,7 +522,7 @@ subroutine DatabaseRead(reaction,option)
       do
         if (.not.associated(cur_surfcplx2)) exit
         if (cur_surfcplx%id /= cur_surfcplx2%id .and. &
-            fiStringCompare(cur_surfcplx%name, &
+            StringCompare(cur_surfcplx%name, &
                             cur_surfcplx2%name,MAXWORDLENGTH)) then
           flag = PETSC_TRUE
           option%io_buffer = 'Surface complex (' // &
@@ -612,7 +606,7 @@ subroutine DatabaseRead(reaction,option)
     
   if (flag) call printErrMsg(option,'Species not found in database.')
 
-  close(dbase_id)
+  call InputDestroy(input)
 
 end subroutine DatabaseRead
 
@@ -626,7 +620,7 @@ end subroutine DatabaseRead
 subroutine BasisInit(reaction,option)
 
   use Option_module
-  use Fileio_module
+  use String_module
   use Utility_module
 
   implicit none
@@ -1010,7 +1004,7 @@ subroutine BasisInit(reaction,option)
         ispec = 1
         do
           if (ispec > cur_mineral%tstrxn%nspec) exit
-          if (fiStringCompare(cur_gas_spec%name, &
+          if (StringCompare(cur_gas_spec%name, &
                               cur_mineral%tstrxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInMineralRxn(cur_gas_spec%name, &
@@ -1037,7 +1031,7 @@ subroutine BasisInit(reaction,option)
           ispec = 1
           do
             if (ispec > cur_surfcplx2%eqrxn%nspec) exit
-            if (fiStringCompare(cur_gas_spec%name, &
+            if (StringCompare(cur_gas_spec%name, &
                                 cur_surfcplx2%eqrxn%spec_name(ispec), &
                                 MAXWORDLENGTH)) then
               call BasisSubSpeciesInGasOrSecRxn(cur_gas_spec%name, &
@@ -1079,7 +1073,7 @@ subroutine BasisInit(reaction,option)
         ispec = 1
         do
           if (ispec > cur_mineral%tstrxn%nspec) exit
-          if (fiStringCompare(cur_sec_aq_spec%name, &
+          if (StringCompare(cur_sec_aq_spec%name, &
                               cur_mineral%tstrxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInMineralRxn(cur_sec_aq_spec%name, &
@@ -1105,7 +1099,7 @@ subroutine BasisInit(reaction,option)
           ispec = 1
           do
             if (ispec > cur_surfcplx2%eqrxn%nspec) exit
-            if (fiStringCompare(cur_sec_aq_spec%name, &
+            if (StringCompare(cur_sec_aq_spec%name, &
                                 cur_surfcplx2%eqrxn%spec_name(ispec), &
                                 MAXWORDLENGTH)) then
               call BasisSubSpeciesInGasOrSecRxn(cur_sec_aq_spec%name, &
@@ -1196,7 +1190,7 @@ subroutine BasisInit(reaction,option)
         ispec = 1
         do
           if (ispec > cur_pri_aq_spec%eqrxn%nspec) exit
-          if (fiStringCompare(cur_gas_spec1%name, &
+          if (StringCompare(cur_gas_spec1%name, &
                               cur_pri_aq_spec%eqrxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInGasOrSecRxn(cur_gas_spec1%name, &
@@ -1220,7 +1214,7 @@ subroutine BasisInit(reaction,option)
         ispec = 1
         do
           if (ispec > cur_sec_aq_spec2%eqrxn%nspec) exit
-          if (fiStringCompare(cur_gas_spec1%name, &
+          if (StringCompare(cur_gas_spec1%name, &
                               cur_sec_aq_spec2%eqrxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInGasOrSecRxn(cur_gas_spec1%name, &
@@ -1256,7 +1250,7 @@ subroutine BasisInit(reaction,option)
   do i_old = 1, icount_old
     found = PETSC_FALSE
     do i_new = 1, icount_new
-      if (fiStringCompare(old_basis_names(i_old), &
+      if (StringCompare(old_basis_names(i_old), &
                           new_basis_names(i_new),MAXWORDLENGTH)) then
         found = PETSC_TRUE
         exit
@@ -1294,7 +1288,7 @@ subroutine BasisInit(reaction,option)
     do
       if (.not.associated(cur_pri_aq_spec)) exit
       do irow = 1, ncomp_h2o
-        if (fiStringCompare(cur_pri_aq_spec%name,new_basis_names(irow), &
+        if (StringCompare(cur_pri_aq_spec%name,new_basis_names(irow), &
                             MAXWORDLENGTH)) then
           if (associated(cur_pri_aq_spec%eqrxn)) then
             logKvector(:,ipri_spec) = &
@@ -1302,7 +1296,7 @@ subroutine BasisInit(reaction,option)
             do i=1,cur_pri_aq_spec%eqrxn%nspec
               found = PETSC_FALSE
               do icol = 1, icount_old
-                if (fiStringCompare(cur_pri_aq_spec%eqrxn%spec_name(i), &
+                if (StringCompare(cur_pri_aq_spec%eqrxn%spec_name(i), &
                                     old_basis_names(icol), &
                                     MAXWORDLENGTH)) then
                   new_basis(irow,icol) = cur_pri_aq_spec%eqrxn%stoich(i)
@@ -1317,7 +1311,7 @@ subroutine BasisInit(reaction,option)
                 do j=1,cur_pri_aq_spec%eqrxn%nspec
                   found = PETSC_FALSE
                   do icol = 1, icount_old
-                    if (fiStringCompare(cur_pri_aq_spec%eqrxn%spec_name(j), &
+                    if (StringCompare(cur_pri_aq_spec%eqrxn%spec_name(j), &
                                         old_basis_names(icol), &
                                       MAXWORDLENGTH)) then
                       found = PETSC_TRUE
@@ -1336,7 +1330,7 @@ subroutine BasisInit(reaction,option)
           else
             logKvector(:,ipri_spec) = 0.d0
             do icol = 1, icount_old
-              if (fiStringCompare(new_basis_names(irow), &
+              if (StringCompare(new_basis_names(irow), &
                                   old_basis_names(icol), &
                                   MAXWORDLENGTH)) then
                 new_basis(irow,icol) = 1.d0
@@ -1383,7 +1377,7 @@ subroutine BasisInit(reaction,option)
         logK = 0.d0
         found = PETSC_FALSE
         do icol = 1, icount_old
-          if (fiStringCompare(cur_sec_aq_spec%name, &
+          if (StringCompare(cur_sec_aq_spec%name, &
                               old_basis_names(icol),MAXWORDLENGTH)) then
             stoich_prev(icol) = 1.d0
             found = PETSC_TRUE
@@ -1471,7 +1465,7 @@ subroutine BasisInit(reaction,option)
         ispec = 1
         do
           if (ispec > cur_gas_spec2%eqrxn%nspec) exit
-          if (fiStringCompare(cur_gas_spec1%name, &
+          if (StringCompare(cur_gas_spec1%name, &
                               cur_gas_spec2%eqrxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInGasOrSecRxn(cur_gas_spec1%name, &
@@ -1495,7 +1489,7 @@ subroutine BasisInit(reaction,option)
         ispec = 1
         do
           if (ispec > cur_sec_aq_spec2%eqrxn%nspec) exit
-          if (fiStringCompare(cur_gas_spec1%name, &
+          if (StringCompare(cur_gas_spec1%name, &
                               cur_sec_aq_spec2%eqrxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInGasOrSecRxn(cur_gas_spec1%name, &
@@ -1519,7 +1513,7 @@ subroutine BasisInit(reaction,option)
         ispec = 1
         do
           if (ispec > cur_mineral%tstrxn%nspec) exit
-          if (fiStringCompare(cur_gas_spec1%name, &
+          if (StringCompare(cur_gas_spec1%name, &
                               cur_mineral%tstrxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInMineralRxn(cur_gas_spec1%name, &
@@ -1546,7 +1540,7 @@ subroutine BasisInit(reaction,option)
           ispec = 1
           do
             if (ispec > cur_surfcplx2%eqrxn%nspec) exit
-            if (fiStringCompare(cur_gas_spec1%name, &
+            if (StringCompare(cur_gas_spec1%name, &
                                 cur_surfcplx2%eqrxn%spec_name(ispec), &
                                 MAXWORDLENGTH)) then
               call BasisSubSpeciesInGasOrSecRxn(cur_gas_spec1%name, &
@@ -1600,7 +1594,7 @@ subroutine BasisInit(reaction,option)
         ispec = 1
         do
           if (ispec > cur_gas_spec2%eqrxn%nspec) exit
-          if (fiStringCompare(cur_sec_aq_spec1%name, &
+          if (StringCompare(cur_sec_aq_spec1%name, &
                               cur_gas_spec2%eqrxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInGasOrSecRxn(cur_sec_aq_spec1%name, &
@@ -1624,7 +1618,7 @@ subroutine BasisInit(reaction,option)
         ispec = 1
         do
           if (ispec > cur_sec_aq_spec2%eqrxn%nspec) exit
-          if (fiStringCompare(cur_sec_aq_spec1%name, &
+          if (StringCompare(cur_sec_aq_spec1%name, &
                               cur_sec_aq_spec2%eqrxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInGasOrSecRxn(cur_sec_aq_spec1%name, &
@@ -1648,7 +1642,7 @@ subroutine BasisInit(reaction,option)
         ispec = 1
         do
           if (ispec > cur_mineral%tstrxn%nspec) exit
-          if (fiStringCompare(cur_sec_aq_spec1%name, &
+          if (StringCompare(cur_sec_aq_spec1%name, &
                               cur_mineral%tstrxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInMineralRxn(cur_sec_aq_spec1%name, &
@@ -1674,7 +1668,7 @@ subroutine BasisInit(reaction,option)
           ispec = 1
           do
             if (ispec > cur_surfcplx2%eqrxn%nspec) exit
-            if (fiStringCompare(cur_sec_aq_spec1%name, &
+            if (StringCompare(cur_sec_aq_spec1%name, &
                                 cur_surfcplx2%eqrxn%spec_name(ispec), &
                                 MAXWORDLENGTH)) then
               call BasisSubSpeciesInGasOrSecRxn(cur_sec_aq_spec1%name, &
@@ -2185,7 +2179,7 @@ subroutine BasisInit(reaction,option)
 
         found = PETSC_FALSE
         do i = 1, reaction%ncomp
-          if (fiStringCompare(cur_cation%name, &
+          if (StringCompare(cur_cation%name, &
                               reaction%primary_species_names(i), &
                               MAXWORDLENGTH)) then
             reaction%eqionx_rxn_cationid(ication,irxn) = i
@@ -2227,7 +2221,7 @@ subroutine BasisInit(reaction,option)
   do ispec = 1, reaction%ncomp
     if (reaction%h_ion_id == 0) then
       word = 'H+'
-      if (fiStringCompare(reaction%primary_species_names(ispec), &
+      if (StringCompare(reaction%primary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
         reaction%h_ion_id = ispec
       endif
@@ -2237,7 +2231,7 @@ subroutine BasisInit(reaction,option)
   do ispec = 1, reaction%neqcmplx
     if (reaction%h_ion_id == 0) then
       word = 'H+'
-      if (fiStringCompare(reaction%secondary_species_names(ispec), &
+      if (StringCompare(reaction%secondary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
         reaction%h_ion_id = -ispec
       endif
@@ -2247,7 +2241,7 @@ subroutine BasisInit(reaction,option)
   do ispec = 1, reaction%ngas
     if (reaction%o2_gas_id == 0) then
       word = 'O2(g)'
-      if (fiStringCompare(reaction%gas_species_names(ispec), &
+      if (StringCompare(reaction%gas_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
         reaction%o2_gas_id = ispec
       endif
@@ -2310,7 +2304,7 @@ function GetSpeciesBasisID(reaction,option,ncomp_h2o,reaction_name, &
                            pri_names,sec_names,gas_names)
 
   use Option_module
-  use Fileio_module
+  use String_module
 
   implicit none
 
@@ -2328,7 +2322,7 @@ function GetSpeciesBasisID(reaction,option,ncomp_h2o,reaction_name, &
 
   GetSpeciesBasisID = 0
   do i=1,ncomp_h2o
-    if (fiStringCompare(species_name, &
+    if (StringCompare(species_name, &
                         pri_names(i),MAXWORDLENGTH)) then
       GetSpeciesBasisID = i
       return
@@ -2336,14 +2330,14 @@ function GetSpeciesBasisID(reaction,option,ncomp_h2o,reaction_name, &
   enddo
   ! secondary aqueous and gas species denoted by negative id
   do i=1,reaction%neqcmplx
-    if (fiStringCompare(species_name, &
+    if (StringCompare(species_name, &
                         sec_names(i),MAXWORDLENGTH)) then
       GetSpeciesBasisID = -i
       return
     endif
   enddo
   do i=1,reaction%ngas
-    if (fiStringCompare(species_name, &
+    if (StringCompare(species_name, &
                         gas_names(i),MAXWORDLENGTH)) then
       GetSpeciesBasisID = -(reaction%neqcmplx+i)
       return
@@ -2372,7 +2366,7 @@ subroutine BasisAlignSpeciesInRxn(num_basis_species,basis_names, &
                                   rxn_stoich,rxn_species_ids,option)
 
   use Option_module
-  use Fileio_module
+  use String_module
   
   implicit none
   
@@ -2393,7 +2387,7 @@ subroutine BasisAlignSpeciesInRxn(num_basis_species,basis_names, &
   do i_rxn_species = 1, num_rxn_species
     found = PETSC_FALSE
     do i_basis_species = 1, num_basis_species
-      if (fiStringCompare(rxn_species_names(i_rxn_species), &
+      if (StringCompare(rxn_species_names(i_rxn_species), &
                             basis_names(i_basis_species), &
                             MAXWORDLENGTH)) then
         stoich_new(i_basis_species) = rxn_stoich(i_rxn_species)
@@ -2444,7 +2438,7 @@ end subroutine BasisAlignSpeciesInRxn
 ! ************************************************************************** !
 subroutine BasisSubSpeciesInGasOrSecRxn(name1,eqrxn1,eqrxn2)
 
-  use Fileio_module
+  use String_module
   
   implicit none
   
@@ -2465,7 +2459,7 @@ subroutine BasisSubSpeciesInGasOrSecRxn(name1,eqrxn1,eqrxn2)
   scale = 1.d0
   tempcount = 0
   do i=1,eqrxn2%nspec
-    if (.not.fiStringCompare(name1, &
+    if (.not.StringCompare(name1, &
                              eqrxn2%spec_name(i), &
                              MAXWORDLENGTH)) then
       tempcount = tempcount + 1
@@ -2481,7 +2475,7 @@ subroutine BasisSubSpeciesInGasOrSecRxn(name1,eqrxn1,eqrxn2)
   do j=1,eqrxn1%nspec
     found = PETSC_FALSE
     do i=1,tempcount
-      if (fiStringCompare(tempnames(i), &
+      if (StringCompare(tempnames(i), &
                           eqrxn1%spec_name(j), &
                           MAXWORDLENGTH)) then
         tempstoich(i) = tempstoich(i) + scale*eqrxn1%stoich(j)
@@ -2541,7 +2535,7 @@ end subroutine BasisSubSpeciesInGasOrSecRxn
 ! ************************************************************************** !
 subroutine BasisSubSpeciesInMineralRxn(name,eqrxn,tstrxn)
 
-  use Fileio_module
+  use String_module
   
   implicit none
   
@@ -2562,7 +2556,7 @@ subroutine BasisSubSpeciesInMineralRxn(name,eqrxn,tstrxn)
   scale = 1.d0
   tempcount = 0
   do i=1,tstrxn%nspec
-    if (.not.fiStringCompare(name, &
+    if (.not.StringCompare(name, &
                              tstrxn%spec_name(i), &
                              MAXWORDLENGTH)) then
       tempcount = tempcount + 1
@@ -2578,7 +2572,7 @@ subroutine BasisSubSpeciesInMineralRxn(name,eqrxn,tstrxn)
   do j=1,eqrxn%nspec
     found = PETSC_FALSE
     do i=1,tstrxn%nspec
-      if (fiStringCompare(tempnames(i), &
+      if (StringCompare(tempnames(i), &
                           eqrxn%spec_name(j), &
                           MAXWORDLENGTH)) then
         tempstoich(i) = tempstoich(i) + scale*eqrxn%stoich(j)

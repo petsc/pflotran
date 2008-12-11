@@ -246,16 +246,19 @@ end subroutine GridMapIndices
 ! date: 10/26/07
 !
 ! ************************************************************************** !
-subroutine GridComputeSpacing(grid)
+subroutine GridComputeSpacing(grid,option)
+
+  use Option_module
 
   implicit none
   
   type(grid_type) :: grid
+  type(option_type) :: option
   
   select case(grid%itype)
     case(STRUCTURED_GRID)
       call StructuredGridComputeSpacing(grid%structured_grid,grid%nG2A, &
-                                        grid%nG2L)
+                                        grid%nG2L,option)
     case(UNSTRUCTURED_GRID)
   end select
   

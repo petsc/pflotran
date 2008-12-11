@@ -101,40 +101,38 @@ end function BreakthroughCreateFromBreakthrough
 ! date: 02/11/08
 !
 ! ************************************************************************** !
-subroutine BreakthroughRead(breakthrough,fid,option)
+subroutine BreakthroughRead(breakthrough,input,option)
 
-  use Fileio_module
+  use Input_module
   use Option_module
   
   implicit none
   
   type(breakthrough_type) :: breakthrough
-  PetscInt :: fid
+  type(input_type) :: input
   type(option_type) :: option
   
-  character(len=MAXSTRINGLENGTH) :: string, error_string
-  character(len=MAXWORDLENGTH) :: keyword, word, word2
-  PetscErrorCode :: ierr
-
-  ierr = 0
+  character(len=MAXWORDLENGTH) :: keyword
+  
+  input%ierr = 0
   do
   
-    call fiReadFlotranString(fid,string,ierr)
+    call InputReadFlotranString(input,option)
     
-    if (fiCheckExit(string)) exit  
+    if (InputCheckExit(input,option)) exit  
 
-    call fiReadWord(string,keyword,PETSC_TRUE,ierr)
-    call fiErrorMsg(option%myrank,'keyword','BREAKTHROUGH', ierr)   
+    call InputReadWord(input,option,keyword,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','BREAKTHROUGH')   
       
     select case(trim(keyword))
     
       case('REGION')
-        call fiReadWord(string,breakthrough%region_name,PETSC_TRUE,ierr)
-        call fiErrorMsg(option%myrank,'region name','BREAKTHROUGH', ierr)
+        call InputReadWord(input,option,breakthrough%region_name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'region name','BREAKTHROUGH')
       case('VELOCITY')
         breakthrough%print_velocities = PETSC_TRUE
       case default
-        option%io_buffer = 'Keyword (' // trim(word) // &
+        option%io_buffer = 'Keyword (' // trim(keyword) // &
                            ') not recognized under' // &
                            ' BREAKTHROUGH.'
         call printErrMsg(option)
@@ -236,7 +234,7 @@ end subroutine BreakthroughRemoveFromList
 ! ************************************************************************** !
 function BreakthroughGetPtrFromList(breakthrough_name,breakthrough_list)
 
-  use Fileio_module
+  use String_module
 
   implicit none
   
@@ -254,7 +252,7 @@ function BreakthroughGetPtrFromList(breakthrough_name,breakthrough_list)
     if (.not.associated(breakthrough)) exit
     length = len_trim(breakthrough_name)
     if (length == len_trim(breakthrough%name) .and. &
-        fiStringCompare(breakthrough%name,breakthrough_name, &
+        StringCompare(breakthrough%name,breakthrough_name, &
                         length)) then
       BreakthroughGetPtrFromList => breakthrough
       return

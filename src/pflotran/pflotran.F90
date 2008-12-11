@@ -67,7 +67,6 @@
   realization => simulation%realization
   option => realization%option
   
-  option%fid_in = IUNIT1
   option%fid_out = IUNIT2
   out_unit = option%fid_out
 

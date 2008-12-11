@@ -24,7 +24,6 @@ module General_Grid_module
 #include "finclude/petsclog.h"
 
   PetscMPIInt :: hdf5_err
-  PetscErrorCode :: ierr
   public :: ReadStructuredGridHDF5
   
 contains

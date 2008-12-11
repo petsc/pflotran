@@ -408,12 +408,16 @@ end subroutine AMRGridInitialize
 ! date: 03/10/08
 !
 ! ************************************************************************** !
-subroutine AMRGridCreateVector(amrgrid, dof, vector,vector_type, use_components)
+subroutine AMRGridCreateVector(amrgrid, dof, vector,vector_type, &
+                               use_components, option)
+
+  use Option_module
 
   implicit none
 
   interface
      subroutine create_samrai_vec(p_application, dof, use_ghost, use_components, vec)
+       use Option_module
        implicit none
        
 #include "finclude/petsc.h"
@@ -425,6 +429,7 @@ subroutine AMRGridCreateVector(amrgrid, dof, vector,vector_type, use_components)
        PetscTruth :: use_ghost
        PetscTruth :: use_components
        Vec :: vec
+       type(option_type) :: option
      end subroutine create_samrai_vec
   end interface
 
@@ -433,6 +438,7 @@ subroutine AMRGridCreateVector(amrgrid, dof, vector,vector_type, use_components)
   Vec :: vector
   PetscInt :: vector_type
   PetscTruth :: use_components
+  type(option_type) :: option
   PetscErrorCode :: ierr
   PetscInt :: dof
   PetscTruth:: use_ghost
@@ -442,11 +448,10 @@ subroutine AMRGridCreateVector(amrgrid, dof, vector,vector_type, use_components)
       use_ghost=PETSC_FALSE
       call create_samrai_vec(amrgrid%p_application, dof, use_ghost, use_components, vector)
     case(LOCAL)
-       use_ghost=PETSC_TRUE
+      use_ghost=PETSC_TRUE
       call create_samrai_vec(amrgrid%p_application, dof, use_ghost, use_components, vector)
     case(NATURAL)
-       print *, 'ERROR::SAMRAI will not create PETSc Natural Vecs!!'
-       stop
+      call printErrMsg(option,'SAMRAI will not create PETSc Natural Vecs!!')
   end select
     
 end subroutine AMRGridCreateVector
@@ -525,8 +530,9 @@ subroutine AMRGridComputeGeometryInformation(amrgrid, origin_global, field, &
 
 end subroutine AMRGridComputeGeometryInformation
 
-subroutine AMRGridReadDXYZ(amrgrid, fid, option)
+subroutine AMRGridReadDXYZ(amrgrid, input, option)
   use Option_module
+  use Input_module
 
   implicit none
 
@@ -549,7 +555,7 @@ subroutine AMRGridReadDXYZ(amrgrid, fid, option)
   end interface
 
   type(amrgrid_type), pointer:: amrgrid
-  integer, intent(in) :: fid
+  type(input_type), pointer :: input
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
 
@@ -575,11 +581,11 @@ subroutine AMRGridReadDXYZ(amrgrid, fid, option)
         if(islocal) then
            grid => amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr
            if(readdxyz) then
-              BACKSPACE(UNIT=fid)
-              BACKSPACE(UNIT=fid)
-              BACKSPACE(UNIT=fid)
+              BACKSPACE(UNIT=input%fid)
+              BACKSPACE(UNIT=input%fid)
+              BACKSPACE(UNIT=input%fid)
            endif
-           call StructuredGridReadDXYZ(grid%structured_grid,fid,option)
+           call StructuredGridReadDXYZ(grid%structured_grid,input,option)
            readdxyz = .TRUE.
         endif
      end do

@@ -322,7 +322,8 @@ end function FlowSubConditionCreate
 ! ************************************************************************** !
 function GetFlowSubCondFromArrayByName(sub_condition_ptr_list,name)
 
-  use Fileio_module
+  use Input_module
+  use String_module
   
   implicit none
   
@@ -335,7 +336,7 @@ function GetFlowSubCondFromArrayByName(sub_condition_ptr_list,name)
   nullify(GetFlowSubCondFromArrayByName)
   do idof = 1, size(sub_condition_ptr_list)
     if (len_trim(name) == len_trim(sub_condition_ptr_list(idof)%ptr%name) .and. &
-        fiStringCompare(name,sub_condition_ptr_list(idof)%ptr%name,len_trim(name))) then
+        StringCompare(name,sub_condition_ptr_list(idof)%ptr%name,len_trim(name))) then
       GetFlowSubCondFromArrayByName => sub_condition_ptr_list(idof)%ptr
       return
     endif
@@ -518,17 +519,18 @@ end subroutine FlowConditionDatasetVerify
 ! date: 10/31/07
 !
 ! ************************************************************************** !
-subroutine FlowConditionRead(condition,option,fid)
+subroutine FlowConditionRead(condition,input,option)
 
   use Option_module
-  use Fileio_module
+  use Input_module
+  use String_module
   use Logging_module  
   
   implicit none
   
   type(flow_condition_type) :: condition
+  type(input_type) :: input
   type(option_type) :: option
-  PetscInt :: fid
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
@@ -542,7 +544,7 @@ subroutine FlowConditionRead(condition,option,fid)
   type(flow_condition_dataset_type) :: default_gradient
   character(len=MAXWORDLENGTH) :: default_ctype
   PetscInt :: default_itype
-  PetscInt :: array_size, length, idof
+  PetscInt :: array_size, idof
   PetscTruth :: found
   PetscErrorCode :: ierr
 
@@ -583,23 +585,23 @@ subroutine FlowConditionRead(condition,option,fid)
   default_itype = DIRICHLET_BC
 
   ! read the condition
-  ierr = 0
+  input%ierr = 0
   do
   
-    call fiReadFlotranString(fid,string,ierr)
-    call fiReadStringErrorMsg(option%myrank,'CONDITION',ierr)
+    call InputReadFlotranString(input,option)
+    call InputReadStringErrorMsg(input,option,'CONDITION')
           
-    if (fiCheckExit(string)) exit  
+    if (InputCheckExit(input,option)) exit  
 
-    call fiReadWord(string,word,PETSC_TRUE,ierr)
-    call fiErrorMsg(option%myrank,'keyword','CONDITION', ierr)   
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','CONDITION')   
       
     select case(trim(word))
     
       case('UNITS') ! read default units for condition arguments
         do
-          call fiReadWord(string,word,PETSC_TRUE,ierr)
-          if (ierr /= 0) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          if (InputError(input)) exit
           select case(trim(word))
             case('s','sec','min','hr','d','day','y','yr')
               condition%time_units = trim(word)
@@ -622,10 +624,9 @@ subroutine FlowConditionRead(condition,option,fid)
       case('CYCLIC')
         default_dataset%is_cyclic = PETSC_TRUE
       case('INTERPOLATION')
-        call fiReadWord(string,word,PETSC_TRUE,ierr)
-        call fiErrorMsg(option%myrank,'INTERPOLATION','CONDITION', ierr)   
-        length = len_trim(word)
-        call fiCharsToLower(word,length)
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'INTERPOLATION','CONDITION')   
+        call StringToLower(word)
         select case(word)
           case('step')
             default_dataset%interpolation_method = STEP
@@ -634,14 +635,14 @@ subroutine FlowConditionRead(condition,option,fid)
         end select
       case('TYPE') ! read condition type (dirichlet, neumann, etc) for each dof
         do
-          call fiReadFlotranString(fid,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,'CONDITION',ierr)
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,'CONDITION')
           
-          if (fiCheckExit(string)) exit          
+          if (InputCheckExit(input,option)) exit          
           
-          if (ierr /= 0) exit
-          call fiReadWord(string,word,PETSC_TRUE,ierr)
-          call fiErrorMsg(option%myrank,'keyword','CONDITION,TYPE', ierr)   
+          if (InputError(input)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword','CONDITION,TYPE')   
           select case(trim(word))
             case('PRES','PRESS','PRESSURE')
               sub_condition_ptr => pressure
@@ -659,10 +660,9 @@ subroutine FlowConditionRead(condition,option,fid)
               option%io_buffer = 'keyword not recognized in condition,type'
               call printErrMsg(option)
           end select
-          call fiReadWord(string,word,PETSC_TRUE,ierr)
-          call fiErrorMsg(option%myrank,'TYPE','CONDITION', ierr)   
-          length = len_trim(word)
-          call fiCharsToLower(word,length)
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'TYPE','CONDITION')   
+          call StringToLower(word)
           sub_condition_ptr%ctype = word
           select case(word)
             case('dirichlet')
@@ -690,23 +690,23 @@ subroutine FlowConditionRead(condition,option,fid)
           end select
         enddo
       case('TIME','TIMES')
-        call fiReadDouble(string,default_time,ierr)
-        call fiErrorMsg(option%myrank,'TIME','CONDITION', ierr)   
+        call InputReadDouble(input,option,default_time)
+        call InputErrorMsg(input,option,'TIME','CONDITION')   
       case('IPHASE')
-        call fiReadInt(string,default_iphase,ierr)
-        call fiErrorMsg(option%myrank,'IPHASE','CONDITION', ierr)   
+        call InputReadInt(input,option,default_iphase)
+        call InputErrorMsg(input,option,'IPHASE','CONDITION')   
       case('DATUM','DATM')
-        call FlowConditionReadValues(option,word,string,default_datum,word)
+        call FlowConditionReadValues(input,option,word,string,default_datum,word)
       case('GRADIENT','GRAD')
         do
-          call fiReadFlotranString(fid,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,'CONDITION',ierr)
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,'CONDITION')
           
-          if (fiCheckExit(string)) exit          
+          if (InputCheckExit(input,option)) exit          
           
-          if (ierr /= 0) exit
-          call fiReadWord(string,word,PETSC_TRUE,ierr)
-          call fiErrorMsg(option%myrank,'keyword','CONDITION,TYPE', ierr)   
+          if (InputError(input)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword','CONDITION,TYPE')   
           select case(trim(word))
             case('PRES','PRESS','PRESSURE')
               sub_condition_ptr => pressure
@@ -724,26 +724,33 @@ subroutine FlowConditionRead(condition,option,fid)
               option%io_buffer = 'keyword not recognized in condition,type'
               call printErrMsg(option)
           end select
-          call FlowConditionReadValues(option,word,string,sub_condition_ptr%gradient,word)
+          call FlowConditionReadValues(input,option,word,string, &
+                                       sub_condition_ptr%gradient,word)
           nullify(sub_condition_ptr)
         enddo
       case('TEMPERATURE','TEMP')
-        call FlowConditionReadValues(option,word,string,temperature%dataset, &
+        call FlowConditionReadValues(input,option,word,string, &
+                                     temperature%dataset, &
                                      temperature%units)
       case('ENTHALPY','H')
-        call FlowConditionReadValues(option,word,string,enthalpy%dataset, &
+        call FlowConditionReadValues(input,option,word,string, &
+                                     enthalpy%dataset, &
                                      enthalpy%units)
       case('PRESSURE','PRES','PRESS')
-        call FlowConditionReadValues(option,word,string,pressure%dataset, &
+        call FlowConditionReadValues(input,option,word,string, &
+                                     pressure%dataset, &
                                      pressure%units)
       case('MASS','MASS_RATE')
-        call FlowConditionReadValues(option,word,string,mass_rate%dataset, &
+        call FlowConditionReadValues(input,option,word,string, &
+                                     mass_rate%dataset, &
                                      mass_rate%units)
       case('FLUX','VELOCITY','VEL')
-        call FlowConditionReadValues(option,word,string,pressure%dataset, &
+        call FlowConditionReadValues(input,option,word,string, &
+                                     pressure%dataset, &
                                      pressure%units)
       case('CONC','CONCENTRATION')
-        call FlowConditionReadValues(option,word,string,concentration%dataset, &
+        call FlowConditionReadValues(input,option,word,string, &
+                                     concentration%dataset, &
                                      concentration%units)
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
@@ -894,10 +901,11 @@ end subroutine FlowConditionRead
 ! date: 10/14/08
 !
 ! ************************************************************************** !
-subroutine TranConditionRead(condition,constraint_list,reaction,option)
+subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
 
   use Option_module
-  use Fileio_module
+  use Input_module
+  use String_module
   use Logging_module  
   
   implicit none
@@ -905,6 +913,7 @@ subroutine TranConditionRead(condition,constraint_list,reaction,option)
   type(tran_condition_type) :: condition
   type(tran_constraint_list_type) :: constraint_list
   type(reaction_type) :: reaction
+  type(input_type) :: input
   type(option_type) :: option
   
   type(tran_constraint_type), pointer :: constraint
@@ -918,7 +927,6 @@ subroutine TranConditionRead(condition,constraint_list,reaction,option)
   PetscInt :: default_itype
   PetscTruth :: found
   PetscInt :: icomp
-  PetscInt :: length
   PetscTruth :: minerals_exist
   PetscErrorCode :: ierr
 
@@ -931,24 +939,23 @@ subroutine TranConditionRead(condition,constraint_list,reaction,option)
   default_time_units = ''
 
   ! read the condition
-  ierr = 0
+  input%ierr = 0
   do
   
-    call fiReadFlotranString(option%fid_in,string,ierr)
-    call fiReadStringErrorMsg(option%myrank,'CONDITION',ierr)
+    call InputReadFlotranString(input,option)
+    call InputReadStringErrorMsg(input,option,'CONDITION')
           
-    if (fiCheckExit(string)) exit  
+    if (InputCheckExit(input,option)) exit  
 
-    call fiReadWord(string,word,PETSC_TRUE,ierr)
-    call fiErrorMsg(option%myrank,'keyword','CONDITION', ierr)   
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','CONDITION')   
       
     select case(trim(word))
     
       case('TYPE') ! read condition type (dirichlet, neumann, etc) for each dof
-        call fiReadWord(string,word,PETSC_TRUE,ierr)
-        call fiErrorMsg(option%myrank,'TYPE','CONDITION', ierr)   
-        length = len_trim(word)
-        call fiCharsToLower(word,length)
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'TYPE','CONDITION')   
+        call StringToLower(word)
         select case(word)
             case('dirichlet')
               condition%itype = DIRICHLET_BC
@@ -968,32 +975,32 @@ subroutine TranConditionRead(condition,constraint_list,reaction,option)
               call printErrMsg(option)
         end select
       case('TIME')
-        call fiReadDouble(string,default_time,ierr)
-        call fiErrorMsg(option%myrank,'TIME','CONDITION', ierr) 
+        call InputReadDouble(input,option,default_time)
+        call InputErrorMsg(input,option,'TIME','CONDITION') 
       case('UNITS') 
-        call fiReadWord(string,word,PETSC_TRUE,ierr) 
-        call fiErrorMsg(option%myrank,'UNITS','CONDITION', ierr)   
-        call fiWordToLower(word)
+        call InputReadWord(input,option,word,PETSC_TRUE) 
+        call InputErrorMsg(input,option,'UNITS','CONDITION')   
+        call StringToLower(word)
         select case(trim(word))     
           case('s','sec','min','hr','d','day','y','yr')
             default_time_units = trim(word)         
         end select          
       case('CONSTRAINT_LIST')
         do
-          call fiReadFlotranString(option%fid_in,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,'CONSTRAINT',ierr)
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,'CONSTRAINT')
               
-          if (fiCheckExit(string)) exit  
+          if (InputCheckExit(input,option)) exit  
 
           constraint_coupler => TranConstraintCouplerCreate(option)
-          call fiReadDouble(string,constraint_coupler%time,ierr)
-          call fiErrorMsg(option%myrank,'time','CONSTRAINT_LIST', ierr) 
+          call InputReadDouble(input,option,constraint_coupler%time)
+          call InputErrorMsg(input,option,'time','CONSTRAINT_LIST') 
           ! time units are optional  
-          call fiReadWord(string,word,PETSC_TRUE,ierr)
-          call fiErrorMsg(option%myrank,'constraint name','CONSTRAINT_LIST', ierr) 
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'constraint name','CONSTRAINT_LIST') 
           ! read constraint name
-          call fiReadWord(string,constraint_coupler%constraint_name,PETSC_TRUE,ierr)
-          if (ierr /= 0) then
+          call InputReadWord(input,option,constraint_coupler%constraint_name,PETSC_TRUE)
+          if (InputError(input)) then
             constraint_coupler%time_units = default_time_units
             constraint_coupler%constraint_name = trim(word)
           else
@@ -1014,11 +1021,11 @@ subroutine TranConditionRead(condition,constraint_list,reaction,option)
       case('CONSTRAINT')
         constraint => TranConstraintCreate(option)
         constraint_coupler => TranConstraintCouplerCreate(option)
-        call fiReadWord(string,constraint%name,PETSC_TRUE,ierr)
-        call fiErrorMsg(option%myrank,'constraint','name',ierr) 
+        call InputReadWord(input,option,constraint%name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'constraint','name') 
         option%io_buffer = 'Constraint: ' // trim(constraint%name)
         call printMsg(option)
-        call TranConstraintRead(constraint,reaction,option)
+        call TranConstraintRead(constraint,reaction,input,option)
         call TranConstraintAddToList(constraint,constraint_list)
         constraint_coupler%aqueous_species => constraint%aqueous_species
         constraint_coupler%minerals => constraint%minerals
@@ -1055,22 +1062,24 @@ end subroutine TranConditionRead
 ! date: 10/14/08
 !
 ! ************************************************************************** !
-subroutine TranConstraintRead(constraint,reaction,option)
+subroutine TranConstraintRead(constraint,reaction,input,option)
 
   use Option_module
-  use Fileio_module
+  use Input_module
+  use String_module
   use Logging_module
   
   implicit none
   
   type(tran_constraint_type) :: constraint
   type(reaction_type) :: reaction
+  type(input_type) :: input
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
-  PetscInt :: length
   PetscInt :: icomp
+  PetscInt :: length
   type(aq_species_constraint_type), pointer :: aq_species_constraint
   type(mineral_constraint_type), pointer :: mineral_constraint
   PetscErrorCode :: ierr
@@ -1080,16 +1089,16 @@ subroutine TranConstraintRead(constraint,reaction,option)
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
 
   ! read the constraint
-  ierr = 0
+  input%ierr = 0
   do
   
-    call fiReadFlotranString(option%fid_in,string,ierr)
-    call fiReadStringErrorMsg(option%myrank,'CONSTRAINT',ierr)
+    call InputReadFlotranString(input,option)
+    call InputReadStringErrorMsg(input,option,'CONSTRAINT')
         
-    if (fiCheckExit(string)) exit  
+    if (InputCheckExit(input,option)) exit  
 
-    call fiReadWord(string,word,PETSC_TRUE,ierr)
-    call fiErrorMsg(option%myrank,'keyword','CONSTRAINT', ierr)   
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','CONSTRAINT')   
       
     select case(trim(word))
 
@@ -1099,10 +1108,10 @@ subroutine TranConstraintRead(constraint,reaction,option)
 
         icomp = 0
         do
-          call fiReadFlotranString(option%fid_in,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,'CONSTRAINT, CONCENTRATIONS',ierr)
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,'CONSTRAINT, CONCENTRATIONS')
           
-          if (fiCheckExit(string)) exit  
+          if (InputCheckExit(input,option)) exit  
           
           icomp = icomp + 1        
           
@@ -1114,22 +1123,22 @@ subroutine TranConstraintRead(constraint,reaction,option)
             call printErrMsg(option)
           endif
           
-          call fiReadWord(string,aq_species_constraint%names(icomp), &
-                          PETSC_TRUE,ierr)
-          call fiErrorMsg(option%myrank,'aqueous species name', &
-                          'CONSTRAINT, CONCENTRATIONS', ierr) 
+          call InputReadWord(input,option,aq_species_constraint%names(icomp), &
+                          PETSC_TRUE)
+          call InputErrorMsg(input,option,'aqueous species name', &
+                          'CONSTRAINT, CONCENTRATIONS') 
           option%io_buffer = 'Constraint Species: ' // &
                              trim(aq_species_constraint%names(icomp))
           call printMsg(option)
-          call fiReadDouble(string,aq_species_constraint%constraint_conc(icomp),ierr)
-          call fiErrorMsg(option%myrank,'concentration', &
-                          'CONSTRAINT, CONCENTRATIONS', ierr)          
-          call fiReadWord(string,word,PETSC_TRUE,ierr)
-          call fiDefaultMsg(option%myrank, &
-                            'CONSTRAINT, CONCENTRATION, constraint_type', ierr)
+          call InputReadDouble(input,option,aq_species_constraint%constraint_conc(icomp))
+          call InputErrorMsg(input,option,'concentration', &
+                          'CONSTRAINT, CONCENTRATIONS')          
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputDefaultMsg(input,option, &
+                            'CONSTRAINT, CONCENTRATION, constraint_type')
           length = len_trim(word)
           if (length > 0) then
-            call fiCharsToUpper(word,length)
+            call StringToUpper(word)
             select case(word)
               case('F','FREE')
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_FREE
@@ -1154,10 +1163,10 @@ subroutine TranConstraintRead(constraint,reaction,option)
             end select 
             if (aq_species_constraint%constraint_type(icomp) == CONSTRAINT_MINERAL .or. &
                 aq_species_constraint%constraint_type(icomp) == CONSTRAINT_GAS) then
-              call fiReadWord(string,aq_species_constraint%constraint_spec_name(icomp), &
-                             PETSC_FALSE,ierr)
-              call fiErrorMsg(option%myrank,'constraint name', &
-                              'CONSTRAINT, CONCENTRATIONS', ierr) 
+              call InputReadWord(input,option,aq_species_constraint%constraint_spec_name(icomp), &
+                             PETSC_FALSE)
+              call InputErrorMsg(input,option,'constraint name', &
+                              'CONSTRAINT, CONCENTRATIONS') 
             endif
           else
             aq_species_constraint%constraint_type(icomp) = CONSTRAINT_TOTAL
@@ -1175,10 +1184,10 @@ subroutine TranConstraintRead(constraint,reaction,option)
 
         icomp = 0
         do
-          call fiReadFlotranString(option%fid_in,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,'CONSTRAINT, MINERALS',ierr)
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,'CONSTRAINT, MINERALS')
           
-          if (fiCheckExit(string)) exit          
+          if (InputCheckExit(input,option)) exit          
           
           icomp = icomp + 1
 
@@ -1190,19 +1199,19 @@ subroutine TranConstraintRead(constraint,reaction,option)
             call printErrMsg(option)
           endif
           
-          call fiReadWord(string,mineral_constraint%names(icomp), &
-                          PETSC_TRUE,ierr)
-          call fiErrorMsg(option%myrank,'mineral name', &
-                          'CONSTRAINT, MINERALS', ierr)  
+          call InputReadWord(input,option,mineral_constraint%names(icomp), &
+                          PETSC_TRUE)
+          call InputErrorMsg(input,option,'mineral name', &
+                          'CONSTRAINT, MINERALS')  
           option%io_buffer = 'Constraint Minerals: ' // &
                              trim(mineral_constraint%names(icomp))
           call printMsg(option)
-          call fiReadDouble(string,mineral_constraint%constraint_vol_frac(icomp),ierr)
-          call fiErrorMsg(option%myrank,'volume fraction', &
-                          'CONSTRAINT, MINERALS', ierr)          
-          call fiReadDouble(string,mineral_constraint%constraint_area(icomp),ierr)
-          call fiErrorMsg(option%myrank,'area', &
-                          'CONSTRAINT, MINERALS', ierr)          
+          call InputReadDouble(input,option,mineral_constraint%constraint_vol_frac(icomp))
+          call InputErrorMsg(input,option,'volume fraction', &
+                          'CONSTRAINT, MINERALS')          
+          call InputReadDouble(input,option,mineral_constraint%constraint_area(icomp))
+          call InputErrorMsg(input,option,'area', &
+                          'CONSTRAINT, MINERALS')          
         
         enddo  
         
@@ -1232,14 +1241,16 @@ end subroutine TranConstraintRead
 ! date: 10/31/07
 !
 ! ************************************************************************** !
-subroutine FlowConditionReadValues(option,keyword,string,dataset,units)
+subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
 
-  use Fileio_module
+  use Input_module
+  use String_module
   use Option_module
   use Logging_module
 
   implicit none
   
+  type(input_type) :: input
   type(option_type) :: option
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: keyword
@@ -1249,36 +1260,37 @@ subroutine FlowConditionReadValues(option,keyword,string,dataset,units)
   character(len=MAXSTRINGLENGTH) :: string2
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: error_string
-  PetscInt :: length, irank
+  PetscInt :: irank
   PetscErrorCode :: ierr
 
   call PetscLogEventBegin(logging%event_flow_condition_read_values, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
-  ierr = 0
-  string2 = trim(string)
-  call fiReadWord(string,word,PETSC_TRUE,ierr)
-  call fiErrorMsg(option%myrank,'file or value','CONDITION', ierr)
-  length = len_trim(word)
-  call fiCharsToLower(word,length)
-  if (fiStringCompare(word,'file',FOUR_INTEGER)) then
-    call fiReadWord(string,word,PETSC_TRUE,ierr)
-    error_string = keyword // ' FILE'
-    call fiErrorMsg(option%myrank,error_string,'CONDITION', ierr)
+  input%ierr = 0
+  string2 = trim(input%buf)
+  call InputReadWord(input,option,word,PETSC_TRUE)
+  call InputErrorMsg(input,option,'file or value','CONDITION')
+  call StringToLower(word)
+  if (StringCompare(word,'file',FOUR_INTEGER)) then
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    input%err_buf = keyword // ' FILE'
+    input%err_buf2 = 'CONDITION'
+    call InputErrorMsg(input,option)
     call FlowConditionReadValuesFromFile(word,dataset,option)
   else
-    string = trim(string2)
+    input%buf = trim(string2)
     allocate(dataset%values(dataset%rank,1))
     do irank=1,dataset%rank
-      call fiReadDouble(string,dataset%values(irank,1),ierr)
-      write(error_string,*) trim(keyword) // ' dataset_values, irank = ', irank
-      call fiErrorMsg(option%myrank,error_string,'CONDITION', ierr) 
+      call InputReadDouble(input,option,dataset%values(irank,1))
+      write(input%err_buf,'(a,i2)') trim(keyword) // ' dataset_values, irank = ', irank
+      input%err_buf2 = 'CONDITION'
+      call InputErrorMsg(input,option) 
     enddo
   endif
-  call fiReadWord(string,word,PETSC_TRUE,ierr)
-  if (ierr /= 0) then
+  call InputReadWord(input,option,word,PETSC_TRUE)
+  if (InputError(input)) then
     word = trim(keyword) // ' UNITS'
-    call fiDefaultMsg(option%myrank,word, ierr)
+    call InputDefaultMsg(input,option,word)
   else
     units = trim(word)
   endif
@@ -1298,7 +1310,8 @@ end subroutine FlowConditionReadValues
 ! ************************************************************************** !
 subroutine FlowConditionReadValuesFromFile(filename,dataset,option)
 
-  use Fileio_module
+  use Input_module
+  use String_module
   use Utility_module
   use Option_module
 
@@ -1314,16 +1327,10 @@ subroutine FlowConditionReadValuesFromFile(filename,dataset,option)
   PetscReal :: temp_time
   PetscInt :: max_size = 1000
   PetscInt :: temp_max_size
-  PetscInt :: fid
   PetscInt :: count, i, status
-  PetscErrorCode :: ierr
-
-  fid = 86
-  open(unit=fid,file=filename,status="old",iostat=status)
-  if (status /= 0) then
-    print *, 'file: ', trim(filename), ' not found'
-    stop
-  endif
+  type(input_type), pointer :: input
+  
+  input => InputCreate(IUNIT_TEMP,filename)
   
   allocate(temp_times(max_size))
   allocate(temp_array1(max_size))
@@ -1342,25 +1349,25 @@ subroutine FlowConditionReadValuesFromFile(filename,dataset,option)
   
   count = 0
   do
-    call fiReadFlotranString(fid,string,ierr)
-    if (ierr /= 0) exit
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
     count = count + 1
-    call fiReadDouble(string,temp_times(count),ierr)
-    call fiErrorMsg(option%myrank,'time','CONDITION FILE', ierr)   
-    call fiReadDouble(string,temp_array1(count),ierr)
-    call fiErrorMsg(option%myrank,'array1','CONDITION FILE', ierr)
+    call InputReadDouble(input,option,temp_times(count))
+    call InputErrorMsg(input,option,'time','CONDITION FILE')   
+    call InputReadDouble(input,option,temp_array1(count))
+    call InputErrorMsg(input,option,'array1','CONDITION FILE')
 !    print *, 'RCF:', temp_times(count),  temp_array1(count)
 !   I have commented out the above line because it creates an impossible 
 !   amount of console output for even moderately-sized parallel runs!
 !   If someone needs this data, we need to add a -print_debug flag or 
 !   some such thing.  --RTM
     if (dataset%rank > 1) then
-      call fiReadDouble(string,temp_array2(count),ierr)
-      call fiErrorMsg(option%myrank,'array2','CONDITION FILE', ierr) 
+      call InputReadDouble(input,option,temp_array2(count))
+      call InputErrorMsg(input,option,'array2','CONDITION FILE') 
     endif
     if (dataset%rank > 2) then
-      call fiReadDouble(string,temp_array3(count),ierr)
-      call fiErrorMsg(option%myrank,'array3','CONDITION FILE', ierr) 
+      call InputReadDouble(input,option,temp_array3(count))
+      call InputErrorMsg(input,option,'array3','CONDITION FILE') 
     endif
     if (count+1 > max_size) then
       temp_max_size = max_size
@@ -1410,7 +1417,7 @@ subroutine FlowConditionReadValuesFromFile(filename,dataset,option)
   if (dataset%rank > 1) deallocate(temp_array2)
   if (dataset%rank > 2) deallocate(temp_array3)
   
-  close(fid)
+  call InputDestroy(input)
 
 end subroutine FlowConditionReadValuesFromFile
 
@@ -1424,7 +1431,6 @@ end subroutine FlowConditionReadValuesFromFile
 subroutine FlowConditionPrint(condition,option)
 
   use Option_module
-  use Fileio_module
 
   implicit none
   
@@ -1465,7 +1471,6 @@ end subroutine FlowConditionPrint
 subroutine FlowConditionPrintSubCondition(subcondition,option)
 
   use Option_module
-  use Fileio_module
 
   implicit none
   
@@ -1518,7 +1523,6 @@ end subroutine FlowConditionPrintSubCondition
 subroutine FlowConditionPrintDataset(dataset,option)
 
   use Option_module
-  use Fileio_module
 
   implicit none
   
@@ -1782,8 +1786,8 @@ end subroutine FlowConditionAddToList
 ! ************************************************************************** !
 function FlowConditionGetPtrFromList(condition_name,condition_list)
 
-  use Fileio_module
-
+  use String_module
+  
   implicit none
   
   type(flow_condition_type), pointer :: FlowConditionGetPtrFromList
@@ -1800,8 +1804,8 @@ function FlowConditionGetPtrFromList(condition_name,condition_list)
     if (.not.associated(condition)) exit
     length = len_trim(condition_name)
     if (length == len_trim(condition%name) .and. &
-        fiStringCompare(condition%name,condition_name, &
-                        length)) then
+        StringCompare(condition%name,condition_name, &
+                      length)) then
       FlowConditionGetPtrFromList => condition
       return
     endif
@@ -1905,7 +1909,7 @@ end subroutine TranConstraintAddToList
 ! ************************************************************************** !
 function TranConditionGetPtrFromList(condition_name,condition_list)
 
-  use Fileio_module
+  use String_module
 
   implicit none
   
@@ -1923,7 +1927,7 @@ function TranConditionGetPtrFromList(condition_name,condition_list)
     if (.not.associated(condition)) exit
     length = len_trim(condition_name)
     if (length == len_trim(condition%name) .and. &
-        fiStringCompare(condition%name,condition_name, &
+        StringCompare(condition%name,condition_name, &
                         length)) then
       TranConditionGetPtrFromList => condition
       return
@@ -1943,7 +1947,7 @@ end function TranConditionGetPtrFromList
 ! ************************************************************************** !
 function TranConstraintGetPtrFromList(constraint_name,constraint_list)
 
-  use Fileio_module
+  use String_module
 
   implicit none
   
@@ -1961,7 +1965,7 @@ function TranConstraintGetPtrFromList(constraint_name,constraint_list)
     if (.not.associated(constraint)) exit
     length = len_trim(constraint_name)
     if (length == len_trim(constraint%name) .and. &
-        fiStringCompare(constraint%name,constraint_name, &
+        StringCompare(constraint%name,constraint_name, &
                         length)) then
       TranConstraintGetPtrFromList => constraint
       return

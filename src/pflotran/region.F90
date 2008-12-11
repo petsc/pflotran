@@ -251,83 +251,81 @@ end subroutine RegionAddToList
 ! date: 02/20/08
 !
 ! ************************************************************************** !
-subroutine RegionRead(region,fid,option)
+subroutine RegionRead(region,input,option)
 
-  use Fileio_module
+  use Input_module
+  use String_module
   use Option_module
   
   implicit none
   
   type(option_type) :: option
   type(region_type) :: region
-  PetscInt :: fid
+  type(input_type) :: input
   
-  character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
-  PetscInt :: length
   PetscInt :: icount
   type(point3d_type) :: coordinates(30)
-  PetscErrorCode :: ierr
 
-  ierr = 0
+  input%ierr = 0
   do
   
-    call fiReadFlotranString(fid,string,ierr)
-    if (ierr /= 0) exit
-    if (fiCheckExit(string)) exit
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
     
-    call fiReadWord(string,word,PETSC_TRUE,ierr)
-    call fiErrorMsg(option%myrank,'keyword','REGION', ierr)
-    call fiWordToUpper(word)   
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','REGION')
+    call StringToUpper(word)   
 
     select case(trim(word))
     
       case('BLOCK')
-        call fiReadInt(string,region%i1,ierr) 
-        if (ierr /= 0) then
-          ierr = 0
-          call fiReadFlotranString(fid,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,'REGION',ierr)
-          call fiReadInt(string,region%i1,ierr) 
+        call InputReadInt(input,option,region%i1) 
+        if (InputError(input)) then
+          input%ierr = 0
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,'REGION')
+          call InputReadInt(input,option,region%i1) 
         endif
-        call fiErrorMsg(option%myrank,'i1','REGION', ierr)
-        call fiReadInt(string,region%i2,ierr)
-        call fiErrorMsg(option%myrank,'i2','REGION', ierr)
-        call fiReadInt(string,region%j1,ierr)
-        call fiErrorMsg(option%myrank,'j1','REGION', ierr)
-        call fiReadInt(string,region%j2,ierr)
-        call fiErrorMsg(option%myrank,'j2','REGION', ierr)
-        call fiReadInt(string,region%k1,ierr)
-        call fiErrorMsg(option%myrank,'k1','REGION', ierr)
-        call fiReadInt(string,region%k2,ierr)
-        call fiErrorMsg(option%myrank,'k2','REGION', ierr)
+        call InputErrorMsg(input,option,'i1','REGION')
+        call InputReadInt(input,option,region%i2)
+        call InputErrorMsg(input,option,'i2','REGION')
+        call InputReadInt(input,option,region%j1)
+        call InputErrorMsg(input,option,'j1','REGION')
+        call InputReadInt(input,option,region%j2)
+        call InputErrorMsg(input,option,'j2','REGION')
+        call InputReadInt(input,option,region%k1)
+        call InputErrorMsg(input,option,'k1','REGION')
+        call InputReadInt(input,option,region%k2)
+        call InputErrorMsg(input,option,'k2','REGION')
       case('COORDINATE')
         allocate(region%coordinates(1))
-        call fiReadDouble(string,region%coordinates(ONE_INTEGER)%x,ierr) 
-        if (ierr /= 0) then
-          ierr = 0
-          call fiReadFlotranString(fid,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,'REGION',ierr)
-          call fiReadDouble(string,region%coordinates(ONE_INTEGER)%x,ierr) 
+        call InputReadDouble(input,option,region%coordinates(ONE_INTEGER)%x) 
+        if (InputError(input)) then
+          input%ierr = 0
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,'REGION')
+          call InputReadDouble(input,option,region%coordinates(ONE_INTEGER)%x) 
         endif
-        call fiErrorMsg(option%myrank,'x-coordinate','REGION', ierr)
-        call fiReadDouble(string,region%coordinates(ONE_INTEGER)%y,ierr)
-        call fiErrorMsg(option%myrank,'y-coordinate','REGION', ierr)
-        call fiReadDouble(string,region%coordinates(ONE_INTEGER)%z,ierr)
-        call fiErrorMsg(option%myrank,'z-coordinate','REGION', ierr)
+        call InputErrorMsg(input,option,'x-coordinate','REGION')
+        call InputReadDouble(input,option,region%coordinates(ONE_INTEGER)%y)
+        call InputErrorMsg(input,option,'y-coordinate','REGION')
+        call InputReadDouble(input,option,region%coordinates(ONE_INTEGER)%z)
+        call InputErrorMsg(input,option,'z-coordinate','REGION')
       case('COORDINATES')
         icount = 0
         do
-          call fiReadFlotranString(fid,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,'REGION',ierr)
-          if (fiCheckExit(string)) exit              
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,'REGION')
+          if (InputCheckExit(input,option)) exit              
           icount = icount + 1
-          call fiReadDouble(string,coordinates(icount)%x,ierr) 
-          call fiErrorMsg(option%myrank,'x-coordinate','REGION', ierr)
-          call fiReadDouble(string,coordinates(icount)%y,ierr)
-          call fiErrorMsg(option%myrank,'y-coordinate','REGION', ierr)
-          call fiReadDouble(string,coordinates(icount)%z,ierr)
-          call fiErrorMsg(option%myrank,'z-coordinate','REGION', ierr)
+          call InputReadDouble(input,option,coordinates(icount)%x) 
+          call InputErrorMsg(input,option,'x-coordinate','REGION')
+          call InputReadDouble(input,option,coordinates(icount)%y)
+          call InputErrorMsg(input,option,'y-coordinate','REGION')
+          call InputReadDouble(input,option,coordinates(icount)%z)
+          call InputErrorMsg(input,option,'z-coordinate','REGION')
         enddo
         allocate(region%coordinates(icount))
         do icount = 1, size(region%coordinates)
@@ -336,16 +334,16 @@ subroutine RegionRead(region,fid,option)
           region%coordinates(icount)%z = coordinates(icount)%z
         enddo
       case('FILE')
-        call fiReadWord(string,word,PETSC_TRUE,ierr)
-        call fiErrorMsg(option%myrank,'filename','REGION', ierr)
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'filename','REGION')
         region%filename = word
       case('LIST')
         option%io_buffer = 'REGION LIST currently not implemented'
         call printErrMsg(option)
       case('FACE')
-        call fiReadWord(string,word,PETSC_TRUE,ierr)
-        call fiErrorMsg(option%myrank,'face','REGION', ierr)
-        call fiWordToUpper(word)
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'face','REGION')
+        call StringToUpper(word)
         select case(word)
           case('WEST')
             region%iface = WEST_FACE
@@ -375,29 +373,22 @@ end subroutine RegionRead
 ! date: 10/29/07
 !
 ! ************************************************************************** !
-subroutine RegionReadFromFilename(region,filename)
+subroutine RegionReadFromFilename(region,option,filename)
 
-  use Fileio_module
+  use Input_module
+  use Option_module
   use Utility_module
   
   implicit none
   
-  type(region_type), pointer :: region
+  type(region_type) :: region
+  type(option_type) :: option
+  type(input_type), pointer :: input
   character(len=MAXWORDLENGTH) :: filename
   
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: word
-  
-  PetscInt :: fid
-  PetscInt, pointer :: temp_int_array(:)
-  PetscInt :: max_size = 1000
-  PetscInt :: count, temp_int
-  PetscErrorCode :: ierr
-  
-  fid = 86
-  open(unit=fid,file=filename)
-  call RegionReadFromFileId(region,fid)          
-  close(fid)          
+  input => InputCreate(IUNIT_TEMP,filename)
+  call RegionReadFromFileId(region,input,option)          
+  call InputDestroy(input)         
 
 end subroutine RegionReadFromFilename
 
@@ -408,19 +399,20 @@ end subroutine RegionReadFromFilename
 ! date: 10/29/07
 !
 ! ************************************************************************** !
-subroutine RegionReadFromFileId(region,fid)
+subroutine RegionReadFromFileId(region,input,option)
 
-  use Fileio_module
+  use Input_module
+  use Option_module
   use Utility_module
   use Logging_module
   
   implicit none
   
-  type(region_type), pointer :: region
-  PetscInt :: fid
+  type(region_type) :: region
+  type(option_type) :: option
+  type(input_type) :: input
   
   PetscTruth :: continuation_flag
-  character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   character(len=1) :: backslash
 
@@ -443,15 +435,16 @@ subroutine RegionReadFromFileId(region,fid)
   continuation_flag = PETSC_TRUE
   do
     if (.not.continuation_flag) exit
-    call fiReadFlotranString(fid,string,ierr)
-    if (ierr /= 0) exit
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
     continuation_flag = PETSC_FALSE
-    if (index(string,backslash) > 0) continuation_flag = PETSC_TRUE
-    ierr = 0
+    if (index(input%buf,backslash) > 0) &
+      continuation_flag = PETSC_TRUE
+    input%ierr = 0
     do
-      if (ierr /= 0) exit
-      call fiReadInt(string,temp_int,ierr)
-      if (ierr == 0) then
+      if (InputError(input)) exit
+      call InputReadInt(input,option,temp_int)
+      if (.not.InputError(input)) then
         count = count + 1
         temp_int_array(count) = temp_int
       endif
@@ -486,7 +479,7 @@ end subroutine RegionReadFromFileId
 ! ************************************************************************** !
 function RegionGetPtrFromList(region_name,region_list)
 
-  use Fileio_module
+  use String_module
 
   implicit none
   
@@ -504,7 +497,7 @@ function RegionGetPtrFromList(region_name,region_list)
     if (.not.associated(region)) exit
     length = len_trim(region_name)
     if (length == len_trim(region%name) .and. &
-        fiStringCompare(region%name,region_name,length)) then
+        StringCompare(region%name,region_name,length)) then
       RegionGetPtrFromList => region
       return
     endif
