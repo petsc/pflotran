@@ -639,7 +639,6 @@ subroutine readRequiredCardsFromInput(realization)
 
       grid => realization%patch%grid
       ! strip card from front of string
-      call InputReadWord(input,option,word,PETSC_FALSE)
       call InputReadInt(input,option,grid%structured_grid%npx)
       call InputDefaultMsg(input,option,'npx')
       call InputReadInt(input,option,grid%structured_grid%npy)
@@ -648,11 +647,13 @@ subroutine readRequiredCardsFromInput(realization)
       call InputDefaultMsg(input,option,'npz')
  
       if (option%myrank == option%io_rank) then
-        write(option%io_buffer,'(/," *PROC",/, &
-          & "  npx   = ",3x,i4,/, &
-          & "  npy   = ",3x,i4,/, &
-          & "  npz   = ",3x,i4)') grid%structured_grid%npx, &
-            grid%structured_grid%npy, grid%structured_grid%npz
+        option%io_buffer = ' Processor Decomposition:'
+        call printMsg(option)
+        write(option%io_buffer,'("  npx   = ",3x,i4)') grid%structured_grid%npx_final
+        call printMsg(option)
+        write(option%io_buffer,'("  npy   = ",3x,i4)') grid%structured_grid%npy_final
+        call printMsg(option)
+        write(option%io_buffer,'("  npz   = ",3x,i4)') grid%structured_grid%npz_final
         call printMsg(option)
       endif
   
