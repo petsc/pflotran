@@ -793,7 +793,7 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
 
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: local_ghosted_id, natural_id
-  PetscInt :: num_in_hash, num_ids_per_hash, hash_id, id, ierr
+  PetscInt :: num_in_hash, num_ids_per_hash, hash_id, id, ierr, hash_id_2
   PetscInt :: max_num_ids_per_hash = 0
   PetscInt, pointer :: hash(:,:,:), temp_hash(:,:,:)
 
@@ -828,11 +828,11 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
       num_ids_per_hash = int(dble(num_ids_per_hash)*1.2)
       allocate(hash(2,0:num_ids_per_hash,grid%num_hash_bins))
       ! copy old to new
-      do hash_id = 1, grid%num_hash_bins
-        do id = 1, temp_hash(1,0,hash_id)
-          hash(1:2,id,hash_id) = temp_hash(1:2,id,hash_id)
+      do hash_id_2 = 1, grid%num_hash_bins
+        do id = 1, temp_hash(1,0,hash_id_2)
+          hash(1:2,id,hash_id_2) = temp_hash(1:2,id,hash_id_2)
         enddo
-        hash(1,0,hash_id) = temp_hash(1,0,hash_id)
+        hash(1,0,hash_id_2) = temp_hash(1,0,hash_id_2)
       enddo
       deallocate(temp_hash)
     endif
