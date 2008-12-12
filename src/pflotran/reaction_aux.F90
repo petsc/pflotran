@@ -138,6 +138,7 @@ module Reaction_Aux_module
     type(ion_exchange_rxn_type), pointer :: ion_exchange_rxn_list
     type(surface_complexation_rxn_type), pointer :: surface_complexation_rxn_list
     PetscInt :: compute_activity_coefs
+    PetscTruth :: checkpoint_activity_coefs
     
     ! compressed arrays for efficient computation
     ! primary aqueous complexes
@@ -309,6 +310,7 @@ function ReactionCreate()
   nullify(reaction%dbase_temperatures)
 
   reaction%compute_activity_coefs = ACTIVITY_COEFFICIENTS_OFF
+  reaction%checkpoint_activity_coefs = PETSC_TRUE
   reaction%use_log_formulation = PETSC_FALSE
   reaction%use_full_geochemistry = PETSC_FALSE
   

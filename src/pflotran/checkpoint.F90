@@ -26,6 +26,7 @@ module Checkpoint_Header_module
     integer*8 :: tran_num_const_timesteps
     integer*8 :: tran_num_newton_iterations
     integer*8 :: plot_number
+    integer*8 :: checkpoint_activity_coefs
   end type checkpoint_header_type
 end module Checkpoint_Header_module
 
@@ -75,6 +76,7 @@ subroutine Checkpoint(realization, &
                       id)
 
   use Realization_module
+  use Reaction_Aux_module
   use Discretization_module
   use Option_module
   use Field_module
@@ -92,6 +94,7 @@ subroutine Checkpoint(realization, &
   PetscInt :: tran_num_newton_iterations
   PetscInt :: tran_steps, tran_newtcum, tran_icutcum, tran_linear_cum
   PetscInt :: id
+  PetscInt :: checkpoint_activity_coefs
 #ifdef PetscSizeT
   PetscSizeT :: bagsize
 #else
@@ -107,13 +110,14 @@ subroutine Checkpoint(realization, &
   PetscErrorCode :: ierr
   PetscLogDouble :: tstart, tend  
   
-  Vec :: global_vec, global_var
+  Vec :: global_vec = 0
   PetscInt :: int_flag
   
   type(field_type), pointer :: field
   type(option_type), pointer :: option
   type(discretization_type), pointer :: discretization
   type(output_option_type), pointer :: output_option
+  PetscInt :: i
 
   call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr)
   call PetscLogEventBegin(logging%event_checkpoint, &
@@ -153,7 +157,7 @@ subroutine Checkpoint(realization, &
   ! We manually specify the number of bytes required for the 
   ! checkpoint header, since sizeof() is not supported by some Fortran 
   ! compilers.  To be on the safe side, we assume an integer is 8 bytes.
-  bagsize = 136
+  bagsize = 144
   call PetscBagCreate(option%comm, bagsize, bag, ierr)
   call PetscBagGetData(bag, header, ierr); CHKERRQ(ierr)
 
@@ -209,7 +213,16 @@ subroutine Checkpoint(realization, &
   call PetscBagRegisterInt(bag,header%tran_icutcum,tran_icutcum,"tran_icutcum", &
                             "Total number of transport time step cuts",ierr)
   call PetscBagRegisterInt(bag,header%tran_linear_cum,tran_linear_cum,"tran_linear_cum", &
-                            "Total number of transport linear iterations",ierr)                            
+                            "Total number of transport linear iterations",ierr)
+  if (realization%reaction%checkpoint_activity_coefs) then               
+    checkpoint_activity_coefs = ONE_INTEGER
+  else
+    checkpoint_activity_coefs = ZERO_INTEGER
+  endif
+  call PetscBagRegisterInt(bag,header%checkpoint_activity_coefs, &
+                           checkpoint_activity_coefs, &
+                           "checkpoint_activity_coefs", &
+                            "Flag indicating whether activity coefficients were checkpointed",ierr)                            
 
   ! Actually write the components of the PetscBag and then free it.
   call PetscBagView(bag, viewer, ierr)
@@ -220,12 +233,12 @@ subroutine Checkpoint(realization, &
   !--------------------------------------------------------------------
 
   if (option%nflowdof > 0) then
+    call DiscretizationCreateVector(realization%discretization,ONEDOF, &
+                                    global_vec,GLOBAL,option)
     ! grid%flow_xx is the vector into which all of the primary variables are 
     ! packed for the SNESSolve().
     call VecView(field%flow_xx, viewer, ierr)
 
-    call DiscretizationCreateVector(realization%discretization,ONEDOF, &
-                                    global_vec,GLOBAL,option)
     ! If we are running with multiple phases, we need to dump the vector 
     ! that indicates what phases are present, as well as the 'var' vector 
     ! that holds variables derived from the primary ones via the translator.
@@ -253,14 +266,35 @@ subroutine Checkpoint(realization, &
                                      global_vec,ONEDOF)
     call VecView(global_vec,viewer,ierr)
 
-    call VecDestroy(global_vec,ierr)
-  
   endif
 
   if (option%ntrandof > 0) then
     call VecView(field%tran_xx, viewer, ierr)
+    if (realization%reaction%checkpoint_activity_coefs .and. &
+        realization%reaction%compute_activity_coefs /= &
+        ACTIVITY_COEFFICIENTS_OFF) then
+      ! allocated vector
+      if (global_vec == 0) then
+        call DiscretizationCreateVector(realization%discretization,ONEDOF, &
+                                        global_vec,GLOBAL,option)
+      endif
+      do i = 1, realization%reaction%ncomp
+        call RealizationGetDataset(realization,global_vec, &
+                                   PRIMARY_ACTIVITY_COEF,i)
+        call VecView(global_vec,viewer,ierr)
+      enddo
+      do i = 1, realization%reaction%neqcmplx
+        call RealizationGetDataset(realization,global_vec, &
+                                   SECONDARY_ACTIVITY_COEF,i)
+        call VecView(global_vec,viewer,ierr)
+      enddo
+    endif
   endif
 
+  if (global_vec /= 0) then
+    call VecDestroy(global_vec,ierr)
+  endif
+ 
   ! We are finished, so clean up.
   call PetscViewerDestroy(viewer, ierr)
 
@@ -287,7 +321,8 @@ subroutine Restart(realization, &
                    tran_steps,tran_newtcum,tran_icutcum, &
                    tran_linear_cum, &
                    tran_num_const_timesteps, &
-                   tran_num_newton_iterations)
+                   tran_num_newton_iterations, &
+                   activity_coefs_read)
 
   use Realization_module
   use Discretization_module
@@ -306,6 +341,7 @@ subroutine Restart(realization, &
   PetscInt :: tran_num_const_timesteps
   PetscInt :: tran_num_newton_iterations
   PetscInt :: tran_steps, tran_newtcum, tran_icutcum, tran_linear_cum
+  PetscTruth :: activity_coefs_read
 
   PetscViewer viewer
   PetscBag bag
@@ -313,8 +349,11 @@ subroutine Restart(realization, &
   PetscErrorCode :: ierr
   PetscLogDouble :: tstart, tend
 
-  Vec :: global_vec, global_var
+  Vec :: global_vec = 0
+  Vec :: local_vec = 0
   PetscInt :: int_flag
+  PetscInt :: i
+  PetscInt :: read_activity_coefs
   
   type(field_type), pointer :: field
   type(discretization_type), pointer :: discretization
@@ -336,6 +375,8 @@ subroutine Restart(realization, &
   call PetscViewerBinaryOpen(option%comm,option%restart_file, &
                              FILE_MODE_READ,viewer,ierr)
  
+  activity_coefs_read = PETSC_FALSE
+  
   ! Get the header data.
   call PetscBagLoad(viewer, bag, ierr)
   call PetscBagGetData(bag, header, ierr)
@@ -358,13 +399,17 @@ subroutine Restart(realization, &
   tran_newtcum = header%tran_newtcum
   tran_icutcum = header%tran_icutcum
   tran_linear_cum = header%tran_linear_cum
+  read_activity_coefs = header%checkpoint_activity_coefs
   call PetscBagDestroy(bag, ierr)
   
+
+  if (option%nflowdof > 0) then
+    call DiscretizationCreateVector(realization%discretization,ONEDOF, &
+                                    global_vec,GLOBAL,option)
+  endif
+    
   ! Load the PETSc vectors.
   if (option%nflowdof > 0) then
-    call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
-                                    option)
-
     call VecLoadIntoVector(viewer,field%flow_xx,ierr)
     call DiscretizationGlobalToLocal(discretization,field%flow_xx, &
                                      field%flow_xx_loc,NFLOWDOF)
@@ -397,8 +442,6 @@ subroutine Restart(realization, &
     call DiscretizationGlobalToLocal(discretization,global_vec, &
                                      field%perm_zz_loc,ONEDOF)
     
-    call VecDestroy(global_vec,ierr)
-  
   endif
   
   if (option%ntrandof > 0) then
@@ -406,9 +449,37 @@ subroutine Restart(realization, &
     call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
                                      field%tran_xx_loc,NTRANDOF)
     call VecCopy(field%tran_xx,field%tran_yy,ierr)
+
+    if (read_activity_coefs == ONE_INTEGER) then
+      activity_coefs_read = PETSC_TRUE
+      if (global_vec == 0) then
+        call DiscretizationCreateVector(realization%discretization,ONEDOF, &
+                                        global_vec,GLOBAL,option)
+      endif    
+      call DiscretizationCreateVector(discretization,ONEDOF,local_vec, &
+                                      LOCAL,option)
+      do i = 1, realization%reaction%ncomp
+        call VecLoadIntoVector(viewer,global_vec,ierr)
+        call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                         local_vec,ONEDOF)
+        call RealizationSetDataset(realization,local_vec,LOCAL, &
+                                   PRIMARY_ACTIVITY_COEF,i)
+      enddo
+      do i = 1, realization%reaction%neqcmplx
+        call VecLoadIntoVector(viewer,global_vec,ierr)
+        call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                         local_vec,ONEDOF)
+        call RealizationSetDataset(realization,local_vec,LOCAL, &
+                                   SECONDARY_ACTIVITY_COEF,i)
+      enddo
+      call VecDestroy(local_vec,ierr)
+    endif
   endif
-  
+    
   ! We are finished, so clean up.
+  if (global_vec /= 0) then
+    call VecDestroy(global_vec,ierr)
+  endif
   call PetscViewerDestroy(viewer, ierr)
   call PetscGetTime(tend,ierr) 
 

@@ -1349,7 +1349,7 @@ end function RealizGetDatasetValueAtCell
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-subroutine RealizationSetDataset(realization,vec,ivar,isubvar)
+subroutine RealizationSetDataset(realization,vec,vec_format,ivar,isubvar)
 
   use Option_module
 
@@ -1357,6 +1357,7 @@ subroutine RealizationSetDataset(realization,vec,ivar,isubvar)
   
   type(realization_type) :: realization
   Vec :: vec
+  PetscInt :: vec_format
   PetscInt :: ivar
   PetscInt :: isubvar
   
@@ -1370,7 +1371,7 @@ subroutine RealizationSetDataset(realization,vec,ivar,isubvar)
     do
       if (.not.associated(cur_patch)) exit
       call PatchSetDataset(cur_patch,realization%field,realization%option, &
-                           vec,ivar,isubvar)
+                           vec,vec_format,ivar,isubvar)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next

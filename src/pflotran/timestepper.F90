@@ -162,6 +162,7 @@ end subroutine TimestepperRead
 subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
   use Realization_module
+!  use Reactive_Transport_module, only: RTUpdateAuxVars
   use Option_module
   use Output_module
   use Logging_module  
@@ -188,6 +189,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   PetscInt :: istep, start_step
   PetscInt :: num_const_timesteps
   PetscInt :: num_newton_iterations, idum
+  PetscTruth :: activity_coefs_read = PETSC_FALSE
   
   PetscLogDouble :: stepper_start_time, current_time, average_step_time
   PetscErrorCode :: ierr
@@ -209,7 +211,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
   if (option%restart_flag) then
     call StepperRestart(realization,flow_stepper,tran_stepper, &
-                        num_const_timesteps,num_newton_iterations)
+                        num_const_timesteps,num_newton_iterations, &
+                        activity_coefs_read)
     if (associated(flow_stepper)) flow_stepper%cur_waypoint => &
       WaypointSkipToTime(realization%waypoints,option%time)
     if (associated(tran_stepper)) tran_stepper%cur_waypoint => &
@@ -221,18 +224,44 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
   endif
 
-  if (option%overwrite_restart_transport .and. option%ntrandof > 0) then
-    call RealizAssignTransportInitCond(realization)  
-  endif
-  
   if (option%overwrite_restart_flow_params) then
     call RealizationRevertFlowParameters(realization)
   endif
 
+  if (option%overwrite_restart_transport .and. option%ntrandof > 0) then
+    call RealizAssignTransportInitCond(realization)  
+  endif
+
+  ! update to parameters/datasets
+  if (realization%option%ntrandof > 0 .and. option%restart_flag) then
+    ! temporarily turn off activity coefficient update as the activity coefficients
+    ! from the previous time step have been read from the checkpoint file and
+    ! must not be overwritten
+    idum = realization%reaction%compute_activity_coefs
+    if (activity_coefs_read) then
+      realization%reaction%compute_activity_coefs = ACTIVITY_COEFFICIENTS_OFF
+    else
+      ! upon restart, the primary molal are in the tran_xx* vectors
+      ! need up update the rt_auxvars from these vectors in order to 
+      ! compute the activty coefs using the checkpointed molalities
+      ! with the Newton approach.  StepperUpdateSolution performs this operation, 
+      ! but only afterthe activity coefficients have been computed.  This is too 
+      ! late because the activity coefficients will have been computed based on 
+      ! the simulation initial condition and not the restarted molalities.  Thus
+      ! we iterate between the two.
+      realization%reaction%compute_activity_coefs = ACTIVITY_COEFFICIENTS_OFF
+      call StepperUpdateSolution(realization)
+      realization%reaction%compute_activity_coefs = ACTIVITY_COEFFICIENTS_NEWTON
+    endif
+  endif
+  call StepperUpdateSolution(realization)
+  if (realization%option%ntrandof > 0 .and. option%restart_flag) then
+    ! switch back on
+    realization%reaction%compute_activity_coefs = idum
+  endif
+  
   call PetscLogStagePop(ierr)
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
-  
-  call StepperUpdateSolution(realization)
 
   ! print initial condition output if not a restarted sim
   if (realization%output_option%plot_number == 0 .and. master_stepper%nstepmax >= 0) then
@@ -1327,7 +1356,8 @@ end subroutine StepperCheckpoint
 !
 ! ************************************************************************** !
 subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
-                          num_const_timesteps,num_newton_iterations)
+                          num_const_timesteps,num_newton_iterations, &
+                          activity_coefs_read)
 
   use Realization_module
   use Checkpoint_module
@@ -1339,6 +1369,7 @@ subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
   PetscInt :: num_const_timesteps, num_newton_iterations
+  PetscTruth :: activity_coefs_read
 
   type(option_type), pointer :: option
   PetscInt :: flow_steps, flow_newton_cum, flow_icutcum, flow_linear_cum ,&
@@ -1352,7 +1383,8 @@ subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
                flow_steps,flow_newton_cum,flow_icutcum,flow_linear_cum, &
                flow_num_const_timesteps,flow_num_newton_iterations, &
                tran_steps,tran_newton_cum,tran_icutcum,tran_linear_cum, &
-               tran_num_const_timesteps,tran_num_newton_iterations)
+               tran_num_const_timesteps,tran_num_newton_iterations, &
+               activity_coefs_read)
   if (option%restart_time < -998.d0) then
     option%time = max(option%flow_time,option%tran_time)
     if (associated(flow_stepper)) then

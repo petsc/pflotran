@@ -319,6 +319,8 @@ subroutine ReactionRead(reaction,input,option)
                            'CHEMISTRY,DATABASE FILENAME')  
       case('LOG_FORMULATION')
         reaction%use_log_formulation = PETSC_TRUE        
+      case('NO_CHECKPOINT_ACT_COEFS')
+        reaction%checkpoint_activity_coefs = PETSC_FALSE
       case('ACTIVITY_COEFFICIENTS')
         call InputReadWord(input,option,word,PETSC_TRUE)
         call InputDefaultMsg(input,option,'CHEMISTRY,ACTIVITY COEFFICIENTS')        

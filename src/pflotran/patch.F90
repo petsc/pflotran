@@ -1065,7 +1065,8 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
       
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY, &
          SECONDARY_MOLARITY,TOTAL_MOLALITY,TOTAL_MOLARITY, &
-         MINERAL_RATE,MINERAL_VOLUME_FRACTION,SURFACE_CMPLX)
+         MINERAL_RATE,MINERAL_VOLUME_FRACTION,SURFACE_CMPLX, &
+         PRIMARY_ACTIVITY_COEF, SECONDARY_ACTIVITY_COEF)
          
       select case(ivar)
         case(PH)
@@ -1121,6 +1122,18 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
         case(SURFACE_CMPLX)
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%eqsurfcmplx_conc(isubvar)
+          enddo
+        case(PRIMARY_ACTIVITY_COEF)
+          do local_id=1,grid%nlmax
+            ghosted_id = grid%nL2G(local_id)
+            vec_ptr(local_id) = &
+              patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)
+          enddo
+        case(SECONDARY_ACTIVITY_COEF)
+          do local_id=1,grid%nlmax
+            ghosted_id = grid%nL2G(local_id)
+            vec_ptr(local_id) = &
+              patch%aux%RT%aux_vars(ghosted_id)%sec_act_coef(isubvar)
           enddo
       end select
     case(PHASE)
@@ -1252,7 +1265,8 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
       
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY, &
          TOTAL_MOLALITY,TOTAL_MOLARITY, &
-         MINERAL_VOLUME_FRACTION,MINERAL_RATE,SURFACE_CMPLX)
+         MINERAL_VOLUME_FRACTION,MINERAL_RATE,SURFACE_CMPLX, &
+         PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF)
          
       select case(ivar)
         case(PH)
@@ -1279,6 +1293,10 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
           value = patch%aux%RT%aux_vars(ghosted_id)%mnrl_rate(isubvar)
         case(SURFACE_CMPLX)
           value = patch%aux%RT%aux_vars(ghosted_id)%eqsurfcmplx_conc(isubvar)
+        case(PRIMARY_ACTIVITY_COEF)
+          value = patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)
+        case(SECONDARY_ACTIVITY_COEF)
+          value = patch%aux%RT%aux_vars(ghosted_id)%sec_act_coef(isubvar)
       end select
     case(PHASE)
       call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
@@ -1299,7 +1317,7 @@ end function PatchGetDatasetValueAtCell
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-subroutine PatchSetDataset(patch,field,option,vec,ivar,isubvar)
+subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
 
   use Grid_module
   use Option_module
@@ -1314,11 +1332,12 @@ subroutine PatchSetDataset(patch,field,option,vec,ivar,isubvar)
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
   Vec :: vec
+  PetscInt :: vec_format
   PetscInt :: ivar
   PetscInt :: isubvar
   PetscInt :: iphase
 
-  PetscInt :: local_id
+  PetscInt :: local_id, ghosted_id
   type(grid_type), pointer :: grid
   PetscReal, pointer :: vec_ptr(:), vec_ptr2(:)
   PetscErrorCode :: ierr
@@ -1326,6 +1345,11 @@ subroutine PatchSetDataset(patch,field,option,vec,ivar,isubvar)
   grid => patch%grid
 
   call GridVecGetArrayF90(grid,vec,vec_ptr,ierr)
+
+  if (vec_format == NATURAL) then
+    call printErrMsg(option,&
+                     'NATURAL vector format not supported by PatchSetDataset')
+  endif
 
   iphase = 1
   select case(ivar)
@@ -1335,30 +1359,66 @@ subroutine PatchSetDataset(patch,field,option,vec,ivar,isubvar)
       if (associated(patch%aux%THC)) then
         select case(ivar)
           case(TEMPERATURE)
-            do local_id=1,grid%nlmax
-              patch%aux%THC%aux_vars(grid%nL2G(local_id))%temp = vec_ptr(local_id)
-            enddo
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%THC%aux_vars(grid%nL2G(local_id))%temp = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%THC%aux_vars(ghosted_id)%temp = vec_ptr(ghosted_id)
+              enddo
+            endif
           case(PRESSURE)
-            do local_id=1,grid%nlmax
-              patch%aux%THC%aux_vars(grid%nL2G(local_id))%pres = vec_ptr(local_id)
-            enddo
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%THC%aux_vars(grid%nL2G(local_id))%pres = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%THC%aux_vars(ghosted_id)%pres = vec_ptr(ghosted_id)
+              enddo
+            endif
           case(LIQUID_SATURATION)
-            do local_id=1,grid%nlmax
-              patch%aux%THC%aux_vars(grid%nL2G(local_id))%sat = vec_ptr(local_id)
-            enddo
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%THC%aux_vars(grid%nL2G(local_id))%sat = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%THC%aux_vars(ghosted_id)%sat = vec_ptr(ghosted_id)
+              enddo
+            endif
           case(LIQUID_DENSITY)
-            do local_id=1,grid%nlmax
-              patch%aux%THC%aux_vars(grid%nL2G(local_id))%den_kg = vec_ptr(local_id)
-            enddo
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%THC%aux_vars(grid%nL2G(local_id))%den_kg = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%THC%aux_vars(ghosted_id)%den_kg = vec_ptr(ghosted_id)
+              enddo
+            endif
           case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
           case(LIQUID_MOLE_FRACTION)
-            do local_id=1,grid%nlmax
-              patch%aux%THC%aux_vars(grid%nL2G(local_id))%xmol(isubvar) = vec_ptr(local_id)
-            enddo
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%THC%aux_vars(grid%nL2G(local_id))%xmol(isubvar) = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%THC%aux_vars(ghosted_id)%xmol(isubvar) = vec_ptr(ghosted_id)
+              enddo
+            endif
           case(LIQUID_ENERGY)
-            do local_id=1,grid%nlmax
-              patch%aux%THC%aux_vars(grid%nL2G(local_id))%u = vec_ptr(local_id)
-            enddo
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%THC%aux_vars(grid%nL2G(local_id))%u = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%THC%aux_vars(ghosted_id)%u = vec_ptr(ghosted_id)
+              enddo
+            endif
         end select
       else if (associated(patch%aux%Richards)) then
         select case(ivar)
@@ -1377,76 +1437,193 @@ subroutine PatchSetDataset(patch,field,option,vec,ivar,isubvar)
           case(GAS_ENERGY)
             call printErrMsg(option,'GAS_ENERGY not supported by Richards')
           case(PRESSURE)
-            do local_id=1,grid%nlmax
-              patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres(1) = vec_ptr(local_id)
-            enddo
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres(1) = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Global%aux_vars(ghosted_id)%pres(1) = vec_ptr(ghosted_id)
+              enddo
+            endif
           case(LIQUID_SATURATION)
-            do local_id=1,grid%nlmax
-              patch%aux%Global%aux_vars(grid%nL2G(local_id))%sat(1) = vec_ptr(local_id)
-            enddo
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Global%aux_vars(grid%nL2G(local_id))%sat(1) = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Global%aux_vars(ghosted_id)%sat(1) = vec_ptr(ghosted_id)
+              enddo
+            endif
           case(LIQUID_DENSITY)
-            do local_id=1,grid%nlmax
-              patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(1) = vec_ptr(local_id)
-            enddo
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(1) = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Global%aux_vars(ghosted_id)%den_kg(1) = vec_ptr(ghosted_id)
+              enddo
+            endif
         end select
       else if (associated(patch%aux%Mphase)) then
         select case(ivar)
           case(TEMPERATURE)
-            do local_id=1,grid%nlmax
-              patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%temp = vec_ptr(local_id)
-            enddo
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%temp = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%temp = vec_ptr(ghosted_id)
+              enddo
+            endif
           case(PRESSURE)
-            do local_id=1,grid%nlmax
-              patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%pres = vec_ptr(local_id)
-            enddo
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%pres = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%pres = vec_ptr(ghosted_id)
+              enddo
+            endif
           case(LIQUID_SATURATION)
-            do local_id=1,grid%nlmax
-              patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%sat(1) = vec_ptr(local_id)
-            enddo
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%sat(1) = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%sat(1) = vec_ptr(ghosted_id)
+              enddo
+            endif
           case(LIQUID_DENSITY)
-            do local_id=1,grid%nlmax
-              patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%den(1) = vec_ptr(local_id)
-            enddo
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%den(1) = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%den(1) = vec_ptr(ghosted_id)
+              enddo
+            endif
           case(GAS_SATURATION)
-            do local_id=1,grid%nlmax
-              patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%sat(2) = vec_ptr(local_id)
-            enddo
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%sat(2) = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%sat(2) = vec_ptr(ghosted_id)
+              enddo
+            endif
           case(GAS_MOLE_FRACTION)
-            do local_id=1,grid%nlmax
-              patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%xmol(2+isubvar) = vec_ptr(local_id)
-            enddo
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%xmol(2+isubvar) = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%xmol(2+isubvar) = vec_ptr(ghosted_id)
+              enddo
+            endif
           case(GAS_ENERGY)
-            do local_id=1,grid%nlmax
-              patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%u(2) = vec_ptr(local_id)
-            enddo
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%u(2) = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%u(2) = vec_ptr(ghosted_id)
+              enddo
+            endif
           case(GAS_DENSITY) 
-            do local_id=1,grid%nlmax
-              patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%den(2) = vec_ptr(local_id)
-            enddo
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%den(2) = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%den(2) = vec_ptr(ghosted_id)
+              enddo
+            endif
           case(LIQUID_MOLE_FRACTION)
-            do local_id=1,grid%nlmax
-              patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%xmol(isubvar) = vec_ptr(local_id)
-            enddo
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%xmol(isubvar) = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%xmol(isubvar) = vec_ptr(ghosted_id)
+              enddo
+            endif
           case(LIQUID_ENERGY)
-            do local_id=1,grid%nlmax
-              patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%u(1) = vec_ptr(local_id)
-            enddo
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%u(1) = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%u(1) = vec_ptr(ghosted_id)
+              enddo
+            endif
         end select
       endif
-    case(PRIMARY_MOLALITY,TOTAL_MOLARITY,MINERAL_VOLUME_FRACTION)
+    case(PRIMARY_MOLALITY,TOTAL_MOLARITY,MINERAL_VOLUME_FRACTION, &
+         PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF)
       select case(ivar)
         case(PRIMARY_MOLALITY)
-          do local_id=1,grid%nlmax
-            patch%aux%RT%aux_vars(grid%nL2G(local_id))%pri_molal(isubvar) = vec_ptr(local_id)
-          enddo
+          if (vec_format == GLOBAL) then
+            do local_id=1,grid%nlmax
+              patch%aux%RT%aux_vars(grid%nL2G(local_id))%pri_molal(isubvar) = vec_ptr(local_id)
+            enddo
+          else if (vec_format == LOCAL) then
+            do ghosted_id=1,grid%ngmax
+              patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar) = vec_ptr(ghosted_id)
+            enddo
+          endif
         case(TOTAL_MOLARITY)
-          do local_id=1,grid%nlmax
-            patch%aux%RT%aux_vars(grid%nL2G(local_id))%total(isubvar,iphase) = vec_ptr(local_id)
-          enddo
+          if (vec_format == GLOBAL) then
+            do local_id=1,grid%nlmax
+              patch%aux%RT%aux_vars(grid%nL2G(local_id))%total(isubvar,iphase) = vec_ptr(local_id)
+            enddo
+          else if (vec_format == LOCAL) then
+            do ghosted_id=1,grid%ngmax
+              patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase) = vec_ptr(ghosted_id)
+            enddo
+          endif
         case(MINERAL_VOLUME_FRACTION)
-          do local_id=1,grid%nlmax
-            patch%aux%RT%aux_vars(grid%nL2G(local_id))%mnrl_volfrac(isubvar) = vec_ptr(local_id)
-          enddo
+          if (vec_format == GLOBAL) then
+            do local_id=1,grid%nlmax
+              patch%aux%RT%aux_vars(grid%nL2G(local_id))%mnrl_volfrac(isubvar) = vec_ptr(local_id)
+            enddo
+          else if (vec_format == LOCAL) then
+            do ghosted_id=1,grid%ngmax
+              patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(isubvar) = vec_ptr(ghosted_id)
+            enddo
+          endif
+        case(PRIMARY_ACTIVITY_COEF)
+          if (vec_format == GLOBAL) then
+            do local_id=1,grid%nlmax
+              patch%aux%RT%aux_vars(grid%nL2G(local_id))%pri_act_coef(isubvar) = vec_ptr(local_id)
+            enddo
+          else if (vec_format == LOCAL) then
+            do ghosted_id=1,grid%ngmax
+              patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar) = vec_ptr(ghosted_id)
+            enddo
+          endif
+        case(SECONDARY_ACTIVITY_COEF)
+          if (vec_format == GLOBAL) then
+            do local_id=1,grid%nlmax
+              patch%aux%RT%aux_vars(grid%nL2G(local_id))%sec_act_coef(isubvar) = vec_ptr(local_id)
+            enddo
+          else if (vec_format == LOCAL) then
+            do ghosted_id=1,grid%ngmax
+              patch%aux%RT%aux_vars(ghosted_id)%sec_act_coef(isubvar) = vec_ptr(ghosted_id)
+            enddo
+          endif
       end select
     case(PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY,TOTAL_MOLALITY)
       select case(ivar)
@@ -1460,15 +1637,25 @@ subroutine PatchSetDataset(patch,field,option,vec,ivar,isubvar)
           call printErrMsg(option,'Setting of total molality at grid cell not supported.')
       end select
     case(PHASE)
-      call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
-      do local_id=1,grid%nlmax
-        vec_ptr2(grid%nL2G(local_id)) = vec_ptr(local_id)
-      enddo
-      call GridVecRestoreArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
+      if (vec_format == GLOBAL) then
+        call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
+        do local_id=1,grid%nlmax
+          vec_ptr2(grid%nL2G(local_id)) = vec_ptr(local_id)
+        enddo
+        call GridVecRestoreArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
+      else if (vec_format == LOCAL) then
+        call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
+        vec_ptr2(1:grid%ngmax) = vec_ptr(1:grid%ngmax)
+        call GridVecRestoreArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
+      endif
     case(MATERIAL_ID)
-      do local_id=1,grid%nlmax
-        patch%imat(grid%nL2G(local_id)) = vec_ptr(local_id)
-      enddo
+      if (vec_format == GLOBAL) then
+        do local_id=1,grid%nlmax
+          patch%imat(grid%nL2G(local_id)) = vec_ptr(local_id)
+        enddo
+      else if (vec_format == LOCAL) then
+        patch%imat(1:grid%ngmax) = vec_ptr(1:grid%ngmax)
+      endif
   end select
 
   call GridVecRestoreArrayF90(grid,vec,vec_ptr,ierr)
