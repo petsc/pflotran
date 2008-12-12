@@ -568,17 +568,17 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 
   iphase = 1
   
-  if (.not.reaction%use_full_geochemistry) then
-    aq_species_constraint%basis_molarity = conc
-    return
-  endif
-  
   if (option%initialize_with_molality) then
     convert_molal_to_molar = global_auxvar%den_kg(iphase)/1000.d0
     convert_molar_to_molal = 1.d0
   else
     convert_molal_to_molar = 1.d0
     convert_molar_to_molal = 1000.d0/global_auxvar%den_kg(iphase)
+  endif
+  
+  if (.not.reaction%use_full_geochemistry) then
+    aq_species_constraint%basis_molarity = conc*convert_molar_to_molal
+    return
   endif
   
   total_conc = 0.d0

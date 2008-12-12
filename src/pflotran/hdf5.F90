@@ -1258,8 +1258,9 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   
 #ifndef USE_HDF5
   option => realization%option
-  write(option%io_buffer,'(/,"PFLOTRAN must be compiled with -DUSE_HDF5 to ", &
-                            &"read HDF5 formatted structured grids.",/)')
+  call printMsg(option,'')
+  write(option%io_buffer,'("PFLOTRAN must be compiled with -DUSE_HDF5 to ", &
+                           &"read HDF5 formatted structured grids.")')
   call printErrMsg(option)
 #else
 
@@ -1420,8 +1421,9 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
 
 #ifndef USE_HDF5
   option => realization%option
-  write(option%io_buffer,'(/,"PFLOTRAN must be compiled with -DUSE_HDF5 to ", &
-                            &"read HDF5 formatted structured grids.",/)')
+  call printMsg(option,'')
+  write(option%io_buffer,'("PFLOTRAN must be compiled with -DUSE_HDF5 to ", &
+                           &"read HDF5 formatted structured grids.")')
   call printErrMsg(option)
 #else
 
