@@ -2895,6 +2895,7 @@ function GetVelocityAtCoord(fid,realization,local_id,x,y,z)
                  distance
  
           sum_velocity(direction) = sum_velocity(direction) + &
+                                    cur_connection_set%dist(direction,iconn)* &
                                     patch%internal_velocities(iphase,sum_connection)* &
                                     weight
           sum_weight(direction) = sum_weight(direction) + weight
@@ -2924,6 +2925,7 @@ function GetVelocityAtCoord(fid,realization,local_id,x,y,z)
                    dabs(cur_connection_set%dist(direction,iconn))/ &
                    distance
           sum_velocity(direction) = sum_velocity(direction) + &
+                                    cur_connection_set%dist(direction,iconn)* &
                                     patch%boundary_velocities(iphase,sum_connection)* &
                                     weight
           sum_weight(direction) = sum_weight(direction) + weight
@@ -5274,9 +5276,9 @@ subroutine ComputeFlowCellVelocityStats(realization)
           sum_connection = sum_connection + 1
           local_id = cur_connection_set%id_dn(iconn)
           vec_ptr(local_id) = vec_ptr(local_id)+ &
+                              cur_connection_set%dist(direction,iconn)* &
                               patch%boundary_velocities(iphase,sum_connection)* &
-                              cur_connection_set%area(iconn)* &
-                              dabs(cur_connection_set%dist(direction,iconn))
+                              cur_connection_set%area(iconn)
         enddo
         boundary_condition => boundary_condition%next
       enddo
