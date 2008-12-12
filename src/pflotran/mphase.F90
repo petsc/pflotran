@@ -903,7 +903,7 @@ subroutine MphaseSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fl
 !        call printErrMsg(option,"concentration source not yet implemented in Mphase")
       if(option%co2eos == EOS_SPAN_WAGNER)then
          !  span-wagner
-          rho = aux_var%den(jco2)*option%fmwco2  
+          rho = aux_var%den(jco2)*FMWCO2  
           select case(option%itable)  
             case(0,1,2,4,5)
               if( option%itable >=4) then
@@ -921,11 +921,11 @@ subroutine MphaseSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fl
           end select     
 
          !  units: rho [kg/m^3]; csrc1 [kmol/s]
-            enth_src_co2 = enth_src_co2 * option%fmwco2
+            enth_src_co2 = enth_src_co2 * FMWCO2
       else if(option%co2eos == EOS_MRK)then
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]
             call CO2(tsrc,aux_var%pres, rho,fg, xphi,enth_src_co2)
-            enth_src_co2 = enth_src_co2*option%fmwco2*option%scale
+            enth_src_co2 = enth_src_co2*FMWCO2*option%scale
       else
          call printErrMsg(option,'pflow mphase ERROR: Need specify CO2 EOS')
       endif
@@ -1457,21 +1457,21 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
              call co2_span_wagner(p2*1.D-6,t+273.15D0,dg,dddt,dddp,fg,&
                 dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
           endif
-          dg= dg / option%fmwco2
+          dg= dg / FMWCO2
           fg= fg * 1.D6 
-          hg= hg * option%fmwco2
+          hg= hg * FMWCO2
 ! Span-Wagner EOS with Bi-Cubic Spline interpolation
           case(3) 
             call sw_prop(t,p2*1D-6,dg,hg, eng, fg)
-            dg= dg / option%fmwco2
+            dg= dg / FMWCO2
             fg= fg * 1.D6 
-            hg= hg * option%fmwco2
+            hg= hg * FMWCO2
           end select     
         elseif(option%co2eos == EOS_MRK)then
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]     
           call CO2( t,p2, dg,fg, xphi, hg)
-          dg = dg / option%fmwco2
-          hg = hg * option%fmwco2 *option%scale
+          dg = dg / FMWCO2
+          hg = hg * FMWCO2 *option%scale
        endif
     else      
        call ideal_gaseos_noderiv(p2,t,option%scale,dg,hg,ug)
@@ -1483,7 +1483,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
     sat_pressure =sat_pressure /1D5
     call Henry_duan_sun(t, p2 *1D-5, henry,xphi,option%m_nacl,option%m_nacl,sat_pressure)
     
-    henry= 1.D8 / option%fmwh2o / henry / xphi !note: henry = H/phi
+    henry= 1.D8 / FMWH2O / henry / xphi !note: henry = H/phi
   
     wat_sat_x = sat_pressure*1.D5/p 
     co2_sat_x = (1.D0-wat_sat_x)/(henry/p-wat_sat_x)*henry/p  ! xmol(4) = xmol(2)*henry/p
@@ -1510,7 +1510,7 @@ select case(icri)
         z1 = xmol(1); z2 = xmol(2)
         xg = ((1.d0-k2)*z2+(1.d0-k1)*z1)/((1.d0-k2)*(1.d0-k1)*(z1+z2))
         vmco2 = 1.d0/dg
-        vmh2o = 1.D0 /den(1)   ! fmwh2o/0.9d3
+        vmh2o = 1.D0 /den(1)   ! FMWH2O/0.9d3
        !calculate initial guess for sg
         sg = vmco2*xg/(vmco2*xg+vmh2o*(1.d0-xg))
         write(*,'(''Rachford-Rice: '',1p10e12.4)') k1,k2,z1,z2,xg,sg,den(1)
@@ -1794,12 +1794,12 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
     if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
 !    hsrc1=0D0
-!    qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
-!    csrc1 = csrc1 / option%fmwco2
+!    qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+!    csrc1 = csrc1 / FMWCO2
 !    msrc(1)=qsrc1; msrc(2) =csrc1
      msrc(:)= psrc(:)
-     msrc(1) =  msrc(1) / option%fmwh2o
-     msrc(2) =  msrc(2) / option%fmwco2
+     msrc(1) =  msrc(1) / FMWH2O
+     msrc(2) =  msrc(2) / FMWCO2
 
      cur_connection_set => source_sink%connection_set
     
@@ -2315,11 +2315,11 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
  !   hsrc1=0.D0
     if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
 
-   ! qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
-   ! csrc1 = csrc1 / option%fmwco2
+   ! qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+   ! csrc1 = csrc1 / FMWCO2
       msrc(:)= psrc(:)
-      msrc(1) =  msrc(1) / option%fmwh2o
-      msrc(2) =  msrc(2) / option%fmwco2
+      msrc(1) =  msrc(1) / FMWH2O
+      msrc(2) =  msrc(2) / FMWCO2
  
       cur_connection_set => source_sink%connection_set
  

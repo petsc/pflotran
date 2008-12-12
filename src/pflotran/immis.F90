@@ -856,7 +856,7 @@ subroutine ImmisSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fla
 !        call printErrMsg(option,"concentration source not yet implemented in Immis")
       if(option%co2eos == EOS_SPAN_WAGNER)then
          !  span-wagner
-          rho = aux_var%den(jco2)*option%fmwco2  
+          rho = aux_var%den(jco2)*FMWCO2  
           select case(option%itable)  
             case(0,1,2,4,5)
               if( option%itable >=4) then
@@ -874,11 +874,11 @@ subroutine ImmisSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fla
           end select     
 
          !  units: rho [kg/m^3]; csrc1 [kmol/s]
-            enth_src_co2 = enth_src_co2 * option%fmwco2
+            enth_src_co2 = enth_src_co2 * FMWCO2
       else if(option%co2eos == EOS_MRK)then
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]
             call CO2(tsrc,aux_var%pres, rho,fg, xphi,enth_src_co2)
-            enth_src_co2 = enth_src_co2*option%fmwco2*option%scale
+            enth_src_co2 = enth_src_co2*FMWCO2*option%scale
       else
          call printErrMsg(option,'pflow Immis ERROR: Need specify CO2 EOS')
       endif
@@ -1472,12 +1472,12 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
     csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
     if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
 !    hsrc1=0D0
-!    qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
-!    csrc1 = csrc1 / option%fmwco2
+!    qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+!    csrc1 = csrc1 / FMWCO2
 !    msrc(1)=qsrc1; msrc(2) =csrc1
      msrc(:)= psrc(:)
-     msrc(1) =  msrc(1) / option%fmwh2o
-     msrc(2) =  msrc(2) / option%fmwco2
+     msrc(1) =  msrc(1) / FMWH2O
+     msrc(2) =  msrc(2) / FMWCO2
 
      cur_connection_set => source_sink%connection_set
     
@@ -1955,11 +1955,11 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
  !   hsrc1=0.D0
     if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
 
-   ! qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
-   ! csrc1 = csrc1 / option%fmwco2
+   ! qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+   ! csrc1 = csrc1 / FMWCO2
       msrc(:)= psrc(:)
-      msrc(1) =  msrc(1) / option%fmwh2o
-      msrc(2) =  msrc(2) / option%fmwco2
+      msrc(1) =  msrc(1) / FMWH2O
+      msrc(2) =  msrc(2) / FMWCO2
  
       cur_connection_set => source_sink%connection_set
  

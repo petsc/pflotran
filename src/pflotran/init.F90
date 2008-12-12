@@ -569,8 +569,6 @@ subroutine readRequiredCardsFromInput(realization)
   type(realization_type) :: realization
 
   character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: word
-  character(len=MAXWORDLENGTH) :: name
   
   type(patch_type), pointer :: patch 
   type(level_type), pointer :: level
@@ -586,9 +584,6 @@ subroutine readRequiredCardsFromInput(realization)
   
   input => realization%input
   
-! we initialize the word to blanks to avoid error reported by valgrind
-  word = ''
-
 ! Read in select required cards
 !.........................................................................
 
@@ -670,7 +665,7 @@ subroutine readRequiredCardsFromInput(realization)
   
 !.........................................................................
 
-  ! COMP information
+  ! CHEMISTRY information
   string = "CHEMISTRY"
   call InputFindStringInFile(input,option,string)
 
@@ -681,38 +676,6 @@ subroutine readRequiredCardsFromInput(realization)
     reaction%primary_species_names => GetPrimarySpeciesNames(reaction)
     option%ntrandof = GetPrimarySpeciesCount(reaction)
   endif
-
-!.........................................................................
-
-  ! COMP information
-  string = "COMP"
-  call InputFindStringInFile(input,option,string)
-
-  if (.not.InputError(input)) then
-    ! enter src here
-  endif          
-
-!....................................................................
-
-  ! COMP information
-  string = "PHAS"
-  call InputFindStringInFile(input,option,string)
-
-  if (.not.InputError(input)) then
-    ! enter src here
-  endif
-
-!....................................................................
-
-  ! TRAN information
-  string = "TRAN"
-  call InputFindStringInFile(input,option,string)
-
-  if (.not.InputError(input)) then
-    call InputReadInt(input,option,option%ntrandof)
-    call InputDefaultMsg(input,option,'ntrandof')
-  endif          
-
     
 end subroutine readRequiredCardsFromInput
 
@@ -755,10 +718,8 @@ subroutine readInput(simulation)
 
   PetscErrorCode :: ierr
   character(len=MAXWORDLENGTH) :: word
-  character(len=MAXWORDLENGTH) :: name
   character(len=MAXWORDLENGTH) :: card
     
-  PetscReal, parameter:: fmwnacl = 58.44277D0, fmwh2o  = 18.01534d0
   PetscInt :: i, i1, i2, idum, ireg, isrc, j
   PetscInt :: ibc, ibrk, ir,np
   PetscReal :: rdum
@@ -1403,9 +1364,9 @@ subroutine readInput(simulation)
         select case(word(1:len_trim(word)))
           case('MOLAL')
           case('MASS')
-            option%m_nacl = option%m_nacl /fmwnacl/(1.D0-option%m_nacl)
+            option%m_nacl = option%m_nacl /FMWNACL/(1.D0-option%m_nacl)
           case('MOLE')    
-            option%m_nacl = option%m_nacl /fmwh2o/(1.D0-option%m_nacl)
+            option%m_nacl = option%m_nacl /FMWH2O/(1.D0-option%m_nacl)
           case default
             print *, 'Wrong unit: ', word(1:len_trim(word))
             stop

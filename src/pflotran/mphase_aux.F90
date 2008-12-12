@@ -5,8 +5,6 @@ use mphase_pckr_module
   private 
 
 #include "definitions.h"
-  PetscReal, parameter :: fmwnacl = 58.44277D0, Rgasj=8.31415
-   
 
 type, public :: mphase_auxvar_elem_type
    PetscReal :: pres
@@ -320,38 +318,38 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
                 call co2_span_wagner(p2*1.D-6, t +273.15D0,dg,dddt,dddp,fg,&
                      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
              endif
-             dg= dg / option%fmwco2
+             dg= dg / FMWCO2
              fg= fg * 1.D6 
-             hg= hg * option%fmwco2
+             hg= hg * FMWCO2
              xphi = fg/p2
 ! ************* Span-Wagner EOS with Bi-Cubic Spline interpolation ********
           case(3) 
              call sw_prop(t,p2*1D-6,dg,hg, eng, fg)
              call visco2(t, dg, visg)
-             dg= dg / option%fmwco2
+             dg= dg / FMWCO2
              fg= fg * 1.D6 
-             hg= hg * option%fmwco2
+             hg= hg * FMWCO2
              xphi = fg/p2
           end select
        elseif(option%co2eos == EOS_MRK)then
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]     
           call CO2(t, p2,  dg,fg, xphi, hg)
           call visco2( t,dg,visg)
-          dg = dg / option%fmwco2
-          hg = hg * option%fmwco2 *option%scale
+          dg = dg / FMWCO2
+          hg = hg * FMWCO2 *option%scale
           !      print *, 'translator', p2, t, dg,hg,visg
        else
          call printErrMsg(option,'pflow mphase ERROR: Need specify CO2 EOS')
       endif
    else      
       call ideal_gaseos_noderiv(p2, t,option%scale,dg,hg,eng)
-      call visco2(t,dg*option%fmwco2,visg)
+      call visco2(t,dg*FMWCO2,visg)
       fg=p2
       xphi = 1.D0
    endif
 
    call Henry_duan_sun(t, p2 *1D-5, henry, xphi, option%m_nacl, option%m_nacl,sat_pressure*1D-5)
-   henry= 1D0 / (option%fmwh2o *1D-3) / (henry*1D-5 )/xphi 
+   henry= 1D0 / (FMWH2O *1D-3) / (henry*1D-5 )/xphi 
    
    select case(iphase)     
    case(1)
@@ -369,7 +367,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
       aux_var%xmol(3)=aux_var%xmol(1) * temp
       aux_var%xmol(4)= 1.D0-aux_var%xmol(3)            
    end select
-   aux_var%avgmw(2)= aux_var%xmol(3)* option%fmwh2o + aux_var%xmol(4) * option%fmwco2
+   aux_var%avgmw(2)= aux_var%xmol(3)* FMWH2O + aux_var%xmol(4) * FMWCO2
    pw = p
    call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,option%scale,ierr) 
    aux_var%den(2)= 1.D0/(aux_var%xmol(4)/dg + aux_var%xmol(3)/dw_mol)
@@ -379,16 +377,16 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
    aux_var%diff(option%nflowspec+1:option%nflowspec*2)= 2.13D-5
 !       fluid_properties%diff_base(2)
 ! Note: not temperature dependent yet.       
-   aux_var%zco2=aux_var%den(2)/(p/rgasj/(t+273.15D0)*1D-3)
+   aux_var%zco2=aux_var%den(2)/(p/IDEAL_GAS_CONST/(t+273.15D0)*1D-3)
 !***************  Liquid phase properties **************************
  
-!  avgmw(1)= xmol(1)* fmwh2o + xmol(2) * fmwco2 
+!  avgmw(1)= xmol(1)* FMWH2O + xmol(2) * FMWCO2 
   aux_var%h(1) = hw
   aux_var%u(1) = aux_var%h(1) - pw /dw_mol* option%scale
   aux_var%diff(1:option%nflowspec) = 1D-9
   ! fluid_properties%diff_base(1)
 
-  xm_nacl = option%m_nacl * fmwnacl
+  xm_nacl = option%m_nacl * FMWNACL
   xm_nacl = xm_nacl /(1.D3 + xm_nacl)
   call nacl_den(t, p*1D-6, xm_nacl, dw_kg) 
   dw_kg = dw_kg * 1D3
@@ -400,13 +398,13 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
   !den(1) = 1.D0/(xmol(2)/dg + xmol(1)/dw_mol) !*c+(1-c)* 
 
 ! Garcia mixing **************************
-  x_nacl =  option%m_nacl/( option%m_nacl + 1D3/option%fmwh2o)
+  x_nacl =  option%m_nacl/( option%m_nacl + 1D3/FMWH2O)
 ! **  xmol(1) = xh2o + xnacl
-  aux_var%avgmw(1)= (aux_var%xmol(1) - x_nacl) * option%fmwh2o&
-       + x_nacl * fmwnacl + aux_var%xmol(2) * option%fmwco2
+  aux_var%avgmw(1)= (aux_var%xmol(1) - x_nacl) * FMWH2O&
+       + x_nacl * FMWNACL + aux_var%xmol(2) * FMWCO2
   vphi=1D-6*(37.51D0 + t&
        *(-9.585D-2 + t*(8.74D-4 - t*5.044D-7)))
-  aux_var%den(1)=dw_kg/(1D0-(option%fmwco2*1D-3-dw_kg*vphi)&
+  aux_var%den(1)=dw_kg/(1D0-(FMWCO2*1D-3-dw_kg*vphi)&
        *aux_var%xmol(2)/(aux_var%avgmw(1)*1D-3))
   aux_var%den(1)=aux_var%den(1)/aux_var%avgmw(1)
   

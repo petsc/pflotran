@@ -1711,8 +1711,8 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
     csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
     if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
 
-    qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
-    csrc1 = csrc1 / option%fmwco2
+    qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+    csrc1 = csrc1 / FMWCO2
       
     cur_connection_set => source_sink%connection_set
     
@@ -2171,8 +2171,8 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
     if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
 
-    qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
-    csrc1 = csrc1 / option%fmwco2
+    qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+    csrc1 = csrc1 / FMWCO2
       
     cur_connection_set => source_sink%connection_set
     

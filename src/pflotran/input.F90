@@ -408,8 +408,7 @@ subroutine InputReadFlotranStringSlave(input, option)
     if (word(1:4) == 'SKIP') then
       do 
         read(input%fid,'(a512)',iostat=input%ierr) tempstring
-        if (InputError(input)) then
-!       if (InputError(input) .and. option%io_rank) then
+       if (InputError(input) .and. option%myrank == option%io_rank) then
           print *, 'End of file reached in InputReadFlotranStringSlave.'
           print *, 'SKIP encountered without matching NOSKIP.'
         endif
@@ -749,11 +748,6 @@ end subroutine InputReadQuotedWord
 
   input%ierr = 0
 
- ! we initialize the word to blanks to avoid error reported by valgrind
- ! do i=1,MAXWORDLENGTH
- !    word(i:i) = ' '
- ! enddo
- 
   length1 = len_trim(string)
 
   do 
@@ -788,8 +782,9 @@ end subroutine InputReadQuotedWord
   endif    
   
   if (.not.found) then
-    option%io_buffer = 'Card (' // trim(string) // ' not found in input file.'
-    call printErrMsg(option)
+    option%io_buffer = 'Card (' // trim(string) // ') not found in input file.'
+    call printWrnMsg(option)
+    input%ierr = 1
   endif
   
   end subroutine InputFindStringInFile

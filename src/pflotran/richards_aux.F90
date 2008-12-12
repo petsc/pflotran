@@ -172,7 +172,7 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,iphase,&
   aux_var%pc = option%reference_pressure - global_aux_var%pres(1)
 
 !***************  Liquid phase properties **************************
-  !geh aux_var%avgmw = option%fmwh2o  ! hardwire for comparison with old code
+  !geh aux_var%avgmw = FMWH2O  ! hardwire for comparison with old code
   aux_var%avgmw = 18.0153d0
 
   pw = option%reference_pressure

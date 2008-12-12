@@ -1363,7 +1363,7 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
     if (.not.associated(source_sink)) exit
     
     qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
-    qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+    qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
       
     cur_connection_set => source_sink%connection_set
     
@@ -1784,7 +1784,7 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     
     qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
 
-    qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+    qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
       
     cur_connection_set => source_sink%connection_set
     

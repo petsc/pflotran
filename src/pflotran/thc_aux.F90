@@ -224,7 +224,7 @@ subroutine THCAuxVarCompute(x,aux_var,iphase,saturation_function, &
   if (option%nflowspec > 1) aux_var%xmol(2:option%nflowspec) = x(3:option%nflowspec+1)   
 
 !***************  Liquid phase properties **************************
-  !geh aux_var%avgmw = option%fmwh2o  ! hardwire for comparison with old code
+  !geh aux_var%avgmw = FMWH2O  ! hardwire for comparison with old code
   aux_var%avgmw = 18.0153d0
 
   pw = option%reference_pressure

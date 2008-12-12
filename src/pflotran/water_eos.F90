@@ -6,8 +6,6 @@ module water_eos_module
   
 #include "definitions.h"
 
-  PetscReal, private, parameter::  fmwh2o = 18.01534d0
-
   interface VISW
     module procedure VISW1
     module procedure VISW2
@@ -155,7 +153,7 @@ contains
       viso = cnv * 1.D0 /(dsqrt(utr)*viso)
  
   !c---------compressed water
-          udw = dw *rhostr*fmwh2o
+          udw = dw *rhostr*FMWH2O
           u4 = udw-1.D0
           sum1 = 0.D0
           do i = 0,5

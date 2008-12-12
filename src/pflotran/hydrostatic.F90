@@ -6,8 +6,6 @@ module Hydrostatic_module
 
 #include "definitions.h"
 
-  PetscReal, parameter ::  fmwnacl = 58.44277D0,  fmwh2o = 18.0153D0
-
   public :: HydrostaticUpdateCoupler, &
             HydrostaticTest
  
@@ -58,7 +56,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   
   condition => coupler%flow_condition
     
-  xm_nacl = option%m_nacl * fmwnacl
+  xm_nacl = option%m_nacl * FMWNACL
   xm_nacl = xm_nacl /(1.d3 + xm_nacl)
   
   nullify(pressure_array)

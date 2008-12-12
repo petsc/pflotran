@@ -79,10 +79,10 @@ contains
 
  subroutine visgas_noderiv(t,pa,p,ds,visg)
       PetscReal  t,pa,p,ds,visg
-      PetscReal  fmwh2o,fmwa,fair,fwat,cair,cwat
+      PetscReal  fair,fwat,cair,cwat
 
-      data  fmwh2o,    fmwa,  fair,   fwat,    cair,  cwat &
-           /18.0153d0, 28.96d0, 97.d0, 363.d0, 3.617d0, 2.655d0/
+      data  fair,   fwat,    cair,  cwat &
+           /97.d0, 363.d0, 3.617d0, 2.655d0/
  
       PetscReal fmix,cmix,d,xga,xg1,tk,trd1,trd3,ome1,ome3,ard,fmw3,vis1, &
              v1,vs,vis2,vis3,z1,g,h,e,z2,z3
@@ -96,7 +96,7 @@ contains
 !      do k = 1,nb
  !       if (iphas(k).eq.2 .or. iphas(k).eq.0) then
 
-          d   = ds *fmwa       
+          d   = ds *FMWAIR       
           xga = pa /p ! for debug, set x constant
           xg1 = 1.D0 - xga
           tk  = t +273.15d0
@@ -106,8 +106,8 @@ contains
           ome1 = (1.188d0-0.051d0*trd1)/trd1
           ome3 = (1.480d0-0.412d0*log(trd3))/trd3
           ard  = 1.095d0/trd3
-          fmw3 = 2.d0*fmwa*fmwh2o/(fmwa+fmwh2o)
-          vis1 = 266.93d-7*sqrt(fmwa*trd1*fair)/(cair*cair*ome1*trd1)
+          fmw3 = 2.d0*FMWAIR*FMWH2O/(FMWAIR+FMWH2O)
+          vis1 = 266.93d-7*sqrt(FMWAIR*trd1*fair)/(cair*cair*ome1*trd1)
  
           v1 = .407d0*t +80.4d0
           if (t .le.350.d0) then
@@ -121,9 +121,9 @@ contains
           vis2 = 10.d0*vs
           vis3 = 266.93d-7*sqrt(fmw3*trd3*fmix)/(cmix*cmix*ome3*trd3)
           z1   = xga*xga/vis1+2.d0*xg1*xga/vis3+xg1*xg1/vis2
-          g    = xga*xga*fmwa/fmwh2o
-          h    = xg1*xg1*fmwh2o/fmwa
-          e    = (2.d0*xga*xg1*fmwa*fmwh2o/fmw3**2)*vis3/(vis1*vis2)
+          g    = xga*xga*FMWAIR/FMWH2O
+          h    = xg1*xg1*FMWH2O/FMWAIR
+          e    = (2.d0*xga*xg1*FMWAIR*FMWH2O/fmw3**2)*vis3/(vis1*vis2)
           z2   = 0.6d0*ard*(g/vis1+e+h/vis2)
           z3   = 0.6d0*ard*(g+e*(vis1+vis2)-2.d0*xga*xg1+h)
           visg  = (1.d0+z3)/(z1+z2)*.1d0

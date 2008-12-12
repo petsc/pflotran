@@ -72,8 +72,7 @@ module Option_module
 
 
     PetscReal :: m_nacl
-    PetscReal :: difaq, delhaq, gravity(3), fmwh2o= 18.0153D0, fmwa=28.96D0, &
-              fmwco2=44.0098D0, eqkair, ret=1.d0, fc=1.d0
+    PetscReal :: difaq, delhaq, gravity(3), eqkair, ret=1.d0, fc=1.d0
     
     PetscInt :: ideriv
     PetscInt :: idt_switch = -1
@@ -261,8 +260,6 @@ function OptionCreate()
   option%delhaq = 12.6d0 ! kJ/mol read from input file
   option%gravity(:) = 0.d0
   option%gravity(3) = -9.8068d0    ! m/s^2
-  option%fmwh2o = 18.01534d0 ! kg H2O/mol H2O
-  option%fmwco2 = 44.0098d0
   option%eqkair = 1.d10 ! Henry's constant for air: Xl = eqkair * pa
 
   ! default brine concentrations
