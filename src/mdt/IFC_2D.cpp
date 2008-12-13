@@ -36,7 +36,7 @@ IFC_2D::IFC_2D(Grid **grid_) {
   PetscReal dy;
   PetscReal dz;// */
 
-  PetscReal len_x = 500.;
+  PetscReal len_x = 800.;
 //  PetscReal len_y = 700.;
   PetscReal len_y = 1.;
   PetscReal len_z = 20.;
@@ -94,8 +94,8 @@ IFC_2D::IFC_2D(Grid **grid_) {
 #endif
 
 //  grid->setOrigin(593618.9,114565.1,70.);
-  grid->setRotation(14.); // must come before ->setOrigin()
-  grid->setOrigin(594071.94,116030.22,90.);
+  grid->setRotation(-45.); // must come before ->setOrigin()
+  grid->setOrigin(594095.,116235.,90.);
 
 //  grid->computeCoordinates();
 //  grid->computeConnectivity();

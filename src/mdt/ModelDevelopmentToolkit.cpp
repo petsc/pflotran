@@ -36,8 +36,8 @@ int main(int argc, char **args) {
 
 //  hanford300 = new Hanford300(&grid);
 //  hanford300 = new Hanford300v2(&grid);
-  ifc = new IFC(&grid);
-//    ifc_2d = new IFC_2D(&grid);
+//  ifc = new IFC(&grid);
+    ifc_2d = new IFC_2D(&grid);
   //  testcase = new TestCase(&grid);
 
   Output *out = new Output(grid);
