@@ -5255,7 +5255,7 @@ subroutine ComputeFlowCellVelocityStats(realization)
           ! velocities are stored as the downwind face of the upwind cell
           flux = patch%internal_velocities(iphase,sum_connection)* &
                    cur_connection_set%area(iconn)* &
-                   dabs(cur_connection_set%dist(direction,iconn))
+                   cur_connection_set%dist(direction,iconn)
           if (local_id_up > 0) then
             vec_ptr(local_id_up) = vec_ptr(local_id_up) - flux
           endif

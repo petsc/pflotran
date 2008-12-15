@@ -227,41 +227,6 @@ subroutine CouplerRead(coupler,input,option)
         call InputReadWord(input,option,coupler%flow_condition_name,PETSC_TRUE)
       case('TRANSPORT_CONDITION')
         call InputReadWord(input,option,coupler%tran_condition_name,PETSC_TRUE)
-      case('TYPE')
-        call InputReadWord(input,option,coupler%ctype,PETSC_TRUE)
-        call StringToUpper(coupler%ctype)
-        select case(trim(coupler%ctype))
-          case('initial')
-            coupler%itype = INITIAL_COUPLER_TYPE
-          case('boundary')
-            coupler%itype = BOUNDARY_COUPLER_TYPE
-          case('source_sink')
-            coupler%itype = SRC_SINK_COUPLER_TYPE
-          case default
-            option%io_buffer = 'coupler type: '//trim(coupler%ctype)//' not recognized.'
-            call printErrMsg(option)
-        end select    
-      case('FACE')
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        call StringToUpper(word)
-        select case(word)
-          case('WEST')
-            coupler%iface = 1
-          case('EAST')
-            coupler%iface = 2
-          case('SOUTH')
-            coupler%iface = 3
-          case('NORTH')
-            coupler%iface = 4
-          case('BOTTOM')
-            coupler%iface = 5
-          case('TOP')
-            coupler%iface = 6
-          case default
-            option%io_buffer = 'ERROR: FACE option (' // trim(word) // &
-                               ') not recognized.'
-            call printErrMsg(option)
-        end select
       case default
         option%io_buffer = 'Coupler card (' // trim(word) // ') not recognized.'
         call printErrMsg(option)        

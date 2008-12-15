@@ -61,6 +61,7 @@ module Solver_module
 
     PetscTruth :: print_convergence
     PetscTruth :: print_detailed_convergence
+    PetscTruth :: print_linear_iterations
     PetscTruth :: check_infinity_norm
     PetscTruth :: force_at_least_1_iteration    
             
@@ -136,6 +137,7 @@ function SolverCreate()
   
   solver%print_convergence = PETSC_TRUE
   solver%print_detailed_convergence = PETSC_FALSE
+  solver%print_linear_iterations = PETSC_FALSE
   solver%check_infinity_norm = PETSC_TRUE
   solver%force_at_least_1_iteration = PETSC_TRUE
     
@@ -392,6 +394,9 @@ subroutine SolverReadNewton(solver,input,option)
 
       case ('PRINT_DETAILED_CONVERGENCE')
         solver%print_detailed_convergence = PETSC_TRUE
+
+      case ('PRINT_LINEAR_ITERATIONS')
+        solver%print_linear_iterations = PETSC_TRUE
 
       case('ATOL')
         call InputReadDouble(input,option,solver%newton_atol)

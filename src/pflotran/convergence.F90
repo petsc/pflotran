@@ -238,6 +238,11 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
               & " pnrm:",es10.2, &
               & 32x, &
               & " rsn: ",a)') it, fnorm, pnorm, trim(string)
+      if (solver%print_linear_iterations) then
+        call KSPGetIterationNumber(solver%ksp,i,ierr)
+        write(option%io_buffer,'("   Linear Solver Iterations: ",i6)') i
+        call printMsg(option)
+      endif
     endif
   endif    
 
