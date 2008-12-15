@@ -278,15 +278,15 @@ CaUO4
 MINERAL_KINETICS
 Quartz 1.e-22 
 Calcite 1.e-12 
-Metatorbernite 5.e-18 
+Metatorbernite 1.e-16 
 /
 :skip
 SORPTION
 SURFACE_COMPLEXATION_RXN
 MINERAL Calcite
-:SITE >SOH 121.112 ! 20 m^2/g
+SITE >SOH 121.112 ! 20 m^2/g
 :SITE >SOH 164.851 ! 27 m^2/g
-SITE >SOH 152.64 ! 25 m^2/g
+:SITE >SOH 152.64 ! 25 m^2/g
 COMPLEXES
 >SOUO2OH
 >SOUO2CO3
@@ -294,8 +294,8 @@ COMPLEXES
 /
 /
 noskip
-:DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
-DATABASE /Users/lichtner/flotran/database/hanford.dat
+DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
+:DATABASE /Users/lichtner/flotran/database/hanford.dat
 :DATABASE ../../../database/hanford.dat
 LOG_FORMULATION
 ACTIVITY_COEFFICIENTS
@@ -304,9 +304,9 @@ ACTIVITY_COEFFICIENTS
 
 :MOLAL
 
-IMOD 250
+IMOD 100
 
-REFERENCE_POROSITY 0.5d0
+REFERENCE_POROSITY 0.4d0
 
 :CHECKPOINT 1
 :RESTART pflotran.chk1
@@ -391,7 +391,7 @@ THERMAL_PROPERTIES
 :
 MATERIALS
 :name   id icap ithm por  tau   permx    permy    permz    permpwr
-Hanford  1  1    1   0.5  0.5   5.d-9    5.d-9    5.d-9    1.d0
+Hanford  1  1    1   0.4  0.5   5.d-9    5.d-9    5.d-9    1.d0
 /
 :
 :skip
@@ -415,9 +415,11 @@ noskip
 REGION all
 BLOCK 1 100 1 1 1 1
 /
+
 REGION source
 BLOCK 10 20 1 1 1 1
 /
+
 REGION down_stream
 BLOCK 21 100 1 1 1 1
 /
@@ -432,17 +434,17 @@ BLOCK 100 100 1 1 1 1
 FACE east
 /
 
-skip
+:skip
 REGION breakthrough
 COORDINATES 
-500. 0. 0.
+497.5 0. 0.
 /
 /
 BREAKTHROUGH 
 REGION breakthrough
-:VELOCITY
+VELOCITY
 /
-noskip
+:noskip
 
 :========================= flow conditions ==============================
 
@@ -455,7 +457,7 @@ FLUX dirichlet
 :FLUX 2.8935185d-7 ! 0.1 m/day pore water
 :FLUX 0.317098d-7 ! 1 m/y
 :FLUX  1.58549e-4 ! 5000 m/y = 50 ft/d
-PRESSURE 221547.78d0
+PRESSURE 224380.d0 ! adjusted to give ave. flow to river of 566.772 m/y
 /
 
 :Columbia River
@@ -474,10 +476,10 @@ PRESSURE FILE river.txt
 
 FLOW_CONDITION initial
 TYPE
-PRESSURE hydrostatic
+:PRESSURE hydrostatic
 /
-DATUM 0.d0 0.d0 1.d0
-PRESSURE 221547.78d0
+DATUM 0.d0 0.d0 0 .d0
+PRESSURE 221556.d0 ! ave. pressure
 /
 
 :========================= transport conditions ==============================
@@ -500,12 +502,14 @@ CONSTRAINT_LIST
 0.d0 initial_src
 /
 /
+:skip
 TRANSPORT_CONDITION initial_dwn
 TYPE zero_gradient
 CONSTRAINT_LIST
 0.d0 initial_down_stream
 /
 /
+:noskip
 
 :============================= connections =====================
 
@@ -535,11 +539,13 @@ TRANSPORT_CONDITION initial_s
 REGION source
 /
 
+:skip
 INITIAL_CONDITION
 FLOW_CONDITION initial
 TRANSPORT_CONDITION initial_dwn
 REGION down_stream
 /
+:noskip
 
 STRATA
 MATERIAL Hanford
@@ -577,7 +583,7 @@ Na+      2.03498e-3       Z
 HCO3-    2.57305e-3       T
 Cl-      6.97741e-4       T
 F-       2.09491e-5       T
-HPO4--   1.e-6            T Whitlockite
+HPO4--   1.e-6            T
 NO3-     4.69979e-3       T
 SO4--    6.37961e-4       T
 SiO2(aq) 5.36989e-4       T
@@ -590,13 +596,14 @@ Metatorbernite 0.    1.
 /
 /
 
+:skip
 CONSTRAINT initial_down_stream
 CONCENTRATIONS
 H+       7.3             pH
 O2(aq)   1.78132e-4       T
 Al+++    1.e-9            M K-Feldspar
 Ca++     1.20644e-3       M Calcite
-Cu++     1.e-5            M Metatorbernite
+Cu++     1.e-5            M Tenorite
 Fe++     1.e-9            M Ferrihydrite
 Mg++     5.09772e-4       M Dolomite
 UO2++    2.34845e-7       T
@@ -605,7 +612,7 @@ Na+      1.03498e-3       Z
 HCO3-    2.57305e-3       T
 Cl-      6.97741e-4       T
 F-       2.09491e-5       T
-HPO4--   1.e-6            M Whitlockite
+HPO4--   1.e-6            M Hydroxylapatite
 NO3-     4.69979e-3       T
 SO4--    6.37961e-4       T
 SiO2(aq) 5.36989e-4       T
@@ -617,6 +624,7 @@ Calcite        0.1   1.
 Metatorbernite 0.0   1.
 /
 /
+:noskip
 
 CONSTRAINT initial_src
 CONCENTRATIONS
@@ -624,7 +632,7 @@ H+       7.3             pH
 O2(aq)   1.78132e-4       T
 Al+++    1.e-9            M K-Feldspar
 Ca++     1.20644e-3       M Calcite
-Cu++     1.e-5            M Metatorbernite
+Cu++     1.e-5            M Tenorite
 Fe++     1.e-9            M Ferrihydrite
 Mg++     5.09772e-4       M Dolomite
 UO2++    2.34845e-7       T
@@ -633,7 +641,7 @@ Na+      1.03498e-3       Z
 HCO3-    2.57305e-3       T
 Cl-      6.97741e-4       T
 F-       2.09491e-5       T
-HPO4--   1.e-6            M Whitlockite
+HPO4--   1.e-6            M Hydroxylapatite
 NO3-     4.69979e-3       T
 SO4--    6.37961e-4       T
 SiO2(aq) 5.36989e-4       T
