@@ -1,4 +1,4 @@
-\documentclass[12pt]{article} 
+\documentclass[12pt]{article}
 %\usepackage{times}
 %\usepackage{palatino}
 \usepackage{fourier}
@@ -14,7 +14,7 @@
 \usepackage{graphicx}
 \usepackage{longtable}
 \usepackage{subfigure}
-\usepackage{ssss}
+%\usepackage{ssss}
 \usepackage{fancybox}
 \usepackage{booktabs}
 %\usepackage{toc_entr}
@@ -23,52 +23,52 @@
 \textwidth 6.5in
 \textheight 8.75in
 \topmargin -0.75in
-%\topmargin -3.280cm 
+%\topmargin -3.280cm
 \newlength{\boxwidth}
 \setlength{\boxwidth}{5.8in}
 \oddsidemargin 0.in
 \evensidemargin 0.in
 \headheight 0.25in
 \lhead{\sl PFLOTRAN Quick Reference User Guide}
-\chead{} 
-%\chead{\rm - \thepage\ -} 
-\rhead{DRAFT \qquad \qquad \ \today} 
+\chead{}
+%\chead{\rm - \thepage\ -}
+\rhead{DRAFT \qquad \qquad \ \today}
 %\rfoot{\today--[\thepage]}
 \rfoot{}
 \cfoot{\rm - \thepage\ -}
 %\cfoot{}
 %\footrulewidth 0.4pt
-\newcommand{\negsp}{\vspace{-4mm}} 
+\newcommand{\negsp}{\vspace{-4mm}}
 \newcommand\secsp{\vspace{-3 mm}}
 \newcommand\secspb{\vspace{-2 mm}}
 \newcommand\subsecsp{\vspace{-0.0 mm}}
 \newcommand\pflotran{{\bf\sl PFLOTRAN}}
 \newcommand\pflow{{\bf\sl PFLOW}}
 \newcommand\ptran{{\bf\sl PTRAN}}
-\renewcommand{\baselinestretch}{1.01} 
+\renewcommand{\baselinestretch}{1.01}
 %\setlength{\baselineskip}{13pt}
 \def\EQ#1\EN{\begin{equation}#1\end{equation}}
 \def\BA#1\EA{\begin{align}#1\end{align}}
 \def\BS#1\ES{\begin{split}#1\end{split}}
-%\newcommand{\EQ}{\begin{equation}} 
-%\newcommand{\EN}{\end{equation}} 
+%\newcommand{\EQ}{\begin{equation}}
+%\newcommand{\EN}{\end{equation}}
 \newcommand{\longline}{\noindent\rule[-0.1in]{\textwidth}{0.01in}}
-\newcommand{\bc}{\begin{center}} 
-\newcommand{\ec}{\end{center}} 
-\newcommand{\degc}{$^\circ$C} 
-\newcommand{\eq}{\ =\ } 
+\newcommand{\bc}{\begin{center}}
+\newcommand{\ec}{\end{center}}
+\newcommand{\degc}{$^\circ$C}
+\newcommand{\eq}{\ =\ }
 \newcommand{\eff}{{\rm eff}}
 \newcommand{\eqr}{{\rm le}}
-\newcommand{\equ}{{\rm eq}} 
-\newcommand{\kin}{{\rm kin}} 
-\newcommand{\rdx}{{\rm rdx}} 
-\newcommand{\ind}{{\rm id}} 
+\newcommand{\equ}{{\rm eq}}
+\newcommand{\kin}{{\rm kin}}
+\newcommand{\rdx}{{\rm rdx}}
+\newcommand{\ind}{{\rm id}}
 \newcommand{\dep}{{\rm dp}}
-\newcommand{\e}{{\rm{e}}} 
-\newcommand{\erf}{{\rm{erf}}} 
-\newcommand{\erfc}{{\rm{erfc}}} 
+\newcommand{\e}{{\rm{e}}}
+\newcommand{\erf}{{\rm{erf}}}
+\newcommand{\erfc}{{\rm{erfc}}}
 \renewcommand{\sc}{{\rm sc}}
-\newcommand{\sign}{{\rm{sign}}} 
+\newcommand{\sign}{{\rm{sign}}}
 \newcommand{\p}{{\partial}}
 \newcommand{\A}{{\mathcal A}}
 \newcommand{\B}{{\mathcal B}}
@@ -92,9 +92,9 @@
 \newcommand{\Z}{{\mathcal Z}}
 \newcommand{\rev}{{\rm rev}}
 \newcommand{\irr}{{\rm irr}}
-\renewcommand{\a}{{\alpha}} 
-\newcommand{\abar}{{\bar \alpha}} 
-\renewcommand{\b}{{\beta}} 
+\renewcommand{\a}{{\alpha}}
+\newcommand{\abar}{{\bar \alpha}}
+\renewcommand{\b}{{\beta}}
 \renewcommand{\c}{{\rm CO_2}}
 \newcommand{\w}{{\rm H_2O}}
 \newcommand{\air}{{\rm N_2}}
@@ -104,7 +104,7 @@
 \renewcommand{\L}{\widehat{\mathcal L}}
 \renewcommand{\bar}{\overline}
 \newcommand{\dsty}{{\displaystyle}}
-\newcommand{\diff}{{\mathcal D}} 
+\newcommand{\diff}{{\mathcal D}}
 \newcommand{\surf}{\equiv \!\!\!}
 \newcommand{\bnabla}{\boldsymbol{\nabla}}
 \newcommand{\bA}{\boldsymbol{A}}
@@ -132,8 +132,8 @@
 \newcommand{\bu}{\boldsymbol{u}}
 \newcommand{\bv}{\boldsymbol{v}}
 \newcommand{\bz}{\boldsymbol{z}}
-\newcommand{\arrows}{~\rightleftharpoons~} 
-\newcommand{\arrowstab}{\!\!\!\rightleftharpoons\!\!\!} 
+\newcommand{\arrows}{~\rightleftharpoons~}
+\newcommand{\arrowstab}{\!\!\!\rightleftharpoons\!\!\!}
 \newcommand{\CA}{C_{\rm A}}
 \newcommand{\CB}{C_{\rm B}}
 \newcommand{\CC}{C_{\rm C}}
@@ -303,7 +303,7 @@ Set environment variables \verb|PKGS| and \verb|MPI_HOME| and the appropriate \v
 
 \noindent
 Configure using:
- 
+
 \verb|./configure --prefix=$PKGS/openmpi/openmpi-1.2.6-gcc-4.0.1-absoft-10.1|
 
 \noindent
@@ -326,10 +326,10 @@ PFLOTRAN uses the Developer version of PETSc. To install PETSc first set the env
 \noindent
 Configure PETSc on a Mac using openmpi and Fortran 90 Absoft 10.1:
 \begin{verbatim}
-./config/configure.py 
---with-blas-lapack-lib="-framework vecLib" 
---with-mpi-dir=$PKGS/openmpi/openmpi-1.2.6-gcc-4.0.1-absoft-10.1  
---with-debugging=0 
+./config/configure.py
+--with-blas-lapack-lib="-framework vecLib"
+--with-mpi-dir=$PKGS/openmpi/openmpi-1.2.6-gcc-4.0.1-absoft-10.1
+--with-debugging=0
 --with-shared=0
 \end{verbatim}
 
@@ -361,9 +361,9 @@ To install HDF5 set the following environment variables:
 \verb|setenv FFLAGS ""|
 
 \begin{verbatim}
-./configure --enable-fortran 
---prefix=$PKGS/hdf/hdf5-1.6.7-gcc-4.0.1-absoft-10.1 
---disable-debug --enable-production --enable-parallel 
+./configure --enable-fortran
+--prefix=$PKGS/hdf/hdf5-1.6.7-gcc-4.0.1-absoft-10.1
+--disable-debug --enable-production --enable-parallel
 --enable-static --disable-shared
 \end{verbatim}
 
@@ -393,22 +393,22 @@ where \verb|#proc| is the desired number of processor cores.
 
 To implement direct solvers in PETSc with PFLOTRAN first recompile PETSc with the options (petsc-dev, MacOSX 10.5):
 
-\begin{verbatim} 
-./config/configure.py --with-blas-lapack-lib="-framework vecLib" 
---with-mpi-dir=\$PKGS/openmpi/openmpi-1.2.7-gcc-4.0.1-absoft-10.1 
---with-debugging=0 --with-shared=0 
---download-mumps=1 
---download-parmetis=1 --with-parmetis 
---download-scalapack=1 --with-scalapack 
+\begin{verbatim}
+./config/configure.py --with-blas-lapack-lib="-framework vecLib"
+--with-mpi-dir=\$PKGS/openmpi/openmpi-1.2.7-gcc-4.0.1-absoft-10.1
+--with-debugging=0 --with-shared=0
+--download-mumps=1
+--download-parmetis=1 --with-parmetis
+--download-scalapack=1 --with-scalapack
 --download-blacs=1 --with-blacs
 \end{verbatim}
 
 \noindent
 Then run PFLOTRAN with the command-line options:
-\begin{verbatim} 
--flow\_mat\_type mpiaij 
--flow\_ksp\_type preonly 
--flow\_pc\_type lu 
+\begin{verbatim}
+-flow\_mat\_type mpiaij
+-flow\_ksp\_type preonly
+-flow\_pc\_type lu
 -flow\_pc\_factor\_mat\_solver\_package mumps
 \end{verbatim}
 
@@ -416,7 +416,7 @@ Then run PFLOTRAN with the command-line options:
 
 The Trilinos package for multi-level solvers (ML) may be used with PETSc by configuring petsc-dev with the flag
 
-\begin{verbatim} 
+\begin{verbatim}
 ./config/configure.py ... --download-ml
 \end{verbatim}
 
@@ -449,11 +449,11 @@ The PFLOTRAN input file construction is based on keywords. Lines beginning with 
 Initial and boundary conditions and material properties are assigned to spatial regions using a novel {\em coupler} approach. In this approach, initial and boundary conditions (keyword CONDITION) are assigned to regions (keyword REGION) using keywords INITIAL\_CONDITION and BOUNDARY\_CONDITION. Material properties (keyword MATERIAL) are assigned to regions using the keyword STRATIGRAPHY.
 
 \begin{longtable}{ll}%[h]%\centering
-%\caption{PFLOTRAN Keywords}\label{flkeywd} 
+%\caption{PFLOTRAN Keywords}\label{flkeywd}
 
 %\vspace{4mm}
 
-%\begin{tabular}{lll} 
+%\begin{tabular}{lll}
 \toprule[1.5pt]
 \multicolumn{1}{c}{Keyword} & \multicolumn{1}{c}{Description}\\
 \midrule[1pt]
@@ -497,21 +497,22 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \hyperlink{target_touch}{USE\_TOUCH\_OPTIONS} & \\
 \hyperlink{target_wallclk}{WALLCLOCK\_STOP} & \\
 \bottomrule[1.5pt]
-%\end{tabular} 
+%\end{tabular}
 \end{longtable}
 
 \protect\hypertarget{target_bcon}{}
 
 \subsection{Keyword: BOUNDARY\_CONDITION}
+\subsubsection{Description}
+The BOUNDARY\_CONDITION card couples a FLOW\_CONDITION and/or TRANSPORT\_CONDITION to a REGION in the problem domain.  The use of this card enables the use/reuse of flow and transport conditions and regions within multiple boundary and initial conditions and source/sinks in the input deck.
+\subsubsection{Example}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[BOUNDARY\_CONDITION]
 \item[REGION] region\_name
 \item[FLOW\_CONDITION] condition\_name
 \item[TRANSPORT\_CONDITION] condition\_name
-\item[TYPE] [initial, boundary, source\_sink]
-\item[FACE] [WEST, EAST, NORTH, SOUTH, BOTTOM, TOP]
 \item[END]
 \end{deflist}
 \end{minipage}
@@ -522,9 +523,12 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \protect\hypertarget{target_brk}{}
 
 \subsection{Keyword: BREAKTHROUGH (BRK)}
+\subsubsection{Description}
+The BREAKTHROUGH card specifies that data values normally printed to the standard output files be monitored and printed at a specific location (e.g. grid cell or coordinate) throughout the simulation for observation.  These data are printed locally from each processor, thus requiring no parallel I/O, to files named 'breakthrough\_N.tec', where N is the rank of the processor upon which the observation points reside.
+\subsubsection{Example}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[BREAKTHROUGH]
 \item[REGION] region\_name
 \item[VELOCITY] \{print\_velocities == PETSC\_TRUE\}
@@ -541,7 +545,7 @@ Initial and boundary conditions and material properties are assigned to spatial 
 
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[BRIN, BRINE] m\_nacl [MOLAL, MASS, MOLE]
 \end{deflist}
 \end{minipage}
@@ -552,9 +556,12 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \protect\hypertarget{target_ckpt}{}
 
 \subsection{Keyword: CHECKPOINT}
+\subsubsection{Description}
+Checkpoint files enable the restart of a simulation at any discrete point in simulation where a checkpoint file has been printed.  When the CHECKPOINT card is included in the input deck, checkpoint files are printed every N time steps, where N is the checkpoint frequency, and at the end of the simulation, should the simulation finish or the be shut down properly mid-simulation using the WALL\_CLOCK\_STOP card.  Checkpoint files are named 'pflotran.chkN', where N is the number of the timestep when the checkpoint file was printed, or 'restart.chk' when printed while PFLOTRAN properly terminates execution.
+\subsubsection{Example}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item [CHECKPOINT] checkpoint\_frequency
 \end{deflist}
 \end{minipage}
@@ -565,10 +572,12 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \protect\hypertarget{target_stat}{}
 
 \subsection{Keyword: COMPUTE\_STATISTICS (STATISTICS)}
-
+\subsubsection{Description}
+COMPUTE\_STATISTICS enables the calculation statistical analysis of flow velocities during a simulation.  The average, maximum, minimum, and standard deviations velocities are computed.
+\subsubsection{Example}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item [COMPUTE\_STATISTICS, STATISTICS] \{compute\_statistics = .true.\}
 \end{deflist}
 \end{minipage}
@@ -579,10 +588,12 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \protect\hypertarget{target_cond}{}
 
 \subsection{Keyword: CONDITION (COND)}
-
+\subsubsection{Description}
+The CONDITION card specifies scalar or vector data sets to be associated with a given boundary or initial condition.  For instance, to specify a hydrostatic boundary condition, the use would specify a condition with a pressure associated with a point in space (i.e. datum) in space and a gradient, both vector quantities.  [Note that in the case of a hydrostatic boundary condition, the vertical gradient specified in the input deck must be 0. in order to enable the hydrostatic pressure calculation.  Otherwise, the specified vertical gradient overrides the hydrostatic pressure.]  Transient pressures, temperatures, concentrations, datums, gradients, etc. are specified using the 'FILE filename' combination for the name of the data set.
+\subsubsection{Example}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item [CONDITION (COND)] condition\_name
 \item [UNITS] ~
 \begin{deflist}{0000000000}
@@ -596,18 +607,18 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \end{deflist}
 
 \item[(., /, END)]
-  
+
 \item[CLASS] [flow, transport (tran)]
-  
+
 \item[CYCLIC] \{is\_cyclic = .true.\}
-  
+
 \item[INTERPOLATION] step linear
-  
+
 \item[TYPE] ~
 
 \begin{deflist}{0000000000}
     \item[PRESSURE (PRES, PRESS)]
-      [dirichlet, 
+      [dirichlet,
       neumann,
       mass,
       hydrostatic (hydro, hydrostat), static,
@@ -616,40 +627,40 @@ Initial and boundary conditions and material properties are assigned to spatial 
     \item[MASS\_RATE (MASS)]
       [mass]
     \item[FLUX]
-      [dirichlet, 
+      [dirichlet,
       neumann,
       mass,
       hydrostatic (hydro, hydrostat), static,
       zero\_gradient,
       seepage]
     \item[TEMPERATURE (TEMP)]
-      [dirichlet, 
+      [dirichlet,
       neumann,
       mass,
       hydrostatic (hydro, hydrostat), static,
       zero\_gradient,
       seepage]
     \item[CONCENTRATION (CONC)]
-      [dirichlet, 
+      [dirichlet,
       neumann,
       mass,
       hydrostatic (hydro, hydrostat), static,
       zero\_gradient,
       seepage]
     \item[ENTHALPY (H)]
-      [dirichlet, 
+      [dirichlet,
       neumann,
       mass,
       hydrostatic (hydro, hydrostat), static,
       zero\_gradient,
       seepage]
-      
+
   \item[(., /, END)]
 \end{deflist}
 \item[TIME] ~
-  
+
 \item[IPHASE] ~
-  
+
 \item[DATUM (DATM)] ~
  \item  [[Continued]]
 \end{deflist}
@@ -659,7 +670,7 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \subsection{Keyword: CONDITION (COND) [Continued]}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[GRADIENT (GRAD)] ~
 \item    PRESSURE (PRES, PRESS)
 \item    FLUX
@@ -684,7 +695,7 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \subsection{Keyword: DATASET}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[DATASET] [permx, permy, permz] [permx\_filename, permy\_filename, permz\_filename]
 \end{deflist}
 \end{minipage}
@@ -697,7 +708,7 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \subsection{Keyword: DEBUG}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[DEBUG]
 \item  PRINT\_SOLUTION (VECVIEW\_SOLUTION, VIEW\_SOLUTION)
 \item  PRINT\_RESIDUAL (VECVIEW\_RESIDUAL,VIEW\_RESIDUAL)
@@ -718,7 +729,7 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \subsection{Keyword: DIFF}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[DIFF] difaq delhaq
 \end{deflist}
 \end{minipage}
@@ -731,7 +742,7 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \subsection{Keyword: DTST}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[DTST] $\Delta t$\_min
 \item $t_1$ \ $\Delta t_1$
 \item $t_2$ \ $\Delta t_2$
@@ -748,10 +759,10 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \subsection{Keyword: DXYZ}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[DXYZ] [STRUCTURED\_GRID, AMR\_GRID]
-\item dx0 
-\item dy0 
+\item dx0
+\item dy0
 \item dz0
 \end{deflist}
 \end{minipage}
@@ -764,8 +775,8 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \subsection{Keyword: FLUID\_PROPERTIES (FLUID\_PROPERTY)}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[FLUID\_PROPERTIES (FLUID\_PROPERTY)] 
+\begin{deflist}{0000000000}
+\item[FLUID\_PROPERTIES (FLUID\_PROPERTY)]
 \item diff\_base
 \item diff\_exp
 \item[(., /, END)]
@@ -780,7 +791,7 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \subsection{Keyword: GRAVITY (GRAV)}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[GRAVITY (GRAV)] gravity
 \end{deflist}
 \end{minipage}
@@ -793,9 +804,9 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \subsection{Keyword: GRID}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[GRID]
-\item TYPE 
+\item TYPE
 \begin{deflist}{00000}
 \item STRUCTURED
 \begin{deflist}{00000}
@@ -823,7 +834,7 @@ Initial and boundary conditions and material properties are assigned to spatial 
 
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item BOUNDS
 \begin{deflist}{00000}
 \item For CARTESIAN coordinates input:
@@ -876,7 +887,7 @@ END
 \subsection{Keyword: HDF5}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[HDF5] [VELO, FLUX]
 \end{deflist}
 \end{minipage}
@@ -889,7 +900,7 @@ END
 \subsection{Keyword: IMOD}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[IMOD] mod
 \end{deflist}
 \end{minipage}
@@ -902,7 +913,7 @@ END
 \subsection{Keyword: INVERT\_Z (INVERTZ)}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[INVERT\_Z (INVERTZ)] \{invert\_z\_axis = .true.\}
 \end{deflist}
 \end{minipage}
@@ -915,7 +926,7 @@ END
 \subsection{Keyword: INITIAL\_CONDITION}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[INITIAL\_CONDITION]
 \item REGION region\_name
 \item FLOW\_CONDITION condition\_name
@@ -934,7 +945,7 @@ END
 \subsection{Keyword: LINEAR\_SOLVER}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[LINEAR\_SOLVER]
 \item TRAN, TRANSPORT (tran\_solver) / DEFAULT (flow\_solver)
 \item SOLVER\_TYPE (SOLVER, KRYLOV\_TYPE, KRYLOV, KSP, KSP\_TYPE)
@@ -967,8 +978,8 @@ END
 \subsection{Keyword: MATERIAL (MATERIALS, PHIK)}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[MATERIAL (MATERIALS, PHIK)] 
+\begin{deflist}{0000000000}
+\item[MATERIAL (MATERIALS, PHIK)]
 \item name id \ icap \ ithrm \ por \ tor \ permx \ permy \ permz \ permpwr
 \item[(., /, END)]
 \end{deflist}
@@ -982,7 +993,7 @@ END
 \subsection{Keyword: MODE}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[MODE] [RICHARDS\_LITE, RICHARDS, MPH]
 \end{deflist}
 \end{minipage}
@@ -995,7 +1006,7 @@ END
 \subsection{Keyword: NEWTON\_SOLVER}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[NEWTON\_SOLVER]
 \item  TRAN, TRANSPORT (tran\_solver) / DEFAULT (flow\_solver)
 \item  INEXACT\_NEWTON
@@ -1023,7 +1034,7 @@ END
 \subsection{Keyword: NUMERICAL\_JACOBIAN}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[NUMERICAL\_JACOBIAN] \{numerical\_derivatives = .true.\}
 \end{deflist}
 \end{minipage}
@@ -1036,7 +1047,7 @@ END
 \subsection{Keyword: ORIGIN (ORIG)}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[ORIGIN (ORIG)] X\_DIRECTION Y\_DIRECTION Z\_DIRECTION
 \end{deflist}
 \end{minipage}
@@ -1049,7 +1060,7 @@ END
 \subsection{Keyword: OVERWRITE\_RESTART\_TRANSPORT}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[OVERWRITE\_RESTART\_TRANSPORT] \{overwrite\_restart\_transport = .true.\}
 \end{deflist}
 \end{minipage}
@@ -1062,7 +1073,7 @@ END
 \subsection{Keyword: REGION}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[REGION] region\_name
 \item  BLOCK i1 i2 j1 j2 k1 k2
 \item  COORDINATE x-coordinate y-coordinate z-coordinate
@@ -1081,7 +1092,7 @@ END
 \subsection{Keyword: RESTART}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[RESTART] restart\_file restart\_time
 \end{deflist}
 \end{minipage}
@@ -1094,7 +1105,7 @@ END
 \subsection{Keyword: RICH}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[RICH] pref
 \end{deflist}
 \end{minipage}
@@ -1107,7 +1118,7 @@ END
 \subsection{Keyword: SATURATION\_FUNCTION (SATURATION\_FUNCTIONS, PCKR)}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[SATURATION\_FUNCTION (SATURATION\_FUNCTIONS, PCKR)]
 \item id \ icaptype \ [(Sr[np],np=1,nphase), Sr] \ pckrm \ alpha \ pcwmax \ pbetac \ pwrprm
 \item[(., /, END)]
@@ -1122,7 +1133,7 @@ END
 \subsection{Keyword: SOURCE\_SINK}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[SOURCE\_SINK]
 \item  REGION region\_name
 \item  CONDITION condition\_name
@@ -1140,7 +1151,7 @@ END
 \subsection{Keyword: STRATIGRAPHY (STRATA)}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[STRATIGRAPHY (STRATA)]
 \item  REGION region\_name
 \item  MATERIAL material\_name
@@ -1157,7 +1168,7 @@ END
 \subsection{Keyword: TECP}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[TECP] [VELO, FLUX]
 \end{deflist}
 \end{minipage}
@@ -1170,7 +1181,7 @@ END
 \subsection{Keyword: THRM (THERMAL\_PROPERTY, THERMAL\_PROPERTIES)}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[THRM (THERMAL\_PROPERTY, THERMAL\_PROPERTIES)]
 \item id \ rock\_density \ spec\_heat \ therm\_cond\_dry \ therm\_cond\_wet \ tort\_bin\_diff \ vap\_air\_diff\_coef \ exp\_binary\_diff
 \item[(., /, END)]
@@ -1185,7 +1196,7 @@ END
 \subsection{Keyword: TIME}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[TIME] [s, m, h, d, mo, y] [every \#]
 \item t1, t2, t3, \ldots
 \end{deflist}
@@ -1199,7 +1210,7 @@ END
 \subsection{Keyword: TIMESTEPPER}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[TIMESTEPPER]
 \item  NUM\_STEPS\_AFTER\_TS\_CUT [5]
 \item  MAX\_STEPS [999999]
@@ -1221,7 +1232,7 @@ END
 \subsection{Keyword: TOLR}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[TOLR] steps  \  iaccel \ newtmx \ icutmx  \  dpmx  \ dtmpmx  \ dcmx  \  dsmx
 \end{deflist}
 \end{minipage}
@@ -1239,7 +1250,7 @@ TOLR   10000       6     16      16     5.e-3     1.     0.01    0.025
 \subsection{Keyword: TRAN}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[TRAN] ntrandof
 \end{deflist}
 \end{minipage}
@@ -1252,7 +1263,7 @@ TOLR   10000       6     16      16     5.e-3     1.     0.01    0.025
 \subsection{Keyword: UNIFORM\_VELOCITY}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[UNIFORM\_VELOCITY] vlx vly vlz
 \end{deflist}
 \end{minipage}
@@ -1265,7 +1276,7 @@ TOLR   10000       6     16      16     5.e-3     1.     0.01    0.025
 \subsection{Keyword: USE\_TOUCH\_OPTIONS}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[USE\_TOUCH\_OPTIONS] \{use\_touch\_options = .true.\}
 \end{deflist}
 \end{minipage}
@@ -1278,7 +1289,7 @@ TOLR   10000       6     16      16     5.e-3     1.     0.01    0.025
 \subsection{Keyword: WALLCLOCK\_STOP}
 \shadowbox{
 \begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
+\begin{deflist}{0000000000}
 \item[WALLCLOCK\_STOP] wallclock\_stop\_time
 \end{deflist}
 \end{minipage}
@@ -1299,7 +1310,7 @@ TOLR   10000       6     16      16     5.e-3     1.     0.01    0.025
 
 %========================================================================
 
-%TOLR nstepmax iaccel newton\_max icut\_max dpmxe dtmpmxe dcmxe dsmxe 
+%TOLR nstepmax iaccel newton\_max icut\_max dpmxe dtmpmxe dcmxe dsmxe
 
 %========================================================================
 
@@ -1401,7 +1412,7 @@ SATURATION_FUNCTIONS
 : van Genuchten
 :id itype swir   m      alpha     pcwmax betac pwr
  1  1     0.1600 0.3391 7.2727d-4 1.e8   0.d0  1.d0
- 2  1     0.1299 0.7479 1.4319d-4 1.e8   0.d0  1.d0 
+ 2  1     0.1299 0.7479 1.4319d-4 1.e8   0.d0  1.d0
 END
 
 THERMAL_PROPERTIES
@@ -1472,7 +1483,7 @@ END
 
 REGION Plume_Source
 FILE input_68_125_20_Scope3.h5
-:BLOCK 60 62 70 72 15 17 
+:BLOCK 60 62 70 72 15 17
 END
 
 REGION 399-1-1
@@ -1519,43 +1530,43 @@ REGION ifc
 COORDINATE 979.57 1302.39 100.0
 END
 
-BREAKTHROUGH 
+BREAKTHROUGH
 REGION 399-1-1
 END
 
-BREAKTHROUGH 
+BREAKTHROUGH
 REGION 399-1-2
 END
 
-BREAKTHROUGH 
+BREAKTHROUGH
 REGION 399-2-1
 END
 
-BREAKTHROUGH 
+BREAKTHROUGH
 REGION 399-2-2
 END
 
-BREAKTHROUGH 
+BREAKTHROUGH
 REGION 399-3-9
 END
 
-BREAKTHROUGH 
+BREAKTHROUGH
 REGION 399-3-12
 END
 
-BREAKTHROUGH 
+BREAKTHROUGH
 REGION 399-4-1
 END
 
-BREAKTHROUGH 
+BREAKTHROUGH
 REGION 399-4-9
 END
 
-BREAKTHROUGH 
+BREAKTHROUGH
 REGION 399-5-1
 END
 
-BREAKTHROUGH 
+BREAKTHROUGH
 REGION ifc
 VELOCITY
 END
@@ -1575,7 +1586,7 @@ GRADIENT
 PRESSURE 1.9538819e-004 2.8407287e-004 0.0000000e+000
 END
 PRESSURE 101325.d0
-TEMPERATURE 25.d0 
+TEMPERATURE 25.d0
 CONCENTRATION 1.d-6
 END
 
@@ -1594,8 +1605,8 @@ PRESSURE file river.gradient_adj
 :PRESSURE 0.d0 0.00027389 0.d0
 END
 PRESSURE 101325.d0
-TEMPERATURE 25.d0 
-CONCENTRATION 1.d-6 
+TEMPERATURE 25.d0
+CONCENTRATION 1.d-6
 END
 
 CONDITION west
@@ -1613,8 +1624,8 @@ PRESSURE file well_data.gradient
 :PRESSURE -7.8414067e-004 3.4105428e-004 0.0000000e+000
 END
 PRESSURE 101325.d0
-TEMPERATURE 25.d0 
-CONCENTRATION 1.d-6 
+TEMPERATURE 25.d0
+CONCENTRATION 1.d-6
 END
 
 CONDITION north
@@ -1632,8 +1643,8 @@ PRESSURE file north.gradient
 :PRESSURE -4.09472e-05 0. 0.
 END
 PRESSURE 101325.d0
-TEMPERATURE 25.d0 
-CONCENTRATION 1.d-6 
+TEMPERATURE 25.d0
+CONCENTRATION 1.d-6
 END
 
 CONDITION south
@@ -1651,8 +1662,8 @@ PRESSURE file south.gradient
 :PRESSURE 8.34319e-05 0. 0.
 END
 PRESSURE 101325.d0
-TEMPERATURE 25.d0 
-CONCENTRATION 1.d-6 
+TEMPERATURE 25.d0
+CONCENTRATION 1.d-6
 END
 
 CONDITION recharge
@@ -1664,8 +1675,8 @@ CONCENTRATION dirichlet
 END
 FLUX file recharge.txt
 :FLUX 1.756d-9
-TEMPERATURE 25.d0 
-CONCENTRATION 1.d-6 
+TEMPERATURE 25.d0
+CONCENTRATION 1.d-6
 END
 
 CONDITION plume
@@ -1685,8 +1696,8 @@ CONCENTRATION dirichlet
 END
 FLUX file north_pond_west_trench.txt
 :FLUX  4.500d-5
-TEMPERATURE 25.d0 
-CONCENTRATION 1.d-6 
+TEMPERATURE 25.d0
+CONCENTRATION 1.d-6
 END
 
 CONDITION north_pond_east_trench
@@ -1698,13 +1709,13 @@ CONCENTRATION dirichlet
 END
 FLUX file north_pond_east_trench.txt
 :FLUX 0.d0
-TEMPERATURE 25.d0 
-CONCENTRATION 1.d-6 
+TEMPERATURE 25.d0
+CONCENTRATION 1.d-6
 END
 
 CONDITION river_c
 CLASS transport
-CONCENTRATION 1.d-40 
+CONCENTRATION 1.d-40
 END
 
 CONDITION west_c
@@ -1804,11 +1815,11 @@ DATASET permz perm_inv.dat
 This section gives an overview in alphabetical order of the objects and their data structures used in PFLOTRAN. The upper most object is {\bf Simulation} followed by {\bf Realization}, followed by {\bf Level}, {\bf Patch} and {\bf Grid}.
 
 \begin{longtable}{ll}%[h]%\centering
-%\caption{PFLOTRAN Keywords}\label{flkeywd} 
+%\caption{PFLOTRAN Keywords}\label{flkeywd}
 
 %\vspace{4mm}
 
-%\begin{tabular}{lll} 
+%\begin{tabular}{lll}
 \toprule[1.5pt]
 \multicolumn{1}{c}{Object} & \multicolumn{1}{c}{Description}\\
 \midrule[1pt]
@@ -1835,7 +1846,7 @@ This section gives an overview in alphabetical order of the objects and their da
 \hyperlink{target_obj_structured_grid}{Structured\_grid} & \\
 \hyperlink{target_obj_waypoint}{Waypoint} & \\
 \bottomrule[1.5pt]
-%\end{tabular} 
+%\end{tabular}
 \end{longtable}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1853,7 +1864,7 @@ This section gives an overview in alphabetical order of the objects and their da
     type(region_type), pointer :: region
     type(breakthrough_type), pointer :: next
   end type breakthrough_type
-  
+
   type, public :: breakthrough_list_type
     PetscInt :: num_breakthroughs
     type(breakthrough_type), pointer :: first
@@ -1879,7 +1890,7 @@ This section gives an overview in alphabetical order of the objects and their da
     PetscInt :: cur_time_index
     PetscInt :: max_time_index
   end type condition_dataset_type
-  
+
   type, public :: condition_type
     PetscInt :: id                    ! id from which condition can be referenced
     character(len=MAXWORDLENGTH) :: class ! character string describing class of
@@ -1898,13 +1909,13 @@ This section gives an overview in alphabetical order of the objects and their da
     type(sub_condition_type), pointer :: concentration
     type(sub_condition_type), pointer :: enthalpy
     type(sub_condition_ptr_type), pointer :: sub_condition_ptr(:)
-    type(condition_type), pointer :: next ! pointer to next condition_type for 
+    type(condition_type), pointer :: next ! pointer to next condition_type for
                                             linked-lists
   end type condition_type
-  
+
   type, public :: sub_condition_type
     PetscInt :: itype                  ! integer describing type of condition
-    character(len=MAXWORDLENGTH) :: ctype ! character string describing type of 
+    character(len=MAXWORDLENGTH) :: ctype ! character string describing type of
                                             condition
     character(len=MAXWORDLENGTH) :: units      ! units
 
@@ -1913,20 +1924,20 @@ This section gives an overview in alphabetical order of the objects and their da
     type(condition_dataset_type) :: dataset
 
   end type sub_condition_type
-  
+
   type, public :: sub_condition_ptr_type
     type(sub_condition_type), pointer :: ptr
   end type sub_condition_ptr_type
-    
+
   type, public :: condition_ptr_type
     type(condition_type), pointer :: ptr
   end type condition_ptr_type
-  
+
   type, public :: condition_list_type
     PetscInt :: num_conditions
     type(condition_type), pointer :: first
     type(condition_type), pointer :: last
-    type(condition_ptr_type), pointer :: array(:)    
+    type(condition_ptr_type), pointer :: array(:)
   end type condition_list_type
 \end{verbatim}
 
@@ -1943,12 +1954,12 @@ This section gives an overview in alphabetical order of the objects and their da
     PetscInt :: num_connections
     PetscInt, pointer :: id_up(:)      ! list of ids of upwind cells
     PetscInt, pointer :: id_dn(:)      ! list of ids of downwind cells
-    PetscReal, pointer :: dist(:,:)    ! list of distance vectors, 
+    PetscReal, pointer :: dist(:,:)    ! list of distance vectors,
                                          size(-1:3,num_connections) where
                                       !   -1 = fraction upwind
-                                      !   0 = magnitude of distance 
+                                      !   0 = magnitude of distance
                                       !   1-3 = components of unit vector
-    PetscReal, pointer :: area(:)        ! list of areas of faces normal to 
+    PetscReal, pointer :: area(:)        ! list of areas of faces normal to
                                            distance vectors
 !    PetscReal, pointer :: velocity(:,:)  ! velocity scalars for each phase
     type(connection_set_type), pointer :: next
@@ -1957,10 +1968,10 @@ This section gives an overview in alphabetical order of the objects and their da
 
   ! pointer data structure required for making an array of region pointers in F90
   type, public :: connection_set_ptr_type
-    type(connection_set_type), pointer :: ptr           ! pointer to the 
+    type(connection_set_type), pointer :: ptr           ! pointer to the
                                                           connection_set_type
-  end type connection_set_ptr_type 
-  
+  end type connection_set_ptr_type
+
   type, public :: connection_set_list_type
     PetscInt :: num_connection_objects
     type(connection_set_type), pointer :: first
@@ -1979,9 +1990,9 @@ This section gives an overview in alphabetical order of the objects and their da
     PetscInt :: id                                       ! id of coupler
     PetscInt :: itype                                    ! integer defining type
     character(len=MAXWORDLENGTH) :: ctype        ! character string defining type
-    character(len=MAXWORDLENGTH) :: condition_name      ! character string 
+    character(len=MAXWORDLENGTH) :: condition_name      ! character string
                                          defining name of condition to be applied
-    character(len=MAXWORDLENGTH) :: region_name         ! character string 
+    character(len=MAXWORDLENGTH) :: region_name         ! character string
                                          defining name of region to be applied
     PetscInt :: icondition          ! id of condition in condition array/list
     PetscInt :: iregion             ! id of region in region array/list
@@ -1990,22 +2001,22 @@ This section gives an overview in alphabetical order of the objects and their da
     PetscReal, pointer :: aux_real_var(:,:) ! auxilliary array for real values
     type(condition_type), pointer :: condition          ! pointer to condition in
                                                           condition array/list
-    type(region_type), pointer :: region                ! pointer to region in 
+    type(region_type), pointer :: region                ! pointer to region in
                                                           region array/list
     type(connection_type), pointer :: connection        ! pointer to an array/list
                                                           of connections
     type(coupler_type), pointer :: next                 ! pointer to next coupler
   end type coupler_type
-  
+
   type, public :: coupler_ptr_type
     type(coupler_type), pointer :: ptr
   end type coupler_ptr_type
-    
+
   type, public :: coupler_list_type
     PetscInt :: num_couplers
     type(coupler_type), pointer :: first
     type(coupler_type), pointer :: last
-    type(coupler_ptr_type), pointer :: array(:)    
+    type(coupler_ptr_type), pointer :: array(:)
   end type coupler_list_type
 \end{verbatim}
 
@@ -2031,8 +2042,8 @@ This section gives an overview in alphabetical order of the objects and their da
 \subsection{Field}
 
 \begin{verbatim}
-  type, public :: field_type 
-    
+  type, public :: field_type
+
 !geh material id
     ! 1 degree of freedom
     Vec :: porosity0, porosity_loc
@@ -2043,19 +2054,19 @@ This section gives an overview in alphabetical order of the objects and their da
 
     Vec :: perm_xx_loc, perm_yy_loc, perm_zz_loc
     Vec :: perm0_xx, perm0_yy, perm0_zz, perm_pow
-    
+
     Vec :: saturation_loc, density_loc
 
-    Vec :: volume 
-    
+    Vec :: volume
+
     ! residual vectors
-    Vec :: flow_r          
-    Vec :: tran_r          
-      
+    Vec :: flow_r
+    Vec :: tran_r
+
     ! Solution vectors
     Vec :: flow_xx, flow_xx_loc, flow_dxx, flow_yy, flow_accum
     Vec :: tran_xx, tran_xx_loc, tran_dxx, tran_yy, tran_accum
-   
+
   end type field_type
 \end{verbatim}
 
@@ -2066,25 +2077,25 @@ This section gives an overview in alphabetical order of the objects and their da
 
 \begin{verbatim}
   type, public :: grid_type
-  
+
     character(len=MAXWORDLENGTH) :: ctype
     PetscInt :: itype  ! type of grid (e.g. structured, unstructured, etc.)
-    
+
     PetscInt :: nmax   ! Total number of nodes in global domain
     PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
     PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
-   
-    !nL2G :  not collective, local processor: local  =>  ghosted local  
-    !nG2L :  not collective, local processor:  ghosted local => local  
-    !nG2N :  collective,  ghosted local => global index , used for   
-    !                     matsetvaluesblocked ( not matsetvaluesblockedlocal)  
-    !nL2A :   collective, local => natural index, used for initialization   
-    !                              and source/sink setup  
+
+    !nL2G :  not collective, local processor: local  =>  ghosted local
+    !nG2L :  not collective, local processor:  ghosted local => local
+    !nG2N :  collective,  ghosted local => global index , used for
+    !                     matsetvaluesblocked ( not matsetvaluesblockedlocal)
+    !nL2A :   collective, local => natural index, used for initialization
+    !                              and source/sink setup
     PetscInt, pointer :: nL2G(:), nG2L(:), nL2A(:)
     PetscInt, pointer :: nG2A(:)
-    
+
     PetscReal, pointer :: x(:), y(:), z(:)
-    
+
     PetscReal :: x_min, x_max, y_min, y_max, z_min, z_max
 
     PetscInt, pointer :: hash(:,:,:)
@@ -2092,7 +2103,7 @@ This section gives an overview in alphabetical order of the objects and their da
 
     type(structured_grid_type), pointer :: structured_grid
     type(unstructured_grid_type), pointer :: unstructured_grid
-    
+
     type(connection_list_type), pointer :: internal_connection_list
 
   end type grid_type
@@ -2104,8 +2115,8 @@ This section gives an overview in alphabetical order of the objects and their da
 \subsection{Level}
 
 \begin{verbatim}
-  type, public :: level_type 
-    
+  type, public :: level_type
+
     PetscInt :: id
     type(patch_list_type), pointer :: patch_list
     type(level_type), pointer :: next
@@ -2115,7 +2126,7 @@ This section gives an overview in alphabetical order of the objects and their da
   ! pointer data structure required for making an array of level pointers in F90
   type, public :: level_ptr_type
     type(level_type), pointer :: ptr           ! pointer to the level_type
-  end type level_ptr_type 
+  end type level_ptr_type
 
   type, public :: level_list_type
     PetscInt :: num_level_objects
@@ -2131,12 +2142,12 @@ This section gives an overview in alphabetical order of the objects and their da
 \subsection{Logging}
 
 \begin{verbatim}
-  type, public :: logging_type 
-  
+  type, public :: logging_type
+
     PetscInt :: stage(10)
-    
+
     PetscInt :: class_pflotran
-    
+
     PetscEvent :: event_init
     PetscEvent :: event_setup
 
@@ -2156,7 +2167,7 @@ This section gives an overview in alphabetical order of the objects and their da
     PetscEvent :: event_read_int_array_hdf5
     PetscEvent :: event_write_real_array_hdf5
     PetscEvent :: event_write_int_array_hdf5
-    PetscEvent :: event_read_array_hdf5    
+    PetscEvent :: event_read_array_hdf5
     PetscEvent :: event_write_struct_dataset_hdf5
     PetscEvent :: event_region_read_hdf5
     PetscEvent :: event_region_read_ascii
@@ -2172,7 +2183,7 @@ This section gives an overview in alphabetical order of the objects and their da
     PetscEvent :: event_output_vec_tecplot
     PetscEvent :: event_output_breakthrough
     PetscEvent :: event_output_coordinates_hdf5
-    
+
   end type logging_type
 \end{verbatim}
 
@@ -2193,11 +2204,11 @@ This section gives an overview in alphabetical order of the objects and their da
     PetscInt :: icap
     type(material_type), pointer :: next
   end type material_type
-  
+
   type, public :: material_ptr_type
     type(material_type), pointer :: ptr
   end type material_ptr_type
-  
+
   type, public :: thermal_property_type
     PetscInt :: id
     PetscReal :: rock_density
@@ -2212,7 +2223,7 @@ This section gives an overview in alphabetical order of the objects and their da
     PetscReal :: enh_binary_diff_coef
     type(thermal_property_type), pointer :: next
   end type thermal_property_type
-  
+
   type, public :: saturation_function_type
     PetscInt :: id
     character(len=MAXWORDLENGTH) :: saturation_function_ctype
@@ -2226,13 +2237,13 @@ This section gives an overview in alphabetical order of the objects and their da
     PetscReal :: pcwmax
     PetscReal :: betac
     PetscReal :: power
-    PetscInt :: ihist 
+    PetscInt :: ihist
     PetscReal :: BC_pressure_low
     PetscReal :: BC_pressure_high
     PetscReal :: BC_spline_coefficients(4)
     type(saturation_function_type), pointer :: next
   end type saturation_function_type
-  
+
   type, public :: saturation_function_ptr_type
     type(saturation_function_type), pointer :: ptr
   end type saturation_function_ptr_type
@@ -2244,49 +2255,49 @@ This section gives an overview in alphabetical order of the objects and their da
 \subsection{Option}
 
 \begin{verbatim}
-  type, public :: option_type 
-  
+  type, public :: option_type
+
     PetscMPIInt :: myrank                    ! rank in PETSC_COMM_WORLD
     PetscMPIInt :: commsize                  ! size of PETSC_COMM_WORLD
-  
+
     ! defines the mode (e.g. mph, richards, vadose, etc.
     character(len=MAXWORDLENGTH) :: flowmode
     PetscInt :: iflowmode
     character(len=MAXWORDLENGTH) :: tranmode
     PetscInt :: itranmode
-  
+
     PetscInt :: nphase
     PetscInt :: nflowdof
     PetscInt :: nspec
 
     PetscInt :: ntrandof
     PetscInt :: ncomp
-    
+
     PetscReal :: uniform_velocity(3)
 
     ! Program options
     PetscTruth :: use_matrix_free  ! If true, do not form the Jacobian.
-    
+
     PetscInt :: imod
-    
+
     PetscTruth :: use_isoth
-    
+
     character(len=MAXWORDLENGTH) :: generalized_grid
     logical :: use_generalized_grid
-      
+
     PetscReal :: flow_time, tran_time, time  ! The time elapsed in the simulation.
     PetscReal :: flow_dt, tran_dt, dt ! The size of the time step.
-  
+
 !    PetscReal, pointer :: tplot(:)
     PetscReal, pointer :: tfac(:)
       ! An array of multiplicative factors that specify how to increase time step.
-      
+
     PetscInt :: iblkfmt ! blocked format
-  
+
       ! Basically our target number of newton iterations per time step.
     PetscReal :: dpmxe,dtmpmxe,dsmxe,dcmxe !maximum allowed changes in field vars.
     PetscReal :: dpmax,dtmpmax,dsmax,dcmax
-    
+
     PetscReal :: scale
     PetscReal, pointer :: rock_density(:),cpr(:),dencpr(:),ckdry(:),ckwet(:), &
                           tau(:),cdiff(:),cexp(:)
@@ -2297,12 +2308,12 @@ This section gives an overview in alphabetical order of the objects and their da
     PetscReal :: m_nacl
     PetscReal :: difaq, delhaq, gravity(3), fmwh2o= 18.0153D0, fmwa=28.96D0, &
               fmwco2=44.0098D0, eqkair, ret=1.d0, fc=1.d0
-    
+
     PetscInt :: ideriv
     PetscReal :: tref,pref
-    
+
     PetscReal :: disp
-    
+
 !   table lookup
     PetscInt :: itable=0
 
@@ -2311,38 +2322,38 @@ This section gives an overview in alphabetical order of the objects and their da
     character(len=MAXWORDLENGTH) :: restart_file
     PetscTruth :: checkpoint_flag
     PetscInt :: checkpoint_frequency
-    
+
     PetscLogDouble :: start_time
     PetscTruth :: wallclock_stop_flag
     PetscLogDouble :: wallclock_stop_time
-    
+
     PetscInt :: log_stage(10)
-    
+
     logical :: numerical_derivatives
     logical :: compute_statistics
     logical :: use_touch_options
     logical :: overwrite_restart_transport
     PetscInt :: io_handshake_buffer_size
-    
+
     character(len=MAXWORDLENGTH) :: permx_filename
     character(len=MAXWORDLENGTH) :: permy_filename
     character(len=MAXWORDLENGTH) :: permz_filename
-    
+
   end type option_type
-  
+
   type, public :: output_option_type
 
     character(len=2) :: tunit
     PetscReal :: tconv
-  
+
     logical :: print_hdf5
     logical :: print_hdf5_velocities
     logical :: print_hdf5_flux_velocities
 
-    logical :: print_tecplot 
+    logical :: print_tecplot
     logical :: print_tecplot_velocities
     logical :: print_tecplot_flux_velocities
-    
+
     PetscInt :: plot_number
     character(len=MAXWORDLENGTH) :: plot_name
 
@@ -2355,16 +2366,16 @@ This section gives an overview in alphabetical order of the objects and their da
 \subsection{Patch}
 
 \begin{verbatim}
-  type, public :: patch_type 
-    
+  type, public :: patch_type
+
     PetscInt :: id
-    
+
     ! thiese arrays will be used by all modes, mode-specific arrays should
     ! go in the auxilliary data stucture for that mode
     PetscInt, pointer :: imat(:)
     PetscReal, pointer :: internal_velocities(:,:)
     PetscReal, pointer :: boundary_velocities(:,:)
-    
+
     type(grid_type), pointer :: grid
 
     type(region_list_type), pointer :: regions
@@ -2376,12 +2387,12 @@ This section gives an overview in alphabetical order of the objects and their da
     type(coupler_list_type), pointer :: flow_boundary_conditions
     type(coupler_list_type), pointer :: flow_initial_conditions
     type(coupler_list_type), pointer :: flow_source_sinks
-    
+
     type(strata_list_type), pointer :: strata
     type(breakthrough_list_type), pointer :: breakthrough
-    
+
     type(auxilliary_type) :: aux
-    
+
     type(patch_type), pointer :: next
 
   end type patch_type
@@ -2389,7 +2400,7 @@ This section gives an overview in alphabetical order of the objects and their da
   ! pointer data structure required for making an array of patch pointers in F90
   type, public :: patch_ptr_type
     type(patch_type), pointer :: ptr           ! pointer to the patch_type
-  end type patch_ptr_type 
+  end type patch_ptr_type
 
   type, public :: patch_list_type
     PetscInt :: num_patch_objects
@@ -2419,15 +2430,15 @@ This section gives an overview in alphabetical order of the objects and their da
     type(region_list_type), pointer :: regions
     type(condition_list_type), pointer :: flow_conditions
     type(condition_list_type), pointer :: transport_conditions
-    
+
     type(material_type), pointer :: materials
     type(material_ptr_type), pointer :: material_array(:)
     type(thermal_property_type), pointer :: thermal_properties
     type(saturation_function_type), pointer :: saturation_functions
     type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
-    
+
     type(waypoint_list_type), pointer :: waypoints
-    
+
   end type realization_type
 \end{verbatim}
 
@@ -2438,10 +2449,10 @@ This section gives an overview in alphabetical order of the objects and their da
 
 \begin{verbatim}
   type, public :: block_type
-    PetscInt :: i1,i2,j1,j2,k1,k2    
+    PetscInt :: i1,i2,j1,j2,k1,k2
     type(block_type), pointer :: next
   end type block_type
- 
+
   type, public :: region_type
     PetscInt :: id
     character(len=MAXWORDLENGTH) :: name
@@ -2454,11 +2465,11 @@ This section gives an overview in alphabetical order of the objects and their da
     PetscInt, pointer :: faces(:)
     type(region_type), pointer :: next
   end type region_type
-  
+
   type, public :: region_ptr_type
     type(region_type), pointer :: ptr
   end type region_ptr_type
-  
+
   type, public :: region_list_type
     PetscInt :: num_regions
     type(region_type), pointer :: first
@@ -2500,7 +2511,7 @@ This section gives an overview in alphabetical order of the objects and their da
     PetscReal, pointer :: xmol(:)
     PetscReal, pointer :: diff(:)
   end type richards_auxvar_type
-  
+
   type, public :: richards_type
     PetscInt :: n_zero_rows
     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
@@ -2536,7 +2547,7 @@ This section gives an overview in alphabetical order of the objects and their da
     PetscReal :: dden_dp
     PetscReal :: dkvr_dp
   end type richards_lite_auxvar_type
-  
+
   type, public :: richards_lite_type
     PetscInt :: n_zero_rows
     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
@@ -2575,10 +2586,10 @@ This section gives an overview in alphabetical order of the objects and their da
     PetscReal :: linear_rtol       ! relative tolerance
     PetscReal :: linear_dtol       ! divergence tolerance
     PetscInt :: linear_maxit     ! maximum number of iterations
-    
+
     PetscReal :: newton_atol       ! absolute tolerance
     PetscReal :: newton_rtol       ! relative tolerance
-    PetscReal :: newton_stol       ! relative tolerance (relative to previous 
+    PetscReal :: newton_stol       ! relative tolerance (relative to previous
                                      iteration)
     PetscReal :: newton_dtol       ! divergence tolerance
     PetscReal :: newton_inf_res_tol    ! infinity tolerance for residual
@@ -2597,14 +2608,14 @@ This section gives an overview in alphabetical order of the objects and their da
     PCType  :: pc_type
     KSP   ::  ksp
     PC    ::  pc
-    
+
     PetscTruth :: inexact_newton
 
     PetscTruth :: print_convergence
     PetscTruth :: print_detailed_convergence
     PetscTruth :: check_infinity_norm
-    PetscTruth :: force_at_least_1_iteration    
-            
+    PetscTruth :: force_at_least_1_iteration
+
   end type solver_type
 \end{verbatim}
 
@@ -2615,24 +2626,24 @@ This section gives an overview in alphabetical order of the objects and their da
 
 \begin{verbatim}
   type, public :: stepper_type
-  
+
     PetscInt :: steps     ! The number of time-steps taken by the code.
     PetscInt :: nstepmax  ! Maximum number of timesteps taken by the code.
     PetscInt :: icut_max  ! Maximum number of timestep cuts within one time step.
     PetscInt :: ndtcmx    ! Steps needed after cutting to increase time step
     PetscInt :: newtcum   ! Total number of Newton steps taken.
-    PetscInt :: icutcum   ! Total number of cuts in the timestep taken.    
+    PetscInt :: icutcum   ! Total number of cuts in the timestep taken.
     PetscInt :: iaccel    ! Accelerator index
-    
+
     PetscReal :: dt_min
     PetscReal :: dt_max
-        
+
     type(solver_type), pointer :: solver
-    
+
     type(waypoint_type), pointer :: cur_waypoint
 
     type(convergence_context_type), pointer :: convergence_context
-    
+
   end type stepper_type
 \end{verbatim}
 
@@ -2645,28 +2656,28 @@ This section gives an overview in alphabetical order of the objects and their da
   type, public :: strata_type
     PetscInt :: id                                 ! id of strata
     logical :: active
-    character(len=MAXWORDLENGTH) :: material_name  ! character string defining 
+    character(len=MAXWORDLENGTH) :: material_name  ! character string defining
                                                    name of material to be applied
-    character(len=MAXWORDLENGTH) :: region_name    ! character string defining 
+    character(len=MAXWORDLENGTH) :: region_name    ! character string defining
                                                    name of region to be applied
     PetscInt :: imaterial                ! id of material in material array/list
     PetscInt :: iregion                      ! id of region in region array/list
-    type(material_type), pointer :: material       ! pointer to material in 
+    type(material_type), pointer :: material       ! pointer to material in
                                                      material array/list
-    type(region_type), pointer :: region           ! pointer to region in region 
+    type(region_type), pointer :: region           ! pointer to region in region
                                                      array/list
     type(strata_type), pointer :: next             ! pointer to next strata
   end type strata_type
-  
+
   type, public :: strata_ptr_type
     type(strata_type), pointer :: ptr
   end type strata_ptr_type
-    
+
   type, public :: strata_list_type
     PetscInt :: num_strata
     type(strata_type), pointer :: first
     type(strata_type), pointer :: last
-    type(strata_ptr_type), pointer :: array(:)    
+    type(strata_ptr_type), pointer :: array(:)
   end type strata_list_type
 \end{verbatim}
 
@@ -2683,7 +2694,7 @@ This section gives an overview in alphabetical order of the objects and their da
     PetscInt :: npx, npy, npz ! Processor partition in each direction.
     PetscInt :: nlx, nly, nlz ! Local grid dimension w/o ghost nodes.
     PetscInt :: ngx, ngy, ngz ! Local grid dimension with ghost nodes.
-    PetscInt :: nxs, nys, nzs 
+    PetscInt :: nxs, nys, nzs
       ! Global indices of non-ghosted corner (starting) of local domain.
     PetscInt :: ngxs, ngys, ngzs
       ! Global indices of ghosted starting corner of local domain.
@@ -2691,11 +2702,11 @@ This section gives an overview in alphabetical order of the objects and their da
       ! Global indices of non-ghosted/ghosted ending corner of local domain.
     PetscInt :: nlxy, nlxz, nlyz
     PetscInt :: ngxy, ngxz, ngyz
-    
+
     PetscInt :: istart, jstart, kstart, iend, jend, kend
       ! istart gives the local x-index of the non-ghosted starting (lower left)
-      ! corner. iend gives the local x-index of the non-ghosted ending 
-      ! corner. jstart, jend correspond to y-index, kstart, kend to z-index.    
+      ! corner. iend gives the local x-index of the non-ghosted ending
+      ! corner. jstart, jend correspond to y-index, kstart, kend to z-index.
 
     PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
     PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
@@ -2703,11 +2714,11 @@ This section gives an overview in alphabetical order of the objects and their da
     PetscReal :: origin(3)
 
     PetscReal, pointer :: dx0(:), dy0(:), dz0(:)
-    
+
     logical :: invert_z_axis
-    
+
     PetscReal, pointer :: dx(:),dy(:),dz(:),dxg(:),dyg(:),dzg(:) ! Grid spacings
-    
+
     PetscFortranAddr p_samr_patch ! pointer to a SAMRAI patch object
 
   end type structured_grid_type
@@ -2730,12 +2741,12 @@ This section gives an overview in alphabetical order of the objects and their da
     type(waypoint_type), pointer :: prev
     type(waypoint_type), pointer :: next
   end type waypoint_type
-  
+
   type, public :: waypoint_list_type
     PetscInt :: num_waypoints
     type(waypoint_type), pointer :: first
     type(waypoint_type), pointer :: last
-    type(waypoint_type), pointer :: array(:)    
+    type(waypoint_type), pointer :: array(:)
   end type waypoint_list_type
 \end{verbatim}
 
