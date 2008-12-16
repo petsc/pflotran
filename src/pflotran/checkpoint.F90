@@ -410,7 +410,7 @@ subroutine Restart(realization, &
   call PetscBagDestroy(bag, ierr)
   
 
-  if (option%nflowdof > 0 .and. option%nflowdof == header%nflowdof > 0) then
+  if (option%nflowdof > 0 .and. option%nflowdof == header%nflowdof) then
     call DiscretizationCreateVector(realization%discretization,ONEDOF, &
                                     global_vec,GLOBAL,option)
   endif
