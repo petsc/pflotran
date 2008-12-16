@@ -410,7 +410,7 @@ subroutine Restart(realization, &
   call PetscBagDestroy(bag, ierr)
   
 
-  if (option%nflowdof > 0 .and. header%nflowdof > 0) then
+  if (option%nflowdof > 0 .and. option%nflowdof == header%nflowdof > 0) then
     call DiscretizationCreateVector(realization%discretization,ONEDOF, &
                                     global_vec,GLOBAL,option)
   endif
@@ -451,7 +451,7 @@ subroutine Restart(realization, &
     
   endif
   
-  if (option%ntrandof > 0 .and. header%ntrandof > 0) then
+  if (option%ntrandof > 0 .and. option%ntrandof == header%ntrandof) then
     call VecLoadIntoVector(viewer,field%tran_xx,ierr)
     call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
                                      field%tran_xx_loc,NTRANDOF)

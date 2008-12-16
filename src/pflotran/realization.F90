@@ -465,7 +465,9 @@ subroutine RealizationProcessConditions(realization)
   
   type(realization_type) :: realization
   
-  call RealProcessTranConditions(realization)
+  if (realization%option%ntrandof > 0) then
+    call RealProcessTranConditions(realization)
+  endif
  
 end subroutine RealizationProcessConditions
 

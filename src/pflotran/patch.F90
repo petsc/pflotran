@@ -459,7 +459,7 @@ subroutine PatchInitAllCouplerAuxVars(patch,reaction,option)
   implicit none
   
   type(patch_type) :: patch
-  type(reaction_type) :: reaction
+  type(reaction_type), pointer :: reaction
   type(option_type) :: option
   
   PetscTruth :: force_update_flag = PETSC_TRUE
@@ -495,7 +495,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
   implicit none
   
   type(coupler_list_type), pointer :: coupler_list
-  type(reaction_type) :: reaction
+  type(reaction_type), pointer :: reaction
   type(option_type) :: option
   
   PetscInt :: num_connections

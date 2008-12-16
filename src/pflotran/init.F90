@@ -415,7 +415,9 @@ subroutine Init(simulation,filename)
   call RealizationProcessConditions(realization)
   call assignMaterialPropToRegions(realization)
   call RealizationInitAllCouplerAuxVars(realization)
-  call RealizationInitConstraints(realization)
+  if (option%ntrandof > 0) then
+    call RealizationInitConstraints(realization)
+  endif
   call RealizationPrintCouplers(realization)
 
   ! should we still support this
