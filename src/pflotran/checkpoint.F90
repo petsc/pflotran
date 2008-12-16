@@ -26,6 +26,8 @@ module Checkpoint_Header_module
     integer*8 :: tran_num_const_timesteps
     integer*8 :: tran_num_newton_iterations
     integer*8 :: plot_number
+    integer*8 :: nflowdof
+    integer*8 :: ntrandof
     integer*8 :: checkpoint_activity_coefs
   end type checkpoint_header_type
 end module Checkpoint_Header_module
@@ -157,7 +159,7 @@ subroutine Checkpoint(realization, &
   ! We manually specify the number of bytes required for the 
   ! checkpoint header, since sizeof() is not supported by some Fortran 
   ! compilers.  To be on the safe side, we assume an integer is 8 bytes.
-  bagsize = 144
+  bagsize = 160
   call PetscBagCreate(option%comm, bagsize, bag, ierr)
   call PetscBagGetData(bag, header, ierr); CHKERRQ(ierr)
 
@@ -165,6 +167,8 @@ subroutine Checkpoint(realization, &
   call PetscBagRegisterInt(bag,header%plot_number,output_option%plot_number, &
                            "plot_number","plot_number",ierr)
   ! FLOW
+  call PetscBagRegisterInt(bag,header%nflowdof,option%nflowdof, &
+                           "nflowdof","Number of flow degrees of freedom",ierr)
   call PetscBagRegisterInt(bag,header%flow_num_newton_iterations, &
                            flow_num_newton_iterations, &
                            "flow_num_newton_iterations", &
@@ -201,6 +205,9 @@ subroutine Checkpoint(realization, &
                             "Total number of flow linear iterations",ierr)
                             
   ! TRANSPORT
+  call PetscBagRegisterInt(bag,header%ntrandof,option%ntrandof, &
+                           "ntrandof", &
+                           "Number of transport degrees of freedom",ierr)
   call PetscBagRegisterReal(bag,header%tran_time,option%tran_time,"tran_time", &
                             "Transport Simulation time (seconds)",ierr)
   call PetscBagRegisterReal(bag,header%tran_dt,option%tran_dt,"tran_dt", &
@@ -403,7 +410,7 @@ subroutine Restart(realization, &
   call PetscBagDestroy(bag, ierr)
   
 
-  if (option%nflowdof > 0) then
+  if (option%nflowdof > 0 .and. header%nflowdof > 0) then
     call DiscretizationCreateVector(realization%discretization,ONEDOF, &
                                     global_vec,GLOBAL,option)
   endif
@@ -444,7 +451,7 @@ subroutine Restart(realization, &
     
   endif
   
-  if (option%ntrandof > 0) then
+  if (option%ntrandof > 0 .and. header%ntrandof > 0) then
     call VecLoadIntoVector(viewer,field%tran_xx,ierr)
     call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
                                      field%tran_xx_loc,NTRANDOF)
