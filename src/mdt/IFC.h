@@ -27,11 +27,14 @@ public:
   void computeEastBoundary(Grid *grid, PetscInt complete);
   void computeWestBoundary(Grid *grid, PetscInt complete);
   void computeIFCBoundary(Grid *grid, Polygon *p);
+  void computeUnSatSPPDomain(Grid *grid, Polygon *p);
+  void computeSatSPPDomain(Grid *grid, Polygon *p);
   void flagGridCells(Grid *grid);
 
 private:
 
   Polygon *ifc_polygon;
+  Polygon *spp_polygon;
   Polygon *river_polygon;
   AsciiGrid **ascii_grids;
 

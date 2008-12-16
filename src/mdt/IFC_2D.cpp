@@ -125,20 +125,19 @@ IFC_2D::IFC_2D(Grid **grid_) {
   AsciiGrid::nasciigrids = 6;
   string *grid_filenames = new string[AsciiGrid::nasciigrids];
 #if 1
-  grid_filenames[0].append("./top_basalt_grid.asc");
-  grid_filenames[1].append("./top9_grid_dec08.asc");
-  grid_filenames[2].append("./top8_grid_dec08.asc");
-  grid_filenames[3].append("./top5_grid_dec08.asc");
-  grid_filenames[4].append("./top4_grid_dec08.asc");
-  grid_filenames[5].append("./newbath_10mDEM_grid.asc");
+  grid_filenames[0].append("./basalt_300area.asc");
+  grid_filenames[1].append("./u9_300area.asc");
+  grid_filenames[2].append("./u8_300area.asc");
+  grid_filenames[3].append("./u5gravel_300area.asc");
+  grid_filenames[4].append("./u5silt_300area.asc");
+  grid_filenames[5].append("./newbath_10mDEM_grid.ascii");
 #else
-  grid_filenames[0].append("../basalt_PNNL_grid.asc");
-  grid_filenames[1].append("../u9PNNL_grid.asc");
-  grid_filenames[2].append("../u8PNNL_grid.asc");
-  grid_filenames[3].append("../u7PNNL_grid.asc");
-  grid_filenames[4].append("../u6PNNL_grid.asc");
-  grid_filenames[5].append("../u5PNNL_grid.asc");
-  grid_filenames[6].append("../u1PNNL_grid.asc");
+  grid_filenames[0].append("../basalt_300area.asc");
+  grid_filenames[1].append("../u9_300area.asc");
+  grid_filenames[2].append("../u8_300area.asc");
+  grid_filenames[3].append("../u5gravel_300area.asc");
+  grid_filenames[4].append("../u5silt_300area.asc");
+  grid_filenames[5].append("../newbath_10mDEM_grid.ascii");
 #endif
 
   ascii_grids = new AsciiGrid*[AsciiGrid::nasciigrids];

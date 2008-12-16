@@ -65,6 +65,21 @@ void Polygon::createIFCPolygon() {
 
 }
 
+void Polygon::createSPPPolygon() {
+
+  num_points = 5;
+  x = new PetscReal[num_points];
+  y = new PetscReal[num_points];
+
+  PetscInt n = 0;
+  x[n] = 594270.; y[n++] = 116219.;
+  x[n] = 594192.; y[n++] = 116173.;
+  x[n] = 594229.; y[n++] = 116059.;
+  x[n] = 594327.; y[n++] = 116057.;
+  x[n] = 594344.; y[n++] = 116084.;
+  x[n] = 594338.; y[n++] = 116198.;
+
+}
 
 void Polygon::createPlumePolygon() {
 

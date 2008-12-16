@@ -12,6 +12,7 @@ IFC::IFC(Grid **grid_) {
   ifc_polygon = NULL;
   river_polygon = NULL;
   ascii_grids = NULL;
+  spp_polygon = NULL;
 
   PetscReal mx = 1.;
   PetscReal my = 1.;
@@ -109,6 +110,8 @@ IFC::IFC(Grid **grid_) {
 
   ifc_polygon = new Polygon();
   ifc_polygon->createIFCPolygon();
+  spp_polygon = new Polygon();
+  spp_polygon->createSPPPolygon();
 
 #if 0
   char ascii_filename[1024];
@@ -123,20 +126,19 @@ IFC::IFC(Grid **grid_) {
   AsciiGrid::nasciigrids = 6;
   string *grid_filenames = new string[AsciiGrid::nasciigrids];
 #if 1
-  grid_filenames[0].append("./top_basalt_grid.asc");
-  grid_filenames[1].append("./top9_grid_dec08.asc");
-  grid_filenames[2].append("./top8_grid_dec08.asc");
-  grid_filenames[3].append("./top5_grid_dec08.asc");
-  grid_filenames[4].append("./top4_grid_dec08.asc");
-  grid_filenames[5].append("./newbath_10mDEM_grid.asc");
+  grid_filenames[0].append("./basalt_300area.asc");
+  grid_filenames[1].append("./u9_300area.asc");
+  grid_filenames[2].append("./u8_300area.asc");
+  grid_filenames[3].append("./u5gravel_300area.asc");
+  grid_filenames[4].append("./u5silt_300area.asc");
+  grid_filenames[5].append("./newbath_10mDEM_grid.ascii");
 #else
-  grid_filenames[0].append("../basalt_PNNL_grid.asc");
-  grid_filenames[1].append("../u9PNNL_grid.asc");
-  grid_filenames[2].append("../u8PNNL_grid.asc");
-  grid_filenames[3].append("../u7PNNL_grid.asc");
-  grid_filenames[4].append("../u6PNNL_grid.asc");
-  grid_filenames[5].append("../u5PNNL_grid.asc");
-  grid_filenames[6].append("../u1PNNL_grid.asc");
+  grid_filenames[0].append("../basalt_300area.asc");
+  grid_filenames[1].append("../u9_300area.asc");
+  grid_filenames[2].append("../u8_300area.asc");
+  grid_filenames[3].append("../u5gravel_300area.asc");
+  grid_filenames[4].append("../u5silt_300area.asc");
+  grid_filenames[5].append("../newbath_10mDEM_grid.ascii");
 #endif
 
   ascii_grids = new AsciiGrid*[AsciiGrid::nasciigrids];
@@ -190,6 +192,8 @@ IFC::IFC(Grid **grid_) {
   computeTopBoundary(grid,0);
 
   computeIFCBoundary(grid,ifc_polygon);
+  computeUnSatSPPDomain(grid,spp_polygon);
+  computeSatSPPDomain(grid,spp_polygon);
 
   BoundarySet *river = grid->getBoundarySet("East");
   BoundarySet *west = grid->getBoundarySet("West");
@@ -473,7 +477,7 @@ void IFC::computeIFCBoundary(Grid *grid, Polygon *p) {
     PetscInt local_id = grid->cells[i].getIdLocal();
     if (local_id > -1) {
 //      if (grid->cells[i].flag & TOP_DIR_TOP_FACE &&
-      if (grid->cells[i].getZ() >= 103. && grid->cells[i].getZ() <= 108. &&
+      if (grid->cells[i].getZ() >= 105. && grid->cells[i].getZ() <= 108.5 &&
           p->pointInPolygon(grid->cells[i].getX(),
                             grid->cells[i].getY())) {
         PetscInt vertex_list[5] = {4,0,0,0,0};
@@ -492,6 +496,61 @@ void IFC::computeIFCBoundary(Grid *grid, Polygon *p) {
 
 }
 
+void IFC::computeSatSPPDomain(Grid *grid, Polygon *p) {
+
+  BoundarySet *spp = new BoundarySet("SPP_Saturated");
+
+  PetscInt count = 0;
+  for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) {
+    PetscInt local_id = grid->cells[i].getIdLocal();
+    if (local_id > -1) {
+//      if (grid->cells[i].flag & TOP_DIR_TOP_FACE &&
+      if (grid->cells[i].getZ() >= 105. && grid->cells[i].getZ() <= 108. &&
+          p->pointInPolygon(grid->cells[i].getX(),
+                            grid->cells[i].getY())) {
+        PetscInt vertex_list[5] = {4,0,0,0,0};
+        grid->cells[i].getHexFaceVertices(TOP,vertex_list);
+        spp->addConnection(new Connection(local_id,vertex_list,TOP));
+        count++;
+      }
+    }
+  }
+
+  PetscPrintf(PETSC_COMM_WORLD,"%d cells mapped to SPP_Saturated Domain.\n",
+                  count);
+
+  grid->addBoundarySet(spp);
+  spp = NULL;
+
+}
+
+void IFC::computeUnSatSPPDomain(Grid *grid, Polygon *p) {
+
+  BoundarySet *spp = new BoundarySet("SPP_Unsaturated");
+
+  PetscInt count = 0;
+  for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) {
+    PetscInt local_id = grid->cells[i].getIdLocal();
+    if (local_id > -1) {
+//      if (grid->cells[i].flag & TOP_DIR_TOP_FACE &&
+      if (grid->cells[i].getZ() >= 103. && grid->cells[i].getZ() <= 105. &&
+          p->pointInPolygon(grid->cells[i].getX(),
+                            grid->cells[i].getY())) {
+        PetscInt vertex_list[5] = {4,0,0,0,0};
+        grid->cells[i].getHexFaceVertices(TOP,vertex_list);
+        spp->addConnection(new Connection(local_id,vertex_list,TOP));
+        count++;
+      }
+    }
+  }
+
+  PetscPrintf(PETSC_COMM_WORLD,"%d cells mapped to SPP_Unsaturated Domain.\n",
+                  count);
+
+  grid->addBoundarySet(spp);
+  spp = NULL;
+
+}
 
 void IFC::flagGridCells(Grid *grid) {
 
