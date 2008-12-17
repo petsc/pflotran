@@ -407,7 +407,8 @@ subroutine Restart(realization, &
     flow_read = PETSC_TRUE
   endif
   ! TRANSPORT
-  if (option%ntrandof .and. option%ntrandof == header%ntrandof) then
+! if (option%ntrandof .and. option%ntrandof == header%ntrandof) then
+  if (option%ntrandof == header%ntrandof) then
     option%tran_time = header%tran_time
     option%tran_dt = header%tran_dt
     tran_num_newton_iterations = header%tran_num_newton_iterations
