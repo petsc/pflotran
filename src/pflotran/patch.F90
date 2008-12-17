@@ -1072,9 +1072,14 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
         case(PH)
           do local_id=1,grid%nlmax
             ghosted_id = grid%nL2G(local_id)
-            vec_ptr(local_id) = &
-              -log10(patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)* &
-                     patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar))
+            if (patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar) > &
+                0.d0) then
+              vec_ptr(local_id) = &
+               -log10(patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)* &
+                      patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar))
+            else
+              vec_ptr(local_id) = 0.d0
+            endif
           enddo
         case(PRIMARY_MOLALITY)
           do local_id=1,grid%nlmax
@@ -1270,8 +1275,14 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
          
       select case(ivar)
         case(PH)
-          value = -log10(patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)* &
-                         patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar))
+          if (patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar) > &
+              0.d0) then
+            value = -log10(patch%aux%RT%aux_vars(ghosted_id)% &
+                           pri_act_coef(isubvar)* &
+                           patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar))
+          else
+            value = 0.d0
+          endif
         case(PRIMARY_MOLALITY)
           value = patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar)
         case(PRIMARY_MOLARITY)
