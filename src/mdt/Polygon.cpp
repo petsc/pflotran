@@ -67,7 +67,7 @@ void Polygon::createIFCPolygon() {
 
 void Polygon::createSPPPolygon() {
 
-  num_points = 5;
+  num_points = 6;
   x = new PetscReal[num_points];
   y = new PetscReal[num_points];
 
