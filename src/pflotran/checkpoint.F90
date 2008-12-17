@@ -221,8 +221,12 @@ subroutine Checkpoint(realization, &
                             "Total number of transport time step cuts",ierr)
   call PetscBagRegisterInt(bag,header%tran_linear_cum,tran_linear_cum,"tran_linear_cum", &
                             "Total number of transport linear iterations",ierr)
-  if (realization%reaction%checkpoint_activity_coefs) then               
-    checkpoint_activity_coefs = ONE_INTEGER
+  if (associated(realization%reaction)) then
+    if (realization%reaction%checkpoint_activity_coefs) then               
+      checkpoint_activity_coefs = ONE_INTEGER
+    else
+      checkpoint_activity_coefs = ZERO_INTEGER
+    endif
   else
     checkpoint_activity_coefs = ZERO_INTEGER
   endif
