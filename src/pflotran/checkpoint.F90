@@ -314,7 +314,7 @@ subroutine Checkpoint(realization, &
 
   call PetscGetTime(tend,ierr) 
   write(option%io_buffer, &
-        '("      Seconds to write to checkpoint file: ", f6.4)') tend-tstart
+        '("      Seconds to write to checkpoint file: ", f6.2)') tend-tstart
   call printMsg(option)
 
   call PetscLogEventEnd(logging%event_checkpoint, &
@@ -333,6 +333,8 @@ subroutine Restart(realization, &
                    tran_linear_cum, &
                    tran_num_const_timesteps, &
                    tran_num_newton_iterations, &
+                   flow_read, &
+                   transport_read, &
                    activity_coefs_read)
 
   use Realization_module
@@ -352,7 +354,7 @@ subroutine Restart(realization, &
   PetscInt :: tran_num_const_timesteps
   PetscInt :: tran_num_newton_iterations
   PetscInt :: tran_steps, tran_newtcum, tran_icutcum, tran_linear_cum
-  PetscTruth :: activity_coefs_read
+  PetscTruth :: activity_coefs_read, flow_read, transport_read
 
   PetscViewer viewer
   PetscBag bag
@@ -393,34 +395,35 @@ subroutine Restart(realization, &
   call PetscBagGetData(bag, header, ierr)
   output_option%plot_number = header%plot_number
   ! FLOW
-  option%flow_time = header%flow_time
-  option%flow_dt = header%flow_dt
-  flow_num_newton_iterations = header%flow_num_newton_iterations
-  flow_num_const_timesteps = header%flow_num_const_timesteps
-  flow_steps = header%flow_steps
-  flow_newtcum = header%flow_newtcum
-  flow_icutcum = header%flow_icutcum
-  flow_linear_cum = header%flow_linear_cum
-  ! TRANSPORT
-  option%tran_time = header%tran_time
-  option%tran_dt = header%tran_dt
-  tran_num_newton_iterations = header%tran_num_newton_iterations
-  tran_num_const_timesteps = header%tran_num_const_timesteps
-  tran_steps = header%tran_steps
-  tran_newtcum = header%tran_newtcum
-  tran_icutcum = header%tran_icutcum
-  tran_linear_cum = header%tran_linear_cum
-  read_activity_coefs = header%checkpoint_activity_coefs
-  call PetscBagDestroy(bag, ierr)
-  
-
   if (option%nflowdof > 0 .and. option%nflowdof == header%nflowdof) then
+    option%flow_time = header%flow_time
+    option%flow_dt = header%flow_dt
+    flow_num_newton_iterations = header%flow_num_newton_iterations
+    flow_num_const_timesteps = header%flow_num_const_timesteps
+    flow_steps = header%flow_steps
+    flow_newtcum = header%flow_newtcum
+    flow_icutcum = header%flow_icutcum
+    flow_linear_cum = header%flow_linear_cum
+    flow_read = PETSC_TRUE
+  endif
+  ! TRANSPORT
+  if (option%ntrandof .and. option%ntrandof == header%ntrandof) then
+    option%tran_time = header%tran_time
+    option%tran_dt = header%tran_dt
+    tran_num_newton_iterations = header%tran_num_newton_iterations
+    tran_num_const_timesteps = header%tran_num_const_timesteps
+    tran_steps = header%tran_steps
+    tran_newtcum = header%tran_newtcum
+    tran_icutcum = header%tran_icutcum
+    tran_linear_cum = header%tran_linear_cum
+    read_activity_coefs = header%checkpoint_activity_coefs
+    transport_read = PETSC_TRUE
+  endif
+
+  if (flow_read) then
     call DiscretizationCreateVector(realization%discretization,ONEDOF, &
                                     global_vec,GLOBAL,option)
-  endif
-    
   ! Load the PETSc vectors.
-  if (option%nflowdof > 0) then
     call VecLoadIntoVector(viewer,field%flow_xx,ierr)
     call DiscretizationGlobalToLocal(discretization,field%flow_xx, &
                                      field%flow_xx_loc,NFLOWDOF)
@@ -455,7 +458,7 @@ subroutine Restart(realization, &
     
   endif
   
-  if (option%ntrandof > 0 .and. option%ntrandof == header%ntrandof) then
+  if (transport_read) then
     call VecLoadIntoVector(viewer,field%tran_xx,ierr)
     call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
                                      field%tran_xx_loc,NTRANDOF)
@@ -494,8 +497,10 @@ subroutine Restart(realization, &
   call PetscViewerDestroy(viewer, ierr)
   call PetscGetTime(tend,ierr) 
 
+  call PetscBagDestroy(bag, ierr)
+
   write(option%io_buffer, &
-        '("      Seconds to read to checkpoint file: ", f6.4)') tend-tstart
+        '("      Seconds to read to checkpoint file: ", f6.2)') tend-tstart
   call printMsg(option)
 
   call PetscLogEventEnd(logging%event_restart, &

@@ -107,7 +107,7 @@ module Option_module
     PetscTruth :: compute_mass_balance
     PetscTruth :: use_touch_options
     PetscTruth :: overwrite_restart_transport
-    PetscTruth :: overwrite_restart_flow_params
+    PetscTruth :: overwrite_restart_flow
     PetscInt :: io_handshake_buffer_size
     
     character(len=MAXWORDLENGTH) :: permx_filename
@@ -288,7 +288,7 @@ function OptionCreate()
 
   option%use_touch_options = PETSC_FALSE
   option%overwrite_restart_transport = PETSC_FALSE
-  option%overwrite_restart_flow_params = PETSC_FALSE
+  option%overwrite_restart_flow = PETSC_FALSE
 
   option%flow_time = 0.d0
   option%tran_time = 0.d0

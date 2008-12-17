@@ -1738,7 +1738,7 @@ subroutine readInput(simulation)
         option%overwrite_restart_transport = PETSC_TRUE
 
       case ('OVERWRITE_RESTART_FLOW_PARAMS')
-        option%overwrite_restart_flow_params = PETSC_TRUE
+        option%overwrite_restart_flow = PETSC_TRUE
 
       case ('TIME')
 

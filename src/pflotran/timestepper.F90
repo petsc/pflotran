@@ -190,6 +190,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   PetscInt :: num_const_timesteps
   PetscInt :: num_newton_iterations, idum
   PetscTruth :: activity_coefs_read = PETSC_FALSE
+  PetscTruth :: flow_read = PETSC_FALSE
+  PetscTruth :: transport_read = PETSC_FALSE
   
   PetscLogDouble :: stepper_start_time, current_time, average_step_time
   PetscErrorCode :: ierr
@@ -212,28 +214,28 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   if (option%restart_flag) then
     call StepperRestart(realization,flow_stepper,tran_stepper, &
                         num_const_timesteps,num_newton_iterations, &
-                        activity_coefs_read)
+                        flow_read,transport_read,activity_coefs_read)
     if (associated(flow_stepper)) flow_stepper%cur_waypoint => &
       WaypointSkipToTime(realization%waypoints,option%time)
     if (associated(tran_stepper)) tran_stepper%cur_waypoint => &
       WaypointSkipToTime(realization%waypoints,option%time)
 
-    if (option%nflowdof > 0) then
+    if (flow_read) then
       call StepperUpdateFlowAuxVars(realization)
     endif
 
   endif
 
-  if (option%overwrite_restart_flow_params) then
+  if (flow_read .and. option%overwrite_restart_flow) then
     call RealizationRevertFlowParameters(realization)
   endif
 
-  if (option%overwrite_restart_transport .and. option%ntrandof > 0) then
+  if (transport_read .and. option%overwrite_restart_transport) then
     call RealizAssignTransportInitCond(realization)  
   endif
 
   ! update to parameters/datasets
-  if (realization%option%ntrandof > 0 .and. option%restart_flag) then
+  if (option%restart_flag .and. transport_read) then
     ! temporarily turn off activity coefficient update as the activity coefficients
     ! from the previous time step have been read from the checkpoint file and
     ! must not be overwritten
@@ -255,7 +257,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     endif
   endif
   call StepperUpdateSolution(realization)
-  if (realization%option%ntrandof > 0 .and. option%restart_flag) then
+  if (option%restart_flag .and. transport_read) then
     ! switch back on
     realization%reaction%compute_activity_coefs = idum
   endif
@@ -264,7 +266,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
 
   ! print initial condition output if not a restarted sim
-  if (realization%output_option%plot_number == 0 .and. master_stepper%nstepmax >= 0) then
+  if (realization%output_option%plot_number == 0 .and. &
+      master_stepper%nstepmax >= 0) then
     plot_flag = PETSC_TRUE
     call Output(realization,plot_flag)
   endif
@@ -1357,7 +1360,7 @@ end subroutine StepperCheckpoint
 ! ************************************************************************** !
 subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
                           num_const_timesteps,num_newton_iterations, &
-                          activity_coefs_read)
+                          flow_read,transport_read,activity_coefs_read)
 
   use Realization_module
   use Checkpoint_module
@@ -1370,6 +1373,8 @@ subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
   type(stepper_type), pointer :: tran_stepper
   PetscInt :: num_const_timesteps, num_newton_iterations
   PetscTruth :: activity_coefs_read
+  PetscTruth :: flow_read
+  PetscTruth :: transport_read
 
   type(option_type), pointer :: option
   PetscInt :: flow_steps, flow_newton_cum, flow_icutcum, flow_linear_cum ,&
@@ -1384,25 +1389,31 @@ subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
                flow_num_const_timesteps,flow_num_newton_iterations, &
                tran_steps,tran_newton_cum,tran_icutcum,tran_linear_cum, &
                tran_num_const_timesteps,tran_num_newton_iterations, &
-               activity_coefs_read)
+               flow_read,transport_read,activity_coefs_read)
   if (option%restart_time < -998.d0) then
     option%time = max(option%flow_time,option%tran_time)
-    if (associated(flow_stepper)) then
+    if (associated(flow_stepper) .and. flow_read) then
       flow_stepper%steps = flow_steps
       flow_stepper%newton_cum = flow_newton_cum
       flow_stepper%icutcum = flow_icutcum
       flow_stepper%linear_cum = flow_linear_cum
     endif
-    if (associated(tran_stepper)) then
+    if (associated(tran_stepper) .and. transport_read) then
       tran_stepper%steps = tran_steps
       tran_stepper%newton_cum = tran_newton_cum
       tran_stepper%icutcum = tran_icutcum
       tran_stepper%linear_cum = tran_linear_cum
     endif
-    num_const_timesteps = flow_num_const_timesteps
-    num_newton_iterations = flow_num_newton_iterations
-!    num_const_timesteps = tran_num_const_timesteps
-!    num_newton_iterations = tran_num_newton_iterations
+    if (flow_read) then
+      num_const_timesteps = flow_num_const_timesteps
+      num_newton_iterations = flow_num_newton_iterations
+    else if (transport_read) then
+      num_const_timesteps = tran_num_const_timesteps
+      num_newton_iterations = tran_num_newton_iterations
+    else
+      num_const_timesteps = 0
+      num_newton_iterations = 0
+    endif
   else
     option%time = option%restart_time
     option%flow_time = option%restart_time
