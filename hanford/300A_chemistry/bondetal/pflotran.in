@@ -12,7 +12,7 @@ Na+
 CO2(aq)
 SO4--
 NO3-
-O2(aq)
+:O2(aq)
 :H2O
 /
 SECONDARY_SPECIES
@@ -36,8 +36,8 @@ KOH(aq)
 KSO4-
 HSO4-
 H2SO4(aq)
-NH3(aq)
-NO2-
+:NH3(aq)
+:NO2-
 :NH4+
 :
 :uranium species
@@ -67,7 +67,7 @@ UO2(SO4)2--
 /
 GAS_SPECIES
 CO2(g)
-O2(g)
+:O2(g)
 /
 MINERALS
 Calcite
@@ -97,8 +97,8 @@ COMPLEXES
 /
 /
 noskip
-DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
-:DATABASE /Users/lichtner/flotran/database/hanford.dat
+:DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
+DATABASE /Users/lichtner/flotran/database/hanford.dat
 :DATABASE ../../../database/hanford.dat
 LOG_FORMULATION
 ACTIVITY_COEFFICIENTS
@@ -230,7 +230,7 @@ Na+      8.e-3       T
 CO2(aq)  -3.5        G  CO2(g)
 NO3-     3.e-3       T
 SO4--    1.2e-3      T
-O2(aq)   0.2         G  O2(g)
+:O2(aq)   0.2         G  O2(g)
 :H2O      55.5        F
 /
 MINERALS
@@ -251,7 +251,7 @@ Na+     98.e-3       T
 CO2(aq)  4.e-3       T
 NO3-    93.e-3       T
 SO4--    1.2e-3      T
-O2(aq)   0.2         G  O2(g)
+:O2(aq)   0.2         G  O2(g)
 :H2O      55.5        F
 /
 /
