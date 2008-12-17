@@ -1,4 +1,4 @@
-#!/sw/bin/gnuplot -persist
+#!/sw/bin/gnuplotx -persist
 #
 #    
 #    	G N U P L O T
@@ -151,7 +151,7 @@ area=20.
 fac=rho*area
 #fac=1.
 set ytics mirror
-set xlabel 'UO_2^{2+} [mol/L]'
-set ylabel '{/Symbol G}_{UO_2^{2+} [mol/m^2]'
+set xlabel 'UO_2^{2+} [mol/L]' font "Helvetica, 24"
+set ylabel '{/Symbol G}_{UO_2^{2+}} [mol/m^2]' font "Helvetica, 24"
 plot 'bondpf_r1.xyp' u 5:(($36+$37)/fac) t '' w l lw 2 lt 3
 #    EOF
