@@ -2021,12 +2021,12 @@ subroutine OutputBreakthroughTecplot(realization)
         breakthrough => breakthrough%next
       enddo
       write(fid,'(a)',advance="yes") ""
-      breakthrough => patch%breakthrough%first
     else
       open(unit=fid,file=filename,action="write",status="old", &
            position="append")
     endif
   
+    breakthrough => patch%breakthrough%first
     write(fid,'(1es12.4)',advance="no") option%time/output_option%tconv
     do 
       if (.not.associated(breakthrough)) exit
