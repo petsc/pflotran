@@ -16,6 +16,9 @@
 #    
 # set terminal aqua 0 title "Figure 0" size 846 594 font "Times-Roman,14" enhanced solid
 # set output
+set terminal postscript enhanced landscape color solid
+#set terminal postscript enhanced landscape dashed
+set output "bond.eps"
 unset clip points
 set clip one
 unset clip two
@@ -111,13 +114,13 @@ set trange [ * : * ] noreverse nowriteback  # (currently [-5.00000:5.00000] )
 set urange [ * : * ] noreverse nowriteback  # (currently [-5.00000:5.00000] )
 set vrange [ * : * ] noreverse nowriteback  # (currently [-5.00000:5.00000] )
 set xlabel "" 
-set xlabel  offset character 0, 0, 0 font "Helvetica, 24" textcolor lt -1 norotate
+set xlabel  offset character 0, -1, 0 font "Helvetica, 24" textcolor lt -1 norotate
 set x2label "" 
 set x2label  offset character 0, 0, 0 font "Helvetica, 24" textcolor lt -1 norotate
 set xrange [ * : * ] noreverse nowriteback  # (currently [-10.0000:10.0000] )
 set x2range [ * : * ] noreverse nowriteback  # (currently [-10.0000:10.0000] )
 set ylabel "" 
-set ylabel  offset character 0, 0, 0 font "Helvetica, 24" textcolor lt -1 rotate by 90
+set ylabel  offset character -1, 0, 0 font "Helvetica, 24" textcolor lt -1 rotate by 90
 set y2label "" 
 set y2label  offset character 0, 0, 0 font "Helvetica, 24" textcolor lt -1 rotate by 90
 set yrange [ * : * ] noreverse nowriteback  # (currently [-10.0000:10.0000] )
@@ -146,12 +149,25 @@ set fontpath
 set fit noerrorvariables
 GNUTERM = "aqua"
 set key top left
-rho=50.
+rho=2.65
+por=0.2
 area=20.
-fac=rho*area
+fac=rho*area*(1-por)*1.e3
 #fac=1.
 set ytics mirror
 set xlabel 'UO_2^{2+} [mol/L]' font "Helvetica, 24"
 set ylabel '{/Symbol G}_{UO_2^{2+}} [mol/m^2]' font "Helvetica, 24"
-plot 'bondpf_r1.xyp' u 5:(($36+$37)/fac) t '' w l lw 2 lt 3
+set pointsize 2
+set key bottom right Right
+plot \
+'bondetal07.dat' index 0 u (10.**($1)):(10.**($2)) t 'Bond et al. (2007): NPP1-16' w p pt 5 lt 1,\
+'bondetal07.dat' index 1 u (10.**($1)):(10.**($2)) t 'NPP1-20' w p pt 5 lt 2,\
+'bondetal07.dat' index 2 u (10.**($1)):(10.**($2)) t 'SPP2-18' w p pt 7 lt 3,\
+'bondetal07.dat' index 3 u (10.**($1)):(10.**($2)) t 'SPP1-18' w p pt 7 lt 4,\
+'bondetal07.dat' index 4 u (10.**($1)):(10.**($2)) t 'SPP2-16' w p pt 7 lt 5,\
+'bondetal07.dat' index 5 u (10.**($1)):(10.**($2)) t 'Mean' w p pt 11 lt 6,\
+'bondetal07.dat' index 6 u (10.**($1)):(10.**($2)) t 'Bond et al. (2007)-1' w l lw 2 lt 7,\
+'bondetal07.dat' index 7 u (10.**($1)):(10.**($2)) t 'Bond et al. (2007)-2' w l lw 2 lt 8,\
+'bondpf_r1_20.xyp' u 5:(($36+$37)/fac) t 'FLOTRAN: 20 m^2/g' w l lw 2 lt 1,\
+'bondpf_r1_15.xyp' u 5:(($36+$37)/fac) t 'FLOTRAN: 15 m^2/g' w l lw 2 lt 3
 #    EOF

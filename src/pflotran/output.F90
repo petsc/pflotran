@@ -2297,8 +2297,12 @@ subroutine WriteBreakthroughHeaderForBC(fid,realization,coupler_name)
 
   use Realization_module
   use Option_module
-  use Reaction_module
+  
+! use Reaction_module
+
   use Region_module
+
+  use Reaction_Aux_module
 
   implicit none
   
@@ -2309,7 +2313,7 @@ subroutine WriteBreakthroughHeaderForBC(fid,realization,coupler_name)
   PetscInt :: i
   character(len=MAXSTRINGLENGTH) :: string
   type(option_type), pointer :: option
-  type(reaction_type), pointer :: reaction
+  type(reaction_type), pointer :: reaction 
   
   option => realization%option
   reaction => realization%reaction
@@ -2701,6 +2705,8 @@ subroutine WriteBreakthroughDataForBC(fid,realization,patch,connection_set)
   use Patch_module
   
   use Structured_Grid_module
+
+  use Reaction_Aux_module
 
   implicit none
   
