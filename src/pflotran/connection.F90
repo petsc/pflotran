@@ -10,6 +10,7 @@ module Connection_module
     PetscInt :: id
     PetscInt :: itype                  ! connection type (boundary, internal, source sink
     PetscInt :: num_connections
+    PetscInt :: offset
     PetscInt, pointer :: id_up(:)      ! list of ids of upwind cells
     PetscInt, pointer :: id_dn(:)      ! list of ids of downwind cells
     PetscReal, pointer :: dist(:,:)      ! list of distance vectors, size(-1:3,num_connections) where
@@ -17,7 +18,6 @@ module Connection_module
                                       !   0 = magnitude of distance 
                                       !   1-3 = components of unit vector
     PetscReal, pointer :: area(:)        ! list of areas of faces normal to distance vectors
-!    PetscReal, pointer :: velocity(:,:)  ! velocity scalars for each phase
     type(connection_set_type), pointer :: next
   end type connection_set_type
 
@@ -34,12 +34,7 @@ module Connection_module
     type(connection_set_ptr_type), pointer :: array(:)
   end type connection_set_list_type
   
-  type(connection_set_list_type), pointer, private :: internal_connection_set_list, &
-                                                      boundary_connection_set_list
-
-
   public :: ConnectionCreate, ConnectionAddToList, &
-            ConnectionAllocateLists, &
             ConnectionGetNumberInList, &
             ConnectionInitList, ConnectionDestroyList, ConnectionDestroy
   
@@ -67,6 +62,7 @@ function ConnectionCreate(num_connections,num_dof,connection_itype)
   allocate(connection)
   connection%id = 0
   connection%itype = connection_itype
+  connection%offset = 0
   connection%num_connections = num_connections
   nullify(connection%id_up)
   nullify(connection%id_dn)
@@ -130,24 +126,6 @@ function ConnectionGetNumberInList(list)
   enddo
 
 end function ConnectionGetNumberInList
-
-! ************************************************************************** !
-!
-! ConnectionAllocateLists: Allocates connections lists
-! author: Glenn Hammond
-! date: 10/15/07
-!
-! ************************************************************************** !
-subroutine ConnectionAllocateLists()
-
-  implicit none
-  
-  allocate(internal_connection_set_list)
-  call ConnectionInitList(internal_connection_set_list)
-  allocate(boundary_connection_set_list)
-  call ConnectionInitList(boundary_connection_set_list)
-  
-end subroutine
 
 ! ************************************************************************** !
 !

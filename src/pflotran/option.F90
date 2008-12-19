@@ -41,6 +41,7 @@ module Option_module
     PetscInt, pointer :: garbage ! for some reason, Intel will not compile without this
 
     PetscReal :: uniform_velocity(3)
+    PetscTruth :: store_solute_fluxes
 
     ! Program options
     PetscTruth :: use_matrix_free  ! If true, do not form the Jacobian.
@@ -218,6 +219,8 @@ function OptionCreate()
   option%gas_phase = 0
   
   option%uniform_velocity = 0.d0
+  option%store_solute_fluxes = PETSC_FALSE
+  
   option%imod = 1
    
 !-----------------------------------------------------------------------
@@ -246,7 +249,6 @@ function OptionCreate()
   !set scale factor for heat equation, i.e. use units of MJ for energy
   option%scale = 1.d-6
 
-  option%use_matrix_free = PETSC_FALSE
   option%ideriv = 1
 
   option%dpmxe = 5.d4

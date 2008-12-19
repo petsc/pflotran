@@ -1,6 +1,7 @@
 module Breakthrough_module
 
   use Region_module
+  use Connection_module
   
   implicit none
   
@@ -11,9 +12,11 @@ module Breakthrough_module
   type, public :: breakthrough_type
     ! all added variables must be included in BreakthroughCreateFromBreakthrough
     PetscInt :: id
+    PetscInt :: itype
     PetscTruth :: print_velocities
     character(len=MAXWORDLENGTH) :: name
-    character(len=MAXWORDLENGTH) :: region_name
+    character(len=MAXWORDLENGTH) :: linkage_name
+    type(connection_set_type), pointer :: connection_set
     type(region_type), pointer :: region
     type(breakthrough_type), pointer :: next
   end type breakthrough_type
@@ -54,8 +57,9 @@ function BreakthroughCreate1()
   allocate(breakthrough)
   
   breakthrough%name = ""
-  breakthrough%region_name = ""
+  breakthrough%linkage_name = ""
   breakthrough%id = 0
+  breakthrough%itype = BREAKTHROUGH_SCALAR
   breakthrough%print_velocities = PETSC_FALSE
   nullify(breakthrough%region)
   nullify(breakthrough%next)
@@ -83,8 +87,9 @@ function BreakthroughCreateFromBreakthrough(breakthrough)
   new_breakthrough => BreakthroughCreate1()
   
   new_breakthrough%name = breakthrough%name
-  new_breakthrough%region_name = breakthrough%region_name
+  new_breakthrough%linkage_name = breakthrough%linkage_name
   new_breakthrough%id = breakthrough%id
+  new_breakthrough%itype = breakthrough%itype
   new_breakthrough%print_velocities = breakthrough%print_velocities
   ! keep these null for now to catch bugs
   nullify(new_breakthrough%region)
@@ -104,6 +109,7 @@ end function BreakthroughCreateFromBreakthrough
 subroutine BreakthroughRead(breakthrough,input,option)
 
   use Input_module
+  use String_module
   use Option_module
   
   implicit none
@@ -126,9 +132,15 @@ subroutine BreakthroughRead(breakthrough,input,option)
       
     select case(trim(keyword))
     
+      case('BOUNDARY_CONDITION')
+        call InputReadWord(input,option,breakthrough%linkage_name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'boundary condition name','BREAKTHROUGH')
+        option%store_solute_fluxes = PETSC_TRUE
+        breakthrough%itype = BREAKTHROUGH_FLUX
       case('REGION')
-        call InputReadWord(input,option,breakthrough%region_name,PETSC_TRUE)
+        call InputReadWord(input,option,breakthrough%linkage_name,PETSC_TRUE)
         call InputErrorMsg(input,option,'region name','BREAKTHROUGH')
+         breakthrough%itype = BREAKTHROUGH_SCALAR
       case('VELOCITY')
         breakthrough%print_velocities = PETSC_TRUE
       case default
@@ -316,6 +328,7 @@ subroutine BreakthroughDestroy(breakthrough)
   if (.not.associated(breakthrough)) return
   
   nullify(breakthrough%region)
+  nullify(breakthrough%connection_set)
   deallocate(breakthrough)
   nullify(breakthrough)
 

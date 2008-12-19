@@ -907,6 +907,11 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
         istart = iend-reaction%ncomp+1
         r_p(istart:iend) = r_p(istart:iend) - Res(1:reaction%ncomp)
       endif
+      
+      if (option%store_solute_fluxes) then
+        patch%internal_fluxes(iphase,1:reaction%ncomp,iconn) = &
+          Res(1:reaction%ncomp)
+      endif
 
     enddo
     cur_connection_set => cur_connection_set%next
@@ -945,6 +950,11 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
       iend = local_id*reaction%ncomp
       istart = iend-reaction%ncomp+1
       r_p(istart:iend)= r_p(istart:iend) - Res(1:reaction%ncomp)
+ 
+      if (option%store_solute_fluxes) then
+        patch%boundary_fluxes(iphase,1:reaction%ncomp,sum_connection) = &
+          -Res(1:reaction%ncomp)
+      endif
  
     enddo
     boundary_condition => boundary_condition%next

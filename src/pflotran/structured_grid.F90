@@ -834,8 +834,6 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
   type(connection_set_type), pointer :: connections
   PetscErrorCode :: ierr
   
-  call ConnectionAllocateLists()
-  
   samr_ofx = 0
   samr_ofy = 0
   samr_ofz = 0
@@ -878,9 +876,8 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
      endif  
   endif
 
-  connections => &
-       ConnectionCreate(nconn, &
-                        option%nphase,INTERNAL_CONNECTION_TYPE)
+  connections => ConnectionCreate(nconn, &
+                                  option%nphase,INTERNAL_CONNECTION_TYPE)
 
   iconn = 0
   ! x-connections

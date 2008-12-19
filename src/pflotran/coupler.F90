@@ -13,6 +13,7 @@ module Coupler_module
  
   type, public :: coupler_type
     PetscInt :: id                                      ! id of coupler
+    character(len=MAXWORDLENGTH) :: name                ! name of coupler
     PetscInt :: itype                                   ! integer defining type
     character(len=MAXWORDLENGTH) :: ctype               ! character string defining type
     character(len=MAXWORDLENGTH) :: flow_condition_name ! character string defining name of condition to be applied
@@ -44,7 +45,7 @@ module Coupler_module
   
   public :: CouplerCreate, CouplerDestroy, CouplerInitList, CouplerAddToList, &
             CouplerRead, CouplerDestroyList, CouplerGetNumConnectionsInList, &
-            CouplerListComputeConnections
+            CouplerListComputeConnections, CouplerGetPtrFromList
 
   
   interface CouplerCreate
@@ -72,6 +73,7 @@ function CouplerCreate1()
   
   allocate(coupler)
   coupler%id = 0
+  coupler%name = ''
   coupler%itype = BOUNDARY_COUPLER_TYPE
   coupler%ctype = "boundary"
   coupler%flow_condition_name = ""
@@ -144,6 +146,7 @@ function CouplerCreateFromCoupler(coupler)
   new_coupler => CouplerCreate1()
 
   new_coupler%id = coupler%id
+  new_coupler%name = coupler%name
   new_coupler%itype = coupler%itype
   new_coupler%ctype = coupler%ctype
   new_coupler%flow_condition_name = coupler%flow_condition_name
@@ -277,13 +280,17 @@ subroutine CouplerListComputeConnections(grid,option,coupler_list)
   type(coupler_list_type), pointer :: coupler_list
   
   type(coupler_type), pointer :: coupler
+  PetscInt :: offset
   
   if (.not.associated(coupler_list)) return
   
+  offset = 0
   coupler => coupler_list%first
   do
     if (.not.associated(coupler)) exit  
     call CouplerComputeConnections(grid,option,coupler)
+    coupler%connection_set%offset = offset
+    offset = offset + coupler%connection_set%num_connections
     coupler => coupler%next
   enddo
 
@@ -342,7 +349,7 @@ subroutine CouplerComputeConnections(grid,option,coupler)
   region => coupler%region
 
   connection_set => ConnectionCreate(region%num_cells,option%nphase, &
-                                 connection_itype)
+                                     connection_itype)
 
   iface = coupler%iface
   do iconn = 1,region%num_cells
@@ -388,6 +395,43 @@ function CouplerGetNumConnectionsInList(list)
   enddo
 
 end function CouplerGetNumConnectionsInList
+
+! ************************************************************************** !
+!
+! CouplerGetPtrFromList: Returns a pointer to the coupler matching 
+!                        coupler_name
+! author: Glenn Hammond
+! date: 11/01/07
+!
+! ************************************************************************** !
+function CouplerGetPtrFromList(coupler_name,coupler_list)
+
+  use String_module
+
+  implicit none
+  
+  type(coupler_type), pointer :: CouplerGetPtrFromList
+  character(len=MAXWORDLENGTH) :: coupler_name
+  PetscInt :: length
+  type(coupler_list_type) :: coupler_list
+
+  type(coupler_type), pointer :: coupler
+    
+  nullify(CouplerGetPtrFromList)
+
+  coupler => coupler_list%first
+  do 
+    if (.not.associated(coupler)) exit
+    length = len_trim(coupler_name)
+    if (length == len_trim(coupler%name) .and. &
+        StringCompare(coupler%name,coupler_name,length)) then
+      CouplerGetPtrFromList => coupler
+      return
+    endif
+    coupler => coupler%next
+  enddo
+  
+end function CouplerGetPtrFromList
 
 ! ************************************************************************** !
 !

@@ -26,7 +26,8 @@ module Patch_module
     type(material_ptr_type), pointer :: material_array(:)
     PetscReal, pointer :: internal_velocities(:,:)
     PetscReal, pointer :: boundary_velocities(:,:)
-    
+    PetscReal, pointer :: internal_fluxes(:,:,:)    
+    PetscReal, pointer :: boundary_fluxes(:,:,:)    
     type(grid_type), pointer :: grid
 
     type(region_list_type), pointer :: regions
@@ -88,6 +89,8 @@ function PatchCreate()
   nullify(patch%material_array)
   nullify(patch%internal_velocities)
   nullify(patch%boundary_velocities)
+  nullify(patch%internal_fluxes)
+  nullify(patch%boundary_fluxes)
 
   nullify(patch%grid)
 
@@ -405,27 +408,6 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     strata => strata%next
   enddo 
 
-  ! breakthrough
-  breakthrough => patch%breakthrough%first
-  do
-    if (.not.associated(breakthrough)) exit
-    next_breakthrough => breakthrough%next
-    ! pointer to region
-    breakthrough%region => RegionGetPtrFromList(breakthrough%region_name, &
-                                                patch%regions)
-    if (.not.associated(breakthrough%region)) then
-      option%io_buffer = 'Region ' // &
-               trim(breakthrough%region_name) // &
-               ' not found in region list'
-      call printErrMsg(option)
-    endif
-    if (breakthrough%region%num_cells == 0) then
-      ! remove the breakthrough object
-      call BreakthroughRemoveFromList(breakthrough,patch%breakthrough)
-    endif
-    breakthrough => next_breakthrough
-  enddo
- 
   ! connectivity between initial conditions, boundary conditions, srcs/sinks, etc and grid
   call CouplerListComputeConnections(patch%grid,option, &
                                      patch%initial_conditions)
@@ -433,13 +415,63 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
                                      patch%boundary_conditions)
   call CouplerListComputeConnections(patch%grid,option, &
                                      patch%source_sinks)
-                                     
-  allocate(patch%internal_velocities(option%nphase, &
-           ConnectionGetNumberInList(patch%grid%internal_connection_set_list)))
+
+  ! linkage of breakthrough to regions and couplers must take place after
+  ! connection list have been created.
+  ! breakthrough
+  breakthrough => patch%breakthrough%first
+  do
+    if (.not.associated(breakthrough)) exit
+    next_breakthrough => breakthrough%next
+    select case(breakthrough%itype)
+      case(BREAKTHROUGH_SCALAR)
+        ! pointer to region
+        breakthrough%region => RegionGetPtrFromList(breakthrough%linkage_name, &
+                                                    patch%regions)
+        if (.not.associated(breakthrough%region)) then
+          option%io_buffer = 'Region ' // &
+                   trim(breakthrough%linkage_name) // &
+                   ' not found in region list'
+          call printErrMsg(option)
+        endif
+        if (breakthrough%region%num_cells == 0) then
+          ! remove the breakthrough object
+          call BreakthroughRemoveFromList(breakthrough,patch%breakthrough)
+        endif
+      case(BREAKTHROUGH_FLUX)
+        coupler => CouplerGetPtrFromList(breakthrough%linkage_name, &
+                                         patch%boundary_conditions)
+        if (associated(coupler)) then
+          breakthrough%connection_set => coupler%connection_set
+        else
+          option%io_buffer = 'Boundary Condition ' // &
+                   trim(breakthrough%linkage_name) // &
+                   ' not found in Boundary Condition list'
+          call printErrMsg(option)
+        endif
+        if (breakthrough%connection_set%num_connections == 0) then
+          ! remove the breakthrough object
+          call BreakthroughRemoveFromList(breakthrough,patch%breakthrough)
+        endif                                      
+    end select
+    breakthrough => next_breakthrough
+  enddo
+ 
+  temp_int = ConnectionGetNumberInList(patch%grid%internal_connection_set_list)
+  allocate(patch%internal_velocities(option%nphase,temp_int))
   patch%internal_velocities = 0.d0
+  if (option%store_solute_fluxes) then
+    allocate(patch%internal_fluxes(option%nphase,option%ntrandof,temp_int))
+    patch%internal_fluxes = 0.d0
+  endif
+  
   temp_int = CouplerGetNumConnectionsInList(patch%boundary_conditions)
   allocate(patch%boundary_velocities(option%nphase,temp_int)) 
   patch%boundary_velocities = 0.d0          
+  if (option%store_solute_fluxes) then
+    allocate(patch%boundary_fluxes(option%nphase,option%ntrandof,temp_int))
+    patch%boundary_fluxes = 0.d0
+  endif
 
 end subroutine PatchProcessCouplers
 
@@ -1729,6 +1761,10 @@ subroutine PatchDestroy(patch)
   nullify(patch%internal_velocities)
   if (associated(patch%boundary_velocities)) deallocate(patch%boundary_velocities)
   nullify(patch%boundary_velocities)
+  if (associated(patch%internal_fluxes)) deallocate(patch%internal_fluxes)
+  nullify(patch%internal_fluxes)
+  if (associated(patch%boundary_fluxes)) deallocate(patch%boundary_fluxes)
+  nullify(patch%boundary_fluxes)
 
   call GridDestroy(patch%grid)
   call RegionDestroyList(patch%regions)

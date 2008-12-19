@@ -1989,14 +1989,20 @@ subroutine OutputBreakthroughTecplot(realization)
       write(fid,'(a)',advance="no") '"Time[' // trim(output_option%tunit) // ']"'
       do 
         if (.not.associated(breakthrough)) exit
-        do icell=1,breakthrough%region%num_cells
-!          call WriteBreakthroughHeaderForCell(fid,realization, &
-!                                              breakthrough%region,icell, &
-!                                              breakthrough%print_velocities)
-          call WriteBreakthroughHeaderForCoord(fid,realization, &
-                                               breakthrough%region, &
-                                               breakthrough%print_velocities)
-        enddo
+        select case(breakthrough%itype)
+          case(BREAKTHROUGH_SCALAR)
+            do icell=1,breakthrough%region%num_cells
+    !          call WriteBreakthroughHeaderForCell(fid,realization, &
+    !                                              breakthrough%region,icell, &
+    !                                              breakthrough%print_velocities)
+              call WriteBreakthroughHeaderForCoord(fid,realization, &
+                                                   breakthrough%region, &
+                                                   breakthrough%print_velocities)
+            enddo
+          case(BREAKTHROUGH_FLUX)
+            call WriteBreakthroughHeaderForBC(fid,realization, &
+                                              breakthrough%linkage_name)
+        end select
         breakthrough => breakthrough%next
       enddo
       write(fid,'(a)',advance="yes") ""
@@ -2009,18 +2015,19 @@ subroutine OutputBreakthroughTecplot(realization)
     write(fid,'(1es12.4)',advance="no") option%time/output_option%tconv
     do 
       if (.not.associated(breakthrough)) exit
-!      do icell=1,breakthrough%region%num_cells
-!        call WriteBreakthroughDataForCell(fid,realization, &
-!                                          breakthrough%region%cell_ids(icell))
-        call WriteBreakthroughDataForCoord(fid,realization, &
-                                           breakthrough%region)
-        if (breakthrough%print_velocities) then
-!          call WriteVelocityAtCell(fid,realization, &
-!                                   breakthrough%region%cell_ids(icell))
-          call WriteVelocityAtCoord(fid,realization, &
-                                    breakthrough%region)
-        endif                                          
- !     enddo
+        select case(breakthrough%itype)
+          case(BREAKTHROUGH_SCALAR)
+            call WriteBreakthroughDataForCoord(fid,realization, &
+                                               breakthrough%region)
+            if (breakthrough%print_velocities) then
+              call WriteVelocityAtCoord(fid,realization, &
+                                        breakthrough%region)
+            endif
+          case(BREAKTHROUGH_FLUX)
+            call WriteBreakthroughDataForBC(fid,realization, &
+                                            patch, &
+                                            breakthrough%connection_set)
+      end select
       breakthrough => breakthrough%next
     enddo
     write(fid,'(a)',advance="yes") ""
@@ -2166,8 +2173,6 @@ subroutine WriteBreakthroughHeaderForCoord(fid,realization,region, &
                                            print_velocities)
 
   use Realization_module
-  use Grid_module
-  use Field_module
   use Option_module
   use Patch_module
   use Region_module
@@ -2185,14 +2190,10 @@ subroutine WriteBreakthroughHeaderForCoord(fid,realization,region, &
   character(len=MAXSTRINGLENGTH) :: coordinate_string
   character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
   type(option_type), pointer :: option
-  type(field_type), pointer :: field
-  type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch  
   
   patch => realization%patch
   option => realization%option
-  field => realization%field
-  grid => patch%grid
   
 !  write(cell_id_string,*) grid%nL2A(region%cell_ids(icell))
 !  cell_id_string = trim(region%name) // ' ' //adjustl(cell_id_string)
@@ -2284,6 +2285,55 @@ subroutine WriteBreakthroughHeaderForCoord(fid,realization,region, &
   endif
 
 end subroutine WriteBreakthroughHeaderForCoord
+
+! ************************************************************************** !
+!
+! WriteBreakthroughHeaderForBC: Print a header for data over a region
+! author: Glenn Hammond
+! date: 12/18/08
+!
+! ************************************************************************** !  
+subroutine WriteBreakthroughHeaderForBC(fid,realization,coupler_name)
+
+  use Realization_module
+  use Option_module
+  use Reaction_module
+  use Region_module
+
+  implicit none
+  
+  PetscInt :: fid
+  type(realization_type) :: realization
+  character(len=MAXWORDLENGTH) :: coupler_name
+  
+  PetscInt :: i
+  character(len=MAXSTRINGLENGTH) :: string
+  type(option_type), pointer :: option
+  type(reaction_type), pointer :: reaction
+  
+  option => realization%option
+  reaction => realization%reaction
+  
+  select case(option%iflowmode)
+    case (MPH_MODE)
+    case(THC_MODE)
+    case(RICHARDS_MODE)
+      string = ',"Darcy flux ' // trim(coupler_name) // &
+               ' [m^3/' // trim(realization%output_option%tunit) // ']"'
+    case default
+  end select
+  write(fid,'(a)',advance="no") trim(string)
+
+  if (associated(reaction)) then
+    do i=1, reaction%ncomp 
+      write(fid,'(a)',advance="no") ',"' // &
+        trim(reaction%primary_species_names(i)) // ' ' // &
+        trim(coupler_name) // &
+        ' [mol/' // trim(realization%output_option%tunit) // ']"'
+    enddo
+  endif
+
+end subroutine WriteBreakthroughHeaderForBC
 
 ! ************************************************************************** !
 !
@@ -2635,6 +2685,83 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
   end select
 
 end subroutine WriteBreakthroughDataForCoord
+
+! ************************************************************************** !
+!
+! WriteBreakthroughDataForBC: Print flux data for a boundary condition
+! author: Glenn Hammond
+! date: 12/18/08
+!
+! ************************************************************************** !  
+subroutine WriteBreakthroughDataForBC(fid,realization,patch,connection_set)
+
+  use Realization_module
+  use Option_module
+  use Connection_module  
+  use Patch_module
+  
+  use Structured_Grid_module
+
+  implicit none
+  
+  PetscInt :: fid
+  type(realization_type) :: realization
+  type(patch_type), pointer :: patch
+  type(connection_set_type), pointer :: connection_set
+
+  PetscInt :: i
+  PetscInt :: iconn
+  PetscInt :: offset
+  PetscInt :: iphase
+  PetscReal :: sum_volumetric_flux(realization%option%nphase)
+  PetscReal :: sum_solute_flux(realization%reaction%ncomp)
+  type(option_type), pointer :: option
+  type(reaction_type), pointer :: reaction
+  
+  option => realization%option
+  reaction => realization%reaction
+
+100 format(es14.6)
+!100 format(es16.9)
+101 format("i")
+110 format(es14.6)
+!110 format(',',es16.9)
+111 format("i")
+ 
+  iphase = 1
+
+  ! sum up fluxes across region
+  if (associated(connection_set)) then
+    offset = connection_set%offset
+    select case(option%iflowmode)
+      case(MPH_MODE,THC_MODE)
+      case(RICHARDS_MODE)
+        sum_volumetric_flux = 0.d0
+        do iconn = 1, connection_set%num_connections
+          sum_volumetric_flux(:) = sum_volumetric_flux(:) + &
+                                patch%boundary_velocities(iphase,offset+iconn)* &
+                                connection_set%area(iconn)
+        enddo
+        do i = 1, option%nphase
+          write(fid,110,advance="no") sum_volumetric_flux(i)
+        enddo
+    end select
+
+    if (associated(reaction)) then
+      sum_solute_flux = 0.d0
+      do iconn = 1, connection_set%num_connections
+        sum_solute_flux(:) = sum_solute_flux(:) + &
+                             patch%boundary_fluxes(iphase,:,offset+iconn)* &
+                             connection_set%area(iconn)
+      enddo
+      do i = 1, reaction%ncomp
+        write(fid,110,advance="no") sum_solute_flux(i)
+      enddo
+    endif
+
+  endif
+
+end subroutine WriteBreakthroughDataForBC
 
 ! ************************************************************************** !
 !
