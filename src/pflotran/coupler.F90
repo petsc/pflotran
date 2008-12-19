@@ -289,8 +289,10 @@ subroutine CouplerListComputeConnections(grid,option,coupler_list)
   do
     if (.not.associated(coupler)) exit  
     call CouplerComputeConnections(grid,option,coupler)
-    coupler%connection_set%offset = offset
-    offset = offset + coupler%connection_set%num_connections
+    if (associated(coupler%connection_set)) then
+      coupler%connection_set%offset = offset
+      offset = offset + coupler%connection_set%num_connections
+    endif
     coupler => coupler%next
   enddo
 

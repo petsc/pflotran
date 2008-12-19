@@ -1952,6 +1952,7 @@ subroutine OutputBreakthroughTecplot(realization)
   type(output_option_type), pointer :: output_option
   type(breakthrough_type), pointer :: breakthrough
   PetscTruth, save :: first = PETSC_TRUE
+  PetscTruth, save :: open_file = PETSC_FALSE
 
   call PetscLogEventBegin(logging%event_output_breakthrough, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -1963,9 +1964,21 @@ subroutine OutputBreakthroughTecplot(realization)
   field => realization%field
   output_option => realization%output_option
   
-  breakthrough => patch%breakthrough%first
+  if (first) then
+    breakthrough => patch%breakthrough%first
+    do
+      if (.not.associated(breakthrough)) exit
+      if (breakthrough%itype == BREAKTHROUGH_SCALAR .or. &
+          (breakthrough%itype == BREAKTHROUGH_FLUX .and. &
+           option%myrank == option%io_rank)) then
+        open_file = PETSC_TRUE
+        exit
+      endif
+    enddo
+  endif
   
-  if (associated(breakthrough)) then
+  
+  if (open_file) then
 
     if (option%myrank < 10) then
       write(filename,'("breakthrough_",i1,".tec")') option%myrank  
@@ -1982,11 +1995,11 @@ subroutine OutputBreakthroughTecplot(realization)
     ! open file
     fid = 86
     if (first) then
-      first = PETSC_FALSE
       open(unit=fid,file=filename,action="write",status="replace")
       ! write header
       ! write title
       write(fid,'(a)',advance="no") '"Time[' // trim(output_option%tunit) // ']"'
+      breakthrough => patch%breakthrough%first
       do 
         if (.not.associated(breakthrough)) exit
         select case(breakthrough%itype)
@@ -2000,8 +2013,10 @@ subroutine OutputBreakthroughTecplot(realization)
                                                    breakthrough%print_velocities)
             enddo
           case(BREAKTHROUGH_FLUX)
-            call WriteBreakthroughHeaderForBC(fid,realization, &
-                                              breakthrough%linkage_name)
+            if (option%myrank == option%io_rank) then
+              call WriteBreakthroughHeaderForBC(fid,realization, &
+                                                breakthrough%linkage_name)
+            endif
         end select
         breakthrough => breakthrough%next
       enddo
@@ -2034,6 +2049,8 @@ subroutine OutputBreakthroughTecplot(realization)
     close(fid)
 
   endif
+
+  first = PETSC_FALSE
 
   call PetscLogEventEnd(logging%event_output_breakthrough, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -2297,11 +2314,6 @@ subroutine WriteBreakthroughHeaderForBC(fid,realization,coupler_name)
 
   use Realization_module
   use Option_module
-  
-! use Reaction_module
-
-  use Region_module
-
   use Reaction_Aux_module
 
   implicit none
@@ -2703,9 +2715,6 @@ subroutine WriteBreakthroughDataForBC(fid,realization,patch,connection_set)
   use Option_module
   use Connection_module  
   use Patch_module
-  
-  use Structured_Grid_module
-
   use Reaction_Aux_module
 
   implicit none
@@ -2720,7 +2729,9 @@ subroutine WriteBreakthroughDataForBC(fid,realization,patch,connection_set)
   PetscInt :: offset
   PetscInt :: iphase
   PetscReal :: sum_volumetric_flux(realization%option%nphase)
+  PetscReal :: sum_volumetric_flux_global(realization%option%nphase)
   PetscReal :: sum_solute_flux(realization%reaction%ncomp)
+  PetscReal :: sum_solute_flux_global(realization%reaction%ncomp)
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
   
@@ -2743,26 +2754,40 @@ subroutine WriteBreakthroughDataForBC(fid,realization,patch,connection_set)
       case(MPH_MODE,THC_MODE)
       case(RICHARDS_MODE)
         sum_volumetric_flux = 0.d0
-        do iconn = 1, connection_set%num_connections
-          sum_volumetric_flux(:) = sum_volumetric_flux(:) + &
-                                patch%boundary_velocities(iphase,offset+iconn)* &
-                                connection_set%area(iconn)
-        enddo
-        do i = 1, option%nphase
-          write(fid,110,advance="no") sum_volumetric_flux(i)
-        enddo
+        if (associated(connection_set)) then
+          do iconn = 1, connection_set%num_connections
+            sum_volumetric_flux(:) = sum_volumetric_flux(:) + &
+                                  patch%boundary_velocities(iphase,offset+iconn)* &
+                                  connection_set%area(iconn)
+          enddo
+        endif
+        call MPI_Reduce(sum_volumetric_flux,sum_volumetric_flux_global, &
+                        option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                        option%io_rank,option%comm,ierr)
+        if (option%myrank == option%io_rank) then
+          do i = 1, option%nphase
+            write(fid,110,advance="no") sum_volumetric_flux_global(i)
+          enddo
+        endif
     end select
 
     if (associated(reaction)) then
       sum_solute_flux = 0.d0
-      do iconn = 1, connection_set%num_connections
-        sum_solute_flux(:) = sum_solute_flux(:) + &
-                             patch%boundary_fluxes(iphase,:,offset+iconn)* &
-                             connection_set%area(iconn)
-      enddo
-      do i = 1, reaction%ncomp
-        write(fid,110,advance="no") sum_solute_flux(i)
-      enddo
+      if (associated(connection_set)) then
+        do iconn = 1, connection_set%num_connections
+          sum_solute_flux(:) = sum_solute_flux(:) + &
+                               patch%boundary_fluxes(iphase,:,offset+iconn)* &
+                               connection_set%area(iconn)
+        enddo
+      endif
+      call MPI_Reduce(sum_solute_flux,sum_solute_flux_global, &
+                      reaction%ncomp,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      option%io_rank,option%comm,ierr)
+      if (option%myrank == option%io_rank) then
+        do i = 1, reaction%ncomp
+          write(fid,110,advance="no") sum_solute_flux_global(i)
+        enddo
+      endif
     endif
 
   endif

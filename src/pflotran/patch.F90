@@ -450,8 +450,10 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
           call printErrMsg(option)
         endif
         if (breakthrough%connection_set%num_connections == 0) then
-          ! remove the breakthrough object
-          call BreakthroughRemoveFromList(breakthrough,patch%breakthrough)
+          ! cannot remove from list, since there must be a global reduction
+          ! across all procs
+          ! therefore, just nullify connection set
+          nullify(breakthrough%connection_set)
         endif                                      
     end select
     breakthrough => next_breakthrough
