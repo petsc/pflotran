@@ -587,6 +587,11 @@ subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
     Res(:) = psv_t*rt_aux_var%total(:,iphase) 
   endif
   
+  do 
+    iphase = iphase + 1
+    if (iphase > option%nphase) exit
+    ! add code for other phases here
+  enddo
 
 end subroutine RTAccumulation
 
