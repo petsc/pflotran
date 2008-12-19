@@ -465,6 +465,9 @@ subroutine Init(simulation,filename)
         call THCUpdateAuxVars(realization)
       case(RICHARDS_MODE)
         call RichardsUpdateAuxVars(realization)
+        if (option%compute_mass_balance_new) then
+          call RichardsInitMassBalancePatch(realization)
+        endif
       case(MPH_MODE)
         call MphaseUpdateAuxVars(realization)
     end select
@@ -501,7 +504,9 @@ subroutine Init(simulation,filename)
       call RTUpdateSolution(realization)    
       call RTUpdateAuxVars(realization)
     endif
-
+    if (option%compute_mass_balance_new) then
+      call RTInitMassBalancePatch(realization)
+    endif
   endif
   
   ! print info
@@ -1406,8 +1411,11 @@ subroutine readInput(simulation)
       case ('COMPUTE_STATISTICS','STATISTICS')
         option%compute_statistics = PETSC_TRUE
 
-      case ('COMPUTE_MASS_BALANCE','MASS_BALANCE')
-        option%compute_mass_balance = PETSC_TRUE
+!      case ('COMPUTE_MASS_BALANCE','MASS_BALANCE')
+!        option%compute_mass_balance = PETSC_TRUE
+
+      case ('COMPUTE_MASS_BALANCE','MASS_BALANCE','COMPUTE_MASS_BALANCE_NEW','MASS_BALANCE_NEW')
+        option%compute_mass_balance_new = PETSC_TRUE
 
 !....................
 

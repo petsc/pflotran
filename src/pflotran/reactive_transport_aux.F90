@@ -38,6 +38,9 @@ module Reactive_Transport_Aux_module
     PetscReal :: act_h2o
     PetscReal, pointer :: pri_act_coef(:)
     PetscReal, pointer :: sec_act_coef(:)
+    
+    PetscReal, pointer :: mass_balance(:,:)
+    PetscReal, pointer :: mass_balance_delta(:,:)
   end type reactive_transport_auxvar_type
   
   type, public :: reactive_transport_type
@@ -179,6 +182,16 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
     nullify(aux_var%sec_act_coef)
   endif
   
+  if (option%compute_mass_balance_new) then
+    allocate(aux_var%mass_balance(reaction%ncomp,option%nphase))
+    aux_var%mass_balance = 0.d0
+    allocate(aux_var%mass_balance_delta(reaction%ncomp,option%nphase))
+    aux_var%mass_balance_delta = 0.d0
+  else
+    nullify(aux_var%mass_balance)
+    nullify(aux_var%mass_balance_delta)
+  endif
+  
 end subroutine RTAuxVarInit
 
 ! ************************************************************************** !
@@ -230,6 +243,11 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
   aux_var%pri_act_coef = aux_var2%pri_act_coef
   if (associated(aux_var%sec_act_coef)) &
     aux_var%sec_act_coef = aux_var2%sec_act_coef
+
+  if (associated(aux_var%mass_balance)) then
+    aux_var%mass_balance = aux_var2%mass_balance
+    aux_var%mass_balance_delta = aux_var2%mass_balance_delta
+  endif
 
 end subroutine RTAuxVarCopy
 
@@ -283,6 +301,11 @@ subroutine RTAuxVarDestroy(aux_var)
   nullify(aux_var%pri_act_coef)
   if (associated(aux_var%sec_act_coef))deallocate(aux_var%sec_act_coef)
   nullify(aux_var%sec_act_coef)
+
+  if (associated(aux_var%mass_balance)) deallocate(aux_var%mass_balance)
+  nullify(aux_var%mass_balance)
+  if (associated(aux_var%mass_balance_delta)) deallocate(aux_var%mass_balance_delta)
+  nullify(aux_var%mass_balance_delta)
 
 end subroutine RTAuxVarDestroy
 

@@ -130,6 +130,10 @@ subroutine Output(realization,plot_flag)
 !      call ComputeFlowMassBalance(realization)
     endif
   
+    if (option%compute_mass_balance_new) then
+      call OutputMassBalanceNew(realization)
+    endif
+  
     realization%output_option%plot_number = realization%output_option%plot_number + 1
 
   endif
@@ -2021,12 +2025,12 @@ subroutine OutputBreakthroughTecplot(realization)
         breakthrough => breakthrough%next
       enddo
       write(fid,'(a)',advance="yes") ""
-      breakthrough => patch%breakthrough%first
     else
       open(unit=fid,file=filename,action="write",status="old", &
            position="append")
     endif
   
+    breakthrough => patch%breakthrough%first
     write(fid,'(1es12.4)',advance="no") option%time/output_option%tconv
     do 
       if (.not.associated(breakthrough)) exit
@@ -5333,6 +5337,223 @@ subroutine OutputMassBalance(realization)
 
 end subroutine OutputMassBalance
 #endif
+
+! ************************************************************************** !
+!
+! OutputMassBalanceNew: Print to Tecplot POINT format
+! author: Glenn Hammond
+! date: 06/18/08
+!
+! ************************************************************************** !  
+subroutine OutputMassBalanceNew(realization)
+
+  use Realization_module
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Coupler_module
+  
+  use Global_Aux_module
+  use Reactive_Transport_Aux_module
+  use Reaction_Aux_module
+  
+  implicit none
+
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(reaction_type), pointer :: reaction
+  type(output_option_type), pointer :: output_option  
+  type(coupler_type), pointer :: boundary_condition
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
+  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_bc(:)
+  
+  character(len=MAXWORDLENGTH) :: filename
+  PetscTruth, save :: first = PETSC_TRUE
+  PetscInt :: fid = 86
+  PetscInt :: i
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: iconn
+  PetscInt :: offset
+  PetscInt :: iphase
+  PetscInt :: icomp
+  PetscReal :: sum_kg(realization%option%nphase)
+  PetscReal :: sum_kg_global(realization%option%nphase)
+  PetscReal :: sum_mol(realization%option%ntrandof,realization%option%nphase)
+  PetscReal :: sum_mol_global(realization%option%ntrandof,realization%option%nphase)
+  
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  reaction => realization%reaction
+  output_option => realization%output_option
+  
+  
+  if (len_trim(output_option%plot_name) > 2) then
+    filename = trim(output_option%plot_name) // '.tec'
+    output_option%plot_name = ''
+  else
+    filename = 'mass_balance.tec'
+  endif
+  
+  ! open file
+  if (option%myrank == option%io_rank) then
+
+    option%io_buffer = '--> write tecplot mass balance file: ' // trim(filename)
+    call printMsg(option)    
+
+    if (first) then
+      open(unit=fid,file=filename,action="write",status="replace")
+
+      ! write header
+      write(fid,'(a)',advance="no") '"Time[' // trim(output_option%tunit) // ']"'  
+      
+      select case(option%iflowmode)
+        case(RICHARDS_MODE)
+          write(fid,'(a)',advance="no") ',"Global Water Mass [kg]"'
+      end select
+      
+      if (option%ntrandof > 0) then
+        do i=1,reaction%ncomp
+          write(fid,'(a)',advance="no") ',"Global ' // &
+              trim(reaction%primary_species_names(i)) // ' [mol]"'
+        enddo
+      endif
+      
+      boundary_condition => patch%boundary_conditions%first
+      do 
+        if (.not.associated(boundary_condition)) exit
+
+        select case(option%iflowmode)
+          case(RICHARDS_MODE)
+            write(fid,'(a)',advance="no") ',"' // &
+              trim(boundary_condition%name) // ' Water Mass [kg]"'
+        end select
+        
+        if (option%ntrandof > 0) then
+          do i=1,reaction%ncomp
+            write(fid,'(a)',advance="no") ',"' // &
+                trim(boundary_condition%name) // ' ' // &
+                trim(reaction%primary_species_names(i)) // ' [mol]"'
+          enddo
+        endif
+        boundary_condition => boundary_condition%next
+      
+      enddo
+      write(fid,'(a)') '' 
+    else
+      open(unit=fid,file=filename,action="write",status="old",position="append")
+    endif 
+    
+  endif     
+  first = PETSC_FALSE
+
+100 format(100es12.4)
+110 format(100es14.6)
+
+  ! write time
+  if (option%myrank == option%io_rank) then
+    write(fid,100,advance="no") option%time/output_option%tconv
+  endif
+
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  if (option%ntrandof > 0) then
+    rt_aux_vars => patch%aux%RT%aux_vars
+    rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
+  endif    
+  
+  sum_kg = 0.d0
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
+    sum_kg = sum_kg + global_aux_vars(ghosted_id)%mass_balance
+  enddo
+
+  call MPI_Reduce(sum_kg,sum_kg_global, &
+                  option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                  option%io_rank,option%comm,ierr)
+                      
+  if (option%myrank == option%io_rank) then
+    write(fid,110,advance="no") sum_kg_global
+  endif
+  
+  if (option%ntrandof > 0) then
+    sum_mol = 0.d0
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      !geh - Ignore inactive cells with inactive materials
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+      sum_mol = sum_mol + rt_aux_vars(ghosted_id)%mass_balance
+    enddo
+
+    call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*reaction%ncomp, &
+                    MPI_DOUBLE_PRECISION,MPI_SUM, &
+                    option%io_rank,option%comm,ierr)
+
+    if (option%myrank == option%io_rank) then
+      write(fid,110,advance="no") ((sum_mol_global(icomp,iphase), &
+                                    icomp=1,reaction%ncomp),&
+                                   iphase=1,option%nphase)
+    endif
+  endif
+  
+  boundary_condition => patch%boundary_conditions%first
+  do 
+    if (.not.associated(boundary_condition)) exit
+
+    offset = boundary_condition%connection_set%offset
+    sum_kg = 0.d0
+    do iconn = 1, boundary_condition%connection_set%num_connections
+      sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance
+    enddo
+
+    call MPI_Reduce(sum_kg,sum_kg_global, &
+                    option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                    option%io_rank,option%comm,ierr)
+                        
+    if (option%myrank == option%io_rank) then
+      write(fid,110,advance="no") sum_kg_global
+    endif
+    
+    if (option%ntrandof > 0) then
+
+      sum_mol = 0.d0
+      do iconn = 1, boundary_condition%connection_set%num_connections
+        sum_mol = sum_mol + rt_aux_vars_bc(offset+iconn)%mass_balance
+      enddo
+
+      call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*reaction%ncomp, &
+                      MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      option%io_rank,option%comm,ierr)
+
+      if (option%myrank == option%io_rank) then
+        write(fid,110,advance="no") ((sum_mol_global(icomp,iphase), &
+                                      icomp=1,reaction%ncomp),&
+                                     iphase=1,option%nphase)
+      endif
+    endif
+
+    boundary_condition => boundary_condition%next
+  
+  enddo
+  
+  if (option%myrank == option%io_rank) then
+    write(fid,'(a)') ''
+    close(fid)
+  endif
+
+end subroutine OutputMassBalanceNew
 
 ! ************************************************************************** !
 !
