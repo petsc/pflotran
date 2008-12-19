@@ -106,6 +106,7 @@ module Option_module
     PetscTruth :: numerical_derivatives
     PetscTruth :: compute_statistics
     PetscTruth :: compute_mass_balance
+    PetscTruth :: compute_mass_balance_new
     PetscTruth :: use_touch_options
     PetscTruth :: overwrite_restart_transport
     PetscTruth :: overwrite_restart_flow
@@ -287,6 +288,7 @@ function OptionCreate()
   option%numerical_derivatives = PETSC_FALSE
   option%compute_statistics = PETSC_FALSE
   option%compute_mass_balance = PETSC_FALSE
+  option%compute_mass_balance_new = PETSC_FALSE
 
   option%use_touch_options = PETSC_FALSE
   option%overwrite_restart_transport = PETSC_FALSE

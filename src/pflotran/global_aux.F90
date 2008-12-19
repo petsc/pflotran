@@ -14,6 +14,8 @@ module Global_Aux_module
     PetscReal, pointer :: den(:)
     PetscReal, pointer :: den_kg(:)
     PetscReal, pointer :: den_kg_store(:,:)
+    PetscReal, pointer :: mass_balance(:)
+    PetscReal, pointer :: mass_balance_delta(:)
   end type global_auxvar_type
   
   type, public :: global_type
@@ -88,6 +90,16 @@ subroutine GlobalAuxVarInit(aux_var,option)
   allocate(aux_var%den_kg_store(option%nphase,TWO_INTEGER))
   aux_var%den_kg_store = 0.d0
 
+  if (option%compute_mass_balance_new) then
+    allocate(aux_var%mass_balance(option%nphase))
+    aux_var%mass_balance = 0.d0
+    allocate(aux_var%mass_balance_delta(option%nphase))
+    aux_var%mass_balance_delta = 0.d0
+  else
+    nullify(aux_var%mass_balance)
+    nullify(aux_var%mass_balance_delta)
+  endif
+
 end subroutine GlobalAuxVarInit
 
 ! ************************************************************************** !
@@ -114,6 +126,10 @@ subroutine GlobalAuxVarCopy(aux_var,aux_var2,option)
 
   aux_var2%sat_store = aux_var%sat_store
   aux_var2%den_kg_store = aux_var%den_kg_store
+  if (associated(aux_var2%mass_balance)) then
+    aux_var2%mass_balance = aux_var%mass_balance
+    aux_var2%mass_balance_delta = aux_var%mass_balance_delta
+  endif
 
 end subroutine GlobalAuxVarCopy
   
@@ -145,6 +161,11 @@ subroutine GlobalAuxVarDestroy(aux_var)
   nullify(aux_var%sat_store)
   if (associated(aux_var%den_kg_store)) deallocate(aux_var%den_kg_store)
   nullify(aux_var%den_kg_store)
+  
+  if (associated(aux_var%mass_balance)) deallocate(aux_var%mass_balance)
+  nullify(aux_var%mass_balance)
+  if (associated(aux_var%mass_balance_delta)) deallocate(aux_var%mass_balance_delta)
+  nullify(aux_var%mass_balance_delta)
 
 end subroutine GlobalAuxVarDestroy
 

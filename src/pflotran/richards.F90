@@ -28,7 +28,7 @@ module Richards_module
          RichardsSetup, RichardsNumericalJacTest, &
          RichardsInitializeTimestep, RichardsUpdateAuxVars, &
          RichardsMaxChange, RichardsUpdateSolution, &
-         RichardsGetTecplotHeader
+         RichardsGetTecplotHeader, RichardsInitMassBalancePatch
 
 contains
 
@@ -93,7 +93,7 @@ subroutine RichardsSetup(realization)
   enddo
 
 end subroutine RichardsSetup
-  
+
 ! ************************************************************************** !
 !
 ! RichardsSetupPatch: Creates arrays for auxilliary variables
@@ -158,6 +158,164 @@ subroutine RichardsSetupPatch(realization)
   call RichardsCreateZeroArray(patch,option)
 
 end subroutine RichardsSetupPatch
+
+! ************************************************************************** !
+!
+! RichardsInitMassBalancePatch: Initializes mass balance
+! author: Glenn Hammond
+! date: 12/19/08
+!
+! ************************************************************************** !
+subroutine RichardsInitMassBalancePatch(realization)
+ 
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(field_type), pointer :: field
+  type(grid_type), pointer :: grid
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  PetscReal, pointer :: volume_p(:), porosity_loc_p(:)
+
+  PetscErrorCode :: ierr
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+  field => realization%field
+
+  global_aux_vars => patch%aux%Global%aux_vars
+
+  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
+  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
+    ! mass = volume*saturation*density
+    global_aux_vars(ghosted_id)%mass_balance = &
+      global_aux_vars(ghosted_id)%den_kg* &
+      global_aux_vars(ghosted_id)%sat* &
+      porosity_loc_p(ghosted_id)*volume_p(ghosted_id)
+  enddo
+
+  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  
+end subroutine RichardsInitMassBalancePatch
+
+! ************************************************************************** !
+!
+! RichardsZeroMassBalDeltaPatch: Zeros mass balance delta array
+! author: Glenn Hammond
+! date: 12/19/08
+!
+! ************************************************************************** !
+subroutine RichardsZeroMassBalDeltaPatch(realization)
+ 
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: iconn
+
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    global_aux_vars(ghosted_id)%mass_balance_delta = 0.d0
+  enddo
+
+  do iconn = 1, patch%aux%Richards%num_aux_bc
+    global_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
+  enddo
+
+end subroutine RichardsZeroMassBalDeltaPatch
+
+! ************************************************************************** !
+!
+! RichardsUpdateMassBalancePatch: Updates mass balance
+! author: Glenn Hammond
+! date: 12/19/08
+!
+! ************************************************************************** !
+subroutine RichardsUpdateMassBalancePatch(realization)
+ 
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: iconn
+
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
+    global_aux_vars(ghosted_id)%mass_balance = &
+      global_aux_vars(ghosted_id)%mass_balance + &
+      ! kmol h2o -> kg h2o
+      global_aux_vars(ghosted_id)%mass_balance_delta*FMWH2O*option%flow_dt
+  enddo
+
+  do iconn = 1, patch%aux%Richards%num_aux_bc
+    global_aux_vars_bc(iconn)%mass_balance = &
+      global_aux_vars_bc(iconn)%mass_balance + &
+      global_aux_vars_bc(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
+  enddo
+
+end subroutine RichardsUpdateMassBalancePatch
 
 ! ************************************************************************** !
 !
@@ -342,19 +500,59 @@ subroutine RichardsUpdateSolution(realization)
 
   use Realization_module
   use Field_module
+  use Level_module
+  use Patch_module
   
   implicit none
   
   type(realization_type) :: realization
 
   type(field_type), pointer :: field
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
   PetscErrorCode :: ierr
   
   field => realization%field
   
   call VecCopy(field%flow_xx,field%flow_yy,ierr)   
 
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RichardsUpdateSolutionPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+  
 end subroutine RichardsUpdateSolution
+
+
+! ************************************************************************** !
+!
+! RichardsUpdateSolutionPatch: Updates data in module after a successful time 
+!                             step
+! author: Glenn Hammond
+! date: 02/13/08
+!
+! ************************************************************************** !
+subroutine RichardsUpdateSolutionPatch(realization)
+
+  use Realization_module
+    
+  implicit none
+  
+  type(realization_type) :: realization
+
+  if (realization%option%compute_mass_balance_new) then
+    call RichardsUpdateMassBalancePatch(realization)
+  endif
+
+end subroutine RichardsUpdateSolutionPatch
 
 ! ************************************************************************** !
 !
@@ -1285,7 +1483,7 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
   PetscReal :: perm_up, perm_dn
   PetscReal :: D_up, D_dn  ! "Diffusion" constants at upstream, downstream faces.
   PetscReal :: dw_kg, dw_mol
-  PetscReal :: tsrc1, qsrc1, enth_src_h2o
+  PetscReal :: tsrc1, qsrc1, enth_src_h2o, qsrc_kg
   PetscReal :: tmp, upweight
   PetscReal :: rho
   PetscInt :: iphasebc
@@ -1321,6 +1519,9 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
 
   call RichardsUpdateAuxVarsPatch(realization)
   patch%aux%Richards%aux_vars_up_to_date = PETSC_FALSE ! override flags since they will soon be out of date
+  if (option%compute_mass_balance_new) then
+    call RichardsZeroMassBalDeltaPatch(realization)
+  endif
 
 ! now assign access pointer to local variables
   call GridVecGetArrayF90(grid,r, r_p, ierr)
@@ -1376,13 +1577,18 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
 
       select case(source_sink%flow_condition%pressure%itype)
         case(MASS_RATE_SS)
-          r_p(local_id) = r_p(local_id) - qsrc1*option%flow_dt ! kg/sec
+          qsrc_kg = qsrc1 ! kg/sec
         case(VOLUMETRIC_RATE_SS)  ! assume local density for now
           ! qsrc1 = m^3/sec
-          r_p(local_id) = r_p(local_id) - qsrc1*global_aux_vars(ghosted_id)%den_kg(1)* &
-                                          option%flow_dt 
+          qsrc_kg = qsrc1*global_aux_vars(ghosted_id)%den_kg(1)
       end select
-
+      if (option%compute_mass_balance_new) then
+        ! may need to added global aux_var for src/sink
+        ! contribution to internal 
+        global_aux_vars(ghosted_id)%mass_balance_delta(1) = &
+          global_aux_vars(ghosted_id)%mass_balance_delta(1) + qsrc_kg
+      endif
+      r_p(local_id) = r_p(local_id) - qsrc_kg*option%flow_dt
     enddo
     source_sink => source_sink%next
   enddo
@@ -1454,6 +1660,14 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
                         upweight,option,v_darcy,Res)
 
       patch%internal_velocities(1,sum_connection) = v_darcy
+      if (option%compute_mass_balance_new) then
+        ! contribution to upwind
+        global_aux_vars(ghosted_id_up)%mass_balance_delta(1) = &
+          global_aux_vars(ghosted_id_up)%mass_balance_delta(1) - Res(1)/option%flow_dt
+        ! contribution to downwind 
+        global_aux_vars(ghosted_id_dn)%mass_balance_delta(1) = &
+          global_aux_vars(ghosted_id_dn)%mass_balance_delta(1) + Res(1)/option%flow_dt
+      endif
 
       if (local_id_up>0) then
         r_p(local_id_up) = r_p(local_id_up) + Res(1)
@@ -1520,6 +1734,14 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
                                 distance_gravity,option, &
                                 v_darcy,Res)
       patch%boundary_velocities(1,sum_connection) = v_darcy
+      if (option%compute_mass_balance_new) then
+        ! contribution to boundary
+        global_aux_vars_bc(sum_connection)%mass_balance_delta(1) = &
+          global_aux_vars_bc(sum_connection)%mass_balance_delta(1) - Res(1)/option%flow_dt
+        ! contribution to internal 
+        global_aux_vars(ghosted_id)%mass_balance_delta(1) = &
+          global_aux_vars(ghosted_id)%mass_balance_delta(1) + Res(1)/option%flow_dt
+      endif
 
       r_p(local_id)= r_p(local_id) - Res(1)
  

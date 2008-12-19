@@ -1156,6 +1156,9 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
     if (option%nflowdof == 0 .or. &
         option%flow_time - option%tran_time <= time_tol*option%flow_time) exit
 
+    ! taking intermediate time step, need to update solution
+    call StepperUpdateTransportSolution(realization)
+
     ! if dt is smaller than dt_orig/4, try growing it by 0.25d0
     if (option%tran_dt < 0.25d0*dt_orig) then
       option%tran_dt = 1.25d0*option%tran_dt
