@@ -178,6 +178,7 @@ subroutine RTInitMassBalancePatch(realization)
   use Realization_module
   use Option_module
   use Patch_module
+  use Field_module
   use Grid_module
  
   implicit none
