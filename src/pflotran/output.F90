@@ -5393,7 +5393,6 @@ subroutine OutputMassBalanceNew(realization)
   reaction => realization%reaction
   output_option => realization%output_option
   
-  
   if (len_trim(output_option%plot_name) > 2) then
     filename = trim(output_option%plot_name) // '.tec'
     output_option%plot_name = ''
@@ -5523,7 +5522,8 @@ subroutine OutputMassBalanceNew(realization)
                     option%io_rank,option%comm,ierr)
                         
     if (option%myrank == option%io_rank) then
-      write(fid,110,advance="no") sum_kg_global
+      ! change sign for positive in / negative out
+      write(fid,110,advance="no") -sum_kg_global
     endif
     
     if (option%ntrandof > 0) then
@@ -5538,7 +5538,8 @@ subroutine OutputMassBalanceNew(realization)
                       option%io_rank,option%comm,ierr)
 
       if (option%myrank == option%io_rank) then
-        write(fid,110,advance="no") ((sum_mol_global(icomp,iphase), &
+        ! change sign for positive in / negative out
+        write(fid,110,advance="no") ((-sum_mol_global(icomp,iphase), &
                                       icomp=1,reaction%ncomp),&
                                      iphase=1,option%nphase)
       endif
