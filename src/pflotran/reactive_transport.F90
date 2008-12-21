@@ -191,17 +191,22 @@ subroutine RTInitMassBalancePatch(realization)
   type(grid_type), pointer :: grid
   type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
+  type(reaction_type), pointer :: reaction
+
   PetscReal, pointer :: volume_p(:), porosity_loc_p(:)
 
   PetscErrorCode :: ierr
   PetscInt :: local_id
   PetscInt :: ghosted_id
   PetscInt :: iphase = 1
+  PetscInt :: i, icomp, imnrl, ncomp
 
   option => realization%option
   patch => realization%patch
   grid => patch%grid
   field => realization%field
+
+  reaction => realization%reaction
 
   rt_aux_vars => patch%aux%RT%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
@@ -216,10 +221,31 @@ subroutine RTInitMassBalancePatch(realization)
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
     rt_aux_vars(ghosted_id)%mass_balance(:,iphase) = &
-      rt_aux_vars(ghosted_id)%total(:,iphase)* &
-      global_aux_vars(ghosted_id)%sat(iphase)* &
-      porosity_loc_p(ghosted_id)*volume_p(ghosted_id)*1000.d0
+      (porosity_loc_p(ghosted_id) * global_aux_vars(ghosted_id)%sat(iphase) * &
+      rt_aux_vars(ghosted_id)%total(:,iphase) + &
+      rt_aux_vars(ghosted_id)%total_sorb(:)) * &
+      volume_p(ghosted_id)*1000.d0
   enddo
+
+  ! add contribution from mineral volume fractions
+  if (reaction%nkinmnrl > 0) then
+    do ghosted_id = 1, grid%ngmax
+      do imnrl = 1, reaction%nkinmnrl
+        ! rate = mol/m^3/sec
+        ! dvolfrac = m^3 mnrl/m^3 bulk = rate (mol mnrl/m^3 bulk/sec) *
+        !                                mol_vol (m^3 mnrl/mol mnrl)
+        ncomp = reaction%kinmnrlspecid(0,imnrl)
+        do i = 1, ncomp
+          icomp = reaction%kinmnrlspecid(i,imnrl)
+          rt_aux_vars(ghosted_id)%mass_balance(icomp,iphase) = &
+          rt_aux_vars(ghosted_id)%mass_balance(icomp,iphase) &
+          + reaction%kinmnrlstoich(i,imnrl)                  &
+          * rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl)      &
+          / reaction%kinmnrl_molar_vol(imnrl)
+        enddo 
+      enddo
+    enddo
+  endif
 
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
