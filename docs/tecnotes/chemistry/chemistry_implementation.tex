@@ -181,7 +181,8 @@ $\oslash$&\bf\large Isotopic Exchange, \\
 $\odot$ & \bf\large Multiphase Systems, \\
 $\oplus$ & \bf\large Multiple Interacting Continua, \\
 $\oslash$& \bf\large Pitzer Model, \\
-$\odot$ & \bf\large Precipitation/Dissolution, \\
+$\odot$ & \bf\large Mineral Precipitation/Dissolution, \\
+$\otimes$ & \bf\large Radioactive Decay Chain, \\
 $\oslash$& \bf\large Solid Solutions, \\
 $\oslash$& \bf\large Species-Dependent Diffusion, \\
 $\otimes$ & \bf\large Stress-Strain\\
@@ -190,10 +191,14 @@ $\oplus$ & \bf\large Surface Complexation (electrostatic), \\
 &\bf\large \ldots
 \end{tabular}
 
-\hfill $\odot$ substantially completed\\
-\hfill $\oplus$ in progress\\
-\hfill $\oslash$ planned\\
-\hfill $\otimes$ not planned
+\begin{tabular}{ll}\centering
+$\odot$ & substantially completed\\
+$\oplus$ & in progress\\
+$\oslash$ & planned\\
+$\otimes$ & not planned
+\end{tabular}
+
+\medskip
 
 P.C. Lichtner (LANL, \today)
 
@@ -1852,6 +1857,42 @@ and
 c_{rT} \eq -\frac{1}{\varphi} \frac{\p \varphi}{\p T}.
 \EN
 As defined, both quantities $c_{rp}$ and $c_{rT}$ are positive for normal materials.
+
+\section{Global Mass Conservation}
+
+Taking the transport equations in the form
+\EQ
+\frac{\p}{\p t} \varphi \left[ \sum_\a s_\a \Psi_j^\a +\sum_k\nu_{jk} S_k\right] + \bnabla\cdot\sum_\a\bOmega_j^\a \eq -\sum_m\nu_{jm}I_m,
+\EN
+and
+\EQ
+\frac{\p\varphi_m}{\p t} \eq \overline V_m I_m,
+\EN
+global mass conservation equations are obtained by integrating over the computational domain $V$ with bounding surface $\p V$ to give
+\EQ
+\frac{d}{dt}\int_V\varphi \left[ \sum_\a s_\a \Psi_j^\a +\sum_k\nu_{jk} S_k + \sum_m \overline V_m^{-1} \varphi_m \right] dV \eq -\sum_\a\int_{\p V} \bOmega_j^\a \cdot \bdS.
+\EN
+Defining $N_j$ equal to the total mass in place at time $t$ as
+\EQ
+N_j (t)\eq\int_V\varphi \left[ \sum_\a s_\a \Psi_j^\a + \sum_k\nu_{jk} S_k + \sum_m \overline V_m^{-1} \varphi_m \right] dV,
+\EN
+gives
+\EQ
+\frac{dN_j}{dt} \eq -\sum_\a\int_{\p V} \bOmega_j^\a \cdot \bdS.
+\EN
+Integrating over time then yields
+\EQ
+N_j(t)\eq N_j(0) -\sum_\a\int_0^t dt \int_{\p V} \bOmega_j^\a \cdot \bdS.
+\EN
+Finally, defining $\G_j^\a(t)$ as the cumulative mass entering and leaving the system
+\EQ
+\G_j^\a(t) \eq \int_0^t dt \int_{\p V} \bOmega_j^\a \cdot \bdS,
+\EN
+then the global mass conservation equation becomes
+\EQ
+N_j(t)\eq N_j(0) -\sum_\a\G_j^\a(t).
+\EN
+
 
 \section{References}
 
