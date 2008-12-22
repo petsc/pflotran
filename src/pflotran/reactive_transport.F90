@@ -221,31 +221,33 @@ subroutine RTInitMassBalancePatch(realization)
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
     rt_aux_vars(ghosted_id)%mass_balance(:,iphase) = &
-      (porosity_loc_p(ghosted_id) * global_aux_vars(ghosted_id)%sat(iphase) * &
-      rt_aux_vars(ghosted_id)%total(:,iphase) + &
-      rt_aux_vars(ghosted_id)%total_sorb(:)) * &
+      rt_aux_vars(ghosted_id)%total(:,iphase) * &
+      global_aux_vars(ghosted_id)%sat(iphase) * &
+      porosity_loc_p(ghosted_id) * &
       volume_p(ghosted_id)*1000.d0
-  enddo
-
-  ! add contribution from mineral volume fractions
-  if (reaction%nkinmnrl > 0) then
-    do ghosted_id = 1, grid%ngmax
+    ! add contribution of equilibrium sorption
+    if (reaction%nsorb > 0) then
+      rt_aux_vars(ghosted_id)%mass_balance(:,iphase) = &
+        rt_aux_vars(ghosted_id)%mass_balance(:,iphase) + &
+        rt_aux_vars(ghosted_id)%total_sorb(:) * volume_p(ghosted_id)
+    endif
+    ! add contribution from mineral volume fractions
+    if (reaction%nkinmnrl > 0) then
       do imnrl = 1, reaction%nkinmnrl
-        ! rate = mol/m^3/sec
-        ! dvolfrac = m^3 mnrl/m^3 bulk = rate (mol mnrl/m^3 bulk/sec) *
-        !                                mol_vol (m^3 mnrl/mol mnrl)
         ncomp = reaction%kinmnrlspecid(0,imnrl)
         do i = 1, ncomp
           icomp = reaction%kinmnrlspecid(i,imnrl)
           rt_aux_vars(ghosted_id)%mass_balance(icomp,iphase) = &
-          rt_aux_vars(ghosted_id)%mass_balance(icomp,iphase) &
-          + reaction%kinmnrlstoich(i,imnrl)                  &
-          * rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl)      &
-          / reaction%kinmnrl_molar_vol(imnrl)
+            rt_aux_vars(ghosted_id)%mass_balance(icomp,iphase) &
+            + reaction%kinmnrlstoich(i,imnrl)                  &
+            * rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl)      &
+            * volume_p(ghosted_id) &
+            / reaction%kinmnrl_molar_vol(imnrl)
         enddo 
       enddo
-    enddo
-  endif
+    endif
+
+  enddo
 
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
@@ -1203,7 +1205,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
       r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)                    
       if (option%compute_mass_balance_new) then
         rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) = &
-          rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) + Res
+          rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) - Res
       endif  
 
     enddo
