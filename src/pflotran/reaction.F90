@@ -1513,6 +1513,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
   else ! numerical derivative
     compute_derivative = PETSC_FALSE
     Res_orig = 0.d0
+    option%iflag = 0 ! be sure not to allocate mass_balance array
     call RTAuxVarInit(rt_auxvar_pert,reaction,option)
     call RTAuxVarCopy(rt_auxvar_pert,rt_auxvar,option)
     ! #2: add new reactions here

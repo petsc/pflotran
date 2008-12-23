@@ -83,6 +83,7 @@ subroutine GlobalSetupPatch(realization)
   patch%aux%Global => GlobalAuxCreate()
   
   ! allocate aux_var data structures for all grid cells  
+  option%iflag = 0 ! be sure not to allocate mass_balance array
   allocate(aux_vars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
     call GlobalAuxVarInit(aux_vars(ghosted_id),option)
@@ -100,12 +101,15 @@ subroutine GlobalSetupPatch(realization)
                      boundary_condition%connection_set%num_connections
     boundary_condition => boundary_condition%next
   enddo
+  option%iflag = 1 ! enable allocation of mass_balance array 
   allocate(aux_vars_bc(sum_connection))
   do iconn = 1, sum_connection
     call GlobalAuxVarInit(aux_vars_bc(iconn),option)
   enddo
   patch%aux%Global%aux_vars_bc => aux_vars_bc
   patch%aux%Global%num_aux_bc = sum_connection
+
+  option%iflag = 0
   
 end subroutine GlobalSetupPatch
 

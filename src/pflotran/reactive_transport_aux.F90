@@ -182,7 +182,7 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
     nullify(aux_var%sec_act_coef)
   endif
   
-  if (option%compute_mass_balance_new) then
+  if (option%iflag /= 0 .and. option%compute_mass_balance_new) then
     allocate(aux_var%mass_balance(reaction%ncomp,option%nphase))
     aux_var%mass_balance = 0.d0
     allocate(aux_var%mass_balance_delta(reaction%ncomp,option%nphase))
@@ -244,7 +244,8 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
   if (associated(aux_var%sec_act_coef)) &
     aux_var%sec_act_coef = aux_var2%sec_act_coef
 
-  if (associated(aux_var%mass_balance)) then
+  if (associated(aux_var%mass_balance) .and. &
+      associated(aux_var2%mass_balance)) then
     aux_var%mass_balance = aux_var2%mass_balance
     aux_var%mass_balance_delta = aux_var2%mass_balance_delta
   endif

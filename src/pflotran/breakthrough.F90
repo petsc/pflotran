@@ -140,7 +140,7 @@ subroutine BreakthroughRead(breakthrough,input,option)
       case('REGION')
         call InputReadWord(input,option,breakthrough%linkage_name,PETSC_TRUE)
         call InputErrorMsg(input,option,'region name','BREAKTHROUGH')
-         breakthrough%itype = BREAKTHROUGH_SCALAR
+        breakthrough%itype = BREAKTHROUGH_SCALAR
       case('VELOCITY')
         breakthrough%print_velocities = PETSC_TRUE
       case default

@@ -465,9 +465,6 @@ subroutine Init(simulation,filename)
         call THCUpdateAuxVars(realization)
       case(RICHARDS_MODE)
         call RichardsUpdateAuxVars(realization)
-        if (option%compute_mass_balance_new) then
-          call RichardsInitMassBalancePatch(realization)
-        endif
       case(MPH_MODE)
         call MphaseUpdateAuxVars(realization)
     end select
@@ -503,9 +500,6 @@ subroutine Init(simulation,filename)
     if (realization%reaction%compute_activity_coefs /= ACTIVITY_COEFFICIENTS_OFF) then
       call RTUpdateSolution(realization)    
       call RTUpdateAuxVars(realization)
-    endif
-    if (option%compute_mass_balance_new) then
-      call RTInitMassBalancePatch(realization)
     endif
   endif
   

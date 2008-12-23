@@ -5353,6 +5353,9 @@ subroutine OutputMassBalanceNew(realization)
   use Option_module
   use Coupler_module
   
+  use Richards_module
+  use Reactive_Transport_module
+  
   use Global_Aux_module
   use Reactive_Transport_Aux_module
   use Reaction_Aux_module
@@ -5367,9 +5370,7 @@ subroutine OutputMassBalanceNew(realization)
   type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option  
   type(coupler_type), pointer :: boundary_condition
-  type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
-  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_bc(:)
   
   character(len=MAXWORDLENGTH) :: filename
@@ -5460,23 +5461,12 @@ subroutine OutputMassBalanceNew(realization)
     write(fid,100,advance="no") option%time/output_option%tconv
   endif
 
-  global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   if (option%ntrandof > 0) then
-    rt_aux_vars => patch%aux%RT%aux_vars
     rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
   endif    
   
-  sum_kg = 0.d0
-  do local_id = 1, grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    !geh - Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif
-    sum_kg = sum_kg + global_aux_vars(ghosted_id)%mass_balance
-  enddo
-
+  call RichardsComputeMassBalance(realization,sum_kg)
   call MPI_Reduce(sum_kg,sum_kg_global, &
                   option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
                   option%io_rank,option%comm,ierr)
@@ -5486,16 +5476,7 @@ subroutine OutputMassBalanceNew(realization)
   endif
   
   if (option%ntrandof > 0) then
-    sum_mol = 0.d0
-    do local_id = 1, grid%nlmax
-      ghosted_id = grid%nL2G(local_id)
-      !geh - Ignore inactive cells with inactive materials
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
-      sum_mol = sum_mol + rt_aux_vars(ghosted_id)%mass_balance
-    enddo
-
+    call RTComputeMassBalance(realization,sum_mol)
     call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*reaction%ncomp, &
                     MPI_DOUBLE_PRECISION,MPI_SUM, &
                     option%io_rank,option%comm,ierr)

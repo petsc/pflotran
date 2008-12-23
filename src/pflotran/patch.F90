@@ -588,6 +588,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
         if (.not.associated(cur_constraint_coupler)) exit
         allocate(cur_constraint_coupler%global_auxvar)
         allocate(cur_constraint_coupler%rt_auxvar)
+        option%iflag = 0 ! be sure not to allocate mass_balance array
         call GlobalAuxVarInit(cur_constraint_coupler%global_auxvar,option)
         call RTAuxVarInit(cur_constraint_coupler%rt_auxvar,reaction,option)
         cur_constraint_coupler => cur_constraint_coupler%next

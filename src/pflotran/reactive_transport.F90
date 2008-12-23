@@ -24,7 +24,7 @@ module Reactive_Transport_module
   
   public :: RTTimeCut, RTSetup, RTMaxChange, RTUpdateSolution, RTResidual, &
             RTJacobian, RTInitializeTimestep, RTGetTecplotHeader, &
-            RTUpdateAuxVars, RTInitMassBalancePatch
+            RTUpdateAuxVars, RTComputeMassBalance
   
 contains
 
@@ -138,6 +138,7 @@ subroutine RTSetupPatch(realization)
   patch%aux%RT => RTAuxCreate()
     
   ! allocate aux_var data structures for all grid cells
+  option%iflag = 0 ! be sure not to allocate mass_balance array
   allocate(patch%aux%RT%aux_vars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
     call RTAuxVarInit(patch%aux%RT%aux_vars(ghosted_id),reaction,option)
@@ -154,11 +155,13 @@ subroutine RTSetupPatch(realization)
                      boundary_condition%connection_set%num_connections
     boundary_condition => boundary_condition%next
   enddo
+  option%iflag = 1 ! enable allocation of mass_balance array 
   allocate(patch%aux%RT%aux_vars_bc(sum_connection))
   do iconn = 1, sum_connection
     call RTAuxVarInit(patch%aux%RT%aux_vars_bc(iconn),reaction,option)
   enddo
   patch%aux%RT%num_aux_bc = sum_connection
+  option%iflag = 0
 
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
@@ -168,12 +171,49 @@ end subroutine RTSetupPatch
 
 ! ************************************************************************** !
 !
-! RTInitMassBalancePatch: Initializes mass balance
+! RTComputeMassBalance: 
 ! author: Glenn Hammond
-! date: 12/19/08
+! date: 12/23/08
 !
 ! ************************************************************************** !
-subroutine RTInitMassBalancePatch(realization)
+subroutine RTComputeMassBalance(realization,mass_balance)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+
+  type(realization_type) :: realization
+  PetscReal :: mass_balance(realization%option%ntrandof, &
+                            realization%option%nphase)
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+    
+  mass_balance = 0.d0
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RTComputeMassBalancePatch(realization,mass_balance)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RTComputeMassBalance
+
+! ************************************************************************** !
+!
+! RTComputeMassBalancePatch: Initializes mass balance
+! author: Glenn Hammond
+! date: 12/23/08
+!
+! ************************************************************************** !
+subroutine RTComputeMassBalancePatch(realization,mass_balance)
  
   use Realization_module
   use Option_module
@@ -184,6 +224,8 @@ subroutine RTInitMassBalancePatch(realization)
   implicit none
   
   type(realization_type) :: realization
+  PetscReal :: mass_balance(realization%option%ntrandof, &
+                            realization%option%nphase)
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -220,15 +262,14 @@ subroutine RTInitMassBalancePatch(realization)
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
-    rt_aux_vars(ghosted_id)%mass_balance(:,iphase) = &
+    mass_balance(:,iphase) = mass_balance(:,iphase) + &
       rt_aux_vars(ghosted_id)%total(:,iphase) * &
       global_aux_vars(ghosted_id)%sat(iphase) * &
       porosity_loc_p(ghosted_id) * &
       volume_p(ghosted_id)*1000.d0
     ! add contribution of equilibrium sorption
     if (reaction%nsorb > 0) then
-      rt_aux_vars(ghosted_id)%mass_balance(:,iphase) = &
-        rt_aux_vars(ghosted_id)%mass_balance(:,iphase) + &
+      mass_balance(:,iphase) = mass_balance(:,iphase) + &
         rt_aux_vars(ghosted_id)%total_sorb(:) * volume_p(ghosted_id)
     endif
     ! add contribution from mineral volume fractions
@@ -237,8 +278,7 @@ subroutine RTInitMassBalancePatch(realization)
         ncomp = reaction%kinmnrlspecid(0,imnrl)
         do i = 1, ncomp
           icomp = reaction%kinmnrlspecid(i,imnrl)
-          rt_aux_vars(ghosted_id)%mass_balance(icomp,iphase) = &
-            rt_aux_vars(ghosted_id)%mass_balance(icomp,iphase) &
+          mass_balance(icomp,iphase) = mass_balance(icomp,iphase) &
             + reaction%kinmnrlstoich(i,imnrl)                  &
             * rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl)      &
             * volume_p(ghosted_id) &
@@ -252,7 +292,7 @@ subroutine RTInitMassBalancePatch(realization)
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
   
-end subroutine RTInitMassBalancePatch
+end subroutine RTComputeMassBalancePatch
 
 ! ************************************************************************** !
 !
@@ -274,25 +314,14 @@ subroutine RTZeroMassBalanceDeltaPatch(realization)
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
-  type(grid_type), pointer :: grid
-  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_bc(:)
 
-  PetscInt :: local_id
-  PetscInt :: ghosted_id
   PetscInt :: iconn
 
   option => realization%option
   patch => realization%patch
-  grid => patch%grid
 
-  rt_aux_vars => patch%aux%RT%aux_vars
   rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
-
-  do local_id = 1, grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    rt_aux_vars(ghosted_id)%mass_balance_delta = 0.d0
-  enddo
 
   do iconn = 1, patch%aux%RT%num_aux_bc
     rt_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
@@ -320,31 +349,14 @@ subroutine RTUpdateMassBalancePatch(realization)
 
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
-  type(grid_type), pointer :: grid
-  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_bc(:)
 
-  PetscInt :: local_id
-  PetscInt :: ghosted_id
   PetscInt :: iconn
 
   option => realization%option
   patch => realization%patch
-  grid => patch%grid
 
-  rt_aux_vars => patch%aux%RT%aux_vars
   rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
-
-  do local_id = 1, grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    !geh - Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif
-    rt_aux_vars(ghosted_id)%mass_balance = &
-      rt_aux_vars(ghosted_id)%mass_balance + &
-      rt_aux_vars(ghosted_id)%mass_balance_delta*option%tran_dt
-  enddo
 
   do iconn = 1, patch%aux%RT%num_aux_bc
     rt_aux_vars_bc(iconn)%mass_balance = &
@@ -1051,12 +1063,11 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
           case default
         end select
       enddo
-      if (option%compute_mass_balance_new) then
-        ! may need to added global aux_var for src/sink
-        ! contribution to internal 
-        rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) = &
-          rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) - Res
-      endif      
+!      if (option%compute_mass_balance_new) then
+        ! need to added global aux_var for src/sink
+!        rt_aux_vars_ss(ghosted_id)%mass_balance_delta(:,iphase) = &
+!          rt_aux_vars_ss(ghosted_id)%mass_balance_delta(:,iphase) + Res
+!      endif      
       iend = local_id*reaction%ncomp
       istart = iend-reaction%ncomp+1
       r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)                                  
@@ -1116,19 +1127,6 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
         patch%internal_fluxes(iphase,1:reaction%ncomp,iconn) = &
           Res(1:reaction%ncomp)
       endif
-
-      if (option%compute_mass_balance_new) then
-        ! contribution to upwind 
-        if (local_id_up>0) then
-          rt_aux_vars(ghosted_id_up)%mass_balance_delta(:,iphase) = &
-            rt_aux_vars(ghosted_id_up)%mass_balance_delta(:,iphase) - Res
-        endif
-        ! contribution to downwind 
-        if (local_id_dn>0) then
-          rt_aux_vars(ghosted_id_dn)%mass_balance_delta(:,iphase) = &
-            rt_aux_vars(ghosted_id_dn)%mass_balance_delta(:,iphase) + Res
-        endif
-      endif    
       
     enddo
     cur_connection_set => cur_connection_set%next
@@ -1177,9 +1175,9 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
         ! contribution to boundary 
         rt_aux_vars_bc(sum_connection)%mass_balance_delta(:,iphase) = &
           rt_aux_vars_bc(sum_connection)%mass_balance_delta(:,iphase) - Res
-        ! contribution to internal 
-        rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) = &
-          rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) + Res
+!        ! contribution to internal 
+!        rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) = &
+!          rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) + Res
       endif  
       
     enddo
@@ -1203,10 +1201,6 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
                      global_aux_vars(ghosted_id), &
                      volume_p(local_id),reaction,option)
       r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)                    
-      if (option%compute_mass_balance_new) then
-        rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) = &
-          rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) - Res
-      endif  
 
     enddo
   endif
@@ -2028,6 +2022,7 @@ subroutine RTAuxVarCompute(x,rt_aux_var,global_aux_var,reaction,option)
   Res_orig = 0.d0
   dtotal = 0.d0
   dtotalsorb = 0.d0
+  option%iflag = 0 ! be sure not to allocate mass_balance array
   call RTAuxVarInit(rt_auxvar_pert,reaction,option)
   do jcomp = 1, reaction%ncomp
     Res_pert = 0.d0

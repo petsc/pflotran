@@ -90,7 +90,7 @@ subroutine GlobalAuxVarInit(aux_var,option)
   allocate(aux_var%den_kg_store(option%nphase,TWO_INTEGER))
   aux_var%den_kg_store = 0.d0
 
-  if (option%compute_mass_balance_new) then
+  if (option%iflag /= 0 .and. option%compute_mass_balance_new) then
     allocate(aux_var%mass_balance(option%nphase))
     aux_var%mass_balance = 0.d0
     allocate(aux_var%mass_balance_delta(option%nphase))
@@ -126,7 +126,8 @@ subroutine GlobalAuxVarCopy(aux_var,aux_var2,option)
 
   aux_var2%sat_store = aux_var%sat_store
   aux_var2%den_kg_store = aux_var%den_kg_store
-  if (associated(aux_var2%mass_balance)) then
+  if (associated(aux_var%mass_balance) .and. &
+      associated(aux_var2%mass_balance)) then
     aux_var2%mass_balance = aux_var%mass_balance
     aux_var2%mass_balance_delta = aux_var%mass_balance_delta
   endif
