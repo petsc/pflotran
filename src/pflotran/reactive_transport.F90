@@ -749,6 +749,25 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
     enddo
   endif
 
+! Add in multiphase, clu 12/29/08
+#if 0  
+  iphase = iphase +1 
+   if (iphase > option%nphase) exit
+! super critical CO2 phase
+   if (iphase ==2 ) then
+     if (associated(rt_aux_var%dtotal)) then
+       psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
+       J = J + rt_aux_var%dtotal(:,:,iphase)*psvd_t
+     else
+       J = 0.d0
+       psvd_t = por*global_aux_var%sat(iphase)* &
+          global_aux_var%den_kg(iphase)*vol/option%tran_dt ! units of den = kg water/m^3 water
+       do icomp=1,reaction%ncomp
+         J(icomp,icomp) = J(icomp,icomp) + psvd_t
+       enddo
+     endif   
+   endif
+#endif     
 end subroutine RTAccumulationDerivative
 
 ! ************************************************************************** !
@@ -788,13 +807,24 @@ subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
     psv_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
     Res(:) = psv_t*rt_aux_var%total(:,iphase) 
   endif
-  
+
+
+! Add in multiphase, clu 12/29/08
+#if 0  
   do 
     iphase = iphase + 1
     if (iphase > option%nphase) exit
-    ! add code for other phases here
+
+! super critical CO2 phase
+    if (iphase ==2 ) then
+      psv_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
+      Res(:) = Res(:) + psv_t*rt_aux_var%total(:,iphase) 
+      ! should sum over gas component only need more implementations
+    endif 
+! add code for other phases here
   enddo
 
+#endif
 end subroutine RTAccumulation
 
 ! ************************************************************************** !
