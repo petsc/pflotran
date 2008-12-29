@@ -1509,8 +1509,10 @@ subroutine readInput(simulation)
           call InputErrorMsg(input,option,'diff_base','FLUID_PROPERTIES')          
         
           call InputReadDouble(input,option,realization%fluid_properties%diff_exp(count))
-          call InputErrorMsg(input,option,'diff_exp','FLUID_PROPERTIES')          
-
+          call InputErrorMsg(input,option,'diff_exp','FLUID_PROPERTIES')
+! hardware the diffusion coefficient of SC and gas phases for now
+          option%difsc=2.13D-5           
+          option%difgs=2.13D-5
         enddo
         
 !....................

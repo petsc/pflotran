@@ -262,18 +262,19 @@ subroutine RTComputeMassBalancePatch(realization,mass_balance)
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
-    mass_balance(:,iphase) = mass_balance(:,iphase) + &
+    do iphase = 1, option%nphase
+     mass_balance(:,iphase) = mass_balance(:,iphase) + &
       rt_aux_vars(ghosted_id)%total(:,iphase) * &
       global_aux_vars(ghosted_id)%sat(iphase) * &
       porosity_loc_p(ghosted_id) * &
       volume_p(ghosted_id)*1000.d0
     ! add contribution of equilibrium sorption
-    if (reaction%nsorb > 0) then
+    if (reaction%nsorb > 0 .and. iphase == 1) then
       mass_balance(:,iphase) = mass_balance(:,iphase) + &
         rt_aux_vars(ghosted_id)%total_sorb(:) * volume_p(ghosted_id)
     endif
     ! add contribution from mineral volume fractions
-    if (reaction%nkinmnrl > 0) then
+    if (reaction%nkinmnrl > 0 .and. iphase ==1) then
       do imnrl = 1, reaction%nkinmnrl
         ncomp = reaction%kinmnrlspecid(0,imnrl)
         do i = 1, ncomp
@@ -286,7 +287,7 @@ subroutine RTComputeMassBalancePatch(realization,mass_balance)
         enddo 
       enddo
     endif
-
+   enddo
   enddo
 
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
@@ -816,7 +817,7 @@ subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
     if (iphase > option%nphase) exit
 
 ! super critical CO2 phase
-    if (iphase ==2 ) then
+    if (iphase == 2 ) then
       psv_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
       Res(:) = Res(:) + psv_t*rt_aux_var%total(:,iphase) 
       ! should sum over gas component only need more implementations

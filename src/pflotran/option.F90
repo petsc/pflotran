@@ -74,6 +74,8 @@ module Option_module
 
     PetscReal :: m_nacl
     PetscReal :: difaq, delhaq, gravity(3), eqkair, ret=1.d0, fc=1.d0
+    PetscReal :: difsc
+    PetscReal :: difgs
     
     PetscInt :: ideriv
     PetscInt :: idt_switch = -1
