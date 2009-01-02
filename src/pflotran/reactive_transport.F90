@@ -2004,6 +2004,17 @@ function RTGetTecplotHeader(realization,icolumn)
     string = trim(string) // trim(string2)
   enddo
   
+  do i=1,realization%reaction%neqsurfcmplxrxn
+    if (icolumn > -1) then
+      icolumn = icolumn + 1  
+      write(string2,'('',"'',i2,''-'',a,''"'')') icolumn, &
+        trim(reaction%surface_site_names(i))
+    else
+      write(string2,'('',"'',a,''"'')') trim(reaction%surface_site_names(i))
+    endif
+    string = trim(string) // trim(string2)
+  enddo
+  
   RTGetTecplotHeader = string
 
 end function RTGetTecplotHeader

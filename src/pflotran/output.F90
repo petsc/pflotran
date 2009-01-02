@@ -457,6 +457,11 @@ subroutine OutputTecplotBlock(realization)
         call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       enddo
+      do i=1,reaction%neqsurfcmplxrxn
+        call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX_FREE,i)
+        call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+        call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      enddo
     endif
   endif
   
@@ -1251,6 +1256,11 @@ subroutine OutputTecplotPoint(realization)
         enddo
         do i=1,reaction%neqsurfcmplx
           value = RealizGetDatasetValueAtCell(realization,SURFACE_CMPLX, &
+                                              i,ghosted_id)
+          write(IUNIT3,1000,advance='no') value
+        enddo
+        do i=1,reaction%neqsurfcmplxrxn
+          value = RealizGetDatasetValueAtCell(realization,SURFACE_CMPLX_FREE, &
                                               i,ghosted_id)
           write(IUNIT3,1000,advance='no') value
         enddo
