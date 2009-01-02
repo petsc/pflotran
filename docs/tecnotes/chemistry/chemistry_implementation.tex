@@ -1862,19 +1862,19 @@ As defined, both quantities $c_{rp}$ and $c_{rT}$ are positive for normal materi
 
 Taking the transport equations in the form
 \EQ
-\frac{\p}{\p t} \varphi \left[ \sum_\a s_\a \Psi_j^\a +\sum_k\nu_{jk} S_k\right] + \bnabla\cdot\sum_\a\bOmega_j^\a \eq -\sum_m\nu_{jm}I_m,
+\frac{\p}{\p t} \left[ \varphi \sum_\a s_\a \Psi_j^\a +\sum_k\nu_{jk} S_k\right] + \bnabla\cdot\sum_\a\bOmega_j^\a \eq -\sum_m\nu_{jm}I_m,
 \EN
-and
+with
 \EQ
 \frac{\p\varphi_m}{\p t} \eq \overline V_m I_m,
 \EN
 global mass conservation equations are obtained by integrating over the computational domain $V$ with bounding surface $\p V$ to give
 \EQ
-\frac{d}{dt}\int_V\varphi \left[ \sum_\a s_\a \Psi_j^\a +\sum_k\nu_{jk} S_k + \sum_m \overline V_m^{-1} \varphi_m \right] dV \eq -\sum_\a\int_{\p V} \bOmega_j^\a \cdot \bdS.
+\frac{d}{dt}\int_V \left[\varphi \sum_\a s_\a \Psi_j^\a +\sum_k\nu_{jk} S_k + \sum_m \overline V_m^{-1} \varphi_m \right] dV \eq -\sum_\a\int_{\p V} \bOmega_j^\a \cdot \bdS.
 \EN
 Defining $N_j$ equal to the total mass in place at time $t$ as
 \EQ
-N_j (t)\eq\int_V\varphi \left[ \sum_\a s_\a \Psi_j^\a + \sum_k\nu_{jk} S_k + \sum_m \overline V_m^{-1} \varphi_m \right] dV,
+N_j (t)\eq\int_V \left[\varphi \sum_\a s_\a \Psi_j^\a + \sum_k\nu_{jk} S_k + \sum_m \overline V_m^{-1} \varphi_m \right] dV,
 \EN
 gives
 \EQ
@@ -1888,9 +1888,9 @@ Finally, defining $\G_j^\a(t)$ as the cumulative mass entering and leaving the s
 \EQ
 \G_j^\a(t) \eq \int_0^t dt \int_{\p V} \bOmega_j^\a \cdot \bdS,
 \EN
-then the global mass conservation equation becomes
+the global mass conservation equation becomes
 \EQ
-N_j(t)\eq N_j(0) -\sum_\a\G_j^\a(t).
+N_j(t) + \sum_\a\G_j^\a(t)\eq N_j(0).
 \EN
 
 
