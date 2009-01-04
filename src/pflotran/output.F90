@@ -5505,18 +5505,21 @@ subroutine OutputMassBalanceNew(realization)
     if (.not.associated(boundary_condition)) exit
 
     offset = boundary_condition%connection_set%offset
-    sum_kg = 0.d0
-    do iconn = 1, boundary_condition%connection_set%num_connections
-      sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance
-    enddo
+    
+    if (option%nflowdof > 0) then
+      sum_kg = 0.d0
+      do iconn = 1, boundary_condition%connection_set%num_connections
+        sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance
+      enddo
 
-    call MPI_Reduce(sum_kg,sum_kg_global, &
+      call MPI_Reduce(sum_kg,sum_kg_global, &
                     option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
                     option%io_rank,option%comm,ierr)
                         
-    if (option%myrank == option%io_rank) then
+      if (option%myrank == option%io_rank) then
       ! change sign for positive in / negative out
-      write(fid,110,advance="no") -sum_kg_global
+        write(fid,110,advance="no") -sum_kg_global
+      endif
     endif
     
     if (option%ntrandof > 0) then
