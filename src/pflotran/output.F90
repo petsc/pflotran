@@ -5476,13 +5476,15 @@ subroutine OutputMassBalanceNew(realization)
     rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
   endif    
   
-  call RichardsComputeMassBalance(realization,sum_kg)
-  call MPI_Reduce(sum_kg,sum_kg_global, &
+  if (option%nflowdof > 0) then
+    call RichardsComputeMassBalance(realization,sum_kg)
+    call MPI_Reduce(sum_kg,sum_kg_global, &
                   option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
                   option%io_rank,option%comm,ierr)
                       
-  if (option%myrank == option%io_rank) then
-    write(fid,110,advance="no") sum_kg_global
+    if (option%myrank == option%io_rank) then
+      write(fid,110,advance="no") sum_kg_global
+    endif
   endif
   
   if (option%ntrandof > 0) then

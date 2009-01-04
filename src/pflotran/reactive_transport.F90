@@ -268,11 +268,13 @@ subroutine RTComputeMassBalancePatch(realization,mass_balance)
         global_aux_vars(ghosted_id)%sat(iphase) * &
         porosity_loc_p(ghosted_id) * &
         volume_p(ghosted_id)*1000.d0
+        
     ! add contribution of equilibrium sorption
       if (reaction%nsorb > 0 .and. iphase == 1) then
         mass_balance(:,iphase) = mass_balance(:,iphase) + &
         rt_aux_vars(ghosted_id)%total_sorb(:) * volume_p(ghosted_id)
       endif
+      
     ! add contribution from mineral volume fractions
       if (reaction%nkinmnrl > 0 .and. iphase ==1) then
         do imnrl = 1, reaction%nkinmnrl
