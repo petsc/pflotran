@@ -263,31 +263,31 @@ subroutine RTComputeMassBalancePatch(realization,mass_balance)
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
     do iphase = 1, option%nphase
-     mass_balance(:,iphase) = mass_balance(:,iphase) + &
-      rt_aux_vars(ghosted_id)%total(:,iphase) * &
-      global_aux_vars(ghosted_id)%sat(iphase) * &
-      porosity_loc_p(ghosted_id) * &
-      volume_p(ghosted_id)*1000.d0
-    ! add contribution of equilibrium sorption
-    if (reaction%nsorb > 0 .and. iphase == 1) then
       mass_balance(:,iphase) = mass_balance(:,iphase) + &
+        rt_aux_vars(ghosted_id)%total(:,iphase) * &
+        global_aux_vars(ghosted_id)%sat(iphase) * &
+        porosity_loc_p(ghosted_id) * &
+        volume_p(ghosted_id)*1000.d0
+    ! add contribution of equilibrium sorption
+      if (reaction%nsorb > 0 .and. iphase == 1) then
+        mass_balance(:,iphase) = mass_balance(:,iphase) + &
         rt_aux_vars(ghosted_id)%total_sorb(:) * volume_p(ghosted_id)
-    endif
+      endif
     ! add contribution from mineral volume fractions
-    if (reaction%nkinmnrl > 0 .and. iphase ==1) then
-      do imnrl = 1, reaction%nkinmnrl
-        ncomp = reaction%kinmnrlspecid(0,imnrl)
-        do i = 1, ncomp
-          icomp = reaction%kinmnrlspecid(i,imnrl)
-          mass_balance(icomp,iphase) = mass_balance(icomp,iphase) &
+      if (reaction%nkinmnrl > 0 .and. iphase ==1) then
+        do imnrl = 1, reaction%nkinmnrl
+          ncomp = reaction%kinmnrlspecid(0,imnrl)
+          do i = 1, ncomp
+            icomp = reaction%kinmnrlspecid(i,imnrl)
+            mass_balance(icomp,iphase) = mass_balance(icomp,iphase) &
             + reaction%kinmnrlstoich(i,imnrl)                  &
             * rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl)      &
             * volume_p(ghosted_id) &
             / reaction%kinmnrl_molar_vol(imnrl)
-        enddo 
-      enddo
-    endif
-   enddo
+          enddo 
+        enddo
+      endif
+    enddo
   enddo
 
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
