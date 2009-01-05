@@ -5466,6 +5466,7 @@ subroutine OutputMassBalanceNew(realization)
     rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
   endif    
   
+  sum_kg = 0.d0
   call RichardsComputeMassBalance(realization,sum_kg)
   call MPI_Reduce(sum_kg,sum_kg_global, &
                   option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
@@ -5476,6 +5477,7 @@ subroutine OutputMassBalanceNew(realization)
   endif
   
   if (option%ntrandof > 0) then
+    sum_mol = 0.d0
     call RTComputeMassBalance(realization,sum_mol)
     call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*reaction%ncomp, &
                     MPI_DOUBLE_PRECISION,MPI_SUM, &
