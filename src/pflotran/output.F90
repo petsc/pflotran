@@ -457,6 +457,11 @@ subroutine OutputTecplotBlock(realization)
         call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       enddo
+      do i=1,reaction%neqsurfcmplxrxn
+        call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX_FREE,i)
+        call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+        call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      enddo
     endif
   endif
   
@@ -1251,6 +1256,11 @@ subroutine OutputTecplotPoint(realization)
         enddo
         do i=1,reaction%neqsurfcmplx
           value = RealizGetDatasetValueAtCell(realization,SURFACE_CMPLX, &
+                                              i,ghosted_id)
+          write(IUNIT3,1000,advance='no') value
+        enddo
+        do i=1,reaction%neqsurfcmplxrxn
+          value = RealizGetDatasetValueAtCell(realization,SURFACE_CMPLX_FREE, &
                                               i,ghosted_id)
           write(IUNIT3,1000,advance='no') value
         enddo
@@ -5466,14 +5476,16 @@ subroutine OutputMassBalanceNew(realization)
     rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
   endif    
   
-  sum_kg = 0.d0
-  call RichardsComputeMassBalance(realization,sum_kg)
-  call MPI_Reduce(sum_kg,sum_kg_global, &
-                  option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
-                  option%io_rank,option%comm,ierr)
-                      
-  if (option%myrank == option%io_rank) then
-    write(fid,110,advance="no") sum_kg_global
+  if (option%nflowdof > 0) then
+    sum_kg = 0.d0
+    call RichardsComputeMassBalance(realization,sum_kg)
+    call MPI_Reduce(sum_kg,sum_kg_global, &
+                    option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                    option%io_rank,option%comm,ierr)
+                        
+    if (option%myrank == option%io_rank) then
+      write(fid,110,advance="no") sum_kg_global
+    endif
   endif
   
   if (option%ntrandof > 0) then
@@ -5495,18 +5507,20 @@ subroutine OutputMassBalanceNew(realization)
     if (.not.associated(boundary_condition)) exit
 
     offset = boundary_condition%connection_set%offset
-    sum_kg = 0.d0
-    do iconn = 1, boundary_condition%connection_set%num_connections
-      sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance
-    enddo
+    if (option%nflowdof > 0) then
+      sum_kg = 0.d0
+      do iconn = 1, boundary_condition%connection_set%num_connections
+        sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance
+      enddo
 
-    call MPI_Reduce(sum_kg,sum_kg_global, &
-                    option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
-                    option%io_rank,option%comm,ierr)
-                        
-    if (option%myrank == option%io_rank) then
-      ! change sign for positive in / negative out
-      write(fid,110,advance="no") -sum_kg_global
+      call MPI_Reduce(sum_kg,sum_kg_global, &
+                      option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      option%io_rank,option%comm,ierr)
+                          
+      if (option%myrank == option%io_rank) then
+        ! change sign for positive in / negative out
+        write(fid,110,advance="no") -sum_kg_global
+      endif
     endif
     
     if (option%ntrandof > 0) then
