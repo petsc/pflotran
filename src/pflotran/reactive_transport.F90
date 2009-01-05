@@ -2074,6 +2074,9 @@ subroutine RTAuxVarCompute(x,rt_aux_var,global_aux_var,reaction,option)
     if (reaction%neqcmplx > 0) then
       aux_var%sec_molal = 0.d0
     endif
+    if (reaction%ngas > 0) then
+      aux_var%gas_molal = 0.d0
+    endif
     if (reaction%neqsurfcmplxrxn > 0) then
       rt_auxvar_pert%eqsurfcmplx_freesite_conc = 1.d-9
       rt_auxvar_pert%eqsurfcmplx_conc = 0.d0

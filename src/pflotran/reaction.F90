@@ -784,8 +784,12 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           igas = constraint_id(icomp)
           
           ! compute secondary species concentration
-          lnQK = -reaction%eqgas_logK(igas)*LOG_TO_LN
-          
+         if(abs(reaction%co2_gas_id) == igas )then
+ !          call Henry_duan_sun_0NaCl(pressloc_p(n) *1D-5, tc,  henry)
+ !          lnQk = - log(henry*xphico2)*LOG_TO_LN       
+         else   
+           lnQK = -reaction%eqgas_logK(igas)*LOG_TO_LN
+         endif 
           ! divide K by RT
           !lnQK = lnQK - log((auxvar%temp+273.15d0)*IDEAL_GAS_CONST)
           
@@ -1767,7 +1771,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: ln_act(reaction%ncomp)
   PetscReal :: ln_act_h2o
   PetscReal :: lnQK, tempreal
-  PetscReal :: den_kg_per_L
+  PetscReal :: den_kg_per_L, den_kg_per_g
 
   iphase = 1           
   
@@ -1829,6 +1833,40 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   ! units of dtotal = kg water/L water
   rt_auxvar%dtotal = rt_auxvar%dtotal*den_kg_per_L
   
+ !*********** Add gas phase contribution ***************************  
+#if 0
+  iphase = 2           
+  if(iphase > option%nphase) return 
+  den_kg_per_g = global_auxvar%den_kg(iphase)*1.d-3     
+  
+  do ieqgas = 1, reaction%ngas ! all gas phase species are secondary
+     if(abs(reaction%co2_gas_id) == ieqgas )then
+ !          call Henry_duan_sun_0NaCl(pressloc_p(n) *1D-5, tc,  henry)
+ !          lnQk = - log(henry*xphico2)*LOG_TO_LN       
+      else   
+          lnQK = -reaction%eqgas_logK(ieqgas)*LOG_TO_LN
+      endif 
+      
+      if (reaction%eqgash2oid(igas) > 0) then
+         lnQK = lnQK + reaction%eqgash2ostoich(ieqgas)*ln_act_h2o
+      endif
+ 
+ ! contribute to %total          
+ !     do i = 1, ncomp
+ ! removed loop ob=ver species, suppose only one primary species is related
+        icomp = reaction%eqgash2ostoich(1,ieqgas)
+        rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
+                                      reaction%eqgasstoich(1,ieqgas)* &
+                                      rt_auxvar%gas_molal(ieqgas)
+ !     enddo
+
+ ! contribute to %dtotal 
+        
+  
+  
+  enddo
+  
+#endif  
 end subroutine RTotal
 
 ! ************************************************************************** !

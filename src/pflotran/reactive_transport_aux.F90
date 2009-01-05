@@ -20,6 +20,7 @@ module Reactive_Transport_Aux_module
     ! aqueous species
     ! aqueous complexes
     PetscReal, pointer :: sec_molal(:)
+    PetscReal, pointer :: gas_molal(:)
     ! sorption reactions
     ! PetscReal, pointer :: kinsurfcmplx_spec(:)
     ! PetscReal, pointer :: kinionx_molfrac(:)
@@ -123,6 +124,14 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
     nullify(aux_var%sec_molal)
   endif
   
+  if (reaction%ngas > 0) then
+    allocate(aux_var%gas_molal(reaction%nnas))
+    aux_var%gas_molal = 0.d0
+  else
+    nullify(aux_var%gas_molal)
+  endif
+
+  
   if (reaction%nsorb > 0) then  
     allocate(aux_var%total_sorb(reaction%ncomp))
     aux_var%total_sorb = 0.d0
@@ -221,6 +230,9 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
     aux_var%dtotal_sorb = aux_var2%dtotal_sorb
   endif
   
+  if (associated(aux_var%gas_molal)) &
+    aux_var%gas_molal = aux_var2%gas_molal
+  
   if (associated(aux_var%eqsurfcmplx_conc)) then
     aux_var%eqsurfcmplx_conc = aux_var2%eqsurfcmplx_conc
     aux_var%eqsurfcmplx_freesite_conc = aux_var2%eqsurfcmplx_freesite_conc
@@ -276,6 +288,9 @@ subroutine RTAuxVarDestroy(aux_var)
   
   if (associated(aux_var%sec_molal))deallocate(aux_var%sec_molal)
   nullify(aux_var%sec_molal)
+  
+  if (associated(aux_var%gas_molal))deallocate(aux_var%gas_molal)
+  nullify(aux_var%gas_molal)
   
   if (associated(aux_var%total_sorb)) deallocate(aux_var%total_sorb)
   nullify(aux_var%total_sorb)
