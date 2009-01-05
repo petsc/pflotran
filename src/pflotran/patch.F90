@@ -1100,7 +1100,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
       
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY, &
          SECONDARY_MOLARITY,TOTAL_MOLALITY,TOTAL_MOLARITY, &
-         MINERAL_RATE,MINERAL_VOLUME_FRACTION,SURFACE_CMPLX, &
+         MINERAL_RATE,MINERAL_VOLUME_FRACTION,SURFACE_CMPLX,SURFACE_CMPLX_FREE, &
          PRIMARY_ACTIVITY_COEF, SECONDARY_ACTIVITY_COEF)
          
       select case(ivar)
@@ -1162,6 +1162,10 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
         case(SURFACE_CMPLX)
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%eqsurfcmplx_conc(isubvar)
+          enddo
+        case(SURFACE_CMPLX_FREE)
+          do local_id=1,grid%nlmax
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%eqsurfcmplx_freesite_conc(isubvar)
           enddo
         case(PRIMARY_ACTIVITY_COEF)
           do local_id=1,grid%nlmax
@@ -1305,7 +1309,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
       
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY, &
          TOTAL_MOLALITY,TOTAL_MOLARITY, &
-         MINERAL_VOLUME_FRACTION,MINERAL_RATE,SURFACE_CMPLX, &
+         MINERAL_VOLUME_FRACTION,MINERAL_RATE,SURFACE_CMPLX, SURFACE_CMPLX_FREE, &
          PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF)
          
       select case(ivar)
@@ -1339,6 +1343,8 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
           value = patch%aux%RT%aux_vars(ghosted_id)%mnrl_rate(isubvar)
         case(SURFACE_CMPLX)
           value = patch%aux%RT%aux_vars(ghosted_id)%eqsurfcmplx_conc(isubvar)
+        case(SURFACE_CMPLX_FREE)
+          value = patch%aux%RT%aux_vars(ghosted_id)%eqsurfcmplx_freesite_conc(isubvar)
         case(PRIMARY_ACTIVITY_COEF)
           value = patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)
         case(SECONDARY_ACTIVITY_COEF)

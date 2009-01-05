@@ -161,8 +161,9 @@ PetscInt, parameter :: MINERAL_RATE = 23
 PetscInt, parameter :: MINERAL_SURFACE_AREA = 24
 PetscInt, parameter :: PH = 25
 PetscInt, parameter :: SURFACE_CMPLX = 26
-PetscInt, parameter :: PRIMARY_ACTIVITY_COEF = 27
-PetscInt, parameter :: SECONDARY_ACTIVITY_COEF = 28
+PetscInt, parameter :: SURFACE_CMPLX_FREE = 27
+PetscInt, parameter :: PRIMARY_ACTIVITY_COEF = 28
+PetscInt, parameter :: SECONDARY_ACTIVITY_COEF = 29
 
 ! activity coefficients
 PetscInt, parameter :: ACTIVITY_COEFFICIENTS_OFF = 0

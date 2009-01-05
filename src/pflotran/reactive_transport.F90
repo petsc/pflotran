@@ -262,31 +262,34 @@ subroutine RTComputeMassBalancePatch(realization,mass_balance)
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
-    mass_balance(:,iphase) = mass_balance(:,iphase) + &
-      rt_aux_vars(ghosted_id)%total(:,iphase) * &
-      global_aux_vars(ghosted_id)%sat(iphase) * &
-      porosity_loc_p(ghosted_id) * &
-      volume_p(ghosted_id)*1000.d0
-    ! add contribution of equilibrium sorption
-    if (reaction%nsorb > 0) then
+    do iphase = 1, option%nphase
       mass_balance(:,iphase) = mass_balance(:,iphase) + &
+        rt_aux_vars(ghosted_id)%total(:,iphase) * &
+        global_aux_vars(ghosted_id)%sat(iphase) * &
+        porosity_loc_p(ghosted_id) * &
+        volume_p(ghosted_id)*1000.d0
+        
+    ! add contribution of equilibrium sorption
+      if (reaction%nsorb > 0 .and. iphase == 1) then
+        mass_balance(:,iphase) = mass_balance(:,iphase) + &
         rt_aux_vars(ghosted_id)%total_sorb(:) * volume_p(ghosted_id)
-    endif
+      endif
+      
     ! add contribution from mineral volume fractions
-    if (reaction%nkinmnrl > 0) then
-      do imnrl = 1, reaction%nkinmnrl
-        ncomp = reaction%kinmnrlspecid(0,imnrl)
-        do i = 1, ncomp
-          icomp = reaction%kinmnrlspecid(i,imnrl)
-          mass_balance(icomp,iphase) = mass_balance(icomp,iphase) &
+      if (reaction%nkinmnrl > 0 .and. iphase ==1) then
+        do imnrl = 1, reaction%nkinmnrl
+          ncomp = reaction%kinmnrlspecid(0,imnrl)
+          do i = 1, ncomp
+            icomp = reaction%kinmnrlspecid(i,imnrl)
+            mass_balance(icomp,iphase) = mass_balance(icomp,iphase) &
             + reaction%kinmnrlstoich(i,imnrl)                  &
             * rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl)      &
             * volume_p(ghosted_id) &
             / reaction%kinmnrl_molar_vol(imnrl)
-        enddo 
-      enddo
-    endif
-
+          enddo 
+        enddo
+      endif
+    enddo
   enddo
 
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
@@ -749,6 +752,25 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
     enddo
   endif
 
+! Add in multiphase, clu 12/29/08
+#if 0  
+  iphase = iphase +1 
+   if (iphase > option%nphase) exit
+! super critical CO2 phase
+   if (iphase ==2 ) then
+     if (associated(rt_aux_var%dtotal)) then
+       psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
+       J = J + rt_aux_var%dtotal(:,:,iphase)*psvd_t
+     else
+       J = 0.d0
+       psvd_t = por*global_aux_var%sat(iphase)* &
+          global_aux_var%den_kg(iphase)*vol/option%tran_dt ! units of den = kg water/m^3 water
+       do icomp=1,reaction%ncomp
+         J(icomp,icomp) = J(icomp,icomp) + psvd_t
+       enddo
+     endif   
+   endif
+#endif     
 end subroutine RTAccumulationDerivative
 
 ! ************************************************************************** !
@@ -788,13 +810,24 @@ subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
     psv_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
     Res(:) = psv_t*rt_aux_var%total(:,iphase) 
   endif
-  
+
+
+! Add in multiphase, clu 12/29/08
+#if 0  
   do 
     iphase = iphase + 1
     if (iphase > option%nphase) exit
-    ! add code for other phases here
+
+! super critical CO2 phase
+    if (iphase == 2 ) then
+      psv_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
+      Res(:) = Res(:) + psv_t*rt_aux_var%total(:,iphase) 
+      ! should sum over gas component only need more implementations
+    endif 
+! add code for other phases here
   enddo
 
+#endif
 end subroutine RTAccumulation
 
 ! ************************************************************************** !
@@ -1969,6 +2002,17 @@ function RTGetTecplotHeader(realization,icolumn)
         trim(reaction%surface_complex_names(i))
     else
       write(string2,'('',"'',a,''"'')') trim(reaction%surface_complex_names(i))
+    endif
+    string = trim(string) // trim(string2)
+  enddo
+  
+  do i=1,realization%reaction%neqsurfcmplxrxn
+    if (icolumn > -1) then
+      icolumn = icolumn + 1  
+      write(string2,'('',"'',i2,''-'',a,''"'')') icolumn, &
+        trim(reaction%surface_site_names(i))
+    else
+      write(string2,'('',"'',a,''"'')') trim(reaction%surface_site_names(i))
     endif
     string = trim(string) // trim(string2)
   enddo

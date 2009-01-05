@@ -211,7 +211,7 @@ Calcite     20.
 :site      site density[sites/nm^2]
 >SOH         2.31
 >SOUO2OH  !-5.152
->SOUO2CO3 !-0.833
+>SOHUO2CO3 !-0.833
 /
 /
 /
