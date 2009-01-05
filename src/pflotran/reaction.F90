@@ -515,6 +515,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   use Input_module
   use String_module  
   use Utility_module  
+  use co2eos_module, only: Henry_duan_sun_0NaCl
   
   implicit none
   
@@ -550,6 +551,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscReal :: ln_act_h2o
   PetscReal :: lnQK, QK
   PetscReal :: tempreal
+  PetscReal :: pres, tc, xphico2, henry 
   PetscInt :: comp_id
   PetscReal :: convert_molal_to_molar
   PetscReal :: convert_molar_to_molal
@@ -785,8 +787,11 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           
           ! compute secondary species concentration
          if(abs(reaction%co2_gas_id) == igas )then
- !          call Henry_duan_sun_0NaCl(pressloc_p(n) *1D-5, tc,  henry)
- !          lnQk = - log(henry*xphico2)*LOG_TO_LN       
+           pres = global_auxvar%pres(2)
+           tc = global_auxvar%temp(1)
+           xphico2 = global_auxvar%xphi(1)
+           call Henry_duan_sun_0NaCl(pres *1D-5, tc, henry)
+           lnQk = - log(henry*xphico2)*LOG_TO_LN       
          else   
            lnQK = -reaction%eqgas_logK(igas)*LOG_TO_LN
          endif 
@@ -1760,6 +1765,7 @@ end subroutine RActivityCoefficients
 subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 
   use Option_module
+  use co2eos_module, only: Henry_duan_sun_0NaCl
   
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
@@ -1771,7 +1777,8 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: ln_act(reaction%ncomp)
   PetscReal :: ln_act_h2o
   PetscReal :: lnQK, tempreal
-  PetscReal :: den_kg_per_L, den_kg_per_g
+  PetscReal :: den_kg_per_L
+  PetscReal :: pressure, temperature, xphico2, henry
 
   iphase = 1           
   
@@ -1837,14 +1844,17 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 #if 0
   iphase = 2           
   if(iphase > option%nphase) return 
-  den_kg_per_g = global_auxvar%den_kg(iphase)*1.d-3     
+  den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3     
   
   do ieqgas = 1, reaction%ngas ! all gas phase species are secondary
      if(abs(reaction%co2_gas_id) == ieqgas )then
- !          call Henry_duan_sun_0NaCl(pressloc_p(n) *1D-5, tc,  henry)
- !          lnQk = - log(henry*xphico2)*LOG_TO_LN       
+        pressure = global_auxvar%pres(2)
+        temperature = global_auxvar%temp(1)
+        xphico2 = global_auxvar%xphi(1)
+        call Henry_duan_sun_0NaCl(pressure *1D-5, temperature, henry)
+        lnQk = - log(henry*xphico2)*LOG_TO_LN       
       else   
-          lnQK = -reaction%eqgas_logK(ieqgas)*LOG_TO_LN
+        lnQK = -reaction%eqgas_logK(ieqgas)*LOG_TO_LN
       endif 
       
       if (reaction%eqgash2oid(igas) > 0) then
@@ -1854,17 +1864,22 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
  ! contribute to %total          
  !     do i = 1, ncomp
  ! removed loop ob=ver species, suppose only one primary species is related
-        icomp = reaction%eqgash2ostoich(1,ieqgas)
-        rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
+      icomp = reaction%eqgash2ostoich(1,ieqgas)
+      rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
                                       reaction%eqgasstoich(1,ieqgas)* &
                                       rt_auxvar%gas_molal(ieqgas)
  !     enddo
 
  ! contribute to %dtotal 
-        
-  
+       tempreal = reaction%eqgasstoich(j,icplx)*exp(lnQK-ln_conc(icomp)) 
+       rt_auxvar%dtotal(icomp,icomp,iphase) = rt_auxvar%dtotal(icomp,icomp,iphase) + &
+                                             reaction%eqgasstoich(1,ieqgas)*tempreal
   
   enddo
+  rt_auxvar%total(:,iphase) = rt_auxvar%total(:,iphase)*den_kg_per_L
+  ! units of dtotal = kg water/L water
+  rt_auxvar%dtotal = rt_auxvar%dtotal*den_kg_per_L
+     
   
 #endif  
 end subroutine RTotal

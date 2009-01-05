@@ -542,6 +542,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
   PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:), iphase_loc_p(:)
   PetscReal :: xxbc(realization%option%nflowdof)
   PetscErrorCode :: ierr
+  PetscReal :: xphi
   
   option => realization%option
   patch => realization%patch
@@ -574,7 +575,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
                        aux_vars(ghosted_id)%aux_var_elem(0), &
                        iphase, &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-                       realization%fluid_properties,option)
+                       realization%fluid_properties,option, xphi)
 ! update global variables
     if( associated(global_aux_vars))then
       global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
@@ -582,6 +583,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
       global_aux_vars(ghosted_id)%temp=aux_vars(ghosted_id)%aux_var_elem(0)%temp
       global_aux_vars(ghosted_id)%sat=aux_vars(ghosted_id)%aux_var_elem(0)%sat
   !    global_aux_vars(ghosted_id)%sat_store = 
+     global_aux_vars(ghosted_id)%xphi(1)=xphi
       global_aux_vars(ghosted_id)%den=aux_vars(ghosted_id)%aux_var_elem(0)%den
        global_aux_vars(ghosted_id)%den_kg = aux_vars(ghosted_id)%aux_var_elem(0)%den &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw

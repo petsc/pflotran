@@ -212,7 +212,7 @@ end subroutine MphaseAuxVarCopy
 !
 ! ************************************************************************** !
 subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
-                                   fluid_properties,option)
+                                   fluid_properties,option, xphico2)
 
   use Option_module
   use water_eos_module
@@ -232,6 +232,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
   PetscReal :: x(option%nflowdof)
   type(mphase_auxvar_elem_type) :: aux_var
   PetscInt :: iphase
+  PetscReal, optional :: xphico2
 
   PetscErrorCode :: ierr
   PetscReal :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
@@ -350,6 +351,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
 
    call Henry_duan_sun(t, p2 *1D-5, henry, xphi, option%m_nacl, option%m_nacl,sat_pressure*1D-5)
    henry= 1D0 / (FMWH2O *1D-3) / (henry*1D-5 )/xphi 
+   if(present(xphico2)) xphico2 = xphi
    
    select case(iphase)     
    case(1)

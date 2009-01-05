@@ -14,6 +14,7 @@ module Global_Aux_module
     PetscReal, pointer :: den(:)
     PetscReal, pointer :: den_kg(:)
     PetscReal, pointer :: den_kg_store(:,:)
+    PetscReal, pointer :: xphi(:)
     PetscReal, pointer :: mass_balance(:)
     PetscReal, pointer :: mass_balance_delta(:)
   end type global_auxvar_type
@@ -84,7 +85,8 @@ subroutine GlobalAuxVarInit(aux_var,option)
   aux_var%den = 0.d0
   allocate(aux_var%den_kg(option%nphase))
   aux_var%den_kg = 0.d0
-
+  allocate(aux_var%xphi(ONE_INTEGER))
+  aux_var%xphi = 1.d0
   allocate(aux_var%sat_store(option%nphase,TWO_INTEGER))
   aux_var%sat_store = 0.d0
   allocate(aux_var%den_kg_store(option%nphase,TWO_INTEGER))
@@ -122,6 +124,7 @@ subroutine GlobalAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%temp = aux_var%temp
   aux_var2%sat = aux_var%sat
   aux_var2%den = aux_var%den
+  aux_var2%xphi = aux_var%xphi
   aux_var2%den_kg = aux_var%den_kg
 
   aux_var2%sat_store = aux_var%sat_store
@@ -155,6 +158,8 @@ subroutine GlobalAuxVarDestroy(aux_var)
   nullify(aux_var%sat)
   if (associated(aux_var%den)) deallocate(aux_var%den)
   nullify(aux_var%den)
+  if (associated(aux_var%xphi)) deallocate(aux_var%xphi)
+  nullify(aux_var%xphi)  
   if (associated(aux_var%den_kg)) deallocate(aux_var%den_kg)
   nullify(aux_var%den_kg)
 

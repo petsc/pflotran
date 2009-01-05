@@ -125,7 +125,7 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   endif
   
   if (reaction%ngas > 0) then
-    allocate(aux_var%gas_molal(reaction%nnas))
+    allocate(aux_var%gas_molal(reaction%ngas))
     aux_var%gas_molal = 0.d0
   else
     nullify(aux_var%gas_molal)
