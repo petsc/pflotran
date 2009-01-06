@@ -780,7 +780,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
     
       if (option%print_flag) write(*,'('' -> Cut time step: snes='',i3, &
         &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.4, '' dt= '', &
-        &   1pe12.4,i3)')  snes_reason,icut,stepper%icutcum, &
+        &   1pe12.4,l3)')  snes_reason,icut,stepper%icutcum, &
             option%flow_time/realization%output_option%tconv, &
             option%flow_dt/realization%output_option%tconv,timestep_cut_flag
 
