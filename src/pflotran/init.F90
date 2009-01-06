@@ -1142,6 +1142,11 @@ subroutine readInput(simulation)
 
 !....................
 
+      case ('PRINT_ACT_COEFS')
+        realization%output_option%print_act_coefs = PETSC_TRUE
+
+!....................
+
       case ('TOLR')
 
         call InputReadStringErrorMsg(input,option,'TOLR')

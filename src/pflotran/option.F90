@@ -137,6 +137,8 @@ module Option_module
     PetscTruth :: print_vtk 
     PetscTruth :: print_vtk_velocities
 
+    PetscTruth :: print_act_coefs
+
     PetscInt :: plot_number
     character(len=MAXWORDLENGTH) :: plot_name
 
@@ -344,6 +346,8 @@ function OutputOptionCreate()
   output_option%print_vtk_velocities = PETSC_FALSE
   output_option%plot_number = 0
   output_option%plot_name = ""
+
+  output_option%print_act_coefs = PETSC_FALSE
 
   OutputOptionCreate => output_option
   

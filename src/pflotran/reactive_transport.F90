@@ -1938,11 +1938,11 @@ function RTGetTecplotHeader(realization,icolumn)
 
   implicit none
   
-  character(len=MAXSTRINGLENGTH) :: RTGetTecplotHeader
+  character(len=MAXHEADERLENGTH) :: RTGetTecplotHeader
   type(realization_type) :: realization
   PetscInt :: icolumn
   
-  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXHEADERLENGTH) :: string, string2
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
   PetscInt :: i
@@ -1972,6 +1972,19 @@ function RTGetTecplotHeader(realization,icolumn)
     endif
     string = trim(string) // trim(string2)
   enddo
+  
+  if (realization%output_option%print_act_coefs) then
+    do i=1,option%ntrandof
+      if (icolumn > -1) then
+        icolumn = icolumn + 1
+        write(string2,'('',"'',i2,''-'',a,''_gam"'')') icolumn, &
+          trim(reaction%primary_species_names(i))
+      else
+        write(string2,'('',"'',a,''_gam"'')') trim(reaction%primary_species_names(i))
+      endif
+      string = trim(string) // trim(string2)
+    enddo
+  endif
   
   do i=1,realization%reaction%nkinmnrl
     if (icolumn > -1) then

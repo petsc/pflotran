@@ -206,7 +206,7 @@ subroutine OutputTecplotBlock(realization)
   PetscInt :: i, comma_count, quote_count
   PetscInt, parameter :: icolumn = -1
   character(len=MAXWORDLENGTH) :: filename
-  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXHEADERLENGTH) :: string, string2
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(discretization_type), pointer :: discretization
@@ -442,6 +442,13 @@ subroutine OutputTecplotBlock(realization)
         call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       enddo
+      if (realization%output_option%print_act_coefs) then
+        do i=1,reaction%ncomp
+          call OutputGetVarFromArray(realization,global_vec,PRIMARY_ACTIVITY_COEF,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        enddo
+      endif
       do i=1,reaction%nkinmnrl
         call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
         call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -1045,7 +1052,7 @@ subroutine OutputTecplotPoint(realization)
   PetscInt :: i, comma_count, quote_count
   PetscInt :: icolumn
   character(len=MAXWORDLENGTH) :: filename
-  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXHEADERLENGTH) :: string, string2
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(discretization_type), pointer :: discretization
@@ -1244,6 +1251,13 @@ subroutine OutputTecplotPoint(realization)
                                               i,ghosted_id)
           write(IUNIT3,1000,advance='no') value
         enddo
+        if (realization%output_option%print_act_coefs) then
+          do i=1,reaction%ncomp
+            value = RealizGetDatasetValueAtCell(realization,PRIMARY_ACTIVITY_COEF, &
+                                                i,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+          enddo
+        endif
         do i=1,reaction%nkinmnrl
           value = RealizGetDatasetValueAtCell(realization,MINERAL_VOLUME_FRACTION, &
                                               i,ghosted_id)
