@@ -141,6 +141,7 @@ subroutine Output(realization,plot_flag)
   call OutputBreakthrough(realization)
 
   plot_flag = PETSC_FALSE
+  realization%output_option%plot_name = ''
 
   call PetscLogStagePop(ierr)
   
@@ -229,7 +230,6 @@ subroutine OutputTecplotBlock(realization)
   ! open file
   if (len_trim(output_option%plot_name) > 2) then
     filename = trim(output_option%plot_name) // '.tec'
-    output_option%plot_name = ''
   else
     if (output_option%plot_number < 10) then
       write(filename,'("pflotran00",i1,".tec")') output_option%plot_number  
@@ -561,14 +561,18 @@ subroutine OutputVelocitiesTecplotBlock(realization)
   discretization => realization%discretization
   
   ! open file
-  if (output_option%plot_number < 10) then
-    write(filename,'("pflotran_vel00",i1,".tec")') output_option%plot_number  
-  else if (output_option%plot_number < 100) then
-    write(filename,'("pflotran_vel0",i2,".tec")') output_option%plot_number  
-  else if (output_option%plot_number < 1000) then
-    write(filename,'("pflotran_vel",i3,".tec")') output_option%plot_number  
-  else if (output_option%plot_number < 10000) then
-    write(filename,'("pflotran_vel",i4,".tec")') output_option%plot_number  
+  if (len_trim(output_option%plot_name) > 2) then
+    filename = trim(output_option%plot_name) // '_vel.tec'
+  else  
+    if (output_option%plot_number < 10) then
+      write(filename,'("pflotran_vel00",i1,".tec")') output_option%plot_number  
+    else if (output_option%plot_number < 100) then
+      write(filename,'("pflotran_vel0",i2,".tec")') output_option%plot_number  
+    else if (output_option%plot_number < 1000) then
+      write(filename,'("pflotran_vel",i3,".tec")') output_option%plot_number  
+    else if (output_option%plot_number < 10000) then
+      write(filename,'("pflotran_vel",i4,".tec")') output_option%plot_number  
+    endif
   endif
   
   if (option%myrank == option%io_rank) then
@@ -762,7 +766,11 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
   output_option => realization%output_option
   
   ! open file
-  filename = 'pflotran_'
+  if (len_trim(output_option%plot_name) > 2) then
+    filename = trim(output_option%plot_name)
+  else    
+    filename = 'pflotran_'
+  endif
   
   select case(iphase)
     case(LIQUID_PHASE)
@@ -1078,7 +1086,6 @@ subroutine OutputTecplotPoint(realization)
   ! open file
   if (len_trim(output_option%plot_name) > 2) then
     filename = trim(output_option%plot_name) // '.tec'
-    output_option%plot_name = ''
   else
     if (output_option%plot_number < 10) then
       write(filename,'("pflotran00",i1,".tec")') output_option%plot_number  
@@ -1343,14 +1350,18 @@ subroutine OutputVelocitiesTecplotPoint(realization)
   discretization => realization%discretization
   
   ! open file
-  if (output_option%plot_number < 10) then
-    write(filename,'("pflotran_vel00",i1,".tec")') output_option%plot_number  
-  else if (output_option%plot_number < 100) then
-    write(filename,'("pflotran_vel0",i2,".tec")') output_option%plot_number  
-  else if (output_option%plot_number < 1000) then
-    write(filename,'("pflotran_vel",i3,".tec")') output_option%plot_number  
-  else if (output_option%plot_number < 10000) then
-    write(filename,'("pflotran_vel",i4,".tec")') output_option%plot_number  
+  if (len_trim(output_option%plot_name) > 2) then
+    filename = trim(output_option%plot_name) // '_vel.tec'
+  else 
+    if (output_option%plot_number < 10) then
+      write(filename,'("pflotran_vel00",i1,".tec")') output_option%plot_number  
+    else if (output_option%plot_number < 100) then
+      write(filename,'("pflotran_vel0",i2,".tec")') output_option%plot_number  
+    else if (output_option%plot_number < 1000) then
+      write(filename,'("pflotran_vel",i3,".tec")') output_option%plot_number  
+    else if (output_option%plot_number < 10000) then
+      write(filename,'("pflotran_vel",i4,".tec")') output_option%plot_number  
+    endif
   endif
   
   if (option%myrank == option%io_rank) then
@@ -3185,7 +3196,6 @@ subroutine OutputVTK(realization)
   ! open file
   if (len_trim(output_option%plot_name) > 2) then
     filename = trim(output_option%plot_name) // '.vtk'
-    output_option%plot_name = ''
   else
     if (output_option%plot_number < 10) then
       write(filename,'("pflotran00",i1,".vtk")') output_option%plot_number  
@@ -5222,7 +5232,6 @@ subroutine OutputMassBalance(realization)
   ! open file
   if (len_trim(output_option%plot_name) > 2) then
     filename = trim(output_option%plot_name) // '.tec'
-    output_option%plot_name = ''
   else
     if (output_option%plot_number < 10) then
       write(filename,'("mass00",i1,".tec")') output_option%plot_number  
@@ -5420,7 +5429,6 @@ subroutine OutputMassBalanceNew(realization)
   
   if (len_trim(output_option%plot_name) > 2) then
     filename = trim(output_option%plot_name) // '.tec'
-    output_option%plot_name = ''
   else
     filename = 'mass_balance.tec'
   endif
