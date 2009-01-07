@@ -188,7 +188,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   PetscTruth :: flow_timestep_cut_flag, tran_timestep_cut_flag
   PetscInt :: istep, start_step
   PetscInt :: num_const_timesteps
-  PetscInt :: num_newton_iterations, idum
+  PetscInt :: num_newton_iterations, idum, idum2
   PetscTruth :: activity_coefs_read = PETSC_FALSE
   PetscTruth :: flow_read = PETSC_FALSE
   PetscTruth :: transport_read = PETSC_FALSE
@@ -239,9 +239,10 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     ! temporarily turn off activity coefficient update as the activity coefficients
     ! from the previous time step have been read from the checkpoint file and
     ! must not be overwritten
-    idum = realization%reaction%compute_activity_coefs
+    idum = realization%reaction%act_coef_update_frequency
+    idum2 = realization%reaction%act_coef_update_algorithm
     if (activity_coefs_read) then
-      realization%reaction%compute_activity_coefs = ACTIVITY_COEFFICIENTS_OFF
+      realization%reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
     else
       ! upon restart, the primary molal are in the tran_xx* vectors
       ! need up update the rt_auxvars from these vectors in order to 
@@ -251,15 +252,16 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       ! late because the activity coefficients will have been computed based on 
       ! the simulation initial condition and not the restarted molalities.  Thus
       ! we iterate between the two.
-      realization%reaction%compute_activity_coefs = ACTIVITY_COEFFICIENTS_OFF
+      realization%reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
       call StepperUpdateSolution(realization)
-      realization%reaction%compute_activity_coefs = ACTIVITY_COEFFICIENTS_NEWTON
+      realization%reaction%act_coef_update_algorithm = ACT_COEF_ALGORITHM_NEWTON
     endif
   endif
   call StepperUpdateSolution(realization)
   if (option%restart_flag .and. transport_read) then
     ! switch back on
-    realization%reaction%compute_activity_coefs = idum
+    realization%reaction%act_coef_update_frequency = idum
+    realization%reaction%act_coef_update_frequency = idum2
   endif
   
   call PetscLogStagePop(ierr)

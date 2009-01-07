@@ -322,16 +322,26 @@ subroutine ReactionRead(reaction,input,option)
       case('NO_CHECKPOINT_ACT_COEFS')
         reaction%checkpoint_activity_coefs = PETSC_FALSE
       case('ACTIVITY_COEFFICIENTS')
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputDefaultMsg(input,option,'CHEMISTRY,ACTIVITY COEFFICIENTS')        
-        select case(trim(word))
-          case('ITERATION')
-            reaction%compute_activity_coefs = ACTIVITY_COEFFICIENTS_ITERATION    
-          case('NEWTON')
-            reaction%compute_activity_coefs = ACTIVITY_COEFFICIENTS_NEWTON       
-          case default
-            reaction%compute_activity_coefs = ACTIVITY_COEFFICIENTS_TIMESTEP        
-        end select
+        reaction%act_coef_update_algorithm = ACT_COEF_ALGORITHM_LAG        
+        reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_TIMESTEP        
+        do 
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          if (input%ierr /= 0) exit
+          select case(trim(word))
+            case('LAG')
+              reaction%act_coef_update_algorithm = ACT_COEF_ALGORITHM_LAG    
+            case('NEWTON')
+              reaction%act_coef_update_algorithm = ACT_COEF_ALGORITHM_NEWTON       
+            case('TIMESTEP')
+              reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_TIMESTEP
+            case('NEWTON_ITERATION')
+              reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_NEWTON_ITER
+            case default
+              option%io_buffer = 'CHEMISTRY,ACTIVITY_COEFFICIENTS keyword: ' &
+                                 //trim(word)//' not recognized'
+              call printErrMsg(option)
+          end select
+        enddo
       case default
         option%io_buffer = 'CHEMISTRY keyword: '//trim(word)//' not recognized'
         call printErrMsg(option)
@@ -346,7 +356,7 @@ subroutine ReactionRead(reaction,input,option)
 
   
   if (len_trim(reaction%database_filename) < 2) &
-    reaction%compute_activity_coefs = ACTIVITY_COEFFICIENTS_OFF
+    reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
  
 end subroutine ReactionRead
 
@@ -637,7 +647,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   
   do
 
-    if (reaction%compute_activity_coefs /= ACTIVITY_COEFFICIENTS_OFF .and. &
+    if (reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF .and. &
         compute_activity_coefs) then
       call RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
     endif
@@ -1583,7 +1593,7 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: ln_act_h2o
 
 
-  if (reaction%compute_activity_coefs == ACTIVITY_COEFFICIENTS_NEWTON) then
+  if (reaction%act_coef_update_algorithm == ACT_COEF_ALGORITHM_NEWTON) then
 
   ln_conc = log(rt_auxvar%pri_molal)
   ln_act = ln_conc+log(rt_auxvar%pri_act_coef)

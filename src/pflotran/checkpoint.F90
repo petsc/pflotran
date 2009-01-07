@@ -282,8 +282,8 @@ subroutine Checkpoint(realization, &
   if (option%ntrandof > 0) then
     call VecView(field%tran_xx, viewer, ierr)
     if (realization%reaction%checkpoint_activity_coefs .and. &
-        realization%reaction%compute_activity_coefs /= &
-        ACTIVITY_COEFFICIENTS_OFF) then
+        realization%reaction%act_coef_update_frequency /= &
+        ACT_COEF_FREQUENCY_OFF) then
       ! allocated vector
       if (global_vec == 0) then
         call DiscretizationCreateVector(realization%discretization,ONEDOF, &

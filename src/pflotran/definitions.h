@@ -167,10 +167,11 @@ PetscInt, parameter :: PRIMARY_ACTIVITY_COEF = 28
 PetscInt, parameter :: SECONDARY_ACTIVITY_COEF = 29
 
 ! activity coefficients
-PetscInt, parameter :: ACTIVITY_COEFFICIENTS_OFF = 0
-PetscInt, parameter :: ACTIVITY_COEFFICIENTS_TIMESTEP = 1
-PetscInt, parameter :: ACTIVITY_COEFFICIENTS_ITERATION = 2
-PetscInt, parameter :: ACTIVITY_COEFFICIENTS_NEWTON = 3
+PetscInt, parameter :: ACT_COEF_FREQUENCY_OFF = 0
+PetscInt, parameter :: ACT_COEF_FREQUENCY_TIMESTEP = 1
+PetscInt, parameter :: ACT_COEF_FREQUENCY_NEWTON_ITER = 2
+PetscInt, parameter :: ACT_COEF_ALGORITHM_LAG = 3
+PetscInt, parameter :: ACT_COEF_ALGORITHM_NEWTON = 4
 
 ! structured grid faces
 PetscInt, parameter :: NULL_FACE = 0
