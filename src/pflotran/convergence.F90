@@ -315,7 +315,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
       imax_solution(i) = GridIndexToCellID(solution_vec,imax_solution(i),grid,GLOBAL)
       imax_update(i) = GridIndexToCellID(update_vec,imax_update(i),grid,GLOBAL)
       imax_residual(i) = GridIndexToCellID(residual_vec,imax_residual(i),grid,GLOBAL)
-!      imax_solution(i) = /ndof
+!      imax_solution(i) = imax_solution(i)/ndof
 !      imax_update(i) = imax_update(i)/ndof
 !      imax_residual(i) = imax_residual(i)/ndof
     enddo

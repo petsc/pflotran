@@ -1083,6 +1083,7 @@ function GridIndexToCellID(vec,index,grid,vec_type)
   PetscInt :: ndof
   PetscInt :: cell_id
   PetscErrorCode :: ierr
+
   
   cell_id = -1
   call VecGetOwnershipRange(vec,low,high,ierr)
@@ -1090,12 +1091,14 @@ function GridIndexToCellID(vec,index,grid,vec_type)
   if (index >= low .and. index < high) then
     cell_id = (index-low)/ndof+1
     if (vec_type == GLOBAL) then
-      cell_id = grid%nG2A(cell_id)+1
-    else if (vec_type == LOCAL) then
       cell_id = grid%nL2A(cell_id)+1
+    else if (vec_type == LOCAL) then
+      cell_id = grid%nG2A(cell_id)+1
     endif
   endif
   
+!print *,  '-> ', low, high, index, cell_id
+
   call MPI_AllReduce(cell_id,GridIndexToCellID,1,MPI_INTEGER,MPI_MAX, &
                      PETSC_COMM_WORLD,ierr)
                      
