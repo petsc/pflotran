@@ -5409,6 +5409,7 @@ subroutine OutputMassBalanceNew(realization)
   character(len=MAXWORDLENGTH) :: filename
   PetscTruth, save :: first = PETSC_TRUE
   PetscInt :: fid = 86
+  PetscInt :: ios
   PetscInt :: i
   PetscInt :: local_id
   PetscInt :: ghosted_id
@@ -5438,6 +5439,15 @@ subroutine OutputMassBalanceNew(realization)
 
     option%io_buffer = '--> write tecplot mass balance file: ' // trim(filename)
     call printMsg(option)    
+
+    if (first .and. option%restart_flag) then ! check if file already exists
+      ios = 0
+      open(unit=fid,file=filename,action="write",status="old",iostat=ios)
+      if (ios == 0) then
+        close(fid)
+        first = PETSC_FALSE 
+      endif
+    endif
 
     if (first) then
       open(unit=fid,file=filename,action="write",status="replace")
