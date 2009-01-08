@@ -197,7 +197,7 @@ region.o : input.o utility.o logging.o string.o
 material.o : region.o option.o input.o field.o string.o
 coupler.o : condition.o connection.o region.o input.o grid.o
 breakthrough.o : region.o option.o input.o
-convergence.o : option.o solver.o
+convergence.o : option.o solver.o grid.o
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o string.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
 	     strata.o waypoint.o field.o hydrostatic.o debug.o breakthrough.o \
