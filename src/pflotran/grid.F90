@@ -85,7 +85,8 @@ module Grid_module
             GridDestroyHashTable, &
             GridGetLocalGhostedIdFromHash, &
             GridVecGetArrayF90, &
-            GridVecRestoreArrayF90
+            GridVecRestoreArrayF90, &
+            GridIndexToCellID
 contains
 
 ! ************************************************************************** !
@@ -1058,5 +1059,46 @@ subroutine GridVecRestoreArrayF90(grid, vec, f90ptr, ierr)
   endif
 
 end subroutine GridVecRestoreArrayF90
+
+! ************************************************************************** !
+!
+! GridIndexToCellID: Returns the local grid cell id of a Petsc Vec index
+! author: Glenn Hammond
+! date: 01/07/09
+!
+! ************************************************************************** !
+function GridIndexToCellID(vec,index,grid,vec_type)
+
+  implicit none
+  
+  Vec :: vec
+  PetscInt :: index
+  type(grid_type) :: grid
+  PetscInt :: vec_type
+  
+  PetscInt :: GridIndexToCellID
+  
+  PetscInt :: low
+  PetscInt :: high
+  PetscInt :: ndof
+  PetscInt :: cell_id
+  PetscErrorCode :: ierr
+  
+  cell_id = -1
+  call VecGetOwnershipRange(vec,low,high,ierr)
+  call VecGetBlockSize(vec,ndof,ierr)
+  if (index >= low .and. index < high) then
+    cell_id = (index-low)/ndof+1
+    if (vec_type == GLOBAL) then
+      cell_id = grid%nG2A(cell_id)+1
+    else if (vec_type == LOCAL) then
+      cell_id = grid%nL2A(cell_id)+1
+    endif
+  endif
+  
+  call MPI_AllReduce(cell_id,GridIndexToCellID,1,MPI_INTEGER,MPI_MAX, &
+                     PETSC_COMM_WORLD,ierr)
+                     
+end function GridIndexToCellID
 
 end module Grid_module

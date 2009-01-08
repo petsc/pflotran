@@ -306,7 +306,8 @@ subroutine Init(simulation,filename)
 
     ! shell for custom convergence test.  The default SNES convergence test  
     ! is call within this function. 
-    flow_stepper%convergence_context => ConvergenceContextCreate(flow_solver,option)
+    flow_stepper%convergence_context => &
+      ConvergenceContextCreate(flow_solver,option,grid)
     call SNESSetConvergenceTest(flow_solver%snes,ConvergenceTest, &
                                 flow_stepper%convergence_context, &
                                 PETSC_NULL_FUNCTION,ierr) 
@@ -384,7 +385,8 @@ subroutine Init(simulation,filename)
 
     ! shell for custom convergence test.  The default SNES convergence test  
     ! is call within this function. 
-    tran_stepper%convergence_context => ConvergenceContextCreate(tran_solver,option)
+    tran_stepper%convergence_context => &
+      ConvergenceContextCreate(tran_solver,option,grid)
     call SNESSetConvergenceTest(tran_solver%snes,ConvergenceTest, &
                                 tran_stepper%convergence_context, &
                                 PETSC_NULL_FUNCTION,ierr) 

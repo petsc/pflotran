@@ -2,7 +2,8 @@ module Convergence_module
 
   use Solver_module
   use Option_module
-
+  use Grid_module
+  
   implicit none
 
   private
@@ -17,6 +18,7 @@ module Convergence_module
   type, public :: convergence_context_type
     type(solver_type), pointer :: solver
     type(option_type), pointer :: option
+    type(grid_type), pointer :: grid
   end type convergence_context_type
 
 
@@ -34,19 +36,21 @@ contains
 ! date: 02/12/08
 !
 ! ************************************************************************** !
-function ConvergenceContextCreate(solver,option)
+function ConvergenceContextCreate(solver,option,grid)
 
   implicit none
   
   type(convergence_context_type), pointer :: ConvergenceContextCreate
   type(solver_type), pointer :: solver
   type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
   
   type(convergence_context_type), pointer :: context
   
   allocate(context)
   context%solver => solver
   context%option => option
+  context%grid => grid
 
   ConvergenceContextCreate => context
 
@@ -76,6 +80,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 
   type(solver_type), pointer :: solver
   type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
   
   Vec :: solution_vec
   Vec :: update_vec
@@ -84,7 +89,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   PetscReal :: inorm_update  
   PetscReal :: inorm_residual  
   
-  PetscInt :: i, ndof
+  PetscInt :: i, ndof, max_index, min_index
   PetscReal, allocatable :: fnorm_solution_stride(:)
   PetscReal, allocatable :: fnorm_update_stride(:)
   PetscReal, allocatable :: fnorm_residual_stride(:)
@@ -146,6 +151,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 
   solver => context%solver
   option => context%option
+  grid => context%grid
 
   if (option%use_touch_options) then
     word = 'detailed_convergence'
@@ -306,9 +312,12 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
       call VecStrideMax(update_vec,i-1,imax_update(i),max_update_val(i),ierr)
       call VecStrideMax(residual_vec,i-1,imax_residual(i),max_residual_val(i),ierr)
       ! tweak the index to get the cell id from the mdof vector
-      imax_solution(i) = imax_solution(i)/ndof
-      imax_update(i) = imax_update(i)/ndof
-      imax_residual(i) = imax_residual(i)/ndof
+      imax_solution(i) = GridIndexToCellID(solution_vec,imax_solution(i),grid,GLOBAL)
+      imax_update(i) = GridIndexToCellID(update_vec,imax_update(i),grid,GLOBAL)
+      imax_residual(i) = GridIndexToCellID(residual_vec,imax_residual(i),grid,GLOBAL)
+!      imax_solution(i) = /ndof
+!      imax_update(i) = imax_update(i)/ndof
+!      imax_residual(i) = imax_residual(i)/ndof
     enddo
 
     do i=1,ndof
@@ -316,9 +325,12 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
       call VecStrideMin(update_vec,i-1,imin_update(i),min_update_val(i),ierr)
       call VecStrideMin(residual_vec,i-1,imin_residual(i),min_residual_val(i),ierr)
       ! tweak the index to get the cell id from the mdof vector
-      imin_solution(i) = imin_solution(i)/ndof
-      imin_update(i) = imin_update(i)/ndof
-      imin_residual(i) = imin_residual(i)/ndof
+      imin_solution(i) = GridIndexToCellID(solution_vec,imin_solution(i),grid,GLOBAL)
+      imin_update(i) = GridIndexToCellID(update_vec,imax_update(i),grid,GLOBAL)
+      imin_residual(i) = GridIndexToCellID(residual_vec,imin_residual(i),grid,GLOBAL)
+!      imin_solution(i) = imin_solution(i)/ndof
+!      imin_update(i) = imin_update(i)/ndof
+!      imin_residual(i) = imin_residual(i)/ndof
     enddo
 
     if (option%print_flag) then
