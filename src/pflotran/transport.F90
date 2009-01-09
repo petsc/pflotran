@@ -94,8 +94,9 @@ subroutine TFlux(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up, &
                            coef_dn*rt_aux_var_dn%total(1:option%ntrandof,iphase)
   
 ! Add in multiphase, clu 12/29/08
-#if 0  
-  iphase = iphase +1 
+#if 1  
+  do
+   iphase = iphase +1 
    if (iphase > option%nphase) exit
 ! super critical CO2 phase have the index 2: need implementation
    q = velocity(iphase)
@@ -135,6 +136,7 @@ subroutine TFlux(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up, &
   Res(1:option%ntrandof) = Res (1:option%ntrandof) + & 
                       coef_up*rt_aux_var_up%total(1:option%ntrandof,iphase) + &
                       coef_dn*rt_aux_var_dn%total(1:option%ntrandof,iphase)
+ enddo
 #endif
 
 end subroutine TFlux
@@ -218,7 +220,7 @@ subroutine TFluxDerivative(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up
   endif
 
 ! Add in multiphase, clu 12/29/08
-#if 0  
+#if 1  
   do 
     iphase = iphase + 1
     if (iphase > option%nphase) exit
@@ -265,6 +267,7 @@ subroutine TFluxDerivative(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up
         J_dn(icomp,icomp) = J_dn(icomp,icomp) + coef_dn*global_aux_var_dn%den_kg(iphase)
       enddo
     endif
+  enddo
 #endif
 
 end subroutine TFluxDerivative
@@ -354,7 +357,7 @@ subroutine TBCFlux(ibndtype, &
 
 ! Add in multiphase, clu 12/29/08
 
-#if 0  
+#if 1  
   do 
     iphase = iphase + 1
     if (iphase > option%nphase) exit
@@ -406,7 +409,7 @@ subroutine TBCFlux(ibndtype, &
   Res(1:option%ntrandof) = Res(1:option%ntrandof) + &
                            coef_up*rt_aux_var_up%total(1:option%ntrandof,iphase) + &
                            coef_dn*rt_aux_var_dn%total(1:option%ntrandof,iphase)  
-
+ enddo
 #endif
 end subroutine TBCFlux
 
@@ -497,7 +500,7 @@ subroutine TBCFluxDerivative(ibndtype, &
   endif
 
 ! Add in multiphase, clu 12/29/08
-#if 0  
+#if 1  
   do 
     iphase = iphase + 1
     if (iphase > option%nphase) exit
@@ -547,11 +550,11 @@ subroutine TBCFluxDerivative(ibndtype, &
         J_dn = rt_aux_var_dn%dtotal(:,:,iphase)*coef_dn*1000.d0
       else
         J_dn = 0.d0
-      do icomp = 1, option%ntrandof
-        J_dn(icomp,icomp) = J_dn(icomp,icomp) + coef_dn*global_aux_var_dn%den_kg(iphase)
-      enddo
-  endif
-
+        do icomp = 1, option%ntrandof
+          J_dn(icomp,icomp) = J_dn(icomp,icomp) + coef_dn*global_aux_var_dn%den_kg(iphase)
+        enddo
+       endif
+   enddo
 #endif
 
 end subroutine TBCFluxDerivative

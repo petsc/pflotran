@@ -753,8 +753,9 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
   endif
 
 ! Add in multiphase, clu 12/29/08
-#if 0  
-  iphase = iphase +1 
+#if 1  
+ do
+   iphase = iphase +1 
    if (iphase > option%nphase) exit
 ! super critical CO2 phase
    if (iphase ==2 ) then
@@ -770,6 +771,7 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
        enddo
      endif   
    endif
+ enddo
 #endif     
 end subroutine RTAccumulationDerivative
 
@@ -813,7 +815,7 @@ subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
 
 
 ! Add in multiphase, clu 12/29/08
-#if 0  
+#if 1  
   do 
     iphase = iphase + 1
     if (iphase > option%nphase) exit
