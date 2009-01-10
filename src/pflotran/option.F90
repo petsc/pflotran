@@ -20,6 +20,9 @@ module Option_module
     PetscMPIInt :: myrank                  ! rank in PETSC_COMM_WORLD
     PetscMPIInt :: mycommsize              ! size of PETSC_COMM_WORLD
     PetscMPIInt :: mygroup                 ! id of group for PETSC_COMM_WORLD
+
+! don't place a character string near here.  It causes the Windows Intel compiler
+! to crash.  Don't know why....
         
     PetscMPIInt :: io_rank
     PetscTruth :: broadcast_read
