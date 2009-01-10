@@ -248,11 +248,11 @@ end subroutine MphaseSetupPatch
     cur_level => cur_level%next
   enddo
 
-   call MPI_Barrier(option%comm,ierr)
-   if(option%commsize >1)then
+   call MPI_Barrier(option%mycomm,ierr)
+   if(option%mycommsize >1)then
       call MPI_ALLREDUCE(ipass,ipass0,ONE_INTEGER, MPI_INTEGER,MPI_SUM, &
-           option%comm,ierr)
-      if(ipass0 < option%commsize) ipass=-1
+           option%mycomm,ierr)
+      if(ipass0 < option%mycommsize) ipass=-1
    endif
    MphaseInitGuessCheck =ipass
  end function MphaseInitGuessCheck
@@ -397,12 +397,12 @@ subroutine MPhaseUpdateReason(reason, realization)
     cur_level => cur_level%next
  enddo
 
- call MPI_Barrier(realization%option%comm,ierr)
+ call MPI_Barrier(realization%option%mycomm,ierr)
   
-  if(realization%option%commsize >1)then
+  if(realization%option%mycommsize >1)then
      call MPI_ALLREDUCE(re, re0,1, MPI_INTEGER,MPI_SUM, &
-          realization%option%comm,ierr)
-     if(re0<realization%option%commsize) re=0
+          realization%option%mycomm,ierr)
+     if(re0<realization%option%mycommsize) re=0
   endif
   reason=re
   
@@ -2078,12 +2078,12 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
 
   if (realization%debug%vecview_residual) then
-    call PetscViewerASCIIOpen(option%comm,'Rresidual.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'Rresidual.out',viewer,ierr)
     call VecView(r,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   if (realization%debug%vecview_solution) then
-    call PetscViewerASCIIOpen(option%comm,'Rxx.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'Rxx.out',viewer,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
@@ -2166,7 +2166,7 @@ subroutine MphaseJacobian(snes,xx,A,B,flag,realization,ierr)
   enddo
 
   if (realization%debug%matview_Jacobian) then
-    call PetscViewerASCIIOpen(realization%option%comm,'MPHjacobian.out', &
+    call PetscViewerASCIIOpen(realization%option%mycomm,'MPHjacobian.out', &
                               viewer,ierr)
     call MatView(J,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
@@ -2507,7 +2507,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    call PetscViewerASCIIOpen(option%comm,'jacobian_srcsink.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'jacobian_srcsink.out',viewer,ierr)
     call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
@@ -2634,7 +2634,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
  ! print *,'end inter flux'
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    call PetscViewerASCIIOpen(option%comm,'jacobian_flux.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'jacobian_flux.out',viewer,ierr)
     call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
@@ -2642,7 +2642,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    call PetscViewerASCIIOpen(option%comm,'jacobian_bcflux.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'jacobian_bcflux.out',viewer,ierr)
     call MatView(A,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
@@ -2789,7 +2789,7 @@ print *,'zero rows point 3'
   patch%aux%Mphase%zero_rows_local_ghosted => zero_rows_local_ghosted
 print *,'zero rows point 4'
   call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
-                     option%comm,ierr)
+                     option%mycomm,ierr)
   if (flag > 0) patch%aux%Mphase%inactive_cells_exist = PETSC_TRUE
 
   if (ncount /= n_zero_rows) then
@@ -2855,9 +2855,9 @@ subroutine MphaseMaxChange(realization)
     cur_level => cur_level%next
   enddo
 
-  if(option%commsize >1)then
-    call MPI_ALLREDUCE(dcmax, max_c,1, MPI_DOUBLE_PRECISION,MPI_MAX, option%comm,ierr)
-    call MPI_ALLREDUCE(dsmax, max_s,1, MPI_DOUBLE_PRECISION,MPI_MAX, option%comm,ierr)
+  if(option%mycommsize >1)then
+    call MPI_ALLREDUCE(dcmax, max_c,1, MPI_DOUBLE_PRECISION,MPI_MAX, option%mycomm,ierr)
+    call MPI_ALLREDUCE(dsmax, max_s,1, MPI_DOUBLE_PRECISION,MPI_MAX, option%mycomm,ierr)
     dcmax= max_C
     dsmax = max_s
   endif 

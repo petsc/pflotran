@@ -105,7 +105,8 @@ subroutine Checkpoint(realization, &
   integer*8 :: bagsize
 #endif
 
-  character(len=MAXSTRINGLENGTH) :: fname
+  character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXWORDLENGTH) :: id_string
   PetscViewer :: viewer
   PetscBag :: bag
   type(checkpoint_header_type), pointer :: header
@@ -134,21 +135,13 @@ subroutine Checkpoint(realization, &
   ! Open the checkpoint file.
   call PetscGetTime(tstart,ierr)   
   if (id < 0) then
-    fname = 'restart.chk'
-  else if (id < 10) then
-    write(fname, '(a12,i1)') 'pflotran.chk', id
-  else if (id < 100) then
-    write(fname, '(a12,i2)') 'pflotran.chk', id
-  else if (id < 1000) then
-    write(fname, '(a12,i3)') 'pflotran.chk', id
-  else if (id < 10000) then
-    write(fname, '(a12,i4)') 'pflotran.chk', id
-  else if (id < 100000) then
-    write(fname, '(a12,i5)') 'pflotran.chk', id
-  else if (id < 1000000) then
-    write(fname, '(a12,i6)') 'pflotran.chk', id
+    filename = 'restart' // trim(option%group_prefix) // '.chk'
+  else 
+    write(id_string,'(i8)') id
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+               '.chk' // trim(adjustl(id_string))
   endif
-  call PetscViewerBinaryOpen(option%comm, fname, FILE_MODE_WRITE, &
+  call PetscViewerBinaryOpen(option%mycomm, filename, FILE_MODE_WRITE, &
                              viewer, ierr)
 
   !--------------------------------------------------------------------
@@ -160,7 +153,7 @@ subroutine Checkpoint(realization, &
   ! checkpoint header, since sizeof() is not supported by some Fortran 
   ! compilers.  To be on the safe side, we assume an integer is 8 bytes.
   bagsize = 160
-  call PetscBagCreate(option%comm, bagsize, bag, ierr)
+  call PetscBagCreate(option%mycomm, bagsize, bag, ierr)
   call PetscBagGetData(bag, header, ierr); CHKERRQ(ierr)
 
   ! Register variables that are passed into timestepper().
@@ -309,7 +302,7 @@ subroutine Checkpoint(realization, &
   ! We are finished, so clean up.
   call PetscViewerDestroy(viewer, ierr)
 
-  write(option%io_buffer,'(" --> Dump checkpoint file: ", a16)') trim(fname)
+  write(option%io_buffer,'(" --> Dump checkpoint file: ", a16)') trim(filename)
   call printMsg(option)
 
   call PetscGetTime(tend,ierr) 
@@ -385,7 +378,7 @@ subroutine Restart(realization, &
   call PetscGetTime(tstart,ierr)
   option%io_buffer = '--> Open checkpoint file: ' // trim(option%restart_file)
   call printMsg(option)
-  call PetscViewerBinaryOpen(option%comm,option%restart_file, &
+  call PetscViewerBinaryOpen(option%mycomm,option%restart_file, &
                              FILE_MODE_READ,viewer,ierr)
  
   activity_coefs_read = PETSC_FALSE

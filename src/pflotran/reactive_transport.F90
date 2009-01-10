@@ -660,7 +660,7 @@ subroutine RTNumericalJacobianTest(realization)
   call VecDuplicate(field%tran_xx,res,ierr)
   call VecDuplicate(field%tran_xx,res_pert,ierr)
   
-  call MatCreate(option%comm,A,ierr)
+  call MatCreate(option%mycomm,A,ierr)
   call MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE, &
                    grid%nlmax*option%ntrandof, &
                    grid%nlmax*option%ntrandof,ierr)
@@ -693,7 +693,7 @@ subroutine RTNumericalJacobianTest(realization)
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-  call PetscViewerASCIIOpen(option%comm,'RTnumerical_jacobian.out',viewer,ierr)
+  call PetscViewerASCIIOpen(option%mycomm,'RTnumerical_jacobian.out',viewer,ierr)
   call MatView(A,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 
@@ -918,13 +918,13 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   endif
 
   if (realization%debug%vecview_residual) then
-    call PetscViewerASCIIOpen(realization%option%comm,'RTresidual.out', &
+    call PetscViewerASCIIOpen(realization%option%mycomm,'RTresidual.out', &
                               viewer,ierr)
     call VecView(r,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   if (realization%debug%vecview_solution) then
-    call PetscViewerASCIIOpen(realization%option%comm,'RTxx.out', &
+    call PetscViewerASCIIOpen(realization%option%mycomm,'RTxx.out', &
                               viewer,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
@@ -1327,7 +1327,7 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   enddo
   
   if (realization%debug%matview_Jacobian) then
-    call PetscViewerASCIIOpen(realization%option%comm,'RTjacobian.out', &
+    call PetscViewerASCIIOpen(realization%option%mycomm,'RTjacobian.out', &
                               viewer,ierr)
     call MatView(J,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
@@ -1337,7 +1337,7 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
     call MatDiagonalScaleLocal(J,realization%field%tran_work_loc,ierr)
 
     if (realization%debug%matview_Jacobian) then
-      call PetscViewerASCIIOpen(realization%option%comm,'RTjacobianLog.out', &
+      call PetscViewerASCIIOpen(realization%option%mycomm,'RTjacobianLog.out', &
                                 viewer,ierr)
       call MatView(J,viewer,ierr)
       call PetscViewerDestroy(viewer,ierr)
@@ -1876,7 +1876,7 @@ subroutine RTCreateZeroArray(patch,reaction,option)
   patch%aux%RT%n_zero_rows = n_zero_rows  
 
   call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
-                     option%comm,ierr)
+                     option%mycomm,ierr)
 
   if (flag > 0) patch%aux%RT%inactive_cells_exist = PETSC_TRUE
 

@@ -11,9 +11,16 @@ module Option_module
 
   type, public :: option_type 
   
-    PetscMPIInt :: comm                      ! alternative to PETSC_COMM_WORLD
-    PetscMPIInt :: myrank                    ! rank in PETSC_COMM_WORLD
-    PetscMPIInt :: commsize                  ! size of PETSC_COMM_WORLD
+    PetscMPIInt :: global_comm             ! MPI_COMM_WORLD
+    PetscMPIInt :: global_rank             ! rank in MPI_COMM_WORLD
+    PetscMPIInt :: global_commsize         ! size of MPI_COMM_WORLD
+    PetscMPIInt :: global_group            ! id of group for MPI_COMM_WORLD
+  
+    PetscMPIInt :: mycomm                  ! PETSC_COMM_WORLD
+    PetscMPIInt :: myrank                  ! rank in PETSC_COMM_WORLD
+    PetscMPIInt :: mycommsize              ! size of PETSC_COMM_WORLD
+    PetscMPIInt :: mygroup                 ! id of group for PETSC_COMM_WORLD
+        
     PetscMPIInt :: io_rank
     PetscTruth :: broadcast_read
     
@@ -118,6 +125,9 @@ module Option_module
     character(len=MAXWORDLENGTH) :: permy_filename
     character(len=MAXWORDLENGTH) :: permz_filename
     
+    character(len=MAXWORDLENGTH) :: global_prefix
+    character(len=MAXWORDLENGTH) :: group_prefix
+    
   end type option_type
   
   type, public :: output_option_type
@@ -196,9 +206,19 @@ function OptionCreate()
   
   allocate(option)
 
-  option%comm = 0
+  option%global_comm = 0
+  option%global_rank = 0
+  option%global_commsize = 0
+  option%global_group = 0
+  
+  option%mycomm = 0
   option%myrank = 0
-  option%commsize = 0
+  option%mycommsize = 0
+  option%mygroup = 0
+  
+  option%global_prefix = 'pflotran'
+  option%group_prefix = ''
+    
   option%broadcast_read = PETSC_FALSE
   option%io_rank = 0
   option%io_buffer = ''
@@ -597,7 +617,7 @@ function OptionCheckTouch(option,filename)
 
   if (option%myrank == option%io_rank) &
     open(unit=fid,file=trim(filename),status='old',iostat=ios)
-  call MPI_Bcast(ios,1,MPI_INTEGER,option%io_rank,option%comm,ierr)
+  call MPI_Bcast(ios,1,MPI_INTEGER,option%io_rank,option%mycomm,ierr)
 
   if (ios == 0) then
     if (option%myrank == option%io_rank) close(fid,status='delete')

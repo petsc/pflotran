@@ -619,7 +619,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
        end select
 
        stencilsize=7;
-       call MatCreateShell(option%comm, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, Jacobian, ierr)
+       call MatCreateShell(option%mycomm, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, Jacobian, ierr)
        call SAMRCreateMatrix(discretization%amrgrid%p_application, ndof, stencilsize, flowortransport, Jacobian)
 
        if(ndof>1) then
@@ -641,7 +641,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
           do i=1,imax
              indices(i:i)=i-1
           enddo
-          call ISLocalToGlobalMappingCreate(option%comm, imax, indices, ptmap, ierr)          
+          call ISLocalToGlobalMappingCreate(option%mycomm, imax, indices, ptmap, ierr)          
 !          call ISSetIdentity(ptmap, ierr)
 !          call ISLocalToGlobalMappingBlock(ptmap, ndof, bmap, ierr)
           call MatSetLocalToGlobalMappingBlock(Jacobian, ptmap, ierr)
@@ -710,7 +710,7 @@ subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
         call DASetRefinementFactor(dm_fine_ptr, refine_x, refine_y, refine_z, &
                                    ierr)
         call DASetInterpolationType(dm_fine_ptr, DA_Q0, ierr)
-        call DACoarsen(dm_fine_ptr, option%comm, dmc_ptr(i), ierr)
+        call DACoarsen(dm_fine_ptr, option%mycomm, dmc_ptr(i), ierr)
         call DAGetInterpolation(dmc_ptr(i), dm_fine_ptr, interpolation(i), &
                                 PETSC_NULL_OBJECT, ierr)
         dm_fine_ptr => dmc_ptr(i)

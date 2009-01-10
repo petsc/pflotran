@@ -61,7 +61,7 @@ subroutine Init(simulation,filename)
   implicit none
   
   type(simulation_type) :: simulation
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXWORDLENGTH) :: filename, filename_out
 
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
@@ -115,7 +115,9 @@ subroutine Init(simulation,filename)
   
 
   realization%input => InputCreate(IUNIT1,filename)
-  open(option%fid_out, file='pflotran.out', action="write", status="unknown")
+  filename_out = trim(option%global_prefix) // trim(option%group_prefix) // &
+                 '.out'
+  open(option%fid_out, file=filename_out, action="write", status="unknown")
 
   ! read required cards
   call readRequiredCardsFromInput(realization)
@@ -181,7 +183,7 @@ subroutine Init(simulation,filename)
       &++++++++")')
     if (realization%discretization%itype == STRUCTURED_GRID) then
       write(*,'(" Requested processors and decomposition = ",i5,", npx,y,z= ",3i5)') &
-        option%commsize,grid%structured_grid%npx,grid%structured_grid%npy, &
+        option%mycommsize,grid%structured_grid%npx,grid%structured_grid%npy, &
         grid%structured_grid%npz
       write(*,'(" Actual decomposition: npx,y,z= ",3i5)') &
         grid%structured_grid%npx_final,grid%structured_grid%npy_final, &
@@ -216,7 +218,7 @@ subroutine Init(simulation,filename)
 
     call printMsg(option,"  Beginning setup of FLOW SNES ")
 
-    call SolverCreateSNES(flow_solver,option%comm)  
+    call SolverCreateSNES(flow_solver,option%mycomm)  
     call SNESSetOptionsPrefix(flow_solver%snes, "flow_",ierr)
     call SolverCheckCommandLine(flow_solver)
 
@@ -321,7 +323,7 @@ subroutine Init(simulation,filename)
 
     call printMsg(option,"  Beginning setup of TRAN SNES ")
     
-    call SolverCreateSNES(tran_solver,option%comm)  
+    call SolverCreateSNES(tran_solver,option%mycomm)  
     call SNESSetOptionsPrefix(tran_solver%snes, "tran_",ierr)
     call SolverCheckCommandLine(tran_solver)
 
@@ -655,12 +657,12 @@ subroutine readRequiredCardsFromInput(realization)
         call printMsg(option)
       endif
   
-      if (option%commsize /= grid%structured_grid%npx * &
+      if (option%mycommsize /= grid%structured_grid%npx * &
                              grid%structured_grid%npy * &
                              grid%structured_grid%npz) then
         write(option%io_buffer,*) 'Incorrect number of processors specified: ', &
                        grid%structured_grid%npx*grid%structured_grid%npy* &
-                       grid%structured_grid%npz,' commsize = ',option%commsize
+                       grid%structured_grid%npz,' commsize = ',option%mycommsize
         call printErrMsg(option)
       endif
     endif
@@ -1082,7 +1084,7 @@ subroutine readInput(simulation)
         
         ! safety catch: only block supported in parallel
         if (realization%output_option%tecplot_format == TECPLOT_POINT_FORMAT .and. &
-            option%commsize > 1) then
+            option%mycommsize > 1) then
           realization%output_option%tecplot_format = TECPLOT_BLOCK_FORMAT
         endif
           
@@ -2557,7 +2559,7 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
       if (option%myrank == option%io_rank) &
         read(fid,*,iostat=ierr) values(1:read_count)
       call mpi_bcast(ierr,ONE_INTEGER,MPI_INTEGER,option%io_rank, &
-                     option%comm,ierr2)      
+                     option%mycomm,ierr2)      
       if (ierr /= 0) then
         option%io_buffer = 'Insufficent data in file: ' // filename
         call printErrMsg(option)
@@ -2569,7 +2571,7 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
       count = count + read_count
     enddo
     call mpi_bcast(count,ONE_INTEGER,MPI_INTEGER,option%io_rank, &
-                   option%comm,ierr)      
+                   option%mycomm,ierr)      
     if (count /= grid%nmax) then
       write(option%io_buffer, &
             '("Number of data in file (",i8, &
