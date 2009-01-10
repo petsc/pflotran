@@ -21,7 +21,7 @@ ifdef compile_broken
 endif
 
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) \
-          $(COMPILE_BROKEN_FLAGS) -DGLENN
+          $(COMPILE_BROKEN_FLAGS)
 LIBS = $(HDF5_LIBS)
 
 CFLAGS		 = 
