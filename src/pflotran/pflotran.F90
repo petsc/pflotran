@@ -48,12 +48,14 @@
   PetscMPIInt :: mycolor, mykey
 
   PetscInt :: out_unit
-  PetscInt :: num_groups = 1
+  PetscInt :: igroup, num_groups = 2
+  PetscInt :: local_commsize, rank_offset, delta, remainder
 
   PetscInt :: ierr
   PetscInt :: stage(10)
   PetscTruth :: option_found  ! For testing presence of a command-line option.
   character(len=MAXSTRINGLENGTH) :: pflotranin
+  character(len=MAXWORDLENGTH) :: string
 
   
   type(simulation_type), pointer :: simulation
@@ -66,8 +68,17 @@
   call MPI_Comm_rank(MPI_COMM_WORLD,global_rank, ierr)
   call MPI_Comm_size(MPI_COMM_WORLD,global_commsize,ierr)
   call MPI_Comm_group(MPI_COMM_WORLD,global_group,ierr)
-  mycolor = global_rank / num_groups
-  mykey = mod(global_rank,num_groups)
+  local_commsize = global_commsize / num_groups
+  remainder = global_commsize - num_groups * local_commsize
+  rank_offset = 0
+  do igroup = 1, num_groups
+    delta = local_commsize
+    if (igroup < remainder) delta = delta + 1
+    if (global_rank >= rank_offset .and. global_rank < rank_offset + delta) exit
+    rank_offset = rank_offset + delta
+  enddo
+  mycolor = igroup
+  mykey = global_rank - rank_offset
   call MPI_Comm_split(MPI_COMM_WORLD,mycolor,mykey,mycomm,ierr)
   call MPI_Comm_group(mycomm,mygroup,ierr)
   PETSC_COMM_WORLD = mycomm
@@ -104,6 +115,13 @@
   option%myrank = myrank
   option%mycommsize = mycommsize
   option%mygroup = mygroup
+
+#ifdef GLENN
+  if (num_groups > 1) then
+    write(string,'(i6)') igroup-1
+    option%group_prefix = 'G' // trim(adjustl(string))
+  endif
+#endif
 
   call PetscOptionsGetString(PETSC_NULL_CHARACTER, "-pflotranin", &
                              pflotranin, option_found, ierr)
