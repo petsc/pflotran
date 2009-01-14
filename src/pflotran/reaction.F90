@@ -1036,7 +1036,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       end select
       write(option%fid_out,103) reaction%primary_species_names(icomp), &
                                 rt_auxvar%pri_molal(icomp), &
-                                rt_auxvar%total(icomp,1), &
+                                rt_auxvar%total(icomp,1)*molar_to_molal, &
                                 rt_auxvar%pri_act_coef(icomp), &
                                 trim(string)
     enddo 

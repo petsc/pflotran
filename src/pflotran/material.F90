@@ -223,6 +223,101 @@ end function SaturationFunctionCreate
 
 ! ************************************************************************** !
 !
+! MaterialRead: Reads in contents of a material card
+! author: Glenn Hammond
+! date: 01/13/09
+! 
+! ************************************************************************** !
+subroutine MaterialRead(material,input,option)
+
+  use Option_module
+  use Input_module
+  use String_module
+
+  implicit none
+  
+  type(material_type) :: material
+  type(input_type) :: input
+  type(option_type) :: option
+  
+  character(len=MAXWORDLENGTH) :: keyword, word
+
+  input%ierr = 0
+  do
+  
+    call InputReadFlotranString(input,option)
+
+    if (InputCheckExit(input,option)) exit  
+
+    call InputReadWord(input,option,keyword,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','MATERIAL')
+    call StringToUpper(keyword)   
+      
+    select case(trim(keyword))
+    
+      case('ID') 
+        call InputReadInt(input,option,material%id)
+        call InputDefaultMsg(input,option,'material id')
+      case('SATURATION_FUNCTION') 
+        call InputReadInt(input,option,material%icap)
+        call InputDefaultMsg(input,option,'material saturation function id')
+      case('THERMAL_PROPERTY')
+        call InputReadInt(input,option,material%ithrm)
+        call InputDefaultMsg(input,option,'material thermal property id')
+      case('POROSITY')
+        call InputReadDouble(input,option,material%porosity)
+        call InputDefaultMsg(input,option,'porosity')
+      case('TORTUOSITY')
+        call InputReadDouble(input,option,material%tortuosity)
+        call InputDefaultMsg(input,option,'tortuosity')
+      case('PERMEABILITY')
+        do
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,'MATERIAL,PERMEABILITY')
+          
+          if (InputCheckExit(input,option)) exit          
+          
+          if (InputError(input)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword','MATERIAL,PERMEABILITY')   
+          select case(trim(word))
+            case('PERM_X')
+              call InputReadDouble(input,option,material%permeability(1,1))
+              call InputDefaultMsg(input,option,'x permeability')
+            case('PERM_Y')
+              call InputReadDouble(input,option,material%permeability(2,2))
+              call InputDefaultMsg(input,option,'y permeability')
+            case('PERM_Z')
+              call InputReadDouble(input,option,material%permeability(3,3))
+              call InputDefaultMsg(input,option,'z permeability')
+            case('PERM_POWER')
+              call InputReadDouble(input,option,material%permeability_pwr)
+              call InputDefaultMsg(input,option,'permeability power')
+            case('RANDOM_DATASET')
+!              material%random_permeability = PETSC_TRUE
+!              call InputReadWord(input,option,material%permeability_filename,PETSC_TRUE)
+              call InputErrorMsg(input,option,'keyword','CONDITION,TYPE')   
+            case('ISOTROPIC')
+!              material%isotropic_permeability = PETSC_TRUE
+            case default
+              option%io_buffer = 'keyword not recognized in material,permeability'
+              call printErrMsg(option)
+          end select
+        enddo
+
+      case default
+        option%io_buffer = 'Keyword: ' // keyword // &
+                           ' not recognized in material'    
+        call printErrMsg(option)
+    end select 
+  
+  enddo  
+
+
+end subroutine 
+
+! ************************************************************************** !
+!
 ! SaturationFunctionComputeSpline: Computes a spline spanning the 
 !                                  discontinuity in Brooks Corey
 ! author: Glenn Hammond

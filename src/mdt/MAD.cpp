@@ -38,7 +38,7 @@ MAD::MAD(Grid **grid_) {
 
   PetscReal len_x = 120.;
   PetscReal len_y = 122;
-  PetscReal len_z = 20.;
+  PetscReal len_z = 60.;
 
   dx = len_x/(PetscReal)nx;
   dy = len_y/(PetscReal)ny;

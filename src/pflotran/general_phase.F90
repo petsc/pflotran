@@ -1,6 +1,6 @@
-module Richards_module
+module General_Phase_module
 
-  use Richards_Aux_module
+  use General_Phase_Aux_module
   use Global_Aux_module
   
   implicit none
@@ -23,23 +23,23 @@ module Richards_module
   PetscReal, parameter :: floweps   = 1.D-24
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
   
-  public RichardsResidual,RichardsJacobian, &
-         RichardsUpdateFixedAccum,RichardsTimeCut,&
-         RichardsSetup, RichardsNumericalJacTest, &
-         RichardsInitializeTimestep, RichardsUpdateAuxVars, &
-         RichardsMaxChange, RichardsUpdateSolution, &
-         RichardsGetTecplotHeader, RichardsComputeMassBalance
+  public GeneralPhaseResidual,GeneralPhaseJacobian, &
+         GeneralPhaseUpdateFixedAccum,GeneralPhaseTimeCut,&
+         GeneralPhaseSetup, GeneralPhaseNumericalJacTest, &
+         GeneralPhaseInitializeTimestep, GeneralPhaseUpdateAuxVars, &
+         GeneralPhaseMaxChange, GeneralPhaseUpdateSolution, &
+         GeneralPhaseGetTecplotHeader, GeneralPhaseComputeMassBalance
 
 contains
 
 ! ************************************************************************** !
 !
-! RichardsTimeCut: Resets arrays for time step cut
+! GeneralPhaseTimeCut: Resets arrays for time step cut
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsTimeCut(realization)
+subroutine GeneralPhaseTimeCut(realization)
  
   use Realization_module
   use Option_module
@@ -59,16 +59,16 @@ subroutine RichardsTimeCut(realization)
 
   call VecCopy(field%flow_yy,field%flow_xx,ierr)
  
-end subroutine RichardsTimeCut
+end subroutine GeneralPhaseTimeCut
 
 ! ************************************************************************** !
 !
-! RichardsSetup: 
+! GeneralPhaseSetup: 
 ! author: Glenn Hammond
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine RichardsSetup(realization)
+subroutine GeneralPhaseSetup(realization)
 
   use Realization_module
   use Level_module
@@ -86,22 +86,22 @@ subroutine RichardsSetup(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RichardsSetupPatch(realization)
+      call GeneralPhaseSetupPatch(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
 
-end subroutine RichardsSetup
+end subroutine GeneralPhaseSetup
 
 ! ************************************************************************** !
 !
-! RichardsSetupPatch: Creates arrays for auxilliary variables
+! GeneralPhaseSetupPatch: Creates arrays for auxilliary variables
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsSetupPatch(realization)
+subroutine GeneralPhaseSetupPatch(realization)
 
   use Realization_module
   use Patch_module
@@ -120,21 +120,21 @@ subroutine RichardsSetupPatch(realization)
   type(coupler_type), pointer :: boundary_condition
 
   PetscInt :: ghosted_id, iconn, sum_connection
-  type(richards_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)  
+  type(general_phase_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)  
   
   option => realization%option
   patch => realization%patch
   grid => patch%grid
 
-  patch%aux%Richards => RichardsAuxCreate()
+  patch%aux%GeneralPhase => GeneralPhaseAuxCreate()
   
   ! allocate aux_var data structures for all grid cells  
   allocate(rich_aux_vars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
-    call RichardsAuxVarInit(rich_aux_vars(ghosted_id),option)
+    call GeneralPhaseAuxVarInit(rich_aux_vars(ghosted_id),option)
   enddo
-  patch%aux%Richards%aux_vars => rich_aux_vars
-  patch%aux%Richards%num_aux = grid%ngmax
+  patch%aux%GeneralPhase%aux_vars => rich_aux_vars
+  patch%aux%GeneralPhase%num_aux = grid%ngmax
   
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them  
@@ -148,25 +148,25 @@ subroutine RichardsSetupPatch(realization)
   enddo
   allocate(rich_aux_vars_bc(sum_connection))
   do iconn = 1, sum_connection
-    call RichardsAuxVarInit(rich_aux_vars_bc(iconn),option)
+    call GeneralPhaseAuxVarInit(rich_aux_vars_bc(iconn),option)
   enddo
-  patch%aux%Richards%aux_vars_bc => rich_aux_vars_bc
-  patch%aux%Richards%num_aux_bc = sum_connection
+  patch%aux%GeneralPhase%aux_vars_bc => rich_aux_vars_bc
+  patch%aux%GeneralPhase%num_aux_bc = sum_connection
   
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
-  call RichardsCreateZeroArray(patch,option)
+  call GeneralPhaseCreateZeroArray(patch,option)
 
-end subroutine RichardsSetupPatch
+end subroutine GeneralPhaseSetupPatch
 
 ! ************************************************************************** !
 !
-! RichardsSetup: 
+! GeneralPhaseSetup: 
 ! author: Glenn Hammond
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine RichardsComputeMassBalance(realization,mass_balance)
+subroutine GeneralPhaseComputeMassBalance(realization,mass_balance)
 
   use Realization_module
   use Level_module
@@ -187,22 +187,22 @@ subroutine RichardsComputeMassBalance(realization,mass_balance)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RichardsComputeMassBalancePatch(realization,mass_balance)
+      call GeneralPhaseComputeMassBalancePatch(realization,mass_balance)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
 
-end subroutine RichardsComputeMassBalance
+end subroutine GeneralPhaseComputeMassBalance
 
 ! ************************************************************************** !
 !
-! RichardsComputeMassBalancePatch: Initializes mass balance
+! GeneralPhaseComputeMassBalancePatch: Initializes mass balance
 ! author: Glenn Hammond
 ! date: 12/19/08
 !
 ! ************************************************************************** !
-subroutine RichardsComputeMassBalancePatch(realization,mass_balance)
+subroutine GeneralPhaseComputeMassBalancePatch(realization,mass_balance)
  
   use Realization_module
   use Option_module
@@ -246,22 +246,22 @@ subroutine RichardsComputeMassBalancePatch(realization,mass_balance)
     mass_balance = mass_balance + &
       global_aux_vars(ghosted_id)%den_kg* &
       global_aux_vars(ghosted_id)%sat* &
-      porosity_loc_p(ghosted_id)*volume_p(local_id)
+      porosity_loc_p(ghosted_id)*volume_p(ghosted_id)
   enddo
 
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
   
-end subroutine RichardsComputeMassBalancePatch
+end subroutine GeneralPhaseComputeMassBalancePatch
 
 ! ************************************************************************** !
 !
-! RichardsZeroMassBalDeltaPatch: Zeros mass balance delta array
+! GeneralPhaseZeroMassBalDeltaPatch: Zeros mass balance delta array
 ! author: Glenn Hammond
 ! date: 12/19/08
 !
 ! ************************************************************************** !
-subroutine RichardsZeroMassBalDeltaPatch(realization)
+subroutine GeneralPhaseZeroMassBalDeltaPatch(realization)
  
   use Realization_module
   use Option_module
@@ -283,20 +283,20 @@ subroutine RichardsZeroMassBalDeltaPatch(realization)
 
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
-  do iconn = 1, patch%aux%Richards%num_aux_bc
+  do iconn = 1, patch%aux%GeneralPhase%num_aux_bc
     global_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
   enddo
 
-end subroutine RichardsZeroMassBalDeltaPatch
+end subroutine GeneralPhaseZeroMassBalDeltaPatch
 
 ! ************************************************************************** !
 !
-! RichardsUpdateMassBalancePatch: Updates mass balance
+! GeneralPhaseUpdateMassBalancePatch: Updates mass balance
 ! author: Glenn Hammond
 ! date: 12/19/08
 !
 ! ************************************************************************** !
-subroutine RichardsUpdateMassBalancePatch(realization)
+subroutine GeneralPhaseUpdateMassBalancePatch(realization)
  
   use Realization_module
   use Option_module
@@ -318,23 +318,23 @@ subroutine RichardsUpdateMassBalancePatch(realization)
 
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
-  do iconn = 1, patch%aux%Richards%num_aux_bc
+  do iconn = 1, patch%aux%GeneralPhase%num_aux_bc
     global_aux_vars_bc(iconn)%mass_balance = &
       global_aux_vars_bc(iconn)%mass_balance + &
       global_aux_vars_bc(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
   enddo
 
-end subroutine RichardsUpdateMassBalancePatch
+end subroutine GeneralPhaseUpdateMassBalancePatch
 
 ! ************************************************************************** !
 !
-! RichardsUpdateAuxVars: Updates the auxilliary variables associated with 
-!                        the Richards problem
+! GeneralPhaseUpdateAuxVars: Updates the auxilliary variables associated with 
+!                        the GeneralPhase problem
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsUpdateAuxVars(realization)
+subroutine GeneralPhaseUpdateAuxVars(realization)
 
   use Realization_module
   use Level_module
@@ -352,23 +352,23 @@ subroutine RichardsUpdateAuxVars(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RichardsUpdateAuxVarsPatch(realization)
+      call GeneralPhaseUpdateAuxVarsPatch(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
 
-end subroutine RichardsUpdateAuxVars
+end subroutine GeneralPhaseUpdateAuxVars
 
 ! ************************************************************************** !
 !
-! RichardsUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
-!                        the Richards problem
+! GeneralPhaseUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
+!                        the GeneralPhase problem
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsUpdateAuxVarsPatch(realization)
+subroutine GeneralPhaseUpdateAuxVarsPatch(realization)
 
   use Realization_module
   use Patch_module
@@ -389,7 +389,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
-  type(richards_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)  
+  type(general_phase_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)  
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)  
 
   PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn
@@ -404,8 +404,8 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   grid => patch%grid
   field => realization%field
 
-  rich_aux_vars => patch%aux%Richards%aux_vars
-  rich_aux_vars_bc => patch%aux%Richards%aux_vars_bc
+  rich_aux_vars => patch%aux%GeneralPhase%aux_vars
+  rich_aux_vars_bc => patch%aux%GeneralPhase%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
     
@@ -423,7 +423,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
     endif
     iphase = int(iphase_loc_p(ghosted_id))
    
-    call RichardsAuxVarCompute(xx_loc_p(ghosted_id:ghosted_id),rich_aux_vars(ghosted_id), &
+    call GeneralPhaseAuxVarCompute(xx_loc_p(ghosted_id:ghosted_id),rich_aux_vars(ghosted_id), &
                        global_aux_vars(ghosted_id), iphase, &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
@@ -458,7 +458,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
           iphasebc=int(iphase_loc_p(ghosted_id))                               
       end select
 
-      call RichardsAuxVarCompute(xxbc(1),rich_aux_vars_bc(sum_connection), &
+      call GeneralPhaseAuxVarCompute(xxbc(1),rich_aux_vars_bc(sum_connection), &
                          global_aux_vars_bc(sum_connection),iphasebc, &
                          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                          porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                         
@@ -474,18 +474,18 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)  
   
-  patch%aux%Richards%aux_vars_up_to_date = PETSC_TRUE
+  patch%aux%GeneralPhase%aux_vars_up_to_date = PETSC_TRUE
 
-end subroutine RichardsUpdateAuxVarsPatch
+end subroutine GeneralPhaseUpdateAuxVarsPatch
 
 ! ************************************************************************** !
 !
-! RichardsInitializeTimestep: Update data in module prior to time step
+! GeneralPhaseInitializeTimestep: Update data in module prior to time step
 ! author: Glenn Hammond
 ! date: 02/20/08
 !
 ! ************************************************************************** !
-subroutine RichardsInitializeTimestep(realization)
+subroutine GeneralPhaseInitializeTimestep(realization)
 
   use Realization_module
   
@@ -493,19 +493,19 @@ subroutine RichardsInitializeTimestep(realization)
   
   type(realization_type) :: realization
 
-  call RichardsUpdateFixedAccum(realization)
+  call GeneralPhaseUpdateFixedAccum(realization)
 
-end subroutine RichardsInitializeTimestep
+end subroutine GeneralPhaseInitializeTimestep
 
 ! ************************************************************************** !
 !
-! RichardsUpdateSolution: Updates data in module after a successful time 
+! GeneralPhaseUpdateSolution: Updates data in module after a successful time 
 !                             step
 ! author: Glenn Hammond
 ! date: 02/13/08
 !
 ! ************************************************************************** !
-subroutine RichardsUpdateSolution(realization)
+subroutine GeneralPhaseUpdateSolution(realization)
 
   use Realization_module
   use Field_module
@@ -532,24 +532,24 @@ subroutine RichardsUpdateSolution(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RichardsUpdateSolutionPatch(realization)
+      call GeneralPhaseUpdateSolutionPatch(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
   
-end subroutine RichardsUpdateSolution
+end subroutine GeneralPhaseUpdateSolution
 
 
 ! ************************************************************************** !
 !
-! RichardsUpdateSolutionPatch: Updates data in module after a successful time 
+! GeneralPhaseUpdateSolutionPatch: Updates data in module after a successful time 
 !                             step
 ! author: Glenn Hammond
 ! date: 02/13/08
 !
 ! ************************************************************************** !
-subroutine RichardsUpdateSolutionPatch(realization)
+subroutine GeneralPhaseUpdateSolutionPatch(realization)
 
   use Realization_module
     
@@ -558,20 +558,20 @@ subroutine RichardsUpdateSolutionPatch(realization)
   type(realization_type) :: realization
 
   if (realization%option%compute_mass_balance_new) then
-    call RichardsUpdateMassBalancePatch(realization)
+    call GeneralPhaseUpdateMassBalancePatch(realization)
   endif
 
-end subroutine RichardsUpdateSolutionPatch
+end subroutine GeneralPhaseUpdateSolutionPatch
 
 ! ************************************************************************** !
 !
-! RichardsUpdateFixedAccum: Updates the fixed portion of the 
+! GeneralPhaseUpdateFixedAccum: Updates the fixed portion of the 
 !                                  accumulation term
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsUpdateFixedAccum(realization)
+subroutine GeneralPhaseUpdateFixedAccum(realization)
 
   use Realization_module
   use Level_module
@@ -589,23 +589,23 @@ subroutine RichardsUpdateFixedAccum(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RichardsLiUpdateFixedAccumPatch(realization)
+      call GeneralPhaseLiUpdateFixedAccumPatch(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
 
-end subroutine RichardsUpdateFixedAccum
+end subroutine GeneralPhaseUpdateFixedAccum
 
 ! ************************************************************************** !
 !
-! RichardsLiUpdateFixedAccumPatch: Updates the fixed portion of the 
+! GeneralPhaseLiUpdateFixedAccumPatch: Updates the fixed portion of the 
 !                                  accumulation term
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsLiUpdateFixedAccumPatch(realization)
+subroutine GeneralPhaseLiUpdateFixedAccumPatch(realization)
 
   use Realization_module
   use Patch_module
@@ -621,7 +621,7 @@ subroutine RichardsLiUpdateFixedAccumPatch(realization)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
-  type(richards_auxvar_type), pointer :: rich_aux_vars(:)
+  type(general_phase_auxvar_type), pointer :: rich_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)
 
   PetscInt :: ghosted_id, local_id, iphase
@@ -636,7 +636,7 @@ subroutine RichardsLiUpdateFixedAccumPatch(realization)
   patch => realization%patch
   grid => patch%grid
 
-  rich_aux_vars => patch%aux%Richards%aux_vars
+  rich_aux_vars => patch%aux%GeneralPhase%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
     
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
@@ -657,13 +657,13 @@ subroutine RichardsLiUpdateFixedAccumPatch(realization)
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
     iphase = int(iphase_loc_p(ghosted_id))
-    call RichardsAuxVarCompute(xx_p(local_id:local_id), &
+    call GeneralPhaseAuxVarCompute(xx_p(local_id:local_id), &
                    rich_aux_vars(ghosted_id),global_aux_vars(ghosted_id),iphase, &
                    realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                    porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                        
                    option)
     iphase_loc_p(ghosted_id) = iphase
-    call RichardsAccumulation(rich_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
+    call GeneralPhaseAccumulation(rich_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               option%dencpr(int(ithrm_loc_p(ghosted_id))), &
@@ -682,19 +682,19 @@ subroutine RichardsLiUpdateFixedAccumPatch(realization)
   call GridVecRestoreArrayF90(grid,field%flow_accum, accum_p, ierr)
 
 #if 0
-!  call RichardsNumericalJacTest(field%flow_xx,realization)
+!  call GeneralPhaseNumericalJacTest(field%flow_xx,realization)
 #endif
 
-end subroutine RichardsLiUpdateFixedAccumPatch
+end subroutine GeneralPhaseLiUpdateFixedAccumPatch
 
 ! ************************************************************************** !
 !
-! RichardsNumericalJacTest: Computes the a test numerical jacobian
+! GeneralPhaseNumericalJacTest: Computes the a test numerical jacobian
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsNumericalJacTest(xx,realization)
+subroutine GeneralPhaseNumericalJacTest(xx,realization)
 
   use Realization_module
   use Patch_module
@@ -739,7 +739,7 @@ subroutine RichardsNumericalJacTest(xx,realization)
   call MatSetType(A,MATAIJ,ierr)
   call MatSetFromOptions(A,ierr)
     
-  call RichardsResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
+  call GeneralPhaseResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
   call GridVecGetArrayF90(grid,res,vec2_p,ierr)
   do icell = 1,grid%nlmax
     if (associated(patch%imat)) then
@@ -752,7 +752,7 @@ subroutine RichardsNumericalJacTest(xx,realization)
       perturbation = vec_p(idof)*perturbation_tolerance
       vec_p(idof) = vec_p(idof)+perturbation
       call vecrestorearrayf90(xx_pert,vec_p,ierr)
-      call RichardsResidual(PETSC_NULL_OBJECT,xx_pert,res_pert,realization,ierr)
+      call GeneralPhaseResidual(PETSC_NULL_OBJECT,xx_pert,res_pert,realization,ierr)
       call vecgetarrayf90(res_pert,vec_p,ierr)
       do idof2 = 1, grid%nlmax*option%nflowdof
         derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
@@ -777,17 +777,17 @@ subroutine RichardsNumericalJacTest(xx,realization)
   call VecDestroy(res,ierr)
   call VecDestroy(res_pert,ierr)
   
-end subroutine RichardsNumericalJacTest
+end subroutine GeneralPhaseNumericalJacTest
 
 ! ************************************************************************** !
 !
-! RichardsAccumDerivative: Computes derivatives of the accumulation 
+! GeneralPhaseAccumDerivative: Computes derivatives of the accumulation 
 !                                 term for the Jacobian
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
+subroutine GeneralPhaseAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
                                    rock_dencpr,option,sat_func,J)
 
   use Option_module
@@ -795,7 +795,7 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
   
   implicit none
 
-  type(richards_auxvar_type) :: rich_aux_var
+  type(general_phase_auxvar_type) :: rich_aux_var
   type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
   PetscReal vol,por,rock_dencpr
@@ -806,7 +806,7 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
   PetscReal :: porXvol
 
   PetscInt :: iphase, ideriv
-  type(richards_auxvar_type) :: rich_aux_var_pert
+  type(general_phase_auxvar_type) :: rich_aux_var_pert
   type(global_auxvar_type) :: global_aux_var_pert
   PetscReal :: x(1), x_pert(1), pert, res(1), res_pert(1), J_pert(1,1)
 
@@ -817,16 +817,16 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
            porXvol
 
   if (option%numerical_derivatives) then
-    call RichardsAuxVarCopy(rich_aux_var,rich_aux_var_pert,option)
+    call GeneralPhaseAuxVarCopy(rich_aux_var,rich_aux_var_pert,option)
     call GlobalAuxVarCopy(global_aux_var,global_aux_var_pert,option)
     x(1) = global_aux_var%pres(1)
-    call RichardsAccumulation(rich_aux_var,global_aux_var,por,vol,rock_dencpr, &
+    call GeneralPhaseAccumulation(rich_aux_var,global_aux_var,por,vol,rock_dencpr, &
                               option,res)
     ideriv = 1
     pert = x(ideriv)*perturbation_tolerance
     x_pert = x
     x_pert(ideriv) = x_pert(ideriv) + pert
-    call RichardsAuxVarCompute(x_pert(1),rich_aux_var_pert,global_aux_var_pert, &
+    call GeneralPhaseAuxVarCompute(x_pert(1),rich_aux_var_pert,global_aux_var_pert, &
                                iphase,sat_func,0.d0,0.d0,option)
 #if 0      
       select case(ideriv)
@@ -838,30 +838,30 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
           print *, 'dkvr_dp:', aux_var%dkvr_dp, (rich_aux_var_pert%kvr-rich_aux_var%kvr)/pert
       end select     
 #endif     
-    call RichardsAccumulation(rich_aux_var_pert,global_aux_var,por,vol,rock_dencpr, &
+    call GeneralPhaseAccumulation(rich_aux_var_pert,global_aux_var,por,vol,rock_dencpr, &
                               option,res_pert)
     J_pert(1,1) = (res_pert(1)-res(1))/pert
     J = J_pert
   endif
    
-end subroutine RichardsAccumDerivative
+end subroutine GeneralPhaseAccumDerivative
 
 ! ************************************************************************** !
 !
-! RichardsAccumulation: Computes the non-fixed portion of the accumulation
+! GeneralPhaseAccumulation: Computes the non-fixed portion of the accumulation
 !                       term for the residual
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !  
-subroutine RichardsAccumulation(rich_aux_var,global_aux_var,por,vol,rock_dencpr, &
+subroutine GeneralPhaseAccumulation(rich_aux_var,global_aux_var,por,vol,rock_dencpr, &
                                 option,Res)
 
   use Option_module
   
   implicit none
 
-  type(richards_auxvar_type) :: rich_aux_var
+  type(general_phase_auxvar_type) :: rich_aux_var
   type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
   PetscReal Res(1:option%nflowdof) 
@@ -869,17 +869,17 @@ subroutine RichardsAccumulation(rich_aux_var,global_aux_var,por,vol,rock_dencpr,
        
   Res(1) = global_aux_var%sat(1) * global_aux_var%den(1) * por * vol
 
-end subroutine RichardsAccumulation
+end subroutine GeneralPhaseAccumulation
 
 ! ************************************************************************** !
 !
-! RichardsFluxDerivative: Computes the derivatives of the internal flux terms
+! GeneralPhaseFluxDerivative: Computes the derivatives of the internal flux terms
 !                         for the Jacobian
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** ! 
-subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
+subroutine GeneralPhaseFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
                                   sir_up,dd_up,perm_up, &
                                   rich_aux_var_dn,global_aux_var_dn,por_dn, &
                                   sir_dn,dd_dn,perm_dn, &
@@ -890,7 +890,7 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
   
   implicit none
   
-  type(richards_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
+  type(general_phase_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
@@ -913,7 +913,7 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
   PetscReal :: dq_dp_up, dq_dp_dn
 
   PetscInt :: iphase, ideriv
-  type(richards_auxvar_type) :: rich_aux_var_pert_up, rich_aux_var_pert_dn
+  type(general_phase_auxvar_type) :: rich_aux_var_pert_up, rich_aux_var_pert_dn
   type(global_auxvar_type) :: global_aux_var_pert_up, global_aux_var_pert_dn
   PetscReal :: x_up(1), x_dn(1), x_pert_up(1), x_pert_dn(1), pert_up, pert_dn, &
             res(1), res_pert_up(1), res_pert_dn(1), J_pert_up(1,1), J_pert_dn(1,1)
@@ -987,13 +987,13 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
  !                                              dn J = J - Jdn  
 
   if (option%numerical_derivatives) then
-    call RichardsAuxVarCopy(rich_aux_var_up,rich_aux_var_pert_up,option)
-    call RichardsAuxVarCopy(rich_aux_var_dn,rich_aux_var_pert_dn,option)
+    call GeneralPhaseAuxVarCopy(rich_aux_var_up,rich_aux_var_pert_up,option)
+    call GeneralPhaseAuxVarCopy(rich_aux_var_dn,rich_aux_var_pert_dn,option)
     call GlobalAuxVarCopy(global_aux_var_up,global_aux_var_pert_up,option)
     call GlobalAuxVarCopy(global_aux_var_dn,global_aux_var_pert_dn,option)
     x_up(1) = global_aux_var_up%pres(1)
     x_dn(1) = global_aux_var_dn%pres(1)
-    call RichardsFlux(rich_aux_var_up,global_aux_var_up,por_up,sir_up,dd_up,perm_up, &
+    call GeneralPhaseFlux(rich_aux_var_up,global_aux_var_up,por_up,sir_up,dd_up,perm_up, &
                       rich_aux_var_dn,global_aux_var_dn,por_dn,sir_dn,dd_dn,perm_dn, &
                       area,dist_gravity,upweight, &
                       option,v_darcy,res)
@@ -1004,19 +1004,19 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
     x_pert_dn = x_dn
     x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
     x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
-    call RichardsAuxVarCompute(x_pert_up(1),rich_aux_var_pert_up, &
+    call GeneralPhaseAuxVarCompute(x_pert_up(1),rich_aux_var_pert_up, &
                                global_aux_var_pert_up,iphase,sat_func_up, &
                                0.d0,0.d0,option)
-    call RichardsAuxVarCompute(x_pert_dn(1),rich_aux_var_pert_dn, &
+    call GeneralPhaseAuxVarCompute(x_pert_dn(1),rich_aux_var_pert_dn, &
                                global_aux_var_pert_dn,iphase,sat_func_dn, &
                                0.d0,0.d0,option)
-    call RichardsFlux(rich_aux_var_pert_up,global_aux_var_pert_up, &
+    call GeneralPhaseFlux(rich_aux_var_pert_up,global_aux_var_pert_up, &
                       por_up,sir_up,dd_up,perm_up, &
                       rich_aux_var_dn,global_aux_var_dn, &
                       por_dn,sir_dn,dd_dn,perm_dn, &
                       area,dist_gravity,upweight, &
                       option,v_darcy,res_pert_up)
-    call RichardsFlux(rich_aux_var_up,global_aux_var_up, &
+    call GeneralPhaseFlux(rich_aux_var_up,global_aux_var_up, &
                       por_up,sir_up,dd_up,perm_up, &
                       rich_aux_var_pert_dn,global_aux_var_pert_dn, &
                       por_dn,sir_dn,dd_dn,perm_dn, &
@@ -1028,16 +1028,16 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
     Jdn = J_pert_dn
   endif
 
-end subroutine RichardsFluxDerivative
+end subroutine GeneralPhaseFluxDerivative
 
 ! ************************************************************************** !
 !
-! RichardsFlux: Computes the internal flux terms for the residual
+! GeneralPhaseFlux: Computes the internal flux terms for the residual
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** ! 
-subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
+subroutine GeneralPhaseFlux(rich_aux_var_up,global_aux_var_up, &
                         por_up,sir_up,dd_up,perm_up, &
                         rich_aux_var_dn,global_aux_var_dn, &
                         por_dn,sir_dn,dd_dn,perm_dn, &
@@ -1047,7 +1047,7 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
   
   implicit none
   
-  type(richards_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
+  type(general_phase_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
@@ -1105,17 +1105,17 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
 
-end subroutine RichardsFlux
+end subroutine GeneralPhaseFlux
 
 ! ************************************************************************** !
 !
-! RichardsBCFluxDerivative: Computes the derivatives of the boundary flux 
+! GeneralPhaseBCFluxDerivative: Computes the derivatives of the boundary flux 
 !                           terms for the Jacobian
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
+subroutine GeneralPhaseBCFluxDerivative(ibndtype,aux_vars, &
                                     rich_aux_var_up,global_aux_var_up, &
                                     rich_aux_var_dn,global_aux_var_dn, &
                                     por_dn,sir_dn,dd_up,perm_dn, &
@@ -1127,7 +1127,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
   implicit none
   
   PetscInt :: ibndtype(:)
-  type(richards_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
+  type(general_phase_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
   type(option_type) :: option
   PetscReal :: dd_up, sir_dn
@@ -1151,7 +1151,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
   PetscReal :: dq_dp_dn
 
   PetscInt :: iphase, ideriv
-  type(richards_auxvar_type) :: rich_aux_var_pert_dn, rich_aux_var_pert_up
+  type(general_phase_auxvar_type) :: rich_aux_var_pert_dn, rich_aux_var_pert_up
   type(global_auxvar_type) :: global_aux_var_pert_dn, global_aux_var_pert_up
   PetscReal :: perturbation
   PetscReal :: x_dn(1), x_up(1), x_pert_dn(1), x_pert_up(1), pert_dn, res(1), &
@@ -1235,8 +1235,8 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
   Jdn = Jdn * option%flow_dt
 
   if (option%numerical_derivatives) then
-    call RichardsAuxVarCopy(rich_aux_var_up,rich_aux_var_pert_up,option)
-    call RichardsAuxVarCopy(rich_aux_var_dn,rich_aux_var_pert_dn,option)
+    call GeneralPhaseAuxVarCopy(rich_aux_var_up,rich_aux_var_pert_up,option)
+    call GeneralPhaseAuxVarCopy(rich_aux_var_dn,rich_aux_var_pert_dn,option)
     call GlobalAuxVarCopy(global_aux_var_up,global_aux_var_pert_up,option)
     call GlobalAuxVarCopy(global_aux_var_dn,global_aux_var_pert_dn,option)
     x_up(1) = global_aux_var_up%pres(1)
@@ -1245,7 +1245,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
     if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
       x_up(ideriv) = x_dn(ideriv)
     endif
-    call RichardsBCFlux(ibndtype,aux_vars, &
+    call GeneralPhaseBCFlux(ibndtype,aux_vars, &
                         rich_aux_var_up,global_aux_var_up, &
                         rich_aux_var_dn,global_aux_var_dn, &
                         por_dn,sir_dn,dd_up,perm_dn, &
@@ -1261,13 +1261,13 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
     if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
       x_pert_up(ideriv) = x_pert_dn(ideriv)
     endif   
-    call RichardsAuxVarCompute(x_pert_dn(1),rich_aux_var_pert_dn, &
+    call GeneralPhaseAuxVarCompute(x_pert_dn(1),rich_aux_var_pert_dn, &
                                global_aux_var_pert_dn,iphase,sat_func_dn, &
                                0.d0,0.d0,option)
-    call RichardsAuxVarCompute(x_pert_up(1),rich_aux_var_pert_up, &
+    call GeneralPhaseAuxVarCompute(x_pert_up(1),rich_aux_var_pert_up, &
                                global_aux_var_pert_up,iphase,sat_func_dn, &
                                0.d0,0.d0,option)
-    call RichardsBCFlux(ibndtype,aux_vars, &
+    call GeneralPhaseBCFlux(ibndtype,aux_vars, &
                         rich_aux_var_pert_up,global_aux_var_pert_up, &
                         rich_aux_var_pert_dn,global_aux_var_pert_dn, &
                         por_dn,sir_dn,dd_up,perm_dn, &
@@ -1276,16 +1276,16 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
     Jdn = J_pert_dn
   endif
 
-end subroutine RichardsBCFluxDerivative
+end subroutine GeneralPhaseBCFluxDerivative
 
 ! ************************************************************************** !
 !
-! RichardsBCFlux: Computes the  boundary flux terms for the residual
+! GeneralPhaseBCFlux: Computes the  boundary flux terms for the residual
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsBCFlux(ibndtype,aux_vars, &
+subroutine GeneralPhaseBCFlux(ibndtype,aux_vars, &
                           rich_aux_var_up,global_aux_var_up, &
                           rich_aux_var_dn,global_aux_var_dn, &
                           por_dn,sir_dn,dd_up,perm_dn, &
@@ -1295,7 +1295,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
   implicit none
   
   PetscInt :: ibndtype(:)
-  type(richards_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
+  type(general_phase_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
   type(option_type) :: option
   PetscReal :: dd_up, sir_dn
@@ -1373,16 +1373,16 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
 
   Res(1)=fluxm * option%flow_dt
 
-end subroutine RichardsBCFlux
+end subroutine GeneralPhaseBCFlux
 
 ! ************************************************************************** !
 !
-! RichardsResidual: Computes the residual equation 
+! GeneralPhaseResidual: Computes the residual equation 
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsResidual(snes,xx,r,realization,ierr)
+subroutine GeneralPhaseResidual(snes,xx,r,realization,ierr)
 
   use Realization_module
   use Field_module
@@ -1418,7 +1418,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   discretization => realization%discretization
   
   ! Communication -----------------------------------------
-  ! These 3 must be called before RichardsUpdateAuxVars()
+  ! These 3 must be called before GeneralPhaseUpdateAuxVars()
   call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%icap_loc,field%icap_loc,ONEDOF)
@@ -1435,7 +1435,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RichardsResidualPatch(snes,xx,r,realization,ierr)
+      call GeneralPhaseResidualPatch(snes,xx,r,realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -1444,16 +1444,16 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   if(discretization%itype==AMR_GRID) then
      call samrpetscobjectstateincrease(r)
   endif
-end subroutine RichardsResidual
+end subroutine GeneralPhaseResidual
 
 ! ************************************************************************** !
 !
-! RichardsResidualPatch: Computes the residual equation 
+! GeneralPhaseResidualPatch: Computes the residual equation 
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
+subroutine GeneralPhaseResidualPatch(snes,xx,r,realization,ierr)
 
   use water_eos_module
 
@@ -1504,7 +1504,7 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(richards_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)
+  type(general_phase_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
@@ -1521,15 +1521,15 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
   option => realization%option
   field => realization%field
 
-  rich_aux_vars => patch%aux%Richards%aux_vars
-  rich_aux_vars_bc => patch%aux%Richards%aux_vars_bc
+  rich_aux_vars => patch%aux%GeneralPhase%aux_vars
+  rich_aux_vars_bc => patch%aux%GeneralPhase%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
-  call RichardsUpdateAuxVarsPatch(realization)
-  patch%aux%Richards%aux_vars_up_to_date = PETSC_FALSE ! override flags since they will soon be out of date
+  call GeneralPhaseUpdateAuxVarsPatch(realization)
+  patch%aux%GeneralPhase%aux_vars_up_to_date = PETSC_FALSE ! override flags since they will soon be out of date
   if (option%compute_mass_balance_new) then
-    call RichardsZeroMassBalDeltaPatch(realization)
+    call GeneralPhaseZeroMassBalDeltaPatch(realization)
   endif
 
 ! now assign access pointer to local variables
@@ -1557,7 +1557,7 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
-    call RichardsAccumulation(rich_aux_vars(ghosted_id), &
+    call GeneralPhaseAccumulation(rich_aux_vars(ghosted_id), &
                               global_aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
@@ -1654,7 +1654,7 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
       D_up = option%ckwet(ithrm_up)
       D_dn = option%ckwet(ithrm_dn)
 
-      call RichardsFlux(rich_aux_vars(ghosted_id_up), &
+      call GeneralPhaseFlux(rich_aux_vars(ghosted_id_up), &
                         global_aux_vars(ghosted_id_up), &
                           porosity_loc_p(ghosted_id_up), &
                           option%sir(1,icap_up), &
@@ -1721,7 +1721,7 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
 
       icap_dn = int(icap_loc_p(ghosted_id))  
 
-      call RichardsBCFlux(boundary_condition%flow_condition%itype, &
+      call GeneralPhaseBCFlux(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
                                 rich_aux_vars_bc(sum_connection), &
                                 global_aux_vars_bc(sum_connection), &
@@ -1750,9 +1750,9 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
   enddo
 #endif  
 
-  if (patch%aux%Richards%inactive_cells_exist) then
-    do i=1,patch%aux%Richards%n_zero_rows
-      r_p(patch%aux%Richards%zero_rows_local(i)) = 0.d0
+  if (patch%aux%GeneralPhase%inactive_cells_exist) then
+    do i=1,patch%aux%GeneralPhase%n_zero_rows
+      r_p(patch%aux%GeneralPhase%zero_rows_local(i)) = 0.d0
     enddo
   endif
 
@@ -1778,16 +1778,16 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   
-end subroutine RichardsResidualPatch
+end subroutine GeneralPhaseResidualPatch
 
 ! ************************************************************************** !
 !
-! RichardsJacobian: Computes the Jacobian
+! GeneralPhaseJacobian: Computes the Jacobian
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
+subroutine GeneralPhaseJacobian(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_module
   use Level_module
@@ -1851,7 +1851,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
          call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
       endif
 
-      call RichardsJacobianPatch(snes,xx,J,J,flag,realization,ierr)
+      call GeneralPhaseJacobianPatch(snes,xx,J,J,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -1876,16 +1876,16 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
     call printMsg(option) 
   endif
   
-end subroutine RichardsJacobian
+end subroutine GeneralPhaseJacobian
                 
 ! ************************************************************************** !
 !
-! RichardsJacobianPatch: Computes the Jacobian
+! GeneralPhaseJacobianPatch: Computes the Jacobian
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
+subroutine GeneralPhaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
        
   use water_eos_module
 
@@ -1944,7 +1944,7 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
-  type(richards_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:) 
+  type(general_phase_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:) 
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
   
   PetscViewer :: viewer
@@ -1955,8 +1955,8 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   option => realization%option
   field => realization%field
 
-  rich_aux_vars => patch%aux%Richards%aux_vars
-  rich_aux_vars_bc => patch%aux%Richards%aux_vars_bc
+  rich_aux_vars => patch%aux%GeneralPhase%aux_vars
+  rich_aux_vars_bc => patch%aux%GeneralPhase%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
@@ -1979,7 +1979,7 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
     icap = int(icap_loc_p(ghosted_id))
-    call RichardsAccumDerivative(rich_aux_vars(ghosted_id), &
+    call GeneralPhaseAccumDerivative(rich_aux_vars(ghosted_id), &
                               global_aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
@@ -2094,7 +2094,7 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
                               
-      call RichardsFluxDerivative(rich_aux_vars(ghosted_id_up), &
+      call GeneralPhaseFluxDerivative(rich_aux_vars(ghosted_id_up), &
                                   global_aux_vars(ghosted_id_up), &
                                     porosity_loc_p(ghosted_id_up), &
                                     option%sir(1,icap_up), &
@@ -2174,7 +2174,7 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
       icap_dn = int(icap_loc_p(ghosted_id))  
 
-      call RichardsBCFluxDerivative(boundary_condition%flow_condition%itype, &
+      call GeneralPhaseBCFluxDerivative(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
                                 rich_aux_vars_bc(sum_connection), &
                                 global_aux_vars_bc(sum_connection), &
@@ -2217,22 +2217,22 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
 
 ! zero out isothermal and inactive cells
-  if (patch%aux%Richards%inactive_cells_exist) then
+  if (patch%aux%GeneralPhase%inactive_cells_exist) then
     f_up = 1.d0
-    call MatZeroRowsLocal(A,patch%aux%Richards%n_zero_rows, &
-                          patch%aux%Richards%zero_rows_local_ghosted,f_up,ierr) 
+    call MatZeroRowsLocal(A,patch%aux%GeneralPhase%n_zero_rows, &
+                          patch%aux%GeneralPhase%zero_rows_local_ghosted,f_up,ierr) 
   endif
 
-end subroutine RichardsJacobianPatch
+end subroutine GeneralPhaseJacobianPatch
 
 ! ************************************************************************** !
 !
-! RichardsCreateZeroArray: Computes the zeroed rows for inactive grid cells
+! GeneralPhaseCreateZeroArray: Computes the zeroed rows for inactive grid cells
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsCreateZeroArray(patch,option)
+subroutine GeneralPhaseCreateZeroArray(patch,option)
 
   use Realization_module
   use Patch_module
@@ -2288,29 +2288,29 @@ subroutine RichardsCreateZeroArray(patch,option)
     enddo
   endif
 
-  patch%aux%Richards%zero_rows_local => zero_rows_local
-  patch%aux%Richards%zero_rows_local_ghosted => zero_rows_local_ghosted
-  patch%aux%Richards%n_zero_rows = n_zero_rows
+  patch%aux%GeneralPhase%zero_rows_local => zero_rows_local
+  patch%aux%GeneralPhase%zero_rows_local_ghosted => zero_rows_local_ghosted
+  patch%aux%GeneralPhase%n_zero_rows = n_zero_rows
   
   call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
                      option%mycomm,ierr)
-  if (flag > 0) patch%aux%Richards%inactive_cells_exist = PETSC_TRUE
+  if (flag > 0) patch%aux%GeneralPhase%inactive_cells_exist = PETSC_TRUE
 
   if (ncount /= n_zero_rows) then
     print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
     stop
   endif
 
-end subroutine RichardsCreateZeroArray
+end subroutine GeneralPhaseCreateZeroArray
 
 ! ************************************************************************** !
 !
-! RichardsMaxChange: Computes the maximum change in the solution vector
+! GeneralPhaseMaxChange: Computes the maximum change in the solution vector
 ! author: Glenn Hammond
 ! date: 01/15/08
 !
 ! ************************************************************************** !
-subroutine RichardsMaxChange(realization)
+subroutine GeneralPhaseMaxChange(realization)
 
   use Realization_module
   use Option_module
@@ -2331,17 +2331,17 @@ subroutine RichardsMaxChange(realization)
   call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
   call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
 
-end subroutine RichardsMaxChange
+end subroutine GeneralPhaseMaxChange
 
 ! ************************************************************************** !
 !
-! RichardsGetTecplotHeader: Returns Richards Lite contribution to 
+! GeneralPhaseGetTecplotHeader: Returns GeneralPhase Lite contribution to 
 !                               Tecplot file header
 ! author: Glenn Hammond
 ! date: 02/13/08
 !
 ! ************************************************************************** !
-function RichardsGetTecplotHeader(realization,icolumn)
+function GeneralPhaseGetTecplotHeader(realization,icolumn)
   
   use Realization_module
   use Option_module
@@ -2349,7 +2349,7 @@ function RichardsGetTecplotHeader(realization,icolumn)
     
   implicit none
   
-  character(len=MAXSTRINGLENGTH) :: RichardsGetTecplotHeader
+  character(len=MAXSTRINGLENGTH) :: GeneralPhaseGetTecplotHeader
   type(realization_type) :: realization
   PetscInt :: icolumn
   
@@ -2378,18 +2378,18 @@ function RichardsGetTecplotHeader(realization,icolumn)
   endif
   string = trim(string) // trim(string2)
  
-  RichardsGetTecplotHeader = string
+  GeneralPhaseGetTecplotHeader = string
 
-end function RichardsGetTecplotHeader
+end function GeneralPhaseGetTecplotHeader
 
 ! ************************************************************************** !
 !
-! RichardsDestroy: Deallocates variables associated with Richard
+! GeneralPhaseDestroy: Deallocates variables associated with Richard
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-subroutine RichardsDestroy(patch)
+subroutine GeneralPhaseDestroy(patch)
 
   use Patch_module
 
@@ -2398,8 +2398,8 @@ subroutine RichardsDestroy(patch)
   type(patch_type) :: patch
   
   ! need to free array in aux vars
-  call RichardsAuxDestroy(patch%aux%Richards)
+  call GeneralPhaseAuxDestroy(patch%aux%GeneralPhase)
 
-end subroutine RichardsDestroy
+end subroutine GeneralPhaseDestroy
 
-end module Richards_module
+end module General_Phase_module
