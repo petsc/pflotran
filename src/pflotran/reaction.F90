@@ -761,7 +761,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         case(CONSTRAINT_MINERAL)
 
           ln_act_h2o = 0.d0
-  
+
           imnrl = constraint_id(icomp)
           ! compute secondary species concentration
           lnQK = -reaction%mnrl_logK(imnrl)*LOG_TO_LN
@@ -792,7 +792,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         case(CONSTRAINT_GAS)
 
           ln_act_h2o = 0.d0
-           print *,'SC CO2 speciation 1'
+          ! print *,'SC CO2 speciation 1'
           igas = constraint_id(icomp)
           
           ! compute secondary species concentration
@@ -1858,41 +1858,45 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   if(iphase > option%nphase) return 
   rt_auxvar%total(:,iphase) = 0D0 
   den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3     
-  
-  do ieqgas = 1, reaction%ngas ! all gas phase species are secondary
-     if(abs(reaction%co2_gas_id) == ieqgas )then
-        pressure = global_auxvar%pres(2)
-        temperature = global_auxvar%temp(1)
-        xphico2 = global_auxvar%xphi(1)
-        call Henry_duan_sun_0NaCl(pressure *1D-5, temperature, henry)
-        lnQk = - log(henry*xphico2)*LOG_TO_LN       
-      else   
-        lnQK = -reaction%eqgas_logK(ieqgas)*LOG_TO_LN
-      endif 
-      
-      if (reaction%eqgash2oid(igas) > 0) then
-         lnQK = lnQK + reaction%eqgash2ostoich(ieqgas)*ln_act_h2o
-      endif
- 
- ! contribute to %total          
- !     do i = 1, ncomp
- ! removed loop over species, suppose only one primary species is related
-      icomp = reaction%eqgasspecid(1,ieqgas)
-      rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
-                                      reaction%eqgasstoich(1,ieqgas)* &
-                                      rt_auxvar%gas_molal(ieqgas)
- !     enddo
+  print *,'Rtotal: den(2)=', den_kg_per_L, reaction%ngas, reaction%co2_gas_id,&
+     global_auxvar%sat(iphase)
+  if(global_auxvar%sat(iphase)>1D-20)then
+    do ieqgas = 1, reaction%ngas ! all gas phase species are secondary
+      print *, ieqgas  
+       if(abs(reaction%co2_gas_id) == ieqgas )then
+          pressure = global_auxvar%pres(2)
+          temperature = global_auxvar%temp(1)
+          xphico2 = global_auxvar%xphi(1)
+          print *,'Rtotal: CO2=',pressure, temperature, xphico2
+          call Henry_duan_sun_0NaCl(pressure *1D-5, temperature, henry)
+          lnQk = - log(henry*xphico2)*LOG_TO_LN       
+        else   
+          lnQK = -reaction%eqgas_logK(ieqgas)*LOG_TO_LN
+        endif 
+        
+        if (reaction%eqgash2oid(igas) > 0) then
+           lnQK = lnQK + reaction%eqgash2ostoich(ieqgas)*ln_act_h2o
+        endif
+   
+   ! contribute to %total          
+   !     do i = 1, ncomp
+   ! removed loop over species, suppose only one primary species is related
+        icomp = reaction%eqgasspecid(1,ieqgas)
+        rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
+                                        reaction%eqgasstoich(1,ieqgas)* &
+                                        rt_auxvar%gas_molal(ieqgas)
+   !     enddo
 
- ! contribute to %dtotal 
-       tempreal = reaction%eqgasstoich(j,ieqgas)*exp(lnQK-ln_conc(icomp)) 
-       rt_auxvar%dtotal(icomp,icomp,iphase) = rt_auxvar%dtotal(icomp,icomp,iphase) + &
-                                             reaction%eqgasstoich(1,ieqgas)*tempreal
-  
-  enddo
-  rt_auxvar%total(:,iphase) = rt_auxvar%total(:,iphase)*den_kg_per_L
-  ! units of dtotal = kg water/L water
-  rt_auxvar%dtotal = rt_auxvar%dtotal*den_kg_per_L
-     
+   ! contribute to %dtotal 
+         tempreal = reaction%eqgasstoich(j,ieqgas)*exp(lnQK-ln_conc(icomp)) 
+         rt_auxvar%dtotal(icomp,icomp,iphase) = rt_auxvar%dtotal(icomp,icomp,iphase) + &
+                                               reaction%eqgasstoich(1,ieqgas)*tempreal
+    
+    enddo
+    rt_auxvar%total(:,iphase) = rt_auxvar%total(:,iphase)*den_kg_per_L
+    ! units of dtotal = kg water/L water
+    rt_auxvar%dtotal(:, :,iphase) = rt_auxvar%dtotal(:,:,iphase)*den_kg_per_L
+  endif   
   
 #endif  
 end subroutine RTotal

@@ -2246,6 +2246,20 @@ subroutine BasisInit(reaction,option)
         reaction%o2_gas_id = ispec
       endif
     endif
+    if (reaction%co2_gas_id == 0) then
+      word = 'CO2(g)'
+      if (StringCompare(reaction%gas_species_names(ispec), &
+                          word,MAXWORDLENGTH)) then
+        reaction%co2_gas_id = ispec
+      endif
+      word = 'CO2(g)*'
+      if (StringCompare(reaction%gas_species_names(ispec), &
+                          word,MAXWORDLENGTH)) then
+        reaction%co2_gas_id = ispec
+      endif
+
+    endif
+
   enddo
   
 90 format(80('-'))

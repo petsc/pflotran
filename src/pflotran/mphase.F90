@@ -578,6 +578,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
                        realization%fluid_properties,option, xphi)
 ! update global variables
     if( associated(global_aux_vars))then
+      print *,'UPdate mphase and gloable vars'
       global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
                aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
       global_aux_vars(ghosted_id)%temp=aux_vars(ghosted_id)%aux_var_elem(0)%temp
@@ -590,6 +591,8 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
   !    global_aux_vars(ghosted_id)%den_kg_store
   !    global_aux_vars(ghosted_id)%mass_balance 
   !    global_aux_vars(ghosted_id)%mass_balance_delta                   
+    else
+      print *,'Not associated global for mph'
     endif
     iphase_loc_p(ghosted_id) = iphase
   enddo
