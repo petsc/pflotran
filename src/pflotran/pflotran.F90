@@ -43,23 +43,59 @@
 
   PetscLogDouble :: timex(4), timex_wall(4)
 
-  PetscMPIInt :: myrank, commsize
+  PetscMPIInt :: global_rank, global_commsize, global_comm, global_group
+  PetscMPIInt :: myrank, mycommsize, mycomm, mygroup
+  PetscMPIInt :: mycolor, mykey
 
   PetscInt :: out_unit
+  PetscInt :: igroup, num_groups = 1
+  PetscInt :: local_commsize, rank_offset, delta, remainder
 
   PetscInt :: ierr
   PetscInt :: stage(10)
   PetscTruth :: option_found  ! For testing presence of a command-line option.
   character(len=MAXSTRINGLENGTH) :: pflotranin
+  character(len=MAXWORDLENGTH) :: string
 
   
   type(simulation_type), pointer :: simulation
   type(realization_type), pointer :: realization
   type(option_type), pointer :: option
   
+#ifdef GLENN
+  call MPI_Init(ierr)
+  global_comm = MPI_COMM_WORLD
+  call MPI_Comm_rank(MPI_COMM_WORLD,global_rank, ierr)
+  call MPI_Comm_size(MPI_COMM_WORLD,global_commsize,ierr)
+  call MPI_Comm_group(MPI_COMM_WORLD,global_group,ierr)
+  local_commsize = global_commsize / num_groups
+  remainder = global_commsize - num_groups * local_commsize
+  rank_offset = 0
+  do igroup = 1, num_groups
+    delta = local_commsize
+    if (igroup < remainder) delta = delta + 1
+    if (global_rank >= rank_offset .and. global_rank < rank_offset + delta) exit
+    rank_offset = rank_offset + delta
+  enddo
+  mycolor = igroup
+  mykey = global_rank - rank_offset
+  call MPI_Comm_split(MPI_COMM_WORLD,mycolor,mykey,mycomm,ierr)
+  call MPI_Comm_group(mycomm,mygroup,ierr)
+  PETSC_COMM_WORLD = mycomm
   call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
-  call MPI_Comm_rank(PETSC_COMM_WORLD,myrank, ierr)
-  call MPI_Comm_size(PETSC_COMM_WORLD,commsize,ierr)
+  call MPI_Comm_rank(mycomm,myrank, ierr)
+  call MPI_Comm_size(mycomm,mycommsize,ierr)
+#else  
+  call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
+  global_comm = PETSC_COMM_WORLD
+  call MPI_Comm_rank(PETSC_COMM_WORLD,global_rank, ierr)
+  call MPI_Comm_size(PETSC_COMM_WORLD,global_commsize,ierr)
+  call MPI_Comm_group(PETSC_COMM_WORLD,global_group,ierr)
+  mycomm = global_comm
+  myrank = global_rank
+  mycommsize = global_commsize
+  mygroup = global_group
+#endif  
   
   call LoggingCreate()
 
@@ -70,9 +106,22 @@
   option%fid_out = IUNIT2
   out_unit = option%fid_out
 
-  option%comm = PETSC_COMM_WORLD
+  option%global_comm = global_comm
+  option%global_rank = global_rank
+  option%global_commsize = global_commsize
+  option%global_group = global_group
+
+  option%mycomm = mycomm
   option%myrank = myrank
-  option%commsize = commsize
+  option%mycommsize = mycommsize
+  option%mygroup = mygroup
+
+#ifdef GLENN
+  if (num_groups > 1) then
+    write(string,'(i6)') igroup-1
+    option%group_prefix = 'G' // trim(adjustl(string))
+  endif
+#endif
 
   call PetscOptionsGetString(PETSC_NULL_CHARACTER, "-pflotranin", &
                              pflotranin, option_found, ierr)

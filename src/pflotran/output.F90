@@ -230,16 +230,18 @@ subroutine OutputTecplotBlock(realization)
   ! open file
   if (len_trim(output_option%plot_name) > 2) then
     filename = trim(output_option%plot_name) // '.tec'
-  else
+  else  
     if (output_option%plot_number < 10) then
-      write(filename,'("pflotran00",i1,".tec")') output_option%plot_number  
+      write(string,'("00",i1)') output_option%plot_number  
     else if (output_option%plot_number < 100) then
-      write(filename,'("pflotran0",i2,".tec")') output_option%plot_number  
+      write(string,'("0",i2)') output_option%plot_number  
     else if (output_option%plot_number < 1000) then
-      write(filename,'("pflotran",i3,".tec")') output_option%plot_number  
+      write(string,'(i3)') output_option%plot_number  
     else if (output_option%plot_number < 10000) then
-      write(filename,'("pflotran",i4,".tec")') output_option%plot_number  
+      write(string,'(i4)') output_option%plot_number  
     endif
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+               trim(string) // '.tec'
   endif
   
   if (option%myrank == option%io_rank) then
@@ -565,14 +567,16 @@ subroutine OutputVelocitiesTecplotBlock(realization)
     filename = trim(output_option%plot_name) // '_vel.tec'
   else  
     if (output_option%plot_number < 10) then
-      write(filename,'("pflotran_vel00",i1,".tec")') output_option%plot_number  
+      write(string,'("00",i1)') output_option%plot_number  
     else if (output_option%plot_number < 100) then
-      write(filename,'("pflotran_vel0",i2,".tec")') output_option%plot_number  
+      write(string,'("0",i2)') output_option%plot_number  
     else if (output_option%plot_number < 1000) then
-      write(filename,'("pflotran_vel",i3,".tec")') output_option%plot_number  
+      write(string,'(i3)') output_option%plot_number  
     else if (output_option%plot_number < 10000) then
-      write(filename,'("pflotran_vel",i4,".tec")') output_option%plot_number  
+      write(string,'(i4)') output_option%plot_number  
     endif
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+               '_vel' // trim(string) // '.tec'
   endif
   
   if (option%myrank == option%io_rank) then
@@ -767,9 +771,9 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
   
   ! open file
   if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name)
-  else    
-    filename = 'pflotran_'
+    filename = trim(output_option%plot_name) // '_'
+  else  
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // '_'
   endif
   
   select case(iphase)
@@ -789,16 +793,16 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
   end select 
   
   if (output_option%plot_number < 10) then
-    write(string,'("00",i1,".tec")') output_option%plot_number  
+    write(string,'("00",i1)') output_option%plot_number  
   else if (output_option%plot_number < 100) then
-    write(string,'("0",i2,".tec")') output_option%plot_number  
+    write(string,'("0",i2)') output_option%plot_number  
   else if (output_option%plot_number < 1000) then
-    write(string,'(i3,".tec")') output_option%plot_number  
+    write(string,'(i3)') output_option%plot_number  
   else if (output_option%plot_number < 10000) then
-    write(string,'(i4,".tec")') output_option%plot_number  
+    write(string,'(i4)') output_option%plot_number  
   endif
   
-  filename = trim(filename) // trim(string)
+  filename = trim(filename) // trim(string) // '.tec'
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot velocity flux output file: ' // &
@@ -1088,14 +1092,16 @@ subroutine OutputTecplotPoint(realization)
     filename = trim(output_option%plot_name) // '.tec'
   else
     if (output_option%plot_number < 10) then
-      write(filename,'("pflotran00",i1,".tec")') output_option%plot_number  
+      write(string,'("00",i1)') output_option%plot_number  
     else if (output_option%plot_number < 100) then
-      write(filename,'("pflotran0",i2,".tec")') output_option%plot_number  
+      write(string,'("0",i2)') output_option%plot_number  
     else if (output_option%plot_number < 1000) then
-      write(filename,'("pflotran",i3,".tec")') output_option%plot_number  
+      write(string,'(i3)') output_option%plot_number  
     else if (output_option%plot_number < 10000) then
-      write(filename,'("pflotran",i4,".tec")') output_option%plot_number  
+      write(string,'(i4)') output_option%plot_number  
     endif
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+               trim(string) // '.tec'    
   endif
   
   if (option%myrank == option%io_rank) then
@@ -1352,16 +1358,18 @@ subroutine OutputVelocitiesTecplotPoint(realization)
   ! open file
   if (len_trim(output_option%plot_name) > 2) then
     filename = trim(output_option%plot_name) // '_vel.tec'
-  else 
+  else  
     if (output_option%plot_number < 10) then
-      write(filename,'("pflotran_vel00",i1,".tec")') output_option%plot_number  
+      write(string,'("00",i1)') output_option%plot_number  
     else if (output_option%plot_number < 100) then
-      write(filename,'("pflotran_vel0",i2,".tec")') output_option%plot_number  
+      write(string,'("0",i2)') output_option%plot_number  
     else if (output_option%plot_number < 1000) then
-      write(filename,'("pflotran_vel",i3,".tec")') output_option%plot_number  
+      write(string,'(i3)') output_option%plot_number  
     else if (output_option%plot_number < 10000) then
-      write(filename,'("pflotran_vel",i4,".tec")') output_option%plot_number  
+      write(string,'(i4)') output_option%plot_number  
     endif
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+               '_vel' // trim(string) // '.tec'
   endif
   
   if (option%myrank == option%io_rank) then
@@ -1796,14 +1804,14 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
 
   if (size_flag /= 0) then
     call MPI_Allreduce(size_flag,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
-                       option%comm,ierr)
+                       option%mycomm,ierr)
     local_size = size_flag
   else 
   ! if first time, determine the maximum size of any local array across 
   ! all procs
     if (max_local_size_saved < 0) then
       call MPI_Allreduce(grid%nlmax,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
-                         option%comm,ierr)
+                         option%mycomm,ierr)
       max_local_size_saved = max_local_size
       write(option%io_buffer,'("max_local_size_saved: ",i9)') max_local_size
       call printMsg(option)
@@ -1854,20 +1862,20 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
       real_data(1:local_size-iend) = real_data(iend+1:local_size)
       num_in_array = local_size-iend
     endif
-    do iproc=1,option%commsize-1
+    do iproc=1,option%mycommsize-1
 #ifdef HANDSHAKE    
       if (option%io_handshake_buffer_size > 0 .and. &
           iproc+max_proc_prefetch >= max_proc) then
         max_proc = max_proc + option%io_handshake_buffer_size
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%comm, &
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
                        ierr)
       endif
 #endif      
-      call MPI_Probe(iproc,MPI_ANY_TAG,option%comm,status,ierr)
+      call MPI_Probe(iproc,MPI_ANY_TAG,option%mycomm,status,ierr)
       recv_size = status(MPI_TAG)
       if (datatype == 0) then
         call MPI_Recv(integer_data_recv,recv_size,MPI_INTEGER,iproc, &
-                      MPI_ANY_TAG,option%comm,status,ierr)
+                      MPI_ANY_TAG,option%mycomm,status,ierr)
         if (recv_size > 0) then
           integer_data(num_in_array+1:num_in_array+recv_size) = &
                                              integer_data_recv(1:recv_size)
@@ -1886,7 +1894,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
         endif
       else
         call MPI_Recv(real_data_recv,recv_size,MPI_DOUBLE_PRECISION,iproc, &
-                      MPI_ANY_TAG,option%comm,status,ierr)
+                      MPI_ANY_TAG,option%mycomm,status,ierr)
         if (recv_size > 0) then
           real_data(num_in_array+1:num_in_array+recv_size) = &
                                              real_data_recv(1:recv_size)
@@ -1908,7 +1916,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
 #ifdef HANDSHAKE    
     if (option%io_handshake_buffer_size > 0) then
       max_proc = -1
-      call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%comm, &
+      call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
                      ierr)
     endif
 #endif      
@@ -1925,22 +1933,22 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
     if (option%io_handshake_buffer_size > 0) then
       do
         if (option%myrank < max_proc) exit
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%comm, &
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
                        ierr)
       enddo
     endif
 #endif    
     if (datatype == TECPLOT_INTEGER) then
       call MPI_Send(integer_data,local_size,MPI_INTEGER,option%io_rank,local_size, &
-                    option%comm,ierr)
+                    option%mycomm,ierr)
     else
       call MPI_Send(real_data,local_size,MPI_DOUBLE_PRECISION,option%io_rank,local_size, &
-                    option%comm,ierr)
+                    option%mycomm,ierr)
     endif
 #ifdef HANDSHAKE    
     if (option%io_handshake_buffer_size > 0) then
       do
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%comm, &
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
                        ierr)
         if (max_proc < 0) exit
       enddo
@@ -2020,16 +2028,18 @@ subroutine OutputBreakthroughTecplot(realization)
   if (open_file) then
 
     if (option%myrank < 10) then
-      write(filename,'("breakthrough_",i1,".tec")') option%myrank  
+      write(string,'(i1)') option%myrank  
     else if (option%myrank < 100) then
-      write(filename,'("breakthrough_",i2,".tec")') option%myrank  
+      write(string,'(i2)') option%myrank  
     else if (option%myrank < 1000) then
-      write(filename,'("breakthrough_",i3,".tec")') option%myrank  
+      write(string,'(i3)') option%myrank  
     else if (option%myrank < 10000) then
-      write(filename,'("breakthrough_",i4,".tec")') option%myrank  
+      write(string,'(i4)') option%myrank  
     else if (option%myrank < 100000) then
-      write(filename,'("breakthrough_",i5,".tec")') option%myrank  
+      write(string,'(i5)') option%myrank  
     endif
+    filename = 'breakthrough' // trim(option%group_prefix) // '_' // &
+               trim(string) // '.tec'
   
     ! open file
     fid = 86
@@ -2124,7 +2134,7 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,region,icell, &
   
   PetscInt :: i
   character(len=MAXSTRINGLENGTH) :: string, string2
-  character(len=MAXWORDLENGTH) :: cell_id_string
+  character(len=MAXWORDLENGTH) :: cell_string
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
@@ -2135,59 +2145,59 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,region,icell, &
   field => realization%field
   grid => patch%grid
   
-  write(cell_id_string,*) grid%nL2A(region%cell_ids(icell))
-  cell_id_string = trim(region%name) // ' ' //adjustl(cell_id_string)
+  write(cell_string,*) grid%nL2A(region%cell_ids(icell))
+  cell_string = trim(region%name) // ' ' //adjustl(cell_string)
 
   select case(option%iflowmode)
     case (MPH_MODE)
-      string = ',"X [m] '// trim(cell_id_string) // '",' // &
-               '"Y [m] '// trim(cell_id_string) // '",' // &
-               '"Z [m] '// trim(cell_id_string) // '",' // &
-               '"T [C] '// trim(cell_id_string) // '",' // &
-               '"P [Pa] '// trim(cell_id_string) // '",' // &
-               '"sl '// trim(cell_id_string) // '",' // &
-               '"sg '// trim(cell_id_string) // '",' // &
-               '"Ul '// trim(cell_id_string) // '",' // &
-               '"Ug '// trim(cell_id_string) // '",'
+      string = ',"X [m] '// trim(cell_string) // '",' // &
+               '"Y [m] '// trim(cell_string) // '",' // &
+               '"Z [m] '// trim(cell_string) // '",' // &
+               '"T [C] '// trim(cell_string) // '",' // &
+               '"P [Pa] '// trim(cell_string) // '",' // &
+               '"sl '// trim(cell_string) // '",' // &
+               '"sg '// trim(cell_string) // '",' // &
+               '"Ul '// trim(cell_string) // '",' // &
+               '"Ug '// trim(cell_string) // '",'
       do i=1,option%nflowspec
-        write(string2,'(''"Xl('',i2,'') '// trim(cell_id_string) // '",'')') i
+        write(string2,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
         string = trim(string) // trim(string2)
       enddo
       do i=1,option%nflowspec
-        write(string2,'(''"Xg('',i2,'') '// trim(cell_id_string) // '",'')') i
+        write(string2,'(''"Xg('',i2,'') '// trim(cell_string) // '",'')') i
         string = trim(string) // trim(string2)
       enddo
 #if 0      
       if (option%rk > 0.d0) then
-        string = trim(string) // '"Volume Fraction '// trim(cell_id_string) // '"'
+        string = trim(string) // '"Volume Fraction '// trim(cell_string) // '"'
       endif
 #endif      
-      string = trim(string) // ',"Phase '// trim(cell_id_string) // '"'
+      string = trim(string) // ',"Phase '// trim(cell_string) // '"'
     case(THC_MODE,RICHARDS_MODE)
       if (option%iflowmode == THC_MODE) then
-        string = ',"X [m] '// trim(cell_id_string) // '",' // &
-                 '"Y [m] '// trim(cell_id_string) // '",' // &
-                 '"Z [m] '// trim(cell_id_string) // '",' // &
-                 '"T [C] '// trim(cell_id_string) // '",' // &
-                 '"P [Pa] '// trim(cell_id_string) // '",' // &
-                 '"sl '// trim(cell_id_string) // '",' // &
-                 '"Ul '// trim(cell_id_string) // '"' 
+        string = ',"X [m] '// trim(cell_string) // '",' // &
+                 '"Y [m] '// trim(cell_string) // '",' // &
+                 '"Z [m] '// trim(cell_string) // '",' // &
+                 '"T [C] '// trim(cell_string) // '",' // &
+                 '"P [Pa] '// trim(cell_string) // '",' // &
+                 '"sl '// trim(cell_string) // '",' // &
+                 '"Ul '// trim(cell_string) // '"' 
       else
-        string = ',"X [m] '// trim(cell_id_string) // '",' // &
-                 '"Y [m] '// trim(cell_id_string) // '",' // &
-                 '"Z [m] '// trim(cell_id_string) // '",' // &
-                 '"P [Pa] '// trim(cell_id_string) // '",' // &
-                 '"sl '// trim(cell_id_string) // '"'
+        string = ',"X [m] '// trim(cell_string) // '",' // &
+                 '"Y [m] '// trim(cell_string) // '",' // &
+                 '"Z [m] '// trim(cell_string) // '",' // &
+                 '"P [Pa] '// trim(cell_string) // '",' // &
+                 '"sl '// trim(cell_string) // '"'
       endif
       if (option%iflowmode == THC_MODE) then
         do i=1,option%nflowspec
-          write(string2,'('',"Xl('',i2,'') '// trim(cell_id_string) // '"'')') i
+          write(string2,'('',"Xl('',i2,'') '// trim(cell_string) // '"'')') i
           string = trim(string) // trim(string2)
         enddo
       endif
 #if 0      
       if (option%rk > 0.d0) then
-        string = trim(string) // ',"Volume Fraction '// trim(cell_id_string) // '"'
+        string = trim(string) // ',"Volume Fraction '// trim(cell_string) // '"'
       endif
 #endif      
     case default
@@ -2208,11 +2218,11 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,region,icell, &
 
   if (print_velocities) then 
     string = ',"vlx [m/'//trim(realization%output_option%tunit)//'] '// &
-             trim(cell_id_string) // '"' // &
+             trim(cell_string) // '"' // &
              ',"vly [m/'//trim(realization%output_option%tunit)//'] '// &
-             trim(cell_id_string) // '"' // &
+             trim(cell_string) // '"' // &
              ',"vlz [m/'//trim(realization%output_option%tunit)//'] '// &
-             trim(cell_id_string) // '"'
+             trim(cell_string) // '"'
     write(fid,'(a)',advance="no") trim(string)
   endif
 
@@ -2242,7 +2252,7 @@ subroutine WriteBreakthroughHeaderForCoord(fid,realization,region, &
   
   PetscInt :: i
   character(len=MAXSTRINGLENGTH) :: string, string2
-  character(len=MAXSTRINGLENGTH) :: cell_id_string
+  character(len=MAXSTRINGLENGTH) :: cell_string
   character(len=MAXSTRINGLENGTH) :: coordinate_string
   character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
   type(option_type), pointer :: option
@@ -2251,67 +2261,67 @@ subroutine WriteBreakthroughHeaderForCoord(fid,realization,region, &
   patch => realization%patch
   option => realization%option
   
-!  write(cell_id_string,*) grid%nL2A(region%cell_ids(icell))
-!  cell_id_string = trim(region%name) // ' ' //adjustl(cell_id_string)
-  cell_id_string = trim(region%name)
+!  write(cell_string,*) grid%nL2A(region%cell_ids(icell))
+!  cell_string = trim(region%name) // ' ' //adjustl(cell_string)
+  cell_string = trim(region%name)
   
   110 format(1pg12.4)
   write(x_string,110) region%coordinates(ONE_INTEGER)%x
   write(y_string,110) region%coordinates(ONE_INTEGER)%y
   write(z_string,110) region%coordinates(ONE_INTEGER)%z
-  cell_id_string = trim(cell_id_string) // ' ' // trim(adjustl(x_string)) // ' ' // &
+  cell_string = trim(cell_string) // ' ' // trim(adjustl(x_string)) // ' ' // &
                    trim(adjustl(y_string)) // ' ' // trim(adjustl(z_string))
 
   select case(option%iflowmode)
     case (MPH_MODE)
-!      string = ',"X [m] '// trim(cell_id_string) // '",' // &
-!               '"Y [m] '// trim(cell_id_string) // '",' // &
-!               '"Z [m] '// trim(cell_id_string) // '",' // &
-       string = ',"T [C] '// trim(cell_id_string) // '",' // &
-               '"P [Pa] '// trim(cell_id_string) // '",' // &
-               '"sl '// trim(cell_id_string) // '",' // &
-               '"sg '// trim(cell_id_string) // '",' // &
-               '"Ul '// trim(cell_id_string) // '",' // &
-               '"Ug '// trim(cell_id_string) // '",'
+!      string = ',"X [m] '// trim(cell_string) // '",' // &
+!               '"Y [m] '// trim(cell_string) // '",' // &
+!               '"Z [m] '// trim(cell_string) // '",' // &
+       string = ',"T [C] '// trim(cell_string) // '",' // &
+               '"P [Pa] '// trim(cell_string) // '",' // &
+               '"sl '// trim(cell_string) // '",' // &
+               '"sg '// trim(cell_string) // '",' // &
+               '"Ul '// trim(cell_string) // '",' // &
+               '"Ug '// trim(cell_string) // '",'
       do i=1,option%nflowspec
-        write(string2,'(''"Xl('',i2,'') '// trim(cell_id_string) // '",'')') i
+        write(string2,'(''"Xl('',i2,'') '// trim(cell_string) // '",'')') i
         string = trim(string) // trim(string2)
       enddo
       do i=1,option%nflowspec
-        write(string2,'(''"Xg('',i2,'') '// trim(cell_id_string) // '",'')') i
+        write(string2,'(''"Xg('',i2,'') '// trim(cell_string) // '",'')') i
         string = trim(string) // trim(string2)
       enddo
 #if 0      
       if (option%rk > 0.d0) then
-        string = trim(string) // '"Volume Fraction '// trim(cell_id_string) // '"'
+        string = trim(string) // '"Volume Fraction '// trim(cell_string) // '"'
       endif
 #endif      
-      string = trim(string) // ',"Phase '// trim(cell_id_string) // '"'
+      string = trim(string) // ',"Phase '// trim(cell_string) // '"'
     case(THC_MODE,RICHARDS_MODE)
       if (option%iflowmode == THC_MODE) then
-!        string = ',"X [m] '// trim(cell_id_string) // '",' // &
-!                 '"Y [m] '// trim(cell_id_string) // '",' // &
-!                 '"Z [m] '// trim(cell_id_string) // '",' // &
-        string = ',"T [C] '// trim(cell_id_string) // '",' // &
-                 '"P [Pa] '// trim(cell_id_string) // '",' // &
-                 '"sl '// trim(cell_id_string) // '",' // &
-                 '"Ul '// trim(cell_id_string) // '"' 
+!        string = ',"X [m] '// trim(cell_string) // '",' // &
+!                 '"Y [m] '// trim(cell_string) // '",' // &
+!                 '"Z [m] '// trim(cell_string) // '",' // &
+        string = ',"T [C] '// trim(cell_string) // '",' // &
+                 '"P [Pa] '// trim(cell_string) // '",' // &
+                 '"sl '// trim(cell_string) // '",' // &
+                 '"Ul '// trim(cell_string) // '"' 
       else
-!        string = ',"X [m] '// trim(cell_id_string) // '",' // &
-!                 '"Y [m] '// trim(cell_id_string) // '",' // &
-!                 '"Z [m] '// trim(cell_id_string) // '",' // &
-        string = ',"P [Pa] '// trim(cell_id_string) // '",' // &
-                 '"sl '// trim(cell_id_string) // '"'
+!        string = ',"X [m] '// trim(cell_string) // '",' // &
+!                 '"Y [m] '// trim(cell_string) // '",' // &
+!                 '"Z [m] '// trim(cell_string) // '",' // &
+        string = ',"P [Pa] '// trim(cell_string) // '",' // &
+                 '"sl '// trim(cell_string) // '"'
       endif
       if (option%iflowmode == THC_MODE) then
         do i=1,option%nflowspec
-          write(string2,'('',"Xl('',i2,'') '// trim(cell_id_string) // '"'')') i
+          write(string2,'('',"Xl('',i2,'') '// trim(cell_string) // '"'')') i
           string = trim(string) // trim(string2)
         enddo
       endif
 #if 0      
       if (option%rk > 0.d0) then
-        string = trim(string) // ',"Volume Fraction '// trim(cell_id_string) // '"'
+        string = trim(string) // ',"Volume Fraction '// trim(cell_string) // '"'
       endif
 #endif      
     case default
@@ -2332,11 +2342,11 @@ subroutine WriteBreakthroughHeaderForCoord(fid,realization,region, &
 
   if (print_velocities) then 
     string = ',"vlx [m/'//trim(realization%output_option%tunit)//'] '// &
-             trim(cell_id_string) // '"' // &
+             trim(cell_string) // '"' // &
              ',"vly [m/'//trim(realization%output_option%tunit)//'] '// &
-             trim(cell_id_string) // '"' // &
+             trim(cell_string) // '"' // &
              ',"vlz [m/'//trim(realization%output_option%tunit)//'] '// &
-             trim(cell_id_string) // '"'
+             trim(cell_string) // '"'
     write(fid,'(a)',advance="no") trim(string)
   endif
 
@@ -2802,7 +2812,7 @@ subroutine WriteBreakthroughDataForBC(fid,realization,patch,connection_set)
         endif
         call MPI_Reduce(sum_volumetric_flux,sum_volumetric_flux_global, &
                         option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
-                        option%io_rank,option%comm,ierr)
+                        option%io_rank,option%mycomm,ierr)
         if (option%myrank == option%io_rank) then
           do i = 1, option%nphase
             write(fid,110,advance="no") sum_volumetric_flux_global(i)
@@ -2821,7 +2831,7 @@ subroutine WriteBreakthroughDataForBC(fid,realization,patch,connection_set)
       endif
       call MPI_Reduce(sum_solute_flux,sum_solute_flux_global, &
                       reaction%ncomp,MPI_DOUBLE_PRECISION,MPI_SUM, &
-                      option%io_rank,option%comm,ierr)
+                      option%io_rank,option%mycomm,ierr)
       if (option%myrank == option%io_rank) then
         do i = 1, reaction%ncomp
           write(fid,110,advance="no") sum_solute_flux_global(i)
@@ -3198,14 +3208,16 @@ subroutine OutputVTK(realization)
     filename = trim(output_option%plot_name) // '.vtk'
   else
     if (output_option%plot_number < 10) then
-      write(filename,'("pflotran00",i1,".vtk")') output_option%plot_number  
+      write(string,'("00",i1)') output_option%plot_number  
     else if (output_option%plot_number < 100) then
-      write(filename,'("pflotran0",i2,".vtk")') output_option%plot_number  
+      write(string,'("0",i2)') output_option%plot_number  
     else if (output_option%plot_number < 1000) then
-      write(filename,'("pflotran",i3,".vtk")') output_option%plot_number  
+      write(string,'(i3)') output_option%plot_number  
     else if (output_option%plot_number < 10000) then
-      write(filename,'("pflotran",i4,".vtk")') output_option%plot_number  
+      write(string,'(i4)') output_option%plot_number  
     endif
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+               trim(string) // '.vtk'    
   endif
   
   if (option%myrank == option%io_rank) then
@@ -3435,14 +3447,20 @@ subroutine OutputVelocitiesVTK(realization)
   discretization => realization%discretization
   
   ! open file
-  if (output_option%plot_number < 10) then
-    write(filename,'("pflotran_vel00",i1,".vtk")') output_option%plot_number  
-  else if (output_option%plot_number < 100) then
-    write(filename,'("pflotran_vel0",i2,".vtk")') output_option%plot_number  
-  else if (output_option%plot_number < 1000) then
-    write(filename,'("pflotran_vel",i3,".vtk")') output_option%plot_number  
-  else if (output_option%plot_number < 10000) then
-    write(filename,'("pflotran_vel",i4,".vtk")') output_option%plot_number  
+  if (len_trim(output_option%plot_name) > 2) then
+    filename = trim(output_option%plot_name) // '_vel.tec'
+  else  
+    if (output_option%plot_number < 10) then
+      write(string,'("00",i1)') output_option%plot_number  
+    else if (output_option%plot_number < 100) then
+      write(string,'("0",i2)') output_option%plot_number  
+    else if (output_option%plot_number < 1000) then
+      write(string,'(i3)') output_option%plot_number  
+    else if (output_option%plot_number < 10000) then
+      write(string,'(i4)') output_option%plot_number  
+    endif
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // &
+               '_vel' // trim(string) // '.tec'
   endif
   
   if (option%myrank == option%io_rank) then
@@ -3749,14 +3767,14 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
 
   if (size_flag /= 0) then
     call MPI_Allreduce(size_flag,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
-                       option%comm,ierr)
+                       option%mycomm,ierr)
     local_size = size_flag
   else 
   ! if first time, determine the maximum size of any local array across 
   ! all procs
     if (max_local_size_saved < 0) then
       call MPI_Allreduce(grid%nlmax,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
-                         option%comm,ierr)
+                         option%mycomm,ierr)
       max_local_size_saved = max_local_size
       if (OptionPrint(option)) print *, 'max_local_size_saved: ', max_local_size
     endif
@@ -3817,20 +3835,20 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
       real_data(1:local_size-iend) = real_data(iend+1:local_size)
       num_in_array = local_size-iend
     endif
-    do iproc=1,option%commsize-1
+    do iproc=1,option%mycommsize-1
 #ifdef HANDSHAKE    
       if (option%io_handshake_buffer_size > 0 .and. &
           iproc+max_proc_prefetch >= max_proc) then
         max_proc = max_proc + option%io_handshake_buffer_size
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%comm, &
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
                        ierr)
       endif
 #endif      
-      call MPI_Probe(iproc,MPI_ANY_TAG,option%comm,status,ierr)
+      call MPI_Probe(iproc,MPI_ANY_TAG,option%mycomm,status,ierr)
       recv_size = status(MPI_TAG)
       if (datatype == 0) then
         call MPI_Recv(integer_data_recv,recv_size,MPI_INTEGER,iproc, &
-                      MPI_ANY_TAG,option%comm,status,ierr)
+                      MPI_ANY_TAG,option%mycomm,status,ierr)
         if (recv_size > 0) then
           integer_data(num_in_array+1:num_in_array+recv_size) = &
                                              integer_data_recv(1:recv_size)
@@ -3849,7 +3867,7 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
         endif
       else
         call MPI_Recv(real_data_recv,recv_size,MPI_DOUBLE_PRECISION,iproc, &
-                      MPI_ANY_TAG,option%comm,status,ierr)
+                      MPI_ANY_TAG,option%mycomm,status,ierr)
         if (recv_size > 0) then
           real_data(num_in_array+1:num_in_array+recv_size) = &
                                              real_data_recv(1:recv_size)
@@ -3871,7 +3889,7 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
 #ifdef HANDSHAKE    
     if (option%io_handshake_buffer_size > 0) then
       max_proc = -1
-      call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%comm, &
+      call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
                      ierr)
     endif
 #endif      
@@ -3889,22 +3907,22 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
     if (option%io_handshake_buffer_size > 0) then
       do
         if (option%myrank < max_proc) exit
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%comm, &
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
                        ierr)
       enddo
     endif
 #endif    
     if (datatype == VTK_INTEGER) then
       call MPI_Send(integer_data,local_size,MPI_INTEGER,option%io_rank, &
-                    local_size,option%comm,ierr)
+                    local_size,option%mycomm,ierr)
     else
       call MPI_Send(real_data,local_size,MPI_DOUBLE_PRECISION,option%io_rank, &
-                    local_size,option%comm,ierr)
+                    local_size,option%mycomm,ierr)
     endif
 #ifdef HANDSHAKE    
     if (option%io_handshake_buffer_size > 0) then
       do
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%comm, &
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
                        ierr)
         if (max_proc < 0) exit
       enddo
@@ -4018,7 +4036,7 @@ subroutine OutputHDF5(realization)
   Vec :: natural_vec
   PetscReal, pointer :: v_ptr
   
-  character(len=MAXWORDLENGTH) :: filename = "pflotran.h5"
+  character(len=MAXWORDLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
   PetscTruth, save :: first = PETSC_TRUE
   PetscReal, pointer :: array(:)
@@ -4035,6 +4053,8 @@ subroutine OutputHDF5(realization)
   reaction => realization%reaction
   output_option => realization%output_option
 
+  filename = trim(option%global_prefix) // trim(option%group_prefix) // '.h5'
+
   if(.not.(associated(discretization%amrgrid))) then
      
      ! initialize fortran interface
@@ -4042,7 +4062,7 @@ subroutine OutputHDF5(realization)
 
      call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
-     call h5pset_fapl_mpio_f(prop_id,option%comm,MPI_INFO_NULL,hdf5_err)
+     call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
 #endif
      if (.not.first) call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id, &
           hdf5_err,prop_id)
@@ -4521,17 +4541,17 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
     if (grid%structured_grid%ngxe-grid%structured_grid%nxe == 0) then
       nx_local = grid%structured_grid%nlx-1
     endif
-    call MPI_Allreduce(nx_local,i,ONE_INTEGER,MPI_INTEGER,MPI_MIN,option%comm,ierr)
+    call MPI_Allreduce(nx_local,i,ONE_INTEGER,MPI_INTEGER,MPI_MIN,option%mycomm,ierr)
     if (i == 0) trick_flux_vel_x = PETSC_TRUE
     if (grid%structured_grid%ngye-grid%structured_grid%nye == 0) then
       ny_local = grid%structured_grid%nly-1
     endif
-    call MPI_Allreduce(ny_local,j,ONE_INTEGER,MPI_INTEGER,MPI_MIN,option%comm,ierr)
+    call MPI_Allreduce(ny_local,j,ONE_INTEGER,MPI_INTEGER,MPI_MIN,option%mycomm,ierr)
     if (j == 0) trick_flux_vel_y = PETSC_TRUE
     if (grid%structured_grid%ngze-grid%structured_grid%nze == 0) then
       nz_local = grid%structured_grid%nlz-1
     endif
-    call MPI_Allreduce(nz_local,k,ONE_INTEGER,MPI_INTEGER,MPI_MIN,option%comm,ierr)
+    call MPI_Allreduce(nz_local,k,ONE_INTEGER,MPI_INTEGER,MPI_MIN,option%mycomm,ierr)
     if (k == 0) trick_flux_vel_z = PETSC_TRUE
   endif
 
@@ -4743,7 +4763,7 @@ subroutine ConvertArrayToNatural(indices,array,local_size,global_size,option)
   PetscInt, allocatable :: indices_zero_based(:)
   PetscReal, pointer :: vec_ptr(:)
   
-  call VecCreate(option%comm,natural_vec,ierr)
+  call VecCreate(option%mycomm,natural_vec,ierr)
   call VecSetSizes(natural_vec,PETSC_DECIDE,global_size,ierr)
   call VecSetType(natural_vec,VECMPI,ierr)
 
@@ -5234,14 +5254,15 @@ subroutine OutputMassBalance(realization)
     filename = trim(output_option%plot_name) // '.tec'
   else
     if (output_option%plot_number < 10) then
-      write(filename,'("mass00",i1,".tec")') output_option%plot_number  
+      write(string,'("00",i1,".tec")') output_option%plot_number  
     else if (output_option%plot_number < 100) then
-      write(filename,'("mass0",i2,".tec")') output_option%plot_number  
+      write(string,'("0",i2,".tec")') output_option%plot_number  
     else if (output_option%plot_number < 1000) then
-      write(filename,'("mass",i3,".tec")') output_option%plot_number  
+      write(string,'(i3,".tec")') output_option%plot_number  
     else if (output_option%plot_number < 10000) then
-      write(filename,'("mass",i4,".tec")') output_option%plot_number  
+      write(string,'(i4,".tec")') output_option%plot_number  
     endif
+    filename = 'mass' // trim(option%group_prefix) // trim(string)
   endif
   
   if (option%myrank == option%io_rank) then
@@ -5429,9 +5450,9 @@ subroutine OutputMassBalanceNew(realization)
   output_option => realization%output_option
   
   if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '.tec'
+    filename = trim(output_option%plot_name) // '.dat'
   else
-    filename = 'mass_balance.tec'
+    filename = 'mass_balance' // trim(option%group_prefix) // '.dat'
   endif
   
   ! open file
@@ -5513,7 +5534,7 @@ subroutine OutputMassBalanceNew(realization)
     call RichardsComputeMassBalance(realization,sum_kg)
     call MPI_Reduce(sum_kg,sum_kg_global, &
                     option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
-                    option%io_rank,option%comm,ierr)
+                    option%io_rank,option%mycomm,ierr)
                         
     if (option%myrank == option%io_rank) then
       write(fid,110,advance="no") sum_kg_global
@@ -5525,7 +5546,7 @@ subroutine OutputMassBalanceNew(realization)
     call RTComputeMassBalance(realization,sum_mol)
     call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*reaction%ncomp, &
                     MPI_DOUBLE_PRECISION,MPI_SUM, &
-                    option%io_rank,option%comm,ierr)
+                    option%io_rank,option%mycomm,ierr)
 
     if (option%myrank == option%io_rank) then
       write(fid,110,advance="no") ((sum_mol_global(icomp,iphase), &
@@ -5547,7 +5568,7 @@ subroutine OutputMassBalanceNew(realization)
 
       call MPI_Reduce(sum_kg,sum_kg_global, &
                       option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
-                      option%io_rank,option%comm,ierr)
+                      option%io_rank,option%mycomm,ierr)
                           
       if (option%myrank == option%io_rank) then
         ! change sign for positive in / negative out
@@ -5564,7 +5585,7 @@ subroutine OutputMassBalanceNew(realization)
 
       call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*reaction%ncomp, &
                       MPI_DOUBLE_PRECISION,MPI_SUM, &
-                      option%io_rank,option%comm,ierr)
+                      option%io_rank,option%mycomm,ierr)
 
       if (option%myrank == option%io_rank) then
         ! change sign for positive in / negative out

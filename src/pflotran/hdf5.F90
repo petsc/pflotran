@@ -155,9 +155,9 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
 #ifdef HDF5_BROADCAST
     endif
-    if (option%commsize > 1) &
+    if (option%mycommsize > 1) &
       call mpi_bcast(cell_ids,dims(1),MPI_INTEGER,option%io_rank, &
-                     option%comm,ierr)
+                     option%mycomm,ierr)
 #endif     
   call PetscLogEventBegin(logging%event_hash_map, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -329,9 +329,9 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
                                 PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
 #ifdef HDF5_BROADCAST
         endif
-        if (option%commsize > 1) &
+        if (option%mycommsize > 1) &
           call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION, &
-                         option%io_rank,option%comm,ierr)
+                         option%io_rank,option%mycomm,ierr)
 #endif
         prev_real_count = real_count
         real_count = real_count + length(1)                  
@@ -365,9 +365,9 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
     endif
-    if (option%commsize > 1) &
+    if (option%mycommsize > 1) &
       call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION, &
-                     option%io_rank,option%comm,ierr)
+                     option%io_rank,option%mycomm,ierr)
     real_count = real_count + length(1)                  
   enddo
 #endif
@@ -493,9 +493,9 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
                                 PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
 #ifdef HDF5_BROADCAST
         endif
-        if (option%commsize > 1) &
+        if (option%mycommsize > 1) &
           call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,option%io_rank, &
-                         option%comm,ierr)
+                         option%mycomm,ierr)
 #endif
         prev_integer_count = integer_count
         integer_count = integer_count + length(1)                  
@@ -529,9 +529,9 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
     endif
-    if (option%commsize > 1) &
+    if (option%mycommsize > 1) &
       call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,option%io_rank, &
-                     option%comm,ierr)
+                     option%mycomm,ierr)
     integer_count = integer_count + length(1)                  
   enddo
 #endif
@@ -656,9 +656,9 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
                                 PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
 #ifdef HDF5_BROADCAST
         endif
-        if (option%commsize > 1) &
+        if (option%mycommsize > 1) &
           call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,option%io_rank, &
-                         option%comm,ierr)
+                         option%mycomm,ierr)
 #endif
         prev_integer_count = integer_count
         integer_count = integer_count + length(1)                  
@@ -693,9 +693,9 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
     endif
-    if (option%commsize > 1) &
+    if (option%mycommsize > 1) &
       call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,option%io_rank, &
-                     option%comm,ierr)
+                     option%mycomm,ierr)
     integer_count = integer_count + length(1)                  
   enddo
 #endif
@@ -989,8 +989,8 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   iend = 0
   
   ! first determine upper and lower bound on PETSc global array
-  call mpi_exscan(grid%nlmax,istart,ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%comm,ierr)
-  call mpi_scan(grid%nlmax,iend,ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%comm,ierr)
+  call mpi_exscan(grid%nlmax,istart,ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
+  call mpi_scan(grid%nlmax,iend,ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
   if (iend /= istart + grid%nlmax) then
     call printErrMsg(option,'iend /= istart+grid%nlmax')
   endif
@@ -1285,7 +1285,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   call printMsg(option)
   call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
-  call h5pset_fapl_mpio_f(prop_id,option%comm,MPI_INFO_NULL,hdf5_err)
+  call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
 #endif
   call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
   call h5pclose_f(prop_id,hdf5_err)
@@ -1455,7 +1455,7 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   call printMsg(option) 
   call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
-  call h5pset_fapl_mpio_f(prop_id,option%comm,MPI_INFO_NULL,hdf5_err)
+  call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
 #endif
   call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
   call h5pclose_f(prop_id,hdf5_err)
