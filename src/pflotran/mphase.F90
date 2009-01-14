@@ -509,7 +509,7 @@ end subroutine MphaseUpdateAuxVars
 !
 ! MphaseUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
 !                        the Mphase problem
-! author: Glenn Hammond
+! author: Chuan Lu
 ! date: 12/10/07
 !
 ! ************************************************************************** !
@@ -767,18 +767,21 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
   type(field_type), pointer :: field
   type(mphase_auxvar_type), pointer :: aux_vars(:)
 
-  PetscInt :: ghosted_id, local_id, istart, iend, iphase
+  PetscInt :: ghosted_id, local_id, istart, iend !, iphase
   PetscReal, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
   PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:), volume_p(:), &
                           ithrm_loc_p(:), accum_p(:)
                           
   PetscErrorCode :: ierr
   
+  
+  call MphaseUpdateAuxVarsPatch(realization)
+
   option => realization%option
   field => realization%field
   patch => realization%patch
   grid => patch%grid
-
+ 
   aux_vars => patch%aux%Mphase%aux_vars
     
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
@@ -799,13 +802,13 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
     endif
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
-    iphase = int(iphase_loc_p(ghosted_id))
-    call MphaseAuxVarCompute_Ninc(xx_p(istart:iend), &
-                       aux_vars(ghosted_id)%aux_var_elem(0), &
-                       iphase, &
-                       realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-                       realization%fluid_properties,option)
-    iphase_loc_p(ghosted_id) = iphase
+!    iphase = int(iphase_loc_p(ghosted_id))
+!    call MphaseAuxVarCompute_Ninc(xx_p(istart:iend), &
+!                       aux_vars(ghosted_id)%aux_var_elem(0), &
+!                       iphase, &
+!                       realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+!                       realization%fluid_properties,option)
+!    iphase_loc_p(ghosted_id) = iphase
     call MphaseAccumulation(aux_vars(ghosted_id)%aux_var_elem(0), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
