@@ -1858,7 +1858,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   if(iphase > option%nphase) return 
   rt_auxvar%total(:,iphase) = 0D0 
   den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3     
-  print *,'Rtotal: den(2)=', den_kg_per_L, reaction%ngas, reaction%co2_gas_id,&
+  print *,'Rtotal: den(2)=', den_kg_per_L, global_auxvar%den_kg(:),&
      global_auxvar%sat(iphase)
   if(global_auxvar%sat(iphase)>1D-20)then
     do ieqgas = 1, reaction%ngas ! all gas phase species are secondary
@@ -1867,7 +1867,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
           pressure = global_auxvar%pres(2)
           temperature = global_auxvar%temp(1)
           xphico2 = global_auxvar%xphi(1)
-          print *,'Rtotal: CO2=',pressure, temperature, xphico2
+          !print *,'Rtotal: CO2=',pressure, temperature, xphico2
           call Henry_duan_sun_0NaCl(pressure *1D-5, temperature, henry)
           lnQk = - log(henry*xphico2)*LOG_TO_LN       
         else   

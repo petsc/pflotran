@@ -578,17 +578,19 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
                        realization%fluid_properties,option, xphi)
 ! update global variables
     if( associated(global_aux_vars))then
-      print *,'UPdate mphase and gloable vars'
+     
       global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
                aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
       global_aux_vars(ghosted_id)%temp=aux_vars(ghosted_id)%aux_var_elem(0)%temp
-      global_aux_vars(ghosted_id)%sat=aux_vars(ghosted_id)%aux_var_elem(0)%sat
+      global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
   !    global_aux_vars(ghosted_id)%sat_store = 
      global_aux_vars(ghosted_id)%xphi(1)=xphi
-      global_aux_vars(ghosted_id)%den=aux_vars(ghosted_id)%aux_var_elem(0)%den
-       global_aux_vars(ghosted_id)%den_kg = aux_vars(ghosted_id)%aux_var_elem(0)%den &
-                                          * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw
-  !    global_aux_vars(ghosted_id)%den_kg_store
+      global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
+       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
+                                          * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
+     print *,'UPdate mphase and gloable vars', ghosted_id, global_aux_vars(ghosted_id)%den_kg(:), &
+         aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
+   !    global_aux_vars(ghosted_id)%den_kg_store
   !    global_aux_vars(ghosted_id)%mass_balance 
   !    global_aux_vars(ghosted_id)%mass_balance_delta                   
     else
@@ -640,11 +642,11 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
         global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
                      aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
         global_aux_vars_bc(sum_connection)%temp=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
-        global_aux_vars_bc(sum_connection)%sat=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat
+        global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
         !    global_aux_vars(ghosted_id)%sat_store = 
-        global_aux_vars_bc(sum_connection)%den=aux_vars_bc(sum_connection)%aux_var_elem(0)%den
-        global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den &
-                                          * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw
+        global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
+        global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
+                                          * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
   !    global_aux_vars(ghosted_id)%den_kg_store
   !    global_aux_vars(ghosted_id)%mass_balance 
   !    global_aux_vars(ghosted_id)%mass_balance_delta                   
