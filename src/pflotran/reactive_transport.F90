@@ -497,15 +497,7 @@ subroutine RTUpdateSolutionPatch(realization)
   rt_aux_vars => patch%aux%RT%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
 
-  ! update activity coefficients
-  if (reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
-    do ghosted_id = 1, grid%ngmax
-      call RActivityCoefficients(rt_aux_vars(ghosted_id), &
-                                 global_aux_vars(ghosted_id),reaction,option)
-    enddo  
-  endif
-
-  call RTUpdateAuxVarsPatch(realization,PETSC_FALSE)
+  call RTUpdateAuxVarsPatch(realization,PETSC_FALSE,PETSC_FALSE)
   
   ! update mineral volume fractions
   if (reaction%nkinmnrl > 0) then
@@ -573,6 +565,7 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   grid => patch%grid
   reaction => realization%reaction
 
+  ! cannot use tran_xx_loc vector here as it has not yet been updated.
   call GridVecGetArrayF90(grid,field%tran_xx,xx_p, ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%tor_loc,tor_loc_p,ierr)
@@ -580,8 +573,7 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
 
   call GridVecGetArrayF90(grid,field%tran_accum, accum_p, ierr)
 
-! The loop below should take care of this. - geh
-!  call RTUpdateAuxVarsPatch(realization,PETSC_FALSE)
+! Do not use RTUpdateAuxVarsPatch() as it loops over ghosted ids
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -592,8 +584,13 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
     iend = local_id*reaction%ncomp
     istart = iend-reaction%ncomp+1
 
-    call RTAuxVarCompute(xx_p(istart:iend), &
-                         rt_aux_vars(ghosted_id), &
+    rt_aux_vars(ghosted_id)%pri_molal = xx_p(istart:iend)
+    if (reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
+      call RActivityCoefficients(rt_aux_vars(ghosted_id), &
+                                 global_aux_vars(ghosted_id), &
+                                 reaction,option)
+    endif
+    call RTAuxVarCompute(rt_aux_vars(ghosted_id), &
                          global_aux_vars(ghosted_id), &
                          reaction,option)
     call RTAccumulation(rt_aux_vars(ghosted_id), &
@@ -609,7 +606,6 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
 
   call GridVecRestoreArrayF90(grid,field%tran_accum, accum_p, ierr)
-
 
 end subroutine RTUpdateFixedAccumulationPatch
 
@@ -994,8 +990,14 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   
-  call RTUpdateAuxVarsPatch(realization,PETSC_TRUE)
+  if (.not.patch%aux%RT%aux_vars_up_to_date .and. &
+      reaction%act_coef_update_frequency == ACT_COEF_FREQUENCY_NEWTON_ITER) then
+    call RTUpdateAuxVarsPatch(realization,PETSC_TRUE,PETSC_TRUE)
+  else
+    call RTUpdateAuxVarsPatch(realization,PETSC_TRUE,PETSC_FALSE)
+  endif
   patch%aux%RT%aux_vars_up_to_date = PETSC_FALSE 
+  
   if (option%compute_mass_balance_new) then
     call RTZeroMassBalanceDeltaPatch(realization)
   endif
@@ -1010,15 +1012,6 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
 
   r_p = -accum_p
   
-  ! update activity coefficients
-  if (reaction%act_coef_update_frequency == ACT_COEF_FREQUENCY_NEWTON_ITER) then
-    do ghosted_id = 1, grid%ngmax
-      call RActivityCoefficients(rt_aux_vars(ghosted_id), &
-                                 global_aux_vars(ghosted_id), &
-                                 reaction,option)
-    enddo  
-  endif
-    
 #if 1
   ! Accumulation terms ------------------------------------
   do local_id = 1, grid%nlmax  ! For each local node do...
@@ -1655,13 +1648,15 @@ end subroutine RTJacobianPatch
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine RTUpdateAuxVars(realization)
+subroutine RTUpdateAuxVars(realization,update_bcs,update_activity_coefs)
 
   use Realization_module
   use Level_module
   use Patch_module
 
   type(realization_type) :: realization
+  PetscTruth :: update_bcs
+  PetscTruth :: update_activity_coefs
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -1673,7 +1668,7 @@ subroutine RTUpdateAuxVars(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RTUpdateAuxVarsPatch(realization,PETSC_FALSE)
+      call RTUpdateAuxVarsPatch(realization,update_bcs,update_activity_coefs)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -1689,7 +1684,7 @@ end subroutine RTUpdateAuxVars
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine RTUpdateAuxVarsPatch(realization,update_bcs)
+subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
 
   use Realization_module
   use Patch_module
@@ -1703,6 +1698,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs)
 
   type(realization_type) :: realization
   PetscTruth :: update_bcs
+  PetscTruth :: compute_activity_coefs
   PetscTruth :: time0
   
   type(option_type), pointer :: option
@@ -1740,8 +1736,13 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs)
     iend = ghosted_id*reaction%ncomp
     istart = iend-reaction%ncomp+1
     
-    call RTAuxVarCompute(xx_loc_p(istart:iend), &
-                         patch%aux%RT%aux_vars(ghosted_id), &
+    patch%aux%RT%aux_vars(ghosted_id)%pri_molal = xx_loc_p(istart:iend)
+    if (compute_activity_coefs) then
+      call RActivityCoefficients(patch%aux%RT%aux_vars(ghosted_id), &
+                                 patch%aux%Global%aux_vars(ghosted_id), &
+                                 reaction,option)
+    endif
+    call RTAuxVarCompute(patch%aux%RT%aux_vars(ghosted_id), &
                          patch%aux%Global%aux_vars(ghosted_id), &
                          reaction,option)
   enddo
@@ -1790,8 +1791,13 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs)
             enddo
         end select
         ! no need to update boundary fluid density since it is already set
-        call RTAuxVarCompute(xxbc, &
-                             patch%aux%RT%aux_vars_bc(sum_connection), &
+        patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal = xxbc
+        if (compute_activity_coefs) then
+          call RActivityCoefficients(patch%aux%RT%aux_vars_bc(sum_connection), &
+                                     patch%aux%Global%aux_vars_bc(sum_connection), &
+                                     reaction,option)
+        endif
+        call RTAuxVarCompute(patch%aux%RT%aux_vars_bc(sum_connection), &
                              patch%aux%Global%aux_vars_bc(sum_connection), &
                              reaction,option)
       enddo
@@ -2044,7 +2050,7 @@ end function RTGetTecplotHeader
 ! date: 08/28/08
 !
 ! ************************************************************************** !
-subroutine RTAuxVarCompute(x,rt_aux_var,global_aux_var,reaction,option)
+subroutine RTAuxVarCompute(rt_aux_var,global_aux_var,reaction,option)
 
   use Option_module
 
@@ -2052,7 +2058,6 @@ subroutine RTAuxVarCompute(x,rt_aux_var,global_aux_var,reaction,option)
   
   type(option_type) :: option
   type(reaction_type) :: reaction
-  PetscReal :: x(reaction%ncomp)
   type(reactive_transport_auxvar_type) :: rt_aux_var
   type(global_auxvar_type) :: global_aux_var
   
@@ -2069,8 +2074,8 @@ subroutine RTAuxVarCompute(x,rt_aux_var,global_aux_var,reaction,option)
   ! any changes to the below must also be updated in 
   ! Reaction.F90:RReactionDerivative()
   
-  rt_aux_var%pri_molal = x
-  
+!already set  rt_aux_var%pri_molal = x
+
   call RTotal(rt_aux_var,global_aux_var,reaction,option)
   if (reaction%nsorb > 0) then
     call RTotalSorb(rt_aux_var,global_aux_var,reaction,option)

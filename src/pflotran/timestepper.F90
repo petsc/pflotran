@@ -234,35 +234,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     call RealizAssignTransportInitCond(realization)  
   endif
 
-  ! update to parameters/datasets
-  if (option%restart_flag .and. transport_read) then
-    ! temporarily turn off activity coefficient update as the activity coefficients
-    ! from the previous time step have been read from the checkpoint file and
-    ! must not be overwritten
-    idum = realization%reaction%act_coef_update_frequency
-    idum2 = realization%reaction%act_coef_update_algorithm
-    if (activity_coefs_read) then
-      realization%reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
-    else
-      ! upon restart, the primary molal are in the tran_xx* vectors
-      ! need up update the rt_auxvars from these vectors in order to 
-      ! compute the activty coefs using the checkpointed molalities
-      ! with the Newton approach.  StepperUpdateSolution performs this operation, 
-      ! but only afterthe activity coefficients have been computed.  This is too 
-      ! late because the activity coefficients will have been computed based on 
-      ! the simulation initial condition and not the restarted molalities.  Thus
-      ! we iterate between the two.
-      realization%reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
-      call StepperUpdateSolution(realization)
-      realization%reaction%act_coef_update_algorithm = ACT_COEF_ALGORITHM_NEWTON
-    endif
-  endif
   call StepperUpdateSolution(realization)
-  if (option%restart_flag .and. transport_read) then
-    ! switch back on
-    realization%reaction%act_coef_update_frequency = idum
-    realization%reaction%act_coef_update_frequency = idum2
-  endif
   
   call PetscLogStagePop(ierr)
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
@@ -1001,6 +973,11 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
 
     do
      
+      if (realization%reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
+        call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE)
+! The below is set within RTUpdateAuxVarsPatch()
+!        patch%aux%RT%aux_vars_up_to_date = PETSC_TRUE 
+      endif
       if (realization%reaction%use_log_formulation) then
         if (associated(realization%patch%grid%structured_grid) .and. &
             (.not.(realization%patch%grid%structured_grid%p_samr_patch.eq.0))) then

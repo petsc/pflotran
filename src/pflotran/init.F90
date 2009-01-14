@@ -497,13 +497,13 @@ subroutine Init(simulation,filename)
 
     ! initial concentrations must be assigned after densities are set !!!
     call RealizAssignTransportInitCond(realization)
-    call RTUpdateAuxVars(realization)
+    ! PETSC_FALSE = no activity coefficients
+    call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_FALSE)
     ! at this point the auxvars have been computed with activity coef = 1.d0
     ! to use intitial condition with activity coefs /= 1.d0, must update
     ! activity coefs and recompute auxvars
     if (realization%reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
-      call RTUpdateSolution(realization)    
-      call RTUpdateAuxVars(realization)
+      call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_TRUE)
     endif
   endif
   

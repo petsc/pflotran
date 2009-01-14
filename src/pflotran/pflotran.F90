@@ -48,7 +48,7 @@
   PetscMPIInt :: mycolor, mykey
 
   PetscInt :: out_unit
-  PetscInt :: igroup, num_groups = 2
+  PetscInt :: igroup, num_groups = 1
   PetscInt :: local_commsize, rank_offset, delta, remainder
 
   PetscInt :: ierr
