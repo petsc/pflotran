@@ -9,7 +9,7 @@ module Global_module
 #include "definitions.h"
   
   public GlobalSetup, GlobalSetAuxVarScalar, GlobalSetAuxVarVecLoc, &
-         GlobalUpdateDenAndSat
+         GlobalUpdateDenAndSat, GlobalUpdateAuxVars
 
 contains
 
@@ -419,5 +419,51 @@ subroutine GlobalUpdateDenAndSatPatch(realization,weight)
   enddo     
   
 end subroutine GlobalUpdateDenAndSatPatch
+
+
+! ************************************************************************** !
+!
+! GlobalUpdateAuxVars: Updates global aux var variables for use in 
+!                                 reactive transport
+! author: Glenn Hammond
+! date: 01/14/09
+!
+! ************************************************************************** !
+subroutine GlobalUpdateAuxVars(realization,time_level)
+
+  use Realization_module
+  use Field_module
+  use Option_module
+  use Discretization_module
+  
+  type(realization_type) :: realization
+  PetscInt :: time_level
+  
+  type(field_type), pointer :: field
+  type(option_type), pointer :: option
+  
+  option => realization%option
+  field => realization%field
+
+  ! I believe that liquid saturation and density are need for all modes
+  ! liquid density
+  call RealizationGetDataset(realization,field%work,LIQUID_DENSITY, &
+                             ZERO_INTEGER)
+  call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+  call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_DENSITY,time_level)                                     
+
+  ! liquid saturation
+  call RealizationGetDataset(realization,field%work,LIQUID_SATURATION, &
+                             ZERO_INTEGER)
+  call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+  call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_SATURATION,time_level)                                     
+
+  select case(option%iflowmode)
+    case(MPH_MODE)
+  end select
+
+end subroutine GlobalUpdateAuxVars
 
 end module Global_module

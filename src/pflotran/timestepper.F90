@@ -665,17 +665,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   if (option%print_flag) write(*,'(/,2("=")," FLOW ",52("="))')
 
   if (option%ntrandof > 0) then ! store initial saturations for transport
-    call RealizationGetDataset(realization,field%work,LIQUID_DENSITY, &
-                               ZERO_INTEGER)
-    call DiscretizationGlobalToLocal(realization%discretization, &
-                                     field%work,field%work_loc,ONEDOF)
-    call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_DENSITY,TIME_T)                                     
-
-    call RealizationGetDataset(realization,field%work,LIQUID_SATURATION, &
-                               ZERO_INTEGER)
-    call DiscretizationGlobalToLocal(realization%discretization, &
-                                     field%work,field%work_loc,ONEDOF)
-    call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_SATURATION,TIME_T)                                     
+    call GlobalUpdateAuxVars(realization,TIME_T)
   endif
   
   select case(option%iflowmode)
@@ -789,17 +779,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   stepper%icutcum = stepper%icutcum + icut
 
   if (option%ntrandof > 0) then ! store initial saturations for transport
-    call RealizationGetDataset(realization,field%work,LIQUID_DENSITY, &
-                               ZERO_INTEGER)
-    call DiscretizationGlobalToLocal(realization%discretization, &
-                                     field%work,field%work_loc,ONEDOF)
-    call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_DENSITY,TIME_TpDT)                                     
-
-    call RealizationGetDataset(realization,field%work,LIQUID_SATURATION, &
-                               ZERO_INTEGER)
-    call DiscretizationGlobalToLocal(realization%discretization, &
-                                     field%work,field%work_loc,ONEDOF)
-    call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_SATURATION,TIME_TpDT)                                     
+    call GlobalUpdateAuxVars(realization,TIME_TpDT)
   endif
   
 ! print screen output
