@@ -509,7 +509,7 @@ end subroutine MphaseUpdateAuxVars
 !
 ! MphaseUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
 !                        the Mphase problem
-! author: Glenn Hammond
+! author: Chuan Lu
 ! date: 12/10/07
 !
 ! ************************************************************************** !
@@ -578,18 +578,23 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
                        realization%fluid_properties,option, xphi)
 ! update global variables
     if( associated(global_aux_vars))then
+     
       global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
                aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
       global_aux_vars(ghosted_id)%temp=aux_vars(ghosted_id)%aux_var_elem(0)%temp
-      global_aux_vars(ghosted_id)%sat=aux_vars(ghosted_id)%aux_var_elem(0)%sat
+      global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
   !    global_aux_vars(ghosted_id)%sat_store = 
      global_aux_vars(ghosted_id)%xphi(1)=xphi
-      global_aux_vars(ghosted_id)%den=aux_vars(ghosted_id)%aux_var_elem(0)%den
-       global_aux_vars(ghosted_id)%den_kg = aux_vars(ghosted_id)%aux_var_elem(0)%den &
-                                          * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw
-  !    global_aux_vars(ghosted_id)%den_kg_store
+      global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
+       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
+                                          * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
+     print *,'UPdate mphase and gloable vars', ghosted_id, global_aux_vars(ghosted_id)%den_kg(:), &
+         aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
+   !    global_aux_vars(ghosted_id)%den_kg_store
   !    global_aux_vars(ghosted_id)%mass_balance 
   !    global_aux_vars(ghosted_id)%mass_balance_delta                   
+    else
+      print *,'Not associated global for mph'
     endif
     iphase_loc_p(ghosted_id) = iphase
   enddo
@@ -637,11 +642,11 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
         global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
                      aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
         global_aux_vars_bc(sum_connection)%temp=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
-        global_aux_vars_bc(sum_connection)%sat=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat
+        global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
         !    global_aux_vars(ghosted_id)%sat_store = 
-        global_aux_vars_bc(sum_connection)%den=aux_vars_bc(sum_connection)%aux_var_elem(0)%den
-        global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den &
-                                          * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw
+        global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
+        global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
+                                          * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
   !    global_aux_vars(ghosted_id)%den_kg_store
   !    global_aux_vars(ghosted_id)%mass_balance 
   !    global_aux_vars(ghosted_id)%mass_balance_delta                   
@@ -764,18 +769,21 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
   type(field_type), pointer :: field
   type(mphase_auxvar_type), pointer :: aux_vars(:)
 
-  PetscInt :: ghosted_id, local_id, istart, iend, iphase
+  PetscInt :: ghosted_id, local_id, istart, iend !, iphase
   PetscReal, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
   PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:), volume_p(:), &
                           ithrm_loc_p(:), accum_p(:)
                           
   PetscErrorCode :: ierr
   
+  
+  call MphaseUpdateAuxVarsPatch(realization)
+
   option => realization%option
   field => realization%field
   patch => realization%patch
   grid => patch%grid
-
+ 
   aux_vars => patch%aux%Mphase%aux_vars
     
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
@@ -796,13 +804,13 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
     endif
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
-    iphase = int(iphase_loc_p(ghosted_id))
-    call MphaseAuxVarCompute_Ninc(xx_p(istart:iend), &
-                       aux_vars(ghosted_id)%aux_var_elem(0), &
-                       iphase, &
-                       realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-                       realization%fluid_properties,option)
-    iphase_loc_p(ghosted_id) = iphase
+!    iphase = int(iphase_loc_p(ghosted_id))
+!    call MphaseAuxVarCompute_Ninc(xx_p(istart:iend), &
+!                       aux_vars(ghosted_id)%aux_var_elem(0), &
+!                       iphase, &
+!                       realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+!                       realization%fluid_properties,option)
+!    iphase_loc_p(ghosted_id) = iphase
     call MphaseAccumulation(aux_vars(ghosted_id)%aux_var_elem(0), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &

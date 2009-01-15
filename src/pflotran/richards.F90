@@ -246,7 +246,7 @@ subroutine RichardsComputeMassBalancePatch(realization,mass_balance)
     mass_balance = mass_balance + &
       global_aux_vars(ghosted_id)%den_kg* &
       global_aux_vars(ghosted_id)%sat* &
-      porosity_loc_p(ghosted_id)*volume_p(ghosted_id)
+      porosity_loc_p(ghosted_id)*volume_p(local_id)
   enddo
 
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
