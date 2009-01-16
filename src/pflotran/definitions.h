@@ -100,6 +100,7 @@ PetscInt, parameter :: CONSTRAINT_MINERAL = 5
 PetscInt, parameter :: CONSTRAINT_GAS = 6
 PetscInt, parameter :: CONSTRAINT_CHARGE_BAL = 7
 PetscInt, parameter :: CONSTRAINT_TOTAL_SORB = 8
+PetscInt, parameter :: CONSTRAINT_SUPERCRIT_CO2 = 9
 
 ! mineral types
 PetscInt, parameter :: MINERAL_REFERENCE = 1
@@ -150,6 +151,7 @@ PetscInt, parameter :: LIQUID_MOLE_FRACTION = 12
 PetscInt, parameter :: GAS_MOLE_FRACTION = 13
 PetscInt, parameter :: PHASE = 14
 PetscInt, parameter :: MATERIAL_ID = 15
+PetscInt, parameter :: SC_FUGA_COEFF = 30
 
 PetscInt, parameter :: PRIMARY_MOLALITY = 16
 PetscInt, parameter :: SECONDARY_MOLALITY = 17

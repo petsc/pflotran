@@ -1154,6 +1154,8 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_MINERAL
               case('G','GAS') 
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_GAS
+              case('SC','CONSTRAINT_SUPERCRIT_CO2') 
+                aq_species_constraint%constraint_type(icomp) = CONSTRAINT_SUPERCRIT_CO2
               case('Z','CHG') 
                 aq_species_constraint%constraint_type(icomp) = CONSTRAINT_CHARGE_BAL
               case default

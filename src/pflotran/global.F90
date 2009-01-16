@@ -462,6 +462,38 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
 
   select case(option%iflowmode)
     case(MPH_MODE)
+      ! Gas density
+      call RealizationGetDataset(realization,field%work,GAS_DENSITY, &
+                             ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_DENSITY,time_level)          
+      
+      ! Gas saturation
+      call RealizationGetDataset(realization,field%work,GAS_SATURATION, &
+                                 ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                       field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_SATURATION,time_level)                                     
+      
+      ! pressure
+      call RealizationGetDataset(realization,field%work,PRESSURE, &
+                             ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,PRESSURE,time_level)                                     
+
+      ! temperature
+      call RealizationGetDataset(realization,field%work,TEMPERATURE, &
+                             ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,TEMPERATURE,time_level)                                     
+      
+      ! fugacity coeff
+
+      
+      
   end select
 
 end subroutine GlobalUpdateAuxVars
