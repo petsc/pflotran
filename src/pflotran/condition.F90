@@ -1164,7 +1164,8 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
                 call printErrMsg(option)
             end select 
             if (aq_species_constraint%constraint_type(icomp) == CONSTRAINT_MINERAL .or. &
-                aq_species_constraint%constraint_type(icomp) == CONSTRAINT_GAS) then
+                aq_species_constraint%constraint_type(icomp) == CONSTRAINT_GAS .or.&
+                aq_species_constraint%constraint_type(icomp) == CONSTRAINT_SUPERCRIT_CO2) then
               call InputReadWord(input,option,aq_species_constraint%constraint_spec_name(icomp), &
                              PETSC_FALSE)
               call InputErrorMsg(input,option,'constraint name', &

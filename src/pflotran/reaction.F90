@@ -444,7 +444,7 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
                      trim(constraint_name) // ' not found.' 
             call printErrMsg(option)         
           endif
-        case(CONSTRAINT_GAS)
+        case(CONSTRAINT_GAS, CONSTRAINT_SUPERCRIT_CO2)
           found = PETSC_FALSE
           do igas = 1, reaction%ngas
             if (StringCompare(constraint_spec_name(jcomp), &
@@ -632,7 +632,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         endif        
       case(CONSTRAINT_MINERAL)
         free_conc(icomp) = conc(icomp)*convert_molar_to_molal ! guess
-      case(CONSTRAINT_GAS)
+      case(CONSTRAINT_GAS, CONSTRAINT_SUPERCRIT_CO2)
         if (conc(icomp) <= 0.d0) then ! log form
           conc(icomp) = 10.d0**conc(icomp) ! conc log10 partial pressure gas
         endif
@@ -827,9 +827,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         case(CONSTRAINT_SUPERCRIT_CO2)
         
            ln_act_h2o = 0.d0
-         ! print *,'SC CO2 speciation 1'
-          igas = constraint_id(icomp)
           
+          igas = constraint_id(icomp)
+          print *,'SC CO2 speciation 1', icomp, igas, reaction%co2_gas_id
           ! compute secondary species concentration
           if(abs(reaction%co2_gas_id) == igas )then
             pres = global_auxvar%pres(2)
@@ -1062,7 +1062,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
           string = 'log'
         case(CONSTRAINT_PH)
           string = 'pH'
-        case(CONSTRAINT_MINERAL,CONSTRAINT_GAS)
+        case(CONSTRAINT_MINERAL,CONSTRAINT_GAS, CONSTRAINT_SUPERCRIT_CO2)
           string = aq_species_constraint%constraint_spec_name(icomp)
       end select
       write(option%fid_out,103) reaction%primary_species_names(icomp), &
@@ -1893,7 +1893,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
      global_auxvar%sat(iphase)
   if(global_auxvar%sat(iphase)>1D-20)then
     do ieqgas = 1, reaction%ngas ! all gas phase species are secondary
-      print *, ieqgas  
+      
        if(abs(reaction%co2_gas_id) == ieqgas )then
           pressure = global_auxvar%pres(2)
           temperature = global_auxvar%temp(1)
@@ -1904,7 +1904,8 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
         else   
           lnQK = -reaction%eqgas_logK(ieqgas)*LOG_TO_LN
         endif 
-        
+      print *, ieqgas,   global_auxvar%pres(2), global_auxvar%temp(1), xphico2, henry
+          
         if (reaction%eqgash2oid(igas) > 0) then
            lnQK = lnQK + reaction%eqgash2ostoich(ieqgas)*ln_act_h2o
         endif
