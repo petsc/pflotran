@@ -407,11 +407,9 @@ subroutine StructuredGridReadArray(a,n,input,option)
   PetscInt :: fid
   PetscInt :: n
   PetscInt :: i, i1, i2, m
-  PetscInt ::  nvalue=10
+  PetscInt, parameter ::  nvalue=10
   PetscReal, intent(inout) :: a(*)
   character(len=MAXSTRINGLENGTH) :: string 
-
-  save nvalue
 
 !  call fiReadStringErrorMsg('DXYZ',ierr)
 

@@ -595,7 +595,7 @@ subroutine THCAccumulationDerivative(aux_var,por,vol,rock_dencpr,option, &
   type(saturation_function_type) :: sat_func
   PetscReal :: J(option%nflowdof,option%nflowdof)
      
-  PetscInt :: ispec !, iireac=1
+  PetscInt :: ispec 
   PetscReal :: porXvol, mol(option%nflowspec), eng
 
   PetscInt :: iphase, ideriv
@@ -678,7 +678,7 @@ subroutine THCAccumulation(aux_var,por,vol,rock_dencpr,option,Res)
   PetscReal Res(1:option%nflowdof) 
   PetscReal vol,por,rock_dencpr
      
-  PetscInt :: ispec !, iireac=1
+  PetscInt :: ispec 
   PetscReal :: porXvol, mol(option%nflowspec), eng
   
  ! if (present(ireac)) iireac=ireac
@@ -2443,12 +2443,13 @@ subroutine THCCreateZeroArray(patch,option)
   PetscInt :: local_id, ghosted_id
 
   type(grid_type), pointer :: grid
-  PetscInt :: flag = 0
+  PetscInt :: flag
   PetscInt :: n_zero_rows
   PetscInt, pointer :: zero_rows_local(:)
   PetscInt, pointer :: zero_rows_local_ghosted(:)
   PetscErrorCode :: ierr
-    
+  
+  flag = 0
   grid => patch%grid
   
   n_zero_rows = 0

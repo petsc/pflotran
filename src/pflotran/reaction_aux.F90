@@ -1652,6 +1652,9 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%kinmnrl_affinity_power)) deallocate(reaction%kinmnrl_affinity_power)
   nullify(reaction%kinmnrl_affinity_power)
 
+  deallocate(reaction)
+  nullify(reaction)
+
 end subroutine ReactionDestroy
 
 end module Reaction_Aux_module

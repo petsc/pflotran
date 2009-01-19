@@ -27,6 +27,7 @@ module Output_module
 
   PetscMPIInt :: hdf5_err
   PetscErrorCode :: ierr
+  PetscInt, save :: max_local_size_saved = -1
 
   public :: Output, OutputVectorTecplot, &
             OutputBreakthrough, OutputGetVarFromArray
@@ -59,6 +60,9 @@ subroutine Output(realization,plot_flag)
 
   call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr)
 
+  ! set size to -1 in order to re-initialize
+  if (realization%output_option%first) max_local_size_saved = -1
+  
   ! check for plot request from active directory
   if (.not.plot_flag) then
 
@@ -1768,7 +1772,6 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   PetscInt :: fid
   type(realization_type) :: realization
   PetscReal :: array(:)
-  PetscInt, save :: max_local_size_saved = -1
   PetscInt :: datatype
   PetscInt :: size_flag ! if size_flag /= 0, use size_flag as the local size
   
@@ -1998,7 +2001,6 @@ subroutine OutputBreakthroughTecplot(realization)
   type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
   type(breakthrough_type), pointer :: breakthrough
-  PetscTruth, save :: first = PETSC_TRUE
   PetscTruth, save :: open_file = PETSC_FALSE
 
   call PetscLogEventBegin(logging%event_output_breakthrough, &
@@ -2011,7 +2013,8 @@ subroutine OutputBreakthroughTecplot(realization)
   field => realization%field
   output_option => realization%output_option
   
-  if (first) then
+  if (output_option%first) then
+    open_file = PETSC_FALSE
     breakthrough => patch%breakthrough%first
     do
       if (.not.associated(breakthrough)) exit
@@ -2043,7 +2046,7 @@ subroutine OutputBreakthroughTecplot(realization)
   
     ! open file
     fid = 86
-    if (first) then
+    if (output_option%first) then
       open(unit=fid,file=filename,action="write",status="replace")
       ! write header
       ! write title
@@ -2098,8 +2101,6 @@ subroutine OutputBreakthroughTecplot(realization)
     close(fid)
 
   endif
-
-  first = PETSC_FALSE
 
   call PetscLogEventEnd(logging%event_output_breakthrough, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -3733,7 +3734,6 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
   type(realization_type) :: realization
   PetscReal :: array(:)
   character(len=MAXWORDLENGTH) :: dataset_name
-  PetscInt, save :: max_local_size_saved = -1
   PetscInt :: datatype
   PetscInt :: size_flag ! if size_flag /= 0, use size_flag as the local size
   
@@ -4038,7 +4038,6 @@ subroutine OutputHDF5(realization)
   
   character(len=MAXWORDLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
-  PetscTruth, save :: first = PETSC_TRUE
   PetscReal, pointer :: array(:)
   PetscInt :: i
   PetscInt :: nviz_flow, nviz_tran, nviz_dof
@@ -4064,22 +4063,22 @@ subroutine OutputHDF5(realization)
 #ifndef SERIAL_HDF5
      call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
 #endif
-     if (.not.first) call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id, &
-          hdf5_err,prop_id)
-     if (hdf5_err < 0 .or. first) then 
+     if (.not.output_option%first) call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id, &
+                                                  hdf5_err,prop_id)
+     if (hdf5_err < 0 .or. output_option%first) then 
         call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err,H5P_DEFAULT_F, &
-             prop_id)
+                         prop_id)
      endif
      call h5pclose_f(prop_id,hdf5_err)
 
-     if (first) then
+     if (output_option%first) then
        option%io_buffer = '--> creating hdf5 output file: ' // filename
      else
        option%io_buffer = '--> appending to hdf5 output file: ' // filename
      endif
      call printMsg(option)
 
-     if (first) then
+     if (output_option%first) then
 
         ! create a group for the coordinates data set
         string = "Coordinates"
@@ -4188,7 +4187,7 @@ subroutine OutputHDF5(realization)
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
           else
              call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             if(first) then
+             if(output_option%first) then
                 call SAMRRegisterForViz(app_ptr,samr_vec,current_component,TEMPERATURE,ZERO_INTEGER)
              endif
              current_component=current_component+1
@@ -4204,7 +4203,7 @@ subroutine OutputHDF5(realization)
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
           else
              call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             if(first) then
+             if(output_option%first) then
                 call SAMRRegisterForViz(app_ptr,samr_vec,current_component,PRESSURE,ZERO_INTEGER)
              endif
              current_component=current_component+1
@@ -4220,7 +4219,7 @@ subroutine OutputHDF5(realization)
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)  
           else
              call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             if(first) then
+             if(output_option%first) then
                 call SAMRRegisterForViz(app_ptr,samr_vec,current_component,LIQUID_SATURATION,ZERO_INTEGER)
              endif
              current_component=current_component+1
@@ -4236,7 +4235,7 @@ subroutine OutputHDF5(realization)
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
           else
              call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             if(first) then
+             if(output_option%first) then
                 call SAMRRegisterForViz(app_ptr,samr_vec,current_component,GAS_SATURATION,ZERO_INTEGER)
              endif
              current_component=current_component+1
@@ -4252,7 +4251,7 @@ subroutine OutputHDF5(realization)
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
              call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             if(first) then
+             if(output_option%first) then
                 call SAMRRegisterForViz(app_ptr,samr_vec,current_component,LIQUID_ENERGY,ZERO_INTEGER)
              endif
              current_component=current_component+1
@@ -4268,7 +4267,7 @@ subroutine OutputHDF5(realization)
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
              call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             if(first) then
+             if(output_option%first) then
                 call SAMRRegisterForViz(app_ptr,samr_vec,current_component,GAS_ENERGY,ZERO_INTEGER)
              endif
              current_component=current_component+1
@@ -4285,7 +4284,7 @@ subroutine OutputHDF5(realization)
                call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
             else
                call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             if(first) then
+             if(output_option%first) then
                 call SAMRRegisterForViz(app_ptr,samr_vec,current_component,LIQUID_MOLE_FRACTION,i)
              endif
                current_component=current_component+1
@@ -4303,7 +4302,7 @@ subroutine OutputHDF5(realization)
                 call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
             else
                call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             if(first) then
+             if(output_option%first) then
                 call SAMRRegisterForViz(app_ptr,samr_vec,current_component,GAS_MOLE_FRACTION,i)
              endif
                current_component=current_component+1
@@ -4327,7 +4326,7 @@ subroutine OutputHDF5(realization)
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
           else
              call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             if(first) then
+             if(output_option%first) then
                 call SAMRRegisterForViz(app_ptr,samr_vec,current_component,PHASE,ZERO_INTEGER)
              endif
              current_component=current_component+1
@@ -4348,7 +4347,7 @@ subroutine OutputHDF5(realization)
            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         else
            call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-           if(first) then
+           if(output_option%first) then
               call SAMRRegisterForViz(app_ptr,samr_vec,current_component,PRIMARY_MOLARITY,i)
            endif
            current_component=current_component+1
@@ -4361,7 +4360,7 @@ subroutine OutputHDF5(realization)
            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         else
            call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-           if(first) then
+           if(output_option%first) then
               call SAMRRegisterForViz(app_ptr,samr_vec,current_component,MINERAL_VOLUME_FRACTION,i)
            endif
            current_component=current_component+1
@@ -4378,7 +4377,7 @@ subroutine OutputHDF5(realization)
        call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
     else
        call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-       if(first) then
+       if(output_option%first) then
           call SAMRRegisterForViz(app_ptr,samr_vec,current_component,MATERIAL_ID,ZERO_INTEGER)
        endif
        current_component=current_component+1
@@ -4464,7 +4463,6 @@ subroutine OutputHDF5(realization)
      call SAMRWritePlotData(app_ptr, option%time)
      call VecDestroy(samr_vec,ierr)
   endif
-  first = PETSC_FALSE
 #endif
 end subroutine OutputHDF5
 
@@ -4512,7 +4510,6 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   PetscReal, allocatable :: array(:)
   PetscReal, pointer :: vec_ptr(:)
 
-  PetscTruth, save :: first = PETSC_TRUE
   PetscTruth, save :: trick_flux_vel_x = PETSC_FALSE
   PetscTruth, save :: trick_flux_vel_y = PETSC_FALSE
   PetscTruth, save :: trick_flux_vel_z = PETSC_FALSE
@@ -4534,7 +4531,11 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   ! in collective H5Dwrite().  To avoid, we switch to independent
   ! H5Dwrite() and don't write from the zero-length procs. 
 !GEH - Structured Grid Dependence - Begin
-  if (first) then
+  if (output_option%first) then
+    trick_flux_vel_x = PETSC_FALSE
+    trick_flux_vel_y = PETSC_FALSE
+    trick_flux_vel_z = PETSC_FALSE
+    
     nx_local = grid%structured_grid%nlx
     ny_local = grid%structured_grid%nly
     nz_local = grid%structured_grid%nlz
@@ -4631,7 +4632,6 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
 
   deallocate(array)
   trick_hdf5 = PETSC_FALSE
-  first = PETSC_FALSE
 
 end subroutine WriteHDF5FluxVelocities
 
@@ -5428,7 +5428,6 @@ subroutine OutputMassBalanceNew(realization)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_bc(:)
   
   character(len=MAXWORDLENGTH) :: filename
-  PetscTruth, save :: first = PETSC_TRUE
   PetscInt :: fid = 86
   PetscInt :: ios
   PetscInt :: i
@@ -5442,12 +5441,15 @@ subroutine OutputMassBalanceNew(realization)
   PetscReal :: sum_kg_global(realization%option%nphase)
   PetscReal :: sum_mol(realization%option%ntrandof,realization%option%nphase)
   PetscReal :: sum_mol_global(realization%option%ntrandof,realization%option%nphase)
+  PetscTruth :: local_first
   
   patch => realization%patch
   grid => patch%grid
   option => realization%option
   reaction => realization%reaction
   output_option => realization%output_option
+  
+  local_first = output_option%first
   
   if (len_trim(output_option%plot_name) > 2) then
     filename = trim(output_option%plot_name) // '.dat'
@@ -5461,16 +5463,16 @@ subroutine OutputMassBalanceNew(realization)
     option%io_buffer = '--> write tecplot mass balance file: ' // trim(filename)
     call printMsg(option)    
 
-    if (first .and. option%restart_flag) then ! check if file already exists
+    if (output_option%first .and. option%restart_flag) then ! check if file already exists
       ios = 0
       open(unit=fid,file=filename,action="write",status="old",iostat=ios)
       if (ios == 0) then
         close(fid)
-        first = PETSC_FALSE 
+        local_first = PETSC_FALSE 
       endif
     endif
 
-    if (first) then
+    if (local_first) then
       open(unit=fid,file=filename,action="write",status="replace")
 
       ! write header
@@ -5514,7 +5516,6 @@ subroutine OutputMassBalanceNew(realization)
     endif 
     
   endif     
-  first = PETSC_FALSE
 
 100 format(100es12.4)
 110 format(100es14.6)

@@ -417,7 +417,7 @@ subroutine RegionReadFromFileId(region,input,option)
   character(len=1) :: backslash
 
   PetscInt, pointer :: temp_int_array(:)
-  PetscInt :: max_size = 1000
+  PetscInt :: max_size
   PetscInt :: count, temp_int
   PetscErrorCode :: ierr
 
@@ -425,6 +425,7 @@ subroutine RegionReadFromFileId(region,input,option)
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
 
+  max_size = 1000
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
                           ! is a double quote as in c/c++
   

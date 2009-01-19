@@ -802,7 +802,7 @@ subroutine GeneralPhaseAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
   type(saturation_function_type) :: sat_func
   PetscReal :: J(option%nflowdof,option%nflowdof)
      
-  PetscInt :: ispec !, iireac=1
+  PetscInt :: ispec 
   PetscReal :: porXvol
 
   PetscInt :: iphase, ideriv
@@ -2249,7 +2249,7 @@ subroutine GeneralPhaseCreateZeroArray(patch,option)
   PetscInt :: local_id, ghosted_id
 
   type(grid_type), pointer :: grid
-  PetscInt :: flag = 0
+  PetscInt :: flag
   PetscInt :: n_zero_rows
   PetscInt, pointer :: zero_rows_local(:)
   PetscInt, pointer :: zero_rows_local_ghosted(:)
@@ -2257,6 +2257,7 @@ subroutine GeneralPhaseCreateZeroArray(patch,option)
     
   grid => patch%grid
   
+  flag = 0
   n_zero_rows = 0
 
   if (associated(patch%imat)) then

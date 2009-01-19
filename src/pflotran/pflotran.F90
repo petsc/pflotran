@@ -46,10 +46,17 @@
   PetscMPIInt :: global_rank, global_commsize, global_comm, global_group
   PetscMPIInt :: myrank, mycommsize, mycomm, mygroup
   PetscMPIInt :: mycolor, mykey
+  PetscMPIInt :: io_rank
 
+  PetscInt :: i
   PetscInt :: out_unit
-  PetscInt :: igroup, num_groups = 1
-  PetscInt :: local_commsize, rank_offset, delta, remainder
+  PetscInt :: igroup, irealization
+  PetscInt :: num_groups
+  PetscInt :: local_commsize, offset, delta, remainder
+
+  PetscInt :: num_realizations
+  PetscInt :: num_local_realizations
+  PetscInt, allocatable :: realization_ids(:)
 
   PetscInt :: ierr
   PetscInt :: stage(10)
@@ -62,7 +69,10 @@
   type(realization_type), pointer :: realization
   type(option_type), pointer :: option
   
+  num_groups = 1
+  num_realizations = 2
 #ifdef GLENN
+  ! set up global and local communicator groups, processor ranks, and group sizes
   call MPI_Init(ierr)
   global_comm = MPI_COMM_WORLD
   call MPI_Comm_rank(MPI_COMM_WORLD,global_rank, ierr)
@@ -70,21 +80,39 @@
   call MPI_Comm_group(MPI_COMM_WORLD,global_group,ierr)
   local_commsize = global_commsize / num_groups
   remainder = global_commsize - num_groups * local_commsize
-  rank_offset = 0
+  offset = 0
   do igroup = 1, num_groups
     delta = local_commsize
     if (igroup < remainder) delta = delta + 1
-    if (global_rank >= rank_offset .and. global_rank < rank_offset + delta) exit
-    rank_offset = rank_offset + delta
+    if (global_rank >= offset .and. global_rank < offset + delta) exit
+    offset = offset + delta
   enddo
   mycolor = igroup
-  mykey = global_rank - rank_offset
+  mykey = global_rank - offset
   call MPI_Comm_split(MPI_COMM_WORLD,mycolor,mykey,mycomm,ierr)
   call MPI_Comm_group(mycomm,mygroup,ierr)
   PETSC_COMM_WORLD = mycomm
   call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
   call MPI_Comm_rank(mycomm,myrank, ierr)
   call MPI_Comm_size(mycomm,mycommsize,ierr)
+
+  ! divvy up the realizations
+  num_local_realizations = num_realizations / num_groups
+  remainder = num_realizations - num_groups * num_local_realizations
+  offset = 0
+  do i = 1, igroup-1
+    delta = num_local_realizations
+    if (i < remainder) delta = delta + 1
+    offset = offset + delta
+  enddo
+  
+  if (igroup < remainder) num_local_realizations = num_local_realizations + 1
+  allocate(realization_ids(num_local_realizations))
+  realization_ids = 0
+  do i = 1, num_local_realizations
+    realization_ids(i) = offset + i
+  enddo
+
 #else  
   call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
   global_comm = PETSC_COMM_WORLD
@@ -95,82 +123,94 @@
   myrank = global_rank
   mycommsize = global_commsize
   mygroup = global_group
+  num_local_realizations = num_realizations
 #endif  
   
-  call LoggingCreate()
+  do irealization = 1, num_local_realizations
 
-  simulation => SimulationCreate()
-  realization => simulation%realization
-  option => realization%option
-  
-  option%fid_out = IUNIT2
-  out_unit = option%fid_out
+    call LoggingCreate()
 
-  option%global_comm = global_comm
-  option%global_rank = global_rank
-  option%global_commsize = global_commsize
-  option%global_group = global_group
-
-  option%mycomm = mycomm
-  option%myrank = myrank
-  option%mycommsize = mycommsize
-  option%mygroup = mygroup
-
-#ifdef GLENN
-  if (num_groups > 1) then
-    write(string,'(i6)') igroup-1
-    option%group_prefix = 'G' // trim(adjustl(string))
-  endif
+    simulation => SimulationCreate()
+    realization => simulation%realization
+    option => realization%option
+    
+#ifdef GLENN    
+    option%id = realization_ids(irealization)
 #endif
 
-  call PetscOptionsGetString(PETSC_NULL_CHARACTER, "-pflotranin", &
-                             pflotranin, option_found, ierr)
-  if(.not.option_found) pflotranin = "pflotran.in"
+    option%fid_out = IUNIT2
+    out_unit = option%fid_out
+
+    option%global_comm = global_comm
+    option%global_rank = global_rank
+    option%global_commsize = global_commsize
+    option%global_group = global_group
+
+    option%mycomm = mycomm
+    option%myrank = myrank
+    option%mycommsize = mycommsize
+    option%mygroup = mygroup
+
+  #ifdef GLENN
+    if (num_realizations > 1) then
+      write(string,'(i6)') realization_ids(irealization)
+      option%group_prefix = 'R' // trim(adjustl(string)) // '_'
+    endif
+  #endif
+
+    call PetscOptionsGetString(PETSC_NULL_CHARACTER, "-pflotranin", &
+                               pflotranin, option_found, ierr)
+    if(.not.option_found) pflotranin = "pflotran.in"
+    
+    call OptionCheckCommandLine(option)
+
+    call PetscGetCPUTime(timex(1), ierr)
+    call PetscGetTime(timex_wall(1), ierr)
+    option%start_time = timex_wall(1)
+
+    call Init(simulation,pflotranin)
+
+    call StepperRun(simulation%realization,simulation%flow_stepper, &
+                    simulation%tran_stepper)
+
+  ! Clean things up.
+    io_rank = option%io_rank
+    call SimulationDestroy(simulation)
+
+  ! Final Time
+    call PetscGetCPUTime(timex(2), ierr)
+    call PetscGetTime(timex_wall(2), ierr)
+    
+    if (myrank == io_rank) then
+
+      write(*,'(/," CPU Time:", 1pe12.4, " [sec] ", &
+      & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
+        timex(2)-timex(1), (timex(2)-timex(1))/60.d0, &
+        (timex(2)-timex(1))/3600.d0
+
+      write(*,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
+      & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
+        timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
+        (timex_wall(2)-timex_wall(1))/3600.d0
+
+      write(out_unit,'(/," CPU Time:", 1pe12.4, " [sec] ", &
+      & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
+        timex(2)-timex(1), (timex(2)-timex(1))/60.d0, &
+        (timex(2)-timex(1))/3600.d0
+
+      write(out_unit,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
+      & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
+        timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
+        (timex_wall(2)-timex_wall(1))/3600.d0
+    endif
+
+    if (myrank == io_rank) close(out_unit)
+
+    call LoggingDestroy()
+    
+  enddo
   
-  call PetscGetCPUTime(timex(1), ierr)
-  call PetscGetTime(timex_wall(1), ierr)
-  option%start_time = timex_wall(1)
-
-  call OptionCheckCommandLine(option)
-
-  call Init(simulation,pflotranin)
-
-  call StepperRun(simulation%realization,simulation%flow_stepper, &
-                  simulation%tran_stepper)
-
-! Clean things up.
-  call SimulationDestroy(simulation)
-
-! Final Time
-  call PetscGetCPUTime(timex(2), ierr)
-  call PetscGetTime(timex_wall(2), ierr)
-  
-  if (myrank == 0) then
-
-    write(*,'(/," CPU Time:", 1pe12.4, " [sec] ", &
-    & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
-      timex(2)-timex(1), (timex(2)-timex(1))/60.d0, &
-      (timex(2)-timex(1))/3600.d0
-
-    write(*,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
-    & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
-      timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
-      (timex_wall(2)-timex_wall(1))/3600.d0
-
-    write(out_unit,'(/," CPU Time:", 1pe12.4, " [sec] ", &
-    & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
-      timex(2)-timex(1), (timex(2)-timex(1))/60.d0, &
-      (timex(2)-timex(1))/3600.d0
-
-    write(out_unit,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
-    & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
-      timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
-      (timex_wall(2)-timex_wall(1))/3600.d0
-  endif
-
-  if (myrank == 0) close(out_unit)
-
-  call LoggingDestroy()
   call PetscFinalize (ierr)
+  deallocate(realization_ids)
 
   end program pflotran

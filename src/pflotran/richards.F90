@@ -802,7 +802,7 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
   type(saturation_function_type) :: sat_func
   PetscReal :: J(option%nflowdof,option%nflowdof)
      
-  PetscInt :: ispec !, iireac=1
+  PetscInt :: ispec 
   PetscReal :: porXvol
 
   PetscInt :: iphase, ideriv
@@ -2249,12 +2249,13 @@ subroutine RichardsCreateZeroArray(patch,option)
   PetscInt :: local_id, ghosted_id
 
   type(grid_type), pointer :: grid
-  PetscInt :: flag = 0
+  PetscInt :: flag
   PetscInt :: n_zero_rows
   PetscInt, pointer :: zero_rows_local(:)
   PetscInt, pointer :: zero_rows_local_ghosted(:)
   PetscErrorCode :: ierr
     
+  flag = 0
   grid => patch%grid
   
   n_zero_rows = 0

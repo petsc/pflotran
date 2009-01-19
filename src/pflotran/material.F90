@@ -13,6 +13,7 @@ module Material_module
     character(len=MAXWORDLENGTH) :: name
     PetscReal :: permeability(3,3)
     PetscReal :: permeability_pwr
+    character(len=MAXWORDLENGTH) :: permeability_filename
     PetscReal :: porosity
     PetscReal :: tortuosity
     PetscInt :: ithrm
@@ -110,9 +111,10 @@ function MaterialCreate()
   
   allocate(material)
   material%id = 0
-  material%name = ""
+  material%name = ''
   material%permeability = 0.d0
   material%permeability_pwr = 0.d0
+  material%permeability_filename = ''
   material%porosity = 0.d0
   material%tortuosity = 0.d0
   material%ithrm = 0
@@ -294,11 +296,9 @@ subroutine MaterialRead(material,input,option)
               call InputReadDouble(input,option,material%permeability_pwr)
               call InputDefaultMsg(input,option,'permeability power')
             case('RANDOM_DATASET')
-!              material%random_permeability = PETSC_TRUE
-!              call InputReadWord(input,option,material%permeability_filename,PETSC_TRUE)
+              call InputReadWord(input,option,material%permeability_filename,PETSC_TRUE)
               call InputErrorMsg(input,option,'keyword','CONDITION,TYPE')   
-            case('ISOTROPIC')
-!              material%isotropic_permeability = PETSC_TRUE
+!            case('ISOTROPIC')
             case default
               option%io_buffer = 'keyword not recognized in material,permeability'
               call printErrMsg(option)
@@ -433,8 +433,9 @@ subroutine MaterialConvertListToArray(list,array)
   type(material_ptr_type), pointer :: array(:)
     
   type(material_type), pointer :: cur_material
-  PetscInt :: max_id = 0
+  PetscInt :: max_id
 
+  max_id = 0
   cur_material => list
   do 
     if (.not.associated(cur_material)) exit
@@ -575,7 +576,7 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
   PetscReal :: auxvar1,auxvar2
   type(option_type) :: option
 
-  PetscInt :: iphase = 1
+  PetscInt :: iphase
   PetscReal :: alpha, lambda, m, n, Sr, one_over_alpha
   PetscReal :: pc, Se, one_over_m, Se_one_over_m, dSe_pc, dsat_pc, dkr_pc
   PetscReal :: dkr_Se, power
@@ -584,6 +585,7 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
   PetscReal :: por, perm
   PetscReal :: Fg, a, Pd, PHg
   
+  iphase = 1
   dsat_pres = 0.d0
   dkr_pres = 0.d0
   

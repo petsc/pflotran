@@ -537,8 +537,8 @@ subroutine FlowConditionRead(condition,input,option)
   type(flow_sub_condition_type), pointer :: pressure, flux, temperature, &
                                        concentration, enthalpy, mass_rate, &
                                        sub_condition_ptr
-  PetscReal :: default_time = 0.d0
-  PetscInt :: default_iphase = 0
+  PetscReal :: default_time
+  PetscInt :: default_iphase
   type(flow_condition_dataset_type) :: default_dataset
   type(flow_condition_dataset_type) :: default_datum
   type(flow_condition_dataset_type) :: default_gradient
@@ -552,6 +552,8 @@ subroutine FlowConditionRead(condition,input,option)
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
 
+  default_time = 0.d0
+  default_iphase = 0
   call FlowConditionDatasetInit(default_dataset)
   default_dataset%rank = 1
   default_dataset%interpolation_method = STEP
@@ -920,9 +922,9 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
   type(tran_constraint_coupler_type), pointer :: constraint_coupler, cur_coupler
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
-  PetscReal :: default_time = 0.d0
+  PetscReal :: default_time
   character(len=MAXWORDLENGTH) :: default_time_units
-  PetscInt :: default_iphase = 0
+  PetscInt :: default_iphase
   character(len=MAXWORDLENGTH) :: default_ctype
   PetscInt :: default_itype
   PetscTruth :: found
@@ -934,6 +936,8 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
 
+  default_time = 0.d0
+  default_iphase = 0
   default_ctype = 'dirichlet'
   default_itype = DIRICHLET_BC
   default_time_units = ''
@@ -1325,13 +1329,14 @@ subroutine FlowConditionReadValuesFromFile(filename,dataset,option)
   PetscReal, pointer :: temp_times(:), temp_array1(:), temp_array2(:), &
                         temp_array3(:)
   PetscReal :: temp_time
-  PetscInt :: max_size = 1000
+  PetscInt :: max_size
   PetscInt :: temp_max_size
   PetscInt :: count, i, status
   type(input_type), pointer :: input
   
   input => InputCreate(IUNIT_TEMP,filename)
   
+  max_size = 1000
   allocate(temp_times(max_size))
   allocate(temp_array1(max_size))
   temp_times = 0.d0

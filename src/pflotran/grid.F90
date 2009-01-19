@@ -372,9 +372,10 @@ subroutine GridLocalizeRegions(grid,region_list,option)
   PetscInt :: i_min, i_max, j_min, j_max, k_min, k_max
   PetscReal :: x_min, x_max, y_min, y_max, z_min, z_max
   PetscReal :: x_shift, y_shift, z_shift
-  PetscInt :: iflag = 0
+  PetscInt :: iflag
   PetscErrorCode :: ierr
   
+  iflag = 0
   region => region_list%first
   do
   
@@ -795,7 +796,7 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: local_ghosted_id, natural_id
   PetscInt :: num_in_hash, num_ids_per_hash, hash_id, id, ierr, hash_id_2
-  PetscInt :: max_num_ids_per_hash = 0
+  PetscInt :: max_num_ids_per_hash
   PetscInt, pointer :: hash(:,:,:), temp_hash(:,:,:)
 
   if (associated(grid%hash)) return
@@ -804,6 +805,7 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
                           
+  max_num_ids_per_hash = 0
   ! initial guess of 10% of ids per hash
   ! must be at least 5 so that reallocation (*1.2) works below
   num_ids_per_hash = max(grid%nlmax/(grid%num_hash_bins/10),5)

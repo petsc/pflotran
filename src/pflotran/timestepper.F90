@@ -243,8 +243,10 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   if (realization%output_option%plot_number == 0 .and. &
       master_stepper%nstepmax >= 0) then
     plot_flag = PETSC_TRUE
+    realization%output_option%first = PETSC_TRUE
     call Output(realization,plot_flag)
   endif
+  realization%output_option%first = PETSC_FALSE
            
   call PetscGetTime(stepper_start_time, ierr)
   start_step = master_stepper%steps+1
@@ -625,8 +627,6 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   Vec :: global_vec
   PetscTruth :: plot_flag
   
-  PetscInt, save :: linear_solver_divergence_count = 0
-
   PetscViewer :: viewer
 
   type(option_type), pointer :: option
@@ -890,8 +890,6 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   PetscTruth :: plot_flag  
   PetscReal, pointer :: r_p(:), xx_p(:), log_xx_p(:)
   PetscReal, parameter :: time_tol = 1.d-10
-
-  PetscInt, save :: linear_solver_divergence_count = 0
 
   PetscViewer :: viewer
 

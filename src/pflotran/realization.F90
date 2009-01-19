@@ -23,6 +23,7 @@ private
 
   type, public :: realization_type
 
+    PetscInt :: id
     type(discretization_type), pointer :: discretization
     type(level_list_type), pointer :: level_list
     type(patch_type), pointer :: patch

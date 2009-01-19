@@ -240,9 +240,10 @@ subroutine RTComputeMassBalancePatch(realization,mass_balance)
   PetscErrorCode :: ierr
   PetscInt :: local_id
   PetscInt :: ghosted_id
-  PetscInt :: iphase = 1
+  PetscInt :: iphase
   PetscInt :: i, icomp, imnrl, ncomp
 
+  iphase = 1
   option => realization%option
   patch => realization%patch
   grid => patch%grid
@@ -1835,12 +1836,13 @@ subroutine RTCreateZeroArray(patch,reaction,option)
   PetscInt :: local_id, ghosted_id, icomp
 
   type(grid_type), pointer :: grid
-  PetscInt :: flag = 0
+  PetscInt :: flag
   PetscInt :: n_zero_rows
   PetscInt, pointer :: zero_rows_local(:)
   PetscInt, pointer :: zero_rows_local_ghosted(:)
   PetscErrorCode :: ierr
 
+  flag = 0
   grid => patch%grid
   
   n_zero_rows = 0

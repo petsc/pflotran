@@ -427,8 +427,9 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
   
   PetscMPIInt, allocatable :: upwind_ids(:), downwind_ids(:)
   
-  PetscInt :: read_block_size = HDF5_READ_BUFFER_SIZE
+  PetscInt :: read_block_size
 
+  read_block_size = HDF5_READ_BUFFER_SIZE
   num_internal_connections = ConnectionGetNumberInList(grid%internal_connection_set_list)
   
   string = "Id Upwind"

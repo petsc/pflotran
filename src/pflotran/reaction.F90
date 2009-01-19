@@ -54,12 +54,18 @@ subroutine ReactionRead(reaction,input,option)
   type(surface_complexation_rxn_type), pointer :: srfcmplx_rxn, prev_srfcmplx_rxn
   type(ion_exchange_rxn_type), pointer :: ionx_rxn, prev_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cation, prev_cation
-  PetscInt :: srfcmplx_count = 0
+  PetscInt :: srfcmplx_count
   PetscErrorCode :: ierr
 
+  nullify(prev_species)
+  nullify(prev_gas)
+  nullify(prev_mineral)
   nullify(prev_srfcmplx_rxn)
+  nullify(prev_srfcmplx)
   nullify(prev_ionx_rxn)
+  nullify(prev_cation)
 
+  srfcmplx_count = 0
   input%ierr = 0
   do
   

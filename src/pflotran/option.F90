@@ -11,6 +11,8 @@ module Option_module
 
   type, public :: option_type 
   
+    PetscInt :: id                         ! id of realization
+  
     PetscMPIInt :: global_comm             ! MPI_COMM_WORLD
     PetscMPIInt :: global_rank             ! rank in MPI_COMM_WORLD
     PetscMPIInt :: global_commsize         ! size of MPI_COMM_WORLD
@@ -135,6 +137,8 @@ module Option_module
   
   type, public :: output_option_type
 
+    PetscTruth :: first
+
     character(len=2) :: tunit
     PetscReal :: tconv
   
@@ -208,6 +212,8 @@ function OptionCreate()
   type(option_type), pointer :: option
   
   allocate(option)
+
+  option%id = 0
 
   option%global_comm = 0
   option%global_rank = 0
@@ -358,6 +364,7 @@ function OutputOptionCreate()
   type(output_option_type), pointer :: output_option
   
   allocate(output_option)
+  output_option%first = PETSC_FALSE
   output_option%print_hdf5 = PETSC_FALSE
   output_option%print_hdf5_velocities = PETSC_FALSE
   output_option%print_hdf5_flux_velocities = PETSC_FALSE

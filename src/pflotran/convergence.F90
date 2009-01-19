@@ -76,8 +76,6 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   type(convergence_context_type) :: context
   PetscErrorCode :: ierr
   
-  PetscInt :: ctx = 0
-
   type(solver_type), pointer :: solver
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
