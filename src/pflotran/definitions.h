@@ -151,7 +151,6 @@ PetscInt, parameter :: LIQUID_MOLE_FRACTION = 12
 PetscInt, parameter :: GAS_MOLE_FRACTION = 13
 PetscInt, parameter :: PHASE = 14
 PetscInt, parameter :: MATERIAL_ID = 15
-PetscInt, parameter :: SC_FUGA_COEFF = 30
 
 PetscInt, parameter :: PRIMARY_MOLALITY = 16
 PetscInt, parameter :: SECONDARY_MOLALITY = 17
@@ -167,6 +166,8 @@ PetscInt, parameter :: SURFACE_CMPLX = 26
 PetscInt, parameter :: SURFACE_CMPLX_FREE = 27
 PetscInt, parameter :: PRIMARY_ACTIVITY_COEF = 28
 PetscInt, parameter :: SECONDARY_ACTIVITY_COEF = 29
+
+PetscInt, parameter :: SC_FUGA_COEFF = 30
 
 ! activity coefficients
 PetscInt, parameter :: ACT_COEF_FREQUENCY_OFF = 0
