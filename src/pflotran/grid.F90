@@ -519,6 +519,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
           ! if plane or line, ensure it is within the grid cells     
           if (grid%itype == STRUCTURED_GRID) then
             if (x_max-x_min < 1.d-10) then
+              x_max = region%coordinates(ONE_INTEGER)%x
               x_shift = 1.d-8*(grid%x_max_global-grid%x_min_global)
               if (region%iface == WEST_FACE) then
                 x_max = x_max + x_shift
@@ -528,19 +529,21 @@ subroutine GridLocalizeRegions(grid,region_list,option)
               x_min = x_max
             endif
             if (y_max-y_min < 1.d-10) then
+              y_max = region%coordinates(ONE_INTEGER)%y
               y_shift = 1.d-8*(grid%y_max_global-grid%y_min_global)
-              if (region%iface == NORTH_FACE) then
+              if (region%iface == SOUTH_FACE) then
                 y_max = y_max + y_shift
-              elseif (region%iface == SOUTH_FACE) then
+              elseif (region%iface == NORTH_FACE) then
                 y_max = y_max - y_shift
               endif
               y_min = y_max
             endif
             if (z_max-z_min < 1.d-10) then
+              z_max = region%coordinates(ONE_INTEGER)%z
               z_shift = 1.d-8*(grid%z_max_global-grid%z_min_global)
-              if (region%iface == TOP_FACE) then
+              if (region%iface == BOTTOM_FACE) then
                 z_max = z_max + z_shift
-              elseif (region%iface == BOTTOM_FACE) then
+              elseif (region%iface == TOP_FACE) then
                 z_max = z_max - z_shift
               endif
               z_min = z_max
