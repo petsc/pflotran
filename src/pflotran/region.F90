@@ -306,7 +306,7 @@ subroutine RegionRead(region,input,option)
           input%ierr = 0
           call InputReadFlotranString(input,option)
           call InputReadStringErrorMsg(input,option,'REGION')
-          call InputReadDouble(input,option,region%coordinates(ONE_INTEGER)%x) 
+          call InputReadDouble(input,option,region%coordinates(ONE_INTEGER)%x)
         endif
         call InputErrorMsg(input,option,'x-coordinate','REGION')
         call InputReadDouble(input,option,region%coordinates(ONE_INTEGER)%y)

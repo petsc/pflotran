@@ -1692,6 +1692,12 @@ subroutine readInput(simulation)
       
       case ('PHIK','MATERIAL','MATERIALS')
 
+#ifdef GLENN
+        material => MaterialCreate()
+        call MaterialRead(material,input,option)
+        call MaterialAddToList(material,realization%materials)
+        nullify(material)
+#else
         count = 0
         do
           call InputReadFlotranString(input,option)
@@ -1737,10 +1743,8 @@ subroutine readInput(simulation)
           call MaterialAddToList(material,realization%materials)
           
         enddo          
+#endif
 
-        call MaterialConvertListToArray(realization%materials, &
-                                        realization%material_array)
-                                        
 !....................
 
       case ('USE_TOUCH_OPTIONS')
@@ -1919,6 +1923,10 @@ subroutine readInput(simulation)
 
   enddo
 
+  ! organize lists
+  call MaterialConvertListToArray(realization%materials, &
+                                  realization%material_array)
+                                        
 end subroutine readInput
 
 ! ************************************************************************** !
@@ -2162,6 +2170,13 @@ subroutine assignMaterialPropToRegions(realization)
            call readVectorFromFile(realization,field%perm0_zz, &
                 option%permz_filename,GLOBAL)  
         endif
+        
+        do material_id = 1, size(realization%material_array)
+          material => realization%material_array(material_id)%ptr
+          if (len_trim(material%permeability_filename) > 1) then
+            call readPermeabilitiesFromFile(realization,material%permeability_filename)
+          endif
+        enddo
         
         cur_patch => cur_patch%next
      enddo
@@ -2488,6 +2503,99 @@ subroutine readMaterialsFromFile(realization,filename)
   endif
   
 end subroutine readMaterialsFromFile
+
+! ************************************************************************** !
+!
+! readPermeabilitiesFromFile: Reads in grid cell permeabilities
+! author: Glenn Hammond
+! date: 01/19/09
+!
+! ************************************************************************** !
+subroutine readPermeabilitiesFromFile(realization,filename)
+
+  use Realization_module
+  use Field_module
+  use Grid_module
+  use Option_module
+  use Patch_module
+  use Logging_module
+  use Input_module
+
+  use HDF5_module
+  
+  implicit none
+  
+  type(realization_type) :: realization
+  character(len=MAXWORDLENGTH) :: filename
+  
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(input_type), pointer :: input
+  PetscInt :: local_id, ghosted_id, natural_id
+  PetscReal :: permeability
+  PetscInt :: fid = 86
+  PetscInt :: status
+  PetscErrorCode :: ierr
+  
+  PetscReal, pointer :: perm_xx_p(:)
+  PetscReal, pointer :: perm_yy_p(:)
+  PetscReal, pointer :: perm_zz_p(:)
+
+  field => realization%field
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  input => realization%input
+
+  if (index(filename,'.h5') > 0) then
+    call HDF5ReadPermeabilitiesFromFile(realization,filename)
+  else
+
+    call GridVecGetArrayF90(grid,field%perm0_xx,perm_xx_p,ierr)
+    call GridVecGetArrayF90(grid,field%perm0_yy,perm_yy_p,ierr)
+    call GridVecGetArrayF90(grid,field%perm0_zz,perm_zz_p,ierr)
+  
+    call GridCreateNaturalToGhostedHash(grid,option)
+    status = 0
+    open(unit=fid,file=filename,status="old",iostat=status)
+    if (status /= 0) then
+      option%io_buffer = 'File: ' // trim(filename) // ' not found.'
+      call printErrMsg(option)
+    endif
+    call PetscLogEventBegin(logging%event_hash_map, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+    do
+      call InputReadFlotranString(input,option)
+      if (InputError(input)) exit
+      call InputReadInt(input,option,natural_id)
+      call InputErrorMsg(input,option,'natural id','STRATA')
+      ghosted_id = GridGetLocalGhostedIdFromHash(grid,natural_id)
+      if (ghosted_id > 0) then
+        local_id = grid%nG2L(ghosted_id)
+        if (local_id > 0) then
+          call InputReadDouble(input,option,permeability)
+          call InputErrorMsg(input,option,'permeability','STRATA')
+          perm_xx_p(local_id) = permeability
+          perm_yy_p(local_id) = permeability
+          perm_zz_p(local_id) = permeability
+        endif
+      endif
+    enddo
+
+    call GridVecRestoreArrayF90(grid,field%perm0_xx,perm_xx_p,ierr)
+    call GridVecRestoreArrayF90(grid,field%perm0_yy,perm_yy_p,ierr)
+    call GridVecRestoreArrayF90(grid,field%perm0_zz,perm_zz_p,ierr)
+  
+    call PetscLogEventEnd(logging%event_hash_map, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+    call GridDestroyHashTable(grid)
+  endif
+  
+end subroutine readPermeabilitiesFromFile
 
 ! ************************************************************************** !
 !

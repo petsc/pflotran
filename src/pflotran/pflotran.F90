@@ -70,7 +70,7 @@
   type(option_type), pointer :: option
   
   num_groups = 1
-  num_realizations = 2
+  num_realizations = 1
 #ifdef GLENN
   ! set up global and local communicator groups, processor ranks, and group sizes
   call MPI_Init(ierr)
