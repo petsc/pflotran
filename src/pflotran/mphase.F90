@@ -1814,7 +1814,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
                               option%dencpr(int(ithrm_loc_p(ghosted_id))), &
                               option,1,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
-    !print *,'REs, acm: ', res
+  !  print *,'REs, acm: ', res
     Resold_AR(local_id, :)= Res(1:option%nflowdof)
   enddo
 #endif

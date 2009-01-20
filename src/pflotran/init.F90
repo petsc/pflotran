@@ -1963,7 +1963,7 @@ subroutine setFlowMode(option)
       option%iflowmode = MPH_MODE
       option%nphase = 2
       option%liquid_phase = 1      
-      option%gas_phase = 1      
+      option%gas_phase = 2      
       option%nflowdof = 3
       option%nflowspec = 2
       option%itable = 2
