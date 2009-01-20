@@ -31,9 +31,9 @@ subroutine f_initialize_simulation(simulation)
   realization => simulation%realization
   option => realization%option
 
-  option%comm    = PETSC_COMM_WORLD
+  option%mycomm    = PETSC_COMM_WORLD
   option%myrank = myrank
-  option%commsize = commsize
+  option%mycommsize = commsize
 
   call PetscOptionsGetString(PETSC_NULL_CHARACTER, "-pflotranin", &
                              pflotranin, option_found, ierr)
