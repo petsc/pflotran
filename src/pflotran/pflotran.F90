@@ -151,12 +151,12 @@
     option%mycommsize = mycommsize
     option%mygroup = mygroup
 
-  #ifdef GLENN
+#ifdef GLENN
     if (num_realizations > 1) then
       write(string,'(i6)') realization_ids(irealization)
       option%group_prefix = 'R' // trim(adjustl(string)) // '_'
     endif
-  #endif
+#endif
 
     call PetscOptionsGetString(PETSC_NULL_CHARACTER, "-pflotranin", &
                                pflotranin, option_found, ierr)
