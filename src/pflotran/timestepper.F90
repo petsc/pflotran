@@ -665,9 +665,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   if (option%print_flag) write(*,'(/,2("=")," FLOW ",52("="))')
 
   if (option%ntrandof > 0) then ! store initial saturations for transport
-    print *,'GlobalUpdateAuxVars BEgin'
     call GlobalUpdateAuxVars(realization,TIME_T)
-    print *,'GlobalUpdateAuxVars END'
   endif
   
   select case(option%iflowmode)
