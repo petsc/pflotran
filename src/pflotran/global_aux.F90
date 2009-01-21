@@ -8,13 +8,16 @@ module Global_Aux_module
 
   type, public :: global_auxvar_type
     PetscReal, pointer :: pres(:)
+    PetscReal, pointer :: pres_store(:,:)
     PetscReal, pointer :: temp(:)
+    PetscReal, pointer :: temp_store(:,:)
     PetscReal, pointer :: sat(:)
     PetscReal, pointer :: sat_store(:,:)
     PetscReal, pointer :: den(:)
     PetscReal, pointer :: den_kg(:)
     PetscReal, pointer :: den_kg_store(:,:)
     PetscReal, pointer :: fugacoeff(:)
+    PetscReal, pointer :: fugacoeff_store(:,:)
     PetscReal, pointer :: mass_balance(:)
     PetscReal, pointer :: mass_balance_delta(:)
   end type global_auxvar_type
@@ -85,12 +88,21 @@ subroutine GlobalAuxVarInit(aux_var,option)
   aux_var%den = 0.d0
   allocate(aux_var%den_kg(option%nphase))
   aux_var%den_kg = 0.d0
-  allocate(aux_var%fugacoeff(ONE_INTEGER))
-  aux_var%fugacoeff = 1.d0
   allocate(aux_var%sat_store(option%nphase,TWO_INTEGER))
   aux_var%sat_store = 0.d0
   allocate(aux_var%den_kg_store(option%nphase,TWO_INTEGER))
   aux_var%den_kg_store = 0.d0
+
+  if(option%iflowmode == MPH_MODE)then
+    allocate(aux_var%pres_store(option%nphase,TWO_INTEGER))
+    aux_var%pres_store = 0.d0
+    allocate(aux_var%temp_store(ONE_INTEGER,TWO_INTEGER))
+    aux_var%temp_store = 0.d0
+    allocate(aux_var%fugacoeff(ONE_INTEGER))
+    aux_var%fugacoeff = 1.d0
+    allocate(aux_var%fugacoeff_store(ONE_INTEGER,TWO_INTEGER))
+    aux_var%fugacoeff_store = 1.d0     
+  endif
 
   if (option%iflag /= 0 .and. option%compute_mass_balance_new) then
     allocate(aux_var%mass_balance(option%nphase))
@@ -124,11 +136,29 @@ subroutine GlobalAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%temp = aux_var%temp
   aux_var2%sat = aux_var%sat
   aux_var2%den = aux_var%den
-  aux_var2%fugacoeff = aux_var%fugacoeff
   aux_var2%den_kg = aux_var%den_kg
 
   aux_var2%sat_store = aux_var%sat_store
   aux_var2%den_kg_store = aux_var%den_kg_store
+  
+  if (associated(aux_var%fugacoeff) .and. &
+      associated(aux_var2%fugacoeff)) then
+    aux_var2%fugacoeff = aux_var%fugacoeff  
+  endif
+  if (associated(aux_var%pres_store) .and. &
+      associated(aux_var2%pres_store)) then
+    aux_var2%pres_store = aux_var%pres_store  
+  endif
+  if (associated(aux_var%temp_store) .and. &
+      associated(aux_var2%temp_store)) then
+    aux_var2%temp_store = aux_var%temp_store  
+  endif
+  if (associated(aux_var%fugacoeff_store) .and. &
+      associated(aux_var2%fugacoeff_store)) then
+    aux_var2%fugacoeff_store = aux_var%fugacoeff_store  
+  endif
+
+  
   if (associated(aux_var%mass_balance) .and. &
       associated(aux_var2%mass_balance)) then
     aux_var2%mass_balance = aux_var%mass_balance
@@ -162,7 +192,13 @@ subroutine GlobalAuxVarDestroy(aux_var)
   nullify(aux_var%fugacoeff)
   if (associated(aux_var%den_kg)) deallocate(aux_var%den_kg)
   nullify(aux_var%den_kg)
-
+  
+  if (associated(aux_var%pres_store)) deallocate(aux_var%pres_store)
+  nullify(aux_var%pres_store)
+  if (associated(aux_var%temp_store)) deallocate(aux_var%temp_store)
+  nullify(aux_var%temp_store)
+  if (associated(aux_var%fugacoeff_store)) deallocate(aux_var%fugacoeff_store)
+  nullify(aux_var%fugacoeff_store)
   if (associated(aux_var%sat_store)) deallocate(aux_var%sat_store)
   nullify(aux_var%sat_store)
   if (associated(aux_var%den_kg_store)) deallocate(aux_var%den_kg_store)

@@ -988,7 +988,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
   select case(ivar)
     case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
-         LIQUID_DENSITY,GAS_DENSITY)
+         LIQUID_DENSITY,GAS_DENSITY,SC_FUGA_COEFF)
          
       if (associated(patch%aux%THC)) then
         select case(ivar)
@@ -1088,7 +1088,12 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
               vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(2)
             enddo
           case(SC_FUGA_COEFF)
-              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%fugacoeff(1)
+            do local_id=1,grid%nlmax
+             if(.not.associated(patch%aux%Global%aux_vars(grid%nL2G(local_id))%fugacoeff))then
+               print *,'ERRor, fugacoeff not allocated for ', option%iflowmode, local_id
+             endif
+             vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%fugacoeff(1)
+            enddo 
           case(LIQUID_MOLE_FRACTION)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%xmol(isubvar)
@@ -1193,7 +1198,8 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
         vec_ptr(local_id) = patch%imat(grid%nL2G(local_id))
       enddo
     case default
-      call printErrMsg(option,'IVAR not found in OutputGetVarFromArray')      
+ !     print *,'Missing Ivar, isubvar',ivar, isubvar
+      call printErrMsg(option,'IVAR not found in OutputGetVarFromArray')
   end select
 
   call GridVecRestoreArrayF90(grid,vec,vec_ptr,ierr)
@@ -1242,7 +1248,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
   select case(ivar)
     case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
-         LIQUID_DENSITY,GAS_DENSITY)
+         LIQUID_DENSITY,GAS_DENSITY, SC_FUGA_COEFF)
          
       if (associated(patch%aux%THC)) then
         select case(ivar)
@@ -1302,6 +1308,8 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
             value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%u(2)
           case(GAS_DENSITY) 
             value = patch%aux%Global%aux_vars(ghosted_id)%den_kg(2)
+          case(SC_FUGA_COEFF)
+            value = patch%aux%Global%aux_vars(ghosted_id)%fugacoeff(1)   
           case(LIQUID_MOLE_FRACTION)
             value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%xmol(isubvar)
           case(LIQUID_ENERGY)

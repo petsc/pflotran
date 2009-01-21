@@ -113,7 +113,7 @@ else
  include ${PETSC_DIR}/conf/base
 endif
 
-FPPFLAGS         = -g ${MYFLAGS}
+FPPFLAGS         = -g ${MYFLAGS} -I${PETSC_DIR}
 
 $(FORTOBJS):$(FORTM4SRC)
 	cd $(FORTDIR); ${MAKE}

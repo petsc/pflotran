@@ -53,7 +53,7 @@ util_obj  = ${common_src}input.o \
 	${common_src}co2_sw.o \
 	${common_src}utility.o
 
-pflotran_obj = ${common_src}option.o \
+common_obj = ${common_src}option.o \
 	${common_src}logging.o \
 	${common_src}global_aux.o\
 	${common_src}reactive_transport_aux.o\
@@ -102,58 +102,12 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}timestepper.o \
 	${common_src}simulation.o \
 	${common_src}output.o \
-	${common_src}init.o\
+	${common_src}init.o
+
+pflotran_obj = ${common_obj}\
 	${common_src}amrstubs.o
 
-
-pflotranamr_obj = ${common_src}option.o \
-	${common_src}logging.o \
-	${common_src}reactive_transport_aux.o\
-	${common_src}reaction_aux.o\
-	${common_src}thc_aux.o\
-	${common_src}richards_aux.o\
-	${common_src}mphase_aux.o\
-	${common_src}immis_aux.o\
-	${common_src}auxilliary.o\
-	${common_src}field.o \
-	${common_src}debug.o \
-	${common_src}waypoint.o \
-	${common_src}region.o \
-	${common_src}material.o \
-        ${common_src}pckr_mod.o \
-	${common_src}strata.o \
-	${common_src}connection.o \
-	${common_src}breakthrough.o \
-	${common_src}cf90bridge.o \
-	${common_src}solver.o \
-	${common_src}unstructured_grid.o \
-	${common_src}structured_grid.o \
-	${common_src}condition.o \
-	${common_src}coupler.o \
-	${common_src}grid.o \
-	${common_src}hydrostatic.o \
-	${common_src}patch.o \
-	${common_src}level.o \
-	${common_src}amrgrid.o\
-	${common_src}discretization.o \
-	${common_src}database.o \
-	${common_src}realization.o \
-	${common_src}hdf5.o \
-	${common_src}mphase.o\
-	${common_src}immis.o\
-	${common_src}transport.o\
-	${common_src}reaction.o\
-	${common_src}reactive_transport.o\
-	${common_src}thc.o\
-	${common_src}richards.o\
-	${common_src}mass_balance.o\
-	${common_src}general_grid.o \
-	${common_src}checkpoint.o \
-	${common_src}convergence.o \
-	${common_src}timestepper.o \
-	${common_src}simulation.o \
-	${common_src}output.o \
-	${common_src}init.o
+pflotranamr_obj = ${common_obj}
 
 pflotranamr: $(util_obj) $(pflotranamr_obj)
 	ar ru libpflotranamr.a $(util_obj) $(pflotranamr_obj)

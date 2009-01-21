@@ -297,13 +297,51 @@ subroutine GlobalSetAuxVarVecLocPatch(realization,vec_loc,ivar,isubvar)
   
   select case(ivar)
     case(PRESSURE)
-      do ghosted_id=1, grid%ngmax
-        patch%aux%Global%aux_vars(ghosted_id)%pres = vec_loc_p(ghosted_id)
-      enddo
+      if(associated(patch%aux%Global%aux_vars(ghosted_id)%pres_store))then
+        select case(isubvar)
+          case(TIME_T)
+            do ghosted_id=1, grid%ngmax
+              patch%aux%Global%aux_vars(ghosted_id)%pres_store(option%gas_phase,TIME_T) = &
+                vec_loc_p(ghosted_id)
+            enddo
+          case(TIME_TpDT)
+            do ghosted_id=1, grid%ngmax
+              patch%aux%Global%aux_vars(ghosted_id)%pres_store(option%gas_phase,TIME_TpDT) = &
+                vec_loc_p(ghosted_id)
+            enddo
+          case default
+            do ghosted_id=1, grid%ngmax
+              patch%aux%Global%aux_vars(ghosted_id)%pres(option%gas_phase) = vec_loc_p(ghosted_id)
+            enddo
+        end select
+      else
+        do ghosted_id=1, grid%ngmax
+          patch%aux%Global%aux_vars(ghosted_id)%pres = vec_loc_p(ghosted_id)
+        enddo
+      endif
     case(TEMPERATURE)
-      do ghosted_id=1, grid%ngmax
-        patch%aux%Global%aux_vars(ghosted_id)%temp = vec_loc_p(ghosted_id)
-      enddo
+     if(associated(patch%aux%Global%aux_vars(ghosted_id)%temp_store))then
+       select case(isubvar)
+        case(TIME_T)
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%aux_vars(ghosted_id)%temp_store(1,TIME_T) = &
+              vec_loc_p(ghosted_id)
+          enddo
+        case(TIME_TpDT)
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%aux_vars(ghosted_id)%temp_store(1,TIME_TpDT) = &
+              vec_loc_p(ghosted_id)
+          enddo
+        case default
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%aux_vars(ghosted_id)%temp(1) = vec_loc_p(ghosted_id)
+          enddo
+        end select
+       else
+         do ghosted_id=1, grid%ngmax
+           patch%aux%Global%aux_vars(ghosted_id)%temp = vec_loc_p(ghosted_id)
+         enddo
+      endif
     case(LIQUID_DENSITY)
       select case(isubvar)
         case(TIME_T)
@@ -321,6 +359,43 @@ subroutine GlobalSetAuxVarVecLocPatch(realization,vec_loc,ivar,isubvar)
             patch%aux%Global%aux_vars(ghosted_id)%den_kg(option%liquid_phase) = vec_loc_p(ghosted_id)
             patch%aux%Global%aux_vars(ghosted_id)%den(option%liquid_phase) = &
               vec_loc_p(ghosted_id)/FMWH2O
+          enddo
+        end select
+    case(GAS_SATURATION)
+      select case(isubvar)
+        case(TIME_T)
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%aux_vars(ghosted_id)%sat_store(option%gas_phase,TIME_T) = &
+              vec_loc_p(ghosted_id)
+          enddo
+        case(TIME_TpDT)
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%aux_vars(ghosted_id)%sat_store(option%gas_phase,TIME_TpDT) = &
+              vec_loc_p(ghosted_id)
+          enddo
+        case default
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%aux_vars(ghosted_id)%sat(option%gas_phase) = &
+              vec_loc_p(ghosted_id)
+          enddo
+        end select
+    case(GAS_DENSITY)
+      select case(isubvar)
+        case(TIME_T)
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%aux_vars(ghosted_id)%den_kg_store(option%gas_phase,TIME_T) = &
+              vec_loc_p(ghosted_id)
+          enddo
+        case(TIME_TpDT)
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%aux_vars(ghosted_id)%den_kg_store(option%gas_phase,TIME_TpDT) = &
+              vec_loc_p(ghosted_id)
+          enddo
+        case default
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%aux_vars(ghosted_id)%den_kg(option%gas_phase) = vec_loc_p(ghosted_id)
+            patch%aux%Global%aux_vars(ghosted_id)%den(option%gas_phase) = &
+              vec_loc_p(ghosted_id)/FMWCO2
           enddo
         end select
     case(LIQUID_SATURATION)
@@ -341,6 +416,23 @@ subroutine GlobalSetAuxVarVecLocPatch(realization,vec_loc,ivar,isubvar)
               vec_loc_p(ghosted_id)
           enddo
         end select
+     case(SC_FUGA_COEFF)
+       select case(isubvar)
+         case(TIME_T)
+           do ghosted_id=1, grid%ngmax
+             patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(1,TIME_T) = &
+               vec_loc_p(ghosted_id)
+           enddo
+         case(TIME_TpDT)
+           do ghosted_id=1, grid%ngmax
+             patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(1,TIME_TpDT) = &
+               vec_loc_p(ghosted_id)
+           enddo
+         case default
+           do ghosted_id=1, grid%ngmax
+             patch%aux%Global%aux_vars(ghosted_id)%fugacoeff(1) = vec_loc_p(ghosted_id)
+           enddo
+       end select
   end select
 
   call GridVecRestoreArrayF90(grid,vec_loc,vec_loc_p,ierr)
@@ -416,6 +508,18 @@ subroutine GlobalUpdateDenAndSatPatch(realization,weight)
     patch%aux%Global%aux_vars(ghosted_id)%sat(:) = &
       (weight*patch%aux%Global%aux_vars(ghosted_id)%sat_store(:,TIME_TpDT)+ &
        (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%sat_store(:,TIME_T))
+
+    if(option%iflowmode == MPH_MODE)then
+       patch%aux%Global%aux_vars(ghosted_id)%pres(2) = &
+         (weight*patch%aux%Global%aux_vars(ghosted_id)%pres_store(2,TIME_TpDT)+ &
+          (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%pres_store(2,TIME_T))
+       patch%aux%Global%aux_vars(ghosted_id)%temp(:) = &
+         (weight*patch%aux%Global%aux_vars(ghosted_id)%temp_store(:,TIME_TpDT)+ &
+          (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%temp_store(:,TIME_T))
+       patch%aux%Global%aux_vars(ghosted_id)%fugacoeff(:) = &
+         (weight*patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(:,TIME_TpDT)+ &
+          (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(:,TIME_T))
+    endif 
   enddo     
   
 end subroutine GlobalUpdateDenAndSatPatch
@@ -459,7 +563,6 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
   call DiscretizationGlobalToLocal(realization%discretization, &
                                    field%work,field%work_loc,ONEDOF)
   call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_SATURATION,time_level)                                     
-
   select case(option%iflowmode)
     case(MPH_MODE)
       ! Gas density
@@ -468,21 +571,21 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                    field%work,field%work_loc,ONEDOF)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_DENSITY,time_level)          
-      
+ 
       ! Gas saturation
       call RealizationGetDataset(realization,field%work,GAS_SATURATION, &
                                  ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                        field%work,field%work_loc,ONEDOF)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_SATURATION,time_level)                                     
-      
+   
       ! pressure
       call RealizationGetDataset(realization,field%work,PRESSURE, &
                              ZERO_INTEGER)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                    field%work,field%work_loc,ONEDOF)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,PRESSURE,time_level)                                     
-
+ 
       ! temperature
       call RealizationGetDataset(realization,field%work,TEMPERATURE, &
                              ZERO_INTEGER)
@@ -491,8 +594,12 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,TEMPERATURE,time_level)                                     
       
       ! fugacity coeff
-
+      call RealizationGetDataset(realization,field%work,SC_FUGA_COEFF, &
+                             ZERO_INTEGER)
       
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,SC_FUGA_COEFF,time_level)       
       
   end select
 

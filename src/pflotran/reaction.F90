@@ -1889,14 +1889,14 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   ! units of dtotal = kg water/L water
   rt_auxvar%dtotal = rt_auxvar%dtotal*den_kg_per_L
   
- !*********** Add gas phase contribution ***************************  
+ !*********** Add SC phase contribution ***************************  
 #if 1
   iphase = 2           
   if(iphase > option%nphase) return 
   rt_auxvar%total(:,iphase) = 0D0 
   den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3     
   print *,'Rtotal: den(2)=', den_kg_per_L, global_auxvar%den_kg(:),&
-     global_auxvar%sat(iphase)
+     global_auxvar%sat(iphase), global_auxvar%fugacoeff(1)
   if(global_auxvar%sat(iphase)>1D-20)then
     do ieqgas = 1, reaction%ngas ! all gas phase species are secondary
       
@@ -1910,7 +1910,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
         else   
           lnQK = -reaction%eqgas_logK(ieqgas)*LOG_TO_LN
         endif 
-      print *, ieqgas,   global_auxvar%pres(2), global_auxvar%temp(1), xphico2, henry
+      print *, 'Rtotal CO2:',ieqgas,   global_auxvar%pres(2), global_auxvar%temp(1), xphico2, henry
           
         if (reaction%eqgash2oid(igas) > 0) then
            lnQK = lnQK + reaction%eqgash2ostoich(ieqgas)*ln_act_h2o
