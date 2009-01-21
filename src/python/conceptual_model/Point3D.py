@@ -35,7 +35,7 @@ class Point3D:
     self.y += dy
     self.z += dz
   def rotate(self,rotation):
-    rotation_radians = rotation/180*math.pi
+    rotation_radians = -rotation/180*math.pi
     new_x = math.cos(rotation_radians)*self.x-math.sin(rotation_radians)*self.y
     new_y = math.sin(rotation_radians)*self.x+math.cos(rotation_radians)*self.y
     self.x = new_x

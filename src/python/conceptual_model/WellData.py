@@ -53,11 +53,14 @@ class WellData:
     self.value1 = self.value2
     self.readDataValue()
   def readDataValue(self):
+    
     s = self.f.readline()
-    if len(s.strip()) < 2:
-      print 'Error blank line read from file: ', self.filename
-      quit()
-    w = s.split("\t")
+    w = s.strip().split("\t")
+    while len(w) < 2:
+#      print 'Error blank line read from file: ', self.filename
+#      quit()
+      s = self.f.readline()
+      w = s.strip().split("\t")
     self.time2 = readDateFromString(s)
     self.value2 = float(w[1])
   def setLocation(self,x,y,z):
