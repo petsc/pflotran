@@ -1690,14 +1690,17 @@ subroutine readInput(simulation)
         
 !....................
       
-      case ('PHIK','MATERIAL','MATERIALS')
+      case ('MATERIAL')
 
-#ifdef GLENN
         material => MaterialCreate()
         call MaterialRead(material,input,option)
         call MaterialAddToList(material,realization%materials)
         nullify(material)
-#else
+
+!....................
+      
+      case ('MATERIALS')
+
         count = 0
         do
           call InputReadFlotranString(input,option)
@@ -1743,7 +1746,6 @@ subroutine readInput(simulation)
           call MaterialAddToList(material,realization%materials)
           
         enddo          
-#endif
 
 !....................
 
