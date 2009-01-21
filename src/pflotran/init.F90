@@ -2471,21 +2471,15 @@ subroutine readMaterialsFromFile(realization,filename)
   patch => realization%patch
   grid => patch%grid
   option => realization%option
-  input => realization%input
 
   if (index(filename,'.h5') > 0) then
     call HDF5ReadMaterialsFromFile(realization,filename)
   else
-    call GridCreateNaturalToGhostedHash(grid,option)
-    status = 0
-    open(unit=fid,file=filename,status="old",iostat=status)
-    if (status /= 0) then
-      option%io_buffer = 'File: ' // trim(filename) // ' not found.'
-      call printErrMsg(option)
-    endif
     call PetscLogEventBegin(logging%event_hash_map, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+    call GridCreateNaturalToGhostedHash(grid,option)
+    input => InputCreate(IUNIT_TEMP,filename)
     do
       call InputReadFlotranString(input,option)
       if (InputError(input)) exit
@@ -2498,10 +2492,11 @@ subroutine readMaterialsFromFile(realization,filename)
         patch%imat(ghosted_id) = material_id
       endif
     enddo
+    call InputDestroy(input)
+    call GridDestroyHashTable(grid)
     call PetscLogEventEnd(logging%event_hash_map, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
-    call GridDestroyHashTable(grid)
   endif
   
 end subroutine readMaterialsFromFile
@@ -2549,7 +2544,6 @@ subroutine readPermeabilitiesFromFile(realization,filename)
   patch => realization%patch
   grid => patch%grid
   option => realization%option
-  input => realization%input
 
   if (index(filename,'.h5') > 0) then
     call HDF5ReadPermeabilitiesFromFile(realization,filename)
@@ -2559,16 +2553,11 @@ subroutine readPermeabilitiesFromFile(realization,filename)
     call GridVecGetArrayF90(grid,field%perm0_yy,perm_yy_p,ierr)
     call GridVecGetArrayF90(grid,field%perm0_zz,perm_zz_p,ierr)
   
-    call GridCreateNaturalToGhostedHash(grid,option)
-    status = 0
-    open(unit=fid,file=filename,status="old",iostat=status)
-    if (status /= 0) then
-      option%io_buffer = 'File: ' // trim(filename) // ' not found.'
-      call printErrMsg(option)
-    endif
     call PetscLogEventBegin(logging%event_hash_map, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+    call GridCreateNaturalToGhostedHash(grid,option)
+    input => InputCreate(IUNIT_TEMP,filename)
     do
       call InputReadFlotranString(input,option)
       if (InputError(input)) exit
@@ -2591,10 +2580,11 @@ subroutine readPermeabilitiesFromFile(realization,filename)
     call GridVecRestoreArrayF90(grid,field%perm0_yy,perm_yy_p,ierr)
     call GridVecRestoreArrayF90(grid,field%perm0_zz,perm_zz_p,ierr)
   
+    call InputDestroy(input)
+    call GridDestroyHashTable(grid)
     call PetscLogEventEnd(logging%event_hash_map, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
-    call GridDestroyHashTable(grid)
   endif
   
 end subroutine readPermeabilitiesFromFile
