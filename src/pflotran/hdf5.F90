@@ -1689,7 +1689,7 @@ subroutine HDF5ReadPermeabilitiesFromFile(realization,filename)
     tend-tstart
   call printMsg(option)  
 
-  ! Read Material ids
+  ! Read Permeabilities
   allocate(real_array(grid%nlmax))
   string = ''
   if (option%id > 0) then
@@ -1710,7 +1710,7 @@ subroutine HDF5ReadPermeabilitiesFromFile(realization,filename)
   call VecCopy(global_vec,field%perm0_zz,ierr)
 
   call PetscGetTime(tend,ierr)
-  write(option%io_buffer,'(f6.2," Seconds to read material ids.")') &
+  write(option%io_buffer,'(f6.2," Seconds to read permeabilities.")') &
     tend-tstart
   call printMsg(option)  
 
