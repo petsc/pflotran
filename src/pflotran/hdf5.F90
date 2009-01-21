@@ -1666,7 +1666,10 @@ subroutine HDF5ReadPermeabilitiesFromFile(realization,filename)
   call printMsg(option)
 
   call PetscGetTime(tstart,ierr)
-  write(string,'(i6)') option%id
+  string = ''
+  if (option%id > 0) then
+    write(string,'(i6)') option%id
+  endif
   string = 'Permeability' // adjustl(trim(string))
   option%io_buffer = 'Reading dataset: ' // trim(string)
   call printMsg(option)   
@@ -1688,7 +1691,10 @@ subroutine HDF5ReadPermeabilitiesFromFile(realization,filename)
 
   ! Read Material ids
   allocate(real_array(grid%nlmax))
-  write(string,'(i6)') option%id
+  string = ''
+  if (option%id > 0) then
+    write(string,'(i6)') option%id
+  endif
   string = 'Permeability' // adjustl(trim(string))
   option%io_buffer = 'Reading dataset: ' // trim(string)
   call printMsg(option)   
