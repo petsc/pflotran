@@ -99,9 +99,14 @@ subroutine GlobalAuxVarInit(aux_var,option)
     allocate(aux_var%temp_store(ONE_INTEGER,TWO_INTEGER))
     aux_var%temp_store = 0.d0
     allocate(aux_var%fugacoeff(ONE_INTEGER))
-    aux_var%fugacoeff = 1.d0
+    aux_var%fugacoeff = 0.d0
     allocate(aux_var%fugacoeff_store(ONE_INTEGER,TWO_INTEGER))
-    aux_var%fugacoeff_store = 1.d0     
+    aux_var%fugacoeff_store = 0.d0    
+  else
+    nullify(aux_var%pres_store)
+    nullify(aux_var%temp_store)
+    nullify(aux_var%fugacoeff)
+    nullify(aux_var%fugacoeff_store)
   endif
 
   if (option%iflag /= 0 .and. option%compute_mass_balance_new) then

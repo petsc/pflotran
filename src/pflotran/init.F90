@@ -417,6 +417,8 @@ subroutine Init(simulation,filename)
   ! link conditions with regions through couplers and generate connectivity
   call RealizationProcessCouplers(realization)
   call RealizationProcessConditions(realization)
+  call RealProcessFluidProperties(realization)
+  call RealProcessMatPropAndSatFunc(realization)
   call assignMaterialPropToRegions(realization)
   call RealizationInitAllCouplerAuxVars(realization)
   if (option%ntrandof > 0) then
@@ -1229,6 +1231,9 @@ subroutine readInput(simulation)
 
       case ('DIFF')
 
+        call printErrMsg(option,"DIFF currently out of date.  Needs to be reimplemented")
+#if 0
+
         call InputReadStringErrorMsg(input,option,'DIFF')
 
         call InputReadDouble(input,option,option%difaq)
@@ -1241,7 +1246,7 @@ subroutine readInput(simulation)
           &"  difaq       = ",1pe12.4,"[m^2/s]",/, &
           &"  delhaq      = ",1pe12.4,"[kJ/mol]")') &
           option%difaq,option%delhaq
-
+#endif
 !....................
 
       case ('RCTR')
@@ -1528,61 +1533,21 @@ subroutine readInput(simulation)
           thermal_property => thermal_property%next
           
         enddo
-        
+#endif        
 !....................
 
-      case ('PCKR','SATURATION_FUNCTION','SATURATION_FUNCTIONS')
+      case ('SATURATION_FUNCTION')
       
-        count = 0
-        do
-          call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,'PCKR')
+        saturation_function => SaturationFunctionCreate(option)
+        call InputReadWord(input,option,saturation_function%name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'name','SATURATION_FUNCTION')
+        call SaturationFunctionRead(saturation_function,input,option)
+        call SaturationFunctionComputeSpline(option,saturation_function)
+        call SaturationFunctionAddToList(saturation_function, &
+                                         realization%saturation_functions)
+        nullify(saturation_function)   
 
-          if (InputCheckExit(input,option)) exit
-       
-          count = count + 1
-          saturation_function => SaturationFunctionCreate(option)
-          
-          call InputReadInt(input,option,saturation_function%id)
-          call InputErrorMsg(input,option,'id','PCKR')
-          
-          call InputReadInt(input,option,saturation_function%saturation_function_itype)
-          call InputErrorMsg(input,option,'icaptype','PCKR')
-      
-          select case(option%iflowmode)
-            case(MPH_MODE,THC_MODE,RICHARDS_MODE)
-              do np=1, option%nphase
-                call InputReadDouble(input,option,saturation_function%Sr(np))
-                call InputErrorMsg(input,option,'Sr','PCKR')
-              enddo 
-            case default
-              call InputReadDouble(input,option,saturation_function%Sr(1))
-              call InputErrorMsg(input,option,'Sr','PCKR')
-          end select
-        
-          call InputReadDouble(input,option,saturation_function%m)
-          call InputErrorMsg(input,option,'pckrm','PCKR')
-          saturation_function%lambda = saturation_function%m
-
-          call InputReadDouble(input,option,saturation_function%alpha)
-          call InputErrorMsg(input,option,'alpha','PCKR')
-
-          call InputReadDouble(input,option,saturation_function%pcwmax)
-          call InputErrorMsg(input,option,'pcwmax','PCKR')
-      
-          call InputReadDouble(input,option,saturation_function%betac)
-          call InputErrorMsg(input,option,'pbetac','PCKR')
-      
-          call InputReadDouble(input,option,saturation_function%power)
-          call InputErrorMsg(input,option,'pwrprm','PCKR')
-
-          call SaturationFunctionComputeSpline(option,saturation_function)
-          
-          call SaturationFunctionAddToList(saturation_function, &
-                                           realization%saturation_functions)
-
-        enddo
-        
+#if 0
         ! allocate dynamic arrays holding saturation function information
         select case(option%iflowmode)
           case(MPH_MODE,THC_MODE,RICHARDS_MODE)
@@ -1615,68 +1580,19 @@ subroutine readInput(simulation)
           
         enddo
         
-        call SaturatFuncConvertListToArray(realization%saturation_functions, &
-                                           realization%saturation_function_array)
+
 #endif        
 !....................
       
       case ('MATERIAL_PROPERTY')
 
         material_property => MaterialPropertyCreate()
+        call InputReadWord(input,option,material_property%name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'name','MATERIAL_PROPERTY')        
         call MaterialPropertyRead(material_property,input,option)
         call MaterialPropertyAddToList(material_property,realization%material_properties)
         nullify(material_property)
 
-!....................
-#if 0      
-      case ('MATERIALS')
-
-        count = 0
-        do
-          call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,'PHIK')
-
-          if (InputCheckExit(input,option)) exit
-       
-          count = count + 1
-          material => MaterialCreate()
-
-          call InputReadWord(input,option,material%name,PETSC_TRUE)
-          call InputErrorMsg(input,option,'name','PHIK')
-                
-          call InputReadInt(input,option,material%id)
-          call InputErrorMsg(input,option,'id','PHIK')
-                
-          call InputReadInt(input,option,material%icap)
-          call InputErrorMsg(input,option,'icap','PHIK')
-  
-          call InputReadInt(input,option,material%ithrm)
-          call InputErrorMsg(input,option,'ithrm','PHIK')
-  
-          call InputReadDouble(input,option,material%porosity)
-          call InputErrorMsg(input,option,'por','PHIK')
-          
-          call InputReadDouble(input,option,material%tortuosity)
-          call InputErrorMsg(input,option,'tor','PHIK')
-  
-          call InputReadDouble(input,option,material%permeability(1,1))
-          call InputErrorMsg(input,option,'permx','PHIK')
-  
-          call InputReadDouble(input,option,material%permeability(2,2))
-          call InputErrorMsg(input,option,'permy','PHIK')
-  
-          call InputReadDouble(input,option,material%permeability(3,3))
-          call InputErrorMsg(input,option,'permz','PHIK')
-  
-          call InputReadDouble(input,option,material%permeability_pwr)
-          call InputErrorMsg(input,option,'permpwr','PHIK')
-          
-          material%permeability(1:3,1:3) = material%permeability(1:3,1:3)
-          
-          call MaterialAddToList(material,realization%materials)
-          
-        enddo          
-#endif
 !....................
 
       case ('USE_TOUCH_OPTIONS')
@@ -1854,10 +1770,7 @@ subroutine readInput(simulation)
     end select
 
   enddo
-
-  ! organize lists
-  call MaterialPropConvertListToArray(realization%material_properties, &
-                                      realization%material_property_array)
+                                   
                                         
 end subroutine readInput
 

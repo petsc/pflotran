@@ -22,7 +22,7 @@ module Material_module
     PetscReal :: thermal_conductivity_dry
     PetscReal :: thermal_conductivity_wet
     PetscReal :: pore_compressibility
-    PetscReal :: pore_expansivity    
+    PetscReal :: thermal_expansitivity    
     type(material_property_type), pointer :: next
   end type material_property_type
   
@@ -32,6 +32,7 @@ module Material_module
   
   type, public :: saturation_function_type
     PetscInt :: id
+    character(len=MAXWORDLENGTH) :: name
     character(len=MAXWORDLENGTH) :: saturation_function_ctype
     PetscInt :: saturation_function_itype
     character(len=MAXWORDLENGTH) :: permeability_function_ctype
@@ -67,7 +68,8 @@ module Material_module
             SaturationFunctionAddToList, &
             SaturationFunctionCompute, &
             SaturatFuncConvertListToArray, &
-            SaturationFunctionComputeSpline
+            SaturationFunctionComputeSpline, &
+            SaturationFunctionRead
 
   PetscInt, parameter :: VAN_GENUCHTEN = 1
   PetscInt, parameter :: BROOKS_COREY = 2
@@ -109,7 +111,7 @@ function MaterialPropertyCreate()
   material_property%thermal_conductivity_dry = 0.d0
   material_property%thermal_conductivity_wet = 0.d0
   material_property%pore_compressibility = 0.d0
-  material_property%pore_expansivity = 0.d0  
+  material_property%thermal_expansitivity = 0.d0  
   nullify(material_property%next)
   MaterialPropertyCreate => material_property
 
@@ -135,9 +137,10 @@ function SaturationFunctionCreate(option)
   
   allocate(saturation_function)
   saturation_function%id = 0
-  saturation_function%saturation_function_ctype = ""
+  saturation_function%name = ''
+  saturation_function%saturation_function_ctype = 'VAN_GENUCHTEN'
   saturation_function%saturation_function_itype = VAN_GENUCHTEN
-  saturation_function%permeability_function_ctype = ""
+  saturation_function%permeability_function_ctype = 'BURDINE'
   saturation_function%permeability_function_itype = BURDINE
   allocate(saturation_function%Sr(option%nphase))
   saturation_function%Sr = 0.d0
@@ -193,13 +196,31 @@ subroutine MaterialPropertyRead(material_property,input,option)
     
       case('NAME') 
         call InputReadWord(input,option,material_property%name,PETSC_TRUE)
-        call InputErrorMsg(input,option,'material_property name','MATERIAL_PROPERTY')
+        call InputErrorMsg(input,option,'name','MATERIAL_PROPERTY')
       case('ID') 
         call InputReadInt(input,option,material_property%id)
-        call InputErrorMsg(input,option,'material_property id','MATERIAL_PROPERTY')
+        call InputErrorMsg(input,option,'id','MATERIAL_PROPERTY')
       case('SATURATION_FUNCTION') 
         call InputReadWord(input,option,material_property%saturation_function_name,PETSC_TRUE)
-        call InputErrorMsg(input,option,'material_property saturation function name','MATERIAL_PROPERTY')
+        call InputErrorMsg(input,option,'saturation function name','MATERIAL_PROPERTY')
+      case('ROCK_DENSITY') 
+        call InputReadDouble(input,option,material_property%rock_density)
+        call InputErrorMsg(input,option,'rock density','MATERIAL_PROPERTY')
+      case('SPECIFIC_HEAT') 
+        call InputReadDouble(input,option,material_property%specific_heat)
+        call InputErrorMsg(input,option,'specific heat','MATERIAL_PROPERTY')
+      case('THERMAL_CONDUCTIVITY_DRY') 
+        call InputReadDouble(input,option,material_property%thermal_conductivity_dry)
+        call InputErrorMsg(input,option,'dry thermal conductivity','MATERIAL_PROPERTY')
+      case('THERMAL_CONDUCTIVITY_WET') 
+        call InputReadDouble(input,option,material_property%thermal_conductivity_wet)
+        call InputErrorMsg(input,option,'wet thermal conductivity','MATERIAL_PROPERTY')
+      case('PORE_COMPRESSIBILITY') 
+        call InputReadDouble(input,option,material_property%pore_compressibility)
+        call InputErrorMsg(input,option,'pore compressibility','MATERIAL_PROPERTY')
+      case('THERMAL_EXPANSITIVITY') 
+        call InputReadDouble(input,option,material_property%thermal_expansitivity)
+        call InputErrorMsg(input,option,'thermal expansitivity','MATERIAL_PROPERTY')
       case('POROSITY')
         call InputReadDouble(input,option,material_property%porosity)
         call InputErrorMsg(input,option,'porosity','MATERIAL_PROPERTY')
@@ -245,7 +266,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
         enddo
 
       case default
-        option%io_buffer = 'Keyword: ' // keyword // &
+        option%io_buffer = 'Keyword: ' // trim(keyword) // &
                            ' not recognized in material_property'    
         call printErrMsg(option)
     end select 
@@ -254,6 +275,87 @@ subroutine MaterialPropertyRead(material_property,input,option)
 
 
 end subroutine MaterialPropertyRead
+
+! ************************************************************************** !
+!
+! SaturationFunctionRead: Reads in contents of a saturation_function card
+! author: Glenn Hammond
+! date: 01/21/09
+! 
+! ************************************************************************** !
+subroutine SaturationFunctionRead(saturation_function,input,option)
+
+  use Option_module
+  use Input_module
+  use String_module
+
+  implicit none
+  
+  type(saturation_function_type) :: saturation_function
+  type(input_type) :: input
+  type(option_type) :: option
+  
+  character(len=MAXWORDLENGTH) :: keyword, word
+
+  input%ierr = 0
+  do
+  
+    call InputReadFlotranString(input,option)
+
+    if (InputCheckExit(input,option)) exit  
+
+    call InputReadWord(input,option,keyword,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','SATURATION_FUNCTION')
+    call StringToUpper(keyword)   
+      
+    select case(trim(keyword))
+    
+      case('PERMEABILITY_FUNCTION_TYPE') 
+        call InputReadWord(input,option, &
+                           saturation_function%permeability_function_ctype, &
+                           PETSC_TRUE)
+        call InputErrorMsg(input,option,'permeability function type', &
+                           'SATURATION_FUNCTION')
+      case('SATURATION_FUNCTION_TYPE') 
+        call InputReadWord(input,option, &
+                           saturation_function%saturation_function_ctype, &
+                           PETSC_TRUE)
+        call InputErrorMsg(input,option,'saturation function type', &
+                           'SATURATION_FUNCTION')
+      case('RESIDUAL_SATURATION') 
+        if (option%iflowmode == MPH_MODE) then
+          option%io_buffer = 'Need to implement multiphase saturation function'
+          call printErrMsg(option)
+        else
+          call InputReadDouble(input,option,saturation_function%Sr(1))
+          call InputErrorMsg(input,option,'residual saturation','SATURATION_FUNCTION')
+        endif
+      case('LAMBDA') 
+        call InputReadDouble(input,option,saturation_function%lambda)
+        call InputErrorMsg(input,option,'residual saturation','SATURATION_FUNCTION')
+        saturation_function%m = saturation_function%lambda
+      case('ALPHA') 
+        call InputReadDouble(input,option,saturation_function%alpha)
+        call InputErrorMsg(input,option,'alpha','SATURATION_FUNCTION')
+      case('MAX_CAPILLARY_PRESSURE') 
+        call InputReadDouble(input,option,saturation_function%pcwmax)
+        call InputErrorMsg(input,option,'maximum capillary pressure','SATURATION_FUNCTION')
+      case('BETAC') 
+        call InputReadDouble(input,option,saturation_function%betac)
+        call InputErrorMsg(input,option,'betac','SATURATION_FUNCTION')
+      case('POWER') 
+        call InputReadDouble(input,option,saturation_function%power)
+        call InputErrorMsg(input,option,'power','SATURATION_FUNCTION')
+      case default
+        option%io_buffer = 'Keyword: ' // trim(keyword) // &
+                           ' not recognized in saturation_function'    
+        call printErrMsg(option)
+    end select 
+  
+  enddo  
+
+
+end subroutine SaturationFunctionRead
 
 ! ************************************************************************** !
 !
@@ -372,7 +474,38 @@ subroutine MaterialPropConvertListToArray(list,array)
   type(material_property_ptr_type), pointer :: array(:)
     
   type(material_property_type), pointer :: cur_material_property
+  type(material_property_type), pointer :: prev_material_property
+  type(material_property_type), pointer :: next_material_property
   PetscInt :: max_id
+
+#if 0
+! don't necessary need right now, but maybe in future
+  ! reorder into ascending order
+  swapped = PETSC_FALSE
+  do
+    if (.not.swapped) exit
+    cur_material_property => list
+    do 
+      if (.not.associated(cur_material_property)) exit
+      next_material_property => cur_material_property%next
+      if (associated(next_material_property)) then
+        if (cur_material_property%id > next_material_property%id) then
+          ! swap
+          if (associated(prev_material_property)) then
+            prev_material_property%next => next_material_property
+          else
+            list => next_material_property
+          endif
+          cur_material_property%next => next_material_property%next
+          next_material_property%next => cur_material_property
+          swapped = PETSC_TRUE
+        endif
+      endif
+      prev_material_property => cur_material_property
+      cur_material_property => next_material_property
+    enddo
+  enddo
+#endif
 
   max_id = 0
   cur_material_property => list
@@ -431,12 +564,16 @@ end subroutine SaturationFunctionAddToList
 ! date: 12/11/07
 !
 ! ************************************************************************** !
-subroutine SaturatFuncConvertListToArray(list,array)
+subroutine SaturatFuncConvertListToArray(list,array,option)
 
+  use String_module
+  use Option_module
+  
   implicit none
   
   type(saturation_function_type), pointer :: list
   type(saturation_function_ptr_type), pointer :: array(:)
+  type(option_type) :: option
     
   type(saturation_function_type), pointer :: cur_saturation_function
   PetscInt :: count
@@ -446,6 +583,43 @@ subroutine SaturatFuncConvertListToArray(list,array)
   do 
     if (.not.associated(cur_saturation_function)) exit
     count = count + 1
+    
+    ! set permeability function integer type
+    call StringToUpper(cur_saturation_function%permeability_function_ctype)
+    select case(trim(cur_saturation_function%permeability_function_ctype))
+      case('DEFAULT')
+        cur_saturation_function%permeability_function_itype = DEFAULT
+      case('BURDINE')
+        cur_saturation_function%permeability_function_itype = BURDINE
+      case('MUALEM')
+        cur_saturation_function%permeability_function_itype = MUALEM
+      case default
+        option%io_buffer = 'Permeability function type "' // &
+                           trim(cur_saturation_function%permeability_function_ctype) // &
+                           '" not recognized ' // &
+                           ' in saturation function ' // &
+                           trim(cur_saturation_function%name)
+        call printErrMsg(option)
+    end select
+    
+    ! set saturation function integer type
+    call StringToUpper(cur_saturation_function%saturation_function_ctype)
+    select case(trim(cur_saturation_function%saturation_function_ctype))
+      case('VAN_GENUCHTEN')
+        cur_saturation_function%saturation_function_itype = VAN_GENUCHTEN
+      case('BROOKS_COREY')
+        cur_saturation_function%saturation_function_itype = BROOKS_COREY
+      case('THOMEER_COREY')
+        cur_saturation_function%saturation_function_itype = THOMEER_COREY
+      case default
+        option%io_buffer = 'Saturation function type "' // &
+                           trim(cur_saturation_function%saturation_function_ctype) // &
+                           '" not recognized ' // &
+                           ' in saturation function ' // &
+                           trim(cur_saturation_function%name)
+        call printErrMsg(option)
+    end select
+    
     cur_saturation_function => cur_saturation_function%next
   enddo
   
@@ -456,6 +630,7 @@ subroutine SaturatFuncConvertListToArray(list,array)
   do 
     if (.not.associated(cur_saturation_function)) exit
     count = count + 1
+    cur_saturation_function%id = count
     array(count)%ptr => cur_saturation_function
     cur_saturation_function => cur_saturation_function%next
   enddo

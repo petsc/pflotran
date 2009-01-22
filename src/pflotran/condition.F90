@@ -1280,7 +1280,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
   call StringToLower(word)
   if (StringCompare(word,'file',FOUR_INTEGER)) then
     call InputReadWord(input,option,word,PETSC_TRUE)
-    input%err_buf = keyword // ' FILE'
+    input%err_buf = trim(keyword) // ' FILE'
     input%err_buf2 = 'CONDITION'
     call InputErrorMsg(input,option)
     call FlowConditionReadValuesFromFile(word,dataset,option)

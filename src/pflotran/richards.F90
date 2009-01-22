@@ -666,7 +666,6 @@ subroutine RichardsLiUpdateFixedAccumPatch(realization)
     call RichardsAccumulation(rich_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
-                              option%dencpr(int(ithrm_loc_p(ghosted_id))), &
                               option,accum_p(local_id:local_id)) 
   enddo
 
@@ -788,7 +787,7 @@ end subroutine RichardsNumericalJacTest
 !
 ! ************************************************************************** !
 subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
-                                   rock_dencpr,option,sat_func,J)
+                                   option,sat_func,J)
 
   use Option_module
   use Material_module
@@ -798,7 +797,7 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
   type(richards_auxvar_type) :: rich_aux_var
   type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
-  PetscReal vol,por,rock_dencpr
+  PetscReal :: vol, por
   type(saturation_function_type) :: sat_func
   PetscReal :: J(option%nflowdof,option%nflowdof)
      
@@ -820,8 +819,7 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
     call RichardsAuxVarCopy(rich_aux_var,rich_aux_var_pert,option)
     call GlobalAuxVarCopy(global_aux_var,global_aux_var_pert,option)
     x(1) = global_aux_var%pres(1)
-    call RichardsAccumulation(rich_aux_var,global_aux_var,por,vol,rock_dencpr, &
-                              option,res)
+    call RichardsAccumulation(rich_aux_var,global_aux_var,por,vol,option,res)
     ideriv = 1
     pert = x(ideriv)*perturbation_tolerance
     x_pert = x
@@ -838,7 +836,7 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
           print *, 'dkvr_dp:', aux_var%dkvr_dp, (rich_aux_var_pert%kvr-rich_aux_var%kvr)/pert
       end select     
 #endif     
-    call RichardsAccumulation(rich_aux_var_pert,global_aux_var,por,vol,rock_dencpr, &
+    call RichardsAccumulation(rich_aux_var_pert,global_aux_var,por,vol, &
                               option,res_pert)
     J_pert(1,1) = (res_pert(1)-res(1))/pert
     J = J_pert
@@ -854,7 +852,7 @@ end subroutine RichardsAccumDerivative
 ! date: 12/13/07
 !
 ! ************************************************************************** !  
-subroutine RichardsAccumulation(rich_aux_var,global_aux_var,por,vol,rock_dencpr, &
+subroutine RichardsAccumulation(rich_aux_var,global_aux_var,por,vol, &
                                 option,Res)
 
   use Option_module
@@ -864,8 +862,8 @@ subroutine RichardsAccumulation(rich_aux_var,global_aux_var,por,vol,rock_dencpr,
   type(richards_auxvar_type) :: rich_aux_var
   type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
-  PetscReal Res(1:option%nflowdof) 
-  PetscReal vol,por,rock_dencpr
+  PetscReal :: Res(1:option%nflowdof) 
+  PetscReal :: vol, por
        
   Res(1) = global_aux_var%sat(1) * global_aux_var%den(1) * por * vol
 
@@ -1560,7 +1558,6 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
                               global_aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
-                              option%dencpr(int(ithrm_loc_p(ghosted_id))), &
                               option,Res) 
     r_p(local_id) = r_p(local_id) + Res(1)
   enddo
@@ -1974,7 +1971,6 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                               global_aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
-                              option%dencpr(int(ithrm_loc_p(ghosted_id))), &
                               option, &
                               realization%saturation_function_array(icap)%ptr,&
                               Jup) 

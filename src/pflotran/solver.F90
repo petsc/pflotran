@@ -337,7 +337,7 @@ subroutine SolverReadLinear(solver,input,option)
         call InputDefaultMsg(input,option,'linear_maxit')
 
       case default
-        option%io_buffer = 'Keyword: ' // keyword // &
+        option%io_buffer = 'Keyword: ' // trim(keyword) // &
                            ' not recognized in linear solver'    
         call printErrMsg(option)
     end select 

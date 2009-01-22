@@ -74,7 +74,9 @@ private
             RealizGetDatasetValueAtCell, &
             RealizationSetDataset, &
             RealizationPrintCouplers, &
-            RealizationInitConstraints
+            RealizationInitConstraints, &
+            RealProcessMatPropAndSatFunc, &
+            RealProcessFluidProperties
             
             
 contains
@@ -473,6 +475,117 @@ subroutine RealizationProcessConditions(realization)
   endif
  
 end subroutine RealizationProcessConditions
+
+! ************************************************************************** !
+!
+! RealProcessMatPropAndSatFunc: Sets up linkeage between material properties
+!                               and saturation function and auxilliary arrays
+! author: Glenn Hammond
+! date: 01/21/09
+!
+! ************************************************************************** !
+subroutine RealProcessMatPropAndSatFunc(realization)
+
+  use String_module
+  
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  PetscTruth :: found
+  PetscInt :: i
+  type(option_type), pointer :: option
+  type(material_property_type), pointer :: cur_material_property
+  type(saturation_function_type), pointer :: cur_saturation_function
+  
+  option => realization%option
+  
+  ! organize lists
+  call MaterialPropConvertListToArray(realization%material_properties, &
+                                      realization%material_property_array)
+  call SaturatFuncConvertListToArray(realization%saturation_functions, &
+                                     realization%saturation_function_array, &
+                                     option) 
+    
+  cur_material_property => realization%material_properties                            
+  do                                      
+    if (.not.associated(cur_material_property)) exit
+    found = PETSC_FALSE
+    cur_saturation_function => realization%saturation_functions
+    do 
+      if (.not.associated(cur_saturation_function)) exit
+      if (StringCompare(cur_material_property%saturation_function_name, &
+                        cur_saturation_function%name,MAXWORDLENGTH)) then
+        found = PETSC_TRUE
+        cur_material_property%saturation_function_id = &
+          cur_saturation_function%id
+        exit
+      endif
+      cur_saturation_function => cur_saturation_function%next
+    enddo
+    if (.not.found) then
+      option%io_buffer = 'Saturation function "' // &
+               trim(cur_material_property%saturation_function_name) // &
+               '" in material property "' // &
+               trim(cur_material_property%name) // &
+               '" not found among available saturation functions.'
+      call printErrMsg(realization%option)    
+    endif
+    cur_material_property => cur_material_property%next
+  enddo
+  
+  if (option%nphase > 1) then
+    option%io_buffer = 'RealProcessMatPropAndSatFunc needs to be fixed to '//&
+                       ' handle more than 1 phase.'
+    call printErrMsg(option)
+  endif
+  if (associated(option%sir)) then
+    option%io_buffer = 'Error, option%sir should not be allocated before ' // &
+                       'RealProcessMatPropAndSatFunc.'
+    call printErrMsg(option)
+  else
+    allocate(option%sir(option%nphase,size(realization%saturation_function_array)))
+    do i = 1, size(realization%saturation_function_array)
+      option%sir(:,i) = realization%saturation_function_array(i)%ptr%Sr(:)
+    enddo
+  endif
+
+end subroutine RealProcessMatPropAndSatFunc
+
+! ************************************************************************** !
+!
+! RealProcessFluidProperties: Sets up linkeage with fluid properties
+! author: Glenn Hammond
+! date: 01/21/09
+!
+! ************************************************************************** !
+subroutine RealProcessFluidProperties(realization)
+  
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  PetscTruth :: found
+  type(option_type), pointer :: option
+  type(fluid_property_type), pointer :: cur_fluid_property
+  
+  option => realization%option
+  
+  found = PETSC_FALSE
+  cur_fluid_property => realization%fluid_properties                            
+  do                                      
+    if (.not.associated(cur_fluid_property)) exit
+    option%difaq = cur_fluid_property%diff_coef
+    found = PETSC_TRUE
+    cur_fluid_property => cur_fluid_property%next
+  enddo
+  
+  if (option%ntrandof > 0 .and. .not.found) then
+    option%io_buffer = 'A fluid property must be present in input file' // &
+                       ' for solute transport'
+  endif
+  
+end subroutine RealProcessFluidProperties
 
 ! ************************************************************************** !
 !
