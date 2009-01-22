@@ -49,6 +49,7 @@ module Option_module
   
     PetscInt :: iflag
     PetscTruth :: print_flag
+    PetscTruth :: print_to_screen
     
     PetscInt, pointer :: garbage ! for some reason, Intel will not compile without this
 
@@ -57,8 +58,6 @@ module Option_module
 
     ! Program options
     PetscTruth :: use_matrix_free  ! If true, do not form the Jacobian.
-    
-    PetscInt :: imod, icolumn
     
     PetscTruth :: use_isoth
     
@@ -71,23 +70,21 @@ module Option_module
     PetscTruth :: match_waypoint
     PetscReal :: prev_dt
   
-!    PetscReal, pointer :: tplot(:)
-    PetscReal, pointer :: tfac(:)
-      ! An array of multiplicative factors that specify how to increase time step.
-        
       ! Basically our target number of newton iterations per time step.
     PetscReal :: dpmxe,dtmpmxe,dsmxe,dcmxe !maximum allowed changes in field vars.
     PetscReal :: dpmax,dtmpmax,dsmax,dcmax
     
     PetscReal :: scale
-    PetscReal, pointer :: dencpr(:),ckwet(:)
-    PetscReal, pointer :: sir(:,:)
+ !   PetscReal, pointer :: dencpr(:),ckwet(:)
+ !   PetscReal, pointer :: sir(:,:)
 
+    PetscReal :: gravity(3)
 
     PetscReal :: m_nacl
-    PetscReal :: difaq, delhaq, gravity(3), eqkair, ret=1.d0, fc=1.d0
-    PetscReal :: difsc
-    PetscReal :: difgs
+!    PetscReal :: difaq, delhaq, eqkair, ret=1.d0, fc=1.d0
+!    PetscReal :: difsc
+!    PetscReal :: difgs
+!    PetscReal :: disp
     
     PetscInt :: ideriv
     PetscInt :: idt_switch = -1
@@ -99,8 +96,6 @@ module Option_module
     
     PetscTruth :: initialize_with_molality
         
-    PetscReal :: disp
-    
 !   table lookup
     PetscInt :: itable=0
     PetscInt :: co2eos=EOS_SPAN_WAGNER
@@ -119,7 +114,6 @@ module Option_module
     
     PetscTruth :: numerical_derivatives
     PetscTruth :: compute_statistics
-    PetscTruth :: compute_mass_balance
     PetscTruth :: compute_mass_balance_new
     PetscTruth :: use_touch_options
     PetscTruth :: overwrite_restart_transport
@@ -156,6 +150,14 @@ module Option_module
 
     PetscTruth :: print_act_coefs
 
+    PetscInt :: screen_imod
+    
+    PetscInt :: periodic_output_ts_imod
+    PetscInt :: periodic_tr_output_ts_imod
+    
+    PetscReal :: periodic_output_time_incr
+    PetscReal :: periodic_tr_output_time_incr
+    
     PetscInt :: plot_number
     character(len=MAXWORDLENGTH) :: plot_name
 
@@ -236,6 +238,7 @@ function OptionCreate()
 
   option%iflag = 0
   option%print_flag = PETSC_FALSE
+  option%print_to_screen = PETSC_TRUE
   
   option%use_isoth = PETSC_FALSE
   option%use_matrix_free = PETSC_FALSE
@@ -255,8 +258,6 @@ function OptionCreate()
   option%uniform_velocity = 0.d0
   option%store_solute_fluxes = PETSC_FALSE
   
-  option%imod = 1
-   
 !-----------------------------------------------------------------------
       ! Initialize some parameters to sensible values.  These are parameters
       ! which should be set via the command line or the input file, but it
@@ -269,16 +270,9 @@ function OptionCreate()
   option%reference_porosity = 0.25d0
   option%reference_saturation = 1.d0
   option%initialize_with_molality = PETSC_FALSE
-  
-  allocate(option%tfac(13))
-      
-  option%tfac(1)  = 2.0d0; option%tfac(2)  = 2.0d0
-  option%tfac(3)  = 2.0d0; option%tfac(4)  = 2.0d0
-  option%tfac(5)  = 2.0d0; option%tfac(6)  = 1.8d0
-  option%tfac(7)  = 1.6d0; option%tfac(8)  = 1.4d0
-  option%tfac(9)  = 1.2d0; option%tfac(10) = 1.0d0
-  option%tfac(11) = 1.0d0; option%tfac(12) = 1.0d0
-  option%tfac(13) = 1.0d0    
+
+  option%gravity(:) = 0.d0
+  option%gravity(3) = -9.8068d0    ! m/s^2
   
   !set scale factor for heat equation, i.e. use units of MJ for energy
   option%scale = 1.d-6
@@ -292,16 +286,14 @@ function OptionCreate()
 
   !physical constants and defult variables
 !  option%difaq = 1.d-9 ! m^2/s read from input file
-  option%difaq = 0.d0
-  option%delhaq = 12.6d0 ! kJ/mol read from input file
-  option%gravity(:) = 0.d0
-  option%gravity(3) = -9.8068d0    ! m/s^2
-  option%eqkair = 1.d10 ! Henry's constant for air: Xl = eqkair * pa
+!  option%difaq = 0.d0
+!  option%delhaq = 12.6d0 ! kJ/mol read from input file
+!  option%eqkair = 1.d10 ! Henry's constant for air: Xl = eqkair * pa
 
   ! default brine concentrations
-  option%m_nacl = 0.d0
+!  option%m_nacl = 0.d0
   
-  option%disp = 0.d0
+!  option%disp = 0.d0
   
   option%generalized_grid = ""
   option%use_generalized_grid = PETSC_FALSE
@@ -320,7 +312,6 @@ function OptionCreate()
   
   option%numerical_derivatives = PETSC_FALSE
   option%compute_statistics = PETSC_FALSE
-  option%compute_mass_balance = PETSC_FALSE
   option%compute_mass_balance_new = PETSC_FALSE
 
   option%use_touch_options = PETSC_FALSE
@@ -375,8 +366,12 @@ function OutputOptionCreate()
   output_option%print_vtk = PETSC_FALSE
   output_option%print_vtk_velocities = PETSC_FALSE
   output_option%plot_number = 0
+  output_option%screen_imod = 1
+  output_option%periodic_output_ts_imod  = 100000000
+  output_option%periodic_output_time_incr = 0.d0
+  output_option%periodic_tr_output_ts_imod = 100000000
+  output_option%periodic_tr_output_time_incr = 0.d0
   output_option%plot_name = ""
-
   output_option%print_act_coefs = PETSC_FALSE
 
   OutputOptionCreate => output_option
@@ -651,7 +646,7 @@ function OptionPrint(option)
   
   PetscTruth :: OptionPrint
   
-  if (option%myrank == option%io_rank) then
+  if (option%myrank == option%io_rank .and. option%print_to_screen) then
     OptionPrint = PETSC_TRUE
   else
     OptionPrint = PETSC_FALSE
@@ -693,6 +688,7 @@ subroutine OptionDestroy(option)
   ! all kinds of stuff needs to be added here.
 
   ! all the below should be placed somewhere other than option.F90
+#if 0
   if (associated(option%dencpr)) deallocate(option%dencpr)
   nullify(option%dencpr)
   if (associated(option%ckwet)) deallocate(option%ckwet)
@@ -701,6 +697,7 @@ subroutine OptionDestroy(option)
   nullify(option%sir)
   if (associated(option%tfac)) deallocate(option%tfac)
   nullify(option%tfac)
+#endif  
   
   deallocate(option)
   nullify(option)

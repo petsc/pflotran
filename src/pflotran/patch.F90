@@ -1089,10 +1089,11 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
               vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(2)
             enddo
           case(SC_FUGA_COEFF)
+            if (.not.associated(patch%aux%Global%aux_vars(1)%fugacoeff) .and. &
+                OptionPrint(option))then
+               print *,'ERRor, fugacoeff not allocated for ', option%iflowmode, 1
+            endif
             do local_id=1,grid%nlmax
-             if(.not.associated(patch%aux%Global%aux_vars(grid%nL2G(local_id))%fugacoeff))then
-               print *,'ERRor, fugacoeff not allocated for ', option%iflowmode, local_id
-             endif
              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%fugacoeff(1)
             enddo 
           case(LIQUID_MOLE_FRACTION)
@@ -1199,7 +1200,6 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
         vec_ptr(local_id) = patch%imat(grid%nL2G(local_id))
       enddo
     case default
- !     print *,'Missing Ivar, isubvar',ivar, isubvar
       call printErrMsg(option,'IVAR not found in OutputGetVarFromArray')
   end select
 

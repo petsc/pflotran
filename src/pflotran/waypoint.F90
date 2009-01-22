@@ -12,6 +12,7 @@ module Waypoint_module
   type, public :: waypoint_type
     PetscReal :: time
     PetscTruth :: print_output
+    PetscTruth :: print_tr_output
     type(output_option_type), pointer :: output_option
     PetscTruth :: update_bcs
     PetscTruth :: update_srcs
@@ -57,6 +58,7 @@ function WaypointCreate()
   allocate(waypoint)
   waypoint%time = 0.d0
   waypoint%print_output = PETSC_FALSE
+  waypoint%print_tr_output = PETSC_FALSE
   waypoint%final = PETSC_FALSE
 !  waypoint%output_option => OutputOptionCreate()
   nullify(waypoint%output_option)
@@ -312,6 +314,12 @@ subroutine WaypointMerge(old_waypoint,new_waypoint)
     old_waypoint%print_output = PETSC_TRUE
   else
     old_waypoint%print_output = PETSC_FALSE
+  endif
+
+  if (old_waypoint%print_tr_output .or. new_waypoint%print_tr_output) then
+    old_waypoint%print_tr_output = PETSC_TRUE
+  else
+    old_waypoint%print_tr_output = PETSC_FALSE
   endif
 
   if (old_waypoint%update_bcs .or. new_waypoint%update_bcs) then

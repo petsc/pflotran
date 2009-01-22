@@ -117,6 +117,7 @@ subroutine RTSetupPatch(realization)
   use Coupler_module
   use Condition_module
   use Connection_module
+  use Fluid_module
  
   implicit none
 
@@ -127,15 +128,17 @@ subroutine RTSetupPatch(realization)
   type(grid_type), pointer :: grid
   type(reaction_type), pointer :: reaction
   type(coupler_type), pointer :: boundary_condition
+  type(fluid_property_type), pointer :: cur_fluid_property
 
   PetscInt :: ghosted_id, iconn, sum_connection
+  PetscInt :: i, iphase
   
   option => realization%option
   patch => realization%patch
   grid => patch%grid
   reaction => realization%reaction
 
-  patch%aux%RT => RTAuxCreate()
+  patch%aux%RT => RTAuxCreate(option)
     
   ! allocate aux_var data structures for all grid cells
   option%iflag = 0 ! be sure not to allocate mass_balance array
@@ -166,6 +169,17 @@ subroutine RTSetupPatch(realization)
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
   call RTCreateZeroArray(patch,reaction,option)
+  
+  ! initialize parameter
+  
+  cur_fluid_property => realization%fluid_properties
+  do 
+    if (.not.associated(cur_fluid_property)) exit
+    iphase = cur_fluid_property%phase_id
+    patch%aux%Rt%rt_parameter%diffusion_coefficient(iphase) = &
+      cur_fluid_property%diffusion_coefficient
+    cur_fluid_property => cur_fluid_property%next
+  enddo
 
 end subroutine RTSetupPatch
 
@@ -966,6 +980,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch
   type(reaction_type), pointer :: reaction
+  type(reactive_transport_param_type), pointer :: rt_parameter
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:), rt_aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
   PetscReal :: Res(realization%reaction%ncomp)
@@ -986,6 +1001,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   patch => realization%patch
   reaction => realization%reaction
   grid => patch%grid
+  rt_parameter => patch%aux%RT%rt_parameter
   rt_aux_vars => patch%aux%RT%aux_vars
   rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
@@ -1137,7 +1153,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
                  rt_aux_vars(ghosted_id_dn),global_aux_vars(ghosted_id_dn), &
                  porosity_loc_p(ghosted_id_dn),tor_loc_p(ghosted_id_dn), &
                  dist_up, &
-                 cur_connection_set%area(iconn),option, &
+                 cur_connection_set%area(iconn),rt_parameter,option, &
                  patch%internal_velocities(:,iconn),Res)
 
       if (local_id_up>0) then
@@ -1189,7 +1205,8 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
                    tor_loc_p(ghosted_id), &
                    cur_connection_set%dist(0,iconn), &
                    cur_connection_set%area(iconn), &
-                   option,patch%boundary_velocities(:,sum_connection),Res)
+                   rt_parameter,option, &
+                   patch%boundary_velocities(:,sum_connection),Res)
  
       iend = local_id*reaction%ncomp
       istart = iend-reaction%ncomp+1
@@ -1379,6 +1396,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch
   type(reaction_type), pointer :: reaction
+  type(reactive_transport_param_type), pointer :: rt_parameter
       
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:), rt_aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
@@ -1401,6 +1419,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   patch => realization%patch  
   reaction => realization%reaction
   grid => patch%grid
+  rt_parameter => patch%aux%RT%rt_parameter
   rt_aux_vars => patch%aux%RT%aux_vars
   rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
@@ -1520,7 +1539,8 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                            porosity_loc_p(ghosted_id_dn), &
                            tor_loc_p(ghosted_id_dn), &
                            dist_dn, &
-                           cur_connection_set%area(iconn),option, &
+                           cur_connection_set%area(iconn), &
+                           rt_parameter,option, &
                            patch%internal_velocities(:,iconn),Jup,Jdn)
 
       if (local_id_up>0) then
@@ -1571,7 +1591,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                              tor_loc_p(ghosted_id), &
                              cur_connection_set%dist(0,iconn), &
                              cur_connection_set%area(iconn), &
-                             option, &
+                             rt_parameter,option, &
                              patch%boundary_velocities(:,sum_connection), &
                              Jdn)
  

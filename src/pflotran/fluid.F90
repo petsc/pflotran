@@ -15,7 +15,8 @@ module Fluid_module
     PetscReal :: diff_exp
     character(len=MAXWORDLENGTH) :: phase_name
     PetscInt :: phase_id
-    PetscReal :: diff_coef
+    PetscReal :: diffusion_coefficient
+    PetscReal :: nacl_concentration
     type(fluid_property_type), pointer :: next
   end type fluid_property_type
   
@@ -48,7 +49,8 @@ function FluidPropertyCreate()
   fluid_property%diff_exp = 0.d0
   fluid_property%phase_name = ''
   fluid_property%phase_id = 0
-  fluid_property%diff_coef = 0.d0
+  fluid_property%diffusion_coefficient = 0.d0
+  fluid_property%nacl_concentration = 0.d0
   nullify(fluid_property%next)
   FluidPropertyCreate => fluid_property
 
@@ -92,9 +94,8 @@ subroutine FluidPropertyRead(fluid_property,input,option)
         call InputReadWord(input,option,fluid_property%phase_name,PETSC_TRUE)
         call InputErrorMsg(input,option,'phase','FLUID_PROPERTY')
       case('DIFFUSION_COEFFICIENT') 
-        call InputReadDouble(input,option,fluid_property%diff_coef)
+        call InputReadDouble(input,option,fluid_property%diffusion_coefficient)
         call InputErrorMsg(input,option,'diffusion coefficient','FLUID_PROPERTY')
-
       case default
         option%io_buffer = 'Keyword: ' // trim(keyword) // &
                            ' not recognized in fluid property'    

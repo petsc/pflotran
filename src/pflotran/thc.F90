@@ -131,11 +131,18 @@ subroutine THCSetupPatch(realization)
   grid => patch%grid
     
   patch%aux%THC => THCAuxCreate()
+  option%io_buffer = 'Before THC can be run, the thc_parameter object ' // &
+                     'must be initialized with the proper variables ' // &
+                     'THCAuxCreate() is called anyhwere.'
+  call printErrMsg(option)
     
   ! allocate aux_var data structures for all grid cells
   allocate(aux_vars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
     call THCAuxVarInit(aux_vars(ghosted_id),option)
+    ! currently, hardwire to first fluid
+    aux_vars(ghosted_id)%diff(1:option%nflowspec) = &
+      realization%fluid_properties%diffusion_coefficient
   enddo
   patch%aux%THC%aux_vars => aux_vars
   patch%aux%THC%num_aux = grid%ngmax
@@ -153,6 +160,9 @@ subroutine THCSetupPatch(realization)
   allocate(aux_vars_bc(sum_connection))
   do iconn = 1, sum_connection
     call THCAuxVarInit(aux_vars_bc(iconn),option)
+    ! currently, hardwire to first fluid
+    aux_vars_bc(iconn)%diff(1:option%nflowspec) = &
+      realization%fluid_properties%diffusion_coefficient
   enddo
   patch%aux%THC%aux_vars_bc => aux_vars_bc
   patch%aux%THC%num_aux_bc = sum_connection
@@ -416,6 +426,7 @@ subroutine THCUpdateFixedAccumPatch(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(thc_auxvar_type), pointer :: aux_vars(:)
+  type(thc_parameter_type), pointer :: thc_parameter
 
   PetscInt :: ghosted_id, local_id, istart, iend, iphase
   PetscReal, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
@@ -429,6 +440,7 @@ subroutine THCUpdateFixedAccumPatch(realization)
   patch => realization%patch
   grid => patch%grid
 
+  thc_parameter => patch%aux%THC%thc_parameter
   aux_vars => patch%aux%THC%aux_vars
     
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
@@ -461,7 +473,7 @@ subroutine THCUpdateFixedAccumPatch(realization)
     call THCAccumulation(aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
-                              option%dencpr(int(ithrm_loc_p(ghosted_id))), &
+                              thc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                               option,accum_p(istart:iend)) 
   enddo
 
@@ -585,7 +597,7 @@ subroutine THCAccumulationDerivative(aux_var,por,vol,rock_dencpr,option, &
                                           sat_func,J)
 
   use Option_module
-  use Material_module
+  use Saturation_Function_module
   
   implicit none
 
@@ -720,7 +732,7 @@ subroutine THCFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up
                         area,dist_gravity,upweight, &
                         option,sat_func_up,sat_func_dn,Jup,Jdn)
   use Option_module 
-  use Material_module                             
+  use Saturation_Function_module                    
   
   implicit none
   
@@ -1109,7 +1121,7 @@ subroutine THCBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
                                     area,dist_gravity,option, &
                                     sat_func_dn,Jdn)
   use Option_module
-  use Material_module
+  use Saturation_Function_module
  
   implicit none
   
@@ -1634,6 +1646,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(thc_parameter_type), pointer :: thc_parameter
   type(thc_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
@@ -1649,6 +1662,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   option => realization%option
   field => realization%field
 
+  thc_parameter => patch%aux%THC%thc_parameter
   aux_vars => patch%aux%THC%aux_vars
   aux_vars_bc => patch%aux%THC%aux_vars_bc
   
@@ -1688,7 +1702,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
     istart = iend-option%nflowdof+1
     call THCAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
-                              option%dencpr(int(ithrm_loc_p(ghosted_id))), &
+                              thc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                               option,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
   enddo
@@ -1796,14 +1810,14 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
    
-      D_up = option%ckwet(ithrm_up)
-      D_dn = option%ckwet(ithrm_dn)
+      D_up = thc_parameter%ckwet(ithrm_up)
+      D_dn = thc_parameter%ckwet(ithrm_dn)
 
       call THCFlux(aux_vars(ghosted_id_up),porosity_loc_p(ghosted_id_up), &
-                          tor_loc_p(ghosted_id_up),option%sir(1,icap_up), &
+                          tor_loc_p(ghosted_id_up),thc_parameter%sir(1,icap_up), &
                           dd_up,perm_up,D_up, &
                         aux_vars(ghosted_id_dn),porosity_loc_p(ghosted_id_dn), &
-                          tor_loc_p(ghosted_id_dn),option%sir(1,icap_dn), &
+                          tor_loc_p(ghosted_id_dn),thc_parameter%sir(1,icap_dn), &
                           dd_dn,perm_dn,D_dn, &
                         cur_connection_set%area(iconn),distance_gravity, &
                         upweight,option,v_darcy,Res)
@@ -1851,7 +1865,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
       endif
 
       ithrm_dn = int(ithrm_loc_p(ghosted_id))
-      D_dn = option%ckwet(ithrm_dn)
+      D_dn = thc_parameter%ckwet(ithrm_dn)
 
       ! for now, just assume diagonal tensor
       perm_dn = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
@@ -1872,7 +1886,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
                                 aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
                                 tor_loc_p(ghosted_id), &
-                                option%sir(1,icap_dn), &
+                                thc_parameter%sir(1,icap_dn), &
                                 cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
                                 cur_connection_set%area(iconn), &
                                 distance_gravity,option, &
@@ -2096,6 +2110,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
+  type(thc_parameter_type), pointer :: thc_parameter
   type(thc_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   
   PetscViewer :: viewer
@@ -2106,6 +2121,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   option => realization%option
   field => realization%field
 
+  thc_parameter => patch%aux%THC%thc_parameter
   aux_vars => patch%aux%THC%aux_vars
   aux_vars_bc => patch%aux%THC%aux_vars_bc
   
@@ -2139,7 +2155,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     call THCAccumulationDerivative(aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
-                              option%dencpr(int(ithrm_loc_p(ghosted_id))), &
+                              thc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                               option, &
                               realization%saturation_function_array(icap)%ptr,&
                               Jup) 
@@ -2267,17 +2283,17 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
       ithrm_up = int(ithrm_loc_p(ghosted_id_up))
       ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
-      D_up = option%ckwet(ithrm_up)
-      D_dn = option%ckwet(ithrm_dn)
+      D_up = thc_parameter%ckwet(ithrm_up)
+      D_dn = thc_parameter%ckwet(ithrm_dn)
     
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
                               
       call THCFluxDerivative(aux_vars(ghosted_id_up),porosity_loc_p(ghosted_id_up), &
-                          tor_loc_p(ghosted_id_up),option%sir(1,icap_up), &
+                          tor_loc_p(ghosted_id_up),thc_parameter%sir(1,icap_up), &
                           dd_up,perm_up,D_up, &
                         aux_vars(ghosted_id_dn),porosity_loc_p(ghosted_id_dn), &
-                          tor_loc_p(ghosted_id_dn),option%sir(1,icap_dn), &
+                          tor_loc_p(ghosted_id_dn),thc_parameter%sir(1,icap_dn), &
                           dd_dn,perm_dn,D_dn, &
                         cur_connection_set%area(iconn),distance_gravity, &
                         upweight,option,&
@@ -2334,7 +2350,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       endif
 
       ithrm_dn = int(ithrm_loc_p(ghosted_id))
-      D_dn = option%ckwet(ithrm_dn)
+      D_dn = thc_parameter%ckwet(ithrm_dn)
 
       ! for now, just assume diagonal tensor
       perm_dn = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
@@ -2354,7 +2370,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                 aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
                                 tor_loc_p(ghosted_id), &
-                                option%sir(1,icap_dn), &
+                                thc_parameter%sir(1,icap_dn), &
                                 cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
                                 cur_connection_set%area(iconn), &
                                 distance_gravity,option, &

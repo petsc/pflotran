@@ -58,6 +58,7 @@ util_obj  = ${common_src}input.o \
 	${common_src}utility.o
 
 common_obj = ${common_src}option.o \
+	${common_src}units.o\
 	${common_src}logging.o \
 	${common_src}global_aux.o\
 	${common_src}reactive_transport_aux.o\
@@ -71,6 +72,8 @@ common_obj = ${common_src}option.o \
 	${common_src}debug.o \
 	${common_src}waypoint.o \
 	${common_src}region.o \
+	${common_src}fluid.o \
+	${common_src}saturation_function.o \
 	${common_src}material.o \
 	${common_src}pckr_mod.o \
 	${common_src}strata.o \
@@ -139,10 +142,10 @@ simulation.o : timestepper.o realization.o
 init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	simulation.o input.o material.o region.o condition.o convergence.o \
 	waypoint.o field.o general_grid.o co2_span_wagner.o utility.o \
-	co2_span_wagner_spline.o co2_sw.o \
+	co2_span_wagner_spline.o co2_sw.o fluid.o saturation_function.o \
 	coupler.o strata.o pckr_mod.o field.o mphase.o \
 	richards.o thc.o discretization.o logging.o mass_balance.o \
-	database.o reaction_aux.o string.o
+	database.o reaction_aux.o string.o units.o
 unstructured_grid.o : option.o connection.o 
 structured_grid.o : connection.o option.o input.o 
 general_grid.o : grid.o realization.o hdf5.o logging.o
@@ -153,14 +156,17 @@ grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
 input.o : string.o option.o
 solver.o : option.o field.o input.o string.o
 region.o : input.o utility.o logging.o string.o
-material.o : region.o option.o input.o field.o string.o
+material.o : option.o input.o string.o
+fluid.o : option.o input.o string.o
+saturation_function.o : option.o input.o string.o utility.o
 coupler.o : condition.o connection.o region.o input.o grid.o
 breakthrough.o : region.o option.o input.o
 convergence.o : option.o solver.o grid.o
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o string.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
-	     strata.o waypoint.o field.o hydrostatic.o debug.o breakthrough.o \
-             patch.o level.o discretization.o reaction.o reaction_aux.o
+	              strata.o waypoint.o field.o hydrostatic.o debug.o breakthrough.o \
+                patch.o level.o discretization.o reaction.o reaction_aux.o \
+                fluid.o saturation_function.o
 level.o : patch.o option.o
 patch.o : option.o grid.o coupler.o breakthrough.o strata.o region.o \
           auxilliary.o reaction.o condition.o connection.o hydrostatic.o \
@@ -178,18 +184,20 @@ reaction.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reaction_aux.o : option.o string.o
 transport.o : reactive_transport_aux.o option.o
 reactive_transport.o : realization.o reaction.o transport.o \
-                       reactive_transport_aux.o
+                       reactive_transport_aux.o fluid.o
 reactive_transport_aux.o : option.o reaction_aux.o
-thc.o : thc_aux.o realization.o
-richards.o : richards_aux.o realization.o
-thc_aux.o : option.o material.o water_eos.o
-richards_aux.o : option.o material.o water_eos.o
-mphase.o : mphase_aux.o realization.o 
+thc.o : thc_aux.o realization.o saturation_function.o
+richards.o : richards_aux.o realization.o saturation_function.o
+thc_aux.o : option.o material.o water_eos.o saturation_function.o
+richards_aux.o : option.o material.o water_eos.o saturation_function.o
+mphase.o : mphase_aux.o realization.o fluid.o
 mphase.o : immis_aux.o realization.o 
 mphase_aux.o :  option.o material.o water_eos.o co2_span_wagner.o \
-		co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o
+		co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o \
+		fluid.o saturation_function.o
 immis_aux.o :  option.o material.o water_eos.o co2_span_wagner.o \
-		co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o
+		co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o fluid.o \
+		saturation_function.o
 timestepper.o : thc.o richards.o mphase.o \
                 realization.o grid.o option.o field.o solver.o \
                 output.o convergence.o checkpoint.o waypoint.o logging.o \
@@ -201,3 +209,4 @@ database.o : reaction.o input.o option.o utility.o reaction_aux.o string.o
 global.o : realization.o level.o patch.o global_aux.o connection.o grid.o \
 	   option.o coupler.o
 global_aux.o : option.o
+units.o : option.o

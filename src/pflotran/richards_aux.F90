@@ -20,6 +20,10 @@ module Richards_Aux_module
     PetscReal :: dkvr_dp
   end type richards_auxvar_type
   
+  type, public :: richards_parameter_type
+    PetscReal, pointer :: sir(:,:)
+  end type richards_parameter_type
+  
   type, public :: richards_type
     PetscInt :: n_zero_rows
     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
@@ -27,6 +31,7 @@ module Richards_Aux_module
     PetscTruth :: aux_vars_up_to_date
     PetscTruth :: inactive_cells_exist
     PetscInt :: num_aux, num_aux_bc
+    type(richards_parameter_type), pointer :: richards_parameter
     type(richards_auxvar_type), pointer :: aux_vars(:)
     type(richards_auxvar_type), pointer :: aux_vars_bc(:)
   end type richards_type
@@ -63,6 +68,10 @@ function RichardsAuxCreate()
   nullify(aux%aux_vars)
   nullify(aux%aux_vars_bc)
   aux%n_zero_rows = 0
+  allocate(aux%richards_parameter)
+  ! don't allocate richards_parameter%sir quite yet, since we don't know the
+  ! number of saturation functions
+  nullify(aux%richards_parameter%sir)
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
 
@@ -141,7 +150,7 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,iphase,&
   use Option_module
   use Global_Aux_module
   use water_eos_module
-  use Material_module
+  use Saturation_Function_module
   
   implicit none
 
@@ -270,6 +279,12 @@ subroutine RichardsAuxDestroy(aux)
   nullify(aux%zero_rows_local)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
   nullify(aux%zero_rows_local_ghosted)
+  if (associated(aux%richards_parameter)) then
+    if (associated(aux%richards_parameter%sir)) deallocate(aux%richards_parameter%sir)
+    nullify(aux%richards_parameter%sir)
+    deallocate(aux%richards_parameter)
+  endif
+  nullify(aux%richards_parameter)
     
 end subroutine RichardsAuxDestroy
 

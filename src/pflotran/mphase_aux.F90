@@ -47,6 +47,12 @@ type, public :: mphase_auxvar_elem_type
 #endif
   end type mphase_auxvar_type
   
+  type, public :: Mphase_parameter_type
+    PetscReal, pointer :: dencpr(:)
+    PetscReal, pointer :: ckwet(:)
+    PetscReal, pointer :: sir(:,:)
+  end type Mphase_parameter_type
+  
   type, public :: Mphase_type
      PetscInt :: n_zero_rows
      PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
@@ -54,6 +60,7 @@ type, public :: mphase_auxvar_elem_type
      PetscTruth :: aux_vars_up_to_date
      PetscTruth :: inactive_cells_exist
      PetscInt :: num_aux, num_aux_bc
+     type(Mphase_parameter_type), pointer :: mphase_parameter
      type(Mphase_auxvar_type), pointer :: aux_vars(:)
      type(Mphase_auxvar_type), pointer :: aux_vars_bc(:)
   end type Mphase_type
@@ -93,6 +100,7 @@ function MphaseAuxCreate()
   nullify(aux%aux_vars)
   nullify(aux%aux_vars_bc)
   aux%n_zero_rows = 0
+  nullify(aux%mphase_parameter)
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
 
@@ -221,7 +229,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
   use span_wagner_module
   use span_wagner_spline_module, only: sw_prop
   use co2_sw_module, only: co2_sw_interp
-  use Material_module
+  use Saturation_Function_module
   use Fluid_module
   use mphase_pckr_module
   
@@ -455,7 +463,7 @@ subroutine MphaseAuxVarCompute_WINC(x, delx, aux_var,iphase,saturation_function,
 
   use Option_module
   use water_eos_module
-  use Material_module
+  use Saturation_Function_module
   use Fluid_module
   
   implicit none
@@ -545,6 +553,16 @@ use option_module
   nullify(aux%zero_rows_local)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
   nullify(aux%zero_rows_local_ghosted)
+  if (associated(aux%mphase_parameter)) then
+    if (associated(aux%mphase_parameter%dencpr)) deallocate(aux%mphase_parameter%dencpr)
+    nullify(aux%mphase_parameter%dencpr)
+    if (associated(aux%mphase_parameter%ckwet)) deallocate(aux%mphase_parameter%ckwet)
+    nullify(aux%mphase_parameter%ckwet)
+    if (associated(aux%mphase_parameter%sir)) deallocate(aux%mphase_parameter%sir)
+    nullify(aux%mphase_parameter%sir)
+    deallocate(aux%mphase_parameter)
+  endif
+  nullify(aux%mphase_parameter)
     
 end subroutine MphaseAuxDestroy
 

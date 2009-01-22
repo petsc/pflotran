@@ -47,6 +47,13 @@ type, public :: Immis_auxvar_elem_type
 #endif
   end type Immis_auxvar_type
   
+  type, public :: Immis_parameter_type
+    PetscReal, pointer :: dencpr(:)
+    PetscReal, pointer :: ckwet(:)
+    PetscReal, pointer :: ckdry(:)
+    PetscReal, pointer :: sir(:,:)
+  end type Immis_parameter_type
+    
   type, public :: Immis_type
      PetscInt :: n_zero_rows
      PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
@@ -54,6 +61,7 @@ type, public :: Immis_auxvar_elem_type
      PetscTruth :: aux_vars_up_to_date
      PetscTruth :: inactive_cells_exist
      PetscInt :: num_aux, num_aux_bc
+     type(Immis_parameter_type), pointer :: immis_parameter
      type(Immis_auxvar_type), pointer :: aux_vars(:)
      type(Immis_auxvar_type), pointer :: aux_vars_bc(:)
   end type Immis_type
@@ -93,6 +101,7 @@ function ImmisAuxCreate()
   nullify(aux%aux_vars)
   nullify(aux%aux_vars_bc)
   aux%n_zero_rows = 0
+  nullify(aux%immis_parameter)
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
 
@@ -221,7 +230,7 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
   use span_wagner_module
   use span_wagner_spline_module, only: sw_prop
   use co2_sw_module, only: co2_sw_interp
-  use Material_module
+  use Saturation_Function_module
   use Fluid_module
   use Mphase_pckr_module
   
@@ -401,7 +410,7 @@ subroutine ImmisAuxVarCompute_WINC(x, delx, aux_var,saturation_function, &
 
   use Option_module
   use water_eos_module
-  use Material_module
+  use Saturation_Function_module
   use Fluid_module
   
   implicit none
@@ -491,6 +500,18 @@ use option_module
   nullify(aux%zero_rows_local)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
   nullify(aux%zero_rows_local_ghosted)
+  if (associated(aux%immis_parameter)) then
+    if (associated(aux%immis_parameter%dencpr)) deallocate(aux%immis_parameter%dencpr)
+    nullify(aux%immis_parameter%dencpr)
+    if (associated(aux%immis_parameter%ckwet)) deallocate(aux%immis_parameter%ckwet)
+    nullify(aux%immis_parameter%ckwet)
+    if (associated(aux%immis_parameter%ckdry)) deallocate(aux%immis_parameter%ckdry)
+    nullify(aux%immis_parameter%ckdry)
+    if (associated(aux%immis_parameter%sir)) deallocate(aux%immis_parameter%sir)
+    nullify(aux%immis_parameter%sir)
+    deallocate(aux%immis_parameter)
+  endif
+  nullify(aux%immis_parameter%dencpr)
     
 end subroutine ImmisAuxDestroy
 

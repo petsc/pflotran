@@ -5,6 +5,7 @@ module Realization_module
   use Region_module
   use Condition_module
   use Material_module
+  use Saturation_Function_module
   use Fluid_module
   use Discretization_module
   use Field_module
@@ -534,22 +535,6 @@ subroutine RealProcessMatPropAndSatFunc(realization)
     cur_material_property => cur_material_property%next
   enddo
   
-  if (option%nphase > 1) then
-    option%io_buffer = 'RealProcessMatPropAndSatFunc needs to be fixed to '//&
-                       ' handle more than 1 phase.'
-    call printErrMsg(option)
-  endif
-  if (associated(option%sir)) then
-    option%io_buffer = 'Error, option%sir should not be allocated before ' // &
-                       'RealProcessMatPropAndSatFunc.'
-    call printErrMsg(option)
-  else
-    allocate(option%sir(option%nphase,size(realization%saturation_function_array)))
-    do i = 1, size(realization%saturation_function_array)
-      option%sir(:,i) = realization%saturation_function_array(i)%ptr%Sr(:)
-    enddo
-  endif
-
 end subroutine RealProcessMatPropAndSatFunc
 
 ! ************************************************************************** !
@@ -575,8 +560,15 @@ subroutine RealProcessFluidProperties(realization)
   cur_fluid_property => realization%fluid_properties                            
   do                                      
     if (.not.associated(cur_fluid_property)) exit
-    option%difaq = cur_fluid_property%diff_coef
     found = PETSC_TRUE
+    select case(trim(cur_fluid_property%phase_name))
+      case('LIQUID_PHASE')
+        cur_fluid_property%phase_id = LIQUID_PHASE
+      case('GAS_PHASE')
+        cur_fluid_property%phase_id = GAS_PHASE
+      case default
+        cur_fluid_property%phase_id = LIQUID_PHASE
+    end select
     cur_fluid_property => cur_fluid_property%next
   enddo
   
@@ -1331,9 +1323,10 @@ subroutine RealizationAddWaypointsToList(realization)
   type(tran_condition_type), pointer :: cur_tran_condition
   type(flow_sub_condition_type), pointer :: sub_condition
   type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
-  type(waypoint_type), pointer :: waypoint
+  type(waypoint_type), pointer :: waypoint, cur_waypoint
   type(option_type), pointer :: option
   PetscInt :: itime, isub_condition
+  PetscReal :: temp_real, final_time
 
   option => realization%option
   waypoint_list => realization%waypoints
@@ -1379,6 +1372,46 @@ subroutine RealizationAddWaypointsToList(realization)
     endif
     cur_tran_condition => cur_tran_condition%next
   enddo
+
+  ! add waypoints for periodic output
+  ! find final time
+  if (realization%output_option%periodic_output_time_incr > 0.d0 .or. &
+      realization%output_option%periodic_tr_output_time_incr > 0.d0) then
+    cur_waypoint => waypoint_list%first
+    do
+      if (.not.associated(cur_waypoint%next)) exit
+      if (cur_waypoint%final) exit
+      cur_waypoint => cur_waypoint%next
+    enddo
+
+    final_time = cur_waypoint%time
+    if (realization%output_option%periodic_output_time_incr > 0.d0) then
+      ! standard output
+      temp_real = 0.d0
+      do
+        temp_real = temp_real + realization%output_option%periodic_output_time_incr
+        if (temp_real > final_time) exit
+        waypoint => WaypointCreate()
+        waypoint%time = temp_real
+        waypoint%print_output = PETSC_TRUE 
+        call WaypointInsertInList(waypoint,realization%waypoints)
+      enddo
+    endif
+    
+    if (realization%output_option%periodic_tr_output_time_incr > 0.d0) then
+      ! transient observation output
+      temp_real = 0.d0
+      do
+        temp_real = temp_real + realization%output_option%periodic_tr_output_time_incr
+        if (temp_real > final_time) exit
+        waypoint => WaypointCreate()
+        waypoint%time = temp_real
+        waypoint%print_tr_output = PETSC_TRUE 
+        call WaypointInsertInList(waypoint,realization%waypoints)
+      enddo
+    endif
+
+  endif
       
 end subroutine RealizationAddWaypointsToList
 

@@ -167,6 +167,12 @@ subroutine MphaseSetupPatch(realization)
   grid => patch%grid
   print *,' mph setup get patch'
   patch%aux%Mphase => MphaseAuxCreate()
+  
+  option%io_buffer = 'Before Mphase can be run, the thc_parameter object ' // &
+                     'must be initialized with the proper variables ' // &
+                     'MphaseAuxCreate() is called anyhwere.'
+  call printErrMsg(option)  
+  
   print *,' mph setup get Aux'
   ! allocate aux_var data structures for all grid cells  
   allocate(aux_vars(grid%ngmax))
@@ -767,6 +773,7 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
+  type(mphase_parameter_type), pointer :: mphase_parameter
   type(mphase_auxvar_type), pointer :: aux_vars(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend !, iphase
@@ -784,6 +791,7 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
   patch => realization%patch
   grid => patch%grid
  
+  mphase_parameter => patch%aux%Mphase%mphase_parameter
   aux_vars => patch%aux%Mphase%aux_vars
     
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
@@ -814,7 +822,7 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
     call MphaseAccumulation(aux_vars(ghosted_id)%aux_var_elem(0), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
-                              option%dencpr(int(ithrm_loc_p(ghosted_id))), &
+                              mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                               option,0, accum_p(istart:iend)) 
   enddo
 
@@ -1695,6 +1703,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(mphase_parameter_type), pointer :: mphase_parameter
   type(mphase_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
@@ -1711,6 +1720,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   option => realization%option
   field => realization%field
 
+  mphase_parameter => patch%aux%Mphase%mphase_parameter
   aux_vars => patch%aux%Mphase%aux_vars
   aux_vars_bc => patch%aux%Mphase%aux_vars_bc
 
@@ -1811,7 +1821,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     istart = iend-option%nflowdof+1
     call MphaseAccumulation(aux_vars(ghosted_id)%aux_var_elem(0),porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
-                              option%dencpr(int(ithrm_loc_p(ghosted_id))), &
+                              mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                               option,1,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
   !  print *,'REs, acm: ', res
@@ -1894,7 +1904,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       endif
 
       ithrm_dn = int(ithrm_loc_p(ghosted_id))
-      D_dn = option%ckwet(ithrm_dn)
+      D_dn = mphase_parameter%ckwet(ithrm_dn)
 
       ! for now, just assume diagonal tensor
       perm_dn = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
@@ -1937,7 +1947,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
          aux_vars(ghosted_id)%aux_var_elem(0), &
          porosity_loc_p(ghosted_id), &
          tor_loc_p(ghosted_id), &
-         option%sir(:,icap_dn), &
+         mphase_parameter%sir(:,icap_dn), &
          cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
          cur_connection_set%area(iconn), &
          distance_gravity,option, &
@@ -2001,14 +2011,14 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
    
-      D_up = option%ckwet(ithrm_up)
-      D_dn = option%ckwet(ithrm_dn)
+      D_up = mphase_parameter%ckwet(ithrm_up)
+      D_dn = mphase_parameter%ckwet(ithrm_dn)
 
       call MphaseFlux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
-                          tor_loc_p(ghosted_id_up),option%sir(:,icap_up), &
+                          tor_loc_p(ghosted_id_up),mphase_parameter%sir(:,icap_up), &
                           dd_up,perm_up,D_up, &
                           aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
-                          tor_loc_p(ghosted_id_dn),option%sir(:,icap_dn), &
+                          tor_loc_p(ghosted_id_dn),mphase_parameter%sir(:,icap_dn), &
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
                           upweight,option,v_darcy,Res)
@@ -2266,6 +2276,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
+  type(mphase_parameter_type), pointer :: mphase_parameter
   type(mphase_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   
   PetscReal :: vv_darcy(realization%option%nphase), voltemp
@@ -2292,6 +2303,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   option => realization%option
   field => realization%field
 
+  mphase_parameter => patch%aux%Mphase%mphase_parameter
   aux_vars => patch%aux%Mphase%aux_vars
   aux_vars_bc => patch%aux%Mphase%aux_vars_bc
   
@@ -2332,7 +2344,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
         call MphaseAccumulation(aux_vars(ghosted_id)%aux_var_elem(nvar), &
              porosity_loc_p(ghosted_id), &
              volume_p(local_id), &
-             option%dencpr(int(ithrm_loc_p(ghosted_id))), &
+             mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
              option,1, res) 
         ResInc( local_id,:,nvar) =  ResInc(local_id,:,nvar) + Res(:)
      enddo
@@ -2417,7 +2429,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       endif
 
       ithrm_dn = int(ithrm_loc_p(ghosted_id))
-      D_dn = option%ckwet(ithrm_dn)
+      D_dn = mphase_parameter%ckwet(ithrm_dn)
 
       ! for now, just assume diagonal tensor
       perm_dn = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
@@ -2470,7 +2482,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
          aux_vars(ghosted_id)%aux_var_elem(nvar), &
          porosity_loc_p(ghosted_id), &
          tor_loc_p(ghosted_id), &
-         option%sir(:,icap_dn), &
+         mphase_parameter%sir(:,icap_dn), &
          cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
          cur_connection_set%area(iconn), &
          distance_gravity,option, &
@@ -2572,28 +2584,28 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
       ithrm_up = int(ithrm_loc_p(ghosted_id_up))
       ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
-      D_up = option%ckwet(ithrm_up)
-      D_dn = option%ckwet(ithrm_dn)
+      D_up = mphase_parameter%ckwet(ithrm_up)
+      D_dn = mphase_parameter%ckwet(ithrm_dn)
     
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
       
       do nvar = 1, option%nflowdof 
          call MphaseFlux(aux_vars(ghosted_id_up)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_up), &
-                          tor_loc_p(ghosted_id_up),option%sir(:,icap_up), &
+                          tor_loc_p(ghosted_id_up),mphase_parameter%sir(:,icap_up), &
                           dd_up,perm_up,D_up, &
                           aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
-                          tor_loc_p(ghosted_id_dn),option%sir(:,icap_dn), &
+                          tor_loc_p(ghosted_id_dn),mphase_parameter%sir(:,icap_dn), &
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
                           upweight, option, vv_darcy, Res)
             ra(:,nvar)= (Res(:)-ResOld_FL(iconn,:))/delx(nvar,ghosted_id_up)
 
          call MphaseFlux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
-                          tor_loc_p(ghosted_id_up),option%sir(:,icap_up), &
+                          tor_loc_p(ghosted_id_up),mphase_parameter%sir(:,icap_up), &
                           dd_up,perm_up,D_up, &
                           aux_vars(ghosted_id_dn)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_dn),&
-                          tor_loc_p(ghosted_id_dn),option%sir(:,icap_dn), &
+                          tor_loc_p(ghosted_id_dn),mphase_parameter%sir(:,icap_dn), &
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
                           upweight, option, vv_darcy, Res)

@@ -173,9 +173,10 @@ subroutine Init(simulation,filename)
 
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
-  if (option%compute_mass_balance) then
-    call MassBalanceCreate(realization)
-  endif  
+! deprecated - geh
+!  if (option%compute_mass_balance) then
+!    call MassBalanceCreate(realization)
+!  endif  
   
   if (OptionPrint(option)) then
     ! general print statements for both flow and transport modes
@@ -649,7 +650,7 @@ subroutine readRequiredCardsFromInput(realization)
       call InputReadInt(input,option,grid%structured_grid%npz)
       call InputDefaultMsg(input,option,'npz')
  
-      if (option%myrank == option%io_rank) then
+      if (option%myrank == option%io_rank .and. option%print_to_screen) then
         option%io_buffer = ' Processor Decomposition:'
         call printMsg(option)
         write(option%io_buffer,'("  npx   = ",3x,i4)') grid%structured_grid%npx
@@ -704,6 +705,7 @@ subroutine readInput(simulation)
   use AMR_Grid_module
   use Solver_module
   use Material_module
+  use Saturation_Function_module  
   use Fluid_module
   use Realization_module
   use Timestepper_module
@@ -867,11 +869,12 @@ subroutine readInput(simulation)
                   case('DISTRIBUTION_COEF')
                 end select
               enddo
+            case('MOLAL','MOLALITY')
+              option%initialize_with_molality = PETSC_TRUE
+            case ('PRINT_ACTIVITY_COEFS')
+              realization%output_option%print_act_coefs = PETSC_TRUE
           end select
         enddo
-
-!....................
-      case ('TRAN')
 
 !....................
       case ('UNIFORM_VELOCITY')
@@ -883,7 +886,7 @@ subroutine readInput(simulation)
         call InputErrorMsg(input,option,'velz','UNIFORM_VELOCITY')
       
 !....................
-      case ('DEBUG','PFLOW_DEBUG')
+      case ('DEBUG')
         call DebugRead(realization%debug,input,option)
         
 !....................
@@ -989,29 +992,6 @@ subroutine readInput(simulation)
             call InputErrorMsg(input,option,'dataset','permz_filename') 
         end select          
         
-!.....................
-      case ('COMP') 
-        call InputSkipToEnd(input,option,card)
-        
-!.....................
-      case ('PHAS')
-        call InputSkipToEnd(input,option,card)
-      
-!....................
-
-      case ('COUP')
-
-        call printWrnMsg(option,"COUP not currently supported")
-        call InputReadStringErrorMsg(input,option,'COUP')
-
-        call InputReadInt(input,option,idum)
-        call InputDefaultMsg(input,option,'isync')
-
-        if (option%myrank == option%io_rank) &
-          write(option%fid_out,'(/," *COUP",/, &
-            & "  isync      = ",3x,i2 &
-            & )') idum
-
 !....................
 
       case ('GRAV','GRAVITY')
@@ -1032,35 +1012,14 @@ subroutine readInput(simulation)
           endif
         endif
 
-        if (option%myrank == option%io_rank) &
+        if (option%myrank == option%io_rank .and. &
+            option%print_to_screen) &
           write(option%fid_out,'(/," *GRAV",/, &
             & "  gravity    = "," [m/s^2]",3x,3pe12.4 &
             & )') option%gravity(1:3)
 
 !....................
-#if 0
-      case ('HDF5')
-        realization%output_option%print_hdf5 = PETSC_TRUE
-        do
-          call InputReadWord(input,option,word,PETSC_TRUE)
-          if (InputError(input)) exit
-          call StringToUpper(word)
 
-          select case(word)
-            case('VELO')
-              realization%output_option%print_hdf5_velocities = PETSC_TRUE
-            case('FLUX')
-              realization%output_option%print_hdf5_flux_velocities = PETSC_TRUE
-            case default
-          end select
-            
-        enddo
-
-        if (option%myrank == option%io_rank) &
-          write(option%fid_out,'(/," *HDF5",10x,l1,/)') &
-            realization%output_option%print_hdf5
-#endif
-!.....................
       case ('INVERT_Z','INVERTZ')
         if (associated(grid%structured_grid)) then
           grid%structured_grid%invert_z_axis = PETSC_TRUE
@@ -1068,239 +1027,6 @@ subroutine readInput(simulation)
         endif
       
 !....................
-#if 0
-      case ('TECP','TECPLOT')
-        realization%output_option%print_tecplot = PETSC_TRUE
-
-        if (StringCompare(card,'TECPLOT',SEVEN_INTEGER)) then
-          call InputReadWord(input,option,word,PETSC_TRUE)
-          call InputErrorMsg(input,option,'TECPLOT','type') 
-          call StringToUpper(word)
-          select case(trim(word))
-            case('POINT')
-              realization%output_option%tecplot_format = TECPLOT_POINT_FORMAT
-            case('BLOCK')
-              realization%output_option%tecplot_format = TECPLOT_BLOCK_FORMAT
-            case default
-              option%io_buffer = 'TECPLOT format (' // trim(word) // &
-                                 ') not recongnized.'
-              call printErrMsg(option)
-          end select
-        else
-          realization%output_option%tecplot_format = TECPLOT_BLOCK_FORMAT
-        endif
-        
-        ! safety catch: only block supported in parallel
-        if (realization%output_option%tecplot_format == TECPLOT_POINT_FORMAT .and. &
-            option%mycommsize > 1) then
-          realization%output_option%tecplot_format = TECPLOT_BLOCK_FORMAT
-        endif
-          
-        do
-          call InputReadWord(input,option,word,PETSC_TRUE)
-          if (InputError(input)) exit
-          call StringToUpper(word)
-
-          select case(word)
-            case('VELO')
-              realization%output_option%print_tecplot_velocities = PETSC_TRUE
-            case('FLUX')
-              if (realization%output_option%tecplot_format == TECPLOT_POINT_FORMAT) then
-                option%io_buffer = &
-                    'Printing of fluxes not supported in TECPLOT POINT format.'
-                call printErrMsg(option)
-              endif
-              realization%output_option%print_tecplot_flux_velocities = PETSC_TRUE
-            case default
-          end select
-          
-        enddo
-
-        if (option%myrank == option%io_rank) &
-          write(option%fid_out,'(/," *TECP",10x,l1,/)') &
-            realization%output_option%print_tecplot
-
-      case ('VTK')
-        realization%output_option%print_vtk = PETSC_TRUE
-
-        do
-          call InputReadWord(input,option,word,PETSC_TRUE)
-          if (InputError(input)) exit
-          call StringToUpper(word)
-
-          select case(word)
-            case('VELO')
-              realization%output_option%print_vtk_velocities = PETSC_TRUE
-            case('FLUX')
-              if (realization%output_option%tecplot_format == TECPLOT_POINT_FORMAT) then
-                call printErrMsg(option,'Printing of fluxes not supported &
-                                         &in TECPLOT POINT format.')
-              endif
-              realization%output_option%print_tecplot_flux_velocities = PETSC_TRUE
-            case default
-          end select
-          
-        enddo
-
-        if (option%myrank == option%io_rank) &
-          write(option%fid_out,'(/," *VTK",10x,l1,/)') &
-            realization%output_option%print_vtk
-#endif
-!....................
-
-      case ('IMOD')
-        call InputReadInt(input,option,option%imod)
-        call InputDefaultMsg(input,option,'mod')
-
-!....................
-
-      case ('PRINT_ACT_COEFS')
-        realization%output_option%print_act_coefs = PETSC_TRUE
-
-!....................
-
-      case ('TOLR')
-
-        call InputReadStringErrorMsg(input,option,'TOLR')
-
-        call InputReadInt(input,option,master_stepper%nstepmax)
-        call InputDefaultMsg(input,option,'nstepmax')
-  
-        call InputReadInt(input,option,master_stepper%iaccel)
-        call InputDefaultMsg(input,option,'iaccel')
-
-        call InputReadInt(input,option,idum)
-        call InputDefaultMsg(input,option,'newton_max')
-
-        call InputReadInt(input,option,master_stepper%icut_max)
-        call InputDefaultMsg(input,option,'icut_max')
-
-        call InputReadDouble(input,option,option%dpmxe)
-        call InputDefaultMsg(input,option,'dpmxe')
-
-        call InputReadDouble(input,option,option%dtmpmxe)
-        call InputDefaultMsg(input,option,'dtmpmxe')
-  
-        call InputReadDouble(input,option,option%dcmxe)
-        call InputDefaultMsg(input,option,'dcmxe')
-
-        call InputReadDouble(input,option,option%dsmxe)
-        call InputDefaultMsg(input,option,'dsmxe')
-        
-        if (associated(tran_stepper)) then
-          tran_stepper%icut_max = master_stepper%icut_max
-        endif
-
-        idum = 0
-        if (option%myrank==0) write(option%fid_out,'(/," *TOLR ",/, &
-          &"  steps  = ",i6,/,      &
-          &"  iaccel     = ",i3,/,      &
-          &"  newtmx     = ",i3,/,      &
-          &"  icutmx     = ",i3,/,      &
-          &"  dpmxe      = ",1pe12.4,/, &
-          &"  dtmpmxe    = ",1pe12.4,/, &
-          &     "  dcmxe      = ",1pe12.4,/, &
-          &"  dsmxe      = ",1pe12.4)') &
-! For commented-out lines to work with the Sun f95 compiler, we have to 
-! terminate the string in the line above; otherwise, the compiler tries to
-! include the commented-out line as part of the continued string.
-          master_stepper%nstepmax,master_stepper%iaccel, &
-          idum,master_stepper%icut_max, &
-          option%dpmxe,option%dtmpmxe,option%dcmxe, option%dsmxe
-
-!....................
-
-#if 0
-      case ('DXYZ')
-      
-        if (realization%discretization%itype == STRUCTURED_GRID) then  ! look for processor decomposition
-          call StructuredGridReadDXYZ(grid%structured_grid,option)
-        else if(realization%discretization%itype == AMR_GRID) then
-          call AMRGridReadDXYZ(realization%discretization%amrgrid,option)
-        else
-          option%io_buffer = 'Keyword "DXYZ" not supported for unstructured grid'
-          call printErrMsg(option)
-        endif
-#endif
-
-!....................
-
-#if 0
-      case('ORIG','ORIGIN')
-        call InputReadDouble(input,option,realization%discretization%origin(X_DIRECTION))
-        call InputErrorMsg(input,option,'X direction','Origin')
-        call InputReadDouble(input,option,realization%discretization%origin(Y_DIRECTION))
-        call InputErrorMsg(input,option,'Y direction','Origin')
-        call InputReadDouble(input,option,realization%discretization%origin(Z_DIRECTION))
-        call InputErrorMsg(input,option,'Z direction','Origin')
-#endif
-        
-!....................
-
-      case ('DIFF')
-
-        call printErrMsg(option,"DIFF currently out of date.  Needs to be reimplemented")
-#if 0
-
-        call InputReadStringErrorMsg(input,option,'DIFF')
-
-        call InputReadDouble(input,option,option%difaq)
-        call InputDefaultMsg(input,option,'difaq')
-
-        call InputReadDouble(input,option,option%delhaq)
-        call InputDefaultMsg(input,option,'delhaq')
-
-        if (option%myrank==0) write(option%fid_out,'(/," *DIFF ",/, &
-          &"  difaq       = ",1pe12.4,"[m^2/s]",/, &
-          &"  delhaq      = ",1pe12.4,"[kJ/mol]")') &
-          option%difaq,option%delhaq
-#endif
-!....................
-
-      case ('RCTR')
-
-        call printErrMsg(option,"RCTR currently out of date.  Needs to be reimplemented")
-
-!....................
-
-      case ('RADN')
-
-        call printErrMsg(option,"RADN currently out of date.  Needs to be reimplemented")
-#if 0
-        call InputReadStringErrorMsg(input,option,'RADN')
-
-        call InputReadDouble(input,option,option%ret)
-        call InputDefaultMsg(input,option,'ret')
-
-        call InputReadDouble(input,option,option%fc)
-        call InputDefaultMsg(input,option,'fc')
-
-        if (option%myrank==0) write(option%fid_out,'(/," *RADN ",/, &
-          &"  ret     = ",1pe12.4,/, &
-          &"  fc      = ",1pe12.4)') &
-          option%ret,option%fc
-#endif          
-
-!....................
-
-
-      case ('PHAR')
-        call printWrnMsg(option,"PHAR currently out of date.  Needs to be reimplemented")
-#if 0
-        call InputReadStringErrorMsg(input,option,'PHAR')
-
-        call InputReadDouble(input,option,option%qu_kin)
-        call InputDefaultMsg(input,option,'TransReaction')
-        if (option%myrank==0) write(option%fid_out,'(/," *PHAR ",1pe12.4)')option%qu_kin
-        option%yh2o_in_co2 = 0.d0
-        if (option%qu_kin > 0.d0) option%yh2o_in_co2 = 1.d-2 ! check this number!
-#endif     
-!......................
-
-      case('MOLAL','MOLALITY')
-        option%initialize_with_molality = PETSC_TRUE
-
-!......................
 
       case('REFERENCE_PRESSURE')
         call InputReadStringErrorMsg(input,option,card)
@@ -1371,14 +1097,8 @@ subroutine readInput(simulation)
 
 !......................
 
-      case ('COMPUTE_STATISTICS','STATISTICS')
+      case ('COMPUTE_STATISTICS')
         option%compute_statistics = PETSC_TRUE
-
-!      case ('COMPUTE_MASS_BALANCE','MASS_BALANCE')
-!        option%compute_mass_balance = PETSC_TRUE
-
-      case ('COMPUTE_MASS_BALANCE','MASS_BALANCE','COMPUTE_MASS_BALANCE_NEW','MASS_BALANCE_NEW')
-        option%compute_mass_balance_new = PETSC_TRUE
 
 !....................
 
@@ -1468,81 +1188,6 @@ subroutine readInput(simulation)
         nullify(fluid_property)
         
 !....................
-#if 0
-      case ('THRM','FLUID_PROPERTY','THERMAL_PROPERTIES')
-
-        count = 0
-        do
-          call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,'THRM')
-
-          if (InputCheckExit(input,option)) exit
-       
-          count = count + 1
-          fluid_property => FluidPropertyCreate()
-      
-          call InputReadInt(input,option,thermal_property%id)
-          call InputErrorMsg(input,option,'id','THRM')
-
-          call InputReadDouble(input,option,thermal_property%rock_density)
-          call InputErrorMsg(input,option,'rock density','THRM')
-
-          call InputReadDouble(input,option,thermal_property%spec_heat)
-          call InputErrorMsg(input,option,'cpr','THRM')
-        
-          call InputReadDouble(input,option,thermal_property%therm_cond_dry)
-          call InputErrorMsg(input,option,'ckdry','THRM')
-        
-          call InputReadDouble(input,option,thermal_property%therm_cond_wet)
-          call InputErrorMsg(input,option,'ckwet','THRM')
-        
-          call InputReadDouble(input,option,thermal_property%tort_bin_diff)
-          call InputErrorMsg(input,option,'tau','THRM')
-
-          call InputReadDouble(input,option,thermal_property%vap_air_diff_coef)
-          call InputErrorMsg(input,option,'cdiff','THRM')
-
-          call InputReadDouble(input,option,thermal_property%exp_binary_diff)
-          call InputErrorMsg(input,option,'cexp','THRM')
-
-        !scale thermal properties
-          thermal_property%spec_heat = option%scale * &
-                                       thermal_property%spec_heat
-          thermal_property%therm_cond_dry = option%scale * &
-                                            thermal_property%therm_cond_dry
-          thermal_property%therm_cond_wet = option%scale * &
-                                            thermal_property%therm_cond_wet
-          
-          call ThermalAddPropertyToList(thermal_property, &
-                                        realization%thermal_properties)
-        enddo
-        
-        ! allocate dynamic arrays holding saturation function information
-        allocate(option%dencpr(count))
-        allocate(option%ckwet(count))
-        
-        ! fill arrays with values from linked list
-        thermal_property => realization%thermal_properties
-        do
-        
-          if (.not.associated(thermal_property)) exit
-          
-          id = thermal_property%id
-          
-          if (id > count) then
-            call printErrMsg(option,'Thermal property id greater than &
-                                    &number of thermal properties')
-          endif
-                    
-          option%dencpr(id) = thermal_property%rock_density * &
-                              thermal_property%spec_heat
-          option%ckwet(id) = thermal_property%therm_cond_wet
-          
-          thermal_property => thermal_property%next
-          
-        enddo
-#endif        
-!....................
 
       case ('SATURATION_FUNCTION')
       
@@ -1555,41 +1200,6 @@ subroutine readInput(simulation)
                                          realization%saturation_functions)
         nullify(saturation_function)   
 
-#if 0
-        ! allocate dynamic arrays holding saturation function information
-        select case(option%iflowmode)
-          case(MPH_MODE,THC_MODE,RICHARDS_MODE)
-            allocate(option%sir(1:option%nphase,count))
-          case default
-        end select
-  
-        ! fill arrays with values from linked list
-        saturation_function => realization%saturation_functions
-        do 
-        
-          if (.not.associated(saturation_function)) exit
-          
-          id = saturation_function%id
-          
-          if (id > count) then
-            call printErrMsg(option,'Saturation function id greater than &
-                                    &number of saturation functions')
-          endif
-          
-          select case(option%iflowmode)
-            case(MPH_MODE,THC_MODE,RICHARDS_MODE)
-              do i=1,option%nphase
-                option%sir(i,id) = saturation_function%Sr(i)
-              enddo
-            case default
-          end select
-          
-          saturation_function => saturation_function%next
-          
-        enddo
-        
-
-#endif        
 !....................
       
       case ('MATERIAL_PROPERTY')
@@ -1619,127 +1229,8 @@ subroutine readInput(simulation)
       case ('OVERWRITE_RESTART_FLOW_PARAMS')
         option%overwrite_restart_flow = PETSC_TRUE
 
-      case ('TIME')
-
-        call InputReadStringErrorMsg(input,option,'TIME')
-      
-        call InputReadWord(input,option,word,PETSC_FALSE)
-      
-        realization%output_option%tunit = trim(word)
-
-        if (realization%output_option%tunit == 's') then
-          realization%output_option%tconv = 1.d0
-        else if (realization%output_option%tunit == 'm') then
-          realization%output_option%tconv = 60.d0
-        else if (realization%output_option%tunit == 'h') then
-          realization%output_option%tconv = 60.d0 * 60.d0
-        else if (realization%output_option%tunit == 'd') then
-          realization%output_option%tconv = 60.d0 * 60.d0 * 24.d0
-        else if (realization%output_option%tunit == 'mo') then
-          realization%output_option%tconv = 60.d0 * 60.d0 * 24.d0 * 30.d0
-        else if (realization%output_option%tunit == 'y') then
-          realization%output_option%tconv = 60.d0 * 60.d0 * 24.d0 * 365.d0
-        else
-          if (OptionPrint(option)) then
-            write(*,'(" Time unit: ",a3,/, &
-              &" Error: time units must be one of ",/, &
-              &"   s -seconds",/,"   m -minutes",/,"   h -hours",/, &
-              &"   d -days", /, "  mo -months",/,"   y -years")') realization%output_option%tunit
-          endif
-          stop
-        endif
-
-        call InputReadWord(input,option,word,PETSC_FALSE)
-        if (.not.InputError(input)) then
-          call StringToUpper(word)
-          if (StringCompare(word,'EVERY',FIVE_INTEGER)) then
-            periodic_output_flag = PETSC_TRUE
-            call InputReadDouble(input,option,periodic_rate)
-          endif
-        endif
-
-        continuation_flag = PETSC_TRUE
-        do
-          if (.not.continuation_flag) exit
-          call InputReadFlotranString(input,option)
-          if (InputError(input)) exit
-          continuation_flag = PETSC_FALSE
-          if (index(input%buf,backslash) > 0) continuation_flag = PETSC_TRUE
-          input%ierr = 0
-          do
-            if (InputError(input)) exit
-            call InputReadDouble(input,option,temp_real)
-            if (.not.InputError(input)) then
-              waypoint => WaypointCreate()
-              waypoint%time = temp_real
-              waypoint%print_output = PETSC_TRUE    
-              pause          
-              call WaypointInsertInList(waypoint,realization%waypoints)
-            endif
-          enddo
-        enddo
-        
-        ! make last waypoint final
-        waypoint%final = PETSC_TRUE
-        
-        if (periodic_output_flag) then
-          temp_real2 = waypoint%time   ! final simulation time
-          temp_real = periodic_rate
-          do
-            if (temp_real > temp_real2) exit
-            
-            waypoint => WaypointCreate()
-            waypoint%time = temp_real
-            waypoint%print_output = PETSC_TRUE 
-            pause             
-            call WaypointInsertInList(waypoint,realization%waypoints)
-            
-            temp_real = temp_real + periodic_rate
-          enddo
-        endif
-
 !....................
-
-      case ('DTST')
-
-        call InputReadStringErrorMsg(input,option,'DTST')
-
-        call InputReadDouble(input,option,master_stepper%dt_min)
-        call InputDefaultMsg(input,option,'dt_min')
-            
-        continuation_flag = PETSC_TRUE
-        temp_int = 0       
-        do
-          if (.not.continuation_flag) exit
-          call InputReadFlotranString(input,option)
-          if (InputError(input)) exit
-          continuation_flag = PETSC_FALSE
-          if (index(input%buf,backslash) > 0) continuation_flag = PETSC_TRUE
-          input%ierr = 0
-          do
-            if (InputError(input)) exit
-            call InputReadDouble(input,option,temp_real)
-            if (.not.InputError(input)) then
-              waypoint => WaypointCreate()
-              waypoint%time = temp_real
-              call InputReadDouble(input,option,waypoint%dt_max)
-              call InputErrorMsg(input,option,'dt_max','dtst')
-              if (temp_int == 0) master_stepper%dt_max = waypoint%dt_max
-              pause
-              call WaypointInsertInList(waypoint,realization%waypoints)
-              temp_int = temp_int + 1
-            endif
-          enddo
-        enddo
-        
-        master_stepper%dt_min = realization%output_option%tconv * master_stepper%dt_min
-        master_stepper%dt_max = realization%output_option%tconv * master_stepper%dt_max
-
-        option%flow_dt = master_stepper%dt_min
-        option%tran_dt = master_stepper%dt_min
-      
-!....................
-      case ('BREAKTHROUGH')
+      case ('OBSERVATION')
         breakthrough => BreakthroughCreate()
         call BreakthroughRead(breakthrough,input,option)
         call RealizationAddBreakthrough(realization,breakthrough)        
@@ -1765,6 +1256,8 @@ subroutine readInput(simulation)
           call InputErrorMsg(input,option,'keyword','OUTPUT') 
           call StringToUpper(word)
           select case(trim(word))
+            case('MASS_BALANCE')
+              option%compute_mass_balance_new = PETSC_TRUE
             case('TIMES')
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'units','OUTPUT')
@@ -1788,6 +1281,68 @@ subroutine readInput(simulation)
                 call InputReadFlotranString(input,option)
                 if (InputError(input)) exit
               enddo
+            case('SCREEN')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'time increment','OUTPUT,SCREEN')
+              call StringToUpper(word)
+              select case(trim(word))
+                case('OFF')
+                  option%print_to_screen = PETSC_FALSE
+                case('PERIODIC')
+                  call InputReadInt(input,option,output_option%screen_imod)
+                  call InputErrorMsg(input,option,'timestep increment', &
+                                     'OUTPUT,PERIODIC,SCREEN')
+                case default
+                  option%io_buffer = 'Keyword: ' // trim(word) // &
+                                     ' not recognized in OUTPUT,SCREEN.'
+                  call printErrMsg(option)
+              end select
+            case('PERIODIC')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'time increment','OUTPUT,PERIODIC')
+              call StringToUpper(word)
+              select case(trim(word))
+                case('TIME')
+                  call InputReadDouble(input,option,temp_real)
+                  call InputErrorMsg(input,option,'time increment', &
+                                     'OUTPUT,PERIODIC,TIME')
+                  call InputReadWord(input,option,word,PETSC_TRUE)
+                  call InputErrorMsg(input,option,'time increment units', &
+                                     'OUTPUT,PERIODIC,TIME')
+                  units_conversion = UnitsConvertToInternal(word,option) 
+                  output_option%periodic_output_time_incr = temp_real*units_conversion
+                case('TIMESTEP')
+                  call InputReadInt(input,option,output_option%periodic_output_ts_imod)
+                  call InputErrorMsg(input,option,'timestep increment', &
+                                     'OUTPUT,PERIODIC,TIMESTEP')
+                case default
+                  option%io_buffer = 'Keyword: ' // trim(word) // &
+                                     ' not recognized in OUTPUT,PERIODIC,TIMESTEP.'
+                  call printErrMsg(option)
+              end select
+            case('PERIODIC_OBSERVATION')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'time increment','OUTPUT,PERIODIC')
+              call StringToUpper(word)
+              select case(trim(word))
+                case('TIME')
+                  call InputReadDouble(input,option,temp_real)
+                  call InputErrorMsg(input,option,'time increment', &
+                                     'OUTPUT,PERIODIC_OBSERVATION,TIME')
+                  call InputReadWord(input,option,word,PETSC_TRUE)
+                  call InputErrorMsg(input,option,'time increment units', &
+                                     'OUTPUT,PERIODIC_OBSERVATION,TIME')
+                  units_conversion = UnitsConvertToInternal(word,option) 
+                  output_option%periodic_tr_output_time_incr = temp_real*units_conversion
+                case('TIMESTEP')
+                  call InputReadInt(input,option,output_option%periodic_tr_output_ts_imod)
+                  call InputErrorMsg(input,option,'timestep increment', &
+                                     'OUTPUT,PERIODIC_OBSERVATION,TIMESTEP')
+                case default
+                  option%io_buffer = 'Keyword: ' // trim(word) // &
+                                     ' not recognized in OUTPUT,PERIODIC_OBSERVATION,TIMESTEP.'
+                  call printErrMsg(option)
+              end select
             case('FORMAT')
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'keyword','OUTPUT,FORMAT') 
@@ -1816,11 +1371,19 @@ subroutine readInput(simulation)
                   output_option%print_vtk = PETSC_TRUE
                 case ('HDF5')
                   output_option%print_hdf5 = PETSC_TRUE
+                case default
+                  option%io_buffer = 'Keyword: ' // trim(word) // &
+                                     ' not recognized in OUTPUT,FORMAT.'
+                  call printErrMsg(option)
               end select
             case('VELOCITIES')
               velocities = PETSC_TRUE
             case('FLUXES')
               fluxes = PETSC_TRUE
+            case default
+              option%io_buffer = 'Keyword: ' // trim(word) // &
+                                 ' not recognized in OUTPUT.'
+              call printErrMsg(option)              
           end select
        enddo
        
@@ -1840,36 +1403,37 @@ subroutine readInput(simulation)
        endif
             
 !.....................
-      case ('SIMULATION')
+      case ('TIME')
         do
           call InputReadFlotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
           if (InputCheckExit(input,option)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)
-          call InputErrorMsg(input,option,'word','SIMULATION') 
+          call InputErrorMsg(input,option,'word','TIME') 
           select case(trim(word))
             case('FINAL_TIME')
               call InputReadDouble(input,option,temp_real)
-              call InputErrorMsg(input,option,'Final Time','SIMULATION') 
+              call InputErrorMsg(input,option,'Final Time','TIME') 
               call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'Final Time Units','SIMULATION')
+              call InputErrorMsg(input,option,'Final Time Units','TIME')
               realization%output_option%tunit = word
               realization%output_option%tconv = UnitsConvertToInternal(word,option)
               waypoint => WaypointCreate()
+              waypoint%final = PETSC_TRUE
               waypoint%time = temp_real*realization%output_option%tconv
               waypoint%print_output = PETSC_TRUE              
               call WaypointInsertInList(waypoint,realization%waypoints)
             case('INITIAL_TIMESTEP_SIZE')
               call InputReadDouble(input,option,temp_real)
-              call InputErrorMsg(input,option,'Initial Timestep Size','SIMULATION') 
+              call InputErrorMsg(input,option,'Initial Timestep Size','TIME') 
               call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'Initial Timestep Size Time Units','SIMULATION')
+              call InputErrorMsg(input,option,'Initial Timestep Size Time Units','TIME')
               master_stepper%dt_min = temp_real*UnitsConvertToInternal(word,option)
             case('MAXIMUM_TIMESTEP_SIZE')
               call InputReadDouble(input,option,temp_real)
-              call InputErrorMsg(input,option,'Maximum Timestep Size','SIMULATION') 
+              call InputErrorMsg(input,option,'Maximum Timestep Size','TIME') 
               call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'Maximum Timestep Size Time Units','SIMULATION')
+              call InputErrorMsg(input,option,'Maximum Timestep Size Time Units','TIME')
               waypoint => WaypointCreate()
               waypoint%dt_max = temp_real*UnitsConvertToInternal(word,option)
               call InputReadWord(input,option,word,PETSC_TRUE)
@@ -1877,9 +1441,9 @@ subroutine readInput(simulation)
                 call StringToUpper(word)
                 if (StringCompare(word,'AT',TWO_INTEGER)) then
                   call InputReadDouble(input,option,temp_real)
-                  call InputErrorMsg(input,option,'Maximum Timestep Size Update Time','SIMULATION') 
+                  call InputErrorMsg(input,option,'Maximum Timestep Size Update Time','TIME') 
                   call InputReadWord(input,option,word,PETSC_TRUE)
-                  call InputErrorMsg(input,option,'Maximum Timestep Size Update Time Units','SIMULATION')
+                  call InputErrorMsg(input,option,'Maximum Timestep Size Update Time Units','TIME')
                   waypoint%time = temp_real*UnitsConvertToInternal(word,option)
                 else
                   option%io_buffer = 'Keyword under "MAXIMUM_TIMESTEP_SIZE" after ' // &
@@ -1890,8 +1454,15 @@ subroutine readInput(simulation)
                 waypoint%time = 0.d0
               endif     
               call WaypointInsertInList(waypoint,realization%waypoints)
+            case default
+              option%io_buffer = 'Keyword: ' // trim(word) // &
+                                 ' not recognized in TIME.'
+              call printErrMsg(option)              
           end select
         enddo
+
+        option%flow_dt = master_stepper%dt_min
+        option%tran_dt = master_stepper%dt_min
       
 !....................
       case default
@@ -1903,7 +1474,6 @@ subroutine readInput(simulation)
     end select
 
   enddo
-                                   
                                         
 end subroutine readInput
 

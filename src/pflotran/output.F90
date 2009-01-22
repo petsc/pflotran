@@ -22,17 +22,34 @@ module Output_module
   PetscInt, parameter :: TECPLOT_FILE = 0
   PetscInt, parameter ::  HDF5_FILE = 1
 
-  PetscInt, parameter :: LIQUID_PHASE = 1
-  PetscInt, parameter :: GAS_PHASE = 2
-
   PetscMPIInt :: hdf5_err
   PetscErrorCode :: ierr
   PetscInt, save :: max_local_size_saved = -1
 
-  public :: Output, OutputVectorTecplot, &
+  public :: OutputInit, Output, OutputVectorTecplot, &
             OutputBreakthrough, OutputGetVarFromArray
 
 contains
+
+! ************************************************************************** !
+!
+! OutputInit: Initializes variables
+! author: Glenn Hammond
+! date: 01/22/09
+!
+! ************************************************************************** !
+subroutine OutputInit(realization)
+
+  use Realization_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  ! set size to -1 in order to re-initialize parallel communication blocks
+  max_local_size_saved = -1
+
+end subroutine OutputInit
 
 ! ************************************************************************** !
 !
@@ -41,15 +58,17 @@ contains
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine Output(realization,plot_flag)
+subroutine Output(realization,plot_flag,transient_plot_flag)
 
-  use Realization_module
-  use Option_module
+  use Realization_module, only : realization_type
+  use Option_module, only : OptionCheckTouch, option_type, &
+                            output_option_type, printMsg
   
   implicit none
   
   type(realization_type) :: realization
   PetscTruth :: plot_flag
+  PetscTruth :: transient_plot_flag
 
   character(len=MAXWORDLENGTH) :: word
   PetscErrorCode :: ierr
@@ -60,9 +79,6 @@ subroutine Output(realization,plot_flag)
 
   call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr)
 
-  ! set size to -1 in order to re-initialize
-  if (realization%output_option%first) max_local_size_saved = -1
-  
   ! check for plot request from active directory
   if (.not.plot_flag) then
 
@@ -134,17 +150,19 @@ subroutine Output(realization,plot_flag)
 !      call ComputeFlowMassBalance(realization)
     endif
   
-    if (option%compute_mass_balance_new) then
-      call OutputMassBalanceNew(realization)
-    endif
-  
     realization%output_option%plot_number = realization%output_option%plot_number + 1
 
   endif
   
-  call OutputBreakthrough(realization)
-
+  if (transient_plot_flag) then
+    if (option%compute_mass_balance_new) then
+      call OutputMassBalanceNew(realization)
+    endif
+    call OutputBreakthrough(realization)
+  endif
+  
   plot_flag = PETSC_FALSE
+  transient_plot_flag = PETSC_FALSE
   realization%output_option%plot_name = ''
 
   call PetscLogStagePop(ierr)
@@ -2573,7 +2591,6 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
 !110 format(',',es16.9)
 111 format("i")
 
-!print *, 'Fix format statements in output!!!!!'
 
   ! write out coorindates
 !geh - do not print coordinates for now

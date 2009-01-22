@@ -553,7 +553,10 @@ end subroutine pflow_pckr_noderiv_exec
 ! ************************************************************************** !
 subroutine pckrNH_noderiv( sat, pc, kr, saturation_function, option)
 
+  use Saturation_Function_module
+
   implicit none
+  
   type(saturation_function_type) :: saturation_function
   type(option_type) :: option
   PetscReal :: sat(option%nphase),pc(option%nphase),kr(option%nphase)
@@ -586,7 +589,10 @@ end subroutine pckrNH_noderiv
 ! ************************************************************************** !
 subroutine pckrHY_noderiv(sat, hysdat, pc, kr, saturation_function, option)
 
+  use Saturation_Function_module
+  
   implicit none
+  
   type(saturation_function_type) :: saturation_function
   type(option_type) :: option
   PetscReal :: sat(option%nphase),pc(option%nphase),kr(option%nphase)

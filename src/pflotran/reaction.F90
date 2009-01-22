@@ -798,7 +798,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         case(CONSTRAINT_GAS)
 
           ln_act_h2o = 0.d0
-          ! print *,'SC CO2 speciation 1'
           igas = constraint_id(icomp)
           
           ! compute secondary species concentration
@@ -835,7 +834,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
            ln_act_h2o = 0.d0
           
           igas = constraint_id(icomp)
-          print *,'SC CO2 speciation 1', icomp, igas, reaction%co2_gas_id
+
           ! compute secondary species concentration
           if(abs(reaction%co2_gas_id) == igas )then
             pres = global_auxvar%pres(2)
@@ -843,7 +842,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             xphico2 = global_auxvar%fugacoeff(1)
             call Henry_duan_sun_0NaCl(pres *1D-5, tc, henry)
             lnQk = - log(henry*xphico2)*LOG_TO_LN
-            print *,'SC CO2 speciation 2'       
            
             ! activity of water
             if (reaction%eqgash2oid(igas) > 0) then
@@ -1895,8 +1893,6 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   if(iphase > option%nphase) return 
   rt_auxvar%total(:,iphase) = 0D0 
   den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3     
-  print *,'Rtotal: den(2)=', den_kg_per_L, global_auxvar%den_kg(:),&
-     global_auxvar%sat(iphase), global_auxvar%fugacoeff(1)
   if(global_auxvar%sat(iphase)>1D-20)then
     do ieqgas = 1, reaction%ngas ! all gas phase species are secondary
       
@@ -1904,13 +1900,11 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
           pressure = global_auxvar%pres(2)
           temperature = global_auxvar%temp(1)
           xphico2 = global_auxvar%fugacoeff(1)
-          !print *,'Rtotal: CO2=',pressure, temperature, xphico2
           call Henry_duan_sun_0NaCl(pressure *1D-5, temperature, henry)
           lnQk = - log(henry*xphico2)*LOG_TO_LN       
         else   
           lnQK = -reaction%eqgas_logK(ieqgas)*LOG_TO_LN
         endif 
-      print *, 'Rtotal CO2:',ieqgas,   global_auxvar%pres(2), global_auxvar%temp(1), xphico2, henry
           
         if (reaction%eqgash2oid(igas) > 0) then
            lnQK = lnQK + reaction%eqgash2ostoich(ieqgas)*ln_act_h2o

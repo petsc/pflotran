@@ -44,16 +44,22 @@ module Reactive_Transport_Aux_module
     PetscReal, pointer :: mass_balance_delta(:,:)
   end type reactive_transport_auxvar_type
   
+  type, public :: reactive_transport_param_type
+    PetscReal :: dispersivity
+    PetscReal, pointer :: diffusion_coefficient(:)
+  end type reactive_transport_param_type
+
   type, public :: reactive_transport_type
     PetscInt :: num_aux, num_aux_bc
     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
     PetscInt :: n_zero_rows
     PetscTruth :: aux_vars_up_to_date
     PetscTruth :: inactive_cells_exist
+    type(reactive_transport_param_type), pointer :: rt_parameter
     type(reactive_transport_auxvar_type), pointer :: aux_vars(:)
     type(reactive_transport_auxvar_type), pointer :: aux_vars_bc(:)
   end type reactive_transport_type
-
+  
   public :: RTAuxCreate, RTAuxDestroy, &
             RTAuxVarInit, RTAuxVarCopy, RTAuxVarDestroy
             
@@ -67,12 +73,13 @@ contains
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-function RTAuxCreate()
+function RTAuxCreate(option)
 
   use Option_module
 
   implicit none
   
+  type(option_type) :: option
   type(reactive_transport_type), pointer :: RTAuxCreate
   
   type(reactive_transport_type), pointer :: aux
@@ -87,6 +94,11 @@ function RTAuxCreate()
   nullify(aux%zero_rows_local_ghosted)
   aux%aux_vars_up_to_date = PETSC_FALSE
   aux%inactive_cells_exist = PETSC_FALSE
+
+  allocate(aux%rt_parameter)
+  allocate(aux%rt_parameter%diffusion_coefficient(option%nphase))
+  aux%rt_parameter%diffusion_coefficient = 0.d0
+  aux%rt_parameter%dispersivity = 0.d0
 
   RTAuxCreate => aux
   
@@ -356,6 +368,12 @@ subroutine RTAuxDestroy(aux)
   nullify(aux%zero_rows_local)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
   nullify(aux%zero_rows_local_ghosted)
+  if (associated(aux%rt_parameter)) then
+    deallocate(aux%rt_parameter%diffusion_coefficient)
+    nullify(aux%rt_parameter%diffusion_coefficient)
+    deallocate(aux%rt_parameter)
+  endif
+  nullify(aux%rt_parameter)
     
 end subroutine RTAuxDestroy
 

@@ -33,6 +33,13 @@ module THC_Aux_module
     PetscReal, pointer :: xmol(:)
     PetscReal, pointer :: diff(:)
   end type thc_auxvar_type
+
+  type, public :: thc_parameter_type
+    PetscReal, pointer :: dencpr(:)
+    PetscReal, pointer :: ckdry(:)
+    PetscReal, pointer :: ckwet(:)
+    PetscReal, pointer :: sir(:,:)
+  end type thc_parameter_type
   
   type, public :: thc_type
     PetscInt :: n_zero_rows
@@ -41,6 +48,7 @@ module THC_Aux_module
     PetscTruth :: aux_vars_up_to_date
     PetscTruth :: inactive_cells_exist
     PetscInt :: num_aux, num_aux_bc
+    type(thc_parameter_type), pointer :: thc_parameter
     type(thc_auxvar_type), pointer :: aux_vars(:)
     type(thc_auxvar_type), pointer :: aux_vars_bc(:)
   end type thc_type
@@ -77,6 +85,7 @@ function THCAuxCreate()
   nullify(aux%aux_vars)
   nullify(aux%aux_vars_bc)
   aux%n_zero_rows = 0
+  nullify(aux%thc_parameter)
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
 
@@ -186,7 +195,7 @@ subroutine THCAuxVarCompute(x,aux_var,iphase,saturation_function, &
 
   use Option_module
   use water_eos_module
-  use Material_module
+  use Saturation_Function_module  
   
   implicit none
 
@@ -267,7 +276,6 @@ subroutine THCAuxVarCompute(x,aux_var,iphase,saturation_function, &
   aux_var%den_kg = dw_kg
   aux_var%h = hw
   aux_var%u = aux_var%h - pw / dw_mol * option%scale
-  aux_var%diff(1:option%nflowspec) = option%difaq
   aux_var%kvr = kr/visl
   
 !  aux_var%vis = visl
@@ -344,6 +352,17 @@ subroutine THCAuxDestroy(aux)
   nullify(aux%zero_rows_local)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
   nullify(aux%zero_rows_local_ghosted)
+  if (associated(aux%thc_parameter)) then
+    if (associated(aux%thc_parameter%dencpr)) deallocate(aux%thc_parameter%dencpr)
+    nullify(aux%thc_parameter%dencpr)
+    if (associated(aux%thc_parameter%ckwet)) deallocate(aux%thc_parameter%ckwet)
+    nullify(aux%thc_parameter%ckwet)
+    if (associated(aux%thc_parameter%ckdry)) deallocate(aux%thc_parameter%ckdry)
+    nullify(aux%thc_parameter%ckdry)
+    if (associated(aux%thc_parameter%sir)) deallocate(aux%thc_parameter%sir)
+    nullify(aux%thc_parameter%sir)
+  endif
+  nullify(aux%thc_parameter)
     
 end subroutine THCAuxDestroy
 

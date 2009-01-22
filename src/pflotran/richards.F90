@@ -120,6 +120,7 @@ subroutine RichardsSetupPatch(realization)
   type(coupler_type), pointer :: boundary_condition
 
   PetscInt :: ghosted_id, iconn, sum_connection
+  PetscInt :: i
   type(richards_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)  
   
   option => realization%option
@@ -127,6 +128,12 @@ subroutine RichardsSetupPatch(realization)
   grid => patch%grid
 
   patch%aux%Richards => RichardsAuxCreate()
+  allocate(patch%aux%Richards%richards_parameter%sir(option%nphase, &
+                                  size(realization%saturation_function_array)))
+  do i = 1, size(realization%saturation_function_array)
+    patch%aux%Richards%richards_parameter%sir(:,realization%saturation_function_array(i)%ptr%id) = &
+      realization%saturation_function_array(i)%ptr%Sr(:)
+  enddo
   
   ! allocate aux_var data structures for all grid cells  
   allocate(rich_aux_vars(grid%ngmax))
@@ -790,7 +797,7 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
                                    option,sat_func,J)
 
   use Option_module
-  use Material_module
+  use Saturation_Function_module
   
   implicit none
 
@@ -884,7 +891,7 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
                                   area,dist_gravity,upweight, &
                                   option,sat_func_up,sat_func_dn,Jup,Jdn)
   use Option_module 
-  use Material_module                             
+  use Saturation_Function_module                        
   
   implicit none
   
@@ -1120,7 +1127,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
                                     area,dist_gravity,option, &
                                     sat_func_dn,Jdn)
   use Option_module
-  use Material_module
+  use Saturation_Function_module
  
   implicit none
   
@@ -1501,6 +1508,7 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(richards_parameter_type), pointer :: richards_parameter
   type(richards_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
   type(coupler_type), pointer :: boundary_condition, source_sink
@@ -1517,7 +1525,7 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
   grid => patch%grid
   option => realization%option
   field => realization%field
-
+  richards_parameter => patch%aux%Richards%richards_parameter
   rich_aux_vars => patch%aux%Richards%aux_vars
   rich_aux_vars_bc => patch%aux%Richards%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
@@ -1648,12 +1656,12 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
       call RichardsFlux(rich_aux_vars(ghosted_id_up), &
                         global_aux_vars(ghosted_id_up), &
                           porosity_loc_p(ghosted_id_up), &
-                          option%sir(1,icap_up), &
+                          richards_parameter%sir(1,icap_up), &
                           dd_up,perm_up, &
                         rich_aux_vars(ghosted_id_dn), &
                         global_aux_vars(ghosted_id_dn), &
                           porosity_loc_p(ghosted_id_dn), &
-                          option%sir(1,icap_dn), &
+                          richards_parameter%sir(1,icap_dn), &
                           dd_dn,perm_dn, &
                         cur_connection_set%area(iconn),distance_gravity, &
                         upweight,option,v_darcy,Res)
@@ -1716,7 +1724,7 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
                                 rich_aux_vars(ghosted_id), &
                                 global_aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
-                                option%sir(1,icap_dn), &
+                                richards_parameter%sir(1,icap_dn), &
                                 cur_connection_set%dist(0,iconn),perm_dn, &
                                 cur_connection_set%area(iconn), &
                                 distance_gravity,option, &
@@ -1932,6 +1940,7 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
+  type(richards_parameter_type), pointer :: richards_parameter
   type(richards_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:) 
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
   
@@ -1942,7 +1951,7 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   grid => patch%grid
   option => realization%option
   field => realization%field
-
+  richards_parameter => patch%aux%Richards%richards_parameter
   rich_aux_vars => patch%aux%Richards%aux_vars
   rich_aux_vars_bc => patch%aux%Richards%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
@@ -2079,12 +2088,12 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       call RichardsFluxDerivative(rich_aux_vars(ghosted_id_up), &
                                   global_aux_vars(ghosted_id_up), &
                                     porosity_loc_p(ghosted_id_up), &
-                                    option%sir(1,icap_up), &
+                                    richards_parameter%sir(1,icap_up), &
                                     dd_up,perm_up, &
                                   rich_aux_vars(ghosted_id_dn), &
                                   global_aux_vars(ghosted_id_dn), &
                                     porosity_loc_p(ghosted_id_dn), &
-                                    option%sir(1,icap_dn), &
+                                    richards_parameter%sir(1,icap_dn), &
                                     dd_dn,perm_dn, &
                                   cur_connection_set%area(iconn),distance_gravity, &
                                   upweight,option,&
@@ -2160,7 +2169,7 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                 rich_aux_vars(ghosted_id), &
                                 global_aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
-                                option%sir(1,icap_dn), &
+                                richards_parameter%sir(1,icap_dn), &
                                 cur_connection_set%dist(0,iconn),perm_dn, &
                                 cur_connection_set%area(iconn), &
                                 distance_gravity,option, &

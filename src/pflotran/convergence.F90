@@ -186,7 +186,6 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     call VecNorm(update_vec,NORM_INFINITY,inorm_update,ierr)
 
     if (inorm_residual < solver%newton_inf_res_tol) then
-!      if (option%print_flag) print *, 'converged from infinity', inorm_residual
       reason = 10
     else
 !      if (reason > 0 .and. inorm_residual > 100.d0*solver%newton_inf_res_tol) &
@@ -194,7 +193,6 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     endif
 
     if (inorm_update < solver%newton_inf_upd_tol .and. it > 0) then
-!      if (option%print_flag) print *, 'converged from infinity', inorm_residual
       reason = 11
     endif
 

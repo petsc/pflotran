@@ -23,6 +23,9 @@ module Timestepper_module
     
     PetscReal :: dt_min
     PetscReal :: dt_max
+
+    ! An array of multiplicative factors that specify how to increase time step.
+    PetscReal, pointer :: tfac(:)
         
     type(solver_type), pointer :: solver
     
@@ -34,7 +37,7 @@ module Timestepper_module
   
   public :: TimestepperCreate, TimestepperDestroy, StepperRun, &
             TimestepperRead, TimestepperPrintInfo
-  
+
 contains
 
 ! ************************************************************************** !
@@ -65,7 +68,16 @@ function TimestepperCreate()
   
   stepper%dt_min = 1.d0
   stepper%dt_max = 3.1536d6 ! One-tenth of a year.  
-      
+
+  allocate(stepper%tfac(13))
+  stepper%tfac(1)  = 2.0d0; stepper%tfac(2)  = 2.0d0
+  stepper%tfac(3)  = 2.0d0; stepper%tfac(4)  = 2.0d0
+  stepper%tfac(5)  = 2.0d0; stepper%tfac(6)  = 1.8d0
+  stepper%tfac(7)  = 1.6d0; stepper%tfac(8)  = 1.4d0
+  stepper%tfac(9)  = 1.2d0; stepper%tfac(10) = 1.0d0
+  stepper%tfac(11) = 1.0d0; stepper%tfac(12) = 1.0d0
+  stepper%tfac(13) = 1.0d0
+  
   nullify(stepper%solver)
   nullify(stepper%convergence_context)
   nullify(stepper%cur_waypoint)
@@ -75,7 +87,7 @@ function TimestepperCreate()
   TimeStepperCreate => stepper
   
 end function TimestepperCreate 
-  
+
 ! ************************************************************************** !
 !
 ! TimestepperRead: Reads parameters associated with time stepper
@@ -162,9 +174,9 @@ end subroutine TimestepperRead
 subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
   use Realization_module
-!  use Reactive_Transport_module, only: RTUpdateAuxVars
+
   use Option_module
-  use Output_module
+  use Output_module, only : Output, OutputInit
   use Logging_module  
   use Mass_Balance_module
   
@@ -181,9 +193,10 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   type(stepper_type), pointer :: master_stepper
   
   type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option
   type(waypoint_type), pointer :: prev_waypoint  
 
-  PetscTruth :: plot_flag, stop_flag
+  PetscTruth :: plot_flag, stop_flag, transient_plot_flag
   PetscTruth :: master_timestep_cut_flag
   PetscTruth :: flow_timestep_cut_flag, tran_timestep_cut_flag
   PetscInt :: istep, start_step
@@ -197,6 +210,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   PetscErrorCode :: ierr
 
   option => realization%option
+  output_option => realization%output_option
   
   if (associated(flow_stepper)) then
     master_stepper => flow_stepper
@@ -205,6 +219,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   endif
 
   plot_flag = PETSC_FALSE
+  transient_plot_flag = PETSC_FALSE
   master_timestep_cut_flag = PETSC_FALSE
   flow_timestep_cut_flag = PETSC_FALSE
   tran_timestep_cut_flag = PETSC_FALSE
@@ -240,20 +255,22 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
 
   ! print initial condition output if not a restarted sim
-  if (realization%output_option%plot_number == 0 .and. &
+  call OutputInit(realization)
+  if (output_option%plot_number == 0 .and. &
       master_stepper%nstepmax >= 0) then
     plot_flag = PETSC_TRUE
-    realization%output_option%first = PETSC_TRUE
-    call Output(realization,plot_flag)
+    transient_plot_flag = PETSC_TRUE
+    output_option%first = PETSC_TRUE
+    call Output(realization,plot_flag,transient_plot_flag)
   endif
-  realization%output_option%first = PETSC_FALSE
+  output_option%first = PETSC_FALSE
            
   call PetscGetTime(stepper_start_time, ierr)
   start_step = master_stepper%steps+1
   do istep = start_step, master_stepper%nstepmax
 
     if (OptionPrint(option) .and. &
-        mod(master_stepper%steps,option%imod) == 0) then
+        mod(master_stepper%steps,output_option%screen_imod) == 0) then
       option%print_flag = PETSC_TRUE
     else
       option%print_flag = PETSC_FALSE
@@ -263,7 +280,9 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     flow_timestep_cut_flag = PETSC_FALSE
     tran_timestep_cut_flag = PETSC_FALSE
     plot_flag = PETSC_FALSE
-    call StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag)
+    transient_plot_flag = PETSC_FALSE
+    call StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
+                               transient_plot_flag)
 
     if (associated(flow_stepper)) then
       call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
@@ -296,12 +315,20 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       master_stepper%cur_waypoint => prev_waypoint
       plot_flag = PETSC_FALSE
     endif
-
-    if (option%compute_mass_balance) then
-      call MassBalanceUpdate(realization,flow_stepper%solver, &
-                             tran_stepper%solver)
+    ! however, if we are using the modulus of the output_option%imod, we may still print
+    if (mod(istep,output_option%periodic_output_ts_imod) == 0) then
+      plot_flag = PETSC_TRUE
     endif
-    call Output(realization,plot_flag)
+    if (plot_flag .or. mod(istep,output_option%periodic_tr_output_ts_imod) == 0) then
+      transient_plot_flag = PETSC_TRUE
+    endif
+
+!   deprecated - geh
+!    if (option%compute_mass_balance) then
+!      call MassBalanceUpdate(realization,flow_stepper%solver, &
+!                             tran_stepper%solver)
+!    endif
+    call Output(realization,plot_flag,transient_plot_flag)
   
     call StepperUpdateDT(flow_stepper,tran_stepper,option, &
                          master_timestep_cut_flag, &
@@ -463,11 +490,11 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option,timestep_cut_flag, &
     case default
       dtt = dt
       if (num_newton_iterations <= stepper%iaccel .and. &
-          num_newton_iterations <= size(option%tfac)) then
+          num_newton_iterations <= size(stepper%tfac)) then
         if (num_newton_iterations == 0) then
-          dtt = option%tfac(1) * dt
+          dtt = stepper%tfac(1) * dt
         else
-          dtt = option%tfac(num_newton_iterations) * dt
+          dtt = stepper%tfac(num_newton_iterations) * dt
         endif
       endif
   end select
@@ -494,7 +521,8 @@ end subroutine StepperUpdateDT
 ! date: 02/19/08
 !
 ! ************************************************************************** !
-subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag)
+subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
+                                 transient_plot_flag)
 
   use Option_module
   
@@ -503,6 +531,7 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag)
   type(stepper_type), pointer :: flow_stepper, tran_stepper
   type(option_type) :: option
   PetscTruth :: plot_flag
+  PetscTruth :: transient_plot_flag
   
   PetscReal :: time
   PetscReal :: dt
@@ -540,7 +569,8 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag)
 ! If a waypoint calls for a plot or change in src/sinks, adjust time step to match waypoint
   if (time + 0.2*dt >= cur_waypoint%time .and. &
       (cur_waypoint%update_srcs .or. &
-       cur_waypoint%print_output)) then
+       cur_waypoint%print_output .or. &
+       cur_waypoint%print_tr_output)) then
     time = time - dt
     dt = cur_waypoint%time - time
     if (dt > dt_max .and. dabs(dt-dt_max) > 1.d0) then ! 1 sec tolerance to avoid cancellation
@@ -549,6 +579,7 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag)
     else
       time = cur_waypoint%time
       if (cur_waypoint%print_output) plot_flag = PETSC_TRUE
+      if (cur_waypoint%print_tr_output) transient_plot_flag = PETSC_TRUE
       option%match_waypoint = PETSC_TRUE
       cur_waypoint => cur_waypoint%next
       if (associated(cur_waypoint)) &
@@ -591,12 +622,14 @@ end subroutine StepperSetTargetTimes
 ! ************************************************************************** !
 subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
                              num_newton_iterations)
-  
-  use MPHASE_module
-  use Richards_module
-  use THC_module
-  use Output_module
+  use MPHASE_module, only : MphaseMaxChange, MphaseInitializeTimestep, &
+                           MphaseTimeCut, MPhaseUpdateReason
+  use Richards_module, only : RichardsMaxChange, RichardsInitializeTimestep, &
+                             RichardsTimeCut
+  use THC_module, only : THCMaxChange, THCInitializeTimestep, THCTimeCut
   use Global_module
+
+  use Output_module, only : Output
   
   use Realization_module
   use Discretization_module
@@ -734,7 +767,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
         endif
         realization%output_option%plot_name = 'cut_to_failure'
         plot_flag = PETSC_TRUE
-        call Output(realization,plot_flag)
+        call Output(realization,plot_flag,PETSC_FALSE)
         call PetscFinalize(ierr)
         stop
       endif
@@ -840,7 +873,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   endif
 
   if (option%print_flag) print *, ""
-  
+
 end subroutine StepperStepFlowDT
 
 ! ************************************************************************** !
@@ -854,7 +887,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
                                   num_newton_iterations)
   
   use Reactive_Transport_module
-  use Output_module
+  use Output_module, only : Output
   
   use Realization_module
   use Discretization_module
@@ -1037,7 +1070,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
           endif
           realization%output_option%plot_name = 'cut_to_failure'
           plot_flag = PETSC_TRUE
-          call Output(realization,plot_flag)
+          call Output(realization,plot_flag,PETSC_FALSE)
           call PetscFinalize(ierr)
           stop
         endif
@@ -1449,10 +1482,12 @@ subroutine TimestepperDestroy(stepper)
     
   call SolverDestroy(stepper%solver)
   call ConvergenceContextDestroy(stepper%convergence_context)
-
+  
+  if (associated(stepper%tfac)) deallocate(stepper%tfac)
+  nullify(stepper%tfac)
   deallocate(stepper)
   nullify(stepper)
   
 end subroutine TimestepperDestroy
-  
+
 end module Timestepper_module

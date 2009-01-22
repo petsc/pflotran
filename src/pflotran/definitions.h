@@ -200,4 +200,10 @@ PetscInt, parameter :: TECPLOT_BLOCK_FORMAT = 2
 PetscInt, parameter :: BREAKTHROUGH_SCALAR = 1
 PetscInt, parameter :: BREAKTHROUGH_FLUX = 2
 
+! phase ids
+PetscInt, parameter :: LIQUID_PHASE = 1
+PetscInt, parameter :: GAS_PHASE = 2
+
+
+
 #define HASH

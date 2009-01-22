@@ -1395,13 +1395,15 @@ subroutine FlowConditionReadValuesFromFile(filename,dataset,option)
   enddo
   
   if (associated(dataset%times)) then
-    if (count /= size(dataset%times,1)) then
+    if (count /= size(dataset%times,1) .and. &
+        OptionPrint(option)) then
       print *, 'Number of times (', count, ') in ', trim(filename), &
                ' does not match previous allocation: ', size(dataset%times,1)
       stop
     endif
     do i=1,count
-      if (dabs(dataset%times(i)-temp_times(i)) > 1.d-8) then
+      if (dabs(dataset%times(i)-temp_times(i)) > 1.d-8 .and. &
+          OptionPrint(option)) then
         print *, 'Time (', temp_times(i), ') in ', trim(filename), &
                  ' does not match previous allocation time: ', &
                  dataset%times(i), i
@@ -1644,10 +1646,6 @@ subroutine FlowSubConditionUpdateDataset(option,time,dataset)
     do cur_time_index = 1, dataset%max_time_index
       dataset%times(cur_time_index) = dataset%times(cur_time_index) + &     
                                dataset%time_shift
-!     print *,'condition: ',cur_time_index,dataset%max_time_index, &
-!       dataset%times(cur_time_index), &     
-!       dataset%times(dataset%max_time_index), dataset%time_shift, &
-!       dataset%times(cur_time_index) + dataset%time_shift
     enddo
     dataset%cur_time_index = 1
   endif

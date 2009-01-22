@@ -1102,8 +1102,6 @@ function GridIndexToCellID(vec,index,grid,vec_type)
     endif
   endif
   
-!print *,  '-> ', low, high, index, cell_id
-
   call MPI_AllReduce(cell_id,GridIndexToCellID,1,MPI_INTEGER,MPI_MAX, &
                      PETSC_COMM_WORLD,ierr)
                      
