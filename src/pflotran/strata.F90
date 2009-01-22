@@ -13,11 +13,11 @@ module Strata_module
   type, public :: strata_type
     PetscInt :: id                                       ! id of strata
     PetscTruth :: active
-    character(len=MAXWORDLENGTH) :: material_name       ! character string defining name of material to be applied
+    character(len=MAXWORDLENGTH) :: material_property_name  ! character string defining name of material to be applied
     character(len=MAXWORDLENGTH) :: region_name         ! character string defining name of region to be applied
-    PetscInt :: imaterial                                ! id of material in material array/list
+    PetscInt :: imaterial_property                       ! id of material in material array/list
     PetscInt :: iregion                                  ! id of region in region array/list
-    type(material_type), pointer :: material            ! pointer to material in material array/list
+    type(material_property_type), pointer :: material_property ! pointer to material in material array/list
     type(region_type), pointer :: region                ! pointer to region in region array/list
     type(strata_type), pointer :: next            ! pointer to next strata
   end type strata_type
@@ -61,13 +61,13 @@ function StrataCreate1()
   allocate(strata)
   strata%id = 0
   strata%active = PETSC_TRUE
-  strata%material_name = ""
+  strata%material_property_name = ""
   strata%region_name = ""
   strata%iregion = 0
-  strata%imaterial = 0
+  strata%imaterial_property = 0
 
   nullify(strata%region)
-  nullify(strata%material)
+  nullify(strata%material_property)
   nullify(strata%next)
   
   StrataCreate1 => strata
@@ -94,13 +94,13 @@ function StrataCreateFromStrata(strata)
   
   new_strata%id = strata%id
   new_strata%active = strata%active
-  new_strata%material_name = strata%material_name
+  new_strata%material_property_name = strata%material_property_name
   new_strata%region_name = strata%region_name
   new_strata%iregion = strata%iregion
 
   ! keep these null
   nullify(new_strata%region)
-  nullify(new_strata%material)
+  nullify(new_strata%material_property)
   nullify(new_strata%next)
   
   StrataCreateFromStrata => new_strata
@@ -164,8 +164,8 @@ subroutine StrataRead(strata,input,option)
         call InputErrorMsg(input,option,'region name','STRATA')
       case('MATERIAL')
         call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'material name','STRATA')
-        strata%material_name = word
+        call InputErrorMsg(input,option,'material property name','STRATA')
+        strata%material_property_name = word
       case('INACTIVE')
         strata%active = PETSC_FALSE
     end select 

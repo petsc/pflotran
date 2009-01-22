@@ -5,6 +5,7 @@ module Realization_module
   use Region_module
   use Condition_module
   use Material_module
+  use Fluid_module
   use Discretization_module
   use Field_module
   use Debug_module
@@ -41,12 +42,12 @@ private
     
     type(reaction_type), pointer :: reaction
     
-    type(material_type), pointer :: materials
-    type(material_ptr_type), pointer :: material_array(:)
-    type(thermal_property_type), pointer :: thermal_properties
+    type(material_property_type), pointer :: material_properties
+    type(material_property_ptr_type), pointer :: material_property_array(:)
+    type(fluid_property_type), pointer :: fluid_properties
+    type(fluid_property_type), pointer :: fluid_property_array(:)
     type(saturation_function_type), pointer :: saturation_functions
     type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
-    type(fluid_property_type), pointer :: fluid_properties
     
     type(waypoint_list_type), pointer :: waypoints
     
@@ -113,12 +114,12 @@ function RealizationCreate()
   allocate(realization%transport_constraints)
   call TranConstraintInitList(realization%transport_constraints)
 
-  nullify(realization%materials)
-  nullify(realization%material_array)
-  nullify(realization%thermal_properties)
+  nullify(realization%material_properties)
+  nullify(realization%material_property_array)
+  nullify(realization%fluid_properties)
+  nullify(realization%fluid_property_array)
   nullify(realization%saturation_functions)
   nullify(realization%saturation_function_array)
-  nullify(realization%fluid_properties)
   
   nullify(realization%reaction)
   
@@ -444,7 +445,7 @@ subroutine RealizationProcessCouplers(realization)
       if (.not.associated(cur_patch)) exit
       call PatchProcessCouplers(cur_patch,realization%flow_conditions, &
                                 realization%transport_conditions, &
-                                realization%materials, &
+                                realization%material_properties, &
                                 realization%option)
       cur_patch => cur_patch%next
     enddo
@@ -1411,12 +1412,15 @@ subroutine RealizationDestroy(realization)
   if (associated(realization%debug)) deallocate(realization%debug)
   nullify(realization%debug)
   
+  if (associated(realization%fluid_property_array)) &
+    deallocate(realization%fluid_property_array)
+  nullify(realization%fluid_property_array)
   call FluidPropertyDestroy(realization%fluid_properties)
   
-  if (associated(realization%material_array)) &
-    deallocate(realization%material_array)
-  nullify(realization%material_array)
-  call MaterialDestroy(realization%materials)
+  if (associated(realization%material_property_array)) &
+    deallocate(realization%material_property_array)
+  nullify(realization%material_property_array)
+  call MaterialPropertyDestroy(realization%material_properties)
   
   if (associated(realization%saturation_function_array)) &
     deallocate(realization%saturation_function_array)

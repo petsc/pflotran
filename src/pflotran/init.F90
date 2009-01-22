@@ -701,6 +701,7 @@ subroutine readInput(simulation)
   use AMR_Grid_module
   use Solver_module
   use Material_module
+  use Fluid_module
   use Realization_module
   use Timestepper_module
   use Region_module
@@ -738,9 +739,6 @@ subroutine readInput(simulation)
   PetscInt :: temp_int
   PetscInt :: count, id
   
-! keywords: GRID, PROC, COUP, GRAV, OPTS, TOLR, DXYZ, DIFF, RADN, HYDR,  
-!           SOLV, THRM, PCKR, PHIK, INIT, TIME, DTST, BCON, SOUR, BRK, RCTR
-
   type(region_type), pointer :: region
   type(flow_condition_type), pointer :: flow_condition
   type(tran_condition_type), pointer :: tran_condition
@@ -751,8 +749,8 @@ subroutine readInput(simulation)
   
   type(waypoint_type), pointer :: waypoint
   
-  type(material_type), pointer :: material
-  type(thermal_property_type), pointer :: thermal_property
+  type(material_property_type), pointer :: material_property
+  type(fluid_property_type), pointer :: fluid_property
   type(saturation_function_type), pointer :: saturation_function
 
   type(realization_type), pointer :: realization
@@ -1249,65 +1247,13 @@ subroutine readInput(simulation)
       case ('RCTR')
 
         call printErrMsg(option,"RCTR currently out of date.  Needs to be reimplemented")
-#if 0
-        call InputReadStringErrorMsg(input,option,'RCTR')
 
-        call InputReadInt(input,option,option%ityprxn)
-        call InputDefaultMsg(input,option,'ityprxn')
-
-        call InputReadDouble(input,option,option%rk)
-        call InputDefaultMsg(input,option,'rk')
-
-        call InputReadDouble(input,option,option%phis0)
-        call InputDefaultMsg(input,option,'phis0')
-
-        call InputReadDouble(input,option,option%areas0)
-        call InputDefaultMsg(input,option,'areas0')
-
-        call InputReadDouble(input,option,option%pwrsrf)
-        call InputDefaultMsg(input,option,'pwrsrf')
-
-        call InputReadDouble(input,option,option%vbars)
-        call InputDefaultMsg(input,option,'vbars')
-
-        call InputReadDouble(input,option,option%ceq)
-        call InputDefaultMsg(input,option,'ceq')
-
-        call InputReadDouble(input,option,option%delHs)
-        call InputDefaultMsg(input,option,'delHs')
-
-        call InputReadDouble(input,option,option%delEs)
-        call InputDefaultMsg(input,option,'delEs')
-
-        call InputReadDouble(input,option,option%wfmts)
-        call InputDefaultMsg(input,option,'wfmts')
-
-        if (OptionPrint(option)) &
-        write(option%fid_out,'(/," *RCTR",/, &
-          & "  ityp   = ",3x,i3,/, &
-          & "  rk     = ",3x,1pe12.4," [mol/cm^2/s]",/, &
-          & "  phis0  = ",3x,1pe12.4," [-]",/, &
-          & "  areas0 = ",3x,1pe12.4," [1/cm]",/, &
-          & "  pwrsrf = ",3x,1pe12.4," [-]",/, &
-          & "  vbars  = ",3x,1pe12.4," [cm^3/mol]",/, &
-          & "  ceq    = ",3x,1pe12.4," [mol/L]",/, &
-          & "  delHs  = ",3x,1pe12.4," [J/kg]",/, &
-          & "  delEs  = ",3x,1pe12.4," [J/kg]",/, &
-          & "  wfmts  = ",3x,1pe12.4," [g/mol]" &
-          & )') option%ityprxn,option%rk,option%phis0,option%areas0,option%pwrsrf, &
-          option%vbars,option%ceq,option%delHs,option%delEs,option%wfmts
-
- ! convert: mol/cm^2 -> mol/cm^3 -> mol/dm^3 (note area 1/cm)          
-        option%rk = option%rk * option%areas0 * 1.d3
-        option%vbars = option%vbars * 1.d-3 ! convert: cm^3/mol -> L/mol
-      
-        option%delHs = option%delHs * option%wfmts * 1.d-3 ! convert kJ/kg -> kJ/mol
-!        option%delHs = option%delHs * option%scale ! convert J/kmol -> MJ/kmol
-#endif
 !....................
 
       case ('RADN')
 
+        call printErrMsg(option,"RADN currently out of date.  Needs to be reimplemented")
+#if 0
         call InputReadStringErrorMsg(input,option,'RADN')
 
         call InputReadDouble(input,option,option%ret)
@@ -1320,6 +1266,7 @@ subroutine readInput(simulation)
           &"  ret     = ",1pe12.4,/, &
           &"  fc      = ",1pe12.4)') &
           option%ret,option%fc
+#endif          
 
 !....................
 
@@ -1500,33 +1447,16 @@ subroutine readInput(simulation)
 
 !....................
 
-      case ('FLUID_PROPERTY','FLUID_PROPERTIES')
+      case ('FLUID_PROPERTY')
 
-        realization%fluid_properties => FluidPropertyCreate(option%nphase)
-        
-        count = 0
-        do
-          call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,'FLUID_PROPERTIES')
-          
-          if (InputCheckExit(input,option)) exit
-         
-          count = count + 1 
-          if (count > option%nphase) exit              
-                        
-          call InputReadDouble(input,option,realization%fluid_properties%diff_base(count))
-          call InputErrorMsg(input,option,'diff_base','FLUID_PROPERTIES')          
-        
-          call InputReadDouble(input,option,realization%fluid_properties%diff_exp(count))
-          call InputErrorMsg(input,option,'diff_exp','FLUID_PROPERTIES')
-! hardware the diffusion coefficient of SC and gas phases for now
-          option%difsc=2.13D-5           
-          option%difgs=2.13D-5
-        enddo
+        fluid_property => FluidPropertyCreate()
+        call FluidPropertyRead(fluid_property,input,option)
+        call FluidPropertyAddToList(fluid_property,realization%fluid_properties)
+        nullify(fluid_property)
         
 !....................
-
-      case ('THRM','THERMAL_PROPERTY','THERMAL_PROPERTIES')
+#if 0
+      case ('THRM','FLUID_PROPERTY','THERMAL_PROPERTIES')
 
         count = 0
         do
@@ -1536,7 +1466,7 @@ subroutine readInput(simulation)
           if (InputCheckExit(input,option)) exit
        
           count = count + 1
-          thermal_property => ThermalPropertyCreate()
+          fluid_property => FluidPropertyCreate()
       
           call InputReadInt(input,option,thermal_property%id)
           call InputErrorMsg(input,option,'id','THRM')
@@ -1687,18 +1617,18 @@ subroutine readInput(simulation)
         
         call SaturatFuncConvertListToArray(realization%saturation_functions, &
                                            realization%saturation_function_array)
-        
+#endif        
 !....................
       
-      case ('MATERIAL')
+      case ('MATERIAL_PROPERTY')
 
-        material => MaterialCreate()
-        call MaterialRead(material,input,option)
-        call MaterialAddToList(material,realization%materials)
-        nullify(material)
+        material_property => MaterialPropertyCreate()
+        call MaterialPropertyRead(material_property,input,option)
+        call MaterialPropertyAddToList(material_property,realization%material_properties)
+        nullify(material_property)
 
 !....................
-      
+#if 0      
       case ('MATERIALS')
 
         count = 0
@@ -1746,7 +1676,7 @@ subroutine readInput(simulation)
           call MaterialAddToList(material,realization%materials)
           
         enddo          
-
+#endif
 !....................
 
       case ('USE_TOUCH_OPTIONS')
@@ -1926,8 +1856,8 @@ subroutine readInput(simulation)
   enddo
 
   ! organize lists
-  call MaterialConvertListToArray(realization%materials, &
-                                  realization%material_array)
+  call MaterialPropConvertListToArray(realization%material_properties, &
+                                      realization%material_property_array)
                                         
 end subroutine readInput
 
@@ -2010,7 +1940,7 @@ subroutine assignMaterialPropToRegions(realization)
   PetscReal, pointer :: perm_pow_p(:)
   PetscReal, pointer :: tor_loc_p(:)
   
-  PetscInt :: icell, local_id, ghosted_id, natural_id, material_id
+  PetscInt :: icell, local_id, ghosted_id, natural_id, material_property_id
   PetscInt :: istart, iend
   PetscErrorCode :: ierr
   
@@ -2023,7 +1953,7 @@ subroutine assignMaterialPropToRegions(realization)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
 
-  type(material_type), pointer :: material
+  type(material_property_type), pointer :: material_property
   type(region_type), pointer :: region
   
   option => realization%option
@@ -2068,7 +1998,7 @@ subroutine assignMaterialPropToRegions(realization)
         do
            if (.not.associated(strata)) exit
            if (.not.associated(strata%region) .and. strata%active) then
-              call readMaterialsFromFile(realization,strata%material_name)
+              call readMaterialsFromFile(realization,strata%material_property_name)
            endif
            strata => strata%next
         end do
@@ -2103,7 +2033,7 @@ subroutine assignMaterialPropToRegions(realization)
            
            if (strata%active) then
               region => strata%region
-              material => strata%material
+              material_property => strata%material_property
               if (associated(region)) then
                  istart = 1
                  iend = region%num_cells
@@ -2122,26 +2052,26 @@ subroutine assignMaterialPropToRegions(realization)
                  if (associated(cur_patch%imat)) then
                     ! if patch%imat is allocated and the id > 0, the material id 
                     ! supercedes the material pointer for the strata
-                    material_id = cur_patch%imat(ghosted_id)
-                    if (material_id > 0 .and. &
-                         material_id <= size(realization%material_array)) then
-                       material => realization%material_array(material_id)%ptr
+                    material_property_id = cur_patch%imat(ghosted_id)
+                    if (material_property_id > 0 .and. &
+                         material_property_id <= size(realization%material_property_array)) then
+                       material_property => realization%material_property_array(material_property_id)%ptr
                     endif
                     ! otherwide set the imat value to the stratas material
-                    if (material_id < -998) & ! prevent overwrite of cell already set to inactive
-                         cur_patch%imat(ghosted_id) = material%id
+                    if (material_property_id < -998) & ! prevent overwrite of cell already set to inactive
+                         cur_patch%imat(ghosted_id) = material_property%id
                  endif
-                 if (associated(material)) then
+                 if (associated(material_property)) then
                     if (option%nflowdof > 0) then
-                       icap_loc_p(ghosted_id) = material%icap
-                       ithrm_loc_p(ghosted_id) = material%ithrm
-                       perm_xx_p(local_id) = material%permeability(1,1)
-                       perm_yy_p(local_id) = material%permeability(2,2)
-                       perm_zz_p(local_id) = material%permeability(3,3)
-                       perm_pow_p(local_id) = material%permeability_pwr
+                       icap_loc_p(ghosted_id) = material_property%saturation_function_id
+                       ithrm_loc_p(ghosted_id) = material_property%id
+                       perm_xx_p(local_id) = material_property%permeability(1,1)
+                       perm_yy_p(local_id) = material_property%permeability(2,2)
+                       perm_zz_p(local_id) = material_property%permeability(3,3)
+                       perm_pow_p(local_id) = material_property%permeability_pwr
                     endif
-                    por0_p(local_id) = material%porosity
-                    tor_loc_p(ghosted_id) = material%tortuosity
+                    por0_p(local_id) = material_property%porosity
+                    tor_loc_p(ghosted_id) = material_property%tortuosity
                  endif
               enddo
            endif
@@ -2173,10 +2103,10 @@ subroutine assignMaterialPropToRegions(realization)
                 option%permz_filename,GLOBAL)  
         endif
         
-        do material_id = 1, size(realization%material_array)
-          material => realization%material_array(material_id)%ptr
-          if (len_trim(material%permeability_filename) > 1) then
-            call readPermeabilitiesFromFile(realization,material%permeability_filename)
+        do material_property_id = 1, size(realization%material_property_array)
+          material_property => realization%material_property_array(material_property_id)%ptr
+          if (len_trim(material_property%permeability_filename) > 1) then
+            call readPermeabilitiesFromFile(realization,material_property%permeability_filename)
           endif
         enddo
         

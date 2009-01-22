@@ -222,6 +222,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
   use span_wagner_spline_module, only: sw_prop
   use co2_sw_module, only: co2_sw_interp
   use Material_module
+  use Fluid_module
   use mphase_pckr_module
   
   implicit none
@@ -455,6 +456,7 @@ subroutine MphaseAuxVarCompute_WINC(x, delx, aux_var,iphase,saturation_function,
   use Option_module
   use water_eos_module
   use Material_module
+  use Fluid_module
   
   implicit none
 

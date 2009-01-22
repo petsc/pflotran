@@ -1,14 +1,13 @@
 module Material_module
  
-  use Region_module
- 
+
   implicit none
 
   private
 
 #include "definitions.h"
  
-  type, public :: material_type
+  type, public :: material_property_type
     PetscInt :: id
     character(len=MAXWORDLENGTH) :: name
     PetscReal :: permeability(3,3)
@@ -16,34 +15,20 @@ module Material_module
     character(len=MAXWORDLENGTH) :: permeability_filename
     PetscReal :: porosity
     PetscReal :: tortuosity
-    PetscInt :: ithrm
-    PetscInt :: icap
-    type(material_type), pointer :: next
-  end type material_type
-  
-  type, public :: fluid_property_type
-    PetscReal, pointer :: diff_base(:)
-    PetscReal, pointer :: diff_exp(:)
-  end type fluid_property_type
-  
-  type, public :: material_ptr_type
-    type(material_type), pointer :: ptr
-  end type material_ptr_type
-  
-  type, public :: thermal_property_type
-    PetscInt :: id
+    PetscInt :: saturation_function_id
+    character(len=MAXWORDLENGTH) :: saturation_function_name
     PetscReal :: rock_density
-    PetscReal :: spec_heat
-    PetscReal :: therm_cond_dry
-    PetscReal :: therm_cond_wet
-    PetscReal :: pore_compress
-    PetscReal :: pore_expansivity
-    PetscReal :: tort_bin_diff
-    PetscReal :: vap_air_diff_coef
-    PetscReal :: exp_binary_diff
-    PetscReal :: enh_binary_diff_coef
-    type(thermal_property_type), pointer :: next
-  end type thermal_property_type
+    PetscReal :: specific_heat
+    PetscReal :: thermal_conductivity_dry
+    PetscReal :: thermal_conductivity_wet
+    PetscReal :: pore_compressibility
+    PetscReal :: pore_expansivity    
+    type(material_property_type), pointer :: next
+  end type material_property_type
+  
+  type, public :: material_property_ptr_type
+    type(material_property_type), pointer :: ptr
+  end type material_property_ptr_type
   
   type, public :: saturation_function_type
     PetscInt :: id
@@ -70,20 +55,19 @@ module Material_module
     type(saturation_function_type), pointer :: ptr
   end type saturation_function_ptr_type
   
-  public :: MaterialCreate, ThermalPropertyCreate, SaturationFunctionCreate, &
-            MaterialDestroy, ThermalPropertyDestroy, &
+  public :: MaterialPropertyCreate, &
+            MaterialPropertyDestroy, &
+            MaterialPropertyAddToList, &
+            MaterialPropGetPtrFromList, &
+            MaterialPropGetPtrFromArray, &
+            MaterialPropConvertListToArray, &
+            MaterialPropertyRead, &
+            SaturationFunctionCreate, &
             SaturationFunctionDestroy, &
-            MaterialAddToList, ThermalAddPropertyToList, &
             SaturationFunctionAddToList, &
-            MaterialGetPtrFromList, &
-            MaterialGetPtrFromArray, &
             SaturationFunctionCompute, &
             SaturatFuncConvertListToArray, &
-            MaterialConvertListToArray, &
-            SaturationFunctionComputeSpline, &
-            FluidPropertyCreate, &
-            FluidPropertyDestroy, &
-            MaterialRead
+            SaturationFunctionComputeSpline
 
   PetscInt, parameter :: VAN_GENUCHTEN = 1
   PetscInt, parameter :: BROOKS_COREY = 2
@@ -97,90 +81,39 @@ contains
 
 ! ************************************************************************** !
 !
-! MaterialCreate: Creates a material
+! MaterialPropertyCreate: Creates a material property
 ! author: Glenn Hammond
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-function MaterialCreate()
+function MaterialPropertyCreate()
   
   implicit none
 
-  type(material_type), pointer :: MaterialCreate
+  type(material_property_type), pointer :: MaterialPropertyCreate
   
-  type(material_type), pointer :: material
+  type(material_property_type), pointer :: material_property
   
-  allocate(material)
-  material%id = 0
-  material%name = ''
-  material%permeability = 0.d0
-  material%permeability_pwr = 0.d0
-  material%permeability_filename = ''
-  material%porosity = 0.d0
-  material%tortuosity = 0.d0
-  material%ithrm = 0
-  material%icap = 0
-  nullify(material%next)
-  MaterialCreate => material
+  allocate(material_property)
+  material_property%id = 0
+  material_property%name = ''
+  material_property%permeability = 0.d0
+  material_property%permeability_pwr = 0.d0
+  material_property%permeability_filename = ''
+  material_property%porosity = 0.d0
+  material_property%tortuosity = 0.d0
+  material_property%saturation_function_id = 0
+  material_property%saturation_function_name = ''
+  material_property%rock_density = 0.d0
+  material_property%specific_heat = 0.d0
+  material_property%thermal_conductivity_dry = 0.d0
+  material_property%thermal_conductivity_wet = 0.d0
+  material_property%pore_compressibility = 0.d0
+  material_property%pore_expansivity = 0.d0  
+  nullify(material_property%next)
+  MaterialPropertyCreate => material_property
 
-end function MaterialCreate
-
-! ************************************************************************** !
-!
-! MaterialCreate: Creates a thermal property
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
-function ThermalPropertyCreate()
-  
-  implicit none
-
-  type(thermal_property_type), pointer :: ThermalPropertyCreate
-  
-  type(thermal_property_type), pointer :: thermal_property
-  
-  allocate(thermal_property)
-  thermal_property%id = 0
-  thermal_property%rock_density = 0.d0
-  thermal_property%spec_heat = 0.d0
-  thermal_property%therm_cond_dry = 0.d0
-  thermal_property%therm_cond_wet = 0.d0
-  thermal_property%pore_compress = 0.d0
-  thermal_property%pore_expansivity = 0.d0
-  thermal_property%tort_bin_diff = 0.d0
-  thermal_property%vap_air_diff_coef = 0.d0
-  thermal_property%exp_binary_diff = 0.d0
-  thermal_property%enh_binary_diff_coef = 0.d0
-  nullify(thermal_property%next)
-  ThermalPropertyCreate => thermal_property
-
-end function ThermalPropertyCreate
-
-! ************************************************************************** !
-!
-! FluidPropertyCreate: Creates a fluid property object
-! author: Glenn Hammond
-! date: 05/07/08
-!
-! ************************************************************************** !
-function FluidPropertyCreate(nphase)
-  
-  implicit none
-
-  type(fluid_property_type), pointer :: FluidPropertyCreate
-  integer :: nphase
-  
-  type(fluid_property_type), pointer :: fluid_property
-  
-  allocate(fluid_property)
-  allocate(fluid_property%diff_base(nphase))
-  allocate(fluid_property%diff_exp(nphase))
-  fluid_property%diff_base = 0.d0
-  fluid_property%diff_exp = 0.d0
-  FluidPropertyCreate => fluid_property
-
-end function FluidPropertyCreate
+end function MaterialPropertyCreate
 
 ! ************************************************************************** !
 !
@@ -226,12 +159,12 @@ end function SaturationFunctionCreate
 
 ! ************************************************************************** !
 !
-! MaterialRead: Reads in contents of a material card
+! MaterialPropertyRead: Reads in contents of a material_property card
 ! author: Glenn Hammond
 ! date: 01/13/09
 ! 
 ! ************************************************************************** !
-subroutine MaterialRead(material,input,option)
+subroutine MaterialPropertyRead(material_property,input,option)
 
   use Option_module
   use Input_module
@@ -239,7 +172,7 @@ subroutine MaterialRead(material,input,option)
 
   implicit none
   
-  type(material_type) :: material
+  type(material_property_type) :: material_property
   type(input_type) :: input
   type(option_type) :: option
   
@@ -253,77 +186,74 @@ subroutine MaterialRead(material,input,option)
     if (InputCheckExit(input,option)) exit  
 
     call InputReadWord(input,option,keyword,PETSC_TRUE)
-    call InputErrorMsg(input,option,'keyword','MATERIAL')
+    call InputErrorMsg(input,option,'keyword','MATERIAL_PROPERTY')
     call StringToUpper(keyword)   
       
     select case(trim(keyword))
     
       case('NAME') 
-        call InputReadWord(input,option,material%name,PETSC_TRUE)
-        call InputErrorMsg(input,option,'material name','MATERIAL')
+        call InputReadWord(input,option,material_property%name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'material_property name','MATERIAL_PROPERTY')
       case('ID') 
-        call InputReadInt(input,option,material%id)
-        call InputErrorMsg(input,option,'material id','MATERIAL')
+        call InputReadInt(input,option,material_property%id)
+        call InputErrorMsg(input,option,'material_property id','MATERIAL_PROPERTY')
       case('SATURATION_FUNCTION') 
-        call InputReadInt(input,option,material%icap)
-        call InputErrorMsg(input,option,'material saturation function id','MATERIAL')
-      case('THERMAL_PROPERTY')
-        call InputReadInt(input,option,material%ithrm)
-        call InputErrorMsg(input,option,'material thermal property id','MATERIAL')
+        call InputReadWord(input,option,material_property%saturation_function_name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'material_property saturation function name','MATERIAL_PROPERTY')
       case('POROSITY')
-        call InputReadDouble(input,option,material%porosity)
-        call InputErrorMsg(input,option,'porosity','MATERIAL')
+        call InputReadDouble(input,option,material_property%porosity)
+        call InputErrorMsg(input,option,'porosity','MATERIAL_PROPERTY')
       case('TORTUOSITY')
-        call InputReadDouble(input,option,material%tortuosity)
-        call InputErrorMsg(input,option,'tortuosity','MATERIAL')
+        call InputReadDouble(input,option,material_property%tortuosity)
+        call InputErrorMsg(input,option,'tortuosity','MATERIAL_PROPERTY')
       case('PERMEABILITY')
         do
           call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,'MATERIAL,PERMEABILITY')
+          call InputReadStringErrorMsg(input,option,'MATERIAL_PROPERTY,PERMEABILITY')
           
           if (InputCheckExit(input,option)) exit          
           
           if (InputError(input)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)
-          call InputErrorMsg(input,option,'keyword','MATERIAL,PERMEABILITY')   
+          call InputErrorMsg(input,option,'keyword','MATERIAL_PROPERTY,PERMEABILITY')   
           select case(trim(word))
             case('PERM_X')
-              call InputReadDouble(input,option,material%permeability(1,1))
-              call InputErrorMsg(input,option,'x permeability','MATERIAL,PERMEABILITY')
+              call InputReadDouble(input,option,material_property%permeability(1,1))
+              call InputErrorMsg(input,option,'x permeability','MATERIAL_PROPERTY,PERMEABILITY')
             case('PERM_Y')
-              call InputReadDouble(input,option,material%permeability(2,2))
-              call InputErrorMsg(input,option,'y permeability','MATERIAL,PERMEABILITY')
+              call InputReadDouble(input,option,material_property%permeability(2,2))
+              call InputErrorMsg(input,option,'y permeability','MATERIAL_PROPERTY,PERMEABILITY')
             case('PERM_Z')
-              call InputReadDouble(input,option,material%permeability(3,3))
-              call InputErrorMsg(input,option,'z permeability','MATERIAL,PERMEABILITY')
+              call InputReadDouble(input,option,material_property%permeability(3,3))
+              call InputErrorMsg(input,option,'z permeability','MATERIAL_PROPERTY,PERMEABILITY')
             case('PERM_ISO')
-              call InputReadDouble(input,option,material%permeability(1,1))
-              call InputErrorMsg(input,option,'isotropic permeability','MATERIAL,PERMEABILITY')
-              material%permeability(2,2) = material%permeability(1,1)
-              material%permeability(3,3) = material%permeability(1,1)
+              call InputReadDouble(input,option,material_property%permeability(1,1))
+              call InputErrorMsg(input,option,'isotropic permeability','MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(2,2) = material_property%permeability(1,1)
+              material_property%permeability(3,3) = material_property%permeability(1,1)
             case('PERM_POWER')
-              call InputReadDouble(input,option,material%permeability_pwr)
-              call InputErrorMsg(input,option,'permeability power','MATERIAL,PERMEABILITY')
+              call InputReadDouble(input,option,material_property%permeability_pwr)
+              call InputErrorMsg(input,option,'permeability power','MATERIAL_PROPERTY,PERMEABILITY')
             case('RANDOM_DATASET')
-              call InputReadWord(input,option,material%permeability_filename,PETSC_TRUE)
-              call InputErrorMsg(input,option,'RANDOM_DATASET,FILENAME','MATERIAL,PERMEABILITY')   
+              call InputReadWord(input,option,material_property%permeability_filename,PETSC_TRUE)
+              call InputErrorMsg(input,option,'RANDOM_DATASET,FILENAME','MATERIAL_PROPERTY,PERMEABILITY')   
 !            case('ISOTROPIC')
             case default
-              option%io_buffer = 'keyword not recognized in material,permeability'
+              option%io_buffer = 'keyword not recognized in material_property,permeability'
               call printErrMsg(option)
           end select
         enddo
 
       case default
         option%io_buffer = 'Keyword: ' // keyword // &
-                           ' not recognized in material'    
+                           ' not recognized in material_property'    
         call printErrMsg(option)
     end select 
   
   enddo  
 
 
-end subroutine 
+end subroutine MaterialPropertyRead
 
 ! ************************************************************************** !
 !
@@ -398,100 +328,70 @@ end subroutine SaturationFunctionComputeSpline
 
 ! ************************************************************************** !
 !
-! MaterialAddToList: Adds a thermal property to linked list
+! MaterialPropertyAddToList: Adds a material property to linked list
 ! author: Glenn Hammond
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-recursive subroutine MaterialAddToList(material,list)
+subroutine MaterialPropertyAddToList(material_property,list)
 
   implicit none
   
-  type(material_type), pointer :: material
-  type(material_type), pointer :: list
+  type(material_property_type), pointer :: material_property
+  type(material_property_type), pointer :: list
 
-  type(material_type), pointer :: cur_material
+  type(material_property_type), pointer :: cur_material_property
   
   if (associated(list)) then
-    cur_material => list
+    cur_material_property => list
     ! loop to end of list
     do
-      if (.not.associated(cur_material%next)) exit
-      cur_material => cur_material%next
+      if (.not.associated(cur_material_property%next)) exit
+      cur_material_property => cur_material_property%next
     enddo
-    cur_material%next => material
+    cur_material_property%next => material_property
   else
-    list => material
+    list => material_property
   endif
   
-end subroutine MaterialAddToList
+end subroutine MaterialPropertyAddToList
 
 ! ************************************************************************** !
 !
-! MaterialConvertListToArray: Creates an array of pointers to the 
-!                                materials in the list
+! MaterialPropConvertListToArray: Creates an array of pointers to the 
+!                                material_properties in the list
 ! author: Glenn Hammond
 ! date: 12/18/07
 !
 ! ************************************************************************** !
-subroutine MaterialConvertListToArray(list,array)
+subroutine MaterialPropConvertListToArray(list,array)
 
   implicit none
   
-  type(material_type), pointer :: list
-  type(material_ptr_type), pointer :: array(:)
+  type(material_property_type), pointer :: list
+  type(material_property_ptr_type), pointer :: array(:)
     
-  type(material_type), pointer :: cur_material
+  type(material_property_type), pointer :: cur_material_property
   PetscInt :: max_id
 
   max_id = 0
-  cur_material => list
+  cur_material_property => list
   do 
-    if (.not.associated(cur_material)) exit
-    max_id = max(max_id,cur_material%id)
-    cur_material => cur_material%next
+    if (.not.associated(cur_material_property)) exit
+    max_id = max(max_id,cur_material_property%id)
+    cur_material_property => cur_material_property%next
   enddo
   
   allocate(array(max_id))
   
-  cur_material => list
+  cur_material_property => list
   do 
-    if (.not.associated(cur_material)) exit
-    array(cur_material%id)%ptr => cur_material
-    cur_material => cur_material%next
+    if (.not.associated(cur_material_property)) exit
+    array(cur_material_property%id)%ptr => cur_material_property
+    cur_material_property => cur_material_property%next
   enddo
 
-end subroutine MaterialConvertListToArray
-
-! ************************************************************************** !
-!
-! ThermalAddPropertyToList: Adds a thermal property to linked list
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
-recursive subroutine ThermalAddPropertyToList(thermal_property,list)
-
-  implicit none
-  
-  type(thermal_property_type), pointer :: thermal_property
-  type(thermal_property_type), pointer :: list
-
-  type(thermal_property_type), pointer :: cur_thermal_property
-  
-  if (associated(list)) then
-    cur_thermal_property => list
-    ! loop to end of list
-    do
-      if (.not.associated(cur_thermal_property%next)) exit
-      cur_thermal_property => cur_thermal_property%next
-    enddo
-    cur_thermal_property%next => thermal_property
-  else
-    list => thermal_property
-  endif
-  
-end subroutine ThermalAddPropertyToList
+end subroutine MaterialPropConvertListToArray
 
 ! ************************************************************************** !
 !
@@ -500,7 +400,7 @@ end subroutine ThermalAddPropertyToList
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-recursive subroutine SaturationFunctionAddToList(saturation_function,list)
+subroutine SaturationFunctionAddToList(saturation_function,list)
 
   implicit none
   
@@ -739,144 +639,97 @@ end subroutine SaturationFunctionCompute
 
 ! ************************************************************************** !
 !
-! MaterialGetPtrFromList: Returns a pointer to the material matching 
-!                         material_name
+! MaterialPropGetPtrFromList: Returns a pointer to the material property
+!                             matching material_name
 ! author: Glenn Hammond
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-function MaterialGetPtrFromList(material_name,material_list)
+function MaterialPropGetPtrFromList(material_property_name, &
+                                    material_property_list)
 
   use String_module
   
   implicit none
   
-  type(material_type), pointer :: MaterialGetPtrFromList
-  character(len=MAXWORDLENGTH) :: material_name
-  type(material_type), pointer :: material_list
+  type(material_property_type), pointer :: MaterialPropGetPtrFromList
+  character(len=MAXWORDLENGTH) :: material_property_name
+  type(material_property_type), pointer :: material_property_list
   PetscInt :: length
-  type(material_type), pointer :: material
+  type(material_property_type), pointer :: material_property
     
-  nullify(MaterialGetPtrFromList)
-  material => material_list
+  nullify(MaterialPropGetPtrFromList)
+  material_property => material_property_list
   
   do 
-    if (.not.associated(material)) exit
-    length = len_trim(material_name)
-    if (length == len_trim(material%name) .and. &
-        StringCompare(material%name,material_name,length)) then
-      MaterialGetPtrFromList => material
+    if (.not.associated(material_property)) exit
+    length = len_trim(material_property_name)
+    if (length == len_trim(material_property%name) .and. &
+        StringCompare(material_property%name,material_property_name,length)) then
+      MaterialPropGetPtrFromList => material_property
       return
     endif
-    material => material%next
+    material_property => material_property%next
   enddo
   
-end function MaterialGetPtrFromList
+end function MaterialPropGetPtrFromList
 
 ! ************************************************************************** !
 !
-! MaterialGetPtrFromArray: Returns a pointer to the material matching 
-!                          material_name
+! MaterialPropGetPtrFromArray: Returns a pointer to the material property
+!                              matching material_name
 ! author: Glenn Hammond
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-function MaterialGetPtrFromArray(material_name,material_array)
+function MaterialPropGetPtrFromArray(material_property_name, &
+                                     material_property_array)
 
   use String_module
 
   implicit none
   
-  type(material_type), pointer :: MaterialGetPtrFromArray
-  character(len=MAXWORDLENGTH) :: material_name
-  type(material_ptr_type), pointer :: material_array(:)
+  type(material_property_type), pointer :: MaterialPropGetPtrFromArray
+  character(len=MAXWORDLENGTH) :: material_property_name
+  type(material_property_ptr_type), pointer :: material_property_array(:)
   PetscInt :: length
-  PetscInt :: imaterial
+  PetscInt :: imaterial_property
     
-  nullify(MaterialGetPtrFromArray)
+  nullify(MaterialPropGetPtrFromArray)
   
-  do imaterial = 1, size(material_array)
-    length = len_trim(material_name)
-    if (length == len_trim(material_array(imaterial)%ptr%name) .and. &
-        StringCompare(material_array(imaterial)%ptr%name, &
-                        material_name,length)) then
-      MaterialGetPtrFromArray => material_array(imaterial)%ptr
+  do imaterial_property = 1, size(material_property_array)
+    length = len_trim(material_property_name)
+    if (length == len_trim(material_property_array(imaterial_property)%ptr%name) .and. &
+        StringCompare(material_property_array(imaterial_property)%ptr%name, &
+                        material_property_name,length)) then
+      MaterialPropGetPtrFromArray => material_property_array(imaterial_property)%ptr
       return
     endif
   enddo
   
-end function MaterialGetPtrFromArray
+end function MaterialPropGetPtrFromArray
 
 ! ************************************************************************** !
 !
-! FluidPropertyDestroy: Destroys a fluid property object
-! author: Glenn Hammond
-! date: 05/07/08
-!
-! ************************************************************************** !
-subroutine FluidPropertyDestroy(fluid_property)
-
-  implicit none
-  
-  type(fluid_property_type), pointer :: fluid_property
-  
-  if (.not.associated(fluid_property)) return
-  
-  if (associated(fluid_property%diff_base)) &
-    deallocate(fluid_property%diff_base)
-  nullify(fluid_property%diff_base)
-  if (associated(fluid_property%diff_exp)) &
-    deallocate(fluid_property%diff_exp)
-  nullify(fluid_property%diff_exp)
-  
-  deallocate(fluid_property)
-  nullify(fluid_property)
-  
-end subroutine FluidPropertyDestroy
-
-! ************************************************************************** !
-!
-! MaterialDestroy: Destroys a material
+! MaterialPropertyDestroy: Destroys a material_property
 ! author: Glenn Hammond
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-recursive subroutine MaterialDestroy(material)
+recursive subroutine MaterialPropertyDestroy(material_property)
 
   implicit none
   
-  type(material_type), pointer :: material
+  type(material_property_type), pointer :: material_property
   
-  if (.not.associated(material)) return
+  if (.not.associated(material_property)) return
   
-  call MaterialDestroy(material%next)
+  call MaterialPropertyDestroy(material_property%next)
   
-  deallocate(material)
-  nullify(material)
+  deallocate(material_property)
+  nullify(material_property)
   
-end subroutine MaterialDestroy
-
-! ************************************************************************** !
-!
-! SaturationFunctionDestroy: Destroys a saturation function
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
-recursive subroutine ThermalPropertyDestroy(thermal_property)
-
-  implicit none
-  
-  type(thermal_property_type), pointer :: thermal_property
-  
-  if (.not.associated(thermal_property)) return
-  
-  call ThermalPropertyDestroy(thermal_property%next)
-
-  deallocate(thermal_property)
-  nullify(thermal_property)
-  
-end subroutine ThermalPropertyDestroy
+end subroutine MaterialPropertyDestroy
 
 ! ************************************************************************** !
 !

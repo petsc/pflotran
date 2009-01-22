@@ -1485,12 +1485,11 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
   PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
 
   PetscInt :: iphase
-  PetscInt :: icap_up, icap_dn, ithrm_up, ithrm_dn
+  PetscInt :: icap_up, icap_dn
   PetscReal :: dd_up, dd_dn, &
             accum
   PetscReal :: dd, f_up, f_dn, ff
   PetscReal :: perm_up, perm_dn
-  PetscReal :: D_up, D_dn  ! "Diffusion" constants at upstream, downstream faces.
   PetscReal :: dw_kg, dw_mol
   PetscReal :: tsrc1, qsrc1, enth_src_h2o, qsrc_kg
   PetscReal :: tmp, upweight
@@ -1646,14 +1645,9 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
                 perm_yy_loc_p(ghosted_id_dn)*dabs(cur_connection_set%dist(2,iconn))+ &
                 perm_zz_loc_p(ghosted_id_dn)*dabs(cur_connection_set%dist(3,iconn))
 
-      ithrm_up = int(ithrm_loc_p(ghosted_id_up))
-      ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
    
-      D_up = option%ckwet(ithrm_up)
-      D_dn = option%ckwet(ithrm_dn)
-
       call RichardsFlux(rich_aux_vars(ghosted_id_up), &
                         global_aux_vars(ghosted_id_up), &
                           porosity_loc_p(ghosted_id_up), &
@@ -1704,9 +1698,6 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
         print *, "Wrong boundary node index... STOP!!!"
         stop
       endif
-
-      ithrm_dn = int(ithrm_loc_p(ghosted_id))
-      D_dn = option%ckwet(ithrm_dn)
 
       ! for now, just assume diagonal tensor
       perm_dn = perm_xx_loc_p(ghosted_id)*dabs(cur_connection_set%dist(1,iconn))+ &
@@ -1908,7 +1899,7 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
   PetscErrorCode :: ierr
   PetscInt :: nvar,neq,nr
-  PetscInt :: ithrm_up, ithrm_dn, i
+  PetscInt :: i
   PetscInt :: ip1, ip2 
 
   PetscReal, pointer :: porosity_loc_p(:), volume_p(:), &
@@ -2086,11 +2077,6 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       iphas_up = iphase_loc_p(ghosted_id_up)
       iphas_dn = iphase_loc_p(ghosted_id_dn)
 
-      ithrm_up = int(ithrm_loc_p(ghosted_id_up))
-      ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
-      D_up = option%ckwet(ithrm_up)
-      D_dn = option%ckwet(ithrm_dn)
-    
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
                               
@@ -2157,9 +2143,6 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
         print *, "Wrong boundary node index... STOP!!!"
         stop
       endif
-
-      ithrm_dn = int(ithrm_loc_p(ghosted_id))
-      D_dn = option%ckwet(ithrm_dn)
 
       ! for now, just assume diagonal tensor
       perm_dn = perm_xx_loc_p(ghosted_id)*dabs(cur_connection_set%dist(1,iconn))+ &

@@ -169,7 +169,7 @@ subroutine LevelProcessCouplers(level,flow_conditions,transport_conditions, &
   implicit none
   
   type(level_type) :: level
-  type(material_type), pointer :: materials(:)
+  type(material_property_type), pointer :: materials(:)
   type(condition_list_type) :: flow_conditions
   type(condition_list_type) :: transport_conditions
   type(option_type) :: option  

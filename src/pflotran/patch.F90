@@ -23,7 +23,7 @@ module Patch_module
     ! thiese arrays will be used by all modes, mode-specific arrays should
     ! go in the auxilliary data stucture for that mode
     PetscInt, pointer :: imat(:)
-    type(material_ptr_type), pointer :: material_array(:)
+    type(material_property_ptr_type), pointer :: material_property_array(:)
     PetscReal, pointer :: internal_velocities(:,:)
     PetscReal, pointer :: boundary_velocities(:,:)
     PetscReal, pointer :: internal_fluxes(:,:,:)    
@@ -86,7 +86,7 @@ function PatchCreate()
 
   patch%id = 0
   nullify(patch%imat)
-  nullify(patch%material_array)
+  nullify(patch%material_property_array)
   nullify(patch%internal_velocities)
   nullify(patch%boundary_velocities)
   nullify(patch%internal_fluxes)
@@ -236,7 +236,7 @@ end subroutine PatchLocalizeRegions
 !
 ! ************************************************************************** !
 subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
-                                materials,option)
+                                material_properties,option)
 
   use Option_module
   use Material_module
@@ -246,7 +246,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   implicit none
   
   type(patch_type) :: patch
-  type(material_type), pointer :: materials
+  type(material_property_type), pointer :: material_properties
   type(condition_list_type) :: flow_conditions
   type(tran_condition_list_type) :: transport_conditions
   type(option_type) :: option
@@ -258,7 +258,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   
   PetscInt :: temp_int
   
-  call MaterialConvertListToArray(materials,patch%material_array)
+  call MaterialPropConvertListToArray(material_properties,patch%material_property_array)
   
   ! boundary conditions
   coupler => patch%boundary_conditions%first
@@ -392,18 +392,19 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       endif
       if (strata%active) then
         ! pointer to material
-        strata%material => MaterialGetPtrFromArray(strata%material_name, &
-                                                   patch%material_array)
-        if (.not.associated(strata%material)) then
+        strata%material_property => &
+          MaterialPropGetPtrFromArray(strata%material_property_name, &
+                                      patch%material_property_array)
+        if (.not.associated(strata%material_property)) then
           option%io_buffer = 'Material ' // &
-                             trim(strata%material_name) // &
+                             trim(strata%material_property_name) // &
                              ' not found in material list'
           call printErrMsg(option)
         endif
       endif
     else
       nullify(strata%region)
-      nullify(strata%material)
+      nullify(strata%material_property)
     endif
     strata => strata%next
   enddo 
