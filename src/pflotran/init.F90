@@ -442,8 +442,9 @@ subroutine Init(simulation,filename)
   ! fill in holes in waypoint data
   call WaypointListFillIn(option,realization%waypoints)
   call WaypointListRemoveExtraWaypnts(option,realization%waypoints)
-  ! convert times from in put time to seconds
-  call WaypointConvertTimes(realization%waypoints,realization%output_option%tconv)
+! geh- no longer needed
+!  ! convert times from input time to seconds
+!  call WaypointConvertTimes(realization%waypoints,realization%output_option%tconv)
 
   if (associated(flow_stepper)) flow_stepper%cur_waypoint => realization%waypoints%first
   if (associated(tran_stepper)) tran_stepper%cur_waypoint => realization%waypoints%first
@@ -719,6 +720,7 @@ subroutine readInput(simulation)
   use Discretization_module
   use Input_module
   use String_module
+  use Units_module
  
   implicit none
   
@@ -738,8 +740,12 @@ subroutine readInput(simulation)
   
   character(len=1) :: backslash
   PetscReal :: temp_real, temp_real2
+  PetscReal :: units_conversion
   PetscInt :: temp_int
   PetscInt :: count, id
+  
+  PetscTruth :: velocities
+  PetscTruth :: fluxes
   
   type(region_type), pointer :: region
   type(flow_condition_type), pointer :: flow_condition
@@ -767,6 +773,7 @@ subroutine readInput(simulation)
   type(stepper_type), pointer :: tran_stepper
   type(stepper_type), pointer :: master_stepper
   type(reaction_type), pointer :: reaction
+  type(output_option_type), pointer :: output_option
   type(input_type), pointer :: input
   
   
@@ -779,6 +786,7 @@ subroutine readInput(simulation)
   patch => realization%patch
   grid => patch%grid
   option => realization%option
+  output_option => realization%output_option
   field => realization%field
   reaction => realization%reaction
   input => realization%input
@@ -800,7 +808,7 @@ subroutine readInput(simulation)
                           ! is a double quote as in c/c++
                               
   rewind(input%fid)  
-    
+      
   do
     call InputReadFlotranString(input,option)
     if (InputError(input)) exit
@@ -1030,7 +1038,7 @@ subroutine readInput(simulation)
             & )') option%gravity(1:3)
 
 !....................
-
+#if 0
       case ('HDF5')
         realization%output_option%print_hdf5 = PETSC_TRUE
         do
@@ -1051,7 +1059,7 @@ subroutine readInput(simulation)
         if (option%myrank == option%io_rank) &
           write(option%fid_out,'(/," *HDF5",10x,l1,/)') &
             realization%output_option%print_hdf5
-
+#endif
 !.....................
       case ('INVERT_Z','INVERTZ')
         if (associated(grid%structured_grid)) then
@@ -1060,7 +1068,7 @@ subroutine readInput(simulation)
         endif
       
 !....................
-
+#if 0
       case ('TECP','TECPLOT')
         realization%output_option%print_tecplot = PETSC_TRUE
 
@@ -1137,7 +1145,7 @@ subroutine readInput(simulation)
         if (option%myrank == option%io_rank) &
           write(option%fid_out,'(/," *VTK",10x,l1,/)') &
             realization%output_option%print_vtk
-
+#endif
 !....................
 
       case ('IMOD')
@@ -1664,7 +1672,8 @@ subroutine readInput(simulation)
             if (.not.InputError(input)) then
               waypoint => WaypointCreate()
               waypoint%time = temp_real
-              waypoint%print_output = PETSC_TRUE              
+              waypoint%print_output = PETSC_TRUE    
+              pause          
               call WaypointInsertInList(waypoint,realization%waypoints)
             endif
           enddo
@@ -1681,7 +1690,8 @@ subroutine readInput(simulation)
             
             waypoint => WaypointCreate()
             waypoint%time = temp_real
-            waypoint%print_output = PETSC_TRUE              
+            waypoint%print_output = PETSC_TRUE 
+            pause             
             call WaypointInsertInList(waypoint,realization%waypoints)
             
             temp_real = temp_real + periodic_rate
@@ -1715,6 +1725,7 @@ subroutine readInput(simulation)
               call InputReadDouble(input,option,waypoint%dt_max)
               call InputErrorMsg(input,option,'dt_max','dtst')
               if (temp_int == 0) master_stepper%dt_max = waypoint%dt_max
+              pause
               call WaypointInsertInList(waypoint,realization%waypoints)
               temp_int = temp_int + 1
             endif
@@ -1728,29 +1739,11 @@ subroutine readInput(simulation)
         option%tran_dt = master_stepper%dt_min
       
 !....................
-      case ('BRK','BREAKTHROUGH')
+      case ('BREAKTHROUGH')
         breakthrough => BreakthroughCreate()
         call BreakthroughRead(breakthrough,input,option)
         call RealizationAddBreakthrough(realization,breakthrough)        
       
-!....................
-      case('SDST')
-        print *, 'SDST needs to be implemented'
-        stop
-#if 0
-! Needs implementation         
-        allocate(master_stepper%steady_eps(option%nflowdof))
-        do j=1,option%nflowdof
-          call InputReadDouble(input,option,master_stepper%steady_eps(j))
-          call InputDefaultMsg(input,option,'steady tol')
-        enddo
-        if (option%myrank==0) write(option%fid_out,'(/," *SDST ",/, &
-          &"  dpdt        = ",1pe12.4,/, &
-          &"  dtmpdt        = ",1pe12.4,/, &
-          &"  dcdt        = ",1pe12.4)') &
-          master_stepper%steady_eps
-#endif
-
 !.....................
       case ('WALLCLOCK_STOP')
         option%wallclock_stop_flag = PETSC_TRUE
@@ -1759,6 +1752,146 @@ subroutine readInput(simulation)
         ! convert from hrs to seconds and add to start_time
         option%wallclock_stop_time = option%start_time + &
                                      option%wallclock_stop_time*3600.d0
+      
+!....................
+      case ('OUTPUT')
+        velocities = PETSC_FALSE
+        fluxes = PETSC_FALSE
+        do
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,card)
+          if (InputCheckExit(input,option)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword','OUTPUT') 
+          call StringToUpper(word)
+          select case(trim(word))
+            case('TIMES')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'units','OUTPUT')
+              units_conversion = UnitsConvertToInternal(word,option) 
+              continuation_flag = PETSC_TRUE
+              do
+                continuation_flag = PETSC_FALSE
+                if (index(input%buf,backslash) > 0) continuation_flag = PETSC_TRUE
+                input%ierr = 0
+                do
+                  if (InputError(input)) exit
+                  call InputReadDouble(input,option,temp_real)
+                  if (.not.InputError(input)) then
+                    waypoint => WaypointCreate()
+                    waypoint%time = temp_real*units_conversion
+                    waypoint%print_output = PETSC_TRUE    
+                    call WaypointInsertInList(waypoint,realization%waypoints)
+                  endif
+                enddo
+                if (.not.continuation_flag) exit
+                call InputReadFlotranString(input,option)
+                if (InputError(input)) exit
+              enddo
+            case('FORMAT')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'keyword','OUTPUT,FORMAT') 
+              call StringToUpper(word)
+              select case(trim(word))
+                case ('TECPLOT')
+                  output_option%print_tecplot = PETSC_TRUE
+                  call InputReadWord(input,option,word,PETSC_TRUE)
+                  call InputErrorMsg(input,option,'TECPLOT','OUTPUT,FORMAT') 
+                  call StringToUpper(word)
+                  select case(trim(word))
+                    case('POINT')
+                      output_option%tecplot_format = TECPLOT_POINT_FORMAT
+                    case('BLOCK')
+                      output_option%tecplot_format = TECPLOT_BLOCK_FORMAT
+                    case default
+                      option%io_buffer = 'TECPLOT format (' // trim(word) // &
+                                         ') not recongnized.'
+                      call printErrMsg(option)
+                  end select
+                  if (output_option%tecplot_format == TECPLOT_POINT_FORMAT .and. &
+                      option%mycommsize > 1) then
+                    output_option%tecplot_format = TECPLOT_BLOCK_FORMAT
+                  endif
+                case ('VTK')
+                  output_option%print_vtk = PETSC_TRUE
+                case ('HDF5')
+                  output_option%print_hdf5 = PETSC_TRUE
+              end select
+            case('VELOCITIES')
+              velocities = PETSC_TRUE
+            case('FLUXES')
+              fluxes = PETSC_TRUE
+          end select
+       enddo
+       
+       if (velocities) then
+         if (output_option%print_tecplot) &
+           output_option%print_tecplot_velocities = PETSC_TRUE
+         if (output_option%print_hdf5) &
+           output_option%print_hdf5_velocities = PETSC_TRUE
+         if (output_option%print_vtk) &
+           output_option%print_vtk_velocities = PETSC_TRUE
+       endif
+       if (fluxes) then
+         if (output_option%print_tecplot) &
+           output_option%print_tecplot_flux_velocities = PETSC_TRUE
+         if (output_option%print_hdf5) &
+           output_option%print_hdf5_flux_velocities = PETSC_TRUE
+       endif
+            
+!.....................
+      case ('SIMULATION')
+        do
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,card)
+          if (InputCheckExit(input,option)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'word','SIMULATION') 
+          select case(trim(word))
+            case('FINAL_TIME')
+              call InputReadDouble(input,option,temp_real)
+              call InputErrorMsg(input,option,'Final Time','SIMULATION') 
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'Final Time Units','SIMULATION')
+              realization%output_option%tunit = word
+              realization%output_option%tconv = UnitsConvertToInternal(word,option)
+              waypoint => WaypointCreate()
+              waypoint%time = temp_real*realization%output_option%tconv
+              waypoint%print_output = PETSC_TRUE              
+              call WaypointInsertInList(waypoint,realization%waypoints)
+            case('INITIAL_TIMESTEP_SIZE')
+              call InputReadDouble(input,option,temp_real)
+              call InputErrorMsg(input,option,'Initial Timestep Size','SIMULATION') 
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'Initial Timestep Size Time Units','SIMULATION')
+              master_stepper%dt_min = temp_real*UnitsConvertToInternal(word,option)
+            case('MAXIMUM_TIMESTEP_SIZE')
+              call InputReadDouble(input,option,temp_real)
+              call InputErrorMsg(input,option,'Maximum Timestep Size','SIMULATION') 
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'Maximum Timestep Size Time Units','SIMULATION')
+              waypoint => WaypointCreate()
+              waypoint%dt_max = temp_real*UnitsConvertToInternal(word,option)
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              if (input%ierr == 0) then
+                call StringToUpper(word)
+                if (StringCompare(word,'AT',TWO_INTEGER)) then
+                  call InputReadDouble(input,option,temp_real)
+                  call InputErrorMsg(input,option,'Maximum Timestep Size Update Time','SIMULATION') 
+                  call InputReadWord(input,option,word,PETSC_TRUE)
+                  call InputErrorMsg(input,option,'Maximum Timestep Size Update Time Units','SIMULATION')
+                  waypoint%time = temp_real*UnitsConvertToInternal(word,option)
+                else
+                  option%io_buffer = 'Keyword under "MAXIMUM_TIMESTEP_SIZE" after ' // &
+                                     'maximum timestep size should be "at".'
+                  call printErrMsg(option)
+                endif
+              else
+                waypoint%time = 0.d0
+              endif     
+              call WaypointInsertInList(waypoint,realization%waypoints)
+          end select
+        enddo
       
 !....................
       case default

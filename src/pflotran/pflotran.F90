@@ -133,7 +133,7 @@
     simulation => SimulationCreate()
     realization => simulation%realization
     option => realization%option
-    
+
 #ifdef GLENN    
     option%id = realization_ids(irealization)
 #endif

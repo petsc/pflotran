@@ -1350,6 +1350,7 @@ subroutine RealizationAddWaypointsToList(realization)
           waypoint => WaypointCreate()
           waypoint%time = sub_condition%dataset%times(itime)
           waypoint%update_bcs = PETSC_TRUE
+          pause
           call WaypointInsertInList(waypoint,waypoint_list)
           exit
         endif
@@ -1370,6 +1371,7 @@ subroutine RealizationAddWaypointsToList(realization)
           waypoint => WaypointCreate()
           waypoint%time = cur_constraint_coupler%time
           waypoint%update_bcs = PETSC_TRUE
+          pause
           call WaypointInsertInList(waypoint,waypoint_list)
         endif
         cur_constraint_coupler => cur_constraint_coupler%next
