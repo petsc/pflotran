@@ -27,7 +27,7 @@ module Output_module
   PetscInt, save :: max_local_size_saved = -1
 
   public :: OutputInit, Output, OutputVectorTecplot, &
-            OutputBreakthrough, OutputGetVarFromArray
+            OutputObservation, OutputGetVarFromArray
 
 contains
 
@@ -158,7 +158,7 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
     if (option%compute_mass_balance_new) then
       call OutputMassBalanceNew(realization)
     endif
-    call OutputBreakthrough(realization)
+    call OutputObservation(realization)
   endif
   
   plot_flag = PETSC_FALSE
@@ -171,12 +171,12 @@ end subroutine Output
 
 ! ************************************************************************** !
 !
-! Output_Breakthrough: Main driver for all breakthrough output subroutines
+! Output_Observation: Main driver for all observation output subroutines
 ! author: Glenn Hammond
 ! date: 02/11/08
 !
 ! ************************************************************************** !
-subroutine OutputBreakthrough(realization)
+subroutine OutputObservation(realization)
                            ! for some flakey reason, current Intel 10.1 reports
                            ! error if 'only' statement not used.
   use Realization_module, only : realization_type 
@@ -187,16 +187,16 @@ subroutine OutputBreakthrough(realization)
   type(realization_type) :: realization
 
 !  if (realization%output_option%print_hdf5) then
-!    call OutputBreakthroughHDF5(realization)
-!    call OutputBreakthroughTecplot(realization)
+!    call OutputObservationHDF5(realization)
+!    call OutputObservationTecplot(realization)
 !  endif
  
   if (realization%output_option%print_tecplot .or. &
       realization%output_option%print_hdf5) then
-    call OutputBreakthroughTecplot(realization)
+    call OutputObservationTecplot(realization)
   endif
 
-end subroutine OutputBreakthrough
+end subroutine OutputObservation
 
 ! ************************************************************************** !
 !
@@ -1991,12 +1991,12 @@ end subroutine WriteTecplotDataSet
 
 ! ************************************************************************** !
 !
-! OutputBreakthroughTecplot: Print to breakthrough data to TECPLOT file
+! OutputObservationTecplot: Print to observation data to TECPLOT file
 ! author: Glenn Hammond
 ! date: 02/11/08
 !
 ! ************************************************************************** !  
-subroutine OutputBreakthroughTecplot(realization)
+subroutine OutputObservationTecplot(realization)
 
   use Realization_module
   use Discretization_module
@@ -2004,7 +2004,7 @@ subroutine OutputBreakthroughTecplot(realization)
   use Option_module
   use Field_module
   use Patch_module
-  use Breakthrough_module
+  use Observation_module
  
   implicit none
 
@@ -2018,10 +2018,10 @@ subroutine OutputBreakthroughTecplot(realization)
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
-  type(breakthrough_type), pointer :: breakthrough
+  type(observation_type), pointer :: observation
   PetscTruth, save :: open_file = PETSC_FALSE
 
-  call PetscLogEventBegin(logging%event_output_breakthrough, &
+  call PetscLogEventBegin(logging%event_output_observation, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
   
@@ -2033,11 +2033,11 @@ subroutine OutputBreakthroughTecplot(realization)
   
   if (output_option%first) then
     open_file = PETSC_FALSE
-    breakthrough => patch%breakthrough%first
+    observation => patch%observation%first
     do
-      if (.not.associated(breakthrough)) exit
-      if (breakthrough%itype == BREAKTHROUGH_SCALAR .or. &
-          (breakthrough%itype == BREAKTHROUGH_FLUX .and. &
+      if (.not.associated(observation)) exit
+      if (observation%itype == OBSERVATION_SCALAR .or. &
+          (observation%itype == OBSERVATION_FLUX .and. &
            option%myrank == option%io_rank)) then
         open_file = PETSC_TRUE
         exit
@@ -2059,7 +2059,7 @@ subroutine OutputBreakthroughTecplot(realization)
     else if (option%myrank < 100000) then
       write(string,'(i5)') option%myrank  
     endif
-    filename = 'breakthrough' // trim(option%group_prefix) // '_' // &
+    filename = 'observation' // trim(option%group_prefix) // '_' // &
                trim(string) // '.tec'
   
     ! open file
@@ -2069,26 +2069,26 @@ subroutine OutputBreakthroughTecplot(realization)
       ! write header
       ! write title
       write(fid,'(a)',advance="no") '"Time[' // trim(output_option%tunit) // ']"'
-      breakthrough => patch%breakthrough%first
+      observation => patch%observation%first
       do 
-        if (.not.associated(breakthrough)) exit
-        select case(breakthrough%itype)
-          case(BREAKTHROUGH_SCALAR)
-            do icell=1,breakthrough%region%num_cells
-    !          call WriteBreakthroughHeaderForCell(fid,realization, &
-    !                                              breakthrough%region,icell, &
-    !                                              breakthrough%print_velocities)
-              call WriteBreakthroughHeaderForCoord(fid,realization, &
-                                                   breakthrough%region, &
-                                                   breakthrough%print_velocities)
+        if (.not.associated(observation)) exit
+        select case(observation%itype)
+          case(OBSERVATION_SCALAR)
+            do icell=1,observation%region%num_cells
+    !          call WriteObservationHeaderForCell(fid,realization, &
+    !                                              observation%region,icell, &
+    !                                              observation%print_velocities)
+              call WriteObservationHeaderForCoord(fid,realization, &
+                                                   observation%region, &
+                                                   observation%print_velocities)
             enddo
-          case(BREAKTHROUGH_FLUX)
+          case(OBSERVATION_FLUX)
             if (option%myrank == option%io_rank) then
-              call WriteBreakthroughHeaderForBC(fid,realization, &
-                                                breakthrough%linkage_name)
+              call WriteObservationHeaderForBC(fid,realization, &
+                                                observation%linkage_name)
             endif
         end select
-        breakthrough => breakthrough%next
+        observation => observation%next
       enddo
       write(fid,'(a)',advance="yes") ""
     else
@@ -2096,44 +2096,44 @@ subroutine OutputBreakthroughTecplot(realization)
            position="append")
     endif
   
-    breakthrough => patch%breakthrough%first
+    observation => patch%observation%first
     write(fid,'(1es12.4)',advance="no") option%time/output_option%tconv
     do 
-      if (.not.associated(breakthrough)) exit
-        select case(breakthrough%itype)
-          case(BREAKTHROUGH_SCALAR)
-            call WriteBreakthroughDataForCoord(fid,realization, &
-                                               breakthrough%region)
-            if (breakthrough%print_velocities) then
+      if (.not.associated(observation)) exit
+        select case(observation%itype)
+          case(OBSERVATION_SCALAR)
+            call WriteObservationDataForCoord(fid,realization, &
+                                               observation%region)
+            if (observation%print_velocities) then
               call WriteVelocityAtCoord(fid,realization, &
-                                        breakthrough%region)
+                                        observation%region)
             endif
-          case(BREAKTHROUGH_FLUX)
-            call WriteBreakthroughDataForBC(fid,realization, &
+          case(OBSERVATION_FLUX)
+            call WriteObservationDataForBC(fid,realization, &
                                             patch, &
-                                            breakthrough%connection_set)
+                                            observation%connection_set)
       end select
-      breakthrough => breakthrough%next
+      observation => observation%next
     enddo
     write(fid,'(a)',advance="yes") ""
     close(fid)
 
   endif
 
-  call PetscLogEventEnd(logging%event_output_breakthrough, &
+  call PetscLogEventEnd(logging%event_output_observation, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
       
-end subroutine OutputBreakthroughTecplot
+end subroutine OutputObservationTecplot
 
 ! ************************************************************************** !
 !
-! WriteBreakthroughHeaderForCell: Print a header for data at a cell
+! WriteObservationHeaderForCell: Print a header for data at a cell
 ! author: Glenn Hammond
 ! date: 02/11/08
 !
 ! ************************************************************************** !  
-subroutine WriteBreakthroughHeaderForCell(fid,realization,region,icell, &
+subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
                                           print_velocities)
 
   use Realization_module
@@ -2245,16 +2245,16 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,region,icell, &
     write(fid,'(a)',advance="no") trim(string)
   endif
 
-end subroutine WriteBreakthroughHeaderForCell
+end subroutine WriteObservationHeaderForCell
 
 ! ************************************************************************** !
 !
-! WriteBreakthroughHeaderForCoord: Print a header for data at a coordinate
+! WriteObservationHeaderForCoord: Print a header for data at a coordinate
 ! author: Glenn Hammond
 ! date: 04/11/08
 !
 ! ************************************************************************** !  
-subroutine WriteBreakthroughHeaderForCoord(fid,realization,region, &
+subroutine WriteObservationHeaderForCoord(fid,realization,region, &
                                            print_velocities)
 
   use Realization_module
@@ -2369,16 +2369,16 @@ subroutine WriteBreakthroughHeaderForCoord(fid,realization,region, &
     write(fid,'(a)',advance="no") trim(string)
   endif
 
-end subroutine WriteBreakthroughHeaderForCoord
+end subroutine WriteObservationHeaderForCoord
 
 ! ************************************************************************** !
 !
-! WriteBreakthroughHeaderForBC: Print a header for data over a region
+! WriteObservationHeaderForBC: Print a header for data over a region
 ! author: Glenn Hammond
 ! date: 12/18/08
 !
 ! ************************************************************************** !  
-subroutine WriteBreakthroughHeaderForBC(fid,realization,coupler_name)
+subroutine WriteObservationHeaderForBC(fid,realization,coupler_name)
 
   use Realization_module
   use Option_module
@@ -2417,16 +2417,16 @@ subroutine WriteBreakthroughHeaderForBC(fid,realization,coupler_name)
     enddo
   endif
 
-end subroutine WriteBreakthroughHeaderForBC
+end subroutine WriteObservationHeaderForBC
 
 ! ************************************************************************** !
 !
-! WriteBreakthroughDataForCell: Print data for data at a cell
+! WriteObservationDataForCell: Print data for data at a cell
 ! author: Glenn Hammond
 ! date: 02/11/08
 !
 ! ************************************************************************** !  
-subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
+subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   use Realization_module
   use Option_module
@@ -2542,16 +2542,16 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
   
   end select
 
-end subroutine WriteBreakthroughDataForCell
+end subroutine WriteObservationDataForCell
 
 ! ************************************************************************** !
 !
-! WriteBreakthroughDataForCoord: Print data for data at a coordinate
+! WriteObservationDataForCoord: Print data for data at a coordinate
 ! author: Glenn Hammond
 ! date: 04/11/08
 !
 ! ************************************************************************** !  
-subroutine WriteBreakthroughDataForCoord(fid,realization,region)
+subroutine WriteObservationDataForCoord(fid,realization,region)
 
   use Realization_module
   use Option_module
@@ -2767,16 +2767,16 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
   
   end select
 
-end subroutine WriteBreakthroughDataForCoord
+end subroutine WriteObservationDataForCoord
 
 ! ************************************************************************** !
 !
-! WriteBreakthroughDataForBC: Print flux data for a boundary condition
+! WriteObservationDataForBC: Print flux data for a boundary condition
 ! author: Glenn Hammond
 ! date: 12/18/08
 !
 ! ************************************************************************** !  
-subroutine WriteBreakthroughDataForBC(fid,realization,patch,connection_set)
+subroutine WriteObservationDataForBC(fid,realization,patch,connection_set)
 
   use Realization_module
   use Option_module
@@ -2859,7 +2859,7 @@ subroutine WriteBreakthroughDataForBC(fid,realization,patch,connection_set)
 
   endif
 
-end subroutine WriteBreakthroughDataForBC
+end subroutine WriteObservationDataForBC
 
 ! ************************************************************************** !
 !

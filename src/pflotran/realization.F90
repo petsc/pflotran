@@ -65,7 +65,7 @@ private
             RealizationLocalizeRegions, &
             RealizationAddCoupler, &
             RealizationAddStrata, &
-            RealizationAddBreakthrough, &
+            RealizationAddObservation, &
             RealizAssignInitialConditions, &
             RealizAssignFlowInitCond, &
             RealizAssignTransportInitCond, &
@@ -385,23 +385,23 @@ end subroutine RealizationAddStrata
 
 ! ************************************************************************** !
 !
-! RealizationAddBreakthrough: Adds a copy of a breakthrough object to a list
+! RealizationAddObservation: Adds a copy of a observation object to a list
 ! author: Glenn Hammond
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine RealizationAddBreakthrough(realization,breakthrough)
+subroutine RealizationAddObservation(realization,observation)
 
-  use Breakthrough_module
+  use Observation_module
 
   implicit none
   
   type(realization_type) :: realization
-  type(breakthrough_type), pointer :: breakthrough
+  type(observation_type), pointer :: observation
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
-  type(breakthrough_type), pointer :: new_breakthrough
+  type(observation_type), pointer :: new_observation
   
   cur_level => realization%level_list%first
   do 
@@ -409,18 +409,18 @@ subroutine RealizationAddBreakthrough(realization,breakthrough)
     cur_patch => cur_level%patch_list%first
     do
       if (.not.associated(cur_patch)) exit
-      new_breakthrough => BreakthroughCreate(breakthrough)
-      call BreakthroughAddToList(new_breakthrough, &
-                                 cur_patch%breakthrough)
-      nullify(new_breakthrough)
+      new_observation => ObservationCreate(observation)
+      call ObservationAddToList(new_observation, &
+                                 cur_patch%observation)
+      nullify(new_observation)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
   
-  call BreakthroughDestroy(breakthrough)
+  call ObservationDestroy(observation)
  
-end subroutine RealizationAddBreakthrough
+end subroutine RealizationAddObservation
 
 ! ************************************************************************** !
 !

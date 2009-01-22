@@ -3,7 +3,7 @@ module Patch_module
   use Option_module
   use Grid_module
   use Coupler_module
-  use Breakthrough_module
+  use Observation_module
   use Strata_module
   use Region_module
   use Material_module
@@ -37,7 +37,7 @@ module Patch_module
     type(coupler_list_type), pointer :: source_sinks
 
     type(strata_list_type), pointer :: strata
-    type(breakthrough_list_type), pointer :: breakthrough
+    type(observation_list_type), pointer :: observation
     
     type(auxilliary_type) :: aux
     
@@ -104,8 +104,8 @@ function PatchCreate()
   allocate(patch%source_sinks)
   call CouplerInitList(patch%source_sinks)
 
-  allocate(patch%breakthrough)
-  call BreakthroughInitList(patch%breakthrough)
+  allocate(patch%observation)
+  call ObservationInitList(patch%observation)
 
   allocate(patch%strata)
   call StrataInitList(patch%strata)
@@ -254,7 +254,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   type(coupler_type), pointer :: coupler
   type(coupler_list_type), pointer :: coupler_list 
   type(strata_type), pointer :: strata
-  type(breakthrough_type), pointer :: breakthrough, next_breakthrough
+  type(observation_type), pointer :: observation, next_observation
   
   PetscInt :: temp_int
   
@@ -417,47 +417,47 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   call CouplerListComputeConnections(patch%grid,option, &
                                      patch%source_sinks)
 
-  ! linkage of breakthrough to regions and couplers must take place after
+  ! linkage of observation to regions and couplers must take place after
   ! connection list have been created.
-  ! breakthrough
-  breakthrough => patch%breakthrough%first
+  ! observation
+  observation => patch%observation%first
   do
-    if (.not.associated(breakthrough)) exit
-    next_breakthrough => breakthrough%next
-    select case(breakthrough%itype)
-      case(BREAKTHROUGH_SCALAR)
+    if (.not.associated(observation)) exit
+    next_observation => observation%next
+    select case(observation%itype)
+      case(OBSERVATION_SCALAR)
         ! pointer to region
-        breakthrough%region => RegionGetPtrFromList(breakthrough%linkage_name, &
+        observation%region => RegionGetPtrFromList(observation%linkage_name, &
                                                     patch%regions)
-        if (.not.associated(breakthrough%region)) then
+        if (.not.associated(observation%region)) then
           option%io_buffer = 'Region ' // &
-                   trim(breakthrough%linkage_name) // &
+                   trim(observation%linkage_name) // &
                    ' not found in region list'
           call printErrMsg(option)
         endif
-        if (breakthrough%region%num_cells == 0) then
-          ! remove the breakthrough object
-          call BreakthroughRemoveFromList(breakthrough,patch%breakthrough)
+        if (observation%region%num_cells == 0) then
+          ! remove the observation object
+          call ObservationRemoveFromList(observation,patch%observation)
         endif
-      case(BREAKTHROUGH_FLUX)
-        coupler => CouplerGetPtrFromList(breakthrough%linkage_name, &
+      case(OBSERVATION_FLUX)
+        coupler => CouplerGetPtrFromList(observation%linkage_name, &
                                          patch%boundary_conditions)
         if (associated(coupler)) then
-          breakthrough%connection_set => coupler%connection_set
+          observation%connection_set => coupler%connection_set
         else
           option%io_buffer = 'Boundary Condition ' // &
-                   trim(breakthrough%linkage_name) // &
+                   trim(observation%linkage_name) // &
                    ' not found in Boundary Condition list'
           call printErrMsg(option)
         endif
-        if (breakthrough%connection_set%num_connections == 0) then
+        if (observation%connection_set%num_connections == 0) then
           ! cannot remove from list, since there must be a global reduction
           ! across all procs
           ! therefore, just nullify connection set
-          nullify(breakthrough%connection_set)
+          nullify(observation%connection_set)
         endif                                      
     end select
-    breakthrough => next_breakthrough
+    observation => next_observation
   enddo
  
   temp_int = ConnectionGetNumberInList(patch%grid%internal_connection_set_list)
@@ -1792,12 +1792,12 @@ subroutine PatchDestroy(patch)
   call CouplerDestroyList(patch%initial_conditions)
   call CouplerDestroyList(patch%source_sinks)
   
-  call BreakthroughDestroyList(patch%breakthrough)
+  call ObservationDestroyList(patch%observation)
   call StrataDestroyList(patch%strata)
   
   call AuxDestroy(patch%aux)
   
-  call BreakthroughDestroyList(patch%breakthrough)
+  call ObservationDestroyList(patch%observation)
   
   deallocate(patch)
   nullify(patch)

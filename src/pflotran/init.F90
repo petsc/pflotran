@@ -713,7 +713,7 @@ subroutine readInput(simulation)
   use Condition_module
   use Coupler_module
   use Strata_module
-  use Breakthrough_module
+  use Observation_module
   use Waypoint_module
   use Debug_module
   use Patch_module
@@ -755,7 +755,7 @@ subroutine readInput(simulation)
   type(tran_constraint_type), pointer :: tran_constraint
   type(coupler_type), pointer :: coupler
   type(strata_type), pointer :: strata
-  type(breakthrough_type), pointer :: breakthrough
+  type(observation_type), pointer :: observation
   
   type(waypoint_type), pointer :: waypoint
   
@@ -1231,9 +1231,9 @@ subroutine readInput(simulation)
 
 !....................
       case ('OBSERVATION')
-        breakthrough => BreakthroughCreate()
-        call BreakthroughRead(breakthrough,input,option)
-        call RealizationAddBreakthrough(realization,breakthrough)        
+        observation => ObservationCreate()
+        call ObservationRead(observation,input,option)
+        call RealizationAddObservation(realization,observation)        
       
 !.....................
       case ('WALLCLOCK_STOP')

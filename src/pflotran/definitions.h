@@ -197,8 +197,8 @@ PetscInt, parameter :: HDF5_READ_BUFFER_SIZE = 1000000
 PetscInt, parameter :: TECPLOT_POINT_FORMAT = 1
 PetscInt, parameter :: TECPLOT_BLOCK_FORMAT = 2
 
-PetscInt, parameter :: BREAKTHROUGH_SCALAR = 1
-PetscInt, parameter :: BREAKTHROUGH_FLUX = 2
+PetscInt, parameter :: OBSERVATION_SCALAR = 1
+PetscInt, parameter :: OBSERVATION_FLUX = 2
 
 ! phase ids
 PetscInt, parameter :: LIQUID_PHASE = 1

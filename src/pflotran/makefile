@@ -78,7 +78,7 @@ common_obj = ${common_src}option.o \
 	${common_src}pckr_mod.o \
 	${common_src}strata.o \
 	${common_src}connection.o \
-	${common_src}breakthrough.o \
+	${common_src}observation.o \
 	${common_src}solver.o \
 	${common_src}cf90bridge.o\
 	${common_src}unstructured_grid.o \
@@ -160,15 +160,15 @@ material.o : option.o input.o string.o
 fluid.o : option.o input.o string.o
 saturation_function.o : option.o input.o string.o utility.o
 coupler.o : condition.o connection.o region.o input.o grid.o
-breakthrough.o : region.o option.o input.o
+observation.o : region.o option.o input.o
 convergence.o : option.o solver.o grid.o
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o string.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
-	              strata.o waypoint.o field.o hydrostatic.o debug.o breakthrough.o \
+	              strata.o waypoint.o field.o hydrostatic.o debug.o observation.o \
                 patch.o level.o discretization.o reaction.o reaction_aux.o \
                 fluid.o saturation_function.o
 level.o : patch.o option.o
-patch.o : option.o grid.o coupler.o breakthrough.o strata.o region.o \
+patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
           auxilliary.o reaction.o condition.o connection.o hydrostatic.o \
           field.o 
 strata.o : input.o region.o material.o
@@ -176,7 +176,7 @@ hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
                 structured_grid.o
 waypoint.o : option.o 
 output.o : grid.o structured_grid.o option.o realization.o field.o \
-           coupler.o connection.o hdf5.o breakthrough.o \
+           coupler.o connection.o hdf5.o observation.o \
 					 reactive_transport.o \
            thc.o richards.o mphase.o \
 					 discretization.o logging.o

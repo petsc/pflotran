@@ -60,7 +60,7 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 5
     PetscLogEvent :: event_output_get_var_from_array
     PetscLogEvent :: event_output_get_cell_vel
     PetscLogEvent :: event_output_vec_tecplot
-    PetscLogEvent :: event_output_breakthrough
+    PetscLogEvent :: event_output_observation
     PetscLogEvent :: event_output_coordinates_hdf5
     
     PetscLogEvent :: event_mass_balance
@@ -213,7 +213,7 @@ subroutine LoggingCreate()
                              logging%event_output_vec_tecplot,ierr)
   call PetscLogEventRegister('OutputBrkthuTec', &
                              logging%class_pflotran, &
-                             logging%event_output_breakthrough,ierr)
+                             logging%event_output_observation,ierr)
   call PetscLogEventRegister('WriteHDF5Coord', &
                              logging%class_pflotran, &
                              logging%event_output_coordinates_hdf5,ierr)
