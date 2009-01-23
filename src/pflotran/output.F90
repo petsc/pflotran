@@ -5531,7 +5531,7 @@ subroutine OutputMassBalanceNew(realization)
       
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
       do offset = 1, 4
-        write(word,'(i)') offset*100
+        write(word,'(i6)') offset*100
         select case(option%iflowmode)
           case(RICHARDS_MODE)
             write(fid,'(a)',advance="no") ',"' // &
