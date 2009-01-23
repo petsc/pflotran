@@ -290,6 +290,12 @@ subroutine RichardsZeroMassBalDeltaPatch(realization)
 
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+  do iconn = 1, patch%aux%Richards%num_aux
+    patch%aux%Global%aux_vars(iconn)%mass_balance_delta = 0.d0
+  enddo
+#endif
+
   do iconn = 1, patch%aux%Richards%num_aux_bc
     global_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
   enddo
@@ -324,6 +330,14 @@ subroutine RichardsUpdateMassBalancePatch(realization)
   patch => realization%patch
 
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+  do iconn = 1, patch%aux%Richards%num_aux
+    patch%aux%Global%aux_vars(iconn)%mass_balance = &
+      patch%aux%Global%aux_vars(iconn)%mass_balance + &
+      patch%aux%Global%aux_vars(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
+  enddo
+#endif
 
   do iconn = 1, patch%aux%Richards%num_aux_bc
     global_aux_vars_bc(iconn)%mass_balance = &
@@ -1667,6 +1681,11 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
                         upweight,option,v_darcy,Res)
 
       patch%internal_velocities(1,sum_connection) = v_darcy
+      
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+      global_aux_vars(local_id_up)%mass_balance_delta(1) = &
+        global_aux_vars(local_id_up)%mass_balance_delta(1) - Res(1)/option%flow_dt
+#endif
 
       if (local_id_up>0) then
         r_p(local_id_up) = r_p(local_id_up) + Res(1)

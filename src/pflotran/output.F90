@@ -1181,7 +1181,7 @@ subroutine OutputTecplotPoint(realization)
     write(IUNIT3,'(a)') trim(string)
   endif
   
-1000 format(es11.4,x)
+1000 format(es13.6,x)
 1001 format(i11,x)
 1009 format('')
 
@@ -1450,9 +1450,9 @@ subroutine OutputVelocitiesTecplotPoint(realization)
   call GridVecGetArrayF90(grid,global_vec_vz,vec_ptr_vz,ierr)
 
   ! write points
-1000 format(es11.4,x)
+1000 format(es13.6,x)
 1001 format(i11,x)
-1002 format(3(es11.4,x))
+1002 format(3(es13.6,x))
 1009 format('')
 
   do local_id = 1, grid%nlmax
@@ -1672,8 +1672,8 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
   PetscInt :: i, j, k, count, nx, ny, nz
   PetscReal :: temp_real
 
-1000 format(es11.4,x)
-1001 format(10(es11.4,x))
+1000 format(es13.6,x)
+1001 format(10(es13.6,x))
   
   call PetscLogEventBegin(logging%event_output_str_grid_tecplot, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -1805,8 +1805,8 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   PetscInt, allocatable :: integer_data(:), integer_data_recv(:)
   PetscReal, allocatable :: real_data(:), real_data_recv(:)
 
-1000 format(es11.4)
-1001 format(10(es11.4,x))
+1000 format(es13.6)
+1001 format(10(es13.6,x))
 !1000 format(es16.9)
 !1001 format(10(es16.9,x))
   
@@ -3619,7 +3619,7 @@ subroutine WriteVTKGrid(fid,realization)
   PetscInt :: nxp1Xnyp1, nxp1, nyp1, nzp1
   PetscInt :: vertex_id
 
-1000 format(es11.4,x,es11.4,x,es11.4)
+1000 format(es13.6,x,es13.6,x,es13.6)
 1001 format(i1,8(x,i8))
   
   call PetscLogEventBegin(logging%event_output_grid_vtk, &
@@ -3766,7 +3766,7 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
   PetscInt, allocatable :: integer_data(:), integer_data_recv(:)
   PetscReal, allocatable :: real_data(:), real_data_recv(:)
 
-1001 format(10(es11.4,x))
+1001 format(10(es13.6,x))
 1002 format(i3)
   
   patch => realization%patch
@@ -5445,6 +5445,7 @@ subroutine OutputMassBalanceNew(realization)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_bc(:)
   
   character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXWORDLENGTH) :: word
   PetscInt :: fid = 86
   PetscInt :: ios
   PetscInt :: i
@@ -5527,6 +5528,25 @@ subroutine OutputMassBalanceNew(realization)
         boundary_condition => boundary_condition%next
       
       enddo
+      
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+      do offset = 1, 4
+        write(word,'(i)') offset*100
+        select case(option%iflowmode)
+          case(RICHARDS_MODE)
+            write(fid,'(a)',advance="no") ',"' // &
+              trim(adjustl(word)) // 'm Water Mass [kg]"'
+        end select
+        
+        if (option%ntrandof > 0) then
+          do i=1,reaction%ncomp
+            write(fid,'(a)',advance="no") ',"' // &
+                trim(word) // 'm ' // &
+                trim(reaction%primary_species_names(i)) // ' [mol]"'
+          enddo
+        endif
+      enddo
+#endif      
       write(fid,'(a)') '' 
     else
       open(unit=fid,file=filename,action="write",status="old",position="append")
@@ -5616,6 +5636,44 @@ subroutine OutputMassBalanceNew(realization)
     boundary_condition => boundary_condition%next
   
   enddo
+
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+
+  do offset = 1, 4
+    iconn = offset*20-1
+
+    if (option%nflowdof > 0) then
+      sum_kg = 0.d0
+      sum_kg = sum_kg + patch%aux%Global%aux_vars(iconn)%mass_balance
+
+      call MPI_Reduce(sum_kg,sum_kg_global, &
+                      option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      option%io_rank,option%mycomm,ierr)
+                          
+      if (option%myrank == option%io_rank) then
+        ! change sign for positive in / negative out
+        write(fid,110,advance="no") -sum_kg_global
+      endif
+    endif
+    
+    if (option%ntrandof > 0) then
+
+      sum_mol = 0.d0
+      sum_mol = sum_mol + patch%aux%RT%aux_vars(iconn)%mass_balance
+
+      call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*reaction%ncomp, &
+                      MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      option%io_rank,option%mycomm,ierr)
+
+      if (option%myrank == option%io_rank) then
+        ! change sign for positive in / negative out
+        write(fid,110,advance="no") ((-sum_mol_global(icomp,iphase), &
+                                      icomp=1,reaction%ncomp),&
+                                     iphase=1,option%nphase)
+      endif
+    endif
+  enddo
+#endif
   
   if (option%myrank == option%io_rank) then
     write(fid,'(a)') ''
