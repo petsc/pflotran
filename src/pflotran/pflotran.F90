@@ -225,6 +225,6 @@
   
   call MPI_Barrier(MPI_COMM_WORLD,ierr)
   call PetscFinalize (ierr)
-  deallocate(realization_ids)
+  if (associated(realization_ids)) deallocate(realization_ids)
 
   end program pflotran

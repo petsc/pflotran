@@ -83,7 +83,11 @@ subroutine GlobalSetupPatch(realization)
   patch%aux%Global => GlobalAuxCreate()
   
   ! allocate aux_var data structures for all grid cells  
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+  option%iflag = 1 ! allocate mass_balance array
+#else  
   option%iflag = 0 ! be sure not to allocate mass_balance array
+#endif
   allocate(aux_vars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
     call GlobalAuxVarInit(aux_vars(ghosted_id),option)

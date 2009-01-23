@@ -141,7 +141,11 @@ subroutine RTSetupPatch(realization)
   patch%aux%RT => RTAuxCreate(option)
     
   ! allocate aux_var data structures for all grid cells
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+  option%iflag = 1 ! allocate mass_balance array
+#else  
   option%iflag = 0 ! be sure not to allocate mass_balance array
+#endif
   allocate(patch%aux%RT%aux_vars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
     call RTAuxVarInit(patch%aux%RT%aux_vars(ghosted_id),reaction,option)
@@ -341,6 +345,12 @@ subroutine RTZeroMassBalanceDeltaPatch(realization)
 
   rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
 
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+  do iconn = 1, patch%aux%RT%num_aux
+    patch%aux%RT%aux_vars(iconn)%mass_balance_delta = 0.d0
+  enddo
+#endif
+
   do iconn = 1, patch%aux%RT%num_aux_bc
     rt_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
   enddo
@@ -375,6 +385,14 @@ subroutine RTUpdateMassBalancePatch(realization)
   patch => realization%patch
 
   rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
+
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+  do iconn = 1, patch%aux%RT%num_aux
+    patch%aux%RT%aux_vars(iconn)%mass_balance = &
+      patch%aux%RT%aux_vars(iconn)%mass_balance + &
+      patch%aux%RT%aux_vars(iconn)%mass_balance_delta*option%tran_dt
+  enddo
+#endif
 
   do iconn = 1, patch%aux%RT%num_aux_bc
     rt_aux_vars_bc(iconn)%mass_balance = &
@@ -1155,6 +1173,11 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
                  dist_up, &
                  cur_connection_set%area(iconn),rt_parameter,option, &
                  patch%internal_velocities(:,iconn),Res)
+
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+      rt_aux_vars(local_id_up)%mass_balance_delta(:,iphase) = &
+        rt_aux_vars(local_id_up)%mass_balance_delta(:,iphase) - Res        
+#endif
 
       if (local_id_up>0) then
         iend = local_id_up*reaction%ncomp
