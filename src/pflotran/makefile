@@ -21,12 +21,16 @@ ifdef compile_broken
   COMPILE_BROKEN_FLAGS = -DCOMPILE_BROKEN
 endif
 
+ifdef uo2
+UO2_FLAG = -DCOMPUTE_INTERNAL_MASS_FLUX
+endif
+
 ifdef glenn
 GLENN_FLAGS = -DGLENN
 endif
 
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) \
-          $(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS)
+          $(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG)
 LIBS = $(HDF5_LIBS)
 
 CFLAGS		 = 
