@@ -78,6 +78,19 @@
   call MPI_Comm_rank(MPI_COMM_WORLD,global_rank, ierr)
   call MPI_Comm_size(MPI_COMM_WORLD,global_commsize,ierr)
   call MPI_Comm_group(MPI_COMM_WORLD,global_group,ierr)
+
+  PETSC_COMM_WORLD = mycomm
+  call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
+  ! query user for number of communicator groups and realizations
+  option_found = PETSC_FALSE
+  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-num_groups', &
+                          i,option_found, ierr)
+  if (option_found) num_groups = i
+  option_found = PETSC_FALSE
+  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-num_realizations', &
+                          i,option_found, ierr)
+  if (option_found) num_realizations = i
+
   local_commsize = global_commsize / num_groups
   remainder = global_commsize - num_groups * local_commsize
   offset = 0
@@ -210,6 +223,7 @@
     
   enddo
   
+  call MPI_Barrier(MPI_COMM_WORLD,ierr)
   call PetscFinalize (ierr)
   deallocate(realization_ids)
 

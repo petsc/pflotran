@@ -1181,7 +1181,7 @@ subroutine OutputTecplotPoint(realization)
     write(IUNIT3,'(a)') trim(string)
   endif
   
-1000 format(es11.4,x)
+1000 format(es13.6,x)
 1001 format(i11,x)
 1009 format('')
 
@@ -1450,9 +1450,9 @@ subroutine OutputVelocitiesTecplotPoint(realization)
   call GridVecGetArrayF90(grid,global_vec_vz,vec_ptr_vz,ierr)
 
   ! write points
-1000 format(es11.4,x)
+1000 format(es13.6,x)
 1001 format(i11,x)
-1002 format(3(es11.4,x))
+1002 format(3(es13.6,x))
 1009 format('')
 
   do local_id = 1, grid%nlmax
@@ -1672,8 +1672,8 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
   PetscInt :: i, j, k, count, nx, ny, nz
   PetscReal :: temp_real
 
-1000 format(es11.4,x)
-1001 format(10(es11.4,x))
+1000 format(es13.6,x)
+1001 format(10(es13.6,x))
   
   call PetscLogEventBegin(logging%event_output_str_grid_tecplot, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -1805,8 +1805,8 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   PetscInt, allocatable :: integer_data(:), integer_data_recv(:)
   PetscReal, allocatable :: real_data(:), real_data_recv(:)
 
-1000 format(es11.4)
-1001 format(10(es11.4,x))
+1000 format(es13.6)
+1001 format(10(es13.6,x))
 !1000 format(es16.9)
 !1001 format(10(es16.9,x))
   
@@ -3619,7 +3619,7 @@ subroutine WriteVTKGrid(fid,realization)
   PetscInt :: nxp1Xnyp1, nxp1, nyp1, nzp1
   PetscInt :: vertex_id
 
-1000 format(es11.4,x,es11.4,x,es11.4)
+1000 format(es13.6,x,es13.6,x,es13.6)
 1001 format(i1,8(x,i8))
   
   call PetscLogEventBegin(logging%event_output_grid_vtk, &
@@ -3766,7 +3766,7 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
   PetscInt, allocatable :: integer_data(:), integer_data_recv(:)
   PetscReal, allocatable :: real_data(:), real_data_recv(:)
 
-1001 format(10(es11.4,x))
+1001 format(10(es13.6,x))
 1002 format(i3)
   
   patch => realization%patch
