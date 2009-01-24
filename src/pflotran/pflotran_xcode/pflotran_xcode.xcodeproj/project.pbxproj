@@ -15,8 +15,10 @@
 		2329A3DB0DC0F3F900AB44B2 /* amrstubs.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = amrstubs.F90; path = ../amrstubs.F90; sourceTree = SOURCE_ROOT; };
 		2329A3DC0DC0F3F900AB44B2 /* auxilliary.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = auxilliary.F90; path = ../auxilliary.F90; sourceTree = SOURCE_ROOT; };
 		2329A3DE0DC0F3F900AB44B2 /* sub_grid.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = sub_grid.F90; path = ../sub_grid.F90; sourceTree = SOURCE_ROOT; };
+		232D73C50F2AC72800919F31 /* observation.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = observation.F90; path = ../observation.F90; sourceTree = SOURCE_ROOT; };
+		232D73CA0F2AC74900919F31 /* fluid.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = fluid.F90; path = ../fluid.F90; sourceTree = SOURCE_ROOT; };
+		232D73CD0F2AC75A00919F31 /* units.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = units.F90; path = ../units.F90; sourceTree = SOURCE_ROOT; };
 		2366A78F0D86058C0003BB1F /* ascii_to_hdf5.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = ascii_to_hdf5.F90; path = ../ascii_to_hdf5.F90; sourceTree = SOURCE_ROOT; };
-		2366A7900D86058C0003BB1F /* breakthrough.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = breakthrough.F90; path = ../breakthrough.F90; sourceTree = SOURCE_ROOT; };
 		2366A7910D86058C0003BB1F /* checkpoint.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = checkpoint.F90; path = ../checkpoint.F90; sourceTree = SOURCE_ROOT; };
 		2366A7920D86058C0003BB1F /* co2_span_wagner.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = co2_span_wagner.F90; path = ../co2_span_wagner.F90; sourceTree = SOURCE_ROOT; };
 		2366A7930D86058C0003BB1F /* co2_sw_global.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = co2_sw_global.F90; path = ../co2_sw_global.F90; sourceTree = SOURCE_ROOT; };
@@ -91,7 +93,6 @@
 				2329A3DB0DC0F3F900AB44B2 /* amrstubs.F90 */,
 				2366A78F0D86058C0003BB1F /* ascii_to_hdf5.F90 */,
 				2329A3DC0DC0F3F900AB44B2 /* auxilliary.F90 */,
-				2366A7900D86058C0003BB1F /* breakthrough.F90 */,
 				23EEB6F00E9B14C2002FBA38 /* cf90bridge.F90 */,
 				2366A7910D86058C0003BB1F /* checkpoint.F90 */,
 				2366A7920D86058C0003BB1F /* co2_span_wagner.F90 */,
@@ -109,6 +110,7 @@
 				2366A79B0D86058C0003BB1F /* definitions.h */,
 				2366A79C0D86058C0003BB1F /* discretization.F90 */,
 				2366A79D0D86058C0003BB1F /* field.F90 */,
+				232D73CA0F2AC74900919F31 /* fluid.F90 */,
 				2366A79F0D86058C0003BB1F /* gaseos_mod.F90 */,
 				2366A7A00D86058C0003BB1F /* general_grid.F90 */,
 				236781E70F1E458C00E727CC /* general_phase.F90 */,
@@ -131,6 +133,7 @@
 				23EEB6F20E9B14C2002FBA38 /* mixed_fluid_eos.F90 */,
 				899DEDE20DE3377C0060475D /* mphase.F90 */,
 				899DEDE30DE3377C0060475D /* mphase_aux.F90 */,
+				232D73C50F2AC72800919F31 /* observation.F90 */,
 				2366A7AB0D86058C0003BB1F /* oil_eos.F90 */,
 				2366A7AC0D86058C0003BB1F /* option.F90 */,
 				2366A7AD0D86058C0003BB1F /* output.F90 */,
@@ -157,6 +160,7 @@
 				23A1261D0E9E89BF00C77837 /* thc_aux.F90 */,
 				2366A7D20D86058C0003BB1F /* timestepper.F90 */,
 				2366A7D40D86058C0003BB1F /* transport.F90 */,
+				232D73CD0F2AC75A00919F31 /* units.F90 */,
 				2366A7DA0D86058C0003BB1F /* unstructured_grid.F90 */,
 				2366A7DC0D86058C0003BB1F /* utility.F90 */,
 				2366A7DD0D86058C0003BB1F /* water_eos.F90 */,
