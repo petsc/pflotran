@@ -456,42 +456,54 @@ subroutine OutputTecplotBlock(realization)
   
   if (option%ntrandof > 0) then
     if (associated(reaction)) then
-      if (reaction%h_ion_id > 0) then
+      if (reaction%print_pH .and. reaction%h_ion_id > 0) then
         call OutputGetVarFromArray(realization,global_vec,PH,reaction%h_ion_id)
         call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       endif
       do i=1,reaction%ncomp
-        call OutputGetVarFromArray(realization,global_vec,TOTAL_MOLARITY,i)
-        call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-        call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        if (reaction%primary_species_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,TOTAL_MOLARITY,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        endif
       enddo
       if (realization%output_option%print_act_coefs) then
         do i=1,reaction%ncomp
-          call OutputGetVarFromArray(realization,global_vec,PRIMARY_ACTIVITY_COEF,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+          if (reaction%primary_species_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,PRIMARY_ACTIVITY_COEF,i)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+            call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+          endif
         enddo
       endif
       do i=1,reaction%nkinmnrl
-        call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
-        call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-        call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        if (reaction%kinmnrl_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        endif
       enddo
       do i=1,reaction%nkinmnrl
-        call OutputGetVarFromArray(realization,global_vec,MINERAL_RATE,i)
-        call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-        call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
-      enddo
-      do i=1,reaction%neqsurfcmplx
-        call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX,i)
-        call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-        call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        if (reaction%kinmnrl_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,MINERAL_RATE,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        endif
       enddo
       do i=1,reaction%neqsurfcmplxrxn
-        call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX_FREE,i)
-        call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-        call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        if (reaction%surface_site_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX_FREE,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        endif
+      enddo
+      do i=1,reaction%neqsurfcmplx
+        if (reaction%surface_complex_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        endif
       enddo
     endif
   endif
@@ -1276,42 +1288,54 @@ subroutine OutputTecplotPoint(realization)
     
     if (option%ntrandof > 0) then
       if (associated(reaction)) then
-        if (reaction%h_ion_id > 0) then
+        if (reaction%print_pH .and. reaction%h_ion_id > 0) then
           value = RealizGetDatasetValueAtCell(realization,PH, &
                                               reaction%h_ion_id,ghosted_id)
           write(IUNIT3,1000,advance='no') value
         endif
         do i=1,reaction%ncomp
-          value = RealizGetDatasetValueAtCell(realization,TOTAL_MOLARITY, &
-                                              i,ghosted_id)
-          write(IUNIT3,1000,advance='no') value
+          if (reaction%primary_species_print(i)) then
+            value = RealizGetDatasetValueAtCell(realization,TOTAL_MOLARITY, &
+                                                i,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+          endif
         enddo
         if (realization%output_option%print_act_coefs) then
           do i=1,reaction%ncomp
-            value = RealizGetDatasetValueAtCell(realization,PRIMARY_ACTIVITY_COEF, &
-                                                i,ghosted_id)
-            write(IUNIT3,1000,advance='no') value
+            if (reaction%primary_species_print(i)) then
+              value = RealizGetDatasetValueAtCell(realization,PRIMARY_ACTIVITY_COEF, &
+                                                  i,ghosted_id)
+              write(IUNIT3,1000,advance='no') value
+            endif
           enddo
         endif
         do i=1,reaction%nkinmnrl
-          value = RealizGetDatasetValueAtCell(realization,MINERAL_VOLUME_FRACTION, &
-                                              i,ghosted_id)
-          write(IUNIT3,1000,advance='no') value
+          if (reaction%kinmnrl_print(i)) then
+            value = RealizGetDatasetValueAtCell(realization,MINERAL_VOLUME_FRACTION, &
+                                                i,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+          endif
         enddo
         do i=1,reaction%nkinmnrl
-          value = RealizGetDatasetValueAtCell(realization,MINERAL_RATE, &
-                                              i,ghosted_id)
-          write(IUNIT3,1000,advance='no') value
-        enddo
-        do i=1,reaction%neqsurfcmplx
-          value = RealizGetDatasetValueAtCell(realization,SURFACE_CMPLX, &
-                                              i,ghosted_id)
-          write(IUNIT3,1000,advance='no') value
+          if (reaction%kinmnrl_print(i)) then
+            value = RealizGetDatasetValueAtCell(realization,MINERAL_RATE, &
+                                                i,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+          endif
         enddo
         do i=1,reaction%neqsurfcmplxrxn
-          value = RealizGetDatasetValueAtCell(realization,SURFACE_CMPLX_FREE, &
-                                              i,ghosted_id)
-          write(IUNIT3,1000,advance='no') value
+          if (reaction%surface_site_print(i)) then
+            value = RealizGetDatasetValueAtCell(realization,SURFACE_CMPLX_FREE, &
+                                                i,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+          endif
+        enddo
+        do i=1,reaction%neqsurfcmplx
+          if (reaction%surface_complex_print(i)) then
+            value = RealizGetDatasetValueAtCell(realization,SURFACE_CMPLX, &
+                                                i,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+          endif
         enddo
       endif
     endif
@@ -5503,8 +5527,10 @@ subroutine OutputMassBalanceNew(realization)
       
       if (option%ntrandof > 0) then
         do i=1,reaction%ncomp
-          write(fid,'(a)',advance="no") ',"Global ' // &
-              trim(reaction%primary_species_names(i)) // ' [mol]"'
+          if (reaction%primary_species_print(i)) then
+            write(fid,'(a)',advance="no") ',"Global ' // &
+                trim(reaction%primary_species_names(i)) // ' [mol]"'
+          endif
         enddo
       endif
       
@@ -5520,9 +5546,11 @@ subroutine OutputMassBalanceNew(realization)
         
         if (option%ntrandof > 0) then
           do i=1,reaction%ncomp
-            write(fid,'(a)',advance="no") ',"' // &
-                trim(boundary_condition%name) // ' ' // &
-                trim(reaction%primary_species_names(i)) // ' [mol]"'
+            if (reaction%primary_species_print(i)) then
+              write(fid,'(a)',advance="no") ',"' // &
+                  trim(boundary_condition%name) // ' ' // &
+                  trim(reaction%primary_species_names(i)) // ' [mol]"'
+            endif
           enddo
         endif
         boundary_condition => boundary_condition%next
@@ -5540,9 +5568,11 @@ subroutine OutputMassBalanceNew(realization)
         
         if (option%ntrandof > 0) then
           do i=1,reaction%ncomp
-            write(fid,'(a)',advance="no") ',"' // &
-                trim(word) // 'm ' // &
-                trim(reaction%primary_species_names(i)) // ' [mol]"'
+            if (reaction%primary_species_print(i)) then
+              write(fid,'(a)',advance="no") ',"' // &
+                  trim(adjustl(word)) // 'm ' // &
+                  trim(reaction%primary_species_names(i)) // ' [mol]"'
+            endif
           enddo
         endif
       enddo
@@ -5587,9 +5617,13 @@ subroutine OutputMassBalanceNew(realization)
                     option%io_rank,option%mycomm,ierr)
 
     if (option%myrank == option%io_rank) then
-      write(fid,110,advance="no") ((sum_mol_global(icomp,iphase), &
-                                    icomp=1,reaction%ncomp),&
-                                   iphase=1,option%nphase)
+      do iphase = 1, option%nphase
+        do icomp = 1, reaction%ncomp
+          if (reaction%primary_species_print(icomp)) then
+            write(fid,110,advance="no") sum_mol_global(icomp,iphase)
+          endif
+        enddo
+      enddo
     endif
   endif
   
@@ -5627,9 +5661,13 @@ subroutine OutputMassBalanceNew(realization)
 
       if (option%myrank == option%io_rank) then
         ! change sign for positive in / negative out
-        write(fid,110,advance="no") ((-sum_mol_global(icomp,iphase), &
-                                      icomp=1,reaction%ncomp),&
-                                     iphase=1,option%nphase)
+        do iphase = 1, option%nphase
+          do icomp = 1, reaction%ncomp
+            if (reaction%primary_species_print(icomp)) then
+              write(fid,110,advance="no") -sum_mol_global(icomp,iphase)
+            endif
+          enddo
+        enddo
       endif
     endif
 
@@ -5666,10 +5704,14 @@ subroutine OutputMassBalanceNew(realization)
                       option%io_rank,option%mycomm,ierr)
 
       if (option%myrank == option%io_rank) then
-        ! change sign for positive in / negative out
-        write(fid,110,advance="no") ((-sum_mol_global(icomp,iphase), &
-                                      icomp=1,reaction%ncomp),&
-                                     iphase=1,option%nphase)
+        do iphase = 1, option%nphase
+          do icomp = 1, reaction%ncomp
+            if (reaction%primary_species_print(icomp)) then
+              ! change sign for positive in / negative out
+              write(fid,110,advance="no") -sum_mol_global(icomp,iphase)
+            endif
+          enddo
+        enddo
       endif
     endif
   enddo

@@ -96,7 +96,7 @@ subroutine TFlux(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up, &
                            coef_dn*rt_aux_var_dn%total(1:option%ntrandof,iphase)
   
 ! Add in multiphase, clu 12/29/08
-#if 1  
+#ifdef CHUAN_CO2  
   do
    iphase = iphase +1 
    if (iphase > option%nphase) exit
@@ -225,7 +225,7 @@ subroutine TFluxDerivative(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up
   endif
 
 ! Add in multiphase, clu 12/29/08
-#if 1  
+#ifdef CHUAN_CO2  
   do 
     iphase = iphase + 1
     if (iphase > option%nphase) exit
@@ -365,8 +365,7 @@ subroutine TBCFlux(ibndtype, &
                            coef_dn*rt_aux_var_dn%total(1:option%ntrandof,iphase)  
 
 ! Add in multiphase, clu 12/29/08
-
-#if 1  
+#ifdef CHUAN_CO2  
   do 
     iphase = iphase + 1
     if (iphase > option%nphase) exit
@@ -515,7 +514,7 @@ subroutine TBCFluxDerivative(ibndtype, &
   endif
 
 ! Add in multiphase, clu 12/29/08
-#if 1  
+#ifdef CHUAN_CO2  
   do 
     iphase = iphase + 1
     if (iphase > option%nphase) exit

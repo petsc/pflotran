@@ -1779,8 +1779,13 @@ subroutine BasisInit(reaction,option)
   if (associated(reaction%primary_species_names)) &
     deallocate(reaction%primary_species_names)
   allocate(reaction%primary_species_names(reaction%ncomp))
+  reaction%primary_species_names = ''
+  allocate(reaction%primary_species_print(reaction%ncomp))
+  reaction%primary_species_print = PETSC_FALSE
   allocate(reaction%primary_spec_Z(reaction%ncomp))
+  reaction%primary_spec_Z = 0.d0
   allocate(reaction%primary_spec_a0(reaction%ncomp))
+  reaction%primary_spec_a0 = 0.d0
   
     ! pack in reaction arrays
   cur_pri_aq_spec => reaction%primary_species_list
@@ -1793,6 +1798,8 @@ subroutine BasisInit(reaction,option)
       cur_pri_aq_spec%Z
     reaction%primary_spec_a0(ispec) = &
       cur_pri_aq_spec%a0
+    reaction%primary_species_print(ispec) = cur_pri_aq_spec%print_me .or. &
+                                            reaction%print_all_species
     ispec = ispec + 1
     cur_pri_aq_spec => cur_pri_aq_spec%next
   enddo
@@ -1804,7 +1811,11 @@ subroutine BasisInit(reaction,option)
   
   if (reaction%neqcmplx > 0) then
     allocate(reaction%secondary_species_names(reaction%neqcmplx))
+    reaction%secondary_species_names = ''
+    allocate(reaction%secondary_species_print(reaction%neqcmplx))
+    reaction%secondary_species_print = PETSC_FALSE
     allocate(reaction%eqcmplx_basis_names(reaction%ncomp,reaction%neqcmplx))
+    reaction%eqcmplx_basis_names = ''
     allocate(reaction%eqcmplxspecid(0:reaction%ncomp,reaction%neqcmplx))
     reaction%eqcmplxspecid = 0
     allocate(reaction%eqcmplxstoich(0:reaction%ncomp,reaction%neqcmplx))
@@ -1830,6 +1841,8 @@ subroutine BasisInit(reaction,option)
 
       reaction%secondary_species_names(isec_spec) = &
         cur_sec_aq_spec%name
+      reaction%secondary_species_print(isec_spec) = cur_sec_aq_spec%print_me .or. &
+                                            reaction%print_all_species
       ispec = 0
       do i = 1, cur_sec_aq_spec%eqrxn%nspec
       
@@ -1871,6 +1884,9 @@ subroutine BasisInit(reaction,option)
   
   if (reaction%ngas > 0) then
     allocate(reaction%gas_species_names(reaction%ngas))
+    reaction%gas_species_names = ''
+    allocate(reaction%gas_species_print(reaction%ngas))
+    reaction%gas_species_print = PETSC_FALSE
     allocate(reaction%eqgasspecid(0:reaction%ncomp,reaction%ngas))
     reaction%eqgasspecid = 0
     allocate(reaction%eqgasstoich(0:reaction%ncomp,reaction%ngas))
@@ -1893,6 +1909,8 @@ subroutine BasisInit(reaction,option)
 
       reaction%gas_species_names(igas_spec) = &
         cur_gas_spec%name
+      reaction%gas_species_print(igas_spec) = cur_gas_spec%print_me .or. &
+                                            reaction%print_all_species
       ispec = 0
       do i = 1, cur_gas_spec%eqrxn%nspec
         if (cur_gas_spec%eqrxn%spec_ids(i) /= h2o_id) then
@@ -1928,6 +1946,7 @@ subroutine BasisInit(reaction,option)
 
   if (reaction%nmnrl > 0) then
     allocate(reaction%mineral_names(reaction%nmnrl))
+    reaction%mineral_names = ''
     allocate(reaction%mnrlspecid(0:reaction%ncomp,reaction%nmnrl))
     reaction%mnrlspecid = 0
     allocate(reaction%mnrlstoich(reaction%ncomp,reaction%nmnrl))
@@ -1943,6 +1962,9 @@ subroutine BasisInit(reaction,option)
     reaction%mnrl_logKcoef = 0.d0
 
     allocate(reaction%kinmnrl_names(reaction%nkinmnrl))
+    reaction%kinmnrl_names = ''
+    allocate(reaction%kinmnrl_print(reaction%nkinmnrl))
+    reaction%kinmnrl_print = PETSC_FALSE
     allocate(reaction%kinmnrlspecid(0:reaction%ncomp,reaction%nkinmnrl))
     reaction%kinmnrlspecid = 0
     allocate(reaction%kinmnrlstoich(reaction%ncomp,reaction%nkinmnrl))
@@ -1993,6 +2015,8 @@ subroutine BasisInit(reaction,option)
   
       if (cur_mineral%itype == MINERAL_KINETIC) then
         reaction%kinmnrl_names(ikinmnrl) = reaction%mineral_names(imnrl)
+        reaction%kinmnrl_print(ikinmnrl) = cur_mineral%print_me .or. &
+                                            reaction%print_all_species
         reaction%kinmnrlspecid(:,ikinmnrl) = reaction%mnrlspecid(:,imnrl)
         reaction%kinmnrlstoich(:,ikinmnrl) = reaction%mnrlstoich(:,imnrl)
         reaction%kinmnrlh2oid(ikinmnrl) = reaction%mnrlh2oid(imnrl)
@@ -2035,12 +2059,16 @@ subroutine BasisInit(reaction,option)
     reaction%eqsurfcmplx_rxn_to_complex = 0
     allocate(reaction%surface_site_names(reaction%neqsurfcmplxrxn))
     reaction%surface_site_names = ''
+    allocate(reaction%surface_site_print(reaction%neqsurfcmplxrxn))
+    reaction%surface_site_print = PETSC_FALSE
     allocate(reaction%eqsurfcmplx_rxn_site_density(reaction%neqsurfcmplxrxn))
     reaction%eqsurfcmplx_rxn_site_density = 0.d0
     allocate(reaction%eqsurfcmplx_rxn_stoich_flag(reaction%neqsurfcmplxrxn))
     reaction%eqsurfcmplx_rxn_stoich_flag = PETSC_FALSE
     allocate(reaction%surface_complex_names(reaction%neqsurfcmplx))
     reaction%surface_complex_names = ''
+    allocate(reaction%surface_complex_print(reaction%neqsurfcmplx))
+    reaction%surface_complex_print = PETSC_FALSE
     allocate(reaction%eqsurfcmplxspecid(0:reaction%ncomp,reaction%neqsurfcmplx))
     reaction%eqsurfcmplxspecid = 0
     allocate(reaction%eqsurfcmplxstoich(reaction%ncomp,reaction%neqsurfcmplx))
@@ -2071,6 +2099,8 @@ subroutine BasisInit(reaction,option)
       
       irxn = irxn + 1
       reaction%surface_site_names(irxn) = cur_surfcplx_rxn%free_site_name
+      reaction%surface_site_print(irxn) = cur_surfcplx_rxn%free_site_print_me .or. &
+                                            reaction%print_all_species
       reaction%eqsurfcmplx_rxn_to_mineral(irxn) = &
         GetMineralIDFromName(reaction,cur_surfcplx_rxn%mineral_name)
       reaction%eqsurfcmplx_rxn_site_density(irxn) = cur_surfcplx_rxn%site_density
@@ -2089,6 +2119,8 @@ subroutine BasisInit(reaction,option)
           reaction%eqsurfcmplx_rxn_to_complex(0,irxn),irxn) = isurfcplx 
         
         reaction%surface_complex_names(isurfcplx) = cur_surfcplx%name
+        reaction%surface_complex_print(isurfcplx) = cur_surfcplx%print_me .or. &
+                                            reaction%print_all_species
         reaction%eqsurfcmplx_free_site_id(isurfcplx) = &
           cur_surfcplx_rxn%free_site_id
         reaction%eqsurfcmplx_free_site_stoich(isurfcplx) =  &

@@ -12,6 +12,7 @@ module Reaction_Aux_module
     PetscReal :: a0
     PetscReal :: molar_weight
     PetscReal :: Z
+    PetscTruth :: print_me
     type(equilibrium_rxn_type), pointer :: eqrxn
     type(aq_species_type), pointer :: next
   end type aq_species_type
@@ -21,6 +22,7 @@ module Reaction_Aux_module
     character(len=MAXWORDLENGTH) :: name
     PetscReal :: molar_volume
     PetscReal :: molar_weight
+    PetscTruth :: print_me
     type(equilibrium_rxn_type), pointer :: eqrxn
     type(gas_species_type), pointer :: next    
   end type gas_species_type
@@ -49,6 +51,7 @@ module Reaction_Aux_module
     character(len=MAXWORDLENGTH) :: name
     PetscReal :: molar_volume
     PetscReal :: molar_weight
+    PetscTruth :: print_me
     type(transition_state_rxn_type), pointer :: tstrxn
     type(mineral_type), pointer :: next
   end type mineral_type
@@ -91,6 +94,7 @@ module Reaction_Aux_module
     character(len=MAXWORDLENGTH) :: name
     PetscReal :: free_site_stoich
     PetscReal :: Z
+    PetscTruth :: print_me
     type(equilibrium_rxn_type), pointer :: eqrxn
     type(surface_complex_type), pointer :: next
   end type surface_complex_type
@@ -99,6 +103,7 @@ module Reaction_Aux_module
     PetscInt :: id
     PetscInt :: free_site_id
     character(len=MAXWORDLENGTH) :: free_site_name
+    PetscTruth :: free_site_print_me
     PetscInt :: mineral_id
     character(len=MAXWORDLENGTH) :: mineral_name
     PetscReal :: site_density
@@ -127,6 +132,8 @@ module Reaction_Aux_module
     character(len=MAXSTRINGLENGTH) :: database_filename
     PetscTruth :: use_full_geochemistry
     PetscTruth :: use_log_formulation ! flag for solving for the change in the log of the concentration
+    PetscTruth :: print_all_species
+    PetscTruth :: print_pH
     PetscInt :: num_dbase_temperatures
     PetscInt :: h_ion_id
     PetscInt :: o2_gas_id
@@ -146,13 +153,16 @@ module Reaction_Aux_module
     ! primary aqueous complexes
     PetscInt :: ncomp
     character(len=MAXWORDLENGTH), pointer :: primary_species_names(:)
+    PetscTruth, pointer :: primary_species_print(:)
     PetscReal, pointer :: primary_spec_a0(:)
     PetscReal, pointer :: primary_spec_Z(:)
     
     ! aqueous complexes
     PetscInt :: neqcmplx
     character(len=MAXWORDLENGTH), pointer :: secondary_species_names(:)
+    PetscTruth, pointer :: secondary_species_print(:)
     character(len=MAXWORDLENGTH), pointer :: eqcmplx_basis_names(:,:)
+    PetscTruth, pointer :: eqcmplx_basis_print(:)
     PetscInt, pointer :: eqcmplxspecid(:,:)   ! (0:ncomp in rxn)
     PetscReal, pointer :: eqcmplxstoich(:,:)
     PetscInt, pointer :: eqcmplxh2oid(:)       ! id of water, if present
@@ -169,6 +179,7 @@ module Reaction_Aux_module
     ! gas species
     PetscInt :: ngas
     character(len=MAXWORDLENGTH), pointer :: gas_species_names(:)
+    PetscTruth, pointer :: gas_species_print(:)
     PetscInt, pointer :: eqgasspecid(:,:)   ! (0:ncomp in rxn)
     PetscReal, pointer :: eqgasstoich(:,:)
     PetscInt, pointer :: eqgash2oid(:)       ! id of water, if present
@@ -199,7 +210,9 @@ module Reaction_Aux_module
     PetscReal, pointer :: eqsurfcmplx_rxn_site_density(:)
     PetscTruth, pointer :: eqsurfcmplx_rxn_stoich_flag(:)
     character(len=MAXWORDLENGTH), pointer :: surface_site_names(:)
+    PetscTruth, pointer :: surface_site_print(:)
     character(len=MAXWORDLENGTH), pointer :: surface_complex_names(:)
+    PetscTruth, pointer :: surface_complex_print(:)
     PetscInt, pointer :: eqsurfcmplxspecid(:,:)
     PetscReal, pointer :: eqsurfcmplxstoich(:,:)
     PetscInt, pointer :: eqsurfcmplxh2oid(:)
@@ -237,6 +250,7 @@ module Reaction_Aux_module
       ! for kinetic reactions
     PetscInt :: nkinmnrl
     character(len=MAXWORDLENGTH), pointer :: kinmnrl_names(:)
+    PetscTruth, pointer :: kinmnrl_print(:)
     PetscInt, pointer :: kinmnrlspecid(:,:)
     PetscReal, pointer :: kinmnrlstoich(:,:)
     PetscInt, pointer :: kinmnrlh2oid(:)
@@ -314,6 +328,8 @@ function ReactionCreate()
   reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
   reaction%act_coef_update_algorithm = ACT_COEF_ALGORITHM_LAG
   reaction%checkpoint_activity_coefs = PETSC_TRUE
+  reaction%print_all_species = PETSC_TRUE
+  reaction%print_pH = PETSC_FALSE
   reaction%use_log_formulation = PETSC_FALSE
   reaction%use_full_geochemistry = PETSC_FALSE
   
@@ -332,9 +348,18 @@ function ReactionCreate()
   nullify(reaction%secondary_species_names)
   nullify(reaction%eqcmplx_basis_names)
   nullify(reaction%gas_species_names)
+  nullify(reaction%surface_site_names)
   nullify(reaction%surface_complex_names)
   nullify(reaction%mineral_names)
   nullify(reaction%kinmnrl_names)
+
+  nullify(reaction%primary_species_print)
+  nullify(reaction%secondary_species_print)
+  nullify(reaction%eqcmplx_basis_print)
+  nullify(reaction%gas_species_print)
+  nullify(reaction%surface_site_print)
+  nullify(reaction%surface_complex_print)
+  nullify(reaction%kinmnrl_print)
   
   reaction%ncomp = 0
   nullify(reaction%primary_spec_a0)
@@ -462,6 +487,7 @@ function AqueousSpeciesCreate()
   species%a0 = 0.d0
   species%molar_weight = 0.d0
   species%Z = 0.d0
+  species%print_me = PETSC_FALSE
   nullify(species%eqrxn)
   nullify(species%next)
 
@@ -491,6 +517,7 @@ function GasSpeciesCreate()
   species%name = ''
   species%molar_volume = 0.d0
   species%molar_weight = 0.d0
+  species%print_me = PETSC_FALSE
   nullify(species%eqrxn)
   nullify(species%next)
 
@@ -521,6 +548,7 @@ function MineralCreate()
   mineral%name = ''
   mineral%molar_volume = 0.d0
   mineral%molar_weight = 0.d0
+  mineral%print_me = PETSC_FALSE
   nullify(mineral%tstrxn)
   nullify(mineral%next)
   
@@ -611,6 +639,7 @@ function SurfaceComplexationRxnCreate()
   allocate(surfcplxrxn)
   surfcplxrxn%free_site_id = 0
   surfcplxrxn%free_site_name = ''
+  surfcplxrxn%free_site_print_me = PETSC_FALSE
 
   surfcplxrxn%mineral_id = 0
   surfcplxrxn%mineral_name = ''
@@ -643,6 +672,7 @@ function SurfaceComplexCreate()
   srfcmplx%name = ''
   srfcmplx%Z = 0.d0
   srfcmplx%free_site_stoich = 0.d0
+  srfcmplx%print_me = PETSC_FALSE
   nullify(srfcmplx%eqrxn)
   nullify(srfcmplx%next)
   
@@ -1488,13 +1518,30 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%secondary_species_names)
   if (associated(reaction%gas_species_names)) deallocate(reaction%gas_species_names)
   nullify(reaction%gas_species_names)
+  if (associated(reaction%surface_site_names)) deallocate(reaction%surface_site_names)
+  nullify(reaction%surface_site_names)
   if (associated(reaction%surface_complex_names)) deallocate(reaction%surface_complex_names)
   nullify(reaction%surface_complex_names)
   if (associated(reaction%mineral_names)) deallocate(reaction%mineral_names)
   nullify(reaction%mineral_names)
   if (associated(reaction%kinmnrl_names)) deallocate(reaction%kinmnrl_names)
   nullify(reaction%kinmnrl_names)
-  
+
+  if (associated(reaction%primary_species_print)) deallocate(reaction%primary_species_print)
+  nullify(reaction%primary_species_print)
+  if (associated(reaction%secondary_species_print)) deallocate(reaction%secondary_species_print)
+  nullify(reaction%primary_species_print)
+  if (associated(reaction%eqcmplx_basis_print)) deallocate(reaction%eqcmplx_basis_print)
+  nullify(reaction%eqcmplx_basis_print)
+  if (associated(reaction%gas_species_print)) deallocate(reaction%gas_species_print)
+  nullify(reaction%gas_species_print)
+  if (associated(reaction%surface_site_print)) deallocate(reaction%surface_site_print)
+  nullify(reaction%primary_species_print)
+  if (associated(reaction%surface_complex_print)) deallocate(reaction%surface_complex_print)
+  nullify(reaction%surface_complex_print)
+  if (associated(reaction%kinmnrl_print)) deallocate(reaction%kinmnrl_print)
+  nullify(reaction%kinmnrl_print)
+    
   if (associated(reaction%primary_spec_a0)) deallocate(reaction%primary_spec_a0)
   nullify(reaction%primary_spec_a0)
   if (associated(reaction%primary_spec_Z)) deallocate(reaction%primary_spec_Z)

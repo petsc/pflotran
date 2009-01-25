@@ -2005,7 +2005,8 @@ function RTGetTecplotHeader(realization,icolumn)
   
   string = ''
   
-  if (realization%reaction%h_ion_id > 0) then
+  if ((reaction%print_pH) .and. &
+      reaction%h_ion_id > 0) then
     if (icolumn > -1) then
       icolumn = icolumn + 1
       write(string2,'('',"'',i2,''-pH"'')') icolumn
@@ -2016,71 +2017,83 @@ function RTGetTecplotHeader(realization,icolumn)
   endif
   
   do i=1,option%ntrandof
-    if (icolumn > -1) then
-      icolumn = icolumn + 1
-      write(string2,'('',"'',i2,''-'',a,''"'')') icolumn, &
-        trim(reaction%primary_species_names(i))
-    else
-      write(string2,'('',"'',a,''"'')') trim(reaction%primary_species_names(i))
+    if (reaction%primary_species_print(i)) then
+      if (icolumn > -1) then
+        icolumn = icolumn + 1
+        write(string2,'('',"'',i2,''-'',a,''"'')') icolumn, &
+          trim(reaction%primary_species_names(i))
+      else
+        write(string2,'('',"'',a,''"'')') trim(reaction%primary_species_names(i))
+      endif
+      string = trim(string) // trim(string2)
     endif
-    string = trim(string) // trim(string2)
   enddo
   
   if (realization%output_option%print_act_coefs) then
     do i=1,option%ntrandof
-      if (icolumn > -1) then
-        icolumn = icolumn + 1
-        write(string2,'('',"'',i2,''-'',a,''_gam"'')') icolumn, &
-          trim(reaction%primary_species_names(i))
-      else
-        write(string2,'('',"'',a,''_gam"'')') trim(reaction%primary_species_names(i))
+      if (reaction%primary_species_print(i)) then
+        if (icolumn > -1) then
+          icolumn = icolumn + 1
+          write(string2,'('',"'',i2,''-'',a,''_gam"'')') icolumn, &
+            trim(reaction%primary_species_names(i))
+        else
+          write(string2,'('',"'',a,''_gam"'')') trim(reaction%primary_species_names(i))
+        endif
+        string = trim(string) // trim(string2)
       endif
-      string = trim(string) // trim(string2)
     enddo
   endif
   
-  do i=1,realization%reaction%nkinmnrl
-    if (icolumn > -1) then
-      icolumn = icolumn + 1
-      write(string2,'('',"'',i2,''-'',a,''_vf"'')') icolumn, &
-        trim(reaction%kinmnrl_names(i))
-    else
-      write(string2,'('',"'',a,''_vf"'')') trim(reaction%kinmnrl_names(i))    
+  do i=1,reaction%nkinmnrl
+    if (reaction%kinmnrl_print(i)) then
+      if (icolumn > -1) then
+        icolumn = icolumn + 1
+        write(string2,'('',"'',i2,''-'',a,''_vf"'')') icolumn, &
+          trim(reaction%kinmnrl_names(i))
+      else
+        write(string2,'('',"'',a,''_vf"'')') trim(reaction%kinmnrl_names(i))    
+      endif
+      string = trim(string) // trim(string2)
     endif
-    string = trim(string) // trim(string2)
   enddo
   
-  do i=1,realization%reaction%nkinmnrl
-    if (icolumn > -1) then
-      icolumn = icolumn + 1
-      write(string2,'('',"'',i2,''-'',a,''_rt"'')') icolumn, &
-        trim(reaction%kinmnrl_names(i))
-    else
-      write(string2,'('',"'',a,''_rt"'')') trim(reaction%kinmnrl_names(i))    
+  do i=1,reaction%nkinmnrl
+    if (reaction%kinmnrl_print(i)) then
+      if (icolumn > -1) then
+        icolumn = icolumn + 1
+        write(string2,'('',"'',i2,''-'',a,''_rt"'')') icolumn, &
+          trim(reaction%kinmnrl_names(i))
+      else
+        write(string2,'('',"'',a,''_rt"'')') trim(reaction%kinmnrl_names(i))    
+      endif
+      string = trim(string) // trim(string2)
     endif
-    string = trim(string) // trim(string2)
-  enddo
-  
-  do i=1,realization%reaction%neqsurfcmplx
-    if (icolumn > -1) then
-      icolumn = icolumn + 1  
-      write(string2,'('',"'',i2,''-'',a,''"'')') icolumn, &
-        trim(reaction%surface_complex_names(i))
-    else
-      write(string2,'('',"'',a,''"'')') trim(reaction%surface_complex_names(i))
-    endif
-    string = trim(string) // trim(string2)
   enddo
   
   do i=1,realization%reaction%neqsurfcmplxrxn
-    if (icolumn > -1) then
-      icolumn = icolumn + 1  
-      write(string2,'('',"'',i2,''-'',a,''"'')') icolumn, &
-        trim(reaction%surface_site_names(i))
-    else
-      write(string2,'('',"'',a,''"'')') trim(reaction%surface_site_names(i))
+    if (reaction%surface_site_print(i)) then
+      if (icolumn > -1) then
+        icolumn = icolumn + 1  
+        write(string2,'('',"'',i2,''-'',a,''"'')') icolumn, &
+          trim(reaction%surface_site_names(i))
+      else
+        write(string2,'('',"'',a,''"'')') trim(reaction%surface_site_names(i))
+      endif
+      string = trim(string) // trim(string2)
     endif
-    string = trim(string) // trim(string2)
+  enddo
+  
+  do i=1,realization%reaction%neqsurfcmplx
+    if (reaction%surface_complex_print(i)) then
+      if (icolumn > -1) then
+        icolumn = icolumn + 1  
+        write(string2,'('',"'',i2,''-'',a,''"'')') icolumn, &
+          trim(reaction%surface_complex_names(i))
+      else
+        write(string2,'('',"'',a,''"'')') trim(reaction%surface_complex_names(i))
+      endif
+      string = trim(string) // trim(string2)
+    endif
   enddo
   
   RTGetTecplotHeader = string
