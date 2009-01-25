@@ -15,6 +15,7 @@ module Reaction_module
   public :: ReactionCreate, &
             ReactionRead, &
             ReactionReadMineralKinetics, &
+            ReactionReadOutput, &
             RTotal, &
             RTotalSorb, &
             RActivityCoefficients, &
@@ -46,19 +47,16 @@ subroutine ReactionRead(reaction,input,option)
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: word, word2
-  type(aq_species_type), pointer :: species, prev_species, cur_aq_spec
-  type(gas_species_type), pointer :: gas, prev_gas, cur_gas_spec
-  type(mineral_type), pointer :: mineral, prev_mineral, cur_mineral
-  type(surface_complex_type), pointer :: srfcmplx, prev_srfcmplx, cur_surfcplx
+  character(len=MAXWORDLENGTH) :: word
+  type(aq_species_type), pointer :: species, prev_species
+  type(gas_species_type), pointer :: gas, prev_gas
+  type(mineral_type), pointer :: mineral, prev_mineral
+  type(surface_complex_type), pointer :: srfcmplx, prev_srfcmplx
   type(surface_complexation_rxn_type), pointer :: srfcmplx_rxn, &
-                                                  prev_srfcmplx_rxn, &
-                                                  cur_surfcplx_rxn
+                                                  prev_srfcmplx_rxn
   type(ion_exchange_rxn_type), pointer :: ionx_rxn, prev_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cation, prev_cation
   PetscInt :: srfcmplx_count
-  PetscTruth :: found
-  PetscErrorCode :: ierr
 
   nullify(prev_species)
   nullify(prev_gas)
@@ -67,11 +65,6 @@ subroutine ReactionRead(reaction,input,option)
   nullify(prev_srfcmplx)
   nullify(prev_ionx_rxn)
   nullify(prev_cation)
-  nullify(cur_aq_spec)
-  nullify(cur_gas_spec)
-  nullify(cur_mineral)
-  nullify(cur_surfcplx)
-  nullify(cur_surfcplx_rxn)
 
   srfcmplx_count = 0
   input%ierr = 0
@@ -357,111 +350,7 @@ subroutine ReactionRead(reaction,input,option)
           end select
         enddo
       case('OUTPUT')
-        reaction%print_all_species = PETSC_FALSE
-        do
-          call InputReadFlotranString(input,option)
-          if (InputError(input)) exit
-          if (InputCheckExit(input,option)) exit
-
-          call InputReadWord(input,option,word,PETSC_TRUE)  
-          call InputErrorMsg(input,option,'keyword','CHEMISTRY,OUTPUT,SPECIES_NAME')
-          
-          found = PETSC_FALSE
-          
-          word2 = word
-          call StringToLower(word2)
-          if (StringCompare(word,'all',THREE_INTEGER)) then
-            reaction%print_all_species = PETSC_TRUE
-            reaction%print_pH = PETSC_TRUE
-            call InputSkipToEnd(input,option,word)
-            exit
-          endif
-
-          if (StringCompare(word,'pH',TWO_INTEGER)) then
-            reaction%print_pH = PETSC_TRUE
-            found = PETSC_TRUE
-          endif
-
-          if (.not.found) then
-            cur_aq_spec => reaction%primary_species_list
-            do
-              if (.not.associated(cur_aq_spec)) exit
-              if (StringCompare(word,cur_aq_spec%name,MAXWORDLENGTH)) then
-                cur_aq_spec%print_me = PETSC_TRUE
-                found = PETSC_TRUE
-                exit
-              endif
-              cur_aq_spec => cur_aq_spec%next
-            enddo
-          endif
-          if (.not.found) then
-            cur_aq_spec => reaction%secondary_species_list
-            do
-              if (.not.associated(cur_aq_spec)) exit
-              if (StringCompare(word,cur_aq_spec%name,MAXWORDLENGTH)) then
-                cur_aq_spec%print_me = PETSC_TRUE
-                found = PETSC_TRUE
-                exit
-              endif
-              cur_aq_spec => cur_aq_spec%next
-            enddo  
-          endif
-          if (.not.found) then
-            cur_gas_spec => reaction%gas_species_list
-            do
-              if (.not.associated(cur_gas_spec)) exit
-              if (StringCompare(word,cur_gas_spec%name,MAXWORDLENGTH)) then
-                cur_gas_spec%print_me = PETSC_TRUE
-                found = PETSC_TRUE
-                exit
-              endif
-              cur_gas_spec => cur_gas_spec%next
-            enddo  
-          endif
-          if (.not.found) then
-            cur_mineral => reaction%mineral_list
-            do
-              if (.not.associated(cur_mineral)) exit
-              if (StringCompare(word,cur_mineral%name,MAXWORDLENGTH)) then
-                cur_mineral%print_me = PETSC_TRUE
-                found = PETSC_TRUE
-                exit
-              endif
-              cur_mineral => cur_mineral%next
-            enddo
-          endif
-          if (.not.found) then
-            cur_surfcplx_rxn => reaction%surface_complexation_rxn_list
-            do
-              if (.not.associated(cur_surfcplx_rxn)) exit
-              if (StringCompare(word,cur_surfcplx_rxn%free_site_name,MAXWORDLENGTH)) then
-                cur_surfcplx_rxn%free_site_print_me = PETSC_TRUE
-                found = PETSC_TRUE
-                exit
-              endif
-              if (.not.found) then
-                cur_surfcplx => cur_surfcplx_rxn%complex_list
-                do  
-                  if (.not.associated(cur_surfcplx)) exit
-                if (StringCompare(word,cur_surfcplx%name,MAXWORDLENGTH)) then
-                  cur_surfcplx%print_me = PETSC_TRUE
-                  found = PETSC_TRUE
-                  exit
-                endif
-                  cur_surfcplx => cur_surfcplx%next
-                enddo
-              endif
-              cur_surfcplx_rxn => cur_surfcplx_rxn%next
-            enddo  
-          endif
-          
-          if (.not.found) then
-            option%io_buffer = 'CHEMISTRY,OUTPUT species name: '//trim(word)// &
-                               'not found among chemical species'
-            call printErrMsg(option)
-          endif
-
-        enddo      
+        call InputSkipToEnd(input,option,word)
       case default
         option%io_buffer = 'CHEMISTRY keyword: '//trim(word)//' not recognized'
         call printErrMsg(option)
@@ -1610,6 +1499,153 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
 
 end subroutine ReactionReadMineralKinetics
 
+! ************************************************************************** !
+!
+! ReactionReadOutput: Reads species to be printed in output
+! author: Glenn Hammond
+! date: 01/24/09
+!
+! ************************************************************************** !
+subroutine ReactionReadOutput(reaction,input,option)
+
+  use Input_module
+  use String_module  
+  use Option_module
+  
+  implicit none
+  
+  type(reaction_type) :: reaction
+  type(input_type) :: input
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: name
+  PetscTruth :: found
+
+  type(aq_species_type), pointer :: cur_aq_spec
+  type(gas_species_type), pointer :: cur_gas_spec
+  type(mineral_type), pointer :: cur_mineral
+  type(surface_complex_type), pointer :: cur_surfcplx
+  type(surface_complexation_rxn_type), pointer :: cur_surfcplx_rxn
+  
+  nullify(cur_aq_spec)
+  nullify(cur_gas_spec)
+  nullify(cur_mineral)
+  nullify(cur_surfcplx)
+  nullify(cur_surfcplx_rxn)
+  
+  reaction%print_all_species = PETSC_FALSE
+
+  input%ierr = 0
+  do
+  
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit
+
+    call InputReadWord(input,option,name,PETSC_TRUE)  
+    call InputErrorMsg(input,option,'keyword','CHEMISTRY,OUTPUT,SPECIES_NAME')
+    
+    found = PETSC_FALSE
+    
+    word = name
+    call StringToLower(word)
+    if (StringCompare(word,'all',THREE_INTEGER)) then
+      reaction%print_all_species = PETSC_TRUE
+      reaction%print_pH = PETSC_TRUE
+      call InputSkipToEnd(input,option,'OUTPUT')
+      exit
+    endif
+
+    if (StringCompare(name,'pH',TWO_INTEGER)) then
+      reaction%print_pH = PETSC_TRUE
+      found = PETSC_TRUE
+    endif
+
+    if (.not.found) then
+      cur_aq_spec => reaction%primary_species_list
+      do
+        if (.not.associated(cur_aq_spec)) exit
+        if (StringCompare(name,cur_aq_spec%name,MAXWORDLENGTH)) then
+          cur_aq_spec%print_me = PETSC_TRUE
+          found = PETSC_TRUE
+          exit
+        endif
+        cur_aq_spec => cur_aq_spec%next
+      enddo
+    endif
+    if (.not.found) then
+      cur_aq_spec => reaction%secondary_species_list
+      do
+        if (.not.associated(cur_aq_spec)) exit
+        if (StringCompare(name,cur_aq_spec%name,MAXWORDLENGTH)) then
+          cur_aq_spec%print_me = PETSC_TRUE
+          found = PETSC_TRUE
+          exit
+        endif
+        cur_aq_spec => cur_aq_spec%next
+      enddo  
+    endif
+    if (.not.found) then
+      cur_gas_spec => reaction%gas_species_list
+      do
+        if (.not.associated(cur_gas_spec)) exit
+        if (StringCompare(name,cur_gas_spec%name,MAXWORDLENGTH)) then
+          cur_gas_spec%print_me = PETSC_TRUE
+          found = PETSC_TRUE
+          exit
+        endif
+        cur_gas_spec => cur_gas_spec%next
+      enddo  
+    endif
+    if (.not.found) then
+      cur_mineral => reaction%mineral_list
+      do
+        if (.not.associated(cur_mineral)) exit
+        if (StringCompare(name,cur_mineral%name,MAXWORDLENGTH)) then
+          cur_mineral%print_me = PETSC_TRUE
+          found = PETSC_TRUE
+          exit
+        endif
+        cur_mineral => cur_mineral%next
+      enddo
+    endif
+    if (.not.found) then
+      cur_surfcplx_rxn => reaction%surface_complexation_rxn_list
+      do
+        if (.not.associated(cur_surfcplx_rxn)) exit
+        if (StringCompare(name,cur_surfcplx_rxn%free_site_name,MAXWORDLENGTH)) then
+          cur_surfcplx_rxn%free_site_print_me = PETSC_TRUE
+          found = PETSC_TRUE
+          exit
+        endif
+        if (.not.found) then
+          cur_surfcplx => cur_surfcplx_rxn%complex_list
+          do  
+            if (.not.associated(cur_surfcplx)) exit
+          if (StringCompare(name,cur_surfcplx%name,MAXWORDLENGTH)) then
+            cur_surfcplx%print_me = PETSC_TRUE
+            found = PETSC_TRUE
+            exit
+          endif
+            cur_surfcplx => cur_surfcplx%next
+          enddo
+        endif
+        cur_surfcplx_rxn => cur_surfcplx_rxn%next
+      enddo  
+    endif
+    
+    if (.not.found) then
+      option%io_buffer = 'CHEMISTRY,OUTPUT species name: '//trim(name)// &
+                         'not found among chemical species'
+      call printErrMsg(option)
+    endif
+
+  enddo
+
+end subroutine ReactionReadOutput
+      
 ! ************************************************************************** !
 !
 ! RReaction: Computes reactions
