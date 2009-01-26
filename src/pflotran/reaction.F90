@@ -1638,7 +1638,7 @@ subroutine ReactionReadOutput(reaction,input,option)
     
     if (.not.found) then
       option%io_buffer = 'CHEMISTRY,OUTPUT species name: '//trim(name)// &
-                         'not found among chemical species'
+                         ' not found among chemical species'
       call printErrMsg(option)
     endif
 
