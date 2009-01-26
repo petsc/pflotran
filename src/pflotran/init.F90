@@ -168,6 +168,9 @@ subroutine Init(simulation,filename)
     if (realization%reaction%use_full_geochemistry) then
       call DatabaseRead(realization%reaction,option)
       call BasisInit(realization%reaction,option)    
+    else
+      allocate(realization%reaction%primary_species_print(option%ntrandof))
+      realization%reaction%primary_species_print = PETSC_TRUE
     endif
   endif
 

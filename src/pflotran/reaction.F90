@@ -598,7 +598,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   endif
   
   if (.not.reaction%use_full_geochemistry) then
-    aq_species_constraint%basis_molarity = conc*convert_molar_to_molal
+!    aq_species_constraint%basis_molarity = conc*convert_molar_to_molal
+    aq_species_constraint%basis_molarity = conc ! don't need to convert
     rt_auxvar%pri_molal = aq_species_constraint%basis_molarity
     return
   endif

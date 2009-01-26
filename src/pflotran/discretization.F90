@@ -215,11 +215,11 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
             case default
               call printErrMsg(option,'Keyword "DXYZ" not supported for unstructured grid')
           end select
-          call InputReadFlotranString(input,option) ! z-direction
-          call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Z')
+          call InputReadFlotranString(input,option) ! read END card
+          call InputReadStringErrorMsg(input,option,'DISCRETIZATION,DXYZ,END')
           if (.not.(InputCheckExit(input,option))) then
             option%io_buffer = 'Card DXYZ should include either 3 entires ' // &
-                     '(one for each grid direction or NX+NY+NZ entries'
+                     '(one for each grid direction or NX+NY+NZ entries)'
             call printErrMsg(option)
           endif
         case('BOUNDS')

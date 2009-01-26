@@ -1185,8 +1185,8 @@ subroutine OutputTecplotPoint(realization)
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
-    write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                   &'', K='',i4)') &
+    write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i5,'', J='',i5, &
+                   &'', K='',i5)') &
                    option%time/output_option%tconv,grid%structured_grid%nx, &
                    grid%structured_grid%ny,grid%structured_grid%nz 
     string = trim(string) // ', DATAPACKING=POINT'
@@ -1448,8 +1448,8 @@ subroutine OutputVelocitiesTecplotPoint(realization)
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
-    write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                 &'', K='',i4,'','')') &
+    write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i5,'', J='',i5, &
+                 &'', K='',i5,'','')') &
                  option%time/output_option%tconv, &
                  grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
     string = trim(string) // ' DATAPACKING=POINT'
@@ -1577,8 +1577,8 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   
     ! write zone header
     if (realization%discretization%itype == STRUCTURED_GRID) then
-      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                   &'', K='',i4,'','')') &
+      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i5,'', J='',i5, &
+                   &'', K='',i5,'','')') &
                    option%time/realization%output_option%tconv, &
                    grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
       string = trim(string) // ' DATAPACKING=BLOCK'
