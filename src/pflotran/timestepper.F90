@@ -1410,16 +1410,16 @@ subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
   else
     option%time = option%restart_time
     option%flow_time = option%restart_time
-    option%flow_dt = flow_stepper%dt_min
     option%tran_time = option%restart_time
-    option%tran_dt = tran_stepper%dt_min
     if (associated(flow_stepper)) then
+      option%flow_dt = flow_stepper%dt_min
       flow_stepper%steps = 0
       flow_stepper%newton_cum = 0
       flow_stepper%icutcum = 0
       flow_stepper%linear_cum = 0
     endif
     if (associated(tran_stepper)) then
+      option%tran_dt = tran_stepper%dt_min
       tran_stepper%steps = 0
       tran_stepper%newton_cum = 0
       tran_stepper%icutcum = 0
