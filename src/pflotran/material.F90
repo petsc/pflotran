@@ -241,7 +241,7 @@ subroutine MaterialPropConvertListToArray(list,array)
   type(material_property_type), pointer :: cur_material_property
   type(material_property_type), pointer :: prev_material_property
   type(material_property_type), pointer :: next_material_property
-  PetscInt :: max_id
+  PetscInt :: i, max_id
 
 #if 0
 ! don't necessary need right now, but maybe in future
@@ -281,6 +281,9 @@ subroutine MaterialPropConvertListToArray(list,array)
   enddo
   
   allocate(array(max_id))
+  do i = 1, max_id
+    nullify(array(i)%ptr)
+  enddo
   
   cur_material_property => list
   do 

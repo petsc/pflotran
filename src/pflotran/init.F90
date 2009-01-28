@@ -1726,8 +1726,10 @@ subroutine assignMaterialPropToRegions(realization)
         
         do material_property_id = 1, size(realization%material_property_array)
           material_property => realization%material_property_array(material_property_id)%ptr
-          if (len_trim(material_property%permeability_filename) > 1) then
-            call readPermeabilitiesFromFile(realization,material_property%permeability_filename)
+          if (associated(material_property)) then
+            if (len_trim(material_property%permeability_filename) > 1) then
+              call readPermeabilitiesFromFile(realization,material_property%permeability_filename)
+            endif
           endif
         enddo
         
