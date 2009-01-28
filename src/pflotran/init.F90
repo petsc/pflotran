@@ -450,8 +450,12 @@ subroutine Init(simulation,filename)
 !  ! convert times from input time to seconds
 !  call WaypointConvertTimes(realization%waypoints,realization%output_option%tconv)
 
-  if (associated(flow_stepper)) flow_stepper%cur_waypoint => realization%waypoints%first
-  if (associated(tran_stepper)) tran_stepper%cur_waypoint => realization%waypoints%first
+  if (associated(flow_stepper)) then
+    flow_stepper%cur_waypoint => realization%waypoints%first
+  endif
+  if (associated(tran_stepper)) then
+    tran_stepper%cur_waypoint => realization%waypoints%first
+  endif
   
   ! initialize global auxilliary variable object
   call GlobalSetup(realization)

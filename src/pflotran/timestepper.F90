@@ -264,6 +264,13 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     call Output(realization,plot_flag,transient_plot_flag)
   endif
   output_option%first = PETSC_FALSE
+
+  if (associated(flow_stepper)) then
+    flow_stepper%dt_max = flow_stepper%cur_waypoint%dt_max
+  endif
+  if (associated(tran_stepper)) then
+    tran_stepper%dt_max = tran_stepper%cur_waypoint%dt_max
+  endif
            
   call PetscGetTime(stepper_start_time, ierr)
   start_step = master_stepper%steps+1
@@ -544,15 +551,15 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
   if (associated(flow_stepper)) then
     time = option%flow_time + option%flow_dt
     dt = option%flow_dt
+    dt_max = flow_stepper%dt_max
     cur_waypoint => flow_stepper%cur_waypoint
-    dt_max = cur_waypoint%dt_max
     steps = flow_stepper%steps
     nstepmax = flow_stepper%nstepmax
   else
     time = option%tran_time + option%tran_dt
     dt = option%tran_dt
+    dt_max = tran_stepper%dt_max
     cur_waypoint => tran_stepper%cur_waypoint
-    dt_max = cur_waypoint%dt_max
     steps = tran_stepper%steps
     nstepmax = tran_stepper%nstepmax
   endif
