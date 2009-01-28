@@ -20,9 +20,13 @@ public:
   void setIdGhosted(PetscInt i); 
   void setIdNatural(PetscInt i); 
   void setCentroid(PetscReal x, PetscReal y, PetscReal z); 
+  void setCentroidLocal(PetscReal x, PetscReal y, PetscReal z); 
   void setX(PetscReal x); 
   void setY(PetscReal y); 
   void setZ(PetscReal z); 
+  void setXLocal(PetscReal x); 
+  void setYLocal(PetscReal y); 
+  void setZLocal(PetscReal z); 
   void setVolume(PetscReal d); 
   void setPermX(PetscReal d); 
   void setPermY(PetscReal d); 
@@ -38,9 +42,13 @@ public:
   PetscInt getIdGhosted(); 
   PetscInt getIdNatural(); 
   PetscReal *getCentroidPtr(); 
+  PetscReal *getCentroidLocalPtr(); 
   PetscReal getX(); 
   PetscReal getY(); 
   PetscReal getZ(); 
+  PetscReal getXLocal(); 
+  PetscReal getYLocal(); 
+  PetscReal getZLocal(); 
   PetscReal getVolume(); 
   PetscReal getPermX(); 
   PetscReal getPermY(); 
@@ -63,6 +71,7 @@ private:
 
   PetscReal volume; 
   PetscReal centroid[3]; 
+  PetscReal centroidlocal[3]; 
  
 // matrix variables 
   PetscReal permeability[3]; 

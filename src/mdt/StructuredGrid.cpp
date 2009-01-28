@@ -517,6 +517,7 @@ void StructuredGrid::setUpCells(PetscInt num_cells, GridCell *cells) {
       else x = 0.5*gdx[0];
       for (PetscInt i=0; i<gnx; i++) {
         PetscInt id = i+j*gnx+k*gnxXny;
+        cells[id].setCentroidLocal(x,y,z);
         cells[id].setVolume(gdx[i]*gdy[j]*gdz[k]);
         PetscReal x_rot = local_origin[0] + x*cos(rotationZradians) -
                                             y*sin(rotationZradians);

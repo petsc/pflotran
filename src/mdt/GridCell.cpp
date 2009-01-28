@@ -12,6 +12,7 @@ GridCell::GridCell() {
 
   for (PetscInt i=0; i<3; i++) {
     centroid[i] = -999.;
+    centroidlocal[i] = -999.;
     permeability[i] = -999.;
   }
   vertices[0] = 0;
@@ -28,9 +29,17 @@ void GridCell::setCentroid(PetscReal x, PetscReal y, PetscReal z) {
   centroid[1] = y;
   centroid[2] = z;
 }
+void GridCell::setCentroidLocal(PetscReal x, PetscReal y, PetscReal z) {
+  centroidlocal[0] = x;
+  centroidlocal[1] = y;
+  centroidlocal[2] = z;
+}
 void GridCell::setX(PetscReal x) { centroid[0] = x; }
 void GridCell::setY(PetscReal y) { centroid[1] = y; }
 void GridCell::setZ(PetscReal z) { centroid[2] = z; }
+void GridCell::setXLocal(PetscReal x) { centroidlocal[0] = x; }
+void GridCell::setYLocal(PetscReal y) { centroidlocal[1] = y; }
+void GridCell::setZLocal(PetscReal z) { centroidlocal[2] = z; }
 void GridCell::setVolume(PetscReal d) { volume = d; }
 void GridCell::setPermX(PetscReal d) { permeability[0] = d; }
 void GridCell::setPermY(PetscReal d) { permeability[1] = d; }
@@ -46,9 +55,13 @@ PetscInt GridCell::getIdLocal() { return id_local; }
 PetscInt GridCell::getIdGhosted() { return id_ghosted; }
 PetscInt GridCell::getIdNatural() { return id_natural; }
 PetscReal *GridCell::getCentroidPtr() { return &centroid[0]; }
+PetscReal *GridCell::getCentroidLocalPtr() { return &centroidlocal[0]; }
 PetscReal GridCell::getX() { return centroid[0]; }
 PetscReal GridCell::getY() { return centroid[1]; }
 PetscReal GridCell::getZ() { return centroid[2]; }
+PetscReal GridCell::getXLocal() { return centroidlocal[0]; }
+PetscReal GridCell::getYLocal() { return centroidlocal[1]; }
+PetscReal GridCell::getZLocal() { return centroidlocal[2]; }
 PetscReal GridCell::getVolume() { return volume; }
 PetscReal GridCell::getPermX() { return permeability[0]; }
 PetscReal GridCell::getPermY() { return permeability[1]; }

@@ -113,6 +113,7 @@ IFC::IFC(Grid **grid_) {
   spp_polygon = new Polygon();
   spp_polygon->createSPPPolygon();
 
+#if 1
 #if 0
   char ascii_filename[1024];
   strcpy(ascii_filename,"test.asc");
@@ -181,6 +182,7 @@ IFC::IFC(Grid **grid_) {
     }
   }
 
+#endif
 #endif
 
   flagGridCells(grid);
@@ -883,6 +885,8 @@ void IFC::flagGridCells(Grid *grid) {
               PetscInt ghosted_id = i+j*gnx+k*gnxXny;
               if (grid->cells[ghosted_id].getIdLocal() > -1 &&
                   grid->cells[ghosted_id].getActive() && 
+                  // added to prevent connections within 100m of east boundary
+                  grid->cells[ghosted_id].getXLocal() < 400. &&
                   grid->cells[ghosted_id].getZ() <= north_stage_max &&
                   grid->cells[ghosted_id].getZ() >= north_stage_min) {
                 grid->cells[ghosted_id].flag |= NORTH_DIR_NORTH_FACE;
