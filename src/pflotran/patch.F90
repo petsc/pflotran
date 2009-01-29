@@ -1090,7 +1090,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
             enddo
           case(SC_FUGA_COEFF)
             if (.not.associated(patch%aux%Global%aux_vars(1)%fugacoeff) .and. &
-                OptionPrint(option))then
+                OptionPrintToScreen(option))then
                print *,'ERRor, fugacoeff not allocated for ', option%iflowmode, 1
             endif
             do local_id=1,grid%nlmax

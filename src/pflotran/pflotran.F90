@@ -56,6 +56,7 @@
 
   PetscInt :: num_realizations
   PetscInt :: num_local_realizations
+  PetscTruth :: screen_output, file_output, truth
   PetscInt, allocatable :: realization_ids(:)
 
   PetscInt :: ierr
@@ -71,6 +72,8 @@
   
   num_groups = 1
   num_realizations = 1
+  screen_output = PETSC_TRUE
+
 #ifdef GLENN
   ! set up global and local communicator groups, processor ranks, and group sizes
   call MPI_Init(ierr)
@@ -138,7 +141,17 @@
   mygroup = global_group
   num_local_realizations = num_realizations
 #endif  
-  
+
+  option_found = PETSC_FALSE
+  call PetscOptionsGetTruth(PETSC_NULL_CHARACTER, '-screen_output', &
+                          truth,option_found, ierr)
+  if (option_found) screen_output = truth
+
+  option_found = PETSC_FALSE
+  call PetscOptionsGetTruth(PETSC_NULL_CHARACTER, '-file_output', &
+                          truth,option_found, ierr)
+  if (option_found) file_output = truth
+
   do irealization = 1, num_local_realizations
 
     call LoggingCreate()
@@ -152,6 +165,8 @@
 #endif
 
     option%fid_out = IUNIT2
+    option%print_to_screen = screen_output
+    option%print_to_file = file_output
     out_unit = option%fid_out
 
     option%global_comm = global_comm
@@ -188,6 +203,7 @@
 
   ! Clean things up.
     io_rank = option%io_rank
+    screen_output = option%print_to_screen
     call SimulationDestroy(simulation)
 
   ! Final Time
@@ -196,28 +212,31 @@
     
     if (myrank == io_rank) then
 
-      write(*,'(/," CPU Time:", 1pe12.4, " [sec] ", &
-      & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
-        timex(2)-timex(1), (timex(2)-timex(1))/60.d0, &
-        (timex(2)-timex(1))/3600.d0
+      if (screen_output) then
+        write(*,'(/," CPU Time:", 1pe12.4, " [sec] ", &
+        & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
+          timex(2)-timex(1), (timex(2)-timex(1))/60.d0, &
+          (timex(2)-timex(1))/3600.d0
 
-      write(*,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
-      & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
-        timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
-        (timex_wall(2)-timex_wall(1))/3600.d0
+        write(*,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
+        & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
+          timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
+          (timex_wall(2)-timex_wall(1))/3600.d0
+      endif
+      if (file_output) then
+        write(out_unit,'(/," CPU Time:", 1pe12.4, " [sec] ", &
+        & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
+          timex(2)-timex(1), (timex(2)-timex(1))/60.d0, &
+          (timex(2)-timex(1))/3600.d0
 
-      write(out_unit,'(/," CPU Time:", 1pe12.4, " [sec] ", &
-      & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
-        timex(2)-timex(1), (timex(2)-timex(1))/60.d0, &
-        (timex(2)-timex(1))/3600.d0
-
-      write(out_unit,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
-      & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
-        timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
-        (timex_wall(2)-timex_wall(1))/3600.d0
+        write(out_unit,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
+        & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
+          timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
+          (timex_wall(2)-timex_wall(1))/3600.d0
+      endif
     endif
 
-    if (myrank == io_rank) close(out_unit)
+    if (myrank == io_rank .and. file_output) close(out_unit)
 
     call LoggingDestroy()
     

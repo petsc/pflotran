@@ -276,11 +276,17 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   start_step = master_stepper%steps+1
   do istep = start_step, master_stepper%nstepmax
 
-    if (OptionPrint(option) .and. &
+    if (OptionPrintToScreen(option) .and. &
         mod(master_stepper%steps,output_option%screen_imod) == 0) then
-      option%print_flag = PETSC_TRUE
+      option%print_screen_flag = PETSC_TRUE
     else
-      option%print_flag = PETSC_FALSE
+      option%print_screen_flag = PETSC_FALSE
+    endif
+
+    if (OptionPrintToFile(option)) then
+      option%print_file_flag = PETSC_TRUE
+    else
+      option%print_file_flag = PETSC_FALSE
     endif
 
     prev_waypoint => master_stepper%cur_waypoint
@@ -375,30 +381,31 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
                            NEG_ONE_INTEGER)  
   endif
 
-  if (OptionPrint(option)) then
+  if (OptionPrintToScreen(option)) then
     if (option%nflowdof > 0) then
       write(*,'(/," FLOW steps = ",i6," newton = ",i8," linear = ",i10, &
             & " cuts = ",i6)') &
-!            istep,flow_stepper%newton_cum,flow_stepper%linear_cum, &
-            flow_stepper%steps,flow_stepper%newton_cum, &
-            flow_stepper%linear_cum,flow_stepper%icutcum
-
-      write(option%fid_out,'(/," FLOW steps = ",i6," newton = ",i8," linear = ",i10, &
-            & " cuts = ",i6)') &
-!            istep,flow_stepper%newton_cum,flow_stepper%linear_cum, &
             flow_stepper%steps,flow_stepper%newton_cum, &
             flow_stepper%linear_cum,flow_stepper%icutcum
     endif
     if (option%ntrandof > 0) then
       write(*,'(/," TRAN steps = ",i6," newton = ",i8," linear = ",i10, &
             & " cuts = ",i6)') &
-!            istep,tran_stepper%newton_cum,tran_stepper%linear_cum, &
             tran_stepper%steps,tran_stepper%newton_cum, &
             tran_stepper%linear_cum,tran_stepper%icutcum
+    endif            
+  endif
 
+  if (OptionPrintToFile(option)) then
+    if (option%nflowdof > 0) then
+      write(option%fid_out,'(/," FLOW steps = ",i6," newton = ",i8," linear = ",i10, &
+            & " cuts = ",i6)') &
+            flow_stepper%steps,flow_stepper%newton_cum, &
+            flow_stepper%linear_cum,flow_stepper%icutcum
+    endif
+    if (option%ntrandof > 0) then
       write(option%fid_out,'(/," TRAN steps = ",i6," newton = ",i8," linear = ",i10, &
             & " cuts = ",i6)') &
-!            istep,tran_stepper%newton_cum,tran_stepper%linear_cum, &
             tran_stepper%steps,tran_stepper%newton_cum, &
             tran_stepper%linear_cum,tran_stepper%icutcum
     endif            
@@ -702,7 +709,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
                                   field%iphas_loc,ONEDOF)
   
-  if (option%print_flag) write(*,'(/,2("=")," FLOW ",52("="))')
+  if (option%print_screen_flag) write(*,'(/,2("=")," FLOW ",52("="))')
 
   if (option%ntrandof > 0) then ! store initial saturations for transport
     call GlobalUpdateAuxVars(realization,TIME_T)
@@ -754,7 +761,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
         case(RICHARDS_MODE)
           update_reason=1
       end select   
-      if (option%print_flag) print *,'update_reason: ',update_reason
+      if (option%print_screen_flag) print *,'update_reason: ',update_reason
     endif
 
 !******************************************************************
@@ -765,7 +772,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
       timestep_cut_flag = PETSC_TRUE
 
       if (icut > stepper%icut_max .or. option%flow_dt<1.d-20) then
-        if (option%print_flag) then
+        if (option%print_screen_flag) then
           print *,"--> icut_max exceeded: icut/icutmax= ",icut, &
                   stepper%icut_max, "t= ", &
                   option%flow_time/realization%output_option%tconv, " dt= ", &
@@ -782,7 +789,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
       option%flow_time = option%flow_time - option%flow_dt
       option%flow_dt = 0.5d0 * option%flow_dt
     
-      if (option%print_flag) write(*,'('' -> Cut time step: snes='',i3, &
+      if (option%print_screen_flag) write(*,'('' -> Cut time step: snes='',i3, &
         &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.4, '' dt= '', &
         &   1pe12.4,l3)')  snes_reason,icut,stepper%icutcum, &
             option%flow_time/realization%output_option%tconv, &
@@ -823,7 +830,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   endif
   
 ! print screen output
-  if (option%print_flag) then
+  if (option%print_screen_flag) then
     write(*, '(/," FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
       & " snes_conv_reason: ",i4,/,"  newton = ",i2," [",i8,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
@@ -837,6 +844,8 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
              num_linear_iterations,num_newton_iterations
     print *,' --> SNES Residual: ', fnorm, scaled_fnorm, inorm 
      
+  endif
+  if (option%print_file_flag) then
     write(option%fid_out, '(" FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
       & "]"," snes_conv_reason: ",i4,/,"  newton = ",i2," [",i8,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') stepper%steps, &
@@ -849,37 +858,40 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   
   if (option%iflowmode == THC_MODE) then
      call THCMaxChange(realization)
-    if (option%print_flag) then
+    if (option%print_screen_flag) then
       write(*,'("  --> max chng: dpmx= ",1pe12.4, &
         & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
         option%dpmax,option%dtmpmax, option%dcmax
-      
+    endif
+    if (option%print_file_flag) then 
       write(option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
         & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
         option%dpmax,option%dtmpmax,option%dcmax
     endif
   else if (option%iflowmode == RICHARDS_MODE) then
     call RichardsMaxChange(realization)
-    if (option%print_flag) then
+    if (option%print_screen_flag) then
       write(*,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
-        
+    endif
+    if (option%print_file_flag) then
       write(option%fid_out,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
     endif
   else if (option%iflowmode == MPH_MODE) then
     call MphaseMaxChange(realization)
     ! note use mph will use variable switching, the x and s change is not meaningful 
-    if (option%print_flag) then
+    if (option%print_screen_flag) then
       write(*,'("  --> max chng: dpmx= ",1pe12.4, &
         & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
         option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
-        
+    endif
+    if (option%print_file_flag) then  
       write(option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
         & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
         option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
     endif
   endif
 
-  if (option%print_flag) print *, ""
+  if (option%print_screen_flag) print *, ""
 
 end subroutine StepperStepFlowDT
 
@@ -987,7 +999,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
     sum_linear_iterations = 0
     icut = 0
 
-    if (option%print_flag) write(*,'(/,2("=")" TRANSPORT ",47("="))')
+    if (option%print_screen_flag) write(*,'(/,2("=")" TRANSPORT ",47("="))')
 
     do
      
@@ -1069,7 +1081,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
         timestep_cut_flag = PETSC_TRUE
 
         if (icut > stepper%icut_max .or. option%tran_dt<1.d-20) then
-          if (option%print_flag) then
+          if (option%print_screen_flag) then
             print *,"--> icut_max exceeded: icut/icutmax= ",icut,stepper%icut_max, &
                     "t= ",option%tran_time/realization%output_option%tconv, " dt= ", &
                     option%tran_dt/realization%output_option%tconv
@@ -1085,7 +1097,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
         option%tran_time = option%tran_time - option%tran_dt
         option%tran_dt = 0.5d0 * option%tran_dt
       
-        if (option%print_flag) write(*,'('' -> Cut time step: snes='',i3, &
+        if (option%print_screen_flag) write(*,'('' -> Cut time step: snes='',i3, &
           &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.4, '' dt= '', &
           &   1pe12.4,i3)')  snes_reason,icut,stepper%icutcum, &
               option%tran_time/realization%output_option%tconv, &
@@ -1115,7 +1127,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
     stepper%icutcum = stepper%icutcum + icut
 
   ! print screen output
-    if (option%print_flag) then
+    if (option%print_screen_flag) then
 
       write(*, '(/," TRAN ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
         & " snes_conv_reason: ",i4,/,"  newton = ",i2," [",i6,"]", &
@@ -1129,7 +1141,8 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
       print *,' --> SNES Linear/Non-Linear Interations = ', &
                num_linear_iterations,num_newton_iterations
       print *,' --> SNES Residual: ', fnorm, scaled_fnorm, inorm 
-       
+    endif
+    if (option%print_file_flag) then
       write(option%fid_out, '(" TRAN ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
         & "]"," snes_conv_reason: ",i4,/,"  newton = ",i2," [",i6,"]", &
         & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') stepper%steps, &
@@ -1141,13 +1154,14 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
     endif
     
     call RTMaxChange(realization)
-    if (option%print_flag) then
+    if (option%print_screen_flag) then
       write(*,'("  --> max chng: dcmx= ",1pe12.4)') option%dcmax
-        
+    endif
+    if (option%print_file_flag) then  
       write(option%fid_out,'("  --> max chng: dcmx= ",1pe12.4)') option%dcmax
     endif
 
-    if (option%print_flag) print *, ""
+    if (option%print_screen_flag) print *, ""
 
     ! get out if not simulating flow or time is met
     if (option%nflowdof == 0 .or. &
@@ -1457,16 +1471,18 @@ subroutine TimestepperPrintInfo(stepper,fid,header,option)
   character(len=MAXSTRINGLENGTH) :: header  
   type(option_type) :: option
   
-  if (OptionPrint(option)) then
+  if (OptionPrintToScreen(option)) then
     write(*,*) 
-    write(fid,*) 
     write(*,'(a)') trim(header)
-    write(fid,'(a)') trim(header)
     write(*,'("max steps:",i8)') stepper%nstepmax
-    write(fid,'("max steps:",i8)') stepper%nstepmax
     write(*,'("max const steps:",i4)') stepper%ndtcmx
-    write(fid,'("max const steps:",i4)') stepper%ndtcmx
     write(*,'("max cuts:",i4)') stepper%icut_max
+  endif
+  if (OptionPrintToFile(option)) then
+    write(fid,*) 
+    write(fid,'(a)') trim(header)
+    write(fid,'("max steps:",i8)') stepper%nstepmax
+    write(fid,'("max const steps:",i4)') stepper%ndtcmx
     write(fid,'("max cuts:",i4)') stepper%icut_max
   endif    
 

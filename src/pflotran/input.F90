@@ -408,7 +408,7 @@ subroutine InputReadFlotranStringSlave(input, option)
     if (word(1:4) == 'SKIP') then
       do 
         read(input%fid,'(a512)',iostat=input%ierr) tempstring
-       if (InputError(input) .and. OptionPrint(option)) then
+       if (InputError(input) .and. OptionPrintToScreen(option)) then
           print *, 'End of file reached in InputReadFlotranStringSlave.'
           print *, 'SKIP encountered without matching NOSKIP.'
         endif

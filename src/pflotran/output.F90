@@ -3817,7 +3817,7 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
       call MPI_Allreduce(grid%nlmax,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
                          option%mycomm,ierr)
       max_local_size_saved = max_local_size
-      if (OptionPrint(option)) print *, 'max_local_size_saved: ', max_local_size
+      if (OptionPrintToScreen(option)) print *, 'max_local_size_saved: ', max_local_size
     endif
     max_local_size = max_local_size_saved
     local_size = grid%nlmax

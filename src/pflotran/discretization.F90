@@ -256,7 +256,7 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
               call InputReadFlotranString(input,option) ! z-direction
               call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Z')
               if (.not.(InputCheckExit(input,option))) then
-                if (OptionPrint(option)) then
+                if (OptionPrintToScreen(option)) then
                   if (grid%structured_grid%itype == CARTESIAN_GRID) then
                     print *, 'BOUNDS card for a cartesian structured grid must include ' // &
                              '5 lines.  I.e.'

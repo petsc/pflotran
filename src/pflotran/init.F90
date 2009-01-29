@@ -117,7 +117,10 @@ subroutine Init(simulation,filename)
   realization%input => InputCreate(IUNIT1,filename)
   filename_out = trim(option%global_prefix) // trim(option%group_prefix) // &
                  '.out'
-  open(option%fid_out, file=filename_out, action="write", status="unknown")
+  
+  if (option%print_to_file) then
+    open(option%fid_out, file=filename_out, action="write", status="unknown")
+  endif
 
   ! read required cards
   call readRequiredCardsFromInput(realization)
@@ -181,7 +184,7 @@ subroutine Init(simulation,filename)
 !    call MassBalanceCreate(realization)
 !  endif  
   
-  if (OptionPrint(option)) then
+  if (OptionPrintToScreen(option)) then
     ! general print statements for both flow and transport modes
     write(*,'(/,"++++++++++++++++++++++++++++++++++++++++++++++++++++&
       &++++++++")')
@@ -207,7 +210,7 @@ subroutine Init(simulation,filename)
       end select
     endif
 
-    if (OptionPrint(option)) then
+    if (OptionPrintToScreen(option)) then
       write(*,'(" number of dofs = ",i3,", number of phases = ",i3,i2)') &
         option%nflowdof,option%nphase
       select case(option%iflowmode)
@@ -407,7 +410,7 @@ subroutine Init(simulation,filename)
   
   endif
 
-  if (OptionPrint(option)) write(*,'("++++++++++++++++++++++++++++++++&
+  if (OptionPrintToScreen(option)) write(*,'("++++++++++++++++++++++++++++++++&
                      &++++++++++++++++++++++++++++",/)')
 
 
@@ -527,21 +530,29 @@ subroutine Init(simulation,filename)
     string = 'Transport Stepper:'
     call TimestepperPrintInfo(tran_stepper,option%fid_out,string,option)
   endif    
-  if (OptionPrint(option) .and. associated(flow_solver)) then
+  if (associated(flow_solver)) then
     string = 'Flow Newton Solver:'
-    call SolverPrintNewtonInfo(flow_solver,option%fid_out,string)
+    call SolverPrintNewtonInfo(flow_solver,OptionPrintToScreen(option), &
+                               OptionPrintToFile(option),option%fid_out, &
+                               string)
   endif    
-  if (OptionPrint(option) .and. associated(tran_solver)) then
+  if (associated(tran_solver)) then
     string = 'Transport Newton Solver:'
-    call SolverPrintNewtonInfo(tran_solver,option%fid_out,string)
+    call SolverPrintNewtonInfo(tran_solver,OptionPrintToScreen(option), &
+                               OptionPrintToFile(option),option%fid_out, &
+                               string)
   endif    
-  if (OptionPrint(option) .and. associated(flow_solver)) then
+  if (associated(flow_solver)) then
     string = 'Flow Linear Solver:'
-    call SolverPrintLinearInfo(flow_solver,option%fid_out,string)
+    call SolverPrintLinearInfo(flow_solver,OptionPrintToScreen(option), &
+                               OptionPrintToFile(option),option%fid_out, &
+                               string)
   endif    
-  if (OptionPrint(option) .and. associated(tran_solver)) then
+  if (associated(tran_solver)) then
     string = 'Transport Linear Solver'
-    call SolverPrintLinearInfo(tran_solver,option%fid_out,string)
+    call SolverPrintLinearInfo(tran_solver,OptionPrintToScreen(option), &
+                               OptionPrintToFile(option),option%fid_out, &
+                               string)
   endif    
 
   if (debug%print_couplers) then
@@ -1082,7 +1093,7 @@ subroutine readInput(simulation)
             print *, 'Wrong unit: ', word(1:len_trim(word))
             stop
          end select 
-         if (OptionPrint(option)) print *, option%m_nacl
+         if (OptionPrintToScreen(option)) print *, option%m_nacl
 !......................
 
       case ('RESTART')

@@ -2298,7 +2298,7 @@ subroutine BasisInit(reaction,option)
 100 format(/,2x,i3,2x,a)
 110 format(100(/,14x,3(a20,2x)))
 
-  if (OptionPrint(option)) then
+  if (OptionPrintToFile(option)) then
     write(option%fid_out,90)
     write(option%fid_out,100) reaction%ncomp, 'Primary Species'
     write(option%fid_out,110) (reaction%primary_species_names(i),i=1,reaction%ncomp)
@@ -2702,7 +2702,7 @@ subroutine BasisPrint(reaction,title,option)
 140 format(a,f6.2)
 150 format(a,es11.4)
 
-  if (OptionPrint(option)) then
+  if (OptionPrintToFile(option)) then
     write(option%fid_out,*)
     write(option%fid_out,*) '! *************************************************' // &
                     '************************* !'

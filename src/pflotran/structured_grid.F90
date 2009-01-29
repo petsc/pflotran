@@ -375,7 +375,7 @@ subroutine StructuredGridReadDXYZ(structured_grid,input,option)
   call StructuredGridReadArray(structured_grid%dz_global, &
                                structured_grid%nz,input,option)
     
-  if (option%myrank == option%io_rank) then
+  if (OptionPrintToFile(option)) then
     write(option%fid_out,'(/," *DXYZ ")')
     write(option%fid_out,'("  dx  ",/,(1p10e12.4))') &
       (structured_grid%dx_global(i),i=1,structured_grid%nx)
@@ -1226,7 +1226,7 @@ subroutine StructuredGridComputeVolumes(radius,structured_grid,option,nL2G,volum
   
   call StructGridVecRestoreArrayF90(structured_grid,volume,volume_p, ierr)
   
-  if (OptionPrint(option) .and. &
+  if (OptionPrintToScreen(option) .and. &
       option%mycommsize > 1 .and. option%mycommsize <= 16) then
     write(*,'(" rank= ",i3,", nlmax= ",i6,", nlx,y,z= ",3i4, &
       & ", nxs,e = ",2i4,", nys,e = ",2i4,", nzs,e = ",2i4)') &

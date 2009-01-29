@@ -1396,14 +1396,14 @@ subroutine FlowConditionReadValuesFromFile(filename,dataset,option)
   
   if (associated(dataset%times)) then
     if (count /= size(dataset%times,1) .and. &
-        OptionPrint(option)) then
+        OptionPrintToScreen(option)) then
       print *, 'Number of times (', count, ') in ', trim(filename), &
                ' does not match previous allocation: ', size(dataset%times,1)
       stop
     endif
     do i=1,count
       if (dabs(dataset%times(i)-temp_times(i)) > 1.d-8 .and. &
-          OptionPrint(option)) then
+          OptionPrintToScreen(option)) then
         print *, 'Time (', temp_times(i), ') in ', trim(filename), &
                  ' does not match previous allocation time: ', &
                  dataset%times(i), i

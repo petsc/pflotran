@@ -750,7 +750,7 @@ subroutine RealizationPrintCouplers(realization)
   option => realization%option
   reaction => realization%reaction
  
-  if (option%myrank /= 0) return
+  if (.not.OptionPrintToFile(option)) return
   
   cur_level => realization%level_list%first
   do 

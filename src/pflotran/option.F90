@@ -48,8 +48,10 @@ module Option_module
     PetscInt :: ntrandof
   
     PetscInt :: iflag
-    PetscTruth :: print_flag
+    PetscTruth :: print_screen_flag
+    PetscTruth :: print_file_flag
     PetscTruth :: print_to_screen
+    PetscTruth :: print_to_file
     
     PetscInt, pointer :: garbage ! for some reason, Intel will not compile without this
 
@@ -193,7 +195,8 @@ module Option_module
             OptionDotProduct, &
             OptionDestroy, &
             OptionCheckTouch, &
-            OptionPrint, &
+            OptionPrintToScreen, &
+            OptionPrintToFile, &
             OutputOptionDestroy
 
 contains
@@ -237,8 +240,10 @@ function OptionCreate()
   option%fid_out = 0
 
   option%iflag = 0
-  option%print_flag = PETSC_FALSE
+  option%print_screen_flag = PETSC_FALSE
+  option%print_file_flag = PETSC_FALSE
   option%print_to_screen = PETSC_TRUE
+  option%print_to_file = PETSC_TRUE
   
   option%use_isoth = PETSC_FALSE
   option%use_matrix_free = PETSC_FALSE
@@ -435,7 +440,7 @@ subroutine printErrMsg1(option)
   
   PetscErrorCode :: ierr
   
-  if (OptionPrint(option)) then
+  if (OptionPrintToScreen(option)) then
     print *
     print *, 'ERROR: ' // trim(option%io_buffer)
     print *, 'Stopping!'
@@ -461,7 +466,7 @@ subroutine printErrMsg2(option,string)
   
   PetscErrorCode :: ierr
   
-  if (OptionPrint(option)) then
+  if (OptionPrintToScreen(option)) then
     print *
     print *, 'ERROR: ' // trim(string)
     print *, 'Stopping!'
@@ -484,7 +489,7 @@ subroutine printWrnMsg1(option)
   
   type(option_type) :: option
   
-  if (OptionPrint(option)) print *, 'WARNING: ' // trim(option%io_buffer)
+  if (OptionPrintToScreen(option)) print *, 'WARNING: ' // trim(option%io_buffer)
   
 end subroutine printWrnMsg1
 
@@ -502,7 +507,7 @@ subroutine printWrnMsg2(option,string)
   type(option_type) :: option
   character(len=*) :: string
   
-  if (OptionPrint(option)) print *, 'WARNING: ' // trim(string)
+  if (OptionPrintToScreen(option)) print *, 'WARNING: ' // trim(string)
   
 end subroutine printWrnMsg2
 
@@ -519,7 +524,7 @@ subroutine printMsg1(option)
   
   type(option_type) :: option
   
-  if (OptionPrint(option)) print *, trim(option%io_buffer)
+  if (OptionPrintToScreen(option)) print *, trim(option%io_buffer)
   
 end subroutine printMsg1
 
@@ -537,7 +542,7 @@ subroutine printMsg2(option,string)
   type(option_type) :: option
   character(len=*) :: string
   
-  if (OptionPrint(option)) print *, trim(string)
+  if (OptionPrintToScreen(option)) print *, trim(string)
   
 end subroutine printMsg2
 
@@ -633,26 +638,50 @@ end function OptionCheckTouch
 
 ! ************************************************************************** !
 !
-! OptionPrint: Determines whether printing should occur
+! OptionPrintToScreen: Determines whether printing should occur
 ! author: Glenn Hammond
 ! date: 12/09/08
 !
 ! ************************************************************************** !
-function OptionPrint(option)
+function OptionPrintToScreen(option)
 
   implicit none
 
   type(option_type) :: option
   
-  PetscTruth :: OptionPrint
+  PetscTruth :: OptionPrintToScreen
   
   if (option%myrank == option%io_rank .and. option%print_to_screen) then
-    OptionPrint = PETSC_TRUE
+    OptionPrintToScreen = PETSC_TRUE
   else
-    OptionPrint = PETSC_FALSE
+    OptionPrintToScreen = PETSC_FALSE
   endif
 
-end function OptionPrint
+end function OptionPrintToScreen
+
+
+! ************************************************************************** !
+!
+! OptionPrintToFile: Determines whether printing to file should occur
+! author: Glenn Hammond
+! date: 01/29/09
+!
+! ************************************************************************** !
+function OptionPrintToFile(option)
+
+  implicit none
+
+  type(option_type) :: option
+  
+  PetscTruth :: OptionPrintToFile
+  
+  if (option%myrank == option%io_rank .and. option%print_to_file) then
+    OptionPrintToFile = PETSC_TRUE
+  else
+    OptionPrintToFile = PETSC_FALSE
+  endif
+
+end function OptionPrintToFile
 
 ! ************************************************************************** !
 !
