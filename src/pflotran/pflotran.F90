@@ -82,7 +82,7 @@
   call MPI_Comm_size(MPI_COMM_WORLD,global_commsize,ierr)
   call MPI_Comm_group(MPI_COMM_WORLD,global_group,ierr)
 
-  PETSC_COMM_WORLD = mycomm
+  PETSC_COMM_WORLD = global_comm
   call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
   ! query user for number of communicator groups and realizations
   option_found = PETSC_FALSE
