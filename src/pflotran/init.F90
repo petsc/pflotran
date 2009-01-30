@@ -1276,6 +1276,8 @@ subroutine readInput(simulation)
           call InputErrorMsg(input,option,'keyword','OUTPUT') 
           call StringToUpper(word)
           select case(trim(word))
+            case('PERMEABILITY')
+              output_option%print_permeability = PETSC_TRUE
             case('MASS_BALANCE')
               option%compute_mass_balance_new = PETSC_TRUE
             case('TIMES')

@@ -176,7 +176,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   use Realization_module
 
   use Option_module
-  use Output_module, only : Output, OutputInit
+  use Output_module, only : Output, OutputInit, OutputVectorTecplot
   use Logging_module  
   use Mass_Balance_module
   
@@ -196,6 +196,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   type(output_option_type), pointer :: output_option
   type(waypoint_type), pointer :: prev_waypoint  
 
+  character(len=MAXSTRINGLENGTH) :: string
   PetscTruth :: plot_flag, stop_flag, transient_plot_flag
   PetscTruth :: master_timestep_cut_flag
   PetscTruth :: flow_timestep_cut_flag, tran_timestep_cut_flag
@@ -262,6 +263,10 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     transient_plot_flag = PETSC_TRUE
     output_option%first = PETSC_TRUE
     call Output(realization,plot_flag,transient_plot_flag)
+    if (output_option%print_permeability) then
+      string = 'permeability.tec'
+      call OutputVectorTecplot(string,string,realization,realization%field%perm0_xx)
+    endif
   endif
   output_option%first = PETSC_FALSE
 

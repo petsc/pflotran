@@ -160,6 +160,8 @@ module Option_module
     PetscReal :: periodic_output_time_incr
     PetscReal :: periodic_tr_output_time_incr
     
+    PetscTruth :: print_permeability
+    
     PetscInt :: plot_number
     character(len=MAXWORDLENGTH) :: plot_name
 
@@ -378,6 +380,7 @@ function OutputOptionCreate()
   output_option%periodic_tr_output_time_incr = 0.d0
   output_option%plot_name = ""
   output_option%print_act_coefs = PETSC_FALSE
+  output_option%print_permeability = PETSC_FALSE
 
   OutputOptionCreate => output_option
   
