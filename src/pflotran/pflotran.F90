@@ -56,6 +56,7 @@
 
   PetscInt :: num_realizations
   PetscInt :: num_local_realizations
+  PetscInt :: realization_id
   PetscTruth :: screen_output, file_output, truth
   PetscInt, allocatable :: realization_ids(:)
 
@@ -70,9 +71,11 @@
   type(realization_type), pointer :: realization
   type(option_type), pointer :: option
   
+  realization_id = 0
   num_groups = 1
   num_realizations = 1
   screen_output = PETSC_TRUE
+  file_output = PETSC_TRUE
 
 #ifdef GLENN
   ! set up global and local communicator groups, processor ranks, and group sizes
@@ -152,6 +155,11 @@
                           truth,option_found, ierr)
   if (option_found) file_output = truth
 
+  option_found = PETSC_FALSE
+  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-realization_id', &
+                          i,option_found, ierr)
+  if (option_found) realization_id = i
+
   do irealization = 1, num_local_realizations
 
     call LoggingCreate()
@@ -160,6 +168,7 @@
     realization => simulation%realization
     option => realization%option
 
+    if (realization_id > 0) option%id = realization_id
 #ifdef GLENN    
     option%id = realization_ids(irealization)
 #endif
