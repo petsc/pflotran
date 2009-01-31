@@ -285,7 +285,7 @@ END
 : well source/sink
 SOURCE_SINK well
 FLOW_CONDITION source
-TRANSPORT_CONDITION initial
+TRANSPORT_CONDITION source
 REGION well
 END
 
