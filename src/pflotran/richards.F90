@@ -1590,7 +1590,7 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
   do 
     if (.not.associated(source_sink)) exit
     
-    qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
+    qsrc1 = source_sink%flow_condition%rate%dataset%cur_value(1)
     qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
       
     cur_connection_set => source_sink%connection_set
@@ -1602,7 +1602,7 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
 
-      select case(source_sink%flow_condition%pressure%itype)
+      select case(source_sink%flow_condition%rate%itype)
         case(MASS_RATE_SS)
           qsrc_kg = qsrc1 ! kg/sec
         case(VOLUMETRIC_RATE_SS)  ! assume local density for now
@@ -2019,7 +2019,7 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   do 
     if (.not.associated(source_sink)) exit
     
-    qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
+    qsrc1 = source_sink%flow_condition%rate%dataset%cur_value(1)
 
     qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
       
@@ -2034,7 +2034,7 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       endif
       
       Jup = 0.d0
-      select case(source_sink%flow_condition%pressure%itype)
+      select case(source_sink%flow_condition%rate%itype)
         case(MASS_RATE_SS)
         case(VOLUMETRIC_RATE_SS)  ! assume local density for now
           Jup(1,1) = -qsrc1*rich_aux_vars(ghosted_id)%dden_dp*rich_aux_vars(ghosted_id)%avgmw* &

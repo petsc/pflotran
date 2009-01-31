@@ -648,7 +648,7 @@ subroutine FlowConditionRead(condition,input,option)
           select case(trim(word))
             case('PRES','PRESS','PRESSURE')
               sub_condition_ptr => pressure
-            case('MASS','MASS_RATE','VOLUMETRIC','VOLUMETRIC_RATE')
+            case('RATE')
               sub_condition_ptr => rate
             case('FLUX')
               sub_condition_ptr => flux
@@ -712,7 +712,7 @@ subroutine FlowConditionRead(condition,input,option)
           select case(trim(word))
             case('PRES','PRESS','PRESSURE')
               sub_condition_ptr => pressure
-            case('MASS','MASS_RATE','VOLUMETRIC','VOLUMETRIC_RATE')
+            case('RATE')
               sub_condition_ptr => rate
             case('FLUX')
               sub_condition_ptr => flux
@@ -742,7 +742,7 @@ subroutine FlowConditionRead(condition,input,option)
         call FlowConditionReadValues(input,option,word,string, &
                                      pressure%dataset, &
                                      pressure%units)
-      case('MASS','MASS_RATE','VOLUMETRIC','VOLUMETRIC_RATE')
+      case('RATE')
         call FlowConditionReadValues(input,option,word,string, &
                                      rate%dataset, &
                                      rate%units)
@@ -873,7 +873,11 @@ subroutine FlowConditionRead(condition,input,option)
       endif                         
       condition%num_sub_conditions = 1
       allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
-      condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
+      if (associated(pressure)) then
+        condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
+      elseif (associated(rate)) then
+        condition%sub_condition_ptr(ONE_INTEGER)%ptr => rate
+      endif                         
 
       allocate(condition%itype(ONE_INTEGER))
       if (associated(rate)) condition%itype(ONE_INTEGER) = rate%itype

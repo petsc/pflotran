@@ -1073,9 +1073,9 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
     cur_connection_set => source_sink%connection_set
     
     if (associated(source_sink%flow_condition) .and. &
-        associated(source_sink%flow_condition%pressure)) then
-      qsrc = source_sink%flow_condition%pressure%dataset%cur_value(1)
-      if (source_sink%flow_condition%pressure%itype == &
+        associated(source_sink%flow_condition%rate)) then
+      qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
+      if (source_sink%flow_condition%rate%itype == &
           VOLUMETRIC_RATE_SS) then
         volumetric = PETSC_TRUE
       else
@@ -1481,9 +1481,9 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     cur_connection_set => source_sink%connection_set
     
     if (associated(source_sink%flow_condition) .and. &
-        associated(source_sink%flow_condition%pressure)) then
-      qsrc = source_sink%flow_condition%pressure%dataset%cur_value(1)
-      if (source_sink%flow_condition%pressure%itype == &
+        associated(source_sink%flow_condition%rate)) then
+      qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
+      if (source_sink%flow_condition%rate%itype == &
           VOLUMETRIC_RATE_SS) then
         volumetric = PETSC_TRUE
       else
