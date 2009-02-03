@@ -28,7 +28,8 @@ module Richards_module
          RichardsSetup, RichardsNumericalJacTest, &
          RichardsInitializeTimestep, RichardsUpdateAuxVars, &
          RichardsMaxChange, RichardsUpdateSolution, &
-         RichardsGetTecplotHeader, RichardsComputeMassBalance
+         RichardsGetTecplotHeader, RichardsComputeMassBalance, &
+         RichardsDestroy
 
 contains
 
@@ -2397,17 +2398,50 @@ end function RichardsGetTecplotHeader
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-subroutine RichardsDestroy(patch)
+subroutine RichardsDestroy(realization)
 
+  use Realization_module
+  use Level_module
   use Patch_module
 
-  implicit none
+  type(realization_type) :: realization
   
-  type(patch_type) :: patch
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
   
-  ! need to free array in aux vars
-  call RichardsAuxDestroy(patch%aux%Richards)
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RichardsDestroyPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
 
 end subroutine RichardsDestroy
+
+! ************************************************************************** !
+!
+! RichardsDestroyPatch: Deallocates variables associated with Richard
+! author: Glenn Hammond
+! date: 02/03/09
+!
+! ************************************************************************** !
+subroutine RichardsDestroyPatch(realization)
+
+  use Realization_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  
+  ! need to free array in aux vars
+  call RichardsAuxDestroy(realization%patch%aux%Richards)
+
+end subroutine RichardsDestroyPatch
 
 end module Richards_module

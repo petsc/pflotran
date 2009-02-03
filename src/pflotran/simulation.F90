@@ -57,11 +57,25 @@ end function SimulationCreate
 ! ************************************************************************** !
 subroutine SimulationDestroy(simulation)
 
+  use Richards_module, only : RichardsDestroy
+  use Reactive_Transport_module, only : RTDestroy
+
   implicit none
   
   type(simulation_type), pointer :: simulation
   
   if (.not.associated(simulation)) return
+
+  if (simulation%realization%option%nflowdof > 0) then
+    select case(simulation%realization%option%iflowmode)
+      case(RICHARDS_MODE)
+        call RichardsDestroy(simulation%realization)
+    end select
+  endif
+
+  if (simulation%realization%option%ntrandof > 0) then
+    call RTDestroy(simulation%realization)
+  endif
 
   call RealizationDestroy(simulation%realization)
   call TimestepperDestroy(simulation%flow_stepper)
