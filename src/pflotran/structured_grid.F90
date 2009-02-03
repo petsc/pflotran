@@ -670,7 +670,15 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
   use Option_module
   
   implicit none
-  
+
+  interface
+     PetscInt function samr_patch_at_bc(p_patch, axis, dim)
+#include "finclude/petsc.h"
+       PetscFortranAddr :: p_patch
+       PetscInt :: axis,dim
+     end function samr_patch_at_bc
+  end interface
+    
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
   PetscInt :: i, j, k
@@ -678,68 +686,80 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
   PetscInt :: i_ghosted, j_ghosted, k_ghosted
   PetscReal :: x, y, z
   
-  PetscReal :: x_lower_face, y_lower_face, z_lower_face
+  PetscReal :: x_upper_face, y_upper_face, z_upper_face
 
   i = -1
   j = -1
   k = -1
 
-  x_lower_face = structured_grid%origin(X_DIRECTION)
+  x_upper_face = structured_grid%origin(X_DIRECTION)
   i_local = 1
   do i_ghosted=structured_grid%istart,structured_grid%iend
-    if (x >= x_lower_face .and. &                   ! since i_ghosted is zero-based
-        x <= x_lower_face+structured_grid%dxg_local(i_ghosted+1)) then
+    if (x >= x_upper_face .and. &                   ! since i_ghosted is zero-based
+        x <= x_upper_face+structured_grid%dxg_local(i_ghosted+1)) then
       ! test to prevent multiple procs from including a coordinate located on
       ! boundary of local decomposition shared by two procs
       ! if first cell in x-dir on proc
       if (i_ghosted == structured_grid%istart) then
         ! located on upwind boundary and ghosted
-        if (x == x_lower_face .and. &
-            structured_grid%nxs /= structured_grid%ngxs) exit
+        if (structured_grid%p_samr_patch == 0) then
+          if (x == x_upper_face .and. &
+              structured_grid%nxs /= structured_grid%ngxs) exit
+        else if (samr_patch_at_bc(structured_grid%p_samr_patch, 0, 0) == 0) then
+          exit
+        endif
       endif
       i = i_local 
       exit
     endif
     i_local = i_local + 1
-    x_lower_face = x_lower_face + structured_grid%dxg_local(i_ghosted+1)
+    x_upper_face = x_upper_face + structured_grid%dxg_local(i_ghosted+1)
   enddo
-  y_lower_face = structured_grid%origin(Y_DIRECTION)
+  y_upper_face = structured_grid%origin(Y_DIRECTION)
   j_local = 1
   do j_ghosted=structured_grid%jstart,structured_grid%jend
-    if (y >= y_lower_face .and. &
-        y <= y_lower_face+structured_grid%dyg_local(j_ghosted+1)) then
+    if (y >= y_upper_face .and. &
+        y <= y_upper_face+structured_grid%dyg_local(j_ghosted+1)) then
       ! test to prevent multiple procs from including a coordinate located on
       ! boundary of local decomposition shared by two procs
       ! if first cell in y-dir on proc
       if (j_ghosted == structured_grid%jstart) then
         ! located on upwind boundary and ghosted
-        if (y == y_lower_face .and. &
-            structured_grid%nys /= structured_grid%ngys) exit
-      endif      
+        if (structured_grid%p_samr_patch == 0) then
+          if (y == y_upper_face .and. &
+              structured_grid%nys /= structured_grid%ngys) exit
+        else if (samr_patch_at_bc(structured_grid%p_samr_patch, 1, 0) == 0) then
+          exit
+        endif
+      endif
       j = j_local
       exit
     endif
     j_local = j_local + 1
-    y_lower_face = y_lower_face + structured_grid%dyg_local(j_ghosted+1)
+    y_upper_face = y_upper_face + structured_grid%dyg_local(j_ghosted+1)
   enddo
-  z_lower_face = structured_grid%origin(Z_DIRECTION)
+  z_upper_face = structured_grid%origin(Z_DIRECTION)
   k_local = 1
   do k_ghosted=structured_grid%kstart,structured_grid%kend
-    if (z >= z_lower_face .and. &
-        z <= z_lower_face+structured_grid%dzg_local(k_ghosted+1)) then
+    if (z >= z_upper_face .and. &
+        z <= z_upper_face+structured_grid%dzg_local(k_ghosted+1)) then
       ! test to prevent multiple procs from including a coordinate located on
       ! boundary of local decomposition shared by two procs
       ! if first cell in z-dir on proc
       if (k_ghosted == structured_grid%kstart) then
         ! if located on upwind boundary and ghosted, skip
-        if (z == z_lower_face .and. &
+        if (structured_grid%p_samr_patch == 0) then
+          if (z == z_upper_face .and. &
             structured_grid%nzs /= structured_grid%ngzs) exit
+        else if (samr_patch_at_bc(structured_grid%p_samr_patch, 2, 0) == 0) then
+          exit
+        endif
       endif          
       k = k_local
       exit
     endif
     k_local = k_local + 1
-    z_lower_face = z_lower_face + structured_grid%dzg_local(k_ghosted+1)
+    z_upper_face = z_upper_face + structured_grid%dzg_local(k_ghosted+1)
   enddo
     
 end subroutine StructGridGetIJKFromCoordinate
