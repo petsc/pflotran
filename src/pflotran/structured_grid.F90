@@ -705,8 +705,9 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
         if (structured_grid%p_samr_patch == 0) then
           if (x == x_upper_face .and. &
               structured_grid%nxs /= structured_grid%ngxs) exit
-        else if (samr_patch_at_bc(structured_grid%p_samr_patch, 0, 0) == 0) then
-          exit
+! geh - the below should not be necessary for AMR since patches do not span processors              
+!        else if (samr_patch_at_bc(structured_grid%p_samr_patch, 0, 0) == 0) then
+!          exit
         endif
       endif
       i = i_local 
@@ -728,8 +729,8 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
         if (structured_grid%p_samr_patch == 0) then
           if (y == y_upper_face .and. &
               structured_grid%nys /= structured_grid%ngys) exit
-        else if (samr_patch_at_bc(structured_grid%p_samr_patch, 1, 0) == 0) then
-          exit
+!        else if (samr_patch_at_bc(structured_grid%p_samr_patch, 1, 0) == 0) then
+!          exit
         endif
       endif
       j = j_local
@@ -751,8 +752,8 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
         if (structured_grid%p_samr_patch == 0) then
           if (z == z_upper_face .and. &
             structured_grid%nzs /= structured_grid%ngzs) exit
-        else if (samr_patch_at_bc(structured_grid%p_samr_patch, 2, 0) == 0) then
-          exit
+!        else if (samr_patch_at_bc(structured_grid%p_samr_patch, 2, 0) == 0) then
+!          exit
         endif
       endif          
       k = k_local
