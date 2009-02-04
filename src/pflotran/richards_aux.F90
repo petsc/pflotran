@@ -144,7 +144,7 @@ end subroutine RichardsAuxVarCopy
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,iphase,&
+subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
                                  saturation_function,por,perm,option)
 
   use Option_module
@@ -159,9 +159,9 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,iphase,&
   PetscReal :: x(option%nflowdof)
   type(richards_auxvar_type) :: aux_var
   type(global_auxvar_type) :: global_aux_var
-  PetscInt :: iphase
   PetscReal :: por, perm
 
+  PetscInt :: iphase
   PetscErrorCode :: ierr
   PetscReal :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
   PetscReal :: kr, ds_dp, dkr_dp

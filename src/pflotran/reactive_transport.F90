@@ -180,7 +180,7 @@ subroutine RTSetupPatch(realization)
   do 
     if (.not.associated(cur_fluid_property)) exit
     iphase = cur_fluid_property%phase_id
-    patch%aux%Rt%rt_parameter%diffusion_coefficient(iphase) = &
+    patch%aux%RT%rt_parameter%diffusion_coefficient(iphase) = &
       cur_fluid_property%diffusion_coefficient
     cur_fluid_property => cur_fluid_property%next
   enddo
