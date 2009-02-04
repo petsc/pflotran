@@ -370,7 +370,7 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
 ! **  xmol(1) = xh2o + xnacl
   aux_var%avgmw(1)= (1D0 - x_nacl) * FMWH2O&
        + x_nacl * FMWNACL
-  aux_var%den(1)=dw_kg/	aux_var%avgmw(1)
+  aux_var%den(1)=dw_kg/aux_var%avgmw(1)
   
        
  ! Hebach, J. Chem.Eng.Data 2004 (49),p950 ***********
