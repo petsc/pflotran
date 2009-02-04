@@ -59,6 +59,7 @@ subroutine RichardsTimeCut(realization)
   field => realization%field
 
   call VecCopy(field%flow_yy,field%flow_xx,ierr)
+  call RichardsInitializeTimestep(realization)  
  
 end subroutine RichardsTimeCut
 
@@ -816,13 +817,14 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
   type(global_auxvar_type) :: global_aux_var_pert
   PetscReal :: x(1), x_pert(1), pert, res(1), res_pert(1), J_pert(1,1)
 
-  porXvol = por*vol
+  porXvol = por*vol/option%flow_dt
       
   J(1,1) = (global_aux_var%sat(1)*rich_aux_var%dden_dp+ &
             rich_aux_var%dsat_dp*global_aux_var%den(1))* &
            porXvol
 
   if (option%numerical_derivatives) then
+    call GlobalAuxVarInit(global_aux_var_pert,option)  
     call RichardsAuxVarCopy(rich_aux_var,rich_aux_var_pert,option)
     call GlobalAuxVarCopy(global_aux_var,global_aux_var_pert,option)
     x(1) = global_aux_var%pres(1)
@@ -847,6 +849,7 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
                               option,res_pert)
     J_pert(1,1) = (res_pert(1)-res(1))/pert
     J = J_pert
+    call GlobalAuxVarDestroy(global_aux_var_pert)  
   endif
    
 end subroutine RichardsAccumDerivative
@@ -872,7 +875,8 @@ subroutine RichardsAccumulation(rich_aux_var,global_aux_var,por,vol, &
   PetscReal :: Res(1:option%nflowdof) 
   PetscReal :: vol, por
        
-  Res(1) = global_aux_var%sat(1) * global_aux_var%den(1) * por * vol
+  Res(1) = global_aux_var%sat(1) * global_aux_var%den(1) * por * vol / &
+           option%flow_dt
 
 end subroutine RichardsAccumulation
 
@@ -986,12 +990,12 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
     endif
   endif 
 
-  Jup = Jup*option%flow_dt
-  Jdn = Jdn*option%flow_dt
  ! note: Res is the flux contribution, for node up J = J + Jup
  !                                              dn J = J - Jdn  
 
   if (option%numerical_derivatives) then
+    call GlobalAuxVarInit(global_aux_var_pert_up,option)
+    call GlobalAuxVarInit(global_aux_var_pert_dn,option)  
     call RichardsAuxVarCopy(rich_aux_var_up,rich_aux_var_pert_up,option)
     call RichardsAuxVarCopy(rich_aux_var_dn,rich_aux_var_pert_dn,option)
     call GlobalAuxVarCopy(global_aux_var_up,global_aux_var_pert_up,option)
@@ -1031,6 +1035,8 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
     J_pert_dn(1,ideriv) = (res_pert_dn(1)-res(1))/pert_dn
     Jup = J_pert_up
     Jdn = J_pert_dn
+    call GlobalAuxVarDestroy(global_aux_var_pert_up)
+    call GlobalAuxVarDestroy(global_aux_var_pert_dn)    
   endif
 
 end subroutine RichardsFluxDerivative
@@ -1106,7 +1112,7 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
     endif
   endif 
 
-  Res(1) = fluxm * option%flow_dt
+  Res(1) = fluxm
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
 
@@ -1237,9 +1243,9 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
 
   Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)
 
-  Jdn = Jdn * option%flow_dt
-
   if (option%numerical_derivatives) then
+    call GlobalAuxVarInit(global_aux_var_pert_up,option)
+    call GlobalAuxVarInit(global_aux_var_pert_dn,option)  
     call RichardsAuxVarCopy(rich_aux_var_up,rich_aux_var_pert_up,option)
     call RichardsAuxVarCopy(rich_aux_var_dn,rich_aux_var_pert_dn,option)
     call GlobalAuxVarCopy(global_aux_var_up,global_aux_var_pert_up,option)
@@ -1279,6 +1285,8 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
                         area,dist_gravity,option,v_darcy,res_pert_dn)
     J_pert_dn(1,ideriv) = (res_pert_dn(1)-res(1))/pert_dn
     Jdn = J_pert_dn
+    call GlobalAuxVarDestroy(global_aux_var_pert_up)
+    call GlobalAuxVarDestroy(global_aux_var_pert_dn)      
   endif
 
 end subroutine RichardsBCFluxDerivative
@@ -1376,7 +1384,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
 
   fluxm = q*density_ave
 
-  Res(1)=fluxm * option%flow_dt
+  Res(1)=fluxm
 
 end subroutine RichardsBCFlux
 
@@ -1412,6 +1420,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   Vec :: xx
   Vec :: r
   type(realization_type) :: realization
+  PetscViewer :: viewer
   PetscErrorCode :: ierr
   
   type(discretization_type), pointer :: discretization
@@ -1461,9 +1470,23 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
     cur_level => cur_level%next
   enddo
 
-  if(discretization%itype==AMR_GRID) then
+  if (discretization%itype==AMR_GRID) then
      call samrpetscobjectstateincrease(r)
   endif
+   
+  if (realization%debug%vecview_residual) then
+    call PetscViewerASCIIOpen(realization%option%mycomm,'Rresidual.out', &
+                              viewer,ierr)
+    call VecView(r,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+  if (realization%debug%vecview_solution) then
+    call PetscViewerASCIIOpen(realization%option%mycomm,'Rxx.out', &
+                              viewer,ierr)
+    call VecView(xx,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+  
 end subroutine RichardsResidual
 
 ! ************************************************************************** !
@@ -1505,7 +1528,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   PetscReal :: perm_up, perm_dn
   PetscReal :: upweight
   PetscReal :: Res(realization%option%nflowdof), v_darcy
-  PetscViewer :: viewer
 
 
   type(grid_type), pointer :: grid
@@ -1612,7 +1634,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
       global_aux_vars(local_id_up)%mass_balance_delta(1) = &
-        global_aux_vars(local_id_up)%mass_balance_delta(1) - Res(1)/option%flow_dt
+        global_aux_vars(local_id_up)%mass_balance_delta(1) - Res(1)
 #endif
 
       if (local_id_up>0) then
@@ -1680,7 +1702,6 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   PetscReal :: perm_dn
   PetscReal :: tsrc1, qsrc1, qsrc_kg
   PetscReal :: Res(realization%option%nflowdof), v_darcy
-  PetscViewer :: viewer
 
 
   type(grid_type), pointer :: grid
@@ -1770,7 +1791,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
 !        global_aux_vars_ss(ghosted_id)%mass_balance_delta(1) = &
 !          global_aux_vars_ss(ghosted_id)%mass_balance_delta(1) - qsrc_kg
 !      endif
-      r_p(local_id) = r_p(local_id) - qsrc_kg*option%flow_dt
+      r_p(local_id) = r_p(local_id) - qsrc_kg
     enddo
     source_sink => source_sink%next
   enddo
@@ -1828,10 +1849,10 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
         global_aux_vars_bc(sum_connection)%mass_balance_delta(1) = &
-          global_aux_vars_bc(sum_connection)%mass_balance_delta(1) - Res(1)/option%flow_dt
+          global_aux_vars_bc(sum_connection)%mass_balance_delta(1) - Res(1)
         ! contribution to internal 
 !        global_aux_vars(ghosted_id)%mass_balance_delta(1) = &
-!          global_aux_vars(ghosted_id)%mass_balance_delta(1) + Res(1)/option%flow_dt
+!          global_aux_vars(ghosted_id)%mass_balance_delta(1) + Res(1)
       endif
 
       r_p(local_id)= r_p(local_id) - Res(1)
@@ -1857,17 +1878,6 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
 
-  if (realization%debug%vecview_residual) then
-    call PetscViewerASCIIOpen(option%mycomm,'Rresidual.out',viewer,ierr)
-    call VecView(r,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
-  endif
-  if (realization%debug%vecview_solution) then
-    call PetscViewerASCIIOpen(option%mycomm,'Rxx.out',viewer,ierr)
-    call VecView(xx,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
-  endif
-  
 end subroutine RichardsResidualPatch2
 
 ! ************************************************************************** !
@@ -2188,8 +2198,7 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       select case(source_sink%flow_condition%rate%itype)
         case(MASS_RATE_SS)
         case(VOLUMETRIC_RATE_SS)  ! assume local density for now
-          Jup(1,1) = -qsrc1*rich_aux_vars(ghosted_id)%dden_dp*rich_aux_vars(ghosted_id)%avgmw* &
-                     option%flow_dt
+          Jup(1,1) = -qsrc1*rich_aux_vars(ghosted_id)%dden_dp*rich_aux_vars(ghosted_id)%avgmw
 
       end select
       call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)  
