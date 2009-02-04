@@ -2498,8 +2498,7 @@ subroutine RichardsDestroyPatch(realization)
 
   type(realization_type) :: realization
   
-  ! need to free array in aux vars
-  call RichardsAuxDestroy(realization%patch%aux%Richards)
+  ! place anything that needs to be freed here.
 
 end subroutine RichardsDestroyPatch
 

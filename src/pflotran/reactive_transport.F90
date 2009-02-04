@@ -2236,9 +2236,6 @@ subroutine RTDestroyPatch(realization)
 
   type(realization_type) :: realization
   
-  ! need to free array in aux vars
-  call RTAuxDestroy(realization%patch%aux%RT)
-
 end subroutine RTDestroyPatch
 
 end module Reactive_Transport_module

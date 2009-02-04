@@ -13,6 +13,7 @@ Tracer
 :=========================== solver options ===================================
 TIMESTEPPER
 TS_ACCELERATION 8
+MAX_STEPS 1
 /
 
 NEWTON_SOLVER FLOW

@@ -264,16 +264,19 @@ subroutine RichardsAuxDestroy(aux)
   
   if (.not.associated(aux)) return
   
-  do iaux = 1, aux%num_aux
-    call AuxVarDestroy(aux%aux_vars(iaux))
-  enddo  
-  do iaux = 1, aux%num_aux_bc
-    call AuxVarDestroy(aux%aux_vars_bc(iaux))
-  enddo  
-  
-  if (associated(aux%aux_vars)) deallocate(aux%aux_vars)
+  if (associated(aux%aux_vars)) then
+    do iaux = 1, aux%num_aux
+      call AuxVarDestroy(aux%aux_vars(iaux))
+    enddo  
+    deallocate(aux%aux_vars)
+  endif
   nullify(aux%aux_vars)
-  if (associated(aux%aux_vars_bc)) deallocate(aux%aux_vars_bc)
+  if (associated(aux%aux_vars_bc)) then
+    do iaux = 1, aux%num_aux_bc
+      call AuxVarDestroy(aux%aux_vars_bc(iaux))
+    enddo  
+    deallocate(aux%aux_vars_bc)
+  endif
   nullify(aux%aux_vars_bc)
   if (associated(aux%zero_rows_local)) deallocate(aux%zero_rows_local)
   nullify(aux%zero_rows_local)
