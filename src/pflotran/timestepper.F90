@@ -678,6 +678,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   PetscReal :: fnorm, scaled_fnorm, inorm
   Vec :: global_vec
   PetscTruth :: plot_flag
+  PetscTruth :: transient_plot_flag
   
   PetscViewer :: viewer
 
@@ -786,7 +787,8 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
         endif
         realization%output_option%plot_name = 'cut_to_failure'
         plot_flag = PETSC_TRUE
-        call Output(realization,plot_flag,PETSC_FALSE)
+        transient_plot_flag = PETSC_FALSE
+        call Output(realization,plot_flag,transient_plot_flag)
         call PetscFinalize(ierr)
         stop
       endif
@@ -945,6 +947,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   PetscReal :: fnorm, scaled_fnorm, inorm
   PetscReal :: start_time, end_time, dt_orig
   PetscTruth :: plot_flag  
+  PetscTruth :: transient_plot_flag  
   PetscReal, pointer :: r_p(:), xx_p(:), log_xx_p(:)
   PetscReal, parameter :: time_tol = 1.d-10
 
@@ -1094,7 +1097,8 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
           endif
           realization%output_option%plot_name = 'cut_to_failure'
           plot_flag = PETSC_TRUE
-          call Output(realization,plot_flag,PETSC_FALSE)
+          transient_plot_flag = PETSC_FALSE
+          call Output(realization,plot_flag,transient_plot_flag)
           call PetscFinalize(ierr)
           stop
         endif
