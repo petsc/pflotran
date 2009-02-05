@@ -153,5 +153,6 @@
   
   call OptionDestroy(option)
   call PetscFinalize (ierr)
+  call MPI_Finalize (ierr)
 
   end program pflotran

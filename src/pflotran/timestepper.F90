@@ -274,6 +274,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       call OutputVectorTecplot(string,string,realization,realization%field%perm0_xx)
     endif
   endif
+  ! increment plot number so that 000 is always the initial condition, and nothing else
+  if (output_option%plot_number == 0) output_option%plot_number = 1
   output_option%first = PETSC_FALSE
 
   if (associated(flow_stepper)) then
