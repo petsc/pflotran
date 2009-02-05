@@ -1353,9 +1353,11 @@ Note that if $K_j^f \!\geq\! K_j^s \!\gg\! 1$, $R_j\!\leq\! 2$, and there is lit
 
 \begin{verbatim}
 type, public :: colloid_type
+  character(len=MAXWORDLENGTH) :: name
   PetscInt :: ncoll
   PetscInt :: id
   PetscReal :: coll_formula_wt
+  PetscReal :: coll_surf_site_den
 end type colloid type
 \end{verbatim}
 
