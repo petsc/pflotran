@@ -588,12 +588,14 @@ subroutine InitReadStochasticCardFromInput(stochastic,option)
   
   character(len=MAXSTRINGLENGTH) :: string
   type(input_type), pointer :: input
+  PetscTruth :: print_warning
   
   input => InputCreate(IUNIT1,option%input_filename)
 
   ! MODE information
   string = "STOCHASTIC"
-  call InputFindStringInFile(input,option,string)
+  print_warning = PETSC_FALSE
+  call InputFindStringInFile(input,option,string,print_warning)
 
   if (.not.InputError(input)) then
     if (.not.associated(stochastic)) then

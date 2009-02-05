@@ -27,6 +27,21 @@ module Input_module
     module procedure InputReadWord2
   end interface
   
+  interface InputReadInt
+    module procedure InputReadInt1
+    module procedure InputReadInt2
+  end interface
+  
+  interface InputReadDouble
+    module procedure InputReadDouble1
+    module procedure InputReadDouble2
+  end interface
+  
+  interface InputError
+    module procedure InputError1
+    module procedure InputError2
+  end interface
+  
   interface InputErrorMsg
     module procedure InputErrorMsg1
     module procedure InputErrorMsg2
@@ -42,12 +57,21 @@ module Input_module
     module procedure InputReadStringErrorMsg2
   end interface
   
+  interface InputFindStringInFile
+    module procedure InputFindStringInFile1
+    module procedure InputFindStringInFile2
+  end interface
+  
   public :: InputCreate, InputDestroy, InputReadFlotranString, &
             InputReadWord, InputReadDouble, InputReadInt, InputCheckExit, &
             InputSkipToEND, InputFindStringInFile, InputErrorMsg, &
             InputDefaultMsg, InputReadStringErrorMsg, &
             InputFindStringErrorMsg, InputError, &
-            InputReadNChars, InputReadQuotedWord
+            InputReadNChars, InputReadQuotedWord, &
+            InputGetCommandLineInt, &
+            InputGetCommandLineReal, &
+            InputGetCommandLineTruth, &
+            InputGetCommandLineString
 
 contains
 
@@ -248,12 +272,12 @@ end subroutine InputFindStringErrorMsg
 
 ! ************************************************************************** !
 !
-! InputReadInt: reads and removes an integer value from a string
+! InputReadInt1: reads and removes an integer value from a string
 ! author: Glenn Hammond
 ! date: 11/10/08
 !
 ! ************************************************************************** !
-subroutine InputReadInt(input, option, int)
+subroutine InputReadInt1(input, option, int)
 
   implicit none
 
@@ -269,16 +293,43 @@ subroutine InputReadInt(input, option, int)
     read(word,*,iostat=input%ierr) int
   endif
 
-end subroutine InputReadInt
+end subroutine InputReadInt1
 
 ! ************************************************************************** !
 !
-! InputReadDouble: reads and removes a real value from a string
+! InputReadInt2: reads and removes an integer value from a string
 ! author: Glenn Hammond
 ! date: 11/10/08
 !
 ! ************************************************************************** !
-subroutine InputReadDouble(input, option, double)
+subroutine InputReadInt2(string, option, int, ierr)
+
+  implicit none
+
+  character(len=MAXSTRINGLENGTH) :: string
+  type(option_type) :: option
+  PetscInt :: int
+  PetscErrorCode :: ierr
+
+  character(len=MAXWORDLENGTH) :: word
+
+  ierr = 0
+  call InputReadWord(string,word,PETSC_TRUE,ierr)
+  
+  if (.not.InputError(ierr)) then
+    read(word,*,iostat=ierr) int
+  endif
+
+end subroutine InputReadInt2
+
+! ************************************************************************** !
+!
+! InputReadDouble1: reads and removes a real value from a string
+! author: Glenn Hammond
+! date: 11/10/08
+!
+! ************************************************************************** !
+subroutine InputReadDouble1(input, option, double)
 
   implicit none
 
@@ -294,7 +345,35 @@ subroutine InputReadDouble(input, option, double)
     read(word,*,iostat=input%ierr) double
   endif
 
-end subroutine InputReadDouble
+end subroutine InputReadDouble1
+
+! ************************************************************************** !
+!
+! InputReadDouble2: reads and removes a real value from a string
+! author: Glenn Hammond
+! date: 11/10/08
+!
+! ************************************************************************** !
+subroutine InputReadDouble2(string, option, double, ierr)
+
+  implicit none
+
+  character(len=MAXSTRINGLENGTH) :: string
+  type(option_type) :: option
+  PetscReal :: double
+  PetscErrorCode :: ierr
+
+  character(len=MAXWORDLENGTH) :: word
+
+  ierr = 0
+  call InputReadWord(string,word,PETSC_TRUE,ierr)
+  
+  if (.not.InputError(ierr)) then
+    read(word,*,iostat=ierr) double
+  endif
+
+end subroutine InputReadDouble2
+
 #endif
 
 #if 0
@@ -725,14 +804,14 @@ end subroutine InputReadQuotedWord
 
 ! ************************************************************************** !
 !
-! InputFindStringInFile: Rewinds file and finds the first occurrence of
+! InputFindStringInFile1: Rewinds file and finds the first occurrence of
 !                     'string'.  Note that the line must start with 'string'
 !                     in order to match and that line is NOT returned
 ! author: Glenn Hammond
 ! date: 03/07/07
 !
 ! ************************************************************************** !
-  subroutine InputFindStringInFile(input, option, string)
+  subroutine InputFindStringInFile1(input, option, string)
 
   use String_module
 
@@ -741,6 +820,30 @@ end subroutine InputReadQuotedWord
   type(input_type) :: input
   type(option_type) :: option
   character(len=MAXSTRINGLENGTH) :: string
+  
+  call InputFindStringInFile2(input, option, string, PETSC_TRUE)
+  
+  end subroutine InputFindStringInFile1
+
+! ************************************************************************** !
+!
+! InputFindStringInFile2: Rewinds file and finds the first occurrence of
+!                     'string'.  Note that the line must start with 'string'
+!                     in order to match and that line is NOT returned
+! author: Glenn Hammond
+! date: 03/07/07
+!
+! ************************************************************************** !
+  subroutine InputFindStringInFile2(input, option, string, print_warning)
+
+  use String_module
+
+  implicit none
+
+  type(input_type) :: input
+  type(option_type) :: option
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscTruth :: print_warning
   
   character(len=MAXWORDLENGTH) :: word
   PetscTruth :: found = PETSC_FALSE
@@ -781,13 +884,13 @@ end subroutine InputReadQuotedWord
     enddo
   endif    
   
-  if (.not.found) then
+  if (.not.found .and. print_warning) then
     option%io_buffer = 'Card (' // trim(string) // ') not found in input file.'
     call printWrnMsg(option)
     input%ierr = 1
   endif
   
-  end subroutine InputFindStringInFile
+  end subroutine InputFindStringInFile2
 
 ! ************************************************************************** !
 !
@@ -842,26 +945,279 @@ end function InputCheckExit
 
 ! ************************************************************************** !
 !
-! InputError: Returns true if an error has occurred 
+! InputError1: Returns true if an error has occurred 
 ! author: Glenn Hammond
 ! date: 12/10/08
 !
 ! ************************************************************************** !
-function InputError(input)
+function InputError1(input)
 
   implicit none
 
   type(input_type) :: input
   
-  PetscTruth :: InputError
+  PetscTruth :: InputError1
 
   if (input%ierr == 0) then
-    InputError = PETSC_FALSE
+    InputError1 = PETSC_FALSE
   else
-    InputError = PETSC_TRUE
+    InputError1 = PETSC_TRUE
   endif
 
-end function InputError
+end function InputError1
+
+! ************************************************************************** !
+!
+! InputError2: Returns true if an error has occurred 
+! author: Glenn Hammond
+! date: 12/10/08
+!
+! ************************************************************************** !
+function InputError2(ierr)
+
+  implicit none
+
+  PetscErrorCode :: ierr
+  
+  PetscTruth :: InputError2
+
+  if (ierr == 0) then
+    InputError2 = PETSC_FALSE
+  else
+    InputError2 = PETSC_TRUE
+  endif
+
+end function InputError2
+
+! ************************************************************************** !
+!
+! InputGetCommandLineInt: Returns integer value associated with a command 
+!                          line argument
+! author: Glenn Hammond
+! date: 02/05/09
+!
+! ************************************************************************** !
+subroutine InputGetCommandLineInt(string,int_value,found,option)
+
+  use String_module
+  use Option_module
+
+  implicit none
+
+  character(len=MAXSTRINGLENGTH) :: string
+  type(option_type) :: option
+  PetscTruth :: found
+  PetscInt :: int_value
+
+  PetscInt :: iarg, narg
+  PetscInt :: len
+  character(len=MAXSTRINGLENGTH) :: string2
+  PetscErrorCode :: ierr
+  
+  ierr = 0
+  ! do not initialize int_value, as it may already have a value
+  found = PETSC_FALSE
+  narg = iargc()
+  string = adjustl(string)
+  len = len_trim(string)
+  do iarg = 1, narg
+    call getarg(iarg,string2)
+    if (StringCompare(string,string2,len)) then
+      found = PETSC_TRUE
+      if (iarg+1 <= narg) then
+        call getarg(iarg+1,string2)
+        call InputReadInt(string2,option,int_value,ierr)
+      else
+        ierr = 1
+      endif
+      if (InputError(ierr)) then
+        option%io_buffer = 'Integer argument for command line argument "' // &
+                           trim(adjustl(string)) // ' not found.'
+        call printErrMsg(option)
+      endif
+      exit
+    endif
+  enddo
+  
+end subroutine InputGetCommandLineInt
+
+! ************************************************************************** !
+!
+! InputGetCommandLineReal: Returns real*8 value associated with a command 
+!                          line argument
+! author: Glenn Hammond
+! date: 02/05/09
+!
+! ************************************************************************** !
+subroutine InputGetCommandLineReal(string,double_value,found,option)
+
+  use String_module
+  use Option_module
+  
+  implicit none
+
+  character(len=MAXSTRINGLENGTH) :: string
+  type(option_type) :: option
+  PetscTruth :: found
+  PetscReal :: double_value
+
+  PetscInt :: iarg, narg
+  PetscInt :: len
+  character(len=MAXSTRINGLENGTH) :: string2
+  PetscErrorCode :: ierr
+  
+  ierr = 0
+  ! do not initialize int_value, as it may already have a value
+  found = PETSC_FALSE
+  narg = iargc()
+  string = adjustl(string)
+  len = len_trim(string)
+  do iarg = 1, narg
+    call getarg(iarg,string2)
+    if (StringCompare(string,string2,len)) then
+      found = PETSC_TRUE
+      if (iarg+1 <= narg) then
+        call getarg(iarg+1,string2)
+        call InputReadDouble(string2,option,double_value,ierr)
+      else
+        ierr = 1
+      endif
+      if (InputError(ierr)) then
+        option%io_buffer = 'Real argument for command line argument "' // &
+                           trim(adjustl(string)) // ' not found.'
+        call printErrMsg(option)
+      endif
+      exit
+    endif
+  enddo
+  
+end subroutine InputGetCommandLineReal
+
+
+! ************************************************************************** !
+!
+! InputGetCommandLineString: Returns a string associated with a command 
+!                          line argument
+! author: Glenn Hammond
+! date: 02/05/09
+!
+! ************************************************************************** !
+subroutine InputGetCommandLineString(string,string_value,found,option)
+
+  use String_module
+  use Option_module
+  
+  implicit none
+
+  character(len=MAXSTRINGLENGTH) :: string
+  type(option_type) :: option
+  PetscTruth :: found
+  character(len=MAXSTRINGLENGTH) :: string_value
+
+  PetscInt :: iarg, narg
+  PetscInt :: len
+  character(len=MAXSTRINGLENGTH) :: string2
+  PetscErrorCode :: ierr
+  
+  ierr = 0
+  ! do not initialize int_value, as it may already have a value
+  found = PETSC_FALSE
+  narg = iargc()
+  string = adjustl(string)
+  len = len_trim(string)
+  do iarg = 1, narg
+    call getarg(iarg,string2)
+    if (StringCompare(string,string2,len)) then
+      found = PETSC_TRUE
+      if (iarg+1 <= narg) then
+        call getarg(iarg+1,string2)
+        call InputReadWord(string2,string_value,PETSC_TRUE,ierr)
+        if (string_value(1:1) == '-') then
+          ! no argument exists
+          option%io_buffer = 'String argument (' // &
+                             trim(adjustl(string_value)) // & 
+                             ') for command line argument "' // &
+                             trim(adjustl(string)) // ' not recognized.'
+          call printErrMsg(option)
+        endif
+      else
+        ierr = 1
+      endif
+      if (InputError(ierr)) then
+        option%io_buffer = 'String argument for command line argument "' // &
+                           trim(adjustl(string)) // ' not found.'
+        call printErrMsg(option)
+      endif
+      exit
+    endif
+  enddo
+  
+end subroutine InputGetCommandLineString
+
+! ************************************************************************** !
+!
+! InputGetCommandLineTruth: Returns logical associated with a command 
+!                           line argument
+! author: Glenn Hammond
+! date: 02/05/09
+!
+! ************************************************************************** !
+subroutine InputGetCommandLineTruth(string,truth_value,found,option)
+
+  use String_module
+  use Option_module
+  
+  implicit none
+
+  character(len=MAXSTRINGLENGTH) :: string
+  type(option_type) :: option
+  PetscTruth :: found
+  PetscTruth :: truth_value
+
+  PetscInt :: iarg, narg
+  PetscInt :: len
+  character(len=MAXSTRINGLENGTH) :: string2
+  character(len=MAXWORDLENGTH) :: word
+  PetscErrorCode :: ierr
+  
+  ierr = 0
+  ! do not initialize int_value, as it may already have a value
+  found = PETSC_FALSE
+  narg = iargc()
+  string = adjustl(string)
+  len = len_trim(string)
+  do iarg = 1, narg
+    call getarg(iarg,string2)
+    if (StringCompare(string,string2,len)) then
+      found = PETSC_TRUE
+      if (iarg+1 <= narg) then
+        call getarg(iarg+1,string2)
+        call InputReadWord(string2,word,PETSC_TRUE,ierr)
+      else
+        ! check if no argument exists, which is valid and means 'true'
+        truth_value = PETSC_TRUE
+        exit
+      endif    
+      if (word(1:1) == '-') then
+        ! no argument exists, which is valid and means 'true'
+        truth_value = PETSC_TRUE
+        exit
+      endif
+      call StringToLower(word)
+      select case(trim(word))
+        case('yes','true','1')
+          truth_value = PETSC_TRUE
+        case('no','false','0')
+          truth_value = PETSC_FALSE
+        case default
+          option%io_buffer = 'Truth argument for command line argument "' // &
+                             trim(adjustl(string)) // ' not recogized.'
+          call printErrMsg(option)
+      end select
+    endif
+  enddo
+  
+end subroutine InputGetCommandLineTruth
 
 ! ************************************************************************** !
 !

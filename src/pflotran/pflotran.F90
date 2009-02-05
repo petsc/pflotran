@@ -33,6 +33,7 @@
   use Realization_module
   use Timestepper_module
   use Option_module
+  use Input_module
   use Init_module
   use Logging_module
   use Stochastic_module
@@ -47,7 +48,8 @@
 
   PetscTruth :: truth
   PetscTruth :: option_found  
-  PetscInt :: ierr
+  PetscInt :: test_int
+  PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH) :: string
 
   type(stochastic_type), pointer :: stochastic
@@ -60,36 +62,23 @@
 
   call MPI_Init(ierr)
   option%global_comm = MPI_COMM_WORLD
-  call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
-  call MPI_Comm_rank(PETSC_COMM_WORLD,option%global_rank, ierr)
-  call MPI_Comm_size(PETSC_COMM_WORLD,option%global_commsize,ierr)
-  call MPI_Comm_group(PETSC_COMM_WORLD,option%global_group,ierr)
+  call MPI_Comm_rank(MPI_COMM_WORLD,option%global_rank, ierr)
+  call MPI_Comm_size(MPI_COMM_WORLD,option%global_commsize,ierr)
+  call MPI_Comm_group(MPI_COMM_WORLD,option%global_group,ierr)
 
   ! check for non-default input filename
-  option_found = PETSC_FALSE
-  call PetscOptionsGetString(PETSC_NULL_CHARACTER, "-pflotranin", &
-                             string, option_found, ierr)
-  if(option_found) then
-    option%input_filename = trim(string)
-  else
-    option%input_filename = "pflotran.in"
-  endif
-  
-  ! check for screen output
-  option_found = PETSC_FALSE
-  call PetscOptionsGetTruth(PETSC_NULL_CHARACTER, '-screen_output', &
-                            truth,option_found, ierr)
-  if (option_found) option%print_to_screen = truth
+  option%input_filename = "pflotran.in"
+  string = '-pflotranin'
+  call InputGetCommandLineString(string,option%input_filename,option_found,option)
 
-  ! check for file output
-  option_found = PETSC_FALSE
-  call PetscOptionsGetTruth(PETSC_NULL_CHARACTER, '-file_output', &
-                            truth,option_found, ierr)
-  if (option_found) option%print_to_file = truth
+  string = '-screen_output'
+  call InputGetCommandLineTruth(string,option%print_to_screen,option_found,option)
 
-  option_found = PETSC_FALSE
-  call PetscOptionsGetTruth(PETSC_NULL_CHARACTER, '-stochastic', &
-                            truth,option_found, ierr)
+  string = '-file_output'
+  call InputGetCommandLineTruth(string,option%print_to_file,option_found,option)
+
+  string = '-stochastic'
+  call InputGetCommandLineTruth(string,truth,option_found,option)
   if (option_found) stochastic => StochasticCreate()
 
   call InitReadStochasticCardFromInput(stochastic,option)
@@ -98,6 +87,9 @@
     call StochasticInit(stochastic,option)
     call StochasticRun(stochastic,option)
   else
+
+    PETSC_COMM_WORLD = MPI_COMM_WORLD
+    call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
 
     option%mycomm = option%global_comm
     option%myrank = option%global_rank

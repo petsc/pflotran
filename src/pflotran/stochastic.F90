@@ -23,6 +23,7 @@ contains
 subroutine StochasticInit(stochastic,option)
 
   use Option_module
+  use Input_module
   
   implicit none
 
@@ -37,7 +38,7 @@ subroutine StochasticInit(stochastic,option)
   PetscInt :: local_commsize, offset, delta, remainder
 
   PetscInt :: realization_id
-  PetscInt :: tempint
+  character(len=MAXSTRINGLENGTH) :: string
   PetscTruth :: option_found
   PetscErrorCode :: ierr
 
@@ -52,15 +53,13 @@ subroutine StochasticInit(stochastic,option)
   call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
 #endif
 
+#if 1
   ! query user for number of communicator groups and realizations
-  option_found = PETSC_FALSE
-  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-num_groups', &
-                          tempint,option_found, ierr)
-  if (option_found) stochastic%num_groups = tempint
-  option_found = PETSC_FALSE
-  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-num_realizations', &
-                          tempint,option_found, ierr)
-  if (option_found) stochastic%num_realizations = tempint
+  string = '-num_groups'
+  call InputGetCommandLineInt(string,stochastic%num_groups,option_found,option)
+
+  string = '-num_realizations'
+  call InputGetCommandLineInt(string,stochastic%num_realizations,option_found,option)
 
   ! error checking
   if (stochastic%num_groups == 0) then
@@ -75,6 +74,7 @@ subroutine StochasticInit(stochastic,option)
     call printWrnMsg(option)
     stochastic%num_realizations = 1
   endif
+#endif
   
   local_commsize = option%global_commsize / stochastic%num_groups
   remainder = option%global_commsize - stochastic%num_groups * local_commsize
@@ -91,8 +91,8 @@ subroutine StochasticInit(stochastic,option)
   mykey = option%global_rank - offset
   call MPI_Comm_split(MPI_COMM_WORLD,mycolor,mykey,option%mycomm,ierr)
   call MPI_Comm_group(option%mycomm,option%mygroup,ierr)
+
   PETSC_COMM_WORLD = option%mycomm
-  ! but this doesn't do anything....
   call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
   call MPI_Comm_rank(option%mycomm,option%myrank, ierr)
   call MPI_Comm_size(option%mycomm,option%mycommsize,ierr)

@@ -106,7 +106,7 @@ module Option_module
     PetscTruth :: restart_flag
     PetscReal :: restart_time
     character(len=MAXWORDLENGTH) :: restart_filename
-    character(len=MAXWORDLENGTH) :: input_filename
+    character(len=MAXSTRINGLENGTH) :: input_filename
     PetscTruth :: checkpoint_flag
     PetscInt :: checkpoint_frequency
     
@@ -681,7 +681,6 @@ function OptionPrintToScreen(option)
   endif
 
 end function OptionPrintToScreen
-
 
 ! ************************************************************************** !
 !
