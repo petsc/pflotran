@@ -1303,7 +1303,7 @@ end subroutine RealizAssignUniformVelocity
 
 ! ************************************************************************** !
 !
-! RealizationAddWaypointsToList: Creates waypoints assoiciated with source/sinks
+! RealizationAddWaypointsToList: Creates waypoints associated with source/sinks
 !                             boundary conditions, etc. and add to list
 ! author: Glenn Hammond
 ! date: 11/01/07
@@ -1393,7 +1393,7 @@ subroutine RealizationAddWaypointsToList(realization)
         if (temp_real > final_time) exit
         waypoint => WaypointCreate()
         waypoint%time = temp_real
-        waypoint%print_output = PETSC_TRUE 
+        waypoint%print_output = realization%output_option%print_final
         call WaypointInsertInList(waypoint,realization%waypoints)
       enddo
     endif

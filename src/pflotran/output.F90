@@ -143,6 +143,22 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
       call printMsg(option) 
     endif
       
+    if (realization%output_option%print_mad) then
+      call PetscGetTime(tstart,ierr) 
+      call PetscLogEventBegin(logging%event_output_mad, &
+                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+      call OutputMAD(realization)
+
+      call PetscLogEventEnd(logging%event_output_mad, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+      call PetscGetTime(tend,ierr) 
+      write(option%io_buffer,'(f6.2," Seconds to write to MAD HDF5 file(s)")') &
+            tend-tstart
+      call printMsg(option) 
+    endif
+      
     if (option%compute_statistics) then
       call ComputeFlowCellVelocityStats(realization)
       call ComputeFlowFluxVelocityStats(realization)
@@ -4506,6 +4522,141 @@ subroutine OutputHDF5(realization)
   endif
 #endif
 end subroutine OutputHDF5
+
+! ************************************************************************** !
+!
+! OutputMAD: Print to HDF5 file for MAD final output
+! author: Glenn Hammond
+! date: 10/25/07
+!
+! ************************************************************************** !
+subroutine OutputMAD(realization)
+
+  use Realization_module
+  use Discretization_module
+  use Option_module
+  use Grid_module
+  use Field_module
+  use Patch_module
+  use Reaction_Aux_module
+  
+  use AMR_Grid_Module
+ 
+#ifndef USE_HDF5
+  implicit none
+  
+  type(realization_type) :: realization
+
+  write(realization%option%io_buffer, &
+        '(/,"PFLOTRAN must be compiled with -DUSE_HDF5 to ", &
+        &"read HDF5 formatted structured grids.",/)')
+  call printErrMsg(realization%option)
+#else
+
+! 64-bit stuff
+#ifdef PETSC_USE_64BIT_INDICES
+!#define HDF_NATIVE_INTEGER H5T_STD_I64LE
+#define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
+#else
+#define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
+#endif
+
+  use hdf5
+  use HDF5_module
+  
+  implicit none
+
+  type(realization_type) :: realization
+
+  integer(HID_T) :: file_id
+  integer(HID_T) :: grp_id
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: realization_set_id
+  integer(HID_T) :: prop_id
+  PetscMPIInt :: rank
+  integer(HSIZE_T) :: dims(3)
+  
+  type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
+  type(reaction_type), pointer :: reaction
+  type(output_option_type), pointer :: output_option
+  
+  Vec :: global_vec
+  Vec :: samr_vec
+  Vec :: natural_vec
+  PetscReal, pointer :: v_ptr
+  
+  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscReal, pointer :: array(:)
+  PetscInt :: i
+  PetscInt :: nviz_flow, nviz_tran, nviz_dof
+  PetscInt :: current_component
+  PetscFortranAddr :: app_ptr
+
+  discretization => realization%discretization
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+  reaction => realization%reaction
+  output_option => realization%output_option
+
+#define ALL
+#ifdef ALL
+  write(string,'(i6)') option%mygroup_id
+  filename = trim(option%global_prefix) // 'G' // trim(adjustl(string)) // '.h5'
+
+  ! initialize fortran interface
+  call h5open_f(hdf5_err)
+
+  call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+  call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+#endif
+  call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdf5_err,prop_id)
+  if (hdf5_err < 0) then 
+    call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err,H5P_DEFAULT_F, &
+                     prop_id)
+  endif
+  call h5pclose_f(prop_id,hdf5_err)
+#else
+  filename = trim(option%global_prefix) // trim(option%group_prefix) // '.h5'
+
+  ! initialize fortran interface
+  call h5open_f(hdf5_err)
+
+  call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+  call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+#endif
+  call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err,H5P_DEFAULT_F, &
+                   prop_id)
+  call h5pclose_f(prop_id,hdf5_err)
+#endif
+
+  ! write out data sets 
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
+                                  option)   
+
+  ! pressure
+  call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
+#ifdef ALL
+  string = 'Pressure' // trim(option%group_prefix)
+#else
+  string = 'Pressure'
+#endif
+  call HDF5WriteStructDataSetFromVec(string,realization,global_vec,file_id,H5T_NATIVE_DOUBLE)
+
+  call VecDestroy(global_vec,ierr)
+
+  call h5fclose_f(file_id,hdf5_err)
+  call h5close_f(hdf5_err)
+#endif
+end subroutine OutputMAD
 
 #ifdef USE_HDF5
 ! ************************************************************************** !

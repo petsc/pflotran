@@ -112,6 +112,7 @@ common_obj = ${common_src}option.o \
 	${common_src}convergence.o \
 	${common_src}timestepper.o \
 	${common_src}simulation.o \
+	${common_src}stochastic.o \
 	${common_src}output.o \
 	${common_src}init.o
 
@@ -214,3 +215,4 @@ global.o : realization.o level.o patch.o global_aux.o connection.o grid.o \
 	   option.o coupler.o
 global_aux.o : option.o
 units.o : option.o
+stochastic.o : simulation.o input.o option.o

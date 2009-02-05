@@ -22,6 +22,7 @@ module Option_module
     PetscMPIInt :: myrank                  ! rank in PETSC_COMM_WORLD
     PetscMPIInt :: mycommsize              ! size of PETSC_COMM_WORLD
     PetscMPIInt :: mygroup                 ! id of group for PETSC_COMM_WORLD
+    PetscMPIInt :: mygroup_id
 
 ! don't place a character string near here.  It causes the Windows Intel compiler
 ! to crash.  Don't know why....
@@ -137,6 +138,9 @@ module Option_module
 
     character(len=2) :: tunit
     PetscReal :: tconv
+
+    PetscTruth :: print_initial
+    PetscTruth :: print_final
   
     PetscTruth :: print_hdf5
     PetscTruth :: print_hdf5_velocities
@@ -149,6 +153,8 @@ module Option_module
     
     PetscTruth :: print_vtk 
     PetscTruth :: print_vtk_velocities
+
+    PetscTruth :: print_mad 
 
     PetscTruth :: print_act_coefs
 
@@ -231,6 +237,7 @@ function OptionCreate()
   option%myrank = 0
   option%mycommsize = 0
   option%mygroup = 0
+  option%mygroup_id = 0
   
   option%global_prefix = 'pflotran'
   option%group_prefix = ''
@@ -372,6 +379,9 @@ function OutputOptionCreate()
   output_option%print_tecplot_flux_velocities = PETSC_FALSE
   output_option%print_vtk = PETSC_FALSE
   output_option%print_vtk_velocities = PETSC_FALSE
+  output_option%print_mad = PETSC_FALSE
+  output_option%print_initial = PETSC_TRUE
+  output_option%print_final = PETSC_TRUE
   output_option%plot_number = 0
   output_option%screen_imod = 1
   output_option%periodic_output_ts_imod  = 100000000

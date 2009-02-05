@@ -35,6 +35,7 @@
   use Option_module
   use Init_module
   use Logging_module
+  use Stochastic_module
   
   implicit none
 
@@ -66,7 +67,7 @@
   character(len=MAXSTRINGLENGTH) :: pflotranin
   character(len=MAXWORDLENGTH) :: string
 
-  
+  type(stochastic_type), pointer :: stochastic
   type(simulation_type), pointer :: simulation
   type(realization_type), pointer :: realization
   type(option_type), pointer :: option

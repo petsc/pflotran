@@ -1276,6 +1276,10 @@ subroutine readInput(simulation)
           call InputErrorMsg(input,option,'keyword','OUTPUT') 
           call StringToUpper(word)
           select case(trim(word))
+            case('NO_FINAL','NO_PRINT_FINAL')
+              output_option%print_final = PETSC_FALSE
+            case('NO_INITIAL','NO_PRINT_INITIAL')
+              output_option%print_initial = PETSC_FALSE
             case('PERMEABILITY')
               output_option%print_permeability = PETSC_TRUE
             case('MASS_BALANCE')
@@ -1370,6 +1374,10 @@ subroutine readInput(simulation)
               call InputErrorMsg(input,option,'keyword','OUTPUT,FORMAT') 
               call StringToUpper(word)
               select case(trim(word))
+                case ('HDF5')
+                  output_option%print_hdf5 = PETSC_TRUE
+                case ('MAD')
+                  output_option%print_mad = PETSC_TRUE
                 case ('TECPLOT')
                   output_option%print_tecplot = PETSC_TRUE
                   call InputReadWord(input,option,word,PETSC_TRUE)
@@ -1391,8 +1399,6 @@ subroutine readInput(simulation)
                   endif
                 case ('VTK')
                   output_option%print_vtk = PETSC_TRUE
-                case ('HDF5')
-                  output_option%print_hdf5 = PETSC_TRUE
                 case default
                   option%io_buffer = 'Keyword: ' // trim(word) // &
                                      ' not recognized in OUTPUT,FORMAT.'
