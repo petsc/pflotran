@@ -4574,6 +4574,7 @@ subroutine OutputMAD(realization)
   integer(HID_T) :: realization_set_id
   integer(HID_T) :: prop_id
   PetscMPIInt :: rank
+  PetscMPIInt, parameter :: ON=1, OFF=0
   integer(HSIZE_T) :: dims(3)
   
   type(grid_type), pointer :: grid
@@ -4596,6 +4597,7 @@ subroutine OutputMAD(realization)
   PetscInt :: nviz_flow, nviz_tran, nviz_dof
   PetscInt :: current_component
   PetscFortranAddr :: app_ptr
+  PetscMPIInt :: hdf5_flag 
 
   discretization => realization%discretization
   patch => realization%patch
@@ -4617,8 +4619,12 @@ subroutine OutputMAD(realization)
 #ifndef SERIAL_HDF5
   call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
 #endif
+  ! turn off error reporting
+  call h5eset_auto_f(OFF,hdf5_err)
   call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdf5_err,prop_id)
-  if (hdf5_err < 0) then 
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON,hdf5_err)
+  if (hdf5_flag < 0) then 
     call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err,H5P_DEFAULT_F, &
                      prop_id)
   endif

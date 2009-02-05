@@ -801,6 +801,8 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   PetscMPIInt :: rank
+  PetscMPIInt, parameter :: ON=1, OFF=0
+  PetscMPIInt :: hdf5_flag
   
   PetscMPIInt, pointer :: int_array(:)
   PetscReal, pointer :: double_array(:)
@@ -836,12 +838,20 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type, &
     dims(2) = ny_global
     dims(1) = nz_global
 #endif
-  call h5screate_simple_f(rank,dims,file_space_id,hdf5_err,dims)
-
-
   call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
-  call h5dcreate_f(file_id,name,data_type,file_space_id, &
-                   data_set_id,hdf5_err,prop_id)
+
+  call h5eset_auto_f(OFF,hdf5_err)
+  call h5dopen_f(file_id,name,data_set_id,hdf5_err)
+  hdf5_flag = hdf5_err
+  call h5eset_auto_f(ON,hdf5_err)
+  if (hdf5_flag < 0) then 
+    call h5screate_simple_f(rank,dims,file_space_id,hdf5_err,dims)
+    call h5dcreate_f(file_id,name,data_type,file_space_id, &
+                     data_set_id,hdf5_err,prop_id)
+  else
+    call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  endif
+
   call h5pclose_f(prop_id,hdf5_err)
   
   ! create the hyperslab
