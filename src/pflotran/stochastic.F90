@@ -92,6 +92,8 @@ subroutine StochasticInit(stochastic,option)
   call MPI_Comm_split(MPI_COMM_WORLD,mycolor,mykey,option%mycomm,ierr)
   call MPI_Comm_group(option%mycomm,option%mygroup,ierr)
   PETSC_COMM_WORLD = option%mycomm
+  ! but this doesn't do anything....
+  call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
   call MPI_Comm_rank(option%mycomm,option%myrank, ierr)
   call MPI_Comm_size(option%mycomm,option%mycommsize,ierr)
 
@@ -208,7 +210,7 @@ subroutine StochasticRun(stochastic,option)
     
   enddo
   
-  call MPI_Barrier(MPI_COMM_WORLD,ierr)
+  call MPI_Barrier(option%global_comm,ierr)
 
 end subroutine StochasticRun
 

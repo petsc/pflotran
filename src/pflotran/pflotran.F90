@@ -58,8 +58,9 @@
   option => OptionCreate()
   option%fid_out = IUNIT2
 
+  call MPI_Init(ierr)
+  option%global_comm = MPI_COMM_WORLD
   call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
-  option%global_comm = PETSC_COMM_WORLD
   call MPI_Comm_rank(PETSC_COMM_WORLD,option%global_rank, ierr)
   call MPI_Comm_size(PETSC_COMM_WORLD,option%global_commsize,ierr)
   call MPI_Comm_group(PETSC_COMM_WORLD,option%global_group,ierr)
