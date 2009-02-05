@@ -54,6 +54,11 @@ private
     
   end type realization_type
 
+  interface RealizationCreate
+    module procedure RealizationCreate1
+    module procedure RealizationCreate2
+  end interface
+  
   public :: RealizationCreate, &
             RealizationDestroy, &
             RealizationProcessCouplers, &
@@ -84,22 +89,49 @@ contains
   
 ! ************************************************************************** !
 !
-! RealizationCreate: Allocates and initializes a new Realization object
+! RealizationCreate1: Allocates and initializes a new Realization object
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-function RealizationCreate()
+function RealizationCreate1()
 
   implicit none
   
-  type(realization_type), pointer :: RealizationCreate
+  type(realization_type), pointer :: RealizationCreate1
+  
+  type(realization_type), pointer :: realization
+  type(option_type), pointer :: option
+  
+  nullify(option)
+  RealizationCreate1 => RealizationCreate2(option)
+  
+end function RealizationCreate1  
+
+! ************************************************************************** !
+!
+! RealizationCreate2: Allocates and initializes a new Realization object
+! author: Glenn Hammond
+! date: 10/25/07
+!
+! ************************************************************************** !
+function RealizationCreate2(option)
+
+  implicit none
+  
+  type(option_type), pointer :: option
+  
+  type(realization_type), pointer :: RealizationCreate2
   
   type(realization_type), pointer :: realization
   
   allocate(realization)
   realization%discretization => DiscretizationCreate()
-  realization%option => OptionCreate()
+  if (associated(option)) then
+    realization%option => option
+  else
+    realization%option => OptionCreate()
+  endif
   nullify(realization%input)
   realization%field => FieldCreate()
   realization%debug => DebugCreatePflow()
@@ -126,9 +158,9 @@ function RealizationCreate()
   
   nullify(realization%reaction)
   
-  RealizationCreate => realization
+  RealizationCreate2 => realization
   
-end function RealizationCreate  
+end function RealizationCreate2 
 
 ! ************************************************************************** !
 !
@@ -1548,7 +1580,7 @@ subroutine RealizationDestroy(realization)
   if (.not.associated(realization)) return
     
   call FieldDestroy(realization%field)
-  call OptionDestroy(realization%option)
+!  call OptionDestroy(realization%option) !geh it will be destroy externally
   call RegionDestroyList(realization%regions)
   
   call FlowConditionDestroyList(realization%flow_conditions)

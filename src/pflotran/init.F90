@@ -13,7 +13,7 @@ module Init_module
 #include "finclude/petscsnes.h"
 #include "finclude/petscpc.h"
 
-  public :: Init
+  public :: Init, InitReadStochasticCardFromInput
 
 contains
 
@@ -24,7 +24,7 @@ contains
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine Init(simulation,filename)
+subroutine Init(simulation)
 
   use Simulation_module
   use Option_module
@@ -114,7 +114,7 @@ subroutine Init(simulation,filename)
   nullify(tran_solver)
   
 
-  realization%input => InputCreate(IUNIT1,filename)
+  realization%input => InputCreate(IUNIT1,option%input_filename)
   filename_out = trim(option%global_prefix) // trim(option%group_prefix) // &
                  '.out'
   
@@ -123,7 +123,7 @@ subroutine Init(simulation,filename)
   endif
 
   ! read required cards
-  call readRequiredCardsFromInput(realization)
+  call InitReadRequiredCardsFromInput(realization)
 
   patch => realization%patch
 
@@ -158,7 +158,7 @@ subroutine Init(simulation,filename)
   endif
 
   ! read in the remainder of the input file
-  call readInput(simulation)
+  call InitReadInput(simulation)
   call InputDestroy(realization%input)
 
   ! initialize reference density
@@ -570,12 +570,50 @@ end subroutine Init
 
 ! ************************************************************************** !
 !
-! readRequiredCardsFromInput: Reads pflow input file
+! InitReadStochasticCardFromInput: Reads stochastic card from input file
+! author: Glenn Hammond
+! date: 02/04/09
+!
+! ************************************************************************** !
+subroutine InitReadStochasticCardFromInput(stochastic,option)
+
+  use Option_module
+  use Input_module
+  use Stochastic_Aux_module
+
+  implicit none
+  
+  type(stochastic_type), pointer :: stochastic
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  type(input_type), pointer :: input
+  
+  input => InputCreate(IUNIT1,option%input_filename)
+
+  ! MODE information
+  string = "STOCHASTIC"
+  call InputFindStringInFile(input,option,string)
+
+  if (.not.InputError(input)) then
+    if (.not.associated(stochastic)) then
+      stochastic => StochasticCreate()
+    endif
+    call StochasticRead(stochastic,input,option)
+  endif
+  
+  call InputDestroy(input)
+
+end subroutine InitReadStochasticCardFromInput
+
+! ************************************************************************** !
+!
+! InitReadRequiredCardsFromInput: Reads pflow input file
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine readRequiredCardsFromInput(realization)
+subroutine InitReadRequiredCardsFromInput(realization)
 
   use Option_module
   use Discretization_module
@@ -586,7 +624,6 @@ subroutine readRequiredCardsFromInput(realization)
   use Level_module
   use Realization_module
   use AMR_Grid_module
-  use Input_module
 
   use Reaction_module  
   use Reaction_Aux_module  
@@ -704,16 +741,16 @@ subroutine readRequiredCardsFromInput(realization)
     option%ntrandof = GetPrimarySpeciesCount(reaction)
   endif
     
-end subroutine readRequiredCardsFromInput
+end subroutine InitReadRequiredCardsFromInput
 
 ! ************************************************************************** !
 !
-! readInput: Reads pflow input file
+! InitReadInput: Reads pflow input file
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine readInput(simulation)
+subroutine InitReadInput(simulation)
 
   use Simulation_module
   use Option_module
@@ -1098,7 +1135,7 @@ subroutine readInput(simulation)
 
       case ('RESTART')
         option%restart_flag = PETSC_TRUE
-        call InputReadWord(input,option,option%restart_file,PETSC_TRUE)
+        call InputReadWord(input,option,option%restart_filename,PETSC_TRUE)
         call InputErrorMsg(input,option,'RESTART','Restart file name') 
         call InputReadDouble(input,option,option%restart_time)
         call InputDefaultMsg(input,option,'Restart time') 
@@ -1503,7 +1540,7 @@ subroutine readInput(simulation)
 
   enddo
                                         
-end subroutine readInput
+end subroutine InitReadInput
 
 ! ************************************************************************** !
 !

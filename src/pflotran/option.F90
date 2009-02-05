@@ -105,7 +105,8 @@ module Option_module
 
     PetscTruth :: restart_flag
     PetscReal :: restart_time
-    character(len=MAXWORDLENGTH) :: restart_file
+    character(len=MAXWORDLENGTH) :: restart_filename
+    character(len=MAXWORDLENGTH) :: input_filename
     PetscTruth :: checkpoint_flag
     PetscInt :: checkpoint_frequency
     
@@ -312,8 +313,9 @@ function OptionCreate()
   option%generalized_grid = ""
   option%use_generalized_grid = PETSC_FALSE
 
+  option%input_filename = ""
   option%restart_flag = PETSC_FALSE
-  option%restart_file = ""
+  option%restart_filename = ""
   option%restart_time = -999.d0
   option%checkpoint_flag = PETSC_FALSE
   option%checkpoint_frequency = huge(option%checkpoint_frequency)
@@ -410,6 +412,7 @@ subroutine OptionCheckCommandLine(option)
   type(option_type) :: option
   
   PetscTruth :: option_found 
+  PetscInt :: temp_int
   PetscErrorCode :: ierr
   
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-snes_mf", & 
@@ -417,7 +420,8 @@ subroutine OptionCheckCommandLine(option)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_isoth", &
                            option%use_isoth, ierr)
                            
-  call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-restart', option%restart_file, &
+  call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-restart', &
+                             option%restart_filename, &
                              option%restart_flag, ierr)
   call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-chkptfreq', &
                           option%checkpoint_frequency, &
@@ -435,6 +439,12 @@ subroutine OptionCheckCommandLine(option)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_mph", &
                            option_found, ierr)
   if (option_found) option%flowmode = "mph"                           
+ 
+ 
+  option_found = PETSC_FALSE
+  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-realization_id', &
+                          temp_int,option_found, ierr)
+  if (option_found) option%id = temp_int
  
 end subroutine OptionCheckCommandLine
 

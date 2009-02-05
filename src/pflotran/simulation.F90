@@ -18,35 +18,65 @@ module Simulation_module
 
   end type simulation_type
   
+  interface SimulationCreate
+    module procedure SimulationCreate1
+    module procedure SimulationCreate2
+  end interface
+  
   public :: SimulationCreate, SimulationDestroy
   
 contains
 
 ! ************************************************************************** !
 !
-! SimulationCreate: Allocates and initializes a new simulation object
+! SimulationCreate1: Allocates and initializes a new simulation object
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-function SimulationCreate()
+function SimulationCreate1()
+
+  use Option_module
+  
+  implicit none
+  
+  type(simulation_type), pointer :: SimulationCreate1
+  
+  type(simulation_type), pointer :: simulation
+  type(option_type), pointer :: option
+  
+  nullify(option)
+  SimulationCreate1 => SimulationCreate2(option)
+  
+end function SimulationCreate1
+
+! ************************************************************************** !
+!
+! SimulationCreate2: Allocates and initializes a new simulation object
+! author: Glenn Hammond
+! date: 10/25/07
+!
+! ************************************************************************** !
+function SimulationCreate2(option)
 
   use Option_module
 
   implicit none
   
-  type(simulation_type), pointer :: SimulationCreate
+  type(option_type), pointer :: option
+  
+  type(simulation_type), pointer :: SimulationCreate2
   
   type(simulation_type), pointer :: simulation
   
   allocate(simulation)
-  simulation%realization => RealizationCreate()
+  simulation%realization => RealizationCreate(option)
   simulation%flow_stepper => TimestepperCreate()
   simulation%tran_stepper => TimestepperCreate()
   
-  SimulationCreate => simulation
+  SimulationCreate2 => simulation
   
-end function SimulationCreate  
+end function SimulationCreate2
 
 ! ************************************************************************** !
 !
