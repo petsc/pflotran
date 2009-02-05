@@ -1090,15 +1090,15 @@ subroutine InputGetCommandLineInt(string,int_value,found,option)
   ierr = 0
   ! do not initialize int_value, as it may already have a value
   found = PETSC_FALSE
-  narg = iargc()
+  narg = command_argument_count()
   string = adjustl(string)
   len = len_trim(string)
   do iarg = 1, narg
-    call getarg(iarg,string2)
+    call get_command_argument(iarg,string2)
     if (StringCompare(string,string2,len)) then
       found = PETSC_TRUE
       if (iarg+1 <= narg) then
-        call getarg(iarg+1,string2)
+        call get_command_argument(iarg+1,string2)
         call InputReadInt(string2,option,int_value,ierr)
       else
         ierr = 1
@@ -1142,15 +1142,15 @@ subroutine InputGetCommandLineReal(string,double_value,found,option)
   ierr = 0
   ! do not initialize int_value, as it may already have a value
   found = PETSC_FALSE
-  narg = iargc()
+  narg = command_argument_count()
   string = adjustl(string)
   len = len_trim(string)
   do iarg = 1, narg
-    call getarg(iarg,string2)
+    call get_command_argument(iarg,string2)
     if (StringCompare(string,string2,len)) then
       found = PETSC_TRUE
       if (iarg+1 <= narg) then
-        call getarg(iarg+1,string2)
+        call get_command_argument(iarg+1,string2)
         call InputReadDouble(string2,option,double_value,ierr)
       else
         ierr = 1
@@ -1195,15 +1195,15 @@ subroutine InputGetCommandLineString(string,string_value,found,option)
   ierr = 0
   ! do not initialize int_value, as it may already have a value
   found = PETSC_FALSE
-  narg = iargc()
+  narg = command_argument_count()
   string = adjustl(string)
   len = len_trim(string)
   do iarg = 1, narg
-    call getarg(iarg,string2)
+    call get_command_argument(iarg,string2)
     if (StringCompare(string,string2,len)) then
       found = PETSC_TRUE
       if (iarg+1 <= narg) then
-        call getarg(iarg+1,string2)
+        call get_command_argument(iarg+1,string2)
         call InputReadNChars(string2,string_value,MAXSTRINGLENGTH, &
                              PETSC_TRUE,ierr)
         if (string_value(1:1) == '-') then
@@ -1257,15 +1257,15 @@ subroutine InputGetCommandLineTruth(string,truth_value,found,option)
   ierr = 0
   ! do not initialize int_value, as it may already have a value
   found = PETSC_FALSE
-  narg = iargc()
+  narg = command_argument_count()
   string = adjustl(string)
   len = len_trim(string)
   do iarg = 1, narg
-    call getarg(iarg,string2)
+    call get_command_argument(iarg,string2)
     if (StringCompare(string,string2,len)) then
       found = PETSC_TRUE
       if (iarg+1 <= narg) then
-        call getarg(iarg+1,string2)
+        call get_command_argument(iarg+1,string2)
         call InputReadWord(string2,word,PETSC_TRUE,ierr)
       else
         ! check if no argument exists, which is valid and means 'true'
