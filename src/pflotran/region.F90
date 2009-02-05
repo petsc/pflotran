@@ -14,7 +14,7 @@ module Region_module
   type, public :: region_type
     PetscInt :: id
     character(len=MAXWORDLENGTH) :: name
-    character(len=MAXWORDLENGTH) :: filename
+    character(len=MAXSTRINGLENGTH) :: filename
     PetscInt :: i1,i2,j1,j2,k1,k2
     type(point3d_type), pointer :: coordinates(:)
     PetscInt :: iface
@@ -384,7 +384,7 @@ subroutine RegionReadFromFilename(region,option,filename)
   type(region_type) :: region
   type(option_type) :: option
   type(input_type), pointer :: input
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   
   input => InputCreate(IUNIT_TEMP,filename)
   call RegionReadFromFileId(region,input,option)          

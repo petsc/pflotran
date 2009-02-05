@@ -27,6 +27,11 @@ module Input_module
     module procedure InputReadWord2
   end interface
   
+  interface InputReadNChars
+    module procedure InputReadNChars1
+    module procedure InputReadNChars2
+  end interface
+  
   interface InputReadInt
     module procedure InputReadInt1
     module procedure InputReadInt2
@@ -653,13 +658,13 @@ end subroutine InputReadWord2
 
 ! ************************************************************************** !
 !
-! InputReadNChars: reads and removes a specified number of characters from a 
+! InputReadNChars1: reads and removes a specified number of characters from a 
 !              string
 ! author: Glenn Hammond
 ! date: 11/02/00
 !
 ! ************************************************************************** !
-subroutine InputReadNChars(input, option, chars, n, return_blank_error)
+subroutine InputReadNChars1(input, option, chars, n, return_blank_error)
 
   implicit none
 
@@ -717,7 +722,75 @@ subroutine InputReadNChars(input, option, chars, n, return_blank_error)
 
   endif
 
-end subroutine InputReadNChars
+end subroutine InputReadNChars1
+
+! ************************************************************************** !
+!
+! InputReadNChars2: reads and removes a specified number of characters from a 
+!              string
+! author: Glenn Hammond
+! date: 11/02/00
+!
+! ************************************************************************** !
+subroutine InputReadNChars2(string, chars, n, return_blank_error, ierr)
+
+  implicit none
+
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscTruth :: return_blank_error ! Return an error for a blank line
+                                   ! Therefore, a blank line is not acceptable.
+  
+  PetscInt :: i, n, begins, ends
+  character(len=n) :: chars
+  PetscErrorCode :: ierr
+
+  if (InputError(ierr)) return
+
+  ! Initialize character string to blank.
+  do i=1,n
+    chars(i:i) = ' '
+  enddo
+
+  ierr = len_trim(string)
+  if (.not.InputError(ierr)) then
+    if (return_blank_error) then
+      ierr = 1
+    else
+      ierr = 0
+    endif
+    return
+  else
+    ierr = 0
+
+    ! Remove leading blanks and tabs
+    i=1
+    do while(string(i:i) == ' ' .or. string(i:i) == achar(9)) 
+      i=i+1
+    enddo
+
+    begins=i
+
+    ! Count # of continuous characters (no blanks, commas, etc. in between)
+    do while (string(i:i) /= ' ' .and. string(i:i) /= ',' .and. &
+              string(i:i) /= achar(9)) ! 9 = tab
+      i=i+1
+    enddo
+
+    ends=i-1
+
+    if (ends-begins+1 > n) then ! string read is too large for 'chars'
+      ierr = 1
+      return
+    endif
+
+    ! Copy (ends-begins) characters to 'chars'
+    chars = string(begins:ends)
+    ! Remove chars from string
+    string = string(ends+1:)
+
+  endif
+
+end subroutine InputReadNChars2
 
 ! ************************************************************************** !
 !
@@ -1032,7 +1105,7 @@ subroutine InputGetCommandLineInt(string,int_value,found,option)
       endif
       if (InputError(ierr)) then
         option%io_buffer = 'Integer argument for command line argument "' // &
-                           trim(adjustl(string)) // ' not found.'
+                           trim(adjustl(string)) // '" not found.'
         call printErrMsg(option)
       endif
       exit
@@ -1084,7 +1157,7 @@ subroutine InputGetCommandLineReal(string,double_value,found,option)
       endif
       if (InputError(ierr)) then
         option%io_buffer = 'Real argument for command line argument "' // &
-                           trim(adjustl(string)) // ' not found.'
+                           trim(adjustl(string)) // '" not found.'
         call printErrMsg(option)
       endif
       exit
@@ -1131,13 +1204,14 @@ subroutine InputGetCommandLineString(string,string_value,found,option)
       found = PETSC_TRUE
       if (iarg+1 <= narg) then
         call getarg(iarg+1,string2)
-        call InputReadWord(string2,string_value,PETSC_TRUE,ierr)
+        call InputReadNChars(string2,string_value,MAXSTRINGLENGTH, &
+                             PETSC_TRUE,ierr)
         if (string_value(1:1) == '-') then
           ! no argument exists
           option%io_buffer = 'String argument (' // &
                              trim(adjustl(string_value)) // & 
                              ') for command line argument "' // &
-                             trim(adjustl(string)) // ' not recognized.'
+                             trim(adjustl(string)) // '" not recognized.'
           call printErrMsg(option)
         endif
       else
@@ -1145,7 +1219,7 @@ subroutine InputGetCommandLineString(string,string_value,found,option)
       endif
       if (InputError(ierr)) then
         option%io_buffer = 'String argument for command line argument "' // &
-                           trim(adjustl(string)) // ' not found.'
+                           trim(adjustl(string)) // '" not found.'
         call printErrMsg(option)
       endif
       exit
@@ -1205,13 +1279,13 @@ subroutine InputGetCommandLineTruth(string,truth_value,found,option)
       endif
       call StringToLower(word)
       select case(trim(word))
-        case('yes','true','1')
+        case('yes','true','1','on')
           truth_value = PETSC_TRUE
-        case('no','false','0')
+        case('no','false','0','off')
           truth_value = PETSC_FALSE
         case default
           option%io_buffer = 'Truth argument for command line argument "' // &
-                             trim(adjustl(string)) // ' not recogized.'
+                             trim(adjustl(string)) // '" not recognized.'
           call printErrMsg(option)
       end select
     endif

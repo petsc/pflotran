@@ -1041,13 +1041,16 @@ subroutine InitReadInput(simulation)
         call StringToLower(word)        
         select case(word)
           case('permx')
-            call InputReadWord(input,option,option%permx_filename,PETSC_TRUE)
+            call InputReadNChars(input,option,option%permx_filename, &
+                                 MAXSTRINGLENGTH,PETSC_TRUE)
             call InputErrorMsg(input,option,'dataset','permx_filename') 
           case('permy')
-            call InputReadWord(input,option,option%permy_filename,PETSC_TRUE)
+            call InputReadNChars(input,option,option%permy_filename, &
+                                 MAXSTRINGLENGTH,PETSC_TRUE)
             call InputErrorMsg(input,option,'dataset','permy_filename') 
           case('permz')
-            call InputReadWord(input,option,option%permz_filename,PETSC_TRUE)
+            call InputReadNChars(input,option,option%permz_filename, &
+                                 MAXSTRINGLENGTH,PETSC_TRUE)
             call InputErrorMsg(input,option,'dataset','permz_filename') 
         end select          
         
@@ -1137,7 +1140,8 @@ subroutine InitReadInput(simulation)
 
       case ('RESTART')
         option%restart_flag = PETSC_TRUE
-        call InputReadWord(input,option,option%restart_filename,PETSC_TRUE)
+        call InputReadNChars(input,option,option%restart_filename,MAXSTRINGLENGTH, &
+                             PETSC_TRUE)
         call InputErrorMsg(input,option,'RESTART','Restart file name') 
         call InputReadDouble(input,option,option%restart_time)
         call InputDefaultMsg(input,option,'Restart time') 
@@ -1681,7 +1685,8 @@ subroutine assignMaterialPropToRegions(realization)
         do
            if (.not.associated(strata)) exit
            if (.not.associated(strata%region) .and. strata%active) then
-              call readMaterialsFromFile(realization,strata%material_property_name)
+              call readMaterialsFromFile(realization, &
+                                         strata%material_property_filename)
            endif
            strata => strata%next
         end do
@@ -1957,7 +1962,7 @@ subroutine verifyCoupler(realization,patch,coupler_list)
   type(patch_type), pointer :: patch  
   type(coupler_type), pointer :: coupler
   character(len=MAXWORDLENGTH) :: word
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: dataset_name
   PetscInt :: iconn, icell, local_id
   Vec :: global_vec
@@ -2070,7 +2075,7 @@ subroutine readMaterialsFromFile(realization,filename)
   implicit none
   
   type(realization_type) :: realization
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
@@ -2138,7 +2143,7 @@ subroutine readPermeabilitiesFromFile(realization,filename)
   implicit none
   
   type(realization_type) :: realization
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch

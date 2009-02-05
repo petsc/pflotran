@@ -12,7 +12,7 @@ module Material_module
     character(len=MAXWORDLENGTH) :: name
     PetscReal :: permeability(3,3)
     PetscReal :: permeability_pwr
-    character(len=MAXWORDLENGTH) :: permeability_filename
+    character(len=MAXSTRINGLENGTH) :: permeability_filename
     PetscReal :: porosity
     PetscReal :: tortuosity
     PetscInt :: saturation_function_id
@@ -118,8 +118,11 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputReadInt(input,option,material_property%id)
         call InputErrorMsg(input,option,'id','MATERIAL_PROPERTY')
       case('SATURATION_FUNCTION') 
-        call InputReadWord(input,option,material_property%saturation_function_name,PETSC_TRUE)
-        call InputErrorMsg(input,option,'saturation function name','MATERIAL_PROPERTY')
+        call InputReadWord(input,option, &
+                           material_property%saturation_function_name, &
+                           PETSC_TRUE)
+        call InputErrorMsg(input,option,'saturation function name', &
+                           'MATERIAL_PROPERTY')
       case('ROCK_DENSITY') 
         call InputReadDouble(input,option,material_property%rock_density)
         call InputErrorMsg(input,option,'rock density','MATERIAL_PROPERTY')
@@ -127,17 +130,25 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputReadDouble(input,option,material_property%specific_heat)
         call InputErrorMsg(input,option,'specific heat','MATERIAL_PROPERTY')
       case('THERMAL_CONDUCTIVITY_DRY') 
-        call InputReadDouble(input,option,material_property%thermal_conductivity_dry)
-        call InputErrorMsg(input,option,'dry thermal conductivity','MATERIAL_PROPERTY')
+        call InputReadDouble(input,option, &
+                             material_property%thermal_conductivity_dry)
+        call InputErrorMsg(input,option,'dry thermal conductivity', &
+                           'MATERIAL_PROPERTY')
       case('THERMAL_CONDUCTIVITY_WET') 
-        call InputReadDouble(input,option,material_property%thermal_conductivity_wet)
-        call InputErrorMsg(input,option,'wet thermal conductivity','MATERIAL_PROPERTY')
+        call InputReadDouble(input,option, &
+                             material_property%thermal_conductivity_wet)
+        call InputErrorMsg(input,option,'wet thermal conductivity', &
+                           'MATERIAL_PROPERTY')
       case('PORE_COMPRESSIBILITY') 
-        call InputReadDouble(input,option,material_property%pore_compressibility)
-        call InputErrorMsg(input,option,'pore compressibility','MATERIAL_PROPERTY')
+        call InputReadDouble(input,option, &
+                             material_property%pore_compressibility)
+        call InputErrorMsg(input,option,'pore compressibility', &
+                           'MATERIAL_PROPERTY')
       case('THERMAL_EXPANSITIVITY') 
-        call InputReadDouble(input,option,material_property%thermal_expansitivity)
-        call InputErrorMsg(input,option,'thermal expansitivity','MATERIAL_PROPERTY')
+        call InputReadDouble(input,option, &
+                             material_property%thermal_expansitivity)
+        call InputErrorMsg(input,option,'thermal expansitivity', &
+                           'MATERIAL_PROPERTY')
       case('POROSITY')
         call InputReadDouble(input,option,material_property%porosity)
         call InputErrorMsg(input,option,'porosity','MATERIAL_PROPERTY')
@@ -147,37 +158,55 @@ subroutine MaterialPropertyRead(material_property,input,option)
       case('PERMEABILITY')
         do
           call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,'MATERIAL_PROPERTY,PERMEABILITY')
+          call InputReadStringErrorMsg(input,option, &
+                                       'MATERIAL_PROPERTY,PERMEABILITY')
           
           if (InputCheckExit(input,option)) exit          
           
           if (InputError(input)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)
-          call InputErrorMsg(input,option,'keyword','MATERIAL_PROPERTY,PERMEABILITY')   
+          call InputErrorMsg(input,option,'keyword', &
+                             'MATERIAL_PROPERTY,PERMEABILITY')   
           select case(trim(word))
             case('PERM_X')
-              call InputReadDouble(input,option,material_property%permeability(1,1))
-              call InputErrorMsg(input,option,'x permeability','MATERIAL_PROPERTY,PERMEABILITY')
+              call InputReadDouble(input,option, &
+                                   material_property%permeability(1,1))
+              call InputErrorMsg(input,option,'x permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
             case('PERM_Y')
-              call InputReadDouble(input,option,material_property%permeability(2,2))
-              call InputErrorMsg(input,option,'y permeability','MATERIAL_PROPERTY,PERMEABILITY')
+              call InputReadDouble(input,option, &
+                                   material_property%permeability(2,2))
+              call InputErrorMsg(input,option,'y permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
             case('PERM_Z')
-              call InputReadDouble(input,option,material_property%permeability(3,3))
-              call InputErrorMsg(input,option,'z permeability','MATERIAL_PROPERTY,PERMEABILITY')
+              call InputReadDouble(input,option, &
+                                   material_property%permeability(3,3))
+              call InputErrorMsg(input,option,'z permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
             case('PERM_ISO')
-              call InputReadDouble(input,option,material_property%permeability(1,1))
-              call InputErrorMsg(input,option,'isotropic permeability','MATERIAL_PROPERTY,PERMEABILITY')
-              material_property%permeability(2,2) = material_property%permeability(1,1)
-              material_property%permeability(3,3) = material_property%permeability(1,1)
+              call InputReadDouble(input,option, &
+                                   material_property%permeability(1,1))
+              call InputErrorMsg(input,option,'isotropic permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+              material_property%permeability(2,2) = &
+                material_property%permeability(1,1)
+              material_property%permeability(3,3) = &
+                material_property%permeability(1,1)
             case('PERM_POWER')
-              call InputReadDouble(input,option,material_property%permeability_pwr)
-              call InputErrorMsg(input,option,'permeability power','MATERIAL_PROPERTY,PERMEABILITY')
+              call InputReadDouble(input,option, &
+                                   material_property%permeability_pwr)
+              call InputErrorMsg(input,option,'permeability power', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
             case('RANDOM_DATASET')
-              call InputReadWord(input,option,material_property%permeability_filename,PETSC_TRUE)
-              call InputErrorMsg(input,option,'RANDOM_DATASET,FILENAME','MATERIAL_PROPERTY,PERMEABILITY')   
+              call InputReadNChars(input,option,&
+                                   material_property%permeability_filename,&
+                                   MAXSTRINGLENGTH,PETSC_TRUE)
+              call InputErrorMsg(input,option,'RANDOM_DATASET,FILENAME', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')   
 !            case('ISOTROPIC')
             case default
-              option%io_buffer = 'keyword not recognized in material_property,permeability'
+              option%io_buffer = 'keyword not recognized in ' // &
+                                 'material_property,permeability'
               call printErrMsg(option)
           end select
         enddo

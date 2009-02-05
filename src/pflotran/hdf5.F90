@@ -1244,7 +1244,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
 
   type(realization_type) :: realization
   type(region_type) :: region
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
 
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
@@ -1400,7 +1400,7 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
 #include "finclude/petscvec.h90"
 
   type(realization_type) :: realization
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
 
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
@@ -1582,7 +1582,7 @@ subroutine HDF5ReadPermeabilitiesFromFile(realization,filename)
 #include "finclude/petscvec.h90"
 
   type(realization_type) :: realization
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
 
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid

@@ -105,7 +105,7 @@ module Option_module
 
     PetscTruth :: restart_flag
     PetscReal :: restart_time
-    character(len=MAXWORDLENGTH) :: restart_filename
+    character(len=MAXSTRINGLENGTH) :: restart_filename
     character(len=MAXSTRINGLENGTH) :: input_filename
     PetscTruth :: checkpoint_flag
     PetscInt :: checkpoint_frequency
@@ -124,9 +124,9 @@ module Option_module
     PetscTruth :: overwrite_restart_flow
     PetscInt :: io_handshake_buffer_size
     
-    character(len=MAXWORDLENGTH) :: permx_filename
-    character(len=MAXWORDLENGTH) :: permy_filename
-    character(len=MAXWORDLENGTH) :: permz_filename
+    character(len=MAXSTRINGLENGTH) :: permx_filename
+    character(len=MAXSTRINGLENGTH) :: permy_filename
+    character(len=MAXSTRINGLENGTH) :: permz_filename
     
     character(len=MAXWORDLENGTH) :: global_prefix
     character(len=MAXWORDLENGTH) :: group_prefix
@@ -461,6 +461,7 @@ subroutine printErrMsg1(option)
   
   type(option_type) :: option
   
+  PetscTruth :: petsc_initialized
   PetscErrorCode :: ierr
   
   if (OptionPrintToScreen(option)) then
@@ -468,7 +469,8 @@ subroutine printErrMsg1(option)
     print *, 'ERROR: ' // trim(option%io_buffer)
     print *, 'Stopping!'
   endif    
-  call PetscFinalize(ierr)
+  call PetscInitialized(petsc_initialized, ierr)
+  if (petsc_initialized) call PetscFinalize(ierr)
   stop
   
 end subroutine printErrMsg1
@@ -487,6 +489,7 @@ subroutine printErrMsg2(option,string)
   type(option_type) :: option
   character(len=*) :: string
   
+  PetscTruth :: petsc_initialized
   PetscErrorCode :: ierr
   
   if (OptionPrintToScreen(option)) then
@@ -494,7 +497,8 @@ subroutine printErrMsg2(option,string)
     print *, 'ERROR: ' // trim(string)
     print *, 'Stopping!'
   endif    
-  call PetscFinalize(ierr)
+  call PetscInitialized(petsc_initialized, ierr)
+  if (petsc_initialized) call PetscFinalize(ierr)
   stop
   
 end subroutine printErrMsg2
@@ -639,7 +643,7 @@ function OptionCheckTouch(option,filename)
   implicit none
 
   type(option_type) :: option
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   
   PetscInt :: ios
   PetscInt :: fid = 86

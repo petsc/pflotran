@@ -65,6 +65,10 @@
   call MPI_Comm_rank(MPI_COMM_WORLD,option%global_rank, ierr)
   call MPI_Comm_size(MPI_COMM_WORLD,option%global_commsize,ierr)
   call MPI_Comm_group(MPI_COMM_WORLD,option%global_group,ierr)
+  option%mycomm = option%global_comm
+  option%myrank = option%global_rank
+  option%mycommsize = option%global_commsize
+  option%mygroup = option%global_group
 
   ! check for non-default input filename
   option%input_filename = "pflotran.in"
@@ -91,11 +95,6 @@
     PETSC_COMM_WORLD = MPI_COMM_WORLD
     call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
 
-    option%mycomm = option%global_comm
-    option%myrank = option%global_rank
-    option%mycommsize = option%global_commsize
-    option%mygroup = option%global_group
-    
     call LoggingCreate()
 
     simulation => SimulationCreate(option)

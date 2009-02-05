@@ -70,7 +70,7 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
   PetscTruth :: plot_flag
   PetscTruth :: transient_plot_flag
 
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXSTRINGLENGTH) :: string
   PetscErrorCode :: ierr
   PetscLogDouble :: tstart, tend
   type(option_type), pointer :: option
@@ -83,8 +83,8 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
   if (.not.plot_flag) then
 
     if (option%use_touch_options) then
-      word = 'plot'
-      if (OptionCheckTouch(option,word)) then
+      string = 'plot'
+      if (OptionCheckTouch(option,string)) then
         realization%output_option%plot_name = 'plot'
         plot_flag = PETSC_TRUE
       endif
@@ -244,7 +244,7 @@ subroutine OutputTecplotBlock(realization)
   
   PetscInt :: i, comma_count, quote_count
   PetscInt, parameter :: icolumn = -1
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXHEADERLENGTH) :: string, string2
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -598,7 +598,7 @@ subroutine OutputVelocitiesTecplotBlock(realization)
   type(discretization_type), pointer :: discretization
   type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
   Vec :: global_vec
   Vec :: natural_vec
@@ -786,7 +786,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
   type(discretization_type), pointer :: discretization  
   type(output_option_type), pointer :: output_option
   
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
   
   PetscInt :: local_size, global_size
@@ -1113,7 +1113,7 @@ subroutine OutputTecplotPoint(realization)
   
   PetscInt :: i, comma_count, quote_count
   PetscInt :: icolumn
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXHEADERLENGTH) :: string, string2
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -1401,7 +1401,7 @@ subroutine OutputVelocitiesTecplotPoint(realization)
   type(discretization_type), pointer :: discretization
   type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: local_id
   PetscInt :: ghosted_id
@@ -1546,7 +1546,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   
   implicit none
 
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXWORDLENGTH) :: dataset_name
   type(realization_type) :: realization
   Vec :: vector
@@ -2051,7 +2051,7 @@ subroutine OutputObservationTecplot(realization)
   type(realization_type) :: realization
   
   PetscInt :: fid, icell
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -3239,7 +3239,7 @@ subroutine OutputVTK(realization)
   type(realization_type) :: realization
   
   PetscInt :: i, comma_count, quote_count
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(grid_type), pointer :: grid
@@ -3490,7 +3490,7 @@ subroutine OutputVelocitiesVTK(realization)
   type(discretization_type), pointer :: discretization
   type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
   Vec :: global_vec
   Vec :: natural_vec
@@ -4093,7 +4093,7 @@ subroutine OutputHDF5(realization)
   Vec :: natural_vec
   PetscReal, pointer :: v_ptr
   
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
   PetscReal, pointer :: array(:)
   PetscInt :: i
@@ -4589,7 +4589,7 @@ subroutine OutputMAD(realization)
   Vec :: natural_vec
   PetscReal, pointer :: v_ptr
   
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
   PetscReal, pointer :: array(:)
   PetscInt :: i
@@ -5422,7 +5422,7 @@ subroutine OutputMassBalance(realization)
   type(realization_type) :: realization
   
   PetscInt :: i, comma_count, quote_count
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -5619,7 +5619,7 @@ subroutine OutputMassBalanceNew(realization)
   type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_bc(:)
   
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXWORDLENGTH) :: word
   PetscInt :: fid = 86
   PetscInt :: ios
@@ -6063,7 +6063,7 @@ subroutine ComputeFlowFluxVelocityStats(realization)
   type(discretization_type), pointer :: discretization  
   type(output_option_type), pointer :: output_option
   
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
   
   PetscInt :: iphase

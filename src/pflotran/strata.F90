@@ -14,6 +14,7 @@ module Strata_module
     PetscInt :: id                                       ! id of strata
     PetscTruth :: active
     character(len=MAXWORDLENGTH) :: material_property_name  ! character string defining name of material to be applied
+    character(len=MAXSTRINGLENGTH) :: material_property_filename  ! character string defining name of file containing materia ids
     character(len=MAXWORDLENGTH) :: region_name         ! character string defining name of region to be applied
     PetscInt :: imaterial_property                       ! id of material in material array/list
     PetscInt :: iregion                                  ! id of region in region array/list
@@ -62,6 +63,7 @@ function StrataCreate1()
   strata%id = 0
   strata%active = PETSC_TRUE
   strata%material_property_name = ""
+  strata%material_property_filename = ""
   strata%region_name = ""
   strata%iregion = 0
   strata%imaterial_property = 0
@@ -145,7 +147,8 @@ subroutine StrataRead(strata,input,option)
   type(input_type) :: input
   type(option_type) :: option
   
-  character(len=MAXWORDLENGTH) :: keyword, word
+  character(len=MAXWORDLENGTH) :: keyword
+  character(len=MAXSTRINGLENGTH) :: string
 
   input%ierr = 0
   do
@@ -163,9 +166,10 @@ subroutine StrataRead(strata,input,option)
         call InputReadWord(input,option,strata%region_name,PETSC_TRUE)
         call InputErrorMsg(input,option,'region name','STRATA')
       case('MATERIAL')
-        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputReadNChars(input,option,string,MAXSTRINGLENGTH,PETSC_TRUE)
         call InputErrorMsg(input,option,'material property name','STRATA')
-        strata%material_property_name = word
+        strata%material_property_name = string
+        strata%material_property_filename = string
       case('INACTIVE')
         strata%active = PETSC_FALSE
     end select 
