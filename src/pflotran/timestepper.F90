@@ -270,7 +270,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     output_option%first = PETSC_TRUE
     call Output(realization,plot_flag,transient_plot_flag)
     if (output_option%print_permeability) then
-      string = 'permeability.tec'
+      string = 'permeability-' // trim(option%group_prefix) // '.tec'
       call OutputVectorTecplot(string,string,realization,realization%field%perm0_xx)
     endif
   endif
