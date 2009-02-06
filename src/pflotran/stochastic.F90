@@ -205,6 +205,12 @@ subroutine StochasticRun(stochastic,option)
 
     if (option%myrank == option%io_rank .and. option%print_to_file) &
       close(option%fid_out)
+    if (option%myrank == option%io_rank .and. mod(irealization,10) == 0) then
+      write(string,'(i6)') option%id
+      print *, 'Finished with ' // trim(adjustl(string)), irealization, &
+               ' of ', stochastic%num_local_realizations
+    endif
+
 
     call LoggingDestroy()
     

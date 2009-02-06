@@ -4618,8 +4618,8 @@ subroutine OutputMAD(realization)
 #define ALL
 #ifdef ALL
   write(string,'(i6)') option%mygroup_id
-!  filename = trim(option%global_prefix) // 'G' // trim(adjustl(string)) // '.h5'
-  filename = trim(option%global_prefix) // '-MAD.h5'
+  filename = trim(option%global_prefix) // '-MAD-G' // trim(adjustl(string)) // '.h5'
+!  filename = trim(option%global_prefix) // '-MAD.h5'
 
   ! initialize fortran interface
   call h5open_f(hdf5_err)
