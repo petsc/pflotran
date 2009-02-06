@@ -160,7 +160,7 @@ subroutine StochasticRun(stochastic,option)
 
     option%id = stochastic%realization_ids(irealization)
     write(string,'(i6)') option%id
-    option%group_prefix = 'R' // trim(adjustl(string)) // '_'
+    option%group_prefix = 'R' // trim(adjustl(string))
 
     call PetscGetCPUTime(timex(1), ierr)
     call PetscGetTime(timex_wall(1), ierr)
@@ -205,6 +205,12 @@ subroutine StochasticRun(stochastic,option)
 
     if (option%myrank == option%io_rank .and. option%print_to_file) &
       close(option%fid_out)
+    if (option%myrank == option%io_rank .and. mod(irealization,10) == 0) then
+      write(string,'(i6)') option%id
+      print *, 'Finished with ' // trim(adjustl(string)), irealization, &
+               ' of ', stochastic%num_local_realizations
+    endif
+
 
     call LoggingDestroy()
     

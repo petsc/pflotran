@@ -97,6 +97,7 @@ function StrataCreateFromStrata(strata)
   new_strata%id = strata%id
   new_strata%active = strata%active
   new_strata%material_property_name = strata%material_property_name
+  new_strata%material_property_filename = strata%material_property_filename
   new_strata%region_name = strata%region_name
   new_strata%iregion = strata%iregion
 
