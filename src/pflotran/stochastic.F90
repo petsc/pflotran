@@ -160,7 +160,7 @@ subroutine StochasticRun(stochastic,option)
 
     option%id = stochastic%realization_ids(irealization)
     write(string,'(i6)') option%id
-    option%group_prefix = 'R' // trim(adjustl(string)) // '_'
+    option%group_prefix = 'R' // trim(adjustl(string))
 
     call PetscGetCPUTime(timex(1), ierr)
     call PetscGetTime(timex_wall(1), ierr)

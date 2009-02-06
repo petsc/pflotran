@@ -279,7 +279,7 @@ subroutine OutputTecplotBlock(realization)
       write(string,'(i4)') output_option%plot_number  
     endif
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               trim(string) // '.tec'
+               '-' // trim(string) // '.tec'
   endif
   
   if (option%myrank == option%io_rank) then
@@ -614,7 +614,7 @@ subroutine OutputVelocitiesTecplotBlock(realization)
   
   ! open file
   if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '_vel.tec'
+    filename = trim(output_option%plot_name) // '-vel.tec'
   else  
     if (output_option%plot_number < 10) then
       write(string,'("00",i1)') output_option%plot_number  
@@ -626,7 +626,7 @@ subroutine OutputVelocitiesTecplotBlock(realization)
       write(string,'(i4)') output_option%plot_number  
     endif
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               '_vel' // trim(string) // '.tec'
+               '-vel-' // trim(string) // '.tec'
   endif
   
   if (option%myrank == option%io_rank) then
@@ -821,9 +821,9 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
   
   ! open file
   if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '_'
+    filename = trim(output_option%plot_name) // '-'
   else  
-    filename = trim(option%global_prefix) // trim(option%group_prefix) // '_'
+    filename = trim(option%global_prefix) // trim(option%group_prefix) // '-'
   endif
   
   select case(iphase)
@@ -852,7 +852,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
     write(string,'(i4)') output_option%plot_number  
   endif
   
-  filename = trim(filename) // trim(string) // '.tec'
+  filename = trim(filename) // '-' // trim(string) // '.tec'
   
   if (option%myrank == option%io_rank) then
     option%io_buffer = '--> write tecplot velocity flux output file: ' // &
@@ -1151,7 +1151,7 @@ subroutine OutputTecplotPoint(realization)
       write(string,'(i4)') output_option%plot_number  
     endif
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               trim(string) // '.tec'    
+               '-' // trim(string) // '.tec'    
   endif
   
   if (option%myrank == option%io_rank) then
@@ -1419,7 +1419,7 @@ subroutine OutputVelocitiesTecplotPoint(realization)
   
   ! open file
   if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '_vel.tec'
+    filename = trim(output_option%plot_name) // '-vel.tec'
   else  
     if (output_option%plot_number < 10) then
       write(string,'("00",i1)') output_option%plot_number  
@@ -1431,7 +1431,7 @@ subroutine OutputVelocitiesTecplotPoint(realization)
       write(string,'(i4)') output_option%plot_number  
     endif
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               '_vel' // trim(string) // '.tec'
+               '-vel-' // trim(string) // '.tec'
   endif
   
   if (option%myrank == option%io_rank) then
@@ -2099,7 +2099,7 @@ subroutine OutputObservationTecplot(realization)
     else if (option%myrank < 100000) then
       write(string,'(i5)') option%myrank  
     endif
-    filename = 'observation' // trim(option%group_prefix) // '_' // &
+    filename = 'observation' // trim(option%group_prefix) // '-' // &
                trim(string) // '.tec'
   
     ! open file
@@ -3275,7 +3275,7 @@ subroutine OutputVTK(realization)
       write(string,'(i4)') output_option%plot_number  
     endif
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               trim(string) // '.vtk'    
+               '-' // trim(string) // '.vtk'    
   endif
   
   if (option%myrank == option%io_rank) then
@@ -3506,7 +3506,7 @@ subroutine OutputVelocitiesVTK(realization)
   
   ! open file
   if (len_trim(output_option%plot_name) > 2) then
-    filename = trim(output_option%plot_name) // '_vel.tec'
+    filename = trim(output_option%plot_name) // '-vel.tec'
   else  
     if (output_option%plot_number < 10) then
       write(string,'("00",i1)') output_option%plot_number  
@@ -3518,7 +3518,7 @@ subroutine OutputVelocitiesVTK(realization)
       write(string,'(i4)') output_option%plot_number  
     endif
     filename = trim(option%global_prefix) // trim(option%group_prefix) // &
-               '_vel' // trim(string) // '.tec'
+               '-vel-' // trim(string) // '.tec'
   endif
   
   if (option%myrank == option%io_rank) then
@@ -4099,7 +4099,9 @@ subroutine OutputHDF5(realization)
   PetscInt :: i
   PetscInt :: nviz_flow, nviz_tran, nviz_dof
   PetscInt :: current_component
+  PetscMPIInt, parameter :: ON=1, OFF=0
   PetscFortranAddr :: app_ptr
+  PetscTruth :: first
 
   discretization => realization%discretization
   patch => realization%patch
@@ -4108,6 +4110,8 @@ subroutine OutputHDF5(realization)
   field => realization%field
   reaction => realization%reaction
   output_option => realization%output_option
+
+  first = output_option%first
 
   filename = trim(option%global_prefix) // trim(option%group_prefix) // '.h5'
 
@@ -4120,22 +4124,26 @@ subroutine OutputHDF5(realization)
 #ifndef SERIAL_HDF5
      call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
 #endif
-     if (.not.output_option%first) call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id, &
-                                                  hdf5_err,prop_id)
-     if (hdf5_err < 0 .or. output_option%first) then 
-        call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err,H5P_DEFAULT_F, &
-                         prop_id)
+     if (.not.first) then
+       call h5eset_auto_f(OFF,hdf5_err)
+       call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdf5_err,prop_id)
+       first = PETSC_TRUE
+       call h5eset_auto_f(ON,hdf5_err)
+     endif
+     if (first) then 
+        call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err, &
+                         H5P_DEFAULT_F,prop_id)
      endif
      call h5pclose_f(prop_id,hdf5_err)
 
-     if (output_option%first) then
+     if (first) then
        option%io_buffer = '--> creating hdf5 output file: ' // filename
      else
        option%io_buffer = '--> appending to hdf5 output file: ' // filename
      endif
      call printMsg(option)
 
-     if (output_option%first) then
+     if (first) then
 
         ! create a group for the coordinates data set
         string = "Coordinates"
@@ -4244,7 +4252,7 @@ subroutine OutputHDF5(realization)
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
           else
              call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             if(output_option%first) then
+             if(first) then
                 call SAMRRegisterForViz(app_ptr,samr_vec,current_component,TEMPERATURE,ZERO_INTEGER)
              endif
              current_component=current_component+1
@@ -4260,7 +4268,7 @@ subroutine OutputHDF5(realization)
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
           else
              call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             if(output_option%first) then
+             if(first) then
                 call SAMRRegisterForViz(app_ptr,samr_vec,current_component,PRESSURE,ZERO_INTEGER)
              endif
              current_component=current_component+1
@@ -4276,7 +4284,7 @@ subroutine OutputHDF5(realization)
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)  
           else
              call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             if(output_option%first) then
+             if(first) then
                 call SAMRRegisterForViz(app_ptr,samr_vec,current_component,LIQUID_SATURATION,ZERO_INTEGER)
              endif
              current_component=current_component+1
@@ -4292,7 +4300,7 @@ subroutine OutputHDF5(realization)
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
           else
              call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             if(output_option%first) then
+             if(first) then
                 call SAMRRegisterForViz(app_ptr,samr_vec,current_component,GAS_SATURATION,ZERO_INTEGER)
              endif
              current_component=current_component+1
@@ -4308,7 +4316,7 @@ subroutine OutputHDF5(realization)
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
              call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             if(output_option%first) then
+             if(first) then
                 call SAMRRegisterForViz(app_ptr,samr_vec,current_component,LIQUID_ENERGY,ZERO_INTEGER)
              endif
              current_component=current_component+1
@@ -4324,7 +4332,7 @@ subroutine OutputHDF5(realization)
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
              call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             if(output_option%first) then
+             if(first) then
                 call SAMRRegisterForViz(app_ptr,samr_vec,current_component,GAS_ENERGY,ZERO_INTEGER)
              endif
              current_component=current_component+1
@@ -4341,7 +4349,7 @@ subroutine OutputHDF5(realization)
                call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
             else
                call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             if(output_option%first) then
+             if(first) then
                 call SAMRRegisterForViz(app_ptr,samr_vec,current_component,LIQUID_MOLE_FRACTION,i)
              endif
                current_component=current_component+1
@@ -4359,7 +4367,7 @@ subroutine OutputHDF5(realization)
                 call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
             else
                call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             if(output_option%first) then
+             if(first) then
                 call SAMRRegisterForViz(app_ptr,samr_vec,current_component,GAS_MOLE_FRACTION,i)
              endif
                current_component=current_component+1
@@ -4383,7 +4391,7 @@ subroutine OutputHDF5(realization)
              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
           else
              call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-             if(output_option%first) then
+             if(first) then
                 call SAMRRegisterForViz(app_ptr,samr_vec,current_component,PHASE,ZERO_INTEGER)
              endif
              current_component=current_component+1
@@ -4404,7 +4412,7 @@ subroutine OutputHDF5(realization)
            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         else
            call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-           if(output_option%first) then
+           if(first) then
               call SAMRRegisterForViz(app_ptr,samr_vec,current_component,PRIMARY_MOLARITY,i)
            endif
            current_component=current_component+1
@@ -4417,7 +4425,7 @@ subroutine OutputHDF5(realization)
            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         else
            call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-           if(output_option%first) then
+           if(first) then
               call SAMRRegisterForViz(app_ptr,samr_vec,current_component,MINERAL_VOLUME_FRACTION,i)
            endif
            current_component=current_component+1
@@ -4434,7 +4442,7 @@ subroutine OutputHDF5(realization)
        call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
     else
        call SAMRCopyVecToVecComponent(global_vec,samr_vec, current_component)
-       if(output_option%first) then
+       if(first) then
           call SAMRRegisterForViz(app_ptr,samr_vec,current_component,MATERIAL_ID,ZERO_INTEGER)
        endif
        current_component=current_component+1
@@ -4610,7 +4618,8 @@ subroutine OutputMAD(realization)
 #define ALL
 #ifdef ALL
   write(string,'(i6)') option%mygroup_id
-  filename = trim(option%global_prefix) // 'G' // trim(adjustl(string)) // '.h5'
+!  filename = trim(option%global_prefix) // 'G' // trim(adjustl(string)) // '.h5'
+  filename = trim(option%global_prefix) // '-MAD.h5'
 
   ! initialize fortran interface
   call h5open_f(hdf5_err)
@@ -4723,7 +4732,7 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   option => realization%option
   field => realization%field
   output_option => realization%output_option  
-  
+
   ! in a few cases (i.e. for small test problems), some processors may
   ! have no velocities to print.  This results in zero-length arrays
   ! in collective H5Dwrite().  To avoid, we switch to independent
@@ -5460,7 +5469,7 @@ subroutine OutputMassBalance(realization)
     else if (output_option%plot_number < 10000) then
       write(string,'(i4,".tec")') output_option%plot_number  
     endif
-    filename = 'mass' // trim(option%group_prefix) // trim(string)
+    filename = 'mass-' // trim(option%group_prefix) // '-' //trim(string)
   endif
   
   if (option%myrank == option%io_rank) then
