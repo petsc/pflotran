@@ -696,7 +696,6 @@ subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
       dmc_ptr => discretization%dmc_ntrandof
   end select  
    
-  allocate(dmc_ptr(mg_levels))
   allocate(interpolation(mg_levels))
 
   select case(discretization%itype)
