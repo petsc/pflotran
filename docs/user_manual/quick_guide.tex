@@ -1070,20 +1070,72 @@ END
 
 \protect\hypertarget{target_region}{}
 
+
 \subsection{Keyword: REGION}
+\subsubsection{Description}
+The REGION card defines a set of grid cells encompassed by a volume or intersected by a plane or point, or a list of grid cell ids.  The REGION name can then be used to link this set of grid cells to material properties, strata, boundary and initial conditions, source sinks, observation points, etc.  Although a region may be defined though the use of IJK indices using the BLOCK keyword, the user is encouraged to define regions either through COORDINATES or lists read in from an HDF5 file in order to minimize the dependence of the input file on grid resolution.  In the case of the FILE keyword, a list of grid cell ids is read from an HDF5 file where the region\_name defines the HDF5 data set.  It should be noted that given a region defined by a plane or point shared by two grid cells (e.g. a plane defining the surface between two grid cells) PFLOTRAN will select the upwind cell(s) as the region.
+
 \shadowbox{
 \begin{minipage}{6.5in}
 \begin{deflist}{0000000000}
-\item[REGION] region\_name
-\item  BLOCK i1 i2 j1 j2 k1 k2
-\item  COORDINATE x-coordinate y-coordinate z-coordinate
-\item  FILE filename
-\item  LIST (not implemented)
-\item  FACE [WEST, EAST, NORTH, SOUTH, BOTTOM, TOP]
-\item END
+\item[REGION] Followed by region\_name, begins a region entry
+\item[BLOCK] Defines a volumetric, planar, or point region through IJK indices: i1 i2 j1 j2 k1 k2
+\item[COORDINATE] Defines a point region through coordinates in 3D space
+\item[COORDINATES] Defines a volumetric, planar, or point region between two coordinates in space
+\item[FILE] Defines an HDF5 file within which a dataset named region\_name contains a list of grid cells corresponding to a region.
+\item[LIST] (to be implemented)
+\item[FACE] (structured grids only) Defines the face of the grid cell to which boundary conditions are connected (i.e. WEST, EAST, NORTH, SOUTH, BOTTOM, TOP])
+\item[END] Ends the region entry
 \end{deflist}
 \end{minipage}
 }
+\subsubsection{Examples}
+\begin{verbatim}
+REGION source_zone
+BLOCK 3 5 15 16 2 3
+END
+
+REGION source_zone
+BLOCK
+3 5 15 16 2 3
+END
+
+REGION west_boundary
+BLOCK 1 1 1 30 1 50
+FACE WEST
+END
+
+REGION source_zone
+COORDINATES
+50. 10. 10.
+60. 15. 15.
+/
+END
+
+REGION river_boundary
+FILE ./regions.h5
+FACE EAST
+END
+
+REGION well
+COORDINATE 50. 10. 10.
+END
+
+REGION well
+COORDINATE
+50. 10. 10.
+END
+
+REGION west_boundary
+COORDINATES
+0. 0. 0.
+0. 10. 10.
+/
+FACE WEST
+END
+\end{verbatim}
+
+
 
 %========================================================================
 
