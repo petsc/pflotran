@@ -4127,7 +4127,7 @@ subroutine OutputHDF5(realization)
      if (.not.first) then
        call h5eset_auto_f(OFF,hdf5_err)
        call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdf5_err,prop_id)
-       first = PETSC_TRUE
+       if (hdf5_err /= 0) first = PETSC_TRUE
        call h5eset_auto_f(ON,hdf5_err)
      endif
      if (first) then 
