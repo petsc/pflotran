@@ -97,6 +97,8 @@ module Option_module
     PetscReal :: reference_porosity
     PetscReal :: reference_saturation
     
+    PetscInt :: itemp_ref
+    
     PetscTruth :: initialize_with_molality
         
 !   table lookup
