@@ -1,0 +1,167 @@
+MODE MPHASE
+:
+:=========================== discretization ===================================
+GRID
+TYPE structured
+ORIGIN 0.d0 0.d0 0.d0
+NXYZ 107  1  51
+BOUNDS
+0.d0 321.d0
+0.d0 1.d0
+0.d0 51.d0
+/
+END
+:
+:=========================== solver options ===================================
+TIMESTEPPER
+TS_ACCELERATION 8
+/
+
+NEWTON_SOLVER FLOW
+ATOL 1D-12
+RTOL 1D-12
+STOL 1D-30
+DTOL 1D15
+ITOL 1D-8
+MAXIT 25
+MAXF 100
+END
+:
+
+:=========================== times ============================================
+TIME
+FINAL_TIME 5.d3 y
+INITIAL_TIMESTEP_SIZE 1.d-2 y
+MAXIMUM_TIMESTEP_SIZE 50.d0 y
+/
+
+:=========================== output options ===================================
+OUTPUT
+:MASS_BALANCE
+TIMES y 1.0  5.  10. 50.  100.  500.  1000.  5000.
+FORMAT TECPLOT BLOCK
+:VELOCITIES
+/
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY 
+DIFFUSION_COEFFICIENT 1.d-9
+/
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+ID 1
+POROSITY 0.15d0
+TORTUOSITY 1d-1
+ROCK_DENSITY 2.65E3
+SPECIFIC_HEAT 1E3
+THERMAL_CONDUCTIVITY_DRY 0.5
+THERMAL_CONDUCTIVITY_WET 0.5 
+SATURATION_FUNCTION sf2
+PERMEABILITY
+PERM_X 1.d-15
+PERM_Y 1.d-15
+PERM_Z 1.d-17
+/
+/
+:=========================== saturation functions =============================
+SATURATION_FUNCTION sf2
+PERMEABILITY_FUNCTION_TYPE NMT_EXP
+SATURATION_FUNCTION_TYPE NMT_EXP
+RESIDUAL_SATURATION LIQUID_PHASE 0.1
+RESIDUAL_SATURATION GAS_PHASE 0.0
+LAMBDA 0.762d0
+ALPHA 7.5d-4
+MAX_CAPILLARY_PRESSURE 1.d6
+BETAC 2.d0
+POWER 7.d0
+/
+
+:=========================== regions ==========================================
+REGION all
+COORDINATES
+0.d0 0.d0 0.d0
+321.D0 1.D0  51.D0
+/
+END
+
+REGION top
+FACE TOP
+COORDINATES
+0.d0 0.d0  51.d0
+321.d0 1.d0 51.d0
+/
+END
+
+REGION well
+COORDINATES
+160.d0 1.d0 20.d0
+160.d0 1.d0 20.d0
+/
+END
+
+:=========================== flow conditions ==================================
+FLOW_CONDITION initial
+UNITS Pa,C,M,yr
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE zero_gradient
+CONCENTRATION zero_gradient
+/
+IPHASE 1
+PRESSURE 2D7 2D7
+TEMPERATURE 50 C
+CONCENTRATION 1d-6 M
+ENTHALPY 0.d0 0.d0
+/
+
+FLOW_CONDITION top
+UNITS Pa,C,M,yr
+TYPE
+PRESSURE dirichlet
+TEMPERATURE zero_gradient
+CONCENTRATION zero_gradient
+/
+IPHASE 1
+PRESSURE 2D7 2D7
+TEMPERATURE 50
+CONCENTRATION 1d-6
+ENTHALPY 0.d0 0.d0
+/
+
+FLOW_CONDITION source
+UNITS Pa,C,M,yr
+TYPE
+PRESSURE mass_rate
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+/
+PRESSURE file c2i.txt  ! kg/s
+TEMPERATURE 50.d0
+CONCENTRATION 0.D0
+ENTHALPY 0.d0 0.d0
+/
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+FLOW_CONDITION initial
+REGION all
+END
+
+: top boundary condition
+BOUNDARY_CONDITION top
+FLOW_CONDITION top
+REGION top
+END
+
+SOURCE_SINK
+FLOW_CONDITION source
+REGION well
+END
+:
+:=========================== stratigraphy couplers ============================
+STRATA
+REGION all
+MATERIAL soil1
+END
