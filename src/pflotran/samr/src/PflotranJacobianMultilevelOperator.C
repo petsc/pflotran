@@ -6,7 +6,9 @@
 #include "tbox/TimerManager.h"
 #include "CCellDataFactory.h"
 #include "RefineAlgorithm.h"
+#include "CoarsenAlgorithm.h"
 #include "HierarchyCCellDataOpsReal.h"
+#include "CartesianGridGeometry.h"
 
 namespace SAMRAI{
 #ifndef iC
@@ -32,8 +34,8 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
    d_reset_ghost_values           = true;
    d_face_coarsen_op_str          = "CONSERVATIVE_COARSEN";
    d_cell_coarsen_op_str          = "CONSERVATIVE_COARSEN";
-   d_cell_refine_op_str           = "CONSTANT_REFINE";
-   d_face_refine_op_str           = "CONSTANT_REFINE";
+   d_cell_refine_op_str           = "CCELL_CONSTANT_REFINE";
+   d_face_refine_op_str           = "CCELL_CONSTANT_REFINE";
    d_flux.setNull();
    
    d_patch                        = NULL;
@@ -74,10 +76,18 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
                                                                    0, d_hierarchy->getFinestLevelNumber());
    initializeInternalVariableData();
 
+   tbox::Pointer<geom::CartesianGridGeometry<NDIM> > grid_geometry = d_hierarchy->getGridGeometry();
+
+   d_soln_refine_op =  grid_geometry->lookupRefineOperator(d_scratch_variable, d_cell_refine_op_str);
+
+   d_soln_coarsen_op = grid_geometry->lookupCoarsenOperator(d_scratch_variable, d_cell_coarsen_op_str);
+
    d_GlobalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
+   d_CoarsenSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
    for(int ln=0; ln<hierarchy_size; ln++)
    {
       d_GlobalToLocalRefineSchedule[ln].setNull();
+      d_CoarsenSchedule[ln].setNull();
    }
 
 }
@@ -172,12 +182,12 @@ PflotranJacobianMultilevelOperator::initializeInternalVariableData(void)
                                                                                                                  d_hierarchy,
                                                                                                                  0, d_hierarchy->getFinestLevelNumber());
 
-   tbox::Pointer< pdat::CCellVariable<NDIM,double> > scratchVar = new pdat::CCellVariable<NDIM,double>(vecname,d_ndof);
-   int scratch_var_id = variable_db->registerVariableAndContext(scratchVar,
+   d_scratch_variable = new pdat::CCellVariable<NDIM,double>(vecname,d_ndof);
+   int scratch_var_id = variable_db->registerVariableAndContext(d_scratch_variable,
                                                                 scratch_cxt,
                                                                 hier::IntVector<NDIM>(1));
    
-   scratch_vector->addComponent(scratchVar,
+   scratch_vector->addComponent(d_scratch_variable,
                                 scratch_var_id, -1, d_math_op);
    
 
@@ -266,7 +276,7 @@ PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> d
       
       if(d_use_cf_interpolant)
       {
-         d_cell_refine_op_str = "CONSTANT_REFINE";
+         d_cell_refine_op_str = "CCELL_CONSTANT_REFINE";
 
          if (db->keyExists("variable_order_interpolation")) 
          {
@@ -610,6 +620,7 @@ PflotranJacobianMultilevelOperator::initializeScratchVector( Vec x )
 				   dest_id,
 				   d_soln_refine_op);
 
+
     // now refine and set physical boundaries also
     for (int ln = 0; ln < hierarchy->getNumberOfLevels(); ln++ ) 
     {
@@ -651,9 +662,30 @@ PflotranJacobianMultilevelOperator::initializeScratchVector( Vec x )
           }
       }
     }
-
+#if 1
     // should add code to coarsen variables
+    xfer::CoarsenAlgorithm<NDIM> cell_coarsen;
+    cell_coarsen.registerCoarsen(dest_id, dest_id, d_soln_coarsen_op);
 
+    for (int ln = hierarchy->getNumberOfLevels()-2; ln>=0; ln-- ) 
+    {
+      tbox::Pointer<hier::PatchLevel<NDIM> > clevel = hierarchy->getPatchLevel(ln);
+      tbox::Pointer<hier::PatchLevel<NDIM> > flevel = hierarchy->getPatchLevel(ln+1);
+
+      if((!d_CoarsenSchedule[ln].isNull()) && cell_coarsen.checkConsistency(d_CoarsenSchedule[ln]))
+      {
+         cell_coarsen.resetSchedule(d_CoarsenSchedule[ln]);
+      }
+      else
+      {
+         d_CoarsenSchedule[ln] = cell_coarsen.createSchedule(clevel, 
+                                                             flevel);
+      }
+      
+      d_CoarsenSchedule[ln]->coarsenData();            
+      
+    }
+#endif
     t_interpolate_variable->stop();
 }
 

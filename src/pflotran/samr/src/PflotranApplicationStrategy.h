@@ -16,6 +16,7 @@
 #include "RefinePatchStrategy.h"
 #include "RefineOperator.h"
 #include "CoarsenOperator.h"
+#include "CoarsenSchedule.h"
 #include "SAMRAIVectorReal.h"
 #include "tbox/Serializable.h"
 #include "CartesianGridGeometry.h"
@@ -196,6 +197,8 @@ private:
 
    tbox::Array< tbox::Array< tbox::Pointer< xfer::RefineSchedule<NDIM> > > > d_GlobalToLocalRefineSchedule;
    tbox::Array< tbox::Array< tbox::Pointer< xfer::RefineSchedule<NDIM> > > > d_LocalToLocalRefineSchedule;
+
+   tbox::Array< tbox::Array< tbox::Pointer< xfer::CoarsenSchedule<NDIM> > > > d_CoarsenSchedule;
 
    tbox::Pointer<hier::VariableContext> d_application_ctx;
 
