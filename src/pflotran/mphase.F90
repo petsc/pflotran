@@ -159,7 +159,7 @@ subroutine MphaseSetupPatch(realization)
   type(grid_type), pointer :: grid
   type(coupler_type), pointer :: boundary_condition
 
-  PetscInt :: ghosted_id, iconn, sum_connection
+  PetscInt :: ghosted_id, iconn, sum_connection, ipara
   type(Mphase_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)  
   
   option => realization%option
@@ -167,11 +167,40 @@ subroutine MphaseSetupPatch(realization)
   grid => patch%grid
   print *,' mph setup get patch'
   patch%aux%Mphase => MphaseAuxCreate()
+
+  print *,' mph setup get Aux 1'
   
-  option%io_buffer = 'Before Mphase can be run, the thc_parameter object ' // &
-                     'must be initialized with the proper variables ' // &
-                     'MphaseAuxCreate() is called anyhwere.'
-  call printErrMsg(option)  
+!  option%io_buffer = 'Before Mphase can be run, the thc_parameter object ' // &
+!                     'must be initialized with the proper variables ' // &
+!                     'MphaseAuxCreate() is called anyhwere.'
+!  call printErrMsg(option)  
+
+! mphase_parameters create *********************************************
+! Sir
+  allocate(patch%aux%Mphase%Mphase_parameter%sir(option%nphase, &
+                                  size(realization%saturation_function_array)))
+   print *,' mph setup get patch: sir, allocated'                                
+  do ipara = 1, size(realization%saturation_function_array)
+    patch%aux%Mphase%mphase_parameter%sir(:,realization%saturation_function_array(ipara)%ptr%id) = &
+      realization%saturation_function_array(ipara)%ptr%Sr(:)
+  enddo
+  print *,' mph setup get patch: sir'
+! dencpr  
+  allocate(patch%aux%Mphase%Mphase_parameter%dencpr(size(realization%material_property_array)))
+  do ipara = 1, size(realization%material_property_array)
+    patch%aux%Mphase%mphase_parameter%dencpr(realization%material_property_array(ipara)%ptr%id) = &
+      realization%material_property_array(ipara)%ptr%rock_density*&
+      realization%material_property_array(ipara)%ptr%specific_heat
+  enddo
+! ckwet
+  allocate(patch%aux%Mphase%Mphase_parameter%ckwet(size(realization%material_property_array)))
+  do ipara = 1, size(realization%material_property_array)
+    patch%aux%Mphase%mphase_parameter%dencpr(realization%material_property_array(ipara)%ptr%id) = &
+      realization%material_property_array(ipara)%ptr%thermal_conductivity_wet
+  enddo
+  
+
+! mphase_parameters create_end *****************************************
   
   print *,' mph setup get Aux'
   ! allocate aux_var data structures for all grid cells  
@@ -594,8 +623,8 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
       global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
        global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
-     print *,'UPdate mphase and gloable vars', ghosted_id, global_aux_vars(ghosted_id)%den_kg(:), &
-         aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
+    ! print *,'UPdate mphase and gloable vars', ghosted_id, global_aux_vars(ghosted_id)%den_kg(:), &
+    !     aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
    !    global_aux_vars(ghosted_id)%den_kg_store
   !    global_aux_vars(ghosted_id)%mass_balance 
   !    global_aux_vars(ghosted_id)%mass_balance_delta                   
@@ -819,6 +848,9 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
 !                       realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
 !                       realization%fluid_properties,option)
 !    iphase_loc_p(ghosted_id) = iphase
+   ! print *, 'MphaseUpdateFixedAccumPatch1'
+    !if(.not.associated(aux_vars(ghosted_id))) print *,'no var'
+    if(.not.associated(mphase_parameter%dencpr)) print *,'no para'    
     call MphaseAccumulation(aux_vars(ghosted_id)%aux_var_elem(0), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
@@ -1746,6 +1778,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
  
  
 ! Multiphase flash calculation is more expansive, so calculate once per iterration
+! print *, 'Mpahse residual patch 1' 
 #if 1
   ! Pertubations for aux terms --------------------------------
   do ng = 1, grid%ngmax
@@ -1803,6 +1836,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
             realization%fluid_properties,option)
      endif
   enddo
+! print *,'mphase resi patch: end numerical increments'
 #endif
 
   Resold_AR=0.D0; ResOld_FL=0.D0; r_p = 0.d0
