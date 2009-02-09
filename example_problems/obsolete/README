@@ -1,0 +1,5 @@
+The subdirectories present in this directory contain example problems that 
+need updating and do not work with the latest version of PFLOTRAN.
+
+As examples are updated to work with the latest version, they should be 
+moved back out of this directory.
