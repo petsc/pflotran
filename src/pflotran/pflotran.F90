@@ -33,8 +33,11 @@
   use Realization_module
   use Timestepper_module
   use Option_module
+  use Input_module
   use Init_module
   use Logging_module
+  use Stochastic_module
+  use Stochastic_Aux_module  
   
   implicit none
 
@@ -43,185 +46,81 @@
 
   PetscLogDouble :: timex(4), timex_wall(4)
 
-  PetscMPIInt :: global_rank, global_commsize, global_comm, global_group
-  PetscMPIInt :: myrank, mycommsize, mycomm, mygroup
-  PetscMPIInt :: mycolor, mykey
-  PetscMPIInt :: io_rank
+  PetscTruth :: truth
+  PetscTruth :: option_found  
+  PetscInt :: test_int
+  PetscErrorCode :: ierr
+  character(len=MAXSTRINGLENGTH) :: string
 
-  PetscInt :: i
-  PetscInt :: out_unit
-  PetscInt :: igroup, irealization
-  PetscInt :: num_groups
-  PetscInt :: local_commsize, offset, delta, remainder
-
-  PetscInt :: num_realizations
-  PetscInt :: num_local_realizations
-  PetscInt :: realization_id
-  PetscTruth :: screen_output, file_output, truth
-  PetscInt, allocatable :: realization_ids(:)
-
-  PetscInt :: ierr
-  PetscInt :: stage(10)
-  PetscTruth :: option_found  ! For testing presence of a command-line option.
-  character(len=MAXSTRINGLENGTH) :: pflotranin
-  character(len=MAXWORDLENGTH) :: string
-
-  
+  type(stochastic_type), pointer :: stochastic
   type(simulation_type), pointer :: simulation
   type(realization_type), pointer :: realization
   type(option_type), pointer :: option
   
-  realization_id = 0
-  num_groups = 1
-  num_realizations = 1
-  screen_output = PETSC_TRUE
-  file_output = PETSC_TRUE
+  option => OptionCreate()
+  option%fid_out = IUNIT2
 
-#ifdef GLENN
-  ! set up global and local communicator groups, processor ranks, and group sizes
   call MPI_Init(ierr)
-  global_comm = MPI_COMM_WORLD
-  call MPI_Comm_rank(MPI_COMM_WORLD,global_rank, ierr)
-  call MPI_Comm_size(MPI_COMM_WORLD,global_commsize,ierr)
-  call MPI_Comm_group(MPI_COMM_WORLD,global_group,ierr)
+  option%global_comm = MPI_COMM_WORLD
+  call MPI_Comm_rank(MPI_COMM_WORLD,option%global_rank, ierr)
+  call MPI_Comm_size(MPI_COMM_WORLD,option%global_commsize,ierr)
+  call MPI_Comm_group(MPI_COMM_WORLD,option%global_group,ierr)
+  option%mycomm = option%global_comm
+  option%myrank = option%global_rank
+  option%mycommsize = option%global_commsize
+  option%mygroup = option%global_group
 
-  PETSC_COMM_WORLD = global_comm
-  call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
-  ! query user for number of communicator groups and realizations
-  option_found = PETSC_FALSE
-  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-num_groups', &
-                          i,option_found, ierr)
-  if (option_found) num_groups = i
-  option_found = PETSC_FALSE
-  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-num_realizations', &
-                          i,option_found, ierr)
-  if (option_found) num_realizations = i
+  ! check for non-default input filename
+  option%input_filename = "pflotran.in"
+  string = '-pflotranin'
+  call InputGetCommandLineString(string,option%input_filename,option_found,option)
 
-  local_commsize = global_commsize / num_groups
-  remainder = global_commsize - num_groups * local_commsize
-  offset = 0
-  do igroup = 1, num_groups
-    delta = local_commsize
-    if (igroup < remainder) delta = delta + 1
-    if (global_rank >= offset .and. global_rank < offset + delta) exit
-    offset = offset + delta
-  enddo
-  mycolor = igroup
-  mykey = global_rank - offset
-  call MPI_Comm_split(MPI_COMM_WORLD,mycolor,mykey,mycomm,ierr)
-  call MPI_Comm_group(mycomm,mygroup,ierr)
-  PETSC_COMM_WORLD = mycomm
-  call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
-  call MPI_Comm_rank(mycomm,myrank, ierr)
-  call MPI_Comm_size(mycomm,mycommsize,ierr)
+  string = '-screen_output'
+  call InputGetCommandLineTruth(string,option%print_to_screen,option_found,option)
 
-  ! divvy up the realizations
-  num_local_realizations = num_realizations / num_groups
-  remainder = num_realizations - num_groups * num_local_realizations
-  offset = 0
-  do i = 1, igroup-1
-    delta = num_local_realizations
-    if (i < remainder) delta = delta + 1
-    offset = offset + delta
-  enddo
-  
-  if (igroup < remainder) num_local_realizations = num_local_realizations + 1
-  allocate(realization_ids(num_local_realizations))
-  realization_ids = 0
-  do i = 1, num_local_realizations
-    realization_ids(i) = offset + i
-  enddo
+  string = '-file_output'
+  call InputGetCommandLineTruth(string,option%print_to_file,option_found,option)
 
-#else  
-  call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
-  global_comm = PETSC_COMM_WORLD
-  call MPI_Comm_rank(PETSC_COMM_WORLD,global_rank, ierr)
-  call MPI_Comm_size(PETSC_COMM_WORLD,global_commsize,ierr)
-  call MPI_Comm_group(PETSC_COMM_WORLD,global_group,ierr)
-  mycomm = global_comm
-  myrank = global_rank
-  mycommsize = global_commsize
-  mygroup = global_group
-  num_local_realizations = num_realizations
-#endif  
+  string = '-stochastic'
+  call InputGetCommandLineTruth(string,truth,option_found,option)
+  if (option_found) stochastic => StochasticCreate()
 
-  option_found = PETSC_FALSE
-  call PetscOptionsGetTruth(PETSC_NULL_CHARACTER, '-screen_output', &
-                          truth,option_found, ierr)
-  if (option_found) screen_output = truth
+  call InitReadStochasticCardFromInput(stochastic,option)
 
-  option_found = PETSC_FALSE
-  call PetscOptionsGetTruth(PETSC_NULL_CHARACTER, '-file_output', &
-                          truth,option_found, ierr)
-  if (option_found) file_output = truth
+  if (associated(stochastic)) then
+    call StochasticInit(stochastic,option)
+    call StochasticRun(stochastic,option)
+  else
 
-  option_found = PETSC_FALSE
-  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-realization_id', &
-                          i,option_found, ierr)
-  if (option_found) realization_id = i
-
-  do irealization = 1, num_local_realizations
+    PETSC_COMM_WORLD = MPI_COMM_WORLD
+    call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
 
     call LoggingCreate()
 
-    simulation => SimulationCreate()
+    simulation => SimulationCreate(option)
     realization => simulation%realization
-    option => realization%option
 
-    if (realization_id > 0) option%id = realization_id
-#ifdef GLENN    
-    option%id = realization_ids(irealization)
-#endif
-
-    option%fid_out = IUNIT2
-    option%print_to_screen = screen_output
-    option%print_to_file = file_output
-    out_unit = option%fid_out
-
-    option%global_comm = global_comm
-    option%global_rank = global_rank
-    option%global_commsize = global_commsize
-    option%global_group = global_group
-
-    option%mycomm = mycomm
-    option%myrank = myrank
-    option%mycommsize = mycommsize
-    option%mygroup = mygroup
-
-#ifdef GLENN
-    if (num_realizations > 1) then
-      write(string,'(i6)') realization_ids(irealization)
-      option%group_prefix = 'R' // trim(adjustl(string)) // '_'
-    endif
-#endif
-
-    call PetscOptionsGetString(PETSC_NULL_CHARACTER, "-pflotranin", &
-                               pflotranin, option_found, ierr)
-    if(.not.option_found) pflotranin = "pflotran.in"
-    
     call OptionCheckCommandLine(option)
 
     call PetscGetCPUTime(timex(1), ierr)
     call PetscGetTime(timex_wall(1), ierr)
     option%start_time = timex_wall(1)
 
-    call Init(simulation,pflotranin)
+    call Init(simulation)
 
     call StepperRun(simulation%realization,simulation%flow_stepper, &
                     simulation%tran_stepper)
 
   ! Clean things up.
-    io_rank = option%io_rank
-    screen_output = option%print_to_screen
     call SimulationDestroy(simulation)
 
   ! Final Time
     call PetscGetCPUTime(timex(2), ierr)
     call PetscGetTime(timex_wall(2), ierr)
     
-    if (myrank == io_rank) then
+    if (option%myrank == option%io_rank) then
 
-      if (screen_output) then
+      if (option%print_to_screen) then
         write(*,'(/," CPU Time:", 1pe12.4, " [sec] ", &
         & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
           timex(2)-timex(1), (timex(2)-timex(1))/60.d0, &
@@ -232,27 +131,30 @@
           timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
           (timex_wall(2)-timex_wall(1))/3600.d0
       endif
-      if (file_output) then
-        write(out_unit,'(/," CPU Time:", 1pe12.4, " [sec] ", &
+      if (option%print_to_file) then
+        write(option%fid_out,'(/," CPU Time:", 1pe12.4, " [sec] ", &
         & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
           timex(2)-timex(1), (timex(2)-timex(1))/60.d0, &
           (timex(2)-timex(1))/3600.d0
 
-        write(out_unit,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
+        write(option%fid_out,'(/," Wall Clock Time:", 1pe12.4, " [sec] ", &
         & 1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
           timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
           (timex_wall(2)-timex_wall(1))/3600.d0
       endif
     endif
 
-    if (myrank == io_rank .and. file_output) close(out_unit)
+    if (option%myrank == option%io_rank .and. option%print_to_file) &
+      close(option%fid_out)
 
     call LoggingDestroy()
     
-  enddo
+  endif
   
-  call MPI_Barrier(MPI_COMM_WORLD,ierr)
+  call PetscOptionsSetValue('-options_left','no',ierr);
+
+  call OptionDestroy(option)
   call PetscFinalize (ierr)
-  if (allocated(realization_ids)) deallocate(realization_ids)
+  call MPI_Finalize (ierr)
 
   end program pflotran

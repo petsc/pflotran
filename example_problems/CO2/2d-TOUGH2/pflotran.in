@@ -1,12 +1,22 @@
 MODE MPHASE
 :
+:=========================== discretization ===================================
 GRID
 TYPE structured
+ORIGIN 0.d0 0.d0 0.d0
 NXYZ 107  1  51
+BOUNDS
+0.d0 321.d0
+0.d0 1.d0
+0.d0 51.d0
+/
 END
 :
-ORIGIN 0.d0 0.d0 0.d0
-:
+:=========================== solver options ===================================
+TIMESTEPPER
+TS_ACCELERATION 8
+/
+
 NEWTON_SOLVER FLOW
 ATOL 1D-12
 RTOL 1D-12
@@ -17,119 +27,141 @@ MAXIT 25
 MAXF 100
 END
 :
-:
-TECP !VELO FLUX
-:
-DXYZ
-3.d0
-1.d0
-1.d0
-:
-:  d0[m^2/s] delhaq[kJ/mol]
-DIFF  1.D-16       12.6
-:
-:
-SATURATION_FUNCTIONS
-:id itype swir    sgir    lambda  alpha    pcwmax  betac  pwr
- 1   4     0.1  0.D0     0.762   7.5d-4     1.d6   2.d0    7.0
+
+:=========================== times ============================================
+TIME
+FINAL_TIME 5.d3 y
+INITIAL_TIMESTEP_SIZE 1.d-2 y
+MAXIMUM_TIMESTEP_SIZE 50.d0 y
+/
+
+:=========================== output options ===================================
+OUTPUT
+:MASS_BALANCE
+TIMES y 1.0  5.  10. 50.  100.  500.  1000.  5000.
+FORMAT TECPLOT BLOCK
+:VELOCITIES
+/
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY 
+DIFFUSION_COEFFICIENT 1.d-9
+/
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+ID 1
+POROSITY 0.15d0
+TORTUOSITY 1d-1
+ROCK_DENSITY 2.65E3
+SPECIFIC_HEAT 1E3
+THERMAL_CONDUCTIVITY_DRY 0.5
+THERMAL_CONDUCTIVITY_WET 0.5 
+SATURATION_FUNCTION sf2
+PERMEABILITY
+PERM_X 1.d-15
+PERM_Y 1.d-15
+PERM_Z 1.d-17
+/
+/
+:=========================== saturation functions =============================
+SATURATION_FUNCTION sf2
+PERMEABILITY_FUNCTION_TYPE NMT_EXP
+SATURATION_FUNCTION_TYPE NMT_EXP
+RESIDUAL_SATURATION LIQUID_PHASE 0.1
+RESIDUAL_SATURATION GAS_PHASE 0.0
+LAMBDA 0.762d0
+ALPHA 7.5d-4
+MAX_CAPILLARY_PRESSURE 1.d6
+BETAC 2.d0
+POWER 7.d0
+/
+
+:=========================== regions ==========================================
+REGION all
+COORDINATES
+0.d0 0.d0 0.d0
+321.D0 1.D0  51.D0
+/
 END
 
-THERMAL_PROPERTIES
-:ithm rho    cpr     ckdry cksat tau cdiff   cexp
-  1   2.65e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
-END
-:
-MATERIALS
-:name  id icap ithm por  tau    permx  permy  permz  permpwr
-soil1  1  1    1    0.15  0.1  1.d-15 1.d-15 1.d-17 1.d0
-:soil2 2  1    1    0.25 0.5 1.d-13 1.d-13 1.d-13 1.d0
-END
-:
-:
-TIME y
-1.  5. 10.  50. 100. 500. 1000.  5000.
-:
-:
-DTST 1.d-2
-5000.  50d0
-:
-:
-REGION all
-BLOCK 1 107 1 1 1 51
-END
-:
 REGION top
-BLOCK 1 107 1 1 51 51
-FACE top
+FACE TOP
+COORDINATES
+0.d0 0.d0  51.d0
+321.d0 1.d0 51.d0
+/
 END
-:
-REGION inj
-BLOCK 54 54 1 1 20 20
+
+REGION well
+COORDINATES
+160.d0 1.d0 20.d0
+160.d0 1.d0 20.d0
+/
 END
-:
-CONDITION top
-CLASS flow
-TYPE
-PRESSURE dirichlet
-TEMPERATURE zero_gradient
-CONCENTRATION zero_gradient
-END
-IPHASE 1
-PRESSURE 2D7 2D7
-TEMPERATURE 50.d0 
-CONCENTRATION 1D-6
-END
-:
-CONDITION init
-CLASS flow
+
+:=========================== flow conditions ==================================
+FLOW_CONDITION initial
+UNITS Pa,C,M,yr
 TYPE
 PRESSURE hydrostatic
 TEMPERATURE zero_gradient
 CONCENTRATION zero_gradient
-END
-DATUM 0.d0 0.d0 0.d0
-PRESSURE 2.d7 2D7
-TEMPERATURE 50.d0 C
+/
+IPHASE 1
+PRESSURE 2D7 2D7
+TEMPERATURE 50 C
 CONCENTRATION 1d-6 M
-END
-:
-CONDITION inj
+ENTHALPY 0.d0 0.d0
+/
+
+FLOW_CONDITION top
 UNITS Pa,C,M,yr
-CLASS flow
 TYPE
-PRESSURE mass
+PRESSURE dirichlet
+TEMPERATURE zero_gradient
+CONCENTRATION zero_gradient
+/
+IPHASE 1
+PRESSURE 2D7 2D7
+TEMPERATURE 50
+CONCENTRATION 1d-6
+ENTHALPY 0.d0 0.d0
+/
+
+FLOW_CONDITION source
+UNITS Pa,C,M,yr
+TYPE
+PRESSURE mass_rate
 TEMPERATURE dirichlet
 CONCENTRATION dirichlet
-END
-PRESSURE file c2i.txt 
+/
+PRESSURE file c2i.txt  ! kg/s
 TEMPERATURE 50.d0
 CONCENTRATION 0.D0
 ENTHALPY 0.d0 0.d0
-END
-:
-BOUNDARY_CONDITION
-FLOW_CONDITION top
-REGION top
-END
-:
+/
+
+:=========================== condition couplers ===============================
+: initial condition
 INITIAL_CONDITION
-FLOW_CONDITION init
+FLOW_CONDITION initial
 REGION all
 END
 
-:
-: plume source
+: top boundary condition
+BOUNDARY_CONDITION top
+FLOW_CONDITION top
+REGION top
+END
+
 SOURCE_SINK
-FLOW_CONDITION inj
-REGION inj
+FLOW_CONDITION source
+REGION well
 END
 :
-:
+:=========================== stratigraphy couplers ============================
 STRATA
 REGION all
 MATERIAL soil1
 END
-:
-
-
-

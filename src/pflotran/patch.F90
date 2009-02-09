@@ -272,6 +272,15 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
                ' not found in boundary condition list'
       call printErrMsg(option)
     endif
+    if (associated(patch%grid%structured_grid)) then
+      if (coupler%region%iface == 0 .and. &
+          .not.associated(coupler%region%faces)) then
+        option%io_buffer = 'Region ' // trim(coupler%region_name) // &
+                 ', which is tied to a boundary condition, has not ' // &
+                 'been assigned a face in the structured grid. '
+        call printErrMsg(option)
+      endif
+    endif
     ! pointer to flow condition
     if (len_trim(coupler%flow_condition_name) > 0) then
       coupler%flow_condition => &

@@ -41,10 +41,15 @@ module Saturation_Function_module
             SaturationFunctionComputeSpline, &
             SaturationFunctionRead
 
+! Permeability function defination ************************ 
   PetscInt, parameter :: VAN_GENUCHTEN = 1
   PetscInt, parameter :: BROOKS_COREY = 2
   PetscInt, parameter :: THOMEER_COREY = 3
+  PetscInt, parameter :: NMT_EXP= 4
+  PetscInt, parameter :: PRUESS_1= 5
 
+
+! Saturation function function defination ************************ 
   PetscInt, parameter :: DEFAULT = 0
   PetscInt, parameter :: BURDINE = 1
   PetscInt, parameter :: MUALEM = 2
@@ -325,6 +330,10 @@ subroutine SaturatFuncConvertListToArray(list,array,option)
         cur_saturation_function%permeability_function_itype = BURDINE
       case('MUALEM')
         cur_saturation_function%permeability_function_itype = MUALEM
+      case('NMT_EXP')
+        cur_saturation_function%permeability_function_itype = NMT_EXP
+      case('PRUESS_1')
+        cur_saturation_function%permeability_function_itype = PRUESS_1
       case default
         option%io_buffer = 'Permeability function type "' // &
                            trim(cur_saturation_function%permeability_function_ctype) // &
@@ -343,6 +352,11 @@ subroutine SaturatFuncConvertListToArray(list,array,option)
         cur_saturation_function%saturation_function_itype = BROOKS_COREY
       case('THOMEER_COREY')
         cur_saturation_function%saturation_function_itype = THOMEER_COREY
+      case('NMT_EXP')
+        cur_saturation_function%saturation_function_itype = NMT_EXP
+      case('PRUESS_1')
+        cur_saturation_function%saturation_function_itype = PRUESS_1
+       
       case default
         option%io_buffer = 'Saturation function type "' // &
                            trim(cur_saturation_function%saturation_function_ctype) // &

@@ -721,12 +721,13 @@ subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
 !  dmc_ptr = DiscretizationGetDMCPtrFromIndex(discretization,dm_index)
   select case (dm_index)
     case(NFLOWDOF)
-      dmc_ptr = discretization%dmc_nflowdof
+      allocate(discretization%dmc_nflowdof(mg_levels))
+      dmc_ptr => discretization%dmc_nflowdof
     case(NTRANDOF)
-      dmc_ptr = discretization%dmc_ntrandof
+      allocate(discretization%dmc_ntrandof(mg_levels))
+      dmc_ptr => discretization%dmc_ntrandof
   end select  
    
-  allocate(dmc_ptr(mg_levels))
   allocate(interpolation(mg_levels))
 
   select case(discretization%itype)

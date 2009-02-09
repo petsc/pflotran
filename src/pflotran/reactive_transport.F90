@@ -24,7 +24,7 @@ module Reactive_Transport_module
   
   public :: RTTimeCut, RTSetup, RTMaxChange, RTUpdateSolution, RTResidual, &
             RTJacobian, RTInitializeTimestep, RTGetTecplotHeader, &
-            RTUpdateAuxVars, RTComputeMassBalance
+            RTUpdateAuxVars, RTComputeMassBalance, RTDestroy
   
 contains
 
@@ -180,7 +180,7 @@ subroutine RTSetupPatch(realization)
   do 
     if (.not.associated(cur_fluid_property)) exit
     iphase = cur_fluid_property%phase_id
-    patch%aux%Rt%rt_parameter%diffusion_coefficient(iphase) = &
+    patch%aux%RT%rt_parameter%diffusion_coefficient(iphase) = &
       cur_fluid_property%diffusion_coefficient
     cur_fluid_property => cur_fluid_property%next
   enddo
@@ -2187,5 +2187,55 @@ subroutine RTAuxVarCompute(rt_aux_var,global_aux_var,reaction,option)
 #endif
   
 end subroutine RTAuxVarCompute
+
+! ************************************************************************** !
+!
+! RTDestroy: Deallocates variables associated with Reactive Transport
+! author: Glenn Hammond
+! date: 02/03/09
+!
+! ************************************************************************** !
+subroutine RTDestroy(realization)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+
+  type(realization_type) :: realization
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RTDestroyPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RTDestroy
+
+! ************************************************************************** !
+!
+! RTDestroyPatch: Deallocates variables associated with Reactive Transport
+! author: Glenn Hammond
+! date: 02/03/09
+!
+! ************************************************************************** !
+subroutine RTDestroyPatch(realization)
+
+  use Realization_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  
+end subroutine RTDestroyPatch
 
 end module Reactive_Transport_module

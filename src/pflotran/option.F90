@@ -22,6 +22,7 @@ module Option_module
     PetscMPIInt :: myrank                  ! rank in PETSC_COMM_WORLD
     PetscMPIInt :: mycommsize              ! size of PETSC_COMM_WORLD
     PetscMPIInt :: mygroup                 ! id of group for PETSC_COMM_WORLD
+    PetscMPIInt :: mygroup_id
 
 ! don't place a character string near here.  It causes the Windows Intel compiler
 ! to crash.  Don't know why....
@@ -96,6 +97,8 @@ module Option_module
     PetscReal :: reference_porosity
     PetscReal :: reference_saturation
     
+    PetscInt :: itemp_ref
+    
     PetscTruth :: initialize_with_molality
         
 !   table lookup
@@ -104,7 +107,8 @@ module Option_module
 
     PetscTruth :: restart_flag
     PetscReal :: restart_time
-    character(len=MAXWORDLENGTH) :: restart_file
+    character(len=MAXSTRINGLENGTH) :: restart_filename
+    character(len=MAXSTRINGLENGTH) :: input_filename
     PetscTruth :: checkpoint_flag
     PetscInt :: checkpoint_frequency
     
@@ -122,9 +126,9 @@ module Option_module
     PetscTruth :: overwrite_restart_flow
     PetscInt :: io_handshake_buffer_size
     
-    character(len=MAXWORDLENGTH) :: permx_filename
-    character(len=MAXWORDLENGTH) :: permy_filename
-    character(len=MAXWORDLENGTH) :: permz_filename
+    character(len=MAXSTRINGLENGTH) :: permx_filename
+    character(len=MAXSTRINGLENGTH) :: permy_filename
+    character(len=MAXSTRINGLENGTH) :: permz_filename
     
     character(len=MAXWORDLENGTH) :: global_prefix
     character(len=MAXWORDLENGTH) :: group_prefix
@@ -137,6 +141,9 @@ module Option_module
 
     character(len=2) :: tunit
     PetscReal :: tconv
+
+    PetscTruth :: print_initial
+    PetscTruth :: print_final
   
     PetscTruth :: print_hdf5
     PetscTruth :: print_hdf5_velocities
@@ -149,6 +156,8 @@ module Option_module
     
     PetscTruth :: print_vtk 
     PetscTruth :: print_vtk_velocities
+
+    PetscTruth :: print_mad 
 
     PetscTruth :: print_act_coefs
 
@@ -231,6 +240,7 @@ function OptionCreate()
   option%myrank = 0
   option%mycommsize = 0
   option%mygroup = 0
+  option%mygroup_id = 0
   
   option%global_prefix = 'pflotran'
   option%group_prefix = ''
@@ -305,8 +315,9 @@ function OptionCreate()
   option%generalized_grid = ""
   option%use_generalized_grid = PETSC_FALSE
 
+  option%input_filename = ""
   option%restart_flag = PETSC_FALSE
-  option%restart_file = ""
+  option%restart_filename = ""
   option%restart_time = -999.d0
   option%checkpoint_flag = PETSC_FALSE
   option%checkpoint_frequency = huge(option%checkpoint_frequency)
@@ -372,6 +383,9 @@ function OutputOptionCreate()
   output_option%print_tecplot_flux_velocities = PETSC_FALSE
   output_option%print_vtk = PETSC_FALSE
   output_option%print_vtk_velocities = PETSC_FALSE
+  output_option%print_mad = PETSC_FALSE
+  output_option%print_initial = PETSC_TRUE
+  output_option%print_final = PETSC_TRUE
   output_option%plot_number = 0
   output_option%screen_imod = 1
   output_option%periodic_output_ts_imod  = 100000000
@@ -400,6 +414,7 @@ subroutine OptionCheckCommandLine(option)
   type(option_type) :: option
   
   PetscTruth :: option_found 
+  PetscInt :: temp_int
   PetscErrorCode :: ierr
   
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-snes_mf", & 
@@ -407,7 +422,8 @@ subroutine OptionCheckCommandLine(option)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_isoth", &
                            option%use_isoth, ierr)
                            
-  call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-restart', option%restart_file, &
+  call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-restart', &
+                             option%restart_filename, &
                              option%restart_flag, ierr)
   call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-chkptfreq', &
                           option%checkpoint_frequency, &
@@ -426,6 +442,12 @@ subroutine OptionCheckCommandLine(option)
                            option_found, ierr)
   if (option_found) option%flowmode = "mph"                           
  
+ 
+  option_found = PETSC_FALSE
+  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-realization_id', &
+                          temp_int,option_found, ierr)
+  if (option_found) option%id = temp_int
+ 
 end subroutine OptionCheckCommandLine
 
 ! ************************************************************************** !
@@ -441,6 +463,7 @@ subroutine printErrMsg1(option)
   
   type(option_type) :: option
   
+  PetscTruth :: petsc_initialized
   PetscErrorCode :: ierr
   
   if (OptionPrintToScreen(option)) then
@@ -448,7 +471,8 @@ subroutine printErrMsg1(option)
     print *, 'ERROR: ' // trim(option%io_buffer)
     print *, 'Stopping!'
   endif    
-  call PetscFinalize(ierr)
+  call PetscInitialized(petsc_initialized, ierr)
+  if (petsc_initialized) call PetscFinalize(ierr)
   stop
   
 end subroutine printErrMsg1
@@ -467,6 +491,7 @@ subroutine printErrMsg2(option,string)
   type(option_type) :: option
   character(len=*) :: string
   
+  PetscTruth :: petsc_initialized
   PetscErrorCode :: ierr
   
   if (OptionPrintToScreen(option)) then
@@ -474,7 +499,8 @@ subroutine printErrMsg2(option,string)
     print *, 'ERROR: ' // trim(string)
     print *, 'Stopping!'
   endif    
-  call PetscFinalize(ierr)
+  call PetscInitialized(petsc_initialized, ierr)
+  if (petsc_initialized) call PetscFinalize(ierr)
   stop
   
 end subroutine printErrMsg2
@@ -619,7 +645,7 @@ function OptionCheckTouch(option,filename)
   implicit none
 
   type(option_type) :: option
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   
   PetscInt :: ios
   PetscInt :: fid = 86
@@ -661,7 +687,6 @@ function OptionPrintToScreen(option)
   endif
 
 end function OptionPrintToScreen
-
 
 ! ************************************************************************** !
 !

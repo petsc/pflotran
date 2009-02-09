@@ -1,0 +1,135 @@
+MODE MPHASE
+:
+GRID
+TYPE structured
+NXYZ 107  1  51
+END
+:
+ORIGIN 0.d0 0.d0 0.d0
+:
+NEWTON_SOLVER FLOW
+ATOL 1D-12
+RTOL 1D-12
+STOL 1D-30
+DTOL 1D15
+ITOL 1D-8
+MAXIT 25
+MAXF 100
+END
+:
+:
+TECP !VELO FLUX
+:
+DXYZ
+3.d0
+1.d0
+1.d0
+:
+:  d0[m^2/s] delhaq[kJ/mol]
+DIFF  1.D-16       12.6
+:
+:
+SATURATION_FUNCTIONS
+:id itype swir    sgir    lambda  alpha    pcwmax  betac  pwr
+ 1   4     0.1  0.D0     0.762   7.5d-4     1.d6   2.d0    7.0
+END
+
+THERMAL_PROPERTIES
+:ithm rho    cpr     ckdry cksat tau cdiff   cexp
+  1   2.65e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
+END
+:
+MATERIALS
+:name  id icap ithm por  tau    permx  permy  permz  permpwr
+soil1  1  1    1    0.15  0.1  1.d-15 1.d-15 1.d-17 1.d0
+:soil2 2  1    1    0.25 0.5 1.d-13 1.d-13 1.d-13 1.d0
+END
+:
+:
+TIME y
+1.  5. 10.  50. 100. 500. 1000.  5000.
+:
+:
+DTST 1.d-2
+5000.  50d0
+:
+:
+REGION all
+BLOCK 1 107 1 1 1 51
+END
+:
+REGION top
+BLOCK 1 107 1 1 51 51
+FACE top
+END
+:
+REGION inj
+BLOCK 54 54 1 1 20 20
+END
+:
+CONDITION top
+CLASS flow
+TYPE
+PRESSURE dirichlet
+TEMPERATURE zero_gradient
+CONCENTRATION zero_gradient
+END
+IPHASE 1
+PRESSURE 2D7 2D7
+TEMPERATURE 50.d0 
+CONCENTRATION 1D-6
+END
+:
+CONDITION init
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE zero_gradient
+CONCENTRATION zero_gradient
+END
+DATUM 0.d0 0.d0 0.d0
+PRESSURE 2.d7 2D7
+TEMPERATURE 50.d0 C
+CONCENTRATION 1d-6 M
+END
+:
+CONDITION inj
+UNITS Pa,C,M,yr
+CLASS flow
+TYPE
+PRESSURE mass
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+END
+PRESSURE file c2i.txt 
+TEMPERATURE 50.d0
+CONCENTRATION 0.D0
+ENTHALPY 0.d0 0.d0
+END
+:
+BOUNDARY_CONDITION
+FLOW_CONDITION top
+REGION top
+END
+:
+INITIAL_CONDITION
+FLOW_CONDITION init
+REGION all
+END
+
+:
+: plume source
+SOURCE_SINK
+FLOW_CONDITION inj
+REGION inj
+END
+:
+:
+STRATA
+REGION all
+MATERIAL soil1
+END
+:
+
+
+

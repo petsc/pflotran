@@ -68,7 +68,7 @@ type, public :: mphase_auxvar_elem_type
   
 
   public :: MphaseAuxCreate, MphaseAuxDestroy, &
-            MphaseAuxVarCompute_NINC, MphaseAuxVarCompute_WINC,&
+              MphaseAuxVarCompute_NINC, MphaseAuxVarCompute_WINC,&
             MphaseAuxVarInit, MphaseAuxVarCopy
 
 contains
@@ -100,7 +100,10 @@ function MphaseAuxCreate()
   nullify(aux%aux_vars)
   nullify(aux%aux_vars_bc)
   aux%n_zero_rows = 0
-  nullify(aux%mphase_parameter)
+  allocate(aux%mphase_parameter)
+  nullify(aux%mphase_parameter%sir)
+  nullify(aux%mphase_parameter%ckwet)
+  nullify(aux%mphase_parameter%dencpr)
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
 

@@ -1,0 +1,221 @@
+:Description: 3D toy problem for richards equation
+
+:=========================== flow mode ========================================
+MODE RICHARDS
+
+:=========================== chemistry ========================================
+CHEMISTRY
+PRIMARY_SPECIES
+river_c
+groundwater_c
+plume_c
+/
+/
+
+:=========================== solver options ===================================
+TIMESTEPPER
+:MAX_STEPS 10
+END
+
+NEWTON_SOLVER FLOW
+:MATRIX_TYPE MFFD
+:PRECONDITIONER_MATRIX_TYPE AIJ
+END
+
+LINEAR_SOLVER FLOW
+KSP_TYPE BCGS
+:KSP_TYPE GMRES
+:KSP_TYPE FGMRES
+END
+
+:=========================== discretization ===================================
+GRID
+TYPE structured
+ORIGIN 0.d0 0.d0 0.d0
+NXYZ 100 10 10
+BOUNDS
+0.d0 100.d0
+0.d0 10.d0
+0.d0 10.d0
+/
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY
+DIFFUSION_COEFFICIENT 1.d-9
+/
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+ID 1
+POROSITY 0.25d0
+TORTUOSITY 0.5d0
+SATURATION_FUNCTION default
+PERMEABILITY
+PERM_X 1.d-12
+PERM_Y 1.d-12
+PERM_Z 1.d-12
+/
+/
+
+MATERIAL_PROPERTY soil2
+ID 2
+POROSITY 0.25d0
+TORTUOSITY 0.5d0
+SATURATION_FUNCTION default
+PERMEABILITY
+PERM_X 1.d-13
+PERM_Y 1.d-13
+PERM_Z 1.d-13
+/
+/
+
+:=========================== saturation functions =============================
+SATURATION_FUNCTION default
+/
+
+:=========================== output options ===================================
+OUTPUT
+FORMAT TECPLOT BLOCK
+FORMAT HDF5
+VELOCITIES
+/
+
+:=========================== times ============================================
+TIME
+FINAL_TIME 100.d0 d
+INITIAL_TIMESTEP_SIZE 1.d-2 d
+MAXIMUM_TIMESTEP_SIZE 10.d0 d
+/
+
+REFERENCE_PRESSURE 101325.
+
+:=========================== regions ==========================================
+REGION all
+COORDINATES
+0.d0 0.d0 0.d0
+100.d0 10.d0 10.d0
+/
+END
+
+REGION region1
+COORDINATES
+0.d0 0.d0 0.d0
+50.d0 10.d0 10.d0
+/
+END
+
+REGION region2
+COORDINATES
+50.d0 0.d0 0.d0
+100.d0 10.d0 10.d0
+/
+END
+
+REGION breakthrough
+COORDINATE 0.d0 0.d0 0.d0
+END
+
+REGION West
+COORDINATES
+0.d0 0.d0 0.d0
+0.d0 10.d0 10.d0
+/
+FACE WEST
+END
+
+REGION East
+COORDINATES
+100.d0 0.d0 0.d0
+100.d0 10.d0 10.d0
+/
+FACE EAST
+END
+
+skip
+BREAKTHROUGH 
+REGION breakthrough
+END
+noskip
+
+:=========================== flow conditions ==================================
+FLOW_CONDITION west
+TYPE
+PRESSURE hydrostatic
+END
+INTERPOLATION linear
+DATUM 0.d0 0.d0 10.d0
+PRESSURE 201325.d0
+END
+
+FLOW_CONDITION initial
+TYPE
+PRESSURE hydrostatic
+END
+INTERPOLATION linear
+DATUM 0.d0 0.d0 10.d0
+PRESSURE 101325.d0
+END
+
+:=========================== transport conditions =============================
+TRANSPORT_CONDITION west_c
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 west
+END
+END
+
+TRANSPORT_CONDITION initial_c
+TYPE zero_gradient
+CONSTRAINT initial
+CONCENTRATIONS
+river_c 1.d-6 
+groundwater_c 1.d0 
+plume_c 1.d-6 
+END
+END
+END
+
+:=========================== constraints ======================================
+CONSTRAINT west
+CONCENTRATIONS
+river_c 1.d-6 
+groundwater_c 1.d-6
+plume_c 1.d0
+END
+END
+
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial_c
+REGION all
+END
+
+: west boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION west
+TRANSPORT_CONDITION west_c
+REGION West
+END
+
+: east boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial_c
+REGION East
+END
+
+:=========================== stratigraphy couplers ============================
+STRATA
+REGION region1
+MATERIAL soil1
+END
+
+STRATA
+REGION region2
+MATERIAL soil2
+END
+

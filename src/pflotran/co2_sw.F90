@@ -253,25 +253,25 @@ module co2_sw_module
         if (myrank==0) print *,'--> open co2data0.dat'
         open(unit=122,file='co2data_c0.dat',status='unknown')
         read(122,*)
-	    read(122,*)
-	    read(122,*)
-	    do i = 0, ntab_p_c
-	      do j = 0, ntab_t_c
-	        read(122,'(1p15e14.6)') co2_prop_sw_c(i,j,1:15)
-	      enddo
-	    enddo
-	    close (122)
+        read(122,*)
+        read(122,*)
+        do i = 0, ntab_p_c
+          do j = 0, ntab_t_c
+            read(122,'(1p15e14.6)') co2_prop_sw_c(i,j,1:15)
+          enddo
+        enddo
+        close (122)
 
         open(unit=122,file='co2data_f0.dat',status='unknown')
         read(122,*)
-	    read(122,*)
-	    read(122,*)
-	    do i = 0, ntab_p_f
-	      do j = 0, ntab_t_f
-	        read(122,'(1p15e14.6)') co2_prop_sw_f(i,j,1:15)
-	      enddo
-	    enddo
-	    close (122)
+        read(122,*)
+        read(122,*)
+        do i = 0, ntab_p_f
+          do j = 0, ntab_t_f
+            read(122,'(1p15e14.6)') co2_prop_sw_f(i,j,1:15)
+          enddo
+        enddo
+        close (122)
      end select
       
     end subroutine initialize_sw_interp 
@@ -310,106 +310,100 @@ module co2_sw_module
       real*8 ps, tmp, tmp2, ntab_t, ntab_p, dt_tab, dp_tab, p0_tab, t0_tab 
       integer isucc, i1,i2,j1,j2, icross, i,j
       
-       ifinetable = PETSC_FALSE
-       if( x2 <= co2_sw_f_t1_tab .and. x1<= co2_sw_f_p1_tab )then
+      ifinetable = PETSC_FALSE
+      if(x2 <= co2_sw_f_t1_tab .and. x1<= co2_sw_f_p1_tab) then
        ! within the fine grid table 
-         ifinetable = PETSC_TRUE
-                
-	   endif   
-	  
-	  
-	   isucc= 0 
-	   if(ifinetable)then
-	     ntab_t = ntab_t_f
-	     ntab_p = ntab_p_f
-	     dt_tab = dt_tab_f 
-	     dp_tab = dp_tab_f
-	     p0_tab =  co2_sw_f_p0_tab
-	     t0_tab =  co2_sw_f_t0_tab
-!      print *, 'using fine table', x1,x2
-	   else
-	     ntab_t = ntab_t_c
-	     ntab_p = ntab_p_c
-	     dt_tab = dt_tab_c 
-	     dp_tab = dp_tab_c
-	     p0_tab =  co2_sw_c_p0_tab
-	     t0_tab =  co2_sw_c_t0_tab
-        endif
-        
-        
-         
-	      
-	      
-	  tmp = (x1 - p0_tab) / dp_tab; i1 = floor(tmp); i2 = i1+1; iindex=tmp 
-	  tmp = (x2 - t0_tab) / dt_tab; j1 = floor(tmp); j2 = j1+1; jindex=tmp 
-	  
-	  isucc=1
+        ifinetable = PETSC_TRUE
+      endif   
+
+
+    isucc= 0 
+    if(ifinetable)then
+      ntab_t = ntab_t_f
+      ntab_p = ntab_p_f
+      dt_tab = dt_tab_f 
+      dp_tab = dp_tab_f
+      p0_tab =  co2_sw_f_p0_tab
+      t0_tab =  co2_sw_f_t0_tab
+!     print *, 'using fine table', x1,x2
+    else
+      ntab_t = ntab_t_c
+      ntab_p = ntab_p_c
+      dt_tab = dt_tab_c 
+      dp_tab = dp_tab_c
+      p0_tab =  co2_sw_c_p0_tab
+      t0_tab =  co2_sw_c_t0_tab
+    endif
+
+
+    tmp = (x1 - p0_tab) / dp_tab; i1 = floor(tmp); i2 = i1+1; iindex=tmp 
+    tmp = (x2 - t0_tab) / dt_tab; j1 = floor(tmp); j2 = j1+1; jindex=tmp 
+
+    isucc=1
 
  ! Check wether the table block covers the saturation line, missed special case.
-   	  icross =0
-	  if(ifinetable)then
-        call vappr(co2_prop_spwag(i1,j1,2),ps,tmp,tmp2,11)
-        if((ps - co2_prop_spwag(i1,j1,1)) * (ps - co2_prop_spwag(i1,j2,1)) <0.D0)then
-           icross = 1; isucc=0
-        else
-          call vappr(co2_prop_spwag(i2,j1,2),ps,tmp,tmp,11)
-	      if((ps - co2_prop_spwag(i2,j1,1)) * (ps - co2_prop_spwag(i2,j2,1)) <0.D0)then
-	         icross = 1; isucc=0
-	  !    else
-      !      call vappr(0.5D0 * (co2_prop_spwag(i1,j1,2)+co2_prop_spwag(i2,j1,2)),ps, tmp,tmp2,12)
-	  !     if((ts - co2_prop_spwag(i2,j1,2)) * (ts - co2_prop_spwag(i2,j2,2)) <0.D0)then
-	  !       icross = 1; isucc=0
-	  !     endif
-	     endif
-        endif   
-      endif
-	  
-      if(icross == 1) print *,'co2_sw: cross sat line'
-        
-	  if(iindex > ntab_p .or. iindex < 0.d0 .or. jindex < 0.d0 .or. jindex > ntab_t) then
-	    print  *,' Out of Table Bounds: ', 'p=',x1,' t=',x2,' i=',iindex,' j=',jindex
-	    isucc=0
-	  endif
-		  
-	
-	  if(isucc>0 .and. icross ==0 )then
-	
-	    factor(1)= (iindex-i2) * (jindex-j2)
-	    factor(2)= -(iindex-i1) * (jindex-j2)
-	    factor(3)= -(iindex-i2) * (jindex-j1)
-	    factor(4)= (iindex-i1) * (jindex-j1)
+    icross =0
+    if (ifinetable) then
+      call vappr(co2_prop_spwag(i1,j1,2),ps,tmp,tmp2,11)
+      if((ps - co2_prop_spwag(i1,j1,1)) * (ps - co2_prop_spwag(i1,j2,1)) <0.D0)then
+        icross = 1; isucc=0
+      else
+        call vappr(co2_prop_spwag(i2,j1,2),ps,tmp,tmp,11)
+        if((ps - co2_prop_spwag(i2,j1,1)) * (ps - co2_prop_spwag(i2,j2,1)) <0.D0)then
+          icross = 1; isucc=0
+    !     else
+    !     call vappr(0.5D0 * (co2_prop_spwag(i1,j1,2)+co2_prop_spwag(i2,j1,2)),ps, tmp,tmp2,12)
+    !     if((ts - co2_prop_spwag(i2,j1,2)) * (ts - co2_prop_spwag(i2,j2,2)) <0.D0)then
+    !       icross = 1; isucc=0
+    !     endif
+        endif
+      endif   
+    endif
 
-	    fac(1,1) = (iindex-i1 ); fac(2,1) = 1.D0 -  fac(1,1) 
-        fac(1,2) = (jindex-j1 ); fac(2,2) = 1.D0 -  fac(1,2)
+    if(icross == 1) print *,'co2_sw: cross sat line'
+
+    if(iindex > ntab_p .or. iindex < 0.d0 .or. jindex < 0.d0 .or. jindex > ntab_t) then
+      print  *,' Out of Table Bounds: ', 'p=',x1,' t=',x2,' i=',iindex,' j=',jindex
+      isucc=0
+    endif
+
+
+    if(isucc>0 .and. icross ==0 )then
+
+      factor(1)= (iindex-i2) * (jindex-j2)
+      factor(2)= -(iindex-i1) * (jindex-j2)
+      factor(3)= -(iindex-i2) * (jindex-j1)
+      factor(4)= (iindex-i1) * (jindex-j1)
+
+      fac(1,1) = (iindex-i1 ); fac(2,1) = 1.D0 -  fac(1,1) 
+      fac(1,2) = (jindex-j1 ); fac(2,2) = 1.D0 -  fac(1,2)
  
        !  print *,  icross,isucc, factor, fac 
 
-	
-	    i=1
-	    y(1) = factor(1)*co2_prop_spwag(i1,j1,i) + factor(2)*co2_prop_spwag(i2,j1,i) &
-	         + factor(3)*co2_prop_spwag(i1,j2,i) + factor(4)*co2_prop_spwag(i2,j2,i)
-	    if (dabs(y(1)-x1)>1D-10 ) then
-	      print *,' Error in intropolate::P',x1,iindex,factor;isucc=0
-	    endif
-	   !print *, 'Table: P ',iindex,jindex, factor,i  
-	    i=i+1
-	    y(2) = factor(1)*co2_prop_spwag(i1,j1,i) + factor(2)*co2_prop_spwag(i2,j1,i) &
-	         + factor(3)*co2_prop_spwag(i1,j2,i) + factor(4)*co2_prop_spwag(i2,j2,i)
-	    if (dabs(y(2)-x2)>1D-10 ) then
-	      print *,' Error in intropolate:;T', x2,jindex,factor; isucc=0
-	    endif
-	  endif
-	
-	! print *, 'Table: T',iindex,jindex,factor,i,isucc,itable
-	 
-       
- 
+      i=1
+      y(1) = factor(1)*co2_prop_spwag(i1,j1,i) + factor(2)*co2_prop_spwag(i2,j1,i) &
+           + factor(3)*co2_prop_spwag(i1,j2,i) + factor(4)*co2_prop_spwag(i2,j2,i)
+      if (dabs(y(1)-x1)>1D-10 ) then
+        print *,' Error in intropolate::P',x1,iindex,factor;isucc=0
+      endif
+     !print *, 'Table: P ',iindex,jindex, factor,i  
+      i=i+1
+      y(2) = factor(1)*co2_prop_spwag(i1,j1,i) + factor(2)*co2_prop_spwag(i2,j1,i) &
+           + factor(3)*co2_prop_spwag(i1,j2,i) + factor(4)*co2_prop_spwag(i2,j2,i)
+      if (dabs(y(2)-x2)>1D-10 ) then
+        print *,' Error in intropolate:;T', x2,jindex,factor; isucc=0
+      endif
+    endif
+
+  ! print *, 'Table: T',iindex,jindex,factor,i,isucc,itable
+
+
     if(isucc==1)then
        
       do i =3,15
       ! if (i==var_index(1) .or. i==var_index(2) .or.i==var_index(3) .or.i==var_index(4)) cycle
-        y(i)=   factor(1)*co2_prop_spwag(i1,j1,i) + factor(2)*co2_prop_spwag(i2,j1,i) &
-	         + factor(3)*co2_prop_spwag(i1,j2,i) + factor(4)*co2_prop_spwag(i2,j2,i)
+        y(i) = factor(1)*co2_prop_spwag(i1,j1,i) + factor(2)*co2_prop_spwag(i2,j1,i) &
+           + factor(3)*co2_prop_spwag(i1,j2,i) + factor(4)*co2_prop_spwag(i2,j2,i)
       enddo 
        
 !#if 0      

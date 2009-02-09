@@ -206,6 +206,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   PetscTruth :: activity_coefs_read = PETSC_FALSE
   PetscTruth :: flow_read = PETSC_FALSE
   PetscTruth :: transport_read = PETSC_FALSE
+  PetscTruth :: failure
   
   PetscLogDouble :: stepper_start_time, current_time, average_step_time
   PetscErrorCode :: ierr
@@ -225,6 +226,10 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   flow_timestep_cut_flag = PETSC_FALSE
   tran_timestep_cut_flag = PETSC_FALSE
   stop_flag = PETSC_FALSE
+  activity_coefs_read = PETSC_FALSE
+  flow_read = PETSC_FALSE
+  transport_read = PETSC_FALSE
+  failure = PETSC_FALSE
   num_const_timesteps = 0  
 
   if (option%restart_flag) then
@@ -258,16 +263,19 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   ! print initial condition output if not a restarted sim
   call OutputInit(realization)
   if (output_option%plot_number == 0 .and. &
-      master_stepper%nstepmax >= 0) then
+      master_stepper%nstepmax >= 0 .and. &
+      output_option%print_initial) then
     plot_flag = PETSC_TRUE
     transient_plot_flag = PETSC_TRUE
     output_option%first = PETSC_TRUE
     call Output(realization,plot_flag,transient_plot_flag)
     if (output_option%print_permeability) then
-      string = 'permeability.tec'
+      string = 'permeability-' // trim(option%group_prefix) // '.tec'
       call OutputVectorTecplot(string,string,realization,realization%field%perm0_xx)
     endif
   endif
+  ! increment plot number so that 000 is always the initial condition, and nothing else
+  if (output_option%plot_number == 0) output_option%plot_number = 1
   output_option%first = PETSC_FALSE
 
   if (associated(flow_stepper)) then
@@ -306,15 +314,18 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
       call StepperStepFlowDT(realization,flow_stepper, &
                              flow_timestep_cut_flag, &
-                             num_newton_iterations)
+                             num_newton_iterations, &
+                             failure)
       call PetscLogStagePop(ierr)
+      if (failure) return ! if flow solve fails, exit
     endif
     if (associated(tran_stepper)) then
       call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr)
       call StepperStepTransportDT(realization,tran_stepper, &
                                   tran_timestep_cut_flag, &
-                                  idum)
+                                  idum,failure)
       call PetscLogStagePop(ierr)
+      if (failure) return ! if flow solve fails, exit
       if (.not.associated(flow_stepper)) num_newton_iterations = idum
     endif
 
@@ -640,7 +651,7 @@ end subroutine StepperSetTargetTimes
 !
 ! ************************************************************************** !
 subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
-                             num_newton_iterations)
+                             num_newton_iterations,failure)
   use MPHASE_module, only : MphaseMaxChange, MphaseInitializeTimestep, &
                            MphaseTimeCut, MPhaseUpdateReason
   use Richards_module, only : RichardsMaxChange, RichardsInitializeTimestep, &
@@ -669,6 +680,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
 
   PetscTruth :: timestep_cut_flag
   PetscInt :: num_newton_iterations
+  PetscTruth :: failure
   
   PetscErrorCode :: ierr
   PetscInt :: icut ! Tracks the number of time step reductions applied
@@ -678,6 +690,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   PetscReal :: fnorm, scaled_fnorm, inorm
   Vec :: global_vec
   PetscTruth :: plot_flag
+  PetscTruth :: transient_plot_flag
   
   PetscViewer :: viewer
 
@@ -786,9 +799,9 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
         endif
         realization%output_option%plot_name = 'cut_to_failure'
         plot_flag = PETSC_TRUE
-        call Output(realization,plot_flag,PETSC_FALSE)
-        call PetscFinalize(ierr)
-        stop
+        transient_plot_flag = PETSC_FALSE
+        call Output(realization,plot_flag,transient_plot_flag)
+        failure = PETSC_TRUE
       endif
 
       option%flow_time = option%flow_time - option%flow_dt
@@ -908,7 +921,7 @@ end subroutine StepperStepFlowDT
 !
 ! ************************************************************************** !
 subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
-                                  num_newton_iterations)
+                                  num_newton_iterations,failure)
   
   use Reactive_Transport_module
   use Output_module, only : Output
@@ -936,6 +949,8 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
 
   PetscTruth :: timestep_cut_flag
   PetscInt :: num_newton_iterations
+  PetscTruth :: failure
+  
   PetscErrorCode :: ierr
   PetscInt :: icut ! Tracks the number of time step reductions applied
   SNESConvergedReason :: snes_reason 
@@ -945,6 +960,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   PetscReal :: fnorm, scaled_fnorm, inorm
   PetscReal :: start_time, end_time, dt_orig
   PetscTruth :: plot_flag  
+  PetscTruth :: transient_plot_flag  
   PetscReal, pointer :: r_p(:), xx_p(:), log_xx_p(:)
   PetscReal, parameter :: time_tol = 1.d-10
 
@@ -1094,9 +1110,9 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
           endif
           realization%output_option%plot_name = 'cut_to_failure'
           plot_flag = PETSC_TRUE
-          call Output(realization,plot_flag,PETSC_FALSE)
-          call PetscFinalize(ierr)
-          stop
+          transient_plot_flag = PETSC_FALSE
+          call Output(realization,plot_flag,transient_plot_flag)
+          failure = PETSC_TRUE
         endif
 
         option%tran_time = option%tran_time - option%tran_dt

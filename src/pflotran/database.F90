@@ -100,6 +100,53 @@ subroutine DatabaseRead(reaction,option)
     call InputErrorMsg(input,option,'Database temperatures','DATABASE')            
   enddo
 
+! get database temperature based on REFERENCE_TEMPERATURE
+  option%itemp_ref = 1
+  do itemp = 1, reaction%num_dbase_temperatures
+    if (reaction%dbase_temperatures(itemp) == option%reference_temperature) then
+      option%itemp_ref = itemp
+      exit
+    endif
+  enddo
+
+  if (option%reference_temperature == 0.d0) then
+    reaction%debyeA = 0.4939d0 
+    reaction%debyeB = 0.3253d0 
+    reaction%debyeBdot = 0.0374d0
+  else if (option%reference_temperature == 25.d0) then
+    reaction%debyeA = 0.5114d0 
+    reaction%debyeB = 0.3288d0 
+    reaction%debyeBdot = 0.0410d0
+  else if (option%reference_temperature == 60.d0) then
+    reaction%debyeA = 0.5465d0 
+    reaction%debyeB = 0.3346d0 
+    reaction%debyeBdot = 0.0440d0
+  else if (option%reference_temperature == 100.d0) then
+    reaction%debyeA = 0.5995d0 
+    reaction%debyeB = 0.3421d0 
+    reaction%debyeBdot = 0.0460d0
+  else if (option%reference_temperature == 150.d0) then
+    reaction%debyeA = 0.6855d0 
+    reaction%debyeB = 0.3525d0 
+    reaction%debyeBdot = 0.0470d0
+  else if (option%reference_temperature == 200.d0) then
+    reaction%debyeA = 0.7994d0 
+    reaction%debyeB = 0.3639d0 
+    reaction%debyeBdot = 0.0470d0
+  else if (option%reference_temperature == 250.d0) then
+    reaction%debyeA = 0.9593d0 
+    reaction%debyeB = 0.3766d0 
+    reaction%debyeBdot = 0.0340d0
+  else if (option%reference_temperature == 300.d0) then
+    reaction%debyeA = 1.2180d0 
+    reaction%debyeB = 0.3925d0 
+    reaction%debyeBdot = 0.0000d0
+  else if (option%reference_temperature == 350.d0) then
+    reaction%debyeA = 1.2180d0 
+    reaction%debyeB = 0.3925d0 
+    reaction%debyeBdot = 0.0000d0
+  endif
+
   num_nulls = 0
   null_name = 'null'
   do ! loop over every entry in the database
@@ -1867,7 +1914,7 @@ subroutine BasisInit(reaction,option)
       reaction%eqcmplxspecid(0,isec_spec) = ispec
       reaction%eqcmplx_logKcoef(:,isec_spec) = &
         cur_sec_aq_spec%eqrxn%logK
-      reaction%eqcmplx_logK(isec_spec) = cur_sec_aq_spec%eqrxn%logK(2)
+      reaction%eqcmplx_logK(isec_spec) = cur_sec_aq_spec%eqrxn%logK(option%itemp_ref)
       reaction%eqcmplx_Z(isec_spec) = cur_sec_aq_spec%Z
       reaction%eqcmplx_a0(isec_spec) = cur_sec_aq_spec%a0
   
@@ -1930,7 +1977,7 @@ subroutine BasisInit(reaction,option)
       reaction%eqgasspecid(0,igas_spec) = ispec
       reaction%eqgas_logKcoef(:,igas_spec) = &
         cur_gas_spec%eqrxn%logK
-      reaction%eqgas_logK(igas_spec) = cur_gas_spec%eqrxn%logK(2)
+      reaction%eqgas_logK(igas_spec) = cur_gas_spec%eqrxn%logK(option%itemp_ref)
   
       igas_spec = igas_spec + 1
       cur_gas_spec => cur_gas_spec%next
@@ -2011,7 +2058,7 @@ subroutine BasisInit(reaction,option)
       reaction%mnrlspecid(0,imnrl) = ispec
       reaction%mnrl_logKcoef(:,imnrl) = &
         cur_mineral%tstrxn%logK
-      reaction%mnrl_logK(imnrl) = cur_mineral%tstrxn%logK(2)
+      reaction%mnrl_logK(imnrl) = cur_mineral%tstrxn%logK(option%itemp_ref)
   
       if (cur_mineral%itype == MINERAL_KINETIC) then
         reaction%kinmnrl_names(ikinmnrl) = reaction%mineral_names(imnrl)
@@ -2149,7 +2196,7 @@ subroutine BasisInit(reaction,option)
         reaction%eqsurfcmplxspecid(0,isurfcplx) = ispec
         reaction%eqsurfcmplx_logKcoef(:,isurfcplx) = &
           cur_surfcplx%eqrxn%logK
-        reaction%eqsurfcmplx_logK(isurfcplx) = cur_surfcplx%eqrxn%logK(2)
+        reaction%eqsurfcmplx_logK(isurfcplx) = cur_surfcplx%eqrxn%logK(option%itemp_ref)
         reaction%eqsurfcmplx_Z(isurfcplx) = cur_surfcplx%Z
 
         cur_surfcplx => cur_surfcplx%next

@@ -144,7 +144,7 @@ end subroutine RichardsAuxVarCopy
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,iphase,&
+subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
                                  saturation_function,por,perm,option)
 
   use Option_module
@@ -159,9 +159,9 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,iphase,&
   PetscReal :: x(option%nflowdof)
   type(richards_auxvar_type) :: aux_var
   type(global_auxvar_type) :: global_aux_var
-  PetscInt :: iphase
   PetscReal :: por, perm
 
+  PetscInt :: iphase
   PetscErrorCode :: ierr
   PetscReal :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
   PetscReal :: kr, ds_dp, dkr_dp
@@ -264,16 +264,19 @@ subroutine RichardsAuxDestroy(aux)
   
   if (.not.associated(aux)) return
   
-  do iaux = 1, aux%num_aux
-    call AuxVarDestroy(aux%aux_vars(iaux))
-  enddo  
-  do iaux = 1, aux%num_aux_bc
-    call AuxVarDestroy(aux%aux_vars_bc(iaux))
-  enddo  
-  
-  if (associated(aux%aux_vars)) deallocate(aux%aux_vars)
+  if (associated(aux%aux_vars)) then
+    do iaux = 1, aux%num_aux
+      call AuxVarDestroy(aux%aux_vars(iaux))
+    enddo  
+    deallocate(aux%aux_vars)
+  endif
   nullify(aux%aux_vars)
-  if (associated(aux%aux_vars_bc)) deallocate(aux%aux_vars_bc)
+  if (associated(aux%aux_vars_bc)) then
+    do iaux = 1, aux%num_aux_bc
+      call AuxVarDestroy(aux%aux_vars_bc(iaux))
+    enddo  
+    deallocate(aux%aux_vars_bc)
+  endif
   nullify(aux%aux_vars_bc)
   if (associated(aux%zero_rows_local)) deallocate(aux%zero_rows_local)
   nullify(aux%zero_rows_local)

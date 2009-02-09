@@ -1205,7 +1205,7 @@ The above formulation for heterogeneous reactions involving mineral precipitatio
 In this case the primary species transport equations contain contributions from both reactions with stationary solid grains which may include filtered colloids and mobile colloids in solution. 
 
 It is necessary to distinguish between two distinct colloid states: colloids suspended in solution, and colloids attached to solid surfaces which are not moving. The two states are described by the concentrations $C_c^f$ and $C_c^s$.
-The colloid concentration $C_c^f$ is equal to the number of moles of colloids of type $c$, $N_c^{f}$ in solution, divided by the pore volume $V_p$
+The colloid concentration $C_c^f$ is equal to the number of moles of colloids of type $c$ in solution, $N_c^{f}$, divided by the pore volume $V_p$
 \EQ
 C_c^f\eq\frac{N_c^{f}}{V_p}.
 \EN
@@ -1348,6 +1348,18 @@ and
 K_j^l \eq \frac{1}{\Psi_j} \sum_{ic}\nu_{ji}^c S_{ic}^l.
 \EN
 Note that if $K_j^f \!\geq\! K_j^s \!\gg\! 1$, $R_j\!\leq\! 2$, and there is little or no retardation. However, there still remains a reduction in kinetic homogeneous and heterogeneous rates. Finally, it should be noted that if colloids are to compete with stationary solid phase, they must be sufficiently concentrated to provide an equivalent surface site density (or cation exchange capacity).
+
+\subsection{Colloid Type Structure}
+
+\begin{verbatim}
+type, public :: colloid_type
+  character(len=MAXWORDLENGTH) :: name
+  PetscInt :: ncoll
+  PetscInt :: id
+  PetscReal :: coll_formula_wt
+  PetscReal :: coll_surf_site_den
+end type colloid type
+\end{verbatim}
 
 \begin{comment}
 From the primary species transport equations it is possible to define a retardation factor assuming constant aqueous and sorbed concentrations and neglecting diffusion by writing the transport equations in the form

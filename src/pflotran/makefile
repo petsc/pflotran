@@ -112,6 +112,8 @@ common_obj = ${common_src}option.o \
 	${common_src}convergence.o \
 	${common_src}timestepper.o \
 	${common_src}simulation.o \
+	${common_src}stochastic_aux.o \
+	${common_src}stochastic.o \
 	${common_src}output.o \
 	${common_src}init.o
 
@@ -141,7 +143,8 @@ test: functions.o test.o
 # These ensure that the module files are built in the correct order.
 auxilliary.o : thc_aux.o richards_aux.o reactive_transport_aux.o \
 	mphase_aux.o
-pflotran.o : simulation.o output.o init.o timestepper.o logging.o
+pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
+	     stochastic_aux.o stochastic.o
 simulation.o : timestepper.o realization.o 
 init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	simulation.o input.o material.o region.o condition.o convergence.o \
@@ -149,7 +152,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	co2_span_wagner_spline.o co2_sw.o fluid.o saturation_function.o \
 	coupler.o strata.o pckr_mod.o field.o mphase.o \
 	richards.o thc.o discretization.o logging.o mass_balance.o \
-	database.o reaction_aux.o string.o units.o
+	database.o reaction_aux.o string.o units.o stochastic_aux.o
 unstructured_grid.o : option.o connection.o 
 structured_grid.o : connection.o option.o input.o 
 general_grid.o : grid.o realization.o hdf5.o logging.o
@@ -214,3 +217,6 @@ global.o : realization.o level.o patch.o global_aux.o connection.o grid.o \
 	   option.o coupler.o
 global_aux.o : option.o
 units.o : option.o
+stochastic.o : simulation.o option.o realization.o timestepper.o \
+	       init.o logging.o
+stochastic_aux.o : simulation.o input.o option.o

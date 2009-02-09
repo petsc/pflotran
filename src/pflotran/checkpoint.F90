@@ -378,9 +378,10 @@ subroutine Restart(realization, &
   output_option => realization%output_option
   
   call PetscGetTime(tstart,ierr)
-  option%io_buffer = '--> Open checkpoint file: ' // trim(option%restart_file)
+  option%io_buffer = '--> Open checkpoint file: ' // &
+                     trim(option%restart_filename)
   call printMsg(option)
-  call PetscViewerBinaryOpen(option%mycomm,option%restart_file, &
+  call PetscViewerBinaryOpen(option%mycomm,option%restart_filename, &
                              FILE_MODE_READ,viewer,ierr)
  
   activity_coefs_read = PETSC_FALSE

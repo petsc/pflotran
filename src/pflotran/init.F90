@@ -13,7 +13,7 @@ module Init_module
 #include "finclude/petscsnes.h"
 #include "finclude/petscpc.h"
 
-  public :: Init
+  public :: Init, InitReadStochasticCardFromInput
 
 contains
 
@@ -24,7 +24,7 @@ contains
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine Init(simulation,filename)
+subroutine Init(simulation)
 
   use Simulation_module
   use Option_module
@@ -114,7 +114,7 @@ subroutine Init(simulation,filename)
   nullify(tran_solver)
   
 
-  realization%input => InputCreate(IUNIT1,filename)
+  realization%input => InputCreate(IUNIT1,option%input_filename)
   filename_out = trim(option%global_prefix) // trim(option%group_prefix) // &
                  '.out'
   
@@ -123,7 +123,7 @@ subroutine Init(simulation,filename)
   endif
 
   ! read required cards
-  call readRequiredCardsFromInput(realization)
+  call InitReadRequiredCardsFromInput(realization)
 
   patch => realization%patch
 
@@ -158,7 +158,7 @@ subroutine Init(simulation,filename)
   endif
 
   ! read in the remainder of the input file
-  call readInput(simulation)
+  call InitReadInput(simulation)
   call InputDestroy(realization%input)
 
   ! initialize reference density
@@ -570,12 +570,52 @@ end subroutine Init
 
 ! ************************************************************************** !
 !
-! readRequiredCardsFromInput: Reads pflow input file
+! InitReadStochasticCardFromInput: Reads stochastic card from input file
+! author: Glenn Hammond
+! date: 02/04/09
+!
+! ************************************************************************** !
+subroutine InitReadStochasticCardFromInput(stochastic,option)
+
+  use Option_module
+  use Input_module
+  use Stochastic_Aux_module
+
+  implicit none
+  
+  type(stochastic_type), pointer :: stochastic
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  type(input_type), pointer :: input
+  PetscTruth :: print_warning
+  
+  input => InputCreate(IUNIT1,option%input_filename)
+
+  ! MODE information
+  string = "STOCHASTIC"
+  print_warning = PETSC_FALSE
+  call InputFindStringInFile(input,option,string,print_warning)
+
+  if (.not.InputError(input)) then
+    if (.not.associated(stochastic)) then
+      stochastic => StochasticCreate()
+    endif
+    call StochasticRead(stochastic,input,option)
+  endif
+  
+  call InputDestroy(input)
+
+end subroutine InitReadStochasticCardFromInput
+
+! ************************************************************************** !
+!
+! InitReadRequiredCardsFromInput: Reads pflow input file
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine readRequiredCardsFromInput(realization)
+subroutine InitReadRequiredCardsFromInput(realization)
 
   use Option_module
   use Discretization_module
@@ -586,7 +626,6 @@ subroutine readRequiredCardsFromInput(realization)
   use Level_module
   use Realization_module
   use AMR_Grid_module
-  use Input_module
 
   use Reaction_module  
   use Reaction_Aux_module  
@@ -704,16 +743,16 @@ subroutine readRequiredCardsFromInput(realization)
     option%ntrandof = GetPrimarySpeciesCount(reaction)
   endif
     
-end subroutine readRequiredCardsFromInput
+end subroutine InitReadRequiredCardsFromInput
 
 ! ************************************************************************** !
 !
-! readInput: Reads pflow input file
+! InitReadInput: Reads pflow input file
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine readInput(simulation)
+subroutine InitReadInput(simulation)
 
   use Simulation_module
   use Option_module
@@ -1002,13 +1041,16 @@ subroutine readInput(simulation)
         call StringToLower(word)        
         select case(word)
           case('permx')
-            call InputReadWord(input,option,option%permx_filename,PETSC_TRUE)
+            call InputReadNChars(input,option,option%permx_filename, &
+                                 MAXSTRINGLENGTH,PETSC_TRUE)
             call InputErrorMsg(input,option,'dataset','permx_filename') 
           case('permy')
-            call InputReadWord(input,option,option%permy_filename,PETSC_TRUE)
+            call InputReadNChars(input,option,option%permy_filename, &
+                                 MAXSTRINGLENGTH,PETSC_TRUE)
             call InputErrorMsg(input,option,'dataset','permy_filename') 
           case('permz')
-            call InputReadWord(input,option,option%permz_filename,PETSC_TRUE)
+            call InputReadNChars(input,option,option%permz_filename, &
+                                 MAXSTRINGLENGTH,PETSC_TRUE)
             call InputErrorMsg(input,option,'dataset','permz_filename') 
         end select          
         
@@ -1098,7 +1140,8 @@ subroutine readInput(simulation)
 
       case ('RESTART')
         option%restart_flag = PETSC_TRUE
-        call InputReadWord(input,option,option%restart_file,PETSC_TRUE)
+        call InputReadNChars(input,option,option%restart_filename,MAXSTRINGLENGTH, &
+                             PETSC_TRUE)
         call InputErrorMsg(input,option,'RESTART','Restart file name') 
         call InputReadDouble(input,option,option%restart_time)
         call InputDefaultMsg(input,option,'Restart time') 
@@ -1276,6 +1319,10 @@ subroutine readInput(simulation)
           call InputErrorMsg(input,option,'keyword','OUTPUT') 
           call StringToUpper(word)
           select case(trim(word))
+            case('NO_FINAL','NO_PRINT_FINAL')
+              output_option%print_final = PETSC_FALSE
+            case('NO_INITIAL','NO_PRINT_INITIAL')
+              output_option%print_initial = PETSC_FALSE
             case('PERMEABILITY')
               output_option%print_permeability = PETSC_TRUE
             case('MASS_BALANCE')
@@ -1370,6 +1417,10 @@ subroutine readInput(simulation)
               call InputErrorMsg(input,option,'keyword','OUTPUT,FORMAT') 
               call StringToUpper(word)
               select case(trim(word))
+                case ('HDF5')
+                  output_option%print_hdf5 = PETSC_TRUE
+                case ('MAD')
+                  output_option%print_mad = PETSC_TRUE
                 case ('TECPLOT')
                   output_option%print_tecplot = PETSC_TRUE
                   call InputReadWord(input,option,word,PETSC_TRUE)
@@ -1391,8 +1442,6 @@ subroutine readInput(simulation)
                   endif
                 case ('VTK')
                   output_option%print_vtk = PETSC_TRUE
-                case ('HDF5')
-                  output_option%print_hdf5 = PETSC_TRUE
                 case default
                   option%io_buffer = 'Keyword: ' // trim(word) // &
                                      ' not recognized in OUTPUT,FORMAT.'
@@ -1497,7 +1546,7 @@ subroutine readInput(simulation)
 
   enddo
                                         
-end subroutine readInput
+end subroutine InitReadInput
 
 ! ************************************************************************** !
 !
@@ -1636,7 +1685,8 @@ subroutine assignMaterialPropToRegions(realization)
         do
            if (.not.associated(strata)) exit
            if (.not.associated(strata%region) .and. strata%active) then
-              call readMaterialsFromFile(realization,strata%material_property_name)
+              call readMaterialsFromFile(realization, &
+                                         strata%material_property_filename)
            endif
            strata => strata%next
         end do
@@ -1912,7 +1962,7 @@ subroutine verifyCoupler(realization,patch,coupler_list)
   type(patch_type), pointer :: patch  
   type(coupler_type), pointer :: coupler
   character(len=MAXWORDLENGTH) :: word
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: dataset_name
   PetscInt :: iconn, icell, local_id
   Vec :: global_vec
@@ -2025,7 +2075,7 @@ subroutine readMaterialsFromFile(realization,filename)
   implicit none
   
   type(realization_type) :: realization
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
@@ -2093,7 +2143,7 @@ subroutine readPermeabilitiesFromFile(realization,filename)
   implicit none
   
   type(realization_type) :: realization
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch

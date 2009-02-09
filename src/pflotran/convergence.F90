@@ -120,7 +120,6 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   PetscReal, pointer :: vec_ptr(:)
   
   character(len=MAXSTRINGLENGTH) :: string, string2, string3
-  character(len=MAXWORDLENGTH) :: word
   PetscTruth :: print_sol_norm_info = PETSC_FALSE
   PetscTruth :: print_upd_norm_info = PETSC_FALSE
   PetscTruth :: print_res_norm_info = PETSC_FALSE
@@ -152,8 +151,8 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   grid => context%grid
 
   if (option%use_touch_options) then
-    word = 'detailed_convergence'
-    if (OptionCheckTouch(option,word)) then
+    string = 'detailed_convergence'
+    if (OptionCheckTouch(option,string)) then
       if (solver%print_detailed_convergence) then
         solver%print_detailed_convergence = PETSC_FALSE
       else
