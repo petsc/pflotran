@@ -195,7 +195,7 @@ subroutine MphaseSetupPatch(realization)
 ! ckwet
   allocate(patch%aux%Mphase%Mphase_parameter%ckwet(size(realization%material_property_array)))
   do ipara = 1, size(realization%material_property_array)
-    patch%aux%Mphase%mphase_parameter%dencpr(realization%material_property_array(ipara)%ptr%id) = &
+    patch%aux%Mphase%mphase_parameter%ckwet(realization%material_property_array(ipara)%ptr%id) = &
       realization%material_property_array(ipara)%ptr%thermal_conductivity_wet
   enddo
   
@@ -1858,7 +1858,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
                               mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
                               option,1,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
-  !  print *,'REs, acm: ', res
+ !   print *,'REs, acm: ', res
     Resold_AR(local_id, :)= Res(1:option%nflowdof)
   enddo
 #endif
@@ -1991,6 +1991,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     istart = iend-option%nflowdof+1
     r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
     Resold_AR(local_id,1:option%nflowdof) = ResOld_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
+   !  print *, 'REs BC: ',r_p(istart:iend)
   enddo
   boundary_condition => boundary_condition%next
  enddo
@@ -2059,7 +2060,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 
       patch%internal_velocities(:,sum_connection) = v_darcy(:)
       Resold_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
- 
+      
      if (local_id_up>0) then
         iend = local_id_up*option%nflowdof
         istart = iend-option%nflowdof+1
