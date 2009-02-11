@@ -349,6 +349,8 @@ subroutine ReactionRead(reaction,input,option)
               call printErrMsg(option)
           end select
         enddo
+      case('MOLAL','MOLARITY')
+        option%initialize_with_molality = PETSC_TRUE
       case('OUTPUT')
         call InputSkipToEnd(input,option,word)
       case default

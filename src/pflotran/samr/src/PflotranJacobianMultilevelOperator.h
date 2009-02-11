@@ -22,6 +22,7 @@ extern "C"{
 #include "BoundaryConditionStrategy.h"
 #include "CCellVariable.h"
 #include "HierarchyDataOpsReal.h"
+#include "CoarsenSchedule.h"
 
 extern "C" {
 #include "petscmat.h"
@@ -266,6 +267,7 @@ private:
    tbox::Pointer<xfer::CoarsenOperator<NDIM> > d_soln_coarsen_op;
 
    tbox::Array< tbox::Pointer< xfer::RefineSchedule<NDIM> > > d_GlobalToLocalRefineSchedule;
+   tbox::Array< tbox::Pointer< xfer::CoarsenSchedule<NDIM> > > d_CoarsenSchedule;
 
    RefinementBoundaryInterpolation::InterpolationScheme d_tangential_interp_scheme;
    RefinementBoundaryInterpolation::InterpolationScheme d_normal_interp_scheme;

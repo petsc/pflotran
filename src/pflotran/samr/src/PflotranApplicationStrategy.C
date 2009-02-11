@@ -100,6 +100,7 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
    
    d_GlobalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
    d_LocalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
+   d_CoarsenSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
    
 #ifdef DEBUG_CHECK_ASSERTIONS
    assert(d_number_solution_components>=1);
@@ -109,11 +110,13 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
    {
       d_GlobalToLocalRefineSchedule[ln].resizeArray(d_number_solution_components);
       d_LocalToLocalRefineSchedule[ln].resizeArray(d_number_solution_components);
+      d_CoarsenSchedule[ln].resizeArray(d_number_solution_components);
 
       for(int i=0;i<d_number_solution_components; i++)
       {
          d_GlobalToLocalRefineSchedule[ln][i].setNull();
          d_LocalToLocalRefineSchedule[ln][i].setNull();
+         d_CoarsenSchedule[ln][i].setNull();
       }
    }
 
@@ -411,8 +414,32 @@ PflotranApplicationStrategy::interpolateLocalToLocalVector(tbox::Pointer< solv::
          }
       }
     }
-
+#if 1
     // should add code to coarsen variables
+    xfer::CoarsenAlgorithm<NDIM> cell_coarsen;
+    cell_coarsen.registerCoarsen(dest_id, dest_id, d_soln_coarsen_op);
+
+    for (int ln = hierarchy->getNumberOfLevels()-2; ln>=0; ln-- ) 
+    {
+      tbox::Pointer<hier::PatchLevel<NDIM> > clevel = hierarchy->getPatchLevel(ln);
+      tbox::Pointer<hier::PatchLevel<NDIM> > flevel = hierarchy->getPatchLevel(ln+1);
+
+      for ( int i=0; i<srcDOF; i++)
+      {
+         if((!d_CoarsenSchedule[ln][i].isNull()) && cell_coarsen.checkConsistency(d_CoarsenSchedule[ln][i]))
+         {
+            cell_coarsen.resetSchedule(d_CoarsenSchedule[ln][i]);
+         }
+         else
+         {
+            d_CoarsenSchedule[ln][i] = cell_coarsen.createSchedule(clevel, 
+                                                                   flevel);
+         }
+         
+         d_CoarsenSchedule[ln][i]->coarsenData();            
+      }
+    }
+#endif
 
     t_interpolate_variable->stop();
 }
@@ -509,6 +536,29 @@ PflotranApplicationStrategy::interpolateGlobalToLocalVector(tbox::Pointer< solv:
     }
 
     // should add code to coarsen variables
+    xfer::CoarsenAlgorithm<NDIM> cell_coarsen;
+    cell_coarsen.registerCoarsen(dest_id, dest_id, d_soln_coarsen_op);
+
+    for (int ln = hierarchy->getNumberOfLevels()-2; ln>=0; ln-- ) 
+    {
+      tbox::Pointer<hier::PatchLevel<NDIM> > clevel = hierarchy->getPatchLevel(ln);
+      tbox::Pointer<hier::PatchLevel<NDIM> > flevel = hierarchy->getPatchLevel(ln+1);
+
+      for ( int i=0; i<globalDOF; i++)
+      {
+         if((!d_CoarsenSchedule[ln][i].isNull()) && cell_coarsen.checkConsistency(d_CoarsenSchedule[ln][i]))
+         {
+            cell_coarsen.resetSchedule(d_CoarsenSchedule[ln][i]);
+         }
+         else
+         {
+            d_CoarsenSchedule[ln][i] = cell_coarsen.createSchedule(clevel, 
+                                                                   flevel);
+         }
+         
+         d_CoarsenSchedule[ln][i]->coarsenData();            
+      }
+    }
 
     t_interpolate_variable->stop();
 }

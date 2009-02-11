@@ -45,13 +45,13 @@ c
       do k = ifirst2, ilast2
          do j = ifirst1, ilast1
             do i = ifirst0, ilast0
-               r(i,j,k)=f(i,j,k)- stencil(PP,i,j,k)*u(i,j,k)
+               r(i,j,k)=f(i,j,k)-(stencil(PP,i,j,k)*u(i,j,k)
      &                           +stencil(WW,i,j,k)*u(i-1,j,k)
      &                           +stencil(EE,i,j,k)*u(i+1,j,k)
      &                           +stencil(SS,i,j,k)*u(i,j-1,k)
      &                           +stencil(NN,i,j,k)*u(i,j+1,k)
      &                           +stencil(BB,i,j,k)*u(i,j,k-1)
-     &                           +stencil(TT,i,j,k)*u(i,j,k+1)
+     &                           +stencil(TT,i,j,k)*u(i,j,k+1))
                
             enddo
          enddo
