@@ -217,10 +217,21 @@ P.C. Lichtner (LANL, \today)
 \subsection{Database Format}
 
 The thermodynamic database stores all chemical reaction properties (equilibrium constant $\log K_r$, reaction stoichiometry $\nu_{ir}$, species valence $z_i$, Debye parameter $a_i$, mineral molar volume $\overline V_m$, and formula weight $w_i$) used in PFLOTRAN, with the exception of ion exchange. Reactions included in the database consist of aqueous complexation, mineral precipitation and dissolution, gaseous reactions, and surface complexation. The database is divided in five sections: database primary species, aqueous complex reactions, gaseous reactions, mineral reactions, and surface complexation. The format of the database is set up as shown in Table~\ref{tdatabase}. Equilibrium constants are stored at the temperatures: $\{$0, 25, 60, 100, 150, 200, 250, 300$\}$\degc. In the standard database the equilibrium constants are interpolated using a least squares fit to the Meier-Kelly expansion
-\EQ
+\EQ\label{mk}
 \log K \eq c_{-1} \ln T + c_0 + c_1 T + \frac{c_2}{T} + \frac{c_3}{T^2},
 \EN
-with coefficients $c_i$. As a consequence the entries in the database are not exactly reproduced at the corresponding temperatures. 
+with coefficients $c_i$. As a consequence the entries in the database are not exactly reproduced at the corresponding temperatures. The residual function $R$ defined by
+\EQ
+R \eq\sum_{l=1}^{N_{\rm temp}} \left(\log K(T_l)-\sum_{k=-1}^3 c_k f_k(T_l)\right)^2 \eq \min,
+\EN
+where $f_k(T)$ refers to the temperature-dependent coefficients in Eqn.\eqref{mk} and $T_l$ refers to the $N_{\rm temp}$ temperature values listed in the database. Differentiating with respect to $c_i$ yields the equation
+\EQ
+\frac{\p R}{\p c_i} \eq -2\sum_{l=1}^{N_{\rm temp}}\left(\log K(T_l)-\sum_{k=-1}^3 c_k f_k(T_l) \right) f_i(T_l) \eq 0,
+\EN
+which can be written in the form
+\EQ
+\sum_{l=1}^{N_{\rm temp}}\sum_{k=-1}^3 f_i(T_l) f_k(T_l) c_k \eq \sum_l f_i(T_l) \log K(T_l).
+\EN
 
 \begin{table}[h]\centering
 \caption{Thermodynamic database format.}\label{tdatabase}
