@@ -2502,7 +2502,7 @@ end subroutine ImmisMaxChange
 ! date: 10/13/08
 !
 ! ************************************************************************** !
-function ImmisGetTecplotHeader(realization)
+function ImmisGetTecplotHeader(realization, icolumn)
 
   use Realization_module
   use Option_module
@@ -2512,6 +2512,7 @@ function ImmisGetTecplotHeader(realization)
   
   character(len=MAXSTRINGLENGTH) :: ImmisGetTecplotHeader
   type(realization_type) :: realization
+  PetscInt :: icolumn
   
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(option_type), pointer :: option
@@ -2521,26 +2522,64 @@ function ImmisGetTecplotHeader(realization)
   option => realization%option
   field => realization%field
   
-  string = ',' // &
-           '"T [C]",' // &
-           '"P [Pa]",' // &
-           '"PHASE",' // &
-           '"S(l)",' // &
-           '"S(g)",' // &
-           '"u(l)",'//&
-           '"u(g)",'
+  string = ''
 
-  do i=1,option%nflowspec
-    write(string2,'('',"Xl('',i2,'')"'')') i
-    string = trim(string) // trim(string2)
-  enddo
-
-  do i=1,option%nflowspec
-    write(string2,'('',"Xg('',i2,'')"'')') i
-    string = trim(string) // trim(string2)
-  enddo
-
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-T [C]"'')') icolumn
+  else
+    write(string2,'('',"T [C]"'')')
+  endif
+  string = trim(string) // trim(string2)
   
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-P [Pa]"'')') icolumn
+  else
+    write(string2,'('',"P [Pa]"'')')
+  endif
+  string = trim(string) // trim(string2)
+  
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-PHASE"'')') icolumn
+  else
+    write(string2,'('',"PHASE"'')')
+  endif
+  string = trim(string) // trim(string2)
+  
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-S(l)"'')') icolumn
+  else
+    write(string2,'('',"S(l)"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-S(g)"'')') icolumn
+  else
+    write(string2,'('',"S(g)"'')')
+  endif
+  string = trim(string) // trim(string2)
+    
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-u(l)"'')') icolumn
+  else
+    write(string2,'('',"u(l)"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-u(g)"'')') icolumn
+  else
+    write(string2,'('',"u(g)"'')')
+  endif
+  string = trim(string) // trim(string2)
+
   ImmisGetTecplotHeader = string
 
 end function ImmisGetTecplotHeader
