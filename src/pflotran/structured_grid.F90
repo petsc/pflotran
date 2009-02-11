@@ -50,6 +50,11 @@ module Structured_Grid_module
 
   end type structured_grid_type
 
+  interface StructuredGridVecGetArrayF90
+     module procedure StructuredGridVecGetArrayCellF90
+     module procedure StructuredGridVecGetArraySideF90
+  end interface
+
   public :: StructuredGridCreate, &
             StructuredGridDestroy, &
             StructuredGridCreateDA, &
@@ -1504,19 +1509,19 @@ end subroutine StructuredGridDestroy
                           
 ! ************************************************************************** !
 !
-! StructuredGridVecGetArrayF90: Interface for SAMRAI AMR
+! StructuredGridVecGetArrayCellF90: Interface for SAMRAI AMR
 ! author: Bobby Philip
 ! date: 06/09/08
 !
 ! ************************************************************************** !
-subroutine StructuredGridVecGetArrayF90(structured_grid, vec, f90ptr, ierr)
+subroutine StructuredGridVecGetArrayCellF90(structured_grid, vec, f90ptr, ierr)
 
  use cf90interface_module
 
  implicit none 
 
  interface
-    subroutine samr_vecgetarrayf90(patch, petscvec, f90wrap)
+    subroutine samr_vecgetarraycellf90(patch, petscvec, f90wrap)
       implicit none
 #include "finclude/petsc.h"
 #include "finclude/petscvec.h"
@@ -1524,7 +1529,7 @@ subroutine StructuredGridVecGetArrayF90(structured_grid, vec, f90ptr, ierr)
       PetscFortranAddr, intent(inout):: patch
       Vec:: petscvec
       PetscFortranAddr :: f90wrap
-    end subroutine samr_vecgetarrayf90
+    end subroutine samr_vecgetarraycellf90
  end interface
 
 #include "finclude/petsc.h"
@@ -1546,12 +1551,65 @@ subroutine StructuredGridVecGetArrayF90(structured_grid, vec, f90ptr, ierr)
     allocate(ptr)
     nullify(ptr%f90ptr)
     call assign_c_array_ptr(cptr, ptr)
-    call samr_vecgetarrayf90(structured_grid%p_samr_patch, vec, cptr)
+    call samr_vecgetarraycellf90(structured_grid%p_samr_patch, vec, cptr)
     f90ptr => ptr%f90ptr
     deallocate(ptr)
  endif
  
-end subroutine StructuredGridVecGetArrayF90
+end subroutine StructuredGridVecGetArrayCellF90
+                          
+! ************************************************************************** !
+!
+! StructuredGridVecGetArray2F90: Interface for SAMRAI AMR
+! author: Bobby Philip
+! date: 06/09/08
+!
+! ************************************************************************** !
+subroutine StructuredGridVecGetArraySideF90(structured_grid, axis, vec, f90ptr, ierr)
+
+ use cf90interface_module
+
+ implicit none 
+
+ interface
+    subroutine samr_vecgetarraysidef90(patch, axis, petscvec, f90wrap)
+      implicit none
+#include "finclude/petsc.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+      PetscFortranAddr, intent(inout):: patch
+      PetscInt :: axis
+      Vec:: petscvec
+      PetscFortranAddr :: f90wrap
+    end subroutine samr_vecgetarraysidef90
+ end interface
+
+#include "finclude/petsc.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+ type(structured_grid_type) :: structured_grid
+ PetscInt :: axis
+ Vec:: vec
+ PetscReal, pointer :: f90ptr(:)
+ PetscInt :: ierr
+ 
+ type(f90ptrwrap), pointer :: ptr
+ PetscFortranAddr :: cptr
+ 
+ if(structured_grid%p_samr_patch .eq. 0) then
+    call VecGetArrayF90(vec, f90ptr, ierr)
+ else
+    ierr=0
+    allocate(ptr)
+    nullify(ptr%f90ptr)
+    call assign_c_array_ptr(cptr, ptr)
+    call samr_vecgetarraysidef90(structured_grid%p_samr_patch, axis, vec, cptr)
+    f90ptr => ptr%f90ptr
+    deallocate(ptr)
+ endif
+ 
+end subroutine StructuredGridVecGetArraySideF90
 
 ! ************************************************************************** !
 !

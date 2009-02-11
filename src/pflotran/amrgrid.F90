@@ -416,7 +416,7 @@ subroutine AMRGridCreateVector(amrgrid, dof, vector,vector_type, &
   implicit none
 
   interface
-     subroutine create_samrai_vec(p_application, dof, use_ghost, use_components, vec)
+     subroutine create_samrai_vec(p_application, dof, centering, use_ghost, use_components, vec)
        use Option_module
        implicit none
        
@@ -426,6 +426,7 @@ subroutine AMRGridCreateVector(amrgrid, dof, vector,vector_type, &
        
        PetscFortranAddr :: p_application
        integer :: dof
+       PetscInt :: centering
        PetscTruth :: use_ghost
        PetscTruth :: use_components
        Vec :: vec
@@ -442,14 +443,17 @@ subroutine AMRGridCreateVector(amrgrid, dof, vector,vector_type, &
   PetscErrorCode :: ierr
   PetscInt :: dof
   PetscTruth:: use_ghost
+  PetscInt :: var_centering
+
+  var_centering = option%ivar_centering
 
   select case (vector_type)
     case(GLOBAL)
       use_ghost=PETSC_FALSE
-      call create_samrai_vec(amrgrid%p_application, dof, use_ghost, use_components, vector)
+      call create_samrai_vec(amrgrid%p_application, dof, var_centering, use_ghost, use_components, vector)
     case(LOCAL)
       use_ghost=PETSC_TRUE
-      call create_samrai_vec(amrgrid%p_application, dof, use_ghost, use_components, vector)
+      call create_samrai_vec(amrgrid%p_application, dof, var_centering, use_ghost, use_components, vector)
     case(NATURAL)
       call printErrMsg(option,'SAMRAI will not create PETSc Natural Vecs!!')
   end select

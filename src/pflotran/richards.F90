@@ -1511,6 +1511,18 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   
   implicit none
 
+  interface
+     subroutine samr_patch_get_corners(p_patch, nxs, nys, nzs, nlx, nly, nlz)
+       implicit none
+       
+#include "finclude/petsc.h"
+       
+       PetscFortranAddr :: p_patch
+       PetscInt :: nxs, nys, nzs, nlx, nly, nlz
+       
+     end subroutine samr_patch_get_corners
+  end interface
+
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
@@ -1522,7 +1534,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   PetscReal, pointer :: r_p(:), porosity_loc_p(:), &
                         perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
   PetscReal, pointer :: icap_loc_p(:), ithrm_loc_p(:)
-
+  PetscReal, pointer :: face_fluxes_p(:)
   PetscInt :: icap_up, icap_dn
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
@@ -1543,7 +1555,8 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity
-  
+  PetscInt :: axis, nlx, nly, nlz, pstart, pend
+
   patch => realization%patch
   grid => patch%grid
   option => realization%option
@@ -1649,6 +1662,28 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
     cur_connection_set => cur_connection_set%next
   enddo    
 #endif
+  ! in case of a SAMR grid the face fluxes need to be restricted to coarser grids
+  ! so we copy them into a SAMRAI face vector in order to do that
+  if(associated(grid%structured_grid).and.(grid%structured_grid%p_samr_patch/=0)) then
+     nlx = grid%structured_grid%nlx
+     nly = grid%structured_grid%nly
+     nlz = grid%structured_grid%nlz
+     do axis=0,2
+        select case(axis)
+           case(0)
+              pstart = 1
+              pend = (nlx+1)*nly*nlz
+           case(1)
+              pstart = (nlx+1)*nly*nlz+1
+              pend = pstart+nlx*(nly+1)*nlz-1
+           case(2)
+              pstart = (nlx+1)*nly*nlz+nlx*(nly+1)*nlz+1
+              pend = pstart+nlx*nly*(nlz+1)-1
+        end select
+        call GridVecGetArrayF90(grid,axis,field%flow_face_fluxes, face_fluxes_p, ierr)
+        face_fluxes_p = patch%internal_velocities(1,pstart:pend)
+     enddo
+  endif
 
   call GridVecRestoreArrayF90(grid,r, r_p, ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
