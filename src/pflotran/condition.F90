@@ -809,7 +809,7 @@ subroutine FlowConditionRead(condition,input,option)
                               default_datum, default_gradient,PETSC_TRUE)
     
   select case(option%iflowmode)
-    case(THC_MODE,MPH_MODE)
+    case(THC_MODE, MPH_MODE, IMS_MODE)
       if (.not.associated(pressure) .and. .not.associated(rate)) then
         option%io_buffer = 'pressure and rate condition null in ' // &
                            'condition: ' // trim(condition%name)

@@ -161,6 +161,21 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
             call InputReadDouble(input,option,saturation_function%Sr(iphase))
             word = trim(keyword) // ' residual saturation'
             call InputErrorMsg(input,option,word,'SATURATION_FUNCTION')
+          case(IMS_MODE)
+            call InputReadWord(input,option,keyword,PETSC_TRUE)
+            call InputErrorMsg(input,option,'keyword','SATURATION_FUNCTION')
+            call StringToUpper(keyword)   
+            select case(trim(keyword))
+              case('WATER','WATER_PHASE','LIQUID','LIQUID_PHASE')
+                iphase = 1
+              case('CO2','CO2_PHASE','GAS','GAS_PHASE')
+                iphase = 2
+              case('OIL','OIL_PHASE','NAPL','NAPL_PHASE')
+                iphase = 3
+            end select
+            call InputReadDouble(input,option,saturation_function%Sr(iphase))
+            word = trim(keyword) // ' residual saturation'
+            call InputErrorMsg(input,option,word,'SATURATION_FUNCTION')
           case(RICHARDS_MODE,THC_MODE)
             call InputReadDouble(input,option,saturation_function%Sr(1))
             call InputErrorMsg(input,option,'residual saturation','SATURATION_FUNCTION')

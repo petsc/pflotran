@@ -513,6 +513,7 @@ subroutine GlobalUpdateDenAndSatPatch(realization,weight)
       (weight*patch%aux%Global%aux_vars(ghosted_id)%sat_store(:,TIME_TpDT)+ &
        (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%sat_store(:,TIME_T))
 
+    ! need future implementation for ims_mode too    
     if(option%iflowmode == MPH_MODE)then
        patch%aux%Global%aux_vars(ghosted_id)%pres(2) = &
          (weight*patch%aux%Global%aux_vars(ghosted_id)%pres_store(2,TIME_TpDT)+ &
@@ -568,7 +569,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
                                    field%work,field%work_loc,ONEDOF)
   call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_SATURATION,time_level)                                     
   select case(option%iflowmode)
-    case(MPH_MODE)
+    case(MPH_MODE, IMS_MODE)
       ! Gas density
       call RealizationGetDataset(realization,field%work,GAS_DENSITY, &
                              ZERO_INTEGER)

@@ -48,6 +48,7 @@ subroutine Init(simulation)
   use Input_module
   
   use MPHASE_module
+  use Immis_module
   use Richards_module
   use THC_module
   
@@ -203,7 +204,7 @@ subroutine Init(simulation)
   
     if (flow_solver%J_mat_type == MATAIJ) then
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE)
+        case(MPH_MODE,THC_MODE, IMS_MODE)
           option%io_buffer = 'AIJ matrix not supported for current mode: '// &
                              option%flowmode
           call printErrMsg(option)
@@ -215,6 +216,8 @@ subroutine Init(simulation)
         option%nflowdof,option%nphase
       select case(option%iflowmode)
         case(MPH_MODE)
+          write(*,'(" mode = MPH: p, T, s/C")')
+        case(IMS_MODE)
           write(*,'(" mode = MPH: p, T, s/C")')
         case(THC_MODE)
           write(*,'(" mode = Richards: p, T, s/C")')
@@ -266,6 +269,9 @@ subroutine Init(simulation)
       case(MPH_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,MPHASEResidual, &
                              realization,ierr)
+      case(IMS_MODE)
+        call SNESSetFunction(flow_solver%snes,field%flow_r,ImmisResidual, &
+                             realization,ierr)
     end select
     
     if (flow_solver%J_mat_type == MATMFFD) then
@@ -282,6 +288,9 @@ subroutine Init(simulation)
       case(MPH_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              MPHASEJacobian,realization,ierr)
+      case(IMS_MODE)
+        call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
+                             ImmisJacobian,realization,ierr)
     end select
     
     call SolverSetSNESOptions(flow_solver)
@@ -473,6 +482,8 @@ subroutine Init(simulation)
         call RichardsSetup(realization)
       case(MPH_MODE)
         call MphaseSetup(realization)
+      case(IMS_MODE)
+        call ImmisSetup(realization)
     end select
   
     ! assign initial conditionsRealizAssignFlowInitCond
@@ -484,6 +495,8 @@ subroutine Init(simulation)
       case(RICHARDS_MODE)
         call RichardsUpdateAuxVars(realization)
       case(MPH_MODE)
+        call MphaseUpdateAuxVars(realization)
+      case(IMS_MODE)
         call MphaseUpdateAuxVars(realization)
     end select
   endif
@@ -1580,6 +1593,14 @@ subroutine setFlowMode(option)
       option%nflowspec = 1
     case('MPH','MPHASE')
       option%iflowmode = MPH_MODE
+      option%nphase = 2
+      option%liquid_phase = 1      
+      option%gas_phase = 2      
+      option%nflowdof = 3
+      option%nflowspec = 2
+      option%itable = 2
+   case('IMS','IMMIS','THS')
+      option%iflowmode = IMS_MODE
       option%nphase = 2
       option%liquid_phase = 1      
       option%gas_phase = 2      

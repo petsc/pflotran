@@ -340,4 +340,29 @@ subroutine lubksb(A,N,INDX,B)
 
 end subroutine lubksb
 
+! ************************************************************************** !
+!
+! Interpolate: Interpolates values between two reference values
+! author: Glenn Hammond
+! date: 02/09/09
+!
+! ************************************************************************** !
+subroutine Interpolate(x_high,x_low,x,y_high,y_low,y)
+
+  implicit none
+
+  PetscReal :: x_high, x_low, x
+  PetscReal :: y_high, y_low, y
+  
+  PetscReal :: weight
+  
+  if (dabs(x_high-x_low) < 1.d-10) then
+    y = x
+  else
+    weight = (x-x_low)/(x_high-x_low)
+    y = y_low + weight*(y_high-y_low)
+  endif
+
+end subroutine Interpolate
+
 end module Utility_module
