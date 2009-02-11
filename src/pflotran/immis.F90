@@ -157,7 +157,7 @@ subroutine ImmisSetupPatch(realization)
   type(grid_type), pointer :: grid
   type(coupler_type), pointer :: boundary_condition
 
-  PetscInt :: ghosted_id, iconn, sum_connection
+  PetscInt :: ghosted_id, iconn, sum_connection, ipara
   type(Immis_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)  
   
   option => realization%option
@@ -166,13 +166,37 @@ subroutine ImmisSetupPatch(realization)
   print *,' ims setup get patch'
   patch%aux%Immis => ImmisAuxCreate()
   
-  option%io_buffer = 'Before Immis can be run, the thc_parameter object ' // &
-                     'must be initialized with the proper variables ' // &
-                     'ImmisAuxCreate() is called anyhwere.'
-  call printErrMsg(option)
+!  option%io_buffer = 'Before Immis can be run, the thc_parameter object ' // &
+!                     'must be initialized with the proper variables ' // &
+!                     'ImmisAuxCreate() is called anyhwere.'
+!  call printErrMsg(option)
     
-  print *,' mph setup get Aux'
-  ! allocate aux_var data structures for all grid cells  
+! immis_parameters create *********************************************
+! Sir
+  allocate(patch%aux%Immis%Immis_parameter%sir(option%nphase, &
+                                  size(realization%saturation_function_array)))
+   print *,' ims setup get patch: sir, allocated'                                
+  do ipara = 1, size(realization%saturation_function_array)
+    patch%aux%Immis%immis_parameter%sir(:,realization%saturation_function_array(ipara)%ptr%id) = &
+      realization%saturation_function_array(ipara)%ptr%Sr(:)
+  enddo
+  print *,' ims setup get patch: sir'
+! dencpr  
+  allocate(patch%aux%Immis%Immis_parameter%dencpr(size(realization%material_property_array)))
+  do ipara = 1, size(realization%material_property_array)
+    patch%aux%Immis%Immis_parameter%dencpr(realization%material_property_array(ipara)%ptr%id) = &
+      realization%material_property_array(ipara)%ptr%rock_density*&
+      realization%material_property_array(ipara)%ptr%specific_heat
+  enddo
+! ckwet
+  allocate(patch%aux%Immis%Immis_parameter%ckwet(size(realization%material_property_array)))
+  do ipara = 1, size(realization%material_property_array)
+    patch%aux%Immis%Immis_parameter%ckwet(realization%material_property_array(ipara)%ptr%id) = &
+      realization%material_property_array(ipara)%ptr%thermal_conductivity_wet
+  enddo
+! immis_parameters create_end *****************************************
+
+! allocate aux_var data structures for all grid cells  
   allocate(aux_vars(grid%ngmax))
   print *,' ims setup get Aux alloc', grid%ngmax
   do ghosted_id = 1, grid%ngmax
