@@ -36,8 +36,13 @@ IFC::IFC(Grid **grid_) {
   PetscReal dy;
   PetscReal dz;// */
 
+#if 0
   PetscReal len_x = 500.;
   PetscReal len_y = 700.;
+#else
+  PetscReal len_x = 850.;
+  PetscReal len_y = 1000.;
+#endif
   PetscReal len_z = 20.;
 
   dx = len_x/(PetscReal)nx;
@@ -92,9 +97,13 @@ IFC::IFC(Grid **grid_) {
   grid->setGridSpacing(dx,dy,dz);
 #endif
 
-//  grid->setOrigin(593618.9,114565.1,70.);
   grid->setRotation(14.); // must come before ->setOrigin()
+
+#if 0
   grid->setOrigin(594200.,115550.,90.);
+#else
+  grid->setOrigin(593875.,115360.,90.);
+#endif
 
 //  grid->computeCoordinates();
 //  grid->computeConnectivity();
@@ -886,7 +895,8 @@ void IFC::flagGridCells(Grid *grid) {
               if (grid->cells[ghosted_id].getIdLocal() > -1 &&
                   grid->cells[ghosted_id].getActive() && 
                   // added to prevent connections within 100m of east boundary
-                  grid->cells[ghosted_id].getXLocal() < 400. &&
+//                  grid->cells[ghosted_id].getXLocal() < 400. &&
+                  grid->cells[ghosted_id].getXLocal() < 750. &&
                   grid->cells[ghosted_id].getZ() <= north_stage_max &&
                   grid->cells[ghosted_id].getZ() >= north_stage_min) {
                 grid->cells[ghosted_id].flag |= NORTH_DIR_NORTH_FACE;
