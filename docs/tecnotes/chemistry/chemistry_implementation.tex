@@ -232,6 +232,7 @@ which can be written in the form
 \EQ
 \sum_{l=1}^{N_{\rm temp}}\sum_{k=-1}^3 f_i(T_l) f_k(T_l) c_k \eq \sum_l f_i(T_l) \log K(T_l).
 \EN
+The solution to this linear equation provides the expansion coefficients $c_k$.
 
 \begin{table}[h]\centering
 \caption{Thermodynamic database format.}\label{tdatabase}
@@ -239,11 +240,11 @@ which can be written in the form
 \begin{tabular}{ll}
 \hline
 Primary Species: & name, $a_0$, $z$, $w$\\
-Secondary Species: & name, nspec, ($\nu$(n), name($n$), $n$=1, nspec), log$K$(1:8) $a_0$, $z$, $w$\\
-Gaseous Species: & name, $\overline V$, nspec, ($\nu$(n), name($n$), $n$=1, nspec), log$K$(1:8), $w$ \\
-Minerals: & name, $\overline V$, nspec, ($\nu$(n), name($n$), $n$=1, nspec), log$K$(1:8), $w$\\
+Secondary Species: & name, nspec, ($\nu$(n), name($n$), $n$=1, nspec), log$K$(1:$N_{\rm temp}$) $a_0$, $z$, $w$\\
+Gaseous Species: & name, $\overline V$, nspec, ($\nu$(n), name($n$), $n$=1, nspec), log$K$(1:$N_{\rm temp}$), $w$ \\
+Minerals: & name, $\overline V$, nspec, ($\nu$(n), name($n$), $n$=1, nspec), log$K$(1:$N_{\rm temp}$), $w$\\
 Surface Complexes: & $>$name, nspec, $\nu$, $>$site, 
-($\nu$(n), name($n$), $n$=1, nspec-1), log$K$(1:8), $z$, $w$\\
+($\nu$(n), name($n$), $n$=1, nspec-1), log$K$(1:$N_{\rm temp}$), $z$, $w$\\
 \hline
 \end{tabular}
 \end{table}
