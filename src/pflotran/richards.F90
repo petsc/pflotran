@@ -1717,29 +1717,28 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   enddo
 #endif  
 
-
-  ! in case of a SAMR grid the face fluxes need to be restricted to coarser grids  
-  ! so we copy them into a SAMRAI face vector in order to do that  
-  if (associated(grid%structured_grid).and.(grid%structured_grid%p_samr_patch/=0)) then  
-    nlx = grid%structured_grid%nlx  
-    nly = grid%structured_grid%nly  
-    nlz = grid%structured_grid%nlz  
-    do axis=0,2  
-      select case(axis)  
-        case(0)  
-          pstart = 1  
-          pend = (nlx+1)*nly*nlz  
-        case(1)  
-          pstart = (nlx+1)*nly*nlz+1  
-          pend = pstart+nlx*(nly+1)*nlz-1  
-        case(2)  
-          pstart = (nlx+1)*nly*nlz+nlx*(nly+1)*nlz+1  
-          pend = pstart+nlx*nly*(nlz+1)-1  
-      end select  
-      call GridVecGetArrayF90(grid,axis,field%flow_face_fluxes, face_fluxes_p, ierr)  
-      face_fluxes_p = patch%internal_velocities(1,pstart:pend)  
-    enddo  
-  endif  
+  ! in case of a SAMR grid the face fluxes need to be restricted to coarser grids 
+  ! so we copy them into a SAMRAI face vector in order to do that 
+  if (associated(grid%structured_grid).and.(grid%structured_grid%p_samr_patch/=0)) then 
+    nlx = grid%structured_grid%nlx 
+    nly = grid%structured_grid%nly 
+    nlz = grid%structured_grid%nlz 
+    do axis=0,2 
+      select case(axis) 
+        case(0) 
+          pstart = 1 
+          pend = (nlx+1)*nly*nlz 
+        case(1) 
+          pstart = (nlx+1)*nly*nlz+1 
+          pend = pstart+nlx*(nly+1)*nlz-1 
+        case(2) 
+          pstart = (nlx+1)*nly*nlz+nlx*(nly+1)*nlz+1 
+          pend = pstart+nlx*nly*(nlz+1)-1 
+      end select 
+      call GridVecGetArrayF90(grid,axis,field%flow_face_fluxes, face_fluxes_p, ierr) 
+      face_fluxes_p = patch%internal_velocities(1,pstart:pend) 
+    enddo 
+  endif 
 
   call GridVecRestoreArrayF90(grid,r, r_p, ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)

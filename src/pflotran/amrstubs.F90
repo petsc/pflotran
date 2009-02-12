@@ -182,7 +182,6 @@ implicit none
   PetscFortranAddr :: p_application
   Vec :: lvec
   Vec :: gvec
-  PetscInt :: ndof
   PetscInt :: ierr
 
 end subroutine SAMRGlobalToLocal
@@ -195,10 +194,20 @@ implicit none
   PetscFortranAddr :: p_application
   Vec :: lvec
   Vec :: gvec
-  PetscInt :: ndof
   PetscInt :: ierr
 
 end subroutine SAMRLocalToLocal
+
+subroutine SAMRCoarsenFaceFluxes(p_application, vec, ierr)
+implicit none
+#include "finclude/petsc.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  PetscFortranAddr :: p_application
+  Vec :: vec
+  PetscInt :: ierr
+
+end subroutine SAMRCoarsenFaceFluxes
 
 subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
 #include "finclude/petsc.h"

@@ -1,6 +1,7 @@
 #include "PflotranApplicationStrategy.h"
 #include "tbox/TimerManager.h"
 #include "CCellDataFactory.h"
+#include "CSideDataFactory.h"
 #include "tbox/RestartManager.h"
 #include "CellVariable.h"
 #include "CCellVariable.h"
@@ -584,7 +585,7 @@ PflotranApplicationStrategy::coarsenFaceFluxes(tbox::Pointer< solv::SAMRAIVector
 
     static tbox::Pointer<tbox::Timer> t_coarsen_flux_variable = tbox::TimerManager::getManager()->getTimer("PFlotran::PflotranApplicationStrategy::coarsenFaceFluxes");
 
-    t_interpolate_variable->start();
+    t_coarsen_flux_variable->start();
 
     int flux_id = fluxVec->getComponentDescriptorIndex(0);
 
