@@ -56,6 +56,8 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
 
    d_soln_coarsen_op.setNull();
 
+   d_flux_coarsen_op.setNull();
+
    d_regrid_refine_scheds.resizeArray(0);
 
    initialize(params);
@@ -105,6 +107,7 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
    d_GlobalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
    d_LocalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
    d_CoarsenSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
+   d_FluxCoarsenSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
    
 #ifdef DEBUG_CHECK_ASSERTIONS
    assert(d_number_solution_components>=1);
@@ -115,12 +118,14 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
       d_GlobalToLocalRefineSchedule[ln].resizeArray(d_number_solution_components);
       d_LocalToLocalRefineSchedule[ln].resizeArray(d_number_solution_components);
       d_CoarsenSchedule[ln].resizeArray(d_number_solution_components);
+      d_FluxCoarsenSchedule[ln].resizeArray(d_number_solution_components);
 
       for(int i=0;i<d_number_solution_components; i++)
       {
          d_GlobalToLocalRefineSchedule[ln][i].setNull();
          d_LocalToLocalRefineSchedule[ln][i].setNull();
          d_CoarsenSchedule[ln][i].setNull();
+         d_FluxCoarsenSchedule[ln][i].setNull();
       }
    }
 
@@ -568,6 +573,57 @@ PflotranApplicationStrategy::interpolateGlobalToLocalVector(tbox::Pointer< solv:
     }
 
     t_interpolate_variable->stop();
+}
+
+void
+PflotranApplicationStrategy::coarsenFaceFluxes(tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> > fluxVec, 
+                                               int ierr)
+{
+
+    tbox::Pointer<hier::PatchHierarchy<NDIM> > hierarchy =  d_hierarchy;
+
+    static tbox::Pointer<tbox::Timer> t_coarsen_flux_variable = tbox::TimerManager::getManager()->getTimer("PFlotran::PflotranApplicationStrategy::coarsenFaceFluxes");
+
+    t_interpolate_variable->start();
+
+    int flux_id = fluxVec->getComponentDescriptorIndex(0);
+
+    tbox::Pointer< hier::Variable< NDIM > > fluxVar = fluxVec->getComponentVariable(0);
+    tbox::Pointer< pdat::CSideDataFactory< NDIM, double > > sideFactory = fluxVar->getPatchDataFactory(); 
+    int ndof = sideFactory->getDefaultDepth();
+
+    if(d_flux_coarsen_op.isNull())
+    {
+       d_flux_coarsen_op = d_grid_geometry->lookupRefineOperator(fluxVar,
+                                                                 "CONSERVATIVE_COARSEN");
+    }
+
+    // should add code to coarsen variables
+    xfer::CoarsenAlgorithm<NDIM> flux_coarsen;
+    flux_coarsen.registerCoarsen(flux_id, flux_id, d_flux_coarsen_op);
+
+    for (int ln = hierarchy->getNumberOfLevels()-2; ln>=0; ln-- ) 
+    {
+      tbox::Pointer<hier::PatchLevel<NDIM> > clevel = hierarchy->getPatchLevel(ln);
+      tbox::Pointer<hier::PatchLevel<NDIM> > flevel = hierarchy->getPatchLevel(ln+1);
+
+      for ( int i=0; i<ndof; i++)
+      {
+         if((!d_FluxCoarsenSchedule[ln][i].isNull()) && flux_coarsen.checkConsistency(d_FluxCoarsenSchedule[ln][i]))
+         {
+            flux_coarsen.resetSchedule(d_FluxCoarsenSchedule[ln][i]);
+         }
+         else
+         {
+            d_FluxCoarsenSchedule[ln][i] = flux_coarsen.createSchedule(clevel, 
+                                                                       flevel);
+         }
+         
+         d_FluxCoarsenSchedule[ln][i]->coarsenData();            
+      }
+    }
+
+    t_coarsen_flux_variable->stop();
 }
 
 void

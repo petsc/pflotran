@@ -284,6 +284,14 @@ void samrlocaltolocal_(SAMRAI::PflotranApplicationStrategy **application_strateg
    
 }
 
+void samrcoarsenfacefluxes_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
+                            Vec *vec, 
+                            int *ierr)
+{
+   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > faceVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(*vec);
+   (*application_strategy)->coarsenFaceFluxes(faceVec, *ierr);
+}
+
 void 
 samrsetcurrentjacobianpatch_( Mat *mat, SAMRAI::hier::Patch<NDIM> **patch)
 {
