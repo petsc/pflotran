@@ -1544,6 +1544,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity
   PetscInt :: axis, nlx, nly, nlz, pstart, pend
+  PetscInt :: direction, max_x_conn, max_y_conn
   
   patch => realization%patch
   grid => patch%grid
@@ -1572,6 +1573,13 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 
   r_p = 0.d0
 #if 1
+  if (option%use_samr) then
+    nlx = grid%structured_grid%nlx  
+    nly = grid%structured_grid%nly  
+    nlz = grid%structured_grid%nlz 
+    max_x_conn = (nlx+1)*nly*nlz
+    max_y_conn = max_x_conn + nlx*(nly+1)*nlz
+  endif
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
@@ -1633,6 +1641,17 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
                         upweight,option,v_darcy,Res)
 
       patch%internal_velocities(1,sum_connection) = v_darcy
+      
+      if (option%use_samr) then
+        if (sum_connection <= max_x_conn) then
+          direction = 0
+        else if (sum_connection <= max_y_conn) then
+          direction = 1
+        else
+          direction = 2
+        endif
+!        face_fluxes_p(ghosted_id_up,direction) = Res(1)
+      endif
       
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
       global_aux_vars(local_id_up)%mass_balance_delta(1) = &
@@ -1711,6 +1730,22 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       endif
 
       r_p(local_id)= r_p(local_id) - Res(1)
+
+      if (option%use_samr) then
+        direction = boundary_condition%region%faces(iconn)
+        select case(direction)
+          case(EAST_FACE)
+            ghosted_id = ghosted_id + 1
+            direction = WEST_FACE
+          case(NORTH_FACE)
+            ghosted_id = ghosted_id + nlx
+            direction = SOUTH_FACE
+          case(TOP_FACE)
+            ghosted_id = ghosted_id + nlx*nly
+            direction = BOTTOM_FACE
+        end select
+!        face_fluxes_p(ghosted_id,direction) = Res(1)
+      endif
  
     enddo
     boundary_condition => boundary_condition%next
@@ -1720,7 +1755,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 
   ! in case of a SAMR grid the face fluxes need to be restricted to coarser grids  
   ! so we copy them into a SAMRAI face vector in order to do that  
-  if (associated(grid%structured_grid).and.(grid%structured_grid%p_samr_patch/=0)) then  
+  if (option%use_samr) then  
     nlx = grid%structured_grid%nlx  
     nly = grid%structured_grid%nly  
     nlz = grid%structured_grid%nlz  

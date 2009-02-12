@@ -44,6 +44,7 @@ module Option_module
     ! 0 - CELL CENTERED
     ! 1 - FACE CENTERED
     PetscInt :: ivar_centering
+    PetscTruth :: use_samr
 
     PetscInt :: nphase
     PetscInt :: liquid_phase
