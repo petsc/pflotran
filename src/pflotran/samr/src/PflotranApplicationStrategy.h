@@ -130,6 +130,9 @@ public:
                                       tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  destVec,
                                       int ierr);
 
+   void coarsenFaceFluxes(tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> > faceVec, 
+                          int ierr);
+
    void setRefinementBoundaryInterpolant(RefinementBoundaryInterpolation *cf_interpolant);
 
    RefinementBoundaryInterpolation *getRefinementBoundaryInterpolant(void){return d_cf_interpolant; }
@@ -138,7 +141,7 @@ public:
 
    tbox::Pointer< hier::PatchHierarchy<NDIM> > getHierarchy(void) { return d_hierarchy; }
 
-   void createVector(int &dof, bool &use_ghost, bool &use_components, Vec *vec);
+   void createVector(int &dof, int &centering, bool &use_ghost, bool &use_components, Vec *vec);
 
    void writePlotData(int time_step, double sim_time);
 
@@ -157,6 +160,12 @@ private:
    void getFromInput(tbox::Pointer<tbox::Database> db,
                     bool is_from_restart);
 
+   static void createVariable(std::string &vname,
+                              int centering,
+                              int type,
+                              int dof,
+                              SAMRAI::tbox::Pointer< SAMRAI::hier::Variable<NDIM> > &var);
+   
    static int d_vec_instance_id;
    bool d_read_regrid_boxes;
    bool d_is_after_regrid;
@@ -193,12 +202,17 @@ private:
    tbox::Pointer<xfer::RefineOperator<NDIM> >  d_soln_refine_op;
    tbox::Pointer<xfer::CoarsenOperator<NDIM> > d_soln_coarsen_op;
 
+   tbox::Pointer<xfer::CoarsenOperator<NDIM> > d_flux_coarsen_op;
+
    tbox::Array< tbox::Pointer< xfer::RefineSchedule<NDIM> > > d_regrid_refine_scheds;
 
    tbox::Array< tbox::Array< tbox::Pointer< xfer::RefineSchedule<NDIM> > > > d_GlobalToLocalRefineSchedule;
    tbox::Array< tbox::Array< tbox::Pointer< xfer::RefineSchedule<NDIM> > > > d_LocalToLocalRefineSchedule;
 
    tbox::Array< tbox::Array< tbox::Pointer< xfer::CoarsenSchedule<NDIM> > > > d_CoarsenSchedule;
+
+   // face/side centered coarsening of fluxes
+   tbox::Array< tbox::Array< tbox::Pointer< xfer::CoarsenSchedule<NDIM> > > > d_FluxCoarsenSchedule;
 
    tbox::Pointer<hier::VariableContext> d_application_ctx;
 
@@ -222,7 +236,9 @@ private:
 
    BoundaryConditionStrategy  *d_refine_patch_strategy;
 
-   tbox::Pointer< math::HierarchyDataOpsReal< NDIM, double > > d_math_op;
+   tbox::Pointer< math::HierarchyDataOpsReal< NDIM, double > > d_ccell_math_op;
+
+   tbox::Pointer< math::HierarchyDataOpsReal< NDIM, double > > d_cside_math_op;
 
    /* 
     * Viz data writers.

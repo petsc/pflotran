@@ -67,13 +67,18 @@ extern "C"{
  */
 
 #define GHOST_CELL_WIDTH (1)
+int __argc_save;
+char **__argv_save;
 
 int main( int argc, char *argv[] ) 
 {
    string input_file;
    string log_file;
-   
+  
    tbox::Pointer<hier::PatchHierarchy<NDIM> > hierarchy;
+
+   __argc_save = argc;
+   __argv_save = argv;
 
    tbox::SAMRAI_MPI::init(&argc, &argv);
    tbox::SAMRAIManager::startup();

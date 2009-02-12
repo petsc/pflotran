@@ -40,6 +40,12 @@ module Option_module
     character(len=MAXWORDLENGTH) :: tranmode
     PetscInt :: itranmode
 
+    ! vector centering, used by SAMR
+    ! 0 - CELL CENTERED
+    ! 1 - FACE CENTERED
+    PetscInt :: ivar_centering
+    PetscTruth :: use_samr
+
     PetscInt :: nphase
     PetscInt :: liquid_phase
     PetscInt :: gas_phase
@@ -266,6 +272,9 @@ function OptionCreate()
   option%itranmode = NULL_MODE
   option%ntrandof = 0
   
+  option%ivar_centering = CELL_CENTERED
+  option%use_samr = PETSC_FALSE
+
   option%nphase = 0
   option%liquid_phase = 0
   option%gas_phase = 0

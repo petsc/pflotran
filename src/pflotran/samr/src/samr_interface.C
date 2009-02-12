@@ -4,12 +4,15 @@
 #include "PETSc_SAMRAIVectorReal.h"
 #include "CCellData.h"
 #include "CellData.h"
+#include "CSideData.h"
+#include "SideData.h"
 #include "CellIndex.h"
 #include "CartesianGridGeometry.h"
 #include "CartesianPatchGeometry.h"
 #include "PflotranApplicationStrategy.h"
 #include "PflotranJacobianMultilevelOperator.h"
 #include "PflotranJacobianMultilevelOperatorParameters.h"
+#include "SideGeometry.h"
 
 #define X_COORDINATE  1
 #define Y_COORDINATE  2
@@ -158,7 +161,7 @@ void samr_patch_get_ghostcorners_(SAMRAI::hier::Patch<NDIM> **patch,
    
 }
 
-void samr_vecgetarrayf90_(SAMRAI::hier::Patch<NDIM> **patch, 
+void samr_vecgetarraycellf90_(SAMRAI::hier::Patch<NDIM> **patch, 
                           Vec *petscVec,
                           void **f90wrap)
 
@@ -171,6 +174,25 @@ void samr_vecgetarrayf90_(SAMRAI::hier::Patch<NDIM> **patch,
    len = len*depth;
 
    void *p_data_ptr = pData->getPointer(0);
+
+   cf90bridge_(p_data_ptr, &len, *f90wrap);
+   
+}
+
+void samr_vecgetarraysidef90_(SAMRAI::hier::Patch<NDIM> **patch, 
+                              int *axis,
+                              Vec *petscVec,
+                              void **f90wrap)
+
+{
+   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > sVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(*petscVec);
+   SAMRAI::tbox::Pointer< SAMRAI::pdat::CSideData<NDIM, double> > pData = sVec->getComponentPatchData(0, *(*patch));
+   int depth = pData->getDepth();
+
+   int len = (pdat::SideGeometry<NDIM>::toSideBox(pData->getGhostBox(),*axis)).size();
+   len = len*depth;
+
+   void *p_data_ptr = pData->getPointer(*axis);
 
    cf90bridge_(p_data_ptr, &len, *f90wrap);
    
@@ -262,6 +284,14 @@ void samrlocaltolocal_(SAMRAI::PflotranApplicationStrategy **application_strateg
    
 }
 
+void samrcoarsenfacefluxes_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
+                            Vec *vec, 
+                            int *ierr)
+{
+   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > faceVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(*vec);
+   (*application_strategy)->coarsenFaceFluxes(faceVec, *ierr);
+}
+
 void 
 samrsetcurrentjacobianpatch_( Mat *mat, SAMRAI::hier::Patch<NDIM> **patch)
 {
@@ -275,13 +305,15 @@ samrsetcurrentjacobianpatch_( Mat *mat, SAMRAI::hier::Patch<NDIM> **patch)
 
 void create_samrai_vec_(SAMRAI::PflotranApplicationStrategy **application_strategy,
                         int &dof, 
+                        int &centering,
                         bool &use_ghost,
                         bool &use_components,
                         Vec *vec)
 {
 
-   (*application_strategy)->createVector(dof, use_ghost, use_components, vec);
+   (*application_strategy)->createVector(dof, centering, use_ghost, use_components, vec);
 }
+
 
 void
 samrpetscobjectstateincrease_(Vec *vec)

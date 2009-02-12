@@ -188,6 +188,7 @@ subroutine RealizationCreateDiscretization(realization)
   
   call DiscretizationCreateDMs(discretization,option)
   
+  option%ivar_centering = CELL_CENTERED
   ! 1 degree of freedom, global
   call DiscretizationCreateVector(discretization,ONEDOF,field%porosity0, &
                                   GLOBAL,option)
@@ -249,6 +250,13 @@ subroutine RealizationCreateDiscretization(realization)
     ! ndof degrees of freedom, local
     call DiscretizationCreateVector(discretization,NFLOWDOF,field%flow_xx_loc, &
                                     LOCAL,option)
+
+    if(associated(discretization%amrgrid)) then
+       option%ivar_centering = SIDE_CENTERED
+       call DiscretizationCreateVector(discretization,NFLOWDOF,field%flow_face_fluxes, &
+                                    GLOBAL,option)
+       option%ivar_centering = CELL_CENTERED
+    endif
   endif
 
   if (option%ntrandof > 0) then

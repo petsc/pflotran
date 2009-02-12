@@ -1,12 +1,17 @@
 #include "PflotranApplicationStrategy.h"
 #include "tbox/TimerManager.h"
 #include "CCellDataFactory.h"
+#include "CSideDataFactory.h"
 #include "tbox/RestartManager.h"
 #include "CellVariable.h"
 #include "CCellVariable.h"
+#include "SideVariable.h"
+#include "CSideVariable.h"
 #include "SAMRAIVectorReal.h"
 #include "PETSc_SAMRAIVectorReal.h"
 #include "HierarchyCCellDataOpsReal.h"
+#include "HierarchyCSideDataOpsReal.h"
+
 
 namespace SAMRAI{
   
@@ -51,6 +56,8 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
    d_soln_refine_op.setNull();
 
    d_soln_coarsen_op.setNull();
+
+   d_flux_coarsen_op.setNull();
 
    d_regrid_refine_scheds.resizeArray(0);
 
@@ -101,6 +108,7 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
    d_GlobalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
    d_LocalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
    d_CoarsenSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
+   d_FluxCoarsenSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
    
 #ifdef DEBUG_CHECK_ASSERTIONS
    assert(d_number_solution_components>=1);
@@ -111,17 +119,22 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
       d_GlobalToLocalRefineSchedule[ln].resizeArray(d_number_solution_components);
       d_LocalToLocalRefineSchedule[ln].resizeArray(d_number_solution_components);
       d_CoarsenSchedule[ln].resizeArray(d_number_solution_components);
+      d_FluxCoarsenSchedule[ln].resizeArray(d_number_solution_components);
 
       for(int i=0;i<d_number_solution_components; i++)
       {
          d_GlobalToLocalRefineSchedule[ln][i].setNull();
          d_LocalToLocalRefineSchedule[ln][i].setNull();
          d_CoarsenSchedule[ln][i].setNull();
+         d_FluxCoarsenSchedule[ln][i].setNull();
       }
    }
 
-   d_math_op = new math::HierarchyCCellDataOpsReal< NDIM, double >(d_hierarchy,
-                                                                   0, d_hierarchy->getFinestLevelNumber());
+   d_ccell_math_op = new math::HierarchyCCellDataOpsReal< NDIM, double >(d_hierarchy,
+                                                                         0, d_hierarchy->getFinestLevelNumber());
+
+   d_cside_math_op = new math::HierarchyCSideDataOpsReal< NDIM, double >(d_hierarchy,
+                                                                         0, d_hierarchy->getFinestLevelNumber());
 
    d_visit_writer = new appu::VisItDataWriter<NDIM>("rmhd visit writer", d_viz_directory);
    
@@ -564,6 +577,57 @@ PflotranApplicationStrategy::interpolateGlobalToLocalVector(tbox::Pointer< solv:
 }
 
 void
+PflotranApplicationStrategy::coarsenFaceFluxes(tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> > fluxVec, 
+                                               int ierr)
+{
+
+    tbox::Pointer<hier::PatchHierarchy<NDIM> > hierarchy =  d_hierarchy;
+
+    static tbox::Pointer<tbox::Timer> t_coarsen_flux_variable = tbox::TimerManager::getManager()->getTimer("PFlotran::PflotranApplicationStrategy::coarsenFaceFluxes");
+
+    t_coarsen_flux_variable->start();
+
+    int flux_id = fluxVec->getComponentDescriptorIndex(0);
+
+    tbox::Pointer< hier::Variable< NDIM > > fluxVar = fluxVec->getComponentVariable(0);
+    tbox::Pointer< pdat::CSideDataFactory< NDIM, double > > sideFactory = fluxVar->getPatchDataFactory(); 
+    int ndof = sideFactory->getDefaultDepth();
+
+    if(d_flux_coarsen_op.isNull())
+    {
+       d_flux_coarsen_op = d_grid_geometry->lookupRefineOperator(fluxVar,
+                                                                 "CONSERVATIVE_COARSEN");
+    }
+
+    // should add code to coarsen variables
+    xfer::CoarsenAlgorithm<NDIM> flux_coarsen;
+    flux_coarsen.registerCoarsen(flux_id, flux_id, d_flux_coarsen_op);
+
+    for (int ln = hierarchy->getNumberOfLevels()-2; ln>=0; ln-- ) 
+    {
+      tbox::Pointer<hier::PatchLevel<NDIM> > clevel = hierarchy->getPatchLevel(ln);
+      tbox::Pointer<hier::PatchLevel<NDIM> > flevel = hierarchy->getPatchLevel(ln+1);
+
+      for ( int i=0; i<ndof; i++)
+      {
+         if((!d_FluxCoarsenSchedule[ln][i].isNull()) && flux_coarsen.checkConsistency(d_FluxCoarsenSchedule[ln][i]))
+         {
+            flux_coarsen.resetSchedule(d_FluxCoarsenSchedule[ln][i]);
+         }
+         else
+         {
+            d_FluxCoarsenSchedule[ln][i] = flux_coarsen.createSchedule(clevel, 
+                                                                       flevel);
+         }
+         
+         d_FluxCoarsenSchedule[ln][i]->coarsenData();            
+      }
+    }
+
+    t_coarsen_flux_variable->stop();
+}
+
+void
 PflotranApplicationStrategy::setRefinementBoundaryInterpolant(RefinementBoundaryInterpolation *cf_interpolant)
 {
 #ifdef DEBUG_CHECK_ASSERTIONS
@@ -594,7 +658,11 @@ PflotranApplicationStrategy::setRefinementBoundaryInterpolant(RefinementBoundary
 }
 
 void
-PflotranApplicationStrategy::createVector(int &dof, bool &use_ghost, bool &use_components, Vec *vec)
+PflotranApplicationStrategy::createVector(int &dof, 
+                                          int &centering,
+                                          bool &use_ghost, 
+                                          bool &use_components, 
+                                          Vec *vec)
 {
    std::ostringstream ibuffer;
    ibuffer<<(long)PflotranApplicationStrategy::d_vec_instance_id;
@@ -627,10 +695,11 @@ PflotranApplicationStrategy::createVector(int &dof, bool &use_ghost, bool &use_c
       nghosts = SAMRAI::hier::IntVector<NDIM>(0);
    }
 
+   SAMRAI::tbox::Pointer< SAMRAI::hier::Variable<NDIM> > pflotran_var;
+   
    if(use_components)
    {
       // in this case regular cell variables are used
-      SAMRAI::tbox::Pointer< SAMRAI::pdat::CellVariable<NDIM,double> > pflotran_var;
 
       for(int i=0;i<dof; i++)
       {
@@ -640,8 +709,8 @@ PflotranApplicationStrategy::createVector(int &dof, bool &use_ghost, bool &use_c
          cbuffer<<(long)i;
          object_str=cbuffer.str();
          vName = dataName+"_component_"+object_str;
-
-         pflotran_var = new SAMRAI::pdat::CellVariable<NDIM,double>(vName,1);
+        
+         PflotranApplicationStrategy::createVariable(vName,centering, 0, 1, pflotran_var);
                            
          pflotran_var_id = variable_db->registerVariableAndContext(pflotran_var,
                                                                    pflotran_cxt,
@@ -659,10 +728,7 @@ PflotranApplicationStrategy::createVector(int &dof, bool &use_ghost, bool &use_c
    }
    else
    {
-      SAMRAI::tbox::Pointer< SAMRAI::pdat::CCellVariable<NDIM,double> > pflotran_var;
-
-      pflotran_var = new SAMRAI::pdat::CCellVariable<NDIM,double>(dataName,dof);
-            
+      PflotranApplicationStrategy::createVariable(dataName,centering, 1, dof, pflotran_var);            
       
       pflotran_var_id = variable_db->registerVariableAndContext(pflotran_var,
                                                                 pflotran_cxt,
@@ -675,10 +741,12 @@ PflotranApplicationStrategy::createVector(int &dof, bool &use_ghost, bool &use_c
          level->allocatePatchData(pflotran_var_id);
       }
 
+      tbox::Pointer< math::HierarchyDataOpsReal< NDIM, double > > math_op = (centering==0)? d_ccell_math_op:d_cside_math_op; 
+
       samrai_vec->addComponent(pflotran_var,
                                pflotran_var_id,
                                d_pflotran_weight_id,
-                               d_math_op);
+                               math_op);
    }
 
    *vec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM,double>::createPETScVector(samrai_vec, PETSC_COMM_WORLD);
@@ -730,4 +798,34 @@ PflotranApplicationStrategy::initializePreconditioner(int *which_pc, PC *pc)
    }
 }
 
+void 
+PflotranApplicationStrategy::createVariable(std::string &vname,
+                                            int centering,
+                                            int type,
+                                            int dof,
+                                            SAMRAI::tbox::Pointer< SAMRAI::hier::Variable<NDIM> > &var)
+{
+   if(centering==0)
+   {
+      if(type==0)
+      {
+         var =  new SAMRAI::pdat::CellVariable<NDIM,double>(vname,dof);
+      }
+      else
+      {
+         var =  new SAMRAI::pdat::CCellVariable<NDIM,double>(vname,dof);
+      }
+   }
+   else
+   {
+      if(type==0)
+      {
+         var =  new SAMRAI::pdat::SideVariable<NDIM,double>(vname,dof);
+      }
+      else
+      {
+         var =  new SAMRAI::pdat::CSideVariable<NDIM,double>(vname,dof);
+      }
+   }
+}
 }
