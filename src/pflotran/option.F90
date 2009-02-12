@@ -273,6 +273,7 @@ function OptionCreate()
   option%ntrandof = 0
   
   option%ivar_centering = CELL_CENTERED
+  option%use_samr = PETSC_FALSE
 
   option%nphase = 0
   option%liquid_phase = 0
