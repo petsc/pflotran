@@ -4,9 +4,13 @@
 #include "tbox/RestartManager.h"
 #include "CellVariable.h"
 #include "CCellVariable.h"
+#include "SideVariable.h"
+#include "CSideVariable.h"
 #include "SAMRAIVectorReal.h"
 #include "PETSc_SAMRAIVectorReal.h"
 #include "HierarchyCCellDataOpsReal.h"
+#include "HierarchyCSideDataOpsReal.h"
+
 
 namespace SAMRAI{
   
@@ -120,8 +124,11 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
       }
    }
 
-   d_math_op = new math::HierarchyCCellDataOpsReal< NDIM, double >(d_hierarchy,
-                                                                   0, d_hierarchy->getFinestLevelNumber());
+   d_ccell_math_op = new math::HierarchyCCellDataOpsReal< NDIM, double >(d_hierarchy,
+                                                                         0, d_hierarchy->getFinestLevelNumber());
+
+   d_cside_math_op = new math::HierarchyCSideDataOpsReal< NDIM, double >(d_hierarchy,
+                                                                         0, d_hierarchy->getFinestLevelNumber());
 
    d_visit_writer = new appu::VisItDataWriter<NDIM>("rmhd visit writer", d_viz_directory);
    
@@ -594,7 +601,11 @@ PflotranApplicationStrategy::setRefinementBoundaryInterpolant(RefinementBoundary
 }
 
 void
-PflotranApplicationStrategy::createVector(int &dof, bool &use_ghost, bool &use_components, Vec *vec)
+PflotranApplicationStrategy::createVector(int &dof, 
+                                          int &centering,
+                                          bool &use_ghost, 
+                                          bool &use_components, 
+                                          Vec *vec)
 {
    std::ostringstream ibuffer;
    ibuffer<<(long)PflotranApplicationStrategy::d_vec_instance_id;
@@ -627,10 +638,11 @@ PflotranApplicationStrategy::createVector(int &dof, bool &use_ghost, bool &use_c
       nghosts = SAMRAI::hier::IntVector<NDIM>(0);
    }
 
+   SAMRAI::tbox::Pointer< SAMRAI::hier::Variable<NDIM> > pflotran_var;
+   
    if(use_components)
    {
       // in this case regular cell variables are used
-      SAMRAI::tbox::Pointer< SAMRAI::pdat::CellVariable<NDIM,double> > pflotran_var;
 
       for(int i=0;i<dof; i++)
       {
@@ -640,8 +652,8 @@ PflotranApplicationStrategy::createVector(int &dof, bool &use_ghost, bool &use_c
          cbuffer<<(long)i;
          object_str=cbuffer.str();
          vName = dataName+"_component_"+object_str;
-
-         pflotran_var = new SAMRAI::pdat::CellVariable<NDIM,double>(vName,1);
+        
+         PflotranApplicationStrategy::createVariable(vName,centering, 0, 1, pflotran_var);
                            
          pflotran_var_id = variable_db->registerVariableAndContext(pflotran_var,
                                                                    pflotran_cxt,
@@ -659,10 +671,7 @@ PflotranApplicationStrategy::createVector(int &dof, bool &use_ghost, bool &use_c
    }
    else
    {
-      SAMRAI::tbox::Pointer< SAMRAI::pdat::CCellVariable<NDIM,double> > pflotran_var;
-
-      pflotran_var = new SAMRAI::pdat::CCellVariable<NDIM,double>(dataName,dof);
-            
+      PflotranApplicationStrategy::createVariable(dataName,centering, 1, dof, pflotran_var);            
       
       pflotran_var_id = variable_db->registerVariableAndContext(pflotran_var,
                                                                 pflotran_cxt,
@@ -675,10 +684,12 @@ PflotranApplicationStrategy::createVector(int &dof, bool &use_ghost, bool &use_c
          level->allocatePatchData(pflotran_var_id);
       }
 
+      tbox::Pointer< math::HierarchyDataOpsReal< NDIM, double > > math_op = (centering==0)? d_ccell_math_op:d_cside_math_op; 
+
       samrai_vec->addComponent(pflotran_var,
                                pflotran_var_id,
                                d_pflotran_weight_id,
-                               d_math_op);
+                               math_op);
    }
 
    *vec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM,double>::createPETScVector(samrai_vec, PETSC_COMM_WORLD);
@@ -730,4 +741,34 @@ PflotranApplicationStrategy::initializePreconditioner(int *which_pc, PC *pc)
    }
 }
 
+void 
+PflotranApplicationStrategy::createVariable(std::string &vname,
+                                            int centering,
+                                            int type,
+                                            int dof,
+                                            SAMRAI::tbox::Pointer< SAMRAI::hier::Variable<NDIM> > &var)
+{
+   if(centering==0)
+   {
+      if(type==0)
+      {
+         var =  new SAMRAI::pdat::CellVariable<NDIM,double>(vname,dof);
+      }
+      else
+      {
+         var =  new SAMRAI::pdat::CCellVariable<NDIM,double>(vname,dof);
+      }
+   }
+   else
+   {
+      if(type==0)
+      {
+         var =  new SAMRAI::pdat::SideVariable<NDIM,double>(vname,dof);
+      }
+      else
+      {
+         var =  new SAMRAI::pdat::CSideVariable<NDIM,double>(vname,dof);
+      }
+   }
+}
 }
