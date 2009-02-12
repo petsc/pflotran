@@ -1,4 +1,4 @@
-subroutine create_samrai_vec(p_application, dof, use_ghost, use_components, vec)
+subroutine create_samrai_vec(p_application, dof, centering, use_ghost, use_components, vec)
 implicit none
 
 #include "finclude/petsc.h"
@@ -7,6 +7,7 @@ implicit none
 
 PetscFortranAddr :: p_application
 PetscInt :: dof
+PetscInt :: centering
 PetscTruth :: use_ghost
 PetscTruth :: use_components
 Vec :: vec
@@ -131,7 +132,7 @@ implicit none
 
 end subroutine assign_c_array_ptr
 
-subroutine samr_vecgetarrayf90(patch, petscvec, f90wrap)
+subroutine samr_vecgetarraycellf90(patch, petscvec, f90wrap)
 implicit none
 #include "finclude/petsc.h"
 #include "finclude/petscvec.h"
@@ -139,7 +140,18 @@ implicit none
   PetscFortranAddr, intent(inout):: patch
   Vec:: petscvec
   PetscFortranAddr :: f90wrap
-end subroutine samr_vecgetarrayf90
+end subroutine samr_vecgetarraycellf90
+
+subroutine samr_vecgetarraysidef90(patch, axis, petscvec, f90wrap)
+implicit none
+#include "finclude/petsc.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  PetscFortranAddr, intent(inout):: patch
+  PetscInt :: axis
+  Vec:: petscvec
+  PetscFortranAddr :: f90wrap
+end subroutine samr_vecgetarraysidef90
 
 subroutine samr_patch_get_spacing(p_samr_patch, dx, dy, dz)
 implicit none

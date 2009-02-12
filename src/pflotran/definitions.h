@@ -205,5 +205,8 @@ PetscInt, parameter :: LIQUID_PHASE = 1
 PetscInt, parameter :: GAS_PHASE = 2
 
 
+! variable centerings
+PetscInt, parameter :: CELL_CENTERED = 0
+PetscInt, parameter :: SIDE_CENTERED = 1
 
 #define HASH

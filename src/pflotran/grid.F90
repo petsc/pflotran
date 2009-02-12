@@ -67,6 +67,10 @@ module Grid_module
 
   end type grid_type
 
+  interface GridVecGetArrayF90
+     module procedure GridVecGetArrayCellF90
+     module procedure GridVecGetArraySideF90
+  end interface
 
   public :: GridCreate, &
             GridDestroy, &
@@ -1072,7 +1076,7 @@ subroutine GridDestroy(grid)
 
 end subroutine GridDestroy
 
-subroutine GridVecGetArrayF90(grid, vec, f90ptr, ierr)
+subroutine GridVecGetArrayCellF90(grid, vec, f90ptr, ierr)
 
   implicit none
 
@@ -1087,7 +1091,25 @@ subroutine GridVecGetArrayF90(grid, vec, f90ptr, ierr)
      call StructuredGridVecGetArrayF90(grid%structured_grid, vec, f90ptr, ierr)
   endif
 
-end subroutine GridVecGetArrayF90
+end subroutine GridVecGetArrayCellF90
+
+subroutine GridVecGetArraySideF90(grid, axis, vec, f90ptr, ierr)
+
+  implicit none
+
+  type(grid_type) :: grid
+  PetscInt :: axis 
+  Vec:: vec
+  PetscReal, pointer :: f90ptr(:)
+  integer :: ierr
+
+  if (.not.associated(grid%structured_grid)) then
+     call VecGetArrayF90(vec, f90ptr, ierr)
+  else
+     call StructuredGridVecGetArrayF90(grid%structured_grid, axis, vec, f90ptr, ierr)
+  endif
+
+end subroutine GridVecGetArraySideF90
 
 subroutine GridVecRestoreArrayF90(grid, vec, f90ptr, ierr)
 
