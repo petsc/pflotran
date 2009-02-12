@@ -1,7 +1,8 @@
 module Immis_module
   
   use Immis_Aux_module
-  
+  use Global_Aux_module
+
   implicit none
   
   private 
@@ -170,7 +171,7 @@ subroutine ImmisSetupPatch(realization)
 !                     'must be initialized with the proper variables ' // &
 !                     'ImmisAuxCreate() is called anyhwere.'
 !  call printErrMsg(option)
-    
+  print *,' ims setup get Aux', option%nphase, size(realization%saturation_function_array)     
 ! immis_parameters create *********************************************
 ! Sir
   allocate(patch%aux%Immis%Immis_parameter%sir(option%nphase, &
@@ -327,7 +328,6 @@ end subroutine ImmisSetupPatch
            if (patch%imat(grid%nL2G(n)) <= 0) cycle
         endif
         n0=(n-1)* option%nflowdof
-        iipha=int(iphase_loc_p(grid%nL2G(n)))
   
 ! ******** Too huge change in pressure ****************     
         if(dabs(xx_p(n0 + 1)- yy_p(n0 + 1))> (10.0D0 * option%dpmxe))then
@@ -356,8 +356,6 @@ end subroutine ImmisSetupPatch
     call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr); 
 
    endif
-  ! print *,' update reason', grid%myrank, re,n,grid%nlmax
- 
   
  end subroutine ImmisUpdateReasonPatch
 
@@ -541,6 +539,7 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
   type(Immis_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase
@@ -555,6 +554,9 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
   
   aux_vars => patch%aux%Immis%aux_vars
   aux_vars_bc => patch%aux%Immis%aux_vars_bc
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+
   
   call GridVecGetArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
@@ -575,6 +577,21 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
                        aux_vars(ghosted_id)%aux_var_elem(0), &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        realization%fluid_properties,option)
+ ! update global variables
+    if( associated(global_aux_vars))then
+     
+      global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
+               aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
+      global_aux_vars(ghosted_id)%temp=aux_vars(ghosted_id)%aux_var_elem(0)%temp
+      global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
+      global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
+      global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
+                                          * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
+    else
+      print *,'Not associated global for IMS'
+    endif
+
+
   enddo
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
@@ -604,6 +621,21 @@ subroutine ImmisUpdateAuxVarsPatch(realization)
      call ImmisAuxVarCompute_NINC(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
                          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                          realization%fluid_properties, option)
+
+     if( associated(global_aux_vars_bc))then
+        global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
+                     aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
+        global_aux_vars_bc(sum_connection)%temp=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
+        global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
+        !    global_aux_vars(ghosted_id)%sat_store = 
+        global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
+        global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
+                                          * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
+  !    global_aux_vars(ghosted_id)%den_kg_store
+  !    global_aux_vars(ghosted_id)%mass_balance 
+  !    global_aux_vars(ghosted_id)%mass_balance_delta                   
+      endif
+
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -727,10 +759,12 @@ subroutine ImmisUpdateFixedAccumPatch(realization)
                           
   PetscErrorCode :: ierr
   
+  call ImmisUpdateAuxVarsPatch(realization) 
   option => realization%option
   field => realization%field
   patch => realization%patch
   grid => patch%grid
+
 
   immis_parameter => patch%aux%Immis%immis_parameter
   aux_vars => patch%aux%Immis%aux_vars
@@ -752,11 +786,7 @@ subroutine ImmisUpdateFixedAccumPatch(realization)
     endif
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
-    call ImmisAuxVarCompute_Ninc(xx_p(istart:iend), &
-                       aux_vars(ghosted_id)%aux_var_elem(0), &
-                       realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-                       realization%fluid_properties,option)
-    iphase_loc_p(ghosted_id) = iphase
+
     call ImmisAccumulation(aux_vars(ghosted_id)%aux_var_elem(0), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
@@ -805,10 +835,9 @@ subroutine ImmisAccumulation(aux_var,por,vol,rock_dencpr,option,iireac,Res)
  ! if (present(ireac)) iireac=ireac
 
   porXvol = por*vol
-      
   mol=0.d0; eng=0.D0
   do np = 1, option%nphase
-        mol(ispec) = mol(ispec) + aux_var%sat(np) * &
+        mol(np) = mol(np) + aux_var%sat(np) * &
              aux_var%den(np)
      eng = eng + aux_var%sat(np) * aux_var%den(np) * aux_var%u(np)
   enddo
@@ -827,7 +856,7 @@ subroutine ImmisAccumulation(aux_var,por,vol,rock_dencpr,option,iireac,Res)
    !if(option%use_isoth)then
    !   Res(1:option%nflowdof)=mol(:)
    !else
-      Res(1:option%nflowdof-1)=mol(:)
+      Res(1:option%nphase)=mol(:)
       Res(option%nflowdof)=eng
   ! endif
   end subroutine ImmisAccumulation
@@ -1041,7 +1070,7 @@ subroutine ImmisFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
            v_darcy= Dq * ukvr * dphi
            vv_darcy(np)=v_darcy
            q = v_darcy * area
-           fluxm(ispec)=fluxm(ispec) + q * density_ave
+           fluxm(np)=fluxm(np) + q * density_ave
           ! if(option%use_isoth == PETSC_FALSE)&
             fluxe = fluxe + q*density_ave*uh 
         endif
@@ -1073,7 +1102,7 @@ subroutine ImmisFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   !if(option%use_isoth)then
   !   Res(1:option%nflowdof) = fluxm(:) * option%flow_dt
  ! else
-     Res(1:option%nflowdof-1) = fluxm(:) * option%flow_dt
+     Res(1:option%nphase) = fluxm(:) * option%flow_dt
      Res(option%nflowdof) = fluxe * option%flow_dt
  ! end if
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
@@ -1183,9 +1212,8 @@ subroutine ImmisBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
          ! uxmol(:)=aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
      endif
     
-     do ispec=1, option%nflowspec 
-        fluxm(ispec) = fluxm(ispec) + q*density_ave ! *uxmol(ispec)
-     enddo
+        fluxm(np) = fluxm(np) + q*density_ave ! *uxmol(ispec)
+
       !if(option%use_isoth == PETSC_FALSE) &
       fluxe = fluxe + q*density_ave*uh
  !print *,'FLBC', ibndtype(1),np, ukvr, v_darcy, uh, uxmol
@@ -1221,7 +1249,7 @@ subroutine ImmisBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
     end select
 ! end if
 
-  Res(1:option%nflowspec)=fluxm(:)* option%flow_dt
+  Res(1:option%nphase)=fluxm(:)* option%flow_dt
   Res(option%nflowdof)=fluxe * option%flow_dt
 
 end subroutine ImmisBCFlux

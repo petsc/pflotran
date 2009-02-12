@@ -764,7 +764,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   do
     
     select case(option%iflowmode)
-      case(MPH_MODE,THC_MODE,RICHARDS_MODE)
+      case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE)
         call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
     end select
 
@@ -799,7 +799,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
       end select   
       if (option%print_screen_flag) print *,'update_reason: ',update_reason
     endif
-
+ 
 !******************************************************************
     
     if (snes_reason <= 0 .or. update_reason <= 0) then
