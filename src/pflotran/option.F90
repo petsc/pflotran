@@ -44,6 +44,7 @@ module Option_module
     ! 0 - CELL CENTERED
     ! 1 - FACE CENTERED
     PetscInt :: ivar_centering
+    PetscTruth :: use_samr
 
     PetscInt :: nphase
     PetscInt :: liquid_phase
@@ -272,6 +273,7 @@ function OptionCreate()
   option%ntrandof = 0
   
   option%ivar_centering = CELL_CENTERED
+  option%use_samr = PETSC_FALSE
 
   option%nphase = 0
   option%liquid_phase = 0
