@@ -365,4 +365,79 @@ subroutine Interpolate(x_high,x_low,x,y_high,y_low,y)
 
 end subroutine Interpolate
 
+
+! ************************************************************************** !
+!
+! Interpolate: Interpolation log K function: temp - temperature [C]
+!                             b - fit coefficients determined from fit(...)
+! author: P.C. Lichtner
+! date: 02/13/09
+!
+! ************************************************************************** !
+
+double precision function flogk(b,temp)
+
+  PetscReal :: b(5), temp
+
+  flogk = b(1)*log(temp) &
+        + b(2)           &
+        + b(3)*temp      &
+        + b(4)/temp      &
+        + b(5)/(temp*temp)
+     
+end function flogk
+
+
+! ************************************************************************** !
+!
+! Interpolate: Least squares fit to log K over database temperature range
+! author: P.C. Lichtner
+! date: 02/13/09
+!
+! ************************************************************************** !
+#if 0
+subroutine fit (n0,nbasis,ntemp,iflgint,alogk0,w,bvec,vec,indx)
+
+  integer :: i,j,n0,ndimmx,ntemp,ntmpmx,iflgint
+  
+!     include 'impl.h'
+!     include 'paramtrs.h'
+
+  integer :: int(ntmpmx),indx(ndimmx)
+  PetscReal :: alogk0(ntmpmx),w(ndimmx,ndimmx),vec(5,*),bvec(5)
+
+  iflgint = 0
+  do j = 1, nbasis
+    bvec(j) = 0.d0
+    do i = 1, ntemp
+      if (alogk0(i) .ne. 500.) then
+        bvec(j) = bvec(j) + alogk0(i)*vec(j,i)
+        int(i) = 1
+      else if (alogk0(i) .eq. 500.) then
+        iflgint = 1
+        int(i) = 0
+      else if (alogk0(i) .gt. 500.) then
+        write(*,*) 'error in fit: log K .gt. 500---stop!'
+        stop
+      endif
+    enddo
+  enddo
+
+  do j = 1, nbasis
+    do k = j, nbasis
+      w(j,k) = 0.d0
+      do i = 1, ntemp
+        if (int(i) .eq. 1) then
+          w(j,k) = w(j,k) + vec(j,i)*vec(k,i)
+        endif
+      enddo
+      if (j .ne. k) w(k,j) = w(j,k)
+    enddo
+  enddo
+  call ludcmp(w,nbasis,n0,indx,dd)
+  call lubksb(w,nbasis,n0,indx,bvec)
+
+end subroutine fit
+#endif
+
 end module Utility_module
