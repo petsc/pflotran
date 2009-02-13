@@ -2018,9 +2018,15 @@ subroutine BasisInit(reaction,option)
     reaction%eqgash2ostoich = 0.d0
     allocate(reaction%eqgas_logK(reaction%ngas))
     reaction%eqgas_logK = 0.d0
+#if TEMP_DEPENDENT_LOGK
+!Peter change here
+    allocate(reaction%eqgas_logKcoef(FIVE_INTEGER,reaction%ngas))
+    reaction%eqgas_logKcoef = 0.d0
+#else
     allocate(reaction%eqgas_logKcoef(reaction%num_dbase_temperatures, &
                                      reaction%ngas))
     reaction%eqgas_logKcoef = 0.d0
+#endif
 
     ! pack in reaction arrays
     cur_gas_spec => reaction%gas_species_list
@@ -2049,6 +2055,15 @@ subroutine BasisInit(reaction,option)
         endif
       enddo
       reaction%eqgasspecid(0,igas_spec) = ispec
+#if TEMP_DEPENDENT_LOGK
+!Peter change here
+      call ReactionFitLogKCoef(reaction%eqgas_logKcoef(:,igas_spec),cur_gas_spec%eqrxn%logK, &
+                               option,reaction)
+      call ReactionInitializeLogK(reaction%eqgas_logKcoef(:,igas_spec), &
+                                  cur_gas_spec%eqrxn%logK, &
+                                  reaction%eqgas_logK(igas_spec), &
+                                  option,reaction)
+#else
       reaction%eqgas_logKcoef(:,igas_spec) = &
         cur_gas_spec%eqrxn%logK
       call Interpolate(temp_high,temp_low,option%reference_temperature, &
@@ -2056,6 +2071,7 @@ subroutine BasisInit(reaction,option)
                        cur_gas_spec%eqrxn%logK(itemp_low), &
                        reaction%eqgas_logK(igas_spec))
 !      reaction%eqgas_logK(igas_spec) = cur_gas_spec%eqrxn%logK(option%itemp_ref)
+#endif      
   
       igas_spec = igas_spec + 1
       cur_gas_spec => cur_gas_spec%next
