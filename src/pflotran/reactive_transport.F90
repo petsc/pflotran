@@ -1758,7 +1758,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
   PetscReal :: xxbc(realization%reaction%ncomp)
   PetscReal, pointer :: basis_molarity_p(:)
   PetscReal :: weight
-  PetscInt :: iphase
+  PetscInt, parameter :: iphase = 1
   PetscErrorCode :: ierr
   
   option => realization%option
@@ -1766,8 +1766,6 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
   grid => patch%grid
   field => realization%field
   reaction => realization%reaction
-  
-  iphase = 1
   
   call GridVecGetArrayF90(grid,field%tran_xx_loc,xx_loc_p, ierr)
 
@@ -1817,7 +1815,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
             xxbc(1:reaction%ncomp) = basis_molarity_p(1:reaction%ncomp) / &
               patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * 1000.d0
           case(DIRICHLET_ZERO_GRADIENT_BC)
-            do iphase = 1, option%nphase
+!geh            do iphase = 1, option%nphase
               if (patch%boundary_velocities(iphase,sum_connection) >= 0.d0) then
                 ! same as dirichlet above
                 xxbc(1:reaction%ncomp) = basis_molarity_p(1:reaction%ncomp) / &
@@ -1828,7 +1826,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
                   xxbc(idof) = xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
                 enddo
               endif
-            enddo
+!geh            enddo
           case(ZERO_GRADIENT_BC)
             do idof=1,reaction%ncomp
               xxbc(idof) = xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
