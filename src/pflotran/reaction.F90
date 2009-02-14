@@ -1326,7 +1326,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   if (reaction%nmnrl > 0) then
   
     130 format(/,'  mineral                   log SI    log K')
-    131 format(2x,a20,2x,f10.4,2x,1pe12.4)
+    131 format(2x,a30,2x,f10.4,2x,1pe12.4)
 
     do imnrl = 1, reaction%nmnrl
       ! compute saturation

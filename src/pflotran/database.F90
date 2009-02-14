@@ -2444,7 +2444,7 @@ subroutine BasisInit(reaction,option)
   enddo
   
 90 format(80('-'))
-100 format(/,2x,i3,2x,a)
+100 format(/,2x,i4,2x,a)
 110 format(100(/,14x,3(a20,2x)))
 
   if (OptionPrintToFile(option)) then
