@@ -1823,7 +1823,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
         global_aux_vars(local_id_up)%mass_balance_delta(1) - Res(1)
 #endif
 
-      if(option%use_samr==PETSC_FALSE) then
+      if(.not.option%use_samr) then
          
          if (local_id_up>0) then
             r_p(local_id_up) = r_p(local_id_up) + Res(1)
