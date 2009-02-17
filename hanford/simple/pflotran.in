@@ -1,0 +1,622 @@
+:Description: 2D problem with simpler geochemistry (no redox)
+ 
+MODE RICHARDS
+
+CHEMISTRY
+PRIMARY_SPECIES
+H+
+Ca++
+Cu++
+Mg++
+UO2++
+K+
+Na+
+HCO3-
+Cl-
+F-
+HPO4--
+NO3-
+SO4--
+Tracer
+/
+SECONDARY_SPECIES
+OH-
+CO3--
+CO2(aq)
+CaCO3(aq)
+CaHCO3+
+CaSO4(aq)
+CaCl+
+CaCl2(aq)
+CaF+
+CaH2PO4+
+CaHPO4(aq)
+CaNO3+
+CaPO4-
+MgCO3(aq)
+MgHCO3+
+MgSO4(aq)
+MgCl+
+MgF+
+MgH2PO4+
+MgHPO4(aq)
+MgP2O7--
+MgPO4-
+NaCl(aq)
+NaOH(aq)
+NaSO4-
+NaHCO3(aq)
+NaNO3(aq)
+NaF(aq)
+NaHP2O7--
+NaHPO4-
+KCl(aq)
+KHPO4-
+KHSO4(aq)
+KOH(aq)
+KP2O7---
+KSO4-
+HSO4-
+H2SO4(aq)
+HCl(aq)
+H2PO4-
+PO4---
+H3PO4(aq)
+H2F2(aq)
+H2PO3F(aq)
+:
+:copper species
+Cu(CO3)2--
+CuCO3(OH)2--
+CuCO3(aq)
+CuCl+
+CuCl2(aq)
+CuCl4--
+CuF+
+CuH2PO4+
+CuHPO4(aq)
+CuO2--
+CuOH+
+CuPO4-
+CuSO4(aq)
+:
+:uranium species
+UO2OH+
+UO2(OH)2(aq)
+UO2(OH)3-
+UO2(OH)4--
+(UO2)2OH+++
+(UO2)2(OH)2++
+(UO2)3(OH)4++
+(UO2)3(OH)5+
+(UO2)3(OH)7-
+(UO2)4(OH)7+
+:
+UO2CO3(aq)
+UO2(CO3)2--
+UO2(CO3)3----
+(UO2)2CO3(OH)3-
+:
+Ca2UO2(CO3)3(aq)
+CaUO2(CO3)3--
+:
+UO2NO3+
+UO2Cl+
+UO2Cl2(aq)
+UO2SO4(aq)
+UO2(SO4)2--
+:
+UO2F+
+UO2F2(aq)
+UO2F3-
+UO2F4--
+:
+:25 C
+UO2(H2PO4)(H3PO4)+
+UO2(H2PO4)2(aq)
+UO2HPO4(aq)
+UO2H2PO4+
+UO2H3PO4++
+UO2PO4-
+/
+GAS_SPECIES
+CO2(g)
+/
+MINERALS
+Calcite
+Magnesite
+Dolomite
+Dolomite-dis
+Dolomite-ord
+Brucite
+Nesquehonite
+Gypsum
+Schoepite
+UO2CO3
+UO2(PO3)2
+(UO2)3(PO4)2
+(UO2)3(PO4)2.4H2O
+CaUO4
+:Boltwoodite
+:Boltwoodite-Na
+:Boltwoodite_PNNL
+:Boltwoodite-Na_PNNL
+:Soddyite
+:Soddyite_PNNL
+:Uraninite
+:Uranophane
+:Uranophane_PNNL
+:Weeksite
+:Weeksite_PNNL
+:Weeksite-Na_PNNL
+ UO2SO4
+ UOF4
+ UO3.2H2O
+ UO3.0.9H2O(alpha)
+ Saleeite
+ Sylvite
+ Metatorbernite
+ Whitlockite
+ Chalcanthite
+ Brochantite
+ Tenorite
+ Malachite
+ Fluorapatite
+ Fluorite
+ Hydroxylapatite
+ Torbernite
+/
+:
+MINERAL_KINETICS
+Calcite 1.e-12 
+Metatorbernite 1.e-16 
+/
+:skip
+SORPTION
+SURFACE_COMPLEXATION_RXN
+MINERAL Calcite
+SITE >SOH 152.64 ! 20 m^2/g, por = 0.25
+COMPLEXES
+>SOUO2OH
+>SOHUO2CO3
+/
+/
+/
+:noskip
+:DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
+:DATABASE /Users/lichtner/flotran/database/hanford.dat
+DATABASE ./hanford.dat
+LOG_FORMULATION
+ACTIVITY_COEFFICIENTS NEWTON_ITERATION
+OUTPUT
+All
+pH
+/
+/
+
+REFERENCE_POROSITY 0.25d0
+
+:CHECKPOINT 1
+:RESTART pflotran.chk1
+
+TIMESTEPPER
+:MAX_STEPS -1
+:MAX_STEPS 1000000
+MAX_STEPS 2000000
+/
+
+:CHECKPOINT 50
+:WALLCLOCK_STOP 0.05
+
+DEBUG
+:MATVIEW_JACOBIAN
+:VECVIEW_RESIDUAL
+:VECVIEW_SOLUTION
+/
+
+GRID
+TYPE structured
+ORIGIN 0.d0 0.d0 90.d0
+NXYZ 160 1 40
+BOUNDS
+0.d0 800.d0
+0.d0 1.d0
+90.d0 110.d0
+/
+/
+
+NEWTON_SOLVER FLOW
+:MATRIX_TYPE MFFD
+:PRECONDITIONER_MATRIX_TYPE AIJ
+RTOL 1.d-8
+ATOL 1.d-8
+STOL 1.d-30
+ITOL_UPDATE 1.d0
+:NO_INFINITY_NORM
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
+
+LINEAR_SOLVER FLOW
+:KSP_TYPE FGMRES
+:KSP_TYPE PREONLY
+:PC_TYPE LU
+/
+
+NEWTON_SOLVER TRANSPORT
+:MATRIX_TYPE MFFD
+:PRECONDITIONER_MATRIX_TYPE AIJ
+RTOL 1.d-6
+ATOL 1.d-12
+STOL 1.d-30
+:NO_INFINITY_NORM
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
+
+LINEAR_SOLVER TRANSPORT
+:KSP_TYPE PREONLY
+:PC_TYPE LU
+/
+
+FLUID_PROPERTY
+DIFFUSION_COEFFICIENT 1.d-9
+/
+
+SATURATION_FUNCTION sf1
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.16d0
+LAMBDA 0.3391d0
+ALPHA 7.2727d-4
+MAX_CAPILLARY_PRESSURE 1.d8
+BETAC 0.d0
+POWER 1.d0
+/
+
+SATURATION_FUNCTION sf2
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.1299d0
+LAMBDA 0.7479d0
+ALPHA 1.4319d-4
+MAX_CAPILLARY_PRESSURE 1.d8
+BETAC 0.d0
+POWER 1.d0
+/
+
+MATERIAL_PROPERTY Hanford
+ID 1
+SATURATION_FUNCTION sf1
+POROSITY 0.2
+TORTUOSITY 0.5
+PERMEABILITY
+PERM_X 7.387d-9
+PERM_Y 7.387d-9
+PERM_Z 7.387d-10
+/
+/
+
+MATERIAL_PROPERTY Unit5
+ID 5
+SATURATION_FUNCTION sf2
+POROSITY 0.25
+TORTUOSITY 0.5
+PERMEABILITY
+PERM_X 4.221d-11
+PERM_Y 4.221d-11
+PERM_Z 4.221d-12
+/
+/
+
+MATERIAL_PROPERTY Unit6
+ID 6
+SATURATION_FUNCTION sf2
+POROSITY 0.25
+TORTUOSITY 0.5
+PERMEABILITY
+PERM_X 1.052d-14
+PERM_Y 1.052d-14
+PERM_Z 1.052d-15
+/
+/
+
+MATERIAL_PROPERTY Unit7
+ID 7
+SATURATION_FUNCTION sf2
+POROSITY 0.25
+TORTUOSITY 0.5
+PERMEABILITY
+PERM_X 4.523d-11
+PERM_Y 4.523d-11
+PERM_Z 4.523d-12
+/
+/
+
+MATERIAL_PROPERTY Unit8
+ID 8
+SATURATION_FUNCTION sf2
+POROSITY 0.25
+TORTUOSITY 0.5
+PERMEABILITY
+PERM_X 5.259d-17
+PERM_Y 5.259d-17
+PERM_Z 5.259d-18
+/
+/
+
+MATERIAL_PROPERTY Unit9
+ID 9
+SATURATION_FUNCTION sf2
+POROSITY 0.25
+TORTUOSITY 0.5
+PERMEABILITY
+PERM_X 5.259d-17
+PERM_Y 5.259d-17
+PERM_Z 5.259d-18
+/
+/
+
+MATERIAL_PROPERTY Unit10
+ID 10
+SATURATION_FUNCTION sf2
+POROSITY 0.25
+TORTUOSITY 0.5
+PERMEABILITY
+PERM_X 1.d-20
+PERM_Y 1.d-20
+PERM_Z 1.d-20
+/
+/
+
+OUTPUT
+:SCREEN PERIODIC 50
+PERIODIC TIME 50 h
+:times h 1.
+PERIODIC_OBSERVATION TIME 50 h
+FORMAT TECPLOT BLOCK
+FORMAT HDF5
+VELOCITIES
+MASS_BALANCE
+/
+
+TIME
+FINAL_TIME 8760.d0 h
+INITIAL_TIMESTEP_SIZE 1.d-6 h
+MAXIMUM_TIMESTEP_SIZE 1.d0 h
+/
+
+:============================== regions ================================
+
+REGION all
+COORDINATES
+0.d0 0.d0 90.d0
+800.d0 1.d0 110.d0
+/
+/
+
+REGION source
+COORDINATES
+200.d0 0.d0 103.d0
+250.d0 1.d0 110.d0
+/
+/
+
+REGION down_stream
+COORDINATES
+250.d0 0.d0 100.d0
+800.d0 1.d0 105.d0
+/
+/
+
+REGION West
+FILE ./input_160_1_40.h5
+FACE west
+/
+
+REGION East
+FILE ./input_160_1_40.h5
+FACE east
+/
+
+REGION breakthrough
+COORDINATES 
+800. 0. 90.
+/
+/
+OBSERVATION 
+REGION breakthrough
+VELOCITY
+/
+
+:========================= flow conditions ==============================
+
+:inland
+FLOW_CONDITION inland
+TYPE
+PRESSURE hydrostatic
+/
+INTERPOLATION linear
+CYCLIC
+DATUM file inland_2d.datum
+PRESSURE 101325.d0
+/
+
+:Columbia River
+FLOW_CONDITION river
+TYPE
+PRESSURE hydrostatic
+/
+INTERPOLATION linear
+CYCLIC
+DATUM file river_2d.datum
+PRESSURE 101325.d0
+/
+
+FLOW_CONDITION initial
+TYPE
+PRESSURE hydrostatic
+/
+DATUM 0.d0 0.d0 105.436d0
+GRADIENT
+PRESSURE -7.3251d-4 0.d0 0.d0
+/
+PRESSURE 101325.d0
+/
+
+:========================= transport conditions ==============================
+
+TRANSPORT_CONDITION columbia_river
+TYPE dirichlet_zero_gradient
+CONSTRAINT_LIST
+0.d0 river
+/
+/
+TRANSPORT_CONDITION initial_c
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 initial
+/
+/
+TRANSPORT_CONDITION initial_s
+TYPE zero_gradient
+CONSTRAINT_LIST
+0.d0 initial_src
+/
+/
+TRANSPORT_CONDITION initial_dwn
+TYPE zero_gradient
+CONSTRAINT_LIST
+0.d0 initial_down_stream
+/
+/
+
+:============================= connections =====================
+
+:inland
+BOUNDARY_CONDITION inlet
+FLOW_CONDITION inland
+TRANSPORT_CONDITION initial_c
+REGION West
+/
+
+:Columbia river
+BOUNDARY_CONDITION river
+FLOW_CONDITION river
+TRANSPORT_CONDITION columbia_river
+REGION East
+/
+
+INITIAL_CONDITION
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial_c
+REGION all
+/
+
+INITIAL_CONDITION
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial_s
+REGION source
+/
+
+INITIAL_CONDITION
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial_dwn
+REGION down_stream
+/
+
+STRATA
+MATERIAL ./input_160_1_40.h5
+/
+
+:============================= solution composition ========================
+
+CONSTRAINT initial
+CONCENTRATIONS
+H+       7.3             pH
+Ca++     1.20644e-3       M Calcite
+Cu++     1.e-6            T
+Mg++     5.09772e-4       T
+UO2++    2.4830E-11       T
+K+       1.54789e-4       T
+Na+      2.03498e-3       Z
+HCO3-    2.57305e-3       T
+Cl-      6.97741e-4       T
+F-       2.09491e-5       T
+HPO4--   1.e-6            T
+NO3-     4.69979e-3       T
+SO4--    6.37961e-4       T
+Tracer   1.e-7            F
+/
+MINERALS
+:Quartz         0.35  1.
+Calcite        0.1   1.
+Metatorbernite 0.    1.
+/
+/
+
+:skip
+CONSTRAINT initial_down_stream
+CONCENTRATIONS
+H+       7.3             pH
+Ca++     1.20644e-3       M Calcite
+Cu++     1.e-5            M Tenorite
+Mg++     5.09772e-4       M Dolomite
+UO2++    2.34845e-7       T
+K+       1.54789e-4       T
+Na+      1.03498e-3       Z
+HCO3-    2.57305e-3       T
+Cl-      6.97741e-4       T
+F-       2.09491e-5       T
+HPO4--   1.e-6            M Hydroxylapatite
+NO3-     4.69979e-3       T
+SO4--    6.37961e-4       T
+Tracer   1.e-7            F
+/
+MINERALS
+Calcite        0.1   1.
+Metatorbernite 0.0   1.
+/
+/
+:noskip
+
+CONSTRAINT initial_src
+CONCENTRATIONS
+H+       7.3             pH
+Ca++     1.20644e-3       M Calcite
+Cu++     1.e-5            M Tenorite
+Mg++     5.09772e-4       M Dolomite
+UO2++    2.34845e-7       T
+K+       1.54789e-4       T
+Na+      1.03498e-3       Z
+HCO3-    2.57305e-3       T
+Cl-      6.97741e-4       T
+F-       2.09491e-5       T
+HPO4--   1.e-6            M Hydroxylapatite
+NO3-     4.69979e-3       T
+SO4--    6.37961e-4       T
+Tracer   1.e-3            F
+/
+MINERALS
+Calcite        0.1   1.
+Metatorbernite 1.e-4  1.
+/
+/
+
+CONSTRAINT river
+CONCENTRATIONS
+H+       7.8             pH
+Ca++     4.49496e-4       T Calcite
+Cu++     1.e-8            T
+Mg++     1.82316e-4       T
+UO2++    2.4830E-11       T
+K+       1.905371e-5      T
+Na+      1.00551e-4       Z
+HCO3-    1.127881e-3      T
+Cl-      3.3895e-5        T
+F-       6.23269e-6       T
+HPO4--   1.e-6            T
+NO3-     1.e-5            T
+SO4--    9.23943e-5       T
+Tracer   1.e-3            F
+/
+/
+:=====================================================

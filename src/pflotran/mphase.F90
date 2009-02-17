@@ -570,7 +570,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
   type(Mphase_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
-   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
+  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase
@@ -619,9 +619,9 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
       global_aux_vars(ghosted_id)%temp=aux_vars(ghosted_id)%aux_var_elem(0)%temp
       global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
   !    global_aux_vars(ghosted_id)%sat_store = 
-     global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
+      global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
       global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
-       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
+      global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
     ! print *,'UPdate mphase and gloable vars', ghosted_id, global_aux_vars(ghosted_id)%den_kg(:), &
     !     aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
@@ -673,7 +673,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
                          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                          realization%fluid_properties, option)
     
-      if( associated(global_aux_vars))then
+      if( associated(global_aux_vars_bc))then
         global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
                      aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
         global_aux_vars_bc(sum_connection)%temp=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp

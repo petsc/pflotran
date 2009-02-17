@@ -23,7 +23,9 @@ module Reaction_module
             RReactionDerivative, &
             ReactionProcessConstraint, &
             ReactionEquilibrateConstraint, &
-            ReactionPrintConstraint
+            ReactionPrintConstraint, &
+            ReactionFitLogKCoef, &
+            ReactionInitializeLogK
 
 contains
 
@@ -1324,7 +1326,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   if (reaction%nmnrl > 0) then
   
     130 format(/,'  mineral                   log SI    log K')
-    131 format(2x,a20,2x,f10.4,2x,1pe12.4)
+    131 format(2x,a30,2x,f10.4,2x,1pe12.4)
 
     do imnrl = 1, reaction%nmnrl
       ! compute saturation
@@ -1995,6 +1997,12 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   do icomp = 1, reaction%ncomp
     rt_auxvar%dtotal(icomp,icomp,iphase) = 1.d0
   enddo
+  
+#ifdef TEMP_DEPENDENT_LOGK
+!Peter change here
+  call ReactionInterpolateLogK(reaction%eqcmplx_logKcoef,reaction%eqcmplx_logK, &
+                               global_auxvar%temp(iphase),reaction%neqcmplx)
+#endif  
   
   do icplx = 1, reaction%neqcmplx ! for each secondary species
     ! compute secondary species concentration
@@ -2678,5 +2686,151 @@ subroutine RSolve(Res,Jac,conc,update,ncomp)
   update = dsign(1.d0,res)*min(dabs(res),5.d0)
   
 end subroutine RSolve
+
+! ************************************************************************** !
+!
+! ReactionFitLogKCoef: Least squares fit to log K over database temperature range
+! author: P.C. Lichtner
+! date: 02/13/09
+!
+! ************************************************************************** !
+subroutine ReactionFitLogKCoef(coefs,logK,option,reaction)
+
+  use Option_module
+  use Utility_module
+
+  implicit none
+  
+  type(reaction_type) :: reaction
+  PetscReal :: coefs(FIVE_INTEGER)
+  PetscReal :: logK(reaction%num_dbase_temperatures)
+  type(option_type) :: option
+
+  PetscInt :: temp_int(reaction%num_dbase_temperatures), &
+              indx(reaction%num_dbase_temperatures)
+  PetscReal :: a(reaction%num_dbase_temperatures,reaction%num_dbase_temperatures), &
+               vec(FIVE_INTEGER,reaction%num_dbase_temperatures), temperature_kelvin
+
+  PetscInt :: i, j, k, iflag
+  
+  ! need to fill in vec with equations for temperatures vs coefs.
+  
+  do i = 1, reaction%num_dbase_temperatures
+    temperature_kelvin = reaction%dbase_temperatures(i) + 273.15d0
+    vec(1,i) = log(temperature_kelvin)
+    vec(2,i) = 1.d0
+    vec(3,i) = temperature_kelvin
+    vec(4,i) = 1.d0/temperature_kelvin
+    vec(5,i) = 1.d0/(temperature_kelvin*temperature_kelvin)
+  enddo
+  
+  iflag = 0
+  do j = 1, FIVE_INTEGER
+    coefs(j) = 0.d0
+    do i = 1, reaction%num_dbase_temperatures
+      if (dabs(logK(i) - 500.) < 1.d-10) then
+        iflag = 1
+        temp_int(i) = ZERO_INTEGER
+      else if (logK(i) .gt. 500.) then
+        option%io_buffer = 'In ReactionFitLogKCoef: log K .gt. 500---stop!'
+        call printErrMsg(option)
+      else
+        coefs(j) = coefs(j) + logK(i)*vec(j,i)
+        temp_int(i) = ONE_INTEGER
+      endif
+    enddo
+  enddo
+
+  do j = 1, FIVE_INTEGER
+    do k = j, FIVE_INTEGER
+      a(j,k) = 0.d0
+      do i = 1, reaction%num_dbase_temperatures
+        if (temp_int(i) .eq. 1) then
+          a(j,k) = a(j,k) + vec(j,i)*vec(k,i)
+        endif
+      enddo
+      if (j .ne. k) a(k,j) = a(j,k)
+    enddo
+  enddo
+  call ludcmp(a,FIVE_INTEGER,indx,i)
+  call lubksb(a,FIVE_INTEGER,indx,coefs)
+
+end subroutine ReactionFitLogKCoef
+
+! ************************************************************************** !
+!
+! ReactionInitializeLogK: Least squares fit to log K over database temperature range
+! author: P.C. Lichtner
+! date: 02/13/09
+!
+! ************************************************************************** !
+subroutine ReactionInitializeLogK(logKcoef,logKs,logK,option,reaction)
+
+  use Option_module
+
+  implicit none
+  
+  type(reaction_type) :: reaction
+  PetscReal :: logKcoef(FIVE_INTEGER)
+  PetscReal :: logKs(reaction%num_dbase_temperatures)
+  PetscReal :: logK, logK_1D_Array(ONE_INTEGER)
+  type(option_type) :: option
+  
+  PetscReal :: coefs(FIVE_INTEGER,ONE_INTEGER)
+  PetscReal :: temperature
+  PetscInt :: itemperature
+  PetscInt :: i
+  
+  ! we always initialize on reference temperature
+  temperature = option%reference_temperature
+  
+  itemperature = 0
+  if (option%use_isoth) then
+    do i = 1, reaction%num_dbase_temperatures
+      if (dabs(option%reference_temperature - &
+               reaction%dbase_temperatures(i)) < 1.d-10) then
+        itemperature = i
+        exit
+      endif
+    enddo
+  endif
+  
+  if (itemperature > 0) then
+    logK = logKs(itemperature)
+  else
+    coefs(:,ONE_INTEGER) = logKcoef(:)
+    call ReactionInterpolateLogK(coefs,logK_1D_Array,temperature,ONE_INTEGER)
+    logK = logK_1D_Array(ONE_INTEGER)
+  endif
+
+end subroutine ReactionInitializeLogK
+
+! ************************************************************************** !
+!
+! ReactionInterpolateLogK: Interpolation log K function: temp - temperature [C]
+!                             b - fit coefficients determined from fit(...)
+! author: P.C. Lichtner
+! date: 02/13/09
+!
+! ************************************************************************** !
+subroutine ReactionInterpolateLogK(coefs,logKs,temp,n)
+
+  PetscInt :: n
+  PetscReal :: coefs(5,n), logKs(n), temp
+
+  PetscInt :: i
+  PetscReal :: temp_kelvin
+  
+  temp_kelvin = temp + 273.15d0
+  
+  do i = 1, n
+    logKs(i) = coefs(1,i)*log(temp_kelvin) &
+             + coefs(2,i)           &
+             + coefs(3,i)*temp_kelvin      &
+             + coefs(4,i)/temp_kelvin      &
+             + coefs(5,i)/(temp_kelvin*temp_kelvin)
+  enddo
+  
+end subroutine ReactionInterpolateLogK
 
 end module Reaction_module

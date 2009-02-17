@@ -101,7 +101,10 @@ function ImmisAuxCreate()
   nullify(aux%aux_vars)
   nullify(aux%aux_vars_bc)
   aux%n_zero_rows = 0
-  nullify(aux%immis_parameter)
+  allocate(aux%immis_parameter)
+  nullify(aux%immis_parameter%sir)
+  nullify(aux%immis_parameter%ckwet)
+  nullify(aux%immis_parameter%dencpr)
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
 
@@ -272,7 +275,9 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
   p= aux_var%pres
   t= aux_var%temp
 
-
+  if(x(3)<0.D0)x(3)=0.D0
+  if(x(3)>1.D0)x(3)=1.D0
+  
   aux_var%sat(2)=x(3)
   if(aux_var%sat(2)< 0.D0)then
      print *,'tran:',iphase, x(1:3)

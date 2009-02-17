@@ -218,7 +218,7 @@ subroutine Init(simulation)
         case(MPH_MODE)
           write(*,'(" mode = MPH: p, T, s/C")')
         case(IMS_MODE)
-          write(*,'(" mode = MPH: p, T, s/C")')
+          write(*,'(" mode = MPH: p, T, s")')
         case(THC_MODE)
           write(*,'(" mode = Richards: p, T, s/C")')
         case(RICHARDS_MODE)
@@ -497,7 +497,7 @@ subroutine Init(simulation)
       case(MPH_MODE)
         call MphaseUpdateAuxVars(realization)
       case(IMS_MODE)
-        call MphaseUpdateAuxVars(realization)
+        call ImmisUpdateAuxVars(realization)
     end select
   endif
 
