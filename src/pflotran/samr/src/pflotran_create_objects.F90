@@ -43,6 +43,7 @@ subroutine f_create_simulation(simulation_obj, application_ptr)
  option%myrank = myrank
  option%mycommsize = commsize
 
+ option%use_samr = PETSC_TRUE
  option%input_filename = "pflotran_well.in"
 
  string = '-pflotranin'
