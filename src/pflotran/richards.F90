@@ -1468,8 +1468,19 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   ! ensure consistent fluxes at coarse-fine interfaces
   if(option%use_samr) then
      call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%flow_face_fluxes, ierr)
-     
 
+     cur_level => realization%level_list%first
+     do
+        if (.not.associated(cur_level)) exit
+        cur_patch => cur_level%patch_list%first
+        do
+           if (.not.associated(cur_patch)) exit
+           realization%patch => cur_patch
+           call RichardsResidualFluxContribPatch(r,realization,ierr)
+           cur_patch => cur_patch%next
+        enddo
+        cur_level => cur_level%next
+     enddo
   endif
 
 
@@ -1505,6 +1516,86 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   endif
   
 end subroutine RichardsResidual
+
+! ************************************************************************** !
+!
+! RichardsResidualfuxContribsPatch: should be called only for SAMR
+! author: Bobby Philip
+! date: 02/17/09
+!
+! ************************************************************************** !
+subroutine RichardsResidualFluxContribPatch(r,realization,ierr)
+  use Realization_module
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Field_module
+  use Debug_module
+  
+  implicit none
+
+  Vec, intent(out) :: r
+  type(realization_type) :: realization
+
+  PetscErrorCode :: ierr
+
+  type :: flux_ptrs
+    PetscReal, dimension(:), pointer :: flux_p 
+  end type
+
+  type (flux_ptrs), dimension(0:2) :: fluxes
+  PetscReal, pointer :: r_p(:)
+  PetscReal, pointer :: face_fluxes_p(:)
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  PetscInt :: axis, nlx, nly, nlz
+  PetscInt :: iconn, i, j, k
+  PetscInt :: xup_id, xdn_id, yup_id, ydn_id, zup_id, zdn_id
+
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+! now assign access pointer to local variables
+  call GridVecGetArrayF90(grid,r, r_p, ierr)
+
+  do axis=0,2  
+     call GridVecGetArrayF90(grid,axis,field%flow_face_fluxes, fluxes(axis)%flux_p, ierr)  
+  enddo
+
+  nlx = grid%structured_grid%nlx  
+  nly = grid%structured_grid%nly  
+  nlz = grid%structured_grid%nlz 
+  
+  iconn=0
+  do k=1,nlz
+     do j=1,nly
+        do i=1,nlx
+           iconn=iconn+1
+           xup_id = ((k-1)*nly+j-1)*(nlx+1)+i
+           xdn_id = xup_id+1
+           yup_id = ((k-1)*(nly+1)+(j-1))*nlx+i
+           ydn_id = yup_id+nlx
+           zup_id = ((k-1)*nly+(j-1))*nlx+i
+           zdn_id = zup_id+nlx*nly
+
+           r_p(iconn) = r_p(iconn)+fluxes(0)%flux_p(xdn_id)-fluxes(0)%flux_p(xup_id) &
+                                  +fluxes(1)%flux_p(ydn_id)-fluxes(1)%flux_p(yup_id) &
+                                  +fluxes(2)%flux_p(zdn_id)-fluxes(2)%flux_p(zup_id)
+
+        enddo
+     enddo
+  enddo
+
+  call GridVecRestoreArrayF90(grid,r, r_p, ierr)
+!!$
+!!$  do axis=0,2  
+!!$     call GridVecRestoreArrayF90(grid,axis,field%flow_face_fluxes, fluxes(axis)%flux_p, ierr)  
+!!$  enddo
+
+end subroutine RichardsResidualFluxContribPatch
 
 ! ************************************************************************** !
 !
@@ -1732,15 +1823,18 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
         global_aux_vars(local_id_up)%mass_balance_delta(1) - Res(1)
 #endif
 
-      if (local_id_up>0) then
-        r_p(local_id_up) = r_p(local_id_up) + Res(1)
+      if(option%use_samr==PETSC_FALSE) then
+         
+         if (local_id_up>0) then
+            r_p(local_id_up) = r_p(local_id_up) + Res(1)
+         endif
+         
+         if (local_id_dn>0) then
+            r_p(local_id_dn) = r_p(local_id_dn) - Res(1)
+         endif
       endif
-   
-      if (local_id_dn>0) then
-        r_p(local_id_dn) = r_p(local_id_dn) - Res(1)
-      endif
-
     enddo
+
     cur_connection_set => cur_connection_set%next
   enddo    
 #endif
@@ -1803,8 +1897,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 !          global_aux_vars(ghosted_id)%mass_balance_delta(1) + Res(1)
       endif
 
-      r_p(local_id)= r_p(local_id) - Res(1)
-
       if (option%use_samr) then
          direction =  (boundary_condition%region%faces(iconn)-1)/2
 
@@ -1842,8 +1934,12 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
          end select
 
          fluxes(direction)%flux_p(flux_id) = Res(1)
+
+      else
+         r_p(local_id)= r_p(local_id) - Res(1)
       endif
-    enddo
+
+   enddo
     boundary_condition => boundary_condition%next
   enddo
 #endif  
