@@ -1412,6 +1412,15 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
        Vec :: vec
      end subroutine samrpetscobjectstateincrease
      
+     subroutine SAMRCoarsenFaceFluxes(p_application, vec, ierr)
+       implicit none
+#include "finclude/petsc.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+       PetscFortranAddr :: p_application
+       Vec :: vec
+       PetscInt :: ierr
+     end subroutine SAMRCoarsenFaceFluxes
   end interface
 
   SNES :: snes
@@ -1425,9 +1434,11 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   type(field_type), pointer :: field
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
+  type(option_type), pointer :: option
   
   field => realization%field
   discretization => realization%discretization
+  option => realization%option
   
   ! Communication -----------------------------------------
   ! These 3 must be called before RichardsUpdateAuxVars()
@@ -1452,6 +1463,15 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
     enddo
     cur_level => cur_level%next
   enddo
+
+  ! now coarsen all face fluxes in case we are using SAMRAI to 
+  ! ensure consistent fluxes at coarse-fine interfaces
+  if(option%use_samr) then
+     call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%flow_face_fluxes, ierr)
+     
+
+  endif
+
 
   ! pass #2 for everything else
   cur_level => realization%level_list%first
@@ -1508,6 +1528,22 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   
   implicit none
 
+  interface
+     PetscInt function samr_patch_at_bc(p_patch, axis, dim)
+     implicit none
+     
+#include "finclude/petsc.h"
+     
+     PetscFortranAddr :: p_patch
+     PetscInt :: axis,dim
+   end function samr_patch_at_bc
+  end interface
+
+  type :: flux_ptrs
+    PetscReal, dimension(:), pointer :: flux_p 
+  end type
+
+  type (flux_ptrs), dimension(0:2) :: fluxes
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
@@ -1543,7 +1579,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity
-  PetscInt :: axis, nlx, nly, nlz, pstart, pend
+  PetscInt :: axis, side, nlx, nly, nlz, ngx, ngxy, pstart, pend, flux_id
   PetscInt :: direction, max_x_conn, max_y_conn
   
   patch => realization%patch
@@ -1571,15 +1607,38 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
   !print *,' Finished scattering non deriv'
 
+  if (option%use_samr) then
+     do axis=0,2  
+        call GridVecGetArrayF90(grid,axis,field%flow_face_fluxes, fluxes(axis)%flux_p, ierr)  
+     enddo
+  endif
+
   r_p = 0.d0
 #if 1
   if (option%use_samr) then
     nlx = grid%structured_grid%nlx  
     nly = grid%structured_grid%nly  
     nlz = grid%structured_grid%nlz 
+
+    ngx = grid%structured_grid%ngx   
+    ngxy = grid%structured_grid%ngxy
+
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 0, 0)==1) nlx = nlx-1
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 0, 1)==1) nlx = nlx-1
+    
     max_x_conn = (nlx+1)*nly*nlz
+    ! reinitialize nlx
+    nlx = grid%structured_grid%nlx  
+
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 1, 0)==1) nly = nly-1
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 1, 1)==1) nly = nly-1
+    
     max_y_conn = max_x_conn + nlx*(nly+1)*nlz
+
+    ! reinitialize nly
+    nly = grid%structured_grid%nly  
   endif
+
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
@@ -1645,12 +1704,27 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       if (option%use_samr) then
         if (sum_connection <= max_x_conn) then
           direction = 0
+          if(mod(mod(ghosted_id_dn,ngxy),ngx).eq.0) then
+             flux_id = ((ghosted_id_dn/ngxy)-1)*(nlx+1)*nly + &
+                       ((mod(ghosted_id_dn,ngxy))/ngx-1)*(nlx+1)
+          else
+             flux_id = ((ghosted_id_dn/ngxy)-1)*(nlx+1)*nly + &
+                       ((mod(ghosted_id_dn,ngxy))/ngx-1)*(nlx+1)+ &
+                       mod(mod(ghosted_id_dn,ngxy),ngx)-1
+          endif
+
         else if (sum_connection <= max_y_conn) then
           direction = 1
+          flux_id = ((ghosted_id_dn/ngxy)-1)*nlx*(nly+1) + &
+                    ((mod(ghosted_id_dn,ngxy))/ngx-1)*nlx + &
+                    mod(mod(ghosted_id_dn,ngxy),ngx)-1
         else
           direction = 2
+          flux_id = ((ghosted_id_dn/ngxy)-1)*nlx*nly &
+                   +((mod(ghosted_id_dn,ngxy))/ngx-1)*nlx &
+                   +mod(mod(ghosted_id_dn,ngxy),ngx)-1
         endif
-!        face_fluxes_p(ghosted_id_up,direction) = Res(1)
+        fluxes(direction)%flux_p(flux_id) = Res(1)
       endif
       
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
@@ -1732,48 +1806,47 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       r_p(local_id)= r_p(local_id) - Res(1)
 
       if (option%use_samr) then
-        direction = boundary_condition%region%faces(iconn)
-        select case(direction)
-          case(EAST_FACE)
-            ghosted_id = ghosted_id + 1
-            direction = WEST_FACE
-          case(NORTH_FACE)
-            ghosted_id = ghosted_id + nlx
-            direction = SOUTH_FACE
-          case(TOP_FACE)
-            ghosted_id = ghosted_id + nlx*nly
-            direction = BOTTOM_FACE
-        end select
-!        face_fluxes_p(ghosted_id,direction) = Res(1)
+         direction =  (boundary_condition%region%faces(iconn)-1)/2
+
+         ! the ghosted_id gives the id of the cell. Since the
+         ! flux_id is based on the ghosted_id of the downwind
+         ! cell this has to be adjusted in the case of the east, 
+         ! north and top faces before the flux_id is computed
+         select case(boundary_condition%region%faces(iconn)) 
+           case(WEST_FACE)
+              flux_id = ((ghosted_id/ngxy)-1)*(nlx+1)*nly + &
+                        ((mod(ghosted_id,ngxy))/ngx-1)*(nlx+1)+ &
+                        mod(mod(ghosted_id,ngxy),ngx)-1
+           case(EAST_FACE)
+              ghosted_id = ghosted_id+1
+              flux_id = ((ghosted_id/ngxy)-1)*(nlx+1)*nly + &
+                        ((mod(ghosted_id,ngxy))/ngx-1)*(nlx+1)
+           case(SOUTH_FACE)
+              flux_id = ((ghosted_id/ngxy)-1)*nlx*(nly+1) + &
+                        ((mod(ghosted_id,ngxy))/ngx-1)*nlx + &
+                        mod(mod(ghosted_id,ngxy),ngx)-1
+           case(NORTH_FACE)
+              ghosted_id = ghosted_id+ngx
+              flux_id = ((ghosted_id/ngxy)-1)*nlx*(nly+1) + &
+                        ((mod(ghosted_id,ngxy))/ngx-1)*nlx + &
+                        mod(mod(ghosted_id,ngxy),ngx)-1
+           case(BOTTOM_FACE)
+              flux_id = ((ghosted_id/ngxy)-1)*nlx*nly &
+                       +((mod(ghosted_id,ngxy))/ngx-1)*nlx &
+                       +mod(mod(ghosted_id,ngxy),ngx)-1
+           case(TOP_FACE)
+              ghosted_id = ghosted_id+ngxy
+              flux_id = ((ghosted_id/ngxy)-1)*nlx*nly &
+                       +((mod(ghosted_id,ngxy))/ngx-1)*nlx &
+                       +mod(mod(ghosted_id,ngxy),ngx)-1
+         end select
+
+         fluxes(direction)%flux_p(flux_id) = Res(1)
       endif
- 
     enddo
     boundary_condition => boundary_condition%next
   enddo
 #endif  
-
-  ! in case of a SAMR grid the face fluxes need to be restricted to coarser grids  
-  ! so we copy them into a SAMRAI face vector in order to do that  
-  if (option%use_samr) then  
-    nlx = grid%structured_grid%nlx  
-    nly = grid%structured_grid%nly  
-    nlz = grid%structured_grid%nlz  
-    do axis=0,2  
-      select case(axis)  
-        case(0)  
-          pstart = 1  
-          pend = (nlx+1)*nly*nlz  
-        case(1)  
-          pstart = (nlx+1)*nly*nlz+1  
-          pend = pstart+nlx*(nly+1)*nlz-1  
-        case(2)  
-          pstart = (nlx+1)*nly*nlz+nlx*(nly+1)*nlz+1  
-          pend = pstart+nlx*nly*(nlz+1)-1  
-      end select  
-      call GridVecGetArrayF90(grid,axis,field%flow_face_fluxes, face_fluxes_p, ierr)  
-      face_fluxes_p = patch%internal_velocities(1,pstart:pend)  
-    enddo  
-  endif  
 
   call GridVecRestoreArrayF90(grid,r, r_p, ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
