@@ -155,6 +155,7 @@ subroutine StochasticRun(stochastic,option)
 
     call LoggingCreate()
 
+    call OptionInitRealization(option)
     simulation => SimulationCreate(option)
     realization => simulation%realization
 

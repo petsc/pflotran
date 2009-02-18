@@ -210,7 +210,8 @@ module Option_module
             OptionCheckTouch, &
             OptionPrintToScreen, &
             OptionPrintToFile, &
-            OutputOptionDestroy
+            OutputOptionDestroy, &
+            OptionInitRealization
 
 contains
 
@@ -231,6 +232,32 @@ function OptionCreate()
   
   allocate(option)
 
+  ! DO NOT initialize members of the option type here.  One must decide 
+  ! whether the member needs initialization once for all stochastic 
+  ! simulations or initialization for every realization (e.g. within multiple 
+  ! stochastic simulations).  This is done in OptionInitAll() and
+  ! OptionInitRealization()
+  call OptionInitAll(option)
+  OptionCreate => option
+  
+end function OptionCreate
+
+! ************************************************************************** !
+!
+! OptionInitAll: Initializes all option variables 
+! author: Glenn Hammond
+! date: 10/25/07
+!
+! ************************************************************************** !
+subroutine OptionInitAll(option)
+
+  implicit none
+  
+  type(option_type) :: option
+  
+  ! These variables should only be initialized once at the beginning of a
+  ! PFLOTRAN run (regardless of whether stochastic)
+  
   option%id = 0
 
   option%global_comm = 0
@@ -249,15 +276,39 @@ function OptionCreate()
     
   option%broadcast_read = PETSC_FALSE
   option%io_rank = 0
-  option%io_buffer = ''
   
-  option%fid_out = 0
-
-  option%iflag = 0
   option%print_screen_flag = PETSC_FALSE
   option%print_file_flag = PETSC_FALSE
   option%print_to_screen = PETSC_TRUE
   option%print_to_file = PETSC_TRUE
+
+  option%input_filename = ''
+
+  call OptionInitRealization(option)
+
+end subroutine OptionInitAll
+
+! ************************************************************************** !
+!
+! OptionInitRealization: Initializes option variables specific to a single 
+!                        realization
+! author: Glenn Hammond
+! date: 10/25/07
+!
+! ************************************************************************** !
+subroutine OptionInitRealization(option)
+
+  implicit none
+  
+  type(option_type) :: option
+  
+  ! These variables should be initialized once at the beginning of every 
+  ! PFLOTRAN realization or simulation of a single realization
+    
+  option%fid_out = 0
+
+  option%iflag = 0
+  option%io_buffer = ''
   
   option%use_isoth = PETSC_FALSE
   option%use_matrix_free = PETSC_FALSE
@@ -320,7 +371,6 @@ function OptionCreate()
   option%generalized_grid = ""
   option%use_generalized_grid = PETSC_FALSE
 
-  option%input_filename = ""
   option%restart_flag = PETSC_FALSE
   option%restart_filename = ""
   option%restart_time = -999.d0
@@ -358,9 +408,7 @@ function OptionCreate()
   option%permy_filename = ""
   option%permz_filename = ""
 
-  OptionCreate => option
-  
-end function OptionCreate
+end subroutine OptionInitRealization
 
 ! ************************************************************************** !
 !
