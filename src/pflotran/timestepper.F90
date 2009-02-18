@@ -964,6 +964,8 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   endif
     
 ! print screen output
+  call VecNorm(field%flow_r,NORM_2,fnorm,ierr) 
+  call VecNorm(field%flow_r,NORM_INFINITY,inorm,ierr)
   if (option%print_screen_flag) then
     write(*, '(/," FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
       & " snes_conv_reason: ",i4,/,"  newton = ",i2," [",i8,"]", &
@@ -974,8 +976,6 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
       stepper%newton_cum,num_linear_iterations,stepper%linear_cum,icut, &
       stepper%icutcum
 
-    call VecNorm(field%flow_r,NORM_2,fnorm,ierr) 
-    call VecNorm(field%flow_r,NORM_INFINITY,inorm,ierr)
     ! the grid pointer is null if we are working with SAMRAI
     if(associated(discretization%grid)) then
        scaled_fnorm = fnorm/discretization%grid%nmax 
@@ -1276,6 +1276,8 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
     stepper%icutcum = stepper%icutcum + icut
 
   ! print screen output
+    call VecNorm(field%tran_r,NORM_2,fnorm,ierr) 
+    call VecNorm(field%tran_r,NORM_INFINITY,inorm,ierr)
     if (option%print_screen_flag) then
 
       write(*, '(/," TRAN ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
@@ -1287,8 +1289,6 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
         stepper%newton_cum,num_linear_iterations,stepper%linear_cum,icut, &
         stepper%icutcum
 
-      call VecNorm(field%tran_r,NORM_2,fnorm,ierr) 
-      call VecNorm(field%tran_r,NORM_INFINITY,inorm,ierr)
       ! the grid pointer is null if we are working with SAMRAI
       if(associated(discretization%grid)) then
          scaled_fnorm = fnorm/discretization%grid%nmax   
