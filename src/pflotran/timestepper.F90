@@ -321,7 +321,6 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       output_option%print_initial) then
     plot_flag = PETSC_TRUE
     transient_plot_flag = PETSC_TRUE
-    output_option%first = PETSC_TRUE
     call Output(realization,plot_flag,transient_plot_flag)
     if (output_option%print_permeability) then
       string = 'permeability-' // trim(option%group_prefix) // '.tec'
@@ -330,7 +329,6 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   endif
   ! increment plot number so that 000 is always the initial condition, and nothing else
   if (output_option%plot_number == 0) output_option%plot_number = 1
-  output_option%first = PETSC_FALSE
 
   if (associated(flow_stepper)) then
     flow_stepper%dt_max = flow_stepper%cur_waypoint%dt_max

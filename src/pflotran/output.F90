@@ -25,6 +25,12 @@ module Output_module
   PetscMPIInt :: hdf5_err
   PetscErrorCode :: ierr
   PetscInt, save :: max_local_size_saved = -1
+  
+  ! flags signifying the first time a routine is called during a given
+  ! simulation
+  PetscTruth :: observation_first
+  PetscTruth :: hdf5_first
+  PetscTruth :: mass_balance_first
 
   public :: OutputInit, Output, OutputVectorTecplot, &
             OutputObservation, OutputGetVarFromArray
@@ -48,6 +54,9 @@ subroutine OutputInit(realization)
   
   ! set size to -1 in order to re-initialize parallel communication blocks
   max_local_size_saved = -1
+  observation_first = PETSC_TRUE
+  hdf5_first = PETSC_TRUE
+  mass_balance_first = PETSC_TRUE
 
 end subroutine OutputInit
 
@@ -2077,7 +2086,7 @@ subroutine OutputObservationTecplot(realization)
   field => realization%field
   output_option => realization%output_option
   
-  if (output_option%first) then
+  if (observation_first) then
     open_file = PETSC_FALSE
     observation => patch%observation%first
     do
@@ -2110,7 +2119,7 @@ subroutine OutputObservationTecplot(realization)
   
     ! open file
     fid = 86
-    if (output_option%first) then
+    if (observation_first) then
       open(unit=fid,file=filename,action="write",status="replace")
       ! write header
       ! write title
@@ -2166,6 +2175,8 @@ subroutine OutputObservationTecplot(realization)
 
   endif
 
+  observation_first = PETSC_FALSE
+  
   call PetscLogEventEnd(logging%event_output_observation, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
@@ -4139,7 +4150,7 @@ subroutine OutputHDF5(realization)
   reaction => realization%reaction
   output_option => realization%output_option
 
-  first = output_option%first
+  first = hdf5_first
 
   filename = trim(option%global_prefix) // trim(option%group_prefix) // '.h5'
 
@@ -4559,6 +4570,9 @@ subroutine OutputHDF5(realization)
      call VecDestroy(samr_vec,ierr)
   endif
 #endif
+
+  hdf5_first = PETSC_FALSE
+
 end subroutine OutputHDF5
 
 ! ************************************************************************** !
@@ -4768,7 +4782,7 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   ! in collective H5Dwrite().  To avoid, we switch to independent
   ! H5Dwrite() and don't write from the zero-length procs. 
 !GEH - Structured Grid Dependence - Begin
-  if (output_option%first) then
+  if (hdf5_first) then
     trick_flux_vel_x = PETSC_FALSE
     trick_flux_vel_y = PETSC_FALSE
     trick_flux_vel_z = PETSC_FALSE
@@ -5688,7 +5702,7 @@ subroutine OutputMassBalanceNew(realization)
   reaction => realization%reaction
   output_option => realization%output_option
   
-  local_first = output_option%first
+  local_first = mass_balance_first
   
   if (len_trim(output_option%plot_name) > 2) then
     filename = trim(output_option%plot_name) // '.dat'
@@ -5702,7 +5716,7 @@ subroutine OutputMassBalanceNew(realization)
     option%io_buffer = '--> write tecplot mass balance file: ' // trim(filename)
     call printMsg(option)    
 
-    if (output_option%first .and. option%restart_flag) then ! check if file already exists
+    if (mass_balance_first .and. option%restart_flag) then ! check if file already exists
       ios = 0
       open(unit=fid,file=filename,action="write",status="old",iostat=ios)
       if (ios == 0) then
@@ -5918,6 +5932,8 @@ subroutine OutputMassBalanceNew(realization)
     write(fid,'(a)') ''
     close(fid)
   endif
+  
+  mass_balance_first = PETSC_FALSE
 
 end subroutine OutputMassBalanceNew
 
