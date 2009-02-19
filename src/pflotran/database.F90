@@ -1943,8 +1943,13 @@ subroutine BasisInit(reaction,option)
     reaction%eqcmplxh2ostoich = 0.d0
     allocate(reaction%eqcmplx_logK(reaction%neqcmplx))
     reaction%eqcmplx_logK = 0.d0
+#if TEMP_DEPENDENT_LOGK
+    allocate(reaction%eqcmplx_logKcoef(FIVE_INTEGER,reaction%neqcmplx))
+    reaction%eqcmplx_logKcoef = 0.d0
+#else
     allocate(reaction%eqcmplx_logKcoef(reaction%num_dbase_temperatures,reaction%neqcmplx))
     reaction%eqcmplx_logKcoef = 0.d0
+#endif
     allocate(reaction%eqcmplx_Z(reaction%neqcmplx))
     reaction%eqcmplx_Z = 0.d0
     allocate(reaction%eqcmplx_a0(reaction%neqcmplx))
@@ -1972,18 +1977,15 @@ subroutine BasisInit(reaction,option)
           reaction%eqcmplxspecid(ispec,isec_spec) = spec_id
           reaction%eqcmplx_basis_names(ispec,isec_spec) = &
             cur_sec_aq_spec%eqrxn%spec_name(i)
-          reaction%eqcmplxstoich(ispec,isec_spec) = &
-            cur_sec_aq_spec%eqrxn%stoich(i)
+          reaction%eqcmplxstoich(ispec,isec_spec) = cur_sec_aq_spec%eqrxn%stoich(i)
             
         else ! fill in h2o id and stoich
           reaction%eqcmplxh2oid(isec_spec) = h2o_id
-          reaction%eqcmplxh2ostoich(isec_spec) = &
-            cur_sec_aq_spec%eqrxn%stoich(i)
+          reaction%eqcmplxh2ostoich(isec_spec) = cur_sec_aq_spec%eqrxn%stoich(i)
         endif
       enddo
       reaction%eqcmplxspecid(0,isec_spec) = ispec
-      reaction%eqcmplx_logKcoef(:,isec_spec) = &
-        cur_sec_aq_spec%eqrxn%logK
+      reaction%eqcmplx_logKcoef(:,isec_spec) = cur_sec_aq_spec%eqrxn%logK
       call Interpolate(temp_high,temp_low,option%reference_temperature, &
                        cur_sec_aq_spec%eqrxn%logK(itemp_high), &
                        cur_sec_aq_spec%eqrxn%logK(itemp_low), &
@@ -2034,8 +2036,7 @@ subroutine BasisInit(reaction,option)
     do
       if (.not.associated(cur_gas_spec)) exit
 
-      reaction%gas_species_names(igas_spec) = &
-        cur_gas_spec%name
+      reaction%gas_species_names(igas_spec) = cur_gas_spec%name
       reaction%gas_species_print(igas_spec) = cur_gas_spec%print_me .or. &
                                             reaction%print_all_species
       ispec = 0
@@ -2055,6 +2056,7 @@ subroutine BasisInit(reaction,option)
         endif
       enddo
       reaction%eqgasspecid(0,igas_spec) = ispec
+      
 #if TEMP_DEPENDENT_LOGK
 !Peter change here
       call ReactionFitLogKCoef(reaction%eqgas_logKcoef(:,igas_spec),cur_gas_spec%eqrxn%logK, &
@@ -2064,8 +2066,7 @@ subroutine BasisInit(reaction,option)
                                   reaction%eqgas_logK(igas_spec), &
                                   option,reaction)
 #else
-      reaction%eqgas_logKcoef(:,igas_spec) = &
-        cur_gas_spec%eqrxn%logK
+      reaction%eqgas_logKcoef(:,igas_spec) = cur_gas_spec%eqrxn%logK
       call Interpolate(temp_high,temp_low,option%reference_temperature, &
                        cur_gas_spec%eqrxn%logK(itemp_high), &
                        cur_gas_spec%eqrxn%logK(itemp_low), &
@@ -2098,10 +2099,14 @@ subroutine BasisInit(reaction,option)
     reaction%mnrlh2ostoich = 0.d0
     allocate(reaction%mnrl_logK(reaction%nmnrl))
     reaction%mnrl_logK = 0.d0
+#if TEMP_DEPENDENT_LOGK
+    allocate(reaction%mnrl_logKcoef(FIVE_INTEGER,reaction%nmnrl))
+    reaction%mnrl_logKcoef = 0.d0
+#else
     allocate(reaction%mnrl_logKcoef(reaction%num_dbase_temperatures, &
                                     reaction%nmnrl))
     reaction%mnrl_logKcoef = 0.d0
-
+#endif
     allocate(reaction%kinmnrl_names(reaction%nkinmnrl))
     reaction%kinmnrl_names = ''
     allocate(reaction%kinmnrl_print(reaction%nkinmnrl))
@@ -2230,9 +2235,14 @@ subroutine BasisInit(reaction,option)
     reaction%eqsurfcmplx_mineral_id = 0
     allocate(reaction%eqsurfcmplx_logK(reaction%neqsurfcmplx))
     reaction%eqsurfcmplx_logK = 0.d0
+#if TEMP_DEPENDENT_LOGK
+    allocate(reaction%eqsurfcmplx_logKcoef(FIVE_INTEGER,reaction%neqsurfcmplx))
+    reaction%eqsurfcmplx_logKcoef = 0.d0
+#else
     allocate(reaction%eqsurfcmplx_logKcoef(reaction%num_dbase_temperatures, &
                                            reaction%neqsurfcmplx))
     reaction%eqsurfcmplx_logKcoef = 0.d0
+#endif
     allocate(reaction%eqsurfcmplx_Z(reaction%neqsurfcmplx))
     reaction%eqsurfcmplx_Z = 0.d0
 
