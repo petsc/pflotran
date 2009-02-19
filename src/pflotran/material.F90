@@ -14,6 +14,7 @@ module Material_module
     PetscReal :: permeability_pwr
     character(len=MAXSTRINGLENGTH) :: permeability_filename
     PetscReal :: porosity
+    character(len=MAXSTRINGLENGTH) :: porosity_filename
     PetscReal :: tortuosity
     PetscInt :: saturation_function_id
     character(len=MAXWORDLENGTH) :: saturation_function_name
@@ -63,6 +64,7 @@ function MaterialPropertyCreate()
   material_property%permeability_pwr = 0.d0
   material_property%permeability_filename = ''
   material_property%porosity = 0.d0
+  material_property%porosity_filename = ''
   material_property%tortuosity = 0.d0
   material_property%saturation_function_id = 0
   material_property%saturation_function_name = ''

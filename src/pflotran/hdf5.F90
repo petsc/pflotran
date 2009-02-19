@@ -32,14 +32,14 @@ module HDF5_module
             HDF5WriteStructDataSetFromVec, &
             HDF5WriteStructuredDataSet, &
             HDF5ReadRegionFromFile, &
-            HDF5ReadMaterialsFromFile, &
-            HDF5ReadPermeabilitiesFromFile
+            HDF5ReadCellIndexedIntegerArray, &
+            HDF5ReadCellIndexedRealArray
 
 #else
 
   public :: HDF5ReadRegionFromFile, &
-            HDF5ReadMaterialsFromFile, &
-            HDF5ReadPermeabilitiesFromFile
+            HDF5ReadCellIndexedIntegerArray, &
+            HDF5ReadCellIndexedRealArray
 
 #endif
   
@@ -1386,12 +1386,15 @@ end subroutine HDF5ReadRegionFromFile
 
 ! ************************************************************************** !
 !
-! HDF5ReadMaterialsFromFile: Reads material ids from an hdf5 file
+! HDF5ReadCellIndexedIntegerArray: Reads an array of integer values from an 
+!                                  hdf5 file
 ! author: Glenn Hammond
-! date: 1/3/08
+! date: 1/3/08; 02/18/09
 !
 ! ************************************************************************** !
-subroutine HDF5ReadMaterialsFromFile(realization,filename)
+subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
+                                           group_name, &
+                                           dataset_name,append_realization_id)
 
 #ifdef USE_HDF5
   use hdf5
@@ -1410,7 +1413,11 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
 #include "finclude/petscvec.h90"
 
   type(realization_type) :: realization
+  Vec :: global_vec
   character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: group_name
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  PetscTruth :: append_realization_id
 
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
@@ -1431,10 +1438,6 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   PetscInt, pointer :: indices(:)
   PetscInt, allocatable :: integer_array(:)
   
-  Vec :: global_vec
-  Vec :: local_vec
-  PetscReal, pointer :: vec_ptr(:)
-
 #ifndef USE_HDF5
   option => realization%option
   call printMsg(option,'')
@@ -1451,18 +1454,9 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   grid => patch%grid
   field => realization%field
 
-  call PetscLogEventBegin(logging%event_material_read_hdf5, &
+  call PetscLogEventBegin(logging%event_cell_indx_int_read_hdf5, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
-
-  ! create hash table for fast lookup
-#ifdef HASH
-  call PetscGetTime(tstart,ierr)
-  call GridCreateNaturalToGhostedHash(grid,option)
-  call PetscGetTime(tend,ierr)
-  write(option%io_buffer,'(f6.2," Seconds to create hash.")') tend-tstart
-  call printMsg(option) 
-#endif
 
   ! initialize fortran hdf5 interface
   call h5open_f(hdf5_err)
@@ -1476,27 +1470,29 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
   call h5pclose_f(prop_id,hdf5_err)
 
-  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
-                                  option)
-  call DiscretizationCreateVector(discretization,ONEDOF,local_vec,LOCAL, &
-                                  option)
-
   option%io_buffer = 'Setting up grid cell indices'
   call printMsg(option) 
 
-  ! Open the Materials group
-  string = 'Materials'
-
-  option%io_buffer = 'Opening group: ' // trim(string)
-  call printMsg(option)   
-  call h5gopen_f(file_id,string,grp_id,hdf5_err)
+  ! Open group if necessary
+  if (len_trim(group_name) > 1) then
+    option%io_buffer = 'Opening group: ' // trim(group_name)
+    call printMsg(option)   
+    call h5gopen_f(file_id,group_name,grp_id,hdf5_err)
+  else
+    grp_id = file_id
+  endif
 
 ! new approach
 #if 1
   ! Read Cell Ids
   call PetscGetTime(tstart,ierr)
   string = "Cell Ids"
-  option%io_buffer = 'Reading dataset: ' // trim(string)
+  if (grp_id /= file_id) then
+    option%io_buffer = 'Reading dataset: ' // trim(group_name) // '/' &
+                       // trim(string)
+  else
+    option%io_buffer = 'Reading dataset: ' // trim(string)
+  endif
   call printMsg(option)   
   call HDF5ReadIndices(grid,option,grp_id,string,grid%nmax,indices)
   call PetscGetTime(tend,ierr)
@@ -1504,17 +1500,40 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   call printMsg(option)
 
   call PetscGetTime(tstart,ierr)
-  string = "Material Ids"
-  option%io_buffer = 'Reading dataset: ' // trim(string)
+  string = ''
+  if (append_realization_id) then
+    write(string,'(i6)') option%id
+  endif
+  string = trim(dataset_name) // adjustl(trim(string))
+  if (grp_id /= file_id) then
+    option%io_buffer = 'Reading dataset: ' // trim(group_name) // '/' &
+                       // trim(string)
+  else
+    option%io_buffer = 'Reading dataset: ' // trim(string)
+  endif
   call printMsg(option)   
   call HDF5ReadArray(discretization,grid,option,grp_id,string,grid%nmax, &
                      indices,global_vec,HDF_NATIVE_INTEGER)
 #else  
+  ! create hash table for fast lookup
+#ifdef HASH
+  call PetscGetTime(tstart,ierr)
+  call GridCreateNaturalToGhostedHash(grid,option)
+  call PetscGetTime(tend,ierr)
+  write(option%io_buffer,'(f6.2," Seconds to create hash.")') tend-tstart
+  call printMsg(option) 
+#endif
+
   allocate(indices(grid%nlmax))
   ! Read Cell Ids
   call PetscGetTime(tstart,ierr)
   string = "Cell Ids"
-  option%io_buffer = 'Reading dataset: ' // trim(string)
+  if (grp_id /= file_id) then
+    option%io_buffer = 'Reading dataset: ' // trim(group_name) // '/' &
+                       // trim(string)
+  else
+    option%io_buffer = 'Reading dataset: ' // trim(string)
+  endif
   call printMsg(option)   
   call HDF5MapLocalToNaturalIndices(grid,option,grp_id,string,grid%nmax, &
                                     indices,grid%nlmax)
@@ -1523,57 +1542,67 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
     tend-tstart
   call printMsg(option)  
 
-  ! Read Material ids
-  allocate(integer_array(grid%nlmax))
-  string = "Material Ids"
-  option%io_buffer = 'Reading dataset: ' // trim(string)
-  call printMsg(option)   
+  ! Read integer values
   call PetscGetTime(tstart,ierr)
+  allocate(integer_array(grid%nlmax))
+  string = ''
+  if (append_realization_id) then
+    write(string,'(i6)') option%id
+  endif
+  string = trim(dataset_name) // adjustl(trim(string))
+  if (grp_id /= file_id) then
+    option%io_buffer = 'Reading dataset: ' // trim(group_name) // '/' &
+                       // trim(string)
+  else
+    option%io_buffer = 'Reading dataset: ' // trim(string)
+  endif
+  call printMsg(option)   
   call HDF5ReadIntegerArray(option,grp_id,string,grid%nlmax,indices, &
                             grid%nlmax,integer_array)
   call GridCopyIntegerArrayToPetscVec(integer_array,global_vec,grid%nlmax)
   deallocate(integer_array)
+#ifdef HASH  
+  call GridDestroyHashTable(grid)
+#endif
 #endif
   
-  call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)
-  call GridCopyPetscVecToIntegerArray(patch%imat,local_vec,grid%ngmax)
   call PetscGetTime(tend,ierr)
-  write(option%io_buffer,'(f6.2," Seconds to read material ids.")') &
+  write(option%io_buffer,'(f6.2," Seconds to read integer array.")') &
     tend-tstart
   call printMsg(option)  
 
-  call VecDestroy(global_vec,ierr)
-  call VecDestroy(local_vec,ierr)
   if (associated(indices)) deallocate(indices)
   nullify(indices)
 
-  option%io_buffer = 'Closing group: Materials'
-  call printMsg(option)   
-  call h5gclose_f(grp_id,hdf5_err)
-    
+  if (file_id /= grp_id) then
+    option%io_buffer = 'Closing group: ' // trim(group_name)
+    call printMsg(option)   
+    call h5gclose_f(grp_id,hdf5_err)
+  endif
+  
   option%io_buffer = 'Closing hdf5 file: ' // filename
   call printMsg(option)   
   call h5fclose_f(file_id,hdf5_err)
    
   call h5close_f(hdf5_err)
-  
-  call GridDestroyHashTable(grid)
 #endif  
 
-  call PetscLogEventEnd(logging%event_material_read_hdf5, &
+  call PetscLogEventEnd(logging%event_cell_indx_int_read_hdf5, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
                           
-end subroutine HDF5ReadMaterialsFromFile
+end subroutine HDF5ReadCellIndexedIntegerArray
 
 ! ************************************************************************** !
 !
-! HDF5ReadPermeabilitiesFromFile: Reads permeabilities from an hdf5 file
+! HDF5ReadCellIndexedIntArray: Reads an array of real values from an hdf5 file
 ! author: Glenn Hammond
-! date: 01/16/09
+! date: 01/16/09, 02/18/09
 !
 ! ************************************************************************** !
-subroutine HDF5ReadPermeabilitiesFromFile(realization,filename)
+subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
+                                        group_name, &
+                                        dataset_name,append_realization_id)
 
 #ifdef USE_HDF5
   use hdf5
@@ -1592,7 +1621,11 @@ subroutine HDF5ReadPermeabilitiesFromFile(realization,filename)
 #include "finclude/petscvec.h90"
 
   type(realization_type) :: realization
+  Vec :: global_vec
   character(len=MAXSTRINGLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: group_name
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  PetscTruth :: append_realization_id
 
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
@@ -1613,9 +1646,6 @@ subroutine HDF5ReadPermeabilitiesFromFile(realization,filename)
   PetscInt, pointer :: indices(:)
   PetscReal, allocatable :: real_array(:)
   
-  Vec :: global_vec
-  PetscReal, pointer :: vec_ptr(:)
-
 #ifndef USE_HDF5
   option => realization%option
   call printMsg(option,'')
@@ -1632,18 +1662,9 @@ subroutine HDF5ReadPermeabilitiesFromFile(realization,filename)
   grid => patch%grid
   field => realization%field
 
-  call PetscLogEventBegin(logging%event_permeabilities_read_hdf5, &
+  call PetscLogEventBegin(logging%event_cell_indx_real_read_hdf5, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
-
-  ! create hash table for fast lookup
-#ifdef HASH
-  call PetscGetTime(tstart,ierr)
-  call GridCreateNaturalToGhostedHash(grid,option)
-  call PetscGetTime(tend,ierr)
-  write(option%io_buffer,'(f6.2," Seconds to create hash.")') tend-tstart
-  call printMsg(option) 
-#endif
 
   ! initialize fortran hdf5 interface
   call h5open_f(hdf5_err)
@@ -1657,40 +1678,71 @@ subroutine HDF5ReadPermeabilitiesFromFile(realization,filename)
   call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
   call h5pclose_f(prop_id,hdf5_err)
 
-  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
-                                  option)
-
   option%io_buffer = 'Setting up grid cell indices'
   call printMsg(option) 
+
+  ! Open group if necessary
+  if (len_trim(group_name) > 1) then
+    option%io_buffer = 'Opening group: ' // trim(group_name)
+    call printMsg(option)   
+    call h5gopen_f(file_id,group_name,grp_id,hdf5_err)
+  else
+    grp_id = file_id
+  endif
 
 ! new approach
 #if 1
   ! Read Cell Ids
   call PetscGetTime(tstart,ierr)
   string = "Cell Ids"
-  option%io_buffer = 'Reading dataset: ' // trim(string)
+  if (grp_id /= file_id) then
+    option%io_buffer = 'Reading dataset: ' // trim(group_name) // '/' &
+                       // trim(string)
+  else
+    option%io_buffer = 'Reading dataset: ' // trim(string)
+  endif
   call printMsg(option)   
-  call HDF5ReadIndices(grid,option,file_id,string,grid%nmax,indices)
+  call HDF5ReadIndices(grid,option,grp_id,string,grid%nmax,indices)
   call PetscGetTime(tend,ierr)
   write(option%io_buffer,'(f6.2," Seconds to set up indices")') tend-tstart
   call printMsg(option)
 
   call PetscGetTime(tstart,ierr)
   string = ''
-  if (option%id > 0) then
+  if (append_realization_id) then
     write(string,'(i6)') option%id
   endif
-  string = 'Permeability' // adjustl(trim(string))
-  option%io_buffer = 'Reading dataset: ' // trim(string)
+  string = trim(dataset_name) // adjustl(trim(string))
+  if (grp_id /= file_id) then
+    option%io_buffer = 'Reading dataset: ' // trim(group_name) // '/' &
+                       // trim(string)
+  else
+    option%io_buffer = 'Reading dataset: ' // trim(string)
+  endif
   call printMsg(option)   
   call HDF5ReadArray(discretization,grid,option,file_id,string,grid%nmax, &
                      indices,global_vec,H5T_NATIVE_DOUBLE)
 #else  
+
+  ! create hash table for fast lookup
+#ifdef HASH
+  call PetscGetTime(tstart,ierr)
+  call GridCreateNaturalToGhostedHash(grid,option)
+  call PetscGetTime(tend,ierr)
+  write(option%io_buffer,'(f6.2," Seconds to create hash.")') tend-tstart
+  call printMsg(option) 
+#endif
+
   allocate(indices(grid%nlmax))
   ! Read Cell Ids
   call PetscGetTime(tstart,ierr)
   string = "Cell Ids"
-  option%io_buffer = 'Reading dataset: ' // trim(string)
+  if (grp_id /= file_id) then
+    option%io_buffer = 'Reading dataset: ' // trim(group_name) // '/' &
+                       // trim(string)
+  else
+    option%io_buffer = 'Reading dataset: ' // trim(string)
+  endif
   call printMsg(option)   
   call HDF5MapLocalToNaturalIndices(grid,option,file_id,string,grid%nmax, &
                                     indices,grid%nlmax)
@@ -1702,45 +1754,54 @@ subroutine HDF5ReadPermeabilitiesFromFile(realization,filename)
   ! Read Permeabilities
   allocate(real_array(grid%nlmax))
   string = ''
-  if (option%id > 0) then
+  if (append_realization_id) then
     write(string,'(i6)') option%id
   endif
-  string = 'Permeability' // adjustl(trim(string))
-  option%io_buffer = 'Reading dataset: ' // trim(string)
+  string = trim(dataset_name) // adjustl(trim(string))
+  if (grp_id /= file_id) then
+    option%io_buffer = 'Reading dataset: ' // trim(group_name) // '/' &
+                       // trim(string)
+  else
+    option%io_buffer = 'Reading dataset: ' // trim(string)
+  endif
   call printMsg(option)   
   call PetscGetTime(tstart,ierr)
   call HDF5ReadRealArray(option,file_id,string,grid%nlmax,indices, &
                          grid%nlmax,real_array)
   call GridCopyRealArrayToPetscVec(real_array,global_vec,grid%nlmax)
   deallocate(real_array)
+  
+#ifdef HASH  
+  call GridDestroyHashTable(grid)
+#endif
 #endif
   
-  call VecCopy(global_vec,field%perm0_xx,ierr)
-  call VecCopy(global_vec,field%perm0_yy,ierr)
-  call VecCopy(global_vec,field%perm0_zz,ierr)
-
   call PetscGetTime(tend,ierr)
-  write(option%io_buffer,'(f6.2," Seconds to read permeabilities.")') &
+  write(option%io_buffer,'(f6.2," Seconds to read real array")') &
     tend-tstart
   call printMsg(option)  
 
-  call VecDestroy(global_vec,ierr)
   if (associated(indices)) deallocate(indices)
   nullify(indices)
 
+  if (file_id /= grp_id) then
+    option%io_buffer = 'Closing group: ' // trim(group_name)
+    call printMsg(option)   
+    call h5gclose_f(grp_id,hdf5_err)
+  endif
+  
   option%io_buffer = 'Closing hdf5 file: ' // filename
   call printMsg(option)   
   call h5fclose_f(file_id,hdf5_err)
    
   call h5close_f(hdf5_err)
   
-  call GridDestroyHashTable(grid)
 #endif  
 
-  call PetscLogEventEnd(logging%event_permeabilities_read_hdf5, &
+  call PetscLogEventEnd(logging%event_cell_indx_real_read_hdf5, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
                           
-end subroutine HDF5ReadPermeabilitiesFromFile
+end subroutine HDF5ReadCellIndexedRealArray
 
 end module HDF5_module
