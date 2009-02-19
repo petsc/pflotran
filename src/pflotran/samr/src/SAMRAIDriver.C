@@ -59,7 +59,7 @@ extern "C"{
 #include "PflotranApplicationParameters.h" 
 #include "CCellDoubleConstantRefine.h"
 #include "CartesianCCellDoubleWeightedAverage.h"
-#include "CartesianCSideDoubleWeightedAverage.h"
+#include "CartesianCSideDoubleSum.h"
 #include "fc_interface.h"
 #include "SAMRAIDriver.h"
 /*#include "pims_local_struct.h"*/
@@ -140,8 +140,8 @@ int main( int argc, char *argv[] )
       geom::CartesianCCellDoubleWeightedAverage<NDIM> *ccell_cons_coarsen_op = new geom::CartesianCCellDoubleWeightedAverage<NDIM>();
       grid_geometry->addSpatialCoarsenOperator(ccell_cons_coarsen_op);
 
-      geom::CartesianCSideDoubleWeightedAverage<NDIM> *cside_cons_coarsen_op = new geom::CartesianCSideDoubleWeightedAverage<NDIM>();
-      grid_geometry->addSpatialCoarsenOperator(cside_cons_coarsen_op);
+      geom::CartesianCSideDoubleSum<NDIM> *cside_sum_coarsen_op = new geom::CartesianCSideDoubleSum<NDIM>();
+      grid_geometry->addSpatialCoarsenOperator(cside_sum_coarsen_op);
 
       PflotranApplicationParameters *params  =new PflotranApplicationParameters(app_database);
       params->d_hierarchy = hierarchy;

@@ -596,7 +596,7 @@ PflotranApplicationStrategy::coarsenFaceFluxes(tbox::Pointer< solv::SAMRAIVector
     if(d_flux_coarsen_op.isNull())
     {
        d_flux_coarsen_op = d_grid_geometry->lookupCoarsenOperator(fluxVar,
-                                                                 "CONSERVATIVE_COARSEN");
+                                                                 "SUM_COARSEN");
     }
 
     // should add code to coarsen variables
