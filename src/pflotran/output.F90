@@ -196,7 +196,7 @@ end subroutine Output
 
 ! ************************************************************************** !
 !
-! Output_Observation: Main driver for all observation output subroutines
+! OutputObservation: Main driver for all observation output subroutines
 ! author: Glenn Hammond
 ! date: 02/11/08
 !
@@ -2152,7 +2152,7 @@ subroutine OutputObservationTecplot(realization)
     endif
   
     observation => patch%observation%first
-    write(fid,'(1es12.4)',advance="no") option%time/output_option%tconv
+    write(fid,'(1es14.6)',advance="no") option%time/output_option%tconv
     do 
       if (.not.associated(observation)) exit
         select case(observation%itype)
