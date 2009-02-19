@@ -1985,12 +1985,21 @@ subroutine BasisInit(reaction,option)
         endif
       enddo
       reaction%eqcmplxspecid(0,isec_spec) = ispec
-      reaction%eqcmplx_logKcoef(:,isec_spec) = cur_sec_aq_spec%eqrxn%logK
+
+#if TEMP_DEPENDENT_LOGK
+      call ReactionFitLogKCoef(reaction%eqcmplx_logKcoef(:,isec_spec),cur_sec_aq_spec%eqrxn%logK, &
+                               option,reaction)
+      call ReactionInitializeLogK(reaction%eqcmplx_logKcoef(:,isec_spec), &
+                                  cur_sec_aq_spec%eqrxn%logK, &
+                                  reaction%eqcmplx_logK(isec_spec), &
+                                  option,reaction)
+#else
       call Interpolate(temp_high,temp_low,option%reference_temperature, &
                        cur_sec_aq_spec%eqrxn%logK(itemp_high), &
                        cur_sec_aq_spec%eqrxn%logK(itemp_low), &
                        reaction%eqcmplx_logK(isec_spec))
 !      reaction%eqcmplx_logK(isec_spec) = cur_sec_aq_spec%eqrxn%logK(option%itemp_ref)
+#endif  
       reaction%eqcmplx_Z(isec_spec) = cur_sec_aq_spec%Z
       reaction%eqcmplx_a0(isec_spec) = cur_sec_aq_spec%a0
   
@@ -2021,7 +2030,6 @@ subroutine BasisInit(reaction,option)
     allocate(reaction%eqgas_logK(reaction%ngas))
     reaction%eqgas_logK = 0.d0
 #if TEMP_DEPENDENT_LOGK
-!Peter change here
     allocate(reaction%eqgas_logKcoef(FIVE_INTEGER,reaction%ngas))
     reaction%eqgas_logKcoef = 0.d0
 #else
@@ -2058,7 +2066,6 @@ subroutine BasisInit(reaction,option)
       reaction%eqgasspecid(0,igas_spec) = ispec
       
 #if TEMP_DEPENDENT_LOGK
-!Peter change here
       call ReactionFitLogKCoef(reaction%eqgas_logKcoef(:,igas_spec),cur_gas_spec%eqrxn%logK, &
                                option,reaction)
       call ReactionInitializeLogK(reaction%eqgas_logKcoef(:,igas_spec), &
@@ -2121,9 +2128,14 @@ subroutine BasisInit(reaction,option)
     reaction%kinmnrlh2ostoich = 0.d0
     allocate(reaction%kinmnrl_logK(reaction%nkinmnrl))
     reaction%kinmnrl_logK = 0.d0
+#if TEMP_DEPENDENT_LOGK
+    allocate(reaction%kinmnrl_logKcoef(FIVE_INTEGER,reaction%nkinmnrl))
+    reaction%kinmnrl_logKcoef = 0.d0
+#else
     allocate(reaction%kinmnrl_logKcoef(reaction%num_dbase_temperatures, &
                                        reaction%nkinmnrl))
     reaction%kinmnrl_logKcoef = 0.d0
+#endif
     allocate(reaction%kinmnrl_rate(1,reaction%nkinmnrl))
     reaction%kinmnrl_rate = 0.d0
     allocate(reaction%kinmnrl_molar_vol(reaction%nkinmnrl))
@@ -2155,13 +2167,21 @@ subroutine BasisInit(reaction,option)
         endif
       enddo
       reaction%mnrlspecid(0,imnrl) = ispec
-      reaction%mnrl_logKcoef(:,imnrl) = &
-        cur_mineral%tstrxn%logK
+
+#if TEMP_DEPENDENT_LOGK
+      call ReactionFitLogKCoef(reaction%mnrl_logKcoef(:,imnrl),cur_mineral%tstrxn%logK, &
+                               option,reaction)
+      call ReactionInitializeLogK(reaction%mnrl_logKcoef(:,imnrl), &
+                                  cur_mineral%tstrxn%logK, &
+                                  reaction%mnrl_logK(imnrl), &
+                                  option,reaction)
+#else
       call Interpolate(temp_high,temp_low,option%reference_temperature, &
                        cur_mineral%tstrxn%logK(itemp_high), &
                        cur_mineral%tstrxn%logK(itemp_low), &
                        reaction%mnrl_logK(imnrl))
 !      reaction%mnrl_logK(imnrl) = cur_mineral%tstrxn%logK(option%itemp_ref)
+#endif
   
       if (cur_mineral%itype == MINERAL_KINETIC) then
         reaction%kinmnrl_names(ikinmnrl) = reaction%mineral_names(imnrl)
@@ -2171,8 +2191,20 @@ subroutine BasisInit(reaction,option)
         reaction%kinmnrlstoich(:,ikinmnrl) = reaction%mnrlstoich(:,imnrl)
         reaction%kinmnrlh2oid(ikinmnrl) = reaction%mnrlh2oid(imnrl)
         reaction%kinmnrlh2ostoich(ikinmnrl) = reaction%mnrlh2ostoich(imnrl)
-        reaction%kinmnrl_logK(ikinmnrl) = reaction%mnrl_logK(imnrl)
-        reaction%kinmnrl_logKcoef(:,ikinmnrl) = reaction%mnrl_logKcoef(:,imnrl)
+#if TEMP_DEPENDENT_LOGK
+        call ReactionFitLogKCoef(reaction%kinmnrl_logKcoef(:,ikinmnrl),cur_mineral%tstrxn%logK, &
+                                 option,reaction)
+        call ReactionInitializeLogK(reaction%kinmnrl_logKcoef(:,ikinmnrl), &
+                                    cur_mineral%tstrxn%logK, &
+                                    reaction%kinmnrl_logK(ikinmnrl), &
+                                    option,reaction)
+#else
+      call Interpolate(temp_high,temp_low,option%reference_temperature, &
+                       cur_mineral%tstrxn%logK(itemp_high), &
+                       cur_mineral%tstrxn%logK(itemp_low), &
+                       reaction%kinmnrl_logK(ikinmnrl))
+!      reaction%kinmnrl_logK(imnrl) = cur_mineral%tstrxn%logK(option%itemp_ref)
+#endif
         reaction%kinmnrl_rate(1,ikinmnrl) = cur_mineral%tstrxn%rate
         reaction%kinmnrl_molar_vol(ikinmnrl) = cur_mineral%molar_volume
         ikinmnrl = ikinmnrl + 1
@@ -2302,13 +2334,20 @@ subroutine BasisInit(reaction,option)
           endif
         enddo
         reaction%eqsurfcmplxspecid(0,isurfcplx) = ispec
-        reaction%eqsurfcmplx_logKcoef(:,isurfcplx) = &
-          cur_surfcplx%eqrxn%logK
+#if TEMP_DEPENDENT_LOGK
+      call ReactionFitLogKCoef(reaction%eqsurfcmplx_logKcoef(:,isurfcplx),cur_surfcplx%eqrxn%logK, &
+                               option,reaction)
+      call ReactionInitializeLogK(reaction%eqsurfcmplx_logKcoef(:,isurfcplx), &
+                                  cur_surfcplx%eqrxn%logK, &
+                                  reaction%eqsurfcmplx_logK(isurfcplx), &
+                                  option,reaction)
+#else
         call Interpolate(temp_high,temp_low,option%reference_temperature, &
                          cur_surfcplx%eqrxn%logK(itemp_high), &
                          cur_surfcplx%eqrxn%logK(itemp_low), &
                          reaction%eqsurfcmplx_logK(isurfcplx))
         !reaction%eqsurfcmplx_logK(isurfcplx) = cur_surfcplx%eqrxn%logK(option%itemp_ref)
+#endif
         reaction%eqsurfcmplx_Z(isurfcplx) = cur_surfcplx%Z
 
         cur_surfcplx => cur_surfcplx%next

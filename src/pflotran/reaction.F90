@@ -607,6 +607,19 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     rt_auxvar%pri_molal = aq_species_constraint%basis_molarity
     return
   endif
+
+#ifdef TEMP_DEPENDENT_LOGK
+  call ReactionInterpolateLogK(reaction%eqcmplx_logKcoef,reaction%eqcmplx_logK, &
+                               global_auxvar%temp(iphase),reaction%neqcmplx)
+  call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
+                               global_auxvar%temp(iphase),reaction%ngas)
+  call ReactionInterpolateLogK(reaction%eqsurfcmplx_logKcoef,reaction%eqsurfcmplx_logK, &
+                               global_auxvar%temp(iphase),reaction%neqsurfcmplx)
+  call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
+                               global_auxvar%temp(iphase),reaction%nkinmnrl)
+  call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
+                               global_auxvar%temp(iphase),reaction%nmnrl)
+#endif  
   
   total_conc = 0.d0
   do icomp = 1, reaction%ncomp
@@ -1012,6 +1025,19 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
                                 rt_auxvar%pri_molal(icomp)
     enddo
   else
+
+#ifdef TEMP_DEPENDENT_LOGK
+    call ReactionInterpolateLogK(reaction%eqcmplx_logKcoef,reaction%eqcmplx_logK, &
+                                 global_auxvar%temp(iphase),reaction%neqcmplx)
+    call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
+                                 global_auxvar%temp(iphase),reaction%ngas)
+    call ReactionInterpolateLogK(reaction%eqsurfcmplx_logKcoef,reaction%eqsurfcmplx_logK, &
+                                 global_auxvar%temp(iphase),reaction%neqsurfcmplx)
+    call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
+                                 global_auxvar%temp(iphase),reaction%nkinmnrl)
+    call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
+                                 global_auxvar%temp(iphase),reaction%nmnrl)
+#endif  
 
     200 format('')
     201 format(a20,i5)
@@ -1792,6 +1818,11 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
   ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
   ln_act_h2o = 0.d0  ! assume act h2o = 1 for now
   
+#ifdef TEMP_DEPENDENT_LOGK
+  call ReactionInterpolateLogK(reaction%eqcmplx_logKcoef,reaction%eqcmplx_logK, &
+                               global_auxvar%temp(1),reaction%neqcmplx)
+#endif  
+  
   ! compute primary species contribution to ionic strength
   fpri = 0.d0
   do j = 1, reaction%ncomp
@@ -1999,7 +2030,6 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   enddo
   
 #ifdef TEMP_DEPENDENT_LOGK
-!Peter change here
   call ReactionInterpolateLogK(reaction%eqcmplx_logKcoef,reaction%eqcmplx_logK, &
                                global_auxvar%temp(iphase),reaction%neqcmplx)
 #endif  
@@ -2052,7 +2082,13 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   
  !*********** Add SC phase contribution ***************************  
 #ifdef CHUAN_CO2
+
   iphase = 2           
+#ifdef TEMP_DEPENDENT_LOGK
+  call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
+                               global_auxvar%temp(iphase),reaction%ngas)
+#endif  
+
   if(iphase > option%nphase) return 
   rt_auxvar%total(:,iphase) = 0D0 
   den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3     
@@ -2147,6 +2183,11 @@ subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
   ! initialize total sorbed concentrations and derivatives
   rt_auxvar%total_sorb = 0.d0
   rt_auxvar%dtotal_sorb = 0.d0
+
+#ifdef TEMP_DEPENDENT_LOGK
+  call ReactionInterpolateLogK(reaction%eqsurfcmplx_logKcoef,reaction%eqsurfcmplx_logK, &
+                               global_auxvar%temp(iphase),reaction%neqsurfcmplx)
+#endif  
 
   ! Surface Complexation
   do irxn = 1, reaction%neqsurfcmplxrxn
@@ -2463,7 +2504,12 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   endif
   
   ln_act_h2o = 0.d0
-  
+
+#ifdef TEMP_DEPENDENT_LOGK
+  call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
+                               global_auxvar%temp(iphase),reaction%nkinmnrl)
+#endif  
+
   do imnrl = 1, reaction%nkinmnrl ! for each mineral
     ! compute secondary species concentration
     lnQK = -reaction%kinmnrl_logK(imnrl)*LOG_TO_LN
