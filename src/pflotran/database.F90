@@ -777,7 +777,7 @@ subroutine BasisInit(reaction,option)
     itemp_high = 1
     temp_low = reaction%dbase_temperatures(itemp_low)
     temp_high = reaction%dbase_temperatures(itemp_high)
-  else if (option%reference_temperature >= &
+  else if (option%reference_temperature > &
            reaction%dbase_temperatures(reaction%num_dbase_temperatures)) then
     itemp_low = reaction%num_dbase_temperatures
     itemp_high = reaction%num_dbase_temperatures
