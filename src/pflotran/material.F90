@@ -99,6 +99,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: keyword, word
+  character(len=MAXSTRINGLENGTH) :: string
 
   input%ierr = 0
   do
@@ -152,8 +153,15 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputErrorMsg(input,option,'thermal expansitivity', &
                            'MATERIAL_PROPERTY')
       case('POROSITY')
-        call InputReadDouble(input,option,material_property%porosity)
+        call InputReadNChars(input,option,string,MAXSTRINGLENGTH,PETSC_TRUE)
         call InputErrorMsg(input,option,'porosity','MATERIAL_PROPERTY')
+        call StringToUpper(string)
+        if (StringCompare(string,'RANDOM_DATASET',len_trim('RANDOM_DATASET'))) then
+          material_property%porosity_filename = string
+        else
+          call InputReadDouble(string,option,material_property%porosity,input%ierr)
+          call InputErrorMsg(input,option,'porosity','MATERIAL_PROPERTY')
+        endif
       case('TORTUOSITY')
         call InputReadDouble(input,option,material_property%tortuosity)
         call InputErrorMsg(input,option,'tortuosity','MATERIAL_PROPERTY')
