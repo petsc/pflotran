@@ -263,7 +263,7 @@ subroutine RegionRead(region,input,option)
   type(region_type) :: region
   type(input_type) :: input
   
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: keyword, word
   PetscInt :: icount
   type(point3d_type) :: coordinates(30)
 
@@ -274,11 +274,11 @@ subroutine RegionRead(region,input,option)
     if (InputError(input)) exit
     if (InputCheckExit(input,option)) exit
     
-    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputReadWord(input,option,keyword,PETSC_TRUE)
     call InputErrorMsg(input,option,'keyword','REGION')
-    call StringToUpper(word)   
+    call StringToUpper(keyword)   
 
-    select case(trim(word))
+    select case(trim(keyword))
     
       case('BLOCK')
         call InputReadInt(input,option,region%i1) 
@@ -334,9 +334,8 @@ subroutine RegionRead(region,input,option)
           region%coordinates(icount)%z = coordinates(icount)%z
         enddo
       case('FILE')
-        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputReadNChars(input,option,region%filename,MAXSTRINGLENGTH,PETSC_TRUE)
         call InputErrorMsg(input,option,'filename','REGION')
-        region%filename = word
       case('LIST')
         option%io_buffer = 'REGION LIST currently not implemented'
         call printErrMsg(option)
