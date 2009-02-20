@@ -916,9 +916,15 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     num_iterations = num_iterations + 1
     
     if (mod(num_iterations,1000) == 0) then
-100 format('Constraint iteration count has exceeded: ',i5)
+100   format('Constraint iteration count has exceeded: ',i5)
       write(option%io_buffer,100) num_iterations
       call printMsg(option)
+      do icomp=1,reaction%ncomp
+        write(option%io_buffer,200) reaction%primary_species_names(icomp), &
+        prev_molal(icomp),Res(icomp)
+        call printMsg(option)
+      enddo
+200   format(a12,1x,1p2e12.4)
       if (num_iterations >= 10000) then
         option%io_buffer = 'Stopping due to excessive iteration count!'
         call printErrMsg(option)
