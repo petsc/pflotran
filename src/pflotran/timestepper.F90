@@ -331,10 +331,24 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   if (output_option%plot_number == 0) output_option%plot_number = 1
 
   if (associated(flow_stepper)) then
-    flow_stepper%dt_max = flow_stepper%cur_waypoint%dt_max
+    if (.not.associated(flow_stepper%cur_waypoint)) then
+      option%io_buffer = &
+        'Null flow waypoint list; final time likely equal to start time.'
+      call printMsg(option)
+      return
+    else
+      flow_stepper%dt_max = flow_stepper%cur_waypoint%dt_max
+    endif
   endif
   if (associated(tran_stepper)) then
-    tran_stepper%dt_max = tran_stepper%cur_waypoint%dt_max
+    if (.not.associated(tran_stepper%cur_waypoint)) then
+      option%io_buffer = &
+        'Null transport waypoint list; final time likely equal to start time.'
+      call printMsg(option)
+      return
+    else
+      tran_stepper%dt_max = tran_stepper%cur_waypoint%dt_max
+    endif
   endif
            
   ! ensure that steady_state flag is off
