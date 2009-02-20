@@ -9,7 +9,7 @@ bindir = ./${PETSC_ARCH}/bin
 ifdef hdf5
   ifndef jaguar
     HDF5_FLAGS = -I$(HDF5_INCLUDE) -I$(HDF5_LIB) -DUSE_HDF5
-    HDF5_LIBS = -L$(HDF5_LIB) -lhdf5 -lhdf5_fortran -lhdf5 -lz  
+    HDF5_LIBS = -L$(HDF5_LIB) -lhdf5 -lhdf5_fortran -lz  
 #    HDF5_LIBS = -L$(HDF5_LIB) ${HDF5_LIB}/libhdf5_fortran.a ${HDF5_LIB}/libhdf5.a -lz
   else
 # the below is for jaguar
