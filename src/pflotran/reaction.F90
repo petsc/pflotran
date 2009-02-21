@@ -609,6 +609,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   endif
 
 #ifdef TEMP_DEPENDENT_LOGK
+  if (.not.option%use_isothermal) then
   call ReactionInterpolateLogK(reaction%eqcmplx_logKcoef,reaction%eqcmplx_logK, &
                                global_auxvar%temp(iphase),reaction%neqcmplx)
   call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
@@ -619,6 +620,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                global_auxvar%temp(iphase),reaction%nkinmnrl)
   call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
                                global_auxvar%temp(iphase),reaction%nmnrl)
+  endif
 #endif  
   
   total_conc = 0.d0
@@ -1033,6 +1035,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   else
 
 #ifdef TEMP_DEPENDENT_LOGK
+  if (.not.option%use_isothermal) then
     call ReactionInterpolateLogK(reaction%eqcmplx_logKcoef,reaction%eqcmplx_logK, &
                                  global_auxvar%temp(iphase),reaction%neqcmplx)
     call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
@@ -1043,6 +1046,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
                                  global_auxvar%temp(iphase),reaction%nkinmnrl)
     call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
                                  global_auxvar%temp(iphase),reaction%nmnrl)
+  endif
 #endif  
 
     200 format('')
@@ -1825,8 +1829,10 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
   ln_act_h2o = 0.d0  ! assume act h2o = 1 for now
   
 #ifdef TEMP_DEPENDENT_LOGK
-  call ReactionInterpolateLogK(reaction%eqcmplx_logKcoef,reaction%eqcmplx_logK, &
+  if (.not.option%use_isothermal) then
+    call ReactionInterpolateLogK(reaction%eqcmplx_logKcoef,reaction%eqcmplx_logK, &
                                global_auxvar%temp(1),reaction%neqcmplx)
+  endif
 #endif  
   
   ! compute primary species contribution to ionic strength
@@ -2036,8 +2042,10 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   enddo
   
 #ifdef TEMP_DEPENDENT_LOGK
-  call ReactionInterpolateLogK(reaction%eqcmplx_logKcoef,reaction%eqcmplx_logK, &
+  if (.not.option%use_isothermal) then
+    call ReactionInterpolateLogK(reaction%eqcmplx_logKcoef,reaction%eqcmplx_logK, &
                                global_auxvar%temp(iphase),reaction%neqcmplx)
+  endif
 #endif  
   
   do icplx = 1, reaction%neqcmplx ! for each secondary species
@@ -2091,8 +2099,10 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 
   iphase = 2           
 #ifdef TEMP_DEPENDENT_LOGK
-  call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
+  if (.not.option%use_isothermal) then
+    call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
                                global_auxvar%temp(iphase),reaction%ngas)
+  endif
 #endif  
 
   if(iphase > option%nphase) return 
@@ -2191,8 +2201,10 @@ subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
   rt_auxvar%dtotal_sorb = 0.d0
 
 #ifdef TEMP_DEPENDENT_LOGK
-  call ReactionInterpolateLogK(reaction%eqsurfcmplx_logKcoef,reaction%eqsurfcmplx_logK, &
+  if (.not.option%use_isothermal) then
+    call ReactionInterpolateLogK(reaction%eqsurfcmplx_logKcoef,reaction%eqsurfcmplx_logK, &
                                global_auxvar%temp(iphase),reaction%neqsurfcmplx)
+  endif
 #endif  
 
   ! Surface Complexation
@@ -2512,8 +2524,10 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   ln_act_h2o = 0.d0
 
 #ifdef TEMP_DEPENDENT_LOGK
-  call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
+  if (.not.option%use_isothermal) then
+    call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
                                global_auxvar%temp(iphase),reaction%nkinmnrl)
+  endif
 #endif  
 
   do imnrl = 1, reaction%nkinmnrl ! for each mineral
@@ -2760,7 +2774,7 @@ subroutine ReactionFitLogKCoef(coefs,logK,option,reaction)
 
   PetscInt :: temp_int(reaction%num_dbase_temperatures), &
               indx(reaction%num_dbase_temperatures)
-  PetscReal :: a(reaction%num_dbase_temperatures,reaction%num_dbase_temperatures), &
+  PetscReal :: a(FIVE_INTEGER,FIVE_INTEGER), &
                vec(FIVE_INTEGER,reaction%num_dbase_temperatures), temperature_kelvin
 
   PetscInt :: i, j, k, iflag
@@ -2787,7 +2801,7 @@ subroutine ReactionFitLogKCoef(coefs,logK,option,reaction)
         option%io_buffer = 'In ReactionFitLogKCoef: log K .gt. 500---stop!'
         call printErrMsg(option)
       else
-        coefs(j) = coefs(j) + logK(i)*vec(j,i)
+        coefs(j) = coefs(j) + vec(j,i)*logK(i)
         temp_int(i) = ONE_INTEGER
       endif
     enddo
@@ -2804,6 +2818,7 @@ subroutine ReactionFitLogKCoef(coefs,logK,option,reaction)
       if (j .ne. k) a(k,j) = a(j,k)
     enddo
   enddo
+
   call ludcmp(a,FIVE_INTEGER,indx,i)
   call lubksb(a,FIVE_INTEGER,indx,coefs)
 
@@ -2837,7 +2852,7 @@ subroutine ReactionInitializeLogK(logKcoef,logKs,logK,option,reaction)
   temperature = option%reference_temperature
   
   itemperature = 0
-  if (option%use_isothermal) then
+  if (option%use_isothermal) then ! find database temperature if relevant
     do i = 1, reaction%num_dbase_temperatures
       if (dabs(option%reference_temperature - &
                reaction%dbase_temperatures(i)) < 1.d-10) then
@@ -2847,9 +2862,9 @@ subroutine ReactionInitializeLogK(logKcoef,logKs,logK,option,reaction)
     enddo
   endif
   
-  if (itemperature > 0) then
+  if (itemperature > 0) then ! use database temperature
     logK = logKs(itemperature)
-  else
+  else                       ! interpolate
     coefs(:,ONE_INTEGER) = logKcoef(:)
     call ReactionInterpolateLogK(coefs,logK_1D_Array,temperature,ONE_INTEGER)
     logK = logK_1D_Array(ONE_INTEGER)

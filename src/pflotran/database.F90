@@ -1987,7 +1987,8 @@ subroutine BasisInit(reaction,option)
       reaction%eqcmplxspecid(0,isec_spec) = ispec
 
 #if TEMP_DEPENDENT_LOGK
-      call ReactionFitLogKCoef(reaction%eqcmplx_logKcoef(:,isec_spec),cur_sec_aq_spec%eqrxn%logK, &
+      call ReactionFitLogKCoef(reaction%eqcmplx_logKcoef(:,isec_spec), &
+                               cur_sec_aq_spec%eqrxn%logK, &
                                option,reaction)
       call ReactionInitializeLogK(reaction%eqcmplx_logKcoef(:,isec_spec), &
                                   cur_sec_aq_spec%eqrxn%logK, &

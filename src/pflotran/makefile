@@ -29,8 +29,12 @@ ifdef glenn
 GLENN_FLAGS = -DGLENN
 endif
 
+ifdef temp
+TEMP_FLAGS = -DTEMP_DEPENDENT_LOGK
+endif
+
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) \
-          $(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG)
+          $(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG) $(TEMP_FLAGS)
 LIBS = $(HDF5_LIBS)
 
 CFLAGS		 = 
