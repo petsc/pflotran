@@ -1901,7 +1901,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
     boundary_condition => boundary_condition%next
   enddo
 #endif  
-  if (option%use_isoth) then
+  if (option%use_isothermal) then
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
       !geh - Ignore inactive cells with inactive materials
