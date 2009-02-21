@@ -2837,7 +2837,7 @@ subroutine ReactionInitializeLogK(logKcoef,logKs,logK,option,reaction)
   temperature = option%reference_temperature
   
   itemperature = 0
-  if (option%use_isoth) then
+  if (option%use_isothermal) then
     do i = 1, reaction%num_dbase_temperatures
       if (dabs(option%reference_temperature - &
                reaction%dbase_temperatures(i)) < 1.d-10) then
