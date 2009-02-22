@@ -10,13 +10,13 @@ module Reactive_Transport_Aux_module
  
   type, public :: reactive_transport_auxvar_type
     ! molality
-    PetscReal, pointer :: pri_molal(:) ! kg solute / L water
+    PetscReal, pointer :: pri_molal(:)     ! mol/kg water
     ! phase dependent totals
-    PetscReal, pointer :: total(:,:) ! mol solute / L water
-    PetscReal, pointer :: dtotal(:,:,:) ! kg water / m^3 water
+    PetscReal, pointer :: total(:,:)       ! mol solute/L water
+    PetscReal, pointer :: dtotal(:,:,:)    ! kg water/m^3 water
     ! sorbed totals
-    PetscReal, pointer :: total_sorb(:) ! mol solute / L water
-    PetscReal, pointer :: dtotal_sorb(:,:) ! kg water / m^3 water
+    PetscReal, pointer :: total_sorb(:)    ! mol/m^3 bulk
+    PetscReal, pointer :: dtotal_sorb(:,:) ! kg water/m^3 bulk
     ! aqueous species
     ! aqueous complexes
     PetscReal, pointer :: sec_molal(:)
