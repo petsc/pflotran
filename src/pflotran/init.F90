@@ -1069,40 +1069,6 @@ subroutine InitReadInput(simulation)
         
 !....................
 
-      case ('GRAV','GRAVITY')
-
-        call InputReadStringErrorMsg(input,option,'GRAV')
-
-        call InputReadDouble(input,option,temp_real)
-        if (InputError(input)) then
-          call InputDefaultMsg(input,option,'gravity')
-        else
-          call InputReadDouble(input,option,option%gravity(2))
-          if (InputError(input)) then
-            option%gravity(:) = 0.d0
-            option%gravity(3) = temp_real
-          else
-            option%gravity(1) = temp_real
-            call InputReadDouble(input,option,option%gravity(3))
-          endif
-        endif
-
-        if (option%myrank == option%io_rank .and. &
-            option%print_to_screen) &
-          write(option%fid_out,'(/," *GRAV",/, &
-            & "  gravity    = "," [m/s^2]",3x,3pe12.4 &
-            & )') option%gravity(1:3)
-
-!....................
-
-      case ('INVERT_Z','INVERTZ')
-        if (associated(grid%structured_grid)) then
-          grid%structured_grid%invert_z_axis = PETSC_TRUE
-          option%gravity(3) = -option%gravity(3)
-        endif
-      
-!....................
-
       case('REFERENCE_PRESSURE')
         call InputReadStringErrorMsg(input,option,card)
         call InputReadDouble(input,option,option%reference_pressure)
@@ -1905,8 +1871,8 @@ subroutine assignUniformVelocity(realization)
     if (.not.associated(cur_connection_set)) exit
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
-      vdarcy = OptionDotProduct(option%uniform_velocity, &
-                                cur_connection_set%dist(1:3,iconn))
+      vdarcy = dot_product(option%uniform_velocity, &
+                           cur_connection_set%dist(1:3,iconn))
       patch%internal_velocities(1,sum_connection) = vdarcy
     enddo
     cur_connection_set => cur_connection_set%next
@@ -1920,8 +1886,8 @@ subroutine assignUniformVelocity(realization)
     cur_connection_set => boundary_condition%connection_set
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
-      vdarcy = OptionDotProduct(option%uniform_velocity, &
-                                cur_connection_set%dist(1:3,iconn))
+      vdarcy = dot_product(option%uniform_velocity, &
+                           cur_connection_set%dist(1:3,iconn))
       patch%boundary_velocities(1,sum_connection) = vdarcy
     enddo
     boundary_condition => boundary_condition%next

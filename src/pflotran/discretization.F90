@@ -191,6 +191,8 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
           call InputReadDouble(input,option,discretization%origin(Z_DIRECTION))
           call InputErrorMsg(input,option,'Z direction','Origin')        
         case('FILE')
+        case ('GRAVITY')
+        case ('INVERT_Z')
         case('DXYZ')
           call InputSkipToEND(input,option,word) 
         case('BOUNDS')
@@ -319,6 +321,22 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
                 stop
              endif
           end select
+        case ('GRAVITY')
+          call InputReadDouble(input,option,discretization%grid%gravity(X_DIRECTION))
+          call InputErrorMsg(input,option,'x-direction','GRAVITY')
+          call InputReadDouble(input,option,discretization%grid%gravity(Y_DIRECTION))
+          call InputErrorMsg(input,option,'y-direction','GRAVITY')
+          call InputReadDouble(input,option,discretization%grid%gravity(Z_DIRECTION))
+          call InputErrorMsg(input,option,'z-direction','GRAVITY')
+          if (option%myrank == option%io_rank .and. &
+              option%print_to_screen) &
+            write(option%fid_out,'(/," *GRAV",/, &
+              & "  gravity    = "," [m/s^2]",3x,3pe12.4 &
+              & )') discretization%grid%gravity(1:3)
+        case ('INVERT_Z')
+          if (associated(grid%structured_grid)) then
+            grid%structured_grid%invert_z_axis = PETSC_TRUE
+          endif          
         case default
           option%io_buffer = 'Keyword: ' // trim(word) // &
                    ' not recognized in DISCRETIZATION, second read.'
@@ -357,7 +375,9 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
     end select
 
   else
-
+    if (grid%structured_grid%invert_z_axis) then
+      discretization%grid%gravity(Z_DIRECTION) = -discretization%grid%gravity(Z_DIRECTION)
+    endif
   endif
 
 end subroutine DiscretizationRead

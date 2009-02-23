@@ -899,8 +899,8 @@ subroutine PatchAssignUniformVelocity(patch,option)
     if (.not.associated(cur_connection_set)) exit
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
-      vdarcy = OptionDotProduct(option%uniform_velocity, &
-                                cur_connection_set%dist(1:3,iconn))
+      vdarcy = dot_product(option%uniform_velocity, &
+                           cur_connection_set%dist(1:3,iconn))
       patch%internal_velocities(1,sum_connection) = vdarcy
     enddo
     cur_connection_set => cur_connection_set%next
@@ -914,8 +914,8 @@ subroutine PatchAssignUniformVelocity(patch,option)
     cur_connection_set => boundary_condition%connection_set
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
-      vdarcy = OptionDotProduct(option%uniform_velocity, &
-                                cur_connection_set%dist(1:3,iconn))
+      vdarcy = dot_product(option%uniform_velocity, &
+                           cur_connection_set%dist(1:3,iconn))
       patch%boundary_velocities(1,sum_connection) = vdarcy
     enddo
     boundary_condition => boundary_condition%next

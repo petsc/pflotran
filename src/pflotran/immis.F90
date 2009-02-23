@@ -1364,7 +1364,6 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   use Field_module
   use Debug_module
   
-  
   implicit none
 
   SNES, intent(in) :: snes
@@ -1601,8 +1600,8 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
       distance_gravity = cur_connection_set%dist(0,iconn) * &
-                         OptionDotProduct(option%gravity, &
-                                          cur_connection_set%dist(1:3,iconn))
+                         dot_product(grid%gravity, &
+                                     cur_connection_set%dist(1:3,iconn))
 
       icap_dn = int(icap_loc_p(ghosted_id))  
 ! Then need fill up increments for BCs
@@ -1669,8 +1668,8 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
       distance_gravity = distance * &
-                         OptionDotProduct(option%gravity, &
-                                          cur_connection_set%dist(1:3,iconn))
+                         dot_product(grid%gravity, &
+                                     cur_connection_set%dist(1:3,iconn))
       dd_up = distance*fraction_upwind
       dd_dn = distance-dd_up ! should avoid truncation error
       ! upweight could be calculated as 1.d0-fraction_upwind
@@ -2088,8 +2087,8 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
       distance_gravity = cur_connection_set%dist(0,iconn) * &
-                         OptionDotProduct(option%gravity, &
-                                          cur_connection_set%dist(1:3,iconn))
+                         dot_product(grid%gravity, &
+                                     cur_connection_set%dist(1:3,iconn))
       icap_dn = int(icap_loc_p(ghosted_id))
 
 ! Then need fill up increments for BCs
@@ -2203,8 +2202,8 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
       distance_gravity = distance * &
-                         OptionDotProduct(option%gravity, &
-                                          cur_connection_set%dist(1:3,iconn))
+                         dot_product(grid%gravity, &
+                                     cur_connection_set%dist(1:3,iconn))
       dd_up = distance*fraction_upwind
       dd_dn = distance-dd_up ! should avoid truncation error
       ! upweight could be calculated as 1.d0-fraction_upwind

@@ -1787,8 +1787,8 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
       distance_gravity = distance * &
-                         OptionDotProduct(option%gravity, &
-                                          cur_connection_set%dist(1:3,iconn))
+                         dot_product(grid%gravity, &
+                                     cur_connection_set%dist(1:3,iconn))
       dd_up = distance*fraction_upwind
       dd_dn = distance-dd_up ! should avoid truncation error
       ! upweight could be calculated as 1.d0-fraction_upwind
@@ -1875,8 +1875,8 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
       distance_gravity = cur_connection_set%dist(0,iconn) * &
-                         OptionDotProduct(option%gravity, &
-                                          cur_connection_set%dist(1:3,iconn))
+                         dot_product(grid%gravity, &
+                                     cur_connection_set%dist(1:3,iconn))
 
       icap_dn = int(icap_loc_p(ghosted_id))  
 
@@ -2260,8 +2260,8 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
       distance_gravity = distance * &
-                         OptionDotProduct(option%gravity, &
-                                          cur_connection_set%dist(1:3,iconn))
+                         dot_product(grid%gravity, &
+                                     cur_connection_set%dist(1:3,iconn))
       dd_up = distance*fraction_upwind
       dd_dn = distance-dd_up ! should avoid truncation error
       ! upweight could be calculated as 1.d0-fraction_upwind
@@ -2360,8 +2360,8 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
       distance_gravity = cur_connection_set%dist(0,iconn) * &
-                         OptionDotProduct(option%gravity, &
-                                          cur_connection_set%dist(1:3,iconn))
+                         dot_product(grid%gravity, &
+                                     cur_connection_set%dist(1:3,iconn))
       icap_dn = int(icap_loc_p(ghosted_id))  
 
       call THCBCFluxDerivative(boundary_condition%flow_condition%itype, &
