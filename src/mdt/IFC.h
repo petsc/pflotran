@@ -20,6 +20,7 @@ public:
   IFC(Grid **grid);
   virtual ~IFC();
 
+  void setEastBoundaryMaterialTo2(Grid *grid);
   void computeTopBoundary(Grid *grid, PetscInt complete);
   void computeBottomBoundary(Grid *grid, PetscInt complete);
   void computeNorthBoundary(Grid *grid, PetscInt complete);
