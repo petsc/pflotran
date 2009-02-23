@@ -911,7 +911,7 @@ subroutine MphaseAccumulation(aux_var,por,vol,rock_dencpr,option,iireac,Res)
      eng = eng + aux_var%sat(np) * aux_var%den(np) * aux_var%u(np)
   enddo
   mol = mol * porXvol
- ! if(option%use_isoth == PETSC_FALSE) &
+ ! if(option%use_isothermal == PETSC_FALSE) &
   eng = eng * porXvol + (1.d0 - por)* vol * rock_dencpr * aux_var%temp 
  
 ! Reaction terms here
@@ -922,7 +922,7 @@ subroutine MphaseAccumulation(aux_var,por,vol,rock_dencpr,option,iireac,Res)
  !    mol(2)= mol(2) - option%flow_dt * option%rtot(iireac,2)
  ! endif
   
-   !if(option%use_isoth)then
+   !if(option%use_isothermal)then
    !   Res(1:option%nflowdof)=mol(:)
    !else
       Res(1:option%nflowdof-1)=mol(:)
@@ -1130,12 +1130,12 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
         ! note uxmol only contains one phase xmol
         if (dphi>=0.D0) then
            ukvr = aux_var_up%kvr(np)
-           ! if(option%use_isoth == PETSC_FALSE)&
+           ! if(option%use_isothermal == PETSC_FALSE)&
            uh = aux_var_up%h(np)
            uxmol(1:option%nflowspec) = aux_var_up%xmol((np-1)*option%nflowspec + 1 : np*option%nflowspec)
         else
            ukvr = aux_var_dn%kvr(np)
-           ! if(option%use_isoth == PETSC_FALSE)&
+           ! if(option%use_isothermal == PETSC_FALSE)&
            uh = aux_var_dn%h(np)
            uxmol(1:option%nflowspec) = aux_var_dn%xmol((np-1)*option%nflowspec + 1 : np*option%nflowspec)
         endif
@@ -1149,7 +1149,7 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
            do ispec=1, option%nflowspec 
               fluxm(ispec)=fluxm(ispec) + q * density_ave * uxmol(ispec)
            enddo
-          ! if(option%use_isoth == PETSC_FALSE)&
+          ! if(option%use_isothermal == PETSC_FALSE)&
             fluxe = fluxe + q*density_ave*uh 
         endif
      endif
@@ -1169,13 +1169,13 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   enddo
 
 ! conduction term
-  !if(option%use_isoth == PETSC_FALSE) then     
+  !if(option%use_isothermal == PETSC_FALSE) then     
      Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
      cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
      fluxe=fluxe + cond
  ! end if
 
-  !if(option%use_isoth)then
+  !if(option%use_isothermal)then
   !   Res(1:option%nflowdof) = fluxm(:) * option%flow_dt
  ! else
      Res(1:option%nflowdof-1) = fluxm(:) * option%flow_dt
@@ -1279,11 +1279,11 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      uxmol=0.D0
      
      if (v_darcy >= 0.D0) then
-        !if(option%use_isoth == PETSC_FALSE)&
+        !if(option%use_isothermal == PETSC_FALSE)&
          uh = aux_var_up%h(np)
         uxmol(:)=aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
      else
-         !if(option%use_isoth == PETSC_FALSE)&
+         !if(option%use_isothermal == PETSC_FALSE)&
         uh = aux_var_dn%h(np)
         uxmol(:)=aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
      endif
@@ -1291,7 +1291,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      do ispec=1, option%nflowspec 
         fluxm(ispec) = fluxm(ispec) + q*density_ave*uxmol(ispec)
      enddo
-      !if(option%use_isoth == PETSC_FALSE) &
+      !if(option%use_isothermal == PETSC_FALSE) &
       fluxe = fluxe + q*density_ave*uh
  !print *,'FLBC', ibndtype(1),np, ukvr, v_darcy, uh, uxmol
    enddo
@@ -1315,7 +1315,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   end select
 
   ! Conduction term
-! if(option%use_isoth == PETSC_FALSE) then
+! if(option%use_isothermal == PETSC_FALSE) then
     select case(ibndtype(2))
     case(DIRICHLET_BC, 4)
        Dk =  Dk_dn / dd_up
@@ -2096,7 +2096,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   enddo
 
 ! print *,'finished rp vol scale'
-  if(option%use_isoth) then
+  if(option%use_isothermal) then
      do local_id = 1, grid%nlmax  ! For each local node do...
         ghosted_id = grid%nL2G(local_id)   ! corresponding ghost index
         if (associated(patch%imat)) then

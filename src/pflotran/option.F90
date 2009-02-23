@@ -68,7 +68,7 @@ module Option_module
     ! Program options
     PetscTruth :: use_matrix_free  ! If true, do not form the Jacobian.
     
-    PetscTruth :: use_isoth
+    PetscTruth :: use_isothermal
     
     character(len=MAXWORDLENGTH) :: generalized_grid
     PetscTruth :: use_generalized_grid
@@ -301,7 +301,7 @@ subroutine OptionInitRealization(option)
   option%iflag = 0
   option%io_buffer = ''
   
-  option%use_isoth = PETSC_FALSE
+  option%use_isothermal = PETSC_FALSE
   option%use_matrix_free = PETSC_FALSE
   
   option%flowmode = ""
@@ -459,8 +459,8 @@ subroutine OptionCheckCommandLine(option)
   
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-snes_mf", & 
                            option%use_matrix_free, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_isoth", &
-                           option%use_isoth, ierr)
+  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_isothermal", &
+                           option%use_isothermal, ierr)
                            
   call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-restart', &
                              option%restart_filename, &

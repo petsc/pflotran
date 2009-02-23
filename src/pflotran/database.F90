@@ -1987,7 +1987,8 @@ subroutine BasisInit(reaction,option)
       reaction%eqcmplxspecid(0,isec_spec) = ispec
 
 #if TEMP_DEPENDENT_LOGK
-      call ReactionFitLogKCoef(reaction%eqcmplx_logKcoef(:,isec_spec),cur_sec_aq_spec%eqrxn%logK, &
+      call ReactionFitLogKCoef(reaction%eqcmplx_logKcoef(:,isec_spec), &
+                               cur_sec_aq_spec%eqrxn%logK, &
                                option,reaction)
       call ReactionInitializeLogK(reaction%eqcmplx_logKcoef(:,isec_spec), &
                                   cur_sec_aq_spec%eqrxn%logK, &
@@ -2896,7 +2897,7 @@ subroutine BasisPrint(reaction,title,option)
 100 format(a)
 110 format(a,f9.4)
 120 format(a,f6.2,2x,a)
-130 format(a,100f9.4)
+130 format(a,100f10.4)
 140 format(a,f6.2)
 150 format(a,es11.4)
 
