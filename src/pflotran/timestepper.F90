@@ -905,6 +905,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
           transient_plot_flag = PETSC_FALSE
           call Output(realization,plot_flag,transient_plot_flag)
           failure = PETSC_TRUE
+          return
         endif
 
         option%flow_time = option%flow_time - option%flow_dt
@@ -1255,6 +1256,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
           transient_plot_flag = PETSC_FALSE
           call Output(realization,plot_flag,transient_plot_flag)
           failure = PETSC_TRUE
+          return
         endif
 
         option%tran_time = option%tran_time - option%tran_dt
