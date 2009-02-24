@@ -273,8 +273,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       call printErrMsg(option)
     endif
     if (associated(patch%grid%structured_grid)) then
-      if (coupler%region%iface == 0 .and. &
-          .not.associated(coupler%region%faces)) then
+      if (coupler%region%num_cells > 0 .and. &
+          (coupler%region%iface == 0 .and. &
+           .not.associated(coupler%region%faces))) then
         option%io_buffer = 'Region ' // trim(coupler%region_name) // &
                  ', which is tied to a boundary condition, has not ' // &
                  'been assigned a face in the structured grid. '

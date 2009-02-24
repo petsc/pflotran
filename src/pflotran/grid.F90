@@ -702,10 +702,14 @@ subroutine GridLocalizeRegions(grid,region_list,option)
 #endif        
     endif
     
-    if (region%num_cells == 0 .and. associated(region%cell_ids)) &
+    if (region%num_cells == 0 .and. associated(region%cell_ids)) then
       deallocate(region%cell_ids)
-    if (region%num_cells == 0 .and. associated(region%faces)) &
+      nullify(region%cell_ids)
+    endif
+    if (region%num_cells == 0 .and. associated(region%faces)) then
       deallocate(region%faces)
+      nullify(region%faces)
+    endif
     region => region%next
     
   enddo
