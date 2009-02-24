@@ -1416,9 +1416,9 @@ subroutine RealizationAddWaypointsToList(realization)
   ! set flag for final output
   cur_waypoint => waypoint_list%first
   do
-    if (.not.associated(cur_waypoint%next)) exit
+    if (.not.associated(cur_waypoint)) exit
     if (cur_waypoint%final) then
-      waypoint%print_output = realization%output_option%print_final
+      cur_waypoint%print_output = realization%output_option%print_final
       exit
     endif
     cur_waypoint => cur_waypoint%next
