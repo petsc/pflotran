@@ -2283,7 +2283,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
 !        string = ',"X [m] '// trim(cell_string) // '",' // &
 !                 '"Y [m] '// trim(cell_string) // '",' // &
 !                 '"Z [m] '// trim(cell_string) // '",' // &
-        string = '"P [Pa] '// trim(cell_string) // '",' // &
+        string = ',"P [Pa] '// trim(cell_string) // '",' // &
                  '"sl '// trim(cell_string) // '"'
       endif
       if (option%iflowmode == THC_MODE) then

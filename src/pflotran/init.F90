@@ -1370,7 +1370,7 @@ subroutine InitReadInput(simulation)
               end select
             case('PERIODIC_OBSERVATION')
               call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'time increment','OUTPUT,PERIODIC')
+              call InputErrorMsg(input,option,'time increment','OUTPUT,PERIODIC_OBSERVATION')
               call StringToUpper(word)
               select case(trim(word))
                 case('TIME')
