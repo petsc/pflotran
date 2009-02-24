@@ -278,7 +278,15 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
                                flow_timestep_cut_flag, &
                                num_newton_iterations, &
                                step_to_steady_state,failure)
-        if (failure) return ! if flow solve fails, exit
+        if (failure) then ! if flow solve fails, exit
+          if (OptionPrintToScreen(option)) then
+            write(*,*) ' ERROR: steady state solve failed!!!'
+          endif
+          if (OptionPrintToFile(option)) then
+            write(option%fid_out,*) ' ERROR: steady state solve failed!!!'
+          endif
+          return 
+        endif
         option%flow_dt = master_stepper%dt_min
         run_flow_as_steady_state = flow_stepper%run_as_steady_state
       endif
