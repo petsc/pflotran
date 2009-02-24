@@ -375,9 +375,13 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
     end select
 
   else
-    if (grid%structured_grid%invert_z_axis) then
-      discretization%grid%gravity(Z_DIRECTION) = -discretization%grid%gravity(Z_DIRECTION)
-    endif
+    select case(discretization%itype)
+      case(STRUCTURED_GRID)
+        if (grid%structured_grid%invert_z_axis) then
+          discretization%grid%gravity(Z_DIRECTION) =  &
+            -discretization%grid%gravity(Z_DIRECTION)
+        endif
+    end select
   endif
 
 end subroutine DiscretizationRead
