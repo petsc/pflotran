@@ -855,7 +855,8 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
       call ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                             reaction,cur_constraint_coupler%constraint_name, &
                             cur_constraint_coupler%aqueous_species, &
-                            cur_constraint_coupler%num_iterations,option)
+                            cur_constraint_coupler%num_iterations, &
+                            PETSC_TRUE,option)
       ! turn on flag indicating constraint has not yet been used
       cur_constraint_coupler%iflag = ONE_INTEGER
       cur_constraint_coupler => cur_constraint_coupler%next
