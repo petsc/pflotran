@@ -269,7 +269,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
   else if (master_stepper%init_to_steady_state) then
     option%print_screen_flag = OptionPrintToScreen(option)
-  
+    option%print_file_flag = OptionPrintToFile(option)
     if (associated(flow_stepper)) then
       if (flow_stepper%init_to_steady_state) then
         step_to_steady_state = PETSC_TRUE
@@ -801,7 +801,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   SNESConvergedReason :: snes_reason 
   PetscInt :: update_reason
   PetscInt :: sum_newton_iterations, sum_linear_iterations, num_linear_iterations
-  PetscReal :: fnorm, scaled_fnorm, inorm, prev_inorm
+  PetscReal :: fnorm, scaled_fnorm, inorm, prev_norm, dif_norm, rel_norm
   Vec :: update_vec
   PetscTruth :: plot_flag
   PetscTruth :: transient_plot_flag
@@ -824,7 +824,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   icut = 0
   sum_newton_iterations = 0
   sum_linear_iterations = 0
-  prev_inorm = 1.d20
+  prev_norm = 1.d20
 
   do ! this loop is for steady state initial condition
   
@@ -951,14 +951,32 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
     
       call SNESGetSolutionUpdate(solver%snes,update_vec,ierr)
       call VecStrideNorm(update_vec,ZERO_INTEGER,NORM_INFINITY,inorm,ierr)
-      if (dabs((inorm-prev_inorm)/prev_inorm) < &
-          stepper%steady_state_rel_tol) exit
+      dif_norm = inorm-prev_norm
+      rel_norm = dif_norm/prev_norm
+      if ((sum_newton_iterations > 100 .and. &
+           dabs(dif_norm) < stepper%steady_state_rel_tol) .or. &
+          dabs(rel_norm) < stepper%steady_state_rel_tol) then
+        if (option%print_file_flag) then
+          write(option%fid_out,*) 'Steady state solve converged after ', &
+            sum_newton_iterations, ' iterations'
+        endif
+        exit
+      endif
       
-      prev_inorm = inorm
+      prev_norm = inorm
       
       if (sum_newton_iterations > 1000) then
         option%io_buffer = 'Steady-state solve exceeded 1000 Newton iterations.'
         call printMsg(option)
+        if (option%print_file_flag) then
+          write(option%fid_out,*) trim(option%io_buffer)
+          write(option%fid_out,*) 'inorm: ', inorm
+          write(option%fid_out,*) 'prev_norm: ', prev_norm
+          write(option%fid_out,*) 'rel_norm: ', rel_norm
+          write(option%fid_out,*) 'dif_norm: ', dif_norm
+          write(option%fid_out,*) 'relative tolerance: ', &
+                                  stepper%steady_state_rel_tol
+        endif
         failure = PETSC_TRUE
         exit
       endif
@@ -971,6 +989,12 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
       call StepperUpdateFlowSolution(realization)
       option%flow_dt = fnorm
       option%flow_dt = option%flow_dt*2.d0
+      if (option%print_file_flag) then
+        write(option%fid_out,*) 'Dt: ', option%flow_dt
+      endif
+      if (option%print_screen_flag) then
+        write(*,*) 'Dt: ', option%flow_dt
+      endif
     endif
 
   enddo ! end of steady-state loop
