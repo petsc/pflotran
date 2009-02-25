@@ -21,6 +21,7 @@ extern "C"{
 #include "PflotranJacobianLevelOperator.h"
 #include "BoundaryConditionStrategy.h"
 #include "CCellVariable.h"
+#include "CSideVariable.h"
 #include "HierarchyDataOpsReal.h"
 #include "CoarsenSchedule.h"
 
@@ -192,6 +193,8 @@ public:
                         bool bOverride=false,
                         std::string centering="");
 
+   void setSourceValueOnPatch(SAMRAI::hier::Patch<NDIM> **patch, int *index, double *val);
+
 protected:
 
    void initializePetscMatInterface(void);
@@ -201,6 +204,17 @@ protected:
    void initializeInternalVariableData(void);
 
    void getFromInput(tbox::Pointer<tbox::Database> db);
+
+   /**
+   * Routine used to set up internal transfer schedules
+   */
+   void setupTransferSchedules(void);
+
+   void initializeBoundaryConditionStrategy(tbox::Pointer<tbox::Database> &db);
+
+   Vec getScratchVector(void){ return d_scratch_vector; }
+
+   void initializeScratchVector( Vec x);
 
    /**
    * Compute fluxes.
@@ -220,19 +234,29 @@ protected:
                 const int *u_idx=NULL);
 
    /**
-   * Routine used to set up internal transfer schedules
+   * Coarsen a souce term like variable from level ln+1 to level ln
+   * currently this routine is identical to coarsenVariable but that may
+   * change
+   * \param ln
+   *        level number
+   * \param u_id
+   *        descriptor index of solution to coarsen
+   * \param src_id
+   *        descriptor index of rhs to coarsen
+   * \param b
+   *        boolean to determine if b should be coarsened or not
    */
-   void setupTransferSchedules(void);
+   void coarsenSolutionAndSourceTerm(const int ln, 
+                                     const int u_id,
+                                     const int src_id,
+                                     const bool coarsen_rhs);
 
-   void initializeBoundaryConditionStrategy(tbox::Pointer<tbox::Database> &db);
 
-   Vec getScratchVector(void){ return d_scratch_vector; }
-
-   void initializeScratchVector( Vec x);
 
 private:
 
    PflotranJacobianMultilevelOperator();
+
 
    bool d_adjust_cf_coefficients;
    bool d_coarsen_diffusive_fluxes;
@@ -247,6 +271,7 @@ private:
    std::string d_cell_refine_op_str;
 
    int d_flux_id;
+   int d_srcsink_id;
 
    int d_bdry_types[2*NDIM];
 
@@ -258,16 +283,17 @@ private:
     * Variables.
     */
    tbox::Pointer< pdat::CCellVariable<NDIM,double> > d_scratch_variable;
+   tbox::Pointer< pdat::CCellVariable<NDIM,double> > d_srcsink;
+   tbox::Pointer< pdat::CSideVariable<NDIM,double> > d_flux;
 
    hier::Patch <NDIM> *d_patch;
-
-   tbox::Pointer< pdat::FaceVariable<NDIM,double> > d_flux;
 
    tbox::Pointer<xfer::RefineOperator<NDIM> >  d_soln_refine_op;
    tbox::Pointer<xfer::CoarsenOperator<NDIM> > d_soln_coarsen_op;
 
    tbox::Array< tbox::Pointer< xfer::RefineSchedule<NDIM> > > d_GlobalToLocalRefineSchedule;
-   tbox::Array< tbox::Pointer< xfer::CoarsenSchedule<NDIM> > > d_CoarsenSchedule;
+   tbox::Array< tbox::Pointer< xfer::CoarsenSchedule<NDIM> > > d_src_coarsen_schedule;
+   tbox::Array< tbox::Pointer< xfer::CoarsenSchedule<NDIM> > > d_flux_coarsen_schedule;
 
    RefinementBoundaryInterpolation::InterpolationScheme d_tangential_interp_scheme;
    RefinementBoundaryInterpolation::InterpolationScheme d_normal_interp_scheme;

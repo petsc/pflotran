@@ -302,6 +302,18 @@ samrsetcurrentjacobianpatch_( Mat *mat, SAMRAI::hier::Patch<NDIM> **patch)
    pJacobian->setCurrentPatch(*patch);
 }
 
+void samrsetjacobiansourceonpatch_(int *which_jac,
+                                   int *index, 
+                                   double *val, 
+                                   SAMRAI::PflotranApplicationStrategy **application_strategy, 
+                                   SAMRAI::hier::Patch<NDIM> **patch) 
+{
+
+   SAMRAI::PflotranJacobianMultilevelOperator *pJacobian = (*application_strategy)->getJacobianOperator(which_jac);
+
+   pJacobian->setSourceValueOnPatch(patch, index, val);
+
+}
 
 void create_samrai_vec_(SAMRAI::PflotranApplicationStrategy **application_strategy,
                         int &dof, 

@@ -32,10 +32,10 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
    d_adjust_cf_coefficients       = false; 
    d_variable_order_interpolation = false;
    d_reset_ghost_values           = true;
-   d_face_coarsen_op_str          = "CONSERVATIVE_COARSEN";
-   d_cell_coarsen_op_str          = "CONSERVATIVE_COARSEN";
-   d_cell_refine_op_str           = "CCELL_CONSTANT_REFINE";
-   d_face_refine_op_str           = "CCELL_CONSTANT_REFINE";
+   d_face_coarsen_op_str          = "SUM_COARSEN";
+   d_cell_coarsen_op_str          = "SUM_COARSEN";
+   d_cell_refine_op_str           = "CONSTANT_REFINE";
+   d_face_refine_op_str           = "CONSTANT_REFINE";
    d_flux.setNull();
    
    d_patch                        = NULL;
@@ -55,6 +55,11 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
 
    initializePetscMatInterface();
 
+   // we initialize the internal variable data before
+   // initializing the level operators so that the variable id
+   // for the src/sink's is set and can be passed to the level operators
+   initializeInternalVariableData();
+
    for(int ln=0; ln<hierarchy_size; ln++)
    {
       LevelOperatorParameters *params = new LevelOperatorParameters(parameters->d_db);
@@ -62,6 +67,7 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
       // It lets the level operators know what object_id to use as a suffix
       // when creating internal data to minimize the number of variables created
       parameters->d_db->putInteger("object_id", d_object_id);
+      parameters->d_db->putInteger("srcsink_id", d_srcsink_id);
       
       tbox::Pointer<hier::PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
 
@@ -74,20 +80,20 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
    
    d_math_op = new math::HierarchyCCellDataOpsReal< NDIM, double >(d_hierarchy,
                                                                    0, d_hierarchy->getFinestLevelNumber());
-   initializeInternalVariableData();
-
    tbox::Pointer<geom::CartesianGridGeometry<NDIM> > grid_geometry = d_hierarchy->getGridGeometry();
 
    d_soln_refine_op =  grid_geometry->lookupRefineOperator(d_scratch_variable, d_cell_refine_op_str);
 
    d_soln_coarsen_op = grid_geometry->lookupCoarsenOperator(d_scratch_variable, d_cell_coarsen_op_str);
 
+   d_flux_coarsen_schedule.resizeArray(d_hierarchy->getNumberOfLevels());
    d_GlobalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
-   d_CoarsenSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
+   d_src_coarsen_schedule.resizeArray(d_hierarchy->getNumberOfLevels());
    for(int ln=0; ln<hierarchy_size; ln++)
    {
       d_GlobalToLocalRefineSchedule[ln].setNull();
-      d_CoarsenSchedule[ln].setNull();
+      d_src_coarsen_schedule[ln].setNull();
+      d_flux_coarsen_schedule[ln].setNull();
    }
 
 }
@@ -139,17 +145,51 @@ PflotranJacobianMultilevelOperator::apply(const int coarse_ln,
                                           const double a,
                                           const double b)
 {
-   
-   // this version does not compute correctly at c-f interfaces
-   for(int ln=fine_ln; ln>=coarse_ln; ln--)
+   if(d_coarsen_diffusive_fluxes)
    {
-#ifdef DEBUG_CHECK_ASSERTIONS
-      assert(d_level_operators[ln]!=NULL);
-#endif
-      d_level_operators[ln]->apply(f_id, u_id, r_id, f_idx, u_idx, r_idx, a, b);
+      setupTransferSchedules();
       
-   }
+      for(int ln=fine_ln; ln>=coarse_ln; ln--)
+      {
+#ifdef DEBUG_CHECK_ASSERTIONS
+         assert(d_level_operators[ln]!=NULL);
+#endif
+         d_level_operators[ln]->setFlux(d_flux_id, u_id, u_idx);
+      }
 
+      for(int ln=fine_ln-1; ln>=coarse_ln; ln--)
+      {
+         bool coarsen_rhs = (b!=0.0)?true:false;         
+         coarsenSolutionAndSourceTerm(ln, u_id[0], f_id[0], coarsen_rhs);      
+         
+#ifdef DEBUG_CHECK_ASSERTIONS
+         assert(d_schedules_initialized==true);
+         assert(!d_flux_coarsen_schedule[ln].isNull());
+#endif
+         d_flux_coarsen_schedule[ln]->coarsenData();
+      }
+
+      for(int ln=fine_ln; ln>=coarse_ln; ln--)
+      {
+         d_level_operators[ln]->apply(d_flux_id,
+                                      f_id , u_id , r_id, 
+                                      f_idx, u_idx, r_idx,
+                                      a, b);
+      }
+
+   }
+   else
+   {
+      // this version does not compute correctly at c-f interfaces
+      for(int ln=fine_ln; ln>=coarse_ln; ln--)
+      {
+#ifdef DEBUG_CHECK_ASSERTIONS
+         assert(d_level_operators[ln]!=NULL);
+#endif
+         d_level_operators[ln]->apply(f_id, u_id, r_id, f_idx, u_idx, r_idx, a, b);
+         
+      }
+   }
 }
 
 void
@@ -198,7 +238,7 @@ PflotranJacobianMultilevelOperator::initializeInternalVariableData(void)
 
    if (!d_flux) 
    {
-      d_flux = new pdat::FaceVariable<NDIM,double>(cellFlux,1);
+      d_flux = new pdat::CSideVariable<NDIM,double>(cellFlux,1);
    }
 
    d_flux_id = variable_db->registerVariableAndContext(d_flux,
@@ -206,6 +246,34 @@ PflotranJacobianMultilevelOperator::initializeInternalVariableData(void)
                                                        zero_ghosts);
 
    
+   std::string SrcSink("PflotranJacobianOperator_SrcSink");
+   SrcSink+=object_str;
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+   if(d_debug_print_info_level>4)
+   {
+      tbox::pout << "PflotranJacobianMultilevelOperator::SrcSink variable name " << SrcSink << std::endl;
+   }
+#endif
+
+   d_srcsink = variable_db->getVariable(SrcSink);
+
+   if (!d_srcsink) 
+   {
+      d_srcsink = new pdat::CCellVariable<NDIM,double>(SrcSink,d_ndof);
+   }
+
+   if(d_srcsink)
+   {
+      d_srcsink_id = variable_db->registerVariableAndContext(d_srcsink,
+                                                             scratch_cxt,
+                                                             zero_ghosts);
+   }
+   else
+   {
+      tbox::pout << "PflotranJacobianLevelOperator::ERROR could not allocate memory for internal srcsink data" << std::endl; 
+      abort();
+   }
 
    for(int ln=0; ln<d_hierarchy->getNumberOfLevels(); ln++)
    {
@@ -219,6 +287,12 @@ PflotranJacobianMultilevelOperator::initializeInternalVariableData(void)
       if(!level->checkAllocated(scratch_var_id))
       {
          level->allocatePatchData(scratch_var_id);
+      }
+
+      // allocate storage space
+      if(!level->checkAllocated(d_srcsink_id))
+      {
+         level->allocatePatchData(d_srcsink_id);
       }
 
 #ifdef DEBUG_CHECK_ASSERTIONS
@@ -276,7 +350,7 @@ PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> d
       
       if(d_use_cf_interpolant)
       {
-         d_cell_refine_op_str = "CCELL_CONSTANT_REFINE";
+         d_cell_refine_op_str = "CONSTANT_REFINE";
 
          if (db->keyExists("variable_order_interpolation")) 
          {
@@ -310,7 +384,6 @@ PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> d
                  << " missing in input.");
    }
 
-#if 0
    if (db->keyExists("coarsen_diffusive_fluxes")) 
    {
       d_coarsen_diffusive_fluxes = db->getBool("coarsen_diffusive_fluxes");
@@ -382,7 +455,7 @@ PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> d
                  << " -- Required key `boundary_conditions'"
                  << " missing in input.");
    } 
-#endif
+
    if (db->keyExists("stencilsize")) 
    {
       d_stencilSize = db->getInteger("stencilsize");      
@@ -412,11 +485,57 @@ PflotranJacobianMultilevelOperator::setFlux(const int coarse_ln,
                                             const int *u_id,
                                             const int *u_idx)
 {
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+      assert(d_flux_id>=0);
+      assert(u_id!=NULL);
+#endif   
+
+   for(int ln=fine_ln; ln>=coarse_ln; ln--)
+   {
+#ifdef DEBUG_CHECK_ASSERTIONS
+      assert(d_level_operators[ln]!=NULL);
+#endif
+      
+      d_level_operators[ln]->setFlux(d_flux_id, u_id, u_idx);
+
+      if(ln<fine_ln && d_coarsen_diffusive_fluxes)
+      {
+#ifdef DEBUG_CHECK_ASSERTIONS
+         assert(d_schedules_initialized==true);
+         assert(!d_flux_coarsen_schedule[ln].isNull());
+#endif
+         d_flux_coarsen_schedule[ln]->coarsenData();
+      } 
+   }
 }
 
 void
 PflotranJacobianMultilevelOperator::setupTransferSchedules(void)
 {
+   int ln;
+   
+   if(d_coarsen_diffusive_fluxes && (!d_schedules_initialized))
+   {
+      tbox::Pointer<hier::PatchLevel<NDIM> > flevel = d_hierarchy->getPatchLevel(0);
+      tbox::Pointer<hier::PatchLevel<NDIM> > clevel;
+
+      tbox::Pointer<xfer::Geometry<NDIM> > geometry = flevel->getGridGeometry();
+
+      xfer::CoarsenAlgorithm<NDIM> flux_coarsen_alg;
+      flux_coarsen_alg.registerCoarsen(d_flux_id, d_flux_id,
+                                       geometry->lookupCoarsenOperator(d_flux,d_face_coarsen_op_str));
+      
+      for (ln = 1; ln < d_hierarchy->getNumberOfLevels(); ln++) 
+      {
+         flevel = d_hierarchy->getPatchLevel(ln);
+         clevel = d_hierarchy->getPatchLevel(ln-1);
+         d_flux_coarsen_schedule[ln-1] = flux_coarsen_alg.createSchedule(clevel, flevel); 
+      }
+      
+      d_schedules_initialized=true;
+
+   }
 }
 
 void 
@@ -672,17 +791,17 @@ PflotranJacobianMultilevelOperator::initializeScratchVector( Vec x )
       tbox::Pointer<hier::PatchLevel<NDIM> > clevel = hierarchy->getPatchLevel(ln);
       tbox::Pointer<hier::PatchLevel<NDIM> > flevel = hierarchy->getPatchLevel(ln+1);
 
-      if((!d_CoarsenSchedule[ln].isNull()) && cell_coarsen.checkConsistency(d_CoarsenSchedule[ln]))
+      if((!d_src_coarsen_schedule[ln].isNull()) && cell_coarsen.checkConsistency(d_src_coarsen_schedule[ln]))
       {
-         cell_coarsen.resetSchedule(d_CoarsenSchedule[ln]);
+         cell_coarsen.resetSchedule(d_src_coarsen_schedule[ln]);
       }
       else
       {
-         d_CoarsenSchedule[ln] = cell_coarsen.createSchedule(clevel, 
+         d_src_coarsen_schedule[ln] = cell_coarsen.createSchedule(clevel, 
                                                              flevel);
       }
       
-      d_CoarsenSchedule[ln]->coarsenData();            
+      d_src_coarsen_schedule[ln]->coarsenData();            
       
     }
 #endif
@@ -721,6 +840,79 @@ PflotranJacobianMultilevelOperator::getVariableIndex(std::string &name,
 
    return var_id;
 
+}
+
+void
+PflotranJacobianMultilevelOperator::setSourceValueOnPatch(SAMRAI::hier::Patch<NDIM> **patch, 
+                                                          int *index, 
+                                                          double *val)
+{
+   int ln = (*patch)->getPatchLevelNumber();
+
+   d_level_operators[ln]->setSourceValueOnPatch(patch, index, val);
+
+}
+
+void
+PflotranJacobianMultilevelOperator::coarsenSolutionAndSourceTerm(const int ln, 
+                                                              const int u_id,
+                                                              const int f_id, 
+                                                              const bool coarsen_rhs)
+{
+
+   hier::VariableDatabase<NDIM>* variable_db = hier::VariableDatabase<NDIM>::getDatabase();
+   tbox::Pointer< hier::Variable< NDIM > > f;
+   variable_db->mapIndexToVariable(f_id, f);
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+   assert(!f.isNull());      
+   assert(ln<d_hierarchy->getFinestLevelNumber());
+#endif
+
+   tbox::Pointer< xfer::Geometry<NDIM> > geometry = d_hierarchy->getGridGeometry();
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+   assert(!geometry.isNull());      
+#endif
+
+   xfer::CoarsenAlgorithm<NDIM> coarsen_alg;
+
+   if(coarsen_rhs)
+   {
+      coarsen_alg.registerCoarsen(f_id, f_id,
+                                  geometry->lookupCoarsenOperator(f, d_cell_coarsen_op_str));
+   }
+
+   // if a schedule does not currently exist create it
+   if(d_src_coarsen_schedule[ln].isNull())
+   {
+      tbox::Pointer<hier::PatchLevel<NDIM> > flevel = d_hierarchy->getPatchLevel(ln+1);
+      tbox::Pointer<hier::PatchLevel<NDIM> > clevel = d_hierarchy->getPatchLevel(ln);
+      d_src_coarsen_schedule[ln]=coarsen_alg.createSchedule(clevel, flevel); 
+   }
+   else
+   {
+      // recreating a schedule when it is not consistent is not the
+      // most efficient way of doing this. An improvement would be
+      // to cache multiple schedules 
+      if(coarsen_alg.checkConsistency(d_src_coarsen_schedule[ln]))
+      {
+         coarsen_alg.resetSchedule(d_src_coarsen_schedule[ln]);
+      }
+      else
+      {
+         tbox::Pointer<hier::PatchLevel<NDIM> > flevel = d_hierarchy->getPatchLevel(ln+1);
+         tbox::Pointer<hier::PatchLevel<NDIM> > clevel = d_hierarchy->getPatchLevel(ln);
+         d_src_coarsen_schedule[ln]=coarsen_alg.createSchedule(clevel, flevel); 
+         tbox::pout << "CellDiffusionMultilevelOperator::coarsenSolutionAndSourceTerm()::Forced to recreate schedule " << std::endl;
+      }
+   }
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+   assert(!d_src_coarsen_schedule[ln].isNull());      
+#endif
+
+   d_src_coarsen_schedule[ln]->coarsenData();   
 }
 
 }

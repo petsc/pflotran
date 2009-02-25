@@ -218,6 +218,15 @@ Mat :: mat
 PetscFortranAddr :: patch
 end subroutine SAMRSetCurrentJacobianPatch
 
+subroutine SAMRSetJacobianSourceOnPatch(which_pc, index, val, application, patch) 
+#include "finclude/petsc.h"
+PetscInt :: which_pc
+PetscInt :: index
+PetscReal :: val
+PetscFortranAddr :: application
+PetscFortranAddr :: patch
+end subroutine SAMRSetJacobianSourceOnPatch
+
 subroutine samrpetscobjectstateincrease(vec)
 implicit none
 #include "finclude/petsc.h"

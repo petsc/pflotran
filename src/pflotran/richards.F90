@@ -1909,31 +1909,37 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
               flux_id = ((ghosted_id/ngxy)-1)*(nlx+1)*nly + &
                         ((mod(ghosted_id,ngxy))/ngx-1)*(nlx+1)+ &
                         mod(mod(ghosted_id,ngxy),ngx)-1
+              fluxes(direction)%flux_p(flux_id) = Res(1)
            case(EAST_FACE)
               ghosted_id = ghosted_id+1
               flux_id = ((ghosted_id/ngxy)-1)*(nlx+1)*nly + &
                         ((mod(ghosted_id,ngxy))/ngx-1)*(nlx+1)
+              fluxes(direction)%flux_p(flux_id) = -Res(1)
            case(SOUTH_FACE)
               flux_id = ((ghosted_id/ngxy)-1)*nlx*(nly+1) + &
                         ((mod(ghosted_id,ngxy))/ngx-1)*nlx + &
                         mod(mod(ghosted_id,ngxy),ngx)-1
+              fluxes(direction)%flux_p(flux_id) = Res(1)
            case(NORTH_FACE)
               ghosted_id = ghosted_id+ngx
               flux_id = ((ghosted_id/ngxy)-1)*nlx*(nly+1) + &
                         ((mod(ghosted_id,ngxy))/ngx-1)*nlx + &
                         mod(mod(ghosted_id,ngxy),ngx)-1
+              fluxes(direction)%flux_p(flux_id) = -Res(1)
            case(BOTTOM_FACE)
               flux_id = ((ghosted_id/ngxy)-1)*nlx*nly &
                        +((mod(ghosted_id,ngxy))/ngx-1)*nlx &
                        +mod(mod(ghosted_id,ngxy),ngx)-1
+              fluxes(direction)%flux_p(flux_id) = Res(1)
            case(TOP_FACE)
               ghosted_id = ghosted_id+ngxy
               flux_id = ((ghosted_id/ngxy)-1)*nlx*nly &
                        +((mod(ghosted_id,ngxy))/ngx-1)*nlx &
                        +mod(mod(ghosted_id,ngxy),ngx)-1
+              fluxes(direction)%flux_p(flux_id) = -Res(1)
          end select
 
-         fluxes(direction)%flux_p(flux_id) = Res(1)
+!         fluxes(direction)%flux_p(flux_id) = Res(1)
 
       else
          r_p(local_id)= r_p(local_id) - Res(1)
@@ -2130,6 +2136,8 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
   type(option_type), pointer :: option
   PetscReal :: norm
   
+  option => realization%option
+
   flag = SAME_NONZERO_PATTERN
   call MatGetType(A,mat_type,ierr)
   if (mat_type == MATMFFD) then
@@ -2153,8 +2161,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
       grid => cur_patch%grid
       ! need to set the current patch in the Jacobian operator
       ! so that entries will be set correctly
-      if(associated(grid%structured_grid) .and. &
-        (.not.(grid%structured_grid%p_samr_patch.eq.0))) then
+      if(option%use_samr) then
          call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
       endif
 
@@ -2175,8 +2182,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
       grid => cur_patch%grid
       ! need to set the current patch in the Jacobian operator
       ! so that entries will be set correctly
-      if(associated(grid%structured_grid) .and. &
-        (.not.(grid%structured_grid%p_samr_patch.eq.0))) then
+      if(option%use_samr) then
          call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
       endif
 
@@ -2467,6 +2473,18 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     
   implicit none
 
+  interface
+     subroutine SAMRSetJacobianSourceOnPatch(which_pc, index, val, p_application, p_patch) 
+#include "finclude/petsc.h"
+
+       PetscInt :: which_pc
+       PetscInt :: index
+       PetscReal :: val
+       PetscFortranAddr :: p_application
+       PetscFortranAddr :: p_patch
+     end subroutine SAMRSetJacobianSourceOnPatch
+  end interface
+
   SNES, intent(in) :: snes
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
@@ -2492,7 +2510,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   type(richards_parameter_type), pointer :: richards_parameter
   type(richards_auxvar_type), pointer :: rich_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)
-  
+  PetscInt :: flow_pc
   PetscViewer :: viewer
 
   patch => realization%patch
@@ -2524,6 +2542,10 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                               realization%saturation_function_array(icap)%ptr,&
                               Jup) 
     call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
+    if(option%use_samr) then
+       flow_pc = 0
+       call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
+    endif
   enddo
 
 #endif
@@ -2562,6 +2584,11 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 
       end select
       call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)  
+
+      if(option%use_samr) then
+         flow_pc = 0
+         call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
+      endif
     enddo
     source_sink => source_sink%next
   enddo

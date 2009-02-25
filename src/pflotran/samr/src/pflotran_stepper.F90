@@ -9,7 +9,7 @@ subroutine f_stepper_run(simulation)
   implicit none
 
 #include "definitions.h"
-#include "include/finclude/petsclog.h"
+#include "finclude/petsclog.h"
 
   type(simulation_type), pointer :: simulation
 

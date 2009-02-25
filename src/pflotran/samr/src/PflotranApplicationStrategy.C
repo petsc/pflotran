@@ -74,6 +74,7 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
       d_solution = variable_db->getVariable("pflotranSolution");
    }
 
+#if 1
    if(!variable_db->checkVariableExists("pflotranWeight"))
    {
       d_pflotran_weight = new pdat::CCellVariable<NDIM,double>("pflotranWeight", d_number_solution_components);
@@ -96,11 +97,12 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
    }
    
    AMRUtilities::setVectorWeights(d_hierarchy, d_pflotran_weight_id);
+#endif
 
    d_application_ctx = variable_db->getContext(d_object_name);
 
    d_soln_refine_op =  d_grid_geometry->lookupRefineOperator(d_solution,
-                                                             "CCELL_CONSTANT_REFINE");
+                                                             "CONSTANT_REFINE");
 
    d_soln_coarsen_op = d_grid_geometry->lookupCoarsenOperator(d_solution,
                                                               "CONSERVATIVE_COARSEN");
@@ -796,6 +798,16 @@ PflotranApplicationStrategy::initializePreconditioner(int *which_pc, PC *pc)
       }
 
    }
+}
+
+PflotranJacobianMultilevelOperator *
+PflotranApplicationStrategy::getJacobianOperator(int *which_pc)
+{
+   PflotranJacobianMultilevelOperator *retOp = NULL;
+
+   retOp = (*which_pc==0)?d_FlowJacobian.get():d_TransportJacobian.get();
+
+   return retOp;
 }
 
 void 

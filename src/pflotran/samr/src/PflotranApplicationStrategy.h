@@ -149,6 +149,8 @@ public:
 
    void initializePreconditioner(int *which_pc, PC *pc);
 
+   PflotranJacobianMultilevelOperator *getJacobianOperator(int *which_pc);
+
 protected:
 
 private:

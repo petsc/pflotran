@@ -24,7 +24,7 @@
 ## Description: makefile for application to test implicit/nonlinear solver
 ##
 BUILDTYPE :=$(shell echo "`uname -m`-`uname -s`")
-
+ .SUFFIXES: .F90
 # for now use the SAMRAI definition for F77 which should default to pgf95 or fortran
 F90=${F77}
 FLINKER=${F77}
@@ -110,23 +110,27 @@ endif
 ifdef petscrel
  include ${PETSC_DIR}/bmake/common/base
 else
- include ${PETSC_DIR}/conf/base
+# include ${PETSC_DIR}/conf/base
 endif
 
-FPPFLAGS         = -g ${MYFLAGS} -I${PETSC_DIR}
+CXX=mpicxx
+
+FPPFLAGS         = -g ${MYFLAGS} -I${PETSC_DIR}/include
 
 $(FORTOBJS):$(FORTM4SRC)
 	cd $(FORTDIR); ${MAKE}
 
 OBJS =${CXXOBJS} ${COBJS} ${F90OBJS} ${FORTOBJS}
 
+%.o: %.F90
+	${F90} -c ${FFLAGS} ${FC_FLAGS} ${FPPFLAGS} -o $@ $<
+
 SAMRAIDriver: SAMRAIDriver.o ${OBJS} ${PFLOTRAN_DIR}/libpflotranamr.a
 	$(CXX) -g ${OBJS} $(LIBSAMRAI3D) $(LIBSAMRAI) ${LDFLAGS} ${LDLIBS} -o $@
 
-#clean:
-#	$(RM) SAMRAIDriver *.f core *~ *.mod
-#	$(RM) *.o *.ii *.int.c
-#	$(RM) -r ti_files ii_files
+clean:
+	$(RM) SAMRAIDriver *.f core *~ *.mod
+	$(RM) *.o *.ii *.int.c
 
 veryclean:
 	$(MAKE) clean

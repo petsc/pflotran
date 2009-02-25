@@ -1,6 +1,8 @@
 #include "PflotranJacobianLevelOperator.h"
 #include "CartesianGridGeometry.h"
+#include "CartesianPatchGeometry.h"
 #include "CCellData.h"
+#include "CSideData.h"
 #include "PETSc_SAMRAIVectorReal.h"
 #include "fortran/3d/prototypes.h"
 
@@ -43,7 +45,7 @@ PflotranJacobianLevelOperator::initializeInternalVariableData()
 
    if (!d_flux) 
    {
-      d_flux = new pdat::FaceVariable<NDIM,double>(cellFlux,1);
+      d_flux = new pdat::CSideVariable<NDIM,double>(cellFlux,1);
    }
 
    d_flux_id = variable_db->registerVariableAndContext(d_flux,
@@ -89,6 +91,7 @@ PflotranJacobianLevelOperator::initializeInternalVariableData()
    {
       d_level->allocatePatchData(d_stencil_id);
    }
+
 }
 
 PflotranJacobianLevelOperator::PflotranJacobianLevelOperator()
@@ -162,6 +165,112 @@ PflotranJacobianLevelOperator::apply(const int *f_id,
          abort();
       }
       
+   }
+}
+
+void
+PflotranJacobianLevelOperator::apply(const int flux_id,
+                                     const int *f_id,
+                                     const int *u_id, 
+                                     const int *r_id,
+                                     const int *f_idx,
+                                     const int *u_idx,
+                                     const int *r_idx,
+                                     const double a, 
+                                     const double b)
+{
+#ifdef DEBUG_CHECK_ASSERTIONS
+   assert(f_id!=NULL);
+   assert(u_id!=NULL);
+   assert(r_id!=NULL);
+#endif
+
+   const int fidx=(f_idx==NULL)?0:f_idx[0];
+   const int uidx=(u_idx==NULL)?0:u_idx[0];
+   const int ridx=(r_idx==NULL)?0:r_idx[0];
+
+   for (hier::PatchLevel<NDIM>::Iterator p(d_level); p; p++) 
+   {
+      tbox::Pointer<hier::Patch<NDIM> > patch = d_level->getPatch(p());
+      const hier::Box<NDIM> interior(patch->getBox());
+      const hier::Index<NDIM> ifirst  = interior.lower();
+      const hier::Index<NDIM> ilast   = interior.upper();
+      
+#ifdef DEBUG_CHECK_ASSERTIONS
+      assert(patch->checkAllocated(f_id[0]));
+      assert(patch->checkAllocated(flux_id));
+      assert(patch->checkAllocated(d_srcsink_id));
+      assert(patch->checkAllocated(r_id[0]));
+#endif
+
+      tbox::Pointer< pdat::CCellData<NDIM,double> > f_data = patch->getPatchData(f_id[0]);
+      tbox::Pointer< pdat::CCellData<NDIM,double> > src_data = patch->getPatchData(d_srcsink_id);
+      tbox::Pointer< pdat::CSideData<NDIM,double> > flux_data = patch->getPatchData(flux_id);
+      tbox::Pointer< pdat::CCellData<NDIM,double> > r_data = patch->getPatchData(r_id[0]);
+      tbox::Pointer< pdat::CCellData<NDIM,double> > u_data = patch->getPatchData(u_id[0]);
+      tbox::Pointer< pdat::CCellData<NDIM,double> > stencil = patch->getPatchData(d_stencil_id);
+
+      const hier::Index<NDIM> ufirst = u_data->getGhostBox().lower();
+      const hier::Index<NDIM> ulast  = u_data->getGhostBox().upper();
+      const hier::Index<NDIM> ffirst = f_data->getGhostBox().lower();
+      const hier::Index<NDIM> flast  = f_data->getGhostBox().upper();
+      const hier::Index<NDIM> sfirst = src_data->getGhostBox().lower();
+      const hier::Index<NDIM> slast  = src_data->getGhostBox().upper();
+      const hier::Index<NDIM> rfirst = r_data->getGhostBox().lower();
+      const hier::Index<NDIM> rlast  = r_data->getGhostBox().upper();
+
+      pflotranpcapply3d_(
+         ifirst(0),ifirst(1),ifirst(2),ilast(0),ilast(1),ilast(2),
+         ufirst(0),ufirst(1),ufirst(2),ulast(0),ulast(1),ulast(2),
+         ffirst(0),ffirst(1),ffirst(2),flast(0),flast(1),flast(2),
+         sfirst(0),sfirst(1),sfirst(2),slast(0),slast(1),slast(2),
+         rfirst(0),rfirst(1),rfirst(2),rlast(0),rlast(1),rlast(2),
+         d_stencil_size,
+         d_ndof,
+         stencil->getPointer(),
+         u_data->getPointer(),
+         flux_data->getPointer(0), flux_data->getPointer(1), flux_data->getPointer(2),
+         f_data->getPointer(),
+         src_data->getPointer(),
+         r_data->getPointer());
+
+   }
+}
+
+void
+PflotranJacobianLevelOperator::setFlux(const int flux_id,
+                                       const int *u_id,
+                                       const int *u_idx)
+{
+   for (hier::PatchLevel<NDIM>::Iterator p(d_level); p; p++) 
+   {
+      tbox::Pointer<hier::Patch<NDIM> > patch = d_level->getPatch(p());
+      
+      const hier::Box<NDIM> box = patch->getBox();
+      const hier::Index<NDIM> ifirst = box.lower();
+      const hier::Index<NDIM> ilast = box.upper();
+     
+      tbox::Pointer< pdat::CCellData<NDIM,double> > stencil = patch->getPatchData(d_stencil_id);
+      tbox::Pointer< pdat::CSideData<NDIM,double> > flux_data = patch->getPatchData(flux_id);
+
+      tbox::Pointer< pdat::CCellData<NDIM,double> > u_data = patch->getPatchData(u_id[0]);
+      const hier::Index<NDIM> gfirst = u_data->getGhostBox().lower();
+      const hier::Index<NDIM> glast = u_data->getGhostBox().upper();
+      
+      assert(d_stencil_size==7);
+      assert(d_ndof==1);
+
+      pflotranpcflux3d_(ifirst(0),ifirst(1),ifirst(2),
+                        ilast(0),ilast(1),ilast(2),
+                        gfirst(0),gfirst(1),gfirst(2),
+                        glast(0),glast(1),glast(2),
+                        d_stencil_size,
+                        d_ndof,
+                        stencil->getPointer(),
+                        u_data->getPointer(),
+                        flux_data->getPointer(0),
+                        flux_data->getPointer(1),
+                        flux_data->getPointer(2));
    }
 }
 
@@ -276,8 +385,7 @@ PflotranJacobianLevelOperator::getStencilOffsets(const int i,
 }
 
 void 
-PflotranJacobianLevelOperator::
-getFromInput(const tbox::Pointer<tbox::Database> &db)
+PflotranJacobianLevelOperator::getFromInput(const tbox::Pointer<tbox::Database> &db)
 {
    LevelLinearOperator::getFromInput(db);
 
@@ -401,6 +509,28 @@ getFromInput(const tbox::Pointer<tbox::Database> &db)
    {
       TBOX_ERROR( "PflotranJacobianLevelOperator" 
                  << " -- Required key `ndof'"
+                 << " missing in input.");
+   }
+
+   if (db->keyExists("object_id")) 
+   {
+      d_object_id = db->getInteger("object_id");      
+   } 
+   else 
+   {
+      TBOX_ERROR( "PflotranJacobianLevelOperator" 
+                 << " -- Required key `object_id'"
+                 << " missing in input.");
+   }
+
+   if (db->keyExists("srcsink_id")) 
+   {
+      d_srcsink_id = db->getInteger("srcsink_id");      
+   } 
+   else 
+   {
+      TBOX_ERROR( "PflotranJacobianLevelOperator" 
+                 << " -- Required key `srcsink_id'"
                  << " missing in input.");
    }
 
@@ -682,6 +812,30 @@ PflotranJacobianLevelOperator::MatMult(Vec x, Vec y )
    }
    
    return(0);
+}
+
+void
+PflotranJacobianLevelOperator::setSourceValueOnPatch(SAMRAI::hier::Patch<NDIM> **patch, int *index, double *val)
+{
+   tbox::Pointer< pdat::CCellData<NDIM,double> > src_data = (*patch)->getPatchData(d_srcsink_id);
+   double *srcArray = src_data->getPointer();
+
+   int currentRow = (*index);
+   const hier::Box<NDIM> &box  = (*patch)->getBox();
+   hier::Box<NDIM> gbox = box;
+   gbox.grow(1);
+   
+   const int ngx = gbox.numberCells(0);
+   const int ngxy = ngx*(gbox.numberCells(1));
+   
+   const int nx = box.numberCells(0);
+   const int nxy = nx*(box.numberCells(1));
+   int kr= int((currentRow)/ngxy) - 1;
+   int jr= int((currentRow%ngxy)/ngx) - 1;
+   int ir= ((currentRow%ngxy)%ngx) - 1;  
+
+   int offSet = (kr*nxy+jr*nx+ir)*d_ndof;
+   srcArray[offSet] += (*val);
 }
 
 int

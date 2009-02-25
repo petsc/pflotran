@@ -20,4 +20,30 @@ extern "C"{
       const int&, const int&, const int&, const int&, const int&, const int&,
       const double*);
 
+   int pflotranpcflux3d_(
+      const int&, const int&, const int&, const int&, const int&, const int&,
+      const int&, const int&, const int&, const int&, const int&, const int&,
+      const int&,
+      const int&,
+      const double*,
+      const double*,
+      const double*,
+      const double*,
+      const double*);
+
+
+   int pflotranpcapply3d_(
+      const int&, const int&, const int&, const int&, const int&, const int&,
+      const int&, const int&, const int&, const int&, const int&, const int&,
+      const int&, const int&, const int&, const int&, const int&, const int&,
+      const int&, const int&, const int&, const int&, const int&, const int&,
+      const int&, const int&, const int&, const int&, const int&, const int&,
+      const int&,
+      const int&,
+      const double*,
+      const double*,
+      const double*, const double*, const double*,
+      const double*,
+      const double*,
+      const double*);
 }

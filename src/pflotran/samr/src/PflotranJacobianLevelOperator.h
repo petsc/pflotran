@@ -13,6 +13,7 @@ extern "C"{
 
 #include "FaceVariable.h"
 #include "CCellVariable.h"
+#include "CSideVariable.h"
 #include "LevelOperatorParameters.h"
 #include "LevelLinearOperator.h"
 #include <vector>
@@ -69,6 +70,19 @@ public:
               const double b = 1.0);
    
    /**
+    * Compute b*f+a*A*u from fluxes, default values for a and b yield the residual
+    */
+   void apply(const int flux_id, 
+              const int *f_id,
+              const int *u_id,
+              const int *r_id,
+              const int *f_idx=NULL,
+              const int *u_idx=NULL,
+              const int *r_idx=NULL,
+              const double a=-1, 
+              const double b=1.0);
+
+   /**
    * Apply a boundary condition for a specific variable and index. Periodic boundaries
    * will be automatically detected and set.
    * \pre Initialization of the boundary condition types for the different variables
@@ -96,6 +110,24 @@ public:
                                const int *var_components=NULL,
                                const int number_of_variables=-1);
    
+   /**
+   * Compute fluxes.
+   * \pre This routine assumes data in ghost cells has been constant refined
+   *      from coarser grids on c-f boundaries and extrapolated on physical
+   *      boundaries. Using the cf_interpolant data is realigned before calculating
+   *      fluxes.
+   * \param u_id
+   *        descriptor index for cell centered variable to calculate flux from
+   * \param u_idx
+   *        component index for cell centered variable to calculate flux from
+   * \param flux_id
+   *        descriptor index for face centered variable to store flux
+   */   
+   void setFlux(const int flux_id,
+                const int *u_id,
+                const int *u_idx=NULL);
+
+
    /**
    * Return the number of non zero stencil elements for block i,j of the stencil.
    * Block i,j of the stencil contains non zero connections between the i-th and j-th variables.
@@ -177,6 +209,8 @@ public:
                         bool bOverride=false,
                         std::string centering="");
 
+   void setSourceValueOnPatch(SAMRAI::hier::Patch<NDIM> **patch, int *index, double *val);
+
 protected:
 
    void getFromInput(const tbox::Pointer<tbox::Database> &db);
@@ -200,14 +234,15 @@ private:
    int d_extrapolation_order;           // extrapolation order to use for ghost cells on physical boundaries
    int d_bdry_types[2*NDIM];
    int d_stencil_size;
+
    int d_stencil_id;
+   int d_srcsink_id;
+   int d_flux_id;
 
    tbox::Pointer<xfer::RefineSchedule<NDIM> > d_sibling_fill_schedule;
 
-   tbox::Pointer<pdat::FaceVariable<NDIM,double> > d_flux;
+   tbox::Pointer<pdat::CSideVariable<NDIM,double> > d_flux;
    tbox::Pointer<pdat::CCellVariable<NDIM,double> > d_stencil;
-
-   int d_flux_id;
 
    RefinementBoundaryInterpolation::InterpolationScheme d_tangent_interp_scheme;
    RefinementBoundaryInterpolation::InterpolationScheme d_normal_interp_scheme;

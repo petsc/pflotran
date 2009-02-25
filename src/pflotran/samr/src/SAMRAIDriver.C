@@ -60,6 +60,7 @@ extern "C"{
 #include "CCellDoubleConstantRefine.h"
 #include "CartesianCCellDoubleWeightedAverage.h"
 #include "CartesianCSideDoubleSum.h"
+#include "CartesianCCellDoubleSum.h"
 #include "fc_interface.h"
 #include "SAMRAIDriver.h"
 /*#include "pims_local_struct.h"*/
@@ -139,6 +140,9 @@ int main( int argc, char *argv[] )
 
       geom::CartesianCCellDoubleWeightedAverage<NDIM> *ccell_cons_coarsen_op = new geom::CartesianCCellDoubleWeightedAverage<NDIM>();
       grid_geometry->addSpatialCoarsenOperator(ccell_cons_coarsen_op);
+
+      geom::CartesianCCellDoubleSum<NDIM> *ccell_sum_coarsen_op = new geom::CartesianCCellDoubleSum<NDIM>();
+      grid_geometry->addSpatialCoarsenOperator(ccell_sum_coarsen_op);
 
       geom::CartesianCSideDoubleSum<NDIM> *cside_sum_coarsen_op = new geom::CartesianCSideDoubleSum<NDIM>();
       grid_geometry->addSpatialCoarsenOperator(cside_sum_coarsen_op);
