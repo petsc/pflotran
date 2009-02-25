@@ -1069,40 +1069,6 @@ subroutine InitReadInput(simulation)
         
 !....................
 
-      case ('GRAV','GRAVITY')
-
-        call InputReadStringErrorMsg(input,option,'GRAV')
-
-        call InputReadDouble(input,option,temp_real)
-        if (InputError(input)) then
-          call InputDefaultMsg(input,option,'gravity')
-        else
-          call InputReadDouble(input,option,option%gravity(2))
-          if (InputError(input)) then
-            option%gravity(:) = 0.d0
-            option%gravity(3) = temp_real
-          else
-            option%gravity(1) = temp_real
-            call InputReadDouble(input,option,option%gravity(3))
-          endif
-        endif
-
-        if (option%myrank == option%io_rank .and. &
-            option%print_to_screen) &
-          write(option%fid_out,'(/," *GRAV",/, &
-            & "  gravity    = "," [m/s^2]",3x,3pe12.4 &
-            & )') option%gravity(1:3)
-
-!....................
-
-      case ('INVERT_Z','INVERTZ')
-        if (associated(grid%structured_grid)) then
-          grid%structured_grid%invert_z_axis = PETSC_TRUE
-          option%gravity(3) = -option%gravity(3)
-        endif
-      
-!....................
-
       case('REFERENCE_PRESSURE')
         call InputReadStringErrorMsg(input,option,card)
         call InputReadDouble(input,option,option%reference_pressure)
@@ -1404,7 +1370,7 @@ subroutine InitReadInput(simulation)
               end select
             case('PERIODIC_OBSERVATION')
               call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'time increment','OUTPUT,PERIODIC')
+              call InputErrorMsg(input,option,'time increment','OUTPUT,PERIODIC_OBSERVATION')
               call StringToUpper(word)
               select case(trim(word))
                 case('TIME')
@@ -1634,6 +1600,8 @@ subroutine assignMaterialPropToRegions(realization)
   use Field_module
   use Patch_module
   use Level_module
+  
+  use HDF5_module
 
   implicit none
   
@@ -1650,6 +1618,8 @@ subroutine assignMaterialPropToRegions(realization)
   
   PetscInt :: icell, local_id, ghosted_id, natural_id, material_property_id
   PetscInt :: istart, iend
+  character(len=MAXSTRINGLENGTH) :: group_name
+  character(len=MAXSTRINGLENGTH) :: dataset_name
   PetscErrorCode :: ierr
   
   type(option_type), pointer :: option
@@ -1821,6 +1791,15 @@ subroutine assignMaterialPropToRegions(realization)
           endif
         enddo
         
+        if (len_trim(material_property%porosity_filename) > 1) then
+          group_name = ''
+          dataset_name = 'Porosity'
+          call HDF5ReadCellIndexedRealArray(realization,field%porosity0, &
+                                            material_property%porosity_filename, &
+                                            group_name, &
+                                            dataset_name,option%id>0)
+        endif
+        
         cur_patch => cur_patch%next
      enddo
      cur_level => cur_level%next
@@ -1892,8 +1871,8 @@ subroutine assignUniformVelocity(realization)
     if (.not.associated(cur_connection_set)) exit
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
-      vdarcy = OptionDotProduct(option%uniform_velocity, &
-                                cur_connection_set%dist(1:3,iconn))
+      vdarcy = dot_product(option%uniform_velocity, &
+                           cur_connection_set%dist(1:3,iconn))
       patch%internal_velocities(1,sum_connection) = vdarcy
     enddo
     cur_connection_set => cur_connection_set%next
@@ -1907,8 +1886,8 @@ subroutine assignUniformVelocity(realization)
     cur_connection_set => boundary_condition%connection_set
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
-      vdarcy = OptionDotProduct(option%uniform_velocity, &
-                                cur_connection_set%dist(1:3,iconn))
+      vdarcy = dot_product(option%uniform_velocity, &
+                           cur_connection_set%dist(1:3,iconn))
       patch%boundary_velocities(1,sum_connection) = vdarcy
     enddo
     boundary_condition => boundary_condition%next
@@ -2088,6 +2067,7 @@ subroutine readMaterialsFromFile(realization,filename)
   use Grid_module
   use Option_module
   use Patch_module
+  use Discretization_module
   use Logging_module
   use Input_module
 
@@ -2103,18 +2083,43 @@ subroutine readMaterialsFromFile(realization,filename)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch   
   type(input_type), pointer :: input
+  type(discretization_type), pointer :: discretization
+  character(len=MAXSTRINGLENGTH) :: group_name
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  PetscTruth :: append_realization_id
   PetscInt :: ghosted_id, natural_id, material_id
   PetscInt :: fid = 86
   PetscInt :: status
+  Vec :: global_vec
+  Vec :: local_vec
   PetscErrorCode :: ierr
 
   field => realization%field
   patch => realization%patch
   grid => patch%grid
   option => realization%option
+  discretization => realization%discretization
 
   if (index(filename,'.h5') > 0) then
-    call HDF5ReadMaterialsFromFile(realization,filename)
+    group_name = 'Materials'
+    dataset_name = 'Material Ids'
+    if (option%id > 0) then
+      append_realization_id = PETSC_TRUE
+    else
+      append_realization_id = PETSC_FALSE
+    endif
+
+    call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
+                                    option)
+    call DiscretizationCreateVector(discretization,ONEDOF,local_vec,LOCAL, &
+                                    option)
+    call HDF5ReadCellIndexedIntegerArray(realization,global_vec, &
+                                         filename,group_name, &
+                                         dataset_name,append_realization_id)
+    call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)
+    call GridCopyPetscVecToIntegerArray(patch%imat,local_vec,grid%ngmax)
+    call VecDestroy(global_vec,ierr)
+    call VecDestroy(local_vec,ierr)
   else
     call PetscLogEventBegin(logging%event_hash_map, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -2156,6 +2161,7 @@ subroutine readPermeabilitiesFromFile(realization,filename)
   use Grid_module
   use Option_module
   use Patch_module
+  use Discretization_module
   use Logging_module
   use Input_module
 
@@ -2171,10 +2177,15 @@ subroutine readPermeabilitiesFromFile(realization,filename)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(input_type), pointer :: input
+  type(discretization_type), pointer :: discretization
+  character(len=MAXSTRINGLENGTH) :: group_name
+  character(len=MAXSTRINGLENGTH) :: dataset_name
   PetscInt :: local_id, ghosted_id, natural_id
   PetscReal :: permeability
+  PetscTruth :: append_realization_id
   PetscInt :: fid = 86
   PetscInt :: status
+  Vec :: global_vec
   PetscErrorCode :: ierr
   
   PetscReal, pointer :: perm_xx_p(:)
@@ -2185,9 +2196,26 @@ subroutine readPermeabilitiesFromFile(realization,filename)
   patch => realization%patch
   grid => patch%grid
   option => realization%option
+  discretization => realization%discretization
 
   if (index(filename,'.h5') > 0) then
-    call HDF5ReadPermeabilitiesFromFile(realization,filename)
+    group_name = ''
+    dataset_name = 'Permeability'
+    if (option%id > 0) then
+      append_realization_id = PETSC_TRUE
+    else
+      append_realization_id = PETSC_FALSE
+    endif
+
+    call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
+                                    option)
+    call HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
+                                      group_name, &
+                                      dataset_name,append_realization_id)
+    call VecCopy(global_vec,field%perm0_xx,ierr)
+    call VecCopy(global_vec,field%perm0_yy,ierr)
+    call VecCopy(global_vec,field%perm0_zz,ierr)
+    call VecDestroy(global_vec,ierr)
   else
 
     call GridVecGetArrayF90(grid,field%perm0_xx,perm_xx_p,ierr)

@@ -2,7 +2,12 @@ module Utility_module
 
 #include "definitions.h"
 
-  contains
+  interface DotProduct
+    module procedure DotProduct2
+    module procedure DotProduct3
+  end interface
+  
+contains
 
 function rnd()
 
@@ -364,5 +369,63 @@ subroutine Interpolate(x_high,x_low,x,y_high,y_low,y)
   endif
 
 end subroutine Interpolate
+
+! ************************************************************************** !
+!
+! DotProduct1: Computes the dot product between two 3d vectors
+! author: Glenn Hammond
+! date: 11/28/07
+!
+! ************************************************************************** !
+function DotProduct1(v1,v2)
+
+  implicit none
+  
+  PetscReal :: v1(3), v2(3)
+  
+  PetscReal :: DotProduct1
+  
+  DotProduct1 = v1(1)*v2(1)+v1(2)*v2(2)+v1(3)*v2(3)
+
+end function DotProduct1
+
+! ************************************************************************** !
+!
+! DotProduct2: Computes the dot product between two 3d vectors
+! author: Glenn Hammond
+! date: 11/28/07
+!
+! ************************************************************************** !
+function DotProduct2(v1,v2x,v2y,v2z)
+
+  implicit none
+  
+  PetscReal :: v1(3), v2x, v2y, v2z
+  
+  PetscReal :: DotProduct2
+  
+  DotProduct2 = v1(1)*v2x+v1(2)*v2y+v1(3)*v2z
+
+end function DotProduct2
+
+! ************************************************************************** !
+!
+! DotProduct3: Computes the dot product between components of two 3d 
+!                    vectors
+! author: Glenn Hammond
+! date: 11/28/07
+!
+! ************************************************************************** !
+function DotProduct3(v1x,v1y,v1z,v2x,v2y,v2z)
+
+  implicit none
+  
+  PetscReal :: v1x, v1y, v1z, v2x, v2y, v2z
+  
+  PetscReal :: DotProduct3
+  
+  DotProduct3 = v1x*v2x+v1y*v2y+v1z*v2z
+
+end function DotProduct3
 
 end module Utility_module

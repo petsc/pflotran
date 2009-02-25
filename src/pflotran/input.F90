@@ -492,9 +492,12 @@ subroutine InputReadFlotranStringSlave(input, option)
     if (word(1:4) == 'SKIP') then
       do 
         read(input%fid,'(a512)',iostat=input%ierr) tempstring
-       if (InputError(input) .and. OptionPrintToScreen(option)) then
-          print *, 'End of file reached in InputReadFlotranStringSlave.'
-          print *, 'SKIP encountered without matching NOSKIP.'
+       if (InputError(input)) then
+         if (OptionPrintToScreen(option)) then
+            print *, 'End of file reached in InputReadFlotranStringSlave.'
+            print *, 'SKIP encountered without matching NOSKIP.'
+          endif
+        return
         endif
         call InputReadWord(tempstring,word,PETSC_FALSE,input%ierr)
         call StringToUpper(word)

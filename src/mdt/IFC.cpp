@@ -196,6 +196,8 @@ IFC::IFC(Grid **grid_) {
 
   flagGridCells(grid);
 
+  setEastBoundaryMaterialTo2(grid);
+
   computeEastBoundary(grid,1);
   computeWestBoundary(grid,1);
   computeNorthBoundary(grid,0);
@@ -224,6 +226,22 @@ IFC::IFC(Grid **grid_) {
 
 }
 
+void IFC::setEastBoundaryMaterialTo2(Grid *grid) {
+
+  for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) {
+    PetscInt local_id = grid->cells[i].getIdLocal();
+    if (local_id > -1) {
+      if (grid->cells[i].flag & EAST_DIR_EAST_FACE || 
+          grid->cells[i].flag & EAST_DIR_SOUTH_FACE || 
+          grid->cells[i].flag & EAST_DIR_NORTH_FACE || 
+          grid->cells[i].flag & EAST_DIR_BOTTOM_FACE || 
+          grid->cells[i].flag & EAST_DIR_TOP_FACE) {
+        grid->cells[i].setMaterialId(2);
+      }
+    }
+  }
+
+}
 
 void IFC::computeWestBoundary(Grid *grid, PetscInt complete) {
 

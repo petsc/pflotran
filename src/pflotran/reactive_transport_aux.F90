@@ -10,13 +10,13 @@ module Reactive_Transport_Aux_module
  
   type, public :: reactive_transport_auxvar_type
     ! molality
-    PetscReal, pointer :: pri_molal(:) ! kg solute / L water
+    PetscReal, pointer :: pri_molal(:)     ! mol/kg water
     ! phase dependent totals
-    PetscReal, pointer :: total(:,:) ! mol solute / L water
-    PetscReal, pointer :: dtotal(:,:,:) ! kg water / m^3 water
+    PetscReal, pointer :: total(:,:)       ! mol solute/L water
+    PetscReal, pointer :: dtotal(:,:,:)    ! kg water/m^3 water
     ! sorbed totals
-    PetscReal, pointer :: total_sorb(:) ! mol solute / L water
-    PetscReal, pointer :: dtotal_sorb(:,:) ! kg water / m^3 water
+    PetscReal, pointer :: total_sorb(:)    ! mol/m^3 bulk
+    PetscReal, pointer :: dtotal_sorb(:,:) ! kg water/m^3 bulk
     ! aqueous species
     ! aqueous complexes
     PetscReal, pointer :: sec_molal(:)
@@ -26,8 +26,10 @@ module Reactive_Transport_Aux_module
     ! PetscReal, pointer :: kinionx_molfrac(:)
     PetscReal, pointer :: eqsurfcmplx_conc(:)
     PetscReal, pointer :: eqsurfcmplx_freesite_conc(:)
+!   PetscReal, pointer :: eqsurf_site_density(:)
     PetscReal, pointer :: eqionx_ref_cation_sorbed_conc(:)
     PetscReal, pointer :: eqionx_conc(:,:)
+!   PetscReal, pointer :: eqionx_cec(:)
     ! PetscReal, pointer :: eqionx_molfrac(:)
     ! mineral reactions
     PetscReal, pointer :: mnrl_volfrac0(:)
@@ -159,9 +161,12 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
     aux_var%eqsurfcmplx_conc = 0.d0
     allocate(aux_var%eqsurfcmplx_freesite_conc(reaction%neqsurfcmplxrxn))
     aux_var%eqsurfcmplx_freesite_conc = 1.d-9 ! initialize to guess
+!   allocate(aux_var%eqsurf_site_density(reaction%neqsurfcmplxrxn))
+!   aux_var%eqsurf_site_density = 0.d0
   else
     nullify(aux_var%eqsurfcmplx_conc)
     nullify(aux_var%eqsurfcmplx_freesite_conc)
+!   nullify(aux_var%eqsurf_site_density)
   endif
   
   if (reaction%neqionxrxn > 0) then
@@ -169,9 +174,12 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
     aux_var%eqionx_ref_cation_sorbed_conc = 1.d-9 ! initialize to guess
     allocate(aux_var%eqionx_conc(reaction%neqionxcation,reaction%neqionxrxn))
     aux_var%eqionx_conc = 1.d-9
+!   allocate(aux_var%eqionx_cec(reaction%neqionxcation))
+!   aux_var%eqionx_cec = 0.d0
   else
     nullify(aux_var%eqionx_ref_cation_sorbed_conc)
     nullify(aux_var%eqionx_conc)
+!   nullify(aux_var%eqionx_cec)
   endif
   
   if (reaction%nkinmnrl > 0) then
