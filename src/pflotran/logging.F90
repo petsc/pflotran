@@ -46,8 +46,8 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 5
     PetscLogEvent :: event_write_struct_dataset_hdf5
     PetscLogEvent :: event_region_read_hdf5
     PetscLogEvent :: event_region_read_ascii
-    PetscLogEvent :: event_material_read_hdf5
-    PetscLogEvent :: event_permeabilities_read_hdf5
+    PetscLogEvent :: event_cell_indx_int_read_hdf5
+    PetscLogEvent :: event_cell_indx_real_read_hdf5
 
     PetscLogEvent :: event_output_tecplot
     PetscLogEvent :: event_output_hdf5
@@ -172,12 +172,12 @@ subroutine LoggingCreate()
   call PetscLogEventRegister('RegReadFrmFileId', &
                              logging%class_pflotran, &
                              logging%event_region_read_ascii,ierr)
-  call PetscLogEventRegister('H5ReadMatFrmFile', &
+  call PetscLogEventRegister('H5RdCellIndxInt', &
                              logging%class_pflotran, &
-                             logging%event_material_read_hdf5,ierr)
-  call PetscLogEventRegister('H5ReadPermFrmFile', &
+                             logging%event_cell_indx_int_read_hdf5,ierr)
+  call PetscLogEventRegister('H5RdCellIndxReal', &
                              logging%class_pflotran, &
-                             logging%event_permeabilities_read_hdf5,ierr)
+                             logging%event_cell_indx_real_read_hdf5,ierr)
 
   call PetscLogEventRegister('OutputTecplot', &
                              logging%class_pflotran, &

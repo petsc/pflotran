@@ -842,7 +842,7 @@ subroutine ImmisAccumulation(aux_var,por,vol,rock_dencpr,option,iireac,Res)
      eng = eng + aux_var%sat(np) * aux_var%den(np) * aux_var%u(np)
   enddo
   mol = mol * porXvol
- ! if(option%use_isoth == PETSC_FALSE) &
+ ! if(option%use_isothermal == PETSC_FALSE) &
   eng = eng * porXvol + (1.d0 - por)* vol * rock_dencpr * aux_var%temp 
  
 ! Reaction terms here
@@ -853,7 +853,7 @@ subroutine ImmisAccumulation(aux_var,por,vol,rock_dencpr,option,iireac,Res)
  !    mol(2)= mol(2) - option%flow_dt * option%rtot(iireac,2)
  ! endif
   
-   !if(option%use_isoth)then
+   !if(option%use_isothermal)then
    !   Res(1:option%nflowdof)=mol(:)
    !else
       Res(1:option%nphase)=mol(:)
@@ -1057,11 +1057,11 @@ subroutine ImmisFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
         ! note uxmol only contains one phase xmol
         if (dphi>=0.D0) then
            ukvr = aux_var_up%kvr(np)
-           ! if(option%use_isoth == PETSC_FALSE)&
+           ! if(option%use_isothermal == PETSC_FALSE)&
            uh = aux_var_up%h(np)
         else
            ukvr = aux_var_dn%kvr(np)
-           ! if(option%use_isoth == PETSC_FALSE)&
+           ! if(option%use_isothermal == PETSC_FALSE)&
            uh = aux_var_dn%h(np)
         endif
    
@@ -1071,7 +1071,7 @@ subroutine ImmisFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
            vv_darcy(np)=v_darcy
            q = v_darcy * area
            fluxm(np)=fluxm(np) + q * density_ave
-          ! if(option%use_isoth == PETSC_FALSE)&
+          ! if(option%use_isothermal == PETSC_FALSE)&
             fluxe = fluxe + q*density_ave*uh 
         endif
      endif
@@ -1093,13 +1093,13 @@ subroutine ImmisFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   enddo
 
 ! conduction term
-  !if(option%use_isoth == PETSC_FALSE) then     
+  !if(option%use_isothermal == PETSC_FALSE) then     
      Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
      cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
      fluxe=fluxe + cond
  ! end if
 
-  !if(option%use_isoth)then
+  !if(option%use_isothermal)then
   !   Res(1:option%nflowdof) = fluxm(:) * option%flow_dt
  ! else
      Res(1:option%nphase) = fluxm(:) * option%flow_dt
@@ -1203,18 +1203,18 @@ subroutine ImmisBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      uxmol=0.D0
      
      if (v_darcy >= 0.D0) then
-        !if(option%use_isoth == PETSC_FALSE)&
+        !if(option%use_isothermal == PETSC_FALSE)&
          uh = aux_var_up%h(np)
         ! uxmol(:)=aux_var_up%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
      else
-         !if(option%use_isoth == PETSC_FALSE)&
+         !if(option%use_isothermal == PETSC_FALSE)&
         uh = aux_var_dn%h(np)
          ! uxmol(:)=aux_var_dn%xmol((np-1)*option%nflowspec+1 : np * option%nflowspec)
      endif
     
         fluxm(np) = fluxm(np) + q*density_ave ! *uxmol(ispec)
 
-      !if(option%use_isoth == PETSC_FALSE) &
+      !if(option%use_isothermal == PETSC_FALSE) &
       fluxe = fluxe + q*density_ave*uh
  !print *,'FLBC', ibndtype(1),np, ukvr, v_darcy, uh, uxmol
    enddo
@@ -1240,7 +1240,7 @@ subroutine ImmisBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   end select
 #endif
   ! Conduction term
-! if(option%use_isoth == PETSC_FALSE) then
+! if(option%use_isothermal == PETSC_FALSE) then
     select case(ibndtype(2))
     case(DIRICHLET_BC, 4)
        Dk =  Dk_dn / dd_up
@@ -1363,7 +1363,6 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   use Coupler_module  
   use Field_module
   use Debug_module
-  
   
   implicit none
 
@@ -1601,8 +1600,8 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
       distance_gravity = cur_connection_set%dist(0,iconn) * &
-                         OptionDotProduct(option%gravity, &
-                                          cur_connection_set%dist(1:3,iconn))
+                         dot_product(grid%gravity, &
+                                     cur_connection_set%dist(1:3,iconn))
 
       icap_dn = int(icap_loc_p(ghosted_id))  
 ! Then need fill up increments for BCs
@@ -1669,8 +1668,8 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
       distance_gravity = distance * &
-                         OptionDotProduct(option%gravity, &
-                                          cur_connection_set%dist(1:3,iconn))
+                         dot_product(grid%gravity, &
+                                     cur_connection_set%dist(1:3,iconn))
       dd_up = distance*fraction_upwind
       dd_dn = distance-dd_up ! should avoid truncation error
       ! upweight could be calculated as 1.d0-fraction_upwind
@@ -1743,7 +1742,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   enddo
 
 ! print *,'finished rp vol scale'
-  if(option%use_isoth) then
+  if(option%use_isothermal) then
      do local_id = 1, grid%nlmax  ! For each local node do...
         ghosted_id = grid%nL2G(local_id)   ! corresponding ghost index
         if (associated(patch%imat)) then
@@ -2088,8 +2087,8 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
       distance_gravity = cur_connection_set%dist(0,iconn) * &
-                         OptionDotProduct(option%gravity, &
-                                          cur_connection_set%dist(1:3,iconn))
+                         dot_product(grid%gravity, &
+                                     cur_connection_set%dist(1:3,iconn))
       icap_dn = int(icap_loc_p(ghosted_id))
 
 ! Then need fill up increments for BCs
@@ -2203,8 +2202,8 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
       distance_gravity = distance * &
-                         OptionDotProduct(option%gravity, &
-                                          cur_connection_set%dist(1:3,iconn))
+                         dot_product(grid%gravity, &
+                                     cur_connection_set%dist(1:3,iconn))
       dd_up = distance*fraction_upwind
       dd_dn = distance-dd_up ! should avoid truncation error
       ! upweight could be calculated as 1.d0-fraction_upwind

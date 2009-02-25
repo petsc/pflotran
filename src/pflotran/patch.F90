@@ -273,8 +273,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       call printErrMsg(option)
     endif
     if (associated(patch%grid%structured_grid)) then
-      if (coupler%region%iface == 0 .and. &
-          .not.associated(coupler%region%faces)) then
+      if (coupler%region%num_cells > 0 .and. &
+          (coupler%region%iface == 0 .and. &
+           .not.associated(coupler%region%faces))) then
         option%io_buffer = 'Region ' // trim(coupler%region_name) // &
                  ', which is tied to a boundary condition, has not ' // &
                  'been assigned a face in the structured grid. '
@@ -899,8 +900,8 @@ subroutine PatchAssignUniformVelocity(patch,option)
     if (.not.associated(cur_connection_set)) exit
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
-      vdarcy = OptionDotProduct(option%uniform_velocity, &
-                                cur_connection_set%dist(1:3,iconn))
+      vdarcy = dot_product(option%uniform_velocity, &
+                           cur_connection_set%dist(1:3,iconn))
       patch%internal_velocities(1,sum_connection) = vdarcy
     enddo
     cur_connection_set => cur_connection_set%next
@@ -914,8 +915,8 @@ subroutine PatchAssignUniformVelocity(patch,option)
     cur_connection_set => boundary_condition%connection_set
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
-      vdarcy = OptionDotProduct(option%uniform_velocity, &
-                                cur_connection_set%dist(1:3,iconn))
+      vdarcy = dot_product(option%uniform_velocity, &
+                           cur_connection_set%dist(1:3,iconn))
       patch%boundary_velocities(1,sum_connection) = vdarcy
     enddo
     boundary_condition => boundary_condition%next

@@ -1413,18 +1413,23 @@ subroutine RealizationAddWaypointsToList(realization)
     cur_tran_condition => cur_tran_condition%next
   enddo
 
+  ! set flag for final output
+  cur_waypoint => waypoint_list%first
+  do
+    if (.not.associated(cur_waypoint)) exit
+    if (cur_waypoint%final) then
+      cur_waypoint%print_output = realization%output_option%print_final
+      exit
+    endif
+    cur_waypoint => cur_waypoint%next
+  enddo
+  ! use final time in conditional below
+  final_time = cur_waypoint%time
+
   ! add waypoints for periodic output
-  ! find final time
   if (realization%output_option%periodic_output_time_incr > 0.d0 .or. &
       realization%output_option%periodic_tr_output_time_incr > 0.d0) then
-    cur_waypoint => waypoint_list%first
-    do
-      if (.not.associated(cur_waypoint%next)) exit
-      if (cur_waypoint%final) exit
-      cur_waypoint => cur_waypoint%next
-    enddo
 
-    final_time = cur_waypoint%time
     if (realization%output_option%periodic_output_time_incr > 0.d0) then
       ! standard output
       temp_real = 0.d0
@@ -1433,7 +1438,7 @@ subroutine RealizationAddWaypointsToList(realization)
         if (temp_real > final_time) exit
         waypoint => WaypointCreate()
         waypoint%time = temp_real
-        waypoint%print_output = realization%output_option%print_final
+        waypoint%print_output = PETSC_TRUE
         call WaypointInsertInList(waypoint,realization%waypoints)
       enddo
     endif
@@ -1452,7 +1457,7 @@ subroutine RealizationAddWaypointsToList(realization)
     endif
 
   endif
-      
+
 end subroutine RealizationAddWaypointsToList
 
 ! ************************************************************************** !

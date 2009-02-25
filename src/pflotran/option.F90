@@ -68,7 +68,7 @@ module Option_module
     ! Program options
     PetscTruth :: use_matrix_free  ! If true, do not form the Jacobian.
     
-    PetscTruth :: use_isoth
+    PetscTruth :: use_isothermal
     
     character(len=MAXWORDLENGTH) :: generalized_grid
     PetscTruth :: use_generalized_grid
@@ -86,8 +86,6 @@ module Option_module
     PetscReal :: scale
  !   PetscReal, pointer :: dencpr(:),ckwet(:)
  !   PetscReal, pointer :: sir(:,:)
-
-    PetscReal :: gravity(3)
 
     PetscReal :: m_nacl
 !    PetscReal :: difaq, delhaq, eqkair, ret=1.d0, fc=1.d0
@@ -178,12 +176,6 @@ module Option_module
 
   end type output_option_type
 
-  interface OptionDotProduct
-    module procedure OptionDotProduct1
-    module procedure OptionDotProduct2
-    module procedure OptionDotProduct3
-  end interface
-  
   interface printMsg
     module procedure printMsg1
     module procedure printMsg2
@@ -205,7 +197,6 @@ module Option_module
             printErrMsg, &
             printWrnMsg, &
             printMsg, &
-            OptionDotProduct, &
             OptionDestroy, &
             OptionCheckTouch, &
             OptionPrintToScreen, &
@@ -310,7 +301,7 @@ subroutine OptionInitRealization(option)
   option%iflag = 0
   option%io_buffer = ''
   
-  option%use_isoth = PETSC_FALSE
+  option%use_isothermal = PETSC_FALSE
   option%use_matrix_free = PETSC_FALSE
   
   option%flowmode = ""
@@ -344,9 +335,6 @@ subroutine OptionInitRealization(option)
   option%reference_saturation = 1.d0
   option%initialize_with_molality = PETSC_FALSE
 
-  option%gravity(:) = 0.d0
-  option%gravity(3) = -9.8068d0    ! m/s^2
-  
   !set scale factor for heat equation, i.e. use units of MJ for energy
   option%scale = 1.d-6
 
@@ -471,8 +459,8 @@ subroutine OptionCheckCommandLine(option)
   
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-snes_mf", & 
                            option%use_matrix_free, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_isoth", &
-                           option%use_isoth, ierr)
+  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_isothermal", &
+                           option%use_isothermal, ierr)
                            
   call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-restart', &
                              option%restart_filename, &
@@ -626,64 +614,6 @@ subroutine printMsg2(option,string)
   if (OptionPrintToScreen(option)) print *, trim(string)
   
 end subroutine printMsg2
-
-! ************************************************************************** !
-!
-! OptionDotProduct1: Computes the dot product between two 3d vectors
-! author: Glenn Hammond
-! date: 11/28/07
-!
-! ************************************************************************** !
-function OptionDotProduct1(v1,v2)
-
-  implicit none
-  
-  PetscReal :: v1(3), v2(3)
-  
-  PetscReal :: OptionDotProduct1
-  
-  OptionDotProduct1 = v1(1)*v2(1)+v1(2)*v2(2)+v1(3)*v2(3)
-
-end function OptionDotProduct1
-
-! ************************************************************************** !
-!
-! OptionDotProduct2: Computes the dot product between two 3d vectors
-! author: Glenn Hammond
-! date: 11/28/07
-!
-! ************************************************************************** !
-function OptionDotProduct2(v1,v2x,v2y,v2z)
-
-  implicit none
-  
-  PetscReal :: v1(3), v2x, v2y, v2z
-  
-  PetscReal :: OptionDotProduct2
-  
-  OptionDotProduct2 = v1(1)*v2x+v1(2)*v2y+v1(3)*v2z
-
-end function OptionDotProduct2
-
-! ************************************************************************** !
-!
-! OptionDotProduct3: Computes the dot product between components of two 3d 
-!                    vectors
-! author: Glenn Hammond
-! date: 11/28/07
-!
-! ************************************************************************** !
-function OptionDotProduct3(v1x,v1y,v1z,v2x,v2y,v2z)
-
-  implicit none
-  
-  PetscReal :: v1x, v1y, v1z, v2x, v2y, v2z
-  
-  PetscReal :: OptionDotProduct3
-  
-  OptionDotProduct3 = v1x*v2x+v1y*v2y+v1z*v2z
-
-end function OptionDotProduct3
 
 ! ************************************************************************** !
 !

@@ -199,6 +199,8 @@ PetscInt, parameter :: TECPLOT_BLOCK_FORMAT = 2
 
 PetscInt, parameter :: OBSERVATION_SCALAR = 1
 PetscInt, parameter :: OBSERVATION_FLUX = 2
+PetscInt, parameter :: OBSERVATION_AT_CELL_CENTER = 1
+PetscInt, parameter :: OBSERVATION_AT_COORDINATE = 2
 
 ! phase ids
 PetscInt, parameter :: LIQUID_PHASE = 1
