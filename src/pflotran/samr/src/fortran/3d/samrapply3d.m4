@@ -178,7 +178,7 @@ c for now we assume that ndof is 1
              r(0,i,j,k)= f(0,i,j,k)-(flux0(0,i+1,j,k)-flux0(0,i,j,k)
      &                              +flux1(0,i,j+1,k)-flux1(0,i,j,k)
      &                              +flux2(0,i,j,k+1)-flux2(0,i,j,k))
-     &                  -src(0,i,j,k)*u(0,i,j,k)
+     &                              -src(0,i,j,k)*u(0,i,j,k)
             enddo
          enddo
       enddo
