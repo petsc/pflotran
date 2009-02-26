@@ -1,7 +1,4 @@
-:Description: 1D test problem for tracer transport
-
-:=========================== flow mode ========================================
-MODE RICHARDS
+:Description: 1D test problem for diffusion of tracer in a cubic domain
 
 :=========================== chemistry ========================================
 CHEMISTRY
@@ -13,25 +10,6 @@ Tracer
 :=========================== solver options ===================================
 TIMESTEPPER
 TS_ACCELERATION 8
-/
-
-NEWTON_SOLVER FLOW
-:RTOL 1.d-4
-:ATOL 1.d-4
-:STOL 1.e-60
-:DTOL 1.e4
-:ITOL_UPDATE 1.d0
-:NO_INFINITY_NORM
-::NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
-/
-
-LINEAR_SOLVER FLOW
-KSP_TYPE GMRES
-PC_TYPE NONE
-:KSP_TYPE PREONLY
-:PC_TYPE LU
-:SOLVER GMRES
 /
 
 NEWTON_SOLVER TRANSPORT
@@ -191,21 +169,6 @@ COORDINATES
 /
 END
 
-:=========================== flow conditions ==================================
-FLOW_CONDITION initial
-TYPE
-PRESSURE hydrostatic
-/
-PRESSURE 1956741.84 ! 200 meter piezometric head (200*997.32*9.81)
-/
-
-FLOW_CONDITION source
-TYPE
-RATE volumetric_rate
-/
-RATE 2.77777778d-3  ! 10 m^3/hr
-/
-
 :=========================== transport conditions =============================
 TRANSPORT_CONDITION initial
 TYPE zero_gradient
@@ -237,56 +200,48 @@ END
 :=========================== condition couplers ===============================
 : initial condition
 INITIAL_CONDITION
-FLOW_CONDITION initial
 TRANSPORT_CONDITION initial
 REGION all
 END
 
 : west boundary condition
 BOUNDARY_CONDITION west
-FLOW_CONDITION initial
 TRANSPORT_CONDITION initial
 REGION west
 END
 
 : east boundary condition
 BOUNDARY_CONDITION east
-FLOW_CONDITION initial
 TRANSPORT_CONDITION initial
 REGION east
 END
 
 : north boundary condition
 BOUNDARY_CONDITION north
-FLOW_CONDITION initial
 TRANSPORT_CONDITION initial
 REGION north
 END
 
 : south boundary condition
 BOUNDARY_CONDITION south
-FLOW_CONDITION initial
 TRANSPORT_CONDITION initial
 REGION south
 END
 
 : top boundary condition
 BOUNDARY_CONDITION top
-FLOW_CONDITION initial
 TRANSPORT_CONDITION initial
 REGION top
 END
 
 : bottom boundary condition
 BOUNDARY_CONDITION bottom
-FLOW_CONDITION initial
 TRANSPORT_CONDITION initial
 REGION bottom
 END
 
 : well source/sink
 SOURCE_SINK well
-FLOW_CONDITION source
 TRANSPORT_CONDITION source
 REGION well
 END
