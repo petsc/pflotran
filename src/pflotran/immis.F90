@@ -1600,7 +1600,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
       distance_gravity = cur_connection_set%dist(0,iconn) * &
-                         dot_product(grid%gravity, &
+                         dot_product(option%gravity, &
                                      cur_connection_set%dist(1:3,iconn))
 
       icap_dn = int(icap_loc_p(ghosted_id))  
@@ -1668,7 +1668,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
       distance_gravity = distance * &
-                         dot_product(grid%gravity, &
+                         dot_product(option%gravity, &
                                      cur_connection_set%dist(1:3,iconn))
       dd_up = distance*fraction_upwind
       dd_dn = distance-dd_up ! should avoid truncation error
@@ -2087,7 +2087,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
       distance_gravity = cur_connection_set%dist(0,iconn) * &
-                         dot_product(grid%gravity, &
+                         dot_product(option%gravity, &
                                      cur_connection_set%dist(1:3,iconn))
       icap_dn = int(icap_loc_p(ghosted_id))
 
@@ -2202,7 +2202,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
       distance_gravity = distance * &
-                         dot_product(grid%gravity, &
+                         dot_product(option%gravity, &
                                      cur_connection_set%dist(1:3,iconn))
       dd_up = distance*fraction_upwind
       dd_dn = distance-dd_up ! should avoid truncation error

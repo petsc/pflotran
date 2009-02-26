@@ -83,7 +83,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   call nacl_den(temperature_at_datum,pressure_at_datum*1.d-6,xm_nacl,dw_kg) 
   rho = dw_kg * 1.d3
   pressure_gradient(1:3) = piezometric_head_gradient(1:3)* &
-                           rho*dabs(grid%gravity(Z_DIRECTION)) ! gravity is negative, but we just want magnitude
+                           rho*dabs(option%gravity(Z_DIRECTION)) ! gravity is negative, but we just want magnitude
 
   if (dabs(pressure_gradient(Z_DIRECTION)) < 1.d-40) then
     ! compute the vertical gradient based on a 1 meter vertical spacing and
@@ -121,7 +121,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       num_iteration = 0
       do 
         pressure = pressure0 + 0.5d0*(rho+rho0) * &
-                   grid%gravity(Z_DIRECTION) * delta_z
+                   option%gravity(Z_DIRECTION) * delta_z
         call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
         rho1 = dw_kg * 1.d3
         if (dabs(rho-rho1) < 1.d-10) exit
@@ -156,7 +156,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       num_iteration = 0
       do                   ! notice the negative sign (-) here
         pressure = pressure0 - 0.5d0*(rho+rho0) * &
-                   grid%gravity(Z_DIRECTION) * delta_z
+                   option%gravity(Z_DIRECTION) * delta_z
         call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
         rho1 = dw_kg * 1.d3
         if (dabs(rho-rho1) < 1.d-10) exit
@@ -199,7 +199,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       ipressure = idatum+int(dist_z/delta_z)
       dist_z = grid%z(ghosted_id)-dz_conn-z(ipressure)
       pressure = pressure_array(ipressure) + &
-                 density_array(ipressure)*grid%gravity(Z_DIRECTION) * &
+                 density_array(ipressure)*option%gravity(Z_DIRECTION) * &
                  dist_z + &
 !                 (grid%z(ghosted_id)-z(ipressure)) + &
                  pressure_gradient(X_DIRECTION)*dist_x + & ! gradient in Pa/m
@@ -295,8 +295,8 @@ subroutine HydrostaticUpdateCouplerRotate(coupler,option,grid)
   
   nullify(pressure_array)
 
-  magnitude_gravity = sqrt(dot_product(grid%gravity,grid%gravity))
-  unit_vector = grid%gravity/magnitude_gravity
+  magnitude_gravity = sqrt(dot_product(option%gravity,option%gravity))
+  unit_vector = option%gravity/magnitude_gravity
   length_vector(1) = grid%x_max_global-grid%x_min_global
   length_vector(2) = grid%y_max_global-grid%y_min_global
   length_vector(3) = grid%z_max_global-grid%z_min_global
@@ -445,7 +445,7 @@ subroutine HydrostaticUpdateCouplerRotate(coupler,option,grid)
       ipressure = idatum+int(dist_z/delta_depth)
       dist_z = grid%z(ghosted_id)-dz_conn-depth(ipressure)
       pressure = pressure_array(ipressure) + &
-                 density_array(ipressure)*grid%gravity(Z_DIRECTION) * &
+                 density_array(ipressure)*option%gravity(Z_DIRECTION) * &
                  dist_z + &
 !                 (grid%z(ghosted_id)-z(ipressure)) + &
                  pressure_gradient(X_DIRECTION)*dist_x + & ! gradient in Pa/m

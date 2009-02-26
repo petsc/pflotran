@@ -82,6 +82,8 @@ module Option_module
       ! Basically our target number of newton iterations per time step.
     PetscReal :: dpmxe,dtmpmxe,dsmxe,dcmxe !maximum allowed changes in field vars.
     PetscReal :: dpmax,dtmpmax,dsmax,dcmax
+
+    PetscReal :: gravity(3)
     
     PetscReal :: scale
  !   PetscReal, pointer :: dencpr(:),ckwet(:)
@@ -339,6 +341,9 @@ subroutine OptionInitRealization(option)
   option%scale = 1.d-6
 
   option%ideriv = 1
+
+  option%gravity(:) = 0.d0
+  option%gravity(3) = -9.8068d0    ! m/s^2
 
   option%dpmxe = 5.d4
   option%dtmpmxe = 5.d0

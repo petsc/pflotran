@@ -54,8 +54,6 @@ module Grid_module
     
     PetscReal, pointer :: x(:), y(:), z(:) ! coordinates of ghosted grid cells
 
-    PetscReal :: gravity(3)
-
     PetscReal :: x_min_global, x_max_global, y_min_global, y_max_global, z_min_global, z_max_global
     PetscReal :: x_min_local, x_max_local, y_min_local, y_max_local, z_min_local, z_max_local
 
@@ -142,9 +140,6 @@ function GridCreate()
   grid%z_min_local = 1.d20
   grid%z_max_local = -1.d20
 
-  grid%gravity(:) = 0.d0
-  grid%gravity(3) = -9.8068d0    ! m/s^2
-  
   grid%nmax = 0
   grid%nlmax = 0 
   grid%ngmax = 0
