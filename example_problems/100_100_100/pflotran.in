@@ -56,6 +56,7 @@ PC_TYPE NONE
 :=========================== discretization ===================================
 GRID
 TYPE structured
+GRAVITY 0.d0 0.d0 0.d0
 ORIGIN 0.d0 0.d0 0.d0
 NXYZ 32 32 32
 BOUNDS
