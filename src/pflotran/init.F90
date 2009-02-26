@@ -294,6 +294,10 @@ subroutine Init(simulation)
                              ImmisJacobian,realization,ierr)
     end select
     
+    ! by default turn off line search
+    call SNESLineSearchSet(flow_solver%snes,SNESLineSearchNo, &
+                           PETSC_NULL_OBJECT,ierr)
+
     call SolverSetSNESOptions(flow_solver)
 
     ! If we are using a structured grid, set the corresponding flow DA 
