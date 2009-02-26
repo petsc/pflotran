@@ -533,7 +533,8 @@ end subroutine ReactionProcessConstraint
 subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          reaction,constraint_name, &
                                          aq_species_constraint, &
-                                         num_iterations,option)
+                                         num_iterations, &
+                                         initialize_rt_auxvar,option)
   use Option_module
   use Input_module
   use String_module  
@@ -548,6 +549,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   character(len=MAXWORDLENGTH) :: constraint_name
   type(aq_species_constraint_type), pointer :: aq_species_constraint
   PetscInt :: num_iterations
+  PetscTruth :: initialize_rt_auxvar
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -669,7 +671,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     end select
   enddo
   
-  rt_auxvar%pri_molal = free_conc
+  if (initialize_rt_auxvar) then
+    rt_auxvar%pri_molal = free_conc
+  endif
 
   num_iterations = 0
   compute_activity_coefs = PETSC_FALSE

@@ -1162,6 +1162,7 @@ subroutine RealizAssignTransportInitCond(realization)
   use Reactive_Transport_Aux_module
   use Reaction_Aux_module
   use Global_Aux_module
+  use Reaction_module
   
   implicit none
 
@@ -1186,7 +1187,7 @@ subroutine RealizAssignTransportInitCond(realization)
   type(reaction_type), pointer :: reaction
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)
-  
+ 
   PetscInt :: iphase
   
   option => realization%option
@@ -1230,6 +1231,15 @@ subroutine RealizAssignTransportInitCond(realization)
                 xx_p(ibegin:iend) = 1.d-200
                 cycle
               endif
+            endif
+            if (.not.option%use_isothermal) then
+              call ReactionEquilibrateConstraint(rt_aux_vars(ghosted_id), &
+                                                 global_aux_vars(ghosted_id), &
+                                                 reaction, &
+                  initial_condition%tran_condition%cur_constraint_coupler%constraint_name, &
+                  initial_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
+                  initial_condition%tran_condition%cur_constraint_coupler%num_iterations, &
+                                                 PETSC_FALSE,option)
             endif
             do idof = 1, option%ntrandof ! primary aqueous concentrations
               xx_p(ibegin+idof-1) = &

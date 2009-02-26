@@ -146,6 +146,7 @@ subroutine Init(simulation)
   else
     option%nphase = 1
     option%liquid_phase = 1
+    option%use_isothermal = PETSC_TRUE  ! assume default isothermal when only transport
     call TimestepperDestroy(simulation%flow_stepper)
     nullify(flow_stepper)
   endif
@@ -1097,6 +1098,16 @@ subroutine InitReadInput(simulation)
 
 !......................
 
+      case('NONISOTHERMAL')
+        option%use_isothermal = PETSC_FALSE
+
+!......................
+
+      case('ISOTHERMAL')
+        option%use_isothermal = PETSC_TRUE
+
+!......................
+
       case('BRIN','BRINE')
         call InputReadStringErrorMsg(input,option,card)
         call InputReadDouble(input,option,option%m_nacl)
@@ -1557,6 +1568,7 @@ subroutine setFlowMode(option)
       option%liquid_phase = 1      
       option%nflowdof = 1
       option%nflowspec = 1
+      option%use_isothermal = PETSC_TRUE
     case('MPH','MPHASE')
       option%iflowmode = MPH_MODE
       option%nphase = 2

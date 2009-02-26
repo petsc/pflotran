@@ -354,9 +354,13 @@ subroutine OutputTecplotBlock(realization)
                    &'', K='',i4)') &
                    option%time/output_option%tconv,grid%structured_grid%nx+1, &
                    grid%structured_grid%ny+1,grid%structured_grid%nz+1
-      write(string2,'(i5)') comma_count+1
-      string = trim(string) // ', VARLOCATION=([4-' // &
-               trim(adjustl(string2)) // ']=CELLCENTERED)'
+      if (comma_count > 3) then
+        write(string2,'(i5)') comma_count+1
+        string = trim(string) // ', VARLOCATION=([4-' // &
+                 trim(adjustl(string2)) // ']=CELLCENTERED)'
+      else
+        string = trim(string) // ', VARLOCATION=([4]=CELLCENTERED)'
+      endif
     else
       write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
                    &'', K='',i4)') &

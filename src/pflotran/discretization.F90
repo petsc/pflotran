@@ -291,21 +291,17 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
               call InputSkipToEND(input,option,word) 
           end select
         case ('GRAVITY')
-          select case(discretization%itype)
-            case(STRUCTURED_GRID, UNSTRUCTURED_GRID)
-               call InputReadDouble(input,option,discretization%grid%gravity(X_DIRECTION))
-               call InputErrorMsg(input,option,'x-direction','GRAVITY')
-               call InputReadDouble(input,option,discretization%grid%gravity(Y_DIRECTION))
-               call InputErrorMsg(input,option,'y-direction','GRAVITY')
-               call InputReadDouble(input,option,discretization%grid%gravity(Z_DIRECTION))
-               call InputErrorMsg(input,option,'z-direction','GRAVITY')
-               if (option%myrank == option%io_rank .and. &
-                    option%print_to_screen) &
-                    write(option%fid_out,'(/," *GRAV",/, &
-                    & "  gravity    = "," [m/s^2]",3x,3pe12.4 &
-                    & )') discretization%grid%gravity(1:3)
-            case(AMR_GRID)
-           end select
+          call InputReadDouble(input,option,option%gravity(X_DIRECTION))
+          call InputErrorMsg(input,option,'x-direction','GRAVITY')
+          call InputReadDouble(input,option,option%gravity(Y_DIRECTION))
+          call InputErrorMsg(input,option,'y-direction','GRAVITY')
+          call InputReadDouble(input,option,option%gravity(Z_DIRECTION))
+          call InputErrorMsg(input,option,'z-direction','GRAVITY')
+          if (option%myrank == option%io_rank .and. &
+              option%print_to_screen) &
+            write(option%fid_out,'(/," *GRAV",/, &
+              & "  gravity    = "," [m/s^2]",3x,3pe12.4 &
+              & )') option%gravity(1:3)
         case ('INVERT_Z')
           if (associated(grid%structured_grid)) then
             grid%structured_grid%invert_z_axis = PETSC_TRUE
@@ -351,8 +347,7 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
     select case(discretization%itype)
       case(STRUCTURED_GRID)
         if (discretization%grid%structured_grid%invert_z_axis) then
-          discretization%grid%gravity(Z_DIRECTION) =  &
-            -discretization%grid%gravity(Z_DIRECTION)
+          option%gravity(Z_DIRECTION) = -1.d0*option%gravity(Z_DIRECTION)
         endif
     end select
   endif
