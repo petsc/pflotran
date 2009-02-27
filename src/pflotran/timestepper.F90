@@ -196,6 +196,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   use Output_module, only : Output, OutputInit, OutputVectorTecplot
   use Logging_module  
   use Mass_Balance_module
+  use Discretization_module
   
   implicit none
   
