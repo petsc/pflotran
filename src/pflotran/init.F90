@@ -1818,23 +1818,23 @@ subroutine assignMaterialPropToRegions(realization)
   enddo
 
   if (option%nflowdof > 0) then
-     call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
-          field%perm_xx_loc,ONEDOF)  
-     call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
-          field%perm_yy_loc,ONEDOF)  
-     call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
-          field%perm_zz_loc,ONEDOF)   
+    call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
+                                     field%perm_xx_loc,ONEDOF)  
+    call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
+                                     field%perm_yy_loc,ONEDOF)  
+    call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
+                                     field%perm_zz_loc,ONEDOF)   
      
-     call DiscretizationLocalToLocal(discretization,field%icap_loc, &
-          field%icap_loc,ONEDOF)   
-     call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
-          field%ithrm_loc,ONEDOF)
+    call DiscretizationLocalToLocal(discretization,field%icap_loc, &
+                                    field%icap_loc,ONEDOF)   
+    call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
+                                    field%ithrm_loc,ONEDOF)
   endif
   
   call DiscretizationGlobalToLocal(discretization,field%porosity0, &
-       field%porosity_loc,ONEDOF)
+                                   field%porosity_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%tor_loc, &
-       field%tor_loc,ONEDOF)   
+                                  field%tor_loc,ONEDOF)   
 
 end subroutine assignMaterialPropToRegions
 

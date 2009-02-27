@@ -331,8 +331,15 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     transient_plot_flag = PETSC_TRUE
     call Output(realization,plot_flag,transient_plot_flag)
     if (output_option%print_permeability) then
-      string = 'permeability-' // trim(option%group_prefix) // '.tec'
-      call OutputVectorTecplot(string,string,realization,realization%field%perm0_xx)
+      if (len_trim(option%group_prefix) > 1) then
+        string = 'permeability-' // trim(option%group_prefix) // '.tec'
+      else
+        string = 'permeability.tec'
+      endif
+      call DiscretizationLocalToGlobal(realization%discretization, &
+                                       realization%field%perm_xx_loc, &
+                                       realization%field%work,ONEDOF)
+      call OutputVectorTecplot(string,string,realization,realization%field%work)
     endif
   endif
   ! increment plot number so that 000 is always the initial condition, and nothing else
