@@ -917,7 +917,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
                     option%flow_dt/realization%output_option%tconv
             print *,"Stopping execution!"
           endif
-          realization%output_option%plot_name = 'cut_to_failure'
+          realization%output_option%plot_name = 'flow_cut_to_failure'
           plot_flag = PETSC_TRUE
           transient_plot_flag = PETSC_FALSE
           call Output(realization,plot_flag,transient_plot_flag)
@@ -1294,7 +1294,7 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
                     option%tran_dt/realization%output_option%tconv
             print *,"Stopping execution!"
           endif
-          realization%output_option%plot_name = 'cut_to_failure'
+          realization%output_option%plot_name = 'tran_cut_to_failure'
           plot_flag = PETSC_TRUE
           transient_plot_flag = PETSC_FALSE
           call Output(realization,plot_flag,transient_plot_flag)
