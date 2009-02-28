@@ -409,6 +409,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     if (associated(tran_stepper)) then
       call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr)
       call StepperStepTransportDT(realization,tran_stepper, &
+                                  flow_timestep_cut_flag, &
                                   tran_timestep_cut_flag, &
                                   idum,failure)
       call PetscLogStagePop(ierr)
@@ -1112,7 +1113,8 @@ end subroutine StepperStepFlowDT
 ! date: 02/19/08
 !
 ! ************************************************************************** !
-subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
+subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
+                                  tran_timestep_cut_flag, &
                                   num_newton_iterations,failure)
   
   use Reactive_Transport_module
@@ -1139,7 +1141,8 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   type(realization_type) :: realization
   type(stepper_type) :: stepper
 
-  PetscTruth :: timestep_cut_flag
+  PetscTruth :: flow_timestep_cut_flag
+  PetscTruth :: tran_timestep_cut_flag
   PetscInt :: num_newton_iterations
   PetscTruth :: failure
   
@@ -1175,7 +1178,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   call DiscretizationLocalToLocal(discretization,field%porosity_loc,field%porosity_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%tor_loc,field%tor_loc,ONEDOF)
 
-  if (timestep_cut_flag) then
+  if (flow_timestep_cut_flag) then
     option%tran_time = option%flow_time
     option%tran_dt = option%flow_dt
     option%time = option%flow_time
@@ -1282,7 +1285,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
       if (snes_reason <= 0) then
         ! The Newton solver diverged, so try reducing the time step.
         icut = icut + 1
-        timestep_cut_flag = PETSC_TRUE
+        tran_timestep_cut_flag = PETSC_TRUE
 
         if (icut > stepper%icut_max .or. option%tran_dt<1.d-20) then
           if (option%print_screen_flag) then
@@ -1306,7 +1309,8 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
           &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.4, '' dt= '', &
           &   1pe12.4,i3)')  snes_reason,icut,stepper%icutcum, &
               option%tran_time/realization%output_option%tconv, &
-              option%tran_dt/realization%output_option%tconv,timestep_cut_flag
+              option%tran_dt/realization%output_option%tconv, &
+              tran_timestep_cut_flag
 
         option%tran_time = option%tran_time + option%tran_dt
 
