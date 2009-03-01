@@ -1092,7 +1092,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     write(option%fid_out,'(a20,es12.4,a8)') '  ionic strength: ', ionic_strength,' [mol/L]'
     write(option%fid_out,204) '  charge balance: ', charge_balance
     
-    write(option%fid_out,'(a20,f10.2,a5)') '        pressure: ', global_auxvar%pres(1),' [Pa]'
+    write(option%fid_out,'(a20,1pe12.4,a5)') '        pressure: ', global_auxvar%pres(1),' [Pa]'
     write(option%fid_out,'(a20,f8.2,a4)') '     temperature: ', global_auxvar%temp(1),' [C]'
     write(option%fid_out,'(a20,f8.2,a9)') '     density H2O: ', global_auxvar%den_kg(1),' [kg/m^3]'
     write(option%fid_out,90)
