@@ -236,9 +236,8 @@ void IFC::setEastBoundaryMaterialTo2(Grid *grid) {
         grid->cells[i].flag & EAST_DIR_NORTH_FACE || 
         grid->cells[i].flag & EAST_DIR_BOTTOM_FACE || 
         grid->cells[i].flag & EAST_DIR_TOP_FACE) {
-        if (grid->cells[i].getMaterialId() == 1) {
-          grid->cells[i].setMaterialId(2);
-        }
+        grid->cells[i].setMaterialId(2);
+        if (grid->cells[i-1].getActive()) grid->cells[i-1].setMaterialId(2);
       }
     }
   }
