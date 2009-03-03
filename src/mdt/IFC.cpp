@@ -236,9 +236,8 @@ void IFC::setEastBoundaryMaterialTo2(Grid *grid) {
         grid->cells[i].flag & EAST_DIR_NORTH_FACE || 
         grid->cells[i].flag & EAST_DIR_BOTTOM_FACE || 
         grid->cells[i].flag & EAST_DIR_TOP_FACE) {
-        if (grid->cells[i].getMaterialId() == 1) {
-          grid->cells[i].setMaterialId(2);
-        }
+        grid->cells[i].setMaterialId(2);
+        if (grid->cells[i-1].getActive()) grid->cells[i-1].setMaterialId(2);
       }
     }
   }
@@ -536,7 +535,7 @@ void IFC::computeSatSPPDomain(Grid *grid, Polygon *p) {
     PetscInt local_id = grid->cells[i].getIdLocal();
     if (local_id > -1) {
 //      if (grid->cells[i].flag & TOP_DIR_TOP_FACE &&
-      if (grid->cells[i].getZ() >= 105. && grid->cells[i].getZ() <= 108. &&
+      if (grid->cells[i].getZ() >= 103. && grid->cells[i].getZ() <= 105. &&
           p->pointInPolygon(grid->cells[i].getX(),
                             grid->cells[i].getY())) {
         PetscInt vertex_list[5] = {4,0,0,0,0};
@@ -564,7 +563,7 @@ void IFC::computeUnSatSPPDomain(Grid *grid, Polygon *p) {
     PetscInt local_id = grid->cells[i].getIdLocal();
     if (local_id > -1) {
 //      if (grid->cells[i].flag & TOP_DIR_TOP_FACE &&
-      if (grid->cells[i].getZ() >= 103. && grid->cells[i].getZ() <= 105. &&
+      if (grid->cells[i].getZ() > 105. && grid->cells[i].getZ() <= 108. &&
           p->pointInPolygon(grid->cells[i].getX(),
                             grid->cells[i].getY())) {
         PetscInt vertex_list[5] = {4,0,0,0,0};

@@ -1283,11 +1283,11 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
   call InputErrorMsg(input,option,'file or value','CONDITION')
   call StringToLower(word)
   if (StringCompare(word,'file',FOUR_INTEGER)) then
-    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputReadNChars(input,option,string2,MAXSTRINGLENGTH,PETSC_TRUE)
     input%err_buf = trim(keyword) // ' FILE'
     input%err_buf2 = 'CONDITION'
     call InputErrorMsg(input,option)
-    call FlowConditionReadValuesFromFile(word,dataset,option)
+    call FlowConditionReadValuesFromFile(string2,dataset,option)
   else
     input%buf = trim(string2)
     allocate(dataset%values(dataset%rank,1))
@@ -1330,7 +1330,7 @@ subroutine FlowConditionReadValuesFromFile(filename,dataset,option)
   
   type(option_type) :: option
   type(flow_condition_dataset_type) :: dataset
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   
   character(len=MAXSTRINGLENGTH) :: string
   PetscReal, pointer :: temp_times(:), temp_array1(:), temp_array2(:), &
