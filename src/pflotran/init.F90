@@ -1140,7 +1140,15 @@ subroutine InitReadInput(simulation)
                              PETSC_TRUE)
         call InputErrorMsg(input,option,'RESTART','Restart file name') 
         call InputReadDouble(input,option,option%restart_time)
-        call InputDefaultMsg(input,option,'Restart time') 
+        if (input%ierr == 0) then
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          if (input%ierr == 0) then
+            option%restart_time = option%restart_time* &
+                                  UnitsConvertToInternal(word,option)
+          else
+            call InputDefaultMsg(input,option,'RESTART, time units')
+          endif
+        endif
 
 !......................
 
