@@ -853,7 +853,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 !                                reaction%eqgasstoich(jcomp,igas)
             Jac(icomp,comp_id) = reaction%eqgasstoich(jcomp,igas)/rt_auxvar%pri_molal(comp_id)
              print *,'Gas CO2 constraint Jac,',igas, icomp, comp_id, reaction%eqgasstoich(jcomp,igas),&
-                 Jac(icomp,comp_id), rt_auxvar%pri_molal(comp_id)
+                 Jac(icomp,comp_id), rt_auxvar%pri_molal(comp_id), lnQK
 
           enddo
 
