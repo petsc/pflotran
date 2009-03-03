@@ -179,6 +179,11 @@ subroutine Init(simulation)
     endif
   endif
 
+  ! Initialize flow databases (e.g. span wagner, etc.)
+  select case(option%iflowmode)
+    case(MPH_MODE)
+  end select
+
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
 ! deprecated - geh
