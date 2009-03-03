@@ -48,7 +48,7 @@ module Mphase_module
          MphaseSetup,MphaseUpdateReason,&
          MphaseMaxChange, MphaseUpdateSolution, &
          MphaseGetTecplotHeader, MphaseInitializeTimestep, &
-         MphaseUpdateAuxVars
+         MphaseUpdateAuxVars, init_span_wanger
 
 contains
 
@@ -83,27 +83,23 @@ subroutine MphaseTimeCut(realization)
 
 end subroutine MphaseTimeCut
 
+
 ! ************************************************************************** !
 !
-! MphaseSetup: 
+! init_span_wanger
 ! author: Chuan Lu
 ! date: 5/13/08
 !
 ! ************************************************************************** !
-subroutine MphaseSetup(realization)
-
+subroutine init_span_wanger(realization)
   use Realization_module
-  use Level_module
-  use Patch_module
   use span_wagner_module
   use co2_sw_module
   use span_wagner_spline_module 
-   
+
+  implicit none
   type(realization_type) :: realization
-  
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  
+
   if (realization%option%co2eos == EOS_SPAN_WAGNER)then
     select case(realization%option%itable)
        case(0,1,2)
@@ -118,6 +114,27 @@ subroutine MphaseSetup(realization)
       stop
     end select
   endif
+end subroutine init_span_wanger
+
+
+! ************************************************************************** !
+!
+! MphaseSetup: 
+! author: Chuan Lu
+! date: 5/13/08
+!
+! ************************************************************************** !
+subroutine MphaseSetup(realization)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+   
+  type(realization_type) :: realization
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
  
   cur_level => realization%level_list%first
   do

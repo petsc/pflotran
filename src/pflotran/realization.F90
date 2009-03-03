@@ -1233,7 +1233,7 @@ subroutine RealizAssignTransportInitCond(realization)
               endif
             endif
             if (.not.option%use_isothermal) then
-              if (icell > 1) then
+              if (icell == 1) then
                 call ReactionEquilibrateConstraint(rt_aux_vars(ghosted_id), &
                                                    global_aux_vars(ghosted_id), &
                                                    reaction, &

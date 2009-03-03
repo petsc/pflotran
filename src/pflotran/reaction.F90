@@ -539,8 +539,10 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   use Input_module
   use String_module  
   use Utility_module  
+#ifdef CHUAN_CO2
   use co2eos_module, only: Henry_duan_sun_0NaCl
-  
+  use span_wagner_module, only: co2_span_wagner
+#endif  
   implicit none
   
   type(reactive_transport_auxvar_type) :: rt_auxvar
@@ -587,6 +589,10 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscReal :: Res_pert, pert, prev_value
 
   PetscInt :: iphase
+
+#ifdef CHUAN_CO2  
+  PetscReal :: dg,dddt,dddp,fg, dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
+#endif
     
   constraint_type = aq_species_constraint%constraint_type
   constraint_spec_name = aq_species_constraint%constraint_spec_name
@@ -852,9 +858,11 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 !           Jac(icomp,comp_id) = QK/auxvar%primary_spec(comp_id)* &
 !                                reaction%eqgasstoich(jcomp,igas)
             Jac(icomp,comp_id) = reaction%eqgasstoich(jcomp,igas)/rt_auxvar%pri_molal(comp_id)
+
+#ifdef CHUAN_CO2
              print *,'Gas CO2 constraint Jac,',igas, icomp, comp_id, reaction%eqgasstoich(jcomp,igas),&
                  Jac(icomp,comp_id), rt_auxvar%pri_molal(comp_id), lnQK
-
+#endif
           enddo
 
 #ifdef CHUAN_CO2        
@@ -868,7 +876,11 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           if(abs(reaction%co2_gas_id) == igas )then
             pres = global_auxvar%pres(2)
             tc = global_auxvar%temp(1)
-            xphico2 = global_auxvar%fugacoeff(1)
+            
+            call co2_span_wagner(pres*1.D-6, tc +273.15D0,dg,dddt,dddp,fg,&
+               dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
+            xphico2 = fg * 1D6 / pres
+     
             call Henry_duan_sun_0NaCl(pres *1D-5, tc, henry)
             lnQk = - log(henry*xphico2)*LOG_TO_LN
             print *, 'SC CO2 constraint', pres, tc, xphico2, henry, lnQk

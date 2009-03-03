@@ -182,6 +182,7 @@ subroutine Init(simulation)
   ! Initialize flow databases (e.g. span wagner, etc.)
   select case(option%iflowmode)
     case(MPH_MODE)
+      call init_span_wanger(realization)
   end select
 
   ! create grid and allocate vectors
