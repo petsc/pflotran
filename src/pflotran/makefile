@@ -33,8 +33,13 @@ ifdef temp
 TEMP_FLAGS = -DTEMP_DEPENDENT_LOGK
 endif
 
+ifdef chuan_co2
+CHUAN_FLAGS = -DCHUAN_CO2
+endif
+
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) \
-          $(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG) $(TEMP_FLAGS)
+          $(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG) $(TEMP_FLAGS)\
+ 					$(CHUAN_FLAGS)
 LIBS = $(HDF5_LIBS)
 
 CFLAGS		 = 

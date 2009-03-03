@@ -781,13 +781,16 @@ subroutine PatchInitConstraints(patch,reaction,option)
   type(option_type) :: option
   type(reaction_type), pointer :: reaction
 
+  call printMsg(option," PatchInitCouplerConstraints: begin init ")
   call PatchInitCouplerConstraints(patch%initial_conditions, &
                                    reaction,option)
+ call printMsg(option," PatchInitCouplerConstraints: end init ")
   call PatchInitCouplerConstraints(patch%boundary_conditions, &
                                    reaction,option)
+   call printMsg(option," PatchInitCouplerConstraints: end BC ")                                 
   call PatchInitCouplerConstraints(patch%source_sinks, &
                                    reaction,option)
-
+   call printMsg(option," PatchInitCouplerConstraints: end Source ")
 end subroutine PatchInitConstraints
 
 ! ************************************************************************** !

@@ -443,7 +443,9 @@ subroutine Init(simulation)
   call assignMaterialPropToRegions(realization)
   call RealizationInitAllCouplerAuxVars(realization)
   if (option%ntrandof > 0) then
+  call printMsg(option,"  Setting up TRAN SNES ")
     call RealizationInitConstraints(realization)
+  call printMsg(option,"  Finished setting up TRAN SNES ")  
   endif
   call RealizationPrintCouplers(realization)
 
