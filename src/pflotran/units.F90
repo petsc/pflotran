@@ -47,8 +47,13 @@ function UnitsConvertToInternal(units,option)
     if (istart > length) exit
     do
       char = units(iend:iend)
-      if (char == '-' .or. char == '/' .or. iend == length) then
-        word = units(istart:max(istart,iend-1))
+      if (char == '-' .or. char == '/' .or. char == ' ' .or. iend == length) then
+        if (iend == length) then
+          word = units(istart:max(istart,iend))
+        else
+          word = units(istart:max(istart,iend-1))
+        endif
+        word = adjustl(word)
         if (set_numerator) then
           numerator = numerator * UnitsConvert(word,option)
         else
