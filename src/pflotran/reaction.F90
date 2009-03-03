@@ -868,21 +868,21 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 #ifdef CHUAN_CO2        
         case(CONSTRAINT_SUPERCRIT_CO2)
         
-           ln_act_h2o = 0.d0
+          ln_act_h2o = 0.d0
           
           igas = constraint_id(icomp)
          
           ! compute secondary species concentration
-          if(abs(reaction%co2_gas_id) == igas )then
+          if(abs(reaction%co2_gas_id) == igas) then
             pres = global_auxvar%pres(2)
             tc = global_auxvar%temp(1)
             
-            call co2_span_wagner(pres*1.D-6, tc +273.15D0,dg,dddt,dddp,fg,&
-               dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
+            call co2_span_wagner(pres*1.D-6,tc+273.15D0,dg,dddt,dddp,fg, &
+              dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
             xphico2 = fg * 1D6 / pres
      
-            call Henry_duan_sun_0NaCl(pres *1D-5, tc, henry)
-            lnQk = - log(henry*xphico2)*LOG_TO_LN
+            call Henry_duan_sun_0NaCl(pres*1.D-5, tc, henry)
+            lnQk = -log(henry*xphico2)
             print *, 'SC CO2 constraint', pres, tc, xphico2, henry, lnQk
             ! activity of water
             if (reaction%eqgash2oid(igas) > 0) then
@@ -905,7 +905,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 !                                reaction%eqgasstoich(jcomp,igas)
               Jac(icomp,comp_id) = reaction%eqgasstoich(jcomp,igas)/rt_auxvar%pri_molal(comp_id)
               print *,'SC CO2 constraint Jac,',igas, icomp, comp_id, reaction%eqgasstoich(jcomp,igas),&
-                 Jac(icomp,comp_id), rt_auxvar%pri_molal(comp_id)
+                Jac(icomp,comp_id), rt_auxvar%pri_molal(comp_id)
             enddo
          endif       
 #endif           
@@ -1110,6 +1110,10 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     write(option%fid_out,'(a20,1pe12.4,a5)') '        pressure: ', global_auxvar%pres(1),' [Pa]'
     write(option%fid_out,'(a20,f8.2,a4)') '     temperature: ', global_auxvar%temp(1),' [C]'
     write(option%fid_out,'(a20,f8.2,a9)') '     density H2O: ', global_auxvar%den_kg(1),' [kg/m^3]'
+#ifdef CHUAN_CO2
+    write(option%fid_out,'(a20,f8.2,a9)') '     density CO2: ', global_auxvar%den_kg(2),' [kg/m^3]'
+    write(option%fid_out,'(a20,f8.2,a9)') '            xphi: ', global_auxvar%fugacoeff(1)
+#endif
     write(option%fid_out,90)
 
     102 format(/,'  species               molality    total       act coef  constraint')  
@@ -2136,8 +2140,8 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
           temperature = global_auxvar%temp(1)
           xphico2 = global_auxvar%fugacoeff(1)
           
-          call Henry_duan_sun_0NaCl(pressure *1D-5, temperature, henry)
-          lnQk = - log(henry*xphico2)*LOG_TO_LN       
+          call Henry_duan_sun_0NaCl(pressure*1D-5, temperature, henry)
+          lnQk = -log(henry*xphico2)       
            
         else   
           lnQK = -reaction%eqgas_logK(ieqgas)*LOG_TO_LN
