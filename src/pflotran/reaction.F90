@@ -885,11 +885,11 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             
             !compute fugacity coefficient
             fg = fg*1D6
-            xphico2 = fg * 1.d6 / pres
+            xphico2 = fg / pres
             global_auxvar%fugacoeff(1) = xphico2
             
             call Henry_duan_sun_0NaCl(pres*1.d-5, tc, henry)
-            lnQk = log(fg*1D-5/henry)
+            lnQk = log(fg /henry)
             
             print *, 'SC CO2 constraint', pres, tc, xphico2, henry, lnQk
             
