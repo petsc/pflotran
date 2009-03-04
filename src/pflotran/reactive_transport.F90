@@ -1091,41 +1091,44 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
       
-      do istart = 1, reaction%ncomp
-        molality = source_sink%tran_condition%cur_constraint_coupler% &
-           aqueous_species%basis_molarity(istart)/global_aux_vars(ghosted_id)%den_kg(iphase)*1000.d0
-        select case(source_sink%tran_condition%itype)
-          case(EQUILIBRIUM_SS)
-            ! units should be mol/sec
-            Res(istart) = -1.d-6* &
-                          porosity_loc_p(ghosted_id)* &
-                          global_aux_vars(ghosted_id)%sat(option%liquid_phase)* &
-                          volume_p(local_id)* & ! convert m^3 water -> L water
-                          (molality*global_aux_vars(ghosted_id)%den_kg(option%liquid_phase) - & 
-                           rt_aux_vars(ghosted_id)%total(istart,iphase)*1000.d0) ! convert kg water/L water -> kg water/m^3 water
-          case(MASS_RATE_SS)
-            Res(istart) = -molality ! actually moles/sec
-          case(DIRICHLET_BC)
-            if (qsrc > 0) then ! injection
-              if (volumetric) then ! qsrc is volumetric; must be converted to mass
-                Res(istart) = -qsrc*global_aux_vars(ghosted_id)%den_kg(option%liquid_phase) * &
-                              molality
-              else
-                 Res(istart) = -qsrc*molality
-              endif
-            else ! extraction
-              if (volumetric) then ! qsrc is volumetric; must be converted to mass
-                Res(istart) = -qsrc*global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
-                              rt_aux_vars(ghosted_id)%total(istart,iphase)
-              else
-                Res(istart) = -qsrc* &
-                              rt_aux_vars(ghosted_id)%total(istart,iphase)/ &
-                              global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)*1000.d0 ! convert kg water/L water -> kg water/m^3 water
-              endif
+      select case(source_sink%tran_condition%itype)
+        case(EQUILIBRIUM_SS)
+          ! units should be mol/sec
+          Res = -1.d-6* &
+                porosity_loc_p(ghosted_id)* &
+                global_aux_vars(ghosted_id)%sat(option%liquid_phase)* &
+                volume_p(local_id)* & ! convert m^3 water -> L water
+                (source_sink%tran_condition%cur_constraint_coupler% &
+                 rt_auxvar%total(:,iphase) - rt_aux_vars(ghosted_id)%total(:,iphase))* &
+                1000.d0 ! convert kg water/L water -> kg water/m^3 water
+        case(MASS_RATE_SS)
+          Res = -source_sink%tran_condition%cur_constraint_coupler% &
+                 rt_auxvar%total(:,iphase) ! actually moles/sec
+        case(DIRICHLET_BC)
+          if (qsrc > 0) then ! injection
+            if (volumetric) then ! qsrc is volumetric; must be converted to mass
+              Res = -qsrc* &
+                    source_sink%tran_condition%cur_constraint_coupler% &
+                    rt_auxvar%total(:,iphase)*1000.d0
+            else
+               Res = -qsrc* &
+                     source_sink%tran_condition%cur_constraint_coupler% &
+                     rt_auxvar%total(:,iphase)/ &
+                     global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
+                     1000.d0
             endif
-          case default
-        end select
-      enddo
+          else ! extraction
+            if (volumetric) then ! qsrc is volumetric; must be converted to mass
+              Res = -qsrc*rt_aux_vars(ghosted_id)%total(:,iphase)*1000.d0
+            else
+              Res = -qsrc* &
+                    rt_aux_vars(ghosted_id)%total(:,iphase)/ &
+                    global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
+                    1000.d0 ! convert kg water/L water -> kg water/m^3 water
+            endif
+          endif
+        case default
+      end select
 !      if (option%compute_mass_balance_new) then
         ! need to added global aux_var for src/sink
 !        rt_aux_vars_ss(ghosted_id)%mass_balance_delta(:,iphase) = &
@@ -1498,30 +1501,33 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-      
+
       Jup = 0.d0
-      do istart = 1, reaction%ncomp
-        select case(source_sink%tran_condition%itype)
-          case(EQUILIBRIUM_SS)
+      select case(source_sink%tran_condition%itype)
+        case(EQUILIBRIUM_SS)
+          do istart = 1, reaction%ncomp
             Jup(istart,istart) = 1.d-6* &
                                  porosity_loc_p(ghosted_id)* &
                                  global_aux_vars(ghosted_id)%sat(option%liquid_phase)* &
-                                 global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
                                  volume_p(local_id)
-          case(MASS_RATE_SS)
-          case(DIRICHLET_BC)
-            if (qsrc < 0) then ! extraction
-              if (volumetric) then ! qsrc is volumetric; must be converted to mass
-                Jup(istart,istart) = -qsrc*global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)
-              else
+          enddo
+        case(MASS_RATE_SS)
+        case(DIRICHLET_BC)
+          if (qsrc < 0) then ! extraction
+            if (volumetric) then ! qsrc is volumetric; must be converted to mass
+              do istart = 1, reaction%ncomp
                 Jup(istart,istart) = -qsrc
-              endif
+              enddo
+            else
+              do istart = 1, reaction%ncomp
+                Jup(istart,istart) = -qsrc/global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)
+              enddo
             endif
-          case default
-        end select
-      enddo 
-      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
-    enddo
+          endif
+        case default
+      end select
+      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr) 
+    enddo                       
     source_sink => source_sink%next
   enddo
 #endif

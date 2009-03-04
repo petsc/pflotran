@@ -612,6 +612,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 !    aq_species_constraint%basis_molarity = conc*convert_molar_to_molal
     aq_species_constraint%basis_molarity = conc ! don't need to convert
     rt_auxvar%pri_molal = aq_species_constraint%basis_molarity
+    rt_auxvar%total(:,iphase) = aq_species_constraint%basis_molarity
     return
   endif
 
