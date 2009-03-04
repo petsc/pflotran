@@ -887,7 +887,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             global_auxvar%fugacoeff(1) = xphico2
             
             call Henry_duan_sun_0NaCl(pres*1.d-5, tc, henry)
-            lnQk = -log(henry*xphico2)
+            lnQk = -log(henry*xphico2*FMWH2O*1D-3)
             
             print *, 'SC CO2 constraint', pres, tc, xphico2, henry, lnQk
             
@@ -2151,7 +2151,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
           xphico2 = global_auxvar%fugacoeff(1)
           
           call Henry_duan_sun_0NaCl(pressure*1D-5, temperature, henry)
-          lnQk = -log(henry*xphico2)       
+          lnQk = -log(henry*xphico2*FMWH2O*1D-3)       
            
         else   
           lnQK = -reaction%eqgas_logK(ieqgas)*LOG_TO_LN
