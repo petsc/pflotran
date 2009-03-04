@@ -884,11 +884,12 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             global_auxvar%den_kg(2) = dg
             
             !compute fugacity coefficient
+            fg = fg*1D6
             xphico2 = fg * 1.d6 / pres
             global_auxvar%fugacoeff(1) = xphico2
             
             call Henry_duan_sun_0NaCl(pres*1.d-5, tc, henry)
-            lnQk = -log(henry*xphico2*FMWH2O*1D-3)
+            lnQk = log(fg*1D-5/henry)
             
             print *, 'SC CO2 constraint', pres, tc, xphico2, henry, lnQk
             
@@ -914,7 +915,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
               Jac(icomp,comp_id) = reaction%eqgasstoich(jcomp,igas)/rt_auxvar%pri_molal(comp_id)
               
               print *,'SC CO2 constraint Jac,',igas, icomp, comp_id, reaction%eqgasstoich(jcomp,igas),&
-                Jac(icomp,comp_id), rt_auxvar%pri_molal(comp_id)
+                Jac(icomp,comp_id), rt_auxvar%pri_molal(comp_id),conc(icomp) 
             enddo
          endif       
 #endif           
@@ -2141,7 +2142,11 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 
   if(iphase > option%nphase) return 
   rt_auxvar%total(:,iphase) = 0D0
-   
+  rt_auxvar%dtotal(:,:,iphase)=0D0
+!  do icomp = 1, reaction%ncomp
+!    rt_auxvar%dtotal(icomp,icomp,iphase) = 1.d0
+!  enddo
+    
   den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3     
   if(global_auxvar%sat(iphase)>1D-20)then
     do ieqgas = 1, reaction%ngas ! all gas phase species are secondary
@@ -2152,7 +2157,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
           xphico2 = global_auxvar%fugacoeff(1)
           
           call Henry_duan_sun_0NaCl(pressure*1D-5, temperature, henry)
-          lnQk = -log(henry*xphico2*FMWH2O*1D-3)       
+          lnQk = log(pressure*xphico2*1D-5/henry)
            
         else   
           lnQK = -reaction%eqgas_logK(ieqgas)*LOG_TO_LN
@@ -2166,6 +2171,8 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
    !     do i = 1, ncomp
    ! removed loop over species, suppose only one primary species is related
         icomp = reaction%eqgasspecid(1,ieqgas)
+        rt_auxvar%gas_molal(ieqgas) = &
+          reaction%eqgasstoich(1,ieqgas)*exp(lnQK-ln_conc(icomp))*rt_auxvar%pri_molal(icomp) 
         rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
                                         reaction%eqgasstoich(1,ieqgas)* &
                                         rt_auxvar%gas_molal(ieqgas)
