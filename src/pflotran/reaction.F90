@@ -591,7 +591,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscInt :: iphase
 
 #ifdef CHUAN_CO2  
-  PetscReal :: dg,dddt,dddp,fg, dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
+  PetscReal :: dg,dddt,dddp,fg, dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,yco2,pco2
 #endif
     
   constraint_type = aq_species_constraint%constraint_type
@@ -876,22 +876,25 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           ! compute secondary species concentration
           if(abs(reaction%co2_gas_id) == igas) then
             pres = global_auxvar%pres(2)
+            pco2 = conc(icomp)*1.e5
+            yco2 = pco2/pres
             tc = global_auxvar%temp(1)
             
-            call co2_span_wagner(pres*1.D-6,tc+273.15D0,dg,dddt,dddp,fg, &
+            call co2_span_wagner(pco2*1.D-6,tc+273.15D0,dg,dddt,dddp,fg, &
               dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
             
             global_auxvar%den_kg(2) = dg
             
             !compute fugacity coefficient
             fg = fg*1D6
-            xphico2 = fg / pres
+            xphico2 = fg / pco2
             global_auxvar%fugacoeff(1) = xphico2
             
-            call Henry_duan_sun_0NaCl(pres*1.d-5, tc, henry)
-            lnQk = log(fg /henry)
+            call Henry_duan_sun_0NaCl(pco2*1.d-5, tc, henry)
+            lnQk = -log(xphico2*henry)
+!           lnQk = log(fg/henry)
             
-            print *, 'SC CO2 constraint', pres, tc, xphico2, henry, lnQk
+            print *, 'SC CO2 constraint',pres,pco2,tc,xphico2,henry,lnQk,yco2
             
             ! activity of water
             if (reaction%eqgash2oid(igas) > 0) then
