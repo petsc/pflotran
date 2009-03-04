@@ -1104,7 +1104,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
         case(MASS_RATE_SS)
           Res = -source_sink%tran_condition%cur_constraint_coupler% &
                  rt_auxvar%total(:,iphase) ! actually moles/sec
-        case(DIRICHLET_BC)
+        case default
           if (qsrc > 0) then ! injection
             if (volumetric) then ! qsrc is volumetric; must be converted to mass
               Res = -qsrc* &
@@ -1127,7 +1127,6 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
                     1000.d0 ! convert kg water/L water -> kg water/m^3 water
             endif
           endif
-        case default
       end select
 !      if (option%compute_mass_balance_new) then
         ! need to added global aux_var for src/sink
@@ -1512,7 +1511,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                  volume_p(local_id)
           enddo
         case(MASS_RATE_SS)
-        case(DIRICHLET_BC)
+        case default
           if (qsrc < 0) then ! extraction
             if (volumetric) then ! qsrc is volumetric; must be converted to mass
               do istart = 1, reaction%ncomp
@@ -1524,7 +1523,6 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
               enddo
             endif
           endif
-        case default
       end select
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr) 
     enddo                       
