@@ -43,6 +43,7 @@
 \newcommand{\ecr}{\end{center}}
 \newcommand{\eq}{\ =\ }
 \newcommand{\degc}{$^\circ$C}
+\renewcommand{\c}{{\rm CO_2}}
 \newcommand{\ecm}{{\rm ecm}}
 \newcommand{\eff}{{\rm eff}}
 \newcommand{\eqr}{{\rm le}}
@@ -574,6 +575,49 @@ Adding mineral precipitation/dissolution to the mass conservation equations yiel
 \EN
 \EQ
 \frac{\p\varphi_m}{\p t} \eq \overline V_m I_m.
+\EN
+
+\section{CO$_2$ Equilibria}
+
+For an aqueous fluid in equilibrium with supercritical CO$_2$ it is necessary to use an equation of state for CO$_2$ to obtain the solubility of CO$_2$ in solution. The presentation follows Duan and Sun (2003). The total pressure of the system is denoted by $P$ and the partial pressures of CO$_2$ and H$_2$O are denoted, respectively, by $P_{\rm H_2O}$ and $P_{\rm CO_2}$ with
+\EQ
+P \eq P_{\rm H_2O} + P_{\rm CO_2}.
+\EN
+Thus
+\EQ
+y_\c \eq \frac{P_\c}{P} \eq \frac{P-P_\w}{P}.
+\EN
+Equilibrium of supercritical CO$_2$ with an aqueous solution implies equality of the chemical potentials
+\EQ
+\mu_{\rm CO_2}^l \eq \mu_{\rm CO_2}^g,
+\EN
+where
+\EQ
+\mu_{\rm CO_2}^l \eq \mu_{\rm CO_2}^{\ominus l} + \ln a_{\rm CO_2},
+\EN
+and
+\EQ
+\mu_{\rm CO_2}^g \eq \mu_{\rm CO_2}^{\ominus g} + \ln f_{\rm CO_2},
+\EN
+with standard state chemical potentials $\mu_{\rm CO_2}^{\ominus l}$ and $\mu_{\rm CO_2}^{\ominus g}$. The activity of $\c$ in solution is given by
+\EQ
+a_\c \eq \gamma_\c m_\c,
+\EN
+and the fugacity is given by
+\EQ
+f_\c \eq \phi_\c P_\c,
+\EN
+with fugacity coefficient $\phi_\c$. Introducing the equilibrium constant $K_\c$ defined as
+\EQ
+K_\c \eq -\frac{1}{RT}\big(\mu_{\rm CO_2}^{\ominus g} - \mu_{\rm CO_2}^{\ominus l}\big),
+\EN
+yields the mass action equation
+\EQ
+K_\c \eq \frac{f_\c}{a_\c} \eq \frac{\phi_\c P_\c}{a_\c} \eq \frac{\phi_\c y_\c P}{a_\c}.
+\EN
+Solving for the $\c$ partial pressure gives
+\EQ
+P_\c \eq \frac{K_\c}{\phi_\c} a_\c.
 \EN
 
 \section{Sorption}
