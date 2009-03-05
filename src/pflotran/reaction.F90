@@ -2062,7 +2062,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: ln_act_h2o
   PetscReal :: lnQK, tempreal
   PetscReal :: den_kg_per_L
-  PetscReal :: pressure, temperature, xphico2, henry
+  PetscReal :: pressure, temperature, xphico2, henry, den
 
   rt_auxvar%total =0D0 !debugging 
   iphase = 1           
@@ -2153,14 +2153,16 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3     
   if(global_auxvar%sat(iphase)>1D-20)then
     do ieqgas = 1, reaction%ngas ! all gas phase species are secondary
-      
-       if(abs(reaction%co2_gas_id) == ieqgas )then
+   
           pressure = global_auxvar%pres(2)
           temperature = global_auxvar%temp(1)
           xphico2 = global_auxvar%fugacoeff(1)
+          den = global_auxvar%den(2)
+
+       if(abs(reaction%co2_gas_id) == ieqgas )then
           
           call Henry_duan_sun_0NaCl(pressure*1D-5, temperature, henry)
-          lnQk = log(pressure*xphico2*1D-5/henry)
+          lnQk = - log(henry)
            
         else   
           lnQK = -reaction%eqgas_logK(ieqgas)*LOG_TO_LN
@@ -2173,16 +2175,19 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
    ! contribute to %total          
    !     do i = 1, ncomp
    ! removed loop over species, suppose only one primary species is related
+        print *,'Ttotal', global_auxvar%pres(2), pressure, temperature, xphico2, den, lnQk
         icomp = reaction%eqgasspecid(1,ieqgas)
+        pressure =pressure *1D-5
         rt_auxvar%gas_molal(ieqgas) = &
-          reaction%eqgasstoich(1,ieqgas)*exp(lnQK-ln_conc(icomp))*rt_auxvar%pri_molal(icomp) 
+          reaction%eqgasstoich(1,ieqgas)*exp(lnQK)*rt_auxvar%pri_molal(icomp)&
+          /pressure /xphico2* den
         rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
                                         reaction%eqgasstoich(1,ieqgas)* &
                                         rt_auxvar%gas_molal(ieqgas)
    !     enddo
 
    ! contribute to %dtotal 
-         tempreal = reaction%eqgasstoich(j,ieqgas)*exp(lnQK-ln_conc(icomp)) 
+         tempreal = reaction%eqgasstoich(j,ieqgas)*exp(lnQK)/pressure /xphico2* den 
          rt_auxvar%dtotal(icomp,icomp,iphase) = rt_auxvar%dtotal(icomp,icomp,iphase) + &
                                                reaction%eqgasstoich(1,ieqgas)*tempreal
     
