@@ -2212,7 +2212,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
   use Discretization_module
   use Logging_module
   use Input_module
-
+  use Material_module
   use HDF5_module
   
   implicit none
