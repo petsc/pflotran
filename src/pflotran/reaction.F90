@@ -878,22 +878,28 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
          
           ! compute secondary species concentration
           if(abs(reaction%co2_gas_id) == igas) then
-            pres = global_auxvar%pres(2)
+!           pres = global_auxvar%pres(2)
+!           pres = conc(icomp)*1.D5
             tc = global_auxvar%temp(1)
 
             call PSAT(tc, sat_pressure, ierr)
             
-            !pco2 = conc(icomp)*1.e5
-            pco2=pres - sat_pressure
+            pco2 = conc(icomp)*1.e5
+!           pco2 = pres - sat_pressure
+            
+            pres = conc(icomp)*1.D5 + sat_pressure
             yco2 = pco2/pres
                         
-            call co2_span_wagner(pres*1D-6,tc+273.15D0,dg,dddt,dddp,fg, &
+!           call co2_span_wagner(pres*1D-6,tc+273.15D0,dg,dddt,dddp,fg, &
+!             dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
+
+            call co2_span_wagner(pco2*1D-6,tc+273.15D0,dg,dddt,dddp,fg, &
               dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
             
             global_auxvar%den_kg(2) = dg
             
             !compute fugacity coefficient
-            fg = fg*1D6
+            fg = fg*1.D6
             xphico2 = fg / pco2
             global_auxvar%fugacoeff(1) = xphico2
             
