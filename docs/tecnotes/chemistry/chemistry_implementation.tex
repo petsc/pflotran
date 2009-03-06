@@ -577,49 +577,6 @@ Adding mineral precipitation/dissolution to the mass conservation equations yiel
 \frac{\p\varphi_m}{\p t} \eq \overline V_m I_m.
 \EN
 
-\section{CO$_2$ Equilibria}
-
-For an aqueous fluid in equilibrium with supercritical CO$_2$ it is necessary to use an equation of state for CO$_2$ to obtain the solubility of CO$_2$ in solution. The presentation follows Duan and Sun (2003). The total pressure of the system is denoted by $P$ and the partial pressures of CO$_2$ and H$_2$O are denoted, respectively, by $P_{\rm H_2O}$ and $P_{\rm CO_2}$ with
-\EQ
-P \eq P_{\rm H_2O} + P_{\rm CO_2}.
-\EN
-Thus
-\EQ
-y_\c \eq \frac{P_\c}{P} \eq \frac{P-P_\w}{P}.
-\EN
-Equilibrium of supercritical CO$_2$ with an aqueous solution implies equality of the chemical potentials
-\EQ
-\mu_{\rm CO_2}^l \eq \mu_{\rm CO_2}^g,
-\EN
-where
-\EQ
-\mu_{\rm CO_2}^l \eq \mu_{\rm CO_2}^{\ominus l} + \ln a_{\rm CO_2},
-\EN
-and
-\EQ
-\mu_{\rm CO_2}^g \eq \mu_{\rm CO_2}^{\ominus g} + \ln f_{\rm CO_2},
-\EN
-with standard state chemical potentials $\mu_{\rm CO_2}^{\ominus l}$ and $\mu_{\rm CO_2}^{\ominus g}$. The activity of $\c$ in solution is given by
-\EQ
-a_\c \eq \gamma_\c m_\c,
-\EN
-and the fugacity is given by
-\EQ
-f_\c \eq \phi_\c P_\c,
-\EN
-with fugacity coefficient $\phi_\c$. Introducing the equilibrium constant $K_\c$ defined as
-\EQ
-K_\c \eq -\frac{1}{RT}\big(\mu_{\rm CO_2}^{\ominus g} - \mu_{\rm CO_2}^{\ominus l}\big),
-\EN
-yields the mass action equation
-\EQ
-K_\c \eq \frac{f_\c}{a_\c} \eq \frac{\phi_\c P_\c}{a_\c} \eq \frac{\phi_\c y_\c P}{a_\c}.
-\EN
-Solving for the $\c$ partial pressure gives
-\EQ
-P_\c \eq \frac{K_\c}{\phi_\c} a_\c.
-\EN
-
 \section{Sorption}
 
 \setcounter{equation}{0}
@@ -1918,12 +1875,83 @@ p_\a-p_\b \eq p_{\a\b}^c,
 \EN
 for capillary pressure $p_{\a\b}^c$.
 
-The Kronecker delta function appears in the expression for the total concentration $\Psi_j^\a$ multiplying the primary species concentration because it is assumed that all primary species belong to the aqueous phase. This condition could be relaxed, but it would require introducing variable switching at phase boundaries where phase changes take place. In the current implementation, if the aqueous phase completely disappears it is necessary to ``freeze'' the total aqueous concentration at some arbitrarily chosen minimum threshold value for the liquid saturation $s_l^{\rm min}$:  $(s_l^{}\!\leq\!s_l^{\rm min})$. If the system resaturates $(s_l^{}\!>\!s_l^{\rm min})$, this ``frozen'' total aqueous concentration must be released back into the system.
+The Kronecker delta function appears in the expression for the total concentration $\Psi_j^\a$ multiplying the primary species concentration because it is assumed that all primary species belong to the aqueous phase. This condition could be relaxed, but it would require introducing variable switching at phase boundaries where phase changes take place. In the current implementation, if the aqueous phase completely disappears it is necessary to ``freeze'' the total aqueous concentration at some arbitrarily chosen minimum threshold value for the liquid saturation $s_l^{\rm min}$:  $(s_l^{}\!\leq\!s_l^{\rm min})$. If the system resaturates $(s_l^{}\!>\!s_l^{\rm min})$, this ``frozen'' total aqueous concentration must be released back into the fluid phase.
 
 The residual function has the form
 \EQ
-R_{jn}\eq\frac{V_n}{\Delta t}\left[\bigg(\varphi_n\sum_\a s_{\a n} \Psi_{jn}^\a\bigg)_{t+\Delta t} - \bigg(\varphi_n\sum_\a s_{\a n} \Psi_{jn}^\a\bigg)_{t}\right] + \sum_{\a n'}\Omega_{jnn'}^\a A_{nn'} -\R_{jn} V_n.
+R_{jn}\eq\frac{V_n}{\Delta t}\left[\bigg(\varphi_n\sum_\a s_{\a n} \Psi_{jn}^\a\bigg)_{t+\Delta t} - \bigg(\varphi_n\sum_\a s_{\a n} \Psi_{jn}^\a\bigg)_{t}\right] + \sum_{\a n'}\Omega_{jnn'}^\a A_{nn'} - \R_{jn} V_n.
 \EN
+
+\subsection{Supercritical CO$_2$ Equilibria}
+
+For an aqueous fluid in equilibrium with supercritical CO$_2$ it is necessary to use an equation of state for CO$_2$ to obtain the solubility of CO$_2$ in solution. The presentation follows Duan and Sun (2003). Equilibrium of supercritical CO$_2$ with an aqueous solution described by the reaction
+\EQ
+{\rm CO}_2^l \arrows {\rm CO}_2^g,
+\EN
+implies equality of the chemical potentials
+\EQ
+\mu_\c^l \eq \mu_\c^g,
+\EN
+where
+\EQ
+\mu_\c^l \eq \mu_\c^{l\ominus} + \ln a_\c,
+\EN
+and
+\EQ
+\mu_\c^g \eq \mu_\c^{g\ominus} + \ln f_\c,
+\EN
+with standard state chemical potentials $\mu_\c^{\ominus l}$ and $\mu_\c^{\ominus g}$. The activity of $\c$ in solution is given by
+\EQ
+a_\c \eq \gamma_\c m_\c,
+\EN
+and the fugacity is given by
+\EQ
+f_\c \eq \phi_\c P_\c,
+\EN
+with fugacity coefficient $\phi_\c$. 
+
+Introducing the equilibrium constant $K_\c$ defined as
+\EQ
+K_\c \eq -\frac{1}{RT}\big(\mu_{\rm CO_2}^{g\ominus} - \mu_{\rm CO_2}^{l\ominus}\big),
+\EN
+yields the mass action equation
+\EQ\label{massactco2}
+K_\c \eq \frac{f_\c}{a_\c} \eq \frac{\phi_\c P_\c}{a_\c} \eq \frac{\phi_\c y_\c P_g}{a_\c},
+\EN
+where the mole fraction of $\c$ in the gas phase, $y_\c$, is assumed to be given by
+\EQ
+y_\c \eq \frac{P_\c^g}{P_g} \eq \frac{P_g-P_\w^{\rm sat}(T)}{P_g},
+\EN
+with total gas pressure $P_g$ equal to
+\EQ\label{totalp}
+P_g \eq P_\c^g + P_\w^{\rm sat}(T),
+\EN
+and where $P_\w^{\rm sat}(T)$ denotes the saturation pressure of pure water. Of the three quantities: $P_g$, $P_\c^g$, and $T$, two may be specified and the other computed from Eqn.\eqref{totalp}.
+
+Solving Eqn.\eqref{massactco2} for the $\c$ partial pressure gives
+\EQ
+P_\c^g \eq \frac{K_\c}{\phi_\c} a_\c.
+\EN
+The molality is related to the mole fraction by the equation
+\begin{subequations}
+\EQ
+x_\c \eq\frac{m_\c W_\w}{1+m_\c W_\w},
+\EN
+and conversely mole fraction is related to molality by the equation
+\EQ
+m_\c \eq \frac{x_\c}{W_\w(1-x_\c)},
+\EN
+\end{subequations}
+where $W_\w$ denotes the formula weight of water. Weight $w_i$ and mole $x_i$ fractions are related by the expression
+\begin{subequations}
+\EQ
+x_i \eq \frac{w_i^{} W_i^{-1}}{\sum_l w_l^{} W_l^{-1}},
+\EN
+with the inverse relation
+\EQ
+w_i \eq \frac{x_i W_i}{\sum_l x_l W_l}.
+\EN
+\end{subequations}
 
 \section{Stress-Strain Relations}
 
