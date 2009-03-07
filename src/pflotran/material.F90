@@ -156,10 +156,16 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputReadNChars(input,option,string,MAXSTRINGLENGTH,PETSC_TRUE)
         call InputErrorMsg(input,option,'porosity','MATERIAL_PROPERTY')
         call StringToUpper(string)
-        if (StringCompare(string,'RANDOM_DATASET',len_trim('RANDOM_DATASET'))) then
-          material_property%porosity_filename = string
+        if (StringCompare(string,'RANDOM_DATASET', &
+                          len_trim('RANDOM_DATASET'))) then
+          call InputReadNChars(input,option,&
+                               material_property%porosity_filename,&
+                               MAXSTRINGLENGTH,PETSC_TRUE)
+          call InputErrorMsg(input,option,'RANDOM_DATASET,FILENAME', &
+                             'MATERIAL_PROPERTY,POROSITY')   
         else
-          call InputReadDouble(string,option,material_property%porosity,input%ierr)
+          call InputReadDouble(string,option,material_property%porosity, &
+                               input%ierr)
           call InputErrorMsg(input,option,'porosity','MATERIAL_PROPERTY')
         endif
       case('TORTUOSITY')

@@ -1335,6 +1335,8 @@ subroutine InitReadInput(simulation)
               output_option%print_initial = PETSC_FALSE
             case('PERMEABILITY')
               output_option%print_permeability = PETSC_TRUE
+            case('POROSITY')
+              output_option%print_porosity = PETSC_TRUE
             case('MASS_BALANCE')
               option%compute_mass_balance_new = PETSC_TRUE
             case('TIMES')
@@ -1816,37 +1818,38 @@ subroutine assignMaterialPropToRegions(realization)
         endif
         
         do material_property_id = 1, size(realization%material_property_array)
-          material_property => realization%material_property_array(material_property_id)%ptr
+          material_property => &
+                 realization%material_property_array(material_property_id)%ptr
           if (associated(material_property)) then
             if (len_trim(material_property%permeability_filename) > 1) then
               call readPermeabilitiesFromFile(realization,material_property)
             endif
+            if (len_trim(material_property%porosity_filename) > 1) then
+              group_name = ''
+              dataset_name = 'Porosity'
+              call HDF5ReadCellIndexedRealArray(realization,field%work, &
+                                         material_property%porosity_filename, &
+                                                group_name, &
+                                                dataset_name,option%id>0)
+              call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+              call GridVecGetArrayF90(grid,field%porosity0,por0_p,ierr)
+              if (associated(patch%imat)) then
+                do local_id = 1, grid%nlmax
+                  if (patch%imat(grid%nL2G(local_id)) == &
+                      material_property%id) then
+                    por0_p(local_id) = vec_p(local_id)
+                  endif
+                enddo
+              else
+                do local_id = 1, grid%nlmax
+                  por0_p(local_id) = vec_p(local_id)
+                enddo
+              endif
+              call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+              call GridVecRestoreArrayF90(grid,field%porosity0,por0_p,ierr)
+            endif
           endif
         enddo
-        
-        if (len_trim(material_property%porosity_filename) > 1) then
-          group_name = ''
-          dataset_name = 'Porosity'
-          call HDF5ReadCellIndexedRealArray(realization,field%work, &
-                                            material_property%porosity_filename, &
-                                            group_name, &
-                                            dataset_name,option%id>0)
-          call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
-          call GridVecGetArrayF90(grid,field%porosity0,por0_p,ierr)
-          if (associated(patch%imat)) then
-            do local_id = 1, grid%nlmax
-              if (patch%imat(grid%nL2G(local_id)) == material_property%id) then
-                por0_p(local_id) = vec_p(local_id)
-              endif
-            enddo
-          else
-            do local_id = 1, grid%nlmax
-              por0_p(local_id) = vec_p(local_id)
-            enddo
-          endif
-          call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
-          call GridVecRestoreArrayF90(grid,field%porosity0,por0_p,ierr)
-        endif
         
         cur_patch => cur_patch%next
      enddo
