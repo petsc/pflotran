@@ -649,6 +649,7 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option,timestep_cut_flag, &
           dtt = stepper%tfac(num_newton_iterations) * dt
         endif
       endif
+      
   end select
   
   if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
@@ -1050,7 +1051,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
        scaled_fnorm = fnorm
     endif
     print *,' --> SNES Linear/Non-Linear Interations = ', &
-             num_linear_iterations,num_newton_iterations
+             num_linear_iterations,' / ',num_newton_iterations
     print *,' --> SNES Residual: ', fnorm, scaled_fnorm, inorm 
      
   endif
@@ -1367,7 +1368,7 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
          scaled_fnorm = fnorm
       endif
       print *,' --> SNES Linear/Non-Linear Interations = ', &
-               num_linear_iterations,num_newton_iterations
+               num_linear_iterations,' / ',num_newton_iterations
       print *,' --> SNES Residual: ', fnorm, scaled_fnorm, inorm 
     endif
 
@@ -1384,10 +1385,12 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
     
     call RTMaxChange(realization)
     if (option%print_screen_flag) then
-      write(*,'("  --> max chng: dcmx= ",1pe12.4)') option%dcmax
+      write(*,'("  --> max chng: dcmx= ",1pe12.4," dcdt= ",1pe12.4," [mol/s]")') &
+        option%dcmax,option%dcmax/option%tran_dt
     endif
     if (option%print_file_flag) then  
-      write(option%fid_out,'("  --> max chng: dcmx= ",1pe12.4)') option%dcmax
+      write(option%fid_out,'("  --> max chng: dcmx= ",1pe12.4," dcdt= ",1pe12.4," [mol/s]")') &
+        option%dcmax,option%dcmax/option%tran_dt
     endif
 
     if (option%print_screen_flag) print *, ""
