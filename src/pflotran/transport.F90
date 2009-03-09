@@ -266,12 +266,14 @@ subroutine TFluxDerivative(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up
       J_up = J_up + rt_aux_var_up%dtotal(:,:,iphase)*coef_up*1000.d0
       J_dn = J_dn + rt_aux_var_dn%dtotal(:,:,iphase)*coef_dn*1000.d0
     else  
+      print *,'Dtotal needed for SC problem. STOP'
+      stop 
    !   J_up = 0.d0
    !   J_dn = 0.d0
-      do icomp = 1, option%ntrandof
-        J_up(icomp,icomp) = J_up(icomp,icomp) + coef_up*global_aux_var_up%den_kg(iphase)
-        J_dn(icomp,icomp) = J_dn(icomp,icomp) + coef_dn*global_aux_var_dn%den_kg(iphase)
-      enddo
+   !   do icomp = 1, option%ntrandof
+   !     J_up(icomp,icomp) = J_up(icomp,icomp) + coef_up*global_aux_var_up%den_kg(iphase)
+   !     J_dn(icomp,icomp) = J_dn(icomp,icomp) + coef_dn*global_aux_var_dn%den_kg(iphase)
+   !   enddo
     endif
   enddo
 #endif
