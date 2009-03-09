@@ -565,7 +565,7 @@ subroutine TBCFluxDerivative(ibndtype, &
 
       ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
       if (associated(rt_aux_var_dn%dtotal)) then
-        J_dn = rt_aux_var_dn%dtotal(:,:,iphase)*coef_dn*1000.d0
+        J_dn = J_dn + rt_aux_var_dn%dtotal(:,:,iphase)*coef_dn*1000.d0
       else
         J_dn = 0.d0
         do icomp = 1, option%ntrandof

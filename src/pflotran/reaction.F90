@@ -2207,18 +2207,21 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
    ! removed loop over species, suppose only one primary species is related
         icomp = reaction%eqgasspecid(1,ieqgas)
         pressure =pressure *1D-5
+        
         rt_auxvar%gas_molal(ieqgas) = &
           rt_auxvar%pri_act_coef(icomp)*exp(lnQK)*rt_auxvar%pri_molal(icomp)&
           /pressure /xphico2* den
-        rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
+   
+            rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
                                         reaction%eqgasstoich(1,ieqgas)* &
                                         rt_auxvar%gas_molal(ieqgas)
-        print *,'Ttotal',pressure, temperature, xphico2, den, lnQk,rt_auxvar%pri_molal(icomp),rt_auxvar%total(icomp,iphase)
-        if(rt_auxvar%total(icomp,iphase) > den)rt_auxvar%total(icomp,iphase) = den* .99D0
+        print *,'Ttotal',pressure, temperature, xphico2, den, lnQk,rt_auxvar%pri_molal(icomp),&
+         rt_auxvar%pri_act_coef(icomp),rt_auxvar%gas_molal(ieqgas)
+   !     if(rt_auxvar%total(icomp,iphase) > den)rt_auxvar%total(icomp,iphase) = den* .99D0
    !     enddo
 
    ! contribute to %dtotal 
-         tempreal = reaction%eqgasstoich(j,ieqgas)*exp(lnQK)/pressure /xphico2* den 
+         tempreal = rt_auxvar%pri_act_coef(icomp)*exp(lnQK)/pressure /xphico2* den 
          rt_auxvar%dtotal(icomp,icomp,iphase) = rt_auxvar%dtotal(icomp,icomp,iphase) + &
                                                reaction%eqgasstoich(1,ieqgas)*tempreal
     
