@@ -386,8 +386,23 @@ subroutine GlobalSetAuxVarVecLocPatch(realization,vec_loc,ivar,isubvar)
         case default
           do ghosted_id=1, grid%ngmax
             patch%aux%Global%aux_vars(ghosted_id)%den_kg(option%gas_phase) = vec_loc_p(ghosted_id)
-            patch%aux%Global%aux_vars(ghosted_id)%den(option%gas_phase) = &
-              vec_loc_p(ghosted_id)/FMWCO2
+          enddo
+        end select
+    case(GAS_DENSITY_MOL)
+      select case(isubvar)
+        case(TIME_T)
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%aux_vars(ghosted_id)%den_store(option%gas_phase,TIME_T) = &
+              vec_loc_p(ghosted_id)
+          enddo
+        case(TIME_TpDT)
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%aux_vars(ghosted_id)%den_store(option%gas_phase,TIME_TpDT) = &
+              vec_loc_p(ghosted_id)
+          enddo
+        case default
+          do ghosted_id=1, grid%ngmax
+            patch%aux%Global%aux_vars(ghosted_id)%den(option%gas_phase) = vec_loc_p(ghosted_id)
           enddo
         end select
     case(LIQUID_SATURATION)
@@ -514,6 +529,9 @@ subroutine GlobalUpdateDenAndSatPatch(realization,weight)
       patch%aux%Global%aux_vars(ghosted_id)%fugacoeff(:) = &
         (weight*patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(:,TIME_TpDT)+ &
          (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(:,TIME_T))
+      patch%aux%Global%aux_vars(ghosted_id)%den(:) = &
+        (weight*patch%aux%Global%aux_vars(ghosted_id)%den_store(:,TIME_TpDT)+ &
+         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%den_store(:,TIME_T))
     enddo     
   endif 
   
@@ -566,6 +584,12 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
       call DiscretizationGlobalToLocal(realization%discretization, &
                                    field%work,field%work_loc,ONEDOF)
       call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_DENSITY,time_level)          
+      call RealizationGetDataset(realization,field%work,GAS_DENSITY_MOL, &
+                             ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                   field%work,field%work_loc,ONEDOF)
+      call GlobalSetAuxVarVecLoc(realization,field%work_loc,GAS_DENSITY_MOL,time_level)          
+ 
  
       ! Gas saturation
       call RealizationGetDataset(realization,field%work,GAS_SATURATION, &

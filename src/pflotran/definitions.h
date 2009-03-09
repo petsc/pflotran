@@ -151,6 +151,8 @@ PetscInt, parameter :: LIQUID_MOLE_FRACTION = 12
 PetscInt, parameter :: GAS_MOLE_FRACTION = 13
 PetscInt, parameter :: PHASE = 14
 PetscInt, parameter :: MATERIAL_ID = 15
+PetscInt, parameter :: GAS_DENSITY_MOL = 31
+
 
 PetscInt, parameter :: PRIMARY_MOLALITY = 16
 PetscInt, parameter :: SECONDARY_MOLALITY = 17
