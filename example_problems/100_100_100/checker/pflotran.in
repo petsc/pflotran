@@ -1,0 +1,1113 @@
+:Description: 1D test problem for tracer transport
+
+:=========================== flow mode ========================================
+MODE RICHARDS
+
+:=========================== chemistry ========================================
+skip
+CHEMISTRY
+PRIMARY_SPECIES
+Tracer
+/
+/
+noskip
+
+:=========================== solver options ===================================
+TIMESTEPPER
+TS_ACCELERATION 8
+/
+
+NEWTON_SOLVER FLOW
+:RTOL 1.d-4
+:ATOL 1.d-4
+:STOL 1.e-60
+:DTOL 1.e4
+ITOL_UPDATE 1.d0
+:NO_INFINITY_NORM
+::NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
+
+LINEAR_SOLVER FLOW
+KSP_TYPE GMRES
+PC_TYPE NONE
+:KSP_TYPE PREONLY
+:PC_TYPE LU
+:SOLVER GMRES
+/
+
+NEWTON_SOLVER TRANSPORT
+:RTOL 1.d-4
+:ATOL 1.d-4
+:STOL 1.e-60
+:DTOL 1.e4
+:ITOL_UPDATE 1.d-4
+NO_INFINITY_NORM
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
+
+LINEAR_SOLVER TRANSPORT
+KSP_TYPE GMRES
+PC_TYPE NONE
+:KSP_TYPE PREONLY
+:PC_TYPE LU
+:SOLVER GMRES
+/
+
+:=========================== discretization ===================================
+GRID
+TYPE structured
+ORIGIN 0.d0 0.d0 0.d0
+:NXYZ 8 8 8
+NXYZ 32 32 32
+BOUNDS
+0.d0 100.d0
+0.d0 100.d0
+0.d0 100.d0
+/
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY 
+DIFFUSION_COEFFICIENT 1.d-9
+/
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+ID 1
+POROSITY 0.25d0
+TORTUOSITY 1.d0
+SATURATION_FUNCTION sf1
+PERMEABILITY
+PERM_X 1.d-12
+PERM_Y 1.d-12
+PERM_Z 1.d-12
+/
+/
+
+MATERIAL_PROPERTY soil2
+ID 2
+POROSITY 0.25d0
+TORTUOSITY 1.d0
+:SATURATION_FUNCTION sf2
+SATURATION_FUNCTION sf1
+PERMEABILITY
+PERM_X 1.d-13
+PERM_Y 1.d-13
+PERM_Z 1.d-13
+/
+/
+
+:=========================== saturation functions =============================
+SATURATION_FUNCTION sf1
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.2d0
+:LAMBDA 0.25d0
+LAMBDA 0.75d0
+ALPHA 1.d-4
+MAX_CAPILLARY_PRESSURE 1.d8
+BETAC 0.d0
+POWER 1.d
+/
+
+SATURATION_FUNCTION sf2
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.1d0
+LAMBDA 0.5d0
+ALPHA 1.d-3
+MAX_CAPILLARY_PRESSURE 1.d8
+BETAC 0.d0
+POWER 1.d
+/
+
+:=========================== output options ===================================
+OUTPUT
+:MASS_BALANCE
+:TIMES y 0.25d0 0.5d0 0.75d0
+PERIODIC TIME 0.5 y
+FORMAT TECPLOT BLOCK
+VELOCITIES
+/
+
+:=========================== times ============================================
+TIME
+FINAL_TIME 10.d0 y
+INITIAL_TIMESTEP_SIZE 1.d-6 y
+MAXIMUM_TIMESTEP_SIZE 1.d-1 y
+/
+
+:=========================== regions ==========================================
+REGION all
+COORDINATES
+0.d0 0.d0 0.d0
+100.d0 100.d0 100.d0
+/
+END
+
+REGION west
+FACE WEST
+COORDINATES
+0.d0 0.d0 0.d0
+0.d0 100.d0 100.d0
+/
+END
+
+REGION east
+FACE EAST
+COORDINATES
+100.d0 0.d0 0.d0
+100.d0 100.d0 100.d0
+/
+END
+
+REGION north
+FACE NORTH
+COORDINATES
+0.d0 100.d0 0.d0
+100.d0 100.d0 100.d0
+/
+END
+
+REGION south
+FACE SOUTH
+COORDINATES
+0.d0 0.d0 0.d0
+100.d0 0.d0 100.d0
+/
+END
+
+REGION top
+FACE TOP
+COORDINATES
+0.d0 0.d0 100.d0
+100.d0 100.d0 100.d0
+/
+END
+
+REGION bottom
+FACE BOTTOM
+COORDINATES
+0.d0 0.d0 0.d0
+100.d0 100.d0 0.d0
+/
+END
+
+REGION well
+COORDINATES
+50.d0 50.d0 50.d0
+50.d0 50.d0 50.d0
+/
+END
+
+: Layer 1
+REGION region_1_1_1
+COORDINATES
+0.d0 0.d0 0.d0
+25.d0 25.d0 25.d0
+/
+END
+
+REGION region_2_1_1
+COORDINATES
+25.d0 0.d0 0.d0
+50.d0 25.d0 25.d0
+/
+END
+
+REGION region_3_1_1
+COORDINATES
+50.d0 0.d0 0.d0
+75.d0 25.d0 25.d0
+/
+END
+
+REGION region_4_1_1
+COORDINATES
+75.d0 0.d0 0.d0
+100.d0 25.d0 25.d0
+/
+END
+
+REGION region_1_2_1
+COORDINATES
+0.d0 25.d0 0.d0
+25.d0 50.d0 25.d0
+/
+END
+
+REGION region_2_2_1
+COORDINATES
+25.d0 25.d0 0.d0
+50.d0 50.d0 25.d0
+/
+END
+
+REGION region_3_2_1
+COORDINATES
+50.d0 25.d0 0.d0
+75.d0 50.d0 25.d0
+/
+END
+
+REGION region_4_2_1
+COORDINATES
+75.d0 25.d0 0.d0
+100.d0 50.d0 25.d0
+/
+END
+
+REGION region_1_3_1
+COORDINATES
+0.d0 50.d0 0.d0
+25.d0 75.d0 25.d0
+/
+END
+
+REGION region_2_3_1
+COORDINATES
+25.d0 50.d0 0.d0
+50.d0 75.d0 25.d0
+/
+END
+
+REGION region_3_3_1
+COORDINATES
+50.d0 50.d0 0.d0
+75.d0 75.d0 25.d0
+/
+END
+
+REGION region_4_3_1
+COORDINATES
+75.d0 50.d0 0.d0
+100.d0 75.d0 25.d0
+/
+END
+
+REGION region_1_4_1
+COORDINATES
+0.d0 75.d0 0.d0
+25.d0 100.d0 25.d0
+/
+END
+
+REGION region_2_4_1
+COORDINATES
+25.d0 75.d0 0.d0
+50.d0 100.d0 25.d0
+/
+END
+
+REGION region_3_4_1
+COORDINATES
+50.d0 75.d0 0.d0
+75.d0 100.d0 25.d0
+/
+END
+
+REGION region_4_4_1
+COORDINATES
+75.d0 75.d0 0.d0
+100.d0 100.d0 25.d0
+/
+END
+
+: Layer 2
+REGION region_1_1_2
+COORDINATES
+0.d0 0.d0 25.d0
+25.d0 25.d0 50.d0
+/
+END
+
+REGION region_2_1_2
+COORDINATES
+25.d0 0.d0 25.d0
+50.d0 25.d0 50.d0
+/
+END
+
+REGION region_3_1_2
+COORDINATES
+50.d0 0.d0 25.d0
+75.d0 25.d0 50.d0
+/
+END
+
+REGION region_4_1_2
+COORDINATES
+75.d0 0.d0 25.d0
+100.d0 25.d0 50.d0
+/
+END
+
+REGION region_1_2_2
+COORDINATES
+0.d0 25.d0 25.d0
+25.d0 50.d0 50.d0
+/
+END
+
+REGION region_2_2_2
+COORDINATES
+25.d0 25.d0 25.d0
+50.d0 50.d0 50.d0
+/
+END
+
+REGION region_3_2_2
+COORDINATES
+50.d0 25.d0 25.d0
+75.d0 50.d0 50.d0
+/
+END
+
+REGION region_4_2_2
+COORDINATES
+75.d0 25.d0 25.d0
+100.d0 50.d0 50.d0
+/
+END
+
+REGION region_1_3_2
+COORDINATES
+0.d0 50.d0 25.d0
+25.d0 75.d0 50.d0
+/
+END
+
+REGION region_2_3_2
+COORDINATES
+25.d0 50.d0 25.d0
+50.d0 75.d0 50.d0
+/
+END
+
+REGION region_3_3_2
+COORDINATES
+50.d0 50.d0 25.d0
+75.d0 75.d0 50.d0
+/
+END
+
+REGION region_4_3_2
+COORDINATES
+75.d0 50.d0 25.d0
+100.d0 75.d0 50.d0
+/
+END
+
+REGION region_1_4_2
+COORDINATES
+0.d0 75.d0 25.d0
+25.d0 100.d0 50.d0
+/
+END
+
+REGION region_2_4_2
+COORDINATES
+25.d0 75.d0 25.d0
+50.d0 100.d0 50.d0
+/
+END
+
+REGION region_3_4_2
+COORDINATES
+50.d0 75.d0 25.d0
+75.d0 100.d0 50.d0
+/
+END
+
+REGION region_4_4_2
+COORDINATES
+75.d0 75.d0 25.d0
+100.d0 100.d0 50.d0
+/
+END
+
+: Layer 3
+REGION region_1_1_3
+COORDINATES
+0.d0 0.d0 50.d0
+25.d0 25.d0 75.d0
+/
+END
+
+REGION region_2_1_3
+COORDINATES
+25.d0 0.d0 50.d0
+50.d0 25.d0 75.d0
+/
+END
+
+REGION region_3_1_3
+COORDINATES
+50.d0 0.d0 50.d0
+75.d0 25.d0 75.d0
+/
+END
+
+REGION region_4_1_3
+COORDINATES
+75.d0 0.d0 50.d0
+100.d0 25.d0 75.d0
+/
+END
+
+REGION region_1_2_3
+COORDINATES
+0.d0 25.d0 50.d0
+25.d0 50.d0 75.d0
+/
+END
+
+REGION region_2_2_3
+COORDINATES
+25.d0 25.d0 50.d0
+50.d0 50.d0 75.d0
+/
+END
+
+REGION region_3_2_3
+COORDINATES
+50.d0 25.d0 50.d0
+75.d0 50.d0 75.d0
+/
+END
+
+REGION region_4_2_3
+COORDINATES
+75.d0 25.d0 50.d0
+100.d0 50.d0 75.d0
+/
+END
+
+REGION region_1_3_3
+COORDINATES
+0.d0 50.d0 50.d0
+25.d0 75.d0 75.d0
+/
+END
+
+REGION region_2_3_3
+COORDINATES
+25.d0 50.d0 50.d0
+50.d0 75.d0 75.d0
+/
+END
+
+REGION region_3_3_3
+COORDINATES
+50.d0 50.d0 50.d0
+75.d0 75.d0 75.d0
+/
+END
+
+REGION region_4_3_3
+COORDINATES
+75.d0 50.d0 50.d0
+100.d0 75.d0 75.d0
+/
+END
+
+REGION region_1_4_3
+COORDINATES
+0.d0 75.d0 50.d0
+25.d0 100.d0 75.d0
+/
+END
+
+REGION region_2_4_3
+COORDINATES
+25.d0 75.d0 50.d0
+50.d0 100.d0 75.d0
+/
+END
+
+REGION region_3_4_3
+COORDINATES
+50.d0 75.d0 50.d0
+75.d0 100.d0 75.d0
+/
+END
+
+REGION region_4_4_3
+COORDINATES
+75.d0 75.d0 50.d0
+100.d0 100.d0 75.d0
+/
+END
+
+: Layer 4
+REGION region_1_1_4
+COORDINATES
+0.d0 0.d0 75.d0
+25.d0 25.d0 100.d0
+/
+END
+
+REGION region_2_1_4
+COORDINATES
+25.d0 0.d0 75.d0
+50.d0 25.d0 100.d0
+/
+END
+
+REGION region_3_1_4
+COORDINATES
+50.d0 0.d0 75.d0
+75.d0 25.d0 100.d0
+/
+END
+
+REGION region_4_1_4
+COORDINATES
+75.d0 0.d0 75.d0
+100.d0 25.d0 100.d0
+/
+END
+
+REGION region_1_2_4
+COORDINATES
+0.d0 25.d0 75.d0
+25.d0 50.d0 100.d0
+/
+END
+
+REGION region_2_2_4
+COORDINATES
+25.d0 25.d0 75.d0
+50.d0 50.d0 100.d0
+/
+END
+
+REGION region_3_2_4
+COORDINATES
+50.d0 25.d0 75.d0
+75.d0 50.d0 100.d0
+/
+END
+
+REGION region_4_2_4
+COORDINATES
+75.d0 25.d0 75.d0
+100.d0 50.d0 100.d0
+/
+END
+
+REGION region_1_3_4
+COORDINATES
+0.d0 50.d0 75.d0
+25.d0 75.d0 100.d0
+/
+END
+
+REGION region_2_3_4
+COORDINATES
+25.d0 50.d0 75.d0
+50.d0 75.d0 100.d0
+/
+END
+
+REGION region_3_3_4
+COORDINATES
+50.d0 50.d0 75.d0
+75.d0 75.d0 100.d0
+/
+END
+
+REGION region_4_3_4
+COORDINATES
+75.d0 50.d0 75.d0
+100.d0 75.d0 100.d0
+/
+END
+
+REGION region_1_4_4
+COORDINATES
+0.d0 75.d0 75.d0
+25.d0 100.d0 100.d0
+/
+END
+
+REGION region_2_4_4
+COORDINATES
+25.d0 75.d0 75.d0
+50.d0 100.d0 100.d0
+/
+END
+
+REGION region_3_4_4
+COORDINATES
+50.d0 75.d0 75.d0
+75.d0 100.d0 100.d0
+/
+END
+
+REGION region_4_4_4
+COORDINATES
+75.d0 75.d0 75.d0
+100.d0 100.d0 100.d0
+/
+END
+
+:=========================== flow conditions ==================================
+FLOW_CONDITION initial
+TYPE
+PRESSURE hydrostatic
+/
+DATUM 0.d0 0.d0 100.d0
+PRESSURE 101325.d0 
+/
+
+FLOW_CONDITION atmospheric
+TYPE
+PRESSURE dirichlet
+/
+DATUM 0.d0 0.d0 0.d0
+PRESSURE 101325.d0 
+/
+
+FLOW_CONDITION variable
+TYPE
+PRESSURE dirichlet
+/
+DATUM 0.d0 0.d0 90.d0
+PRESSURE 101325.d0 
+/
+
+FLOW_CONDITION recharge
+TYPE
+PRESSURE neumann
+/
+FLUX 1.585d-9  !5 cm/yr
+/
+
+skip
+FLOW_CONDITION source
+TYPE
+RATE volumetric_rate
+/
+RATE 2.77777778d-3  ! 10 m^3/hr
+/
+noskip
+
+:=========================== transport conditions =============================
+skip
+TRANSPORT_CONDITION initial
+TYPE zero_gradient
+CONSTRAINT_LIST
+0.d0 initial
+/
+END
+
+TRANSPORT_CONDITION source
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 well
+/
+/
+
+:=========================== constraints ======================================
+CONSTRAINT well
+CONCENTRATIONS
+Tracer 1.d0 T
+/
+END
+
+CONSTRAINT initial
+CONCENTRATIONS
+Tracer 1.d-40 T
+/
+END
+noskip
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+FLOW_CONDITION initial
+:TRANSPORT_CONDITION initial
+REGION all
+END
+
+skip
+: west boundary condition
+BOUNDARY_CONDITION west
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial
+REGION west
+END
+
+: east boundary condition
+BOUNDARY_CONDITION east
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial
+REGION east
+END
+
+: north boundary condition
+BOUNDARY_CONDITION north
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial
+REGION north
+END
+
+: south boundary condition
+BOUNDARY_CONDITION south
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial
+REGION south
+END
+noskip
+
+: top boundary condition
+BOUNDARY_CONDITION top
+FLOW_CONDITION recharge
+:TRANSPORT_CONDITION initial
+REGION top
+END
+
+: bottom boundary condition
+BOUNDARY_CONDITION bottom
+:FLOW_CONDITION initial
+FLOW_CONDITION variable
+:FLOW_CONDITION atmospheric
+:TRANSPORT_CONDITION initial
+REGION bottom
+END
+
+skip
+: well source/sink
+SOURCE_SINK well
+FLOW_CONDITION source
+TRANSPORT_CONDITION source
+REGION well
+END
+noskip
+
+:=========================== stratigraphy couplers ============================
+: Layer 1
+STRATA
+REGION region_1_1_1
+MATERIAL soil1
+END
+
+STRATA
+REGION region_2_1_1
+MATERIAL soil2
+END
+
+STRATA
+REGION region_3_1_1
+MATERIAL soil1
+END
+
+STRATA
+REGION region_4_1_1
+MATERIAL soil2
+END
+
+STRATA
+REGION region_1_2_1
+MATERIAL soil2
+END
+
+STRATA
+REGION region_2_2_1
+MATERIAL soil1
+END
+
+STRATA
+REGION region_3_2_1
+MATERIAL soil2
+END
+
+STRATA
+REGION region_4_2_1
+MATERIAL soil1
+END
+
+STRATA
+REGION region_1_3_1
+MATERIAL soil1
+END
+
+STRATA
+REGION region_2_3_1
+MATERIAL soil2
+END
+
+STRATA
+REGION region_3_3_1
+MATERIAL soil1
+END
+
+STRATA
+REGION region_4_3_1
+MATERIAL soil2
+END
+
+STRATA
+REGION region_1_4_1
+MATERIAL soil2
+END
+
+STRATA
+REGION region_2_4_1
+MATERIAL soil1
+END
+
+STRATA
+REGION region_3_4_1
+MATERIAL soil2
+END
+
+STRATA
+REGION region_4_4_1
+MATERIAL soil1
+END
+
+: Layer 2
+STRATA
+REGION region_1_1_2
+MATERIAL soil2
+END
+
+STRATA
+REGION region_2_1_2
+MATERIAL soil1
+END
+
+STRATA
+REGION region_3_1_2
+MATERIAL soil2
+END
+
+STRATA
+REGION region_4_1_2
+MATERIAL soil1
+END
+
+STRATA
+REGION region_1_2_2
+MATERIAL soil1
+END
+
+STRATA
+REGION region_2_2_2
+MATERIAL soil2
+END
+
+STRATA
+REGION region_3_2_2
+MATERIAL soil1
+END
+
+STRATA
+REGION region_4_2_2
+MATERIAL soil2
+END
+
+STRATA
+REGION region_1_3_2
+MATERIAL soil2
+END
+
+STRATA
+REGION region_2_3_2
+MATERIAL soil1
+END
+
+STRATA
+REGION region_3_3_2
+MATERIAL soil2
+END
+
+STRATA
+REGION region_4_3_2
+MATERIAL soil1
+END
+
+STRATA
+REGION region_1_4_2
+MATERIAL soil1
+END
+
+STRATA
+REGION region_2_4_2
+MATERIAL soil2
+END
+
+STRATA
+REGION region_3_4_2
+MATERIAL soil1
+END
+
+STRATA
+REGION region_4_4_2
+MATERIAL soil2
+END
+
+: Layer 3
+STRATA
+REGION region_1_1_3
+MATERIAL soil1
+END
+
+STRATA
+REGION region_2_1_3
+MATERIAL soil2
+END
+
+STRATA
+REGION region_3_1_3
+MATERIAL soil1
+END
+
+STRATA
+REGION region_4_1_3
+MATERIAL soil2
+END
+
+STRATA
+REGION region_1_2_3
+MATERIAL soil2
+END
+
+STRATA
+REGION region_2_2_3
+MATERIAL soil1
+END
+
+STRATA
+REGION region_3_2_3
+MATERIAL soil2
+END
+
+STRATA
+REGION region_4_2_3
+MATERIAL soil1
+END
+
+STRATA
+REGION region_1_3_3
+MATERIAL soil1
+END
+
+STRATA
+REGION region_2_3_3
+MATERIAL soil2
+END
+
+STRATA
+REGION region_3_3_3
+MATERIAL soil1
+END
+
+STRATA
+REGION region_4_3_3
+MATERIAL soil2
+END
+
+STRATA
+REGION region_1_4_3
+MATERIAL soil2
+END
+
+STRATA
+REGION region_2_4_3
+MATERIAL soil1
+END
+
+STRATA
+REGION region_3_4_3
+MATERIAL soil2
+END
+
+STRATA
+REGION region_4_4_3
+MATERIAL soil1
+END
+
+: Layer 4
+STRATA
+REGION region_1_1_4
+MATERIAL soil2
+END
+
+STRATA
+REGION region_2_1_4
+MATERIAL soil1
+END
+
+STRATA
+REGION region_3_1_4
+MATERIAL soil2
+END
+
+STRATA
+REGION region_4_1_4
+MATERIAL soil1
+END
+
+STRATA
+REGION region_1_2_4
+MATERIAL soil1
+END
+
+STRATA
+REGION region_2_2_4
+MATERIAL soil2
+END
+
+STRATA
+REGION region_3_2_4
+MATERIAL soil1
+END
+
+STRATA
+REGION region_4_2_4
+MATERIAL soil2
+END
+
+STRATA
+REGION region_1_3_4
+MATERIAL soil2
+END
+
+STRATA
+REGION region_2_3_4
+MATERIAL soil1
+END
+
+STRATA
+REGION region_3_3_4
+MATERIAL soil2
+END
+
+STRATA
+REGION region_4_3_4
+MATERIAL soil1
+END
+
+STRATA
+REGION region_1_4_4
+MATERIAL soil1
+END
+
+STRATA
+REGION region_2_4_4
+MATERIAL soil2
+END
+
+STRATA
+REGION region_3_4_4
+MATERIAL soil1
+END
+
+STRATA
+REGION region_4_4_4
+MATERIAL soil2
+END
+
