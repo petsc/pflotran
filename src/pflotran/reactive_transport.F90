@@ -1013,6 +1013,10 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   PetscReal :: qsrc, molality
   PetscReal :: Jup(realization%reaction%ncomp,realization%reaction%ncomp)
   PetscTruth :: volumetric
+#ifdef CHUAN_CO2
+  PetscReal :: msrc(1:realization%option%nflowspec)
+  PetscInt :: icomp, ieqgas
+#endif
 
   option => realization%option
   field => realization%field
@@ -1139,6 +1143,43 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
     enddo
     source_sink => source_sink%next
   enddo
+
+#ifdef CHUAN_CO2
+  source_sink => patch%source_sinks%first 
+  do 
+    if (.not.associated(source_sink)) exit
+
+     msrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
+     msrc(1) =  msrc(1) / FMWH2O *1D3
+     msrc(2) =  msrc(2) / FMWCO2 *1D3
+    
+    do iconn = 1, cur_connection_set%num_connections      
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      Res=0D0
+      
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+      
+      select case(source_sink%tran_condition%itype)
+        case(MASS_RATE_SS)
+           do ieqgas = 1, reaction%ngas
+              if(abs(reaction%co2_gas_id) == ieqgas )then
+                 icomp = reaction%eqgasspecid(1,ieqgas)
+                 iend = local_id*reaction%ncomp
+                 istart = iend-reaction%ncomp
+                 Res(icomp) = -msrc(2)
+                 r_p(istart+icomp) = r_p(istart+icomp) + Res(icomp)
+                 print *,'RT SC source', ieqgas,icomp, res(icomp)  
+              endif 
+           enddo
+      end select 
+     enddo
+     source_sink => source_sink%next
+   enddo 
+     
+#endif
 #endif
 #if 1
   ! Interior Flux Terms -----------------------------------
