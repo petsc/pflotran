@@ -1916,11 +1916,11 @@ K_\c \eq -\frac{1}{RT}\big(\mu_{\rm CO_2}^{g\ominus} - \mu_{\rm CO_2}^{l\ominus}
 \EN
 yields the mass action equation
 \EQ\label{massactco2}
-K_\c \eq \frac{f_\c}{a_\c} \eq \frac{\phi_\c P_\c}{a_\c} \eq \frac{\phi_\c y_\c P_g}{a_\c},
+K_\c \eq \frac{f_\c}{a_\c} \eq \frac{\phi_\c P_\c}{a_\c} \eq \frac{\phi_\c y_\c^g P_g}{a_\c},
 \EN
 where the mole fraction of $\c$ in the gas phase, $y_\c$, is assumed to be given by
 \EQ
-y_\c \eq \frac{P_\c^g}{P_g} \eq \frac{P_g-P_\w^{\rm sat}(T)}{P_g},
+y_\c^g \eq \frac{P_\c^g}{P_g} \eq \frac{P_g-P_\w^{\rm sat}(T)}{P_g},
 \EN
 with total gas pressure $P_g$ equal to
 \EQ\label{totalp}
@@ -1935,14 +1935,23 @@ P_\c^g \eq \frac{K_\c}{\phi_\c} a_\c.
 The molality is related to the mole fraction by the equation
 \begin{subequations}
 \EQ
-x_\c \eq\frac{m_\c W_\w}{1+m_\c W_\w},
+x_\c^l \eq\frac{m_\c W_\w}{1+m_\c W_\w},
 \EN
 and conversely mole fraction is related to molality by the equation
 \EQ
-m_\c \eq \frac{x_\c}{W_\w(1-x_\c)},
+m_\c \eq \frac{x_\c^l}{W_\w(1-x_\c^l)},
 \EN
 \end{subequations}
-where $W_\w$ denotes the formula weight of water. Weight $w_i$ and mole $x_i$ fractions are related by the expression
+where $W_\w$ denotes the formula weight of water. 
+
+The concentration of $\c$ in the gas phase, $C_\c^g$, is obtained as
+\BA
+C_\c^g &\eq \frac{n_i^g}{V_g} \eq \frac{n_i^g}{N_g}\frac{N_g}{V_g} \eq \rho_\c y_i^g,\\
+&\eq \rho_\c \frac{f_\c}{\phi_\c P_\c},\\
+&\eq \rho_\c K_\c \frac{a_\c}{\phi_\c P_g}.
+\EA
+
+Weight $w_i$ and mole $x_i$ fractions are related by the expression
 \begin{subequations}
 \EQ
 x_i \eq \frac{w_i^{} W_i^{-1}}{\sum_l w_l^{} W_l^{-1}},
