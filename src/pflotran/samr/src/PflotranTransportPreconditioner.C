@@ -195,7 +195,12 @@ PflotranTransportPreconditioner::applyPreconditioner(
    assert(!r.isNull());
    assert(!z.isNull());
 #endif
+   int r_id, z_id;
 
+   r_id = r->getComponentDescriptorIndex(0);
+   z_id = z->getComponentDescriptorIndex(0);
+
+   d_pc_solver->solve(&r_id, &z_id);
    return (0);
 
 }   

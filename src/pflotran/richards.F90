@@ -438,7 +438,8 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)  
 
   do ghosted_id = 1, grid%ngmax
-    if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
+     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
+     
     !geh - Ignore inactive cells with inactive materials
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
