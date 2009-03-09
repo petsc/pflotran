@@ -301,7 +301,6 @@ subroutine GlobalSetAuxVarVecLocPatch(realization,vec_loc,ivar,isubvar)
   
   select case(ivar)
     case(PRESSURE)
-      if(associated(patch%aux%Global%aux_vars(ghosted_id)%pres_store))then
         select case(isubvar)
           case(TIME_T)
             do ghosted_id=1, grid%ngmax
@@ -318,13 +317,7 @@ subroutine GlobalSetAuxVarVecLocPatch(realization,vec_loc,ivar,isubvar)
               patch%aux%Global%aux_vars(ghosted_id)%pres(option%gas_phase) = vec_loc_p(ghosted_id)
             enddo
         end select
-      else
-        do ghosted_id=1, grid%ngmax
-          patch%aux%Global%aux_vars(ghosted_id)%pres = vec_loc_p(ghosted_id)
-        enddo
-      endif
     case(TEMPERATURE)
-     if(associated(patch%aux%Global%aux_vars(ghosted_id)%temp_store))then
        select case(isubvar)
         case(TIME_T)
           do ghosted_id=1, grid%ngmax
@@ -341,11 +334,6 @@ subroutine GlobalSetAuxVarVecLocPatch(realization,vec_loc,ivar,isubvar)
             patch%aux%Global%aux_vars(ghosted_id)%temp(1) = vec_loc_p(ghosted_id)
           enddo
         end select
-       else
-         do ghosted_id=1, grid%ngmax
-           patch%aux%Global%aux_vars(ghosted_id)%temp = vec_loc_p(ghosted_id)
-         enddo
-      endif
     case(LIQUID_DENSITY)
       select case(isubvar)
         case(TIME_T)
@@ -517,9 +505,9 @@ subroutine GlobalUpdateDenAndSatPatch(realization,weight)
     ! need future implementation for ims_mode too    
   if (option%iflowmode == MPH_MODE) then
     do ghosted_id = 1, patch%aux%Global%num_aux
-      patch%aux%Global%aux_vars(ghosted_id)%pres(2) = &
-        (weight*patch%aux%Global%aux_vars(ghosted_id)%pres_store(2,TIME_TpDT)+ &
-         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%pres_store(2,TIME_T))
+      patch%aux%Global%aux_vars(ghosted_id)%pres(:) = &
+        (weight*patch%aux%Global%aux_vars(ghosted_id)%pres_store(:,TIME_TpDT)+ &
+         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%pres_store(:,TIME_T))
       patch%aux%Global%aux_vars(ghosted_id)%temp(:) = &
         (weight*patch%aux%Global%aux_vars(ghosted_id)%temp_store(:,TIME_TpDT)+ &
          (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%temp_store(:,TIME_T))

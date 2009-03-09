@@ -1233,13 +1233,26 @@ subroutine RealizAssignTransportInitCond(realization)
               endif
             endif
             if (.not.option%use_isothermal) then
-              call ReactionEquilibrateConstraint(rt_aux_vars(ghosted_id), &
-                                                 global_aux_vars(ghosted_id), &
-                                                 reaction, &
-                  initial_condition%tran_condition%cur_constraint_coupler%constraint_name, &
-                  initial_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
-                  initial_condition%tran_condition%cur_constraint_coupler%num_iterations, &
-                                                 PETSC_FALSE,option)
+              if (icell == 1) then
+                call ReactionEquilibrateConstraint(rt_aux_vars(ghosted_id), &
+                                                   global_aux_vars(ghosted_id), &
+                                                   reaction, &
+                    initial_condition%tran_condition%cur_constraint_coupler%constraint_name, &
+                    initial_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
+                    initial_condition%tran_condition%cur_constraint_coupler%num_iterations, &
+                                                   PETSC_TRUE,option)
+              else
+                call RTAuxVarCopy(rt_aux_vars(ghosted_id), &
+                  rt_aux_vars(grid%nL2G(initial_condition%region%cell_ids(icell-1))), &
+                  option)
+                call ReactionEquilibrateConstraint(rt_aux_vars(ghosted_id), &
+                                                   global_aux_vars(ghosted_id), &
+                                                   reaction, &
+                    initial_condition%tran_condition%cur_constraint_coupler%constraint_name, &
+                    initial_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
+                    initial_condition%tran_condition%cur_constraint_coupler%num_iterations, &
+                                                   PETSC_FALSE,option)
+              endif
             endif
             do idof = 1, option%ntrandof ! primary aqueous concentrations
               xx_p(ibegin+idof-1) = &

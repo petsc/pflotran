@@ -48,7 +48,7 @@ module Mphase_module
          MphaseSetup,MphaseUpdateReason,&
          MphaseMaxChange, MphaseUpdateSolution, &
          MphaseGetTecplotHeader, MphaseInitializeTimestep, &
-         MphaseUpdateAuxVars
+         MphaseUpdateAuxVars, init_span_wanger
 
 contains
 
@@ -83,27 +83,23 @@ subroutine MphaseTimeCut(realization)
 
 end subroutine MphaseTimeCut
 
+
 ! ************************************************************************** !
 !
-! MphaseSetup: 
+! init_span_wanger
 ! author: Chuan Lu
 ! date: 5/13/08
 !
 ! ************************************************************************** !
-subroutine MphaseSetup(realization)
-
+subroutine init_span_wanger(realization)
   use Realization_module
-  use Level_module
-  use Patch_module
   use span_wagner_module
   use co2_sw_module
   use span_wagner_spline_module 
-   
+
+  implicit none
   type(realization_type) :: realization
-  
-  type(level_type), pointer :: cur_level
-  type(patch_type), pointer :: cur_patch
-  
+
   if (realization%option%co2eos == EOS_SPAN_WAGNER)then
     select case(realization%option%itable)
        case(0,1,2)
@@ -118,6 +114,27 @@ subroutine MphaseSetup(realization)
       stop
     end select
   endif
+end subroutine init_span_wanger
+
+
+! ************************************************************************** !
+!
+! MphaseSetup: 
+! author: Chuan Lu
+! date: 5/13/08
+!
+! ************************************************************************** !
+subroutine MphaseSetup(realization)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+   
+  type(realization_type) :: realization
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
  
   cur_level => realization%level_list%first
   do
@@ -616,7 +633,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
      
       global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
                aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-      global_aux_vars(ghosted_id)%temp=aux_vars(ghosted_id)%aux_var_elem(0)%temp
+      global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
       global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
   !    global_aux_vars(ghosted_id)%sat_store = 
       global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
@@ -671,14 +688,15 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
       call MphaseAuxVarCompute_NINC(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
                          iphasebc, &
                          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-                         realization%fluid_properties, option)
+                         realization%fluid_properties, option, xphi)
     
       if( associated(global_aux_vars_bc))then
         global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
                      aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-        global_aux_vars_bc(sum_connection)%temp=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
+        global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
         global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
         !    global_aux_vars(ghosted_id)%sat_store = 
+        global_aux_vars_bc(sum_connection)%fugacoeff(1)=xphi
         global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
         global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)

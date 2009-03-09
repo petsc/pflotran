@@ -28,6 +28,7 @@ public:
   void computeEastBoundary(Grid *grid, PetscInt complete);
   void computeWestBoundary(Grid *grid, PetscInt complete);
   void computeIFCBoundary(Grid *grid, Polygon *p);
+  void computeTopSPPDomain(Grid *grid, Polygon *p);
   void computeUnSatSPPDomain(Grid *grid, Polygon *p);
   void computeSatSPPDomain(Grid *grid, Polygon *p);
   void flagGridCells(Grid *grid);

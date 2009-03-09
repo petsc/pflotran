@@ -2545,7 +2545,8 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
     if(option%use_samr) then
        flow_pc = 0
-       call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
+       call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), &
+       realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
     endif
   enddo
 
@@ -2588,7 +2589,8 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 
       if(option%use_samr) then
          flow_pc = 0
-         call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
+         call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), &
+         realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
       endif
     enddo
     source_sink => source_sink%next

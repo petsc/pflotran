@@ -646,17 +646,17 @@ subroutine FlowConditionRead(condition,input,option)
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputErrorMsg(input,option,'keyword','CONDITION,TYPE')   
           select case(trim(word))
-            case('PRES','PRESS','PRESSURE')
+            case('PRESSURE')
               sub_condition_ptr => pressure
             case('RATE')
               sub_condition_ptr => rate
             case('FLUX')
               sub_condition_ptr => flux
-            case('TEMP','TEMPERATURE')
+            case('TEMPERATURE')
               sub_condition_ptr => temperature
-            case('CONC','CONCENTRATION')
+            case('CONCENTRATION')
               sub_condition_ptr => concentration
-            case('H','ENTHALPY')
+            case('ENTHALPY')
               sub_condition_ptr => enthalpy
             case default
               option%io_buffer = 'keyword not recognized in condition,type'
@@ -671,13 +671,13 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = DIRICHLET_BC
             case('neumann')
               sub_condition_ptr%itype = NEUMANN_BC
-            case('mass','mass_rate')
+            case('mass_rate')
               sub_condition_ptr%itype = MASS_RATE_SS
-            case('hydrostatic','hydro','hydrostat','static')
+            case('hydrostatic')
               sub_condition_ptr%itype = HYDROSTATIC_BC
             case('zero_gradient')
               sub_condition_ptr%itype = ZERO_GRADIENT_BC
-            case('prod','production_well')
+            case('production_well')
               sub_condition_ptr%itype = PRODUCTION_WELL
             case('seepage')
               sub_condition_ptr%itype = SEEPAGE_BC
@@ -697,7 +697,7 @@ subroutine FlowConditionRead(condition,input,option)
       case('IPHASE')
         call InputReadInt(input,option,default_iphase)
         call InputErrorMsg(input,option,'IPHASE','CONDITION')   
-      case('DATUM','DATM')
+      case('DATUM')
         call FlowConditionReadValues(input,option,word,string,default_datum,word)
       case('GRADIENT','GRAD')
         do
@@ -1283,11 +1283,11 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
   call InputErrorMsg(input,option,'file or value','CONDITION')
   call StringToLower(word)
   if (StringCompare(word,'file',FOUR_INTEGER)) then
-    call InputReadWord(input,option,word,PETSC_TRUE)
+    call InputReadNChars(input,option,string2,MAXSTRINGLENGTH,PETSC_TRUE)
     input%err_buf = trim(keyword) // ' FILE'
     input%err_buf2 = 'CONDITION'
     call InputErrorMsg(input,option)
-    call FlowConditionReadValuesFromFile(word,dataset,option)
+    call FlowConditionReadValuesFromFile(string2,dataset,option)
   else
     input%buf = trim(string2)
     allocate(dataset%values(dataset%rank,1))
@@ -1330,7 +1330,7 @@ subroutine FlowConditionReadValuesFromFile(filename,dataset,option)
   
   type(option_type) :: option
   type(flow_condition_dataset_type) :: dataset
-  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: filename
   
   character(len=MAXSTRINGLENGTH) :: string
   PetscReal, pointer :: temp_times(:), temp_array1(:), temp_array2(:), &

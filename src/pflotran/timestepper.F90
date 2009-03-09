@@ -196,6 +196,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   use Output_module, only : Output, OutputInit, OutputVectorTecplot
   use Logging_module  
   use Mass_Balance_module
+  use Discretization_module
   
   implicit none
   
@@ -331,8 +332,26 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     transient_plot_flag = PETSC_TRUE
     call Output(realization,plot_flag,transient_plot_flag)
     if (output_option%print_permeability) then
-      string = 'permeability-' // trim(option%group_prefix) // '.tec'
-      call OutputVectorTecplot(string,string,realization,realization%field%perm0_xx)
+      if (len_trim(option%group_prefix) > 1) then
+        string = 'permeability-' // trim(option%group_prefix) // '.tec'
+      else
+        string = 'permeability.tec'
+      endif
+      call DiscretizationLocalToGlobal(realization%discretization, &
+                                       realization%field%perm_xx_loc, &
+                                       realization%field%work,ONEDOF)
+      call OutputVectorTecplot(string,string,realization,realization%field%work)
+    endif
+    if (output_option%print_porosity) then
+      if (len_trim(option%group_prefix) > 1) then
+        string = 'porosity-' // trim(option%group_prefix) // '.tec'
+      else
+        string = 'porosity.tec'
+      endif
+      call DiscretizationLocalToGlobal(realization%discretization, &
+                                       realization%field%porosity_loc, &
+                                       realization%field%work,ONEDOF)
+      call OutputVectorTecplot(string,string,realization,realization%field%work)
     endif
   endif
   ! increment plot number so that 000 is always the initial condition, and nothing else
@@ -401,6 +420,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     if (associated(tran_stepper)) then
       call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr)
       call StepperStepTransportDT(realization,tran_stepper, &
+                                  flow_timestep_cut_flag, &
                                   tran_timestep_cut_flag, &
                                   idum,failure)
       call PetscLogStagePop(ierr)
@@ -629,6 +649,7 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option,timestep_cut_flag, &
           dtt = stepper%tfac(num_newton_iterations) * dt
         endif
       endif
+      
   end select
   
   if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
@@ -908,7 +929,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
                     option%flow_dt/realization%output_option%tconv
             print *,"Stopping execution!"
           endif
-          realization%output_option%plot_name = 'cut_to_failure'
+          realization%output_option%plot_name = 'flow_cut_to_failure'
           plot_flag = PETSC_TRUE
           transient_plot_flag = PETSC_FALSE
           call Output(realization,plot_flag,transient_plot_flag)
@@ -921,7 +942,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
       
         if (option%print_screen_flag) write(*,'('' -> Cut time step: snes='',i3, &
           &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.4, '' dt= '', &
-          &   1pe12.4,l3)')  snes_reason,icut,stepper%icutcum, &
+          &   1pe12.4,l2)')  snes_reason,icut,stepper%icutcum, &
               option%flow_time/realization%output_option%tconv, &
               option%flow_dt/realization%output_option%tconv,timestep_cut_flag
 
@@ -1030,7 +1051,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
        scaled_fnorm = fnorm
     endif
     print *,' --> SNES Linear/Non-Linear Interations = ', &
-             num_linear_iterations,num_newton_iterations
+             num_linear_iterations,' / ',num_newton_iterations
     print *,' --> SNES Residual: ', fnorm, scaled_fnorm, inorm 
      
   endif
@@ -1104,7 +1125,8 @@ end subroutine StepperStepFlowDT
 ! date: 02/19/08
 !
 ! ************************************************************************** !
-subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
+subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
+                                  tran_timestep_cut_flag, &
                                   num_newton_iterations,failure)
   
   use Reactive_Transport_module
@@ -1131,7 +1153,8 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   type(realization_type) :: realization
   type(stepper_type) :: stepper
 
-  PetscTruth :: timestep_cut_flag
+  PetscTruth :: flow_timestep_cut_flag
+  PetscTruth :: tran_timestep_cut_flag
   PetscInt :: num_newton_iterations
   PetscTruth :: failure
   
@@ -1167,7 +1190,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   call DiscretizationLocalToLocal(discretization,field%porosity_loc,field%porosity_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%tor_loc,field%tor_loc,ONEDOF)
 
-  if (timestep_cut_flag) then
+  if (flow_timestep_cut_flag) then
     option%tran_time = option%flow_time
     option%tran_dt = option%flow_dt
     option%time = option%flow_time
@@ -1274,7 +1297,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
       if (snes_reason <= 0) then
         ! The Newton solver diverged, so try reducing the time step.
         icut = icut + 1
-        timestep_cut_flag = PETSC_TRUE
+        tran_timestep_cut_flag = PETSC_TRUE
 
         if (icut > stepper%icut_max .or. option%tran_dt<1.d-20) then
           if (option%print_screen_flag) then
@@ -1283,7 +1306,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
                     option%tran_dt/realization%output_option%tconv
             print *,"Stopping execution!"
           endif
-          realization%output_option%plot_name = 'cut_to_failure'
+          realization%output_option%plot_name = 'tran_cut_to_failure'
           plot_flag = PETSC_TRUE
           transient_plot_flag = PETSC_FALSE
           call Output(realization,plot_flag,transient_plot_flag)
@@ -1296,9 +1319,10 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
       
         if (option%print_screen_flag) write(*,'('' -> Cut time step: snes='',i3, &
           &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.4, '' dt= '', &
-          &   1pe12.4,i3)')  snes_reason,icut,stepper%icutcum, &
+          &   1pe12.4,l2)')  snes_reason,icut,stepper%icutcum, &
               option%tran_time/realization%output_option%tconv, &
-              option%tran_dt/realization%output_option%tconv,timestep_cut_flag
+              option%tran_dt/realization%output_option%tconv, &
+              tran_timestep_cut_flag
 
         option%tran_time = option%tran_time + option%tran_dt
 
@@ -1344,7 +1368,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
          scaled_fnorm = fnorm
       endif
       print *,' --> SNES Linear/Non-Linear Interations = ', &
-               num_linear_iterations,num_newton_iterations
+               num_linear_iterations,' / ',num_newton_iterations
       print *,' --> SNES Residual: ', fnorm, scaled_fnorm, inorm 
     endif
 
@@ -1361,10 +1385,12 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
     
     call RTMaxChange(realization)
     if (option%print_screen_flag) then
-      write(*,'("  --> max chng: dcmx= ",1pe12.4)') option%dcmax
+      write(*,'("  --> max chng: dcmx= ",1pe12.4," dcdt= ",1pe12.4," [mol/s]")') &
+        option%dcmax,option%dcmax/option%tran_dt
     endif
     if (option%print_file_flag) then  
-      write(option%fid_out,'("  --> max chng: dcmx= ",1pe12.4)') option%dcmax
+      write(option%fid_out,'("  --> max chng: dcmx= ",1pe12.4," dcdt= ",1pe12.4," [mol/s]")') &
+        option%dcmax,option%dcmax/option%tran_dt
     endif
 
     if (option%print_screen_flag) print *, ""

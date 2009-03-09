@@ -47,8 +47,13 @@ function UnitsConvertToInternal(units,option)
     if (istart > length) exit
     do
       char = units(iend:iend)
-      if (char == '-' .or. char == '/' .or. iend == length) then
-        word = units(istart:max(istart,iend-1))
+      if (char == '-' .or. char == '/' .or. char == ' ' .or. iend == length) then
+        if (iend == length) then
+          word = units(istart:max(istart,iend))
+        else
+          word = units(istart:max(istart,iend-1))
+        endif
+        word = adjustl(word)
         if (set_numerator) then
           numerator = numerator * UnitsConvert(word,option)
         else
@@ -126,6 +131,10 @@ function UnitsConvert(unit,option)
       UnitsConvert = 3600.d0
     case('d','day')
       UnitsConvert = 24.d0*3600.d0 
+    case('w','week')
+      UnitsConvert = 7.d0*24.d0*3600.d0 
+    case('mo','month')
+      UnitsConvert = 30.d0*24.d0*3600.d0 
     case('y','yr')
       UnitsConvert = 365.d0*24.d0*3600.d0
     ! convert length to meters

@@ -79,17 +79,15 @@ SATURATION_FUNCTION default
 
 :=========================== output options ===================================
 OUTPUT
-:MASS_BALANCE
-TIMES y 0.25d0 0.5d0 0.75d0
+PERIODIC TIME 1.d0 y
 FORMAT TECPLOT BLOCK
-VELOCITIES
 /
 
 :=========================== times ============================================
 TIME
-FINAL_TIME 1.d0 y
+FINAL_TIME 10.d0 y
 INITIAL_TIMESTEP_SIZE 1.d-3 y
-MAXIMUM_TIMESTEP_SIZE 1.d-1 y
+MAXIMUM_TIMESTEP_SIZE 1.d0 y
 /
 
 :=========================== regions ==========================================

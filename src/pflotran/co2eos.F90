@@ -640,7 +640,7 @@ contains
   PetscReal :: p,t,tc,lnt,muco2, henry
 
   c1  = 28.9447706d0
-  c2  = -0.0354581768
+  c2  = -0.0354581768d0
   c3  = -4770.67077d0
   c4  =  1.02782768d-5
   c5  = 33.8126098d0
@@ -655,7 +655,7 @@ contains
   muco2 = c1 + c2*t + c3/t + c4*t*t + c5/(630.d0-t) + c6*p + c7*p*lnt &
     + c8*p/t + c9*p/(630.d0-t) + c10*p*p/(630.d0-t)**2
 
-   henry = exp(-muco2)
+  henry = exp(-muco2)
 
   return
   end subroutine Henry_duan_sun_0NaCl

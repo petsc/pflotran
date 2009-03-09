@@ -500,42 +500,120 @@ Initial and boundary conditions and material properties are assigned to spatial 
 %\end{tabular}
 \end{longtable}
 
-\protect\hypertarget{target_bcon}{}
 
-\subsection{Keyword: BOUNDARY\_CONDITION}
-\subsubsection{Description}
-The BOUNDARY\_CONDITION card couples a FLOW\_CONDITION and/or TRANSPORT\_CONDITION to a REGION in the problem domain.  The use of this card enables the use/reuse of flow and transport conditions and regions within multiple boundary and initial conditions and source/sinks in the input deck.
-\subsubsection{Example}
+\begin{comment}
+\protect\hypertarget{target_XXX}{}
+\subsection{Keyword: XXX}
+{\noindent\bf Description}
+{\noindent\bf Input:}
 \shadowbox{
 \begin{minipage}{6.5in}
 \begin{deflist}{0000000000}
-\item[BOUNDARY\_CONDITION]
+\item[]
+\end{deflist}
+\end{minipage}
+}
+{\noindent\bf Explanation:}
+\begin{description}
+\item[Keyword XXX]
+\end{description}
+{\noindent\bf Examples:}
+\begin{verbatim}
+\end{verbatim}
+\end{comment}
+
+
+
+\protect\hypertarget{target_bcon}{}
+
+\subsection{Keyword: BOUNDARY\_CONDITION}
+{\noindent\bf Description}
+The BOUNDARY\_CONDITION card couples conditions specified under the FLOW\_CONDITION and/or TRANSPORT\_CONDITION CARDS to a REGION in the problem domain.  The use of this card enables the use/reuse of flow and transport conditions and regions within multiple boundary and initial conditions and source/sinks in the input deck.
+
+{\noindent\bf Input:}
+
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000}
+\item[BOUNDARY\_CONDITION] boundary\_condition\_name
+\item[FLOW\_CONDITION] flow\_condition\_name
+\item[TRANSPORT\_CONDITION] transport\_condition\_name
 \item[REGION] region\_name
-\item[FLOW\_CONDITION] condition\_name
-\item[TRANSPORT\_CONDITION] condition\_name
 \item[END]
 \end{deflist}
 \end{minipage}
 }
 
+{\noindent\bf Explanation:}
+\begin{description}
+\item[Keyword BOUNDARY\_CONDITION] defines the beginning of a boundary condition entry and the name of the boundary condition.
+\item[Keyword FLOW\_CONDITION] defines the name of the flow condition to be linked to this boundary condition.
+\item[Keyword TRANSPORT\_CONDITION] defines the name of the transport condition to be linked to this boundary condition.
+\item[Keyword REGION] defines the name of the region to which the conditions are linked.
+\item[Keyword END] terminates the boundary condition entry.
+\end{description}
+
+{\noindent\bf Examples:}
+\begin{verbatim}
+BOUNDARY_CONDITION river
+FLOW_CONDITION river_stage
+TRANSPORT_CONDITION river_chemistry
+REGION river_bank
+END
+
+BOUNDARY_CONDITION recharge
+FLOW_CONDITION infiltration_flux
+TRANSPORT_CONDITION infiltration_chemistry
+REGION ground_surface
+END
+\end{verbatim}
+
 %========================================================================
 
-\protect\hypertarget{target_brk}{}
+\protect\hypertarget{target_obs}{}
 
-\subsection{Keyword: BREAKTHROUGH (BRK)}
-\subsubsection{Description}
-The BREAKTHROUGH card specifies that data values normally printed to the standard output files be monitored and printed at a specific location (e.g. grid cell or coordinate) throughout the simulation for observation.  These data are printed locally from each processor, thus requiring no parallel I/O, to files named 'breakthrough\_N.tec', where N is the rank of the processor upon which the observation points reside.
-\subsubsection{Example}
+\subsection{Keyword: OBSERVATION}
+{\noindent\bf Description}
+The OBSERVATION card specifies a location (REGION) at which flow and transport results (e.g. pressure, saturation, flow velocities, solute concentrations, etc.) will be monitored in the output.
+The user must specify either a region or boundary condition to which the observation object is linked.  The velocity keyword toggles on the printing of velocities at a point in space.
+
+{\noindent\bf Input:}
+
 \shadowbox{
 \begin{minipage}{6.5in}
 \begin{deflist}{0000000000}
-\item[BREAKTHROUGH]
+\item[OBSERVATION]
 \item[REGION] region\_name
-\item[VELOCITY] \{print\_velocities == PETSC\_TRUE\}
-\item[(., /, END)]
+\item[BOUNDARY\_CONDITION] boundary\_condition\_name
+\item[VELOCITY]
+\item[END]
 \end{deflist}
 \end{minipage}
 }
+
+{\noindent\bf Explanation:}
+\begin{description}
+\item[Keyword OBSERVATION] initiates an observation point entry.
+\item[Keyword REGION] (optional) defines the name of the region (usually a point in space) to which the observation point is linked.
+\item[Keyword BOUNDARY\_CONDITION] (optional) specifies the name of a boundary condition to which the observation point is tied (e.g. to monitor fluxes across a boundary face).
+\item[Keyword VELOCITY] (optional) toggles on the printing of Darcy velocities at the observation point.
+\item[Keyword END] initiates an observation point entry.
+\item[Keyword OBSERVATION] terminates the observation point entry.
+\end{description}
+
+{\noindent\bf Examples:}
+\begin{verbatim}
+OBSERVATION
+REGION well1
+VELOCITY
+END
+
+OBSERVATION
+BOUNDARY_CONDITION river
+END
+
+\end{verbatim}
+
 
 %========================================================================
 
@@ -556,9 +634,11 @@ The BREAKTHROUGH card specifies that data values normally printed to the standar
 \protect\hypertarget{target_ckpt}{}
 
 \subsection{Keyword: CHECKPOINT}
-\subsubsection{Description}
-Checkpoint files enable the restart of a simulation at any discrete point in simulation where a checkpoint file has been printed.  When the CHECKPOINT card is included in the input deck, checkpoint files are printed every N time steps, where N is the checkpoint frequency, and at the end of the simulation, should the simulation finish or the be shut down properly mid-simulation using the WALL\_CLOCK\_STOP card.  Checkpoint files are named 'pflotran.chkN', where N is the number of the timestep when the checkpoint file was printed, or 'restart.chk' when printed while PFLOTRAN properly terminates execution.
-\subsubsection{Example}
+{\noindent\bf Description}
+Checkpoint files enable the restart of a simulation at any discrete point in simulation where a checkpoint file has been printed.  When the CHECKPOINT card is included in the input deck, checkpoint files are printed every N time steps, where N is the checkpoint frequency, and at the end of the simulation, should the simulation finish or the be shut down properly mid-simulation using the WALL\_CLOCK\_STOP card.  Checkpoint files are named 'pflotran.chkN', where N is the number of the timestep when the checkpoint file was printed, or 'restart.chk' when printed as PFLOTRAN properly terminates execution.
+
+{\noindent\bf Input:}
+
 \shadowbox{
 \begin{minipage}{6.5in}
 \begin{deflist}{0000000000}
@@ -566,6 +646,18 @@ Checkpoint files enable the restart of a simulation at any discrete point in sim
 \end{deflist}
 \end{minipage}
 }
+
+{\noindent\bf Explanation:}
+\begin{description}
+\item[Keyword CHECKPOINT] toggles on checkpointing and defines the frequency at which checkpoint files will be printed
+\end{description}
+
+{\noindent\bf Examples:}
+\begin{verbatim}
+CHECKPOINT 1000
+
+CHECKPOINT 5
+\end{verbatim}
 
 %========================================================================
 
@@ -587,17 +679,20 @@ COMPUTE\_STATISTICS enables the calculation statistical analysis of flow velocit
 
 \protect\hypertarget{target_cond}{}
 
-\subsection{Keyword: CONDITION (COND)}
-\subsubsection{Description}
+\subsection{Keyword: CONDITION (FLOW\_/TRANSPORT\_}
+
+{\noindent\bf Description}
 The CONDITION card specifies scalar or vector data sets to be associated with a given boundary or initial condition.  For instance, to specify a hydrostatic boundary condition, the use would specify a condition with a pressure associated with a point in space (i.e. datum) in space and a gradient, both vector quantities.  [Note that in the case of a hydrostatic boundary condition, the vertical gradient specified in the input deck must be 0. in order to enable the hydrostatic pressure calculation.  Otherwise, the specified vertical gradient overrides the hydrostatic pressure.]  Transient pressures, temperatures, concentrations, datums, gradients, etc. are specified using the 'FILE filename' combination for the name of the data set.
-\subsubsection{Example}
+
+{\noindent\bf Input:}
+
 \shadowbox{
 \begin{minipage}{6.5in}
 \begin{deflist}{0000000000}
-\item [CONDITION (COND)] condition\_name
-\item [UNITS] ~
+\item [(FLOW\_/TRANSPORT\_)CONDITION] condition\_name
+\item [UNITS] (not currently supported)
 \begin{deflist}{0000000000}
-\item    s, sec, min, hr, d, day, y, yr
+\item    s, sec, min, hr, d, day, w, week, mo, month, y, yr
 \item    mm, cm, m, met, meter, dm, km
 \item    Pa, KPa
 \item    m/s, m/yr
@@ -606,26 +701,24 @@ The CONDITION card specifies scalar or vector data sets to be associated with a 
 \item    KJ/mol
 \end{deflist}
 
-\item[(., /, END)]
+\item[END]
 
-\item[CLASS] [flow, transport (tran)]
+\item[CYCLIC] 
 
-\item[CYCLIC] \{is\_cyclic = .true.\}
-
-\item[INTERPOLATION] step linear
+\item[INTERPOLATION] (step/linear)
 
 \item[TYPE] ~
 
 \begin{deflist}{0000000000}
-    \item[PRESSURE (PRES, PRESS)]
+    \item[PRESSURE]
       [dirichlet,
-      neumann,
-      mass,
-      hydrostatic (hydro, hydrostat), static,
+      hydrostatic,,
       zero\_gradient,
       seepage]
-    \item[MASS\_RATE (MASS)]
-      [mass]
+    \item[FLUX]
+      [neumann]
+    \item[RATE]
+      [mass\_rate]
     \item[FLUX]
       [dirichlet,
       neumann,
@@ -633,61 +726,121 @@ The CONDITION card specifies scalar or vector data sets to be associated with a 
       hydrostatic (hydro, hydrostat), static,
       zero\_gradient,
       seepage]
-    \item[TEMPERATURE (TEMP)]
-      [dirichlet,
-      neumann,
-      mass,
-      hydrostatic (hydro, hydrostat), static,
-      zero\_gradient,
-      seepage]
-    \item[CONCENTRATION (CONC)]
-      [dirichlet,
-      neumann,
-      mass,
-      hydrostatic (hydro, hydrostat), static,
-      zero\_gradient,
-      seepage]
+    \item[TEMPERATURE]
+      [dirichlet,hydrostatic,
+      zero\_gradient]
+    \item[CONCENTRATION]
+      [dirichlet,hydrostatic,
+      zero\_gradient]
     \item[ENTHALPY (H)]
-      [dirichlet,
-      neumann,
-      mass,
-      hydrostatic (hydro, hydrostat), static,
-      zero\_gradient,
-      seepage]
-
-  \item[(., /, END)]
+      [dirichlet,hydrostatic,
+      zero\_gradient]
+  \item[END]
 \end{deflist}
-\item[TIME] ~
+\item[TIME] (not currently supported)
 
 \item[IPHASE] ~
 
-\item[DATUM (DATM)] ~
- \item  [[Continued]]
+\item[DATUM] x y z
+\item[GRADIENT] 
+\item    PRESSURE $d_{dx}$ $d_{dy}$ $d_{dz}$
+\item    FLUX
+\item    TEMPERATURE
+\item    CONCENTRATION
+\item    ENTHALPY
+\item[END]
+\item[TEMPERATURE] ~
+\item[ENTHALPY] ~
+\item[PRESSURE] ~
+\item[FLUX] ~
+\item[CONCENTRATION] ~
+\item[CONSTRAINT\_LIST]
+\item[END] ~
 \end{deflist}
 \end{minipage}
 }
 
-\subsection{Keyword: CONDITION (COND) [Continued]}
+{\noindent\bf Explanation:}
+\begin{description}
+\item[(FLOW\_/TRANSPORT\_)CONDITION] initiates a condition entry and defines its name.
+\item[CYCLIC] instructs PFLOTRAN to cycle the transient data set should the simulation time exceed the last time in the data set.
+\item[INTERPOLATION] defines the method for interpolating between data set times.
+\item[DATUM] location is space where prescribed scalar (e.g. pressure, temperature concentration, etc.) is defined.
+\item[TYPE] specifies the type of condition.
+\begin{deflist}{0000000000}
+    \item[PRESSURE] specifies the type of pressure condition.
+    \item[TEMPERATURE] specifies the type of temperature condition.
+    \item[CONCENTRATION] specifies the type of concentration condition.
+    \item[ENTHALPY] specifies the type of enthalpy condition.
+    \item[END] terminates the type entry.
+\end{deflist}
+\item[GRADIENT] gradient of the scalar in 3D space.
+\begin{deflist}{0000000000}
+    \item[PRESSURE] pressure gradient in x-, y-, and z-directions.
+    \item[TEMPERATURE] temperature gradient in x-, y-, and z-directions.
+    \item[CONCENTRATION] concentration gradient in x-, y-, and z-directions.
+    \item[ENTHALPY] enthalpy gradient in x-, y-, and z-directions.
+    \item[END] terminates the gradient entry.
+\end{deflist}
+\item[PRESSURE] absolute fluid pressure at the datum.
+\item[FLUX] Darcy velocity of fluid defining flux across a boundary.
+\item[TEMPERATURE] temperature in $^\circ$ C at the datum.
+\item[CONCENTRATION] solute concentration at the datum.
+\item[ENTHALPY] enthalpy at the datum.
+\item[CONSTRAINT\_LIST] specifies a list of concentration constraints for solute transport.
+\item[END] terminates the condition entry.
+\end{description}
+
+{\noindent\bf Examples:}
+\begin{verbatim}
+FLOW_CONDITION initial
+TYPE
+PRESSURE hydrostatic
+/
+PRESSURE 1956741.84 ! 200 meter piezometric head (200*997.32*9.81)
+/
+
+FLOW_CONDITION source
+TYPE
+RATE volumetric_rate
+/
+RATE 2.77777778d-3  ! 10 m^3/hr
+/
+
+TRANSPORT_CONDITION initial
+TYPE zero_gradient
+CONSTRAINT_LIST
+0.d0 initial
+/
+END
+
+TRANSPORT_CONDITION source
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 well
+/
+\end{verbatim}
+
+\begin{comment}
+\protect\hypertarget{target_XXX}{}
+\subsection{Keyword: XXX}
+{\noindent\bf Description}
+{\noindent\bf Input:}
 \shadowbox{
 \begin{minipage}{6.5in}
 \begin{deflist}{0000000000}
-\item[GRADIENT (GRAD)] ~
-\item    PRESSURE (PRES, PRESS)
-\item    FLUX
-\item    TEMPERATURE (TEMP)
-\item    CONCENTRATION (CONC)
-\item    ENTHALPY (H)
-\item[(., /, END)] ~
-\item[TEMPERATURE (TEMP)] ~
-\item[ENTHALPY (H)] ~
-\item[PRESSURE (PRES, PRESS)] ~
-\item[FLUX (VELOCITY, VEL)] ~
-\item[CONCENTRATION (CONC)] ~
-\item[(., /, END)] ~
+\item[]
 \end{deflist}
 \end{minipage}
 }
-
+{\noindent\bf Explanation:}
+\begin{description}
+\item[Keyword XXX]
+\end{description}
+{\noindent\bf Examples:}
+\begin{verbatim}
+\end{verbatim}
+\end{comment}
 %========================================================================
 
 \protect\hypertarget{target_datset}{}
@@ -1097,13 +1250,13 @@ x2 y2 z2\\
 \end{minipage}
 }
 
-{\noindent\bf Explanation:} 
+{\noindent\bf Explanation:}
 \begin{description}
-\item[Keyword REGION] begins a region entry with name {\tt region\_name}. 
-\item[Keyword BLOCK] defines a volumetric, planar, or point region through IJK indices: i1 i2 j1 j2 k1 k2. 
+\item[Keyword REGION] begins a region entry with name {\tt region\_name}.
+\item[Keyword BLOCK] defines a volumetric, planar, or point region through IJK indices: i1 i2 j1 j2 k1 k2.
 \item[Keyword COORDINATE] defines a point region through coordinates in 3D space.
 \item[Keyword COORDINATES] Defines a volumetric, planar, or point region between two coordinates in space.
-\item[Keyword FILE] Defines an HDF5 file within which a dataset named 
+\item[Keyword FILE] Defines an HDF5 file within which a dataset named
 region\_name contains a list of grid cells corresponding to a region.
 \item [Keyword FACE] Defines the face of the grid cell to which boundary conditions are connected where face\_name is one of WEST, EAST, NORTH, SOUTH, BOTTOM, TOP (structured grids only).
 \item [Keyword END] Ends the region entry (can be one of . \ END).
@@ -1164,13 +1317,34 @@ END
 \protect\hypertarget{target_restart}{}
 
 \subsection{Keyword: RESTART}
+{\noindent\bf Description}
+
+The RESTART card defines a checkpoint file from which the current simulation should be restarted.  If a time is specified after the file name, the initial simulation time is set to that time.
+
+{\noindent\bf Input:}
+
 \shadowbox{
 \begin{minipage}{6.5in}
 \begin{deflist}{0000000000}
-\item[RESTART] restart\_file restart\_time
+\item[RESTART] restart\_file restart\_time time\_units
 \end{deflist}
 \end{minipage}
 }
+
+{\noindent\bf Explanation:}
+\begin{description}
+\item[Keyword RESTART] defines the checkpoint filename to be read in to restart a simulation at the specified time.
+\end{description}
+
+{\noindent\bf
+Examples:}
+
+\begin{verbatim}
+RESTART restart.chk 0. y
+
+RESTART restart.chk 
+
+\end{verbatim}
 
 %========================================================================
 

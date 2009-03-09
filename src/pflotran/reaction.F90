@@ -539,8 +539,11 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   use Input_module
   use String_module  
   use Utility_module  
+#ifdef CHUAN_CO2
   use co2eos_module, only: Henry_duan_sun_0NaCl
-  
+  use span_wagner_module, only: co2_span_wagner
+  use water_eos_module
+#endif  
   implicit none
   
   type(reactive_transport_auxvar_type) :: rt_auxvar
@@ -587,6 +590,12 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscReal :: Res_pert, pert, prev_value
 
   PetscInt :: iphase
+
+#ifdef CHUAN_CO2  
+  PetscReal :: dg,dddt,dddp,fg, dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,&
+               yco2,pco2, sat_pressure
+  PetscInt :: ierr
+#endif
     
   constraint_type = aq_species_constraint%constraint_type
   constraint_spec_name = aq_species_constraint%constraint_spec_name
@@ -594,7 +603,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   conc = aq_species_constraint%constraint_conc
 
   iphase = 1
-  
   if (option%initialize_with_molality) then
     convert_molal_to_molar = global_auxvar%den_kg(iphase)/1000.d0
     convert_molar_to_molal = 1.d0
@@ -607,6 +615,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 !    aq_species_constraint%basis_molarity = conc*convert_molar_to_molal
     aq_species_constraint%basis_molarity = conc ! don't need to convert
     rt_auxvar%pri_molal = aq_species_constraint%basis_molarity
+    rt_auxvar%total(:,iphase) = aq_species_constraint%basis_molarity
     return
   endif
 
@@ -686,7 +695,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     endif
     call RTotal(rt_auxvar,global_auxvar,reaction,option)
     if (reaction%nsorb > 0) call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
-    
     Jac = 0.d0
         
     do icomp = 1, reaction%ncomp
@@ -854,23 +862,53 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 !           Jac(icomp,comp_id) = QK/auxvar%primary_spec(comp_id)* &
 !                                reaction%eqgasstoich(jcomp,igas)
             Jac(icomp,comp_id) = reaction%eqgasstoich(jcomp,igas)/rt_auxvar%pri_molal(comp_id)
+
+#ifdef CHUAN_CO2
+             print *,'Gas CO2 constraint Jac,',igas, icomp, comp_id, reaction%eqgasstoich(jcomp,igas),&
+                 Jac(icomp,comp_id), rt_auxvar%pri_molal(comp_id), lnQK
+#endif
           enddo
 
-#if CHUAN_CO2        
+#ifdef CHUAN_CO2        
         case(CONSTRAINT_SUPERCRIT_CO2)
         
-           ln_act_h2o = 0.d0
+          ln_act_h2o = 0.d0
           
           igas = constraint_id(icomp)
-
+         
           ! compute secondary species concentration
-          if(abs(reaction%co2_gas_id) == igas )then
-            pres = global_auxvar%pres(2)
+          if(abs(reaction%co2_gas_id) == igas) then
+!           pres = global_auxvar%pres(2)
+!           pres = conc(icomp)*1.D5
             tc = global_auxvar%temp(1)
-            xphico2 = global_auxvar%fugacoeff(1)
-            call Henry_duan_sun_0NaCl(pres *1D-5, tc, henry)
-            lnQk = - log(henry*xphico2)*LOG_TO_LN
-           
+
+            call PSAT(tc, sat_pressure, ierr)
+            
+            pco2 = conc(icomp)*1.e5
+!           pco2 = pres - sat_pressure
+            
+            pres = conc(icomp)*1.D5 + sat_pressure
+            yco2 = pco2/pres
+                        
+!           call co2_span_wagner(pres*1D-6,tc+273.15D0,dg,dddt,dddp,fg, &
+!             dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
+
+            call co2_span_wagner(pco2*1D-6,tc+273.15D0,dg,dddt,dddp,fg, &
+              dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
+            
+            global_auxvar%den_kg(2) = dg
+            
+            !compute fugacity coefficient
+            fg = fg*1.D6
+            xphico2 = fg / pco2
+            global_auxvar%fugacoeff(1) = xphico2
+            
+            call Henry_duan_sun_0NaCl(pco2*1.d-5, tc, henry)
+            lnQk = -log(xphico2*henry)
+!           lnQk = log(fg/henry)
+            
+            print *, 'SC CO2 constraint',pres,pco2,tc,xphico2,henry,lnQk,yco2
+            
             ! activity of water
             if (reaction%eqgash2oid(igas) > 0) then
               lnQK = lnQK + reaction%eqgash2ostoich(igas)*ln_act_h2o
@@ -882,15 +920,18 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             enddo
           
 !           QK = exp(lnQK)
-          
+             
 !           Res(icomp) = QK - conc(icomp)
-            Res(icomp) = lnQK - log(conc(icomp)) ! gas pressure
+            Res(icomp) = lnQK - log(pco2*1D-5)!log(conc(icomp)) ! gas pressure
             Jac(icomp,:) = 0.d0
             do jcomp = 1,reaction%eqgasspecid(0,igas)
               comp_id = reaction%eqgasspecid(jcomp,igas)
 !             Jac(icomp,comp_id) = QK/auxvar%primary_spec(comp_id)* &
 !                                reaction%eqgasstoich(jcomp,igas)
               Jac(icomp,comp_id) = reaction%eqgasstoich(jcomp,igas)/rt_auxvar%pri_molal(comp_id)
+              
+              print *,'SC CO2 constraint Jac,',igas, icomp, comp_id, reaction%eqgasstoich(jcomp,igas),&
+                Jac(icomp,comp_id), rt_auxvar%pri_molal(comp_id),conc(icomp) 
             enddo
          endif       
 #endif           
@@ -1092,16 +1133,22 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     write(option%fid_out,'(a20,es12.4,a8)') '  ionic strength: ', ionic_strength,' [mol/L]'
     write(option%fid_out,204) '  charge balance: ', charge_balance
     
-    write(option%fid_out,'(a20,f10.2,a5)') '        pressure: ', global_auxvar%pres(1),' [Pa]'
+    write(option%fid_out,'(a20,1pe12.4,a5)') '        pressure: ', global_auxvar%pres(1),' [Pa]'
     write(option%fid_out,'(a20,f8.2,a4)') '     temperature: ', global_auxvar%temp(1),' [C]'
     write(option%fid_out,'(a20,f8.2,a9)') '     density H2O: ', global_auxvar%den_kg(1),' [kg/m^3]'
+#ifdef CHUAN_CO2
+    if (global_auxvar%den_kg(2) > 0.d0) then
+      write(option%fid_out,'(a20,f8.2,a9)') '     density CO2: ', global_auxvar%den_kg(2),' [kg/m^3]'
+      write(option%fid_out,'(a20,es12.4,a9)') '            xphi: ', global_auxvar%fugacoeff(1)
+    endif
+#endif
     write(option%fid_out,90)
 
     102 format(/,'  species               molality    total       act coef  constraint')  
     write(option%fid_out,102)
     write(option%fid_out,90)
   
-    103 format(2x,a20,es12.4,es12.4,f8.4,4x,a)
+    103 format(2x,a20,es12.4,es12.4,es12.4,4x,a)
     do icomp = 1, reaction%ncomp
       select case(aq_species_constraint%constraint_type(icomp))
         case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
@@ -1150,7 +1197,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     110 format(/,'  complex               molality    act coef  logK')  
     write(option%fid_out,110)
     write(option%fid_out,90)
-    111 format(2x,a20,es12.4,f8.4,2x,es12.4)
+    111 format(2x,a20,es12.4,es12.4,2x,es12.4)
     do i = 1, reaction%neqcmplx ! for each secondary species
       icplx = eqcmplxsort(i)
       write(option%fid_out,111) reaction%secondary_species_names(icplx), &
@@ -2016,19 +2063,26 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 
   use Option_module
   use co2eos_module, only: Henry_duan_sun_0NaCl
+  use water_eos_module
   
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
   type(reaction_type) :: reaction
   type(option_type) :: option
   
-  PetscInt :: i, j, icplx, icomp, jcomp, iphase, ncomp, ieqgas, igas
+  PetscInt :: i, j, icplx, icomp, jcomp, iphase, ncomp, ieqgas,ierr
   PetscReal :: ln_conc(reaction%ncomp)
   PetscReal :: ln_act(reaction%ncomp)
   PetscReal :: ln_act_h2o
   PetscReal :: lnQK, tempreal
   PetscReal :: den_kg_per_L
-  PetscReal :: pressure, temperature, xphico2, henry
+  PetscReal :: pressure, temperature, xphico2, henry, den
+  
+#ifdef CHUAN_CO2  
+  PetscReal :: dg,dddt,dddp,fg, dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,&
+               yco2,pco2, sat_pressure
+#endif
+  
 
   rt_auxvar%total =0D0 !debugging 
   iphase = 1           
@@ -2105,27 +2159,46 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 #ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal) then
     call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
-                               global_auxvar%temp(iphase),reaction%ngas)
+                               global_auxvar%temp(1),reaction%ngas)
   endif
 #endif  
 
   if(iphase > option%nphase) return 
-  rt_auxvar%total(:,iphase) = 0D0 
+  rt_auxvar%total(:,iphase) = 0D0
+  rt_auxvar%dtotal(:,:,iphase)=0D0
+!  do icomp = 1, reaction%ncomp
+!    rt_auxvar%dtotal(icomp,icomp,iphase) = 1.d0
+!  enddo
+    
   den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3     
   if(global_auxvar%sat(iphase)>1D-20)then
     do ieqgas = 1, reaction%ngas ! all gas phase species are secondary
-      
-       if(abs(reaction%co2_gas_id) == ieqgas )then
+   
           pressure = global_auxvar%pres(2)
           temperature = global_auxvar%temp(1)
           xphico2 = global_auxvar%fugacoeff(1)
-          call Henry_duan_sun_0NaCl(pressure *1D-5, temperature, henry)
-          lnQk = - log(henry*xphico2)*LOG_TO_LN       
+          den = global_auxvar%den(2)
+ 
+          call PSAT(temperature, sat_pressure, ierr)
+          pco2 = pressure - sat_pressure
+!          call co2_span_wagner(pressure*1.D-6,temperature+273.15D0,dg,dddt,dddp,fg, &
+!              dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
+!
+!            fg = fg*1D6
+!            xphico2 = fg / pco2
+!            global_auxvar%fugacoeff(1) = xphico2
+
+
+       if(abs(reaction%co2_gas_id) == ieqgas )then
+          
+          call Henry_duan_sun_0NaCl(pco2*1D-5, temperature, henry)
+          lnQk = - log(henry)
+           
         else   
           lnQK = -reaction%eqgas_logK(ieqgas)*LOG_TO_LN
         endif 
           
-        if (reaction%eqgash2oid(igas) > 0) then
+        if (reaction%eqgash2oid(ieqgas) > 0) then
            lnQK = lnQK + reaction%eqgash2ostoich(ieqgas)*ln_act_h2o
         endif
    
@@ -2133,21 +2206,27 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
    !     do i = 1, ncomp
    ! removed loop over species, suppose only one primary species is related
         icomp = reaction%eqgasspecid(1,ieqgas)
+        pressure =pressure *1D-5
+        rt_auxvar%gas_molal(ieqgas) = &
+          reaction%eqgasstoich(1,ieqgas)*exp(lnQK)*rt_auxvar%pri_molal(icomp)&
+          /pressure /xphico2* den
         rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
                                         reaction%eqgasstoich(1,ieqgas)* &
                                         rt_auxvar%gas_molal(ieqgas)
+        print *,'Ttotal',pressure, temperature, xphico2, den, lnQk,rt_auxvar%pri_molal(icomp),rt_auxvar%total(icomp,iphase)
+
    !     enddo
 
    ! contribute to %dtotal 
-         tempreal = reaction%eqgasstoich(j,ieqgas)*exp(lnQK-ln_conc(icomp)) 
+         tempreal = reaction%eqgasstoich(j,ieqgas)*exp(lnQK)/pressure /xphico2* den 
          rt_auxvar%dtotal(icomp,icomp,iphase) = rt_auxvar%dtotal(icomp,icomp,iphase) + &
                                                reaction%eqgasstoich(1,ieqgas)*tempreal
     
     enddo
-    rt_auxvar%total(:,iphase) = rt_auxvar%total(:,iphase)*den_kg_per_L
+    rt_auxvar%total(:,iphase) = rt_auxvar%total(:,iphase)!*den_kg_per_L
     ! units of dtotal = kg water/L water
-    rt_auxvar%dtotal(:, :,iphase) = rt_auxvar%dtotal(:,:,iphase)*den_kg_per_L
-  endif   
+    rt_auxvar%dtotal(:, :,iphase) = rt_auxvar%dtotal(:,:,iphase)!*den_kg_per_L
+   endif   
   
 #endif  
 end subroutine RTotal
