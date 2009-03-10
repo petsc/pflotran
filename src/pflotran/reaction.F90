@@ -2203,6 +2203,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
           
         if (reaction%eqgash2oid(ieqgas) > 0) then
            lnQK = lnQK + reaction%eqgash2ostoich(ieqgas)*ln_act_h2o
+           print *,'Ttotal', reaction%eqgash2ostoich(ieqgas), ln_act_h2o
         endif
    
    ! contribute to %total          
