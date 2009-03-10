@@ -540,7 +540,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   use String_module  
   use Utility_module  
 #ifdef CHUAN_CO2
-  use co2eos_module, only: Henry_duan_sun_0NaCl
+  use co2eos_module, only: Henry_duan_sun
   use span_wagner_module, only: co2_span_wagner
   use water_eos_module
 #endif  
@@ -903,7 +903,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             xphico2 = fg / pco2
             global_auxvar%fugacoeff(1) = xphico2
             
-            call Henry_duan_sun_0NaCl(pco2*1.d-5, tc, henry)
+!            call Henry_duan_sun_0NaCl(pco2*1.d-5, tc, henry)
+            call Henry_duan_sun(tc, pco2 *1D-5, henry, xphico2, &
+                 option%m_nacl, option%m_nacl,sat_pressure*1D-5) 
             lnQk = -log(xphico2*henry)
 !           lnQk = log(fg/henry)
             
@@ -2062,7 +2064,7 @@ end subroutine RActivityCoefficients
 subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 
   use Option_module
-  use co2eos_module, only: Henry_duan_sun_0NaCl
+  use co2eos_module, only: Henry_duan_sun
   use water_eos_module
   
   type(reactive_transport_auxvar_type) :: rt_auxvar
@@ -2076,7 +2078,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: ln_act_h2o
   PetscReal :: lnQK, tempreal
   PetscReal :: den_kg_per_L
-  PetscReal :: pressure, temperature, xphico2, henry, den
+  PetscReal :: pressure, temperature, xphico2, muco2, den
   
 #ifdef CHUAN_CO2  
   PetscReal :: dg,dddt,dddp,fg, dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,&
@@ -2190,9 +2192,10 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 
 
        if(abs(reaction%co2_gas_id) == ieqgas )then
-          
-          call Henry_duan_sun_0NaCl(pco2*1D-5, temperature, henry)
-          lnQk = - log(henry)
+!          call Henry_duan_sun_0NaCl(pco2*1D-5, temperature, henry)
+           call Henry_duan_sun(temperature, pressure *1D-5, muco2, xphico2, &
+                option%m_nacl, option%m_nacl,sat_pressure*1D-5)
+          lnQk = - log(muco2)
            
         else   
           lnQK = -reaction%eqgas_logK(ieqgas)*LOG_TO_LN
@@ -2216,7 +2219,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
                                         reaction%eqgasstoich(1,ieqgas)* &
                                         rt_auxvar%gas_molal(ieqgas)
         print *,'Ttotal',pressure, temperature, xphico2, den, lnQk,rt_auxvar%pri_molal(icomp),&
-         rt_auxvar%pri_act_coef(icomp),rt_auxvar%gas_molal(ieqgas)
+         global_auxvar%sat(2),rt_auxvar%gas_molal(ieqgas)
    !     if(rt_auxvar%total(icomp,iphase) > den)rt_auxvar%total(icomp,iphase) = den* .99D0
    !     enddo
 
