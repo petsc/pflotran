@@ -137,6 +137,8 @@ module Option_module
     character(len=MAXWORDLENGTH) :: global_prefix
     character(len=MAXWORDLENGTH) :: group_prefix
     
+    PetscTruth :: steady_state
+    
   end type option_type
   
   type, public :: output_option_type
@@ -401,6 +403,8 @@ subroutine OptionInitRealization(option)
   option%permx_filename = ""
   option%permy_filename = ""
   option%permz_filename = ""
+  
+  option%steady_state = PETSC_FALSE
 
 end subroutine OptionInitRealization
 
