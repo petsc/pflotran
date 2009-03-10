@@ -1447,7 +1447,7 @@ subroutine RealizationAddWaypointsToList(realization)
     cur_waypoint => cur_waypoint%next
   enddo
   ! use final time in conditional below
-  final_time = cur_waypoint%time
+  if (associated(cur_waypoint)) final_time = cur_waypoint%time
 
   ! add waypoints for periodic output
   if (realization%output_option%periodic_output_time_incr > 0.d0 .or. &
