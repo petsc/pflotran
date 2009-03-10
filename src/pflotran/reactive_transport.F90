@@ -1152,7 +1152,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
      msrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
      msrc(1) =  msrc(1) / FMWH2O *1D3
      msrc(2) =  msrc(2) / FMWCO2 *1D3
-    
+    ! print *,'RT SC source'
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
@@ -1162,7 +1162,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
       
-      select case(source_sink%tran_condition%itype)
+      select case(source_sink%flow_condition%itype(1))
         case(MASS_RATE_SS)
            do ieqgas = 1, reaction%ngas
               if(abs(reaction%co2_gas_id) == ieqgas )then

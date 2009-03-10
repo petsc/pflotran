@@ -32,7 +32,7 @@ module Mphase_module
 
 ! Cutoff parameters
   PetscReal, parameter :: formeps   = 1.D-4
-  PetscReal, parameter :: eps = 1.D-8 
+  PetscReal, parameter :: eps = 1.D-5 
   PetscReal, parameter :: dfac = 1D-8
   PetscReal, parameter :: floweps   = 1.D-24
 !  PetscReal, parameter :: satcuteps = 1.D-5
@@ -1111,12 +1111,11 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
      
   PetscInt :: ispec, np, ind
   PetscReal :: fluxm(option%nflowspec),fluxe,q, v_darcy
-  PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,difff,diffp, DK,Dq
+  PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,difff,diffdp, DK,Dq
   PetscReal :: upweight,density_ave,cond,gravity,dphi
-  PetscReal :: stp_up, stp_dn, uden
-        
+     
   Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
-  
+  diffdp = (por_up *tor_up * por_dn*tor_dn) / (dd_dn*por_up*tor_up + dd_up*por_dn*tor_dn)*area
   
   fluxm = 0.D0
   fluxe = 0.D0
@@ -1151,13 +1150,11 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
            ukvr = aux_var_up%kvr(np)
            ! if(option%use_isothermal == PETSC_FALSE)&
            uh = aux_var_up%h(np)
-           uden = aux_var_up%den(np)
            uxmol(1:option%nflowspec) = aux_var_up%xmol((np-1)*option%nflowspec + 1 : np*option%nflowspec)
         else
            ukvr = aux_var_dn%kvr(np)
            ! if(option%use_isothermal == PETSC_FALSE)&
            uh = aux_var_dn%h(np)
-           uden = aux_var_dn%den(np)
            uxmol(1:option%nflowspec) = aux_var_dn%xmol((np-1)*option%nflowspec + 1 : np*option%nflowspec)
         endif
    
@@ -1168,26 +1165,23 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
            q = v_darcy * area
         
            do ispec=1, option%nflowspec 
-              fluxm(ispec)=fluxm(ispec) + q * uden * uxmol(ispec)
+              fluxm(ispec)=fluxm(ispec) + q * density_ave * uxmol(ispec)
            enddo
           ! if(option%use_isothermal == PETSC_FALSE)&
-            fluxe = fluxe + q* uden *uh 
+            fluxe = fluxe + q*density_ave*uh 
         endif
      endif
 
 ! Diffusion term   
 ! Note : average rule may not be correct  
      if ((aux_var_up%sat(np) > eps) .and. (aux_var_dn%sat(np) > eps)) then
-        stp_up = tor_up * por_up * aux_var_up%sat(np)
-        stp_dn = tor_dn * por_dn * aux_var_dn%sat(np)
-        diffp = (stp_up*stp_dn)/(stp_up*dd_dn+stp_dn*dd_up)
-        difff = 0.D0 !diffdp !, for debugging only
+        difff = diffdp * 0.25D0*(aux_var_up%sat(np) + aux_var_dn%sat(np))* &
+             (aux_var_up%den(np) + aux_var_dn%den(np))
         do ispec=1, option%nflowspec
            ind = ispec + (np-1)*option%nflowspec
-           fluxm(ispec) = fluxm(ispec) + difff * 0.5D0 *  &
+           fluxm(ispec) = fluxm(ispec) + difff * .5D0 * &
                 (aux_var_up%diff(ind) + aux_var_dn%diff(ind))* &
-                (aux_var_up%xmol(ind) * aux_var_up%den(np) -&
-                 aux_var_dn%xmol(ind) * aux_var_dn%den(np))
+                (aux_var_up%xmol(ind) - aux_var_dn%xmol(ind))
         enddo
      endif
   enddo

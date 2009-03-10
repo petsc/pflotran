@@ -244,7 +244,7 @@ subroutine TFluxDerivative(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
       if(iphase==2) diffusion = weight*(rt_parameter%dispersivity*q/(0.5d0*(por_up+por_dn))+ &
                                         rt_parameter%diffusion_coefficient(iphase))
-    endif
+        endif
   
     !upstream weighting
     ! units = (m^3 water/m^2 bulk/sec)
