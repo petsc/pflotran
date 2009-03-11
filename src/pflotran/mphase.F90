@@ -1181,7 +1181,7 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
         stp_up = tor_up * por_up * aux_var_up%sat(np)
         stp_dn = tor_dn * por_dn * aux_var_dn%sat(np)
         diffp = (stp_up*stp_dn)/(stp_up*dd_dn+stp_dn*dd_up)
-        difff = 0.D0 !diffdp !, for debugging only
+        difff = diffp * area !, for debugging only
         do ispec=1, option%nflowspec
            ind = ispec + (np-1)*option%nflowspec
            fluxm(ispec) = fluxm(ispec) + difff * 0.5D0 *  &
