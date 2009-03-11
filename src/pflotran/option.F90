@@ -446,6 +446,9 @@ function OutputOptionCreate()
   output_option%print_act_coefs = PETSC_FALSE
   output_option%print_permeability = PETSC_FALSE
   output_option%print_porosity = PETSC_FALSE
+  
+  output_option%tconv = 1.d0
+  output_option%tunit = 's'
 
   OutputOptionCreate => output_option
   

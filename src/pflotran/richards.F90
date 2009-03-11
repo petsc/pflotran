@@ -2025,9 +2025,9 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
 
-#if 1
   ! Accumulation terms ------------------------------------
   if (.not.option%steady_state) then
+#if 1
     r_p = r_p - accum_p
 
     do local_id = 1, grid%nlmax  ! For each local node do...
@@ -2043,8 +2043,8 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
                                 option,Res) 
       r_p(local_id) = r_p(local_id) + Res(1)
     enddo
-  endif
 #endif
+  endif
 #if 1
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first 
@@ -2527,8 +2527,8 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
   
-#if 1
   if (.not.option%steady_state) then
+#if 1
     ! Accumulation terms ------------------------------------
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
@@ -2551,8 +2551,8 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
          realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
       endif
     enddo
-  endif
 #endif
+  endif
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
