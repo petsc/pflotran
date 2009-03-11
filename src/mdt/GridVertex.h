@@ -1,7 +1,7 @@
 #ifndef GRIDVERTEX_H_
 #define GRIDVERTEX_H_
 
-#include "include/petsc.h"
+#include "petsc.h"
 
 class GridVertex {
 public:

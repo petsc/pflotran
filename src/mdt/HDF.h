@@ -1,7 +1,7 @@
 #ifndef HDF_H_
 #define HDF_H_
 
-#include "include/petsc.h"
+#include "petsc.h"
 
 #include "hdf5.h"
 

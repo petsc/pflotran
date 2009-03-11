@@ -1,10 +1,10 @@
 #ifndef GRID_H_
 #define GRID_H_
 
-#include "include/petsc.h"
-#include "include/petscvec.h"
-#include "include/petscmat.h"
-#include "include/petscis.h"
+#include "petsc.h"
+#include "petscvec.h"
+#include "petscmat.h"
+#include "petscis.h"
 
 #include "BoundarySet.h"
 #include "Globals.h"

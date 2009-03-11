@@ -880,7 +880,7 @@ void StructuredGrid::receiveFlag(PetscInt *flag, PetscInt direction) {
 
 void StructuredGrid::printAO() {
 
-#include "include/petscao.h"
+#include "petscao.h"
 
   PetscErrorCode ierr;
   AO ao;

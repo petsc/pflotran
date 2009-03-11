@@ -7,7 +7,7 @@
 #include "Connection.h"
 #include "Grid.h"
 
-#include "include/petsc.h"
+#include "petsc.h"
 
 class TestCase {
   

@@ -3,7 +3,7 @@
 
 #include <string.h>
 
-#include "include/petsc.h"
+#include "petsc.h"
 
 #include "FileIO.h"
 #include "Globals.h"
