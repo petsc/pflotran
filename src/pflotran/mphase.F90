@@ -396,7 +396,7 @@ end subroutine MphaseSetupPatch
         end select
      end do
   
-    if(re<=0) print *,'Sat or Con out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
+!    if(re<=0) print *,'Sat or Con out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
     call GridVecRestoreArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
     call GridVecRestoreArrayF90(grid,field%flow_yy, yy_p, ierr)
     call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr); 
@@ -1605,10 +1605,10 @@ select case(icri)
       if (xmol(4) > 1.05D0*co2_sat_x) then
 !      if (xmol(4) > 1.001D0*co2_sat_x .and. iipha==1) then
 !     if (xmol(4) > (1.d0+1.d-6)*tmp .and. iipha==1) then
-        write(*,'('' Liq -> 2ph '',''rank='',i6,'' n='',i8,'' p='',1pe10.4, &
-      & '' T='',1pe10.4,'' Xl='',1pe11.4,'' xmol4='',1pe11.4, &
-      & '' 1-Ps/P='',1pe11.4)') &
-        option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),xmol(4),co2_sat_x
+!        write(*,'('' Liq -> 2ph '',''rank='',i6,'' n='',i8,'' p='',1pe10.4, &
+!      & '' T='',1pe10.4,'' Xl='',1pe11.4,'' xmol4='',1pe11.4, &
+!      & '' 1-Ps/P='',1pe11.4)') &
+!        option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),xmol(4),co2_sat_x
         iphase_loc_p(ghosted_id) = 3
         
         !Rachford-Rice initial guess: 1=H2O, 2=CO2
@@ -1620,7 +1620,7 @@ select case(icri)
         vmh2o = 1.D0 /den(1)   ! FMWH2O/0.9d3
        !calculate initial guess for sg
         sg = vmco2*xg/(vmco2*xg+vmh2o*(1.d0-xg))
-        write(*,'(''Rachford-Rice: '',1p10e12.4)') k1,k2,z1,z2,xg,sg,den(1)
+!        write(*,'(''Rachford-Rice: '',1p10e12.4)') k1,k2,z1,z2,xg,sg,den(1)
         xx_p(dof_offset+3) = sg   
         ichange = 1
       endif
@@ -1630,9 +1630,9 @@ select case(icri)
 
       if (xmol(3) > wat_sat_x*1.05)then
 !     if (xmol(3) > (1.d0+1.d-6)*tmp .and. iipha==2)then
-        write(*,'('' Gas -> 2ph '',''rank='',i6,'' n='',i8, &
-      & '' p= '',1pe10.4,'' T= '',1pe10.4,'' Xg= '',1pe11.4,'' Ps/P='', 1pe11.4)') &
-        option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),wat_sat_x
+!        write(*,'('' Gas -> 2ph '',''rank='',i6,'' n='',i8, &
+!      & '' p= '',1pe10.4,'' T= '',1pe10.4,'' Xg= '',1pe11.4,'' Ps/P='', 1pe11.4)') &
+!        option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),wat_sat_x
         iphase_loc_p(ghosted_id) = 3
         xx_p(dof_offset+3)=1.D0-formeps
         ichange = 1
@@ -1649,16 +1649,16 @@ select case(icri)
       xmol(4)= 1.D0-xmol(3)
             
       if(satu(2)>=1.D0)then
-        write(*,'('' 2ph -> Gas '',''rank='',i6,'' n='',i8, &
-      & '' p='',1pe10.4,'' T='',1pe10.4,'' sg='',1p3e11.4)') &
-        option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),satu(1),satu(2)
+!        write(*,'('' 2ph -> Gas '',''rank='',i6,'' n='',i8, &
+!      & '' p='',1pe10.4,'' T='',1pe10.4,'' sg='',1p3e11.4)') &
+!        option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),satu(1),satu(2)
         iphase_loc_p(ghosted_id) = 2
         xx_p(dof_offset+3) = 1.D0-1D-8
         ichange =1  
       else if(satu(2) <= 0.D0)then
-        write(*,'('' 2ph -> Liq '',''rank= '',i6,'' n='',i8,'' p='',1pe10.4, &
-      & '' T='',1pe10.4,'' sg ='',1pe11.4,'' sl='',1pe11.4,'' sg='',1pe11.4)')  &
-        option%myrank,local_id, xx_p(dof_offset+1:dof_offset+3),satu(2), xmol(2)
+!        write(*,'('' 2ph -> Liq '',''rank= '',i6,'' n='',i8,'' p='',1pe10.4, &
+!      & '' T='',1pe10.4,'' sg ='',1pe11.4,'' sl='',1pe11.4,'' sg='',1pe11.4)')  &
+!        option%myrank,local_id, xx_p(dof_offset+1:dof_offset+3),satu(2), xmol(2)
         iphase_loc_p(ghosted_id) = 1 ! 2ph -> Liq
         ichange = 1
         tmp = xmol(2) * 0.99
@@ -1673,19 +1673,19 @@ select case(icri)
      select case(iipha)     
        case(2)   
          if (xmol(3) > wat_sat_x)then
-           write(*,'(''** Gas -> 2ph '',i8,1p10e12.4)') local_id,xx_p(dof_offset+1:dof_offset+3)
+ !          write(*,'(''** Gas -> 2ph '',i8,1p10e12.4)') local_id,xx_p(dof_offset+1:dof_offset+3)
          endif
        case(1) 
          xmol(4)=xmol(2)*henry/p 
          if (xmol(4) >co2_sat_x ) then
-           write(*,'(''** Liq -> 2ph '',i8,1p10e12.4)') local_id,xx_p(dof_offset+1:dof_offset+3),xmol(4), co2_sat_x
+!           write(*,'(''** Liq -> 2ph '',i8,1p10e12.4)') local_id,xx_p(dof_offset+1:dof_offset+3),xmol(4), co2_sat_x
          endif
        case(3) 
          if(satu(2)>1.D0 .and. iipha==3)then
-            write(*,'(''** 2ph -> Gas '',i8,1p10e12.4)') local_id,xx_p(dof_offset+1:dof_offset+3)
+!            write(*,'(''** 2ph -> Gas '',i8,1p10e12.4)') local_id,xx_p(dof_offset+1:dof_offset+3)
          endif
          if(satu(2)<= 0.D0 .and. iipha==3)then
-           write(*,'(''** 2ph -> Liq '',i8,1p10e12.4)') local_id,xx_p(dof_offset+1:dof_offset+3),satu(1),satu(2)
+!           write(*,'(''** 2ph -> Liq '',i8,1p10e12.4)') local_id,xx_p(dof_offset+1:dof_offset+3),satu(1),satu(2)
          endif
       end select
     end select

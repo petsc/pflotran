@@ -280,10 +280,10 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
   
   aux_var%sat(2)=x(3)
   if(aux_var%sat(2)< 0.D0)then
-     print *,'tran:',iphase, x(1:3)
+!     print *,'tran:',iphase, x(1:3)
      aux_var%sat(2)= 0.D0
    endif
-   if(aux_var%sat(2)> 1.D0) print *,'tran:',iphase, x(1:3)
+!   if(aux_var%sat(2)> 1.D0) print *,'tran:',iphase, x(1:3)
      aux_var%sat(1)=1.D0 - aux_var%sat(2)
         aux_var%pc(:)=0.D0
         temp = 1D-2
