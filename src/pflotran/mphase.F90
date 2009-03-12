@@ -1283,7 +1283,7 @@ subroutine MphaseBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
               v_darcy = Dq * ukvr * dphi
            endif
         endif
-
+     
      case(NEUMANN_BC)
         v_darcy = 0.D0
         if (dabs(aux_vars(1)) > floweps) then
@@ -1980,6 +1980,11 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
        select case(boundary_condition%flow_condition%itype(idof))
        case(DIRICHLET_BC)
           xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
+       case(HYDROSTATIC_BC)
+          xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
+          if(idof>=2)then
+             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+          endif 
        case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
           xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
@@ -2508,7 +2513,13 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
        case(DIRICHLET_BC)
           xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
           delxbc(idof)=0.D0
-       case(NEUMANN_BC, ZERO_GRADIENT_BC)
+      case(HYDROSTATIC_BC)
+          xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
+          if(idof>=2)then
+             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+             delxbc(idof)=delx(idof,ghosted_id)
+          endif 
+         case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
           xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
           !iphasebc = int(iphase_loc_p(ghosted_id))
