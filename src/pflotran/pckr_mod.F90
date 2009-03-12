@@ -493,10 +493,15 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
         if(upc>pcmax) upc=pcmax
           
         se = (sw-swir)/(sw0-swir)
-        temp=se**(-1.D0/um)
-      ! kr(1)=sqrt(se)*(1.D0-(1.D0-1.D0/temp)**um)**2.d0
-          
-        kr(1) = sqrt(se)*(1.D0 - (1.D0 - se**(1.D0/um))**pckr_m)**2.D0
+          if(se<0.D0)then 
+            se =0.D0
+            kr(1)=0.D0
+           else 
+             temp=se**(-1.D0/um)
+         ! kr(1)=sqrt(se)*(1.D0-(1.D0-1.D0/temp)**um)**2.d0
+             kr(1) = sqrt(se)*(1.D0 - (1.D0 - se**(1.D0/um))**pckr_m)**2.D0
+           endif
+
 ! Gas phase using BC         
            
         se = (sw - swir)/(1.D0 - swir -sgir)
