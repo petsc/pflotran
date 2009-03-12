@@ -96,7 +96,7 @@ module Option_module
 !    PetscReal :: disp
     
     PetscInt :: ideriv
-    PetscInt :: idt_switch = -1
+    PetscInt :: idt_switch
     PetscReal :: reference_temperature
     PetscReal :: reference_pressure
     PetscReal :: reference_density
@@ -106,8 +106,8 @@ module Option_module
     PetscTruth :: initialize_with_molality
         
 !   table lookup
-    PetscInt :: itable=0
-    PetscInt :: co2eos=EOS_SPAN_WAGNER
+    PetscInt :: itable
+    PetscInt :: co2eos
 
     PetscTruth :: restart_flag
     PetscReal :: restart_time
@@ -405,6 +405,10 @@ subroutine OptionInitRealization(option)
   option%permz_filename = ""
   
   option%steady_state = PETSC_FALSE
+  
+  option%itable=0
+  option%co2eos=EOS_SPAN_WAGNER
+  option%idt_switch = -1
 
 end subroutine OptionInitRealization
 
