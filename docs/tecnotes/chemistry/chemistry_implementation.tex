@@ -300,9 +300,11 @@ Given various constraints imposed on an aqueous solution, the equilibrium concen
 
 \subsubsection{Reaction Types}
 
+All reactions are formulated in terms of a set of basis, primary, or component species chosen from the set of aqueous species and referred to as $\{\A_j: \, j=1, \,\cdots,\, N_c\}$. The remaining aqueous species are referred to as secondary species and denoted by $\{\A_i:\,i=1,\,\cdots,\,N-N_c\}$.
+
 \begin{description}
 
-\item[Homogeneous]
+\item[Homogeneous: aqueous]
 \EQ
 \sum_j\nu_{ji}\A_j\arrows\A_i.
 \EN
@@ -2018,6 +2020,36 @@ the global mass conservation equation becomes
 N_j(t) + \sum_\a\G_j^\a(t)\eq N_j(0).
 \EN
 
+\section{Solution Update}
+
+Two cases are considered for updating the numerical solution depending on whether the logarithm of the concentration or the concentration itself is used as the independent variable. Thus
+\EQ
+\delta X \eq \left\{
+\begin{array}{ll}
+C &\text{(linear)}\\
+\ln C &\text{(logarithmic)}
+\end{array}
+\right..
+\EN
+The solution update is then
+\EQ
+C \eq \left\{
+\begin{array}{ll}
+C+\delta C &\text{(linear)}\\
+C \e^{\delta \ln C} &\text{(logarithmic)}
+\end{array}
+\right..
+\EN
+In the logarithmic case, if the solution vector $\delta\ln C$ becomes too large or too small, two possibilities are used to compute the updated solution as follows
+\EQ
+\text{if } |\delta\ln C| > \epsilon \text{ then:} \left\{
+\begin{array}{ll}
+\text{cut time step $\Delta t$} &\text{~}\\
+\delta\ln C = \epsilon \delta\ln C/|\delta\ln C| &\text{~}
+\end{array}
+\right..
+\EN
+Typically $\epsilon \sim 5$.
 
 \section{References}
 
