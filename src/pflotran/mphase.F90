@@ -1920,7 +1920,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
       call MphaseSourceSink(msrc,psrc,tsrc1,hsrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
-                            source_sink%flow_condition%itype(1),Res,enthalpy_flag, option)
+                           source_sink%flow_condition%itype(1),Res,enthalpy_flag, option)
  
       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
       r_p((local_id-1)*option%nflowdof + jco2) = r_p((local_id-1)*option%nflowdof + jco2)-Res(jco2)
