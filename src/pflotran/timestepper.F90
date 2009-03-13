@@ -1447,6 +1447,7 @@ subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
   PetscTruth :: transient_plot_flag
   PetscTruth :: plot_flag
   PetscTruth :: failure
+  PetscLogDouble :: start_time, end_time
   character(len=MAXSTRINGLENGTH) :: string
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
@@ -1508,16 +1509,40 @@ subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
   plot_flag = PETSC_TRUE
     
   if (associated(flow_stepper)) then
+    call PetscGetTime(start_time, ierr)
     call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
     call StepperSolveFlowSteadyState(realization,flow_stepper,failure)
     call PetscLogStagePop(ierr)
+    call PetscGetTime(end_time, ierr)
+    if (OptionPrintToScreen(option)) then
+      write(*, &
+         &  '(/,1pe12.4," seconds to solve steady state flow problem",/)') &
+        end_time-start_time
+    endif
+    if (OptionPrintToFile(option)) then
+      write(option%fid_out, &
+         &  '(/,1pe12.4," seconds to solve steady state flow problem",/)') &
+        end_time-start_time
+    endif
     if (failure) return ! if flow solve fails, exit
   endif
 
   if (associated(tran_stepper)) then
+    call PetscGetTime(start_time, ierr)
     call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr)
     call StepperSolveTranSteadyState(realization,tran_stepper,failure)
     call PetscLogStagePop(ierr)
+    call PetscGetTime(end_time, ierr)
+    if (OptionPrintToScreen(option)) then
+      write(*, &
+         &'(/,1pe12.4," seconds to solve steady state transport problem",/)') &
+        end_time-start_time
+    endif
+    if (OptionPrintToFile(option)) then
+      write(option%fid_out, &
+         &'(/,1pe12.4," seconds to solve steady state transport problem",/)') &
+        end_time-start_time
+    endif
     if (failure) return ! if transport solve fails, exit
   endif
 
