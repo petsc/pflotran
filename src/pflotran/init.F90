@@ -304,6 +304,12 @@ subroutine Init(simulation)
     call SNESLineSearchSet(flow_solver%snes,SNESLineSearchNo, &
                            PETSC_NULL_OBJECT,ierr)
 
+    ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
+    if (option%verbosity >= 1) then
+      string = '-flow_snes_view'
+      call PetscOptionsInsertString(string, ierr)
+    endif
+
     call SolverSetSNESOptions(flow_solver)
 
     ! If we are using a structured grid, set the corresponding flow DA 
@@ -395,6 +401,12 @@ subroutine Init(simulation)
     ! update does not perturb concentrations negative.
     call SNESLineSearchSet(tran_solver%snes,SNESLineSearchNo, &
                            PETSC_NULL_OBJECT,ierr)
+
+    ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
+    if (option%verbosity >= 1) then
+      string = '-tran_snes_view'
+      call PetscOptionsInsertString(string, ierr)
+    endif
 
     call SolverSetSNESOptions(tran_solver)
 
