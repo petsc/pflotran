@@ -59,6 +59,7 @@ module Option_module
     PetscTruth :: print_file_flag
     PetscTruth :: print_to_screen
     PetscTruth :: print_to_file
+    PetscInt :: verbosity  ! Values >0 indicate additional console output.
     
     PetscInt, pointer :: garbage ! for some reason, Intel will not compile without this
 
@@ -277,6 +278,7 @@ subroutine OptionInitAll(option)
   option%print_file_flag = PETSC_FALSE
   option%print_to_screen = PETSC_TRUE
   option%print_to_file = PETSC_TRUE
+  option%verbosity = 0
 
   option%input_filename = ''
 
