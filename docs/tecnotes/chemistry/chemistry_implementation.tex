@@ -300,9 +300,11 @@ Given various constraints imposed on an aqueous solution, the equilibrium concen
 
 \subsubsection{Reaction Types}
 
+All reactions are formulated in terms of a set of basis, primary, or component species chosen from the set of aqueous species and referred to as $\{\A_j: \, j=1, \,\cdots,\, N_c\}$. The remaining aqueous species are referred to as secondary species and denoted by $\{\A_i:\,i=1,\,\cdots,\,N-N_c\}$.
+
 \begin{description}
 
-\item[Homogeneous]
+\item[Homogeneous: aqueous]
 \EQ
 \sum_j\nu_{ji}\A_j\arrows\A_i.
 \EN
@@ -1916,11 +1918,11 @@ K_\c \eq -\frac{1}{RT}\big(\mu_{\rm CO_2}^{g\ominus} - \mu_{\rm CO_2}^{l\ominus}
 \EN
 yields the mass action equation
 \EQ\label{massactco2}
-K_\c \eq \frac{f_\c}{a_\c} \eq \frac{\phi_\c P_\c}{a_\c} \eq \frac{\phi_\c y_\c P_g}{a_\c},
+K_\c \eq \frac{f_\c}{a_\c} \eq \frac{\phi_\c P_\c}{a_\c} \eq \frac{\phi_\c y_\c^g P_g}{a_\c},
 \EN
 where the mole fraction of $\c$ in the gas phase, $y_\c$, is assumed to be given by
 \EQ
-y_\c \eq \frac{P_\c^g}{P_g} \eq \frac{P_g-P_\w^{\rm sat}(T)}{P_g},
+y_\c^g \eq \frac{P_\c^g}{P_g} \eq \frac{P_g-P_\w^{\rm sat}(T)}{P_g},
 \EN
 with total gas pressure $P_g$ equal to
 \EQ\label{totalp}
@@ -1935,14 +1937,23 @@ P_\c^g \eq \frac{K_\c}{\phi_\c} a_\c.
 The molality is related to the mole fraction by the equation
 \begin{subequations}
 \EQ
-x_\c \eq\frac{m_\c W_\w}{1+m_\c W_\w},
+x_\c^l \eq\frac{m_\c W_\w}{1+m_\c W_\w},
 \EN
 and conversely mole fraction is related to molality by the equation
 \EQ
-m_\c \eq \frac{x_\c}{W_\w(1-x_\c)},
+m_\c \eq \frac{x_\c^l}{W_\w(1-x_\c^l)},
 \EN
 \end{subequations}
-where $W_\w$ denotes the formula weight of water. Weight $w_i$ and mole $x_i$ fractions are related by the expression
+where $W_\w$ denotes the formula weight of water. 
+
+The concentration of $\c$ in the gas phase, $C_\c^g$, is obtained as
+\BA
+C_\c^g &\eq \frac{n_i^g}{V_g} \eq \frac{n_i^g}{N_g}\frac{N_g}{V_g} \eq \rho_\c y_i^g,\\
+&\eq \rho_\c \frac{f_\c}{\phi_\c P_\c},\\
+&\eq \rho_\c K_\c \frac{a_\c}{\phi_\c P_g}.
+\EA
+
+Weight $w_i$ and mole $x_i$ fractions are related by the expression
 \begin{subequations}
 \EQ
 x_i \eq \frac{w_i^{} W_i^{-1}}{\sum_l w_l^{} W_l^{-1}},
@@ -2009,6 +2020,45 @@ the global mass conservation equation becomes
 N_j(t) + \sum_\a\G_j^\a(t)\eq N_j(0).
 \EN
 
+\section{Solution Update}
+
+\subsection{Solution Vector}
+Two cases are considered for updating the numerical solution depending on whether the logarithm of the concentration or the concentration itself is used as the independent variable. Thus
+\EQ
+\delta X \eq \left\{
+\begin{array}{ll}
+C &\text{(linear)}\\
+\ln C &\text{(logarithmic)}
+\end{array}
+\right..
+\EN
+The solution update is then
+\EQ
+C \eq \left\{
+\begin{array}{ll}
+C+\delta C &\text{(linear)}\\
+C \e^{\delta \ln C} &\text{(logarithmic)}
+\end{array}
+\right..
+\EN
+In the logarithmic case, if the solution vector $\delta\ln C$ becomes too large or too small, two possibilities are used to compute the updated solution as follows
+\EQ\label{delc}
+\text{if } |\delta\ln C| > \epsilon \text{ then:} \left\{
+\begin{array}{ll}
+\text{cut time step $\Delta t$} &\text{~}\\
+\delta\ln C = \epsilon \delta\ln C/|\delta\ln C| &\text{~}
+\end{array}
+\right..
+\EN
+Typically $\epsilon\sim 5$. The second approach in Eqn.\eqref{delc} has the advantage that the time step is not cut and Newton iteration continues at the current time.
+
+\subsection{Kinetic Reaction Rate}
+
+For the case when updating the kinetic reaction rate, it is possible for the affinity factor $1-KQ$ to become too large, e.g.
+\EQ
+KQ > Q_{\rm max}\sim 10^3, 
+\EN
+leading to an unrealistically large precipitation rate. When this occurs it is necessary to reduce the time step. 
 
 \section{References}
 

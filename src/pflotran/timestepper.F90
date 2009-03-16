@@ -235,6 +235,11 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   option => realization%option
   output_option => realization%output_option
   
+  if (option%steady_state) then
+    call StepperRunSteadyState(realization,flow_stepper,tran_stepper)
+    return 
+  endif
+  
   if (associated(flow_stepper)) then
     master_stepper => flow_stepper
   else
@@ -1418,6 +1423,397 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
   enddo
 
 end subroutine StepperStepTransportDT
+
+! ************************************************************************** !
+!
+! StepperRunSteadyState: Solves steady state solution for flow and transport
+! author: Glenn Hammond
+! date: 03/10/09
+!
+! ************************************************************************** !
+subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
+
+  use Realization_module
+
+  use Option_module
+  use Output_module, only : Output, OutputInit, OutputVectorTecplot
+  use Logging_module
+  use Discretization_module
+
+  type(realization_type) :: realization
+  type(stepper_type), pointer :: flow_stepper
+  type(stepper_type), pointer :: tran_stepper
+
+  PetscTruth :: transient_plot_flag
+  PetscTruth :: plot_flag
+  PetscTruth :: failure
+  character(len=MAXSTRINGLENGTH) :: string
+  type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option
+  
+  PetscErrorCode :: ierr
+
+  option => realization%option
+  output_option => realization%output_option
+
+  plot_flag = PETSC_FALSE
+  transient_plot_flag = PETSC_FALSE
+  failure = PETSC_FALSE
+
+  call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
+
+  ! print initial condition output if not a restarted sim
+  call OutputInit(realization)
+  transient_plot_flag = PETSC_FALSE
+  plot_flag = PETSC_TRUE
+  if (output_option%print_initial) then
+    transient_plot_flag = PETSC_FALSE
+    call Output(realization,plot_flag,transient_plot_flag)
+    if (output_option%print_permeability) then
+      if (len_trim(option%group_prefix) > 1) then
+        string = 'permeability-' // trim(option%group_prefix) // '.tec'
+      else
+        string = 'permeability.tec'
+      endif
+      call DiscretizationLocalToGlobal(realization%discretization, &
+                                       realization%field%perm_xx_loc, &
+                                       realization%field%work,ONEDOF)
+      call OutputVectorTecplot(string,string,realization,realization%field%work)
+    endif
+    if (output_option%print_porosity) then
+      if (len_trim(option%group_prefix) > 1) then
+        string = 'porosity-' // trim(option%group_prefix) // '.tec'
+      else
+        string = 'porosity.tec'
+      endif
+      call DiscretizationLocalToGlobal(realization%discretization, &
+                                       realization%field%porosity_loc, &
+                                       realization%field%work,ONEDOF)
+      call OutputVectorTecplot(string,string,realization,realization%field%work)
+    endif
+  endif
+
+  if (OptionPrintToScreen(option)) then
+    option%print_screen_flag = PETSC_TRUE
+  else
+    option%print_screen_flag = PETSC_FALSE
+  endif
+
+  if (OptionPrintToFile(option)) then
+    option%print_file_flag = PETSC_TRUE
+  else
+    option%print_file_flag = PETSC_FALSE
+  endif
+
+  plot_flag = PETSC_TRUE
+    
+  if (associated(flow_stepper)) then
+    call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
+    call StepperSolveFlowSteadyState(realization,flow_stepper,failure)
+    call PetscLogStagePop(ierr)
+    if (failure) return ! if flow solve fails, exit
+  endif
+
+  if (associated(tran_stepper)) then
+    call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr)
+    call StepperSolveTranSteadyState(realization,tran_stepper,failure)
+    call PetscLogStagePop(ierr)
+    if (failure) return ! if transport solve fails, exit
+  endif
+
+  if (output_option%print_initial) then
+    output_option%plot_number = 1
+    call Output(realization,plot_flag,transient_plot_flag)
+  endif
+   
+  if (option%checkpoint_flag) then
+    call StepperCheckpoint(realization,flow_stepper,tran_stepper, &
+                           ZERO_INTEGER,ZERO_INTEGER,NEG_ONE_INTEGER)  
+  endif
+
+  if (OptionPrintToScreen(option)) then
+    if (option%nflowdof > 0) then
+      write(*,'(/," FLOW newton = ",i8," linear = ",i10)') &
+            flow_stepper%newton_cum,flow_stepper%linear_cum
+    endif
+    if (option%ntrandof > 0) then
+      write(*,'(/," TRAN newton = ",i8," linear = ",i10)') &
+            tran_stepper%newton_cum,tran_stepper%linear_cum
+    endif            
+  endif
+
+  if (OptionPrintToFile(option)) then
+    if (option%nflowdof > 0) then
+      write(option%fid_out,'(/," FLOW newton = ",i8," linear = ",i10)') &
+            flow_stepper%steps,flow_stepper%linear_cum
+    endif
+    if (option%ntrandof > 0) then
+      write(option%fid_out,'(/," TRAN newton = ",i8," linear = ",i10)') &
+            tran_stepper%newton_cum,tran_stepper%linear_cum
+    endif            
+  endif
+
+  call PetscLogStagePop(ierr)
+
+
+end subroutine StepperRunSteadyState
+ 
+! ************************************************************************** !
+!
+! StepperSolveFlowSteadyState: Solves the steady-state flow equation
+! author: Glenn Hammond
+! date: 03/10/09
+!
+! ************************************************************************** !
+subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
+
+  use Global_module, only : GlobalUpdateAuxVars
+  
+  use Realization_module
+  use Discretization_module
+  use Option_module
+  use Solver_module
+  use Field_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscviewer.h"
+#include "finclude/petscsnes.h"
+
+  type(realization_type) :: realization
+  type(stepper_type) :: stepper
+  PetscTruth :: failure
+
+  PetscErrorCode :: ierr
+  PetscInt :: num_newton_iterations
+  PetscInt :: num_linear_iterations
+  PetscInt :: snes_reason
+  PetscReal :: fnorm
+  PetscReal :: inorm
+  PetscReal :: scaled_fnorm
+
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field 
+  type(solver_type), pointer :: solver
+  type(discretization_type), pointer :: discretization 
+
+  option => realization%option
+  discretization => realization%discretization
+  field => realization%field
+  solver => stepper%solver
+
+  num_newton_iterations = 0
+  num_linear_iterations = 0
+
+  call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
+                                  field%porosity_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%tor_loc, &
+                                  field%tor_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%icap_loc, &
+                                  field%icap_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
+                                  field%ithrm_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
+                                  field%iphas_loc,ONEDOF)
+    
+  if (option%print_screen_flag) write(*,'(/,2("=")," FLOW (STEADY STATE) ",37("="))')
+
+  call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
+
+  call SNESGetIterationNumber(solver%snes,num_newton_iterations, ierr)
+  call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations, ierr)
+  call SNESGetConvergedReason(solver%snes, snes_reason, ierr)
+
+  if (snes_reason <= 0) then
+    if (option%print_screen_flag) then
+      print *, 'Newton solver failed to converge in FLOW, reason: ', snes_reason
+    endif
+    failure = PETSC_TRUE
+    return
+  endif
+  
+  stepper%newton_cum = num_newton_iterations
+  stepper%linear_cum = num_linear_iterations
+
+  if (option%ntrandof > 0) then ! store final saturations, etc. for transport
+    call GlobalUpdateAuxVars(realization,TIME_T)
+    call GlobalUpdateAuxVars(realization,TIME_TpDT)
+  endif
+    
+! print screen output
+  call VecNorm(field%flow_r,NORM_2,fnorm,ierr) 
+  call VecNorm(field%flow_r,NORM_INFINITY,inorm,ierr)
+  if (option%print_screen_flag) then
+    ! the grid pointer is null if we are working with SAMRAI
+    if(associated(discretization%grid)) then
+       scaled_fnorm = fnorm/discretization%grid%nmax 
+    else
+       scaled_fnorm = fnorm
+    endif
+    print *,' --> SNES Linear/Non-Linear Interations = ', &
+             num_linear_iterations,' / ',num_newton_iterations
+    print *,' --> SNES Residual: ', fnorm, scaled_fnorm, inorm 
+     
+  endif
+  
+  if (option%print_screen_flag) print *, ""
+
+end subroutine StepperSolveFlowSteadyState
+
+! ************************************************************************** !
+!
+! StepperSolveTranSteadyState: Steps forward one step in time
+! author: Glenn Hammond
+! date: 02/19/08
+!
+! ************************************************************************** !
+subroutine StepperSolveTranSteadyState(realization,stepper,failure)
+  
+  use Realization_module
+  use Discretization_module
+  use Option_module
+  use Solver_module
+  use Field_module
+  
+  use Patch_module
+  use Level_module
+  use Grid_module
+    
+  use Global_module, only : GlobalUpdateDenAndSat
+  use Reactive_Transport_module, only : RTUpdateAuxVars  
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscviewer.h"
+#include "finclude/petscsnes.h"
+
+  type(realization_type) :: realization
+  type(stepper_type) :: stepper
+  PetscTruth :: failure
+  
+  PetscErrorCode :: ierr
+  SNESConvergedReason :: snes_reason 
+  PetscInt :: num_newton_iterations, num_linear_iterations
+  PetscReal :: fnorm, scaled_fnorm, inorm
+  PetscReal, pointer :: r_p(:), xx_p(:), log_xx_p(:)
+
+  type(option_type), pointer :: option
+  type(discretization_type), pointer :: discretization
+  type(field_type), pointer :: field  
+  type(solver_type), pointer :: solver
+  type(patch_type), pointer :: cur_patch
+  type(level_type), pointer :: cur_level
+
+  option => realization%option
+  discretization => realization%discretization
+  field => realization%field
+  solver => stepper%solver
+
+! PetscReal, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
+
+  call DiscretizationLocalToLocal(discretization,field%porosity_loc,field%porosity_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%tor_loc,field%tor_loc,ONEDOF)
+
+  call GlobalUpdateDenAndSat(realization,1.d0)
+  num_newton_iterations = 0
+  num_linear_iterations = 0
+
+  if (option%print_screen_flag) write(*,'(/,2("=")" TRANSPORT (STEADY STATE) ",32("="))')
+
+  if (realization%reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
+    call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE)
+  endif
+
+  if (realization%reaction%use_log_formulation) then
+    if (associated(realization%patch%grid%structured_grid) .and. &
+        (.not.(realization%patch%grid%structured_grid%p_samr_patch.eq.0))) then
+      cur_level => realization%level_list%first
+      do 
+        if (.not.associated(cur_level)) exit
+        cur_patch => cur_level%patch_list%first
+        do
+          if (.not.associated(cur_patch)) exit
+          call GridVecGetArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
+          call GridVecGetArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
+          log_xx_p(:) = log(xx_p(:))
+          call GridVecRestoreArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
+          call GridVecRestoreArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
+          cur_patch => cur_patch%next
+        enddo
+        cur_level => cur_level%next
+      enddo
+    else
+      call VecCopy(field%tran_xx,field%tran_log_xx,ierr)
+      call VecLog(field%tran_log_xx,ierr)
+    endif
+      
+    call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_log_xx, ierr)
+      
+    if (associated(realization%patch%grid%structured_grid) .and. &
+        (.not.(realization%patch%grid%structured_grid%p_samr_patch.eq.0))) then
+      cur_level => realization%level_list%first
+      do 
+        if (.not.associated(cur_level)) exit
+        cur_patch => cur_level%patch_list%first
+        do
+          if (.not.associated(cur_patch)) exit
+          call GridVecGetArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
+          call GridVecGetArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
+          xx_p(:) = exp(log_xx_p(:))
+          call GridVecRestoreArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
+          call GridVecRestoreArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
+          cur_patch => cur_patch%next
+        enddo
+        cur_level => cur_level%next
+      enddo
+    else
+      call VecCopy(field%tran_log_xx,field%tran_xx,ierr)
+      call VecExp(field%tran_xx,ierr)
+    endif
+  else
+    call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_xx, ierr)
+  endif
+
+  ! do we really need all this? - geh 
+  call SNESGetIterationNumber(solver%snes,num_newton_iterations, ierr)
+  call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations, ierr)
+  call SNESGetConvergedReason(solver%snes, snes_reason, ierr)
+
+  if (snes_reason <= 0) then
+    if (option%print_screen_flag) then
+      print *, 'Newton solver failed to converge in TRAN, reason: ', snes_reason
+    endif
+    failure = PETSC_TRUE
+    return
+  endif
+      
+  stepper%newton_cum = num_newton_iterations
+  stepper%linear_cum = num_linear_iterations
+
+  ! print screen output
+  call VecNorm(field%tran_r,NORM_2,fnorm,ierr) 
+  call VecNorm(field%tran_r,NORM_INFINITY,inorm,ierr)
+  if (option%print_screen_flag) then
+    ! the grid pointer is null if we are working with SAMRAI
+    if(associated(discretization%grid)) then
+       scaled_fnorm = fnorm/discretization%grid%nmax   
+    else
+       scaled_fnorm = fnorm
+    endif
+    print *,' --> SNES Linear/Non-Linear Interations = ', &
+             num_linear_iterations,' / ',num_newton_iterations
+    print *,' --> SNES Residual: ', fnorm, scaled_fnorm, inorm 
+  endif
+
+  if (option%print_screen_flag) print *, ""
+
+end subroutine StepperSolveTranSteadyState
 
 ! ************************************************************************** !
 !

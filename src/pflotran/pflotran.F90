@@ -81,6 +81,10 @@
   string = '-file_output'
   call InputGetCommandLineTruth(string,option%print_to_file,option_found,option)
 
+  string = '-v'
+  call InputGetCommandLineTruth(string,truth,option_found,option)
+  if (option_found) option%verbosity = 1
+
   string = '-stochastic'
   call InputGetCommandLineTruth(string,truth,option_found,option)
   if (option_found) stochastic => StochasticCreate()

@@ -1013,6 +1013,10 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   PetscReal :: qsrc, molality
   PetscReal :: Jup(realization%reaction%ncomp,realization%reaction%ncomp)
   PetscTruth :: volumetric
+#ifdef CHUAN_CO2
+  PetscReal :: msrc(1:realization%option%nflowspec)
+  PetscInt :: icomp, ieqgas
+#endif
 
   option => realization%option
   field => realization%field
@@ -1045,23 +1049,27 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%tor_loc, tor_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
 
-  r_p = -accum_p
+  if (option%steady_state) then
+    r_p = 0.d0
+  else
+    r_p = -accum_p
   
 #if 1
-  ! Accumulation terms ------------------------------------
-  do local_id = 1, grid%nlmax  ! For each local node do...
-    ghosted_id = grid%nL2G(local_id)
-    !geh - Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif
-    iend = local_id*reaction%ncomp
-    istart = iend-reaction%ncomp+1
-    call RTAccumulation(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
-                        porosity_loc_p(ghosted_id), &
-                        volume_p(local_id),reaction,option,Res) 
-    r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)
-  enddo
+    ! Accumulation terms ------------------------------------
+    do local_id = 1, grid%nlmax  ! For each local node do...
+      ghosted_id = grid%nL2G(local_id)
+      !geh - Ignore inactive cells with inactive materials
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+      iend = local_id*reaction%ncomp
+      istart = iend-reaction%ncomp+1
+      call RTAccumulation(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
+                          porosity_loc_p(ghosted_id), &
+                          volume_p(local_id),reaction,option,Res) 
+      r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)
+    enddo
+  endif
 #endif
 #if 1
   ! Source/sink terms -------------------------------------
@@ -1139,6 +1147,43 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
     enddo
     source_sink => source_sink%next
   enddo
+
+#ifdef CHUAN_CO2
+  source_sink => patch%source_sinks%first 
+  do 
+    if (.not.associated(source_sink)) exit
+
+     msrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
+     msrc(1) =  msrc(1) / FMWH2O *1D3
+     msrc(2) =  msrc(2) / FMWCO2 *1D3
+    ! print *,'RT SC source'
+    do iconn = 1, cur_connection_set%num_connections      
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      Res=0D0
+      
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+      
+      select case(source_sink%flow_condition%itype(1))
+        case(MASS_RATE_SS)
+           do ieqgas = 1, reaction%ngas
+              if(abs(reaction%co2_gas_id) == ieqgas )then
+                 icomp = reaction%eqgasspecid(1,ieqgas)
+                 iend = local_id*reaction%ncomp
+                 istart = iend-reaction%ncomp
+                 Res(icomp) = -msrc(2)
+                 r_p(istart+icomp) = r_p(istart+icomp) + Res(icomp)
+                 print *,'RT SC source', ieqgas,icomp, res(icomp)  
+              endif 
+           enddo
+      end select 
+     enddo
+     source_sink => source_sink%next
+   enddo 
+     
+#endif
 #endif
 #if 1
   ! Interior Flux Terms -----------------------------------
@@ -1458,22 +1503,24 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   call GridVecGetArrayF90(grid,field%tor_loc, tor_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
     
+  if (.not.option%steady_state) then
 #if 1  
-  do local_id = 1, grid%nlmax  ! For each local node do...
-    ghosted_id = grid%nL2G(local_id)
-    !geh - Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif
-    iend = local_id*reaction%ncomp
-    istart = iend-reaction%ncomp+1
-    call RTAccumulationDerivative(rt_aux_vars(ghosted_id), &
-                                  global_aux_vars(ghosted_id), &
-                                  porosity_loc_p(ghosted_id), &
-                                  volume_p(local_id),reaction,option,Jup) 
-    call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
-  enddo
+    do local_id = 1, grid%nlmax  ! For each local node do...
+      ghosted_id = grid%nL2G(local_id)
+      !geh - Ignore inactive cells with inactive materials
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+      iend = local_id*reaction%ncomp
+      istart = iend-reaction%ncomp+1
+      call RTAccumulationDerivative(rt_aux_vars(ghosted_id), &
+                                    global_aux_vars(ghosted_id), &
+                                    porosity_loc_p(ghosted_id), &
+                                    volume_p(local_id),reaction,option,Jup) 
+      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
+    enddo
 #endif
+  endif
 #if 1
   ! Source/Sink terms -------------------------------------
   source_sink => patch%source_sinks%first 

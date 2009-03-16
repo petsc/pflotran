@@ -244,7 +244,7 @@ subroutine TFluxDerivative(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
       if(iphase==2) diffusion = weight*(rt_parameter%dispersivity*q/(0.5d0*(por_up+por_dn))+ &
                                         rt_parameter%diffusion_coefficient(iphase))
-    endif
+        endif
   
     !upstream weighting
     ! units = (m^3 water/m^2 bulk/sec)
@@ -266,12 +266,14 @@ subroutine TFluxDerivative(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up
       J_up = J_up + rt_aux_var_up%dtotal(:,:,iphase)*coef_up*1000.d0
       J_dn = J_dn + rt_aux_var_dn%dtotal(:,:,iphase)*coef_dn*1000.d0
     else  
+      print *,'Dtotal needed for SC problem. STOP'
+      stop 
    !   J_up = 0.d0
    !   J_dn = 0.d0
-      do icomp = 1, option%ntrandof
-        J_up(icomp,icomp) = J_up(icomp,icomp) + coef_up*global_aux_var_up%den_kg(iphase)
-        J_dn(icomp,icomp) = J_dn(icomp,icomp) + coef_dn*global_aux_var_dn%den_kg(iphase)
-      enddo
+   !   do icomp = 1, option%ntrandof
+   !     J_up(icomp,icomp) = J_up(icomp,icomp) + coef_up*global_aux_var_up%den_kg(iphase)
+   !     J_dn(icomp,icomp) = J_dn(icomp,icomp) + coef_dn*global_aux_var_dn%den_kg(iphase)
+   !   enddo
     endif
   enddo
 #endif
@@ -563,7 +565,7 @@ subroutine TBCFluxDerivative(ibndtype, &
 
       ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
       if (associated(rt_aux_var_dn%dtotal)) then
-        J_dn = rt_aux_var_dn%dtotal(:,:,iphase)*coef_dn*1000.d0
+        J_dn = J_dn + rt_aux_var_dn%dtotal(:,:,iphase)*coef_dn*1000.d0
       else
         J_dn = 0.d0
         do icomp = 1, option%ntrandof

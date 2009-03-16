@@ -232,13 +232,15 @@ void IFC::setEastBoundaryMaterialTo2(Grid *grid) {
   for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) {
     PetscInt local_id = grid->cells[i].getIdLocal();
     if (local_id > -1) {
-      if (grid->cells[i].flag & EAST_DIR_EAST_FACE || 
-        grid->cells[i].flag & EAST_DIR_SOUTH_FACE || 
-        grid->cells[i].flag & EAST_DIR_NORTH_FACE || 
-        grid->cells[i].flag & EAST_DIR_BOTTOM_FACE || 
-        grid->cells[i].flag & EAST_DIR_TOP_FACE) {
+      if (grid->cells[i].getMaterialId() == 1 &&
+        (grid->cells[i].flag & EAST_DIR_EAST_FACE || 
+         grid->cells[i].flag & EAST_DIR_SOUTH_FACE || 
+         grid->cells[i].flag & EAST_DIR_NORTH_FACE || 
+         grid->cells[i].flag & EAST_DIR_BOTTOM_FACE || 
+         grid->cells[i].flag & EAST_DIR_TOP_FACE)) {
         grid->cells[i].setMaterialId(2);
-        if (grid->cells[i-1].getActive()) grid->cells[i-1].setMaterialId(2);
+        if (grid->cells[i-1].getActive() &&
+            grid->cells[i-1].getMaterialId() == 1) grid->cells[i-1].setMaterialId(2);
       }
     }
   }

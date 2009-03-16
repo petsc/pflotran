@@ -3,7 +3,7 @@
 
 #include <string.h>
 
-#include "include/petsc.h"
+#include "petsc.h"
 
 #include "Globals.h"
 #include "AsciiGrid.h"
@@ -11,8 +11,6 @@
 #include "Connection.h"
 #include "Grid.h"
 #include "Polygon.h"
-
-#include "include/petsc.h"
 
 class Hanford300v2 {
   

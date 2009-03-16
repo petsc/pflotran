@@ -262,6 +262,7 @@ subroutine SolverReadLinear(solver,input,option)
   type(solver_type) :: solver
   type(input_type) :: input
   type(option_type) :: option
+  PetscErrorCode :: ierr
   
   character(len=MAXWORDLENGTH) :: keyword, word, word2
 
@@ -280,7 +281,7 @@ subroutine SolverReadLinear(solver,input,option)
     
       case('SOLVER_TYPE','SOLVER','KRYLOV_TYPE','KRYLOV','KSP','KSP_TYPE')
         call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'ksp_type','SOLVER')   
+        call InputErrorMsg(input,option,'ksp_type','LINEAR SOLVER')   
         call StringToUpper(word)
         select case(trim(word))
           case('NONE','PREONLY')
@@ -300,7 +301,7 @@ subroutine SolverReadLinear(solver,input,option)
 
       case('PRECONDITIONER_TYPE','PRECONDITIONER','PC','PC_TYPE')
         call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'pc_type','SOLVER')   
+        call InputErrorMsg(input,option,'pc_type','LINEAR SOLVER')   
         call StringToUpper(word)
         select case(trim(word))
           case('NONE','PCNONE')
@@ -313,12 +314,202 @@ subroutine SolverReadLinear(solver,input,option)
             solver%pc_type = PCBJACOBI
           case('ASM','ADDITIVE_SCHWARTZ')
             solver%pc_type = PCASM
+         case('HYPRE')
+            solver%pc_type = PCHYPRE
          case('SHELL')
             solver%pc_type = PCSHELL
           case default
             option%io_buffer  = 'Preconditioner type: ' // trim(word) // ' unknown.'
             call printErrMsg(option)
         end select
+
+      case('HYPRE_OPTIONS')
+        do
+          call InputReadFlotranString(input,option)
+          if (InputCheckExit(input,option)) exit  
+          call InputReadWord(input,option,keyword,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword','LINEAR SOLVER, HYPRE options')   
+          call StringToUpper(keyword)
+          select case(trim(keyword))
+            case('TYPE')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'type','LINEAR SOLVER, HYPRE options')  
+              call StringToLower(word)
+              select case(trim(word))
+                case('pilut','parasails','boomeramg','euclid')
+                  call PetscOptionsSetValue('-pc_hypre_type',trim(word),ierr); 
+                case default
+                  option%io_buffer  = 'HYPRE preconditioner type: ' // &
+                                      trim(word) // ' unknown.'
+                  call printErrMsg(option)
+              end select
+            case('BOOMERAMG_CYCLE_TYPE')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG cycle type','LINEAR SOLVER, HYPRE options')  
+              call StringToLower(word)
+              select case(trim(word))
+                case('V')
+                  call PetscOptionsSetValue('-pc_hypre_boomeramg_cycle_type','1',ierr); 
+                case('W')
+                  call PetscOptionsSetValue('-pc_hypre_boomeramg_cycle_type','1',ierr); 
+                case default
+                  option%io_buffer  = 'HYPRE BoomerAMG cycle type: ' &
+                                      // trim(word) // ' unknown.'
+                  call printErrMsg(option)
+              end select
+            case('BOOMERAMG_MAX_LEVELS')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG maximum levels', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_max_levels', &
+                                        trim(word),ierr); 
+            case('BOOMERAMG_MAX_ITER')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG maximum iterations', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_max_iter', &
+                                        trim(word),ierr); 
+            case('BOOMERAMG_TOL')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG convergence tolerance', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_tol', &
+                                        trim(word),ierr); 
+            case('BOOMERAMG_TRUNCFACTOR')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG interpolation truncation factor', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_truncfactor', &
+                                        trim(word),ierr); 
+            case('BOOMERAMG_AGG_NL')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG # levels aggressive coarsening', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_agg_nl', &
+                                        trim(word),ierr); 
+            case('BOOMERAMG_AGG_NUM_PATHS')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG # paths for aggressive coarsening', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_agg_num_paths', &
+                                        trim(word),ierr); 
+            case('BOOMERAMG_STRONG_THRESHOLD')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG threshold for strong connectivity', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_strong_threshold', &
+                                        trim(word),ierr); 
+            case('BOOMERAMG_GRID_SWEEPS_ALL')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG number of grid sweeps up and down cycles', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_grid_sweeps_all', &
+                                        trim(word),ierr); 
+            case('BOOMERAMG_GRID_SWEEPS_DOWN')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG number of grid sweeps down cycles', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_grid_sweeps_down', &
+                                        trim(word),ierr); 
+            case('BOOMERAMG_GRID_SWEEPS_UP')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG number of grid sweeps up cycles', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_grid_sweeps_up', &
+                                        trim(word),ierr); 
+            case('BOOMERAMG_GRID_SWEEPS_COARSE')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG number of grid sweeps for coarse level', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_grid_sweeps_coarse', &
+                                        trim(word),ierr); 
+            case('BOOMERAMG_RELAX_TYPE_ALL')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG relaxation type for up and down cycles', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_relax_type_all', &
+                                        trim(word),ierr); 
+            case('BOOMERAMG_RELAX_TYPE_DOWN')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG relaxation type for down cycles', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_relax_type_down', &
+                                        trim(word),ierr); 
+            case('BOOMERAMG_RELAX_TYPE_UP')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG relaxation type for up cycles', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_relax_type_up', &
+                                        trim(word),ierr); 
+            case('BOOMERAMG_RELAX_TYPE_COARSE')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG relaxation type for coarse grids', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_relax_type_coarse', &
+                                        trim(word),ierr); 
+            case('BOOMERAMG_RELAX_WEIGHT_ALL')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG relaxation weight for all levels', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_relax_weight_all', &
+                                        trim(word),ierr); 
+            case('BOOMERAMG_RELAX_WEIGHT_LEVEL')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputReadWord(input,option,word2,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG relaxation weight for a level', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              word = trim(word) // ' ' // trim(word2)
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_relax_weight_level', &
+                                        trim(word),ierr); 
+            case('BOOMERAMG_OUTER_RELAX_WEIGHT_ALL')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG outer relaxation weight for all levels', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_outer_relax_weight_all', &
+                                        trim(word),ierr); 
+            case('BOOMERAMG_OUTER_RELAX_WEIGHT_LEVEL')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputReadWord(input,option,word2,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG outer relaxation weight for a level', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              word = trim(word) // ' ' // trim(word2)
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_outer_relax_weight_level', &
+                                        trim(word),ierr); 
+            case('BOOMERAMG_NO_CF')
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_no_CF','',ierr); 
+            case('BOOMERAMG_MEASURE_TYPE')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG measure type', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_measure_type', &
+                                        trim(word),ierr); 
+            case('BOOMERAMG_COARSEN_TYPE')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG coarsen type', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_coarsen_type', &
+                                        trim(word),ierr); 
+            case('BOOMERAMG_INTERPOLATION_TYPE','BOOMERAMG_INTERP_TYPE')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG interpolation type', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_interp_type', &
+                                        trim(word),ierr); 
+            case('BOOMERAMG_NODAL_COARSEN')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG set nodal coarsening', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_nodal_coarsen','',ierr); 
+            case('BOOMERAMG_NODAL_RELAXATION')
+              call InputReadWord(input,option,word,PETSC_TRUE)
+              call InputErrorMsg(input,option,'BoomerAMG nodal relaxation via Schwarz', &
+                                 'LINEAR SOLVER, HYPRE options')  
+              call PetscOptionsSetValue('-pc_hypre_boomeramg_nodal_relaxation','',ierr); 
+            case default
+              option%io_buffer  = 'HYPRE option: ' // trim(keyword) // ' unknown.'
+              call printErrMsg(option)
+          end select
+        enddo
 
       case('ATOL')
         call InputReadDouble(input,option,solver%linear_atol)
@@ -432,7 +623,7 @@ subroutine SolverReadNewton(solver,input,option)
 
       case('MATRIX_TYPE')
         call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'mat_type','SOLVER')   
+        call InputErrorMsg(input,option,'mat_type','NEWTON SOLVER')   
         call StringToUpper(word)
         select case(trim(word))
           case('BAIJ')
@@ -448,7 +639,7 @@ subroutine SolverReadNewton(solver,input,option)
         
       case('PRECONDITIONER_MATRIX_TYPE')
         call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'mat_type','SOLVER')   
+        call InputErrorMsg(input,option,'mat_type','NEWTON SOLVER')   
         call StringToUpper(word)
         select case(trim(word))
           case('BAIJ')

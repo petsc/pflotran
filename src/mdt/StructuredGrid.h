@@ -3,10 +3,10 @@
 
 #include <stdlib.h>
 
-#include "include/petsc.h"
-#include "include/petscda.h"
-#include "include/petscvec.h"
-#include "include/petscmat.h"
+#include "petsc.h"
+#include "petscda.h"
+#include "petscvec.h"
+#include "petscmat.h"
 
 #include "BoundaryConnection.h"
 #include "Globals.h"

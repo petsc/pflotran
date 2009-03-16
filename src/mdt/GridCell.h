@@ -3,7 +3,7 @@
  
 #include <stdlib.h>
 
-#include "include/petsc.h" 
+#include "petsc.h" 
  
 #include "Globals.h" 
  
