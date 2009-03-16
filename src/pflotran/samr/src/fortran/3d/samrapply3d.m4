@@ -178,10 +178,51 @@ c for now we assume that ndof is 1
              r(0,i,j,k)= f(0,i,j,k)-(flux0(0,i+1,j,k)-flux0(0,i,j,k)
      &                              +flux1(0,i,j+1,k)-flux1(0,i,j,k)
      &                              +flux2(0,i,j,k+1)-flux2(0,i,j,k))
-     &                  -src(0,i,j,k)*u(0,i,j,k)
+     &                              -src(0,i,j,k)*u(0,i,j,k)
             enddo
          enddo
       enddo
 
       return
       end
+
+      subroutine samrsetjacobiansrccoeffs3d(
+     &     ifirst0,ifirst1,ifirst2,ilast0,ilast1,ilast2,
+     &     depth,
+     &     stencil,
+     &     sfirst0,sfirst1,sfirst2,slast0,slast1,slast2,
+     &     src)
+
+c***********************************************************************
+      implicit none
+c
+      integer ifirst0,ifirst1,ifirst2
+      integer ilast0,ilast1,ilast2
+      integer sfirst0,sfirst1,sfirst2
+      integer slast0,slast1,slast2
+      integer depth
+
+      REAL stencil(0:depth-1,CELL3d(ifirst,ilast,0))
+      REAL src(CELL3d(sfirst,slast,0))
+
+      integer i,j,k
+
+c***********************************************************************
+c
+      do k = ifirst2, ilast2
+         do j = ifirst1, ilast1
+            do i = ifirst0, ilast0
+               src(i,j,k)=(stencil(PP,i,j,k)
+     &                    +stencil(WW,i,j,k)
+     &                    +stencil(EE,i,j,k)
+     &                    +stencil(SS,i,j,k)
+     &                    +stencil(NN,i,j,k)
+     &                    +stencil(BB,i,j,k)
+     &                    +stencil(TT,i,j,k))
+            enddo
+         enddo
+      enddo
+
+      return
+      end
+

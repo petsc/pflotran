@@ -438,7 +438,8 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)  
 
   do ghosted_id = 1, grid%ngmax
-    if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
+     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
+     
     !geh - Ignore inactive cells with inactive materials
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
@@ -2485,6 +2486,14 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
        PetscFortranAddr :: p_application
        PetscFortranAddr :: p_patch
      end subroutine SAMRSetJacobianSourceOnPatch
+
+     subroutine SAMRSetJacobianSrcCoeffsOnPatch(which_pc, p_application, p_patch) 
+#include "finclude/petsc.h"
+
+       PetscInt :: which_pc
+       PetscFortranAddr :: p_application
+       PetscFortranAddr :: p_patch
+     end subroutine SAMRSetJacobianSrcCoeffsOnPatch
   end interface
 
   SNES, intent(in) :: snes
@@ -2529,28 +2538,28 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   
   if (.not.option%steady_state) then
 #if 1
-    ! Accumulation terms ------------------------------------
-    do local_id = 1, grid%nlmax  ! For each local node do...
-      ghosted_id = grid%nL2G(local_id)
-      !geh - Ignore inactive cells with inactive materials
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
-      icap = int(icap_loc_p(ghosted_id))
-      call RichardsAccumDerivative(rich_aux_vars(ghosted_id), &
-                                global_aux_vars(ghosted_id), &
-                                porosity_loc_p(ghosted_id), &
-                                volume_p(local_id), &
-                                option, &
-                                realization%saturation_function_array(icap)%ptr,&
-                                Jup) 
-      call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
-      if(option%use_samr) then
-         flow_pc = 0
-         call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), &
-         realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
-      endif
-    enddo
+  ! Accumulation terms ------------------------------------
+  do local_id = 1, grid%nlmax  ! For each local node do...
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
+    icap = int(icap_loc_p(ghosted_id))
+    call RichardsAccumDerivative(rich_aux_vars(ghosted_id), &
+                              global_aux_vars(ghosted_id), &
+                              porosity_loc_p(ghosted_id), &
+                              volume_p(local_id), &
+                              option, &
+                              realization%saturation_function_array(icap)%ptr,&
+                              Jup) 
+    call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
+!!$    if(option%use_samr) then
+!!$       flow_pc = 0
+!!$       call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), &
+!!$       realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
+!!$    endif
+  enddo
 #endif
   endif
   if (realization%debug%matview_Jacobian_detailed) then
@@ -2589,11 +2598,11 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       end select
       call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)  
 
-      if(option%use_samr) then
-         flow_pc = 0
-         call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), &
-         realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
-      endif
+!!$      if(option%use_samr) then
+!!$         flow_pc = 0
+!!$         call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), &
+!!$         realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
+!!$      endif
     enddo
     source_sink => source_sink%next
   enddo
@@ -2619,6 +2628,12 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     call MatZeroRowsLocal(A,patch%aux%Richards%n_zero_rows, &
                           patch%aux%Richards%zero_rows_local_ghosted, &
                           qsrc1,ierr) 
+  endif
+
+  if(option%use_samr) then
+     flow_pc = 0
+     call SAMRSetJacobianSrcCoeffsOnPatch(flow_pc, &
+          realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
   endif
 
 end subroutine RichardsJacobianPatch2

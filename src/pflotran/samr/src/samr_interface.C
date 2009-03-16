@@ -30,11 +30,20 @@
 #define PHASE  14
 #define MATERIAL_ID  15
 
-#define PRIMARY_SPEC_CONCENTRATION  16
-#define SECONDARY_SPEC_CONCENTRATION  17
-#define TOTAL_CONCENTRATION  18
-#define MINERAL_VOLUME_FRACTION  19
-#define MINERAL_SURFACE_AREA  20
+#define PRIMARY_MOLALITY  16
+#define SECONDARY_MOLALITY  17
+#define TOTAL_MOLALITY  18
+#define PRIMARY_MOLARITY  19
+#define SECONDARY_MOLARITY  20
+#define TOTAL_MOLARITY  21
+#define MINERAL_VOLUME_FRACTION  22
+#define MINERAL_RATE  23
+#define MINERAL_SURFACE_AREA  24
+#define PH  25
+#define SURFACE_CMPLX  26
+#define SURFACE_CMPLX_FREE  27
+#define PRIMARY_ACTIVITY_COEF  28
+#define SECONDARY_ACTIVITY_COEF 29
 
 extern "C" {
 #include "petscvec.h"
@@ -315,6 +324,17 @@ void samrsetjacobiansourceonpatch_(int *which_jac,
 
 }
 
+void samrsetjacobiansrccoeffsonpatch_(int *which_jac,
+                                      SAMRAI::PflotranApplicationStrategy **application_strategy, 
+                                      SAMRAI::hier::Patch<NDIM> **patch) 
+{
+
+   SAMRAI::PflotranJacobianMultilevelOperator *pJacobian = (*application_strategy)->getJacobianOperator(which_jac);
+
+   pJacobian->setSrcCoefficientsOnPatch(patch);
+
+}
+
 void create_samrai_vec_(SAMRAI::PflotranApplicationStrategy **application_strategy,
                         int &dof, 
                         int &centering,
@@ -455,17 +475,29 @@ void samrregisterforviz_(SAMRAI::PflotranApplicationStrategy **application_strat
          case PHASE:
             vName = "Phase";
             break;
-         case PRIMARY_SPEC_CONCENTRATION:
-            vName = "Primary Spec Concentration "+inxStr;
-            break;
          case MINERAL_VOLUME_FRACTION:
             vName = "Mineral Vol Fraction "+inxStr;
             break;
-         case TOTAL_CONCENTRATION:
-            vName = "Total Concentration "+inxStr;
-            break;
          case MATERIAL_ID:
             vName = "Material_ID";
+            break;
+         case PH:
+            vName = "PH";
+            break;
+         case TOTAL_MOLARITY:
+            vName = "Total Molarity "+inxStr;
+            break;
+         case PRIMARY_ACTIVITY_COEF:
+            vName = "Primary Activity Coefficient "+inxStr;
+            break;
+         case MINERAL_RATE:
+            vName = "Mineral Rate "+inxStr;
+            break;
+         case SURFACE_CMPLX_FREE:
+            vName = "Surface Cmplx Free "+inxStr;
+            break;
+         case SURFACE_CMPLX:
+            vName = "Surface Cmplx "+inxStr;
             break;
          default:
             abort();

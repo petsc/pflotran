@@ -46,4 +46,11 @@ extern "C"{
       const double*,
       const double*,
       const double*);
+
+   int samrsetjacobiansrccoeffs3d_(      
+      const int&, const int&, const int&, const int&, const int&, const int&,
+      const int&,
+      const double*,
+      const int&, const int&, const int&, const int&, const int&, const int&,
+      const double*);
 }
