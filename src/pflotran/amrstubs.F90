@@ -227,6 +227,14 @@ PetscFortranAddr :: application
 PetscFortranAddr :: patch
 end subroutine SAMRSetJacobianSourceOnPatch
 
+subroutine SAMRSetJacobianSrcCoeffsOnPatch(which_pc, p_application, p_patch) 
+#include "finclude/petsc.h"
+  
+       PetscInt :: which_pc
+       PetscFortranAddr :: p_application
+       PetscFortranAddr :: p_patch
+end subroutine SAMRSetJacobianSrcCoeffsOnPatch
+
 subroutine samrpetscobjectstateincrease(vec)
 implicit none
 #include "finclude/petsc.h"
