@@ -195,6 +195,8 @@ public:
 
    void setSourceValueOnPatch(SAMRAI::hier::Patch<NDIM> **patch, int *index, double *val);
 
+   void setSrcCoefficientsOnPatch(SAMRAI::hier::Patch<NDIM> **patch);
+
 protected:
 
    void initializePetscMatInterface(void);

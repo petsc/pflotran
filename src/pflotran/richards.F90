@@ -2484,6 +2484,14 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
        PetscFortranAddr :: p_application
        PetscFortranAddr :: p_patch
      end subroutine SAMRSetJacobianSourceOnPatch
+
+     subroutine SAMRSetJacobianSrcCoeffsOnPatch(which_pc, p_application, p_patch) 
+#include "finclude/petsc.h"
+
+       PetscInt :: which_pc
+       PetscFortranAddr :: p_application
+       PetscFortranAddr :: p_patch
+     end subroutine SAMRSetJacobianSrcCoeffsOnPatch
   end interface
 
   SNES, intent(in) :: snes
@@ -2543,11 +2551,11 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                               realization%saturation_function_array(icap)%ptr,&
                               Jup) 
     call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
-    if(option%use_samr) then
-       flow_pc = 0
-       call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), &
-       realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
-    endif
+!!$    if(option%use_samr) then
+!!$       flow_pc = 0
+!!$       call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), &
+!!$       realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
+!!$    endif
   enddo
 
 #endif
@@ -2587,11 +2595,11 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       end select
       call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)  
 
-      if(option%use_samr) then
-         flow_pc = 0
-         call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), &
-         realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
-      endif
+!!$      if(option%use_samr) then
+!!$         flow_pc = 0
+!!$         call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), &
+!!$         realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
+!!$      endif
     enddo
     source_sink => source_sink%next
   enddo
@@ -2617,6 +2625,12 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     call MatZeroRowsLocal(A,patch%aux%Richards%n_zero_rows, &
                           patch%aux%Richards%zero_rows_local_ghosted, &
                           qsrc1,ierr) 
+  endif
+
+  if(option%use_samr) then
+     flow_pc = 0
+     call SAMRSetJacobianSrcCoeffsOnPatch(flow_pc, &
+          realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
   endif
 
 end subroutine RichardsJacobianPatch2

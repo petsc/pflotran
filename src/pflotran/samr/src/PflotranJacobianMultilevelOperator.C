@@ -165,7 +165,7 @@ PflotranJacobianMultilevelOperator::apply(const int coarse_ln,
       for(int ln=fine_ln-1; ln>=coarse_ln; ln--)
       {
          bool coarsen_rhs = (b!=0.0)?true:false;   
-         bool coarsen_soln = true;
+         bool coarsen_soln = false;
          coarsenSolutionAndSourceTerm(ln, u_id[0], f_id[0], coarsen_soln, coarsen_rhs);      
          
 #ifdef DEBUG_CHECK_ASSERTIONS
@@ -880,6 +880,15 @@ PflotranJacobianMultilevelOperator::setSourceValueOnPatch(SAMRAI::hier::Patch<ND
    int ln = (*patch)->getPatchLevelNumber();
 
    d_level_operators[ln]->setSourceValueOnPatch(patch, index, val);
+
+}
+
+void
+PflotranJacobianMultilevelOperator::setSrcCoefficientsOnPatch(SAMRAI::hier::Patch<NDIM> **patch)
+{
+   int ln = (*patch)->getPatchLevelNumber();
+
+   d_level_operators[ln]->setSrcCoefficientsOnPatch(patch);
 
 }
 

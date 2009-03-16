@@ -324,6 +324,17 @@ void samrsetjacobiansourceonpatch_(int *which_jac,
 
 }
 
+void samrsetjacobiansrccoeffsonpatch_(int *which_jac,
+                                      SAMRAI::PflotranApplicationStrategy **application_strategy, 
+                                      SAMRAI::hier::Patch<NDIM> **patch) 
+{
+
+   SAMRAI::PflotranJacobianMultilevelOperator *pJacobian = (*application_strategy)->getJacobianOperator(which_jac);
+
+   pJacobian->setSrcCoefficientsOnPatch(patch);
+
+}
+
 void create_samrai_vec_(SAMRAI::PflotranApplicationStrategy **application_strategy,
                         int &dof, 
                         int &centering,
