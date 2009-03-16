@@ -2538,28 +2538,28 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   
   if (.not.option%steady_state) then
 #if 1
-    ! Accumulation terms ------------------------------------
-    do local_id = 1, grid%nlmax  ! For each local node do...
-      ghosted_id = grid%nL2G(local_id)
-      !geh - Ignore inactive cells with inactive materials
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
-      icap = int(icap_loc_p(ghosted_id))
-      call RichardsAccumDerivative(rich_aux_vars(ghosted_id), &
-                                global_aux_vars(ghosted_id), &
-                                porosity_loc_p(ghosted_id), &
-                                volume_p(local_id), &
-                                option, &
-                                realization%saturation_function_array(icap)%ptr,&
-                                Jup) 
-      call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
-      if(option%use_samr) then
-         flow_pc = 0
-         call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), &
-         realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
-      endif
-    enddo
+  ! Accumulation terms ------------------------------------
+  do local_id = 1, grid%nlmax  ! For each local node do...
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
+    icap = int(icap_loc_p(ghosted_id))
+    call RichardsAccumDerivative(rich_aux_vars(ghosted_id), &
+                              global_aux_vars(ghosted_id), &
+                              porosity_loc_p(ghosted_id), &
+                              volume_p(local_id), &
+                              option, &
+                              realization%saturation_function_array(icap)%ptr,&
+                              Jup) 
+    call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
+!!$    if(option%use_samr) then
+!!$       flow_pc = 0
+!!$       call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), &
+!!$       realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
+!!$    endif
+  enddo
 #endif
   endif
   if (realization%debug%matview_Jacobian_detailed) then
