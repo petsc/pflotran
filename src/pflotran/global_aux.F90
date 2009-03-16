@@ -15,6 +15,7 @@ module Global_Aux_module
     PetscReal, pointer :: sat_store(:,:)
     PetscReal, pointer :: den(:)
     PetscReal, pointer :: den_kg(:)
+    PetscReal, pointer :: den_store(:,:)
     PetscReal, pointer :: den_kg_store(:,:)
     PetscReal, pointer :: fugacoeff(:)
     PetscReal, pointer :: fugacoeff_store(:,:)
@@ -102,11 +103,14 @@ subroutine GlobalAuxVarInit(aux_var,option)
     aux_var%fugacoeff = 1.d0
     allocate(aux_var%fugacoeff_store(ONE_INTEGER,TWO_INTEGER))
     aux_var%fugacoeff_store = 1.d0    
+    allocate(aux_var%den_store(option%nphase,TWO_INTEGER))
+    aux_var%den_store = 0.d0
   else
     nullify(aux_var%pres_store)
     nullify(aux_var%temp_store)
     nullify(aux_var%fugacoeff)
     nullify(aux_var%fugacoeff_store)
+    nullify(aux_var%den_store)
   endif
 
   if(option%iflowmode == MPH_MODE)then
@@ -117,12 +121,15 @@ subroutine GlobalAuxVarInit(aux_var,option)
     allocate(aux_var%fugacoeff(ONE_INTEGER))
     aux_var%fugacoeff = 1.d0
     allocate(aux_var%fugacoeff_store(ONE_INTEGER,TWO_INTEGER))
-    aux_var%fugacoeff_store = 1.d0    
+    aux_var%fugacoeff_store = 1.d0
+    allocate(aux_var%den_store(option%nphase,TWO_INTEGER))
+    aux_var%den_store = 0.d0
   else
     nullify(aux_var%pres_store)
     nullify(aux_var%temp_store)
     nullify(aux_var%fugacoeff)
     nullify(aux_var%fugacoeff_store)
+    nullify(aux_var%den_store)
   endif
 
 
@@ -170,6 +177,10 @@ subroutine GlobalAuxVarCopy(aux_var,aux_var2,option)
   if (associated(aux_var%pres_store) .and. &
       associated(aux_var2%pres_store)) then
     aux_var2%pres_store = aux_var%pres_store  
+  endif
+  if (associated(aux_var%den_store) .and. &
+      associated(aux_var2%den_store)) then
+    aux_var2%pres_store = aux_var%den_store  
   endif
   if (associated(aux_var%temp_store) .and. &
       associated(aux_var2%temp_store)) then

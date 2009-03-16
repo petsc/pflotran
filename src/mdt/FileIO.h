@@ -6,7 +6,7 @@
 #include <sstream>
 using namespace std;
 
-#include "include/petsc.h"
+#include "petsc.h"
 
 #define MAXCARDLENGTH 5 // add 1 to account of end of line \0
 #define MAXWORDLENGTH 33

@@ -304,6 +304,12 @@ subroutine Init(simulation)
     call SNESLineSearchSet(flow_solver%snes,SNESLineSearchNo, &
                            PETSC_NULL_OBJECT,ierr)
 
+    ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
+    if (option%verbosity >= 1) then
+      string = '-flow_snes_view'
+      call PetscOptionsInsertString(string, ierr)
+    endif
+
     call SolverSetSNESOptions(flow_solver)
 
     ! If we are using a structured grid, set the corresponding flow DA 
@@ -396,6 +402,12 @@ subroutine Init(simulation)
     call SNESLineSearchSet(tran_solver%snes,SNESLineSearchNo, &
                            PETSC_NULL_OBJECT,ierr)
 
+    ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
+    if (option%verbosity >= 1) then
+      string = '-tran_snes_view'
+      call PetscOptionsInsertString(string, ierr)
+    endif
+
     call SolverSetSNESOptions(tran_solver)
 
     ! setup a shell preconditioner and initialize in the case of AMR
@@ -465,16 +477,17 @@ subroutine Init(simulation)
   call PetscLogEventEnd(logging%event_setup,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,ierr)
-
-  ! add waypoints associated with boundary conditions, source/sinks etc. to list
-  call RealizationAddWaypointsToList(realization)
-  ! fill in holes in waypoint data
-  call WaypointListFillIn(option,realization%waypoints)
-  call WaypointListRemoveExtraWaypnts(option,realization%waypoints)
-! geh- no longer needed
-!  ! convert times from input time to seconds
-!  call WaypointConvertTimes(realization%waypoints,realization%output_option%tconv)
-
+  if (.not.option%steady_state) then
+    ! add waypoints associated with boundary conditions, source/sinks etc. to list
+    call RealizationAddWaypointsToList(realization)
+    ! fill in holes in waypoint data
+    call WaypointListFillIn(option,realization%waypoints)
+    call WaypointListRemoveExtraWaypnts(option,realization%waypoints)
+  ! geh- no longer needed
+  !  ! convert times from input time to seconds
+  !  call WaypointConvertTimes(realization%waypoints,realization%output_option%tconv)
+  endif
+  
   if (associated(flow_stepper)) then
     flow_stepper%cur_waypoint => realization%waypoints%first
   endif
@@ -1494,6 +1507,8 @@ subroutine InitReadInput(simulation)
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputErrorMsg(input,option,'word','TIME') 
           select case(trim(word))
+            case('STEADY_STATE')
+              option%steady_state = PETSC_TRUE
             case('FINAL_TIME')
               call InputReadDouble(input,option,temp_real)
               call InputErrorMsg(input,option,'Final Time','TIME') 

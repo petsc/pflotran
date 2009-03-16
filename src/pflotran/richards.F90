@@ -602,7 +602,7 @@ subroutine RichardsUpdateFixedAccum(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RichardsLiUpdateFixedAccumPatch(realization)
+      call RichardsUpdateFixedAccumPatch(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -612,13 +612,13 @@ end subroutine RichardsUpdateFixedAccum
 
 ! ************************************************************************** !
 !
-! RichardsLiUpdateFixedAccumPatch: Updates the fixed portion of the 
-!                                  accumulation term
+! RichardsUpdateFixedAccumPatch: Updates the fixed portion of the 
+!                                accumulation term
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsLiUpdateFixedAccumPatch(realization)
+subroutine RichardsUpdateFixedAccumPatch(realization)
 
   use Realization_module
   use Patch_module
@@ -691,7 +691,7 @@ subroutine RichardsLiUpdateFixedAccumPatch(realization)
 !  call RichardsNumericalJacTest(field%flow_xx,realization)
 #endif
 
-end subroutine RichardsLiUpdateFixedAccumPatch
+end subroutine RichardsUpdateFixedAccumPatch
 
 ! ************************************************************************** !
 !
@@ -2026,24 +2026,26 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
 
-#if 1
   ! Accumulation terms ------------------------------------
-  r_p = r_p - accum_p
+  if (.not.option%steady_state) then
+#if 1
+    r_p = r_p - accum_p
 
-  do local_id = 1, grid%nlmax  ! For each local node do...
-    ghosted_id = grid%nL2G(local_id)
-    !geh - Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif
-    call RichardsAccumulation(rich_aux_vars(ghosted_id), &
-                              global_aux_vars(ghosted_id), &
-                              porosity_loc_p(ghosted_id), &
-                              volume_p(local_id), &
-                              option,Res) 
-    r_p(local_id) = r_p(local_id) + Res(1)
-  enddo
+    do local_id = 1, grid%nlmax  ! For each local node do...
+      ghosted_id = grid%nL2G(local_id)
+      !geh - Ignore inactive cells with inactive materials
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+      call RichardsAccumulation(rich_aux_vars(ghosted_id), &
+                                global_aux_vars(ghosted_id), &
+                                porosity_loc_p(ghosted_id), &
+                                volume_p(local_id), &
+                                option,Res) 
+      r_p(local_id) = r_p(local_id) + Res(1)
+    enddo
 #endif
+  endif
 #if 1
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first 
@@ -2534,31 +2536,32 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
   
+  if (.not.option%steady_state) then
 #if 1
-  ! Accumulation terms ------------------------------------
-  do local_id = 1, grid%nlmax  ! For each local node do...
-    ghosted_id = grid%nL2G(local_id)
-    !geh - Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif
-    icap = int(icap_loc_p(ghosted_id))
-    call RichardsAccumDerivative(rich_aux_vars(ghosted_id), &
-                              global_aux_vars(ghosted_id), &
-                              porosity_loc_p(ghosted_id), &
-                              volume_p(local_id), &
-                              option, &
-                              realization%saturation_function_array(icap)%ptr,&
-                              Jup) 
-    call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
-!!$    if(option%use_samr) then
-!!$       flow_pc = 0
-!!$       call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), &
-!!$       realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
-!!$    endif
-  enddo
-
+    ! Accumulation terms ------------------------------------
+    do local_id = 1, grid%nlmax  ! For each local node do...
+      ghosted_id = grid%nL2G(local_id)
+      !geh - Ignore inactive cells with inactive materials
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+      icap = int(icap_loc_p(ghosted_id))
+      call RichardsAccumDerivative(rich_aux_vars(ghosted_id), &
+                                global_aux_vars(ghosted_id), &
+                                porosity_loc_p(ghosted_id), &
+                                volume_p(local_id), &
+                                option, &
+                                realization%saturation_function_array(icap)%ptr,&
+                                Jup) 
+      call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
+      if(option%use_samr) then
+         flow_pc = 0
+         call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), &
+         realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
+      endif
+    enddo
 #endif
+  endif
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)

@@ -59,6 +59,7 @@ module Option_module
     PetscTruth :: print_file_flag
     PetscTruth :: print_to_screen
     PetscTruth :: print_to_file
+    PetscInt :: verbosity  ! Values >0 indicate additional console output.
     
     PetscInt, pointer :: garbage ! for some reason, Intel will not compile without this
 
@@ -96,7 +97,7 @@ module Option_module
 !    PetscReal :: disp
     
     PetscInt :: ideriv
-    PetscInt :: idt_switch = -1
+    PetscInt :: idt_switch
     PetscReal :: reference_temperature
     PetscReal :: reference_pressure
     PetscReal :: reference_density
@@ -106,8 +107,8 @@ module Option_module
     PetscTruth :: initialize_with_molality
         
 !   table lookup
-    PetscInt :: itable=0
-    PetscInt :: co2eos=EOS_SPAN_WAGNER
+    PetscInt :: itable
+    PetscInt :: co2eos
 
     PetscTruth :: restart_flag
     PetscReal :: restart_time
@@ -136,6 +137,8 @@ module Option_module
     
     character(len=MAXWORDLENGTH) :: global_prefix
     character(len=MAXWORDLENGTH) :: group_prefix
+    
+    PetscTruth :: steady_state
     
   end type option_type
   
@@ -275,6 +278,7 @@ subroutine OptionInitAll(option)
   option%print_file_flag = PETSC_FALSE
   option%print_to_screen = PETSC_TRUE
   option%print_to_file = PETSC_TRUE
+  option%verbosity = 0
 
   option%input_filename = ''
 
@@ -401,6 +405,12 @@ subroutine OptionInitRealization(option)
   option%permx_filename = ""
   option%permy_filename = ""
   option%permz_filename = ""
+  
+  option%steady_state = PETSC_FALSE
+  
+  option%itable=0
+  option%co2eos=EOS_SPAN_WAGNER
+  option%idt_switch = -1
 
 end subroutine OptionInitRealization
 
@@ -442,6 +452,9 @@ function OutputOptionCreate()
   output_option%print_act_coefs = PETSC_FALSE
   output_option%print_permeability = PETSC_FALSE
   output_option%print_porosity = PETSC_FALSE
+  
+  output_option%tconv = 1.d0
+  output_option%tunit = 's'
 
   OutputOptionCreate => output_option
   
@@ -463,6 +476,7 @@ subroutine OptionCheckCommandLine(option)
   PetscTruth :: option_found 
   PetscInt :: temp_int
   PetscErrorCode :: ierr
+  character(len=MAXSTRINGLENGTH) :: string
   
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-snes_mf", & 
                            option%use_matrix_free, ierr)
@@ -495,6 +509,17 @@ subroutine OptionCheckCommandLine(option)
                           temp_int,option_found, ierr)
   if (option_found) option%id = temp_int
  
+  ! If the verbosity level > 0, then set some PETSc options.
+  ! I note that the verbosity level should already have been set from the 
+  ! command line, but this routine seemed like an appropriate place to 
+  ! flip these PETSc options.  Also, I note that we can't set all of the 
+  ! PETSc options here, e.g., some of the solver options because the 
+  ! solver prefixes haven't yet been set up.  --RTM
+  if (option%verbosity > 0) then
+    string = '-log_summary'
+    call PetscOptionsInsertString(string, ierr)
+  endif
+
 end subroutine OptionCheckCommandLine
 
 ! ************************************************************************** !
