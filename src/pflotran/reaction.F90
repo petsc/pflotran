@@ -355,6 +355,9 @@ subroutine ReactionRead(reaction,input,option)
         option%initialize_with_molality = PETSC_TRUE
       case('OUTPUT')
         call InputSkipToEnd(input,option,word)
+      case('MAX_DLNC')
+        call InputReadDouble(input,option,reaction%max_dlnC)
+        call InputErrorMsg(input,option,trim(word),'CHEMISTRY')
       case default
         option%io_buffer = 'CHEMISTRY keyword: '//trim(word)//' not recognized'
         call printErrMsg(option)

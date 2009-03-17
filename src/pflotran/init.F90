@@ -434,8 +434,7 @@ subroutine Init(simulation)
 
     ! this update check must be in place, otherwise reactive transport is likely
     ! to fail
-    call SNESLineSearchSetPreCheck(tran_solver%snes, &
-                                   ConvergenceRTUpdateCheck, &
+    call SNESLineSearchSetPreCheck(tran_solver%snes,RTCheckUpdate, &
                                    realization,ierr)
 
     call printMsg(option,"  Finished setting up TRAN SNES ")
