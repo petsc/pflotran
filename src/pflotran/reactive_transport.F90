@@ -24,7 +24,7 @@ module Reactive_Transport_module
   
   public :: RTTimeCut, RTSetup, RTMaxChange, RTUpdateSolution, RTResidual, &
             RTJacobian, RTInitializeTimestep, RTGetTecplotHeader, &
-            RTUpdateAuxVars, RTComputeMassBalance, RTDestroy
+            RTUpdateAuxVars, RTComputeMassBalance, RTDestroy, RTCheckUpdate
   
 contains
 
@@ -186,6 +186,122 @@ subroutine RTSetupPatch(realization)
   enddo
 
 end subroutine RTSetupPatch
+
+! ************************************************************************** !
+!
+! RTCheckUpdate: In the case of the log formulation, ensures that the update 
+!                vector does not exceed a prescribed tolerance
+! author: Glenn Hammond
+! date: 03/16/09
+!
+! ************************************************************************** !
+subroutine RTCheckUpdate(snes_,C,dC,realization,changed,ierr)
+ 
+  use Realization_module
+  use Level_module
+  use Patch_module
+ 
+  implicit none
+  
+  SNES :: snes_
+  Vec :: C
+  Vec :: dC
+  type(realization_type) :: realization
+  PetscTruth :: changed
+  PetscErrorCode :: ierr
+
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RTCheckUpdatePatch(snes_,C,dC,realization,changed,ierr)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RTCheckUpdate
+
+! ************************************************************************** !
+!
+! RTCheckUpdatePatch: In the case of the log formulation, ensures that the 
+!                     update vector does not exceed a prescribed tolerance
+! author: Glenn Hammond
+! date: 03/16/09
+!
+! ************************************************************************** !
+subroutine RTCheckUpdatePatch(snes_,C,dC,realization,changed,ierr)
+
+  use Realization_module
+  use Grid_module
+ 
+  implicit none
+  
+  SNES :: snes_
+  Vec :: C
+  Vec :: dC
+  type(realization_type) :: realization
+  PetscTruth :: changed
+  
+  PetscReal, pointer :: C_p(:)
+  PetscReal, pointer :: dC_p(:)
+  type(grid_type), pointer :: grid
+  PetscReal :: ratio, min_ratio
+  PetscInt :: i, n
+  PetscErrorCode :: ierr
+  
+  grid => realization%patch%grid
+  
+  call GridVecGetArrayF90(grid,dC,dC_p,ierr)
+
+  if (realization%reaction%use_log_formulation) then
+    ! C and dC are actually lnC and dlnC
+    dC_p = dsign(1.d0,dC_p)*min(dabs(dC_p),realization%reaction%max_dlnC)
+
+    ! at this point, it does not matter whether "changed" is set to true, since it 
+    ! is not check in PETSc.  Thus, I don't want to spend time checking for changes
+    ! and performing an allreduce for log formulation.
+  
+  else
+    call VecGetLocalSize(C,n,ierr)
+    call GridVecGetArrayF90(grid,C,C_p,ierr)
+    
+    ! C^p+1 = C^p - dC^p
+    ! if dC is positive and abs(dC) larger than C
+    ! we need to scale the update
+    
+    ! compute smallest ratio of C to dC
+    min_ratio = 1.d20 ! large number
+    do i = 1, n
+      if (C_p(i) <= dC_p(i)) then
+        ratio = abs(C_p(i)/dC_p(i))
+        if (ratio < min_ratio) min_ratio = ratio
+      endif
+    enddo
+    ratio = min_ratio
+    
+    ! get global minimum
+    call MPI_AllReduce(ratio,min_ratio,1,MPI_DOUBLE_PRECISION,MPI_MIN, &
+                       PETSC_COMM_WORLD,ierr)
+                       
+    ! scale if necessary
+    if (min_ratio < 1.d0) then
+      ! scale by 0.99 to make the update slightly smaller than the min_ratio
+      dC_p = dC_p*min_ratio*0.99d0
+      changed = PETSC_TRUE
+    endif
+    call GridVecRestoreArrayF90(grid,C,C_p,ierr)
+  endif
+
+  call GridVecRestoreArrayF90(grid,dC,dC_p,ierr)
+
+end subroutine RTCheckUpdatePatch
 
 ! ************************************************************************** !
 !

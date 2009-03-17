@@ -23,7 +23,6 @@ module Convergence_module
 
 
   public :: ConvergenceContextCreate, ConvergenceTest, &
-            ConvergenceRTUpdateCheck, &
             ConvergenceContextDestroy
   
 contains
@@ -498,79 +497,5 @@ subroutine ConvergenceContextDestroy(context)
   nullify(context)
 
 end subroutine ConvergenceContextDestroy
-
-! ************************************************************************** !
-!
-! ConvergenceRTUpdateCheck: User defined update check for reactive transport
-! author: Glenn Hammond
-! date: 10/24/08
-!
-! ************************************************************************** !
-subroutine ConvergenceRTUpdateCheck(snes_,C,dC,realization,changed,ierr)
-
-  use Realization_module
-  use Grid_module  
-
-  implicit none
-  
-  SNES :: snes_
-  Vec :: C
-  Vec :: dC
-  type(realization_type) :: realization
-  PetscTruth :: changed
-  
-  PetscReal, pointer :: C_p(:)
-  PetscReal, pointer :: dC_p(:)
-  type(grid_type), pointer :: grid
-  PetscReal :: ratio, min_ratio
-  PetscInt :: i, n
-  PetscErrorCode :: ierr
-  
-  grid => realization%patch%grid
-  
-  call GridVecGetArrayF90(grid,dC,dC_p,ierr)
-
-  if (realization%reaction%use_log_formulation) then
-    ! C and dC are actually lnC and dlnC
-    dC_p = dsign(1.d0,dC_p)*min(dabs(dC_p),10.d0)
-
-    ! at this point, it does not matter whether "changed" is set to true, since it 
-    ! is not check in PETSc.  Thus, I don't want to spend time checking for changes
-    ! and performing an allreduce for log formulation.
-  
-  else
-    call VecGetLocalSize(C,n,ierr)
-    call GridVecGetArrayF90(grid,C,C_p,ierr)
-    
-    ! C^p+1 = C^p - dC^p
-    ! if dC is positive and abs(dC) larger than C
-    ! we need to scale the update
-    
-    ! compute smallest ratio of C to dC
-    min_ratio = 1.d20 ! large number
-    do i = 1, n
-      if (C_p(i) <= dC_p(i)) then
-        ratio = abs(C_p(i)/dC_p(i))
-        if (ratio < min_ratio) min_ratio = ratio
-      endif
-    enddo
-    ratio = min_ratio
-    
-    ! get global minimum
-    call MPI_AllReduce(ratio,min_ratio,1,MPI_DOUBLE_PRECISION,MPI_MIN, &
-                       PETSC_COMM_WORLD,ierr)
-                       
-    ! scale if necessary
-    if (min_ratio < 1.d0) then
-      ! scale by 0.99 to make the update slightly smaller than the min_ratio
-      dC_p = dC_p*min_ratio*0.99d0
-      changed = PETSC_TRUE
-    endif
-    call GridVecRestoreArrayF90(grid,C,C_p,ierr)
-  endif
-
-  call GridVecRestoreArrayF90(grid,dC,dC_p,ierr)
-
-end subroutine ConvergenceRTUpdateCheck
 
 end module Convergence_module

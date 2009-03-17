@@ -270,6 +270,9 @@ module Reaction_Aux_module
     PetscReal, pointer :: kinmnrl_sec_pref_atten_coef(:,:,:)
     PetscReal, pointer :: kinmnrl_Tempkin_const(:)
     PetscReal, pointer :: kinmnrl_affinity_power(:)
+    
+    PetscReal :: max_dlnC
+    
   end type reaction_type
 
   public :: ReactionCreate, &
@@ -459,6 +462,8 @@ function ReactionCreate()
   nullify(reaction%kinmnrl_sec_pref_atten_coef)
   nullify(reaction%kinmnrl_Tempkin_const)
   nullify(reaction%kinmnrl_affinity_power)
+  
+  reaction%max_dlnC = 5.d0
 
   ReactionCreate => reaction
   
