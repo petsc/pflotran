@@ -1055,7 +1055,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
     else
        scaled_fnorm = fnorm
     endif
-    print *,' --> SNES Linear/Non-Linear Interations = ', &
+    print *,' --> SNES Linear/Non-Linear Iterations = ', &
              num_linear_iterations,' / ',num_newton_iterations
     print *,' --> SNES Residual: ', fnorm, scaled_fnorm, inorm 
      
@@ -1372,7 +1372,7 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
       else
          scaled_fnorm = fnorm
       endif
-      print *,' --> SNES Linear/Non-Linear Interations = ', &
+      print *,' --> SNES Linear/Non-Linear Iterations = ', &
                num_linear_iterations,' / ',num_newton_iterations
       print *,' --> SNES Residual: ', fnorm, scaled_fnorm, inorm 
     endif
@@ -1653,7 +1653,7 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
     else
        scaled_fnorm = fnorm
     endif
-    print *,' --> SNES Linear/Non-Linear Interations = ', &
+    print *,' --> SNES Linear/Non-Linear Iterations = ', &
              num_linear_iterations,' / ',num_newton_iterations
     print *,' --> SNES Residual: ', fnorm, scaled_fnorm, inorm 
      
@@ -1806,7 +1806,7 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
     else
        scaled_fnorm = fnorm
     endif
-    print *,' --> SNES Linear/Non-Linear Interations = ', &
+    print *,' --> SNES Linear/Non-Linear Iterations = ', &
              num_linear_iterations,' / ',num_newton_iterations
     print *,' --> SNES Residual: ', fnorm, scaled_fnorm, inorm 
   endif
