@@ -195,6 +195,8 @@ public:
 
    void setSourceValueOnPatch(SAMRAI::hier::Patch<NDIM> **patch, int *index, double *val);
 
+   void setSrcCoefficientsOnPatch(SAMRAI::hier::Patch<NDIM> **patch);
+
 protected:
 
    void initializePetscMatInterface(void);
@@ -249,6 +251,7 @@ protected:
    void coarsenSolutionAndSourceTerm(const int ln, 
                                      const int u_id,
                                      const int src_id,
+                                     const bool coarsen_soln,
                                      const bool coarsen_rhs);
 
 
@@ -267,7 +270,8 @@ private:
 
    std::string d_face_coarsen_op_str;
    std::string d_face_refine_op_str;
-   std::string d_cell_coarsen_op_str;
+   std::string d_cell_soln_coarsen_op_str;
+   std::string d_cell_src_coarsen_op_str;
    std::string d_cell_refine_op_str;
 
    int d_flux_id;
@@ -290,9 +294,11 @@ private:
 
    tbox::Pointer<xfer::RefineOperator<NDIM> >  d_soln_refine_op;
    tbox::Pointer<xfer::CoarsenOperator<NDIM> > d_soln_coarsen_op;
+   tbox::Pointer<xfer::CoarsenOperator<NDIM> > d_src_coarsen_op;
 
    tbox::Array< tbox::Pointer< xfer::RefineSchedule<NDIM> > > d_GlobalToLocalRefineSchedule;
    tbox::Array< tbox::Pointer< xfer::CoarsenSchedule<NDIM> > > d_src_coarsen_schedule;
+   tbox::Array< tbox::Pointer< xfer::CoarsenSchedule<NDIM> > > d_soln_coarsen_schedule;
    tbox::Array< tbox::Pointer< xfer::CoarsenSchedule<NDIM> > > d_flux_coarsen_schedule;
 
    RefinementBoundaryInterpolation::InterpolationScheme d_tangential_interp_scheme;

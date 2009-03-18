@@ -33,7 +33,7 @@ module AMR_Grid_module
   PetscFortranAddr p_application ! pointer to the SAMRAI hierarchy
 
   PetscInt :: nlevels
-
+  
   end type amrgrid_type
 
   public:: AMRGridCreate, &

@@ -33,7 +33,8 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
    d_variable_order_interpolation = false;
    d_reset_ghost_values           = true;
    d_face_coarsen_op_str          = "SUM_COARSEN";
-   d_cell_coarsen_op_str          = "SUM_COARSEN";
+   d_cell_soln_coarsen_op_str     = "CONSERVATIVE_COARSEN";
+   d_cell_src_coarsen_op_str      = "SUM_COARSEN";
    d_cell_refine_op_str           = "CONSTANT_REFINE";
    d_face_refine_op_str           = "CONSTANT_REFINE";
    d_flux.setNull();
@@ -84,15 +85,19 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
 
    d_soln_refine_op =  grid_geometry->lookupRefineOperator(d_scratch_variable, d_cell_refine_op_str);
 
-   d_soln_coarsen_op = grid_geometry->lookupCoarsenOperator(d_scratch_variable, d_cell_coarsen_op_str);
+   d_soln_coarsen_op = grid_geometry->lookupCoarsenOperator(d_scratch_variable, d_cell_soln_coarsen_op_str);
+
+   d_src_coarsen_op = grid_geometry->lookupCoarsenOperator(d_scratch_variable, d_cell_src_coarsen_op_str);
 
    d_flux_coarsen_schedule.resizeArray(d_hierarchy->getNumberOfLevels());
    d_GlobalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
    d_src_coarsen_schedule.resizeArray(d_hierarchy->getNumberOfLevels());
+   d_soln_coarsen_schedule.resizeArray(d_hierarchy->getNumberOfLevels());
    for(int ln=0; ln<hierarchy_size; ln++)
    {
       d_GlobalToLocalRefineSchedule[ln].setNull();
       d_src_coarsen_schedule[ln].setNull();
+      d_soln_coarsen_schedule[ln].setNull();
       d_flux_coarsen_schedule[ln].setNull();
    }
 
@@ -159,8 +164,9 @@ PflotranJacobianMultilevelOperator::apply(const int coarse_ln,
 
       for(int ln=fine_ln-1; ln>=coarse_ln; ln--)
       {
-         bool coarsen_rhs = (b!=0.0)?true:false;         
-         coarsenSolutionAndSourceTerm(ln, u_id[0], f_id[0], coarsen_rhs);      
+         bool coarsen_rhs = (b!=0.0)?true:false;   
+         bool coarsen_soln = false;
+         coarsenSolutionAndSourceTerm(ln, u_id[0], f_id[0], coarsen_soln, coarsen_rhs);      
          
 #ifdef DEBUG_CHECK_ASSERTIONS
          assert(d_schedules_initialized==true);
@@ -177,6 +183,11 @@ PflotranJacobianMultilevelOperator::apply(const int coarse_ln,
                                       a, b);
       }
 
+//       for(int ln=fine_ln-1; ln>=coarse_ln; ln--)
+//       {
+//          bool coarsen_rhs = (b!=0.0)?true:false;         
+//          coarsenSolutionAndSourceTerm(ln, u_id[0], r_id[0], coarsen_rhs);      
+//       }
    }
    else
    {
@@ -299,6 +310,14 @@ PflotranJacobianMultilevelOperator::initializeInternalVariableData(void)
       assert(level->checkAllocated(d_flux_id));
 #endif
 
+      for (hier::PatchLevel<NDIM>::Iterator p(level); p; p++) 
+      {
+         tbox::Pointer<hier::Patch<NDIM> > patch = level->getPatch(p());
+         tbox::Pointer< pdat::CCellData<NDIM, double > > data = patch->getPatchData(d_srcsink_id);
+         data->fillAll(0.0);
+         data = patch->getPatchData(scratch_var_id);
+         data->fillAll(0.0);
+      }
    }
 
    d_scratch_vector = solv::PETSc_SAMRAIVectorReal<NDIM,double>::createPETScVector(scratch_vector);
@@ -333,14 +352,25 @@ PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> d
                  << " missing in input.");
    }
 
-   if(db->keyExists("cell_coarsen_op"))
+   if(db->keyExists("cell_src_coarsen_op"))
    {
-      d_cell_coarsen_op_str = db->getString("cell_coarsen_op");
+      d_cell_src_coarsen_op_str = db->getString("cell_src_coarsen_op");
    }
    else
    {
       TBOX_ERROR("PflotranJacobianMultilevelOperator" 
-                 << " -- Required key `cell_coarsen_op'"
+                 << " -- Required key `cell_src_coarsen_op'"
+                 << " missing in input.");
+   }
+
+   if(db->keyExists("cell_soln_coarsen_op"))
+   {
+      d_cell_soln_coarsen_op_str = db->getString("cell_soln_coarsen_op");
+   }
+   else
+   {
+      TBOX_ERROR("PflotranJacobianMultilevelOperator" 
+                 << " -- Required key `cell_soln_coarsen_op'"
                  << " missing in input.");
    }
 
@@ -791,17 +821,17 @@ PflotranJacobianMultilevelOperator::initializeScratchVector( Vec x )
       tbox::Pointer<hier::PatchLevel<NDIM> > clevel = hierarchy->getPatchLevel(ln);
       tbox::Pointer<hier::PatchLevel<NDIM> > flevel = hierarchy->getPatchLevel(ln+1);
 
-      if((!d_src_coarsen_schedule[ln].isNull()) && cell_coarsen.checkConsistency(d_src_coarsen_schedule[ln]))
+      if((!d_soln_coarsen_schedule[ln].isNull()) && cell_coarsen.checkConsistency(d_soln_coarsen_schedule[ln]))
       {
-         cell_coarsen.resetSchedule(d_src_coarsen_schedule[ln]);
+         cell_coarsen.resetSchedule(d_soln_coarsen_schedule[ln]);
       }
       else
       {
-         d_src_coarsen_schedule[ln] = cell_coarsen.createSchedule(clevel, 
+         d_soln_coarsen_schedule[ln] = cell_coarsen.createSchedule(clevel, 
                                                              flevel);
       }
       
-      d_src_coarsen_schedule[ln]->coarsenData();            
+      d_soln_coarsen_schedule[ln]->coarsenData();            
       
     }
 #endif
@@ -854,18 +884,31 @@ PflotranJacobianMultilevelOperator::setSourceValueOnPatch(SAMRAI::hier::Patch<ND
 }
 
 void
+PflotranJacobianMultilevelOperator::setSrcCoefficientsOnPatch(SAMRAI::hier::Patch<NDIM> **patch)
+{
+   int ln = (*patch)->getPatchLevelNumber();
+
+   d_level_operators[ln]->setSrcCoefficientsOnPatch(patch);
+
+}
+
+void
 PflotranJacobianMultilevelOperator::coarsenSolutionAndSourceTerm(const int ln, 
-                                                              const int u_id,
-                                                              const int f_id, 
-                                                              const bool coarsen_rhs)
+                                                                 const int u_id,
+                                                                 const int f_id, 
+                                                                 const bool coarsen_soln,
+                                                                 const bool coarsen_rhs)
 {
 
    hier::VariableDatabase<NDIM>* variable_db = hier::VariableDatabase<NDIM>::getDatabase();
    tbox::Pointer< hier::Variable< NDIM > > f;
    variable_db->mapIndexToVariable(f_id, f);
+   tbox::Pointer< hier::Variable< NDIM > > u;
+   variable_db->mapIndexToVariable(u_id, u);
 
 #ifdef DEBUG_CHECK_ASSERTIONS
    assert(!f.isNull());      
+   assert(!u.isNull());      
    assert(ln<d_hierarchy->getFinestLevelNumber());
 #endif
 
@@ -875,45 +918,86 @@ PflotranJacobianMultilevelOperator::coarsenSolutionAndSourceTerm(const int ln,
    assert(!geometry.isNull());      
 #endif
 
-   xfer::CoarsenAlgorithm<NDIM> coarsen_alg;
+   xfer::CoarsenAlgorithm<NDIM> coarsen_src_alg;
+   xfer::CoarsenAlgorithm<NDIM> coarsen_soln_alg;
 
    if(coarsen_rhs)
    {
-      coarsen_alg.registerCoarsen(f_id, f_id,
-                                  geometry->lookupCoarsenOperator(f, d_cell_coarsen_op_str));
-   }
+      coarsen_src_alg.registerCoarsen(f_id, f_id,
+                                      geometry->lookupCoarsenOperator(f, d_cell_src_coarsen_op_str));
+   
 
-   // if a schedule does not currently exist create it
-   if(d_src_coarsen_schedule[ln].isNull())
-   {
-      tbox::Pointer<hier::PatchLevel<NDIM> > flevel = d_hierarchy->getPatchLevel(ln+1);
-      tbox::Pointer<hier::PatchLevel<NDIM> > clevel = d_hierarchy->getPatchLevel(ln);
-      d_src_coarsen_schedule[ln]=coarsen_alg.createSchedule(clevel, flevel); 
-   }
-   else
-   {
-      // recreating a schedule when it is not consistent is not the
-      // most efficient way of doing this. An improvement would be
-      // to cache multiple schedules 
-      if(coarsen_alg.checkConsistency(d_src_coarsen_schedule[ln]))
-      {
-         coarsen_alg.resetSchedule(d_src_coarsen_schedule[ln]);
-      }
-      else
+      // if a schedule does not currently exist create it
+      if(d_src_coarsen_schedule[ln].isNull())
       {
          tbox::Pointer<hier::PatchLevel<NDIM> > flevel = d_hierarchy->getPatchLevel(ln+1);
          tbox::Pointer<hier::PatchLevel<NDIM> > clevel = d_hierarchy->getPatchLevel(ln);
-         d_src_coarsen_schedule[ln]=coarsen_alg.createSchedule(clevel, flevel); 
-         tbox::pout << "CellDiffusionMultilevelOperator::coarsenSolutionAndSourceTerm()::Forced to recreate schedule " << std::endl;
+         d_src_coarsen_schedule[ln]=coarsen_src_alg.createSchedule(clevel, flevel); 
       }
+      else
+      {
+         // recreating a schedule when it is not consistent is not the
+         // most efficient way of doing this. An improvement would be
+         // to cache multiple schedules 
+         if(coarsen_src_alg.checkConsistency(d_src_coarsen_schedule[ln]))
+         {
+            coarsen_src_alg.resetSchedule(d_src_coarsen_schedule[ln]);
+         }
+         else
+         {
+            tbox::Pointer<hier::PatchLevel<NDIM> > flevel = d_hierarchy->getPatchLevel(ln+1);
+            tbox::Pointer<hier::PatchLevel<NDIM> > clevel = d_hierarchy->getPatchLevel(ln);
+            d_src_coarsen_schedule[ln]=coarsen_src_alg.createSchedule(clevel, flevel); 
+            tbox::pout << "CellDiffusionMultilevelOperator::coarsenSolutionAndSourceTerm()::Forced to recreate src coarsen schedule " << std::endl;
+         }
+      }
+      
+#ifdef DEBUG_CHECK_ASSERTIONS
+      assert(!d_src_coarsen_schedule[ln].isNull());      
+#endif
+      
+      d_src_coarsen_schedule[ln]->coarsenData();   
    }
 
-#ifdef DEBUG_CHECK_ASSERTIONS
-   assert(!d_src_coarsen_schedule[ln].isNull());      
-#endif
+   if(coarsen_soln)
+   {
+      coarsen_soln_alg.registerCoarsen(u_id, u_id,
+                                      geometry->lookupCoarsenOperator(u, d_cell_soln_coarsen_op_str));
+   
 
-   d_src_coarsen_schedule[ln]->coarsenData();   
+      // if a schedule does not currently exist create it
+      if(d_soln_coarsen_schedule[ln].isNull())
+      {
+         tbox::Pointer<hier::PatchLevel<NDIM> > flevel = d_hierarchy->getPatchLevel(ln+1);
+         tbox::Pointer<hier::PatchLevel<NDIM> > clevel = d_hierarchy->getPatchLevel(ln);
+         d_soln_coarsen_schedule[ln]=coarsen_soln_alg.createSchedule(clevel, flevel); 
+      }
+      else
+      {
+         // recreating a schedule when it is not consistent is not the
+         // most efficient way of doing this. An improvement would be
+         // to cache multiple schedules 
+         if(coarsen_soln_alg.checkConsistency(d_soln_coarsen_schedule[ln]))
+         {
+            coarsen_soln_alg.resetSchedule(d_soln_coarsen_schedule[ln]);
+         }
+         else
+         {
+            tbox::Pointer<hier::PatchLevel<NDIM> > flevel = d_hierarchy->getPatchLevel(ln+1);
+            tbox::Pointer<hier::PatchLevel<NDIM> > clevel = d_hierarchy->getPatchLevel(ln);
+            d_soln_coarsen_schedule[ln]=coarsen_soln_alg.createSchedule(clevel, flevel); 
+            tbox::pout << "CellDiffusionMultilevelOperator::coarsenSolutionAndSourceTerm()::Forced to recreate soln coarsen schedule " << std::endl;
+         }
+      }
+      
+#ifdef DEBUG_CHECK_ASSERTIONS
+      assert(!d_soln_coarsen_schedule[ln].isNull());      
+#endif
+      
+      d_soln_coarsen_schedule[ln]->coarsenData();   
+   }
 }
+
 
 }
 

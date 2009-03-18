@@ -59,6 +59,7 @@ module Option_module
     PetscTruth :: print_file_flag
     PetscTruth :: print_to_screen
     PetscTruth :: print_to_file
+    PetscInt :: verbosity  ! Values >0 indicate additional console output.
     
     PetscInt, pointer :: garbage ! for some reason, Intel will not compile without this
 
@@ -277,6 +278,7 @@ subroutine OptionInitAll(option)
   option%print_file_flag = PETSC_FALSE
   option%print_to_screen = PETSC_TRUE
   option%print_to_file = PETSC_TRUE
+  option%verbosity = 0
 
   option%input_filename = ''
 
@@ -474,6 +476,7 @@ subroutine OptionCheckCommandLine(option)
   PetscTruth :: option_found 
   PetscInt :: temp_int
   PetscErrorCode :: ierr
+  character(len=MAXSTRINGLENGTH) :: string
   
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-snes_mf", & 
                            option%use_matrix_free, ierr)
@@ -505,7 +508,7 @@ subroutine OptionCheckCommandLine(option)
   call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-realization_id', &
                           temp_int,option_found, ierr)
   if (option_found) option%id = temp_int
- 
+
 end subroutine OptionCheckCommandLine
 
 ! ************************************************************************** !

@@ -77,7 +77,11 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
 #if 1
    if(!variable_db->checkVariableExists("pflotranWeight"))
    {
+#if 0
       d_pflotran_weight = new pdat::CCellVariable<NDIM,double>("pflotranWeight", d_number_solution_components);
+#else
+      d_pflotran_weight = new pdat::CCellVariable<NDIM,double>("pflotranWeight", 1);
+#endif
    }
    else
    {

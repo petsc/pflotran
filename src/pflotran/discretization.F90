@@ -120,7 +120,7 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
   PetscInt :: structured_grid_itype
   PetscInt :: nx, ny, nz
   PetscInt :: i
-  PetscReal :: bx, by, bz
+
   nx = 0
   ny = 0
   nz = 0
@@ -288,38 +288,7 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
               discretization%origin(Y_DIRECTION) = grid%structured_grid%bounds(Y_DIRECTION,LOWER)
               discretization%origin(Z_DIRECTION) = grid%structured_grid%bounds(Z_DIRECTION,LOWER)
            case(AMR_GRID)
-              call InputReadFlotranString(input,option) ! x-direction
-              call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,X or R')
-              call InputReadDouble(input,option,bx)
-              call InputErrorMsg(input,option,'Lower X or R','BOUNDS')
-              call InputReadDouble(input,option,bx)
-              call InputErrorMsg(input,option,'Upper X or R','BOUNDS')
-              call InputReadFlotranString(input,option) ! y-direction
-              call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Y')
-              call InputReadDouble(input,option,by)
-              call InputErrorMsg(input,option,'Lower Y','BOUNDS')
-              call InputReadDouble(input,option,by)
-              call InputErrorMsg(input,option,'Upper Y','BOUNDS')
-              call InputReadFlotranString(input,option) ! z-direction
-              call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Z')
-              call InputReadDouble(input,option,bz)
-              call InputErrorMsg(input,option,'Lower Z','BOUNDS')
-              call InputReadDouble(input,option,bz)
-              call InputErrorMsg(input,option,'Upper Z','BOUNDS')
-              call InputReadFlotranString(input,option) ! z-direction
-              call InputReadStringErrorMsg(input,option,'DISCRETIZATION,BOUNDS,Z')
-              if (.not.(InputCheckExit(input,option))) then
-                if (OptionPrintToScreen(option)) then
-                   print *, 'BOUNDS card for a cartesian structured grid must include ' // &
-                        '5 lines.  I.e.'
-                   print *, 'BOUNDS'
-                   print *, 'x_min, x_max'
-                   print *, 'y_min, y_max'
-                   print *, 'z_min, z_max'
-                   print *, 'END'
-                endif
-                stop
-             endif
+              call InputSkipToEND(input,option,word) 
           end select
         case ('GRAVITY')
           call InputReadDouble(input,option,option%gravity(X_DIRECTION))

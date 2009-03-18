@@ -838,6 +838,33 @@ PflotranJacobianLevelOperator::setSourceValueOnPatch(SAMRAI::hier::Patch<NDIM> *
    srcArray[offSet] += (*val);
 }
 
+void
+PflotranJacobianLevelOperator::setSrcCoefficientsOnPatch(SAMRAI::hier::Patch<NDIM> **patch)
+{
+   tbox::Pointer< pdat::CCellData<NDIM, double > > stencil = (*patch)->getPatchData(d_stencil_id);
+   tbox::Pointer< pdat::CCellData<NDIM,double> > src_data = (*patch)->getPatchData(d_srcsink_id);
+
+   if(d_ndof==1)
+   {
+      hier::Box<NDIM> box = (*patch)->getBox();
+      
+      const hier::Index<NDIM> ifirst = box.lower();
+      const hier::Index<NDIM> ilast = box.upper();
+      
+      box = src_data->getGhostBox(); 
+      const hier::Index<NDIM> sfirst = box.lower();
+      const hier::Index<NDIM> slast = box.upper();
+      
+      samrsetjacobiansrccoeffs3d_(ifirst(0),ifirst(1),ifirst(2),
+                                  ilast(0),ilast(1),ilast(2),
+                                  stencil->getDepth(),
+                                  stencil->getPointer(),
+                                  sfirst(0),sfirst(1),sfirst(2),
+                                  slast(0),slast(1),slast(2),
+                                  src_data->getPointer());
+   }
+}
+
 int
 PflotranJacobianLevelOperator::getVariableIndex(std::string &name, 
                                                 tbox::Pointer<hier::VariableContext> &context,

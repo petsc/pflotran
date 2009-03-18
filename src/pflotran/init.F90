@@ -304,6 +304,12 @@ subroutine Init(simulation)
     call SNESLineSearchSet(flow_solver%snes,SNESLineSearchNo, &
                            PETSC_NULL_OBJECT,ierr)
 
+    ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
+    if (option%verbosity >= 1) then
+      string = '-flow_snes_view'
+      call PetscOptionsInsertString(string, ierr)
+    endif
+
     call SolverSetSNESOptions(flow_solver)
 
     ! If we are using a structured grid, set the corresponding flow DA 
@@ -396,6 +402,12 @@ subroutine Init(simulation)
     call SNESLineSearchSet(tran_solver%snes,SNESLineSearchNo, &
                            PETSC_NULL_OBJECT,ierr)
 
+    ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
+    if (option%verbosity >= 1) then
+      string = '-tran_snes_view'
+      call PetscOptionsInsertString(string, ierr)
+    endif
+
     call SolverSetSNESOptions(tran_solver)
 
     ! setup a shell preconditioner and initialize in the case of AMR
@@ -422,8 +434,7 @@ subroutine Init(simulation)
 
     ! this update check must be in place, otherwise reactive transport is likely
     ! to fail
-    call SNESLineSearchSetPreCheck(tran_solver%snes, &
-                                   ConvergenceRTUpdateCheck, &
+    call SNESLineSearchSetPreCheck(tran_solver%snes,RTCheckUpdate, &
                                    realization,ierr)
 
     call printMsg(option,"  Finished setting up TRAN SNES ")
