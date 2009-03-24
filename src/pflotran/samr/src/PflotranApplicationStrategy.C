@@ -100,7 +100,12 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
       level->allocatePatchData(d_pflotran_weight_id);
    }
    
+#if 0
    AMRUtilities::setVectorWeights(d_hierarchy, d_pflotran_weight_id);
+#else
+   AMRUtilities::setMask(d_hierarchy, d_pflotran_weight_id);
+#endif
+
 #endif
 
    d_application_ctx = variable_db->getContext(d_object_name);
@@ -186,6 +191,8 @@ PflotranApplicationStrategy::getFromInput(tbox::Pointer<tbox::Database> db,
    if (db->keyExists("number_solution_components")) {
       d_number_solution_components = db->getInteger("number_solution_components");
    }
+   
+   d_face_coarsen_op_str = db->getStringWithDefault("face_coarsen_op", "SUM_COARSEN");
    
    d_viz_directory = db->getStringWithDefault("viz_directory", "viz");
    
@@ -602,7 +609,7 @@ PflotranApplicationStrategy::coarsenFaceFluxes(tbox::Pointer< solv::SAMRAIVector
     if(d_flux_coarsen_op.isNull())
     {
        d_flux_coarsen_op = d_grid_geometry->lookupCoarsenOperator(fluxVar,
-                                                                 "SUM_COARSEN");
+                                                                 d_face_coarsen_op_str);
     }
 
     // should add code to coarsen variables

@@ -124,6 +124,7 @@ c     we are forced to adjust the upper face differently
            flux2(0,i,j,k+1)= stencil(6,i,j,k)*(u(0,i,j,k+1)-u(0,i,j,k))
          enddo
       enddo
+
       return
       end
 
