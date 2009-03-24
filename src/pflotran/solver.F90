@@ -294,6 +294,10 @@ subroutine SolverReadLinear(solver,input,option)
             solver%ksp_type = KSPBCGS
           case('IBCGS','IBICGSTAB','IBI-CGSTAB')
             solver%ksp_type = KSPIBCGS
+          case('RICHARDSON')
+            solver%ksp_type = KSPRICHARDSON
+          case('CG')
+            solver%ksp_type = KSPCG
           case default
             option%io_buffer  = 'Krylov solver type: ' // trim(word) // ' unknown.'
             call printErrMsg(option)

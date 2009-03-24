@@ -24,7 +24,7 @@ module Reactive_Transport_module
   
   public :: RTTimeCut, RTSetup, RTMaxChange, RTUpdateSolution, RTResidual, &
             RTJacobian, RTInitializeTimestep, RTGetTecplotHeader, &
-            RTUpdateAuxVars, RTComputeMassBalance, RTDestroy
+            RTUpdateAuxVars, RTComputeMassBalance, RTDestroy, RTCheckUpdate
   
 contains
 
@@ -186,6 +186,122 @@ subroutine RTSetupPatch(realization)
   enddo
 
 end subroutine RTSetupPatch
+
+! ************************************************************************** !
+!
+! RTCheckUpdate: In the case of the log formulation, ensures that the update 
+!                vector does not exceed a prescribed tolerance
+! author: Glenn Hammond
+! date: 03/16/09
+!
+! ************************************************************************** !
+subroutine RTCheckUpdate(snes_,C,dC,realization,changed,ierr)
+ 
+  use Realization_module
+  use Level_module
+  use Patch_module
+ 
+  implicit none
+  
+  SNES :: snes_
+  Vec :: C
+  Vec :: dC
+  type(realization_type) :: realization
+  PetscTruth :: changed
+  PetscErrorCode :: ierr
+
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RTCheckUpdatePatch(snes_,C,dC,realization,changed,ierr)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RTCheckUpdate
+
+! ************************************************************************** !
+!
+! RTCheckUpdatePatch: In the case of the log formulation, ensures that the 
+!                     update vector does not exceed a prescribed tolerance
+! author: Glenn Hammond
+! date: 03/16/09
+!
+! ************************************************************************** !
+subroutine RTCheckUpdatePatch(snes_,C,dC,realization,changed,ierr)
+
+  use Realization_module
+  use Grid_module
+ 
+  implicit none
+  
+  SNES :: snes_
+  Vec :: C
+  Vec :: dC
+  type(realization_type) :: realization
+  PetscTruth :: changed
+  
+  PetscReal, pointer :: C_p(:)
+  PetscReal, pointer :: dC_p(:)
+  type(grid_type), pointer :: grid
+  PetscReal :: ratio, min_ratio
+  PetscInt :: i, n
+  PetscErrorCode :: ierr
+  
+  grid => realization%patch%grid
+  
+  call GridVecGetArrayF90(grid,dC,dC_p,ierr)
+
+  if (realization%reaction%use_log_formulation) then
+    ! C and dC are actually lnC and dlnC
+    dC_p = dsign(1.d0,dC_p)*min(dabs(dC_p),realization%reaction%max_dlnC)
+
+    ! at this point, it does not matter whether "changed" is set to true, since it 
+    ! is not check in PETSc.  Thus, I don't want to spend time checking for changes
+    ! and performing an allreduce for log formulation.
+  
+  else
+    call VecGetLocalSize(C,n,ierr)
+    call GridVecGetArrayF90(grid,C,C_p,ierr)
+    
+    ! C^p+1 = C^p - dC^p
+    ! if dC is positive and abs(dC) larger than C
+    ! we need to scale the update
+    
+    ! compute smallest ratio of C to dC
+    min_ratio = 1.d20 ! large number
+    do i = 1, n
+      if (C_p(i) <= dC_p(i)) then
+        ratio = abs(C_p(i)/dC_p(i))
+        if (ratio < min_ratio) min_ratio = ratio
+      endif
+    enddo
+    ratio = min_ratio
+    
+    ! get global minimum
+    call MPI_AllReduce(ratio,min_ratio,1,MPI_DOUBLE_PRECISION,MPI_MIN, &
+                       PETSC_COMM_WORLD,ierr)
+                       
+    ! scale if necessary
+    if (min_ratio < 1.d0) then
+      ! scale by 0.99 to make the update slightly smaller than the min_ratio
+      dC_p = dC_p*min_ratio*0.99d0
+      changed = PETSC_TRUE
+    endif
+    call GridVecRestoreArrayF90(grid,C,C_p,ierr)
+  endif
+
+  call GridVecRestoreArrayF90(grid,dC,dC_p,ierr)
+
+end subroutine RTCheckUpdatePatch
 
 ! ************************************************************************** !
 !
@@ -929,6 +1045,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
     call DiscretizationGlobalToLocal(discretization,xx,field%tran_xx_loc,NTRANDOF)
   endif
 
+  ! pass #1 for internal and boundary flux terms
   cur_level => realization%level_list%first
   do
     if (.not.associated(cur_level)) exit
@@ -936,7 +1053,21 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RTResidualPatch(snes,xx,r,realization,ierr)
+      call RTResidualPatch1(snes,xx,r,realization,ierr)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+  ! pass #2 for everything else
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RTResidualPatch2(snes,xx,r,realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -963,12 +1094,12 @@ end subroutine RTResidual
 
 ! ************************************************************************** !
 !
-! RTResidualPatch: Computes residual function for reactive transport
+! RTResidualPatch1: Computes residual function for reactive transport
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-subroutine RTResidualPatch(snes,xx,r,realization,ierr)
+subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
 
   use Realization_module
   use Patch_module
@@ -988,8 +1119,8 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   type(realization_type) :: realization  
   PetscErrorCode :: ierr
   
-  PetscReal, pointer :: r_p(:), accum_p(:)
-  PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:), volume_p(:)
+  PetscReal, pointer :: r_p(:)
+  PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: iphase
   PetscInt :: i, istart, iend                        
@@ -1002,17 +1133,13 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:), rt_aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
   PetscReal :: Res(realization%reaction%ncomp)
-  PetscViewer :: viewer
   
-  type(coupler_type), pointer :: boundary_condition, source_sink
+  type(coupler_type), pointer :: boundary_condition
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: sum_connection, iconn
   PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
   PetscReal :: fraction_upwind, distance, dist_up, dist_dn
-  PetscReal :: qsrc, molality
-  PetscReal :: Jup(realization%reaction%ncomp,realization%reaction%ncomp)
-  PetscTruth :: volumetric
 #ifdef CHUAN_CO2
   PetscReal :: msrc(1:realization%option%nflowspec)
   PetscInt :: icomp, ieqgas
@@ -1043,17 +1170,209 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   
   ! Get pointer to Vector data
   call GridVecGetArrayF90(grid,r, r_p, ierr)
-  call GridVecGetArrayF90(grid,field%tran_accum, accum_p, ierr)
  
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%tor_loc, tor_loc_p, ierr)
+
+  r_p = 0.d0
+
+#if 1
+  ! Interior Flux Terms -----------------------------------
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
+  sum_connection = 0  
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+
+      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
+      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
+
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id_up) <= 0 .or.  &
+            patch%imat(ghosted_id_dn) <= 0) cycle
+      endif
+
+      fraction_upwind = cur_connection_set%dist(-1,iconn)
+      distance = cur_connection_set%dist(0,iconn)
+      ! distance = scalar - magnitude of distance
+      dist_up = distance*fraction_upwind
+      dist_dn = distance-dist_up ! should avoid truncation error
+
+      call TFlux(rt_aux_vars(ghosted_id_up),global_aux_vars(ghosted_id_up), &
+                 porosity_loc_p(ghosted_id_up),tor_loc_p(ghosted_id_up), &
+                 dist_up, &
+                 rt_aux_vars(ghosted_id_dn),global_aux_vars(ghosted_id_dn), &
+                 porosity_loc_p(ghosted_id_dn),tor_loc_p(ghosted_id_dn), &
+                 dist_up, &
+                 cur_connection_set%area(iconn),rt_parameter,option, &
+                 patch%internal_velocities(:,iconn),Res)
+
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+      rt_aux_vars(local_id_up)%mass_balance_delta(:,iphase) = &
+        rt_aux_vars(local_id_up)%mass_balance_delta(:,iphase) - Res        
+#endif
+
+      if (local_id_up>0) then
+        iend = local_id_up*reaction%ncomp
+        istart = iend-reaction%ncomp+1
+        r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)
+      endif
+   
+      if (local_id_dn>0) then
+        iend = local_id_dn*reaction%ncomp
+        istart = iend-reaction%ncomp+1
+        r_p(istart:iend) = r_p(istart:iend) - Res(1:reaction%ncomp)
+      endif
+      
+      if (option%store_solute_fluxes) then
+        patch%internal_fluxes(iphase,1:reaction%ncomp,iconn) = &
+          Res(1:reaction%ncomp)
+      endif
+      
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo    
+#endif
+#if 1
+  ! Boundary Flux Terms -----------------------------------
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(boundary_condition)) exit
+    
+    cur_connection_set => boundary_condition%connection_set
+    
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+    
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+
+      call TBCFlux(boundary_condition%tran_condition%itype, &
+                   rt_aux_vars_bc(sum_connection), &
+                   global_aux_vars_bc(sum_connection), &
+                   rt_aux_vars(ghosted_id), &
+                   global_aux_vars(ghosted_id), &
+                   porosity_loc_p(ghosted_id), &
+                   tor_loc_p(ghosted_id), &
+                   cur_connection_set%dist(0,iconn), &
+                   cur_connection_set%area(iconn), &
+                   rt_parameter,option, &
+                   patch%boundary_velocities(:,sum_connection),Res)
+ 
+      iend = local_id*reaction%ncomp
+      istart = iend-reaction%ncomp+1
+      r_p(istart:iend)= r_p(istart:iend) - Res(1:reaction%ncomp)
+ 
+      if (option%store_solute_fluxes) then
+        patch%boundary_fluxes(iphase,1:reaction%ncomp,sum_connection) = &
+          -Res(1:reaction%ncomp)
+      endif
+ 
+       if (option%compute_mass_balance_new) then
+        ! contribution to boundary 
+        rt_aux_vars_bc(sum_connection)%mass_balance_delta(:,iphase) = &
+          rt_aux_vars_bc(sum_connection)%mass_balance_delta(:,iphase) - Res
+!        ! contribution to internal 
+!        rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) = &
+!          rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) + Res
+      endif  
+      
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+#endif  
+
+  ! Restore vectors
+  call GridVecRestoreArrayF90(grid,r, r_p, ierr)
+ 
+  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%tor_loc, tor_loc_p, ierr)
+
+end subroutine RTResidualPatch1
+
+! ************************************************************************** !
+!
+! RTResidualPatch2: Computes residual function for reactive transport
+! author: Glenn Hammond
+! date: 02/14/08
+!
+! ************************************************************************** !
+subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
+
+  use Realization_module
+  use Patch_module
+  use Transport_module
+  use Option_module
+  use Field_module
+  use Grid_module
+  use Connection_module
+  use Coupler_module  
+  use Debug_module
+  
+  implicit none
+
+  SNES, intent(in) :: snes
+  Vec, intent(inout) :: xx
+  Vec, intent(out) :: r
+  type(realization_type) :: realization  
+  PetscErrorCode :: ierr
+  
+  PetscReal, pointer :: r_p(:), accum_p(:)
+  PetscReal, pointer :: porosity_loc_p(:), volume_p(:)
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: iphase
+  PetscInt :: i, istart, iend                        
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+  type(reaction_type), pointer :: reaction
+  type(reactive_transport_param_type), pointer :: rt_parameter
+  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:), rt_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
+  PetscReal :: Res(realization%reaction%ncomp)
+  
+  type(coupler_type), pointer :: source_sink
+  type(connection_set_type), pointer :: cur_connection_set
+  PetscInt :: iconn
+  PetscReal :: qsrc, molality
+  PetscReal :: Jup(realization%reaction%ncomp,realization%reaction%ncomp)
+  PetscTruth :: volumetric
+#ifdef CHUAN_CO2
+  PetscReal :: msrc(1:realization%option%nflowspec)
+  PetscInt :: icomp, ieqgas
+#endif
+
+  option => realization%option
+  field => realization%field
+  patch => realization%patch
+  reaction => realization%reaction
+  grid => patch%grid
+  rt_parameter => patch%aux%RT%rt_parameter
+  rt_aux_vars => patch%aux%RT%aux_vars
+  rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  
+  ! Get pointer to Vector data
+  call GridVecGetArrayF90(grid,r, r_p, ierr)
+  call GridVecGetArrayF90(grid,field%tran_accum, accum_p, ierr)
+ 
+  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
 
-  if (option%steady_state) then
-    r_p = 0.d0
-  else
-    r_p = -accum_p
-  
+  if (.not.option%steady_state) then
+    r_p = r_p - accum_p
 #if 1
     ! Accumulation terms ------------------------------------
     do local_id = 1, grid%nlmax  ! For each local node do...
@@ -1185,121 +1504,6 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
      
 #endif
 #endif
-#if 1
-  ! Interior Flux Terms -----------------------------------
-  connection_set_list => grid%internal_connection_set_list
-  cur_connection_set => connection_set_list%first
-  sum_connection = 0  
-  do 
-    if (.not.associated(cur_connection_set)) exit
-    do iconn = 1, cur_connection_set%num_connections
-      sum_connection = sum_connection + 1
-
-      ghosted_id_up = cur_connection_set%id_up(iconn)
-      ghosted_id_dn = cur_connection_set%id_dn(iconn)
-
-      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
-      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
-
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id_up) <= 0 .or.  &
-            patch%imat(ghosted_id_dn) <= 0) cycle
-      endif
-
-      fraction_upwind = cur_connection_set%dist(-1,iconn)
-      distance = cur_connection_set%dist(0,iconn)
-      ! distance = scalar - magnitude of distance
-      dist_up = distance*fraction_upwind
-      dist_dn = distance-dist_up ! should avoid truncation error
-
-      call TFlux(rt_aux_vars(ghosted_id_up),global_aux_vars(ghosted_id_up), &
-                 porosity_loc_p(ghosted_id_up),tor_loc_p(ghosted_id_up), &
-                 dist_up, &
-                 rt_aux_vars(ghosted_id_dn),global_aux_vars(ghosted_id_dn), &
-                 porosity_loc_p(ghosted_id_dn),tor_loc_p(ghosted_id_dn), &
-                 dist_up, &
-                 cur_connection_set%area(iconn),rt_parameter,option, &
-                 patch%internal_velocities(:,iconn),Res)
-
-#ifdef COMPUTE_INTERNAL_MASS_FLUX
-      rt_aux_vars(local_id_up)%mass_balance_delta(:,iphase) = &
-        rt_aux_vars(local_id_up)%mass_balance_delta(:,iphase) - Res        
-#endif
-
-      if (local_id_up>0) then
-        iend = local_id_up*reaction%ncomp
-        istart = iend-reaction%ncomp+1
-        r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)
-      endif
-   
-      if (local_id_dn>0) then
-        iend = local_id_dn*reaction%ncomp
-        istart = iend-reaction%ncomp+1
-        r_p(istart:iend) = r_p(istart:iend) - Res(1:reaction%ncomp)
-      endif
-      
-      if (option%store_solute_fluxes) then
-        patch%internal_fluxes(iphase,1:reaction%ncomp,iconn) = &
-          Res(1:reaction%ncomp)
-      endif
-      
-    enddo
-    cur_connection_set => cur_connection_set%next
-  enddo    
-#endif
-#if 1
-  ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
-  sum_connection = 0    
-  do 
-    if (.not.associated(boundary_condition)) exit
-    
-    cur_connection_set => boundary_condition%connection_set
-    
-    do iconn = 1, cur_connection_set%num_connections
-      sum_connection = sum_connection + 1
-    
-      local_id = cur_connection_set%id_dn(iconn)
-      ghosted_id = grid%nL2G(local_id)
-
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
-
-      call TBCFlux(boundary_condition%tran_condition%itype, &
-                   rt_aux_vars_bc(sum_connection), &
-                   global_aux_vars_bc(sum_connection), &
-                   rt_aux_vars(ghosted_id), &
-                   global_aux_vars(ghosted_id), &
-                   porosity_loc_p(ghosted_id), &
-                   tor_loc_p(ghosted_id), &
-                   cur_connection_set%dist(0,iconn), &
-                   cur_connection_set%area(iconn), &
-                   rt_parameter,option, &
-                   patch%boundary_velocities(:,sum_connection),Res)
- 
-      iend = local_id*reaction%ncomp
-      istart = iend-reaction%ncomp+1
-      r_p(istart:iend)= r_p(istart:iend) - Res(1:reaction%ncomp)
- 
-      if (option%store_solute_fluxes) then
-        patch%boundary_fluxes(iphase,1:reaction%ncomp,sum_connection) = &
-          -Res(1:reaction%ncomp)
-      endif
- 
-       if (option%compute_mass_balance_new) then
-        ! contribution to boundary 
-        rt_aux_vars_bc(sum_connection)%mass_balance_delta(:,iphase) = &
-          rt_aux_vars_bc(sum_connection)%mass_balance_delta(:,iphase) - Res
-!        ! contribution to internal 
-!        rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) = &
-!          rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) + Res
-      endif  
-      
-    enddo
-    boundary_condition => boundary_condition%next
-  enddo
-#endif  
 #if 1  
 ! Reactions
   if (associated(reaction)) then
@@ -1333,10 +1537,9 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%tran_accum, accum_p, ierr)
  
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%tor_loc, tor_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
 
-end subroutine RTResidualPatch
+end subroutine RTResidualPatch2
 
 ! ************************************************************************** !
 !
@@ -1385,7 +1588,8 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   endif
     
   call MatZeroEntries(J,ierr)
-  
+
+  ! pass #1 for internal and boundary flux terms  
   cur_level => realization%level_list%first
   do
     if (.not.associated(cur_level)) exit
@@ -1401,12 +1605,34 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
          call SAMRSetCurrentJacobianPatch(J,grid%structured_grid%p_samr_patch)
       endif
 
-      call RTJacobianPatch(snes,xx,J,J,flag,realization,ierr)
+      call RTJacobianPatch1(snes,xx,J,J,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
   
+  ! pass #2 for everything else
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      grid => cur_patch%grid
+      ! need to set the current patch in the Jacobian operator
+      ! so that entries will be set correctly
+      if(associated(grid%structured_grid) .and. &
+        (.not.(grid%structured_grid%p_samr_patch.eq.0))) then
+         call SAMRSetCurrentJacobianPatch(J,grid%structured_grid%p_samr_patch)
+      endif
+
+      call RTJacobianPatch2(snes,xx,J,J,flag,realization,ierr)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+    
   if (realization%debug%matview_Jacobian) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'RTjacobian.out', &
                               viewer,ierr)
@@ -1430,12 +1656,12 @@ end subroutine RTJacobian
 
 ! ************************************************************************** !
 !
-! RTJacobianPatch: Computes Jacobian for reactive transport
+! RTJacobianPatch1: Computes Jacobian for reactive transport
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
+subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_module
   use Patch_module
@@ -1456,16 +1682,14 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(realization_type) :: realization  
   PetscErrorCode :: ierr
   
-  PetscReal, pointer :: r_p(:), accum_p(:)
-  PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:), &
-                        volume_p(:), work_loc_p(:)
+  PetscReal, pointer :: r_p(:)
+  PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: istart, iend                        
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch
-  type(reaction_type), pointer :: reaction
   type(reactive_transport_param_type), pointer :: rt_parameter
       
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:), rt_aux_vars_bc(:)
@@ -1474,20 +1698,16 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscReal :: Jdn(realization%reaction%ncomp,realization%reaction%ncomp)
   PetscReal :: Res(realization%reaction%ncomp)  
   
-  type(coupler_type), pointer :: boundary_condition, source_sink
+  type(coupler_type), pointer :: boundary_condition
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: sum_connection, iconn
   PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
   PetscReal :: fraction_upwind, distance, dist_up, dist_dn, rdum
-  PetscReal :: qsrc
-  PetscTruth :: volumetric
-  PetscViewer :: viewer
   
   option => realization%option
   field => realization%field
   patch => realization%patch  
-  reaction => realization%reaction
   grid => patch%grid
   rt_parameter => patch%aux%RT%rt_parameter
   rt_aux_vars => patch%aux%RT%aux_vars
@@ -1497,85 +1717,9 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
 
   ! Get pointer to Vector data
-  call GridVecGetArrayF90(grid,field%tran_accum, accum_p, ierr)
- 
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%tor_loc, tor_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
     
-  if (.not.option%steady_state) then
-#if 1  
-    do local_id = 1, grid%nlmax  ! For each local node do...
-      ghosted_id = grid%nL2G(local_id)
-      !geh - Ignore inactive cells with inactive materials
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
-      iend = local_id*reaction%ncomp
-      istart = iend-reaction%ncomp+1
-      call RTAccumulationDerivative(rt_aux_vars(ghosted_id), &
-                                    global_aux_vars(ghosted_id), &
-                                    porosity_loc_p(ghosted_id), &
-                                    volume_p(local_id),reaction,option,Jup) 
-      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
-    enddo
-#endif
-  endif
-#if 1
-  ! Source/Sink terms -------------------------------------
-  source_sink => patch%source_sinks%first 
-  do 
-    if (.not.associated(source_sink)) exit
-    
-    cur_connection_set => source_sink%connection_set
-    
-    if (associated(source_sink%flow_condition) .and. &
-        associated(source_sink%flow_condition%rate)) then
-      qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
-      if (source_sink%flow_condition%rate%itype == &
-          VOLUMETRIC_RATE_SS) then
-        volumetric = PETSC_TRUE
-      else
-        volumetric = PETSC_FALSE
-      endif
-    endif
-      
-    do iconn = 1, cur_connection_set%num_connections      
-      local_id = cur_connection_set%id_dn(iconn)
-      ghosted_id = grid%nL2G(local_id)
-
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
-
-      Jup = 0.d0
-      select case(source_sink%tran_condition%itype)
-        case(EQUILIBRIUM_SS)
-          do istart = 1, reaction%ncomp
-            Jup(istart,istart) = 1.d-6* &
-                                 porosity_loc_p(ghosted_id)* &
-                                 global_aux_vars(ghosted_id)%sat(option%liquid_phase)* &
-                                 volume_p(local_id)
-          enddo
-        case(MASS_RATE_SS)
-        case default
-          if (qsrc < 0) then ! extraction
-            if (volumetric) then ! qsrc is volumetric; must be converted to mass
-              do istart = 1, reaction%ncomp
-                Jup(istart,istart) = -qsrc
-              enddo
-            else
-              do istart = 1, reaction%ncomp
-                Jup(istart,istart) = -qsrc/global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)
-              enddo
-            endif
-          endif
-      end select
-      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr) 
-    enddo                       
-    source_sink => source_sink%next
-  enddo
-#endif
 #if 1
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
@@ -1677,6 +1821,154 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     boundary_condition => boundary_condition%next
   enddo
 #endif 
+
+  ! Restore vectors
+  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%tor_loc, tor_loc_p, ierr)
+
+end subroutine RTJacobianPatch1
+
+! ************************************************************************** !
+!
+! RTJacobianPatch2: Computes Jacobian for reactive transport
+! author: Glenn Hammond
+! date: 02/14/08
+!
+! ************************************************************************** !
+subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
+
+  use Realization_module
+  use Patch_module
+  use Transport_module
+  use Option_module
+  use Field_module
+  use Grid_module
+  use Connection_module
+  use Coupler_module  
+  use Debug_module
+  
+  implicit none
+
+  SNES :: snes
+  Vec :: xx
+  Mat :: A, B
+  MatStructure flag  
+  type(realization_type) :: realization  
+  PetscErrorCode :: ierr
+  
+  PetscReal, pointer :: r_p(:), accum_p(:)
+  PetscReal, pointer :: porosity_loc_p(:), volume_p(:), work_loc_p(:)
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: istart, iend                        
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+  type(reaction_type), pointer :: reaction
+  type(reactive_transport_param_type), pointer :: rt_parameter
+      
+  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:), rt_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
+  PetscReal :: Jup(realization%reaction%ncomp,realization%reaction%ncomp)
+  PetscReal :: Res(realization%reaction%ncomp)    
+  
+  type(coupler_type), pointer :: source_sink
+  type(connection_set_type), pointer :: cur_connection_set
+  PetscInt :: iconn
+  PetscReal :: qsrc, rdum
+  PetscTruth :: volumetric
+  
+  option => realization%option
+  field => realization%field
+  patch => realization%patch  
+  reaction => realization%reaction
+  grid => patch%grid
+  rt_parameter => patch%aux%RT%rt_parameter
+  rt_aux_vars => patch%aux%RT%aux_vars
+  rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+
+
+  ! Get pointer to Vector data
+  call GridVecGetArrayF90(grid,field%tran_accum, accum_p, ierr)
+ 
+  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
+    
+  if (.not.option%steady_state) then
+#if 1  
+    do local_id = 1, grid%nlmax  ! For each local node do...
+      ghosted_id = grid%nL2G(local_id)
+      !geh - Ignore inactive cells with inactive materials
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+      iend = local_id*reaction%ncomp
+      istart = iend-reaction%ncomp+1
+      call RTAccumulationDerivative(rt_aux_vars(ghosted_id), &
+                                    global_aux_vars(ghosted_id), &
+                                    porosity_loc_p(ghosted_id), &
+                                    volume_p(local_id),reaction,option,Jup) 
+      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
+    enddo
+#endif
+  endif
+#if 1
+  ! Source/Sink terms -------------------------------------
+  source_sink => patch%source_sinks%first 
+  do 
+    if (.not.associated(source_sink)) exit
+    
+    cur_connection_set => source_sink%connection_set
+    
+    if (associated(source_sink%flow_condition) .and. &
+        associated(source_sink%flow_condition%rate)) then
+      qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
+      if (source_sink%flow_condition%rate%itype == &
+          VOLUMETRIC_RATE_SS) then
+        volumetric = PETSC_TRUE
+      else
+        volumetric = PETSC_FALSE
+      endif
+    endif
+      
+    do iconn = 1, cur_connection_set%num_connections      
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+
+      Jup = 0.d0
+      select case(source_sink%tran_condition%itype)
+        case(EQUILIBRIUM_SS)
+          do istart = 1, reaction%ncomp
+            Jup(istart,istart) = 1.d-6* &
+                                 porosity_loc_p(ghosted_id)* &
+                                 global_aux_vars(ghosted_id)%sat(option%liquid_phase)* &
+                                 volume_p(local_id)
+          enddo
+        case(MASS_RATE_SS)
+        case default
+          if (qsrc < 0) then ! extraction
+            if (volumetric) then ! qsrc is volumetric; must be converted to mass
+              do istart = 1, reaction%ncomp
+                Jup(istart,istart) = -qsrc
+              enddo
+            else
+              do istart = 1, reaction%ncomp
+                Jup(istart,istart) = -qsrc/global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)
+              enddo
+            endif
+          endif
+      end select
+      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr) 
+    enddo                       
+    source_sink => source_sink%next
+  enddo
+#endif
 #if 1  
 ! Reactions
   if (associated(reaction)) then
@@ -1721,7 +2013,6 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%tran_accum, accum_p, ierr)
  
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%tor_loc, tor_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -1733,7 +2024,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                           patch%aux%RT%zero_rows_local_ghosted,rdum,ierr) 
   endif
 
-end subroutine RTJacobianPatch
+end subroutine RTJacobianPatch2
 
 ! ************************************************************************** !
 !

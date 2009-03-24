@@ -1089,6 +1089,7 @@ subroutine MphaseSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fl
 ! date: 05/12/08
 !
 ! ************************************************************************** ! 
+#if 0
 subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
@@ -1160,7 +1161,7 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
            uden = aux_var_dn%den(np)
            uxmol(1:option%nflowspec) = aux_var_dn%xmol((np-1)*option%nflowspec + 1 : np*option%nflowspec)
         endif
-   
+        uden = density_ave ! debugging
 
         if (ukvr>floweps) then
            v_darcy= Dq * ukvr * dphi
@@ -1209,6 +1210,125 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
  !                                              2 R = R - Res_FL  
 
 end subroutine MphaseFlux
+#endif
+
+! older version
+#if 1
+subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
+                        aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
+                        area,dist_gravity,upweight, &
+                        option,vv_darcy,Res)
+  use Option_module                              
+  
+  implicit none
+  
+  type(mphase_auxvar_elem_type) :: aux_var_up, aux_var_dn
+  type(option_type) :: option
+  PetscReal :: sir_up(:), sir_dn(:)
+  PetscReal :: por_up, por_dn
+  PetscReal :: tor_up, tor_dn
+  PetscReal :: dd_up, dd_dn
+  PetscReal :: perm_up, perm_dn
+  PetscReal :: Dk_up, Dk_dn
+  PetscReal :: vv_darcy(:),area
+  PetscReal :: Res(1:option%nflowdof) 
+  PetscReal :: dist_gravity  ! distance along gravity vector
+     
+  PetscInt :: ispec, np, ind
+  PetscReal :: fluxm(option%nflowspec),fluxe,q, v_darcy
+  PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,difff,diffdp, DK,Dq
+  PetscReal :: upweight,density_ave,cond,gravity,dphi
+     
+  Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
+  diffdp = (por_up *tor_up * por_dn*tor_dn) / (dd_dn*por_up*tor_up + dd_up*por_dn*tor_dn)*area
+  
+  fluxm = 0.D0
+  fluxe = 0.D0
+  vv_darcy =0.D0 
+  
+! Flow term
+  do np = 1, option%nphase
+     if (aux_var_up%sat(np) > sir_up(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
+        upweight= dd_dn/(dd_up+dd_dn)
+        if (aux_var_up%sat(np) <eps) then 
+           upweight=0.d0
+        else if (aux_var_dn%sat(np) <eps) then 
+           upweight=1.d0
+        endif
+        density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np) 
+        
+        gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
+             (1.D0-upweight)*aux_var_dn%den(np) * aux_var_dn%avgmw(np)) &
+             * dist_gravity
+
+        dphi = aux_var_up%pres - aux_var_dn%pres &
+             - aux_var_up%pc(np) + aux_var_dn%pc(np) &
+             + gravity
+
+        v_darcy = 0.D0
+        ukvr=0.D0
+        uh=0.D0
+        uxmol=0.D0
+
+        ! note uxmol only contains one phase xmol
+        if (dphi>=0.D0) then
+           ukvr = aux_var_up%kvr(np)
+           ! if(option%use_isothermal == PETSC_FALSE)&
+           uh = aux_var_up%h(np)
+           uxmol(1:option%nflowspec) = aux_var_up%xmol((np-1)*option%nflowspec + 1 : np*option%nflowspec)
+        else
+           ukvr = aux_var_dn%kvr(np)
+           ! if(option%use_isothermal == PETSC_FALSE)&
+           uh = aux_var_dn%h(np)
+           uxmol(1:option%nflowspec) = aux_var_dn%xmol((np-1)*option%nflowspec + 1 : np*option%nflowspec)
+        endif
+   
+
+        if (ukvr>floweps) then
+           v_darcy= Dq * ukvr * dphi
+           vv_darcy(np)=v_darcy
+           q = v_darcy * area
+        
+           do ispec=1, option%nflowspec 
+              fluxm(ispec)=fluxm(ispec) + q * density_ave * uxmol(ispec)
+           enddo
+          ! if(option%use_isothermal == PETSC_FALSE)&
+            fluxe = fluxe + q*density_ave*uh 
+        endif
+     endif
+
+! Diffusion term   
+! Note : average rule may not be correct  
+     if ((aux_var_up%sat(np) > eps) .and. (aux_var_dn%sat(np) > eps)) then
+        difff = diffdp * 0.25D0*(aux_var_up%sat(np) + aux_var_dn%sat(np))* &
+             (aux_var_up%den(np) + aux_var_dn%den(np))
+        do ispec=1, option%nflowspec
+           ind = ispec + (np-1)*option%nflowspec
+           fluxm(ispec) = fluxm(ispec) + difff * .5D0 * &
+                (aux_var_up%diff(ind) + aux_var_dn%diff(ind))* &
+                (aux_var_up%xmol(ind) - aux_var_dn%xmol(ind))
+        enddo
+     endif
+  enddo
+
+! conduction term
+  !if(option%use_isothermal == PETSC_FALSE) then     
+     Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
+     cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
+     fluxe=fluxe + cond
+ ! end if
+
+  !if(option%use_isothermal)then
+  !   Res(1:option%nflowdof) = fluxm(:) * option%flow_dt
+ ! else
+     Res(1:option%nflowdof-1) = fluxm(:) * option%flow_dt
+     Res(option%nflowdof) = fluxe * option%flow_dt
+ ! end if
+ ! note: Res is the flux contribution, for node 1 R = R + Res_FL
+ !                                              2 R = R - Res_FL  
+
+end subroutine MphaseFlux
+#endif
 
 ! ************************************************************************** !
 !

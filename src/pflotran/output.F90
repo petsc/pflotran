@@ -4381,39 +4381,30 @@ subroutine OutputHDF5(realization)
         !GEH - Structured Grid Dependence - Begin
         ! write out coordinates in x, y, and z directions
         string = "X [m]"
-        allocate(array(grid%structured_grid%nx))
-        do i=1,grid%structured_grid%nx
-           if (i == 1) then
-              array(i) = 0.5d0*grid%structured_grid%dx_global(1)
-           else
-              array(i) = array(i-1) + 0.5d0*(grid%structured_grid%dx_global(i-1)+grid%structured_grid%dx_global(i))
-           endif
+        allocate(array(grid%structured_grid%nx+1))
+        array(1) = grid%structured_grid%origin(X_DIRECTION)
+        do i=2,grid%structured_grid%nx+1
+          array(i) = array(i-1) + grid%structured_grid%dx_global(i-1)
         enddo
-        call WriteHDF5Coordinates(string,option,grid%structured_grid%nx,array,grp_id)
+        call WriteHDF5Coordinates(string,option,grid%structured_grid%nx+1,array,grp_id)
         deallocate(array)
 
         string = "Y [m]"
-        allocate(array(grid%structured_grid%ny))
-        do i=1,grid%structured_grid%ny
-           if (i == 1) then
-              array(i) = 0.5d0*grid%structured_grid%dy_global(1)
-           else
-              array(i) = array(i-1) + 0.5d0*(grid%structured_grid%dy_global(i-1)+grid%structured_grid%dy_global(i))
-           endif
+        allocate(array(grid%structured_grid%ny+1))
+        array(1) = grid%structured_grid%origin(Y_DIRECTION)
+        do i=2,grid%structured_grid%ny+1
+          array(i) = array(i-1) + grid%structured_grid%dy_global(i-1)
         enddo
-        call WriteHDF5Coordinates(string,option,grid%structured_grid%ny,array,grp_id)
+        call WriteHDF5Coordinates(string,option,grid%structured_grid%ny+1,array,grp_id)
         deallocate(array)
 
         string = "Z [m]"
-        allocate(array(grid%structured_grid%nz))
-        do i=1,grid%structured_grid%nz
-           if (i == 1) then
-              array(i) = 0.5d0*grid%structured_grid%dz_global(1)
-           else
-              array(i) = array(i-1) + 0.5d0*(grid%structured_grid%dz_global(i-1)+grid%structured_grid%dz_global(i))
-           endif
+        allocate(array(grid%structured_grid%nz+1))
+        array(1) = grid%structured_grid%origin(Z_DIRECTION)
+        do i=2,grid%structured_grid%nz+1
+          array(i) = array(i-1) + grid%structured_grid%dz_global(i-1)
         enddo
-        call WriteHDF5Coordinates(string,option,grid%structured_grid%nz,array,grp_id)
+        call WriteHDF5Coordinates(string,option,grid%structured_grid%nz+1,array,grp_id)
         deallocate(array)
         !GEH - Structured Grid Dependence - End
 

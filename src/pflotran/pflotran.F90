@@ -98,7 +98,12 @@
 
     PETSC_COMM_WORLD = MPI_COMM_WORLD
     call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
-
+ 
+    if (option%verbosity > 0) then 
+      call PetscLogBegin(ierr)
+      string = '-log_summary'
+      call PetscOptionsInsertString(string, ierr)
+    endif
     call LoggingCreate()
 
     simulation => SimulationCreate(option)

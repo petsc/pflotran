@@ -508,17 +508,6 @@ subroutine OptionCheckCommandLine(option)
   call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-realization_id', &
                           temp_int,option_found, ierr)
   if (option_found) option%id = temp_int
- 
-  ! If the verbosity level > 0, then set some PETSc options.
-  ! I note that the verbosity level should already have been set from the 
-  ! command line, but this routine seemed like an appropriate place to 
-  ! flip these PETSc options.  Also, I note that we can't set all of the 
-  ! PETSc options here, e.g., some of the solver options because the 
-  ! solver prefixes haven't yet been set up.  --RTM
-  if (option%verbosity > 0) then
-    string = '-log_summary'
-    call PetscOptionsInsertString(string, ierr)
-  endif
 
 end subroutine OptionCheckCommandLine
 
