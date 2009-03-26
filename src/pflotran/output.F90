@@ -4340,6 +4340,7 @@ subroutine OutputHDF5(realization)
   output_option => realization%output_option
 
   first = hdf5_first
+  if (option%restart_flag) first = PETSC_FALSE
 
   filename = trim(option%global_prefix) // trim(option%group_prefix) // '.h5'
 
