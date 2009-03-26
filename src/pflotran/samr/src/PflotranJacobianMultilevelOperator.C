@@ -249,7 +249,7 @@ PflotranJacobianMultilevelOperator::initializeInternalVariableData(void)
 
    if (!d_flux) 
    {
-      d_flux = new pdat::CSideVariable<NDIM,double>(cellFlux,1);
+      d_flux = new pdat::CSideVariable<NDIM,double>(cellFlux,d_ndof);
    }
 
    d_flux_id = variable_db->registerVariableAndContext(d_flux,

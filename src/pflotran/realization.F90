@@ -255,7 +255,9 @@ subroutine RealizationCreateDiscretization(realization)
        option%ivar_centering = SIDE_CENTERED
        call DiscretizationCreateVector(discretization,NFLOWDOF,field%flow_face_fluxes, &
                                     GLOBAL,option)
-       option%ivar_centering = CELL_CENTERED
+        call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_face_fluxes, &
+                                    GLOBAL,option)
+      option%ivar_centering = CELL_CENTERED
     endif
   endif
 

@@ -43,6 +43,8 @@ PflotranTransportPreconditioner::PflotranTransportPreconditioner(PflotranTranspo
 
    getFromInput(parameters->d_db);   
 
+   initializePetscInterface();
+
    initializeSolvers(parameters->d_db);
 }
 

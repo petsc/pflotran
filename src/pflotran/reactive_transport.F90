@@ -1015,13 +1015,15 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   
   type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
+  type(option_type), pointer :: option
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscViewer :: viewer  
   
   field => realization%field
   discretization => realization%discretization
-  
+  option => realization%option
+
   ! Communication -----------------------------------------
   if (realization%reaction%use_log_formulation) then
     ! have to convert the log concentration to non-log form
@@ -1059,6 +1061,25 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
     cur_level => cur_level%next
   enddo
 
+  ! now coarsen all face fluxes in case we are using SAMRAI to 
+  ! ensure consistent fluxes at coarse-fine interfaces
+  if(option%use_samr) then
+     call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%tran_face_fluxes, ierr)
+
+     cur_level => realization%level_list%first
+     do
+        if (.not.associated(cur_level)) exit
+        cur_patch => cur_level%patch_list%first
+        do
+           if (.not.associated(cur_patch)) exit
+           realization%patch => cur_patch
+           call RTResidualFluxContribPatch(r,realization,ierr)
+           cur_patch => cur_patch%next
+        enddo
+        cur_level => cur_level%next
+     enddo
+  endif
+
   ! pass #2 for everything else
   cur_level => realization%level_list%first
   do
@@ -1094,6 +1115,113 @@ end subroutine RTResidual
 
 ! ************************************************************************** !
 !
+! RichardsResidualfuxContribsPatch: should be called only for SAMR
+! author: Bobby Philip
+! date: 02/17/09
+!
+! ************************************************************************** !
+subroutine RTResidualFluxContribPatch(r,realization,ierr)
+  use Realization_module
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Field_module
+  use Debug_module
+  
+  implicit none
+
+  Vec, intent(out) :: r
+  type(realization_type) :: realization
+
+  PetscErrorCode :: ierr
+
+  type :: flux_ptrs
+    PetscReal, dimension(:), pointer :: flux_p 
+  end type
+
+  type (flux_ptrs), dimension(0:2) :: fluxes
+
+  PetscReal, pointer :: r_p(:)
+  PetscReal, pointer :: face_fluxes_p(:)
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(reaction_type), pointer :: reaction
+  PetscInt :: axis, nlx, nly, nlz
+  PetscInt :: iconn, i, j, k
+  PetscInt :: xup_id, xdn_id, yup_id, ydn_id, zup_id, zdn_id
+  PetscInt :: su1, eu1, sd1, ed1
+  PetscInt :: su2, eu2, sd2, ed2
+  PetscInt :: su3, eu3, sd3, ed3
+  PetscInt :: istart, iend
+
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+  reaction => realization%reaction
+
+! now assign access pointer to local variables
+  call GridVecGetArrayF90(grid,r, r_p, ierr)
+
+  do axis=0,2  
+     call GridVecGetArrayF90(grid,axis,field%tran_face_fluxes, fluxes(axis)%flux_p, ierr)  
+  enddo
+
+  nlx = grid%structured_grid%nlx  
+  nly = grid%structured_grid%nly  
+  nlz = grid%structured_grid%nlz 
+  
+  iconn=1
+  do k=1,nlz
+     do j=1,nly
+        do i=1,nlx
+           xup_id = ((k-1)*nly+j-1)*(nlx+1)+i
+           xdn_id = xup_id+1
+           yup_id = ((k-1)*(nly+1)+(j-1))*nlx+i
+           ydn_id = yup_id+nlx
+           zup_id = ((k-1)*nly+(j-1))*nlx+i
+           zdn_id = zup_id+nlx*nly
+
+           su1    = xup_id*reaction%ncomp
+           eu1    = su1+reaction%ncomp-1
+           sd1    = xdn_id*reaction%ncomp
+           ed1    = sd1+reaction%ncomp-1
+
+           su2    = yup_id*reaction%ncomp
+           eu2    = su1+reaction%ncomp-1
+           sd2    = ydn_id*reaction%ncomp
+           ed2    = sd1+reaction%ncomp-1
+
+           su3    = zup_id*reaction%ncomp
+           eu3    = su1+reaction%ncomp-1
+           sd3    = zdn_id*reaction%ncomp
+           ed3    = sd1+reaction%ncomp-1
+
+           istart=iconn
+           iend  = iconn+reaction%ncomp-1
+           r_p(istart:iend) = r_p(istart:iend) &
+                             +fluxes(0)%flux_p(sd1:ed1)-fluxes(0)%flux_p(su1:eu1) &
+                             +fluxes(1)%flux_p(sd2:ed2)-fluxes(1)%flux_p(su2:eu2) &
+                             +fluxes(2)%flux_p(sd3:ed3)-fluxes(2)%flux_p(su3:eu3) 
+
+           iconn=iend+1
+        enddo
+     enddo
+  enddo
+
+  call GridVecRestoreArrayF90(grid,r, r_p, ierr)
+!!$
+!!$  do axis=0,2  
+!!$     call GridVecRestoreArrayF90(grid,axis,field%flow_face_fluxes, fluxes(axis)%flux_p, ierr)  
+!!$  enddo
+
+end subroutine RTResidualFluxContribPatch
+
+
+! ************************************************************************** !
+!
 ! RTResidualPatch1: Computes residual function for reactive transport
 ! author: Glenn Hammond
 ! date: 02/14/08
@@ -1113,6 +1241,22 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   
   implicit none
 
+  interface
+     PetscInt function samr_patch_at_bc(p_patch, axis, dim)
+     implicit none
+     
+#include "finclude/petsc.h"
+     
+     PetscFortranAddr :: p_patch
+     PetscInt :: axis,dim
+   end function samr_patch_at_bc
+  end interface
+
+  type :: flux_ptrs
+    PetscReal, dimension(:), pointer :: flux_p 
+  end type
+
+  type (flux_ptrs), dimension(0:2) :: fluxes
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
@@ -1134,12 +1278,17 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
   PetscReal :: Res(realization%reaction%ncomp)
   
+  PetscReal, pointer :: face_fluxes_p(:)
+
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: sum_connection, iconn
   PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
   PetscReal :: fraction_upwind, distance, dist_up, dist_dn
+  PetscInt :: axis, side, nlx, nly, nlz, ngx, ngxy, pstart, pend, flux_id
+  PetscInt :: direction, max_x_conn, max_y_conn
+
 #ifdef CHUAN_CO2
   PetscReal :: msrc(1:realization%option%nflowspec)
   PetscInt :: icomp, ieqgas
@@ -1175,6 +1324,34 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%tor_loc, tor_loc_p, ierr)
 
   r_p = 0.d0
+
+  if (option%use_samr) then
+     do axis=0,2  
+        call GridVecGetArrayF90(grid,axis,field%tran_face_fluxes, fluxes(axis)%flux_p, ierr)  
+     enddo
+
+    nlx = grid%structured_grid%nlx  
+    nly = grid%structured_grid%nly  
+    nlz = grid%structured_grid%nlz 
+
+    ngx = grid%structured_grid%ngx   
+    ngxy = grid%structured_grid%ngxy
+
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 0, 0)==1) nlx = nlx-1
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 0, 1)==1) nlx = nlx-1
+    
+    max_x_conn = (nlx+1)*nly*nlz
+    ! reinitialize nlx
+    nlx = grid%structured_grid%nlx  
+
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 1, 0)==1) nly = nly-1
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 1, 1)==1) nly = nly-1
+    
+    max_y_conn = max_x_conn + nlx*(nly+1)*nlz
+
+    ! reinitialize nly
+    nly = grid%structured_grid%nly  
+  endif
 
 #if 1
   ! Interior Flux Terms -----------------------------------
@@ -1217,18 +1394,47 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
         rt_aux_vars(local_id_up)%mass_balance_delta(:,iphase) - Res        
 #endif
 
-      if (local_id_up>0) then
-        iend = local_id_up*reaction%ncomp
-        istart = iend-reaction%ncomp+1
-        r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)
-      endif
-   
-      if (local_id_dn>0) then
-        iend = local_id_dn*reaction%ncomp
-        istart = iend-reaction%ncomp+1
-        r_p(istart:iend) = r_p(istart:iend) - Res(1:reaction%ncomp)
+      if (option%use_samr) then
+         if (sum_connection <= max_x_conn) then
+            direction = 0
+            if(mod(mod(ghosted_id_dn,ngxy),ngx).eq.0) then
+               flux_id = ((ghosted_id_dn/ngxy)-1)*(nlx+1)*nly + &
+                    ((mod(ghosted_id_dn,ngxy))/ngx-1)*(nlx+1)
+            else
+               flux_id = ((ghosted_id_dn/ngxy)-1)*(nlx+1)*nly + &
+                    ((mod(ghosted_id_dn,ngxy))/ngx-1)*(nlx+1)+ &
+                    mod(mod(ghosted_id_dn,ngxy),ngx)-1
+            endif
+            
+         else if (sum_connection <= max_y_conn) then
+            direction = 1
+            flux_id = ((ghosted_id_dn/ngxy)-1)*nlx*(nly+1) + &
+                 ((mod(ghosted_id_dn,ngxy))/ngx-1)*nlx + &
+                 mod(mod(ghosted_id_dn,ngxy),ngx)-1
+         else
+            direction = 2
+            flux_id = ((ghosted_id_dn/ngxy)-1)*nlx*nly &
+                 +((mod(ghosted_id_dn,ngxy))/ngx-1)*nlx &
+                 +mod(mod(ghosted_id_dn,ngxy),ngx)-1
+         endif
+         istart = flux_id*reaction%ncomp
+         iend = istart+reaction%ncomp-1
+         fluxes(direction)%flux_p(istart:iend) = Res(1:reaction%ncomp)
       endif
       
+      if(.not.option%use_samr) then
+         if (local_id_up>0) then
+            iend = local_id_up*reaction%ncomp
+            istart = iend-reaction%ncomp+1
+            r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)
+         endif
+         
+         if (local_id_dn>0) then
+            iend = local_id_dn*reaction%ncomp
+            istart = iend-reaction%ncomp+1
+            r_p(istart:iend) = r_p(istart:iend) - Res(1:reaction%ncomp)
+         endif
+      endif
       if (option%store_solute_fluxes) then
         patch%internal_fluxes(iphase,1:reaction%ncomp,iconn) = &
           Res(1:reaction%ncomp)
@@ -1269,10 +1475,65 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
                    rt_parameter,option, &
                    patch%boundary_velocities(:,sum_connection),Res)
  
-      iend = local_id*reaction%ncomp
-      istart = iend-reaction%ncomp+1
-      r_p(istart:iend)= r_p(istart:iend) - Res(1:reaction%ncomp)
- 
+      if (option%use_samr) then
+         direction =  (boundary_condition%region%faces(iconn)-1)/2
+         
+         ! the ghosted_id gives the id of the cell. Since the
+         ! flux_id is based on the ghosted_id of the downwind
+         ! cell this has to be adjusted in the case of the east, 
+         ! north and top faces before the flux_id is computed
+         select case(boundary_condition%region%faces(iconn)) 
+         case(WEST_FACE)
+            flux_id = ((ghosted_id/ngxy)-1)*(nlx+1)*nly + &
+                 ((mod(ghosted_id,ngxy))/ngx-1)*(nlx+1)+ &
+                 mod(mod(ghosted_id,ngxy),ngx)-1
+            istart = flux_id*reaction%ncomp
+            iend = istart+reaction%ncomp-1
+            fluxes(direction)%flux_p(istart:iend) = Res(1:reaction%ncomp)
+         case(EAST_FACE)
+            ghosted_id = ghosted_id+1
+            flux_id = ((ghosted_id/ngxy)-1)*(nlx+1)*nly + &
+                 ((mod(ghosted_id,ngxy))/ngx-1)*(nlx+1)
+            istart = flux_id*reaction%ncomp
+            iend = istart+reaction%ncomp-1
+            fluxes(direction)%flux_p(istart:iend) = -Res(1:reaction%ncomp)
+         case(SOUTH_FACE)
+            flux_id = ((ghosted_id/ngxy)-1)*nlx*(nly+1) + &
+                 ((mod(ghosted_id,ngxy))/ngx-1)*nlx + &
+                 mod(mod(ghosted_id,ngxy),ngx)-1
+            istart = flux_id*reaction%ncomp
+            iend = istart+reaction%ncomp-1
+            fluxes(direction)%flux_p(istart:iend) = Res(1:reaction%ncomp)
+         case(NORTH_FACE)
+            ghosted_id = ghosted_id+ngx
+            flux_id = ((ghosted_id/ngxy)-1)*nlx*(nly+1) + &
+                 ((mod(ghosted_id,ngxy))/ngx-1)*nlx + &
+                 mod(mod(ghosted_id,ngxy),ngx)-1
+            istart = flux_id*reaction%ncomp
+            iend = istart+reaction%ncomp-1
+            fluxes(direction)%flux_p(istart:iend) = -Res(1:reaction%ncomp)
+         case(BOTTOM_FACE)
+            flux_id = ((ghosted_id/ngxy)-1)*nlx*nly &
+                 +((mod(ghosted_id,ngxy))/ngx-1)*nlx &
+                 +mod(mod(ghosted_id,ngxy),ngx)-1
+            istart = flux_id*reaction%ncomp
+            iend = istart+reaction%ncomp-1
+            fluxes(direction)%flux_p(istart:iend) = Res(1:reaction%ncomp)
+         case(TOP_FACE)
+            ghosted_id = ghosted_id+ngxy
+            flux_id = ((ghosted_id/ngxy)-1)*nlx*nly &
+                 +((mod(ghosted_id,ngxy))/ngx-1)*nlx &
+                 +mod(mod(ghosted_id,ngxy),ngx)-1
+            istart = flux_id*reaction%ncomp
+            iend = istart+reaction%ncomp-1
+            fluxes(direction)%flux_p(istart:iend) = -Res(1:reaction%ncomp)
+         end select
+      else
+         iend = local_id*reaction%ncomp
+         istart = iend-reaction%ncomp+1
+         r_p(istart:iend)= r_p(istart:iend) - Res(1:reaction%ncomp)
+      endif
+
       if (option%store_solute_fluxes) then
         patch%boundary_fluxes(iphase,1:reaction%ncomp,sum_connection) = &
           -Res(1:reaction%ncomp)
@@ -1849,6 +2110,15 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   
   implicit none
 
+  interface
+     subroutine SAMRSetJacobianSrcCoeffsOnPatch(which_pc, p_application, p_patch) 
+#include "finclude/petsc.h"
+
+       PetscInt :: which_pc
+       PetscFortranAddr :: p_application
+       PetscFortranAddr :: p_patch
+     end subroutine SAMRSetJacobianSrcCoeffsOnPatch
+  end interface
   SNES :: snes
   Vec :: xx
   Mat :: A, B
@@ -1866,7 +2136,8 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   type(patch_type), pointer :: patch
   type(reaction_type), pointer :: reaction
   type(reactive_transport_param_type), pointer :: rt_parameter
-      
+  PetscInt :: tran_pc
+    
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:), rt_aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
   PetscReal :: Jup(realization%reaction%ncomp,realization%reaction%ncomp)
@@ -2022,6 +2293,12 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     rdum = 1.d0
     call MatZeroRowsLocal(A,patch%aux%RT%n_zero_rows, &
                           patch%aux%RT%zero_rows_local_ghosted,rdum,ierr) 
+  endif
+
+  if(option%use_samr) then
+     tran_pc = 1
+     call SAMRSetJacobianSrcCoeffsOnPatch(tran_pc, &
+          realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
   endif
 
 end subroutine RTJacobianPatch2

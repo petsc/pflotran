@@ -45,7 +45,7 @@ PflotranJacobianLevelOperator::initializeInternalVariableData()
 
    if (!d_flux) 
    {
-      d_flux = new pdat::CSideVariable<NDIM,double>(cellFlux,1);
+      d_flux = new pdat::CSideVariable<NDIM,double>(cellFlux,d_ndof);
    }
 
    d_flux_id = variable_db->registerVariableAndContext(d_flux,
@@ -328,53 +328,53 @@ PflotranJacobianLevelOperator::getStencilOffsets(const int i,
    std::vector<int> offsets;
    if(d_ndof==1)
    {
-   if((NDIM==1)&&i==0)
-   {
-      offsets.resize(d_stencil_size*NDIM);
-      offsets[0]=0;
-      offsets[1]=-1;
-      offsets[2]=1;
-   }
-   else if((NDIM==2)&&i==0&&j==0)
-   {
-      offsets.resize(d_stencil_size*NDIM);
-      offsets[0]=0;
-      offsets[1]=0;
-      offsets[2]=-1;
-      offsets[3]=0;
-      offsets[4]=1;
-      offsets[5]=0;
-      offsets[6]=0;
-      offsets[7]=-1;
-      offsets[8]=0;
-      offsets[9]=1;
-
-   }
-   else if((NDIM==3)&&i==0&&j==0&&k==0)
-   {
-      offsets.resize(d_stencil_size*NDIM);
-      offsets[0]=0;
-      offsets[1]=0;
-      offsets[2]=0;
-      offsets[3]=-1;
-      offsets[4]=0;
-      offsets[5]=0;
-      offsets[6]=1;
-      offsets[7]=0;
-      offsets[8]=0;
-      offsets[9]=0;
-      offsets[10]=-1;
-      offsets[11]=0;
-      offsets[12]=0;
-      offsets[13]=1;
-      offsets[14]=0;
-      offsets[15]=0;
-      offsets[16]=0;
-      offsets[17]=-1;
-      offsets[18]=0;
-      offsets[19]=0;
-      offsets[20]=1;
-   }
+      if((NDIM==1)&&i==0)
+      {
+         offsets.resize(d_stencil_size*NDIM);
+         offsets[0]=0;
+         offsets[1]=-1;
+         offsets[2]=1;
+      }
+      else if((NDIM==2)&&i==0&&j==0)
+      {
+         offsets.resize(d_stencil_size*NDIM);
+         offsets[0]=0;
+         offsets[1]=0;
+         offsets[2]=-1;
+         offsets[3]=0;
+         offsets[4]=1;
+         offsets[5]=0;
+         offsets[6]=0;
+         offsets[7]=-1;
+         offsets[8]=0;
+         offsets[9]=1;
+         
+      }
+      else if((NDIM==3)&&i==0&&j==0&&k==0)
+      {
+         offsets.resize(d_stencil_size*NDIM);
+         offsets[0]=0;
+         offsets[1]=0;
+         offsets[2]=0;
+         offsets[3]=-1;
+         offsets[4]=0;
+         offsets[5]=0;
+         offsets[6]=1;
+         offsets[7]=0;
+         offsets[8]=0;
+         offsets[9]=0;
+         offsets[10]=-1;
+         offsets[11]=0;
+         offsets[12]=0;
+         offsets[13]=1;
+         offsets[14]=0;
+         offsets[15]=0;
+         offsets[16]=0;
+         offsets[17]=-1;
+         offsets[18]=0;
+         offsets[19]=0;
+         offsets[20]=1;
+      }
    }
    else
    {
