@@ -124,6 +124,7 @@ c     we are forced to adjust the upper face differently
            flux2(0,i,j,k+1)= stencil(6,i,j,k)*(u(0,i,j,k+1)-u(0,i,j,k))
          enddo
       enddo
+
       return
       end
 
@@ -169,16 +170,15 @@ c
 
 c***********************************************************************
 c
-c for now we assume that ndof is 1
-
       do k = ifirst2, ilast2
          do j = ifirst1, ilast1
             do i = ifirst0, ilast0
-
-             r(0,i,j,k)= f(0,i,j,k)-(flux0(0,i+1,j,k)-flux0(0,i,j,k)
-     &                              +flux1(0,i,j+1,k)-flux1(0,i,j,k)
-     &                              +flux2(0,i,j,k+1)-flux2(0,i,j,k))
-     &                              -src(0,i,j,k)*u(0,i,j,k)
+               do d = 0,ndof-1
+                r(d,i,j,k)= f(d,i,j,k)-(flux0(d,i+1,j,k)-flux0(d,i,j,k)
+     &                                 +flux1(d,i,j+1,k)-flux1(d,i,j,k)
+     &                                 +flux2(d,i,j,k+1)-flux2(d,i,j,k))
+     &                                 -src(d,i,j,k)*u(d,i,j,k)
+               enddo
             enddo
          enddo
       enddo

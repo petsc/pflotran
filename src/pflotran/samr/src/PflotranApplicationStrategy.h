@@ -197,6 +197,8 @@ private:
    // Name of application
    std::string d_object_name;
 
+   std::string d_face_coarsen_op_str;
+
    int d_number_solution_components;
 
    tbox::Array< tbox::Pointer< hier::Variable<NDIM> > > d_variable_list;

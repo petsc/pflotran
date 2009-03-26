@@ -43,6 +43,9 @@ module Field_module
     ! required by SAMR to ensure consistent fluxes at 
     ! coarse-fine interfaces
     Vec :: flow_face_fluxes
+    Vec :: tran_face_fluxes
+    ! viz vector
+    Vec :: samr_viz_vec
 
   end type field_type
 
@@ -97,6 +100,9 @@ function FieldCreate()
   field%flow_yy = 0
   field%flow_accum = 0
   
+  field%flow_face_fluxes = 0
+  field%tran_face_fluxes = 0
+
   field%tran_r = 0
   field%tran_log_xx = 0
   field%tran_xx = 0
@@ -110,8 +116,6 @@ function FieldCreate()
   field%flow_total_mass_balance = 0
   field%tran_ts_mass_balance = 0
   field%tran_total_mass_balance = 0
-  
-  field%flow_face_fluxes = 0
 
   FieldCreate => field
   
@@ -181,6 +185,8 @@ subroutine FieldDestroy(field)
     
   if (field%flow_face_fluxes /= 0) &
     call VecDestroy(field%flow_face_fluxes,ierr)
+  if (field%tran_face_fluxes /= 0) &
+    call VecDestroy(field%tran_face_fluxes,ierr)
     
   deallocate(field)
   nullify(field)
