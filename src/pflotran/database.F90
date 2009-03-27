@@ -771,6 +771,10 @@ subroutine BasisInit(reaction,option)
     reaction%debyeB = 0.3925d0 
     reaction%debyeBdot = 0.0000d0
   endif
+  
+  if (.not.reaction%act_coef_use_bdot) then
+    reaction%debyeBdot = 0.d0
+  endif
 
   if (option%reference_temperature <= reaction%dbase_temperatures(1)) then
     itemp_low = 1

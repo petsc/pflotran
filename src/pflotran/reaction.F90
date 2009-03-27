@@ -351,6 +351,8 @@ subroutine ReactionRead(reaction,input,option)
               call printErrMsg(option)
           end select
         enddo
+      case('NO_BDOT')
+        reaction%act_coef_use_bdot = PETSC_FALSE
       case('MOLAL','MOLARITY')
         option%initialize_with_molality = PETSC_TRUE
       case('OUTPUT')
