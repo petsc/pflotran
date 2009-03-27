@@ -4340,7 +4340,8 @@ subroutine OutputHDF5(realization)
   output_option => realization%output_option
 
   first = hdf5_first
-  if (option%restart_flag) first = PETSC_FALSE
+  if (option%restart_flag .and. option%restart_time > 1.d-40)  &
+    first = PETSC_FALSE
 
   filename = trim(option%global_prefix) // trim(option%group_prefix) // '.h5'
 
@@ -4418,7 +4419,12 @@ subroutine OutputHDF5(realization)
      if (len_trim(output_option%plot_name) > 2) then
         string = trim(string) // ' ' // output_option%plot_name
      endif
-     call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
+     call h5eset_auto_f(OFF,hdf5_err)
+     call h5gopen_f(file_id,string,grp_id,hdf5_err)
+     if (hdf5_err /= 0) then
+       call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
+     endif
+     call h5eset_auto_f(ON,hdf5_err)
   
   else
 
