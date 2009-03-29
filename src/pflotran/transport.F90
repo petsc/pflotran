@@ -610,7 +610,9 @@ subroutine TFluxAdv(rt_aux_var_up,global_aux_var_up, &
   
   PetscInt :: icomp
   PetscInt :: iphase
-  PetscReal :: coef_up, coef_dn
+  PetscReal :: coef_up, coef_dn, sat_up, sat_dn, stp_up, stp_dn, &
+               tor_up, tor_dn, por_up, por_dn, dist_up, dist_dn, &
+               diffusion, weight
   PetscReal :: q
   
   iphase = 1
@@ -710,8 +712,10 @@ subroutine TFluxDerivativeAdv(rt_aux_var_up,global_aux_var_up, &
   
   PetscInt :: icomp
   PetscInt :: iphase
-  PetscReal :: coef_up, coef_dn
   PetscReal :: q
+  PetscReal :: coef_up, coef_dn, sat_up, sat_dn, stp_up, stp_dn, &
+               tor_up, tor_dn, por_up, por_dn, dist_up, dist_dn, &
+               diffusion, weight
   
   iphase = 1
   q = velocity(iphase)
@@ -827,7 +831,9 @@ subroutine TBCFluxAdv(ibndtype, &
   
   PetscInt :: icomp
   PetscInt :: iphase
-  PetscReal :: coef_up, coef_dn
+  PetscReal :: coef_up, coef_dn, sat_up, sat_dn, stp_up, stp_dn, &
+               tor_up, tor_dn, por_up, por_dn, dist_up, dist_dn, &
+               diffusion, weight
   PetscReal :: q
 
   iphase = 1
@@ -940,7 +946,9 @@ subroutine TBCFluxDerivativeAdv(ibndtype, &
   
   PetscInt :: icomp
   PetscInt :: iphase
-  PetscReal :: coef_dn
+  PetscReal :: coef_up, coef_dn, sat_up, sat_dn, stp_up, stp_dn, &
+               tor_up, tor_dn, por_up, por_dn, dist_up, dist_dn, &
+               diffusion, weight
   PetscReal :: q
   
   iphase = 1
