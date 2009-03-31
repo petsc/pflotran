@@ -177,6 +177,7 @@ PetscInt, parameter :: ACT_COEF_FREQUENCY_TIMESTEP = 1
 PetscInt, parameter :: ACT_COEF_FREQUENCY_NEWTON_ITER = 2
 PetscInt, parameter :: ACT_COEF_ALGORITHM_LAG = 3
 PetscInt, parameter :: ACT_COEF_ALGORITHM_NEWTON = 4
+PetscInt, parameter :: NO_BDOT = 5
 
 ! structured grid faces
 PetscInt, parameter :: NULL_FACE = 0

@@ -148,6 +148,7 @@ module Reaction_Aux_module
     PetscInt :: act_coef_update_frequency
     PetscInt :: act_coef_update_algorithm
     PetscTruth :: checkpoint_activity_coefs
+    PetscTruth :: act_coef_use_bdot
     
     ! compressed arrays for efficient computation
     ! primary aqueous complexes
@@ -328,6 +329,7 @@ function ReactionCreate()
   reaction%num_dbase_temperatures = 0
   nullify(reaction%dbase_temperatures)
 
+  reaction%act_coef_use_bdot = PETSC_TRUE
   reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
   reaction%act_coef_update_algorithm = ACT_COEF_ALGORITHM_LAG
   reaction%checkpoint_activity_coefs = PETSC_TRUE

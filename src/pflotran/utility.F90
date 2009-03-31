@@ -246,7 +246,7 @@ subroutine ludcmp(A,N,INDX,D)
   integer :: INDX(N)
   integer :: D
 
-  integer :: i, j, k, imax
+  integer :: i, j, k, imax, ierr, rank
   real*8 :: aamax, sum, dum
 
   D=1
@@ -255,8 +255,13 @@ subroutine ludcmp(A,N,INDX,D)
     do j=1,N
       if (abs(A(i,j)).gt.aamax) aamax=abs(A(i,j))
     enddo
-    if (aamax.eq.0) &
-      pause 'Singular Matrix.'
+    if (aamax.eq.0) then
+      call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
+      print *, "ERROR: Singular value encountered in ludcmp() on process", rank
+      call MPI_Abort(MPI_COMM_WORLD, 1, ierr)
+      call MPI_Finalize(ierr)
+      stop
+    endif
     VV(i)=1./aamax
   enddo
   do j=1,N
