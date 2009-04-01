@@ -316,7 +316,7 @@ subroutine SolverReadLinear(solver,input,option)
             solver%pc_type = PCLU
           case('BJACOBI','BLOCK_JACOBI')
             solver%pc_type = PCBJACOBI
-          case('ASM','ADDITIVE_SCHWARTZ')
+          case('ASM','ADDITIVE_SCHWARZ')
             solver%pc_type = PCASM
          case('HYPRE')
             solver%pc_type = PCHYPRE
