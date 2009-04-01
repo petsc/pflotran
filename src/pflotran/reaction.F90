@@ -1170,8 +1170,10 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
           string = 'log'
         case(CONSTRAINT_PH)
           string = 'pH'
-        case(CONSTRAINT_MINERAL,CONSTRAINT_GAS, CONSTRAINT_SUPERCRIT_CO2)
+        case(CONSTRAINT_MINERAL,CONSTRAINT_GAS)
           string = aq_species_constraint%constraint_spec_name(icomp)
+        case(CONSTRAINT_SUPERCRIT_CO2)
+          string = 'SC ' // aq_species_constraint%constraint_spec_name(icomp)
       end select
       write(option%fid_out,103) reaction%primary_species_names(icomp), &
                                 rt_auxvar%pri_molal(icomp), &

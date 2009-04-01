@@ -2901,7 +2901,7 @@ subroutine BasisPrint(reaction,title,option)
 100 format(a)
 110 format(a,f9.4)
 120 format(a,f6.2,2x,a)
-130 format(a,100f10.4)
+130 format(a,100f11.4)
 140 format(a,f6.2)
 150 format(a,es11.4)
 

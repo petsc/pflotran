@@ -196,7 +196,7 @@ IFC::IFC(Grid **grid_) {
 
   flagGridCells(grid);
 
-  setEastBoundaryMaterialTo2(grid);
+//  setEastBoundaryMaterialTo2(grid);
 
   computeEastBoundary(grid,1);
   computeWestBoundary(grid,1);
