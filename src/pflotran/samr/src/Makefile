@@ -53,8 +53,13 @@ ifeq "$(BUILDTYPE)" "i386-Darwin"
    CPPFLAGS_EXTRA += -DNDIM=$(PDIM)
 endif
 
+ifndef jaguar
 HDF5_FLAGS = -I$(HDF5_INCLUDE) -I$(HDF5_LIB) -DUSE_HDF5
 HDF5_LIBS = -L$(HDF5_LIB) -lhdf5_fortran
+else
+HDF5_FFLAGS = $(HDF5_FLIB) -DUSE_HDF5
+HDF5_LIBS = -lhdf5_fortran -lhdf5 -lz -lsz
+endif
 
 CPPFLAGS_EXTRA += ${HDF5_FLAGS}
 
@@ -94,7 +99,11 @@ CXXOBJS=${CXXSRC:.C=.o}
 F90SRC  = ${wildcard ./*.F90}
 F90OBJS = ${F90SRC:.F90=.o}
 
+ifndef jaguar
 FFLAGS		 = -g
+else
+FFLAGS += ${HDF5_FFLAGS}
+endif
 
 PFLOTRAN_LDFLAGS += -L${PFLOTRAN_DIR}
 
@@ -113,9 +122,15 @@ else
 # include ${PETSC_DIR}/conf/base
 endif
 
+ifndef jaguar
 CXX=mpicxx
+endif
 
+ifndef jaguar
 FPPFLAGS         = -g ${MYFLAGS} -I${PETSC_DIR}/include
+else
+FPPFLAGS         = -g ${MYFLAGS} -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include
+endif
 
 $(FORTOBJS):$(FORTM4SRC)
 	cd $(FORTDIR); ${MAKE}

@@ -756,9 +756,11 @@ PflotranApplicationStrategy::createVector(int &dof,
 
       tbox::Pointer< math::HierarchyDataOpsReal< NDIM, double > > math_op = (centering==0)? d_ccell_math_op:d_cside_math_op; 
 
+      const int vol_id = (centering==0)?d_pflotran_weight_id:-1;
+
       samrai_vec->addComponent(pflotran_var,
                                pflotran_var_id,
-                               d_pflotran_weight_id,
+                               vol_id,
                                math_op);
    }
 
