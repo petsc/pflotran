@@ -1266,7 +1266,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   PetscReal, pointer :: r_p(:)
   PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:)
   PetscInt :: local_id, ghosted_id
-  PetscInt :: iphase
+  PetscInt, parameter :: iphase = 1
   PetscInt :: i, istart, iend                        
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -1801,7 +1801,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
   PetscReal, pointer :: r_p(:), accum_p(:)
   PetscReal, pointer :: porosity_loc_p(:), volume_p(:)
   PetscInt :: local_id, ghosted_id
-  PetscInt :: iphase
+  PetscInt, parameter :: iphase = 1
   PetscInt :: i, istart, iend                        
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -1863,7 +1863,6 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Source/sink terms -------------------------------------
-  iphase = 1
   source_sink => patch%source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
