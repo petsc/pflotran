@@ -56,6 +56,16 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
 
    initializePetscMatInterface();
 
+   d_math_op = new math::HierarchyCCellDataOpsReal< NDIM, double >(d_hierarchy,
+                                                                   0, d_hierarchy->getFinestLevelNumber());
+   tbox::Pointer<geom::CartesianGridGeometry<NDIM> > grid_geometry = d_hierarchy->getGridGeometry();
+
+   d_soln_refine_op =  grid_geometry->lookupRefineOperator(d_scratch_variable, d_cell_refine_op_str);
+
+   d_soln_coarsen_op = grid_geometry->lookupCoarsenOperator(d_scratch_variable, d_cell_soln_coarsen_op_str);
+
+   d_src_coarsen_op = grid_geometry->lookupCoarsenOperator(d_scratch_variable, d_cell_src_coarsen_op_str);
+
    // we initialize the internal variable data before
    // initializing the level operators so that the variable id
    // for the src/sink's is set and can be passed to the level operators
@@ -79,16 +89,6 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
       delete params;
    }
    
-   d_math_op = new math::HierarchyCCellDataOpsReal< NDIM, double >(d_hierarchy,
-                                                                   0, d_hierarchy->getFinestLevelNumber());
-   tbox::Pointer<geom::CartesianGridGeometry<NDIM> > grid_geometry = d_hierarchy->getGridGeometry();
-
-   d_soln_refine_op =  grid_geometry->lookupRefineOperator(d_scratch_variable, d_cell_refine_op_str);
-
-   d_soln_coarsen_op = grid_geometry->lookupCoarsenOperator(d_scratch_variable, d_cell_soln_coarsen_op_str);
-
-   d_src_coarsen_op = grid_geometry->lookupCoarsenOperator(d_scratch_variable, d_cell_src_coarsen_op_str);
-
    d_flux_coarsen_schedule.resizeArray(d_hierarchy->getNumberOfLevels());
    d_GlobalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
    d_src_coarsen_schedule.resizeArray(d_hierarchy->getNumberOfLevels());
@@ -229,19 +229,11 @@ PflotranJacobianMultilevelOperator::initializeInternalVariableData(void)
    std::string vecname("PflotranJacobianMultilevelOperator_scratchVector");
    vecname+=object_str;
 
-   tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> > scratch_vector = new solv::SAMRAIVectorReal<NDIM,double>(vecname,
-                                                                                                                 d_hierarchy,
-                                                                                                                 0, d_hierarchy->getFinestLevelNumber());
-
-   d_scratch_variable = new pdat::CCellVariable<NDIM,double>(vecname,d_ndof);
+   d_scratch_variable = new pdat::CCellVariable<NDIM,double>(vecname+"Component0",d_ndof);
    int scratch_var_id = variable_db->registerVariableAndContext(d_scratch_variable,
                                                                 scratch_cxt,
                                                                 hier::IntVector<NDIM>(1));
    
-   scratch_vector->addComponent(d_scratch_variable,
-                                scratch_var_id, -1, d_math_op);
-   
-
    std::string cellFlux("PflotranJacobianMultilevelOperator_InternalFlux");
    cellFlux+=object_str;
 
@@ -319,6 +311,13 @@ PflotranJacobianMultilevelOperator::initializeInternalVariableData(void)
          data->fillAll(0.0);
       }
    }
+
+   tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> > scratch_vector = new solv::SAMRAIVectorReal<NDIM,double>(vecname,
+                                                                                                                 d_hierarchy,
+                                                                                                                 0, d_hierarchy->getFinestLevelNumber());
+   scratch_vector->addComponent(d_scratch_variable,
+                                scratch_var_id, -1, d_math_op);
+   
 
    d_scratch_vector = solv::PETSc_SAMRAIVectorReal<NDIM,double>::createPETScVector(scratch_vector);
 }
