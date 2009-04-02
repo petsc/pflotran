@@ -2104,8 +2104,13 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   enddo
     
   if (realization%debug%matview_Jacobian) then
+#if 1
     call PetscViewerASCIIOpen(realization%option%mycomm,'RTjacobian.out', &
                               viewer,ierr)
+#else
+    call PetscViewerBinaryOpen(realization%option%mycomm,'RTjacobian.bin', &
+                               FILE_MODE_WRITE,viewer,ierr)
+#endif
     call MatView(J,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
