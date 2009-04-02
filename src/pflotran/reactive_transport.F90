@@ -2943,16 +2943,19 @@ subroutine RTCreateZeroArray(patch,reaction,option)
   patch%aux%RT%zero_rows_local_ghosted => zero_rows_local_ghosted
   patch%aux%RT%n_zero_rows = n_zero_rows  
 
-  call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
-                     option%mycomm,ierr)
 
-  if (flag > 0) patch%aux%RT%inactive_cells_exist = PETSC_TRUE
-
-  if (ncount /= n_zero_rows) then
-    print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
-    stop
+  if(.not.(option%use_samr)) then
+     call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
+          option%mycomm,ierr)
+     
+     if (flag > 0) patch%aux%RT%inactive_cells_exist = PETSC_TRUE
+     
+     if (ncount /= n_zero_rows) then
+        print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
+        stop
+     endif
   endif
-  
+
 end subroutine RTCreateZeroArray
 
 ! ************************************************************************** !

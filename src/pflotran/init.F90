@@ -128,8 +128,10 @@ subroutine Init(simulation)
 
   patch => realization%patch
 
-  if(associated(patch%grid)) then
-    grid => patch%grid
+  if(associated(patch)) then
+     if (associated(patch%grid)) then
+        grid => patch%grid
+     endif
   endif
 
   ! process command line options
@@ -325,7 +327,7 @@ subroutine Init(simulation)
     endif
 
     ! setup a shell preconditioner and initialize in the case of AMR
-    if(associated(discretization%amrgrid)) then
+    if(option%use_samr) then
 !       flow_solver%pc_type = PCSHELL
        pcside = PC_RIGHT
        if(flow_solver%pc_type==PCSHELL) then
@@ -881,7 +883,11 @@ subroutine InitReadInput(simulation)
   
   realization => simulation%realization
   patch => realization%patch
-  grid => patch%grid
+
+  if(associated(patch)) then
+     grid => patch%grid
+  endif
+
   option => realization%option
   output_option => realization%output_option
   field => realization%field
@@ -1686,7 +1692,6 @@ subroutine assignMaterialPropToRegions(realization)
   option => realization%option
   discretization => realization%discretization
   patch => realization%patch
-  grid => patch%grid
   field => realization%field
 
   ! loop over all strata to determine if any are inactive or

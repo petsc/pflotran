@@ -507,12 +507,12 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                   else
                     region%num_cells = 0
                   endif
-                  call MPI_Allreduce(region%num_cells,count,ONE_INTEGER,MPI_INTEGER,MPI_SUM, &
-                                     option%mycomm,ierr)   
-
   ! the next test as designed will only work on a uniform grid
-                  if (grid%structured_grid%p_samr_patch==0) then
-                    if (count == 0) then
+                  if(.not. (option%use_samr)) then
+                     call MPI_Allreduce(region%num_cells,count,ONE_INTEGER,MPI_INTEGER,MPI_SUM, &
+                          option%mycomm,ierr)   
+
+                     if (count == 0) then
                       write(option%io_buffer,*) 'Region: (coord)', &
                            region%coordinates(ONE_INTEGER)%x, &
                            region%coordinates(ONE_INTEGER)%y, &
@@ -636,8 +636,14 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                   endif
               end select
             endif
-            call MPI_Allreduce(iflag,i,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
-                               option%mycomm,ierr)
+
+            if(.not. (option%use_samr)) then
+               call MPI_Allreduce(iflag,i,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
+                    option%mycomm,ierr)
+            else
+               i=0
+            endif
+
             iflag = i
             if (iflag > 0) then
               option%io_buffer = 'GridLocalizeRegions, between two points'
