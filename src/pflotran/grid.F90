@@ -1090,6 +1090,9 @@ subroutine GridVecGetArrayCellF90(grid, vec, f90ptr, ierr)
 
   implicit none
 
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
   type(grid_type) :: grid
   Vec:: vec
   PetscReal, pointer :: f90ptr(:)
@@ -1106,6 +1109,9 @@ end subroutine GridVecGetArrayCellF90
 subroutine GridVecGetArraySideF90(grid, axis, vec, f90ptr, ierr)
 
   implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
 
   type(grid_type) :: grid
   PetscInt :: axis 
@@ -1124,6 +1130,9 @@ end subroutine GridVecGetArraySideF90
 subroutine GridVecRestoreArrayF90(grid, vec, f90ptr, ierr)
 
   implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
 
   type(grid_type) :: grid
   Vec:: vec
