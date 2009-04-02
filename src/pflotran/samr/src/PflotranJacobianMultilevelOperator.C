@@ -58,6 +58,11 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
 
    d_math_op = new math::HierarchyCCellDataOpsReal< NDIM, double >(d_hierarchy,
                                                                    0, d_hierarchy->getFinestLevelNumber());
+   // we initialize the internal variable data before
+   // initializing the level operators so that the variable id
+   // for the src/sink's is set and can be passed to the level operators
+   initializeInternalVariableData();
+
    tbox::Pointer<geom::CartesianGridGeometry<NDIM> > grid_geometry = d_hierarchy->getGridGeometry();
 
    d_soln_refine_op =  grid_geometry->lookupRefineOperator(d_scratch_variable, d_cell_refine_op_str);
@@ -65,11 +70,6 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
    d_soln_coarsen_op = grid_geometry->lookupCoarsenOperator(d_scratch_variable, d_cell_soln_coarsen_op_str);
 
    d_src_coarsen_op = grid_geometry->lookupCoarsenOperator(d_scratch_variable, d_cell_src_coarsen_op_str);
-
-   // we initialize the internal variable data before
-   // initializing the level operators so that the variable id
-   // for the src/sink's is set and can be passed to the level operators
-   initializeInternalVariableData();
 
    for(int ln=0; ln<hierarchy_size; ln++)
    {
