@@ -2200,7 +2200,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
     call PetscViewerASCIIOpen(realization%option%mycomm,'Rjacobian.out', &
                               viewer,ierr)
 #else
-    call PetscViewerBinaryOpen(realization%option%mycomm,'Rjacobian_binary.out', &
+    call PetscViewerBinaryOpen(realization%option%mycomm,'Rjacobian.bin', &
                                FILE_MODE_WRITE,viewer,ierr)
 #endif    
     call MatView(J,viewer,ierr)

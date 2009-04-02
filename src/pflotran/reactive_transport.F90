@@ -2119,8 +2119,13 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
     call MatDiagonalScaleLocal(J,realization%field%tran_work_loc,ierr)
 
     if (realization%debug%matview_Jacobian) then
+#if 1
       call PetscViewerASCIIOpen(realization%option%mycomm,'RTjacobianLog.out', &
                                 viewer,ierr)
+#else
+    call PetscViewerBinaryOpen(realization%option%mycomm,'RTjacobianLog.bin', &
+                               FILE_MODE_WRITE,viewer,ierr)
+#endif
       call MatView(J,viewer,ierr)
       call PetscViewerDestroy(viewer,ierr)
     endif
