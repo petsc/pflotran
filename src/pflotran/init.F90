@@ -436,9 +436,7 @@ subroutine Init(simulation)
 
     ! this update check must be in place, otherwise reactive transport is likely
     ! to fail
-    if(option%use_samr) then
-       if (OptionPrintToScreen(option)) write(*,'("WARNING:: SAMR skipping call to RTCheckUpdate!!!!!"))
-    else
+    if(.not.(option%use_samr)) then
        call SNESLineSearchSetPreCheck(tran_solver%snes,RTCheckUpdate, &
             realization,ierr)
     endif

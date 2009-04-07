@@ -4333,7 +4333,6 @@ subroutine OutputHDF5(realization)
 
   discretization => realization%discretization
   patch => realization%patch
-  grid => patch%grid
   option => realization%option
   field => realization%field
   reaction => realization%reaction
@@ -4347,6 +4346,7 @@ subroutine OutputHDF5(realization)
 
   if(.not.(option%use_samr)) then
      
+     grid => patch%grid
      ! initialize fortran interface
      call h5open_f(hdf5_err)
 
@@ -4453,9 +4453,9 @@ subroutine OutputHDF5(realization)
 
      nviz_dof = nviz_flow+nviz_tran
 
-     if (associated(patch%imat)) then
-        nviz_dof = nviz_dof+1
-     endif
+!!$     if (associated(patch%imat)) then
+!!$        nviz_dof = nviz_dof+1
+!!$     endif
 
      if(first) then
         call AMRGridCreateVector(discretization%amrgrid, nviz_dof, field%samr_viz_vec, &

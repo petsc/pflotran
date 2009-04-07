@@ -1059,7 +1059,6 @@ subroutine RealizAssignFlowInitCond(realization)
   discretization => realization%discretization
   field => realization%field
   patch => realization%patch
-  grid => patch%grid
 
   cur_level => realization%level_list%first
   do 
@@ -1196,7 +1195,6 @@ subroutine RealizAssignTransportInitCond(realization)
   discretization => realization%discretization
   field => realization%field
   patch => realization%patch
-  grid => patch%grid
   reaction => realization%reaction
   
   iphase = 1
