@@ -147,6 +147,31 @@ public:
                                const bool reset_ghost_values = false);
   
    /**
+   * Interpolate source data on a coarser level to destination data on finer level
+   * using scratch locations for intermediate calculations. This function is part
+   * of the linear operator class because interpolations can require data that is
+   * available only to the discrete linear operator, eg, boundary condition data.
+   * \param flevel
+   *        reference to pointer for fine level
+   * \param clevel
+   *        reference to pointer for coarse level
+   * \param dst_id
+   *        pointer to array of descriptor indices for destination data
+   * \param src_id
+   *        pointer to array of descriptor indices for source data
+   * \param scratch_id
+   *        pointer to array of descriptor indices for scratch data
+   * \param refine_op
+   *        name of refine operator to use
+   */
+   virtual void interpolate(const tbox::Pointer<hier::PatchLevel<NDIM> > &flevel,
+                            const tbox::Pointer<hier::PatchLevel<NDIM> > &clevel,
+                            const int *dst_id,
+                            const int *src_id,
+                            const int *scratch_id,
+                            std::string &refine_op);
+
+   /**
    * Returns the number of primitive variables for the discretization
    */
    const int getNumberOfVariables(void){ return d_ndof; }
@@ -297,6 +322,8 @@ private:
    tbox::Pointer<xfer::CoarsenOperator<NDIM> > d_src_coarsen_op;
 
    tbox::Array< tbox::Pointer< xfer::RefineSchedule<NDIM> > > d_GlobalToLocalRefineSchedule;
+   tbox::Array< tbox::Pointer<xfer::RefineSchedule<NDIM> > > d_interpolate_schedule;
+
    tbox::Array< tbox::Pointer< xfer::CoarsenSchedule<NDIM> > > d_src_coarsen_schedule;
    tbox::Array< tbox::Pointer< xfer::CoarsenSchedule<NDIM> > > d_soln_coarsen_schedule;
    tbox::Array< tbox::Pointer< xfer::CoarsenSchedule<NDIM> > > d_flux_coarsen_schedule;

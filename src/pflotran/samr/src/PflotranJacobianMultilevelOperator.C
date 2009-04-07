@@ -93,12 +93,15 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
    d_GlobalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
    d_src_coarsen_schedule.resizeArray(d_hierarchy->getNumberOfLevels());
    d_soln_coarsen_schedule.resizeArray(d_hierarchy->getNumberOfLevels());
+   d_interpolate_schedule.resizeArray(d_hierarchy->getNumberOfLevels());
+
    for(int ln=0; ln<hierarchy_size; ln++)
    {
       d_GlobalToLocalRefineSchedule[ln].setNull();
       d_src_coarsen_schedule[ln].setNull();
       d_soln_coarsen_schedule[ln].setNull();
       d_flux_coarsen_schedule[ln].setNull();
+      d_interpolate_schedule[ln].setNull();
    }
 
 }
@@ -211,6 +214,61 @@ PflotranJacobianMultilevelOperator::applyBoundaryCondition(const int ln,
                                                            const int number_of_variables,
                                                            const bool reset_ghost_values)
 {
+}
+
+void
+PflotranJacobianMultilevelOperator::interpolate(const tbox::Pointer<hier::PatchLevel<NDIM> > &flevel,
+                                                const tbox::Pointer<hier::PatchLevel<NDIM> > &clevel,
+                                                const int *dst_id,
+                                                const int *src_id,
+                                                const int *scratch_id,
+                                                std::string &refine_op)
+{
+#ifdef DEBUG_CHECK_ASSERTIONS
+   assert(dst_id!=NULL);
+   assert(src_id!=NULL);
+   assert(scratch_id!=NULL);
+#endif
+   hier::VariableDatabase<NDIM>* variable_db = hier::VariableDatabase<NDIM>::getDatabase();
+   tbox::Pointer< hier::Variable< NDIM > > dstvar;
+   variable_db->mapIndexToVariable(scratch_id[0], dstvar);
+
+   tbox::Pointer< xfer::Geometry<NDIM> > geometry = d_hierarchy->getGridGeometry();
+
+   xfer::RefineAlgorithm<NDIM> refine_alg;
+   refine_alg.registerRefine(dst_id[0], src_id[0], scratch_id[0],
+                             geometry->lookupRefineOperator(dstvar, 
+                                                            refine_op));
+   
+   const int ln = flevel->getLevelNumber();
+
+   xfer::RefinePatchStrategy<NDIM> *ptr=NULL;
+
+   if(d_interpolate_schedule[ln].isNull()||(!refine_alg.checkConsistency(d_interpolate_schedule[ln])))
+   {
+      if(ln==0)
+      {
+         d_interpolate_schedule[ln]=refine_alg.createSchedule(flevel,
+                                                              ptr);
+      }
+      else
+      {
+         d_interpolate_schedule[ln]=refine_alg.createSchedule(flevel,
+                                                              (hier::PatchLevel<NDIM>*) NULL,
+                                                              ln-1,
+                                                              d_hierarchy,
+                                                              ptr);
+      }
+   }
+   else
+   {
+      refine_alg.resetSchedule(d_interpolate_schedule[ln]);
+   }
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+   assert(!d_interpolate_schedule[ln].isNull());
+#endif
+   d_interpolate_schedule[ln]->fillData(0.0);
 }
 
 void
