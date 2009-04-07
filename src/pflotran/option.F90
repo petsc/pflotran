@@ -29,7 +29,7 @@ module Option_module
         
     PetscMPIInt :: io_rank
     PetscTruth :: broadcast_read
-    MPI_Comm :: iogroup 
+    PetscMPIInt :: iogroup 
     PetscInt :: broadcast_size 
     character(len=MAXSTRINGLENGTH) :: io_buffer
   
@@ -274,6 +274,8 @@ subroutine OptionInitAll(option)
     
   option%broadcast_read = PETSC_FALSE
   option%io_rank = 0
+  option%iogroup = 0
+  option%broadcast_size = 0
   
   option%print_screen_flag = PETSC_FALSE
   option%print_file_flag = PETSC_FALSE
