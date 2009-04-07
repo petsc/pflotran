@@ -4745,20 +4745,23 @@ subroutine OutputHDF5(realization)
   endif
   
   ! material id
-  if (associated(patch%imat)) then
-    call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-    if(.not.(option%use_samr)) then
-       string = "Material_ID"
-       call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
-    else
-       call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-       if(first) then
-          call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,MATERIAL_ID,ZERO_INTEGER)
+
+  if(.not.(option%use_samr)) then
+     if(associated(patch%imat)) then
+        call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+        if(.not.(option%use_samr)) then
+           string = "Material_ID"
+           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
+        else
+           call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+           if(first) then
+              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,MATERIAL_ID,ZERO_INTEGER)
        endif
        current_component=current_component+1
     endif
+    endif
   endif
-
+  
   if(.not.(option%use_samr)) then
      if (output_option%print_hdf5_velocities) then
 
