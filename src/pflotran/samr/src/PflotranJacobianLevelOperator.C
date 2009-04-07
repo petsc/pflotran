@@ -1,6 +1,7 @@
 #include "PflotranJacobianLevelOperator.h"
 #include "CartesianGridGeometry.h"
 #include "CartesianPatchGeometry.h"
+#include "RefineAlgorithm.h" 
 #include "CCellData.h"
 #include "CSideData.h"
 #include "PETSc_SAMRAIVectorReal.h"
@@ -10,6 +11,9 @@ namespace SAMRAI{
 
 PflotranJacobianLevelOperator::PflotranJacobianLevelOperator(LevelOperatorParameters *parameters):LevelLinearOperator(parameters)
 {
+   d_sibling_fill_cached          = false;
+   d_interpolate_ghost_values     = true;
+
    PflotranJacobianLevelOperator::getFromInput(parameters->d_db);
 
    initializeInternalVariableData();
@@ -100,6 +104,7 @@ PflotranJacobianLevelOperator::PflotranJacobianLevelOperator()
 
 PflotranJacobianLevelOperator::~PflotranJacobianLevelOperator()
 {
+   d_sibling_fill_schedule.setNull();
 }
 
 void 
@@ -280,6 +285,64 @@ PflotranJacobianLevelOperator::applyBoundaryCondition(const int *var_id,
                                                       const int *var_components,
                                                       const int number_of_variables)
 {
+#ifdef DEBUG_CHECK_ASSERTIONS
+   assert(var_id!=NULL);
+   assert(var_components==NULL);
+#endif
+
+   // the commented out codee can be dealt with when AFAC and AFACx need to be run
+#if 0
+   // if this operator was created using createOperator
+   // the coefficients need to be initialized from a level in 
+   // the hierarchy before we proceed
+   if((!d_copy_schedule.isNull())&&d_coefficients_changed)
+   {
+      d_copy_schedule->fillData(0.0);
+      d_coefficients_changed=false;
+   }
+#endif
+
+   xfer::RefineAlgorithm<NDIM> ghost_cell_fill;
+   ghost_cell_fill.registerRefine(var_id[0], var_id[0], var_id[0], NULL);
+   
+   xfer::RefinePatchStrategy<NDIM> *ptr=NULL;
+      
+   if(!d_sibling_fill_cached)
+   {
+      d_sibling_fill_schedule = ghost_cell_fill.createSchedule(d_level, ptr);
+      d_sibling_fill_cached=true;
+   }
+   else
+   {
+#ifdef DEBUG_CHECK_ASSERTIONS
+      assert(ghost_cell_fill.checkConsistency(d_sibling_fill_schedule));
+#endif
+      ghost_cell_fill.resetSchedule(d_sibling_fill_schedule);
+   }
+   
+   d_sibling_fill_schedule->fillData(0.0);
+
+
+   const int ln = d_level->inHierarchy()?d_level->getLevelNumber():0;
+   // it is necessary to allow the case with d_cf_interpolant==NULL
+   // without aborting to handle restricted levels in AFAC for example
+   if(d_level->inHierarchy() 
+      &&(ln>0)
+      &&(d_interpolate_ghost_values==true)
+      &&(d_cf_interpolant!=NULL))
+   {      
+      bool cachedIsVariableInterpolationOrder=d_cf_interpolant->getVariableOrderInterpolation();
+      d_cf_interpolant->setVariableOrderInterpolation(d_variable_order_interpolation);
+      
+      const int idx=(var_idx==NULL)?0:var_idx[0];
+      d_cf_interpolant->interpolateGhostValues(ln,
+                                               d_tangent_interp_scheme,
+                                               d_normal_interp_scheme,
+                                               var_id[0],
+                                               idx);
+
+      d_cf_interpolant->setVariableOrderInterpolation(cachedIsVariableInterpolationOrder);
+   }
 }
 
 const int 
@@ -392,7 +455,7 @@ PflotranJacobianLevelOperator::getFromInput(const tbox::Pointer<tbox::Database> 
 #ifdef DEBUG_CHECK_ASSERTIONS
    assert(!db.isNull());
 #endif
-#if 0
+
    if (db->keyExists("tangent_interp_scheme")) 
    {
       d_tangent_interp_scheme = RefinementBoundaryInterpolation::lookupInterpolationScheme(db->getString("tangent_interp_scheme"));
@@ -464,6 +527,7 @@ PflotranJacobianLevelOperator::getFromInput(const tbox::Pointer<tbox::Database> 
    }
 
 
+#if 0
    if (db->keyExists("boundary_conditions")) 
    {
       // get the database object for boundary conditions

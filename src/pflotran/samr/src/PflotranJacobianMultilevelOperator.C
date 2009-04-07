@@ -214,6 +214,7 @@ PflotranJacobianMultilevelOperator::applyBoundaryCondition(const int ln,
                                                            const int number_of_variables,
                                                            const bool reset_ghost_values)
 {
+   d_level_operators[ln]->applyBoundaryCondition(var_id, var_idx, var_components, number_of_variables);
 }
 
 void
