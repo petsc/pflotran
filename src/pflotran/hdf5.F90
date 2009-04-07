@@ -17,7 +17,8 @@ module HDF5_module
 
 #ifdef USE_HDF5
   PetscMPIInt :: hdf5_err
-
+  PetscMPIInt :: io_rank
+  PetscInt :: broadcast_size = HDF5_BROADCAST_SIZE
 ! 64-bit stuff
 #ifdef PETSC_USE_64BIT_INDICES
 !#define HDF_NATIVE_INTEGER H5T_STD_I64LE  
@@ -72,7 +73,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
   integer(HID_T) :: file_id
   PetscInt, pointer :: indices(:)
   PetscInt :: num_indices
-  
+
   integer(HID_T) :: file_space_id
   integer(HID_T) :: memory_space_id
   integer(HID_T) :: data_set_id
@@ -148,6 +149,10 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
 #ifdef HDF5_BROADCAST
     if (option%myrank == option%io_rank) then                           
 #endif
+#ifdef VAMSI_HDF5
+   call printMsg(option," Entered VAMSI_HDF5 in HDF5MapLocalToNaturalIndices")
+   if (mod(option%global_rank,broadcast_size) == 0) then
+#endif   
       call PetscLogEventBegin(logging%event_h5dread_f, &
                               PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                               PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
@@ -161,7 +166,14 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
     if (option%mycommsize > 1) &
       call mpi_bcast(cell_ids,dims(1),MPI_INTEGER,option%io_rank, &
                      option%mycomm,ierr)
-#endif     
+#endif
+#ifdef VAMSI_HDF5
+   endif
+   if (option%mycommsize > 1) &
+      call mpi_bcast(cell_ids,dims(1),MPI_INTEGER,0, &
+                     option%iogroup,ierr)
+#endif  
+        
   call PetscLogEventBegin(logging%event_hash_map, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
@@ -323,6 +335,9 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
 #ifdef HDF5_BROADCAST
         if (option%myrank == option%io_rank) then                           
 #endif
+#ifdef VAMSI_HDF5
+   if (mod(option%global_rank,broadcast_size) == 0) then
+#endif   
           call PetscLogEventBegin(logging%event_h5dread_f, &
                                   PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                                   PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
@@ -337,6 +352,12 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
           call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION, &
                          option%io_rank,option%mycomm,ierr)
 #endif
+#ifdef VAMSI_HDF5
+   endif
+   if (option%mycommsize > 1) &
+          call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION, &
+                         0,option%iogroup,ierr)
+#endif  
         prev_real_count = real_count
         real_count = real_count + length(1)                  
       enddo
@@ -375,7 +396,39 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
     real_count = real_count + length(1)                  
   enddo
 #endif
-
+#ifdef VAMSI_HDF5
+   call printMsg(option," Entered VAMSI_HDF5 in HDF5ReadRealArray")
+  do 
+    if (real_count >= num_reals_in_file) exit
+    temp_int = num_reals_in_file-real_count
+    temp_int = min(temp_int,read_block_size)
+    if (dims(1) /= temp_int) then
+      if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
+      dims(1) = temp_int
+      call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+    endif
+    ! offset is zero-based
+    offset(1) = real_count
+    length(1) = dims(1)
+    call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
+                               length,hdf5_err,stride,stride) 
+   ! if (option%myrank == io_rank) then 
+   if (mod(option%global_rank,broadcast_size) == 0) then
+      call PetscLogEventBegin(logging%event_h5dread_f, &
+                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+      call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_buffer,dims, &
+                     hdf5_err,memory_space_id,file_space_id,prop_id)
+      call PetscLogEventEnd(logging%event_h5dread_f, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+    endif
+    if (option%mycommsize > 1) &
+      call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION, &
+                     0,option%iogroup,ierr)
+    real_count = real_count + length(1)                  
+  enddo
+#endif  
   deallocate(real_buffer)
   
   call h5pclose_f(prop_id,hdf5_err)
@@ -488,6 +541,9 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
 #ifdef HDF5_BROADCAST
         if (option%myrank == option%io_rank) then                           
 #endif
+#ifdef VAMSI_HDF5
+   if (mod(option%global_rank,broadcast_size) == 0) then
+#endif   
           call PetscLogEventBegin(logging%event_h5dread_f, &
                                   PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                                   PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
@@ -502,6 +558,12 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
           call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,option%io_rank, &
                          option%mycomm,ierr)
 #endif
+#ifdef VAMSI_HDF5
+   endif
+   if (option%mycommsize > 1) &
+          call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,0, &
+                         option%iogroup,ierr)
+#endif  
         prev_integer_count = integer_count
         integer_count = integer_count + length(1)                  
       enddo
@@ -540,7 +602,38 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
     integer_count = integer_count + length(1)                  
   enddo
 #endif
-
+#ifdef VAMSI_HDF5
+  do
+    if (integer_count >= num_integers_in_file) exit
+    temp_int = num_integers_in_file-integer_count
+    temp_int = min(temp_int,read_block_size)
+    if (dims(1) /= temp_int) then
+      if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
+      dims(1) = temp_int
+      call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+    endif
+    ! offset is zero-based
+    offset(1) = integer_count
+    length(1) = dims(1)
+    call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
+                               length,hdf5_err,stride,stride) 
+   ! if (option%myrank == option%io_rank) then 
+   if (mod(option%global_rank,broadcast_size) == 0) then
+      call PetscLogEventBegin(logging%event_h5dread_f, &
+                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+      call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer,dims, &
+                     hdf5_err,memory_space_id,file_space_id,prop_id)   
+      call PetscLogEventEnd(logging%event_h5dread_f, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+    endif
+    if (option%mycommsize > 1) &
+      call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,0, &
+                     option%iogroup,ierr)
+    integer_count = integer_count + length(1)                  
+  enddo
+#endif
   deallocate(integer_buffer)
   
   call h5pclose_f(prop_id,hdf5_err)
@@ -652,6 +745,9 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
 #ifdef HDF5_BROADCAST
         if (option%myrank == option%io_rank) then                           
 #endif
+#ifdef VAMSI_HDF5
+        if (mod(option%global_rank,broadcast_size) == 0) then
+#endif
           call PetscLogEventBegin(logging%event_h5dread_f, &
                                   PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                                   PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
@@ -666,6 +762,12 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
           call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,option%io_rank, &
                          option%mycomm,ierr)
 #endif
+#ifdef VAMSI_HDF5
+   endif
+   if (option%mycommsize > 1) &
+          call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,0, &
+                         option%iogroup,ierr)
+#endif  
         prev_integer_count = integer_count
         integer_count = integer_count + length(1)                  
       enddo
@@ -705,7 +807,39 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
     integer_count = integer_count + length(1)                  
   enddo
 #endif
-
+#ifdef VAMSI_HDF5
+  do
+    if (integer_count >= num_integers_in_file) exit
+    temp_int = num_integers_in_file-integer_count
+    temp_int = min(temp_int,read_block_size)
+    if (dims(1) /= temp_int) then
+      if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
+      dims(1) = temp_int
+      call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+    endif
+    ! offset is zero-based
+    offset(1) = integer_count
+    length(1) = dims(1)
+    call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
+                               length,hdf5_err,stride,stride) 
+  !  if (option%myrank == option%io_rank) then   
+  if (mod(option%global_rank,broadcast_size) == 0) then
+      call PetscLogEventBegin(logging%event_h5dread_f, &
+                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+                            
+      call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer,dims, &
+                     hdf5_err,memory_space_id,file_space_id,prop_id)   
+      call PetscLogEventEnd(logging%event_h5dread_f, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+    endif
+    if (option%mycommsize > 1) &
+      call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,0, &
+                     option%iogroup,ierr)
+    integer_count = integer_count + length(1)                  
+  enddo
+#endif
   deallocate(integer_buffer)
   
   call h5pclose_f(prop_id,hdf5_err)

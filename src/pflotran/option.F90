@@ -29,7 +29,8 @@ module Option_module
         
     PetscMPIInt :: io_rank
     PetscTruth :: broadcast_read
-    
+    MPI_Comm :: iogroup 
+    PetscInt :: broadcast_size 
     character(len=MAXSTRINGLENGTH) :: io_buffer
   
     PetscInt :: fid_out

@@ -51,7 +51,9 @@
   PetscInt :: test_int
   PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH) :: string
-
+  PetscInt :: color, key
+  PetscInt :: broadcast_size
+  
   type(stochastic_type), pointer :: stochastic
   type(simulation_type), pointer :: simulation
   type(realization_type), pointer :: realization
@@ -69,7 +71,12 @@
   option%myrank = option%global_rank
   option%mycommsize = option%global_commsize
   option%mygroup = option%global_group
-
+#ifdef VAMSI_HDF5
+  broadcast_size = HDF5_BROADCAST_SIZE
+  color = option%global_rank/ broadcast_size
+  key = option%global_rank
+  call MPI_Comm_split(option%global_comm,color,key,option%iogroup,ierr)
+#endif
   ! check for non-default input filename
   option%input_filename = "pflotran.in"
   string = '-pflotranin'
