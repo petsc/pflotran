@@ -2988,14 +2988,12 @@ subroutine RTMaxChange(realization)
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field 
-  type(grid_type), pointer :: grid 
   PetscReal, pointer :: dxx_ptr(:), xx_ptr(:), yy_ptr(:)
   
   PetscErrorCode :: ierr
   
   option => realization%option
   field => realization%field
-  grid => realization%patch%grid
 
   option%dcmax=0.D0
   
