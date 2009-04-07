@@ -37,6 +37,10 @@ ifdef chuan_co2
 CHUAN_FLAGS = -DCHUAN_CO2
 endif
 
+ifdef vamsi_hdf5
+  HDF5_FLAGS += -DVAMSI_HDF5
+endif
+
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) \
           $(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG) $(TEMP_FLAGS)\
  					$(CHUAN_FLAGS)
