@@ -10,7 +10,6 @@ syntax: glob
 *.xyp
 *.toc
 *.bst
-*.sty
 *.synctex.gz
 *.pdf
 .DS_Store
