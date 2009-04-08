@@ -41,6 +41,8 @@ using namespace std;
 #include "tbox/SAMRAIManager.h"
 #include "StandardTagAndInitialize.h"
 #include "tbox/Utilities.h"
+#include "tbox/Timer.h"
+#include "tbox/TimerManager.h"
 #include "VariableContext.h"
 #include "VariableDatabase.h"
 #include "PETSc_SAMRAIVectorReal.h"
@@ -77,6 +79,7 @@ int main( int argc, char *argv[] )
 {
    string input_file;
    string log_file;
+   bool is_from_restart = false;
   
    tbox::Pointer<hier::PatchHierarchy<NDIM> > hierarchy;
 
@@ -112,6 +115,22 @@ int main( int argc, char *argv[] )
    int mode =  app_database->getInteger("DriverMode");
 
    PflotranApplicationStrategy *pflotranApplication = NULL;
+
+   /*
+    * Setup the timer manager to trace timing statistics during execution
+    * of the code.  The list of timers is given in the tbox::TimerManager
+    * section of the input file.  Timing information is stored in the
+    * restart file.  Timers will automatically be initialized to their
+    * previous state if the run is restarted.  To reset timers to zero,
+    * call the resetAllTimers() function as shown.
+    */
+   tbox::TimerManager::createManager(input_db->getDatabase("TimerManager"));
+   if (is_from_restart) 
+   {
+      tbox::TimerManager::getManager()->resetAllTimers();
+   }
+
+   input_db->getDatabase("TimerManager")->printClassData(tbox::plog);
 
    if(mode==1)
    {
@@ -168,11 +187,32 @@ int main( int argc, char *argv[] )
 
    void *p_pflotran_sim = NULL;
 
+   /*
+    * Initialize AMR hierarchy configuration and data on all patches
+    * at initial time.  Close restart file after all simulation state
+    * has been reconstructed.  Also, write initial state for
+    * visualization.  Note that we also start a timer for the
+    * simulation part of the main program.
+    */
+   static tbox::Pointer<tbox::Timer> main_timer = 
+      tbox::TimerManager::getManager()->getTimer("apps::main::main");
+
+   main_timer->start();
+
+
    f_create_simulation_(&p_pflotran_sim, (void **)&pflotranApplication);
 
    f_initialize_simulation_(&p_pflotran_sim);
 
    f_stepper_run_(&p_pflotran_sim);
+
+   /*
+    * At conclusion of simulation, stop timer and deallocate objects.
+    */
+   main_timer->stop();
+
+
+   tbox::TimerManager::getManager()->print();
 
    /* 
     * That's all, folks!
