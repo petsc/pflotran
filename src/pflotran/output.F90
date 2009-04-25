@@ -6032,7 +6032,7 @@ subroutine OutputMassBalanceNew(realization)
     
   endif     
 
-100 format(100es12.4)
+100 format(100es14.6)
 110 format(100es14.6)
 
   ! write time
