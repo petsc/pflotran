@@ -5990,6 +5990,8 @@ subroutine OutputMassBalanceNew(realization)
           case(RICHARDS_MODE)
             write(fid,'(a)',advance="no") ',"' // &
               trim(boundary_condition%name) // ' Water Mass [kg]"'
+            write(fid,'(a)',advance="no") ',"' // &
+              trim(boundary_condition%name) // ' Water Mass [kg/s]"'
         end select
         
         if (option%ntrandof > 0) then
@@ -5998,6 +6000,14 @@ subroutine OutputMassBalanceNew(realization)
               write(fid,'(a)',advance="no") ',"' // &
                   trim(boundary_condition%name) // ' ' // &
                   trim(reaction%primary_species_names(i)) // ' [mol]"'
+            endif
+          enddo
+
+          do i=1,reaction%ncomp
+            if (reaction%primary_species_print(i)) then
+              write(fid,'(a)',advance="no") ',"' // &
+                  trim(boundary_condition%name) // ' ' // &
+                  trim(reaction%primary_species_names(i)) // ' [mol/s]"'
             endif
           enddo
         endif
@@ -6032,7 +6042,7 @@ subroutine OutputMassBalanceNew(realization)
     
   endif     
 
-100 format(100es12.4)
+100 format(100es14.6)
 110 format(100es14.6)
 
   ! write time
@@ -6081,9 +6091,25 @@ subroutine OutputMassBalanceNew(realization)
 
     offset = boundary_condition%connection_set%offset
     if (option%nflowdof > 0) then
+      ! print out cumulative H2O flux
       sum_kg = 0.d0
       do iconn = 1, boundary_condition%connection_set%num_connections
         sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance
+      enddo
+
+      call MPI_Reduce(sum_kg,sum_kg_global, &
+                      option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      option%io_rank,option%mycomm,ierr)
+                          
+      if (option%myrank == option%io_rank) then
+        ! change sign for positive in / negative out
+        write(fid,110,advance="no") -sum_kg_global
+      endif
+
+      ! print out H2O flux
+      sum_kg = 0.d0
+      do iconn = 1, boundary_condition%connection_set%num_connections
+        sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance_delta
       enddo
 
       call MPI_Reduce(sum_kg,sum_kg_global, &
@@ -6098,6 +6124,7 @@ subroutine OutputMassBalanceNew(realization)
     
     if (option%ntrandof > 0) then
 
+      ! print out cumulative boundary flux
       sum_mol = 0.d0
       do iconn = 1, boundary_condition%connection_set%num_connections
         sum_mol = sum_mol + rt_aux_vars_bc(offset+iconn)%mass_balance
@@ -6107,6 +6134,27 @@ subroutine OutputMassBalanceNew(realization)
                       MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
 
+      if (option%myrank == option%io_rank) then
+        ! change sign for positive in / negative out
+        do iphase = 1, option%nphase
+          do icomp = 1, reaction%ncomp
+            if (reaction%primary_species_print(icomp)) then
+              write(fid,110,advance="no") -sum_mol_global(icomp,iphase)
+            endif
+          enddo
+        enddo
+      endif
+    
+      ! print out boundary flux
+      sum_mol = 0.d0
+      do iconn = 1, boundary_condition%connection_set%num_connections
+        sum_mol = sum_mol + rt_aux_vars_bc(offset+iconn)%mass_balance_delta 
+      enddo
+
+      call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*reaction%ncomp, &
+                      MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      option%io_rank,option%mycomm,ierr)
+                      
       if (option%myrank == option%io_rank) then
         ! change sign for positive in / negative out
         do iphase = 1, option%nphase

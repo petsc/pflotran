@@ -863,57 +863,57 @@ subroutine TBCFluxAdv(ibndtype, &
   do 
     iphase = iphase + 1
     if (iphase > option%nphase) exit
-      q = velocity(iphase)
+    q = velocity(iphase)
   
-      sat_up = global_aux_var_up%sat(iphase)
-      sat_dn = global_aux_var_dn%sat(iphase)
+    sat_up = global_aux_var_up%sat(iphase)
+    sat_dn = global_aux_var_dn%sat(iphase)
 
-      select case(ibndtype)
-        case(DIRICHLET_BC)
-          if (sat_up > eps .and. sat_dn > eps) then
+    select case(ibndtype)
+      case(DIRICHLET_BC)
+        if (sat_up > eps .and. sat_dn > eps) then
           ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-            weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
+          weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
            ! need to account for multiple phases
            ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-            if( iphase == 2) diffusion = weight*(rt_parameter%dispersivity*q/por_dn+ &
+          if( iphase == 2) diffusion = weight*(rt_parameter%dispersivity*q/por_dn+ &
                                                  rt_parameter%diffusion_coefficient(iphase))
-          endif    
-        case(DIRICHLET_ZERO_GRADIENT_BC)
-          if (q >= 0.d0) then
+        endif    
+      case(DIRICHLET_ZERO_GRADIENT_BC)
+        if (q >= 0.d0) then
            ! same as dirichlet above
-            if (sat_up > eps .and. sat_dn > eps) then
+          if (sat_up > eps .and. sat_dn > eps) then
             ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-              weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
+            weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
           ! need to account for multiple phases
           ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-              diffusion = 0.d0
-              if(iphase == 2) diffusion = weight*(rt_parameter%dispersivity*q/por_dn+ &
+            diffusion = 0.d0
+            if(iphase == 2) diffusion = weight*(rt_parameter%dispersivity*q/por_dn+ &
                                                   rt_parameter%diffusion_coefficient(iphase))
-            endif    
-          endif
-    case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
-  end select
+          endif    
+        endif
+      case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
+    end select
 
   !upstream weighting
   ! units = (m^3 water/m^2 bulk/sec)
-  if (q > 0.d0) then
-    coef_up =  diffusion+q
-    coef_dn = -diffusion
-  else
-    coef_up =  diffusion
-    coef_dn = -diffusion+q
-  endif
+    if (q > 0.d0) then
+      coef_up =  diffusion+q
+      coef_dn = -diffusion
+    else
+      coef_up =  diffusion
+      coef_dn = -diffusion+q
+    endif
 
   ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)*(1000 L water/m^3 water)
   !       = L water/sec
-  coef_up = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
-  coef_dn = coef_dn*area*1000.d0
+    coef_up = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
+    coef_dn = coef_dn*area*1000.d0
 
   ! units = (L water/sec)*(mol/L) = mol/s  
-  Res(1:option%ntrandof) = Res(1:option%ntrandof) + &
+    Res(1:option%ntrandof) = Res(1:option%ntrandof) + &
                            coef_up*rt_aux_var_up%total(1:option%ntrandof,iphase) + &
                            coef_dn*rt_aux_var_dn%total(1:option%ntrandof,iphase)  
- enddo
+  enddo
 #endif
 
 end subroutine TBCFluxAdv
