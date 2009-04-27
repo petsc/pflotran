@@ -5991,7 +5991,8 @@ subroutine OutputMassBalanceNew(realization)
             write(fid,'(a)',advance="no") ',"' // &
               trim(boundary_condition%name) // ' Water Mass [kg]"'
             write(fid,'(a)',advance="no") ',"' // &
-              trim(boundary_condition%name) // ' Water Mass [kg/s]"'
+              trim(boundary_condition%name) // ' Water Mass [kg/' // &
+              trim(output_option%tunit) // ']"'
         end select
         
         if (option%ntrandof > 0) then
@@ -6007,7 +6008,8 @@ subroutine OutputMassBalanceNew(realization)
             if (reaction%primary_species_print(i)) then
               write(fid,'(a)',advance="no") ',"' // &
                   trim(boundary_condition%name) // ' ' // &
-                  trim(reaction%primary_species_names(i)) // ' [mol/s]"'
+                  trim(reaction%primary_species_names(i)) // ' [mol/' // &
+                  trim(output_option%tunit) // ']"'
             endif
           enddo
         endif
@@ -6042,8 +6044,8 @@ subroutine OutputMassBalanceNew(realization)
     
   endif     
 
-100 format(100es14.6)
-110 format(100es14.6)
+100 format(100es16.8)
+110 format(100es16.8)
 
   ! write time
   if (option%myrank == option%io_rank) then
@@ -6118,7 +6120,7 @@ subroutine OutputMassBalanceNew(realization)
                           
       if (option%myrank == option%io_rank) then
         ! change sign for positive in / negative out
-        write(fid,110,advance="no") -sum_kg_global
+        write(fid,110,advance="no") -sum_kg_global*output_option%tconv
       endif
     endif
     
@@ -6160,7 +6162,8 @@ subroutine OutputMassBalanceNew(realization)
         do iphase = 1, option%nphase
           do icomp = 1, reaction%ncomp
             if (reaction%primary_species_print(icomp)) then
-              write(fid,110,advance="no") -sum_mol_global(icomp,iphase)
+              write(fid,110,advance="no") -sum_mol_global(icomp,iphase)* &
+                                          output_option%tconv
             endif
           enddo
         enddo
