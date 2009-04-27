@@ -380,7 +380,7 @@ PflotranApplicationStrategy::interpolateLocalToLocalVector(tbox::Pointer< solv::
 
 #ifdef DEBUG_CHECK_ASSERTIONS
     assert(srcDOF>=1);
-    assert(srcDOF=dstDOF);
+    assert(srcDOF==dstDOF);
 #endif
 
     xfer::RefineAlgorithm<NDIM> ghost_cell_fill;
@@ -492,8 +492,9 @@ PflotranApplicationStrategy::interpolateGlobalToLocalVector(tbox::Pointer< solv:
     tbox::Pointer< pdat::CCellDataFactory< NDIM, double > > globalFactory = globalVar->getPatchDataFactory(); 
     int globalDOF = globalFactory->getDefaultDepth();
 
-    assert(localDOF=globalDOF);
-
+#ifdef DEBUG_CHECK_ASSERTIONS
+    assert(localDOF==globalDOF);
+#endif
     xfer::RefineAlgorithm<NDIM> ghost_cell_fill;
 
     ghost_cell_fill.registerRefine(dest_id,
