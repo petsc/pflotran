@@ -105,6 +105,17 @@ void Polygon::createPlumePolygon() {
 
 }
 
+void Polygon::createMidIFCPolygon() {
+
+  num_points = 6;
+  x = new PetscReal[num_points];
+  y = new PetscReal[num_points];
+
+  PetscInt n = 0;
+  x[n] = 1.; y[n++] = 1.;
+
+}
+
 PetscInt Polygon::pointInPolygon(PetscReal x_, PetscReal y_) {
 
   PetscInt inside = 0;
