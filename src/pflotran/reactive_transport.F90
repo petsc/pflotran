@@ -1351,218 +1351,274 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
 
     ! reinitialize nly
     nly = grid%structured_grid%nly  
-  endif
 
-#ifdef AMR_FLUX
-#if 1
-  ! Interior Advective Flux Terms -----------------------------------
-  connection_set_list => grid%internal_connection_set_list
-  cur_connection_set => connection_set_list%first
-  sum_connection = 0  
-  do 
-    if (.not.associated(cur_connection_set)) exit
-    do iconn = 1, cur_connection_set%num_connections
-      sum_connection = sum_connection + 1
+    ! Interior Advective Flux Terms -----------------------------------
+    connection_set_list => grid%internal_connection_set_list
+    cur_connection_set => connection_set_list%first
+    sum_connection = 0  
+    do 
+       if (.not.associated(cur_connection_set)) exit
+       do iconn = 1, cur_connection_set%num_connections
+          sum_connection = sum_connection + 1
+          
+          ghosted_id_up = cur_connection_set%id_up(iconn)
+          ghosted_id_dn = cur_connection_set%id_dn(iconn)
+          
+          local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
+          local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
+          
+          if (associated(patch%imat)) then
+             if (patch%imat(ghosted_id_up) <= 0 .or.  &
+                  patch%imat(ghosted_id_dn) <= 0) cycle
+          endif
 
-      ghosted_id_up = cur_connection_set%id_up(iconn)
-      ghosted_id_dn = cur_connection_set%id_dn(iconn)
-
-      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
-      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
-
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id_up) <= 0 .or.  &
-            patch%imat(ghosted_id_dn) <= 0) cycle
-      endif
-
-      call TFluxAdv(rt_aux_vars(ghosted_id_up),global_aux_vars(ghosted_id_up), &
-                    rt_aux_vars(ghosted_id_dn),global_aux_vars(ghosted_id_dn), &
-                    cur_connection_set%area(iconn),rt_parameter,option, &
-                    patch%internal_velocities(:,iconn),Res)
-
-      if (local_id_up>0) then
-        iend = local_id_up*reaction%ncomp
-        istart = iend-reaction%ncomp+1
-        r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)
-      endif
-   
-      if (local_id_dn>0) then
-        iend = local_id_dn*reaction%ncomp
-        istart = iend-reaction%ncomp+1
-        r_p(istart:iend) = r_p(istart:iend) - Res(1:reaction%ncomp)
-      endif
-      
-      if (option%store_solute_fluxes) then
-        patch%internal_fluxes(iphase,1:reaction%ncomp,iconn) = &
-          Res(1:reaction%ncomp)
-      endif
-      
+          call TFluxAdv(rt_aux_vars(ghosted_id_up),global_aux_vars(ghosted_id_up), &
+               rt_aux_vars(ghosted_id_dn),global_aux_vars(ghosted_id_dn), &
+               cur_connection_set%area(iconn),rt_parameter,option, &
+               patch%internal_velocities(:,iconn),Res)
+          
+          if (local_id_up>0) then
+             iend = local_id_up*reaction%ncomp
+             istart = iend-reaction%ncomp+1
+             r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)
+          endif
+          
+          if (local_id_dn>0) then
+             iend = local_id_dn*reaction%ncomp
+             istart = iend-reaction%ncomp+1
+             r_p(istart:iend) = r_p(istart:iend) - Res(1:reaction%ncomp)
+          endif
+          
+          if (option%store_solute_fluxes) then
+             patch%internal_fluxes(iphase,1:reaction%ncomp,iconn) = &
+                  Res(1:reaction%ncomp)
+          endif
+          
+       enddo
+       cur_connection_set => cur_connection_set%next
     enddo
-    cur_connection_set => cur_connection_set%next
-  enddo    
-#endif
-#if 1
-  ! Interior Diffusive Flux Terms -----------------------------------
-  connection_set_list => grid%internal_connection_set_list
-  cur_connection_set => connection_set_list%first
-  sum_connection = 0  
-  do 
-    if (.not.associated(cur_connection_set)) exit
-    do iconn = 1, cur_connection_set%num_connections
-      sum_connection = sum_connection + 1
 
-      ghosted_id_up = cur_connection_set%id_up(iconn)
-      ghosted_id_dn = cur_connection_set%id_dn(iconn)
-
-      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
-      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
-
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id_up) <= 0 .or.  &
-            patch%imat(ghosted_id_dn) <= 0) cycle
-      endif
-
-      fraction_upwind = cur_connection_set%dist(-1,iconn)
-      distance = cur_connection_set%dist(0,iconn)
-      ! distance = scalar - magnitude of distance
-      dist_up = distance*fraction_upwind
-      dist_dn = distance-dist_up ! should avoid truncation error
-
-      call TFluxDiff(rt_aux_vars(ghosted_id_up),global_aux_vars(ghosted_id_up), &
-                     porosity_loc_p(ghosted_id_up),tor_loc_p(ghosted_id_up), &
-                     dist_up, &
-                     rt_aux_vars(ghosted_id_dn),global_aux_vars(ghosted_id_dn), &
-                     porosity_loc_p(ghosted_id_dn),tor_loc_p(ghosted_id_dn), &
-                     dist_up, &
-                     cur_connection_set%area(iconn),rt_parameter,option, &
-                     patch%internal_velocities(:,iconn),Res)
-
-      if (local_id_up>0) then
-        iend = local_id_up*reaction%ncomp
-        istart = iend-reaction%ncomp+1
-        r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)
-      endif
-   
-      if (local_id_dn>0) then
-        iend = local_id_dn*reaction%ncomp
-        istart = iend-reaction%ncomp+1
-        r_p(istart:iend) = r_p(istart:iend) - Res(1:reaction%ncomp)
-      endif
-      
-      if (option%store_solute_fluxes) then
-        patch%internal_fluxes(iphase,1:reaction%ncomp,iconn) = &
-          Res(1:reaction%ncomp)
-      endif
-      
+    ! Interior Diffusive Flux Terms -----------------------------------
+    connection_set_list => grid%internal_connection_set_list
+    cur_connection_set => connection_set_list%first
+    sum_connection = 0  
+    do 
+       if (.not.associated(cur_connection_set)) exit
+       do iconn = 1, cur_connection_set%num_connections
+          sum_connection = sum_connection + 1
+          
+          ghosted_id_up = cur_connection_set%id_up(iconn)
+          ghosted_id_dn = cur_connection_set%id_dn(iconn)
+          
+          local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
+          local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
+          
+          if (associated(patch%imat)) then
+             if (patch%imat(ghosted_id_up) <= 0 .or.  &
+                  patch%imat(ghosted_id_dn) <= 0) cycle
+          endif
+          
+          fraction_upwind = cur_connection_set%dist(-1,iconn)
+          distance = cur_connection_set%dist(0,iconn)
+          ! distance = scalar - magnitude of distance
+          dist_up = distance*fraction_upwind
+          dist_dn = distance-dist_up ! should avoid truncation error
+          
+          call TFluxDiff(rt_aux_vars(ghosted_id_up),global_aux_vars(ghosted_id_up), &
+               porosity_loc_p(ghosted_id_up),tor_loc_p(ghosted_id_up), &
+               dist_up, &
+               rt_aux_vars(ghosted_id_dn),global_aux_vars(ghosted_id_dn), &
+               porosity_loc_p(ghosted_id_dn),tor_loc_p(ghosted_id_dn), &
+               dist_up, &
+               cur_connection_set%area(iconn),rt_parameter,option, &
+               patch%internal_velocities(:,iconn),Res)
+          
+          if (sum_connection <= max_x_conn) then
+             direction = 0
+             if(mod(mod(ghosted_id_dn,ngxy),ngx).eq.0) then
+                flux_id = ((ghosted_id_dn/ngxy)-1)*(nlx+1)*nly + &
+                     ((mod(ghosted_id_dn,ngxy))/ngx-1)*(nlx+1)
+             else
+                flux_id = ((ghosted_id_dn/ngxy)-1)*(nlx+1)*nly + &
+                     ((mod(ghosted_id_dn,ngxy))/ngx-1)*(nlx+1)+ &
+                     mod(mod(ghosted_id_dn,ngxy),ngx)-1
+             endif
+             
+          else if (sum_connection <= max_y_conn) then
+             direction = 1
+             flux_id = ((ghosted_id_dn/ngxy)-1)*nlx*(nly+1) + &
+                  ((mod(ghosted_id_dn,ngxy))/ngx-1)*nlx + &
+                  mod(mod(ghosted_id_dn,ngxy),ngx)-1
+          else
+             direction = 2
+             flux_id = ((ghosted_id_dn/ngxy)-1)*nlx*nly &
+                  +((mod(ghosted_id_dn,ngxy))/ngx-1)*nlx &
+                  +mod(mod(ghosted_id_dn,ngxy),ngx)-1
+          endif
+          
+          iend = flux_id*reaction%ncomp
+          istart = iend-reaction%ncomp+1         
+          fluxes(direction)%flux_p(istart:iend) = Res(1:reaction%ncomp)
+          
+          if (option%store_solute_fluxes) then
+             patch%internal_fluxes(iphase,1:reaction%ncomp,iconn) = &
+                  Res(1:reaction%ncomp)
+          endif
+       enddo
+       cur_connection_set => cur_connection_set%next
+    enddo    
+  
+    ! Advective Boundary Flux Terms -----------------------------------
+    boundary_condition => patch%boundary_conditions%first
+    sum_connection = 0    
+    do 
+       if (.not.associated(boundary_condition)) exit
+       
+       cur_connection_set => boundary_condition%connection_set
+       
+       do iconn = 1, cur_connection_set%num_connections
+          sum_connection = sum_connection + 1
+          
+          local_id = cur_connection_set%id_dn(iconn)
+          ghosted_id = grid%nL2G(local_id)
+          
+          if (associated(patch%imat)) then
+             if (patch%imat(ghosted_id) <= 0) cycle
+          endif
+          
+          call TBCFluxAdv(boundary_condition%tran_condition%itype, &
+               rt_aux_vars_bc(sum_connection), &
+               global_aux_vars_bc(sum_connection), &
+               rt_aux_vars(ghosted_id), &
+               global_aux_vars(ghosted_id), &
+               cur_connection_set%area(iconn), &
+               rt_parameter,option, &
+               patch%boundary_velocities(:,sum_connection),Res)
+          
+          iend = local_id*reaction%ncomp
+          istart = iend-reaction%ncomp+1
+          r_p(istart:iend)= r_p(istart:iend) - Res(1:reaction%ncomp)
+          
+          if (option%store_solute_fluxes) then
+             patch%boundary_fluxes(iphase,1:reaction%ncomp,sum_connection) = &
+                  -Res(1:reaction%ncomp)
+          endif
+          
+          if (option%compute_mass_balance_new) then
+             ! contribution to boundary 
+             rt_aux_vars_bc(sum_connection)%mass_balance_delta(:,iphase) = &
+                  rt_aux_vars_bc(sum_connection)%mass_balance_delta(:,iphase) - Res
+             !        ! contribution to internal 
+             !        rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) = &
+             !          rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) + Res
+          endif
+          
+       enddo
+       boundary_condition => boundary_condition%next
     enddo
-    cur_connection_set => cur_connection_set%next
-  enddo    
-#endif
-#if 1
-  ! Advective Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
-  sum_connection = 0    
-  do 
-    if (.not.associated(boundary_condition)) exit
     
-    cur_connection_set => boundary_condition%connection_set
-    
-    do iconn = 1, cur_connection_set%num_connections
-      sum_connection = sum_connection + 1
-    
-      local_id = cur_connection_set%id_dn(iconn)
-      ghosted_id = grid%nL2G(local_id)
+    ! Diffusive Boundary Flux Terms -----------------------------------
+    boundary_condition => patch%boundary_conditions%first
+    sum_connection = 0    
+    do 
+       if (.not.associated(boundary_condition)) exit
+       
+       cur_connection_set => boundary_condition%connection_set
+       
+       do iconn = 1, cur_connection_set%num_connections
+          sum_connection = sum_connection + 1
+          
+          local_id = cur_connection_set%id_dn(iconn)
+          ghosted_id = grid%nL2G(local_id)
+          
+          if (associated(patch%imat)) then
+             if (patch%imat(ghosted_id) <= 0) cycle
+          endif
+          
+          call TBCFluxDiff(boundary_condition%tran_condition%itype, &
+               rt_aux_vars_bc(sum_connection), &
+               global_aux_vars_bc(sum_connection), &
+               rt_aux_vars(ghosted_id), &
+               global_aux_vars(ghosted_id), &
+               porosity_loc_p(ghosted_id), &
+               tor_loc_p(ghosted_id), &
+               cur_connection_set%dist(0,iconn), &
+               cur_connection_set%area(iconn), &
+               rt_parameter,option, &
+               patch%boundary_velocities(:,sum_connection),Res)
+          
+          direction =  (boundary_condition%region%faces(iconn)-1)/2
+          
+          ! the ghosted_id gives the id of the cell. Since the
+          ! flux_id is based on the ghosted_id of the downwind
+          ! cell this has to be adjusted in the case of the east, 
+          ! north and top faces before the flux_id is computed
+          select case(boundary_condition%region%faces(iconn)) 
+          case(WEST_FACE)
+             flux_id = ((ghosted_id/ngxy)-1)*(nlx+1)*nly + &
+                  ((mod(ghosted_id,ngxy))/ngx-1)*(nlx+1)+ &
+                  mod(mod(ghosted_id,ngxy),ngx)-1
+             istart = flux_id*reaction%ncomp
+             iend = istart+reaction%ncomp-1
+             fluxes(direction)%flux_p(istart:iend) = Res(1:reaction%ncomp)
+          case(EAST_FACE)
+             ghosted_id = ghosted_id+1
+             flux_id = ((ghosted_id/ngxy)-1)*(nlx+1)*nly + &
+                  ((mod(ghosted_id,ngxy))/ngx-1)*(nlx+1)
+             istart = flux_id*reaction%ncomp
+             iend = istart+reaction%ncomp-1
+             fluxes(direction)%flux_p(istart:iend) = -Res(1:reaction%ncomp)
+          case(SOUTH_FACE)
+             flux_id = ((ghosted_id/ngxy)-1)*nlx*(nly+1) + &
+                  ((mod(ghosted_id,ngxy))/ngx-1)*nlx + &
+                  mod(mod(ghosted_id,ngxy),ngx)-1
+             istart = flux_id*reaction%ncomp
+             iend = istart+reaction%ncomp-1
+             fluxes(direction)%flux_p(istart:iend) = Res(1:reaction%ncomp)
+          case(NORTH_FACE)
+             ghosted_id = ghosted_id+ngx
+             flux_id = ((ghosted_id/ngxy)-1)*nlx*(nly+1) + &
+                  ((mod(ghosted_id,ngxy))/ngx-1)*nlx + &
+                  mod(mod(ghosted_id,ngxy),ngx)-1
+             istart = flux_id*reaction%ncomp
+             iend = istart+reaction%ncomp-1
+             fluxes(direction)%flux_p(istart:iend) = -Res(1:reaction%ncomp)
+          case(BOTTOM_FACE)
+             flux_id = ((ghosted_id/ngxy)-1)*nlx*nly &
+                  +((mod(ghosted_id,ngxy))/ngx-1)*nlx &
+                  +mod(mod(ghosted_id,ngxy),ngx)-1
+             istart = flux_id*reaction%ncomp
+             iend = istart+reaction%ncomp-1
+             fluxes(direction)%flux_p(istart:iend) = Res(1:reaction%ncomp)
+          case(TOP_FACE)
+             ghosted_id = ghosted_id+ngxy
+             flux_id = ((ghosted_id/ngxy)-1)*nlx*nly &
+                  +((mod(ghosted_id,ngxy))/ngx-1)*nlx &
+                  +mod(mod(ghosted_id,ngxy),ngx)-1
+             istart = flux_id*reaction%ncomp
+             iend = istart+reaction%ncomp-1
+             fluxes(direction)%flux_p(istart:iend) = -Res(1:reaction%ncomp)
+         end select
 
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+         if (option%store_solute_fluxes) then
+            patch%boundary_fluxes(iphase,1:reaction%ncomp,sum_connection) = &
+                 -Res(1:reaction%ncomp)
+         endif
+         
+         if (option%compute_mass_balance_new) then
+            ! contribution to boundary 
+            rt_aux_vars_bc(sum_connection)%mass_balance_delta(:,iphase) = &
+                 rt_aux_vars_bc(sum_connection)%mass_balance_delta(:,iphase) - Res
+            !        ! contribution to internal 
+            !        rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) = &
+            !          rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) + Res
+         endif
+         
+       enddo
+       boundary_condition => boundary_condition%next
+   enddo
 
-      call TBCFluxAdv(boundary_condition%tran_condition%itype, &
-                      rt_aux_vars_bc(sum_connection), &
-                      global_aux_vars_bc(sum_connection), &
-                      rt_aux_vars(ghosted_id), &
-                      global_aux_vars(ghosted_id), &
-                      cur_connection_set%area(iconn), &
-                      rt_parameter,option, &
-                      patch%boundary_velocities(:,sum_connection),Res)
- 
-      iend = local_id*reaction%ncomp
-      istart = iend-reaction%ncomp+1
-      r_p(istart:iend)= r_p(istart:iend) - Res(1:reaction%ncomp)
- 
-      if (option%store_solute_fluxes) then
-        patch%boundary_fluxes(iphase,1:reaction%ncomp,sum_connection) = &
-          -Res(1:reaction%ncomp)
-      endif
- 
-       if (option%compute_mass_balance_new) then
-        ! contribution to boundary 
-        rt_aux_vars_bc(sum_connection)%mass_balance_delta(:,iphase) = &
-          rt_aux_vars_bc(sum_connection)%mass_balance_delta(:,iphase) - Res
-!        ! contribution to internal 
-!        rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) = &
-!          rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) + Res
-      endif  
-      
-    enddo
-    boundary_condition => boundary_condition%next
-  enddo
-#endif  
-#if 1
-  ! Diffusive Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
-  sum_connection = 0    
-  do 
-    if (.not.associated(boundary_condition)) exit
-    
-    cur_connection_set => boundary_condition%connection_set
-    
-    do iconn = 1, cur_connection_set%num_connections
-      sum_connection = sum_connection + 1
-    
-      local_id = cur_connection_set%id_dn(iconn)
-      ghosted_id = grid%nL2G(local_id)
-
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
-
-      call TBCFluxDiff(boundary_condition%tran_condition%itype, &
-                       rt_aux_vars_bc(sum_connection), &
-                       global_aux_vars_bc(sum_connection), &
-                       rt_aux_vars(ghosted_id), &
-                       global_aux_vars(ghosted_id), &
-                       porosity_loc_p(ghosted_id), &
-                       tor_loc_p(ghosted_id), &
-                       cur_connection_set%dist(0,iconn), &
-                       cur_connection_set%area(iconn), &
-                       rt_parameter,option, &
-                       patch%boundary_velocities(:,sum_connection),Res)
- 
-      iend = local_id*reaction%ncomp
-      istart = iend-reaction%ncomp+1
-      r_p(istart:iend)= r_p(istart:iend) - Res(1:reaction%ncomp)
- 
-      if (option%store_solute_fluxes) then
-        patch%boundary_fluxes(iphase,1:reaction%ncomp,sum_connection) = &
-          -Res(1:reaction%ncomp)
-      endif
- 
-       if (option%compute_mass_balance_new) then
-        ! contribution to boundary 
-        rt_aux_vars_bc(sum_connection)%mass_balance_delta(:,iphase) = &
-          rt_aux_vars_bc(sum_connection)%mass_balance_delta(:,iphase) - Res
-!        ! contribution to internal 
-!        rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) = &
-!          rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) + Res
-      endif  
-      
-    enddo
-    boundary_condition => boundary_condition%next
-  enddo
-#endif  
-#else ! #ifdef AMR_FLUX
-#if 1
+  else
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
@@ -1602,58 +1658,27 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
       rt_aux_vars(local_id_up)%mass_balance_delta(:,iphase) = &
         rt_aux_vars(local_id_up)%mass_balance_delta(:,iphase) - Res        
 #endif
-
-      if (option%use_samr) then
-         if (sum_connection <= max_x_conn) then
-            direction = 0
-            if(mod(mod(ghosted_id_dn,ngxy),ngx).eq.0) then
-               flux_id = ((ghosted_id_dn/ngxy)-1)*(nlx+1)*nly + &
-                    ((mod(ghosted_id_dn,ngxy))/ngx-1)*(nlx+1)
-            else
-               flux_id = ((ghosted_id_dn/ngxy)-1)*(nlx+1)*nly + &
-                    ((mod(ghosted_id_dn,ngxy))/ngx-1)*(nlx+1)+ &
-                    mod(mod(ghosted_id_dn,ngxy),ngx)-1
-            endif
-            
-         else if (sum_connection <= max_y_conn) then
-            direction = 1
-            flux_id = ((ghosted_id_dn/ngxy)-1)*nlx*(nly+1) + &
-                 ((mod(ghosted_id_dn,ngxy))/ngx-1)*nlx + &
-                 mod(mod(ghosted_id_dn,ngxy),ngx)-1
-         else
-            direction = 2
-            flux_id = ((ghosted_id_dn/ngxy)-1)*nlx*nly &
-                 +((mod(ghosted_id_dn,ngxy))/ngx-1)*nlx &
-                 +mod(mod(ghosted_id_dn,ngxy),ngx)-1
-         endif
-         istart = flux_id*reaction%ncomp
-         iend = istart+reaction%ncomp-1
-         fluxes(direction)%flux_p(istart:iend) = Res(1:reaction%ncomp)
+      
+      if (local_id_up>0) then
+         iend = local_id_up*reaction%ncomp
+         istart = iend-reaction%ncomp+1
+         r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)
       endif
       
-      if(.not.option%use_samr) then
-         if (local_id_up>0) then
-            iend = local_id_up*reaction%ncomp
-            istart = iend-reaction%ncomp+1
-            r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)
-         endif
-         
-         if (local_id_dn>0) then
-            iend = local_id_dn*reaction%ncomp
-            istart = iend-reaction%ncomp+1
-            r_p(istart:iend) = r_p(istart:iend) - Res(1:reaction%ncomp)
-         endif
+      if (local_id_dn>0) then
+         iend = local_id_dn*reaction%ncomp
+         istart = iend-reaction%ncomp+1
+         r_p(istart:iend) = r_p(istart:iend) - Res(1:reaction%ncomp)
       endif
+
       if (option%store_solute_fluxes) then
-        patch%internal_fluxes(iphase,1:reaction%ncomp,iconn) = &
-          Res(1:reaction%ncomp)
+         patch%internal_fluxes(iphase,1:reaction%ncomp,iconn) = &
+              Res(1:reaction%ncomp)
       endif
       
     enddo
     cur_connection_set => cur_connection_set%next
   enddo    
-#endif
-#if 1
   ! Boundary Flux Terms -----------------------------------
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
@@ -1684,71 +1709,16 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
                    rt_parameter,option, &
                    patch%boundary_velocities(:,sum_connection),Res)
  
-      if (option%use_samr) then
-         direction =  (boundary_condition%region%faces(iconn)-1)/2
-         
-         ! the ghosted_id gives the id of the cell. Since the
-         ! flux_id is based on the ghosted_id of the downwind
-         ! cell this has to be adjusted in the case of the east, 
-         ! north and top faces before the flux_id is computed
-         select case(boundary_condition%region%faces(iconn)) 
-         case(WEST_FACE)
-            flux_id = ((ghosted_id/ngxy)-1)*(nlx+1)*nly + &
-                 ((mod(ghosted_id,ngxy))/ngx-1)*(nlx+1)+ &
-                 mod(mod(ghosted_id,ngxy),ngx)-1
-            istart = flux_id*reaction%ncomp
-            iend = istart+reaction%ncomp-1
-            fluxes(direction)%flux_p(istart:iend) = Res(1:reaction%ncomp)
-         case(EAST_FACE)
-            ghosted_id = ghosted_id+1
-            flux_id = ((ghosted_id/ngxy)-1)*(nlx+1)*nly + &
-                 ((mod(ghosted_id,ngxy))/ngx-1)*(nlx+1)
-            istart = flux_id*reaction%ncomp
-            iend = istart+reaction%ncomp-1
-            fluxes(direction)%flux_p(istart:iend) = -Res(1:reaction%ncomp)
-         case(SOUTH_FACE)
-            flux_id = ((ghosted_id/ngxy)-1)*nlx*(nly+1) + &
-                 ((mod(ghosted_id,ngxy))/ngx-1)*nlx + &
-                 mod(mod(ghosted_id,ngxy),ngx)-1
-            istart = flux_id*reaction%ncomp
-            iend = istart+reaction%ncomp-1
-            fluxes(direction)%flux_p(istart:iend) = Res(1:reaction%ncomp)
-         case(NORTH_FACE)
-            ghosted_id = ghosted_id+ngx
-            flux_id = ((ghosted_id/ngxy)-1)*nlx*(nly+1) + &
-                 ((mod(ghosted_id,ngxy))/ngx-1)*nlx + &
-                 mod(mod(ghosted_id,ngxy),ngx)-1
-            istart = flux_id*reaction%ncomp
-            iend = istart+reaction%ncomp-1
-            fluxes(direction)%flux_p(istart:iend) = -Res(1:reaction%ncomp)
-         case(BOTTOM_FACE)
-            flux_id = ((ghosted_id/ngxy)-1)*nlx*nly &
-                 +((mod(ghosted_id,ngxy))/ngx-1)*nlx &
-                 +mod(mod(ghosted_id,ngxy),ngx)-1
-            istart = flux_id*reaction%ncomp
-            iend = istart+reaction%ncomp-1
-            fluxes(direction)%flux_p(istart:iend) = Res(1:reaction%ncomp)
-         case(TOP_FACE)
-            ghosted_id = ghosted_id+ngxy
-            flux_id = ((ghosted_id/ngxy)-1)*nlx*nly &
-                 +((mod(ghosted_id,ngxy))/ngx-1)*nlx &
-                 +mod(mod(ghosted_id,ngxy),ngx)-1
-            istart = flux_id*reaction%ncomp
-            iend = istart+reaction%ncomp-1
-            fluxes(direction)%flux_p(istart:iend) = -Res(1:reaction%ncomp)
-         end select
-      else
-         iend = local_id*reaction%ncomp
-         istart = iend-reaction%ncomp+1
-         r_p(istart:iend)= r_p(istart:iend) - Res(1:reaction%ncomp)
-      endif
+      iend = local_id*reaction%ncomp
+      istart = iend-reaction%ncomp+1
+      r_p(istart:iend)= r_p(istart:iend) - Res(1:reaction%ncomp)
 
       if (option%store_solute_fluxes) then
         patch%boundary_fluxes(iphase,1:reaction%ncomp,sum_connection) = &
-          -Res(1:reaction%ncomp)
-      endif
- 
-       if (option%compute_mass_balance_new) then
+             -Res(1:reaction%ncomp)
+     endif
+     
+     if (option%compute_mass_balance_new) then
         ! contribution to boundary 
         rt_aux_vars_bc(sum_connection)%mass_balance_delta(:,iphase) = &
           rt_aux_vars_bc(sum_connection)%mass_balance_delta(:,iphase) - Res
@@ -1760,8 +1730,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
     enddo
     boundary_condition => boundary_condition%next
   enddo
-#endif  
-#endif  ! #else AMR_FLUX
+  endif
 
   ! Restore vectors
   call GridVecRestoreArrayF90(grid,r, r_p, ierr)
@@ -2200,8 +2169,7 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%tor_loc, tor_loc_p, ierr)
 
-#ifdef AMR_FLUX
-#if 1 
+  if (option%use_samr) then
   ! Interior Advective Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
@@ -2249,8 +2217,6 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     enddo
     cur_connection_set => cur_connection_set%next
   enddo    
-#endif
-#if 1
   ! Boundary Advective Flux Terms -----------------------------------
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
@@ -2286,8 +2252,6 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     enddo
     boundary_condition => boundary_condition%next
   enddo
-#endif 
-#if 1
   ! Interior Diffusive Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
@@ -2347,8 +2311,6 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     enddo
     cur_connection_set => cur_connection_set%next
   enddo    
-#endif
-#if 1
   ! Boundary Diffusive Flux Terms -----------------------------------
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
@@ -2387,9 +2349,8 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     enddo
     boundary_condition => boundary_condition%next
   enddo
-#endif 
-#else ! #ifdef AMR_FLUX
-#if 1
+  else ! !use_samr
+
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
@@ -2449,8 +2410,6 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     enddo
     cur_connection_set => cur_connection_set%next
   enddo    
-#endif
-#if 1
   ! Boundary Flux Terms -----------------------------------
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
@@ -2489,8 +2448,7 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     enddo
     boundary_condition => boundary_condition%next
   enddo
-#endif 
-#endif ! #else AMR_FLUX
+  endif ! #else AMR_FLUX
 
   ! Restore vectors
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)

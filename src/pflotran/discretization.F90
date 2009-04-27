@@ -322,7 +322,7 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
         grid => GridCreate()
         select case(discretization%itype)
           case(STRUCTURED_GRID)      
-            if (nx*ny*nz == 0) &
+            if (nx*ny*nz <= 0) &
               call printErrMsg(option,'NXYZ not set correctly for structured grid.')
             str_grid => StructuredGridCreate()
             str_grid%nx = nx

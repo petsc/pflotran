@@ -251,11 +251,9 @@ subroutine RealizationCreateDiscretization(realization)
     call DiscretizationCreateVector(discretization,NFLOWDOF,field%flow_xx_loc, &
                                     LOCAL,option)
 
-    if(associated(discretization%amrgrid)) then
+    if(option%use_samr) then
        option%ivar_centering = SIDE_CENTERED
        call DiscretizationCreateVector(discretization,NFLOWDOF,field%flow_face_fluxes, &
-                                    GLOBAL,option)
-        call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_face_fluxes, &
                                     GLOBAL,option)
       option%ivar_centering = CELL_CENTERED
     endif
@@ -285,6 +283,13 @@ subroutine RealizationCreateDiscretization(realization)
                                          field%tran_work_loc)
     endif
     
+    if(option%use_samr) then
+       option%ivar_centering = SIDE_CENTERED
+        call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_face_fluxes, &
+                                    GLOBAL,option)
+      option%ivar_centering = CELL_CENTERED
+    endif
+
   endif
 
   select case(discretization%itype)

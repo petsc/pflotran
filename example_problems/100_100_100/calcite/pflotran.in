@@ -1,0 +1,290 @@
+:Description: 3D test problem for diffusion of tracer and reaction of calcite in a cubic domain
+
+:=========================== chemistry ========================================
+CHEMISTRY
+PRIMARY_SPECIES
+Ca++
+H+
+HCO3-
+Tracer
+/
+SECONDARY_SPECIES
+OH-
+CO3--
+CO2(aq)
+CaCO3(aq)
+CaHCO3+
+/
+GAS_SPECIES
+CO2(g)
+/
+MINERALS
+Calcite
+/
+MINERAL_KINETICS
+Calcite 1.e-8 
+/
+:DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
+:DATABASE /Users/lichtner/flotran/database/hanford.dat
+DATABASE ../../../database/hanford.dat
+LOG_FORMULATION
+ACTIVITY_COEFFICIENTS
+MOLAL
+/
+:=========================== solver options ===================================
+TIMESTEPPER
+TS_ACCELERATION 8
+/
+
+NEWTON_SOLVER TRANSPORT
+:RTOL 1.d-4
+:ATOL 1.d-4
+:STOL 1.e-60
+:DTOL 1.e4
+:ITOL_UPDATE 1.d-4
+NO_INFINITY_NORM
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
+
+LINEAR_SOLVER TRANSPORT
+KSP_TYPE GMRES
+PC_TYPE NONE
+:KSP_TYPE PREONLY
+:PC_TYPE LU
+:SOLVER GMRES
+/
+
+:=========================== discretization ===================================
+GRID
+TYPE structured
+ORIGIN 0.d0 0.d0 0.d0
+NXYZ 32 32 32
+BOUNDS
+0.d0 100.d0
+0.d0 100.d0
+0.d0 100.d0
+/
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY 
+DIFFUSION_COEFFICIENT 1.d-9
+/
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+ID 1
+POROSITY 0.25d0
+TORTUOSITY 1.d0
+SATURATION_FUNCTION default
+PERMEABILITY
+PERM_X 1.d-12
+PERM_Y 1.d-12
+PERM_Z 1.d-12
+/
+/
+
+MATERIAL_PROPERTY soil2
+ID 2
+POROSITY 0.25d0
+TORTUOSITY 1.d0
+SATURATION_FUNCTION default
+PERMEABILITY
+PERM_X 5.d-13
+PERM_Y 5.d-13
+PERM_Z 5.d-13
+/
+/
+
+:=========================== saturation functions =============================
+SATURATION_FUNCTION default
+/
+
+:=========================== output options ===================================
+OUTPUT
+PERIODIC TIME 1.d0 y
+FORMAT TECPLOT BLOCK
+/
+
+:=========================== times ============================================
+TIME
+FINAL_TIME 10.d0 y
+INITIAL_TIMESTEP_SIZE 1.d-3 y
+MAXIMUM_TIMESTEP_SIZE 1.d0 y
+/
+
+:=========================== regions ==========================================
+REGION all
+COORDINATES
+0.d0 0.d0 0.d0
+100.d0 100.d0 100.d0
+/
+END
+
+REGION top_layer
+COORDINATES
+0.d0 0.d0 60.d0
+100.d0 100.d0 100.d0
+/
+END
+
+REGION bottom_layer
+COORDINATES
+0.d0 0.d0 0.d0
+100.d0 100.d0 60.d0
+/
+END
+
+REGION west
+FACE WEST
+COORDINATES
+0.d0 0.d0 0.d0
+0.d0 100.d0 100.d0
+/
+END
+
+REGION east
+FACE EAST
+COORDINATES
+100.d0 0.d0 0.d0
+100.d0 100.d0 100.d0
+/
+END
+
+REGION north
+FACE NORTH
+COORDINATES
+0.d0 100.d0 0.d0
+100.d0 100.d0 100.d0
+/
+END
+
+REGION south
+FACE SOUTH
+COORDINATES
+0.d0 0.d0 0.d0
+100.d0 0.d0 100.d0
+/
+END
+
+REGION top
+FACE TOP
+COORDINATES
+0.d0 0.d0 100.d0
+100.d0 100.d0 100.d0
+/
+END
+
+REGION bottom
+FACE BOTTOM
+COORDINATES
+0.d0 0.d0 0.d0
+100.d0 100.d0 0.d0
+/
+END
+
+REGION center
+COORDINATES
+45.d0 45.d0 45.d0
+55.d0 55.d0 55.d0
+/
+END
+
+:=========================== transport conditions =============================
+TRANSPORT_CONDITION initial
+TYPE zero_gradient
+CONSTRAINT_LIST
+0.d0 initial
+/
+END
+
+TRANSPORT_CONDITION initial_pulse
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 pulse
+/
+/
+
+:=========================== constraints ======================================
+CONSTRAINT pulse
+CONCENTRATIONS
+Ca++   1.e-8 T
+H+     5.    pH
+HCO3- -3.d0  G CO2(g)
+Tracer 1.d0  T
+/
+/
+
+CONSTRAINT initial
+CONCENTRATIONS
+Ca++   1.d-3  M Calcite
+H+     8.     pH
+HCO3- -3.d0   G  CO2(g)
+Tracer 1.d-8  T
+/
+MINERALS
+Calcite        0.75  1.
+/
+/
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+TRANSPORT_CONDITION initial
+REGION all
+END
+
+: initial pulse condition
+INITIAL_CONDITION
+TRANSPORT_CONDITION initial_pulse
+REGION center
+END
+
+: west boundary condition
+BOUNDARY_CONDITION west
+TRANSPORT_CONDITION initial
+REGION west
+END
+
+: east boundary condition
+BOUNDARY_CONDITION east
+TRANSPORT_CONDITION initial
+REGION east
+END
+
+: north boundary condition
+BOUNDARY_CONDITION north
+TRANSPORT_CONDITION initial
+REGION north
+END
+
+: south boundary condition
+BOUNDARY_CONDITION south
+TRANSPORT_CONDITION initial
+REGION south
+END
+
+: top boundary condition
+BOUNDARY_CONDITION top
+TRANSPORT_CONDITION initial
+REGION top
+END
+
+: bottom boundary condition
+BOUNDARY_CONDITION bottom
+TRANSPORT_CONDITION initial
+REGION bottom
+END
+
+:=========================== stratigraphy couplers ============================
+STRATA
+REGION top_layer
+MATERIAL soil1
+END
+
+STRATA
+REGION bottom_layer
+MATERIAL soil1
+END
+
