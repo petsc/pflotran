@@ -448,6 +448,11 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
         n = 1.d0/(1.d0-m)
         pc_alpha = pc*alpha
         pc_alpha_n = pc_alpha**n
+        if (1.d0 + pc_alpha_n == 1.d0) then ! check for minute perturubation
+          saturation = 1.d0
+          relative_perm = 1.d0
+          return
+        endif
         one_plus_pc_alpha_n = 1.d0+pc_alpha_n
         Sr = saturation_function%Sr(iphase)
         Se = one_plus_pc_alpha_n**(-m)

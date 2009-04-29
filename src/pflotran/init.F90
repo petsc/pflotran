@@ -896,9 +896,15 @@ subroutine InitReadInput(simulation)
   input => realization%input
 
   tran_stepper => simulation%tran_stepper
-  if (associated(tran_stepper)) tran_solver => tran_stepper%solver
+  if (associated(tran_stepper)) then
+    tran_solver => tran_stepper%solver
+    tran_solver%itype = TRANSPORT_CLASS
+  endif
   flow_stepper => simulation%flow_stepper
-  if (associated(flow_stepper)) flow_solver => flow_stepper%solver
+  if (associated(flow_stepper)) then
+    flow_solver => flow_stepper%solver
+    flow_solver%itype = FLOW_CLASS
+  endif
 
   if (associated(flow_stepper)) then
     master_stepper => flow_stepper
