@@ -61,9 +61,9 @@ TYPE structured
 ORIGIN 0.d0 0.d0 0.d0
 NXYZ 32 32 32
 BOUNDS
-0.d0 100.d0
-0.d0 100.d0
-0.d0 100.d0
+0.d0 1.d0
+0.d0 1.d0
+0.d0 1.d0
 /
 END
 
@@ -118,21 +118,21 @@ MAXIMUM_TIMESTEP_SIZE 1.d0 y
 REGION all
 COORDINATES
 0.d0 0.d0 0.d0
-100.d0 100.d0 100.d0
+1.d0 1.d0 1.d0
 /
 END
 
 REGION top_layer
 COORDINATES
-0.d0 0.d0 60.d0
-100.d0 100.d0 100.d0
+0.d0 0.d0 0.6d0
+1.d0 1.d0 1.d0
 /
 END
 
 REGION bottom_layer
 COORDINATES
 0.d0 0.d0 0.d0
-100.d0 100.d0 60.d0
+1.d0 1.d0 0.6d0
 /
 END
 
@@ -140,23 +140,23 @@ REGION west
 FACE WEST
 COORDINATES
 0.d0 0.d0 0.d0
-0.d0 100.d0 100.d0
+0.d0 1.d0 1.d0
 /
 END
 
 REGION east
 FACE EAST
 COORDINATES
-100.d0 0.d0 0.d0
-100.d0 100.d0 100.d0
+1.d0 0.d0 0.d0
+1.d0 1.d0 1.d0
 /
 END
 
 REGION north
 FACE NORTH
 COORDINATES
-0.d0 100.d0 0.d0
-100.d0 100.d0 100.d0
+0.d0 1.d0 0.d0
+1.d0 1.d0 1.d0
 /
 END
 
@@ -164,15 +164,15 @@ REGION south
 FACE SOUTH
 COORDINATES
 0.d0 0.d0 0.d0
-100.d0 0.d0 100.d0
+1.d0 0.d0 1.d0
 /
 END
 
 REGION top
 FACE TOP
 COORDINATES
-0.d0 0.d0 100.d0
-100.d0 100.d0 100.d0
+0.d0 0.d0 1.d0
+1.d0 1.d0 1.d0
 /
 END
 
@@ -180,14 +180,14 @@ REGION bottom
 FACE BOTTOM
 COORDINATES
 0.d0 0.d0 0.d0
-100.d0 100.d0 0.d0
+1.d0 1.d0 0.d0
 /
 END
 
 REGION center
 COORDINATES
-45.d0 45.d0 45.d0
-55.d0 55.d0 55.d0
+0.45d0 0.45d0 0.45d0
+0.55d0 0.55d0 0.55d0
 /
 END
 

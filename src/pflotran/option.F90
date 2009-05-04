@@ -365,7 +365,7 @@ subroutine OptionInitRealization(option)
 !  option%eqkair = 1.d10 ! Henry's constant for air: Xl = eqkair * pa
 
   ! default brine concentrations
-!  option%m_nacl = 0.d0
+  option%m_nacl = 0.d0
   
 !  option%disp = 0.d0
   
