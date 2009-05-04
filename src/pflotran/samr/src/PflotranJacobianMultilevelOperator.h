@@ -204,6 +204,14 @@ public:
                                            PetscInt ncol,const PetscInt icol[],
                                            const PetscScalar y[],InsertMode addv);
       
+   static PetscErrorCode wrapperMatDiagonalScaleLocal(Mat mat,Vec diag);
+
+   PetscErrorCode MatDiagonalScaleLocal(Mat mat,Vec diag);
+
+   static PetscErrorCode wrapperMatDiagonalScale(Mat mat, Vec l, Vec r);  
+
+   PetscErrorCode MatDiagonalScale(Mat mat, Vec l, Vec r);
+
    tbox::Pointer<hier::PatchHierarchy<NDIM> > getHierarchy(void){ return d_hierarchy; }
 
    LevelLinearOperator *getLevelOperator(const int ln){ return d_level_operators[ln];}

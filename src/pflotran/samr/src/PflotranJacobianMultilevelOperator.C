@@ -116,6 +116,13 @@ PflotranJacobianMultilevelOperator::initializePetscMatInterface(void)
    MatShellSetOperation(*d_pMatrix, MATOP_SET_VALUES_LOCAL, (void(*)(void))(&SAMRAI::PflotranJacobianMultilevelOperator::wrapperMatSetValuesLocal));
 
    MatShellSetOperation(*d_pMatrix, MATOP_SET_VALUES_BLOCKED, (void(*)(void))(&SAMRAI::PflotranJacobianMultilevelOperator::wrapperMatSetValuesBlockedLocal));
+   
+   // the operation below is for the serial case where DiagonalScaleLocal is a call to DiagonalScale
+   MatShellSetOperation(*d_pMatrix, MATOP_DIAGONAL_SCALE, (void(*)(void))(&SAMRAI::PflotranJacobianMultilevelOperator::wrapperMatDiagonalScale));
+   
+   // the operation below is for the parallel case where the operation is currently registered as a dynamic op
+   PetscObjectComposeFunctionDynamic((PetscObject)*d_pMatrix, "MatDiagonalScaleLocal_C", "SAMRAI::PflotranJacobianMultilevelOperator::wrapperMatDiagonalScaleLocal", (void(*)(void))(&SAMRAI::PflotranJacobianMultilevelOperator::wrapperMatDiagonalScaleLocal));
+
 }
 
 void
@@ -632,6 +639,69 @@ PflotranJacobianMultilevelOperator::initializeBoundaryConditionStrategy(tbox::Po
 }
 
 PetscErrorCode
+PflotranJacobianMultilevelOperator::wrapperMatDiagonalScale(Mat mat,Vec l, Vec r)
+{
+   PflotranJacobianMultilevelOperator *pMatrix = NULL;
+   
+   MatShellGetContext(mat,(void**)&pMatrix);
+
+   return pMatrix->MatDiagonalScale(mat,l,r);
+}
+
+PetscErrorCode
+PflotranJacobianMultilevelOperator::MatDiagonalScale(Mat mat,Vec l, Vec r)
+{
+
+   PflotranJacobianMultilevelOperator *pMatrix = NULL;
+   
+   MatShellGetContext(mat,(void**)&pMatrix);
+
+   for(int ln=0; ln<d_hierarchy->getNumberOfLevels(); ln++)
+   {
+      tbox::Pointer<hier::PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
+      
+      PflotranJacobianLevelOperator *levelMatrix = dynamic_cast<PflotranJacobianLevelOperator *>(pMatrix->getLevelOperator(ln));
+
+      levelMatrix->MatDiagonalScale(l,r);
+   }
+
+   return (0);
+
+}
+
+PetscErrorCode
+PflotranJacobianMultilevelOperator::wrapperMatDiagonalScaleLocal(Mat mat,Vec diag)
+{
+   PflotranJacobianMultilevelOperator *pMatrix = NULL;
+   
+   MatShellGetContext(mat,(void**)&pMatrix);
+
+   return pMatrix->MatDiagonalScaleLocal(mat,diag);
+
+}
+
+PetscErrorCode
+PflotranJacobianMultilevelOperator::MatDiagonalScaleLocal(Mat mat,Vec diag)
+{
+   PflotranJacobianMultilevelOperator *pMatrix = NULL;
+   
+   MatShellGetContext(mat,(void**)&pMatrix);
+
+   for(int ln=0; ln<d_hierarchy->getNumberOfLevels(); ln++)
+   {
+      tbox::Pointer<hier::PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
+      
+      PflotranJacobianLevelOperator *levelMatrix = dynamic_cast<PflotranJacobianLevelOperator *>(pMatrix->getLevelOperator(ln));
+
+      levelMatrix->MatDiagonalScaleLocal(diag);
+   }
+
+   return (0);
+
+
+}
+
+PetscErrorCode
 PflotranJacobianMultilevelOperator::wrapperMatMult(Mat mat,Vec x,Vec y)
 {
 
@@ -646,25 +716,6 @@ PflotranJacobianMultilevelOperator::wrapperMatMult(Mat mat,Vec x,Vec y)
 PetscErrorCode
 PflotranJacobianMultilevelOperator::MatMult(Mat mat,Vec x,Vec y)
 {
-
-   PflotranJacobianMultilevelOperator *pMatrix = NULL;
-   
-   MatShellGetContext(mat,(void**)&pMatrix);
-
-   pMatrix->initializeScratchVector(x);
-
-   Vec scratch = pMatrix->getScratchVector();
-
-   for(int ln=0; ln<d_hierarchy->getNumberOfLevels(); ln++)
-   {
-      tbox::Pointer<hier::PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
-      
-      PflotranJacobianLevelOperator *levelMatrix = dynamic_cast<PflotranJacobianLevelOperator *>(pMatrix->getLevelOperator(ln));
-
-      levelMatrix->MatMult(scratch,y);
-   }
-
-   return (0);
 
 }
 

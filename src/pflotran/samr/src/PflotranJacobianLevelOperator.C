@@ -441,7 +441,37 @@ PflotranJacobianLevelOperator::getStencilOffsets(const int i,
    }
    else
    {
-      abort();
+      if((NDIM==3)&&i==0&&j==0&&k==0)
+      {
+         offsets.resize(d_stencil_size*NDIM*d_ndof*d_ndof);
+
+         if(d_stencil_size==7)
+         {
+            // we are assuming the standard 7 point stencil here 
+            int off[7] = {-1, 1, 0, 0, 0, 0, 0};
+            int xi = 6;
+            int yi = 4;
+            int zi = 2;
+
+            for(int s=0; s<7; s++)
+            {
+               for(int i=0;i<d_ndof*d_ndof; i++)
+               {
+                  offsets[s*d_ndof*d_ndof*NDIM+i*NDIM+0]=off[(xi+s)%7];
+                  offsets[s*d_ndof*d_ndof*NDIM+i*NDIM+1]=off[(yi+s)%7];
+                  offsets[s*d_ndof*d_ndof*NDIM+i*NDIM+2]=off[(zi+s)%7];
+               }
+            }
+         }
+         else
+         {
+            abort();
+         }
+      }
+      else
+      {
+         abort();
+      }
    }
 
    return offsets;
@@ -873,6 +903,156 @@ PflotranJacobianLevelOperator::MatMult(Vec x, Vec y )
                             src->getPointer(),
                             dgcw,
                             dst->getPointer());
+   }
+   
+   return(0);
+}
+
+int
+PflotranJacobianLevelOperator::MatDiagonalScale(Vec l, Vec r )
+{
+
+   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > lVec;
+   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > rVec;
+   int l_id = -1;
+   int r_id = -1;
+
+   if(l!=PETSC_NULL)
+   {
+      lVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(l);
+      l_id = lVec->getComponentDescriptorIndex(0);
+   }
+   
+   if(r!=PETSC_NULL)
+   {
+      rVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(r);
+      r_id = rVec->getComponentDescriptorIndex(0);
+   }
+
+   for (hier::PatchLevel<NDIM>::Iterator p(d_level); p; p++) 
+   {
+      tbox::Pointer<hier::Patch<NDIM> > patch = d_level->getPatch(p());
+      
+#ifdef DEBUG_CHECK_ASSERTIONS
+      assert(!patch.isNull());
+#endif
+      const hier::Box<NDIM> &box = patch->getBox();
+
+      tbox::Pointer< pdat::CCellData<NDIM, double > > stencil = patch->getPatchData(d_stencil_id);
+      // for now we will use cell data instead of CCell data
+
+      tbox::Pointer< pdat::CCellData<NDIM, double > > rdata = patch->getPatchData(r_id);
+         
+      const hier::Index<NDIM> ifirst = box.lower();
+      const hier::Index<NDIM> ilast = box.upper();
+
+      hier::IntVector<NDIM> ghost_cell_width = rdata->getGhostCellWidth();
+      const int rgcw=ghost_cell_width(0);
+
+      if(l_id>=0)
+      {
+         tbox::Pointer< pdat::CCellData<NDIM, double > > ldata = patch->getPatchData(l_id);
+#ifdef DEBUG_CHECK_ASSERTIONS
+         assert(!stencil.isNull());
+         assert(!ldata.isNull());
+         assert(!rdata.isNull());
+#endif
+         
+         ghost_cell_width = ldata->getGhostCellWidth();
+         const int lgcw=ghost_cell_width(0);
+         
+#ifdef DEBUG_CHECK_ASSERTIONS
+         assert(lgcw>=0);
+         assert(rgcw>=0);
+         assert(d_stencil_size>0);
+         assert(d_ndof>=1);
+#endif
+         samrccellmatdiagscale3d_( ifirst(0),ifirst(1),ifirst(2),
+                                   ilast(0),ilast(1),ilast(2),
+                                   d_stencil_size,
+                                   d_ndof,
+                                   stencil->getPointer(),
+                                   lgcw,
+                                   ldata->getPointer(),
+                                   rgcw,
+                                   rdata->getPointer());
+      }
+      else
+      {
+         std::vector<int> offsets=this->getStencilOffsets();
+         int stencil_offsets[d_stencil_size*NDIM*d_ndof*d_ndof];
+         
+         for(int s=0; s<d_stencil_size*NDIM*d_ndof*d_ndof; s++)
+         {
+            stencil_offsets[s]=offsets[s];
+         }
+
+         samrccellmatdiagscalelocal3d_( ifirst(0),ifirst(1),ifirst(2),
+                                        ilast(0),ilast(1),ilast(2),
+                                        d_stencil_size,
+                                        stencil_offsets,
+                                        d_ndof,
+                                        stencil->getPointer(),
+                                        rgcw,
+                                        rdata->getPointer());
+      }
+   }
+   
+   return(0);
+}
+
+int
+PflotranJacobianLevelOperator::MatDiagonalScaleLocal(Vec diag )
+{
+   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > diagVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(diag);
+
+   int src_id = diagVec->getComponentDescriptorIndex(0);
+
+   for (hier::PatchLevel<NDIM>::Iterator p(d_level); p; p++) 
+   {
+      tbox::Pointer<hier::Patch<NDIM> > patch = d_level->getPatch(p());
+      
+#ifdef DEBUG_CHECK_ASSERTIONS
+      assert(!patch.isNull());
+#endif
+      const hier::Box<NDIM> &box = patch->getBox();
+
+      tbox::Pointer< pdat::CCellData<NDIM, double > > stencil = patch->getPatchData(d_stencil_id);
+      // for now we will use cell data instead of CCell data
+      tbox::Pointer< pdat::CCellData<NDIM, double > > src = patch->getPatchData(src_id);
+#ifdef DEBUG_CHECK_ASSERTIONS
+      assert(!stencil.isNull());
+      assert(!src.isNull());
+#endif
+
+      const hier::Index<NDIM> ifirst = box.lower();
+      const hier::Index<NDIM> ilast = box.upper();
+      
+      hier::IntVector<NDIM> ghost_cell_width = src->getGhostCellWidth();
+      const int sgcw=ghost_cell_width(0);
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+        assert(sgcw>=0);
+        assert(d_stencil_size>0);
+        assert(d_ndof>=1);
+#endif
+
+        std::vector<int> offsets=this->getStencilOffsets();
+        int stencil_offsets[d_stencil_size*NDIM*d_ndof*d_ndof];
+
+        for(int s=0; s<d_stencil_size*NDIM*d_ndof*d_ndof; s++)
+        {
+           stencil_offsets[s]=offsets[s];
+        }
+
+        samrccellmatdiagscalelocal3d_( ifirst(0),ifirst(1),ifirst(2),
+                                       ilast(0),ilast(1),ilast(2),
+                                       d_stencil_size,
+                                       stencil_offsets,
+                                       d_ndof,
+                                       stencil->getPointer(),
+                                       sgcw,
+                                       src->getPointer());
    }
    
    return(0);

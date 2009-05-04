@@ -65,6 +65,87 @@ c
       return
       end
 
+c
+c
+      subroutine samrccellmatdiagscale3d(
+     & ifirst0,ifirst1,ifirst2,ilast0,ilast1,ilast2,
+     & stencilsize,
+     & ndof,
+     & stencil,
+     & lgcw,
+     & ldata,
+     & rgcw,
+     & rdata)
+
+c***********************************************************************
+      implicit none
+c
+      integer ifirst0,ifirst1,ifirst2
+      integer ilast0,ilast1,ilast2
+      integer stencilsize, ndof
+      integer lgcw, rgcw
+      REAL ldata(0:ndof-1,CELL3d(ifirst,ilast,lgcw))
+      REAL rdata(0:ndof-1,CELL3d(ifirst,ilast,rgcw))
+      REAL stencil(0:ndof*ndof*stencilsize-1, 
+     &             CELL3d(ifirst,ilast,0))
+
+      integer i,j,k
+c
+c***********************************************************************
+c
+      return
+      end
+c
+c
+      subroutine samrccellmatdiagscalelocal3d(
+     & ifirst0,ifirst1,ifirst2,ilast0,ilast1,ilast2,
+     & stencilsize,
+     & offsets,
+     & ndof,
+     & stencil,
+     & dgcw,
+     & ddata)
+
+c***********************************************************************
+      implicit none
+c
+      integer ifirst0,ifirst1,ifirst2
+      integer ilast0,ilast1,ilast2
+      integer stencilsize, ndof
+      integer dgcw
+      integer offsets(1:stencilsize*ndof*ndof*NDIM)
+      REAL ddata(0:ndof-1,CELL3d(ifirst,ilast,dgcw))
+      REAL stencil(0:ndof*ndof*stencilsize-1, 
+     &             CELL3d(ifirst,ilast,0))
+
+      integer i, j, k, io, jo,ko, be, bs, s, d
+      
+c
+c***********************************************************************
+c
+      do k = ifirst2, ilast2
+         do j = ifirst1, ilast1
+            do i = ifirst0, ilast0
+               do s = 1, stencilsize
+
+                  io=offsets(NDIM*ndof*ndof*(s-1)+1)
+                  jo=offsets(NDIM*ndof*ndof*(s-1)+2)
+                  ko=offsets(NDIM*ndof*ndof*(s-1)+3)
+
+                  do d=0,ndof-1
+                  bs = ndof*ndof*(s-1)+d*ndof
+                  be = bs + ndof-1
+                  stencil(bs:be,i,j,k)=stencil(bs:be,i,j,k)
+     &                                *ddata(d,i+io,j+jo,k+ko)
+                  enddo
+               enddo
+            enddo
+         enddo
+      enddo
+
+      return
+      end
+
       subroutine samrcellsd7s3d(
      & ifirst0,ifirst1,ifirst2,ilast0,ilast1,ilast2,
      & stencil,
