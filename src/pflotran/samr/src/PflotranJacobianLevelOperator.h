@@ -201,6 +201,10 @@ public:
 
    int MatMult(Vec x, Vec y);
 
+   int MatDiagonalScale(Vec l, Vec r);
+
+   int MatDiagonalScaleLocal(Vec diag);
+
    int getVariableIndex(std::string &name, 
                         tbox::Pointer<hier::VariableContext> &context,
                         tbox::Pointer<hier::Variable<NDIM> > &var,
