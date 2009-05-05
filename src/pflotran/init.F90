@@ -575,7 +575,21 @@ subroutine Init(simulation)
   
   call printMsg(option," ")
   call printMsg(option,"  Finished Initialization")
-
+  
+  #ifdef USE_HDF5
+  #ifdef HDF5_BROADCAST
+  call printMsg(option,"Glenn's HDF5 Broadcast Mechanism is used")
+  #endif
+  #ifdef VAMSI_HDF5
+  call printMsg(option,"Vamsi's HDF5 Broadcast Mechanism is used")
+  if (option%myrank == 0) then
+  write(*,'(" HDF5_BRAODCAST_SIZE = ",i5)') option%broadcast_size
+  endif  
+  #endif
+  #else
+  call printfMsg(option,"Default HDF5 mechanism is used")
+  #endif
+  
   call PetscLogEventEnd(logging%event_init,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,ierr)
@@ -2048,6 +2062,7 @@ subroutine readRegionFiles(realization)
   type(realization_type) :: realization
   
   type(region_type), pointer :: region
+ 
   
   region => realization%regions%first
   do 

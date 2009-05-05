@@ -13,10 +13,21 @@ ifdef hdf5
 #    HDF5_LIBS = -L$(HDF5_LIB) ${HDF5_LIB}/libhdf5_fortran.a ${HDF5_LIB}/libhdf5.a -lz
   else
 # the below is for jaguar
-    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5
+    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5 
     HDF5_LIBS = $(HDF5_FLIB) -lhdf5_fortran -lhdf5 -lz -lsz
   endif
 endif
+
+ifdef hdf5-glenn
+    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5 -DHDF5_BROADCAST
+    HDF5_LIBS = $(HDF5_FLIB) -lhdf5_fortran -lhdf5 -lz -lsz
+endif
+
+ifdef hdf5-vamsi
+    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5 -DVAMSI_HDF5
+    HDF5_LIBS = $(HDF5_FLIB) -lhdf5_fortran -lhdf5 -lz -lsz
+endif	
+
 ifdef compile_broken
   COMPILE_BROKEN_FLAGS = -DCOMPILE_BROKEN
 endif
