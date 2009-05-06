@@ -651,6 +651,8 @@ subroutine SolverReadNewton(solver,input,option)
             solver%J_mat_type = MATBAIJ
           case('MFFD','MATRIX_FREE')
             solver%J_mat_type = MATMFFD
+          case('HYPRESTRUCT')
+            solver%J_mat_type = MATHYPRESTRUCT
           case default
             option%io_buffer = 'Matrix type: ' // trim(word) // ' unknown.'
             call printErrMsg(option)
@@ -665,6 +667,8 @@ subroutine SolverReadNewton(solver,input,option)
             solver%Jpre_mat_type = MATBAIJ
           case('AIJ')
             solver%Jpre_mat_type = MATBAIJ
+          case('HYPRESTRUCT')
+            solver%Jpre_mat_type = MATHYPRESTRUCT
           case('MFFD','MATRIX_FREE')
             solver%Jpre_mat_type = MATMFFD
           case default
