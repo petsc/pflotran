@@ -373,6 +373,7 @@ subroutine DiscretizationCreateDMs(discretization,option)
   PetscInt :: ndof
   PetscInt, parameter :: stencil_width = 1
   PetscErrorCode :: ierr
+  character(len=MAXWORDLENGTH) :: prefix
   PetscInt :: i
 
   discretization%dm_index_to_ndof(ONEDOF) = 1
@@ -391,12 +392,16 @@ subroutine DiscretizationCreateDMs(discretization,option)
     ndof = option%nflowdof
     call DiscretizationCreateDM(discretization,discretization%dm_nflowdof, &
                                 ndof,stencil_width,option)
+    prefix = 'flow'
+    call SNESGetOptionsPrefix(discretization%dm_nflowdof,prefix,ierr)
   endif
   
   if (option%ntrandof > 0) then
     ndof = option%ntrandof
     call DiscretizationCreateDM(discretization,discretization%dm_ntrandof, &
                                 ndof,stencil_width,option)
+    prefix = 'tran'
+    call SNESGetOptionsPrefix(discretization%dm_ntrandof,prefix,ierr)
   endif
 
   select case(discretization%itype)
