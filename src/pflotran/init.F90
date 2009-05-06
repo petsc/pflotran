@@ -322,9 +322,8 @@ subroutine Init(simulation)
     ! I also note that this preconditioner is intended only for the flow, 
     ! solver.  --RTM
     if (realization%discretization%itype == STRUCTURED_GRID) then
-! petsc-dev no longer supports this call - GEH 5/5/09
-!      call PCExoticSetDA(flow_solver%pc, &
-!                         realization%discretization%dm_nflowdof,ierr);
+      call PCSetDA(flow_solver%pc, &
+                   realization%discretization%dm_nflowdof,ierr);
     endif
 
     ! setup a shell preconditioner and initialize in the case of AMR

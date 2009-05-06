@@ -89,6 +89,7 @@ PetscInt, parameter :: MASS_RATE_SS = 7
 PetscInt, parameter :: VOLUMETRIC_RATE_SS = 8
 PetscInt, parameter :: CONCENTRATION_SS = 9
 PetscInt, parameter :: EQUILIBRIUM_SS = 10
+PetscInt, parameter :: CONDUCTANCE_BC = 11
 
 ! concentration subcondition types
 PetscInt, parameter :: CONSTRAINT_NULL = 0

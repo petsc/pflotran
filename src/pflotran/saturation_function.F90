@@ -448,7 +448,7 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
         n = 1.d0/(1.d0-m)
         pc_alpha = pc*alpha
         pc_alpha_n = pc_alpha**n
-        if (1.d0 + pc_alpha_n == 1.d0) then ! check for minute perturubation
+        if (1.d0 + pc_alpha_n == 1.d0) then ! check for zero perturbation
           saturation = 1.d0
           relative_perm = 1.d0
           return

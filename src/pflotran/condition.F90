@@ -675,6 +675,8 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = MASS_RATE_SS
             case('hydrostatic')
               sub_condition_ptr%itype = HYDROSTATIC_BC
+            case('conductance')
+              sub_condition_ptr%itype = CONDUCTANCE_BC
             case('zero_gradient')
               sub_condition_ptr%itype = ZERO_GRADIENT_BC
             case('production_well')
@@ -1503,6 +1505,8 @@ subroutine FlowConditionPrintSubCondition(subcondition,option)
       string = 'mass_rate'
     case(HYDROSTATIC_BC)
       string = 'hydrostatic'
+    case(CONDUCTANCE_BC)
+      string = 'conductance'
     case(ZERO_GRADIENT_BC)
       string = 'zero_gradient'
     case(PRODUCTION_WELL)
