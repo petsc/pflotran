@@ -213,6 +213,9 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 
     if (condition%pressure%itype == SEEPAGE_BC) then
       coupler%flow_aux_real_var(1,iconn) = max(pressure,option%reference_pressure)
+    else if (condition%pressure%itype == CONDUCTANCE_BC) then
+      coupler%flow_aux_real_var(1,iconn) = max(pressure,option%reference_pressure)
+      coupler%flow_aux_real_var(2,iconn) = condition%pressure%dataset%lame_aux_variable_remove_me
     else
       coupler%flow_aux_real_var(1,iconn) = pressure
     endif
@@ -459,6 +462,9 @@ subroutine HydrostaticUpdateCouplerRotate(coupler,option,grid)
 
     if (condition%pressure%itype == SEEPAGE_BC) then
       coupler%flow_aux_real_var(1,iconn) = max(pressure,option%reference_pressure)
+    else if (condition%pressure%itype == CONDUCTANCE_BC) then
+      coupler%flow_aux_real_var(1,iconn) = max(pressure,option%reference_pressure)
+      coupler%flow_aux_real_var(2,iconn) = condition%pressure%dataset%lame_aux_variable_remove_me
     else
       coupler%flow_aux_real_var(1,iconn) = pressure
     endif

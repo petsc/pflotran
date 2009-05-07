@@ -25,6 +25,7 @@ module Condition_module
     PetscInt :: cur_time_index
     PetscInt :: max_time_index
     PetscReal :: time_shift
+    PetscReal :: lame_aux_variable_remove_me
   end type flow_condition_dataset_type
   
   type, public :: flow_condition_type
@@ -366,6 +367,8 @@ subroutine FlowConditionDatasetInit(dataset)
   dataset%is_cyclic = PETSC_FALSE
   dataset%is_transient = PETSC_FALSE
   dataset%interpolation_method = NULL
+  dataset%time_shift = 0.d0
+  dataset%lame_aux_variable_remove_me = 0.d0
     
 end subroutine FlowConditionDatasetInit
 
@@ -756,6 +759,9 @@ subroutine FlowConditionRead(condition,input,option)
         call FlowConditionReadValues(input,option,word,string, &
                                      concentration%dataset, &
                                      concentration%units)
+      case('CONDUCTANCE')
+        call InputReadDouble(input,option,pressure%dataset%lame_aux_variable_remove_me)
+        call InputErrorMsg(input,option,'CONDUCTANCE','CONDITION')   
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
                            ' not recognized in flow condition'

@@ -466,7 +466,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
       endif
 
       select case(boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF))
-        case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
+        case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
           xxbc(1) = boundary_condition%flow_aux_real_var(RICHARDS_PRESSURE_DOF,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
           xxbc(1) = xx_loc_p(ghosted_id)
@@ -1159,6 +1159,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
   PetscReal :: dphi_dp_dn
   PetscReal :: dukvr_dp_dn
   PetscReal :: dq_dp_dn
+  PetscInt :: pressure_bc_type
 
   PetscInt :: iphase, ideriv
   type(richards_auxvar_type) :: rich_aux_var_pert_dn, rich_aux_var_pert_up
@@ -1179,11 +1180,16 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
   dukvr_dp_dn = 0.d0
   dq_dp_dn = 0.d0
         
-  ! Flow   
-  select case(ibndtype(RICHARDS_PRESSURE_DOF))
+  ! Flow
+  pressure_bc_type = ibndtype(RICHARDS_PRESSURE_DOF)
+  select case(pressure_bc_type)
     ! figure out the direction of flow
-    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-      Dq = perm_dn / dd_up
+    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+      if (pressure_bc_type == CONDUCTANCE_BC) then
+        Dq = aux_vars(RICHARDS_CONDUCTANCE_DOF)
+      else
+        Dq = perm_dn / dd_up
+      endif
       ! Flow term
       if (global_aux_var_up%sat(1) > sir_dn .or. global_aux_var_dn%sat(1) > sir_dn) then
         upweight=1.D0
@@ -1204,7 +1210,8 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
         dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1) + gravity
         dphi_dp_dn = -1.d0 + dgravity_dden_dn*rich_aux_var_dn%dden_dp
 
-        if (ibndtype(RICHARDS_PRESSURE_DOF) == SEEPAGE_BC) then
+        if (pressure_bc_type == SEEPAGE_BC .or. &
+            pressure_bc_type == SEEPAGE_BC) then
               ! flow in         ! boundary cell is <= pref
           if (dphi > 0.d0 .and. global_aux_var_up%pres(1)-option%reference_pressure < eps) then
             dphi = 0.d0
@@ -1260,7 +1267,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
                         rich_aux_var_dn,global_aux_var_dn, &
                         por_dn,sir_dn,dd_up,perm_dn, &
                         area,dist_gravity,option,v_darcy,res)
-    if (ibndtype(RICHARDS_PRESSURE_DOF) == ZERO_GRADIENT_BC) then
+    if (pressure_bc_type == ZERO_GRADIENT_BC) then
       x_pert_up = x_up
     endif
     ideriv = 1
@@ -1322,17 +1329,24 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
   PetscReal :: fluxm,q,density_ave
   PetscReal :: ukvr,diffdp,Dq
   PetscReal :: upweight,cond,gravity,dphi
+  PetscInt :: pressure_bc_type
   
   fluxm = 0.d0
   v_darcy = 0.d0
   density_ave = 0.d0
   q = 0.d0
 
-  ! Flow   
-  select case(ibndtype(RICHARDS_PRESSURE_DOF))
+  ! Flow  
+  pressure_bc_type = ibndtype(RICHARDS_PRESSURE_DOF)
+  select case(pressure_bc_type)
     ! figure out the direction of flow
-    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-      Dq = perm_dn / dd_up
+    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+
+      if (pressure_bc_type == CONDUCTANCE_BC) then
+        Dq = aux_vars(RICHARDS_CONDUCTANCE_DOF)
+      else
+        Dq = perm_dn / dd_up
+      endif
       ! Flow term
       if (global_aux_var_up%sat(1) > sir_dn .or. global_aux_var_dn%sat(1) > sir_dn) then
         upweight=1.D0
@@ -1349,7 +1363,8 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
        
         dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1) + gravity
 
-        if (ibndtype(RICHARDS_PRESSURE_DOF) == SEEPAGE_BC) then
+        if (pressure_bc_type == SEEPAGE_BC .and. &
+            pressure_bc_type == CONDUCTANCE_BC) then
               ! flow in         ! boundary cell is <= pref
           if (dphi > 0.d0 .and. global_aux_var_up%pres(1)-option%reference_pressure < eps) then
             dphi = 0.d0

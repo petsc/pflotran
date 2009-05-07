@@ -333,7 +333,8 @@ subroutine CouplerComputeConnections(grid,option,coupler)
     case(INITIAL_COUPLER_TYPE)
       if (associated(coupler%flow_condition)) then
         if (coupler%flow_condition%pressure%itype /= HYDROSTATIC_BC .and. &
-            coupler%flow_condition%pressure%itype /= SEEPAGE_BC) then
+            coupler%flow_condition%pressure%itype /= SEEPAGE_BC .and. &
+            coupler%flow_condition%pressure%itype /= CONDUCTANCE_BC) then
           nullify(coupler%connection_set)
           return
         endif

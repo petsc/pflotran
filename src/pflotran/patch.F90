@@ -568,15 +568,20 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
           ! allocate arrays that match the number of connections
           select case(option%iflowmode)
 
-            case(THC_MODE,RICHARDS_MODE)
-           
+            case(RICHARDS_MODE)
+!geh              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
+              allocate(coupler%flow_aux_real_var(2,num_connections))
+              allocate(coupler%flow_aux_int_var(1,num_connections))
+              coupler%flow_aux_real_var = 0.d0
+              coupler%flow_aux_int_var = 0
+
+            case(THC_MODE)
               allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
               allocate(coupler%flow_aux_int_var(1,num_connections))
               coupler%flow_aux_real_var = 0.d0
               coupler%flow_aux_int_var = 0
 
             case(MPH_MODE, IMS_MODE)
-
               allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
               allocate(coupler%flow_aux_int_var(1,num_connections))
               coupler%flow_aux_real_var = 0.d0
@@ -748,7 +753,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                   coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
                     flow_condition%pressure%dataset%cur_value(1)
               end select
-            case(HYDROSTATIC_BC,SEEPAGE_BC)
+            case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
               call HydrostaticUpdateCoupler(coupler,option,patch%grid)
           end select
         endif
