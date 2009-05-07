@@ -1139,11 +1139,8 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   iend = 0
   
   ! first determine upper and lower bound on PETSc global array
-  call mpi_exscan(grid%nlmax,istart,ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
   call mpi_scan(grid%nlmax,iend,ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
-  if (iend /= istart + grid%nlmax) then
-    call printErrMsg(option,'iend /= istart+grid%nlmax')
-  endif
+  istart = iend - grid%nlmax
   
   call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
   call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
