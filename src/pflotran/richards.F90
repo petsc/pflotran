@@ -1211,7 +1211,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
         dphi_dp_dn = -1.d0 + dgravity_dden_dn*rich_aux_var_dn%dden_dp
 
         if (pressure_bc_type == SEEPAGE_BC .or. &
-            pressure_bc_type == SEEPAGE_BC) then
+            pressure_bc_type == CONDUCTANCE_BC) then
               ! flow in         ! boundary cell is <= pref
           if (dphi > 0.d0 .and. global_aux_var_up%pres(1)-option%reference_pressure < eps) then
             dphi = 0.d0
@@ -1363,7 +1363,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
        
         dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1) + gravity
 
-        if (pressure_bc_type == SEEPAGE_BC .and. &
+        if (pressure_bc_type == SEEPAGE_BC .or. &
             pressure_bc_type == CONDUCTANCE_BC) then
               ! flow in         ! boundary cell is <= pref
           if (dphi > 0.d0 .and. global_aux_var_up%pres(1)-option%reference_pressure < eps) then
