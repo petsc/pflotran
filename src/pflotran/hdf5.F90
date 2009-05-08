@@ -1967,7 +1967,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
 #ifdef VAMSI_HDF5
       call h5pset_fapl_mpio_f(prop_id,option%readers,MPI_INFO_NULL,hdf5_err) 
 #else
-     call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+      call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
 #endif
 #endif
       call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
