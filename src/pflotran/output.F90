@@ -5969,12 +5969,14 @@ subroutine OutputMassBalanceNew(realization)
       ! write header
       write(fid,'(a)',advance="no") '"Time[' // trim(output_option%tunit) // ']"'  
       
+      icol = 1
       select case(option%iflowmode)
         case(RICHARDS_MODE)
-          write(fid,'(a)',advance="no") ',"2-Global Water Mass [kg]"'
+          icol = icol + 1
+          write(strcol,'(i3,"-")') icol
+          write(fid,'(a)',advance="no") ',"' // trim(strcol) // 'Global Water Mass [kg]"'
       end select
       
-      icol = 2
       if (option%ntrandof > 0) then
         do i=1,reaction%ncomp
           if (reaction%primary_species_print(i)) then
