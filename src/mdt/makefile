@@ -40,8 +40,10 @@ mdt_obj = ${common_src}AsciiGrid.o \
 	${common_src}Hanford300v2.o \
 	${common_src}HDF.o \
 	${common_src}IFC.o \
+	${common_src}IFC_Scope3.o \
 	${common_src}IFC_2D.o \
 	${common_src}MAD.o \
+	${common_src}MidIFC.o \
 	${common_src}Material.o \
 	${common_src}ModelDevelopmentToolkit.o \
 	${common_src}Output.o \
@@ -71,7 +73,8 @@ IFC_2D.o : AsciiGrid.o BoundarySet.o Connection.o Grid.o Polygon.o
 MAD.o : AsciiGrid.o BoundarySet.o Connection.o Grid.o Polygon.o
 HDF.o :
 Material.o :
-ModelDevelopmentToolkit.o : Grid.o Hanford300.o Hanford300v2.o Output.o
+ModelDevelopmentToolkit.o : Grid.o Hanford300.o Hanford300v2.o Output.o IFC.o \
+                            IFC_Scope3.o IFC_2D.o MAD.o MidIFC.o
 Output.o : BoundarySet.o Grid.o HDF.o
 Polygon.o :
 Source.o :
