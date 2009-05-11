@@ -17,6 +17,7 @@ public:
   void createPlumePolygon();
   void createIFCPolygon();
   void createSPPPolygon();
+  void createSPPPolygonCorrect();
   void createMidIFCPolygon();
   PetscInt pointInPolygon(PetscReal x_, PetscReal y_);
   

@@ -81,6 +81,23 @@ void Polygon::createSPPPolygon() {
 
 }
 
+
+void Polygon::createSPPPolygonCorrect() {
+
+  num_points = 6;
+  x = new PetscReal[num_points];
+  y = new PetscReal[num_points];
+
+  PetscInt n = 0;
+  x[n] = 594298.; y[n++] = 116214.;
+  x[n] = 594192.; y[n++] = 116155.;
+  x[n] = 594242.; y[n++] = 116022.;
+  x[n] = 594356.; y[n++] = 116022.;
+  x[n] = 594379.; y[n++] = 116053.;
+  x[n] = 594376.; y[n++] = 116184.;
+
+}
+
 void Polygon::createPlumePolygon() {
 
   num_points = 4;
