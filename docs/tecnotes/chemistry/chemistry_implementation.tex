@@ -1212,6 +1212,29 @@ END
 \end{verbatim}
 \normalsize
 
+\section{Multicomponent-Multirate Model for Sorption}
+
+This formulation is considered only for surface complexation reactions, but ion exchange could also be implemented if desired. Consider surface complexation reactions of the form
+\EQ
+>\!\chi + \sum_j\nu_{ji} \A_j \arrows >\! S_{i\a},
+\EN
+with the rate of reaction described through a kinetic relation given by
+\EQ
+\frac{\p S_{i\a}}{\p t} \eq k_\a^{} \big(f_\a^{} S_i^{\rm eq}-S_{i\a}\big),
+\EN
+where
+\EQ
+\sum_\a f_\a\eq 1.
+\EN
+Then the solute transport equations become
+\EQ
+\frac{\p}{\p t}\varphi \Psi_j + \bnabla\cdot\bOmega_j \eq -\sum_{i\a}\nu_{ji}\frac{\p S_{i\a}}{\p t},
+\EN
+or
+\EQ
+\frac{\p}{\p t}\left(\varphi \Psi_j + \sum_{i\a}\nu_{ji} S_{i\a}\right) + \bnabla\cdot\bOmega_j \eq 0.
+\EN
+
 \section{Colloid-Facilitated Transport}
 
 \setcounter{equation}{0}
