@@ -5918,9 +5918,10 @@ subroutine OutputMassBalanceNew(realization)
   
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXWORDLENGTH) :: word
+  character(len=4) :: strcol
   PetscInt :: fid = 86
   PetscInt :: ios
-  PetscInt :: i
+  PetscInt :: i,icol
   PetscInt :: local_id
   PetscInt :: ghosted_id
   PetscInt :: iconn
@@ -5968,15 +5969,20 @@ subroutine OutputMassBalanceNew(realization)
       ! write header
       write(fid,'(a)',advance="no") '"Time[' // trim(output_option%tunit) // ']"'  
       
+      icol = 1
       select case(option%iflowmode)
         case(RICHARDS_MODE)
-          write(fid,'(a)',advance="no") ',"Global Water Mass [kg]"'
+          icol = icol + 1
+          write(strcol,'(i3,"-")') icol
+          write(fid,'(a)',advance="no") ',"' // trim(strcol) // 'Global Water Mass [kg]"'
       end select
       
       if (option%ntrandof > 0) then
         do i=1,reaction%ncomp
           if (reaction%primary_species_print(i)) then
-            write(fid,'(a)',advance="no") ',"Global ' // &
+            icol = icol + 1
+            write(strcol,'(i3,"-")') icol
+            write(fid,'(a)',advance="no") ',"' // trim(strcol) // 'Global ' // &
                 trim(reaction%primary_species_names(i)) // ' [mol]"'
           endif
         enddo
@@ -5988,9 +5994,13 @@ subroutine OutputMassBalanceNew(realization)
 
         select case(option%iflowmode)
           case(RICHARDS_MODE)
-            write(fid,'(a)',advance="no") ',"' // &
+            icol = icol + 1
+            write(strcol,'(i3,"-")') icol
+            write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
               trim(boundary_condition%name) // ' Water Mass [kg]"'
-            write(fid,'(a)',advance="no") ',"' // &
+            icol = icol + 1
+            write(strcol,'(i3,"-")') icol
+            write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
               trim(boundary_condition%name) // ' Water Mass [kg/' // &
               trim(output_option%tunit) // ']"'
         end select
@@ -5998,7 +6008,9 @@ subroutine OutputMassBalanceNew(realization)
         if (option%ntrandof > 0) then
           do i=1,reaction%ncomp
             if (reaction%primary_species_print(i)) then
-              write(fid,'(a)',advance="no") ',"' // &
+              icol = icol + 1
+              write(strcol,'(i3,"-")') icol
+              write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
                   trim(boundary_condition%name) // ' ' // &
                   trim(reaction%primary_species_names(i)) // ' [mol]"'
             endif
@@ -6006,7 +6018,9 @@ subroutine OutputMassBalanceNew(realization)
 
           do i=1,reaction%ncomp
             if (reaction%primary_species_print(i)) then
-              write(fid,'(a)',advance="no") ',"' // &
+              icol = icol + 1
+              write(strcol,'(i3,"-")') icol
+              write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
                   trim(boundary_condition%name) // ' ' // &
                   trim(reaction%primary_species_names(i)) // ' [mol/' // &
                   trim(output_option%tunit) // ']"'
@@ -6092,6 +6106,7 @@ subroutine OutputMassBalanceNew(realization)
     if (.not.associated(boundary_condition)) exit
 
     offset = boundary_condition%connection_set%offset
+    
     if (option%nflowdof > 0) then
       ! print out cumulative H2O flux
       sum_kg = 0.d0
