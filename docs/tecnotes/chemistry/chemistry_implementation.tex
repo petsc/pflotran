@@ -1244,13 +1244,30 @@ Using this result the empty site concentration can be computed directly from the
 S_\a \eq \omega_\a - \sum_i S_{i\a}.
 \EN
 
-Then the solute transport equations become
+The solute transport equations become
 \EQ
 \frac{\p}{\p t}\varphi \Psi_j + \bnabla\cdot\bOmega_j \eq -\sum_{i\a}\nu_{ji}\frac{\p S_{i\a}}{\p t},
 \EN
 or
 \EQ
 \frac{\p}{\p t}\left(\varphi \Psi_j + \sum_{i\a}\nu_{ji} S_{i\a}\right) + \bnabla\cdot\bOmega_j \eq 0.
+\EN
+
+An alternative form of these equations is to introduce the total sorbed concentration for the $j$th primary species defined as
+\EQ
+q_{j\a}\eq\sum_i \nu_{ji}S_{i\a}.
+\EN
+Then the transport equations become
+\EQ
+\frac{\p}{\p t}\left(\varphi \Psi_j + \sum_{\a}q_{j\a}\right) + \bnabla\cdot\bOmega_j \eq 0.
+\EN
+The sorbed concentrations are obtained from the equations
+\EQ
+\frac{\p q_{j\a}}{\p t} \eq k_\a^{} \big(q_{j\a}^{\rm eq}-q_{j\a}\big),
+\EN
+where $q_{j\a}^{\rm eq}$ is defined as
+\EQ
+q_{j\a}^{\rm eq} \eq \sum_i \nu_{ji} S_{i\a}^{\rm eq}\eq \frac{\omega_\a}{1+\sum_l K_lQ_l} \sum_i \nu_{ji}K_i Q_i.
 \EN
 
 \section{Colloid-Facilitated Transport}
