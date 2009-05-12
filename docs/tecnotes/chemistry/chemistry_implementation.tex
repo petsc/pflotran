@@ -1219,18 +1219,31 @@ This formulation is considered only for surface complexation reactions, but ion 
 >\!\chi_\a + \sum_j\nu_{ji} \A_j \arrows >\! S_{i\a},
 \EN
 with the rate of reaction described through a kinetic relation given by
-\EQ
-\frac{\p S_{i\a}}{\p t} \eq k_\a^{} \big(f_\a^{} S_{i\a}^{\rm eq}-S_{i\a}\big),
+\EQ\label{sorbed}
+\frac{\p S_{i\a}}{\p t} \eq k_\a^{} \big(S_{i\a}^{\rm eq}-S_{i\a}\big),
 \EN
-where
-\EQ
-\sum_\a f_\a\eq 1.
+for sorbed concentrations, and
+\EQ\label{fsite}
+\frac{\p S_{\a}}{\p t} \eq -\sum_i k_\a^{} \big(S_{i\a}^{\rm eq}-S_{i\a}\big),
 \EN
+for empty sites.
 The equilibrium sorption concentration $S_{i\a}^{\rm eq}$ is given by
 \EQ
 S_{i\a}^{\rm eq}\eq \frac{\omega_\a K_i Q_i}{1+\sum_l K_lQ_l},
 \EN
-where $\omega_\a$ denotes the total site concentration of type $\a$.
+where $\omega_\a$ denotes the total site concentration of type $\a$ given by
+\EQ\label{totsite}
+\omega_\a \eq S_\a + \sum_i S_{i\a}.
+\EN
+The site concentration $\omega_\a$ is constant as follows by differentiating Eqn.\eqref{totsite} using Eqns.\eqref{sorbed} and \eqref{fsite} to give
+\EQ
+\frac{\p\omega_\a}{\p t} \eq 0.
+\EN
+Using this result the empty site concentration can be computed directly from the equation
+\EQ
+S_\a \eq \omega_\a - \sum_i S_{i\a}.
+\EN
+
 Then the solute transport equations become
 \EQ
 \frac{\p}{\p t}\varphi \Psi_j + \bnabla\cdot\bOmega_j \eq -\sum_{i\a}\nu_{ji}\frac{\p S_{i\a}}{\p t},
