@@ -37,7 +37,8 @@ IFC_Scope3::IFC_Scope3(Grid **grid_) {
   PetscReal dz;// */
 
   PetscReal len_x = 900.;
-  PetscReal len_y = 1200.;
+//  PetscReal len_y = 1200.;
+  PetscReal len_y = 1300.;
   PetscReal len_z = 20.;
 
   dx = len_x/(PetscReal)nx;
@@ -94,11 +95,8 @@ IFC_Scope3::IFC_Scope3(Grid **grid_) {
 
   grid->setRotation(14.); // must come before ->setOrigin()
 
-#if 0
-  grid->setOrigin(594200.,115550.,90.);
-#else
-  grid->setOrigin(593925.,115160.,90.);
-#endif
+//  grid->setOrigin(593925.,115160.,90.);
+  grid->setOrigin(593950.,115070.,90.);
 
 //  grid->computeCoordinates();
 //  grid->computeConnectivity();
