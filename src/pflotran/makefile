@@ -72,7 +72,8 @@ util_obj  = ${common_src}input.o \
 	${common_src}spline.o \
 	${common_src}co2_span_wagner_spline.o \
 	${common_src}co2_sw.o \
-	${common_src}utility.o
+	${common_src}utility.o \
+	${common_src}matrix_buffer.o
 
 common_obj = ${common_src}option.o \
 	${common_src}units.o\
@@ -233,3 +234,4 @@ units.o : option.o
 stochastic.o : simulation.o option.o realization.o timestepper.o \
 	       init.o logging.o
 stochastic_aux.o : simulation.o input.o option.o
+matrix_buffer.o :
