@@ -97,8 +97,8 @@ subroutine MatrixBufferInit(A,matrix_buffer,grid)
       matrix_buffer%i_width = 1
       matrix_buffer%j_width = structured_grid%ngx 
       matrix_buffer%k_width = structured_grid%ngxy
-      allocate(matrix_buffer%icol(7,structured_grid%nlmax))
-      allocate(matrix_buffer%values(7,structured_grid%nlmax))
+      allocate(matrix_buffer%icol(7,structured_grid%ngmax))
+      allocate(matrix_buffer%values(7,structured_grid%ngmax))
       ! compute fill indices
       ! initialize all to zero
       matrix_buffer%icol = 0 
@@ -109,26 +109,26 @@ subroutine MatrixBufferInit(A,matrix_buffer,grid)
             local_id = local_id + 1
             ghosted_id = grid%nL2G(local_id)
             if (k > 0) then
-              matrix_buffer%icol(1,local_id) = ghosted_id - structured_grid%ngxy
+              matrix_buffer%icol(1,ghosted_id) = ghosted_id - structured_grid%ngxy
             endif
             if (j > 0) then
-              matrix_buffer%icol(2,local_id) = ghosted_id - structured_grid%ngx
+              matrix_buffer%icol(2,ghosted_id) = ghosted_id - structured_grid%ngx
             endif
             if (i > 0) then
-              matrix_buffer%icol(3,local_id) = ghosted_id - 1
+              matrix_buffer%icol(3,ghosted_id) = ghosted_id - 1
             endif
-            matrix_buffer%icol(4,local_id) = ghosted_id
+            matrix_buffer%icol(4,ghosted_id) = ghosted_id
             if (i < structured_grid%iend .or. &
                 structured_grid%ngxe-structured_grid%nxe > 0) then
-              matrix_buffer%icol(5,local_id) = ghosted_id + 1
+              matrix_buffer%icol(5,ghosted_id) = ghosted_id + 1
             endif
             if (j < structured_grid%jend .or. &
                 structured_grid%ngye-structured_grid%nye > 0) then
-              matrix_buffer%icol(6,local_id) = ghosted_id + structured_grid%ngx
+              matrix_buffer%icol(6,ghosted_id) = ghosted_id + structured_grid%ngx
             endif
             if (k < structured_grid%kend .or. &
                 structured_grid%ngze-structured_grid%nze > 0) then
-              matrix_buffer%icol(7,local_id) = ghosted_id + structured_grid%ngxy
+              matrix_buffer%icol(7,ghosted_id) = ghosted_id + structured_grid%ngxy
             endif
           enddo
         enddo
@@ -300,14 +300,15 @@ subroutine MatrixBufferSetValuesAij(A,matrix_buffer)
   Mat :: A
   type(matrix_buffer_type), pointer :: matrix_buffer  
 
-  PetscInt :: local_id
+  PetscInt :: local_id, ghosted_id
   PetscErrorCode :: ierr
 
   do local_id = 1, matrix_buffer%grid%nlmax
-    call MatSetValuesLocal(A,1,matrix_buffer%icol(4,local_id), &
+    ghosted_id = matrix_buffer%grid%nL2G(local_id)
+    call MatSetValuesLocal(A,1,matrix_buffer%icol(4,ghosted_id), &
                            size(matrix_buffer%icol,1), &
-                           matrix_buffer%icol(:,local_id), &
-                           matrix_buffer%values(:,local_id),INSERT_VALUES, &
+                           matrix_buffer%icol(:,ghosted_id), &
+                           matrix_buffer%values(:,ghosted_id),INSERT_VALUES, &
                            ierr)
   enddo
 
@@ -330,6 +331,8 @@ subroutine MatrixBufferDestroy(matrix_buffer)
   
   if (associated(matrix_buffer%values)) deallocate(matrix_buffer%values)
   nullify(matrix_buffer%values)
+  if (associated(matrix_buffer%icol)) deallocate(matrix_buffer%icol)
+  nullify(matrix_buffer%icol)
   
   deallocate(matrix_buffer)
   nullify(matrix_buffer)

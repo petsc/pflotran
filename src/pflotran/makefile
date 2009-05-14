@@ -72,8 +72,7 @@ util_obj  = ${common_src}input.o \
 	${common_src}spline.o \
 	${common_src}co2_span_wagner_spline.o \
 	${common_src}co2_sw.o \
-	${common_src}utility.o \
-	${common_src}matrix_buffer.o
+	${common_src}utility.o
 
 common_obj = ${common_src}option.o \
 	${common_src}units.o\
@@ -104,6 +103,7 @@ common_obj = ${common_src}option.o \
 	${common_src}condition.o \
 	${common_src}coupler.o \
 	${common_src}grid.o \
+	${common_src}matrix_buffer.o \
 	${common_src}hydrostatic.o \
 	${common_src}patch.o \
 	${common_src}level.o \
@@ -168,7 +168,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	richards.o thc.o discretization.o logging.o mass_balance.o \
 	database.o reaction_aux.o string.o units.o stochastic_aux.o
 unstructured_grid.o : option.o connection.o 
-structured_grid.o : connection.o option.o input.o 
+structured_grid.o : connection.o option.o input.o cf90bridge.o
 general_grid.o : grid.o realization.o hdf5.o logging.o
 discretization.o : grid.o structured_grid.o unstructured_grid.o option.o \
                    input.o string.o
@@ -236,4 +236,4 @@ units.o : option.o
 stochastic.o : simulation.o option.o realization.o timestepper.o \
 	       init.o logging.o
 stochastic_aux.o : simulation.o input.o option.o
-matrix_buffer.o : grid.o
+matrix_buffer.o : grid.o structured_grid.o
