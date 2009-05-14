@@ -141,6 +141,8 @@ module Option_module
     
     PetscTruth :: steady_state
     
+    PetscTruth :: use_matrix_buffer
+
   end type option_type
   
   type, public :: output_option_type
@@ -415,6 +417,8 @@ subroutine OptionInitRealization(option)
   option%co2eos=EOS_SPAN_WAGNER
   option%idt_switch = -1
 
+  option%use_matrix_buffer = PETSC_FALSE
+
 end subroutine OptionInitRealization
 
 ! ************************************************************************** !
@@ -481,6 +485,8 @@ subroutine OptionCheckCommandLine(option)
   PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH) :: string
   
+  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-buffer_matrix", & 
+                           option%use_matrix_buffer, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-snes_mf", & 
                            option%use_matrix_free, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_isothermal", &

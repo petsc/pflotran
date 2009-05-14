@@ -236,4 +236,4 @@ units.o : option.o
 stochastic.o : simulation.o option.o realization.o timestepper.o \
 	       init.o logging.o
 stochastic_aux.o : simulation.o input.o option.o
-matrix_buffer.o :
+matrix_buffer.o : grid.o

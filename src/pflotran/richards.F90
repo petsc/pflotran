@@ -2,6 +2,9 @@ module Richards_module
 
   use Richards_Aux_module
   use Global_Aux_module
+#ifdef GLENN
+  use Matrix_Buffer_module
+#endif
   
   implicit none
   
@@ -144,7 +147,7 @@ subroutine RichardsSetupPatch(realization)
   enddo
   patch%aux%Richards%aux_vars => rich_aux_vars
   patch%aux%Richards%num_aux = grid%ngmax
-  
+
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them  
   boundary_condition => patch%boundary_conditions%first
@@ -2164,6 +2167,9 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
   else
     J = A
+    if (mat_type == MATHYPRESTRUCT) then
+      option%use_matrix_buffer = PETSC_TRUE
+    endif
   endif
 
   call MatZeroEntries(J,ierr)
@@ -2307,6 +2313,17 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
+#ifdef GLENN
+  if (option%use_matrix_buffer) then
+    if (associated(patch%aux%Richards%matrix_buffer)) then
+      call MatrixBufferZero(patch%aux%Richards%matrix_buffer)
+    else
+      patch%aux%Richards%matrix_buffer => MatrixBufferCreate()
+      call MatrixBufferInit(A,patch%aux%Richards%matrix_buffer,grid)
+    endif
+  endif
+#endif
+
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
@@ -2377,31 +2394,39 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                                   realization%saturation_function_array(icap_dn)%ptr,&
                                   Jup,Jdn)
       if (local_id_up > 0) then
-#ifdef BUFFER_MATRIX
-        call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id_up, &
-                             ghosted_id_up,Jup(1))
-        call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id_up, &
-                             ghosted_id_dn,Jdn(1))
-#else
-        call MatSetValuesLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
-                                      Jup,ADD_VALUES,ierr)
-        call MatSetValuesLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
-                                      Jdn,ADD_VALUES,ierr)
+#ifdef GLENN
+        if (option%use_matrix_buffer) then
+          call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id_up, &
+                               ghosted_id_up,Jup(1,1))
+          call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id_up, &
+                               ghosted_id_dn,Jdn(1,1))
+        else
+#endif
+          call MatSetValuesLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
+                                        Jup,ADD_VALUES,ierr)
+          call MatSetValuesLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
+                                        Jdn,ADD_VALUES,ierr)
+#ifdef GLENN
+        endif
 #endif
       endif
       if (local_id_dn > 0) then
         Jup = -Jup
         Jdn = -Jdn
-#ifdef BUFFER_MATRIX
-        call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id_dn, &
-                             ghosted_id_dn,Jdn(1))
-        call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id_dn, &
-                             ghosted_id_up,Jup(1))
-#else
-        call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
-                                      Jdn,ADD_VALUES,ierr)
-        call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
-                                      Jup,ADD_VALUES,ierr)
+#ifdef GLENN
+        if (option%use_matrix_buffer) then
+          call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id_dn, &
+                               ghosted_id_dn,Jdn(1,1))
+          call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id_dn, &
+                               ghosted_id_up,Jup(1,1))
+        else
+#endif
+          call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
+                                        Jdn,ADD_VALUES,ierr)
+          call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
+                                        Jup,ADD_VALUES,ierr)
+#ifdef GLENN
+        endif
 #endif
       endif
     enddo
@@ -2466,11 +2491,16 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                                 realization%saturation_function_array(icap_dn)%ptr,&
                                 Jdn)
       Jdn = -Jdn
-#ifdef BUFFER_MATRIX
-      call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id, &
-                           ghosted_id,Jdn(1))
-#else
-      call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn,ADD_VALUES,ierr)
+#ifdef GLENN
+      if (option%use_matrix_buffer) then
+        call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id, &
+                             ghosted_id,Jdn(1,1))
+      else
+#endif
+        call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn, &
+                               ADD_VALUES,ierr)
+#ifdef GLENN
+      endif
 #endif
  
     enddo
@@ -2592,11 +2622,16 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                               option, &
                               realization%saturation_function_array(icap)%ptr,&
                               Jup) 
-#ifdef BUFFER_MATRIX
-    call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id, &
-                         ghosted_id,Jup(1))
-#else
-    call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
+#ifdef GLENN
+    if (option%use_matrix_buffer) then
+      call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id, &
+                           ghosted_id,Jup(1,1))
+    else
+#endif
+      call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
+                             ADD_VALUES,ierr)
+#ifdef GLENN
+    endif
 #endif
 !!$    if(option%use_samr) then
 !!$       flow_pc = 0
@@ -2640,11 +2675,15 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
           Jup(1,1) = -qsrc1*rich_aux_vars(ghosted_id)%dden_dp*rich_aux_vars(ghosted_id)%avgmw
 
       end select
-#ifdef BUFFER_MATRIX
-      call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id, &
-                           ghosted_id,Jup(1))
-#else
-      call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)  
+#ifdef GLENN
+      if (option%use_matrix_buffer) then
+        call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id, &
+                             ghosted_id,Jup(1,1))
+      else
+#endif
+        call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)  
+#ifdef GLENN
+      endif
 #endif
 
 !!$      if(option%use_samr) then
@@ -2668,20 +2707,33 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
 
+#ifdef GLENN
+  if (option%use_matrix_buffer) then
+    if (patch%aux%Richards%inactive_cells_exist) then
+      call MatrixBufferZeroRows(patch%aux%Richards%matrix_buffer, &
+                                patch%aux%Richards%n_zero_rows, &
+                                patch%aux%Richards%zero_rows_local_ghosted)
+    endif
+    call MatrixBufferSetValues(A,patch%aux%Richards%matrix_buffer)
+  endif
+#endif
+
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
 
 ! zero out isothermal and inactive cells
-  if (patch%aux%Richards%inactive_cells_exist) then
-    qsrc1 = 1.d0 ! solely a temporary variable in this conditional
-#ifdef BUFFER_MATRIX
-    call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,
-#else
-    call MatZeroRowsLocal(A,patch%aux%Richards%n_zero_rows, &
-                          patch%aux%Richards%zero_rows_local_ghosted, &
-                          qsrc1,ierr) 
+#ifdef GLENN
+  if (.not.option%use_matrix_buffer) then
 #endif
+    if (patch%aux%Richards%inactive_cells_exist) then
+      qsrc1 = 1.d0 ! solely a temporary variable in this conditional
+      call MatZeroRowsLocal(A,patch%aux%Richards%n_zero_rows, &
+                            patch%aux%Richards%zero_rows_local_ghosted, &
+                            qsrc1,ierr) 
+    endif
+#ifdef GLENN
   endif
+#endif
 
   if(option%use_samr) then
      flow_pc = 0

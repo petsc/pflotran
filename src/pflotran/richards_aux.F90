@@ -1,6 +1,6 @@
 module Richards_Aux_module
 
-#ifdef BUFFER_MATRIX)
+#ifdef GLENN
   use Matrix_Buffer_module
 #endif
 
@@ -38,7 +38,7 @@ module Richards_Aux_module
     type(richards_parameter_type), pointer :: richards_parameter
     type(richards_auxvar_type), pointer :: aux_vars(:)
     type(richards_auxvar_type), pointer :: aux_vars_bc(:)
-#ifdef BUFFER_MATRIX)
+#ifdef GLENN
     type(matrix_buffer_type), pointer :: matrix_buffer
 #endif
   end type richards_type
@@ -81,7 +81,7 @@ function RichardsAuxCreate()
   nullify(aux%richards_parameter%sir)
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
-#ifdef BUFFER_MATRIX)
+#ifdef GLENN
   nullify(aux%matrix_buffer)
 #endif
 
@@ -299,7 +299,7 @@ subroutine RichardsAuxDestroy(aux)
   endif
   nullify(aux%richards_parameter)
 
-#ifdef BUFFER_MATRIX)
+#ifdef GLENN
   if (associated(aux%matrix_buffer)) then
     call MatrixBufferDestroy(aux%matrix_buffer)
   endif
