@@ -2377,18 +2377,32 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                                   realization%saturation_function_array(icap_dn)%ptr,&
                                   Jup,Jdn)
       if (local_id_up > 0) then
+#ifdef BUFFER_MATRIX
+        call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id_up, &
+                             ghosted_id_up,Jup(1))
+        call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id_up, &
+                             ghosted_id_dn,Jdn(1))
+#else
         call MatSetValuesLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
                                       Jup,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
                                       Jdn,ADD_VALUES,ierr)
+#endif
       endif
       if (local_id_dn > 0) then
         Jup = -Jup
         Jdn = -Jdn
+#ifdef BUFFER_MATRIX
+        call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id_dn, &
+                             ghosted_id_dn,Jdn(1))
+        call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id_dn, &
+                             ghosted_id_up,Jup(1))
+#else
         call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
                                       Jdn,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
                                       Jup,ADD_VALUES,ierr)
+#endif
       endif
     enddo
     cur_connection_set => cur_connection_set%next
@@ -2452,7 +2466,12 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                                 realization%saturation_function_array(icap_dn)%ptr,&
                                 Jdn)
       Jdn = -Jdn
+#ifdef BUFFER_MATRIX
+      call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id, &
+                           ghosted_id,Jdn(1))
+#else
       call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn,ADD_VALUES,ierr)
+#endif
  
     enddo
     boundary_condition => boundary_condition%next
@@ -2573,7 +2592,12 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                               option, &
                               realization%saturation_function_array(icap)%ptr,&
                               Jup) 
+#ifdef BUFFER_MATRIX
+    call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id, &
+                         ghosted_id,Jup(1))
+#else
     call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
+#endif
 !!$    if(option%use_samr) then
 !!$       flow_pc = 0
 !!$       call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), &
@@ -2616,7 +2640,12 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
           Jup(1,1) = -qsrc1*rich_aux_vars(ghosted_id)%dden_dp*rich_aux_vars(ghosted_id)%avgmw
 
       end select
+#ifdef BUFFER_MATRIX
+      call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id, &
+                           ghosted_id,Jup(1))
+#else
       call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)  
+#endif
 
 !!$      if(option%use_samr) then
 !!$         flow_pc = 0
@@ -2645,9 +2674,13 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 ! zero out isothermal and inactive cells
   if (patch%aux%Richards%inactive_cells_exist) then
     qsrc1 = 1.d0 ! solely a temporary variable in this conditional
+#ifdef BUFFER_MATRIX
+    call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,
+#else
     call MatZeroRowsLocal(A,patch%aux%Richards%n_zero_rows, &
                           patch%aux%Richards%zero_rows_local_ghosted, &
                           qsrc1,ierr) 
+#endif
   endif
 
   if(option%use_samr) then

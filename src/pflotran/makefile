@@ -208,9 +208,11 @@ reactive_transport.o : realization.o reaction.o transport.o \
                        reactive_transport_aux.o fluid.o
 reactive_transport_aux.o : option.o reaction_aux.o
 thc.o : thc_aux.o realization.o saturation_function.o
-richards.o : richards_aux.o realization.o saturation_function.o
+richards.o : richards_aux.o realization.o saturation_function.o \
+             matrix_buffer.o
 thc_aux.o : option.o material.o water_eos.o saturation_function.o
-richards_aux.o : option.o material.o water_eos.o saturation_function.o
+richards_aux.o : option.o material.o water_eos.o saturation_function.o \
+                 matrix_buffer.o
 mphase.o : mphase_aux.o realization.o fluid.o
 mphase.o : immis_aux.o realization.o 
 mphase_aux.o :  option.o material.o water_eos.o co2_span_wagner.o \
