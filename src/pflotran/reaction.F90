@@ -3039,17 +3039,17 @@ subroutine ReactionComputeKd(icomp,retardation,rt_auxvar,global_auxvar, &
       do j = 1, reaction%eqsurfcmplxspecid(0,icplx)
         jcomp = reaction%eqsurfcmplxspecid(j,icplx)
         if (icomp == jcomp) then
-          if (dabs(rt_auxvar%total(jcomp,iphase)) > 1.d-40) &
-            retardation = retardation + &
-                          reaction%eqsurfcmplxstoich(j,icplx)* &
-                          rt_auxvar%eqsurfcmplx_conc(icplx)
+          retardation = retardation + &
+            reaction%eqsurfcmplxstoich(j,icplx) * &
+            rt_auxvar%eqsurfcmplx_conc(icplx)
           exit
         endif
       enddo
     enddo
   enddo
-  retardation = retardation/bulk_vol_to_fluid_vol/ &
-    rt_auxvar%total(icomp,iphase)
+  if (dabs(rt_auxvar%total(icomp,iphase)) > 1.d-40) &
+    retardation = retardation/bulk_vol_to_fluid_vol/ &
+      rt_auxvar%total(icomp,iphase)
 
 end subroutine ReactionComputeKd
 
