@@ -3028,7 +3028,7 @@ subroutine ReactionComputeKd(icomp,retardation,rt_auxvar,global_auxvar, &
   PetscInt :: i, j, jcomp, irxn, icplx
   PetscInt, parameter :: iphase = 1
 
-  retardation = 1.d0
+  retardation = 0.d0
   if (reaction%neqsurfcmplxrxn == 0) return
   
   bulk_vol_to_fluid_vol = porosity*global_auxvar%sat(iphase)*1000.d0
@@ -3042,14 +3042,14 @@ subroutine ReactionComputeKd(icomp,retardation,rt_auxvar,global_auxvar, &
           if (dabs(rt_auxvar%total(jcomp,iphase)) > 1.d-40) &
             retardation = retardation + &
                           reaction%eqsurfcmplxstoich(j,icplx)* &
-                          rt_auxvar%eqsurfcmplx_conc(icplx)/ &
-                          bulk_vol_to_fluid_vol/ &
-                          rt_auxvar%total(jcomp,iphase)
+                          rt_auxvar%eqsurfcmplx_conc(icplx)
           exit
         endif
       enddo
     enddo
   enddo
+  retardation = retardation/bulk_vol_to_fluid_vol/ &
+    rt_auxvar%total(icomp,iphase)
 
 end subroutine ReactionComputeKd
 
