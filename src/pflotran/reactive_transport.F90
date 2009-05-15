@@ -92,6 +92,7 @@ subroutine RTSetup(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
+      cur_patch%reaction => realization%reaction
       call RTSetupPatch(realization)
       cur_patch => cur_patch%next
     enddo
@@ -3076,6 +3077,19 @@ function RTGetTecplotHeader(realization,icolumn)
           trim(reaction%surface_complex_names(i))
       else
         write(string2,'('',"'',a,''"'')') trim(reaction%surface_complex_names(i))
+      endif
+      string = trim(string) // trim(string2)
+    endif
+  enddo
+
+  do i=1,option%ntrandof
+    if (reaction%kd_print(i)) then
+      if (icolumn > -1) then
+        icolumn = icolumn + 1
+        write(string2,'('',"'',i2,''-'',a,''_kd"'')') icolumn, &
+          trim(reaction%primary_species_names(i))
+      else
+        write(string2,'('',"'',a,''_kd"'')') trim(reaction%primary_species_names(i))
       endif
       string = trim(string) // trim(string2)
     endif

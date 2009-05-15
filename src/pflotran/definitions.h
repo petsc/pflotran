@@ -152,25 +152,25 @@ PetscInt, parameter :: LIQUID_MOLE_FRACTION = 12
 PetscInt, parameter :: GAS_MOLE_FRACTION = 13
 PetscInt, parameter :: PHASE = 14
 PetscInt, parameter :: MATERIAL_ID = 15
-PetscInt, parameter :: GAS_DENSITY_MOL = 31
+PetscInt, parameter :: GAS_DENSITY_MOL = 16
 
 
-PetscInt, parameter :: PRIMARY_MOLALITY = 16
-PetscInt, parameter :: SECONDARY_MOLALITY = 17
-PetscInt, parameter :: TOTAL_MOLALITY = 18
-PetscInt, parameter :: PRIMARY_MOLARITY = 19
-PetscInt, parameter :: SECONDARY_MOLARITY = 20
-PetscInt, parameter :: TOTAL_MOLARITY = 21
-PetscInt, parameter :: MINERAL_VOLUME_FRACTION = 22
-PetscInt, parameter :: MINERAL_RATE = 23
-PetscInt, parameter :: MINERAL_SURFACE_AREA = 24
-PetscInt, parameter :: PH = 25
-PetscInt, parameter :: SURFACE_CMPLX = 26
-PetscInt, parameter :: SURFACE_CMPLX_FREE = 27
-PetscInt, parameter :: PRIMARY_ACTIVITY_COEF = 28
-PetscInt, parameter :: SECONDARY_ACTIVITY_COEF = 29
-
-PetscInt, parameter :: SC_FUGA_COEFF = 30
+PetscInt, parameter :: PRIMARY_MOLALITY = 17
+PetscInt, parameter :: SECONDARY_MOLALITY = 18
+PetscInt, parameter :: TOTAL_MOLALITY = 19
+PetscInt, parameter :: PRIMARY_MOLARITY = 20
+PetscInt, parameter :: SECONDARY_MOLARITY = 21
+PetscInt, parameter :: TOTAL_MOLARITY = 22
+PetscInt, parameter :: MINERAL_VOLUME_FRACTION = 23
+PetscInt, parameter :: MINERAL_RATE = 24
+PetscInt, parameter :: MINERAL_SURFACE_AREA = 25
+PetscInt, parameter :: PH = 26
+PetscInt, parameter :: SURFACE_CMPLX = 27
+PetscInt, parameter :: SURFACE_CMPLX_FREE = 28
+PetscInt, parameter :: PRIMARY_ACTIVITY_COEF = 29
+PetscInt, parameter :: SECONDARY_ACTIVITY_COEF = 30
+PetscInt, parameter :: SC_FUGA_COEFF = 31
+PetscInt, parameter :: PRIMARY_KD = 32
 
 ! activity coefficients
 PetscInt, parameter :: ACT_COEF_FREQUENCY_OFF = 0

@@ -25,7 +25,8 @@ module Reaction_module
             ReactionEquilibrateConstraint, &
             ReactionPrintConstraint, &
             ReactionFitLogKCoef, &
-            ReactionInitializeLogK
+            ReactionInitializeLogK, &
+            ReactionComputeKd
 
 contains
 
@@ -1656,12 +1657,18 @@ subroutine ReactionReadOutput(reaction,input,option)
     if (StringCompare(word,'all',THREE_INTEGER)) then
       reaction%print_all_species = PETSC_TRUE
       reaction%print_pH = PETSC_TRUE
+      reaction%print_kd = PETSC_TRUE
       call InputSkipToEnd(input,option,'OUTPUT')
       exit
     endif
 
     if (StringCompare(name,'pH',TWO_INTEGER)) then
       reaction%print_pH = PETSC_TRUE
+      found = PETSC_TRUE
+    endif
+
+   if (StringCompare(name,'Kd',TWO_INTEGER)) then
+      reaction%print_kd = PETSC_TRUE
       found = PETSC_TRUE
     endif
 
@@ -1737,7 +1744,7 @@ subroutine ReactionReadOutput(reaction,input,option)
         cur_surfcplx_rxn => cur_surfcplx_rxn%next
       enddo  
     endif
-    
+
     if (.not.found) then
       option%io_buffer = 'CHEMISTRY,OUTPUT species name: '//trim(name)// &
                          ' not found among chemical species'
@@ -2996,5 +3003,54 @@ subroutine ReactionInterpolateLogK(coefs,logKs,temp,n)
   enddo
   
 end subroutine ReactionInterpolateLogK
+
+! ************************************************************************** !
+!
+! RComputeKd: Computes the Kd for a given chemical component
+! author: Glenn Hammond
+! date: 05/14/09
+!
+! ************************************************************************** !
+subroutine ReactionComputeKd(icomp,retardation,rt_auxvar,global_auxvar, &
+                             porosity,reaction,option)
+
+  use Option_module
+  
+  PetscInt :: icomp
+  PetscReal :: retardation
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar  
+  PetscReal :: porosity
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+  
+  PetscReal :: bulk_vol_to_fluid_vol
+  PetscInt :: i, j, jcomp, irxn, icplx
+  PetscInt, parameter :: iphase = 1
+
+  retardation = 0.d0
+  if (reaction%neqsurfcmplxrxn == 0) return
+  
+  bulk_vol_to_fluid_vol = porosity*global_auxvar%sat(iphase)*1000.d0
+
+  do irxn = 1, reaction%neqsurfcmplxrxn
+    do i = 1, reaction%eqsurfcmplx_rxn_to_complex(0,irxn)
+      icplx = reaction%eqsurfcmplx_rxn_to_complex(i,irxn)
+      do j = 1, reaction%eqsurfcmplxspecid(0,icplx)
+        jcomp = reaction%eqsurfcmplxspecid(j,icplx)
+        if (icomp == jcomp) then
+          retardation = retardation + &
+            reaction%eqsurfcmplxstoich(j,icplx) * &
+            rt_auxvar%eqsurfcmplx_conc(icplx)
+          exit
+        endif
+      enddo
+    enddo
+  enddo
+  if (dabs(rt_auxvar%total(icomp,iphase)) > 1.d-40) &
+    retardation = retardation/bulk_vol_to_fluid_vol/ &
+      rt_auxvar%total(icomp,iphase)
+
+end subroutine ReactionComputeKd
 
 end module Reaction_module
