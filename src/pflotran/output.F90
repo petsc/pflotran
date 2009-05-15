@@ -537,6 +537,13 @@ subroutine OutputTecplotBlock(realization)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo
+      do i=1,reaction%ncomp
+        if (reaction%kd_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,PRIMARY_KD,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        endif
+      enddo
     endif
   endif
   
@@ -1368,6 +1375,13 @@ subroutine OutputTecplotPoint(realization)
         do i=1,reaction%neqsurfcmplx
           if (reaction%surface_complex_print(i)) then
             value = RealizGetDatasetValueAtCell(realization,SURFACE_CMPLX, &
+                                                i,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+          endif
+        enddo
+        do i=1,reaction%ncomp
+          if (reaction%kd_print(i)) then
+            value = RealizGetDatasetValueAtCell(realization,PRIMARY_KD, &
                                                 i,ghosted_id)
             write(IUNIT3,1000,advance='no') value
           endif
@@ -2354,6 +2368,13 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
       endif
     enddo
 
+    do i=1,option%ntrandof
+      if (reaction%kd_print(i)) then
+        write(fid,'('',"'',a,'' '',a,''_kd"'')',advance="no") &
+          trim(reaction%primary_species_names(i)), trim(cell_string)
+      endif
+    enddo
+    
   endif
 
   if (print_velocities) then 
@@ -2524,6 +2545,13 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
       endif
     enddo
 
+    do i=1,option%ntrandof
+      if (reaction%kd_print(i)) then
+        write(fid,'('',"'',a,'' '',a,''_kd"'')',advance="no") &
+          trim(reaction%primary_species_names(i)), trim(cell_string)
+      endif
+    enddo
+    
   endif
 
   if (print_velocities) then 
@@ -2743,6 +2771,12 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
         if (reaction%surface_complex_print(i)) then
           write(fid,110,advance="no") &
             RealizGetDatasetValueAtCell(realization,SURFACE_CMPLX,i,ghosted_id)
+        endif
+      enddo
+      do i=1,reaction%ncomp
+        if (reaction%kd_print(i)) then
+          write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,PRIMARY_KD,i,ghosted_id)
         endif
       enddo
     endif
@@ -3026,6 +3060,16 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
         if (reaction%surface_complex_print(i)) then
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,SURFACE_CMPLX,i, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
+        endif
+      enddo
+      do i=1,reaction%ncomp
+        if (reaction%kd_print(i)) then
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,PRIMARY_KD,i, &
                                          region%coordinates(ONE_INTEGER)%x, &
                                          region%coordinates(ONE_INTEGER)%y, &
                                          region%coordinates(ONE_INTEGER)%z, &
@@ -4736,6 +4780,21 @@ subroutine OutputHDF5(realization)
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
             if(first) then
                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,SURFACE_CMPLX,i)
+            endif
+            current_component=current_component+1
+          endif
+        endif
+      enddo
+      do i=1,reaction%ncomp
+        if (reaction%kd_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,PRIMARY_KD,i)
+          if (.not.(option%use_samr)) then
+            write(string,'(a)') trim(reaction%primary_species_names(i)) // '_kd'
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+          else
+            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+            if(first) then
+               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,PRIMARY_KD,i)
             endif
             current_component=current_component+1
           endif

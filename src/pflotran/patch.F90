@@ -6,6 +6,7 @@ module Patch_module
   use Observation_module
   use Strata_module
   use Region_module
+  use Reaction_Aux_module
   use Material_module
   
   use Auxilliary_module
@@ -38,7 +39,8 @@ module Patch_module
 
     type(strata_list_type), pointer :: strata
     type(observation_list_type), pointer :: observation
-    
+
+    type(reaction_type), pointer :: reaction
     type(auxilliary_type) :: aux
     
     type(patch_type), pointer :: next
@@ -111,6 +113,8 @@ function PatchCreate()
   call StrataInitList(patch%strata)
   
   call AuxInit(patch%aux)
+  
+  nullify(patch%reaction)
   
   nullify(patch%next)
   
@@ -989,6 +993,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
   use THC_Aux_module
   use Richards_Aux_module
   use Reactive_Transport_Aux_module  
+  use Reaction_module
   
   implicit none
 
@@ -1176,7 +1181,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY, &
          SECONDARY_MOLARITY,TOTAL_MOLALITY,TOTAL_MOLARITY, &
          MINERAL_RATE,MINERAL_VOLUME_FRACTION,SURFACE_CMPLX,SURFACE_CMPLX_FREE, &
-         PRIMARY_ACTIVITY_COEF, SECONDARY_ACTIVITY_COEF)
+         PRIMARY_ACTIVITY_COEF, SECONDARY_ACTIVITY_COEF,PRIMARY_KD)
          
       select case(ivar)
         case(PH)
@@ -1254,6 +1259,16 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
             vec_ptr(local_id) = &
               patch%aux%RT%aux_vars(ghosted_id)%sec_act_coef(isubvar)
           enddo
+        case(PRIMARY_KD)
+          call GridVecGetArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+          do local_id=1,grid%nlmax
+            ghosted_id = grid%nL2G(local_id)
+            call ReactionComputeKd(isubvar,vec_ptr(local_id), &
+                                   patch%aux%RT%aux_vars(ghosted_id), &
+                                   patch%aux%Global%aux_vars(ghosted_id), &
+                                   vec_ptr2(ghosted_id),patch%reaction,option)
+          enddo
+          call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
       end select
     case(PHASE)
       call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
@@ -1287,6 +1302,12 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
   use Grid_module
   use Option_module
   use Field_module
+
+  use Mphase_Aux_module
+  use THC_Aux_module
+  use Richards_Aux_module
+  use Reactive_Transport_Aux_module  
+  use Reaction_module
 
   implicit none
 
@@ -1410,7 +1431,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY, &
          TOTAL_MOLALITY,TOTAL_MOLARITY, &
          MINERAL_VOLUME_FRACTION,MINERAL_RATE,SURFACE_CMPLX, SURFACE_CMPLX_FREE, &
-         PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF)
+         PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD)
          
       select case(ivar)
         case(PH)
@@ -1449,6 +1470,13 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
           value = patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)
         case(SECONDARY_ACTIVITY_COEF)
           value = patch%aux%RT%aux_vars(ghosted_id)%sec_act_coef(isubvar)
+        case(PRIMARY_KD)
+          call GridVecGetArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+          call ReactionComputeKd(isubvar,value, &
+                                 patch%aux%RT%aux_vars(ghosted_id), &
+                                 patch%aux%Global%aux_vars(ghosted_id), &
+                                 vec_ptr2(ghosted_id),patch%reaction,option)
+          call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
       end select
     case(PHASE)
       call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
@@ -1960,6 +1988,8 @@ subroutine PatchDestroy(patch)
   call AuxDestroy(patch%aux)
   
   call ObservationDestroyList(patch%observation)
+  
+  nullify(patch%reaction)
   
   deallocate(patch)
   nullify(patch)

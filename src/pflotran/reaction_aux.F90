@@ -134,6 +134,7 @@ module Reaction_Aux_module
     PetscTruth :: use_log_formulation ! flag for solving for the change in the log of the concentration
     PetscTruth :: print_all_species
     PetscTruth :: print_pH
+    PetscTruth :: print_kd
     PetscInt :: num_dbase_temperatures
     PetscInt :: h_ion_id
     PetscInt :: o2_gas_id
@@ -224,6 +225,7 @@ module Reaction_Aux_module
     PetscReal, pointer :: eqsurfcmplx_logK(:)
     PetscReal, pointer :: eqsurfcmplx_logKcoef(:,:)
     PetscReal, pointer :: eqsurfcmplx_Z(:)  ! valence
+    PetscTruth, pointer :: kd_print(:)
 
 #if 0    
     PetscInt, pointer :: kinsurfcmplxspecid(:,:)
@@ -335,6 +337,7 @@ function ReactionCreate()
   reaction%checkpoint_activity_coefs = PETSC_TRUE
   reaction%print_all_species = PETSC_TRUE
   reaction%print_pH = PETSC_FALSE
+  reaction%print_kd = PETSC_FALSE
   reaction%use_log_formulation = PETSC_FALSE
   reaction%use_full_geochemistry = PETSC_FALSE
   
@@ -365,6 +368,7 @@ function ReactionCreate()
   nullify(reaction%surface_site_print)
   nullify(reaction%surface_complex_print)
   nullify(reaction%kinmnrl_print)
+  nullify(reaction%kd_print)
   
   reaction%ncomp = 0
   nullify(reaction%primary_spec_a0)
@@ -1548,6 +1552,8 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%surface_complex_print)
   if (associated(reaction%kinmnrl_print)) deallocate(reaction%kinmnrl_print)
   nullify(reaction%kinmnrl_print)
+  if (associated(reaction%kd_print)) deallocate(reaction%kd_print)
+  nullify(reaction%kd_print)
     
   if (associated(reaction%primary_spec_a0)) deallocate(reaction%primary_spec_a0)
   nullify(reaction%primary_spec_a0)
