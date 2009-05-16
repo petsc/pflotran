@@ -1214,28 +1214,56 @@ END
 
 \section{Multicomponent-Multirate Model for Sorption}
 
-This formulation is considered only for surface complexation reactions, but ion exchange could also be implemented if desired. Consider surface complexation reactions of the form
+The multirate formulation is considered only for surface complexation reactions, but ion exchange could also be implemented if desired. Consider surface complexation reactions of the form
 \EQ
->\!\chi_\a + \sum_j\nu_{ji} \A_j \arrows >\! S_{i\a},
+\nu_\a >\!\!\chi_\a + \sum_j\nu_{ji} \A_j \arrows >\!\! \S_{i\a},
 \EN
-with the rate of reaction described through a kinetic relation given by
+for the $i$th surface complex $>\!\!\S_{i\a}$ on site $\a$ and empty site $>\!\!\chi_\a$. For simplicity, in what follows it is assumed that $\nu_\a\!=\!1$. 
+
+With each site $\a$ is associated a rate constant $k_\a$ and site concentration $\omega_\a$. These quantities are defined through a given distribution of sites $\P(\a)$, such that
+\EQ
+\int_0^\infty \P(k_\a)dk_\a \eq 1.
+\EN
+The fraction of sites $f_\a$ belonging to site $\a$ is determined from the relation
+\EQ
+f_\a \eq \int_{k_\a-\Delta k_\a/2}^{k_\a+\Delta k_\a/2} \P(k_\a)dk_\a \simeq \P(k_\a)\Delta k_\a,
+\EN
+with the property that
+\EQ
+\sum_\a f_\a =1.
+\EN
+Given that the total site concentration is $\omega$, then the site concentration $\omega_\a$ associated with site $\a$ is equal to
+\EQ
+\omega_\a \eq f_\a \omega.
+\EN
+
+The rate of reaction is described through a kinetic relation given by
 \EQ\label{sorbed}
 \frac{\p S_{i\a}}{\p t} \eq k_\a^{} \big(S_{i\a}^{\rm eq}-S_{i\a}\big),
 \EN
-for sorbed concentrations, and
-\EQ\label{fsite}
-\frac{\p S_{\a}}{\p t} \eq -\sum_i k_\a^{} \big(S_{i\a}^{\rm eq}-S_{i\a}\big),
-\EN
+for surface complexes, and
+\BA\label{fsite}
+\frac{\p S_{\a}}{\p t} &\eq -\sum_i k_\a^{} \big(S_{i\a}^{\rm eq}-S_{i\a}\big),\\
+&\eq k_\a\big(S_\a^{\rm eq}-S_{\a}\big),
+\EA
 for empty sites.
 The equilibrium sorption concentration $S_{i\a}^{\rm eq}$ is given by
 \EQ
 S_{i\a}^{\rm eq}\eq \frac{\omega_\a K_i Q_i}{1+\sum_l K_lQ_l},
 \EN
-where $\omega_\a$ denotes the total site concentration of type $\a$ given by
+and
+\EQ
+S_\a^{\rm eq}\eq\frac{\omega_\a}{1+\sum_l K_lQ_l},
+\EN
+where the ion activity product $Q_i$ is defined by
+\EQ
+Q_i\eq\prod_j\big(\gamma_jC_j\big)^{\nu_{ji}}.
+\EN
+The site concentration $\omega_\a$ satisfies the relation
 \EQ\label{totsite}
 \omega_\a \eq S_\a + \sum_i S_{i\a}.
 \EN
-The site concentration $\omega_\a$ is constant as follows by differentiating Eqn.\eqref{totsite} using Eqns.\eqref{sorbed} and \eqref{fsite} to give
+and is constant as follows by differentiating Eqn.\eqref{totsite} using Eqns.\eqref{sorbed} and \eqref{fsite} to give
 \EQ
 \frac{\p\omega_\a}{\p t} \eq 0.
 \EN
@@ -1246,11 +1274,11 @@ S_\a \eq \omega_\a - \sum_i S_{i\a}.
 
 The solute transport equations become
 \EQ
-\frac{\p}{\p t}\varphi \Psi_j + \bnabla\cdot\bOmega_j \eq -\sum_{i\a}\nu_{ji}\frac{\p S_{i\a}}{\p t},
+\frac{\p}{\p t}\varphi \Psi_j + \bnabla\cdot\bOmega_j \eq -\sum_{i\a}\nu_{ji}\frac{\p S_{i\a}}{\p t} - \sum_m\nu_{jm}I_m,
 \EN
 or
 \EQ
-\frac{\p}{\p t}\left(\varphi \Psi_j + \sum_{i\a}\nu_{ji} S_{i\a}\right) + \bnabla\cdot\bOmega_j \eq 0.
+\frac{\p}{\p t}\left(\varphi \Psi_j + \sum_{i\a}\nu_{ji} S_{i\a}\right) + \bnabla\cdot\bOmega_j \eq -\sum_m\nu_{jm}I_m.
 \EN
 
 An alternative form of these equations is to introduce the total sorbed concentration for the $j$th primary species defined as
@@ -1259,7 +1287,7 @@ q_{j\a}\eq\sum_i \nu_{ji}S_{i\a}.
 \EN
 Then the transport equations become
 \EQ
-\frac{\p}{\p t}\left(\varphi \Psi_j + \sum_{\a}q_{j\a}\right) + \bnabla\cdot\bOmega_j \eq 0.
+\frac{\p}{\p t}\left(\varphi \Psi_j + \sum_{\a}q_{j\a}\right) + \bnabla\cdot\bOmega_j \eq  - \sum_m\nu_{jm}I_m.
 \EN
 The sorbed concentrations are obtained from the equations
 \EQ
@@ -1267,7 +1295,7 @@ The sorbed concentrations are obtained from the equations
 \EN
 where $q_{j\a}^{\rm eq}$ is defined as
 \EQ
-q_{j\a}^{\rm eq} \eq \sum_i \nu_{ji} S_{i\a}^{\rm eq}\eq \frac{\omega_\a}{1+\sum_l K_lQ_l} \sum_i \nu_{ji}K_i Q_i.
+q_{j\a}^{\rm eq} \eq \sum_i \nu_{ji}^{} S_{i\a}^{\rm eq}\eq \frac{\omega_\a}{1+\sum_l K_lQ_l} \sum_i \nu_{ji}K_i Q_i.
 \EN
 
 \section{Colloid-Facilitated Transport}
