@@ -15,6 +15,7 @@ PetscInt, parameter :: HHISTORY_LENGTH = 1000
 ! formula weights
 PetscReal, parameter :: FMWNACL = 58.44277d0
 PetscReal, parameter :: FMWH2O = 18.01534d0
+PetscReal, parameter :: FMWH2OKG = 18.01534d-3
 PetscReal, parameter :: FMWCO2 = 44.0098d0
 PetscReal, parameter :: FMWAIR = 28.96d0
 

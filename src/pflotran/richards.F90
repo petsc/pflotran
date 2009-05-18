@@ -340,14 +340,15 @@ subroutine RichardsUpdateMassBalancePatch(realization)
   do iconn = 1, patch%aux%Richards%num_aux
     patch%aux%Global%aux_vars(iconn)%mass_balance = &
       patch%aux%Global%aux_vars(iconn)%mass_balance + &
-      patch%aux%Global%aux_vars(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
+      patch%aux%Global%aux_vars(iconn)%mass_balance_delta*FMWH2OKG* &
+      option%flow_dt
   enddo
 #endif
 
   do iconn = 1, patch%aux%Richards%num_aux_bc
     global_aux_vars_bc(iconn)%mass_balance = &
       global_aux_vars_bc(iconn)%mass_balance + &
-      global_aux_vars_bc(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
+      global_aux_vars_bc(iconn)%mass_balance_delta*FMWH2OKG*option%flow_dt
   enddo
 
 end subroutine RichardsUpdateMassBalancePatch
@@ -2071,7 +2072,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
     if (.not.associated(source_sink)) exit
     
     qsrc1 = source_sink%flow_condition%rate%dataset%cur_value(1)
-    qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+    qsrc1 = qsrc1 / FMWH2OKG ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
       
     cur_connection_set => source_sink%connection_set
     
@@ -2656,7 +2657,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     
     qsrc1 = source_sink%flow_condition%rate%dataset%cur_value(1)
 
-    qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+    qsrc1 = qsrc1 / FMWH2OKG ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
       
     cur_connection_set => source_sink%connection_set
     

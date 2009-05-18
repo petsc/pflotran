@@ -6187,6 +6187,7 @@ subroutine OutputMassBalanceNew(realization)
       do iconn = 1, boundary_condition%connection_set%num_connections
         sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance_delta
       enddo
+      sum_kg = sum_kg*FMWH2OKG
 
       call MPI_Reduce(sum_kg,sum_kg_global, &
                       option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
