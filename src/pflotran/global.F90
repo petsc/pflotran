@@ -201,12 +201,12 @@ subroutine GlobalSetAuxVarScalarPatch(realization,value,ivar)
       do i=1, patch%aux%Global%num_aux
         patch%aux%Global%aux_vars(i)%den_kg(option%liquid_phase) = value
         patch%aux%Global%aux_vars(i)%den(option%liquid_phase) = value/ &
-                                                                FMWH2OKG
+                                                                FMWH2O
       enddo
       do i=1, realization%patch%aux%Global%num_aux_bc
         patch%aux%Global%aux_vars_bc(i)%den_kg(option%liquid_phase) = value
         patch%aux%Global%aux_vars_bc(i)%den(option%liquid_phase) = value/ &
-                                                                   FMWH2OKG
+                                                                   FMWH2O
       enddo
     case(LIQUID_SATURATION)
       do i=1, patch%aux%Global%num_aux
@@ -350,7 +350,7 @@ subroutine GlobalSetAuxVarVecLocPatch(realization,vec_loc,ivar,isubvar)
           do ghosted_id=1, grid%ngmax
             patch%aux%Global%aux_vars(ghosted_id)%den_kg(option%liquid_phase) = vec_loc_p(ghosted_id)
             patch%aux%Global%aux_vars(ghosted_id)%den(option%liquid_phase) = &
-              vec_loc_p(ghosted_id)/FMWH2OKG
+              vec_loc_p(ghosted_id)/FMWH2O
           enddo
         end select
     case(GAS_SATURATION)

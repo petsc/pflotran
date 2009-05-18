@@ -11,8 +11,6 @@ module Richards_Aux_module
 #include "definitions.h"
 
   type, public :: richards_auxvar_type
-    PetscReal :: den_kg
-    PetscReal :: avgmw
     PetscReal :: pc
 !    PetscReal :: vis
 !    PetscReal :: dvis_dp
@@ -105,7 +103,6 @@ subroutine RichardsAuxVarInit(aux_var,option)
   type(richards_auxvar_type) :: aux_var
   type(option_type) :: option
   
-  aux_var%avgmw = 0.d0
   aux_var%pc = 0.d0
 !  aux_var%kr = 0.d0
 !  aux_var%dkr_dp = 0.d0
@@ -134,7 +131,6 @@ subroutine RichardsAuxVarCopy(aux_var,aux_var2,option)
   type(richards_auxvar_type) :: aux_var, aux_var2
   type(option_type) :: option
 
-  aux_var2%avgmw = aux_var%avgmw
   aux_var2%pc = aux_var%pc
 !  aux_var2%kr = aux_var%kr
 !  aux_var2%dkr_dp = aux_var%dkr_dp
@@ -181,7 +177,6 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   global_aux_var%sat = 0.d0
   global_aux_var%den = 0.d0
   global_aux_var%den_kg = 0.d0
-  aux_var%avgmw = 0.d0
   aux_var%kvr = 0.d0
   kr = 0.d0
  
@@ -191,8 +186,6 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   aux_var%pc = option%reference_pressure - global_aux_var%pres(1)
 
 !***************  Liquid phase properties **************************
-  aux_var%avgmw = FMWH2OKG
-
   pw = option%reference_pressure
   ds_dp = 0.d0
   dkr_dp = 0.d0

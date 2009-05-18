@@ -13,14 +13,14 @@ module Global_Aux_module
     PetscReal, pointer :: temp_store(:,:)
     PetscReal, pointer :: sat(:)
     PetscReal, pointer :: sat_store(:,:)
-    PetscReal, pointer :: den(:)
-    PetscReal, pointer :: den_kg(:)
+    PetscReal, pointer :: den(:)  ! kmol/m^3
+    PetscReal, pointer :: den_kg(:) ! kg/m^3
     PetscReal, pointer :: den_store(:,:)
     PetscReal, pointer :: den_kg_store(:,:)
     PetscReal, pointer :: fugacoeff(:)
     PetscReal, pointer :: fugacoeff_store(:,:)
-    PetscReal, pointer :: mass_balance(:)
-    PetscReal, pointer :: mass_balance_delta(:)
+    PetscReal, pointer :: mass_balance(:) ! kg
+    PetscReal, pointer :: mass_balance_delta(:) ! kmol
   end type global_auxvar_type
   
   type, public :: global_type

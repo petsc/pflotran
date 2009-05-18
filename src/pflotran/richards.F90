@@ -340,7 +340,7 @@ subroutine RichardsUpdateMassBalancePatch(realization)
   do iconn = 1, patch%aux%Richards%num_aux
     patch%aux%Global%aux_vars(iconn)%mass_balance = &
       patch%aux%Global%aux_vars(iconn)%mass_balance + &
-      patch%aux%Global%aux_vars(iconn)%mass_balance_delta*FMWH2OKG* &
+      patch%aux%Global%aux_vars(iconn)%mass_balance_delta*FMWH2O* &
       option%flow_dt
   enddo
 #endif
@@ -348,7 +348,7 @@ subroutine RichardsUpdateMassBalancePatch(realization)
   do iconn = 1, patch%aux%Richards%num_aux_bc
     global_aux_vars_bc(iconn)%mass_balance = &
       global_aux_vars_bc(iconn)%mass_balance + &
-      global_aux_vars_bc(iconn)%mass_balance_delta*FMWH2OKG*option%flow_dt
+      global_aux_vars_bc(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
   enddo
 
 end subroutine RichardsUpdateMassBalancePatch
@@ -822,6 +822,7 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
 
   porXvol = por*vol/option%flow_dt
       
+  ! accumulation term units = dkmol/dp
   J(1,1) = (global_aux_var%sat(1)*rich_aux_var%dden_dp+ &
             rich_aux_var%dsat_dp*global_aux_var%den(1))* &
            porXvol
@@ -878,6 +879,7 @@ subroutine RichardsAccumulation(rich_aux_var,global_aux_var,por,vol, &
   PetscReal :: Res(1:option%nflowdof) 
   PetscReal :: vol, por
        
+  ! accumulation term units = kmol/s
   Res(1) = global_aux_var%sat(1) * global_aux_var%den(1) * por * vol / &
            option%flow_dt
 
@@ -960,24 +962,21 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
     dden_ave_dp_up = upweight*rich_aux_var_up%dden_dp
     dden_ave_dp_dn = (1.D0-upweight)*rich_aux_var_dn%dden_dp
 
-    gravity = (upweight*global_aux_var_up%den(1)*rich_aux_var_up%avgmw + &
-              (1.D0-upweight)*global_aux_var_dn%den(1)*rich_aux_var_dn%avgmw) &
-              * dist_gravity
-    dgravity_dden_up = upweight*rich_aux_var_up%avgmw*dist_gravity
-    dgravity_dden_dn = (1.d0-upweight)*rich_aux_var_dn%avgmw*dist_gravity
+    gravity = (upweight*global_aux_var_up%den(1) + &
+              (1.D0-upweight)*global_aux_var_dn%den(1)) &
+              * FMWH2O * dist_gravity
+    dgravity_dden_up = upweight*FMWH2O*dist_gravity
+    dgravity_dden_dn = (1.d0-upweight)*FMWH2O*dist_gravity
 
     dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)  + gravity
     dphi_dp_up = 1.d0 + dgravity_dden_up*rich_aux_var_up%dden_dp
     dphi_dp_dn = -1.d0 + dgravity_dden_dn*rich_aux_var_dn%dden_dp
 
-! note uxmol only contains one phase xmol
     if (dphi>=0.D0) then
       ukvr = rich_aux_var_up%kvr
       dukvr_dp_up = rich_aux_var_up%dkvr_dp
-!      dukvr_dp_dn = 0.d0
     else
       ukvr = rich_aux_var_dn%kvr
-!      dukvr_dp_up = 0.d0
       dukvr_dp_dn = rich_aux_var_dn%dkvr_dp
     endif      
    
@@ -1092,13 +1091,12 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
     density_ave = upweight*global_aux_var_up%den(1)+ &
                   (1.D0-upweight)*global_aux_var_dn%den(1)
 
-    gravity = (upweight*global_aux_var_up%den(1)*rich_aux_var_up%avgmw + &
-              (1.D0-upweight)*global_aux_var_dn%den(1)*rich_aux_var_dn%avgmw) &
-              * dist_gravity
+    gravity = (upweight*global_aux_var_up%den(1) + &
+              (1.D0-upweight)*global_aux_var_dn%den(1)) &
+              * FMWH2O * dist_gravity
 
     dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)  + gravity
 
-! note uxmol only contains one phase xmol
     if (dphi>=0.D0) then
       ukvr = rich_aux_var_up%kvr
     else
@@ -1206,10 +1204,10 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
         density_ave = upweight*global_aux_var_up%den(1)+(1.D0-upweight)*global_aux_var_dn%den(1)
         dden_ave_dp_dn = (1.D0-upweight)*rich_aux_var_dn%dden_dp
 
-        gravity = (upweight*global_aux_var_up%den(1)*rich_aux_var_up%avgmw + &
-                  (1.D0-upweight)*global_aux_var_dn%den(1)*rich_aux_var_dn%avgmw) &
-                  * dist_gravity
-        dgravity_dden_dn = (1.d0-upweight)*rich_aux_var_dn%avgmw*dist_gravity
+        gravity = (upweight*global_aux_var_up%den(1) + &
+                  (1.D0-upweight)*global_aux_var_dn%den(1)) &
+                  * FMWH2O * dist_gravity
+        dgravity_dden_dn = (1.d0-upweight)*FMWH2O*dist_gravity
 
         dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1) + gravity
         dphi_dp_dn = -1.d0 + dgravity_dden_dn*rich_aux_var_dn%dden_dp
@@ -1361,9 +1359,9 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
         endif
         density_ave = upweight*global_aux_var_up%den(1)+(1.D0-upweight)*global_aux_var_dn%den(1)
    
-        gravity = (upweight*global_aux_var_up%den(1)*rich_aux_var_up%avgmw + &
-                  (1.D0-upweight)*global_aux_var_dn%den(1)*rich_aux_var_dn%avgmw) &
-                  * dist_gravity
+        gravity = (upweight*global_aux_var_up%den(1) + &
+                  (1.D0-upweight)*global_aux_var_dn%den(1)) &
+                  * FMWH2O * dist_gravity
        
         dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1) + gravity
 
@@ -2014,7 +2012,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
 
   PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:)
 
-  PetscReal :: qsrc1, qsrc_kg
+  PetscReal :: qsrc, qsrc_mol
   PetscReal :: Res(realization%option%nflowdof)
 
 
@@ -2071,8 +2069,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   do 
     if (.not.associated(source_sink)) exit
     
-    qsrc1 = source_sink%flow_condition%rate%dataset%cur_value(1)
-    qsrc1 = qsrc1 / FMWH2OKG ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+    qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
       
     cur_connection_set => source_sink%connection_set
     
@@ -2085,17 +2082,17 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
 
       select case(source_sink%flow_condition%rate%itype)
         case(MASS_RATE_SS)
-          qsrc_kg = qsrc1 ! kg/sec
+          qsrc_mol = qsrc/FMWH2O ! kg/sec -> kmol/sec
         case(VOLUMETRIC_RATE_SS)  ! assume local density for now
           ! qsrc1 = m^3/sec
-          qsrc_kg = qsrc1*global_aux_vars(ghosted_id)%den_kg(1)
+          qsrc_mol = qsrc*global_aux_vars(ghosted_id)%den(1) ! den = kmol/m^3
       end select
 !      if (option%compute_mass_balance_new) then
         ! need to added global aux_var for src/sink
 !        global_aux_vars_ss(ghosted_id)%mass_balance_delta(1) = &
 !          global_aux_vars_ss(ghosted_id)%mass_balance_delta(1) - qsrc_kg
 !      endif
-      r_p(local_id) = r_p(local_id) - qsrc_kg
+      r_p(local_id) = r_p(local_id) - qsrc_mol
     enddo
     source_sink => source_sink%next
   enddo
@@ -2575,7 +2572,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   PetscErrorCode :: ierr
 
   PetscReal, pointer :: porosity_loc_p(:), volume_p(:), icap_loc_p(:)
-  PetscReal :: qsrc1
+  PetscReal :: qsrc
   PetscInt :: icap
   PetscInt :: local_id, ghosted_id
   
@@ -2655,10 +2652,8 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   do 
     if (.not.associated(source_sink)) exit
     
-    qsrc1 = source_sink%flow_condition%rate%dataset%cur_value(1)
+    qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
 
-    qsrc1 = qsrc1 / FMWH2OKG ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
-      
     cur_connection_set => source_sink%connection_set
     
     do iconn = 1, cur_connection_set%num_connections      
@@ -2673,7 +2668,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       select case(source_sink%flow_condition%rate%itype)
         case(MASS_RATE_SS)
         case(VOLUMETRIC_RATE_SS)  ! assume local density for now
-          Jup(1,1) = -qsrc1*rich_aux_vars(ghosted_id)%dden_dp*rich_aux_vars(ghosted_id)%avgmw
+          Jup(1,1) = -qsrc*rich_aux_vars(ghosted_id)%dden_dp*FMWH2O
 
       end select
 #ifdef GLENN
@@ -2727,10 +2722,10 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   if (.not.option%use_matrix_buffer) then
 #endif
     if (patch%aux%Richards%inactive_cells_exist) then
-      qsrc1 = 1.d0 ! solely a temporary variable in this conditional
+      qsrc = 1.d0 ! solely a temporary variable in this conditional
       call MatZeroRowsLocal(A,patch%aux%Richards%n_zero_rows, &
                             patch%aux%Richards%zero_rows_local_ghosted, &
-                            qsrc1,ierr) 
+                            qsrc,ierr) 
     endif
 #ifdef GLENN
   endif

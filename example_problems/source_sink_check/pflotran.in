@@ -1,0 +1,171 @@
+:Description: 3D toy problem for richards equation
+
+:=========================== flow mode ========================================
+MODE RICHARDS
+
+:=========================== solver options ===================================
+TIMESTEPPER
+:MAX_STEPS 10
+END
+
+LINEAR_SOLVER FLOW
+PC_TYPE LU
+KSP_TYPE PREONLY
+END
+
+:=========================== discretization ===================================
+GRID
+TYPE structured
+ORIGIN 0.d0 0.d0 0.d0
+NXYZ 100 1 1
+BOUNDS
+0.d0 100.d0
+0.d0 1.d0
+0.d0 1.d0
+/
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY
+DIFFUSION_COEFFICIENT 1.d-9
+/
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+ID 1
+POROSITY 0.25d0
+TORTUOSITY 0.5d0
+SATURATION_FUNCTION default
+PERMEABILITY
+PERM_X 1.d-12
+PERM_Y 1.d-12
+PERM_Z 1.d-12
+/
+/
+
+:=========================== saturation functions =============================
+SATURATION_FUNCTION default
+/
+
+:=========================== output options ===================================
+OUTPUT
+FORMAT TECPLOT POINT
+FORMAT HDF5
+VELOCITIES
+/
+
+:=========================== times ============================================
+TIME
+FINAL_TIME 100.d0 d
+INITIAL_TIMESTEP_SIZE 1.d-2 d
+MAXIMUM_TIMESTEP_SIZE 0.25d0 d
+/
+
+REFERENCE_PRESSURE 101325.
+
+:=========================== regions ==========================================
+REGION all
+COORDINATES
+0.d0 0.d0 0.d0
+100.d0 1.d0 1.d0
+/
+END
+
+REGION breakthrough
+COORDINATE 0.d0 0.d0 0.d0
+END
+
+REGION West
+COORDINATES
+0.d0 0.d0 0.d0
+0.d0 1.d0 1.d0
+/
+FACE WEST
+END
+
+REGION East
+COORDINATES
+100.d0 0.d0 0.d0
+100.d0 1.d0 1.d0
+/
+FACE EAST
+END
+
+skip
+BREAKTHROUGH 
+REGION breakthrough
+END
+noskip
+
+:=========================== flow conditions ==================================
+skip
+FLOW_CONDITION west
+TYPE
+PRESSURE hydrostatic
+END
+INTERPOLATION linear
+DATUM 0.d0 0.d0 1.d0
+PRESSURE 201325.d0
+END
+noskip
+
+FLOW_CONDITION west
+TYPE
+PRESSURE neumann
+END
+FLUX 1.157407d-5    ! 1 m/day darcy
+END
+
+FLOW_CONDITION initial
+TYPE
+PRESSURE hydrostatic
+END
+INTERPOLATION linear
+DATUM 0.d0 0.d0 1.d0
+PRESSURE 101325.d0
+END
+
+FLOW_CONDITION source
+TYPE
+RATE mass_rate
+:RATE volumetric_rate
+END
+RATE 1.155463d-2  ! kg/s
+:RATE 1.157407d-5 ! m^3/s
+END
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+FLOW_CONDITION initial
+REGION all
+END
+
+skip
+: west boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION west
+REGION West
+END
+noskip
+
+: east boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION initial
+REGION East
+END
+
+:skip
+: source sink
+SOURCE_SINK
+FLOW_CONDITION source
+REGION West
+END
+:noskip
+
+:=========================== stratigraphy couplers ============================
+STRATA
+REGION all
+MATERIAL soil1
+END
+

@@ -6187,7 +6187,8 @@ subroutine OutputMassBalanceNew(realization)
       do iconn = 1, boundary_condition%connection_set%num_connections
         sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance_delta
       enddo
-      sum_kg = sum_kg*FMWH2OKG
+      ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
+      sum_kg = sum_kg*FMWH2O
 
       call MPI_Reduce(sum_kg,sum_kg_global, &
                       option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
