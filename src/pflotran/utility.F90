@@ -433,4 +433,50 @@ function DotProduct3(v1x,v1y,v1z,v2x,v2y,v2z)
 
 end function DotProduct3
 
+! ************************************************************************** !
+!
+! Erf: Computes an approximate to erf(x)
+! author: Glenn Hammond
+! date: 05/20/09
+! from: http://jin.ece.uiuc.edu/routines/merror.for
+!
+! ************************************************************************** !
+function Erf(x)
+
+  implicit none
+  
+  PetscReal :: x
+  
+  PetscReal :: Erf
+
+  PetscReal, parameter :: EPS = 1.d-15
+  PetscReal, parameter :: PI=3.141592653589793d0
+  PetscReal :: x2, er, r, co
+  PetscInt :: k
+  
+  x2=x*x
+  if (dabs(x) < 3.5d0) then
+    er=1.d0
+    r=1.d0
+    do k = 1, 50
+      r=r*x2/(dble(k)+0.5d0)
+      er=er+r
+      if (dabs(r) < dabs(er)*EPS) exit
+    enddo
+    co=2.d0/sqrt(PI)*x*exp(-x2)
+    Erf=co*er
+  else
+    er=1.d0
+    r=1.d0
+    do k = 1, 12
+      r=-r*(dble(k)-0.5d0)/x2
+      er=er+r
+    enddo
+    co=exp(-x2)/(dabs(x)*sqrt(PI))
+    Erf=1.d0-co*er
+    if (x < 0.d0) Erf=-Erf
+  endif
+
+end function Erf
+
 end module Utility_module

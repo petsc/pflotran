@@ -44,6 +44,10 @@ module Reactive_Transport_Aux_module
     
     PetscReal, pointer :: mass_balance(:,:)
     PetscReal, pointer :: mass_balance_delta(:,:)
+    
+    PetscReal, pointer :: kinmr_total_sorb(:,:)
+    PetscReal, pointer :: kinmr_total_sorb_prev(:,:)
+    
   end type reactive_transport_auxvar_type
   
   type, public :: reactive_transport_param_type
@@ -221,6 +225,16 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
     nullify(aux_var%mass_balance_delta)
   endif
   
+  if (reaction%nkinmr_rates > 0) then
+    allocate(aux_var%kinmr_total_sorb(reaction%ncomp,reaction%nkinmr_rates))
+    aux_var%kinmr_total_sorb = 0.d0
+    allocate(aux_var%kinmr_total_sorb_prev(reaction%ncomp,reaction%nkinmr_rates))
+    aux_var%kinmr_total_sorb_prev = 0.d0
+  else
+    nullify(aux_var%kinmr_total_sorb)
+    nullify(aux_var%kinmr_total_sorb_prev)
+  endif
+  
 end subroutine RTAuxVarInit
 
 ! ************************************************************************** !
@@ -280,6 +294,12 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
       associated(aux_var2%mass_balance)) then
     aux_var%mass_balance = aux_var2%mass_balance
     aux_var%mass_balance_delta = aux_var2%mass_balance_delta
+  endif
+
+  if (associated(aux_var%kinmr_total_sorb) .and. &
+      associated(aux_var2%kinmr_total_sorb)) then
+    aux_var%kinmr_total_sorb = aux_var2%kinmr_total_sorb
+    aux_var%kinmr_total_sorb_prev = aux_var2%kinmr_total_sorb_prev
   endif
 
 end subroutine RTAuxVarCopy
@@ -342,6 +362,11 @@ subroutine RTAuxVarDestroy(aux_var)
   nullify(aux_var%mass_balance)
   if (associated(aux_var%mass_balance_delta)) deallocate(aux_var%mass_balance_delta)
   nullify(aux_var%mass_balance_delta)
+
+  if (associated(aux_var%kinmr_total_sorb)) deallocate(aux_var%kinmr_total_sorb)
+  nullify(aux_var%kinmr_total_sorb)
+  if (associated(aux_var%kinmr_total_sorb_prev)) deallocate(aux_var%kinmr_total_sorb_prev)
+  nullify(aux_var%kinmr_total_sorb_prev)
 
 end subroutine RTAuxVarDestroy
 

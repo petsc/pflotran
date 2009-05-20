@@ -57,6 +57,8 @@ subroutine ReactionRead(reaction,input,option)
   type(surface_complex_type), pointer :: srfcmplx, prev_srfcmplx
   type(surface_complexation_rxn_type), pointer :: srfcmplx_rxn, &
                                                   prev_srfcmplx_rxn
+  type(multi_rate_rxn_type), pointer :: multirate_rxn, &
+                                        prev_multirate_rxn
   type(ion_exchange_rxn_type), pointer :: ionx_rxn, prev_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cation, prev_cation
   PetscInt :: srfcmplx_count
@@ -256,6 +258,78 @@ subroutine ReactionRead(reaction,input,option)
               reaction%neqsurfcmplxrxn = srfcmplx_rxn%id
 
               nullify(srfcmplx_rxn)
+
+            case('MULTI_RATE_RXN')
+          
+              multirate_rxn => MultiRateRXNCreate()
+              srfcmplx_rxn => multirate_rxn%rxn
+              do
+                call InputReadFlotranString(input,option)
+                if (InputError(input)) exit
+                if (InputCheckExit(input,option)) exit
+
+                call InputReadWord(input,option,word,.true.)
+                call InputErrorMsg(input,option,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN')
+                call StringToUpper(word)
+                
+                select case(trim(word))
+                  case('NUM_RATES')
+                    call InputReadInt(input,option,multirate_rxn%nrate)
+                    call InputErrorMsg(input,option,'keyword','CHEMISTRY,MULTI_RATE_RXN,SITE_DENSITY')                   
+                  case('MINERAL')
+                    call InputReadWord(input,option,srfcmplx_rxn%mineral_name,PETSC_TRUE)
+                    call InputErrorMsg(input,option,'keyword','CHEMISTRY,MULTI_RATE_RXN,MINERAL_NAME')
+                  case('SITE')
+                    call InputReadWord(input,option,srfcmplx_rxn%free_site_name,PETSC_TRUE)
+                    call InputErrorMsg(input,option,'keyword','CHEMISTRY,MULTI_RATE_RXN,SITE_NAME')
+                    call InputReadDouble(input,option,srfcmplx_rxn%site_density)
+                    call InputErrorMsg(input,option,'keyword','CHEMISTRY,MULTI_RATE_RXN,SITE_DENSITY')                   
+                  case('COMPLEXES')
+                    nullify(prev_srfcmplx)
+                    do
+                      call InputReadFlotranString(input,option)
+                      if (InputError(input)) exit
+                      if (InputCheckExit(input,option)) exit
+                      
+                      srfcmplx_count = srfcmplx_count + 1
+                      reaction%neqsurfcmplx = srfcmplx_count
+                      srfcmplx => SurfaceComplexCreate()
+                      srfcmplx%id = srfcmplx_count
+                      call InputReadWord(input,option,srfcmplx%name,PETSC_TRUE)
+                      call InputErrorMsg(input,option,'keyword','CHEMISTRY,MULTI_RATE_RXN,COMPLEX_NAME')
+                
+                      if (.not.associated(srfcmplx_rxn%complex_list)) then
+                        srfcmplx_rxn%complex_list => srfcmplx
+                      endif
+                      if (associated(prev_srfcmplx)) then
+                        prev_srfcmplx%next => srfcmplx
+                      endif
+                      prev_srfcmplx => srfcmplx
+                      nullify(srfcmplx)
+                
+                    enddo
+                  case default
+                    option%io_buffer = 'CHEMISTRY, MULTI_RATE_RXN keyword: '// &
+                                     trim(word)//' not recognized'
+                    call printErrMsg(option)
+                end select
+
+              enddo
+              if (.not.associated(reaction%multi_rate_rxn_list)) then
+                reaction%multi_rate_rxn_list => multirate_rxn
+                multirate_rxn%id = 1
+              endif
+              if (associated(prev_srfcmplx_rxn)) then
+                prev_multirate_rxn%next => multirate_rxn
+                multirate_rxn%id = multirate_rxn%id + 1
+              endif
+              prev_multirate_rxn => multirate_rxn
+
+              srfcmplx_rxn%free_site_id = srfcmplx_rxn%id
+              reaction%nkinmrrxn = srfcmplx_rxn%id
+
+              nullify(srfcmplx_rxn)
+              nullify(multirate_rxn)
 
             case('ION_EXCHANGE_RXN')
             
@@ -1782,6 +1856,11 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,volume, &
     call RKineticMineral(Res,Jac,derivative,rt_auxvar,global_auxvar,volume, &
                          reaction,option)
   endif
+  
+  if (reaction%nkinmr_rates > 0) then
+    call RMultiRateSorption(Res,Jac,derivative,rt_auxvar, &
+                            global_auxvar,reaction,option)
+  endif
   ! add new reactions here
 
 end subroutine RReaction
@@ -1826,6 +1905,10 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
       call RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
                            global_auxvar,volume,reaction,option)
     endif
+    if (reaction%nkinmr_rates > 0) then
+      call RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
+                              global_auxvar,reaction,option)
+    endif    
   else ! numerical derivative
     compute_derivative = PETSC_FALSE
     Res_orig = 0.d0
@@ -1837,6 +1920,10 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
       call RKineticMineral(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
                            global_auxvar,volume,reaction,option)
     endif
+    if (reaction%nkinmr_rates > 0) then
+      call RMultiRateSorption(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
+                              global_auxvar,reaction,option)
+    endif    
     do jcomp = 1, reaction%ncomp
       Res_pert = 0.d0
       call RTAuxVarCopy(rt_auxvar_pert,rt_auxvar,option)
@@ -1852,6 +1939,10 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
         call RKineticMineral(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
                              global_auxvar,volume,reaction,option)
       endif
+      if (reaction%nkinmr_rates > 0) then
+        call RMultiRateSorption(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
+                                global_auxvar,reaction,option)
+      endif      
       do icomp = 1, reaction%ncomp
         Jac(icomp,jcomp) = Jac(icomp,jcomp) + (Res_pert(icomp)-Res_orig(icomp))/pert
       enddo
@@ -2577,6 +2668,221 @@ subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
   ! units of dtotal_sorb = kg water/m^3 bulk
   
 end subroutine RTotalSorb
+
+! ************************************************************************** !
+!
+! RMultiRateSorption: Computes contribution to the accumualtion term due
+!                     due to multirate sorption
+! author: Glenn Hammond
+! date: 05/20/09
+!
+! ************************************************************************** !
+subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
+                              global_auxvar,reaction,option)
+
+  use Option_module
+
+  PetscTruth :: compute_derivative
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  type(reaction_type) :: reaction
+  PetscReal :: Res(reaction%ncomp)
+  PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
+  type(option_type) :: option
+  
+  PetscInt :: i, j, k, icplx, icomp, jcomp, ncomp, ncplx
+  PetscInt, parameter :: iphase = 1
+  PetscReal :: ln_conc(reaction%ncomp)
+  PetscReal :: ln_act(reaction%ncomp)
+  PetscReal :: surfcmplx_conc(reaction%neqsurfcmplx)
+  PetscReal :: dSx_dmi(reaction%ncomp)
+  PetscReal :: dSi_dSx
+  PetscReal :: free_site_conc
+  PetscReal :: ln_free_site
+  PetscReal :: ln_act_h2o
+  PetscReal :: lnQK, tempreal, tempreal1, tempreal2, total
+  PetscInt :: irxn
+  PetscReal, parameter :: tol = 1.d-12
+  PetscTruth :: one_more
+  PetscReal :: residual, dres_dfree_site, dfree_site_conc
+  PetscReal :: site_density
+  
+  PetscInt :: irate
+  PetscReal :: kdt, one_plus_kdt, k_over_one_plus_kdt
+  PetscReal :: total_sorb_eq(reaction%ncomp)
+  PetscReal :: dtotal_sorb_eq(reaction%ncomp,reaction%ncomp)
+
+  ln_conc = log(rt_auxvar%pri_molal)
+  ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
+  ln_act_h2o = 0.d0  ! assume act h2o = 1 for now
+    
+#ifdef TEMP_DEPENDENT_LOGK
+  if (.not.option%use_isothermal) then
+    call ReactionInterpolateLogK(reaction%eqsurfcmplx_logKcoef,reaction%eqsurfcmplx_logK, &
+                               global_auxvar%temp(iphase),reaction%neqsurfcmplx)
+  endif
+#endif  
+
+  do irate = 1, reaction%nkinmr_rates
+
+    ! Surface Complexation
+    do irxn = 1, reaction%neqsurfcmplxrxn
+    
+      ncplx = reaction%eqsurfcmplx_rxn_to_complex(0,irxn)
+      
+      free_site_conc = rt_auxvar%eqsurfcmplx_freesite_conc(irxn) / &
+                       dble(reaction%nkinmr_rates)
+
+      ! get a pointer to the first complex (there will always be at least 1)
+      ! in order to grab free site conc
+      one_more = PETSC_FALSE
+      do
+
+        total = free_site_conc
+        ln_free_site = log(free_site_conc)
+        do j = 1, ncplx
+          icplx = reaction%eqsurfcmplx_rxn_to_complex(j,irxn)
+          ! compute secondary species concentration
+          lnQK = -reaction%eqsurfcmplx_logK(icplx)*LOG_TO_LN
+
+          ! activity of water
+          if (reaction%eqsurfcmplxh2oid(icplx) > 0) then
+            lnQK = lnQK + reaction%eqsurfcmplxh2ostoich(icplx)*ln_act_h2o
+          endif
+
+          lnQK = lnQK + reaction%eqsurfcmplx_free_site_stoich(icplx)* &
+                        ln_free_site
+        
+          ncomp = reaction%eqsurfcmplxspecid(0,icplx)
+          do i = 1, ncomp
+            icomp = reaction%eqsurfcmplxspecid(i,icplx)
+            lnQK = lnQK + reaction%eqsurfcmplxstoich(i,icplx)*ln_act(icomp)
+          enddo
+          surfcmplx_conc(icplx) = exp(lnQK)
+          total = total + reaction%eqsurfcmplx_free_site_stoich(icplx)*surfcmplx_conc(icplx) 
+          
+        enddo
+        
+        if (one_more) exit
+        
+        site_density = reaction%eqsurfcmplx_rxn_site_density(irxn)/ &
+                       dble(reaction%nkinmr_rates)
+
+        if (reaction%eqsurfcmplx_rxn_stoich_flag(irxn)) then 
+          ! stoichiometry for free sites in one of reactions is not 1, thus must
+          ! use nonlinear iteration to solve
+          residual = site_density-total
+          
+          dres_dfree_site = 1.d0
+
+          do j = 1, ncplx
+
+            icplx = reaction%eqsurfcmplx_rxn_to_complex(j,irxn)
+            dres_dfree_site = dres_dfree_site + &
+              reaction%eqsurfcmplx_free_site_stoich(icplx)* &
+              surfcmplx_conc(icplx)/free_site_conc
+          enddo
+
+          dfree_site_conc = residual / dres_dfree_site
+          free_site_conc = free_site_conc - dfree_site_conc
+        
+          if (dabs(dfree_site_conc/free_site_conc) < tol) then
+            one_more = PETSC_TRUE
+          endif
+        
+        else
+        
+          total = total / free_site_conc
+          free_site_conc = site_density / total  
+          
+          one_more = PETSC_TRUE 
+        
+        endif
+
+      enddo
+      
+      rt_auxvar%eqsurfcmplx_freesite_conc(irxn) = free_site_conc
+   
+      dSx_dmi = 0.d0
+      tempreal = 0.d0
+      do j = 1, ncplx
+        icplx = reaction%eqsurfcmplx_rxn_to_complex(j,irxn)
+        ncomp = reaction%eqsurfcmplxspecid(0,icplx)
+        do i = 1, ncomp
+          icomp = reaction%eqsurfcmplxspecid(i,icplx)
+          ! numerator of 4.39
+          dSx_dmi(icomp) = dSx_dmi(icomp) + reaction%eqsurfcmplxstoich(i,icplx)* &
+                                            reaction%eqsurfcmplx_free_site_stoich(icplx)* &
+                                            surfcmplx_conc(icplx)
+        enddo
+        ! denominator of 4.39
+        tempreal = tempreal + reaction%eqsurfcmplx_free_site_stoich(icplx)* & 
+                              reaction%eqsurfcmplx_free_site_stoich(icplx)* &
+                              surfcmplx_conc(icplx)
+      enddo 
+      ! divide denominator by Sx
+      tempreal = tempreal / free_site_conc
+      ! add 1.d0 to denominator
+      tempreal = tempreal + 1.d0
+      ! divide numerator by denominator
+      dSx_dmi = -dSx_dmi / tempreal
+      ! convert from dlogm to dm
+      dSx_dmi = dSx_dmi / rt_auxvar%pri_molal
+
+      ! initialize total sorbed concentrations and derivatives
+      total_sorb_eq = 0.d0
+      dtotal_sorb_eq = 0.d0
+      
+      kdt = reaction%kinmr_rate(irate) * option%tran_dt
+      one_plus_kdt = 1.d0 + kdt
+      k_over_one_plus_kdt = reaction%kinmr_rate(irate)/one_plus_kdt
+      
+      do k = 1, ncplx
+        icplx = reaction%eqsurfcmplx_rxn_to_complex(k,irxn)
+
+        ncomp = reaction%eqsurfcmplxspecid(0,icplx)
+        do i = 1, ncomp
+          icomp = reaction%eqsurfcmplxspecid(i,icplx)
+          total_sorb_eq(icomp) = total_sorb_eq(icomp) + &
+            reaction%eqsurfcmplxstoich(i,icplx)*surfcmplx_conc(icplx)
+        enddo
+        
+        if (compute_derivative) then
+          dSi_dSx = reaction%eqsurfcmplx_free_site_stoich(icplx)* &
+                    surfcmplx_conc(icplx)/ &
+                    free_site_conc
+
+          do j = 1, ncomp
+            jcomp = reaction%eqsurfcmplxspecid(j,icplx)
+            tempreal = reaction%eqsurfcmplxstoich(j,icplx)*surfcmplx_conc(icplx) / &
+                       rt_auxvar%pri_molal(jcomp)+ &
+                       dSi_dSx*dSx_dmi(jcomp)
+                      
+            do i = 1, ncomp
+              icomp = reaction%eqsurfcmplxspecid(i,icplx)
+              dtotal_sorb_eq(icomp,jcomp) = dtotal_sorb_eq(icomp,jcomp) + &
+                                            reaction%eqsurfcmplxstoich(i,icplx)* &
+                                            tempreal
+            enddo
+          enddo
+        endif
+      enddo
+      
+    enddo
+
+    rt_auxvar%kinmr_total_sorb(:,irate) = &
+      (rt_auxvar%kinmr_total_sorb_prev(:,irate) + kdt * total_sorb_eq) / &
+      one_plus_kdt
+    Res = Res + k_over_one_plus_kdt * &
+                (total_sorb_eq - rt_auxvar%kinmr_total_sorb_prev(:,irate))
+    
+    if (compute_derivative) then
+      Jac = Jac + k_over_one_plus_kdt * dtotal_sorb_eq
+    endif
+
+  enddo
+  
+end subroutine RMultiRateSorption
 
 ! ************************************************************************** !
 !
