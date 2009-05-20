@@ -6,6 +6,10 @@
 ! The software is unclassified and does not contain Unclassified 
 ! Controlled Nuclear Information (UCNI).
 
+! The software titled "PFLOTRAN v 2.0" has been assigned LA-CC-09-047. 
+! The software is unclassified and does not contain Unclassified 
+! Controlled Nuclear Information (UCNI).
+
 ! The software is under review to be released as open source, which 
 ! requires review and approval by the appropriate DOE Program Office. 
 ! If DOE declines to release this software as publicly available open 
