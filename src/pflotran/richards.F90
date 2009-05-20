@@ -2165,9 +2165,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
   else
     J = A
-    if (mat_type == MATHYPRESTRUCT) then
-      option%use_matrix_buffer = PETSC_TRUE
-    endif
   endif
 
   call MatZeroEntries(J,ierr)
