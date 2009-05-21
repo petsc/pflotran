@@ -4786,17 +4786,19 @@ subroutine OutputHDF5(realization)
         endif
       enddo
       do i=1,reaction%ncomp
-        if (reaction%kd_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,PRIMARY_KD,i)
-          if (.not.(option%use_samr)) then
-            write(string,'(a)') trim(reaction%primary_species_names(i)) // '_kd'
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          else
-            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-            if(first) then
-               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,PRIMARY_KD,i)
+        if (associated(reaction%kd_print)) then
+          if (reaction%kd_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,PRIMARY_KD,i)
+            if (.not.(option%use_samr)) then
+              write(string,'(a)') trim(reaction%primary_species_names(i)) // '_kd'
+              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+            else
+              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+              if(first) then
+                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,PRIMARY_KD,i)
+              endif
+              current_component=current_component+1
             endif
-            current_component=current_component+1
           endif
         endif
       enddo

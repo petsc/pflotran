@@ -1858,8 +1858,8 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,volume, &
   endif
   
   if (reaction%nkinmr_rates > 0) then
-    call RMultiRateSorption(Res,Jac,derivative,rt_auxvar, &
-                            global_auxvar,reaction,option)
+    call RMultiRateSorption(Res,Jac,derivative,rt_auxvar,global_auxvar, &
+                            volume,reaction,option)
   endif
   ! add new reactions here
 
@@ -1907,7 +1907,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
     endif
     if (reaction%nkinmr_rates > 0) then
       call RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
-                              global_auxvar,reaction,option)
+                              global_auxvar,volume,reaction,option)
     endif    
   else ! numerical derivative
     compute_derivative = PETSC_FALSE
@@ -1922,7 +1922,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
     endif
     if (reaction%nkinmr_rates > 0) then
       call RMultiRateSorption(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
-                              global_auxvar,reaction,option)
+                              global_auxvar,volume,reaction,option)
     endif    
     do jcomp = 1, reaction%ncomp
       Res_pert = 0.d0
@@ -1941,7 +1941,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
       endif
       if (reaction%nkinmr_rates > 0) then
         call RMultiRateSorption(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
-                                global_auxvar,reaction,option)
+                                global_auxvar,volume,reaction,option)
       endif      
       do icomp = 1, reaction%ncomp
         Jac(icomp,jcomp) = Jac(icomp,jcomp) + (Res_pert(icomp)-Res_orig(icomp))/pert
@@ -2678,13 +2678,14 @@ end subroutine RTotalSorb
 !
 ! ************************************************************************** !
 subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
-                              global_auxvar,reaction,option)
+                              global_auxvar,volume,reaction,option)
 
   use Option_module
 
   PetscTruth :: compute_derivative
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
+  PetscReal :: volume
   type(reaction_type) :: reaction
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
@@ -2708,7 +2709,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: site_density
   
   PetscInt :: irate
-  PetscReal :: kdt, one_plus_kdt, k_over_one_plus_kdt
+  PetscReal :: dt_over_v, kdtv, one_plus_kdtv, k_over_one_plus_kdtv
   PetscReal :: total_sorb_eq(reaction%ncomp)
   PetscReal :: dtotal_sorb_eq(reaction%ncomp,reaction%ncomp)
 
@@ -2722,6 +2723,8 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
                                global_auxvar%temp(iphase),reaction%neqsurfcmplx)
   endif
 #endif  
+
+  dt_over_v = option%tran_dt / volume
 
   do irate = 1, reaction%nkinmr_rates
 
@@ -2833,9 +2836,9 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
       total_sorb_eq = 0.d0
       dtotal_sorb_eq = 0.d0
       
-      kdt = reaction%kinmr_rate(irate) * option%tran_dt
-      one_plus_kdt = 1.d0 + kdt
-      k_over_one_plus_kdt = reaction%kinmr_rate(irate)/one_plus_kdt
+      kdtv = reaction%kinmr_rate(irate) * dt_over_v
+      one_plus_kdtv = 1.d0 + kdtv
+      k_over_one_plus_kdtv = reaction%kinmr_rate(irate)/one_plus_kdtv
       
       do k = 1, ncplx
         icplx = reaction%eqsurfcmplx_rxn_to_complex(k,irxn)
@@ -2871,13 +2874,13 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
     enddo
 
     rt_auxvar%kinmr_total_sorb(:,irate) = &
-      (rt_auxvar%kinmr_total_sorb_prev(:,irate) + kdt * total_sorb_eq) / &
-      one_plus_kdt
-    Res = Res + k_over_one_plus_kdt * &
+      (rt_auxvar%kinmr_total_sorb_prev(:,irate) + kdtv * total_sorb_eq) / &
+      one_plus_kdtv
+    Res = Res + k_over_one_plus_kdtv * &
                 (total_sorb_eq - rt_auxvar%kinmr_total_sorb_prev(:,irate))
     
     if (compute_derivative) then
-      Jac = Jac + k_over_one_plus_kdt * dtotal_sorb_eq
+      Jac = Jac + k_over_one_plus_kdtv * dtotal_sorb_eq
     endif
 
   enddo

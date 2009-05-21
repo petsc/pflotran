@@ -363,6 +363,7 @@ subroutine StructuredGridReadDXYZ(structured_grid,input,option)
   type(structured_grid_type) :: structured_grid
   type(input_type) :: input
   type(option_type) :: option
+  character(len=MAXWORDLENGTH) :: word
   
   PetscInt :: i
 
@@ -373,12 +374,15 @@ subroutine StructuredGridReadDXYZ(structured_grid,input,option)
   allocate(structured_grid%dz_global(structured_grid%nz))
   structured_grid%dz_global = 0.d0
 
-  call StructuredGridReadArray(structured_grid%dx_global, &
-                               structured_grid%nx,input,option)
-  call StructuredGridReadArray(structured_grid%dy_global, &
-                               structured_grid%ny,input,option)
-  call StructuredGridReadArray(structured_grid%dz_global, &
-                               structured_grid%nz,input,option)
+  word = 'X'
+  call StructuredGridReadArrayNew(structured_grid%dx_global, &
+                               structured_grid%nx,word,input,option)
+  word = 'Y'
+  call StructuredGridReadArrayNew(structured_grid%dy_global, &
+                               structured_grid%ny,word,input,option)
+  word = 'Z'
+  call StructuredGridReadArrayNew(structured_grid%dz_global, &
+                               structured_grid%nz,word,input,option)
     
   if (OptionPrintToFile(option)) then
     write(option%fid_out,'(/," *DXYZ ")')
@@ -454,6 +458,92 @@ subroutine StructuredGridReadArray(a,n,input,option)
   enddo
     
 end subroutine StructuredGridReadArray
+
+! ************************************************************************** !
+!
+! StructuredGridReadArrayNew: Reads structured grid spacing along an axis from  
+!                         input file
+! author: Glenn Hammond
+! date: 05/21/09
+!
+! ************************************************************************** !
+subroutine StructuredGridReadArrayNew(array,array_size,axis,input,option)
+
+  use Input_module
+  use String_module
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  type(input_type) :: input
+  character(len=MAXWORDLENGTH) :: axis
+  PetscInt :: array_size
+  PetscReal :: array(array_size)
+  
+  PetscInt :: i, num_values, count
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXWORDLENGTH) :: word, word2, word3
+  character(len=1) :: backslash
+  PetscTruth :: continuation_flag
+  PetscReal :: value
+  PetscErrorCode :: ierr
+
+  backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
+                          ! is a double quote as in c/c++
+  
+  count = 0
+  continuation_flag = PETSC_TRUE
+  do
+    
+    if (count >= array_size) exit
+    
+    if (.not.continuation_flag .and. count /= 1) then
+      option%io_buffer = 'Insufficient values read for ' // &
+                         trim(axis) // &
+                         ' direction in DXYZ card'
+      call printErrMsg(option)
+    else if (count == 1) then
+      array = array(count)
+      exit
+    endif
+    
+    call InputReadFlotranString(input,option)
+    call InputReadStringErrorMsg(input,option,'DXYZ')
+
+    continuation_flag = PETSC_FALSE
+    if (index(input%buf,backslash) > 0) &
+      continuation_flag = PETSC_TRUE
+
+    do 
+      call InputReadWord(input,option,word,PETSC_TRUE)
+      if (InputError(input) .or. StringCompare(word,backslash,1)) exit
+      i = index(word,'*')
+      if (i == 0) i = index(word,'@')
+      if (i /= 0) then
+        word2 = word(1:i-1)
+        word3 = word(i+1:len_trim(word))
+        string2 = word2
+        call InputReadInt(string2,option,num_values,input%ierr)
+        call InputErrorMsg(input,option,'# values','StructuredGridReadArrayNew')
+        string2 = word3
+        call InputReadDouble(string2,option,value,input%ierr)
+        call InputErrorMsg(input,option,'value','StructuredGridReadArrayNew')
+        do i=1, num_values
+          count = count + 1
+          array(count) = value
+        enddo
+      else
+        string2 = word
+        call InputReadDouble(string2,option,value,input%ierr)
+        call InputErrorMsg(input,option,'value','StructuredGridReadDXYZ')
+        count = count + 1
+        array(count) = value
+      endif
+    enddo
+  enddo
+
+end subroutine StructuredGridReadArrayNew
 
 ! ************************************************************************** !
 !
