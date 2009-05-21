@@ -479,4 +479,75 @@ function Erf(x)
 
 end function Erf
 
+! ************************************************************************** !
+!
+! Erf: Computes an approximate to erf(x)
+! author: Glenn Hammond
+! date: 05/20/09
+!/* adapted from 
+!#
+!# Lower tail quantile for standard normal distribution function.
+!#
+!# This function returns an approximation of the inverse cumulative
+!# standard normal distribution function.  I.e., given P, it returns
+!# an approximation to the X satisfying P = Pr{Z <= X} where Z is a
+!# random variable from the standard normal distribution.
+!#
+!# The algorithm uses a minimax approximation by rational functions
+!# and the result has a relative error whose absolute value is less
+!# than 1.15e-9.
+!#
+!# Author:      Peter J. Acklam
+!# Time-stamp:  2000-07-19 18:26:14
+!# E-mail:      pjacklam@online.no
+!# WWW URL:     http://home.online.no/~pjacklam
+!*/
+!
+! ************************************************************************** !
+function InverseErf(p)
+
+  implicit none
+  
+  PetscReal :: p
+  
+  PetscReal :: InverseErf
+  
+ ! Coefficients in rational approximations.
+  PetscReal, parameter :: A(6) = (/-3.969683028665376d+1,2.209460984245205d+2, &
+                                  -2.759285104469687d+2,1.383577518672690d+2, &
+                                  -3.066479806614716d+1,2.506628277459239d+0/)
+  PetscReal, parameter :: B(5) = (/-5.447609879822406d+1,1.615858368580409d+2, &
+                                  -1.556989798598866d+2,6.680131188771972d+1, &
+                                  -1.328068155288572d+1/)
+  PetscReal, parameter :: C(6) = (/-7.784894002430293d-3,-3.223964580411365d-1, &
+                                  -2.400758277161838d+0,-2.549732539343734d+0, &
+                                  4.374664141464968d+0,2.938163982698783d+0/)
+  PetscReal, parameter :: D(4) = (/7.784695709041462d-03,  3.224671290700398d-01, &
+                                  2.445134137142996d+00,  3.754408661907416d+0/)
+
+  ! Define break-points.
+  PetscReal, parameter :: PLOW  = 0.02425d0;
+  PetscReal, parameter :: PHIGH = 0.97575d0 ! 1 - PLOW;
+  PetscReal :: q, r
+
+  ! Rational approximation for lower region:
+  if (p < PLOW) then
+    q = sqrt(-2.d0*log(p))
+    InverseErf = (((((C(1)*q+C(2))*q+C(3))*q+C(4))*q+C(5))*q+C(6)) / &
+                  ((((D(1)*q+D(2))*q+D(3))*q+D(4))*q+1.d0)
+  ! Rational approximation for upper region:
+  elseif (PHIGH < p) then
+    q = sqrt(-2.d0*log(1.d0-p))
+    InverseErf = -(((((C(1)*q+C(2))*q+C(3))*q+C(4))*q+C(5))*q+C(6)) / &
+                   ((((D(1)*q+D(2))*q+D(3))*q+D(4))*q+1.d0)
+  ! Rational approximation for central region:
+  else
+    q = p - 0.5d0;
+    r = q*q;
+    InverseErf = (((((A(1)*r+A(2))*r+A(3))*r+A(4))*r+A(5))*r+A(6))*q / &
+                 (((((B(1)*r+B(2))*r+B(3))*r+B(4))*r+B(5))*r+1.d0)
+  endif
+
+end function InverseErf
+
 end module Utility_module
