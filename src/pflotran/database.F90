@@ -335,7 +335,8 @@ subroutine DatabaseRead(reaction,option)
           cur_multirate_rxn => reaction%multi_rate_rxn_list
           do
             if (.not.associated(cur_multirate_rxn)) exit
-            cur_surfcplx => cur_multirate_rxn%rxn%complex_list
+            cur_surfcplx_rxn => cur_multirate_rxn%rxn
+            cur_surfcplx => cur_surfcplx_rxn%complex_list
             do
               if (.not.associated(cur_surfcplx)) exit
               if (StringCompare(name,cur_surfcplx%name,MAXWORDLENGTH)) then
@@ -2451,7 +2452,7 @@ subroutine BasisInit(reaction,option)
     enddo
   endif
   
-  if (reaction%neqsurfcmplx > 0) then
+  if (reaction%neqsurfcmplxrxn > 0) then
   
     ! determine max # complexes for a given site
     icount = 0
@@ -2613,19 +2614,19 @@ subroutine BasisInit(reaction,option)
       cur_multirate_rxn => cur_multirate_rxn%next
     enddo
     nullify(cur_multirate_rxn)  
-
-    allocate(reaction%eqsurfcmplx_rxn_to_mineral(reaction%neqsurfcmplxrxn))
+    
+    allocate(reaction%eqsurfcmplx_rxn_to_mineral(reaction%nkinmrrxn))
     reaction%eqsurfcmplx_rxn_to_mineral = 0
     allocate(reaction%eqsurfcmplx_rxn_to_complex(0:icount, &
-                                                 reaction%neqsurfcmplxrxn))
+                                                 reaction%nkinmrrxn))
     reaction%eqsurfcmplx_rxn_to_complex = 0
-    allocate(reaction%surface_site_names(reaction%neqsurfcmplxrxn))
+    allocate(reaction%surface_site_names(reaction%nkinmrrxn))
     reaction%surface_site_names = ''
-    allocate(reaction%surface_site_print(reaction%neqsurfcmplxrxn))
+    allocate(reaction%surface_site_print(reaction%nkinmrrxn))
     reaction%surface_site_print = PETSC_FALSE
-    allocate(reaction%eqsurfcmplx_rxn_site_density(reaction%neqsurfcmplxrxn))
+    allocate(reaction%eqsurfcmplx_rxn_site_density(reaction%nkinmrrxn))
     reaction%eqsurfcmplx_rxn_site_density = 0.d0
-    allocate(reaction%eqsurfcmplx_rxn_stoich_flag(reaction%neqsurfcmplxrxn))
+    allocate(reaction%eqsurfcmplx_rxn_stoich_flag(reaction%nkinmrrxn))
     reaction%eqsurfcmplx_rxn_stoich_flag = PETSC_FALSE
     allocate(reaction%surface_complex_names(reaction%neqsurfcmplx))
     reaction%surface_complex_names = ''
@@ -2657,6 +2658,33 @@ subroutine BasisInit(reaction,option)
 #endif
     allocate(reaction%eqsurfcmplx_Z(reaction%neqsurfcmplx))
     reaction%eqsurfcmplx_Z = 0.d0
+
+    ! determine the maximum # of rates for a given reaction
+    icount = 0
+    cur_multirate_rxn => reaction%multi_rate_rxn_list
+    do
+      if (.not.associated(cur_multirate_rxn)) exit
+      if (cur_multirate_rxn%nrate > icount) icount = cur_multirate_rxn%nrate
+      cur_multirate_rxn => cur_multirate_rxn%next
+    enddo
+    nullify(cur_multirate_rxn)  
+    allocate(reaction%nkinmr_rate(reaction%nkinmrrxn))
+    reaction%nkinmr_rate = 0
+    allocate(reaction%kinmr_rate(icount,reaction%nkinmrrxn))
+    reaction%kinmr_rate = 0.d0
+    
+    ! fill in rates
+    icount = 0
+    cur_multirate_rxn => reaction%multi_rate_rxn_list
+    do
+      if (.not.associated(cur_multirate_rxn)) exit
+      icount = icount + 1
+      reaction%nkinmr_rate(icount) = cur_multirate_rxn%nrate
+      reaction%kinmr_rate(1:cur_multirate_rxn%nrate,icount) = &
+        cur_multirate_rxn%rates
+      cur_multirate_rxn => cur_multirate_rxn%next
+    enddo
+    nullify(cur_multirate_rxn)  
     
     ! specific to multi-rate surface complexation reactions
     call MultiRateSorptionInit(reaction)
@@ -2741,6 +2769,7 @@ subroutine BasisInit(reaction,option)
       nullify(cur_surfcplx_rxn)
       cur_multirate_rxn => cur_multirate_rxn%next
     enddo
+    
     nullify(cur_multirate_rxn)  
   
   endif

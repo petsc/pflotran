@@ -160,10 +160,12 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
     nullify(aux_var%dtotal_sorb)
   endif    
   
-  if (reaction%neqsurfcmplxrxn > 0) then
+  if (reaction%neqsurfcmplxrxn > 0 .or. reaction%nkinmrrxn > 0) then
     allocate(aux_var%eqsurfcmplx_conc(reaction%neqsurfcmplx))
     aux_var%eqsurfcmplx_conc = 0.d0
-    allocate(aux_var%eqsurfcmplx_freesite_conc(reaction%neqsurfcmplxrxn))
+    option%io_buffer = 'reaction%neqsurfcmplxrxn+reaction%nkinmrrxn in reactive_transport_aux.F90 is a terrible kluge'
+    call printMsg(option)
+    allocate(aux_var%eqsurfcmplx_freesite_conc(reaction%neqsurfcmplxrxn+reaction%nkinmrrxn))
     aux_var%eqsurfcmplx_freesite_conc = 1.d-9 ! initialize to guess
 !   allocate(aux_var%eqsurf_site_density(reaction%neqsurfcmplxrxn))
 !   aux_var%eqsurf_site_density = 0.d0
@@ -225,10 +227,10 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
     nullify(aux_var%mass_balance_delta)
   endif
   
-  if (reaction%nkinmr_rates > 0) then
-    allocate(aux_var%kinmr_total_sorb(reaction%ncomp,reaction%nkinmr_rates))
+  if (reaction%nkinmrrxn > 0) then
+    allocate(aux_var%kinmr_total_sorb(reaction%ncomp,reaction%nkinmr_rate(1)))
     aux_var%kinmr_total_sorb = 0.d0
-    allocate(aux_var%kinmr_total_sorb_prev(reaction%ncomp,reaction%nkinmr_rates))
+    allocate(aux_var%kinmr_total_sorb_prev(reaction%ncomp,reaction%nkinmr_rate(1)))
     aux_var%kinmr_total_sorb_prev = 0.d0
   else
     nullify(aux_var%kinmr_total_sorb)

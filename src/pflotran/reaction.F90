@@ -62,11 +62,19 @@ subroutine ReactionRead(reaction,input,option)
   type(ion_exchange_rxn_type), pointer :: ionx_rxn, prev_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cation, prev_cation
   PetscInt :: srfcmplx_count
+  PetscInt :: count
+  character(len=1) backslash
+  PetscTruth :: continuation_flag
+  PetscReal :: value
+
+  backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
+                          ! is a double quote as in c/c++
 
   nullify(prev_species)
   nullify(prev_gas)
   nullify(prev_mineral)
   nullify(prev_srfcmplx_rxn)
+  nullify(prev_multirate_rxn)
   nullify(prev_srfcmplx)
   nullify(prev_ionx_rxn)
   nullify(prev_cation)
@@ -181,6 +189,7 @@ subroutine ReactionRead(reaction,input,option)
         call InputSkipToEnd(input,option,word)
       case('SORPTION')
         nullify(prev_srfcmplx_rxn)
+        nullify(prev_multirate_rxn)
         do
           call InputReadFlotranString(input,option)
           if (InputError(input)) exit
@@ -262,7 +271,8 @@ subroutine ReactionRead(reaction,input,option)
             case('MULTI_RATE_RXN')
           
               multirate_rxn => MultiRateRXNCreate()
-              srfcmplx_rxn => multirate_rxn%rxn
+              srfcmplx_rxn => SurfaceComplexationRXNCreate()
+              multirate_rxn%rxn => srfcmplx_rxn
               do
                 call InputReadFlotranString(input,option)
                 if (InputError(input)) exit
@@ -273,9 +283,41 @@ subroutine ReactionRead(reaction,input,option)
                 call StringToUpper(word)
                 
                 select case(trim(word))
-                  case('NUM_RATES')
+                  case('RATE','RATES')
                     call InputReadInt(input,option,multirate_rxn%nrate)
-                    call InputErrorMsg(input,option,'keyword','CHEMISTRY,MULTI_RATE_RXN,SITE_DENSITY')                   
+                    call InputErrorMsg(input,option,'keyword','CHEMISTRY,MULTI_RATE_RXN,RATE')                   
+                    allocate(multirate_rxn%rates(multirate_rxn%nrate))
+                    multirate_rxn%rates = 0.d0
+                    count = 0
+                    continuation_flag = PETSC_FALSE
+                    do
+                      if (count >= multirate_rxn%nrate) exit
+                      if (.not.continuation_flag .and. count > 0) then
+                        option%io_buffer = 'Insufficient values read for multirate surface ' // &
+                                           'complexation reaction rates.'
+                        call printErrMsg(option)
+                      endif    
+                      if (continuation_flag) then
+                        call InputReadFlotranString(input,option)
+                        call InputReadStringErrorMsg(input,option,'CHEMISTRY,MULTI_RATE_RXN,RATES')
+                      endif
+                      continuation_flag = PETSC_FALSE
+                      if (index(input%buf,backslash) > 0) &
+                        continuation_flag = PETSC_TRUE
+                      input%ierr = 0
+                      do
+                        call InputReadDouble(input,option,value)
+                        if (InputError(input)) exit
+                        count = count + 1
+                        multirate_rxn%rates(count) = value
+                      enddo
+                    enddo
+                  case('RATE_MEAN')
+                    call InputReadDouble(input,option,multirate_rxn%rate_mean)
+                    call InputErrorMsg(input,option,'keyword','CHEMISTRY,MULTI_RATE_RXN,RATE MEAN')                   
+                  case('RATE_STDEV')
+                    call InputReadDouble(input,option,multirate_rxn%rate_stdev)
+                    call InputErrorMsg(input,option,'keyword','CHEMISTRY,MULTI_RATE_RXN,RATE STDEV')                   
                   case('MINERAL')
                     call InputReadWord(input,option,srfcmplx_rxn%mineral_name,PETSC_TRUE)
                     call InputErrorMsg(input,option,'keyword','CHEMISTRY,MULTI_RATE_RXN,MINERAL_NAME')
@@ -319,14 +361,15 @@ subroutine ReactionRead(reaction,input,option)
                 reaction%multi_rate_rxn_list => multirate_rxn
                 multirate_rxn%id = 1
               endif
-              if (associated(prev_srfcmplx_rxn)) then
+              if (associated(prev_multirate_rxn)) then
                 prev_multirate_rxn%next => multirate_rxn
                 multirate_rxn%id = multirate_rxn%id + 1
               endif
               prev_multirate_rxn => multirate_rxn
 
-              srfcmplx_rxn%free_site_id = srfcmplx_rxn%id
-              reaction%nkinmrrxn = srfcmplx_rxn%id
+              srfcmplx_rxn%id = multirate_rxn%id
+              srfcmplx_rxn%free_site_id = multirate_rxn%id
+              reaction%nkinmrrxn = multirate_rxn%id
 
               nullify(srfcmplx_rxn)
               nullify(multirate_rxn)
@@ -1857,7 +1900,7 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,volume, &
                          reaction,option)
   endif
   
-  if (reaction%nkinmr_rates > 0) then
+  if (reaction%nkinmrrxn > 0) then
     call RMultiRateSorption(Res,Jac,derivative,rt_auxvar,global_auxvar, &
                             volume,reaction,option)
   endif
@@ -1905,7 +1948,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
       call RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
                            global_auxvar,volume,reaction,option)
     endif
-    if (reaction%nkinmr_rates > 0) then
+    if (reaction%nkinmrrxn > 0) then
       call RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
                               global_auxvar,volume,reaction,option)
     endif    
@@ -1920,7 +1963,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
       call RKineticMineral(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
                            global_auxvar,volume,reaction,option)
     endif
-    if (reaction%nkinmr_rates > 0) then
+    if (reaction%nkinmrrxn > 0) then
       call RMultiRateSorption(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
                               global_auxvar,volume,reaction,option)
     endif    
@@ -1939,7 +1982,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
         call RKineticMineral(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
                              global_auxvar,volume,reaction,option)
       endif
-      if (reaction%nkinmr_rates > 0) then
+      if (reaction%nkinmrrxn > 0) then
         call RMultiRateSorption(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
                                 global_auxvar,volume,reaction,option)
       endif      
@@ -2709,7 +2752,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: site_density
   
   PetscInt :: irate
-  PetscReal :: dt_over_v, kdtv, one_plus_kdtv, k_over_one_plus_kdtv
+  PetscReal :: kdt, one_plus_kdt, k_over_one_plus_kdt
   PetscReal :: total_sorb_eq(reaction%ncomp)
   PetscReal :: dtotal_sorb_eq(reaction%ncomp,reaction%ncomp)
 
@@ -2724,17 +2767,14 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   endif
 #endif  
 
-  dt_over_v = option%tran_dt / volume
+  ! Surface Complexation
+  do irxn = 1, reaction%nkinmrrxn
+    do irate = 1, reaction%nkinmr_rate(1)
 
-  do irate = 1, reaction%nkinmr_rates
-
-    ! Surface Complexation
-    do irxn = 1, reaction%neqsurfcmplxrxn
-    
       ncplx = reaction%eqsurfcmplx_rxn_to_complex(0,irxn)
       
       free_site_conc = rt_auxvar%eqsurfcmplx_freesite_conc(irxn) / &
-                       dble(reaction%nkinmr_rates)
+                       dble(reaction%nkinmr_rate(irxn))
 
       ! get a pointer to the first complex (there will always be at least 1)
       ! in order to grab free site conc
@@ -2769,7 +2809,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
         if (one_more) exit
         
         site_density = reaction%eqsurfcmplx_rxn_site_density(irxn)/ &
-                       dble(reaction%nkinmr_rates)
+                       dble(reaction%nkinmr_rate(irxn))
 
         if (reaction%eqsurfcmplx_rxn_stoich_flag(irxn)) then 
           ! stoichiometry for free sites in one of reactions is not 1, thus must
@@ -2836,9 +2876,9 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
       total_sorb_eq = 0.d0
       dtotal_sorb_eq = 0.d0
       
-      kdtv = reaction%kinmr_rate(irate) * dt_over_v
-      one_plus_kdtv = 1.d0 + kdtv
-      k_over_one_plus_kdtv = reaction%kinmr_rate(irate)/one_plus_kdtv
+      kdt = reaction%kinmr_rate(irate,irxn) * option%tran_dt
+      one_plus_kdt = 1.d0 + kdt
+      k_over_one_plus_kdt = reaction%kinmr_rate(irate,irxn)/one_plus_kdt
       
       do k = 1, ncplx
         icplx = reaction%eqsurfcmplx_rxn_to_complex(k,irxn)
@@ -2870,18 +2910,18 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
           enddo
         endif
       enddo
-      
-    enddo
 
-    rt_auxvar%kinmr_total_sorb(:,irate) = &
-      (rt_auxvar%kinmr_total_sorb_prev(:,irate) + kdtv * total_sorb_eq) / &
-      one_plus_kdtv
-    Res = Res + k_over_one_plus_kdtv * &
-                (total_sorb_eq - rt_auxvar%kinmr_total_sorb_prev(:,irate))
-    
-    if (compute_derivative) then
-      Jac = Jac + k_over_one_plus_kdtv * dtotal_sorb_eq
-    endif
+      rt_auxvar%kinmr_total_sorb(:,irate) = &
+        (rt_auxvar%kinmr_total_sorb_prev(:,irate) + kdt * total_sorb_eq) / &
+        one_plus_kdt
+      Res = Res + volume * k_over_one_plus_kdt * &
+                  (total_sorb_eq - rt_auxvar%kinmr_total_sorb_prev(:,irate))
+      
+      if (compute_derivative) then
+        Jac = Jac + volume * k_over_one_plus_kdt * dtotal_sorb_eq
+      endif
+
+    enddo
 
   enddo
   

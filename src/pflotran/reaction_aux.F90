@@ -114,6 +114,7 @@ module Reaction_Aux_module
   type, public :: multi_rate_rxn_type
     PetscInt :: id
     PetscInt :: nrate
+    PetscReal, pointer :: rates(:)
     character(len=MAXWORDLENGTH) :: distribution_type
     PetscReal :: rate_mean
     PetscReal :: rate_stdev
@@ -251,8 +252,8 @@ module Reaction_Aux_module
 
     ! kinetic multi-rate surface complexation model
     PetscInt :: nkinmrrxn 
-    PetscInt :: nkinmr_rates
-    PetscInt, pointer :: kinmr_rate(:)
+    PetscInt, pointer :: nkinmr_rate(:)
+    PetscInt, pointer :: kinmr_rate(:,:)
 
     ! mineral reactions
     PetscInt :: nmnrl
@@ -369,6 +370,7 @@ function ReactionCreate()
   nullify(reaction%mineral_list)
   nullify(reaction%ion_exchange_rxn_list)
   nullify(reaction%surface_complexation_rxn_list)
+  nullify(reaction%multi_rate_rxn_list)
   
   nullify(reaction%primary_species_names)
   nullify(reaction%secondary_species_names)
@@ -488,7 +490,7 @@ function ReactionCreate()
   nullify(reaction%kinmnrl_affinity_power)
 
   reaction%nkinmrrxn = 0
-  reaction%nkinmr_rates = 0
+  nullify(reaction%nkinmr_rate)
   nullify(reaction%kinmr_rate)
   
   reaction%max_dlnC = 5.d0
@@ -708,6 +710,7 @@ function MultiRateRxnCreate()
   multiraterxn%rate_mean = 0.d0
   multiraterxn%rate_stdev = 0.d0
   multiraterxn%rxn => SurfaceComplexationRxnCreate()
+  nullify(multiraterxn%rates)
   
   nullify(multiraterxn%next)
   
@@ -730,11 +733,11 @@ subroutine MultiRateSorptionInit(reaction)
   
   PetscInt :: irate
 
-  allocate(reaction%kinmr_rate(reaction%nkinmr_rates))
-  reaction%kinmr_rate = 0.d0
+!  allocate(reaction%kinmr_rate(reaction%nkinmr_rate))
+!  reaction%kinmr_rate = 0.d0
 
-  do irate = 1, reaction%nkinmr_rates
-  enddo
+!  do irate = 1, reaction%nkinmr_rate
+!  enddo
   
 end subroutine MultiRateSorptionInit
 
@@ -1402,6 +1405,8 @@ subroutine MultiRateRxnDestroy(multiraterxn)
     call SurfaceComplexationRxnDestroy(multiraterxn%rxn)
   endif
   nullify(multiraterxn%rxn)
+  if (associated(multiraterxn%rates)) deallocate(multiraterxn%rates)
+  nullify(multiraterxn%rates)
   deallocate(multiraterxn)  
   nullify(multiraterxn)
 
@@ -1822,6 +1827,11 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%kinmnrl_affinity_power)) deallocate(reaction%kinmnrl_affinity_power)
   nullify(reaction%kinmnrl_affinity_power)
 
+  if (associated(reaction%nkinmr_rate)) deallocate(reaction%nkinmr_rate)
+  nullify(reaction%nkinmr_rate)
+  if (associated(reaction%kinmr_rate)) deallocate(reaction%kinmr_rate)
+  nullify(reaction%kinmr_rate)
+  
   deallocate(reaction)
   nullify(reaction)
 
