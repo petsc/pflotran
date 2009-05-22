@@ -881,7 +881,8 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
   !         *(kg water/L water)*(1000L water/m^3 water) = kg water/sec
   ! all Jacobian entries should be in kg water/sec
   if (associated(rt_aux_var%dtotal)) then ! units of dtotal = kg water/L water
-    if (associated(rt_aux_var%dtotal_sorb)) then ! unit of dtotal_sorb = kg water/m^3 bulk
+!geh fix    if (associated(rt_aux_var%dtotal_sorb)) then ! unit of dtotal_sorb = kg water/m^3 bulk
+    if (reaction%nsorb > 0) then
       v_t = vol/option%tran_dt
       psvd_t = por*global_aux_var%sat(iphase)*1000.d0*v_t
       J = rt_aux_var%dtotal(:,:,iphase)*psvd_t + rt_aux_var%dtotal_sorb(:,:)*v_t
@@ -950,7 +951,8 @@ subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
   !         (m^3 bulk)*(1000L water/m^3 water)/(sec) = mol/sec
   ! 1000.d0 converts vol from m^3 -> L
   ! all residual entries should be in mol/sec
-  if (associated(rt_aux_var%total_sorb)) then
+!geh fix  if (associated(rt_aux_var%total_sorb)) then
+  if (reaction%nsorb > 0) then
     v_t = vol/option%tran_dt
     psv_t = por*global_aux_var%sat(iphase)*1000.d0*v_t
     Res(:) = psv_t*rt_aux_var%total(:,iphase) +  v_t*rt_aux_var%total_sorb(:)

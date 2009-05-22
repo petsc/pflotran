@@ -167,6 +167,12 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
     call printMsg(option)
     allocate(aux_var%eqsurfcmplx_freesite_conc(reaction%neqsurfcmplxrxn+reaction%nkinmrrxn))
     aux_var%eqsurfcmplx_freesite_conc = 1.d-9 ! initialize to guess
+
+! another kludge
+    if (.not.associated(aux_var%total_sorb)) then
+      allocate(aux_var%total_sorb(reaction%ncomp))
+      aux_var%total_sorb = 0.d0
+    endif
 !   allocate(aux_var%eqsurf_site_density(reaction%neqsurfcmplxrxn))
 !   aux_var%eqsurf_site_density = 0.d0
   else

@@ -2767,6 +2767,9 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   endif
 #endif  
 
+  rt_auxvar%total_sorb = 0.d0
+  rt_auxvar%eqsurfcmplx_conc = 0.d0
+
   ! Surface Complexation
   do irxn = 1, reaction%nkinmrrxn
     do irate = 1, reaction%nkinmr_rate(1)
@@ -2882,6 +2885,9 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
       
       do k = 1, ncplx
         icplx = reaction%eqsurfcmplx_rxn_to_complex(k,irxn)
+
+        rt_auxvar%eqsurfcmplx_conc(k) = &
+          rt_auxvar%eqsurfcmplx_conc(k) + surfcmplx_conc(icplx)
 
         ncomp = reaction%eqsurfcmplxspecid(0,icplx)
         do i = 1, ncomp
@@ -3378,11 +3384,15 @@ subroutine ReactionComputeKd(icomp,retardation,rt_auxvar,global_auxvar, &
   PetscInt, parameter :: iphase = 1
 
   retardation = 0.d0
-  if (reaction%neqsurfcmplxrxn == 0) return
+! another geh kludge
+!geh  if (reaction%neqsurfcmplxrxn == 0) return
+  if (reaction%neqsurfcmplxrxn + reaction%nkinmrrxn == 0) return
   
   bulk_vol_to_fluid_vol = porosity*global_auxvar%sat(iphase)*1000.d0
 
-  do irxn = 1, reaction%neqsurfcmplxrxn
+! another geh kludge
+!  do irxn = 1, reaction%neqsurfcmplxrxn
+  do irxn = 1, reaction%neqsurfcmplxrxn+reaction%nkinmrrxn
     do i = 1, reaction%eqsurfcmplx_rxn_to_complex(0,irxn)
       icplx = reaction%eqsurfcmplx_rxn_to_complex(i,irxn)
       do j = 1, reaction%eqsurfcmplxspecid(0,icplx)
