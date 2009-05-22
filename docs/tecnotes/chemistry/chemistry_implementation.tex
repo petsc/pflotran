@@ -80,6 +80,7 @@
 \renewcommand{\a}{{\alpha}}
 \newcommand{\abar}{{\bar \alpha}}
 \renewcommand{\b}{{\beta}}
+\newcommand{\s}{{\sigma}}
 \newcommand{\w}{{\rm H_2O}}
 \newcommand{\air}{{\rm N_2}}
 \newcommand{\pe}{{\rm Pe}}
@@ -1315,14 +1316,32 @@ Thus the sorption rate equal to the right-hand side of Eqn.\eqref{sorbnum} becom
 k_\a\big(q_{j\a n}^{{\rm eq},\,t+\Delta t}-q_{j\a n}^{t+\Delta t}\big) \eq k_\a\frac{q_{j\a n}^{{\rm eq},\,t+\Delta t}-q_{j\a n}^{t}}{1+k_\a\Delta t}.
 \EN
 This result can be substituted directly into the residual function for the finite difference form corresponding to the $j$th primary species equation 
-\EQ
-R_{jn} \eq \varphi \frac{\Psi_{jn}^{t+\Delta t}-\Psi_{jn}^t}{\Delta t} + \sum_\a \frac{q_{j\a n}^{t+\Delta t}-q_{j\a n}^t}{\Delta t} + \sum_{n'} \Omega_{jnn'} A_{nn'} + \sum_m\nu_{jm}I_{mn},
-\EN
-becomes
-\EQ
-R_{jn} \eq \varphi \frac{\Psi_{jn}^{t+\Delta t}-\Psi_{jn}^t}{\Delta t} + \sum_\a \frac{k_\a}{1+k_\a\Delta t}\big(q_{j\a n}^{{\rm eq},\,t+\Delta t}-q_{j\a n}^{t}\big) + \sum_{n'} \Omega_{jnn'} A_{nn'} + \sum_m\nu_{jm}I_{mn},
-\EN
+\BA
+R_{jn} \eq \frac{\big(\varphi_n \Psi_{jn}\big)_{t+\Delta t}-\big(\varphi_n \Psi_{jn}\big)_t}{\Delta t}V_n &+ \sum_\a \frac{q_{j\a n}^{t+\Delta t}-q_{j\a n}^t}{\Delta t}V_n \nonumber\\
+&+ \sum_{n'} \Omega_{jnn'} A_{nn'} + \sum_m\nu_{jm}I_{mn}V_n,
+\EA
+with control volume $V_n$ and interfacial area $A_{nn'}$, becomes
+\BA
+R_{jn} \eq \frac{\big(\varphi_n \Psi_{jn}\big)_{t+\Delta t}-\big(\varphi_n \Psi_{jn}\big)_t}{\Delta t}V_n &+ \sum_\a \frac{k_\a}{1+k_\a\Delta t}\big(q_{j\a n}^{{\rm eq},\,t+\Delta t}-q_{j\a n}^{t}\big)V_n \nonumber\\
+&+ \sum_{n'} \Omega_{jnn'} A_{nn'} + \sum_m\nu_{jm}I_{mn}V_n,
+\EA
 where $q_{j\a n}^{{\rm eq},\,t+\Delta t}$ is given explicitly as a function of the primary species concentrations in Eqn.\eqref{qeq}. Once the primary species transport equations are solved, the sorbed concentrations can be updated from Eqn.\eqref{qkin}.
+
+\subsection{Mobile-Immobile Domains}
+
+The multirate model can be extended to include both mobile and immobile domains. Multirate processes are assumed to take place in both domains. The transport equations for primary species have the form
+\EQ
+\frac{\p}{\p t}\varphi_\a \Psi_j^\a + \bnabla\cdot\bOmega_j^\a \eq -\sum_{il}\nu_{ji}\frac{\p S_{il}^\a}{\p t} - \sum_m\nu_{jm}I_m^\a - \sum_\b\Gamma_{\a\b} \big(\Psi_j^\a-\Psi_j^\b\big),
+\EN
+and
+\EQ
+\frac{\p}{\p t}\varphi_\b \Psi_j^\b + \bnabla\cdot\bOmega_j^\b \eq -\sum_{il}\nu_{ji}\frac{\p S_{il}^\b}{\p t} - \sum_m\nu_{jm}I_m^\b + \Gamma_{\a\b} \big(\Psi_j^\a-\Psi_j^\b\big),
+\EN
+for the mobile region $\a$ and immobile regions $\b$. Sorption mass transfer equations for both domains are given by
+\EQ
+\frac{\p S_{il}^\s}{\p t} \eq k_l^{} \big(S_{il}^{\rm eq,\s}-S_{il}^\s\big), \ \ \ \ \ (\s=\a,\,\b).
+\EN
+
 
 \section{Colloid-Facilitated Transport}
 
