@@ -1311,10 +1311,15 @@ for fully backward implicit time differencing. Solving for $q_{j\a}^{t+\Delta t}
 \EQ\label{qkin}
 q_{j\a n}^{t+\Delta t} \eq \frac{q_{j\a n}^t+k_\a \Delta t \, q_{j\a}^{{\rm eq},\,t+\Delta t}}{1+k_\a\Delta t}.
 \EN
+or in terms of individual surface complexes
+\EQ\label{qkin}
+S_{i\a n}^{t+\Delta t} \eq \frac{S_{i\a n}^t+k_\a \Delta t \, S_{i\a}^{{\rm eq},\,t+\Delta t}}{1+k_\a\Delta t}.
+\EN
 Thus the sorption rate equal to the right-hand side of Eqn.\eqref{sorbnum} becomes
 \EQ
-k_\a\big(q_{j\a n}^{{\rm eq},\,t+\Delta t}-q_{j\a n}^{t+\Delta t}\big) \eq k_\a\frac{q_{j\a n}^{{\rm eq},\,t+\Delta t}-q_{j\a n}^{t}}{1+k_\a\Delta t}.
+k_\a\big(q_{j\a n}^{{\rm eq},\,t+\Delta t}-q_{j\a n}^{t+\Delta t}\big) \eq k_\a\frac{q_{j\a n}^{{\rm eq},\,t+\Delta t}-q_{j\a n}^{t}}{1+k_\a\Delta t},
 \EN
+
 Substituting this result directly into the residual function for the finite difference form corresponding to the $j$th primary species equation given by
 \BA
 R_{jn} \eq \frac{\big(\varphi_n \Psi_{jn}\big)_{t+\Delta t}-\big(\varphi_n \Psi_{jn}\big)_t}{\Delta t}V_n &+ \sum_\a \frac{q_{j\a n}^{t+\Delta t}-q_{j\a n}^t}{\Delta t}V_n \nonumber\\

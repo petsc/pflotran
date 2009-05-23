@@ -108,19 +108,8 @@ module Reaction_Aux_module
     character(len=MAXWORDLENGTH) :: mineral_name
     PetscReal :: site_density
     type(surface_complex_type), pointer :: complex_list
-    type(surface_complexation_rxn_type), pointer :: next
+    type (surface_complexation_rxn_type), pointer :: next
   end type surface_complexation_rxn_type    
-
-  type, public :: multi_rate_rxn_type
-    PetscInt :: id
-    PetscInt :: nrate
-    PetscReal, pointer :: rates(:)
-    character(len=MAXWORDLENGTH) :: distribution_type
-    PetscReal :: rate_mean
-    PetscReal :: rate_stdev
-    type(surface_complexation_rxn_type), pointer :: rxn
-    type(multi_rate_rxn_type), pointer :: next
-  end type multi_rate_rxn_type   
 
   type, public :: aq_species_constraint_type
     character(len=MAXWORDLENGTH), pointer :: names(:)
@@ -157,7 +146,6 @@ module Reaction_Aux_module
     type(mineral_type), pointer :: mineral_list
     type(ion_exchange_rxn_type), pointer :: ion_exchange_rxn_list
     type(surface_complexation_rxn_type), pointer :: surface_complexation_rxn_list
-    type(multi_rate_rxn_type), pointer :: multi_rate_rxn_list
     PetscInt :: act_coef_update_frequency
     PetscInt :: act_coef_update_algorithm
     PetscTruth :: checkpoint_activity_coefs
@@ -250,11 +238,6 @@ module Reaction_Aux_module
     PetscReal, pointer :: kinsurfcmplx_Z(:)  ! valence
 #endif
 
-    ! kinetic multi-rate surface complexation model
-    PetscInt :: nkinmrrxn 
-    PetscInt, pointer :: nkinmr_rate(:)
-    PetscInt, pointer :: kinmr_rate(:,:)
-
     ! mineral reactions
     PetscInt :: nmnrl
     character(len=MAXWORDLENGTH), pointer :: mineral_names(:)
@@ -315,15 +298,13 @@ module Reaction_Aux_module
             TransitionStateTheoryRxnCreate, &
             TransitionStateTheoryRxnDestroy, &
             SurfaceComplexationRxnCreate, &
-            MultiRateRxnCreate, &
             AqueousSpeciesConstraintDestroy, &
             MineralConstraintDestroy, &
             AqueousSpeciesConstraintCreate, &
             MineralConstraintCreate, &
             SurfaceComplexCreate, &
             IonExchangeRxnCreate, &
-            IonExchangeCationCreate, &
-            MultiRateSorptionInit
+            IonExchangeCationCreate
              
 contains
 
@@ -370,7 +351,6 @@ function ReactionCreate()
   nullify(reaction%mineral_list)
   nullify(reaction%ion_exchange_rxn_list)
   nullify(reaction%surface_complexation_rxn_list)
-  nullify(reaction%multi_rate_rxn_list)
   
   nullify(reaction%primary_species_names)
   nullify(reaction%secondary_species_names)
@@ -488,10 +468,6 @@ function ReactionCreate()
   nullify(reaction%kinmnrl_sec_pref_atten_coef)
   nullify(reaction%kinmnrl_Tempkin_const)
   nullify(reaction%kinmnrl_affinity_power)
-
-  reaction%nkinmrrxn = 0
-  nullify(reaction%nkinmr_rate)
-  nullify(reaction%kinmr_rate)
   
   reaction%max_dlnC = 5.d0
 
@@ -686,60 +662,6 @@ function SurfaceComplexationRxnCreate()
   SurfaceComplexationRxnCreate => surfcplxrxn
   
 end function SurfaceComplexationRxnCreate
-
-! ************************************************************************** !
-!
-! SurfaceComplexationRxnCreate: Allocate and initialize a multi-rate surface 
-!                               complexation reaction
-! author: Glenn Hammond
-! date: 05/20/09
-!
-! ************************************************************************** !
-function MultiRateRxnCreate()
-
-  implicit none
-
-  type(multi_rate_rxn_type), pointer :: MultiRateRxnCreate
-
-  type(multi_rate_rxn_type), pointer :: multiraterxn
-  
-  allocate(multiraterxn)
-  multiraterxn%id = 0
-  multiraterxn%nrate = 0
-  multiraterxn%distribution_type = ''
-  multiraterxn%rate_mean = 0.d0
-  multiraterxn%rate_stdev = 0.d0
-  multiraterxn%rxn => SurfaceComplexationRxnCreate()
-  nullify(multiraterxn%rates)
-  
-  nullify(multiraterxn%next)
-  
-  MultiRateRxnCreate => multiraterxn
-  
-end function MultiRateRxnCreate
-
-! ************************************************************************** !
-!
-! MultiRateSorptionInit: Initializes the multi-rate distribution of rates
-! author: Glenn Hammond
-! date: 05/20/09
-!
-! ************************************************************************** !
-subroutine MultiRateSorptionInit(reaction)
-
-  implicit none
-
-  type(reaction_type) :: reaction
-  
-  PetscInt :: irate
-
-!  allocate(reaction%kinmr_rate(reaction%nkinmr_rate))
-!  reaction%kinmr_rate = 0.d0
-
-!  do irate = 1, reaction%nkinmr_rate
-!  enddo
-  
-end subroutine MultiRateSorptionInit
 
 ! ************************************************************************** !
 !
@@ -1388,32 +1310,6 @@ end subroutine SurfaceComplexationRxnDestroy
 
 ! ************************************************************************** !
 !
-! MultiRateRxnDestroy: Deallocates a multi-rate surface complexation reaction
-! author: Glenn Hammond
-! date: 05/20/09
-!
-! ************************************************************************** !
-subroutine MultiRateRxnDestroy(multiraterxn)
-
-  implicit none
-    
-  type(multi_rate_rxn_type), pointer :: multiraterxn
-
-  if (.not.associated(multiraterxn)) return
-  
-  if (associated(multiraterxn%rxn)) then
-    call SurfaceComplexationRxnDestroy(multiraterxn%rxn)
-  endif
-  nullify(multiraterxn%rxn)
-  if (associated(multiraterxn%rates)) deallocate(multiraterxn%rates)
-  nullify(multiraterxn%rates)
-  deallocate(multiraterxn)  
-  nullify(multiraterxn)
-
-end subroutine MultiRateRxnDestroy
-
-! ************************************************************************** !
-!
 ! SurfaceComplexDestroy: Deallocates a surface complex
 ! author: Glenn Hammond
 ! date: 10/21/08
@@ -1564,7 +1460,6 @@ subroutine ReactionDestroy(reaction)
   type(mineral_type), pointer :: mineral, prev_mineral
   type(ion_exchange_rxn_type), pointer :: ionxrxn, prev_ionxrxn
   type(surface_complexation_rxn_type), pointer :: surfcplxrxn, prev_surfcplxrxn
-  type(multi_rate_rxn_type), pointer :: multiraterxn, prev_multiraterxn
 
   if (.not.associated(reaction)) return 
 
@@ -1627,16 +1522,6 @@ subroutine ReactionDestroy(reaction)
     call SurfaceComplexationRxnDestroy(prev_surfcplxrxn)
   enddo    
   nullify(reaction%surface_complexation_rxn_list)
-  
-  ! multi-rate surface complexation reactions
-  multiraterxn => reaction%multi_rate_rxn_list
-  do
-    if (.not.associated(multiraterxn)) exit
-    prev_multiraterxn => multiraterxn
-    multiraterxn => multiraterxn%next
-    call MultiRateRxnDestroy(prev_multiraterxn)
-  enddo    
-  nullify(reaction%multi_rate_rxn_list)
   
   if (associated(reaction%primary_species_names)) deallocate(reaction%primary_species_names)
   nullify(reaction%primary_species_names)
@@ -1827,11 +1712,6 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%kinmnrl_affinity_power)) deallocate(reaction%kinmnrl_affinity_power)
   nullify(reaction%kinmnrl_affinity_power)
 
-  if (associated(reaction%nkinmr_rate)) deallocate(reaction%nkinmr_rate)
-  nullify(reaction%nkinmr_rate)
-  if (associated(reaction%kinmr_rate)) deallocate(reaction%kinmr_rate)
-  nullify(reaction%kinmr_rate)
-  
   deallocate(reaction)
   nullify(reaction)
 

@@ -964,7 +964,7 @@ subroutine InitReadInput(simulation)
                 call InputReadWord(input,option,word,PETSC_TRUE)
                 call InputErrorMsg(input,option,'SORPTION','CHEMISTRY') 
                 select case(trim(word))
-                  case('SURFACE_COMPLEXATION_RXN','ION_EXCHANGE_RXN','MULTI_RATE_RXN')
+                  case('SURFACE_COMPLEXATION_RXN','ION_EXCHANGE_RXN')
                     do
                       call InputReadFlotranString(input,option)
                       call InputReadStringErrorMsg(input,option,card)
