@@ -362,6 +362,11 @@ subroutine RTAuxVarDestroy(aux_var)
   if (associated(aux_var%mass_balance_delta)) deallocate(aux_var%mass_balance_delta)
   nullify(aux_var%mass_balance_delta)
 
+  if (associated(aux_var%kinmr_total_sorb)) deallocate(aux_var%kinmr_total_sorb)
+  nullify(aux_var%kinmr_total_sorb)
+  if (associated(aux_var%kinmr_total_sorb_prev)) deallocate(aux_var%kinmr_total_sorb_prev)
+  nullify(aux_var%kinmr_total_sorb_prev)
+
 end subroutine RTAuxVarDestroy
 
 ! ************************************************************************** !
