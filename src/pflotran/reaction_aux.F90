@@ -111,6 +111,17 @@ module Reaction_Aux_module
     type (surface_complexation_rxn_type), pointer :: next
   end type surface_complexation_rxn_type    
 
+#if 0
+  type, public :: multi_rate_rxn
+    PetscInt :: id
+    PetscInt :: nrate
+    PetscReal, pointer :: rates(:)
+    character(len=MAXWORDLENGTH) :: distribution_type
+    PetscReal :: rate_mean
+    PetscReal :: rate_stdev
+  end type multi_rate_rxn
+#endif
+
   type, public :: aq_species_constraint_type
     character(len=MAXWORDLENGTH), pointer :: names(:)
     PetscReal, pointer :: constraint_conc(:)
@@ -132,6 +143,7 @@ module Reaction_Aux_module
     character(len=MAXSTRINGLENGTH) :: database_filename
     PetscTruth :: use_full_geochemistry
     PetscTruth :: use_log_formulation ! flag for solving for the change in the log of the concentration
+    PetscTruth :: use_multirate
     PetscTruth :: print_all_species
     PetscTruth :: print_pH
     PetscTruth :: print_kd
@@ -238,6 +250,10 @@ module Reaction_Aux_module
     PetscReal, pointer :: kinsurfcmplx_Z(:)  ! valence
 #endif
 
+    ! multirate reaction rates
+    PetscInt :: kinmr_nrate
+    PetscReal, pointer :: kinmr_rate(:)
+
     ! mineral reactions
     PetscInt :: nmnrl
     character(len=MAXWORDLENGTH), pointer :: mineral_names(:)
@@ -340,6 +356,7 @@ function ReactionCreate()
   reaction%print_kd = PETSC_FALSE
   reaction%use_log_formulation = PETSC_FALSE
   reaction%use_full_geochemistry = PETSC_FALSE
+  reaction%use_multirate = PETSC_FALSE
   
   reaction%h_ion_id = 0
   reaction%o2_gas_id = 0
@@ -439,6 +456,9 @@ function ReactionCreate()
   nullify(reaction%kinsurfcmplx_logKcoef)
   nullify(reaction%kinsurfcmplx_Z)
 #endif
+
+  reaction%kinmr_nrate = 0
+  nullify(reaction%kinmr_rate)
 
   reaction%nmnrl = 0  
   nullify(reaction%mnrlspecid)

@@ -943,8 +943,8 @@ subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
   PetscReal :: Res(reaction%ncomp)
   
   PetscInt :: iphase
-  PetscReal :: psv_t
-  PetscReal :: v_t
+  PetscReal :: por_sat, psv_dt
+  PetscReal :: vol_dt
   
   iphase = 1
   ! units = (mol solute/L water)*(m^3 por/m^3 bulk)*(m^3 water/m^3 por)*
@@ -952,13 +952,13 @@ subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
   ! 1000.d0 converts vol from m^3 -> L
   ! all residual entries should be in mol/sec
 !geh fix  if (associated(rt_aux_var%total_sorb)) then
+
+  vol_dt = vol/option%tran_dt
+  por_sat = por*global_aux_var%sat(iphase)*1000.d0
   if (reaction%nsorb > 0) then
-    v_t = vol/option%tran_dt
-    psv_t = por*global_aux_var%sat(iphase)*1000.d0*v_t
-    Res(:) = psv_t*rt_aux_var%total(:,iphase) +  v_t*rt_aux_var%total_sorb(:)
+    Res(:) = (por_sat*rt_aux_var%total(:,iphase) + rt_aux_var%total_sorb(:))*vol_dt
   else
-    psv_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
-    Res(:) = psv_t*rt_aux_var%total(:,iphase) 
+    Res(:) = por_sat*rt_aux_var%total(:,iphase)*vol_dt
   endif
 
 
@@ -970,8 +970,8 @@ subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
 
 ! super critical CO2 phase
     if (iphase == 2 ) then
-      psv_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
-      Res(:) = Res(:) + psv_t*rt_aux_var%total(:,iphase) 
+      psv_dt = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
+      Res(:) = Res(:) + psv_dt*rt_aux_var%total(:,iphase) 
       ! should sum over gas component only need more implementations
     endif 
 ! add code for other phases here
@@ -1000,13 +1000,13 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   implicit none
   
   interface
-     subroutine samrpetscobjectstateincrease(vec)
-       implicit none
+    subroutine samrpetscobjectstateincrease(vec)
+      implicit none
 #include "finclude/petsc.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
-       Vec :: vec
-     end subroutine samrpetscobjectstateincrease
+      Vec :: vec
+    end subroutine samrpetscobjectstateincrease
   end interface
 
   SNES :: snes
@@ -1045,7 +1045,8 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
       enddo
       cur_level => cur_level%next
     enddo
-    call DiscretizationGlobalToLocal(discretization,field%tran_xx,field%tran_xx_loc,NTRANDOF)
+    call DiscretizationGlobalToLocal(discretization,field%tran_xx,&
+      field%tran_xx_loc,NTRANDOF)
   else
     call DiscretizationGlobalToLocal(discretization,xx,field%tran_xx_loc,NTRANDOF)
   endif
@@ -1067,7 +1068,8 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   ! now coarsen all face fluxes in case we are using SAMRAI to 
   ! ensure consistent fluxes at coarse-fine interfaces
   if(option%use_samr) then
-     call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%tran_face_fluxes, ierr)
+     call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, &
+       field%tran_face_fluxes, ierr)
 
      cur_level => realization%level_list%first
      do
@@ -2600,7 +2602,8 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
               enddo
             else
               do istart = 1, reaction%ncomp
-                Jup(istart,istart) = -qsrc/global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)
+                Jup(istart,istart) = -qsrc/ &
+                  global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)
               enddo
             endif
           endif

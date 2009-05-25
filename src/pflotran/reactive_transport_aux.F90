@@ -44,6 +44,10 @@ module Reactive_Transport_Aux_module
     
     PetscReal, pointer :: mass_balance(:,:)
     PetscReal, pointer :: mass_balance_delta(:,:)
+    
+    PetscReal, pointer :: kinmr_total_sorb(:,:)
+    PetscReal, pointer :: kinmr_total_sorb_prev(:,:)
+    
   end type reactive_transport_auxvar_type
   
   type, public :: reactive_transport_param_type
@@ -123,6 +127,8 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   type(reactive_transport_auxvar_type) :: aux_var
   type(reaction_type) :: reaction
   type(option_type) :: option  
+  
+! type(multi_rate_rxn) :: multirate_rxn
   
   allocate(aux_var%pri_molal(reaction%ncomp))
   aux_var%pri_molal = 0.d0
@@ -221,6 +227,19 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
     nullify(aux_var%mass_balance_delta)
   endif
   
+! print *,'reactive_transport_aux: ',reaction%ncomp,multirate_rxn%nrate
+
+!#if 0
+  if (reaction%use_multirate) then
+    allocate(aux_var%kinmr_total_sorb(reaction%ncomp,reaction%kinmr_nrate))
+    aux_var%kinmr_total_sorb = 0.d0
+    allocate(aux_var%kinmr_total_sorb_prev(reaction%ncomp,reaction%kinmr_nrate))
+    aux_var%kinmr_total_sorb_prev = 0.d0
+  else
+    nullify(aux_var%kinmr_total_sorb)
+    nullify(aux_var%kinmr_total_sorb_prev)
+  endif
+!#endif  
 end subroutine RTAuxVarInit
 
 ! ************************************************************************** !

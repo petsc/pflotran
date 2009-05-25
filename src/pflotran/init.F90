@@ -979,6 +979,8 @@ subroutine InitReadInput(simulation)
                   case('DISTRIBUTION_COEF')
                 end select
               enddo
+            case('MULTI_RATE')
+              call InputSkipToEND(input,option,card)
             case('MOLAL','MOLALITY')
               option%initialize_with_molality = PETSC_TRUE
             case ('PRINT_ACTIVITY_COEFS')
