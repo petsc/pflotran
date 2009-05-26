@@ -200,9 +200,11 @@ module Reaction_Aux_module
     PetscReal, pointer :: eqgash2ostoich(:)  ! stoichiometry of water, if present
     PetscReal, pointer :: eqgas_logK(:)
     PetscReal, pointer :: eqgas_logKcoef(:,:)
+   
+    ! equilibrium sorption reactions
+    PetscInt :: neqsorb
     
     ! ionx exchange reactions
-    PetscInt :: nsorb
     PetscInt :: neqionxrxn
     PetscInt :: neqionxcation 
     PetscTruth, pointer :: eqionx_rxn_Z_flag(:)
@@ -251,7 +253,7 @@ module Reaction_Aux_module
 #endif
 
     ! multirate reaction rates
-    PetscInt :: kinmr_nrate
+    PetscInt :: kinmr_nrate 
     PetscReal, pointer :: kinmr_rate(:)
 
     ! mineral reactions
@@ -426,7 +428,8 @@ function ReactionCreate()
   nullify(reaction%kinionx_cationid)
 #endif
 
-  reaction%nsorb = 0
+  reaction%neqsorb = 0
+
   reaction%neqsurfcmplx = 0
   reaction%neqsurfcmplxrxn = 0
   nullify(reaction%eqsurfcmplx_rxn_to_mineral)

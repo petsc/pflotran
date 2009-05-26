@@ -151,7 +151,7 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   endif
 
   
-  if (reaction%nsorb > 0) then  
+  if (reaction%neqsorb > 0) then  
     allocate(aux_var%total_sorb(reaction%ncomp))
     aux_var%total_sorb = 0.d0
     allocate(aux_var%dtotal_sorb(reaction%ncomp,reaction%ncomp))
@@ -167,7 +167,7 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
     allocate(aux_var%eqsurfcmplx_freesite_conc(reaction%neqsurfcmplxrxn))
     aux_var%eqsurfcmplx_freesite_conc = 1.d-9 ! initialize to guess
 !   allocate(aux_var%eqsurf_site_density(reaction%neqsurfcmplxrxn))
-!   aux_var%eqsurf_site_density = 0.d0
+!   aux_var%eqsurf_site_density = 0.d0 
   else
     nullify(aux_var%eqsurfcmplx_conc)
     nullify(aux_var%eqsurfcmplx_freesite_conc)
