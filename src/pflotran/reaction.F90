@@ -447,9 +447,9 @@ subroutine ReactionRead(reaction,input,option)
     end select
   enddo
   
-  reaction%nsorb = reaction%neqsurfcmplxrxn + reaction%neqionxrxn
+  reaction%neqsorb = reaction%neqsurfcmplxrxn + reaction%neqionxrxn
 
-  if (reaction%neqcmplx + reaction%nsorb + reaction%nmnrl > 0) then
+  if (reaction%neqcmplx + reaction%neqsorb + reaction%nmnrl > 0) then
     reaction%use_full_geochemistry = PETSC_TRUE
   endif
 
@@ -780,7 +780,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
       call RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
     endif
     call RTotal(rt_auxvar,global_auxvar,reaction,option)
-    if (reaction%nsorb > 0) call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
+    if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
     Jac = 0.d0
         
     do icomp = 1, reaction%ncomp
@@ -1076,7 +1076,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   enddo
 
   ! once equilibrated, compute sorbed concentrations
-  if (reaction%nsorb > 0) call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
+  if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
   
   ! remember that a density of 1 kg/L was assumed, thus molal and molarity are equal
   ! do not scale by molal_to_molar since it could be 1.d0 if MOLAL flag set
@@ -1484,7 +1484,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   endif
   
 ! total retardation from ion exchange and surface complexation
-  if (reaction%nsorb > 0) then
+  if (reaction%neqsorb > 0) then
     write(option%fid_out,1128)
     write(option%fid_out,90)
     do jcomp = 1, reaction%ncomp
@@ -1857,6 +1857,10 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,volume, &
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
   PetscReal :: volume
+
+  if (reaction%neqsorb > 0) then
+    call RAccumulation(rt_auxvar,global_auxvar,volume,reaction,option,Res)
+  endif
    
   if (reaction%nkinmnrl > 0) then
     call RKineticMineral(Res,Jac,derivative,rt_auxvar,global_auxvar,volume, &
@@ -1907,6 +1911,10 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
   !if (PETSC_FALSE) then
     compute_derivative = PETSC_TRUE
     ! #1: add new reactions here
+    if (reaction%neqsorb > 0) then
+      call RAccumulationDerivative(rt_auxvar,global_auxvar,volume, &
+                                   reaction,option,Jac)
+    endif    
     if (reaction%nkinmnrl > 0) then
       call RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
                            global_auxvar,volume,reaction,option)
@@ -1922,6 +1930,9 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
     call RTAuxVarInit(rt_auxvar_pert,reaction,option)
     call RTAuxVarCopy(rt_auxvar_pert,rt_auxvar,option)
     ! #2: add new reactions here
+    if (reaction%neqsorb > 0) then
+      call RAccumulation(rt_auxvar,global_auxvar,volume,reaction,option,Res_orig)
+    endif    
     if (reaction%nkinmnrl > 0) then
       call RKineticMineral(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
                            global_auxvar,volume,reaction,option)
@@ -1937,6 +1948,10 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
       rt_auxvar_pert%pri_molal(jcomp) = rt_auxvar_pert%pri_molal(jcomp) + pert
 
       ! #3: add new reactions here
+      if (reaction%neqsorb > 0) then
+        call RAccumulation(rt_auxvar_pert,global_auxvar,volume,reaction, &
+                           option,Res_pert)
+      endif       
       if (reaction%nkinmnrl > 0) then
         call RKineticMineral(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
                              global_auxvar,volume,reaction,option)
@@ -1946,7 +1961,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
                                 global_auxvar,volume,reaction,option)
       else
         call RTotal(rt_auxvar_pert,global_auxvar,reaction,option)
-        if (reaction%nsorb > 0) call RTotalSorb(rt_auxvar_pert,global_auxvar, &
+        if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar_pert,global_auxvar, &
                                               reaction,option)
       endif      
       do icomp = 1, reaction%ncomp
@@ -2351,13 +2366,115 @@ end subroutine RTotal
 
 ! ************************************************************************** !
 !
-! RTotalSorb: Computes the total sorbed component concentrations and 
-!             derivative with respect to free-ion
+! RAccumulation: Computes accumulation term in residual function
 ! author: Glenn Hammond
-! date: 10/22/08
+! date: 05/26/09
+!
+! ************************************************************************** !
+subroutine RAccumulation(rt_aux_var,global_aux_var,vol,reaction,option,Res)
+
+  use Option_module
+
+  implicit none
+  
+  type(reactive_transport_auxvar_type) :: rt_aux_var
+  type(global_auxvar_type) :: global_aux_var
+  PetscReal :: vol
+  type(option_type) :: option
+  type(reaction_type) :: reaction
+  PetscReal :: Res(reaction%ncomp)
+  
+  PetscReal :: vol_dt
+  
+  ! units = (mol solute/m^3 bulk)*(m^3 bulk)*/(sec) = mol/sec
+  ! all residual entries should be in mol/sec
+
+  vol_dt = vol/option%tran_dt
+
+!geh fix  if (associated(rt_aux_var%total_sorb)) then
+  if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
+    Res(:) = rt_aux_var%total_sorb(:)*vol_dt
+  endif
+
+end subroutine RAccumulation
+
+! ************************************************************************** !
+!
+! RAccumulationDerivative: Computes derivative of accumulation term in 
+!                          residual function 
+! author: Glenn Hammond
+! date: 05/26/09
+!
+! ************************************************************************** !
+subroutine RAccumulationDerivative(rt_aux_var,global_aux_var, &
+                                   vol,reaction,option,J)
+
+  use Option_module
+
+  implicit none
+  
+  type(reactive_transport_auxvar_type) :: rt_aux_var
+  type(global_auxvar_type) :: global_aux_var  
+  PetscReal :: vol
+  type(option_type) :: option
+  type(reaction_type) :: reaction
+  PetscReal :: J(reaction%ncomp,reaction%ncomp)
+  
+  PetscReal :: v_t
+  
+  ! units = (kg water/m^3 bulk)*(m^3 bulk)/(sec) = kg water/sec
+  ! all Jacobian entries should be in kg water/sec
+
+!geh fix   if (associated(rt_aux_var%dtotal_sorb)) then ! unit of dtotal_sorb = kg water/m^3 bulk
+  if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
+    v_t = vol/option%tran_dt
+    J = rt_aux_var%dtotal_sorb(:,:)*v_t
+  endif
+
+end subroutine RAccumulationDerivative
+
+
+! ************************************************************************** !
+!
+! RTotalSorb: Computes the total sorbed component concentrations and 
+!                     derivative with respect to free-ion
+! author: Glenn Hammond
+! date: 10/22/08, 05/26/09
 !
 ! ************************************************************************** !
 subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
+
+  use Option_module
+  
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+  
+  ! initialize total sorbed concentrations and derivatives
+  rt_auxvar%total_sorb = 0.d0
+  rt_auxvar%dtotal_sorb = 0.d0
+    
+  if (reaction%neqsurfcmplx > 0 .and. reaction%kinmr_nrate <= 0) then
+    call RTotalSorbSurfCplx(rt_auxvar,global_auxvar,reaction,option)
+  endif
+  
+  if (reaction%neqionxrxn > 0) then
+    call RTotalSorbIonx(rt_auxvar,global_auxvar,reaction,option)
+  endif
+
+end subroutine RTotalSorb
+
+! ************************************************************************** !
+!
+! RTotalSorbSurfCplx: Computes the total sorbed component concentrations and 
+!                     derivative with respect to free-ion for surface 
+!                     complexation
+! author: Glenn Hammond
+! date: 10/22/08, 05/26/09
+!
+! ************************************************************************** !
+subroutine RTotalSorbSurfCplx(rt_auxvar,global_auxvar,reaction,option)
 
   use Option_module
   
@@ -2380,27 +2497,13 @@ subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
   PetscReal, parameter :: tol = 1.d-12
   PetscTruth :: one_more
   PetscReal :: res, dres_dfree_site, dfree_site_conc
-  
-  PetscReal :: omega
-  PetscReal :: ref_cation_X, ref_cation_conc, ref_cation_Z, ref_cation_k, &
-               ref_cation_quotient
-  PetscReal :: cation_X(reaction%ncomp)
-  PetscReal :: dres_dref_cation_X, dref_cation_X
-  PetscReal :: sumZX, sumkm
-  
-  PetscReal :: total_pert, ref_cation_X_pert, pert
-  PetscReal :: ref_cation_quotient_pert, dres_dref_cation_X_pert
-
+ 
   iphase = 1                         
 
   ln_conc = log(rt_auxvar%pri_molal)
   ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
   ln_act_h2o = 0.d0  ! assume act h2o = 1 for now
     
-  ! initialize total sorbed concentrations and derivatives
-  rt_auxvar%total_sorb = 0.d0
-  rt_auxvar%dtotal_sorb = 0.d0
-
 #ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal) then
     call ReactionInterpolateLogK(reaction%eqsurfcmplx_logKcoef,reaction%eqsurfcmplx_logK, &
@@ -2535,8 +2638,55 @@ subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
     enddo
   enddo
 
-!====================================================================================
+  ! units of total_sorb = mol/m^3
+  ! units of dtotal_sorb = kg water/m^3 bulk
+  
+end subroutine RTotalSorbSurfCplx
 
+! ************************************************************************** !
+!
+! RTotalSorbIonx: Computes the total sorbed component concentrations and 
+!                 derivative with respect to free-ion for ion exchange
+! author: Glenn Hammond
+! date: 10/22/08, 05/26/09
+!
+! ************************************************************************** !
+subroutine RTotalSorbIonx(rt_auxvar,global_auxvar,reaction,option)
+
+  use Option_module
+  
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+  
+  PetscInt :: i, j, k, icplx, icomp, jcomp, iphase, ncomp, ncplx
+  PetscReal :: ln_conc(reaction%ncomp)
+  PetscReal :: ln_act(reaction%ncomp)
+  PetscReal :: ln_free_site
+  PetscReal :: ln_act_h2o
+  PetscReal ::  tempreal, tempreal1, tempreal2, total
+  PetscInt :: irxn
+  PetscReal, parameter :: tol = 1.d-12
+  PetscTruth :: one_more
+  PetscReal :: res, dres_dfree_site, dfree_site_conc
+  
+  PetscReal :: omega
+  PetscReal :: ref_cation_X, ref_cation_conc, ref_cation_Z, ref_cation_k, &
+               ref_cation_quotient
+  PetscReal :: cation_X(reaction%ncomp)
+  PetscReal :: dres_dref_cation_X, dref_cation_X
+  PetscReal :: sumZX, sumkm
+  
+  PetscReal :: total_pert, ref_cation_X_pert, pert
+  PetscReal :: ref_cation_quotient_pert, dres_dref_cation_X_pert
+
+  iphase = 1                         
+
+  ln_conc = log(rt_auxvar%pri_molal)
+  ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
+  ln_act_h2o = 0.d0  ! assume act h2o = 1 for now
+    
   ! Ion Exchange
   if (associated(rt_auxvar%eqionx_conc)) rt_auxvar%eqionx_conc = 0.d0
   do irxn = 1, reaction%neqionxrxn
@@ -2667,7 +2817,7 @@ subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
   ! units of total_sorb = mol/m^3
   ! units of dtotal_sorb = kg water/m^3 bulk
   
-end subroutine RTotalSorb
+end subroutine RTotalSorbIonx
 
 ! ************************************************************************** !
 !
@@ -2855,6 +3005,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
     enddo
   enddo
       
+  ! WARNING: this assumes equal site distribution 
   do irate = 1, reaction%kinmr_nrate
     kdt = reaction%kinmr_rate(irate) * option%tran_dt
     one_plus_kdt = 1.d0 + kdt
@@ -2866,9 +3017,10 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
     if (compute_derivative) then
       Jac = Jac + volume * k_over_one_plus_kdt * dtotal_sorb_eq
     endif
+
+    rt_auxvar%total_sorb = rt_auxvar%total_sorb + total_sorb_eq
   enddo
   
-  rt_auxvar%total_sorb = total_sorb_eq
   
 end subroutine RMultiRateSorption
 
