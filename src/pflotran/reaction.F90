@@ -2506,7 +2506,6 @@ subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
     do k = 1, ncplx
       icplx = reaction%eqsurfcmplx_rxn_to_complex(k,irxn)
 
-!     rt_auxvar%eqsurfcmplx_conc(icplx) = surfcmplx_conc(icplx)
       rt_auxvar%eqsurfcmplx_conc(k) = surfcmplx_conc(icplx)
 
       ! compute total surface complexation concentration
@@ -2518,15 +2517,13 @@ subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
       enddo
       
       dSi_dSx = reaction%eqsurfcmplx_free_site_stoich(icplx)* &
-                surfcmplx_conc(icplx)/ &
-                free_site_conc
+                surfcmplx_conc(icplx)/free_site_conc
 
       ! compute derivative of total surface complexation concentration
       do j = 1, ncomp
         jcomp = reaction%eqsurfcmplxspecid(j,icplx)
         tempreal = reaction%eqsurfcmplxstoich(j,icplx)*surfcmplx_conc(icplx) / &
-                   rt_auxvar%pri_molal(jcomp)+ &
-                   dSi_dSx*dSx_dmi(jcomp)
+                   rt_auxvar%pri_molal(jcomp) + dSi_dSx*dSx_dmi(jcomp)
                   
         do i = 1, ncomp
           icomp = reaction%eqsurfcmplxspecid(i,icplx)
@@ -2862,19 +2859,16 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
     kdt = reaction%kinmr_rate(irate) * option%tran_dt
     one_plus_kdt = 1.d0 + kdt
     k_over_one_plus_kdt = reaction%kinmr_rate(irate)/one_plus_kdt
-
-    ! update not needed here
-    rt_auxvar%kinmr_total_sorb(:,irate) = &
-        (rt_auxvar%kinmr_total_sorb_prev(:,irate) + kdt * total_sorb_eq) / &
-        one_plus_kdt
         
     Res(:) = Res(:) + volume * k_over_one_plus_kdt * &
-                  (total_sorb_eq(:) - rt_auxvar%kinmr_total_sorb_prev(:,irate))
+      (total_sorb_eq(:) - rt_auxvar%kinmr_total_sorb(:,irate))
       
     if (compute_derivative) then
       Jac = Jac + volume * k_over_one_plus_kdt * dtotal_sorb_eq
     endif
   enddo
+  
+  rt_auxvar%total_sorb = total_sorb_eq
   
 end subroutine RMultiRateSorption
 
