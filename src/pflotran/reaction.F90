@@ -1858,7 +1858,7 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,volume, &
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
   PetscReal :: volume
 
-  if (reaction%neqsorb > 0) then
+  if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
     call RAccumulation(rt_auxvar,global_auxvar,volume,reaction,option,Res)
   endif
    
@@ -1911,7 +1911,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
   !if (PETSC_FALSE) then
     compute_derivative = PETSC_TRUE
     ! #1: add new reactions here
-    if (reaction%neqsorb > 0) then
+    if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
       call RAccumulationDerivative(rt_auxvar,global_auxvar,volume, &
                                    reaction,option,Jac)
     endif    
@@ -1930,7 +1930,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
     call RTAuxVarInit(rt_auxvar_pert,reaction,option)
     call RTAuxVarCopy(rt_auxvar_pert,rt_auxvar,option)
     ! #2: add new reactions here
-    if (reaction%neqsorb > 0) then
+    if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
       call RAccumulation(rt_auxvar,global_auxvar,volume,reaction,option,Res_orig)
     endif    
     if (reaction%nkinmnrl > 0) then
@@ -1948,7 +1948,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
       rt_auxvar_pert%pri_molal(jcomp) = rt_auxvar_pert%pri_molal(jcomp) + pert
 
       ! #3: add new reactions here
-      if (reaction%neqsorb > 0) then
+      if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
         call RAccumulation(rt_auxvar_pert,global_auxvar,volume,reaction, &
                            option,Res_pert)
       endif       
@@ -3018,9 +3018,9 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
       Jac = Jac + volume * k_over_one_plus_kdt * dtotal_sorb_eq
     endif
 
-    rt_auxvar%total_sorb = rt_auxvar%total_sorb + total_sorb_eq
   enddo
   
+  rt_auxvar%total_sorb = total_sorb_eq
   
 end subroutine RMultiRateSorption
 
