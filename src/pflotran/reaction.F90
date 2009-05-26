@@ -1929,6 +1929,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
     option%iflag = 0 ! be sure not to allocate mass_balance array
     call RTAuxVarInit(rt_auxvar_pert,reaction,option)
     call RTAuxVarCopy(rt_auxvar_pert,rt_auxvar,option)
+    
     ! #2: add new reactions here
     if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
       call RAccumulation(rt_auxvar,global_auxvar,volume,reaction,option,Res_orig)
@@ -1948,10 +1949,14 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
       rt_auxvar_pert%pri_molal(jcomp) = rt_auxvar_pert%pri_molal(jcomp) + pert
 
       ! #3: add new reactions here
+      call RTotal(rt_auxvar_pert,global_auxvar,reaction,option)
+      if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar_pert,global_auxvar,reaction,option)
+      
       if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
         call RAccumulation(rt_auxvar_pert,global_auxvar,volume,reaction, &
                            option,Res_pert)
       endif       
+      
       if (reaction%nkinmnrl > 0) then
         call RKineticMineral(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
                              global_auxvar,volume,reaction,option)
@@ -1959,11 +1964,9 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
       if (reaction%kinmr_nrate > 0) then
         call RMultiRateSorption(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
                                 global_auxvar,volume,reaction,option)
-      else
-        call RTotal(rt_auxvar_pert,global_auxvar,reaction,option)
-        if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar_pert,global_auxvar, &
-                                              reaction,option)
       endif      
+
+
       do icomp = 1, reaction%ncomp
         Jac(icomp,jcomp) = Jac(icomp,jcomp) + (Res_pert(icomp)-Res_orig(icomp))/pert
       enddo
@@ -2390,11 +2393,7 @@ subroutine RAccumulation(rt_aux_var,global_aux_var,vol,reaction,option,Res)
   ! all residual entries should be in mol/sec
 
   vol_dt = vol/option%tran_dt
-
-!geh fix  if (associated(rt_aux_var%total_sorb)) then
-  if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
-    Res(:) = rt_aux_var%total_sorb(:)*vol_dt
-  endif
+  Res(:) = rt_aux_var%total_sorb(:)*vol_dt
 
 end subroutine RAccumulation
 
@@ -2425,11 +2424,8 @@ subroutine RAccumulationDerivative(rt_aux_var,global_aux_var, &
   ! units = (kg water/m^3 bulk)*(m^3 bulk)/(sec) = kg water/sec
   ! all Jacobian entries should be in kg water/sec
 
-!geh fix   if (associated(rt_aux_var%dtotal_sorb)) then ! unit of dtotal_sorb = kg water/m^3 bulk
-  if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
-    v_t = vol/option%tran_dt
-    J = rt_aux_var%dtotal_sorb(:,:)*v_t
-  endif
+  v_t = vol/option%tran_dt
+  J = rt_aux_var%dtotal_sorb(:,:)*v_t
 
 end subroutine RAccumulationDerivative
 
