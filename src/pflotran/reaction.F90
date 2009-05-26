@@ -26,7 +26,9 @@ module Reaction_module
             ReactionPrintConstraint, &
             ReactionFitLogKCoef, &
             ReactionInitializeLogK, &
-            ReactionComputeKd
+            ReactionComputeKd, &
+            RAccumulationSorb, &
+            RAccumulationSorbDerivative
 
 contains
 
@@ -1777,6 +1779,11 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,volume, &
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
   PetscReal :: volume
+
+  if (reaction%neqsorb > 0) then
+    call RAccumulationSorb(rt_auxvar,global_auxvar, &
+                           volume,reaction,option,Res) 
+  endif
    
   if (reaction%nkinmnrl > 0) then
     call RKineticMineral(Res,Jac,derivative,rt_auxvar,global_auxvar,volume, &
@@ -1822,6 +1829,10 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
   !if (PETSC_FALSE) then
     compute_derivative = PETSC_TRUE
     ! #1: add new reactions here
+    if (reaction%neqsorb > 0) then
+      call RAccumulationSorbDerivative(rt_auxvar,global_auxvar, &
+                                       volume,reaction,option,Jac)
+    endif
     if (reaction%nkinmnrl > 0) then
       call RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
                            global_auxvar,volume,reaction,option)
@@ -1833,6 +1844,10 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
     call RTAuxVarInit(rt_auxvar_pert,reaction,option)
     call RTAuxVarCopy(rt_auxvar_pert,rt_auxvar,option)
     ! #2: add new reactions here
+    if (reaction%neqsorb > 0) then
+      call RAccumulationSorb(rt_auxvar,global_auxvar, &
+                             volume,reaction,option,Res_orig) 
+    endif    
     if (reaction%nkinmnrl > 0) then
       call RKineticMineral(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
                            global_auxvar,volume,reaction,option)
@@ -1848,6 +1863,10 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
                                               reaction,option)
 
       ! #3: add new reactions here
+      if (reaction%neqsorb > 0) then
+        call RAccumulationSorb(rt_auxvar_pert,global_auxvar, &
+                               volume,reaction,option,Res_pert) 
+      endif       
       if (reaction%nkinmnrl > 0) then
         call RKineticMineral(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
                              global_auxvar,volume,reaction,option)
@@ -2877,6 +2896,69 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   enddo  ! loop over minerals
     
 end subroutine RKineticMineral
+
+! ************************************************************************** !
+!
+! RAccumulationSorb: Computes non-aqueous portion of the accumulation term in 
+!                    residual function
+! author: Glenn Hammond
+! date: 05/26/09
+!
+! ************************************************************************** !
+subroutine RAccumulationSorb(rt_aux_var,global_aux_var,vol,reaction, &
+                             option,Res)
+
+  use Option_module
+
+  implicit none
+  
+  type(reactive_transport_auxvar_type) :: rt_aux_var
+  type(global_auxvar_type) :: global_aux_var
+  PetscReal :: vol
+  type(option_type) :: option
+  type(reaction_type) :: reaction
+  PetscReal :: Res(reaction%ncomp)
+  
+  PetscReal :: v_t
+  
+  ! units = (mol solute/m^3 bulk)*(m^3 bulk)/(sec) = mol/sec
+  ! all residual entries should be in mol/sec
+  v_t = vol/option%tran_dt
+  Res(:) = Res(:) + rt_aux_var%total_sorb(:)*v_t
+
+end subroutine RAccumulationSorb
+
+! ************************************************************************** !
+!
+! RAccumulationSorbDerivative: Computes derivative of non-aqueous portion of 
+!                              the accumulation term in residual function 
+! author: Glenn Hammond
+! date: 05/26/09
+!
+! ************************************************************************** !
+subroutine RAccumulationSorbDerivative(rt_aux_var,global_aux_var, &
+                                       vol,reaction,option,J)
+
+  use Option_module
+
+  implicit none
+  
+  type(reactive_transport_auxvar_type) :: rt_aux_var
+  type(global_auxvar_type) :: global_aux_var  
+  PetscReal :: vol
+  type(option_type) :: option
+  type(reaction_type) :: reaction
+  PetscReal :: J(reaction%ncomp,reaction%ncomp)
+  
+  PetscInt :: icomp
+  PetscReal :: v_t
+  
+  ! units = (kg water/m^3 bulk)*(m^3 bulk)/(sec) = kg water/sec
+  ! all Jacobian entries should be in kg water/sec
+  v_t = vol/option%tran_dt
+  J = J + rt_aux_var%dtotal_sorb(:,:)*v_t
+
+end subroutine RAccumulationSorbDerivative
 
 ! ************************************************************************** !
 !

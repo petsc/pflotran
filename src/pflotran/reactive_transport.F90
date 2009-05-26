@@ -748,6 +748,10 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
                         porosity_loc_p(ghosted_id), &
                         volume_p(local_id), &
                         reaction,option,accum_p(istart:iend)) 
+    call RAccumulationSorb(rt_aux_vars(ghosted_id), &
+                           global_aux_vars(ghosted_id), &
+                           volume_p(local_id), &
+                           reaction,option,accum_p(istart:iend)) 
   enddo
 
   call GridVecRestoreArrayF90(grid,field%tran_xx,xx_p, ierr)
@@ -853,8 +857,59 @@ end subroutine RTNumericalJacobianTest
 
 ! ************************************************************************** !
 !
-! RTAccumulationDerivative: Computes derivative of accumulation term in 
-!                           residual function 
+! RTAccumulation: Computes aqueous portion of the accumulation term in 
+!                 residual function
+! author: Glenn Hammond
+! date: 02/15/08
+!
+! ************************************************************************** !
+subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
+
+  use Option_module
+
+  implicit none
+  
+  type(reactive_transport_auxvar_type) :: rt_aux_var
+  type(global_auxvar_type) :: global_aux_var
+  PetscReal :: por, vol
+  type(option_type) :: option
+  type(reaction_type) :: reaction
+  PetscReal :: Res(reaction%ncomp)
+  
+  PetscInt :: iphase
+  PetscReal :: psv_t
+  PetscReal :: v_t
+  
+  iphase = 1
+  ! units = (mol solute/L water)*(m^3 por/m^3 bulk)*(m^3 water/m^3 por)*
+  !         (m^3 bulk)*(1000L water/m^3 water)/(sec) = mol/sec
+  ! 1000.d0 converts vol from m^3 -> L
+  ! all residual entries should be in mol/sec
+  psv_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
+  Res(:) = psv_t*rt_aux_var%total(:,iphase) 
+
+! Add in multiphase, clu 12/29/08
+#if 1  
+  do 
+    iphase = iphase + 1
+    if (iphase > option%nphase) exit
+
+! super critical CO2 phase
+    if (iphase == 2 ) then
+      psv_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
+      Res(:) = Res(:) + psv_t*rt_aux_var%total(:,iphase) 
+      ! should sum over gas component only need more implementations
+    endif 
+! add code for other phases here
+  enddo
+
+#endif
+end subroutine RTAccumulation
+
+! ************************************************************************** !
+!
+! RTAccumulationDerivative: Computes derivative of aqueous portion of the 
+!                           accumulation term in residual function 
 ! author: Glenn Hammond
 ! date: 02/15/08
 !
@@ -881,14 +936,8 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
   !         *(kg water/L water)*(1000L water/m^3 water) = kg water/sec
   ! all Jacobian entries should be in kg water/sec
   if (associated(rt_aux_var%dtotal)) then ! units of dtotal = kg water/L water
-    if (associated(rt_aux_var%dtotal_sorb)) then ! unit of dtotal_sorb = kg water/m^3 bulk
-      v_t = vol/option%tran_dt
-      psvd_t = por*global_aux_var%sat(iphase)*1000.d0*v_t
-      J = rt_aux_var%dtotal(:,:,iphase)*psvd_t + rt_aux_var%dtotal_sorb(:,:)*v_t
-    else
-      psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
-      J = rt_aux_var%dtotal(:,:,iphase)*psvd_t
-    endif
+    psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
+    J = rt_aux_var%dtotal(:,:,iphase)*psvd_t
   else
     J = 0.d0
     psvd_t = por*global_aux_var%sat(iphase)* &
@@ -920,63 +969,6 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
  enddo
 #endif     
 end subroutine RTAccumulationDerivative
-
-! ************************************************************************** !
-!
-! RTAccumulation: Computes accumulation term in residual function
-! author: Glenn Hammond
-! date: 02/15/08
-!
-! ************************************************************************** !
-subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
-
-  use Option_module
-
-  implicit none
-  
-  type(reactive_transport_auxvar_type) :: rt_aux_var
-  type(global_auxvar_type) :: global_aux_var
-  PetscReal :: por, vol
-  type(option_type) :: option
-  type(reaction_type) :: reaction
-  PetscReal :: Res(reaction%ncomp)
-  
-  PetscInt :: iphase
-  PetscReal :: psv_t
-  PetscReal :: v_t
-  
-  iphase = 1
-  ! units = (mol solute/L water)*(m^3 por/m^3 bulk)*(m^3 water/m^3 por)*
-  !         (m^3 bulk)*(1000L water/m^3 water)/(sec) = mol/sec
-  ! 1000.d0 converts vol from m^3 -> L
-  ! all residual entries should be in mol/sec
-  if (associated(rt_aux_var%total_sorb)) then
-    v_t = vol/option%tran_dt
-    psv_t = por*global_aux_var%sat(iphase)*1000.d0*v_t
-    Res(:) = psv_t*rt_aux_var%total(:,iphase) +  v_t*rt_aux_var%total_sorb(:)
-  else
-    psv_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
-    Res(:) = psv_t*rt_aux_var%total(:,iphase) 
-  endif
-
-
-! Add in multiphase, clu 12/29/08
-#if 1  
-  do 
-    iphase = iphase + 1
-    if (iphase > option%nphase) exit
-
-! super critical CO2 phase
-    if (iphase == 2 ) then
-      psv_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
-      Res(:) = Res(:) + psv_t*rt_aux_var%total(:,iphase) 
-      ! should sum over gas component only need more implementations
-    endif 
-! add code for other phases here
-  enddo
-
-#endif
-end subroutine RTAccumulation
 
 ! ************************************************************************** !
 !
