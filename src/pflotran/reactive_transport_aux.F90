@@ -44,9 +44,6 @@ module Reactive_Transport_Aux_module
     
     PetscReal, pointer :: mass_balance(:,:)
     PetscReal, pointer :: mass_balance_delta(:,:)
-    
-    PetscReal, pointer :: kinmr_total_sorb(:,:)
-    
   end type reactive_transport_auxvar_type
   
   type, public :: reactive_transport_param_type
@@ -127,8 +124,6 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   type(reaction_type) :: reaction
   type(option_type) :: option  
   
-! type(multi_rate_rxn) :: multirate_rxn
-  
   allocate(aux_var%pri_molal(reaction%ncomp))
   aux_var%pri_molal = 0.d0
   allocate(aux_var%total(reaction%ncomp,option%nphase))
@@ -167,7 +162,7 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
     allocate(aux_var%eqsurfcmplx_freesite_conc(reaction%neqsurfcmplxrxn))
     aux_var%eqsurfcmplx_freesite_conc = 1.d-9 ! initialize to guess
 !   allocate(aux_var%eqsurf_site_density(reaction%neqsurfcmplxrxn))
-!   aux_var%eqsurf_site_density = 0.d0 
+!   aux_var%eqsurf_site_density = 0.d0
   else
     nullify(aux_var%eqsurfcmplx_conc)
     nullify(aux_var%eqsurfcmplx_freesite_conc)
@@ -224,13 +219,6 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   else
     nullify(aux_var%mass_balance)
     nullify(aux_var%mass_balance_delta)
-  endif
-
-  if (reaction%use_multirate) then
-    allocate(aux_var%kinmr_total_sorb(reaction%ncomp,reaction%kinmr_nrate))
-    aux_var%kinmr_total_sorb = 0.d0
-  else
-    nullify(aux_var%kinmr_total_sorb)
   endif
   
 end subroutine RTAuxVarInit
@@ -354,9 +342,6 @@ subroutine RTAuxVarDestroy(aux_var)
   nullify(aux_var%mass_balance)
   if (associated(aux_var%mass_balance_delta)) deallocate(aux_var%mass_balance_delta)
   nullify(aux_var%mass_balance_delta)
-
-  if (associated(aux_var%kinmr_total_sorb)) deallocate(aux_var%kinmr_total_sorb)
-  nullify(aux_var%kinmr_total_sorb)
 
 end subroutine RTAuxVarDestroy
 

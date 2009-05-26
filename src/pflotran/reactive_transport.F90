@@ -376,7 +376,7 @@ subroutine RTComputeMassBalancePatch(realization,mass_balance)
   PetscInt :: local_id
   PetscInt :: ghosted_id
   PetscInt :: iphase
-  PetscInt :: i, icomp, imnrl, ncomp, irate
+  PetscInt :: i, icomp, imnrl, ncomp
 
   iphase = 1
   option => realization%option
@@ -405,37 +405,25 @@ subroutine RTComputeMassBalancePatch(realization,mass_balance)
         porosity_loc_p(ghosted_id) * &
         volume_p(local_id)*1000.d0
         
-      if (iphase == 1) then
+    ! add contribution of equilibrium sorption
+      if (reaction%neqsorb > 0 .and. iphase == 1) then
+        mass_balance(:,iphase) = mass_balance(:,iphase) + &
+        rt_aux_vars(ghosted_id)%total_sorb(:) * volume_p(local_id)
+      endif
       
-        ! add contribution of equilibrium sorption
-        if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
-          mass_balance(:,iphase) = mass_balance(:,iphase) + &
-          rt_aux_vars(ghosted_id)%total_sorb(:) * volume_p(local_id)
-        endif
-
-        ! add contributin of kinetic multirate sorption
-        if (reaction%kinmr_nrate > 0) then
-          do irate = 1, reaction%kinmr_nrate
-            mass_balance(:,iphase) = mass_balance(:,iphase) + &
-              rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) * &
-              volume_p(local_id)
-          enddo
-        endif
-        
-        ! add contribution from mineral volume fractions 
-        if (reaction%nkinmnrl > 0) then
-          do imnrl = 1, reaction%nkinmnrl
-            ncomp = reaction%kinmnrlspecid(0,imnrl)
-            do i = 1, ncomp
-              icomp = reaction%kinmnrlspecid(i,imnrl)
-              mass_balance(icomp,iphase) = mass_balance(icomp,iphase) &
-              + reaction%kinmnrlstoich(i,imnrl)                  &
-              * rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl)      &
-              * volume_p(local_id) &
-              / reaction%kinmnrl_molar_vol(imnrl)
-            enddo 
-          enddo
-        endif
+    ! add contribution from mineral volume fractions
+      if (reaction%nkinmnrl > 0 .and. iphase ==1) then
+        do imnrl = 1, reaction%nkinmnrl
+          ncomp = reaction%kinmnrlspecid(0,imnrl)
+          do i = 1, ncomp
+            icomp = reaction%kinmnrlspecid(i,imnrl)
+            mass_balance(icomp,iphase) = mass_balance(icomp,iphase) &
+            + reaction%kinmnrlstoich(i,imnrl)                  &
+            * rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl)      &
+            * volume_p(local_id) &
+            / reaction%kinmnrl_molar_vol(imnrl)
+          enddo 
+        enddo
       endif
     enddo
   enddo
@@ -649,8 +637,7 @@ subroutine RTUpdateSolutionPatch(realization)
   type(grid_type), pointer :: grid
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)  
-  PetscInt :: ghosted_id, imnrl, irate
-  PetscReal :: kdt, one_plus_kdt, k_over_one_plus_kdt
+  PetscInt :: ghosted_id, imnrl
   
   option => realization%option
   patch => realization%patch
@@ -676,20 +663,6 @@ subroutine RTUpdateSolutionPatch(realization)
           option%tran_dt
         if (rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) < 0.d0) &
           rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = 0.d0
-      enddo
-    enddo
-  endif
-  
-  ! update multirate sorption concentrations
-  if (reaction%kinmr_nrate > 0) then
-    do ghosted_id = 1, grid%ngmax
-      do irate = 1, reaction%kinmr_nrate
-        kdt = reaction%kinmr_rate(irate) * option%tran_dt
-        one_plus_kdt = 1.d0 + kdt
-        k_over_one_plus_kdt = reaction%kinmr_rate(irate)/one_plus_kdt
-        rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) = &
-          (rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) + &
-          kdt * rt_aux_vars(ghosted_id)%total_sorb)/one_plus_kdt
       enddo
     enddo
   endif
@@ -908,8 +881,14 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
   !         *(kg water/L water)*(1000L water/m^3 water) = kg water/sec
   ! all Jacobian entries should be in kg water/sec
   if (associated(rt_aux_var%dtotal)) then ! units of dtotal = kg water/L water
-    psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
-    J = rt_aux_var%dtotal(:,:,iphase)*psvd_t
+    if (associated(rt_aux_var%dtotal_sorb)) then ! unit of dtotal_sorb = kg water/m^3 bulk
+      v_t = vol/option%tran_dt
+      psvd_t = por*global_aux_var%sat(iphase)*1000.d0*v_t
+      J = rt_aux_var%dtotal(:,:,iphase)*psvd_t + rt_aux_var%dtotal_sorb(:,:)*v_t
+    else
+      psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
+      J = rt_aux_var%dtotal(:,:,iphase)*psvd_t
+    endif
   else
     J = 0.d0
     psvd_t = por*global_aux_var%sat(iphase)* &
@@ -963,17 +942,22 @@ subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
   PetscReal :: Res(reaction%ncomp)
   
   PetscInt :: iphase
-  PetscReal :: por_sat, psv_dt
-  PetscReal :: vol_dt
+  PetscReal :: psv_t
+  PetscReal :: v_t
   
   iphase = 1
   ! units = (mol solute/L water)*(m^3 por/m^3 bulk)*(m^3 water/m^3 por)*
   !         (m^3 bulk)*(1000L water/m^3 water)/(sec) = mol/sec
   ! 1000.d0 converts vol from m^3 -> L
   ! all residual entries should be in mol/sec
-  vol_dt = vol/option%tran_dt
-  por_sat = por*global_aux_var%sat(iphase)*1000.d0
-  Res(:) = por_sat*rt_aux_var%total(:,iphase)*vol_dt
+  if (associated(rt_aux_var%total_sorb)) then
+    v_t = vol/option%tran_dt
+    psv_t = por*global_aux_var%sat(iphase)*1000.d0*v_t
+    Res(:) = psv_t*rt_aux_var%total(:,iphase) +  v_t*rt_aux_var%total_sorb(:)
+  else
+    psv_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
+    Res(:) = psv_t*rt_aux_var%total(:,iphase) 
+  endif
 
 
 ! Add in multiphase, clu 12/29/08
@@ -984,8 +968,8 @@ subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
 
 ! super critical CO2 phase
     if (iphase == 2 ) then
-      psv_dt = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
-      Res(:) = Res(:) + psv_dt*rt_aux_var%total(:,iphase) 
+      psv_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
+      Res(:) = Res(:) + psv_t*rt_aux_var%total(:,iphase) 
       ! should sum over gas component only need more implementations
     endif 
 ! add code for other phases here
@@ -1014,13 +998,13 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   implicit none
   
   interface
-    subroutine samrpetscobjectstateincrease(vec)
-      implicit none
+     subroutine samrpetscobjectstateincrease(vec)
+       implicit none
 #include "finclude/petsc.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
-      Vec :: vec
-    end subroutine samrpetscobjectstateincrease
+       Vec :: vec
+     end subroutine samrpetscobjectstateincrease
   end interface
 
   SNES :: snes
@@ -1059,8 +1043,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
       enddo
       cur_level => cur_level%next
     enddo
-    call DiscretizationGlobalToLocal(discretization,field%tran_xx,&
-      field%tran_xx_loc,NTRANDOF)
+    call DiscretizationGlobalToLocal(discretization,field%tran_xx,field%tran_xx_loc,NTRANDOF)
   else
     call DiscretizationGlobalToLocal(discretization,xx,field%tran_xx_loc,NTRANDOF)
   endif
@@ -1082,8 +1065,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   ! now coarsen all face fluxes in case we are using SAMRAI to 
   ! ensure consistent fluxes at coarse-fine interfaces
   if(option%use_samr) then
-     call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, &
-       field%tran_face_fluxes, ierr)
+     call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%tran_face_fluxes, ierr)
 
      cur_level => realization%level_list%first
      do
@@ -2616,8 +2598,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
               enddo
             else
               do istart = 1, reaction%ncomp
-                Jup(istart,istart) = -qsrc/ &
-                  global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)
+                Jup(istart,istart) = -qsrc/global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)
               enddo
             endif
           endif
@@ -3153,7 +3134,9 @@ subroutine RTAuxVarCompute(rt_aux_var,global_aux_var,reaction,option)
 !already set  rt_aux_var%pri_molal = x
 
   call RTotal(rt_aux_var,global_aux_var,reaction,option)
-  if (reaction%neqsorb > 0) call RTotalSorb(rt_aux_var,global_aux_var,reaction,option)
+  if (reaction%neqsorb > 0) then
+    call RTotalSorb(rt_aux_var,global_aux_var,reaction,option)
+  endif
 
 #if 0
 ! numerical check
@@ -3183,23 +3166,22 @@ subroutine RTAuxVarCompute(rt_aux_var,global_aux_var,reaction,option)
     
     call RTotal(rt_auxvar_pert,global_aux_var,reaction,option)
     dtotal(:,jcomp) = (rt_auxvar_pert%total(:,1) - rt_aux_var%total(:,1))/pert
-    if (reaction%neqsorb > 0) then
+    if (reaction%neqsorb > 0) &
       call RTotalSorb(rt_auxvar_pert,global_aux_var,reaction,option)
-      if (reaction%kinmr_nrate <= 0) &
-        dtotalsorb(:,jcomp) = (rt_auxvar_pert%total_sorb(:) - &
-                               rt_aux_var%total_sorb(:))/pert
+      dtotalsorb(:,jcomp) = (rt_auxvar_pert%total_sorb(:) - &
+                             rt_aux_var%total_sorb(:))/pert
     endif
   enddo
   do icomp = 1, reaction%ncomp
     do jcomp = 1, reaction%ncomp
       if (dabs(dtotal(icomp,jcomp)) < 1.d-16) dtotal(icomp,jcomp) = 0.d0
-      if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
+      if (reaction%neqsorb > 0) then
         if (dabs(dtotalsorb(icomp,jcomp)) < 1.d-16) dtotalsorb(icomp,jcomp) = 0.d0
       endif
     enddo
   enddo
   rt_aux_var%dtotal(:,:,1) = dtotal
-  if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) rt_aux_var%dtotal_sorb = dtotalsorb
+  if (reaction%neqsorb > 0) rt_aux_var%dtotal_sorb = dtotalsorb
   call RTAuxVarDestroy(rt_auxvar_pert)
 #endif
   
