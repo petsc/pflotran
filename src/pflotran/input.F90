@@ -543,8 +543,12 @@ subroutine InputReadWord1(input, option, word, return_blank_error)
   PetscTruth :: return_blank_error
   
   PetscInt :: i, begins, ends
+  character(len=1) :: tab, backslash
 
   if (InputError(input)) return
+  
+  tab = achar(9)
+  backslash = achar(92)
 
   ! Initialize character string to blank.
   do i=1,len_trim(word)
@@ -566,7 +570,7 @@ subroutine InputReadWord1(input, option, word, return_blank_error)
     ! Remove leading blanks and tabs
     i=1
     do while(input%buf(i:i) == ' ' .or. input%buf(i:i) == ',' .or. &
-             input%buf(i:i) == achar(9)) 
+             input%buf(i:i) == tab) 
       i=i+1
     enddo
 
@@ -574,7 +578,8 @@ subroutine InputReadWord1(input, option, word, return_blank_error)
 
     ! Count # of continuous characters (no blanks, commas, etc. in between)
     do while (input%buf(i:i) /= ' ' .and. input%buf(i:i) /= ',' .and. &
-              input%buf(i:i) /= achar(9)) ! 9 = tab
+              input%buf(i:i) /= tab .and. &
+              (i == begins .or. input%buf(i:i) /= backslash))
       i=i+1
     enddo
 
@@ -610,9 +615,13 @@ subroutine InputReadWord2(string, word, return_blank_error, ierr)
   PetscErrorCode :: ierr
   
   PetscInt :: i, begins, ends
+  character(len=1) :: tab, backslash  
 
   if (ierr /= 0) return
 
+  tab = achar(9)
+  backslash = achar(92)
+  
   ! Initialize character string to blank.
   do i=1,len_trim(word)
     word(i:i) = ' '
@@ -633,7 +642,7 @@ subroutine InputReadWord2(string, word, return_blank_error, ierr)
     ! Remove leading blanks and tabs
     i=1
     do while(string(i:i) == ' ' .or. string(i:i) == ',' .or. &
-             string(i:i) == achar(9)) 
+             string(i:i) == tab) 
       i=i+1
     enddo
 
@@ -641,7 +650,8 @@ subroutine InputReadWord2(string, word, return_blank_error, ierr)
 
     ! Count # of continuous characters (no blanks, commas, etc. in between)
     do while (string(i:i) /= ' ' .and. string(i:i) /= ',' .and. &
-              string(i:i) /= achar(9)) ! 9 = tab
+              string(i:i) /= tab .and. &
+              (i == begins .or. string(i:i) /= backslash))
       i=i+1
     enddo
 
@@ -678,9 +688,13 @@ subroutine InputReadNChars1(input, option, chars, n, return_blank_error)
   
   PetscInt :: i, n, begins, ends
   character(len=n) :: chars
+  character(len=1) :: tab, backslash    
 
   if (InputError(input)) return
 
+  tab = achar(9)
+  backslash = achar(92)
+  
   ! Initialize character string to blank.
   do i=1,n
     chars(i:i) = ' '
@@ -699,7 +713,7 @@ subroutine InputReadNChars1(input, option, chars, n, return_blank_error)
 
     ! Remove leading blanks and tabs
     i=1
-    do while(input%buf(i:i) == ' ' .or. input%buf(i:i) == achar(9)) 
+    do while(input%buf(i:i) == ' ' .or. input%buf(i:i) == tab) 
       i=i+1
     enddo
 
@@ -707,7 +721,8 @@ subroutine InputReadNChars1(input, option, chars, n, return_blank_error)
 
     ! Count # of continuous characters (no blanks, commas, etc. in between)
     do while (input%buf(i:i) /= ' ' .and. input%buf(i:i) /= ',' .and. &
-              input%buf(i:i) /= achar(9)) ! 9 = tab
+              input%buf(i:i) /= tab .and. &
+              (i == begins .or. input%buf(i:i) /= backslash))
       i=i+1
     enddo
 
@@ -746,8 +761,12 @@ subroutine InputReadNChars2(string, chars, n, return_blank_error, ierr)
   PetscInt :: i, n, begins, ends
   character(len=n) :: chars
   PetscErrorCode :: ierr
+  character(len=1) :: tab, backslash    
 
   if (InputError(ierr)) return
+
+  tab = achar(9)
+  backslash = achar(92)
 
   ! Initialize character string to blank.
   do i=1,n
@@ -767,7 +786,7 @@ subroutine InputReadNChars2(string, chars, n, return_blank_error, ierr)
 
     ! Remove leading blanks and tabs
     i=1
-    do while(string(i:i) == ' ' .or. string(i:i) == achar(9)) 
+    do while(string(i:i) == ' ' .or. string(i:i) == tab) 
       i=i+1
     enddo
 
@@ -775,7 +794,8 @@ subroutine InputReadNChars2(string, chars, n, return_blank_error, ierr)
 
     ! Count # of continuous characters (no blanks, commas, etc. in between)
     do while (string(i:i) /= ' ' .and. string(i:i) /= ',' .and. &
-              string(i:i) /= achar(9)) ! 9 = tab
+              string(i:i) /= tab  .and. &
+              (i == begins .or. string(i:i) /= backslash))
       i=i+1
     enddo
 
@@ -814,8 +834,12 @@ subroutine InputReadQuotedWord(input, option, word, return_blank_error)
                                 ! Therefore, a blank line is not acceptable.
   character(len=*) :: word
   PetscTruth :: openquotefound
+  character(len=1) :: tab, backslash    
 
   if (InputError(input)) return
+
+  tab = achar(9)
+  backslash = achar(92)
 
   openquotefound = PETSC_FALSE
   ! Initialize character string to blank.
@@ -840,7 +864,7 @@ subroutine InputReadQuotedWord(input, option, word, return_blank_error)
     
     ! Remove leading blanks and tabs
     i=1
-    do while(input%buf(i:i) == ' ' .or. input%buf(i:i) == achar(9)) 
+    do while(input%buf(i:i) == ' ' .or. input%buf(i:i) == tab) 
       i=i+1
     enddo
 
@@ -859,7 +883,8 @@ subroutine InputReadQuotedWord(input, option, word, return_blank_error)
     else
     ! Count # of continuous characters (no blanks, commas, etc. in between)
       do while (input%buf(i:i) /= ' ' .and. input%buf(i:i) /= ',' .and. &
-                input%buf(i:i) /= achar(9)) ! 9 = tab
+                input%buf(i:i) /= tab .and. &
+                (i == begins .or. input%buf(i:i) /= backslash))
         i=i+1
       enddo
     endif
