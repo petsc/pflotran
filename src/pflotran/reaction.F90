@@ -2338,9 +2338,10 @@ subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
   type(option_type) :: option
   
   ! initialize total sorbed concentrations and derivatives
-  rt_auxvar%total_sorb = 0.d0
-  if (associated(rt_auxvar%dtotal_sorb)) &
+  if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
+    rt_auxvar%total_sorb = 0.d0
     rt_auxvar%dtotal_sorb = 0.d0  
+  endif
 
   if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
     call RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
