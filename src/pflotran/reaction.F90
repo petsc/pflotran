@@ -1020,7 +1020,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     reaction%kinmr_nrate = kinmr_nrate_store
     kinmr_nrate_store = 0
     do irate = 1, reaction%kinmr_nrate
-      rt_auxvar%kinmr_total_sorb(:,irate) = rt_auxvar%total_sorb
+      rt_auxvar%kinmr_total_sorb(:,irate) = rt_auxvar%total_sorb/dble(reaction%kinmr_nrate)
     enddo
     deallocate(rt_auxvar%dtotal_sorb)
     nullify(rt_auxvar%dtotal_sorb)
