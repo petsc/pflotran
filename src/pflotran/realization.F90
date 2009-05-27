@@ -1281,6 +1281,11 @@ subroutine RealizAssignTransportInitCond(realization)
                     minerals%basis_area(idof)
               enddo
             endif
+            if (reaction%kinmr_nrate > 0) then
+              rt_aux_vars(ghosted_id)%kinmr_total_sorb = &
+                initial_condition%tran_condition%cur_constraint_coupler% &
+                rt_auxvar%kinmr_total_sorb
+            endif
           enddo
 !        endif
         initial_condition => initial_condition%next
