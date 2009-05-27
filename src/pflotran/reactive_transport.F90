@@ -407,9 +407,10 @@ subroutine RTComputeMassBalancePatch(realization,mass_balance)
         
       if (iphase == 1) then
       ! add contribution of equilibrium sorption
-        if (reaction%neqsorb > 0) then
+        if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
           mass_balance(:,iphase) = mass_balance(:,iphase) + &
-          rt_aux_vars(ghosted_id)%total_sorb(:) * volume_p(local_id)
+          rt_aux_vars(ghosted_id)%total_sorb(:) * volume_p(local_id) * &
+          dble(reaction%kinmr_nrate)
         endif
 
 

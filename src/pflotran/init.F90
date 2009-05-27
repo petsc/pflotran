@@ -600,6 +600,17 @@ subroutine Init(simulation)
     call verifyAllCouplers(realization)
   endif
   
+  ! check that material properties have been set at all grid cells
+  ! right now, we check just perms; maybe more needed later
+  call VecMin(field%porosity0,temp_int,r1,ierr)
+  if (r1 < -998.d0) then
+    write(string,*) temp_int
+    option%io_buffer = 'Porosity not initialized at cell ' // &
+                       trim(adjustl(string)) // ' (note PETSc numbering).' // &
+                       '  Ensure that REGIONS cover entire domain!!!'
+    call printErrMsg(option)
+  endif
+  
   call printMsg(option," ")
   call printMsg(option,"  Finished Initialization")
 
@@ -1901,7 +1912,7 @@ subroutine assignMaterialPropToRegions(realization)
   call DiscretizationGlobalToLocal(discretization,field%porosity0, &
                                    field%porosity_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%tor_loc, &
-                                  field%tor_loc,ONEDOF)   
+                                  field%tor_loc,ONEDOF)
 
 end subroutine assignMaterialPropToRegions
 

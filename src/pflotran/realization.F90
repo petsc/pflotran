@@ -181,6 +181,8 @@ subroutine RealizationCreateDiscretization(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(option_type), pointer :: option
+  PetscErrorCode :: ierr
+  
   option => realization%option
   field => realization%field
   
@@ -309,7 +311,12 @@ subroutine RealizationCreateDiscretization(realization)
        call AMRGridComputeGeometryInformation(discretization%amrgrid, &
                                               discretization%origin, &
                                               field,option)
-  end select      
+  end select 
+  
+  ! initialize to -999.d0 for check later that verifies all values 
+  ! have been set
+  call VecSet(field%porosity0,-999.d0,ierr)
+       
 
 end subroutine RealizationCreateDiscretization
 
