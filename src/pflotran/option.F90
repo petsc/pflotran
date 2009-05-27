@@ -56,6 +56,7 @@ module Option_module
     PetscInt :: ntrandof
   
     PetscInt :: iflag
+    PetscTruth :: init_stage
     PetscTruth :: print_screen_flag
     PetscTruth :: print_file_flag
     PetscTruth :: print_to_screen
@@ -418,6 +419,7 @@ subroutine OptionInitRealization(option)
   option%idt_switch = -1
 
   option%use_matrix_buffer = PETSC_FALSE
+  option%init_stage = PETSC_FALSE
 
 end subroutine OptionInitRealization
 

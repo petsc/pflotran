@@ -664,37 +664,39 @@ subroutine RTUpdateSolutionPatch(realization)
 
   call RTUpdateAuxVarsPatch(realization,PETSC_FALSE,PETSC_FALSE)
   
-  ! update mineral volume fractions
-  if (reaction%nkinmnrl > 0) then
-    do ghosted_id = 1, grid%ngmax
-      do imnrl = 1, reaction%nkinmnrl
-        ! rate = mol/m^3/sec
-        ! dvolfrac = m^3 mnrl/m^3 bulk = rate (mol mnrl/m^3 bulk/sec) *
-        !                                mol_vol (m^3 mnrl/mol mnrl)
-        rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = &
-          rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) + &
-          rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* &
-          reaction%kinmnrl_molar_vol(imnrl)* &
-          option%tran_dt
-        if (rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) < 0.d0) &
-          rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = 0.d0
+  if (.not.option%init_stage) then
+    ! update mineral volume fractions
+    if (reaction%nkinmnrl > 0) then
+      do ghosted_id = 1, grid%ngmax
+        do imnrl = 1, reaction%nkinmnrl
+          ! rate = mol/m^3/sec
+          ! dvolfrac = m^3 mnrl/m^3 bulk = rate (mol mnrl/m^3 bulk/sec) *
+          !                                mol_vol (m^3 mnrl/mol mnrl)
+          rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = &
+            rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) + &
+            rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* &
+            reaction%kinmnrl_molar_vol(imnrl)* &
+            option%tran_dt
+          if (rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) < 0.d0) &
+            rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = 0.d0
+        enddo
       enddo
-    enddo
-  endif
-  
-  ! update multirate sorption concentrations 
-  if (reaction%kinmr_nrate > 0) then 
-    do ghosted_id = 1, grid%ngmax 
-      do irate = 1, reaction%kinmr_nrate 
-        kdt = reaction%kinmr_rate(irate) * option%tran_dt 
-        one_plus_kdt = 1.d0 + kdt 
-        k_over_one_plus_kdt = reaction%kinmr_rate(irate)/one_plus_kdt 
-        rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) = & 
-          (rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) + & 
-          kdt * rt_aux_vars(ghosted_id)%total_sorb)/one_plus_kdt 
+    endif
+    
+    ! update multirate sorption concentrations 
+    if (reaction%kinmr_nrate > 0) then 
+      do ghosted_id = 1, grid%ngmax 
+        do irate = 1, reaction%kinmr_nrate 
+          kdt = reaction%kinmr_rate(irate) * option%tran_dt 
+          one_plus_kdt = 1.d0 + kdt 
+          k_over_one_plus_kdt = reaction%kinmr_rate(irate)/one_plus_kdt 
+          rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) = & 
+            (rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) + & 
+            kdt * rt_aux_vars(ghosted_id)%total_sorb)/one_plus_kdt 
+        enddo 
       enddo 
-    enddo 
-  endif 
+    endif
+  endif
   
   if (option%compute_mass_balance_new) then
     call RTUpdateMassBalancePatch(realization)

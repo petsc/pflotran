@@ -111,10 +111,11 @@ subroutine Init(simulation)
   debug => realization%debug
   input => realization%input
   
+  option%init_stage = PETSC_TRUE
+
   nullify(flow_solver)
   nullify(tran_solver)
   
-
   realization%input => InputCreate(IUNIT1,option%input_filename)
   filename_out = trim(option%global_prefix) // trim(option%group_prefix) // &
                  '.out'

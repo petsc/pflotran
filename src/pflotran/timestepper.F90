@@ -323,9 +323,11 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     call RealizAssignTransportInitCond(realization)  
   endif
 
+  ! turn on flag to tell RTUpdateSolution that the code is not timestepping
   call StepperUpdateSolution(realization)
   
   call PetscLogStagePop(ierr)
+  option%init_stage = PETSC_FALSE
   call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
 
   ! print initial condition output if not a restarted sim
