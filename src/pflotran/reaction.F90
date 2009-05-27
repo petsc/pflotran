@@ -719,7 +719,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     call RTotal(rt_auxvar,global_auxvar,reaction,option)
     if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
     
-    reaction%kinmr_nrate = icomp
     Jac = 0.d0
         
     do icomp = 1, reaction%ncomp
