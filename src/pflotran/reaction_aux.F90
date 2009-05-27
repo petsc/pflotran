@@ -239,6 +239,10 @@ module Reaction_Aux_module
     PetscReal, pointer :: kinsurfcmplx_Z(:)  ! valence
 #endif
 
+    ! multirate reaction rates
+    PetscInt :: kinmr_nrate 
+    PetscReal, pointer :: kinmr_rate(:)
+    
     ! mineral reactions
     PetscInt :: nmnrl
     character(len=MAXWORDLENGTH), pointer :: mineral_names(:)
@@ -440,6 +444,9 @@ function ReactionCreate()
   nullify(reaction%kinsurfcmplx_logKcoef)
   nullify(reaction%kinsurfcmplx_Z)
 #endif
+
+  reaction%kinmr_nrate = 0
+  nullify(reaction%kinmr_rate)
 
   reaction%nmnrl = 0  
   nullify(reaction%mnrlspecid)
@@ -1713,6 +1720,9 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%kinmnrl_affinity_power)) deallocate(reaction%kinmnrl_affinity_power)
   nullify(reaction%kinmnrl_affinity_power)
 
+  if (associated(reaction%kinmr_rate)) deallocate(reaction%kinmr_rate)
+  nullify(reaction%kinmr_rate)
+  
   deallocate(reaction)
   nullify(reaction)
 
