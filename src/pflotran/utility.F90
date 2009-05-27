@@ -551,4 +551,155 @@ function InverseErf(p)
 
 end function InverseErf
 
+! ************************************************************************** !
+!
+! UtilityReadArray: Reads an array of double precision numbers from the  
+!                   input file
+! author: Glenn Hammond
+! date: 05/21/09
+!
+! ************************************************************************** !
+subroutine UtilityReadArray(array,array_size,comment,input,option)
+
+  use Input_module
+  use String_module
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  type(input_type), target :: input
+  character(len=MAXSTRINGLENGTH) :: comment
+  PetscInt :: array_size
+  PetscReal, pointer :: array(:)
+  
+  PetscInt :: i, num_values, count
+  type(input_type), pointer :: input2
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXWORDLENGTH) :: word, word2, word3
+  character(len=1) :: backslash
+  PetscTruth :: continuation_flag
+  PetscReal :: value
+  PetscReal, pointer :: temp_array(:)
+  PetscInt :: max_size
+  PetscErrorCode :: ierr
+
+  backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
+                          ! is a double quote as in c/c++
+  
+  max_size = 1000
+  if (array_size > 0) then
+    max_size = array_size
+  endif
+  allocate(temp_array(max_size))
+  temp_array = 0.d0
+  
+  input%ierr = 0
+  string2 = trim(input%buf)
+  call InputReadWord(input,option,word,PETSC_TRUE)
+  call InputErrorMsg(input,option,'file or value','CONDITION')
+  call StringToLower(word)
+  if (StringCompare(word,'file',FOUR_INTEGER)) then
+    call InputReadNChars(input,option,string2,MAXSTRINGLENGTH,PETSC_TRUE)
+    input%err_buf = 'filename'
+    input%err_buf2 = comment
+    call InputErrorMsg(input,option)
+    input2 => InputCreate(input%fid + 1,string2)
+  else
+    input2 => input
+    input%buf = string2
+  endif
+  
+  if (len_trim(input2%buf) > 1) then
+    continuation_flag = PETSC_FALSE
+  else
+    continuation_flag = PETSC_TRUE
+  endif
+  
+  count = 0
+  do
+    
+    if (count >= array_size .and. array_size > 0) exit
+    
+    if (.not.continuation_flag .and. count /= 1 .and. array_size > 0) then
+      write(string,*) count
+      write(string2,*) array_size
+      if (len_trim(comment) < 1) then
+        option%io_buffer = 'Within call to UtilityReadArray(), ' // &
+                           'insufficient values read: ' // trim(string) // &
+                           ' of ' // trim(string2) // '.'
+      else
+        option%io_buffer = 'Within call to UtilityReadArray() in ' // &
+                           trim(comment) // &
+                           'insufficient values read: ' // trim(string) // &
+                           ' of ' // trim(string2) // '.'
+      endif
+      call printErrMsg(option)
+    else if (count == 1) then
+      temp_array = temp_array(count)
+      exit
+    else if (array_size <= 0 .and. count /= 0) then
+      exit
+    endif
+    
+    if (continuation_flag) then
+      call InputReadFlotranString(input2,option)
+      call InputReadStringErrorMsg(input2,option,'DXYZ')
+    endif
+
+    continuation_flag = PETSC_FALSE
+    if (index(input2%buf,backslash) > 0) &
+      continuation_flag = PETSC_TRUE
+
+    do 
+      call InputReadWord(input2,option,word,PETSC_TRUE)
+      if (InputError(input2) .or. StringCompare(word,backslash,1)) exit
+      i = index(word,'*')
+      if (i == 0) i = index(word,'@')
+      if (i /= 0) then
+        word2 = word(1:i-1)
+        word3 = word(i+1:len_trim(word))
+        string2 = word2
+        call InputReadInt(string2,option,num_values,input2%ierr)
+        call InputErrorMsg(input2,option,'# values','UtilityReadArray')
+        string2 = word3
+        call InputReadDouble(string2,option,value,input2%ierr)
+        call InputErrorMsg(input2,option,'value','UtilityReadArray')
+        do while (count+num_values > max_size)
+          ! careful.  reallocateRealArray double max_size every time.
+          call reallocateRealArray(temp_array,max_size) 
+        enddo
+        do i=1, num_values
+          count = count + 1
+          temp_array(count) = value
+        enddo
+      else
+        string2 = word
+        call InputReadDouble(string2,option,value,input2%ierr)
+        call InputErrorMsg(input2,option,'value','UtilityReadArray')
+        count = count + 1
+        if (count > max_size) then
+          ! careful.  reallocateRealArray double max_size every time.
+          call reallocateRealArray(temp_array,max_size) 
+        endif
+        temp_array(count) = value
+      endif
+    enddo
+  enddo
+  
+  if (array_size > 0 .and. count > array_size) then
+    count = array_size
+  endif
+  
+  if (.not.associated(input2,input)) call InputDestroy(input2)
+  nullify(input2)
+  
+  if (associated(array)) deallocate(array)
+  allocate(array(count))
+  array(1:count) = temp_array(1:count)
+  deallocate(temp_array)
+  nullify(temp_array)
+
+end subroutine UtilityReadArray
+
 end module Utility_module

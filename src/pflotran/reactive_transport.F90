@@ -650,6 +650,8 @@ subroutine RTUpdateSolutionPatch(realization)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)  
   PetscInt :: ghosted_id, imnrl
+  PetscInt :: irate
+  PetscReal :: kdt, one_plus_kdt, k_over_one_plus_kdt
   
   option => realization%option
   patch => realization%patch
@@ -678,6 +680,20 @@ subroutine RTUpdateSolutionPatch(realization)
       enddo
     enddo
   endif
+  
+  ! update multirate sorption concentrations 
+  if (reaction%kinmr_nrate > 0) then 
+    do ghosted_id = 1, grid%ngmax 
+      do irate = 1, reaction%kinmr_nrate 
+        kdt = reaction%kinmr_rate(irate) * option%tran_dt 
+        one_plus_kdt = 1.d0 + kdt 
+        k_over_one_plus_kdt = reaction%kinmr_rate(irate)/one_plus_kdt 
+        rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) = & 
+          (rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) + & 
+          kdt * rt_aux_vars(ghosted_id)%total_sorb)/one_plus_kdt 
+      enddo 
+    enddo 
+  endif 
   
   if (option%compute_mass_balance_new) then
     call RTUpdateMassBalancePatch(realization)

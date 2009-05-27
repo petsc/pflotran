@@ -44,6 +44,7 @@ subroutine ReactionRead(reaction,input,option)
   use Option_module
   use String_module
   use Input_module
+  use Utility_module
   
   implicit none
   
@@ -205,6 +206,10 @@ subroutine ReactionRead(reaction,input,option)
                 call StringToUpper(word)
                 
                 select case(trim(word))
+                  case('RATE','RATES') 
+                    string = 'RATES inside SURFACE_COMPLEXATION_RXN'
+                    call UtilityReadArray(reaction%kinmr_rate,-1,string,input,option) 
+                    reaction%kinmr_nrate = size(reaction%kinmr_rate)
                   case('MINERAL')
                     call InputReadWord(input,option,srfcmplx_rxn%mineral_name,PETSC_TRUE)
                     call InputErrorMsg(input,option,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,MINERAL_NAME')
@@ -598,6 +603,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscReal :: Res_pert, pert, prev_value
 
   PetscInt :: iphase
+  PetscInt :: kinmr_nrate_store, irate
 
 #ifdef CHUAN_CO2  
   PetscReal :: dg,dddt,dddp,fg, dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,&
@@ -627,6 +633,15 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     return
   endif
 
+  ! if using multirate reaction, we need to turn it off to equilibrate the system
+  ! then turn it back on
+  kinmr_nrate_store = 0
+  if (reaction%kinmr_nrate > 0) then
+    kinmr_nrate_store = reaction%kinmr_nrate
+    reaction%kinmr_nrate = 0
+    allocate(rt_auxvar%dtotal_sorb(reaction%ncomp,reaction%ncomp))
+  endif
+  
 #ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal) then
   call ReactionInterpolateLogK(reaction%eqcmplx_logKcoef,reaction%eqcmplx_logK, &
@@ -703,6 +718,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     endif
     call RTotal(rt_auxvar,global_auxvar,reaction,option)
     if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
+    
+    reaction%kinmr_nrate = icomp
     Jac = 0.d0
         
     do icomp = 1, reaction%ncomp
@@ -999,6 +1016,16 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 
   ! once equilibrated, compute sorbed concentrations
   if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
+
+  if (kinmr_nrate_store > 0) then
+    reaction%kinmr_nrate = kinmr_nrate_store
+    kinmr_nrate_store = 0
+    do irate = 1, reaction%kinmr_nrate
+      rt_auxvar%kinmr_total_sorb(:,irate) = rt_auxvar%total_sorb
+    enddo
+    deallocate(rt_auxvar%dtotal_sorb)
+    nullify(rt_auxvar%dtotal_sorb)
+  endif
   
   ! remember that a density of 1 kg/L was assumed, thus molal and molarity are equal
   ! do not scale by molal_to_molar since it could be 1.d0 if MOLAL flag set
@@ -2313,7 +2340,8 @@ subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
   
   ! initialize total sorbed concentrations and derivatives
   rt_auxvar%total_sorb = 0.d0
-  rt_auxvar%dtotal_sorb = 0.d0  
+  if (associated(rt_auxvar%dtotal_sorb)) &
+    rt_auxvar%dtotal_sorb = 0.d0  
 
   if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
     call RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
@@ -2744,6 +2772,10 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
 
   ! Surface Complexation
   do irxn = 1, reaction%neqsurfcmplxrxn
+  
+    ! the below assumes equal site density for each multi-rate reaction
+    site_density = reaction%eqsurfcmplx_rxn_site_density(irxn)/dble(reaction%kinmr_nrate)
+  
     ncplx = reaction%eqsurfcmplx_rxn_to_complex(0,irxn)
     free_site_conc = rt_auxvar%eqsurfcmplx_freesite_conc(irxn)
 
@@ -2781,7 +2813,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
       if (reaction%eqsurfcmplx_rxn_stoich_flag(irxn)) then 
         ! stoichiometry for free sites in one of reactions is not 1, thus must
         ! use nonlinear iteration to solve
-        residual = reaction%eqsurfcmplx_rxn_site_density(irxn)-total
+        residual = site_density-total
         
         dres_dfree_site = 1.d0
 
@@ -2802,7 +2834,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
       else
       
         total = total / free_site_conc
-        free_site_conc = reaction%eqsurfcmplx_rxn_site_density(irxn) / total  
+        free_site_conc = site_density / total  
         
         one_more = PETSC_TRUE
       endif
