@@ -1309,13 +1309,14 @@ The kinetic equation for the sorbed concentration at the $n$th node becomes in f
 \EN
 for fully backward implicit time differencing. Solving for $q_{j\a}^{t+\Delta t}$ at the new time $t\!+\!\Delta t$ gives
 \EQ\label{qkin}
-q_{j\a n}^{t+\Delta t} \eq \frac{q_{j\a n}^t+k_\a \Delta t \, q_{j\a}^{{\rm eq},\,t+\Delta t}}{1+k_\a\Delta t}.
+q_{j\a n}^{t+\Delta t} \eq \frac{q_{j\a n}^t+k_\a \Delta t \, q_{j\a n}^{{\rm eq},\,t+\Delta t}}{1+k_\a\Delta t}.
 \EN
 or in terms of individual surface complexes
-\EQ\label{qkin}
-S_{i\a n}^{t+\Delta t} \eq \frac{S_{i\a n}^t+k_\a \Delta t \, S_{i\a}^{{\rm eq},\,t+\Delta t}}{1+k_\a\Delta t}.
+\EQ\label{qkin1}
+S_{i\a n}^{t+\Delta t} \eq \frac{S_{i\a n}^t+k_\a \Delta t \, S_{i\a n}^{{\rm eq},\,t+\Delta t}}{1+k_\a\Delta t}.
 \EN
-Thus the sorption rate equal to the right-hand side of Eqn.\eqref{sorbnum} becomes
+These two equations provide a recursion relation to calculate the sorbed concentration. 
+The sorption rate equal to the right-hand side of Eqn.\eqref{sorbnum} becomes
 \EQ
 k_\a\big(q_{j\a n}^{{\rm eq},\,t+\Delta t}-q_{j\a n}^{t+\Delta t}\big) \eq k_\a\frac{q_{j\a n}^{{\rm eq},\,t+\Delta t}-q_{j\a n}^{t}}{1+k_\a\Delta t},
 \EN
@@ -1330,7 +1331,7 @@ with control volume $V_n$ and interfacial area $A_{nn'}$, this equation becomes
 R_{jn} \eq \frac{\big(\varphi_n \Psi_{jn}\big)_{t+\Delta t}-\big(\varphi_n \Psi_{jn}\big)_t}{\Delta t}V_n &+ \sum_\a \frac{k_\a}{1+k_\a\Delta t}\big(q_{j\a n}^{{\rm eq},\,t+\Delta t}-q_{j\a n}^{t}\big)V_n \nonumber\\
 &+ \sum_{n'} \Omega_{jnn'} A_{nn'} + \sum_m\nu_{jm}I_{mn}V_n,
 \EA
-where $q_{j\a n}^{{\rm eq},\,t+\Delta t}$ is given explicitly as a function of the primary species concentrations in Eqn.\eqref{qeq}. Once the primary species transport equations are solved, the sorbed concentrations can be updated from Eqn.\eqref{qkin}.
+where $q_{j\a n}^{{\rm eq},\,t+\Delta t}$ is given explicitly as a function of the primary species concentrations in Eqn.\eqref{qeq}. Thus the kinetic sorbed concentration has been eliminated from the primary species transport equations. Once these equations are solved, the sorbed concentrations can be updated from Eqn.\eqref{qkin} or \eqref{qkin1}.
 
 \subsection{Multirate Contribution to Jacobian}
 
