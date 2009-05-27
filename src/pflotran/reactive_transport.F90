@@ -132,7 +132,7 @@ subroutine RTSetupPatch(realization)
   type(fluid_property_type), pointer :: cur_fluid_property
 
   PetscInt :: ghosted_id, iconn, sum_connection
-  PetscInt :: i, iphase
+  PetscInt :: iphase
   
   option => realization%option
   patch => realization%patch
