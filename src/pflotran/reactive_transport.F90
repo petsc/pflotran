@@ -376,7 +376,7 @@ subroutine RTComputeMassBalancePatch(realization,mass_balance)
   PetscInt :: local_id
   PetscInt :: ghosted_id
   PetscInt :: iphase
-  PetscInt :: i, icomp, imnrl, ncomp
+  PetscInt :: i, icomp, imnrl, ncomp, irate
 
   iphase = 1
   option => realization%option
@@ -405,25 +405,37 @@ subroutine RTComputeMassBalancePatch(realization,mass_balance)
         porosity_loc_p(ghosted_id) * &
         volume_p(local_id)*1000.d0
         
-    ! add contribution of equilibrium sorption
-      if (reaction%neqsorb > 0 .and. iphase == 1) then
-        mass_balance(:,iphase) = mass_balance(:,iphase) + &
-        rt_aux_vars(ghosted_id)%total_sorb(:) * volume_p(local_id)
-      endif
-      
-    ! add contribution from mineral volume fractions
-      if (reaction%nkinmnrl > 0 .and. iphase ==1) then
-        do imnrl = 1, reaction%nkinmnrl
-          ncomp = reaction%kinmnrlspecid(0,imnrl)
-          do i = 1, ncomp
-            icomp = reaction%kinmnrlspecid(i,imnrl)
-            mass_balance(icomp,iphase) = mass_balance(icomp,iphase) &
-            + reaction%kinmnrlstoich(i,imnrl)                  &
-            * rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl)      &
-            * volume_p(local_id) &
-            / reaction%kinmnrl_molar_vol(imnrl)
-          enddo 
-        enddo
+      if (iphase == 1) then
+      ! add contribution of equilibrium sorption
+        if (reaction%neqsorb > 0) then
+          mass_balance(:,iphase) = mass_balance(:,iphase) + &
+          rt_aux_vars(ghosted_id)%total_sorb(:) * volume_p(local_id)
+        endif
+
+
+        ! add contributin of kinetic multirate sorption
+        if (reaction%kinmr_nrate > 0) then
+          do irate = 1, reaction%kinmr_nrate
+            mass_balance(:,iphase) = mass_balance(:,iphase) + &
+              rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) * &
+              volume_p(local_id)
+          enddo
+        endif
+               
+      ! add contribution from mineral volume fractions
+        if (reaction%nkinmnrl > 0) then
+          do imnrl = 1, reaction%nkinmnrl
+            ncomp = reaction%kinmnrlspecid(0,imnrl)
+            do i = 1, ncomp
+              icomp = reaction%kinmnrlspecid(i,imnrl)
+              mass_balance(icomp,iphase) = mass_balance(icomp,iphase) &
+              + reaction%kinmnrlstoich(i,imnrl)                  &
+              * rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl)      &
+              * volume_p(local_id) &
+              / reaction%kinmnrl_molar_vol(imnrl)
+            enddo 
+          enddo
+        endif
       endif
     enddo
   enddo
@@ -3158,22 +3170,24 @@ subroutine RTAuxVarCompute(rt_aux_var,global_aux_var,reaction,option)
     
     call RTotal(rt_auxvar_pert,global_aux_var,reaction,option)
     dtotal(:,jcomp) = (rt_auxvar_pert%total(:,1) - rt_aux_var%total(:,1))/pert
-    if (reaction%neqsorb > 0) &
+    if (reaction%neqsorb > 0) then
       call RTotalSorb(rt_auxvar_pert,global_aux_var,reaction,option)
-      dtotalsorb(:,jcomp) = (rt_auxvar_pert%total_sorb(:) - &
-                             rt_aux_var%total_sorb(:))/pert
+      if (reaction%kinmr_nrate <= 0) &
+        dtotalsorb(:,jcomp) = (rt_auxvar_pert%total_sorb(:) - &
+                               rt_aux_var%total_sorb(:))/pert
     endif
   enddo
   do icomp = 1, reaction%ncomp
     do jcomp = 1, reaction%ncomp
       if (dabs(dtotal(icomp,jcomp)) < 1.d-16) dtotal(icomp,jcomp) = 0.d0
-      if (reaction%neqsorb > 0) then
+      if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
         if (dabs(dtotalsorb(icomp,jcomp)) < 1.d-16) dtotalsorb(icomp,jcomp) = 0.d0
       endif
     enddo
   enddo
   rt_aux_var%dtotal(:,:,1) = dtotal
-  if (reaction%neqsorb > 0) rt_aux_var%dtotal_sorb = dtotalsorb
+  if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) &
+    rt_aux_var%dtotal_sorb = dtotalsorb
   call RTAuxVarDestroy(rt_auxvar_pert)
 #endif
   

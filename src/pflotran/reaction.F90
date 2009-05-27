@@ -2315,8 +2315,8 @@ subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
   rt_auxvar%total_sorb = 0.d0
   rt_auxvar%dtotal_sorb = 0.d0  
 
-  if (reaction%neqsorb > 0) then
-    call RTotalSorbEqIonx(rt_auxvar,global_auxvar,reaction,option)
+  if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
+    call RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
   endif
   
   if (reaction%neqionxrxn > 0) then
