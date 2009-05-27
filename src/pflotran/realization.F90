@@ -1281,6 +1281,7 @@ subroutine RealizAssignTransportInitCond(realization)
                     minerals%basis_area(idof)
               enddo
             endif
+            ! this is for the multi-rate surface complexation model
             if (reaction%kinmr_nrate > 0) then
               rt_aux_vars(ghosted_id)%kinmr_total_sorb = &
                 initial_condition%tran_condition%cur_constraint_coupler% &

@@ -776,10 +776,12 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
                         porosity_loc_p(ghosted_id), &
                         volume_p(local_id), &
                         reaction,option,accum_p(istart:iend)) 
-    call RAccumulationSorb(rt_aux_vars(ghosted_id), &
-                           global_aux_vars(ghosted_id), &
-                           volume_p(local_id), &
-                           reaction,option,accum_p(istart:iend)) 
+    if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
+      call RAccumulationSorb(rt_aux_vars(ghosted_id), &
+                             global_aux_vars(ghosted_id), &
+                             volume_p(local_id), &
+                             reaction,option,accum_p(istart:iend))
+    endif
   enddo
 
   call GridVecRestoreArrayF90(grid,field%tran_xx,xx_p, ierr)
