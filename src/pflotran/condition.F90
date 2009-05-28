@@ -1193,6 +1193,13 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
         
         enddo  
         
+        if (icomp < reaction%ncomp) then
+          option%io_buffer = &
+                   'Number of concentration constraints is less than ' // &
+                   'number of primary species in aqueous constraint.'
+          call printErrMsg(option)        
+        endif
+        
         if (associated(constraint%aqueous_species)) &
           call AqueousSpeciesConstraintDestroy(constraint%aqueous_species)
         constraint%aqueous_species => aq_species_constraint 
@@ -1233,6 +1240,16 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
                           'CONSTRAINT, MINERALS')          
         
         enddo  
+        
+        if (icomp < reaction%nkinmnrl) then
+          option%io_buffer = &
+                   'Mineral lists in constraints must provide a volume ' // &
+                   'fraction and surface area for all kinetic minerals ' // &
+                   '(listed under MINERAL_KINETICS card in CHEMISTRY), ' // &
+                   'regardless of whether or not they are present (just ' // &
+                   'assign a zero volume fraction if not present).'
+          call printErrMsg(option)        
+        endif
         
         if (associated(constraint%minerals)) then
           call MineralConstraintDestroy(constraint%minerals)
