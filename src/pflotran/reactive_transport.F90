@@ -3120,6 +3120,19 @@ function RTGetTecplotHeader(realization,icolumn)
     endif
   enddo
   
+  do i=1,option%ntrandof
+    if (reaction%neqsorb > 0 .and. reaction%total_sorb_print(i)) then
+      if (icolumn > -1) then
+        icolumn = icolumn + 1
+        write(string2,'('',"'',i2,''-'',a,''_total_sorb"'')') icolumn, &
+          trim(reaction%primary_species_names(i))
+      else
+        write(string2,'('',"'',a,''_total_sorb"'')') trim(reaction%primary_species_names(i))
+      endif
+      string = trim(string) // trim(string2)
+    endif
+  enddo
+  
   RTGetTecplotHeader = string
 
 end function RTGetTecplotHeader

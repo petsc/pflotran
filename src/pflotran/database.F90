@@ -1909,6 +1909,8 @@ subroutine BasisInit(reaction,option)
   reaction%primary_spec_a0 = 0.d0
   allocate(reaction%kd_print(reaction%ncomp))
   reaction%kd_print = PETSC_FALSE
+  allocate(reaction%total_sorb_print(reaction%ncomp))
+  reaction%total_sorb_print = PETSC_FALSE
   
     ! pack in reaction arrays
   cur_pri_aq_spec => reaction%primary_species_list
@@ -1926,6 +1928,9 @@ subroutine BasisInit(reaction,option)
     reaction%kd_print(ispec) = (cur_pri_aq_spec%print_me .or. &
                                 reaction%print_all_species) .and. &
                                 reaction%print_kd
+    reaction%total_sorb_print(ispec) = (cur_pri_aq_spec%print_me .or. &
+                                reaction%print_all_species) .and. &
+                                reaction%print_total_sorb
     ispec = ispec + 1
     cur_pri_aq_spec => cur_pri_aq_spec%next
   enddo

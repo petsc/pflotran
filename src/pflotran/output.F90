@@ -544,6 +544,13 @@ subroutine OutputTecplotBlock(realization)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo
+      do i=1,reaction%ncomp
+        if (reaction%neqsorb > 0 .and. reaction%total_sorb_print(i)) then
+          call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        endif
+      enddo
     endif
   endif
   
@@ -1382,6 +1389,13 @@ subroutine OutputTecplotPoint(realization)
         do i=1,reaction%ncomp
           if (reaction%kd_print(i)) then
             value = RealizGetDatasetValueAtCell(realization,PRIMARY_KD, &
+                                                i,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+          endif
+        enddo
+        do i=1,reaction%ncomp
+          if (reaction%neqsorb > 0 .and. reaction%total_sorb_print(i)) then
+            value = RealizGetDatasetValueAtCell(realization,TOTAL_SORBED, &
                                                 i,ghosted_id)
             write(IUNIT3,1000,advance='no') value
           endif
@@ -2375,6 +2389,13 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
       endif
     enddo
     
+    do i=1,option%ntrandof
+      if (reaction%neqsorb > 0 .and. reaction%total_sorb_print(i)) then
+        write(fid,'('',"'',a,'' '',a,''_tot_sorb"'')',advance="no") &
+          trim(reaction%primary_species_names(i)), trim(cell_string)
+      endif
+    enddo
+    
   endif
 
   if (print_velocities) then 
@@ -2548,6 +2569,13 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
     do i=1,option%ntrandof
       if (reaction%kd_print(i)) then
         write(fid,'('',"'',a,'' '',a,''_kd"'')',advance="no") &
+          trim(reaction%primary_species_names(i)), trim(cell_string)
+      endif
+    enddo
+    
+    do i=1,option%ntrandof
+      if (reaction%neqsorb > 0 .and. reaction%total_sorb_print(i)) then
+        write(fid,'('',"'',a,'' '',a,''_tot_sorb"'')',advance="no") &
           trim(reaction%primary_species_names(i)), trim(cell_string)
       endif
     enddo
@@ -2777,6 +2805,12 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
         if (reaction%kd_print(i)) then
           write(fid,110,advance="no") &
             RealizGetDatasetValueAtCell(realization,PRIMARY_KD,i,ghosted_id)
+        endif
+      enddo
+      do i=1,reaction%ncomp
+        if (reaction%neqsorb > 0 .and. reaction%total_sorb_print(i)) then
+          write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,TOTAL_SORBED,i,ghosted_id)
         endif
       enddo
     endif
@@ -3070,6 +3104,16 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
         if (reaction%kd_print(i)) then
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,PRIMARY_KD,i, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
+        endif
+      enddo
+      do i=1,reaction%ncomp
+        if (reaction%neqsorb > 0 .and. reaction%total_sorb_print(i)) then
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,TOTAL_SORBED,i, &
                                          region%coordinates(ONE_INTEGER)%x, &
                                          region%coordinates(ONE_INTEGER)%y, &
                                          region%coordinates(ONE_INTEGER)%z, &
@@ -4791,6 +4835,23 @@ subroutine OutputHDF5(realization)
             call OutputGetVarFromArray(realization,global_vec,PRIMARY_KD,i)
             if (.not.(option%use_samr)) then
               write(string,'(a)') trim(reaction%primary_species_names(i)) // '_kd'
+              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+            else
+              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+              if(first) then
+                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,PRIMARY_KD,i)
+              endif
+              current_component=current_component+1
+            endif
+          endif
+        endif
+      enddo
+      do i=1,reaction%ncomp
+        if (associated(reaction%total_sorb_print)) then
+          if (reaction%neqsorb > 0 .and. reaction%total_sorb_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED,i)
+            if (.not.(option%use_samr)) then
+              write(string,'(a)') trim(reaction%primary_species_names(i)) // '_tot_sorb'
               call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)

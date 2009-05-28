@@ -135,6 +135,7 @@ module Reaction_Aux_module
     PetscTruth :: print_all_species
     PetscTruth :: print_pH
     PetscTruth :: print_kd
+    PetscTruth :: print_total_sorb
     PetscInt :: num_dbase_temperatures
     PetscInt :: h_ion_id
     PetscInt :: o2_gas_id
@@ -190,6 +191,8 @@ module Reaction_Aux_module
     PetscReal, pointer :: eqgas_logKcoef(:,:)
     
     PetscInt :: neqsorb
+    PetscTruth, pointer :: kd_print(:)
+    PetscTruth, pointer :: total_sorb_print(:)
 
     ! ionx exchange reactions
     PetscInt :: neqionxrxn
@@ -226,7 +229,6 @@ module Reaction_Aux_module
     PetscReal, pointer :: eqsurfcmplx_logK(:)
     PetscReal, pointer :: eqsurfcmplx_logKcoef(:,:)
     PetscReal, pointer :: eqsurfcmplx_Z(:)  ! valence
-    PetscTruth, pointer :: kd_print(:)
 
 #if 0    
     PetscInt, pointer :: kinsurfcmplxspecid(:,:)
@@ -343,6 +345,7 @@ function ReactionCreate()
   reaction%print_all_species = PETSC_TRUE
   reaction%print_pH = PETSC_FALSE
   reaction%print_kd = PETSC_FALSE
+  reaction%print_total_sorb = PETSC_FALSE
   reaction%use_log_formulation = PETSC_FALSE
   reaction%use_full_geochemistry = PETSC_FALSE
   
@@ -374,6 +377,7 @@ function ReactionCreate()
   nullify(reaction%surface_complex_print)
   nullify(reaction%kinmnrl_print)
   nullify(reaction%kd_print)
+  nullify(reaction%total_sorb_print)
   
   reaction%ncomp = 0
   nullify(reaction%primary_spec_a0)
@@ -1562,6 +1566,8 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%kinmnrl_print)
   if (associated(reaction%kd_print)) deallocate(reaction%kd_print)
   nullify(reaction%kd_print)
+  if (associated(reaction%total_sorb_print)) deallocate(reaction%total_sorb_print)
+  nullify(reaction%total_sorb_print)
     
   if (associated(reaction%primary_spec_a0)) deallocate(reaction%primary_spec_a0)
   nullify(reaction%primary_spec_a0)

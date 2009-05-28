@@ -1011,6 +1011,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
   PetscInt :: local_id, ghosted_id
   type(grid_type), pointer :: grid
   PetscReal, pointer :: vec_ptr(:), vec_ptr2(:)
+  PetscInt :: irate
   PetscErrorCode :: ierr
 
   grid => patch%grid
@@ -1181,7 +1182,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY, &
          SECONDARY_MOLARITY,TOTAL_MOLALITY,TOTAL_MOLARITY, &
          MINERAL_RATE,MINERAL_VOLUME_FRACTION,SURFACE_CMPLX,SURFACE_CMPLX_FREE, &
-         PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD)
+         PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED)
          
       select case(ivar)
         case(PH)
@@ -1269,6 +1270,21 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
                                    vec_ptr2(ghosted_id),patch%reaction,option)
           enddo
           call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+        case(TOTAL_SORBED)
+          if (patch%reaction%neqsorb > 0) then
+            do local_id=1,grid%nlmax
+              ghosted_id = grid%nL2G(local_id)
+              if (patch%reaction%kinmr_nrate > 0) then
+                vec_ptr(local_id) = 0.d0
+                do irate = 1, patch%reaction%kinmr_nrate
+                  vec_ptr(local_id) = vec_ptr(local_id) + &
+                    patch%aux%RT%aux_vars(ghosted_id)%kinmr_total_sorb(isubvar,irate)
+                enddo            
+              else
+                vec_ptr(local_id) = patch%aux%RT%aux_vars(ghosted_id)%total_sorb(isubvar)
+              endif
+            enddo
+          endif
       end select
     case(PHASE)
       call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
@@ -1324,6 +1340,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
   PetscInt :: ghosted_id
 
   PetscReal :: value
+  PetscInt :: irate
   type(grid_type), pointer :: grid
   PetscReal, pointer :: vec_ptr2(:)  
   PetscErrorCode :: ierr
@@ -1431,7 +1448,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY, &
          TOTAL_MOLALITY,TOTAL_MOLARITY, &
          MINERAL_VOLUME_FRACTION,MINERAL_RATE,SURFACE_CMPLX, SURFACE_CMPLX_FREE, &
-         PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD)
+         PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED)
          
       select case(ivar)
         case(PH)
@@ -1477,6 +1494,18 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
                                  patch%aux%Global%aux_vars(ghosted_id), &
                                  vec_ptr2(ghosted_id),patch%reaction,option)
           call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+        case(TOTAL_SORBED)
+          if (patch%reaction%neqsorb > 0) then
+            if (patch%reaction%kinmr_nrate > 0) then
+              value = 0.d0
+              do irate = 1, patch%reaction%kinmr_nrate
+                value = value + &
+                  patch%aux%RT%aux_vars(ghosted_id)%kinmr_total_sorb(isubvar,irate)
+              enddo            
+            else
+              value = patch%aux%RT%aux_vars(ghosted_id)%total_sorb(isubvar)
+            endif
+          endif
       end select
     case(PHASE)
       call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)

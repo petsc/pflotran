@@ -1686,6 +1686,7 @@ subroutine ReactionReadOutput(reaction,input,option)
       reaction%print_all_species = PETSC_TRUE
       reaction%print_pH = PETSC_TRUE
       reaction%print_kd = PETSC_TRUE
+      reaction%print_total_sorb = PETSC_TRUE
       call InputSkipToEnd(input,option,'OUTPUT')
       exit
     endif
@@ -1695,8 +1696,13 @@ subroutine ReactionReadOutput(reaction,input,option)
       found = PETSC_TRUE
     endif
 
-   if (StringCompare(name,'Kd',TWO_INTEGER)) then
+   if (StringCompare(word,'kd',TWO_INTEGER)) then
       reaction%print_kd = PETSC_TRUE
+      found = PETSC_TRUE
+    endif
+
+   if (StringCompare(word,'total_sorbed',TWO_INTEGER)) then
+      reaction%print_total_sorb = PETSC_TRUE
       found = PETSC_TRUE
     endif
 
@@ -3431,28 +3437,40 @@ subroutine ReactionComputeKd(icomp,retardation,rt_auxvar,global_auxvar, &
   type(option_type) :: option
   
   PetscReal :: bulk_vol_to_fluid_vol
-  PetscInt :: i, j, jcomp, irxn, icplx
+  PetscInt :: i, j, jcomp, irxn, icplx, irate
   PetscInt, parameter :: iphase = 1
 
   retardation = 0.d0
-  if (reaction%neqsurfcmplxrxn == 0) return
+  if (reaction%neqsorb == 0) return
   
   bulk_vol_to_fluid_vol = porosity*global_auxvar%sat(iphase)*1000.d0
 
-  do irxn = 1, reaction%neqsurfcmplxrxn
-    do i = 1, reaction%eqsurfcmplx_rxn_to_complex(0,irxn)
-      icplx = reaction%eqsurfcmplx_rxn_to_complex(i,irxn)
-      do j = 1, reaction%eqsurfcmplxspecid(0,icplx)
-        jcomp = reaction%eqsurfcmplxspecid(j,icplx)
-        if (icomp == jcomp) then
-          retardation = retardation + &
-            reaction%eqsurfcmplxstoich(j,icplx) * &
-            rt_auxvar%eqsurfcmplx_conc(icplx)
-          exit
-        endif
+  if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
+#if 0
+    ! we should be able to use total_sorb instead of summing complexes
+    do irxn = 1, reaction%neqsurfcmplxrxn
+      do i = 1, reaction%eqsurfcmplx_rxn_to_complex(0,irxn)
+        icplx = reaction%eqsurfcmplx_rxn_to_complex(i,irxn)
+        do j = 1, reaction%eqsurfcmplxspecid(0,icplx)
+          jcomp = reaction%eqsurfcmplxspecid(j,icplx)
+          if (icomp == jcomp) then
+            retardation = retardation + &
+              reaction%eqsurfcmplxstoich(j,icplx) * &
+              rt_auxvar%eqsurfcmplx_conc(icplx)
+            exit
+          endif
+        enddo
       enddo
     enddo
-  enddo
+#else
+    retardation = rt_auxvar%total_sorb(icomp)
+#endif
+  else
+    do irate = 1, reaction%kinmr_nrate
+      retardation = retardation + rt_auxvar%kinmr_total_sorb(icomp,irate)
+    enddo
+  endif
+  
   if (dabs(rt_auxvar%total(icomp,iphase)) > 1.d-40) &
     retardation = retardation/bulk_vol_to_fluid_vol/ &
       rt_auxvar%total(icomp,iphase)
