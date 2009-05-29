@@ -1,7 +1,4 @@
-#ifdef USE_HDF5
-
 #include "HDF.h"
-
 
 static int neg_one = -1;
 
@@ -23,9 +20,6 @@ HDF::HDF(char *filename, int overwrite) {
   }
 
   hid_t prop_id = H5Pcreate(H5P_FILE_ACCESS);
-#ifndef SERIAL
-  H5Pset_fapl_mpio(prop_id,PETSC_COMM_WORLD,MPI_INFO_NULL);
-#endif
 
 // Create a new file collectively and release property list identifier
   /* Access flags:
@@ -232,7 +226,7 @@ void HDF::createDataSet(char *data_set_name, hid_t type, int compress) {
     status = H5Pset_deflate(prop_id,9); // 0 - 9
   }
 
-  if (type == HDF_NATIVE_INT) {
+  if (type == H5T_NATIVE_INT) {
 #ifdef PETSC_USE_64BIT_INDICES
     long long i = -999;
 #else
@@ -266,19 +260,13 @@ void HDF::writeInt(int *values) {
 void HDF::writeInt(int *values, int collective) {
 
   hid_t prop_id = H5Pcreate(H5P_DATASET_XFER);
-#ifndef SERIAL
-  if (collective)
-    H5Pset_dxpl_mpio(prop_id,H5FD_MPIO_COLLECTIVE);
-  else
-    H5Pset_dxpl_mpio(prop_id,H5FD_MPIO_INDEPENDENT);
-#endif
   if (memory_space_id > -1) {
 
-    H5Dwrite(data_set_id,HDF_NATIVE_INT,memory_space_id,file_space_id,
+    H5Dwrite(data_set_id,H5T_NATIVE_INT,memory_space_id,file_space_id,
              prop_id,values);
   }
   else
-    H5Dwrite(data_set_id,HDF_NATIVE_INT,H5S_ALL,H5S_ALL,prop_id,values);
+    H5Dwrite(data_set_id,H5T_NATIVE_INT,H5S_ALL,H5S_ALL,prop_id,values);
   H5Pclose(prop_id);
 
 }
@@ -290,12 +278,6 @@ void HDF::writeDouble(double *values) {
 void HDF::writeDouble(double *values, int collective) {
 
   hid_t prop_id = H5Pcreate(H5P_DATASET_XFER);
-#ifndef SERIAL
-  if (collective)
-    H5Pset_dxpl_mpio(prop_id,H5FD_MPIO_COLLECTIVE);
-  else
-    H5Pset_dxpl_mpio(prop_id,H5FD_MPIO_INDEPENDENT);
-#endif
   if (memory_space_id > -1) {
 
     H5Dwrite(data_set_id,H5T_NATIVE_DOUBLE,memory_space_id,file_space_id,
@@ -315,20 +297,20 @@ void HDF::printDataSpaceInfo() {
   int rank = H5Sget_simple_extent_dims(file_space_id,dims,NULL);
   if (rank > 1) {
     sprintf(string2," dim1: %d",(int)dims[1]);
-    strcat(string,string2);
+//    strcat(string,string2);
   }
   if (rank > 2) {
     sprintf(string2," dim2: %d",(int)dims[2]);
-    strcat(string,string2);
+//    strcat(string,string2);
   }
   rank = H5Sget_simple_extent_dims(memory_space_id,dims,NULL);
   if (rank > 1) {
     sprintf(string3," dim1: %d",(int)dims[1]);
-    strcat(string2,string3);
+//    strcat(string2,string3);
   }
   if (rank > 2) {
     sprintf(string3," dim2: %d",(int)dims[2]);
-    strcat(string2,string3);
+//    strcat(string2,string3);
   }
   printf("%s\n%s\n",string,string2);
 }
@@ -336,24 +318,19 @@ void HDF::printDataSpaceInfo() {
 void HDF::writeString(char *title, char *string) {
   writeString(title,string,1);
 }
-
 void HDF::writeString(char *title, char *string, int collective) {
+/*
   hid_t string_type = H5Tcopy(H5T_C_S1);
   H5Tset_strpad(string_type,H5T_STR_NULLTERM);
   H5Tset_size(string_type,strlen(string)+1);
   createDataSpace(1,1,0,0);
   createDataSet(title,string_type,0);
   hid_t prop_id = H5Pcreate(H5P_DATASET_XFER);
-#ifndef SERIAL
-  if (collective)
-    H5Pset_dxpl_mpio(prop_id,H5FD_MPIO_COLLECTIVE);
-  else
-    H5Pset_dxpl_mpio(prop_id,H5FD_MPIO_INDEPENDENT);
-#endif
   H5Dwrite(data_set_id,string_type,H5S_ALL,H5S_ALL,prop_id,string);
   H5Pclose(prop_id);
   closeDataSet();
   closeDataSpaces();
+*/
 }
 
 void HDF::writeAttribute(char *title, char *string) {
@@ -376,9 +353,9 @@ void HDF::writeAttribute(char *title, int value) {
   hsize_t dims = 1;
   hid_t space_id = H5Screate_simple(1,&dims,&dims);
     
-  hid_t attribute_id = H5Acreate(grp_id[ngrp-1],title,HDF_NATIVE_INT,space_id,
+  hid_t attribute_id = H5Acreate(grp_id[ngrp-1],title,H5T_NATIVE_INT,space_id,
                                  H5P_DEFAULT);
-  H5Awrite(attribute_id,HDF_NATIVE_INT,&value);
+  H5Awrite(attribute_id,H5T_NATIVE_INT,&value);
   H5Aclose(attribute_id);
   H5Sclose(space_id);
 }
@@ -406,5 +383,3 @@ HDF::~HDF() {
     printf("ERROR: %d groups not freed.\n",ngrp);
   H5Fclose(file_id);
 }
-
-#endif

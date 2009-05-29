@@ -1,15 +1,11 @@
 common_src   = ./
 
-ifndef jaguar
-  HDF5_FLAGS = -I${HDF5_INCLUDE} -DUSE_HDF5
-  HDF5_LIBS = -L${HDF5_LIB} -lhdf5 -lz
-else
-# the below is for jaguar
-  HDF5_FLAGS = $(HDF5_CLIB) -DUSE_HDF5
-  HDF5_LIBS = $(HDF5_CLIB) -lhdf5 -lz
-endif
+HDF5_FLAGS = -I/ccs/home/ghammond/software/lib/hdf5-1.6.5/include
+HDF5_LIBS = -L/ccs/home/ghammond/software/lib/hdf5-1.6.5/lib -lhdf5
 
 LIBS = ${HDF5_LIBS}
+
+CC = g++
 
 CFLAGS		 =  ${HDF5_FLAGS}
 FFLAGS		 = 
@@ -24,7 +20,7 @@ dataloader_obj = \
 	${common_src}DataLoader.o
 
 dataloader: $(dataloader_obj)
-	${CC} -o dataloader ${dataloader_obj} ${LIBS}
+	$(CC) -o dataloader ${dataloader_obj} ${LIBS}
 
 #Dependencies
 FileIO.o : 

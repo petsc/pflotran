@@ -8,12 +8,12 @@ int main(int argc, char **args) {
   int nx, ny, nz;
 
   cout << "Enter nx ny nz: ";
-//  cin >> nx;
-//  cin >> ny;
-//  cin >> nz;
-  nx = 1;
-  ny = 2;
-  nz = 3;
+  cin >> nx;
+  cin >> ny;
+  cin >> nz;
+//  nx = 1;
+//  ny = 2;
+//  nz = 3;
   int n = nx*ny*nz;
 
   char filename[1024];
@@ -24,7 +24,7 @@ int main(int argc, char **args) {
 
   file->createFileSpace(1,n,NULL,NULL);
   printf("Cell Ids\n");
-  file->createDataSet("Cell Ids",HDF_NATIVE_INT,compress);
+  file->createDataSet("Cell Ids",H5T_NATIVE_INT,compress);
 
   int *cell_ids = new int[n];
   for (int i=0; i<n; i++)
@@ -65,7 +65,7 @@ int main(int argc, char **args) {
   printf("Porosity\n");
   file->createDataSet("Porosity",H5T_NATIVE_DOUBLE,compress);
 
-  strcpy(filename,"Porosity.final");
+  strcpy(filename,"porosity.final");
   datafile = new FileIO(filename);
   for (int i=0; i<n; i++) values[i] = 0.;
   for (int i=0; i<n; i++) {

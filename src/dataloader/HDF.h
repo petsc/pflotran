@@ -2,6 +2,8 @@
 #define HDF_H_
 
 #include "hdf5.h"
+//#include <stdio.h>
+//#include <string.h>
 
 //#ifdef PETSC_USE_64BIT_INDICES
 //#define HDF_NATIVE_INT H5T_NATIVE_LLONG 
