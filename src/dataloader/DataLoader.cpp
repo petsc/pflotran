@@ -1,6 +1,8 @@
 #include "FileIO.h"
 #include "HDF.h"
 
+#include <math.h>
+
 #undef __FUNCT__
 #define __FUNCT__ "main"
 int main(int argc, char **args) {
@@ -54,6 +56,27 @@ int main(int argc, char **args) {
   }
   delete datafile;
 
+  double min = 1.e20;
+  double max = -1.e20;
+  double average = 0.;
+  for (int i=0; i<n; i++) {
+    if (values[i] < min) min = values[i];
+    if (values[i] > max) max = values[i];
+    average += values[i];
+  }
+
+  average /= double(n);
+  double stdev = 0.;
+  for (int i=0; i<n; i++) {
+    stdev += (values[i]-average)*(values[i]-average);
+  }
+  stdev = sqrt(stdev/double(n));
+
+  printf("Average Permeability: %e\n", average);
+  printf("Stdev Permeability: %e\n", stdev);
+  printf("Minimum Permeability: %e\n", min);
+  printf("Maximum Permeability: %e\n", max);
+
   file->setHyperSlab(n);
   file->createMemorySpace(1,n,NULL,NULL);
   file->writeDouble(values);
@@ -73,6 +96,38 @@ int main(int argc, char **args) {
     datafile->readDouble(&values[i]);
   }
   delete datafile;
+
+  min = 1.e20;
+  max = -1.e20;
+  average = 0.;
+  int num_below_0 = 0;
+  int num_below_05 = 0;
+  double average_trunc = 0.;
+  for (int i=0; i<n; i++) {
+    if (values[i] < min) min = values[i];
+    if (values[i] > max) max = values[i];
+    average += values[i];
+    if (values[i] < 0.05) {
+      if (values[i] < 0.) num_below_0++;
+      num_below_05++;
+      values[i] = 0.05;
+    }
+    average_trunc += values[i];
+  }
+
+  average /= double(n);
+  stdev = 0.;
+  for (int i=0; i<n; i++) {
+    stdev += (values[i]-average)*(values[i]-average);
+  }
+  stdev = sqrt(stdev/double(n));
+
+  printf("Average Permeability: %e\n", average);
+  printf("Stdev Permeability: %e\n", stdev);
+  printf("Number of porosities below 0.: %d\n", num_below_0);
+  printf("Number of porosities below 0.05: %d\n", num_below_05);
+  printf("Minimum Porosity: %e\n", min);
+  printf("Maximum Porosity: %e\n", max);
 
   file->setHyperSlab(n);
   file->createMemorySpace(1,n,NULL,NULL);
