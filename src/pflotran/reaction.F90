@@ -363,6 +363,8 @@ subroutine ReactionRead(reaction,input,option)
         reaction%act_coef_use_bdot = PETSC_FALSE
       case('MOLAL','MOLARITY')
         option%initialize_with_molality = PETSC_TRUE
+      case('ACTIVITY_H2O','ACTIVITY_WATER')
+        reaction%use_activity_h2o = PETSC_TRUE
       case('OUTPUT')
         call InputSkipToEnd(input,option,word)
       case('MAX_DLNC')
@@ -413,8 +415,7 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   PetscTruth :: found
   PetscInt :: icomp, jcomp
   PetscInt :: imnrl, jmnrl
-  PetscInt :: igas, dummy_int
-  PetscReal :: value
+  PetscInt :: igas
   PetscReal :: constraint_conc(reaction%ncomp)
   PetscInt :: constraint_type(reaction%ncomp)
   character(len=MAXWORDLENGTH) :: constraint_spec_name(reaction%ncomp)
@@ -589,7 +590,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscTruth :: compute_activity_coefs
 
   PetscInt :: constraint_id(reaction%ncomp)
-  PetscReal :: ln_act_h2o
+! PetscReal :: ln_act_h2o
   PetscReal :: lnQK, QK
   PetscReal :: tempreal
   PetscReal :: pres, tc, xphico2, henry 
@@ -792,8 +793,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                           rt_auxvar%pri_act_coef(icomp)
           else ! H+ is a complex
           
-            ln_act_h2o = 0.d0
-          
             icplx = abs(reaction%h_ion_id)
             
             ! compute secondary species concentration
@@ -802,7 +801,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 
             ! activity of water
             if (reaction%eqcmplxh2oid(icplx) > 0) then
-              lnQK = lnQK + reaction%eqcmplxh2ostoich(icplx)*ln_act_h2o
+              lnQK = lnQK + reaction%eqcmplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
             endif
 
             do jcomp = 1, reaction%eqcmplxspecid(0,icplx)
@@ -825,15 +824,13 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                       
         case(CONSTRAINT_MINERAL)
 
-          ln_act_h2o = 0.d0
-
           imnrl = constraint_id(icomp)
           ! compute secondary species concentration
           lnQK = -reaction%mnrl_logK(imnrl)*LOG_TO_LN
 
           ! activity of water
           if (reaction%mnrlh2oid(imnrl) > 0) then
-            lnQK = lnQK + reaction%mnrlh2ostoich(imnrl)*ln_act_h2o
+            lnQK = lnQK + reaction%mnrlh2ostoich(imnrl)*rt_auxvar%ln_act_h2o
           endif
 
           do jcomp = 1, reaction%mnrlspecid(0,imnrl)
@@ -856,7 +853,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   
         case(CONSTRAINT_GAS)
 
-          ln_act_h2o = 0.d0
           igas = constraint_id(icomp)
           
           ! compute secondary species concentration
@@ -867,7 +863,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           
           ! activity of water
           if (reaction%eqgash2oid(igas) > 0) then
-            lnQK = lnQK + reaction%eqgash2ostoich(igas)*ln_act_h2o
+            lnQK = lnQK + reaction%eqgash2ostoich(igas)*rt_auxvar%ln_act_h2o
           endif
 
           do jcomp = 1, reaction%eqgasspecid(0,igas)
@@ -895,8 +891,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 
 #ifdef CHUAN_CO2        
         case(CONSTRAINT_SUPERCRIT_CO2)
-        
-          ln_act_h2o = 0.d0
           
           igas = constraint_id(icomp)
          
@@ -937,7 +931,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             
             ! activity of water
             if (reaction%eqgash2oid(igas) > 0) then
-              lnQK = lnQK + reaction%eqgash2ostoich(igas)*ln_act_h2o
+              lnQK = lnQK + reaction%eqgash2ostoich(igas)*rt_auxvar%ln_act_h2o
             endif
             do jcomp = 1, reaction%eqgasspecid(0,igas)
               comp_id = reaction%eqgasspecid(jcomp,igas)
@@ -1074,7 +1068,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   PetscTruth :: finished, found
   PetscReal :: conc, conc2
   PetscReal :: lnQK(reaction%nmnrl), QK(reaction%nmnrl)
-  PetscReal :: ln_act_h2o
+! PetscReal :: ln_act_h2o
   PetscReal :: charge_balance, ionic_strength
   PetscReal :: percent(reaction%neqcmplx+1)
   PetscReal :: totj, retardation, kd
@@ -1166,16 +1160,24 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     endif
     ionic_strength = 0.5d0 * ionic_strength
     
-    write(option%fid_out,'(a20,es12.4,a8)') '  ionic strength: ', ionic_strength,' [mol/L]'
+    write(option%fid_out,'(a20,es12.4,a8)') '  ionic strength: ', &
+      ionic_strength,' [mol/L]'
     write(option%fid_out,204) '  charge balance: ', charge_balance
     
-    write(option%fid_out,'(a20,1pe12.4,a5)') '        pressure: ', global_auxvar%pres(1),' [Pa]'
-    write(option%fid_out,'(a20,f8.2,a4)') '     temperature: ', global_auxvar%temp(1),' [C]'
-    write(option%fid_out,'(a20,f8.2,a9)') '     density H2O: ', global_auxvar%den_kg(1),' [kg/m^3]'
+    write(option%fid_out,'(a20,1pe12.4,a5)') '        pressure: ', &
+      global_auxvar%pres(1),' [Pa]'
+    write(option%fid_out,'(a20,f8.2,a4)') '     temperature: ', &
+      global_auxvar%temp(1),' [C]'
+    write(option%fid_out,'(a20,f8.2,a9)') '     density H2O: ', &
+      global_auxvar%den_kg(1),' [kg/m^3]'
+    write(option%fid_out,'(a20,1p2e12.4,a9)') 'ln / activity H2O: ', &
+      rt_auxvar%ln_act_h2o,exp(rt_auxvar%ln_act_h2o),' [---]'
 #ifdef CHUAN_CO2
     if (global_auxvar%den_kg(2) > 0.d0) then
-      write(option%fid_out,'(a20,f8.2,a9)') '     density CO2: ', global_auxvar%den_kg(2),' [kg/m^3]'
-      write(option%fid_out,'(a20,es12.4,a9)') '            xphi: ', global_auxvar%fugacoeff(1)
+      write(option%fid_out,'(a20,f8.2,a9)') '     density CO2: ', &
+        global_auxvar%den_kg(2),' [kg/m^3]'
+      write(option%fid_out,'(a20,es12.4,a9)') '            xphi: ', &
+        global_auxvar%fugacoeff(1)
     endif
 #endif
     write(option%fid_out,90)
@@ -1455,10 +1457,9 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
 
     do imnrl = 1, reaction%nmnrl
       ! compute saturation
-      ln_act_h2o = 0.d0
       lnQK(imnrl) = -reaction%mnrl_logK(imnrl)*LOG_TO_LN
       if (reaction%mnrlh2oid(imnrl) > 0) then
-        lnQK(imnrl) = lnQK(imnrl) + reaction%mnrlh2ostoich(imnrl)*ln_act_h2o
+        lnQK(imnrl) = lnQK(imnrl) + reaction%mnrlh2ostoich(imnrl)*rt_auxvar%ln_act_h2o
       endif
       do jcomp = 1, reaction%mnrlspecid(0,imnrl)
         comp_id = reaction%mnrlspecid(jcomp,imnrl)
@@ -1505,8 +1506,6 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     write(option%fid_out,132)
     write(option%fid_out,90)
     do igas = 1, reaction%ngas
-
-      ln_act_h2o = 0.d0
       
       ! compute gas partial pressure
       lnQK(igas) = -reaction%eqgas_logK(igas)*LOG_TO_LN
@@ -1516,7 +1515,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       
       ! activity of water
       if (reaction%eqgash2oid(igas) > 0) then
-        lnQK(igas) = lnQK(igas) + reaction%eqgash2ostoich(igas)*ln_act_h2o
+        lnQK(igas) = lnQK(igas) + reaction%eqgash2ostoich(igas)*rt_auxvar%ln_act_h2o
       endif
 
       do jcomp = 1, reaction%eqgasspecid(0,igas)
@@ -1846,6 +1845,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
   
   type(reaction_type), pointer :: reaction
   type(reactive_transport_auxvar_type) :: rt_auxvar 
+  type(reactive_transport_auxvar_type) :: rt_auxvar_pert
   type(global_auxvar_type) :: global_auxvar
   type(option_type) :: option
   PetscReal :: Res(reaction%ncomp)
@@ -1857,7 +1857,6 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
   PetscInt :: icomp, jcomp
   PetscReal :: Jac_dummy(reaction%ncomp,reaction%ncomp)
   PetscReal :: pert
-  type(reactive_transport_auxvar_type) :: rt_auxvar_pert
   PetscTruth :: compute_derivative
 
   ! add new reactions in the 3 locations below
@@ -1957,102 +1956,185 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
   type(option_type) :: option
   
   PetscInt :: icplx, icomp, it, j, jcomp, ncomp
-  PetscReal :: I, sqrt_I, II, sqrt_II, f, fpri, didi, dcdi, den, dgamdi, lnQK, sum
+  PetscReal :: I, sqrt_I, II, sqrt_II, f, fpri, didi, dcdi, den, dgamdi, &
+    lnQK, sum, sum1, sum_act_h2o
   PetscReal :: ln_conc(reaction%ncomp)
   PetscReal :: ln_act(reaction%ncomp)
-  PetscReal :: ln_act_h2o
+! PetscReal :: ln_act_h2o
 
 
   if (reaction%act_coef_update_algorithm == ACT_COEF_ALGORITHM_NEWTON) then
 
-  ln_conc = log(rt_auxvar%pri_molal)
-  ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
-  ln_act_h2o = 0.d0  ! assume act h2o = 1 for now
+    ln_conc = log(rt_auxvar%pri_molal)
+    ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
   
 #ifdef TEMP_DEPENDENT_LOGK
-  if (.not.option%use_isothermal) then
-    call ReactionInterpolateLogK(reaction%eqcmplx_logKcoef,reaction%eqcmplx_logK, &
+    if (.not.option%use_isothermal) then
+      call ReactionInterpolateLogK(reaction%eqcmplx_logKcoef,reaction%eqcmplx_logK, &
                                global_auxvar%temp(1),reaction%neqcmplx)
-  endif
+    endif
 #endif  
   
   ! compute primary species contribution to ionic strength
-  fpri = 0.d0
-  do j = 1, reaction%ncomp
-    fpri = fpri + rt_auxvar%pri_molal(j)*reaction%primary_spec_Z(j)* &
+    fpri = 0.d0
+    sum_act_h2o = 0.d0
+    do j = 1, reaction%ncomp
+      fpri = fpri + rt_auxvar%pri_molal(j)*reaction%primary_spec_Z(j)* &
                                          reaction%primary_spec_Z(j)
-  enddo
+      if (reaction%use_activity_h2o) then
+        sum_act_h2o = sum_act_h2o + rt_auxvar%pri_molal(j)
+      endif
+    enddo
   
-  it = 0
-  II = 0
-  do
-    it = it + 1
+    it = 0
+    II = 0
+    do
+      it = it + 1
+      
+      sum1 = 0.d0
 
-    if (it > 50) then
-      print *,' too many iterations in computing activity coefficients-stop',it,f,I
-      stop
-    endif
+      if (it > 50) then
+        print *,' too many iterations in computing activity coefficients-stop',it,f,I
+        stop
+      endif
     
   ! add secondary species contribution to ionic strength
-    I = fpri
-    do icplx = 1, reaction%neqcmplx ! for each secondary species
-      I = I + rt_auxvar%sec_molal(icplx)*reaction%eqcmplx_Z(icplx)* &
+      I = fpri
+      do icplx = 1, reaction%neqcmplx ! for each secondary species
+        I = I + rt_auxvar%sec_molal(icplx)*reaction%eqcmplx_Z(icplx)* &
                                          reaction%eqcmplx_Z(icplx)
-    enddo
-    I = 0.5d0*I
-    f = I
+      enddo
+      I = 0.5d0*I
+      f = I
     
-    if (abs(I-II) < 1.d-6*I) exit
+      if (abs(I-II) < 1.d-6*I) exit
     
-    if (reaction%neqcmplx > 0) then
-      didi = 0.d0
-      sqrt_I = sqrt(I)
-      do icplx = 1, reaction%neqcmplx
-        if (abs(reaction%eqcmplx_Z(icplx)) > 0.d0) then
-          sum = 0.5d0*reaction%debyeA*reaction%eqcmplx_Z(icplx)*reaction%eqcmplx_Z(icplx) &
+      if (reaction%neqcmplx > 0) then
+        didi = 0.d0
+        sqrt_I = sqrt(I)
+        do icplx = 1, reaction%neqcmplx
+          if (abs(reaction%eqcmplx_Z(icplx)) > 0.d0) then
+            sum = 0.5d0*reaction%debyeA*reaction%eqcmplx_Z(icplx)* &
+            reaction%eqcmplx_Z(icplx) &
             /(sqrt_I*(1.d0+reaction%debyeB*reaction%eqcmplx_a0(icplx)*sqrt_I)**2) &
             -reaction%debyeBdot
-          ncomp = reaction%eqcmplxspecid(0,icplx)
-          do jcomp = 1, ncomp
-            j = reaction%eqcmplxspecid(jcomp,icplx)
-            if(abs(reaction%primary_spec_Z(j)) > 0.d0) then
-               dgamdi = -0.5d0*reaction%debyeA*reaction%primary_spec_Z(j)**2/(sqrt_I* &
-                 (1.d0+reaction%debyeB*reaction%primary_spec_a0(j)*sqrt_I)**2)+reaction%debyeBdot 
-               sum = sum + reaction%eqcmplxstoich(jcomp,icplx)*dgamdi
-            endif
-          enddo
-          dcdi = rt_auxvar%sec_molal(icplx)*LOG_TO_LN*sum
-          didi = didi+0.5d0*reaction%eqcmplx_Z(icplx)*reaction%eqcmplx_Z(icplx)*dcdi
+            ncomp = reaction%eqcmplxspecid(0,icplx)
+            do jcomp = 1, ncomp
+              j = reaction%eqcmplxspecid(jcomp,icplx)
+              if(abs(reaction%primary_spec_Z(j)) > 0.d0) then
+                dgamdi = -0.5d0*reaction%debyeA*reaction%primary_spec_Z(j)**2/(sqrt_I* &
+                (1.d0+reaction%debyeB*reaction%primary_spec_a0(j)*sqrt_I)**2)+ &
+                reaction%debyeBdot 
+                sum = sum + reaction%eqcmplxstoich(jcomp,icplx)*dgamdi
+              endif
+            enddo
+            dcdi = rt_auxvar%sec_molal(icplx)*LOG_TO_LN*sum
+            didi = didi+0.5d0*reaction%eqcmplx_Z(icplx)*reaction%eqcmplx_Z(icplx)*dcdi
+          endif
+        enddo
+        den = 1.d0-didi
+        if (abs(den) > 0.d0) then
+          II = (f-I*didi)/den
+        else
+          II = f
         endif
-      enddo
-      den = 1.d0-didi
-      if (abs(den) > 0.d0) then
-        II = (f-I*didi)/den
       else
         II = f
       endif
-    else
-      II = f
-    endif
     
-    if (II < 0.d0) then
-      print *,'ionic strength negative! it =',it,' I= ',I,II,den,didi,dcdi,sum
-      stop
-    endif
+      if (II < 0.d0) then
+        print *,'ionic strength negative! it =',it,' I= ',I,II,den,didi,dcdi,sum
+        stop
+      endif
     
   ! compute activity coefficients
   ! primary species
-    I = II
-    sqrt_I = sqrt(I)
+      I = II
+      sqrt_I = sqrt(I)
+      do icomp = 1, reaction%ncomp
+        if (abs(reaction%primary_spec_Z(icomp)) > 0.d0) then
+          rt_auxvar%pri_act_coef(icomp) = exp((-reaction%primary_spec_Z(icomp)* &
+                                        reaction%primary_spec_Z(icomp)* &
+                                        sqrt_I*reaction%debyeA/ &
+                                        (1.d0+reaction%primary_spec_a0(icomp)* &
+                                        reaction%debyeB*sqrt_I)+ &
+                                        reaction%debyeBdot*I)* &
+                                        LOG_TO_LN)
+        else
+          rt_auxvar%pri_act_coef(icomp) = 1.d0
+        endif
+      enddo
+                
+  ! secondary species
+      do icplx = 1, reaction%neqcmplx
+        if (abs(reaction%eqcmplx_Z(icplx)) > 0.d0) then
+          rt_auxvar%sec_act_coef(icplx) = exp((-reaction%eqcmplx_Z(icplx)* &
+                                        reaction%eqcmplx_Z(icplx)* &
+                                        sqrt_I*reaction%debyeA/ &
+                                        (1.d0+reaction%eqcmplx_a0(icplx)* &
+                                        reaction%debyeB*sqrt_I)+ &
+                                        reaction%debyeBdot*I)* &
+                                        LOG_TO_LN)
+        else
+          rt_auxvar%sec_act_coef(icplx) = 1.d0
+        endif
+    
+    ! compute secondary species concentration
+        lnQK = -reaction%eqcmplx_logK(icplx)*LOG_TO_LN
+
+    ! activity of water
+        if (reaction%eqcmplxh2oid(icplx) > 0) then
+          lnQK = lnQK + reaction%eqcmplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
+        endif
+
+        ncomp = reaction%eqcmplxspecid(0,icplx)
+        do jcomp = 1, ncomp
+          icomp = reaction%eqcmplxspecid(jcomp,icplx)
+          lnQK = lnQK + reaction%eqcmplxstoich(jcomp,icplx)*ln_act(icomp)
+        enddo
+        rt_auxvar%sec_molal(icplx) = exp(lnQK)/rt_auxvar%sec_act_coef(icplx)
+        if (reaction%use_activity_h2o) sum1 = sum1 + rt_auxvar%sec_molal(icplx)
+      enddo
+      if (reaction%use_activity_h2o) then
+        rt_auxvar%ln_act_h2o = 1.d0-0.017d0*(sum_act_h2o+sum1)
+        if (rt_auxvar%ln_act_h2o > 0.d0) then
+          rt_auxvar%ln_act_h2o = log(rt_auxvar%ln_act_h2o)
+        else
+          rt_auxvar%ln_act_h2o = 0.d0
+          print *,'activity of H2O negative! ln act H2O =',rt_auxvar%ln_act_h2o
+        endif
+      endif
+    enddo
+  
+  else
+  
+  ! compute ionic strength
+  ! primary species
+    I = 0.d0
     do icomp = 1, reaction%ncomp
-      if (abs(reaction%primary_spec_Z(icomp)) > 0.d0) then
+      I = I + rt_auxvar%pri_molal(icomp)*reaction%primary_spec_Z(icomp)* &
+                                       reaction%primary_spec_Z(icomp)
+    enddo
+  
+  ! secondary species
+    do icplx = 1, reaction%neqcmplx ! for each secondary species
+      I = I + rt_auxvar%sec_molal(icplx)*reaction%eqcmplx_Z(icplx)* &
+                                       reaction%eqcmplx_Z(icplx)
+    enddo
+    I = 0.5d0*I
+    sqrt_I = sqrt(I)
+  
+  ! compute activity coefficients
+  ! primary species
+    do icomp = 1, reaction%ncomp
+      if (abs(reaction%primary_spec_Z(icomp)) > 1.d-10) then
         rt_auxvar%pri_act_coef(icomp) = exp((-reaction%primary_spec_Z(icomp)* &
-                                           reaction%primary_spec_Z(icomp)* &
-                                           sqrt_I*reaction%debyeA/ &
-                                           (1.d0+reaction%primary_spec_a0(icomp)* &
-                                                 reaction%debyeB*sqrt_I)+ &
-                                           reaction%debyeBdot*I)* &
-                                           LOG_TO_LN)
+                                      reaction%primary_spec_Z(icomp)* &
+                                      sqrt_I*reaction%debyeA/ &
+                                      (1.d0+reaction%primary_spec_a0(icomp)* &
+                                      reaction%debyeB*sqrt_I)+ &
+                                      reaction%debyeBdot*I)* &
+                                      LOG_TO_LN)
       else
         rt_auxvar%pri_act_coef(icomp) = 1.d0
       endif
@@ -2060,84 +2142,30 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
                 
   ! secondary species
     do icplx = 1, reaction%neqcmplx
-      if (abs(reaction%eqcmplx_Z(icplx)) > 0.d0) then
+      if (dabs(reaction%eqcmplx_Z(icplx)) > 1.d-10) then
         rt_auxvar%sec_act_coef(icplx) = exp((-reaction%eqcmplx_Z(icplx)* &
-                                           reaction%eqcmplx_Z(icplx)* &
-                                           sqrt_I*reaction%debyeA/ &
-                                           (1.d0+reaction%eqcmplx_a0(icplx)* &
-                                                 reaction%debyeB*sqrt_I)+ &
-                                           reaction%debyeBdot*I)* &
-                                           LOG_TO_LN)
+                                      reaction%eqcmplx_Z(icplx)* &
+                                      sqrt_I*reaction%debyeA/ &
+                                      (1.d0+reaction%eqcmplx_a0(icplx)* &
+                                      reaction%debyeB*sqrt_I)+ &
+                                      reaction%debyeBdot*I)* &
+                                      LOG_TO_LN)
       else
         rt_auxvar%sec_act_coef(icplx) = 1.d0
       endif
-    
-    ! compute secondary species concentration
-      lnQK = -reaction%eqcmplx_logK(icplx)*LOG_TO_LN
-
-    ! activity of water
-      if (reaction%eqcmplxh2oid(icplx) > 0) then
-        lnQK = lnQK + reaction%eqcmplxh2ostoich(icplx)*ln_act_h2o
+      if (reaction%use_activity_h2o) then
+        sum_act_h2o = sum_act_h2o + rt_auxvar%sec_molal(icplx)
       endif
-
-      ncomp = reaction%eqcmplxspecid(0,icplx)
-      do jcomp = 1, ncomp
-        icomp = reaction%eqcmplxspecid(jcomp,icplx)
-        lnQK = lnQK + reaction%eqcmplxstoich(jcomp,icplx)*ln_act(icomp)
-      enddo
-      rt_auxvar%sec_molal(icplx) = exp(lnQK)/rt_auxvar%sec_act_coef(icplx)
     enddo
-  enddo
-  
-  else
-  
-  ! compute ionic strength
-  ! primary species
-  I = 0.d0
-  do icomp = 1, reaction%ncomp
-    I = I + rt_auxvar%pri_molal(icomp)*reaction%primary_spec_Z(icomp)* &
-                                       reaction%primary_spec_Z(icomp)
-  enddo
-  
-  ! secondary species
-  do icplx = 1, reaction%neqcmplx ! for each secondary species
-    I = I + rt_auxvar%sec_molal(icplx)*reaction%eqcmplx_Z(icplx)* &
-                                       reaction%eqcmplx_Z(icplx)
-  enddo
-  I = 0.5d0*I
-  sqrt_I = sqrt(I)
-  
-  ! compute activity coefficients
-  ! primary species
-  do icomp = 1, reaction%ncomp
-    if (abs(reaction%primary_spec_Z(icomp)) > 1.d-10) then
-      rt_auxvar%pri_act_coef(icomp) = exp((-reaction%primary_spec_Z(icomp)* &
-                                           reaction%primary_spec_Z(icomp)* &
-                                           sqrt_I*reaction%debyeA/ &
-                                           (1.d0+reaction%primary_spec_a0(icomp)* &
-                                                 reaction%debyeB*sqrt_I)+ &
-                                           reaction%debyeBdot*I)* &
-                                          LOG_TO_LN)
-    else
-      rt_auxvar%pri_act_coef(icomp) = 1.d0
+    
+    if (reaction%use_activity_h2o) then
+      sum_act_h2o = 1.d0-0.017d0*sum_act_h2o
+      if (sum_act_h2o > 0.d0) then
+        rt_auxvar%ln_act_h2o = log(sum_act_h2o)
+      else
+        rt_auxvar%ln_act_h2o = 0.d0
+      endif
     endif
-  enddo
-                
-  ! secondary species
-  do icplx = 1, reaction%neqcmplx
-    if (dabs(reaction%eqcmplx_Z(icplx)) > 1.d-10) then
-      rt_auxvar%sec_act_coef(icplx) = exp((-reaction%eqcmplx_Z(icplx)* &
-                                           reaction%eqcmplx_Z(icplx)* &
-                                           sqrt_I*reaction%debyeA/ &
-                                           (1.d0+reaction%eqcmplx_a0(icplx)* &
-                                                 reaction%debyeB*sqrt_I)+ &
-                                           reaction%debyeBdot*I)* &
-                                          LOG_TO_LN)
-    else
-      rt_auxvar%sec_act_coef(icplx) = 1.d0
-    endif
-  enddo
-  
   endif
 end subroutine RActivityCoefficients
 
@@ -2163,7 +2191,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   PetscInt :: i, j, icplx, icomp, jcomp, iphase, ncomp, ieqgas,ierr
   PetscReal :: ln_conc(reaction%ncomp)
   PetscReal :: ln_act(reaction%ncomp)
-  PetscReal :: ln_act_h2o
+! PetscReal :: ln_act_h2o
   PetscReal :: lnQK, tempreal
   PetscReal :: den_kg_per_L
   PetscReal :: pressure, temperature, xphico2, muco2, den
@@ -2181,7 +2209,6 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 
   ln_conc = log(rt_auxvar%pri_molal)
   ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
-  ln_act_h2o = 0.d0  ! assume act h2o = 1 for now
   rt_auxvar%total(:,iphase) = rt_auxvar%pri_molal(:)
   ! initialize derivatives
   rt_auxvar%dtotal = 0.d0
@@ -2202,7 +2229,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 
     ! activity of water
     if (reaction%eqcmplxh2oid(icplx) > 0) then
-      lnQK = lnQK + reaction%eqcmplxh2ostoich(icplx)*ln_act_h2o
+      lnQK = lnQK + reaction%eqcmplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
     endif
 
     ncomp = reaction%eqcmplxspecid(0,icplx)
@@ -2290,8 +2317,8 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
         endif 
           
         if (reaction%eqgash2oid(ieqgas) > 0) then
-           lnQK = lnQK + reaction%eqgash2ostoich(ieqgas)*ln_act_h2o
-           print *,'Ttotal', reaction%eqgash2ostoich(ieqgas), ln_act_h2o
+           lnQK = lnQK + reaction%eqgash2ostoich(ieqgas)*rt_auxvar%ln_act_h2o
+           print *,'Ttotal', reaction%eqgash2ostoich(ieqgas), rt_auxvar%ln_act_h2o
         endif
    
    ! contribute to %total          
@@ -2385,7 +2412,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: dSi_dSx
   PetscReal :: free_site_conc
   PetscReal :: ln_free_site
-  PetscReal :: ln_act_h2o
+! PetscReal :: ln_act_h2o
   PetscReal :: lnQK, tempreal, tempreal1, tempreal2, total
   PetscInt :: irxn
   PetscInt, parameter :: iphase = 1
@@ -2395,7 +2422,6 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
   
   ln_conc = log(rt_auxvar%pri_molal)
   ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
-  ln_act_h2o = 0.d0  ! assume act h2o = 1 for now
 
 #ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal) then
@@ -2425,7 +2451,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
 
         ! activity of water
         if (reaction%eqsurfcmplxh2oid(icplx) > 0) then
-          lnQK = lnQK + reaction%eqsurfcmplxh2ostoich(icplx)*ln_act_h2o
+          lnQK = lnQK + reaction%eqsurfcmplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
         endif
 
         lnQK = lnQK + reaction%eqsurfcmplx_free_site_stoich(icplx)* &
@@ -2563,7 +2589,7 @@ subroutine RTotalSorbEqIonx(rt_auxvar,global_auxvar,reaction,option)
   PetscInt :: i, j, k, icplx, icomp, jcomp, iphase, ncomp, ncplx
   PetscReal :: ln_conc(reaction%ncomp)
   PetscReal :: ln_act(reaction%ncomp)
-  PetscReal :: ln_act_h2o
+! PetscReal :: ln_act_h2o
   PetscReal :: tempreal, tempreal1, tempreal2, total
   PetscInt :: irxn
   PetscReal, parameter :: tol = 1.d-12
@@ -2582,7 +2608,6 @@ subroutine RTotalSorbEqIonx(rt_auxvar,global_auxvar,reaction,option)
 
   ln_conc = log(rt_auxvar%pri_molal)
   ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
-  ln_act_h2o = 0.d0  ! assume act h2o = 1 for now
     
   ! Ion Exchange
   if (associated(rt_auxvar%eqionx_conc)) rt_auxvar%eqionx_conc = 0.d0
@@ -2749,7 +2774,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: dSi_dSx
   PetscReal :: free_site_conc
   PetscReal :: ln_free_site
-  PetscReal :: ln_act_h2o
+! PetscReal :: ln_act_h2o
   PetscReal :: lnQK, tempreal, tempreal1, tempreal2, total
   PetscInt :: irxn
   PetscReal, parameter :: tol = 1.d-12
@@ -2764,7 +2789,6 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
 
   ln_conc = log(rt_auxvar%pri_molal)
   ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
-  ln_act_h2o = 0.d0  ! assume act h2o = 1 for now
     
 #ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal) then
@@ -2798,7 +2822,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
 
         ! activity of water
         if (reaction%eqsurfcmplxh2oid(icplx) > 0) then
-          lnQK = lnQK + reaction%eqsurfcmplxh2ostoich(icplx)*ln_act_h2o
+          lnQK = lnQK + reaction%eqsurfcmplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
         endif
 
         lnQK = lnQK + reaction%eqsurfcmplx_free_site_stoich(icplx)* &
@@ -2960,7 +2984,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: ln_sec(reaction%neqcmplx)
   PetscReal :: ln_act(reaction%ncomp)
   PetscReal :: ln_sec_act(reaction%neqcmplx)
-  PetscReal :: ln_act_h2o
+! PetscReal :: ln_act_h2o
   PetscReal :: QK, lnQK, dQK_dCj, dQK_dmj
   PetscTruth :: prefactor_exists
 
@@ -2973,8 +2997,6 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     ln_sec = log(rt_auxvar%sec_molal)
     ln_sec_act = ln_sec+log(rt_auxvar%sec_act_coef)
   endif
-  
-  ln_act_h2o = 0.d0
 
 #ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal) then
@@ -2989,7 +3011,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
 
     ! activity of water
     if (reaction%kinmnrlh2oid(imnrl) > 0) then
-      lnQK = lnQK + reaction%kinmnrlh2ostoich(imnrl)*ln_act_h2o
+      lnQK = lnQK + reaction%kinmnrlh2ostoich(imnrl)*rt_auxvar%ln_act_h2o
     endif
 
     ncomp = reaction%kinmnrlspecid(0,imnrl)

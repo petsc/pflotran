@@ -31,16 +31,20 @@ module Reactive_Transport_Aux_module
     PetscReal, pointer :: eqionx_conc(:,:)
 !   PetscReal, pointer :: eqionx_cec(:)
     ! PetscReal, pointer :: eqionx_molfrac(:)
+    
     ! mineral reactions
     PetscReal, pointer :: mnrl_volfrac0(:)
     PetscReal, pointer :: mnrl_volfrac(:)
     PetscReal, pointer :: mnrl_area0(:)
     PetscReal, pointer :: mnrl_area(:)
     PetscReal, pointer :: mnrl_rate(:)
+    
     ! activity coefficients
-    PetscReal :: act_h2o
+!   PetscReal :: act_h2o
     PetscReal, pointer :: pri_act_coef(:)
     PetscReal, pointer :: sec_act_coef(:)
+
+    PetscReal :: ln_act_h2o
     
     PetscReal, pointer :: mass_balance(:,:)
     PetscReal, pointer :: mass_balance_delta(:,:)
@@ -148,7 +152,6 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
     nullify(aux_var%gas_molal)
   endif
 
-  
   if (reaction%neqsorb > 0) then  
     allocate(aux_var%total_sorb(reaction%ncomp))
     aux_var%total_sorb = 0.d0
@@ -208,7 +211,6 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
     nullify(aux_var%mnrl_rate)
   endif
   
-  aux_var%act_h2o = 1.d0
   allocate(aux_var%pri_act_coef(reaction%ncomp))
   aux_var%pri_act_coef = 1.d0
   if (reaction%neqcmplx > 0) then
@@ -217,6 +219,9 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   else
     nullify(aux_var%sec_act_coef)
   endif
+
+! initialize ln activity H2O
+  aux_var%ln_act_h2o = 0.d0
   
   if (option%iflag /= 0 .and. option%compute_mass_balance_new) then
     allocate(aux_var%mass_balance(reaction%ncomp,option%nphase))
@@ -285,7 +290,8 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
     aux_var%mnrl_rate = aux_var2%mnrl_rate
   endif
   
-  aux_var%act_h2o = aux_var2%act_h2o
+  aux_var%ln_act_h2o = aux_var2%ln_act_h2o
+  
   aux_var%pri_act_coef = aux_var2%pri_act_coef
   if (associated(aux_var%sec_act_coef)) &
     aux_var%sec_act_coef = aux_var2%sec_act_coef
@@ -356,6 +362,9 @@ subroutine RTAuxVarDestroy(aux_var)
   nullify(aux_var%pri_act_coef)
   if (associated(aux_var%sec_act_coef))deallocate(aux_var%sec_act_coef)
   nullify(aux_var%sec_act_coef)
+
+! if (associated(aux_var%ln_act_h2o))deallocate(aux_var%ln_act_h2o)
+! nullify(aux_var%ln_act_h2o)
 
   if (associated(aux_var%mass_balance)) deallocate(aux_var%mass_balance)
   nullify(aux_var%mass_balance)

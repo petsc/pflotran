@@ -151,6 +151,7 @@ module Reaction_Aux_module
     PetscInt :: act_coef_update_algorithm
     PetscTruth :: checkpoint_activity_coefs
     PetscTruth :: act_coef_use_bdot
+    PetscTruth :: use_activity_h2o
     
     ! compressed arrays for efficient computation
     ! primary aqueous complexes
@@ -348,6 +349,7 @@ function ReactionCreate()
   reaction%print_total_sorb = PETSC_FALSE
   reaction%use_log_formulation = PETSC_FALSE
   reaction%use_full_geochemistry = PETSC_FALSE
+  reaction%use_activity_h2o = PETSC_FALSE
   
   reaction%h_ion_id = 0
   reaction%o2_gas_id = 0
