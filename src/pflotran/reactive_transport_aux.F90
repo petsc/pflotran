@@ -363,9 +363,6 @@ subroutine RTAuxVarDestroy(aux_var)
   if (associated(aux_var%sec_act_coef))deallocate(aux_var%sec_act_coef)
   nullify(aux_var%sec_act_coef)
 
-! if (associated(aux_var%ln_act_h2o))deallocate(aux_var%ln_act_h2o)
-! nullify(aux_var%ln_act_h2o)
-
   if (associated(aux_var%mass_balance)) deallocate(aux_var%mass_balance)
   nullify(aux_var%mass_balance)
   if (associated(aux_var%mass_balance_delta)) deallocate(aux_var%mass_balance_delta)

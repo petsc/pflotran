@@ -590,7 +590,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscTruth :: compute_activity_coefs
 
   PetscInt :: constraint_id(reaction%ncomp)
-! PetscReal :: ln_act_h2o
   PetscReal :: lnQK, QK
   PetscReal :: tempreal
   PetscReal :: pres, tc, xphico2, henry 
@@ -1068,7 +1067,6 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   PetscTruth :: finished, found
   PetscReal :: conc, conc2
   PetscReal :: lnQK(reaction%nmnrl), QK(reaction%nmnrl)
-! PetscReal :: ln_act_h2o
   PetscReal :: charge_balance, ionic_strength
   PetscReal :: percent(reaction%neqcmplx+1)
   PetscReal :: totj, retardation, kd
@@ -1960,8 +1958,6 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
     lnQK, sum, sum1, sum_act_h2o
   PetscReal :: ln_conc(reaction%ncomp)
   PetscReal :: ln_act(reaction%ncomp)
-! PetscReal :: ln_act_h2o
-
 
   if (reaction%act_coef_update_algorithm == ACT_COEF_ALGORITHM_NEWTON) then
 
@@ -2191,7 +2187,6 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   PetscInt :: i, j, icplx, icomp, jcomp, iphase, ncomp, ieqgas,ierr
   PetscReal :: ln_conc(reaction%ncomp)
   PetscReal :: ln_act(reaction%ncomp)
-! PetscReal :: ln_act_h2o
   PetscReal :: lnQK, tempreal
   PetscReal :: den_kg_per_L
   PetscReal :: pressure, temperature, xphico2, muco2, den
@@ -2318,7 +2313,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
           
         if (reaction%eqgash2oid(ieqgas) > 0) then
            lnQK = lnQK + reaction%eqgash2ostoich(ieqgas)*rt_auxvar%ln_act_h2o
-           print *,'Ttotal', reaction%eqgash2ostoich(ieqgas), rt_auxvar%ln_act_h2o
+!          print *,'Ttotal', reaction%eqgash2ostoich(ieqgas), rt_auxvar%ln_act_h2o
         endif
    
    ! contribute to %total          
@@ -2412,7 +2407,6 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: dSi_dSx
   PetscReal :: free_site_conc
   PetscReal :: ln_free_site
-! PetscReal :: ln_act_h2o
   PetscReal :: lnQK, tempreal, tempreal1, tempreal2, total
   PetscInt :: irxn
   PetscInt, parameter :: iphase = 1
@@ -2589,7 +2583,6 @@ subroutine RTotalSorbEqIonx(rt_auxvar,global_auxvar,reaction,option)
   PetscInt :: i, j, k, icplx, icomp, jcomp, iphase, ncomp, ncplx
   PetscReal :: ln_conc(reaction%ncomp)
   PetscReal :: ln_act(reaction%ncomp)
-! PetscReal :: ln_act_h2o
   PetscReal :: tempreal, tempreal1, tempreal2, total
   PetscInt :: irxn
   PetscReal, parameter :: tol = 1.d-12
@@ -2774,7 +2767,6 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: dSi_dSx
   PetscReal :: free_site_conc
   PetscReal :: ln_free_site
-! PetscReal :: ln_act_h2o
   PetscReal :: lnQK, tempreal, tempreal1, tempreal2, total
   PetscInt :: irxn
   PetscReal, parameter :: tol = 1.d-12
@@ -2984,7 +2976,6 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: ln_sec(reaction%neqcmplx)
   PetscReal :: ln_act(reaction%ncomp)
   PetscReal :: ln_sec_act(reaction%neqcmplx)
-! PetscReal :: ln_act_h2o
   PetscReal :: QK, lnQK, dQK_dCj, dQK_dmj
   PetscTruth :: prefactor_exists
 
