@@ -1225,21 +1225,40 @@ END
 
 \section{Multicomponent-Multirate Model for Sorption}
 
+\subsection{Governing Equations}
+
 \setcounter{equation}{0}
 
-The multirate formulation is considered only for surface complexation reactions, but ion exchange could also be implemented if desired. Consider surface complexation reactions of the form
+The multirate formulation is considered only for surface complexation reactions, but ion exchange could also be implemented if desired. For surface complexation reactions of the form
 \EQ
 \nu_\a >\!\!\chi_\a + \sum_j\nu_{ji} \A_j \arrows >\!\! \S_{i\a},
 \EN
-for the $i$th surface complex $>\!\!\S_{i\a}$ on site $\a$ and empty site $>\!\!\chi_\a$. For simplicity, in what follows it is assumed that $\nu_\a\!=\!1$. 
-
-With each site $\a$ is associated a rate constant $k_\a$ and site concentration $\omega_\a$. These quantities are defined through a given distribution of sites $\P(\a)$, such that
+for the $i$th surface complex $>\!\!\S_{i\a}$ on site $\a$ and empty site $>\!\!\chi_\a$, 
+the multirate solute transport equations have the form
 \EQ
-\int_0^\infty \P(k_\a)dk_\a \eq 1.
+\frac{\p}{\p t}\varphi \Psi_j + \bnabla\cdot\bOmega_j \eq -\sum_{i\a}\nu_{ji}\frac{\p S_{i\a}}{\p t} - \sum_m\nu_{jm}I_m,
+\EN
+or
+\EQ
+\frac{\p}{\p t}\left(\varphi \Psi_j + \sum_{i\a}\nu_{ji} S_{i\a}\right) + \bnabla\cdot\bOmega_j \eq -\sum_m\nu_{jm}I_m.
+\EN
+For simplicity, in what follows it is assumed that $\nu_\a\!=\!1$. In the multirate model the rates of sorption reactions are described through a kinetic relation given by
+\EQ\label{sorbed}
+\frac{\p S_{i\a}}{\p t} \eq k_\a^{} \big(S_{i\a}^{\rm eq}-S_{i\a}\big),
+\EN
+for surface complexes, and
+\BA\label{fsite}
+\frac{\p S_{\a}}{\p t} &\eq -\sum_i k_\a^{} \big(S_{i\a}^{\rm eq}-S_{i\a}\big),\\
+&\eq k_\a\big(S_\a^{\rm eq}-S_{\a}\big),
+\EA
+for empty sites, where $S_\a^{\rm eq}$ denotes the equilibrium sorbed concentration.
+With each site $\a$ is associated a rate constant $k_\a$ and site concentration $\omega_\a$. These quantities are defined through a given distribution of sites $\wp(\a)$, such that
+\EQ
+\int_0^\infty \wp(k_\a)dk_\a \eq 1.
 \EN
 The fraction of sites $f_\a$ belonging to site $\a$ is determined from the relation
 \EQ
-f_\a \eq \int_{k_\a-\Delta k_\a/2}^{k_\a+\Delta k_\a/2} \P(k_\a)dk_\a \simeq \P(k_\a)\Delta k_\a,
+f_\a \eq \int_{k_\a-\Delta k_\a/2}^{k_\a+\Delta k_\a/2} \wp(k_\a)dk_\a \simeq \wp(k_\a)\Delta k_\a,
 \EN
 with the property that
 \EQ
@@ -1250,16 +1269,21 @@ Given that the total site concentration is $\omega$, then the site concentration
 \omega_\a \eq f_\a \omega.
 \EN
 
-The rate of reaction is described through a kinetic relation given by
-\EQ\label{sorbed}
-\frac{\p S_{i\a}}{\p t} \eq k_\a^{} \big(S_{i\a}^{\rm eq}-S_{i\a}\big),
+An alternative form of these equations is to introduce the total sorbed concentration for the $j$th primary species defined as
+\EQ
+q_{j\a}\eq\sum_i \nu_{ji}S_{i\a}.
 \EN
-for surface complexes, and
-\BA\label{fsite}
-\frac{\p S_{\a}}{\p t} &\eq -\sum_i k_\a^{} \big(S_{i\a}^{\rm eq}-S_{i\a}\big),\\
-&\eq k_\a\big(S_\a^{\rm eq}-S_{\a}\big),
-\EA
-for empty sites.
+Then the transport equations become
+\EQ
+\frac{\p}{\p t}\left(\varphi \Psi_j + \sum_{\a}q_{j\a}\right) + \bnabla\cdot\bOmega_j \eq  - \sum_m\nu_{jm}I_m.
+\EN
+The sorbed concentrations are obtained from the equations
+\EQ
+\frac{\p q_{j\a}}{\p t} \eq k_\a^{} \big(q_{j\a}^{\rm eq}-q_{j\a}\big).
+\EN
+
+\subsubsection{Surface Complexation Model}
+
 The equilibrium sorption concentration $S_{i\a}^{\rm eq}$ is given by
 \EQ
 S_{i\a}^{\rm eq}\eq \frac{\omega_\a K_i Q_i}{1+\sum_l K_lQ_l},
@@ -1284,31 +1308,20 @@ Using this result the empty site concentration can be computed directly from the
 \EQ
 S_\a \eq \omega_\a - \sum_i S_{i\a}.
 \EN
-
-The solute transport equations become
-\EQ
-\frac{\p}{\p t}\varphi \Psi_j + \bnabla\cdot\bOmega_j \eq -\sum_{i\a}\nu_{ji}\frac{\p S_{i\a}}{\p t} - \sum_m\nu_{jm}I_m,
-\EN
-or
-\EQ
-\frac{\p}{\p t}\left(\varphi \Psi_j + \sum_{i\a}\nu_{ji} S_{i\a}\right) + \bnabla\cdot\bOmega_j \eq -\sum_m\nu_{jm}I_m.
-\EN
-
-An alternative form of these equations is to introduce the total sorbed concentration for the $j$th primary species defined as
-\EQ
-q_{j\a}\eq\sum_i \nu_{ji}S_{i\a}.
-\EN
-Then the transport equations become
-\EQ
-\frac{\p}{\p t}\left(\varphi \Psi_j + \sum_{\a}q_{j\a}\right) + \bnabla\cdot\bOmega_j \eq  - \sum_m\nu_{jm}I_m.
-\EN
-The sorbed concentrations are obtained from the equations
-\EQ
-\frac{\p q_{j\a}}{\p t} \eq k_\a^{} \big(q_{j\a}^{\rm eq}-q_{j\a}\big),
-\EN
-where $q_{j\a}^{\rm eq}$ is defined as
+The equilibrium sorbed concentration $q_{j\a}^{\rm eq}$ is defined as
 \EQ\label{qeq}
 q_{j\a}^{\rm eq} \eq \sum_i \nu_{ji}^{} S_{i\a}^{\rm eq}\eq \frac{\omega_\a}{1+\sum_l K_lQ_l} \sum_i \nu_{ji}K_i Q_i.
+\EN
+
+\subsubsection{$K_d$ Model}
+
+For a constant $K_d$ model it is assumed that
+\EQ
+q_{j\a}^{\rm eq}\eq f_\a K_j^d \Psi_j.
+\EN
+The multirate equation is given by
+\EQ
+\frac{\p q_{j\a}}{\p t}\eq k_\a\big(f_\a K_j^d \Psi_j-q_{j\a}\big).
 \EN
 
 \subsection{Numerical Implementation}
