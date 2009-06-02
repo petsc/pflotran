@@ -533,13 +533,7 @@ subroutine Init(simulation)
   if (option%ntrandof > 0) then
     call RTSetup(realization)
 
-    if (dabs(option%uniform_velocity(1)) + dabs(option%uniform_velocity(2)) + &
-        dabs(option%uniform_velocity(3)) >  0.d0) then
-      call RealizAssignUniformVelocity(realization)
-    endif
-
     ! initialize densities and saturations
-
     if (option%nflowdof == 0) then
       call GlobalSetAuxVarScalar(realization,option%reference_pressure, &
                                  PRESSURE)
@@ -833,6 +827,7 @@ subroutine InitReadInput(simulation)
   use Input_module
   use String_module
   use Units_module
+  use Velocity_module
  
   implicit none
   
@@ -886,6 +881,7 @@ subroutine InitReadInput(simulation)
   type(stepper_type), pointer :: master_stepper
   type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option
+  type(velocity_dataset_type), pointer :: velocity_dataset
   type(input_type), pointer :: input
   
   
@@ -1002,13 +998,29 @@ subroutine InitReadInput(simulation)
 
 !....................
       case ('UNIFORM_VELOCITY')
-        call InputReadDouble(input,option,option%uniform_velocity(1))
+        velocity_dataset => VelocityDatasetCreate()
+        velocity_dataset%rank = 3
+        velocity_dataset%interpolation_method = 1 ! 1 = STEP
+        velocity_dataset%is_cyclic = PETSC_FALSE
+        allocate(velocity_dataset%times(1))
+        velocity_dataset%times = 0.d0
+        allocate(velocity_dataset%values(3,1))
+        velocity_dataset%times = 0.d0
+        allocate(velocity_dataset%cur_value(3))
+        velocity_dataset%cur_value = 0.d0
+        call InputReadDouble(input,option,velocity_dataset%values(1,1))
         call InputErrorMsg(input,option,'velx','UNIFORM_VELOCITY')
-        call InputReadDouble(input,option,option%uniform_velocity(2))
+        call InputReadDouble(input,option,velocity_dataset%values(2,1))
         call InputErrorMsg(input,option,'vely','UNIFORM_VELOCITY')
-        call InputReadDouble(input,option,option%uniform_velocity(3))
+        call InputReadDouble(input,option,velocity_dataset%values(3,1))
         call InputErrorMsg(input,option,'velz','UNIFORM_VELOCITY')
+        realization%velocity_dataset => velocity_dataset
       
+      case ('VELOCITY_DATASET')
+        velocity_dataset => VelocityDatasetCreate()
+        call VelocityDatasetRead(velocity_dataset,input,option)
+        realization%velocity_dataset => velocity_dataset
+
 !....................
       case ('DEBUG')
         call DebugRead(realization%debug,input,option)
@@ -1916,75 +1928,6 @@ subroutine assignMaterialPropToRegions(realization)
                                   field%tor_loc,ONEDOF)
 
 end subroutine assignMaterialPropToRegions
-
-! ************************************************************************** !
-!
-! assignUniformVelocity: Assigns uniform velocity in connection list
-!                        darcy velocities
-! author: Glenn Hammond
-! date: 02/20/08
-!
-! ************************************************************************** !
-subroutine assignUniformVelocity(realization)
-
-  use Realization_module
-  use Region_module
-  use Option_module
-  use Field_module
-  use Coupler_module
-  use Condition_module
-  use Connection_module
-  use Grid_module
-  use Patch_module
-  
-  implicit none
-  
-  type(realization_type) :: realization
-  
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field  
-  type(grid_type), pointer :: grid
-  type(patch_type), pointer :: patch   
-  type(coupler_type), pointer :: boundary_condition
-  type(connection_set_type), pointer :: cur_connection_set
-  PetscInt :: iconn, sum_connection
-  PetscReal :: vdarcy
-    
-  option => realization%option
-  field => realization%field
-  patch => realization%patch
-  grid => patch%grid
-    
-  ! Internal Flux Terms -----------------------------------
-  cur_connection_set => grid%internal_connection_set_list%first
-  sum_connection = 0
-  do 
-    if (.not.associated(cur_connection_set)) exit
-    do iconn = 1, cur_connection_set%num_connections
-      sum_connection = sum_connection + 1
-      vdarcy = dot_product(option%uniform_velocity, &
-                           cur_connection_set%dist(1:3,iconn))
-      patch%internal_velocities(1,sum_connection) = vdarcy
-    enddo
-    cur_connection_set => cur_connection_set%next
-  enddo    
-
-  ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%boundary_conditions%first
-  sum_connection = 0
-  do 
-    if (.not.associated(boundary_condition)) exit
-    cur_connection_set => boundary_condition%connection_set
-    do iconn = 1, cur_connection_set%num_connections
-      sum_connection = sum_connection + 1
-      vdarcy = dot_product(option%uniform_velocity, &
-                           cur_connection_set%dist(1:3,iconn))
-      patch%boundary_velocities(1,sum_connection) = vdarcy
-    enddo
-    boundary_condition => boundary_condition%next
-  enddo
-
-end subroutine assignUniformVelocity
 
 ! ************************************************************************** !
 !

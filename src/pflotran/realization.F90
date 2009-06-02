@@ -10,6 +10,7 @@ module Realization_module
   use Discretization_module
   use Field_module
   use Debug_module
+  use Velocity_module
   use Waypoint_module
   
   use Reaction_Aux_module
@@ -50,6 +51,8 @@ private
     type(saturation_function_type), pointer :: saturation_functions
     type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
     
+    type(velocity_dataset_type), pointer :: velocity_dataset
+    
     type(waypoint_list_type), pointer :: waypoints
     
   end type realization_type
@@ -74,7 +77,7 @@ private
             RealizAssignInitialConditions, &
             RealizAssignFlowInitCond, &
             RealizAssignTransportInitCond, &
-            RealizAssignUniformVelocity, &
+            RealizUpdateUniformVelocity, &
             RealizationRevertFlowParameters, &
             RealizationGetDataset, &
             RealizGetDatasetValueAtCell, &
@@ -155,6 +158,7 @@ function RealizationCreate2(option)
   nullify(realization%fluid_property_array)
   nullify(realization%saturation_functions)
   nullify(realization%saturation_function_array)
+  nullify(realization%velocity_dataset)
   
   nullify(realization%reaction)
   
@@ -1004,6 +1008,11 @@ subroutine RealizationUpdate(realization)
                            realization%option, &
                            realization%option%time)
   call RealizUpdateAllCouplerAuxVars(realization,force_update_flag)
+  if (associated(realization%velocity_dataset)) then
+    call VelocityDatasetUpdate(realization%option,realization%option%time, &
+                               realization%velocity_dataset)
+    call RealizUpdateUniformVelocity(realization)
+  endif
 ! currently don't use aux_vars, just condition for src/sinks
 !  call RealizationUpdateSrcSinks(realization)
 
@@ -1352,12 +1361,12 @@ end subroutine RealizationRevertFlowParameters
 
 ! ************************************************************************** !
 !
-! RealizAssignUniformVelocity: Assigns uniform velocity for transport
+! RealizUpdateUniformVelocity: Assigns uniform velocity for transport
 ! author: Glenn Hammond
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine RealizAssignUniformVelocity(realization)
+subroutine RealizUpdateUniformVelocity(realization)
 
   use Option_module
 
@@ -1374,13 +1383,15 @@ subroutine RealizAssignUniformVelocity(realization)
     cur_patch => cur_level%patch_list%first
     do
       if (.not.associated(cur_patch)) exit
-      call PatchAssignUniformVelocity(cur_patch,realization%option)
+      call PatchUpdateUniformVelocity(cur_patch, &
+                                      realization%velocity_dataset%cur_value, &
+                                      realization%option)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
  
-end subroutine RealizAssignUniformVelocity
+end subroutine RealizUpdateUniformVelocity
 
 ! ************************************************************************** !
 !
@@ -1424,7 +1435,6 @@ subroutine RealizationAddWaypointsToList(realization)
           waypoint => WaypointCreate()
           waypoint%time = sub_condition%dataset%times(itime)
           waypoint%update_bcs = PETSC_TRUE
-          pause
           call WaypointInsertInList(waypoint,waypoint_list)
           exit
         endif
@@ -1445,7 +1455,6 @@ subroutine RealizationAddWaypointsToList(realization)
           waypoint => WaypointCreate()
           waypoint%time = cur_constraint_coupler%time
           waypoint%update_bcs = PETSC_TRUE
-          pause
           call WaypointInsertInList(waypoint,waypoint_list)
         endif
         cur_constraint_coupler => cur_constraint_coupler%next
@@ -1454,6 +1463,18 @@ subroutine RealizationAddWaypointsToList(realization)
     cur_tran_condition => cur_tran_condition%next
   enddo
 
+  if (associated(realization%velocity_dataset)) then
+    if (realization%velocity_dataset%times(1) > 1.d-40 .or. &
+        size(realization%velocity_dataset%times) > 1) then
+      do itime = 1, size(realization%velocity_dataset%times)
+        waypoint => WaypointCreate()
+        waypoint%time = realization%velocity_dataset%times(itime)
+        waypoint%update_srcs = PETSC_TRUE
+        call WaypointInsertInList(waypoint,waypoint_list)
+      enddo
+    endif
+  endif
+  
   ! set flag for final output
   cur_waypoint => waypoint_list%first
   do

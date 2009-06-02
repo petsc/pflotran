@@ -1393,11 +1393,6 @@ subroutine FlowConditionReadValuesFromFile(filename,dataset,option)
     call InputErrorMsg(input,option,'time','CONDITION FILE')   
     call InputReadDouble(input,option,temp_array1(count))
     call InputErrorMsg(input,option,'array1','CONDITION FILE')
-!    print *, 'RCF:', temp_times(count),  temp_array1(count)
-!   I have commented out the above line because it creates an impossible 
-!   amount of console output for even moderately-sized parallel runs!
-!   If someone needs this data, we need to add a -print_debug flag or 
-!   some such thing.  --RTM
     if (dataset%rank > 1) then
       call InputReadDouble(input,option,temp_array2(count))
       call InputErrorMsg(input,option,'array2','CONDITION FILE') 
@@ -2130,6 +2125,8 @@ subroutine FlowConditionDatasetDestroy(dataset)
   nullify(dataset%times)
   if (associated(dataset%values)) deallocate(dataset%values)
   nullify(dataset%values)  
+  if (associated(dataset%cur_value)) deallocate(dataset%cur_value)
+  nullify(dataset%cur_value)  
 
 end subroutine FlowConditionDatasetDestroy
 

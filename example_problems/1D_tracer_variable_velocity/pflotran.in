@@ -1,0 +1,176 @@
+:Description: 1D test problem for tracer transport
+
+CHEMISTRY
+PRIMARY_SPECIES
+Tracer
+/
+/
+
+GRID
+TYPE structured
+ORIGIN 0.d0 0.d0 0.d0
+NXYZ 1000 1 1
+BOUNDS
+0.d0 1000.d0
+0.d0 1.d0
+0.d0 1.d0
+/
+END
+
+LINEAR_SOLVER FLOW
+PC_TYPE LU
+KSP_TYPE PREONLY
+END
+
+:UNIFORM_VELOCITY 3.170979198d-8 0.d0 0.d0  ! 1 m/yr
+
+:skip
+: scenario 1
+VELOCITY_DATASET
+UNITS m/yr
+CYCLIC
+VELOCITY
+0.d0 250.d0 0.d0 0.d0 
+0.25d0 -250.d0 0.d0 0.d0 
+0.75d0 250.d0 0.d0 0.d0 
+1.d0 250.d0 0.d0 0.d0 
+/
+/
+:noskip
+
+skip
+: scenario 2
+VELOCITY_DATASET
+UNITS m/yr
+VELOCITY file velocity.txt
+/
+noskip
+
+skip
+: scenario 3
+VELOCITY_DATASET
+UNITS m/yr
+VELOCITY 1.d0 0.d0 0.d0
+/
+noskip
+
+FLUID_PROPERTY
+DIFFUSION_COEFFICIENT 1.d-9
+/
+
+MATERIAL_PROPERTY soil1
+ID 1
+POROSITY 0.25d0
+TORTUOSITY 1.d0
+SATURATION_FUNCTION default
+/
+
+SATURATION_FUNCTION default
+/
+
+OUTPUT
+:TIMES y 0.25d0 0.5d0 0.75d0
+PERIODIC TIME 0.1 y
+:FORMAT TECPLOT POINT
+FORMAT TECPLOT BLOCK
+VELOCITIES
+/
+
+TIME
+FINAL_TIME 4.d0 y
+INITIAL_TIMESTEP_SIZE 1.d-6 y
+MAXIMUM_TIMESTEP_SIZE 1.d-3 y
+/
+
+REGION all
+COORDINATES
+0.d0 0.d0 0.d0
+1000.d0 1.d0 1.d0
+/
+END
+
+REGION west
+FACE WEST
+COORDINATES
+0.d0 0.d0 0.d0
+0.d0 1.d0 1.d0
+/
+END
+
+REGION east
+FACE EAST
+COORDINATES
+1000.d0 0.d0 0.d0
+1000.d0 1.d0 1.d0
+/
+END
+
+REGION middle
+COORDINATES
+450.d0 0.d0 0.d0
+550.d0 1.d0 1.d0
+/
+END
+
+TRANSPORT_CONDITION west
+TYPE dirichlet_zero_gradient
+CONSTRAINT_LIST
+0.d0 initial
+/
+END
+
+TRANSPORT_CONDITION initial
+TYPE dirichlet_zero_gradient
+CONSTRAINT_LIST
+0.d0 initial
+/
+END
+
+TRANSPORT_CONDITION pulse
+TYPE dirichlet_zero_gradient
+CONSTRAINT_LIST
+0.d0 pulse
+/
+END
+
+CONSTRAINT pulse
+CONCENTRATIONS
+Tracer 1.d0 T
+/
+END
+
+CONSTRAINT initial
+CONCENTRATIONS
+Tracer 1.d-40 T
+/
+END
+
+: initial condition
+INITIAL_CONDITION
+TRANSPORT_CONDITION initial
+REGION all
+END
+
+: pulse condition
+INITIAL_CONDITION
+TRANSPORT_CONDITION pulse
+REGION middle
+END
+
+: west boundary condition
+BOUNDARY_CONDITION
+TRANSPORT_CONDITION west
+REGION west
+END
+
+: east boundary condition
+BOUNDARY_CONDITION
+TRANSPORT_CONDITION initial
+REGION east
+END
+
+STRATA
+REGION all
+MATERIAL soil1
+END
+
