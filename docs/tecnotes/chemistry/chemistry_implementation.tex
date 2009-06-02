@@ -129,17 +129,24 @@
 \newcommand{\arrowstab}{\!\!\!\rightleftharpoons\!\!\!}
 \newcommand{\longline}{\noindent\rule[-0.1in]{\textwidth}{0.01in}}
 
-%\numberwithin{equation}{section}
-
-%\renewcommand{\theequation}{\arabic{section}.\arabic{equation}}
-
-%\newcounter{saveeqn}%
-%\newcommand{\seteqn}{\setcounter{saveeqn}{\value{equation}}%
-%\stepcounter{saveeqn}\setcounter{equation}{0}%
-%\renewcommand{\theequation}
-%      {\mbox{\arabic{saveeqn}-\alph{equation}}}}%
-%\newcommand{\reseteqn}{\setcounter{equation}{\value{saveeqn}}%
-%\renewcommand{\theequation}{\arabic{equation}}}%
+\def\water{H$_2$O}
+\def\calcium{Ca$^{2+}$}
+\def\copper{Cu$^{2+}$}
+\def\magnesium{Mg$^{2+}$}
+\def\sodium{Na$^+$}
+\def\potassium{K$^+$}
+\def\uranium{UO$_2^{2+}$}
+\def\hion{H$^+$}
+\def\bicarbonate{HCO$_3^-$}
+\def\cotwo{CO$_2$}
+\def\chloride{Cl$^-$}
+\def\fluoride{F$^-$}
+\def\phosphoricacid{HPO$_4^{2-}$}
+\def\nitrate{NO$_3^-$}
+\def\sulfate{SO$_4^{2-}$}
+\def\souotwooh{$>$SOUO$_2$OH}
+\def\sohuotwocothree{$>$SOHUO$_2$CO$_3$}
+\def\soh{$>$SOH}
 
 \newcounter{saveeqn}%
 \newcommand{\seteqn}{\setcounter{saveeqn}{\value{equation}}%
@@ -1235,6 +1242,7 @@ The multirate formulation is considered only for surface complexation reactions,
 \EN
 for the $i$th surface complex $>\!\!\S_{i\a}$ on site $\a$ and empty site $>\!\!\chi_\a$, 
 the multirate solute transport equations have the form
+\begin{subequations}
 \EQ
 \frac{\p}{\p t}\varphi \Psi_j + \bnabla\cdot\bOmega_j \eq -\sum_{i\a}\nu_{ji}\frac{\p S_{i\a}}{\p t} - \sum_m\nu_{jm}I_m,
 \EN
@@ -1242,7 +1250,25 @@ or
 \EQ
 \frac{\p}{\p t}\left(\varphi \Psi_j + \sum_{i\a}\nu_{ji} S_{i\a}\right) + \bnabla\cdot\bOmega_j \eq -\sum_m\nu_{jm}I_m.
 \EN
-For simplicity, in what follows it is assumed that $\nu_\a\!=\!1$. In the multirate model the rates of sorption reactions are described through a kinetic relation given by
+\end{subequations}
+In terms of the locally defined distribution coefficient $K_j^d$ this latter equation can be written in the form
+\EQ
+\frac{\p}{\p t}\left[\varphi \Psi_j \left(1 + K_j^d\right)\right] + \bnabla\cdot\bOmega_j \eq -\sum_m\nu_{jm}I_m,
+\EN
+where
+\EQ
+K_j^d \eq \frac{1}{\varphi\Psi_j}\sum_{i\a}\nu_{ji}S_{i\a}.
+\EN
+When the distribution coefficient is constant, the transport equation can be expressed in terms of retarded transport coefficients and mineral reaction rate constants
+\EQ
+\frac{\p}{\p t}\left(\varphi \Psi_j \right) + \bnabla\cdot\frac{1}{\Re_j}{\bOmega_j} \eq -\frac{1}{\Re_j}\sum_m\nu_{jm}I_m,
+\EN
+where
+\EQ
+\Re_j\eq 1 + K_j^d.
+\EN
+
+In the multirate model the rates of sorption reactions are described through a kinetic relation given by
 \EQ\label{sorbed}
 \frac{\p S_{i\a}}{\p t} \eq k_\a^{} \big(S_{i\a}^{\rm eq}-S_{i\a}\big),
 \EN
@@ -1251,7 +1277,7 @@ for surface complexes, and
 \frac{\p S_{\a}}{\p t} &\eq -\sum_i k_\a^{} \big(S_{i\a}^{\rm eq}-S_{i\a}\big),\\
 &\eq k_\a\big(S_\a^{\rm eq}-S_{\a}\big),
 \EA
-for empty sites, where $S_\a^{\rm eq}$ denotes the equilibrium sorbed concentration.
+for empty sites, where $S_\a^{\rm eq}$ denotes the equilibrium sorbed concentration. For simplicity, in what follows it is assumed that $\nu_\a\!=\!1$. 
 With each site $\a$ is associated a rate constant $k_\a$ and site concentration $\omega_\a$. These quantities are defined through a given distribution of sites $\wp(\a)$, such that
 \EQ
 \int_0^\infty \wp(k_\a)dk_\a \eq 1.
@@ -1317,12 +1343,98 @@ q_{j\a}^{\rm eq} \eq \sum_i \nu_{ji}^{} S_{i\a}^{\rm eq}\eq \frac{\omega_\a}{1+\
 
 For a constant $K_d$ model it is assumed that
 \EQ
-q_{j\a}^{\rm eq}\eq f_\a K_j^d \Psi_j.
+q_{j\a}^{\rm eq}\eq f_\a K_j^d \Psi_j,
+\EN
+with
+\EQ
+\sum_\a f_\a \eq 1.
 \EN
 The multirate equation is given by
 \EQ
 \frac{\p q_{j\a}}{\p t}\eq k_\a\big(f_\a K_j^d \Psi_j-q_{j\a}\big).
 \EN
+Note that in the $K_d$ model in the limit $k_\a\rightarrow\infty$,
+\EQ
+q_{j\a}\eq f_\a K_j^d \Psi_j.
+\EN
+It then follows that
+\EQ
+q_j\eq \sum_\a f_\a K_j^d\Psi_j \eq K_j^d\Psi_j.
+\EN
+
+As an example illustrating the conditions for the validity of the $K_d$ model, consider the coupled surface complexation reactions
+\begin{subequations}
+\BA
+\text{\soh} + \text{\uranium} - 2 \,\text{\hion} + \text{\water} &\ \rightleftharpoons\ \text{\souotwooh},\\
+\text{\soh} + \text{\uranium} - 2 \,\text{\hion} + \text{\water} + \text{\cotwo} &\ \rightleftharpoons\ \text{\sohuotwocothree}.
+\EA
+\end{subequations}
+The corresponding mass action equations are given by
+\begin{subequations}
+\EQ
+K_1 \eq \dfrac{S_1 a_{\rm H^+}^2}{S_{\rm SOH} a_{\rm UO_2^{2+}} a_{\rm H_2O}},
+\EN
+and
+\EQ
+K_2 \eq \dfrac{S_2 a_{\rm H^+}^2}{S_{\rm SOH} a_{\rm UO_2^{2+}} a_{\rm CO_2} a_{\rm H_2O}},
+\EN
+\end{subequations}
+where subscripts 1 and 2 refer to surface complexes $\text{\sohuotwocothree}$ and $\text{\sohuotwocothree}$, respectively. Noting that
+\EQ
+S_{\rm SOH} \eq \frac{\omega_\a}{1+K_1Q_1+K_2Q_2},
+\EN
+where
+\begin{subequations}
+\EQ
+Q_1\eq\dfrac{a_{\rm UO_2^{2+}} a_{\rm H_2O}}{a_{\rm H^+}^2},
+\EN
+and
+\EQ
+Q_2\eq\dfrac{a_{\rm UO_2^{2+}} a_{\rm CO_2} a_{\rm H_2O}}{a_{\rm H^+}^2},
+\EN
+\end{subequations}
+it follows that
+\begin{subequations}
+\EQ
+S_1 \eq \dfrac{\omega_\a K_1Q_1}{1+K_1Q_1+K_2Q_2},
+\EN
+and
+\EQ
+S_2\eq \dfrac{\omega_\a K_2Q_2}{1+K_1Q_1+K_2Q_2}.
+\EN
+\end{subequations}
+Assuming $K_1Q_1+K_2Q_2 \ll 1$, and conditions of constant pH and CO$_2$ then
+\begin{subequations}
+\EQ
+S_1 \eq \omega_\a K_1' C_{\rm UO_2^{2+}},
+\EN
+and
+\EQ
+S_2 \eq \omega_\a K_2' C_{\rm UO_2^{2+}},
+\EN
+\end{subequations}
+where
+\begin{subequations}
+\EQ
+K_1' \eq K_1\dfrac{a_{\rm H_2O}}{a_{\rm H^+}^2},
+\EN
+and
+\EQ
+K_2' \eq K_2\dfrac{a_{\rm CO_2} a_{\rm H_2O}}{a_{\rm H^+}^2}.
+\EN
+\end{subequations}
+From the general definition of the distribution coefficient for the $j$th primary species
+\EQ
+K_j^d\eq \frac{1}{\varphi\Psi_j}\sum_i\nu_{ji} S_i,
+\EN
+ it follows that for UO$_2^{2+}$
+\begin{subequations}
+\BA
+K_{\rm UO_2^{2+}}^d &\eq \frac{\omega_\a \big(K_1' + K_2'\big) C_{\rm UO_2^2+}}{\varphi\Psi_{\rm UO_2^{2+}}},\\
+& \eq \frac{\omega_\a \big(K_1' + K_2'\big)}{\varphi \big(1+\sum_i\nu_{ji} C_i/C_{\rm UO_2^{2+}}\big)}.
+\EA
+\end{subequations}
+The sum in the denominator is assumed to be constant since the secondary species $C_i$ all contain factors of $C_{\rm UO_2^{2+}}$. Species with UO$_2^{2+}$ stoichiometric factors of two or more must be assumed to be negligible in comparison to other species in the sum.
 
 \subsection{Numerical Implementation}
 
