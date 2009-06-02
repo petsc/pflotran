@@ -28,8 +28,11 @@ END
 : scenario 1
 VELOCITY_DATASET
 UNITS m/yr
-CYCLIC
+CYCLIC ! cycles the data set using last time as offset
+:INTERPOLATION STEP ! interpolation method (step [default] or linear)
 VELOCITY
+:time velx vely velz
+:time units = time unit in velocity units
 0.d0 250.d0 0.d0 0.d0 
 0.25d0 -250.d0 0.d0 0.d0 
 0.75d0 250.d0 0.d0 0.d0 
