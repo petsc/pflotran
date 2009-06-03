@@ -1948,6 +1948,8 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
 
   use Option_module
   
+  implicit none
+
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
   type(reaction_type) :: reaction
@@ -1955,9 +1957,17 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
   
   PetscInt :: icplx, icomp, it, j, jcomp, ncomp
   PetscReal :: I, sqrt_I, II, sqrt_II, f, fpri, didi, dcdi, den, dgamdi, &
-    lnQK, sum, sum1, sum_act_h2o
+    lnQK, sum, sum_pri_molal, sum_sec_molal
+  PetscReal :: sum_molality
   PetscReal :: ln_conc(reaction%ncomp)
   PetscReal :: ln_act(reaction%ncomp)
+
+  if (reaction%use_activity_h2o) then
+    sum_pri_molal = 0.d0
+    do j = 1, reaction%ncomp
+      sum_pri_molal = sum_pri_molal + rt_auxvar%pri_molal(j)
+    enddo
+  endif
 
   if (reaction%act_coef_update_algorithm == ACT_COEF_ALGORITHM_NEWTON) then
 
@@ -1973,13 +1983,10 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
   
   ! compute primary species contribution to ionic strength
     fpri = 0.d0
-    sum_act_h2o = 0.d0
+    sum_molality = 0.d0
     do j = 1, reaction%ncomp
       fpri = fpri + rt_auxvar%pri_molal(j)*reaction%primary_spec_Z(j)* &
                                          reaction%primary_spec_Z(j)
-      if (reaction%use_activity_h2o) then
-        sum_act_h2o = sum_act_h2o + rt_auxvar%pri_molal(j)
-      endif
     enddo
   
     it = 0
@@ -1987,8 +1994,6 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
     do
       it = it + 1
       
-      sum1 = 0.d0
-
       if (it > 50) then
         print *,' too many iterations in computing activity coefficients-stop',it,f,I
         stop
@@ -2039,8 +2044,8 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
       endif
     
       if (II < 0.d0) then
-        print *,'ionic strength negative! it =',it,' I= ',I,II,den,didi,dcdi,sum
-        stop
+        write(option%io_buffer,*) 'ionic strength negative! it =',it,' I= ',I,II,den,didi,dcdi,sum
+        call printErrMsg(option)        
       endif
     
   ! compute activity coefficients
@@ -2062,6 +2067,7 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
       enddo
                 
   ! secondary species
+      sum_sec_molal = 0.d0
       do icplx = 1, reaction%neqcmplx
         if (abs(reaction%eqcmplx_Z(icplx)) > 0.d0) then
           rt_auxvar%sec_act_coef(icplx) = exp((-reaction%eqcmplx_Z(icplx)* &
@@ -2089,17 +2095,21 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
           lnQK = lnQK + reaction%eqcmplxstoich(jcomp,icplx)*ln_act(icomp)
         enddo
         rt_auxvar%sec_molal(icplx) = exp(lnQK)/rt_auxvar%sec_act_coef(icplx)
-        if (reaction%use_activity_h2o) sum1 = sum1 + rt_auxvar%sec_molal(icplx)
+        sum_sec_molal = sum_sec_molal + rt_auxvar%sec_molal(icplx)
+      
       enddo
+      
       if (reaction%use_activity_h2o) then
-        rt_auxvar%ln_act_h2o = 1.d0-0.017d0*(sum_act_h2o+sum1)
+        rt_auxvar%ln_act_h2o = 1.d0-0.017d0*(sum_pri_molal+sum_sec_molal)
         if (rt_auxvar%ln_act_h2o > 0.d0) then
           rt_auxvar%ln_act_h2o = log(rt_auxvar%ln_act_h2o)
         else
           rt_auxvar%ln_act_h2o = 0.d0
-          print *,'activity of H2O negative! ln act H2O =',rt_auxvar%ln_act_h2o
+          write(option%io_buffer,*) 'activity of H2O negative! ln act H2O =',rt_auxvar%ln_act_h2o
+          call printMsg(option)
         endif
       endif
+
     enddo
   
   else
@@ -2137,6 +2147,7 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
     enddo
                 
   ! secondary species
+    sum_sec_molal = 0.d0
     do icplx = 1, reaction%neqcmplx
       if (dabs(reaction%eqcmplx_Z(icplx)) > 1.d-10) then
         rt_auxvar%sec_act_coef(icplx) = exp((-reaction%eqcmplx_Z(icplx)* &
@@ -2149,20 +2160,19 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
       else
         rt_auxvar%sec_act_coef(icplx) = 1.d0
       endif
-      if (reaction%use_activity_h2o) then
-        sum_act_h2o = sum_act_h2o + rt_auxvar%sec_molal(icplx)
-      endif
+      sum_sec_molal = sum_sec_molal + rt_auxvar%sec_molal(icplx)
     enddo
     
     if (reaction%use_activity_h2o) then
-      sum_act_h2o = 1.d0-0.017d0*sum_act_h2o
-      if (sum_act_h2o > 0.d0) then
-        rt_auxvar%ln_act_h2o = log(sum_act_h2o)
+      rt_auxvar%ln_act_h2o = 1.d0-0.017d0*(sum_pri_molal+sum_sec_molal)
+      if (rt_auxvar%ln_act_h2o > 0.d0) then
+        rt_auxvar%ln_act_h2o = log(rt_auxvar%ln_act_h2o)
       else
         rt_auxvar%ln_act_h2o = 0.d0
       endif
     endif
   endif
+  
 end subroutine RActivityCoefficients
 
 ! ************************************************************************** !
