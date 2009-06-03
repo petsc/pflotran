@@ -991,8 +991,6 @@ subroutine InitReadInput(simulation)
               call InputSkipToEND(input,option,card)
             case('MOLAL','MOLALITY')
               option%initialize_with_molality = PETSC_TRUE
-            case ('PRINT_ACTIVITY_COEFS')
-              realization%output_option%print_act_coefs = PETSC_TRUE
           end select
         enddo
 

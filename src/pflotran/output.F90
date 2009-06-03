@@ -500,7 +500,7 @@ subroutine OutputTecplotBlock(realization)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo
-      if (realization%output_option%print_act_coefs) then
+      if (reaction%print_act_coefs) then
         do i=1,reaction%ncomp
           if (reaction%primary_species_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,PRIMARY_ACTIVITY_COEF,i)
@@ -1353,7 +1353,7 @@ subroutine OutputTecplotPoint(realization)
             write(IUNIT3,1000,advance='no') value
           endif
         enddo
-        if (realization%output_option%print_act_coefs) then
+        if (reaction%print_act_coefs) then
           do i=1,reaction%ncomp
             if (reaction%primary_species_print(i)) then
               value = RealizGetDatasetValueAtCell(realization,PRIMARY_ACTIVITY_COEF, &
@@ -2353,7 +2353,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
       endif
     enddo
     
-    if (realization%output_option%print_act_coefs) then
+    if (reaction%print_act_coefs) then
       do i=1,option%ntrandof
         if (reaction%primary_species_print(i)) then
           write(fid,'('',"'',a,''_gam '',a,''"'')',advance="no") &
@@ -2541,7 +2541,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
       endif
     enddo
     
-    if (realization%output_option%print_act_coefs) then
+    if (reaction%print_act_coefs) then
       do i=1,option%ntrandof
         if (reaction%primary_species_print(i)) then
           write(fid,'('',"'',a,''_gam '',a,''"'')',advance="no") &
@@ -2785,7 +2785,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
             RealizGetDatasetValueAtCell(realization,TOTAL_MOLARITY,i,ghosted_id)
         endif
       enddo
-      if (realization%output_option%print_act_coefs) then
+      if (reaction%print_act_coefs) then
         do i=1,reaction%ncomp
           if (reaction%primary_species_print(i)) then
           write(fid,110,advance="no") &
@@ -3068,7 +3068,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                          count,ghosted_ids)
         endif
       enddo
-      if (realization%output_option%print_act_coefs) then
+      if (reaction%print_act_coefs) then
         do i=1,reaction%ncomp
           if (reaction%primary_species_print(i)) then
           write(fid,110,advance="no") &
@@ -4776,7 +4776,7 @@ subroutine OutputHDF5(realization)
           endif
         endif
       enddo
-      if (realization%output_option%print_act_coefs) then
+      if (reaction%print_act_coefs) then
         do i=1,reaction%ncomp
           if (reaction%primary_species_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,PRIMARY_ACTIVITY_COEF,i)

@@ -1693,15 +1693,19 @@ subroutine ReactionReadOutput(reaction,input,option)
       found = PETSC_TRUE
     endif
 
-   if (StringCompare(word,'kd',TWO_INTEGER)) then
+    if (StringCompare(word,'kd',TWO_INTEGER)) then
       reaction%print_kd = PETSC_TRUE
       found = PETSC_TRUE
     endif
 
-   if (StringCompare(word,'total_sorbed',TWO_INTEGER)) then
+    if (StringCompare(word,'total_sorbed',TWO_INTEGER)) then
       reaction%print_total_sorb = PETSC_TRUE
       found = PETSC_TRUE
     endif
+
+    if (StringCompare(word,'activity_coefficients',TWO_INTEGER)) then
+      reaction%print_act_coefs = PETSC_TRUE
+    endif    
 
     if (.not.found) then
       cur_aq_spec => reaction%primary_species_list

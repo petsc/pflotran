@@ -1682,6 +1682,9 @@ subroutine RealizationDestroy(realization)
   nullify(realization%saturation_function_array)
   call SaturationFunctionDestroy(realization%saturation_functions)
   
+  call VelocityDatasetDestroy(realization%velocity_dataset)
+  
+  
 end subroutine RealizationDestroy
   
 end module Realization_module

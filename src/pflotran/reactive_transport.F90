@@ -3039,7 +3039,7 @@ function RTGetTecplotHeader(realization,icolumn)
     endif
   enddo
   
-  if (realization%output_option%print_act_coefs) then
+  if (reaction%print_act_coefs) then
     do i=1,option%ntrandof
       if (reaction%primary_species_print(i)) then
         if (icolumn > -1) then

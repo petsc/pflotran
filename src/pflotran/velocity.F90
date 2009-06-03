@@ -495,14 +495,19 @@ subroutine VelocityDatasetDestroy(dataset)
 
   implicit none
   
-  type(velocity_dataset_type) :: dataset
+  type(velocity_dataset_type), pointer :: dataset
+  
+  if (.not.associated(dataset)) return
   
   if (associated(dataset%times)) deallocate(dataset%times)
   nullify(dataset%times)
   if (associated(dataset%values)) deallocate(dataset%values)
   nullify(dataset%values)  
   if (associated(dataset%cur_value)) deallocate(dataset%cur_value)
-  nullify(dataset%cur_value)  
+  nullify(dataset%cur_value)
+  
+  deallocate(dataset)
+  nullify(dataset)  
 
 end subroutine VelocityDatasetDestroy
 
