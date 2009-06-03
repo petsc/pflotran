@@ -25,7 +25,7 @@ module Velocity_module
   
       
   public :: VelocityDatasetCreate, VelocityDatasetDestroy, VelocityDatasetRead, &
-            VelocityDatasetUpdate 
+            VelocityDatasetUpdate, VelocityDatasetVerify
     
 contains
 

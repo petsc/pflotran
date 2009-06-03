@@ -1005,15 +1005,14 @@ subroutine InitReadInput(simulation)
         allocate(velocity_dataset%times(1))
         velocity_dataset%times = 0.d0
         allocate(velocity_dataset%values(3,1))
-        velocity_dataset%times = 0.d0
-        allocate(velocity_dataset%cur_value(3))
-        velocity_dataset%cur_value = 0.d0
+        velocity_dataset%values = 0.d0
         call InputReadDouble(input,option,velocity_dataset%values(1,1))
         call InputErrorMsg(input,option,'velx','UNIFORM_VELOCITY')
         call InputReadDouble(input,option,velocity_dataset%values(2,1))
         call InputErrorMsg(input,option,'vely','UNIFORM_VELOCITY')
         call InputReadDouble(input,option,velocity_dataset%values(3,1))
         call InputErrorMsg(input,option,'velz','UNIFORM_VELOCITY')
+        call VelocityDatasetVerify(option,velocity_dataset)
         realization%velocity_dataset => velocity_dataset
       
       case ('VELOCITY_DATASET')
