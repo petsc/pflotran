@@ -725,6 +725,13 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
     nstepmax = tran_stepper%nstepmax
   endif
   
+  ! FOr the case where the second waypoint is a printout after the first time step
+  ! we must increment the waypoint beyond the first (time=0.) waypoint.  Otherwise
+  ! the second time step will be zero. - geh
+  if (cur_waypoint%time < 1.d-40) then
+    cur_waypoint => cur_waypoint%next
+  endif
+  
   if (option%match_waypoint) then
     time = time - dt
     dt = option%prev_dt
