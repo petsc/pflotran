@@ -39,7 +39,8 @@ module Saturation_Function_module
             SaturationFunctionCompute, &
             SaturatFuncConvertListToArray, &
             SaturationFunctionComputeSpline, &
-            SaturationFunctionRead
+            SaturationFunctionRead, &
+            SaturationFunctionInvert
 
 ! Permeability function defination ************************ 
   PetscInt, parameter :: VAN_GENUCHTEN = 1
@@ -577,6 +578,101 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
   dkr_pres = -dkr_pc
 
 end subroutine SaturationFunctionCompute
+
+! ************************************************************************** !
+!
+! SaturationFunctionInvert: Computes the capillary pressure as a function of 
+!                           pressure
+! author: Glenn Hammond
+! date: 06/03/09
+!
+! ************************************************************************** !
+subroutine SaturationFunctionInvert(pressure,saturation, &
+                                    saturation_function,option)
+
+  use Option_module
+  
+  implicit none
+
+  PetscReal :: pressure, saturation
+  type(saturation_function_type) :: saturation_function
+  type(option_type) :: option
+
+  PetscInt :: iphase
+  PetscReal :: alpha, lambda, m, n, Sr, one_over_alpha
+  PetscReal :: pc, Se
+  PetscReal :: pc_alpha, pc_alpha_n, one_plus_pc_alpha_n
+  PetscReal :: pc_alpha_neg_lambda
+  
+  iphase = 1
+    
+  ! compute saturation
+  select case(saturation_function%saturation_function_itype)
+    case(VAN_GENUCHTEN)
+      if (saturation >= 1.d0) then
+        pressure = option%reference_pressure
+        return
+      else
+        alpha = saturation_function%alpha
+        m = saturation_function%m
+        n = 1.d0/(1.d0-m)
+        Se = (saturation-Sr)/(1.d0-Sr)
+        one_plus_pc_alpha_n = Se**(-1.d0/m)
+        pc_alpha_n = one_plus_pc_alpha_n - 1.d0
+        pc_alpha = pc_alpha_n**(1.d0/n)
+        pc = pc_alpha/alpha
+        pressure = option%reference_pressure-pc
+      endif
+      ! compute relative permeability
+    case(BROOKS_COREY)
+      alpha = saturation_function%alpha
+      one_over_alpha = 1.d0/alpha
+!      pc = option%reference_pressure-pressure
+      if (saturation >= 1.d0) then
+        pc = one_over_alpha
+        pressure = option%reference_pressure-pc
+        return
+      else
+        lambda = saturation_function%lambda
+        Sr = saturation_function%Sr(iphase)
+        Se = (saturation-Sr)/(1.d0-Sr)
+        pc_alpha_neg_lambda = Se
+        pc = (pc_alpha_neg_lambda**(-1.d0/lambda))/alpha
+        pressure = option%reference_pressure-pc
+      endif
+#if 0
+    case(THOMEER_COREY)
+      pc = option%reference_pressure-pressure
+      por = auxvar1
+      perm = auxvar2*1.013202d15 ! convert from m^2 to mD
+      Fg = saturation_function%alpha
+      a = saturation_function%m
+      Pd = 100.d0*por/sqrt(perm/(3.8068d0*(Fg**(-1.334d0)))) ! psi
+      PHg = 9.63051d-4*pc
+      if (PHg > Pd) then
+        saturation = 1.d0-exp(-Fg/log10(PHg/Pd))
+#if 0
+        alpha = pc*(1.d0+1.d-8)
+        m = 9.63051d-4*alpha
+        n = 1.d0-exp(-Fg/log10(m/Pd))
+        n = (n-saturation)/(alpha-pc)
+#endif        
+        dsat_pc = (saturation-1.d0)*Fg/(log10(PHg/Pd)**2.d0)/(pc*2.30258509d0)
+        ! Sr assumed to be zero
+        relative_perm = saturation**a
+        dkr_pc = a*saturation**(a-1.d0)*dsat_pc
+      else
+        saturation = 1.d0
+        relative_perm = 1.d0
+        return
+      endif
+#endif
+    case default
+      option%io_buffer = 'Unknown saturation function'
+      call printErrMsg(option)
+  end select
+
+end subroutine SaturationFunctionInvert
 
 ! ************************************************************************** !
 !
