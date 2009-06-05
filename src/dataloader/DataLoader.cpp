@@ -50,9 +50,15 @@ int main(int argc, char **args) {
 
   strcpy(filename,"permeability.final");
   FileIO *datafile = new FileIO(filename);
+  // remove top 3 lines
+  datafile->getLine();
+  datafile->getLine();
+  datafile->getLine();
   for (int i=0; i<n; i++) {
     datafile->getLine();
-    datafile->readDouble(&values[i]);
+    double value;
+    datafile->readDouble(&value);
+    values[i] = exp(value);
   }
   delete datafile;
 
@@ -90,6 +96,10 @@ int main(int argc, char **args) {
 
   strcpy(filename,"porosity.final");
   datafile = new FileIO(filename);
+  // remove top 3 lines
+  datafile->getLine();
+  datafile->getLine();
+  datafile->getLine();
   for (int i=0; i<n; i++) values[i] = 0.;
   for (int i=0; i<n; i++) {
     datafile->getLine();
