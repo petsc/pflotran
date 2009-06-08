@@ -598,14 +598,16 @@ subroutine Init(simulation)
   
   ! check that material properties have been set at all grid cells
   ! right now, we check just perms; maybe more needed later
+!  string = 'pre.tec'
+!  call OutputVectorTecplot(string,string,realization,field%porosity0)
   call VecMin(field%porosity0,temp_int,r1,ierr)
   if (r1 < -998.d0) then
     ! if less than 10M grid cells, print porosities
     if (grid%nmax < 10000000) then
-      string = 'porosity-uninit-tec'
+      string = 'porosity-uninitialized.tec'
       call OutputVectorTecplot(string,string,realization,field%porosity0)
     endif
-    write(string,*) temp_int
+    write(string,*) temp_int, r1
     option%io_buffer = 'Porosity not initialized at cell ' // &
                        trim(adjustl(string)) // ' (note PETSc numbering).' // &
                        '  Ensure that REGIONS cover entire domain!!!'

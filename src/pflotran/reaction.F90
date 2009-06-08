@@ -1684,6 +1684,7 @@ subroutine ReactionReadOutput(reaction,input,option)
       reaction%print_pH = PETSC_TRUE
       reaction%print_kd = PETSC_TRUE
       reaction%print_total_sorb = PETSC_TRUE
+      found = PETSC_TRUE
     endif
 
     if (StringCompare(name,'pH',TWO_INTEGER)) then
