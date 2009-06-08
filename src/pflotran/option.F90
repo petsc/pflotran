@@ -168,8 +168,6 @@ module Option_module
 
     PetscTruth :: print_mad 
 
-    PetscTruth :: print_act_coefs
-
     PetscInt :: screen_imod
     
     PetscInt :: periodic_output_ts_imod
@@ -458,7 +456,6 @@ function OutputOptionCreate()
   output_option%periodic_tr_output_ts_imod = 100000000
   output_option%periodic_tr_output_time_incr = 0.d0
   output_option%plot_name = ""
-  output_option%print_act_coefs = PETSC_FALSE
   output_option%print_permeability = PETSC_FALSE
   output_option%print_porosity = PETSC_FALSE
   

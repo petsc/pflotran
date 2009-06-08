@@ -62,7 +62,7 @@ module Patch_module
   public :: PatchCreate, PatchDestroy, PatchCreateList, PatchDestroyList, &
             PatchAddToList, PatchConvertListToArray, PatchProcessCouplers, &
             PatchUpdateAllCouplerAuxVars, PatchInitAllCouplerAuxVars, &
-            PatchLocalizeRegions, PatchAssignUniformVelocity, &
+            PatchLocalizeRegions, PatchUpdateUniformVelocity, &
             PatchGetDataset, PatchGetDatasetValueAtCell, &
             PatchSetDataset, &
             PatchInitConstraints
@@ -877,13 +877,13 @@ end subroutine PatchInitCouplerConstraints
 
 ! ************************************************************************** !
 !
-! PatchAssignUniformVelocity: Assigns uniform velocity in connection list
+! PatchUpdateUniformVelocity: Assigns uniform velocity in connection list
 !                        darcy velocities
 ! author: Glenn Hammond
 ! date: 02/20/08
 !
 ! ************************************************************************** !
-subroutine PatchAssignUniformVelocity(patch,option)
+subroutine PatchUpdateUniformVelocity(patch,velocity,option)
 
   use Option_module
   use Coupler_module
@@ -893,6 +893,7 @@ subroutine PatchAssignUniformVelocity(patch,option)
   implicit none
   
   type(patch_type), pointer :: patch   
+  PetscReal :: velocity(3)
   type(option_type), pointer :: option
 
   type(grid_type), pointer :: grid
@@ -910,7 +911,7 @@ subroutine PatchAssignUniformVelocity(patch,option)
     if (.not.associated(cur_connection_set)) exit
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
-      vdarcy = dot_product(option%uniform_velocity, &
+      vdarcy = dot_product(velocity, &
                            cur_connection_set%dist(1:3,iconn))
       patch%internal_velocities(1,sum_connection) = vdarcy
     enddo
@@ -925,14 +926,14 @@ subroutine PatchAssignUniformVelocity(patch,option)
     cur_connection_set => boundary_condition%connection_set
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
-      vdarcy = dot_product(option%uniform_velocity, &
+      vdarcy = dot_product(velocity, &
                            cur_connection_set%dist(1:3,iconn))
       patch%boundary_velocities(1,sum_connection) = vdarcy
     enddo
     boundary_condition => boundary_condition%next
   enddo
 
-end subroutine PatchAssignUniformVelocity
+end subroutine PatchUpdateUniformVelocity
 
 ! ************************************************************************** !
 !

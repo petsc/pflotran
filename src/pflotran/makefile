@@ -110,6 +110,7 @@ common_obj = ${common_src}option.o \
 	${common_src}amrgrid.o\
 	${common_src}discretization.o \
 	${common_src}database.o \
+	${common_src}velocity.o \
 	${common_src}realization.o \
 	${common_src}hdf5.o \
 	${common_src}global.o \
@@ -166,7 +167,8 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	co2_span_wagner_spline.o co2_sw.o fluid.o saturation_function.o \
 	coupler.o strata.o pckr_mod.o field.o mphase.o \
 	richards.o thc.o discretization.o logging.o mass_balance.o \
-	database.o reaction_aux.o string.o units.o stochastic_aux.o
+	database.o reaction_aux.o string.o units.o stochastic_aux.o \
+	velocity.o
 unstructured_grid.o : option.o connection.o 
 structured_grid.o : connection.o option.o input.o cf90bridge.o
 general_grid.o : grid.o realization.o hdf5.o logging.o
@@ -185,7 +187,8 @@ observation.o : region.o option.o input.o
 convergence.o : option.o solver.o grid.o
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o string.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
-	              strata.o waypoint.o field.o hydrostatic.o debug.o observation.o \
+                strata.o waypoint.o field.o hydrostatic.o debug.o \
+		observation.o velocity.o \
                 patch.o level.o discretization.o reaction.o reaction_aux.o \
                 fluid.o saturation_function.o
 level.o : patch.o option.o
@@ -237,3 +240,4 @@ stochastic.o : simulation.o option.o realization.o timestepper.o \
 	       init.o logging.o
 stochastic_aux.o : simulation.o input.o option.o
 matrix_buffer.o : grid.o structured_grid.o
+velocity.o : option.o input.o string.o logging.o units.o

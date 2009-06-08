@@ -409,8 +409,7 @@ subroutine RTComputeMassBalancePatch(realization,mass_balance)
       ! add contribution of equilibrium sorption
         if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
           mass_balance(:,iphase) = mass_balance(:,iphase) + &
-          rt_aux_vars(ghosted_id)%total_sorb(:) * volume_p(local_id) * &
-          dble(reaction%kinmr_nrate)
+            rt_aux_vars(ghosted_id)%total_sorb(:) * volume_p(local_id)
         endif
 
 
@@ -3040,7 +3039,7 @@ function RTGetTecplotHeader(realization,icolumn)
     endif
   enddo
   
-  if (realization%output_option%print_act_coefs) then
+  if (reaction%print_act_coefs) then
     do i=1,option%ntrandof
       if (reaction%primary_species_print(i)) then
         if (icolumn > -1) then
@@ -3107,36 +3106,39 @@ function RTGetTecplotHeader(realization,icolumn)
     endif
   enddo
 
-  do i=1,option%ntrandof
-    if (reaction%kd_print(i)) then
-      if (icolumn > -1) then
-        icolumn = icolumn + 1
-        write(string2,'('',"'',i2,''-'',a,''_kd"'')') icolumn, &
-          trim(reaction%primary_species_names(i))
-      else
-        write(string2,'('',"'',a,''_kd"'')') trim(reaction%primary_species_names(i))
+  if (associated(reaction%kd_print)) then
+    do i=1,option%ntrandof
+      if (reaction%kd_print(i)) then
+        if (icolumn > -1) then
+          icolumn = icolumn + 1
+          write(string2,'('',"'',i2,''-'',a,''_kd"'')') icolumn, &
+            trim(reaction%primary_species_names(i))
+        else
+          write(string2,'('',"'',a,''_kd"'')') trim(reaction%primary_species_names(i))
+        endif
+        string = trim(string) // trim(string2)
       endif
-      string = trim(string) // trim(string2)
-    endif
-  enddo
+    enddo
+  endif
   
-  do i=1,option%ntrandof
-    if (reaction%neqsorb > 0 .and. reaction%total_sorb_print(i)) then
-      if (icolumn > -1) then
-        icolumn = icolumn + 1
-        write(string2,'('',"'',i2,''-'',a,''_total_sorb"'')') icolumn, &
-          trim(reaction%primary_species_names(i))
-      else
-        write(string2,'('',"'',a,''_total_sorb"'')') trim(reaction%primary_species_names(i))
+  if (associated(reaction%total_sorb_print)) then
+    do i=1,option%ntrandof
+      if (reaction%total_sorb_print(i)) then
+        if (icolumn > -1) then
+          icolumn = icolumn + 1
+          write(string2,'('',"'',i2,''-'',a,''_total_sorb"'')') icolumn, &
+            trim(reaction%primary_species_names(i))
+        else
+          write(string2,'('',"'',a,''_total_sorb"'')') trim(reaction%primary_species_names(i))
+        endif
+        string = trim(string) // trim(string2)
       endif
-      string = trim(string) // trim(string2)
-    endif
-  enddo
+    enddo
+  endif
   
   RTGetTecplotHeader = string
 
 end function RTGetTecplotHeader
-
 
 ! ************************************************************************** !
 !

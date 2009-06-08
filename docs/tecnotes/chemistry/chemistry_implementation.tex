@@ -129,17 +129,24 @@
 \newcommand{\arrowstab}{\!\!\!\rightleftharpoons\!\!\!}
 \newcommand{\longline}{\noindent\rule[-0.1in]{\textwidth}{0.01in}}
 
-%\numberwithin{equation}{section}
-
-%\renewcommand{\theequation}{\arabic{section}.\arabic{equation}}
-
-%\newcounter{saveeqn}%
-%\newcommand{\seteqn}{\setcounter{saveeqn}{\value{equation}}%
-%\stepcounter{saveeqn}\setcounter{equation}{0}%
-%\renewcommand{\theequation}
-%      {\mbox{\arabic{saveeqn}-\alph{equation}}}}%
-%\newcommand{\reseteqn}{\setcounter{equation}{\value{saveeqn}}%
-%\renewcommand{\theequation}{\arabic{equation}}}%
+\def\water{H$_2$O}
+\def\calcium{Ca$^{2+}$}
+\def\copper{Cu$^{2+}$}
+\def\magnesium{Mg$^{2+}$}
+\def\sodium{Na$^+$}
+\def\potassium{K$^+$}
+\def\uranium{UO$_2^{2+}$}
+\def\hion{H$^+$}
+\def\bicarbonate{HCO$_3^-$}
+\def\cotwo{CO$_2$}
+\def\chloride{Cl$^-$}
+\def\fluoride{F$^-$}
+\def\phosphoricacid{HPO$_4^{2-}$}
+\def\nitrate{NO$_3^-$}
+\def\sulfate{SO$_4^{2-}$}
+\def\souotwooh{$>$SOUO$_2$OH}
+\def\sohuotwocothree{$>$SOHUO$_2$CO$_3$}
+\def\soh{$>$SOH}
 
 \newcounter{saveeqn}%
 \newcommand{\seteqn}{\setcounter{saveeqn}{\value{equation}}%
@@ -1235,6 +1242,7 @@ The multirate formulation is considered only for surface complexation reactions,
 \EN
 for the $i$th surface complex $>\!\!\S_{i\a}$ on site $\a$ and empty site $>\!\!\chi_\a$, 
 the multirate solute transport equations have the form
+\begin{subequations}
 \EQ
 \frac{\p}{\p t}\varphi \Psi_j + \bnabla\cdot\bOmega_j \eq -\sum_{i\a}\nu_{ji}\frac{\p S_{i\a}}{\p t} - \sum_m\nu_{jm}I_m,
 \EN
@@ -1242,7 +1250,25 @@ or
 \EQ
 \frac{\p}{\p t}\left(\varphi \Psi_j + \sum_{i\a}\nu_{ji} S_{i\a}\right) + \bnabla\cdot\bOmega_j \eq -\sum_m\nu_{jm}I_m.
 \EN
-For simplicity, in what follows it is assumed that $\nu_\a\!=\!1$. In the multirate model the rates of sorption reactions are described through a kinetic relation given by
+\end{subequations}
+In terms of the locally defined distribution coefficient $K_j^d$ this latter equation can be written in the form
+\EQ
+\frac{\p}{\p t}\left[\varphi \Psi_j \left(1 + K_j^d\right)\right] + \bnabla\cdot\bOmega_j \eq -\sum_m\nu_{jm}I_m,
+\EN
+where
+\EQ
+K_j^d \eq \frac{1}{\varphi\Psi_j}\sum_{i\a}\nu_{ji}S_{i\a}.
+\EN
+When the distribution coefficient is constant, the transport equation can be expressed in terms of retarded transport coefficients and mineral reaction rate constants
+\EQ
+\frac{\p}{\p t}\left(\varphi \Psi_j \right) + \bnabla\cdot\frac{1}{\Re_j}{\bOmega_j} \eq -\frac{1}{\Re_j}\sum_m\nu_{jm}I_m,
+\EN
+where
+\EQ
+\Re_j\eq 1 + K_j^d.
+\EN
+
+In the multirate model the rates of sorption reactions are described through a kinetic relation given by
 \EQ\label{sorbed}
 \frac{\p S_{i\a}}{\p t} \eq k_\a^{} \big(S_{i\a}^{\rm eq}-S_{i\a}\big),
 \EN
@@ -1251,7 +1277,7 @@ for surface complexes, and
 \frac{\p S_{\a}}{\p t} &\eq -\sum_i k_\a^{} \big(S_{i\a}^{\rm eq}-S_{i\a}\big),\\
 &\eq k_\a\big(S_\a^{\rm eq}-S_{\a}\big),
 \EA
-for empty sites, where $S_\a^{\rm eq}$ denotes the equilibrium sorbed concentration.
+for empty sites, where $S_\a^{\rm eq}$ denotes the equilibrium sorbed concentration. For simplicity, in what follows it is assumed that $\nu_\a\!=\!1$. 
 With each site $\a$ is associated a rate constant $k_\a$ and site concentration $\omega_\a$. These quantities are defined through a given distribution of sites $\wp(\a)$, such that
 \EQ
 \int_0^\infty \wp(k_\a)dk_\a \eq 1.
@@ -1269,17 +1295,17 @@ Given that the total site concentration is $\omega$, then the site concentration
 \omega_\a \eq f_\a \omega.
 \EN
 
-An alternative form of these equations is to introduce the total sorbed concentration for the $j$th primary species defined as
+An alternative form of these equations is obtained by introducing the total sorbed concentration for the $j$th primary species for each site defined as
 \EQ
-q_{j\a}\eq\sum_i \nu_{ji}S_{i\a}.
+S_{j\a}\eq\sum_i \nu_{ji}S_{i\a}.
 \EN
 Then the transport equations become
 \EQ
-\frac{\p}{\p t}\left(\varphi \Psi_j + \sum_{\a}q_{j\a}\right) + \bnabla\cdot\bOmega_j \eq  - \sum_m\nu_{jm}I_m.
+\frac{\p}{\p t}\left(\varphi \Psi_j + \sum_{\a}S_{j\a}\right) + \bnabla\cdot\bOmega_j \eq  - \sum_m\nu_{jm}I_m.
 \EN
-The sorbed concentrations are obtained from the equations
+The total sorbed concentrations are obtained from the equations
 \EQ
-\frac{\p q_{j\a}}{\p t} \eq k_\a^{} \big(q_{j\a}^{\rm eq}-q_{j\a}\big).
+\frac{\p S_{j\a}}{\p t} \eq k_\a^{} \big(S_{j\a}^{\rm eq}-S_{j\a}\big).
 \EN
 
 \subsubsection{Surface Complexation Model}
@@ -1288,7 +1314,7 @@ The equilibrium sorption concentration $S_{i\a}^{\rm eq}$ is given by
 \EQ
 S_{i\a}^{\rm eq}\eq \frac{\omega_\a K_i Q_i}{1+\sum_l K_lQ_l},
 \EN
-and
+and the empty site concentration by
 \EQ
 S_\a^{\rm eq}\eq\frac{\omega_\a}{1+\sum_l K_lQ_l},
 \EN
@@ -1308,31 +1334,117 @@ Using this result the empty site concentration can be computed directly from the
 \EQ
 S_\a \eq \omega_\a - \sum_i S_{i\a}.
 \EN
-The equilibrium sorbed concentration $q_{j\a}^{\rm eq}$ is defined as
+The equilibrium sorbed concentration $S_{j\a}^{\rm eq}$ is defined as
 \EQ\label{qeq}
-q_{j\a}^{\rm eq} \eq \sum_i \nu_{ji}^{} S_{i\a}^{\rm eq}\eq \frac{\omega_\a}{1+\sum_l K_lQ_l} \sum_i \nu_{ji}K_i Q_i.
+S_{j\a}^{\rm eq} \eq \sum_i \nu_{ji}^{} S_{i\a}^{\rm eq}\eq \frac{\omega_\a}{1+\sum_l K_lQ_l} \sum_i \nu_{ji}K_i Q_i.
 \EN
 
 \subsubsection{$K_d$ Model}
 
 For a constant $K_d$ model it is assumed that
 \EQ
-q_{j\a}^{\rm eq}\eq f_\a K_j^d \Psi_j.
+S_{j\a}^{\rm eq}\eq f_\a K_j^d \Psi_j,
+\EN
+with
+\EQ
+\sum_\a f_\a \eq 1.
 \EN
 The multirate equation is given by
 \EQ
-\frac{\p q_{j\a}}{\p t}\eq k_\a\big(f_\a K_j^d \Psi_j-q_{j\a}\big).
+\frac{\p S_{j\a}}{\p t}\eq k_\a\big(f_\a K_j^d \Psi_j-S_{j\a}\big).
 \EN
+Note that in the $K_d$ model in the limit $k_\a\rightarrow\infty$,
+\EQ
+S_{j\a}\eq f_\a K_j^d \Psi_j.
+\EN
+It then follows that
+\EQ
+S_j\eq \sum_\a f_\a K_j^d\Psi_j \eq K_j^d\Psi_j.
+\EN
+
+As an example illustrating the conditions for the validity of the $K_d$ model, consider the coupled surface complexation reactions
+\begin{subequations}
+\BA
+\text{\soh} + \text{\uranium} - 2 \,\text{\hion} + \text{\water} &\ \rightleftharpoons\ \text{\souotwooh},\\
+\text{\soh} + \text{\uranium} - 2 \,\text{\hion} + \text{\water} + \text{\cotwo} &\ \rightleftharpoons\ \text{\sohuotwocothree}.
+\EA
+\end{subequations}
+The corresponding mass action equations are given by
+\begin{subequations}
+\EQ
+K_1 \eq \dfrac{S_1^\a a_{\rm H^+}^2}{S_{\rm SOH}^\a a_{\rm UO_2^{2+}} a_{\rm H_2O}^{}},
+\EN
+and
+\EQ
+K_2 \eq \dfrac{S_2^\a a_{\rm H^+}^2}{S_{\rm SOH}^\a a_{\rm UO_2^{2+}} a_{\rm CO_2}^{} a_{\rm H_2O}^{}},
+\EN
+\end{subequations}
+where subscripts 1 and 2 refer to surface complexes $\text{\sohuotwocothree}$ and $\text{\sohuotwocothree}$, respectively. Noting that
+\EQ
+S_{\rm SOH}^\a \eq \frac{\omega_\a}{1+K_1Q_1+K_2Q_2},
+\EN
+where
+\begin{subequations}
+\EQ
+Q_1\eq\dfrac{a_{\rm UO_2^{2+}} a_{\rm H_2O}^{}}{a_{\rm H^+}^2},
+\EN
+and
+\EQ
+Q_2\eq\dfrac{a_{\rm UO_2^{2+}} a_{\rm CO_2}^{} a_{\rm H_2O}^{}}{a_{\rm H^+}^2},
+\EN
+\end{subequations}
+it follows that
+\begin{subequations}
+\EQ
+S_1^\a \eq \dfrac{\omega_\a K_1Q_1}{1+K_1Q_1+K_2Q_2},
+\EN
+and
+\EQ
+S_2^\a\eq \dfrac{\omega_\a K_2Q_2}{1+K_1Q_1+K_2Q_2}.
+\EN
+\end{subequations}
+Assuming $K_1Q_1+K_2Q_2 \ll 1$, and conditions of constant pH and CO$_2$ then
+\begin{subequations}
+\EQ
+S_1^\a \eq \omega_\a K_1' C_{\rm UO_2^{2+}},
+\EN
+and
+\EQ
+S_2^\a \eq \omega_\a K_2' C_{\rm UO_2^{2+}},
+\EN
+\end{subequations}
+where
+\begin{subequations}
+\EQ
+K_1' \eq K_1\dfrac{a_{\rm H_2O}}{a_{\rm H^+}^2},
+\EN
+and
+\EQ
+K_2' \eq K_2\dfrac{a_{\rm CO_2} a_{\rm H_2O}}{a_{\rm H^+}^2}.
+\EN
+\end{subequations}
+From the general definition of the distribution coefficient for the $j$th primary species
+\EQ
+K_j^d\eq \frac{1}{\varphi\Psi_j}\sum_{i\a}\nu_{ji}^{} S_i^\a,
+\EN
+it follows that for UO$_2^{2+}$
+\begin{subequations}
+\BA
+K_{\rm UO_2^{2+}}^d &\eq \frac{\omega \big(K_1' + K_2'\big) C_{\rm UO_2^2+}}{\varphi\Psi_{\rm UO_2^{2+}}},\\
+& \eq \frac{\omega \big(K_1' + K_2'\big)}{\varphi \big(1+\sum_i\nu_{ji} C_i/C_{\rm UO_2^{2+}}\big)}.
+\EA
+\end{subequations}
+The sum in the denominator is assumed to be constant since the secondary species $C_i$ all contain factors of $C_{\rm UO_2^{2+}}$. Species with UO$_2^{2+}$ stoichiometric factors of two or more must be assumed to be negligible in comparison to other species in the sum.
 
 \subsection{Numerical Implementation}
 
 The kinetic equation for the sorbed concentration at the $n$th node becomes in finite difference form
 \EQ\label{sorbnum}
-\frac{q_{j\a n}^{t+\Delta t}-q_{j\a n}^t}{\Delta t} \eq k_\a\big(q_{j\a n}^{{\rm eq},\,t+\Delta t}-q_{j\a n}^{t+\Delta t}\big),
+\frac{S_{j\a n}^{t+\Delta t}-S_{j\a n}^t}{\Delta t} \eq k_\a\big(S_{j\a n}^{{\rm eq},\,t+\Delta t}-S_{j\a n}^{t+\Delta t}\big),
 \EN
-for fully backward implicit time differencing. Solving for $q_{j\a}^{t+\Delta t}$ at the new time $t\!+\!\Delta t$ gives
+for fully backward implicit time differencing. Solving for $S_{j\a}^{t+\Delta t}$ at the new time $t\!+\!\Delta t$ gives
 \EQ\label{qkin}
-q_{j\a n}^{t+\Delta t} \eq \frac{q_{j\a n}^t+k_\a \Delta t \, q_{j\a n}^{{\rm eq},\,t+\Delta t}}{1+k_\a\Delta t}.
+S_{j\a n}^{t+\Delta t} \eq \frac{S_{j\a n}^t+k_\a \Delta t \, S_{j\a n}^{{\rm eq},\,t+\Delta t}}{1+k_\a\Delta t}.
 \EN
 or in terms of individual surface complexes
 \EQ\label{qkin1}
@@ -1341,20 +1453,20 @@ S_{i\a n}^{t+\Delta t} \eq \frac{S_{i\a n}^t+k_\a \Delta t \, S_{i\a n}^{{\rm eq
 These two equations provide a recursion relation to calculate the sorbed concentration. 
 The sorption rate equal to the right-hand side of Eqn.\eqref{sorbnum} becomes
 \EQ
-k_\a\big(q_{j\a n}^{{\rm eq},\,t+\Delta t}-q_{j\a n}^{t+\Delta t}\big) \eq k_\a\frac{q_{j\a n}^{{\rm eq},\,t+\Delta t}-q_{j\a n}^{t}}{1+k_\a\Delta t},
+k_\a\big(S_{j\a n}^{{\rm eq},\,t+\Delta t}-S_{j\a n}^{t+\Delta t}\big) \eq k_\a\frac{S_{j\a n}^{{\rm eq},\,t+\Delta t}-S_{j\a n}^{t}}{1+k_\a\Delta t},
 \EN
 
 Substituting this result directly into the residual function for the finite difference form corresponding to the $j$th primary species equation given by
 \BA
-R_{jn} \eq \frac{\big(\varphi_n \Psi_{jn}\big)_{t+\Delta t}-\big(\varphi_n \Psi_{jn}\big)_t}{\Delta t}V_n &+ \sum_\a \frac{q_{j\a n}^{t+\Delta t}-q_{j\a n}^t}{\Delta t}V_n \nonumber\\
+R_{jn} \eq \frac{\big(\varphi_n \Psi_{jn}\big)_{t+\Delta t}-\big(\varphi_n \Psi_{jn}\big)_t}{\Delta t}V_n &+ \sum_\a \frac{S_{j\a n}^{t+\Delta t}-S_{j\a n}^t}{\Delta t}V_n \nonumber\\
 &+ \sum_{n'} \Omega_{jnn'} A_{nn'} + \sum_m\nu_{jm}I_{mn}V_n,
 \EA
 with control volume $V_n$ and interfacial area $A_{nn'}$, this equation becomes
 \BA
-R_{jn} \eq \frac{\big(\varphi_n \Psi_{jn}\big)_{t+\Delta t}-\big(\varphi_n \Psi_{jn}\big)_t}{\Delta t}V_n &+ \sum_\a \frac{k_\a}{1+k_\a\Delta t}\big(q_{j\a n}^{{\rm eq},\,t+\Delta t}-q_{j\a n}^{t}\big)V_n \nonumber\\
+R_{jn} \eq \frac{\big(\varphi_n \Psi_{jn}\big)_{t+\Delta t}-\big(\varphi_n \Psi_{jn}\big)_t}{\Delta t}V_n &+ \sum_\a \frac{k_\a}{1+k_\a\Delta t}\big(S_{j\a n}^{{\rm eq},\,t+\Delta t}-S_{j\a n}^{t}\big)V_n \nonumber\\
 &+ \sum_{n'} \Omega_{jnn'} A_{nn'} + \sum_m\nu_{jm}I_{mn}V_n,
 \EA
-where $q_{j\a n}^{{\rm eq},\,t+\Delta t}$ is given explicitly as a function of the primary species concentrations in Eqn.\eqref{qeq}. Thus the kinetic sorbed concentration has been eliminated from the primary species transport equations. Once these equations are solved, the sorbed concentrations can be updated from Eqn.\eqref{qkin} or \eqref{qkin1}.
+where $S_{j\a n}^{{\rm eq},\,t+\Delta t}$ is given explicitly as a function of the primary species concentrations in Eqn.\eqref{qeq}. Thus the kinetic sorbed concentration has been eliminated from the primary species transport equations. Once these equations are solved, the sorbed concentrations can be updated from Eqn.\eqref{qkin} or \eqref{qkin1}.
 
 \subsection{Multirate Contribution to Jacobian}
 
