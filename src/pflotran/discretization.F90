@@ -627,11 +627,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   select case(discretization%itype)
     case(STRUCTURED_GRID)
       call DAGetMatrix(dm_ptr,mat_type,Jacobian,ierr)
-#ifdef MAT_KEEP_ZEROED_ROWS      
-      call MatSetOption(Jacobian,MAT_KEEP_ZEROED_ROWS,PETSC_FALSE,ierr)
-#else
       call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
-#endif
       call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
     case(UNSTRUCTURED_GRID)
     case(AMR_GRID)

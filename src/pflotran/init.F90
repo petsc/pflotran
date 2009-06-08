@@ -58,6 +58,7 @@ subroutine Init(simulation)
 
   use water_eos_module
   use Utility_module
+  use Output_module
     
   implicit none
   
@@ -600,7 +601,8 @@ subroutine Init(simulation)
   call VecMin(field%porosity0,temp_int,r1,ierr)
   if (r1 < -998.d0) then
     ! if less than 10M grid cells, print porosities
-    if (grid%n < 10000000) then
+    if (grid%nmax < 10000000) then
+      string = 'porosity-uninit-tec'
       call OutputVectorTecplot(string,string,realization,field%porosity0)
     endif
     write(string,*) temp_int
