@@ -598,8 +598,6 @@ subroutine Init(simulation)
   
   ! check that material properties have been set at all grid cells
   ! right now, we check just perms; maybe more needed later
-!  string = 'pre.tec'
-!  call OutputVectorTecplot(string,string,realization,field%porosity0)
   call VecMin(field%porosity0,temp_int,r1,ierr)
   if (r1 < -998.d0) then
     ! if less than 10M grid cells, print porosities
