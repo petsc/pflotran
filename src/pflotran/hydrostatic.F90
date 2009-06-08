@@ -210,6 +210,9 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
                  pressure_gradient(Y_DIRECTION)*dist_y + &
                  pressure_gradient(Z_DIRECTION)*dist_z 
     endif
+    
+    if (pressure < option%minimum_hydrostatic_pressure) &
+      pressure = option%minimum_hydrostatic_pressure
 
     if (condition%pressure%itype == SEEPAGE_BC) then
       coupler%flow_aux_real_var(1,iconn) = max(pressure,option%reference_pressure)

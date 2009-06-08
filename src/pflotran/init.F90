@@ -1141,6 +1141,13 @@ subroutine InitReadInput(simulation)
         call InputReadDouble(input,option,option%reference_pressure)
         call InputDefaultMsg(input,option,'Reference Pressure') 
 
+!....................
+
+      case('MINIMUM_HYDROSTATIC_PRESSURE')
+        call InputReadStringErrorMsg(input,option,card)
+        call InputReadDouble(input,option,option%minimum_hydrostatic_pressure)
+        call InputDefaultMsg(input,option,'Minimum Hydrostatic Pressure') 
+
 !......................
 
       case('REFERENCE_TEMPERATURE')

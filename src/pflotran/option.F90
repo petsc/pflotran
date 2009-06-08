@@ -106,6 +106,8 @@ module Option_module
     PetscReal :: reference_porosity
     PetscReal :: reference_saturation
     
+    PetscReal :: minimum_hydrostatic_pressure
+    
     PetscTruth :: initialize_with_molality
         
 !   table lookup
@@ -345,6 +347,8 @@ subroutine OptionInitRealization(option)
   option%reference_porosity = 0.25d0
   option%reference_saturation = 1.d0
   option%initialize_with_molality = PETSC_FALSE
+  
+  option%minimum_hydrostatic_pressure = -1.d20
 
   !set scale factor for heat equation, i.e. use units of MJ for energy
   option%scale = 1.d-6
