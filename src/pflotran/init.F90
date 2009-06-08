@@ -58,6 +58,7 @@ subroutine Init(simulation)
 
   use water_eos_module
   use Utility_module
+  use Output_module
     
   implicit none
   
@@ -599,6 +600,11 @@ subroutine Init(simulation)
   ! right now, we check just perms; maybe more needed later
   call VecMin(field%porosity0,temp_int,r1,ierr)
   if (r1 < -998.d0) then
+    ! if less than 10M grid cells, print porosities
+    if (grid%nmax < 10000000) then
+      string = 'porosity-uninit-tec'
+      call OutputVectorTecplot(string,string,realization,field%porosity0)
+    endif
     write(string,*) temp_int
     option%io_buffer = 'Porosity not initialized at cell ' // &
                        trim(adjustl(string)) // ' (note PETSc numbering).' // &
