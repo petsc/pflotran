@@ -1684,8 +1684,6 @@ subroutine ReactionReadOutput(reaction,input,option)
       reaction%print_pH = PETSC_TRUE
       reaction%print_kd = PETSC_TRUE
       reaction%print_total_sorb = PETSC_TRUE
-      call InputSkipToEnd(input,option,'OUTPUT')
-      exit
     endif
 
     if (StringCompare(name,'pH',TWO_INTEGER)) then
@@ -1698,8 +1696,14 @@ subroutine ReactionReadOutput(reaction,input,option)
       found = PETSC_TRUE
     endif
 
-    if (StringCompare(word,'total_sorbed',TWO_INTEGER)) then
+    if (StringCompare(word,'total_sorbed',TWELVE_INTEGER)) then
       reaction%print_total_sorb = PETSC_TRUE
+      found = PETSC_TRUE
+    endif
+
+    if (StringCompare(word,'free_ion',EIGHT_INTEGER)) then
+      reaction%print_total_component = PETSC_FALSE
+      reaction%print_free_ion = PETSC_TRUE
       found = PETSC_TRUE
     endif
 

@@ -493,13 +493,24 @@ subroutine OutputTecplotBlock(realization)
         call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       endif
-      do i=1,reaction%ncomp
-        if (reaction%primary_species_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,TOTAL_MOLARITY,i)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
-        endif
-      enddo
+      if (reaction%print_total_component) then
+        do i=1,reaction%ncomp
+          if (reaction%primary_species_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,TOTAL_MOLARITY,i)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+            call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+          endif
+        enddo
+      endif
+      if (reaction%print_free_ion) then
+        do i=1,reaction%ncomp
+          if (reaction%primary_species_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,PRIMARY_MOLARITY,i)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+            call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+          endif
+        enddo
+      endif
       if (reaction%print_act_coefs) then
         do i=1,reaction%ncomp
           if (reaction%primary_species_print(i)) then
@@ -1346,13 +1357,24 @@ subroutine OutputTecplotPoint(realization)
                                               reaction%h_ion_id,ghosted_id)
           write(IUNIT3,1000,advance='no') value
         endif
-        do i=1,reaction%ncomp
-          if (reaction%primary_species_print(i)) then
-            value = RealizGetDatasetValueAtCell(realization,TOTAL_MOLARITY, &
-                                                i,ghosted_id)
-            write(IUNIT3,1000,advance='no') value
-          endif
-        enddo
+        if (reaction%print_total_component) then
+          do i=1,reaction%ncomp
+            if (reaction%primary_species_print(i)) then
+              value = RealizGetDatasetValueAtCell(realization,TOTAL_MOLARITY, &
+                                                  i,ghosted_id)
+              write(IUNIT3,1000,advance='no') value
+            endif
+          enddo
+        endif
+        if (reaction%print_free_ion) then
+          do i=1,reaction%ncomp
+            if (reaction%primary_species_print(i)) then
+              value = RealizGetDatasetValueAtCell(realization,PRIMARY_MOLARITY, &
+                                                  i,ghosted_id)
+              write(IUNIT3,1000,advance='no') value
+            endif
+          enddo
+        endif        
         if (reaction%print_act_coefs) then
           do i=1,reaction%ncomp
             if (reaction%primary_species_print(i)) then
@@ -2779,12 +2801,22 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
         write(fid,110,advance="no") &
           RealizGetDatasetValueAtCell(realization,PH,reaction%h_ion_id,ghosted_id)
       endif
-      do i=1,reaction%ncomp
-        if (reaction%primary_species_print(i)) then
-          write(fid,110,advance="no") &
-            RealizGetDatasetValueAtCell(realization,TOTAL_MOLARITY,i,ghosted_id)
-        endif
-      enddo
+      if (reaction%print_total_component) then
+        do i=1,reaction%ncomp
+          if (reaction%primary_species_print(i)) then
+            write(fid,110,advance="no") &
+              RealizGetDatasetValueAtCell(realization,TOTAL_MOLARITY,i,ghosted_id)
+          endif
+        enddo
+      endif
+      if (reaction%print_free_ion) then
+        do i=1,reaction%ncomp
+          if (reaction%primary_species_print(i)) then
+            write(fid,110,advance="no") &
+              RealizGetDatasetValueAtCell(realization,PRIMARY_MOLARITY,i,ghosted_id)
+          endif
+        enddo
+      endif      
       if (reaction%print_act_coefs) then
         do i=1,reaction%ncomp
           if (reaction%primary_species_print(i)) then
@@ -3058,16 +3090,30 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                        region%coordinates(ONE_INTEGER)%z, &
                                        count,ghosted_ids)
       endif
-      do i=1,reaction%ncomp
-        if (reaction%primary_species_print(i)) then
-          write(fid,110,advance="no") &
-            OutputGetVarFromArrayAtCoord(realization,TOTAL_MOLARITY,i, &
-                                         region%coordinates(ONE_INTEGER)%x, &
-                                         region%coordinates(ONE_INTEGER)%y, &
-                                         region%coordinates(ONE_INTEGER)%z, &
-                                         count,ghosted_ids)
-        endif
-      enddo
+      if (reaction%print_total_component) then
+        do i=1,reaction%ncomp
+          if (reaction%primary_species_print(i)) then
+            write(fid,110,advance="no") &
+              OutputGetVarFromArrayAtCoord(realization,TOTAL_MOLARITY,i, &
+                                           region%coordinates(ONE_INTEGER)%x, &
+                                           region%coordinates(ONE_INTEGER)%y, &
+                                           region%coordinates(ONE_INTEGER)%z, &
+                                           count,ghosted_ids)
+          endif
+        enddo
+      endif
+      if (reaction%print_free_ion) then
+        do i=1,reaction%ncomp
+          if (reaction%primary_species_print(i)) then
+            write(fid,110,advance="no") &
+              OutputGetVarFromArrayAtCoord(realization,PRIMARY_MOLARITY,i, &
+                                           region%coordinates(ONE_INTEGER)%x, &
+                                           region%coordinates(ONE_INTEGER)%y, &
+                                           region%coordinates(ONE_INTEGER)%z, &
+                                           count,ghosted_ids)
+          endif
+        enddo
+      endif      
       if (reaction%print_act_coefs) then
         do i=1,reaction%ncomp
           if (reaction%primary_species_print(i)) then
@@ -3736,12 +3782,22 @@ subroutine OutputVTK(realization)
   
   if (option%ntrandof > 0) then
     if (associated(reaction)) then
-      do i=1,reaction%ncomp
-        call OutputGetVarFromArray(realization,global_vec,TOTAL_MOLARITY,i)
-        call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-        call WriteVTKDataSetFromVec(IUNIT3,realization,reaction%primary_species_names(i), &
-                                    natural_vec,VTK_REAL)
-      enddo
+      if (reaction%print_total_component) then
+        do i=1,reaction%ncomp
+          call OutputGetVarFromArray(realization,global_vec,TOTAL_MOLARITY,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteVTKDataSetFromVec(IUNIT3,realization,reaction%primary_species_names(i), &
+                                      natural_vec,VTK_REAL)
+        enddo
+      endif
+      if (reaction%print_free_ion) then
+        do i=1,reaction%ncomp
+          call OutputGetVarFromArray(realization,global_vec,PRIMARY_MOLARITY,i)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteVTKDataSetFromVec(IUNIT3,realization,reaction%primary_species_names(i), &
+                                      natural_vec,VTK_REAL)
+        enddo
+      endif    
       do i=1,reaction%nkinmnrl
         call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
         call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -4761,21 +4817,40 @@ subroutine OutputHDF5(realization)
           current_component=current_component+1
         endif
       endif
-      do i=1,reaction%ncomp
-        if (reaction%primary_species_print(i)) then
-          call OutputGetVarFromArray(realization,global_vec,TOTAL_MOLARITY,i)
-          if (.not.(option%use_samr)) then
-            write(string,'(a)') reaction%primary_species_names(i)
-            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-          else
-            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-            if(first) then
-               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,TOTAL_MOLARITY,i)
+      if (reaction%print_total_component) then
+        do i=1,reaction%ncomp
+          if (reaction%primary_species_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,TOTAL_MOLARITY,i)
+            if (.not.(option%use_samr)) then
+              write(string,'(a)') reaction%primary_species_names(i)
+              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+            else
+              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+              if(first) then
+                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,TOTAL_MOLARITY,i)
+              endif
+              current_component=current_component+1
             endif
-            current_component=current_component+1
           endif
-        endif
-      enddo
+        enddo
+      endif
+      if (reaction%print_free_ion) then
+        do i=1,reaction%ncomp
+          if (reaction%primary_species_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,PRIMARY_MOLARITY,i)
+            if (.not.(option%use_samr)) then
+              write(string,'(a)') reaction%primary_species_names(i)
+              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+            else
+              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+              if(first) then
+                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,PRIMARY_MOLARITY,i)
+              endif
+              current_component=current_component+1
+            endif
+          endif
+        enddo
+      endif      
       if (reaction%print_act_coefs) then
         do i=1,reaction%ncomp
           if (reaction%primary_species_print(i)) then

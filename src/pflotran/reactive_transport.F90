@@ -3026,19 +3026,36 @@ function RTGetTecplotHeader(realization,icolumn)
     string = trim(string) // trim(string2)
   endif
   
-  do i=1,option%ntrandof
-    if (reaction%primary_species_print(i)) then
-      if (icolumn > -1) then
-        icolumn = icolumn + 1
-        write(string2,'('',"'',i2,''-'',a,''"'')') icolumn, &
-          trim(reaction%primary_species_names(i))
-      else
-        write(string2,'('',"'',a,''"'')') trim(reaction%primary_species_names(i))
+  if (reaction%print_total_component) then
+    do i=1,option%ntrandof
+      if (reaction%primary_species_print(i)) then
+        if (icolumn > -1) then
+          icolumn = icolumn + 1
+          write(string2,'('',"'',i2,''-'',a,''_tot"'')') icolumn, &
+            trim(reaction%primary_species_names(i))
+        else
+          write(string2,'('',"'',a,''"'')') trim(reaction%primary_species_names(i))
+        endif
+        string = trim(string) // trim(string2)
       endif
-      string = trim(string) // trim(string2)
-    endif
-  enddo
+    enddo
+  endif
   
+  if (reaction%print_free_ion) then
+    do i=1,option%ntrandof
+      if (reaction%primary_species_print(i)) then
+        if (icolumn > -1) then
+          icolumn = icolumn + 1
+          write(string2,'('',"'',i2,''-'',a,''_free"'')') icolumn, &
+            trim(reaction%primary_species_names(i))
+        else
+          write(string2,'('',"'',a,''"'')') trim(reaction%primary_species_names(i))
+        endif
+        string = trim(string) // trim(string2)
+      endif
+    enddo  
+  endif
+    
   if (reaction%print_act_coefs) then
     do i=1,option%ntrandof
       if (reaction%primary_species_print(i)) then

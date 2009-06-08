@@ -137,6 +137,8 @@ module Reaction_Aux_module
     PetscTruth :: print_kd
     PetscTruth :: print_total_sorb
     PetscTruth :: print_act_coefs
+    PetscTruth :: print_total_component
+    PetscTruth :: print_free_ion
     PetscInt :: num_dbase_temperatures
     PetscInt :: h_ion_id
     PetscInt :: o2_gas_id
@@ -352,6 +354,8 @@ function ReactionCreate()
   reaction%use_log_formulation = PETSC_FALSE
   reaction%use_full_geochemistry = PETSC_FALSE
   reaction%use_activity_h2o = PETSC_FALSE
+  reaction%print_total_component = PETSC_TRUE
+  reaction%print_free_ion = PETSC_FALSE
   
   reaction%h_ion_id = 0
   reaction%o2_gas_id = 0

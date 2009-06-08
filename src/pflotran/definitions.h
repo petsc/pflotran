@@ -33,6 +33,11 @@ PetscInt, parameter :: FOUR_INTEGER = 4
 PetscInt, parameter :: FIVE_INTEGER = 5
 PetscInt, parameter :: SIX_INTEGER = 6
 PetscInt, parameter :: SEVEN_INTEGER = 7
+PetscInt, parameter :: EIGHT_INTEGER = 8
+PetscInt, parameter :: NINE_INTEGER = 9
+PetscInt, parameter :: TEN_INTEGER = 10
+PetscInt, parameter :: ELEVEN_INTEGER = 11
+PetscInt, parameter :: TWELVE_INTEGER = 12
 PetscInt, parameter :: NEG_ONE_INTEGER = -1
 
 PetscInt, parameter :: X_DIRECTION = 1
