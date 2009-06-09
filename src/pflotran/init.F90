@@ -1748,7 +1748,7 @@ subroutine assignMaterialPropToRegions(realization)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
 
-  type(material_property_type), pointer :: material_property
+  type(material_property_type), pointer :: material_property, null_material_property
   type(region_type), pointer :: region
   
   option => realization%option
@@ -1822,6 +1822,8 @@ subroutine assignMaterialPropToRegions(realization)
         call GridVecGetArrayF90(grid,field%porosity0,por0_p,ierr)
         call GridVecGetArrayF90(grid,field%tor_loc,tor_loc_p,ierr)
         
+        ! create null material property for inactive cells
+        null_material_property => MaterialPropertyCreate()
         strata => cur_patch%strata%first
         do
            if (.not.associated(strata)) exit
@@ -1845,16 +1847,22 @@ subroutine assignMaterialPropToRegions(realization)
 
                  ghosted_id = grid%nL2G(local_id)
                  if (associated(cur_patch%imat)) then
-                    ! if patch%imat is allocated and the id > 0, the material id 
-                    ! supercedes the material pointer for the strata
-                    material_property_id = cur_patch%imat(ghosted_id)
-                    if (material_property_id > 0 .and. &
-                         material_property_id <= size(realization%material_property_array)) then
-                       material_property => realization%material_property_array(material_property_id)%ptr
-                    endif
-                    ! otherwide set the imat value to the stratas material
-                    if (material_property_id < -998) & ! prevent overwrite of cell already set to inactive
-                         cur_patch%imat(ghosted_id) = material_property%id
+                   ! if patch%imat is allocated and the id > 0, the material id 
+                   ! supercedes the material pointer for the strata
+                   material_property_id = cur_patch%imat(ghosted_id)
+                   if (material_property_id == 0) then ! accommodate inactive cells
+                     material_property => null_material_property
+                   else if (material_property_id > 0 .and. &
+                            material_property_id <= &
+                            size(realization%material_property_array)) then
+                     material_property => realization%material_property_array(material_property_id)%ptr
+                   else if (material_property_id < -998) then 
+                     ! set the imat value to the stratas material
+                     material_property => strata%material_property
+                     cur_patch%imat(ghosted_id) = material_property%id
+                   else
+                     nullify(material_property)
+                   endif
                  endif
                  if (associated(material_property)) then
                     if (option%nflowdof > 0) then
@@ -1872,6 +1880,8 @@ subroutine assignMaterialPropToRegions(realization)
            endif
            strata => strata%next
         enddo
+        call MaterialPropertyDestroy(null_material_property)
+        nullify(null_material_property)
 
         if (option%nflowdof > 0) then
            call GridVecRestoreArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
