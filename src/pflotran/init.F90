@@ -616,8 +616,10 @@ subroutine Init(simulation)
   call printMsg(option,"  Finished Initialization")
   
 #ifdef USE_HDF5
-  #ifndef HDF5_BROADCAST and VAMSI_HDF5
+  #ifndef HDF5_BROADCAST 
+  #ifndef VAMSI_HDF5
   call printMsg(option,"Default HDF5 Mechanism is used")
+  #endif
   #endif
   
   #ifdef HDF5_BROADCAST
