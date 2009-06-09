@@ -29,8 +29,13 @@ module Option_module
         
     PetscMPIInt :: io_rank
     PetscTruth :: broadcast_read
-    PetscMPIInt :: iogroup 
-    PetscInt :: broadcast_size 
+
+#ifdef VAMSI_HDF5
+    MPI_Comm :: iogroup, readers 
+    PetscMPIInt :: localsize, localrank, reader_rank, reader_size
+    PetscInt :: color, key, reader_color, reader_key, broadcast_size
+#endif	
+
     character(len=MAXSTRINGLENGTH) :: io_buffer
   
     PetscInt :: fid_out
@@ -277,8 +282,20 @@ subroutine OptionInitAll(option)
     
   option%broadcast_read = PETSC_FALSE
   option%io_rank = 0
+
+#ifdef VAMSI_HDF5
   option%iogroup = 0
+  option%readers = 0
+  option%localsize = 0
+  option%localrank = 0
+  option%reader_rank = 0
+  option%reader_size = 0
+  option%color = 0
+  option%key = 0
+  option%reader_color = 0
+  option%reader_key = 0
   option%broadcast_size = 0
+#endif
   
   option%print_screen_flag = PETSC_FALSE
   option%print_file_flag = PETSC_FALSE

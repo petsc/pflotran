@@ -55,9 +55,6 @@
   PetscInt :: test_int
   PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH) :: string
-  PetscInt :: color, key
-  PetscInt :: broadcast_size
-  
   type(stochastic_type), pointer :: stochastic
   type(simulation_type), pointer :: simulation
   type(realization_type), pointer :: realization
@@ -76,10 +73,22 @@
   option%mycommsize = option%global_commsize
   option%mygroup = option%global_group
 #ifdef VAMSI_HDF5
-  broadcast_size = HDF5_BROADCAST_SIZE
-  color = option%global_rank/ broadcast_size
-  key = option%global_rank
-  call MPI_Comm_split(option%global_comm,color,key,option%iogroup,ierr)
+  option%broadcast_size = HDF5_BROADCAST_SIZE
+  option%color = option%global_rank / option%broadcast_size
+  option%key = option%global_rank
+  call MPI_Comm_split(option%global_comm,option%color,option%key,option%iogroup,ierr)
+  call MPI_Comm_size(option%iogroup,option%localsize,ierr)
+  call MPI_Comm_rank(option%iogroup,option%localrank,ierr)
+  if (mod(option%global_rank,option%broadcast_size) == 0) then
+	option%reader_color = 1
+	option%reader_key = option%global_rank
+  else
+    option%reader_color = 0
+    option%reader_key = option%global_rank
+  endif
+  call MPI_Comm_split(option%global_comm,option%reader_color,option%reader_key,option%readers,ierr)
+  call MPI_Comm_size(option%readers,option%reader_size,ierr)
+  call MPI_Comm_rank(option%readers,option%reader_rank,ierr)
 #endif
   ! check for non-default input filename
   option%input_filename = "pflotran.in"

@@ -22,8 +22,7 @@ module General_Grid_module
   ! Otherwise some very strange things will happen and PETSc will give no
   ! indication of what the problem is.
 #include "finclude/petsclog.h"
-  
-  PetscInt :: broadcast_size = HDF5_BROADCAST_SIZE
+
   PetscMPIInt :: hdf5_err
   public :: ReadStructuredGridHDF5
   
@@ -485,9 +484,6 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
 #ifdef HDF5_BROADCAST
     if (option%myrank == option%io_rank) then                           
 #endif
-#ifdef VAMSI_HDF5
-    if (mod(option%global_rank,broadcast_size) == 0) then
-#endif
       call PetscLogEventBegin(logging%event_h5dread_f, &
                               PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                               PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
@@ -502,19 +498,10 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
       call mpi_bcast(upwind_ids,dims(1),MPI_INTEGER,option%io_rank, &
                      option%mycomm,ierr)
 #endif    
-#ifdef VAMSI_HDF5
-    endif
-    if (option%mycommsize > 1) &
-      call mpi_bcast(upwind_ids,dims(1),MPI_INTEGER,0, &
-                     option%iogroup,ierr)
-#endif    
     call h5sselect_hyperslab_f(file_space_id_down, H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
 #ifdef HDF5_BROADCAST
     if (option%myrank == option%io_rank) then                           
-#endif
-#ifdef VAMSI_HDF5
-    if (mod(option%global_rank,broadcast_size) == 0) then
 #endif
       call PetscLogEventBegin(logging%event_h5dread_f, &
                               PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -529,12 +516,6 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
     if (option%mycommsize > 1) &
       call mpi_bcast(downwind_ids,dims(1),MPI_INTEGER,option%io_rank, &
                      option%mycomm,ierr)
-#endif    
-#ifdef VAMSI_HDF5
-    endif
-    if (option%mycommsize > 1) &
-      call mpi_bcast(downwind_ids,dims(1),MPI_INTEGER,0, &
-                     option%iogroup,ierr)
 #endif    
     do i=1,dims(1)
       connection_count = connection_count + 1
