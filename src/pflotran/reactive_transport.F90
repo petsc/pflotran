@@ -765,11 +765,8 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
     istart = iend-reaction%ncomp+1
 
     rt_aux_vars(ghosted_id)%pri_molal = xx_p(istart:iend)
-    if (reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
-      call RActivityCoefficients(rt_aux_vars(ghosted_id), &
-                                 global_aux_vars(ghosted_id), &
-                                 reaction,option)
-    endif
+    ! DO NOTE RECOMPUTE THE ACTIVITY COEFFICIENTS BEFORE COMPUTING THE
+    ! FIXED PORTION OF THE ACCUMULATION TERM - geh
     call RTAuxVarCompute(rt_aux_vars(ghosted_id), &
                          global_aux_vars(ghosted_id), &
                          reaction,option)
