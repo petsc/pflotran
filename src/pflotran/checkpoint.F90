@@ -159,7 +159,7 @@ subroutine Checkpoint(realization, &
   ! We manually specify the number of bytes required for the 
   ! checkpoint header, since sizeof() is not supported by some Fortran 
   ! compilers.  To be on the safe side, we assume an integer is 8 bytes.
-  bagsize = 160
+  bagsize = 176
   call PetscBagCreate(option%mycomm, bagsize, bag, ierr)
   call PetscBagGetData(bag, header, ierr); CHKERRQ(ierr)
 

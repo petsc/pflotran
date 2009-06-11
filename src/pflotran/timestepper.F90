@@ -515,16 +515,16 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
             & " cuts = ",i6)') &
             flow_stepper%steps,flow_stepper%newton_cum, &
             flow_stepper%linear_cum,flow_stepper%icutcum
-      write(*,'(" FLOW time: ",1pe12.4," seconds.")') &
-        flow_stepper%cumulative_solver_time
+      write(string,'(f12.1)') flow_stepper%cumulative_solver_time
+      write(*,*) 'FLOW time = ' // trim(adjustl(string)) // ' seconds'
     endif
     if (option%ntrandof > 0) then
       write(*,'(/," TRAN steps = ",i6," newton = ",i8," linear = ",i10, &
             & " cuts = ",i6)') &
             tran_stepper%steps,tran_stepper%newton_cum, &
             tran_stepper%linear_cum,tran_stepper%icutcum
-      write(*,'(" TRAN time: ",1pe12.4," seconds.")') &
-        tran_stepper%cumulative_solver_time
+      write(string,'(f12.1)') tran_stepper%cumulative_solver_time
+      write(*,*) 'TRAN time = ' // trim(adjustl(string)) // ' seconds'
     endif            
   endif
   
@@ -534,16 +534,16 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
             & " cuts = ",i6)') &
             flow_stepper%steps,flow_stepper%newton_cum, &
             flow_stepper%linear_cum,flow_stepper%icutcum
-      write(option%fid_out,'(" FLOW time: ",1pe12.4," seconds.")') &
-        flow_stepper%cumulative_solver_time
+      write(string,'(f12.1)') flow_stepper%cumulative_solver_time
+      write(option%fid_out,*) 'FLOW time = ' // trim(adjustl(string)) // ' seconds'
     endif
     if (option%ntrandof > 0) then
       write(option%fid_out,'(/," TRAN steps = ",i6," newton = ",i8," linear = ",i10, &
             & " cuts = ",i6)') &
             tran_stepper%steps,tran_stepper%newton_cum, &
             tran_stepper%linear_cum,tran_stepper%icutcum
-      write(option%fid_out,'(" TRAN time: ",1pe12.4," seconds.")') &
-        tran_stepper%cumulative_solver_time
+      write(string,'(f12.1)') tran_stepper%cumulative_solver_time
+      write(option%fid_out,*) 'TRAN time = ' // trim(adjustl(string)) // ' seconds'
     endif            
   endif
 
