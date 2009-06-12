@@ -516,7 +516,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
             flow_stepper%steps,flow_stepper%newton_cum, &
             flow_stepper%linear_cum,flow_stepper%icutcum
       write(string,'(f12.1)') flow_stepper%cumulative_solver_time
-      write(*,*) 'FLOW time = ' // trim(adjustl(string)) // ' seconds'
+      write(*,*) 'FLOW SNES time = ' // trim(adjustl(string)) // ' seconds'
     endif
     if (option%ntrandof > 0) then
       write(*,'(/," TRAN steps = ",i6," newton = ",i8," linear = ",i10, &
@@ -524,7 +524,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
             tran_stepper%steps,tran_stepper%newton_cum, &
             tran_stepper%linear_cum,tran_stepper%icutcum
       write(string,'(f12.1)') tran_stepper%cumulative_solver_time
-      write(*,*) 'TRAN time = ' // trim(adjustl(string)) // ' seconds'
+      write(*,*) 'TRAN SNES time = ' // trim(adjustl(string)) // ' seconds'
     endif            
   endif
   
@@ -535,7 +535,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
             flow_stepper%steps,flow_stepper%newton_cum, &
             flow_stepper%linear_cum,flow_stepper%icutcum
       write(string,'(f12.1)') flow_stepper%cumulative_solver_time
-      write(option%fid_out,*) 'FLOW time = ' // trim(adjustl(string)) // ' seconds'
+      write(option%fid_out,*) 'FLOW SNES time = ' // trim(adjustl(string)) // ' seconds'
     endif
     if (option%ntrandof > 0) then
       write(option%fid_out,'(/," TRAN steps = ",i6," newton = ",i8," linear = ",i10, &
@@ -543,7 +543,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
             tran_stepper%steps,tran_stepper%newton_cum, &
             tran_stepper%linear_cum,tran_stepper%icutcum
       write(string,'(f12.1)') tran_stepper%cumulative_solver_time
-      write(option%fid_out,*) 'TRAN time = ' // trim(adjustl(string)) // ' seconds'
+      write(option%fid_out,*) 'TRAN SNES time = ' // trim(adjustl(string)) // ' seconds'
     endif            
   endif
 
@@ -1428,7 +1428,7 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
         option%dcmax,option%dcmax/option%tran_dt
     endif
     if (option%print_file_flag) then  
-      write(option%fid_out,'("  --> max chng: dcmx= ",1pe12.4," dcdt= ",1pe12.4," [mol/s]")') &
+      write(option%fid_out,'("  --> max chng: dcmx= ",1pe12.4," dc/dt= ",1pe12.4," [mol/s]")') &
         option%dcmax,option%dcmax/option%tran_dt
     endif
 
