@@ -1424,7 +1424,7 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
     
     call RTMaxChange(realization)
     if (option%print_screen_flag) then
-      write(*,'("  --> max chng: dcmx= ",1pe12.4," dcdt= ",1pe12.4," [mol/s]")') &
+      write(*,'("  --> max chng: dcmx= ",1pe12.4," dc/dt= ",1pe12.4," [mol/s]")') &
         option%dcmax,option%dcmax/option%tran_dt
     endif
     if (option%print_file_flag) then  
