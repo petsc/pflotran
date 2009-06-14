@@ -107,7 +107,8 @@ function RTAuxCreate(option)
   allocate(aux%rt_parameter)
   allocate(aux%rt_parameter%diffusion_coefficient(option%nphase))
   aux%rt_parameter%diffusion_coefficient = 0.d0
-  aux%rt_parameter%dispersivity = 0.0177326d0 ! Hanford small column exp.-pcld0
+! aux%rt_parameter%dispersivity = 0.0177326d0 ! Hanford small column exp.-pcld0
+  aux%rt_parameter%dispersivity = 0.d0
 
   RTAuxCreate => aux
   
