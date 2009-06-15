@@ -66,7 +66,7 @@ function MaterialPropertyCreate()
   material_property%permeability_filename = ''
   material_property%porosity = 0.d0
   material_property%porosity_filename = ''
-  material_property%tortuosity = 0.d0
+  material_property%tortuosity = 1.d0
   material_property%saturation_function_id = 0
   material_property%saturation_function_name = ''
   material_property%rock_density = 0.d0
