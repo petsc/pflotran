@@ -74,7 +74,7 @@ subroutine TFlux(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up, &
     weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-    diffusion = rt_parameter%dispersivity*q + &
+    diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
                 weight*rt_parameter%diffusion_coefficient(iphase)
   endif
   
@@ -117,7 +117,7 @@ subroutine TFlux(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up, &
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
 
    diffusion = 0.d0 
-   if(iphase ==2) diffusion = rt_parameter%dispersivity*q + &
+   if(iphase ==2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
                               weigth*rt_parameter%diffusion_coefficient(iphase)
 
   endif
@@ -194,7 +194,7 @@ subroutine TFluxDerivative(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up
     weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-    diffusion = rt_parameter%dispersivity*q + &
+    diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
                 weight*rt_parameter%diffusion_coefficient(iphase)
 
   endif
@@ -245,8 +245,8 @@ subroutine TFluxDerivative(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up
       weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-      if(iphase==2) diffusion = weight*(rt_parameter%dispersivity*q/(0.5d0*(por_up+por_dn))+ &
-                                        rt_parameter%diffusion_coefficient(iphase))
+      if(iphase==2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
+                                weight*rt_parameter%diffusion_coefficient(iphase)
         endif
   
     !upstream weighting
@@ -332,7 +332,7 @@ subroutine TBCFlux(ibndtype, &
         weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
         ! need to account for multiple phases
         ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-        diffusion = rt_parameter%dispersivity*q + &
+        diffusion = rt_parameter%dispersivity*q/dist_dn + &
                     weight*rt_parameter%diffusion_coefficient(iphase)
       endif    
     case(DIRICHLET_ZERO_GRADIENT_BC)
@@ -343,7 +343,7 @@ subroutine TBCFlux(ibndtype, &
           weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
           ! need to account for multiple phases
           ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-          diffusion = rt_parameter%dispersivity*q + &
+          diffusion = rt_parameter%dispersivity*q/dist_dn + &
                       weight*rt_parameter%diffusion_coefficient(iphase)
         endif    
       endif
@@ -386,7 +386,7 @@ subroutine TBCFlux(ibndtype, &
             weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
            ! need to account for multiple phases
            ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-            if( iphase == 2) diffusion = rt_parameter%dispersivity*q + &
+            if( iphase == 2) diffusion = rt_parameter%dispersivity*q/dist_dn + &
                                          weight*rt_parameter%diffusion_coefficient(iphase)
           endif    
         case(DIRICHLET_ZERO_GRADIENT_BC)
@@ -398,7 +398,7 @@ subroutine TBCFlux(ibndtype, &
           ! need to account for multiple phases
           ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
               diffusion = 0.d0
-              if(iphase == 2) diffusion = rt_parameter%dispersivity*q + &
+              if(iphase == 2) diffusion = rt_parameter%dispersivity*q/dist_dn + &
                                           weight*rt_parameter%diffusion_coefficient(iphase)
             endif    
           endif
@@ -479,7 +479,7 @@ subroutine TBCFluxDerivative(ibndtype, &
         weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
         ! need to account for multiple phases
         ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-        diffusion = rt_parameter%dispersivity*q + &
+        diffusion = rt_parameter%dispersivity*q/dist_dn + &
                     weight*rt_parameter%diffusion_coefficient(iphase)
       endif    
     case(DIRICHLET_ZERO_GRADIENT_BC)
@@ -489,7 +489,7 @@ subroutine TBCFluxDerivative(ibndtype, &
           weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
           ! need to account for multiple phases
           ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-          diffusion = rt_parameter%dispersivity*q + &
+          diffusion = rt_parameter%dispersivity*q/dist_dn + &
                       weight*rt_parameter%diffusion_coefficient(iphase)
         endif  
       endif  
@@ -537,7 +537,7 @@ subroutine TBCFluxDerivative(ibndtype, &
             weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
             ! need to account for multiple phases
            ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-            diffusion = rt_parameter%dispersivity*q + &
+            diffusion = rt_parameter%dispersivity*q/dist_dn + &
                         weight*rt_parameter%diffusion_coefficient(iphase)
           endif    
         case(DIRICHLET_ZERO_GRADIENT_BC)
@@ -547,7 +547,7 @@ subroutine TBCFluxDerivative(ibndtype, &
               weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
             ! need to account for multiple phases
             ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-              diffusion = rt_parameter%dispersivity*q + &
+              diffusion = rt_parameter%dispersivity*q/dist_dn + &
                           weight*rt_parameter%diffusion_coefficient(iphase)
            endif  
           endif  
@@ -658,8 +658,8 @@ subroutine TFluxAdv(rt_aux_var_up,global_aux_var_up, &
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
 
    diffusion = 0.d0 
-   if(iphase ==2) diffusion = weight*(rt_parameter%dispersivity*q/(0.5d0*(por_up+por_dn))+ &
-                                      rt_parameter%diffusion_coefficient(iphase))
+   if(iphase ==2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn)+ &
+                              weight*rt_parameter%diffusion_coefficient(iphase)
 
   endif
   
@@ -767,8 +767,8 @@ subroutine TFluxDerivativeAdv(rt_aux_var_up,global_aux_var_up, &
       weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-      if(iphase==2) diffusion = weight*(rt_parameter%dispersivity*q/(0.5d0*(por_up+por_dn))+ &
-                                        rt_parameter%diffusion_coefficient(iphase))
+      if(iphase==2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
+                                weight*rt_parameter%diffusion_coefficient(iphase)
         endif
   
     !upstream weighting
@@ -876,8 +876,8 @@ subroutine TBCFluxAdv(ibndtype, &
           weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
            ! need to account for multiple phases
            ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-          if( iphase == 2) diffusion = weight*(rt_parameter%dispersivity*q/por_dn+ &
-                                                 rt_parameter%diffusion_coefficient(iphase))
+          if( iphase == 2) diffusion = rt_parameter%dispersivity*q/dist_dn + &
+                                       weight*rt_parameter%diffusion_coefficient(iphase)
         endif    
       case(DIRICHLET_ZERO_GRADIENT_BC)
         if (q >= 0.d0) then
@@ -888,8 +888,8 @@ subroutine TBCFluxAdv(ibndtype, &
           ! need to account for multiple phases
           ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
             diffusion = 0.d0
-            if(iphase == 2) diffusion = weight*(rt_parameter%dispersivity*q/por_dn+ &
-                                                  rt_parameter%diffusion_coefficient(iphase))
+            if(iphase == 2) diffusion = rt_parameter%dispersivity*q/dist_dn+ &
+                                        weight*rt_parameter%diffusion_coefficient(iphase)
           endif    
         endif
       case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
@@ -996,8 +996,8 @@ subroutine TBCFluxDerivativeAdv(ibndtype, &
             weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
             ! need to account for multiple phases
            ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-            diffusion = weight*(rt_parameter%dispersivity*q/por_dn+ &
-                                rt_parameter%diffusion_coefficient(iphase))
+            diffusion = rt_parameter%dispersivity*q/disn_dn + &
+                        weight*rt_parameter%diffusion_coefficient(iphase)
           endif    
         case(DIRICHLET_ZERO_GRADIENT_BC)
           if (q >= 0.d0) then
@@ -1006,8 +1006,8 @@ subroutine TBCFluxDerivativeAdv(ibndtype, &
               weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
             ! need to account for multiple phases
             ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-              diffusion = weight*(rt_parameter%dispersivity*q/por_dn+ &
-                                  rt_parameter%diffusion_coefficient(iphase))
+              diffusion = rt_parameter%dispersivity*q/dist_dn + &
+                          weight*rt_parameter%diffusion_coefficient(iphase)
            endif  
           endif  
         case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
@@ -1095,7 +1095,7 @@ subroutine TFluxDiff(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up, &
     weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-    diffusion = rt_parameter%dispersivity*q + &
+    diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
                 weight*rt_parameter%diffusion_coefficient(iphase)
   endif
   
@@ -1138,7 +1138,7 @@ subroutine TFluxDiff(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up, &
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
 
    diffusion = 0.d0 
-   if(iphase ==2) diffusion = rt_parameter%dispersivity*q + &
+   if(iphase ==2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
                               weight*rt_parameter%diffusion_coefficient(iphase)
 
   endif
@@ -1218,7 +1218,7 @@ subroutine TFluxDerivativeDiff(rt_aux_var_up,global_aux_var_up, &
     weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-    diffusion = rt_parameter%dispersivity*q + &
+    diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
                 weight*rt_parameter%diffusion_coefficient(iphase)
   endif
   
@@ -1268,7 +1268,7 @@ subroutine TFluxDerivativeDiff(rt_aux_var_up,global_aux_var_up, &
       weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-      if(iphase==2) diffusion = rt_parameter%dispersivity*q + &
+      if(iphase==2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
                                 weight*rt_parameter%diffusion_coefficient(iphase)
         endif
   
@@ -1355,7 +1355,7 @@ subroutine TBCFluxDiff(ibndtype, &
         weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
         ! need to account for multiple phases
         ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-        diffusion = rt_parameter%dispersivity*q + &
+        diffusion = rt_parameter%dispersivity*q/dist_dn + &
                     weight*rt_parameter%diffusion_coefficient(iphase)
       endif    
     case(DIRICHLET_ZERO_GRADIENT_BC)
@@ -1366,7 +1366,7 @@ subroutine TBCFluxDiff(ibndtype, &
           weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
           ! need to account for multiple phases
           ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-          diffusion = rt_parameter%dispersivity*q + &
+          diffusion = rt_parameter%dispersivity*q/dist_dn + &
                       weight*rt_parameter%diffusion_coefficient(iphase)
         endif    
       endif
@@ -1409,7 +1409,7 @@ subroutine TBCFluxDiff(ibndtype, &
             weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
            ! need to account for multiple phases
            ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-            if( iphase == 2) diffusion = rt_parameter%dispersivity* + &
+            if( iphase == 2) diffusion = rt_parameter%dispersivity*q/dist_dn + &
                                          weight*rt_parameter%diffusion_coefficient(iphase)
           endif    
         case(DIRICHLET_ZERO_GRADIENT_BC)
@@ -1421,7 +1421,7 @@ subroutine TBCFluxDiff(ibndtype, &
           ! need to account for multiple phases
           ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
               diffusion = 0.d0
-              if(iphase == 2) diffusion = rt_parameter%dispersivity*q + &
+              if(iphase == 2) diffusion = rt_parameter%dispersivity*q/dist_dn + &
                                           weight*rt_parameter%diffusion_coefficient(iphase)
             endif    
           endif
@@ -1502,7 +1502,7 @@ subroutine TBCFluxDerivativeDiff(ibndtype, &
         weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
         ! need to account for multiple phases
         ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-        diffusion = rt_parameter%dispersivity*q + &
+        diffusion = rt_parameter%dispersivity*q/dist_dn + &
                     weight*rt_parameter%diffusion_coefficient(iphase)
       endif    
     case(DIRICHLET_ZERO_GRADIENT_BC)
@@ -1512,7 +1512,7 @@ subroutine TBCFluxDerivativeDiff(ibndtype, &
           weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
           ! need to account for multiple phases
           ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-          diffusion = rt_parameter%dispersivity*q + &
+          diffusion = rt_parameter%dispersivity*q/dist_dn + &
                       weight*rt_parameter%diffusion_coefficient(iphase)
         endif  
       endif  
@@ -1560,7 +1560,7 @@ subroutine TBCFluxDerivativeDiff(ibndtype, &
             weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
             ! need to account for multiple phases
            ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-            diffusion = rt_parameter%dispersivity*q + &
+            diffusion = rt_parameter%dispersivity*q/dist_dn + &
                         weight*rt_parameter%diffusion_coefficient(iphase)
           endif    
         case(DIRICHLET_ZERO_GRADIENT_BC)
@@ -1570,7 +1570,7 @@ subroutine TBCFluxDerivativeDiff(ibndtype, &
               weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
             ! need to account for multiple phases
             ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-              diffusion = rt_parameter%dispersivity*q + &
+              diffusion = rt_parameter%dispersivity*q/dist_dn + &
                           weight*rt_parameter%diffusion_coefficient(iphase)
            endif  
           endif  
