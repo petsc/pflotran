@@ -119,6 +119,7 @@ subroutine RTSetupPatch(realization)
   use Condition_module
   use Connection_module
   use Fluid_module
+  use Material_module
  
   implicit none
 
@@ -175,8 +176,7 @@ subroutine RTSetupPatch(realization)
   ! for inactive cells (and isothermal)
   call RTCreateZeroArray(patch,reaction,option)
   
-  ! initialize parameter
-  
+  ! initialize parameters
   cur_fluid_property => realization%fluid_properties
   do 
     if (.not.associated(cur_fluid_property)) exit
@@ -185,6 +185,11 @@ subroutine RTSetupPatch(realization)
       cur_fluid_property%diffusion_coefficient
     cur_fluid_property => cur_fluid_property%next
   enddo
+  
+  if (associated(realization%material_properties)) then
+    patch%aux%RT%rt_parameter%dispersivity = &
+      realization%material_properties%longitudinal_dispersivity
+  endif
 
 end subroutine RTSetupPatch
 
