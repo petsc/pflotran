@@ -7,14 +7,25 @@ common_src   = ./
 bindir = ./${PETSC_ARCH}/bin
 
 ifdef hdf5
-  ifndef jaguar
+  ifdef jaguar
+    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5
+    HDF5_LIBS = $(HDF5_FLIB) -lhdf5_fortran -lhdf5 -lz -lsz
+    found=1
+  endif 
+  ifeq ($(machine),jaguar)
+    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5
+    HDF5_LIBS = $(HDF5_FLIB) -lhdf5_fortran -lhdf5 -lz -lsz
+    found=1
+  endif 
+  ifeq ($(machine),franklin)
+    HDF5_FLAGS = $(HDF5) -DUSE_HDF5
+    HDF5_LIBS = $(HDF5) -lhdf5_fortran -lhdf5 -lz -lsz
+    found=1
+  endif
+  ifndef found
     HDF5_FLAGS = -I$(HDF5_INCLUDE) -I$(HDF5_LIB) -DUSE_HDF5
     HDF5_LIBS = -L$(HDF5_LIB) -lhdf5_fortran -lhdf5 -lz  
 #    HDF5_LIBS = -L$(HDF5_LIB) $(HDF5_LIB)/libhdf5_fortran.a $(HDF5_LIB)/libhdf5.a -lz
-  else
-# the below is for jaguar
-    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5
-    HDF5_LIBS = $(HDF5_FLIB) -lhdf5_fortran -lhdf5 -lz -lsz
   endif
 endif
 ifdef compile_broken
