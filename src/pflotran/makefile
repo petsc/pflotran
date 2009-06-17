@@ -18,7 +18,7 @@ ifdef hdf5
     found=1
   endif 
   ifeq ($(machine),franklin)
-    HDF5_FLAGS = $(HDF5) -DUSE_HDF5
+    HDF5_FLAGS = $(HDF5) -DUSE_HDF5 -I$(HDF5_DIR)/lib
     HDF5_LIBS = $(HDF5) -lhdf5_fortran -lhdf5 -lz -lsz
     found=1
   endif
