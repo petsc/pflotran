@@ -1282,7 +1282,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
                     patch%aux%RT%aux_vars(ghosted_id)%kinmr_total_sorb(isubvar,irate)
                 enddo            
               else
-                vec_ptr(local_id) = patch%aux%RT%aux_vars(ghosted_id)%total_sorb(isubvar)
+                vec_ptr(local_id) = patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
               endif
             enddo
           endif
@@ -1504,7 +1504,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
                   patch%aux%RT%aux_vars(ghosted_id)%kinmr_total_sorb(isubvar,irate)
               enddo            
             else
-              value = patch%aux%RT%aux_vars(ghosted_id)%total_sorb(isubvar)
+              value = patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
             endif
           endif
       end select

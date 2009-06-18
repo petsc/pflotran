@@ -414,7 +414,7 @@ subroutine RTComputeMassBalancePatch(realization,mass_balance)
       ! add contribution of equilibrium sorption
         if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
           mass_balance(:,iphase) = mass_balance(:,iphase) + &
-            rt_aux_vars(ghosted_id)%total_sorb(:) * volume_p(local_id)
+            rt_aux_vars(ghosted_id)%total_sorb_eq(:) * volume_p(local_id)
         endif
 
 
@@ -696,7 +696,7 @@ subroutine RTUpdateSolutionPatch(realization)
           k_over_one_plus_kdt = reaction%kinmr_rate(irate)/one_plus_kdt 
           rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) = & 
             (rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) + & 
-            kdt * rt_aux_vars(ghosted_id)%total_sorb)/one_plus_kdt 
+            kdt * rt_aux_vars(ghosted_id)%total_sorb_eq)/one_plus_kdt 
         enddo 
       enddo 
     endif
@@ -3228,8 +3228,8 @@ subroutine RTAuxVarCompute(rt_aux_var,global_aux_var,reaction,option)
     if (reaction%neqsorb > 0) then
       call RTotalSorb(rt_auxvar_pert,global_aux_var,reaction,option)
       if (reaction%kinmr_nrate <= 0) &
-        dtotalsorb(:,jcomp) = (rt_auxvar_pert%total_sorb(:) - &
-                               rt_aux_var%total_sorb(:))/pert
+        dtotalsorb(:,jcomp) = (rt_auxvar_pert%total_sorb_eq(:) - &
+                               rt_aux_var%total_sorb_eq(:))/pert
     endif
   enddo
   do icomp = 1, reaction%ncomp

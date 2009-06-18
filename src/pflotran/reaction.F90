@@ -639,7 +639,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   if (reaction%kinmr_nrate > 0) then
     kinmr_nrate_store = reaction%kinmr_nrate
     reaction%kinmr_nrate = 0
-    allocate(rt_auxvar%dtotal_sorb(reaction%ncomp,reaction%ncomp))
+    allocate(rt_auxvar%dtotal_sorb_eq(reaction%ncomp,reaction%ncomp))
   endif
   
 #ifdef TEMP_DEPENDENT_LOGK
@@ -736,14 +736,14 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           ! conversion from m^3 bulk -> L water
           tempreal = option%reference_porosity*option%reference_saturation*1000.d0
           ! total = mol/L water  total_sorb = mol/m^3 bulk
-          Res(icomp) = rt_auxvar%total(icomp,1) + rt_auxvar%total_sorb(icomp)/tempreal - &
+          Res(icomp) = rt_auxvar%total(icomp,1) + rt_auxvar%total_sorb_eq(icomp)/tempreal - &
                        total_conc(icomp)
           ! dtotal units = kg water/L water
           ! dtotal_sorb units = kg water/m^3 bulk
           ! Jac units = kg water/L water
           Jac(icomp,:) = rt_auxvar%dtotal(icomp,:,1) + &
           ! dtotal_sorb units = kg water/m^3 bulk
-                         rt_auxvar%dtotal_sorb(icomp,:)/tempreal
+                         rt_auxvar%dtotal_sorb_eq(icomp,:)/tempreal
 
         case(CONSTRAINT_FREE,CONSTRAINT_LOG)
         
@@ -1013,10 +1013,10 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     reaction%kinmr_nrate = kinmr_nrate_store
     kinmr_nrate_store = 0
     do irate = 1, reaction%kinmr_nrate
-      rt_auxvar%kinmr_total_sorb(:,irate) = rt_auxvar%total_sorb/dble(reaction%kinmr_nrate)
+      rt_auxvar%kinmr_total_sorb(:,irate) = rt_auxvar%total_sorb_eq/dble(reaction%kinmr_nrate)
     enddo
-    deallocate(rt_auxvar%dtotal_sorb)
-    nullify(rt_auxvar%dtotal_sorb)
+    deallocate(rt_auxvar%dtotal_sorb_eq)
+    nullify(rt_auxvar%dtotal_sorb_eq)
   endif
   
   ! remember that a density of 1 kg/L was assumed, thus molal and molarity are equal
@@ -1437,9 +1437,9 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     write(option%fid_out,90)
     do jcomp = 1, reaction%ncomp
       if (abs(rt_auxvar%total(jcomp,iphase)) > 0.d0) &
-      retardation = 1.d0 + rt_auxvar%total_sorb(jcomp)/bulk_vol_to_fluid_vol &
+      retardation = 1.d0 + rt_auxvar%total_sorb_eq(jcomp)/bulk_vol_to_fluid_vol &
         /rt_auxvar%total(jcomp,iphase)
-      totj = rt_auxvar%total(jcomp,iphase)+rt_auxvar%total_sorb(jcomp)/bulk_vol_to_fluid_vol
+      totj = rt_auxvar%total(jcomp,iphase)+rt_auxvar%total_sorb_eq(jcomp)/bulk_vol_to_fluid_vol
       write(option%fid_out,129) reaction%primary_species_names(jcomp), &
         totj,retardation
     enddo
@@ -2386,8 +2386,8 @@ subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
   
   ! initialize total sorbed concentrations and derivatives
   if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
-    rt_auxvar%total_sorb = 0.d0
-    rt_auxvar%dtotal_sorb = 0.d0  
+    rt_auxvar%total_sorb_eq = 0.d0
+    rt_auxvar%dtotal_sorb_eq = 0.d0  
   endif
 
   if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
@@ -2552,7 +2552,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
       ncomp = reaction%eqsurfcmplxspecid(0,icplx)
       do i = 1, ncomp
         icomp = reaction%eqsurfcmplxspecid(i,icplx)
-        rt_auxvar%total_sorb(icomp) = rt_auxvar%total_sorb(icomp) + &
+        rt_auxvar%total_sorb_eq(icomp) = rt_auxvar%total_sorb_eq(icomp) + &
           reaction%eqsurfcmplxstoich(i,icplx)*surfcmplx_conc(icplx)
       enddo
       
@@ -2568,7 +2568,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
                   
         do i = 1, ncomp
           icomp = reaction%eqsurfcmplxspecid(i,icplx)
-          rt_auxvar%dtotal_sorb(icomp,jcomp) = rt_auxvar%dtotal_sorb(icomp,jcomp) + &
+          rt_auxvar%dtotal_sorb_eq(icomp,jcomp) = rt_auxvar%dtotal_sorb_eq(icomp,jcomp) + &
                                                reaction%eqsurfcmplxstoich(i,icplx)* &
                                                tempreal
         enddo
@@ -2731,17 +2731,17 @@ subroutine RTotalSorbEqIonx(rt_auxvar,global_auxvar,reaction,option)
       
       rt_auxvar%eqionx_conc(icomp,irxn) = rt_auxvar%eqionx_conc(icomp,irxn) + tempreal1
 
-      rt_auxvar%total_sorb(icomp) = rt_auxvar%total_sorb(icomp) + tempreal1
+      rt_auxvar%total_sorb_eq(icomp) = rt_auxvar%total_sorb_eq(icomp) + tempreal1
 
       tempreal2 = reaction%primary_spec_Z(icomp)/sumZX
       do j = 1, ncomp
         jcomp = reaction%eqionx_rxn_cationid(j,irxn)
         if (i == j) then
-          rt_auxvar%dtotal_sorb(icomp,jcomp) = rt_auxvar%dtotal_sorb(icomp,jcomp) + &
+          rt_auxvar%dtotal_sorb_eq(icomp,jcomp) = rt_auxvar%dtotal_sorb_eq(icomp,jcomp) + &
                                                tempreal1*(1.d0-(tempreal2*cation_X(j)))/ &
                                                rt_auxvar%pri_molal(jcomp)
         else
-          rt_auxvar%dtotal_sorb(icomp,jcomp) = rt_auxvar%dtotal_sorb(icomp,jcomp) + &
+          rt_auxvar%dtotal_sorb_eq(icomp,jcomp) = rt_auxvar%dtotal_sorb_eq(icomp,jcomp) + &
                                                (-tempreal1)*tempreal2*cation_X(j)/ &
                                                rt_auxvar%pri_molal(jcomp)
         endif
@@ -2808,7 +2808,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   endif
 #endif  
 
-  rt_auxvar%total_sorb = 0.d0
+  rt_auxvar%total_sorb_eq = 0.d0
   rt_auxvar%eqsurfcmplx_conc = 0.d0
 
   ! Surface Complexation
@@ -2958,7 +2958,9 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
 
   enddo
   
-  rt_auxvar%total_sorb = total_sorb_eq
+  ! store the target equilibrium concentration to update the sorbed 
+  ! concentration at the end of the time step.
+  rt_auxvar%total_sorb_eq = total_sorb_eq
   
 end subroutine RMultiRateSorption
 
@@ -3222,7 +3224,7 @@ subroutine RAccumulationSorb(rt_aux_var,global_aux_var,vol,reaction, &
   ! units = (mol solute/m^3 bulk)*(m^3 bulk)/(sec) = mol/sec
   ! all residual entries should be in mol/sec
   v_t = vol/option%tran_dt
-  Res(:) = Res(:) + rt_aux_var%total_sorb(:)*v_t
+  Res(:) = Res(:) + rt_aux_var%total_sorb_eq(:)*v_t
 
 end subroutine RAccumulationSorb
 
@@ -3254,7 +3256,7 @@ subroutine RAccumulationSorbDerivative(rt_aux_var,global_aux_var, &
   ! units = (kg water/m^3 bulk)*(m^3 bulk)/(sec) = kg water/sec
   ! all Jacobian entries should be in kg water/sec
   v_t = vol/option%tran_dt
-  J = J + rt_aux_var%dtotal_sorb(:,:)*v_t
+  J = J + rt_aux_var%dtotal_sorb_eq(:,:)*v_t
 
 end subroutine RAccumulationSorbDerivative
 
@@ -3495,7 +3497,7 @@ subroutine ReactionComputeKd(icomp,retardation,rt_auxvar,global_auxvar, &
       enddo
     enddo
 #else
-    retardation = rt_auxvar%total_sorb(icomp)
+    retardation = rt_auxvar%total_sorb_eq(icomp)
 #endif
   else
     do irate = 1, reaction%kinmr_nrate
