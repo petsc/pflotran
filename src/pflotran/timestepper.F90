@@ -1072,8 +1072,8 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
       stepper%steps,option%flow_time/realization%output_option%tconv, &
       option%flow_dt/realization%output_option%tconv, &
-      realization%output_option%tunit,snes_reason,num_newton_iterations, &
-      stepper%newton_cum,num_linear_iterations,stepper%linear_cum,icut, &
+      realization%output_option%tunit,snes_reason,sum_newton_iterations, &
+      stepper%newton_cum,sum_linear_iterations,stepper%linear_cum,icut, &
       stepper%icutcum
 
     ! the grid pointer is null if we are working with SAMRAI
@@ -1092,8 +1092,8 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') stepper%steps, &
       option%flow_time/realization%output_option%tconv, &
       option%flow_dt/realization%output_option%tconv, &
-      realization%output_option%tunit,snes_reason,num_newton_iterations, &
-      stepper%newton_cum,num_linear_iterations,stepper%linear_cum,icut, &
+      realization%output_option%tunit,snes_reason,sum_newton_iterations, &
+      stepper%newton_cum,sum_linear_iterations,stepper%linear_cum,icut, &
       stepper%icutcum
   endif
   
@@ -1396,8 +1396,8 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
         & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
         stepper%steps,option%tran_time/realization%output_option%tconv, &
         option%tran_dt/realization%output_option%tconv, &
-        realization%output_option%tunit,snes_reason,num_newton_iterations, &
-        stepper%newton_cum,num_linear_iterations,stepper%linear_cum,icut, &
+        realization%output_option%tunit,snes_reason,sum_linear_iterations, &
+        stepper%newton_cum,sum_linear_iterations,stepper%linear_cum,icut, &
         stepper%icutcum
 
       ! the grid pointer is null if we are working with SAMRAI
@@ -1417,8 +1417,8 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
         & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') stepper%steps, &
         option%tran_time/realization%output_option%tconv, &
         option%tran_dt/realization%output_option%tconv, &
-        realization%output_option%tunit,snes_reason,num_newton_iterations, &
-        stepper%newton_cum,num_linear_iterations,stepper%linear_cum,icut, &
+        realization%output_option%tunit,snes_reason,sum_newton_iterations, &
+        stepper%newton_cum,sum_linear_iterations,stepper%linear_cum,icut, &
         stepper%icutcum
     endif
     

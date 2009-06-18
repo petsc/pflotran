@@ -858,7 +858,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
       else
         global_auxvar%pres = option%reference_pressure
         global_auxvar%temp = option%reference_temperature
-        global_auxvar%den_kg = option%reference_density
+        global_auxvar%den_kg = option%reference_water_density
       endif     
       global_auxvar%sat = option%reference_saturation  
       call ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &

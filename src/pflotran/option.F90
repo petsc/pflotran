@@ -102,7 +102,7 @@ module Option_module
     PetscInt :: idt_switch
     PetscReal :: reference_temperature
     PetscReal :: reference_pressure
-    PetscReal :: reference_density
+    PetscReal :: reference_water_density
     PetscReal :: reference_porosity
     PetscReal :: reference_saturation
     
@@ -343,7 +343,7 @@ subroutine OptionInitRealization(option)
 !-----------------------------------------------------------------------
   option%reference_pressure = 101325.d0
   option%reference_temperature = 25.d0
-  option%reference_density = 0.d0
+  option%reference_water_density = 0.d0
   option%reference_porosity = 0.25d0
   option%reference_saturation = 1.d0
   option%initialize_with_molality = PETSC_FALSE

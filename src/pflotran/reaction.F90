@@ -1089,7 +1089,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   rt_auxvar => constraint_coupler%rt_auxvar
   global_auxvar => constraint_coupler%global_auxvar
   
-  global_auxvar%den_kg(iphase) = option%reference_density
+  global_auxvar%den_kg(iphase) = option%reference_water_density
   global_auxvar%temp(1) = option%reference_temperature
   global_auxvar%sat(iphase) = option%reference_saturation
   bulk_vol_to_fluid_vol = option%reference_porosity*option%reference_saturation*1000.d0
