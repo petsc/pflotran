@@ -833,6 +833,15 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
   do
     if (.not.associated(cur_coupler)) exit
 
+    if (.not.associated(cur_coupler%tran_condition)) then
+      option%io_buffer = 'Null transport condition found in coupler'
+      if (len_trim(cur_coupler%name) > 1) then
+        option%io_buffer = trim(option%io_buffer) // &
+                           ' "' // trim(cur_coupler%name) // '"'
+      endif
+      call printErrMsg(option)
+    endif
+
     cur_constraint_coupler => &
       cur_coupler%tran_condition%constraint_coupler_list
     do

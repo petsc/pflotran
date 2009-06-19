@@ -1068,7 +1068,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   call VecNorm(field%flow_r,NORM_INFINITY,inorm,ierr)
   if (option%print_screen_flag) then
     write(*, '(/," FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
-      & " snes_conv_reason: ",i4,/,"  newton = ",i2," [",i8,"]", &
+      & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
       stepper%steps,option%flow_time/realization%output_option%tconv, &
       option%flow_dt/realization%output_option%tconv, &
@@ -1088,7 +1088,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   endif
   if (option%print_file_flag) then
     write(option%fid_out, '(" FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
-      & "]"," snes_conv_reason: ",i4,/,"  newton = ",i2," [",i8,"]", &
+      & "]"," snes_conv_reason: ",i4,/,"  newton = ",i3," [",i8,"]", &
       & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') stepper%steps, &
       option%flow_time/realization%output_option%tconv, &
       option%flow_dt/realization%output_option%tconv, &
@@ -1392,7 +1392,7 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
     if (option%print_screen_flag) then
 
       write(*, '(/," TRAN ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
-        & " snes_conv_reason: ",i4,/,"  newton = ",i2," [",i6,"]", &
+        & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i6,"]", &
         & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
         stepper%steps,option%tran_time/realization%output_option%tconv, &
         option%tran_dt/realization%output_option%tconv, &
@@ -1413,7 +1413,7 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
 
     if (option%print_file_flag) then
       write(option%fid_out, '(" TRAN ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
-        & "]"," snes_conv_reason: ",i4,/,"  newton = ",i2," [",i6,"]", &
+        & "]"," snes_conv_reason: ",i4,/,"  newton = ",i3," [",i6,"]", &
         & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') stepper%steps, &
         option%tran_time/realization%output_option%tconv, &
         option%tran_dt/realization%output_option%tconv, &
