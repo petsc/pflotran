@@ -935,8 +935,9 @@ subroutine SolverDestroy(solver)
     enddo
     deallocate(solver%interpolation)
   endif
-  if (solver%matfdcoloring /= 0) call MatFDColoringDestroy(solver%matfdcoloring,ierr)
-! if (solver%snes /= 0) call SNESDestroy(solver%snes)
+  if (solver%matfdcoloring /= 0) &
+    call MatFDColoringDestroy(solver%matfdcoloring,ierr)
+  if (solver%snes /= 0) call SNESDestroy(solver%snes)
   solver%ksp = 0
   solver%pc = 0
     

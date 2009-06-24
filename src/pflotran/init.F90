@@ -618,22 +618,22 @@ subroutine Init(simulation)
   call printMsg(option,"  Finished Initialization")
   
 #ifdef USE_HDF5
-  #ifndef HDF5_BROADCAST 
-  #ifndef VAMSI_HDF5
+#ifndef HDF5_BROADCAST 
+#ifndef VAMSI_HDF5
   call printMsg(option,"Default HDF5 Mechanism is used")
-  #endif
-  #endif
+#endif
+#endif
   
-  #ifdef HDF5_BROADCAST
+#ifdef HDF5_BROADCAST
   call printMsg(option,"Glenn's HDF5 Broadcast Mechanism is used")
-  #endif
+#endif
 
-  #ifdef VAMSI_HDF5
+#ifdef VAMSI_HDF5
   call printMsg(option,"Vamsi's HDF5 Broadcast Mechanism is used")
   if (option%myrank == 0) then
      write(*,'(" HDF5_BROADCAST_SIZE = ",i5)') option%broadcast_size
   endif  
-  #endif
+#endif
 #endif
 
   call PetscLogEventEnd(logging%event_init,PETSC_NULL_OBJECT, &
