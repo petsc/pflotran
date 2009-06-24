@@ -80,8 +80,8 @@ function SaturationFunctionCreate(option)
   saturation_function%name = ''
   saturation_function%saturation_function_ctype = 'VAN_GENUCHTEN'
   saturation_function%saturation_function_itype = VAN_GENUCHTEN
-  saturation_function%permeability_function_ctype = 'BURDINE'
-  saturation_function%permeability_function_itype = BURDINE
+  saturation_function%permeability_function_ctype = 'MUALEM'
+  saturation_function%permeability_function_itype = MUALEM
   allocate(saturation_function%Sr(option%nphase))
   saturation_function%Sr = 0.d0
   saturation_function%m = 0.d0
