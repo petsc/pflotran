@@ -119,6 +119,7 @@ subroutine RTSetupPatch(realization)
   use Condition_module
   use Connection_module
   use Fluid_module
+  use Material_module
  
   implicit none
 
@@ -175,8 +176,7 @@ subroutine RTSetupPatch(realization)
   ! for inactive cells (and isothermal)
   call RTCreateZeroArray(patch,reaction,option)
   
-  ! initialize parameter
-  
+  ! initialize parameters
   cur_fluid_property => realization%fluid_properties
   do 
     if (.not.associated(cur_fluid_property)) exit
@@ -185,6 +185,11 @@ subroutine RTSetupPatch(realization)
       cur_fluid_property%diffusion_coefficient
     cur_fluid_property => cur_fluid_property%next
   enddo
+  
+  if (associated(realization%material_properties)) then
+    patch%aux%RT%rt_parameter%dispersivity = &
+      realization%material_properties%longitudinal_dispersivity
+  endif
 
 end subroutine RTSetupPatch
 
@@ -409,7 +414,7 @@ subroutine RTComputeMassBalancePatch(realization,mass_balance)
       ! add contribution of equilibrium sorption
         if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
           mass_balance(:,iphase) = mass_balance(:,iphase) + &
-            rt_aux_vars(ghosted_id)%total_sorb(:) * volume_p(local_id)
+            rt_aux_vars(ghosted_id)%total_sorb_eq(:) * volume_p(local_id)
         endif
 
 
@@ -691,7 +696,7 @@ subroutine RTUpdateSolutionPatch(realization)
           k_over_one_plus_kdt = reaction%kinmr_rate(irate)/one_plus_kdt 
           rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) = & 
             (rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) + & 
-            kdt * rt_aux_vars(ghosted_id)%total_sorb)/one_plus_kdt 
+            kdt * rt_aux_vars(ghosted_id)%total_sorb_eq)/one_plus_kdt 
         enddo 
       enddo 
     endif
@@ -765,11 +770,8 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
     istart = iend-reaction%ncomp+1
 
     rt_aux_vars(ghosted_id)%pri_molal = xx_p(istart:iend)
-    if (reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
-      call RActivityCoefficients(rt_aux_vars(ghosted_id), &
-                                 global_aux_vars(ghosted_id), &
-                                 reaction,option)
-    endif
+    ! DO NOTE RECOMPUTE THE ACTIVITY COEFFICIENTS BEFORE COMPUTING THE
+    ! FIXED PORTION OF THE ACCUMULATION TERM - geh
     call RTAuxVarCompute(rt_aux_vars(ghosted_id), &
                          global_aux_vars(ghosted_id), &
                          reaction,option)
@@ -3226,8 +3228,8 @@ subroutine RTAuxVarCompute(rt_aux_var,global_aux_var,reaction,option)
     if (reaction%neqsorb > 0) then
       call RTotalSorb(rt_auxvar_pert,global_aux_var,reaction,option)
       if (reaction%kinmr_nrate <= 0) &
-        dtotalsorb(:,jcomp) = (rt_auxvar_pert%total_sorb(:) - &
-                               rt_aux_var%total_sorb(:))/pert
+        dtotalsorb(:,jcomp) = (rt_auxvar_pert%total_sorb_eq(:) - &
+                               rt_aux_var%total_sorb_eq(:))/pert
     endif
   enddo
   do icomp = 1, reaction%ncomp

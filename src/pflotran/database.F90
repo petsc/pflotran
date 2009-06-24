@@ -85,6 +85,10 @@ subroutine DatabaseRead(reaction,option)
     cur_surfcplx_rxn => cur_surfcplx_rxn%next
   enddo  
   
+  if (len_trim(reaction%database_filename) < 2) then
+    option%io_buffer = 'Database filename not included in input deck.'
+    call printErrMsg(option)
+  endif
   input => InputCreate(IUNIT_TEMP,reaction%database_filename)
 
   ! read temperatures

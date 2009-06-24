@@ -15,8 +15,8 @@ module Reactive_Transport_Aux_module
     PetscReal, pointer :: total(:,:)       ! mol solute/L water
     PetscReal, pointer :: dtotal(:,:,:)    ! kg water/m^3 water
     ! sorbed totals
-    PetscReal, pointer :: total_sorb(:)    ! mol/m^3 bulk
-    PetscReal, pointer :: dtotal_sorb(:,:) ! kg water/m^3 bulk
+    PetscReal, pointer :: total_sorb_eq(:)    ! mol/m^3 bulk
+    PetscReal, pointer :: dtotal_sorb_eq(:,:) ! kg water/m^3 bulk
     ! aqueous species
     ! aqueous complexes
     PetscReal, pointer :: sec_molal(:)
@@ -153,17 +153,17 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   endif
 
   if (reaction%neqsorb > 0) then  
-    allocate(aux_var%total_sorb(reaction%ncomp))
-    aux_var%total_sorb = 0.d0
+    allocate(aux_var%total_sorb_eq(reaction%ncomp))
+    aux_var%total_sorb_eq = 0.d0
     if (reaction%kinmr_nrate <= 0) then
-      allocate(aux_var%dtotal_sorb(reaction%ncomp,reaction%ncomp))
-      aux_var%dtotal_sorb = 0.d0
+      allocate(aux_var%dtotal_sorb_eq(reaction%ncomp,reaction%ncomp))
+      aux_var%dtotal_sorb_eq = 0.d0
     else
-      nullify(aux_var%dtotal_sorb)
+      nullify(aux_var%dtotal_sorb_eq)
     endif
   else
-    nullify(aux_var%total_sorb)
-    nullify(aux_var%dtotal_sorb)
+    nullify(aux_var%total_sorb_eq)
+    nullify(aux_var%dtotal_sorb_eq)
   endif    
   
   if (reaction%neqsurfcmplxrxn > 0) then
@@ -264,9 +264,9 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
   
   if (associated(aux_var%sec_molal)) &
     aux_var%sec_molal = aux_var2%sec_molal
-  if (associated(aux_var%total_sorb)) then  
-    aux_var%total_sorb = aux_var2%total_sorb
-    aux_var%dtotal_sorb = aux_var2%dtotal_sorb
+  if (associated(aux_var%total_sorb_eq)) then  
+    aux_var%total_sorb_eq = aux_var2%total_sorb_eq
+    aux_var%dtotal_sorb_eq = aux_var2%dtotal_sorb_eq
   endif
   
   if (associated(aux_var%gas_molal)) &
@@ -337,10 +337,10 @@ subroutine RTAuxVarDestroy(aux_var)
   if (associated(aux_var%gas_molal))deallocate(aux_var%gas_molal)
   nullify(aux_var%gas_molal)
   
-  if (associated(aux_var%total_sorb)) deallocate(aux_var%total_sorb)
-  nullify(aux_var%total_sorb)
-  if (associated(aux_var%dtotal_sorb))deallocate(aux_var%dtotal_sorb)
-  nullify(aux_var%dtotal_sorb)
+  if (associated(aux_var%total_sorb_eq)) deallocate(aux_var%total_sorb_eq)
+  nullify(aux_var%total_sorb_eq)
+  if (associated(aux_var%dtotal_sorb_eq))deallocate(aux_var%dtotal_sorb_eq)
+  nullify(aux_var%dtotal_sorb_eq)
   
   if (associated(aux_var%eqionx_ref_cation_sorbed_conc)) deallocate(aux_var%eqionx_ref_cation_sorbed_conc)
   nullify(aux_var%eqionx_ref_cation_sorbed_conc)

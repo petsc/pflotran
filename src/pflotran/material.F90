@@ -23,7 +23,8 @@ module Material_module
     PetscReal :: thermal_conductivity_dry
     PetscReal :: thermal_conductivity_wet
     PetscReal :: pore_compressibility
-    PetscReal :: thermal_expansitivity    
+    PetscReal :: thermal_expansitivity   
+    PetscReal :: longitudinal_dispersivity 
     type(material_property_type), pointer :: next
   end type material_property_type
   
@@ -65,7 +66,7 @@ function MaterialPropertyCreate()
   material_property%permeability_filename = ''
   material_property%porosity = 0.d0
   material_property%porosity_filename = ''
-  material_property%tortuosity = 0.d0
+  material_property%tortuosity = 1.d0
   material_property%saturation_function_id = 0
   material_property%saturation_function_name = ''
   material_property%rock_density = 0.d0
@@ -74,6 +75,7 @@ function MaterialPropertyCreate()
   material_property%thermal_conductivity_wet = 0.d0
   material_property%pore_compressibility = 0.d0
   material_property%thermal_expansitivity = 0.d0  
+  material_property%longitudinal_dispersivity = 0.d0
   nullify(material_property%next)
   MaterialPropertyCreate => material_property
 
@@ -132,6 +134,9 @@ subroutine MaterialPropertyRead(material_property,input,option)
       case('SPECIFIC_HEAT') 
         call InputReadDouble(input,option,material_property%specific_heat)
         call InputErrorMsg(input,option,'specific heat','MATERIAL_PROPERTY')
+      case('LONGITUDINAL_DISPERSIVITY') 
+        call InputReadDouble(input,option,material_property%longitudinal_dispersivity)
+        call InputErrorMsg(input,option,'longitudinal_dispersivity','MATERIAL_PROPERTY')
       case('THERMAL_CONDUCTIVITY_DRY') 
         call InputReadDouble(input,option, &
                              material_property%thermal_conductivity_dry)

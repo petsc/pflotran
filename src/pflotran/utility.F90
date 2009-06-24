@@ -638,7 +638,7 @@ subroutine UtilityReadArray(array,array_size,comment,input,option)
     else if (count == 1) then
       temp_array = temp_array(count)
       exit
-    else if (array_size <= 0 .and. count /= 0) then
+    else if (.not.continuation_flag .and. array_size <= 0 .and. count /= 0) then
       exit
     endif
     

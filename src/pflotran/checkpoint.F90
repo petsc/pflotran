@@ -17,6 +17,7 @@ module Checkpoint_Header_module
     integer*8 :: flow_linear_cum
     integer*8 :: flow_num_const_timesteps
     integer*8 :: flow_num_newton_iterations
+    real*8 :: flow_cumulative_solver_time  ! don't implement yet; will screw up restarts
     real*8 :: tran_time
     real*8 :: tran_dt
     integer*8 :: tran_steps
@@ -25,6 +26,7 @@ module Checkpoint_Header_module
     integer*8 :: tran_linear_cum
     integer*8 :: tran_num_const_timesteps
     integer*8 :: tran_num_newton_iterations
+    real*8 :: tran_cumulative_solver_time  ! don't implement yet; will screw up restarts
     integer*8 :: plot_number
     integer*8 :: nflowdof
     integer*8 :: ntrandof
@@ -71,10 +73,12 @@ subroutine Checkpoint(realization, &
                       flow_linear_cum, &
                       flow_num_const_timesteps, &
                       flow_num_newton_iterations, &
+                      flow_cumulative_solver_time, &
                       tran_steps,tran_newtcum,tran_icutcum, &
                       tran_linear_cum, &
                       tran_num_const_timesteps, &
                       tran_num_newton_iterations, &
+                      tran_cumulative_solver_time, &
                       id)
 
   use Realization_module
@@ -93,9 +97,11 @@ subroutine Checkpoint(realization, &
   PetscInt :: flow_num_const_timesteps
   PetscInt :: flow_num_newton_iterations
   PetscInt :: flow_steps, flow_newtcum, flow_icutcum, flow_linear_cum
+  PetscReal :: flow_cumulative_solver_time
   PetscInt :: tran_num_const_timesteps
   PetscInt :: tran_num_newton_iterations
   PetscInt :: tran_steps, tran_newtcum, tran_icutcum, tran_linear_cum
+  PetscReal :: tran_cumulative_solver_time
   PetscInt :: id
   PetscInt :: checkpoint_activity_coefs
 #ifdef PetscSizeT
@@ -153,7 +159,7 @@ subroutine Checkpoint(realization, &
   ! We manually specify the number of bytes required for the 
   ! checkpoint header, since sizeof() is not supported by some Fortran 
   ! compilers.  To be on the safe side, we assume an integer is 8 bytes.
-  bagsize = 160
+  bagsize = 176
   call PetscBagCreate(option%mycomm, bagsize, bag, ierr)
   call PetscBagGetData(bag, header, ierr); CHKERRQ(ierr)
 
@@ -172,6 +178,7 @@ subroutine Checkpoint(realization, &
                            flow_num_const_timesteps, &
                            "flow_num_const_timesteps", &
                            "flow_num_const_timesteps",ierr)
+
   ! TRANSPORT
   call PetscBagRegisterInt(bag,header%tran_num_newton_iterations, &
                            tran_num_newton_iterations, &
@@ -197,7 +204,11 @@ subroutine Checkpoint(realization, &
                             "Total number of flow time step cuts",ierr)
   call PetscBagRegisterInt(bag,header%flow_linear_cum,flow_linear_cum,"flow_linear_cum", &
                             "Total number of flow linear iterations",ierr)
-                            
+  call PetscBagRegisterReal(bag,header%flow_cumulative_solver_time, &
+                            flow_cumulative_solver_time, &
+                            "flow_cumulative_solver_time", &
+                            "flow_cumulative_solver_time",ierr)
+                                                        
   ! TRANSPORT
   call PetscBagRegisterInt(bag,header%ntrandof,option%ntrandof, &
                            "ntrandof", &
@@ -215,6 +226,11 @@ subroutine Checkpoint(realization, &
                             "Total number of transport time step cuts",ierr)
   call PetscBagRegisterInt(bag,header%tran_linear_cum,tran_linear_cum,"tran_linear_cum", &
                             "Total number of transport linear iterations",ierr)
+  call PetscBagRegisterReal(bag,header%tran_cumulative_solver_time, &
+                            tran_cumulative_solver_time, &
+                            "tran_cumulative_solver_time", &
+                            "tran_cumulative_solver_time",ierr)
+
   if (associated(realization%reaction)) then
     if (realization%reaction%checkpoint_activity_coefs .and. &
         realization%reaction%act_coef_update_frequency /= &
@@ -325,10 +341,12 @@ subroutine Restart(realization, &
                    flow_linear_cum, &
                    flow_num_const_timesteps, &
                    flow_num_newton_iterations, &
+                   flow_cumulative_solver_time, &
                    tran_steps,tran_newtcum,tran_icutcum, &
                    tran_linear_cum, &
                    tran_num_const_timesteps, &
                    tran_num_newton_iterations, &
+                   tran_cumulative_solver_time, &
                    flow_read, &
                    transport_read, &
                    activity_coefs_read)
@@ -348,9 +366,11 @@ subroutine Restart(realization, &
   PetscInt :: flow_num_const_timesteps
   PetscInt :: flow_num_newton_iterations
   PetscInt :: flow_steps, flow_newtcum, flow_icutcum, flow_linear_cum
+  PetscReal :: flow_cumulative_solver_time
   PetscInt :: tran_num_const_timesteps
   PetscInt :: tran_num_newton_iterations
   PetscInt :: tran_steps, tran_newtcum, tran_icutcum, tran_linear_cum
+  PetscReal :: tran_cumulative_solver_time
   PetscTruth :: activity_coefs_read, flow_read, transport_read
 
   PetscViewer viewer
@@ -402,6 +422,8 @@ subroutine Restart(realization, &
     flow_newtcum = header%flow_newtcum
     flow_icutcum = header%flow_icutcum
     flow_linear_cum = header%flow_linear_cum
+    flow_cumulative_solver_time = header%flow_cumulative_solver_time
+    flow_cumulative_solver_time = 0.d0
     flow_read = PETSC_TRUE
   endif
   ! TRANSPORT
@@ -414,6 +436,8 @@ subroutine Restart(realization, &
     tran_newtcum = header%tran_newtcum
     tran_icutcum = header%tran_icutcum
     tran_linear_cum = header%tran_linear_cum
+    tran_cumulative_solver_time = header%tran_cumulative_solver_time
+    tran_cumulative_solver_time = 0.d0
     read_activity_coefs = header%checkpoint_activity_coefs
     transport_read = PETSC_TRUE
   endif

@@ -168,9 +168,11 @@ subroutine Init(simulation)
   call InputDestroy(realization%input)
 
   ! initialize reference density
-  call wateos(option%reference_temperature,option%reference_pressure, &
-              option%reference_density,r1,r2,r3,r4,r5,r6, &
-              option%scale,ierr)
+  if (option%reference_water_density < 1.d-40) then
+    call wateos(option%reference_temperature,option%reference_pressure, &
+                option%reference_water_density,r1,r2,r3,r4,r5,r6, &
+                option%scale,ierr)
+  endif
   
   ! read reaction database
   if (associated(realization%reaction)) then
@@ -465,9 +467,9 @@ subroutine Init(simulation)
   call assignMaterialPropToRegions(realization)
   call RealizationInitAllCouplerAuxVars(realization)
   if (option%ntrandof > 0) then
-  call printMsg(option,"  Setting up TRAN SNES ")
+    call printMsg(option,"  Setting up TRAN SNES ")
     call RealizationInitConstraints(realization)
-  call printMsg(option,"  Finished setting up TRAN SNES ")  
+    call printMsg(option,"  Finished setting up TRAN SNES ")  
   endif
   call RealizationPrintCouplers(realization)
 
@@ -542,7 +544,7 @@ subroutine Init(simulation)
                                  TEMPERATURE)
       call GlobalSetAuxVarScalar(realization,option%reference_saturation, &
                                  LIQUID_SATURATION)
-      call GlobalSetAuxVarScalar(realization,option%reference_density, &
+      call GlobalSetAuxVarScalar(realization,option%reference_water_density, &
                                  LIQUID_DENSITY)
     endif
 
@@ -1159,6 +1161,13 @@ subroutine InitReadInput(simulation)
         call InputReadStringErrorMsg(input,option,card)
         call InputReadDouble(input,option,option%reference_pressure)
         call InputDefaultMsg(input,option,'Reference Pressure') 
+
+!....................
+
+      case('REFERENCE_DENSITY')
+        call InputReadStringErrorMsg(input,option,card)
+        call InputReadDouble(input,option,option%reference_water_density)
+        call InputDefaultMsg(input,option,'Reference Density') 
 
 !....................
 

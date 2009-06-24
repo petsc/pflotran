@@ -833,6 +833,15 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
   do
     if (.not.associated(cur_coupler)) exit
 
+    if (.not.associated(cur_coupler%tran_condition)) then
+      option%io_buffer = 'Null transport condition found in coupler'
+      if (len_trim(cur_coupler%name) > 1) then
+        option%io_buffer = trim(option%io_buffer) // &
+                           ' "' // trim(cur_coupler%name) // '"'
+      endif
+      call printErrMsg(option)
+    endif
+
     cur_constraint_coupler => &
       cur_coupler%tran_condition%constraint_coupler_list
     do
@@ -858,7 +867,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
       else
         global_auxvar%pres = option%reference_pressure
         global_auxvar%temp = option%reference_temperature
-        global_auxvar%den_kg = option%reference_density
+        global_auxvar%den_kg = option%reference_water_density
       endif     
       global_auxvar%sat = option%reference_saturation  
       call ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
@@ -1284,7 +1293,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
                     patch%aux%RT%aux_vars(ghosted_id)%kinmr_total_sorb(isubvar,irate)
                 enddo            
               else
-                vec_ptr(local_id) = patch%aux%RT%aux_vars(ghosted_id)%total_sorb(isubvar)
+                vec_ptr(local_id) = patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
               endif
             enddo
           endif
@@ -1506,7 +1515,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
                   patch%aux%RT%aux_vars(ghosted_id)%kinmr_total_sorb(isubvar,irate)
               enddo            
             else
-              value = patch%aux%RT%aux_vars(ghosted_id)%total_sorb(isubvar)
+              value = patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
             endif
           endif
       end select
