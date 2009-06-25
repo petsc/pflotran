@@ -1396,7 +1396,7 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
         & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
         stepper%steps,option%tran_time/realization%output_option%tconv, &
         option%tran_dt/realization%output_option%tconv, &
-        realization%output_option%tunit,snes_reason,sum_linear_iterations, &
+        realization%output_option%tunit,snes_reason,sum_newton_iterations, &
         stepper%newton_cum,sum_linear_iterations,stepper%linear_cum,icut, &
         stepper%icutcum
 

@@ -1684,6 +1684,7 @@ subroutine RealizationDestroy(realization)
   
   call VelocityDatasetDestroy(realization%velocity_dataset)
   
+  call DiscretizationDestroy(realization%discretization)
   
 end subroutine RealizationDestroy
   
