@@ -118,7 +118,7 @@ subroutine TFlux(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up, &
 
    diffusion = 0.d0 
    if(iphase ==2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
-                              weigth*rt_parameter%diffusion_coefficient(iphase)
+                              weight*rt_parameter%diffusion_coefficient(iphase)
 
   endif
   
@@ -996,7 +996,7 @@ subroutine TBCFluxDerivativeAdv(ibndtype, &
             weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
             ! need to account for multiple phases
            ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-            diffusion = rt_parameter%dispersivity*q/disn_dn + &
+            diffusion = rt_parameter%dispersivity*q/dist_dn + &
                         weight*rt_parameter%diffusion_coefficient(iphase)
           endif    
         case(DIRICHLET_ZERO_GRADIENT_BC)
