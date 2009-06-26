@@ -19,7 +19,7 @@
 !     table lookup parameters t[k], p[MPa]
       PetscReal,  public :: t0_tab = 35.d0+273.15D0, p0_tab = 0.01d0
 
-      PetscInt, public :: ntab_t = 100, ntab_p = 500
+      PetscInt, public :: ntab_t = 150, ntab_p = 500
       PetscReal,  public :: dt_tab = 2.5d0, dp_tab = 0.5d0
 
 !     PetscInt, public :: ntab_t = 100, ntab_p = 1000

@@ -912,6 +912,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 
             call co2_span_wagner(pco2*1D-6,tc+273.15D0,dg,dddt,dddp,fg, &
               dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
+
             
             global_auxvar%den_kg(2) = dg
             
@@ -930,10 +931,11 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
               call Henry_duan_sun(tc, pco2 *1D-5, henry, xphico2, &
                  option%m_nacl, option%m_nacl,sat_pressure*1D-5)
             endif
+            
             lnQk = -log(xphico2*henry)
 !           lnQk = log(fg/henry)
             
-            print *, 'SC CO2 constraint',pres,pco2,tc,xphico2,henry,lnQk,yco2
+            print *, 'SC CO2 constraint',pres,pco2,tc,xphico2,henry,lnQk,yco2, m_na,m_cl
             
             ! activity of water
             if (reaction%eqgash2oid(igas) > 0) then
