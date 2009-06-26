@@ -592,7 +592,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscInt :: constraint_id(reaction%ncomp)
   PetscReal :: lnQK, QK
   PetscReal :: tempreal
-  PetscReal :: pres, tc, xphico2, henry 
+  PetscReal :: pres, tc, xphico2, henry, m_na, m_cl 
   PetscInt :: comp_id
   PetscReal :: convert_molal_to_molar
   PetscReal :: convert_molar_to_molal
@@ -920,9 +920,16 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             xphico2 = fg / pco2
             global_auxvar%fugacoeff(1) = xphico2
             
-!            call Henry_duan_sun_0NaCl(pco2*1.d-5, tc, henry)
-            call Henry_duan_sun(tc, pco2 *1D-5, henry, xphico2, &
-                 option%m_nacl, option%m_nacl,sat_pressure*1D-5) 
+!           call Henry_duan_sun_0NaCl(pco2*1.d-5, tc, henry)
+            if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
+              m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
+              m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
+              call Henry_duan_sun(tc, pco2 *1D-5, henry, xphico2, &
+                 m_na, m_cl,sat_pressure*1D-5)
+            else
+              call Henry_duan_sun(tc, pco2 *1D-5, henry, xphico2, &
+                 option%m_nacl, option%m_nacl,sat_pressure*1D-5)
+            endif
             lnQk = -log(xphico2*henry)
 !           lnQk = log(fg/henry)
             
@@ -2206,7 +2213,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: ln_act(reaction%ncomp)
   PetscReal :: lnQK, tempreal
   PetscReal :: den_kg_per_L
-  PetscReal :: pressure, temperature, xphico2, muco2, den
+  PetscReal :: pressure, temperature, xphico2, muco2, den, m_na, m_cl
   
 #ifdef CHUAN_CO2  
   PetscReal :: dg,dddt,dddp,fg, dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,&
@@ -2303,14 +2310,14 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   if(global_auxvar%sat(iphase)>1D-20)then
     do ieqgas = 1, reaction%ngas ! all gas phase species are secondary
    
-          pressure = global_auxvar%pres(2)
-          temperature = global_auxvar%temp(1)
-          xphico2 = global_auxvar%fugacoeff(1)
-          den = global_auxvar%den(2)
+      pressure = global_auxvar%pres(2)
+      temperature = global_auxvar%temp(1)
+      xphico2 = global_auxvar%fugacoeff(1)
+      den = global_auxvar%den(2)
  
-          call PSAT(temperature, sat_pressure, ierr)
-          pco2 = pressure - sat_pressure
-!          call co2_span_wagner(pressure*1.D-6,temperature+273.15D0,dg,dddt,dddp,fg, &
+      call PSAT(temperature, sat_pressure, ierr)
+      pco2 = pressure - sat_pressure
+!     call co2_span_wagner(pressure*1.D-6,temperature+273.15D0,dg,dddt,dddp,fg, &
 !              dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
 !
 !            fg = fg*1D6
@@ -2318,41 +2325,48 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 !            global_auxvar%fugacoeff(1) = xphico2
 
 
-       if(abs(reaction%co2_gas_id) == ieqgas )then
+      if(abs(reaction%co2_gas_id) == ieqgas )then
 !          call Henry_duan_sun_0NaCl(pco2*1D-5, temperature, henry)
-           call Henry_duan_sun(temperature, pressure *1D-5, muco2, xphico2, &
+        if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
+          m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
+          m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
+          call Henry_duan_sun(temperature, pressure *1D-5, muco2, xphico2, &
+                m_na, m_cl,sat_pressure*1D-5)
+        else
+          call Henry_duan_sun(temperature, pressure *1D-5, muco2, xphico2, &
                 option%m_nacl, option%m_nacl,sat_pressure*1D-5)
-          lnQk = - log(muco2)
-           
-        else   
-          lnQK = -reaction%eqgas_logK(ieqgas)*LOG_TO_LN
-        endif 
-          
-        if (reaction%eqgash2oid(ieqgas) > 0) then
-           lnQK = lnQK + reaction%eqgash2ostoich(ieqgas)*rt_auxvar%ln_act_h2o
-!          print *,'Ttotal', reaction%eqgash2ostoich(ieqgas), rt_auxvar%ln_act_h2o
         endif
+        lnQk = - log(muco2)
+           
+      else   
+        lnQK = -reaction%eqgas_logK(ieqgas)*LOG_TO_LN
+      endif 
+          
+      if (reaction%eqgash2oid(ieqgas) > 0) then
+        lnQK = lnQK + reaction%eqgash2ostoich(ieqgas)*rt_auxvar%ln_act_h2o
+!       print *,'Ttotal', reaction%eqgash2ostoich(ieqgas), rt_auxvar%ln_act_h2o
+      endif
    
    ! contribute to %total          
    !     do i = 1, ncomp
    ! removed loop over species, suppose only one primary species is related
-        icomp = reaction%eqgasspecid(1,ieqgas)
-        pressure =pressure *1D-5
+      icomp = reaction%eqgasspecid(1,ieqgas)
+      pressure =pressure *1D-5
         
-        rt_auxvar%gas_molal(ieqgas) = &
+      rt_auxvar%gas_molal(ieqgas) = &
           rt_auxvar%pri_act_coef(icomp)*exp(lnQK)*rt_auxvar%pri_molal(icomp)&
           /pressure /xphico2* den
    
-            rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
+      rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
                                         reaction%eqgasstoich(1,ieqgas)* &
                                         rt_auxvar%gas_molal(ieqgas)
-        print *,'Ttotal',pressure, temperature, xphico2, den, lnQk,rt_auxvar%pri_molal(icomp),&
-         global_auxvar%sat(2),rt_auxvar%gas_molal(ieqgas)
+!       print *,'Ttotal',pressure, temperature, xphico2, den, lnQk,rt_auxvar%pri_molal(icomp),&
+!        global_auxvar%sat(2),rt_auxvar%gas_molal(ieqgas)
    !     if(rt_auxvar%total(icomp,iphase) > den)rt_auxvar%total(icomp,iphase) = den* .99D0
    !     enddo
 
    ! contribute to %dtotal 
-         tempreal = rt_auxvar%pri_act_coef(icomp)*exp(lnQK)/pressure /xphico2* den 
+      tempreal = rt_auxvar%pri_act_coef(icomp)*exp(lnQK)/pressure /xphico2* den 
          rt_auxvar%dtotal(icomp,icomp,iphase) = rt_auxvar%dtotal(icomp,icomp,iphase) + &
                                                reaction%eqgasstoich(1,ieqgas)*tempreal
     

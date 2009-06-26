@@ -141,6 +141,8 @@ module Reaction_Aux_module
     PetscTruth :: print_free_ion
     PetscInt :: num_dbase_temperatures
     PetscInt :: h_ion_id
+    PetscInt :: na_ion_id
+    PetscInt :: cl_ion_id
     PetscInt :: o2_gas_id
     PetscInt :: co2_gas_id
     PetscReal, pointer :: dbase_temperatures(:)
@@ -358,6 +360,8 @@ function ReactionCreate()
   reaction%print_free_ion = PETSC_FALSE
   
   reaction%h_ion_id = 0
+  reaction%na_ion_id = 0
+  reaction%cl_ion_id = 0
   reaction%o2_gas_id = 0
   reaction%co2_gas_id = 0
 

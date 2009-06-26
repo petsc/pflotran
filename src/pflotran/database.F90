@@ -2479,6 +2479,20 @@ subroutine BasisInit(reaction,option)
         reaction%h_ion_id = ispec
       endif
     endif
+    if (reaction%na_ion_id == 0) then
+      word = 'Na+'
+      if (StringCompare(reaction%primary_species_names(ispec), &
+                          word,MAXWORDLENGTH)) then
+        reaction%na_ion_id = ispec
+      endif
+    endif
+    if (reaction%cl_ion_id == 0) then
+      word = 'Cl-'
+      if (StringCompare(reaction%primary_species_names(ispec), &
+                          word,MAXWORDLENGTH)) then
+        reaction%cl_ion_id = ispec
+      endif
+    endif
   enddo
   
   do ispec = 1, reaction%neqcmplx
@@ -2487,6 +2501,20 @@ subroutine BasisInit(reaction,option)
       if (StringCompare(reaction%secondary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
         reaction%h_ion_id = -ispec
+      endif
+    endif
+    if (reaction%na_ion_id == 0) then
+      word = 'Na+'
+      if (StringCompare(reaction%secondary_species_names(ispec), &
+                          word,MAXWORDLENGTH)) then
+        reaction%na_ion_id = -ispec
+      endif
+    endif
+    if (reaction%cl_ion_id == 0) then
+      word = 'Cl-'
+      if (StringCompare(reaction%secondary_species_names(ispec), &
+                          word,MAXWORDLENGTH)) then
+        reaction%cl_ion_id = -ispec
       endif
     endif
   enddo
