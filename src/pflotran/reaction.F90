@@ -606,8 +606,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscInt :: kinmr_nrate_store, irate
 
 #ifdef CHUAN_CO2  
-  PetscReal :: dg,dddt,dddp,fg, dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,&
-               yco2,pco2, sat_pressure
+  PetscReal :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,&
+               yco2,pco2,sat_pressure,lngamco2
   PetscInt :: ierr
 #endif
     
@@ -736,8 +736,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           ! conversion from m^3 bulk -> L water
           tempreal = option%reference_porosity*option%reference_saturation*1000.d0
           ! total = mol/L water  total_sorb = mol/m^3 bulk
-          Res(icomp) = rt_auxvar%total(icomp,1) + rt_auxvar%total_sorb_eq(icomp)/tempreal - &
-                       total_conc(icomp)
+          Res(icomp) = rt_auxvar%total(icomp,1) + &
+            rt_auxvar%total_sorb_eq(icomp)/tempreal - total_conc(icomp)
           ! dtotal units = kg water/L water
           ! dtotal_sorb units = kg water/m^3 bulk
           ! Jac units = kg water/L water
@@ -757,7 +757,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           Res(icomp) = 0.d0
           Jac(icomp,:) = 0.d0
           do jcomp = 1, reaction%ncomp
-            Res(icomp) = Res(icomp) + reaction%primary_spec_Z(jcomp)*rt_auxvar%total(jcomp,1)
+            Res(icomp) = Res(icomp) + reaction%primary_spec_Z(jcomp) * &
+              rt_auxvar%total(jcomp,1)
             do kcomp = 1, reaction%ncomp
               Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
                 reaction%primary_spec_Z(kcomp)*rt_auxvar%dtotal(kcomp,jcomp,1)
@@ -835,7 +836,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           do jcomp = 1, reaction%mnrlspecid(0,imnrl)
             comp_id = reaction%mnrlspecid(jcomp,imnrl)
             lnQK = lnQK + reaction%mnrlstoich(jcomp,imnrl)* &
-                          log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
+                          log(rt_auxvar%pri_molal(comp_id)* &
+                          rt_auxvar%pri_act_coef(comp_id))
           enddo
 !         QK = exp(lnQK)
           
@@ -846,7 +848,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             comp_id = reaction%mnrlspecid(jcomp,imnrl)
 !           Jac(icomp,comp_id) = -QK/auxvar%primary_spec(comp_id)* &
 !                                reaction%mnrlstoich(jcomp,imnrl)
-            Jac(icomp,comp_id) = reaction%mnrlstoich(jcomp,imnrl)/rt_auxvar%pri_molal(comp_id)
+            Jac(icomp,comp_id) = reaction%mnrlstoich(jcomp,imnrl)/ &
+              rt_auxvar%pri_molal(comp_id)
                                  
           enddo
   
@@ -868,7 +871,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           do jcomp = 1, reaction%eqgasspecid(0,igas)
             comp_id = reaction%eqgasspecid(jcomp,igas)
             lnQK = lnQK + reaction%eqgasstoich(jcomp,igas)* &
-                          log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
+              log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
           enddo
           
 !         QK = exp(lnQK)
@@ -880,11 +883,13 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             comp_id = reaction%eqgasspecid(jcomp,igas)
 !           Jac(icomp,comp_id) = QK/auxvar%primary_spec(comp_id)* &
 !                                reaction%eqgasstoich(jcomp,igas)
-            Jac(icomp,comp_id) = reaction%eqgasstoich(jcomp,igas)/rt_auxvar%pri_molal(comp_id)
+            Jac(icomp,comp_id) = reaction%eqgasstoich(jcomp,igas)/ &
+              rt_auxvar%pri_molal(comp_id)
 
 #ifdef CHUAN_CO2
-             print *,'Gas CO2 constraint Jac,',igas, icomp, comp_id, reaction%eqgasstoich(jcomp,igas),&
-                 Jac(icomp,comp_id), rt_auxvar%pri_molal(comp_id), lnQK
+            print *,'Gas CO2 constraint Jac,',igas, icomp, comp_id, &
+              reaction%eqgasstoich(jcomp,igas),&
+              Jac(icomp,comp_id), rt_auxvar%pri_molal(comp_id), lnQK
 #endif
           enddo
 
@@ -925,17 +930,20 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
               m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
               m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
-              call Henry_duan_sun(tc, pco2 *1D-5, henry, xphico2, &
-                 m_na, m_cl,sat_pressure*1D-5)
+              call Henry_duan_sun(tc,pco2*1D-5,henry,xphico2,lngamco2, &
+                m_na,m_cl,sat_pressure*1D-5)
             else
-              call Henry_duan_sun(tc, pco2 *1D-5, henry, xphico2, &
-                 option%m_nacl, option%m_nacl,sat_pressure*1D-5)
+              call Henry_duan_sun(tc,pco2*1D-5,henry,xphico2,lngamco2, &
+                option%m_nacl,option%m_nacl,sat_pressure*1D-5)
             endif
             
             lnQk = -log(xphico2*henry)
 !           lnQk = log(fg/henry)
+
+            reaction%eqgas_logK(igas) = -lnQK*LN_TO_LOG
             
-            print *, 'SC CO2 constraint',pres,pco2,tc,xphico2,henry,lnQk,yco2, m_na,m_cl
+            print *, 'SC CO2 constraint',igas,pres,pco2,tc,xphico2,henry,lnQk,yco2, &
+              lngamco2,m_na,m_cl,reaction%eqgas_logK(igas)
             
             ! activity of water
             if (reaction%eqgash2oid(igas) > 0) then
@@ -944,22 +952,26 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             do jcomp = 1, reaction%eqgasspecid(0,igas)
               comp_id = reaction%eqgasspecid(jcomp,igas)
               lnQK = lnQK + reaction%eqgasstoich(jcomp,igas)* &
-                          log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
+                log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
+                print *,'SC: ',rt_auxvar%pri_molal(comp_id), &
+                  rt_auxvar%pri_act_coef(comp_id)
             enddo
           
 !           QK = exp(lnQK)
              
 !           Res(icomp) = QK - conc(icomp)
-            Res(icomp) = lnQK - log(pco2*1D-5)!log(conc(icomp)) ! gas pressure
+            Res(icomp) = lnQK - log(pco2*1D-5)!log(conc(icomp)) ! gas pressure bars
             Jac(icomp,:) = 0.d0
             do jcomp = 1,reaction%eqgasspecid(0,igas)
               comp_id = reaction%eqgasspecid(jcomp,igas)
 !             Jac(icomp,comp_id) = QK/auxvar%primary_spec(comp_id)* &
 !                                reaction%eqgasstoich(jcomp,igas)
-              Jac(icomp,comp_id) = reaction%eqgasstoich(jcomp,igas)/rt_auxvar%pri_molal(comp_id)
+              Jac(icomp,comp_id) = reaction%eqgasstoich(jcomp,igas)/ &
+                rt_auxvar%pri_molal(comp_id)
               
-              print *,'SC CO2 constraint Jac,',igas, icomp, comp_id, reaction%eqgasstoich(jcomp,igas),&
-                Jac(icomp,comp_id), rt_auxvar%pri_molal(comp_id),conc(icomp) 
+!             print *,'SC CO2 constraint Jac,',igas, icomp, comp_id, &
+!               reaction%eqgasstoich(jcomp,igas),&
+!               Jac(icomp,comp_id), rt_auxvar%pri_molal(comp_id),conc(icomp) 
             enddo
          endif       
 #endif           
@@ -1459,7 +1471,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   
   if (reaction%nmnrl > 0) then
   
-    130 format(/,'  mineral                   log SI    log K')
+    130 format(/,'  mineral                             log SI    log K')
     131 format(2x,a30,2x,f10.4,2x,1pe12.4)
 
     do imnrl = 1, reaction%nmnrl
@@ -2218,8 +2230,8 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: pressure, temperature, xphico2, muco2, den, m_na, m_cl
   
 #ifdef CHUAN_CO2  
-  PetscReal :: dg,dddt,dddp,fg, dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,&
-               yco2,pco2, sat_pressure
+  PetscReal :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,&
+               yco2,pco2,sat_pressure,lngamco2
 #endif
   
 
@@ -2332,11 +2344,11 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
         if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
           m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
           m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
-          call Henry_duan_sun(temperature, pressure *1D-5, muco2, xphico2, &
-                m_na, m_cl,sat_pressure*1D-5)
+          call Henry_duan_sun(temperature,pressure*1D-5,muco2,xphico2, &
+                lngamco2,m_na,m_cl,sat_pressure*1D-5)
         else
-          call Henry_duan_sun(temperature, pressure *1D-5, muco2, xphico2, &
-                option%m_nacl, option%m_nacl,sat_pressure*1D-5)
+          call Henry_duan_sun(temperature,pressure*1D-5,muco2,xphico2, &
+                lngamco2,option%m_nacl,option%m_nacl,sat_pressure*1D-5)
         endif
         lnQk = - log(muco2)
            

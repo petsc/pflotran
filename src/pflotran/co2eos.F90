@@ -666,7 +666,7 @@ contains
 
 
 
-  subroutine Henry_duan_sun(tc,p,mco2,phico2,mc,ma,psat)
+  subroutine Henry_duan_sun(tc,p,mco2,phico2,lngamco2,mc,ma,psat)
   
 ! t[c], p[bar], mco2[mol/Kg-H2O], mc[cation: mol/kg-H2O], 
 ! ma[anion: mol/kg-H2O], psat[bars]

@@ -337,7 +337,8 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
       xphi = 1.D0
    endif
 
-!   call Henry_duan_sun(t, p2 *1D-5, henry, xphi, option%m_nacl, option%m_nacl,sat_pressure*1D-5)
+!   call Henry_duan_sun(t, p2 *1D-5, henry, xphi, lngamco2, &
+!     option%m_nacl, option%m_nacl,sat_pressure*1D-5)
 !   henry= 1D0 / (FMWH2O *1D-3) / (henry*1D-5 )/xphi 
    
    pw = p

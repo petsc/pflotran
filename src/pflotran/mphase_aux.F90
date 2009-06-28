@@ -249,7 +249,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
   PetscErrorCode :: ierr
   PetscReal :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
   PetscReal ::  p, t, temp, p2, err
-  PetscReal :: henry
+  PetscReal :: henry,lngamco2
   PetscReal :: dg, dddp, dddt
   PetscReal :: fg, dfgdp, dfgdt, xphi
   PetscReal :: eng,hg, dhdp, dhdt
@@ -361,7 +361,8 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
       xphi = 1.D0
    endif
 
-   call Henry_duan_sun(t, p2 *1D-5, henry, xphi, option%m_nacl, option%m_nacl,sat_pressure*1D-5)
+   call Henry_duan_sun(t,p2*1D-5,henry,xphi,lngamco2,option%m_nacl, &
+     option%m_nacl,sat_pressure*1D-5)
    henry= 1D0 / (FMWH2O *1D-3) / (henry*1D-5 )/xphi 
    if(present(xphico2)) xphico2 = xphi
    
