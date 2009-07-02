@@ -211,11 +211,9 @@ subroutine ReactionRead(reaction,input,option)
                   case('RATE','RATES') 
                     string = 'RATES inside SURFACE_COMPLEXATION_RXN'
                     call UtilityReadArray(reaction%kinmr_rate,-1,string,input,option) 
-                    reaction%kinmr_nrate = size(reaction%kinmr_rate)
                   case('SITE_FRACTION') 
                     string = 'SITE_FRACTION inside SURFACE_COMPLEXATION_RXN'
                     call UtilityReadArray(reaction%kinmr_frac,-1,string,input,option) 
-                    reaction%kinmr_nrate = size(reaction%kinmr_frac)
                   case('MINERAL')
                     call InputReadWord(input,option,srfcmplx_rxn%mineral_name,PETSC_TRUE)
                     call InputErrorMsg(input,option,'keyword', &
@@ -396,6 +394,7 @@ subroutine ReactionRead(reaction,input,option)
 
   ! check to ensure that rates for multirate surface complexation are aligned
   ! with surface fractions
+  reaction%kinmr_nrate = size(reaction%kinmr_rate)
   if (reaction%kinmr_nrate > 0) then
     if (size(reaction%kinmr_rate) /= size(reaction%kinmr_frac)) then
       write(word,*) size(reaction%kinmr_rate)
