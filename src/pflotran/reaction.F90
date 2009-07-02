@@ -1067,6 +1067,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   ! once equilibrated, compute sorbed concentrations
   if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
 
+  ! WARNING: below assumes site concentration multiplicative factor
   if (kinmr_nrate_store > 0) then
     reaction%kinmr_nrate = kinmr_nrate_store
     kinmr_nrate_store = 0
@@ -2876,8 +2877,8 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   ! Surface Complexation
   do irxn = 1, reaction%neqsurfcmplxrxn
   
-    ! the below assumes equal site density for each multi-rate reaction
-    site_density = reaction%eqsurfcmplx_rxn_site_density(irxn) !/dble(reaction%kinmr_nrate)
+    !WARNING! the below assumes site density multiplicative factor
+    site_density = reaction%eqsurfcmplx_rxn_site_density(irxn)
   
     ncplx = reaction%eqsurfcmplx_rxn_to_complex(0,irxn)
     free_site_conc = rt_auxvar%eqsurfcmplx_freesite_conc(irxn)
@@ -3005,7 +3006,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
     enddo
   enddo
       
-  ! WARNING: this assumes equal site distribution 
+  ! WARNING: this assumes site fraction multiplicative factor 
   do irate = 1, reaction%kinmr_nrate
     kdt = reaction%kinmr_rate(irate) * option%tran_dt
     one_plus_kdt = 1.d0 + kdt

@@ -688,6 +688,7 @@ subroutine RTUpdateSolutionPatch(realization)
     endif
     
     ! update multirate sorption concentrations 
+  ! WARNING: below assumes site concentration multiplicative factor
     if (reaction%kinmr_nrate > 0) then 
       do ghosted_id = 1, grid%ngmax 
         do irate = 1, reaction%kinmr_nrate 
