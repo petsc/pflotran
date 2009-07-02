@@ -250,6 +250,7 @@ module Reaction_Aux_module
     ! multirate reaction rates
     PetscInt :: kinmr_nrate 
     PetscReal, pointer :: kinmr_rate(:)
+    PetscReal, pointer :: kinmr_frac(:)
     
     ! mineral reactions
     PetscInt :: nmnrl
@@ -463,6 +464,7 @@ function ReactionCreate()
 
   reaction%kinmr_nrate = 0
   nullify(reaction%kinmr_rate)
+  nullify(reaction%kinmr_frac)
 
   reaction%nmnrl = 0  
   nullify(reaction%mnrlspecid)
@@ -1740,6 +1742,9 @@ subroutine ReactionDestroy(reaction)
 
   if (associated(reaction%kinmr_rate)) deallocate(reaction%kinmr_rate)
   nullify(reaction%kinmr_rate)
+
+  if (associated(reaction%kinmr_frac)) deallocate(reaction%kinmr_frac)
+  nullify(reaction%kinmr_frac)
   
   deallocate(reaction)
   nullify(reaction)

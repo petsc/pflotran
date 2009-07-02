@@ -210,14 +210,21 @@ subroutine ReactionRead(reaction,input,option)
                     string = 'RATES inside SURFACE_COMPLEXATION_RXN'
                     call UtilityReadArray(reaction%kinmr_rate,-1,string,input,option) 
                     reaction%kinmr_nrate = size(reaction%kinmr_rate)
+                  case('SITE_FRACTION') 
+                    string = 'SITE_FRACTION inside SURFACE_COMPLEXATION_RXN'
+                    call UtilityReadArray(reaction%kinmr_frac,-1,string,input,option) 
+                    reaction%kinmr_nrate = size(reaction%kinmr_frac)
                   case('MINERAL')
                     call InputReadWord(input,option,srfcmplx_rxn%mineral_name,PETSC_TRUE)
-                    call InputErrorMsg(input,option,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,MINERAL_NAME')
+                    call InputErrorMsg(input,option,'keyword', &
+                      'CHEMISTRY,SURFACE_COMPLEXATION_RXN,MINERAL_NAME')
                   case('SITE')
                     call InputReadWord(input,option,srfcmplx_rxn%free_site_name,PETSC_TRUE)
-                    call InputErrorMsg(input,option,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,SITE_NAME')
+                    call InputErrorMsg(input,option,'keyword', &
+                      'CHEMISTRY,SURFACE_COMPLEXATION_RXN,SITE_NAME')
                     call InputReadDouble(input,option,srfcmplx_rxn%site_density)
-                    call InputErrorMsg(input,option,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,SITE_DENSITY')                   
+                    call InputErrorMsg(input,option,'keyword', &
+                      'CHEMISTRY,SURFACE_COMPLEXATION_RXN,SITE_DENSITY')                   
                   case('COMPLEXES')
                     nullify(prev_srfcmplx)
                     do
@@ -230,7 +237,8 @@ subroutine ReactionRead(reaction,input,option)
                       srfcmplx => SurfaceComplexCreate()
                       srfcmplx%id = srfcmplx_count
                       call InputReadWord(input,option,srfcmplx%name,PETSC_TRUE)
-                      call InputErrorMsg(input,option,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_NAME')
+                      call InputErrorMsg(input,option,'keyword', &
+                        'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_NAME')
                 
                       if (.not.associated(srfcmplx_rxn%complex_list)) then
                         srfcmplx_rxn%complex_list => srfcmplx
@@ -279,7 +287,8 @@ subroutine ReactionRead(reaction,input,option)
                 select case(trim(word))
                   case('MINERAL')
                     call InputReadWord(input,option,ionx_rxn%mineral_name,PETSC_TRUE)
-                    call InputErrorMsg(input,option,'keyword','CHEMISTRY,ION_EXCHANGE_RXN,MINERAL_NAME')
+                    call InputErrorMsg(input,option,'keyword', &
+                      'CHEMISTRY,ION_EXCHANGE_RXN,MINERAL_NAME')
                   case('CEC')
                     call InputReadDouble(input,option,ionx_rxn%CEC)
                     call InputErrorMsg(input,option,'keyword','CHEMISTRY,ION_EXCHANGE_RXN,CEC')                   
@@ -293,7 +302,8 @@ subroutine ReactionRead(reaction,input,option)
                       cation => IonExchangeCationCreate()
                       reaction%neqionxcation = reaction%neqionxcation + 1
                       call InputReadWord(input,option,cation%name,PETSC_TRUE)
-                      call InputErrorMsg(input,option,'keyword','CHEMISTRY,ION_EXCHANGE_RXN,CATION_NAME')
+                      call InputErrorMsg(input,option,'keyword', &
+                        'CHEMISTRY,ION_EXCHANGE_RXN,CATION_NAME')
                       call InputReadDouble(input,option,cation%k)
                       call InputErrorMsg(input,option,'keyword','CHEMISTRY,ION_EXCHANGE_RXN,K')                   
     
@@ -1034,7 +1044,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     reaction%kinmr_nrate = kinmr_nrate_store
     kinmr_nrate_store = 0
     do irate = 1, reaction%kinmr_nrate
-      rt_auxvar%kinmr_total_sorb(:,irate) = rt_auxvar%total_sorb_eq/dble(reaction%kinmr_nrate)
+      rt_auxvar%kinmr_total_sorb(:,irate) = reaction%kinmr_frac(irate) * rt_auxvar%total_sorb_eq
     enddo
     deallocate(rt_auxvar%dtotal_sorb_eq)
     nullify(rt_auxvar%dtotal_sorb_eq)
@@ -2516,7 +2526,6 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
         dres_dfree_site = 1.d0
 
         do j = 1, ncplx
-
           icplx = reaction%eqsurfcmplx_rxn_to_complex(j,irxn)
           dres_dfree_site = dres_dfree_site + &
             reaction%eqsurfcmplx_free_site_stoich(icplx)* &
@@ -2841,7 +2850,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   do irxn = 1, reaction%neqsurfcmplxrxn
   
     ! the below assumes equal site density for each multi-rate reaction
-    site_density = reaction%eqsurfcmplx_rxn_site_density(irxn)/dble(reaction%kinmr_nrate)
+    site_density = reaction%eqsurfcmplx_rxn_site_density(irxn) !/dble(reaction%kinmr_nrate)
   
     ncplx = reaction%eqsurfcmplx_rxn_to_complex(0,irxn)
     free_site_conc = rt_auxvar%eqsurfcmplx_freesite_conc(irxn)
@@ -2957,7 +2966,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
         do j = 1, ncomp
           jcomp = reaction%eqsurfcmplxspecid(j,icplx)
           tempreal = reaction%eqsurfcmplxstoich(j,icplx)*surfcmplx_conc(icplx) / &
-            rt_auxvar%pri_molal(jcomp)+dSi_dSx*dSx_dmi(jcomp)
+            rt_auxvar%pri_molal(jcomp) + dSi_dSx*dSx_dmi(jcomp)
                       
           do i = 1, ncomp
             icomp = reaction%eqsurfcmplxspecid(i,icplx)
@@ -2976,10 +2985,10 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
     k_over_one_plus_kdt = reaction%kinmr_rate(irate)/one_plus_kdt
         
     Res(:) = Res(:) + volume * k_over_one_plus_kdt * &
-      (total_sorb_eq(:) - rt_auxvar%kinmr_total_sorb(:,irate))
+      (reaction%kinmr_frac(irate)*total_sorb_eq(:) - rt_auxvar%kinmr_total_sorb(:,irate))
       
     if (compute_derivative) then
-      Jac = Jac + volume * k_over_one_plus_kdt * dtotal_sorb_eq
+      Jac = Jac + volume * k_over_one_plus_kdt * reaction%kinmr_frac(irate) * dtotal_sorb_eq
     endif
 
   enddo

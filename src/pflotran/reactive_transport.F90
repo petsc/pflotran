@@ -418,7 +418,7 @@ subroutine RTComputeMassBalancePatch(realization,mass_balance)
         endif
 
 
-        ! add contributin of kinetic multirate sorption
+      ! add contribution of kinetic multirate sorption
         if (reaction%kinmr_nrate > 0) then
           do irate = 1, reaction%kinmr_nrate
             mass_balance(:,iphase) = mass_balance(:,iphase) + &
@@ -696,7 +696,7 @@ subroutine RTUpdateSolutionPatch(realization)
           k_over_one_plus_kdt = reaction%kinmr_rate(irate)/one_plus_kdt 
           rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) = & 
             (rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) + & 
-            kdt * rt_aux_vars(ghosted_id)%total_sorb_eq)/one_plus_kdt 
+            kdt * reaction%kinmr_frac(irate) * rt_aux_vars(ghosted_id)%total_sorb_eq)/one_plus_kdt 
         enddo 
       enddo 
     endif
