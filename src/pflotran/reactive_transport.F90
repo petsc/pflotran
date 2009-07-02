@@ -51,7 +51,7 @@ subroutine RTTimeCut(realization)
   field => realization%field
  
   ! copy previous solution back to current solution
-  call VecCopy(field%tran_xx,field%tran_yy,ierr)
+  call VecCopy(field%tran_yy,field%tran_xx,ierr)
   
   ! set densities and saturations to t
   if (realization%option%nflowdof > 0) then
