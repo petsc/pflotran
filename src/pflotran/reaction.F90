@@ -62,6 +62,8 @@ subroutine ReactionRead(reaction,input,option)
                                                   prev_srfcmplx_rxn
   type(ion_exchange_rxn_type), pointer :: ionx_rxn, prev_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cation, prev_cation
+  PetscInt :: i
+  PetscReal :: tempreal
   PetscInt :: srfcmplx_count
 
   nullify(prev_species)
@@ -392,6 +394,31 @@ subroutine ReactionRead(reaction,input,option)
     reaction%use_full_geochemistry = PETSC_TRUE
   endif
 
+  ! check to ensure that rates for multirate surface complexation are aligned
+  ! with surface fractions
+  if (reaction%kinmr_nrate > 0) then
+    if (size(reaction%kinmr_rate) /= size(reaction%kinmr_frac)) then
+      write(word,*) size(reaction%kinmr_rate)
+      write(string,*) size(reaction%kinmr_frac)
+      option%io_buffer = 'Number of kinetic rates (' // &
+        trim(adjustl(word)) // &
+        ') does not match the number of surface fractions (' // &
+        trim(adjustl(string)) // '.'
+      call printErrMsg(option)
+    endif
+    tempreal = 0.d0
+    do i = 1, size(reaction%kinmr_frac)
+      tempreal = tempreal + reaction%kinmr_frac(i)
+    enddo
+    
+    if (dabs(1.d0 - tempreal) > 1.d-6) then
+      write(string,*) tempreal
+      option%io_buffer = 'The sum of the surface fractions for multirate ' // &
+        'kinetic sorption does not add up to 1.d0 (' // trim(adjustl(string)) // &
+        '.'
+      call printErrMsg(option)
+    endif
+  endif
   
   if (len_trim(reaction%database_filename) < 2) &
     reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
