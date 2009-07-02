@@ -1442,18 +1442,19 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
     call StepperUpdateTransportSolution(realization)
 
     ! if dt is smaller than dt_orig/4, try growing it by 0.25d0
-    if (option%tran_dt < 0.25d0*dt_orig) then
+    if (icut == 0 .and. option%tran_dt < 0.25d0*dt_orig) then
       option%tran_dt = 1.25d0*option%tran_dt
     endif
 
     ! compute next time step
-    if (option%tran_time + 1.2d0*option%tran_dt >= option%flow_dt) then
+    ! can't exceed the flow step
+    if (option%tran_time + 1.0001d0*option%tran_dt >= option%flow_time) then
       option%tran_dt = option%flow_time - option%tran_time
       option%tran_time = option%flow_time
     else
       option%tran_time = option%tran_time + option%tran_dt
     endif
-    
+
   enddo
 
 end subroutine StepperStepTransportDT
