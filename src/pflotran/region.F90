@@ -358,7 +358,7 @@ subroutine RegionRead(region,input,option)
             region%iface = TOP_FACE
         end select
       case default
-        option%io_buffer = 'REGION keyword: '//trim(word)//' not recognized'
+        option%io_buffer = 'REGION keyword: '//trim(keyword)//' not recognized'
         call printErrMsg(option)
     end select
   enddo

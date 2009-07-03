@@ -937,7 +937,9 @@ subroutine SolverDestroy(solver)
   endif
   if (solver%matfdcoloring /= 0) &
     call MatFDColoringDestroy(solver%matfdcoloring,ierr)
+#ifndef PC_BUG
   if (solver%snes /= 0) call SNESDestroy(solver%snes)
+#endif
   solver%ksp = 0
   solver%pc = 0
     
