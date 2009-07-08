@@ -2109,7 +2109,8 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
       endif
     
       if (II < 0.d0) then
-        write(option%io_buffer,*) 'ionic strength negative! it =',it,' I= ',I,II,den,didi,dcdi,sum
+        write(option%io_buffer,*) 'ionic strength negative! it =',it, &
+          ' I= ',I,II,den,didi,dcdi,sum
         call printErrMsg(option)        
       endif
     
@@ -2170,7 +2171,8 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
           rt_auxvar%ln_act_h2o = log(rt_auxvar%ln_act_h2o)
         else
           rt_auxvar%ln_act_h2o = 0.d0
-          write(option%io_buffer,*) 'activity of H2O negative! ln act H2O =',rt_auxvar%ln_act_h2o
+          write(option%io_buffer,*) 'activity of H2O negative! ln act H2O =', &
+            rt_auxvar%ln_act_h2o
           call printMsg(option)
         endif
       endif

@@ -771,7 +771,7 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
     istart = iend-reaction%ncomp+1
 
     rt_aux_vars(ghosted_id)%pri_molal = xx_p(istart:iend)
-    ! DO NOTE RECOMPUTE THE ACTIVITY COEFFICIENTS BEFORE COMPUTING THE
+    ! DO NOT RECOMPUTE THE ACTIVITY COEFFICIENTS BEFORE COMPUTING THE
     ! FIXED PORTION OF THE ACCUMULATION TERM - geh
     call RTAuxVarCompute(rt_aux_vars(ghosted_id), &
                          global_aux_vars(ghosted_id), &

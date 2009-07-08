@@ -2493,6 +2493,13 @@ subroutine BasisInit(reaction,option)
         reaction%cl_ion_id = ispec
       endif
     endif
+    if (reaction%co2_aq_id == 0) then
+      word = 'CO2(aq)'
+      if (StringCompare(reaction%primary_species_names(ispec), &
+                          word,MAXWORDLENGTH)) then
+        reaction%co2_aq_id = ispec
+      endif
+    endif
   enddo
   
   do ispec = 1, reaction%neqcmplx
@@ -2515,6 +2522,13 @@ subroutine BasisInit(reaction,option)
       if (StringCompare(reaction%secondary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
         reaction%cl_ion_id = -ispec
+      endif
+    endif
+    if (reaction%co2_aq_id == 0) then
+      word = 'CO2(aq)'
+      if (StringCompare(reaction%secondary_species_names(ispec), &
+                          word,MAXWORDLENGTH)) then
+        reaction%co2_aq_id = -ispec
       endif
     endif
   enddo
