@@ -84,8 +84,8 @@ subroutine ReactionRead(reaction,input,option)
     
     call InputReadWord(input,option,word,PETSC_TRUE)
     call InputErrorMsg(input,option,'keyword','CHEMISTRY')
-    call StringToUpper(word)   
-
+    call StringToUpper(word)
+    
     select case(trim(word))
     
       case('PRIMARY_SPECIES')
@@ -391,6 +391,9 @@ subroutine ReactionRead(reaction,input,option)
   if (reaction%neqcmplx + reaction%neqsorb + reaction%nmnrl > 0) then
     reaction%use_full_geochemistry = PETSC_TRUE
   endif
+ 
+  print *,'reactionread: size(reaction%kinmr_rate) =', size(reaction%kinmr_rate)
+  if (reaction%neqsurfcmplxrxn > 0) then
 
   ! check to ensure that rates for multirate surface complexation are aligned
   ! with surface fractions
@@ -418,10 +421,11 @@ subroutine ReactionRead(reaction,input,option)
       call printErrMsg(option)
     endif
   endif
+  endif
   
   if (len_trim(reaction%database_filename) < 2) &
     reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
- 
+  
 end subroutine ReactionRead
 
 ! ************************************************************************** !
@@ -706,9 +710,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
       case(CONSTRAINT_CHARGE_BAL)
         free_conc(icomp) = conc(icomp)*convert_molar_to_molal ! just a guess
       case(CONSTRAINT_PH)
-        ! check if h+ id set
+        ! check if H+ id set
         if (reaction%h_ion_id /= 0) then
-          ! check if icomp is h+
+          ! check if icomp is H+
           if (reaction%h_ion_id /= icomp) then
             string = 'OH-'
             if (.not.StringCompare(reaction%primary_species_names(icomp), &

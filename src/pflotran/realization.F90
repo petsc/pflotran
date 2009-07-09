@@ -1256,45 +1256,43 @@ subroutine RealizAssignTransportInitCond(realization)
             if (.not.option%use_isothermal) then
               if (icell == 1) then
                 call ReactionEquilibrateConstraint(rt_aux_vars(ghosted_id), &
-                                                   global_aux_vars(ghosted_id), &
-                                                   reaction, &
-                    initial_condition%tran_condition%cur_constraint_coupler%constraint_name, &
-                    initial_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
-                    initial_condition%tran_condition%cur_constraint_coupler%num_iterations, &
-                                                   PETSC_TRUE,option)
+                  global_aux_vars(ghosted_id),reaction, &
+                  initial_condition%tran_condition%cur_constraint_coupler%constraint_name, &
+                  initial_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
+                  initial_condition%tran_condition%cur_constraint_coupler%num_iterations, &
+                  PETSC_TRUE,option)
               else
                 call RTAuxVarCopy(rt_aux_vars(ghosted_id), &
                   rt_aux_vars(grid%nL2G(initial_condition%region%cell_ids(icell-1))), &
                   option)
                 call ReactionEquilibrateConstraint(rt_aux_vars(ghosted_id), &
-                                                   global_aux_vars(ghosted_id), &
-                                                   reaction, &
-                    initial_condition%tran_condition%cur_constraint_coupler%constraint_name, &
-                    initial_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
-                    initial_condition%tran_condition%cur_constraint_coupler%num_iterations, &
-                                                   PETSC_FALSE,option)
+                  global_aux_vars(ghosted_id),reaction, &
+                  initial_condition%tran_condition%cur_constraint_coupler%constraint_name, &
+                  initial_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
+                  initial_condition%tran_condition%cur_constraint_coupler%num_iterations, &
+                  PETSC_FALSE,option)
               endif
             endif
             do idof = 1, option%ntrandof ! primary aqueous concentrations
               xx_p(ibegin+idof-1) = &
                 initial_condition%tran_condition%cur_constraint_coupler% &
-                  aqueous_species%basis_molarity(idof) / &
-                  global_aux_vars(ghosted_id)%den_kg(iphase)*1000.d0 ! convert molarity -> molality
+                aqueous_species%basis_molarity(idof) / &
+                global_aux_vars(ghosted_id)%den_kg(iphase)*1000.d0 ! convert molarity -> molality
             enddo
             if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
               do idof = 1, reaction%nkinmnrl
                 rt_aux_vars(ghosted_id)%mnrl_volfrac0(idof) = &
                   initial_condition%tran_condition%cur_constraint_coupler% &
-                    minerals%basis_vol_frac(idof)
+                  minerals%basis_vol_frac(idof)
                 rt_aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
                   initial_condition%tran_condition%cur_constraint_coupler% &
-                    minerals%basis_vol_frac(idof)
+                  minerals%basis_vol_frac(idof)
                 rt_aux_vars(ghosted_id)%mnrl_area0(idof) = &
                   initial_condition%tran_condition%cur_constraint_coupler% &
-                    minerals%basis_area(idof)
+                  minerals%basis_area(idof)
                 rt_aux_vars(ghosted_id)%mnrl_area(idof) = &
                   initial_condition%tran_condition%cur_constraint_coupler% &
-                    minerals%basis_area(idof)
+                  minerals%basis_area(idof)
               enddo
             endif
             ! this is for the multi-rate surface complexation model
