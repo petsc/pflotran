@@ -661,6 +661,73 @@ CHECKPOINT 5
 
 %========================================================================
 
+\protect\hypertarget{target_chem}{}
+
+\subsection{Keyword: CHEMISTRY}
+\subsubsection{Description}
+CHEMISTRY keyword provides input for primary species, secondary species, minerals, gases, and sorption including ion exchange and surface complexation and a multirate formulation of surface complexation.
+
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000}
+\item [CHEMISTRY] ~
+
+\begin{deflist}{0000000000}
+
+\item [PRIMARY SPECIES] ~
+\item [(.,\,/,\,END)]
+
+\item [SECONDARY SPECIES] ~
+\item [(.,\,/,\,END)]
+\item[GAS\_SPECIES] ~
+\item [(.,\,/,\,END)]
+\item[MINERALS]
+\item [(.,\,/,\,END)]
+\item[MINERAL\_KINETICS] ~
+\begin{deflist}{00000}
+\item Mineral Name \ \ \ Rate [mol/cm$^2$/s]
+\end{deflist}
+\item [(.,\,/,\,END)]
+\item[SORPTION] ~
+\begin{deflist}{000000000000000}
+\item [SURFACE\_COMPLEXATION\_RXN]
+\item [SITE\_FRACTION] Site Fractions
+\item [RATES] Rates
+\item [MINERAL] Mineral Name
+\item[SITE] Site Name \ \ \ Site Density [mol/m$^3$]
+\item[COMPLEX] ~
+\begin{deflist}{0}
+\item [Complex Name]
+\item [(.,\,/,\,END)]
+\end{deflist}
+\end{deflist}
+
+\item [(.,\,/,\,END)]
+\item[DATABASE] Path
+\item[LOG\_FORMULATION]
+\item[ACTIVITY\_COEFFICIENTS]
+\item[ACTIVITY\_H2O]
+\item[MOLAL]
+\item[OUTPUT] ~
+\begin{deflist}{0}
+\item All
+\item pH
+\item Species Name
+\item Kd
+\end{deflist}
+
+\item [(.,\,/,\,END)]
+
+\end{deflist}
+
+\item [(.,\,/,\,END)]
+\end{deflist}
+\end{minipage}
+}
+\subsubsection{Example}
+
+%========================================================================
+
 \protect\hypertarget{target_stat}{}
 
 \subsection{Keyword: COMPUTE\_STATISTICS (STATISTICS)}
@@ -679,7 +746,7 @@ COMPUTE\_STATISTICS enables the calculation statistical analysis of flow velocit
 
 \protect\hypertarget{target_cond}{}
 
-\subsection{Keyword: CONDITION (FLOW\_/TRANSPORT\_}
+\subsection{Keyword: CONDITION (FLOW\_/TRANSPORT\_CONDITION)}
 
 {\noindent\bf Description}
 The CONDITION card specifies scalar or vector data sets to be associated with a given boundary or initial condition.  For instance, to specify a hydrostatic boundary condition, the use would specify a condition with a pressure associated with a point in space (i.e. datum) in space and a gradient, both vector quantities.  [Note that in the case of a hydrostatic boundary condition, the vertical gradient specified in the input deck must be 0. in order to enable the hydrostatic pressure calculation.  Otherwise, the specified vertical gradient overrides the hydrostatic pressure.]  Transient pressures, temperatures, concentrations, datums, gradients, etc. are specified using the 'FILE filename' combination for the name of the data set.
@@ -709,7 +776,7 @@ The CONDITION card specifies scalar or vector data sets to be associated with a 
 
 \item[TYPE] ~
 
-\begin{deflist}{0000000000}
+\begin{deflist}{00000000000000000}
     \item[PRESSURE]
       [dirichlet,
       hydrostatic,,
@@ -742,12 +809,14 @@ The CONDITION card specifies scalar or vector data sets to be associated with a 
 \item[IPHASE] ~
 
 \item[DATUM] x y z
-\item[GRADIENT] 
-\item    PRESSURE $d_{dx}$ $d_{dy}$ $d_{dz}$
-\item    FLUX
-\item    TEMPERATURE
-\item    CONCENTRATION
-\item    ENTHALPY
+\item[GRADIENT] ~
+\begin{deflist}{0}
+\item [PRESSURE] $d_{dx}$ $d_{dy}$ $d_{dz}$
+\item [FLUX]
+\item [TEMPERATURE]
+\item [CONCENTRATION]
+\item [ENTHALPY]
+\end{deflist}
 \item[END]
 \item[TEMPERATURE] ~
 \item[ENTHALPY] ~
