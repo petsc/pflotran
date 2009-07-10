@@ -648,7 +648,8 @@ subroutine SolverReadNewton(solver,input,option)
           case('BAIJ')
             solver%J_mat_type = MATBAIJ
           case('AIJ')
-            solver%J_mat_type = MATBAIJ
+!           solver%J_mat_type = MATBAIJ
+            solver%J_mat_type = MATAIJ
           case('MFFD','MATRIX_FREE')
             solver%J_mat_type = MATMFFD
           case('HYPRESTRUCT')
@@ -666,7 +667,8 @@ subroutine SolverReadNewton(solver,input,option)
           case('BAIJ')
             solver%Jpre_mat_type = MATBAIJ
           case('AIJ')
-            solver%Jpre_mat_type = MATBAIJ
+!           solver%Jpre_mat_type = MATBAIJ
+            solver%Jpre_mat_type = MATAIJ
           case('MFFD','MATRIX_FREE')
             solver%Jpre_mat_type = MATMFFD
           case('HYPRESTRUCT')
