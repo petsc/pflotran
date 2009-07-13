@@ -760,6 +760,13 @@ subroutine SolverPrintNewtonInfo(solver,print_to_screen,print_to_file,fid, &
     write(*,'("inftolupd:",1pe12.4)') solver%newton_inf_upd_tol
     write(*,'("    maxit:",i6)') solver%newton_maxit
     write(*,'("     maxf:",i6)') solver%newton_maxf
+    write(*,*) 
+    if (len_trim(solver%J_mat_type) > 2) then
+      write(*,'("matrix type:",a20)') solver%J_mat_type
+    endif
+    if (len_trim(solver%Jpre_mat_type) > 2) then
+      write(*,'("precond. matrix type:",a20)') solver%Jpre_mat_type
+    endif
     if (solver%inexact_newton) then
       write(*,'("inexact newton: on")')
     else
@@ -802,6 +809,13 @@ subroutine SolverPrintNewtonInfo(solver,print_to_screen,print_to_file,fid, &
     write(fid,'("inftolupd:",1pe12.4)') solver%newton_inf_upd_tol
     write(fid,'("    maxit:",i6)') solver%newton_maxit
     write(fid,'("     maxf:",i6)') solver%newton_maxf
+    write(fid,*) 
+    if (len_trim(solver%J_mat_type) > 2) then
+      write(fid,'("matrix type:",a20)') solver%J_mat_type
+    endif
+    if (len_trim(solver%Jpre_mat_type) > 2) then
+      write(fid,'("precond. matrix type:",a20)') solver%Jpre_mat_type
+    endif
     if (solver%inexact_newton) then
       write(fid,'("inexact newton: on")')
     else
