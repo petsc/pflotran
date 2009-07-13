@@ -727,8 +727,6 @@ subroutine InitReadRequiredCardsFromInput(realization)
 ! Read in select required cards
 !.........................................................................
  
-  print *,'requiredcards: start'
-
   ! MODE information
   string = "MODE"
   call InputFindStringInFile(input,option,string)

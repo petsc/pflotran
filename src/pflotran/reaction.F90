@@ -392,35 +392,33 @@ subroutine ReactionRead(reaction,input,option)
     reaction%use_full_geochemistry = PETSC_TRUE
   endif
  
-  print *,'reactionread: size(reaction%kinmr_rate) =', size(reaction%kinmr_rate)
-  if (reaction%neqsurfcmplxrxn > 0) then
-
   ! check to ensure that rates for multirate surface complexation are aligned
   ! with surface fractions
-  reaction%kinmr_nrate = size(reaction%kinmr_rate)
-  if (reaction%kinmr_nrate > 0) then
-    if (size(reaction%kinmr_rate) /= size(reaction%kinmr_frac)) then
-      write(word,*) size(reaction%kinmr_rate)
-      write(string,*) size(reaction%kinmr_frac)
-      option%io_buffer = 'Number of kinetic rates (' // &
-        trim(adjustl(word)) // &
-        ') does not match the number of surface fractions (' // &
-        trim(adjustl(string)) // '.'
-      call printErrMsg(option)
-    endif
-    tempreal = 0.d0
-    do i = 1, size(reaction%kinmr_frac)
-      tempreal = tempreal + reaction%kinmr_frac(i)
-    enddo
+  if (associated(reaction%kinmr_rate)) then
+    reaction%kinmr_nrate = size(reaction%kinmr_rate)
+    if (reaction%kinmr_nrate > 0) then
+      if (size(reaction%kinmr_rate) /= size(reaction%kinmr_frac)) then
+        write(word,*) size(reaction%kinmr_rate)
+        write(string,*) size(reaction%kinmr_frac)
+        option%io_buffer = 'Number of kinetic rates (' // &
+          trim(adjustl(word)) // &
+          ') does not match the number of surface fractions (' // &
+          trim(adjustl(string)) // '.'
+        call printErrMsg(option)
+      endif
+      tempreal = 0.d0
+      do i = 1, size(reaction%kinmr_frac)
+        tempreal = tempreal + reaction%kinmr_frac(i)
+      enddo
     
-    if (dabs(1.d0 - tempreal) > 1.d-6) then
-      write(string,*) tempreal
-      option%io_buffer = 'The sum of the surface fractions for multirate ' // &
-        'kinetic sorption does not add up to 1.d0 (' // trim(adjustl(string)) // &
-        '.'
-      call printErrMsg(option)
+      if (dabs(1.d0 - tempreal) > 1.d-6) then
+        write(string,*) tempreal
+        option%io_buffer = 'The sum of the surface fractions for ' // &
+          'multirate kinetic sorption does not add up to 1.d0 (' // &
+          trim(adjustl(string)) // '.'
+        call printErrMsg(option)
+      endif
     endif
-  endif
   endif
   
   if (len_trim(reaction%database_filename) < 2) &
