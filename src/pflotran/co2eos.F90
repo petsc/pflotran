@@ -666,7 +666,7 @@ contains
 
 
 
-  subroutine Henry_duan_sun(tc,p,mco2,phico2,lngamco2,mc,ma,psat)
+  subroutine Henry_duan_sun(tc,p,mco2,phico2,lngamco2,mc,ma,psat,co2_aq_actcoef)
   
 ! t[c], p[bar], mco2[mol/Kg-H2O], mc[cation: mol/kg-H2O], 
 ! ma[anion: mol/kg-H2O], psat[bars]
@@ -674,6 +674,7 @@ contains
   implicit none
   PetscReal, save :: coef(3,11)
   PetscReal :: tc,p,mco2,phico2,mc,ma,psat, t
+  PetscReal, optional :: co2_aq_actcoef
 
   PetscReal :: lngamco2, tmp, mu0, lamc, lamca, yco2
 
@@ -697,7 +698,9 @@ contains
   
   !activity coef. co2
   lngamco2 = 2.d0*lamc*mc + lamca*mc*ma ! = log(gam(jco2))
-  
+  if(present(co2_aq_actcoef))then
+    co2_aq_actcoef=exp(lngamco2)
+  endif 
   tmp = mu0 + lngamco2 !- log(phico2)
   
   yco2 = (p-psat)/p

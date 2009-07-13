@@ -2797,6 +2797,11 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
       call RActivityCoefficients(patch%aux%RT%aux_vars(ghosted_id), &
                                  patch%aux%Global%aux_vars(ghosted_id), &
                                  reaction,option)
+      if(option%iflowmode == MPH_MODE)then
+        call CO2AqActCoeff(patch%aux%RT%aux_vars(ghosted_id), &
+                                 patch%aux%Global%aux_vars(ghosted_id), &
+                                 reaction,option) 
+      endif                           
     endif
     call RTAuxVarCompute(patch%aux%RT%aux_vars(ghosted_id), &
                          patch%aux%Global%aux_vars(ghosted_id), &
@@ -2852,6 +2857,11 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
           call RActivityCoefficients(patch%aux%RT%aux_vars_bc(sum_connection), &
                                      patch%aux%Global%aux_vars_bc(sum_connection), &
                                      reaction,option)
+          if(option%iflowmode == MPH_MODE)then
+            call CO2AqActCoeff(patch%aux%RT%aux_vars_bc(sum_connection), &
+                               patch%aux%Global%aux_vars_bc(sum_connection), &
+                               reaction,option) 
+           endif                           
         endif
         call RTAuxVarCompute(patch%aux%RT%aux_vars_bc(sum_connection), &
                              patch%aux%Global%aux_vars_bc(sum_connection), &

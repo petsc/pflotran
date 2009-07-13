@@ -18,6 +18,7 @@ module Reaction_module
             ReactionReadOutput, &
             RTotal, &
             RTotalSorb, &
+            CO2AqActCoeff, &
             RActivityCoefficients, &
             RReaction, &
             RReactionDerivative, &
@@ -753,7 +754,10 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     if (reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF .and. &
         compute_activity_coefs) then
       call RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
-    endif
+      if(option%iflowmode == MPH_MODE)then
+            call CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)  
+       endif
+     endif
     call RTotal(rt_auxvar,global_auxvar,reaction,option)
     if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
     
@@ -2004,6 +2008,46 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
 
 end subroutine RReactionDerivative
                                
+! ************************************************************************** !
+!
+! RActivityCoefficients: Computes activity coefficients of aqueous CO2
+! author: Chuan Lu
+! date: 07/13/09
+!
+! ************************************************************************** !
+subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
+    
+  use Option_module
+  use co2eos_module
+ 
+  implicit none
+
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+   
+  PetscReal :: m_na, m_cl, tc, co2aqact, lngamco2, henry, xphico2, pco2
+  PetscReal :: sat_pressure
+  PetscInt :: ierr 
+
+  tc = global_auxvar%temp(1)
+  pco2 = global_auxvar%pres(1)
+  
+
+  m_na = option%m_nacl; m_cl = m_na
+  if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
+     m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
+     m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
+  endif
+
+  call Henry_duan_sun(tc,pco2*1D-5,henry, 1.D0,lngamco2, &
+         m_na,m_cl,sat_pressure*1D-5, co2aqact)
+         
+  rt_auxvar%pri_act_coef(reaction%co2_aq_id) = co2aqact 
+
+end subroutine CO2AqActCoeff
+
 ! ************************************************************************** !
 !
 ! RActivityCoefficients: Computes the ionic strength and activity coefficients
