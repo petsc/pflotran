@@ -55,6 +55,8 @@ subroutine ReactionRead(reaction,input,option)
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: name
+  character(len=MAXWORDLENGTH) :: card
   type(aq_species_type), pointer :: species, prev_species
   type(gas_species_type), pointer :: gas, prev_gas
   type(mineral_type), pointer :: mineral, prev_mineral
@@ -182,7 +184,22 @@ subroutine ReactionRead(reaction,input,option)
           nullify(mineral)
         enddo
       case('MINERAL_KINETICS')
-        call InputSkipToEnd(input,option,word)
+        do
+!         call InputSkipToEnd(input,option,word)
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,card)
+          if (InputCheckExit(input,option)) exit
+          call InputReadWord(input,option,name,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword','CHEMISTRY,MINERAL_KINETICS')
+          do
+!           call InputSkipToEnd(input,option,word)
+            call InputReadFlotranString(input,option)
+            call InputReadStringErrorMsg(input,option,card)
+            if (InputCheckExit(input,option)) exit
+            call InputReadWord(input,option,name,PETSC_TRUE)
+            call InputErrorMsg(input,option,'keyword','CHEMISTRY,MINERAL_KINETICS')
+          enddo
+        enddo
       case('SORPTION')
         nullify(prev_srfcmplx_rxn)
         do
@@ -205,7 +222,8 @@ subroutine ReactionRead(reaction,input,option)
                 if (InputCheckExit(input,option)) exit
 
                 call InputReadWord(input,option,word,.true.)
-                call InputErrorMsg(input,option,'keyword','CHEMISTRY,SURFACE_COMPLEXATION_RXN')
+                call InputErrorMsg(input,option,'keyword', &
+                  'CHEMISTRY,SURFACE_COMPLEXATION_RXN')
                 call StringToUpper(word)
                 
                 select case(trim(word))
@@ -216,11 +234,13 @@ subroutine ReactionRead(reaction,input,option)
                     string = 'SITE_FRACTION inside SURFACE_COMPLEXATION_RXN'
                     call UtilityReadArray(reaction%kinmr_frac,-1,string,input,option) 
                   case('MINERAL')
-                    call InputReadWord(input,option,srfcmplx_rxn%mineral_name,PETSC_TRUE)
+                    call InputReadWord(input,option,srfcmplx_rxn%mineral_name, &
+                      PETSC_TRUE)
                     call InputErrorMsg(input,option,'keyword', &
                       'CHEMISTRY,SURFACE_COMPLEXATION_RXN,MINERAL_NAME')
                   case('SITE')
-                    call InputReadWord(input,option,srfcmplx_rxn%free_site_name,PETSC_TRUE)
+                    call InputReadWord(input,option,srfcmplx_rxn%free_site_name, &
+                      PETSC_TRUE)
                     call InputErrorMsg(input,option,'keyword', &
                       'CHEMISTRY,SURFACE_COMPLEXATION_RXN,SITE_NAME')
                     call InputReadDouble(input,option,srfcmplx_rxn%site_density)
@@ -1617,9 +1637,10 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: name
+  character(len=MAXWORDLENGTH) :: card
   
   type(mineral_type), pointer :: cur_mineral
-  PetscInt :: imnrl
+  PetscInt :: imnrl,icount
 
   cur_mineral => reaction%mineral_list
   do 
@@ -1627,13 +1648,13 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
     cur_mineral%id = -1*abs(cur_mineral%id)
     cur_mineral => cur_mineral%next
   enddo
-
+  
   input%ierr = 0
+  icount = 0
   do
   
     call InputReadFlotranString(input,option)
     if (InputError(input)) exit
-
     if (InputCheckExit(input,option)) exit  
 
     call InputReadWord(input,option,name,PETSC_TRUE)
@@ -1647,19 +1668,29 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
         if (.not.associated(cur_mineral%tstrxn)) then
           cur_mineral%tstrxn => TransitionStateTheoryRxnCreate()
         endif
-        ! read rate
-        call InputReadDouble(input,option,cur_mineral%tstrxn%rate)
-        call InputErrorMsg(input,option,'rate','CHEMISTRY,MINERAL_KINETICS')
+        
+        do
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,card)
+          if (InputCheckExit(input,option)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'word','CHEMISTRY,MINERAL_KINETICS,MINERAL') 
+          select case(trim(word))
+            case('RATE_CONSTANT')
+!             read rate constant
+              call InputReadDouble(input,option,cur_mineral%tstrxn%rate)
+              call InputErrorMsg(input,option,'rate','CHEMISTRY,MINERAL_KINETICS')
+          end select
+        enddo
         cur_mineral%id = abs(cur_mineral%id)
         reaction%nkinmnrl = reaction%nkinmnrl + 1
         exit
       endif
       cur_mineral => cur_mineral%next
     enddo
-    
   enddo
   
-  ! allocated kinetic mineral names
+  ! allocate kinetic mineral names
   if (reaction%nkinmnrl > 0) then
     allocate(reaction%kinmnrl_names(reaction%nkinmnrl))
     reaction%kinmnrl_names(reaction%nkinmnrl) = ''

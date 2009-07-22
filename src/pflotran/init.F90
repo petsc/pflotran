@@ -920,9 +920,7 @@ subroutine InitReadInput(simulation)
   realization => simulation%realization
   patch => realization%patch
 
-  if(associated(patch)) then
-     grid => patch%grid
-  endif
+  if(associated(patch)) grid => patch%grid
 
   option => realization%option
   output_option => realization%output_option
@@ -990,6 +988,9 @@ subroutine InitReadInput(simulation)
             case('OUTPUT')
               call ReactionReadOutput(reaction,input,option)
             case('MINERAL_KINETICS')
+            
+              print *,'init'
+              
               call ReactionReadMineralKinetics(reaction,input,option)
             case('SORPTION')
               do
