@@ -60,6 +60,7 @@
   type(realization_type), pointer :: realization
   type(option_type), pointer :: option
   
+  nullify(stochastic)
   option => OptionCreate()
   option%fid_out = IUNIT2
 
@@ -107,6 +108,7 @@
 
   string = '-stochastic'
   call InputGetCommandLineTruth(string,truth,option_found,option)
+  
   if (option_found) stochastic => StochasticCreate()
 
   call InitReadStochasticCardFromInput(stochastic,option)
