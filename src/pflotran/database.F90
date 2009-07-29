@@ -2500,6 +2500,13 @@ subroutine BasisInit(reaction,option)
         reaction%co2_aq_id = ispec
       endif
     endif
+    if (reaction%h2o_aq_id == 0) then
+      word = 'H2O'
+      if (StringCompare(reaction%primary_species_names(ispec), &
+                          word,MAXWORDLENGTH)) then
+        reaction%h2o_aq_id = ispec
+      endif
+    endif
   enddo
   
   do ispec = 1, reaction%neqcmplx

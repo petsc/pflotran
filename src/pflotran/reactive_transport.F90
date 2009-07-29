@@ -654,7 +654,7 @@ subroutine RTUpdateSolutionPatch(realization)
   type(grid_type), pointer :: grid
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)  
-  PetscInt :: ghosted_id, imnrl
+  PetscInt :: ghosted_id, imnrl, iaqspec, ncomp, icomp
   PetscInt :: irate
   PetscReal :: kdt, one_plus_kdt, k_over_one_plus_kdt
   
@@ -683,6 +683,25 @@ subroutine RTUpdateSolutionPatch(realization)
             option%tran_dt
           if (rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) < 0.d0) &
             rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = 0.d0
+#ifdef CHUAN_CO2
+          if(option%iflowmode == MPH_MODE)then
+            ncomp = reaction%kinmnrlspecid(0,imnrl)
+            do iaqspec=1, ncomp  
+              icomp = reaction%kinmnrlspecid(iaqspec,imnrl)
+              if(icomp == reaction%co2_aq_id)then
+                global_aux_vars(ghosted_id)%reaction_rate(2) &
+                  = global_aux_vars(ghosted_id)%reaction_rate(2)& 
+                   + rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* option%tran_dt&
+                   * reaction%mnrlstoich(icomp,imnrl)/option%flow_dt
+               elseif(icomp == reaction%h2o_aq_id)then
+                global_aux_vars(ghosted_id)%reaction_rate(1) &
+                  = global_aux_vars(ghosted_id)%reaction_rate(1)& 
+                   + rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* option%tran_dt&
+                   * reaction%mnrlstoich(icomp,imnrl)/option%flow_dt
+              endif
+            enddo  
+          endif   
+#endif
         enddo
       enddo
     endif
@@ -697,7 +716,7 @@ subroutine RTUpdateSolutionPatch(realization)
           k_over_one_plus_kdt = reaction%kinmr_rate(irate)/one_plus_kdt 
           rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) = & 
             (rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) + & 
-            kdt * reaction%kinmr_frac(irate) * rt_aux_vars(ghosted_id)%total_sorb_eq)/one_plus_kdt 
+            kdt * reaction%kinmr_frac(irate) * rt_aux_vars(ghosted_id)%total_sorb_eq)/one_plus_kdt
         enddo 
       enddo 
     endif

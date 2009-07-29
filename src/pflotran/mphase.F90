@@ -640,6 +640,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
       global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
+      global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
     ! print *,'UPdate mphase and gloable vars', ghosted_id, global_aux_vars(ghosted_id)%den_kg(:), &
     !     aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
    !    global_aux_vars(ghosted_id)%den_kg_store
@@ -822,6 +823,7 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
   type(field_type), pointer :: field
   type(mphase_parameter_type), pointer :: mphase_parameter
   type(mphase_auxvar_type), pointer :: aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend !, iphase
   PetscReal, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
@@ -837,10 +839,12 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
   field => realization%field
   patch => realization%patch
   grid => patch%grid
+  
  
   mphase_parameter => patch%aux%Mphase%mphase_parameter
   aux_vars => patch%aux%Mphase%aux_vars
-    
+  global_aux_vars => patch%aux%Global%aux_vars
+      
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
@@ -870,6 +874,7 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
     !if(.not.associated(aux_vars(ghosted_id))) print *,'no var'
     if(.not.associated(mphase_parameter%dencpr)) print *,'no para'    
     call MphaseAccumulation(aux_vars(ghosted_id)%aux_var_elem(0), &
+                              global_aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
@@ -901,7 +906,7 @@ end subroutine MphaseUpdateFixedAccumPatch
 ! date: 05/12/08
 !
 ! ************************************************************************** !  
-subroutine MphaseAccumulation(aux_var,por,vol,rock_dencpr,option,iireac,Res)
+subroutine MphaseAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,iireac,Res)
 
   use Option_module
   
@@ -911,7 +916,8 @@ subroutine MphaseAccumulation(aux_var,por,vol,rock_dencpr,option,iireac,Res)
   type(option_type) :: option
   PetscReal Res(1:option%nflowdof) 
   PetscReal vol,por,rock_dencpr
-     
+  type(global_auxvar_type) :: global_aux_var
+        
   PetscInt :: ispec, np, iireac
   PetscReal :: porXvol, mol(option%nflowspec), eng
   
@@ -934,11 +940,15 @@ subroutine MphaseAccumulation(aux_var,por,vol,rock_dencpr,option,iireac,Res)
  
 ! Reaction terms here
 ! Note if iireac >0, then it is the node global index
- ! if (option%run_coupled == PETSC_TRUE .and. iireac>0) then
+
+  if(option%ntrandof > 0)then 
+   if (iireac>0) then
 !H2O
- !    mol(1)= mol(1) - option%flow_dt * option%rtot(iireac,1)
- !    mol(2)= mol(2) - option%flow_dt * option%rtot(iireac,2)
- ! endif
+      mol(1)= mol(1) - global_aux_var%reaction_rate(1) * option%flow_dt
+!CO2     
+      mol(2)= mol(2) - global_aux_var%reaction_rate(2) * option%flow_dt
+    endif
+   endif
   
    !if(option%use_isothermal)then
    !   Res(1:option%nflowdof)=mol(:)
@@ -1624,7 +1634,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   PetscReal :: xmol(realization%option%nphase*realization%option%nflowspec),&
                satu(realization%option%nphase)
   PetscReal :: yh2o_in_co2, wat_sat_x, co2_sat_x
-  PetscReal :: lngamco2
+  PetscReal :: lngamco2, m_na, m_cl
 ! PetscReal :: xla,co2_poyn
   PetscInt :: local_id, ghosted_id, dof_offset
   
@@ -1709,8 +1719,15 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
     xphi = fg/p2
     call PSAT(t, sat_pressure, ierr)
     sat_pressure =sat_pressure /1D5
+  
+    m_na=option%m_nacl; m_cl=m_na 
+    if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
+       m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
+       m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
+    endif  
+
     call Henry_duan_sun(t,p2*1D-5,henry,xphi,lngamco2, &
-      option%m_nacl,option%m_nacl,sat_pressure)
+      m_na,m_cl,sat_pressure)
     
     henry= 1.D8 / FMWH2O / henry / xphi !note: henry = H/phi
   
@@ -1882,6 +1899,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   type(field_type), pointer :: field
   type(mphase_parameter_type), pointer :: mphase_parameter
   type(mphase_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
@@ -1900,6 +1918,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   mphase_parameter => patch%aux%Mphase%mphase_parameter
   aux_vars => patch%aux%Mphase%aux_vars
   aux_vars_bc => patch%aux%Mphase%aux_vars_bc
+  global_aux_vars => patch%aux%Global%aux_vars
 
  ! call MphaseUpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
@@ -1998,10 +2017,12 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     endif
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
-    call MphaseAccumulation(aux_vars(ghosted_id)%aux_var_elem(0),porosity_loc_p(ghosted_id), &
-                              volume_p(local_id), &
-                              mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-                              option,1,Res) 
+    call MphaseAccumulation(aux_vars(ghosted_id)%aux_var_elem(0),&
+                            global_aux_vars(ghosted_id), &
+                            porosity_loc_p(ghosted_id), &
+                            volume_p(local_id), &
+                            mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
+                            option,1,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
  !   print *,'REs, acm: ', res
     Resold_AR(local_id, :)= Res(1:option%nflowdof)
@@ -2463,6 +2484,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(field_type), pointer :: field 
   type(mphase_parameter_type), pointer :: mphase_parameter
   type(mphase_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
   
   PetscReal :: vv_darcy(realization%option%nphase), voltemp
   PetscReal :: ra(1:realization%option%nflowdof,1:realization%option%nflowdof*2) 
@@ -2491,6 +2513,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   mphase_parameter => patch%aux%Mphase%mphase_parameter
   aux_vars => patch%aux%Mphase%aux_vars
   aux_vars_bc => patch%aux%Mphase%aux_vars_bc
+  global_aux_vars => patch%aux%Global%aux_vars
   
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
@@ -2527,6 +2550,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
      
      do nvar =1, option%nflowdof
         call MphaseAccumulation(aux_vars(ghosted_id)%aux_var_elem(nvar), &
+             global_aux_vars(ghosted_id),&
              porosity_loc_p(ghosted_id), &
              volume_p(local_id), &
              mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &

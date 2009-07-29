@@ -21,8 +21,8 @@ module Global_Aux_module
     PetscReal, pointer :: fugacoeff_store(:,:)
     PetscReal, pointer :: mass_balance(:) ! kg
     PetscReal, pointer :: mass_balance_delta(:) ! kmol
-    PetscReal, pointer :: reaction_amnt(:)
-    PetscReal, pointer :: reaction_amnt_store(:,:)
+    PetscReal, pointer :: reaction_rate(:)
+    PetscReal, pointer :: reaction_rate_store(:,:)
   end type global_auxvar_type
   
   type, public :: global_type
@@ -126,10 +126,10 @@ subroutine GlobalAuxVarInit(aux_var,option)
     aux_var%fugacoeff_store = 1.d0
     allocate(aux_var%den_store(option%nphase,TWO_INTEGER))
     aux_var%den_store = 0.d0
-    allocate(aux_var%reaction_amnt(option%nspec))
-    aux_var%reaction_amnt = 0.d0
-    allocate(aux_var%reacton_amnt_store(option%nspec,TWO_INTEGER))
-    aux_var%reaction_amnt_store = 0.d0
+    allocate(aux_var%reaction_rate(option%nflowspec))
+    aux_var%reaction_rate = 0.d0
+    allocate(aux_var%reaction_rate_store(option%nflowspec,TWO_INTEGER))
+    aux_var%reaction_rate_store = 0.d0
   else
     nullify(aux_var%pres_store)
     nullify(aux_var%temp_store)

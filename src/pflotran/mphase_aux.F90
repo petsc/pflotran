@@ -250,13 +250,13 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
   PetscReal :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
   PetscReal ::  p, t, temp, p2, err
   PetscReal :: henry,lngamco2
-  PetscReal :: dg, dddp, dddt
+  PetscReal :: dg, dddp, dddt, m_na, m_cl,m_nacl
   PetscReal :: fg, dfgdp, dfgdt, xphi
   PetscReal :: eng,hg, dhdp, dhdt
   PetscReal :: visg, dvdp, dvdt
   PetscReal :: h(option%nphase), u(option%nphase), kr(option%nphase)
   PetscReal :: xm_nacl, x_nacl, vphi             
-   
+  PetscReal :: tk, xco2, pw_kg, x1, vphi_a1, vphi_a2 
   
   
   aux_var%sat = 0.d0
@@ -361,8 +361,14 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
       xphi = 1.D0
    endif
 
-   call Henry_duan_sun(t,p2*1D-5,henry,xphi,lngamco2,option%m_nacl, &
-     option%m_nacl,sat_pressure*1D-5)
+   m_na=option%m_nacl; m_cl=m_na 
+!   if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
+!       m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
+!       m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
+!   endif  
+
+   call Henry_duan_sun(t,p2*1D-5,henry,xphi,lngamco2,m_na, &
+     m_cl,sat_pressure*1D-5)
    henry= 1D0 / (FMWH2O *1D-3) / (henry*1D-5 )/xphi 
    if(present(xphico2)) xphico2 = xphi
    
@@ -401,7 +407,8 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
   aux_var%diff(1:option%nflowspec) = 1D-9
   ! fluid_properties%diff_base(1)
 
-  xm_nacl = option%m_nacl * FMWNACL
+  
+  xm_nacl = m_nacl * FMWNACL
   xm_nacl = xm_nacl /(1.D3 + xm_nacl)
   call nacl_den(t, p*1D-6, xm_nacl, dw_kg) 
   dw_kg = dw_kg * 1D3
@@ -412,16 +419,44 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
 ! ideal mixing    
   !den(1) = 1.D0/(xmol(2)/dg + xmol(1)/dw_mol) !*c+(1-c)* 
 
-! Garcia mixing **************************
-  x_nacl =  option%m_nacl/( option%m_nacl + 1D3/FMWH2O)
+  m_nacl=option%m_nacl
+!  if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
+!     m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
+!     m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
+!     m_nacl=m_na
+!     if(m_cl>m_nacl) m_nacl=m_cl
+!   endif  
+
+ x_nacl =  m_nacl/( m_nacl + 1D3/FMWH2O)
 ! **  xmol(1) = xh2o + xnacl
   aux_var%avgmw(1)= (aux_var%xmol(1) - x_nacl) * FMWH2O&
        + x_nacl * FMWNACL + aux_var%xmol(2) * FMWCO2
+
+! Garcia mixing **************************
+#ifdef GARCIA
   vphi=1D-6*(37.51D0 + t&
        *(-9.585D-2 + t*(8.74D-4 - t*5.044D-7)))
   aux_var%den(1)=dw_kg/(1D0-(FMWCO2*1D-3-dw_kg*vphi)&
        *aux_var%xmol(2)/(aux_var%avgmw(1)*1D-3))
   aux_var%den(1)=aux_var%den(1)/aux_var%avgmw(1)
+#endif  
+
+
+!duan mixing **************************
+#ifdef DUANDEN
+ tk = t + 273.15D0; xco2= xmol(2)
+  call nacl_den(t, p*1D-6, 0.D0, pw_kg)
+  pw_kg=pw_kg*1D3  
+  x1=1.D0-xco2;
+  vphi_a1 = (0.3838402D-3 * tk - 0.5595385D0) * tk + 0.30429268D3 +(-0.72044305D5 +0.63003388D7/tk)/tk;  
+  vphi_a2 = (-0.57709332D-5 * tk + 0.82764653D-2) * tk - 0.43813556D1 +(0.10144907D4 - 0.86777045D5/tk)/tk;  
+  vphi = (1.D0 + vphi_a1 + vphi_a2 * p*1D-6) *( fmwh2o*1D-3 /pw_kg); 
+  vphi =  ((x1-x_nacl)*fmwh2o + x_nacl* fmwnacl)*1D-3/dw_kg + xco2*vphi;
+  aux_var%den(1) = ((x1 - x_nacl) * fmwh2o + x_nacl * fmwnacl+ xco2*fmwco2)*1D-3 / vphi;
+ !  if(iphase==3) print *, 'Duan den=', den(1)
+  aux_var%den(1)=aux_var%den(1)/aux_var%avgmw(1)
+  
+#endif 
   
        
  ! Hebach, J. Chem.Eng.Data 2004 (49),p950 ***********

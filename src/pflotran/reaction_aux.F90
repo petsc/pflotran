@@ -144,6 +144,7 @@ module Reaction_Aux_module
     PetscInt :: na_ion_id
     PetscInt :: cl_ion_id
     PetscInt :: co2_aq_id
+    PetscInt :: h2o_aq_id
     PetscInt :: co2_gas_id
     PetscInt :: o2_gas_id
     PetscReal, pointer :: dbase_temperatures(:)
@@ -366,6 +367,7 @@ function ReactionCreate()
   reaction%cl_ion_id = 0
   reaction%o2_gas_id = 0
   reaction%co2_aq_id = 0
+  reaction%h2o_aq_id = 0
   reaction%co2_gas_id = 0
 
   nullify(reaction%primary_species_list)
