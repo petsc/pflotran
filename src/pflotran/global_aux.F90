@@ -19,10 +19,11 @@ module Global_Aux_module
     PetscReal, pointer :: den_kg_store(:,:)
     PetscReal, pointer :: fugacoeff(:)
     PetscReal, pointer :: fugacoeff_store(:,:)
+    PetscReal, pointer :: m_nacl(:)
     PetscReal, pointer :: mass_balance(:) ! kg
     PetscReal, pointer :: mass_balance_delta(:) ! kmol
     PetscReal, pointer :: reaction_rate(:)
-    PetscReal, pointer :: reaction_rate_store(:,:)
+!   PetscReal, pointer :: reaction_rate_store(:,:)
   end type global_auxvar_type
   
   type, public :: global_type
@@ -95,6 +96,13 @@ subroutine GlobalAuxVarInit(aux_var,option)
   aux_var%sat_store = 0.d0
   allocate(aux_var%den_kg_store(option%nphase,TWO_INTEGER))
   aux_var%den_kg_store = 0.d0
+  allocate(aux_var%m_nacl(TWO_INTEGER))
+  aux_var%m_nacl = option%m_nacl
+  allocate(aux_var%reaction_rate(option%nflowspec))
+  aux_var%reaction_rate = 0.d0
+! allocate(aux_var%reaction_rate_store(option%nflowspec,TWO_INTEGER))
+! aux_var%reaction_rate_store = 0.d0
+
 
   if(option%iflowmode == IMS_MODE)then
     allocate(aux_var%pres_store(option%nphase,TWO_INTEGER))
@@ -126,10 +134,6 @@ subroutine GlobalAuxVarInit(aux_var,option)
     aux_var%fugacoeff_store = 1.d0
     allocate(aux_var%den_store(option%nphase,TWO_INTEGER))
     aux_var%den_store = 0.d0
-    allocate(aux_var%reaction_rate(option%nflowspec))
-    aux_var%reaction_rate = 0.d0
-    allocate(aux_var%reaction_rate_store(option%nflowspec,TWO_INTEGER))
-    aux_var%reaction_rate_store = 0.d0
   else
     nullify(aux_var%pres_store)
     nullify(aux_var%temp_store)
@@ -172,7 +176,8 @@ subroutine GlobalAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%sat = aux_var%sat
   aux_var2%den = aux_var%den
   aux_var2%den_kg = aux_var%den_kg
-
+  aux_var2%m_nacl = aux_var%m_nacl
+  aux_var2%reaction_rate = aux_var%reaction_rate
   aux_var2%sat_store = aux_var%sat_store
   aux_var2%den_kg_store = aux_var%den_kg_store
   
@@ -231,6 +236,10 @@ subroutine GlobalAuxVarDestroy(aux_var)
   nullify(aux_var%fugacoeff)
   if (associated(aux_var%den_kg)) deallocate(aux_var%den_kg)
   nullify(aux_var%den_kg)
+  if (associated(aux_var%m_nacl)) deallocate(aux_var%m_nacl)
+  nullify(aux_var%m_nacl)
+  if (associated(aux_var%reaction_rate)) deallocate(aux_var%reaction_rate)
+  nullify(aux_var%reaction_rate)
   
   if (associated(aux_var%pres_store)) deallocate(aux_var%pres_store)
   nullify(aux_var%pres_store)
