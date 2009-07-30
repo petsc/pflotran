@@ -384,6 +384,7 @@ subroutine Restart(realization, &
   PetscInt :: int_flag
   PetscInt :: i
   PetscInt :: read_activity_coefs
+  character(len=MAXSTRINGLENGTH) :: string
   
   type(field_type), pointer :: field
   type(discretization_type), pointer :: discretization
@@ -440,6 +441,14 @@ subroutine Restart(realization, &
     tran_cumulative_solver_time = 0.d0
     read_activity_coefs = header%checkpoint_activity_coefs
     transport_read = PETSC_TRUE
+  else
+    write(string,*) header%ntrandof
+    option%io_buffer = 'Number of transport dofs in restart file (' // &
+                       trim(adjustl(string)) // &
+           ') does not match the number of transport dofs in the input file ('
+    write(string,*) option%ntrandof
+    option%io_buffer = trim(option%io_buffer) // string // ')'
+    call printWrnMsg(option)
   endif
 
   if (flow_read) then
