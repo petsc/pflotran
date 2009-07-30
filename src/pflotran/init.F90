@@ -988,9 +988,6 @@ subroutine InitReadInput(simulation)
             case('OUTPUT')
               call ReactionReadOutput(reaction,input,option)
             case('MINERAL_KINETICS')
-            
-              print *,'init'
-              
               call ReactionReadMineralKinetics(reaction,input,option)
             case('SORPTION')
               do
