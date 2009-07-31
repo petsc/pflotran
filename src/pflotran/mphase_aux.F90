@@ -1,5 +1,6 @@
 module Mphase_Aux_module
 use mphase_pckr_module
+
   implicit none
   
   private 
@@ -222,10 +223,11 @@ end subroutine MphaseAuxVarCopy
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
+subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_function, &
                                    fluid_properties,option, xphico2)
 
   use Option_module
+  use Global_Aux_module
   use water_eos_module
   use gas_eos_module
   use co2eos_module
@@ -243,6 +245,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
   type(saturation_function_type) :: saturation_function
   PetscReal :: x(option%nflowdof)
   type(mphase_auxvar_elem_type) :: aux_var
+  type(global_auxvar_type) :: global_aux_var
   PetscInt :: iphase
   PetscReal, optional :: xphico2
 
@@ -362,10 +365,11 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
    endif
 
    m_na=option%m_nacl; m_cl=m_na 
-!   if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
-!       m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
-!       m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
-!   endif  
+   if(option%ntrandof>0)then
+       m_na = global_aux_var%m_nacl(1)
+       m_cl = global_aux_var%m_nacl(2)
+   endif  
+
 
    call Henry_duan_sun(t,p2*1D-5,henry,xphi,lngamco2,m_na, &
      m_cl,sat_pressure*1D-5)
@@ -497,10 +501,11 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
 
 
 
-subroutine MphaseAuxVarCompute_WINC(x, delx, aux_var,iphase,saturation_function, &
+subroutine MphaseAuxVarCompute_WINC(x, delx, aux_var, global_auxvar,iphase,saturation_function, &
                                     fluid_properties,option)
 
   use Option_module
+  use Global_Aux_module
   use water_eos_module
   use Saturation_Function_module
   use Fluid_module
@@ -512,6 +517,8 @@ subroutine MphaseAuxVarCompute_WINC(x, delx, aux_var,iphase,saturation_function,
   type(saturation_function_type) :: saturation_function
   PetscReal :: x(option%nflowdof), xx(option%nflowdof), delx(option%nflowdof)
   type(mphase_auxvar_elem_type) :: aux_var(1:option%nflowdof)
+  type(global_auxvar_type) :: global_auxvar
+
   PetscInt :: iphase
 
   PetscInt :: n 
@@ -519,7 +526,8 @@ subroutine MphaseAuxVarCompute_WINC(x, delx, aux_var,iphase,saturation_function,
   do n=1, option%nflowdof
      xx=x;  xx(n)=x(n)+ delx(n)
 ! ***   note: var_node here starts from 1 to option%flowdof ***
-    call  MphaseAuxVarCompute_NINC(xx,aux_var(n),iphase,saturation_function, &
+    call  MphaseAuxVarCompute_NINC(xx,aux_var(n),global_auxvar,iphase, &
+                                   saturation_function, &
                                    fluid_properties, option)
   enddo
 

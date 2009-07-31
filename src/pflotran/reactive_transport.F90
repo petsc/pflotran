@@ -667,7 +667,7 @@ subroutine RTUpdateSolutionPatch(realization)
   global_aux_vars => patch%aux%Global%aux_vars
 
   call RTUpdateAuxVarsPatch(realization,PETSC_FALSE,PETSC_FALSE)
-  
+
   if (.not.option%init_stage) then
     ! update mineral volume fractions
     if (reaction%nkinmnrl > 0) then
@@ -705,7 +705,8 @@ subroutine RTUpdateSolutionPatch(realization)
         enddo
       enddo
     endif
-    
+  
+
     ! update multirate sorption concentrations 
   ! WARNING: below assumes site concentration multiplicative factor
     if (reaction%kinmr_nrate > 0) then 
@@ -2825,6 +2826,14 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
     call RTAuxVarCompute(patch%aux%RT%aux_vars(ghosted_id), &
                          patch%aux%Global%aux_vars(ghosted_id), &
                          reaction,option)
+    if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
+      patch%aux%Global%aux_vars(ghosted_id)%m_nacl(1) = &
+            patch%aux%RT%aux_vars(ghosted_id)%pri_molal(reaction%na_ion_id)
+      patch%aux%Global%aux_vars(ghosted_id)%m_nacl(2) = &
+            patch%aux%RT%aux_vars(ghosted_id)%pri_molal(reaction%cl_ion_id)
+     else
+      patch%aux%Global%aux_vars(ghosted_id)%m_nacl = option%m_nacl
+    endif
   enddo
 
   if (update_bcs) then
@@ -2885,6 +2894,14 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
         call RTAuxVarCompute(patch%aux%RT%aux_vars_bc(sum_connection), &
                              patch%aux%Global%aux_vars_bc(sum_connection), &
                              reaction,option)
+        if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
+          patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl(1) = &
+                patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(reaction%na_ion_id)
+          patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl(2) = &
+                patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(reaction%cl_ion_id)
+         else
+          patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl = option%m_nacl
+        endif
       enddo
       boundary_condition => boundary_condition%next
     enddo
