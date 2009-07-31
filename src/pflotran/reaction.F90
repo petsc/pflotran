@@ -2063,8 +2063,8 @@ subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
   PetscInt :: ierr 
 
   tc = global_auxvar%temp(1)
-  pco2 = global_auxvar%pres(1)
-  
+  pco2 = global_auxvar%pres(2)
+  sat_pressure =0D0
 
   m_na = option%m_nacl; m_cl = m_na
   if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
@@ -2076,7 +2076,7 @@ subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
          m_na,m_cl,sat_pressure*1D-5, co2aqact)
          
   rt_auxvar%pri_act_coef(reaction%co2_aq_id) = co2aqact 
-
+ ! print *, 'CO2AqActCoeff', tc, pco2, m_na,m_cl, sat_pressure,co2aqact
 end subroutine CO2AqActCoeff
 
 ! ************************************************************************** !

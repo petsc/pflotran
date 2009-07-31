@@ -1873,7 +1873,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       istart = iend-reaction%ncomp+1
       call RTAccumulation(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                           porosity_loc_p(ghosted_id), &
-                          volume_p(local_id),reaction,option,Res) 
+                          volume_p(local_id),reaction,option,Res)
       r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)
     enddo
   endif
@@ -2820,7 +2820,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
       if(option%iflowmode == MPH_MODE)then
         call CO2AqActCoeff(patch%aux%RT%aux_vars(ghosted_id), &
                                  patch%aux%Global%aux_vars(ghosted_id), &
-                                 reaction,option) 
+                                 reaction,option)
       endif                           
     endif
     call RTAuxVarCompute(patch%aux%RT%aux_vars(ghosted_id), &
