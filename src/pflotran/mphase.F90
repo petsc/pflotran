@@ -624,28 +624,28 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
     endif
    
     call MphaseAuxVarCompute_NINC(xx_loc_p(istart:iend), &
-                       aux_vars(ghosted_id)%aux_var_elem(0), &
-                       iphase, &
-                       realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-                       realization%fluid_properties,option, xphi)
+                                  aux_vars(ghosted_id)%aux_var_elem(0),&
+                                  global_aux_vars(ghosted_id), &
+                                  iphase, &
+                                  realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+                                  realization%fluid_properties,option, xphi)
 ! update global variables
     if( associated(global_aux_vars))then
-     
       global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
                aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
       global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
       global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
-  !    global_aux_vars(ghosted_id)%sat_store = 
+!     global_aux_vars(ghosted_id)%sat_store = 
       global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
       global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
       global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
-    ! print *,'UPdate mphase and gloable vars', ghosted_id, global_aux_vars(ghosted_id)%den_kg(:), &
-    !     aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
-   !    global_aux_vars(ghosted_id)%den_kg_store
-  !    global_aux_vars(ghosted_id)%mass_balance 
-  !    global_aux_vars(ghosted_id)%mass_balance_delta                   
+!     print *,'UPdate mphase and gloable vars', ghosted_id, global_aux_vars(ghosted_id)%den_kg(:), &
+!     aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
+!     global_aux_vars(ghosted_id)%den_kg_store
+!     global_aux_vars(ghosted_id)%mass_balance 
+!     global_aux_vars(ghosted_id)%mass_balance_delta                   
     else
       print *,'Not associated global for mph'
     endif
@@ -669,8 +669,9 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
          xxbc(:) = boundary_condition%flow_aux_real_var(:,iconn)
       case(HYDROSTATIC_BC)
          xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
-          xxbc(2:option%nflowdof) = &
+         xxbc(2:option%nflowdof) = &
                xx_loc_p((ghosted_id-1)*option%nflowdof+2:ghosted_id*option%nflowdof)
+
      !  case(CONST_TEMPERATURE)
       
     !  case(PRODUCTION_WELL) ! 102      
@@ -687,7 +688,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
       end select
 
       call MphaseAuxVarCompute_NINC(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
-                         iphasebc, &
+                          global_aux_vars_bc(sum_connection),iphasebc, &
                          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                          realization%fluid_properties, option, xphi)
     
@@ -942,19 +943,19 @@ subroutine MphaseAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,
 ! Note if iireac >0, then it is the node global index
 
   if(option%ntrandof > 0)then 
-   if (iireac>0) then
+    if (iireac>0) then
 !H2O
       mol(1)= mol(1) - global_aux_var%reaction_rate(1) * option%flow_dt
 !CO2     
       mol(2)= mol(2) - global_aux_var%reaction_rate(2) * option%flow_dt
     endif
-   endif
+  endif
   
    !if(option%use_isothermal)then
    !   Res(1:option%nflowdof)=mol(:)
    !else
-      Res(1:option%nflowdof-1)=mol(:)
-      Res(option%nflowdof)=eng
+  Res(1:option%nflowdof-1)=mol(:)
+  Res(option%nflowdof)=eng
   ! endif
 end subroutine MphaseAccumulation
 
@@ -1642,13 +1643,15 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch
-  
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+
   patch => realization%patch  
   grid => patch%grid
   option => realization%option
   field => realization%field
+  global_aux_vars => patch%aux%Global%aux_vars
   
-  
+    
 ! mphase code need assemble 
   call GridVecGetArrayF90(grid,xx, xx_p, ierr); CHKERRQ(ierr)
   call GridVecGetArrayF90(grid,field%flow_yy, yy_p, ierr); CHKERRQ(ierr)
@@ -1721,10 +1724,12 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
     sat_pressure =sat_pressure /1D5
   
     m_na=option%m_nacl; m_cl=m_na 
-    if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
-       m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
-       m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
-    endif  
+    if(associated(realization%reaction))then
+      if (realization%reaction%na_ion_id /= 0 .and. realization%reaction%cl_ion_id /= 0) then
+         m_na = global_aux_vars(ghosted_id)%m_nacl(1)
+         m_cl = global_aux_vars(ghosted_id)%m_nacl(2)
+      endif  
+    endif
 
     call Henry_duan_sun(t,p2*1D-5,henry,xphi,lngamco2, &
       m_na,m_cl,sat_pressure)
@@ -1899,7 +1904,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   type(field_type), pointer :: field
   type(mphase_parameter_type), pointer :: mphase_parameter
   type(mphase_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
@@ -1919,6 +1924,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   aux_vars => patch%aux%Mphase%aux_vars
   aux_vars_bc => patch%aux%Mphase%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
  ! call MphaseUpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
@@ -1953,9 +1959,10 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
         
      istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
      iphase =int(iphase_loc_p(ng))
-     call MphaseAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),iphase,&
-          realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
-          realization%fluid_properties,option)
+     call MphaseAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
+                      global_aux_vars(ng), iphase,&
+                      realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
+                      realization%fluid_properties,option)
 
      if (option%numerical_derivatives) then
         delx(1,ng) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
@@ -1995,7 +2002,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
            endif
         end select
        call MphaseAuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:,ng),&
-            aux_vars(ng)%aux_var_elem(1:option%nflowdof),iphase,&
+            aux_vars(ng)%aux_var_elem(1:option%nflowdof),global_aux_vars(ng),iphase,&
             realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
             realization%fluid_properties,option)
      endif
@@ -2142,9 +2149,10 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
        iphase=int(iphase_loc_p(ghosted_id))                               
     end select
  
-    call MphaseAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),iphase,&
-         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
-         realization%fluid_properties, option)
+    call MphaseAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
+            global_aux_vars_bc(sum_connection), iphase,&
+            realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
+            realization%fluid_properties, option)
 
     call MphaseBCFlux(boundary_condition%flow_condition%itype, &
          boundary_condition%flow_aux_real_var(:,iconn), &
@@ -2484,7 +2492,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(field_type), pointer :: field 
   type(mphase_parameter_type), pointer :: mphase_parameter
   type(mphase_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
-  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
   
   PetscReal :: vv_darcy(realization%option%nphase), voltemp
   PetscReal :: ra(1:realization%option%nflowdof,1:realization%option%nflowdof*2) 
@@ -2514,6 +2522,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   aux_vars => patch%aux%Mphase%aux_vars
   aux_vars_bc => patch%aux%Mphase%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
@@ -2682,11 +2691,13 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
        iphasebc=int(iphase_loc_p(ghosted_id))                               
     end select
  
-    call MphaseAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),iphasebc,&
+    call MphaseAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
+        global_aux_vars_bc(sum_connection), iphasebc,&
          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties, option)
     call MphaseAuxVarCompute_Winc(xxbc,delxbc,&
-         aux_vars_bc(sum_connection)%aux_var_elem(1:option%nflowdof),iphasebc,&
+         aux_vars_bc(sum_connection)%aux_var_elem(1:option%nflowdof),&
+         global_aux_vars_bc(sum_connection),iphasebc,&
          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
          realization%fluid_properties,option)
     
