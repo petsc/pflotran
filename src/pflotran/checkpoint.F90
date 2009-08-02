@@ -108,7 +108,7 @@ subroutine Checkpoint(realization, &
   PetscInt :: tran_num_newton_iterations
   PetscInt :: tran_steps, tran_newtcum, tran_icutcum, tran_linear_cum
   PetscReal :: tran_cumulative_solver_time
-  PetscInt :: id
+  PetscInt, intent(in) :: id  ! id should not be altered within this subroutine
   PetscInt :: checkpoint_activity_coefs
 #ifdef PetscSizeT
   PetscSizeT :: bagsize
@@ -169,8 +169,8 @@ subroutine Checkpoint(realization, &
   call PetscBagCreate(option%mycomm, bagsize, bag, ierr)
   call PetscBagGetData(bag, header, ierr); CHKERRQ(ierr)
 
-  id = REVISION_NUMBER
-  call PetscBagRegisterInt(bag,header%revision_number,id, &
+  i = REVISION_NUMBER
+  call PetscBagRegisterInt(bag,header%revision_number,i, &
                            "revision_number","revision_number",ierr)
 
   ! Register variables that are passed into timestepper().
