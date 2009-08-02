@@ -1084,7 +1084,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
     endif
     print *,' --> SNES Linear/Non-Linear Iterations = ', &
              num_linear_iterations,' / ',num_newton_iterations
-    write(*,'(" --> SNES Residual: ",1p3e14.6)') fnorm, scaled_fnorm, inorm 
+    write(*,'("  --> SNES Residual: ",1p3e14.6)') fnorm, scaled_fnorm, inorm 
   endif
   if (option%print_file_flag) then
     write(option%fid_out, '(" FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
@@ -1408,7 +1408,7 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
       endif
       print *,' --> SNES Linear/Non-Linear Iterations = ', &
                num_linear_iterations,' / ',num_newton_iterations
-      write(*,'(" --> SNES Residual: ",1p3e14.6)') fnorm, scaled_fnorm, inorm 
+      write(*,'("  --> SNES Residual: ",1p3e14.6)') fnorm, scaled_fnorm, inorm 
     endif
 
     if (option%print_file_flag) then
