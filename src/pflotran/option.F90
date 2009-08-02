@@ -558,7 +558,7 @@ subroutine printErrMsg1(option)
   
   if (OptionPrintToScreen(option)) then
     print *
-    print *, 'ERROR: 1' // trim(option%io_buffer)
+    print *, 'ERROR: ' // trim(option%io_buffer)
     print *, 'Stopping!'
   endif    
   call PetscInitialized(petsc_initialized, ierr)
@@ -586,7 +586,7 @@ subroutine printErrMsg2(option,string)
   
   if (OptionPrintToScreen(option)) then
     print *
-    print *, 'ERROR: 2' // trim(string)
+    print *, 'ERROR: ' // trim(string)
     print *, 'Stopping!'
   endif    
   call PetscInitialized(petsc_initialized, ierr)
