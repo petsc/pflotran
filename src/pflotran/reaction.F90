@@ -185,20 +185,13 @@ subroutine ReactionRead(reaction,input,option)
         enddo
       case('MINERAL_KINETICS')
         do
-!         call InputSkipToEnd(input,option,word)
           call InputReadFlotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
           if (InputCheckExit(input,option)) exit
           call InputReadWord(input,option,name,PETSC_TRUE)
-          call InputErrorMsg(input,option,'keyword','CHEMISTRY,MINERAL_KINETICS')
-          do
-!           call InputSkipToEnd(input,option,word)
-            call InputReadFlotranString(input,option)
-            call InputReadStringErrorMsg(input,option,card)
-            if (InputCheckExit(input,option)) exit
-            call InputReadWord(input,option,name,PETSC_TRUE)
-            call InputErrorMsg(input,option,'keyword','CHEMISTRY,MINERAL_KINETICS')
-          enddo
+          call InputErrorMsg(input,option,name,'CHEMISTRY,MINERAL_KINETICS')
+          ! skip over remaining cards to end of each mineral entry
+          call InputSkipToEnd(input,option,word)
         enddo
       case('SORPTION')
         nullify(prev_srfcmplx_rxn)
