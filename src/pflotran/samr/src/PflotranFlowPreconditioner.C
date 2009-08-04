@@ -166,7 +166,7 @@ PflotranFlowPreconditioner::setRefinementBoundaryInterpolant(RefinementBoundaryI
 }
 
 PetscErrorCode
-PflotranFlowPreconditioner::wrapperApplyPreconditioner(void *ptr, Vec r, Vec z)
+PflotranFlowPreconditioner::wrapperApplyPreconditioner(PC ptr, Vec r, Vec z)
 {
    
    PflotranFlowPreconditioner *pc = (PflotranFlowPreconditioner *)ptr;
@@ -208,7 +208,7 @@ PflotranFlowPreconditioner::applyPreconditioner(
 }   
 
 PetscErrorCode
-PflotranFlowPreconditioner::wrapperSetupPreconditioner( void *ptr)
+PflotranFlowPreconditioner::wrapperSetupPreconditioner( PC ptr)
 {
    PflotranFlowPreconditioner *pc = (PflotranFlowPreconditioner *)ptr;
    PreconditionerParameters* params = NULL;

@@ -60,9 +60,9 @@ public:
 
    void setOperator(PflotranJacobianMultilevelOperator *op){d_pc_operator = op;}
 
-   static PetscErrorCode wrapperSetupPreconditioner(void *ptr);
+   static PetscErrorCode wrapperSetupPreconditioner(PC pc);
 
-   static PetscErrorCode wrapperApplyPreconditioner(void *ptr,Vec xin,Vec xout);
+   static PetscErrorCode wrapperApplyPreconditioner(PC pc,Vec xin,Vec xout);
 
 protected:
 

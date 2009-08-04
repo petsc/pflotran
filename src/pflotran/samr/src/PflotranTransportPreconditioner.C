@@ -167,7 +167,7 @@ PflotranTransportPreconditioner::setRefinementBoundaryInterpolant(RefinementBoun
 }
 
 PetscErrorCode
-PflotranTransportPreconditioner::wrapperApplyPreconditioner(void *ptr, Vec r, Vec z)
+PflotranTransportPreconditioner::wrapperApplyPreconditioner(PC ptr, Vec r, Vec z)
 {
    
    PflotranTransportPreconditioner *pc = (PflotranTransportPreconditioner *)ptr;
@@ -208,7 +208,7 @@ PflotranTransportPreconditioner::applyPreconditioner(
 }   
 
 PetscErrorCode
-PflotranTransportPreconditioner::wrapperSetupPreconditioner( void *ptr)
+PflotranTransportPreconditioner::wrapperSetupPreconditioner( PC ptr)
 {
    PflotranTransportPreconditioner *pc = (PflotranTransportPreconditioner *)ptr;
    PreconditionerParameters* params = NULL;
