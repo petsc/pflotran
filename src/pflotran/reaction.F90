@@ -417,7 +417,7 @@ subroutine ReactionRead(reaction,input,option)
         option%io_buffer = 'Number of kinetic rates (' // &
           trim(adjustl(word)) // &
           ') does not match the number of surface fractions (' // &
-          trim(adjustl(string)) // '.'
+          trim(adjustl(string)) // ').'
         call printErrMsg(option)
       endif
       tempreal = 0.d0
