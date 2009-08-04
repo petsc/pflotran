@@ -5,10 +5,16 @@
 ! RTM: This is pretty makeshift.  We need to think about what should 
 ! go into this header and how it should be organized.
 
+! MUST INCREMENT THIS NUMBER EVERYTIME A CHECKPOINT FILE IS MODIFIED TO PREVENT
+! COMPATIBILITY ISSUES - geh.
+#define REVISION_NUMBER 1
+
 module Checkpoint_Header_module
   implicit none
   private
   type, public :: checkpoint_header_type
+    integer*8 :: revision_number  ! increment this every time there is a change
+                                             ! in the checkpoint file format
     real*8 :: flow_time
     real*8 :: flow_dt
     integer*8 :: flow_steps
@@ -102,7 +108,7 @@ subroutine Checkpoint(realization, &
   PetscInt :: tran_num_newton_iterations
   PetscInt :: tran_steps, tran_newtcum, tran_icutcum, tran_linear_cum
   PetscReal :: tran_cumulative_solver_time
-  PetscInt :: id
+  PetscInt, intent(in) :: id  ! id should not be altered within this subroutine
   PetscInt :: checkpoint_activity_coefs
 #ifdef PetscSizeT
   PetscSizeT :: bagsize
@@ -159,9 +165,13 @@ subroutine Checkpoint(realization, &
   ! We manually specify the number of bytes required for the 
   ! checkpoint header, since sizeof() is not supported by some Fortran 
   ! compilers.  To be on the safe side, we assume an integer is 8 bytes.
-  bagsize = 176
+  bagsize = 184
   call PetscBagCreate(option%mycomm, bagsize, bag, ierr)
   call PetscBagGetData(bag, header, ierr); CHKERRQ(ierr)
+
+  i = REVISION_NUMBER
+  call PetscBagRegisterInt(bag,header%revision_number,i, &
+                           "revision_number","revision_number",ierr)
 
   ! Register variables that are passed into timestepper().
   call PetscBagRegisterInt(bag,header%plot_number,output_option%plot_number, &
@@ -412,6 +422,19 @@ subroutine Restart(realization, &
   ! Get the header data.
   call PetscBagLoad(viewer, bag, ierr)
   call PetscBagGetData(bag, header, ierr)
+  
+  if (header%revision_number /= REVISION_NUMBER) then
+    write(string,*) header%revision_number
+    option%io_buffer = 'The revision number # of checkpoint file (' // &
+                       trim(option%restart_filename) // ', rev=' // &
+                       trim(adjustl(string)) // &
+                       ') does not match the current revision number' // &
+                       ' of PFLOTRAN checkpoint files ('
+    write(string,*) REVISION_NUMBER
+    option%io_buffer = trim(option%io_buffer) // trim(adjustl(string)) // ').'
+    call printErrMsg(option)
+  endif
+  
   output_option%plot_number = header%plot_number
   ! FLOW
   if (option%nflowdof > 0 .and. option%nflowdof == header%nflowdof) then

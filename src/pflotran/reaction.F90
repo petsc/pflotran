@@ -185,20 +185,13 @@ subroutine ReactionRead(reaction,input,option)
         enddo
       case('MINERAL_KINETICS')
         do
-!         call InputSkipToEnd(input,option,word)
           call InputReadFlotranString(input,option)
           call InputReadStringErrorMsg(input,option,card)
           if (InputCheckExit(input,option)) exit
           call InputReadWord(input,option,name,PETSC_TRUE)
-          call InputErrorMsg(input,option,'keyword','CHEMISTRY,MINERAL_KINETICS')
-          do
-!           call InputSkipToEnd(input,option,word)
-            call InputReadFlotranString(input,option)
-            call InputReadStringErrorMsg(input,option,card)
-            if (InputCheckExit(input,option)) exit
-            call InputReadWord(input,option,name,PETSC_TRUE)
-            call InputErrorMsg(input,option,'keyword','CHEMISTRY,MINERAL_KINETICS')
-          enddo
+          call InputErrorMsg(input,option,name,'CHEMISTRY,MINERAL_KINETICS')
+          ! skip over remaining cards to end of each mineral entry
+          call InputSkipToEnd(input,option,word)
         enddo
       case('SORPTION')
         nullify(prev_srfcmplx_rxn)
@@ -424,7 +417,7 @@ subroutine ReactionRead(reaction,input,option)
         option%io_buffer = 'Number of kinetic rates (' // &
           trim(adjustl(word)) // &
           ') does not match the number of surface fractions (' // &
-          trim(adjustl(string)) // '.'
+          trim(adjustl(string)) // ').'
         call printErrMsg(option)
       endif
       tempreal = 0.d0
@@ -446,6 +439,117 @@ subroutine ReactionRead(reaction,input,option)
     reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
   
 end subroutine ReactionRead
+
+! ************************************************************************** !
+!
+! ReactionReadMineralKinetics: Reads mineral kinetics
+! author: Glenn Hammond
+! date: 10/16/08
+!
+! ************************************************************************** !
+subroutine ReactionReadMineralKinetics(reaction,input,option)
+
+  use Input_module
+  use String_module  
+  use Option_module
+  
+  implicit none
+  
+  type(reaction_type) :: reaction
+  type(input_type) :: input
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: name
+  character(len=MAXWORDLENGTH) :: card
+  
+  type(mineral_type), pointer :: cur_mineral
+  PetscInt :: imnrl,icount
+
+  cur_mineral => reaction%mineral_list
+  do 
+    if (.not.associated(cur_mineral)) exit
+    cur_mineral%id = -1*abs(cur_mineral%id)
+    cur_mineral => cur_mineral%next
+  enddo
+  
+  input%ierr = 0
+  icount = 0
+  do
+  
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
+    if (InputCheckExit(input,option)) exit  
+
+    call InputReadWord(input,option,name,PETSC_TRUE)
+    call InputErrorMsg(input,option,'keyword','CHEMISTRY,MINERAL_KINETICS')
+    
+    cur_mineral => reaction%mineral_list
+    do 
+      if (.not.associated(cur_mineral)) exit
+      if (StringCompare(cur_mineral%name,name,MAXWORDLENGTH)) then
+        cur_mineral%itype = MINERAL_KINETIC
+        if (.not.associated(cur_mineral%tstrxn)) then
+          cur_mineral%tstrxn => TransitionStateTheoryRxnCreate()
+        endif
+        
+        do
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,card)
+          if (InputCheckExit(input,option)) exit
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'word','CHEMISTRY,MINERAL_KINETICS,MINERAL') 
+          select case(trim(word))
+            case('RATE_CONSTANT')
+!             read rate constant
+              call InputReadDouble(input,option,cur_mineral%tstrxn%rate)
+              call InputErrorMsg(input,option,'rate','CHEMISTRY,MINERAL_KINETICS')
+            case default
+              option%io_buffer = 'CHEMISTRY,MINERAL_KINETICS keyword: ' // &
+                                 trim(word) // ' not recognized'
+              call printErrMsg(option)
+          end select
+        enddo
+        cur_mineral%id = abs(cur_mineral%id)
+        reaction%nkinmnrl = reaction%nkinmnrl + 1
+        exit
+      endif
+      cur_mineral => cur_mineral%next
+    enddo
+  enddo
+  
+  ! allocate kinetic mineral names
+  if (reaction%nkinmnrl > 0) then
+    allocate(reaction%kinmnrl_names(reaction%nkinmnrl))
+    reaction%kinmnrl_names(reaction%nkinmnrl) = ''
+  endif
+ 
+  cur_mineral => reaction%mineral_list
+  imnrl = 0
+  do 
+    if (.not.associated(cur_mineral)) exit
+    if (cur_mineral%id < 0 .and. &
+        cur_mineral%itype == MINERAL_KINETIC) then
+      option%io_buffer = 'No rate provided in input file for mineral: ' // &
+               trim(cur_mineral%name) // '.'
+      call printErrMsg(option)
+    endif
+    if (associated(cur_mineral%tstrxn)) then
+      imnrl = imnrl + 1
+      reaction%kinmnrl_names(imnrl) = cur_mineral%name
+    endif
+    cur_mineral => cur_mineral%next
+  enddo
+  
+  cur_mineral => reaction%mineral_list
+  do 
+    if (.not.associated(cur_mineral)) exit
+    cur_mineral%id = abs(cur_mineral%id)
+    cur_mineral => cur_mineral%next
+  enddo
+
+end subroutine ReactionReadMineralKinetics
 
 ! ************************************************************************** !
 !
@@ -1617,113 +1721,6 @@ end subroutine ReactionPrintConstraint
 
 ! ************************************************************************** !
 !
-! ReactionReadMineralKinetics: Reads mineral kinetics
-! author: Glenn Hammond
-! date: 10/16/08
-!
-! ************************************************************************** !
-subroutine ReactionReadMineralKinetics(reaction,input,option)
-
-  use Input_module
-  use String_module  
-  use Option_module
-  
-  implicit none
-  
-  type(reaction_type) :: reaction
-  type(input_type) :: input
-  type(option_type) :: option
-  
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: word
-  character(len=MAXWORDLENGTH) :: name
-  character(len=MAXWORDLENGTH) :: card
-  
-  type(mineral_type), pointer :: cur_mineral
-  PetscInt :: imnrl,icount
-
-  cur_mineral => reaction%mineral_list
-  do 
-    if (.not.associated(cur_mineral)) exit
-    cur_mineral%id = -1*abs(cur_mineral%id)
-    cur_mineral => cur_mineral%next
-  enddo
-  
-  input%ierr = 0
-  icount = 0
-  do
-  
-    call InputReadFlotranString(input,option)
-    if (InputError(input)) exit
-    if (InputCheckExit(input,option)) exit  
-
-    call InputReadWord(input,option,name,PETSC_TRUE)
-    call InputErrorMsg(input,option,'keyword','CHEMISTRY,MINERAL_KINETICS')
-    
-    cur_mineral => reaction%mineral_list
-    do 
-      if (.not.associated(cur_mineral)) exit
-      if (StringCompare(cur_mineral%name,name,MAXWORDLENGTH)) then
-        cur_mineral%itype = MINERAL_KINETIC
-        if (.not.associated(cur_mineral%tstrxn)) then
-          cur_mineral%tstrxn => TransitionStateTheoryRxnCreate()
-        endif
-        
-        do
-          call InputReadFlotranString(input,option)
-          call InputReadStringErrorMsg(input,option,card)
-          if (InputCheckExit(input,option)) exit
-          call InputReadWord(input,option,word,PETSC_TRUE)
-          call InputErrorMsg(input,option,'word','CHEMISTRY,MINERAL_KINETICS,MINERAL') 
-          select case(trim(word))
-            case('RATE_CONSTANT')
-!             read rate constant
-              call InputReadDouble(input,option,cur_mineral%tstrxn%rate)
-              call InputErrorMsg(input,option,'rate','CHEMISTRY,MINERAL_KINETICS')
-          end select
-        enddo
-        cur_mineral%id = abs(cur_mineral%id)
-        reaction%nkinmnrl = reaction%nkinmnrl + 1
-        exit
-      endif
-      cur_mineral => cur_mineral%next
-    enddo
-  enddo
-  
-  ! allocate kinetic mineral names
-  if (reaction%nkinmnrl > 0) then
-    allocate(reaction%kinmnrl_names(reaction%nkinmnrl))
-    reaction%kinmnrl_names(reaction%nkinmnrl) = ''
-  endif
- 
-  cur_mineral => reaction%mineral_list
-  imnrl = 0
-  do 
-    if (.not.associated(cur_mineral)) exit
-    if (cur_mineral%id < 0 .and. &
-        cur_mineral%itype == MINERAL_KINETIC) then
-      option%io_buffer = 'No rate provided in input file for mineral: ' // &
-               trim(cur_mineral%name) // '.'
-      call printErrMsg(option)
-    endif
-    if (associated(cur_mineral%tstrxn)) then
-      imnrl = imnrl + 1
-      reaction%kinmnrl_names(imnrl) = cur_mineral%name
-    endif
-    cur_mineral => cur_mineral%next
-  enddo
-  
-  cur_mineral => reaction%mineral_list
-  do 
-    if (.not.associated(cur_mineral)) exit
-    cur_mineral%id = abs(cur_mineral%id)
-    cur_mineral => cur_mineral%next
-  enddo
-
-end subroutine ReactionReadMineralKinetics
-
-! ************************************************************************** !
-!
 ! ReactionReadOutput: Reads species to be printed in output
 ! author: Glenn Hammond
 ! date: 01/24/09
@@ -2063,8 +2060,8 @@ subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
   PetscInt :: ierr 
 
   tc = global_auxvar%temp(1)
-  pco2 = global_auxvar%pres(1)
-  
+  pco2 = global_auxvar%pres(2)
+  sat_pressure =0D0
 
   m_na = option%m_nacl; m_cl = m_na
   if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
@@ -2076,7 +2073,7 @@ subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
          m_na,m_cl,sat_pressure*1D-5, co2aqact)
          
   rt_auxvar%pri_act_coef(reaction%co2_aq_id) = co2aqact 
-
+ ! print *, 'CO2AqActCoeff', tc, pco2, m_na,m_cl, sat_pressure,co2aqact
 end subroutine CO2AqActCoeff
 
 ! ************************************************************************** !
@@ -2348,10 +2345,9 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 #ifdef CHUAN_CO2  
   PetscReal :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,&
                yco2,pco2,sat_pressure,lngamco2
+  rt_auxvar%total = 0.d0 !debugging 
 #endif
   
-
-  rt_auxvar%total =0D0 !debugging 
   iphase = 1           
   
   den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3              

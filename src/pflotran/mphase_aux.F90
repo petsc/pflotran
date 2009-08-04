@@ -4,7 +4,8 @@ use mphase_pckr_module
   implicit none
   
   private 
-
+!#define GARCIA 1
+#define DUANDEN 1
 #include "definitions.h"
 
 type, public :: mphase_auxvar_elem_type
@@ -364,10 +365,12 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
       xphi = 1.D0
    endif
 
-   m_na=option%m_nacl; m_cl=m_na 
+   m_na=option%m_nacl; m_cl=m_na; m_nacl=m_na 
    if(option%ntrandof>0)then
        m_na = global_aux_var%m_nacl(1)
        m_cl = global_aux_var%m_nacl(2)
+       m_nacl = m_na
+       if( m_cl> m_na)m_nacl = m_cl
    endif  
 
 
@@ -423,7 +426,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 ! ideal mixing    
   !den(1) = 1.D0/(xmol(2)/dg + xmol(1)/dw_mol) !*c+(1-c)* 
 
-  m_nacl=option%m_nacl
+!  m_nacl=option%m_nacl
 !  if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
 !     m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
 !     m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
@@ -431,10 +434,25 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 !     if(m_cl>m_nacl) m_nacl=m_cl
 !   endif  
 
- x_nacl =  m_nacl/( m_nacl + 1D3/FMWH2O)
+  x_nacl =  m_nacl/( m_nacl + 1D3/FMWH2O)
 ! **  xmol(1) = xh2o + xnacl
   aux_var%avgmw(1)= (aux_var%xmol(1) - x_nacl) * FMWH2O&
        + x_nacl * FMWNACL + aux_var%xmol(2) * FMWCO2
+
+!duan mixing **************************
+#ifdef DUANDEN
+  tk = t + 273.15D0; xco2= aux_var%xmol(2)
+  call nacl_den(t, p*1D-6, 0.D0, pw_kg)
+  pw_kg=pw_kg*1D3  
+  x1=1.D0-xco2;
+  vphi_a1 = (0.3838402D-3 * tk - 0.5595385D0) * tk + 0.30429268D3 +(-0.72044305D5 +0.63003388D7/tk)/tk;  
+  vphi_a2 = (-0.57709332D-5 * tk + 0.82764653D-2) * tk - 0.43813556D1 +(0.10144907D4 - 0.86777045D5/tk)/tk;  
+  vphi = (1.D0 + vphi_a1 + vphi_a2 * p*1D-6) *( fmwh2o*1D-3 /pw_kg); 
+  vphi =  ((x1-x_nacl)*fmwh2o + x_nacl* fmwnacl)*1D-3/dw_kg + xco2*vphi;
+  aux_var%den(1) = ((x1 - x_nacl) * fmwh2o + x_nacl * fmwnacl+ xco2*fmwco2)*1D-3 / vphi;
+!  if(iphase==3) print *, 'Duan den=', aux_var%den(1)
+  aux_var%den(1)=aux_var%den(1)/aux_var%avgmw(1)
+#endif 
 
 ! Garcia mixing **************************
 #ifdef GARCIA
@@ -444,24 +462,6 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
        *aux_var%xmol(2)/(aux_var%avgmw(1)*1D-3))
   aux_var%den(1)=aux_var%den(1)/aux_var%avgmw(1)
 #endif  
-
-
-!duan mixing **************************
-#ifdef DUANDEN
- tk = t + 273.15D0; xco2= xmol(2)
-  call nacl_den(t, p*1D-6, 0.D0, pw_kg)
-  pw_kg=pw_kg*1D3  
-  x1=1.D0-xco2;
-  vphi_a1 = (0.3838402D-3 * tk - 0.5595385D0) * tk + 0.30429268D3 +(-0.72044305D5 +0.63003388D7/tk)/tk;  
-  vphi_a2 = (-0.57709332D-5 * tk + 0.82764653D-2) * tk - 0.43813556D1 +(0.10144907D4 - 0.86777045D5/tk)/tk;  
-  vphi = (1.D0 + vphi_a1 + vphi_a2 * p*1D-6) *( fmwh2o*1D-3 /pw_kg); 
-  vphi =  ((x1-x_nacl)*fmwh2o + x_nacl* fmwnacl)*1D-3/dw_kg + xco2*vphi;
-  aux_var%den(1) = ((x1 - x_nacl) * fmwh2o + x_nacl * fmwnacl+ xco2*fmwco2)*1D-3 / vphi;
- !  if(iphase==3) print *, 'Duan den=', den(1)
-  aux_var%den(1)=aux_var%den(1)/aux_var%avgmw(1)
-  
-#endif 
-  
        
  ! Hebach, J. Chem.Eng.Data 2004 (49),p950 ***********
  !   den(1)= 949.7109D0 + p * (0.559684D-6 - 0.00097D-12 * p) &  
@@ -488,16 +488,16 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 !                                   saturation_function, &
 !                                   por,perm, &
 !                                   option)
-       aux_var%kvr(2)=kr(2)/visg     
-       aux_var%kvr(1) = kr(1)/visl
-       select case(iphase)
-         case(1)
-           aux_var%pc =0.D0
-         case(2)
-           aux_var%pc =0.D0
-      end select          
+   aux_var%kvr(2)=kr(2)/visg     
+   aux_var%kvr(1) = kr(1)/visl
+   select case(iphase)
+     case(1)
+       aux_var%pc =0.D0
+     case(2)
+       aux_var%pc =0.D0
+   end select          
 
-    end subroutine MphaseAuxVarCompute_NINC
+end subroutine MphaseAuxVarCompute_NINC
 
 
 
