@@ -1297,9 +1297,18 @@ subroutine RealizAssignTransportInitCond(realization)
             endif
             ! this is for the multi-rate surface complexation model
             if (reaction%kinmr_nrate > 0) then
+              ! copy over total sorbed concentration
               rt_aux_vars(ghosted_id)%kinmr_total_sorb = &
                 initial_condition%tran_condition%cur_constraint_coupler% &
                 rt_auxvar%kinmr_total_sorb
+              ! copy over free site concentration
+              rt_aux_vars(ghosted_id)%eqsurfcmplx_freesite_conc = &
+                initial_condition%tran_condition%cur_constraint_coupler% &
+                rt_auxvar%eqsurfcmplx_freesite_conc
+              ! copy over surface complex concentrations
+              rt_aux_vars(ghosted_id)%eqsurfcmplx_conc = &
+                initial_condition%tran_condition%cur_constraint_coupler% &
+                rt_auxvar%eqsurfcmplx_conc
             endif
           enddo
 !        endif
