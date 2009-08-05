@@ -29,7 +29,8 @@ module Reaction_module
             ReactionInitializeLogK, &
             ReactionComputeKd, &
             RAccumulationSorb, &
-            RAccumulationSorbDerivative
+            RAccumulationSorbDerivative, &
+            RJumpStartKineticSorption
 
 contains
 
@@ -351,6 +352,9 @@ subroutine ReactionRead(reaction,input,option)
               nullify(ionx_rxn)          
             case('DISTRIBUTION_COEF')
           !   call DistributionCoefRead
+            case('JUMPSTART_KINETIC_SORPTION')
+            ! dummy place  holder; this is actually read during the second pass
+            ! in InitReadInput()
           end select
         enddo
       case('DATABASE')
@@ -1884,6 +1888,40 @@ subroutine ReactionReadOutput(reaction,input,option)
   enddo
 
 end subroutine ReactionReadOutput
+
+! ************************************************************************** !
+!
+! RJumpStartKineticSorption: Calculates the concentrations of species sorbing
+!                            through kinetic sorption processes based
+!                            on equilibrium with the aqueous phase.
+! author: Glenn Hammond
+! date: 08/05/09
+!
+! ************************************************************************** !
+subroutine RJumpStartKineticSorption(rt_auxvar,global_auxvar, &
+                                     reaction,option)
+
+  use Option_module
+  
+  type(reaction_type), pointer :: reaction
+  type(reactive_transport_auxvar_type) :: rt_auxvar 
+  type(global_auxvar_type) :: global_auxvar
+  type(option_type) :: option
+
+  PetscInt :: irate
+  
+  ! WARNING: below assumes site concentration multiplicative factor
+  allocate(rt_auxvar%dtotal_sorb_eq(reaction%ncomp,reaction%ncomp))
+  rt_auxvar%dtotal_sorb_eq = 0.d0
+  call RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
+  do irate = 1, reaction%kinmr_nrate
+    rt_auxvar%kinmr_total_sorb(:,irate) = reaction%kinmr_frac(irate) * &
+                                          rt_auxvar%total_sorb_eq
+  enddo
+  deallocate(rt_auxvar%dtotal_sorb_eq)
+  nullify(rt_auxvar%dtotal_sorb_eq)
+
+end subroutine RJumpStartKineticSorption
       
 ! ************************************************************************** !
 !

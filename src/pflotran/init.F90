@@ -1010,6 +1010,8 @@ subroutine InitReadInput(simulation)
                       end select 
                     enddo
                   case('DISTRIBUTION_COEF')
+                  case('JUMPSTART_KINETIC_SORPTION')
+                    option%jumpstart_kinetic_sorption = PETSC_TRUE
                 end select
               enddo
             case('MULTI_RATE')

@@ -24,7 +24,8 @@ module Reactive_Transport_module
   
   public :: RTTimeCut, RTSetup, RTMaxChange, RTUpdateSolution, RTResidual, &
             RTJacobian, RTInitializeTimestep, RTGetTecplotHeader, &
-            RTUpdateAuxVars, RTComputeMassBalance, RTDestroy, RTCheckUpdate
+            RTUpdateAuxVars, RTComputeMassBalance, RTDestroy, RTCheckUpdate, &
+            RTJumpStartKineticSorption
   
 contains
 
@@ -3294,6 +3295,96 @@ subroutine RTAuxVarCompute(rt_aux_var,global_aux_var,reaction,option)
 #endif
   
 end subroutine RTAuxVarCompute
+
+
+! ************************************************************************** !
+!
+! RTJumpStartKineticSorption: Calculates the concentrations of species sorbing
+!                             through kinetic sorption processes based
+!                             on equilibrium with the aqueous phase.
+! author: Glenn Hammond
+! date: 08/05/09
+!
+! ************************************************************************** !
+subroutine RTJumpStartKineticSorption(realization)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+
+  type(realization_type) :: realization
+  PetscTruth :: update_bcs
+  PetscTruth :: update_activity_coefs
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RTJumpStartKineticSorptionPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+                              
+end subroutine RTJumpStartKineticSorption
+
+! ************************************************************************** !
+!
+! RTJumpStartKineticSorptionPatch: Calculates the concentrations of species 
+!                                  sorbing through kinetic sorption processes 
+!                                  within a patch based on equilibrium with
+!                                  the aqueous phase.
+! author: Glenn Hammond
+! date: 08/05/09
+!
+! ************************************************************************** !
+subroutine RTJumpStartKineticSorptionPatch(realization)
+
+  use Realization_module
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Field_module
+  
+  implicit none
+
+  type(realization_type) :: realization
+  
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(reaction_type), pointer :: reaction
+
+  PetscInt :: ghosted_id
+  PetscErrorCode :: ierr
+  
+  option => realization%option
+  patch => realization%patch  
+  grid => patch%grid
+  field => realization%field
+  reaction => realization%reaction
+  
+  ! This subroutine assumes that the auxilliary variables are current!
+
+  do ghosted_id = 1, grid%ngmax
+    if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
+    call RJumpStartKineticSorption(patch%aux%RT%aux_vars(ghosted_id), &
+                                   patch%aux%Global%aux_vars(ghosted_id), &
+                                   reaction,option)
+  enddo
+
+end subroutine RTJumpStartKineticSorptionPatch
 
 ! ************************************************************************** !
 !

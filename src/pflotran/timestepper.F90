@@ -330,6 +330,10 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
   ! turn on flag to tell RTUpdateSolution that the code is not timestepping
   call StepperUpdateSolution(realization)
+
+  if (option%jumpstart_kinetic_sorption .and. option%time < 1.d-40) then
+    call StepperJumpStart(realization)
+  endif
   
   call PetscLogStagePop(ierr)
   option%init_stage = PETSC_FALSE
@@ -1960,6 +1964,26 @@ subroutine StepperUpdateTransportSolution(realization)
   call RTUpdateSolution(realization)
 
 end subroutine StepperUpdateTransportSolution
+
+! ************************************************************************** !
+!
+! StepperJumpStart: Sets kinetic sorbed concentrations
+! author: Glenn Hammond
+! date: 08/05/09 
+!
+! ************************************************************************** !
+subroutine StepperJumpStart(realization)
+
+  use Realization_module
+  use Reactive_Transport_module, only : RTJumpStartKineticSorption
+
+  implicit none
+
+  type(realization_type) :: realization
+
+  call RTJumpStartKineticSorption(realization)
+
+end subroutine StepperJumpStart
 
 ! ************************************************************************** !
 !
