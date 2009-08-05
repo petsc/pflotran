@@ -3373,7 +3373,7 @@ subroutine RTJumpStartKineticSorptionPatch(realization)
   
   ! This subroutine assumes that the auxilliary variables are current!
 
-  if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
+  if (reaction%kinmr_nrate > 0) then
     do ghosted_id = 1, grid%ngmax
       if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
       !geh - Ignore inactive cells with inactive materials
