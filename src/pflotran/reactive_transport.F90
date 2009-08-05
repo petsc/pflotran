@@ -3373,16 +3373,18 @@ subroutine RTJumpStartKineticSorptionPatch(realization)
   
   ! This subroutine assumes that the auxilliary variables are current!
 
-  do ghosted_id = 1, grid%ngmax
-    if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
-    !geh - Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif
-    call RJumpStartKineticSorption(patch%aux%RT%aux_vars(ghosted_id), &
-                                   patch%aux%Global%aux_vars(ghosted_id), &
-                                   reaction,option)
-  enddo
+  if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
+    do ghosted_id = 1, grid%ngmax
+      if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
+      !geh - Ignore inactive cells with inactive materials
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+      call RJumpStartKineticSorption(patch%aux%RT%aux_vars(ghosted_id), &
+                                     patch%aux%Global%aux_vars(ghosted_id), &
+                                     reaction,option)
+    enddo
+  endif
 
 end subroutine RTJumpStartKineticSorptionPatch
 
