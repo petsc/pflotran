@@ -1298,6 +1298,12 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
             enddo
           endif
       end select
+    case(POROSITY)
+      call GridVecGetArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
+      enddo
+      call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
     case(PHASE)
       call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
       do local_id=1,grid%nlmax
@@ -1519,6 +1525,10 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
             endif
           endif
       end select
+    case(POROSITY)
+      call GridVecGetArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+      value = vec_ptr2(ghosted_id)
+      call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
     case(PHASE)
       call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
       value = vec_ptr2(ghosted_id)
@@ -1930,6 +1940,18 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
         case(TOTAL_MOLALITY)
           call printErrMsg(option,'Setting of total molality at grid cell not supported.')
       end select
+    case(POROSITY)
+      if (vec_format == GLOBAL) then
+        call GridVecGetArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+        do local_id=1,grid%nlmax
+          vec_ptr2(grid%nL2G(local_id)) = vec_ptr(local_id)
+        enddo
+        call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+      else if (vec_format == LOCAL) then
+        call GridVecGetArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+        vec_ptr2(1:grid%ngmax) = vec_ptr(1:grid%ngmax)
+        call GridVecRestoreArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
+      endif
     case(PHASE)
       if (vec_format == GLOBAL) then
         call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)

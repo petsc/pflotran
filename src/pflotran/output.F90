@@ -308,6 +308,11 @@ subroutine OutputTecplotBlock(realization)
              '"Y [m]",' // &
              '"Z [m]"'
 
+    ! add porosity to header
+    if (output_option%print_porosity) then
+      string = trim(string) // ',"Porosity"'
+    endif
+
     ! write flow variables
     string2 = ''
     select case(option%iflowmode)
@@ -391,6 +396,13 @@ subroutine OutputTecplotBlock(realization)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
 
     call GetCoordinates(grid,global_vec,Z_COORDINATE)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+  endif
+
+  ! write out porosity first
+  if (output_option%print_porosity) then
+    call OutputGetVarFromArray(realization,global_vec,POROSITY,ZERO_INTEGER)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
   endif
@@ -1218,7 +1230,13 @@ subroutine OutputTecplotPoint(realization)
              '"Z [m]"'
 
     icolumn = 3
-    
+
+    ! add porosity to header
+    if (output_option%print_porosity) then
+      icolumn = icolumn + 1
+      string = trim(string) // ',"4-Porosity"'
+    endif
+        
     ! write flow variables
     string2 = ''
     select case(option%iflowmode)
@@ -1267,6 +1285,13 @@ subroutine OutputTecplotPoint(realization)
     write(IUNIT3,1000,advance='no') grid%y(ghosted_id)
     write(IUNIT3,1000,advance='no') grid%z(ghosted_id)
 
+    ! porosity
+    if (output_option%print_porosity) then
+      value = RealizGetDatasetValueAtCell(realization,POROSITY, &
+                                          ZERO_INTEGER,ghosted_id)
+      write(IUNIT3,1000,advance='no') value
+    endif
+    
     select case(option%iflowmode)
       case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE)
 
@@ -2292,22 +2317,30 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch  
-  type(reaction_type), pointer :: reaction  
+  type(reaction_type), pointer :: reaction
+  type(output_option_type), pointer :: output_option  
   
   patch => realization%patch
   option => realization%option
+  output_option => realization%output_option
   field => realization%field
   grid => patch%grid
   
   write(cell_string,*) grid%nL2A(region%cell_ids(icell))
   cell_string = trim(region%name) // ' ' //adjustl(cell_string)
 
+  ! add porosity to header
+  if (output_option%print_porosity) then
+    string = ',"Porosity ' // trim(cell_string) // '"'
+    write(fid,'(a)',advance="no") trim(string)
+  endif
+  
   select case(option%iflowmode)
     case (IMS_MODE)
 !      string = ',"X [m] '// trim(cell_string) // '",' // &
 !               '"Y [m] '// trim(cell_string) // '",' // &
 !               '"Z [m] '// trim(cell_string) // '",' // &
-      string = '"T [C] '// trim(cell_string) // '",' // &
+      string = ',"T [C] '// trim(cell_string) // '",' // &
                '"P [Pa] '// trim(cell_string) // '",' // &
                '"sl '// trim(cell_string) // '",' // &
                '"sg '// trim(cell_string) // '",' // &
@@ -2317,7 +2350,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
 !      string = ',"X [m] '// trim(cell_string) // '",' // &
 !               '"Y [m] '// trim(cell_string) // '",' // &
 !               '"Z [m] '// trim(cell_string) // '",' // &
-      string = '"T [C] '// trim(cell_string) // '",' // &
+      string = ',"T [C] '// trim(cell_string) // '",' // &
                '"P [Pa] '// trim(cell_string) // '",' // &
                '"sl '// trim(cell_string) // '",' // &
                '"sg '// trim(cell_string) // '",' // &
@@ -2337,7 +2370,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
 !        string = ',"X [m] '// trim(cell_string) // '",' // &
 !                 '"Y [m] '// trim(cell_string) // '",' // &
 !                 '"Z [m] '// trim(cell_string) // '",' // &
-        string = '"T [C] '// trim(cell_string) // '",' // &
+        string = ',"T [C] '// trim(cell_string) // '",' // &
                  '"P [Pa] '// trim(cell_string) // '",' // &
                  '"sl '// trim(cell_string) // '",' // &
                  '"Ul '// trim(cell_string) // '"' 
@@ -2475,9 +2508,11 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch  
   type(reaction_type), pointer :: reaction  
+  type(output_option_type), pointer :: output_option    
   
   patch => realization%patch
   option => realization%option
+  output_option => realization%output_option
   
 !  write(cell_string,*) grid%nL2A(region%cell_ids(icell))
 !  cell_string = trim(region%name) // ' ' //adjustl(cell_string)
@@ -2489,6 +2524,12 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
   write(z_string,110) region%coordinates(ONE_INTEGER)%z
   cell_string = trim(cell_string) // ' ' // trim(adjustl(x_string)) // ' ' // &
                    trim(adjustl(y_string)) // ' ' // trim(adjustl(z_string))
+
+  ! add porosity to header
+  if (output_option%print_porosity) then
+    string = ',"Porosity ' // trim(cell_string) //'"'
+    write(fid,'(a)',advance="no") trim(string)
+  endif
 
   select case(option%iflowmode)
     case (IMS_MODE)
@@ -2709,11 +2750,13 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
   type(reaction_type), pointer :: reaction
+  type(output_option_type), pointer :: output_option    
   
   option => realization%option
   patch => realization%patch
   grid => patch%grid
   field => realization%field
+  output_option => realization%output_option
 
 100 format(es14.6)
 101 format("i")
@@ -2725,7 +2768,13 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
   !write(fid,110,advance="no") grid%x(ghosted_id)
   !write(fid,110,advance="no") grid%y(ghosted_id)
   !write(fid,110,advance="no") grid%z(ghosted_id)
-  
+
+  ! porosity
+  if (output_option%print_porosity) then
+    write(fid,110,advance="no") &
+      RealizGetDatasetValueAtCell(realization,POROSITY,ZERO_INTEGER,ghosted_id)
+  endif  
+
   ! temperature
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,IMS_MODE)
@@ -2902,6 +2951,8 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
   type(reaction_type), pointer :: reaction
+  type(output_option_type), pointer :: output_option  
+    
   PetscInt :: ghosted_ids(8)
   PetscInt :: count
   PetscInt :: i, j, k
@@ -2911,6 +2962,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
   patch => realization%patch
   grid => patch%grid
   field => realization%field
+  output_option => realization%output_option
 
 100 format(es14.6)
 !100 format(es16.9)
@@ -2974,6 +3026,16 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
       enddo
     enddo
   enddo
+
+  ! porosity
+  if (output_option%print_porosity) then
+    write(fid,110,advance="no") &
+      OutputGetVarFromArrayAtCoord(realization,POROSITY,ZERO_INTEGER, &
+                                   region%coordinates(ONE_INTEGER)%x, &
+                                   region%coordinates(ONE_INTEGER)%y, &
+                                   region%coordinates(ONE_INTEGER)%z, &
+                                   count,ghosted_ids)
+  endif
   
   ! temperature
   select case(option%iflowmode)
@@ -4636,6 +4698,15 @@ subroutine OutputHDF5(realization)
   ! write out data sets 
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                   option)
+
+  if (output_option%print_porosity) then
+    call OutputGetVarFromArray(realization,global_vec,POROSITY,ZERO_INTEGER)
+    if (.not.(option%use_samr)) then
+      string = "Porosity"
+      call HDF5WriteStructDataSetFromVec(string,realization,global_vec, &
+                                         grp_id,H5T_NATIVE_DOUBLE)
+    endif
+  endif
 
   select case(option%iflowmode)
   

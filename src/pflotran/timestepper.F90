@@ -358,6 +358,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
                                        realization%field%work,ONEDOF)
       call OutputVectorTecplot(string,string,realization,realization%field%work)
     endif
+#if 0
+! this now occurs in the standard output file    
     if (output_option%print_porosity) then
       if (len_trim(option%group_prefix) > 1) then
         string = 'porosity-' // trim(option%group_prefix) // '.tec'
@@ -369,6 +371,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
                                        realization%field%work,ONEDOF)
       call OutputVectorTecplot(string,string,realization,realization%field%work)
     endif
+#endif    
   endif
   ! increment plot number so that 000 is always the initial condition, and nothing else
   if (output_option%plot_number == 0) output_option%plot_number = 1
