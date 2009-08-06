@@ -2448,7 +2448,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
     if (associated(reaction%kd_print)) then
       do i=1,option%ntrandof
         if (reaction%kd_print(i)) then
-          write(fid,'('',"'',a,'' '',a,''_kd"'')',advance="no") &
+          write(fid,'('',"'',a,''_kd '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(cell_string)
         endif
       enddo
@@ -2457,7 +2457,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
     if (associated(reaction%total_sorb_print)) then
       do i=1,option%ntrandof
         if (reaction%total_sorb_print(i)) then
-          write(fid,'('',"'',a,'' '',a,''_tot_sorb"'')',advance="no") &
+          write(fid,'('',"'',a,''_tot_sorb '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(cell_string)
         endif
       enddo
@@ -2644,7 +2644,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
     if (associated(reaction%kd_print)) then
       do i=1,option%ntrandof
         if (reaction%kd_print(i)) then
-          write(fid,'('',"'',a,'' '',a,''_kd"'')',advance="no") &
+          write(fid,'('',"'',a,''_kd '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(cell_string)
         endif
       enddo
@@ -2653,7 +2653,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
     if (associated(reaction%total_sorb_print)) then
       do i=1,option%ntrandof
         if (reaction%total_sorb_print(i)) then
-          write(fid,'('',"'',a,'' '',a,''_tot_sorb"'')',advance="no") &
+          write(fid,'('',"'',a,''_tot_sorb '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(cell_string)
         endif
       enddo
