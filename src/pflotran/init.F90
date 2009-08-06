@@ -1011,13 +1011,13 @@ subroutine InitReadInput(simulation)
                     enddo
                   case('DISTRIBUTION_COEF')
                   case('JUMPSTART_KINETIC_SORPTION')
-                    option%jumpstart_kinetic_sorption = PETSC_TRUE
+                    ! dummy placeholder
                 end select
               enddo
             case('MULTI_RATE')
               call InputSkipToEND(input,option,card)
-            case('MOLAL','MOLALITY')
-              option%initialize_with_molality = PETSC_TRUE
+            case('MOLAL','MOLALITY','CALCULATE_POROSITY')
+              ! dummy placeholder
           end select
         enddo
 

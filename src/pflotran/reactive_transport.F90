@@ -25,7 +25,7 @@ module Reactive_Transport_module
   public :: RTTimeCut, RTSetup, RTMaxChange, RTUpdateSolution, RTResidual, &
             RTJacobian, RTInitializeTimestep, RTGetTecplotHeader, &
             RTUpdateAuxVars, RTComputeMassBalance, RTDestroy, RTCheckUpdate, &
-            RTJumpStartKineticSorption
+            RTJumpStartKineticSorption, RTCalculatePorosity
   
 contains
 
@@ -539,13 +539,13 @@ end subroutine RTUpdateMassBalancePatch
 
 ! ************************************************************************** !
 !
-! RTComputePorosity: Calculates the porosity at each grid cell based on the
-!                    sum of the mineral volume fractions.
+! RTCalculatePorosity: Calculates the porosity at each grid cell based on the
+!                      sum of the mineral volume fractions.
 ! author: Glenn Hammond
 ! date: 08/05/09
 !
 ! ************************************************************************** !
-subroutine RTComputePorosity(realization)
+subroutine RTCalculatePorosity(realization)
 
   use Realization_module
   use Level_module
@@ -558,6 +558,7 @@ subroutine RTComputePorosity(realization)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscReal :: min_value  
+  PetscInt :: ivalue
   PetscErrorCode :: ierr
   
   option => realization%option
@@ -569,7 +570,7 @@ subroutine RTComputePorosity(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RTComputePorosityPatch(realization)
+      call RTCalculatePorosityPatch(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -577,23 +578,24 @@ subroutine RTComputePorosity(realization)
   
   ! perform check to ensure that porosity is bounded between 0 and 1
   ! since it is calculated as 1.d-sum_volfrac, it cannot be > 1
-  call VecMin(realization%field%porosity_loc,min_value,ierr)
-  if (min_value <= 0.d0) then
-    option%io_buffer = 'Sum of mineral volume fractions have exceeded 1.d0'
+  call VecMin(realization%field%porosity_loc,ivalue,min_value,ierr)
+  if (min_value < 0.d0) then
+    write(option%io_buffer,*) 'Sum of mineral volume fractions has ' // &
+      'exceeded 1.d0 at cell (note PETSc numbering): ', ivalue
     call printErrMsg(option)
   endif
    
-end subroutine RTComputePorosity
+end subroutine RTCalculatePorosity
 
 ! ************************************************************************** !
 !
-! RTComputePorosityPatch: Calculates the porosity at each grid cell based on 
-!                         the sum of the mineral volume fractions.
+! RTCalculatePorosityPatch: Calculates the porosity at each grid cell based on 
+!                           the sum of the mineral volume fractions.
 ! author: Glenn Hammond
 ! date: 08/05/09
 !
 ! ************************************************************************** !
-subroutine RTComputePorosityPatch(realization)
+subroutine RTCalculatePorosityPatch(realization)
 
   use Realization_module
   use Option_module
@@ -641,7 +643,7 @@ subroutine RTComputePorosityPatch(realization)
 
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
 
-end subroutine RTComputePorosityPatch
+end subroutine RTCalculatePorosityPatch
  
 ! ************************************************************************** !
 !

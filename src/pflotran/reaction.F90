@@ -353,8 +353,7 @@ subroutine ReactionRead(reaction,input,option)
             case('DISTRIBUTION_COEF')
           !   call DistributionCoefRead
             case('JUMPSTART_KINETIC_SORPTION')
-            ! dummy place  holder; this is actually read during the second pass
-            ! in InitReadInput()
+              option%jumpstart_kinetic_sorption = PETSC_TRUE
           end select
         enddo
       case('DATABASE')
@@ -389,7 +388,9 @@ subroutine ReactionRead(reaction,input,option)
         enddo
       case('NO_BDOT')
         reaction%act_coef_use_bdot = PETSC_FALSE
-      case('MOLAL','MOLARITY')
+      case('CALCULATE_POROSITY')
+        option%calculate_porosity = PETSC_TRUE
+      case('MOLAL','MOLALITY')
         option%initialize_with_molality = PETSC_TRUE
       case('ACTIVITY_H2O','ACTIVITY_WATER')
         reaction%use_activity_h2o = PETSC_TRUE
