@@ -115,7 +115,9 @@ module Option_module
     
     PetscTruth :: update_porosity
     PetscTruth :: update_tortuosity
-    PetscTruth :: update_mineral_surfarea
+    PetscTruth :: update_permeability
+    PetscTruth :: update_mineral_surface_area
+    PetscTruth :: update_mnrl_surf_with_porosity
     
     PetscTruth :: initialize_with_molality
     PetscTruth :: jumpstart_kinetic_sorption
@@ -368,9 +370,13 @@ subroutine OptionInitRealization(option)
   option%reference_water_density = 0.d0
   option%reference_porosity = 0.25d0
   option%reference_saturation = 1.d0
+
   option%update_porosity = PETSC_FALSE
   option%update_tortuosity = PETSC_FALSE
-  option%update_mineral_surfarea = PETSC_FALSE
+  option%update_permeability = PETSC_FALSE
+  option%update_mineral_surface_area = PETSC_FALSE
+  option%update_mnrl_surf_with_porosity = PETSC_FALSE
+    
   option%initialize_with_molality = PETSC_FALSE
   option%jumpstart_kinetic_sorption = PETSC_FALSE
   

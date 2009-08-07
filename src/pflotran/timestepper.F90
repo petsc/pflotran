@@ -894,8 +894,8 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
     ! if a method such as line search is being used.
     call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
                                     field%porosity_loc,ONEDOF)
-    call DiscretizationLocalToLocal(discretization,field%tor_loc, &
-                                    field%tor_loc,ONEDOF)
+    call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
+                                    field%tortuosity_loc,ONEDOF)
     call DiscretizationLocalToLocal(discretization,field%icap_loc, &
                                     field%icap_loc,ONEDOF)
     call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
@@ -1227,8 +1227,10 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
 
 ! PetscReal, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
 
-  call DiscretizationLocalToLocal(discretization,field%porosity_loc,field%porosity_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%tor_loc,field%tor_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
+                                  field%porosity_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
+                                  field%tortuosity_loc,ONEDOF)
 
   if (flow_timestep_cut_flag) then
     option%tran_time = option%flow_time
@@ -1677,8 +1679,8 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
 
   call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
                                   field%porosity_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%tor_loc, &
-                                  field%tor_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
+                                  field%tortuosity_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%icap_loc, &
                                   field%icap_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
@@ -1783,8 +1785,10 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
 
 ! PetscReal, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
 
-  call DiscretizationLocalToLocal(discretization,field%porosity_loc,field%porosity_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%tor_loc,field%tor_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
+                                  field%porosity_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
+                                  field%tortuosity_loc,ONEDOF)
 
   call GlobalUpdateDenAndSat(realization,1.d0)
   num_newton_iterations = 0
@@ -1956,8 +1960,7 @@ end subroutine StepperUpdateFlowSolution
 subroutine StepperUpdateTransportSolution(realization)
 
   use Realization_module
-  use Reactive_Transport_module, only : RTUpdateSolution, RTUpdatePorosity, &
-      RTUpdateTortuosity, RTUpdateMineralSurfArea
+  use Reactive_Transport_module, only : RTUpdateSolution
 
   implicit none
 
@@ -1966,14 +1969,11 @@ subroutine StepperUpdateTransportSolution(realization)
   PetscErrorCode :: ierr
   
   call RTUpdateSolution(realization)
-  if (realization%option%update_porosity) then
-    call RTUpdatePorosity(realization)
-  endif
-  if (realization%option%update_tortuosity) then
-    call RTUpdateTortuosity(realization)
-  endif
-  if (realization%option%update_mineral_surfarea) then
-    call RTUpdateMineralSurfArea(realization)
+  if (realization%option%update_porosity .or. &
+      realization%option%update_tortuosity .or. &
+      realization%option%update_permeability .or. &
+      realization%option%update_mineral_surface_area) then
+    call RealizationUpdateProperties(realization)
   endif
 
 end subroutine StepperUpdateTransportSolution

@@ -1016,7 +1016,9 @@ subroutine InitReadInput(simulation)
               enddo
             case('MULTI_RATE')
               call InputSkipToEND(input,option,card)
-            case('MOLAL','MOLALITY','UPDATE_POROSITY','UPDATE_TORTUOSITY','UPDATE_MINERAL_SURFAREA')
+            case('MOLAL','MOLALITY', &
+                 'UPDATE_POROSITY','UPDATE_TORTUOSITY', &
+                 'UPDATE_PERMEABILITY','UPDATE_MINERAL_SURFACE_AREA')
               ! dummy placeholder
           end select
         enddo
@@ -1735,11 +1737,11 @@ subroutine assignMaterialPropToRegions(realization)
   PetscReal, pointer :: icap_loc_p(:)
   PetscReal, pointer :: ithrm_loc_p(:)
   PetscReal, pointer :: por0_p(:)
+  PetscReal, pointer :: tor0_p(:)
   PetscReal, pointer :: perm_xx_p(:)
   PetscReal, pointer :: perm_yy_p(:)
   PetscReal, pointer :: perm_zz_p(:)
   PetscReal, pointer :: perm_pow_p(:)
-  PetscReal, pointer :: tor_loc_p(:)
   PetscReal, pointer :: vec_p(:)
   
   PetscInt :: icell, local_id, ghosted_id, natural_id, material_property_id
@@ -1829,7 +1831,7 @@ subroutine assignMaterialPropToRegions(realization)
            call GridVecGetArrayF90(grid,field%perm_pow,perm_pow_p,ierr)
         endif
         call GridVecGetArrayF90(grid,field%porosity0,por0_p,ierr)
-        call GridVecGetArrayF90(grid,field%tor_loc,tor_loc_p,ierr)
+        call GridVecGetArrayF90(grid,field%tortuosity0,tor0_p,ierr)
         
         ! create null material property for inactive cells
         null_material_property => MaterialPropertyCreate()
@@ -1883,7 +1885,7 @@ subroutine assignMaterialPropToRegions(realization)
                        perm_pow_p(local_id) = material_property%permeability_pwr
                     endif
                     por0_p(local_id) = material_property%porosity
-                    tor_loc_p(ghosted_id) = material_property%tortuosity
+                    tor0_p(local_id) = material_property%tortuosity
                  endif
               enddo
            endif
@@ -1901,7 +1903,7 @@ subroutine assignMaterialPropToRegions(realization)
            call GridVecRestoreArrayF90(grid,field%perm_pow,perm_pow_p,ierr)
         endif
         call GridVecRestoreArrayF90(grid,field%porosity0,por0_p,ierr)
-        call GridVecRestoreArrayF90(grid,field%tor_loc,tor_loc_p,ierr)
+        call GridVecRestoreArrayF90(grid,field%tortuosity0,tor0_p,ierr)
         
         ! read in any cell by cell data 
         if (len_trim(option%permx_filename) > 1) then
@@ -1972,8 +1974,8 @@ subroutine assignMaterialPropToRegions(realization)
   
   call DiscretizationGlobalToLocal(discretization,field%porosity0, &
                                    field%porosity_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%tor_loc, &
-                                  field%tor_loc,ONEDOF)
+  call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
+                                   field%tortuosity_loc,ONEDOF)
 
 end subroutine assignMaterialPropToRegions
 

@@ -754,8 +754,8 @@ subroutine ImmisUpdateFixedAccumPatch(realization)
 
   PetscInt :: ghosted_id, local_id, istart, iend, iphase
   PetscReal, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
-  PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:), volume_p(:), &
-                          ithrm_loc_p(:), accum_p(:)
+  PetscReal, pointer :: porosity_loc_p(:), tortuosity_loc_p(:), volume_p(:), &
+                        ithrm_loc_p(:), accum_p(:)
                           
   PetscErrorCode :: ierr
   
@@ -772,7 +772,7 @@ subroutine ImmisUpdateFixedAccumPatch(realization)
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
-  call GridVecGetArrayF90(grid,field%tor_loc,tor_loc_p,ierr)
+  call GridVecGetArrayF90(grid,field%tortuosity_loc,tortuosity_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
   call GridVecGetArrayF90(grid,field%ithrm_loc,ithrm_loc_p,ierr)
 
@@ -797,7 +797,7 @@ subroutine ImmisUpdateFixedAccumPatch(realization)
   call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
-  call GridVecRestoreArrayF90(grid,field%tor_loc,tor_loc_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%tortuosity_loc,tortuosity_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
   call GridVecRestoreArrayF90(grid,field%ithrm_loc,ithrm_loc_p,ierr)
 
@@ -1380,7 +1380,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 
   PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
                xx_loc_p(:), xx_p(:), yy_p(:),&
-               tor_loc_p(:),&
+               tortuosity_loc_p(:),&
                perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
                           
                
@@ -1439,7 +1439,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
  
   call GridVecGetArrayF90(grid,field%flow_yy,yy_p,ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%tor_loc, tor_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%tortuosity_loc, tortuosity_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
@@ -1626,7 +1626,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
          aux_vars_bc(sum_connection)%aux_var_elem(0), &
          aux_vars(ghosted_id)%aux_var_elem(0), &
          porosity_loc_p(ghosted_id), &
-         tor_loc_p(ghosted_id), &
+         tortuosity_loc_p(ghosted_id), &
          immis_parameter%sir(:,icap_dn), &
          cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
          cur_connection_set%area(iconn), &
@@ -1695,10 +1695,10 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
       D_dn = immis_parameter%ckwet(ithrm_dn)
 
       call ImmisFlux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
-                          tor_loc_p(ghosted_id_up),immis_parameter%sir(:,icap_up), &
+                          tortuosity_loc_p(ghosted_id_up),immis_parameter%sir(:,icap_up), &
                           dd_up,perm_up,D_up, &
                           aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
-                          tor_loc_p(ghosted_id_dn),immis_parameter%sir(:,icap_dn), &
+                          tortuosity_loc_p(ghosted_id_dn),immis_parameter%sir(:,icap_dn), &
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
                           upweight,option,v_darcy,Res)
@@ -1766,7 +1766,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%flow_accum, accum_p, ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%tor_loc, tor_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%tortuosity_loc, tortuosity_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
@@ -1880,7 +1880,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: ip1, ip2 
 
   PetscReal, pointer :: porosity_loc_p(:), volume_p(:), &
-                          xx_loc_p(:), tor_loc_p(:),&
+                          xx_loc_p(:), tortuosity_loc_p(:),&
                           perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
   PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
   PetscInt :: icap,iphas,iphas_up,iphas_dn,icap_up,icap_dn
@@ -1965,7 +1965,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
   call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%tor_loc, tor_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%tortuosity_loc, tortuosity_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
@@ -2122,7 +2122,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
          aux_vars_bc(sum_connection)%aux_var_elem(nvar), &
          aux_vars(ghosted_id)%aux_var_elem(nvar), &
          porosity_loc_p(ghosted_id), &
-         tor_loc_p(ghosted_id), &
+         tortuosity_loc_p(ghosted_id), &
          immis_parameter%sir(:,icap_dn), &
          cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
          cur_connection_set%area(iconn), &
@@ -2233,20 +2233,20 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       
       do nvar = 1, option%nflowdof 
          call ImmisFlux(aux_vars(ghosted_id_up)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_up), &
-                          tor_loc_p(ghosted_id_up),immis_parameter%sir(:,icap_up), &
+                          tortuosity_loc_p(ghosted_id_up),immis_parameter%sir(:,icap_up), &
                           dd_up,perm_up,D_up, &
                           aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
-                          tor_loc_p(ghosted_id_dn),immis_parameter%sir(:,icap_dn), &
+                          tortuosity_loc_p(ghosted_id_dn),immis_parameter%sir(:,icap_dn), &
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
                           upweight, option, vv_darcy, Res)
             ra(:,nvar)= (Res(:)-ResOld_FL(iconn,:))/delx(nvar,ghosted_id_up)
 
          call ImmisFlux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
-                          tor_loc_p(ghosted_id_up),immis_parameter%sir(:,icap_up), &
+                          tortuosity_loc_p(ghosted_id_up),immis_parameter%sir(:,icap_up), &
                           dd_up,perm_up,D_up, &
                           aux_vars(ghosted_id_dn)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_dn),&
-                          tor_loc_p(ghosted_id_dn),immis_parameter%sir(:,icap_dn), &
+                          tortuosity_loc_p(ghosted_id_dn),immis_parameter%sir(:,icap_dn), &
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
                           upweight, option, vv_darcy, Res)
@@ -2311,7 +2311,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   
   call GridVecRestoreArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%tor_loc, tor_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%tortuosity_loc, tortuosity_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)

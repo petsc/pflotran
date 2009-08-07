@@ -11,7 +11,6 @@ module Material_module
     PetscInt :: id
     character(len=MAXWORDLENGTH) :: name
     PetscReal :: permeability(3,3)
-    PetscReal :: permeability_pwr
     character(len=MAXSTRINGLENGTH) :: permeability_filename
     PetscReal :: porosity
     character(len=MAXSTRINGLENGTH) :: porosity_filename
@@ -25,6 +24,10 @@ module Material_module
     PetscReal :: pore_compressibility
     PetscReal :: thermal_expansitivity   
     PetscReal :: longitudinal_dispersivity 
+    PetscReal :: tortuosity_pwr
+    PetscReal :: mnrl_surf_area_volfrac_pwr
+    PetscReal :: mnrl_surf_area_porosity_pwr
+    PetscReal :: permeability_pwr
     type(material_property_type), pointer :: next
   end type material_property_type
   
@@ -76,6 +79,10 @@ function MaterialPropertyCreate()
   material_property%pore_compressibility = 0.d0
   material_property%thermal_expansitivity = 0.d0  
   material_property%longitudinal_dispersivity = 0.d0
+  material_property%tortuosity_pwr = 0.d0
+  material_property%mnrl_surf_area_volfrac_pwr = 0.d0
+  material_property%mnrl_surf_area_porosity_pwr = 0.d0
+  material_property%permeability_pwr = 0.d0
   nullify(material_property%next)
   MaterialPropertyCreate => material_property
 
@@ -213,11 +220,6 @@ subroutine MaterialPropertyRead(material_property,input,option)
                 material_property%permeability(1,1)
               material_property%permeability(3,3) = &
                 material_property%permeability(1,1)
-            case('PERM_POWER')
-              call InputReadDouble(input,option, &
-                                   material_property%permeability_pwr)
-              call InputErrorMsg(input,option,'permeability power', &
-                                 'MATERIAL_PROPERTY,PERMEABILITY')
             case('RANDOM_DATASET')
               call InputReadNChars(input,option,&
                                    material_property%permeability_filename,&
@@ -231,7 +233,32 @@ subroutine MaterialPropertyRead(material_property,input,option)
               call printErrMsg(option)
           end select
         enddo
-
+      case('PERMEABILITY_POWER')
+        call InputReadDouble(input,option, &
+                             material_property%permeability_pwr)
+        call InputErrorMsg(input,option,'permeability power','MATERIAL_PROPERTY')
+      case('TORTUOSITY_POWER')
+        call InputReadDouble(input,option, &
+                             material_property%tortuosity_pwr)
+        call InputErrorMsg(input,option,'tortuosity power','MATERIAL_PROPERTY')
+      case('MINERAL_SURFACE_AREA_POWER')
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'type', &
+                           'MATERIAL_PROPERTY,MINERAL_SURFACE_AREA_POWER')
+        call StringToUpper(word)  
+        select case(word)
+          case('VOLUME_FRACTION')
+            call InputReadDouble(input,option, &
+                                 material_property%mnrl_surf_area_volfrac_pwr)
+            call InputErrorMsg(input,option,'volume fraction power', &
+                   'MATERIAL_PROPERTY,MINERAL_SURFACE_AREA_POWER')
+          case('POROSITY')
+            option%update_mnrl_surf_with_porosity = PETSC_TRUE
+            call InputReadDouble(input,option, &
+                                 material_property%mnrl_surf_area_porosity_pwr)
+            call InputErrorMsg(input,option,'porosity power', &
+                   'MATERIAL_PROPERTY,MINERAL_SURFACE_AREA_POWER')
+        end select
       case default
         option%io_buffer = 'Keyword: ' // trim(keyword) // &
                            ' not recognized in material_property'    
