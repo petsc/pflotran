@@ -750,8 +750,7 @@ subroutine RTUpdateTortuosityPatch(realization)
   type(grid_type), pointer :: grid
 
   PetscInt :: ghosted_id
-  PetscInt :: imnrl
-  PetscReal :: sum_volfrac
+  PetscReal, pointer :: tor_loc_p(:)
   PetscReal, pointer :: porosity_loc_p(:)
   PetscErrorCode :: ierr
 
@@ -762,22 +761,14 @@ subroutine RTUpdateTortuosityPatch(realization)
   grid => patch%grid
 
   call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  call GridVecGetArrayF90(grid,field%tor_loc,tor_loc_p,ierr)
 
-  if (reaction%nkinmnrl > 0) then
-    do ghosted_id = 1, grid%ngmax
-
-      ! Go ahead and compute for inactive cells since their porosity does
-      ! not matter (avoid check on active/inactive)
-      sum_volfrac = 0.d0
-      do imnrl = 1, reaction%nkinmnrl
-        sum_volfrac = sum_volfrac + &
-                      patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(imnrl)
-      enddo 
-      porosity_loc_p(ghosted_id) = 1.d0-sum_volfrac
-    enddo
-  endif
-
+  do ghosted_id = 1, grid%ngmax
+!   tor_loc_p(ghosted_id) = tor0_loc_p(ghosted_id)* &
+!     (porosity_loc_p(ghosted_id)/por0_loc_p(ghosted_id))**0.66666667d0
+  enddo
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%tor_loc,tor_loc_p,ierr)
 
 end subroutine RTUpdateTortuosityPatch
  
@@ -818,12 +809,10 @@ subroutine RTUpdateMineralSurfAreaPatch(realization)
 
       ! Go ahead and compute for inactive cells since their porosity does
       ! not matter (avoid check on active/inactive)
-      sum_volfrac = 0.d0
       do imnrl = 1, reaction%nkinmnrl
-        sum_volfrac = sum_volfrac + &
-                      patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(imnrl)
+!       surf = surf0 * &
+!         (patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(imnrl)/phik0)**0.66666667
       enddo 
-      porosity_loc_p(ghosted_id) = 1.d0-sum_volfrac
     enddo
   endif
 
