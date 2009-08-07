@@ -25,7 +25,7 @@ module Reactive_Transport_module
   public :: RTTimeCut, RTSetup, RTMaxChange, RTUpdateSolution, RTResidual, &
             RTJacobian, RTInitializeTimestep, RTGetTecplotHeader, &
             RTUpdateAuxVars, RTComputeMassBalance, RTDestroy, RTCheckUpdate, &
-            RTJumpStartKineticSorption, RTCalculatePorosity, &
+            RTJumpStartKineticSorption, RTUpdatePorosity, &
             RTCheckpointKineticSorption
   
 contains
@@ -540,13 +540,13 @@ end subroutine RTUpdateMassBalancePatch
 
 ! ************************************************************************** !
 !
-! RTCalculatePorosity: Calculates the porosity at each grid cell based on the
+! RTUpdatePorosity: Updates the porosity at each grid cell based on the
 !                      sum of the mineral volume fractions.
 ! author: Glenn Hammond
 ! date: 08/05/09
 !
 ! ************************************************************************** !
-subroutine RTCalculatePorosity(realization)
+subroutine RTUpdatePorosity(realization)
 
   use Realization_module
   use Level_module
@@ -571,7 +571,7 @@ subroutine RTCalculatePorosity(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RTCalculatePorosityPatch(realization)
+      call RTUpdatePorosityPatch(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -586,17 +586,17 @@ subroutine RTCalculatePorosity(realization)
     call printErrMsg(option)
   endif
    
-end subroutine RTCalculatePorosity
+end subroutine RTUpdatePorosity
 
 ! ************************************************************************** !
 !
-! RTCalculatePorosityPatch: Calculates the porosity at each grid cell based on 
+! RTUpdatePorosityPatch: Calculates the porosity at each grid cell based on 
 !                           the sum of the mineral volume fractions.
 ! author: Glenn Hammond
 ! date: 08/05/09
 !
 ! ************************************************************************** !
-subroutine RTCalculatePorosityPatch(realization)
+subroutine RTUpdatePorosityPatch(realization)
 
   use Realization_module
   use Option_module
@@ -644,7 +644,7 @@ subroutine RTCalculatePorosityPatch(realization)
 
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
 
-end subroutine RTCalculatePorosityPatch
+end subroutine RTUpdatePorosityPatch
  
 ! ************************************************************************** !
 !

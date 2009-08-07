@@ -1016,7 +1016,7 @@ subroutine InitReadInput(simulation)
               enddo
             case('MULTI_RATE')
               call InputSkipToEND(input,option,card)
-            case('MOLAL','MOLALITY','CALCULATE_POROSITY')
+            case('MOLAL','MOLALITY','UPDATE_POROSITY')
               ! dummy placeholder
           end select
         enddo

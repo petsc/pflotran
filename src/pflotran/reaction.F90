@@ -388,8 +388,8 @@ subroutine ReactionRead(reaction,input,option)
         enddo
       case('NO_BDOT')
         reaction%act_coef_use_bdot = PETSC_FALSE
-      case('CALCULATE_POROSITY')
-        option%calculate_porosity = PETSC_TRUE
+      case('UPDATE_POROSITY')
+        option%update_porosity = PETSC_TRUE
       case('MOLAL','MOLALITY')
         option%initialize_with_molality = PETSC_TRUE
       case('ACTIVITY_H2O','ACTIVITY_WATER')

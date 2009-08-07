@@ -113,7 +113,10 @@ module Option_module
     
     PetscReal :: minimum_hydrostatic_pressure
     
-    PetscTruth :: calculate_porosity
+    PetscTruth :: update_porosity
+    PetscTruth :: update_tortuosity
+    PetscTruth :: update_mineral_surfarea
+    
     PetscTruth :: initialize_with_molality
     PetscTruth :: jumpstart_kinetic_sorption
         
@@ -365,7 +368,9 @@ subroutine OptionInitRealization(option)
   option%reference_water_density = 0.d0
   option%reference_porosity = 0.25d0
   option%reference_saturation = 1.d0
-  option%calculate_porosity = PETSC_FALSE
+  option%update_porosity = PETSC_FALSE
+  option%update_tortuosity = PETSC_FALSE
+  option%update_mineral_surfarea = PETSC_FALSE
   option%initialize_with_molality = PETSC_FALSE
   option%jumpstart_kinetic_sorption = PETSC_FALSE
   

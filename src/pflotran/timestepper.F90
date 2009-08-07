@@ -1956,7 +1956,7 @@ end subroutine StepperUpdateFlowSolution
 subroutine StepperUpdateTransportSolution(realization)
 
   use Realization_module
-  use Reactive_Transport_module, only : RTUpdateSolution, RTCalculatePorosity
+  use Reactive_Transport_module, only : RTUpdateSolution, RTUpdatePorosity
 
   implicit none
 
@@ -1965,8 +1965,8 @@ subroutine StepperUpdateTransportSolution(realization)
   PetscErrorCode :: ierr
   
   call RTUpdateSolution(realization)
-  if (realization%option%calculate_porosity) then
-    call RTCalculatePorosity(realization)
+  if (realization%option%update_porosity) then
+    call RTUpdatePorosity(realization)
   endif
 
 end subroutine StepperUpdateTransportSolution
