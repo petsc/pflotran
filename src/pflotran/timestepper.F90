@@ -1956,7 +1956,8 @@ end subroutine StepperUpdateFlowSolution
 subroutine StepperUpdateTransportSolution(realization)
 
   use Realization_module
-  use Reactive_Transport_module, only : RTUpdateSolution, RTUpdatePorosity
+  use Reactive_Transport_module, only : RTUpdateSolution, RTUpdatePorosity, &
+      RTUpdateTortuosity, RTUpdateMineralSurfArea
 
   implicit none
 
@@ -1967,6 +1968,12 @@ subroutine StepperUpdateTransportSolution(realization)
   call RTUpdateSolution(realization)
   if (realization%option%update_porosity) then
     call RTUpdatePorosity(realization)
+  endif
+  if (realization%option%update_tortuosity) then
+    call RTUpdateTortuosity(realization)
+  endif
+  if (realization%option%update_mineral_surfarea) then
+    call RTUpdateMineralSurfArea(realization)
   endif
 
 end subroutine StepperUpdateTransportSolution

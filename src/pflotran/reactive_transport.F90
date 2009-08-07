@@ -25,8 +25,8 @@ module Reactive_Transport_module
   public :: RTTimeCut, RTSetup, RTMaxChange, RTUpdateSolution, RTResidual, &
             RTJacobian, RTInitializeTimestep, RTGetTecplotHeader, &
             RTUpdateAuxVars, RTComputeMassBalance, RTDestroy, RTCheckUpdate, &
-            RTJumpStartKineticSorption, RTUpdatePorosity, &
-            RTCheckpointKineticSorption
+            RTJumpStartKineticSorption, RTUpdatePorosity, RTUpdateTortuosity, &
+            RTUpdateMineralSurfArea, RTCheckpointKineticSorption
   
 contains
 
@@ -546,6 +546,7 @@ end subroutine RTUpdateMassBalancePatch
 ! date: 08/05/09
 !
 ! ************************************************************************** !
+
 subroutine RTUpdatePorosity(realization)
 
   use Realization_module
@@ -587,6 +588,90 @@ subroutine RTUpdatePorosity(realization)
   endif
    
 end subroutine RTUpdatePorosity
+
+subroutine RTUpdateTortuosity(realization)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+  use Option_module
+
+  type(realization_type) :: realization
+  
+  type(option_type), pointer :: option  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  PetscReal :: min_value  
+  PetscInt :: ivalue
+  PetscErrorCode :: ierr
+  
+  option => realization%option
+    
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RTUpdateTortuosityPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+  
+  ! perform check to ensure that porosity is bounded between 0 and 1
+  ! since it is calculated as 1.d-sum_volfrac, it cannot be > 1
+  call VecMin(realization%field%porosity_loc,ivalue,min_value,ierr)
+  if (min_value < 0.d0) then
+    write(option%io_buffer,*) 'Sum of mineral volume fractions has ' // &
+      'exceeded 1.d0 at cell (note PETSc numbering): ', ivalue
+    call printErrMsg(option)
+  endif
+   
+end subroutine RTUpdateTortuosity
+
+subroutine RTUpdateMineralSurfArea(realization)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+  use Option_module
+
+  type(realization_type) :: realization
+  
+  type(option_type), pointer :: option  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  PetscReal :: min_value  
+  PetscInt :: ivalue
+  PetscErrorCode :: ierr
+  
+  option => realization%option
+    
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RTUpdateMineralSurfAreaPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+  
+  ! perform check to ensure that porosity is bounded between 0 and 1
+  ! since it is calculated as 1.d-sum_volfrac, it cannot be > 1
+  call VecMin(realization%field%porosity_loc,ivalue,min_value,ierr)
+  if (min_value < 0.d0) then
+    write(option%io_buffer,*) 'Sum of mineral volume fractions has ' // &
+      'exceeded 1.d0 at cell (note PETSc numbering): ', ivalue
+    call printErrMsg(option)
+  endif
+   
+end subroutine RTUpdateMineralSurfArea
 
 ! ************************************************************************** !
 !
@@ -645,6 +730,106 @@ subroutine RTUpdatePorosityPatch(realization)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
 
 end subroutine RTUpdatePorosityPatch
+ 
+subroutine RTUpdateTortuosityPatch(realization)
+
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Field_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(field_type), pointer :: field
+  type(reaction_type), pointer :: reaction
+  type(grid_type), pointer :: grid
+
+  PetscInt :: ghosted_id
+  PetscInt :: imnrl
+  PetscReal :: sum_volfrac
+  PetscReal, pointer :: porosity_loc_p(:)
+  PetscErrorCode :: ierr
+
+  option => realization%option
+  patch => realization%patch
+  field => realization%field
+  reaction => realization%reaction
+  grid => patch%grid
+
+  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+
+  if (reaction%nkinmnrl > 0) then
+    do ghosted_id = 1, grid%ngmax
+
+      ! Go ahead and compute for inactive cells since their porosity does
+      ! not matter (avoid check on active/inactive)
+      sum_volfrac = 0.d0
+      do imnrl = 1, reaction%nkinmnrl
+        sum_volfrac = sum_volfrac + &
+                      patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(imnrl)
+      enddo 
+      porosity_loc_p(ghosted_id) = 1.d0-sum_volfrac
+    enddo
+  endif
+
+  call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+
+end subroutine RTUpdateTortuosityPatch
+ 
+subroutine RTUpdateMineralSurfAreaPatch(realization)
+
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Field_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(field_type), pointer :: field
+  type(reaction_type), pointer :: reaction
+  type(grid_type), pointer :: grid
+
+  PetscInt :: ghosted_id
+  PetscInt :: imnrl
+  PetscReal :: sum_volfrac
+  PetscReal, pointer :: porosity_loc_p(:)
+  PetscErrorCode :: ierr
+
+  option => realization%option
+  patch => realization%patch
+  field => realization%field
+  reaction => realization%reaction
+  grid => patch%grid
+
+  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+
+  if (reaction%nkinmnrl > 0) then
+    do ghosted_id = 1, grid%ngmax
+
+      ! Go ahead and compute for inactive cells since their porosity does
+      ! not matter (avoid check on active/inactive)
+      sum_volfrac = 0.d0
+      do imnrl = 1, reaction%nkinmnrl
+        sum_volfrac = sum_volfrac + &
+                      patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(imnrl)
+      enddo 
+      porosity_loc_p(ghosted_id) = 1.d0-sum_volfrac
+    enddo
+  endif
+
+  call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+
+end subroutine RTUpdateMineralSurfAreaPatch
  
 ! ************************************************************************** !
 !
