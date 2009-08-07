@@ -25,7 +25,8 @@ module Reactive_Transport_module
   public :: RTTimeCut, RTSetup, RTMaxChange, RTUpdateSolution, RTResidual, &
             RTJacobian, RTInitializeTimestep, RTGetTecplotHeader, &
             RTUpdateAuxVars, RTComputeMassBalance, RTDestroy, RTCheckUpdate, &
-            RTJumpStartKineticSorption, RTCalculatePorosity
+            RTJumpStartKineticSorption, RTCalculatePorosity, &
+            RTCheckpointKineticSorption
   
 contains
 
@@ -780,6 +781,8 @@ subroutine RTUpdateSolutionPatch(realization)
   if (.not.option%init_stage) then
     ! update mineral volume fractions
     if (reaction%nkinmnrl > 0) then
+    
+      ! why are we looping over ghosted ids? - geh
       do ghosted_id = 1, grid%ngmax
         do imnrl = 1, reaction%nkinmnrl
           ! rate = mol/m^3/sec
@@ -792,6 +795,7 @@ subroutine RTUpdateSolutionPatch(realization)
             option%tran_dt
           if (rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) < 0.d0) &
             rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = 0.d0
+
 #ifdef CHUAN_CO2
           if(option%iflowmode == MPH_MODE)then
             ncomp = reaction%kinmnrlspecid(0,imnrl)
@@ -811,6 +815,7 @@ subroutine RTUpdateSolutionPatch(realization)
             enddo  
           endif   
 #endif
+
         enddo
       enddo
     endif
@@ -3421,8 +3426,6 @@ subroutine RTJumpStartKineticSorption(realization)
   use Patch_module
 
   type(realization_type) :: realization
-  PetscTruth :: update_bcs
-  PetscTruth :: update_activity_coefs
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -3495,6 +3498,99 @@ subroutine RTJumpStartKineticSorptionPatch(realization)
   endif
 
 end subroutine RTJumpStartKineticSorptionPatch
+
+! ************************************************************************** !
+!
+! RTCheckpointKineticSorption: Checkpoints expliclity stored sorbed 
+!                              concentrations
+! author: Glenn Hammond
+! date: 08/06/09
+!
+! ************************************************************************** !
+subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
+
+  use Realization_module
+  use Patch_module
+  use Level_module
+  use Grid_module
+  use Option_module
+  use Field_module
+  
+  type(realization_type) :: realization
+  PetscViewer :: viewer
+  PetscTruth :: checkpoint
+  
+  type(option_type), pointer :: option
+  type(reaction_type), pointer :: reaction
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
+  PetscReal, pointer :: vec_p(:)
+
+  PetscTruth :: checkpoint_flag(realization%reaction%ncomp)
+  PetscInt :: i, j, irxn, icomp, icplx, ncomp, ncplx, irate
+  PetscInt :: local_id
+  PetscErrorCode :: ierr
+  
+  option => realization%option
+  reaction => realization%reaction
+  field => realization%field
+  
+  checkpoint_flag = PETSC_FALSE
+
+  ! Loop over sorption reactions to find the necessary components
+  
+  do irxn = 1, reaction%neqsurfcmplxrxn
+    ncplx = reaction%eqsurfcmplx_rxn_to_complex(0,irxn)
+    do j = 1, ncplx
+      icplx = reaction%eqsurfcmplx_rxn_to_complex(j,irxn)
+      ncomp = reaction%eqsurfcmplxspecid(0,icplx)
+      do i = 1, ncomp
+        icomp = reaction%eqsurfcmplxspecid(i,icplx)
+        checkpoint_flag(icomp) = PETSC_TRUE
+      enddo
+    enddo
+  enddo
+
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      rt_auxvars => cur_patch%aux%RT%aux_vars
+      grid => cur_patch%grid
+      do icomp = 1, reaction%ncomp
+        if (checkpoint_flag(icomp)) then
+          do irate = 1, reaction%kinmr_nrate
+            if (checkpoint) then
+              call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+              do local_id = 1, grid%nlmax
+                vec_p(local_id) = &
+                  rt_auxvars(grid%nL2G(local_id))%kinmr_total_sorb(icomp,irate)
+              enddo
+              call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+              call VecView(field%work,viewer,ierr)
+            else
+              call VecLoadIntoVector(viewer,field%work,ierr)
+              call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+              do local_id = 1, grid%nlmax
+                rt_auxvars(grid%nL2G(local_id))%kinmr_total_sorb(icomp,irate) = &
+                   vec_p(local_id)
+              enddo
+              call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+            endif
+          enddo
+        endif
+      enddo
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RTCheckpointKineticSorption
 
 ! ************************************************************************** !
 !
