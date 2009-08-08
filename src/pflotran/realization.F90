@@ -1804,11 +1804,13 @@ subroutine RealizationUpdatePropertiesPatch(realization)
         porosity_scale = vec_p(local_id)** &
           material_property_array(patch%imat(ghosted_id))%ptr%mnrl_surf_area_porosity_pwr
       endif
-      volfrac_scale = (rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl)/ &
+      do imnrl = 1, reaction%nkinmnrl
+        volfrac_scale = (rt_auxvars(ghosted_id)%mnrl_volfrac(imnrl)/ &
                        rt_auxvars(ghosted_id)%mnrl_volfrac0(imnrl))** &
-        material_property_array(patch%imat(ghosted_id))%ptr%mnrl_surf_area_volfrac_pwr
-      rt_auxvars(ghosted_id)%mnrl_area(imnrl) = &
-        rt_auxvars(ghosted_id)%mnrl_area0(imnrl)*porosity_scale*volfrac_scale
+          material_property_array(patch%imat(ghosted_id))%ptr%mnrl_surf_area_volfrac_pwr
+        rt_auxvars(ghosted_id)%mnrl_area(imnrl) = &
+          rt_auxvars(ghosted_id)%mnrl_area0(imnrl)*porosity_scale*volfrac_scale
+      enddo
     enddo
     if (option%update_mnrl_surf_with_porosity) then
       call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
