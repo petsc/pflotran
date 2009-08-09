@@ -1505,25 +1505,33 @@ for the mobile region $\a$ and immobile regions $\b$. Sorption mass transfer equ
 
 \setcounter{equation}{0}
 
-The above formulation for heterogeneous reactions involving mineral precipitation/dis\-solution, ion exchange and surface complexation, also apply to colloids. This presents an added complication since now the solid phase is moving with the fluid. 
+The above formulation for heterogeneous reactions involving mineral precipitation/dis\-solution, ion exchange and surface complexation, also apply to colloids. This presents an added complication since now the solid phase in the form of the suspended colloid load is moving with the fluid. 
 In this case the primary species transport equations contain contributions from both reactions with stationary solid grains which may include filtered colloids and mobile colloids in solution. 
 
-It is necessary to distinguish between two distinct colloid states: colloids suspended in solution, and colloids attached to solid surfaces which are not moving. The two states are described by the concentrations $C_c^f$ and $C_c^s$.
-The colloid concentration $C_c^f$ is equal to the number of moles of colloids of type $c$ in solution, $N_c^{f}$, divided by the pore volume $V_p$
+It is necessary to distinguish between two distinct colloid states: colloids suspended in solution, and colloids attached to solid surfaces which are not moving. The two states are described by the concentrations $C_c^f$ and $C_c^s$. 
+Filtration processes may occur in which a mobile colloid becomes trapped by the porous rock matrix and attaches to stationary solid surfaces. Conversely, stationary colloids may be remobilized into solution. The transformation between filtered and suspended colloids is represented by the first order reaction
 \EQ
-C_c^f\eq\frac{N_c^{f}}{V_p}.
+\A_c^f \arrows \A_c^s,
+\EN
+where $\A_c^f$ and $\A_c^s$ refer to suspended mobile colloids in the fluid phase and stationary colloids, respectively.
+The colloid concentration $C_c^f$ is equal to the number of moles of colloids of type $c$ in solution, $N_c^{f}$, divided by the aqueous volume $V_{\rm aq}$
+\EQ
+C_c^f\eq\frac{N_c^{f}}{V_{\rm aq}}.
 \EN
 Whereas the stationary colloid concentration $C_c^s$ is defined as
 \EQ
 C_c^s\eq\frac{N_c^s}{V},
 \EN
-referenced to the bulk volume $V$.
+referenced to the bulk volume $V$. The bulk volume is the sum of aqueous, gaseous and solid volumes
+\EQ
+V \eq V_s+V_g+V_{\rm aq}.
+\EN
 
 The colloids themselves may react with the fluid through mineral precipitation and dissolution reactions and sorption reactions through ion exchange and surface complexation at the colloid surface. In addition, sorption on colloids competes with the host rock minerals. These processes are described through the reactions
 \EQ
-\sum_j\nu_{jc}\A_j\arrows\A_c,
+\sum_j\nu_{jc_{f,\,s}}\A_j\arrows\A_{c_{f,\,s}},
 \EN
-describing precipitation and dissolution (formation and degradation) of colloid $\A_c$, surface complexation
+describing precipitation and dissolution (formation and degradation) of colloid $\A_c^{f,\,s}$ for mobile and immobile colloids, surface complexation
 \EQ
 >\!\!X_c + \sum_j\nu_{ji}^c\A_j\arrows >\!\!\A_i^c,
 \EN
@@ -1531,11 +1539,7 @@ for surface complex $\A_i^c$, and ion exchange
 \EQ
 \dfrac{1}{z_j} \A_j + \dfrac{1}{z_i} X_{z_i}^c\A_i \arrows \dfrac{1}{z_i} \A_i + \dfrac{1}{z_j} X_{z_j}^c\A_j,
 \EN
-with sorption sites $X_c$ and $X_{z_l}^c$. Finally, filtration processes may occur in which a mobile colloid becomes filtered by the porous rock matrix and attaches to stationary solid surfaces. Conversely, stationary colloids may be remobilized into solution. These processes are described by a reaction of the form
-\EQ
-\A_c^f \arrows \A_c^s,
-\EN
-where $\A_c^f$ and $\A_c^s$ refer to suspended mobile colloids in the fluid phase and stationary colloids, respectively.
+with sorption sites $X_c$ and $X_{z_l}^c$. Note that the subscript $c$ may refer to mobile or immobile colloids.
 
 In the case of surface complexation reactions, two different surface site densities may be defined corresponding to suspended and filtered colloids. The site concentrations for suspended and filtered colloids are equal to the number of sorption sites $N_c^{\rm srf}$ associated with colloid type $\A_c^{f,\,s}$ divided by the pore  or bulk volume
 \EQ
@@ -1555,7 +1559,7 @@ where $\eta_c$ denotes the site density, $A_c^M$ the colloid area per mass of co
 \EQ
 \Gamma_c\eq\frac{N_c^{f,\,{\rm srf}}}{N_c^{f}}\eq \frac{N_c^{s,\,{\rm srf}}}{N_c^s}\eq \eta_c^{} A_c^M W_c^{}.
 \EN
-For stationary colloids, the site concentration is given in terms of the filtered colloid concentration $C_c^s$ as
+For stationary colloids, the site concentration is given in terms of the trapped or immobile colloid concentration $C_c^s$ as
 \BA
 \omega_c^s &\eq \frac{N_c^{s,\,{\rm srf}}}{A_c^s}\frac{A_c^s}{M_c^s}\frac{M_c^s}{N_c^s}\frac{N_c^s}{V},\\
 &\eq \eta_c^{} A_c^M W_c^{} C_c^s,\\
@@ -1566,7 +1570,7 @@ The site conservation equation
 \EQ
 \omega_{c}\eq S_{c} + \sum_i S_{ic},
 \EN
-holds for both suspended and filtered colloids as does the mass action equations  
+holds for both suspended and filtered colloids as do the mass action equations  
 \EQ
 K_{ic}\eq \frac{S_{ic}}{S_c^{} Q_{ic}},
 \EN
@@ -1591,52 +1595,55 @@ In the case of ion exchange, the site concentration is related to the colloid co
 \EA
 where $\Q_c$ denotes the cation exchange capacity in units of mol sites/kg colloid.
 
-Mass conservation equations for colloids, minerals, sorbed and aqueous species can now be written in the following forms. The colloid mass conservation equation has the form
+Mass conservation equations for colloids, minerals, sorbed and aqueous species can now be written in the following forms. The colloid mass conservation equations have the forms
 \EQ
-\frac{\p}{\p t}\varphi C_c^f + \bnabla\cdot\bF_c^f \eq -I_c^{fs} - I_c^f,
+\frac{\p}{\p t}\varphi s_l^{} C_c^f + \bnabla\cdot\bF_c^f \eq -I_c^{fs} - I_c^f,
 \EN
-for mobile (liquid phase) colloids with concentration $C_c^f$, and
+for mobile (liquid phase) colloids with concentration $C_c^f$ and flux $\bF_c^f$, and
 \EQ
 \frac{\p C_c^s}{\p t} \eq I_c^{fs} + I_c^s,
 \EN
-for immobile colloids with concentration $C_c^s$ attached to the stationary solid phase. Combining these two equations leads to an alternative form in which the reaction rate does not appear explicitly
+for immobile colloids with concentration $C_c^s$ attached to the stationary solid phase. 
+
+Combining these two equations leads to an alternative form in which the reaction rate does not appear explicitly
 \EQ
-\frac{\p}{\p t}\left(\varphi C_c^f + C_c^s\right) + \bnabla\cdot\bF_c^f \eq 0.
+\frac{\p}{\p t}\left(\varphi s_l^{} C_c^f + C_c^s\right) + \bnabla\cdot\bF_c^f \eq 0.
 \EN
-Surface complexes associated with mobile and immobile colloids obey the conservation equations   
+
+Transport equations for surface complexes associated with mobile and immobile colloids obey the conservation equations   
 \EQ
-\frac{\p}{\p t}\varphi S_{ic}^f + \bnabla\cdot\bq_c S_{ic}^f \eq I_{ic}^f,
-\EN
-\EQ
-\frac{\p}{\p t}\varphi S_{ic}^s \eq I_{ic}^s,
-\EN
-and for free sites
-\EQ
-\frac{\p}{\p t}\varphi S_{c}^f + \bnabla\cdot\bq_c S_{c}^f \eq -\sum_i I_{ic}^f,
+\frac{\p}{\p t}\varphi s_l^{} S_{ic}^f + \bnabla\cdot\bq_c S_{ic}^f \eq I_{ic}^f,
 \EN
 \EQ
-\frac{\p}{\p t}\varphi S_{c}^s \eq -\sum_i I_{ic}^s.
+\frac{\p S_{ic}^s}{\p t} \eq I_{ic}^s,
+\EN
+with colloid Darcy velocity $\bq_c$ and neglecting colloid diffusion. Free (empty) sites obey the equations
+\EQ
+\frac{\p}{\p t}\varphi s_l^{} S_{c}^f + \bnabla\cdot\bq_c S_{c}^f \eq -\sum_i I_{ic}^f,
+\EN
+\EQ
+\frac{\p S_{c}^s}{\p t} \eq -\sum_i I_{ic}^s.
 \EN
 Aqueous phase primary species transport equations have the form
 \BA
-\frac{\p}{\p t}\varphi \Psi_j &+ \bnabla\bdot\bOmega_j \eq 
+\frac{\p}{\p t}\varphi s_l^{}\Psi_j &+ \bnabla\bdot\bOmega_j \eq 
 -\sum_m\nu_{jm} I_m -\sum_{im}\nu_{ji}^m I_i^m \nonumber\\
 &-\sum_c \nu_{jc}^{} \big(I_c^f+I_c^s\big) 
 - \sum_{ic}^{}\nu_{ji}^c\big(I_{ic}^f+I_{ic}^s\big) 
 + \sum_r\nu_{jr}^{\kin}I_r^{\rm kin},
 \EA
-where mineral precipitation and dissolution and surface complexation reactions are considered. The superscript $c$ refers to colloids. Ion exchange can be handled similarly. 
+including mineral precipitation and dissolution and surface complexation reactions. Ion exchange can be handled similarly. 
 
 Eliminating the surface complexation reaction rates gives
 \BA\label{pricolloid}
-\frac{\p}{\p t}\bigg(\varphi\Psi_j + \sum_{im} \nu_{ji}^m S_{im} &+ \sum_{ic} \nu_{ji}^c \big(\varphi S_{ic}^f+S_{ic}^s\big)\bigg) + \bnabla\bdot\bigg(\bOmega_j +\bq_c \sum_{ic}\nu_{ji}^c S_{ic}^f\bigg) \eq \nonumber\\
+\frac{\p}{\p t}\bigg(\varphi s_l^{}\Psi_j + \sum_{im} \nu_{ji}^m S_{im} &+ \sum_{ic} \nu_{ji}^c \big(\varphi s_l^{} S_{ic}^f+S_{ic}^s\big)\bigg) + \bnabla\bdot\bigg(\bOmega_j + \sum_{ic}\nu_{ji}^c\bq_c S_{ic}^f\bigg) \eq \nonumber\\
 &-\sum_m\nu_{jm} I_m - \sum_{c}\nu_{jc}^{} \big(I_{c}^l+I_{c}^s\big) + \sum_r\nu_{jr}^{\kin}I_r^{\rm kin}.
 \EA
 Note that colloids are only transported by advection and not diffusion in this formulation. The possibility for a different Darcy flow rate is allowed for colloids compared to the fluid phase, because colloids have been shown to actually move slightly faster because of their tendency to be concentrated away from the pore walls due to electrostatic repulsion.
 
 From the primary species transport equations it is possible to define a retardation factor assuming constant aqueous and sorbed concentrations and neglecting diffusion by writing the transport equations in the form
 \BA\label{retcolloid}
-\frac{\p}{\p t}\big(\varphi \Psi_j\big) &+ \bnabla\bdot\bigg(\frac{\bq}{R_j} \Psi_j\bigg) \eq \nonumber\\
+\frac{\p}{\p t}\big(\varphi s_l^{} \Psi_j\big) &+ \bnabla\bdot\bigg(\frac{\bq}{R_j} \Psi_j\bigg) \eq \nonumber\\
 &-\frac{1}{1+K_j^s + K_j^f}\left[\sum_m\nu_{jm} I_m + \sum_{c}\nu_{jc}^{} \big(I_{c}^l+I_{c}^s\big) - \sum_r\nu_{jr}^{\kin}I_r^{\rm kin}\right],
 \EA
 where the retardation factor $R_j$ is defined as
@@ -1645,7 +1652,7 @@ R_j\eq 1+\dfrac{K_j^s}{1+K_j^f},
 \EN
 where the distribution coefficients $K_j$ for the stationary solid phase including contributions from minerals and colloids, and $K_j^f$ for colloids present in the aqueous phase are defined by
 \EQ
-K_j^s \eq \frac{1}{\varphi\Psi_j} \left[\sum_{im}\nu_{ji}^m S_{im} + \sum_{ic}\nu_{ji}^c S_{ic}^s\right],
+K_j^s \eq \frac{1}{\varphi s_l^{}\Psi_j} \left[\sum_{im}\nu_{ji}^m S_{im} + \sum_{ic}\nu_{ji}^c S_{ic}^s\right],
 \EN
 and
 \EQ
