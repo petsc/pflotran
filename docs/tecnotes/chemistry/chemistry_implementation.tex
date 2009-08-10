@@ -2120,23 +2120,37 @@ This equation expresses $\Psi_{jn}^{\b(k+1)}$ in terms of $\Psi_{jn}^{\a(k+1)}$,
 
 Writing
 \EQ
-\Psi_{jn}^{\b(k+1)} \eq f_{jn}^\b(C^{\b(k+1)}) + g_{\a\b}\Psi_{jn}^{\a(k+1)},
+\Psi_{jn}^{\b(k+1)} \eq e_{jn}^\a + f_{jn}^\b(C^{\b(k+1)}) + g_{\a\b}\Psi_{jn}^{\a(k+1)},
+\EN
+where
+\EQ
+e_{jn}^\a \eq \frac{(\varphi_\b\Psi_j^\b)_n^k}{\varphi_\b + \Delta t_k\Gamma_{\a\b}},
+\EN
+\EQ
+f_{jn}^\b \eq -\frac{1}{\varphi_\b + \Delta t_k\Gamma_{\a\b}} \left[ 
+\sum_{il} \nu_{ji} \big(S_{il}^{\b(k+1)} \!\!\!\!\!\!- S_{il}^{\b(k)}\big) + \Delta t_k \sum_m\nu_{jm} I_{mn}^{\b,k+1} \right],
+\EN
+and
+\EQ
+g_{\a\b} \eq \frac{\Delta t_k \Gamma_{\a\b}}{\varphi_\b + \Delta t_k\Gamma_{\a\b}},
 \EN
 the residual for the primary continuum equations become
 \EQ
-R_{jn}^\a (C^\a,\,C^\b) \eq \widetilde R_{jn}^\a + \Gamma_{\a\b} (1-g_{\a\b}) \Psi_{jn}^{\a(k+1)} - \Gamma_{\a\b} f_{jn}^\b,
+R_{jn}^\a (C^\a,\,C^\b) \eq \widetilde R_{jn}^\a + \Gamma_{\a\b} (1-g_{\a\b}) \Psi_{jn}^{\a(k+1)} - \Gamma_{\a\b} \big(e_{jn}^\a + f_{jn}^\b\big),
 \EN
 where $\widetilde R_{jn}^\a$ denotes the residual function for a single continuum without the mass transfer coupling term to the secondary continuum. Likewise, the residual for the secondary continuum may be written as
 \EQ
 (R')_{jn}^\b (C^\a,\,C^\b) \eq \Psi_{jn}^{\b(k+1)} - f_{jn}^\b(C^{\b(k+1)}) - g_{\a\b}\Psi_{jn}^{\a(k+1)}.
 \EN
 The Newton-Raphson equations read
+\begin{subequations}
 \BA
 \sum_{lm}\left[\frac{\p R_{jn}^\a}{\p C_{lm}^\a}\, \delta\ln C_{lm}^\a 
 + \frac{\p R_{jn}^\a}{\p C_{lm}^\b}\, \delta\ln C_{lm}^\b\right] \eq -R_{jn}^\a,\\
 \sum_{lm}\left[\frac{\p R_{jn}^\b}{\p C_{lm}^\a}\, \delta\ln C_{lm}^\a 
 + \frac{\p R_{jn}^\b}{\p C_{lm}^\b}\, \delta\ln C_{lm}^\b\right] \eq -R_{jn}^\b.
 \EA
+\end{subequations}
 In the nonlinear case, to avoid large matrices it will be necessary to iterate with off-diagonal coupling terms for the primary continuum lagged one iterate behind.
 %This latter equation must be solved for the individual primary species concentrations $C_{jn}^{\b(k+1)}$.
 
