@@ -2064,6 +2064,39 @@ which in turn requires that $\bi_e\!=\!\boldsymbol 0$. This will be the case if 
 
 \setcounter{equation}{0}
 
+\subsection{Dual Continuum Connected Matrix (DCCM)}
+
+For a dual continuum model with continua $\a$ and $\b$, and with multirate sorption and mineral precipitation and dissolution the transport equations read
+\begin{subequations}
+\EQ\label{acont}
+\frac{\p}{\p t} \varphi_\a\Psi_j^\a + \bnabla\cdot\bOmega_j^\a \eq -\sum_{il}\nu_{ji} \frac{\p S_{il}^\a}{\p t} - \Gamma_{\a\b} \big(\Psi_j^\a - \Psi_j^\b\big) -\sum_m\nu_{jm}I_m^\a,
+\EN
+for the primary continuum, and
+\EQ
+\frac{\p}{\p t} \varphi_\b\Psi_j^\b \eq -\sum_{il}\nu_{ji} \frac{\p S_{il}^\b}{\p t} + \Gamma_{\a\b} \big(\Psi_j^\a - \Psi_j^\b\big) -\sum_m\nu_{jm}I_m^\b,
+\EN
+\end{subequations}
+for the secondary continuum. Note that transport is assumed to take place only in continuum $\a$  and not $\b$. These equations are augmented by the kinetic sorption equations for each continuum given by
+\begin{subequations}
+\EQ\label{bcont}
+\frac{\p S_{il}^\a}{\p t} \eq k_l \big(S_{il}^{\rm eq,\a} - S_{il}^\a\big),
+\EN
+and
+\EQ
+\frac{\p S_{il}^\b}{\p t} \eq k_l \big(S_{il}^{\rm eq,\b} - S_{il}^\b\big),
+\EN
+\end{subequations}
+and mineral mass transfer equations
+\EQ
+\frac{\p \varphi_m^{\a,\b}}{\p t} \eq \overline V_m^{-1} I_m^{\a,\b}.
+\EN
+Adding Eqns.\eqref{acont} and \eqref{bcont} eliminates the mass transfer coupling term between continua
+\EQ
+\frac{\p}{\p t} \left(\varphi_\a\Psi_j^\a + \varphi_\b\Psi_j^\b \right) + \bnabla\cdot\bOmega_j^\a \eq -\sum_{il}\nu_{ji}\left(\frac{\p S_{il}^\a}{\p t} + \frac{\p S_{il}^\b}{\p t}\right) -\sum_m\nu_{jm}\big(I_m^\a + I_m^\b\big),
+\EN
+
+\subsection{Multiple Continuum Disconnected Matrix (DCDM)}
+
 A fundamental problem facing efforts to model subsurface reactive flows is characterizing and incorporating a multitude of spatial scales that are typical of natural systems into multi\-com\-po\-nent-multiphase numerical models. Spatial scales may range from nanoscale surface chemistry, to pore and fracture apertures of millimeters to centimeters, to fracture spacing and matrix block sizes of tens of centimeters to meters, to reservoir or basin scales of kilometers to tens of kilometers. To illustrate the technical challenges involved in modeling multi-scale subsurface processes, consider a basin scale reservoir with an areal extent of one square kilometer and depth of 500 meters. Modeling this system as a single continuum on a grid with one million nodes results in an average grid block size of 10m by 10m by 5m---or roughly the size of a large conference room. Within this grid block, physical and chemical processes occur at much smaller sub-grid scales. Such processes involve, for example, diffusive and advective mass transfer between fractures and rock matrix, or more generally diffusion between macro- and micro-pore scales, accompanied by chemical reactions. Characteristic of these systems is mass transport and chemical reactions occurring at disparate spatial scales that cannot be captured within a single continuum description. In particular, localized chemical environments may be vastly different from the bulk fluid and lead to dramatically different results compared to a single continuum description. It is clearly impossible to capture this range of scales within a single continuum framework because of the large computational expense that would be required to resolve the smallest scale. One approach that appears feasible to describe such systems is to incorporate sub-grid scale processes through multiple interacting continua representing fine scale processes. Besides the difficulty developing conceptual models of such systems, characterization at the laboratory and field scales adds additional challenges. In addition, this approach carries a significant computational cost as well because of the increase in the number of degrees of freedom associated with the additional continua and the necessity to carry out calculations over engineering and geologic time spans within feasible computation times. 
 
 A considerable body of literature exists on multiscale descriptions of flow and transport in porous and fractured media. Such formulations range from structured soils (Murphy et al., 1986; van Genuchten and Wagenet, 1989; Brusseau and Rao, 1990; Gerke and van Genuchten, 1993; Gwo et al., 1995; and others), to fractured rock (Warren and Root, 1956; Barenblatt et al., 1960; Duguid and Lee, 1977; Pruess and Narisimhan, 1985; Bai et al., 1993; Lichtner, 2000).
