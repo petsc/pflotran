@@ -2111,13 +2111,12 @@ R_{jn}^\b \eq &\frac{(\varphi_\b\Psi_j^\b)_n^{k+1} - (\varphi_\b\Psi_j^\b)_n^k}{
 \EA
 The secondary continuum since it does not contain transport may be solved directly for $\Psi_{jn}^{\b(k+1)}$ to give
 \BA
-\Psi_{jn}^{\b(k+1)} = &\frac{1}{\varphi_\b + \Delta t_k\Gamma_{\a\b}}\left[(\varphi_\b\Psi_j^\b)_n^k 
-- \sum_{il} \nu_{ji} \big(S_{il}^{\b(k+1)} - S_{il}^{\b(k)}\big)\right] 
+\Psi_{jn}^{\b(k+1)} = \frac{1}{\varphi_\b + \Delta t_k\Gamma_{\a\b}}&\left[(\varphi_\b\Psi_j^\b)_n^k 
+- \sum_{il} \nu_{ji} \big(S_{il}^{\b(k+1)} \!\!\!\!\!\!- S_{il}^{\b(k)}\big) - \Delta t_k \sum_m\nu_{jm} I_{mn}^{\b,k+1} \right] 
 \nonumber\\
-& - \frac{\Delta t_k}{\varphi_\b + \Delta t_k\Gamma_{\a\b}} \sum_m\nu_{jm} I_{mn}^{\b,k+1} 
-+ \frac{\Delta t_k \Gamma_{\a\b}}{\varphi_\b + \Delta t_k\Gamma_{\a\b}}\Psi_{jn}^{\a(k+1)}.
+&+ \frac{\Delta t_k \Gamma_{\a\b}}{\varphi_\b + \Delta t_k\Gamma_{\a\b}}\Psi_{jn}^{\a(k+1)}.
 \EA
-This equation expresses $\Psi_{jn}^{\b(k+1)}$ in terms of $\Psi_{jn}^{\a(k+1)}$, however, the right-hand side is still a function of $C_{jn}^{\b(k+1)}$ and therefore complete elimination of the $\b$-continuum variables from the primary continuum in the nonlinear case is not possible.
+This equation expresses $\Psi_{jn}^{\b(k+1)}$ in terms of $\Psi_{jn}^{\a(k+1)}$, however, the right-hand side remains a function of $C_{jn}^{\b(k+1)}$, and therefore complete elimination of the $\b$-continuum variables from the primary continuum in the nonlinear case is not possible.
 
 Writing
 \EQ
@@ -2136,7 +2135,7 @@ The Newton-Raphson equations read
 \sum_{lm}\left[\frac{\p R_{jn}^\a}{\p C_{lm}^\a}\, \delta\ln C_{lm}^\a 
 + \frac{\p R_{jn}^\a}{\p C_{lm}^\b}\, \delta\ln C_{lm}^\b\right] \eq -R_{jn}^\a,\\
 \sum_{lm}\left[\frac{\p R_{jn}^\b}{\p C_{lm}^\a}\, \delta\ln C_{lm}^\a 
-+ \frac{\p R_{jn}^\b}{\p C_{lm}^\a}\, \delta\ln C_{lm}^\b\right] \eq -R_{jn}^\b.
++ \frac{\p R_{jn}^\b}{\p C_{lm}^\b}\, \delta\ln C_{lm}^\b\right] \eq -R_{jn}^\b.
 \EA
 In the nonlinear case, to avoid large matrices it will be necessary to iterate with off-diagonal coupling terms for the primary continuum lagged one iterate behind.
 %This latter equation must be solved for the individual primary species concentrations $C_{jn}^{\b(k+1)}$.
