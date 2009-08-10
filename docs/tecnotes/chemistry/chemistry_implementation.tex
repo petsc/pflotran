@@ -2069,11 +2069,11 @@ which in turn requires that $\bi_e\!=\!\boldsymbol 0$. This will be the case if 
 For a dual continuum model with continua $\a$ and $\b$, and with multirate sorption and mineral precipitation and dissolution the transport equations read
 \begin{subequations}
 \EQ\label{acont}
-\frac{\p}{\p t} \varphi_\a\Psi_j^\a + \bnabla\cdot\bOmega_j^\a \eq -\sum_{il}\nu_{ji} \frac{\p S_{il}^\a}{\p t} - \Gamma_{\a\b} \big(\Psi_j^\a - \Psi_j^\b\big) -\sum_m\nu_{jm}I_m^\a,
+\frac{\p}{\p t} \varphi_\a\Psi_j^\a + \bnabla\cdot\bOmega_j^\a \eq - \Gamma_{\a\b} \big(\Psi_j^\a - \Psi_j^\b\big) -\sum_{il}\nu_{ji} \frac{\p S_{il}^\a}{\p t} -\sum_m\nu_{jm}I_m^\a,
 \EN
 for the primary continuum, and
 \EQ
-\frac{\p}{\p t} \varphi_\b\Psi_j^\b \eq -\sum_{il}\nu_{ji} \frac{\p S_{il}^\b}{\p t} + \Gamma_{\a\b} \big(\Psi_j^\a - \Psi_j^\b\big) -\sum_m\nu_{jm}I_m^\b,
+\frac{\p}{\p t} \varphi_\b\Psi_j^\b \eq \Gamma_{\a\b} \big(\Psi_j^\a - \Psi_j^\b\big) -\sum_{il}\nu_{ji} \frac{\p S_{il}^\b}{\p t} -\sum_m\nu_{jm}I_m^\b,
 \EN
 \end{subequations}
 for the secondary continuum. Note that transport is assumed to take place only in continuum $\a$  and not $\b$. These equations are augmented by the kinetic sorption equations for each continuum given by
@@ -2092,8 +2092,33 @@ and mineral mass transfer equations
 \EN
 Adding Eqns.\eqref{acont} and \eqref{bcont} eliminates the mass transfer coupling term between continua
 \EQ
-\frac{\p}{\p t} \left(\varphi_\a\Psi_j^\a + \varphi_\b\Psi_j^\b \right) + \bnabla\cdot\bOmega_j^\a \eq -\sum_{il}\nu_{ji}\left(\frac{\p S_{il}^\a}{\p t} + \frac{\p S_{il}^\b}{\p t}\right) -\sum_m\nu_{jm}\big(I_m^\a + I_m^\b\big),
+\frac{\p}{\p t} \left(\varphi_\a\Psi_j^\a + \varphi_\b\Psi_j^\b \right) + \bnabla\cdot\bOmega_j^\a \eq -\sum_{il}\nu_{ji}\left(\frac{\p S_{il}^\a}{\p t} + \frac{\p S_{il}^\b}{\p t}\right) -\sum_m\nu_{jm}\big(I_m^\a + I_m^\b\big).
 \EN
+
+\subsubsection{Numerical Implementation}
+
+The residual functions for the finite volume form of the dual continuum equations can be written as
+\BA
+R_{jn}^\a \eq &\frac{(\varphi_\a\Psi_j^\a)_n^{k+1} - (\varphi_\a\Psi_j^\a)_n^k}{\Delta t_k}V_n + V_n\sum_{il} \nu_{ji} 
+\left(\frac{S_{il}^{\a(k+1)}-S_{il}^{\a(k)}}{\Delta t_k}\right) \nonumber \\
+& + \sum_{n'} A_{nn'} \Omega_{jnn'} + V_n \Gamma_{\a\b} \big(\Psi_{jn}^{\a(k+1)} - \Psi_{jn}^{\b(k+1)}\big) + V_n \sum_m\nu_{jm} I_{mn}^{\a,k+1},
+\EA
+and
+\BA
+R_{jn}^\b \eq &\frac{(\varphi_\b\Psi_j^\b)_n^{k+1} - (\varphi_\b\Psi_j^\b)_n^k}{\Delta t_k} + \sum_{il} \nu_{ji} 
+\left(\frac{S_{il}^{\b(k+1)}-S_{il}^{\b(k)}}{\Delta t_k}\right) \nonumber \\
+&- \Gamma_{\a\b} \big(\Psi_{jn}^{\a(k+1)} - \Psi_{jn}^{\b(k+1)}\big) + \sum_m\nu_{jm} I_{mn}^{\b,k+1}.
+\EA
+The secondary continuum since it does not contain transport may be solved directly for $\Psi_{jn}^{\b(k+1)}$ to give
+\BA
+\Psi_{jn}^{\b(k+1)} = &\frac{1}{\varphi_\b + \Delta t_k\Gamma_{\a\b}}\left[(\varphi_\b\Psi_j^\b)_n^k 
+- \sum_{il} \nu_{ji} \big(S_{il}^{\b(k+1)} - S_{il}^{\b(k)}\big)\right] 
+\nonumber\\
+& - \frac{\Delta t_k}{\varphi_\b + \Delta t_k\Gamma_{\a\b}} \sum_m\nu_{jm} I_{mn}^{\b,k+1} 
++ \frac{\Delta t_k}{\varphi_\b + \Delta t_k\Gamma_{\a\b}}\Gamma_{\a\b}\Psi_{jn}^{\a(k+1)}.
+\EA
+This equation expresses $\Psi_{jn}^{\b(k+1)}$ in terms of $\Psi_{jn}^{\a(k+1)}$, however, the right-hand side is still a function of $C_{jn}^{\b(k+1)}$ and therefore complete elimination of the $\b$-continuum variables from the primary continuum is not possible in the nonlinear case.
+%This latter equation must be solved for the individual primary species concentrations $C_{jn}^{\b(k+1)}$.
 
 \subsection{Multiple Continuum Disconnected Matrix (DCDM)}
 
