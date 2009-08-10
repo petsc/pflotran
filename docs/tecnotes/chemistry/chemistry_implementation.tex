@@ -2117,7 +2117,28 @@ The secondary continuum since it does not contain transport may be solved direct
 & - \frac{\Delta t_k}{\varphi_\b + \Delta t_k\Gamma_{\a\b}} \sum_m\nu_{jm} I_{mn}^{\b,k+1} 
 + \frac{\Delta t_k \Gamma_{\a\b}}{\varphi_\b + \Delta t_k\Gamma_{\a\b}}\Psi_{jn}^{\a(k+1)}.
 \EA
-This equation expresses $\Psi_{jn}^{\b(k+1)}$ in terms of $\Psi_{jn}^{\a(k+1)}$, however, the right-hand side is still a function of $C_{jn}^{\b(k+1)}$ and therefore complete elimination of the $\b$-continuum variables from the primary continuum is not possible in the nonlinear case.
+This equation expresses $\Psi_{jn}^{\b(k+1)}$ in terms of $\Psi_{jn}^{\a(k+1)}$, however, the right-hand side is still a function of $C_{jn}^{\b(k+1)}$ and therefore complete elimination of the $\b$-continuum variables from the primary continuum in the nonlinear case is not possible.
+
+Writing
+\EQ
+\Psi_{jn}^{\b(k+1)} \eq f_{jn}^\b(C^{\b(k+1)}) + g_{\a\b}\Psi_{jn}^{\a(k+1)},
+\EN
+the residual for the primary continuum equations become
+\EQ
+R_{jn}^\a (C^\a,\,C^\b) \eq \widetilde R_{jn}^\a + \Gamma_{\a\b} (1-g_{\a\b}) \Psi_{jn}^{\a(k+1)} - \Gamma_{\a\b} f_{jn}^\b,
+\EN
+where $\widetilde R_{jn}^\a$ denotes the residual function for a single continuum without the mass transfer coupling term to the secondary continuum. Likewise, the residual for the secondary continuum may be written as
+\EQ
+(R')_{jn}^\b (C^\a,\,C^\b) \eq \Psi_{jn}^{\b(k+1)} - f_{jn}^\b(C^{\b(k+1)}) - g_{\a\b}\Psi_{jn}^{\a(k+1)}.
+\EN
+The Newton-Raphson equations read
+\BA
+\sum_{lm}\left[\frac{\p R_{jn}^\a}{\p C_{lm}^\a}\, \delta\ln C_{lm}^\a 
++ \frac{\p R_{jn}^\a}{\p C_{lm}^\b}\, \delta\ln C_{lm}^\b\right] \eq -R_{jn}^\a,\\
+\sum_{lm}\left[\frac{\p R_{jn}^\b}{\p C_{lm}^\a}\, \delta\ln C_{lm}^\a 
++ \frac{\p R_{jn}^\b}{\p C_{lm}^\a}\, \delta\ln C_{lm}^\b\right] \eq -R_{jn}^\b.
+\EA
+In the nonlinear case, to avoid large matrices it will be necessary to iterate with off-diagonal coupling terms for the primary continuum lagged one iterate behind.
 %This latter equation must be solved for the individual primary species concentrations $C_{jn}^{\b(k+1)}$.
 
 \subsection{Multiple Continuum Disconnected Matrix (DCDM)}
@@ -2136,7 +2157,8 @@ One of the primary difficulties in applying a multiscale formulation is obtainin
 
 Multiscale processes play a significant role in many situations involving flow and reactive transport. However, because of the inherent nonlinearity of constitutive relations, for example, chemical rate laws and statements of equilibrium mass action relations in real multicomponent fluids, use of linear relations is of limited usefulness.
 
-The formulation presented below is based on a multiple interacting continuum formulaiton. This formulation provides for local concentration gradients within a sub-continuum domain. The model places no restrictions on linear or nonlinear constitutive relations, and is completely general in its treatment of chemical and other physical processes.
+The algorithm presented below is based on a multiple interacting continuum formulation. This formulation provides for local concentration gradients within a sub-continuum domain. 
+%The model places no restrictions on linear or nonlinear constitutive relations, and is completely general in its treatment of chemical and other physical processes.
 
 In the following a multi-scale continuum formulation for reactive transport is developed based on multiple interacting continua. In this formulation the primary continuum, which may consist of one, two, or three spatial dimensions, is coupled to sub-grid scale domains that are presumed to form effective one-dimensional regions. 
 %The sub-grid domains are coupled only to the primary continuum and not to each other as illustrated in Figure~\ref{F:subgrid} which shows the connectivity between primary and secondary continua. 
