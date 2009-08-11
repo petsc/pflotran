@@ -92,8 +92,14 @@
 \newcommand{\diff}{{\mathcal D}}
 \newcommand{\surf}{\equiv \!\!\!}
 \newcommand{\bnabla}{\boldsymbol{\nabla}}
-\newcommand{\bA}{\boldsymbol{A}}
 \newcommand{\ba}{\boldsymbol{a}}
+
+\newcommand{\balpha}{\boldsymbol{\alpha}}
+\newcommand{\bbeta}{\boldsymbol{\beta}}
+\newcommand{\bgamma}{\boldsymbol{\gamma}}
+\renewcommand{\d}{{\delta}}
+
+\newcommand{\bA}{\boldsymbol{A}}
 \newcommand{\bB}{\boldsymbol{B}}
 \newcommand{\bb}{\boldsymbol{\beta}}
 \newcommand{\bC}{\boldsymbol{C}}
@@ -103,11 +109,13 @@
 \newcommand{\bD}{\boldsymbol{D}}
 \newcommand{\bE}{\boldsymbol{E}}
 \newcommand{\bF}{\boldsymbol{F}}
+\newcommand{\bG}{\boldsymbol{G}}
 \newcommand{\bg}{\boldsymbol{g}}
 \newcommand{\bi}{\boldsymbol{i}}
 \newcommand{\bI}{\boldsymbol{I}}
 \newcommand{\bJ}{\boldsymbol{J}}
 \newcommand{\bK}{\boldsymbol{K}}
+\newcommand{\bL}{\boldsymbol{L}}
 \newcommand{\bM}{\boldsymbol{M}}
 \newcommand{\bn}{\boldsymbol{n}}
 \newcommand{\bdelta}{\boldsymbol{\delta}}
@@ -122,9 +130,14 @@
 \newcommand{\br}{\boldsymbol{r}}
 \newcommand{\bR}{\boldsymbol{R}}
 \newcommand{\bS}{\boldsymbol{S}}
+\newcommand{\bU}{\boldsymbol{U}}
 \newcommand{\bu}{\boldsymbol{u}}
 \newcommand{\bv}{\boldsymbol{v}}
 \newcommand{\bx}{\boldsymbol{x}}
+\newcommand{\by}{\boldsymbol{y}}
+\newcommand{\bY}{\boldsymbol{Y}}
+\newcommand{\bz}{\boldsymbol{z}}
+
 \newcommand{\arrows}{~\rightleftharpoons~}
 \newcommand{\arrowstab}{\!\!\!\rightleftharpoons\!\!\!}
 \newcommand{\longline}{\noindent\rule[-0.1in]{\textwidth}{0.01in}}
@@ -315,12 +328,12 @@ All reactions are formulated in terms of a set of basis, primary, or component s
 \begin{description}
 
 \item[Homogeneous: aqueous]
-\EQ
+\EQ\label{hom}
 \sum_j\nu_{ji}\A_j\arrows\A_i.
 \EN
 
 \item[Heterogeneous: mineral]
-\EQ
+\EQ\label{het}
 \sum_j\nu_{jm}\A_j\arrows\M_m.
 \EN
 
@@ -2100,19 +2113,19 @@ Adding Eqns.\eqref{acont} and \eqref{bcont} eliminates the mass transfer couplin
 The residual functions for the finite volume form of the dual continuum equations can be written as
 \BA
 R_{jn}^\a \eq &\frac{(\varphi_\a\Psi_j^\a)_n^{k+1} - (\varphi_\a\Psi_j^\a)_n^k}{\Delta t_k}V_n + V_n\sum_{il} \nu_{ji} 
-\left(\frac{S_{il}^{\a(k+1)}-S_{il}^{\a(k)}}{\Delta t_k}\right) \nonumber \\
+\left(\frac{S_{iln}^{\a(k+1)}-S_{iln}^{\a(k)}}{\Delta t_k}\right) \nonumber \\
 & + \sum_{n'} A_{nn'} \Omega_{jnn'} + V_n \Gamma_{\a\b} \big(\Psi_{jn}^{\a(k+1)} - \Psi_{jn}^{\b(k+1)}\big) + V_n \sum_m\nu_{jm} I_{mn}^{\a,k+1},
 \EA
 and
 \BA
 R_{jn}^\b \eq &\frac{(\varphi_\b\Psi_j^\b)_n^{k+1} - (\varphi_\b\Psi_j^\b)_n^k}{\Delta t_k} + \sum_{il} \nu_{ji} 
-\left(\frac{S_{il}^{\b(k+1)}-S_{il}^{\b(k)}}{\Delta t_k}\right) \nonumber \\
+\left(\frac{S_{iln}^{\b(k+1)}-S_{iln}^{\b(k)}}{\Delta t_k}\right) \nonumber \\
 &- \Gamma_{\a\b} \big(\Psi_{jn}^{\a(k+1)} - \Psi_{jn}^{\b(k+1)}\big) + \sum_m\nu_{jm} I_{mn}^{\b,k+1}.
 \EA
 The secondary continuum since it does not contain transport may be solved directly for $\Psi_{jn}^{\b(k+1)}$ to give
 \BA
 \Psi_{jn}^{\b(k+1)} = \frac{1}{\varphi_\b + \Delta t_k\Gamma_{\a\b}}&\left[(\varphi_\b\Psi_j^\b)_n^k 
-- \sum_{il} \nu_{ji} \big(S_{il}^{\b(k+1)} \!\!\!\!\!\!- S_{il}^{\b(k)}\big) - \Delta t_k \sum_m\nu_{jm} I_{mn}^{\b,k+1} \right] 
+- \sum_{il} \nu_{ji} \big(S_{iln}^{\b(k+1)} \!\!\!- S_{iln}^{\b(k)}\big) - \Delta t_k \sum_m\nu_{jm} I_{mn}^{\b,k+1} \right] 
 \nonumber\\
 &+ \frac{\Delta t_k \Gamma_{\a\b}}{\varphi_\b + \Delta t_k\Gamma_{\a\b}}\Psi_{jn}^{\a(k+1)}.
 \EA
@@ -2120,15 +2133,15 @@ This equation expresses $\Psi_{jn}^{\b(k+1)}$ in terms of $\Psi_{jn}^{\a(k+1)}$,
 
 Writing
 \EQ
-\Psi_{jn}^{\b(k+1)} \eq e_{jn}^\a + f_{jn}^\b(C^{\b(k+1)}) + g_{\a\b}\Psi_{jn}^{\a(k+1)},
+\Psi_{jn}^{\b(k+1)} \eq e_{jn}^\b + f_{jn}^\b(C^{\b(k+1)}) + g_{\a\b}\Psi_{jn}^{\a(k+1)},
 \EN
 where
 \EQ
-e_{jn}^\a \eq \frac{(\varphi_\b\Psi_j^\b)_n^k}{\varphi_\b + \Delta t_k\Gamma_{\a\b}},
+e_{jn}^\b \eq \frac{(\varphi_\b\Psi_j^\b)_n^k}{\varphi_\b + \Delta t_k\Gamma_{\a\b}},
 \EN
 \EQ
 f_{jn}^\b \eq -\frac{1}{\varphi_\b + \Delta t_k\Gamma_{\a\b}} \left[ 
-\sum_{il} \nu_{ji} \big(S_{il}^{\b(k+1)} \!\!\!\!\!\!- S_{il}^{\b(k)}\big) + \Delta t_k \sum_m\nu_{jm} I_{mn}^{\b,k+1} \right],
+\sum_{il} \nu_{ji} \big(S_{iln}^{\b(k+1)} \!\!\!- S_{iln}^{\b(k)}\big) + \Delta t_k \sum_m\nu_{jm} I_{mn}^{\b,k+1} \right],
 \EN
 and
 \EQ
@@ -2136,7 +2149,7 @@ g_{\a\b} \eq \frac{\Delta t_k \Gamma_{\a\b}}{\varphi_\b + \Delta t_k\Gamma_{\a\b
 \EN
 the residual for the primary continuum equations become
 \EQ
-R_{jn}^\a (C^\a,\,C^\b) \eq \widetilde R_{jn}^\a + \Gamma_{\a\b} (1-g_{\a\b}) \Psi_{jn}^{\a(k+1)} - \Gamma_{\a\b} \big(e_{jn}^\a + f_{jn}^\b\big),
+R_{jn}^\a (C^\a,\,C^\b) \eq \widetilde R_{jn}^\a + \Gamma_{\a\b} (1-g_{\a\b}) \Psi_{jn}^{\a(k+1)} - \Gamma_{\a\b} \big(e_{jn}^\b + f_{jn}^\b\big),
 \EN
 where $\widetilde R_{jn}^\a$ denotes the residual function for a single continuum without the mass transfer coupling term to the secondary continuum. Likewise, the residual for the secondary continuum may be written as
 \EQ
@@ -2205,8 +2218,8 @@ Also of interest is the specific interfacial surface area $a_{\a\b}$ separating 
 a_{\a\b} \eq \frac{A_{\a\b}}{V} \eq \frac{1}{V}\sum_\b N_\b^{} A_\b^0 \eq \big(1-\epsilon_\a\big) \frac{x_\b^{} A_\b^0}{\displaystyle\sum_{\b'} x_{\b'}^{} V_{\b'}^0}.
 \EN
 
-Multi-scale, multicomponent, continuum-scale reactive transport equations for primary species $\A_j$ participating in reactions given in Eqns.\eqref{rxnleq} and \eqref{rxnhet} can be written in the general form as the set of coupled partial differential equations as follows (Lichtner and Kang, 2007)
-\BA\label{bulk}
+Multi-scale, multicomponent, continuum-scale reactive transport equations for primary species $\A_j$ participating in reactions given in Eqns.\eqref{hom} and \eqref{het} can be written in the general form as the set of coupled partial differential equations as follows (Lichtner and Kang, 2007)
+\BA\label{primary}
 \frac{\p}{\p t} \epsilon_\a\varphi_\a \Psi_j^\a + \bnabla\bdot\bOmega_j^\a \eq \sum_\b a_{\a\b}^{} \Omega_j^{\a\b} - \epsilon_\a\sum_{s} \nu_{js}^{} I_{s}^\a,
 \EA
 for the primary continuum fluid, and
@@ -2238,9 +2251,292 @@ where $\bn_\b$ denotes the outward normal to the interface.
 The matrix equation is quite general and applies to various geometries including spheres and linear domains. As an approximation cubes and irregular shaped domains may be used. Because of computational considerations, the sub-grid domain equations are reduced to an equivalent 1D problem. 
 For further discussion of numerical techniques for efficiently solving the multi-scale equations see Lichtner (2006).
 
-\section{Electrical Conductivity}
+\subsection{Coupling Term}
 
+The primary and sub-grid continua are coupled through a source/sink term appearing in the primary continuum fluid transport equation given by Eqn.~\eqref{primary}. In finite difference form the coupling term can be written as
+\EQ
+\Omega_{jn}^{\a\b} \eq -\varphi_\b D_\b \left.\frac{\p\Psi_j^\b}{\p y}\right|_{y=0} \eq -\varphi_\b D_\b \left(\frac{\Psi_j^\a-\Psi_j^\b}{d_{\a\b}}\right),
+\EN
+where $d_{\a\b}$ represents the distance from the primary-subgrid continuum interface to the neighboring matrix node. Thus the coupling term can be rewritten in discretized form as
+\EQ
+\sum_\b a_{\a\b} \Omega_j^{\a\b} \eq \sum_\b \Gamma_{\a\b} \big(\Psi_j^\a-\Psi_j^\b\big),
+\EN
+where
+\EQ
+\Gamma_{\a\b}\eq\frac{a_{\a \b}\varphi_\b D_\b}{d_{\a\b}}.
+\EN
+
+\begin{comment}
+\subsection{Mass Conservation}
+
+\BA
+\frac{dM_j}{dt} &\eq \frac{dM_j^\a}{dt}+\frac{dM_j^\b}{dt},\\
+&\eq \frac{d}{dt}\int_0^{L_b} \epsilon_b\varphi_b C_j^\a dx + \frac{d}{dt}\int_0^{l_\b} \varphi_\b C_j^\b dy,\\
+&\eq\int_0^{L_b} \bigg(A_{\b b} F_j^{\b b} - \frac{\p\epsilon_b F_j^\a}{\p x}\bigg) dx - \int_0^{l_\b} \frac{\p F_j^\b}{\p y} dy,\\
+&\eq A_{\b b} \varphi_\b D_\b \bigg(\frac{C_j^\b-C_j^\a}{d_\b}\bigg) + F_j^{\b 0} + \epsilon_b \big(F_j^{L_b} - F_j^{b0}\big),\\
+&\eq \epsilon_b \big(F_j^{L_b} - F_j^{b0}\big),
+\EA
+since
+\EQ
+F_j^{\b 0} \eq -A_{\b \b} \varphi_\b D_\b \bigg(\frac{C_j^\b-C_j^\a}{d_\b}\bigg).
+\EN
+\end{comment}
+
+The sub-grid model involves solving a block-tridiagonal system of nonlinear algebraic equations for each primary continuum node $n$.
+The residual function for the subgrid domain for the $M$th node neighboring the interface to the primary continuum fluid has the form (see Appendix)
+\begin{subequations}
+\BA
+\bR_{nM}^{\b}&\eq\frac{\varphi V_M}{\Delta t}\big(\bPsi_M^{\b,t+\Delta t}-\bPsi_M^{\b t}\big)+\bOmega_M^{\b +} A_M^+ - \bOmega_M^{\b -} A_M^- + V_M \sum_s\bnu_{s}^{} I_{sM}^\b,\\
+&\eq\widetilde\bR_{nM}^{\b}-\frac{\varphi DA_M^+}{d_M}\bPsi_n^\a,
+\EA
+\end{subequations}
+where $\widetilde\bR_{nM}^{\b}$ denotes the contribution to the residual function which does not contain the boundary concentration equal to the primary continuum concentration $\bPsi_n^\a$ at the $n$th node. 
+
+The quantity $\bz_M$ defined in the Appendix in Eqn.~\eqref{zn} then becomes
+\begin{subequations}
+\BA
+\bz_M&\eq -\bD_M^{-1}\big(\widetilde\bR_M + \bbeta_M\bz_{M-1}\big) + \frac{\varphi D A_M^+}{d_M} \bD_M^{-1}\bPsi_n^\a,\\
+&\eq \ba_n+\bb_n\bPsi_n^\a,
+\EA
+\end{subequations}
+with known quantities $\ba_n$ and $\bb_n$ defined as
+\begin{subequations}
+\BA
+\ba_n&\eq -\bD_M^{-1}\big(\widetilde\bR_M + \bbeta_M\bz_{M-1}\big),\\
+\bb_n&\eq -\frac{\varphi DA_M^+}{d_M}\bD_M^{-1}.
+\EA
+\end{subequations}
+
+The three possible cases for the choice of $\d\bx$ are considered in turn.
+
+\subsubsection{Case I: $\d x_j = \d C_j$}
+
+For the situation where $\d x_j \!=\! \d C_j$, $C_{jM}^{(k+1)}$ is found from the relation
+\EQ
+C_{jM}^{(k+1)}\eq C_{jM}^{(k)} + a_{jn} + \sum_l b_{jln} \Psi_{ln}^\a.
+\EN
+The residual function and Jacobian for the primary continuum involves the total concentration
+\EQ
+\Psi_{jM}^{(k+1)}\eq C_{jM}^{(k+1)}(\Psi_{jn}^\a) + \sum_i\nu_{ji} \C_{iM} [C_{jM}^{(k+1)}(\Psi_{jn}^\a)],
+\EN
+with derivative
+\EQ
+\frac{\p\Psi_{jM}^{(k+1)}}{\p C_{kn}^\a}\eq \frac{\p C_{jM}^{(k+1)}}{\p C_{kn}^\a}+ \sum_i\nu_{ji} \frac{\p\C_{iM}^{(k+1)}}{\p C_{kn}^{b}}.
+\EN
+
+\subsubsection{Case II: $\d x_j = \d{\rm ln} C_j$}
+
+For the case $\d x_j = \d\ln C_j$, the matrix concentration at the interface is related to the primary continuum total concentration by the expression
+\EQ
+\ln C_{jM}^{(k+1)}\eq\ln C_{jM}^{(k)} + a_{jn} + \sum_l b_{jln} \Psi_{ln}^\a,
+\EN
+or alternatively
+\EQ
+C_{jM}^{(k+1)}\eq C_{jM}^{(k)} \e^{a_{jn} + \sum_l b_{jln} \Psi_{ln}^\a}.
+\EN
+The total matrix concentration can now be written as a function of the total bulk fluid concentration as
+\EQ
+\Psi_{jM}^{(k+1)}\eq C_{jM}^{(k+1)}(\Psi_{jn}^\a) + \sum_i\nu_{ji} \C_{iM} \big[C_{jM}^{(k+1)}(\Psi_{jn}^\a)\big].
+\EN
+To obtain the Jacobian it is necessary to compute the derivatives of this relation with respect to the bulk fluid primary species concentrations. It follows that
+\BA
+\frac{\p C_{jM}^{(k+1)}}{\p\ln C_{kn}^\a}&\eq C_{jM}^{(k+1)} \sum_l b_{jln}\frac{\p\Psi_{jn}^\a}{\p\ln C_{kn}^\a},\\
+&\eq C_{jM}^{(k+1)} \sum_l b_{jln}\left(C_{jn}^\a\delta_{jk}+\sum_i\nu_{ji}\nu_{ki}\C_{in}^\a\right),
+\EA
+making use of the relation
+\EQ
+\frac{\p\Psi_{jn}^\a}{\p\ln C_{kn}^\a}\eq C_{jn}^\a\delta_{jk}+\sum_i\nu_{ji}\nu_{ki}\C_{in}^\a.
+\EN
+Further one has
+\EQ
+\frac{\p\Psi_{jM}^{(k+1)}}{\p\ln C_{kn}^\a}\eq \frac{\p\ln C_{jM}^{(k+1)}}{\p C_{kn}^\a}+ \sum_i\nu_{ji} \frac{\p\C_{iM}^{(k+1)}}{\p\ln C_{kn}^\a},
+\EN
+with
+\BA
+\frac{\p\C_{iM}^{(k+1)}}{\p\ln C_{kn}^{b}}&\eq\C_{iM}^{(k+1)}\sum_j\nu_{ji}\frac{\p C_{jM}^{(k+1)}}{\p\ln C_{kn}^\a},\\
+&\eq\C_{iM}^{(k+1)}\sum_j\nu_{ji} C_{jM}^{(k+1)} \sum_l b_{jln}\left(C_{jn}^\a\delta_{jk}+\sum_i\nu_{ji}\nu_{ki}\C_{in}^\a\right).
+\EA
+
+For the backward solve
+\EQ
+\d\ln C_{jM}\eq z_{jM}\eq a_{jn}+\sum_lb_{jln}\Psi_{ln}^\a,
+\EN
+\EQ
+\d\ln C_{jn} \eq z_{jn}-\sum_lU_{jln}\d\ln C_{l,n+1}, \ (n=M-1, \, \ldots, \, 1).
+\EN
+
+\subsubsection{Case III: $\d x_j = \d\Psi_j$}
+
+For the case $\d x_j = \d\Psi_j$
+\EQ
+\Psi_{jM}^{(k+1)}\eq \Psi_{jM}^{(k)} + a_{jn} + \sum_l b_{jln} \Psi_{ln}^\a.
+\EN
+The derivative is given by
+\EQ
+\frac{\p\Psi_{jM}^{(k+1)}}{\p C_k^\a}\eq \sum_l b_{jln} \frac{\p\Psi_{ln}^\a}{\p C_k^\a}.
+\EN
+
+\section*{Appendix: Block Tridiagonal System of Equations}
+\addcontentsline{toc}{section}{Appendix: Block Tridiagonal System of Equations}
+
+\renewcommand{\theequation}{A.\arabic{equation}}
 \setcounter{equation}{0}
+
+For an effective one-dimensional, multicomponent system the finite volume discretized equations have the form of a block-tridiagonal system of equations. The residual function has the form
+\EQ
+R_{jn}\eq\varphi\frac{\Psi_{jn}^{t+\Delta t}-\Psi_{jn}^t}{\Delta t}V_n + \Omega_{jn}^+ A_n^+ - \Omega_{jn}^- A_n^- + V_n\sum_s\nu_{js}I_{sn},
+\EN
+\begin{subequations}\label{resj}
+\BA
+\Omega_{jn}^+ &\eq -\varphi D \frac{\Psi_{j,n+1}-\Psi_{jn}}{d_{n+1}+d_n} + q \Psi_{jn},\\
+\Omega_{jn}^- &\eq -\varphi D \frac{\Psi_{jn}-\Psi_{j,n-1}}{d_{n}+d_{n-1}} + q \Psi_{jn-1}.
+\EA
+\end{subequations}
+The area $A_n^\pm$ and volume $V_n$ determines the geometry of the system. 
+
+These equations are solved using a Newton-Raphson in which the nonlinear equations are solved in a linearized form given by
+\EQ
+\bJ \d\bx \eq -\bR,
+\EN
+where
+the Jacobian written in matrix form is given by
+\EQ
+\bJ_{nn'} \eq \frac{\p \bR_n}{\p \ln\bC_{n'}} \eq \bbeta_n \delta_{n-1,n'} + \balpha_n\delta_{nn'} + \bgamma_n\delta_{n+1,n'},
+\EN
+with coefficients $\balpha_n$, $\bbeta_n$, and $\bgamma_n$ defined by
+\begin{subequations}
+\BA
+(\bbeta_n)_{jl}^{} &\eq \left(-\frac{\varphi D}{d_{n}+d_{n-1}} - q\right)A_n^- \frac{\p\Psi_{j,n-1}}{\p \ln C_{l,n-1}},\\
+(\balpha_n)_{jl}^{} &\eq \left[\frac{\varphi V_n}{\Delta t} + \varphi D \left(\frac{A_n^+}{d_{n+1}+d_{n}}+\frac{A_n^-}{d_{n}+d_{n-1}}\right) + q A_n^+\right] \frac{\p\Psi_{jn}}{\p \ln C_{ln}} \nonumber\\
+& \qquad+V_n\sum_s\nu_{js}\frac{\p I_{sn}}{\p \ln C_{ln}},\\
+(\bgamma_n)_{jl}^{} &\eq \left(-\frac{\varphi D}{d_{n+1}+d_{n}}\right)A_n^+ \frac{\p\Psi_{j,n+1}}{\p \ln C_{l,n+1}}.
+\EA
+\end{subequations}
+The derivatives $\p\Psi_{jn}/\p \ln C_{ln}$ and $\p I_{sn}/\p \ln C_{ln}$ can be easily computed analytically according to the expressions (assuming constant activity coefficients $\gamma_j$)
+\BA
+\frac{\p\Psi_{jn}}{\p \ln C_{ln}} &\eq \delta_{jl} C_{jn} + \sum_i \nu_{ji}\nu_{li}\C_{in},\\
+\frac{\p I_{sn}}{\p \ln C_{ln}} &\eq \nu_{ls} k_{sn} a_s K_{sn} Q_{sn}.
+\EA
+
+The Newton-Raphson equations form a block tridiagonal system of equations of the form
+\begin{subequations}
+\BA
+\balpha_1 \d \bx_1 + \bgamma_1 \d \bx_2 &\eq \br_1,\\
+\bbeta_2 \d \bx_1 + \balpha_2 \d \bx_2 + \bgamma_2 \d \bx_3 &\eq \br_2,\\
+\cdots\nonumber\\
+\bbeta_n \d \bx_{n-1} + \balpha_n \d \bx_n + \bgamma_n \d \bx_{n+1} &\eq \br_n,\\
+%\beta_{n-1} C_{n-2} + \alpha_{n-1} C_{n-1} + \gamma_{n-1} C_{n} &\eq r_{n-1}\\
+\cdots\nonumber\\
+\bbeta_{M-1} \d \bx_{M-2} + \balpha_{M-1} \d \bx_{M-1} + \bgamma_{M-1} \d \bx_M &\eq \br_{M-1},\\
+\bbeta_M \d \bx_{M-1} + \balpha_M \d \bx_M &\eq \br_M,
+\EA
+\end{subequations}
+with 
+\EQ
+\br_n\eq -\bR_n.
+\EN
+To solve these equations, first an $LU$ decomposition is carried out such that
+\EQ
+\bL\bU\eq \bJ,
+\EN
+where $\bJ$ denotes the original matrix
+\EQ
+\bJ\eq\left[
+\begin{array}{ccccc}
+\balpha_1 & \bgamma_1\\
+\bbeta_2 & \balpha_2 & \bgamma_2\\
+&&\ldots\\
+& & & \bbeta_M & \balpha_M
+\end{array}
+\right].
+\EN
+The matrices $\bL$ and $\bU$ have the form
+\EQ
+\bL \eq \left[
+\begin{array}{ccccc}
+\bD_1\\
+\bbeta_2 & \bD_2\\
+&&\ldots\\
+& & & \bbeta_M & \bD_M
+\end{array}
+\right],
+\EN
+and
+\EQ
+\bU \eq \left[
+\begin{array}{ccccc}
+\bI & \bU_1\\
+ & \bI & \bU_2\\
+&&&\ldots\\
+& & & & \bI
+\end{array}
+\right].
+\EN
+In matrix form the $LU$ decomposition reads
+\EQ
+\left[
+\begin{array}{ccccc}
+\bD_1\\
+\bbeta_2 & \bD_2\\
+&&\ldots\\
+& & & \bbeta_M & \bD_M
+\end{array}
+\right]
+\left[
+\begin{array}{ccccc}
+\bI & \bU_1\\
+ & \bI & \bU_2\\
+&&&\ldots\\
+& & & & \bI
+\end{array}
+\right] \eq
+\left[
+\begin{array}{ccccc}
+\balpha_1 & \bgamma_1\\
+\bbeta_2 & \balpha_2 & \bgamma_2\\
+&&\ldots\\
+& & & \bbeta_M & \balpha_M
+\end{array}
+\right].
+\EN
+By comparing both sides of this equation, the block matrices $\bD_n$ and $\bU_n$ are obtained recursively from the relations
+\BA
+\bD_1 &\eq \balpha_1, \qquad \qquad \quad \ \ \ \bU_1 \eq \bD_1^{-1} \bgamma_1,\\
+\bD_{n} &\eq \balpha_n - \bbeta_n \bU_{n-1}, \ \ \ \bU_n \eq \bD_n^{-1} \bgamma_n, \ \ \ \ \ \ (n \eq 2,\,\ldots,\,M).
+\EA
+
+Following the $LU$ decomposition, the solution to the block tridiagonal system of equations
+\EQ
+\bL\bU\d\bx\eq\br,
+\EN
+is obtained from solving the successive equations
+\begin{subequations}
+\BA
+\bL\bz&\eq\br,\\
+\bU\d\bx&\eq\bz.\label{zn}
+\EA
+\end{subequations}
+First the solution for $\bz_n$ is obtained recursively through the forward sweep
+\begin{subequations}
+\BA
+\bD_1\bz_1 & \eq\br_1,\\
+\bD_n\bz_n & \eq\br_n-\bbeta_n\bz_{n-1}, \ \ \ \ (n=2,\,\ldots,\,M).
+\EA
+\end{subequations}
+This is followed by a backward sweep to obtain the solution for $\d\bx_n$
+\begin{subequations}
+\BA
+\d\bx_M&\eq\bz_M,\\
+\d\bx_{n}&\eq\bz_{n}-\bU_{n}\d\bx_{n+1}, \ \ \ \ (n=M-1,\,\ldots,\,1).
+\EA
+\end{subequations}
+To carry out the backward sweep, the quantity $\bz_M$ must be determined first
+by solving the primary continuum equations.
+
+\renewcommand{\theequation}{\arabic{section}.\arabic{equation}}
+\setcounter{equation}{0}
+
+\section{Electrical Conductivity}
 
 \section{Hydration-Dehydration Reactions}
 
