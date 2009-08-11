@@ -101,7 +101,7 @@
 
 \newcommand{\bA}{\boldsymbol{A}}
 \newcommand{\bB}{\boldsymbol{B}}
-\newcommand{\bb}{\boldsymbol{\beta}}
+\newcommand{\bb}{\boldsymbol{b}}
 \newcommand{\bC}{\boldsymbol{C}}
 \newcommand{\bc}{\boldsymbol{c}}
 \newcommand{\bcolon}{\boldsymbol{:}}
@@ -466,7 +466,7 @@ for secondary species. Noting that the rates $I_i$ for local equilibrium reactio
 \EN
 where the total concentration $\Psi_j$ is defined by
 \begin{subequations}
-\BA
+\BA\label{psi}
 \Psi_j &\eq C_j + \sum_i\nu_{ji}C_i,\\
 &\eq\rho_w\big(m_j+\sum_i\nu_{ji}m_i\big),
 \EA
@@ -2238,7 +2238,7 @@ The total concentration $\Psi_j^{\a,\,\b}$ is given by Eqn.\eqref{psi} for the p
 with tortuosity $\tau_{\a,\b}$, diffusivity $D$, and Darcy flow rate $\bq_{\a,\b}$. For simplicity dispersion is not included, but in general would be necessary. 
 %Note that Eqn.\eqref{bulk} is referenced to the bulk volume, including both primary continuum and sub-grid domains, whereas Eqn.\eqref{matrix} is referenced to the sub-grid domain volume, whence the factor $\epsilon_\a$ appears only in Eqn.\eqref{bulk}.
 
-The boundary condition at the primary continuum-matrix fluid interface is given by
+The boundary condition at the primary continuum--$\b$-secondary continua fluid interface is given by
 \EQ
 C_j^\b(r=r_\b,\, t; \br) \eq C_j^\a(\br,\,t),
 \EN
@@ -2255,11 +2255,11 @@ For further discussion of numerical techniques for efficiently solving the multi
 
 The primary and sub-grid continua are coupled through a source/sink term appearing in the primary continuum fluid transport equation given by Eqn.~\eqref{primary}. In finite difference form the coupling term can be written as
 \EQ
-\Omega_{jn}^{\a\b} \eq -\varphi_\b D_\b \left.\frac{\p\Psi_j^\b}{\p y}\right|_{y=0} \eq -\varphi_\b D_\b \left(\frac{\Psi_j^\a-\Psi_j^\b}{d_{\a\b}}\right),
+\Omega_{jn}^{\a\b} \eq -\varphi_\b D_\b \left.\frac{\p\Psi_j^\b}{\p y}\right|_{y=l_\b}\!\!\!\!\!\!\!\! \eq -\varphi_\b D_\b \left(\frac{\Psi_{jm}^\a-\Psi_{jM}^\b}{d_{\a\b}}\right),
 \EN
 where $d_{\a\b}$ represents the distance from the primary-subgrid continuum interface to the neighboring matrix node. Thus the coupling term can be rewritten in discretized form as
 \EQ
-\sum_\b a_{\a\b} \Omega_j^{\a\b} \eq \sum_\b \Gamma_{\a\b} \big(\Psi_j^\a-\Psi_j^\b\big),
+\sum_\b a_{\a\b} \Omega_j^{\a\b} \eq \sum_\b \Gamma_{\a\b} \big(\Psi_{jm}^\a-\Psi_{jM}^\b\big),
 \EN
 where
 \EQ
@@ -2283,27 +2283,28 @@ F_j^{\b 0} \eq -A_{\b \b} \varphi_\b D_\b \bigg(\frac{C_j^\b-C_j^\a}{d_\b}\bigg)
 \end{comment}
 
 The sub-grid model involves solving a block-tridiagonal system of nonlinear algebraic equations for each primary continuum node $n$.
-The residual function for the subgrid domain for the $M$th node neighboring the interface to the primary continuum fluid has the form (see Appendix)
+The residual function for the subgrid domain for the $M$th node neighboring the interface to the primary continuum fluid at the $m$th node has the form (see Appendix)
 \begin{subequations}
 \BA
-\bR_{nM}^{\b}&\eq\frac{\varphi V_M}{\Delta t}\big(\bPsi_M^{\b,t+\Delta t}-\bPsi_M^{\b t}\big)+\bOmega_M^{\b +} A_M^+ - \bOmega_M^{\b -} A_M^- + V_M \sum_s\bnu_{s}^{} I_{sM}^\b,\\
-&\eq\widetilde\bR_{nM}^{\b}-\frac{\varphi DA_M^+}{d_M}\bPsi_n^\a,
+\bR_{mM}^{\b}&\eq\frac{\varphi V_M}{\Delta t}\big(\bPsi_M^{\b,t+\Delta t}-\bPsi_M^{\b t}\big)+\bOmega_M^{\b +} A_M^+ - \bOmega_M^{\b -} A_M^- + V_M \sum_s\bnu_{s}^{} I_{sM}^\b,\\
+&\eq\widetilde\bR_{mM}^{\b}-\frac{\varphi DA_M^+}{d_M}\bPsi_m^\a,
 \EA
 \end{subequations}
-where $\widetilde\bR_{nM}^{\b}$ denotes the contribution to the residual function which does not contain the boundary concentration equal to the primary continuum concentration $\bPsi_n^\a$ at the $n$th node. 
+where $\widetilde\bR_{mM}^{\b}$ denotes the contribution to the residual function which does not contain the boundary concentration equal to the primary continuum concentration $\bPsi_m^\a$ at the $n$th node and $d_M\!=\!d_{\a\b}$. These equations form a tri-diagonal system of nonlinear equations which can be solved using the techniques outlined in the Appendix to this section.
 
 The quantity $\bz_M$ defined in the Appendix in Eqn.~\eqref{zn} then becomes
 \begin{subequations}
 \BA
-\bz_M&\eq -\bD_M^{-1}\big(\widetilde\bR_M + \bbeta_M\bz_{M-1}\big) + \frac{\varphi D A_M^+}{d_M} \bD_M^{-1}\bPsi_n^\a,\\
-&\eq \ba_n+\bb_n\bPsi_n^\a,
+\bz_M &\eq \bD_M^{-1}\big(-\bR_M - \bbeta_M\bz_{M-1}\big),\\
+&\eq -\bD_M^{-1}\big(\widetilde\bR_M + \bbeta_M\bz_{M-1}\big) + \frac{\varphi D A_M^+}{d_M} \bD_M^{-1}\bPsi_m^\a,\\
+&\eq \ba_m + \bb_m\bPsi_m^\a,
 \EA
 \end{subequations}
-with known quantities $\ba_n$ and $\bb_n$ defined as
+with known quantities $\ba_m$ and $\bb_m$ defined as
 \begin{subequations}
 \BA
-\ba_n&\eq -\bD_M^{-1}\big(\widetilde\bR_M + \bbeta_M\bz_{M-1}\big),\\
-\bb_n&\eq -\frac{\varphi DA_M^+}{d_M}\bD_M^{-1}.
+\ba_m&\eq -\bD_M^{-1}\big(\widetilde\bR_M + \bbeta_M\bz_{M-1}\big),\\
+\bb_m&\eq -\frac{\varphi DA_M^+}{d_M}\bD_M^{-1}.
 \EA
 \end{subequations}
 
@@ -2382,17 +2383,42 @@ The derivative is given by
 \renewcommand{\theequation}{A.\arabic{equation}}
 \setcounter{equation}{0}
 
-For an effective one-dimensional, multicomponent system the finite volume discretized equations have the form of a block-tridiagonal system of equations. The residual function has the form
+For an effective one-dimensional, multicomponent system the finite volume discretized equations have the form of a block-tridiagonal system of equations. The computational domain is divided into $M$ grid cells of varying size which depend on the geometry of the system, i.e. spheres, rods, etc. The node in contact with the primary continuum is labeled $M$, and the node at the opposite end is labeled 1 as illustrated in Figure~\ref{fnodestruct}.
+
+\begin{figure}[h]\centering
+%\fbox{
+%\shadowbox{
+\EQ
+\bf \qquad 
+\bigg|\quad\mathop{\bullet}_{\displaystyle 1\b}\quad\bigg| \qquad \cdots \qquad 
+\bigg|\quad\mathop{\bullet}_{\displaystyle n\b}\quad\bigg| \qquad \cdots \qquad 
+\bigg|\quad\mathop{\bullet}_{\displaystyle M\b}\quad
+\bigg|\quad\mathop{\bullet}_{\displaystyle m\a}\quad\bigg|\nonumber
+\EN
+%}
+\caption{Node configuration for primary ($\a$) and secondary ($\b$) continua.}\label{fnodestruct}
+\end{figure}
+
+The residual function can be written in the form (superscript $\b$ is omitted for brevity)
 \EQ
 R_{jn}\eq\varphi\frac{\Psi_{jn}^{t+\Delta t}-\Psi_{jn}^t}{\Delta t}V_n + \Omega_{jn}^+ A_n^+ - \Omega_{jn}^- A_n^- + V_n\sum_s\nu_{js}I_{sn},
 \EN
+for $n=1,\, \ldots,\, M$, with fluxes $\Omega_{jn}^\pm$ defined as
 \begin{subequations}\label{resj}
 \BA
 \Omega_{jn}^+ &\eq -\varphi D \frac{\Psi_{j,n+1}-\Psi_{jn}}{d_{n+1}+d_n} + q \Psi_{jn},\\
 \Omega_{jn}^- &\eq -\varphi D \frac{\Psi_{jn}-\Psi_{j,n-1}}{d_{n}+d_{n-1}} + q \Psi_{jn-1}.
 \EA
 \end{subequations}
-The area $A_n^\pm$ and volume $V_n$ determines the geometry of the system. 
+The area $A_n^\pm$ and volume $V_n$ determine the geometry of the system. Note that $A_n^+ \!=\! A_{n+1}^-$. The boundary conditions imposed on the system are zero flux at the left boundary
+\EQ
+\Omega_{j1}^{\b,-} \eq 0,
+\EN
+and a Dirichlet condition on the right boundary in contact with the $m$th primary continuum node giving
+\EQ
+\Omega_{jM}^{\b,+} \eq -\varphi_\b D_\b \frac{\Psi_{jm}^\a - \Psi_{jM}^\b}{d_M},
+\EN
+where $d_M$ denotes the distance between the boundary and the cell center.
 
 These equations are solved using a Newton-Raphson in which the nonlinear equations are solved in a linearized form given by
 \EQ
