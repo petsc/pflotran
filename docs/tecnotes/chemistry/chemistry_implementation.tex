@@ -2265,6 +2265,7 @@ where
 \EQ
 \Gamma_{\a\b}\eq\frac{a_{\a \b}\varphi_\b D_\b}{d_{\a\b}}.
 \EN
+In order to decouple the primary and secondary continua it is necessary to express $\Psi_{jM}^\b$ in terms of the primary species concentrations.
 
 \begin{comment}
 \subsection{Mass Conservation}
@@ -2282,7 +2283,7 @@ F_j^{\b 0} \eq -A_{\b \b} \varphi_\b D_\b \bigg(\frac{C_j^\b-C_j^\a}{d_\b}\bigg)
 \EN
 \end{comment}
 
-The sub-grid model involves solving a block-tridiagonal system of nonlinear algebraic equations for each primary continuum node $n$.
+The sub-grid model involves solving a block-tridiagonal system of nonlinear algebraic equations for each primary continuum node $m$.
 The residual function for the subgrid domain for the $M$th node neighboring the interface to the primary continuum fluid at the $m$th node has the form (see Appendix)
 \begin{subequations}
 \BA
@@ -2290,9 +2291,13 @@ The residual function for the subgrid domain for the $M$th node neighboring the 
 &\eq\widetilde\bR_{mM}^{\b}-\frac{\varphi DA_M^+}{d_M}\bPsi_m^\a,
 \EA
 \end{subequations}
-where $\widetilde\bR_{mM}^{\b}$ denotes the contribution to the residual function which does not contain the boundary concentration equal to the primary continuum concentration $\bPsi_m^\a$ at the $n$th node and $d_M\!=\!d_{\a\b}$. These equations form a tri-diagonal system of nonlinear equations which can be solved using the techniques outlined in the Appendix to this section.
+where $\widetilde\bR_{mM}^{\b}$ denotes the contribution to the residual function which does not contain the boundary concentration $\bPsi_m^\a$, and $d_M\!=\!d_{\a\b}$. These equations form a tri-diagonal system of nonlinear equations which can be solved using the techniques outlined in the Appendix to this section.
 
-The quantity $\bz_M$ defined in the Appendix in Eqn.~\eqref{zn} then becomes
+After carrying out the forward sweep described in the Appendix, the primary species transport equations are solved next. To do this requires expressing $\Psi_{jM}^\b$ in terms of the primary species concentrations, which requires expressing the individual concentrations $C_{jM}^\b$ as functions of the total primary species concentrations. As demonstrated in the Appendix
+\EQ
+\d x_{jM}^\b \eq z_{jM}.
+\EN
+The quantity $\bz_M$ defined in the Appendix in Eqn.~\eqref{zn} is a function of the total primary species concentrations according to the relations
 \begin{subequations}
 \BA
 \bz_M &\eq \bD_M^{-1}\big(-\bR_M - \bbeta_M\bz_{M-1}\big),\\
@@ -2300,81 +2305,80 @@ The quantity $\bz_M$ defined in the Appendix in Eqn.~\eqref{zn} then becomes
 &\eq \ba_m + \bb_m\bPsi_m^\a,
 \EA
 \end{subequations}
-with known quantities $\ba_m$ and $\bb_m$ defined as
+with known quantities $\ba_m$ and $\bb_m$ determined through the forward sweep of the tri-diagonal equations, and defined as
 \begin{subequations}
 \BA
-\ba_m&\eq -\bD_M^{-1}\big(\widetilde\bR_M + \bbeta_M\bz_{M-1}\big),\\
-\bb_m&\eq -\frac{\varphi DA_M^+}{d_M}\bD_M^{-1}.
+\ba_m &\eq -\bD_M^{-1}\big(\widetilde\bR_M + \bbeta_M\bz_{M-1}\big),\\
+\bb_m &\eq -\frac{\varphi DA_M^+}{d_M}\bD_M^{-1}.
 \EA
 \end{subequations}
+The three possible choices for $\d\bx$ are considered in turn.
 
-The three possible cases for the choice of $\d\bx$ are considered in turn.
-
-\subsubsection{Case I: $\d x_j = \d C_j$}
+\subsubsection{Case I: linear $\d x_j = \d C_j$}
 
 For the situation where $\d x_j \!=\! \d C_j$, $C_{jM}^{(k+1)}$ is found from the relation
 \EQ
-C_{jM}^{(k+1)}\eq C_{jM}^{(k)} + a_{jn} + \sum_l b_{jln} \Psi_{ln}^\a.
+C_{jM}^{(k+1)}\eq C_{jM}^{(k)} + a_{jm} + \sum_l b_{jlm}^{} \Psi_{lm}^\a.
 \EN
 The residual function and Jacobian for the primary continuum involves the total concentration
 \EQ
-\Psi_{jM}^{(k+1)}\eq C_{jM}^{(k+1)}(\Psi_{jn}^\a) + \sum_i\nu_{ji} \C_{iM} [C_{jM}^{(k+1)}(\Psi_{jn}^\a)],
+\Psi_{jM}^{(k+1)}\eq C_{jM}^{(k+1)}(\Psi_{jm}^\a) + \sum_i\nu_{ji} \C_{iM} [C_{jM}^{(k+1)}(\Psi_{jm}^\a)],
 \EN
 with derivative
 \EQ
-\frac{\p\Psi_{jM}^{(k+1)}}{\p C_{kn}^\a}\eq \frac{\p C_{jM}^{(k+1)}}{\p C_{kn}^\a}+ \sum_i\nu_{ji} \frac{\p\C_{iM}^{(k+1)}}{\p C_{kn}^{b}}.
+\frac{\p\Psi_{jM}^{(k+1)}}{\p C_{km}^\a}\eq \frac{\p C_{jM}^{(k+1)}}{\p C_{km}^\a}+ \sum_i\nu_{ji} \frac{\p\C_{iM}^{(k+1)}}{\p C_{km}^{\a}}.
 \EN
 
-\subsubsection{Case II: $\d x_j = \d{\rm ln} C_j$}
+\subsubsection{Case II: logarithmic $\d x_j = \d{\rm ln} C_j$}
 
 For the case $\d x_j = \d\ln C_j$, the matrix concentration at the interface is related to the primary continuum total concentration by the expression
 \EQ
-\ln C_{jM}^{(k+1)}\eq\ln C_{jM}^{(k)} + a_{jn} + \sum_l b_{jln} \Psi_{ln}^\a,
+\ln C_{jM}^{(k+1)}\eq\ln C_{jM}^{(k)} + a_{jm} + \sum_l b_{jlm}^{} \Psi_{lm}^\a,
 \EN
 or alternatively
 \EQ
-C_{jM}^{(k+1)}\eq C_{jM}^{(k)} \e^{a_{jn} + \sum_l b_{jln} \Psi_{ln}^\a}.
+C_{jM}^{(k+1)}\eq C_{jM}^{(k)} \e^{a_{jm} + \sum_l b_{jlm}^{} \Psi_{lm}^\a}.
 \EN
 The total matrix concentration can now be written as a function of the total bulk fluid concentration as
 \EQ
-\Psi_{jM}^{(k+1)}\eq C_{jM}^{(k+1)}(\Psi_{jn}^\a) + \sum_i\nu_{ji} \C_{iM} \big[C_{jM}^{(k+1)}(\Psi_{jn}^\a)\big].
+\Psi_{jM}^{(k+1)}\eq C_{jM}^{(k+1)}(\Psi_{jm}^\a) + \sum_i\nu_{ji} \C_{iM} \big[C_{jM}^{(k+1)}(\Psi_{jm}^\a)\big].
 \EN
 To obtain the Jacobian it is necessary to compute the derivatives of this relation with respect to the bulk fluid primary species concentrations. It follows that
 \BA
-\frac{\p C_{jM}^{(k+1)}}{\p\ln C_{kn}^\a}&\eq C_{jM}^{(k+1)} \sum_l b_{jln}\frac{\p\Psi_{jn}^\a}{\p\ln C_{kn}^\a},\\
-&\eq C_{jM}^{(k+1)} \sum_l b_{jln}\left(C_{jn}^\a\delta_{jk}+\sum_i\nu_{ji}\nu_{ki}\C_{in}^\a\right),
+\frac{\p C_{jM}^{(k+1)}}{\p\ln C_{km}^\a}&\eq C_{jM}^{(k+1)} \sum_l b_{jlm}^{} \frac{\p\Psi_{jm}^\a}{\p\ln C_{km}^\a},\\
+&\eq C_{jM}^{(k+1)} \sum_l b_{jln}^{} \left(C_{jm}^\a\delta_{jk}+\sum_i\nu_{ji}\nu_{ki}\C_{im}^\a\right),
 \EA
 making use of the relation
 \EQ
-\frac{\p\Psi_{jn}^\a}{\p\ln C_{kn}^\a}\eq C_{jn}^\a\delta_{jk}+\sum_i\nu_{ji}\nu_{ki}\C_{in}^\a.
+\frac{\p\Psi_{jm}^\a}{\p\ln C_{km}^\a}\eq C_{jm}^\a\delta_{jk}+\sum_i\nu_{ji}\nu_{ki}\C_{im}^\a.
 \EN
 Further one has
 \EQ
-\frac{\p\Psi_{jM}^{(k+1)}}{\p\ln C_{kn}^\a}\eq \frac{\p\ln C_{jM}^{(k+1)}}{\p C_{kn}^\a}+ \sum_i\nu_{ji} \frac{\p\C_{iM}^{(k+1)}}{\p\ln C_{kn}^\a},
+\frac{\p\Psi_{jM}^{(k+1)}}{\p\ln C_{km}^\a}\eq \frac{\p\ln C_{jM}^{(k+1)}}{\p C_{km}^\a}+ \sum_i\nu_{ji} \frac{\p\C_{iM}^{(k+1)}}{\p\ln C_{km}^\a},
 \EN
 with
 \BA
-\frac{\p\C_{iM}^{(k+1)}}{\p\ln C_{kn}^{b}}&\eq\C_{iM}^{(k+1)}\sum_j\nu_{ji}\frac{\p C_{jM}^{(k+1)}}{\p\ln C_{kn}^\a},\\
-&\eq\C_{iM}^{(k+1)}\sum_j\nu_{ji} C_{jM}^{(k+1)} \sum_l b_{jln}\left(C_{jn}^\a\delta_{jk}+\sum_i\nu_{ji}\nu_{ki}\C_{in}^\a\right).
+\frac{\p\C_{iM}^{(k+1)}}{\p\ln C_{km}^{b}}&\eq\C_{iM}^{(k+1)}\sum_j\nu_{ji}\frac{\p C_{jM}^{(k+1)}}{\p\ln C_{km}^\a},\\
+&\eq\C_{iM}^{(k+1)}\sum_j\nu_{ji} C_{jM}^{(k+1)} \sum_l b_{jlm}^{}\left(C_{jm}^\a\delta_{jk}+\sum_i\nu_{ji}\nu_{ki}\C_{im}^\a\right).
 \EA
 
 For the backward solve
 \EQ
-\d\ln C_{jM}\eq z_{jM}\eq a_{jn}+\sum_lb_{jln}\Psi_{ln}^\a,
+\d\ln C_{jM}\eq z_{jM}\eq a_{jm}+\sum_l b_{jlm}^{}\Psi_{lm}^\a,
 \EN
 \EQ
-\d\ln C_{jn} \eq z_{jn}-\sum_lU_{jln}\d\ln C_{l,n+1}, \ (n=M-1, \, \ldots, \, 1).
+\d\ln C_{jm} \eq z_{jm}-\sum_l U_{jln} \d\ln C_{l,m+1}, \ (m=M-1, \, \ldots, \, 1).
 \EN
 
-\subsubsection{Case III: $\d x_j = \d\Psi_j$}
+\subsubsection{Case III: total concentration $\d x_j = \d\Psi_j$}
 
 For the case $\d x_j = \d\Psi_j$
 \EQ
-\Psi_{jM}^{(k+1)}\eq \Psi_{jM}^{(k)} + a_{jn} + \sum_l b_{jln} \Psi_{ln}^\a.
+\Psi_{jM}^{(k+1)}\eq \Psi_{jM}^{(k)} + a_{jm} + \sum_l b_{jlm}^{} \Psi_{lm}^\a.
 \EN
 The derivative is given by
 \EQ
-\frac{\p\Psi_{jM}^{(k+1)}}{\p C_k^\a}\eq \sum_l b_{jln} \frac{\p\Psi_{ln}^\a}{\p C_k^\a}.
+\frac{\p\Psi_{jM}^{(k+1)}}{\p C_k^\a}\eq \sum_l b_{jlm}^{} \frac{\p\Psi_{lm}^\a}{\p C_k^\a}.
 \EN
 
 \section*{Appendix: Block Tridiagonal System of Equations}
@@ -2390,10 +2394,10 @@ For an effective one-dimensional, multicomponent system the finite volume discre
 %\shadowbox{
 \EQ
 \bf \qquad 
-\bigg|\quad\mathop{\bullet}_{\displaystyle 1\b}\quad\bigg| \qquad \cdots \qquad 
-\bigg|\quad\mathop{\bullet}_{\displaystyle n\b}\quad\bigg| \qquad \cdots \qquad 
-\bigg|\quad\mathop{\bullet}_{\displaystyle M\b}\quad
-\bigg|\quad\mathop{\bullet}_{\displaystyle m\a}\quad\bigg|\nonumber
+\bigg|\quad\mathop{\bullet}_{\ \ \ \, \displaystyle 1 \ \b}\quad\bigg| \qquad \cdots \qquad 
+\bigg|\quad\mathop{\bullet}_{\ \ \ \, \displaystyle n \ \b}\quad\bigg| \qquad \cdots \qquad 
+\bigg|\quad\mathop{\bullet}_{\ \ \ \, \displaystyle M \ \b}\quad
+\bigg|\quad\mathop{\bullet}_{\ \ \ \, \displaystyle m \ \a}\quad\bigg|\nonumber
 \EN
 %}
 \caption{Node configuration for primary ($\a$) and secondary ($\b$) continua.}\label{fnodestruct}
