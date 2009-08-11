@@ -133,9 +133,14 @@
       call InitReadInputFilenames(option,filenames)
       call SimulationCreateProcessorGroups(option,size(filenames))
       option%input_filename = filenames(option%mygroup_id)
-      do i=len_trim(option%input_filename),1,-1
-        if (option%input_filename(i:i) == '.') exit
-      enddo
+      i = index(option%input_filename,'.',PETSC_TRUE)
+      if (i > 1) then
+        i = i-1
+      else
+        ! for some reason len_trim doesn't work on MS Visual Studio in 
+        ! this location
+        i = len(trim(option%input_filename)) 
+      endif
       option%global_prefix = option%input_filename(1:i)
       write(string,*) option%mygroup_id
       option%group_prefix = 'G' // trim(adjustl(string))

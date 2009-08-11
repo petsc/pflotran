@@ -706,7 +706,13 @@ subroutine InitReadInputFilenames(option,filenames)
 
   string = "FILENAMES"
   call InputFindStringInFile(input,option,string) 
-  
+
+  if (InputError(input)) then
+    ! if the FILENAMES card is not included, we will assume that only
+    ! filenames exist in the file.
+    rewind(input%fid)
+  endif
+    
   filename_count = 0     
   do
     call InputReadFlotranString(input,option)
