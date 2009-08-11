@@ -52,9 +52,11 @@
 
   PetscTruth :: truth
   PetscTruth :: option_found  
-  PetscInt :: test_int
+  PetscTruth :: single_inputfile
+  PetscInt :: i
   PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH), pointer :: filenames(:)
   type(stochastic_type), pointer :: stochastic
   type(simulation_type), pointer :: simulation
   type(realization_type), pointer :: realization
@@ -63,6 +65,7 @@
   nullify(stochastic)
   option => OptionCreate()
   option%fid_out = IUNIT2
+  single_inputfile = PETSC_TRUE
 
   call MPI_Init(ierr)
   option%global_comm = MPI_COMM_WORLD
@@ -106,9 +109,14 @@
   call InputGetCommandLineTruth(string,truth,option_found,option)
   if (option_found) option%verbosity = 1
 
+  string = '-multisimulation'
+  call InputGetCommandLineTruth(string,truth,option_found,option)
+  if (option_found) then
+    single_inputfile = PETSC_FALSE
+  endif
+
   string = '-stochastic'
   call InputGetCommandLineTruth(string,truth,option_found,option)
-  
   if (option_found) stochastic => StochasticCreate()
 
   call InitReadStochasticCardFromInput(stochastic,option)
@@ -118,8 +126,20 @@
     call StochasticRun(stochastic,option)
   else
 
-    PETSC_COMM_WORLD = MPI_COMM_WORLD
-    call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
+    if (single_inputfile) then
+      PETSC_COMM_WORLD = MPI_COMM_WORLD
+      call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
+    else
+      call InitReadInputFilenames(option,filenames)
+      call SimulationCreateProcessorGroups(option,size(filenames))
+      option%input_filename = filenames(option%mygroup_id)
+      do i=len_trim(option%input_filename),1,-1
+        if (option%input_filename(i:i) == '.') exit
+      enddo
+      option%global_prefix = option%input_filename(1:i)
+      write(string,*) option%mygroup_id
+      option%group_prefix = 'G' // trim(adjustl(string))
+    endif
  
     if (option%verbosity > 0) then 
       call PetscLogBegin(ierr)

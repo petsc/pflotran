@@ -22,6 +22,7 @@ contains
 ! ************************************************************************** !
 subroutine StochasticInit(stochastic,option)
 
+  use Simulation_module
   use Option_module
   use Input_module
   
@@ -30,12 +31,9 @@ subroutine StochasticInit(stochastic,option)
   type(stochastic_type) :: stochastic
   type(option_type) :: option
 
-  PetscMPIInt :: mycolor, mykey
-
   PetscInt :: i
+  PetscInt :: offset, delta, remainder
   PetscInt :: igroup, irealization
-  PetscInt :: num_groups
-  PetscInt :: local_commsize, offset, delta, remainder
 
   PetscInt :: realization_id
   character(len=MAXSTRINGLENGTH) :: string
@@ -76,6 +74,10 @@ subroutine StochasticInit(stochastic,option)
   endif
 #endif
   
+  call SimulationCreateProcessorGroups(option,stochastic%num_groups)
+  
+#if 0
+! this section is now located in SimulationCreateProcessorGroups()
   local_commsize = option%global_commsize / stochastic%num_groups
   remainder = option%global_commsize - stochastic%num_groups * local_commsize
   offset = 0
@@ -96,6 +98,7 @@ subroutine StochasticInit(stochastic,option)
   call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
   call MPI_Comm_rank(option%mycomm,option%myrank, ierr)
   call MPI_Comm_size(option%mycomm,option%mycommsize,ierr)
+#endif
 
   ! divvy up the realizations
   stochastic%num_local_realizations = stochastic%num_realizations / &

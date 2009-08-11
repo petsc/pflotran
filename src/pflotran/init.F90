@@ -13,7 +13,7 @@ module Init_module
 #include "finclude/petscsnes.h"
 #include "finclude/petscpc.h"
 
-  public :: Init, InitReadStochasticCardFromInput
+  public :: Init, InitReadStochasticCardFromInput, InitReadInputFilenames
 
 contains
 
@@ -681,6 +681,56 @@ subroutine InitReadStochasticCardFromInput(stochastic,option)
   call InputDestroy(input)
 
 end subroutine InitReadStochasticCardFromInput
+
+! ************************************************************************** !
+!
+! InitReadInputFilenames: Reads filenames for multi-simulation runs
+! author: Glenn Hammond
+! date: 08/11/09
+!
+! ************************************************************************** !
+subroutine InitReadInputFilenames(option,filenames)
+
+  use Option_module
+  use Input_module
+
+  type(option_type) :: option
+  character(len=MAXSTRINGLENGTH), pointer :: filenames(:)
+
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: filename
+  PetscInt :: filename_count
+  type(input_type), pointer :: input
+
+  input => InputCreate(IUNIT1,option%input_filename)
+
+  string = "FILENAMES"
+  call InputFindStringInFile(input,option,string) 
+  
+  filename_count = 0     
+  do
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
+    call InputReadWord(input,option,filename,PETSC_FALSE)
+    filename_count = filename_count + 1
+  enddo
+  
+  allocate(filenames(filename_count))
+  filenames = ''
+  rewind(input%fid) 
+
+  filename_count = 0     
+  do
+    call InputReadFlotranString(input,option)
+    if (InputError(input)) exit
+    call InputReadWord(input,option,filename,PETSC_FALSE)
+    filename_count = filename_count + 1
+    filenames(filename_count) = filename
+  enddo
+
+  call InputDestroy(input)
+
+end subroutine InitReadInputFilenames
 
 ! ************************************************************************** !
 !
