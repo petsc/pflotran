@@ -228,8 +228,9 @@ subroutine MaterialPropertyRead(material_property,input,option)
                                  'MATERIAL_PROPERTY,PERMEABILITY')   
 !            case('ISOTROPIC')
             case default
-              option%io_buffer = 'keyword not recognized in ' // &
-                                 'material_property,permeability'
+              option%io_buffer = 'Keyword (' // trim(word) // &
+                                 ') not recognized in MATERIAL_PROPERTY,' // &
+                                 'PERMEABILITY'
               call printErrMsg(option)
           end select
         enddo
@@ -260,8 +261,8 @@ subroutine MaterialPropertyRead(material_property,input,option)
                    'MATERIAL_PROPERTY,MINERAL_SURFACE_AREA_POWER')
         end select
       case default
-        option%io_buffer = 'Keyword: ' // trim(keyword) // &
-                           ' not recognized in material_property'    
+        option%io_buffer = 'Keyword (' // trim(keyword) // &
+                           ') not recognized in material_property'    
         call printErrMsg(option)
     end select 
   
