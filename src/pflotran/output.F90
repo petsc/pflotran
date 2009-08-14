@@ -450,6 +450,22 @@ subroutine OutputTecplotBlock(realization)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
     
+      ! liquid density
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE,IMS_MODE)
+          call OutputGetVarFromArray(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+    
+     ! gas density
+      select case(option%iflowmode)
+        case(MPH_MODE,IMS_MODE)
+          call OutputGetVarFromArray(realization,global_vec,GAS_DENSITY,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+    
       ! liquid energy
       select case(option%iflowmode)
         case(MPH_MODE,THC_MODE,IMS_MODE)
@@ -1331,6 +1347,22 @@ subroutine OutputTecplotPoint(realization)
         select case(option%iflowmode)
           case(MPH_MODE,IMS_MODE)
             value = RealizGetDatasetValueAtCell(realization,GAS_SATURATION, &
+                                                ZERO_INTEGER,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+        end select
+      
+        ! liquid density
+        select case(option%iflowmode)
+          case(MPH_MODE,THC_MODE,IMS_MODE)
+            value = RealizGetDatasetValueAtCell(realization,LIQUID_DENSITY, &
+                                                ZERO_INTEGER,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+        end select
+      
+       ! gas density
+        select case(option%iflowmode)
+          case(MPH_MODE,IMS_MODE)
+            value = RealizGetDatasetValueAtCell(realization,GAS_DENSITY, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
         end select
@@ -2803,6 +2835,20 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
         RealizGetDatasetValueAtCell(realization,GAS_SATURATION,ZERO_INTEGER,ghosted_id)
   end select
 
+  ! liquid density
+  select case(option%iflowmode)
+    case(MPH_MODE,THC_MODE,IMS_MODE)
+      write(fid,110,advance="no") &
+        RealizGetDatasetValueAtCell(realization,LIQUID_DENSITY,ZERO_INTEGER,ghosted_id)
+  end select
+
+  ! gas density
+  select case(option%iflowmode)
+    case(MPH_MODE,IMS_MODE)
+      write(fid,110,advance="no") &
+        RealizGetDatasetValueAtCell(realization,GAS_DENSITY,ZERO_INTEGER,ghosted_id)
+  end select
+
   ! liquid energy
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,IMS_MODE)
@@ -3076,6 +3122,28 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
       ! gas saturation
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,GAS_SATURATION,ZERO_INTEGER, &
+                                     region%coordinates(ONE_INTEGER)%x, &
+                                     region%coordinates(ONE_INTEGER)%y, &
+                                     region%coordinates(ONE_INTEGER)%z, &
+                                     count,ghosted_ids)
+  end select
+
+  ! liquid density
+  select case(option%iflowmode)
+    case(MPH_MODE,THC_MODE,IMS_MODE)
+      write(fid,110,advance="no") &
+        OutputGetVarFromArrayAtCoord(realization,LIQUID_DENSITY,ZERO_INTEGER, &
+                                     region%coordinates(ONE_INTEGER)%x, &
+                                     region%coordinates(ONE_INTEGER)%y, &
+                                     region%coordinates(ONE_INTEGER)%z, &
+                                     count,ghosted_ids)
+  end select
+
+  ! gas density
+  select case(option%iflowmode)
+    case(MPH_MODE,IMS_MODE)
+      write(fid,110,advance="no") &
+        OutputGetVarFromArrayAtCoord(realization,GAS_DENSITY,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
                                      region%coordinates(ONE_INTEGER)%y, &
                                      region%coordinates(ONE_INTEGER)%z, &
@@ -4772,6 +4840,38 @@ subroutine OutputHDF5(realization)
              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
              if(first) then
                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,GAS_SATURATION,ZERO_INTEGER)
+             endif
+             current_component=current_component+1
+          endif
+      end select
+      
+      ! liquid density
+      select case(option%iflowmode)
+        case (MPH_MODE,THC_MODE,IMS_MODE)
+          call OutputGetVarFromArray(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
+          if(.not.(option%use_samr)) then
+             string = "Liquid Density"
+             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+          else
+             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+             if(first) then
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,LIQUID_DENSITY,ZERO_INTEGER)
+             endif
+             current_component=current_component+1
+          endif
+      end select
+      
+      ! gas density
+      select case(option%iflowmode)
+        case (MPH_MODE,IMS_MODE)
+          call OutputGetVarFromArray(realization,global_vec,GAS_DENSITY,ZERO_INTEGER)
+          if(.not.(option%use_samr)) then
+             string = "Gas Density"
+             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+          else
+             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+             if(first) then
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,GAS_DENSITY,ZERO_INTEGER)
              endif
              current_component=current_component+1
           endif
@@ -6822,6 +6922,3 @@ subroutine ComputeFlowFluxVelocityStats(realization)
 end subroutine ComputeFlowFluxVelocityStats
 
 end module Output_module
-
-    
-       

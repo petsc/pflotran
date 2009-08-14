@@ -944,9 +944,9 @@ subroutine MphaseAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,
   if(option%ntrandof > 0)then 
     if (iireac>0) then
 !H2O
-      mol(1)= mol(1) - global_aux_var%reaction_rate(1) * option%flow_dt
+      mol(1)= mol(1) - global_aux_var%reaction_rate(1) * option%flow_dt * 1.d3
 !CO2     
-      mol(2)= mol(2) - global_aux_var%reaction_rate(2) * option%flow_dt
+      mol(2)= mol(2) - global_aux_var%reaction_rate(2) * option%flow_dt * 1.d3
     endif
   endif
   
@@ -3245,6 +3245,22 @@ function MphaseGetTecplotHeader(realization,icolumn)
     write(string2,'('',"'',i2,''-S(g)"'')') icolumn
   else
     write(string2,'('',"S(g)"'')')
+  endif
+  string = trim(string) // trim(string2)
+    
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-d(l)"'')') icolumn
+  else
+    write(string2,'('',"d(l)"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-d(g)"'')') icolumn
+  else
+    write(string2,'('',"d(g)"'')')
   endif
   string = trim(string) // trim(string2)
     
