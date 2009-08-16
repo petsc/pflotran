@@ -1304,7 +1304,8 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
         call PetscGetTime(log_start_time, ierr)
         call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_log_xx, ierr)
         call PetscGetTime(log_end_time, ierr)
-        stepper%cumulative_solver_time = stepper%cumulative_solver_time + (log_end_time - log_start_time)          
+        stepper%cumulative_solver_time = stepper%cumulative_solver_time + &
+          (log_end_time - log_start_time)          
           
         if (associated(realization%patch%grid%structured_grid) .and. &
             (.not.(realization%patch%grid%structured_grid%p_samr_patch.eq.0))) then
@@ -1331,7 +1332,8 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
         call PetscGetTime(log_start_time, ierr)
         call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_xx, ierr)
         call PetscGetTime(log_end_time, ierr)
-        stepper%cumulative_solver_time = stepper%cumulative_solver_time + (log_end_time - log_start_time)          
+        stepper%cumulative_solver_time = stepper%cumulative_solver_time + &
+          (log_end_time - log_start_time)          
       endif
 
   ! do we really need all this? - geh 
