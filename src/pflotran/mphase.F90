@@ -1109,6 +1109,9 @@ end subroutine MphaseSourceSink
 !
 ! ************************************************************************** ! 
 #if 0
+
+!computes diffusive flux as: (rho X)_(n+1) - (rho X)_n etc
+
 subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
@@ -1233,6 +1236,9 @@ end subroutine MphaseFlux
 
 ! older version
 #if 1
+
+!computes diffusive flux as: 0.5*(rho_(n+1)+rho_n) [(X)_(n+1) - (X)_n] etc
+
 subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
@@ -1267,67 +1273,68 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   
 ! Flow term
   do np = 1, option%nphase
-     if (aux_var_up%sat(np) > sir_up(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
-        upweight= dd_dn/(dd_up+dd_dn)
-        if (aux_var_up%sat(np) <eps) then 
-           upweight=0.d0
-        else if (aux_var_dn%sat(np) <eps) then 
-           upweight=1.d0
-        endif
-        density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np) 
+    if (aux_var_up%sat(np) > sir_up(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
+      upweight= dd_dn/(dd_up+dd_dn)
+      if (aux_var_up%sat(np) <eps) then 
+        upweight=0.d0
+      else if (aux_var_dn%sat(np) <eps) then 
+        upweight=1.d0
+      endif
+      density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np) 
         
-        gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
+      gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
              (1.D0-upweight)*aux_var_dn%den(np) * aux_var_dn%avgmw(np)) &
              * dist_gravity
 
-        dphi = aux_var_up%pres - aux_var_dn%pres &
+      dphi = aux_var_up%pres - aux_var_dn%pres &
              - aux_var_up%pc(np) + aux_var_dn%pc(np) &
              + gravity
 
-        v_darcy = 0.D0
-        ukvr=0.D0
-        uh=0.D0
-        uxmol=0.D0
+      v_darcy = 0.D0
+      ukvr=0.D0
+      uh=0.D0
+      uxmol=0.D0
 
-        ! note uxmol only contains one phase xmol
-        if (dphi>=0.D0) then
-           ukvr = aux_var_up%kvr(np)
-           ! if(option%use_isothermal == PETSC_FALSE)&
-           uh = aux_var_up%h(np)
-           uxmol(1:option%nflowspec) = aux_var_up%xmol((np-1)*option%nflowspec + 1 : np*option%nflowspec)
-        else
-           ukvr = aux_var_dn%kvr(np)
-           ! if(option%use_isothermal == PETSC_FALSE)&
-           uh = aux_var_dn%h(np)
-           uxmol(1:option%nflowspec) = aux_var_dn%xmol((np-1)*option%nflowspec + 1 : np*option%nflowspec)
-        endif
-   
+      ! note uxmol only contains one phase xmol
+      if (dphi>=0.D0) then
+        ukvr = aux_var_up%kvr(np)
+        ! if(option%use_isothermal == PETSC_FALSE)&
+        uh = aux_var_up%h(np)
+        uxmol(1:option%nflowspec) = &
+            aux_var_up%xmol((np-1)*option%nflowspec + 1 : np*option%nflowspec)
+      else
+        ukvr = aux_var_dn%kvr(np)
+      ! if(option%use_isothermal == PETSC_FALSE)&
+        uh = aux_var_dn%h(np)
+        uxmol(1:option%nflowspec) = &
+          aux_var_dn%xmol((np-1)*option%nflowspec + 1 : np*option%nflowspec)
+      endif
 
-        if (ukvr>floweps) then
-           v_darcy= Dq * ukvr * dphi
-           vv_darcy(np)=v_darcy
-           q = v_darcy * area
+      if (ukvr>floweps) then
+        v_darcy= Dq * ukvr * dphi
+        vv_darcy(np)=v_darcy
+        q = v_darcy * area
         
-           do ispec=1, option%nflowspec 
-              fluxm(ispec)=fluxm(ispec) + q * density_ave * uxmol(ispec)
-           enddo
-          ! if(option%use_isothermal == PETSC_FALSE)&
-            fluxe = fluxe + q*density_ave*uh 
-        endif
-     endif
+        do ispec=1, option%nflowspec 
+          fluxm(ispec)=fluxm(ispec) + q * density_ave * uxmol(ispec)
+        enddo
+      ! if(option%use_isothermal == PETSC_FALSE)&
+        fluxe = fluxe + q*density_ave*uh 
+      endif
+    endif
 
 ! Diffusion term   
 ! Note : average rule may not be correct  
-     if ((aux_var_up%sat(np) > eps) .and. (aux_var_dn%sat(np) > eps)) then
-        difff = diffdp * 0.25D0*(aux_var_up%sat(np) + aux_var_dn%sat(np))* &
+    if ((aux_var_up%sat(np) > eps) .and. (aux_var_dn%sat(np) > eps)) then
+      difff = diffdp * 0.25D0*(aux_var_up%sat(np) + aux_var_dn%sat(np))* &
              (aux_var_up%den(np) + aux_var_dn%den(np))
-        do ispec=1, option%nflowspec
-           ind = ispec + (np-1)*option%nflowspec
-           fluxm(ispec) = fluxm(ispec) + difff * .5D0 * &
+      do ispec=1, option%nflowspec
+        ind = ispec + (np-1)*option%nflowspec
+        fluxm(ispec) = fluxm(ispec) + difff * .5D0 * &
                 (aux_var_up%diff(ind) + aux_var_dn%diff(ind))* &
                 (aux_var_up%xmol(ind) - aux_var_dn%xmol(ind))
-        enddo
-     endif
+      enddo
+    endif
   enddo
 
 ! conduction term
