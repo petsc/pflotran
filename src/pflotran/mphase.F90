@@ -906,7 +906,8 @@ end subroutine MphaseUpdateFixedAccumPatch
 ! date: 05/12/08
 !
 ! ************************************************************************** !  
-subroutine MphaseAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,iireac,Res)
+subroutine MphaseAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr, &
+                              option,iireac,Res)
 
   use Option_module
   
@@ -927,12 +928,12 @@ subroutine MphaseAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,
       
   mol=0.d0; eng=0.D0
   do np = 1, option%nphase
-     do ispec=1, option%nflowspec  
-        mol(ispec) = mol(ispec) + aux_var%sat(np) * &
-             aux_var%den(np) * &
-             aux_var%xmol(ispec + (np-1)*option%nflowspec)
-     enddo
-     eng = eng + aux_var%sat(np) * aux_var%den(np) * aux_var%u(np)
+    do ispec = 1, option%nflowspec  
+      mol(ispec) = mol(ispec) + aux_var%sat(np) * &
+        aux_var%den(np) * &
+        aux_var%xmol(ispec + (np-1)*option%nflowspec)
+    enddo
+    eng = eng + aux_var%sat(np) * aux_var%den(np) * aux_var%u(np)
   enddo
   mol = mol * porXvol
  ! if(option%use_isothermal == PETSC_FALSE) &
@@ -943,18 +944,18 @@ subroutine MphaseAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr,option,
 
   if(option%ntrandof > 0)then 
     if (iireac>0) then
-!H2O
-      mol(1)= mol(1) - global_aux_var%reaction_rate(1) * option%flow_dt * 1.d3
-!CO2     
-      mol(2)= mol(2) - global_aux_var%reaction_rate(2) * option%flow_dt * 1.d3
+     !H2O
+      mol(1) = mol(1) - global_aux_var%reaction_rate(1) * option%flow_dt * 1.d3
+     !CO2     
+      mol(2) = mol(2) - global_aux_var%reaction_rate(2) * option%flow_dt * 1.d3
     endif
   endif
   
    !if(option%use_isothermal)then
    !   Res(1:option%nflowdof)=mol(:)
    !else
-  Res(1:option%nflowdof-1)=mol(:)
-  Res(option%nflowdof)=eng
+  Res(1:option%nflowdof-1) = mol(:)
+  Res(option%nflowdof) = eng
   ! endif
 end subroutine MphaseAccumulation
 
@@ -966,11 +967,11 @@ end subroutine MphaseAccumulation
 ! date: 05/12/08
 !
 ! ************************************************************************** !  
-subroutine MphaseSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_flag, option)
+subroutine MphaseSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, &
+                            energy_flag, option)
 
   use Option_module
-  
-   use water_eos_module
+  use water_eos_module
 !   use gas_eos_module  
   use co2eos_module
   use span_wagner_spline_module, only: sw_prop
@@ -994,100 +995,108 @@ subroutine MphaseSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fl
   
   Res=0D0
  ! if (present(ireac)) iireac=ireac
-      if (energy_flag) then
-        Res(option%nflowdof) = Res(option%nflowdof) + hsrc * option%flow_dt   
-      endif         
+  if (energy_flag) then
+    Res(option%nflowdof) = Res(option%nflowdof) + hsrc * option%flow_dt   
+  endif         
  
-   select case(isrctype)
-     case(MASS_RATE_SS)
-        msrc(:)=mmsrc(:)
-             if (msrc(1) > 0.d0) then ! H2O injection
-        call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
+  select case(isrctype)
+    case(MASS_RATE_SS)
+      msrc(:)=mmsrc(:)
+      if (msrc(1) > 0.d0) then ! H2O injection
+        call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o, &
+          option%scale,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
         Res(jh2o) = Res( jh2o) + msrc(1) *option%flow_dt
         if (energy_flag) &
-             Res(option%nflowdof) = Res(option%nflowdof) + msrc(1)*enth_src_h2o*option%flow_dt
+          Res(option%nflowdof) = Res(option%nflowdof) + &
+            msrc(1)*enth_src_h2o*option%flow_dt
       endif  
     
       if (msrc(2) > 0.d0) then ! CO2 injection
-!        call printErrMsg(option,"concentration source not yet implemented in Mphase")
-      if(option%co2eos == EOS_SPAN_WAGNER)then
+!       call printErrMsg(option,"concentration source not yet implemented in Mphase")
+        if(option%co2eos == EOS_SPAN_WAGNER) then
          !  span-wagner
           rho = aux_var%den(jco2)*FMWCO2  
           select case(option%itable)  
             case(0,1,2,4,5)
               if( option%itable >=4) then
-              call co2_sw_interp(aux_var%pres*1.D-6,&
+                call co2_sw_interp(aux_var%pres*1.D-6,&
                   tsrc,rho,dddt,dddp,fg,dfgdp,dfgdt, &
                   eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
               else
-              call co2_span_wagner(aux_var%pres*1.D-6,&
+                call co2_span_wagner(aux_var%pres*1.D-6,&
                   tsrc+273.15D0,rho,dddt,dddp,fg,dfgdp,dfgdt, &
                   eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
               endif 
-             case(3) 
+            case(3) 
               call sw_prop(tsrc,aux_var%pres*1.D-6,rho, &
                      enth_src_co2, eng, fg)
           end select     
 
          !  units: rho [kg/m^3]; csrc1 [kmol/s]
-            enth_src_co2 = enth_src_co2 * FMWCO2
-      else if(option%co2eos == EOS_MRK)then
+          enth_src_co2 = enth_src_co2 * FMWCO2
+          
+        else if(option%co2eos == EOS_MRK) then
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]
-            call CO2(tsrc,aux_var%pres, rho,fg, xphi,enth_src_co2)
-            enth_src_co2 = enth_src_co2*FMWCO2*option%scale
-      else
-         call printErrMsg(option,'pflow mphase ERROR: Need specify CO2 EOS')
-      endif
+          call CO2(tsrc,aux_var%pres, rho,fg, xphi,enth_src_co2)
+          enth_src_co2 = enth_src_co2*FMWCO2*option%scale
+        else
+          call printErrMsg(option,'pflow mphase ERROR: Need specify CO2 EOS')
+        endif
               
-      Res(jco2) = Res(jco2) + msrc(2)*option%flow_dt
-      if (energy_flag) &
-         Res(option%nflowdof) = Res(option%nflowdof)+ msrc(2) * enth_src_co2 *option%flow_dt
-       endif
+          Res(jco2) = Res(jco2) + msrc(2)*option%flow_dt
+          if (energy_flag) &
+            Res(option%nflowdof) = Res(option%nflowdof)+ msrc(2) * &
+              enth_src_co2 *option%flow_dt
+      endif
 
-     case(-1) ! production well
-     ! if node pessure is lower than the given extraction pressure, shut it down
-         Dq = psrc(2) ! well parameter, read in input file
+      case(-1) ! production well
+     !  if node pessure is lower than the given extraction pressure, shut it down
+        Dq = psrc(2) ! well parameter, read in input file
                       ! Take the place of 2nd parameter 
         ! Flow term
         do np = 1, option%nphase
           dphi = aux_var%pres - aux_var%pc(np)- psrc(1)
           if (dphi>=0.D0) then ! outflow only
-              ukvr = aux_var%kvr(np)
-              v_darcy=0D0
-              if (ukvr*Dq>floweps) then
-                 v_darcy = Dq * ukvr * dphi
-                 Res(1) =Res(1)- v_darcy* aux_var%den(np)*aux_var%xmol((np-1)*option%nflowspec+1) 
-                 Res(2) =Res(2)- v_darcy* aux_var%den(np)*aux_var%xmol((np-1)*option%nflowspec+2) 
-                 if(energy_flag) Res(3) =Res(3)- v_darcy* aux_var%den(np)*aux_var%h(np)
-              endif
-           endif
+            ukvr = aux_var%kvr(np)
+            v_darcy=0D0
+            if (ukvr*Dq>floweps) then
+              v_darcy = Dq * ukvr * dphi
+              Res(1) = Res(1)- v_darcy* aux_var%den(np)* &
+                aux_var%xmol((np-1)*option%nflowspec+1) 
+              Res(2) = Res(2)- v_darcy* aux_var%den(np)* &
+                aux_var%xmol((np-1)*option%nflowspec+2) 
+              if(energy_flag) Res(3) =Res(3)- v_darcy* aux_var%den(np)*aux_var%h(np)
+            endif
+          endif
         enddo
        ! print *,'well-prod: ',  aux_var%pres,psrc(1), res
          
-    case(1) ! injetion well with constant pressure
-         Dq = psrc(2) ! well parameter, read in input file
+      case(1) ! injetion well with constant pressure
+        Dq = psrc(2) ! well parameter, read in input file
                       ! Take the place of 2nd parameter 
         ! Flow term
         do np = 1, option%nphase
           dphi = psrc(1) - aux_var%pres - aux_var%pc(np)
           if (dphi>=0.D0) then ! outflow only
-              ukvr = aux_var%kvr(np)
-              v_darcy=0D0
-              if (ukvr*Dq>floweps) then
-                 v_darcy = Dq * ukvr * dphi
-                 Res(1) =Res(1)- v_darcy* aux_var%den(np)*aux_var%xmol((np-1)*option%nflowspec+1) 
-                 Res(2) =Res(2)- v_darcy* aux_var%den(np)*aux_var%xmol((np-1)*option%nflowspec+2) 
-                 if(energy_flag) Res(3) =Res(3)- v_darcy* aux_var%den(np)*aux_var%h(np)
-              endif
-           endif
+            ukvr = aux_var%kvr(np)
+            v_darcy=0.D0
+            if (ukvr*Dq>floweps) then
+              v_darcy = Dq * ukvr * dphi
+              Res(1) = Res(1) - v_darcy* aux_var%den(np)* &
+                aux_var%xmol((np-1)*option%nflowspec+1) 
+              Res(2) = Res(2) - v_darcy* aux_var%den(np)* &
+                aux_var%xmol((np-1)*option%nflowspec+2) 
+              if(energy_flag) Res(3) = Res(3) - v_darcy*aux_var%den(np)*aux_var%h(np)
+            endif
+          endif
         enddo 
-    case default
-        print *,'Unrecognized Source/Sink condition: ', isrctype 
-   end select      
+      case default
+      print *,'Unrecognized Source/Sink condition: ', isrctype 
+  end select      
       
- end subroutine MphaseSourceSink
+end subroutine MphaseSourceSink
 
 
 
