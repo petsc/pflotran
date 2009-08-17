@@ -253,6 +253,7 @@ module Reaction_Aux_module
     PetscInt :: kinmr_nrate 
     PetscReal, pointer :: kinmr_rate(:)
     PetscReal, pointer :: kinmr_frac(:)
+    PetscReal :: kinmr_scale_factor
     
     ! mineral reactions
     PetscInt :: nmnrl
@@ -469,6 +470,7 @@ function ReactionCreate()
   reaction%kinmr_nrate = 0
   nullify(reaction%kinmr_rate)
   nullify(reaction%kinmr_frac)
+  reaction%kinmr_scale_factor = 1.d0
 
   reaction%nmnrl = 0  
   nullify(reaction%mnrlspecid)

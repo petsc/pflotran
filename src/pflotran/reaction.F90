@@ -227,6 +227,10 @@ subroutine ReactionRead(reaction,input,option)
                   case('SITE_FRACTION') 
                     string = 'SITE_FRACTION inside SURFACE_COMPLEXATION_RXN'
                     call UtilityReadArray(reaction%kinmr_frac,-1,string,input,option) 
+                  case('MULTIRATE_SCALE_FACTOR')
+                    call InputReadDouble(input,option,reaction%kinmr_scale_factor)
+                    call InputErrorMsg(input,option,'keyword', &
+                      'CHEMISTRY,SURFACE_COMPLEXATION_RXN,MULTIRATE_SCALE_FACTOR')
                   case('MINERAL')
                     call InputReadWord(input,option,srfcmplx_rxn%mineral_name, &
                       PETSC_TRUE)
@@ -434,6 +438,7 @@ subroutine ReactionRead(reaction,input,option)
       tempreal = 0.d0
       do i = 1, size(reaction%kinmr_frac)
         tempreal = tempreal + reaction%kinmr_frac(i)
+        reaction%kinmr_rate(i) = reaction%kinmr_rate(i) * reaction%kinmr_scale_factor
       enddo
     
       if (dabs(1.d0 - tempreal) > 1.d-6) then

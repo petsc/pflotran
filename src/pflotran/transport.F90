@@ -639,48 +639,48 @@ subroutine TFluxAdv(rt_aux_var_up,global_aux_var_up, &
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
   do
-   iphase = iphase +1 
-   if (iphase > option%nphase) exit
-! super critical CO2 phase have the index 2: need implementation
-   q = velocity(iphase)
+    iphase = iphase + 1 
+    if (iphase > option%nphase) exit
+!   super critical CO2 phase have the index 2: need implementation
+    q = velocity(iphase)
   
-  sat_up = global_aux_var_up%sat(iphase)
-  sat_dn = global_aux_var_dn%sat(iphase)
+    sat_up = global_aux_var_up%sat(iphase)
+    sat_dn = global_aux_var_dn%sat(iphase)
   
-  if (sat_up > eps .and. sat_dn > eps) then
-    stp_up = sat_up*tor_up*por_up 
-    stp_dn = sat_dn*tor_dn*por_dn
+    if (sat_up > eps .and. sat_dn > eps) then
+      stp_up = sat_up*tor_up*por_up 
+      stp_dn = sat_dn*tor_dn*por_dn
     ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-    weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
+      weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
 
-   diffusion = 0.d0 
-   if(iphase ==2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn)+ &
+     diffusion = 0.d0 
+     if(iphase == 2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn)+ &
                               weight*rt_parameter%diffusion_coefficient(iphase)
 
-  endif
+    endif
   
   !upstream weighting
   ! units = (m^3 water/m^2 bulk/sec)
-  if (q > 0.d0) then
-    coef_up =  diffusion+q
-    coef_dn = -diffusion
-  else
-    coef_up =  diffusion
-    coef_dn = -diffusion+q
-  endif
+    if (q > 0.d0) then
+      coef_up =  diffusion+q
+      coef_dn = -diffusion
+    else
+      coef_up =  diffusion
+      coef_dn = -diffusion+q
+    endif
   
   ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)*(1000 L water/m^3 water)
   !       = L water/sec
-  coef_up = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
-  coef_dn = coef_dn*area*1000.d0
+    coef_up = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
+    coef_dn = coef_dn*area*1000.d0
   
   ! units = (L water/sec)*(mol/L) = mol/s
-  Res(1:option%ntrandof) = Res (1:option%ntrandof) + & 
+    Res(1:option%ntrandof) = Res (1:option%ntrandof) + & 
                       coef_up*rt_aux_var_up%total(1:option%ntrandof,iphase) + &
                       coef_dn*rt_aux_var_dn%total(1:option%ntrandof,iphase)
- enddo
+  enddo
 #endif
 
 end subroutine TFluxAdv
