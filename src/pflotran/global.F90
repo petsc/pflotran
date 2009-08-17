@@ -465,7 +465,7 @@ subroutine GlobalUpdateDenAndSat(realization,weight)
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
-  
+
   cur_level => realization%level_list%first
   do
     if (.not.associated(cur_level)) exit
@@ -529,9 +529,9 @@ subroutine GlobalUpdateDenAndSatPatch(realization,weight)
       patch%aux%Global%aux_vars(ghosted_id)%fugacoeff(:) = &
         (weight*patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(:,TIME_TpDT)+ &
          (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(:,TIME_T))
-      patch%aux%Global%aux_vars(ghosted_id)%den(:) = &
-        (weight*patch%aux%Global%aux_vars(ghosted_id)%den_store(:,TIME_TpDT)+ &
-         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%den_store(:,TIME_T))
+!      patch%aux%Global%aux_vars(ghosted_id)%den(:) = &
+!        (weight*patch%aux%Global%aux_vars(ghosted_id)%den_store(:,TIME_TpDT)+ &
+!         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%den_store(:,TIME_T))
     enddo     
   endif 
   

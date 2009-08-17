@@ -104,20 +104,18 @@ subroutine TFlux(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up, &
    if (iphase > option%nphase) exit
 ! super critical CO2 phase have the index 2: need implementation
    q = velocity(iphase)
+   diffusion = 0.d0
+   sat_up = global_aux_var_up%sat(iphase)
+   sat_dn = global_aux_var_dn%sat(iphase)
   
-  sat_up = global_aux_var_up%sat(iphase)
-  sat_dn = global_aux_var_dn%sat(iphase)
-  
-  if (sat_up > eps .and. sat_dn > eps) then
-    stp_up = sat_up*tor_up*por_up 
-    stp_dn = sat_dn*tor_dn*por_dn
+   if (sat_up > eps .and. sat_dn > eps) then
+     stp_up = sat_up*tor_up*por_up 
+     stp_dn = sat_dn*tor_dn*por_dn
     ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-    weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
+     weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-
-   diffusion = 0.d0 
-   if(iphase ==2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
+    if(iphase ==2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
                               weight*rt_parameter%diffusion_coefficient(iphase)
 
   endif
@@ -234,7 +232,7 @@ subroutine TFluxDerivative(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up
     if (iphase > option%nphase) exit
 ! super critical CO2 phase
     q = velocity(iphase)
-
+    diffusion = 0D0
     sat_up = global_aux_var_up%sat(iphase)
     sat_dn = global_aux_var_dn%sat(iphase)
     
@@ -247,7 +245,7 @@ subroutine TFluxDerivative(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
       if(iphase==2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
                                 weight*rt_parameter%diffusion_coefficient(iphase)
-        endif
+    endif
   
     !upstream weighting
     ! units = (m^3 water/m^2 bulk/sec)
@@ -375,7 +373,7 @@ subroutine TBCFlux(ibndtype, &
     iphase = iphase + 1
     if (iphase > option%nphase) exit
       q = velocity(iphase)
-  
+      diffusion = 0D0
       sat_up = global_aux_var_up%sat(iphase)
       sat_dn = global_aux_var_dn%sat(iphase)
 
@@ -526,7 +524,7 @@ subroutine TBCFluxDerivative(ibndtype, &
 
 ! super critical CO2 phase
       q = velocity(iphase)
-  
+      diffusion = 0D0
       sat_up = global_aux_var_up%sat(iphase)
       sat_dn = global_aux_var_dn%sat(iphase)
   
@@ -1125,23 +1123,23 @@ subroutine TFluxDiff(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up, &
    if (iphase > option%nphase) exit
 ! super critical CO2 phase have the index 2: need implementation
    q = velocity(iphase)
+   diffusion = 0.d0
+   sat_up = global_aux_var_up%sat(iphase)
+   sat_dn = global_aux_var_dn%sat(iphase)
   
-  sat_up = global_aux_var_up%sat(iphase)
-  sat_dn = global_aux_var_dn%sat(iphase)
-  
-  if (sat_up > eps .and. sat_dn > eps) then
-    stp_up = sat_up*tor_up*por_up 
-    stp_dn = sat_dn*tor_dn*por_dn
+   if (sat_up > eps .and. sat_dn > eps) then
+     stp_up = sat_up*tor_up*por_up 
+     stp_dn = sat_dn*tor_dn*por_dn
     ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-    weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
+     weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
 
-   diffusion = 0.d0 
-   if(iphase ==2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
+    
+    if(iphase ==2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
                               weight*rt_parameter%diffusion_coefficient(iphase)
 
-  endif
+   endif
   
   !upstream weighting
   ! units = (m^3 water/m^2 bulk/sec)
