@@ -640,7 +640,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
       global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
-      global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
+!      global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
 !     print *,'UPdate mphase and gloable vars', ghosted_id, global_aux_vars(ghosted_id)%m_nacl(:), & 
 !       global_aux_vars(ghosted_id)%pres(:)
 !     global_aux_vars(ghosted_id)%mass_balance 
@@ -1974,10 +1974,32 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
         
      istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
      iphase =int(iphase_loc_p(ng))
+     ghosted_id = ng
      call MphaseAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
                       global_aux_vars(ng), iphase,&
                       realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
-                      realization%fluid_properties,option)
+                      realization%fluid_properties,option, xphi)
+
+#if 1
+     if( associated(global_aux_vars))then
+       global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
+               aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
+       global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
+       global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
+!      global_aux_vars(ghosted_id)%sat_store = 
+       global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
+       global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
+       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
+                                          * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
+       global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
+!      print *,'UPdate mphase and gloable vars', ghosted_id, global_aux_vars(ghosted_id) %m_nacl(:), & 
+!      global_aux_vars(ghosted_id)%pres(:)
+!      global_aux_vars(ghosted_id)%mass_balance 
+!      global_aux_vars(ghosted_id)%mass_balance_delta                   
+     else
+       print *,'Not associated global for mph'
+     endif
+#endif
 
      if (option%numerical_derivatives) then
         delx(1,ng) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
@@ -2167,7 +2189,23 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     call MphaseAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
             global_aux_vars_bc(sum_connection), iphase,&
             realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
-            realization%fluid_properties, option)
+            realization%fluid_properties, option, xphi)
+#if 1
+    if( associated(global_aux_vars_bc))then
+      global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
+                     aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
+      global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
+      global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
+      !    global_aux_vars(ghosted_id)%sat_store = 
+      global_aux_vars_bc(sum_connection)%fugacoeff(1)=xphi
+      global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
+      global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
+                                          * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
+  !   global_aux_vars(ghosted_id)%den_kg_store
+  !   global_aux_vars(ghosted_id)%mass_balance 
+  !   global_aux_vars(ghosted_id)%mass_balance_delta                   
+    endif
+#endif
 
     call MphaseBCFlux(boundary_condition%flow_condition%itype, &
          boundary_condition%flow_aux_real_var(:,iconn), &
