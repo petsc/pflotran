@@ -1109,6 +1109,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             global_auxvar%fugacoeff(1) = xphico2
             
 !           call Henry_duan_sun_0NaCl(pco2*1.d-5, tc, henry)
+            m_na = 0.d0
+            m_cl = 0.d0
             if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
               m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
               m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
@@ -1124,8 +1126,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 
             reaction%eqgas_logK(igas) = -lnQK*LN_TO_LOG
             
-            print *, 'SC CO2 constraint',igas,pres,pco2,tc,xphico2,henry,lnQk,yco2, &
-              lngamco2,m_na,m_cl,reaction%eqgas_logK(igas)
+!            print *, 'SC CO2 constraint',igas,pres,pco2,tc,xphico2,henry,lnQk,yco2, &
+!              lngamco2,m_na,m_cl,reaction%eqgas_logK(igas)
             
             ! activity of water
             if (reaction%eqgash2oid(igas) > 0) then
@@ -1708,6 +1710,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     
     write(option%fid_out,132)
     write(option%fid_out,90)
+    
     do igas = 1, reaction%ngas
       
       ! compute gas partial pressure
