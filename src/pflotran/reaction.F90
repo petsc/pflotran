@@ -1271,6 +1271,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   PetscTruth :: finished, found
   PetscReal :: conc, conc2
   PetscReal :: lnQK(reaction%nmnrl), QK(reaction%nmnrl)
+  PetscReal :: lnQKgas(reaction%ngas), QKgas(reaction%ngas)
   PetscReal :: charge_balance, ionic_strength
   PetscReal :: percent(reaction%neqcmplx+1)
   PetscReal :: totj, retardation, kd
@@ -1710,26 +1711,26 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     do igas = 1, reaction%ngas
       
       ! compute gas partial pressure
-      lnQK(igas) = -reaction%eqgas_logK(igas)*LOG_TO_LN
+      lnQKgas(igas) = -reaction%eqgas_logK(igas)*LOG_TO_LN
       
       ! divide K by RT
-      !lnQK = lnQK - log((auxvar%temp+273.15d0)*IDEAL_GAS_CONST)
+      !lnQKgas = lnQKgas - log((auxvar%temp+273.15d0)*IDEAL_GAS_CONST)
       
       ! activity of water
       if (reaction%eqgash2oid(igas) > 0) then
-        lnQK(igas) = lnQK(igas) + reaction%eqgash2ostoich(igas)*rt_auxvar%ln_act_h2o
+        lnQKgas(igas) = lnQKgas(igas) + reaction%eqgash2ostoich(igas)*rt_auxvar%ln_act_h2o
       endif
 
       do jcomp = 1, reaction%eqgasspecid(0,igas)
         comp_id = reaction%eqgasspecid(jcomp,igas)
-        lnQK(igas) = lnQK(igas) + reaction%eqgasstoich(jcomp,igas)* &
+        lnQKgas(igas) = lnQKgas(igas) + reaction%eqgasstoich(jcomp,igas)* &
                       log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
       enddo
       
-      QK(igas) = exp(lnQK(igas))
+      QKgas(igas) = exp(lnQKgas(igas))
           
-      write(option%fid_out,133) reaction%gas_species_names(igas),lnQK(igas)*LN_TO_LOG, &
-      QK(igas),reaction%eqgas_logK(igas)
+      write(option%fid_out,133) reaction%gas_species_names(igas),lnQKgas(igas)*LN_TO_LOG, &
+      QKgas(igas),reaction%eqgas_logK(igas)
     enddo
   endif
 
