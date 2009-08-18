@@ -6320,6 +6320,8 @@ subroutine OutputMassBalanceNew(realization)
   PetscInt :: offset
   PetscInt :: iphase
   PetscInt :: icomp
+  PetscReal :: sum_area(3)
+  PetscReal :: sum_area_global(3)
   PetscReal :: sum_kg(realization%option%nphase)
   PetscReal :: sum_kg_global(realization%option%nphase)
   PetscReal :: sum_mol(realization%option%ntrandof,realization%option%nphase)
@@ -6500,6 +6502,43 @@ subroutine OutputMassBalanceNew(realization)
     offset = boundary_condition%connection_set%offset
     
     if (option%nflowdof > 0) then
+
+#if 0
+! compute the total area of the boundary condition
+      sum_area = 0.d0
+      do iconn = 1, boundary_condition%connection_set%num_connections
+        sum_area(1) = sum_area(1) + &
+          boundary_condition%connection_set%area(iconn)
+        if (global_aux_vars_bc(offset+iconn)%sat(1) >= 0.5d0) then
+          sum_area(2) = sum_area(2) + &
+            boundary_condition%connection_set%area(iconn)
+        endif
+        if (global_aux_vars_bc(offset+iconn)%sat(1) > 0.99d0) then
+          sum_area(3) = sum_area(3) + &
+            boundary_condition%connection_set%area(iconn)
+        endif
+      enddo
+
+      call MPI_Reduce(sum_area,sum_area_global, &
+                      THREE_INTEGER,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      option%io_rank,option%mycomm,ierr)
+                          
+      if (option%myrank == option%io_rank) then
+        print *
+        write(word,'(es16.6)') sum_area(1)
+        print *, 'Total area in ' // trim(boundary_condition%name) // &
+                 ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
+        write(word,'(es16.6)') sum_area(2)
+        print *, 'Total half-saturated area in '// &
+                 trim(boundary_condition%name) // &
+                 ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
+        write(word,'(es16.6)') sum_area(3)
+        print *, 'Total saturated area in '// trim(boundary_condition%name) // &
+                 ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
+        print *
+      endif
+#endif
+
       ! print out cumulative H2O flux
       sum_kg = 0.d0
       do iconn = 1, boundary_condition%connection_set%num_connections
