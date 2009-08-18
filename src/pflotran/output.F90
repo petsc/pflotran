@@ -6320,8 +6320,8 @@ subroutine OutputMassBalanceNew(realization)
   PetscInt :: offset
   PetscInt :: iphase
   PetscInt :: icomp
-  PetscReal :: sum_area(3)
-  PetscReal :: sum_area_global(3)
+  PetscReal :: sum_area(4)
+  PetscReal :: sum_area_global(4)
   PetscReal :: sum_kg(realization%option%nphase)
   PetscReal :: sum_kg_global(realization%option%nphase)
   PetscReal :: sum_mol(realization%option%ntrandof,realization%option%nphase)
@@ -6517,23 +6517,30 @@ subroutine OutputMassBalanceNew(realization)
           sum_area(3) = sum_area(3) + &
             boundary_condition%connection_set%area(iconn)
         endif
+        sum_area(4) = sum_area(4) + &
+          boundary_condition%connection_set%area(iconn)* &
+          global_aux_vars_bc(offset+iconn)%sat(1)
       enddo
 
       call MPI_Reduce(sum_area,sum_area_global, &
-                      THREE_INTEGER,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      FOUR_INTEGER,MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
                           
       if (option%myrank == option%io_rank) then
         print *
-        write(word,'(es16.6)') sum_area(1)
+        write(word,'(es16.6)') sum_area_global(1)
         print *, 'Total area in ' // trim(boundary_condition%name) // &
                  ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
-        write(word,'(es16.6)') sum_area(2)
+        write(word,'(es16.6)') sum_area_global(2)
         print *, 'Total half-saturated area in '// &
                  trim(boundary_condition%name) // &
                  ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
-        write(word,'(es16.6)') sum_area(3)
+        write(word,'(es16.6)') sum_area_global(3)
         print *, 'Total saturated area in '// trim(boundary_condition%name) // &
+                 ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
+        write(word,'(es16.6)') sum_area_global(4)
+        print *, 'Total saturation-weighted area [=sum(saturation*area)] in '//&
+                   trim(boundary_condition%name) // &
                  ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
         print *
       endif
