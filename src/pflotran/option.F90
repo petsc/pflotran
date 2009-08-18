@@ -121,6 +121,7 @@ module Option_module
     
     PetscTruth :: initialize_with_molality
     PetscTruth :: jumpstart_kinetic_sorption
+    PetscTruth :: no_restart_kinetic_sorption
         
 !   table lookup
     PetscInt :: itable
@@ -379,6 +380,7 @@ subroutine OptionInitRealization(option)
     
   option%initialize_with_molality = PETSC_FALSE
   option%jumpstart_kinetic_sorption = PETSC_FALSE
+  option%no_restart_kinetic_sorption = PETSC_FALSE
   
   option%minimum_hydrostatic_pressure = -1.d20
 
