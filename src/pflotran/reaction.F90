@@ -3503,7 +3503,7 @@ end subroutine RSolve
 ! date: 02/13/09
 !
 ! ************************************************************************** !
-subroutine ReactionFitLogKCoef(coefs,logK,option,reaction)
+subroutine ReactionFitLogKCoef(coefs,logK,name,option,reaction)
 
   use Option_module
   use Utility_module
@@ -3512,6 +3512,7 @@ subroutine ReactionFitLogKCoef(coefs,logK,option,reaction)
   
   type(reaction_type) :: reaction
   PetscReal :: coefs(FIVE_INTEGER)
+  character(len=MAXWORDLENGTH) :: name 
   PetscReal :: logK(reaction%num_dbase_temperatures)
   type(option_type) :: option
 
@@ -3541,7 +3542,8 @@ subroutine ReactionFitLogKCoef(coefs,logK,option,reaction)
         iflag = 1
         temp_int(i) = ZERO_INTEGER
       else if (logK(i) .gt. 500.) then
-        option%io_buffer = 'In ReactionFitLogKCoef: log K .gt. 500---stop!'
+        option%io_buffer = 'In ReactionFitLogKCoef: log K .gt. 500 for ' // &
+                           trim(name) // '---stop!'
         call printErrMsg(option)
       else
         coefs(j) = coefs(j) + vec(j,i)*logK(i)

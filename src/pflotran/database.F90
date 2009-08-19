@@ -2011,6 +2011,7 @@ subroutine BasisInit(reaction,option)
 #if TEMP_DEPENDENT_LOGK
       call ReactionFitLogKCoef(reaction%eqcmplx_logKcoef(:,isec_spec), &
                                cur_sec_aq_spec%eqrxn%logK, &
+                               reaction%secondary_species_names(isec_spec), &
                                option,reaction)
       call ReactionInitializeLogK(reaction%eqcmplx_logKcoef(:,isec_spec), &
                                   cur_sec_aq_spec%eqrxn%logK, &
@@ -2090,6 +2091,7 @@ subroutine BasisInit(reaction,option)
       
 #if TEMP_DEPENDENT_LOGK
       call ReactionFitLogKCoef(reaction%eqgas_logKcoef(:,igas_spec),cur_gas_spec%eqrxn%logK, &
+                               reaction%gas_species_names(igas_spec), &
                                option,reaction)
       call ReactionInitializeLogK(reaction%eqgas_logKcoef(:,igas_spec), &
                                   cur_gas_spec%eqrxn%logK, &
@@ -2193,6 +2195,7 @@ subroutine BasisInit(reaction,option)
 
 #if TEMP_DEPENDENT_LOGK
       call ReactionFitLogKCoef(reaction%mnrl_logKcoef(:,imnrl),cur_mineral%tstrxn%logK, &
+                               reaction%mineral_names(imnrl), &
                                option,reaction)
       call ReactionInitializeLogK(reaction%mnrl_logKcoef(:,imnrl), &
                                   cur_mineral%tstrxn%logK, &
@@ -2216,6 +2219,7 @@ subroutine BasisInit(reaction,option)
         reaction%kinmnrlh2ostoich(ikinmnrl) = reaction%mnrlh2ostoich(imnrl)
 #if TEMP_DEPENDENT_LOGK
         call ReactionFitLogKCoef(reaction%kinmnrl_logKcoef(:,ikinmnrl),cur_mineral%tstrxn%logK, &
+                                 reaction%kinmnrl_names(ikinmnrl), &
                                  option,reaction)
         call ReactionInitializeLogK(reaction%kinmnrl_logKcoef(:,ikinmnrl), &
                                     cur_mineral%tstrxn%logK, &
@@ -2359,6 +2363,7 @@ subroutine BasisInit(reaction,option)
         reaction%eqsurfcmplxspecid(0,isurfcplx) = ispec
 #if TEMP_DEPENDENT_LOGK
       call ReactionFitLogKCoef(reaction%eqsurfcmplx_logKcoef(:,isurfcplx),cur_surfcplx%eqrxn%logK, &
+                               reaction%surface_complex_names(isurfcplx), &
                                option,reaction)
       call ReactionInitializeLogK(reaction%eqsurfcmplx_logKcoef(:,isurfcplx), &
                                   cur_surfcplx%eqrxn%logK, &
