@@ -2239,11 +2239,19 @@ subroutine readMaterialsFromFile(realization,filename)
   if (index(filename,'.h5') > 0) then
     group_name = 'Materials'
     dataset_name = 'Material Ids'
+#if 0    
+! For now, skip realization dependent material ids, or at least this should 
+! not be based on the realization id as it prevents the use of a single set 
+! of material ids - geh
+ 
     if (option%id > 0) then
       append_realization_id = PETSC_TRUE
     else
       append_realization_id = PETSC_FALSE
     endif
+#else
+    append_realization_id = PETSC_FALSE
+#endif    
 
     call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                     option)
