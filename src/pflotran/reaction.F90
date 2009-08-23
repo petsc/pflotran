@@ -1283,6 +1283,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   PetscInt :: icount
   PetscInt :: iphase
   PetscReal :: bulk_vol_to_fluid_vol, molar_to_molal, molal_to_molar
+  PetscReal :: sum_molality, mol_fraction_h2o, mass_fraction_h2o
 
   aq_species_constraint => constraint_coupler%aqueous_species
   mineral_constraint => constraint_coupler%minerals
@@ -1303,6 +1304,21 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   global_auxvar%sat(iphase) = option%reference_saturation
   bulk_vol_to_fluid_vol = option%reference_porosity*option%reference_saturation*1000.d0
 
+! compute mass fraction of H2O
+  if (reaction%use_full_geochemistry) then
+    sum_molality = 0.d0
+    do icomp = 1, reaction%ncomp
+      sum_molality = sum_molality + rt_auxvar%pri_molal(icomp)
+    enddo
+    if (reaction%neqcmplx > 0) then    
+      do i = 1, reaction%neqcmplx
+        sum_molality = sum_molality + rt_auxvar%sec_molal(i)
+      enddo
+    endif
+    mol_fraction_h2o = 1.d0/(1.d0+FMWH2O*sum_molality*1.d-3)
+    mass_fraction_h2o = 0.d0
+  endif
+  
   molal_to_molar = global_auxvar%den_kg(iphase)/1000.d0
   molar_to_molal = 1.d0/molal_to_molar
     
@@ -1379,6 +1395,8 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       global_auxvar%den_kg(1),' [kg/m^3]'
     write(option%fid_out,'(a20,1p2e12.4,a9)') 'ln / activity H2O: ', &
       rt_auxvar%ln_act_h2o,exp(rt_auxvar%ln_act_h2o),' [---]'
+    write(option%fid_out,'(a20,1pe12.4,a9)') 'mole fraction H2O: ', &
+      mol_fraction_h2o,' [---]'
 #ifdef CHUAN_CO2
     if (global_auxvar%den_kg(2) > 0.d0) then
       write(option%fid_out,'(a20,f8.2,a9)') '     density CO2: ', &
