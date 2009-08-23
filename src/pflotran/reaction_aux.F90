@@ -167,6 +167,7 @@ module Reaction_Aux_module
     PetscTruth, pointer :: primary_species_print(:)
     PetscReal, pointer :: primary_spec_a0(:)
     PetscReal, pointer :: primary_spec_Z(:)
+    PetscReal, pointer :: primary_spec_molar_wt(:)
     
     ! aqueous complexes
     PetscInt :: neqcmplx
@@ -180,6 +181,7 @@ module Reaction_Aux_module
     PetscReal, pointer :: eqcmplxh2ostoich(:)  ! stoichiometry of water, if present
     PetscReal, pointer :: eqcmplx_a0(:)  ! Debye-Huckel constant
     PetscReal, pointer :: eqcmplx_Z(:)
+    PetscReal, pointer :: eqcmplx_molar_wt(:)
     PetscReal, pointer :: eqcmplx_logK(:)
     PetscReal, pointer :: eqcmplx_logKcoef(:,:)
     ! Debye-Huckel
@@ -400,6 +402,7 @@ function ReactionCreate()
   reaction%ncomp = 0
   nullify(reaction%primary_spec_a0)
   nullify(reaction%primary_spec_Z)
+  nullify(reaction%primary_spec_molar_wt)
 
   reaction%ngas = 0
   nullify(reaction%eqgasspecid)
@@ -416,6 +419,7 @@ function ReactionCreate()
   nullify(reaction%eqcmplxh2ostoich)
   nullify(reaction%eqcmplx_a0)
   nullify(reaction%eqcmplx_Z)
+  nullify(reaction%eqcmplx_molar_wt)
   nullify(reaction%eqcmplx_logK)
   nullify(reaction%eqcmplx_logKcoef)
   
@@ -1593,6 +1597,8 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%primary_spec_a0)
   if (associated(reaction%primary_spec_Z)) deallocate(reaction%primary_spec_Z)
   nullify(reaction%primary_spec_Z)
+  if (associated(reaction%primary_spec_molar_wt)) deallocate(reaction%primary_spec_molar_wt)
+  nullify(reaction%primary_spec_molar_wt)
   
   if (associated(reaction%eqcmplxspecid)) deallocate(reaction%eqcmplxspecid)
   nullify(reaction%eqcmplxspecid)
@@ -1606,6 +1612,8 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%eqcmplx_a0)
   if (associated(reaction%eqcmplx_Z)) deallocate(reaction%eqcmplx_Z)
   nullify(reaction%eqcmplx_Z)
+  if (associated(reaction%eqcmplx_molar_wt)) deallocate(reaction%eqcmplx_molar_wt)
+  nullify(reaction%eqcmplx_molar_wt)
   if (associated(reaction%eqcmplx_logK)) deallocate(reaction%eqcmplx_logK)
   nullify(reaction%eqcmplx_logK)
   if (associated(reaction%eqcmplx_logKcoef)) deallocate(reaction%eqcmplx_logKcoef)

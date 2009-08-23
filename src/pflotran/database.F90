@@ -1903,14 +1903,22 @@ subroutine BasisInit(reaction,option)
   ! fill reaction arrays, swapping if necessary
   if (associated(reaction%primary_species_names)) &
     deallocate(reaction%primary_species_names)
+
   allocate(reaction%primary_species_names(reaction%ncomp))
   reaction%primary_species_names = ''
+
   allocate(reaction%primary_species_print(reaction%ncomp))
   reaction%primary_species_print = PETSC_FALSE
+
   allocate(reaction%primary_spec_Z(reaction%ncomp))
   reaction%primary_spec_Z = 0.d0
+
+  allocate(reaction%primary_spec_molar_wt(reaction%ncomp))
+  reaction%primary_spec_molar_wt = 0.d0
+
   allocate(reaction%primary_spec_a0(reaction%ncomp))
   reaction%primary_spec_a0 = 0.d0
+
   allocate(reaction%kd_print(reaction%ncomp))
   reaction%kd_print = PETSC_FALSE
   if (reaction%neqsorb > 0) then
@@ -1923,12 +1931,10 @@ subroutine BasisInit(reaction,option)
   ispec = 1
   do
     if (.not.associated(cur_pri_aq_spec)) exit
-    reaction%primary_species_names(ispec) = &
-      cur_pri_aq_spec%name
-    reaction%primary_spec_Z(ispec) = &
-      cur_pri_aq_spec%Z
-    reaction%primary_spec_a0(ispec) = &
-      cur_pri_aq_spec%a0
+    reaction%primary_species_names(ispec) = cur_pri_aq_spec%name
+    reaction%primary_spec_Z(ispec) = cur_pri_aq_spec%Z
+    reaction%primary_spec_molar_wt(ispec) = cur_pri_aq_spec%molar_weight
+    reaction%primary_spec_a0(ispec) = cur_pri_aq_spec%a0
     reaction%primary_species_print(ispec) = cur_pri_aq_spec%print_me .or. &
                                             reaction%print_all_species
     reaction%kd_print(ispec) = (cur_pri_aq_spec%print_me .or. &
@@ -1951,20 +1957,28 @@ subroutine BasisInit(reaction,option)
   if (reaction%neqcmplx > 0) then
     allocate(reaction%secondary_species_names(reaction%neqcmplx))
     reaction%secondary_species_names = ''
+
     allocate(reaction%secondary_species_print(reaction%neqcmplx))
     reaction%secondary_species_print = PETSC_FALSE
+
     allocate(reaction%eqcmplx_basis_names(reaction%ncomp,reaction%neqcmplx))
     reaction%eqcmplx_basis_names = ''
+
     allocate(reaction%eqcmplxspecid(0:reaction%ncomp,reaction%neqcmplx))
     reaction%eqcmplxspecid = 0
+
     allocate(reaction%eqcmplxstoich(0:reaction%ncomp,reaction%neqcmplx))
     reaction%eqcmplxstoich = 0.d0
+
     allocate(reaction%eqcmplxh2oid(reaction%neqcmplx))
     reaction%eqcmplxh2oid = 0
+
     allocate(reaction%eqcmplxh2ostoich(reaction%neqcmplx))
     reaction%eqcmplxh2ostoich = 0.d0
+
     allocate(reaction%eqcmplx_logK(reaction%neqcmplx))
     reaction%eqcmplx_logK = 0.d0
+
 #if TEMP_DEPENDENT_LOGK
     allocate(reaction%eqcmplx_logKcoef(FIVE_INTEGER,reaction%neqcmplx))
     reaction%eqcmplx_logKcoef = 0.d0
@@ -1974,6 +1988,10 @@ subroutine BasisInit(reaction,option)
 #endif
     allocate(reaction%eqcmplx_Z(reaction%neqcmplx))
     reaction%eqcmplx_Z = 0.d0
+
+    allocate(reaction%eqcmplx_molar_wt(reaction%neqcmplx))
+    reaction%eqcmplx_molar_wt = 0.d0
+
     allocate(reaction%eqcmplx_a0(reaction%neqcmplx))
     reaction%eqcmplx_a0 = 0.d0
 
@@ -2025,6 +2043,7 @@ subroutine BasisInit(reaction,option)
 !      reaction%eqcmplx_logK(isec_spec) = cur_sec_aq_spec%eqrxn%logK(option%itemp_ref)
 #endif  
       reaction%eqcmplx_Z(isec_spec) = cur_sec_aq_spec%Z
+      reaction%eqcmplx_molar_wt(isec_spec) = cur_sec_aq_spec%molar_weight
       reaction%eqcmplx_a0(isec_spec) = cur_sec_aq_spec%a0
   
       isec_spec = isec_spec + 1
