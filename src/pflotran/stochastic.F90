@@ -33,7 +33,6 @@ subroutine StochasticInit(stochastic,option)
 
   PetscInt :: i
   PetscInt :: offset, delta, remainder
-  PetscInt :: igroup, irealization
 
   PetscInt :: realization_id
   character(len=MAXSTRINGLENGTH) :: string
@@ -106,13 +105,13 @@ subroutine StochasticInit(stochastic,option)
   remainder = stochastic%num_realizations - stochastic%num_groups * &
                                             stochastic%num_local_realizations
   offset = 0
-  do i = 1, igroup-1
+  do i = 1, option%mygroup_id-1
     delta = stochastic%num_local_realizations
     if (i < remainder) delta = delta + 1
     offset = offset + delta
   enddo
   
-  if (igroup < remainder) stochastic%num_local_realizations = &
+  if (option%mygroup_id < remainder) stochastic%num_local_realizations = &
                           stochastic%num_local_realizations + 1
   allocate(stochastic%realization_ids(stochastic%num_local_realizations))
   stochastic%realization_ids = 0
