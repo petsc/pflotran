@@ -6990,15 +6990,19 @@ subroutine OutputPermeability(realization)
   PetscInt :: material_property_id
   character(len=MAXSTRINGLENGTH) :: string
   type(option_type), pointer :: option
+  type(material_property_type), pointer :: material_property
   
   option => realization%option
 
   print_all_three = PETSC_FALSE
   ! check for anisotripic permeabilities  
   do material_property_id = 1, size(realization%material_property_array)
-    if (.not. realization%material_property_array(material_property_id)% &
-        ptr%isotropic_permeability) then
-      print_all_three = PETSC_TRUE
+    material_property => &
+      realization%material_property_array(material_property_id)%ptr
+    if (associated(material_property)) then
+      if (.not.material_property%isotropic_permeability) then
+        print_all_three = PETSC_TRUE
+      endif
     endif
   enddo
   
