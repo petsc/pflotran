@@ -11,6 +11,7 @@ module Material_module
     PetscInt :: id
     character(len=MAXWORDLENGTH) :: name
     PetscReal :: permeability(3,3)
+    PetscTruth :: isotropic_permeability
     character(len=MAXSTRINGLENGTH) :: permeability_filename
     PetscReal :: porosity
     character(len=MAXSTRINGLENGTH) :: porosity_filename
@@ -65,6 +66,7 @@ function MaterialPropertyCreate()
   material_property%id = 0
   material_property%name = ''
   material_property%permeability = 0.d0
+  material_property%isotropic_permeability = PETSC_TRUE
   material_property%permeability_pwr = 0.d0
   material_property%permeability_filename = ''
   material_property%porosity = 0.d0
@@ -196,6 +198,10 @@ subroutine MaterialPropertyRead(material_property,input,option)
           call InputErrorMsg(input,option,'keyword', &
                              'MATERIAL_PROPERTY,PERMEABILITY')   
           select case(trim(word))
+            case('ANISOTROPIC')
+              material_property%isotropic_permeability = PETSC_FALSE
+            case('ISOTROPIC')
+              material_property%isotropic_permeability = PETSC_TRUE
             case('PERM_X')
               call InputReadDouble(input,option, &
                                    material_property%permeability(1,1))
@@ -226,7 +232,6 @@ subroutine MaterialPropertyRead(material_property,input,option)
                                    MAXSTRINGLENGTH,PETSC_TRUE)
               call InputErrorMsg(input,option,'RANDOM_DATASET,FILENAME', &
                                  'MATERIAL_PROPERTY,PERMEABILITY')   
-!            case('ISOTROPIC')
             case default
               option%io_buffer = 'Keyword (' // trim(word) // &
                                  ') not recognized in MATERIAL_PROPERTY,' // &

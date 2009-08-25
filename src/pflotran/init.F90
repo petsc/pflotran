@@ -2329,6 +2329,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
   PetscTruth :: append_realization_id
   PetscInt :: fid = 86
   PetscInt :: status
+  PetscInt :: idirection
   Vec :: global_vec
   PetscErrorCode :: ierr
   
@@ -2349,7 +2350,6 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
   
   if (index(material_property%permeability_filename,'.h5') > 0) then
     group_name = ''
-    dataset_name = 'Permeability'
     if (option%id > 0) then
       append_realization_id = PETSC_TRUE
     else
@@ -2358,28 +2358,67 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
 
     call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                     option)
-    call HDF5ReadCellIndexedRealArray(realization,global_vec, &
-                                      material_property%permeability_filename, &
-                                      group_name, &
-                                      dataset_name,append_realization_id)
-    call GridVecGetArrayF90(grid,global_vec,vec_p,ierr)
-    if (associated(patch%imat)) then
-      do local_id = 1, grid%nlmax
-        if (patch%imat(grid%nL2G(local_id)) == material_property%id) then
+    if (material_property%isotropic_permeability) then
+      dataset_name = 'Permeability'
+      call HDF5ReadCellIndexedRealArray(realization,global_vec, &
+                                        material_property%permeability_filename, &
+                                        group_name, &
+                                        dataset_name,append_realization_id)
+      call GridVecGetArrayF90(grid,global_vec,vec_p,ierr)
+      if (associated(patch%imat)) then
+        do local_id = 1, grid%nlmax
+          if (patch%imat(grid%nL2G(local_id)) == material_property%id) then
+            perm_xx_p(local_id) = vec_p(local_id)
+            perm_yy_p(local_id) = vec_p(local_id)
+            perm_zz_p(local_id) = vec_p(local_id)
+          endif
+        enddo
+      else
+        do local_id = 1, grid%nlmax
           perm_xx_p(local_id) = vec_p(local_id)
           perm_yy_p(local_id) = vec_p(local_id)
           perm_zz_p(local_id) = vec_p(local_id)
-        endif
-      enddo
+        enddo
+      endif
+      call GridVecRestoreArrayF90(grid,global_vec,vec_p,ierr)
     else
-      do local_id = 1, grid%nlmax
-        perm_xx_p(local_id) = vec_p(local_id)
-        perm_yy_p(local_id) = vec_p(local_id)
-        perm_zz_p(local_id) = vec_p(local_id)
+      do idirection = X_DIRECTION,Z_DIRECTION
+        select case(idirection)
+          case(X_DIRECTION)
+            dataset_name = 'PermeabilityX'
+          case(Y_DIRECTION)
+            dataset_name = 'PermeabilityY'
+          case(Z_DIRECTION)
+            dataset_name = 'PermeabilityZ'
+        end select          
+        call HDF5ReadCellIndexedRealArray(realization,global_vec, &
+                                          material_property%permeability_filename, &
+                                          group_name, &
+                                          dataset_name,append_realization_id)
+        call GridVecGetArrayF90(grid,global_vec,vec_p,ierr)
+        select case(idirection)
+          case(X_DIRECTION)
+            do local_id = 1, grid%nlmax
+              if (patch%imat(grid%nL2G(local_id)) == material_property%id) then
+                perm_xx_p(local_id) = vec_p(local_id)
+              endif
+            enddo
+          case(Y_DIRECTION)
+            do local_id = 1, grid%nlmax
+              if (patch%imat(grid%nL2G(local_id)) == material_property%id) then
+                perm_yy_p(local_id) = vec_p(local_id)
+              endif
+            enddo
+          case(Z_DIRECTION)
+            do local_id = 1, grid%nlmax
+              if (patch%imat(grid%nL2G(local_id)) == material_property%id) then
+                perm_zz_p(local_id) = vec_p(local_id)
+              endif
+            enddo
+        end select
+        call GridVecRestoreArrayF90(grid,global_vec,vec_p,ierr)
       enddo
     endif
-    call GridVecRestoreArrayF90(grid,global_vec,vec_p,ierr)
-
     call VecDestroy(global_vec,ierr)
   else
 
