@@ -197,7 +197,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   use Realization_module
 
   use Option_module
-  use Output_module, only : Output, OutputInit, OutputVectorTecplot
+  use Output_module, only : Output, OutputInit, OutputVectorTecplot, &
+                            OutputPermeability
   use Logging_module  
   use Mass_Balance_module
   use Discretization_module
@@ -348,30 +349,9 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     transient_plot_flag = PETSC_TRUE
     call Output(realization,plot_flag,transient_plot_flag)
     if (output_option%print_permeability) then
-      if (len_trim(option%group_prefix) > 1) then
-        string = 'permeability-' // trim(option%group_prefix) // '.tec'
-      else
-        string = 'permeability.tec'
-      endif
-      call DiscretizationLocalToGlobal(realization%discretization, &
-                                       realization%field%perm_xx_loc, &
-                                       realization%field%work,ONEDOF)
-      call OutputVectorTecplot(string,string,realization,realization%field%work)
+      call OutputPermeability(realization)
     endif
-#if 0
-! this now occurs in the standard output file    
-    if (output_option%print_porosity) then
-      if (len_trim(option%group_prefix) > 1) then
-        string = 'porosity-' // trim(option%group_prefix) // '.tec'
-      else
-        string = 'porosity.tec'
-      endif
-      call DiscretizationLocalToGlobal(realization%discretization, &
-                                       realization%field%porosity_loc, &
-                                       realization%field%work,ONEDOF)
-      call OutputVectorTecplot(string,string,realization,realization%field%work)
-    endif
-#endif    
+
   endif
   ! increment plot number so that 000 is always the initial condition, and nothing else
   if (output_option%plot_number == 0) output_option%plot_number = 1
