@@ -1283,7 +1283,8 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   PetscInt :: icount
   PetscInt :: iphase
   PetscReal :: bulk_vol_to_fluid_vol, molar_to_molal, molal_to_molar
-  PetscReal :: sum_molality, sum_mass, mol_fraction_h2o, mass_fraction_h2o
+  PetscReal :: sum_molality, sum_mass, mole_fraction_h2o, mass_fraction_h2o, &
+               mass_fraction_co2, mole_fraction_co2
 
   aq_species_constraint => constraint_coupler%aqueous_species
   mineral_constraint => constraint_coupler%minerals
@@ -1315,7 +1316,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
         sum_molality = sum_molality + rt_auxvar%sec_molal(i)
       enddo
     endif
-    mol_fraction_h2o = 1.d0/(1.d0+FMWH2O*sum_molality*1.d-3)
+    mole_fraction_h2o = 1.d0/(1.d0+FMWH2O*sum_molality*1.d-3)
 
     sum_mass = 0.d0
     do icomp = 1, reaction%ncomp
@@ -1406,7 +1407,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     write(option%fid_out,'(a20,1p2e12.4,a9)') 'ln / activity H2O: ', &
       rt_auxvar%ln_act_h2o,exp(rt_auxvar%ln_act_h2o),' [---]'
     write(option%fid_out,'(a20,1pe12.4,a9)') 'mole fraction H2O: ', &
-      mol_fraction_h2o,' [---]'
+      mole_fraction_h2o,' [---]'
     write(option%fid_out,'(a20,1pe12.4,a9)') 'mass fraction H2O: ', &
       mass_fraction_h2o,' [---]'
 #ifdef CHUAN_CO2
@@ -1415,6 +1416,17 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
         global_auxvar%den_kg(2),' [kg/m^3]'
       write(option%fid_out,'(a20,es12.4,a9)') '            xphi: ', &
         global_auxvar%fugacoeff(1)
+
+      if (reaction%co2_aq_id /= 0) then
+        icomp = reaction%co2_aq_id
+        mass_fraction_co2 = reaction%primary_spec_molar_wt(icomp)*rt_auxvar%pri_molal(icomp)* &
+          mass_fraction_h2o*1.d-3
+        mole_fraction_co2 = rt_auxvar%pri_molal(icomp)*FMWH2O*mole_fraction_h2o*1.e-3
+        write(option%fid_out,'(a20,es12.4,a9)') 'mole fraction CO2: ', &
+          mole_fraction_co2
+        write(option%fid_out,'(a20,es12.4,a9)') 'mass fraction CO2: ', &
+          mass_fraction_co2
+      endif
     endif
 #endif
     write(option%fid_out,90)
