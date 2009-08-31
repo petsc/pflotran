@@ -2628,6 +2628,8 @@ The transport equations Eqn.\eqref{molar_form} may also be written in terms of m
 &+ \bnabla\cdot\left[ \eta_l^{}\big(x_j^l \bar\bv_j^l + \sum_i \nu_{ji} x_i^l \bar\bv_i^l\big) + \sum_{i,\,\a\ne l} \eta_\a^{}\nu_{ji} x_i^\a \bar\bv_i^\a \right] \eq -\sum_m \nu_{jm}I_m.
 \EA
 
+\subsubsection{Diffusion}
+
 Given a reference velocity $\bomega_\a$ for phase $\a$, the average species fluid velocity $\bar\bv_k^\a$ can be separated into contributions from advection and diffusion by writing
 \BA
 \bar\bv_k^\a &\eq \bomega_\a + \bar\bv_k^\a - \bomega_\a,\\
@@ -2658,7 +2660,10 @@ and satisfies the relation
 \sum_k\frac{\omega_k^\a}{C_k^\a}~_{\bomega}\bJ_k^\a \eq \boldsymbol{0},
 \EN
 implying that only $N\!-\!1$ of the diffusive fluxes are independent.
-Several different choices can be made for $\bomega_\a$ and the weight coefficients $\omega_k^\a$ leading to different forms for the fluid flow velocity and diffusive flux as listed in Table~\ref{trefframe}.
+Several different choices can be made for $\bomega_\a$ and the weight coefficients $\omega_k^\a$ leading to different forms for the fluid flow velocity and diffusive flux as listed in Table~\ref{trefframe}. The molar volume $\bar V_k^\a\!=\!\p V/\p n_k^\a$ satisfies the constraint
+\EQ
+\sum_k n_k^{\a} \bar V_k^\a \eq 1.
+\EN
 
 \begin{table}[t]\centering
 \tabcolsep=8pt
@@ -2678,6 +2683,22 @@ Hittorf & $\bv_\a^\prime = \bar\bv_1^\a$ & 1, $k$=1; 0 otherwise\\
 \bottomrule[1.5pt]
 \end{tabular}
 \end{table}
+
+\subsubsection{Transformation of Diffusive Flux Among Reference Velocities}
+
+For two reference velocities $\bomega_\a$ and $\bomega_\a^\prime$ the corresponding diffusive velocity is defined as
+\EQ
+\bv_k^\a \eq \bar\bv_k^\a - \bomega_\a^{},
+\EN
+and
+\EQ
+\bv_k^{\a\,\prime} \eq \bar\bv_k^\a - \bomega_\a^\prime.
+\EN
+They are related by the transformation
+\BA
+\bv_k^{\a\,\prime} &\eq \bv_k^\a - \big(\bomega_\a^{\prime} - \bomega_\a^{}\big),\\
+&\eq \bv_k^\a - \sum_i \omega_i^{\a\,\prime} \bv_i^\a.
+\EA
 
 \subsection{Simplified System}
 
