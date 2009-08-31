@@ -135,10 +135,12 @@
 \newcommand{\bU}{\boldsymbol{U}}
 \newcommand{\bu}{\boldsymbol{u}}
 \newcommand{\bv}{\boldsymbol{v}}
+\newcommand{\bw}{\boldsymbol{w}}
 \newcommand{\bx}{\boldsymbol{x}}
 \newcommand{\by}{\boldsymbol{y}}
 \newcommand{\bY}{\boldsymbol{Y}}
 \newcommand{\bz}{\boldsymbol{z}}
+%\newcommand{\b0}{\boldsymbol{0}}
 
 \newcommand{\arrows}{~\rightleftharpoons~}
 \newcommand{\arrowstab}{\!\!\!\rightleftharpoons\!\!\!}
@@ -2579,25 +2581,25 @@ for fluid-fluid reactions, and for mineral reactions reacting with the aqueous p
 with the respective reaction rates $I_i^\a$ and $I_m$.
 Conservation equations have the following forms for primary species $\A_j^l$ associated with the reference aqueous phase
 \EQ
-\frac{\p}{\p t} \varphi s_l^{} C_j^l + \bnabla\cdot C_j^l \bv_j^l \eq -\sum_i \nu_{ji}I_i^l -\sum_i\nu_{ji}I_i^\a - \sum_m \nu_{jm}I_m,
+\frac{\p}{\p t} \varphi s_l^{} C_j^l + \bnabla\cdot C_j^l \bar\bv_j^l \eq -\sum_i \nu_{ji}I_i^l -\sum_i\nu_{ji}I_i^\a - \sum_m \nu_{jm}I_m,
 \EN
 and for secondary species $\A_i^\a$ for other fluid phases including $\a \!=\! l$
 \EQ
-\frac{\p}{\p t} \varphi s_l^{} C_i^\a + \bnabla\cdot C_i^\a \bv_i^\a \eq I_i^\a.
+\frac{\p}{\p t} \varphi s_l^{} C_i^\a + \bnabla\cdot C_i^\a \bar\bv_i^\a \eq I_i^\a.
 \EN
-In these equations $\bv_k$ denotes the average velocity of the $k$th species including contributions from both advection and diffusion.
+In these equations $\bar\bv_k^\a$ denotes the average velocity of the $k$th species including contributions from both advection and diffusion.
 Eliminating the reactions rates $I_i^\a$ from the primary species transport equations yields
-\BA
+\BA\label{molar_form}
 \frac{\p}{\p t} &\varphi \left\{ s_l^{} \big(C_j^l + \sum_i \nu_{ji} C_i^l\big) + \sum_{\a\ne l} s_\a \sum_{i}\nu_{ji} C_i^\a \right\} \nonumber\\
-&+ \bnabla\cdot\left[ \big(C_j^l \bv_j^l + \sum_i \nu_{ji} C_i^l \bv_i^l\big) + \sum_{i,\,\a\ne l} \nu_{ji} C_i^\a \bv_i^\a \right] \eq -\sum_m \nu_{jm}I_m.
+&+ \bnabla\cdot\left[ \big(C_j^l \bar\bv_j^l + \sum_i \nu_{ji} C_i^l \bar\bv_i^l\big) + \sum_{i,\,\a\ne l} \nu_{ji} C_i^\a \bar\bv_i^\a \right] \eq -\sum_m \nu_{jm}I_m.
 \EA
 From this equation the overall mass conservation equation follows by multiplying through by $W_j$ and summing over $j$ to give
 \EQ\label{totmassbal}
-\frac{\p}{\p t} \left(\varphi\sum_\a s_\a\rho_\a\right) + \bnabla\cdot\sum_\a \rho_\a \bv_\a \eq -\sum_m W_m I_m,
+\frac{\p}{\p t} \left(\varphi\sum_\a s_\a\rho_\a\right) + \bnabla\cdot\sum_\a \rho_\a \bar\bv_\a \eq -\sum_m W_m I_m,
 \EN
 where $\bv_\a$ represents the barycentric velocity (see Table~\ref{trefframe}) defined by
 \EQ
-\rho \bv_\a \eq \sum_k\rho_k^\a \bv_k^\a.
+\rho \bv_\a \eq \sum_k\rho_k^\a \bar\bv_k^\a.
 \EN
 To obtain this result the following relations are used
 \EQ
@@ -2616,31 +2618,46 @@ To obtain this result the following relations are used
 In terms of the mass concentrations $\rho_i^\a$ the primary species transport equations become
 \BA
 \frac{\p}{\p t} &\varphi \left\{ s_l^{} \big(\rho_j^l + W_j\sum_i \nu_{ji} W_i^{-1}\rho_i^l\big) + W_j \sum_{\a\ne l} s_\a \sum_{i}\nu_{ji} W_i^{-1}\rho_i^\a \right\} \nonumber\\
-&\qquad + \bnabla\cdot\left[ \big(\rho_j^l \bv_j^l + W_j \sum_i \nu_{ji} W_i^{-1} \rho_i^l \bv_i^l\big) + W_j\sum_{i,\,\a\ne l} \nu_{ji} W_i^{-1}\rho_i^\a \bv_i^\a \right] \nonumber\\
+&\qquad + \bnabla\cdot\left[ \big(\rho_j^l \bar\bv_j^l + W_j \sum_i \nu_{ji} W_i^{-1} \rho_i^l \bar\bv_i^l\big) + W_j\sum_{i,\,\a\ne l} \nu_{ji} W_i^{-1}\rho_i^\a \bar\bv_i^\a \right] \nonumber\\
 &\qquad\qquad\eq -W_j\sum_m \nu_{jm}I_m.
 \EA
 Summing this equation over $j$ leads directly to Eqn.\eqref{totmassbal}.
+The transport equations Eqn.\eqref{molar_form} may also be written in terms of mol fractions as
+\BA\label{mol_frac_form}
+\frac{\p}{\p t} &\varphi \left\{ s_l^{} \eta_l^{}\big(x_j^l + \sum_i \nu_{ji} x_i^l\big) + \sum_{\a\ne l} s_\a^{} \eta_\a^{}\sum_{i}\nu_{ji} x_i^\a \right\} \nonumber\\
+&+ \bnabla\cdot\left[ \eta_l^{}\big(x_j^l \bar\bv_j^l + \sum_i \nu_{ji} x_i^l \bar\bv_i^l\big) + \sum_{i,\,\a\ne l} \eta_\a^{}\nu_{ji} x_i^\a \bar\bv_i^\a \right] \eq -\sum_m \nu_{jm}I_m.
+\EA
 
-Given a reference velocity $\bomega_\a$ for phase $\a$, the average species fluid velocity $\bv_k^\a$ can be separated into contributions from advection and diffusion according to the relation
+Given a reference velocity $\bomega_\a$ for phase $\a$, the average species fluid velocity $\bar\bv_k^\a$ can be separated into contributions from advection and diffusion by writing
+\BA
+\bar\bv_k^\a &\eq \bomega_\a + \bar\bv_k^\a - \bomega_\a,\\
+&\eq \bomega_\a + \bv_k^\a,
+\EA
+where the first term corresponds to the reference velocity describing advection and the second term $\bv_k^\a$ corresponds to the diffusion velocity
 \EQ
-C_k^\a \bv_k^\a \eq C_k^\a \bomega_\a + \bJ_k^\a,
+\bv_k^\a \eq \bar\bv_k^\a - \bomega_\a. 
 \EN
-where the diffusive flux $\bJ_k^\a$ is defined as
+The reference velocity is defined as the weighted average
 \EQ
-\bJ_k^\a \eq C_k^\a \big(\bv_k^\a - \bomega_\a\big),
+\bomega_\a \eq \sum_k \omega_k^\a \bar\bv_k^\a,
 \EN
 with
 \EQ
-\bomega_\a \eq \sum_k \omega_k^\a \bv_k^\a,
-\EN
-and
-\EQ
 \sum_k\omega_k^\a \eq 1.
 \EN
-The diffusive flux satisfies the relation
+It follows that the weighted sum of the diffusion velocity is zero
 \EQ
-\sum_k\frac{\omega_k^\a}{C_k^\a}\bJ_k^\a \eq 0.
+\sum_k \omega_k^\a \bv_k^\a \eq \sum_k \omega_k^\a \big(\bar\bv_k^\a - \bomega_\a\big) \eq \boldsymbol{0}.
 \EN
+The diffusive flux $~_{\bomega}\bJ_k^\a$ relative to reference velocity $\bomega_\a$ is defined as
+\EQ
+~_{\bomega}\bJ_k^\a \eq C_k^\a \big(\bar\bv_k^\a - \bomega_\a\big),
+\EN
+and satisfies the relation
+\EQ
+\sum_k\frac{\omega_k^\a}{C_k^\a}~_{\bomega}\bJ_k^\a \eq \boldsymbol{0},
+\EN
+implying that only $N\!-\!1$ of the diffusive fluxes are independent.
 Several different choices can be made for $\bomega_\a$ and the weight coefficients $\omega_k^\a$ leading to different forms for the fluid flow velocity and diffusive flux as listed in Table~\ref{trefframe}.
 
 \begin{table}[t]\centering
@@ -2654,10 +2671,10 @@ Several different choices can be made for $\bomega_\a$ and the weight coefficien
 \toprule[1.5pt]
 Reference Frame & Mean Flow Velocity $\bomega_\a$ & $\omega_k^\a$\\
 \midrule
-Barycentric & $\dfrac{1}{\rho_\a}\sum_k\rho_k^\a\bv_k^\a$ & $\chi_k^\a\!=\!\rho_k^\a/\rho_\a$\\
-Molecular & $\dfrac{1}{\eta_\a}\sum_k C_k^\a \bv_k^\a$ & $x_k^\a\!=\!C_k^\a/\eta_\a$\\
-Volumetric (Fickian) & $\sum_k C_k^\a \bar{V}_k^\a \bv_k^\a$ & $\phi_k^\a\!=\!C_k^\a \bar{V}_k^\a$\\
-Hittorf & $\bv_1^\a$ & 1, $k$=1; 0 otherwise\\
+Barycentric & $\bv_\a = \dfrac{1}{\rho_\a}\sum_k\rho_k^\a\bar\bv_k^\a$ & $\chi_k^\a\!=\!\rho_k^\a/\rho_\a$\\
+Molecular & $\bu_\a = \dfrac{1}{\eta_\a}\sum_k C_k^\a \bar\bv_k^\a$ & $x_k^\a\!=\!C_k^\a/\eta_\a$\\
+Volumetric (Fickian) & $\bw_\a = \sum_k C_k^\a \bar{V}_k^\a \bar\bv_k^\a$ & $\phi_k^\a\!=\!C_k^\a \bar{V}_k^\a$\\
+Hittorf & $\bv_\a^\prime = \bar\bv_1^\a$ & 1, $k$=1; 0 otherwise\\
 \bottomrule[1.5pt]
 \end{tabular}
 \end{table}
