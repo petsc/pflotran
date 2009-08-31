@@ -1,6 +1,7 @@
 \documentclass[12pt]{article} 
 %\usepackage{times,helvet}
 \usepackage{palatino}
+%\usepackage[utf8]{inputenc} %useful to type directly diacritic characters
 %\usepackage{ssss}
 \usepackage{amsmath,amsbsy,amssymb}
 \usepackage{sectsty,hangcaption}
@@ -87,7 +88,7 @@
 \newcommand{\da}{{\rm Da}}
 \renewcommand{\k}{{\dot R}^0}
 \renewcommand{\L}{\widehat{\mathcal L}}
-\renewcommand{\bar}{\overline}
+%\renewcommand{\bar}{\overline}
 \newcommand{\dsty}{{\displaystyle}}
 \newcommand{\diff}{{\mathcal D}}
 \newcommand{\surf}{\equiv \!\!\!}
@@ -120,6 +121,7 @@
 \newcommand{\bn}{\boldsymbol{n}}
 \newcommand{\bdelta}{\boldsymbol{\delta}}
 \newcommand{\bGamma}{\boldsymbol{\Gamma}}
+\newcommand{\bomega}{\boldsymbol{\omega}}
 \newcommand{\bOmega}{\boldsymbol{\Omega}}
 \newcommand{\bPsi}{\boldsymbol{\Psi}}
 \newcommand{\bO}{\boldsymbol{O}}
@@ -161,19 +163,11 @@
 \def\sohuotwocothree{$>$SOHUO$_2$CO$_3$}
 \def\soh{$>$SOH}
 
-\newcounter{saveeqn}%
-\newcommand{\seteqn}{\setcounter{saveeqn}{\value{equation}}%
-\stepcounter{saveeqn}\setcounter{equation}{0}%
-\renewcommand{\theequation}
-      {\mbox{\arabic{section}.\arabic{saveeqn}\alph{equation}}}}%
-\newcommand{\reseteqn}{\setcounter{equation}{\value{saveeqn}}%
-\renewcommand{\theequation}{\arabic{section}.\arabic{equation}}}%
-
 \setcounter{secnumdepth}{5}
 \setcounter{tocdepth}{5}
 %\renewcommand{\thepage}{\roman{page}}
 %\renewcommand{\thepage}{\arabic{page}}
-\renewcommand{\theequation}{\arabic{section}.\arabic{equation}}
+\renewcommand{\theequation}{\arabic{section}.\arabic{subsection}-\arabic{equation}}
 %\setcounter{page}{1}
 
 \setlength{\parindent}{0.3125in}
@@ -1853,21 +1847,21 @@ For the set of primary species $\{ \A_d, \ \A_a, \ \A_j \}$, the mass transport 
 Mineral reaction rates are denoted by $I_m^{min}$, and homogeneous aqueous reaction rates by $I_i^{aq}$. 
 
 For the case in which the rates $I_i^{aq}$ for homogeneous reactions are in local equilibrium, their rates may be eliminated by replacing the corresponding transport equations with mass action equations. This results in the primary species transport equations
-\seteqn
+\begin{subequations}
 \BA
 \L \Psi_d &\eq -\frac{1}{\Y_c^d} \, I_c^\S -\sum_m \nu_{dm}^{min} I_m^{min},\\
 \L \Psi_a &\eq \frac{1-f_s^\circ}{f_s^\circ} \, \frac{n_c^e}{n_a^e} \, I_c^\S + \nu_{ac}^\D \, \lambda_c \, \chi_c -\sum_m \nu_{am}^{min} I_m^{min},\\
 \L \Psi_j &\eq -\left[ \nu_{jc}^\S + \frac{1-f_s^\circ}{f_s^\circ} \, \frac{n_c^e}{n_a^e} \, \nu_{ja} - \frac{1}{\Y_c^d} \, \nu_{jd} \right] I_c^\S + \nu_{jc}^\D \, \lambda_c \, \chi_c -\sum_m \nu_{jm}^{min} I_m^{min},
 \EA
-\reseteqn
+\end{subequations}
 where
-\seteqn
+\begin{subequations}
 \BA
 \Psi_d &\eq C_d + \sum_i \nu_{di}^{aq} C_i,\\
 \Psi_a &\eq C_a + \sum_i \nu_{ai}^{aq} C_i,\\
 \Psi_j &\eq C_j + \sum_i \nu_{ji}^{aq} C_i.
 \EA
-\reseteqn
+\end{subequations}
 
 \textbf{\textsl{Parallel Reactions.}} So far the discussion has focused on the presence a single electron donor and acceptor substrate. However, in natural systems it is common for a number of different electron donor and acceptor substrates to be present at any one time. In such cases several parallel reactions representing biosynthesis may take place simultaneously. For the case of multiple electron acceptors indexed by $\beta$, these reactions may be written collectively in the general form
 \EQ
@@ -2563,7 +2557,7 @@ This is followed by a backward sweep to obtain the solution for $\d\bx_n$
 To carry out the backward sweep, the quantity $\bz_M$ must be determined first
 by solving the primary continuum equations.
 
-\renewcommand{\theequation}{\arabic{section}.\arabic{equation}}
+\renewcommand{\theequation}{\arabic{section}.\arabic{subsection}-\arabic{equation}}
 \setcounter{equation}{0}
 
 \section{Electrical Conductivity}
@@ -2571,6 +2565,104 @@ by solving the primary continuum equations.
 \section{Hydration-Dehydration Reactions}
 
 \section{Multiphase Systems}
+
+\subsection{Fundamental Governing Equations}
+
+For a multiphase system with chemical reactions involving aqueous-aqueous and aqueous-gas, -oil, -napl etc., with aqueous phase as reference phase, the chemical reactions taking place in the system can be expressed in the canonical form
+\EQ
+\sum_j\nu_{ji}\A_j^l \arrows \A_i^\a,
+\EN
+for fluid-fluid reactions, and for mineral reactions reacting with the aqueous phases as
+\EQ
+\sum_j\nu_{jm}\A_j^l \arrows \M_m,
+\EN
+with the respective reaction rates $I_i^\a$ and $I_m$.
+Conservation equations have the following forms for primary species $\A_j^l$ associated with the reference aqueous phase
+\EQ
+\frac{\p}{\p t} \varphi s_l^{} C_j^l + \bnabla\cdot C_j^l \bv_j^l \eq -\sum_i \nu_{ji}I_i^l -\sum_i\nu_{ji}I_i^\a - \sum_m \nu_{jm}I_m,
+\EN
+and for secondary species $\A_i^\a$ for other fluid phases including $\a \!=\! l$
+\EQ
+\frac{\p}{\p t} \varphi s_l^{} C_i^\a + \bnabla\cdot C_i^\a \bv_i^\a \eq I_i^\a.
+\EN
+In these equations $\bv_k$ denotes the average velocity of the $k$th species including contributions from both advection and diffusion.
+Eliminating the reactions rates $I_i^\a$ from the primary species transport equations yields
+\BA
+\frac{\p}{\p t} &\varphi \left\{ s_l^{} \big(C_j^l + \sum_i \nu_{ji} C_i^l\big) + \sum_{\a\ne l} s_\a \sum_{i}\nu_{ji} C_i^\a \right\} \nonumber\\
+&+ \bnabla\cdot\left[ \big(C_j^l \bv_j^l + \sum_i \nu_{ji} C_i^l \bv_i^l\big) + \sum_{i,\,\a\ne l} \nu_{ji} C_i^\a \bv_i^\a \right] \eq -\sum_m \nu_{jm}I_m.
+\EA
+From this equation the overall mass conservation equation follows by multiplying through by $W_j$ and summing over $j$ to give
+\EQ\label{totmassbal}
+\frac{\p}{\p t} \left(\varphi\sum_\a s_\a\rho_\a\right) + \bnabla\cdot\sum_\a \rho_\a \bv_\a \eq -\sum_m W_m I_m,
+\EN
+where $\bv_\a$ represents the barycentric velocity (see Table~\ref{trefframe}) defined by
+\EQ
+\rho \bv_\a \eq \sum_k\rho_k^\a \bv_k^\a.
+\EN
+To obtain this result the following relations are used
+\EQ
+\sum_j W_j\nu_{ji} \eq W_i,
+\EN
+\EQ
+\sum_j W_j\nu_{jm}\eq W_m,
+\EN
+\EQ
+\rho_i^\a \eq W_i^{} C_i^\a,
+\EN
+\EQ
+\rho_\a \eq \sum_i \rho_i^\a.
+\EN
+
+In terms of the mass concentrations $\rho_i^\a$ the primary species transport equations become
+\BA
+\frac{\p}{\p t} &\varphi \left\{ s_l^{} \big(\rho_j^l + W_j\sum_i \nu_{ji} W_i^{-1}\rho_i^l\big) + W_j \sum_{\a\ne l} s_\a \sum_{i}\nu_{ji} W_i^{-1}\rho_i^\a \right\} \nonumber\\
+&\qquad + \bnabla\cdot\left[ \big(\rho_j^l \bv_j^l + W_j \sum_i \nu_{ji} W_i^{-1} \rho_i^l \bv_i^l\big) + W_j\sum_{i,\,\a\ne l} \nu_{ji} W_i^{-1}\rho_i^\a \bv_i^\a \right] \nonumber\\
+&\qquad\qquad\eq -W_j\sum_m \nu_{jm}I_m.
+\EA
+Summing this equation over $j$ leads directly to Eqn.\eqref{totmassbal}.
+
+Given a reference velocity $\bomega_\a$ for phase $\a$, the average species fluid velocity $\bv_k^\a$ can be separated into contributions from advection and diffusion according to the relation
+\EQ
+C_k^\a \bv_k^\a \eq C_k^\a \bomega_\a + \bJ_k^\a,
+\EN
+where the diffusive flux $\bJ_k^\a$ is defined as
+\EQ
+\bJ_k^\a \eq C_k^\a \big(\bv_k^\a - \bomega_\a\big),
+\EN
+with
+\EQ
+\bomega_\a \eq \sum_k \omega_k^\a \bv_k^\a,
+\EN
+and
+\EQ
+\sum_k\omega_k^\a \eq 1.
+\EN
+The diffusive flux satisfies the relation
+\EQ
+\sum_k\frac{\omega_k^\a}{C_k^\a}\bJ_k^\a \eq 0.
+\EN
+Several different choices can be made for $\bomega_\a$ and the weight coefficients $\omega_k^\a$ leading to different forms for the fluid flow velocity and diffusive flux as listed in Table~\ref{trefframe}.
+
+\begin{table}[t]\centering
+\tabcolsep=8pt
+\renewcommand{\arraystretch}{2}
+\caption{Reference frames for fluid velocity and diffusive flux.}\label{trefframe}
+
+\vspace{3mm}
+
+\begin{tabular}{lcc}
+\toprule[1.5pt]
+Reference Frame & Mean Flow Velocity $\bomega_\a$ & $\omega_k^\a$\\
+\midrule
+Barycentric & $\dfrac{1}{\rho_\a}\sum_k\rho_k^\a\bv_k^\a$ & $\chi_k^\a\!=\!\rho_k^\a/\rho_\a$\\
+Molecular & $\dfrac{1}{\eta_\a}\sum_k C_k^\a \bv_k^\a$ & $x_k^\a\!=\!C_k^\a/\eta_\a$\\
+Volumetric (Fickian) & $\sum_k C_k^\a \bar{V}_k^\a \bv_k^\a$ & $\phi_k^\a\!=\!C_k^\a \bar{V}_k^\a$\\
+Hittorf & $\bv_1^\a$ & 1, $k$=1; 0 otherwise\\
+\bottomrule[1.5pt]
+\end{tabular}
+\end{table}
+
+\subsection{Simplified System}
 
 For a multiphase system characterized with phase saturation $s_\a$, and Darcy velocity $\bq_\a$ the transport equations generalize to
 \EQ
@@ -2719,15 +2811,15 @@ Taking the transport equations in the form
 \EN
 with
 \EQ
-\frac{\p\varphi_m}{\p t} \eq \overline V_m I_m,
+\frac{\p\varphi_m}{\p t} \eq \bar V_m I_m,
 \EN
 global mass conservation equations are obtained by integrating over the computational domain $V$ with bounding surface $\p V$ to give
 \EQ
-\frac{d}{dt}\int_V \left[\varphi \sum_\a s_\a \Psi_j^\a +\sum_k\nu_{jk} S_k + \sum_m \overline V_m^{-1} \varphi_m \right] dV \eq -\sum_\a\int_{\p V} \bOmega_j^\a \cdot \bdS.
+\frac{d}{dt}\int_V \left[\varphi \sum_\a s_\a \Psi_j^\a +\sum_k\nu_{jk} S_k + \sum_m \bar V_m^{-1} \varphi_m \right] dV \eq -\sum_\a\int_{\p V} \bOmega_j^\a \cdot \bdS.
 \EN
 Defining $N_j$ equal to the total mass in place at time $t$ as
 \EQ
-N_j (t)\eq\int_V \left[\varphi \sum_\a s_\a \Psi_j^\a + \sum_k\nu_{jk} S_k + \sum_m \overline V_m^{-1} \varphi_m \right] dV,
+N_j (t)\eq\int_V \left[\varphi \sum_\a s_\a \Psi_j^\a + \sum_k\nu_{jk} S_k + \sum_m \bar V_m^{-1} \varphi_m \right] dV,
 \EN
 gives
 \EQ
@@ -2849,7 +2941,7 @@ Sorbed concentrations give
 \begin{comment}
 \noindent Conversion to Mass Units (mol/dm$^3$ $\rightarrow$ mol/g)
 \EQ
-S_j^M \eq \frac{\overline N_j}{M_s} \eq \frac{\overline N_j}{V} \frac{V}{V_s} \frac{V_s}{M_s} \eq \frac{S_j}{(1-\varphi)\rho_s}
+S_j^M \eq \frac{\bar N_j}{M_s} \eq \frac{\bar N_j}{V} \frac{V}{V_s} \frac{V_s}{M_s} \eq \frac{S_j}{(1-\varphi)\rho_s}
 \EN
 \EQ
 {\rm CEC} \eq \frac{N_{\rm sites}}{M_s} \eq \frac{N_{\rm sites}}{A_s} \frac{A_s}{M_s} \eq \zeta_s \A_s
