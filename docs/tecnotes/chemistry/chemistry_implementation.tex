@@ -2697,8 +2697,35 @@ and
 They are related by the transformation
 \BA
 \bv_k^{\a\,\prime} &\eq \bv_k^\a - \big(\bomega_\a^{\prime} - \bomega_\a^{}\big),\\
-&\eq \bv_k^\a - \sum_i \omega_i^{\a\,\prime} \bv_i^\a.
+&\eq \bv_k^\a - \sum_i \omega_i^{\a\,\prime} \bv_i^\a.\label{transformation}
 \EA
+
+\paragraph{Molecular to Barycentric Transformation.}
+The transformation of the diffusive flux from molecular to barycentric reference velocities has the form
+\EQ
+~_{\bu}\bJ_k^\a \eq ~_{\bv}\bJ_k^\a - x_k^\a \sum_i ~_{\bv}\bJ_i^\a.
+\EN
+Kee et al. (2003) relate the molecular and diffusive fluxes to Fick's law according to the relations
+\EQ
+~_{\bu}\bJ_k^\a \eq -\rho_\a D_\a \bnabla\chi_k^\a,
+\EN
+and
+\EQ
+~_{\bv}\bJ_k^\a \eq -\eta_\a D_\a \bnabla x_k^\a,
+\EN
+corresponding to their Equations 12.158 and 12.160, p. 525--526. However, these relations are not compatible with Eqn.\eqref{transformation}. Indeed it follows that
+\BA
+W_k ~_{\bu}\bJ_k^\a &\eq -W_k\eta_\a D_\a \bnabla \left(\frac{W_k^{-1} \chi_k^\a}{\sum_i W_i^{-1}\chi_i^\a}\right),\\
+&\eq -\rho_\a D_\a \bnabla \chi_k^\a - \rho_\a D_\a W_\a x_k^\a \sum_i W_i^{-1} \bnabla \chi_i^k,
+\EA
+using the relations
+\EQ
+\sum_k W_k^{-1} \chi_k^\a \eq W_\a^{-1} (\chi^\a),
+\EN
+and
+\EQ
+\rho_\a \eq W_\a \eta_\a.
+\EN
 
 \subsection{Simplified System}
 
@@ -2816,6 +2843,7 @@ w_i \eq \frac{x_i W_i}{\sum_l x_l W_l}.
 \EN
 \end{subequations}
 
+\begin{comment}
 \section{Stress-Strain Relations}
 
 \setcounter{equation}{0}
@@ -2838,6 +2866,7 @@ and
 c_{rT} \eq -\frac{1}{\varphi} \frac{\p \varphi}{\p T}.
 \EN
 As defined, both quantities $c_{rp}$ and $c_{rT}$ are positive for normal materials.
+\end{comment}
 
 \section{Global Mass Conservation}
 
@@ -2920,8 +2949,16 @@ leading to an unrealistically large precipitation rate. When this occurs it is n
 
 \section{References}
 
+\begin{description}
+
+\item Kee, R.J., M.E. Coltrin and P. Glarborg (2003) Chemically Reacting Flow: Theory and Practice, pp. 848.
+
+\end{description}
+
 \end{document}
-%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \begin{comment}
 \begin{subequations}
 \BA
