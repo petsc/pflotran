@@ -2702,25 +2702,38 @@ They are related by the transformation
 
 \paragraph{Molecular to Barycentric Transformation.}
 The transformation of the diffusive flux from molecular to barycentric reference velocities has the form
-\EQ
+\EQ\label{trans1}
 ~_{\bu}\bJ_k^\a \eq ~_{\bv}\bJ_k^\a - x_k^\a \sum_i ~_{\bv}\bJ_i^\a.
+\EN
+Introducing
+\EQ
+~_{\bv}\widetilde\bJ_k^\a \eq W_k ~_{\bv}\bJ_k^\a,
+\EN
+and multiplying through by $W_k$, Eqn.\eqref{trans1} becomes
+\EQ\label{trans2}
+W_k ~_{\bu}\bJ_k^\a \eq ~_{\bv}\widetilde\bJ_k^\a - x_k^\a W_k \sum_i W_i^{-1} ~_{\bv}\widetilde\bJ_i^\a.
 \EN
 Kee et al. (2003) relate the molecular and diffusive fluxes to Fick's law according to the relations
 \EQ
-~_{\bu}\bJ_k^\a \eq -\rho_\a D_\a \bnabla\chi_k^\a,
+~_{\bu}\bJ_k^\a \eq -\eta_\a D_\a \bnabla x_k^\a,
 \EN
 and
 \EQ
-~_{\bv}\bJ_k^\a \eq -\eta_\a D_\a \bnabla x_k^\a,
+~_{\bv}\widetilde\bJ_k^\a \eq -\rho_\a D_\a \bnabla\chi_k^\a,
 \EN
-corresponding to their Equations 12.158 and 12.160, p. 525--526. However, these relations are not compatible with Eqn.\eqref{transformation}. Indeed it follows that
+respectively, corresponding to their Equations 12.158 and 12.160, p. 525--526. 
+It is demonstrated that these relations are compatible with Eqn.\eqref{trans2}. Indeed it follows that
 \BA
 W_k ~_{\bu}\bJ_k^\a &\eq -W_k\eta_\a D_\a \bnabla \left(\frac{W_k^{-1} \chi_k^\a}{\sum_i W_i^{-1}\chi_i^\a}\right),\\
-&\eq -\rho_\a D_\a \bnabla \chi_k^\a - \rho_\a D_\a W_\a x_k^\a \sum_i W_i^{-1} \bnabla \chi_i^k,
+&\eq -\rho_\a D_\a \bnabla \chi_k^\a + \rho_\a D_\a x_k^\a W_k \sum_i W_i^{-1} \bnabla \chi_i^\a,\\
+&\eq ~_{\bv}\widetilde\bJ_k^\a - x_k^\a W_k \sum_i W_i^{-1} ~_{\bv}\widetilde\bJ_i^\a,
 \EA
-using the relations
+in agreement with Eqn.\eqref{trans2}. To obtain this result the following relations are used
 \EQ
-\sum_k W_k^{-1} \chi_k^\a \eq W_\a^{-1} (\chi^\a),
+W_k \eta_\a x_k^\a \eq \rho_\a \chi_k^\a,
+\EN
+\EQ
+W_\a \eq \sum_k W_k x_k^\a \eq \frac{1}{\sum W_k^{-1} \chi_k^\a},
 \EN
 and
 \EQ
