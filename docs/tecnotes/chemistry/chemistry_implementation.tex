@@ -2856,11 +2856,108 @@ w_i \eq \frac{x_i W_i}{\sum_l x_l W_l}.
 \EN
 \end{subequations}
 
-\begin{comment}
-\section{Stress-Strain Relations}
+\section{Stress-Strain 101}
 
 \setcounter{equation}{0}
 
+\subsection{Strain Tensor}
+
+The displacement at a point $\br$ = $(x_1,\,x_2,\,x_3)$ to point $\br'$ in a deformable media is defined as
+\EQ
+\bu\eq \br' - \br,
+\EN
+or in component form
+\EQ
+u_i \eq x_i^\prime - x_i,
+\EN
+where $\bu$ represents the displacement vector. The distance between two points $ds$ is transformed to (Einstein summation implied)
+\EQ
+{ds'}^2 \eq ds^2 + 2 u_{ik} dx_i dx_k,
+\EN
+where the strain tensor is defined as
+\EQ
+u_{ik} \eq \frac{1}{2}\left(\frac{\p u_i}{\p x_k} + \frac{\p u_k}{\p x_i}+ \frac{\p u_l}{\p x_i} \frac{\p u_l}{\p x_k}\right).
+\EN
+The strain tensor is symmetric $(u_{ik} \!=\!u_{ki})$ implying that it may be diagonalized
+\EQ
+u_{ik} \eq u^{(i)} \delta_{ik}.
+\EN
+A volume element $dV$ to first order transforms as
+\EQ
+dV' \eq dV \big(1 + u_{ii}\big) \eq dV \big(1+ \sum_i u^{(i)}\big).
+\EN
+
+\subsection{Stress Tensor}
+
+The force acting on a body is related to the stress tensor $\sigma_{ik}$ by the divergence 
+\EQ
+F_i \eq \p_k\sigma_{ik},
+\EN
+where $\p_k\!=\!\p/\p x_k$. The stress tensor must be symmetric $(\sigma_{ik}\!=\!\sigma_{ki})$.
+
+\subsubsection{Fundamental Thermodynamic Relations.}
+\paragraph{Energy}
+\EQ
+d\E \eq T dS + \sigma_{ik} du_{ik}.
+\EN
+\EQ
+\sigma_{ik} \eq \left(\frac{\p\E}{\p u_{ik}}\right)_S.
+\EN
+\paragraph{Free Energy}
+\EQ
+F \eq \E - TS.
+\EN
+\EQ
+dF \eq -S dT + \sigma_{ik} du_{ik}.
+\EN
+\EQ
+\sigma_{ik} \eq \left(\frac{\p F}{\p u_{ik}}\right)_T.
+\EN
+\paragraph{Gibbs Free Energy}
+\EQ
+G \eq \E- TS + \sigma_{ik} u_{ik}.
+\EN
+\EQ
+dG \eq -S dT - u_{ik} d\sigma_{ik}.
+\EN
+\EQ
+u_{ik} \eq -\left(\frac{\p G}{\p\sigma_{ik}}\right)_T.
+\EN
+For $\sigma_{ik} \!=\! -p \delta_{ik}$,
+\EQ
+d\E \eq T dS -pdV.
+\EN
+and
+\EQ
+dG \eq -S dT + Vdp.
+\EN
+
+\subsection{\sl Lam\'e Coefficients}
+
+For a deformed isotropic body
+\BA
+F &\eq F_0 + \frac{1}{2} \lambda u_{ii}^2 + \mu u_{ik}^2 + \ldots,\\
+&\eq \mu \big(u_{ik} - \frac{1}{3} \delta_{ik} u_{ll}\big)^2 + \frac{1}{2} K u_{ll}^2,
+\EA
+with Lam\'e coefficients $\lambda$ and $\mu$, where $K$ (bulk modulus, modulus of hydrostatic compression) is related to $\lambda$ and $\mu$ (shear modulus, modulus of rigidity) by
+\EQ
+K \eq \lambda + \frac{2}{3} \mu.
+\EN
+\EQ
+\sigma_{ik} \eq \left(\frac{\p F}{\p u_{ik}}\right)_T \eq K u_{ll} \delta_{ik} + 2 \mu \big(u_{ik}-\frac{1}{3} \delta_{ik} u_{ll}\big).
+\EN
+Conversely
+\EQ
+u_{ik} \eq \frac{1}{9K} \delta_{ik} \sigma_{ll} + \frac{1}{2\mu} \big(\sigma_{ik} - \frac{1}{3} \delta_{ik} \sigma_{ll}\big),
+\EN
+and
+\EQ
+u_{ll} \eq \frac{\sigma_{ll}}{3K}.
+\EN
+
+\subsection{Finite Element Formulation}
+
+\begin{comment}
 The functional relation of porosity to pore compressibility $c_{rp}$ and expansibility $c_{rT}$ is assumed to have the form
 \EQ
 \varphi \eq \varphi_{0} \big[1+c_{rp} (p-p_{0})-c_{rT} (T-T_{0})\big],
