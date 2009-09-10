@@ -2870,13 +2870,13 @@ or in component form
 \EQ
 u_i \eq x_i^\prime - x_i,
 \EN
-where $\bu$ represents the displacement vector. The distance between two points $ds$ is transformed to (Einstein summation implied)
+where $\bu$ represents the displacement vector. The distance between two points $ds$ is transformed to $ds'$ %(Einstein summation implied)
 \EQ
-{ds'}^2 \eq ds^2 + 2 u_{ik} dx_i dx_k,
+{ds'}^2 \eq ds^2 + 2 \sum_{ik} u_{ik} dx_i dx_k,
 \EN
 where the strain tensor is defined as
 \EQ
-u_{ik} \eq \frac{1}{2}\left(\frac{\p u_i}{\p x_k} + \frac{\p u_k}{\p x_i}+ \frac{\p u_l}{\p x_i} \frac{\p u_l}{\p x_k}\right).
+u_{ik} \eq \frac{1}{2}\left(\frac{\p u_i}{\p x_k} + \frac{\p u_k}{\p x_i}+ \sum_l \frac{\p u_l}{\p x_i} \frac{\p u_l}{\p x_k}\right).
 \EN
 The strain tensor is symmetric $(u_{ik} \!=\!u_{ki})$ implying that it may be diagonalized
 \EQ
@@ -2884,21 +2884,21 @@ u_{ik} \eq u^{(i)} \delta_{ik}.
 \EN
 A volume element $dV$ to first order transforms as
 \EQ
-dV' \eq dV \big(1 + u_{ii}\big) \eq dV \big(1+ \sum_i u^{(i)}\big).
+dV' \eq dV \big(1 + \sum_i u_{ii}\big) \eq dV \big(1+ \sum_i u^{(i)}\big).
 \EN
 
 \subsection{Stress Tensor}
 
-The force acting on a body is related to the stress tensor $\sigma_{ik}$ by the divergence 
+The force acting on a body is related to the divergence of the stress tensor $\sigma_{ik}$ 
 \EQ
-F_i \eq \p_k\sigma_{ik},
+F_i \eq \sum_k \frac{\p\sigma_{ik}}{\p x_k} \eq \sum_k \p_k\sigma_{ik},
 \EN
 where $\p_k\!=\!\p/\p x_k$. The stress tensor must be symmetric $(\sigma_{ik}\!=\!\sigma_{ki})$.
 
 \subsubsection{Fundamental Thermodynamic Relations.}
 \paragraph{Energy}
 \EQ
-d\E \eq T dS + \sigma_{ik} du_{ik}.
+d\E \eq T dS + \sum_{ik} \sigma_{ik} du_{ik}.
 \EN
 \EQ
 \sigma_{ik} \eq \left(\frac{\p\E}{\p u_{ik}}\right)_S.
@@ -2908,17 +2908,17 @@ d\E \eq T dS + \sigma_{ik} du_{ik}.
 F \eq \E - TS.
 \EN
 \EQ
-dF \eq -S dT + \sigma_{ik} du_{ik}.
+dF \eq -S dT + \sum_{ik} \sigma_{ik} du_{ik}.
 \EN
 \EQ
 \sigma_{ik} \eq \left(\frac{\p F}{\p u_{ik}}\right)_T.
 \EN
 \paragraph{Gibbs Free Energy}
 \EQ
-G \eq \E- TS + \sigma_{ik} u_{ik}.
+G \eq \E- TS + \sum_{ik} \sigma_{ik} u_{ik}.
 \EN
 \EQ
-dG \eq -S dT - u_{ik} d\sigma_{ik}.
+dG \eq -S dT - \sum_{ik} u_{ik} d\sigma_{ik}.
 \EN
 \EQ
 u_{ik} \eq -\left(\frac{\p G}{\p\sigma_{ik}}\right)_T.
@@ -2936,23 +2936,129 @@ dG \eq -S dT + Vdp.
 
 For a deformed isotropic body
 \BA
-F &\eq F_0 + \frac{1}{2} \lambda u_{ii}^2 + \mu u_{ik}^2 + \ldots,\\
-&\eq \mu \big(u_{ik} - \frac{1}{3} \delta_{ik} u_{ll}\big)^2 + \frac{1}{2} K u_{ll}^2,
+F &\eq F_0 + \frac{1}{2} \sum_{i} \lambda u_{ii}^2 + \mu  \sum_{ik} u_{ik}^2 + \ldots,\\
+&\eq \mu \big(u_{ik} - \frac{1}{3} \delta_{ik} \sum_{l} u_{ll}\big)^2 + \frac{1}{2} K  \sum_{l} u_{ll}^2,
 \EA
-with Lam\'e coefficients $\lambda$ and $\mu$, where $K$ (bulk modulus, modulus of hydrostatic compression) is related to $\lambda$ and $\mu$ (shear modulus, modulus of rigidity) by
+with Lam\'e coefficients $\lambda$ and $\mu$, where $F_0$ is the free energy of the undeformed body which is omitted in the second form of the free energy and in what follows, and where $K$ (bulk modulus, modulus of hydrostatic compression) is related to $\lambda$ and $\mu$ (shear modulus, modulus of rigidity) by
 \EQ
 K \eq \lambda + \frac{2}{3} \mu.
 \EN
+The stress tensor has the form
 \EQ
-\sigma_{ik} \eq \left(\frac{\p F}{\p u_{ik}}\right)_T \eq K u_{ll} \delta_{ik} + 2 \mu \big(u_{ik}-\frac{1}{3} \delta_{ik} u_{ll}\big).
+\sigma_{ik} \eq \left(\frac{\p F}{\p u_{ik}}\right)_T \eq K \delta_{ik} \sum_{l} u_{ll} + 2 \mu \big(u_{ik}-\frac{1}{3} \delta_{ik} \sum_{l} u_{ll}\big).
 \EN
 Conversely
 \EQ
-u_{ik} \eq \frac{1}{9K} \delta_{ik} \sigma_{ll} + \frac{1}{2\mu} \big(\sigma_{ik} - \frac{1}{3} \delta_{ik} \sigma_{ll}\big),
+u_{ik} \eq \frac{1}{9K} \delta_{ik} \sum_{l} \s_{ll} + \frac{1}{2\mu} \big(\s_{ik} - \frac{1}{3} \delta_{ik} \sum_{l} \s_{ll}\big),
 \EN
 and
 \EQ
-u_{ll} \eq \frac{\sigma_{ll}}{3K}.
+u_{ll} \eq \frac{1}{3K}\sum_{l} \s_{ll}.
+\EN
+
+According to Euler's theorem
+\EQ
+F \eq \frac{1}{2} \sum_{ik} \s_{ik} u_{ik}.
+\EN
+
+From the quadratic form of the elastic energy
+\EQ
+u_{ik} \eq \frac{\p F}{\p\s_{ik}}.
+\EN
+These equations represent a generalization of Hooke's law
+\EQ
+\E\eq \frac{1}{2}k x^2,
+\EN
+and
+\EQ
+F \eq -\frac{\p\E}{\p x} \eq -kx.
+\EN
+
+\subsection{Homogeneous Deformation}
+
+\EQ
+\s_{zz} \eq p, \ \s_{ik} = 0, \ (i\ne k),
+\EN
+\EQ
+u_{xx} \eq u_{yy} \eq -\frac{1}{3}\left(\frac{1}{2\mu}-\frac{1}{3K}\right)p,
+\EN
+\EQ
+u_{zz} \eq \frac{1}{3}\left(\frac{1}{3K}+\frac{1}{\mu}\right)p.
+\EN
+\EQ
+u_{zz} \eq \frac{p}{E},
+\EN
+where
+\EQ
+E \eq \frac{9K\mu}{3K+\mu}.
+\EN
+
+Possion's ratio is defined as
+\EQ
+\s \eq -\frac{\s_{xx}}{\s_{zz}},
+\EN
+where
+\EQ
+\s \eq \frac{1}{2} \left(\frac{3K-2\mu}{3K+\mu}\right).
+\EN
+
+\EQ
+F \eq \frac{E}{2(1+\s)} \left[u_{ik}^2 + \frac{\s}{1-2\s} \sum_l u_{ll}^2\right],
+\EN
+\EQ
+\s_{ik} \eq \frac{E}{1+\s}\left(u_{ik} + \frac{\s}{1-2\s}\delta_{ik} \sum_l u_{ll} \right),
+\EN
+\EQ
+u_{ik} \eq \frac{1}{E} \left[(1+\s)\s_{ik} - \s\delta_{ik} \sum_l \s_{ll}\right],
+\EN
+\begin{subequations}
+\EQ
+\s_{xx} \eq \frac{E}{(1+\s)(1-2\s)} \left[\big(1-\s\big) u_{xx} + \s \big(u_{yy}+u_{zz}\big)\right],
+\EN
+\EQ
+\s_{yy} \eq \frac{E}{(1+\s)(1-2\s)} \left[\big(1-\s\big) u_{yy} + \s \big(u_{xx}+u_{zz}\big)\right],
+\EN
+\EQ
+\s_{zz} \eq \frac{E}{(1+\s)(1-2\s)} \left[\big(1-\s\big) u_{zz} + \s \big(u_{xx}+u_{yy}\big)\right],
+\EN
+\EQ
+\s_{xy}\eq\frac{E}{1+\s} u_{xy}, \ \s_{xz}\eq\frac{E}{1+\s} u_{xz}, \ \s_{yz}\eq\frac{E}{1+\s} u_{yz}.
+\EN
+\end{subequations}
+
+\subsection{Non-isothermal Systems}
+
+\EQ
+F(T,\, u_{ik}) \eq F_0(T)-K\a(T-T_0) \sum_l u_{ll} + \mu \big(u_{ik}-\frac{1}{3}\delta_{ik}\sum_l u_{ll}\big)^2+\frac{1}{2}K \sum_l u_{ll}^2,
+\EN
+\EQ
+\s_{ik} \eq -K \a (T-T_0) \delta_{ik} + K \delta_{ik} \sum_l u_{ll} + 2\mu \big(u_{ik} - \frac{1}{3} \delta_{ik} \sum_l u_{ll}\big).
+\EN
+
+\subsubsection{Adiabatic}
+
+\subsection{Equilibrium}
+
+The condition for equilibrium in a body under gravitational forces has the form
+\EQ
+\sum_k \frac{\p\sigma_{ik}}{\p x_k} + \rho g_i - K\a \frac{\p T}{\p x_k}\eq 0.
+\EN
+
+\subsection{Equation of Motion}
+
+The equation of motion for the strains in a body under gravitational forces has the form
+\EQ
+\frac{\p^2 u_i}{\p t^2} \eq \sum_k \frac{\p\sigma_{ik}}{\p x_k} + \rho g_i - K\a \frac{\p T}{\p x_k}.
+\EN
+For an isotropic medium this equation becomes using vector notation
+\EQ
+\rho\frac{\p^2\bu}{\p t^2} \eq \frac{E}{2(1+\sigma)} \nabla^2 \bu + \frac{E}{2(1+\sigma)(1-2\sigma)} \bnabla \big(\bnabla\cdot\bu\big) + \rho\bg - \frac{E\a}{3(1-2\s)} \bnabla T.
+\EN
+\EQ
+K \eq \frac{E}{3(1-2\s)}.
+\EN
+\EQ
+\bnabla \bnabla\cdot\bu \eq \nabla^2 + \bnabla\times\bnabla\times\bu.
 \EN
 
 \subsection{Finite Element Formulation}
