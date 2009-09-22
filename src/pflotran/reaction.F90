@@ -1431,11 +1431,13 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
 #endif
     write(option%fid_out,90)
 
-    102 format(/,'  species               molality    total       act coef  constraint')  
+    102 format(/,'                        free        total')  
+    103 format('  species               molal       molal       act coef     constraint')  
     write(option%fid_out,102)
+    write(option%fid_out,103)
     write(option%fid_out,90)
   
-    103 format(2x,a20,es12.4,es12.4,es12.4,4x,a)
+    104 format(2x,a20,es12.4,es12.4,es12.4,4x,a)
     do icomp = 1, reaction%ncomp
       select case(aq_species_constraint%constraint_type(icomp))
         case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
@@ -1455,7 +1457,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
         case(CONSTRAINT_SUPERCRIT_CO2)
           string = 'SC ' // aq_species_constraint%constraint_spec_name(icomp)
       end select
-      write(option%fid_out,103) reaction%primary_species_names(icomp), &
+      write(option%fid_out,104) reaction%primary_species_names(icomp), &
                                 rt_auxvar%pri_molal(icomp), &
                                 rt_auxvar%total(icomp,1)*molar_to_molal, &
                                 rt_auxvar%pri_act_coef(icomp), &
