@@ -1736,20 +1736,20 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
    
     xphi = fg/p2
     call PSAT(t, sat_pressure, ierr)
-    sat_pressure =sat_pressure /1D5
+    sat_pressure = sat_pressure /1.D5
   
     m_na=option%m_nacl; m_cl=m_na 
     if(associated(realization%reaction))then
       if (realization%reaction%na_ion_id /= 0 .and. realization%reaction%cl_ion_id /= 0) then
-         m_na = global_aux_vars(ghosted_id)%m_nacl(1)
-         m_cl = global_aux_vars(ghosted_id)%m_nacl(2)
+        m_na = global_aux_vars(ghosted_id)%m_nacl(1)
+        m_cl = global_aux_vars(ghosted_id)%m_nacl(2)
       endif  
     endif
 
-    call Henry_duan_sun(t,p2*1D-5,henry,xphi,lngamco2, &
+    call Henry_duan_sun(t,p2*1.D-5,henry,xphi,lngamco2, &
       m_na,m_cl,sat_pressure)
     
-    henry= 1.D8 / FMWH2O / henry / xphi !note: henry = H/phi
+    henry = 1.D8 / FMWH2O / henry / xphi !note: henry = H/phi
   
     wat_sat_x = sat_pressure*1.D5/p 
     co2_sat_x = (1.D0-wat_sat_x)/(henry/p-wat_sat_x)*henry/p  ! xmol(4) = xmol(2)*henry/p

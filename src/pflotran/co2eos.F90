@@ -698,8 +698,8 @@ contains
   
   !activity coef. co2
   lngamco2 = 2.d0*lamc*mc + lamca*mc*ma ! = log(gam(jco2))
-  if(present(co2_aq_actcoef))then
-    co2_aq_actcoef=exp(lngamco2)
+  if (present(co2_aq_actcoef)) then
+    co2_aq_actcoef = exp(lngamco2)
   endif 
   tmp = mu0 + lngamco2 !- log(phico2)
   
@@ -709,7 +709,7 @@ contains
  
   ! mco2 = yco2 * exp(-tmp) * p
   
-  mco2= exp(-tmp) 
+  mco2 = exp(-tmp) ! = K_co2 * gamco2
   !print *, 'mco2: ', mu0,lngamco2,phico2,psat,yco2,t,p
   return
   end subroutine Henry_duan_sun
@@ -727,8 +727,6 @@ contains
   + c(8) * p / t + c(9) * p * fac &
   + C(10) * p * p * fac * fac + c(11) * t * log(p)
 
-
- 
   return
   end subroutine duan_sun_param
 
