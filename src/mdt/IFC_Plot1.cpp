@@ -1,4 +1,4 @@
-#include "Rubin1.h"
+#include "IFC_Plot1.h"
 
 #ifndef MAX
 #define MAX(X,Y) ((X) > (Y) ? (X) : (Y))
@@ -7,7 +7,7 @@
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y))
 #endif
 
-Rubin1::Rubin1(Grid **grid_) {
+IFC_Plot1::IFC_Plot1(Grid **grid_) {
 
   boundary_polygon = NULL;
   ifc_polygon = NULL;
@@ -104,7 +104,7 @@ Rubin1::Rubin1(Grid **grid_) {
   grid->mapVerticesToCells();
 
 //  boundary_polygon = new Polygon();
-//  boundary_polygon->createRubin1Polygon();
+//  boundary_polygon->createIFC_Plot1Polygon();
 //  ifc_polygon = new Polygon();
 //  ifc_polygon->createIFCPolygon();
 
@@ -194,7 +194,7 @@ Rubin1::Rubin1(Grid **grid_) {
 }
 
 
-void Rubin1::computeWestBoundary(Grid *grid, PetscInt complete) {
+void IFC_Plot1::computeWestBoundary(Grid *grid, PetscInt complete) {
 
   BoundarySet *west = new BoundarySet("West");
 
@@ -236,7 +236,7 @@ void Rubin1::computeWestBoundary(Grid *grid, PetscInt complete) {
 
 }
 
-void Rubin1::computeEastBoundary(Grid *grid, PetscInt complete) {
+void IFC_Plot1::computeEastBoundary(Grid *grid, PetscInt complete) {
 
   BoundarySet *east = new BoundarySet("East");
 
@@ -278,7 +278,7 @@ void Rubin1::computeEastBoundary(Grid *grid, PetscInt complete) {
 
 }
 
-void Rubin1::computeSouthBoundary(Grid *grid, PetscInt complete) {
+void IFC_Plot1::computeSouthBoundary(Grid *grid, PetscInt complete) {
 
   BoundarySet *south = new BoundarySet("South");
 
@@ -319,7 +319,7 @@ void Rubin1::computeSouthBoundary(Grid *grid, PetscInt complete) {
   south = NULL;
 }
 
-void Rubin1::computeNorthBoundary(Grid *grid, PetscInt complete) {
+void IFC_Plot1::computeNorthBoundary(Grid *grid, PetscInt complete) {
 
   BoundarySet *north = new BoundarySet("North");
 
@@ -361,7 +361,7 @@ void Rubin1::computeNorthBoundary(Grid *grid, PetscInt complete) {
 
 }
 
-void Rubin1::computeBottomBoundary(Grid *grid, PetscInt complete) {
+void IFC_Plot1::computeBottomBoundary(Grid *grid, PetscInt complete) {
 
   BoundarySet *bottom = new BoundarySet("Bottom");
 
@@ -403,7 +403,7 @@ void Rubin1::computeBottomBoundary(Grid *grid, PetscInt complete) {
 
 }
 
-void Rubin1::computeTopBoundary(Grid *grid, PetscInt complete) {
+void IFC_Plot1::computeTopBoundary(Grid *grid, PetscInt complete) {
 
   BoundarySet *top = new BoundarySet("Top");
 
@@ -448,7 +448,7 @@ void Rubin1::computeTopBoundary(Grid *grid, PetscInt complete) {
 
 }
 
-void Rubin1::computeIFCBoundary(Grid *grid, Polygon *p) {
+void IFC_Plot1::computeIFCBoundary(Grid *grid, Polygon *p) {
 
   BoundarySet *plume = new BoundarySet("IFC_Boundary");
 
@@ -476,7 +476,7 @@ void Rubin1::computeIFCBoundary(Grid *grid, Polygon *p) {
 
 }
 
-void Rubin1::flagGridCells(Grid *grid) {
+void IFC_Plot1::flagGridCells(Grid *grid) {
 
   PetscReal top_stage_max = 1.e20;
   PetscReal top_stage_min = 108.;
@@ -1053,7 +1053,7 @@ void Rubin1::flagGridCells(Grid *grid) {
 
 }
 
-void Rubin1::setMaterialIdBasedOnNaturalId(PetscInt natural_id, PetscInt material_id,
+void IFC_Plot1::setMaterialIdBasedOnNaturalId(PetscInt natural_id, PetscInt material_id,
                                              Grid *grid) {
   for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) 
     if (grid->cells[i].getIdNatural() == natural_id)//  {
@@ -1062,7 +1062,7 @@ void Rubin1::setMaterialIdBasedOnNaturalId(PetscInt natural_id, PetscInt materia
 //}
 }
 
-void Rubin1::setActiveBasedOnNaturalId(PetscInt natural_id, PetscInt active,
+void IFC_Plot1::setActiveBasedOnNaturalId(PetscInt natural_id, PetscInt active,
                                          Grid *grid) {
   for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) 
     if (grid->cells[i].getIdNatural() == natural_id) 
@@ -1070,7 +1070,7 @@ void Rubin1::setActiveBasedOnNaturalId(PetscInt natural_id, PetscInt active,
 }
 
 
-Rubin1::~Rubin1() {
+IFC_Plot1::~IFC_Plot1() {
   if (ascii_grids) {
     for (PetscInt i=0; i<AsciiGrid::nasciigrids; i++)
       delete ascii_grids[i];

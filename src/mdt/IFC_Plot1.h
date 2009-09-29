@@ -1,5 +1,5 @@
-#ifndef Rubin1_H_
-#define Rubin1_H_
+#ifndef IFC_Plot1_H_
+#define IFC_Plot1_H_
 
 #include <string.h>
 
@@ -12,11 +12,11 @@
 #include "Grid.h"
 #include "Polygon.h"
 
-class Rubin1 {
+class IFC_Plot1 {
   
 public:
-  Rubin1(Grid **grid);
-  virtual ~Rubin1();
+  IFC_Plot1(Grid **grid);
+  virtual ~IFC_Plot1();
 
   void computeTopBoundary(Grid *grid, PetscInt complete);
   void computeBottomBoundary(Grid *grid, PetscInt complete);
@@ -40,4 +40,4 @@ private:
 
 };
 
-#endif /*Rubin1_H_*/
+#endif /*IFC_Plot1_H_*/
