@@ -9,8 +9,8 @@ module Unstructured_Grid_module
 #include "definitions.h"
 
   type, public :: unstructured_grid_type
-    PetscInt :: num_cells
-    PetscInt :: num_vertices
+    PetscInt :: num_cells_global, num_cells_local
+    PetscInt :: num_vertices_global, num_vertices_local
     PetscInt :: nmax   ! Total number of nodes in global domain
     PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
     PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
@@ -52,8 +52,10 @@ function UnstructuredGridCreate()
 
   allocate(unstructured_grid)
 
-  unstructured_grid%num_cells = 0
-  unstructured_grid%num_vertices = 0
+  unstructured_grid%num_cells_global = 0
+  unstructured_grid%num_vertices_global = 0
+  unstructured_grid%num_cells_local = 0
+  unstructured_grid%num_vertices_local = 0
   unstructured_grid%nmax = 0
   unstructured_grid%nlmax = 0
   unstructured_grid%ngmax = 0
@@ -271,8 +273,16 @@ subroutine UnstructuredGridRead(unstructured_grid,filename,option)
   type(input_type), pointer :: input
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: card
+  PetscInt :: num_cells_local_save
+  PetscInt :: num_vertices_local_save
+  PetscInt :: num_to_read
+  PetscInt, allocatable :: temp_int_array(:,:)
+  PetscReal, allocatable :: temp_real_array(:,:)
 
-  integer :: icell, ivertex, idir
+  PetscInt :: icell, ivertex, idir, irank
+  PetscInt :: remainder
+  PetscErrorCode :: ierr
+  PetscInt :: status(MPI_STATUS_SIZE)
   
   input => InputCreate(86,filename)
 
@@ -282,36 +292,95 @@ subroutine UnstructuredGridRead(unstructured_grid,filename,option)
   string = 'unstructured grid'
   call InputReadStringErrorMsg(input,option,card)  
 
-  call InputReadInt(input,option,unstructured_grid%num_cells)
+  call InputReadInt(input,option,unstructured_grid%num_cells_global)
   call InputErrorMsg(input,option,'number of cells',card)
-  call InputReadInt(input,option,unstructured_grid%num_vertices)
+  call InputReadInt(input,option,unstructured_grid%num_vertices_global)
   call InputErrorMsg(input,option,'number of vertices',card)
 
-  allocate(unstructured_grid%cell_vertices(8,unstructured_grid%num_cells))
+  ! divide elements and vertices across processors
+  unstructured_grid%num_cells_local = unstructured_grid%num_cells_global/ &
+                                      option%mycommsize 
+  num_cells_local_save = unstructured_grid%num_cells_local
+  remainder = unstructured_grid%num_cells_global - &
+              unstructured_grid%num_cells_local*option%mycommsize
+  if (option%myrank < remainder) unstructured_grid%num_cells_local = &
+                                  unstructured_grid%num_cells_local + 1
+
+  allocate(unstructured_grid%cell_vertices(8,unstructured_grid%num_cells_local))
   unstructured_grid%cell_vertices = 0
 
-  do icell = 1, unstructured_grid%num_cells
-    call InputReadFlotranString(input,option)
-    call InputReadStringErrorMsg(input,option,card)  
-    do ivertex = 1, 8
-      call InputReadInt(input,option, &
-                        unstructured_grid%cell_vertices(ivertex,icell))
-      call InputErrorMsg(input,option,'vertex id',card)
+  if (option%myrank == option%io_rank) then
+    allocate(temp_int_array(8,num_cells_local_save+1))
+    ! read for other processors
+    do irank = 0, option%mycommsize-1
+      num_to_read = num_cells_local_save
+      if (irank < remainder) num_to_read = num_to_read + 1
+      do icell = 1, num_to_read
+        call InputReadFlotranString(input,option)
+        call InputReadStringErrorMsg(input,option,card)  
+        do ivertex = 1, 8
+          call InputReadInt(input,option,temp_int_array(ivertex,icell))
+          call InputErrorMsg(input,option,'vertex id',card)
+        enddo
+      enddo
+      
+      if (irank == option%io_rank) then
+        unstructured_grid%cell_vertices(:,1:unstructured_grid%num_cells_local) = &
+          temp_int_array(:,1:unstructured_grid%num_cells_local)
+      else
+        call MPI_Send(temp_int_array,num_to_read,MPI_INTEGER,irank, &
+                      num_to_read,option%mycomm,ierr)
+      endif
     enddo
-  enddo
+    deallocate(temp_int_array)
+  else
+    call MPI_Recv(unstructured_grid%cell_vertices, &
+                  unstructured_grid%num_cells_local*8,MPI_INTEGER,option%io_rank, &
+                  MPI_ANY_TAG,option%mycomm,status,ierr)
+  endif
 
-  allocate(unstructured_grid%vertex_coordinates(3,unstructured_grid%num_vertices))
+
+  unstructured_grid%num_vertices_local = unstructured_grid%num_vertices_global/ &
+                                         option%mycommsize 
+  num_vertices_local_save = unstructured_grid%num_vertices_local
+  remainder = unstructured_grid%num_vertices_global - &
+              unstructured_grid%num_vertices_local*option%mycommsize
+  if (option%myrank < remainder) unstructured_grid%num_vertices_local = &
+                                 unstructured_grid%num_vertices_local + 1
+
+  allocate(unstructured_grid%vertex_coordinates(3,unstructured_grid%num_vertices_local))
   unstructured_grid%vertex_coordinates = 0.d0
 
-  do ivertex = 1, unstructured_grid%num_vertices
-    call InputReadFlotranString(input,option)
-    call InputReadStringErrorMsg(input,option,card)  
-    do idir = 1, 3
-      call InputReadDouble(input,option, &
-                           unstructured_grid%vertex_coordinates(idir,ivertex))
-      call InputErrorMsg(input,option,'vertex coordinate',card)
+  if (option%myrank == option%io_rank) then
+    allocate(temp_real_array(3,num_vertices_local_save+1))
+    ! read for other processors
+    do irank = 0, option%mycommsize-1
+      num_to_read = num_vertices_local_save
+      if (irank < remainder) num_to_read = num_to_read + 1
+      do ivertex = 1, num_to_read
+        call InputReadFlotranString(input,option)
+        call InputReadStringErrorMsg(input,option,card)  
+        do idir = 1, 3
+          call InputReadDouble(input,option,temp_real_array(idir,ivertex))
+          call InputErrorMsg(input,option,'vertex coordinate',card)
+        enddo
+      enddo
+      
+      if (irank == option%io_rank) then
+        unstructured_grid%vertex_coordinates(:,1:unstructured_grid%num_cells_local) = &
+          temp_real_array(:,1:unstructured_grid%num_cells_local)
+      else
+        call MPI_Send(temp_real_array,num_to_read,MPI_INTEGER,irank, &
+                      num_to_read,option%mycomm,ierr)
+      endif
     enddo
-  enddo
+    deallocate(temp_real_array)
+  else
+    call MPI_Recv(unstructured_grid%vertex_coordinates, &
+                  unstructured_grid%num_vertices_local*3, &
+                  MPI_DOUBLE_PRECISION,option%io_rank, &
+                  MPI_ANY_TAG,option%mycomm,status,ierr)
+  endif
 
   call InputDestroy(input)
 
@@ -348,7 +417,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   type(option_type) :: option
   
 #ifdef ENABLE_UNSTRUCTURED  
-  PetscInt, allocatable :: cell_distribution(:)
+!  PetscInt, allocatable :: cell_distribution(:)
   PetscInt :: icell, ivertex, count
   PetscInt, allocatable :: local_vertices(:)
   PetscInt, allocatable :: local_vertex_offset(:)
@@ -373,18 +442,19 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   ! cell distribution across processors (size = num_cores + 1)
   ! core i owns cells cell_distribution(i):cell_distribution(i+1), note
   ! the zero-based ordering
-  allocate(cell_distribution(option%mycommsize+1))
-  cell_distribution(1) = 0
-  cell_distribution(2:) = unstructured_grid%num_cells
-  num_local_cells = cell_distribution(option%myrank+1)- &
-                    cell_distribution(option%myrank+2))
+!  allocate(cell_distribution(option%mycommsize+1))
+!  call MPI_Scan(unstructured_grid%num_cells_local,
+!  cell_distribution(1) = 0
+!  cell_distribution(2:) = unstructured_grid%num_cells
+!  num_local_cells = cell_distribution(option%myrank+1)- &
+!                    cell_distribution(option%myrank+2)
   
   ! provide ids of vertices for local cells
-  allocate(local_vertices(8*unstructured_grid%num_cells))
-  allocate(local_vertex_offset(unstructured_grid%num_cells+1))
+  allocate(local_vertices(8*unstructured_grid%num_cells_local))
+  allocate(local_vertex_offset(unstructured_grid%num_cells_local+1))
   count = 0
   local_vertex_offset(1) = 0
-  do icell = 1, unstructured_grid%num_cells
+  do icell = 1, unstructured_grid%num_cells_local
     do ivertex = 1, 8
       count = count + 1
       local_vertices(count) = unstructured_grid%cell_vertices(ivertex,icell)
@@ -394,8 +464,9 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   index_format_flag = 0 ! C-style indexing
   num_common_vertices = 3 ! cells must share at least vertices
   
-  call MatCreateMPIAdj(option%mycomm,unstructured_grid%num_cells, &
-                       unstructured_grid%num_vertices,local_vertex_offset, &
+  call MatCreateMPIAdj(option%mycomm,unstructured_grid%num_cells_local, &
+                       unstructured_grid%num_vertices_global, &
+                       local_vertex_offset, &
                        local_vertices,PETSC_NULL_INTEGER,Adj_mat,ierr)
 
 #if 0
@@ -413,9 +484,9 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
 #endif
 
   call MatPartitioningCreate(option%mycomm,Part,ierr)
-  call MatPartitioningSetAdjacency(Part,Adj_mat,ierr)
+  call MatPartitioningSetAdjacency(Part,Dual_mat,ierr)
   call MatPartitioningSetFromOptions(Part,ierr)
-  call MatPartitioningAppy(Part,is_new,ierr)
+  call MatPartitioningApply(Part,is_new,ierr)
   call MatPartitioningDestroy(Part,ierr)
   
   call PetscViewerASCIIOpen(option%mycomm,'is.out',viewer,ierr)
@@ -423,29 +494,31 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   call PetscViewerDestroy(viewer,ierr)  
 
   allocate(cell_counts(option%mycommsize))
-  call ISPartitioningCount(is_new,option%mysize,cell_counts,ierr)
+  call ISPartitioningCount(is_new,option%mycommsize,cell_counts,ierr)
   
   call VecCreate(option%mycomm,elements_new,ierr)
   ! assuming hexahedron (8)
   call VecSetSizes(elements_new,8*cell_counts(option%myrank+1),PETSC_DECIDE,ierr)
-  call VecSetFromOptions(elements_new)
+  call VecSetFromOptions(elements_new,ierr)
   
   call ISPartitioningToNumbering(is_new,is_num,ierr)
   call ISDestroy(is_new,ierr)
   call ISGetIndicesF90(is_num,index_ptr,ierr)
-  allocate(strided_indices(num_local_cells)
-  do i=1, num_local_cells
-    strided_indices(i) = 8*index_ptr(i)
+  allocate(strided_indices(unstructured_grid%num_cells_local))
+  do icell=1, unstructured_grid%num_cells_local
+    strided_indices(icell) = 8*index_ptr(icell)
   enddo
-  call ISCreateBlock(option%mycomm,8,num_local_cells,strided_indices,is_scatter,ierr)
+  call ISCreateBlock(option%mycomm,8,unstructured_grid%num_cells_local, &
+                     strided_indices,is_scatter,ierr)
   call ISRestoreIndicesF90(is_num,index_ptr,ierr)
   deallocate(strided_indices)
   call ISDestroy(is_num,ierr)
   
-  call VecCreateSeq(option%mycomm,8*num_local_cells,elements_old,ierr)
+  call VecCreateSeq(option%mycomm,8*unstructured_grid%num_cells_local, &
+                    elements_old,ierr)
   call VecGetArrayF90(elements_old,vec_ptr,ierr)
-  do i=1, 8*num_local_cells
-    vec_ptr(i) = local_vertices(i)
+  do icell=1, 8*unstructured_grid%num_cells_local
+    vec_ptr(icell) = local_vertices(icell)
   enddo
   call VecRestoreArrayF90(elements_old,vec_ptr,ierr)
   
@@ -453,54 +526,19 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   call ISDestroy(is_scatter,ierr)
   call VecScatterBegin(vec_scatter,elements_old,elements_new,INSERT_VALUES,SCATTER_FORWARD,ierr)
   call VecScatterEnd(vec_scatter,elements_old,elements_new,INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterDestroy(vec_scatter,ierr)
+  call VecDestroy(elements_old,ierr)
+  
+  call PetscViewerASCIIOpen(option%mycomm,'elements_new.out',viewer,ierr)
+  call VecView(elements_new,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
   
 
-#if 0
-!  allocate(xadj_ptr)
-!  nullify(xadj_ptr%f90iptr)
-!  allocate(xadj_ptr%f90iptr(3))
-!  xadj_ptr%f90iptr(1) = -1
-!  xadj_ptr%f90iptr(2) = -2
-!  xadj_ptr%f90iptr(3) = -3
-!  call assign_c_int_ptr(xadj_cptr,xadj_ptr)
-  call assign_c_int_ptr(xadj_cptr,xadj)
-
-!  allocate(adjncy_ptr)
-!  nullify(adjncy_ptr%f90iptr)
-!  allocate(adjncy_ptr%f90iptr(3))
-!  adjncy_ptr%f90iptr(1) = -10
-!  adjncy_ptr%f90iptr(2) = -20
-!  adjncy_ptr%f90iptr(3) = -30
-!  call assign_c_int_ptr(adjncy_cptr,adjncy_ptr)
-  call assign_c_int_ptr(adjncy_cptr,adjncy)
-
-  call ParMETIS_V3_Mesh2Dual(cell_distribution,local_vertex_offset, &
-                             local_vertices,index_format_flag, &
-                             num_common_vertices,xadj_cptr,adjncy_cptr, &
-                             option%mycomm)
-!  call ParMETIS_V3_Mesh2Dual(idxtype *elmdist, idxtype *eptr, idxtype *eind, int *numflag,
-!int *ncommonnodes, idxtype **xadj, idxtype **adjncy, MPI Comm *comm)
-
-!  allocate(xadj_ptr)
-!  nullify(xadj_ptr%f90ptr)
-!  call assign_c_int_ptr(xadj_cptr,xadj_ptr)
-  xadj => xadj_ptr%f90iptr
-  deallocate(xadj_ptr)
-  nullify(xadj_ptr)
-!  
-!  allocate(adjncy_ptr)
-!  nullify(adjncy_ptr%f90ptr
-!  call assign_c_int_ptr(adjncy_cptr,adjncy_ptr)
-  adjncy => adjncy_ptr%f90iptr
-  deallocate(adjncy_ptr)
-  nullify(adjncy_ptr)
-#endif
-  
-  deallocate(cell_distribution)
+!  deallocate(cell_distribution)
   deallocate(local_vertices)
   deallocate(local_vertex_offset)
   
-  
+  stop
 #endif
   
 end subroutine UnstructuredGridDecompose

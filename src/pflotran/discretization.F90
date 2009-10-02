@@ -329,7 +329,7 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
             un_str_grid => UnstructuredGridCreate()
             call UnstructuredGridRead(un_str_grid,filename,option)
             grid%unstructured_grid => un_str_grid
-            grid%nmax = un_str_grid%num_cells
+            grid%nmax = un_str_grid%num_cells_global
           case(STRUCTURED_GRID)      
             if (nx*ny*nz <= 0) &
               call printErrMsg(option,'NXYZ not set correctly for structured grid.')
