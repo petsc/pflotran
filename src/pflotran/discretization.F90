@@ -115,8 +115,10 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
   character(len=MAXWORDLENGTH) :: word
   type(grid_type), pointer :: grid
   type(structured_grid_type), pointer :: str_grid
+  type(unstructured_grid_type), pointer :: un_str_grid
   type(amrgrid_type), pointer :: amrgrid
   character(len=MAXWORDLENGTH) :: structured_grid_ctype
+  character(len=MAXSTRINGLENGTH) :: filename
   PetscInt :: structured_grid_itype
   PetscInt :: nx, ny, nz
   PetscInt :: i
@@ -164,6 +166,8 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
               end select
             case('unstructured')
               discretization%itype = UNSTRUCTURED_GRID
+              call InputReadWord(input,option,filename,PETSC_TRUE)
+              call InputErrorMsg(input,option,'unstructured filename','GRID')
             case('amr')
               discretization%itype = AMR_GRID
             case default
@@ -321,6 +325,11 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
       case(UNSTRUCTURED_GRID,STRUCTURED_GRID)
         grid => GridCreate()
         select case(discretization%itype)
+          case(UNSTRUCTURED_GRID)
+            un_str_grid => UnstructuredGridCreate()
+            call UnstructuredGridRead(un_str_grid,filename,option)
+            grid%unstructured_grid => un_str_grid
+            grid%nmax = un_str_grid%num_cells
           case(STRUCTURED_GRID)      
             if (nx*ny*nz <= 0) &
               call printErrMsg(option,'NXYZ not set correctly for structured grid.')
@@ -438,6 +447,8 @@ subroutine DiscretizationCreateDM(discretization,dm,ndof,stencil_width, &
       call StructuredGridCreateDA(discretization%grid%structured_grid, &
                                   dm,ndof,stencil_width,option)
     case(UNSTRUCTURED_GRID)
+      call UnstructuredGridDecompose(discretization%grid%unstructured_grid, &
+                                     dm,ndof,option)
   end select
 
 end subroutine DiscretizationCreateDM

@@ -19,7 +19,7 @@ contains
 
 ! ************************************************************************** !
 !
-! Init: Initializes a pflow grid object
+! Init: Initializes pflotran
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
