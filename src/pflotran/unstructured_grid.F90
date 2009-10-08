@@ -325,15 +325,18 @@ subroutine UnstructuredGridRead(unstructured_grid,filename,option)
       enddo
       
       if (irank == option%io_rank) then
+print *, '0: ', unstructured_grid%num_cells_local, ' cells'
         unstructured_grid%cell_vertices(:,1:unstructured_grid%num_cells_local) = &
           temp_int_array(:,1:unstructured_grid%num_cells_local)
       else
-        call MPI_Send(temp_int_array,num_to_read,MPI_INTEGER,irank, &
+print *, '0: ', num_to_read, ' cells sent'
+        call MPI_Send(temp_int_array,num_to_read*8,MPI_INTEGER,irank, &
                       num_to_read,option%mycomm,ierr)
       endif
     enddo
     deallocate(temp_int_array)
   else
+print *, option%myrank,': ',unstructured_grid%num_cells_local, ' cells recv'
     call MPI_Recv(unstructured_grid%cell_vertices, &
                   unstructured_grid%num_cells_local*8,MPI_INTEGER,option%io_rank, &
                   MPI_ANY_TAG,option%mycomm,status,ierr)
@@ -406,6 +409,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
 #include "finclude/petscda.h"
 #include "finclude/petscda.h90"
 #include "finclude/petscis.h"
+#include "finclude/petscis.h90"
 #include "finclude/petscviewer.h"
 
   interface
@@ -418,7 +422,10 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   
 #ifdef ENABLE_UNSTRUCTURED  
 !  PetscInt, allocatable :: cell_distribution(:)
-  PetscInt :: icell, ivertex, count
+  PetscInt :: icell, ivertex, count, vertex_count
+  PetscInt :: max_vertex_count
+  PetscInt :: max_dual
+  PetscInt :: stride
   PetscInt, allocatable :: local_vertices(:)
   PetscInt, allocatable :: local_vertex_offset(:)
   PetscInt :: index_format_flag, num_common_vertices
@@ -426,6 +433,9 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   PetscInt, pointer :: index_ptr(:)
   PetscReal, pointer :: vec_ptr(:)
   PetscInt, allocatable :: strided_indices(:)
+  PetscInt, pointer :: ia_ptr(:), ja_ptr(:)
+  PetscInt :: num_rows, num_cols, istart, iend, icol
+  PetscTruth :: success
   PetscErrorCode :: ierr
   
   PetscViewer :: viewer
@@ -438,6 +448,8 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   IS :: is_num
   IS :: is_scatter
   VecScatter :: vec_scatter
+
+  PetscInt :: global_offset
   
   ! cell distribution across processors (size = num_cores + 1)
   ! core i owns cells cell_distribution(i):cell_distribution(i+1), note
@@ -450,12 +462,17 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
 !                    cell_distribution(option%myrank+2)
   
   ! provide ids of vertices for local cells
-  allocate(local_vertices(8*unstructured_grid%num_cells_local))
+
+  max_vertex_count = 8
+  max_dual = 6
+  stride = max_vertex_count + max_dual + 1 + 1 ! another for -999
+
+  allocate(local_vertices(max_vertex_count*unstructured_grid%num_cells_local))
   allocate(local_vertex_offset(unstructured_grid%num_cells_local+1))
   count = 0
   local_vertex_offset(1) = 0
   do icell = 1, unstructured_grid%num_cells_local
-    do ivertex = 1, 8
+    do ivertex = 1, max_vertex_count
       count = count + 1
       local_vertices(count) = unstructured_grid%cell_vertices(ivertex,icell)
     enddo
@@ -463,21 +480,25 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   enddo
   index_format_flag = 0 ! C-style indexing
   num_common_vertices = 3 ! cells must share at least vertices
+
+  global_offset = 0
+  call MPI_Exscan(unstructured_grid%num_cells_local,global_offset,ONE_INTEGER,&
+                  MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
   
   call MatCreateMPIAdj(option%mycomm,unstructured_grid%num_cells_local, &
                        unstructured_grid%num_vertices_global, &
                        local_vertex_offset, &
                        local_vertices,PETSC_NULL_INTEGER,Adj_mat,ierr)
 
-#if 0
+#if 1
   call PetscViewerASCIIOpen(option%mycomm,'Adj.out',viewer,ierr)
   call MatView(Adj_mat,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
-  call MatMeshToVertexGraph(Adj_mat,num_common_vertices,Dual_mat,ierr)
+  call MatMeshToCellGraph(Adj_mat,num_common_vertices,Dual_mat,ierr)
 
-#if 0
+#if 1
   call PetscViewerASCIIOpen(option%mycomm,'Dual.out',viewer,ierr)
   call MatView(Dual_mat,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -497,8 +518,9 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   call ISPartitioningCount(is_new,option%mycommsize,cell_counts,ierr)
   
   call VecCreate(option%mycomm,elements_new,ierr)
-  ! assuming hexahedron (8)
-  call VecSetSizes(elements_new,8*cell_counts(option%myrank+1),PETSC_DECIDE,ierr)
+  call VecSetSizes(elements_new, &
+                   stride*cell_counts(option%myrank+1), &
+                   PETSC_DECIDE,ierr)
   call VecSetFromOptions(elements_new,ierr)
   
   call ISPartitioningToNumbering(is_new,is_num,ierr)
@@ -506,19 +528,59 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   call ISGetIndicesF90(is_num,index_ptr,ierr)
   allocate(strided_indices(unstructured_grid%num_cells_local))
   do icell=1, unstructured_grid%num_cells_local
-    strided_indices(icell) = 8*index_ptr(icell)
+    strided_indices(icell) = stride*index_ptr(icell)
   enddo
-  call ISCreateBlock(option%mycomm,8,unstructured_grid%num_cells_local, &
+  ! include cell ids
+  call ISCreateBlock(option%mycomm,stride, &
+                     unstructured_grid%num_cells_local, &
                      strided_indices,is_scatter,ierr)
   call ISRestoreIndicesF90(is_num,index_ptr,ierr)
   deallocate(strided_indices)
   call ISDestroy(is_num,ierr)
   
-  call VecCreateSeq(option%mycomm,8*unstructured_grid%num_cells_local, &
-                    elements_old,ierr)
+  call VecCreate(option%mycomm,elements_old,ierr)
+  call VecSetSizes(elements_old, &
+                   stride*unstructured_grid%num_cells_local,PETSC_DECIDE,ierr)
+  call VecSetFromOptions(elements_old,ierr)
+
+  ! 0 = 0-based indexing
+  call MatGetRowIJF90(Dual_mat,0,PETSC_FALSE,PETSC_FALSE,num_rows,ia_ptr, &
+                      ja_ptr,success,ierr)
+
+  if (success == PETSC_FALSE .or. &
+      num_rows /= unstructured_grid%num_cells_local) then
+    print *, option%myrank, num_rows, success, unstructured_grid%num_cells_local
+    option%io_buffer = 'Error getting IJ row indices from dual matrix'
+    call printErrMsg(option)
+  endif
+
   call VecGetArrayF90(elements_old,vec_ptr,ierr)
-  do icell=1, 8*unstructured_grid%num_cells_local
-    vec_ptr(icell) = local_vertices(icell)
+  count = 0
+  vertex_count = 0
+  do icell=1, unstructured_grid%num_cells_local
+    count = count + 1
+    ! negate to indicate cell id with 1-based numbering (-0 = 0)
+    vec_ptr(count) = -(global_offset+icell)
+    do ivertex = 1, max_vertex_count
+      count = count + 1
+      vertex_count = vertex_count + 1
+      vec_ptr(count) = local_vertices(vertex_count)
+    enddo
+
+    count = count + 1 
+    vec_ptr(count) = -999  ! help differentiate
+
+    istart = ia_ptr(icell)
+    iend = ia_ptr(icell+1)-1
+    num_cols = iend-istart+1
+    do icol = 1, max_dual
+      count = count + 1
+      if (icol < num_cols) then
+        vec_ptr(count) = ja_ptr(icol+istart)
+      else
+        vec_ptr(count) = 0
+      endif
+    enddo
   enddo
   call VecRestoreArrayF90(elements_old,vec_ptr,ierr)
   
@@ -527,6 +589,11 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   call VecScatterBegin(vec_scatter,elements_old,elements_new,INSERT_VALUES,SCATTER_FORWARD,ierr)
   call VecScatterEnd(vec_scatter,elements_old,elements_new,INSERT_VALUES,SCATTER_FORWARD,ierr)
   call VecScatterDestroy(vec_scatter,ierr)
+
+  call PetscViewerASCIIOpen(option%mycomm,'elements_old.out',viewer,ierr)
+  call VecView(elements_old,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+  
   call VecDestroy(elements_old,ierr)
   
   call PetscViewerASCIIOpen(option%mycomm,'elements_new.out',viewer,ierr)
