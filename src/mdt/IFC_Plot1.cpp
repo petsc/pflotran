@@ -135,8 +135,8 @@ IFC_Plot1::IFC_Plot1(Grid **grid_) {
   ascii_grids[0]->setMaterialId(10);
   ascii_grids[1]->setMaterialId(9);
   ascii_grids[2]->setMaterialId(8);
-  ascii_grids[3]->setMaterialId(6);
-  ascii_grids[4]->setMaterialId(5);
+  ascii_grids[3]->setMaterialId(5);
+  ascii_grids[4]->setMaterialId(4);
   ascii_grids[5]->setMaterialId(1);
 
   PetscInt mod = grid->num_cells_ghosted/10;
