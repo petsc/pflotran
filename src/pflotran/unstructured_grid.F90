@@ -9,7 +9,7 @@ module Unstructured_Grid_module
 #include "definitions.h"
 
   type, public :: unstructured_grid_type
-    PetscInt :: num_cells_global, num_cells_local
+    PetscInt :: num_cells_global, num_cells_local, num_cell_ghosted
     PetscInt :: num_vertices_global, num_vertices_local
     PetscInt :: nmax   ! Total number of nodes in global domain
     PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
@@ -17,6 +17,7 @@ module Unstructured_Grid_module
     PetscInt, pointer :: hash(:,:,:)
     PetscInt :: num_hash
     PetscInt, pointer :: cell_vertices(:,:)
+    PetscInt, pointer :: cell_ids(:)
     PetscReal, pointer :: vertex_coordinates(:,:)
   end type unstructured_grid_type
 
@@ -56,12 +57,14 @@ function UnstructuredGridCreate()
   unstructured_grid%num_vertices_global = 0
   unstructured_grid%num_cells_local = 0
   unstructured_grid%num_vertices_local = 0
+  unstructured_grid%num_cells_ghosted = 0
   unstructured_grid%nmax = 0
   unstructured_grid%nlmax = 0
   unstructured_grid%ngmax = 0
   nullify(unstructured_grid%cell_vertices)
   nullify(unstructured_grid%vertex_coordinates)
   nullify(unstructured_grid%hash)
+  nullify(unstructured_grid%cell_ids)
   unstructured_grid%num_hash = 100
 
   UnstructuredGridCreate => unstructured_grid
@@ -448,8 +451,13 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   IS :: is_num
   IS :: is_scatter
   VecScatter :: vec_scatter
+  
+  Vec :: global_vec
+  Vec :: local_vec
 
   PetscInt :: global_offset
+  PetscInt :: vertex_ids_offset
+  PetscInt :: dual_offset
   
   ! cell distribution across processors (size = num_cores + 1)
   ! core i owns cells cell_distribution(i):cell_distribution(i+1), note
@@ -463,7 +471,9 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   
   ! provide ids of vertices for local cells
 
+  vertex_ids_offset = 1
   max_vertex_count = 8
+  dual_offset = vertex_ids_offset + max_vertex_count + 1
   max_dual = 6
   stride = max_vertex_count + max_dual + 1 + 1 ! another for -999
 
@@ -600,7 +610,98 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   call VecView(elements_new,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
   
+  
+  unstructured_grid%num_cells_local = cell_counts(option%myrank+1)
+  deallocate(unstructured_grid%cell_vertices)
+  allocate(unstructured_grid%cell_vertices(max_vertex_count, &
+                                           unstructured_grid%num_cells_local)
+  unstructured_grid%cell_vertices = 0
+  allocate(unstructured_grid%cell_ids(unstructured_grid%num_cells_local)
+  unstructured_grid%cell_ids = 0
+  
+  ! look at all connections and determine how many are non-local, and create
+  !  a listof indices
+  PetscInt, allocatable :: local_cell_ids(:)
+  PetscInt, allocatable :: ghost_cell_ids(:)
+  PetscInt :: ghost_cell_count
+  PetscInt :: max_ghost_cell_count
+  PetscInt :: icell2
+  PetscInt :: ndof
+  IS :: is_to
+  IS :: is_from
+  
+  call VecGetArrayF90(elements_new,vec_ptr,ierr)
 
+  ! make a list of local ids
+  allocate(local_cell_ids(unstructured_grid%num_cells_local)
+  do icell=1, unstructured_grid%num_cells_local
+    unstructured_grid%cell_ids(icell) = abs(vec_ptr((icell-1)*stride+1))
+  enddo
+
+  ! make a list of ghosted ids
+  ghost_cell_count = 0
+  max_ghost_cell_count = 0
+  allocate(ghost_cell_ids(unstructured_grid%num_cells_local))
+  do icell=1, unstructured_grid%num_cells_local
+    do idual = 1, max_dual
+      dual_id = vec_ptr(dual_offset + (icell-1)*stride
+      if (dual_id < 1) exit
+      do icell2 = 1, unstructured_grid%num_cells_local
+        if (dual_id == unstructured_grid%cell_ids(icell2)) then
+          found = PETSC_TRUE
+          exit
+        endif
+      enddo
+      if (.not.found) then
+        do icell2 = 1, ghost_cell_count
+          if (dual_id == ghost_cell_ids(icell2)) then
+            found = PETSC_TRUE
+            exit
+          endif
+        enddo
+        if (.not.found) then
+          ghost_cell_count = ghost_cell_count + 1
+          if (ghost_cell_count > max_ghost_cell_count) then
+            call reallocateIntArray(ghost_cell_ids,max_ghost_cell_count)
+          endif
+          ghost_cell_ids(ghost_cell_count) = dual_id
+        endif
+      endif
+    enddo
+  enddo
+
+  call VecRestoreArrayF90(elements_new,vec_ptr,ierr)
+  
+  unstructured_grid%num_cell_ghosted = unstructured_grid%num_cells_local + &
+                                       ghost_cell_count
+  
+  ! create local to global scatter
+  call VecCreateMPI(option%mycomm,cell_counts(option%myrank+1), &
+                    PETSC_DETERMINE,global_vec,ierr)
+  call VecSetBlockSize(global_vec,ndof,ierr)
+  call VecCreateSeq(PETSC_COMM_SELF,ghost_cell_count,local_vec,ierr)
+  call VecSetBlockSize(local_vec,ndof,ierr)
+  
+  call VecGetOwnershipRange(global_vec,istart,iend,ierr)
+  call ISCreateStride(option%mycomm,unstructured_grid%num_cells_local, &
+                      istart,1,is_to,ierr)
+
+  allocate(idx(unstructured_grid%num_cells_local)
+  do icell=1, unstructured_grid%num_cells_local
+    idx(icell) = (icell-1)*ndof
+  enddo
+  call ISCreateBlock(option%mycomm,ndof,unstructured_grid%num_cells_local, &
+                     idx,is_from,ierr) 
+  deallocate(idx)
+  
+  call VecScatterCreate(local_vec,is_from,global_vec,is_to,scatter_ltog,ierr)
+  call ISDestroy(is_to,ierr)
+  call ISDestroy(is_from,ierr)           
+
+  ! create global to local scatter
+  call ISCreateStride(option%mycomm,unstructured_grid%num_cell_ghosted,0,1, &
+                      is_to,ierr)
+  
 !  deallocate(cell_distribution)
   deallocate(local_vertices)
   deallocate(local_vertex_offset)
