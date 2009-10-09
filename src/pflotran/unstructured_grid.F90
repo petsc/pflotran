@@ -574,7 +574,8 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
     do ivertex = 1, max_vertex_count
       count = count + 1
       vertex_count = vertex_count + 1
-      vec_ptr(count) = local_vertices(vertex_count)
+        ! increment for 1-based ordering
+      vec_ptr(count) = local_vertices(vertex_count) + 1
     enddo
 
     count = count + 1 
@@ -585,8 +586,9 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
     num_cols = iend-istart+1
     do icol = 1, max_dual
       count = count + 1
-      if (icol < num_cols) then
-        vec_ptr(count) = ja_ptr(icol+istart)
+      if (icol <= num_cols) then
+        ! increment for 1-based ordering
+        vec_ptr(count) = ja_ptr(icol+istart) + 1
       else
         vec_ptr(count) = 0
       endif
