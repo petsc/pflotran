@@ -437,6 +437,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   PetscInt, allocatable :: cell_counts(:)
   PetscInt, pointer :: index_ptr(:)
   PetscReal, pointer :: vec_ptr(:)
+  PetscReal, pointer :: vec_ptr2(:)
   PetscInt, allocatable :: strided_indices(:)
   PetscInt, pointer :: ia_ptr(:), ja_ptr(:)
   PetscInt :: num_rows, num_cols, istart, iend, icol
@@ -645,7 +646,6 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   call VecGetArrayF90(elements_new,vec_ptr,ierr)
 
   ! make a list of local ids
-  allocate(unstructured_grid%cell_ids_natural(unstructured_grid%num_cells_local))
   do icell=1, unstructured_grid%num_cells_local
     unstructured_grid%cell_ids_natural(icell) = abs(vec_ptr((icell-1)*stride+1))
   enddo
@@ -663,6 +663,10 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
                      ao_natural_to_petsc,ierr)
   deallocate(int_array)
   unstructured_grid%cell_ids_natural = unstructured_grid%cell_ids_natural + 1
+
+  call PetscViewerASCIIOpen(option%mycomm,'ao.out',viewer,ierr)
+  call AOView(ao_natural_to_petsc,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
                      
   count = 0
   do icell=1, unstructured_grid%num_cells_local
@@ -693,11 +697,12 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   do icell=1, unstructured_grid%num_cells_local
     count = count + 1
     unstructured_grid%cell_ids_global(icell) = int_array(count)
+!    vec_ptr(idual + dual_offset + (icell-1)*stride) = int_array(count)
     do idual = 1, max_dual
       dual_id = vec_ptr(idual + dual_offset + (icell-1)*stride)
       if (dual_id < 1) exit
       count = count + 1
-      vec_ptr(idual + dual_offset + (icell-1)*stride) = int_array(count)
+!      vec_ptr(idual + dual_offset + (icell-1)*stride) = int_array(count)
     enddo
   enddo                
   deallocate(int_array)
@@ -744,6 +749,55 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   call PetscViewerASCIIOpen(option%mycomm,'elements_new_transform.out',viewer,ierr)
   call VecView(elements_new,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
+
+
+  ! let do some error checking
+  call VecCreateMPI(option%mycomm,cell_counts(option%myrank+1), &
+                    PETSC_DETERMINE,global_vec,ierr)
+  call VecSetBlockSize(global_vec,1,ierr)
+  call VecGetArrayF90(elements_new,vec_ptr2,ierr)
+  call VecGetArrayF90(global_vec,vec_ptr,ierr)
+  do icell = 1, unstructured_grid%num_cells_local
+    vec_ptr(icell) = unstructured_grid%cell_ids_global(icell)
+  enddo
+  call VecGetArrayF90(elements_new,vec_ptr2,ierr)
+  call VecRestoreArrayF90(global_vec,vec_ptr,ierr)
+  call PetscViewerASCIIOpen(option%mycomm,'petsc_order.out',viewer,ierr)
+  call VecView(global_vec,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+  call VecGetArrayF90(global_vec,vec_ptr,ierr)
+  do icell = 1, unstructured_grid%num_cells_local
+    vec_ptr(icell) = unstructured_grid%cell_ids_natural(icell)
+  enddo
+  call VecRestoreArrayF90(global_vec,vec_ptr,ierr)
+  call PetscViewerASCIIOpen(option%mycomm,'natural_order.out',viewer,ierr)
+  call VecView(global_vec,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+  allocate(int_array(unstructured_grid%num_cells_local))
+  int_array = unstructured_grid%cell_ids_natural - 1
+  call AOApplicationToPetsc(ao_natural_to_petsc,size(int_array),int_array,ierr)
+  int_array = int_array + 1                
+  call VecGetArrayF90(global_vec,vec_ptr,ierr)
+  do icell = 1, unstructured_grid%num_cells_local
+    vec_ptr(icell) = int_array(icell)
+  enddo
+  call VecRestoreArrayF90(global_vec,vec_ptr,ierr)
+  call PetscViewerASCIIOpen(option%mycomm,'petsc_order_check.out',viewer,ierr)
+  call VecView(global_vec,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+  int_array = int_array - 1                
+  call AOPetscToApplication(ao_natural_to_petsc,size(int_array),int_array,ierr)
+  int_array = int_array + 1                
+  call VecGetArrayF90(global_vec,vec_ptr,ierr)
+  do icell = 1, unstructured_grid%num_cells_local
+    vec_ptr(icell) = int_array(icell)
+  enddo
+  call VecRestoreArrayF90(global_vec,vec_ptr,ierr)
+  deallocate(int_array)
+  call PetscViewerASCIIOpen(option%mycomm,'natural_order_check.out',viewer,ierr)
+  call VecView(global_vec,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+  call VecDestroy(global_vec,ierr)
   
   unstructured_grid%num_cells_ghosted = unstructured_grid%num_cells_local + &
                                        ghost_cell_count
