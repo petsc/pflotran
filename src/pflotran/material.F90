@@ -12,6 +12,7 @@ module Material_module
     character(len=MAXWORDLENGTH) :: name
     PetscReal :: permeability(3,3)
     PetscTruth :: isotropic_permeability
+    PetscReal :: vertical_anisotropy_ratio ! (vertical / horizontal)
     character(len=MAXSTRINGLENGTH) :: permeability_filename
     PetscReal :: porosity
     character(len=MAXSTRINGLENGTH) :: porosity_filename
@@ -67,6 +68,7 @@ function MaterialPropertyCreate()
   material_property%name = ''
   material_property%permeability = 0.d0
   material_property%isotropic_permeability = PETSC_TRUE
+  material_property%vertical_anisotropy_ratio = 0.d0
   material_property%permeability_pwr = 0.d0
   material_property%permeability_filename = ''
   material_property%porosity = 0.d0
@@ -200,6 +202,12 @@ subroutine MaterialPropertyRead(material_property,input,option)
           select case(trim(word))
             case('ANISOTROPIC')
               material_property%isotropic_permeability = PETSC_FALSE
+            case('VERTICAL_ANISOTROPY_RATIO')
+              material_property%isotropic_permeability = PETSC_FALSE
+              call InputReadDouble(input,option, &
+                                   material_property%vertical_anisotropy_ratio)
+              call InputErrorMsg(input,option,'vertical anisotropy ratio', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
             case('ISOTROPIC')
               material_property%isotropic_permeability = PETSC_TRUE
             case('PERM_X')

@@ -2358,7 +2358,9 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
 
     call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                     option)
-    if (material_property%isotropic_permeability) then
+    if (material_property%isotropic_permeability .or. &
+        (.not.material_property%isotropic_permeability .and. &
+         material_property%vertical_anisotropy_ratio > 0.d0)) then
       dataset_name = 'Permeability'
       call HDF5ReadCellIndexedRealArray(realization,global_vec, &
                                         material_property%permeability_filename, &
@@ -2370,7 +2372,8 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
           if (patch%imat(grid%nL2G(local_id)) == material_property%id) then
             perm_xx_p(local_id) = vec_p(local_id)
             perm_yy_p(local_id) = vec_p(local_id)
-            perm_zz_p(local_id) = vec_p(local_id)
+            perm_zz_p(local_id) = vec_p(local_id)* &
+              material_property%vertical_anisotropy_ratio
           endif
         enddo
       else
