@@ -153,9 +153,10 @@ subroutine StochasticRun(stochastic,option)
 
   call OptionCheckCommandLine(option)
 
-  do irealization = 1, stochastic%num_local_realizations
+  ! moved outside due to errors when allocating/deallocating  over and over
+  call LoggingCreate()
 
-    call LoggingCreate()
+  do irealization = 1, stochastic%num_local_realizations
 
     call OptionInitRealization(option)
     simulation => SimulationCreate(option)
@@ -214,11 +215,11 @@ subroutine StochasticRun(stochastic,option)
                ' of ', stochastic%num_local_realizations
     endif
 
-
-    call LoggingDestroy()
-    
   enddo
   
+  ! moved outside due to errors when allocating/deallocating  over and over
+  call LoggingDestroy()
+    
   call MPI_Barrier(option%global_comm,ierr)
 
 end subroutine StochasticRun

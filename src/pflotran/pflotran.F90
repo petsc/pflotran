@@ -84,8 +84,8 @@
   call MPI_Comm_size(option%iogroup,option%localsize,ierr)
   call MPI_Comm_rank(option%iogroup,option%localrank,ierr)
   if (mod(option%global_rank,option%broadcast_size) == 0) then
-	option%reader_color = 1
-	option%reader_key = option%global_rank
+    option%reader_color = 1
+    option%reader_key = option%global_rank
   else
     option%reader_color = 0
     option%reader_key = option%global_rank
