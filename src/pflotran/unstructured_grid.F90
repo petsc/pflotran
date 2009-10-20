@@ -10,6 +10,7 @@ module Unstructured_Grid_module
 
   type, public :: unstructured_grid_type
     PetscInt :: num_cells_global, num_cells_local, num_cells_ghosted
+    PetscInt :: num_ghost_cells
     PetscInt :: num_vertices_global, num_vertices_local
     PetscInt :: nmax   ! Total number of nodes in global domain
     PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
@@ -58,6 +59,7 @@ function UnstructuredGridCreate()
   unstructured_grid%num_cells_local = 0
   unstructured_grid%num_vertices_local = 0
   unstructured_grid%num_cells_ghosted = 0
+  unstructured_grid%num_ghost_cells = 0
   unstructured_grid%nmax = 0
   unstructured_grid%nlmax = 0
   unstructured_grid%ngmax = 0
@@ -458,6 +460,8 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   IS :: is_local_local
   IS :: is_ghosted_petsc
   IS :: is_local_petsc
+  IS :: is_ghosts_local
+  IS :: is_ghosts_petsc
   VecScatter :: vec_scatter
   
   Vec :: global_vec
@@ -483,6 +487,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   PetscTruth :: found
   VecScatter :: scatter_ltog
   VecScatter :: scatter_gtol
+  VecScatter :: scatter_ltol
 
   
   ! cell distribution across processors (size = num_cores + 1)
@@ -768,6 +773,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
     enddo
   enddo
   call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr)
+  unstructured_grid%num_ghost_cells = ghost_cell_count
   unstructured_grid%num_cells_ghosted = &
     unstructured_grid%num_cells_local + ghost_cell_count
   
@@ -802,6 +808,30 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   call ISCreateStride(option%mycomm,unstructured_grid%num_cells_local, &
                       istart,1,is_local_petsc,ierr)
 
+  ! IS for local numbering of ghosts cells
+  allocate(int_array(unstructured_grid%num_cells_local))
+  do icell = 1, unstructured_grid%num_ghost_cells
+    int_array(icell) = (icell+unstructured_grid%num_cells_local-1)*ndof
+  enddo
+  call ISCreateBlock(option%mycomm,ndof,unstructured_grid%num_ghost_cells, &
+                     int_array,is_ghosts_local,ierr)
+  deallocate(int_array)
+  call PetscViewerASCIIOpen(option%mycomm,'is_ghosts_local.out',viewer,ierr)
+  call ISView(is_ghosts_local,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+  
+  ! IS for local numbering of ghosts cells
+  allocate(int_array(unstructured_grid%num_cells_local))
+  do icell = 1, unstructured_grid%num_ghost_cells
+    int_array(icell) = (ghost_cell_ids_petsc(icell)-1)*ndof
+  enddo
+  call ISCreateBlock(option%mycomm,ndof,unstructured_grid%num_ghost_cells, &
+                     int_array,is_ghosts_petsc,ierr)
+  deallocate(int_array)
+  call PetscViewerASCIIOpen(option%mycomm,'is_ghosts_petsc.out',viewer,ierr)
+  call ISView(is_ghosts_petsc,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+  
   ! IS for local numbering of local, non-ghosted cells
   allocate(int_array(unstructured_grid%num_cells_local))
   do icell = 1, unstructured_grid%num_cells_local
@@ -810,6 +840,9 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   call ISCreateBlock(option%mycomm,ndof,unstructured_grid%num_cells_local, &
                      int_array,is_local_local,ierr)
   deallocate(int_array)
+  call PetscViewerASCIIOpen(option%mycomm,'is_local_local.out',viewer,ierr)
+  call ISView(is_local_local,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
   
   ! IS for ghosted numbering of local ghosted cells
   allocate(int_array(unstructured_grid%num_cells_ghosted))
@@ -819,6 +852,9 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   call ISCreateBlock(option%mycomm,ndof,unstructured_grid%num_cells_ghosted, &
                      int_array,is_ghosted_local,ierr)
   deallocate(int_array)
+  call PetscViewerASCIIOpen(option%mycomm,'is_ghosted_local.out',viewer,ierr)
+  call ISView(is_ghosted_local,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
                           
   ! IS for petsc numbering of local ghosted cells
   allocate(int_array(unstructured_grid%num_cells_ghosted))
@@ -832,17 +868,33 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   call ISCreateBlock(option%mycomm,ndof,unstructured_grid%num_cells_ghosted, &
                      int_array,is_ghosted_petsc,ierr)
   deallocate(int_array)
+  call PetscViewerASCIIOpen(option%mycomm,'is_ghosted_petsc.out',viewer,ierr)
+  call ISView(is_ghosted_petsc,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+                 
+                 
                  
   ! create a local to global mapping
   call ISLocalToGlobalMappingCreateIS(is_ghosted_petsc,mapping_ltog,ierr)
-
-!  call VecCreateGhost(option%mycomm,unstructured_grid%num_cells_local, &
-!                      unstructured_grid%nmax,ghost_cell_count, &
-!                      ghost_cell_ids_petsc,global_vec, &
-!                      ierr)
+  call PetscViewerASCIIOpen(option%mycomm,'mapping_ltog.out',viewer,ierr)
+  call ISLocalToGlobalMappingView(mapping_ltog,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+  
                             
   call VecScatterCreate(local_vec,is_local_local,global_vec,is_local_petsc,scatter_ltog,ierr)
+  call PetscViewerASCIIOpen(option%mycomm,'scatter_ltog.out',viewer,ierr)
+  call VecScatterView(scatter_ltog,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+
   call VecScatterCreate(global_vec,is_ghosted_local,local_vec,is_ghosted_petsc,scatter_gtol,ierr)
+  call PetscViewerASCIIOpen(option%mycomm,'scatter_gtol.out',viewer,ierr)
+  call VecScatterView(scatter_gtol,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+
+  call VecScatterCreate(local_vec,is_local_petsc,local_vec,is_ghosts_petsc,scatter_ltol,ierr)
+  call PetscViewerASCIIOpen(option%mycomm,'scatter_ltol.out',viewer,ierr)
+  call VecScatterView(scatter_ltol,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
     
   
   ! need to destroy tons of objects  
@@ -851,7 +903,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   call VecDestroy(global_vec,ierr)
   call VecDestroy(local_vec,ierr)
     
-
+  stop
 
   ! let do some error checking
   call VecCreateMPI(option%mycomm,cell_counts(option%myrank+1), &
@@ -928,15 +980,6 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   call ISDestroy(is_to,ierr)
   call ISDestroy(is_from,ierr)           
 
-  ! create global to local scatter
-  !  call ISCreateStride(option%mycomm,unstructured_grid%num_cells_ghosted,0,1, &
-  !                      is_to,ierr)
-  call VecCreateGhost(option%mycomm,unstructured_grid%num_cells_local, &
-                      unstructured_grid%nmax, &
-                      unstructured_grid%num_cells_ghosted- &
-                        unstructured_grid%num_cells_local, &
-                      global_vec,ierr)
-                      
   
 !  deallocate(cell_distribution)
   deallocate(local_vertices)
