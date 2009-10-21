@@ -28,7 +28,9 @@ module Discretization_module
     DM, pointer :: dmc_nflowdof(:), dmc_ntrandof(:)
       ! Arrays containing hierarchy of coarsened DMs, for use with Galerkin 
       ! multigrid.  Element i of each array is a *finer* DM than element i-1.
-
+    type(ugdm_type), pointer :: ugdm_1_dof
+    type(ugdm_type), pointer :: ugdm_nflow_dof
+    type(ugdm_type), pointer :: ugdm_ntran_dof
     PetscInt :: dm_index_to_ndof(5) ! mapping between a dm_ptr to the number of degrees of freedom
 
   end type discretization_type
@@ -84,6 +86,9 @@ function DiscretizationCreate()
   discretization%dm_ntrandof = 0
   nullify(discretization%dmc_nflowdof)
   nullify(discretization%dmc_ntrandof)
+  nullify(discretization%ugdm_1_dof)
+  nullify(discretization%ugdm_nflow_dof)
+  nullify(discretization%ugdm_ntran_dof)
   
   nullify(discretization%grid)
   nullify(discretization%amrgrid)
@@ -384,27 +389,38 @@ subroutine DiscretizationCreateDMs(discretization,option)
   PetscErrorCode :: ierr
   PetscInt :: i
 
-  discretization%dm_index_to_ndof(ONEDOF) = 1
-  discretization%dm_index_to_ndof(NPHASEDOF) = option%nphase
-  discretization%dm_index_to_ndof(NFLOWDOF) = option%nflowdof
-  discretization%dm_index_to_ndof(NTRANDOF) = option%ntrandof
+  select case(discretization%itype)
+    case(STRUCTURED_GRID)
+      discretization%dm_index_to_ndof(ONEDOF) = 1
+      discretization%dm_index_to_ndof(NPHASEDOF) = option%nphase
+      discretization%dm_index_to_ndof(NFLOWDOF) = option%nflowdof
+      discretization%dm_index_to_ndof(NTRANDOF) = option%ntrandof
+    case(UNSTRUCTURED_GRID)
+      call UnstructuredGridDecompose(discretization%grid%unstructured_grid, &
+                                     option)
+    case(AMR_GRID)
+  end select
+
 
   !-----------------------------------------------------------------------
   ! Generate the DA objects that will manage communication.
   !-----------------------------------------------------------------------
   ndof = 1
-  call DiscretizationCreateDM(discretization,discretization%dm_1_dof,ndof, &
+  call DiscretizationCreateDM(discretization,discretization%dm_1_dof, &
+                              discretization%ugdm_1_dof,ndof, &
                               stencil_width,option)
   
   if (option%nflowdof > 0) then
     ndof = option%nflowdof
     call DiscretizationCreateDM(discretization,discretization%dm_nflowdof, &
+                                discretization%ugdm_nflow_dof, &
                                 ndof,stencil_width,option)
   endif
   
   if (option%ntrandof > 0) then
     ndof = option%ntrandof
     call DiscretizationCreateDM(discretization,discretization%dm_ntrandof, &
+                                discretization%ugdm_ntran_dof, &
                                 ndof,stencil_width,option)
   endif
 
@@ -429,7 +445,7 @@ end subroutine DiscretizationCreateDMs
 ! date: 02/08/08
 !
 ! ************************************************************************** !
-subroutine DiscretizationCreateDM(discretization,dm,ndof,stencil_width, &
+subroutine DiscretizationCreateDM(discretization,dm,ugdm,ndof,stencil_width, &
                                   option)
 
   use Option_module
@@ -438,6 +454,7 @@ subroutine DiscretizationCreateDM(discretization,dm,ndof,stencil_width, &
   
   type(discretization_type) :: discretization
   DM :: dm
+  type(ugdm_type), pointer :: ugdm
   PetscInt :: ndof
   PetscInt :: stencil_width
   type(option_type) :: option
@@ -447,8 +464,8 @@ subroutine DiscretizationCreateDM(discretization,dm,ndof,stencil_width, &
       call StructuredGridCreateDA(discretization%grid%structured_grid, &
                                   dm,ndof,stencil_width,option)
     case(UNSTRUCTURED_GRID)
-      call UnstructuredGridDecompose(discretization%grid%unstructured_grid, &
-                                     dm,ndof,option)
+      call UnstructuredGridCreateUGDM(discretization%grid%unstructured_grid, &
+                                      ugdm,ndof,option)
   end select
 
 end subroutine DiscretizationCreateDM
@@ -1239,6 +1256,12 @@ subroutine DiscretizationDestroy(discretization)
         deallocate(discretization%dmc_nflowdof)
       endif
     case(UNSTRUCTURED_GRID)
+      if (associated(discretization%ugdm_1_dof)) &
+        call UGDMDestroy(discretization%ugdm_1_dof)
+      if (associated(discretization%ugdm_nflow_dof)) &
+        call UGDMDestroy(discretization%ugdm_nflow_dof)
+      if (associated(discretization%ugdm_ntran_dof)) &
+        call UGDMDestroy(discretization%ugdm_ntran_dof)
   end select
   
 end subroutine DiscretizationDestroy
