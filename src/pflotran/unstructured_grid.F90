@@ -440,6 +440,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   PetscInt, pointer :: index_ptr(:)
   PetscReal, pointer :: vec_ptr(:)
   PetscReal, pointer :: vec_ptr2(:)
+  PetscInt, pointer :: int_ptr(:)
   PetscInt, allocatable :: strided_indices(:)
   PetscInt, pointer :: ia_ptr(:), ja_ptr(:)
   PetscInt :: num_rows, num_cols, istart, iend, icol
@@ -630,12 +631,14 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   call MatRestoreRowIJF90(Dual_mat,0,PETSC_FALSE,PETSC_FALSE,num_rows,ia_ptr, &
                           ja_ptr,success,ierr)
 
+  call printMsg(option,'Before element scatter')
   call VecScatterCreate(elements_old,PETSC_NULL,elements_natural,is_scatter,vec_scatter,ierr)
   call ISDestroy(is_scatter,ierr)
   call VecScatterBegin(vec_scatter,elements_old,elements_natural,INSERT_VALUES,SCATTER_FORWARD,ierr)
   call VecScatterEnd(vec_scatter,elements_old,elements_natural,INSERT_VALUES,SCATTER_FORWARD,ierr)
   call VecScatterDestroy(vec_scatter,ierr)
 
+  call printMsg(option,'After element scatter')
   call PetscViewerASCIIOpen(option%mycomm,'elements_old.out',viewer,ierr)
   call VecView(elements_old,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -661,6 +664,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   call VecCopy(elements_natural,elements_petsc,ierr)
   call VecGetArrayF90(elements_natural,vec_ptr,ierr)
 
+  call printMsg(option,'Lists of ids')
   ! make a list of local ids
   do icell=1, unstructured_grid%num_cells_local
     unstructured_grid%cell_ids_natural(icell) = abs(vec_ptr((icell-1)*stride+1))
@@ -712,6 +716,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   enddo
   call VecRestoreArrayF90(elements_natural,vec_ptr,ierr)
   
+  call printMsg(option,'Application ordering')
   ! convert the dual ids from natural to petsc
   int_array = int_array - 1             
   call AOApplicationToPetsc(ao_natural_to_petsc,count,int_array,ierr)
@@ -816,7 +821,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   call PetscViewerDestroy(viewer,ierr)
 
   ! IS for local numbering of ghosts cells
-  allocate(int_array(unstructured_grid%num_cells_local))
+  allocate(int_array(unstructured_grid%num_ghost_cells))
   do icell = 1, unstructured_grid%num_ghost_cells
     int_array(icell) = (icell+unstructured_grid%num_cells_local-1)*ndof
   enddo
@@ -830,7 +835,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   call PetscViewerDestroy(viewer,ierr)
   
   ! IS for local numbering of ghosts cells
-  allocate(int_array(unstructured_grid%num_cells_local))
+  allocate(int_array(unstructured_grid%num_ghost_cells))
   do icell = 1, unstructured_grid%num_ghost_cells
     int_array(icell) = (ghost_cell_ids_petsc(icell)-1)*ndof
   enddo
@@ -892,29 +897,32 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
                  
                  
   ! create a local to global mapping
+  call printMsg(option,'ISLocalToGlobalMapping')
   call ISLocalToGlobalMappingCreateIS(is_ghosted_petsc,mapping_ltog,ierr)
   call PetscViewerASCIIOpen(option%mycomm,'mapping_ltog.out',viewer,ierr)
   call ISLocalToGlobalMappingView(mapping_ltog,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
   
                             
-  print *, 'local to global'
+  call printMsg(option,'local to global')
   call VecScatterCreate(local_vec,is_local_local,global_vec,is_local_petsc, &
                         scatter_ltog,ierr)
   call PetscViewerASCIIOpen(option%mycomm,'scatter_ltog.out',viewer,ierr)
   call VecScatterView(scatter_ltog,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 
-  print *, 'global to local'
+  call printMsg(option,'global to local')
   call VecScatterCreate(global_vec,is_ghosted_petsc,local_vec,is_ghosted_local, &
                         scatter_gtol,ierr)
   call PetscViewerASCIIOpen(option%mycomm,'scatter_gtol.out',viewer,ierr)
   call VecScatterView(scatter_gtol,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 
-  print *, 'local to local'
+  call printMsg(option,'local to local')
   call VecScatterCopy(scatter_gtol,scatter_ltol,ierr)
-  call VecScatterRemap(scatter_ltol,is_local_local,PETSC_NULL_INTEGER,ierr)
+  call ISGetIndicesF90(is_local_local,int_ptr,ierr)
+  call VecScatterRemap(scatter_ltol,int_ptr,PETSC_NULL_INTEGER,ierr)
+  call ISRestoreIndicesF90(is_local_local,int_ptr,ierr)
 !  call VecScatterCreate(local_vec,is_local_petsc,local_vec,is_ghosts_petsc,scatter_ltol,ierr)
   call PetscViewerASCIIOpen(option%mycomm,'scatter_ltol.out',viewer,ierr)
   call VecScatterView(scatter_ltol,viewer,ierr)
