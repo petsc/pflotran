@@ -730,7 +730,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   do icell=1, unstructured_grid%num_cells_local
     count = count + 1
     unstructured_grid%cell_ids_petsc(icell) = int_array(count)
-    vec_ptr(idual + dual_offset + (icell-1)*stride) = int_array(count)
+    vec_ptr((icell-1)*stride+1) = int_array(count)
     do idual = 1, max_dual
       dual_id = vec_ptr2(idual + dual_offset + (icell-1)*stride)
       if (dual_id < 1) exit
@@ -741,6 +741,10 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr)
   call VecRestoreArrayF90(elements_natural,vec_ptr2,ierr)
   deallocate(int_array)
+
+  call PetscViewerASCIIOpen(option%mycomm,'elements_petsc.out',viewer,ierr)
+  call VecView(elements_petsc,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
                      
   ! make a list of ghosted ids in natural numbering
   call VecGetArrayF90(elements_natural,vec_ptr,ierr)
@@ -792,7 +796,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
                             ghost_cell_ids_petsc,ierr)
   ghost_cell_ids_petsc = ghost_cell_ids_petsc + 1
 
-  call PetscViewerASCIIOpen(option%mycomm,'elements_natural_transform.out',viewer,ierr)
+  call PetscViewerASCIIOpen(option%mycomm,'elements_natural_local.out',viewer,ierr)
   call VecView(elements_natural,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 
@@ -902,9 +906,9 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   call PetscViewerASCIIOpen(option%mycomm,'mapping_ltog.out',viewer,ierr)
   call ISLocalToGlobalMappingView(mapping_ltog,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
-  
                             
   call printMsg(option,'local to global')
+  ! Create local to global scatter
   call VecScatterCreate(local_vec,is_local_local,global_vec,is_local_petsc, &
                         scatter_ltog,ierr)
   call PetscViewerASCIIOpen(option%mycomm,'scatter_ltog.out',viewer,ierr)
@@ -912,6 +916,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   call PetscViewerDestroy(viewer,ierr)
 
   call printMsg(option,'global to local')
+  ! Create global to local scatter
   call VecScatterCreate(global_vec,is_ghosted_petsc,local_vec,is_ghosted_local, &
                         scatter_gtol,ierr)
   call PetscViewerASCIIOpen(option%mycomm,'scatter_gtol.out',viewer,ierr)
@@ -919,6 +924,8 @@ subroutine UnstructuredGridDecompose(unstructured_grid,dm,ndof,option)
   call PetscViewerDestroy(viewer,ierr)
 
   call printMsg(option,'local to local')
+  ! Create local to local scatter.  Essentially remap the global to local as
+  ! PETSc does in daltol.c
   call VecScatterCopy(scatter_gtol,scatter_ltol,ierr)
   call ISGetIndicesF90(is_local_local,int_ptr,ierr)
   call VecScatterRemap(scatter_ltol,int_ptr,PETSC_NULL_INTEGER,ierr)
