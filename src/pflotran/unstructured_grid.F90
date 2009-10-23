@@ -447,7 +447,7 @@ print *, option%myrank,': ',unstructured_grid%num_cells_local, ' cells recv'
         unstructured_grid%vertex_coordinates(:,1:unstructured_grid%num_vertices_local) = &
           temp_real_array(:,1:unstructured_grid%num_vertices_local)
       else
-        call MPI_Send(temp_real_array,num_to_read*3,MPI_INTEGER,irank, &
+        call MPI_Send(temp_real_array,num_to_read*3,MPI_DOUBLE_PRECISION,irank, &
                       num_to_read,option%mycomm,ierr)
       endif
     enddo
@@ -510,6 +510,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   PetscInt, pointer :: ia_ptr(:), ja_ptr(:)
   PetscInt :: num_rows, num_cols, istart, iend, icol
   PetscTruth :: success
+  character(len=MAXSTRINGLENGTH) :: string
   PetscErrorCode :: ierr
   
   PetscViewer :: viewer
@@ -538,6 +539,9 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   PetscInt :: temp_int
   PetscInt, allocatable :: int_array(:)
   PetscInt, allocatable :: int_array2(:)
+  PetscInt, allocatable :: int_array3(:)
+  PetscInt, allocatable :: int_array4(:)
+  PetscInt, allocatable :: needed_vertices_petsc(:)
   PetscInt, pointer :: int_array_pointer(:)
   
   PetscInt :: idual, dual_id
@@ -557,11 +561,11 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   
   ! provide ids of vertices for local cells
 
-  vertex_ids_offset = 1
+  vertex_ids_offset = 1 + 1 ! +1 for -777
   max_vertex_count = 8
-  dual_offset = vertex_ids_offset + max_vertex_count + 1
+  dual_offset = vertex_ids_offset + max_vertex_count + 1 ! +1 for -888
   max_dual = 6
-  stride = max_vertex_count + max_dual + 1 + 1 ! another for -999
+  stride = dual_offset+ max_dual + 1 ! +1 for -999
 
   allocate(local_vertices(max_vertex_count*unstructured_grid%num_cells_local))
   allocate(local_vertex_offset(unstructured_grid%num_cells_local+1))
@@ -666,6 +670,8 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
     count = count + 1
     ! negate to indicate cell id with 1-based numbering (-0 = 0)
     vec_ptr(count) = -(unstructured_grid%global_offset+icell)
+    count = count + 1
+    vec_ptr(count) = -777  ! help differentiate
     do ivertex = 1, max_vertex_count
       count = count + 1
       vertex_count = vertex_count + 1
@@ -675,7 +681,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
     enddo
 
     count = count + 1 
-    vec_ptr(count) = -999  ! help differentiate
+    vec_ptr(count) = -888  ! help differentiate
 
     istart = ia_ptr(icell)
     iend = ia_ptr(icell+1)-1
@@ -689,6 +695,8 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
         vec_ptr(count) = 0
       endif
     enddo
+    count = count + 1 
+    vec_ptr(count) = -999  ! help differentiate
   enddo
   call VecRestoreArrayF90(elements_old,vec_ptr,ierr)
   
@@ -938,52 +946,92 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
       if (vertex_count > max_int_count) then
         call reallocateIntArray(int_array_pointer,max_int_count)
       endif
+      vec_ptr(ivertex + vertex_ids_offset + (icell-1)*stride) = vertex_count
       int_array_pointer(vertex_count) = vertex_id
     enddo
   enddo
   call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr)
-  call VecDestroy(elements_petsc,ierr)
 
   ! sort the vertex ids
+  allocate(int_array(vertex_count))
+  int_array(1:vertex_count) = int_array_pointer(1:vertex_count)
   allocate(int_array2(vertex_count))
-  int_array2(1:vertex_count) = int_array_pointer(1:vertex_count)
+  do ivertex = 1, vertex_count
+    int_array2(ivertex) = ivertex 
+  enddo
   deallocate(int_array_pointer)
   nullify(int_array_pointer)
-  call PetscSortInt(vertex_count,int_array2,ierr)
+  int_array2 = int_array2-1
+  call PetscSortIntWithPermutation(vertex_count,int_array,int_array2,ierr)
+  int_array2 = int_array2+1
+
   ! remove duplicates
-  allocate(int_array(vertex_count))
-  int_array = 0
-  int_array(1) = int_array2(1)
+  allocate(int_array3(vertex_count))
+  allocate(int_array4(vertex_count))
+  int_array3 = 0
+  int_array4 = 0
+  int_array3(1) = int_array(int_array2(1))
+  int_array4(1) = 1
   count = 1
   do ivertex = 2, vertex_count
-    if (int_array2(ivertex) > int_array(count)) then
+    vertex_id = int_array(int_array2(ivertex))
+    if (vertex_id > int_array3(count)) then
       count = count + 1
-      int_array(count) = int_array2(ivertex)
+      int_array3(count) = vertex_id
     endif
+    int_array4(int_array2(ivertex)) = count
   enddo
   vertex_count = count
-  deallocate(int_array2)
+  deallocate(int_array)
 
-  ! IS for gather
+  allocate(needed_vertices_petsc(vertex_count))
+  needed_vertices_petsc(1:vertex_count) = int_array3(1:vertex_count)
+
+  ! permute the local ids set earlier
+  call VecGetArrayF90(elements_petsc,vec_ptr,ierr)
+  do icell=1, unstructured_grid%num_cells_local
+    do ivertex = 1, max_vertex_count
+      vertex_id = vec_ptr(ivertex + vertex_ids_offset + (icell-1)*stride)
+      if (vertex_id < 1) exit
+      vec_ptr(ivertex + vertex_ids_offset + (icell-1)*stride) = int_array4(vertex_id)
+    enddo
+  enddo
+  call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr)
+  deallocate(int_array2)
+  deallocate(int_array4)
+
+  call PetscViewerASCIIOpen(option%mycomm,'elements_petsc_vert_local.out',viewer,ierr)
+  call VecView(elements_petsc,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+  call VecDestroy(elements_petsc,ierr)
+
+  ! IS for gather - need local numbering
   allocate(strided_indices(vertex_count))
   do ivertex = 1, vertex_count
-    strided_indices(icell) = 3*int_array(ivertex)
+    strided_indices(ivertex) = 3*(ivertex-1)
   enddo
-  deallocate(int_array)
+  deallocate(int_array3)
   ! include cell ids
   call ISCreateBlock(option%mycomm,3,vertex_count, &
                      strided_indices,is_gather,ierr)
   deallocate(strided_indices)
 
-  call VecCreate(option%mycomm,vertices_new,ierr)
-  call VecSetSizes(vertices_new, &
-                   vertex_count*3,PETSC_DECIDE,ierr)
-  call VecSetFromOptions(vertices_new,ierr)
+  call VecCreateMPI(option%mycomm,unstructured_grid%num_vertices_local*3, &
+                    PETSC_DETERMINE,vertices_old,ierr)
+  call VecSetBlockSize(vertices_old,3,ierr)
+
+  call VecCreateSeq(PETSC_COMM_SELF,vertex_count*3,vertices_new,ierr)
+  call VecSetBlockSize(vertices_new,3,ierr)
+
+!  call VecCreate(option%mycomm,vertices_new,ierr)
+!  call VecSetSizes(vertices_new, &
+!                   vertex_count*3,PETSC_DECIDE,ierr)
+!  call VecSetFromOptions(vertices_new,ierr)
   
-  call VecCreate(option%mycomm,vertices_old,ierr)
-  call VecSetSizes(vertices_old, &
-                   3*unstructured_grid%num_vertices_local,PETSC_DECIDE,ierr)
-  call VecSetFromOptions(vertices_old,ierr)
+!  call VecCreate(option%mycomm,vertices_old,ierr)
+!  call VecSetSizes(vertices_old, &
+!                   3*unstructured_grid%num_vertices_local,PETSC_DECIDE,ierr)
+!  call VecSetFromOptions(vertices_old,ierr)
   call VecGetArrayF90(vertices_old,vec_ptr,ierr)
   do ivertex = 1, unstructured_grid%num_vertices_local
     vec_ptr((ivertex-1)*3+1) = unstructured_grid%vertex_coordinates(1,ivertex)
@@ -994,19 +1042,20 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   deallocate(unstructured_grid%vertex_coordinates)
   nullify(unstructured_grid%vertex_coordinates)
 
+#if 0
   global_vertex_offset = 0
   call MPI_Exscan(unstructured_grid%num_vertices_local, &
                   global_vertex_offset, &
                   ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
+#endif
 
-  ! IS for scatter
-  allocate(strided_indices(unstructured_grid%num_vertices_local))
-  do ivertex = 1, unstructured_grid%num_vertices_local
-    strided_indices(icell) = 3*(ivertex+global_vertex_offset) 
+  ! IS for scatter - provide petsc gobal numbering
+  allocate(strided_indices(vertex_count))
+  do ivertex = 1, vertex_count
+    strided_indices(ivertex) = 3*(needed_vertices_petsc(ivertex)-1)
   enddo
   ! include cell ids
-  call ISCreateBlock(option%mycomm,3, &
-                     vertex_count, &
+  call ISCreateBlock(option%mycomm,3,vertex_count, &
                      strided_indices,is_scatter,ierr)
   deallocate(strided_indices)
 
@@ -1021,6 +1070,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   call PetscViewerASCIIOpen(option%mycomm,'is_gather.out',viewer,ierr)
   call ISView(is_gather,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
+
   call VecScatterCreate(vertices_old,is_scatter,vertices_new,is_gather, &
                         vec_scatter,ierr)
   call ISDestroy(is_scatter,ierr)
@@ -1033,7 +1083,9 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   call PetscViewerASCIIOpen(option%mycomm,'vertices_old.out',viewer,ierr)
   call VecView(vertices_old,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
+
   call VecDestroy(vertices_old,ierr)
+
 
   call VecGetArrayF90(vertices_new,vec_ptr,ierr)
   do ivertex = 1, unstructured_grid%num_vertices_local
@@ -1042,9 +1094,12 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
     unstructured_grid%vertex_coordinates(3,ivertex) = vec_ptr((ivertex-1)*3+3)
   enddo
   call VecRestoreArrayF90(vertices_new,vec_ptr,ierr)
-  call PetscViewerASCIIOpen(option%mycomm,'vertices_new.out',viewer,ierr)
+  write(string,*) option%myrank
+  string = 'vertices_new' // trim(adjustl(string)) // '.out'
+  call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string),viewer,ierr)
   call VecView(vertices_new,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
+
   call VecDestroy(vertices_new,ierr)
 
 #endif
