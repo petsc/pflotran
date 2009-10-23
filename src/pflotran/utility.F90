@@ -702,4 +702,54 @@ subroutine UtilityReadArray(array,array_size,comment,input,option)
 
 end subroutine UtilityReadArray
 
+! ************************************************************************** !
+!
+! SearchOrderedArray: Locates an integer value in an ordered array and
+!                     returned the index
+! author: Glenn Hammond
+! date: 10/21/09
+!
+! ************************************************************************** !
+function SearchOrderedArray(array,array_length,int_value)
+
+  implicit none
+
+  PetscInt :: array_length 
+  PetscInt :: array(array_length)
+  PetscInt :: int_value
+
+  PetscInt :: SearchOrderedArray
+  PetscInt :: i
+  PetscInt :: array_value
+  PetscInt :: upper_bound, lower_bound
+
+  SearchOrderedArray = -1
+
+  upper_bound = array_length
+  lower_bound = 1
+
+  i = array_length/2
+  if (i == 0) i = 1
+
+  do 
+    array_value = array(i)
+    if (array_value == int_value) then
+      SearchOrderedArray = i
+      return
+    endif
+    if (array_value > int_value) then
+      upper_bound = i 
+    else
+      lower_bound = i 
+    endif
+    i = lower_bound + (upper_bound-lower_bound) / 2
+    if (i == lower_bound) then
+      if (array(lower_bound) == int_value) SearchOrderedArray = lower_bound
+      if (array(upper_bound) == int_value) SearchOrderedArray = upper_bound
+      return
+    endif
+  enddo
+
+end function SearchOrderedArray
+
 end module Utility_module
