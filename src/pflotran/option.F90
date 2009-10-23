@@ -181,6 +181,8 @@ module Option_module
     PetscTruth :: print_vtk 
     PetscTruth :: print_vtk_velocities
 
+    PetscTruth :: print_observation 
+
     PetscTruth :: print_mad 
 
     PetscInt :: screen_imod
@@ -484,6 +486,7 @@ function OutputOptionCreate()
   output_option%print_tecplot_flux_velocities = PETSC_FALSE
   output_option%print_vtk = PETSC_FALSE
   output_option%print_vtk_velocities = PETSC_FALSE
+  output_option%print_observation = PETSC_FALSE
   output_option%print_mad = PETSC_FALSE
   output_option%print_initial = PETSC_TRUE
   output_option%print_final = PETSC_TRUE

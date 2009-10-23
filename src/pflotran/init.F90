@@ -1494,7 +1494,8 @@ subroutine InitReadInput(simulation)
               continuation_flag = PETSC_TRUE
               do
                 continuation_flag = PETSC_FALSE
-                if (index(input%buf,backslash) > 0) continuation_flag = PETSC_TRUE
+                if (index(input%buf,backslash) > 0) &
+                  continuation_flag = PETSC_TRUE
                 input%ierr = 0
                 do
                   if (InputError(input)) exit
@@ -1528,7 +1529,8 @@ subroutine InitReadInput(simulation)
               end select
             case('PERIODIC')
               call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'time increment','OUTPUT,PERIODIC')
+              call InputErrorMsg(input,option,'time increment', &
+                                 'OUTPUT,PERIODIC')
               call StringToUpper(word)
               select case(trim(word))
                 case('TIME')
@@ -1539,19 +1541,24 @@ subroutine InitReadInput(simulation)
                   call InputErrorMsg(input,option,'time increment units', &
                                      'OUTPUT,PERIODIC,TIME')
                   units_conversion = UnitsConvertToInternal(word,option) 
-                  output_option%periodic_output_time_incr = temp_real*units_conversion
+                  output_option%periodic_output_time_incr = temp_real* &
+                                                            units_conversion
                 case('TIMESTEP')
-                  call InputReadInt(input,option,output_option%periodic_output_ts_imod)
+                  call InputReadInt(input,option, &
+                                    output_option%periodic_output_ts_imod)
                   call InputErrorMsg(input,option,'timestep increment', &
                                      'OUTPUT,PERIODIC,TIMESTEP')
                 case default
                   option%io_buffer = 'Keyword: ' // trim(word) // &
-                                     ' not recognized in OUTPUT,PERIODIC,TIMESTEP.'
+                                     ' not recognized in OUTPUT,PERIODIC,'// &
+                                     'TIMESTEP.'
                   call printErrMsg(option)
               end select
             case('PERIODIC_OBSERVATION')
+              output_option%print_observation = PETSC_TRUE
               call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'time increment','OUTPUT,PERIODIC_OBSERVATION')
+              call InputErrorMsg(input,option,'time increment','OUTPUT, &
+                                 PERIODIC_OBSERVATION')
               call StringToUpper(word)
               select case(trim(word))
                 case('TIME')
@@ -1562,14 +1569,17 @@ subroutine InitReadInput(simulation)
                   call InputErrorMsg(input,option,'time increment units', &
                                      'OUTPUT,PERIODIC_OBSERVATION,TIME')
                   units_conversion = UnitsConvertToInternal(word,option) 
-                  output_option%periodic_tr_output_time_incr = temp_real*units_conversion
+                  output_option%periodic_tr_output_time_incr = temp_real* &
+                                                               units_conversion
                 case('TIMESTEP')
-                  call InputReadInt(input,option,output_option%periodic_tr_output_ts_imod)
+                  call InputReadInt(input,option, &
+                                    output_option%periodic_tr_output_ts_imod)
                   call InputErrorMsg(input,option,'timestep increment', &
                                      'OUTPUT,PERIODIC_OBSERVATION,TIMESTEP')
                 case default
                   option%io_buffer = 'Keyword: ' // trim(word) // &
-                                     ' not recognized in OUTPUT,PERIODIC_OBSERVATION,TIMESTEP.'
+                                     ' not recognized in OUTPUT,'// &
+                                     'PERIODIC_OBSERVATION,TIMESTEP.'
                   call printErrMsg(option)
               end select
             case('FORMAT')
@@ -1596,8 +1606,8 @@ subroutine InitReadInput(simulation)
                                          ') not recongnized.'
                       call printErrMsg(option)
                   end select
-                  if (output_option%tecplot_format == TECPLOT_POINT_FORMAT .and. &
-                      option%mycommsize > 1) then
+                  if (output_option%tecplot_format == TECPLOT_POINT_FORMAT &
+                      .and. option%mycommsize > 1) then
                     output_option%tecplot_format = TECPLOT_BLOCK_FORMAT
                   endif
                 case ('VTK')

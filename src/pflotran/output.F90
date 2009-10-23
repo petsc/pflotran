@@ -217,8 +217,9 @@ subroutine OutputObservation(realization)
 !    call OutputObservationTecplot(realization)
 !  endif
  
-  if (realization%output_option%print_tecplot .or. &
-      realization%output_option%print_hdf5) then
+!  if (realization%output_option%print_tecplot .or. &
+!      realization%output_option%print_hdf5) then
+  if (realization%output_option%print_observation) then
     call OutputObservationTecplot(realization)
   endif
 
