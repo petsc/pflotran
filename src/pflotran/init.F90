@@ -1557,8 +1557,8 @@ subroutine InitReadInput(simulation)
             case('PERIODIC_OBSERVATION')
               output_option%print_observation = PETSC_TRUE
               call InputReadWord(input,option,word,PETSC_TRUE)
-              call InputErrorMsg(input,option,'time increment','OUTPUT, &
-                                 PERIODIC_OBSERVATION')
+              call InputErrorMsg(input,option,'time increment', &
+                'OUTPUT, PERIODIC_OBSERVATION')
               call StringToUpper(word)
               select case(trim(word))
                 case('TIME')
