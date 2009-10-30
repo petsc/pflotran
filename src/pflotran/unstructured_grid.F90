@@ -28,7 +28,7 @@ module Unstructured_Grid_module
     PetscInt, pointer :: ghost_cell_ids_natural(:)
     PetscInt, pointer :: ghost_cell_ids_petsc(:)
     PetscInt, pointer :: cell_neighbors_local_ghosted(:,:)
-    PetscReal, pointer :: vertex_coordinates(:,:)
+    type(point_type), pointer :: vertices(:)
     AO :: ao_natural_to_petsc 
   end type unstructured_grid_type
 
@@ -47,12 +47,21 @@ module Unstructured_Grid_module
     Vec :: local_vec
   end type ugdm_type
 
-  type, public :: vertex_type
+  type, public :: point_type
     PetscInt :: id
     PetscReal :: x
     PetscReal :: y
     PetscReal :: z
-  end type vertex_type
+  end type point_type
+  
+  type, public :: plane_type
+    PetscReal :: A
+    PetscReal :: B
+    PetscReal :: C
+    PetscReal :: D
+  end type plane_type
+
+  PetscInt, parameter :: HEX_TYPE = 1
 
   public :: UnstructuredGridCreate, &
             UnstructuredGridCreateDM, &
@@ -61,6 +70,8 @@ module Unstructured_Grid_module
             UnstructGridGetGhostIdFromHash, &
             UnstructuredGridRead, &
             UnstructuredGridDecompose, &
+            UGridComputeInternConnect, &
+            UGridComputeCoord, &
             UnstructuredGridDestroy, &
             UnstructuredGridCreateUGDM, &
             UGDMDestroy
@@ -128,7 +139,7 @@ function UnstructuredGridCreate()
   unstructured_grid%nlmax = 0
   unstructured_grid%ngmax = 0
   nullify(unstructured_grid%cell_vertices_0)
-  nullify(unstructured_grid%vertex_coordinates)
+  nullify(unstructured_grid%vertices)
   nullify(unstructured_grid%hash)
   nullify(unstructured_grid%cell_ids_natural)
   nullify(unstructured_grid%cell_ids_petsc)
@@ -352,6 +363,7 @@ subroutine UnstructuredGridRead(unstructured_grid,filename,option)
   PetscInt :: num_to_read
   PetscInt, allocatable :: temp_int_array(:,:)
   PetscReal, allocatable :: temp_real_array(:,:)
+  PetscReal, allocatable :: vertex_coordinates(:,:)
 
   PetscInt :: icell, ivertex, idir, irank
   PetscInt :: remainder
@@ -425,8 +437,8 @@ print *, option%myrank,': ',unstructured_grid%num_cells_local, ' cells recv'
   if (option%myrank < remainder) unstructured_grid%num_vertices_local = &
                                  unstructured_grid%num_vertices_local + 1
 
-  allocate(unstructured_grid%vertex_coordinates(3,unstructured_grid%num_vertices_local))
-  unstructured_grid%vertex_coordinates = 0.d0
+  allocate(vertex_coordinates(3,unstructured_grid%num_vertices_local))
+  vertex_coordinates = 0.d0
 
   if (option%myrank == option%io_rank) then
     allocate(temp_real_array(3,num_vertices_local_save+1))
@@ -444,7 +456,7 @@ print *, option%myrank,': ',unstructured_grid%num_cells_local, ' cells recv'
       enddo
       
       if (irank == option%io_rank) then
-        unstructured_grid%vertex_coordinates(:,1:unstructured_grid%num_vertices_local) = &
+        vertex_coordinates(:,1:unstructured_grid%num_vertices_local) = &
           temp_real_array(:,1:unstructured_grid%num_vertices_local)
       else
         call MPI_Send(temp_real_array,num_to_read*3,MPI_DOUBLE_PRECISION,irank, &
@@ -453,11 +465,20 @@ print *, option%myrank,': ',unstructured_grid%num_cells_local, ' cells recv'
     enddo
     deallocate(temp_real_array)
   else
-    call MPI_Recv(unstructured_grid%vertex_coordinates, &
+    call MPI_Recv(vertex_coordinates, &
                   unstructured_grid%num_vertices_local*3, &
                   MPI_DOUBLE_PRECISION,option%io_rank, &
                   MPI_ANY_TAG,option%mycomm,status,ierr)
   endif
+  
+  allocate(unstructured_grid%vertices(unstructured_grid%num_vertices_local))
+  do ivertex = 1, unstructured_grid%num_vertices_local
+    unstructured_grid%vertices(ivertex)%id = 0
+    unstructured_grid%vertices(ivertex)%x = vertex_coordinates(1,ivertex)
+    unstructured_grid%vertices(ivertex)%y = vertex_coordinates(2,ivertex)
+    unstructured_grid%vertices(ivertex)%z = vertex_coordinates(3,ivertex)
+  enddo
+  deallocate(vertex_coordinates)
 
   call InputDestroy(input)
 
@@ -494,7 +515,10 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   type(option_type) :: option
   
 #ifdef ENABLE_UNSTRUCTURED  
-  PetscInt :: icell, ivertex, count, vertex_count, vertex_id
+  PetscInt :: icell, icell2
+  PetscInt :: ivertex
+  PetscInt :: vertex_id
+  PetscInt :: count, vertex_count
   PetscInt :: vertex_offset, global_vertex_offset
   PetscInt :: max_vertex_count
   PetscInt :: max_dual
@@ -535,7 +559,6 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   PetscInt :: ghost_cell_count
   PetscInt :: max_ghost_cell_count
   PetscInt :: max_int_count
-  PetscInt :: icell2
   PetscInt :: temp_int
   PetscInt, allocatable :: int_array(:)
   PetscInt, allocatable :: int_array2(:)
@@ -603,7 +626,10 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
 
   call printMsg(option,'Dual matrix')
   call MatMeshToCellGraph(Adj_mat,num_common_vertices,Dual_mat,ierr)
-
+  call MatDestroy(Adj_mat,ierr)
+  deallocate(local_vertices)
+  deallocate(local_vertex_offset)
+  
 #if 1
   call PetscViewerASCIIOpen(option%mycomm,'Dual.out',viewer,ierr)
   call MatView(Dual_mat,viewer,ierr)
@@ -702,7 +728,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   
   call MatRestoreRowIJF90(Dual_mat,0,PETSC_FALSE,PETSC_FALSE,num_rows,ia_ptr, &
                           ja_ptr,success,ierr)
-
+  call MatDestroy(Dual_mat,ierr)
  
   call printMsg(option,'Before element scatter')
   call VecScatterCreate(elements_old,PETSC_NULL,elements_natural,is_scatter,vec_scatter,ierr)
@@ -722,10 +748,6 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   call VecView(elements_natural,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
   
-  
-  deallocate(unstructured_grid%cell_vertices_0)
-  allocate(unstructured_grid%cell_vertices_0(max_vertex_count, &
-                                             unstructured_grid%num_cells_local))
   unstructured_grid%cell_vertices_0 = 0
   allocate(unstructured_grid%cell_ids_natural(unstructured_grid%num_cells_local))
   unstructured_grid%cell_ids_natural = 0
@@ -987,12 +1009,21 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   allocate(needed_vertices_petsc(vertex_count))
   needed_vertices_petsc(1:vertex_count) = int_array3(1:vertex_count)
 
+  deallocate(unstructured_grid%cell_vertices_0)
+  allocate(unstructured_grid%cell_vertices_0(0:max_vertex_count, &
+                                             unstructured_grid%num_cells_local))
+  unstructured_grid%cell_vertices_0 = -999
+  unstructured_grid%cell_vertices_0(0,:) = 0
+  
   ! permute the local ids set earlier
   call VecGetArrayF90(elements_petsc,vec_ptr,ierr)
   do icell=1, unstructured_grid%num_cells_local
     do ivertex = 1, max_vertex_count
       vertex_id = vec_ptr(ivertex + vertex_ids_offset + (icell-1)*stride)
       if (vertex_id < 1) exit
+      count = unstructured_grid%cell_vertices_0(0,icell)+1
+      unstructured_grid%cell_vertices_0(count,icell) = int_array4(vertex_id)-1
+      unstructured_grid%cell_vertices_0(0,icell) = count
       vec_ptr(ivertex + vertex_ids_offset + (icell-1)*stride) = int_array4(vertex_id)
     enddo
   enddo
@@ -1034,13 +1065,13 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
 !  call VecSetFromOptions(vertices_old,ierr)
   call VecGetArrayF90(vertices_old,vec_ptr,ierr)
   do ivertex = 1, unstructured_grid%num_vertices_local
-    vec_ptr((ivertex-1)*3+1) = unstructured_grid%vertex_coordinates(1,ivertex)
-    vec_ptr((ivertex-1)*3+2) = unstructured_grid%vertex_coordinates(2,ivertex)
-    vec_ptr((ivertex-1)*3+3) = unstructured_grid%vertex_coordinates(3,ivertex)
+    vec_ptr((ivertex-1)*3+1) = unstructured_grid%vertices(ivertex)%x
+    vec_ptr((ivertex-1)*3+2) = unstructured_grid%vertices(ivertex)%y
+    vec_ptr((ivertex-1)*3+3) = unstructured_grid%vertices(ivertex)%z
   enddo
   call VecRestoreArrayF90(vertices_old,vec_ptr,ierr)
-  deallocate(unstructured_grid%vertex_coordinates)
-  nullify(unstructured_grid%vertex_coordinates)
+  deallocate(unstructured_grid%vertices)
+  nullify(unstructured_grid%vertices)
 
 #if 0
   global_vertex_offset = 0
@@ -1061,8 +1092,13 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
 
   ! resize vertex array to new size
   unstructured_grid%num_vertices_local = vertex_count
-  allocate(unstructured_grid%vertex_coordinates(3,vertex_count))
-  unstructured_grid%vertex_coordinates = 0.d0
+  allocate(unstructured_grid%vertices(vertex_count))
+  do ivertex = 1, vertex_count
+    unstructured_grid%vertices(ivertex)%id = 0
+    unstructured_grid%vertices(ivertex)%x = 0.d0
+    unstructured_grid%vertices(ivertex)%y = 0.d0
+    unstructured_grid%vertices(ivertex)%z = 0.d0
+  enddo
 
   call PetscViewerASCIIOpen(option%mycomm,'is_scatter.out',viewer,ierr)
   call ISView(is_scatter,viewer,ierr)
@@ -1080,7 +1116,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   call VecScatterEnd(vec_scatter,vertices_old,vertices_new, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr)
   call VecScatterDestroy(vec_scatter,ierr)
-  call PetscViewerASCIIOpen(option%mycomm,'vertices_old.out',viewer,ierr)
+  call PetscViewerASCIIOpen(option%mycomm,'vertex_coord_old.out',viewer,ierr)
   call VecView(vertices_old,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 
@@ -1089,19 +1125,108 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
 
   call VecGetArrayF90(vertices_new,vec_ptr,ierr)
   do ivertex = 1, unstructured_grid%num_vertices_local
-    unstructured_grid%vertex_coordinates(1,ivertex) = vec_ptr((ivertex-1)*3+1)
-    unstructured_grid%vertex_coordinates(2,ivertex) = vec_ptr((ivertex-1)*3+2)
-    unstructured_grid%vertex_coordinates(3,ivertex) = vec_ptr((ivertex-1)*3+3)
+    unstructured_grid%vertices(ivertex)%x = vec_ptr((ivertex-1)*3+1)
+    unstructured_grid%vertices(ivertex)%y = vec_ptr((ivertex-1)*3+2)
+    unstructured_grid%vertices(ivertex)%z = vec_ptr((ivertex-1)*3+3)
   enddo
   call VecRestoreArrayF90(vertices_new,vec_ptr,ierr)
   write(string,*) option%myrank
-  string = 'vertices_new' // trim(adjustl(string)) // '.out'
+  string = 'vertex_coord_new' // trim(adjustl(string)) // '.out'
   call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string),viewer,ierr)
   call VecView(vertices_new,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 
   call VecDestroy(vertices_new,ierr)
 
+#if 0
+  ! calculate faces
+  allocate(local_vertices(max_vertex_count*unstructured_grid%num_cells_local))
+  allocate(local_vertex_offset(unstructured_grid%num_cells_local+1))
+  count = 0
+  local_vertex_offset(1) = 0
+  do icell = 1, unstructured_grid%num_cells_local
+    do ivertex = 1, max_vertex_count
+      count = count + 1
+      local_vertices(count) = unstructured_grid%cell_vertices_0(ivertex,icell)
+    enddo
+    local_vertex_offset(icell+1) = count 
+  enddo
+  index_format_flag = 0 ! C-style indexing
+  num_common_vertices = 3 ! cells must share at least vertices
+
+  call printMsg(option,'Local Adjacency matrix')
+  call MatCreateMPIAdj(PETSC_COMM_SELF,unstructured_grid%num_cells_local, &
+                       unstructured_grid%num_vertices_local, &
+                       local_vertex_offset, &
+                       local_vertices,PETSC_NULL_INTEGER,Adj_mat,ierr)
+
+  ! do not free local_vertices; MatAdjDestroy will do it
+  ! do not free local_vertex_offset; MatAdjDestroy will do it
+
+#if 1
+  call PetscViewerASCIIOpen(option%mycomm,'Adj_local.out',viewer,ierr)
+  call MatView(Adj_mat,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+
+  call printMsg(option,'Dual matrix')
+  call MatMeshToCellGraph(Adj_mat,num_common_vertices,Dual_mat,ierr)
+  call MatDestroy(Adj_mat,ierr)
+  deallocate(local_vertices)
+  deallocate(local_vertex_offset)
+
+#if 1
+  call PetscViewerASCIIOpen(option%mycomm,'Dual_local.out',viewer,ierr)
+  call MatView(Dual_mat,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+
+  ! 0 = 0-based indexing
+  call MatGetRowIJF90(Dual_mat,0,PETSC_FALSE,PETSC_FALSE,num_rows,ia_ptr, &
+                      ja_ptr,success,ierr)
+
+  call VecGetArrayF90(elements_old,vec_ptr,ierr)
+  count = 0
+  vertex_count = 0
+  do icell=1, unstructured_grid%num_cells_local
+    count = count + 1
+    ! negate to indicate cell id with 1-based numbering (-0 = 0)
+    vec_ptr(count) = -(unstructured_grid%global_offset+icell)
+    count = count + 1
+    vec_ptr(count) = -777  ! help differentiate
+    do ivertex = 1, max_vertex_count
+      count = count + 1
+      vertex_count = vertex_count + 1
+        ! increment for 1-based ordering
+!      vec_ptr(count) = local_vertices(vertex_count) + 1
+      vec_ptr(count) = unstructured_grid%cell_vertices_0(ivertex,icell) + 1
+    enddo
+
+    count = count + 1 
+    vec_ptr(count) = -888  ! help differentiate
+
+    istart = ia_ptr(icell)
+    iend = ia_ptr(icell+1)-1
+    num_cols = iend-istart+1
+    do icol = 1, max_dual
+      count = count + 1
+      if (icol <= num_cols) then
+        ! increment for 1-based ordering
+        vec_ptr(count) = ja_ptr(icol+istart) + 1
+      else
+        vec_ptr(count) = 0
+      endif
+    enddo
+    count = count + 1 
+    vec_ptr(count) = -999  ! help differentiate
+  enddo
+  call VecRestoreArrayF90(elements_old,vec_ptr,ierr)
+  
+  call MatRestoreRowIJF90(Dual_mat,0,PETSC_FALSE,PETSC_FALSE,num_rows,ia_ptr, &
+                          ja_ptr,success,ierr)
+  call MatDestroy(Dual_mat,ierr)
+
+#endif
 #endif
   
 end subroutine UnstructuredGridDecompose
@@ -1281,7 +1406,6 @@ subroutine UnstructuredGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   call VecScatterView(ugdm%scatter_ltol,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
     
-  stop
 #endif
   
 end subroutine UnstructuredGridCreateUGDM
@@ -1294,7 +1418,8 @@ end subroutine UnstructuredGridCreateUGDM
 ! date: 10/21/09
 !
 ! ************************************************************************** !
-function UGridComputeInternConnect(unstructured_grid,option)
+function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
+                                   option)
 
   use Connection_module
   use Option_module
@@ -1303,44 +1428,536 @@ function UGridComputeInternConnect(unstructured_grid,option)
 
   type(connection_set_type), pointer :: UGridComputeInternConnect
   type(option_type) :: option
+  PetscReal :: grid_x(*), grid_y(*), grid_z(*)
   type(unstructured_grid_type) :: unstructured_grid
 
+#ifdef ENABLE_UNSTRUCTURED
   PetscInt :: nconn, iconn
   PetscInt :: idual, dual_id
-  PetscInt :: icell
+
+  PetscInt, allocatable :: face_to_vertex(:,:)
+  PetscInt, allocatable :: cell_to_face(:,:)
+  PetscInt, allocatable :: face_to_cell(:,:)
+  PetscInt, allocatable :: vertex_to_cell(:,:)
+  PetscInt, allocatable :: dual_to_face(:)
+  PetscInt, allocatable :: temp_int(:)
+  PetscInt, allocatable :: temp_int_2d(:,:)
+  PetscInt :: num_match
+  PetscInt :: found_count
+  PetscTruth :: found
+  PetscTruth :: match_found
+  PetscInt :: face_count
+  PetscInt :: count
+  PetscInt :: iface, iface2
+  PetscInt :: face_id, face_id2
+  PetscInt :: icell, icell2
+  PetscInt :: cell_id, cell_id2
+  PetscInt :: ivertex, ivertex2
+  PetscInt :: vertex_id, vertex_id2
+  PetscInt :: vertex_ids4(4)
+  
+  type(plane_type) :: plane1, plane2
+  type(point_type) :: point1, point2, point3, point4
+  type(point_type) :: point_up, point_dn
+  type(point_type) :: intercept1, intercept2
+  
+  
+  character(len=MAXSTRINGLENGTH) :: string  
+
   type(connection_set_type), pointer :: connections
 
+  ! create mappings of [cells,faces,vertices] to [cells,faces,vertices]
+  allocate(face_to_vertex(4,unstructured_grid%num_cells_ghosted*6))
+  face_to_vertex = -999
+  allocate(cell_to_face(6,unstructured_grid%num_cells_ghosted))
+  cell_to_face = -999
+  allocate(face_to_cell(2,6*unstructured_grid%num_cells_ghosted))
+  face_to_cell = -999
+  allocate(vertex_to_cell(0:8,unstructured_grid%num_vertices_local))
+  vertex_to_cell = 0
+
+  face_count = 0
+  do icell = 1, unstructured_grid%num_cells_ghosted
+    do iface = 1, 6
+      face_count = face_count + 1
+      cell_to_face(iface,icell) = face_count
+      face_to_cell(1,face_count) = icell
+      call UGridGetCellFaceVertices(option,HEX_TYPE,iface,vertex_ids4)
+      do ivertex = 1, 4
+        face_to_vertex(ivertex,face_count) = &
+          unstructured_grid%cell_vertices_0(vertex_ids4(ivertex),icell)
+      enddo
+    enddo
+  enddo
+
+  ! remove duplicate faces
+  ! fill face ids
+  do icell = 1, unstructured_grid%num_cells_ghosted
+    cell_id = icell
+    do icell2 = 1, unstructured_grid%cell_neighbors_local_ghosted(0,icell)
+      cell_id2 = unstructured_grid%cell_neighbors_local_ghosted(icell2,icell)
+      if (cell_id2 <= cell_id) cycle
+      num_match = 0
+      do ivertex = 1, unstructured_grid%cell_vertices_0(0,cell_id)
+        vertex_id = unstructured_grid%cell_vertices_0(ivertex,cell_id)
+        do ivertex2 = 1, unstructured_grid%cell_vertices_0(0,cell_id2)
+          vertex_id2 = unstructured_grid%cell_vertices_0(ivertex2,cell_id2)
+          if (vertex_id == vertex_id2) then
+            num_match = num_match + 1
+            vertex_ids4(num_match) = vertex_id
+            exit
+          endif
+        enddo
+        if (num_match > 3) exit
+      enddo
+      if (num_match > 3) then
+        ! now find the shared face
+        match_found = PETSC_TRUE
+        do iface = 1, 6
+          face_id = cell_to_face(iface,cell_id)
+          found_count = 0
+          do ivertex = 1, 4
+            do ivertex2 = 1, 4
+              if (face_to_vertex(ivertex,face_id) == vertex_ids4(ivertex2)) then
+                found_count = found_count + 1
+                exit
+              endif
+            enddo
+          enddo
+          if (found_count > 3) exit
+        enddo
+        if (found_count > 3) then
+          do iface2 = 1, 6
+            face_id2 = cell_to_face(iface2,cell_id2)
+            found_count = 0
+            do ivertex = 1, 4
+              do ivertex2 = 1, 4
+                if (face_to_vertex(ivertex,face_id2) == vertex_ids4(ivertex2)) then
+                  found_count = found_count + 1
+                  exit
+                endif
+              enddo
+            enddo
+            if (found_count > 3) exit
+          enddo
+          if (found_count <= 3) then
+            match_found = PETSC_FALSE
+          else
+            ! remove duplicate face
+            if (face_id2 > face_id) then
+              write(string,*) face_id2, ' -> ', face_id
+              option%io_buffer = 'Duplicated face removed:' // string
+              call printMsg(option)
+              cell_to_face(iface2,cell_id2) = face_id
+              ! flag as removed
+              face_to_cell(1,face_id2) = -face_to_cell(1,face_id2)
+              face_to_cell(2,face_id) = cell_id2
+            else
+              write(string,*) face_id, ' -> ', face_id2
+              option%io_buffer = 'Duplicated face removed:' // string
+              call printMsg(option)
+              cell_to_face(iface,cell_id) = face_id2
+              ! flag as removed
+              face_to_cell(1,face_id) = -face_to_cell(1,face_id)
+              face_to_cell(2,face_id2) = cell_id
+            endif
+          endif
+        else
+          match_found = PETSC_FALSE
+        endif  
+        if (match_found == PETSC_FALSE) then
+          option%io_buffer = 'Matching faces not found'
+          call printErrMsg(option)
+        endif
+      endif    
+    enddo
+  enddo
+  
+  ! count up the # of faces
+  face_count = 0
+  do iface = 1, size(face_to_cell,2)
+    if (face_to_cell(1,iface) > 0) &
+      face_count = face_count + 1
+  enddo
+  print *, 'Face count:', face_count
+  ! reallocate face_to_vertex
+  allocate(temp_int_2d(4,face_count))
+  count = 0
+  do iface = 1, size(face_to_cell,2)
+    if (face_to_cell(1,iface) > 0) then
+      count = count + 1
+      temp_int_2d(:,count) = face_to_vertex(:,iface)
+    endif
+  enddo
+  deallocate(face_to_vertex)
+  allocate(face_to_vertex(4,face_count))
+  face_to_vertex = temp_int_2d
+  deallocate(temp_int_2d)
+  ! reallocate face_to_cell to proper size
+  allocate(temp_int_2d(2,face_count))
+  allocate(temp_int(size(face_to_cell,2)))
+  temp_int = 0
+  count = 0
+  do iface = 1, size(face_to_cell,2)
+    if (face_to_cell(1,iface) > 0) then
+      count = count + 1
+      temp_int_2d(:,count) = face_to_cell(:,iface)
+      temp_int(iface) = count
+    endif
+  enddo
+  deallocate(face_to_cell)
+  allocate(face_to_cell(2,face_count))
+  face_to_cell = temp_int_2d
+  deallocate(temp_int_2d)
+  
+  ! remap faces in cells using temp_int from above
+  do iface = 1, size(face_to_cell,2)
+    face_id = iface
+    do icell = 1,2
+      cell_id = face_to_cell(icell,face_id)
+      ! check for exterior face
+      if (cell_id < 0) cycle
+      found = PETSC_FALSE
+      do iface2 = 1, 6
+        face_id2 = cell_to_face(iface2,cell_id)
+        if (face_id == temp_int(face_id2)) then
+          found = PETSC_TRUE
+          cell_to_face(iface2,cell_id) = face_id
+          exit
+        endif
+      enddo
+      if (found == PETSC_FALSE) then
+        option%io_buffer = 'Remapping of cell face id unsuccessful'
+        call printErrMsg(option)
+      endif
+    enddo
+  enddo
+  deallocate(temp_int)
+  
+  
+  do icell = 1, unstructured_grid%num_cells_ghosted
+    do ivertex = 1, unstructured_grid%cell_vertices_0(0,icell)
+      vertex_id = unstructured_grid%cell_vertices_0(ivertex,icell)
+      count = vertex_to_cell(0,vertex_id) + 1
+      vertex_to_cell(count,vertex_id) = icell
+      vertex_to_cell(0,vertex_id) = count
+    enddo
+  enddo
+  
   nconn = 0
   do icell = 1, unstructured_grid%num_cells_local
     do idual = 1, unstructured_grid%cell_neighbors_local_ghosted(0,icell)
       dual_id = unstructured_grid%cell_neighbors_local_ghosted(idual,icell)
       ! count all ghosted connections (dual_id < 0)
       ! only count connection with cells of larger ids to avoid double counts
-      if (dual_id < 0 .or. icell < dual_id) then 
+      if (dual_id < 0 .or. icell < dual_id) then
         nconn = nconn + 1
       endif
     enddo
   enddo
 
   connections => ConnectionCreate(nconn,option%nphase,INTERNAL_CONNECTION_TYPE)
+  
+  allocate(dual_to_face(nconn))
+  dual_to_face = -999
 
   ! loop over connection again
   iconn = 0
   do icell = 1, unstructured_grid%num_cells_local
     do idual = 1, unstructured_grid%cell_neighbors_local_ghosted(0,icell)
-      dual_id = unstructured_grid%cell_neighbors_local_ghosted(idual,icell)
+      cell_id2 = unstructured_grid%cell_neighbors_local_ghosted(idual,icell)
       if (dual_id < 0 .or. icell < dual_id) then 
         iconn = iconn + 1
+        ! find face
+        found = PETSC_FALSE
+        do iface = 1, 6
+          face_id = cell_to_face(iface,icell)
+          do icell2 = 1,2
+            cell_id2 = face_to_cell(icell2,face_id)
+            if (cell_id2 == abs(cell_id2)) then
+              found = PETSC_TRUE
+              exit
+            endif
+          enddo
+          if (found == PETSC_TRUE) exit
+        enddo
+        if (found == PETSC_TRUE) then
+          dual_to_face(iconn) = face_id
+        else
+          option%io_buffer = 'face not found in connection loop'
+          call printErrMsg(option)
+        endif
         connections%id_up(iconn) = icell
-        connections%id_dn(iconn) = abs(dual_id)
+        connections%id_dn(iconn) = abs(cell_id2)
         ! need to add the surface areas, distance, etc.
+        point1 = unstructured_grid%vertices(face_to_vertex(1,face_id))
+        point2 = unstructured_grid%vertices(face_to_vertex(2,face_id))
+        point3 = unstructured_grid%vertices(face_to_vertex(3,face_id))
+        point4 = unstructured_grid%vertices(face_to_vertex(4,face_id))
+        
+        call ComputePlane(plane1,point1,point2,point3)
+        call ComputePlane(plane2,point3,point4,point1)
+        
+        point_up%x = grid_x(icell)
+        point_up%y = grid_y(icell)
+        point_up%z = grid_z(icell)
+        point_dn%x = grid_x(abs(cell_id2))
+        point_dn%y = grid_y(abs(cell_id2))
+        point_dn%z = grid_z(abs(cell_id2))
+        call GetPlaneIntercept(plane1,point_up,point_dn,intercept1)
+        call GetPlaneIntercept(plane2,point_up,point_dn,intercept2)
+        
+        !area1 = 0.5*(p2-p1)X(p3-p1).
+        !  http://softsurfer.com/Archive/algorithm_0101/algorithm_0101.htm#Triangles
+        
+        !GetPlaneNormalArea(
+        ! http://mathworld.wolfram.com/Plane.html
+       
+#if 0        
+ !       call UGridCalculateAreaAndDistance(grid_x(
+        connections%dist(-1:3,iconn) = 0.d0
+        dist_up = 0.5d0*structured_grid%dx(id_up)
+        dist_dn = 0.5d0*structured_grid%dx(id_dn)
+        connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
+        connections%dist(0,iconn) = dist_up+dist_dn
+        connections%dist(1,iconn) = 1.d0  ! x component of unit vector
+        connections%area(iconn) = structured_grid%dy(id_up)* &
+                                  structured_grid%dz(id_up)    
+#endif                                      
       endif
     enddo
   enddo
 
+  deallocate(face_to_vertex)
+  deallocate(cell_to_face)
+  deallocate(face_to_cell)
+  deallocate(vertex_to_cell)
+  deallocate(dual_to_face)
+
   UGridComputeInternConnect => connections
+#endif        
 
 end function UGridComputeInternConnect
+
+! ************************************************************************** !
+!
+! UGridGetCellFaceVertices: returns vertex ids of a given hex face
+! author: Glenn Hammond
+! date: 10/30/09
+!
+! ************************************************************************** !
+subroutine UGridGetCellFaceVertices(option,cell_type,iface,vertex_ids)
+
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  PetscInt :: cell_type
+  PetscInt :: iface
+  PetscInt :: vertex_ids(*)
+  
+  select case(cell_type)
+    case(HEX_TYPE)
+      select case(iface)
+        case(1)
+          vertex_ids(1) = 1
+          vertex_ids(2) = 2
+          vertex_ids(3) = 6
+          vertex_ids(4) = 5
+        case(2)
+          vertex_ids(1) = 2
+          vertex_ids(2) = 3
+          vertex_ids(3) = 7
+          vertex_ids(4) = 6
+        case(3)
+          vertex_ids(1) = 3
+          vertex_ids(2) = 4
+          vertex_ids(3) = 8
+          vertex_ids(4) = 7
+        case(4)
+          vertex_ids(1) = 4
+          vertex_ids(2) = 1
+          vertex_ids(3) = 5
+          vertex_ids(4) = 8
+        case(5)
+          vertex_ids(1) = 1
+          vertex_ids(2) = 4
+          vertex_ids(3) = 3
+          vertex_ids(4) = 2
+        case(6)
+          vertex_ids(1) = 5
+          vertex_ids(2) = 6
+          vertex_ids(3) = 7
+          vertex_ids(4) = 8
+      end select
+    case default
+      option%io_buffer = 'Cell type not recognized'
+      call printErrMsg(option)
+  end select
+
+end subroutine UGridGetCellFaceVertices
+
+! ************************************************************************** !
+!
+! UGridComputeCoord: Computes coordinates in x,y,z of unstructured grid cells
+! author: Glenn Hammond
+! date: 10/30/09
+!
+! ************************************************************************** !
+subroutine UGridComputeCoord(unstructured_grid,option, &
+                             grid_x,grid_y,grid_z, &
+                             x_min,x_max,y_min,y_max,z_min,z_max)
+
+  use Option_module
+  
+  implicit none
+
+  type(unstructured_grid_type) :: unstructured_grid
+  type(option_type) :: option
+  PetscReal :: grid_x(:), grid_y(:), grid_z(:)
+  PetscReal :: x_min, x_max, y_min, y_max, z_min, z_max
+
+  PetscInt :: icell
+  PetscInt :: ivertex
+  PetscInt :: vertex_id
+  type(point_type) :: vertex_8(8)
+  PetscReal :: centroid(3)
+
+  do icell = 1, unstructured_grid%num_cells_ghosted
+    do ivertex = 1, 8
+      vertex_id = unstructured_grid%cell_vertices_0(ivertex,icell) + 1
+      vertex_8(ivertex)%x = &
+        unstructured_grid%vertices(vertex_id)%x
+      vertex_8(ivertex)%y = &
+        unstructured_grid%vertices(vertex_id)%y
+      vertex_8(ivertex)%z = &
+        unstructured_grid%vertices(vertex_id)%z
+    enddo
+    centroid = ComputeCentroid(HEX_TYPE,vertex_8)
+    grid_x(icell) = centroid(1)
+    grid_y(icell) = centroid(2)
+    grid_z(icell) = centroid(3)
+  enddo
+
+  do ivertex = 1, unstructured_grid%num_vertices_local
+    if (x_max < unstructured_grid%vertices(ivertex)%x) &
+      x_max = unstructured_grid%vertices(ivertex)%x
+    if (x_min > unstructured_grid%vertices(ivertex)%x) &
+      x_min = unstructured_grid%vertices(ivertex)%x
+    if (y_max < unstructured_grid%vertices(ivertex)%y) &
+      y_max = unstructured_grid%vertices(ivertex)%y
+    if (y_min > unstructured_grid%vertices(ivertex)%y) &
+      y_min = unstructured_grid%vertices(ivertex)%y
+    if (z_max < unstructured_grid%vertices(ivertex)%z) &
+      z_max = unstructured_grid%vertices(ivertex)%z
+    if (z_min > unstructured_grid%vertices(ivertex)%z) &
+      z_min = unstructured_grid%vertices(ivertex)%z
+  enddo
+      
+end subroutine UGridComputeCoord
+
+! ************************************************************************** !
+!
+! ComputeCentroid: Computes the centroid a grid cell
+! author: Glenn Hammond
+! date: 10/30/09
+!
+! ************************************************************************** !
+function ComputeCentroid(cell_type,vertices)
+
+  implicit none
+  
+  PetscInt :: cell_type
+  type(point_type) :: vertices(*)
+  
+  PetscReal :: ComputeCentroid(3)
+  PetscInt :: ivertex
+  
+  ComputeCentroid = 0.d0
+  select case(cell_type)
+    case(HEX_TYPE)
+      ! need something more sophisticated, but for now, just use average
+      do ivertex = 1, 8
+        ComputeCentroid(1) = ComputeCentroid(1) + vertices(ivertex)%x
+        ComputeCentroid(2) = ComputeCentroid(2) + vertices(ivertex)%y
+        ComputeCentroid(3) = ComputeCentroid(3) + vertices(ivertex)%z
+      enddo
+      ComputeCentroid = ComputeCentroid / 8.d0
+  end select
+
+end function ComputeCentroid
+
+! ************************************************************************** !
+!
+! ComputePlane: Computes the plane intersected by 3 points
+! author: Glenn Hammond
+! date: 10/30/09
+!
+! ************************************************************************** !
+subroutine ComputePlane(plane,point1,point2,point3)
+
+  implicit none
+  
+  type(plane_type) :: plane
+  type(point_type) :: point1, point2, point3
+  
+  PetscReal :: x1,y1,z1
+  PetscReal :: x2,y2,z2
+  PetscReal :: x3,y3,z3
+  x1 = point1%x
+  y1 = point1%y
+  z1 = point1%z
+  x2 = point2%x
+  y2 = point2%y
+  z2 = point2%z
+  x3 = point3%x
+  y3 = point3%y
+  z3 = point3%z
+  
+  ! this grabbed from python script
+  plane%A = y1*(z2-z3)+y2*(z3-z1)+y3*(z1-z2)
+  plane%B = z1*(x2-x3)+z2*(x3-x1)+z3*(x1-x2)
+  plane%C = x1*(y2-y3)+x2*(y3-y1)+x3*(y1-y2)
+  plane%D = -1.*(x1*(y2*z3-y3*z2)+x2*(y3*z1-y1*z3)+x3*(y1*z2-y2*z1))
+
+end subroutine ComputePlane
+
+! ************************************************************************** !
+!
+! GetPlaneIntercept: Computes the intercept of a line with a plane
+! author: Glenn Hammond
+! date: 10/30/09
+!
+! ************************************************************************** !
+subroutine GetPlaneIntercept(plane,point1,point2,intercept)
+
+  implicit none
+  
+  type(plane_type) :: plane
+  type(point_type) :: point1, point2
+  type(point_type) :: intercept
+
+  PetscReal :: x1,y1,z1
+  PetscReal :: x2,y2,z2
+  PetscReal :: u
+    
+  x1 = point1%x
+  y1 = point1%y
+  z1 = point1%z
+  x2 = point2%x
+  y2 = point2%y
+  z2 = point2%z
+ 
+ 
+  u = (plane%A*x1 + plane%B*y1 + plane%C*z1 + plane%D) / &
+      (plane%A*(x1-x2) + plane%B*(y1-y2) + plane%C*(z1-z2))
+
+  intercept%x = point1%x + u*(point2%x-point1%x)
+  intercept%y = point1%y + u*(point2%y-point1%y)
+  intercept%z = point1%z + u*(point2%z-point1%z)
+
+end subroutine GetPlaneIntercept
 
 ! ************************************************************************** !
 !
@@ -1362,9 +1979,9 @@ subroutine UnstructuredGridDestroy(unstructured_grid)
   if (associated(unstructured_grid%cell_vertices_0)) &
     deallocate(unstructured_grid%cell_vertices_0)
   nullify(unstructured_grid%cell_vertices_0)
-  if (associated(unstructured_grid%vertex_coordinates)) &
-    deallocate(unstructured_grid%vertex_coordinates)
-  nullify(unstructured_grid%vertex_coordinates)
+  if (associated(unstructured_grid%vertices)) &
+    deallocate(unstructured_grid%vertices)
+  nullify(unstructured_grid%vertices)
   if (associated(unstructured_grid%hash)) &
     deallocate(unstructured_grid%hash)
   nullify(unstructured_grid%hash)

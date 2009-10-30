@@ -176,7 +176,8 @@ subroutine GridComputeInternalConnect(grid,option)
         StructGridComputeInternConnect(grid%x,grid%structured_grid,option)
     case(UNSTRUCTURED_GRID) 
       connection_set => &
-        UnstGridComputeInternConnect(grid%unstructured_grid,option)
+        UGridComputeInternConnect(grid%unstructured_grid,grid%x,grid%y, &
+                                  grid%z,option)
   end select
   
   allocate(grid%internal_connection_set_list)
@@ -303,9 +304,21 @@ subroutine GridComputeCoordinates(grid,origin_global,option)
                                       grid%y_min_local,grid%y_max_local, &
                                       grid%z_min_local,grid%z_max_local)
     case(UNSTRUCTURED_GRID)
+      allocate(grid%x(grid%ngmax))
+      grid%x = 0.d0
+      allocate(grid%y(grid%ngmax))
+      grid%y = 0.d0
+      allocate(grid%z(grid%ngmax))
+      grid%z = 0.d0
+      call UGridComputeCoord(grid%unstructured_grid,option, &
+                             grid%x,grid%y,grid%z, &
+                             grid%x_min_local,grid%x_max_local, &
+                             grid%y_min_local,grid%y_max_local, &
+                             grid%z_min_local,grid%z_max_local)
   end select
 
-  if((grid%itype==STRUCTURED_GRID).and.(grid%structured_grid%p_samr_patch==0)) then
+  if (grid%itype==STRUCTURED_GRID) then
+    if (grid%structured_grid%p_samr_patch==0) then
      ! compute global max/min from the local max/in
      call MPI_Allreduce(grid%x_min_local,grid%x_min_global,ONE_INTEGER, &
           MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
@@ -319,6 +332,7 @@ subroutine GridComputeCoordinates(grid,origin_global,option)
           MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
      call MPI_Allreduce(grid%z_max_local,grid%z_max_global,ONE_INTEGER, &
           MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+   endif
   endif
 end subroutine GridComputeCoordinates
 
