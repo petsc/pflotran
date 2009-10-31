@@ -1227,6 +1227,11 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   call MatDestroy(Dual_mat,ierr)
 
 #endif
+
+  unstructured_grid%nlmax = unstructured_grid%num_cells_local
+  unstructured_grid%ngmax = unstructured_grid%num_cells_local + &
+                            unstructured_grid%num_ghost_cells
+
 #endif
   
 end subroutine UnstructuredGridDecompose
@@ -1277,18 +1282,25 @@ subroutine UnstructuredGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
 
   call printMsg(option,'Vectors')
   ! create global vec
-  call VecCreateMPI(option%mycomm,unstructured_grid%num_cells_local, &
+  call VecCreateMPI(option%mycomm,unstructured_grid%num_cells_local*ndof, &
                     PETSC_DETERMINE,ugdm%global_vec,ierr)
   call VecSetBlockSize(ugdm%global_vec,ndof,ierr)
   ! create local vec
-  call VecCreateSeq(PETSC_COMM_SELF,unstructured_grid%num_cells_ghosted, &
+  call VecCreateSeq(PETSC_COMM_SELF,unstructured_grid%num_cells_ghosted*ndof, &
                     ugdm%local_vec,ierr)
   call VecSetBlockSize(ugdm%local_vec,ndof,ierr)
   
   ! IS for global numbering of local, non-ghosted cells
   call VecGetOwnershipRange(ugdm%global_vec,istart,iend,ierr)
-  call ISCreateStride(option%mycomm,unstructured_grid%num_cells_local, &
-                      istart,1,ugdm%is_local_petsc,ierr)
+!  call ISCreateStride(option%mycomm,unstructured_grid%num_cells_local, &
+!                      istart,ndof,ugdm%is_local_petsc,ierr)
+  allocate(int_array(unstructured_grid%num_cells_local))
+  do icell = 1, unstructured_grid%num_cells_local
+    int_array(icell) = (icell-1)*ndof+istart
+  enddo
+  call ISCreateBlock(option%mycomm,ndof,unstructured_grid%num_cells_local, &
+                     int_array,ugdm%is_local_petsc,ierr)
+  deallocate(int_array)
   call PetscViewerASCIIOpen(option%mycomm,'is_local_petsc.out',viewer,ierr)
   call ISView(ugdm%is_local_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -1423,6 +1435,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
 
   use Connection_module
   use Option_module
+  use Utility_module, only : DotProduct, CrossProduct
 
   implicit none
 
@@ -1452,9 +1465,13 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   PetscInt :: face_id, face_id2
   PetscInt :: icell, icell2
   PetscInt :: cell_id, cell_id2
+  PetscInt :: dual_icell
   PetscInt :: ivertex, ivertex2
   PetscInt :: vertex_id, vertex_id2
   PetscInt :: vertex_ids4(4)
+  
+  PetscReal :: v1(3), v2(3), n1(3), n2(3), n_up_dn(3)
+  PetscReal :: area1, area2
   
   type(plane_type) :: plane1, plane2
   type(point_type) :: point1, point2, point3, point4
@@ -1485,7 +1502,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       call UGridGetCellFaceVertices(option,HEX_TYPE,iface,vertex_ids4)
       do ivertex = 1, 4
         face_to_vertex(ivertex,face_count) = &
-          unstructured_grid%cell_vertices_0(vertex_ids4(ivertex),icell)
+          unstructured_grid%cell_vertices_0(vertex_ids4(ivertex),icell)+1
       enddo
     enddo
   enddo
@@ -1499,9 +1516,9 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       if (cell_id2 <= cell_id) cycle
       num_match = 0
       do ivertex = 1, unstructured_grid%cell_vertices_0(0,cell_id)
-        vertex_id = unstructured_grid%cell_vertices_0(ivertex,cell_id)
+        vertex_id = unstructured_grid%cell_vertices_0(ivertex,cell_id)+1
         do ivertex2 = 1, unstructured_grid%cell_vertices_0(0,cell_id2)
-          vertex_id2 = unstructured_grid%cell_vertices_0(ivertex2,cell_id2)
+          vertex_id2 = unstructured_grid%cell_vertices_0(ivertex2,cell_id2)+1
           if (vertex_id == vertex_id2) then
             num_match = num_match + 1
             vertex_ids4(num_match) = vertex_id
@@ -1637,7 +1654,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   
   do icell = 1, unstructured_grid%num_cells_ghosted
     do ivertex = 1, unstructured_grid%cell_vertices_0(0,icell)
-      vertex_id = unstructured_grid%cell_vertices_0(ivertex,icell)
+      vertex_id = unstructured_grid%cell_vertices_0(ivertex,icell)+1
       count = vertex_to_cell(0,vertex_id) + 1
       vertex_to_cell(count,vertex_id) = icell
       vertex_to_cell(0,vertex_id) = count
@@ -1665,8 +1682,8 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   iconn = 0
   do icell = 1, unstructured_grid%num_cells_local
     do idual = 1, unstructured_grid%cell_neighbors_local_ghosted(0,icell)
-      cell_id2 = unstructured_grid%cell_neighbors_local_ghosted(idual,icell)
-      if (dual_id < 0 .or. icell < dual_id) then 
+      dual_icell = unstructured_grid%cell_neighbors_local_ghosted(idual,icell)
+      if (icell < dual_icell) then 
         iconn = iconn + 1
         ! find face
         found = PETSC_FALSE
@@ -1674,7 +1691,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
           face_id = cell_to_face(iface,icell)
           do icell2 = 1,2
             cell_id2 = face_to_cell(icell2,face_id)
-            if (cell_id2 == abs(cell_id2)) then
+            if (cell_id2 == abs(dual_icell)) then
               found = PETSC_TRUE
               exit
             endif
@@ -1688,7 +1705,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
           call printErrMsg(option)
         endif
         connections%id_up(iconn) = icell
-        connections%id_dn(iconn) = abs(cell_id2)
+        connections%id_dn(iconn) = abs(dual_icell)
         ! need to add the surface areas, distance, etc.
         point1 = unstructured_grid%vertices(face_to_vertex(1,face_id))
         point2 = unstructured_grid%vertices(face_to_vertex(2,face_id))
@@ -1701,13 +1718,36 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
         point_up%x = grid_x(icell)
         point_up%y = grid_y(icell)
         point_up%z = grid_z(icell)
-        point_dn%x = grid_x(abs(cell_id2))
-        point_dn%y = grid_y(abs(cell_id2))
-        point_dn%z = grid_z(abs(cell_id2))
+        point_dn%x = grid_x(abs(dual_icell))
+        point_dn%y = grid_y(abs(dual_icell))
+        point_dn%z = grid_z(abs(dual_icell))
+        v1(1) = point_dn%x-point_up%x
+        v1(2) = point_dn%y-point_up%y
+        v1(3) = point_dn%z-point_up%z
+        n_up_dn = v1 / DotProduct(v1,v1)
         call GetPlaneIntercept(plane1,point_up,point_dn,intercept1)
         call GetPlaneIntercept(plane2,point_up,point_dn,intercept2)
         
-        !area1 = 0.5*(p2-p1)X(p3-p1).
+        v1(1) = point3%x-point2%x
+        v1(2) = point3%y-point2%y
+        v1(3) = point3%z-point2%z
+        v2(1) = point1%x-point2%x
+        v2(2) = point1%y-point2%y
+        v2(3) = point1%z-point2%z
+        n1 = CrossProduct(v1,v2)
+        area1 = 0.5d0*DotProduct(n1,n1)
+        area1 = area1*DotProduct(n1,n_up_dn)
+        
+        v1(1) = point1%x-point4%x
+        v1(2) = point1%y-point4%y
+        v1(3) = point1%z-point4%z
+        v2(1) = point3%x-point4%x
+        v2(2) = point3%y-point4%y
+        v2(3) = point3%z-point4%z
+        n2 = CrossProduct(v1,v2)
+        area2 = 0.5d0*DotProduct(n2,n2)
+        area2 = area2*DotProduct(n2,n_up_dn)
+       !area1 = 0.5*|(p2-p1)X(p3-p1)|.
         !  http://softsurfer.com/Archive/algorithm_0101/algorithm_0101.htm#Triangles
         
         !GetPlaneNormalArea(

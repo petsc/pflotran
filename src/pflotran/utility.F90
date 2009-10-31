@@ -3,8 +3,13 @@ module Utility_module
 #include "definitions.h"
 
   interface DotProduct
+    module procedure DotProduct1
     module procedure DotProduct2
     module procedure DotProduct3
+  end interface
+  
+  interface CrossProduct
+    module procedure CrossProduct1
   end interface
   
 contains
@@ -432,6 +437,27 @@ function DotProduct3(v1x,v1y,v1z,v2x,v2y,v2z)
   DotProduct3 = v1x*v2x+v1y*v2y+v1z*v2z
 
 end function DotProduct3
+
+! ************************************************************************** !
+!
+! CrossProduct1: Computes the cross product between two 3d vectors
+! author: Glenn Hammond
+! date: 10/30/09
+!
+! ************************************************************************** !
+function CrossProduct1(v1,v2)
+
+  implicit none
+  
+  PetscReal :: v1(3), v2(3)
+  
+  PetscReal :: CrossProduct1(3)
+  
+  CrossProduct1(1) = v1(2)*v2(3)-v1(3)*v2(2)
+  CrossProduct1(2) = v1(3)*v2(1)-v1(1)*v2(3)
+  CrossProduct1(3) = v1(1)*v2(2)-v1(2)*v2(1)
+
+end function CrossProduct1
 
 ! ************************************************************************** !
 !
