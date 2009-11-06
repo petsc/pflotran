@@ -33,6 +33,7 @@ module Unstructured_Grid_module
   end type unstructured_grid_type
 
   type, public :: ugdm_type
+    PetscInt :: ndof
     IS :: is_ghosted_local
     IS :: is_local_local
     IS :: is_ghosted_petsc
@@ -43,6 +44,7 @@ module Unstructured_Grid_module
     VecScatter :: scatter_gtol
     VecScatter :: scatter_ltol 
     ISLocalToGlobalMapping :: mapping_ltog  
+    ISLocalToGlobalMapping :: mapping_ltogb
     Vec :: global_vec
     Vec :: local_vec
   end type ugdm_type
@@ -72,6 +74,7 @@ module Unstructured_Grid_module
             UnstructuredGridDecompose, &
             UGridComputeInternConnect, &
             UGridComputeCoord, &
+            UGDMCreateJacobian, &
             UnstructuredGridDestroy, &
             UnstructuredGridCreateUGDM, &
             UGDMDestroy
@@ -104,6 +107,7 @@ function UGDMCreate()
   ugdm%scatter_gtol = 0
   ugdm%scatter_ltol  = 0
   ugdm%mapping_ltog = 0
+  ugdm%mapping_ltogb = 0
   ugdm%global_vec = 0
   ugdm%local_vec = 0
 
@@ -1279,6 +1283,7 @@ subroutine UnstructuredGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   PetscInt, allocatable :: int_array(:)
   
   ugdm => UGDMCreate()
+  ugdm%ndof = ndof
 
   call printMsg(option,'Vectors')
   ! create global vec
@@ -1390,6 +1395,16 @@ subroutine UnstructuredGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   call ISLocalToGlobalMappingView(ugdm%mapping_ltog,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
                             
+  ! create a block local to global mapping if ndof > 1
+  if (ndof > 1) then
+    call printMsg(option,'ISLocalToGlobalMapping')
+    call ISLocalToGlobalMappingCreateIS(ugdm%mapping_ltog,ndof, &
+                                        ugdm%mapping_ltogb,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'mapping_ltogb.out',viewer,ierr)
+    call ISLocalToGlobalMappingView(ugdm%mapping_ltogb,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+                            
   call printMsg(option,'local to global')
   ! Create local to global scatter
   call VecScatterCreate(ugdm%local_vec,ugdm%is_local_local,ugdm%global_vec, &
@@ -1472,6 +1487,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   
   PetscReal :: v1(3), v2(3), n1(3), n2(3), n_up_dn(3)
   PetscReal :: area1, area2
+  PetscReal :: dist_up, dist_dn
   
   type(plane_type) :: plane1, plane2
   type(point_type) :: point1, point2, point3, point4
@@ -1752,18 +1768,22 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
         
         !GetPlaneNormalArea(
         ! http://mathworld.wolfram.com/Plane.html
-       
-#if 0        
- !       call UGridCalculateAreaAndDistance(grid_x(
+
+        v1(1) = intercept1%x-point_up%x
+        v1(2) = intercept1%y-point_up%y
+        v1(3) = intercept1%z-point_up%z
+        v2(1) = point_dn%x-intercept1%x
+        v2(2) = point_dn%y-intercept1%y
+        v2(3) = point_dn%z-intercept1%z
+        dist_up = sqrt(DotProduct(v1,v1))
+        dist_dn = sqrt(DotProduct(v2,v2))
+        
         connections%dist(-1:3,iconn) = 0.d0
-        dist_up = 0.5d0*structured_grid%dx(id_up)
-        dist_dn = 0.5d0*structured_grid%dx(id_dn)
         connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
-        connections%dist(0,iconn) = dist_up+dist_dn
-        connections%dist(1,iconn) = 1.d0  ! x component of unit vector
-        connections%area(iconn) = structured_grid%dy(id_up)* &
-                                  structured_grid%dz(id_up)    
-#endif                                      
+        connections%dist(0,iconn) = dist_up + dist_dn
+        connections%dist(1:3,iconn) = v1 + v2
+        connections%area(iconn) = area1 + area2
+       
       endif
     enddo
   enddo
@@ -2001,9 +2021,72 @@ end subroutine GetPlaneIntercept
 
 ! ************************************************************************** !
 !
+! UGDMCreateJacobian: Creates a Jacobian matrix based on the unstructured
+!                     grid dual
+! author: Glenn Hammond
+! date: 11/05/09
+!
+! ************************************************************************** !
+subroutine UGDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(unstructured_grid_type) :: unstructured_grid
+  type(ugdm_type) :: ugdm
+  MatType :: mat_type
+  Mat :: J
+  type(option_type) :: option
+
+  PetscInt, allocatable :: d_nnz(:), o_nnz(:)
+  PetscInt :: icell, ineighbor, neighbor_id
+  PetscErrorCode :: ierr
+  
+  allocate(d_nnz(unstructured_grid%num_cells_local))
+  allocate(o_nnz(unstructured_grid%num_cells_local))
+  d_nnz = 1 ! start 1 since diagonal connection to self
+  o_nnz = 0
+  do icell = 1, unstructured_grid%num_cells_local
+    do ineighbor = 1, unstructured_grid%cell_neighbors_local_ghosted(0,icell)
+      neighbor_id = unstructured_grid%cell_neighbors_local_ghosted(ineighbor,icell)
+      if (neighbor_id > 0) then
+        d_nnz(icell) = d_nnz(icell) + 1
+      else
+        o_nnz(icell) = o_nnz(icell) + 1
+      endif
+    enddo
+  enddo
+
+  select case(mat_type)
+    case(MATMPIAIJ)
+      d_nnz = d_nnz*ugdm%ndof
+      o_nnz = o_nnz*ugdm%ndof
+      call MatCreateMPIAIJ(option%mycomm,unstructured_grid%num_cells_local, &
+                           unstructured_grid%num_cells_local,PETSC_DETERMINE, &
+                           PETSC_DETERMINE,PETSC_NULL_INTEGER,d_nnz, &
+                           PETSC_NULL_INTEGER,o_nnz,J,ierr)
+      call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltog,ierr)
+    case(MATMPIBAIJ)
+      call MatCreateMPIBAIJ(option%mycomm,ugdm%ndof, &
+                            unstructured_grid%num_cells_local, &
+                            unstructured_grid%num_cells_local,PETSC_DETERMINE, &
+                            PETSC_DETERMINE,PETSC_NULL_INTEGER,d_nnz, &
+                            PETSC_NULL_INTEGER,o_nnz,J,ierr)
+      call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltog,ierr)
+      call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltogb,ierr)
+  end select
+
+  deallocate(d_nnz)
+  deallocate(o_nnz)
+  
+end subroutine UGDMCreateJacobian
+
+! ************************************************************************** !
+!
 ! UnstructuredGridDestroy: Deallocates a unstructured grid
 ! author: Glenn Hammond
-! date: 11/01/07
+! date: 11/01/09
 !
 ! ************************************************************************** !
 subroutine UnstructuredGridDestroy(unstructured_grid)
@@ -2053,7 +2136,7 @@ end subroutine UnstructuredGridDestroy
 !
 ! UGDMDestroy: Deallocates a unstructured grid distributed mesh
 ! author: Glenn Hammond
-! date: 11/01/07
+! date: 11/01/09
 !
 ! ************************************************************************** !
 subroutine UGDMDestroy(ugdm)
@@ -2076,9 +2159,10 @@ subroutine UGDMDestroy(ugdm)
   call VecScatterDestroy(ugdm%scatter_gtol,ierr)
   call VecScatterDestroy(ugdm%scatter_ltol,ierr)
   call ISLocalToGlobalMappingDestroy(ugdm%mapping_ltog)
+  if (ugdm%mapping_ltogb /= 0) &
+    call ISLocalToGlobalMappingDestroy(ugdm%mapping_ltogb)
   call VecDestroy(ugdm%global_vec)
   call VecDestroy(ugdm%local_vec)
-  
   deallocate(ugdm)
   nullify(ugdm)
 
