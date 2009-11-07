@@ -176,6 +176,7 @@ end function RealizationCreate2
 subroutine RealizationCreateDiscretization(realization)
 
   use Grid_module
+  use Unstructured_Grid_module, only : UGridMapIndices
   use AMR_Grid_module
   
   implicit none
@@ -302,10 +303,8 @@ subroutine RealizationCreateDiscretization(realization)
   endif
 
   select case(discretization%itype)
-    case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
-    
+    case(STRUCTURED_GRID)
       grid => discretization%grid
-
       ! set up nG2L, NL2G, etc.
       call GridMapIndices(grid)
       call GridComputeSpacing(grid,option)
@@ -313,7 +312,15 @@ subroutine RealizationCreateDiscretization(realization)
       call GridComputeVolumes(grid,field%volume,option)
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option)
-
+    case(UNSTRUCTURED_GRID)
+      grid => discretization%grid
+      ! set up nG2L, NL2G, etc.
+      call UGridMapIndices(grid%unstructured_grid,discretization%dm_1dof%ugdm, &
+                           grid%nG2L,grid%nL2G,grid%nL2A,grid%nG2A)
+      call GridComputeCoordinates(grid,discretization%origin,option)
+      ! set up internal connectivity, distance, etc.
+      call GridComputeInternalConnect(grid,option)
+      call GridComputeVolumes(grid,field%volume,option)
     case(AMR_GRID)
        call AMRGridComputeGeometryInformation(discretization%amrgrid, &
                                               discretization%origin, &

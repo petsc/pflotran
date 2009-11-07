@@ -40,9 +40,11 @@ module Unstructured_Grid_module
     IS :: is_local_petsc
     IS :: is_ghosts_local
     IS :: is_ghosts_petsc
+    IS :: is_local_natural
     VecScatter :: scatter_ltog
     VecScatter :: scatter_gtol
     VecScatter :: scatter_ltol 
+    VecScatter :: scatter_gton
     ISLocalToGlobalMapping :: mapping_ltog  
     ISLocalToGlobalMapping :: mapping_ltogb
     Vec :: global_vec
@@ -74,7 +76,10 @@ module Unstructured_Grid_module
             UnstructuredGridDecompose, &
             UGridComputeInternConnect, &
             UGridComputeCoord, &
+            UGridComputeVolumes, &
+            UGridMapIndices, &
             UGDMCreateJacobian, &
+            UGDMCreateVector, &
             UnstructuredGridDestroy, &
             UnstructuredGridCreateUGDM, &
             UGDMDestroy
@@ -103,9 +108,11 @@ function UGDMCreate()
   ugdm%is_local_petsc = 0
   ugdm%is_ghosts_local = 0
   ugdm%is_ghosts_petsc = 0
+  ugdm%is_local_natural = 0
   ugdm%scatter_ltog = 0
   ugdm%scatter_gtol = 0
   ugdm%scatter_ltol  = 0
+  ugdm%scatter_gton = 0
   ugdm%mapping_ltog = 0
   ugdm%mapping_ltogb = 0
   ugdm%global_vec = 0
@@ -612,8 +619,11 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   call MPI_Exscan(unstructured_grid%num_cells_local, &
                   unstructured_grid%global_offset, &
                   ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
-  
+
+#if GEH_DEBUG  
   call printMsg(option,'Adjacency matrix')
+#endif
+
   call MatCreateMPIAdj(option%mycomm,unstructured_grid%num_cells_local, &
                        unstructured_grid%num_vertices_global, &
                        local_vertex_offset, &
@@ -622,34 +632,42 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   ! do not free local_vertices; MatAdjDestroy will do it
   ! do not free local_vertex_offset; MatAdjDestroy will do it
 
-#if 1
+#if GEH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'Adj.out',viewer,ierr)
   call MatView(Adj_mat,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
+#if GEH_DEBUG
   call printMsg(option,'Dual matrix')
+#endif
+
   call MatMeshToCellGraph(Adj_mat,num_common_vertices,Dual_mat,ierr)
   call MatDestroy(Adj_mat,ierr)
   deallocate(local_vertices)
   deallocate(local_vertex_offset)
   
-#if 1
+#if GEH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'Dual.out',viewer,ierr)
   call MatView(Dual_mat,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
+#if GEH_DEBUG
   call printMsg(option,'Partitioning')
+#endif
+
   call MatPartitioningCreate(option%mycomm,Part,ierr)
   call MatPartitioningSetAdjacency(Part,Dual_mat,ierr)
   call MatPartitioningSetFromOptions(Part,ierr)
   call MatPartitioningApply(Part,is_new,ierr)
   call MatPartitioningDestroy(Part,ierr)
-  
+
+#if GEH_DEBUG  
   call PetscViewerASCIIOpen(option%mycomm,'is.out',viewer,ierr)
   call ISView(is_new,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)  
+#endif
 
   allocate(cell_counts(option%mycommsize))
   call ISPartitioningCount(is_new,option%mycommsize,cell_counts,ierr)
@@ -734,23 +752,30 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
                           ja_ptr,success,ierr)
   call MatDestroy(Dual_mat,ierr)
  
+#if GEH_DEBUG
   call printMsg(option,'Before element scatter')
+#endif
+
   call VecScatterCreate(elements_old,PETSC_NULL,elements_natural,is_scatter,vec_scatter,ierr)
   call ISDestroy(is_scatter,ierr)
   call VecScatterBegin(vec_scatter,elements_old,elements_natural,INSERT_VALUES,SCATTER_FORWARD,ierr)
   call VecScatterEnd(vec_scatter,elements_old,elements_natural,INSERT_VALUES,SCATTER_FORWARD,ierr)
   call VecScatterDestroy(vec_scatter,ierr)
 
+#if GEH_DEBUG
   call printMsg(option,'After element scatter')
   call PetscViewerASCIIOpen(option%mycomm,'elements_old.out',viewer,ierr)
   call VecView(elements_old,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
+#endif
   
   call VecDestroy(elements_old,ierr)
-  
+
+#if GEH_DEBUG  
   call PetscViewerASCIIOpen(option%mycomm,'elements_natural.out',viewer,ierr)
   call VecView(elements_natural,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
+#endif
   
   unstructured_grid%cell_vertices_0 = 0
   allocate(unstructured_grid%cell_ids_natural(unstructured_grid%num_cells_local))
@@ -761,7 +786,10 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   call VecDuplicate(elements_natural,elements_petsc,ierr)
   call VecCopy(elements_natural,elements_petsc,ierr)
 
+#if GEH_DEBUG
   call printMsg(option,'Lists of ids')
+#endif
+
   ! make a list of local ids
   call VecGetArrayF90(elements_natural,vec_ptr,ierr)
   do icell=1, unstructured_grid%num_cells_local
@@ -783,9 +811,11 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   deallocate(int_array)
   unstructured_grid%cell_ids_natural = unstructured_grid%cell_ids_natural + 1
 
+#if GEH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'ao.out',viewer,ierr)
   call AOView(unstructured_grid%ao_natural_to_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
+#endif
 
   ! The below creates a list of cells ids for the duals and converts them
   ! to petsc ordering   
@@ -815,15 +845,21 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
     enddo
   enddo
   call VecRestoreArrayF90(elements_natural,vec_ptr,ierr)
-  
+
+#if GEH_DEBUG
   call printMsg(option,'Application ordering')
+#endif
+
   ! convert the dual ids from natural to petsc
   int_array = int_array - 1             
   call AOApplicationToPetsc(unstructured_grid%ao_natural_to_petsc,count, &
                             int_array,ierr)
   int_array = int_array + 1                
 
+#if GEH_DEBUG
   call printMsg(option,'PETSc-ordered duals')
+#endif
+
   ! load mapped petsc-ordered dual ids back into duplicated vector
   call VecGetArrayF90(elements_petsc,vec_ptr,ierr)
   call VecGetArrayF90(elements_natural,vec_ptr2,ierr)
@@ -845,9 +881,11 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   deallocate(int_array)
   call VecDestroy(elements_natural,ierr)
 
+#if GEH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'elements_petsc.out',viewer,ierr)
   call VecView(elements_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
+#endif
 
   ! make a list of ghosted ids in petsc numbering
   call VecGetArrayF90(elements_petsc,vec_ptr,ierr)
@@ -895,6 +933,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
       endif
     enddo
   enddo
+  
   call printMsg(option,'Add code adds all ghost cells and removed duplicates')
   call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr)
   unstructured_grid%num_ghost_cells = ghost_cell_count
@@ -932,10 +971,12 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   deallocate(int_array)
   deallocate(int_array2)
   call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr)
-  
+
+#if GEH_DEBUG  
   call PetscViewerASCIIOpen(option%mycomm,'elements_petsc_local.out',viewer,ierr)
   call VecView(elements_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
+#endif
 
   ! load cell neighbors into array
   ! start first index at zero to store # duals for a cell
@@ -1035,9 +1076,11 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   deallocate(int_array2)
   deallocate(int_array4)
 
+#if GEH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'elements_petsc_vert_local.out',viewer,ierr)
   call VecView(elements_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
+#endif  
   call VecDestroy(elements_petsc,ierr)
 
   ! IS for gather - need local numbering
@@ -1104,12 +1147,14 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
     unstructured_grid%vertices(ivertex)%z = 0.d0
   enddo
 
+#if GEH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'is_scatter.out',viewer,ierr)
   call ISView(is_scatter,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
   call PetscViewerASCIIOpen(option%mycomm,'is_gather.out',viewer,ierr)
   call ISView(is_gather,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
+#endif
 
   call VecScatterCreate(vertices_old,is_scatter,vertices_new,is_gather, &
                         vec_scatter,ierr)
@@ -1120,9 +1165,12 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   call VecScatterEnd(vec_scatter,vertices_old,vertices_new, &
                      INSERT_VALUES,SCATTER_FORWARD,ierr)
   call VecScatterDestroy(vec_scatter,ierr)
+
+#if GEH_DEBUG  
   call PetscViewerASCIIOpen(option%mycomm,'vertex_coord_old.out',viewer,ierr)
   call VecView(vertices_old,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
+#endif
 
   call VecDestroy(vertices_old,ierr)
 
@@ -1134,11 +1182,14 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
     unstructured_grid%vertices(ivertex)%z = vec_ptr((ivertex-1)*3+3)
   enddo
   call VecRestoreArrayF90(vertices_new,vec_ptr,ierr)
+  
+#if GEH_DEBUG  
   write(string,*) option%myrank
   string = 'vertex_coord_new' // trim(adjustl(string)) // '.out'
   call PetscViewerASCIIOpen(PETSC_COMM_SELF,trim(string),viewer,ierr)
   call VecView(vertices_new,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
+#endif
 
   call VecDestroy(vertices_new,ierr)
 
@@ -1158,7 +1209,10 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   index_format_flag = 0 ! C-style indexing
   num_common_vertices = 3 ! cells must share at least vertices
 
+#if GEH_DEBUG
   call printMsg(option,'Local Adjacency matrix')
+#endif
+
   call MatCreateMPIAdj(PETSC_COMM_SELF,unstructured_grid%num_cells_local, &
                        unstructured_grid%num_vertices_local, &
                        local_vertex_offset, &
@@ -1167,19 +1221,22 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   ! do not free local_vertices; MatAdjDestroy will do it
   ! do not free local_vertex_offset; MatAdjDestroy will do it
 
-#if 1
+#if GEH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'Adj_local.out',viewer,ierr)
   call MatView(Adj_mat,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
 
+#if GEH_DEBUG
   call printMsg(option,'Dual matrix')
+#endif
+
   call MatMeshToCellGraph(Adj_mat,num_common_vertices,Dual_mat,ierr)
   call MatDestroy(Adj_mat,ierr)
   deallocate(local_vertices)
   deallocate(local_vertex_offset)
 
-#if 1
+#if GEH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'Dual_local.out',viewer,ierr)
   call MatView(Dual_mat,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
@@ -1276,6 +1333,9 @@ subroutine UnstructuredGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   PetscInt, pointer :: int_ptr(:)
   PetscInt :: istart, iend
   PetscInt :: icell
+  PetscInt :: idof
+  IS :: is_tmp
+  Vec :: vec_tmp
   PetscErrorCode :: ierr
   
   PetscViewer :: viewer
@@ -1285,7 +1345,10 @@ subroutine UnstructuredGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   ugdm => UGDMCreate()
   ugdm%ndof = ndof
 
+#if GEH_DEBUG
   call printMsg(option,'Vectors')
+#endif
+
   ! create global vec
   call VecCreateMPI(option%mycomm,unstructured_grid%num_cells_local*ndof, &
                     PETSC_DETERMINE,ugdm%global_vec,ierr)
@@ -1306,9 +1369,12 @@ subroutine UnstructuredGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   call ISCreateBlock(option%mycomm,ndof,unstructured_grid%num_cells_local, &
                      int_array,ugdm%is_local_petsc,ierr)
   deallocate(int_array)
+  
+#if GEH_DEBUG  
   call PetscViewerASCIIOpen(option%mycomm,'is_local_petsc.out',viewer,ierr)
   call ISView(ugdm%is_local_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
+#endif
 
   ! IS for local numbering of ghosts cells
   allocate(int_array(unstructured_grid%num_ghost_cells))
@@ -1320,11 +1386,17 @@ subroutine UnstructuredGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
 !  call ISCreateGeneral(option%mycomm,unstructured_grid%num_ghost_cells, &
 !                       int_array,ugdm%is_ghosts_local,ierr)
   deallocate(int_array)
+  
+#if GEH_DEBUG  
   call PetscViewerASCIIOpen(option%mycomm,'is_ghosts_local.out',viewer,ierr)
   call ISView(ugdm%is_ghosts_local,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
+#endif
   
+#if GEH_DEBUG
   call printMsg(option,'Index Sets')
+#endif
+
   ! IS for local numbering of ghosts cells
   allocate(int_array(unstructured_grid%num_ghost_cells))
   do icell = 1, unstructured_grid%num_ghost_cells
@@ -1335,10 +1407,13 @@ subroutine UnstructuredGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
 !  call ISCreateGeneral(option%mycomm,unstructured_grid%num_ghost_cells, &
 !                       int_array,ugdm%is_ghosts_petsc,ierr)
   deallocate(int_array)
+  
+#if GEH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'is_ghosts_petsc.out',viewer,ierr)
   call ISView(ugdm%is_ghosts_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
-  
+#endif
+
   ! IS for local numbering of local, non-ghosted cells
   allocate(int_array(unstructured_grid%num_cells_local))
   do icell = 1, unstructured_grid%num_cells_local
@@ -1349,9 +1424,12 @@ subroutine UnstructuredGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
 !  call ISCreateGeneral(option%mycomm,unstructured_grid%num_cells_local, &
 !                       int_array,ugdm%is_local_local,ierr)
   deallocate(int_array)
+  
+#if GEH_DEBUG  
   call PetscViewerASCIIOpen(option%mycomm,'is_local_local.out',viewer,ierr)
   call ISView(ugdm%is_local_local,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
+#endif
   
   ! IS for ghosted numbering of local ghosted cells
   allocate(int_array(unstructured_grid%num_cells_ghosted))
@@ -1363,10 +1441,13 @@ subroutine UnstructuredGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
 !  call ISCreateGeneral(option%mycomm,unstructured_grid%num_cells_ghosted, &
 !                       int_array,ugdm%is_ghosted_local,ierr)
   deallocate(int_array)
+  
+#if GEH_DEBUG  
   call PetscViewerASCIIOpen(option%mycomm,'is_ghosted_local.out',viewer,ierr)
   call ISView(ugdm%is_ghosted_local,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
-                          
+#endif
+             
   ! IS for petsc numbering of local ghosted cells
   allocate(int_array(unstructured_grid%num_cells_ghosted))
   do icell = 1, unstructured_grid%num_cells_local
@@ -1381,47 +1462,73 @@ subroutine UnstructuredGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
 !  call ISCreateGeneral(option%mycomm,unstructured_grid%num_cells_ghosted, &
 !                       int_array,ugdm%is_ghosted_petsc,ierr)
   deallocate(int_array)
+  
+#if GEH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'is_ghosted_petsc.out',viewer,ierr)
   call ISView(ugdm%is_ghosted_petsc,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
-                 
-                 
+#endif    
                  
   ! create a local to global mapping
+#if GEH_DEBUG
   call printMsg(option,'ISLocalToGlobalMapping')
+#endif
+
   call ISLocalToGlobalMappingCreateIS(ugdm%is_ghosted_petsc, &
                                       ugdm%mapping_ltog,ierr)
+
+#if GEH_DEBUG                                      
   call PetscViewerASCIIOpen(option%mycomm,'mapping_ltog.out',viewer,ierr)
   call ISLocalToGlobalMappingView(ugdm%mapping_ltog,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
-                            
-  ! create a block local to global mapping if ndof > 1
-  if (ndof > 1) then
-    call printMsg(option,'ISLocalToGlobalMapping')
-    call ISLocalToGlobalMappingCreateIS(ugdm%mapping_ltog,ndof, &
-                                        ugdm%mapping_ltogb,ierr)
-    call PetscViewerASCIIOpen(option%mycomm,'mapping_ltogb.out',viewer,ierr)
-    call ISLocalToGlobalMappingView(ugdm%mapping_ltogb,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
-  endif
-                            
+#endif
+               
+  ! create a block local to global mapping 
+#if GEH_DEBUG
+  call printMsg(option,'ISLocalToGlobalMappingBlock')
+#endif
+
+  call ISLocalToGlobalMappingBlock(ugdm%mapping_ltog,ndof, &
+                                   ugdm%mapping_ltogb,ierr)
+                                      
+#if GEH_DEBUG                                      
+  call PetscViewerASCIIOpen(option%mycomm,'mapping_ltogb.out',viewer,ierr)
+  call ISLocalToGlobalMappingView(ugdm%mapping_ltogb,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+
+#if GEH_DEBUG                            
   call printMsg(option,'local to global')
+#endif
+
   ! Create local to global scatter
   call VecScatterCreate(ugdm%local_vec,ugdm%is_local_local,ugdm%global_vec, &
                         ugdm%is_local_petsc,ugdm%scatter_ltog,ierr)
+                        
+#if GEH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'scatter_ltog.out',viewer,ierr)
   call VecScatterView(ugdm%scatter_ltog,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
+#endif
 
+#if GEH_DEBUG
   call printMsg(option,'global to local')
+#endif
+
   ! Create global to local scatter
   call VecScatterCreate(ugdm%global_vec,ugdm%is_ghosted_petsc,ugdm%local_vec, &
                         ugdm%is_ghosted_local,ugdm%scatter_gtol,ierr)
+                        
+#if GEH_DEBUG                        
   call PetscViewerASCIIOpen(option%mycomm,'scatter_gtol.out',viewer,ierr)
   call VecScatterView(ugdm%scatter_gtol,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
+#endif
 
+#if GEH_DEBUG
   call printMsg(option,'local to local')
+#endif
+  
   ! Create local to local scatter.  Essentially remap the global to local as
   ! PETSc does in daltol.c
   call VecScatterCopy(ugdm%scatter_gtol,ugdm%scatter_ltol,ierr)
@@ -1429,9 +1536,61 @@ subroutine UnstructuredGridCreateUGDM(unstructured_grid,ugdm,ndof,option)
   call VecScatterRemap(ugdm%scatter_ltol,int_ptr,PETSC_NULL_INTEGER,ierr)
   call ISRestoreIndicesF90(ugdm%is_local_local,int_ptr,ierr)
 !  call VecScatterCreate(local_vec,is_local_petsc,local_vec,is_ghosts_petsc,scatter_ltol,ierr)
+
+#if GEH_DEBUG
   call PetscViewerASCIIOpen(option%mycomm,'scatter_ltol.out',viewer,ierr)
   call VecScatterView(ugdm%scatter_ltol,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
+#endif
+
+  ! Set up global to natural scatter
+  ! Create index set of local non-ghosted Petsc ordering
+  call VecCreateMPI(option%mycomm,unstructured_grid%num_cells_local, &
+                    PETSC_DETERMINE,vec_tmp,ierr)
+  call VecGetOwnershipRange(vec_tmp,istart,iend,ierr)
+  call VecDestroy(vec_tmp,ierr)
+  allocate(int_array(unstructured_grid%num_cells_local))
+  do icell = 1, unstructured_grid%num_cells_local
+!    int_array(icell) = (icell-1)*ndof+istart
+    int_array(icell) = (icell-1)+istart
+  enddo
+  call ISCreateGeneral(option%mycomm,unstructured_grid%num_cells_local, &
+                       int_array,is_tmp,ierr)
+  deallocate(int_array)
+  call AOPetscToApplicationIS(unstructured_grid%ao_natural_to_petsc, &
+                              is_tmp,ierr)
+  ! remap for ndof > 1
+  allocate(int_array(unstructured_grid%num_cells_local))
+  call ISGetIndicesF90(is_tmp,int_ptr,ierr)
+  do icell = 1, unstructured_grid%num_cells_local
+    int_array(icell) = int_ptr(icell)*ndof
+  enddo
+  call ISRestoreIndicesF90(is_tmp,int_ptr,ierr)
+  call ISDestroy(is_tmp,ierr)
+  call ISCreateBlock(option%mycomm,ndof,unstructured_grid%num_cells_local, &
+                     int_array,ugdm%is_local_natural,ierr)
+  deallocate(int_array)
+
+#if GEH_DEBUG  
+  call PetscViewerASCIIOpen(option%mycomm,'is_local_natural.out',viewer,ierr)
+  call ISView(ugdm%is_local_natural,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+
+  call VecCreateMPI(option%mycomm,unstructured_grid%num_cells_local*ndof, &
+                    PETSC_DETERMINE,vec_tmp,ierr)
+  call VecSetBlockSize(vec_tmp,ndof,ierr)
+  call VecScatterCreate(ugdm%global_vec,ugdm%is_local_petsc,vec_tmp, &
+                        ugdm%is_local_natural,ugdm%scatter_gton,ierr)
+  call VecDestroy(vec_tmp,ierr)
+
+#if GEH_DEBUG                        
+  call PetscViewerASCIIOpen(option%mycomm,'scatter_gton.out',viewer,ierr)
+  call VecScatterView(ugdm%scatter_gton,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+
+  
     
 #endif
   
@@ -1919,6 +2078,53 @@ end subroutine UGridComputeCoord
 
 ! ************************************************************************** !
 !
+! UGridComputeVolumes: Computes volume of unstructured grid cells
+! author: Glenn Hammond
+! date: 11/06/09
+!
+! ************************************************************************** !
+subroutine UGridComputeVolumes(unstructured_grid,option,nL2G,volume)
+
+  use Option_module
+  
+  implicit none
+
+  type(unstructured_grid_type) :: unstructured_grid
+  type(option_type) :: option
+  PetscInt :: nL2G(:)
+  Vec :: volume
+  
+
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: ivertex
+  PetscInt :: vertex_id
+  type(point_type) :: vertex_8(8)
+  PetscReal, pointer :: volume_p(:)
+  PetscErrorCode :: ierr
+
+  call VecGetArrayF90(volume,volume_p,ierr)
+
+  do local_id = 1, unstructured_grid%num_cells_local
+    ghosted_id = nL2G(local_id)
+    do ivertex = 1, 8
+      vertex_id = unstructured_grid%cell_vertices_0(ivertex,ghosted_id) + 1
+      vertex_8(ivertex)%x = &
+        unstructured_grid%vertices(vertex_id)%x
+      vertex_8(ivertex)%y = &
+        unstructured_grid%vertices(vertex_id)%y
+      vertex_8(ivertex)%z = &
+        unstructured_grid%vertices(vertex_id)%z
+    enddo
+    volume_p(local_id) = ComputeVolume(HEX_TYPE,vertex_8)
+  enddo
+      
+  call VecRestoreArrayF90(volume,volume_p,ierr)
+
+end subroutine UGridComputeVolumes
+
+! ************************************************************************** !
+!
 ! ComputeCentroid: Computes the centroid a grid cell
 ! author: Glenn Hammond
 ! date: 10/30/09
@@ -1947,6 +2153,48 @@ function ComputeCentroid(cell_type,vertices)
   end select
 
 end function ComputeCentroid
+
+! ************************************************************************** !
+!
+! ComputeVolume: Computes the volume a grid cell
+! author: Glenn Hammond
+! date: 11/06/09
+!
+! ************************************************************************** !
+function ComputeVolume(cell_type,vertices)
+
+  use Utility_module, only : DotProduct
+
+  implicit none
+  
+  PetscInt :: cell_type
+  type(point_type) :: vertices(*)
+  
+  PetscReal :: ComputeVolume
+  PetscReal :: v(3)
+  PetscReal :: l1, l2, l3
+  
+  ComputeVolume = 0.d0
+  select case(cell_type)
+    case(HEX_TYPE)
+     ! need something more sophisticated, but for now, just use volume of 
+     ! box
+      v(1) = vertices(2)%x-vertices(1)%x
+      v(2) = vertices(2)%y-vertices(1)%y
+      v(3) = vertices(2)%z-vertices(1)%z
+      l1 = DotProduct(v,v)
+      v(1) = vertices(4)%x-vertices(1)%x
+      v(2) = vertices(4)%y-vertices(1)%y
+      v(3) = vertices(4)%z-vertices(1)%z
+      l2 = DotProduct(v,v)
+      v(1) = vertices(5)%x-vertices(1)%x
+      v(2) = vertices(5)%y-vertices(1)%y
+      v(3) = vertices(5)%z-vertices(1)%z
+      l3 = DotProduct(v,v)
+      ComputeVolume = l1*l2*l3
+  end select
+
+end function ComputeVolume
 
 ! ************************************************************************** !
 !
@@ -2041,6 +2289,7 @@ subroutine UGDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
 
   PetscInt, allocatable :: d_nnz(:), o_nnz(:)
   PetscInt :: icell, ineighbor, neighbor_id
+  PetscInt :: ndof_local
   PetscErrorCode :: ierr
   
   allocate(d_nnz(unstructured_grid%num_cells_local))
@@ -2058,29 +2307,147 @@ subroutine UGDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
     enddo
   enddo
 
-  select case(mat_type)
-    case(MATMPIAIJ)
-      d_nnz = d_nnz*ugdm%ndof
-      o_nnz = o_nnz*ugdm%ndof
-      call MatCreateMPIAIJ(option%mycomm,unstructured_grid%num_cells_local, &
-                           unstructured_grid%num_cells_local,PETSC_DETERMINE, &
-                           PETSC_DETERMINE,PETSC_NULL_INTEGER,d_nnz, &
-                           PETSC_NULL_INTEGER,o_nnz,J,ierr)
-      call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltog,ierr)
-    case(MATMPIBAIJ)
-      call MatCreateMPIBAIJ(option%mycomm,ugdm%ndof, &
-                            unstructured_grid%num_cells_local, &
-                            unstructured_grid%num_cells_local,PETSC_DETERMINE, &
-                            PETSC_DETERMINE,PETSC_NULL_INTEGER,d_nnz, &
-                            PETSC_NULL_INTEGER,o_nnz,J,ierr)
-      call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltog,ierr)
-      call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltogb,ierr)
-  end select
+  ndof_local = unstructured_grid%num_cells_local*ugdm%ndof
+  if (option%mycommsize > 1) then
+    select case(mat_type)
+      case(MATAIJ)
+        d_nnz = d_nnz*ugdm%ndof
+        o_nnz = o_nnz*ugdm%ndof
+        call MatCreateMPIAIJ(option%mycomm,ndof_local,ndof_local, &
+                             PETSC_DETERMINE,PETSC_DETERMINE, &
+                             PETSC_NULL_INTEGER,d_nnz, &
+                             PETSC_NULL_INTEGER,o_nnz,J,ierr)
+        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltog,ierr)
+        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltogb,ierr)
+      case(MATBAIJ)
+        call MatCreateMPIBAIJ(option%mycomm,ugdm%ndof,ndof_local,ndof_local, &
+                             PETSC_DETERMINE,PETSC_DETERMINE, &
+                             PETSC_NULL_INTEGER,d_nnz, &
+                             PETSC_NULL_INTEGER,o_nnz,J,ierr)
+        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltog,ierr)
+        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltogb,ierr)
+      case default
+        option%io_buffer = 'MatType not recognized in UGDMCreateJacobian'
+        call printErrMsg(option)
+    end select
+  else
+    select case(mat_type)
+      case(MATAIJ)
+        d_nnz = d_nnz*ugdm%ndof
+        call MatCreateSeqAIJ(option%mycomm,ndof_local,ndof_local, &
+                             PETSC_NULL_INTEGER,d_nnz,J,ierr)
+      case(MATBAIJ)
+        call MatCreateSeqBAIJ(option%mycomm,ugdm%ndof,ndof_local,ndof_local, &
+                             PETSC_NULL_INTEGER,d_nnz,J,ierr)
+      case default
+        option%io_buffer = 'MatType not recognized in UGDMCreateJacobian'
+        call printErrMsg(option)
+    end select
+  endif
 
   deallocate(d_nnz)
   deallocate(o_nnz)
   
 end subroutine UGDMCreateJacobian
+
+! ************************************************************************** !
+!
+! UGDMCreateVector: Creates a global vector with PETSc ordering
+! author: Glenn Hammond
+! date: 11/06/09
+!
+! ************************************************************************** !
+subroutine UGDMCreateVector(unstructured_grid,ugdm,vec,vec_type,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(unstructured_grid_type) :: unstructured_grid
+  type(ugdm_type) :: ugdm
+  Vec :: vec
+  PetscInt :: vec_type
+  type(option_type) :: option
+  
+  PetscErrorCode :: ierr
+  
+  select case(vec_type)
+    case(GLOBAL)
+      call VecCreateMPI(option%mycomm,unstructured_grid%num_cells_local* &
+                        ugdm%ndof, &
+                        PETSC_DETERMINE,vec,ierr)
+      call VecSetLocalToGlobalMapping(vec,ugdm%mapping_ltog,ierr)
+      call VecSetLocalToGlobalMappingBlock(vec,ugdm%mapping_ltogb,ierr)
+      call VecSetBlockSize(vec,ugdm%ndof,ierr)
+    case(LOCAL)
+      call VecCreateSeq(PETSC_COMM_SELF,unstructured_grid%num_cells_ghosted* &
+                        ugdm%ndof, &
+                        vec,ierr)
+      call VecSetBlockSize(vec,ugdm%ndof,ierr)
+    case(NATURAL)
+      call VecCreateMPI(option%mycomm,unstructured_grid%num_cells_local* &
+                        ugdm%ndof, &
+                        PETSC_DETERMINE,vec,ierr)
+      call VecSetBlockSize(vec,ugdm%ndof,ierr)
+  end select
+    
+end subroutine UGDMCreateVector
+
+! ************************************************************************** !
+!
+! UGridMapIndices: maps global, local and natural indices of cells to each other
+! author: Glenn Hammond
+! date: 11/06/09
+!
+! ************************************************************************** !
+subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nL2A,nG2A)
+
+  implicit none
+  
+  type(unstructured_grid_type) :: unstructured_grid
+  type(ugdm_type) :: ugdm
+  PetscInt, pointer :: nG2L(:)
+  PetscInt, pointer :: nL2G(:)
+  PetscInt, pointer :: nL2A(:)
+  PetscInt, pointer :: nG2A(:)
+  PetscErrorCode :: ierr
+  PetscInt, pointer :: int_ptr(:)
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+
+  allocate(nG2L(unstructured_grid%num_cells_ghosted))
+  allocate(nL2G(unstructured_grid%num_cells_local))
+  allocate(nL2A(unstructured_grid%num_cells_local))
+  allocate(nG2A(unstructured_grid%num_cells_ghosted))
+  
+  ! initialize ghosted to -1
+  nG2L = -1
+
+  call ISGetIndicesF90(ugdm%is_local_petsc,int_ptr,ierr)
+  do local_id = 1, unstructured_grid%num_cells_local
+    nL2G(local_id) = local_id
+    nG2L(local_id) = local_id
+    nL2A(local_id) = int_ptr(local_id)+1
+  enddo
+  call ISRestoreIndicesF90(ugdm%is_local_petsc,int_ptr,ierr)
+  nL2A = nL2A - 1
+  call AOPetscToApplication(unstructured_grid%ao_natural_to_petsc, &
+                            unstructured_grid%num_cells_local, &
+                            nL2A,ierr)
+  nL2A = nL2A + 1
+
+  call ISGetIndicesF90(ugdm%is_ghosted_petsc,int_ptr,ierr)
+  do ghosted_id = 1, unstructured_grid%num_cells_ghosted
+    nG2A(ghosted_id) = int_ptr(ghosted_id)+1
+  enddo
+  call ISRestoreIndicesF90(ugdm%is_ghosted_petsc,int_ptr,ierr)
+  nG2A = nG2A - 1
+  call AOPetscToApplication(unstructured_grid%ao_natural_to_petsc, &
+                            unstructured_grid%num_cells_ghosted, &
+                            nG2A,ierr)
+  nG2A = nG2A + 1
+
+end subroutine UGridMapIndices
 
 ! ************************************************************************** !
 !
@@ -2155,9 +2522,11 @@ subroutine UGDMDestroy(ugdm)
   call ISDestroy(ugdm%is_local_petsc,ierr)
   call ISDestroy(ugdm%is_ghosts_local,ierr)
   call ISDestroy(ugdm%is_ghosts_petsc,ierr)
+  call ISDestroy(ugdm%is_local_natural,ierr)
   call VecScatterDestroy(ugdm%scatter_ltog,ierr)
   call VecScatterDestroy(ugdm%scatter_gtol,ierr)
   call VecScatterDestroy(ugdm%scatter_ltol,ierr)
+  call VecScatterDestroy(ugdm%scatter_gton,ierr)
   call ISLocalToGlobalMappingDestroy(ugdm%mapping_ltog)
   if (ugdm%mapping_ltogb /= 0) &
     call ISLocalToGlobalMappingDestroy(ugdm%mapping_ltogb)

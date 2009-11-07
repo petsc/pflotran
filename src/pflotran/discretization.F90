@@ -510,6 +510,9 @@ subroutine DiscretizationCreateVector(discretization,dm_index,vector, &
           call DACreateNaturalVector(dm_ptr%sgdm,vector,ierr)
       end select
     case(UNSTRUCTURED_GRID)
+      call UGDMCreateVector(discretization%grid%unstructured_grid, &
+                            dm_ptr%ugdm,vector, &
+                            vector_type,option)
     case(AMR_GRID)
       select case(dm_index)
         case(ONEDOF)

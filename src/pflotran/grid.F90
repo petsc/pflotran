@@ -317,7 +317,7 @@ subroutine GridComputeCoordinates(grid,origin_global,option)
                              grid%z_min_local,grid%z_max_local)
   end select
 
-  if (grid%itype==STRUCTURED_GRID) then
+  if (associated(grid%structured_grid)) then
     if (grid%structured_grid%p_samr_patch==0) then
      ! compute global max/min from the local max/in
      call MPI_Allreduce(grid%x_min_local,grid%x_min_global,ONE_INTEGER, &
@@ -333,7 +333,8 @@ subroutine GridComputeCoordinates(grid,origin_global,option)
      call MPI_Allreduce(grid%z_max_local,grid%z_max_global,ONE_INTEGER, &
           MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
    endif
-  endif
+ endif
+
 end subroutine GridComputeCoordinates
 
 ! ************************************************************************** !
@@ -361,6 +362,7 @@ subroutine GridComputeVolumes(grid,volume,option)
       call StructuredGridComputeVolumes(grid%x,grid%structured_grid,option, &
                                         grid%nL2G,volume)
     case(UNSTRUCTURED_GRID)
+      call UGridComputeVolumes(grid%unstructured_grid,option,grid%nL2G,volume)
   end select
 
 end subroutine GridComputeVolumes
