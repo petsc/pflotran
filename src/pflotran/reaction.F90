@@ -29,7 +29,8 @@ module Reaction_module
             ReactionInitializeLogK, &
             ReactionComputeKd, &
             RAccumulationSorb, &
-            RAccumulationSorbDerivative
+            RAccumulationSorbDerivative, &
+            RJumpStartKineticSorption
 
 contains
 
@@ -214,7 +215,7 @@ subroutine ReactionRead(reaction,input,option)
                 if (InputError(input)) exit
                 if (InputCheckExit(input,option)) exit
 
-                call InputReadWord(input,option,word,.true.)
+                call InputReadWord(input,option,word,PETSC_TRUE)
                 call InputErrorMsg(input,option,'keyword', &
                   'CHEMISTRY,SURFACE_COMPLEXATION_RXN')
                 call StringToUpper(word)
@@ -226,6 +227,10 @@ subroutine ReactionRead(reaction,input,option)
                   case('SITE_FRACTION') 
                     string = 'SITE_FRACTION inside SURFACE_COMPLEXATION_RXN'
                     call UtilityReadArray(reaction%kinmr_frac,-1,string,input,option) 
+                  case('MULTIRATE_SCALE_FACTOR')
+                    call InputReadDouble(input,option,reaction%kinmr_scale_factor)
+                    call InputErrorMsg(input,option,'keyword', &
+                      'CHEMISTRY,SURFACE_COMPLEXATION_RXN,MULTIRATE_SCALE_FACTOR')
                   case('MINERAL')
                     call InputReadWord(input,option,srfcmplx_rxn%mineral_name, &
                       PETSC_TRUE)
@@ -294,7 +299,7 @@ subroutine ReactionRead(reaction,input,option)
                 if (InputError(input)) exit
                 if (InputCheckExit(input,option)) exit
 
-                call InputReadWord(input,option,word,.true.)
+                call InputReadWord(input,option,word,PETSC_TRUE)
                 call InputErrorMsg(input,option,'keyword','CHEMISTRY,ION_EXCHANGE_RXN')
                 call StringToUpper(word)
                 
@@ -351,6 +356,10 @@ subroutine ReactionRead(reaction,input,option)
               nullify(ionx_rxn)          
             case('DISTRIBUTION_COEF')
           !   call DistributionCoefRead
+            case('JUMPSTART_KINETIC_SORPTION')
+              option%jumpstart_kinetic_sorption = PETSC_TRUE
+            case('NO_RESTART_KINETIC_SORPTION')
+              option%no_restart_kinetic_sorption = PETSC_TRUE
           end select
         enddo
       case('DATABASE')
@@ -385,7 +394,15 @@ subroutine ReactionRead(reaction,input,option)
         enddo
       case('NO_BDOT')
         reaction%act_coef_use_bdot = PETSC_FALSE
-      case('MOLAL','MOLARITY')
+      case('UPDATE_POROSITY')
+        option%update_porosity = PETSC_TRUE
+      case('UPDATE_TORTUOSITY')
+        option%update_tortuosity = PETSC_TRUE
+      case('UPDATE_PERMEABILITY')
+        option%update_permeability = PETSC_TRUE
+      case('UPDATE_MINERAL_SURFACE_AREA')
+        option%update_mineral_surface_area = PETSC_TRUE
+      case('MOLAL','MOLALITY')
         option%initialize_with_molality = PETSC_TRUE
       case('ACTIVITY_H2O','ACTIVITY_WATER')
         reaction%use_activity_h2o = PETSC_TRUE
@@ -423,6 +440,7 @@ subroutine ReactionRead(reaction,input,option)
       tempreal = 0.d0
       do i = 1, size(reaction%kinmr_frac)
         tempreal = tempreal + reaction%kinmr_frac(i)
+        reaction%kinmr_rate(i) = reaction%kinmr_rate(i) * reaction%kinmr_scale_factor
       enddo
     
       if (dabs(1.d0 - tempreal) > 1.d-6) then
@@ -1093,6 +1111,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             global_auxvar%fugacoeff(1) = xphico2
             
 !           call Henry_duan_sun_0NaCl(pco2*1.d-5, tc, henry)
+            m_na = 0.d0
+            m_cl = 0.d0
             if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
               m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
               m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
@@ -1108,8 +1128,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 
             reaction%eqgas_logK(igas) = -lnQK*LN_TO_LOG
             
-            print *, 'SC CO2 constraint',igas,pres,pco2,tc,xphico2,henry,lnQk,yco2, &
-              lngamco2,m_na,m_cl,reaction%eqgas_logK(igas)
+!            print *, 'SC CO2 constraint',igas,pres,pco2,tc,xphico2,henry,lnQk,yco2, &
+!              lngamco2,m_na,m_cl,reaction%eqgas_logK(igas)
             
             ! activity of water
             if (reaction%eqgash2oid(igas) > 0) then
@@ -1255,6 +1275,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   PetscTruth :: finished, found
   PetscReal :: conc, conc2
   PetscReal :: lnQK(reaction%nmnrl), QK(reaction%nmnrl)
+  PetscReal :: lnQKgas(reaction%ngas), QKgas(reaction%ngas)
   PetscReal :: charge_balance, ionic_strength
   PetscReal :: percent(reaction%neqcmplx+1)
   PetscReal :: totj, retardation, kd
@@ -1262,6 +1283,8 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   PetscInt :: icount
   PetscInt :: iphase
   PetscReal :: bulk_vol_to_fluid_vol, molar_to_molal, molal_to_molar
+  PetscReal :: sum_molality, sum_mass, mole_fraction_h2o, mass_fraction_h2o, &
+               mass_fraction_co2, mole_fraction_co2
 
   aq_species_constraint => constraint_coupler%aqueous_species
   mineral_constraint => constraint_coupler%minerals
@@ -1282,6 +1305,31 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   global_auxvar%sat(iphase) = option%reference_saturation
   bulk_vol_to_fluid_vol = option%reference_porosity*option%reference_saturation*1000.d0
 
+! compute mass fraction of H2O
+  if (reaction%use_full_geochemistry) then
+    sum_molality = 0.d0
+    do icomp = 1, reaction%ncomp
+      sum_molality = sum_molality + rt_auxvar%pri_molal(icomp)
+    enddo
+    if (reaction%neqcmplx > 0) then    
+      do i = 1, reaction%neqcmplx
+        sum_molality = sum_molality + rt_auxvar%sec_molal(i)
+      enddo
+    endif
+    mole_fraction_h2o = 1.d0/(1.d0+FMWH2O*sum_molality*1.d-3)
+
+    sum_mass = 0.d0
+    do icomp = 1, reaction%ncomp
+      sum_mass = sum_mass + reaction%primary_spec_molar_wt(icomp)*rt_auxvar%pri_molal(icomp)
+    enddo
+    if (reaction%neqcmplx > 0) then    
+      do i = 1, reaction%neqcmplx
+        sum_mass = sum_mass + reaction%eqcmplx_molar_wt(i)*rt_auxvar%sec_molal(i)
+      enddo
+    endif
+    mass_fraction_h2o = 1.d0/(1.d0 + sum_mass*1.d-3)
+  endif
+  
   molal_to_molar = global_auxvar%den_kg(iphase)/1000.d0
   molar_to_molal = 1.d0/molal_to_molar
     
@@ -1358,21 +1406,38 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       global_auxvar%den_kg(1),' [kg/m^3]'
     write(option%fid_out,'(a20,1p2e12.4,a9)') 'ln / activity H2O: ', &
       rt_auxvar%ln_act_h2o,exp(rt_auxvar%ln_act_h2o),' [---]'
+    write(option%fid_out,'(a20,1pe12.4,a9)') 'mole fraction H2O: ', &
+      mole_fraction_h2o,' [---]'
+    write(option%fid_out,'(a20,1pe12.4,a9)') 'mass fraction H2O: ', &
+      mass_fraction_h2o,' [---]'
 #ifdef CHUAN_CO2
     if (global_auxvar%den_kg(2) > 0.d0) then
       write(option%fid_out,'(a20,f8.2,a9)') '     density CO2: ', &
         global_auxvar%den_kg(2),' [kg/m^3]'
       write(option%fid_out,'(a20,es12.4,a9)') '            xphi: ', &
         global_auxvar%fugacoeff(1)
+
+      if (reaction%co2_aq_id /= 0) then
+        icomp = reaction%co2_aq_id
+        mass_fraction_co2 = reaction%primary_spec_molar_wt(icomp)*rt_auxvar%pri_molal(icomp)* &
+          mass_fraction_h2o*1.d-3
+        mole_fraction_co2 = rt_auxvar%pri_molal(icomp)*FMWH2O*mole_fraction_h2o*1.e-3
+        write(option%fid_out,'(a20,es12.4,a9)') 'mole fraction CO2: ', &
+          mole_fraction_co2
+        write(option%fid_out,'(a20,es12.4,a9)') 'mass fraction CO2: ', &
+          mass_fraction_co2
+      endif
     endif
 #endif
     write(option%fid_out,90)
 
-    102 format(/,'  species               molality    total       act coef  constraint')  
+    102 format(/,'                        free        total')  
+    103 format('  species               molal       molal       act coef     constraint')  
     write(option%fid_out,102)
+    write(option%fid_out,103)
     write(option%fid_out,90)
   
-    103 format(2x,a20,es12.4,es12.4,es12.4,4x,a)
+    104 format(2x,a20,es12.4,es12.4,es12.4,4x,a)
     do icomp = 1, reaction%ncomp
       select case(aq_species_constraint%constraint_type(icomp))
         case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
@@ -1392,7 +1457,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
         case(CONSTRAINT_SUPERCRIT_CO2)
           string = 'SC ' // aq_species_constraint%constraint_spec_name(icomp)
       end select
-      write(option%fid_out,103) reaction%primary_species_names(icomp), &
+      write(option%fid_out,104) reaction%primary_species_names(icomp), &
                                 rt_auxvar%pri_molal(icomp), &
                                 rt_auxvar%total(icomp,1)*molar_to_molal, &
                                 rt_auxvar%pri_act_coef(icomp), &
@@ -1691,29 +1756,30 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     
     write(option%fid_out,132)
     write(option%fid_out,90)
+    
     do igas = 1, reaction%ngas
       
       ! compute gas partial pressure
-      lnQK(igas) = -reaction%eqgas_logK(igas)*LOG_TO_LN
+      lnQKgas(igas) = -reaction%eqgas_logK(igas)*LOG_TO_LN
       
       ! divide K by RT
-      !lnQK = lnQK - log((auxvar%temp+273.15d0)*IDEAL_GAS_CONST)
+      !lnQKgas = lnQKgas - log((auxvar%temp+273.15d0)*IDEAL_GAS_CONST)
       
       ! activity of water
       if (reaction%eqgash2oid(igas) > 0) then
-        lnQK(igas) = lnQK(igas) + reaction%eqgash2ostoich(igas)*rt_auxvar%ln_act_h2o
+        lnQKgas(igas) = lnQKgas(igas) + reaction%eqgash2ostoich(igas)*rt_auxvar%ln_act_h2o
       endif
 
       do jcomp = 1, reaction%eqgasspecid(0,igas)
         comp_id = reaction%eqgasspecid(jcomp,igas)
-        lnQK(igas) = lnQK(igas) + reaction%eqgasstoich(jcomp,igas)* &
+        lnQKgas(igas) = lnQKgas(igas) + reaction%eqgasstoich(jcomp,igas)* &
                       log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
       enddo
       
-      QK(igas) = exp(lnQK(igas))
+      QKgas(igas) = exp(lnQKgas(igas))
           
-      write(option%fid_out,133) reaction%gas_species_names(igas),lnQK(igas)*LN_TO_LOG, &
-      QK(igas),reaction%eqgas_logK(igas)
+      write(option%fid_out,133) reaction%gas_species_names(igas),lnQKgas(igas)*LN_TO_LOG, &
+      QKgas(igas),reaction%eqgas_logK(igas)
     enddo
   endif
 
@@ -1884,6 +1950,40 @@ subroutine ReactionReadOutput(reaction,input,option)
   enddo
 
 end subroutine ReactionReadOutput
+
+! ************************************************************************** !
+!
+! RJumpStartKineticSorption: Calculates the concentrations of species sorbing
+!                            through kinetic sorption processes based
+!                            on equilibrium with the aqueous phase.
+! author: Glenn Hammond
+! date: 08/05/09
+!
+! ************************************************************************** !
+subroutine RJumpStartKineticSorption(rt_auxvar,global_auxvar, &
+                                     reaction,option)
+
+  use Option_module
+  
+  type(reaction_type), pointer :: reaction
+  type(reactive_transport_auxvar_type) :: rt_auxvar 
+  type(global_auxvar_type) :: global_auxvar
+  type(option_type) :: option
+
+  PetscInt :: irate
+  
+  ! WARNING: below assumes site concentration multiplicative factor
+  allocate(rt_auxvar%dtotal_sorb_eq(reaction%ncomp,reaction%ncomp))
+  rt_auxvar%dtotal_sorb_eq = 0.d0
+  call RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
+  do irate = 1, reaction%kinmr_nrate
+    rt_auxvar%kinmr_total_sorb(:,irate) = reaction%kinmr_frac(irate) * &
+                                          rt_auxvar%total_sorb_eq
+  enddo
+  deallocate(rt_auxvar%dtotal_sorb_eq)
+  nullify(rt_auxvar%dtotal_sorb_eq)
+
+end subroutine RJumpStartKineticSorption
       
 ! ************************************************************************** !
 !
@@ -3447,7 +3547,7 @@ end subroutine RSolve
 ! date: 02/13/09
 !
 ! ************************************************************************** !
-subroutine ReactionFitLogKCoef(coefs,logK,option,reaction)
+subroutine ReactionFitLogKCoef(coefs,logK,name,option,reaction)
 
   use Option_module
   use Utility_module
@@ -3456,6 +3556,7 @@ subroutine ReactionFitLogKCoef(coefs,logK,option,reaction)
   
   type(reaction_type) :: reaction
   PetscReal :: coefs(FIVE_INTEGER)
+  character(len=MAXWORDLENGTH) :: name 
   PetscReal :: logK(reaction%num_dbase_temperatures)
   type(option_type) :: option
 
@@ -3485,7 +3586,8 @@ subroutine ReactionFitLogKCoef(coefs,logK,option,reaction)
         iflag = 1
         temp_int(i) = ZERO_INTEGER
       else if (logK(i) .gt. 500.) then
-        option%io_buffer = 'In ReactionFitLogKCoef: log K .gt. 500---stop!'
+        option%io_buffer = 'In ReactionFitLogKCoef: log K .gt. 500 for ' // &
+                           trim(name) // '---stop!'
         call printErrMsg(option)
       else
         coefs(j) = coefs(j) + vec(j,i)*logK(i)

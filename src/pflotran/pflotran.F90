@@ -1,35 +1,41 @@
 !=======================================================================
-! PFLOTRAN v1.0 LA-CC-06-093
+! PFLOTRAN v2.0 LA-CC-09-047
 !=======================================================================
 
-! The software titled "PFLOTRAN v 1.0" has been assigned LA-CC-06-093. 
-! The software is unclassified and does not contain Unclassified 
-! Controlled Nuclear Information (UCNI).
-
-! The software titled "PFLOTRAN v 2.0" has been assigned LA-CC-09-047. 
-! The software is unclassified and does not contain Unclassified 
-! Controlled Nuclear Information (UCNI).
-
-! The software is under review to be released as open source, which 
-! requires review and approval by the appropriate DOE Program Office. 
-! If DOE declines to release this software as publicly available open 
-! source, it would be subject to export control under Department of 
-! Commerce regulations, and classified as ECCN 
-! (Export Control Classification Number) EAR99. 
- 
-! If released as open source, the software will be publicly available and 
-! not subject to export control. Until DOE approval is obtained, the 
-! software should be treated as export controlled. DOE reserves the 
-! right to release or deny release of the software as open source.
+!Copyright 2009. Los Alamos National Security, LLC. This material was produced under U.S. 
+!Government contract DE-AC52-06NA25396 for Los Alamos National Laboratory (LANL), which is operated 
+!by Los Alamos National Security, LLC for the U.S. Department of Energy. The U.S. Government has 
+!rights to use, reproduce, and distribute this software.  NEITHER THE GOVERNMENT NOR LOS ALAMOS 
+!NATIONAL SECURITY, LLC MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY FOR THE 
+!USE OF THIS SOFTWARE.  If software is modified to produce derivative works, such modified software 
+!should be clearly marked, so as not to confuse it with the version available from LANL.
+!Additionally, this library is free software; you can redistribute it and/or modify it under the 
+!terms of the GNU Lesser General Public License as published by the Free Software Foundation; 
+!either version 2.1 of the License, or (at your option) any later version. Accordingly, this 
+!library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even 
+!the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser 
+!General Public License for more details.
 
 ! Send all bug reports/questions/comments to:
+!
 ! Peter C. Lichtner
 ! Los Alamos National Laboratory
 ! Earth and Environmental Sciences
-! EES-6, MS: D469
+! EES-16, MS: D469
 ! (505) 667-3420
 ! lichtner@lanl.gov
 ! Los Alamos, NM
+
+! or
+
+! Glenn E. Hammond
+! Pacific Northwest National Laboratory
+! Energy and Environment Directorate
+! MSIN K9-36
+! (509) 395-3895
+! glenn.hammond@pnl.gov
+! Richland, WA
+
 !=======================================================================
   program pflotran
   
@@ -52,9 +58,11 @@
 
   PetscTruth :: truth
   PetscTruth :: option_found  
-  PetscInt :: test_int
+  PetscTruth :: single_inputfile
+  PetscInt :: i
   PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH), pointer :: filenames(:)
   type(stochastic_type), pointer :: stochastic
   type(simulation_type), pointer :: simulation
   type(realization_type), pointer :: realization
@@ -63,6 +71,7 @@
   nullify(stochastic)
   option => OptionCreate()
   option%fid_out = IUNIT2
+  single_inputfile = PETSC_TRUE
 
   call MPI_Init(ierr)
   option%global_comm = MPI_COMM_WORLD
@@ -81,8 +90,8 @@
   call MPI_Comm_size(option%iogroup,option%localsize,ierr)
   call MPI_Comm_rank(option%iogroup,option%localrank,ierr)
   if (mod(option%global_rank,option%broadcast_size) == 0) then
-	option%reader_color = 1
-	option%reader_key = option%global_rank
+    option%reader_color = 1
+    option%reader_key = option%global_rank
   else
     option%reader_color = 0
     option%reader_key = option%global_rank
@@ -106,9 +115,14 @@
   call InputGetCommandLineTruth(string,truth,option_found,option)
   if (option_found) option%verbosity = 1
 
+  string = '-multisimulation'
+  call InputGetCommandLineTruth(string,truth,option_found,option)
+  if (option_found) then
+    single_inputfile = PETSC_FALSE
+  endif
+
   string = '-stochastic'
   call InputGetCommandLineTruth(string,truth,option_found,option)
-  
   if (option_found) stochastic => StochasticCreate()
 
   call InitReadStochasticCardFromInput(stochastic,option)
@@ -118,8 +132,25 @@
     call StochasticRun(stochastic,option)
   else
 
-    PETSC_COMM_WORLD = MPI_COMM_WORLD
-    call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
+    if (single_inputfile) then
+      PETSC_COMM_WORLD = MPI_COMM_WORLD
+      call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
+    else
+      call InitReadInputFilenames(option,filenames)
+      call SimulationCreateProcessorGroups(option,size(filenames))
+      option%input_filename = filenames(option%mygroup_id)
+      i = index(option%input_filename,'.',PETSC_TRUE)
+      if (i > 1) then
+        i = i-1
+      else
+        ! for some reason len_trim doesn't work on MS Visual Studio in 
+        ! this location
+        i = len(trim(option%input_filename)) 
+      endif
+      option%global_prefix = option%input_filename(1:i)
+      write(string,*) option%mygroup_id
+      option%group_prefix = 'G' // trim(adjustl(string))
+    endif
  
     if (option%verbosity > 0) then 
       call PetscLogBegin(ierr)

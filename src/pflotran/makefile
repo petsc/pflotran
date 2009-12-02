@@ -18,8 +18,9 @@ ifdef hdf5
     found=1
   endif 
   ifeq ($(machine),franklin)
-    HDF5_FLAGS = $(HDF5) -DUSE_HDF5 -I$(HDF5_DIR)/lib
-    HDF5_LIBS = $(HDF5) -lhdf5_fortran -lhdf5 -lz -lsz
+# hdf5 libs are screwed up on franklin.  for now use hardwired default
+    HDF5_FLAGS = $(HDF5) -DUSE_HDF5 -I$(HDF5_DIR_NERSC)/lib
+    HDF5_LIBS = $(HDF5)
     found=1
   endif
   ifndef found
@@ -48,7 +49,7 @@ UO2_FLAG = -DCOMPUTE_INTERNAL_MASS_FLUX
 endif
 
 ifdef glenn
-GLENN_FLAGS = -DGLENN
+GLENN_FLAGS = -DGLENN -DENABLE_UNSTRUCTURED
 endif
 
 ifdef temp

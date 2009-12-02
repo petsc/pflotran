@@ -1,6 +1,7 @@
 \documentclass[12pt]{article} 
 %\usepackage{times,helvet}
 \usepackage{palatino}
+%\usepackage[utf8]{inputenc} %useful to type directly diacritic characters
 %\usepackage{ssss}
 \usepackage{amsmath,amsbsy,amssymb}
 \usepackage{sectsty,hangcaption}
@@ -80,6 +81,7 @@
 \renewcommand{\a}{{\alpha}}
 \newcommand{\abar}{{\bar \alpha}}
 \renewcommand{\b}{{\beta}}
+\renewcommand{\e}{{\epsilon}}
 \newcommand{\s}{{\sigma}}
 \newcommand{\w}{{\rm H_2O}}
 \newcommand{\air}{{\rm N_2}}
@@ -87,15 +89,21 @@
 \newcommand{\da}{{\rm Da}}
 \renewcommand{\k}{{\dot R}^0}
 \renewcommand{\L}{\widehat{\mathcal L}}
-\renewcommand{\bar}{\overline}
+%\renewcommand{\bar}{\overline}
 \newcommand{\dsty}{{\displaystyle}}
 \newcommand{\diff}{{\mathcal D}}
 \newcommand{\surf}{\equiv \!\!\!}
 \newcommand{\bnabla}{\boldsymbol{\nabla}}
-\newcommand{\bA}{\boldsymbol{A}}
 \newcommand{\ba}{\boldsymbol{a}}
+
+\newcommand{\balpha}{\boldsymbol{\alpha}}
+\newcommand{\bbeta}{\boldsymbol{\beta}}
+\newcommand{\bgamma}{\boldsymbol{\gamma}}
+\renewcommand{\d}{{\delta}}
+
+\newcommand{\bA}{\boldsymbol{A}}
 \newcommand{\bB}{\boldsymbol{B}}
-\newcommand{\bb}{\boldsymbol{\beta}}
+\newcommand{\bb}{\boldsymbol{b}}
 \newcommand{\bC}{\boldsymbol{C}}
 \newcommand{\bc}{\boldsymbol{c}}
 \newcommand{\bcolon}{\boldsymbol{:}}
@@ -103,15 +111,18 @@
 \newcommand{\bD}{\boldsymbol{D}}
 \newcommand{\bE}{\boldsymbol{E}}
 \newcommand{\bF}{\boldsymbol{F}}
+\newcommand{\bG}{\boldsymbol{G}}
 \newcommand{\bg}{\boldsymbol{g}}
 \newcommand{\bi}{\boldsymbol{i}}
 \newcommand{\bI}{\boldsymbol{I}}
 \newcommand{\bJ}{\boldsymbol{J}}
 \newcommand{\bK}{\boldsymbol{K}}
+\newcommand{\bL}{\boldsymbol{L}}
 \newcommand{\bM}{\boldsymbol{M}}
 \newcommand{\bn}{\boldsymbol{n}}
 \newcommand{\bdelta}{\boldsymbol{\delta}}
 \newcommand{\bGamma}{\boldsymbol{\Gamma}}
+\newcommand{\bomega}{\boldsymbol{\omega}}
 \newcommand{\bOmega}{\boldsymbol{\Omega}}
 \newcommand{\bPsi}{\boldsymbol{\Psi}}
 \newcommand{\bO}{\boldsymbol{O}}
@@ -122,9 +133,16 @@
 \newcommand{\br}{\boldsymbol{r}}
 \newcommand{\bR}{\boldsymbol{R}}
 \newcommand{\bS}{\boldsymbol{S}}
+\newcommand{\bU}{\boldsymbol{U}}
 \newcommand{\bu}{\boldsymbol{u}}
 \newcommand{\bv}{\boldsymbol{v}}
+\newcommand{\bw}{\boldsymbol{w}}
 \newcommand{\bx}{\boldsymbol{x}}
+\newcommand{\by}{\boldsymbol{y}}
+\newcommand{\bY}{\boldsymbol{Y}}
+\newcommand{\bz}{\boldsymbol{z}}
+%\newcommand{\b0}{\boldsymbol{0}}
+
 \newcommand{\arrows}{~\rightleftharpoons~}
 \newcommand{\arrowstab}{\!\!\!\rightleftharpoons\!\!\!}
 \newcommand{\longline}{\noindent\rule[-0.1in]{\textwidth}{0.01in}}
@@ -148,19 +166,11 @@
 \def\sohuotwocothree{$>$SOHUO$_2$CO$_3$}
 \def\soh{$>$SOH}
 
-\newcounter{saveeqn}%
-\newcommand{\seteqn}{\setcounter{saveeqn}{\value{equation}}%
-\stepcounter{saveeqn}\setcounter{equation}{0}%
-\renewcommand{\theequation}
-      {\mbox{\arabic{section}.\arabic{saveeqn}\alph{equation}}}}%
-\newcommand{\reseteqn}{\setcounter{equation}{\value{saveeqn}}%
-\renewcommand{\theequation}{\arabic{section}.\arabic{equation}}}%
-
 \setcounter{secnumdepth}{5}
 \setcounter{tocdepth}{5}
 %\renewcommand{\thepage}{\roman{page}}
 %\renewcommand{\thepage}{\arabic{page}}
-\renewcommand{\theequation}{\arabic{section}.\arabic{equation}}
+\renewcommand{\theequation}{\arabic{section}.\arabic{subsection}-\arabic{equation}}
 %\setcounter{page}{1}
 
 \setlength{\parindent}{0.3125in}
@@ -315,12 +325,12 @@ All reactions are formulated in terms of a set of basis, primary, or component s
 \begin{description}
 
 \item[Homogeneous: aqueous]
-\EQ
+\EQ\label{hom}
 \sum_j\nu_{ji}\A_j\arrows\A_i.
 \EN
 
 \item[Heterogeneous: mineral]
-\EQ
+\EQ\label{het}
 \sum_j\nu_{jm}\A_j\arrows\M_m.
 \EN
 
@@ -453,7 +463,7 @@ for secondary species. Noting that the rates $I_i$ for local equilibrium reactio
 \EN
 where the total concentration $\Psi_j$ is defined by
 \begin{subequations}
-\BA
+\BA\label{psi}
 \Psi_j &\eq C_j + \sum_i\nu_{ji}C_i,\\
 &\eq\rho_w\big(m_j+\sum_i\nu_{ji}m_i\big),
 \EA
@@ -1505,25 +1515,33 @@ for the mobile region $\a$ and immobile regions $\b$. Sorption mass transfer equ
 
 \setcounter{equation}{0}
 
-The above formulation for heterogeneous reactions involving mineral precipitation/dis\-solution, ion exchange and surface complexation, also apply to colloids. This presents an added complication since now the solid phase is moving with the fluid. 
+The above formulation for heterogeneous reactions involving mineral precipitation/dis\-solution, ion exchange and surface complexation, also apply to colloids. This presents an added complication since now the solid phase in the form of the suspended colloid load is moving with the fluid. 
 In this case the primary species transport equations contain contributions from both reactions with stationary solid grains which may include filtered colloids and mobile colloids in solution. 
 
-It is necessary to distinguish between two distinct colloid states: colloids suspended in solution, and colloids attached to solid surfaces which are not moving. The two states are described by the concentrations $C_c^f$ and $C_c^s$.
-The colloid concentration $C_c^f$ is equal to the number of moles of colloids of type $c$ in solution, $N_c^{f}$, divided by the pore volume $V_p$
+It is necessary to distinguish between two distinct colloid states: colloids suspended in solution, and colloids attached to solid surfaces which are not moving. The two states are described by the concentrations $C_c^f$ and $C_c^s$. 
+Filtration processes may occur in which a mobile colloid becomes trapped by the porous rock matrix and attaches to stationary solid surfaces. Conversely, stationary colloids may be remobilized into solution. The transformation between filtered and suspended colloids is represented by the first order reaction
 \EQ
-C_c^f\eq\frac{N_c^{f}}{V_p}.
+\A_c^f \arrows \A_c^s,
+\EN
+where $\A_c^f$ and $\A_c^s$ refer to suspended mobile colloids in the fluid phase and stationary colloids, respectively.
+The colloid concentration $C_c^f$ is equal to the number of moles of colloids of type $c$ in solution, $N_c^{f}$, divided by the aqueous volume $V_{\rm aq}$
+\EQ
+C_c^f\eq\frac{N_c^{f}}{V_{\rm aq}}.
 \EN
 Whereas the stationary colloid concentration $C_c^s$ is defined as
 \EQ
 C_c^s\eq\frac{N_c^s}{V},
 \EN
-referenced to the bulk volume $V$.
+referenced to the bulk volume $V$. The bulk volume is the sum of aqueous, gaseous and solid volumes
+\EQ
+V \eq V_s+V_g+V_{\rm aq}.
+\EN
 
 The colloids themselves may react with the fluid through mineral precipitation and dissolution reactions and sorption reactions through ion exchange and surface complexation at the colloid surface. In addition, sorption on colloids competes with the host rock minerals. These processes are described through the reactions
 \EQ
-\sum_j\nu_{jc}\A_j\arrows\A_c,
+\sum_j\nu_{jc_{f,\,s}}\A_j\arrows\A_{c_{f,\,s}},
 \EN
-describing precipitation and dissolution (formation and degradation) of colloid $\A_c$, surface complexation
+describing precipitation and dissolution (formation and degradation) of colloid $\A_c^{f,\,s}$ for mobile and immobile colloids, surface complexation
 \EQ
 >\!\!X_c + \sum_j\nu_{ji}^c\A_j\arrows >\!\!\A_i^c,
 \EN
@@ -1531,11 +1549,7 @@ for surface complex $\A_i^c$, and ion exchange
 \EQ
 \dfrac{1}{z_j} \A_j + \dfrac{1}{z_i} X_{z_i}^c\A_i \arrows \dfrac{1}{z_i} \A_i + \dfrac{1}{z_j} X_{z_j}^c\A_j,
 \EN
-with sorption sites $X_c$ and $X_{z_l}^c$. Finally, filtration processes may occur in which a mobile colloid becomes filtered by the porous rock matrix and attaches to stationary solid surfaces. Conversely, stationary colloids may be remobilized into solution. These processes are described by a reaction of the form
-\EQ
-\A_c^f \arrows \A_c^s,
-\EN
-where $\A_c^f$ and $\A_c^s$ refer to suspended mobile colloids in the fluid phase and stationary colloids, respectively.
+with sorption sites $X_c$ and $X_{z_l}^c$. Note that the subscript $c$ may refer to mobile or immobile colloids.
 
 In the case of surface complexation reactions, two different surface site densities may be defined corresponding to suspended and filtered colloids. The site concentrations for suspended and filtered colloids are equal to the number of sorption sites $N_c^{\rm srf}$ associated with colloid type $\A_c^{f,\,s}$ divided by the pore  or bulk volume
 \EQ
@@ -1555,7 +1569,7 @@ where $\eta_c$ denotes the site density, $A_c^M$ the colloid area per mass of co
 \EQ
 \Gamma_c\eq\frac{N_c^{f,\,{\rm srf}}}{N_c^{f}}\eq \frac{N_c^{s,\,{\rm srf}}}{N_c^s}\eq \eta_c^{} A_c^M W_c^{}.
 \EN
-For stationary colloids, the site concentration is given in terms of the filtered colloid concentration $C_c^s$ as
+For stationary colloids, the site concentration is given in terms of the trapped or immobile colloid concentration $C_c^s$ as
 \BA
 \omega_c^s &\eq \frac{N_c^{s,\,{\rm srf}}}{A_c^s}\frac{A_c^s}{M_c^s}\frac{M_c^s}{N_c^s}\frac{N_c^s}{V},\\
 &\eq \eta_c^{} A_c^M W_c^{} C_c^s,\\
@@ -1566,7 +1580,7 @@ The site conservation equation
 \EQ
 \omega_{c}\eq S_{c} + \sum_i S_{ic},
 \EN
-holds for both suspended and filtered colloids as does the mass action equations  
+holds for both suspended and filtered colloids as do the mass action equations  
 \EQ
 K_{ic}\eq \frac{S_{ic}}{S_c^{} Q_{ic}},
 \EN
@@ -1591,52 +1605,55 @@ In the case of ion exchange, the site concentration is related to the colloid co
 \EA
 where $\Q_c$ denotes the cation exchange capacity in units of mol sites/kg colloid.
 
-Mass conservation equations for colloids, minerals, sorbed and aqueous species can now be written in the following forms. The colloid mass conservation equation has the form
+Mass conservation equations for colloids, minerals, sorbed and aqueous species can now be written in the following forms. The colloid mass conservation equations have the forms
 \EQ
-\frac{\p}{\p t}\varphi C_c^f + \bnabla\cdot\bF_c^f \eq -I_c^{fs} - I_c^f,
+\frac{\p}{\p t}\varphi s_l^{} C_c^f + \bnabla\cdot\bF_c^f \eq -I_c^{fs} - I_c^f,
 \EN
-for mobile (liquid phase) colloids with concentration $C_c^f$, and
+for mobile (liquid phase) colloids with concentration $C_c^f$ and flux $\bF_c^f$, and
 \EQ
 \frac{\p C_c^s}{\p t} \eq I_c^{fs} + I_c^s,
 \EN
-for immobile colloids with concentration $C_c^s$ attached to the stationary solid phase. Combining these two equations leads to an alternative form in which the reaction rate does not appear explicitly
+for immobile colloids with concentration $C_c^s$ attached to the stationary solid phase. 
+
+Combining these two equations leads to an alternative form in which the reaction rate does not appear explicitly
 \EQ
-\frac{\p}{\p t}\left(\varphi C_c^f + C_c^s\right) + \bnabla\cdot\bF_c^f \eq 0.
+\frac{\p}{\p t}\left(\varphi s_l^{} C_c^f + C_c^s\right) + \bnabla\cdot\bF_c^f \eq 0.
 \EN
-Surface complexes associated with mobile and immobile colloids obey the conservation equations   
+
+Transport equations for surface complexes associated with mobile and immobile colloids obey the conservation equations   
 \EQ
-\frac{\p}{\p t}\varphi S_{ic}^f + \bnabla\cdot\bq_c S_{ic}^f \eq I_{ic}^f,
-\EN
-\EQ
-\frac{\p}{\p t}\varphi S_{ic}^s \eq I_{ic}^s,
-\EN
-and for free sites
-\EQ
-\frac{\p}{\p t}\varphi S_{c}^f + \bnabla\cdot\bq_c S_{c}^f \eq -\sum_i I_{ic}^f,
+\frac{\p}{\p t}\varphi s_l^{} S_{ic}^f + \bnabla\cdot\bq_c S_{ic}^f \eq I_{ic}^f,
 \EN
 \EQ
-\frac{\p}{\p t}\varphi S_{c}^s \eq -\sum_i I_{ic}^s.
+\frac{\p S_{ic}^s}{\p t} \eq I_{ic}^s,
+\EN
+with colloid Darcy velocity $\bq_c$ and neglecting colloid diffusion. Free (empty) sites obey the equations
+\EQ
+\frac{\p}{\p t}\varphi s_l^{} S_{c}^f + \bnabla\cdot\bq_c S_{c}^f \eq -\sum_i I_{ic}^f,
+\EN
+\EQ
+\frac{\p S_{c}^s}{\p t} \eq -\sum_i I_{ic}^s.
 \EN
 Aqueous phase primary species transport equations have the form
 \BA
-\frac{\p}{\p t}\varphi \Psi_j &+ \bnabla\bdot\bOmega_j \eq 
+\frac{\p}{\p t}\varphi s_l^{}\Psi_j &+ \bnabla\bdot\bOmega_j \eq 
 -\sum_m\nu_{jm} I_m -\sum_{im}\nu_{ji}^m I_i^m \nonumber\\
 &-\sum_c \nu_{jc}^{} \big(I_c^f+I_c^s\big) 
 - \sum_{ic}^{}\nu_{ji}^c\big(I_{ic}^f+I_{ic}^s\big) 
 + \sum_r\nu_{jr}^{\kin}I_r^{\rm kin},
 \EA
-where mineral precipitation and dissolution and surface complexation reactions are considered. The superscript $c$ refers to colloids. Ion exchange can be handled similarly. 
+including mineral precipitation and dissolution and surface complexation reactions. Ion exchange can be handled similarly. 
 
 Eliminating the surface complexation reaction rates gives
 \BA\label{pricolloid}
-\frac{\p}{\p t}\bigg(\varphi\Psi_j + \sum_{im} \nu_{ji}^m S_{im} &+ \sum_{ic} \nu_{ji}^c \big(\varphi S_{ic}^f+S_{ic}^s\big)\bigg) + \bnabla\bdot\bigg(\bOmega_j +\bq_c \sum_{ic}\nu_{ji}^c S_{ic}^f\bigg) \eq \nonumber\\
+\frac{\p}{\p t}\bigg(\varphi s_l^{}\Psi_j + \sum_{im} \nu_{ji}^m S_{im} &+ \sum_{ic} \nu_{ji}^c \big(\varphi s_l^{} S_{ic}^f+S_{ic}^s\big)\bigg) + \bnabla\bdot\bigg(\bOmega_j + \sum_{ic}\nu_{ji}^c\bq_c S_{ic}^f\bigg) \eq \nonumber\\
 &-\sum_m\nu_{jm} I_m - \sum_{c}\nu_{jc}^{} \big(I_{c}^l+I_{c}^s\big) + \sum_r\nu_{jr}^{\kin}I_r^{\rm kin}.
 \EA
 Note that colloids are only transported by advection and not diffusion in this formulation. The possibility for a different Darcy flow rate is allowed for colloids compared to the fluid phase, because colloids have been shown to actually move slightly faster because of their tendency to be concentrated away from the pore walls due to electrostatic repulsion.
 
 From the primary species transport equations it is possible to define a retardation factor assuming constant aqueous and sorbed concentrations and neglecting diffusion by writing the transport equations in the form
 \BA\label{retcolloid}
-\frac{\p}{\p t}\big(\varphi \Psi_j\big) &+ \bnabla\bdot\bigg(\frac{\bq}{R_j} \Psi_j\bigg) \eq \nonumber\\
+\frac{\p}{\p t}\big(\varphi s_l^{} \Psi_j\big) &+ \bnabla\bdot\bigg(\frac{\bq}{R_j} \Psi_j\bigg) \eq \nonumber\\
 &-\frac{1}{1+K_j^s + K_j^f}\left[\sum_m\nu_{jm} I_m + \sum_{c}\nu_{jc}^{} \big(I_{c}^l+I_{c}^s\big) - \sum_r\nu_{jr}^{\kin}I_r^{\rm kin}\right],
 \EA
 where the retardation factor $R_j$ is defined as
@@ -1645,7 +1662,7 @@ R_j\eq 1+\dfrac{K_j^s}{1+K_j^f},
 \EN
 where the distribution coefficients $K_j$ for the stationary solid phase including contributions from minerals and colloids, and $K_j^f$ for colloids present in the aqueous phase are defined by
 \EQ
-K_j^s \eq \frac{1}{\varphi\Psi_j} \left[\sum_{im}\nu_{ji}^m S_{im} + \sum_{ic}\nu_{ji}^c S_{ic}^s\right],
+K_j^s \eq \frac{1}{\varphi s_l^{}\Psi_j} \left[\sum_{im}\nu_{ji}^m S_{im} + \sum_{ic}\nu_{ji}^c S_{ic}^s\right],
 \EN
 and
 \EQ
@@ -1833,21 +1850,21 @@ For the set of primary species $\{ \A_d, \ \A_a, \ \A_j \}$, the mass transport 
 Mineral reaction rates are denoted by $I_m^{min}$, and homogeneous aqueous reaction rates by $I_i^{aq}$. 
 
 For the case in which the rates $I_i^{aq}$ for homogeneous reactions are in local equilibrium, their rates may be eliminated by replacing the corresponding transport equations with mass action equations. This results in the primary species transport equations
-\seteqn
+\begin{subequations}
 \BA
 \L \Psi_d &\eq -\frac{1}{\Y_c^d} \, I_c^\S -\sum_m \nu_{dm}^{min} I_m^{min},\\
 \L \Psi_a &\eq \frac{1-f_s^\circ}{f_s^\circ} \, \frac{n_c^e}{n_a^e} \, I_c^\S + \nu_{ac}^\D \, \lambda_c \, \chi_c -\sum_m \nu_{am}^{min} I_m^{min},\\
 \L \Psi_j &\eq -\left[ \nu_{jc}^\S + \frac{1-f_s^\circ}{f_s^\circ} \, \frac{n_c^e}{n_a^e} \, \nu_{ja} - \frac{1}{\Y_c^d} \, \nu_{jd} \right] I_c^\S + \nu_{jc}^\D \, \lambda_c \, \chi_c -\sum_m \nu_{jm}^{min} I_m^{min},
 \EA
-\reseteqn
+\end{subequations}
 where
-\seteqn
+\begin{subequations}
 \BA
 \Psi_d &\eq C_d + \sum_i \nu_{di}^{aq} C_i,\\
 \Psi_a &\eq C_a + \sum_i \nu_{ai}^{aq} C_i,\\
 \Psi_j &\eq C_j + \sum_i \nu_{ji}^{aq} C_i.
 \EA
-\reseteqn
+\end{subequations}
 
 \textbf{\textsl{Parallel Reactions.}} So far the discussion has focused on the presence a single electron donor and acceptor substrate. However, in natural systems it is common for a number of different electron donor and acceptor substrates to be present at any one time. In such cases several parallel reactions representing biosynthesis may take place simultaneously. For the case of multiple electron acceptors indexed by $\beta$, these reactions may be written collectively in the general form
 \EQ
@@ -2057,6 +2074,98 @@ which in turn requires that $\bi_e\!=\!\boldsymbol 0$. This will be the case if 
 
 \setcounter{equation}{0}
 
+\subsection{Dual Continuum Connected Matrix (DCCM)}
+
+For a dual continuum model with continua $\a$ and $\b$, and with multirate sorption and mineral precipitation and dissolution the transport equations read
+\begin{subequations}
+\EQ\label{acont}
+\frac{\p}{\p t} \varphi_\a\Psi_j^\a + \bnabla\cdot\bOmega_j^\a \eq - \Gamma_{\a\b} \big(\Psi_j^\a - \Psi_j^\b\big) -\sum_{il}\nu_{ji} \frac{\p S_{il}^\a}{\p t} -\sum_m\nu_{jm}I_m^\a,
+\EN
+for the primary continuum, and
+\EQ
+\frac{\p}{\p t} \varphi_\b\Psi_j^\b \eq \Gamma_{\a\b} \big(\Psi_j^\a - \Psi_j^\b\big) -\sum_{il}\nu_{ji} \frac{\p S_{il}^\b}{\p t} -\sum_m\nu_{jm}I_m^\b,
+\EN
+\end{subequations}
+for the secondary continuum. Note that transport is assumed to take place only in continuum $\a$  and not $\b$. These equations are augmented by the kinetic sorption equations for each continuum given by
+\begin{subequations}
+\EQ\label{bcont}
+\frac{\p S_{il}^\a}{\p t} \eq k_l \big(S_{il}^{\rm eq,\a} - S_{il}^\a\big),
+\EN
+and
+\EQ
+\frac{\p S_{il}^\b}{\p t} \eq k_l \big(S_{il}^{\rm eq,\b} - S_{il}^\b\big),
+\EN
+\end{subequations}
+and mineral mass transfer equations
+\EQ
+\frac{\p \varphi_m^{\a,\b}}{\p t} \eq \overline V_m^{-1} I_m^{\a,\b}.
+\EN
+Adding Eqns.\eqref{acont} and \eqref{bcont} eliminates the mass transfer coupling term between continua
+\EQ
+\frac{\p}{\p t} \left(\varphi_\a\Psi_j^\a + \varphi_\b\Psi_j^\b \right) + \bnabla\cdot\bOmega_j^\a \eq -\sum_{il}\nu_{ji}\left(\frac{\p S_{il}^\a}{\p t} + \frac{\p S_{il}^\b}{\p t}\right) -\sum_m\nu_{jm}\big(I_m^\a + I_m^\b\big).
+\EN
+
+\subsubsection{Numerical Implementation}
+
+The residual functions for the finite volume form of the dual continuum equations can be written as
+\BA
+R_{jn}^\a \eq &\frac{(\varphi_\a\Psi_j^\a)_n^{k+1} - (\varphi_\a\Psi_j^\a)_n^k}{\Delta t_k}V_n + V_n\sum_{il} \nu_{ji} 
+\left(\frac{S_{iln}^{\a(k+1)}-S_{iln}^{\a(k)}}{\Delta t_k}\right) \nonumber \\
+& + \sum_{n'} A_{nn'} \Omega_{jnn'} + V_n \Gamma_{\a\b} \big(\Psi_{jn}^{\a(k+1)} - \Psi_{jn}^{\b(k+1)}\big) + V_n \sum_m\nu_{jm} I_{mn}^{\a,k+1},
+\EA
+and
+\BA
+R_{jn}^\b \eq &\frac{(\varphi_\b\Psi_j^\b)_n^{k+1} - (\varphi_\b\Psi_j^\b)_n^k}{\Delta t_k} + \sum_{il} \nu_{ji} 
+\left(\frac{S_{iln}^{\b(k+1)}-S_{iln}^{\b(k)}}{\Delta t_k}\right) \nonumber \\
+&- \Gamma_{\a\b} \big(\Psi_{jn}^{\a(k+1)} - \Psi_{jn}^{\b(k+1)}\big) + \sum_m\nu_{jm} I_{mn}^{\b,k+1}.
+\EA
+The secondary continuum since it does not contain transport may be solved directly for $\Psi_{jn}^{\b(k+1)}$ to give
+\BA
+\Psi_{jn}^{\b(k+1)} = \frac{1}{\varphi_\b + \Delta t_k\Gamma_{\a\b}}&\left[(\varphi_\b\Psi_j^\b)_n^k 
+- \sum_{il} \nu_{ji} \big(S_{iln}^{\b(k+1)} \!\!\!- S_{iln}^{\b(k)}\big) - \Delta t_k \sum_m\nu_{jm} I_{mn}^{\b,k+1} \right] 
+\nonumber\\
+&+ \frac{\Delta t_k \Gamma_{\a\b}}{\varphi_\b + \Delta t_k\Gamma_{\a\b}}\Psi_{jn}^{\a(k+1)}.
+\EA
+This equation expresses $\Psi_{jn}^{\b(k+1)}$ in terms of $\Psi_{jn}^{\a(k+1)}$, however, the right-hand side remains a function of $C_{jn}^{\b(k+1)}$, and therefore complete elimination of the $\b$-continuum variables from the primary continuum in the nonlinear case is not possible.
+
+Writing
+\EQ
+\Psi_{jn}^{\b(k+1)} \eq e_{jn}^\b + f_{jn}^\b(C^{\b(k+1)}) + g_{\a\b}\Psi_{jn}^{\a(k+1)},
+\EN
+where
+\EQ
+e_{jn}^\b \eq \frac{(\varphi_\b\Psi_j^\b)_n^k}{\varphi_\b + \Delta t_k\Gamma_{\a\b}},
+\EN
+\EQ
+f_{jn}^\b \eq -\frac{1}{\varphi_\b + \Delta t_k\Gamma_{\a\b}} \left[ 
+\sum_{il} \nu_{ji} \big(S_{iln}^{\b(k+1)} \!\!\!- S_{iln}^{\b(k)}\big) + \Delta t_k \sum_m\nu_{jm} I_{mn}^{\b,k+1} \right],
+\EN
+and
+\EQ
+g_{\a\b} \eq \frac{\Delta t_k \Gamma_{\a\b}}{\varphi_\b + \Delta t_k\Gamma_{\a\b}},
+\EN
+the residual for the primary continuum equations become
+\EQ
+R_{jn}^\a (C^\a,\,C^\b) \eq \widetilde R_{jn}^\a + \Gamma_{\a\b} (1-g_{\a\b}) \Psi_{jn}^{\a(k+1)} - \Gamma_{\a\b} \big(e_{jn}^\b + f_{jn}^\b\big),
+\EN
+where $\widetilde R_{jn}^\a$ denotes the residual function for a single continuum without the mass transfer coupling term to the secondary continuum. Likewise, the residual for the secondary continuum may be written as
+\EQ
+(R')_{jn}^\b (C^\a,\,C^\b) \eq \Psi_{jn}^{\b(k+1)} - f_{jn}^\b(C^{\b(k+1)}) - g_{\a\b}\Psi_{jn}^{\a(k+1)}.
+\EN
+The Newton-Raphson equations read
+\begin{subequations}
+\BA
+\sum_{lm}\left[\frac{\p R_{jn}^\a}{\p C_{lm}^\a}\, \delta\ln C_{lm}^\a 
++ \frac{\p R_{jn}^\a}{\p C_{lm}^\b}\, \delta\ln C_{lm}^\b\right] \eq -R_{jn}^\a,\\
+\sum_{lm}\left[\frac{\p R_{jn}^\b}{\p C_{lm}^\a}\, \delta\ln C_{lm}^\a 
++ \frac{\p R_{jn}^\b}{\p C_{lm}^\b}\, \delta\ln C_{lm}^\b\right] \eq -R_{jn}^\b.
+\EA
+\end{subequations}
+In the nonlinear case, to avoid large matrices it will be necessary to iterate with off-diagonal coupling terms for the primary continuum lagged one iterate behind.
+%This latter equation must be solved for the individual primary species concentrations $C_{jn}^{\b(k+1)}$.
+
+\subsection{Multiple Continuum Disconnected Matrix (DCDM)}
+
 A fundamental problem facing efforts to model subsurface reactive flows is characterizing and incorporating a multitude of spatial scales that are typical of natural systems into multi\-com\-po\-nent-multiphase numerical models. Spatial scales may range from nanoscale surface chemistry, to pore and fracture apertures of millimeters to centimeters, to fracture spacing and matrix block sizes of tens of centimeters to meters, to reservoir or basin scales of kilometers to tens of kilometers. To illustrate the technical challenges involved in modeling multi-scale subsurface processes, consider a basin scale reservoir with an areal extent of one square kilometer and depth of 500 meters. Modeling this system as a single continuum on a grid with one million nodes results in an average grid block size of 10m by 10m by 5m---or roughly the size of a large conference room. Within this grid block, physical and chemical processes occur at much smaller sub-grid scales. Such processes involve, for example, diffusive and advective mass transfer between fractures and rock matrix, or more generally diffusion between macro- and micro-pore scales, accompanied by chemical reactions. Characteristic of these systems is mass transport and chemical reactions occurring at disparate spatial scales that cannot be captured within a single continuum description. In particular, localized chemical environments may be vastly different from the bulk fluid and lead to dramatically different results compared to a single continuum description. It is clearly impossible to capture this range of scales within a single continuum framework because of the large computational expense that would be required to resolve the smallest scale. One approach that appears feasible to describe such systems is to incorporate sub-grid scale processes through multiple interacting continua representing fine scale processes. Besides the difficulty developing conceptual models of such systems, characterization at the laboratory and field scales adds additional challenges. In addition, this approach carries a significant computational cost as well because of the increase in the number of degrees of freedom associated with the additional continua and the necessity to carry out calculations over engineering and geologic time spans within feasible computation times. 
 
 A considerable body of literature exists on multiscale descriptions of flow and transport in porous and fractured media. Such formulations range from structured soils (Murphy et al., 1986; van Genuchten and Wagenet, 1989; Brusseau and Rao, 1990; Gerke and van Genuchten, 1993; Gwo et al., 1995; and others), to fractured rock (Warren and Root, 1956; Barenblatt et al., 1960; Duguid and Lee, 1977; Pruess and Narisimhan, 1985; Bai et al., 1993; Lichtner, 2000).
@@ -2071,7 +2180,8 @@ One of the primary difficulties in applying a multiscale formulation is obtainin
 
 Multiscale processes play a significant role in many situations involving flow and reactive transport. However, because of the inherent nonlinearity of constitutive relations, for example, chemical rate laws and statements of equilibrium mass action relations in real multicomponent fluids, use of linear relations is of limited usefulness.
 
-The formulation presented below is based on a multiple interacting continuum formulaiton. This formulation provides for local concentration gradients within a sub-continuum domain. The model places no restrictions on linear or nonlinear constitutive relations, and is completely general in its treatment of chemical and other physical processes.
+The algorithm presented below is based on a multiple interacting continuum formulation. This formulation provides for local concentration gradients within a sub-continuum domain. 
+%The model places no restrictions on linear or nonlinear constitutive relations, and is completely general in its treatment of chemical and other physical processes.
 
 In the following a multi-scale continuum formulation for reactive transport is developed based on multiple interacting continua. In this formulation the primary continuum, which may consist of one, two, or three spatial dimensions, is coupled to sub-grid scale domains that are presumed to form effective one-dimensional regions. 
 %The sub-grid domains are coupled only to the primary continuum and not to each other as illustrated in Figure~\ref{F:subgrid} which shows the connectivity between primary and secondary continua. 
@@ -2105,8 +2215,8 @@ Also of interest is the specific interfacial surface area $a_{\a\b}$ separating 
 a_{\a\b} \eq \frac{A_{\a\b}}{V} \eq \frac{1}{V}\sum_\b N_\b^{} A_\b^0 \eq \big(1-\epsilon_\a\big) \frac{x_\b^{} A_\b^0}{\displaystyle\sum_{\b'} x_{\b'}^{} V_{\b'}^0}.
 \EN
 
-Multi-scale, multicomponent, continuum-scale reactive transport equations for primary species $\A_j$ participating in reactions given in Eqns.\eqref{rxnleq} and \eqref{rxnhet} can be written in the general form as the set of coupled partial differential equations as follows (Lichtner and Kang, 2007)
-\BA\label{bulk}
+Multi-scale, multicomponent, continuum-scale reactive transport equations for primary species $\A_j$ participating in reactions given in Eqns.\eqref{hom} and \eqref{het} can be written in the general form as the set of coupled partial differential equations as follows (Lichtner and Kang, 2007)
+\BA\label{primary}
 \frac{\p}{\p t} \epsilon_\a\varphi_\a \Psi_j^\a + \bnabla\bdot\bOmega_j^\a \eq \sum_\b a_{\a\b}^{} \Omega_j^{\a\b} - \epsilon_\a\sum_{s} \nu_{js}^{} I_{s}^\a,
 \EA
 for the primary continuum fluid, and
@@ -2125,7 +2235,7 @@ The total concentration $\Psi_j^{\a,\,\b}$ is given by Eqn.\eqref{psi} for the p
 with tortuosity $\tau_{\a,\b}$, diffusivity $D$, and Darcy flow rate $\bq_{\a,\b}$. For simplicity dispersion is not included, but in general would be necessary. 
 %Note that Eqn.\eqref{bulk} is referenced to the bulk volume, including both primary continuum and sub-grid domains, whereas Eqn.\eqref{matrix} is referenced to the sub-grid domain volume, whence the factor $\epsilon_\a$ appears only in Eqn.\eqref{bulk}.
 
-The boundary condition at the primary continuum-matrix fluid interface is given by
+The boundary condition at the primary continuum--$\b$-secondary continua fluid interface is given by
 \EQ
 C_j^\b(r=r_\b,\, t; \br) \eq C_j^\a(\br,\,t),
 \EN
@@ -2138,13 +2248,500 @@ where $\bn_\b$ denotes the outward normal to the interface.
 The matrix equation is quite general and applies to various geometries including spheres and linear domains. As an approximation cubes and irregular shaped domains may be used. Because of computational considerations, the sub-grid domain equations are reduced to an equivalent 1D problem. 
 For further discussion of numerical techniques for efficiently solving the multi-scale equations see Lichtner (2006).
 
-\section{Electrical Conductivity}
+\subsection{Coupling Term}
 
+The primary and sub-grid continua are coupled through a source/sink term appearing in the primary continuum fluid transport equation given by Eqn.~\eqref{primary}. In finite difference form the coupling term can be written as
+\EQ
+\Omega_{jn}^{\a\b} \eq -\varphi_\b D_\b \left.\frac{\p\Psi_j^\b}{\p y}\right|_{y=l_\b}\!\!\!\!\!\!\!\! \eq -\varphi_\b D_\b \left(\frac{\Psi_{jm}^\a-\Psi_{jM}^\b}{d_{\a\b}}\right),
+\EN
+where $d_{\a\b}$ represents the distance from the primary-subgrid continuum interface to the neighboring matrix node. Thus the coupling term can be rewritten in discretized form as
+\EQ
+\sum_\b a_{\a\b} \Omega_j^{\a\b} \eq \sum_\b \Gamma_{\a\b} \big(\Psi_{jm}^\a-\Psi_{jM}^\b\big),
+\EN
+where
+\EQ
+\Gamma_{\a\b}\eq\frac{a_{\a \b}\varphi_\b D_\b}{d_{\a\b}}.
+\EN
+In order to decouple the primary and secondary continua it is necessary to express $\Psi_{jM}^\b$ in terms of the primary species concentrations.
+
+\begin{comment}
+\subsection{Mass Conservation}
+
+\BA
+\frac{dM_j}{dt} &\eq \frac{dM_j^\a}{dt}+\frac{dM_j^\b}{dt},\\
+&\eq \frac{d}{dt}\int_0^{L_b} \epsilon_b\varphi_b C_j^\a dx + \frac{d}{dt}\int_0^{l_\b} \varphi_\b C_j^\b dy,\\
+&\eq\int_0^{L_b} \bigg(A_{\b b} F_j^{\b b} - \frac{\p\epsilon_b F_j^\a}{\p x}\bigg) dx - \int_0^{l_\b} \frac{\p F_j^\b}{\p y} dy,\\
+&\eq A_{\b b} \varphi_\b D_\b \bigg(\frac{C_j^\b-C_j^\a}{d_\b}\bigg) + F_j^{\b 0} + \epsilon_b \big(F_j^{L_b} - F_j^{b0}\big),\\
+&\eq \epsilon_b \big(F_j^{L_b} - F_j^{b0}\big),
+\EA
+since
+\EQ
+F_j^{\b 0} \eq -A_{\b \b} \varphi_\b D_\b \bigg(\frac{C_j^\b-C_j^\a}{d_\b}\bigg).
+\EN
+\end{comment}
+
+The sub-grid model involves solving a block-tridiagonal system of nonlinear algebraic equations for each primary continuum node $m$.
+The residual function for the subgrid domain for the $M$th node neighboring the interface to the primary continuum fluid at the $m$th node has the form (see Appendix)
+\begin{subequations}
+\BA
+\bR_{mM}^{\b}&\eq\frac{\varphi V_M}{\Delta t}\big(\bPsi_M^{\b,t+\Delta t}-\bPsi_M^{\b t}\big)+\bOmega_M^{\b +} A_M^+ - \bOmega_M^{\b -} A_M^- + V_M \sum_s\bnu_{s}^{} I_{sM}^\b,\\
+&\eq\widetilde\bR_{mM}^{\b}-\frac{\varphi DA_M^+}{d_M}\bPsi_m^\a,
+\EA
+\end{subequations}
+where $\widetilde\bR_{mM}^{\b}$ denotes the contribution to the residual function which does not contain the boundary concentration $\bPsi_m^\a$, and $d_M\!=\!d_{\a\b}$. These equations form a tri-diagonal system of nonlinear equations which can be solved using the techniques outlined in the Appendix to this section.
+
+After carrying out the forward sweep described in the Appendix, the primary species transport equations are solved next. To do this requires expressing $\Psi_{jM}^\b$ in terms of the primary species concentrations, which requires expressing the individual concentrations $C_{jM}^\b$ as functions of the total primary species concentrations. As demonstrated in the Appendix
+\EQ
+\d x_{jM}^\b \eq z_{jM}.
+\EN
+The quantity $\bz_M$ defined in the Appendix in Eqn.~\eqref{zn} is a function of the total primary species concentrations according to the relations
+\begin{subequations}
+\BA
+\bz_M &\eq \bD_M^{-1}\big(-\bR_M - \bbeta_M\bz_{M-1}\big),\\
+&\eq -\bD_M^{-1}\big(\widetilde\bR_M + \bbeta_M\bz_{M-1}\big) + \frac{\varphi D A_M^+}{d_M} \bD_M^{-1}\bPsi_m^\a,\\
+&\eq \ba_m + \bb_m\bPsi_m^\a,
+\EA
+\end{subequations}
+with known quantities $\ba_m$ and $\bb_m$ determined through the forward sweep of the tri-diagonal equations, and defined as
+\begin{subequations}
+\BA
+\ba_m &\eq -\bD_M^{-1}\big(\widetilde\bR_M + \bbeta_M\bz_{M-1}\big),\\
+\bb_m &\eq -\frac{\varphi DA_M^+}{d_M}\bD_M^{-1}.
+\EA
+\end{subequations}
+The three possible choices for $\d\bx$ are considered in turn.
+
+\subsubsection{Case I: linear $\d x_j = \d C_j$}
+
+For the situation where $\d x_j \!=\! \d C_j$, $C_{jM}^{(k+1)}$ is found from the relation
+\EQ
+C_{jM}^{(k+1)}\eq C_{jM}^{(k)} + a_{jm} + \sum_l b_{jlm}^{} \Psi_{lm}^\a.
+\EN
+The residual function and Jacobian for the primary continuum involves the total concentration
+\EQ
+\Psi_{jM}^{(k+1)}\eq C_{jM}^{(k+1)}(\Psi_{jm}^\a) + \sum_i\nu_{ji} \C_{iM} [C_{jM}^{(k+1)}(\Psi_{jm}^\a)],
+\EN
+with derivative
+\EQ
+\frac{\p\Psi_{jM}^{(k+1)}}{\p C_{km}^\a}\eq \frac{\p C_{jM}^{(k+1)}}{\p C_{km}^\a}+ \sum_i\nu_{ji} \frac{\p\C_{iM}^{(k+1)}}{\p C_{km}^{\a}}.
+\EN
+
+\subsubsection{Case II: logarithmic $\d x_j = \d{\rm ln} C_j$}
+
+For the case $\d x_j = \d\ln C_j$, the matrix concentration at the interface is related to the primary continuum total concentration by the expression
+\EQ
+\ln C_{jM}^{(k+1)}\eq\ln C_{jM}^{(k)} + a_{jm} + \sum_l b_{jlm}^{} \Psi_{lm}^\a,
+\EN
+or alternatively
+\EQ
+C_{jM}^{(k+1)}\eq C_{jM}^{(k)} \e^{a_{jm} + \sum_l b_{jlm}^{} \Psi_{lm}^\a}.
+\EN
+The total matrix concentration can now be written as a function of the total bulk fluid concentration as
+\EQ
+\Psi_{jM}^{(k+1)}\eq C_{jM}^{(k+1)}(\Psi_{jm}^\a) + \sum_i\nu_{ji} \C_{iM} \big[C_{jM}^{(k+1)}(\Psi_{jm}^\a)\big].
+\EN
+To obtain the Jacobian it is necessary to compute the derivatives of this relation with respect to the bulk fluid primary species concentrations. It follows that
+\BA
+\frac{\p C_{jM}^{(k+1)}}{\p\ln C_{km}^\a}&\eq C_{jM}^{(k+1)} \sum_l b_{jlm}^{} \frac{\p\Psi_{jm}^\a}{\p\ln C_{km}^\a},\\
+&\eq C_{jM}^{(k+1)} \sum_l b_{jln}^{} \left(C_{jm}^\a\delta_{jk}+\sum_i\nu_{ji}\nu_{ki}\C_{im}^\a\right),
+\EA
+making use of the relation
+\EQ
+\frac{\p\Psi_{jm}^\a}{\p\ln C_{km}^\a}\eq C_{jm}^\a\delta_{jk}+\sum_i\nu_{ji}\nu_{ki}\C_{im}^\a.
+\EN
+Further one has
+\EQ
+\frac{\p\Psi_{jM}^{(k+1)}}{\p\ln C_{km}^\a}\eq \frac{\p\ln C_{jM}^{(k+1)}}{\p C_{km}^\a}+ \sum_i\nu_{ji} \frac{\p\C_{iM}^{(k+1)}}{\p\ln C_{km}^\a},
+\EN
+with
+\BA
+\frac{\p\C_{iM}^{(k+1)}}{\p\ln C_{km}^{b}}&\eq\C_{iM}^{(k+1)}\sum_j\nu_{ji}\frac{\p C_{jM}^{(k+1)}}{\p\ln C_{km}^\a},\\
+&\eq\C_{iM}^{(k+1)}\sum_j\nu_{ji} C_{jM}^{(k+1)} \sum_l b_{jlm}^{}\left(C_{jm}^\a\delta_{jk}+\sum_i\nu_{ji}\nu_{ki}\C_{im}^\a\right).
+\EA
+
+For the backward solve
+\EQ
+\d\ln C_{jM}\eq z_{jM}\eq a_{jm}+\sum_l b_{jlm}^{}\Psi_{lm}^\a,
+\EN
+\EQ
+\d\ln C_{jm} \eq z_{jm}-\sum_l U_{jln} \d\ln C_{l,m+1}, \ (m=M-1, \, \ldots, \, 1).
+\EN
+
+\subsubsection{Case III: total concentration $\d x_j = \d\Psi_j$}
+
+For the case $\d x_j = \d\Psi_j$
+\EQ
+\Psi_{jM}^{(k+1)}\eq \Psi_{jM}^{(k)} + a_{jm} + \sum_l b_{jlm}^{} \Psi_{lm}^\a.
+\EN
+The derivative is given by
+\EQ
+\frac{\p\Psi_{jM}^{(k+1)}}{\p C_k^\a}\eq \sum_l b_{jlm}^{} \frac{\p\Psi_{lm}^\a}{\p C_k^\a}.
+\EN
+
+\section*{Appendix: Block Tridiagonal System of Equations}
+\addcontentsline{toc}{section}{Appendix: Block Tridiagonal System of Equations}
+
+\renewcommand{\theequation}{A.\arabic{equation}}
 \setcounter{equation}{0}
+
+For an effective one-dimensional, multicomponent system the finite volume discretized equations have the form of a block-tridiagonal system of equations. The computational domain is divided into $M$ grid cells of varying size which depend on the geometry of the system, i.e. spheres, rods, etc. The node in contact with the primary continuum is labeled $M$, and the node at the opposite end is labeled 1 as illustrated in Figure~\ref{fnodestruct}.
+
+\begin{figure}[h]\centering
+%\fbox{
+%\shadowbox{
+\EQ
+\bf \qquad 
+\bigg|\quad\mathop{\bullet}_{\ \ \ \, \displaystyle 1 \ \b}\quad\bigg| \qquad \cdots \qquad 
+\bigg|\quad\mathop{\bullet}_{\ \ \ \, \displaystyle n \ \b}\quad\bigg| \qquad \cdots \qquad 
+\bigg|\quad\mathop{\bullet}_{\ \ \ \, \displaystyle M \ \b}\quad
+\bigg|\quad\mathop{\bullet}_{\ \ \ \, \displaystyle m \ \a}\quad\bigg|\nonumber
+\EN
+%}
+\caption{Node configuration for primary ($\a$) and secondary ($\b$) continua.}\label{fnodestruct}
+\end{figure}
+
+The residual function can be written in the form (superscript $\b$ is omitted for brevity)
+\EQ
+R_{jn}\eq\varphi\frac{\Psi_{jn}^{t+\Delta t}-\Psi_{jn}^t}{\Delta t}V_n + \Omega_{jn}^+ A_n^+ - \Omega_{jn}^- A_n^- + V_n\sum_s\nu_{js}I_{sn},
+\EN
+for $n=1,\, \ldots,\, M$, with fluxes $\Omega_{jn}^\pm$ defined as
+\begin{subequations}\label{resj}
+\BA
+\Omega_{jn}^+ &\eq -\varphi D \frac{\Psi_{j,n+1}-\Psi_{jn}}{d_{n+1}+d_n} + q \Psi_{jn},\\
+\Omega_{jn}^- &\eq -\varphi D \frac{\Psi_{jn}-\Psi_{j,n-1}}{d_{n}+d_{n-1}} + q \Psi_{jn-1}.
+\EA
+\end{subequations}
+The area $A_n^\pm$ and volume $V_n$ determine the geometry of the system. Note that $A_n^+ \!=\! A_{n+1}^-$. The boundary conditions imposed on the system are zero flux at the left boundary
+\EQ
+\Omega_{j1}^{\b,-} \eq 0,
+\EN
+and a Dirichlet condition on the right boundary in contact with the $m$th primary continuum node giving
+\EQ
+\Omega_{jM}^{\b,+} \eq -\varphi_\b D_\b \frac{\Psi_{jm}^\a - \Psi_{jM}^\b}{d_M},
+\EN
+where $d_M$ denotes the distance between the boundary and the cell center.
+
+These equations are solved using a Newton-Raphson in which the nonlinear equations are solved in a linearized form given by
+\EQ
+\bJ \d\bx \eq -\bR,
+\EN
+where
+the Jacobian written in matrix form is given by
+\EQ
+\bJ_{nn'} \eq \frac{\p \bR_n}{\p \ln\bC_{n'}} \eq \bbeta_n \delta_{n-1,n'} + \balpha_n\delta_{nn'} + \bgamma_n\delta_{n+1,n'},
+\EN
+with coefficients $\balpha_n$, $\bbeta_n$, and $\bgamma_n$ defined by
+\begin{subequations}
+\BA
+(\bbeta_n)_{jl}^{} &\eq \left(-\frac{\varphi D}{d_{n}+d_{n-1}} - q\right)A_n^- \frac{\p\Psi_{j,n-1}}{\p \ln C_{l,n-1}},\\
+(\balpha_n)_{jl}^{} &\eq \left[\frac{\varphi V_n}{\Delta t} + \varphi D \left(\frac{A_n^+}{d_{n+1}+d_{n}}+\frac{A_n^-}{d_{n}+d_{n-1}}\right) + q A_n^+\right] \frac{\p\Psi_{jn}}{\p \ln C_{ln}} \nonumber\\
+& \qquad+V_n\sum_s\nu_{js}\frac{\p I_{sn}}{\p \ln C_{ln}},\\
+(\bgamma_n)_{jl}^{} &\eq \left(-\frac{\varphi D}{d_{n+1}+d_{n}}\right)A_n^+ \frac{\p\Psi_{j,n+1}}{\p \ln C_{l,n+1}}.
+\EA
+\end{subequations}
+The derivatives $\p\Psi_{jn}/\p \ln C_{ln}$ and $\p I_{sn}/\p \ln C_{ln}$ can be easily computed analytically according to the expressions (assuming constant activity coefficients $\gamma_j$)
+\BA
+\frac{\p\Psi_{jn}}{\p \ln C_{ln}} &\eq \delta_{jl} C_{jn} + \sum_i \nu_{ji}\nu_{li}\C_{in},\\
+\frac{\p I_{sn}}{\p \ln C_{ln}} &\eq \nu_{ls} k_{sn} a_s K_{sn} Q_{sn}.
+\EA
+
+The Newton-Raphson equations form a block tridiagonal system of equations of the form
+\begin{subequations}
+\BA
+\balpha_1 \d \bx_1 + \bgamma_1 \d \bx_2 &\eq \br_1,\\
+\bbeta_2 \d \bx_1 + \balpha_2 \d \bx_2 + \bgamma_2 \d \bx_3 &\eq \br_2,\\
+\cdots\nonumber\\
+\bbeta_n \d \bx_{n-1} + \balpha_n \d \bx_n + \bgamma_n \d \bx_{n+1} &\eq \br_n,\\
+%\beta_{n-1} C_{n-2} + \alpha_{n-1} C_{n-1} + \gamma_{n-1} C_{n} &\eq r_{n-1}\\
+\cdots\nonumber\\
+\bbeta_{M-1} \d \bx_{M-2} + \balpha_{M-1} \d \bx_{M-1} + \bgamma_{M-1} \d \bx_M &\eq \br_{M-1},\\
+\bbeta_M \d \bx_{M-1} + \balpha_M \d \bx_M &\eq \br_M,
+\EA
+\end{subequations}
+with 
+\EQ
+\br_n\eq -\bR_n.
+\EN
+To solve these equations, first an $LU$ decomposition is carried out such that
+\EQ
+\bL\bU\eq \bJ,
+\EN
+where $\bJ$ denotes the original matrix
+\EQ
+\bJ\eq\left[
+\begin{array}{ccccc}
+\balpha_1 & \bgamma_1\\
+\bbeta_2 & \balpha_2 & \bgamma_2\\
+&&\ldots\\
+& & & \bbeta_M & \balpha_M
+\end{array}
+\right].
+\EN
+The matrices $\bL$ and $\bU$ have the form
+\EQ
+\bL \eq \left[
+\begin{array}{ccccc}
+\bD_1\\
+\bbeta_2 & \bD_2\\
+&&\ldots\\
+& & & \bbeta_M & \bD_M
+\end{array}
+\right],
+\EN
+and
+\EQ
+\bU \eq \left[
+\begin{array}{ccccc}
+\bI & \bU_1\\
+ & \bI & \bU_2\\
+&&&\ldots\\
+& & & & \bI
+\end{array}
+\right].
+\EN
+In matrix form the $LU$ decomposition reads
+\EQ
+\left[
+\begin{array}{ccccc}
+\bD_1\\
+\bbeta_2 & \bD_2\\
+&&\ldots\\
+& & & \bbeta_M & \bD_M
+\end{array}
+\right]
+\left[
+\begin{array}{ccccc}
+\bI & \bU_1\\
+ & \bI & \bU_2\\
+&&&\ldots\\
+& & & & \bI
+\end{array}
+\right] \eq
+\left[
+\begin{array}{ccccc}
+\balpha_1 & \bgamma_1\\
+\bbeta_2 & \balpha_2 & \bgamma_2\\
+&&\ldots\\
+& & & \bbeta_M & \balpha_M
+\end{array}
+\right].
+\EN
+By comparing both sides of this equation, the block matrices $\bD_n$ and $\bU_n$ are obtained recursively from the relations
+\BA
+\bD_1 &\eq \balpha_1, \qquad \qquad \quad \ \ \ \bU_1 \eq \bD_1^{-1} \bgamma_1,\\
+\bD_{n} &\eq \balpha_n - \bbeta_n \bU_{n-1}, \ \ \ \bU_n \eq \bD_n^{-1} \bgamma_n, \ \ \ \ \ \ (n \eq 2,\,\ldots,\,M).
+\EA
+
+Following the $LU$ decomposition, the solution to the block tridiagonal system of equations
+\EQ
+\bL\bU\d\bx\eq\br,
+\EN
+is obtained from solving the successive equations
+\begin{subequations}
+\BA
+\bL\bz&\eq\br,\\
+\bU\d\bx&\eq\bz.\label{zn}
+\EA
+\end{subequations}
+First the solution for $\bz_n$ is obtained recursively through the forward sweep
+\begin{subequations}
+\BA
+\bD_1\bz_1 & \eq\br_1,\\
+\bD_n\bz_n & \eq\br_n-\bbeta_n\bz_{n-1}, \ \ \ \ (n=2,\,\ldots,\,M).
+\EA
+\end{subequations}
+This is followed by a backward sweep to obtain the solution for $\d\bx_n$
+\begin{subequations}
+\BA
+\d\bx_M&\eq\bz_M,\\
+\d\bx_{n}&\eq\bz_{n}-\bU_{n}\d\bx_{n+1}, \ \ \ \ (n=M-1,\,\ldots,\,1).
+\EA
+\end{subequations}
+To carry out the backward sweep, the quantity $\bz_M$ must be determined first
+by solving the primary continuum equations.
+
+\renewcommand{\theequation}{\arabic{section}.\arabic{subsection}-\arabic{equation}}
+\setcounter{equation}{0}
+
+\section{Electrical Conductivity}
 
 \section{Hydration-Dehydration Reactions}
 
 \section{Multiphase Systems}
+
+\subsection{Fundamental Governing Equations}
+
+For a multiphase system with chemical reactions involving aqueous-aqueous and aqueous-gas, -oil, -napl etc., with aqueous phase as reference phase, the chemical reactions taking place in the system can be expressed in the canonical form
+\EQ
+\sum_j\nu_{ji}\A_j^l \arrows \A_i^\a,
+\EN
+for fluid-fluid reactions, and for mineral reactions reacting with the aqueous phases as
+\EQ
+\sum_j\nu_{jm}\A_j^l \arrows \M_m,
+\EN
+with the respective reaction rates $I_i^\a$ and $I_m$.
+Conservation equations have the following forms for primary species $\A_j^l$ associated with the reference aqueous phase
+\EQ
+\frac{\p}{\p t} \varphi s_l^{} C_j^l + \bnabla\cdot C_j^l \bar\bv_j^l \eq -\sum_i \nu_{ji}I_i^l -\sum_i\nu_{ji}I_i^\a - \sum_m \nu_{jm}I_m,
+\EN
+and for secondary species $\A_i^\a$ for other fluid phases including $\a \!=\! l$
+\EQ
+\frac{\p}{\p t} \varphi s_l^{} C_i^\a + \bnabla\cdot C_i^\a \bar\bv_i^\a \eq I_i^\a.
+\EN
+In these equations $\bar\bv_k^\a$ denotes the average velocity of the $k$th species including contributions from both advection and diffusion.
+Eliminating the reactions rates $I_i^\a$ from the primary species transport equations yields
+\BA\label{molar_form}
+\frac{\p}{\p t} &\varphi \left\{ s_l^{} \big(C_j^l + \sum_i \nu_{ji} C_i^l\big) + \sum_{\a\ne l} s_\a \sum_{i}\nu_{ji} C_i^\a \right\} \nonumber\\
+&+ \bnabla\cdot\left[ \big(C_j^l \bar\bv_j^l + \sum_i \nu_{ji} C_i^l \bar\bv_i^l\big) + \sum_{i,\,\a\ne l} \nu_{ji} C_i^\a \bar\bv_i^\a \right] \eq -\sum_m \nu_{jm}I_m.
+\EA
+From this equation the overall mass conservation equation follows by multiplying through by $W_j$ and summing over $j$ to give
+\EQ\label{totmassbal}
+\frac{\p}{\p t} \left(\varphi\sum_\a s_\a\rho_\a\right) + \bnabla\cdot\sum_\a \rho_\a \bar\bv_\a \eq -\sum_m W_m I_m,
+\EN
+where $\bv_\a$ represents the barycentric velocity (see Table~\ref{trefframe}) defined by
+\EQ
+\rho \bv_\a \eq \sum_k\rho_k^\a \bar\bv_k^\a.
+\EN
+To obtain this result the following relations are used
+\EQ
+\sum_j W_j\nu_{ji} \eq W_i,
+\EN
+\EQ
+\sum_j W_j\nu_{jm}\eq W_m,
+\EN
+\EQ
+\rho_i^\a \eq W_i^{} C_i^\a,
+\EN
+\EQ
+\rho_\a \eq \sum_i \rho_i^\a.
+\EN
+
+In terms of the mass concentrations $\rho_i^\a$ the primary species transport equations become
+\BA
+\frac{\p}{\p t} &\varphi \left\{ s_l^{} \big(\rho_j^l + W_j\sum_i \nu_{ji} W_i^{-1}\rho_i^l\big) + W_j \sum_{\a\ne l} s_\a \sum_{i}\nu_{ji} W_i^{-1}\rho_i^\a \right\} \nonumber\\
+&\qquad + \bnabla\cdot\left[ \big(\rho_j^l \bar\bv_j^l + W_j \sum_i \nu_{ji} W_i^{-1} \rho_i^l \bar\bv_i^l\big) + W_j\sum_{i,\,\a\ne l} \nu_{ji} W_i^{-1}\rho_i^\a \bar\bv_i^\a \right] \nonumber\\
+&\qquad\qquad\eq -W_j\sum_m \nu_{jm}I_m.
+\EA
+Summing this equation over $j$ leads directly to Eqn.\eqref{totmassbal}.
+The transport equations Eqn.\eqref{molar_form} may also be written in terms of mol fractions as
+\BA\label{mol_frac_form}
+\frac{\p}{\p t} &\varphi \left\{ s_l^{} \eta_l^{}\big(x_j^l + \sum_i \nu_{ji} x_i^l\big) + \sum_{\a\ne l} s_\a^{} \eta_\a^{}\sum_{i}\nu_{ji} x_i^\a \right\} \nonumber\\
+&+ \bnabla\cdot\left[ \eta_l^{}\big(x_j^l \bar\bv_j^l + \sum_i \nu_{ji} x_i^l \bar\bv_i^l\big) + \sum_{i,\,\a\ne l} \eta_\a^{}\nu_{ji} x_i^\a \bar\bv_i^\a \right] \eq -\sum_m \nu_{jm}I_m.
+\EA
+
+\subsubsection{Diffusion}
+
+Given a reference velocity $\bomega_\a$ for phase $\a$, the average species fluid velocity $\bar\bv_k^\a$ can be separated into contributions from advection and diffusion by writing
+\BA
+\bar\bv_k^\a &\eq \bomega_\a + \bar\bv_k^\a - \bomega_\a,\\
+&\eq \bomega_\a + \bv_k^\a,
+\EA
+where the first term corresponds to the reference velocity describing advection and the second term $\bv_k^\a$ corresponds to the diffusion velocity
+\EQ
+\bv_k^\a \eq \bar\bv_k^\a - \bomega_\a. 
+\EN
+The reference velocity is defined as the weighted average
+\EQ
+\bomega_\a \eq \sum_k \omega_k^\a \bar\bv_k^\a,
+\EN
+with
+\EQ
+\sum_k\omega_k^\a \eq 1.
+\EN
+It follows that the weighted sum of the diffusion velocity is zero
+\EQ
+\sum_k \omega_k^\a \bv_k^\a \eq \sum_k \omega_k^\a \big(\bar\bv_k^\a - \bomega_\a\big) \eq \boldsymbol{0}.
+\EN
+The diffusive flux $~_{\bomega}\bJ_k^\a$ relative to reference velocity $\bomega_\a$ is defined as
+\EQ
+~_{\bomega}\bJ_k^\a \eq C_k^\a \big(\bar\bv_k^\a - \bomega_\a\big),
+\EN
+and satisfies the relation
+\EQ
+\sum_k\frac{\omega_k^\a}{C_k^\a}~_{\bomega}\bJ_k^\a \eq \boldsymbol{0},
+\EN
+implying that only $N\!-\!1$ of the diffusive fluxes are independent.
+Several different choices can be made for $\bomega_\a$ and the weight coefficients $\omega_k^\a$ leading to different forms for the fluid flow velocity and diffusive flux as listed in Table~\ref{trefframe}. The molar volume $\bar V_k^\a\!=\!\p V/\p n_k^\a$ satisfies the constraint
+\EQ
+\sum_k n_k^{\a} \bar V_k^\a \eq 1.
+\EN
+
+\begin{table}[t]\centering
+\tabcolsep=8pt
+\renewcommand{\arraystretch}{2}
+\caption{Reference frames for fluid velocity and diffusive flux.}\label{trefframe}
+
+\vspace{3mm}
+
+\begin{tabular}{lcc}
+\toprule[1.5pt]
+Reference Frame & Mean Flow Velocity $\bomega_\a$ & $\omega_k^\a$\\
+\midrule
+Barycentric & $\bv_\a = \dfrac{1}{\rho_\a}\sum_k\rho_k^\a\bar\bv_k^\a$ & $\chi_k^\a\!=\!\rho_k^\a/\rho_\a$\\
+Molecular & $\bu_\a = \dfrac{1}{\eta_\a}\sum_k C_k^\a \bar\bv_k^\a$ & $x_k^\a\!=\!C_k^\a/\eta_\a$\\
+Volumetric (Fickian) & $\bw_\a = \sum_k C_k^\a \bar{V}_k^\a \bar\bv_k^\a$ & $\phi_k^\a\!=\!C_k^\a \bar{V}_k^\a$\\
+Hittorf & $\bv_\a^\prime = \bar\bv_1^\a$ & 1, $k$=1; 0 otherwise\\
+\bottomrule[1.5pt]
+\end{tabular}
+\end{table}
+
+\subsubsection{Transformation of Diffusive Flux Among Reference Velocities}
+
+For two reference velocities $\bomega_\a$ and $\bomega_\a^\prime$ the corresponding diffusive velocity is defined as
+\EQ
+\bv_k^\a \eq \bar\bv_k^\a - \bomega_\a^{},
+\EN
+and
+\EQ
+\bv_k^{\a\,\prime} \eq \bar\bv_k^\a - \bomega_\a^\prime.
+\EN
+They are related by the transformation
+\BA
+\bv_k^{\a\,\prime} &\eq \bv_k^\a - \big(\bomega_\a^{\prime} - \bomega_\a^{}\big),\\
+&\eq \bv_k^\a - \sum_i \omega_i^{\a\,\prime} \bv_i^\a.\label{transformation}
+\EA
+
+\paragraph{Molecular to Barycentric Transformation.}
+The transformation of the diffusive flux from molecular to barycentric reference velocities has the form
+\EQ\label{trans1}
+~_{\bu}\bJ_k^\a \eq ~_{\bv}\bJ_k^\a - x_k^\a \sum_i ~_{\bv}\bJ_i^\a.
+\EN
+Introducing
+\EQ
+~_{\bv}\widetilde\bJ_k^\a \eq W_k ~_{\bv}\bJ_k^\a,
+\EN
+and multiplying through by $W_k$, Eqn.\eqref{trans1} becomes
+\EQ\label{trans2}
+W_k ~_{\bu}\bJ_k^\a \eq ~_{\bv}\widetilde\bJ_k^\a - x_k^\a W_k \sum_i W_i^{-1} ~_{\bv}\widetilde\bJ_i^\a.
+\EN
+Kee et al. (2003) relate the molecular and diffusive fluxes to Fick's law according to the relations
+\EQ
+~_{\bu}\bJ_k^\a \eq -\eta_\a D_\a \bnabla x_k^\a,
+\EN
+and
+\EQ
+~_{\bv}\widetilde\bJ_k^\a \eq -\rho_\a D_\a \bnabla\chi_k^\a,
+\EN
+respectively, corresponding to their Equations 12.158 and 12.160, p. 525--526. 
+It is demonstrated that these relations are compatible with Eqn.\eqref{trans2}. Indeed it follows that
+\BA
+W_k ~_{\bu}\bJ_k^\a &\eq -W_k\eta_\a D_\a \bnabla \left(\frac{W_k^{-1} \chi_k^\a}{\sum_i W_i^{-1}\chi_i^\a}\right),\\
+&\eq -\rho_\a D_\a \bnabla \chi_k^\a + \rho_\a D_\a x_k^\a W_k \sum_i W_i^{-1} \bnabla \chi_i^\a,\\
+&\eq ~_{\bv}\widetilde\bJ_k^\a - x_k^\a W_k \sum_i W_i^{-1} ~_{\bv}\widetilde\bJ_i^\a,
+\EA
+in agreement with Eqn.\eqref{trans2}. To obtain this result the following relations are used
+\EQ
+W_k \eta_\a x_k^\a \eq \rho_\a \chi_k^\a,
+\EN
+\EQ
+W_\a \eq \sum_k W_k x_k^\a \eq \frac{1}{\sum W_k^{-1} \chi_k^\a},
+\EN
+and
+\EQ
+\rho_\a \eq W_\a \eta_\a.
+\EN
+
+\subsection{Simplified System}
 
 For a multiphase system characterized with phase saturation $s_\a$, and Darcy velocity $\bq_\a$ the transport equations generalize to
 \EQ
@@ -2222,10 +2819,15 @@ P_g \eq P_\c^g + P_\w^{\rm sat}(T),
 and where $P_\w^{\rm sat}(T)$ denotes the saturation pressure of pure water. Of the three quantities: $P_g$, $P_\c^g$, and $T$, two may be specified and the other computed from Eqn.\eqref{totalp}.
 
 Solving Eqn.\eqref{massactco2} for the $\c$ partial pressure gives
+\BA
+P_\c^g &\eq \frac{K_\c}{\phi_\c} a_\c,\\
+&\eq \widetilde K_\c a_\c,
+\EA
+where an effective equilibrium constant $\widetilde K_\c$ is defined as
 \EQ
-P_\c^g \eq \frac{K_\c}{\phi_\c} a_\c.
+\widetilde K_\c \eq \frac{K_\c}{\phi_\c}.
 \EN
-The molality is related to the mole fraction by the equation
+For a two-component system molality is related to the mole fraction by the equation
 \begin{subequations}
 \EQ
 x_\c^l \eq\frac{m_\c W_\w}{1+m_\c W_\w},
@@ -2239,8 +2841,8 @@ where $W_\w$ denotes the formula weight of water.
 
 The concentration of $\c$ in the gas phase, $C_\c^g$, is obtained as
 \BA
-C_\c^g &\eq \frac{n_i^g}{V_g} \eq \frac{n_i^g}{N_g}\frac{N_g}{V_g} \eq \rho_\c y_i^g,\\
-&\eq \rho_\c \frac{f_\c}{\phi_\c P_\c},\\
+C_\c^g &\eq \frac{n_i^g}{V_g} \eq \frac{n_i^g}{N_g}\frac{N_g}{V_g} \eq \rho_\c^{} y_\c^g,\\
+&\eq \rho_\c \frac{f_\c}{\phi_\c P_g},\\
 &\eq \rho_\c K_\c \frac{a_\c}{\phi_\c P_g}.
 \EA
 
@@ -2255,10 +2857,264 @@ w_i \eq \frac{x_i W_i}{\sum_l x_l W_l}.
 \EN
 \end{subequations}
 
-\section{Stress-Strain Relations}
+\section{Stress-Strain 101}
 
 \setcounter{equation}{0}
 
+\subsection{Strain Tensor}
+
+The displacement at a point $\br$ = $(x_1,\,x_2,\,x_3)$ to point $\br'$ in a deformable media is defined as
+\EQ
+\bu\eq \br' - \br,
+\EN
+or in component form
+\EQ
+\e_i \eq x_i^\prime - x_i,
+\EN
+where $\bu$ represents the displacement vector. The distance between two points $ds$ is transformed to $ds'$ %(Einstein summation implied)
+\EQ
+{ds'}^2 \eq ds^2 + 2 \sum_{ik} \e_{ik} dx_i dx_k,
+\EN
+where the strain tensor is defined as
+\BA
+\e_{ik} &\eq \frac{1}{2}\left(\frac{\p u_i}{\p x_k} + \frac{\p u_k}{\p x_i} + \sum_l \frac{\p u_l}{\p x_i} \frac{\p u_l}{\p x_k}\right),\\
+&~\simeq~ \frac{1}{2}\left(\frac{\p u_i}{\p x_k} + \frac{\p u_k}{\p x_i}\right).
+\EA
+The strain tensor is symmetric $(\e_{ik} \!=\!\e_{ki})$ implying that it may be diagonalized
+\EQ
+\e_{ik} \eq u^{(i)} \delta_{ik}.
+\EN
+A volume element $dV$ to first order transforms as
+\EQ
+dV' \eq dV \big(1 + \sum_i \e_{ii}\big) \eq dV \big(1+ \sum_i \e^{(i)}\big),
+\EN
+with
+\EQ
+\sum_i\e_{ii} \eq \sum_i\frac{\p u_i}{\p x_i} \eq \bnabla\cdot\bu.
+\EN
+
+\subsection{Stress Tensor}
+
+The force acting on a body is related to the divergence of the stress tensor $\sigma_{ik}$ 
+\EQ
+F_i \eq \sum_k \frac{\p\sigma_{ik}}{\p x_k} \eq \sum_k \p_k\sigma_{ik},
+\EN
+where $\p_k\!=\!\p/\p x_k$. The stress tensor must be symmetric $(\sigma_{ik}\!=\!\sigma_{ki})$.
+
+\subsubsection{Fundamental Thermodynamic Relations.}
+\paragraph{Energy}
+\EQ
+d\E \eq T dS + \sum_{ik} \sigma_{ik} d\e_{ik}.
+\EN
+\EQ
+\sigma_{ik} \eq \left(\frac{\p\E}{\p \e_{ik}}\right)_S.
+\EN
+\paragraph{Free Energy}
+\EQ
+F \eq \E - TS.
+\EN
+\EQ
+dF \eq -S dT + \sum_{ik} \sigma_{ik} d\e_{ik}.
+\EN
+\EQ
+\sigma_{ik} \eq \left(\frac{\p F}{\p \e_{ik}}\right)_T.
+\EN
+\paragraph{Gibbs Free Energy}
+\EQ
+G \eq \E- TS + \sum_{ik} \sigma_{ik} \e_{ik}.
+\EN
+\EQ
+dG \eq -S dT - \sum_{ik} \e_{ik} d\sigma_{ik}.
+\EN
+\EQ
+\e_{ik} \eq -\left(\frac{\p G}{\p\sigma_{ik}}\right)_T.
+\EN
+For $\sigma_{ik} \!=\! -p \delta_{ik}$,
+\EQ
+d\E \eq T dS -pdV.
+\EN
+and
+\EQ
+dG \eq -S dT + Vdp.
+\EN
+
+\subsection{\sl Lam\'e Coefficients}
+
+For a deformed isotropic body
+\BA
+F &\eq F_0 + \frac{1}{2} \sum_{i} \lambda \e_{ii}^2 + \mu  \sum_{ik} \e_{ik}^2 + \ldots,\\
+&\eq \mu \big(\e_{ik} - \frac{1}{3} \delta_{ik} \sum_{l} \e_{ll}\big)^2 + \frac{1}{2} K  \sum_{l} \e_{ll}^2,
+\EA
+with Lam\'e coefficients $\lambda$ and $\mu$, where $F_0$ is the free energy of the undeformed body which is omitted in the second form of the free energy and in what follows, and where $K$ (bulk modulus, modulus of hydrostatic compression) is related to $\lambda$ and $\mu$ (shear modulus, modulus of rigidity) by
+\EQ
+K \eq \lambda + \frac{2}{3} \mu.
+\EN
+The stress tensor has the form
+\BA
+\sigma_{ik} &\eq \left(\frac{\p F}{\p \e_{ik}}\right)_T,\\
+&\eq K \delta_{ik} \sum_{l} \e_{ll} + 2 \mu \big(\e_{ik}-\frac{1}{3} \delta_{ik} \sum_{l} \e_{ll}\big),\\
+&\eq 2 \mu \e_{ik} + \lambda \delta_{ik} \sum_l \e_{ll},
+\EA
+with
+\EQ
+K\eq \lambda + \frac{2}{3} \mu.
+\EN
+Conversely
+\EQ
+\e_{ik} \eq \frac{1}{9K} \delta_{ik} \sum_{l} \s_{ll} + \frac{1}{2\mu} \big(\s_{ik} - \frac{1}{3} \delta_{ik} \sum_{l} \s_{ll}\big).
+\EN
+It follows that
+\EQ
+\sum_{l}\e_{ll} \eq \frac{1}{3K}\sum_{l}\s_{ll},
+\EN
+or
+\EQ
+K \eq \frac{1}{3}\frac{\sum_{l}\s_{ll}}{\sum_{l}\e_{ll}}.
+\EN
+
+According to Euler's theorem
+\EQ
+F \eq \frac{1}{2} \sum_{ik} \s_{ik} \e_{ik}.
+\EN
+
+From the quadratic form of the elastic energy
+\EQ
+\e_{ik} \eq \frac{\p F}{\p\s_{ik}}.
+\EN
+These equations represent a generalization of Hooke's law
+\EQ
+\E\eq \frac{1}{2}k x^2,
+\EN
+and
+\EQ
+F \eq -\frac{\p\E}{\p x} \eq -kx.
+\EN
+
+\subsubsection{``Hydrostatic'' Compression}
+\EQ
+\s_{ik} \eq -p\delta_{ik},
+\EN
+implying 
+\EQ
+\e_{ik} \eq -\frac{p}{3K} \delta_{ik},
+\EN
+and
+\EQ
+\sum_l \e_{ll} \eq -\frac{p}{K}.
+\EN
+
+\subsection{Homogeneous Deformation}
+
+\EQ
+F \eq \frac{E}{2(1+\s)} \left[\e_{ik}^2 + \frac{\s}{1-2\s} \sum_l \e_{ll}^2\right],
+\EN
+\EQ
+\s_{ik} \eq \frac{E}{1+\s}\left(\e_{ik} + \frac{\s}{1-2\s}\delta_{ik} \sum_l \e_{ll} \right),
+\EN
+\EQ
+\e_{ik} \eq \frac{1}{E} \left[(1+\s)\s_{ik} - \s\delta_{ik} \sum_l \s_{ll}\right],
+\EN
+\begin{subequations}
+\EQ
+\s_{xx} \eq \frac{E}{(1+\s)(1-2\s)} \left[\big(1-\s\big) \e_{xx} + \s \big(\e_{yy}+\e_{zz}\big)\right],
+\EN
+\EQ
+\s_{yy} \eq \frac{E}{(1+\s)(1-2\s)} \left[\big(1-\s\big) \e_{yy} + \s \big(\e_{xx}+\e_{zz}\big)\right],
+\EN
+\EQ
+\s_{zz} \eq \frac{E}{(1+\s)(1-2\s)} \left[\big(1-\s\big) \e_{zz} + \s \big(\e_{xx}+\e_{yy}\big)\right],
+\EN
+\EQ
+\s_{xy}\eq\frac{E}{1+\s} \e_{xy}, \ \s_{xz}\eq\frac{E}{1+\s} \e_{xz}, \ \s_{yz}\eq\frac{E}{1+\s} \e_{yz}.
+\EN
+\end{subequations}
+
+\subsubsection{Simple Extension/Compression of a Rod}
+
+\EQ
+\s_{zz} \eq p, \ \s_{ik} = 0, \ (i\ne k),
+\EN
+\EQ
+\e_{xx} \eq \e_{yy} \eq -\frac{1}{3}\left(\frac{1}{2\mu}-\frac{1}{3K}\right)p,
+\EN
+\EQ
+\e_{zz} \eq \frac{1}{3}\left(\frac{1}{3K}+\frac{1}{\mu}\right)p.
+\EN
+\EQ
+\e_{zz} \eq \frac{p}{E},
+\EN
+where
+\EQ
+E \eq \frac{9K\mu}{3K+\mu}.
+\EN
+
+Possion's ratio is defined as
+\EQ
+\nu \eq -\frac{\s_{xx}}{\s_{zz}},
+\EN
+where
+\EQ
+\nu \eq \frac{1}{2} \left(\frac{3K-2\mu}{3K+\mu}\right) \eq \frac{1}{2} \frac{\lambda}{\lambda + \mu},
+\EN
+and conversely
+\EQ
+\lambda \eq \frac{2\nu\mu}{1-2\nu}.
+\EN
+
+\subsection{Biot's Theory of Deformation}
+
+\EQ
+\e_{ik} \eq \frac{1}{2G}\s_{ik} - \frac{2\nu}{E} \sum_l \s_{ll} + \frac{1}{H} p,
+\EN
+\EQ
+\s_{ik} \eq 2\mu \e_{ik} + \left[\lambda\sum_l\e_{ll} - \a p\right] \delta_{ik}.
+\EN
+\EQ
+\sum_l\s_{ll} \eq \frac{E}{1-2\nu} \sum_l\e_{ll} -\frac{E}{1-2\nu}\frac{p}{H}.
+\EN
+\EQ
+\a \eq \frac{2G(1+\nu)}{3H(1-2\nu)} \eq \frac{E}{3H(1-2\nu)}, \ \ \ G \eq \frac{E}{2(1+\nu)}.
+\EN
+
+\subsection{Non-isothermal Systems}
+
+\EQ
+F(T,\, \e_{ik}) \eq F_0(T)-K\b(T-T_0) \sum_l \e_{ll} + \mu \big(\e_{ik}-\frac{1}{3}\delta_{ik}\sum_l \e_{ll}\big)^2+\frac{1}{2}K \sum_l \e_{ll}^2,
+\EN
+\EQ
+\s_{ik} \eq -K \b (T-T_0) \delta_{ik} + K \delta_{ik} \sum_l \e_{ll} + 2\mu \big(\e_{ik} - \frac{1}{3} \delta_{ik} \sum_l \e_{ll}\big).
+\EN
+
+%\subsubsection{Adiabatic}
+
+\subsection{Equilibrium}
+
+The condition for equilibrium in a body under gravitational forces has the form
+\EQ
+\sum_k \frac{\p\sigma_{ik}}{\p x_k} + \rho g_i - K\b \frac{\p T}{\p x_k} -\a \frac{\p p}{\p x_i} \eq 0.
+\EN
+
+\subsection{Equation of Motion}
+
+The equation of motion for the strains in a body under gravitational forces has the form
+\EQ
+\rho\frac{\p^2 u_i}{\p t^2} \eq \sum_k \frac{\p\sigma_{ik}}{\p x_k} + \rho g_i - K\b \frac{\p T}{\p x_k} - \a \frac{\p p}{\p x_k}.
+\EN
+For an isotropic medium this equation becomes using vector notation
+\BA
+\rho\frac{\p^2\bu}{\p t^2} &\eq \frac{E}{2(1+\sigma)} \nabla^2 \bu + \frac{E}{2(1+\sigma)(1-2\sigma)} \bnabla \big(\bnabla\cdot\bu\big) + \rho\bg - \frac{E\b}{3(1-2\s)} \bnabla T -\a \bnabla p,\\
+&\eq 0 \ \text{(equilibrium)}\nonumber.
+\EA
+\EQ
+K \eq \frac{E}{3(1-2\s)}.
+\EN
+\EQ
+\bnabla \bnabla\cdot\bu \eq \nabla^2 + \bnabla\times\bnabla\times\bu.
+\EN
+
+\subsection{Finite Element Formulation}
+
+\begin{comment}
 The functional relation of porosity to pore compressibility $c_{rp}$ and expansibility $c_{rT}$ is assumed to have the form
 \EQ
 \varphi \eq \varphi_{0} \big[1+c_{rp} (p-p_{0})-c_{rT} (T-T_{0})\big],
@@ -2277,6 +3133,7 @@ and
 c_{rT} \eq -\frac{1}{\varphi} \frac{\p \varphi}{\p T}.
 \EN
 As defined, both quantities $c_{rp}$ and $c_{rT}$ are positive for normal materials.
+\end{comment}
 
 \section{Global Mass Conservation}
 
@@ -2288,15 +3145,15 @@ Taking the transport equations in the form
 \EN
 with
 \EQ
-\frac{\p\varphi_m}{\p t} \eq \overline V_m I_m,
+\frac{\p\varphi_m}{\p t} \eq \bar V_m I_m,
 \EN
 global mass conservation equations are obtained by integrating over the computational domain $V$ with bounding surface $\p V$ to give
 \EQ
-\frac{d}{dt}\int_V \left[\varphi \sum_\a s_\a \Psi_j^\a +\sum_k\nu_{jk} S_k + \sum_m \overline V_m^{-1} \varphi_m \right] dV \eq -\sum_\a\int_{\p V} \bOmega_j^\a \cdot \bdS.
+\frac{d}{dt}\int_V \left[\varphi \sum_\a s_\a \Psi_j^\a +\sum_k\nu_{jk} S_k + \sum_m \bar V_m^{-1} \varphi_m \right] dV \eq -\sum_\a\int_{\p V} \bOmega_j^\a \cdot \bdS.
 \EN
 Defining $N_j$ equal to the total mass in place at time $t$ as
 \EQ
-N_j (t)\eq\int_V \left[\varphi \sum_\a s_\a \Psi_j^\a + \sum_k\nu_{jk} S_k + \sum_m \overline V_m^{-1} \varphi_m \right] dV,
+N_j (t)\eq\int_V \left[\varphi \sum_\a s_\a \Psi_j^\a + \sum_k\nu_{jk} S_k + \sum_m \bar V_m^{-1} \varphi_m \right] dV,
 \EN
 gives
 \EQ
@@ -2357,10 +3214,79 @@ KQ > Q_{\rm max}\sim 10^3,
 \EN
 leading to an unrealistically large precipitation rate. When this occurs it is necessary to reduce the time step. 
 
+
+\section{Flow Equations}
+
+\setcounter{equation}{0}
+
+\subsection{Richards Equation}
+The governing equations for flow in variably saturated porous media are detailed below.
+The flow and transport equations are solved sequentially, with saturation state and velocity field passed from the flow to the transport equations at each time step. Because of the relatively short time spans considered ($\sim$ 1 year), there is negligible change in porosity and permeability due to reaction. The flow equations based on Richards equation have the form
+\EQ
+\frac{\p}{\p t} \big(\varphi s \rho\big) + \bnabla\cdot\rho\bq \eq 0,
+\EN
+with fluid density $\rho$, porosity $\varphi$, and liquid saturation $s$. The Darcy velocity $\bq$ is given by
+\EQ
+\bq \eq -\frac{kk_r}{\mu} \bnabla\big(p-\rho g \bz\big),
+\EN
+with fluid pressure $p$, viscosity $\mu$, acceleration of gravity $g$, intrinsic permeability $k$, and relative permeability $k_r$ a function of saturation. The Van Genuchten relation is used to relate capillary pressure to liquid saturation and the Burdine correlation is used for relative permeability.
+
+\subsection{Finite Volume Formulation}
+
+Finite volume techniques are used to discretize the flow and transport partial differential equations on a structured grid. Use of a structured grid requires introducing in inactive cells at irregular boundaries at the river boundary and ground surface. A fully backward implicit approach with upwinding is used with sequential coupling between flow and transport modes.
+
+The residual equation for flow has the finite volume discretized form
+\EQ\label{richards_ifv}
+R_n^{(k+1)} \eq \frac{(\varphi\rho)_n^{(k+1)} - (\varphi\rho)_n^{(k)}}{\Delta t_{k}} V_n + \sum_{n'} A_{nn'}^{} F_{nn'}^{(k+1)} \eq 0,
+\EN
+for the $k\!+\!1^{\rm st}$ time step with variable time step size $\Delta t_k\!=\!t_{k+1}\!-\!t_k$, where the sum $n'$ is over all control volumes connected to the $n$th node with volume $V_n$ and interfacial area $A_{nn'}$.
+
+The discretized flux $F_{nn'}$ at the interface  $n\!-\!n'$ between nodes $n$ and $n'$ has the following form
+\EQ
+F_{nn'} \eq - \rho_{nn'} \left(\frac{kk_r}{\mu}\right)_{nn'}\left[\frac{P_{n'}-P_n-\rho_{nn'} g z_{nn'}}{d_{n'}+d_n}\right],
+\EN
+where the interface quantities $(\ )_{nn'}$ are calculated as follows.
+The density $\rho_{nn'}$ at the interface is computed according to the arithmetic mean
+\BA
+\rho_{nn'} & \eq \frac{M_{n'}+M_n}{V_{n'}+V_n} \eq  \frac{\rho_{n'}V_{n'}+\rho_n V_n}{V_{n'}+V_n},\\
+&\eq \frac{d_n\rho_{n'}+d_{n'}\rho_n}{d_{n'}+d_n}.
+\EA
+The permeability is computed according to the harmonic mean
+\EQ
+k_{nn'} \eq \frac{k_{n'}k_{n}}{d_n k_{n'} + d_{n'} k_{n}} (d_{n'}+d_n).
+\EN
+The mobility factor $(k_r/\mu)_{nn'}$ at the interface is calculated using upstream weighting
+\EQ
+\left(\frac{k_r}{\mu}\right)_{nn'} \eq \omega_{nn'} \left(\frac{k_r}{\mu}\right)_{n'} + (1-\omega_{nn'}) \left(\frac{k_r}{\mu}\right)_{n},
+\EN
+where $\omega_{nn'}=0$ if $q_{nn'}>0$, and $\omega_{nn'}=1$ if $q_{nn'}<0$.
+
+At the Columbia River boundary a conductance boundary condition is imposed to dampen the river stage fluctuations.
+%{\color{black}
+At an exterior face $b$ of the boundary cell $n$, the boundary flux is given by
+\EQ
+F_{nb} \eq -\rho \left(\frac{kk_r}{\mu}\right)\left[\frac{P_{b}-P_n-\rho g z}{d_{nb}}\right],
+\EN
+where $P_b$ and $P_n$ are the pressures at the face and cell center, respectively, and $d_{nb}$ is the distance between the face and cell center.
+The permeability at the river boundary is set to the value
+\EQ
+k \eq C \, d_{nb},
+\EN
+where the coefficient $C$ is referred to as the boundary conductance.
+
+
 \section{References}
 
+\begin{description}
+
+\item Kee, R.J., M.E. Coltrin and P. Glarborg (2003) Chemically Reacting Flow: Theory and Practice, pp. 848.
+
+\end{description}
+
 \end{document}
-%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \begin{comment}
 \begin{subequations}
 \BA
@@ -2418,7 +3344,7 @@ Sorbed concentrations give
 \begin{comment}
 \noindent Conversion to Mass Units (mol/dm$^3$ $\rightarrow$ mol/g)
 \EQ
-S_j^M \eq \frac{\overline N_j}{M_s} \eq \frac{\overline N_j}{V} \frac{V}{V_s} \frac{V_s}{M_s} \eq \frac{S_j}{(1-\varphi)\rho_s}
+S_j^M \eq \frac{\bar N_j}{M_s} \eq \frac{\bar N_j}{V} \frac{V}{V_s} \frac{V_s}{M_s} \eq \frac{S_j}{(1-\varphi)\rho_s}
 \EN
 \EQ
 {\rm CEC} \eq \frac{N_{\rm sites}}{M_s} \eq \frac{N_{\rm sites}}{A_s} \frac{A_s}{M_s} \eq \zeta_s \A_s

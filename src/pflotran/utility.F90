@@ -3,8 +3,13 @@ module Utility_module
 #include "definitions.h"
 
   interface DotProduct
+    module procedure DotProduct1
     module procedure DotProduct2
     module procedure DotProduct3
+  end interface
+  
+  interface CrossProduct
+    module procedure CrossProduct1
   end interface
   
 contains
@@ -435,6 +440,27 @@ end function DotProduct3
 
 ! ************************************************************************** !
 !
+! CrossProduct1: Computes the cross product between two 3d vectors
+! author: Glenn Hammond
+! date: 10/30/09
+!
+! ************************************************************************** !
+function CrossProduct1(v1,v2)
+
+  implicit none
+  
+  PetscReal :: v1(3), v2(3)
+  
+  PetscReal :: CrossProduct1(3)
+  
+  CrossProduct1(1) = v1(2)*v2(3)-v1(3)*v2(2)
+  CrossProduct1(2) = v1(3)*v2(1)-v1(1)*v2(3)
+  CrossProduct1(3) = v1(1)*v2(2)-v1(2)*v2(1)
+
+end function CrossProduct1
+
+! ************************************************************************** !
+!
 ! Erf: Computes an approximate to erf(x)
 ! author: Glenn Hammond
 ! date: 05/20/09
@@ -701,5 +727,55 @@ subroutine UtilityReadArray(array,array_size,comment,input,option)
   nullify(temp_array)
 
 end subroutine UtilityReadArray
+
+! ************************************************************************** !
+!
+! SearchOrderedArray: Locates an integer value in an ordered array and
+!                     returned the index
+! author: Glenn Hammond
+! date: 10/21/09
+!
+! ************************************************************************** !
+function SearchOrderedArray(array,array_length,int_value)
+
+  implicit none
+
+  PetscInt :: array_length 
+  PetscInt :: array(array_length)
+  PetscInt :: int_value
+
+  PetscInt :: SearchOrderedArray
+  PetscInt :: i
+  PetscInt :: array_value
+  PetscInt :: upper_bound, lower_bound
+
+  SearchOrderedArray = -1
+
+  upper_bound = array_length
+  lower_bound = 1
+
+  i = array_length/2
+  if (i == 0) i = 1
+
+  do 
+    array_value = array(i)
+    if (array_value == int_value) then
+      SearchOrderedArray = i
+      return
+    endif
+    if (array_value > int_value) then
+      upper_bound = i 
+    else
+      lower_bound = i 
+    endif
+    i = lower_bound + (upper_bound-lower_bound) / 2
+    if (i == lower_bound) then
+      if (array(lower_bound) == int_value) SearchOrderedArray = lower_bound
+      if (array(upper_bound) == int_value) SearchOrderedArray = upper_bound
+      return
+    endif
+  enddo
+
+end function SearchOrderedArray
 
 end module Utility_module

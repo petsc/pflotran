@@ -18,19 +18,24 @@ module Discretization_module
 #include "finclude/petscda.h"
 #include "finclude/petscda.h90"
 
+  type, public :: dm_ptr_type
+    DM :: sgdm  ! structured grid dm (PETSc DA)
+    type(ugdm_type), pointer :: ugdm ! unstructured grid dm
+  end type dm_ptr_type
+
   type, public :: discretization_type
     PetscInt :: itype  ! type of discretization (e.g. structured, unstructured, etc.)
     character(len=MAXWORDLENGTH) :: ctype
     PetscReal :: origin(3) ! origin of global domain
     type(grid_type), pointer :: grid  ! pointer to a grid object
     type(amrgrid_type), pointer :: amrgrid  ! pointer to an amr grid object
-    DM :: dm_1_dof, dm_nflowdof, dm_ntrandof
-    DM, pointer :: dmc_nflowdof(:), dmc_ntrandof(:)
+    type(dm_ptr_type), pointer :: dmc_nflowdof(:), dmc_ntrandof(:)
       ! Arrays containing hierarchy of coarsened DMs, for use with Galerkin 
       ! multigrid.  Element i of each array is a *finer* DM than element i-1.
-
     PetscInt :: dm_index_to_ndof(5) ! mapping between a dm_ptr to the number of degrees of freedom
-
+    type(dm_ptr_type), pointer :: dm_1dof
+    type(dm_ptr_type), pointer :: dm_nflowdof
+    type(dm_ptr_type), pointer :: dm_ntrandof
   end type discretization_type
 
   public :: DiscretizationCreate, &
@@ -79,11 +84,17 @@ function DiscretizationCreate()
   discretization%origin = 0.d0
 
   ! nullify DM pointers
-  discretization%dm_1_dof = 0
-  discretization%dm_nflowdof = 0
-  discretization%dm_ntrandof = 0
   nullify(discretization%dmc_nflowdof)
   nullify(discretization%dmc_ntrandof)
+  allocate(discretization%dm_1dof)
+  allocate(discretization%dm_nflowdof)
+  allocate(discretization%dm_ntrandof)
+  discretization%dm_1dof%sgdm = 0
+  discretization%dm_nflowdof%sgdm = 0
+  discretization%dm_ntrandof%sgdm = 0
+  nullify(discretization%dm_1dof%ugdm)
+  nullify(discretization%dm_nflowdof%ugdm)
+  nullify(discretization%dm_ntrandof%ugdm)
   
   nullify(discretization%grid)
   nullify(discretization%amrgrid)
@@ -115,8 +126,10 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
   character(len=MAXWORDLENGTH) :: word
   type(grid_type), pointer :: grid
   type(structured_grid_type), pointer :: str_grid
+  type(unstructured_grid_type), pointer :: un_str_grid
   type(amrgrid_type), pointer :: amrgrid
   character(len=MAXWORDLENGTH) :: structured_grid_ctype
+  character(len=MAXSTRINGLENGTH) :: filename
   PetscInt :: structured_grid_itype
   PetscInt :: nx, ny, nz
   PetscInt :: i
@@ -164,6 +177,8 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
               end select
             case('unstructured')
               discretization%itype = UNSTRUCTURED_GRID
+              call InputReadWord(input,option,filename,PETSC_TRUE)
+              call InputErrorMsg(input,option,'unstructured filename','GRID')
             case('amr')
               discretization%itype = AMR_GRID
             case default
@@ -321,6 +336,11 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
       case(UNSTRUCTURED_GRID,STRUCTURED_GRID)
         grid => GridCreate()
         select case(discretization%itype)
+          case(UNSTRUCTURED_GRID)
+            un_str_grid => UnstructuredGridCreate()
+            call UnstructuredGridRead(un_str_grid,filename,option)
+            grid%unstructured_grid => un_str_grid
+            grid%nmax = un_str_grid%num_cells_global
           case(STRUCTURED_GRID)      
             if (nx*ny*nz <= 0) &
               call printErrMsg(option,'NXYZ not set correctly for structured grid.')
@@ -375,17 +395,25 @@ subroutine DiscretizationCreateDMs(discretization,option)
   PetscErrorCode :: ierr
   PetscInt :: i
 
-  discretization%dm_index_to_ndof(ONEDOF) = 1
-  discretization%dm_index_to_ndof(NPHASEDOF) = option%nphase
-  discretization%dm_index_to_ndof(NFLOWDOF) = option%nflowdof
-  discretization%dm_index_to_ndof(NTRANDOF) = option%ntrandof
+  select case(discretization%itype)
+    case(STRUCTURED_GRID)
+      discretization%dm_index_to_ndof(ONEDOF) = 1
+      discretization%dm_index_to_ndof(NPHASEDOF) = option%nphase
+      discretization%dm_index_to_ndof(NFLOWDOF) = option%nflowdof
+      discretization%dm_index_to_ndof(NTRANDOF) = option%ntrandof
+    case(UNSTRUCTURED_GRID)
+      call UnstructuredGridDecompose(discretization%grid%unstructured_grid, &
+                                     option)
+    case(AMR_GRID)
+  end select
+
 
   !-----------------------------------------------------------------------
   ! Generate the DA objects that will manage communication.
   !-----------------------------------------------------------------------
   ndof = 1
-  call DiscretizationCreateDM(discretization,discretization%dm_1_dof,ndof, &
-                              stencil_width,option)
+  call DiscretizationCreateDM(discretization,discretization%dm_1dof, &
+                              ndof,stencil_width,option)
   
   if (option%nflowdof > 0) then
     ndof = option%nflowdof
@@ -403,10 +431,12 @@ subroutine DiscretizationCreateDMs(discretization,option)
     case(STRUCTURED_GRID)
       ! this function must be called to set up str_grid%nxs, etc.
       call StructGridComputeLocalBounds(discretization%grid%structured_grid, &
-                                        discretization%dm_1_dof)    
+                                        discretization%dm_1dof%sgdm)    
       discretization%grid%nlmax = discretization%grid%structured_grid%nlmax
       discretization%grid%ngmax = discretization%grid%structured_grid%ngmax
     case(UNSTRUCTURED_GRID)
+      discretization%grid%nlmax = discretization%grid%unstructured_grid%nlmax
+      discretization%grid%ngmax = discretization%grid%unstructured_grid%ngmax
     case(AMR_GRID)
       call AMRGridComputeLocalBounds(discretization%amrgrid)
   end select
@@ -420,7 +450,7 @@ end subroutine DiscretizationCreateDMs
 ! date: 02/08/08
 !
 ! ************************************************************************** !
-subroutine DiscretizationCreateDM(discretization,dm,ndof,stencil_width, &
+subroutine DiscretizationCreateDM(discretization,dm_ptr,ndof,stencil_width, &
                                   option)
 
   use Option_module
@@ -428,7 +458,7 @@ subroutine DiscretizationCreateDM(discretization,dm,ndof,stencil_width, &
   implicit none
   
   type(discretization_type) :: discretization
-  DM :: dm
+  type(dm_ptr_type), pointer :: dm_ptr
   PetscInt :: ndof
   PetscInt :: stencil_width
   type(option_type) :: option
@@ -436,8 +466,10 @@ subroutine DiscretizationCreateDM(discretization,dm,ndof,stencil_width, &
   select case(discretization%itype)
     case(STRUCTURED_GRID)
       call StructuredGridCreateDA(discretization%grid%structured_grid, &
-                                  dm,ndof,stencil_width,option)
+                                  dm_ptr%sgdm,ndof,stencil_width,option)
     case(UNSTRUCTURED_GRID)
+      call UnstructuredGridCreateUGDM(discretization%grid%unstructured_grid, &
+                                      dm_ptr%ugdm,ndof,option)
   end select
 
 end subroutine DiscretizationCreateDM
@@ -463,21 +495,24 @@ subroutine DiscretizationCreateVector(discretization,dm_index,vector, &
   PetscInt :: ndof
   PetscErrorCode :: ierr
   
-  DM :: dm_ptr
+  type(dm_ptr_type), pointer :: dm_ptr
   
-  dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
   select case(discretization%itype)
     case(STRUCTURED_GRID)
       select case (vector_type)
         case(GLOBAL)
-          call DACreateGlobalVector(dm_ptr,vector,ierr)
+          call DACreateGlobalVector(dm_ptr%sgdm,vector,ierr)
         case(LOCAL)
-          call DACreateLocalVector(dm_ptr,vector,ierr)
+          call DACreateLocalVector(dm_ptr%sgdm,vector,ierr)
         case(NATURAL)
-          call DACreateNaturalVector(dm_ptr,vector,ierr)
+          call DACreateNaturalVector(dm_ptr%sgdm,vector,ierr)
       end select
     case(UNSTRUCTURED_GRID)
+      call UGDMCreateVector(discretization%grid%unstructured_grid, &
+                            dm_ptr%ugdm,vector, &
+                            vector_type,option)
     case(AMR_GRID)
       select case(dm_index)
         case(ONEDOF)
@@ -529,15 +564,15 @@ function DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   type(discretization_type) :: discretization
   PetscInt :: dm_index
   
-  DM :: DiscretizationGetDMPtrFromIndex
+  type(dm_ptr_type), pointer :: DiscretizationGetDMPtrFromIndex
   
   select case (dm_index)
     case(ONEDOF)
-      DiscretizationGetDMPtrFromIndex = discretization%dm_1_dof
+      DiscretizationGetDMPtrFromIndex => discretization%dm_1dof
     case(NFLOWDOF)
-      DiscretizationGetDMPtrFromIndex = discretization%dm_nflowdof
+      DiscretizationGetDMPtrFromIndex => discretization%dm_nflowdof
     case(NTRANDOF)
-      DiscretizationGetDMPtrFromIndex = discretization%dm_ntrandof
+      DiscretizationGetDMPtrFromIndex => discretization%dm_ntrandof
 
   end select  
   
@@ -550,13 +585,13 @@ function DiscretizationGetDMCPtrFromIndex(discretization,dm_index)
   type(discretization_type) :: discretization
   PetscInt :: dm_index
   
-  DM, pointer :: DiscretizationGetDMCPtrFromIndex(:)
+  type(dm_ptr_type), pointer :: DiscretizationGetDMCPtrFromIndex(:)
   
   select case (dm_index)
     case(NFLOWDOF)
-      DiscretizationGetDMCPtrFromIndex = discretization%dmc_nflowdof
+      DiscretizationGetDMCPtrFromIndex => discretization%dmc_nflowdof
     case(NTRANDOF)
-      DiscretizationGetDMCPtrFromIndex = discretization%dmc_ntrandof
+      DiscretizationGetDMCPtrFromIndex => discretization%dmc_ntrandof
   end select  
   
 end function DiscretizationGetDMCPtrFromIndex
@@ -618,18 +653,22 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   PetscInt :: ngmax
   PetscInt :: imax, nlevels, ln, npatches, pn, i
   PetscInt :: flowortransport
-  DM :: dm_ptr
+  type(dm_ptr_type), pointer :: dm_ptr
   ISLocalToGlobalMapping :: ptmap
   PetscTruth :: islocal
 
-  dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
     
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      call DAGetMatrix(dm_ptr,mat_type,Jacobian,ierr)
+      call DAGetMatrix(dm_ptr%sgdm,mat_type,Jacobian,ierr)
       call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
       call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
     case(UNSTRUCTURED_GRID)
+      call UGDMCreateJacobian(discretization%grid%unstructured_grid, &
+                              dm_ptr%ugdm,mat_type,Jacobian,option)
+      call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
+      call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
     case(AMR_GRID)
        select case(dm_index)
        case(ONEDOF)
@@ -701,22 +740,30 @@ subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
 
   PetscInt :: mg_levels
   PetscInt :: refine_x, refine_y, refine_z
-  DM, target :: dm_ptr
-  DM, pointer :: dmc_ptr(:)
+  type(dm_ptr_type), pointer :: dm_ptr
+  type(dm_ptr_type), pointer :: dmc_ptr(:)
   PetscInt :: i
-  DM, pointer :: dm_fine_ptr
+  type(dm_ptr_type), pointer :: dm_fine_ptr
     ! Used to point to finer-grid DM in the loop that constructst the 
     ! interpolation hierarchy.
   
   mg_levels = max(mg_levels_x, mg_levels_y, mg_levels_z)
-  dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
 !  dmc_ptr = DiscretizationGetDMCPtrFromIndex(discretization,dm_index)
   select case (dm_index)
     case(NFLOWDOF)
       allocate(discretization%dmc_nflowdof(mg_levels))
+      do i=1, mg_levels
+        discretization%dmc_nflowdof(i)%sgdm = 0
+        nullify(discretization%dmc_nflowdof(i)%ugdm)
+      enddo
       dmc_ptr => discretization%dmc_nflowdof
     case(NTRANDOF)
       allocate(discretization%dmc_ntrandof(mg_levels))
+      do i=1, mg_levels
+        discretization%dmc_ntrandof(i)%sgdm = 0
+        nullify(discretization%dmc_ntrandof(i)%ugdm)
+      enddo
       dmc_ptr => discretization%dmc_ntrandof
   end select  
    
@@ -732,11 +779,11 @@ subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
         if (i <= mg_levels - mg_levels_x ) refine_x = 1
         if (i <= mg_levels - mg_levels_y ) refine_y = 1
         if (i <= mg_levels - mg_levels_z ) refine_z = 1
-        call DASetRefinementFactor(dm_fine_ptr, refine_x, refine_y, refine_z, &
+        call DASetRefinementFactor(dm_fine_ptr%sgdm, refine_x, refine_y, refine_z, &
                                    ierr)
-        call DASetInterpolationType(dm_fine_ptr, DA_Q0, ierr)
-        call DACoarsen(dm_fine_ptr, option%mycomm, dmc_ptr(i), ierr)
-        call DAGetInterpolation(dmc_ptr(i), dm_fine_ptr, interpolation(i), &
+        call DASetInterpolationType(dm_fine_ptr%sgdm, DA_Q0, ierr)
+        call DACoarsen(dm_fine_ptr, option%mycomm, dmc_ptr(i)%sgdm, ierr)
+        call DAGetInterpolation(dmc_ptr(i)%sgdm, dm_fine_ptr%sgdm, interpolation(i), &
                                 PETSC_NULL_OBJECT, ierr)
         dm_fine_ptr => dmc_ptr(i)
       enddo
@@ -767,13 +814,13 @@ subroutine DiscretizationCreateColoring(discretization,dm_index,option,coloring)
   type(option_type) :: option
   ISColoring :: coloring
 
-  DM :: dm_ptr
+  type(dm_ptr_type), pointer :: dm_ptr
   
-  dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
     
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      call DAGetColoring(dm_ptr,IS_COLORING_GLOBAL,coloring,ierr)
+      call DAGetColoring(dm_ptr%sgdm,IS_COLORING_GLOBAL,coloring,ierr)
     case(UNSTRUCTURED_GRID)
   end select
   
@@ -814,14 +861,14 @@ subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_in
   Vec :: local_vec
   PetscInt :: dm_index
   PetscErrorCode :: ierr
-  DM :: dm_ptr
+  type(dm_ptr_type), pointer :: dm_ptr
   
-  dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
     
   select case(discretization%itype)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
-      call DMGlobalToLocalBegin(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
-      call DMGlobalToLocalEnd(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
+      call DMGlobalToLocalBegin(dm_ptr%sgdm,global_vec,INSERT_VALUES,local_vec,ierr)
+      call DMGlobalToLocalEnd(dm_ptr%sgdm,global_vec,INSERT_VALUES,local_vec,ierr)
       case(AMR_GRID)
          call SAMRGlobalToLocal(discretization%amrgrid%p_application, global_vec, local_vec, ierr);
   end select
@@ -847,13 +894,13 @@ subroutine DiscretizationLocalToGlobal(discretization,local_vec,global_vec,dm_in
   Vec :: global_vec
   PetscInt :: dm_index
   PetscErrorCode :: ierr
-  DM :: dm_ptr
+  type(dm_ptr_type), pointer :: dm_ptr
   
-  dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
   select case(discretization%itype)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
-      call DMLocalToGlobal(dm_ptr,local_vec,INSERT_VALUES,global_vec,ierr)
+      call DMLocalToGlobal(dm_ptr%sgdm,local_vec,INSERT_VALUES,global_vec,ierr)
       case(AMR_GRID)
          call VecCopy(local_vec, global_vec, ierr);
   end select
@@ -891,14 +938,14 @@ subroutine DiscretizationLocalToLocal(discretization,local_vec1,local_vec2,dm_in
   Vec :: local_vec2
   PetscInt :: dm_index
   PetscErrorCode :: ierr
-  DM :: dm_ptr
+  type(dm_ptr_type), pointer :: dm_ptr
   
-  dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      call DALocalToLocalBegin(dm_ptr,local_vec1,INSERT_VALUES,local_vec2,ierr)
-      call DALocalToLocalEnd(dm_ptr,local_vec1,INSERT_VALUES,local_vec2,ierr)
+      call DALocalToLocalBegin(dm_ptr%sgdm,local_vec1,INSERT_VALUES,local_vec2,ierr)
+      call DALocalToLocalEnd(dm_ptr%sgdm,local_vec1,INSERT_VALUES,local_vec2,ierr)
     case(UNSTRUCTURED_GRID)
     case(AMR_GRID)
        call SAMRLocalToLocal(discretization%amrgrid%p_application, local_vec1, local_vec2, ierr);
@@ -922,14 +969,14 @@ subroutine DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,d
   Vec :: natural_vec
   PetscInt :: dm_index
   PetscErrorCode :: ierr
-  DM :: dm_ptr
+  type(dm_ptr_type), pointer :: dm_ptr
   
-  dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      call DAGlobalToNaturalBegin(dm_ptr,global_vec,INSERT_VALUES,natural_vec,ierr)
-      call DAGlobalToNaturalEnd(dm_ptr,global_vec,INSERT_VALUES,natural_vec,ierr)
+      call DAGlobalToNaturalBegin(dm_ptr%sgdm,global_vec,INSERT_VALUES,natural_vec,ierr)
+      call DAGlobalToNaturalEnd(dm_ptr%sgdm,global_vec,INSERT_VALUES,natural_vec,ierr)
     case(UNSTRUCTURED_GRID)
   end select
   
@@ -951,14 +998,14 @@ subroutine DiscretizationNaturalToGlobal(discretization,natural_vec,global_vec,d
   Vec :: global_vec
   PetscInt :: dm_index
   PetscErrorCode :: ierr
-  DM :: dm_ptr
+  type(dm_ptr_type), pointer :: dm_ptr
   
-  dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      call DANaturalToGlobalBegin(dm_ptr,natural_vec,INSERT_VALUES,global_vec,ierr)
-      call DANaturalToGlobalEnd(dm_ptr,natural_vec,INSERT_VALUES,global_vec,ierr)
+      call DANaturalToGlobalBegin(dm_ptr%sgdm,natural_vec,INSERT_VALUES,global_vec,ierr)
+      call DANaturalToGlobalEnd(dm_ptr%sgdm,natural_vec,INSERT_VALUES,global_vec,ierr)
     case(UNSTRUCTURED_GRID)
   end select
   
@@ -983,13 +1030,13 @@ subroutine DiscretizationGlobalToLocalBegin(discretization,global_vec,local_vec,
   Vec :: local_vec
   PetscInt :: dm_index
   PetscErrorCode :: ierr
-  DM :: dm_ptr
+  type(dm_ptr_type), pointer :: dm_ptr
   
-  dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
   select case(discretization%itype)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
-      call DMGlobalToLocalBegin(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
+      call DMGlobalToLocalBegin(dm_ptr%sgdm,global_vec,INSERT_VALUES,local_vec,ierr)
   end select
   
 end subroutine DiscretizationGlobalToLocalBegin
@@ -1013,13 +1060,13 @@ subroutine DiscretizationGlobalToLocalEnd(discretization,global_vec,local_vec,dm
   Vec :: local_vec
   PetscInt :: dm_index
   PetscErrorCode :: ierr
-  DM :: dm_ptr
+  type(dm_ptr_type), pointer :: dm_ptr
   
-  dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
   select case(discretization%itype)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
-      call DMGlobalToLocalEnd(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
+      call DMGlobalToLocalEnd(dm_ptr%sgdm,global_vec,INSERT_VALUES,local_vec,ierr)
   end select
   
 end subroutine DiscretizationGlobalToLocalEnd
@@ -1040,13 +1087,13 @@ subroutine DiscretizationLocalToLocalBegin(discretization,local_vec1,local_vec2,
   Vec :: local_vec2
   PetscInt :: dm_index
   PetscErrorCode :: ierr
-  DM :: dm_ptr
+  type(dm_ptr_type), pointer :: dm_ptr
   
-  dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      call DALocalToLocalBegin(dm_ptr,local_vec1,INSERT_VALUES,local_vec2,ierr)
+      call DALocalToLocalBegin(dm_ptr%sgdm,local_vec1,INSERT_VALUES,local_vec2,ierr)
     case(UNSTRUCTURED_GRID)
   end select
 
@@ -1068,13 +1115,13 @@ subroutine DiscretizationLocalToLocalEnd(discretization,local_vec1,local_vec2,dm
   Vec :: local_vec2
   PetscInt :: dm_index
   PetscErrorCode :: ierr
-  DM :: dm_ptr
+  type(dm_ptr_type), pointer :: dm_ptr
   
-  dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      call DALocalToLocalEnd(dm_ptr,local_vec1,INSERT_VALUES,local_vec2,ierr)
+      call DALocalToLocalEnd(dm_ptr%sgdm,local_vec1,INSERT_VALUES,local_vec2,ierr)
     case(UNSTRUCTURED_GRID)
   end select
 
@@ -1096,13 +1143,13 @@ subroutine DiscretizGlobalToNaturalBegin(discretization,global_vec,natural_vec,d
   Vec :: natural_vec
   PetscInt :: dm_index
   PetscErrorCode :: ierr
-  DM :: dm_ptr
+  type(dm_ptr_type), pointer :: dm_ptr
   
-  dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      call DAGlobalToNaturalBegin(dm_ptr,global_vec,INSERT_VALUES,natural_vec,ierr)
+      call DAGlobalToNaturalBegin(dm_ptr%sgdm,global_vec,INSERT_VALUES,natural_vec,ierr)
     case(UNSTRUCTURED_GRID)
   end select
   
@@ -1124,13 +1171,13 @@ subroutine DiscretizGlobalToNaturalEnd(discretization,global_vec,natural_vec,dm_
   Vec :: natural_vec
   PetscInt :: dm_index
   PetscErrorCode :: ierr
-  DM :: dm_ptr
+  type(dm_ptr_type), pointer :: dm_ptr
   
-  dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      call DAGlobalToNaturalEnd(dm_ptr,global_vec,INSERT_VALUES,natural_vec,ierr)
+      call DAGlobalToNaturalEnd(dm_ptr%sgdm,global_vec,INSERT_VALUES,natural_vec,ierr)
     case(UNSTRUCTURED_GRID)
   end select
   
@@ -1152,13 +1199,13 @@ subroutine DiscretizNaturalToGlobalBegin(discretization,natural_vec,global_vec,d
   Vec :: global_vec
   PetscInt :: dm_index
   PetscErrorCode :: ierr
-  DM :: dm_ptr
+  type(dm_ptr_type), pointer :: dm_ptr
   
-  dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      call DANaturalToGlobalBegin(dm_ptr,natural_vec,INSERT_VALUES,global_vec,ierr)
+      call DANaturalToGlobalBegin(dm_ptr%sgdm,natural_vec,INSERT_VALUES,global_vec,ierr)
     case(UNSTRUCTURED_GRID)
   end select
   
@@ -1180,13 +1227,13 @@ subroutine DiscretizNaturalToGlobalEnd(discretization,natural_vec,global_vec,dm_
   Vec :: global_vec
   PetscInt :: dm_index
   PetscErrorCode :: ierr
-  DM :: dm_ptr
+  type(dm_ptr_type), pointer :: dm_ptr
   
-  dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
+  dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      call DANaturalToGlobalEnd(dm_ptr,natural_vec,INSERT_VALUES,global_vec,ierr)
+      call DANaturalToGlobalEnd(dm_ptr%sgdm,natural_vec,INSERT_VALUES,global_vec,ierr)
     case(UNSTRUCTURED_GRID)
   end select
   
@@ -1212,23 +1259,46 @@ subroutine DiscretizationDestroy(discretization)
       
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      if (discretization%dm_1_dof /= 0) &
-        call DMDestroy(discretization%dm_1_dof,ierr)
-      discretization%dm_1_dof = 0
-      if (discretization%dm_nflowdof /= 0) &
-        call DMDestroy(discretization%dm_nflowdof,ierr)
-      discretization%dm_nflowdof = 0
-      if (discretization%dm_ntrandof /= 0) &
-        call DMDestroy(discretization%dm_ntrandof,ierr)
-      discretization%dm_ntrandof = 0
+      if (discretization%dm_1dof%sgdm /= 0) &
+        call DMDestroy(discretization%dm_1dof%sgdm,ierr)
+      discretization%dm_1dof%sgdm = 0
+      if (discretization%dm_nflowdof%sgdm /= 0) &
+        call DMDestroy(discretization%dm_nflowdof%sgdm,ierr)
+      discretization%dm_nflowdof%sgdm = 0
+      if (discretization%dm_ntrandof%sgdm /= 0) &
+        call DMDestroy(discretization%dm_ntrandof%sgdm,ierr)
+      discretization%dm_ntrandof%sgdm = 0
       if (associated(discretization%dmc_nflowdof)) then
         do i=1,size(discretization%dmc_nflowdof)
-          call DMDestroy(discretization%dmc_nflowdof(i),ierr)
+          call DMDestroy(discretization%dmc_nflowdof(i)%sgdm,ierr)
         enddo
         deallocate(discretization%dmc_nflowdof)
+        nullify(discretization%dmc_nflowdof)
+      endif
+      if (associated(discretization%dmc_ntrandof)) then
+        do i=1,size(discretization%dmc_ntrandof)
+          call DMDestroy(discretization%dmc_ntrandof(i)%sgdm,ierr)
+        enddo
+        deallocate(discretization%dmc_ntrandof)
+        nullify(discretization%dmc_ntrandof)
       endif
     case(UNSTRUCTURED_GRID)
+      if (associated(discretization%dm_1dof%ugdm)) &
+        call UGDMDestroy(discretization%dm_1dof%ugdm)
+      if (associated(discretization%dm_nflowdof%ugdm)) &
+        call UGDMDestroy(discretization%dm_nflowdof%ugdm)
+      if (associated(discretization%dm_ntrandof%ugdm)) &
+        call UGDMDestroy(discretization%dm_ntrandof%ugdm)
   end select
+  if (associated(discretization%dm_1dof)) &
+    deallocate(discretization%dm_1dof)
+  nullify(discretization%dm_1dof)
+  if (associated(discretization%dm_nflowdof)) &
+    deallocate(discretization%dm_nflowdof)
+  nullify(discretization%dm_nflowdof)
+  if (associated(discretization%dm_ntrandof)) &
+    deallocate(discretization%dm_ntrandof)
+  nullify(discretization%dm_ntrandof)
   
 end subroutine DiscretizationDestroy
  

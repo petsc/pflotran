@@ -225,7 +225,7 @@ end subroutine MphaseAuxVarCopy
 !
 ! ************************************************************************** !
 subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_function, &
-                                   fluid_properties,option, xphico2)
+                                   fluid_properties,option,xphico2)
 
   use Option_module
   use Global_Aux_module
@@ -282,39 +282,39 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
   select case(iphase)
 !******* Only aqueous phase exist ***********  
     case(1)
-        aux_var%xmol(2)=x(3)
-!        if(aux_var%xmol(2)<0.D0) print *,'tran:',iphase, x(1:3)
-!        if(aux_var%xmol(2)>1.D0) print *,'tran:',iphase, x(1:3)
-        aux_var%xmol(1)=1.D0 - aux_var%xmol(2)
-        aux_var%pc(:)=0.D0
-        aux_var%sat(1)=1.D0
-        aux_var%sat(2)= 0.D0
-        kr(1)= 1.D0
-        kr(2)= 0.D0
+      aux_var%xmol(2)=x(3)
+!      if(aux_var%xmol(2)<0.D0) print *,'tran:',iphase, x(1:3)
+!      if(aux_var%xmol(2)>1.D0) print *,'tran:',iphase, x(1:3)
+      aux_var%xmol(1)=1.D0 - aux_var%xmol(2)
+      aux_var%pc(:)=0.D0
+      aux_var%sat(1)=1.D0
+      aux_var%sat(2)= 0.D0
+      kr(1)= 1.D0
+      kr(2)= 0.D0
 !******* Only gas phase exist ***********  
-     case(2)
-        aux_var%xmol(4)=x(3)
-!        if(aux_var%xmol(4)<0.D0) print *,'tran:',iphase, x(1:3)
-!        if(aux_var%xmol(4)>1.D0) print *,'tran:',iphase, x(1:3)
-        aux_var%xmol(3)=1.D0 - aux_var%xmol(4)
-        aux_var%pc(:)=0.D0
-        aux_var%sat(1)= 0.D0
-        aux_var%sat(2)= 1.D0
-        aux_var%pc(2)=0.D0
-        kr(1)= 0.D0
-        kr(2)= 1.D0
+    case(2)
+      aux_var%xmol(4)=x(3)
+!      if(aux_var%xmol(4)<0.D0) print *,'tran:',iphase, x(1:3)
+!      if(aux_var%xmol(4)>1.D0) print *,'tran:',iphase, x(1:3)
+      aux_var%xmol(3)=1.D0 - aux_var%xmol(4)
+      aux_var%pc(:)=0.D0
+      aux_var%sat(1)= 0.D0
+      aux_var%sat(2)= 1.D0
+      aux_var%pc(2)=0.D0
+      kr(1)= 0.D0
+      kr(2)= 1.D0
     case(3)    
-        aux_var%sat(2)=x(3)
-        if(aux_var%sat(2)< 0.D0)then
-!           print *,'tran:',iphase, x(1:3)
-           aux_var%sat(2)= 0.D0
-        endif
-!        if(aux_var%sat(2)> 1.D0) print *,'tran:',iphase, x(1:3)
-        aux_var%sat(1)=1.D0 - aux_var%sat(2)
-        aux_var%pc(:)=0.D0
-        temp = 1D-2
-        aux_var%xmol(1)=1.D0; aux_var%xmol(2)=0.D0
-        aux_var%xmol(3)=temp; aux_var%xmol(4)=1.D0-aux_var%xmol(3)
+      aux_var%sat(2)=x(3)
+      if(aux_var%sat(2)< 0.D0)then
+!        print *,'tran:',iphase, x(1:3)
+        aux_var%sat(2)= 0.D0
+      endif
+!      if(aux_var%sat(2)> 1.D0) print *,'tran:',iphase, x(1:3)
+      aux_var%sat(1)=1.D0 - aux_var%sat(2)
+      aux_var%pc(:)=0.D0
+      temp = 1D-2
+      aux_var%xmol(1)=1.D0; aux_var%xmol(2)=0.D0
+      aux_var%xmol(3)=temp; aux_var%xmol(4)=1.D0-aux_var%xmol(3)
    end select
 ! ********************* Gas phase properties ***********************
     call PSAT(t, sat_pressure, ierr)
@@ -323,30 +323,30 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 
     if(p2>=5d4)then
        
-       if(option%co2eos == EOS_SPAN_WAGNER)then
+      if(option%co2eos == EOS_SPAN_WAGNER)then
 ! ************ Span-Wagner EOS ********************             
-          select case(option%itable)  
+        select case(option%itable)  
           case(0,1,2,4,5)
-             if( option%itable >=4) then
+            if( option%itable >=4) then
                 ! print *,' interp', itable
-                call co2_sw_interp(p2*1.D-6, t,dg,dddt,dddp,fg,&
+              call co2_sw_interp(p2*1.D-6, t,dg,dddt,dddp,fg,&
                      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
-             else
-                call co2_span_wagner(p2*1.D-6, t +273.15D0,dg,dddt,dddp,fg,&
+            else
+              call co2_span_wagner(p2*1.D-6, t +273.15D0,dg,dddt,dddp,fg,&
                      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
-             endif
-             dg= dg / FMWCO2
-             fg= fg * 1.D6 
-             hg= hg * FMWCO2
-             xphi = fg/p2
+            endif
+            dg= dg / FMWCO2
+            fg= fg * 1.D6 
+            hg= hg * FMWCO2
+            xphi = fg/p2
 ! ************* Span-Wagner EOS with Bi-Cubic Spline interpolation ********
           case(3) 
-             call sw_prop(t,p2*1D-6,dg,hg, eng, fg)
-             call visco2(t, dg, visg)
-             dg= dg / FMWCO2
-             fg= fg * 1.D6 
-             hg= hg * FMWCO2
-             xphi = fg/p2
+            call sw_prop(t,p2*1D-6,dg,hg, eng, fg)
+            call visco2(t, dg, visg)
+            dg= dg / FMWCO2
+            fg= fg * 1.D6 
+            hg= hg * FMWCO2
+            xphi = fg/p2
           end select
        elseif(option%co2eos == EOS_MRK)then
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]     
@@ -358,68 +358,68 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
        else
          call printErrMsg(option,'pflow mphase ERROR: Need specify CO2 EOS')
       endif
-   else      
+    else      
       call ideal_gaseos_noderiv(p2, t,option%scale,dg,hg,eng)
       call visco2(t,dg*FMWCO2,visg)
       fg=p2
       xphi = 1.D0
-   endif
+    endif
 
-   m_na=option%m_nacl; m_cl=m_na; m_nacl=m_na 
-   if(option%ntrandof>0)then
-       m_na = global_aux_var%m_nacl(1)
-       m_cl = global_aux_var%m_nacl(2)
-       m_nacl = m_na
-       if( m_cl> m_na)m_nacl = m_cl
-   endif  
+    m_na=option%m_nacl; m_cl=m_na; m_nacl=m_na 
+    if (option%ntrandof>0) then
+      m_na = global_aux_var%m_nacl(1)
+      m_cl = global_aux_var%m_nacl(2)
+      m_nacl = m_na
+      if (m_cl> m_na) m_nacl = m_cl
+    endif  
 
 
-   call Henry_duan_sun(t,p2*1D-5,henry,xphi,lngamco2,m_na, &
-     m_cl,sat_pressure*1D-5)
-   henry= 1D0 / (FMWH2O *1D-3) / (henry*1D-5 )/xphi 
-   if(present(xphico2)) xphico2 = xphi
+    call Henry_duan_sun(t,p2*1.D-5,henry,xphi,lngamco2,m_na,m_cl, &
+      sat_pressure*1.D-5)
+    henry = 1.D0 / (FMWH2O*1.D-3) / (henry*1.D-5) / xphi 
+    if(present(xphico2)) xphico2 = xphi
    
-   select case(iphase)     
-   case(1)
-      aux_var%xmol(4)=aux_var%xmol(2)*henry/p   
-      aux_var%xmol(3)=1.D0-aux_var%xmol(4)
-      if(aux_var%xmol(3)<0.D0)aux_var%xmol(3)=0.D0
+    select case(iphase)     
+    case(1)
+      aux_var%xmol(4) = aux_var%xmol(2)*henry/p   
+      aux_var%xmol(3) = 1.D0-aux_var%xmol(4)
+      if (aux_var%xmol(3)<0.D0) aux_var%xmol(3) = 0.D0
      !     if(xmol(3)<0.D0) xmol(3)=0.D0
-   case(2)   
-      aux_var%xmol(2)= p*aux_var%xmol(4)/henry
-      aux_var%xmol(1)=1.D0-aux_var%xmol(2)
-   case(3)
+    case(2)   
+      aux_var%xmol(2) = p*aux_var%xmol(4)/henry
+      aux_var%xmol(1) = 1.D0-aux_var%xmol(2)
+    case(3)
       temp= sat_pressure / p
-      aux_var%xmol(2)=(1.D0-temp)/(Henry/ p - temp)
-      aux_var%xmol(1)= 1.D0- aux_var%xmol(2)
-      aux_var%xmol(3)=aux_var%xmol(1) * temp
-      aux_var%xmol(4)= 1.D0-aux_var%xmol(3)            
-   end select
-   aux_var%avgmw(2)= aux_var%xmol(3)* FMWH2O + aux_var%xmol(4) * FMWCO2
-   pw = p
-   call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,option%scale,ierr) 
-   aux_var%den(2)= 1.D0/(aux_var%xmol(4)/dg + aux_var%xmol(3)/dw_mol)
-   aux_var%h(2)=  hg  
-   aux_var%u(2)=  hg - p/dg * option%scale
-   aux_var%pc(2)=0D0
-   aux_var%diff(option%nflowspec+1:option%nflowspec*2)= 2.13D-5
+      aux_var%xmol(2) = (1.D0-temp)/(Henry/ p - temp)
+      aux_var%xmol(1) = 1.D0- aux_var%xmol(2)
+      aux_var%xmol(3) = aux_var%xmol(1) * temp
+      aux_var%xmol(4) = 1.D0-aux_var%xmol(3)            
+    end select
+    aux_var%avgmw(2)= aux_var%xmol(3)* FMWH2O + aux_var%xmol(4) * FMWCO2
+    pw = p
+    call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,option%scale,ierr) 
+    aux_var%den(2) = 1.D0/(aux_var%xmol(4)/dg + aux_var%xmol(3)/dw_mol)
+    aux_var%h(2) = hg  
+    aux_var%u(2) = hg - p/dg * option%scale
+    aux_var%pc(2)=0D0
+    aux_var%diff(option%nflowspec+1:option%nflowspec*2)= 2.13D-5
 !       fluid_properties%diff_base(2)
 ! Note: not temperature dependent yet.       
-   aux_var%zco2=aux_var%den(2)/(p/IDEAL_GAS_CONST/(t+273.15D0)*1D-3)
+    aux_var%zco2=aux_var%den(2)/(p/IDEAL_GAS_CONST/(t+273.15D0)*1D-3)
 !***************  Liquid phase properties **************************
  
-!  avgmw(1)= xmol(1)* FMWH2O + xmol(2) * FMWCO2 
-  aux_var%h(1) = hw
-  aux_var%u(1) = aux_var%h(1) - pw /dw_mol* option%scale
-  aux_var%diff(1:option%nflowspec) = 1D-9
+!    avgmw(1)= xmol(1)* FMWH2O + xmol(2) * FMWCO2 
+    aux_var%h(1) = hw
+    aux_var%u(1) = aux_var%h(1) - pw /dw_mol* option%scale
+    aux_var%diff(1:option%nflowspec) = 1D-9
   ! fluid_properties%diff_base(1)
 
   
-  xm_nacl = m_nacl * FMWNACL
-  xm_nacl = xm_nacl /(1.D3 + xm_nacl)
-  call nacl_den(t, p*1D-6, xm_nacl, dw_kg) 
-  dw_kg = dw_kg * 1D3
-  call nacl_vis(t,p*1D-6,xm_nacl,visl)
+    xm_nacl = m_nacl * FMWNACL
+    xm_nacl = xm_nacl /(1.D3 + xm_nacl)
+    call nacl_den(t, p*1D-6, xm_nacl, dw_kg) 
+    dw_kg = dw_kg * 1D3
+    call nacl_vis(t,p*1D-6,xm_nacl,visl)
 
 !FEHM mixing ****************************
 !  den(1) = xmol(2)*dg + xmol(1)*dw_mol
@@ -434,9 +434,9 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 !     if(m_cl>m_nacl) m_nacl=m_cl
 !   endif  
 
-  x_nacl =  m_nacl/( m_nacl + 1D3/FMWH2O)
+    x_nacl =  m_nacl/( m_nacl + 1D3/FMWH2O)
 ! **  xmol(1) = xh2o + xnacl
-  aux_var%avgmw(1)= (aux_var%xmol(1) - x_nacl) * FMWH2O&
+    aux_var%avgmw(1)= (aux_var%xmol(1) - x_nacl) * FMWH2O&
        + x_nacl * FMWNACL + aux_var%xmol(2) * FMWCO2
 
 !duan mixing **************************
@@ -470,32 +470,32 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
  !  den(1)=den(1)/avgmw(1)
 !******************************** 2 phase S-Pc-kr relation ***********************************
     if(option%nphase>=2)then
-      if(saturation_function%hysteresis_id <=0.1D0 ) then 
-         call pckrNH_noderiv(aux_var%sat,aux_var%pc,kr, &
+      if (saturation_function%hysteresis_id <= 0.1D0) then 
+        call pckrNH_noderiv(aux_var%sat,aux_var%pc,kr, &
                                    saturation_function, &
                                    option)
         pw=p !-pc(1)
      
-       else
-          call pckrHY_noderiv(aux_var%sat,aux_var%hysdat,aux_var%pc,kr, &
+      else
+        call pckrHY_noderiv(aux_var%sat,aux_var%hysdat,aux_var%pc,kr, &
                                    saturation_function, &
                                    option)
-     end if
-   endif
+      end if
+    endif
 
 !    call SaturationFunctionCompute(aux_var%pres,aux_var%sat,kr, &
 !                                   ds_dp,dkr_dp, &
 !                                   saturation_function, &
 !                                   por,perm, &
 !                                   option)
-   aux_var%kvr(2)=kr(2)/visg     
-   aux_var%kvr(1) = kr(1)/visl
-   select case(iphase)
-     case(1)
-       aux_var%pc =0.D0
-     case(2)
-       aux_var%pc =0.D0
-   end select          
+    aux_var%kvr(2)=kr(2)/visg     
+    aux_var%kvr(1) = kr(1)/visl
+    select case(iphase)
+      case(1)
+        aux_var%pc =0.D0
+      case(2)
+        aux_var%pc =0.D0
+    end select          
 
 end subroutine MphaseAuxVarCompute_NINC
 

@@ -113,7 +113,15 @@ module Option_module
     
     PetscReal :: minimum_hydrostatic_pressure
     
+    PetscTruth :: update_porosity
+    PetscTruth :: update_tortuosity
+    PetscTruth :: update_permeability
+    PetscTruth :: update_mineral_surface_area
+    PetscTruth :: update_mnrl_surf_with_porosity
+    
     PetscTruth :: initialize_with_molality
+    PetscTruth :: jumpstart_kinetic_sorption
+    PetscTruth :: no_restart_kinetic_sorption
         
 !   table lookup
     PetscInt :: itable
@@ -172,6 +180,8 @@ module Option_module
     
     PetscTruth :: print_vtk 
     PetscTruth :: print_vtk_velocities
+
+    PetscTruth :: print_observation 
 
     PetscTruth :: print_mad 
 
@@ -363,7 +373,16 @@ subroutine OptionInitRealization(option)
   option%reference_water_density = 0.d0
   option%reference_porosity = 0.25d0
   option%reference_saturation = 1.d0
+
+  option%update_porosity = PETSC_FALSE
+  option%update_tortuosity = PETSC_FALSE
+  option%update_permeability = PETSC_FALSE
+  option%update_mineral_surface_area = PETSC_FALSE
+  option%update_mnrl_surf_with_porosity = PETSC_FALSE
+    
   option%initialize_with_molality = PETSC_FALSE
+  option%jumpstart_kinetic_sorption = PETSC_FALSE
+  option%no_restart_kinetic_sorption = PETSC_FALSE
   
   option%minimum_hydrostatic_pressure = -1.d20
 
@@ -467,6 +486,7 @@ function OutputOptionCreate()
   output_option%print_tecplot_flux_velocities = PETSC_FALSE
   output_option%print_vtk = PETSC_FALSE
   output_option%print_vtk_velocities = PETSC_FALSE
+  output_option%print_observation = PETSC_FALSE
   output_option%print_mad = PETSC_FALSE
   output_option%print_initial = PETSC_TRUE
   output_option%print_final = PETSC_TRUE

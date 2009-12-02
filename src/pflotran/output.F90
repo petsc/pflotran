@@ -33,7 +33,8 @@ module Output_module
   PetscTruth :: mass_balance_first
 
   public :: OutputInit, Output, OutputVectorTecplot, &
-            OutputObservation, OutputGetVarFromArray
+            OutputObservation, OutputGetVarFromArray, &
+            OutputPermeability
 
 contains
 
@@ -216,8 +217,9 @@ subroutine OutputObservation(realization)
 !    call OutputObservationTecplot(realization)
 !  endif
  
-  if (realization%output_option%print_tecplot .or. &
-      realization%output_option%print_hdf5) then
+!  if (realization%output_option%print_tecplot .or. &
+!      realization%output_option%print_hdf5) then
+  if (realization%output_option%print_observation) then
     call OutputObservationTecplot(realization)
   endif
 
@@ -308,6 +310,11 @@ subroutine OutputTecplotBlock(realization)
              '"Y [m]",' // &
              '"Z [m]"'
 
+    ! add porosity to header
+    if (output_option%print_porosity) then
+      string = trim(string) // ',"Porosity"'
+    endif
+
     ! write flow variables
     string2 = ''
     select case(option%iflowmode)
@@ -395,6 +402,13 @@ subroutine OutputTecplotBlock(realization)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
   endif
 
+  ! write out porosity first
+  if (output_option%print_porosity) then
+    call OutputGetVarFromArray(realization,global_vec,POROSITY,ZERO_INTEGER)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+  endif
+
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE)
 
@@ -434,6 +448,22 @@ subroutine OutputTecplotBlock(realization)
       select case(option%iflowmode)
         case(MPH_MODE,IMS_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+    
+      ! liquid density
+      select case(option%iflowmode)
+        case(MPH_MODE,THC_MODE,IMS_MODE)
+          call OutputGetVarFromArray(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+    
+     ! gas density
+      select case(option%iflowmode)
+        case(MPH_MODE,IMS_MODE)
+          call OutputGetVarFromArray(realization,global_vec,GAS_DENSITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
@@ -1218,7 +1248,13 @@ subroutine OutputTecplotPoint(realization)
              '"Z [m]"'
 
     icolumn = 3
-    
+
+    ! add porosity to header
+    if (output_option%print_porosity) then
+      icolumn = icolumn + 1
+      string = trim(string) // ',"4-Porosity"'
+    endif
+        
     ! write flow variables
     string2 = ''
     select case(option%iflowmode)
@@ -1267,6 +1303,13 @@ subroutine OutputTecplotPoint(realization)
     write(IUNIT3,1000,advance='no') grid%y(ghosted_id)
     write(IUNIT3,1000,advance='no') grid%z(ghosted_id)
 
+    ! porosity
+    if (output_option%print_porosity) then
+      value = RealizGetDatasetValueAtCell(realization,POROSITY, &
+                                          ZERO_INTEGER,ghosted_id)
+      write(IUNIT3,1000,advance='no') value
+    endif
+    
     select case(option%iflowmode)
       case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE)
 
@@ -1306,6 +1349,22 @@ subroutine OutputTecplotPoint(realization)
         select case(option%iflowmode)
           case(MPH_MODE,IMS_MODE)
             value = RealizGetDatasetValueAtCell(realization,GAS_SATURATION, &
+                                                ZERO_INTEGER,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+        end select
+      
+        ! liquid density
+        select case(option%iflowmode)
+          case(MPH_MODE,THC_MODE,IMS_MODE)
+            value = RealizGetDatasetValueAtCell(realization,LIQUID_DENSITY, &
+                                                ZERO_INTEGER,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+        end select
+      
+       ! gas density
+        select case(option%iflowmode)
+          case(MPH_MODE,IMS_MODE)
+            value = RealizGetDatasetValueAtCell(realization,GAS_DENSITY, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
         end select
@@ -2292,22 +2351,30 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch  
-  type(reaction_type), pointer :: reaction  
+  type(reaction_type), pointer :: reaction
+  type(output_option_type), pointer :: output_option  
   
   patch => realization%patch
   option => realization%option
+  output_option => realization%output_option
   field => realization%field
   grid => patch%grid
   
   write(cell_string,*) grid%nL2A(region%cell_ids(icell))
   cell_string = trim(region%name) // ' ' //adjustl(cell_string)
 
+  ! add porosity to header
+  if (output_option%print_porosity) then
+    string = ',"Porosity ' // trim(cell_string) // '"'
+    write(fid,'(a)',advance="no") trim(string)
+  endif
+  
   select case(option%iflowmode)
     case (IMS_MODE)
 !      string = ',"X [m] '// trim(cell_string) // '",' // &
 !               '"Y [m] '// trim(cell_string) // '",' // &
 !               '"Z [m] '// trim(cell_string) // '",' // &
-      string = '"T [C] '// trim(cell_string) // '",' // &
+      string = ',"T [C] '// trim(cell_string) // '",' // &
                '"P [Pa] '// trim(cell_string) // '",' // &
                '"sl '// trim(cell_string) // '",' // &
                '"sg '// trim(cell_string) // '",' // &
@@ -2317,7 +2384,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
 !      string = ',"X [m] '// trim(cell_string) // '",' // &
 !               '"Y [m] '// trim(cell_string) // '",' // &
 !               '"Z [m] '// trim(cell_string) // '",' // &
-      string = '"T [C] '// trim(cell_string) // '",' // &
+      string = ',"T [C] '// trim(cell_string) // '",' // &
                '"P [Pa] '// trim(cell_string) // '",' // &
                '"sl '// trim(cell_string) // '",' // &
                '"sg '// trim(cell_string) // '",' // &
@@ -2337,7 +2404,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
 !        string = ',"X [m] '// trim(cell_string) // '",' // &
 !                 '"Y [m] '// trim(cell_string) // '",' // &
 !                 '"Z [m] '// trim(cell_string) // '",' // &
-        string = '"T [C] '// trim(cell_string) // '",' // &
+        string = ',"T [C] '// trim(cell_string) // '",' // &
                  '"P [Pa] '// trim(cell_string) // '",' // &
                  '"sl '// trim(cell_string) // '",' // &
                  '"Ul '// trim(cell_string) // '"' 
@@ -2415,7 +2482,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
     if (associated(reaction%kd_print)) then
       do i=1,option%ntrandof
         if (reaction%kd_print(i)) then
-          write(fid,'('',"'',a,'' '',a,''_kd"'')',advance="no") &
+          write(fid,'('',"'',a,''_kd '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(cell_string)
         endif
       enddo
@@ -2424,7 +2491,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
     if (associated(reaction%total_sorb_print)) then
       do i=1,option%ntrandof
         if (reaction%total_sorb_print(i)) then
-          write(fid,'('',"'',a,'' '',a,''_tot_sorb"'')',advance="no") &
+          write(fid,'('',"'',a,''_tot_sorb '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(cell_string)
         endif
       enddo
@@ -2475,9 +2542,11 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch  
   type(reaction_type), pointer :: reaction  
+  type(output_option_type), pointer :: output_option    
   
   patch => realization%patch
   option => realization%option
+  output_option => realization%output_option
   
 !  write(cell_string,*) grid%nL2A(region%cell_ids(icell))
 !  cell_string = trim(region%name) // ' ' //adjustl(cell_string)
@@ -2489,6 +2558,12 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
   write(z_string,110) region%coordinates(ONE_INTEGER)%z
   cell_string = trim(cell_string) // ' ' // trim(adjustl(x_string)) // ' ' // &
                    trim(adjustl(y_string)) // ' ' // trim(adjustl(z_string))
+
+  ! add porosity to header
+  if (output_option%print_porosity) then
+    string = ',"Porosity ' // trim(cell_string) //'"'
+    write(fid,'(a)',advance="no") trim(string)
+  endif
 
   select case(option%iflowmode)
     case (IMS_MODE)
@@ -2603,7 +2678,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
     if (associated(reaction%kd_print)) then
       do i=1,option%ntrandof
         if (reaction%kd_print(i)) then
-          write(fid,'('',"'',a,'' '',a,''_kd"'')',advance="no") &
+          write(fid,'('',"'',a,''_kd '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(cell_string)
         endif
       enddo
@@ -2612,7 +2687,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
     if (associated(reaction%total_sorb_print)) then
       do i=1,option%ntrandof
         if (reaction%total_sorb_print(i)) then
-          write(fid,'('',"'',a,'' '',a,''_tot_sorb"'')',advance="no") &
+          write(fid,'('',"'',a,''_tot_sorb '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(cell_string)
         endif
       enddo
@@ -2709,11 +2784,13 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
   type(reaction_type), pointer :: reaction
+  type(output_option_type), pointer :: output_option    
   
   option => realization%option
   patch => realization%patch
   grid => patch%grid
   field => realization%field
+  output_option => realization%output_option
 
 100 format(es14.6)
 101 format("i")
@@ -2725,7 +2802,13 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
   !write(fid,110,advance="no") grid%x(ghosted_id)
   !write(fid,110,advance="no") grid%y(ghosted_id)
   !write(fid,110,advance="no") grid%z(ghosted_id)
-  
+
+  ! porosity
+  if (output_option%print_porosity) then
+    write(fid,110,advance="no") &
+      RealizGetDatasetValueAtCell(realization,POROSITY,ZERO_INTEGER,ghosted_id)
+  endif  
+
   ! temperature
   select case(option%iflowmode)
     case(MPH_MODE,THC_MODE,IMS_MODE)
@@ -2752,6 +2835,20 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
     case(MPH_MODE,IMS_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,GAS_SATURATION,ZERO_INTEGER,ghosted_id)
+  end select
+
+  ! liquid density
+  select case(option%iflowmode)
+    case(MPH_MODE,THC_MODE,IMS_MODE)
+      write(fid,110,advance="no") &
+        RealizGetDatasetValueAtCell(realization,LIQUID_DENSITY,ZERO_INTEGER,ghosted_id)
+  end select
+
+  ! gas density
+  select case(option%iflowmode)
+    case(MPH_MODE,IMS_MODE)
+      write(fid,110,advance="no") &
+        RealizGetDatasetValueAtCell(realization,GAS_DENSITY,ZERO_INTEGER,ghosted_id)
   end select
 
   ! liquid energy
@@ -2902,6 +2999,8 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
   type(reaction_type), pointer :: reaction
+  type(output_option_type), pointer :: output_option  
+    
   PetscInt :: ghosted_ids(8)
   PetscInt :: count
   PetscInt :: i, j, k
@@ -2911,6 +3010,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
   patch => realization%patch
   grid => patch%grid
   field => realization%field
+  output_option => realization%output_option
 
 100 format(es14.6)
 !100 format(es16.9)
@@ -2974,6 +3074,16 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
       enddo
     enddo
   enddo
+
+  ! porosity
+  if (output_option%print_porosity) then
+    write(fid,110,advance="no") &
+      OutputGetVarFromArrayAtCoord(realization,POROSITY,ZERO_INTEGER, &
+                                   region%coordinates(ONE_INTEGER)%x, &
+                                   region%coordinates(ONE_INTEGER)%y, &
+                                   region%coordinates(ONE_INTEGER)%z, &
+                                   count,ghosted_ids)
+  endif
   
   ! temperature
   select case(option%iflowmode)
@@ -3014,6 +3124,28 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
       ! gas saturation
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,GAS_SATURATION,ZERO_INTEGER, &
+                                     region%coordinates(ONE_INTEGER)%x, &
+                                     region%coordinates(ONE_INTEGER)%y, &
+                                     region%coordinates(ONE_INTEGER)%z, &
+                                     count,ghosted_ids)
+  end select
+
+  ! liquid density
+  select case(option%iflowmode)
+    case(MPH_MODE,THC_MODE,IMS_MODE)
+      write(fid,110,advance="no") &
+        OutputGetVarFromArrayAtCoord(realization,LIQUID_DENSITY,ZERO_INTEGER, &
+                                     region%coordinates(ONE_INTEGER)%x, &
+                                     region%coordinates(ONE_INTEGER)%y, &
+                                     region%coordinates(ONE_INTEGER)%z, &
+                                     count,ghosted_ids)
+  end select
+
+  ! gas density
+  select case(option%iflowmode)
+    case(MPH_MODE,IMS_MODE)
+      write(fid,110,advance="no") &
+        OutputGetVarFromArrayAtCoord(realization,GAS_DENSITY,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
                                      region%coordinates(ONE_INTEGER)%y, &
                                      region%coordinates(ONE_INTEGER)%z, &
@@ -4637,6 +4769,15 @@ subroutine OutputHDF5(realization)
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                   option)
 
+  if (output_option%print_porosity) then
+    call OutputGetVarFromArray(realization,global_vec,POROSITY,ZERO_INTEGER)
+    if (.not.(option%use_samr)) then
+      string = "Porosity"
+      call HDF5WriteStructDataSetFromVec(string,realization,global_vec, &
+                                         grp_id,H5T_NATIVE_DOUBLE)
+    endif
+  endif
+
   select case(option%iflowmode)
   
     case(MPH_MODE,THC_MODE, IMS_MODE,&
@@ -4701,6 +4842,38 @@ subroutine OutputHDF5(realization)
              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
              if(first) then
                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,GAS_SATURATION,ZERO_INTEGER)
+             endif
+             current_component=current_component+1
+          endif
+      end select
+      
+      ! liquid density
+      select case(option%iflowmode)
+        case (MPH_MODE,THC_MODE,IMS_MODE)
+          call OutputGetVarFromArray(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
+          if(.not.(option%use_samr)) then
+             string = "Liquid Density"
+             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+          else
+             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+             if(first) then
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,LIQUID_DENSITY,ZERO_INTEGER)
+             endif
+             current_component=current_component+1
+          endif
+      end select
+      
+      ! gas density
+      select case(option%iflowmode)
+        case (MPH_MODE,IMS_MODE)
+          call OutputGetVarFromArray(realization,global_vec,GAS_DENSITY,ZERO_INTEGER)
+          if(.not.(option%use_samr)) then
+             string = "Gas Density"
+             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+          else
+             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+             if(first) then
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,GAS_DENSITY,ZERO_INTEGER)
              endif
              current_component=current_component+1
           endif
@@ -6149,6 +6322,8 @@ subroutine OutputMassBalanceNew(realization)
   PetscInt :: offset
   PetscInt :: iphase
   PetscInt :: icomp
+  PetscReal :: sum_area(4)
+  PetscReal :: sum_area_global(4)
   PetscReal :: sum_kg(realization%option%nphase)
   PetscReal :: sum_kg_global(realization%option%nphase)
   PetscReal :: sum_mol(realization%option%ntrandof,realization%option%nphase)
@@ -6329,6 +6504,50 @@ subroutine OutputMassBalanceNew(realization)
     offset = boundary_condition%connection_set%offset
     
     if (option%nflowdof > 0) then
+
+#if 0
+! compute the total area of the boundary condition
+      sum_area = 0.d0
+      do iconn = 1, boundary_condition%connection_set%num_connections
+        sum_area(1) = sum_area(1) + &
+          boundary_condition%connection_set%area(iconn)
+        if (global_aux_vars_bc(offset+iconn)%sat(1) >= 0.5d0) then
+          sum_area(2) = sum_area(2) + &
+            boundary_condition%connection_set%area(iconn)
+        endif
+        if (global_aux_vars_bc(offset+iconn)%sat(1) > 0.99d0) then
+          sum_area(3) = sum_area(3) + &
+            boundary_condition%connection_set%area(iconn)
+        endif
+        sum_area(4) = sum_area(4) + &
+          boundary_condition%connection_set%area(iconn)* &
+          global_aux_vars_bc(offset+iconn)%sat(1)
+      enddo
+
+      call MPI_Reduce(sum_area,sum_area_global, &
+                      FOUR_INTEGER,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      option%io_rank,option%mycomm,ierr)
+                          
+      if (option%myrank == option%io_rank) then
+        print *
+        write(word,'(es16.6)') sum_area_global(1)
+        print *, 'Total area in ' // trim(boundary_condition%name) // &
+                 ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
+        write(word,'(es16.6)') sum_area_global(2)
+        print *, 'Total half-saturated area in '// &
+                 trim(boundary_condition%name) // &
+                 ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
+        write(word,'(es16.6)') sum_area_global(3)
+        print *, 'Total saturated area in '// trim(boundary_condition%name) // &
+                 ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
+        write(word,'(es16.6)') sum_area_global(4)
+        print *, 'Total saturation-weighted area [=sum(saturation*area)] in '//&
+                   trim(boundary_condition%name) // &
+                 ' boundary condition: ' // trim(adjustl(word)) // ' m^2'
+        print *
+      endif
+#endif
+
       ! print out cumulative H2O flux
       sum_kg = 0.d0
       do iconn = 1, boundary_condition%connection_set%num_connections
@@ -6750,7 +6969,84 @@ subroutine ComputeFlowFluxVelocityStats(realization)
   
 end subroutine ComputeFlowFluxVelocityStats
 
-end module Output_module
+! ************************************************************************** !
+!
+! OutputPermeability: Print vectors for permeability
+! author: Glenn Hammond
+! date: 08/25/09
+!
+! ************************************************************************** !
+subroutine OutputPermeability(realization)
 
-    
-       
+  use Realization_module
+  use Option_module
+  use Discretization_module
+  use Material_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  
+  PetscTruth :: print_all_three
+  PetscInt :: material_property_id
+  character(len=MAXSTRINGLENGTH) :: string
+  type(option_type), pointer :: option
+  type(material_property_type), pointer :: material_property
+  
+  option => realization%option
+
+  print_all_three = PETSC_FALSE
+  ! check for anisotripic permeabilities  
+  do material_property_id = 1, size(realization%material_property_array)
+    material_property => &
+      realization%material_property_array(material_property_id)%ptr
+    if (associated(material_property)) then
+      if (.not.material_property%isotropic_permeability) then
+        print_all_three = PETSC_TRUE
+      endif
+    endif
+  enddo
+  
+  if (print_all_three) then
+    if (len_trim(option%group_prefix) > 1) then
+      string = 'permeabilityX-' // trim(option%group_prefix) // '.tec'
+    else
+      string = 'permeabilityX.tec'
+    endif
+    call DiscretizationLocalToGlobal(realization%discretization, &
+                                     realization%field%perm_xx_loc, &
+                                     realization%field%work,ONEDOF)
+    call OutputVectorTecplot(string,string,realization,realization%field%work)
+    if (len_trim(option%group_prefix) > 1) then
+      string = 'permeabilityY-' // trim(option%group_prefix) // '.tec'
+    else
+      string = 'permeabilityY.tec'
+    endif
+    call DiscretizationLocalToGlobal(realization%discretization, &
+                                     realization%field%perm_yy_loc, &
+                                     realization%field%work,ONEDOF)
+    call OutputVectorTecplot(string,string,realization,realization%field%work)
+    if (len_trim(option%group_prefix) > 1) then
+      string = 'permeabilityZ-' // trim(option%group_prefix) // '.tec'
+    else
+      string = 'permeabilityZ.tec'
+    endif
+    call DiscretizationLocalToGlobal(realization%discretization, &
+                                     realization%field%perm_zz_loc, &
+                                     realization%field%work,ONEDOF)
+    call OutputVectorTecplot(string,string,realization,realization%field%work)
+  else
+    if (len_trim(option%group_prefix) > 1) then
+      string = 'permeability-' // trim(option%group_prefix) // '.tec'
+    else
+      string = 'permeability.tec'
+    endif
+    call DiscretizationLocalToGlobal(realization%discretization, &
+                                     realization%field%perm_xx_loc, &
+                                     realization%field%work,ONEDOF)
+    call OutputVectorTecplot(string,string,realization,realization%field%work)
+  endif
+  
+end subroutine OutputPermeability
+
+end module Output_module

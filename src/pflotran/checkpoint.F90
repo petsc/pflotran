@@ -97,6 +97,8 @@ subroutine Checkpoint(realization, &
   use MPHASE_module
   use Immis_module
 
+  use Reactive_Transport_module, only : RTCheckpointKineticSorption
+
   implicit none
 
   type(realization_type) :: realization
@@ -322,6 +324,10 @@ subroutine Checkpoint(realization, &
         call VecView(global_vec,viewer,ierr)
       enddo
     endif
+    if (realization%reaction%kinmr_nrate > 0) then
+      ! PETSC_TRUE flag indicates write to file
+      call RTCheckpointKineticSorption(realization,viewer,PETSC_TRUE)
+    endif
   endif
 
   if (global_vec /= 0) then
@@ -369,6 +375,8 @@ subroutine Restart(realization, &
 
   use MPHASE_module
   use Immis_module
+  
+  use Reactive_Transport_module, only: RTCheckpointKineticSorption
 
   implicit none
 
@@ -544,6 +552,10 @@ subroutine Restart(realization, &
         call RealizationSetDataset(realization,local_vec,LOCAL, &
                                    SECONDARY_ACTIVITY_COEF,i)
       enddo
+      if (realization%reaction%kinmr_nrate > 0) then
+        ! PETSC_FALSE flag indicates read from file
+        call RTCheckpointKineticSorption(realization,viewer,PETSC_FALSE)
+      endif
       call VecDestroy(local_vec,ierr)
     endif
   endif

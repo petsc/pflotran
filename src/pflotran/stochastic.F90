@@ -22,6 +22,7 @@ contains
 ! ************************************************************************** !
 subroutine StochasticInit(stochastic,option)
 
+  use Simulation_module
   use Option_module
   use Input_module
   
@@ -30,12 +31,8 @@ subroutine StochasticInit(stochastic,option)
   type(stochastic_type) :: stochastic
   type(option_type) :: option
 
-  PetscMPIInt :: mycolor, mykey
-
   PetscInt :: i
-  PetscInt :: igroup, irealization
-  PetscInt :: num_groups
-  PetscInt :: local_commsize, offset, delta, remainder
+  PetscInt :: offset, delta, remainder
 
   PetscInt :: realization_id
   character(len=MAXSTRINGLENGTH) :: string
@@ -76,6 +73,10 @@ subroutine StochasticInit(stochastic,option)
   endif
 #endif
   
+  call SimulationCreateProcessorGroups(option,stochastic%num_groups)
+  
+#if 0
+! this section is now located in SimulationCreateProcessorGroups()
   local_commsize = option%global_commsize / stochastic%num_groups
   remainder = option%global_commsize - stochastic%num_groups * local_commsize
   offset = 0
@@ -96,6 +97,7 @@ subroutine StochasticInit(stochastic,option)
   call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
   call MPI_Comm_rank(option%mycomm,option%myrank, ierr)
   call MPI_Comm_size(option%mycomm,option%mycommsize,ierr)
+#endif
 
   ! divvy up the realizations
   stochastic%num_local_realizations = stochastic%num_realizations / &
@@ -103,13 +105,13 @@ subroutine StochasticInit(stochastic,option)
   remainder = stochastic%num_realizations - stochastic%num_groups * &
                                             stochastic%num_local_realizations
   offset = 0
-  do i = 1, igroup-1
+  do i = 1, option%mygroup_id-1
     delta = stochastic%num_local_realizations
     if (i < remainder) delta = delta + 1
     offset = offset + delta
   enddo
   
-  if (igroup < remainder) stochastic%num_local_realizations = &
+  if (option%mygroup_id < remainder) stochastic%num_local_realizations = &
                           stochastic%num_local_realizations + 1
   allocate(stochastic%realization_ids(stochastic%num_local_realizations))
   stochastic%realization_ids = 0
@@ -151,9 +153,10 @@ subroutine StochasticRun(stochastic,option)
 
   call OptionCheckCommandLine(option)
 
-  do irealization = 1, stochastic%num_local_realizations
+  ! moved outside due to errors when allocating/deallocating  over and over
+  call LoggingCreate()
 
-    call LoggingCreate()
+  do irealization = 1, stochastic%num_local_realizations
 
     call OptionInitRealization(option)
     simulation => SimulationCreate(option)
@@ -212,11 +215,11 @@ subroutine StochasticRun(stochastic,option)
                ' of ', stochastic%num_local_realizations
     endif
 
-
-    call LoggingDestroy()
-    
   enddo
   
+  ! moved outside due to errors when allocating/deallocating  over and over
+  call LoggingDestroy()
+    
   call MPI_Barrier(option%global_comm,ierr)
 
 end subroutine StochasticRun

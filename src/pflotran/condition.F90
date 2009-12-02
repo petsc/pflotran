@@ -1296,6 +1296,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
   character(len=MAXSTRINGLENGTH) :: string2
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: error_string
+  PetscInt :: length, i
   PetscInt :: irank
   PetscErrorCode :: ierr
 
@@ -1307,11 +1308,28 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
   call InputReadWord(input,option,word,PETSC_TRUE)
   call InputErrorMsg(input,option,'file or value','CONDITION')
   call StringToLower(word)
-  if (StringCompare(word,'file',FOUR_INTEGER)) then
+  length = len_trim(word)
+  if (StringCompare(word,'file',length)) then
     call InputReadNChars(input,option,string2,MAXSTRINGLENGTH,PETSC_TRUE)
     input%err_buf = trim(keyword) // ' FILE'
     input%err_buf2 = 'CONDITION'
     call InputErrorMsg(input,option)
+    word = string2
+    call StringToLower(word)
+    length = len_trim(word)
+    if (StringCompare(word,'realization_dependent',length)) then
+      input%err_buf = trim(keyword) // ' REALIZATION_DEPENDENT FILE'
+      call InputReadNChars(input,option,string2,MAXSTRINGLENGTH,PETSC_TRUE)
+      call InputErrorMsg(input,option)
+      write(word,*) option%id
+      word = adjustl(word)
+      i = index(string2,'.',PETSC_TRUE)
+      if (i > 2) then
+        string2 = string2(1:i-1) // trim(word) // string2(i:)
+      else
+        string2 = trim(string2) // trim(word)
+      endif
+    endif
     call FlowConditionReadValuesFromFile(string2,dataset,option)
   else
     input%buf = trim(string2)

@@ -243,11 +243,10 @@ subroutine ReadStructuredGridHDF5(realization)
   string = "Tortuosity"
   option%io_buffer = 'Reading dataset: ' // trim(string)
   call printMsg(option)
-  call VecGetArrayF90(global_vec,vec_ptr,ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%tortuosity0,vec_ptr,ierr); CHKERRQ(ierr)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          vec_ptr)
-  call VecRestoreArrayF90(global_vec,vec_ptr,ierr); CHKERRQ(ierr)
-  call DiscretizationGlobalToLocal(discretization,global_vec,field%tor_loc,ONEDOF)
+  call VecRestoreArrayF90(field%tortuosity0,vec_ptr,ierr); CHKERRQ(ierr)
 
   call VecDestroy(global_vec,ierr)
   call VecDestroy(local_vec,ierr)
@@ -588,8 +587,8 @@ subroutine UpdateGlobalToLocal(discretization,field)
                                    field%perm_zz_loc,ONEDOF)
 
   ! tor
-  call DiscretizationLocalToLocal(discretization,field%tor_loc, &
-                                  field%tor_loc,ONEDOF)
+  call DiscretizationGlobalToLocal(discretization,field%tortuosity0, &
+                                   field%tortuosity_loc,ONEDOF)
 
   ! por
   call DiscretizationGlobalToLocal(discretization,field%porosity0, &
