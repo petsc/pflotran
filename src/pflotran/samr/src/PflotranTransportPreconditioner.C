@@ -107,7 +107,7 @@ PflotranTransportPreconditioner::getFromInput( tbox::Pointer<tbox::Database> &db
    {
       if (db->keyExists("pc_solver"))
       {
-         d_PCSolverFactory = new MultilevelSolverFactory();         
+         d_PCSolverFactory = new SAMRSolvers::MultilevelSolverFactory();         
       } 
       else 
       {
@@ -140,14 +140,14 @@ PflotranTransportPreconditioner::initializeSolvers(tbox::Pointer<tbox::Database>
 #endif
 
    tbox::Pointer<tbox::Database> solver_db = db->getDatabase("pc_solver");
-   MultilevelSolverParameters *params      = new  MultilevelSolverParameters(solver_db);
+   SAMRSolvers::MultilevelSolverParameters *params      = new  SAMRSolvers::MultilevelSolverParameters(solver_db);
    params->d_hierarchy                     = d_hierarchy;
 
 #ifdef DEBUG_CHECK_ASSERTIONS
    assert(d_PCSolverFactory!=NULL);
 #endif
 
-   std::auto_ptr<MultilevelSolver> pcs          = d_PCSolverFactory->createMultilevelSolver(params);
+   std::auto_ptr<SAMRSolvers::MultilevelSolver> pcs          = d_PCSolverFactory->createMultilevelSolver(params);
    d_pc_solver                             = pcs.get();
    pcs.release();
    
@@ -211,14 +211,14 @@ PetscErrorCode
 PflotranTransportPreconditioner::wrapperSetupPreconditioner( PC ptr)
 {
    PflotranTransportPreconditioner *pc = (PflotranTransportPreconditioner *)ptr;
-   PreconditionerParameters* params = NULL;
+   SAMRSolvers::PreconditionerParameters* params = NULL;
    pc->setupPreconditioner(params);
 
    return(0);
 }
 
 int
-PflotranTransportPreconditioner::setupPreconditioner( PreconditionerParameters* parameters )
+PflotranTransportPreconditioner::setupPreconditioner( SAMRSolvers::PreconditionerParameters* parameters )
 {
    static tbox::Pointer<tbox::Timer> t_setup_pc = tbox::TimerManager::getManager()->getTimer("PflotranTransportPreconditioner::setupPreconditioner");
    t_setup_pc->start();

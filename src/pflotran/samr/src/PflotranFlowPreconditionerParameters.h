@@ -32,7 +32,7 @@ extern "C"{
 
 namespace SAMRAI{
 
-class PflotranFlowPreconditionerParameters: public PreconditionerParameters
+class PflotranFlowPreconditionerParameters: public SAMRSolvers::PreconditionerParameters
 {
 public:
    PflotranFlowPreconditionerParameters();

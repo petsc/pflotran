@@ -17,7 +17,7 @@ extern "C"{
 #include "RefineOperator.h"
 #include "CoarsenOperator.h"
 #include "SAMRAIVectorReal.h" 
-#include "MultilevelLinearOperator.h"
+#include "MultilevelOperator.h"
 #include "PflotranJacobianLevelOperator.h"
 #include "BoundaryConditionStrategy.h"
 #include "CCellVariable.h"
@@ -31,11 +31,11 @@ extern "C" {
 
 namespace SAMRAI{
 
-class PflotranJacobianMultilevelOperator: public MultilevelLinearOperator
+class PflotranJacobianMultilevelOperator: public SAMRSolvers::MultilevelOperator
 {
 public:
 
-   PflotranJacobianMultilevelOperator(MultilevelOperatorParameters *parameters);
+  PflotranJacobianMultilevelOperator(SAMRSolvers::MultilevelOperatorParameters *parameters);
 
    ~PflotranJacobianMultilevelOperator();
 
@@ -214,7 +214,7 @@ public:
 
    tbox::Pointer<hier::PatchHierarchy<NDIM> > getHierarchy(void){ return d_hierarchy; }
 
-   LevelLinearOperator *getLevelOperator(const int ln){ return d_level_operators[ln];}
+   SAMRSolvers::LevelOperator *getLevelOperator(const int ln){ return d_level_operators[ln];}
 
    void setCurrentPatch(hier::Patch <NDIM> *patch){d_patch = patch;}
 
