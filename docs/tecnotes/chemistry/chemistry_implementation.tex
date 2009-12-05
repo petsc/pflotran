@@ -1356,6 +1356,63 @@ The equilibrium sorbed concentration $S_{j\a}^{\rm eq}$ is defined as
 S_{j\a}^{\rm eq} \eq \sum_i \nu_{ji}^{} S_{i\a}^{\rm eq}\eq \frac{\omega_\a}{1+\sum_l K_lQ_l} \sum_i \nu_{ji}K_i Q_i.
 \EN
 
+\subsubsection{Kinetic Formulation}
+
+A possible kinetic formulation of the surface complexation can be written in the form
+\EQ\label{skin}
+\frac{\p S_{i\a}}{\p t} \eq k_{i\a}^f S_\a Q_{i} - k_{i\a}^b S_{i\a},
+\EN
+where the forward and backward rate constants, $k_{i\a}^f$, $k_{i\a}^b$ satisfy the relation
+\EQ
+K_i \eq \frac{k_{i\a}^f}{k_{i\a}^b}.
+\EN
+It should be noted that the form of the rate law given in Eqn.\eqref{skin} is not expressed in the form of an elementary reaction. Other forms are certainly possible and comparison with experiment would be required to choose the best formulation.
+
+The implicit finite difference equation corresponding to Eqn.\eqref{skin} is given by
+\EQ\label{fdskin}
+\frac{S_{i\a}^{k+1} - S_{i\a}^k}{\Delta t} \eq k_{i\a}^f S_\a^{k+1} Q_{i}^{k+1} - k_{i\a}^b S_{i\a}^{k+1},
+\EN
+for the $k+1$st time increment. The free site concentration $S_\a^{k+1}$ is obtained from the site conservation equation
+\EQ\label{sfree}
+S_\a^{k+1} \eq \sum_l S_{l\a}^{k+1} - \omega_\a^{k+1}.
+\EN
+Noting that Eqn.\eqref{fdskin} can be considered a linear function of $S_{i\a}^{k+1}$, it may be solved to give
+\EQ\label{sia}
+S_{i\a}^{k+1} \eq \frac{S_{i\a}^k + k_i^f\Delta t S_\a^{k+1} Q_i^{k+1}}{1+k_i^b\Delta t}.
+\EN
+Substituting this result into Eqn.\eqref{sfree} and solving for $S_\a^{k+1}$ yields the result
+\EQ
+S_\a^{k+1} \eq \frac{
+\omega_\a - 
+\displaystyle\sum_l \dfrac{S_{l\a}^{k}}{1+k_l^b\Delta t}
+}
+{1+\displaystyle\sum_l\dfrac{k_l^f\Delta t Q_l^{k+1}}{1+k_l^b\Delta t}}.
+\EN
+Finally, substituting this result for $S_\a^{k+1}$ into Eqn.\eqref{sia} yields the result
+\EQ
+S_{i\a}^{k+1} \eq \frac{S_{i\a}^k}{1+k_i^b\Delta t} + \frac{k_i^f\Delta t}{1+k_i^b \Delta t} \left[
+\frac{
+\omega_\a - 
+\displaystyle\sum_l \dfrac{S_{l\a}^{k}}{1+k_l^b\Delta t}
+}
+{1+\displaystyle\sum_l\dfrac{k_l^f\Delta t Q_l^{k+1}}{1+k_l^b\Delta t}}
+\right] Q_i^{k+1}.
+\EN
+For the case of irreversible reaction with $k_i^b=0$, this expression reduces to
+\EQ
+S_{i\a}^{k+1} \eq S_{i\a}^k + k_i^f\Delta t \left[
+\frac{
+\omega_\a - 
+\displaystyle\sum_l S_{l\a}^{k}
+}
+{1+\displaystyle\sum_l k_l^f\Delta t Q_l^{k+1}}
+\right] Q_i^{k+1}.
+\EN
+In the limit $k_i^f, \, k_i^b \rightarrow\infty$ with $k_i^f/k_i^b=K_i$, $S_{i\a}^{k+1}$ tends to the local equilibrium limiting value
+\EQ
+S_{i\a}^{k+1} \rightarrow \frac{\omega_\a K_i Q_i}{1+\sum_l K_lQ_l}.
+\EN
+
 \subsubsection{$K_d$ Model}
 
 For a constant $K_d$ model it is assumed that
@@ -1453,7 +1510,7 @@ K_{\rm UO_2^{2+}}^d &\eq \frac{\omega \big(K_1' + K_2'\big) C_{\rm UO_2^2+}}{\va
 \end{subequations}
 The sum in the denominator is assumed to be constant since the secondary species $C_i$ all contain factors of $C_{\rm UO_2^{2+}}$. Species with UO$_2^{2+}$ stoichiometric factors of two or more must be assumed to be negligible in comparison to other species in the sum.
 
-\subsection{Numerical Implementation}
+\subsection{Numerical Implementation of Multirate Model}
 
 The kinetic equation for the sorbed concentration at the $n$th node becomes in finite difference form
 \EQ\label{sorbnum}
