@@ -1358,15 +1358,15 @@ S_{j\a}^{\rm eq} \eq \sum_i \nu_{ji}^{} S_{i\a}^{\rm eq}\eq \frac{\omega_\a}{1+\
 
 \subsubsection{Kinetic Formulation}
 
-A possible kinetic formulation of the surface complexation can be written in the form
+A possible kinetic formulation for surface complexation reactions can be written in the form
 \EQ\label{skin}
 \frac{\p S_{i\a}}{\p t} \eq k_{i\a}^f S_\a Q_{i} - k_{i\a}^b S_{i\a},
 \EN
-where the forward and backward rate constants, $k_{i\a}^f$, $k_{i\a}^b$ satisfy the relation
+where for reversible reaction the forward and backward rate constants, $k_{i\a}^f$, $k_{i\a}^b$ satisfy the relation
 \EQ
 K_i \eq \frac{k_{i\a}^f}{k_{i\a}^b}.
 \EN
-It should be noted that the form of the rate law given in Eqn.\eqref{skin} is not expressed in the form of an elementary reaction. Other forms are certainly possible and comparison with experiment would be required to choose the best formulation.
+It should be noted that the form of the rate law given in Eqn.\eqref{skin} is not expressed in the form of an elementary reaction. Other forms are certainly possible and comparison with experiment would be required to choose the best formulation. For irreversible reaction one of the rate constants must vanish.
 
 The implicit finite difference equation corresponding to Eqn.\eqref{skin} is given by
 \EQ\label{fdskin}
@@ -1386,7 +1386,7 @@ S_\a^{k+1} \eq \frac{
 \omega_\a - 
 \displaystyle\sum_l \dfrac{S_{l\a}^{k}}{1+k_l^b\Delta t}
 }
-{1+\displaystyle\sum_l\dfrac{k_l^f\Delta t Q_l^{k+1}}{1+k_l^b\Delta t}}.
+{1+\displaystyle\sum_l\dfrac{k_l^f\Delta t}{1+k_l^b\Delta t} Q_l^{k+1}}.
 \EN
 Finally, substituting this result for $S_\a^{k+1}$ into Eqn.\eqref{sia} yields the result
 \EQ
@@ -1395,7 +1395,7 @@ S_{i\a}^{k+1} \eq \frac{S_{i\a}^k}{1+k_i^b\Delta t} + \frac{k_i^f\Delta t}{1+k_i
 \omega_\a - 
 \displaystyle\sum_l \dfrac{S_{l\a}^{k}}{1+k_l^b\Delta t}
 }
-{1+\displaystyle\sum_l\dfrac{k_l^f\Delta t Q_l^{k+1}}{1+k_l^b\Delta t}}
+{1+\displaystyle\sum_l\dfrac{k_l^f\Delta t}{1+k_l^b\Delta t} Q_l^{k+1}}
 \right] Q_i^{k+1}.
 \EN
 For the case of irreversible reaction with $k_i^b=0$, this expression reduces to
@@ -1407,6 +1407,10 @@ S_{i\a}^{k+1} \eq S_{i\a}^k + k_i^f\Delta t \left[
 }
 {1+\displaystyle\sum_l k_l^f\Delta t Q_l^{k+1}}
 \right] Q_i^{k+1}.
+\EN
+For $k_i^f=0$, one obtains
+\EQ
+S_\a^{k+1} \eq \frac{S_{i\a}^k}{1+k_i^b\Delta t}.
 \EN
 In the limit $k_i^f, \, k_i^b \rightarrow\infty$ with $k_i^f/k_i^b=K_i$, $S_{i\a}^{k+1}$ tends to the local equilibrium limiting value
 \EQ
