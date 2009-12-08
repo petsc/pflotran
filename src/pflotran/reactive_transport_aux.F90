@@ -22,10 +22,12 @@ module Reactive_Transport_Aux_module
     PetscReal, pointer :: sec_molal(:)
     PetscReal, pointer :: gas_molal(:)
     ! sorption reactions
-    ! PetscReal, pointer :: kinsurfcmplx_spec(:)
+    ! PetscReal, pointer :: kinsrfcplx_spec(:)
     ! PetscReal, pointer :: kinionx_molfrac(:)
-    PetscReal, pointer :: eqsurfcmplx_conc(:)
-    PetscReal, pointer :: eqsurfcmplx_freesite_conc(:)
+    PetscReal, pointer :: kinsrfcplx_conc(:)
+    PetscReal, pointer :: kinsrfcplx_freesite_conc(:)
+    PetscReal, pointer :: eqsrfcplx_conc(:)
+    PetscReal, pointer :: eqsrfcplx_freesite_conc(:)
 !   PetscReal, pointer :: eqsurf_site_density(:)
     PetscReal, pointer :: eqionx_ref_cation_sorbed_conc(:)
     PetscReal, pointer :: eqionx_conc(:,:)
@@ -138,8 +140,8 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   allocate(aux_var%dtotal(reaction%ncomp,reaction%ncomp,option%nphase))
   aux_var%dtotal = 0.d0
   
-  if (reaction%neqcmplx > 0) then
-    allocate(aux_var%sec_molal(reaction%neqcmplx))
+  if (reaction%neqcplx > 0) then
+    allocate(aux_var%sec_molal(reaction%neqcplx))
     aux_var%sec_molal = 0.d0
   else
     nullify(aux_var%sec_molal)
@@ -166,17 +168,30 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
     nullify(aux_var%dtotal_sorb_eq)
   endif    
   
-  if (reaction%neqsurfcmplxrxn > 0) then
-    allocate(aux_var%eqsurfcmplx_conc(reaction%neqsurfcmplx))
-    aux_var%eqsurfcmplx_conc = 0.d0
-    allocate(aux_var%eqsurfcmplx_freesite_conc(reaction%neqsurfcmplxrxn))
-    aux_var%eqsurfcmplx_freesite_conc = 1.d-9 ! initialize to guess
-!   allocate(aux_var%eqsurf_site_density(reaction%neqsurfcmplxrxn))
+  if (reaction%neqsrfcplxrxn > 0) then
+    allocate(aux_var%eqsrfcplx_conc(reaction%neqsrfcplx))
+    aux_var%eqsrfcplx_conc = 0.d0
+    allocate(aux_var%eqsrfcplx_freesite_conc(reaction%neqsrfcplxrxn))
+    aux_var%eqsrfcplx_freesite_conc = 1.d-9 ! initialize to guess
+!   allocate(aux_var%eqsurf_site_density(reaction%neqsrfcplxrxn))
 !   aux_var%eqsurf_site_density = 0.d0
   else
-    nullify(aux_var%eqsurfcmplx_conc)
-    nullify(aux_var%eqsurfcmplx_freesite_conc)
+    nullify(aux_var%eqsrfcplx_conc)
+    nullify(aux_var%eqsrfcplx_freesite_conc)
 !   nullify(aux_var%eqsurf_site_density)
+  endif
+  
+  if (reaction%nkinsrfcplxrxn > 0) then
+    allocate(aux_var%kinsrfcplx_conc(reaction%nkinsrfcplx))
+    aux_var%kinsrfcplx_conc = 0.d0
+    allocate(aux_var%kinsrfcplx_freesite_conc(reaction%nkinsrfcplxrxn))
+    aux_var%kinsrfcplx_freesite_conc = 1.d-9 ! initialize to guess
+!   allocate(aux_var%kinsurf_site_density(reaction%nkinsrfcplxrxn))
+!   aux_var%kinsurf_site_density = 0.d0
+  else
+    nullify(aux_var%kinsrfcplx_conc)
+    nullify(aux_var%kinsrfcplx_freesite_conc)
+!   nullify(aux_var%kinsurf_site_density)
   endif
   
   if (reaction%neqionxrxn > 0) then
@@ -213,8 +228,8 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   
   allocate(aux_var%pri_act_coef(reaction%ncomp))
   aux_var%pri_act_coef = 1.d0
-  if (reaction%neqcmplx > 0) then
-    allocate(aux_var%sec_act_coef(reaction%neqcmplx))
+  if (reaction%neqcplx > 0) then
+    allocate(aux_var%sec_act_coef(reaction%neqcplx))
     aux_var%sec_act_coef = 1.d0
   else
     nullify(aux_var%sec_act_coef)
@@ -272,9 +287,14 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
   if (associated(aux_var%gas_molal)) &
     aux_var%gas_molal = aux_var2%gas_molal
   
-  if (associated(aux_var%eqsurfcmplx_conc)) then
-    aux_var%eqsurfcmplx_conc = aux_var2%eqsurfcmplx_conc
-    aux_var%eqsurfcmplx_freesite_conc = aux_var2%eqsurfcmplx_freesite_conc
+  if (associated(aux_var%eqsrfcplx_conc)) then
+    aux_var%eqsrfcplx_conc = aux_var2%eqsrfcplx_conc
+    aux_var%eqsrfcplx_freesite_conc = aux_var2%eqsrfcplx_freesite_conc
+  endif
+  
+  if (associated(aux_var%kinsrfcplx_conc)) then
+    aux_var%kinsrfcplx_conc = aux_var2%kinsrfcplx_conc
+    aux_var%kinsrfcplx_freesite_conc = aux_var2%kinsrfcplx_freesite_conc
   endif
   
   if (associated(aux_var%eqionx_ref_cation_sorbed_conc)) then
@@ -341,8 +361,21 @@ subroutine RTAuxVarDestroy(aux_var)
   nullify(aux_var%total_sorb_eq)
   if (associated(aux_var%dtotal_sorb_eq))deallocate(aux_var%dtotal_sorb_eq)
   nullify(aux_var%dtotal_sorb_eq)
+
+  if (associated(aux_var%eqsrfcplx_conc)) deallocate(aux_var%eqsrfcplx_conc)
+  nullify(aux_var%eqsrfcplx_conc)
+  if (associated(aux_var%eqsrfcplx_freesite_conc)) &
+    deallocate(aux_var%eqsrfcplx_freesite_conc)
+  nullify(aux_var%eqsrfcplx_freesite_conc)
   
-  if (associated(aux_var%eqionx_ref_cation_sorbed_conc)) deallocate(aux_var%eqionx_ref_cation_sorbed_conc)
+  if (associated(aux_var%kinsrfcplx_conc)) deallocate(aux_var%kinsrfcplx_conc)
+  nullify(aux_var%kinsrfcplx_conc)
+  if (associated(aux_var%kinsrfcplx_freesite_conc)) &
+    deallocate(aux_var%kinsrfcplx_freesite_conc)
+  nullify(aux_var%kinsrfcplx_freesite_conc)
+  
+  if (associated(aux_var%eqionx_ref_cation_sorbed_conc)) &
+    deallocate(aux_var%eqionx_ref_cation_sorbed_conc)
   nullify(aux_var%eqionx_ref_cation_sorbed_conc)
   if (associated(aux_var%eqionx_conc)) deallocate(aux_var%eqionx_conc)
   nullify(aux_var%eqionx_conc)

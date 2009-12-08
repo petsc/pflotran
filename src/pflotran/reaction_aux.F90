@@ -99,8 +99,8 @@ module Reaction_Aux_module
     PetscInt :: mineral_id
     character(len=MAXWORDLENGTH) :: mineral_name
     PetscReal :: site_density
-    PetscReal :: rate_forward
-    PetscReal :: rate_backward
+    PetscReal :: forward_rate
+    PetscReal :: backward_rate
     type(surface_complex_type), pointer :: complex_list
     type (surface_complexation_rxn_type), pointer :: next
   end type surface_complexation_rxn_type    
@@ -164,20 +164,20 @@ module Reaction_Aux_module
     PetscReal, pointer :: primary_spec_molar_wt(:)
     
     ! aqueous complexes
-    PetscInt :: neqcmplx
+    PetscInt :: neqcplx
     character(len=MAXWORDLENGTH), pointer :: secondary_species_names(:)
     PetscTruth, pointer :: secondary_species_print(:)
-    character(len=MAXWORDLENGTH), pointer :: eqcmplx_basis_names(:,:)
-    PetscTruth, pointer :: eqcmplx_basis_print(:)
-    PetscInt, pointer :: eqcmplxspecid(:,:)   ! (0:ncomp in rxn)
-    PetscReal, pointer :: eqcmplxstoich(:,:)
-    PetscInt, pointer :: eqcmplxh2oid(:)       ! id of water, if present
-    PetscReal, pointer :: eqcmplxh2ostoich(:)  ! stoichiometry of water, if present
-    PetscReal, pointer :: eqcmplx_a0(:)  ! Debye-Huckel constant
-    PetscReal, pointer :: eqcmplx_Z(:)
-    PetscReal, pointer :: eqcmplx_molar_wt(:)
-    PetscReal, pointer :: eqcmplx_logK(:)
-    PetscReal, pointer :: eqcmplx_logKcoef(:,:)
+    character(len=MAXWORDLENGTH), pointer :: eqcplx_basis_names(:,:)
+    PetscTruth, pointer :: eqcplx_basis_print(:)
+    PetscInt, pointer :: eqcplxspecid(:,:)   ! (0:ncomp in rxn)
+    PetscReal, pointer :: eqcplxstoich(:,:)
+    PetscInt, pointer :: eqcplxh2oid(:)       ! id of water, if present
+    PetscReal, pointer :: eqcplxh2ostoich(:)  ! stoichiometry of water, if present
+    PetscReal, pointer :: eqcplx_a0(:)  ! Debye-Huckel constant
+    PetscReal, pointer :: eqcplx_Z(:)
+    PetscReal, pointer :: eqcplx_molar_wt(:)
+    PetscReal, pointer :: eqcplx_logK(:)
+    PetscReal, pointer :: eqcplx_logKcoef(:,:)
     ! Debye-Huckel
     PetscReal :: debyeA  ! Debye-Huckel A coefficient
     PetscReal :: debyeB  ! Debye-Huckel B coefficient
@@ -213,45 +213,49 @@ module Reaction_Aux_module
 #endif    
 
     ! surface complexation reactions
-    PetscInt :: neqsurfcmplx
-    PetscInt :: neqsurfcmplxrxn 
-    PetscInt, pointer :: eqsurfcmplx_rxn_to_mineral(:)
-    PetscInt, pointer :: eqsurfcmplx_rxn_to_complex(:,:)
-    PetscReal, pointer :: eqsurfcmplx_rxn_site_density(:)
-    PetscTruth, pointer :: eqsurfcmplx_rxn_stoich_flag(:)
-    character(len=MAXWORDLENGTH), pointer :: surface_site_names(:)
-    PetscTruth, pointer :: surface_site_print(:)
-    character(len=MAXWORDLENGTH), pointer :: surface_complex_names(:)
-    PetscTruth, pointer :: surface_complex_print(:)
-    PetscInt, pointer :: eqsurfcmplxspecid(:,:)
-    PetscReal, pointer :: eqsurfcmplxstoich(:,:)
-    PetscInt, pointer :: eqsurfcmplxh2oid(:)
-    PetscReal, pointer :: eqsurfcmplxh2ostoich(:)
-    PetscInt, pointer :: eqsurfcmplx_free_site_id(:)
-    PetscReal, pointer :: eqsurfcmplx_free_site_stoich(:)
-    PetscInt, pointer :: eqsurfcmplx_mineral_id(:)
-    PetscReal, pointer :: eqsurfcmplx_logK(:)
-    PetscReal, pointer :: eqsurfcmplx_logKcoef(:,:)
-    PetscReal, pointer :: eqsurfcmplx_Z(:)  ! valence
+    PetscInt :: neqsrfcplx
+    PetscInt :: neqsrfcplxrxn 
+    PetscInt, pointer :: eqsrfcplx_rxn_to_mineral(:)
+    PetscInt, pointer :: eqsrfcplx_rxn_to_complex(:,:)
+    PetscReal, pointer :: eqsrfcplx_rxn_site_density(:)
+    PetscTruth, pointer :: eqsrfcplx_rxn_stoich_flag(:)
+    character(len=MAXWORDLENGTH), pointer :: eqsrfcplx_site_names(:)
+    PetscTruth, pointer :: eqsrfcplx_site_print(:)
+    character(len=MAXWORDLENGTH), pointer :: eqsrfcplx_names(:)
+    PetscTruth, pointer :: eqsrfcplx_print(:)
+    PetscInt, pointer :: eqsrfcplxspecid(:,:)
+    PetscReal, pointer :: eqsrfcplxstoich(:,:)
+    PetscInt, pointer :: eqsrfcplxh2oid(:)
+    PetscReal, pointer :: eqsrfcplxh2ostoich(:)
+    PetscInt, pointer :: eqsrfcplx_free_site_id(:)
+    PetscReal, pointer :: eqsrfcplx_free_site_stoich(:)
+    PetscInt, pointer :: eqsrfcplx_mineral_id(:)
+    PetscReal, pointer :: eqsrfcplx_logK(:)
+    PetscReal, pointer :: eqsrfcplx_logKcoef(:,:)
+    PetscReal, pointer :: eqsrfcplx_Z(:)  ! valence
 
-    PetscInt :: nkinsurfcmplx
-    PetscInt :: nkinsurfcmplxrxn
-#if 0   
-    PetscInt, pointer :: kinsurfcmplx_rxn_to_mineral(:)
-    PetscInt, pointer :: kinsurfcmplx_rxn_to_complex(:,:)
-    PetscReal, pointer :: kinsurfcmplx_rxn_site_density(:)
-    PetscTruth, pointer :: kinsurfcmplx_rxn_stoich_flag(:)
-#endif
-    PetscInt, pointer :: kinsurfcmplxspecid(:,:)
-    PetscReal, pointer :: kinsurfcmplxstoich(:,:)
-    PetscInt, pointer :: kinsurfcmplxh2oid(:)
-    PetscReal, pointer :: kinsurfcmplxh2ostoich(:)
-    PetscReal, pointer :: kinsurfcmplx_freesite_stoich(:)
-    PetscReal, pointer :: kinsurfcmplx_forward_rate(:)
-    PetscReal, pointer :: kinsurfcmplx_backward_rate(:)
-!    PetscReal, pointer :: kinsurfcmplx_logK(:)
-!    PetscReal, pointer :: kinsurfcmplx_logKcoef(:,:)
-!    PetscReal, pointer :: kinsurfcmplx_Z(:)  ! valence
+    PetscInt :: nkinsrfcplx
+    PetscInt :: nkinsrfcplxrxn
+    PetscInt, pointer :: kinsrfcplx_rxn_to_mineral(:)
+    PetscInt, pointer :: kinsrfcplx_rxn_to_complex(:,:)
+    PetscReal, pointer :: kinsrfcplx_rxn_site_density(:)
+    PetscTruth, pointer :: kinsrfcplx_rxn_stoich_flag(:)
+    character(len=MAXWORDLENGTH), pointer :: kinsrfcplx_site_names(:)
+    PetscTruth, pointer :: kinsrfcplx_site_print(:)
+    character(len=MAXWORDLENGTH), pointer :: kinsrfcplx_names(:)
+    PetscTruth, pointer :: kinsrfcplx_print(:)
+    PetscInt, pointer :: kinsrfcplxspecid(:,:)
+    PetscReal, pointer :: kinsrfcplxstoich(:,:)
+    PetscInt, pointer :: kinsrfcplxh2oid(:)
+    PetscReal, pointer :: kinsrfcplxh2ostoich(:)
+    PetscInt, pointer :: kinsrfcplx_free_site_id(:)
+    PetscReal, pointer :: kinsrfcplx_free_site_stoich(:)
+    PetscInt, pointer :: kinsrfcplx_mineral_id(:)
+    PetscReal, pointer :: kinsrfcplx_forward_rate(:)
+    PetscReal, pointer :: kinsrfcplx_backward_rate(:)  
+!    PetscReal, pointer :: kinsrfcplx_logK(:)
+!    PetscReal, pointer :: kinsrfcplx_logKcoef(:,:)
+    PetscReal, pointer :: kinsrfcplx_Z(:)  ! valence
 
     ! multirate kinetic surface complexation
     PetscInt :: kinmr_nrate 
@@ -384,19 +388,23 @@ function ReactionCreate()
   
   nullify(reaction%primary_species_names)
   nullify(reaction%secondary_species_names)
-  nullify(reaction%eqcmplx_basis_names)
+  nullify(reaction%eqcplx_basis_names)
   nullify(reaction%gas_species_names)
-  nullify(reaction%surface_site_names)
-  nullify(reaction%surface_complex_names)
+  nullify(reaction%eqsrfcplx_site_names)
+  nullify(reaction%eqsrfcplx_names)
+  nullify(reaction%kinsrfcplx_site_names)
+  nullify(reaction%kinsrfcplx_names)
   nullify(reaction%mineral_names)
   nullify(reaction%kinmnrl_names)
 
   nullify(reaction%primary_species_print)
   nullify(reaction%secondary_species_print)
-  nullify(reaction%eqcmplx_basis_print)
+  nullify(reaction%eqcplx_basis_print)
   nullify(reaction%gas_species_print)
-  nullify(reaction%surface_site_print)
-  nullify(reaction%surface_complex_print)
+  nullify(reaction%eqsrfcplx_site_print)
+  nullify(reaction%eqsrfcplx_print)
+  nullify(reaction%kinsrfcplx_site_print)
+  nullify(reaction%kinsrfcplx_print)
   nullify(reaction%kinmnrl_print)
   nullify(reaction%kd_print)
   nullify(reaction%total_sorb_print)
@@ -414,16 +422,16 @@ function ReactionCreate()
   nullify(reaction%eqgas_logK)
   nullify(reaction%eqgas_logKcoef)
   
-  reaction%neqcmplx = 0
-  nullify(reaction%eqcmplxspecid)
-  nullify(reaction%eqcmplxstoich)
-  nullify(reaction%eqcmplxh2oid)
-  nullify(reaction%eqcmplxh2ostoich)
-  nullify(reaction%eqcmplx_a0)
-  nullify(reaction%eqcmplx_Z)
-  nullify(reaction%eqcmplx_molar_wt)
-  nullify(reaction%eqcmplx_logK)
-  nullify(reaction%eqcmplx_logKcoef)
+  reaction%neqcplx = 0
+  nullify(reaction%eqcplxspecid)
+  nullify(reaction%eqcplxstoich)
+  nullify(reaction%eqcplxh2oid)
+  nullify(reaction%eqcplxh2ostoich)
+  nullify(reaction%eqcplx_a0)
+  nullify(reaction%eqcplx_Z)
+  nullify(reaction%eqcplx_molar_wt)
+  nullify(reaction%eqcplx_logK)
+  nullify(reaction%eqcplx_logKcoef)
   
   reaction%debyeA = 0.5114d0 
   reaction%debyeB = 0.3288d0 
@@ -443,42 +451,43 @@ function ReactionCreate()
 #endif
 
   reaction%neqsorb = 0
-  reaction%neqsurfcmplx = 0
-  reaction%neqsurfcmplxrxn = 0
-  nullify(reaction%eqsurfcmplx_rxn_to_mineral)
-  nullify(reaction%eqsurfcmplx_rxn_to_complex)
-  nullify(reaction%eqsurfcmplx_rxn_site_density)
-  nullify(reaction%eqsurfcmplx_rxn_stoich_flag) 
-  nullify(reaction%surface_site_names)
-  nullify(reaction%surface_complex_names)
-  nullify(reaction%eqsurfcmplxspecid)
-  nullify(reaction%eqsurfcmplxstoich)
-  nullify(reaction%eqsurfcmplxh2oid)
-  nullify(reaction%eqsurfcmplxh2ostoich)
-  nullify(reaction%eqsurfcmplx_mineral_id)
-  nullify(reaction%eqsurfcmplx_free_site_id)
-  nullify(reaction%eqsurfcmplx_free_site_stoich)
-  nullify(reaction%eqsurfcmplx_logK)
-  nullify(reaction%eqsurfcmplx_logKcoef)
-  nullify(reaction%eqsurfcmplx_Z)
+  reaction%neqsrfcplx = 0
+  reaction%neqsrfcplxrxn = 0
+  nullify(reaction%eqsrfcplx_rxn_to_mineral)
+  nullify(reaction%eqsrfcplx_rxn_to_complex)
+  nullify(reaction%eqsrfcplx_rxn_site_density)
+  nullify(reaction%eqsrfcplx_rxn_stoich_flag) 
+  nullify(reaction%eqsrfcplx_site_names)
+  nullify(reaction%eqsrfcplx_names)
+  nullify(reaction%eqsrfcplxspecid)
+  nullify(reaction%eqsrfcplxstoich)
+  nullify(reaction%eqsrfcplxh2oid)
+  nullify(reaction%eqsrfcplxh2ostoich)
+  nullify(reaction%eqsrfcplx_mineral_id)
+  nullify(reaction%eqsrfcplx_free_site_id)
+  nullify(reaction%eqsrfcplx_free_site_stoich)
+  nullify(reaction%eqsrfcplx_logK)
+  nullify(reaction%eqsrfcplx_logKcoef)
+  nullify(reaction%eqsrfcplx_Z)
 
-  reaction%nkinsurfcmplx = 0
-  reaction%nkinsurfcmplxrxn = 0
-#if 0  
-  nullify(reaction%kinsurfcmplx_rxn_to_mineral)
-  nullify(reaction%kinsurfcmplx_rxn_to_complex)
-  nullify(reaction%kinsurfcmplx_rxn_site_density)
-  nullify(reaction%kinsurfcmplx_rxn_stoich_flag)
-#endif  
-  nullify(reaction%kinsurfcmplxspecid)
-  nullify(reaction%kinsurfcmplxstoich)
-  nullify(reaction%kinsurfcmplxh2oid)
-  nullify(reaction%kinsurfcmplxh2ostoich)
-  nullify(reaction%kinsurfcmplx_forward_rate)
-  nullify(reaction%kinsurfcmplx_backward_rate)
-!  nullify(reaction%kinsurfcmplx_logK)
-!  nullify(reaction%kinsurfcmplx_logKcoef)
-!  nullify(reaction%kinsurfcmplx_Z)
+  reaction%nkinsrfcplx = 0
+  reaction%nkinsrfcplxrxn = 0
+  nullify(reaction%kinsrfcplx_rxn_to_mineral)
+  nullify(reaction%kinsrfcplx_rxn_to_complex)
+  nullify(reaction%kinsrfcplx_rxn_site_density)
+  nullify(reaction%kinsrfcplx_rxn_stoich_flag) 
+  nullify(reaction%kinsrfcplx_site_names)
+  nullify(reaction%kinsrfcplx_names)
+  nullify(reaction%kinsrfcplxspecid)
+  nullify(reaction%kinsrfcplxstoich)
+  nullify(reaction%kinsrfcplxh2oid)
+  nullify(reaction%kinsrfcplxh2ostoich)
+  nullify(reaction%kinsrfcplx_mineral_id)
+  nullify(reaction%kinsrfcplx_free_site_id)
+  nullify(reaction%kinsrfcplx_free_site_stoich)
+!  nullify(reaction%kinsrfcplx_logK)
+!  nullify(reaction%kinsrfcplx_logKcoef)
+  nullify(reaction%kinsrfcplx_Z)
 
   reaction%kinmr_nrate = 0
   nullify(reaction%kinmr_rate)
@@ -686,25 +695,25 @@ function SurfaceComplexationRxnCreate()
     
   type(surface_complexation_rxn_type), pointer :: SurfaceComplexationRxnCreate
 
-  type(surface_complexation_rxn_type), pointer :: surfcplxrxn
+  type(surface_complexation_rxn_type), pointer :: srfcplxrxn
   
-  allocate(surfcplxrxn)
-  surfcplxrxn%free_site_id = 0
-  surfcplxrxn%itype = SRFCMPLX_RXN_NULL
-  surfcplxrxn%free_site_name = ''
-  surfcplxrxn%free_site_print_me = PETSC_FALSE
+  allocate(srfcplxrxn)
+  srfcplxrxn%free_site_id = 0
+  srfcplxrxn%itype = SRFCMPLX_RXN_NULL
+  srfcplxrxn%free_site_name = ''
+  srfcplxrxn%free_site_print_me = PETSC_FALSE
 
-  surfcplxrxn%mineral_id = 0
-  surfcplxrxn%mineral_name = ''
-  surfcplxrxn%site_density = 0.d0
+  srfcplxrxn%mineral_id = 0
+  srfcplxrxn%mineral_name = ''
+  srfcplxrxn%site_density = 0.d0
   
-  surfcplxrxn%rate_forward = 0.d0
-  surfcplxrxn%rate_backward = 0.d0
+  srfcplxrxn%forward_rate = 0.d0
+  srfcplxrxn%backward_rate = 0.d0
 
-  nullify(surfcplxrxn%complex_list)
-  nullify(surfcplxrxn%next)
+  nullify(srfcplxrxn%complex_list)
+  nullify(srfcplxrxn%next)
   
-  SurfaceComplexationRxnCreate => surfcplxrxn
+  SurfaceComplexationRxnCreate => srfcplxrxn
   
 end function SurfaceComplexationRxnCreate
 
@@ -721,18 +730,18 @@ function SurfaceComplexCreate()
     
   type(surface_complex_type), pointer :: SurfaceComplexCreate
 
-  type(surface_complex_type), pointer :: srfcmplx
+  type(surface_complex_type), pointer :: srfcplx
   
-  allocate(srfcmplx)
-  srfcmplx%id = 0
-  srfcmplx%name = ''
-  srfcmplx%Z = 0.d0
-  srfcmplx%free_site_stoich = 0.d0
-  srfcmplx%print_me = PETSC_FALSE
-  nullify(srfcmplx%dbaserxn)
-  nullify(srfcmplx%next)
+  allocate(srfcplx)
+  srfcplx%id = 0
+  srfcplx%name = ''
+  srfcplx%Z = 0.d0
+  srfcplx%free_site_stoich = 0.d0
+  srfcplx%print_me = PETSC_FALSE
+  nullify(srfcplx%dbaserxn)
+  nullify(srfcplx%next)
   
-  SurfaceComplexCreate => srfcmplx
+  SurfaceComplexCreate => srfcplx
   
 end function SurfaceComplexCreate
 
@@ -1329,27 +1338,27 @@ end subroutine TransitionStateTheoryRxnDestroy
 ! date: 10/21/08
 !
 ! ************************************************************************** !
-subroutine SurfaceComplexationRxnDestroy(surfcplxrxn)
+subroutine SurfaceComplexationRxnDestroy(srfcplxrxn)
 
   implicit none
     
-  type(surface_complexation_rxn_type), pointer :: surfcplxrxn
+  type(surface_complexation_rxn_type), pointer :: srfcplxrxn
 
-  type(surface_complex_type), pointer :: cur_surfcplx, prev_surfcplx
+  type(surface_complex_type), pointer :: cur_srfcplx, prev_srfcplx
   
-  if (.not.associated(surfcplxrxn)) return
+  if (.not.associated(srfcplxrxn)) return
   
-  cur_surfcplx => surfcplxrxn%complex_list
+  cur_srfcplx => srfcplxrxn%complex_list
   do
-    if (.not.associated(cur_surfcplx)) exit
-    prev_surfcplx => cur_surfcplx
-    cur_surfcplx => cur_surfcplx%next
-    call SurfaceComplexDestroy(prev_surfcplx)
-    nullify(prev_surfcplx)
+    if (.not.associated(cur_srfcplx)) exit
+    prev_srfcplx => cur_srfcplx
+    cur_srfcplx => cur_srfcplx%next
+    call SurfaceComplexDestroy(prev_srfcplx)
+    nullify(prev_srfcplx)
   enddo
   
-  deallocate(surfcplxrxn)  
-  nullify(surfcplxrxn)
+  deallocate(srfcplxrxn)  
+  nullify(srfcplxrxn)
 
 end subroutine SurfaceComplexationRxnDestroy
 
@@ -1360,21 +1369,21 @@ end subroutine SurfaceComplexationRxnDestroy
 ! date: 10/21/08
 !
 ! ************************************************************************** !
-subroutine SurfaceComplexDestroy(surfcplx)
+subroutine SurfaceComplexDestroy(srfcplx)
 
   implicit none
     
-  type(surface_complex_type), pointer :: surfcplx
+  type(surface_complex_type), pointer :: srfcplx
 
-  if (.not.associated(surfcplx)) return
+  if (.not.associated(srfcplx)) return
   
-  if (associated(surfcplx%dbaserxn)) &
-    call DatabaseRxnDestroy(surfcplx%dbaserxn)
-  nullify(surfcplx%dbaserxn)
-  nullify(surfcplx%next)
+  if (associated(srfcplx%dbaserxn)) &
+    call DatabaseRxnDestroy(srfcplx%dbaserxn)
+  nullify(srfcplx%dbaserxn)
+  nullify(srfcplx%next)
 
-  deallocate(surfcplx)  
-  nullify(surfcplx)
+  deallocate(srfcplx)  
+  nullify(srfcplx)
 
 end subroutine SurfaceComplexDestroy
 
@@ -1504,7 +1513,7 @@ subroutine ReactionDestroy(reaction)
   type(gas_species_type), pointer :: gas_species, prev_gas_species
   type(mineral_type), pointer :: mineral, prev_mineral
   type(ion_exchange_rxn_type), pointer :: ionxrxn, prev_ionxrxn
-  type(surface_complexation_rxn_type), pointer :: surfcplxrxn, prev_surfcplxrxn
+  type(surface_complexation_rxn_type), pointer :: srfcplxrxn, prev_srfcplxrxn
 
   if (.not.associated(reaction)) return 
 
@@ -1559,12 +1568,12 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%ion_exchange_rxn_list)
 
   ! surface complexation reactions
-  surfcplxrxn => reaction%surface_complexation_rxn_list
+  srfcplxrxn => reaction%surface_complexation_rxn_list
   do
-    if (.not.associated(surfcplxrxn)) exit
-    prev_surfcplxrxn => surfcplxrxn
-    surfcplxrxn => surfcplxrxn%next
-    call SurfaceComplexationRxnDestroy(prev_surfcplxrxn)
+    if (.not.associated(srfcplxrxn)) exit
+    prev_srfcplxrxn => srfcplxrxn
+    srfcplxrxn => srfcplxrxn%next
+    call SurfaceComplexationRxnDestroy(prev_srfcplxrxn)
   enddo    
   nullify(reaction%surface_complexation_rxn_list)
   
@@ -1577,12 +1586,18 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%gas_species_names)) &
     deallocate(reaction%gas_species_names)
   nullify(reaction%gas_species_names)
-  if (associated(reaction%surface_site_names)) &
-    deallocate(reaction%surface_site_names)
-  nullify(reaction%surface_site_names)
-  if (associated(reaction%surface_complex_names)) &
-    deallocate(reaction%surface_complex_names)
-  nullify(reaction%surface_complex_names)
+  if (associated(reaction%eqsrfcplx_site_names)) &
+    deallocate(reaction%eqsrfcplx_site_names)
+  nullify(reaction%eqsrfcplx_site_names)
+  if (associated(reaction%eqsrfcplx_names)) &
+    deallocate(reaction%eqsrfcplx_names)
+  nullify(reaction%eqsrfcplx_names)
+  if (associated(reaction%kinsrfcplx_site_names)) &
+    deallocate(reaction%kinsrfcplx_site_names)
+  nullify(reaction%kinsrfcplx_site_names)
+  if (associated(reaction%kinsrfcplx_names)) &
+    deallocate(reaction%kinsrfcplx_names)
+  nullify(reaction%kinsrfcplx_names)
   if (associated(reaction%mineral_names)) &
     deallocate(reaction%mineral_names)
   nullify(reaction%mineral_names)
@@ -1596,18 +1611,24 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%secondary_species_print)) &
     deallocate(reaction%secondary_species_print)
   nullify(reaction%primary_species_print)
-  if (associated(reaction%eqcmplx_basis_print)) &
-    deallocate(reaction%eqcmplx_basis_print)
-  nullify(reaction%eqcmplx_basis_print)
+  if (associated(reaction%eqcplx_basis_print)) &
+    deallocate(reaction%eqcplx_basis_print)
+  nullify(reaction%eqcplx_basis_print)
   if (associated(reaction%gas_species_print)) &
     deallocate(reaction%gas_species_print)
   nullify(reaction%gas_species_print)
-  if (associated(reaction%surface_site_print)) &
-    deallocate(reaction%surface_site_print)
-  nullify(reaction%primary_species_print)
-  if (associated(reaction%surface_complex_print)) &
-    deallocate(reaction%surface_complex_print)
-  nullify(reaction%surface_complex_print)
+  if (associated(reaction%eqsrfcplx_site_print)) &
+    deallocate(reaction%eqsrfcplx_site_print)
+  nullify(reaction%eqsrfcplx_site_print)
+  if (associated(reaction%eqsrfcplx_print)) &
+    deallocate(reaction%eqsrfcplx_print)
+  nullify(reaction%eqsrfcplx_print)
+  if (associated(reaction%kinsrfcplx_site_print)) &
+    deallocate(reaction%kinsrfcplx_site_print)
+  nullify(reaction%kinsrfcplx_site_print)
+  if (associated(reaction%kinsrfcplx_print)) &
+    deallocate(reaction%kinsrfcplx_print)
+  nullify(reaction%kinsrfcplx_print)
   if (associated(reaction%kinmnrl_print)) &
     deallocate(reaction%kinmnrl_print)
   nullify(reaction%kinmnrl_print)
@@ -1628,33 +1649,33 @@ subroutine ReactionDestroy(reaction)
     deallocate(reaction%primary_spec_molar_wt)
   nullify(reaction%primary_spec_molar_wt)
   
-  if (associated(reaction%eqcmplxspecid)) &
-    deallocate(reaction%eqcmplxspecid)
-  nullify(reaction%eqcmplxspecid)
-  if (associated(reaction%eqcmplxstoich)) &
-    deallocate(reaction%eqcmplxstoich)
-  nullify(reaction%eqcmplxstoich)
-  if (associated(reaction%eqcmplxh2oid)) &
-    deallocate(reaction%eqcmplxh2oid)
-  nullify(reaction%eqcmplxh2oid)
-  if (associated(reaction%eqcmplxh2ostoich)) &
-    deallocate(reaction%eqcmplxh2ostoich)
-  nullify(reaction%eqcmplxh2ostoich)
-  if (associated(reaction%eqcmplx_a0)) &
-    deallocate(reaction%eqcmplx_a0)
-  nullify(reaction%eqcmplx_a0)
-  if (associated(reaction%eqcmplx_Z)) &
-    deallocate(reaction%eqcmplx_Z)
-  nullify(reaction%eqcmplx_Z)
-  if (associated(reaction%eqcmplx_molar_wt)) &
-    deallocate(reaction%eqcmplx_molar_wt)
-  nullify(reaction%eqcmplx_molar_wt)
-  if (associated(reaction%eqcmplx_logK)) &
-    deallocate(reaction%eqcmplx_logK)
-  nullify(reaction%eqcmplx_logK)
-  if (associated(reaction%eqcmplx_logKcoef)) &
-    deallocate(reaction%eqcmplx_logKcoef)
-  nullify(reaction%eqcmplx_logKcoef)
+  if (associated(reaction%eqcplxspecid)) &
+    deallocate(reaction%eqcplxspecid)
+  nullify(reaction%eqcplxspecid)
+  if (associated(reaction%eqcplxstoich)) &
+    deallocate(reaction%eqcplxstoich)
+  nullify(reaction%eqcplxstoich)
+  if (associated(reaction%eqcplxh2oid)) &
+    deallocate(reaction%eqcplxh2oid)
+  nullify(reaction%eqcplxh2oid)
+  if (associated(reaction%eqcplxh2ostoich)) &
+    deallocate(reaction%eqcplxh2ostoich)
+  nullify(reaction%eqcplxh2ostoich)
+  if (associated(reaction%eqcplx_a0)) &
+    deallocate(reaction%eqcplx_a0)
+  nullify(reaction%eqcplx_a0)
+  if (associated(reaction%eqcplx_Z)) &
+    deallocate(reaction%eqcplx_Z)
+  nullify(reaction%eqcplx_Z)
+  if (associated(reaction%eqcplx_molar_wt)) &
+    deallocate(reaction%eqcplx_molar_wt)
+  nullify(reaction%eqcplx_molar_wt)
+  if (associated(reaction%eqcplx_logK)) &
+    deallocate(reaction%eqcplx_logK)
+  nullify(reaction%eqcplx_logK)
+  if (associated(reaction%eqcplx_logKcoef)) &
+    deallocate(reaction%eqcplx_logKcoef)
+  nullify(reaction%eqcplx_logKcoef)
   
   if (associated(reaction%eqgasspecid)) &
     deallocate(reaction%eqgasspecid)
@@ -1703,95 +1724,100 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%kinionx_cationid)
 #endif
   
-  if (associated(reaction%eqsurfcmplx_rxn_to_mineral)) &
-    deallocate(reaction%eqsurfcmplx_rxn_to_mineral)
-  nullify(reaction%eqsurfcmplx_rxn_to_mineral)
-  if (associated(reaction%eqsurfcmplx_rxn_to_complex)) &
-    deallocate(reaction%eqsurfcmplx_rxn_to_complex)
-  nullify(reaction%eqsurfcmplx_rxn_to_complex)
+  if (associated(reaction%eqsrfcplx_rxn_to_mineral)) &
+    deallocate(reaction%eqsrfcplx_rxn_to_mineral)
+  nullify(reaction%eqsrfcplx_rxn_to_mineral)
+  if (associated(reaction%eqsrfcplx_rxn_to_complex)) &
+    deallocate(reaction%eqsrfcplx_rxn_to_complex)
+  nullify(reaction%eqsrfcplx_rxn_to_complex)
 
-  if (associated(reaction%eqsurfcmplx_rxn_site_density)) &
-    deallocate(reaction%eqsurfcmplx_rxn_site_density)
-  nullify(reaction%eqsurfcmplx_rxn_site_density)
-  if (associated(reaction%eqsurfcmplx_rxn_stoich_flag)) &
-    deallocate(reaction%eqsurfcmplx_rxn_stoich_flag)
-  nullify(reaction%eqsurfcmplx_rxn_stoich_flag) 
+  if (associated(reaction%eqsrfcplx_rxn_site_density)) &
+    deallocate(reaction%eqsrfcplx_rxn_site_density)
+  nullify(reaction%eqsrfcplx_rxn_site_density)
+  if (associated(reaction%eqsrfcplx_rxn_stoich_flag)) &
+    deallocate(reaction%eqsrfcplx_rxn_stoich_flag)
+  nullify(reaction%eqsrfcplx_rxn_stoich_flag) 
+! these deallocates above
+!  if (associated(reaction%eqsrfcplx_site_names)) &
+!    deallocate(reaction%eqsrfcplx_site_names)
+!  nullify(reaction%eqsrfcplx_site_names)
+!  if (associated(reaction%eqsrfcplx_names)) &
+!    deallocate(reaction%eqsrfcplx_names)
+!  nullify(reaction%eqsrfcplx_names)
+  if (associated(reaction%eqsrfcplxspecid)) &
+    deallocate(reaction%eqsrfcplxspecid)
+  nullify(reaction%eqsrfcplxspecid)
+  if (associated(reaction%eqsrfcplxstoich)) &
+    deallocate(reaction%eqsrfcplxstoich)
+  nullify(reaction%eqsrfcplxstoich)
+  if (associated(reaction%eqsrfcplxh2oid)) &
+    deallocate(reaction%eqsrfcplxh2oid)
+  nullify(reaction%eqsrfcplxh2oid)
+  if (associated(reaction%eqsrfcplxh2ostoich)) &
+    deallocate(reaction%eqsrfcplxh2ostoich)
+  nullify(reaction%eqsrfcplxh2ostoich)
+  if (associated(reaction%eqsrfcplx_mineral_id)) &
+    deallocate(reaction%eqsrfcplx_mineral_id)
+  nullify(reaction%eqsrfcplx_mineral_id)
+  if (associated(reaction%eqsrfcplx_free_site_id)) &
+    deallocate(reaction%eqsrfcplx_free_site_id)
+  nullify(reaction%eqsrfcplx_free_site_id)
+  if (associated(reaction%eqsrfcplx_free_site_stoich)) &
+    deallocate(reaction%eqsrfcplx_free_site_stoich)
+  nullify(reaction%eqsrfcplx_free_site_stoich)
+  if (associated(reaction%eqsrfcplx_logK)) &
+    deallocate(reaction%eqsrfcplx_logK)
+  nullify(reaction%eqsrfcplx_logK)
+  if (associated(reaction%eqsrfcplx_logKcoef)) &
+    deallocate(reaction%eqsrfcplx_logKcoef)
+  nullify(reaction%eqsrfcplx_logKcoef)
+  if (associated(reaction%eqsrfcplx_Z)) &
+    deallocate(reaction%eqsrfcplx_Z)
+  nullify(reaction%eqsrfcplx_Z)
 
-  if (associated(reaction%surface_site_names)) &
-    deallocate(reaction%surface_site_names)
-  nullify(reaction%surface_site_names)
-  if (associated(reaction%surface_complex_names)) &
-    deallocate(reaction%surface_complex_names)
-  nullify(reaction%surface_complex_names)
-  if (associated(reaction%eqsurfcmplxspecid)) &
-    deallocate(reaction%eqsurfcmplxspecid)
-  nullify(reaction%eqsurfcmplxspecid)
-  if (associated(reaction%eqsurfcmplxstoich)) &
-    deallocate(reaction%eqsurfcmplxstoich)
-  nullify(reaction%eqsurfcmplxstoich)
-  if (associated(reaction%eqsurfcmplxh2oid)) &
-    deallocate(reaction%eqsurfcmplxh2oid)
-  nullify(reaction%eqsurfcmplxh2oid)
-  if (associated(reaction%eqsurfcmplxh2ostoich)) &
-    deallocate(reaction%eqsurfcmplxh2ostoich)
-  nullify(reaction%eqsurfcmplxh2ostoich)
-  if (associated(reaction%eqsurfcmplx_mineral_id)) &
-    deallocate(reaction%eqsurfcmplx_mineral_id)
-  nullify(reaction%eqsurfcmplx_mineral_id)
-  if (associated(reaction%eqsurfcmplx_free_site_id)) &
-    deallocate(reaction%eqsurfcmplx_free_site_id)
-  nullify(reaction%eqsurfcmplx_free_site_id)
-  if (associated(reaction%eqsurfcmplx_free_site_stoich)) &
-    deallocate(reaction%eqsurfcmplx_free_site_stoich)
-  nullify(reaction%eqsurfcmplx_free_site_stoich)
-  if (associated(reaction%eqsurfcmplx_logK)) &
-    deallocate(reaction%eqsurfcmplx_logK)
-  nullify(reaction%eqsurfcmplx_logK)
-  if (associated(reaction%eqsurfcmplx_logKcoef)) &
-    deallocate(reaction%eqsurfcmplx_logKcoef)
-  nullify(reaction%eqsurfcmplx_logKcoef)
-  if (associated(reaction%eqsurfcmplx_Z)) &
-    deallocate(reaction%eqsurfcmplx_Z)
-  nullify(reaction%eqsurfcmplx_Z)
-
-#if 0
-  if (associated(reaction%kinsurfcmplx_rxn_to_mineral)) &
-    deallocate(reaction%kinsurfcmplx_rxn_to_mineral)
-  nullify(reaction%kinsurfcmplx_rxn_to_mineral)
-  if (associated(reaction%kinsurfcmplx_rxn_to_complex)) &
-    deallocate(reaction%kinsurfcmplx_rxn_to_complex)
-  nullify(reaction%kinsurfcmplx_rxn_to_complex)
-  if (associated(reaction%kinsurfcmplx_rxn_site_density)) &
-    deallocate(reaction%kinsurfcmplx_rxn_site_density)
-  nullify(reaction%kinsurfcmplx_rxn_site_density)
-  if (associated(reaction%kinsurfcmplx_rxn_stoich_flag)) &
-    deallocate(reaction%kinsurfcmplx_rxn_stoich_flag)
-  nullify(reaction%kinsurfcmplx_rxn_stoich_flag)
-#endif
-  if (associated(reaction%kinsurfcmplxspecid)) &
-    deallocate(reaction%kinsurfcmplxspecid)
-  nullify(reaction%kinsurfcmplxspecid)
-  if (associated(reaction%kinsurfcmplxstoich)) &
-    deallocate(reaction%kinsurfcmplxstoich)
-  nullify(reaction%kinsurfcmplxstoich)
-  if (associated(reaction%kinsurfcmplx_freesite_stoich)) &
-    deallocate(reaction%kinsurfcmplx_freesite_stoich)
-  nullify(reaction%kinsurfcmplx_freesite_stoich)
-  if (associated(reaction%kinsurfcmplx_forward_rate)) &
-    deallocate(reaction%kinsurfcmplx_forward_rate)
-  nullify(reaction%kinsurfcmplx_forward_rate)
-  if (associated(reaction%kinsurfcmplx_backward_rate)) &
-    deallocate(reaction%kinsurfcmplx_backward_rate)
-  nullify(reaction%kinsurfcmplx_backward_rate)
-!  if (associated(reaction%kinsurfcmplx_logK)) &
-!    deallocate(reaction%kinsurfcmplx_logK)
-!  nullify(reaction%kinsurfcmplx_logK)
-!  if (associated(reaction%kinsurfcmplx_logKcoef)) &
-!    deallocate(reaction%kinsurfcmplx_logKcoef)
-!  nullify(reaction%kinsurfcmplx_logKcoef)
-!  if (associated(reaction%kinsurfcmplx_Z)) &
-!    deallocate(reaction%kinsurfcmplx_Z)
-!  nullify(reaction%kinsurfcmplx_Z)
+  if (associated(reaction%kinsrfcplx_rxn_to_mineral)) &
+    deallocate(reaction%kinsrfcplx_rxn_to_mineral)
+  nullify(reaction%kinsrfcplx_rxn_to_mineral)
+  if (associated(reaction%kinsrfcplx_rxn_to_complex)) &
+    deallocate(reaction%kinsrfcplx_rxn_to_complex)
+  nullify(reaction%kinsrfcplx_rxn_to_complex)
+  if (associated(reaction%kinsrfcplx_rxn_site_density)) &
+    deallocate(reaction%kinsrfcplx_rxn_site_density)
+  nullify(reaction%kinsrfcplx_rxn_site_density)
+  if (associated(reaction%kinsrfcplx_rxn_stoich_flag)) &
+    deallocate(reaction%kinsrfcplx_rxn_stoich_flag)
+  nullify(reaction%kinsrfcplx_rxn_stoich_flag)
+! these deallocates above
+!  if (associated(reaction%kinsrfcplx_site_names)) &
+!    deallocate(reaction%kinsrfcplx_site_names)
+!  nullify(reaction%kinsrfcplx_site_names)
+!  if (associated(reaction%kinsrfcplx_names)) &
+!    deallocate(reaction%kinsrfcplx_names)
+!  nullify(reaction%kinsrfcplx_names)
+  if (associated(reaction%kinsrfcplxspecid)) &
+    deallocate(reaction%kinsrfcplxspecid)
+  nullify(reaction%kinsrfcplxspecid)
+  if (associated(reaction%kinsrfcplxstoich)) &
+    deallocate(reaction%kinsrfcplxstoich)
+  nullify(reaction%kinsrfcplxstoich)
+  if (associated(reaction%kinsrfcplx_free_site_stoich)) &
+    deallocate(reaction%kinsrfcplx_free_site_stoich)
+  nullify(reaction%kinsrfcplx_free_site_stoich)
+  if (associated(reaction%kinsrfcplx_forward_rate)) &
+    deallocate(reaction%kinsrfcplx_forward_rate)
+  nullify(reaction%kinsrfcplx_forward_rate)
+  if (associated(reaction%kinsrfcplx_backward_rate)) &
+    deallocate(reaction%kinsrfcplx_backward_rate)
+  nullify(reaction%kinsrfcplx_backward_rate)
+!  if (associated(reaction%kinsrfcplx_logK)) &
+!    deallocate(reaction%kinsrfcplx_logK)
+!  nullify(reaction%kinsrfcplx_logK)
+!  if (associated(reaction%kinsrfcplx_logKcoef)) &
+!    deallocate(reaction%kinsrfcplx_logKcoef)
+!  nullify(reaction%kinsrfcplx_logKcoef)
+  if (associated(reaction%kinsrfcplx_Z)) &
+    deallocate(reaction%kinsrfcplx_Z)
+  nullify(reaction%kinsrfcplx_Z)
   
   if (associated(reaction%mnrlspecid)) deallocate(reaction%mnrlspecid)
   nullify(reaction%mnrlspecid)

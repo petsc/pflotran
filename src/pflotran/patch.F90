@@ -1254,11 +1254,11 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
           enddo
         case(SURFACE_CMPLX)
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%eqsurfcmplx_conc(isubvar)
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%eqsrfcplx_conc(isubvar)
           enddo
         case(SURFACE_CMPLX_FREE)
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%eqsurfcmplx_freesite_conc(isubvar)
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%eqsrfcplx_freesite_conc(isubvar)
           enddo
         case(PRIMARY_ACTIVITY_COEF)
           do local_id=1,grid%nlmax
@@ -1498,9 +1498,9 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
         case(MINERAL_RATE)
           value = patch%aux%RT%aux_vars(ghosted_id)%mnrl_rate(isubvar)
         case(SURFACE_CMPLX)
-          value = patch%aux%RT%aux_vars(ghosted_id)%eqsurfcmplx_conc(isubvar)
+          value = patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_conc(isubvar)
         case(SURFACE_CMPLX_FREE)
-          value = patch%aux%RT%aux_vars(ghosted_id)%eqsurfcmplx_freesite_conc(isubvar)
+          value = patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_freesite_conc(isubvar)
         case(PRIMARY_ACTIVITY_COEF)
           value = patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)
         case(SECONDARY_ACTIVITY_COEF)

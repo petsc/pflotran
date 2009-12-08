@@ -564,15 +564,15 @@ subroutine OutputTecplotBlock(realization)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo
-      do i=1,reaction%neqsurfcmplxrxn
-        if (reaction%surface_site_print(i)) then
+      do i=1,reaction%neqsrfcplxrxn
+        if (reaction%eqsrfcplx_site_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX_FREE,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
         endif
       enddo
-      do i=1,reaction%neqsurfcmplx
-        if (reaction%surface_complex_print(i)) then
+      do i=1,reaction%neqsrfcplx
+        if (reaction%eqsrfcplx_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1457,15 +1457,15 @@ subroutine OutputTecplotPoint(realization)
             write(IUNIT3,1000,advance='no') value
           endif
         enddo
-        do i=1,reaction%neqsurfcmplxrxn
-          if (reaction%surface_site_print(i)) then
+        do i=1,reaction%neqsrfcplxrxn
+          if (reaction%eqsrfcplx_site_print(i)) then
             value = RealizGetDatasetValueAtCell(realization,SURFACE_CMPLX_FREE, &
                                                 i,ghosted_id)
             write(IUNIT3,1000,advance='no') value
           endif
         enddo
-        do i=1,reaction%neqsurfcmplx
-          if (reaction%surface_complex_print(i)) then
+        do i=1,reaction%neqsrfcplx
+          if (reaction%eqsrfcplx_print(i)) then
             value = RealizGetDatasetValueAtCell(realization,SURFACE_CMPLX, &
                                                 i,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -2465,17 +2465,17 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
       endif
     enddo
     
-    do i=1,realization%reaction%neqsurfcmplxrxn
-      if (reaction%surface_site_print(i)) then
+    do i=1,realization%reaction%neqsrfcplxrxn
+      if (reaction%eqsrfcplx_site_print(i)) then
         write(fid,'('',"'',a,'' '',a,''"'')',advance="no") &
-          trim(reaction%surface_site_names(i)), trim(cell_string)
+          trim(reaction%eqsrfcplx_site_names(i)), trim(cell_string)
       endif
     enddo
     
-    do i=1,realization%reaction%neqsurfcmplx
-      if (reaction%surface_complex_print(i)) then
+    do i=1,realization%reaction%neqsrfcplx
+      if (reaction%eqsrfcplx_print(i)) then
         write(fid,'('',"'',a,'' '',a,''"'')',advance="no") &
-          trim(reaction%surface_complex_names(i)), trim(cell_string)
+          trim(reaction%eqsrfcplx_names(i)), trim(cell_string)
       endif
     enddo
 
@@ -2661,17 +2661,17 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
       endif
     enddo
     
-    do i=1,realization%reaction%neqsurfcmplxrxn
-      if (reaction%surface_site_print(i)) then
+    do i=1,realization%reaction%neqsrfcplxrxn
+      if (reaction%eqsrfcplx_site_print(i)) then
         write(fid,'('',"'',a,'' '',a,''"'')',advance="no") &
-          trim(reaction%surface_site_names(i)), trim(cell_string)
+          trim(reaction%eqsrfcplx_site_names(i)), trim(cell_string)
       endif
     enddo
     
-    do i=1,realization%reaction%neqsurfcmplx
-      if (reaction%surface_complex_print(i)) then
+    do i=1,realization%reaction%neqsrfcplx
+      if (reaction%eqsrfcplx_print(i)) then
         write(fid,'('',"'',a,'' '',a,''"'')',advance="no") &
-          trim(reaction%surface_complex_names(i)), trim(cell_string)
+          trim(reaction%eqsrfcplx_names(i)), trim(cell_string)
       endif
     enddo
 
@@ -2934,14 +2934,14 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
             RealizGetDatasetValueAtCell(realization,MINERAL_RATE,i,ghosted_id)
         endif
       enddo
-      do i=1,reaction%neqsurfcmplxrxn
-        if (reaction%surface_site_print(i)) then
+      do i=1,reaction%neqsrfcplxrxn
+        if (reaction%eqsrfcplx_site_print(i)) then
            write(fid,110,advance="no") &
             RealizGetDatasetValueAtCell(realization,SURFACE_CMPLX_FREE,i,ghosted_id)
         endif
       enddo
-      do i=1,reaction%neqsurfcmplx
-        if (reaction%surface_complex_print(i)) then
+      do i=1,reaction%neqsrfcplx
+        if (reaction%eqsrfcplx_print(i)) then
           write(fid,110,advance="no") &
             RealizGetDatasetValueAtCell(realization,SURFACE_CMPLX,i,ghosted_id)
         endif
@@ -3278,8 +3278,8 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                          count,ghosted_ids)
         endif
       enddo
-      do i=1,reaction%neqsurfcmplxrxn
-        if (reaction%surface_site_print(i)) then
+      do i=1,reaction%neqsrfcplxrxn
+        if (reaction%eqsrfcplx_site_print(i)) then
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,SURFACE_CMPLX_FREE,i, &
                                          region%coordinates(ONE_INTEGER)%x, &
@@ -3288,8 +3288,8 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                          count,ghosted_ids)
         endif
       enddo
-      do i=1,reaction%neqsurfcmplx
-        if (reaction%surface_complex_print(i)) then
+      do i=1,reaction%neqsrfcplx
+        if (reaction%eqsrfcplx_print(i)) then
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,SURFACE_CMPLX,i, &
                                          region%coordinates(ONE_INTEGER)%x, &
@@ -5071,11 +5071,11 @@ subroutine OutputHDF5(realization)
           endif
         endif
       enddo
-      do i=1,reaction%neqsurfcmplxrxn
-        if (reaction%surface_site_print(i)) then
+      do i=1,reaction%neqsrfcplxrxn
+        if (reaction%eqsrfcplx_site_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX_FREE,i)
           if (.not.(option%use_samr)) then
-            write(string,'(a)') reaction%surface_site_names(i)
+            write(string,'(a)') reaction%eqsrfcplx_site_names(i)
             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
@@ -5086,11 +5086,11 @@ subroutine OutputHDF5(realization)
           endif
         endif
       enddo
-      do i=1,reaction%neqsurfcmplx
-        if (reaction%surface_complex_print(i)) then
+      do i=1,reaction%neqsrfcplx
+        if (reaction%eqsrfcplx_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,SURFACE_CMPLX,i)
           if (.not.(option%use_samr)) then
-            write(string,'(a)') reaction%surface_complex_names(i)
+            write(string,'(a)') reaction%eqsrfcplx_names(i)
             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)

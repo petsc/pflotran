@@ -1312,13 +1312,13 @@ subroutine RealizAssignTransportInitCond(realization)
                 initial_condition%tran_condition%cur_constraint_coupler% &
                 rt_auxvar%kinmr_total_sorb
               ! copy over free site concentration
-              rt_aux_vars(ghosted_id)%eqsurfcmplx_freesite_conc = &
+              rt_aux_vars(ghosted_id)%eqsrfcplx_freesite_conc = &
                 initial_condition%tran_condition%cur_constraint_coupler% &
-                rt_auxvar%eqsurfcmplx_freesite_conc
+                rt_auxvar%eqsrfcplx_freesite_conc
               ! copy over surface complex concentrations
-              rt_aux_vars(ghosted_id)%eqsurfcmplx_conc = &
+              rt_aux_vars(ghosted_id)%eqsrfcplx_conc = &
                 initial_condition%tran_condition%cur_constraint_coupler% &
-                rt_auxvar%eqsurfcmplx_conc
+                rt_auxvar%eqsrfcplx_conc
             endif
           enddo
 !        endif

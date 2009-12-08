@@ -3151,27 +3151,27 @@ function RTGetTecplotHeader(realization,icolumn)
     endif
   enddo
   
-  do i=1,realization%reaction%neqsurfcmplxrxn
-    if (reaction%surface_site_print(i)) then
+  do i=1,realization%reaction%neqsrfcplxrxn
+    if (reaction%eqsrfcplx_site_print(i)) then
       if (icolumn > -1) then
         icolumn = icolumn + 1  
         write(string2,'('',"'',i2,''-'',a,''"'')') icolumn, &
-          trim(reaction%surface_site_names(i))
+          trim(reaction%eqsrfcplx_site_names(i))
       else
-        write(string2,'('',"'',a,''"'')') trim(reaction%surface_site_names(i))
+        write(string2,'('',"'',a,''"'')') trim(reaction%eqsrfcplx_site_names(i))
       endif
       string = trim(string) // trim(string2)
     endif
   enddo
   
-  do i=1,realization%reaction%neqsurfcmplx
-    if (reaction%surface_complex_print(i)) then
+  do i=1,realization%reaction%neqsrfcplx
+    if (reaction%eqsrfcplx_print(i)) then
       if (icolumn > -1) then
         icolumn = icolumn + 1  
         write(string2,'('',"'',i2,''-'',a,''"'')') icolumn, &
-          trim(reaction%surface_complex_names(i))
+          trim(reaction%eqsrfcplx_names(i))
       else
-        write(string2,'('',"'',a,''"'')') trim(reaction%surface_complex_names(i))
+        write(string2,'('',"'',a,''"'')') trim(reaction%eqsrfcplx_names(i))
       endif
       string = trim(string) // trim(string2)
     endif
@@ -3259,15 +3259,15 @@ subroutine RTAuxVarCompute(rt_aux_var,global_aux_var,reaction,option)
   do jcomp = 1, reaction%ncomp
     Res_pert = 0.d0
     call RTAuxVarCopy(rt_auxvar_pert,rt_aux_var,option)
-    if (reaction%neqcmplx > 0) then
+    if (reaction%neqcplx > 0) then
       aux_var%sec_molal = 0.d0
     endif
     if (reaction%ngas > 0) then
       aux_var%gas_molal = 0.d0
     endif
-    if (reaction%neqsurfcmplxrxn > 0) then
-      rt_auxvar_pert%eqsurfcmplx_freesite_conc = 1.d-9
-      rt_auxvar_pert%eqsurfcmplx_conc = 0.d0
+    if (reaction%neqsrfcplxrxn > 0) then
+      rt_auxvar_pert%eqsrfcplx_freesite_conc = 1.d-9
+      rt_auxvar_pert%eqsrfcplx_conc = 0.d0
     endif
     if (reaction%neqionxrxn > 0) then
       rt_aux_var%eqionx_ref_cation_sorbed_conc = 1.d-9
@@ -3435,13 +3435,13 @@ subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
 
   ! Loop over sorption reactions to find the necessary components
   
-  do irxn = 1, reaction%neqsurfcmplxrxn
-    ncplx = reaction%eqsurfcmplx_rxn_to_complex(0,irxn)
+  do irxn = 1, reaction%neqsrfcplxrxn
+    ncplx = reaction%eqsrfcplx_rxn_to_complex(0,irxn)
     do j = 1, ncplx
-      icplx = reaction%eqsurfcmplx_rxn_to_complex(j,irxn)
-      ncomp = reaction%eqsurfcmplxspecid(0,icplx)
+      icplx = reaction%eqsrfcplx_rxn_to_complex(j,irxn)
+      ncomp = reaction%eqsrfcplxspecid(0,icplx)
       do i = 1, ncomp
-        icomp = reaction%eqsurfcmplxspecid(i,icplx)
+        icomp = reaction%eqsrfcplxspecid(i,icplx)
         checkpoint_flag(icomp) = PETSC_TRUE
       enddo
     enddo
