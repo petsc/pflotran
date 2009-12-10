@@ -1362,10 +1362,12 @@ A possible kinetic formulation for surface complexation reactions can be written
 \EQ\label{skin}
 \frac{\p S_{i\a}}{\p t} \eq k_{i\a}^f S_\a Q_{i} - k_{i\a}^b S_{i\a},
 \EN
-where for reversible reaction the forward and backward rate constants, $k_{i\a}^f$, $k_{i\a}^b$ satisfy the relation
+where $S_{\i\a}$ denotes the sorbed concentration for the $i$th surface complex on site $\a$. For reversible reaction the forward and backward rate constants, $k_{i\a}^f$, $k_{i\a}^b$ satisfy the relation
+%\footnote{Should the selectivity coefficienty $K_i$ also depend on the site index $\a$?}
 \EQ
-K_i \eq \frac{k_{i\a}^f}{k_{i\a}^b}.
+K_{i\a} \eq \frac{k_{i\a}^f}{k_{i\a}^b},
 \EN
+with selectivity coefficient $K_{i\a}$.
 It should be noted that the form of the rate law given in Eqn.\eqref{skin} is not expressed in the form of an elementary reaction. Other forms are certainly possible and comparison with experiment would be required to choose the best formulation. For irreversible reaction one of the rate constants must vanish.
 
 The implicit finite difference equation corresponding to Eqn.\eqref{skin} is given by
@@ -1373,48 +1375,54 @@ The implicit finite difference equation corresponding to Eqn.\eqref{skin} is giv
 \frac{S_{i\a}^{k+1} - S_{i\a}^k}{\Delta t} \eq k_{i\a}^f S_\a^{k+1} Q_{i}^{k+1} - k_{i\a}^b S_{i\a}^{k+1},
 \EN
 for the $k+1$st time increment. The free site concentration $S_\a^{k+1}$ is obtained from the site conservation equation
+\begin{subequations}
 \EQ\label{sfree}
 S_\a^{k+1} \eq \sum_l S_{l\a}^{k+1} - \omega_\a^{k+1}.
 \EN
+In the numerical implementation it is customary to lag the site concentration $\omega_\a$ one time step behind giving the equation
+\EQ\label{sfree1}
+S_\a^{k+1} \eq \sum_l S_{l\a}^{k+1} - \omega_\a^{k}.
+\EN
+\end{subequations}
 Noting that Eqn.\eqref{fdskin} can be considered a linear function of $S_{i\a}^{k+1}$, it may be solved to give
 \EQ\label{sia}
-S_{i\a}^{k+1} \eq \frac{S_{i\a}^k + k_i^f\Delta t S_\a^{k+1} Q_i^{k+1}}{1+k_i^b\Delta t}.
+S_{i\a}^{k+1} \eq \frac{S_{i\a}^k + k_{i\a}^f\Delta t S_\a^{k+1} Q_i^{k+1}}{1+k_{i\a}^b\Delta t}.
 \EN
 Substituting this result into Eqn.\eqref{sfree} and solving for $S_\a^{k+1}$ yields the result
 \EQ
 S_\a^{k+1} \eq \frac{
 \omega_\a - 
-\displaystyle\sum_l \dfrac{S_{l\a}^{k}}{1+k_l^b\Delta t}
+\displaystyle\sum_l \dfrac{S_{l\a}^{k}}{1+k_{l\a}^b\Delta t}
 }
-{1+\displaystyle\sum_l\dfrac{k_l^f\Delta t}{1+k_l^b\Delta t} Q_l^{k+1}}.
+{1+\displaystyle\sum_l\dfrac{k_{l\a}^f\Delta t}{1+k_{l\a}^b\Delta t} Q_l^{k+1}}.
 \EN
 Finally, substituting this result for $S_\a^{k+1}$ into Eqn.\eqref{sia} yields the result
 \EQ
-S_{i\a}^{k+1} \eq \frac{S_{i\a}^k}{1+k_i^b\Delta t} + \frac{k_i^f\Delta t}{1+k_i^b \Delta t} \left[
+S_{i\a}^{k+1} \eq \frac{S_{i\a}^k}{1+k_{i\a}^b\Delta t} + \frac{k_{i\a}^f\Delta t}{1+k_{i\a}^b \Delta t} \left[
 \frac{
-\omega_\a - 
-\displaystyle\sum_l \dfrac{S_{l\a}^{k}}{1+k_l^b\Delta t}
+\omega_\a^k - 
+\displaystyle\sum_l \dfrac{S_{l\a}^{k}}{1+k_{l\a}^b\Delta t}
 }
-{1+\displaystyle\sum_l\dfrac{k_l^f\Delta t}{1+k_l^b\Delta t} Q_l^{k+1}}
+{1+\displaystyle\sum_l\dfrac{k_{l\a}^f\Delta t}{1+k_{l\a}^b\Delta t} Q_l^{k+1}}
 \right] Q_i^{k+1}.
 \EN
-For the case of irreversible desorption with $k_i^b=0$, this expression reduces to
+For the case of irreversible desorption with $k_{i\a}^b=0$, this expression reduces to
 \EQ
-S_{i\a}^{k+1} \eq S_{i\a}^k + k_i^f\Delta t \left[
+S_{i\a}^{k+1} \eq S_{i\a}^k + k_{i\a}^f\Delta t \left[
 \frac{
-\omega_\a - 
+\omega_\a^k - 
 \displaystyle\sum_l S_{l\a}^{k}
 }
-{1+\displaystyle\sum_l k_l^f\Delta t Q_l^{k+1}}
+{1+\displaystyle\sum_l k_{l\a}^f\Delta t Q_l^{k+1}}
 \right] Q_i^{k+1}.
 \EN
-For $k_i^f=0$, one obtains
+For $k_{i\a}^f=0$, one obtains
 \EQ
-S_\a^{k+1} \eq \frac{S_{i\a}^k}{1+k_i^b\Delta t}.
+S_\a^{k+1} \eq \frac{S_{i\a}^k}{1+k_{i\a}^b\Delta t}.
 \EN
-In the limit $k_i^f, \, k_i^b \rightarrow\infty$ with $k_i^f/k_i^b=K_i$, $S_{i\a}^{k+1}$ tends to the local equilibrium limiting value
+In the limit $k_{i\a}^f, \, k_{i\a}^b \rightarrow\infty$ with $k_{i\a}^f/k_{i\a}^b=K_{i\a}$, $S_{i\a}^{k+1}$ tends to the local equilibrium limiting value
 \EQ
-S_{i\a}^{k+1} \rightarrow \frac{\omega_\a K_i Q_i}{1+\sum_l K_lQ_l}.
+S_{i\a}^{k+1} \rightarrow \frac{\omega_\a^k K_{i\a} Q_i}{1+\sum_l K_{l\a}Q_l}.
 \EN
 
 \subsubsection{$K_d$ Model}
