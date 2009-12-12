@@ -1377,42 +1377,50 @@ The implicit finite difference equation corresponding to Eqn.\eqref{skin} is giv
 for the $k+1$st time increment. The free site concentration $S_\a^{k+1}$ is obtained from the site conservation equation
 \begin{subequations}
 \EQ\label{sfree}
-S_\a^{k+1} \eq \sum_l S_{l\a}^{k+1} - \omega_\a^{k+1}.
+S_\a^{k+1} \eq \omega_\a^{k+1} - \sum_{i'} S_{i'\a}^{k+1}.
 \EN
 In the numerical implementation it is customary to lag the site concentration $\omega_\a$ one time step behind giving the equation
 \EQ\label{sfree1}
-S_\a^{k+1} \eq \sum_l S_{l\a}^{k+1} - \omega_\a^{k}.
+S_\a^{k+1} \eq \omega_\a^{k} - \sum_{i'} S_{i'\a}^{k+1}.
 \EN
 \end{subequations}
 Noting that Eqn.\eqref{fdskin} can be considered a linear function of $S_{i\a}^{k+1}$, it may be solved to give
 \EQ\label{sia}
 S_{i\a}^{k+1} \eq \frac{S_{i\a}^k + k_{i\a}^f\Delta t S_\a^{k+1} Q_i^{k+1}}{1+k_{i\a}^b\Delta t}.
 \EN
-Substituting this result into Eqn.\eqref{sfree} and solving for $S_\a^{k+1}$ yields the result
+Substituting this result into Eqn.\eqref{sfree1} and solving for $S_\a^{k+1}$ yields the result
 \EQ
 S_\a^{k+1} \eq \frac{
-\omega_\a - 
-\displaystyle\sum_l \dfrac{S_{l\a}^{k}}{1+k_{l\a}^b\Delta t}
+\omega_\a^k - \displaystyle\sum_{i'} \dfrac{S_{{i'}\a}^{k}}{1+k_{i'\a}^b\Delta t}
 }
-{1+\displaystyle\sum_l\dfrac{k_{l\a}^f\Delta t}{1+k_{l\a}^b\Delta t} Q_l^{k+1}}.
+{1+\displaystyle\sum_{i'}\dfrac{k_{i'\a}^f\Delta t}{1+k_{i'\a}^b\Delta t} Q_{i'}^{k+1}} \eq \frac{N_\a}{D_\a},
+\EN
+where
+\EQ
+N_\a \eq\omega_\a^k - \displaystyle\sum_{i'} \dfrac{S_{i'\a}^{k}}{1+k_{i'\a}^b\Delta t},
+\EN
+and
+\EQ
+D_\a \eq 1+\displaystyle\sum_{i'}\dfrac{k_{i'\a}^f\Delta t}{1+k_{i'\a}^b\Delta t} Q_{i'}^{k+1}.
 \EN
 Finally, substituting this result for $S_\a^{k+1}$ into Eqn.\eqref{sia} yields the result
 \EQ
-S_{i\a}^{k+1} \eq \frac{S_{i\a}^k}{1+k_{i\a}^b\Delta t} + \frac{k_{i\a}^f\Delta t}{1+k_{i\a}^b \Delta t} \left[
-\frac{
-\omega_\a^k - 
-\displaystyle\sum_l \dfrac{S_{l\a}^{k}}{1+k_{l\a}^b\Delta t}
+S_{i\a}^{k+1} \eq \frac{S_{i\a}^k}{1+k_{i\a}^b\Delta t} + \frac{k_{i\a}^f\Delta t}{1+k_{i\a}^b \Delta t} \left(
+\frac{N_\a
+%\omega_\a^k - \displaystyle\sum_l \dfrac{S_{l\a}^{k}}{1+k_{l\a}^b\Delta t}
 }
-{1+\displaystyle\sum_l\dfrac{k_{l\a}^f\Delta t}{1+k_{l\a}^b\Delta t} Q_l^{k+1}}
-\right] Q_i^{k+1}.
+{D_\a
+%1+\displaystyle\sum_l\dfrac{k_{l\a}^f\Delta t}{1+k_{l\a}^b\Delta t} Q_l^{k+1}
+}
+\right) Q_i^{k+1}.
 \EN
 For the case of irreversible desorption with $k_{i\a}^b=0$, this expression reduces to
 \EQ
 S_{i\a}^{k+1} \eq S_{i\a}^k + k_{i\a}^f\Delta t \left[
 \frac{
-\omega_\a^k - \displaystyle\sum_l S_{l\a}^{k}
+\omega_\a^k - \displaystyle\sum_{i'} S_{i'\a}^{k}
 }
-{1+\displaystyle\sum_l k_{l\a}^f\Delta t Q_l^{k+1}}
+{1+\Delta t\displaystyle\sum_{i'} k_{i'\a}^f Q_{i'}^{k+1}}
 \right] Q_i^{k+1}.
 \EN
 For $k_{i\a}^f=0$, one obtains
@@ -1431,29 +1439,21 @@ The contribution of the kinetic surface complexation model to the residual funct
 R_{jn} &~+\!=~ \sum_{i\a}\nu_{ji}\frac{S_{i\a}^{k+1} - S_{i\a}^k}{\Delta t},\\
 &\eq \sum_{i\a}\nu_{ji} \left\{
 \frac{k_{i\a}^b S_{i\a}^k}{1+k_{i\a}^b\Delta t} + \frac{k_{i\a}^f}{1+k_{i\a}^b \Delta t} \left(
-\frac{N_\a}{D}
+\frac{N_\a}{D_\a}
 \right) Q_i^{k+1}
 \right\}.
 \EA
-In this expression
-\EQ
-N_\a \eq\omega_\a^k - \displaystyle\sum_l \dfrac{S_{l\a}^{k}}{1+k_{l\a}^b\Delta t},
-\EN
-and
-\EQ
-D \eq 1+\displaystyle\sum_l\dfrac{k_{l\a}^f\Delta t}{1+k_{l\a}^b\Delta t} Q_l^{k+1}.
-\EN
 The contribution to the Jacobian is given by
 \BA
-\frac{\p R_{jn}}{\p \ln C_l^{k+1}} &\eq \frac{1}{D} \sum_{i\a}
-\frac{\nu_{ji} k_{i\a}^f N_\a}{1+k_{i\a}^b \Delta t} \left\{
-\frac{\p Q_i^{k+1}}{\p\ln C_l^{k+1}}-\frac{Q_i^{k+1}}{D}
+\frac{\p R_{jn}}{\p \ln C_l^{k+1}} &\eq \sum_{i\a}\frac{N_\a}{D_\a} 
+\frac{\nu_{ji} k_{i\a}^f}{1+k_{i\a}^b \Delta t} \left\{
+\frac{\p Q_i^{k+1}}{\p\ln C_l^{k+1}}-\frac{Q_i^{k+1}}{D_\a}
 \displaystyle\sum_{i'}\dfrac{k_{i'\a}^f\Delta t}{1+k_{i'\a}^b\Delta t} \frac{\p Q_{i'}^{k+1}}{\p\ln C_l^{k+1}}
 \right\},\\
-&\eq \frac{1}{D} \sum_{i\a}
-\nu_{ji} f_{i\a} Q_i^{k+1} N_\a \left\{
-\nu_{li}-\frac{\Delta t}{D}
-\displaystyle\sum_{i'} \nu_{li'} f_{i'\a} Q_{i'}^{k+1}
+&\eq \sum_{i\a}\frac{N_\a}{D_\a} 
+\nu_{ji}^{} f_{i\a}^{} Q_i^{k+1} \left\{
+\nu_{li}^{}-\frac{\Delta t}{D_\a}
+\displaystyle\sum_{i'} \nu_{li'}^{} f_{i'\a}^{} Q_{i'}^{k+1}
 \right\},
 \EA
 with
@@ -1462,7 +1462,7 @@ f_{i\a} \eq \frac{k_{i\a}^f}{1+k_{i\a}^b \Delta t},
 \EN
 and
 \EQ
-\frac{\p Q_{i}^{k+1}}{\p\ln C_l^{k+1}} \eq \nu_{li} Q_i.
+\frac{\p Q_{i}^{k+1}}{\p\ln C_l^{k+1}} \eq \nu_{li}^{} Q_i^{k+1}.
 \EN
 
 \subsubsection{$K_d$ Model}

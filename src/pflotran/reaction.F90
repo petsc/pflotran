@@ -3280,6 +3280,8 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: numerator_sum(reaction%nkinsrfsites)
   PetscReal :: denominator_sum(reaction%nkinsrfsites)
   PetscReal :: denominator
+  PetscReal :: fac
+  PetscReal :: fac_sum(reaction%ncomp)
   PetscReal :: lnQ(reaction%nkinsrfcplx)
   PetscReal :: Q(reaction%nkinsrfcplx)
   PetscReal :: srfcplx_conc_k(reaction%nkinsrfcplx)
@@ -3295,11 +3297,13 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
   
   dt = option%dt
   
+! compute ion activity product and store
   lnQ = 0.d0
   do irxn = 1, reaction%nkinsrfcplxrxn
     icplx = irxn  ! for now....
     if (reaction%kinsrfcplxh2oid(icplx) > 0) then
-      lnQ(icplx) = lnQ(icplx) + reaction%kinsrfcplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
+      lnQ(icplx) = lnQ(icplx) + reaction%kinsrfcplxh2ostoich(icplx)* &
+        rt_auxvar%ln_act_h2o
     endif
 
 !    lnQ = lnQ + reaction%kinsrfcplx_free_site_stoich(icplx)* &
@@ -3308,12 +3312,13 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
     ncomp = reaction%kinsrfcplxspecid(0,icplx)
     do i = 1, ncomp
       icomp = reaction%kinsrfcplxspecid(i,icplx)
-      lnQ(icplx) = lnQ(icplx) + reaction%kinsrfcplxstoich(i,icplx)*ln_act(icomp)
+      lnQ(icplx) = lnQ(icplx) + reaction%kinsrfcplxstoich(i,icplx)* &
+        ln_act(icomp)
     enddo
     Q(icplx) = exp(lnQ(icplx))
   enddo
     
-  ! compute summation in numerator of 5.1-30
+  ! compute summation in numerator of 5.1-29
   numerator_sum = 0.d0
   do irxn = 1, reaction%nkinsrfcplxrxn
     icplx = irxn  ! for now....
@@ -3329,7 +3334,7 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
                            numerator_sum(isite)
   enddo
   
-  ! compute summation in denominator of 5.1-30
+  ! compute summation in denominator of 5.1-29
   denominator_sum = 1.d0
   do irxn = 1, reaction%nkinsrfcplxrxn
     icplx = irxn
@@ -3345,18 +3350,20 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
 !   isite = reaction%kinsrfcplx_rxn_to_site(irxn)
 !   denominator_sum(isite) = 1.d0 + denominator_sum(isite)
 ! enddo
-  
+
+! compute surface complex conc. at new time step (5.1-30)  
   do irxn = 1, reaction%nkinsrfcplxrxn
     icplx = irxn
     isite = reaction%kinsrfcplx_rxn_to_site(irxn)
     srfcplx_conc_k = rt_auxvar%kinsrfcplx_conc(icplx)
     denominator = 1.d0 + reaction%kinsrfcplx_backward_rate(irxn)*dt
-    srfcplx_conc_kp1(icplx) = srfcplx_conc_k(icplx)/denominator + &
-                              reaction%kinsrfcplx_forward_rate(irxn)*dt/ &
-                              denominator* &
+    srfcplx_conc_kp1(icplx) = (srfcplx_conc_k(icplx) + &
+                              reaction%kinsrfcplx_forward_rate(irxn)*dt &
                               numerator_sum(isite)/denominator_sum(isite)* &
-                              Q(icplx)                       
+                              Q(icplx))/denominator 
   enddo
+
+! compute residual (5.1-34)
   
   do irxn = 1, reaction%nkinsrfcplxrxn
     icplx = irxn
@@ -3366,18 +3373,37 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
       Res(icomp) = Res(icomp) + reaction%kinsrfcplxstoich(i,icplx)* &
                   (srfcplx_conc_kp1(icplx)-rt_auxvar%kinsrfcplx_conc(icplx))/dt
     enddo
-
   enddo
 
-  ! derivatives here
+! compute jacobian (5.1-39)
+  fac_sum = 0.d0
+  do irxn = 1, reaction%nkinsrfcplxrxn
+    icplx = irxn
+    denominator = 1.d0 + reaction%kinsrfcplx_backward_rate(irxn)*dt
+    fac = reaction%kinsrfcplx_forward_rate(irxn)/denominator
+    ncomp = reaction%kinsrfcplxspecid(0,icplx)
+    do j = 1, ncomp
+      jcomp = reaction%kinsrfcplxspecid(j,icplx)
+      fac_sum(jcomp) = fac_sum(jcomp) + reaction%kinsrfcplxstoich(j,icplx)* &
+        fac * Q(icplx)
+    enddo
+  enddo
+
   do i = 1, reaction%nkinsrfcplxrxn
     icplx = irxn
+    isite = reaction%kinsrfcplx_rxn_to_site(irxn)
+    denominator = 1.d0 + reaction%kinsrfcplx_backward_rate(irxn)*dt
+    fac = reaction%kinsrfcplx_forward_rate(irxn)/denominator
+    
     ncomp = reaction%kinsrfcplxspecid(0,icplx)
     do j = 1, ncomp
       jcomp = reaction%kinsrfcplxspecid(j,icplx)
       do l = 1, ncomp
         lcomp = reaction%kinsrfcplxspecid(l,icplx)
-        Jac(jcomp,lcomp) = Jac(jcomp,lcomp)
+        Jac(jcomp,lcomp) = Jac(jcomp,lcomp) + &
+          (reaction%kinsrfcplxstoich(j,icplx) * fac * numerator_sum * Q(icplx) *&
+          (reaction%kinsrfcplxstoich(l,icplx) - &
+          dt * fac_sum(lcomp)/denominator_sum))/denominator_sum
       enddo
     enddo
   enddo
