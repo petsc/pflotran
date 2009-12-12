@@ -3358,7 +3358,7 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
     srfcplx_conc_k = rt_auxvar%kinsrfcplx_conc(icplx)
     denominator = 1.d0 + reaction%kinsrfcplx_backward_rate(irxn)*dt
     srfcplx_conc_kp1(icplx) = (srfcplx_conc_k(icplx) + &
-                              reaction%kinsrfcplx_forward_rate(irxn)*dt &
+                              reaction%kinsrfcplx_forward_rate(irxn)*dt * &
                               numerator_sum(isite)/denominator_sum(isite)* &
                               Q(icplx))/denominator 
   enddo
@@ -3401,9 +3401,9 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
       do l = 1, ncomp
         lcomp = reaction%kinsrfcplxspecid(l,icplx)
         Jac(jcomp,lcomp) = Jac(jcomp,lcomp) + &
-          (reaction%kinsrfcplxstoich(j,icplx) * fac * numerator_sum * Q(icplx) *&
-          (reaction%kinsrfcplxstoich(l,icplx) - &
-          dt * fac_sum(lcomp)/denominator_sum))/denominator_sum
+          (reaction%kinsrfcplxstoich(j,icplx) * fac * numerator_sum(isite) * &
+          Q(icplx) * (reaction%kinsrfcplxstoich(l,icplx) - &
+          dt * fac_sum(lcomp)/denominator_sum(isite)))/denominator_sum(isite)
       enddo
     enddo
   enddo
