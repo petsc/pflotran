@@ -3271,7 +3271,7 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
   type(option_type) :: option
 
-  PetscInt :: i, j, k, icplx, icomp, jcomp, ncomp, ncplx
+  PetscInt :: i, j, k, l, icplx, icomp, jcomp, lcomp, ncomp, ncplx
   PetscReal :: ln_conc(reaction%ncomp)
   PetscReal :: ln_act(reaction%ncomp)
   PetscInt :: irxn, isite
@@ -3327,11 +3327,10 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
     isite = reaction%kinsrfcplx_rxn_to_site(irxn)
     numerator_sum(isite) = reaction%kinsrfcplx_rxn_site_density(isite) - &
                            numerator_sum(isite)
-                           
   enddo
   
   ! compute summation in denominator of 5.1-30
-  denominator_sum = 0.d0
+  denominator_sum = 1.d0
   do irxn = 1, reaction%nkinsrfcplxrxn
     icplx = irxn
     isite = reaction%kinsrfcplx_rxn_to_site(irxn)
@@ -3340,11 +3339,12 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
                              (1.d0+reaction%kinsrfcplx_backward_rate(irxn)*dt)* &
                              Q(icplx)
   enddo
-  do irxn = 1, reaction%nkinsrfcplxrxn
-    icplx = irxn
-    isite = reaction%kinsrfcplx_rxn_to_site(irxn)
-    denominator_sum(isite) = 1.d0 + denominator_sum(isite)
-  enddo
+  
+! do irxn = 1, reaction%nkinsrfcplxrxn
+!   icplx = irxn
+!   isite = reaction%kinsrfcplx_rxn_to_site(irxn)
+!   denominator_sum(isite) = 1.d0 + denominator_sum(isite)
+! enddo
   
   do irxn = 1, reaction%nkinsrfcplxrxn
     icplx = irxn
@@ -3370,8 +3370,17 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
   enddo
 
   ! derivatives here
-
-
+  do i = 1, reaction%nkinsrfcplxrxn
+    icplx = irxn
+    ncomp = reaction%kinsrfcplxspecid(0,icplx)
+    do j = 1, ncomp
+      jcomp = reaction%kinsrfcplxspecid(j,icplx)
+      do l = 1, ncomp
+        lcomp = reaction%kinsrfcplxspecid(l,icplx)
+        Jac(jcomp,lcomp) = Jac(jcomp,lcomp)
+      enddo
+    enddo
+  enddo
   
   ! units of total_sorb = mol/m^3
   ! units of dtotal_sorb = kg water/m^3 bulk

@@ -1448,10 +1448,19 @@ The contribution to the Jacobian is given by
 \frac{\p R_{jn}}{\p \ln C_l^{k+1}} &\eq \frac{1}{D} \sum_{i\a}
 \frac{\nu_{ji} k_{i\a}^f N_\a}{1+k_{i\a}^b \Delta t} \left\{
 \frac{\p Q_i^{k+1}}{\p\ln C_l^{k+1}}-\frac{Q_i^{k+1}}{D}
-\displaystyle\sum_{l'}\dfrac{k_{l'\a}^f\Delta t}{1+k_{l'\a}^b\Delta t} \frac{\p Q_{l'}^{k+1}}{\p\ln C_l^{k+1}}
+\displaystyle\sum_{i'}\dfrac{k_{i'\a}^f\Delta t}{1+k_{i'\a}^b\Delta t} \frac{\p Q_{i'}^{k+1}}{\p\ln C_l^{k+1}}
+\right\},\\
+&\eq \frac{1}{D} \sum_{i\a}
+\nu_{ji} f_{i\a} Q_i^{k+1} N_\a \left\{
+\nu_{li}-\frac{\Delta t}{D}
+\displaystyle\sum_{i'} \nu_{li'} f_{i'\a} Q_{i'}^{k+1}
 \right\},
 \EA
 with
+\EQ
+f_{i\a} \eq \frac{k_{i\a}^f}{1+k_{i\a}^b \Delta t},
+\EN
+and
 \EQ
 \frac{\p Q_{i}^{k+1}}{\p\ln C_l^{k+1}} \eq \nu_{li} Q_i.
 \EN
