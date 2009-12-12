@@ -1410,8 +1410,7 @@ For the case of irreversible desorption with $k_{i\a}^b=0$, this expression redu
 \EQ
 S_{i\a}^{k+1} \eq S_{i\a}^k + k_{i\a}^f\Delta t \left[
 \frac{
-\omega_\a^k - 
-\displaystyle\sum_l S_{l\a}^{k}
+\omega_\a^k - \displaystyle\sum_l S_{l\a}^{k}
 }
 {1+\displaystyle\sum_l k_{l\a}^f\Delta t Q_l^{k+1}}
 \right] Q_i^{k+1}.
@@ -1424,6 +1423,34 @@ In the limit $k_{i\a}^f, \, k_{i\a}^b \rightarrow\infty$ with $k_{i\a}^f/k_{i\a}
 \EQ
 S_{i\a}^{k+1} \rightarrow \frac{\omega_\a^k K_{i\a} Q_i}{1+\sum_l K_{l\a}Q_l}.
 \EN
+
+\paragraph{Residual and Jacobian Contributions}
+
+The contribution of the kinetic surface complexation model to the residual function is equal to
+\BA
+R_{jn} &~+\!=~ \sum_{i\a}\nu_{ji}\frac{S_{i\a}^{k+1} - S_{i\a}^k}{\Delta t},\\
+&\eq \sum_{i\a}\nu_{ji} \left\{
+\frac{k_{i\a}^b S_{i\a}^k}{1+k_{i\a}^b\Delta t} + \frac{k_{i\a}^f}{1+k_{i\a}^b \Delta t} \left[
+\frac{N}{D}
+\right] Q_i^{k+1}
+\right\}.
+\EA
+In this expression
+\EQ
+N \eq\omega_\a^k - \displaystyle\sum_l \dfrac{S_{l\a}^{k}}{1+k_{l\a}^b\Delta t},
+\EN
+and
+\EQ
+D \eq 1+\displaystyle\sum_l\dfrac{k_{l\a}^f\Delta t}{1+k_{l\a}^b\Delta t} Q_l^{k+1}.
+\EN
+The contribution to the Jacobian is given by
+\BA
+\frac{\p R_{jn}}{\p \ln C_l^{k+1}} &\eq \sum_{i\a}
+\frac{\nu_{ji} k_{i\a}^f}{1+k_{i\a}^b \Delta t}\frac{N}{D} \left\{
+\frac{\p Q_i^{k+1}}{\p\ln C_l^{k+1}}-\frac{Q_i^{k+1}}{D}
+\displaystyle\sum_{l'}\dfrac{k_{l'\a}^f\Delta t}{1+k_{l'\a}^b\Delta t} \frac{\p Q_{l'}^{k+1}}{\p\ln C_l^{k+1}}
+\right\}
+\EA
 
 \subsubsection{$K_d$ Model}
 
