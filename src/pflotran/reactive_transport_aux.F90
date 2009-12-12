@@ -24,8 +24,8 @@ module Reactive_Transport_Aux_module
     ! sorption reactions
     ! PetscReal, pointer :: kinsrfcplx_spec(:)
     ! PetscReal, pointer :: kinionx_molfrac(:)
-    PetscReal, pointer :: kinsrfcplx_conc(:)
-    PetscReal, pointer :: kinsrfcplx_freesite_conc(:)
+    PetscReal, pointer :: kinsrfcplx_conc(:) ! S_{i\alpha}
+    PetscReal, pointer :: kinsrfcplx_freesite_conc(:)  ! S_\alpha
     PetscReal, pointer :: eqsrfcplx_conc(:)
     PetscReal, pointer :: eqsrfcplx_freesite_conc(:)
 !   PetscReal, pointer :: eqsurf_site_density(:)

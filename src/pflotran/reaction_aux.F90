@@ -236,8 +236,10 @@ module Reaction_Aux_module
 
     PetscInt :: nkinsrfcplx
     PetscInt :: nkinsrfcplxrxn
+    PetscInt :: nkinsrfsites
     PetscInt, pointer :: kinsrfcplx_rxn_to_mineral(:)
     PetscInt, pointer :: kinsrfcplx_rxn_to_complex(:,:)
+    PetscInt, pointer :: kinsrfcplx_rxn_to_site(:)
     PetscReal, pointer :: kinsrfcplx_rxn_site_density(:)
     PetscTruth, pointer :: kinsrfcplx_rxn_stoich_flag(:)
     character(len=MAXWORDLENGTH), pointer :: kinsrfcplx_site_names(:)
@@ -474,6 +476,7 @@ function ReactionCreate()
   reaction%nkinsrfcplxrxn = 0
   nullify(reaction%kinsrfcplx_rxn_to_mineral)
   nullify(reaction%kinsrfcplx_rxn_to_complex)
+  nullify(reaction%kinsrfcplx_rxn_to_site)
   nullify(reaction%kinsrfcplx_rxn_site_density)
   nullify(reaction%kinsrfcplx_rxn_stoich_flag) 
   nullify(reaction%kinsrfcplx_site_names)
@@ -1781,6 +1784,9 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%kinsrfcplx_rxn_to_complex)) &
     deallocate(reaction%kinsrfcplx_rxn_to_complex)
   nullify(reaction%kinsrfcplx_rxn_to_complex)
+  if (associated(reaction%kinsrfcplx_rxn_to_site)) &
+    deallocate(reaction%kinsrfcplx_rxn_to_site)
+  nullify(reaction%kinsrfcplx_rxn_to_site)
   if (associated(reaction%kinsrfcplx_rxn_site_density)) &
     deallocate(reaction%kinsrfcplx_rxn_site_density)
   nullify(reaction%kinsrfcplx_rxn_site_density)

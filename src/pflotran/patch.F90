@@ -1260,6 +1260,14 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%eqsrfcplx_freesite_conc(isubvar)
           enddo
+        case(KIN_SURFACE_CMPLX)
+          do local_id=1,grid%nlmax
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%kinsrfcplx_conc(isubvar)
+          enddo
+        case(KIN_SURFACE_CMPLX_FREE)
+          do local_id=1,grid%nlmax
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%kinsrfcplx_freesite_conc(isubvar)
+          enddo
         case(PRIMARY_ACTIVITY_COEF)
           do local_id=1,grid%nlmax
             ghosted_id = grid%nL2G(local_id)
@@ -1501,6 +1509,10 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
           value = patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_conc(isubvar)
         case(SURFACE_CMPLX_FREE)
           value = patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_freesite_conc(isubvar)
+        case(KIN_SURFACE_CMPLX)
+          value = patch%aux%RT%aux_vars(ghosted_id)%kinsrfcplx_conc(isubvar)
+        case(KIN_SURFACE_CMPLX_FREE)
+          value = patch%aux%RT%aux_vars(ghosted_id)%kinsrfcplx_freesite_conc(isubvar)
         case(PRIMARY_ACTIVITY_COEF)
           value = patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)
         case(SECONDARY_ACTIVITY_COEF)

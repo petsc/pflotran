@@ -2423,6 +2423,8 @@ subroutine BasisInit(reaction,option)
     allocate(reaction%kinsrfcplx_rxn_to_complex(0:icount, &
                                                  reaction%nkinsrfcplxrxn))
     reaction%kinsrfcplx_rxn_to_complex = 0
+    allocate(reaction%kinsrfcplx_rxn_to_site(reaction%nkinsrfcplxrxn))
+    reaction%nkinsrfcplxrxn = 0
     allocate(reaction%kinsrfcplx_site_names(reaction%nkinsrfcplxrxn))
     reaction%kinsrfcplx_site_names = ''
     allocate(reaction%kinsrfcplx_site_print(reaction%nkinsrfcplxrxn))
@@ -2474,8 +2476,8 @@ subroutine BasisInit(reaction,option)
         reaction%kinsrfcplx_forward_rate(irxn) = cur_srfcplx_rxn%forward_rate
         reaction%kinsrfcplx_backward_rate(irxn) = cur_srfcplx_rxn%backward_rate
 !        reaction%kinsrfcplx_site_names(irxn) = cur_srfcplx_rxn%free_site_name
-!        reaction%kinsrfcplx_site_print(irxn) = cur_srfcplx_rxn%free_site_print_me .or. &
-!                                              reaction%print_all_species
+        reaction%kinsrfcplx_site_print(irxn) = cur_srfcplx_rxn%free_site_print_me .or. &
+                                              reaction%print_all_species
         reaction%kinsrfcplx_rxn_to_mineral(irxn) = &
           GetMineralIDFromName(reaction,cur_srfcplx_rxn%mineral_name)
         reaction%kinsrfcplx_rxn_site_density(irxn) = cur_srfcplx_rxn%site_density
@@ -2492,12 +2494,12 @@ subroutine BasisInit(reaction,option)
             reaction%kinsrfcplx_rxn_to_complex(0,irxn) + 1
           reaction%kinsrfcplx_rxn_to_complex( &
             reaction%kinsrfcplx_rxn_to_complex(0,irxn),irxn) = isrfcplx 
+          reaction%kinsrfcplx_rxn_to_site(irxn) = cur_srfcplx_rxn%free_site_id
+
           
 !          reaction%kinsrfcplx_names(isrfcplx) = cur_srfcplx%name
-!          reaction%kinsrfcplx_print(isrfcplx) = cur_srfcplx%print_me .or. &
-!                                              reaction%print_all_species
-          reaction%kinsrfcplx_free_site_id(isrfcplx) = &
-            cur_srfcplx_rxn%free_site_id
+          reaction%kinsrfcplx_print(isrfcplx) = cur_srfcplx%print_me .or. &
+                                              reaction%print_all_species
           reaction%kinsrfcplx_free_site_stoich(isrfcplx) =  &
             cur_srfcplx%free_site_stoich
             

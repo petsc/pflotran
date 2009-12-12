@@ -3257,164 +3257,121 @@ end subroutine RMultiRateSorption
 ! date: 12/07/09
 !
 ! ************************************************************************** !
-subroutine RKineticSurfCplx(rt_auxvar,global_auxvar,reaction,option)
+subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
+                            global_auxvar,reaction,option)
 
   use Option_module
   
+  PetscTruth :: compute_derivative
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
+  PetscReal :: volume
   type(reaction_type) :: reaction
+  PetscReal :: Res(reaction%ncomp)
+  PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
   type(option_type) :: option
-  
+
   PetscInt :: i, j, k, icplx, icomp, jcomp, ncomp, ncplx
   PetscReal :: ln_conc(reaction%ncomp)
   PetscReal :: ln_act(reaction%ncomp)
-  PetscReal :: srfcplx_conc(reaction%nkinsrfcplx)
-  PetscReal :: dSx_dmi(reaction%ncomp)
-  PetscReal :: dSi_dSx
-  PetscReal :: free_site_conc
-  PetscReal :: ln_free_site
-  PetscReal :: lnQK, tempreal, tempreal1, tempreal2, total
-  PetscInt :: irxn
-  PetscInt, parameter :: iphase = 1
-  PetscReal, parameter :: tol = 1.d-12
-  PetscTruth :: one_more
-  PetscReal :: res, dres_dfree_site, dfree_site_conc
+  PetscInt :: irxn, isite
+  PetscReal :: dt
+
+  PetscReal :: numerator_sum(reaction%nkinsrfsites)
+  PetscReal :: denominator_sum(reaction%nkinsrfsites)
+  PetscReal :: denominator
+  PetscReal :: lnQ(reaction%nkinsrfcplx)
+  PetscReal :: Q(reaction%nkinsrfcplx)
+  PetscReal :: srfcplx_conc_k(reaction%nkinsrfcplx)
+  PetscReal :: srfcplx_conc_kp1(reaction%nkinsrfcplx)
   
   ln_conc = log(rt_auxvar%pri_molal)
   ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
 
-  ! Surface Complexation
-  do irxn = 1, reaction%nkinsrfcplxrxn
+
+!    Members of the rt aux var object
+!    PetscReal, pointer :: kinsrfcplx_conc(:) ! S_{i\alpha}
+!    PetscReal, pointer :: kinsrfcplx_freesite_conc(:)  ! S_\alpha
   
-    ncplx = reaction%kinsrfcplx_rxn_to_complex(0,irxn)
-    
-    free_site_conc = rt_auxvar%kinsrfcplx_freesite_conc(irxn)
+  dt = option%dt
+  
+  lnQ = 0.d0
+  do irxn = 1, reaction%nkinsrfcplxrxn
+    icplx = irxn  ! for now....
+    if (reaction%kinsrfcplxh2oid(icplx) > 0) then
+      lnQ(icplx) = lnQ(icplx) + reaction%kinsrfcplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
+    endif
 
-    ! get a pointer to the first complex (there will always be at least 1)
-    ! in order to grab free site conc
-    one_more = PETSC_FALSE
-    do
-
-      total = free_site_conc
-      ln_free_site = log(free_site_conc)
-      do j = 1, ncplx
-        icplx = reaction%kinsrfcplx_rxn_to_complex(j,irxn)
-        ! compute secondary species concentration
-!        lnQK = -reaction%kinsrfcplx_logK(icplx)*LOG_TO_LN
-
-        ! activity of water
-        if (reaction%kinsrfcplxh2oid(icplx) > 0) then
-          lnQK = lnQK + reaction%kinsrfcplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
-        endif
-
-        lnQK = lnQK + reaction%kinsrfcplx_free_site_stoich(icplx)* &
-                      ln_free_site
-      
-        ncomp = reaction%kinsrfcplxspecid(0,icplx)
-        do i = 1, ncomp
-          icomp = reaction%kinsrfcplxspecid(i,icplx)
-          lnQK = lnQK + reaction%kinsrfcplxstoich(i,icplx)*ln_act(icomp)
-        enddo
-        srfcplx_conc(icplx) = exp(lnQK)
-        total = total + reaction%kinsrfcplx_free_site_stoich(icplx)*srfcplx_conc(icplx) 
-        
-      enddo
-      
-      if (one_more) exit
-      
-      if (reaction%kinsrfcplx_rxn_stoich_flag(irxn)) then 
-        ! stoichiometry for free sites in one of reactions is not 1, thus must
-        ! use nonlinear iteration to solve
-        res = reaction%kinsrfcplx_rxn_site_density(irxn)-total
-        
-        dres_dfree_site = 1.d0
-
-        do j = 1, ncplx
-          icplx = reaction%kinsrfcplx_rxn_to_complex(j,irxn)
-          dres_dfree_site = dres_dfree_site + &
-            reaction%kinsrfcplx_free_site_stoich(icplx)* &
-            srfcplx_conc(icplx)/free_site_conc
-        enddo
-
-        dfree_site_conc = res / dres_dfree_site
-        free_site_conc = free_site_conc - dfree_site_conc
-      
-        if (dabs(dfree_site_conc/free_site_conc) < tol) then
-          one_more = PETSC_TRUE
-        endif
-      
-      else
-      
-        total = total / free_site_conc
-        free_site_conc = reaction%kinsrfcplx_rxn_site_density(irxn) / total  
-        
-        one_more = PETSC_TRUE 
-      
-      endif
-
+!    lnQ = lnQ + reaction%kinsrfcplx_free_site_stoich(icplx)* &
+!                ln_free_site
+  
+    ncomp = reaction%kinsrfcplxspecid(0,icplx)
+    do i = 1, ncomp
+      icomp = reaction%kinsrfcplxspecid(i,icplx)
+      lnQ(icplx) = lnQ(icplx) + reaction%kinsrfcplxstoich(i,icplx)*ln_act(icomp)
     enddo
-    
-    rt_auxvar%kinsrfcplx_freesite_conc(irxn) = free_site_conc
- 
-    dSx_dmi = 0.d0
-    tempreal = 0.d0
-    do j = 1, ncplx
-      icplx = reaction%kinsrfcplx_rxn_to_complex(j,irxn)
-      ncomp = reaction%kinsrfcplxspecid(0,icplx)
-      do i = 1, ncomp
-        icomp = reaction%kinsrfcplxspecid(i,icplx)
-        ! numerator of 4.39
-        dSx_dmi(icomp) = dSx_dmi(icomp) + reaction%kinsrfcplxstoich(i,icplx)* &
-                                          reaction%kinsrfcplx_free_site_stoich(icplx)* &
-                                          srfcplx_conc(icplx)
-      enddo
-      ! denominator of 4.39
-      tempreal = tempreal + reaction%kinsrfcplx_free_site_stoich(icplx)* & 
-                            reaction%kinsrfcplx_free_site_stoich(icplx)* &
-                            srfcplx_conc(icplx)
-    enddo 
-    ! divide denominator by Sx
-    tempreal = tempreal / free_site_conc
-    ! add 1.d0 to denominator
-    tempreal = tempreal + 1.d0
-    ! divide numerator by denominator
-    dSx_dmi = -dSx_dmi / tempreal
-    ! convert from dlogm to dm
-    dSx_dmi = dSx_dmi / rt_auxvar%pri_molal
- 
-    do k = 1, ncplx
-      icplx = reaction%kinsrfcplx_rxn_to_complex(k,irxn)
-
-!     rt_auxvar%kinsrfcplx_conc(icplx) = srfcplx_conc(icplx)
-      rt_auxvar%kinsrfcplx_conc(k) = srfcplx_conc(icplx)
-
-      ncomp = reaction%kinsrfcplxspecid(0,icplx)
-      do i = 1, ncomp
-        icomp = reaction%kinsrfcplxspecid(i,icplx)
-        rt_auxvar%total_sorb_eq(icomp) = rt_auxvar%total_sorb_eq(icomp) + &
-          reaction%kinsrfcplxstoich(i,icplx)*srfcplx_conc(icplx)
-      enddo
-      
-      dSi_dSx = reaction%kinsrfcplx_free_site_stoich(icplx)* &
-                srfcplx_conc(icplx)/ &
-                free_site_conc
-
-      do j = 1, ncomp
-        jcomp = reaction%kinsrfcplxspecid(j,icplx)
-        tempreal = reaction%kinsrfcplxstoich(j,icplx)*srfcplx_conc(icplx) / &
-                   rt_auxvar%pri_molal(jcomp)+ &
-                   dSi_dSx*dSx_dmi(jcomp)
-                  
-        do i = 1, ncomp
-          icomp = reaction%kinsrfcplxspecid(i,icplx)
-          rt_auxvar%dtotal_sorb_eq(icomp,jcomp) = rt_auxvar%dtotal_sorb_eq(icomp,jcomp) + &
-                                               reaction%kinsrfcplxstoich(i,icplx)* &
-                                               tempreal
-        enddo
-      enddo
-    enddo
+    Q(icplx) = exp(lnQ(icplx))
   enddo
+    
+  ! compute summation in numerator of 5.1-30
+  numerator_sum = 0.d0
+  do irxn = 1, reaction%nkinsrfcplxrxn
+    icplx = irxn  ! for now....
+    isite = reaction%kinsrfcplx_rxn_to_site(irxn)
+    numerator_sum(isite) = numerator_sum(isite) + &
+                rt_auxvar%kinsrfcplx_conc(icplx)/ &
+                (1.d0+reaction%kinsrfcplx_backward_rate(irxn)*dt)
+  enddo
+  do irxn = 1, reaction%nkinsrfcplxrxn
+    icplx = irxn
+    isite = reaction%kinsrfcplx_rxn_to_site(irxn)
+    numerator_sum(isite) = reaction%kinsrfcplx_rxn_site_density(isite) - &
+                           numerator_sum(isite)
+                           
+  enddo
+  
+  ! compute summation in denominator of 5.1-30
+  denominator_sum = 0.d0
+  do irxn = 1, reaction%nkinsrfcplxrxn
+    icplx = irxn
+    isite = reaction%kinsrfcplx_rxn_to_site(irxn)
+    denominator_sum(isite) = denominator_sum(isite) + &
+                             (reaction%kinsrfcplx_forward_rate(irxn)*dt)/ &
+                             (1.d0+reaction%kinsrfcplx_backward_rate(irxn)*dt)* &
+                             Q(icplx)
+  enddo
+  do irxn = 1, reaction%nkinsrfcplxrxn
+    icplx = irxn
+    isite = reaction%kinsrfcplx_rxn_to_site(irxn)
+    denominator_sum(isite) = 1.d0 + denominator_sum(isite)
+  enddo
+  
+  do irxn = 1, reaction%nkinsrfcplxrxn
+    icplx = irxn
+    isite = reaction%kinsrfcplx_rxn_to_site(irxn)
+    srfcplx_conc_k = rt_auxvar%kinsrfcplx_conc(icplx)
+    denominator = 1.d0 + reaction%kinsrfcplx_backward_rate(irxn)*dt
+    srfcplx_conc_kp1(icplx) = srfcplx_conc_k(icplx)/denominator + &
+                              reaction%kinsrfcplx_forward_rate(irxn)*dt/ &
+                              denominator* &
+                              numerator_sum(isite)/denominator_sum(isite)* &
+                              Q(icplx)                       
+  enddo
+  
+  do irxn = 1, reaction%nkinsrfcplxrxn
+    icplx = irxn
+    ncomp = reaction%kinsrfcplxspecid(0,icplx)
+    do i = 1, ncomp
+      icomp = reaction%kinsrfcplxspecid(i,icplx)
+      Res(icomp) = Res(icomp) + reaction%kinsrfcplxstoich(i,icplx)* &
+                  (srfcplx_conc_kp1(icplx)-rt_auxvar%kinsrfcplx_conc(icplx))/dt
+    enddo
+
+  enddo
+
+  ! derivatives here
+
+
   
   ! units of total_sorb = mol/m^3
   ! units of dtotal_sorb = kg water/m^3 bulk
