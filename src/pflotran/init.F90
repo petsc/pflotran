@@ -1838,18 +1838,18 @@ subroutine assignMaterialPropToRegions(realization)
   ! loop over all patches and allocation material id arrays
   cur_level => realization%level_list%first
   do 
-     if (.not.associated(cur_level)) exit
-     cur_patch => cur_level%patch_list%first
-     do
-        if (.not.associated(cur_patch)) exit
-        if (.not.associated(cur_patch%imat)) then
-          allocate(cur_patch%imat(cur_patch%grid%ngmax))
-          ! initialize to "unset"
-          cur_patch%imat = -999
-        endif
-        cur_patch => cur_patch%next
-     enddo
-     cur_level => cur_level%next
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      if (.not.associated(cur_patch%imat)) then
+        allocate(cur_patch%imat(cur_patch%grid%ngmax))
+        ! initialize to "unset"
+        cur_patch%imat = -999
+      endif
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
   enddo
 
   ! if material ids are set based on region, as opposed to being read in
@@ -1951,7 +1951,7 @@ subroutine assignMaterialPropToRegions(realization)
       call GridVecGetArrayF90(grid,field%porosity0,por0_p,ierr)
       call GridVecGetArrayF90(grid,field%tortuosity0,tor0_p,ierr)
         
-      do local_id = 1, grid%ngmax
+      do local_id = 1, grid%nlmax
         ghosted_id = grid%nL2G(local_id)
         material_id = cur_patch%imat(ghosted_id)
         if (material_id == 0) then ! accommodate inactive cells
