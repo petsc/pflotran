@@ -2070,6 +2070,12 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,volume, &
     call RMultiRateSorption(Res,Jac,derivative,rt_auxvar,global_auxvar, &
                             volume,reaction,option)
   endif
+  
+  if (reaction%nkinsrfcplxrxn > 0) then
+    call RKineticSurfCplx(Res,Jac,derivative,rt_auxvar, &
+                            global_auxvar,reaction,option)
+  endif
+  
   ! add new reactions here
 
 end subroutine RReaction
@@ -2120,7 +2126,11 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
     if (reaction%kinmr_nrate > 0) then
       call RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
                               global_auxvar,volume,reaction,option)
-    endif    
+    endif
+    if (reaction%nkinsrfcplxrxn > 0) then
+      call RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
+                            global_auxvar,reaction,option)
+    endif
 
     ! #1: add new reactions here
 
