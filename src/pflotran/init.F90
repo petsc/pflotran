@@ -1861,6 +1861,7 @@ subroutine assignMaterialPropToRegions(realization)
     cur_patch => cur_level%patch_list%first
     do
       if (.not.associated(cur_patch)) exit
+      grid => cur_patch%grid
       strata => cur_patch%strata%first
       do
         if (.not.associated(strata)) exit
@@ -1930,6 +1931,7 @@ subroutine assignMaterialPropToRegions(realization)
   endif
 
   ! set cell by cell material properties
+  ! create null material property for inactive cells
   null_material_property => MaterialPropertyCreate()
   cur_level => realization%level_list%first
   do 
@@ -1949,8 +1951,8 @@ subroutine assignMaterialPropToRegions(realization)
       call GridVecGetArrayF90(grid,field%porosity0,por0_p,ierr)
       call GridVecGetArrayF90(grid,field%tortuosity0,tor0_p,ierr)
         
-        ! create null material property for inactive cells
-      do ghosted_id = 1, grid%ngmax
+      do local_id = 1, grid%ngmax
+        ghosted_id = grid%nL2G(local_id)
         material_property_id = cur_patch%imat(ghosted_id)
         if (material_property_id == 0) then ! accommodate inactive cells
           material_property => null_material_property
