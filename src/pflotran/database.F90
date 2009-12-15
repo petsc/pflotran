@@ -2420,37 +2420,56 @@ subroutine BasisInit(reaction,option)
   
     allocate(reaction%kinsrfcplx_rxn_to_mineral(reaction%nkinsrfcplxrxn))
     reaction%kinsrfcplx_rxn_to_mineral = 0
+    
     allocate(reaction%kinsrfcplx_rxn_to_complex(0:icount, &
                                                  reaction%nkinsrfcplxrxn))
     reaction%kinsrfcplx_rxn_to_complex = 0
+    
     allocate(reaction%kinsrfcplx_rxn_to_site(reaction%nkinsrfcplxrxn))
-    reaction%nkinsrfcplxrxn = 0
+    reaction%kinsrfcplx_rxn_to_site = 0
+    
     allocate(reaction%kinsrfcplx_site_names(reaction%nkinsrfcplxrxn))
     reaction%kinsrfcplx_site_names = ''
+    
     allocate(reaction%kinsrfcplx_site_print(reaction%nkinsrfcplxrxn))
     reaction%kinsrfcplx_site_print = PETSC_FALSE
+    
     allocate(reaction%kinsrfcplx_rxn_site_density(reaction%nkinsrfcplxrxn))
     reaction%kinsrfcplx_rxn_site_density = 0.d0
+    
     allocate(reaction%kinsrfcplx_rxn_stoich_flag(reaction%nkinsrfcplxrxn))
     reaction%kinsrfcplx_rxn_stoich_flag = PETSC_FALSE
+    
     allocate(reaction%kinsrfcplx_names(reaction%nkinsrfcplx))
     reaction%kinsrfcplx_names = ''
+    
     allocate(reaction%kinsrfcplx_print(reaction%nkinsrfcplx))
-    reaction%eqsrfcplx_print = PETSC_FALSE
+    reaction%kinsrfcplx_print = PETSC_FALSE
+    
     allocate(reaction%kinsrfcplxspecid(0:reaction%ncomp,reaction%nkinsrfcplx))
     reaction%kinsrfcplxspecid = 0
+    
     allocate(reaction%kinsrfcplxstoich(reaction%ncomp,reaction%nkinsrfcplx))
     reaction%kinsrfcplxstoich = 0.d0
+    
     allocate(reaction%kinsrfcplxh2oid(reaction%nkinsrfcplx))
     reaction%kinsrfcplxh2oid = 0
+    
     allocate(reaction%kinsrfcplxh2ostoich(reaction%nkinsrfcplx))
     reaction%kinsrfcplxh2ostoich = 0.d0
+    
     allocate(reaction%kinsrfcplx_free_site_id(reaction%nkinsrfcplx))
     reaction%kinsrfcplx_free_site_id = 0
+    
     allocate(reaction%kinsrfcplx_free_site_stoich(reaction%nkinsrfcplx))
     reaction%kinsrfcplx_free_site_stoich = 0.d0
+    
     allocate(reaction%kinsrfcplx_mineral_id(reaction%nkinsrfcplx))
     reaction%kinsrfcplx_mineral_id = 0
+    
+    allocate(reaction%kinsrfcplx_forward_rate(reaction%nkinsrfcplxrxn))
+    allocate(reaction%kinsrfcplx_backward_rate(reaction%nkinsrfcplxrxn))
+
 !    allocate(reaction%kinsrfcplx_logK(reaction%nkinsrfcplx))
 !    reaction%kinsrfcplx_logK = 0.d0
 !#if TEMP_DEPENDENT_LOGK

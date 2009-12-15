@@ -209,7 +209,7 @@ subroutine ReactionRead(reaction,input,option)
           call StringToUpper(word)   
 
           select case(trim(word))
-          
+            
             case('SURFACE_COMPLEXATION_RXN')
 
               ! initialization of temporary variables

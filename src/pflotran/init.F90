@@ -175,6 +175,7 @@ subroutine Init(simulation)
   endif
   
   ! read reaction database
+  
   if (associated(realization%reaction)) then
     if (realization%reaction%use_full_geochemistry) then
       call DatabaseRead(realization%reaction,option)
