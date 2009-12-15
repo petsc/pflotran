@@ -1811,7 +1811,7 @@ subroutine assignMaterialPropToRegions(realization)
   PetscReal, pointer :: perm_pow_p(:)
   PetscReal, pointer :: vec_p(:)
   
-  PetscInt :: icell, local_id, ghosted_id, natural_id, material_property_id
+  PetscInt :: icell, local_id, ghosted_id, natural_id, material_id
   PetscInt :: istart, iend
   character(len=MAXSTRINGLENGTH) :: group_name
   character(len=MAXSTRINGLENGTH) :: dataset_name
@@ -1953,15 +1953,15 @@ subroutine assignMaterialPropToRegions(realization)
         
       do local_id = 1, grid%ngmax
         ghosted_id = grid%nL2G(local_id)
-        material_property_id = cur_patch%imat(ghosted_id)
-        if (material_property_id == 0) then ! accommodate inactive cells
+        material_id = cur_patch%imat(ghosted_id)
+        if (material_id == 0) then ! accommodate inactive cells
           material_property => null_material_property
-        else if (material_property_id > 0 .and. &
-                 material_property_id <= &
+        else if (material_id > 0 .and. &
+                 material_id <= &
                  size(realization%material_property_array)) then
           material_property => &
-            realization%material_property_array(material_property_id)%ptr
-        else if (material_property_id < -998) then 
+            realization%material_property_array(material_id)%ptr
+        else if (material_id < -998) then 
           option%io_buffer = 'Uninitialized material id in patch'
           call printErrMsg(option)
         else if (material_id > size(realization%material_property_array)) then
@@ -2012,9 +2012,9 @@ subroutine assignMaterialPropToRegions(realization)
       endif
         
       ! read in any user-defined property fields
-      do material_property_id = 1, size(realization%material_property_array)
+      do material_id = 1, size(realization%material_property_array)
         material_property => &
-               realization%material_property_array(material_property_id)%ptr
+               realization%material_property_array(material_id)%ptr
         if (associated(material_property)) then
           if (len_trim(material_property%permeability_filename) > 1) then
             call readPermeabilitiesFromFile(realization,material_property)
