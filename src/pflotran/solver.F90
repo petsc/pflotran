@@ -941,7 +941,7 @@ subroutine SolverDestroy(solver)
 
   if (solver%Jpre == solver%J) then
     solver%Jpre = 0
-  elseif (solver%Jpre /= 0) then
+  else if (solver%Jpre /= 0) then
     call MatDestroy(solver%Jpre)
   endif
   if (solver%J /= 0) call MatDestroy(solver%J,ierr)

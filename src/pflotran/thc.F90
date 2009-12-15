@@ -2417,7 +2417,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     ip1 = zero_rows_local_ghosted(i)
     if (ii == 0) then
       ip2 = ip1-1
-    elseif (ii == option%nflowdof-1) then
+    else if (ii == option%nflowdof-1) then
       ip2 = ip1+1
     else
       ip2 = ip1
