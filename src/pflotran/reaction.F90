@@ -3287,8 +3287,12 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
   PetscInt :: irxn, isite
   PetscReal :: dt
 
-  PetscReal :: numerator_sum(reaction%nkinsrfsites)
-  PetscReal :: denominator_sum(reaction%nkinsrfsites)
+! PetscReal :: numerator_sum(reaction%nkinsrfsites)
+! PetscReal :: denominator_sum(reaction%nkinsrfsites)
+
+  PetscReal :: numerator_sum(reaction%nkinsrfcplx)
+  PetscReal :: denominator_sum(reaction%nkinsrfcplx)
+
   PetscReal :: denominator
   PetscReal :: fac
   PetscReal :: fac_sum(reaction%ncomp)
@@ -3299,7 +3303,6 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
   
   ln_conc = log(rt_auxvar%pri_molal)
   ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
-
 
 !    Members of the rt aux var object
 !    PetscReal, pointer :: kinsrfcplx_conc(:) ! S_{i\alpha}^k
@@ -3334,10 +3337,12 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
   do irxn = 1, reaction%nkinsrfcplxrxn
     icplx = irxn  ! for now....
     isite = reaction%kinsrfcplx_rxn_to_site(irxn)
+    
     numerator_sum(isite) = numerator_sum(isite) + &
                 rt_auxvar%kinsrfcplx_conc(icplx)/ &
                 (1.d0+reaction%kinsrfcplx_backward_rate(irxn)*dt)
   enddo
+
   do irxn = 1, reaction%nkinsrfcplxrxn
     icplx = irxn
     isite = reaction%kinsrfcplx_rxn_to_site(irxn)
@@ -3395,12 +3400,11 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
     enddo
   enddo
 
-  do i = 1, reaction%nkinsrfcplxrxn
+  do irxn = 1, reaction%nkinsrfcplxrxn
     icplx = irxn
     isite = reaction%kinsrfcplx_rxn_to_site(irxn)
     denominator = 1.d0 + reaction%kinsrfcplx_backward_rate(irxn)*dt
     fac = reaction%kinsrfcplx_forward_rate(irxn)/denominator
-    
     ncomp = reaction%kinsrfcplxspecid(0,icplx)
     do j = 1, ncomp
       jcomp = reaction%kinsrfcplxspecid(j,icplx)
