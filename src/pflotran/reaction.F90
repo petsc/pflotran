@@ -3414,7 +3414,7 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
           (reaction%kinsrfcplxstoich(j,icplx) * fac * numerator_sum(isite) * &
           Q(icplx) * (reaction%kinsrfcplxstoich(l,icplx) - &
           dt * fac_sum(lcomp)/denominator_sum(isite)))/denominator_sum(isite) * &
-          exp(ln_conc(lcomp))
+          exp(-ln_conc(lcomp))
       enddo
     enddo
   enddo

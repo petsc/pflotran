@@ -728,7 +728,6 @@ subroutine RTUpdateSolutionPatch(realization)
       enddo 
     endif
 
-#if 0
     ! update kinetic sorption concentrations
     if (reaction%nkinsrfcplxrxn > 0) then
       do ghosted_id = 1, grid%ngmax 
@@ -739,7 +738,6 @@ subroutine RTUpdateSolutionPatch(realization)
         enddo
       enddo
     endif
-#endif
 
   endif
 
