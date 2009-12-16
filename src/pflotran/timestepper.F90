@@ -485,7 +485,6 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
                              istep)  
     endif
     
-   
     ! if at end of waypoint list (i.e. cur_waypoint = null), we are done!
     if (.not.associated(master_stepper%cur_waypoint) .or. stop_flag) exit
 
@@ -1256,8 +1255,8 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
      
       if (realization%reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
         call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE)
-! The below is set within RTUpdateAuxVarsPatch() when PETSC_TRUE,PETSC_TRUE are passed
-!        patch%aux%RT%aux_vars_up_to_date = PETSC_TRUE 
+!       The below is set within RTUpdateAuxVarsPatch() when PETSC_TRUE,PETSC_TRUE are passed
+!       patch%aux%RT%aux_vars_up_to_date = PETSC_TRUE 
       endif
       if (realization%reaction%use_log_formulation) then
         if (associated(realization%patch%grid%structured_grid) .and. &
@@ -1431,6 +1430,7 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
         option%flow_time - option%tran_time <= time_tol*option%flow_time) exit
 
     ! taking intermediate time step, need to update solution
+      
     call StepperUpdateTransportSolution(realization)
 
     ! if dt is smaller than dt_orig/4, try growing it by 0.25d0
