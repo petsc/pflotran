@@ -3302,7 +3302,8 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
 
 
 !    Members of the rt aux var object
-!    PetscReal, pointer :: kinsrfcplx_conc(:) ! S_{i\alpha}
+!    PetscReal, pointer :: kinsrfcplx_conc(:) ! S_{i\alpha}^k
+!    PetscReal, pointer :: kinsrfcplx_conc_kp1(:) ! S_{i\alpha}^k+1
 !    PetscReal, pointer :: kinsrfcplx_freesite_conc(:)  ! S_\alpha
   
   dt = option%dt
@@ -3354,23 +3355,18 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
                              (1.d0+reaction%kinsrfcplx_backward_rate(irxn)*dt)* &
                              Q(icplx)
   enddo
-  
-! do irxn = 1, reaction%nkinsrfcplxrxn
-!   icplx = irxn
-!   isite = reaction%kinsrfcplx_rxn_to_site(irxn)
-!   denominator_sum(isite) = 1.d0 + denominator_sum(isite)
-! enddo
 
 ! compute surface complex conc. at new time step (5.1-30)  
   do irxn = 1, reaction%nkinsrfcplxrxn
     icplx = irxn
     isite = reaction%kinsrfcplx_rxn_to_site(irxn)
-    srfcplx_conc_k = rt_auxvar%kinsrfcplx_conc(icplx)
+    srfcplx_conc_k(icplx) = rt_auxvar%kinsrfcplx_conc(icplx)
     denominator = 1.d0 + reaction%kinsrfcplx_backward_rate(irxn)*dt
     srfcplx_conc_kp1(icplx) = (srfcplx_conc_k(icplx) + &
                               reaction%kinsrfcplx_forward_rate(irxn)*dt * &
                               numerator_sum(isite)/denominator_sum(isite)* &
-                              Q(icplx))/denominator 
+                              Q(icplx))/denominator
+    rt_auxvar%kinsrfcplx_conc_kp1(icplx) = srfcplx_conc_kp1(icplx)
   enddo
 
 ! compute residual (5.1-34)
@@ -3413,7 +3409,8 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
         Jac(jcomp,lcomp) = Jac(jcomp,lcomp) + &
           (reaction%kinsrfcplxstoich(j,icplx) * fac * numerator_sum(isite) * &
           Q(icplx) * (reaction%kinsrfcplxstoich(l,icplx) - &
-          dt * fac_sum(lcomp)/denominator_sum(isite)))/denominator_sum(isite)
+          dt * fac_sum(lcomp)/denominator_sum(isite)))/denominator_sum(isite) * &
+          exp(ln_conc(lcomp))
       enddo
     enddo
   enddo

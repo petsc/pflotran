@@ -656,7 +656,7 @@ subroutine RTUpdateSolutionPatch(realization)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)  
   PetscInt :: ghosted_id, local_id, imnrl, iaqspec, ncomp, icomp
-  PetscInt :: irate
+  PetscInt :: irate, irxn, icplx
   PetscReal :: kdt, one_plus_kdt, k_over_one_plus_kdt
   
   option => realization%option
@@ -723,12 +723,26 @@ subroutine RTUpdateSolutionPatch(realization)
           rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) = & 
             (rt_aux_vars(ghosted_id)%kinmr_total_sorb(:,irate) + & 
             kdt * reaction%kinmr_frac(irate) * &
-              rt_aux_vars(ghosted_id)%total_sorb_eq)/one_plus_kdt
+            rt_aux_vars(ghosted_id)%total_sorb_eq)/one_plus_kdt
         enddo 
       enddo 
     endif
+
+#if 0
+    ! update kinetic sorption concentrations
+    if (reaction%nkinsrfcplxrxn > 0) then
+      do ghosted_id = 1, grid%ngmax 
+        do irxn = 1, reaction%nkinsrfcplxrxn
+          icplx = irxn
+          rt_aux_vars(ghosted_id)%kinsrfcplx_conc(icplx) = &
+            rt_aux_vars(ghosted_id)%kinsrfcplx_conc_kp1(icplx)
+        enddo
+      enddo
+    endif
+#endif
+
   endif
-  
+
   if (option%compute_mass_balance_new) then
     call RTUpdateMassBalancePatch(realization)
   endif

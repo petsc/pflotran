@@ -24,7 +24,8 @@ module Reactive_Transport_Aux_module
     ! sorption reactions
     ! PetscReal, pointer :: kinsrfcplx_spec(:)
     ! PetscReal, pointer :: kinionx_molfrac(:)
-    PetscReal, pointer :: kinsrfcplx_conc(:) ! S_{i\alpha}
+    PetscReal, pointer :: kinsrfcplx_conc(:) ! S_{i\alpha}^k
+    PetscReal, pointer :: kinsrfcplx_conc_kp1(:) ! S_{i\alpha}^k+1
     PetscReal, pointer :: kinsrfcplx_freesite_conc(:)  ! S_\alpha
     PetscReal, pointer :: eqsrfcplx_conc(:)
     PetscReal, pointer :: eqsrfcplx_freesite_conc(:)
@@ -184,12 +185,18 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   if (reaction%nkinsrfcplxrxn > 0) then
     allocate(aux_var%kinsrfcplx_conc(reaction%nkinsrfcplx))
     aux_var%kinsrfcplx_conc = 0.d0
+
+    allocate(aux_var%kinsrfcplx_conc_kp1(reaction%nkinsrfcplx))
+    aux_var%kinsrfcplx_conc_kp1 = 0.d0
+    
     allocate(aux_var%kinsrfcplx_freesite_conc(reaction%nkinsrfcplxrxn))
     aux_var%kinsrfcplx_freesite_conc = 1.d-9 ! initialize to guess
+    
 !   allocate(aux_var%kinsurf_site_density(reaction%nkinsrfcplxrxn))
 !   aux_var%kinsurf_site_density = 0.d0
   else
     nullify(aux_var%kinsrfcplx_conc)
+    nullify(aux_var%kinsrfcplx_conc_kp1)
     nullify(aux_var%kinsrfcplx_freesite_conc)
 !   nullify(aux_var%kinsurf_site_density)
   endif
@@ -294,6 +301,7 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
   
   if (associated(aux_var%kinsrfcplx_conc)) then
     aux_var%kinsrfcplx_conc = aux_var2%kinsrfcplx_conc
+    aux_var%kinsrfcplx_conc_kp1 = aux_var2%kinsrfcplx_conc_kp1
     aux_var%kinsrfcplx_freesite_conc = aux_var2%kinsrfcplx_freesite_conc
   endif
   
@@ -370,6 +378,10 @@ subroutine RTAuxVarDestroy(aux_var)
   
   if (associated(aux_var%kinsrfcplx_conc)) deallocate(aux_var%kinsrfcplx_conc)
   nullify(aux_var%kinsrfcplx_conc)
+  
+  if (associated(aux_var%kinsrfcplx_conc_kp1)) deallocate(aux_var%kinsrfcplx_conc_kp1)
+  nullify(aux_var%kinsrfcplx_conc_kp1)
+  
   if (associated(aux_var%kinsrfcplx_freesite_conc)) &
     deallocate(aux_var%kinsrfcplx_freesite_conc)
   nullify(aux_var%kinsrfcplx_freesite_conc)

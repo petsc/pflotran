@@ -435,6 +435,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     endif
 
     ! update solution variables
+    
     call StepperUpdateSolution(realization)
     
     ! if a time step cut has occured, need to set the below back to original values
