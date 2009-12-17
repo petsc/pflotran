@@ -3189,7 +3189,7 @@ function RTGetTecplotHeader(realization,icolumn)
     endif
   enddo
   
-  do i=1,realization%reaction%nkinsrfcplxrxn
+  do i=1,realization%reaction%nkinsrfcplx !rxn
     if (reaction%kinsrfcplx_print(i)) then
       if (icolumn > -1) then
         icolumn = icolumn + 1  

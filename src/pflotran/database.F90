@@ -2516,7 +2516,7 @@ subroutine BasisInit(reaction,option)
           reaction%kinsrfcplx_rxn_to_site(irxn) = cur_srfcplx_rxn%free_site_id
 
           
-!          reaction%kinsrfcplx_names(isrfcplx) = cur_srfcplx%name
+          reaction%kinsrfcplx_names(isrfcplx) = cur_srfcplx%name
           reaction%kinsrfcplx_print(isrfcplx) = cur_srfcplx%print_me .or. &
                                               reaction%print_all_species
           reaction%kinsrfcplx_free_site_stoich(isrfcplx) =  &
