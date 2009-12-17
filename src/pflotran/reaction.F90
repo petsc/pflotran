@@ -3318,9 +3318,6 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
       lnQ(icplx) = lnQ(icplx) + reaction%kinsrfcplxh2ostoich(icplx)* &
         rt_auxvar%ln_act_h2o
     endif
-
-!    lnQ = lnQ + reaction%kinsrfcplx_free_site_stoich(icplx)* &
-!                ln_free_site
   
     ncomp = reaction%kinsrfcplxspecid(0,icplx)
     do i = 1, ncomp
@@ -3371,6 +3368,7 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
                               numerator_sum(isite)/denominator_sum(isite)* &
                               Q(icplx))/denominator
     rt_auxvar%kinsrfcplx_conc_kp1(icplx) = srfcplx_conc_kp1(icplx)
+    rt_auxvar%kinsrfcplx_freesite_conc(irxn) = numerator_sum(isite)/denominator_sum(isite)
   enddo
 
 ! compute residual (5.1-34)

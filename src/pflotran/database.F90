@@ -2287,37 +2287,53 @@ subroutine BasisInit(reaction,option)
 
     allocate(reaction%eqsrfcplx_rxn_to_mineral(reaction%neqsrfcplxrxn))
     reaction%eqsrfcplx_rxn_to_mineral = 0
+    
     allocate(reaction%eqsrfcplx_rxn_to_complex(0:icount, &
                                                  reaction%neqsrfcplxrxn))
     reaction%eqsrfcplx_rxn_to_complex = 0
+    
     allocate(reaction%eqsrfcplx_site_names(reaction%neqsrfcplxrxn))
     reaction%eqsrfcplx_site_names = ''
+    
     allocate(reaction%eqsrfcplx_site_print(reaction%neqsrfcplxrxn))
     reaction%eqsrfcplx_site_print = PETSC_FALSE
+    
     allocate(reaction%eqsrfcplx_rxn_site_density(reaction%neqsrfcplxrxn))
     reaction%eqsrfcplx_rxn_site_density = 0.d0
+    
     allocate(reaction%eqsrfcplx_rxn_stoich_flag(reaction%neqsrfcplxrxn))
     reaction%eqsrfcplx_rxn_stoich_flag = PETSC_FALSE
+    
     allocate(reaction%eqsrfcplx_names(reaction%neqsrfcplx))
     reaction%eqsrfcplx_names = ''
+    
     allocate(reaction%eqsrfcplx_print(reaction%neqsrfcplx))
     reaction%eqsrfcplx_print = PETSC_FALSE
+    
     allocate(reaction%eqsrfcplxspecid(0:reaction%ncomp,reaction%neqsrfcplx))
     reaction%eqsrfcplxspecid = 0
+    
     allocate(reaction%eqsrfcplxstoich(reaction%ncomp,reaction%neqsrfcplx))
     reaction%eqsrfcplxstoich = 0.d0
+    
     allocate(reaction%eqsrfcplxh2oid(reaction%neqsrfcplx))
     reaction%eqsrfcplxh2oid = 0
+    
     allocate(reaction%eqsrfcplxh2ostoich(reaction%neqsrfcplx))
     reaction%eqsrfcplxh2ostoich = 0.d0
+    
     allocate(reaction%eqsrfcplx_free_site_id(reaction%neqsrfcplx))
     reaction%eqsrfcplx_free_site_id = 0
+    
     allocate(reaction%eqsrfcplx_free_site_stoich(reaction%neqsrfcplx))
     reaction%eqsrfcplx_free_site_stoich = 0.d0
+    
     allocate(reaction%eqsrfcplx_mineral_id(reaction%neqsrfcplx))
     reaction%eqsrfcplx_mineral_id = 0
+    
     allocate(reaction%eqsrfcplx_logK(reaction%neqsrfcplx))
     reaction%eqsrfcplx_logK = 0.d0
+    
 #if TEMP_DEPENDENT_LOGK
     allocate(reaction%eqsrfcplx_logKcoef(FIVE_INTEGER,reaction%neqsrfcplx))
     reaction%eqsrfcplx_logKcoef = 0.d0
@@ -2468,7 +2484,10 @@ subroutine BasisInit(reaction,option)
     reaction%kinsrfcplx_mineral_id = 0
     
     allocate(reaction%kinsrfcplx_forward_rate(reaction%nkinsrfcplxrxn))
+    reaction%kinsrfcplx_forward_rate = 0.d0
+    
     allocate(reaction%kinsrfcplx_backward_rate(reaction%nkinsrfcplxrxn))
+    reaction%kinsrfcplx_backward_rate = 0.d0
 
 !    allocate(reaction%kinsrfcplx_logK(reaction%nkinsrfcplx))
 !    reaction%kinsrfcplx_logK = 0.d0
@@ -2494,7 +2513,7 @@ subroutine BasisInit(reaction,option)
         irxn = irxn + 1
         reaction%kinsrfcplx_forward_rate(irxn) = cur_srfcplx_rxn%forward_rate
         reaction%kinsrfcplx_backward_rate(irxn) = cur_srfcplx_rxn%backward_rate
-!        reaction%kinsrfcplx_site_names(irxn) = cur_srfcplx_rxn%free_site_name
+        reaction%kinsrfcplx_site_names(irxn) = cur_srfcplx_rxn%free_site_name
         reaction%kinsrfcplx_site_print(irxn) = cur_srfcplx_rxn%free_site_print_me .or. &
                                               reaction%print_all_species
         reaction%kinsrfcplx_rxn_to_mineral(irxn) = &

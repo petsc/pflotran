@@ -175,8 +175,10 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   if (reaction%neqsrfcplxrxn > 0) then
     allocate(aux_var%eqsrfcplx_conc(reaction%neqsrfcplx))
     aux_var%eqsrfcplx_conc = 0.d0
+    
     allocate(aux_var%eqsrfcplx_freesite_conc(reaction%neqsrfcplxrxn))
     aux_var%eqsrfcplx_freesite_conc = 1.d-9 ! initialize to guess
+    
 !   allocate(aux_var%eqsurf_site_density(reaction%neqsrfcplxrxn))
 !   aux_var%eqsurf_site_density = 0.d0
   else
@@ -207,8 +209,10 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   if (reaction%neqionxrxn > 0) then
     allocate(aux_var%eqionx_ref_cation_sorbed_conc(reaction%neqionxrxn))
     aux_var%eqionx_ref_cation_sorbed_conc = 1.d-9 ! initialize to guess
+    
     allocate(aux_var%eqionx_conc(reaction%neqionxcation,reaction%neqionxrxn))
     aux_var%eqionx_conc = 1.d-9
+    
 !   allocate(aux_var%eqionx_cec(reaction%neqionxcation))
 !   aux_var%eqionx_cec = 0.d0
   else
