@@ -331,12 +331,11 @@ subroutine ReactionRead(reaction,input,option)
                   else
                     srfcplx_rxn%backward_rate = kinetic_srfcplx_backward_rate
                   endif
-                  reaction%nkinsrfcplx = reaction%nkinsrfcplx + &
-                    temp_srfcplx_count
+                  reaction%nkinsrfcplx = reaction%nkinsrfcplx + temp_srfcplx_count
                   reaction%nkinsrfcplxrxn = reaction%nkinsrfcplxrxn + 1
               end select
               srfcplx_rxn%free_site_id = srfcplx_rxn%id
-
+              
               nullify(srfcplx_rxn)
 
             case('ION_EXCHANGE_RXN')
@@ -2062,8 +2061,8 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,volume, &
   endif
    
   if (reaction%nkinmnrl > 0) then
-    call RKineticMineral(Res,Jac,derivative,rt_auxvar,global_auxvar,volume, &
-                         reaction,option)
+    call RKineticMineral(Res,Jac,derivative,rt_auxvar,global_auxvar, &
+                         volume,reaction,option)
   endif
   
   if (reaction%kinmr_nrate > 0) then
@@ -2072,8 +2071,8 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,volume, &
   endif
   
   if (reaction%nkinsrfcplxrxn > 0) then
-    call RKineticSurfCplx(Res,Jac,derivative,rt_auxvar, &
-                            global_auxvar,reaction,option)
+    call RKineticSurfCplx(Res,Jac,derivative,rt_auxvar,global_auxvar, &
+                          volume,reaction,option)
   endif
   
   ! add new reactions here
@@ -2129,7 +2128,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
     endif
     if (reaction%nkinsrfcplxrxn > 0) then
       call RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
-                            global_auxvar,reaction,option)
+                            global_auxvar,volume,reaction,option)
     endif
 
     ! #1: add new reactions here
@@ -3268,7 +3267,7 @@ end subroutine RMultiRateSorption
 !
 ! ************************************************************************** !
 subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
-                            global_auxvar,reaction,option)
+                            global_auxvar,volume,reaction,option)
 
   use Option_module
   
@@ -3382,7 +3381,7 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
     do i = 1, ncomp
       icomp = reaction%kinsrfcplxspecid(i,icplx)
       Res(icomp) = Res(icomp) + reaction%kinsrfcplxstoich(i,icplx)* &
-                  (srfcplx_conc_kp1(icplx)-rt_auxvar%kinsrfcplx_conc(icplx))/dt
+                  (srfcplx_conc_kp1(icplx)-rt_auxvar%kinsrfcplx_conc(icplx))/dt*volume
     enddo
   enddo
 
@@ -3414,7 +3413,7 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
           (reaction%kinsrfcplxstoich(j,icplx) * fac * numerator_sum(isite) * &
           Q(icplx) * (reaction%kinsrfcplxstoich(l,icplx) - &
           dt * fac_sum(lcomp)/denominator_sum(isite)))/denominator_sum(isite) * &
-          exp(-ln_conc(lcomp))
+          exp(-ln_conc(lcomp)) * volume
       enddo
     enddo
   enddo

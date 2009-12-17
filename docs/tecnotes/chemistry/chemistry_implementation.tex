@@ -1257,8 +1257,28 @@ The multirate formulation is considered only for surface complexation reactions,
 \EQ
 \nu_\a >\!\!\chi_\a + \sum_j\nu_{ji} \A_j \arrows >\!\! \S_{i\a},
 \EN
-for the $i$th surface complex $>\!\!\S_{i\a}$ on site $\a$ and empty site $>\!\!\chi_\a$, 
-the multirate solute transport equations have the form
+for the $i$th surface complex $>\!\!\S_{i\a}$ on site $\a$ and empty site $>\!\!\chi_\a$ are assumed. Examples of these reactions for sorption of Pu on iron oxide and aluminosilicate substrates are
+\begin{subequations}
+\BA
+\rm >\!FeOH - H^+ &\arrows \rm >\!FeO^-,\\
+\rm >\!FeOH + H^+ &\arrows \rm >\!FeOH_2^+,\\
+\rm >\!FeOH -2 H^+ + Pu^{4+} + H_2O &\arrows \rm >\!FeOHPuO^{2+},\\
+\rm >\!FeOH -4 H^+ + Pu^{4+} + 2 H_2O &\arrows \rm >\!FeOHPuO_2,\\
+\rm >\!FeOH + PuO_2^+ &\arrows \rm >\!FeOHPuO_2^+,\\
+\rm >\!FeOH -2 H^+ + PuO_2^+ + H_2O &\arrows \rm >\!FeOHPuO_3^-,
+\EA 
+\end{subequations}
+and
+\begin{subequations}
+\BA
+\rm >\!SiOH - H^+ &\arrows\rm >\!SiO^-,\\
+\rm >\!SiOH + H^+ &\arrows\rm >\!SiOH_2^+,\\
+\rm >\!SiOH + Pu^{4+} - H^+ + H_2O &\arrows\rm >\!SiOPu(OH)_2^{3+},\\
+\rm >\!SiOH + PuO_2^+ - H^+ + &\arrows\rm >\!SiOPuO_2,\\
+\rm >\!SiOH + PuO_2^+ -2 H^+ + H_2O &\arrows\rm >\!SiOPuO_3H^-.
+\EA
+\end{subequations}
+The multirate solute transport equations have the form
 \begin{subequations}
 \EQ
 \frac{\p}{\p t}\varphi \Psi_j + \bnabla\cdot\bOmega_j \eq -\sum_{i\a}\nu_{ji}\frac{\p S_{i\a}}{\p t} - \sum_m\nu_{jm}I_m,

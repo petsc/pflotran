@@ -3188,6 +3188,19 @@ function RTGetTecplotHeader(realization,icolumn)
       string = trim(string) // trim(string2)
     endif
   enddo
+  
+  do i=1,realization%reaction%nkinsrfcplxrxn
+    if (reaction%kinsrfcplx_print(i)) then
+      if (icolumn > -1) then
+        icolumn = icolumn + 1  
+        write(string2,'('',"'',i2,''-'',a,''"'')') icolumn, &
+          trim(reaction%kinsrfcplx_names(i))
+      else
+        write(string2,'('',"'',a,''"'')') trim(reaction%kinsrfcplx_names(i))
+      endif
+      string = trim(string) // trim(string2)
+    endif
+  enddo
 
   if (associated(reaction%kd_print)) then
     do i=1,option%ntrandof

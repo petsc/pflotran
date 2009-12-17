@@ -474,6 +474,7 @@ function ReactionCreate()
 
   reaction%nkinsrfcplx = 0
   reaction%nkinsrfcplxrxn = 0
+  reaction%nkinsrfsites = 0
   nullify(reaction%kinsrfcplx_rxn_to_mineral)
   nullify(reaction%kinsrfcplx_rxn_to_complex)
   nullify(reaction%kinsrfcplx_rxn_to_site)

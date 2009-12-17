@@ -5189,11 +5189,14 @@ subroutine OutputHDF5(realization)
           endif
         endif
       enddo
+      
+! Kinetic surface complexes
+
       do i=1,reaction%nkinsrfcplxrxn
         if (reaction%kinsrfcplx_site_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,KIN_SURFACE_CMPLX_FREE,i)
           if (.not.(option%use_samr)) then
-            write(string,'(a)') reaction%eqsrfcplx_site_names(i)
+            write(string,'(a)') reaction%kinsrfcplx_site_names(i)
             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
@@ -5208,7 +5211,7 @@ subroutine OutputHDF5(realization)
         if (reaction%kinsrfcplx_print(i)) then
           call OutputGetVarFromArray(realization,global_vec,KIN_SURFACE_CMPLX,i)
           if (.not.(option%use_samr)) then
-            write(string,'(a)') reaction%eqsrfcplx_names(i)
+            write(string,'(a)') reaction%kinsrfcplx_names(i)
             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
           else
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
@@ -5219,6 +5222,9 @@ subroutine OutputHDF5(realization)
           endif
         endif
       enddo
+      
+! Kd
+
       if (associated(reaction%kd_print)) then
         do i=1,reaction%ncomp
           if (reaction%kd_print(i)) then

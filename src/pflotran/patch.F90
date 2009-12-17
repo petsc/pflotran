@@ -1338,8 +1338,7 @@ end subroutine PatchGetDataset
 ! date: 02/11/08
 !
 ! ************************************************************************** !
-function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
-                                    ghosted_id)
+function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
 
   use Grid_module
   use Option_module
@@ -1379,7 +1378,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
   select case(ivar)
     case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
-         LIQUID_DENSITY,GAS_DENSITY, GAS_DENSITY_MOL,SC_FUGA_COEFF)
+         LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,SC_FUGA_COEFF)
          
       if (associated(patch%aux%THC)) then
         select case(ivar)
@@ -1473,7 +1472,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
       
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY, &
          TOTAL_MOLALITY,TOTAL_MOLARITY, &
-         MINERAL_VOLUME_FRACTION,MINERAL_RATE,SURFACE_CMPLX, SURFACE_CMPLX_FREE, &
+         MINERAL_VOLUME_FRACTION,MINERAL_RATE,SURFACE_CMPLX,SURFACE_CMPLX_FREE, &
          PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED)
          
       select case(ivar)
