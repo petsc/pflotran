@@ -1372,7 +1372,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
 
   grid => patch%grid
   
-  value = -999.d0
+  value = -999.99d0
 
   iphase = 1
   select case(ivar)
