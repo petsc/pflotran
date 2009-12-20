@@ -3303,14 +3303,19 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
   ln_conc = log(rt_auxvar%pri_molal)
   ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
 
-!    Members of the rt aux var object
-!    PetscReal, pointer :: kinsrfcplx_conc(:) ! S_{i\alpha}^k
-!    PetscReal, pointer :: kinsrfcplx_conc_kp1(:) ! S_{i\alpha}^k+1
-!    PetscReal, pointer :: kinsrfcplx_freesite_conc(:)  ! S_\alpha
+! Members of the rt aux var object: mol/m^3
+! PetscReal, pointer :: kinsrfcplx_conc(:)          ! S_{i\alpha}^k
+! PetscReal, pointer :: kinsrfcplx_conc_kp1(:)      ! S_{i\alpha}^k+1
+! PetscReal, pointer :: kinsrfcplx_freesite_conc(:) ! S_\alpha
   
+! units
+! k_f: dm^3/mol/sec
+! k_b: 1/sec
+! Res: mol/m^3/sec
+
   dt = option%dt
   
-! compute ion activity product and store
+! compute ion activity product and store: units mol/L
   lnQ = 0.d0
   do irxn = 1, reaction%nkinsrfcplxrxn
     icplx = irxn  ! for now....
@@ -3328,7 +3333,7 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
     Q(icplx) = exp(lnQ(icplx))
   enddo
     
-  ! compute summation in numerator of 5.1-29
+  ! compute summation in numerator of 5.1-29: units mol/m^3
   numerator_sum = 0.d0
   do irxn = 1, reaction%nkinsrfcplxrxn
     icplx = irxn  ! for now....
@@ -3368,7 +3373,8 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
                               numerator_sum(isite)/denominator_sum(isite)* &
                               Q(icplx))/denominator
     rt_auxvar%kinsrfcplx_conc_kp1(icplx) = srfcplx_conc_kp1(icplx)
-    rt_auxvar%kinsrfcplx_freesite_conc(irxn) = numerator_sum(isite)/denominator_sum(isite)
+    rt_auxvar%kinsrfcplx_freesite_conc(irxn) = numerator_sum(isite)/ &
+                              denominator_sum(isite)
   enddo
 
 ! compute residual (5.1-34)
@@ -3379,7 +3385,8 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
     do i = 1, ncomp
       icomp = reaction%kinsrfcplxspecid(i,icplx)
       Res(icomp) = Res(icomp) + reaction%kinsrfcplxstoich(i,icplx)* &
-                  (srfcplx_conc_kp1(icplx)-rt_auxvar%kinsrfcplx_conc(icplx))/dt*volume
+                   (srfcplx_conc_kp1(icplx)-rt_auxvar%kinsrfcplx_conc(icplx))/ &
+                   dt * volume
     enddo
   enddo
 
