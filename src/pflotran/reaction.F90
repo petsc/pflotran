@@ -3422,8 +3422,8 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
   PetscInt :: irxn, isite
   PetscReal :: dt
 
-  PetscReal :: numerator_sum(reaction%nkinsrfcplx)
-  PetscReal :: denominator_sum(reaction%nkinsrfcplx)
+  PetscReal :: numerator_sum(reaction%nkinsrfcplxrxn)
+  PetscReal :: denominator_sum(reaction%nkinsrfcplxrxn)
 
   PetscReal :: denominator
   PetscReal :: fac
@@ -3476,7 +3476,6 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
     ncplx = reaction%kinsrfcplx_rxn_to_complex(0,irxn)
     do k = 1, ncplx ! ncplx in rxn
       icplx = reaction%kinsrfcplx_rxn_to_complex(k,irxn)
-      
       numerator_sum(isite) = numerator_sum(isite) + &
                   rt_auxvar%kinsrfcplx_conc(icplx)/ &
                   (1.d0+reaction%kinsrfcplx_backward_rate(icplx)*dt)
@@ -3485,12 +3484,8 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
 
   do irxn = 1, reaction%nkinsrfcplxrxn
     isite = reaction%kinsrfcplx_rxn_to_site(irxn)
-    ncplx = reaction%kinsrfcplx_rxn_to_complex(0,irxn)
-    do k = 1, ncplx ! ncplx in rxn
-      icplx = reaction%kinsrfcplx_rxn_to_complex(k,irxn)
-      numerator_sum(isite) = reaction%kinsrfcplx_rxn_site_density(isite) - &
-                             numerator_sum(isite)
-    enddo
+    numerator_sum(isite) = reaction%kinsrfcplx_rxn_site_density(isite) - &
+                           numerator_sum(isite)
   enddo
   
   ! compute summation in denominator of 5.1-29
@@ -3521,7 +3516,7 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
                                 Q(icplx))/denominator
       rt_auxvar%kinsrfcplx_conc_kp1(icplx) = srfcplx_conc_kp1(icplx)
     enddo
-    rt_auxvar%kinsrfcplx_free_site_conc(irxn) = numerator_sum(isite)/ &
+    rt_auxvar%kinsrfcplx_free_site_conc(isite) = numerator_sum(isite)/ &
                                                denominator_sum(isite)
   enddo
 
