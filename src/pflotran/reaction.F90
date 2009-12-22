@@ -61,7 +61,8 @@ subroutine ReactionRead(reaction,input,option)
   type(aq_species_type), pointer :: species, prev_species
   type(gas_species_type), pointer :: gas, prev_gas
   type(mineral_type), pointer :: mineral, prev_mineral
-  type(surface_complex_type), pointer :: srfcplx, prev_srfcplx
+  type(surface_complex_type), pointer :: srfcplx, cur_srfcplx, prev_srfcplx
+  type(surface_complex_type), pointer :: rate_list, cur_srfcplx_rate, prev_srfcplx_rate
   type(surface_complexation_rxn_type), pointer :: srfcplx_rxn, &
                                                   prev_srfcplx_rxn
   type(ion_exchange_rxn_type), pointer :: ionx_rxn, prev_ionx_rxn
@@ -70,14 +71,17 @@ subroutine ReactionRead(reaction,input,option)
   PetscReal :: tempreal
   PetscInt :: srfcplx_count
   PetscInt :: temp_srfcplx_count
-  PetscReal :: kinetic_srfcplx_forward_rate
-  PetscReal :: kinetic_srfcplx_backward_rate
+  PetscTruth :: found
 
   nullify(prev_species)
   nullify(prev_gas)
   nullify(prev_mineral)
   nullify(prev_srfcplx_rxn)
+  nullify(cur_srfcplx)
   nullify(prev_srfcplx)
+  nullify(rate_list)
+  nullify(cur_srfcplx_rate)
+  nullify(prev_srfcplx_rate)
   nullify(prev_ionx_rxn)
   nullify(prev_cation)
   
@@ -213,11 +217,9 @@ subroutine ReactionRead(reaction,input,option)
             case('SURFACE_COMPLEXATION_RXN')
 
               ! initialization of temporary variables
-              kinetic_srfcplx_forward_rate = -999.d0
-              kinetic_srfcplx_backward_rate = -999.d0
               temp_srfcplx_count = 0
-              
               srfcplx_rxn => SurfaceComplexationRxnCreate()
+              srfcplx_rxn%itype = SRFCMPLX_RXN_EQUILIBRIUM
               do
                 call InputReadFlotranString(input,option)
                 if (InputError(input)) exit
@@ -235,14 +237,51 @@ subroutine ReactionRead(reaction,input,option)
                     srfcplx_rxn%itype = SRFCMPLX_RXN_MULTIRATE_KINETIC
                   case('KINETIC')
                     srfcplx_rxn%itype = SRFCMPLX_RXN_KINETIC
-                  case('FORWARD_RATE')
-                    call InputReadDouble(input,option,kinetic_srfcplx_forward_rate)
-                    call InputErrorMsg(input,option,'keyword', &
-                      'CHEMISTRY,SURFACE_COMPLEXATION_RXN,FORWARD_RATE')
-                  case('BACKWARD_RATE','REVERSE_RATE')
-                    call InputReadDouble(input,option,kinetic_srfcplx_backward_rate)
-                    string = 'CHEMISTRY,SURFACE_COMPLEXATION_RXN' // trim(word)
-                    call InputErrorMsg(input,option,'keyword',trim(string))
+                  case('COMPLEX_KINETICS')
+                    nullify(prev_srfcplx)
+                    do
+                      call InputReadFlotranString(input,option)
+                      if (InputError(input)) exit
+                      if (InputCheckExit(input,option)) exit
+                      
+                      srfcplx => SurfaceComplexCreate()
+                      call InputReadWord(input,option,srfcplx%name,PETSC_TRUE)
+                      call InputErrorMsg(input,option,'keyword', &
+                        'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_KINETIC_RATE')
+                        
+                      do
+                        call InputReadFlotranString(input,option)
+                        call InputReadStringErrorMsg(input,option,card)
+                        if (InputCheckExit(input,option)) exit
+                        call InputReadWord(input,option,word,PETSC_TRUE)
+                        call InputErrorMsg(input,option,'word', &
+                               'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_KINETIC_RATE') 
+                        select case(trim(word))
+                          case('FORWARD_RATE_CONSTANT')
+                            call InputReadDouble(input,option,srfcplx%forward_rate)
+                            call InputErrorMsg(input,option,'forward_rate', &
+                                   'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_KINETIC_RATE')
+                          case('BACKWARD_RATE_CONSTANT')
+                            call InputReadDouble(input,option,srfcplx%backward_rate)
+                            call InputErrorMsg(input,option,'backward_rate', &
+                                   'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_KINETIC_RATE')
+                          case default
+                            option%io_buffer = 'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COMPLEX_KINETIC_RATE keyword: ' // &
+                                               trim(word) // ' not recognized'
+                            call printErrMsg(option)
+                        end select
+                      enddo
+                                      
+                      if (.not.associated(rate_list)) then
+                        rate_list => srfcplx
+                      endif
+                      if (associated(prev_srfcplx)) then
+                        prev_srfcplx%next => srfcplx
+                      endif
+                      prev_srfcplx => srfcplx
+                      nullify(srfcplx)
+                    enddo
+                    nullify(prev_srfcplx)
                   case('RATE','RATES') 
                     srfcplx_rxn%itype = SRFCMPLX_RXN_MULTIRATE_KINETIC
                     string = 'RATES inside SURFACE_COMPLEXATION_RXN'
@@ -290,8 +329,8 @@ subroutine ReactionRead(reaction,input,option)
                       endif
                       prev_srfcplx => srfcplx
                       nullify(srfcplx)
-                
                     enddo
+                    nullify(prev_srfcplx)
                   case default
                     option%io_buffer = 'CHEMISTRY, SURFACE_COMPLEXATION_RXN keyword: '// &
                                      trim(word)//' not recognized'
@@ -317,20 +356,53 @@ subroutine ReactionRead(reaction,input,option)
                     temp_srfcplx_count
                   reaction%neqsrfcplxrxn = reaction%neqsrfcplxrxn + 1
                 case(SRFCMPLX_RXN_KINETIC)
-                  if (dabs(kinetic_srfcplx_forward_rate + 999.d0) < 1.d-20) then
-                    option%io_buffer = 'Forward rate for surface complexation' &
-                                       // ' reaction not defined.'
+                  ! match up rates with their corresponding surface complex
+                  cur_srfcplx => srfcplx_rxn%complex_list
+                  do
+                    if (.not.associated(cur_srfcplx)) exit
+                    found = PETSC_FALSE
+                    nullify(prev_srfcplx_rate)
+                    cur_srfcplx_rate => rate_list
+                    do
+                      if (.not.associated(cur_srfcplx_rate)) exit
+                      ! check for same name
+                      if (StringCompare(cur_srfcplx_rate%name, &
+                                        cur_srfcplx%name, &
+                                        MAXWORDLENGTH)) then
+                        ! set rates
+                        cur_srfcplx%forward_rate = cur_srfcplx_rate%forward_rate
+                        cur_srfcplx%backward_rate = cur_srfcplx_rate%backward_rate
+                        ! remove srfcplx_rate from list of rates
+                        if (associated(prev_srfcplx_rate)) then
+                          prev_srfcplx_rate%next => cur_srfcplx_rate%next
+                        else
+                          rate_list => cur_srfcplx_rate%next
+                        endif
+                        ! destroy the object
+                        call SurfaceComplexDestroy(cur_srfcplx_rate)
+                        found = PETSC_TRUE
+                        exit
+                      endif
+                      prev_srfcplx_rate => cur_srfcplx_rate
+                      cur_srfcplx_rate => cur_srfcplx_rate%next
+                    enddo
+                    if (.not.found) then
+                      option%io_buffer = 'Rates for surface complex ' // &
+                        trim(cur_srfcplx%name) // ' not found in kinetic rate list'
+                      call printErrMsg(option)
+                    endif
+                    cur_srfcplx => cur_srfcplx%next
+                  enddo
+                  ! check to ensure that rates are matched
+                  if (associated(rate_list)) then
+                    option%io_buffer = '# of rates is greater than # of surface complexes'
                     call printErrMsg(option)
-                  else
-                    srfcplx_rxn%forward_rate = kinetic_srfcplx_forward_rate
                   endif
-                  if (dabs(kinetic_srfcplx_backward_rate + 999.d0) < 1.d-20) then
-                    option%io_buffer = 'Backward rate for surface complexation' &
-                                       // ' reaction not defined.'
-                    call printErrMsg(option)
-                  else
-                    srfcplx_rxn%backward_rate = kinetic_srfcplx_backward_rate
-                  endif
+                  nullify(cur_srfcplx)
+                  nullify(prev_srfcplx)
+                  nullify(rate_list)
+                  nullify(cur_srfcplx_rate)
+                  nullify(prev_srfcplx_rate)                  
                   reaction%nkinsrfcplx = reaction%nkinsrfcplx + temp_srfcplx_count
                   reaction%nkinsrfcplxrxn = reaction%nkinsrfcplxrxn + 1
               end select
@@ -626,7 +698,9 @@ end subroutine ReactionReadMineralKinetics
 ! ************************************************************************** !
 subroutine ReactionProcessConstraint(reaction,constraint_name, &
                                         aq_species_constraint, &
-                                        mineral_constraint,option)
+                                        mineral_constraint, &
+                                        srfcplx_constraint, &
+                                        option)
   use Option_module
   use Input_module
   use String_module
@@ -638,16 +712,19 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   character(len=MAXWORDLENGTH) :: constraint_name
   type(aq_species_constraint_type), pointer :: aq_species_constraint
   type(mineral_constraint_type), pointer :: mineral_constraint
+  type(srfcplx_constraint_type), pointer :: srfcplx_constraint
   type(option_type) :: option
   
   PetscTruth :: found
   PetscInt :: icomp, jcomp
   PetscInt :: imnrl, jmnrl
   PetscInt :: igas
+  PetscInt :: isrfcplx, jsrfcplx
   PetscReal :: constraint_conc(reaction%ncomp)
   PetscInt :: constraint_type(reaction%ncomp)
   character(len=MAXWORDLENGTH) :: constraint_spec_name(reaction%ncomp)
   character(len=MAXWORDLENGTH) :: constraint_mnrl_name(reaction%nkinmnrl)
+  character(len=MAXWORDLENGTH) :: constraint_srfcplx_name(reaction%nkinsrfcplx)
   PetscInt :: constraint_id(reaction%ncomp)
     
   constraint_id = 0
@@ -760,6 +837,35 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
     mineral_constraint%names = constraint_mnrl_name
     mineral_constraint%constraint_vol_frac = mineral_constraint%basis_vol_frac
     mineral_constraint%constraint_area = mineral_constraint%basis_area
+  endif
+
+  ! surface compleces
+  if (reaction%use_full_geochemistry .and. associated(srfcplx_constraint)) then
+    constraint_srfcplx_name = ''
+    do isrfcplx = 1, reaction%nkinsrfcplx
+      found = PETSC_FALSE
+      do jsrfcplx = 1, reaction%nkinsrfcplx
+        if (StringCompare(srfcplx_constraint%names(isrfcplx), &
+                          reaction%kinsrfcplx_names(jsrfcplx), &
+                            MAXWORDLENGTH)) then
+          found = PETSC_TRUE
+          exit
+        endif
+      enddo
+      if (.not.found) then
+        option%io_buffer = &
+                 'Surface complex ' // trim(srfcplx_constraint%names(isrfcplx)) // &
+                 'from CONSTRAINT ' // trim(constraint_name) // &
+                 ' not found among kinetic surface complexes.'
+        call printErrMsg(option)
+      else
+        srfcplx_constraint%basis_conc(jsrfcplx) = &
+          srfcplx_constraint%constraint_conc(isrfcplx)
+        constraint_srfcplx_name(jsrfcplx) = srfcplx_constraint%names(isrfcplx)
+      endif  
+    enddo
+    srfcplx_constraint%names = constraint_srfcplx_name
+    srfcplx_constraint%constraint_conc = srfcplx_constraint%basis_conc
   endif
 
 end subroutine ReactionProcessConstraint
@@ -3286,9 +3392,6 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
   PetscInt :: irxn, isite
   PetscReal :: dt
 
-! PetscReal :: numerator_sum(reaction%nkinsrfsites)
-! PetscReal :: denominator_sum(reaction%nkinsrfsites)
-
   PetscReal :: numerator_sum(reaction%nkinsrfcplx)
   PetscReal :: denominator_sum(reaction%nkinsrfcplx)
 
@@ -3318,107 +3421,131 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
 ! compute ion activity product and store: units mol/L
   lnQ = 0.d0
   do irxn = 1, reaction%nkinsrfcplxrxn
-    icplx = irxn  ! for now....
-    if (reaction%kinsrfcplxh2oid(icplx) > 0) then
-      lnQ(icplx) = lnQ(icplx) + reaction%kinsrfcplxh2ostoich(icplx)* &
-        rt_auxvar%ln_act_h2o
-    endif
-  
-    ncomp = reaction%kinsrfcplxspecid(0,icplx)
-    do i = 1, ncomp
-      icomp = reaction%kinsrfcplxspecid(i,icplx)
-      lnQ(icplx) = lnQ(icplx) + reaction%kinsrfcplxstoich(i,icplx)* &
-        ln_act(icomp)
+    ncplx = reaction%kinsrfcplx_rxn_to_complex(0,irxn)
+    do k = 1, ncplx ! ncplx in rxn
+      icplx = reaction%kinsrfcplx_rxn_to_complex(k,irxn)
+      if (reaction%kinsrfcplxh2oid(icplx) > 0) then
+        lnQ(icplx) = lnQ(icplx) + reaction%kinsrfcplxh2ostoich(icplx)* &
+          rt_auxvar%ln_act_h2o
+      endif
+    
+      ncomp = reaction%kinsrfcplxspecid(0,icplx)
+      do i = 1, ncomp
+        icomp = reaction%kinsrfcplxspecid(i,icplx)
+        lnQ(icplx) = lnQ(icplx) + reaction%kinsrfcplxstoich(i,icplx)* &
+          ln_act(icomp)
+      enddo
+      Q(icplx) = exp(lnQ(icplx))
     enddo
-    Q(icplx) = exp(lnQ(icplx))
   enddo
     
   ! compute summation in numerator of 5.1-29: units mol/m^3
   numerator_sum = 0.d0
   do irxn = 1, reaction%nkinsrfcplxrxn
-    icplx = irxn  ! for now....
     isite = reaction%kinsrfcplx_rxn_to_site(irxn)
-    
-    numerator_sum(isite) = numerator_sum(isite) + &
-                rt_auxvar%kinsrfcplx_conc(icplx)/ &
-                (1.d0+reaction%kinsrfcplx_backward_rate(irxn)*dt)
+    ncplx = reaction%kinsrfcplx_rxn_to_complex(0,irxn)
+    do k = 1, ncplx ! ncplx in rxn
+      icplx = reaction%kinsrfcplx_rxn_to_complex(k,irxn)
+      
+      numerator_sum(isite) = numerator_sum(isite) + &
+                  rt_auxvar%kinsrfcplx_conc(icplx)/ &
+                  (1.d0+reaction%kinsrfcplx_backward_rate(icplx)*dt)
+    enddo
   enddo
 
   do irxn = 1, reaction%nkinsrfcplxrxn
-    icplx = irxn
     isite = reaction%kinsrfcplx_rxn_to_site(irxn)
-    numerator_sum(isite) = reaction%kinsrfcplx_rxn_site_density(isite) - &
-                           numerator_sum(isite)
+    ncplx = reaction%kinsrfcplx_rxn_to_complex(0,irxn)
+    do k = 1, ncplx ! ncplx in rxn
+      icplx = reaction%kinsrfcplx_rxn_to_complex(k,irxn)
+      numerator_sum(isite) = reaction%kinsrfcplx_rxn_site_density(isite) - &
+                             numerator_sum(isite)
+    enddo
   enddo
   
   ! compute summation in denominator of 5.1-29
   denominator_sum = 1.d0
   do irxn = 1, reaction%nkinsrfcplxrxn
-    icplx = irxn
     isite = reaction%kinsrfcplx_rxn_to_site(irxn)
-    denominator_sum(isite) = denominator_sum(isite) + &
-                             (reaction%kinsrfcplx_forward_rate(irxn)*dt)/ &
-                             (1.d0+reaction%kinsrfcplx_backward_rate(irxn)*dt)* &
-                             Q(icplx)
+    ncplx = reaction%kinsrfcplx_rxn_to_complex(0,irxn)
+    do k = 1, ncplx ! ncplx in rxn
+      icplx = reaction%kinsrfcplx_rxn_to_complex(k,irxn)
+      denominator_sum(isite) = denominator_sum(isite) + &
+                               (reaction%kinsrfcplx_forward_rate(icplx)*dt)/ &
+                               (1.d0+reaction%kinsrfcplx_backward_rate(icplx)*dt)* &
+                               Q(icplx)
+    enddo
   enddo
 
 ! compute surface complex conc. at new time step (5.1-30)  
   do irxn = 1, reaction%nkinsrfcplxrxn
-    icplx = irxn
     isite = reaction%kinsrfcplx_rxn_to_site(irxn)
-    srfcplx_conc_k(icplx) = rt_auxvar%kinsrfcplx_conc(icplx)
-    denominator = 1.d0 + reaction%kinsrfcplx_backward_rate(irxn)*dt
-    srfcplx_conc_kp1(icplx) = (srfcplx_conc_k(icplx) + &
-                              reaction%kinsrfcplx_forward_rate(irxn)*dt * &
-                              numerator_sum(isite)/denominator_sum(isite)* &
-                              Q(icplx))/denominator
-    rt_auxvar%kinsrfcplx_conc_kp1(icplx) = srfcplx_conc_kp1(icplx)
-    rt_auxvar%kinsrfcplx_freesite_conc(irxn) = numerator_sum(isite)/ &
-                              denominator_sum(isite)
+    ncplx = reaction%kinsrfcplx_rxn_to_complex(0,irxn)
+    do k = 1, ncplx ! ncplx in rxn
+      icplx = reaction%kinsrfcplx_rxn_to_complex(k,irxn)
+      srfcplx_conc_k(icplx) = rt_auxvar%kinsrfcplx_conc(icplx)
+      denominator = 1.d0 + reaction%kinsrfcplx_backward_rate(icplx)*dt
+      srfcplx_conc_kp1(icplx) = (srfcplx_conc_k(icplx) + &
+                                reaction%kinsrfcplx_forward_rate(icplx)*dt * &
+                                numerator_sum(isite)/denominator_sum(isite)* &
+                                Q(icplx))/denominator
+      rt_auxvar%kinsrfcplx_conc_kp1(icplx) = srfcplx_conc_kp1(icplx)
+      rt_auxvar%kinsrfcplx_freesite_conc(irxn) = numerator_sum(isite)/ &
+                                denominator_sum(isite)
+    enddo
   enddo
 
 ! compute residual (5.1-34)
   
   do irxn = 1, reaction%nkinsrfcplxrxn
-    icplx = irxn
-    ncomp = reaction%kinsrfcplxspecid(0,icplx)
-    do i = 1, ncomp
-      icomp = reaction%kinsrfcplxspecid(i,icplx)
-      Res(icomp) = Res(icomp) + reaction%kinsrfcplxstoich(i,icplx)* &
-                   (srfcplx_conc_kp1(icplx)-rt_auxvar%kinsrfcplx_conc(icplx))/ &
-                   dt * volume
+    ncplx = reaction%kinsrfcplx_rxn_to_complex(0,irxn)
+    do k = 1, ncplx ! ncplx in rxn
+      icplx = reaction%kinsrfcplx_rxn_to_complex(k,irxn)
+      ncomp = reaction%kinsrfcplxspecid(0,icplx)
+      do i = 1, ncomp
+        icomp = reaction%kinsrfcplxspecid(i,icplx)
+        Res(icomp) = Res(icomp) + reaction%kinsrfcplxstoich(i,icplx)* &
+                     (srfcplx_conc_kp1(icplx)-rt_auxvar%kinsrfcplx_conc(icplx))/ &
+                     dt * volume
+      enddo
     enddo
   enddo
 
 ! compute jacobian (5.1-39)
   fac_sum = 0.d0
   do irxn = 1, reaction%nkinsrfcplxrxn
-    icplx = irxn
-    denominator = 1.d0 + reaction%kinsrfcplx_backward_rate(irxn)*dt
-    fac = reaction%kinsrfcplx_forward_rate(irxn)/denominator
-    ncomp = reaction%kinsrfcplxspecid(0,icplx)
-    do j = 1, ncomp
-      jcomp = reaction%kinsrfcplxspecid(j,icplx)
-      fac_sum(jcomp) = fac_sum(jcomp) + reaction%kinsrfcplxstoich(j,icplx)* &
-        fac * Q(icplx)
+    ncplx = reaction%kinsrfcplx_rxn_to_complex(0,irxn)
+    do k = 1, ncplx ! ncplx in rxn
+      icplx = reaction%kinsrfcplx_rxn_to_complex(k,irxn)
+      denominator = 1.d0 + reaction%kinsrfcplx_backward_rate(icplx)*dt
+      fac = reaction%kinsrfcplx_forward_rate(icplx)/denominator
+      ncomp = reaction%kinsrfcplxspecid(0,icplx)
+      do j = 1, ncomp
+        jcomp = reaction%kinsrfcplxspecid(j,icplx)
+        fac_sum(jcomp) = fac_sum(jcomp) + reaction%kinsrfcplxstoich(j,icplx)* &
+          fac * Q(icplx)
+      enddo
     enddo
   enddo
 
   do irxn = 1, reaction%nkinsrfcplxrxn
-    icplx = irxn
     isite = reaction%kinsrfcplx_rxn_to_site(irxn)
-    denominator = 1.d0 + reaction%kinsrfcplx_backward_rate(irxn)*dt
-    fac = reaction%kinsrfcplx_forward_rate(irxn)/denominator
-    ncomp = reaction%kinsrfcplxspecid(0,icplx)
-    do j = 1, ncomp
-      jcomp = reaction%kinsrfcplxspecid(j,icplx)
-      do l = 1, ncomp
-        lcomp = reaction%kinsrfcplxspecid(l,icplx)
-        Jac(jcomp,lcomp) = Jac(jcomp,lcomp) + &
-          (reaction%kinsrfcplxstoich(j,icplx) * fac * numerator_sum(isite) * &
-          Q(icplx) * (reaction%kinsrfcplxstoich(l,icplx) - &
-          dt * fac_sum(lcomp)/denominator_sum(isite)))/denominator_sum(isite) * &
-          exp(-ln_conc(lcomp)) * volume
+    ncplx = reaction%kinsrfcplx_rxn_to_complex(0,irxn)
+    do k = 1, ncplx ! ncplx in rxn
+      icplx = reaction%kinsrfcplx_rxn_to_complex(k,irxn)
+      denominator = 1.d0 + reaction%kinsrfcplx_backward_rate(icplx)*dt
+      fac = reaction%kinsrfcplx_forward_rate(icplx)/denominator
+      ncomp = reaction%kinsrfcplxspecid(0,icplx)
+      do j = 1, ncomp
+        jcomp = reaction%kinsrfcplxspecid(j,icplx)
+        do l = 1, ncomp
+          lcomp = reaction%kinsrfcplxspecid(l,icplx)
+          Jac(jcomp,lcomp) = Jac(jcomp,lcomp) + &
+            (reaction%kinsrfcplxstoich(j,icplx) * fac * numerator_sum(isite) * &
+            Q(icplx) * (reaction%kinsrfcplxstoich(l,icplx) - &
+            dt * fac_sum(lcomp)/denominator_sum(isite)))/denominator_sum(isite) * &
+            exp(-ln_conc(lcomp)) * volume
+        enddo
       enddo
     enddo
   enddo

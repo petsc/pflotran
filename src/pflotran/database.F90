@@ -2437,6 +2437,24 @@ subroutine BasisInit(reaction,option)
     allocate(reaction%kinsrfcplx_rxn_to_mineral(reaction%nkinsrfcplxrxn))
     reaction%kinsrfcplx_rxn_to_mineral = 0
     
+    ! determine max # complexes for a given site
+    icount = 0
+    cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
+    do
+      if (.not.associated(cur_srfcplx_rxn)) exit
+      if (cur_srfcplx_rxn%itype == SRFCMPLX_RXN_KINETIC) then
+        isrfcplx = 0
+        cur_srfcplx => cur_srfcplx_rxn%complex_list
+        do
+          if (.not.associated(cur_srfcplx)) exit
+          isrfcplx = isrfcplx + 1
+          cur_srfcplx => cur_srfcplx%next
+        enddo
+        if (isrfcplx > icount) icount = isrfcplx
+      endif
+      cur_srfcplx_rxn => cur_srfcplx_rxn%next
+    enddo
+    nullify(cur_srfcplx_rxn) 
     allocate(reaction%kinsrfcplx_rxn_to_complex(0:icount, &
                                                  reaction%nkinsrfcplxrxn))
     reaction%kinsrfcplx_rxn_to_complex = 0
@@ -2480,13 +2498,10 @@ subroutine BasisInit(reaction,option)
     allocate(reaction%kinsrfcplx_free_site_stoich(reaction%nkinsrfcplx))
     reaction%kinsrfcplx_free_site_stoich = 0.d0
     
-    allocate(reaction%kinsrfcplx_mineral_id(reaction%nkinsrfcplx))
-    reaction%kinsrfcplx_mineral_id = 0
-    
-    allocate(reaction%kinsrfcplx_forward_rate(reaction%nkinsrfcplxrxn))
+    allocate(reaction%kinsrfcplx_forward_rate(reaction%nkinsrfcplx))
     reaction%kinsrfcplx_forward_rate = 0.d0
     
-    allocate(reaction%kinsrfcplx_backward_rate(reaction%nkinsrfcplxrxn))
+    allocate(reaction%kinsrfcplx_backward_rate(reaction%nkinsrfcplx))
     reaction%kinsrfcplx_backward_rate = 0.d0
 
 !    allocate(reaction%kinsrfcplx_logK(reaction%nkinsrfcplx))
@@ -2511,8 +2526,7 @@ subroutine BasisInit(reaction,option)
       if (cur_srfcplx_rxn%itype == SRFCMPLX_RXN_KINETIC) then
 
         irxn = irxn + 1
-        reaction%kinsrfcplx_forward_rate(irxn) = cur_srfcplx_rxn%forward_rate
-        reaction%kinsrfcplx_backward_rate(irxn) = cur_srfcplx_rxn%backward_rate
+        
         reaction%kinsrfcplx_site_names(irxn) = cur_srfcplx_rxn%free_site_name
         reaction%kinsrfcplx_site_print(irxn) = cur_srfcplx_rxn%free_site_print_me .or. &
                                               reaction%print_all_species
@@ -2526,6 +2540,8 @@ subroutine BasisInit(reaction,option)
           
           isrfcplx = isrfcplx + 1
           
+          reaction%kinsrfcplx_forward_rate(isrfcplx) = cur_srfcplx%forward_rate
+          reaction%kinsrfcplx_backward_rate(isrfcplx) = cur_srfcplx%backward_rate
           ! set up integer pointers from site to complexes
           ! increment count for site
           reaction%kinsrfcplx_rxn_to_complex(0,irxn) = &

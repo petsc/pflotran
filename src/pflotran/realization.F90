@@ -704,6 +704,7 @@ subroutine RealProcessTranConditions(realization)
                                    cur_constraint%name, &
                                    cur_constraint%aqueous_species, &
                                    cur_constraint%minerals, &
+                                   cur_constraint%surface_complexes, &
                                    realization%option)
     cur_constraint => cur_constraint%next
   enddo
@@ -724,6 +725,7 @@ subroutine RealProcessTranConditions(realization)
                              MAXWORDLENGTH)) then
             cur_constraint_coupler%aqueous_species => cur_constraint%aqueous_species
             cur_constraint_coupler%minerals => cur_constraint%minerals
+            cur_constraint_coupler%surface_complexes => cur_constraint%surface_complexes
             exit
           endif
           cur_constraint => cur_constraint%next
@@ -1289,6 +1291,7 @@ subroutine RealizAssignTransportInitCond(realization)
                 aqueous_species%basis_molarity(idof) / &
                 global_aux_vars(ghosted_id)%den_kg(iphase)*1000.d0 ! convert molarity -> molality
             enddo
+            ! mineral volume fractions
             if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
               do idof = 1, reaction%nkinmnrl
                 rt_aux_vars(ghosted_id)%mnrl_volfrac0(idof) = &
@@ -1303,6 +1306,14 @@ subroutine RealizAssignTransportInitCond(realization)
                 rt_aux_vars(ghosted_id)%mnrl_area(idof) = &
                   initial_condition%tran_condition%cur_constraint_coupler% &
                   minerals%basis_area(idof)
+              enddo
+            endif
+            ! kinetic surface complexes
+            if (associated(initial_condition%tran_condition%cur_constraint_coupler%surface_complexes)) then
+              do idof = 1, reaction%nkinsrfcplx
+                rt_aux_vars(ghosted_id)%kinsrfcplx_conc(idof) = &
+                  initial_condition%tran_condition%cur_constraint_coupler% &
+                  surface_complexes%basis_conc(idof)
               enddo
             endif
             ! this is for the multi-rate surface complexation model

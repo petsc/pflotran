@@ -85,6 +85,8 @@ module Reaction_Aux_module
     character(len=MAXWORDLENGTH) :: name
     PetscReal :: free_site_stoich
     PetscReal :: Z
+    PetscReal :: forward_rate
+    PetscReal :: backward_rate
     PetscTruth :: print_me
     type(database_rxn_type), pointer :: dbaserxn
     type(surface_complex_type), pointer :: next
@@ -99,8 +101,6 @@ module Reaction_Aux_module
     PetscInt :: mineral_id
     character(len=MAXWORDLENGTH) :: mineral_name
     PetscReal :: site_density
-    PetscReal :: forward_rate
-    PetscReal :: backward_rate
     type(surface_complex_type), pointer :: complex_list
     type (surface_complexation_rxn_type), pointer :: next
   end type surface_complexation_rxn_type    
@@ -121,6 +121,12 @@ module Reaction_Aux_module
     PetscReal, pointer :: basis_vol_frac(:)
     PetscReal, pointer :: basis_area(:)
   end type mineral_constraint_type
+
+  type, public :: srfcplx_constraint_type
+    character(len=MAXWORDLENGTH), pointer :: names(:)
+    PetscReal, pointer :: constraint_conc(:)
+    PetscReal, pointer :: basis_conc(:)
+  end type srfcplx_constraint_type
 
   type, public :: reaction_type
     character(len=MAXSTRINGLENGTH) :: database_filename
@@ -236,9 +242,8 @@ module Reaction_Aux_module
 
     PetscInt :: nkinsrfcplx
     PetscInt :: nkinsrfcplxrxn
-    PetscInt :: nkinsrfsites
     PetscInt, pointer :: kinsrfcplx_rxn_to_mineral(:)
-    PetscInt, pointer :: kinsrfcplx_rxn_to_complex(:,:)
+    PetscInt, pointer :: kinsrfcplx_rxn_to_complex(:,:) 
     PetscInt, pointer :: kinsrfcplx_rxn_to_site(:)
     PetscReal, pointer :: kinsrfcplx_rxn_site_density(:)
     PetscTruth, pointer :: kinsrfcplx_rxn_stoich_flag(:)
@@ -252,7 +257,6 @@ module Reaction_Aux_module
     PetscReal, pointer :: kinsrfcplxh2ostoich(:)
     PetscInt, pointer :: kinsrfcplx_free_site_id(:)
     PetscReal, pointer :: kinsrfcplx_free_site_stoich(:)
-    PetscInt, pointer :: kinsrfcplx_mineral_id(:)
     PetscReal, pointer :: kinsrfcplx_forward_rate(:)
     PetscReal, pointer :: kinsrfcplx_backward_rate(:)  
 !    PetscReal, pointer :: kinsrfcplx_logK(:)
@@ -327,9 +331,12 @@ module Reaction_Aux_module
             SurfaceComplexationRxnCreate, &
             AqueousSpeciesConstraintDestroy, &
             MineralConstraintDestroy, &
+            SurfaceComplexConstraintDestroy, &
             AqueousSpeciesConstraintCreate, &
             MineralConstraintCreate, &
+            SurfaceComplexConstraintCreate, &
             SurfaceComplexCreate, &
+            SurfaceComplexDestroy, &
             IonExchangeRxnCreate, &
             IonExchangeCationCreate
              
@@ -474,7 +481,6 @@ function ReactionCreate()
 
   reaction%nkinsrfcplx = 0
   reaction%nkinsrfcplxrxn = 0
-  reaction%nkinsrfsites = 0
   nullify(reaction%kinsrfcplx_rxn_to_mineral)
   nullify(reaction%kinsrfcplx_rxn_to_complex)
   nullify(reaction%kinsrfcplx_rxn_to_site)
@@ -486,7 +492,6 @@ function ReactionCreate()
   nullify(reaction%kinsrfcplxstoich)
   nullify(reaction%kinsrfcplxh2oid)
   nullify(reaction%kinsrfcplxh2ostoich)
-  nullify(reaction%kinsrfcplx_mineral_id)
   nullify(reaction%kinsrfcplx_free_site_id)
   nullify(reaction%kinsrfcplx_free_site_stoich)
 !  nullify(reaction%kinsrfcplx_logK)
@@ -711,9 +716,6 @@ function SurfaceComplexationRxnCreate()
   srfcplxrxn%mineral_name = ''
   srfcplxrxn%site_density = 0.d0
   
-  srfcplxrxn%forward_rate = 0.d0
-  srfcplxrxn%backward_rate = 0.d0
-
   nullify(srfcplxrxn%complex_list)
   nullify(srfcplxrxn%next)
   
@@ -741,6 +743,8 @@ function SurfaceComplexCreate()
   srfcplx%name = ''
   srfcplx%Z = 0.d0
   srfcplx%free_site_stoich = 0.d0
+  srfcplx%forward_rate = 0.d0
+  srfcplx%backward_rate = 0.d0
   srfcplx%print_me = PETSC_FALSE
   nullify(srfcplx%dbaserxn)
   nullify(srfcplx%next)
@@ -858,7 +862,6 @@ function MineralConstraintCreate(reaction,option)
   type(mineral_constraint_type), pointer :: constraint  
 
   allocate(constraint)
-  allocate(constraint)
   allocate(constraint%names(reaction%nkinmnrl))
   constraint%names = ''
   allocate(constraint%constraint_vol_frac(reaction%nkinmnrl))
@@ -873,6 +876,37 @@ function MineralConstraintCreate(reaction,option)
   MineralConstraintCreate => constraint
 
 end function MineralConstraintCreate
+  
+! ************************************************************************** !
+!
+! SurfaceComplexConstraintCreate: Creates a surface complex constraint object
+! author: Glenn Hammond
+! date: 12/21/09
+!
+! ************************************************************************** !
+function SurfaceComplexConstraintCreate(reaction,option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+  type(srfcplx_constraint_type), pointer :: SurfaceComplexConstraintCreate
+
+  type(srfcplx_constraint_type), pointer :: constraint  
+
+  allocate(constraint)
+  allocate(constraint%names(reaction%nkinsrfcplx))
+  constraint%names = ''
+  allocate(constraint%constraint_conc(reaction%nkinsrfcplx))
+  constraint%constraint_conc = 0.d0
+  allocate(constraint%basis_conc(reaction%nkinsrfcplx))
+  constraint%basis_conc = 0.d0
+
+  SurfaceComplexConstraintCreate => constraint
+
+end function SurfaceComplexConstraintCreate
   
 ! ************************************************************************** !
 !
@@ -1499,6 +1533,37 @@ subroutine MineralConstraintDestroy(constraint)
   nullify(constraint)
 
 end subroutine MineralConstraintDestroy
+
+! ************************************************************************** !
+!
+! SurfaceComplexConstraintDestroy: Destroys a surface complex constraint 
+!                                  object
+! author: Glenn Hammond
+! date: 12/21/09
+!
+! ************************************************************************** !
+subroutine SurfaceComplexConstraintDestroy(constraint)
+
+  implicit none
+  
+  type(srfcplx_constraint_type), pointer :: constraint
+  
+  if (.not.associated(constraint)) return
+  
+  if (associated(constraint%names)) &
+    deallocate(constraint%names)
+  nullify(constraint%names)
+  if (associated(constraint%constraint_conc)) &
+    deallocate(constraint%constraint_conc)
+  nullify(constraint%constraint_conc)
+  if (associated(constraint%basis_conc)) &
+    deallocate(constraint%basis_conc)
+  nullify(constraint%basis_conc)
+
+  deallocate(constraint)
+  nullify(constraint)
+
+end subroutine SurfaceComplexConstraintDestroy
 
 ! ************************************************************************** !
 !

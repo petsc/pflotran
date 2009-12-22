@@ -1064,6 +1064,17 @@ subroutine InitReadInput(simulation)
                       select case(trim(word))
                         case('COMPLEXES','CATIONS')
                           call InputSkipToEND(input,option,word)
+                        case('COMPLEX_KINETICS')
+                          do
+                            call InputReadFlotranString(input,option)
+                            call InputReadStringErrorMsg(input,option,card)
+                            if (InputCheckExit(input,option)) exit
+                            call InputReadWord(input,option,word,PETSC_TRUE)
+                            call InputErrorMsg(input,option,word, &
+                                   'CHEMISTRY,SURFACE_COMPLEXATION_RXN,KINETIC_RATES')
+                            ! skip over remaining cards to end of each mineral entry
+                            call InputSkipToEnd(input,option,word)
+                          enddo
                       end select 
                     enddo
                   case('DISTRIBUTION_COEF')
@@ -1072,8 +1083,6 @@ subroutine InitReadInput(simulation)
                     ! dummy placeholder
                 end select
               enddo
-            case('MULTI_RATE')
-              call InputSkipToEND(input,option,card)
             case('MOLAL','MOLALITY', &
                  'UPDATE_POROSITY','UPDATE_TORTUOSITY', &
                  'UPDATE_PERMEABILITY','UPDATE_MINERAL_SURFACE_AREA')
