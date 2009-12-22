@@ -839,7 +839,7 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
     mineral_constraint%constraint_area = mineral_constraint%basis_area
   endif
 
-  ! surface compleces
+  ! surface complexes
   if (reaction%use_full_geochemistry .and. associated(srfcplx_constraint)) then
     constraint_srfcplx_name = ''
     do isrfcplx = 1, reaction%nkinsrfcplx
@@ -881,6 +881,7 @@ end subroutine ReactionProcessConstraint
 subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          reaction,constraint_name, &
                                          aq_species_constraint, &
+                                         srfcplx_constraint, &
                                          num_iterations, &
                                          initialize_rt_auxvar,option)
   use Option_module
@@ -899,6 +900,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   type(reaction_type), pointer :: reaction
   character(len=MAXWORDLENGTH) :: constraint_name
   type(aq_species_constraint_type), pointer :: aq_species_constraint
+  type(srfcplx_constraint_type), pointer :: srfcplx_constraint
   PetscInt :: num_iterations
   PetscTruth :: initialize_rt_auxvar
   type(option_type) :: option
@@ -907,6 +909,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscInt :: icomp, jcomp, kcomp
   PetscInt :: imnrl, jmnrl
   PetscInt :: icplx
+  PetscInt :: irxn, isite, ncplx, k
   PetscInt :: igas
   PetscReal :: conc(reaction%ncomp)
   PetscInt :: constraint_type(reaction%ncomp)
@@ -1379,6 +1382,33 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     deallocate(rt_auxvar%dtotal_sorb_eq)
     nullify(rt_auxvar%dtotal_sorb_eq)
   endif
+
+  if (reaction%nkinsrfcplx > 0 .and. associated(srfcplx_constraint)) then
+  ! compute surface complex conc. at new time step (5.1-30) 
+    rt_auxvar%kinsrfcplx_conc = srfcplx_constraint%constraint_conc
+    do irxn = 1, reaction%nkinsrfcplxrxn
+      isite = reaction%kinsrfcplx_rxn_to_site(irxn)
+      rt_auxvar%kinsrfcplx_free_site_conc(isite) = reaction%kinsrfcplx_rxn_site_density(isite)
+      ncplx = reaction%kinsrfcplx_rxn_to_complex(0,irxn)
+      do k = 1, ncplx ! ncplx in rxn
+        icplx = reaction%kinsrfcplx_rxn_to_complex(k,irxn)
+        rt_auxvar%kinsrfcplx_free_site_conc(isite) = &
+          rt_auxvar%kinsrfcplx_free_site_conc(isite) - &
+          rt_auxvar%kinsrfcplx_conc(icplx)
+      enddo
+    enddo
+    do irxn = 1, reaction%nkinsrfcplxrxn
+      isite = reaction%kinsrfcplx_rxn_to_site(irxn)
+      if (rt_auxvar%kinsrfcplx_free_site_conc(isite) < 0.d0) then
+        option%io_buffer = 'Free site concentration for site ' // &
+          trim(reaction%kinsrfcplx_site_names(isite)) // &
+          ' is less than zero.'
+        call printErrMsg(option)
+      endif
+    enddo
+    srfcplx_constraint%constraint_free_site_conc = rt_auxvar%kinsrfcplx_free_site_conc
+    srfcplx_constraint%basis_free_site_conc = srfcplx_constraint%constraint_free_site_conc
+  endif
   
   ! remember that a density of 1 kg/L was assumed, thus molal and molarity are equal
   ! do not scale by molal_to_molar since it could be 1.d0 if MOLAL flag set
@@ -1746,12 +1776,12 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
         if (icplx > 0) then
           conc = rt_auxvar%eqsrfcplx_conc(icplx)
         else
-          conc = rt_auxvar%eqsrfcplx_freesite_conc(-icplx)
+          conc = rt_auxvar%eqsrfcplx_free_site_conc(-icplx)
         endif
         if (icplx2 > 0) then
           conc2 = rt_auxvar%eqsrfcplx_conc(icplx2)
         else
-          conc2 = rt_auxvar%eqsrfcplx_freesite_conc(-icplx2)
+          conc2 = rt_auxvar%eqsrfcplx_free_site_conc(-icplx2)
         endif
         if (conc < conc2) then
           eqsrfcplxsort(i) = icplx2
@@ -1775,7 +1805,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
                                   reaction%eqsrfcplx_logK(icplx)
       else
         write(option%fid_out,122) reaction%eqsrfcplx_site_names(-icplx), &
-                                  rt_auxvar%eqsrfcplx_freesite_conc(-icplx)
+                                  rt_auxvar%eqsrfcplx_free_site_conc(-icplx)
       endif
     enddo 
   endif
@@ -2849,7 +2879,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
   
     ncplx = reaction%eqsrfcplx_rxn_to_complex(0,irxn)
     
-    free_site_conc = rt_auxvar%eqsrfcplx_freesite_conc(irxn)
+    free_site_conc = rt_auxvar%eqsrfcplx_free_site_conc(irxn)
 
     ! get a pointer to the first complex (there will always be at least 1)
     ! in order to grab free site conc
@@ -2915,7 +2945,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
 
     enddo
     
-    rt_auxvar%eqsrfcplx_freesite_conc(irxn) = free_site_conc
+    rt_auxvar%eqsrfcplx_free_site_conc(irxn) = free_site_conc
  
     dSx_dmi = 0.d0
     tempreal = 0.d0
@@ -3218,7 +3248,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
     site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
   
     ncplx = reaction%eqsrfcplx_rxn_to_complex(0,irxn)
-    free_site_conc = rt_auxvar%eqsrfcplx_freesite_conc(irxn)
+    free_site_conc = rt_auxvar%eqsrfcplx_free_site_conc(irxn)
 
     ! get a pointer to the first complex (there will always be at least 1)
     ! in order to grab free site conc
@@ -3281,7 +3311,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
       endif
     enddo
 
-    rt_auxvar%eqsrfcplx_freesite_conc(irxn) = free_site_conc
+    rt_auxvar%eqsrfcplx_free_site_conc(irxn) = free_site_conc
    
     dSx_dmi = 0.d0
     tempreal = 0.d0
@@ -3409,7 +3439,7 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
 ! Members of the rt aux var object: mol/m^3
 ! PetscReal, pointer :: kinsrfcplx_conc(:)          ! S_{i\alpha}^k
 ! PetscReal, pointer :: kinsrfcplx_conc_kp1(:)      ! S_{i\alpha}^k+1
-! PetscReal, pointer :: kinsrfcplx_freesite_conc(:) ! S_\alpha
+! PetscReal, pointer :: kinsrfcplx_free_site_conc(:) ! S_\alpha
   
 ! units
 ! k_f: dm^3/mol/sec
@@ -3490,9 +3520,9 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
                                 numerator_sum(isite)/denominator_sum(isite)* &
                                 Q(icplx))/denominator
       rt_auxvar%kinsrfcplx_conc_kp1(icplx) = srfcplx_conc_kp1(icplx)
-      rt_auxvar%kinsrfcplx_freesite_conc(irxn) = numerator_sum(isite)/ &
-                                denominator_sum(isite)
     enddo
+    rt_auxvar%kinsrfcplx_free_site_conc(irxn) = numerator_sum(isite)/ &
+                                               denominator_sum(isite)
   enddo
 
 ! compute residual (5.1-34)

@@ -3304,7 +3304,7 @@ subroutine RTAuxVarCompute(rt_aux_var,global_aux_var,reaction,option)
       aux_var%gas_molal = 0.d0
     endif
     if (reaction%neqsrfcplxrxn > 0) then
-      rt_auxvar_pert%eqsrfcplx_freesite_conc = 1.d-9
+      rt_auxvar_pert%eqsrfcplx_free_site_conc = 1.d-9
       rt_auxvar_pert%eqsrfcplx_conc = 0.d0
     endif
     if (reaction%neqionxrxn > 0) then

@@ -873,6 +873,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
       call ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                             reaction,cur_constraint_coupler%constraint_name, &
                             cur_constraint_coupler%aqueous_species, &
+                            cur_constraint_coupler%surface_complexes, &
                             cur_constraint_coupler%num_iterations, &
                             PETSC_TRUE,option)
       ! turn on flag indicating constraint has not yet been used
@@ -1258,7 +1259,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
           enddo
         case(SURFACE_CMPLX_FREE)
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%eqsrfcplx_freesite_conc(isubvar)
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%eqsrfcplx_free_site_conc(isubvar)
           enddo
         case(KIN_SURFACE_CMPLX)
           do local_id=1,grid%nlmax
@@ -1266,7 +1267,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
           enddo
         case(KIN_SURFACE_CMPLX_FREE)
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%kinsrfcplx_freesite_conc(isubvar)
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%kinsrfcplx_free_site_conc(isubvar)
           enddo
         case(PRIMARY_ACTIVITY_COEF)
           do local_id=1,grid%nlmax
@@ -1508,11 +1509,11 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
         case(SURFACE_CMPLX)
           value = patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_conc(isubvar)
         case(SURFACE_CMPLX_FREE)
-          value = patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_freesite_conc(isubvar)
+          value = patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_free_site_conc(isubvar)
         case(KIN_SURFACE_CMPLX)
           value = patch%aux%RT%aux_vars(ghosted_id)%kinsrfcplx_conc(isubvar)
         case(KIN_SURFACE_CMPLX_FREE)
-          value = patch%aux%RT%aux_vars(ghosted_id)%kinsrfcplx_freesite_conc(isubvar)
+          value = patch%aux%RT%aux_vars(ghosted_id)%kinsrfcplx_free_site_conc(isubvar)
         case(PRIMARY_ACTIVITY_COEF)
           value = patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)
         case(SECONDARY_ACTIVITY_COEF)

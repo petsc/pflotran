@@ -126,6 +126,8 @@ module Reaction_Aux_module
     character(len=MAXWORDLENGTH), pointer :: names(:)
     PetscReal, pointer :: constraint_conc(:)
     PetscReal, pointer :: basis_conc(:)
+    PetscReal, pointer :: constraint_free_site_conc(:)
+    PetscReal, pointer :: basis_free_site_conc(:)
   end type srfcplx_constraint_type
 
   type, public :: reaction_type
@@ -903,6 +905,10 @@ function SurfaceComplexConstraintCreate(reaction,option)
   constraint%constraint_conc = 0.d0
   allocate(constraint%basis_conc(reaction%nkinsrfcplx))
   constraint%basis_conc = 0.d0
+  allocate(constraint%constraint_free_site_conc(reaction%nkinsrfcplxrxn))
+  constraint%constraint_free_site_conc = 0.d0
+  allocate(constraint%basis_free_site_conc(reaction%nkinsrfcplxrxn))
+  constraint%basis_free_site_conc = 0.d0
 
   SurfaceComplexConstraintCreate => constraint
 
@@ -1559,6 +1565,12 @@ subroutine SurfaceComplexConstraintDestroy(constraint)
   if (associated(constraint%basis_conc)) &
     deallocate(constraint%basis_conc)
   nullify(constraint%basis_conc)
+  if (associated(constraint%constraint_free_site_conc)) &
+    deallocate(constraint%constraint_free_site_conc)
+  nullify(constraint%constraint_free_site_conc)
+  if (associated(constraint%basis_free_site_conc)) &
+    deallocate(constraint%basis_free_site_conc)
+  nullify(constraint%basis_free_site_conc)
 
   deallocate(constraint)
   nullify(constraint)
