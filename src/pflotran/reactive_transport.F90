@@ -656,7 +656,7 @@ subroutine RTUpdateSolutionPatch(realization)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)  
   PetscInt :: ghosted_id, local_id, imnrl, iaqspec, ncomp, icomp
-  PetscInt :: irate, irxn, icplx
+  PetscInt :: k, irate, irxn, icplx, ncplx
   PetscReal :: kdt, one_plus_kdt, k_over_one_plus_kdt
   
   option => realization%option
@@ -732,9 +732,12 @@ subroutine RTUpdateSolutionPatch(realization)
     if (reaction%nkinsrfcplxrxn > 0) then
       do ghosted_id = 1, grid%ngmax 
         do irxn = 1, reaction%nkinsrfcplxrxn
-          icplx = irxn
-          rt_aux_vars(ghosted_id)%kinsrfcplx_conc(icplx) = &
-            rt_aux_vars(ghosted_id)%kinsrfcplx_conc_kp1(icplx)
+          ncplx = reaction%kinsrfcplx_rxn_to_complex(0,irxn)
+          do k = 1, ncplx ! ncplx in rxn
+            icplx = reaction%kinsrfcplx_rxn_to_complex(k,irxn)
+            rt_aux_vars(ghosted_id)%kinsrfcplx_conc(icplx) = &
+              rt_aux_vars(ghosted_id)%kinsrfcplx_conc_kp1(icplx)
+          enddo
         enddo
       enddo
     endif
