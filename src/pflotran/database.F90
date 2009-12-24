@@ -2570,7 +2570,6 @@ subroutine BasisInit(reaction,option)
               reaction%kinsrfcplxspecid(ispec,isrfcplx) = spec_id
               reaction%kinsrfcplxstoich(ispec,isrfcplx) = &
                 cur_srfcplx%dbaserxn%stoich(i)
-              
             else ! fill in h2o id and stoich
               reaction%kinsrfcplxh2oid(isrfcplx) = h2o_id
               reaction%kinsrfcplxh2ostoich(isrfcplx) = &

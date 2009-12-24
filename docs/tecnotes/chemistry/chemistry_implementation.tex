@@ -1253,8 +1253,8 @@ END
 
 \setcounter{equation}{0}
 
-The multirate formulation is considered only for surface complexation reactions, but ion exchange could also be implemented if desired. For surface complexation reactions of the form
-\EQ
+The multirate formulation is considered only for surface complexation reactions, but ion exchange could also be implemented if desired. As written, $\nu_{ji}\!>\!0$ for species appearing on the left-hand side and $\nu_{ji}\!<\!0$ for species on the right-hand side of the reaction. For surface complexation reactions of the form
+\EQ\label{srfrxn}
 \nu_\a >\!\!\chi_\a + \sum_j\nu_{ji} \A_j \arrows >\!\! \S_{i\a},
 \EN
 for the $i$th surface complex $>\!\!\S_{i\a}$ on site $\a$ and empty site $>\!\!\chi_\a$ are assumed. Examples of these reactions for sorption of Pu on iron oxide and aluminosilicate substrates are
@@ -1378,17 +1378,30 @@ S_{j\a}^{\rm eq} \eq \sum_i \nu_{ji}^{} S_{i\a}^{\rm eq}\eq \frac{\omega_\a}{1+\
 
 \subsubsection{Kinetic Formulation}
 
-A possible kinetic formulation for surface complexation reactions can be written in the form
+Assuming the surface complexation reaction (see Eqn.\eqref{srfrxn}) can be treated as an elementary reaction the rate equation has the form
+\EQ
+\frac{\p S_{i\a}}{\p t} \eq k_{i\a}^f S_\a Q_{i}^+ - k_{i\a}^b Q_{i}^- S_{i\a},
+\EN
+where
+\EQ
+Q_i^\pm \eq \prod_{\nu_{ji}\mathop{}_{<0}^{>0}}\big(\gamma_j C_j\big)^{|\nu_{ji}|}.
+\EN
+An alternative possible kinetic formulation for surface complexation reactions which is used in what follows can be written in the form
 \EQ\label{skin}
 \frac{\p S_{i\a}}{\p t} \eq k_{i\a}^f S_\a Q_{i} - k_{i\a}^b S_{i\a},
 \EN
-where $S_{\i\a}$ denotes the sorbed concentration for the $i$th surface complex on site $\a$. For reversible reaction the forward and backward rate constants, $k_{i\a}^f$, $k_{i\a}^b$ satisfy the relation
+where
+\EQ
+Q_i \eq \frac{Q^+}{Q^-}\eq \prod_j\big(\gamma_j C_j\big)^{\nu_{ji}},
+\EN
+and
+where $S_{\i\a}$ denotes the sorbed concentration for the $i$th surface complex on site $\a$. In both cases for reversible kinetics the forward and backward rate constants, $k_{i\a}^f$, $k_{i\a}^b$ satisfy the relation
 %\footnote{Should the selectivity coefficienty $K_i$ also depend on the site index $\a$?}
 \EQ
-K_{i\a} \eq \frac{k_{i\a}^f}{k_{i\a}^b},
+K_{i\a} \eq \frac{k_{i\a}^f}{k_{i\a}^b}\eq \frac{S_{i\a}}{S_\a Q_i},
 \EN
 with selectivity coefficient $K_{i\a}$.
-It should be noted that the form of the rate law given in Eqn.\eqref{skin} is not expressed in the form of an elementary reaction. Other forms are certainly possible and comparison with experiment would be required to choose the best formulation. For irreversible reaction one of the rate constants must vanish.
+It should be noted that the form of the rate law given in Eqn.\eqref{skin} is not expressed in the form of an elementary reaction. Other forms are certainly possible and comparison with experiment would be required to choose the best formulation.  For irreversible reaction one of the rate constants vanishes.
 
 The implicit finite difference equation corresponding to Eqn.\eqref{skin} is given by
 \EQ\label{fdskin}
