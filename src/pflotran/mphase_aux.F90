@@ -335,10 +335,12 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
               call co2_span_wagner(p2*1.D-6, t +273.15D0,dg,dddt,dddp,fg,&
                      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
             endif
+
             dg= dg / FMWCO2
             fg= fg * 1.D6 
             hg= hg * FMWCO2
             xphi = fg/p2
+            
 ! ************* Span-Wagner EOS with Bi-Cubic Spline interpolation ********
           case(3) 
             call sw_prop(t,p2*1D-6,dg,hg, eng, fg)

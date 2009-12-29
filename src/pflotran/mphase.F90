@@ -34,7 +34,7 @@ module Mphase_module
   PetscReal, parameter :: formeps   = 1.D-4
   PetscReal, parameter :: eps = 1.D-8 
   PetscReal, parameter :: dfac = 1D-8
-  PetscReal, parameter :: floweps   = 1.D-24
+  PetscReal, parameter :: floweps = 1.D-24
 !  PetscReal, parameter :: satcuteps = 1.D-5
   PetscReal, parameter :: zerocut =0.D0  !1D-8
   
@@ -1110,7 +1110,7 @@ end subroutine MphaseSourceSink
 ! ************************************************************************** ! 
 #if 0
 
-!computes diffusive flux as: (rho X)_(n+1) - (rho X)_n etc
+!computes diffusive flux as: (rho X)_(n+1) - (rho X)_n etc (incorrect)
 
 subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
@@ -1234,7 +1234,7 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 end subroutine MphaseFlux
 #endif
 
-! older version
+! older version: correct
 #if 1
 
 !computes diffusive flux as: 0.5*(rho_(n+1)+rho_n) [(X)_(n+1) - (X)_n] etc
@@ -1273,12 +1273,13 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   
 ! Flow term
   do np = 1, option%nphase
+    
     if (aux_var_up%sat(np) > sir_up(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
-      upweight= dd_dn/(dd_up+dd_dn)
-      if (aux_var_up%sat(np) <eps) then 
-        upweight=0.d0
-      else if (aux_var_dn%sat(np) <eps) then 
-        upweight=1.d0
+      upweight = dd_dn/(dd_up+dd_dn)
+      if (aux_var_up%sat(np) < eps) then 
+        upweight = 0.d0
+      else if (aux_var_dn%sat(np) < eps) then 
+        upweight = 1.d0
       endif
       density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np) 
         
@@ -1291,17 +1292,18 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
              + gravity
 
       v_darcy = 0.D0
-      ukvr=0.D0
-      uh=0.D0
-      uxmol=0.D0
+      ukvr = 0.D0
+      uh = 0.D0
+      uxmol = 0.D0
 
       ! note uxmol only contains one phase xmol
-      if (dphi>=0.D0) then
+      ! upstream weighting
+      if (dphi >= 0.D0) then
         ukvr = aux_var_up%kvr(np)
         ! if(option%use_isothermal == PETSC_FALSE)&
         uh = aux_var_up%h(np)
         uxmol(1:option%nflowspec) = &
-            aux_var_up%xmol((np-1)*option%nflowspec + 1 : np*option%nflowspec)
+          aux_var_up%xmol((np-1)*option%nflowspec + 1 : np*option%nflowspec)
       else
         ukvr = aux_var_dn%kvr(np)
       ! if(option%use_isothermal == PETSC_FALSE)&
@@ -1310,9 +1312,9 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
           aux_var_dn%xmol((np-1)*option%nflowspec + 1 : np*option%nflowspec)
       endif
 
-      if (ukvr>floweps) then
-        v_darcy= Dq * ukvr * dphi
-        vv_darcy(np)=v_darcy
+      if (ukvr > floweps) then
+        v_darcy = Dq * ukvr * dphi
+        vv_darcy(np) = v_darcy
         q = v_darcy * area
         
         do ispec=1, option%nflowspec 
@@ -1339,16 +1341,16 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 
 ! conduction term
   !if(option%use_isothermal == PETSC_FALSE) then     
-     Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
-     cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
-     fluxe=fluxe + cond
+  Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
+  cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
+  fluxe = fluxe + cond
  ! end if
 
   !if(option%use_isothermal)then
   !   Res(1:option%nflowdof) = fluxm(:) * option%flow_dt
  ! else
-     Res(1:option%nflowdof-1) = fluxm(:) * option%flow_dt
-     Res(option%nflowdof) = fluxe * option%flow_dt
+  Res(1:option%nflowdof-1) = fluxm(:) * option%flow_dt
+  Res(option%nflowdof) = fluxe * option%flow_dt
  ! end if
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  

@@ -1284,8 +1284,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 
             reaction%eqgas_logK(igas) = -lnQK*LN_TO_LOG
             
-!            print *, 'SC CO2 constraint',igas,pres,pco2,tc,xphico2,henry,lnQk,yco2, &
-!              lngamco2,m_na,m_cl,reaction%eqgas_logK(igas)
+             print *, 'SC CO2 constraint',igas,pres,pco2,tc,xphico2,henry,lnQk,yco2, &
+               lngamco2,m_na,m_cl,reaction%eqgas_logK(igas),dg
             
             ! activity of water
             if (reaction%eqgash2oid(igas) > 0) then
