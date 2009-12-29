@@ -2993,7 +2993,7 @@ and
 \section{General Multiphase System}
 
 For a multiphase system characterized with phase saturation $s_\a$, and Darcy velocity $\bq_\a$ corresponding to phase $\a$, the transport equations generalize to
-\EQ
+\EQ\label{genmass}
 \frac{\p}{\p t}\left(\varphi\sum_\a s_\a\Psi_j^\a\right) + \bnabla\cdot\sum_\a\bOmega_j^\a \eq \R_j,
 \EN
 where $s_\a$ denotes the saturation of phase $\a$, $\R_j$ refers to source/sink and reaction rate terms, and the total concentration for each phase is defined as
@@ -3025,6 +3025,21 @@ The residual function has the form
 \EQ
 R_{jn}\eq\frac{V_n}{\Delta t}\left[\bigg(\varphi_n\sum_\a s_{\a n} \Psi_{jn}^\a\bigg)_{t+\Delta t} - \bigg(\varphi_n\sum_\a s_{\a n} \Psi_{jn}^\a\bigg)_{t}\right] + \sum_{\a n'}\Omega_{jnn'}^\a A_{nn'} - \R_{jn} V_n.
 \EN
+
+An alternative form of the mass conservation equations Eqn.\eqref{genmass} that emphasizes the similarity of different phase contributions is to write
+\EQ
+\sum_\a\left\{\frac{\p}{\p t}\left(\varphi s_\a\Psi_j^\a\right) + \bnabla\cdot\bOmega_j^\a\right\} \eq \R_j.
+\EN
+The residual function has the form
+\EQ
+R_{jn}\eq \sum_\a\left\{ \frac{V_n}{\Delta t}\left[\bigg(\varphi_n s_{\a n} \Psi_{jn}^\a\bigg)_{t+\Delta t} - \bigg(\varphi_n s_{\a n} \Psi_{jn}^\a\bigg)_{t}\right] + \sum_{n'}\Omega_{jnn'}^\a A_{nn'}\right\} - \R_{jn} V_n.
+\EN
+
+The energy conservation equation can be written in the form
+\EQ
+\sum_\a\left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a U_\a\big) + \bnabla\cdot\big(\bq_\a \rho_\a H_\a\big) \right\} + \frac{\p}{\p t} \big(\rho_r C_p T \big) - \bnabla\cdot\big(\kappa\bnabla T\big) \eq Q,
+\EN
+with internal energy $U_\a$ and enthalpy $H_\a$ of fluid phase $\a$, rock heat capacity $C_p$ and thermal conductivity $\kappa$.
 
 \section{Supercritical CO$_2$--H$_2$O Equilibrium (Duan \& Sun, 2003)}
 
@@ -3120,8 +3135,8 @@ w_w \eq \frac{1}{1+\sum_{l\ne w} m_lW_l}.
 It follows that
 \BA
 m_i \eq \frac{n_i}{M_w} &\eq \frac{n_i}{N}\frac{N}{M}\frac{M}{M_w},\\
-&\eq \frac{x_i}{W w_w},\\
-&\eq \frac{x_i}{x_w W_w} \eq \frac{x_i}{\big(1-\displaystyle\sum_{l\ne w} x_l\big) W_w},
+&\eq \frac{x_i}{W w_w}\eq \frac{x_i}{x_w W_w},\\
+&\eq \frac{x_i}{\big(1-\displaystyle\sum_{l\ne w} x_l\big) W_w},
 \EA
 using
 \EQ
