@@ -3030,16 +3030,64 @@ An alternative form of the mass conservation equations Eqn.\eqref{genmass} that 
 \EQ
 \sum_\a\left\{\frac{\p}{\p t}\left(\varphi s_\a\Psi_j^\a\right) + \bnabla\cdot\bOmega_j^\a\right\} \eq \R_j.
 \EN
-The residual function has the form
-\EQ
-R_{jn}\eq \sum_\a\left\{ \frac{V_n}{\Delta t}\left[\bigg(\varphi_n s_{\a n} \Psi_{jn}^\a\bigg)_{t+\Delta t} - \bigg(\varphi_n s_{\a n} \Psi_{jn}^\a\bigg)_{t}\right] + \sum_{n'}\Omega_{jnn'}^\a A_{nn'}\right\} - \R_{jn} V_n.
-\EN
-
 The energy conservation equation can be written in the form
 \EQ
 \sum_\a\left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a U_\a\big) + \bnabla\cdot\big(\bq_\a \rho_\a H_\a\big) \right\} + \frac{\p}{\p t} \big(\rho_r C_p T \big) - \bnabla\cdot\big(\kappa\bnabla T\big) \eq Q,
 \EN
-with internal energy $U_\a$ and enthalpy $H_\a$ of fluid phase $\a$, rock heat capacity $C_p$ and thermal conductivity $\kappa$.
+as the sum of contributions from different fluid phases and rock,
+with internal energy $U_\a$ and enthalpy $H_\a$ of fluid phase $\a$, and rock heat capacity $C_p$ and thermal conductivity $\kappa$.
+
+The residual function for mass conservation has the form
+\EQ
+R_{jn}\eq \sum_\a\left\{ \frac{V_n}{\Delta t}\left[\bigg(\varphi_n s_{\a n} \Psi_{jn}^\a\bigg)_{t+\Delta t} - \bigg(\varphi_n s_{\a n} \Psi_{jn}^\a\bigg)_{t}\right] + \sum_{n'}\Omega_{jnn'}^\a A_{nn'}\right\} - \R_{jn} V_n.
+\EN
+
+\subsection{Composition Variables}
+
+For a multicomponent system weight $w_i$ and mole $x_i$ fractions are related by the expression
+\begin{subequations}
+\EQ
+x_i \eq \frac{w_i^{} W_i^{-1}}{\sum_l w_l^{} W_l^{-1}},
+\EN
+with the inverse relation
+\EQ
+w_i \eq \frac{x_i W_i}{\sum_l x_l W_l}.
+\EN
+\end{subequations}
+For the solvent H$_2$O
+\begin{subequations}
+\EQ
+x_w \eq \frac{1}{1+W_w\sum_{l\ne w} m_l},
+\EN
+and
+\EQ
+w_w \eq \frac{1}{1+\sum_{l\ne w} m_lW_l}.
+\EN
+\end{subequations}
+It follows that molality is related to mole fraction by the equations
+\BA
+m_i \eq \frac{n_i}{M_w} &\eq \frac{n_i}{N}\frac{N}{M}\frac{M}{M_w},\\
+&\eq \frac{x_i}{W w_w}\eq \frac{x_i}{x_w W_w},\\
+&\eq \frac{x_i}{\big(1-\displaystyle\sum_{l\ne w} x_l\big) W_w},
+\EA
+using
+\BA
+W &\eq \frac{M}{N} \eq \frac{M}{M_w}\frac{M_w}{n_w}\frac{n_w}{N} 
+\eq \frac{x_w W_w}{w_w},\\
+&\eq \sum_i x_iW_i,\\
+&\eq \frac{W_w\big(1+\sum_{l\ne w} m_l W_l\big)}{1+W_w\sum_{l\ne w} m_l}.
+\EA
+The inverse relation is obtained as
+\BA
+x_i &\eq \frac{n_i}{N} \eq \frac{n_i}{M_w}\frac{M_w}{M}\frac{M}{N},\\
+&\eq m_i w_w W \eq m_i x_w W_w,\\
+&\eq \frac{m_i W}{1+\displaystyle\sum_{l\ne w} m_l W_l},\\
+&\eq \frac{m_i W_w}{1+W_w\displaystyle\sum_{l\ne w} m_l},
+\EA
+using the relations
+\EQ
+\frac{M}{M_w} \eq 1+\frac{1}{M_w}\sum_{l\ne w} M_l \eq 1+\frac{1}{M_w}\sum_{l\ne w} n_l W_l \eq 1+\sum_{l\ne w} m_l W_l.
+\EN
 
 \section{Supercritical CO$_2$--H$_2$O Equilibrium (Duan \& Sun, 2003)}
 
@@ -3111,54 +3159,6 @@ m_\c \eq \frac{x_\c^l}{W_\w(1-x_\c^l)},
 \EN
 \end{subequations}
 where $W_\w$ denotes the formula weight of water. 
-
-For a multicomponent system weight $w_i$ and mole $x_i$ fractions are related by the expression
-\begin{subequations}
-\EQ
-x_i \eq \frac{w_i^{} W_i^{-1}}{\sum_l w_l^{} W_l^{-1}},
-\EN
-with the inverse relation
-\EQ
-w_i \eq \frac{x_i W_i}{\sum_l x_l W_l}.
-\EN
-\end{subequations}
-For the solvent H$_2$O
-\begin{subequations}
-\EQ
-x_w \eq \frac{1}{1+W_w\sum_{l\ne w} m_l},
-\EN
-and
-\EQ
-w_w \eq \frac{1}{1+\sum_{l\ne w} m_lW_l}.
-\EN
-\end{subequations}
-It follows that
-\BA
-m_i \eq \frac{n_i}{M_w} &\eq \frac{n_i}{N}\frac{N}{M}\frac{M}{M_w},\\
-&\eq \frac{x_i}{W w_w}\eq \frac{x_i}{x_w W_w},\\
-&\eq \frac{x_i}{\big(1-\displaystyle\sum_{l\ne w} x_l\big) W_w},
-\EA
-using
-\EQ
-W \eq \frac{M}{N} \eq \frac{1}{N}\sum_i n_i W_i \eq \sum_i x_i W_i.
-\EN
-The inverse relation is obtained as
-\BA
-x_i &\eq \frac{n_i}{N} \eq \frac{n_i}{M_w}\frac{M_w}{M}\frac{M}{N},\\
-&\eq m_i w_w W \eq m_i x_w W_w,\\
-&\eq \frac{m_i W}{1+\displaystyle\sum_{l\ne w} m_l W_l},\\
-&\eq \frac{m_i W_w}{1+W_w\displaystyle\sum_{l\ne w} m_l},
-\EA
-using the relations
-\BA
-W &\eq \frac{M}{N} \eq \frac{M}{M_w}\frac{M_w}{n_w}\frac{n_w}{N} 
-\eq \frac{x_w W_w}{w_w},\\
-&\eq \frac{W_w\big(1+\sum_{l\ne w} m_l W_l\big)}{1+W_w\sum_{l\ne w} m_l}.
-\EA
-and
-\EQ
-\frac{M}{M_w} \eq 1+\frac{1}{M_w}\sum_{l\ne w} M_l \eq 1+\frac{1}{M_w}\sum_{l\ne w} n_l W_l \eq 1+\sum_{l\ne w} m_l W_l.
-\EN
 
 The concentration of $\c$ in the gas phase, $C_\c^g$, is obtained as
 \BA
