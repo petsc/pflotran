@@ -1062,6 +1062,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     Jac = 0.d0
         
     do icomp = 1, reaction%ncomp
+    
+      print *,'equilib: ',icomp,constraint_type(icomp)
+      
       select case(constraint_type(icomp))
       
         case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
@@ -1071,6 +1074,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 
           ! Jac units = kg water/L water
           Jac(icomp,:) = rt_auxvar%dtotal(icomp,:,1)
+          
+          print *,'equilib-tot: ',icomp,constraint_type(icomp),res(icomp),jac(icomp,:),&
+          rt_auxvar%total(icomp,1),total_conc(icomp),rt_auxvar%dtotal(icomp,:,1)
       
         case(CONSTRAINT_TOTAL_SORB)
           ! conversion from m^3 bulk -> L water
@@ -1257,7 +1263,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 
             call co2_span_wagner(pco2*1D-6,tc+273.15D0,dg,dddt,dddp,fg, &
               dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
-
             
             global_auxvar%den_kg(2) = dg
             
@@ -1284,7 +1289,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 
             reaction%eqgas_logK(igas) = -lnQK*LN_TO_LOG
             
-             print *, 'SC CO2 constraint',igas,pres,pco2,tc,xphico2,henry,lnQk,yco2, &
+            print *, 'SC CO2 constraint',igas,pres,pco2,tc,xphico2,henry,lnQk,yco2, &
                lngamco2,m_na,m_cl,reaction%eqgas_logK(igas),dg
             
             ! activity of water
@@ -1333,6 +1338,10 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
       Jac(:,icomp) = Jac(:,icomp)*rt_auxvar%pri_molal(icomp)
     enddo
 
+    do jcomp = 1, reaction%ncomp
+      print *,'equilib: jac ',jcomp,(icomp,Jac(jcomp,icomp),icomp=1,reaction%ncomp)
+    enddo
+    
     call ludcmp(Jac,reaction%ncomp,indices,icomp)
     call lubksb(Jac,reaction%ncomp,indices,Res)
 

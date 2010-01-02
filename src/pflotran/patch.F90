@@ -789,11 +789,13 @@ subroutine PatchInitConstraints(patch,reaction,option)
   type(patch_type) :: patch
   type(option_type) :: option
   type(reaction_type), pointer :: reaction
-
+  
   call PatchInitCouplerConstraints(patch%initial_conditions, &
                                    reaction,option)
+  
   call PatchInitCouplerConstraints(patch%boundary_conditions, &
                                    reaction,option)
+  
   call PatchInitCouplerConstraints(patch%source_sinks, &
                                    reaction,option)
 
@@ -861,6 +863,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
         else
           global_auxvar%temp = option%reference_temperature
         endif
+
         call wateos(global_auxvar%temp(1),global_auxvar%pres(1), &
                     global_auxvar%den_kg(1),r1,r2,r3,r4,r5,r6, &
                     option%scale,ierr) 
@@ -870,6 +873,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
         global_auxvar%den_kg = option%reference_water_density
       endif     
       global_auxvar%sat = option%reference_saturation  
+  
       call ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                             reaction,cur_constraint_coupler%constraint_name, &
                             cur_constraint_coupler%aqueous_species, &
@@ -877,6 +881,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
                             cur_constraint_coupler%num_iterations, &
                             PETSC_TRUE,option)
       ! turn on flag indicating constraint has not yet been used
+
       cur_constraint_coupler%iflag = ONE_INTEGER
       cur_constraint_coupler => cur_constraint_coupler%next
     enddo

@@ -230,11 +230,11 @@ subroutine Init(simulation)
         option%nflowdof,option%nphase
       select case(option%iflowmode)
         case(MPH_MODE)
-          write(*,'(" mode = MPH: p, T, s/C")')
+          write(*,'(" mode = MPH: p, T, s/X")')
         case(IMS_MODE)
           write(*,'(" mode = MPH: p, T, s")')
         case(THC_MODE)
-          write(*,'(" mode = Richards: p, T, s/C")')
+          write(*,'(" mode = THC: p, T, s/X")')
         case(RICHARDS_MODE)
           write(*,'(" mode = Richards: p")')      
       end select
@@ -333,12 +333,12 @@ subroutine Init(simulation)
 
     ! setup a shell preconditioner and initialize in the case of AMR
     if(option%use_samr) then
-!       flow_solver%pc_type = PCSHELL
-       pcside = PC_RIGHT
-       if(flow_solver%pc_type==PCSHELL) then
-          call KSPSetPreconditionerSide(flow_solver%ksp, pcside,ierr)
-          call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 0, flow_solver%pc)
-       endif
+!     flow_solver%pc_type = PCSHELL
+      pcside = PC_RIGHT
+      if(flow_solver%pc_type==PCSHELL) then
+        call KSPSetPreconditionerSide(flow_solver%ksp, pcside,ierr)
+        call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 0, flow_solver%pc)
+      endif
     endif
 
     option%io_buffer = 'Solver: ' // trim(flow_solver%ksp_type)

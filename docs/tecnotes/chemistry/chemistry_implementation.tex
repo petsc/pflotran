@@ -190,7 +190,7 @@
 \thispagestyle{empty}
 
 %\documentclass{report}
-\usepackage{fullpage}
+%\usepackage{fullpage}
 \renewcommand{\baselinestretch}{1.2}
 \author{P.C. Lichtner}
 \title{PFLOTRAN: Reactive Transport Implementation}
@@ -2849,7 +2849,7 @@ From this equation the overall mass conservation equation follows by multiplying
 \EN
 where $\bv_\a$ represents the barycentric velocity (see Table~\ref{trefframe}) defined by
 \EQ
-\rho \bv_\a \eq \sum_k\rho_k^\a \bar\bv_k^\a.
+\rho_\a \bv_\a \eq \sum_k\rho_k^\a \bar\bv_k^\a.
 \EN
 To obtain this result the following relations are used
 \EQ
@@ -2882,16 +2882,16 @@ The transport equations Eqn.\eqref{molar_form} may also be written in terms of m
 
 Given a reference velocity $\bomega_\a$ for phase $\a$, the average species fluid velocity $\bar\bv_k^\a$ can be separated into contributions from advection and diffusion by writing
 \BA
-\bar\bv_k^\a &\eq \bomega_\a + \bar\bv_k^\a - \bomega_\a,\\
+\bar\bv_k^\a &\eq \bomega_\a + \bar\bv_k^\a - \bomega_\a^{},\\
 &\eq \bomega_\a + \bv_k^\a,
 \EA
 where the first term corresponds to the reference velocity describing advection and the second term $\bv_k^\a$ corresponds to the diffusion velocity
 \EQ
-\bv_k^\a \eq \bar\bv_k^\a - \bomega_\a. 
+\bv_k^\a \eq \bar\bv_k^\a - \bomega_\a^{}. 
 \EN
 The reference velocity is defined as the weighted average
 \EQ
-\bomega_\a \eq \sum_k \omega_k^\a \bar\bv_k^\a,
+\bomega_\a^{} \eq \sum_k \omega_k^\a \bar\bv_k^\a,
 \EN
 with
 \EQ
@@ -2899,20 +2899,22 @@ with
 \EN
 It follows that the weighted sum of the diffusion velocity is zero
 \EQ
-\sum_k \omega_k^\a \bv_k^\a \eq \sum_k \omega_k^\a \big(\bar\bv_k^\a - \bomega_\a\big) \eq \boldsymbol{0}.
+\sum_k \omega_k^\a \bv_k^\a \eq \sum_k \omega_k^\a \big(\bar\bv_k^\a - \bomega_\a^{}\big) \eq \boldsymbol{0}.
 \EN
-The diffusive flux $~_{\bomega}\bJ_k^\a$ relative to reference velocity $\bomega_\a$ is defined as
+The diffusive flux $~_{\bomega}^{}\bJ_k^\a$ relative to reference velocity $\bomega_\a$ is defined as
 \EQ
-~_{\bomega}\bJ_k^\a \eq C_k^\a \big(\bar\bv_k^\a - \bomega_\a\big),
+~_{\bomega}^{}\bJ_k^\a \eq C_k^\a \big(\bar\bv_k^\a - \bomega_\a^{}\big),
 \EN
 and satisfies the relation
 \EQ
-\sum_k\frac{\omega_k^\a}{C_k^\a}~_{\bomega}\bJ_k^\a \eq \boldsymbol{0},
+\sum_k\frac{\omega_k^\a}{C_k^\a}~_{\bomega}^{}\bJ_k^\a \eq \boldsymbol{0},
 \EN
 implying that only $N\!-\!1$ of the diffusive fluxes are independent.
-Several different choices can be made for $\bomega_\a$ and the weight coefficients $\omega_k^\a$ leading to different forms for the fluid flow velocity and diffusive flux as listed in Table~\ref{trefframe}. The molar volume $\bar V_k^\a\!=\!\p V/\p n_k^\a$ satisfies the constraint
+Several different choices can be made for $\bomega_\a$ and the weight coefficients $\omega_k^\a$ leading to different forms for the fluid flow velocity and diffusive flux as listed in Table~\ref{trefframe}. 
+
+The molar volume $\bar V_k^\a\!=\!\p V/\p n_k^\a$ satisfies the constraint
 \EQ
-\sum_k n_k^{\a} \bar V_k^\a \eq 1.
+\sum_k x_k^{\a} \bar V_k^\a \eq 1.
 \EN
 
 \begin{table}[t]\centering
@@ -2922,14 +2924,15 @@ Several different choices can be made for $\bomega_\a$ and the weight coefficien
 
 \vspace{3mm}
 
-\begin{tabular}{lcc}
+\begin{tabular}{lccc}
 \toprule[1.5pt]
-Reference Frame & Mean Flow Velocity $\bomega_\a$ & $\omega_k^\a$\\
+Reference Frame & Reference Velocity & Weight & Diffusive Flux\\
+& $\bomega_\a$ & $\omega_k^\a$ & $~_{\bomega}^{}\bJ_k^\a$\\
 \midrule
-Barycentric & $\bv_\a = \dfrac{1}{\rho_\a}\sum_k\rho_k^\a\bar\bv_k^\a$ & $\chi_k^\a\!=\!\rho_k^\a/\rho_\a$\\
-Molecular & $\bu_\a = \dfrac{1}{\eta_\a}\sum_k C_k^\a \bar\bv_k^\a$ & $x_k^\a\!=\!C_k^\a/\eta_\a$\\
-Volumetric (Fickian) & $\bw_\a = \sum_k C_k^\a \bar{V}_k^\a \bar\bv_k^\a$ & $\phi_k^\a\!=\!C_k^\a \bar{V}_k^\a$\\
-Hittorf & $\bv_\a^\prime = \bar\bv_1^\a$ & 1, $k$=1; 0 otherwise\\
+Barycentric & $\bv_\a = \dfrac{1}{\rho_\a}\sum_k\rho_k^\a\bar\bv_k^\a$ & $\chi_k^\a\!=\!\rho_k^\a/\rho_\a$ & $C_k^\a \big(\bar\bv_k^\a - \bv_\a^{}\big)$\\
+Molecular & $\bu_\a = \dfrac{1}{\eta_\a}\sum_k C_k^\a \bar\bv_k^\a$ & $x_k^\a\!=\!C_k^\a/\eta_\a$ & $C_k^\a \big(\bar\bv_k^\a - \bu_\a^{}\big)$\\
+Volumetric (Fickian) & $\bw_\a = \sum_k C_k^\a \bar{V}_k^\a \bar\bv_k^\a$ & $\phi_k^\a\!=\!C_k^\a \bar{V}_k^\a$ & $C_k^\a \big(\bar\bv_k^\a - \bw_\a^{}\big)$\\
+Hittorf & $\bv_\a^\prime = \bar\bv_1^\a$ & 1 & $C_k^\a \big(\bar\bv_k^\a - \bv_\a^{'}\big)$\\
 \bottomrule[1.5pt]
 \end{tabular}
 \end{table}
@@ -2937,6 +2940,7 @@ Hittorf & $\bv_\a^\prime = \bar\bv_1^\a$ & 1, $k$=1; 0 otherwise\\
 \subsection{Transformation of Diffusive Flux Among Reference Velocities}
 
 For two reference velocities $\bomega_\a$ and $\bomega_\a^\prime$ the corresponding diffusive velocity is defined as
+\begin{subequations}
 \EQ
 \bv_k^\a \eq \bar\bv_k^\a - \bomega_\a^{},
 \EN
@@ -2944,46 +2948,61 @@ and
 \EQ
 \bv_k^{\a\,\prime} \eq \bar\bv_k^\a - \bomega_\a^\prime.
 \EN
-They are related by the transformation
+\end{subequations}
+The diffusive velocities are related by the transformation
+\begin{subequations}
 \BA
 \bv_k^{\a\,\prime} &\eq \bv_k^\a - \big(\bomega_\a^{\prime} - \bomega_\a^{}\big),\\
-&\eq \bv_k^\a - \sum_i \omega_i^{\a\,\prime} \bv_i^\a.\label{transformation}
+&\eq \bv_k^\a - \sum_i \omega_i^{\a\,\prime} \bv_i^\a,\label{transformation}
 \EA
+\end{subequations}
+where the latter expression is obtained by noting that
+\begin{subequations}
+\BA
+\sum_i\omega_i^{\a\prime} \bv_i^\a &\eq \sum_i\omega_i^{\a\prime} \big(\bar\bv_i^\a -\bomega_\a^{}\big),\\
+&\eq \bomega_\a^\prime - \bomega_\a^{}.
+\EA
+\end{subequations}
 
-\subsubsection{Molecular to Barycentric Transformation.}
+\subsubsection{Molecular to Barycentric Transformation}
+
 The transformation of the diffusive flux from molecular to barycentric reference velocities has the form
 \EQ\label{trans1}
-~_{\bu}\bJ_k^\a \eq ~_{\bv}\bJ_k^\a - x_k^\a \sum_i ~_{\bv}\bJ_i^\a.
+~_{\bu}^{}\bJ_k^\a \eq ~_{\bv}^{}\bJ_k^\a - x_k^\a \sum_i ~_{\bv}^{}\bJ_i^\a.
 \EN
 Introducing
 \EQ
-~_{\bv}\widetilde\bJ_k^\a \eq W_k ~_{\bv}\bJ_k^\a,
+~_{\bomega}^{}\widetilde\bJ_k^\a \eq W_k^{} ~_{\bomega}^{}\bJ_k^\a,
 \EN
 and multiplying through by $W_k$, Eqn.\eqref{trans1} becomes
 \EQ\label{trans2}
-W_k ~_{\bu}\bJ_k^\a \eq ~_{\bv}\widetilde\bJ_k^\a - x_k^\a W_k \sum_i W_i^{-1} ~_{\bv}\widetilde\bJ_i^\a.
+~_{\bu}^{}\widetilde\bJ_k^\a \eq W_k^{} ~_{\bu}^{}\bJ_k^\a \eq ~_{\bv}^{}\widetilde\bJ_k^\a - x_k^\a W_k \sum_i W_i^{-1} ~_{\bv}^{}\widetilde\bJ_i^\a.
 \EN
-Kee et al. (2003) relate the molecular and diffusive fluxes to Fick's law according to the relations
+Kee et al. (2003) relate the molecular and mass diffusive fluxes to Fick's law according to the relations
+\begin{subequations}
 \EQ
-~_{\bu}\bJ_k^\a \eq -\eta_\a D_\a \bnabla x_k^\a,
+~_{\bu}^{}\bJ_k^\a \eq -\eta_\a^{} D_\a^{} \bnabla x_k^\a,
 \EN
 and
 \EQ
-~_{\bv}\widetilde\bJ_k^\a \eq -\rho_\a D_\a \bnabla\chi_k^\a,
+~_{\bv}^{}\widetilde\bJ_k^\a \eq -\rho_\a^{} D_\a^{} \bnabla\chi_k^\a,
 \EN
+\end{subequations}
 respectively, corresponding to their Equations 12.158 and 12.160, p. 525--526. 
 It is demonstrated that these relations are compatible with Eqn.\eqref{trans2}. Indeed it follows that
+\begin{subequations}
 \BA
-W_k ~_{\bu}\bJ_k^\a &\eq -W_k\eta_\a D_\a \bnabla \left(\frac{W_k^{-1} \chi_k^\a}{\sum_i W_i^{-1}\chi_i^\a}\right),\\
-&\eq -\rho_\a D_\a \bnabla \chi_k^\a + \rho_\a D_\a x_k^\a W_k \sum_i W_i^{-1} \bnabla \chi_i^\a,\\
-&\eq ~_{\bv}\widetilde\bJ_k^\a - x_k^\a W_k \sum_i W_i^{-1} ~_{\bv}\widetilde\bJ_i^\a,
+~_{\bu}^{}\widetilde\bJ_k^\a \eq W_k^{} ~_{\bu}^{}\bJ_k^\a &\eq -W_k^{}\eta_\a^{} D_\a^{} \bnabla \left(\frac{W_k^{-1} \chi_k^\a}{\sum_i W_i^{-1}\chi_i^\a}\right),\\
+&\eq -\rho_\a D_\a \bnabla \chi_k^\a + \rho_\a^{} D_\a^{} x_k^\a W_k^{} \sum_i W_i^{-1} \bnabla \chi_i^\a,\\
+&\eq ~_{\bv}^{}\widetilde\bJ_k^\a - x_k^\a W_k^{} \sum_i W_i^{-1} ~_{\bv}\widetilde\bJ_i^\a,
 \EA
+\end{subequations}
 in agreement with Eqn.\eqref{trans2}. To obtain this result the following relations are used
 \EQ
-W_k \eta_\a x_k^\a \eq \rho_\a \chi_k^\a,
+W_k^{} \eta_\a^{} x_k^\a \eq \rho_\a^{} \chi_k^\a,
 \EN
 \EQ
-W_\a \eq \sum_k W_k x_k^\a \eq \frac{1}{\sum W_k^{-1} \chi_k^\a},
+W_\a^{} \eq \sum_k W_k^{} x_k^\a \eq \frac{1}{\displaystyle\sum_k W_k^{-1} \chi_k^\a},
 \EN
 and
 \EQ
@@ -3065,29 +3084,176 @@ w_w \eq \frac{1}{1+\sum_{l\ne w} m_lW_l}.
 \EN
 \end{subequations}
 It follows that molality is related to mole fraction by the equations
+\begin{subequations}
 \BA
 m_i \eq \frac{n_i}{M_w} &\eq \frac{n_i}{N}\frac{N}{M}\frac{M}{M_w},\\
 &\eq \frac{x_i}{W w_w}\eq \frac{x_i}{x_w W_w},\\
 &\eq \frac{x_i}{\big(1-\displaystyle\sum_{l\ne w} x_l\big) W_w},
 \EA
+\end{subequations}
 using
+\begin{subequations}
 \BA
 W &\eq \frac{M}{N} \eq \frac{M}{M_w}\frac{M_w}{n_w}\frac{n_w}{N} 
 \eq \frac{x_w W_w}{w_w},\\
 &\eq \sum_i x_iW_i,\\
-&\eq \frac{W_w\big(1+\sum_{l\ne w} m_l W_l\big)}{1+W_w\sum_{l\ne w} m_l}.
+&\eq \frac{1}{\displaystyle\sum_i w_i^{} W_i^{-1}},\\
+&\eq W_w\frac{1+\sum_{l\ne w} m_l W_l}{1+W_w\sum_{l\ne w} m_l}.
 \EA
+\end{subequations}
 The inverse relation is obtained as
+\begin{subequations}
 \BA
 x_i &\eq \frac{n_i}{N} \eq \frac{n_i}{M_w}\frac{M_w}{M}\frac{M}{N},\\
 &\eq m_i w_w W \eq m_i x_w W_w,\\
 &\eq \frac{m_i W}{1+\displaystyle\sum_{l\ne w} m_l W_l},\\
 &\eq \frac{m_i W_w}{1+W_w\displaystyle\sum_{l\ne w} m_l},
 \EA
+\end{subequations}
 using the relations
 \EQ
 \frac{M}{M_w} \eq 1+\frac{1}{M_w}\sum_{l\ne w} M_l \eq 1+\frac{1}{M_w}\sum_{l\ne w} n_l W_l \eq 1+\sum_{l\ne w} m_l W_l.
 \EN
+
+\section{Multicomponent-Multiphase System}
+
+The composition of a multicomponent-multiphase system is described by mole numbers $n_k^\a$ and mass $M_k^\a$ of the $k$th species in phase $\a$. From these quantities mole and mass fractions $\{x_k^\a\}$ and $\{w_k^\a\}$, respectively, may be defined as
+\EQ
+x_k^\a \eq \frac{n_k^\a}{N_\a},
+\EN
+where
+\EQ
+N_\a \eq \sum_k n_k^\a,
+\EN
+and similarly
+\EQ
+w_k^\a \eq \frac{M_k^\a}{M_\a} \eq \frac{n_k^\a W_k}{M_\a},
+\EN
+for formula weight $W_k$, with
+\EQ
+M_\a\eq\sum_k M_k^\a.
+\EN
+The volume of each fluid phase $\a$ is presented by $V_\a$ satisfying
+\EQ
+V_\a \eq \sum_k n_k^\a \overline V_k^\a,
+\EN
+with molar volume $\overline V_k^\a$.
+
+For a control volume $V = V_p+V_s$, consisting of pore and solid volumes $V_p$ and $V_s$, respectively, the pore volume is equal to the sum of the fluid phase volumes
+\EQ
+V_p \eq \sum_\a V_\a,
+\EN
+with saturation $s_\a$
+\EQ
+s_\a\eq\frac{V_\a}{V_p}.
+\EN
+Fluid density for each phase $\a$ can be given as molar or mass densities $\eta_\a$ or $\rho_\a$, respectively. They are related by the average formula weight $W_\a$
+\EQ
+\rho_\a \eq \frac{M_\a}{V_\a} \eq \frac{M_\a}{N_\a}\frac{N_\a}{V_\a} \eq W_\a \eta_\a,
+\EN
+with
+\EQ
+W_\a \eq \sum_k x_k^\a W_k^{} \eq \frac{1}{\displaystyle\sum_k w_k^{} W_k^{-1}}.
+\EN
+The concentration of the $k$th species can be represented as
+\BA
+c_k^\a &\eq \frac{n_k^\a}{V} \eq \frac{n_k^\a}{N_\a}\frac{N_\a}{V_\a}\frac{V_\a}{V_p}\frac{V_p}{V},\\
+&\eq \varphi s_\a^{} \eta_\a^{} x_k^\a.
+\EA
+In terms of mass units
+\EQ
+W_k^{} c_k^\a \eq \varphi s_\a^{} \rho_\a^{} w_k^\a,
+\EN
+obtained by using the identity
+\EQ
+W_k^{} x_k^\a \eq W_\a^{} w_k^\a.
+\EN
+
+Consider a reaction network consisting of both homogeneous and heterogeneous reactions of the form
+\EQ
+\sum_j\nu_{ji}^{}\A_j^\a \arrows \A_i^\a,
+\EN
+and 
+\EQ
+\sum_j\nu_{ji}^{} \A_j^l \arrows \M_m^l.
+\EN
+The latter reaction corresponds to minerals reacting with an aqueous electrolyte solution.
+Mass and charge conservation implies
+\begin{subequations}
+\EQ
+W_i \eq \sum_j W_j \nu_{ji},
+\EN
+\EQ
+W_m \eq \sum_j W_j \nu_{jm},
+\EN
+\end{subequations}
+and
+\begin{subequations}
+\EQ
+z_i \eq \sum_j z_j \nu_{ji},
+\EN
+\EQ
+0 \eq \sum_j z_j \nu_{jm},
+\EN
+\end{subequations}
+for formula weight and charge, $W_k$, $z_k$ respectively, of the $k$th species. 
+
+Primary species flow and transport equations have the form
+\EQ
+\sum_\a\left\{\frac{\p}{\p t} \big(\varphi s_\a^{} \eta_\a^{} x_j^\a\big) + \bnabla\cdot\big(\bq_\a^{}\eta_\a^{} x_j^\a + \bJ_j^\a\big)\right\} \eq -\sum_{i\a}\nu_{ji}^{} I_i^\a - \sum_m \nu_{jm}^{} I_m^l,
+\EN
+and secondary species as
+\EQ
+\sum_\a\left\{\frac{\p}{\p t} \big(\varphi s_\a^{} \eta_\a^{} x_i^\a\big) + \bnabla\cdot\big(\bq_\a^{}\eta_\a^{} x_i^\a + \bJ_i^\a\big)\right\} \eq \sum_\a I_i^\a.
+\EN
+The diffusive flux $\bJ_k^\a$ is defined by
+\EQ
+\bJ_k^\a \eq -\varphi\tau_\a^{} s_\a^{} D_\a^{} \rho_\a^{} W_k^{-1}\bnabla w_k^\a,
+\EN
+and satisfies
+\EQ
+\sum_k W_k\bJ_k^\a \eq 0.
+\EN
+Eliminating the homogeneous reaction rates $I_i^\a$ gives the total primary species conservation equations
+\EQ
+\sum_\a\left\{\frac{\p}{\p t} \big(\varphi s_\a^{} \eta_\a^{} X_j^\a\big) + \bnabla\cdot\bOmega_j^\a\right\} \eq - \sum_m \nu_{jm}^{} I_m^l,
+\EN
+where
+\EQ
+X_j^\a \eq x_j^\a + \sum_i\nu_{ji}^{} x_i^\a,
+\EN
+and
+\EQ
+\bOmega_j^\a \eq \bq_\a^{} \eta_\a^{} X_j^\a + \bJ_j^\a + \sum_i\nu_{ji}^{}\bJ_i^\a.
+\EN
+
+These equations conserve mass ({\em not} moles!) as follows from the relation
+\begin{subequations}
+\BA
+\sum_j W_j^{} X_j^\a &\eq \sum_j W_j^{} x_j^\a + \sum_{ij} W_j^{} \nu_{ji}^{} x_i^\a,\\
+&\eq \sum_j W_j^{} x_j^\a + \sum_i W_i^{} x_i^\a,\\
+&\eq W_\a(x).
+\EA
+\end{subequations}
+Thus, using the relation $\rho_\a = W_\a\eta_\a$ between mass and molar density, it follows that
+\EQ\label{masscon}
+\sum_\a\left\{\frac{\p}{\p t} \big(\varphi s_\a^{} \rho_\a^{}\big) + \bnabla\cdot\big(\bq_\a^{} \rho_\a^{}\big)\right\} \eq - \sum_{jm} W_j^{} \nu_{jm}^{} I_m^l \eq -\sum_m W_m^{} I_m^l,
+\EN
+noting that by definition of diffusion there can be no net transfer of mass
+\EQ
+\sum_j W_j^{} \big(\bJ_j^\a + \sum_i\nu_{ji}^{}\bJ_i^\a\big) \eq 0.
+\EN
+
+\begin{comment}
+Introducing the total density $\rho=\sum_\a\theta_\a\rho_\a$ and mean velocity $\bq$ defined through the relation
+\EQ
+\rho \bq \eq \sum_\a \rho_\a \bq_\a,
+\EN
+Eqn.\eqref{masscon} becomes
+\EQ
+\frac{\p}{\p t} \sum_\a\big(\varphi s_\a^{} \rho_\a^{}\big) + \bnabla\cdot\big(\bq\rho\big) \eq - \sum_{jm} W_j^{} \nu_{jm}^{} I_m^l.
+\EN
+\end{comment}
 
 \section{Supercritical CO$_2$--H$_2$O Equilibrium (Duan \& Sun, 2003)}
 
