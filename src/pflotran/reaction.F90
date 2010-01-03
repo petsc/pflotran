@@ -1062,8 +1062,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     Jac = 0.d0
         
     do icomp = 1, reaction%ncomp
-    
-      print *,'equilib: ',icomp,constraint_type(icomp)
       
       select case(constraint_type(icomp))
       
@@ -1074,9 +1072,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 
           ! Jac units = kg water/L water
           Jac(icomp,:) = rt_auxvar%dtotal(icomp,:,1)
-          
-          print *,'equilib-tot: ',icomp,constraint_type(icomp),res(icomp),jac(icomp,:),&
-          rt_auxvar%total(icomp,1),total_conc(icomp),rt_auxvar%dtotal(icomp,:,1)
       
         case(CONSTRAINT_TOTAL_SORB)
           ! conversion from m^3 bulk -> L water
@@ -1299,7 +1294,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             do jcomp = 1, reaction%eqgasspecid(0,igas)
               comp_id = reaction%eqgasspecid(jcomp,igas)
               lnQK = lnQK + reaction%eqgasstoich(jcomp,igas)* &
-                log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
+                log(rt_auxvar%pri_molal(comp_id))
+!               log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
                 print *,'SC: ',rt_auxvar%pri_molal(comp_id), &
                   rt_auxvar%pri_act_coef(comp_id)
             enddo
@@ -1336,10 +1332,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     ! for derivatives with respect to ln conc
     do icomp = 1, reaction%ncomp
       Jac(:,icomp) = Jac(:,icomp)*rt_auxvar%pri_molal(icomp)
-    enddo
-
-    do jcomp = 1, reaction%ncomp
-      print *,'equilib: jac ',jcomp,(icomp,Jac(jcomp,icomp),icomp=1,reaction%ncomp)
     enddo
     
     call ludcmp(Jac,reaction%ncomp,indices,icomp)
