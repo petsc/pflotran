@@ -1744,7 +1744,7 @@ For suspended colloids, the site concentration is related to the suspended collo
 &\eq \eta_c^{} A_c^M W_c^{} C_c^{f},\\
 &\eq\Gamma_c^{} C_c^f,
 \EA
-where $\eta_c$ denotes the site density, $A_c^M$ the colloid area per mass of colloid, and $W_c$ represents the formula weight of the colloid, and $\Gamma_c$ is depends only on intrinsic colloid properties, defined as
+where $\eta_c$ denotes the site density, $A_c^M$ the colloid area per mass of colloid, and $W_c$ represents the formula weight of the colloid. The quantity $\Gamma_c$ depends only on intrinsic colloid properties, defined as
 \EQ
 \Gamma_c\eq\frac{N_c^{f,\,{\rm srf}}}{N_c^{f}}\eq \frac{N_c^{s,\,{\rm srf}}}{N_c^s}\eq \eta_c^{} A_c^M W_c^{}.
 \EN
@@ -1765,9 +1765,9 @@ K_{ic}\eq \frac{S_{ic}}{S_c^{} Q_{ic}},
 \EN
 where
 \EQ
-Q_{ic}\eq\prod_j \big(\gamma_j C_j\big)^{\nu_{ji}^c},
+Q_{ic}\eq\prod_j \big(\gamma_j C_j\big)^{\nu_{ji}^c}.
 \EN
-the free site and surface complex concentrations are found to be
+The free site and surface complex concentrations are found to be
 \EQ
 S_c\eq\frac{\Gamma_c C_c}{1+\sum_i K_{ic}Q_{ic}},
 \EN
@@ -1794,7 +1794,7 @@ for mobile (liquid phase) colloids with concentration $C_c^f$ and flux $\bF_c^f$
 \EN
 for immobile colloids with concentration $C_c^s$ attached to the stationary solid phase. 
 
-Combining these two equations leads to an alternative form in which the reaction rate does not appear explicitly
+Adding these two equations leads to an alternative form in which the reaction rates do not appear explicitly
 \EQ
 \frac{\p}{\p t}\left(\varphi s_l^{} C_c^f + C_c^s\right) + \bnabla\cdot\bF_c^f \eq 0.
 \EN
@@ -1839,13 +1839,13 @@ where the retardation factor $R_j$ is defined as
 \EQ
 R_j\eq 1+\dfrac{K_j^s}{1+K_j^f},
 \EN
-where the distribution coefficients $K_j$ for the stationary solid phase including contributions from minerals and colloids, and $K_j^f$ for colloids present in the aqueous phase are defined by
+where the distribution coefficients, $K_j^s$ for the stationary solid phase including contributions from minerals and colloids, and $K_j^f$ for colloids present in the aqueous phase are defined by
 \EQ
 K_j^s \eq \frac{1}{\varphi s_l^{}\Psi_j} \left[\sum_{im}\nu_{ji}^m S_{im} + \sum_{ic}\nu_{ji}^c S_{ic}^s\right],
 \EN
 and
 \EQ
-K_j^l \eq \frac{1}{\Psi_j} \sum_{ic}\nu_{ji}^c S_{ic}^l.
+K_j^f \eq \frac{1}{\Psi_j} \sum_{ic}\nu_{ji}^c S_{ic}^f.
 \EN
 Note that if $K_j^f \!\geq\! K_j^s \!\gg\! 1$, $R_j\!\leq\! 2$, and there is little or no retardation. However, there still remains a reduction in kinetic homogeneous and heterogeneous rates. Finally, it should be noted that if colloids are to compete with stationary solid phase, they must be sufficiently concentrated to provide an equivalent surface site density (or cation exchange capacity).
 
