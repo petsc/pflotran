@@ -652,6 +652,7 @@ subroutine FlowConditionRead(condition,input,option)
           if (InputError(input)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputErrorMsg(input,option,'keyword','CONDITION,TYPE')   
+          call StringToUpper(word)
           select case(trim(word))
             case('PRESSURE')
               sub_condition_ptr => pressure
@@ -666,7 +667,8 @@ subroutine FlowConditionRead(condition,input,option)
             case('ENTHALPY')
               sub_condition_ptr => enthalpy
             case default
-              option%io_buffer = 'keyword not recognized in condition,type'
+              option%io_buffer = 'keyword (' // trim(word) // &
+                                 ') not recognized in condition,type'
               call printErrMsg(option)
           end select
           call InputReadWord(input,option,word,PETSC_TRUE)
