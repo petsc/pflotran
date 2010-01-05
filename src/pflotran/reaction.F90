@@ -1279,7 +1279,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                 option%m_nacl,option%m_nacl,sat_pressure*1D-5)
             endif
             
-            lnQk = -log(xphico2*henry)
+!            lnQk = -log(xphico2*henry)
+            lnQk = -log(xphico2*henry)-lngamco2
 !           lnQk = log(fg/henry)
 
             reaction%eqgas_logK(igas) = -lnQK*LN_TO_LOG
@@ -1294,8 +1295,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             do jcomp = 1, reaction%eqgasspecid(0,igas)
               comp_id = reaction%eqgasspecid(jcomp,igas)
               lnQK = lnQK + reaction%eqgasstoich(jcomp,igas)* &
-                log(rt_auxvar%pri_molal(comp_id))
-!               log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
+!                log(rt_auxvar%pri_molal(comp_id))
+               log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
                 print *,'SC: ',rt_auxvar%pri_molal(comp_id), &
                   rt_auxvar%pri_act_coef(comp_id)
             enddo
@@ -2756,7 +2757,8 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
           call Henry_duan_sun(temperature,pressure*1D-5,muco2,xphico2, &
                 lngamco2,option%m_nacl,option%m_nacl,sat_pressure*1D-5)
         endif
-        lnQk = - log(muco2)
+        !lnQk = - log(muco2) 
+        lnQk = - log(muco2)-lngamco2
            
       else   
         lnQK = -reaction%eqgas_logK(ieqgas)*LOG_TO_LN
