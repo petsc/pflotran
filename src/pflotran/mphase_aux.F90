@@ -259,9 +259,9 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
   PetscReal :: eng,hg, dhdp, dhdt
   PetscReal :: visg, dvdp, dvdt
   PetscReal :: h(option%nphase), u(option%nphase), kr(option%nphase)
-  PetscReal :: xm_nacl, x_nacl, vphi             
+  PetscReal :: xm_nacl, y_nacl, vphi             
   PetscReal :: tk, xco2, pw_kg, x1, vphi_a1, vphi_a2 
-  
+  PetscReal :: Qkco2, mco2,xco2eq
   
   aux_var%sat = 0.d0
   aux_var%h = 0.d0
@@ -378,8 +378,13 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 
     call Henry_duan_sun(t,p2*1.D-5,henry,xphi,lngamco2,m_na,m_cl, &
       sat_pressure*1.D-5)
+    Qkco2 = henry*xphi  ! convert from bar to Pa
     henry = 1.D0 / (FMWH2O*1.D-3) / (henry*1.D-5) / xphi 
     if(present(xphico2)) xphico2 = xphi
+   
+    mco2 = (p - sat_pressure)*1D-5 * Qkco2
+    xco2eq = mco2/(1D3/fmwh2o + mco2 + m_nacl) 
+!   question here :m_nacl or m_na+m_cl ?
    
     select case(iphase)     
     case(1)
@@ -392,10 +397,10 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
       aux_var%xmol(1) = 1.D0-aux_var%xmol(2)
     case(3)
       temp= sat_pressure / p
-      aux_var%xmol(2) = (1.D0-temp)/(Henry/ p - temp)
-      aux_var%xmol(1) = 1.D0- aux_var%xmol(2)
-      aux_var%xmol(3) = aux_var%xmol(1) * temp
-      aux_var%xmol(4) = 1.D0-aux_var%xmol(3)            
+      aux_var%xmol(2) = xco2eq
+      aux_var%xmol(1) = 1D0- xco2eq
+      aux_var%xmol(3) = temp
+      aux_var%xmol(4) = 1.D0-temp            
     end select
     aux_var%avgmw(2)= aux_var%xmol(3)* FMWH2O + aux_var%xmol(4) * FMWCO2
     pw = p
@@ -436,10 +441,10 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
 !     if(m_cl>m_nacl) m_nacl=m_cl
 !   endif  
 
-    x_nacl =  m_nacl/( m_nacl + 1D3/FMWH2O)
+    y_nacl =  m_nacl/( m_nacl + 1D3/FMWH2O)
 ! **  xmol(1) = xh2o + xnacl
-    aux_var%avgmw(1)= (aux_var%xmol(1) - x_nacl) * FMWH2O&
-       + x_nacl * FMWNACL + aux_var%xmol(2) * FMWCO2
+    aux_var%avgmw(1)= aux_var%xmol(1)*((1D0 - y_nacl) * FMWH2O&
+       + y_nacl * FMWNACL) + aux_var%xmol(2) * FMWCO2
 
 !duan mixing **************************
 #ifdef DUANDEN
@@ -450,8 +455,8 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
   vphi_a1 = (0.3838402D-3 * tk - 0.5595385D0) * tk + 0.30429268D3 +(-0.72044305D5 +0.63003388D7/tk)/tk;  
   vphi_a2 = (-0.57709332D-5 * tk + 0.82764653D-2) * tk - 0.43813556D1 +(0.10144907D4 - 0.86777045D5/tk)/tk;  
   vphi = (1.D0 + vphi_a1 + vphi_a2 * p*1D-6) *( fmwh2o*1D-3 /pw_kg); 
-  vphi =  ((x1-x_nacl)*fmwh2o + x_nacl* fmwnacl)*1D-3/dw_kg + xco2*vphi;
-  aux_var%den(1) = ((x1 - x_nacl) * fmwh2o + x_nacl * fmwnacl+ xco2*fmwco2)*1D-3 / vphi;
+  vphi =  x1* ((1D0-y_nacl)*fmwh2o + y_nacl* fmwnacl)*1D-3/dw_kg + xco2*vphi;
+  aux_var%den(1) =(x1* ((1D0 - y_nacl) * fmwh2o + y_nacl * fmwnacl)+ xco2*fmwco2)*1D-3 / vphi;
 !  if(iphase==3) print *, 'Duan den=', aux_var%den(1)
   aux_var%den(1)=aux_var%den(1)/aux_var%avgmw(1)
 #endif 

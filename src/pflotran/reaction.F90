@@ -1241,7 +1241,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
          
           ! compute secondary species concentration
           if(abs(reaction%co2_gas_id) == igas) then
-!           pres = global_auxvar%pres(2)
+           pres = global_auxvar%pres(2)
 !           pres = conc(icomp)*1.D5
             tc = global_auxvar%temp(1)
 
@@ -1250,21 +1250,21 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             pco2 = conc(icomp)*1.e5
 !           pco2 = pres - sat_pressure
             
-            pres = conc(icomp)*1.D5 + sat_pressure
+!            pres = conc(icomp)*1.D5 + sat_pressure
             yco2 = pco2/pres
                         
-!           call co2_span_wagner(pres*1D-6,tc+273.15D0,dg,dddt,dddp,fg, &
-!             dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
+           call co2_span_wagner(pres*1D-6,tc+273.15D0,dg,dddt,dddp,fg, &
+             dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
 
-            call co2_span_wagner(pco2*1D-6,tc+273.15D0,dg,dddt,dddp,fg, &
-              dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
+!            call co2_span_wagner(pco2*1D-6,tc+273.15D0,dg,dddt,dddp,fg, &
+!              dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
             
             global_auxvar%den_kg(2) = dg
             
             !compute fugacity coefficient
             fg = fg*1.D6
-            xphico2 = fg / pco2
-            global_auxvar%fugacoeff(1) = xphico2
+            xphico2 = fg / pres
+!            global_auxvar%fugacoeff(1) = xphico2
             
 !           call Henry_duan_sun_0NaCl(pco2*1.d-5, tc, henry)
             m_na = 0.d0
@@ -1272,21 +1272,26 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
               m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
               m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
-              call Henry_duan_sun(tc,pco2*1D-5,henry,xphico2,lngamco2, &
+!              call Henry_duan_sun(tc,pco2*1D-5,henry,xphico2,lngamco2, &
+!                m_na,m_cl,sat_pressure*1D-5)
+              call Henry_duan_sun(tc,pres*1D-5,henry,xphico2,lngamco2, &
                 m_na,m_cl,sat_pressure*1D-5)
+
             else
-              call Henry_duan_sun(tc,pco2*1D-5,henry,xphico2,lngamco2, &
+              call Henry_duan_sun(tc,pres*1D-5,henry,xphico2,lngamco2, &
                 option%m_nacl,option%m_nacl,sat_pressure*1D-5)
+                print *, 'SC: mnacl=', option%m_nacl,'stioh2o=',reaction%eqgash2ostoich(igas)
             endif
             
-!            lnQk = -log(xphico2*henry)
             lnQk = -log(xphico2*henry)-lngamco2
+!            lnQk = -log(xphico2*henry)
 !           lnQk = log(fg/henry)
 
             reaction%eqgas_logK(igas) = -lnQK*LN_TO_LOG
             
-            print *,'SC CO2 constraint',igas,pres,pco2,tc,xphico2,henry,lnQk,yco2, &
-                    lngamco2,m_na,m_cl,reaction%eqgas_logK(igas),dg
+            print *, 'SC CO2 constraint',igas,pres,pco2,tc,xphico2,henry,lnQk,yco2, &
+               lngamco2,m_na,m_cl,reaction%eqgas_logK(igas),rt_auxvar%ln_act_h2o,&
+                reaction%eqgash2oid(igas), global_auxvar%fugacoeff(1)
             
             ! activity of water
             if (reaction%eqgash2oid(igas) > 0) then
@@ -1295,9 +1300,10 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             do jcomp = 1, reaction%eqgasspecid(0,igas)
               comp_id = reaction%eqgasspecid(jcomp,igas)
               lnQK = lnQK + reaction%eqgasstoich(jcomp,igas)* &
-              log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
-              print *,'SC: ',rt_auxvar%pri_molal(comp_id), &
-                      rt_auxvar%pri_act_coef(comp_id)
+!                log(rt_auxvar%pri_molal(comp_id))
+               log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
+                print *,'SC: ',rt_auxvar%pri_molal(comp_id), &
+                  rt_auxvar%pri_act_coef(comp_id),exp(lngamco2)
             enddo
           
 !           QK = exp(lnQK)
@@ -2355,12 +2361,12 @@ subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
 
   tc = global_auxvar%temp(1)
   pco2 = global_auxvar%pres(2)
-  sat_pressure =0.D0
+  sat_pressure =0D0
 
   m_na = option%m_nacl; m_cl = m_na
   if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
-    m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
-    m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
+     m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
+     m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
   endif
 
   call Henry_duan_sun(tc,pco2*1D-5,henry, 1.D0,lngamco2, &
@@ -2775,7 +2781,8 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
       pressure =pressure *1D-5
         
       rt_auxvar%gas_molal(ieqgas) = &
-          rt_auxvar%pri_act_coef(icomp)*exp(lnQK)*rt_auxvar%pri_molal(icomp)&
+          exp(lnQK+lngamco2)*rt_auxvar%pri_molal(icomp)&
+!          rt_auxvar%pri_act_coef(icomp)*exp(lnQK)*rt_auxvar%pri_molal(icomp)&
           /pressure /xphico2* den
    
       rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
@@ -2786,9 +2793,10 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
    !     if(rt_auxvar%total(icomp,iphase) > den)rt_auxvar%total(icomp,iphase) = den* .99D0
    !     enddo
 
-   ! contribute to %dtotal 
+   ! contribute to %dtotal
+   !      tempreal = exp(lnQK+lngamco2)/pressure /xphico2* den 
       tempreal = rt_auxvar%pri_act_coef(icomp)*exp(lnQK)/pressure /xphico2* den 
-         rt_auxvar%dtotal(icomp,icomp,iphase) = rt_auxvar%dtotal(icomp,icomp,iphase) + &
+      rt_auxvar%dtotal(icomp,icomp,iphase) = rt_auxvar%dtotal(icomp,icomp,iphase) + &
                                                reaction%eqgasstoich(1,ieqgas)*tempreal
     
     enddo
