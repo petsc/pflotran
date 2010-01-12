@@ -929,7 +929,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscInt :: constraint_id(reaction%ncomp)
   PetscReal :: lnQK, QK
   PetscReal :: tempreal
-  PetscReal :: pres, tc, xphico2, henry, m_na, m_cl 
+  PetscReal :: pres, tc, xphico2, henry, m_na, m_cl, xmass 
   PetscInt :: comp_id
   PetscReal :: convert_molal_to_molar
   PetscReal :: convert_molar_to_molal
@@ -953,13 +953,17 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   constraint_id = aq_species_constraint%constraint_spec_id
   conc = aq_species_constraint%constraint_conc
 
+
   iphase = 1
+  xmass =1.d0  
+  if (associated(global_auxvar%xmass)) xmass = global_auxvar%xmass(iphase)
+  
   if (option%initialize_with_molality) then
-    convert_molal_to_molar = global_auxvar%den_kg(iphase)/1000.d0
+    convert_molal_to_molar = global_auxvar%den_kg(iphase)*xmass/1000.d0
     convert_molar_to_molal = 1.d0
   else
     convert_molal_to_molar = 1.d0
-    convert_molar_to_molal = 1000.d0/global_auxvar%den_kg(iphase)
+    convert_molar_to_molal = 1000.d0/global_auxvar%den_kg(iphase)/xmass
   endif
   
   if (.not.reaction%use_full_geochemistry) then
@@ -2639,7 +2643,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: ln_conc(reaction%ncomp)
   PetscReal :: ln_act(reaction%ncomp)
   PetscReal :: lnQK, tempreal
-  PetscReal :: den_kg_per_L
+  PetscReal :: den_kg_per_L, xmass
   PetscReal :: pressure, temperature, xphico2, muco2, den, m_na, m_cl
   
 #ifdef CHUAN_CO2  
@@ -2649,8 +2653,10 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 #endif
   
   iphase = 1           
-  
-  den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3              
+!  den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3              
+  xmass = 1.d0
+  if (associated(global_auxvar%xmass)) xmass = global_auxvar%xmass(iphase)
+  den_kg_per_L = global_auxvar%den_kg(iphase)*xmass*1.d-3
 
   ln_conc = log(rt_auxvar%pri_molal)
   ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
@@ -2732,7 +2738,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 !    rt_auxvar%dtotal(icomp,icomp,iphase) = 1.d0
 !  enddo
     
-  den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3     
+!  den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3     
   if(global_auxvar%sat(iphase)>1D-20)then
     do ieqgas = 1, reaction%ngas ! all gas phase species are secondary
    
