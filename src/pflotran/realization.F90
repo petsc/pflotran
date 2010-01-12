@@ -704,6 +704,7 @@ subroutine RealProcessTranConditions(realization)
                                    cur_constraint%name, &
                                    cur_constraint%aqueous_species, &
                                    cur_constraint%minerals, &
+                                   cur_constraint%surface_complexes, &
                                    realization%option)
     cur_constraint => cur_constraint%next
   enddo
@@ -724,6 +725,7 @@ subroutine RealProcessTranConditions(realization)
                              MAXWORDLENGTH)) then
             cur_constraint_coupler%aqueous_species => cur_constraint%aqueous_species
             cur_constraint_coupler%minerals => cur_constraint%minerals
+            cur_constraint_coupler%surface_complexes => cur_constraint%surface_complexes
             exit
           endif
           cur_constraint => cur_constraint%next
@@ -1205,6 +1207,7 @@ subroutine RealizAssignTransportInitCond(realization)
   
   PetscInt :: icell, iconn, idof, isub_condition
   PetscInt :: local_id, ghosted_id, iend, ibegin
+  PetscInt :: irxn, isite
   PetscReal, pointer :: xx_p(:)
   PetscErrorCode :: ierr
   
@@ -1269,6 +1272,7 @@ subroutine RealizAssignTransportInitCond(realization)
                   global_aux_vars(ghosted_id),reaction, &
                   initial_condition%tran_condition%cur_constraint_coupler%constraint_name, &
                   initial_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
+                  initial_condition%tran_condition%cur_constraint_coupler%surface_complexes, &
                   initial_condition%tran_condition%cur_constraint_coupler%num_iterations, &
                   PETSC_TRUE,option)
               else
@@ -1279,6 +1283,7 @@ subroutine RealizAssignTransportInitCond(realization)
                   global_aux_vars(ghosted_id),reaction, &
                   initial_condition%tran_condition%cur_constraint_coupler%constraint_name, &
                   initial_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
+                  initial_condition%tran_condition%cur_constraint_coupler%surface_complexes, &
                   initial_condition%tran_condition%cur_constraint_coupler%num_iterations, &
                   PETSC_FALSE,option)
               endif
@@ -1289,6 +1294,7 @@ subroutine RealizAssignTransportInitCond(realization)
                 aqueous_species%basis_molarity(idof) / &
                 global_aux_vars(ghosted_id)%den_kg(iphase)*1000.d0 ! convert molarity -> molality
             enddo
+            ! mineral volume fractions
             if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
               do idof = 1, reaction%nkinmnrl
                 rt_aux_vars(ghosted_id)%mnrl_volfrac0(idof) = &
@@ -1305,6 +1311,20 @@ subroutine RealizAssignTransportInitCond(realization)
                   minerals%basis_area(idof)
               enddo
             endif
+            ! kinetic surface complexes
+            if (associated(initial_condition%tran_condition%cur_constraint_coupler%surface_complexes)) then
+              do idof = 1, reaction%nkinsrfcplx
+                rt_aux_vars(ghosted_id)%kinsrfcplx_conc(idof) = &
+                  initial_condition%tran_condition%cur_constraint_coupler% &
+                  surface_complexes%basis_conc(idof)
+              enddo
+              do irxn = 1, reaction%nkinsrfcplxrxn
+                isite = reaction%kinsrfcplx_rxn_to_site(irxn)
+                rt_aux_vars(ghosted_id)%kinsrfcplx_free_site_conc(isite) = &
+                  initial_condition%tran_condition%cur_constraint_coupler% &
+                  surface_complexes%basis_free_site_conc(isite)
+              enddo
+            endif
             ! this is for the multi-rate surface complexation model
             if (reaction%kinmr_nrate > 0) then
               ! copy over total sorbed concentration
@@ -1312,13 +1332,13 @@ subroutine RealizAssignTransportInitCond(realization)
                 initial_condition%tran_condition%cur_constraint_coupler% &
                 rt_auxvar%kinmr_total_sorb
               ! copy over free site concentration
-              rt_aux_vars(ghosted_id)%eqsurfcmplx_freesite_conc = &
+              rt_aux_vars(ghosted_id)%eqsrfcplx_free_site_conc = &
                 initial_condition%tran_condition%cur_constraint_coupler% &
-                rt_auxvar%eqsurfcmplx_freesite_conc
+                rt_auxvar%eqsrfcplx_free_site_conc
               ! copy over surface complex concentrations
-              rt_aux_vars(ghosted_id)%eqsurfcmplx_conc = &
+              rt_aux_vars(ghosted_id)%eqsrfcplx_conc = &
                 initial_condition%tran_condition%cur_constraint_coupler% &
-                rt_auxvar%eqsurfcmplx_conc
+                rt_auxvar%eqsrfcplx_conc
             endif
           enddo
 !        endif

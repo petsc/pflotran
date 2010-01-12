@@ -789,11 +789,13 @@ subroutine PatchInitConstraints(patch,reaction,option)
   type(patch_type) :: patch
   type(option_type) :: option
   type(reaction_type), pointer :: reaction
-
+  
   call PatchInitCouplerConstraints(patch%initial_conditions, &
                                    reaction,option)
+  
   call PatchInitCouplerConstraints(patch%boundary_conditions, &
                                    reaction,option)
+  
   call PatchInitCouplerConstraints(patch%source_sinks, &
                                    reaction,option)
 
@@ -861,6 +863,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
         else
           global_auxvar%temp = option%reference_temperature
         endif
+
         call wateos(global_auxvar%temp(1),global_auxvar%pres(1), &
                     global_auxvar%den_kg(1),r1,r2,r3,r4,r5,r6, &
                     option%scale,ierr) 
@@ -870,12 +873,15 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
         global_auxvar%den_kg = option%reference_water_density
       endif     
       global_auxvar%sat = option%reference_saturation  
+  
       call ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                             reaction,cur_constraint_coupler%constraint_name, &
                             cur_constraint_coupler%aqueous_species, &
+                            cur_constraint_coupler%surface_complexes, &
                             cur_constraint_coupler%num_iterations, &
                             PETSC_TRUE,option)
       ! turn on flag indicating constraint has not yet been used
+
       cur_constraint_coupler%iflag = ONE_INTEGER
       cur_constraint_coupler => cur_constraint_coupler%next
     enddo
@@ -1254,11 +1260,19 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
           enddo
         case(SURFACE_CMPLX)
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%eqsurfcmplx_conc(isubvar)
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%eqsrfcplx_conc(isubvar)
           enddo
         case(SURFACE_CMPLX_FREE)
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%eqsurfcmplx_freesite_conc(isubvar)
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%eqsrfcplx_free_site_conc(isubvar)
+          enddo
+        case(KIN_SURFACE_CMPLX)
+          do local_id=1,grid%nlmax
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%kinsrfcplx_conc(isubvar)
+          enddo
+        case(KIN_SURFACE_CMPLX_FREE)
+          do local_id=1,grid%nlmax
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%kinsrfcplx_free_site_conc(isubvar)
           enddo
         case(PRIMARY_ACTIVITY_COEF)
           do local_id=1,grid%nlmax
@@ -1330,8 +1344,7 @@ end subroutine PatchGetDataset
 ! date: 02/11/08
 !
 ! ************************************************************************** !
-function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
-                                    ghosted_id)
+function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
 
   use Grid_module
   use Option_module
@@ -1365,13 +1378,13 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
 
   grid => patch%grid
   
-  value = -999.d0
+  value = -999.99d0
 
   iphase = 1
   select case(ivar)
     case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
-         LIQUID_DENSITY,GAS_DENSITY, GAS_DENSITY_MOL,SC_FUGA_COEFF)
+         LIQUID_DENSITY,GAS_DENSITY,GAS_DENSITY_MOL,SC_FUGA_COEFF)
          
       if (associated(patch%aux%THC)) then
         select case(ivar)
@@ -1465,7 +1478,8 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
       
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY, &
          TOTAL_MOLALITY,TOTAL_MOLARITY, &
-         MINERAL_VOLUME_FRACTION,MINERAL_RATE,SURFACE_CMPLX, SURFACE_CMPLX_FREE, &
+         MINERAL_VOLUME_FRACTION,MINERAL_RATE, &
+         SURFACE_CMPLX,SURFACE_CMPLX_FREE,KIN_SURFACE_CMPLX,KIN_SURFACE_CMPLX_FREE, &
          PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED)
          
       select case(ivar)
@@ -1498,9 +1512,13 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
         case(MINERAL_RATE)
           value = patch%aux%RT%aux_vars(ghosted_id)%mnrl_rate(isubvar)
         case(SURFACE_CMPLX)
-          value = patch%aux%RT%aux_vars(ghosted_id)%eqsurfcmplx_conc(isubvar)
+          value = patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_conc(isubvar)
         case(SURFACE_CMPLX_FREE)
-          value = patch%aux%RT%aux_vars(ghosted_id)%eqsurfcmplx_freesite_conc(isubvar)
+          value = patch%aux%RT%aux_vars(ghosted_id)%eqsrfcplx_free_site_conc(isubvar)
+        case(KIN_SURFACE_CMPLX)
+          value = patch%aux%RT%aux_vars(ghosted_id)%kinsrfcplx_conc(isubvar)
+        case(KIN_SURFACE_CMPLX_FREE)
+          value = patch%aux%RT%aux_vars(ghosted_id)%kinsrfcplx_free_site_conc(isubvar)
         case(PRIMARY_ACTIVITY_COEF)
           value = patch%aux%RT%aux_vars(ghosted_id)%pri_act_coef(isubvar)
         case(SECONDARY_ACTIVITY_COEF)

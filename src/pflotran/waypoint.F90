@@ -140,7 +140,7 @@ subroutine WaypointInsertInList(new_waypoint,waypoint_list)
                 new_waypoint%time < 1.000001d0*waypoint%time) then ! same
               call WaypointMerge(waypoint,new_waypoint)
               return
-            elseif (associated(waypoint%next)) then 
+            else if (associated(waypoint%next)) then 
               if (new_waypoint%time-waypoint%time > 1.d-10 .and. & ! within list
                   new_waypoint%time-waypoint%next%time < -1.d-10) then 
                 new_waypoint%next => waypoint%next

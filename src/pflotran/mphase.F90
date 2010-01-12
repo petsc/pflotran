@@ -34,7 +34,7 @@ module Mphase_module
   PetscReal, parameter :: formeps   = 1.D-4
   PetscReal, parameter :: eps = 1.D-8 
   PetscReal, parameter :: dfac = 1D-8
-  PetscReal, parameter :: floweps   = 1.D-24
+  PetscReal, parameter :: floweps = 1.D-24
 !  PetscReal, parameter :: satcuteps = 1.D-5
   PetscReal, parameter :: zerocut =0.D0  !1D-8
   
@@ -1110,7 +1110,7 @@ end subroutine MphaseSourceSink
 ! ************************************************************************** ! 
 #if 0
 
-!computes diffusive flux as: (rho X)_(n+1) - (rho X)_n etc
+!computes diffusive flux as: (rho X)_(n+1) - (rho X)_n etc (incorrect)
 
 subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
@@ -1234,7 +1234,7 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 end subroutine MphaseFlux
 #endif
 
-! older version
+! older version: correct
 #if 1
 
 !computes diffusive flux as: 0.5*(rho_(n+1)+rho_n) [(X)_(n+1) - (X)_n] etc
@@ -1273,12 +1273,13 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   
 ! Flow term
   do np = 1, option%nphase
+    
     if (aux_var_up%sat(np) > sir_up(np) .or. aux_var_dn%sat(np) > sir_dn(np)) then
-      upweight= dd_dn/(dd_up+dd_dn)
-      if (aux_var_up%sat(np) <eps) then 
-        upweight=0.d0
-      else if (aux_var_dn%sat(np) <eps) then 
-        upweight=1.d0
+      upweight = dd_dn/(dd_up+dd_dn)
+      if (aux_var_up%sat(np) < eps) then 
+        upweight = 0.d0
+      else if (aux_var_dn%sat(np) < eps) then 
+        upweight = 1.d0
       endif
       density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np) 
         
@@ -1291,17 +1292,18 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
              + gravity
 
       v_darcy = 0.D0
-      ukvr=0.D0
-      uh=0.D0
-      uxmol=0.D0
+      ukvr = 0.D0
+      uh = 0.D0
+      uxmol = 0.D0
 
       ! note uxmol only contains one phase xmol
-      if (dphi>=0.D0) then
+      ! upstream weighting
+      if (dphi >= 0.D0) then
         ukvr = aux_var_up%kvr(np)
         ! if(option%use_isothermal == PETSC_FALSE)&
         uh = aux_var_up%h(np)
         uxmol(1:option%nflowspec) = &
-            aux_var_up%xmol((np-1)*option%nflowspec + 1 : np*option%nflowspec)
+          aux_var_up%xmol((np-1)*option%nflowspec + 1 : np*option%nflowspec)
       else
         ukvr = aux_var_dn%kvr(np)
       ! if(option%use_isothermal == PETSC_FALSE)&
@@ -1310,9 +1312,9 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
           aux_var_dn%xmol((np-1)*option%nflowspec + 1 : np*option%nflowspec)
       endif
 
-      if (ukvr>floweps) then
-        v_darcy= Dq * ukvr * dphi
-        vv_darcy(np)=v_darcy
+      if (ukvr > floweps) then
+        v_darcy = Dq * ukvr * dphi
+        vv_darcy(np) = v_darcy
         q = v_darcy * area
         
         do ispec=1, option%nflowspec 
@@ -1339,16 +1341,16 @@ subroutine MphaseFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 
 ! conduction term
   !if(option%use_isothermal == PETSC_FALSE) then     
-     Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
-     cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
-     fluxe=fluxe + cond
+  Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
+  cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
+  fluxe = fluxe + cond
  ! end if
 
   !if(option%use_isothermal)then
   !   Res(1:option%nflowdof) = fluxm(:) * option%flow_dt
  ! else
-     Res(1:option%nflowdof-1) = fluxm(:) * option%flow_dt
-     Res(option%nflowdof) = fluxe * option%flow_dt
+  Res(1:option%nflowdof-1) = fluxm(:) * option%flow_dt
+  Res(option%nflowdof) = fluxe * option%flow_dt
  ! end if
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
@@ -1650,7 +1652,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   PetscReal :: xmol(realization%option%nphase*realization%option%nflowspec),&
                satu(realization%option%nphase)
   PetscReal :: yh2o_in_co2, wat_sat_x, co2_sat_x
-  PetscReal :: lngamco2, m_na, m_cl
+  PetscReal :: lngamco2, m_na, m_cl, m_nacl, Qkco2, mco2, xco2eq, temp
 ! PetscReal :: xla,co2_poyn
   PetscInt :: local_id, ghosted_id, dof_offset
   
@@ -1738,30 +1740,38 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
     call PSAT(t, sat_pressure, ierr)
     sat_pressure = sat_pressure /1.D5
   
-    m_na=option%m_nacl; m_cl=m_na 
+    m_na=option%m_nacl; m_cl=m_na; m_nacl = m_na 
     if(associated(realization%reaction))then
       if (realization%reaction%na_ion_id /= 0 .and. realization%reaction%cl_ion_id /= 0) then
         m_na = global_aux_vars(ghosted_id)%m_nacl(1)
         m_cl = global_aux_vars(ghosted_id)%m_nacl(2)
-      endif  
+        m_nacl = m_na
+        if (m_cl> m_na) m_nacl = m_cl
+    endif  
     endif
 
     call Henry_duan_sun(t,p2*1.D-5,henry,xphi,lngamco2, &
       m_na,m_cl,sat_pressure)
     
-    henry = 1.D8 / FMWH2O / henry / xphi !note: henry = H/phi
+   
+    sat_pressure = sat_pressure * 1D5
+    Qkco2 = henry*xphi 
+    mco2 = (p - sat_pressure)*1D-5 * Qkco2
+    xco2eq = mco2/(1D3/fmwh2o + mco2 + m_nacl)
   
-    wat_sat_x = sat_pressure*1.D5/p 
+    henry = 1.D8 / FMWH2O / henry / xphi !note: henry = H/phi
+    wat_sat_x = sat_pressure/p 
     co2_sat_x = (1.D0-wat_sat_x)/(henry/p-wat_sat_x)*henry/p  ! xmol(4) = xmol(2)*henry/p
+
 !     tmp = 1.D0-tmp ! approximate form
 
     select case(icri)
       case(0)
       select case(iipha)     
         case(1)
-  
-        xmol(4)=xmol(2)*henry/p   
-        if (xmol(4) > 1.05D0*co2_sat_x) then
+          xmol(4)=xmol(2)*henry/p   
+          if(xmol(2) > xco2eq *1.05D0)then
+!         if (xmol(4) > 1.05D0*co2_sat_x) then
 !         if (xmol(4) > 1.001D0*co2_sat_x .and. iipha==1) then
 !         if (xmol(4) > (1.d0+1.d-6)*tmp .and. iipha==1) then
 !         write(*,'('' Liq -> 2ph '',''rank='',i6,'' n='',i8,'' p='',1pe10.4, &
@@ -1785,7 +1795,6 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
         endif
 
         case(2)   
-
         if (xmol(3) > wat_sat_x*1.05)then
 !         if (xmol(3) > (1.d0+1.d-6)*tmp .and. iipha==2)then
 !         write(*,'('' Gas -> 2ph '',''rank='',i6,'' n='',i8, &
@@ -1797,14 +1806,17 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
         endif
 
         case(3)
-
         tmp = wat_sat_x
-        xmol(2)= (1.D0-tmp)/(Henry/p-tmp) ! solve: x1+x2=1, y1+y2=1, y1=k1*x1, y2=k2*x2
+!       xmol(2)= (1.D0-tmp)/(Henry/p-tmp) ! solve: x1+x2=1, y1+y2=1, y1=k1*x1, y2=k2*x2
 !       xmol(2)= p*(1.D0-tmp)/Henry ! approximate form
-        xmol(1)= 1.D0-xmol(2)
-        xmol(3)= xmol(1)*tmp
-        xmol(4)= 1.D0-xmol(3)
-            
+!       xmol(1)= 1.D0-xmol(2)
+!       xmol(3)= xmol(1)*tmp
+!       xmol(4)= 1.D0-xmol(3)
+        xmol(1) = 1D0 - xco2eq
+        xmol(2) = xco2eq
+        xmol(3) = temp
+        xmol(4) = 1.D0-temp          
+
         if(satu(2)>=1.D0)then
 !         write(*,'('' 2ph -> Gas '',''rank='',i6,'' n='',i8, &
 !      &  '' p='',1pe10.4,'' T='',1pe10.4,'' sg='',1p3e11.4)') &

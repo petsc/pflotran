@@ -82,7 +82,8 @@ CLEANFILES       = pflotran pflotran_fc
 ifdef petscrel
  include ${PETSC_DIR}/bmake/common/base
 else
- include ${PETSC_DIR}/conf/base
+ include ${PETSC_DIR}/conf/variables
+ include ${PETSC_DIR}/conf/rules
 endif
 
 util_obj  = ${common_src}input.o \

@@ -6,6 +6,9 @@ module Auxilliary_module
   use Reactive_Transport_Aux_module
   use Mphase_Aux_module
   use Immis_Aux_module
+#ifdef GENERAL
+  use General_Aux_module
+#endif
   
   implicit none
 
@@ -20,6 +23,9 @@ module Auxilliary_module
     type(richards_type), pointer :: Richards
     type(mphase_type), pointer :: Mphase
     type(immis_type), pointer :: Immis
+#ifdef GENERAL
+    type(general_type), pointer :: General
+#endif
   end type auxilliary_type
   
 #if 0
@@ -55,7 +61,10 @@ subroutine AuxInit(aux)
   nullify(aux%Richards)
   nullify(aux%Mphase)
   nullify(aux%Immis)
-  
+#ifdef GENERAL
+  nullify(aux%General)
+#endif
+
 end subroutine AuxInit
 
 ! ************************************************************************** !
@@ -76,14 +85,18 @@ subroutine AuxDestroy(aux)
   call THCAuxDestroy(aux%THC)
   call RichardsAuxDestroy(aux%Richards)
   !call MphaseAuxDestroy(aux%Mphase)
-  
+#ifdef GENERAL
+  call GeneralAuxDestroy(aux%General)
+#endif
   nullify(aux%Global)
   nullify(aux%RT)
   nullify(aux%THC)
   nullify(aux%Richards)
   nullify(aux%Mphase)
   nullify(aux%Immis)
-  
+#ifdef GENERAL
+  nullify(aux%General)
+#endif  
 end subroutine AuxDestroy
 
 #if 0

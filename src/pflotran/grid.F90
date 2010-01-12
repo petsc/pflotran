@@ -579,7 +579,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                 x_shift = 1.d-8*(grid%x_max_global-grid%x_min_global)
                 if (region%iface == WEST_FACE) then
                   x_max = x_max + x_shift
-                elseif (region%iface == EAST_FACE) then
+                else if (region%iface == EAST_FACE) then
                   x_max = x_max - x_shift
                 endif
                 x_min = x_max
@@ -589,7 +589,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                 y_shift = 1.d-8*(grid%y_max_global-grid%y_min_global)
                 if (region%iface == SOUTH_FACE) then
                   y_max = y_max + y_shift
-                elseif (region%iface == NORTH_FACE) then
+                else if (region%iface == NORTH_FACE) then
                   y_max = y_max - y_shift
                 endif
                 y_min = y_max
@@ -599,7 +599,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                 z_shift = 1.d-8*(grid%z_max_global-grid%z_min_global)
                 if (region%iface == BOTTOM_FACE) then
                   z_max = z_max + z_shift
-                elseif (region%iface == TOP_FACE) then
+                else if (region%iface == TOP_FACE) then
                   z_max = z_max - z_shift
                 endif
                 z_min = z_max

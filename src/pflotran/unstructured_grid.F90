@@ -2420,8 +2420,8 @@ subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nL2A,nG2A)
   allocate(nL2A(unstructured_grid%num_cells_local))
   allocate(nG2A(unstructured_grid%num_cells_ghosted))
   
-  ! initialize ghosted to -1
-  nG2L = -1
+  ! initialize ghosted to 0
+  nG2L = 0
 
   call ISGetIndicesF90(ugdm%is_local_petsc,int_ptr,ierr)
   do local_id = 1, unstructured_grid%num_cells_local

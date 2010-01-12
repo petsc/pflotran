@@ -175,6 +175,7 @@ subroutine Init(simulation)
   endif
   
   ! read reaction database
+  
   if (associated(realization%reaction)) then
     if (realization%reaction%use_full_geochemistry) then
       call DatabaseRead(realization%reaction,option)
@@ -229,11 +230,11 @@ subroutine Init(simulation)
         option%nflowdof,option%nphase
       select case(option%iflowmode)
         case(MPH_MODE)
-          write(*,'(" mode = MPH: p, T, s/C")')
+          write(*,'(" mode = MPH: p, T, s/X")')
         case(IMS_MODE)
           write(*,'(" mode = MPH: p, T, s")')
         case(THC_MODE)
-          write(*,'(" mode = Richards: p, T, s/C")')
+          write(*,'(" mode = THC: p, T, s/X")')
         case(RICHARDS_MODE)
           write(*,'(" mode = Richards: p")')      
       end select
@@ -332,12 +333,12 @@ subroutine Init(simulation)
 
     ! setup a shell preconditioner and initialize in the case of AMR
     if(option%use_samr) then
-!       flow_solver%pc_type = PCSHELL
-       pcside = PC_RIGHT
-       if(flow_solver%pc_type==PCSHELL) then
-          call KSPSetPreconditionerSide(flow_solver%ksp, pcside,ierr)
-          call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 0, flow_solver%pc)
-       endif
+!     flow_solver%pc_type = PCSHELL
+      pcside = PC_RIGHT
+      if(flow_solver%pc_type==PCSHELL) then
+        call KSPSetPreconditionerSide(flow_solver%ksp, pcside,ierr)
+        call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 0, flow_solver%pc)
+      endif
     endif
 
     option%io_buffer = 'Solver: ' // trim(flow_solver%ksp_type)
@@ -1063,6 +1064,17 @@ subroutine InitReadInput(simulation)
                       select case(trim(word))
                         case('COMPLEXES','CATIONS')
                           call InputSkipToEND(input,option,word)
+                        case('COMPLEX_KINETICS')
+                          do
+                            call InputReadFlotranString(input,option)
+                            call InputReadStringErrorMsg(input,option,card)
+                            if (InputCheckExit(input,option)) exit
+                            call InputReadWord(input,option,word,PETSC_TRUE)
+                            call InputErrorMsg(input,option,word, &
+                                   'CHEMISTRY,SURFACE_COMPLEXATION_RXN,KINETIC_RATES')
+                            ! skip over remaining cards to end of each mineral entry
+                            call InputSkipToEnd(input,option,word)
+                          enddo
                       end select 
                     enddo
                   case('DISTRIBUTION_COEF')
@@ -1071,8 +1083,6 @@ subroutine InitReadInput(simulation)
                     ! dummy placeholder
                 end select
               enddo
-            case('MULTI_RATE')
-              call InputSkipToEND(input,option,card)
             case('MOLAL','MOLALITY', &
                  'UPDATE_POROSITY','UPDATE_TORTUOSITY', &
                  'UPDATE_PERMEABILITY','UPDATE_MINERAL_SURFACE_AREA')
@@ -1811,7 +1821,7 @@ subroutine assignMaterialPropToRegions(realization)
   PetscReal, pointer :: perm_pow_p(:)
   PetscReal, pointer :: vec_p(:)
   
-  PetscInt :: icell, local_id, ghosted_id, natural_id, material_property_id
+  PetscInt :: icell, local_id, ghosted_id, natural_id, material_id
   PetscInt :: istart, iend
   character(len=MAXSTRINGLENGTH) :: group_name
   character(len=MAXSTRINGLENGTH) :: dataset_name
@@ -1828,6 +1838,7 @@ subroutine assignMaterialPropToRegions(realization)
 
   type(material_property_type), pointer :: material_property, null_material_property
   type(region_type), pointer :: region
+  PetscTruth :: update_ghosted_material_ids
   
   option => realization%option
   discretization => realization%discretization
@@ -1837,188 +1848,216 @@ subroutine assignMaterialPropToRegions(realization)
   ! loop over all patches and allocation material id arrays
   cur_level => realization%level_list%first
   do 
-     if (.not.associated(cur_level)) exit
-     cur_patch => cur_level%patch_list%first
-     do
-        if (.not.associated(cur_patch)) exit
-        if (.not.associated(cur_patch%imat)) then
-          allocate(cur_patch%imat(cur_patch%grid%ngmax))
-          ! initialize to "unset"
-          cur_patch%imat = -999
-        endif
-        cur_patch => cur_patch%next
-     enddo
-     cur_level => cur_level%next
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      if (.not.associated(cur_patch%imat)) then
+        allocate(cur_patch%imat(cur_patch%grid%ngmax))
+        ! initialize to "unset"
+        cur_patch%imat = -999
+      endif
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
   enddo
 
-  ! Read in cell by cell material ids if they exist
+  ! if material ids are set based on region, as opposed to being read in
+  ! we must communicate the ghosted ids.  This flag toggles this operation.
+  update_ghosted_material_ids = PETSC_FALSE
   cur_level => realization%level_list%first
   do 
-     if (.not.associated(cur_level)) exit
-     cur_patch => cur_level%patch_list%first
-     do
-        if (.not.associated(cur_patch)) exit
-        strata => cur_patch%strata%first
-        do
-           if (.not.associated(strata)) exit
-           if (.not.associated(strata%region) .and. strata%active) then
-              call readMaterialsFromFile(realization, &
-                                         strata%material_property_filename)
-           endif
-           strata => strata%next
-        end do
-        cur_patch => cur_patch%next
-     enddo
-     cur_level => cur_level%next
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      grid => cur_patch%grid
+      strata => cur_patch%strata%first
+      do
+        if (.not.associated(strata)) exit
+        ! Read in cell by cell material ids if they exist
+        if (.not.associated(strata%region) .and. strata%active) then
+          call readMaterialsFromFile(realization, &
+                                       strata%material_property_filename)
+        ! Otherwise, set based on region
+        else if (strata%active) then
+          update_ghosted_material_ids = PETSC_TRUE
+          region => strata%region
+          material_property => strata%material_property
+          if (associated(region)) then
+            istart = 1
+            iend = region%num_cells
+          else
+            istart = 1
+            iend = grid%nlmax
+          endif
+          do icell=istart, iend
+            if (associated(region)) then
+              local_id = region%cell_ids(icell)
+            else
+              local_id = icell
+            endif
+            ghosted_id = grid%nL2G(local_id)
+            cur_patch%imat(ghosted_id) = material_property%id
+          enddo
+        endif
+        strata => strata%next
+      enddo
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
   enddo
     
+  if (update_ghosted_material_ids) then
+    ! update ghosted material ids
+    cur_level => realization%level_list%first
+    do 
+      if (.not.associated(cur_level)) exit
+      cur_patch => cur_level%patch_list%first
+      do
+        if (.not.associated(cur_patch)) exit
+        grid => cur_patch%grid
+        call GridCopyIntegerArrayToPetscVec(cur_patch%imat,field%work_loc, &
+                                            grid%ngmax)
+        cur_patch => cur_patch%next
+      enddo
+      cur_level => cur_level%next
+    enddo
+    call DiscretizationLocalToLocal(discretization,field%work_loc, &
+                                    field%work_loc,ONEDOF)
+    cur_level => realization%level_list%first
+    do 
+      if (.not.associated(cur_level)) exit
+      cur_patch => cur_level%patch_list%first
+      do
+        if (.not.associated(cur_patch)) exit
+        grid => cur_patch%grid
+        call GridCopyPetscVecToIntegerArray(cur_patch%imat,field%work_loc, &
+                                            grid%ngmax)
+        cur_patch => cur_patch%next
+      enddo
+      cur_level => cur_level%next
+    enddo
+  endif
+
   ! set cell by cell material properties
+  ! create null material property for inactive cells
+  null_material_property => MaterialPropertyCreate()
   cur_level => realization%level_list%first
   do 
-     if (.not.associated(cur_level)) exit
-     cur_patch => cur_level%patch_list%first
-     do
-        if (.not.associated(cur_patch)) exit
-
-        grid => cur_patch%grid
-
-        if (option%nflowdof > 0) then
-           call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
-           call GridVecGetArrayF90(grid,field%ithrm_loc,ithrm_loc_p,ierr)
-           call GridVecGetArrayF90(grid,field%perm0_xx,perm_xx_p,ierr)
-           call GridVecGetArrayF90(grid,field%perm0_yy,perm_yy_p,ierr)
-           call GridVecGetArrayF90(grid,field%perm0_zz,perm_zz_p,ierr)
-           call GridVecGetArrayF90(grid,field%perm_pow,perm_pow_p,ierr)
-        endif
-        call GridVecGetArrayF90(grid,field%porosity0,por0_p,ierr)
-        call GridVecGetArrayF90(grid,field%tortuosity0,tor0_p,ierr)
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      grid => cur_patch%grid
+      if (option%nflowdof > 0) then
+        call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
+        call GridVecGetArrayF90(grid,field%ithrm_loc,ithrm_loc_p,ierr)
+        call GridVecGetArrayF90(grid,field%perm0_xx,perm_xx_p,ierr)
+        call GridVecGetArrayF90(grid,field%perm0_yy,perm_yy_p,ierr)
+        call GridVecGetArrayF90(grid,field%perm0_zz,perm_zz_p,ierr)
+        call GridVecGetArrayF90(grid,field%perm_pow,perm_pow_p,ierr)
+      endif
+      call GridVecGetArrayF90(grid,field%porosity0,por0_p,ierr)
+      call GridVecGetArrayF90(grid,field%tortuosity0,tor0_p,ierr)
         
-        ! create null material property for inactive cells
-        null_material_property => MaterialPropertyCreate()
-        strata => cur_patch%strata%first
-        do
-           if (.not.associated(strata)) exit
-           
-           if (strata%active) then
-              region => strata%region
-              material_property => strata%material_property
-              if (associated(region)) then
-                istart = 1
-                iend = region%num_cells
-              else
-                istart = 1
-                iend = grid%nlmax
-              endif
-              do icell=istart, iend
-                if (associated(region)) then
-                  local_id = region%cell_ids(icell)
-                else
-                  local_id = icell
-                endif
-
-                ghosted_id = grid%nL2G(local_id)
-                if (associated(cur_patch%imat)) then
-                  ! if patch%imat is allocated and the id > 0, the material id 
-                  ! supercedes the material pointer for the strata
-                  material_property_id = cur_patch%imat(ghosted_id)
-                  if (material_property_id == 0) then ! accommodate inactive cells
-                    material_property => null_material_property
-                  else if (material_property_id > 0 .and. &
-                           material_property_id <= &
-                           size(realization%material_property_array)) then
-                    material_property => realization%material_property_array(material_property_id)%ptr
-                  else if (material_property_id < -998) then 
-                    ! set the imat value to the stratas material
-                    material_property => strata%material_property
-                    cur_patch%imat(ghosted_id) = material_property%id
-                  else
-                    nullify(material_property)
-                  endif
-                endif
-                if (associated(material_property)) then
-                  if (option%nflowdof > 0) then
-                    icap_loc_p(ghosted_id) = material_property%saturation_function_id
-                    ithrm_loc_p(ghosted_id) = material_property%id
-                    perm_xx_p(local_id) = material_property%permeability(1,1)
-                    perm_yy_p(local_id) = material_property%permeability(2,2)
-                    perm_zz_p(local_id) = material_property%permeability(3,3)
-!                    perm_pow_p(local_id) = ???
-                  endif
-                  por0_p(local_id) = material_property%porosity
-                  tor0_p(local_id) = material_property%tortuosity
-                endif
-              enddo
-           endif
-           strata => strata%next
-        enddo
-        call MaterialPropertyDestroy(null_material_property)
-        nullify(null_material_property)
-
-        if (option%nflowdof > 0) then
-          call GridVecRestoreArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
-          call GridVecRestoreArrayF90(grid,field%ithrm_loc,ithrm_loc_p,ierr)
-          call GridVecRestoreArrayF90(grid,field%perm0_xx,perm_xx_p,ierr)
-          call GridVecRestoreArrayF90(grid,field%perm0_yy,perm_yy_p,ierr)
-          call GridVecRestoreArrayF90(grid,field%perm0_zz,perm_zz_p,ierr)
-          call GridVecRestoreArrayF90(grid,field%perm_pow,perm_pow_p,ierr)
-        endif
-        call GridVecRestoreArrayF90(grid,field%porosity0,por0_p,ierr)
-        call GridVecRestoreArrayF90(grid,field%tortuosity0,tor0_p,ierr)
-        
-        ! read in any cell by cell data 
-        if (len_trim(option%permx_filename) > 1) then
-          call readVectorFromFile(realization,field%perm0_xx, &
-                                  option%permx_filename,GLOBAL)  
-        endif
-        if (len_trim(option%permy_filename) > 1) then
-          call readVectorFromFile(realization,field%perm0_yy, &
-                                  option%permy_filename,GLOBAL)  
-        endif
-        if (len_trim(option%permz_filename) > 1) then
-          call readVectorFromFile(realization,field%perm0_zz, &
-                                  option%permz_filename,GLOBAL)
-        endif
-        
-        ! read in any user-defined property fields
-        do material_property_id = 1, size(realization%material_property_array)
+      do local_id = 1, grid%nlmax
+        ghosted_id = grid%nL2G(local_id)
+        material_id = cur_patch%imat(ghosted_id)
+        if (material_id == 0) then ! accommodate inactive cells
+          material_property => null_material_property
+        else if (material_id > 0 .and. &
+                 material_id <= &
+                 size(realization%material_property_array)) then
           material_property => &
-                 realization%material_property_array(material_property_id)%ptr
-          if (associated(material_property)) then
-            if (len_trim(material_property%permeability_filename) > 1) then
-              call readPermeabilitiesFromFile(realization,material_property)
-            endif
-            if (len_trim(material_property%porosity_filename) > 1) then
-              group_name = ''
-              dataset_name = 'Porosity'
-              call HDF5ReadCellIndexedRealArray(realization,field%work, &
-                                         material_property%porosity_filename, &
-                                                group_name, &
-                                                dataset_name,option%id>0)
-              call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
-              call GridVecGetArrayF90(grid,field%porosity0,por0_p,ierr)
-              if (associated(patch%imat)) then
-                do local_id = 1, grid%nlmax
-                  if (patch%imat(grid%nL2G(local_id)) == &
-                      material_property%id) then
-                    por0_p(local_id) = vec_p(local_id)
-                  endif
-                enddo
-              else
-                do local_id = 1, grid%nlmax
-                  por0_p(local_id) = vec_p(local_id)
-                enddo
-              endif
-              call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
-              call GridVecRestoreArrayF90(grid,field%porosity0,por0_p,ierr)
-            endif
-          endif
-        enddo
-        
-        cur_patch => cur_patch%next
-     enddo
-     cur_level => cur_level%next
-  enddo
+            realization%material_property_array(material_id)%ptr
+        else if (material_id < -998) then 
+          option%io_buffer = 'Uninitialized material id in patch'
+          call printErrMsg(option)
+        else if (material_id > size(realization%material_property_array)) then
+          write(option%io_buffer,*) material_id
+          option%io_buffer = 'Unmatched material id in patch:' // &
+            adjustl(trim(option%io_buffer))
+          call printErrMsg(option)
+        else
+          option%io_buffer = 'Something messed up with material ids. ' // &
+            ' Contact Glenn!'
+          call printErrMsg(option)
+        endif
+        if (option%nflowdof > 0) then
+          icap_loc_p(ghosted_id) = material_property%saturation_function_id
+          ithrm_loc_p(ghosted_id) = material_property%id
+          perm_xx_p(local_id) = material_property%permeability(1,1)
+          perm_yy_p(local_id) = material_property%permeability(2,2)
+          perm_zz_p(local_id) = material_property%permeability(3,3)
+!          perm_pow_p(local_id) = ???
+        endif
+        por0_p(local_id) = material_property%porosity
+        tor0_p(local_id) = material_property%tortuosity
+      enddo
 
+      if (option%nflowdof > 0) then
+        call GridVecRestoreArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
+        call GridVecRestoreArrayF90(grid,field%ithrm_loc,ithrm_loc_p,ierr)
+        call GridVecRestoreArrayF90(grid,field%perm0_xx,perm_xx_p,ierr)
+        call GridVecRestoreArrayF90(grid,field%perm0_yy,perm_yy_p,ierr)
+        call GridVecRestoreArrayF90(grid,field%perm0_zz,perm_zz_p,ierr)
+        call GridVecRestoreArrayF90(grid,field%perm_pow,perm_pow_p,ierr)
+      endif
+      call GridVecRestoreArrayF90(grid,field%porosity0,por0_p,ierr)
+      call GridVecRestoreArrayF90(grid,field%tortuosity0,tor0_p,ierr)
+        
+      ! read in any cell by cell data 
+      if (len_trim(option%permx_filename) > 1) then
+        call readVectorFromFile(realization,field%perm0_xx, &
+                                option%permx_filename,GLOBAL)  
+      endif
+      if (len_trim(option%permy_filename) > 1) then
+        call readVectorFromFile(realization,field%perm0_yy, &
+                                option%permy_filename,GLOBAL)  
+      endif
+      if (len_trim(option%permz_filename) > 1) then
+        call readVectorFromFile(realization,field%perm0_zz, &
+                                option%permz_filename,GLOBAL)
+      endif
+        
+      ! read in any user-defined property fields
+      do material_id = 1, size(realization%material_property_array)
+        material_property => &
+               realization%material_property_array(material_id)%ptr
+        if (associated(material_property)) then
+          if (len_trim(material_property%permeability_filename) > 1) then
+            call readPermeabilitiesFromFile(realization,material_property)
+          endif
+          if (len_trim(material_property%porosity_filename) > 1) then
+            group_name = ''
+            dataset_name = 'Porosity'
+            call HDF5ReadCellIndexedRealArray(realization,field%work, &
+                                       material_property%porosity_filename, &
+                                              group_name, &
+                                              dataset_name,option%id>0)
+            call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+            call GridVecGetArrayF90(grid,field%porosity0,por0_p,ierr)
+            do local_id = 1, grid%nlmax
+              if (patch%imat(grid%nL2G(local_id)) == &
+                  material_property%id) then
+                por0_p(local_id) = vec_p(local_id)
+              endif
+            enddo
+            call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+            call GridVecRestoreArrayF90(grid,field%porosity0,por0_p,ierr)
+          endif
+        endif
+      enddo
+      
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+  call MaterialPropertyDestroy(null_material_property)
+  nullify(null_material_property)
+
+  ! update ghosted values
   if (option%nflowdof > 0) then
     call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
                                      field%perm_xx_loc,ONEDOF)  
@@ -2145,7 +2184,7 @@ subroutine verifyCoupler(realization,patch,coupler_list)
     call VecRestoreArrayF90(global_vec,vec_ptr,ierr) 
     if (len_trim(coupler%flow_condition_name) > 0) then
       dataset_name = coupler%flow_condition_name
-    elseif (len_trim(coupler%tran_condition_name) > 0) then
+    else if (len_trim(coupler%tran_condition_name) > 0) then
       dataset_name = coupler%tran_condition_name
     endif
     write(word,*) patch%id

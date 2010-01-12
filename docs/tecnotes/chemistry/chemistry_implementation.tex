@@ -1,4 +1,4 @@
-\documentclass[12pt]{article} 
+\documentclass[12pt]{report} 
 %\usepackage{times,helvet}
 \usepackage{palatino}
 %\usepackage[utf8]{inputenc} %useful to type directly diacritic characters
@@ -170,13 +170,17 @@
 \setcounter{tocdepth}{5}
 %\renewcommand{\thepage}{\roman{page}}
 %\renewcommand{\thepage}{\arabic{page}}
-\renewcommand{\theequation}{\arabic{section}.\arabic{subsection}-\arabic{equation}}
+%\renewcommand{\theequation}{\arabic{section}.\arabic{subsection}-\arabic{equation}}
+%\renewcommand{\theequation}{\arabic{section}-\arabic{equation}}
 %\setcounter{page}{1}
+
+\numberwithin{equation}{section}
+\renewcommand{\theequation}{\arabic{chapter}.\arabic{section}-\arabic{equation}}
 
 \setlength{\parindent}{0.3125in}
 \setlength{\parskip}{2ex plus 0.2ex minus 0.2ex}
 
-\renewcommand{\contentsname}{TABLE OF CONTENTS}
+\renewcommand{\contentsname}{CONTENTS}
 \setcounter{secnumdepth}{5}
 
 \setlongtables
@@ -185,7 +189,18 @@
 
 \thispagestyle{empty}
 
+%\documentclass{report}
+%\usepackage{fullpage}
+\renewcommand{\baselinestretch}{1.2}
+\author{P.C. Lichtner}
+\title{PFLOTRAN: Reactive Transport Implementation}
+%\begin{document}
+%\maketitle
+%\tableofcontents
+
 \begin{document}
+
+\maketitle
 
 \bcr
 
@@ -231,9 +246,11 @@ P.C. Lichtner (LANL, \today)
 
 \newpage
 
+\chapter{Chemical Reactions}
+
 \section{Reading the Thermodynamic Database}
 
-\setcounter{equation}{0}
+%\setcounter{equation}{0}
 
 \subsection{Database Format}
 
@@ -261,11 +278,12 @@ The solution to this linear equation provides the expansion coefficients $c_k$.
 \begin{tabular}{ll}
 \hline
 Primary Species: & name, $a_0$, $z$, $w$\\
-Secondary Species: & name, nspec, ($\nu$(n), name($n$), $n$=1, nspec), log$K$(1:$N_{\rm temp}$) $a_0$, $z$, $w$\\
+Secondary Species: & name, nspec, ($\nu$(n), name($n$), $n$=1, nspec), log$K$(1:$N_{\rm temp}$), $a_0$, $z$, $w$\\
 Gaseous Species: & name, $\overline V$, nspec, ($\nu$(n), name($n$), $n$=1, nspec), log$K$(1:$N_{\rm temp}$), $w$ \\
 Minerals: & name, $\overline V$, nspec, ($\nu$(n), name($n$), $n$=1, nspec), log$K$(1:$N_{\rm temp}$), $w$\\
 Surface Complexes: & $>$name, nspec, $\nu$, $>$site, 
-($\nu$(n), name($n$), $n$=1, nspec-1), log$K$(1:$N_{\rm temp}$), $z$, $w$\\
+($\nu$(n), name($n$), $n$=1, nspec-1), \\
+&\hspace{3in} log$K$(1:$N_{\rm temp}$), $z$, $w$\\
 \hline
 \end{tabular}
 \end{table}
@@ -273,7 +291,7 @@ Surface Complexes: & $>$name, nspec, $\nu$, $>$site,
 Redox reactions in the standard database are usually written in terms of O$_{2(g)}$.
 Complexation reactions involving redox sensitive species are written in such a manner as to preserve the redox state.
 
-\subsection{Primary Species: Transforming the Database}
+\subsection{Primary Species: Basis Transformation}
 
 The user must first select a set of aqueous primary species in terms of which the reactions in the database are then transformed. This is typically carried out as follows. For an arbitrary reaction corresponding to an aqueous complex that is read from the database with the form
 \EQ
@@ -293,7 +311,7 @@ where
 \EN
 These reactions are presumed to apply to both aqueous complexes and gaseous reactions. 
 The equilibrium constant for reaction \ref{canonical} is given by
-\EQ
+\EQ\label{logki}
 \log K_i \eq \sum_r (\nu^{-1})_{ri} \log K_r.
 \EN
 
@@ -313,6 +331,23 @@ The associated equilibrium constant $K_m'$ is given by
 \EQ
 \log K_m' \eq \log K_m + \sum_i \nu_{im}\log K_i.
 \EN
+
+\subsection{Kinetic Rate Transformation}
+
+Kinetic rate constants must also be transformed to preserve the relation between the ratio of the forward and backward rate constants and the equilibrium constant. Thus from Eqn.\eqref{logki}
+\EQ
+\log k_i^f - \log k_i^b \eq \sum_r (\nu^{-1})_{ri} \big(\log k_r^f - \log k_r^b\big),
+\EN
+it follows that
+\begin{subequations}
+\EQ
+\log k_i^f \eq \sum_r (\nu^{-1})_{ri} \log k_r^f,
+\EN
+and
+\EQ
+\log k_i^b \eq \sum_r (\nu^{-1})_{ri} \log k_r^b.
+\EN
+\end{subequations}
 
 \subsection{Distribution of Species Calculation}
 
@@ -410,9 +445,11 @@ where the sum is over the molality of both primary and secondary species.
 
 \end{description}
 
+\chapter{Mass Conservation Equations}
+
 \section{Homogeneous Reactions}
 
-\setcounter{equation}{0}
+%\setcounter{equation}{0}
 
 Homogeneous reactions taking place within the aqueous phase can either be governed by local equilibrium relations or by kinetics as, for example, in sulfate reduction described by the reaction
 \EQ
@@ -562,7 +599,7 @@ Finally, the stoichiometric has zero elements and may be reduced in size through
 
 \section{Mineral Precipitation/Dissolution Reactions}
 
-\setcounter{equation}{0}
+%\setcounter{equation}{0}
 
 Mineral precipitation/dissolution reactions are assumed to have the form
 \EQ
@@ -609,7 +646,7 @@ Adding mineral precipitation/dissolution to the mass conservation equations yiel
 
 \section{Sorption}
 
-\setcounter{equation}{0}
+%\setcounter{equation}{0}
 
 \subsection{Non-Electrostatic Surface Complexation Reactions}
 
@@ -1253,12 +1290,32 @@ END
 
 \setcounter{equation}{0}
 
-The multirate formulation is considered only for surface complexation reactions, but ion exchange could also be implemented if desired. For surface complexation reactions of the form
-\EQ
-\nu_\a >\!\!\chi_\a + \sum_j\nu_{ji} \A_j \arrows >\!\! \S_{i\a},
+The multirate formulation is considered only for surface complexation reactions, but ion exchange could also be implemented if desired. As written, $\nu_{ji}\!>\!0$ for species appearing on the left-hand side and $\nu_{ji}\!<\!0$ for species on the right-hand side of the reaction. For surface complexation reactions of the form
+\EQ\label{srfrxn}
+\nu_\a >\!\!\chi_\a + \sum_j\nu_{ji} \A_j \arrows \!>\!\! \S_{i\a},
 \EN
-for the $i$th surface complex $>\!\!\S_{i\a}$ on site $\a$ and empty site $>\!\!\chi_\a$, 
-the multirate solute transport equations have the form
+for the $i$th surface complex $>\!\!\S_{i\a}$ on site $\a$ and empty site $>\!\!\chi_\a$ are assumed. Examples of these reactions for sorption of Pu on iron oxide and aluminosilicate substrates are
+\begin{subequations}
+\BA
+\rm >\!FeOH - H^+ &\arrows \rm >\!FeO^-,\\
+\rm >\!FeOH + H^+ &\arrows \rm >\!FeOH_2^+,\\
+\rm >\!FeOH -2 H^+ + Pu^{4+} + H_2O &\arrows \rm >\!FeOHPuO^{2+},\\
+\rm >\!FeOH -4 H^+ + Pu^{4+} + 2 H_2O &\arrows \rm >\!FeOHPuO_2,\\
+\rm >\!FeOH + PuO_2^+ &\arrows \rm >\!FeOHPuO_2^+,\\
+\rm >\!FeOH -2 H^+ + PuO_2^+ + H_2O &\arrows \rm >\!FeOHPuO_3^-,
+\EA 
+\end{subequations}
+and
+\begin{subequations}
+\BA
+\rm >\!SiOH - H^+ &\arrows\rm >\!SiO^-,\\
+\rm >\!SiOH + H^+ &\arrows\rm >\!SiOH_2^+,\\
+\rm >\!SiOH + Pu^{4+} - H^+ + H_2O &\arrows\rm >\!SiOPu(OH)_2^{3+},\\
+\rm >\!SiOH + PuO_2^+ - H^+ + &\arrows\rm >\!SiOPuO_2,\\
+\rm >\!SiOH + PuO_2^+ -2 H^+ + H_2O &\arrows\rm >\!SiOPuO_3H^-.
+\EA
+\end{subequations}
+The multirate solute transport equations have the form
 \begin{subequations}
 \EQ
 \frac{\p}{\p t}\varphi \Psi_j + \bnabla\cdot\bOmega_j \eq -\sum_{i\a}\nu_{ji}\frac{\p S_{i\a}}{\p t} - \sum_m\nu_{jm}I_m,
@@ -1354,6 +1411,128 @@ S_\a \eq \omega_\a - \sum_i S_{i\a}.
 The equilibrium sorbed concentration $S_{j\a}^{\rm eq}$ is defined as
 \EQ\label{qeq}
 S_{j\a}^{\rm eq} \eq \sum_i \nu_{ji}^{} S_{i\a}^{\rm eq}\eq \frac{\omega_\a}{1+\sum_l K_lQ_l} \sum_i \nu_{ji}K_i Q_i.
+\EN
+
+\subsubsection{Kinetic Formulation}
+
+Assuming the surface complexation reaction (see Eqn.\eqref{srfrxn}) can be treated as an elementary reaction the rate equation has the form
+\EQ
+\frac{\p S_{i\a}}{\p t} \eq k_{i\a}^f S_\a Q_{i}^+ - k_{i\a}^b Q_{i}^- S_{i\a},
+\EN
+where
+\EQ
+Q_i^\pm \eq \prod_{\nu_{ji}\mathop{}_{<0}^{>0}}\big(\gamma_j C_j\big)^{|\nu_{ji}|}.
+\EN
+An alternative possible kinetic formulation for surface complexation reactions which is used in what follows can be written in the form
+\EQ\label{skin}
+\frac{\p S_{i\a}}{\p t} \eq k_{i\a}^f S_\a Q_{i} - k_{i\a}^b S_{i\a},
+\EN
+where
+\EQ
+Q_i \eq \frac{Q^+}{Q^-}\eq \prod_j\big(\gamma_j C_j\big)^{\nu_{ji}},
+\EN
+and
+where $S_{\i\a}$ denotes the sorbed concentration for the $i$th surface complex on site $\a$. In both cases for reversible kinetics the forward and backward rate constants, $k_{i\a}^f$, $k_{i\a}^b$ satisfy the relation
+%\footnote{Should the selectivity coefficienty $K_i$ also depend on the site index $\a$?}
+\EQ
+K_{i\a} \eq \frac{k_{i\a}^f}{k_{i\a}^b}\eq \frac{S_{i\a}}{S_\a Q_i},
+\EN
+with selectivity coefficient $K_{i\a}$.
+It should be noted that the form of the rate law given in Eqn.\eqref{skin} is not expressed in the form of an elementary reaction. Other forms are certainly possible and comparison with experiment would be required to choose the best formulation.  For irreversible reaction one of the rate constants vanishes.
+
+The implicit finite difference equation corresponding to Eqn.\eqref{skin} is given by
+\EQ\label{fdskin}
+\frac{S_{i\a}^{k+1} - S_{i\a}^k}{\Delta t} \eq k_{i\a}^f S_\a^{k+1} Q_{i}^{k+1} - k_{i\a}^b S_{i\a}^{k+1},
+\EN
+for the $k+1$st time increment. The free site concentration $S_\a^{k+1}$ is obtained from the site conservation equation
+\begin{subequations}
+\EQ\label{sfree}
+S_\a^{k+1} \eq \omega_\a^{k+1} - \sum_{i'} S_{i'\a}^{k+1}.
+\EN
+In the numerical implementation it is customary to lag the site concentration $\omega_\a$ one time step behind giving the equation
+\EQ\label{sfree1}
+S_\a^{k+1} \eq \omega_\a^{k} - \sum_{i'} S_{i'\a}^{k+1}.
+\EN
+\end{subequations}
+Noting that Eqn.\eqref{fdskin} can be considered a linear function of $S_{i\a}^{k+1}$, it may be solved to give
+\EQ\label{sia}
+S_{i\a}^{k+1} \eq \frac{S_{i\a}^k + k_{i\a}^f\Delta t S_\a^{k+1} Q_i^{k+1}}{1+k_{i\a}^b\Delta t}.
+\EN
+Substituting this result into Eqn.\eqref{sfree1} and solving for $S_\a^{k+1}$ yields the result
+\EQ
+S_\a^{k+1} \eq \frac{
+\omega_\a^k - \displaystyle\sum_{i'} \dfrac{S_{{i'}\a}^{k}}{1+k_{i'\a}^b\Delta t}
+}
+{1+\displaystyle\sum_{i'}\dfrac{k_{i'\a}^f\Delta t}{1+k_{i'\a}^b\Delta t} Q_{i'}^{k+1}} \eq \frac{N_\a}{D_\a},
+\EN
+where
+\EQ
+N_\a \eq\omega_\a^k - \displaystyle\sum_{i'} \dfrac{S_{i'\a}^{k}}{1+k_{i'\a}^b\Delta t},
+\EN
+and
+\EQ
+D_\a \eq 1+\displaystyle\sum_{i'}\dfrac{k_{i'\a}^f\Delta t}{1+k_{i'\a}^b\Delta t} Q_{i'}^{k+1}.
+\EN
+Finally, substituting this result for $S_\a^{k+1}$ into Eqn.\eqref{sia} yields the result
+\EQ
+S_{i\a}^{k+1} \eq \frac{S_{i\a}^k}{1+k_{i\a}^b\Delta t} + \frac{k_{i\a}^f\Delta t}{1+k_{i\a}^b \Delta t} \left(
+\frac{N_\a
+%\omega_\a^k - \displaystyle\sum_l \dfrac{S_{l\a}^{k}}{1+k_{l\a}^b\Delta t}
+}
+{D_\a
+%1+\displaystyle\sum_l\dfrac{k_{l\a}^f\Delta t}{1+k_{l\a}^b\Delta t} Q_l^{k+1}
+}
+\right) Q_i^{k+1}.
+\EN
+For the case of irreversible desorption with $k_{i\a}^b=0$, this expression reduces to
+\EQ
+S_{i\a}^{k+1} \eq S_{i\a}^k + k_{i\a}^f\Delta t \left[
+\frac{
+\omega_\a^k - \displaystyle\sum_{i'} S_{i'\a}^{k}
+}
+{1+\Delta t\displaystyle\sum_{i'} k_{i'\a}^f Q_{i'}^{k+1}}
+\right] Q_i^{k+1}.
+\EN
+For $k_{i\a}^f=0$, one obtains
+\EQ
+S_\a^{k+1} \eq \frac{S_{i\a}^k}{1+k_{i\a}^b\Delta t}.
+\EN
+In the limit $k_{i\a}^f, \, k_{i\a}^b \rightarrow\infty$ with $k_{i\a}^f/k_{i\a}^b=K_{i\a}$, $S_{i\a}^{k+1}$ tends to the local equilibrium limiting value
+\EQ
+S_{i\a}^{k+1} \rightarrow \frac{\omega_\a^k K_{i\a} Q_i}{1+\sum_l K_{l\a}Q_l}.
+\EN
+
+\paragraph{Residual and Jacobian Contributions}
+
+The contribution of the kinetic surface complexation model to the residual function is equal to
+\BA
+R_{jn} &~+\!=~ \sum_{i\a}\nu_{ji}\frac{S_{i\a}^{k+1} - S_{i\a}^k}{\Delta t},\\
+&\eq \sum_{i\a}\nu_{ji} \left\{
+\frac{k_{i\a}^b S_{i\a}^k}{1+k_{i\a}^b\Delta t} + \frac{k_{i\a}^f}{1+k_{i\a}^b \Delta t} \left(
+\frac{N_\a}{D_\a}
+\right) Q_i^{k+1}
+\right\}.
+\EA
+The contribution to the Jacobian is given by
+\BA
+\frac{\p R_{jn}}{\p \ln C_l^{k+1}} &\eq \sum_{i\a}\frac{N_\a}{D_\a} 
+\frac{\nu_{ji} k_{i\a}^f}{1+k_{i\a}^b \Delta t} \left\{
+\frac{\p Q_i^{k+1}}{\p\ln C_l^{k+1}}-\frac{Q_i^{k+1}}{D_\a}
+\displaystyle\sum_{i'}\dfrac{k_{i'\a}^f\Delta t}{1+k_{i'\a}^b\Delta t} \frac{\p Q_{i'}^{k+1}}{\p\ln C_l^{k+1}}
+\right\},\\
+&\eq \sum_{i\a}\frac{N_\a}{D_\a} 
+\nu_{ji}^{} f_{i\a}^{} Q_i^{k+1} \left\{
+\nu_{li}^{}-\frac{\Delta t}{D_\a}
+\displaystyle\sum_{i'} \nu_{li'}^{} f_{i'\a}^{} Q_{i'}^{k+1}
+\right\},
+\EA
+with
+\EQ
+f_{i\a} \eq \frac{k_{i\a}^f}{1+k_{i\a}^b \Delta t},
+\EN
+and
+\EQ
+\frac{\p Q_{i}^{k+1}}{\p\ln C_l^{k+1}} \eq \nu_{li}^{} Q_i^{k+1}.
 \EN
 
 \subsubsection{$K_d$ Model}
@@ -1453,7 +1632,7 @@ K_{\rm UO_2^{2+}}^d &\eq \frac{\omega \big(K_1' + K_2'\big) C_{\rm UO_2^2+}}{\va
 \end{subequations}
 The sum in the denominator is assumed to be constant since the secondary species $C_i$ all contain factors of $C_{\rm UO_2^{2+}}$. Species with UO$_2^{2+}$ stoichiometric factors of two or more must be assumed to be negligible in comparison to other species in the sum.
 
-\subsection{Numerical Implementation}
+\subsection{Numerical Implementation of Multirate Model}
 
 The kinetic equation for the sorbed concentration at the $n$th node becomes in finite difference form
 \EQ\label{sorbnum}
@@ -1511,9 +1690,11 @@ for the mobile region $\a$ and immobile regions $\b$. Sorption mass transfer equ
 \EN
 
 
+\chapter{Colloids}
+
 \section{Colloid-Facilitated Transport}
 
-\setcounter{equation}{0}
+In what follows a continuum-based approach is used to formulate colloid-facilitated transport. In this description discrete colloids are replaced by a continuum concentration of colloids to which is associated a site density continuum.
 
 The above formulation for heterogeneous reactions involving mineral precipitation/dis\-solution, ion exchange and surface complexation, also apply to colloids. This presents an added complication since now the solid phase in the form of the suspended colloid load is moving with the fluid. 
 In this case the primary species transport equations contain contributions from both reactions with stationary solid grains which may include filtered colloids and mobile colloids in solution. 
@@ -1565,7 +1746,7 @@ For suspended colloids, the site concentration is related to the suspended collo
 &\eq \eta_c^{} A_c^M W_c^{} C_c^{f},\\
 &\eq\Gamma_c^{} C_c^f,
 \EA
-where $\eta_c$ denotes the site density, $A_c^M$ the colloid area per mass of colloid, and $W_c$ represents the formula weight of the colloid, and $\Gamma_c$ is depends only on intrinsic colloid properties, defined as
+where $\eta_c$ denotes the site density, $A_c^M$ the colloid area per mass of colloid, and $W_c$ represents the formula weight of the colloid. The quantity $\Gamma_c$ depends only on intrinsic colloid properties, defined as
 \EQ
 \Gamma_c\eq\frac{N_c^{f,\,{\rm srf}}}{N_c^{f}}\eq \frac{N_c^{s,\,{\rm srf}}}{N_c^s}\eq \eta_c^{} A_c^M W_c^{}.
 \EN
@@ -1586,9 +1767,9 @@ K_{ic}\eq \frac{S_{ic}}{S_c^{} Q_{ic}},
 \EN
 where
 \EQ
-Q_{ic}\eq\prod_j \big(\gamma_j C_j\big)^{\nu_{ji}^c},
+Q_{ic}\eq\prod_j \big(\gamma_j C_j\big)^{\nu_{ji}^c}.
 \EN
-the free site and surface complex concentrations are found to be
+The free site and surface complex concentrations are found to be
 \EQ
 S_c\eq\frac{\Gamma_c C_c}{1+\sum_i K_{ic}Q_{ic}},
 \EN
@@ -1615,7 +1796,7 @@ for mobile (liquid phase) colloids with concentration $C_c^f$ and flux $\bF_c^f$
 \EN
 for immobile colloids with concentration $C_c^s$ attached to the stationary solid phase. 
 
-Combining these two equations leads to an alternative form in which the reaction rate does not appear explicitly
+Adding these two equations leads to an alternative form in which the reaction rates do not appear explicitly
 \EQ
 \frac{\p}{\p t}\left(\varphi s_l^{} C_c^f + C_c^s\right) + \bnabla\cdot\bF_c^f \eq 0.
 \EN
@@ -1660,17 +1841,17 @@ where the retardation factor $R_j$ is defined as
 \EQ
 R_j\eq 1+\dfrac{K_j^s}{1+K_j^f},
 \EN
-where the distribution coefficients $K_j$ for the stationary solid phase including contributions from minerals and colloids, and $K_j^f$ for colloids present in the aqueous phase are defined by
+where the distribution coefficients, $K_j^s$ for the stationary solid phase including contributions from minerals and colloids, and $K_j^f$ for colloids present in the aqueous phase are defined by
 \EQ
 K_j^s \eq \frac{1}{\varphi s_l^{}\Psi_j} \left[\sum_{im}\nu_{ji}^m S_{im} + \sum_{ic}\nu_{ji}^c S_{ic}^s\right],
 \EN
 and
 \EQ
-K_j^l \eq \frac{1}{\Psi_j} \sum_{ic}\nu_{ji}^c S_{ic}^l.
+K_j^f \eq \frac{1}{\Psi_j} \sum_{ic}\nu_{ji}^c S_{ic}^f.
 \EN
 Note that if $K_j^f \!\geq\! K_j^s \!\gg\! 1$, $R_j\!\leq\! 2$, and there is little or no retardation. However, there still remains a reduction in kinetic homogeneous and heterogeneous rates. Finally, it should be noted that if colloids are to compete with stationary solid phase, they must be sufficiently concentrated to provide an equivalent surface site density (or cation exchange capacity).
 
-\subsection{Colloid Type Structure}
+\section{Colloid Type Structure}
 
 \begin{verbatim}
 type, public :: colloid_type
@@ -2070,11 +2251,9 @@ In order for the electroneutrality condition Eqn.\eqref{electroneutrality} to be
 \EN
 which in turn requires that $\bi_e\!=\!\boldsymbol 0$. This will be the case if both $\rho_e$ and $\bi_e$ vanish initially. These results assume that corrosion processes which result in a source/sink term and nonzero current are not applicable.
 
-\section{Multiple Interacting Continua}
+\chapter{Multiple Continua}
 
-\setcounter{equation}{0}
-
-\subsection{Dual Continuum Connected Matrix (DCCM)}
+\section{Dual Continuum Connected Matrix (DCCM)}
 
 For a dual continuum model with continua $\a$ and $\b$, and with multirate sorption and mineral precipitation and dissolution the transport equations read
 \begin{subequations}
@@ -2105,7 +2284,7 @@ Adding Eqns.\eqref{acont} and \eqref{bcont} eliminates the mass transfer couplin
 \frac{\p}{\p t} \left(\varphi_\a\Psi_j^\a + \varphi_\b\Psi_j^\b \right) + \bnabla\cdot\bOmega_j^\a \eq -\sum_{il}\nu_{ji}\left(\frac{\p S_{il}^\a}{\p t} + \frac{\p S_{il}^\b}{\p t}\right) -\sum_m\nu_{jm}\big(I_m^\a + I_m^\b\big).
 \EN
 
-\subsubsection{Numerical Implementation}
+\subsection{Numerical Implementation}
 
 The residual functions for the finite volume form of the dual continuum equations can be written as
 \BA
@@ -2164,7 +2343,7 @@ The Newton-Raphson equations read
 In the nonlinear case, to avoid large matrices it will be necessary to iterate with off-diagonal coupling terms for the primary continuum lagged one iterate behind.
 %This latter equation must be solved for the individual primary species concentrations $C_{jn}^{\b(k+1)}$.
 
-\subsection{Multiple Continuum Disconnected Matrix (DCDM)}
+\section{Multiple Continuum Disconnected Matrix (DCDM)}
 
 A fundamental problem facing efforts to model subsurface reactive flows is characterizing and incorporating a multitude of spatial scales that are typical of natural systems into multi\-com\-po\-nent-multiphase numerical models. Spatial scales may range from nanoscale surface chemistry, to pore and fracture apertures of millimeters to centimeters, to fracture spacing and matrix block sizes of tens of centimeters to meters, to reservoir or basin scales of kilometers to tens of kilometers. To illustrate the technical challenges involved in modeling multi-scale subsurface processes, consider a basin scale reservoir with an areal extent of one square kilometer and depth of 500 meters. Modeling this system as a single continuum on a grid with one million nodes results in an average grid block size of 10m by 10m by 5m---or roughly the size of a large conference room. Within this grid block, physical and chemical processes occur at much smaller sub-grid scales. Such processes involve, for example, diffusive and advective mass transfer between fractures and rock matrix, or more generally diffusion between macro- and micro-pore scales, accompanied by chemical reactions. Characteristic of these systems is mass transport and chemical reactions occurring at disparate spatial scales that cannot be captured within a single continuum description. In particular, localized chemical environments may be vastly different from the bulk fluid and lead to dramatically different results compared to a single continuum description. It is clearly impossible to capture this range of scales within a single continuum framework because of the large computational expense that would be required to resolve the smallest scale. One approach that appears feasible to describe such systems is to incorporate sub-grid scale processes through multiple interacting continua representing fine scale processes. Besides the difficulty developing conceptual models of such systems, characterization at the laboratory and field scales adds additional challenges. In addition, this approach carries a significant computational cost as well because of the increase in the number of degrees of freedom associated with the additional continua and the necessity to carry out calculations over engineering and geologic time spans within feasible computation times. 
 
@@ -2379,7 +2558,7 @@ The derivative is given by
 \EN
 
 \section*{Appendix: Block Tridiagonal System of Equations}
-\addcontentsline{toc}{section}{Appendix: Block Tridiagonal System of Equations}
+\addcontentsline{toc}{subsection}{Appendix: Block Tridiagonal System of Equations}
 
 \renewcommand{\theequation}{A.\arabic{equation}}
 \setcounter{equation}{0}
@@ -2397,7 +2576,7 @@ For an effective one-dimensional, multicomponent system the finite volume discre
 \bigg|\quad\mathop{\bullet}_{\ \ \ \, \displaystyle m \ \a}\quad\bigg|\nonumber
 \EN
 %}
-\caption{Node configuration for primary ($\a$) and secondary ($\b$) continua.}\label{fnodestruct}
+\caption{Node configuration for the primary ($\a$) continuum (node $m$), and secondary ($\b$) continua (nodes $1,\, \ldots,\, n,\,\ldots M$).}\label{fnodestruct}
 \end{figure}
 
 The residual function can be written in the form (superscript $\b$ is omitted for brevity)
@@ -2560,18 +2739,90 @@ This is followed by a backward sweep to obtain the solution for $\d\bx_n$
 To carry out the backward sweep, the quantity $\bz_M$ must be determined first
 by solving the primary continuum equations.
 
-\renewcommand{\theequation}{\arabic{section}.\arabic{subsection}-\arabic{equation}}
-\setcounter{equation}{0}
+\numberwithin{equation}{section}
+\renewcommand{\theequation}{\arabic{chapter}.\arabic{section}-\arabic{equation}}
 
 \section{Electrical Conductivity}
 
 \section{Hydration-Dehydration Reactions}
 
-\section{Multiphase Systems}
+\chapter{Multiphase Systems}
 
-\subsection{Fundamental Governing Equations}
+\section{Fundamental Relations}
 
-For a multiphase system with chemical reactions involving aqueous-aqueous and aqueous-gas, -oil, -napl etc., with aqueous phase as reference phase, the chemical reactions taking place in the system can be expressed in the canonical form
+For a multiphase system with mole numbers $n_i^\a\!=\!W_i^{-1} M_i^\a$ of the $i$th species in phase $\a$ the system may be described by various relations for mass and molar density, $\rho_\a$ and $\eta_\a$, respectively.
+Mass density of phase $\a$ has the form
+\EQ
+\rho_\a \eq \frac{M_\a}{V_\a},
+\EN
+molar density $\eta_\a$ is given by
+\EQ
+\eta_\a \eq \frac{N_\a}{V_\a},
+\EN
+with volume $V_\a$ of phase $\a$
+\EQ
+V_\a \eq \sum_i n_i^\a \overline{V}_i^\a.
+\EN
+Here
+\EQ
+N_\a \eq \sum_i n_i^\a,
+\EN
+and
+\EQ
+M_\a \eq\sum_i M_i^\a.
+\EN
+One may likewise define
+\EQ
+N_i \eq\sum_\a n_i^\a,
+\EN
+and
+\EQ
+M_i \eq\sum_\a M_i^\a.
+\EN
+
+Thus the density can be expressed as
+\BA
+\rho_\a &\eq \frac{M_\a}{\displaystyle\sum_i n_i^\a \overline{V}_i^\a},\\
+&\eq \frac{1}{\displaystyle\sum_i \dfrac{w_i^\a}{\rho_i^\a}},
+\EA
+where
+\EQ
+\rho_i^\a \eq W_i (\overline V_i^\a)^{-1},
+\EN
+and the mass fraction $w_i^\a$ is defined as
+\EQ
+w_i^\a \eq \frac{M_i^\a}{M_\a} \eq \frac{W_i n_i^\a}{\displaystyle\sum_i W_{i'} n_{i'}^\a} \eq \frac{W_i x_i^\a}{\displaystyle\sum_i W_{i'} x_{i'}^\a}.
+\EN
+In terms of molar quantities, the density becomes
+\BA
+\eta_\a &\eq \frac{N_\a}{\displaystyle\sum_i n_i^\a \overline{V}_i^\a},\\
+&\eq \frac{1}{\displaystyle\sum_i \dfrac{x_i^\a}{\eta_i^\a}},
+\EA
+where $\eta_i^\a$ is defined as
+\EQ
+\eta_i^\a \eq (\overline V_i^\a)^{-1}.
+\EN
+The mass and molar densities are related by the equation
+\EQ
+\rho_\a \eq W_\a \eta_\a,
+\EN
+where
+\EQ
+W_\a \eq \frac{M_\a}{N_\a} \eq \sum_i W_i x_i^\a \eq \frac{1}{\displaystyle\sum_i W_i^{-1} w_i^\a}.
+\EN
+
+For the total system
+\EQ
+\rho \eq W \eta,
+\EN
+where
+\EQ
+W \eq \frac{M}{N} \eq \sum_\a W_\a x_\a \eq \frac{1}{\displaystyle\sum_\a W_\a^{-1} w_\a}.
+\EN
+
+\section{Governing Equations}
+
+For a multiphase system with chemical reactions involving aqueous-aqueous and aqueous-gas, -oil, -NAPL, -DNAPL etc., with aqueous phase as reference phase, the chemical reactions taking place in the system can be expressed in the canonical form
 \EQ
 \sum_j\nu_{ji}\A_j^l \arrows \A_i^\a,
 \EN
@@ -2592,7 +2843,7 @@ In these equations $\bar\bv_k^\a$ denotes the average velocity of the $k$th spec
 Eliminating the reactions rates $I_i^\a$ from the primary species transport equations yields
 \BA\label{molar_form}
 \frac{\p}{\p t} &\varphi \left\{ s_l^{} \big(C_j^l + \sum_i \nu_{ji} C_i^l\big) + \sum_{\a\ne l} s_\a \sum_{i}\nu_{ji} C_i^\a \right\} \nonumber\\
-&+ \bnabla\cdot\left[ \big(C_j^l \bar\bv_j^l + \sum_i \nu_{ji} C_i^l \bar\bv_i^l\big) + \sum_{i,\,\a\ne l} \nu_{ji} C_i^\a \bar\bv_i^\a \right] \eq -\sum_m \nu_{jm}I_m.
+&+ \bnabla\cdot\left[ C_j^l \bar\bv_j^l + \sum_i \nu_{ji} C_i^l \bar\bv_i^l + \sum_{i,\,\a\ne l} \nu_{ji} C_i^\a \bar\bv_i^\a \right] \eq -\sum_m \nu_{jm}I_m.
 \EA
 From this equation the overall mass conservation equation follows by multiplying through by $W_j$ and summing over $j$ to give
 \EQ\label{totmassbal}
@@ -2600,7 +2851,7 @@ From this equation the overall mass conservation equation follows by multiplying
 \EN
 where $\bv_\a$ represents the barycentric velocity (see Table~\ref{trefframe}) defined by
 \EQ
-\rho \bv_\a \eq \sum_k\rho_k^\a \bar\bv_k^\a.
+\rho_\a \bv_\a \eq \sum_k\rho_k^\a \bar\bv_k^\a.
 \EN
 To obtain this result the following relations are used
 \EQ
@@ -2619,7 +2870,7 @@ To obtain this result the following relations are used
 In terms of the mass concentrations $\rho_i^\a$ the primary species transport equations become
 \BA
 \frac{\p}{\p t} &\varphi \left\{ s_l^{} \big(\rho_j^l + W_j\sum_i \nu_{ji} W_i^{-1}\rho_i^l\big) + W_j \sum_{\a\ne l} s_\a \sum_{i}\nu_{ji} W_i^{-1}\rho_i^\a \right\} \nonumber\\
-&\qquad + \bnabla\cdot\left[ \big(\rho_j^l \bar\bv_j^l + W_j \sum_i \nu_{ji} W_i^{-1} \rho_i^l \bar\bv_i^l\big) + W_j\sum_{i,\,\a\ne l} \nu_{ji} W_i^{-1}\rho_i^\a \bar\bv_i^\a \right] \nonumber\\
+&\qquad + \bnabla\cdot\left[ \rho_j^l \bar\bv_j^l + W_j \sum_i \nu_{ji} W_i^{-1} \rho_i^l \bar\bv_i^l + W_j\sum_{i,\,\a\ne l} \nu_{ji} W_i^{-1}\rho_i^\a \bar\bv_i^\a \right] \nonumber\\
 &\qquad\qquad\eq -W_j\sum_m \nu_{jm}I_m.
 \EA
 Summing this equation over $j$ leads directly to Eqn.\eqref{totmassbal}.
@@ -2629,20 +2880,20 @@ The transport equations Eqn.\eqref{molar_form} may also be written in terms of m
 &+ \bnabla\cdot\left[ \eta_l^{}\big(x_j^l \bar\bv_j^l + \sum_i \nu_{ji} x_i^l \bar\bv_i^l\big) + \sum_{i,\,\a\ne l} \eta_\a^{}\nu_{ji} x_i^\a \bar\bv_i^\a \right] \eq -\sum_m \nu_{jm}I_m.
 \EA
 
-\subsubsection{Diffusion}
+\subsection{Diffusion}
 
 Given a reference velocity $\bomega_\a$ for phase $\a$, the average species fluid velocity $\bar\bv_k^\a$ can be separated into contributions from advection and diffusion by writing
 \BA
-\bar\bv_k^\a &\eq \bomega_\a + \bar\bv_k^\a - \bomega_\a,\\
+\bar\bv_k^\a &\eq \bomega_\a + \bar\bv_k^\a - \bomega_\a^{},\\
 &\eq \bomega_\a + \bv_k^\a,
 \EA
 where the first term corresponds to the reference velocity describing advection and the second term $\bv_k^\a$ corresponds to the diffusion velocity
 \EQ
-\bv_k^\a \eq \bar\bv_k^\a - \bomega_\a. 
+\bv_k^\a \eq \bar\bv_k^\a - \bomega_\a^{}. 
 \EN
 The reference velocity is defined as the weighted average
 \EQ
-\bomega_\a \eq \sum_k \omega_k^\a \bar\bv_k^\a,
+\bomega_\a^{} \eq \sum_k \omega_k^\a \bar\bv_k^\a,
 \EN
 with
 \EQ
@@ -2650,20 +2901,22 @@ with
 \EN
 It follows that the weighted sum of the diffusion velocity is zero
 \EQ
-\sum_k \omega_k^\a \bv_k^\a \eq \sum_k \omega_k^\a \big(\bar\bv_k^\a - \bomega_\a\big) \eq \boldsymbol{0}.
+\sum_k \omega_k^\a \bv_k^\a \eq \sum_k \omega_k^\a \big(\bar\bv_k^\a - \bomega_\a^{}\big) \eq \boldsymbol{0}.
 \EN
-The diffusive flux $~_{\bomega}\bJ_k^\a$ relative to reference velocity $\bomega_\a$ is defined as
+The diffusive flux $~_{\bomega}^{}\bJ_k^\a$ relative to reference velocity $\bomega_\a$ is defined as
 \EQ
-~_{\bomega}\bJ_k^\a \eq C_k^\a \big(\bar\bv_k^\a - \bomega_\a\big),
+~_{\bomega}^{}\bJ_k^\a \eq C_k^\a \big(\bar\bv_k^\a - \bomega_\a^{}\big),
 \EN
 and satisfies the relation
 \EQ
-\sum_k\frac{\omega_k^\a}{C_k^\a}~_{\bomega}\bJ_k^\a \eq \boldsymbol{0},
+\sum_k\frac{\omega_k^\a}{C_k^\a}~_{\bomega}^{}\bJ_k^\a \eq \boldsymbol{0},
 \EN
 implying that only $N\!-\!1$ of the diffusive fluxes are independent.
-Several different choices can be made for $\bomega_\a$ and the weight coefficients $\omega_k^\a$ leading to different forms for the fluid flow velocity and diffusive flux as listed in Table~\ref{trefframe}. The molar volume $\bar V_k^\a\!=\!\p V/\p n_k^\a$ satisfies the constraint
+Several different choices can be made for $\bomega_\a$ and the weight coefficients $\omega_k^\a$ leading to different forms for the fluid flow velocity and diffusive flux as listed in Table~\ref{trefframe}. 
+
+The molar volume $\bar V_k^\a\!=\!\p V/\p n_k^\a$ satisfies the constraint
 \EQ
-\sum_k n_k^{\a} \bar V_k^\a \eq 1.
+\sum_k x_k^{\a} \bar V_k^\a \eq 1.
 \EN
 
 \begin{table}[t]\centering
@@ -2673,21 +2926,23 @@ Several different choices can be made for $\bomega_\a$ and the weight coefficien
 
 \vspace{3mm}
 
-\begin{tabular}{lcc}
+\begin{tabular}{lccc}
 \toprule[1.5pt]
-Reference Frame & Mean Flow Velocity $\bomega_\a$ & $\omega_k^\a$\\
+Reference Frame & Reference Velocity & Weight & Diffusive Flux\\
+& $\bomega_\a$ & $\omega_k^\a$ & $~_{\bomega}^{}\bJ_k^\a$\\
 \midrule
-Barycentric & $\bv_\a = \dfrac{1}{\rho_\a}\sum_k\rho_k^\a\bar\bv_k^\a$ & $\chi_k^\a\!=\!\rho_k^\a/\rho_\a$\\
-Molecular & $\bu_\a = \dfrac{1}{\eta_\a}\sum_k C_k^\a \bar\bv_k^\a$ & $x_k^\a\!=\!C_k^\a/\eta_\a$\\
-Volumetric (Fickian) & $\bw_\a = \sum_k C_k^\a \bar{V}_k^\a \bar\bv_k^\a$ & $\phi_k^\a\!=\!C_k^\a \bar{V}_k^\a$\\
-Hittorf & $\bv_\a^\prime = \bar\bv_1^\a$ & 1, $k$=1; 0 otherwise\\
+Barycentric & $\bv_\a = \dfrac{1}{\rho_\a}\sum_k\rho_k^\a\bar\bv_k^\a$ & $\chi_k^\a\!=\!\rho_k^\a/\rho_\a$ & $C_k^\a \big(\bar\bv_k^\a - \bv_\a^{}\big)$\\
+Molecular & $\bu_\a = \dfrac{1}{\eta_\a}\sum_k C_k^\a \bar\bv_k^\a$ & $x_k^\a\!=\!C_k^\a/\eta_\a$ & $C_k^\a \big(\bar\bv_k^\a - \bu_\a^{}\big)$\\
+Volumetric (Fickian) & $\bw_\a = \sum_k C_k^\a \bar{V}_k^\a \bar\bv_k^\a$ & $\phi_k^\a\!=\!C_k^\a \bar{V}_k^\a$ & $C_k^\a \big(\bar\bv_k^\a - \bw_\a^{}\big)$\\
+Hittorf & $\bv_\a^\prime = \bar\bv_1^\a$ & 1 & $C_k^\a \big(\bar\bv_k^\a - \bv_\a^{'}\big)$\\
 \bottomrule[1.5pt]
 \end{tabular}
 \end{table}
 
-\subsubsection{Transformation of Diffusive Flux Among Reference Velocities}
+\subsection{Transformation of Diffusive Flux Among Reference Velocities}
 
 For two reference velocities $\bomega_\a$ and $\bomega_\a^\prime$ the corresponding diffusive velocity is defined as
+\begin{subequations}
 \EQ
 \bv_k^\a \eq \bar\bv_k^\a - \bomega_\a^{},
 \EN
@@ -2695,56 +2950,71 @@ and
 \EQ
 \bv_k^{\a\,\prime} \eq \bar\bv_k^\a - \bomega_\a^\prime.
 \EN
-They are related by the transformation
+\end{subequations}
+The diffusive velocities are related by the transformation
+\begin{subequations}
 \BA
 \bv_k^{\a\,\prime} &\eq \bv_k^\a - \big(\bomega_\a^{\prime} - \bomega_\a^{}\big),\\
-&\eq \bv_k^\a - \sum_i \omega_i^{\a\,\prime} \bv_i^\a.\label{transformation}
+&\eq \bv_k^\a - \sum_i \omega_i^{\a\,\prime} \bv_i^\a,\label{transformation}
 \EA
+\end{subequations}
+where the latter expression is obtained by noting that
+\begin{subequations}
+\BA
+\sum_i\omega_i^{\a\prime} \bv_i^\a &\eq \sum_i\omega_i^{\a\prime} \big(\bar\bv_i^\a -\bomega_\a^{}\big),\\
+&\eq \bomega_\a^\prime - \bomega_\a^{}.
+\EA
+\end{subequations}
 
-\paragraph{Molecular to Barycentric Transformation.}
+\subsubsection{Molecular to Barycentric Transformation}
+
 The transformation of the diffusive flux from molecular to barycentric reference velocities has the form
 \EQ\label{trans1}
-~_{\bu}\bJ_k^\a \eq ~_{\bv}\bJ_k^\a - x_k^\a \sum_i ~_{\bv}\bJ_i^\a.
+~_{\bu}^{}\bJ_k^\a \eq ~_{\bv}^{}\bJ_k^\a - x_k^\a \sum_i ~_{\bv}^{}\bJ_i^\a.
 \EN
 Introducing
 \EQ
-~_{\bv}\widetilde\bJ_k^\a \eq W_k ~_{\bv}\bJ_k^\a,
+~_{\bomega}^{}\widetilde\bJ_k^\a \eq W_k^{} ~_{\bomega}^{}\bJ_k^\a,
 \EN
 and multiplying through by $W_k$, Eqn.\eqref{trans1} becomes
 \EQ\label{trans2}
-W_k ~_{\bu}\bJ_k^\a \eq ~_{\bv}\widetilde\bJ_k^\a - x_k^\a W_k \sum_i W_i^{-1} ~_{\bv}\widetilde\bJ_i^\a.
+~_{\bu}^{}\widetilde\bJ_k^\a \eq W_k^{} ~_{\bu}^{}\bJ_k^\a \eq ~_{\bv}^{}\widetilde\bJ_k^\a - x_k^\a W_k \sum_i W_i^{-1} ~_{\bv}^{}\widetilde\bJ_i^\a.
 \EN
-Kee et al. (2003) relate the molecular and diffusive fluxes to Fick's law according to the relations
+Kee et al. (2003) relate the molecular and mass diffusive fluxes to Fick's law according to the relations
+\begin{subequations}
 \EQ
-~_{\bu}\bJ_k^\a \eq -\eta_\a D_\a \bnabla x_k^\a,
+~_{\bu}^{}\bJ_k^\a \eq -\eta_\a^{} D_\a^{} \bnabla x_k^\a,
 \EN
 and
 \EQ
-~_{\bv}\widetilde\bJ_k^\a \eq -\rho_\a D_\a \bnabla\chi_k^\a,
+~_{\bv}^{}\widetilde\bJ_k^\a \eq -\rho_\a^{} D_\a^{} \bnabla\chi_k^\a,
 \EN
+\end{subequations}
 respectively, corresponding to their Equations 12.158 and 12.160, p. 525--526. 
 It is demonstrated that these relations are compatible with Eqn.\eqref{trans2}. Indeed it follows that
+\begin{subequations}
 \BA
-W_k ~_{\bu}\bJ_k^\a &\eq -W_k\eta_\a D_\a \bnabla \left(\frac{W_k^{-1} \chi_k^\a}{\sum_i W_i^{-1}\chi_i^\a}\right),\\
-&\eq -\rho_\a D_\a \bnabla \chi_k^\a + \rho_\a D_\a x_k^\a W_k \sum_i W_i^{-1} \bnabla \chi_i^\a,\\
-&\eq ~_{\bv}\widetilde\bJ_k^\a - x_k^\a W_k \sum_i W_i^{-1} ~_{\bv}\widetilde\bJ_i^\a,
+~_{\bu}^{}\widetilde\bJ_k^\a \eq W_k^{} ~_{\bu}^{}\bJ_k^\a &\eq -W_k^{}\eta_\a^{} D_\a^{} \bnabla \left(\frac{W_k^{-1} \chi_k^\a}{\sum_i W_i^{-1}\chi_i^\a}\right),\\
+&\eq -\rho_\a D_\a \bnabla \chi_k^\a + \rho_\a^{} D_\a^{} x_k^\a W_k^{} \sum_i W_i^{-1} \bnabla \chi_i^\a,\\
+&\eq ~_{\bv}^{}\widetilde\bJ_k^\a - x_k^\a W_k^{} \sum_i W_i^{-1} ~_{\bv}\widetilde\bJ_i^\a,
 \EA
+\end{subequations}
 in agreement with Eqn.\eqref{trans2}. To obtain this result the following relations are used
 \EQ
-W_k \eta_\a x_k^\a \eq \rho_\a \chi_k^\a,
+W_k^{} \eta_\a^{} x_k^\a \eq \rho_\a^{} \chi_k^\a,
 \EN
 \EQ
-W_\a \eq \sum_k W_k x_k^\a \eq \frac{1}{\sum W_k^{-1} \chi_k^\a},
+W_\a^{} \eq \sum_k W_k^{} x_k^\a \eq \frac{1}{\displaystyle\sum_k W_k^{-1} \chi_k^\a},
 \EN
 and
 \EQ
 \rho_\a \eq W_\a \eta_\a.
 \EN
 
-\subsection{Simplified System}
+\section{General Multiphase System}
 
-For a multiphase system characterized with phase saturation $s_\a$, and Darcy velocity $\bq_\a$ the transport equations generalize to
-\EQ
+For a multiphase system characterized with phase saturation $s_\a$, and Darcy velocity $\bq_\a$ corresponding to phase $\a$, the transport equations generalize to
+\EQ\label{genmass}
 \frac{\p}{\p t}\left(\varphi\sum_\a s_\a\Psi_j^\a\right) + \bnabla\cdot\sum_\a\bOmega_j^\a \eq \R_j,
 \EN
 where $s_\a$ denotes the saturation of phase $\a$, $\R_j$ refers to source/sink and reaction rate terms, and the total concentration for each phase is defined as
@@ -2757,13 +3027,18 @@ The total flux (for species-independent diffusion) is given by
 \EN
 for diffusion/dispersion coefficient $D_\a$, Darcy velocity $\bq_a$ defined in terms of relative permeability $k_\a$ as
 \EQ
-\bq_\a \eq \frac{kk_\a}{\mu_\a}\bnabla(p_\a -\rho_\a \bg z),
+\bq_\a \eq \frac{kk_\a}{\mu_\a}\bnabla(p_\a -\rho_\a g z),
 \EN
 with bulk permeability $k$, fluid density $\rho_\a$, and acceleration of gravity $\bg$. The fluid pressure $p_\a$ satisfies the relations
 \EQ
 p_\a-p_\b \eq p_{\a\b}^c,
 \EN
 for capillary pressure $p_{\a\b}^c$.
+
+General phase equilibria are described by equality of the chemical potential for the $i$th species in each phase
+\EQ
+\mu_i^\a \eq \mu_i^\b.
+\EN
 
 The Kronecker delta function appears in the expression for the total concentration $\Psi_j^\a$ multiplying the primary species concentration because it is assumed that all primary species belong to the aqueous phase. This condition could be relaxed, but it would require introducing variable switching at phase boundaries where phase changes take place. In the current implementation, if the aqueous phase completely disappears it is necessary to ``freeze'' the total aqueous concentration at some arbitrarily chosen minimum threshold value for the liquid saturation $s_l^{\rm min}$:  $(s_l^{}\!\leq\!s_l^{\rm min})$. If the system resaturates $(s_l^{}\!>\!s_l^{\rm min})$, this ``frozen'' total aqueous concentration must be released back into the fluid phase.
 
@@ -2772,7 +3047,217 @@ The residual function has the form
 R_{jn}\eq\frac{V_n}{\Delta t}\left[\bigg(\varphi_n\sum_\a s_{\a n} \Psi_{jn}^\a\bigg)_{t+\Delta t} - \bigg(\varphi_n\sum_\a s_{\a n} \Psi_{jn}^\a\bigg)_{t}\right] + \sum_{\a n'}\Omega_{jnn'}^\a A_{nn'} - \R_{jn} V_n.
 \EN
 
-\subsection{Supercritical CO$_2$ Equilibria}
+An alternative form of the mass conservation equations Eqn.\eqref{genmass} that emphasizes the similarity of different phase contributions is to write
+\EQ
+\sum_\a\left\{\frac{\p}{\p t}\left(\varphi s_\a\Psi_j^\a\right) + \bnabla\cdot\bOmega_j^\a\right\} \eq \R_j.
+\EN
+The energy conservation equation can be written in the form
+\EQ
+\sum_\a\left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a U_\a\big) + \bnabla\cdot\big(\bq_\a \rho_\a H_\a\big) \right\} + \frac{\p}{\p t} \big(\rho_r C_p T \big) - \bnabla\cdot\big(\kappa\bnabla T\big) \eq Q,
+\EN
+as the sum of contributions from different fluid phases and rock,
+with internal energy $U_\a$ and enthalpy $H_\a$ of fluid phase $\a$, and rock heat capacity $C_p$ and thermal conductivity $\kappa$.
+
+The residual function for mass conservation has the form
+\EQ
+R_{jn}\eq \sum_\a\left\{ \frac{V_n}{\Delta t}\left[\bigg(\varphi_n s_{\a n} \Psi_{jn}^\a\bigg)_{t+\Delta t} - \bigg(\varphi_n s_{\a n} \Psi_{jn}^\a\bigg)_{t}\right] + \sum_{n'}\Omega_{jnn'}^\a A_{nn'}\right\} - \R_{jn} V_n.
+\EN
+
+\subsection{Composition Variables}
+
+For a multicomponent system weight $w_i$ and mole $x_i$ fractions are related by the expression
+\begin{subequations}
+\EQ
+x_i \eq \frac{w_i^{} W_i^{-1}}{\sum_l w_l^{} W_l^{-1}},
+\EN
+with the inverse relation
+\EQ
+w_i \eq \frac{x_i W_i}{\sum_l x_l W_l}.
+\EN
+\end{subequations}
+For the solvent H$_2$O
+\begin{subequations}
+\EQ
+x_w \eq \frac{1}{1+W_w\sum_{l\ne w} m_l},
+\EN
+and
+\EQ
+w_w \eq \frac{1}{1+\sum_{l\ne w} m_lW_l}.
+\EN
+\end{subequations}
+It follows that molality is related to mole fraction by the equations
+\begin{subequations}
+\BA
+m_i \eq \frac{n_i}{M_w} &\eq \frac{n_i}{N}\frac{N}{M}\frac{M}{M_w},\\
+&\eq \frac{x_i}{W w_w}\eq \frac{x_i}{x_w W_w},\\
+&\eq \frac{x_i}{\big(1-\displaystyle\sum_{l\ne w} x_l\big) W_w},
+\EA
+\end{subequations}
+using
+\begin{subequations}
+\BA
+W &\eq \frac{M}{N} \eq \frac{M}{M_w}\frac{M_w}{n_w}\frac{n_w}{N} 
+\eq \frac{x_w W_w}{w_w},\\
+&\eq \sum_i x_iW_i,\\
+&\eq \frac{1}{\displaystyle\sum_i w_i^{} W_i^{-1}},\\
+&\eq W_w\frac{1+\sum_{l\ne w} m_l W_l}{1+W_w\sum_{l\ne w} m_l}.
+\EA
+\end{subequations}
+The inverse relation is obtained as
+\begin{subequations}
+\BA
+x_i &\eq \frac{n_i}{N} \eq \frac{n_i}{M_w}\frac{M_w}{M}\frac{M}{N},\\
+&\eq m_i w_w W \eq m_i x_w W_w,\\
+&\eq \frac{m_i W}{1+\displaystyle\sum_{l\ne w} m_l W_l},\\
+&\eq \frac{m_i W_w}{1+W_w\displaystyle\sum_{l\ne w} m_l},
+\EA
+\end{subequations}
+using the relations
+\EQ
+\frac{M}{M_w} \eq 1+\frac{1}{M_w}\sum_{l\ne w} M_l \eq 1+\frac{1}{M_w}\sum_{l\ne w} n_l W_l \eq 1+\sum_{l\ne w} m_l W_l.
+\EN
+
+\section{Multicomponent-Multiphase System}
+
+The composition of a multicomponent-multiphase system is described by mole numbers $n_k^\a$ and mass $M_k^\a$ of the $k$th species in phase $\a$. From these quantities mole and mass fractions $\{x_k^\a\}$ and $\{w_k^\a\}$, respectively, may be defined as
+\EQ
+x_k^\a \eq \frac{n_k^\a}{N_\a},
+\EN
+where
+\EQ
+N_\a \eq \sum_k n_k^\a,
+\EN
+and similarly
+\EQ
+w_k^\a \eq \frac{M_k^\a}{M_\a} \eq \frac{n_k^\a W_k}{M_\a},
+\EN
+for formula weight $W_k$, with
+\EQ
+M_\a\eq\sum_k M_k^\a.
+\EN
+The volume of each fluid phase $\a$ is presented by $V_\a$ satisfying
+\EQ
+V_\a \eq \sum_k n_k^\a \overline V_k^\a,
+\EN
+with molar volume $\overline V_k^\a$.
+
+For a control volume $V = V_p+V_s$, consisting of pore and solid volumes $V_p$ and $V_s$, respectively, the pore volume is equal to the sum of the fluid phase volumes
+\EQ
+V_p \eq \sum_\a V_\a,
+\EN
+with saturation $s_\a$
+\EQ
+s_\a\eq\frac{V_\a}{V_p}.
+\EN
+Fluid density for each phase $\a$ can be given as molar or mass densities $\eta_\a$ or $\rho_\a$, respectively. They are related by the average formula weight $W_\a$
+\EQ
+\rho_\a \eq \frac{M_\a}{V_\a} \eq \frac{M_\a}{N_\a}\frac{N_\a}{V_\a} \eq W_\a \eta_\a,
+\EN
+with
+\EQ
+W_\a \eq \sum_k x_k^\a W_k^{} \eq \frac{1}{\displaystyle\sum_k w_k^{} W_k^{-1}}.
+\EN
+The concentration of the $k$th species can be represented as
+\BA
+c_k^\a &\eq \frac{n_k^\a}{V} \eq \frac{n_k^\a}{N_\a}\frac{N_\a}{V_\a}\frac{V_\a}{V_p}\frac{V_p}{V},\\
+&\eq \varphi s_\a^{} \eta_\a^{} x_k^\a.
+\EA
+In terms of mass units
+\EQ
+W_k^{} c_k^\a \eq \varphi s_\a^{} \rho_\a^{} w_k^\a,
+\EN
+obtained by using the identity
+\EQ
+W_k^{} x_k^\a \eq W_\a^{} w_k^\a.
+\EN
+
+Consider a reaction network consisting of both homogeneous and heterogeneous reactions of the form
+\EQ
+\sum_j\nu_{ji}^{}\A_j^\a \arrows \A_i^\a,
+\EN
+and 
+\EQ
+\sum_j\nu_{ji}^{} \A_j^l \arrows \M_m^l.
+\EN
+The latter reaction corresponds to minerals reacting with an aqueous electrolyte solution.
+Mass and charge conservation implies
+\begin{subequations}
+\EQ
+W_i \eq \sum_j W_j \nu_{ji},
+\EN
+\EQ
+W_m \eq \sum_j W_j \nu_{jm},
+\EN
+\end{subequations}
+and
+\begin{subequations}
+\EQ
+z_i \eq \sum_j z_j \nu_{ji},
+\EN
+\EQ
+0 \eq \sum_j z_j \nu_{jm},
+\EN
+\end{subequations}
+for formula weight and charge, $W_k$, $z_k$ respectively, of the $k$th species. 
+
+Primary species flow and transport equations have the form
+\EQ
+\sum_\a\left\{\frac{\p}{\p t} \big(\varphi s_\a^{} \eta_\a^{} x_j^\a\big) + \bnabla\cdot\big(\bq_\a^{}\eta_\a^{} x_j^\a + \bJ_j^\a\big)\right\} \eq -\sum_{i\a}\nu_{ji}^{} I_i^\a - \sum_m \nu_{jm}^{} I_m^l,
+\EN
+and secondary species as
+\EQ
+\sum_\a\left\{\frac{\p}{\p t} \big(\varphi s_\a^{} \eta_\a^{} x_i^\a\big) + \bnabla\cdot\big(\bq_\a^{}\eta_\a^{} x_i^\a + \bJ_i^\a\big)\right\} \eq \sum_\a I_i^\a.
+\EN
+The diffusive flux $\bJ_k^\a$ is defined by
+\EQ
+\bJ_k^\a \eq -\varphi\tau_\a^{} s_\a^{} D_\a^{} \rho_\a^{} W_k^{-1}\bnabla w_k^\a,
+\EN
+and satisfies
+\EQ
+\sum_k W_k\bJ_k^\a \eq 0.
+\EN
+Eliminating the homogeneous reaction rates $I_i^\a$ gives the total primary species conservation equations
+\EQ
+\sum_\a\left\{\frac{\p}{\p t} \big(\varphi s_\a^{} \eta_\a^{} X_j^\a\big) + \bnabla\cdot\bOmega_j^\a\right\} \eq - \sum_m \nu_{jm}^{} I_m^l,
+\EN
+where
+\EQ
+X_j^\a \eq x_j^\a + \sum_i\nu_{ji}^{} x_i^\a,
+\EN
+and
+\EQ
+\bOmega_j^\a \eq \bq_\a^{} \eta_\a^{} X_j^\a + \bJ_j^\a + \sum_i\nu_{ji}^{}\bJ_i^\a.
+\EN
+
+These equations conserve mass ({\em not} moles!) as follows from the relation
+\begin{subequations}
+\BA
+\sum_j W_j^{} X_j^\a &\eq \sum_j W_j^{} x_j^\a + \sum_{ij} W_j^{} \nu_{ji}^{} x_i^\a,\\
+&\eq \sum_j W_j^{} x_j^\a + \sum_i W_i^{} x_i^\a,\\
+&\eq W_\a(x).
+\EA
+\end{subequations}
+Thus, using the relation $\rho_\a = W_\a\eta_\a$ between mass and molar density, it follows that
+\EQ\label{masscon}
+\sum_\a\left\{\frac{\p}{\p t} \big(\varphi s_\a^{} \rho_\a^{}\big) + \bnabla\cdot\big(\bq_\a^{} \rho_\a^{}\big)\right\} \eq - \sum_{jm} W_j^{} \nu_{jm}^{} I_m^l \eq -\sum_m W_m^{} I_m^l,
+\EN
+noting that by definition of diffusion there can be no net transfer of mass
+\EQ
+\sum_j W_j^{} \big(\bJ_j^\a + \sum_i\nu_{ji}^{}\bJ_i^\a\big) \eq 0.
+\EN
+
+\begin{comment}
+Introducing the total density $\rho=\sum_\a\theta_\a\rho_\a$ and mean velocity $\bq$ defined through the relation
+\EQ
+\rho \bq \eq \sum_\a \rho_\a \bq_\a,
+\EN
+Eqn.\eqref{masscon} becomes
+\EQ
+\frac{\p}{\p t} \sum_\a\big(\varphi s_\a^{} \rho_\a^{}\big) + \bnabla\cdot\big(\bq\rho\big) \eq - \sum_{jm} W_j^{} \nu_{jm}^{} I_m^l.
+\EN
+\end{comment}
+
+\section{Supercritical CO$_2$--H$_2$O Equilibrium (Duan \& Sun, 2003)}
 
 For an aqueous fluid in equilibrium with supercritical CO$_2$ it is necessary to use an equation of state for CO$_2$ to obtain the solubility of CO$_2$ in solution. The presentation follows Duan and Sun (2003). Equilibrium of supercritical CO$_2$ with an aqueous solution described by the reaction
 \EQ
@@ -2784,46 +3269,50 @@ implies equality of the chemical potentials
 \EN
 where
 \EQ
-\mu_\c^l \eq \mu_\c^{l\ominus} + \ln a_\c,
+\mu_\c^l \eq \mu_\c^{l\ominus} + \ln a_\c^{},
 \EN
 and
 \EQ
-\mu_\c^g \eq \mu_\c^{g\ominus} + \ln f_\c,
+\mu_\c^g \eq \mu_\c^{g\ominus} + \ln f_\c^{},
 \EN
 with standard state chemical potentials $\mu_\c^{\ominus l}$ and $\mu_\c^{\ominus g}$. The activity of $\c$ in solution is given by
 \EQ
-a_\c \eq \gamma_\c m_\c,
+a_\c^{} \eq \gamma_\c^{} m_\c^{},
 \EN
 and the fugacity is given by
 \EQ
-f_\c \eq \phi_\c P_\c,
+f_\c^{} \eq \phi_\c^{} P_\c^{} \eq \phi_\c^{} y_\c^g P_g^{},
 \EN
-with fugacity coefficient $\phi_\c$. 
-
-Introducing the equilibrium constant $K_\c$ defined as
+with fugacity coefficient $\phi_\c$ where the mole fraction of $\c$ in the supercritical (gas) phase, $y_\c^g$, is assumed to be given by
 \EQ
-K_\c \eq -\frac{1}{RT}\big(\mu_{\rm CO_2}^{g\ominus} - \mu_{\rm CO_2}^{l\ominus}\big),
-\EN
-yields the mass action equation
-\EQ\label{massactco2}
-K_\c \eq \frac{f_\c}{a_\c} \eq \frac{\phi_\c P_\c}{a_\c} \eq \frac{\phi_\c y_\c^g P_g}{a_\c},
-\EN
-where the mole fraction of $\c$ in the gas phase, $y_\c$, is assumed to be given by
-\EQ
-y_\c^g \eq \frac{P_\c^g}{P_g} \eq \frac{P_g-P_\w^{\rm sat}(T)}{P_g},
+y_\c^g \eq \frac{P_\c^g}{P_g} \eq \frac{P_g-P_\w^{\rm sat}(T)}{P_g} \eq 1-\frac{P_\w^{\rm sat}(T)}{P_g},
 \EN
 with total gas pressure $P_g$ equal to
 \EQ\label{totalp}
 P_g \eq P_\c^g + P_\w^{\rm sat}(T),
 \EN
-and where $P_\w^{\rm sat}(T)$ denotes the saturation pressure of pure water. Of the three quantities: $P_g$, $P_\c^g$, and $T$, two may be specified and the other computed from Eqn.\eqref{totalp}.
+and where $P_\w^{\rm sat}(T)$ denotes the saturation pressure of pure water. 
+
+Introducing the equilibrium constant $K_\c$ defined as
+\EQ
+\ln K_\c \eq -\frac{1}{RT}\big(\mu_{\rm CO_2}^{g\ominus} - \mu_{\rm CO_2}^{l\ominus}\big),
+\EN
+yields the mass action equation
+\EQ\label{massactco2}
+K_\c^{} \eq \frac{f_\c^{}}{a_\c^{}} \eq \frac{\phi_\c^{} P_\c^g}{a_\c} \eq \frac{\phi_\c^{} y_\c^g P_g^{}}{a_\c^{}}.
+\EN
+The equilibrium CO$_2$ molality is thus given by
+\EQ
+m_\c^{} \eq \frac{\phi_\c^{} y_\c^g}{\gamma_\c^{}K_\c^{}}  P_g^{}.
+\EN
+%Of the three quantities: $P_g$, $P_\c^g$, and $T$, two may be specified and the other computed from Eqn.\eqref{totalp}.
 
 Solving Eqn.\eqref{massactco2} for the $\c$ partial pressure gives
 \BA
 P_\c^g &\eq \frac{K_\c}{\phi_\c} a_\c,\\
 &\eq \widetilde K_\c a_\c,
 \EA
-where an effective equilibrium constant $\widetilde K_\c$ is defined as
+where the effective equilibrium constant $\widetilde K_\c$ is defined as
 \EQ
 \widetilde K_\c \eq \frac{K_\c}{\phi_\c}.
 \EN
@@ -2846,16 +3335,7 @@ C_\c^g &\eq \frac{n_i^g}{V_g} \eq \frac{n_i^g}{N_g}\frac{N_g}{V_g} \eq \rho_\c^{
 &\eq \rho_\c K_\c \frac{a_\c}{\phi_\c P_g}.
 \EA
 
-Weight $w_i$ and mole $x_i$ fractions are related by the expression
-\begin{subequations}
-\EQ
-x_i \eq \frac{w_i^{} W_i^{-1}}{\sum_l w_l^{} W_l^{-1}},
-\EN
-with the inverse relation
-\EQ
-w_i \eq \frac{x_i W_i}{\sum_l x_l W_l}.
-\EN
-\end{subequations}
+\chapter{Mechanical Coupling}
 
 \section{Stress-Strain 101}
 
@@ -3135,6 +3615,7 @@ c_{rT} \eq -\frac{1}{\varphi} \frac{\p \varphi}{\p T}.
 As defined, both quantities $c_{rp}$ and $c_{rT}$ are positive for normal materials.
 \end{comment}
 
+\chapter{Finite Volume Method}
 \section{Global Mass Conservation}
 
 \setcounter{equation}{0}

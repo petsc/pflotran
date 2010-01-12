@@ -173,11 +173,13 @@ PetscInt, parameter :: MINERAL_SURFACE_AREA = 26
 PetscInt, parameter :: PH = 27
 PetscInt, parameter :: SURFACE_CMPLX = 28
 PetscInt, parameter :: SURFACE_CMPLX_FREE = 29
-PetscInt, parameter :: PRIMARY_ACTIVITY_COEF = 30
-PetscInt, parameter :: SECONDARY_ACTIVITY_COEF = 31
-PetscInt, parameter :: SC_FUGA_COEFF = 32
-PetscInt, parameter :: PRIMARY_KD = 33
-PetscInt, parameter :: TOTAL_SORBED = 34
+PetscInt, parameter :: KIN_SURFACE_CMPLX = 30
+PetscInt, parameter :: KIN_SURFACE_CMPLX_FREE = 31
+PetscInt, parameter :: PRIMARY_ACTIVITY_COEF = 32
+PetscInt, parameter :: SECONDARY_ACTIVITY_COEF = 33
+PetscInt, parameter :: SC_FUGA_COEFF = 34
+PetscInt, parameter :: PRIMARY_KD = 35
+PetscInt, parameter :: TOTAL_SORBED = 36
 
 ! activity coefficients
 PetscInt, parameter :: ACT_COEF_FREQUENCY_OFF = 0

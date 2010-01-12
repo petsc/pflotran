@@ -131,10 +131,10 @@ subroutine THCSetupPatch(realization)
   grid => patch%grid
     
   patch%aux%THC => THCAuxCreate()
-  option%io_buffer = 'Before THC can be run, the thc_parameter object ' // &
-                     'must be initialized with the proper variables ' // &
-                     'THCAuxCreate() is called anyhwere.'
-  call printErrMsg(option)
+! option%io_buffer = 'Before THC can be run, the thc_parameter object ' // &
+!                    'must be initialized with the proper variables ' // &
+!                    'THCAuxCreate() is called anywhere.'
+! call printErrMsg(option)
     
   ! allocate aux_var data structures for all grid cells
   allocate(aux_vars(grid%ngmax))
@@ -2417,7 +2417,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     ip1 = zero_rows_local_ghosted(i)
     if (ii == 0) then
       ip2 = ip1-1
-    elseif (ii == option%nflowdof-1) then
+    else if (ii == option%nflowdof-1) then
       ip2 = ip1+1
     else
       ip2 = ip1

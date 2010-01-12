@@ -34,8 +34,8 @@ subroutine DatabaseRead(reaction,option)
   type(aq_species_type), pointer :: cur_aq_spec, cur_aq_spec2
   type(gas_species_type), pointer :: cur_gas_spec, cur_gas_spec2
   type(mineral_type), pointer :: cur_mineral, cur_mineral2
-  type(surface_complexation_rxn_type), pointer :: cur_surfcplx_rxn
-  type(surface_complex_type), pointer :: cur_surfcplx, cur_surfcplx2
+  type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
+  type(surface_complex_type), pointer :: cur_srfcplx, cur_srfcplx2
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: name
@@ -73,16 +73,16 @@ subroutine DatabaseRead(reaction,option)
     cur_mineral%id = -abs(cur_mineral%id)
     cur_mineral => cur_mineral%next
   enddo
-  cur_surfcplx_rxn => reaction%surface_complexation_rxn_list
+  cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
   do
-    if (.not.associated(cur_surfcplx_rxn)) exit
-    cur_surfcplx => cur_surfcplx_rxn%complex_list
+    if (.not.associated(cur_srfcplx_rxn)) exit
+    cur_srfcplx => cur_srfcplx_rxn%complex_list
     do  
-      if (.not.associated(cur_surfcplx)) exit
-      cur_surfcplx%id = -abs(cur_surfcplx%id)
-      cur_surfcplx => cur_surfcplx%next
+      if (.not.associated(cur_srfcplx)) exit
+      cur_srfcplx%id = -abs(cur_srfcplx%id)
+      cur_srfcplx => cur_srfcplx%next
     enddo
-    cur_surfcplx_rxn => cur_surfcplx_rxn%next
+    cur_srfcplx_rxn => cur_srfcplx_rxn%next
   enddo  
   
   if (len_trim(reaction%database_filename) < 2) then
@@ -162,28 +162,28 @@ subroutine DatabaseRead(reaction,option)
         
         if (num_nulls > 0) then ! secondary species in database
           ! create aqueous equilibrium reaction
-          if (.not.associated(cur_aq_spec%eqrxn)) &
-            cur_aq_spec%eqrxn => EquilibriumRxnCreate()
+          if (.not.associated(cur_aq_spec%dbaserxn)) &
+            cur_aq_spec%dbaserxn => DatabaseRxnCreate()
           ! read the number of primary species in secondary rxn
-          call InputReadInt(input,option,cur_aq_spec%eqrxn%nspec)
+          call InputReadInt(input,option,cur_aq_spec%dbaserxn%nspec)
           call InputErrorMsg(input,option,'Number of species in aqueous complex', &
                           'DATABASE')  
           ! allocate arrays for rxn
-          allocate(cur_aq_spec%eqrxn%spec_name(cur_aq_spec%eqrxn%nspec))
-          cur_aq_spec%eqrxn%spec_name = ''
-          allocate(cur_aq_spec%eqrxn%stoich(cur_aq_spec%eqrxn%nspec))
-          cur_aq_spec%eqrxn%stoich = 0.d0
-          allocate(cur_aq_spec%eqrxn%logK(reaction%num_dbase_temperatures))
-          cur_aq_spec%eqrxn%logK = 0.d0
+          allocate(cur_aq_spec%dbaserxn%spec_name(cur_aq_spec%dbaserxn%nspec))
+          cur_aq_spec%dbaserxn%spec_name = ''
+          allocate(cur_aq_spec%dbaserxn%stoich(cur_aq_spec%dbaserxn%nspec))
+          cur_aq_spec%dbaserxn%stoich = 0.d0
+          allocate(cur_aq_spec%dbaserxn%logK(reaction%num_dbase_temperatures))
+          cur_aq_spec%dbaserxn%logK = 0.d0
           ! read in species and stoichiometries
-          do ispec = 1, cur_aq_spec%eqrxn%nspec
-            call InputReadDouble(input,option,cur_aq_spec%eqrxn%stoich(ispec))
+          do ispec = 1, cur_aq_spec%dbaserxn%nspec
+            call InputReadDouble(input,option,cur_aq_spec%dbaserxn%stoich(ispec))
             call InputErrorMsg(input,option,'EQRXN species stoichiometry','DATABASE')            
-            call InputReadQuotedWord(input,option,cur_aq_spec%eqrxn%spec_name(ispec),PETSC_TRUE)
+            call InputReadQuotedWord(input,option,cur_aq_spec%dbaserxn%spec_name(ispec),PETSC_TRUE)
             call InputErrorMsg(input,option,'EQRXN species name','DATABASE')            
           enddo
           do itemp = 1, reaction%num_dbase_temperatures
-            call InputReadDouble(input,option,cur_aq_spec%eqrxn%logK(itemp))
+            call InputReadDouble(input,option,cur_aq_spec%dbaserxn%logK(itemp))
             call InputErrorMsg(input,option,'EQRXN logKs','DATABASE')            
           enddo
         endif 
@@ -221,28 +221,28 @@ subroutine DatabaseRead(reaction,option)
         ! convert from cm^3/mol to m^3/mol
         cur_gas_spec%molar_volume = cur_gas_spec%molar_volume*1.d-6
         ! create aqueous equilibrium reaction
-        if (.not.associated(cur_gas_spec%eqrxn)) &
-          cur_gas_spec%eqrxn => EquilibriumRxnCreate()
+        if (.not.associated(cur_gas_spec%dbaserxn)) &
+          cur_gas_spec%dbaserxn => DatabaseRxnCreate()
         ! read the number of aqueous species in secondary rxn
-        call InputReadInt(input,option,cur_gas_spec%eqrxn%nspec)
+        call InputReadInt(input,option,cur_gas_spec%dbaserxn%nspec)
         call InputErrorMsg(input,option,'Number of species in gas reaction', &
                         'DATABASE')  
         ! allocate arrays for rxn
-        allocate(cur_gas_spec%eqrxn%spec_name(cur_gas_spec%eqrxn%nspec))
-        cur_gas_spec%eqrxn%spec_name = ''
-        allocate(cur_gas_spec%eqrxn%stoich(cur_gas_spec%eqrxn%nspec))
-        cur_gas_spec%eqrxn%stoich = 0.d0
-        allocate(cur_gas_spec%eqrxn%logK(reaction%num_dbase_temperatures))
-        cur_gas_spec%eqrxn%logK = 0.d0
+        allocate(cur_gas_spec%dbaserxn%spec_name(cur_gas_spec%dbaserxn%nspec))
+        cur_gas_spec%dbaserxn%spec_name = ''
+        allocate(cur_gas_spec%dbaserxn%stoich(cur_gas_spec%dbaserxn%nspec))
+        cur_gas_spec%dbaserxn%stoich = 0.d0
+        allocate(cur_gas_spec%dbaserxn%logK(reaction%num_dbase_temperatures))
+        cur_gas_spec%dbaserxn%logK = 0.d0
         ! read in species and stoichiometries
-        do ispec = 1, cur_gas_spec%eqrxn%nspec
-          call InputReadDouble(input,option,cur_gas_spec%eqrxn%stoich(ispec))
+        do ispec = 1, cur_gas_spec%dbaserxn%nspec
+          call InputReadDouble(input,option,cur_gas_spec%dbaserxn%stoich(ispec))
           call InputErrorMsg(input,option,'GAS species stoichiometry','DATABASE')            
-          call InputReadQuotedWord(input,option,cur_gas_spec%eqrxn%spec_name(ispec),PETSC_TRUE)
+          call InputReadQuotedWord(input,option,cur_gas_spec%dbaserxn%spec_name(ispec),PETSC_TRUE)
           call InputErrorMsg(input,option,'GAS species name','DATABASE')            
         enddo
         do itemp = 1, reaction%num_dbase_temperatures
-          call InputReadDouble(input,option,cur_gas_spec%eqrxn%logK(itemp))
+          call InputReadDouble(input,option,cur_gas_spec%dbaserxn%logK(itemp))
           call InputErrorMsg(input,option,'GAS logKs','DATABASE')            
         enddo
         ! read the molar weight
@@ -273,28 +273,30 @@ subroutine DatabaseRead(reaction,option)
         ! convert from cm^3/mol to m^3/mol
         cur_mineral%molar_volume = cur_mineral%molar_volume*1.d-6
         ! create mineral reaction
-        if (.not.associated(cur_mineral%tstrxn)) &
+        if (.not.associated(cur_mineral%tstrxn)) then
           cur_mineral%tstrxn => TransitionStateTheoryRxnCreate()
+        endif
         ! read the number of aqueous species in mineral rxn
-        call InputReadInt(input,option,cur_mineral%tstrxn%nspec)
+        call InputReadInt(input,option,cur_mineral%tstrxn%dbaserxn%nspec)
         call InputErrorMsg(input,option,'Number of species in mineral reaction', &
                         'DATABASE')  
         ! allocate arrays for rxn
-        allocate(cur_mineral%tstrxn%spec_name(cur_mineral%tstrxn%nspec))
-        cur_mineral%tstrxn%spec_name = ''
-        allocate(cur_mineral%tstrxn%stoich(cur_mineral%tstrxn%nspec))
-        cur_mineral%tstrxn%stoich = 0.d0
-        allocate(cur_mineral%tstrxn%logK(reaction%num_dbase_temperatures))
-        cur_mineral%tstrxn%logK = 0.d0
+        allocate(cur_mineral%tstrxn%dbaserxn%spec_name(cur_mineral%tstrxn%dbaserxn%nspec))
+        cur_mineral%tstrxn%dbaserxn%spec_name = ''
+        allocate(cur_mineral%tstrxn%dbaserxn%stoich(cur_mineral%tstrxn%dbaserxn%nspec))
+        cur_mineral%tstrxn%dbaserxn%stoich = 0.d0
+        allocate(cur_mineral%tstrxn%dbaserxn%logK(reaction%num_dbase_temperatures))
+        cur_mineral%tstrxn%dbaserxn%logK = 0.d0
         ! read in species and stoichiometries
-        do ispec = 1, cur_mineral%tstrxn%nspec
-          call InputReadDouble(input,option,cur_mineral%tstrxn%stoich(ispec))
+        do ispec = 1, cur_mineral%tstrxn%dbaserxn%nspec
+          call InputReadDouble(input,option,cur_mineral%tstrxn%dbaserxn%stoich(ispec))
           call InputErrorMsg(input,option,'MINERAL species stoichiometry','DATABASE')            
-          call InputReadQuotedWord(input,option,cur_mineral%tstrxn%spec_name(ispec),PETSC_TRUE)
+          call InputReadQuotedWord(input,option,cur_mineral%tstrxn%dbaserxn% &
+                                   spec_name(ispec),PETSC_TRUE)
           call InputErrorMsg(input,option,'MINERAL species name','DATABASE')            
         enddo
         do itemp = 1, reaction%num_dbase_temperatures
-          call InputReadDouble(input,option,cur_mineral%tstrxn%logK(itemp))
+          call InputReadDouble(input,option,cur_mineral%tstrxn%dbaserxn%logK(itemp))
           call InputErrorMsg(input,option,'MINERAL logKs','DATABASE')            
         enddo
         ! read the molar weight
@@ -303,73 +305,73 @@ subroutine DatabaseRead(reaction,option)
         
         
       case(4) ! surface complexes
-        cur_surfcplx_rxn => reaction%surface_complexation_rxn_list
+        cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
         found = PETSC_FALSE
         do
-          if (.not.associated(cur_surfcplx_rxn)) exit
-          cur_surfcplx => cur_surfcplx_rxn%complex_list
+          if (.not.associated(cur_srfcplx_rxn)) exit
+          cur_srfcplx => cur_srfcplx_rxn%complex_list
           do
-            if (.not.associated(cur_surfcplx)) exit
-            if (StringCompare(name,cur_surfcplx%name,MAXWORDLENGTH)) then
+            if (.not.associated(cur_srfcplx)) exit
+            if (StringCompare(name,cur_srfcplx%name,MAXWORDLENGTH)) then
               found = PETSC_TRUE          
             ! change negative id to positive, indicating it was found in database
-              cur_surfcplx%id = abs(cur_surfcplx%id)
+              cur_srfcplx%id = abs(cur_srfcplx%id)
               exit
             endif
-            cur_surfcplx => cur_surfcplx%next
+            cur_srfcplx => cur_srfcplx%next
           enddo
           if (found) exit
-          cur_surfcplx_rxn => cur_surfcplx_rxn%next
+          cur_srfcplx_rxn => cur_srfcplx_rxn%next
         enddo
         
         if (.not.found) cycle ! go to next line in database
 
-        if (.not.associated(cur_surfcplx%eqrxn)) &
-          cur_surfcplx%eqrxn => EquilibriumRxnCreate()
+        if (.not.associated(cur_srfcplx%dbaserxn)) &
+          cur_srfcplx%dbaserxn => DatabaseRxnCreate()
             
         ! read the number of aqueous species in surface complexation rxn
-        call InputReadInt(input,option,cur_surfcplx%eqrxn%nspec)
+        call InputReadInt(input,option,cur_srfcplx%dbaserxn%nspec)
         call InputErrorMsg(input,option,'Number of species in surface complexation reaction', &
                         'DATABASE')  
         ! decrement number of species since free site will not be included
-        cur_surfcplx%eqrxn%nspec = cur_surfcplx%eqrxn%nspec - 1
+        cur_srfcplx%dbaserxn%nspec = cur_srfcplx%dbaserxn%nspec - 1
         ! allocate arrays for rxn
-        allocate(cur_surfcplx%eqrxn%spec_name(cur_surfcplx%eqrxn%nspec))
-        cur_surfcplx%eqrxn%spec_name = ''
-        allocate(cur_surfcplx%eqrxn%stoich(cur_surfcplx%eqrxn%nspec))
-        cur_surfcplx%eqrxn%stoich = 0.d0
-        allocate(cur_surfcplx%eqrxn%logK(reaction%num_dbase_temperatures))
-        cur_surfcplx%eqrxn%logK = 0.d0
+        allocate(cur_srfcplx%dbaserxn%spec_name(cur_srfcplx%dbaserxn%nspec))
+        cur_srfcplx%dbaserxn%spec_name = ''
+        allocate(cur_srfcplx%dbaserxn%stoich(cur_srfcplx%dbaserxn%nspec))
+        cur_srfcplx%dbaserxn%stoich = 0.d0
+        allocate(cur_srfcplx%dbaserxn%logK(reaction%num_dbase_temperatures))
+        cur_srfcplx%dbaserxn%logK = 0.d0
         ! read in species and stoichiometries
         ispec = 0
         found = PETSC_FALSE
-        do i = 1, cur_surfcplx%eqrxn%nspec+1 ! recall that nspec was decremented above
+        do i = 1, cur_srfcplx%dbaserxn%nspec+1 ! recall that nspec was decremented above
           call InputReadDouble(input,option,stoich)
           call InputErrorMsg(input,option,'SURFACE COMPLEX species stoichiometry','DATABASE')            
           call InputReadQuotedWord(input,option,name,PETSC_TRUE)
           call InputErrorMsg(input,option,'SURFACE COMPLEX species name','DATABASE')            
-          if (StringCompare(name,cur_surfcplx_rxn%free_site_name,MAXWORDLENGTH)) then
+          if (StringCompare(name,cur_srfcplx_rxn%free_site_name,MAXWORDLENGTH)) then
             found = PETSC_TRUE
-            cur_surfcplx%free_site_stoich = stoich
+            cur_srfcplx%free_site_stoich = stoich
           else
             ispec = ispec + 1
-            cur_surfcplx%eqrxn%stoich(ispec) = stoich
-            cur_surfcplx%eqrxn%spec_name(ispec) = name
+            cur_srfcplx%dbaserxn%stoich(ispec) = stoich
+            cur_srfcplx%dbaserxn%spec_name(ispec) = name
           endif
         enddo
         if (.not.found) then
           option%io_buffer = 'Free site name: ' // &
-                             trim(cur_surfcplx_rxn%free_site_name) // &
+                             trim(cur_srfcplx_rxn%free_site_name) // &
                              ' not found in surface complex:' // &
-                             trim(cur_surfcplx%name)
+                             trim(cur_srfcplx%name)
           call printErrMsg(option)
         endif
         do itemp = 1, reaction%num_dbase_temperatures
-          call InputReadDouble(input,option,cur_surfcplx%eqrxn%logK(itemp))
+          call InputReadDouble(input,option,cur_srfcplx%dbaserxn%logK(itemp))
           call InputErrorMsg(input,option,'SURFACE COMPLEX logKs','DATABASE')            
         enddo
         ! read the valence
-        call InputReadDouble(input,option,cur_surfcplx%Z)
+        call InputReadDouble(input,option,cur_srfcplx%Z)
         call InputErrorMsg(input,option,'Surface Complex Z','DATABASE')            
 
       
@@ -516,29 +518,29 @@ subroutine DatabaseRead(reaction,option)
   enddo
   
   ! surface complexes
-  cur_surfcplx_rxn => reaction%surface_complexation_rxn_list
+  cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
   do
-    if (.not.associated(cur_surfcplx_rxn)) exit
-    cur_surfcplx => cur_surfcplx_rxn%complex_list
+    if (.not.associated(cur_srfcplx_rxn)) exit
+    cur_srfcplx => cur_srfcplx_rxn%complex_list
     do
-      if (.not.associated(cur_surfcplx)) exit
-      cur_surfcplx2 => cur_surfcplx%next
+      if (.not.associated(cur_srfcplx)) exit
+      cur_srfcplx2 => cur_srfcplx%next
       do
-        if (.not.associated(cur_surfcplx2)) exit
-        if (cur_surfcplx%id /= cur_surfcplx2%id .and. &
-            StringCompare(cur_surfcplx%name, &
-                            cur_surfcplx2%name,MAXWORDLENGTH)) then
+        if (.not.associated(cur_srfcplx2)) exit
+        if (cur_srfcplx%id /= cur_srfcplx2%id .and. &
+            StringCompare(cur_srfcplx%name, &
+                            cur_srfcplx2%name,MAXWORDLENGTH)) then
           flag = PETSC_TRUE
           option%io_buffer = 'Surface complex (' // &
-                             trim(cur_surfcplx2%name) // &
+                             trim(cur_srfcplx2%name) // &
                       ') duplicated in input file surface complex reaction.'
           call printMsg(option)                          
         endif
-        cur_surfcplx2 => cur_surfcplx2%next
+        cur_srfcplx2 => cur_srfcplx2%next
       enddo
-      cur_surfcplx => cur_surfcplx%next
+      cur_srfcplx => cur_srfcplx%next
     enddo
-    cur_surfcplx_rxn => cur_surfcplx_rxn%next
+    cur_srfcplx_rxn => cur_srfcplx_rxn%next
   enddo  
   
   if (flag) call printErrMsg(option,'Species duplicated in input file.')
@@ -591,21 +593,21 @@ subroutine DatabaseRead(reaction,option)
     endif
     cur_mineral => cur_mineral%next
   enddo
-  cur_surfcplx_rxn => reaction%surface_complexation_rxn_list
+  cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
   do
-    if (.not.associated(cur_surfcplx_rxn)) exit
-    cur_surfcplx => cur_surfcplx_rxn%complex_list
+    if (.not.associated(cur_srfcplx_rxn)) exit
+    cur_srfcplx => cur_srfcplx_rxn%complex_list
     do
-      if (.not.associated(cur_surfcplx)) exit
-      if (cur_surfcplx%id < 0) then
+      if (.not.associated(cur_srfcplx)) exit
+      if (cur_srfcplx%id < 0) then
         flag = PETSC_TRUE
-        option%io_buffer = 'Surface species (' // trim(cur_surfcplx%name) // &
+        option%io_buffer = 'Surface species (' // trim(cur_srfcplx%name) // &
                  ') not found in database.'
         call printMsg(option)
       endif
-      cur_surfcplx => cur_surfcplx%next
+      cur_srfcplx => cur_srfcplx%next
     enddo  
-    cur_surfcplx_rxn => cur_surfcplx_rxn%next
+    cur_srfcplx_rxn => cur_srfcplx_rxn%next
   enddo 
     
   if (flag) call printErrMsg(option,'Species not found in database.')
@@ -641,9 +643,9 @@ subroutine BasisInit(reaction,option)
   type(aq_species_type), pointer :: cur_sec_aq_spec2
   type(gas_species_type), pointer :: cur_gas_spec1
   type(gas_species_type), pointer :: cur_gas_spec2
-  type(surface_complexation_rxn_type), pointer :: cur_surfcplx_rxn
-  type(surface_complex_type), pointer :: cur_surfcplx
-  type(surface_complex_type), pointer :: cur_surfcplx2
+  type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
+  type(surface_complex_type), pointer :: cur_srfcplx
+  type(surface_complex_type), pointer :: cur_srfcplx2
   type(ion_exchange_rxn_type), pointer :: cur_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cur_cation
   
@@ -676,7 +678,7 @@ subroutine BasisInit(reaction,option)
   PetscInt :: i, j, irow, icol
   PetscInt :: ipri_spec, isec_spec, imnrl, igas_spec, ikinmnrl
   PetscInt :: i_old, i_new
-  PetscInt :: isurfcplx, irxn
+  PetscInt :: isrfcplx, irxn
   PetscInt :: ication
   PetscInt :: idum
   PetscReal :: temp_high, temp_low
@@ -805,13 +807,13 @@ subroutine BasisInit(reaction,option)
   endif
 
   reaction%ncomp = GetPrimarySpeciesCount(reaction)
-  reaction%neqcmplx = GetSecondarySpeciesCount(reaction)
+  reaction%neqcplx = GetSecondarySpeciesCount(reaction)
   reaction%ngas = GetGasCount(reaction)
 
   ! account for H2O in the basis by adding 1
   ncomp_h2o = reaction%ncomp+1
   
-  allocate(old_basis_names(ncomp_h2o+reaction%neqcmplx))
+  allocate(old_basis_names(ncomp_h2o+reaction%neqcplx))
   allocate(new_basis_names(ncomp_h2o))
   old_basis_names = ''
   new_basis_names = ''
@@ -821,14 +823,14 @@ subroutine BasisInit(reaction,option)
   !--------------------------------------------
 #if 1 
 
-  ncomp_secondary = reaction%neqcmplx+reaction%ngas
+  ncomp_secondary = reaction%neqcplx+reaction%ngas
   allocate(pri_matrix(ncomp_secondary,ncomp_h2o))
   pri_matrix = 0.d0
   allocate(pri_names(ncomp_h2o))
   pri_names = ''
   allocate(sec_matrix(ncomp_secondary,ncomp_secondary))
   sec_matrix = 0.d0
-  allocate(sec_names(reaction%neqcmplx))
+  allocate(sec_names(reaction%neqcplx))
   sec_names = ''
   allocate(gas_names(reaction%ngas))
   gas_names = ''
@@ -868,9 +870,9 @@ subroutine BasisInit(reaction,option)
   cur_pri_aq_spec => reaction%primary_species_list
   do
     if (.not.associated(cur_pri_aq_spec)) exit
-    if (associated(cur_pri_aq_spec%eqrxn)) then
+    if (associated(cur_pri_aq_spec%dbaserxn)) then
       icount = icount + 1
-      logKvector(:,icount) = cur_pri_aq_spec%eqrxn%logK
+      logKvector(:,icount) = cur_pri_aq_spec%dbaserxn%logK
       i = GetSpeciesBasisID(reaction,option,ncomp_h2o, &
                             cur_pri_aq_spec%name, &
                             cur_pri_aq_spec%name, &
@@ -882,15 +884,15 @@ subroutine BasisInit(reaction,option)
         call printErrMsg(option)
       endif
       pri_matrix(icount,i) = -1.d0
-      do ispec=1,cur_pri_aq_spec%eqrxn%nspec
+      do ispec=1,cur_pri_aq_spec%dbaserxn%nspec
         i = GetSpeciesBasisID(reaction,option,ncomp_h2o, &
                               cur_pri_aq_spec%name, &
-                              cur_pri_aq_spec%eqrxn%spec_name(ispec), &
+                              cur_pri_aq_spec%dbaserxn%spec_name(ispec), &
                               pri_names,sec_names,gas_names)
         if (i > 0) then
-          pri_matrix(icount,i) = cur_pri_aq_spec%eqrxn%stoich(ispec)
+          pri_matrix(icount,i) = cur_pri_aq_spec%dbaserxn%stoich(ispec)
         else
-          sec_matrix(icount,-i) = cur_pri_aq_spec%eqrxn%stoich(ispec)
+          sec_matrix(icount,-i) = cur_pri_aq_spec%dbaserxn%stoich(ispec)
         endif
       enddo
     endif
@@ -900,9 +902,9 @@ subroutine BasisInit(reaction,option)
   cur_sec_aq_spec => reaction%secondary_species_list
   do
     if (.not.associated(cur_sec_aq_spec)) exit
-    if (associated(cur_sec_aq_spec%eqrxn)) then
+    if (associated(cur_sec_aq_spec%dbaserxn)) then
       icount = icount + 1
-      logKvector(:,icount) = cur_sec_aq_spec%eqrxn%logK
+      logKvector(:,icount) = cur_sec_aq_spec%dbaserxn%logK
       i = GetSpeciesBasisID(reaction,option,ncomp_h2o, &
                             cur_sec_aq_spec%name, &
                             cur_sec_aq_spec%name, &
@@ -914,15 +916,15 @@ subroutine BasisInit(reaction,option)
         call printErrMsg(option)
       endif
       sec_matrix(icount,-i) = -1.d0
-      do ispec=1,cur_sec_aq_spec%eqrxn%nspec
+      do ispec=1,cur_sec_aq_spec%dbaserxn%nspec
         i = GetSpeciesBasisID(reaction,option,ncomp_h2o, &
                               cur_sec_aq_spec%name, &
-                              cur_sec_aq_spec%eqrxn%spec_name(ispec), &
+                              cur_sec_aq_spec%dbaserxn%spec_name(ispec), &
                               pri_names,sec_names,gas_names)
         if (i > 0) then
-          pri_matrix(icount,i) = cur_sec_aq_spec%eqrxn%stoich(ispec)
+          pri_matrix(icount,i) = cur_sec_aq_spec%dbaserxn%stoich(ispec)
         else
-          sec_matrix(icount,-i) = cur_sec_aq_spec%eqrxn%stoich(ispec)
+          sec_matrix(icount,-i) = cur_sec_aq_spec%dbaserxn%stoich(ispec)
         endif
       enddo
     endif
@@ -932,9 +934,9 @@ subroutine BasisInit(reaction,option)
   cur_gas_spec => reaction%gas_species_list
   do
     if (.not.associated(cur_gas_spec)) exit
-    if (associated(cur_gas_spec%eqrxn)) then
+    if (associated(cur_gas_spec%dbaserxn)) then
       icount = icount + 1
-      logKvector(:,icount) = cur_gas_spec%eqrxn%logK
+      logKvector(:,icount) = cur_gas_spec%dbaserxn%logK
       i = GetSpeciesBasisID(reaction,option,ncomp_h2o, &
                             cur_gas_spec%name, &
                             cur_gas_spec%name, &
@@ -946,22 +948,22 @@ subroutine BasisInit(reaction,option)
         call printErrMsg(option)
       endif
       sec_matrix(icount,-i) = -1.d0
-      do ispec=1,cur_gas_spec%eqrxn%nspec
+      do ispec=1,cur_gas_spec%dbaserxn%nspec
         i = GetSpeciesBasisID(reaction,option,ncomp_h2o, &
                               cur_gas_spec%name, &
-                              cur_gas_spec%eqrxn%spec_name(ispec), &
+                              cur_gas_spec%dbaserxn%spec_name(ispec), &
                               pri_names,sec_names,gas_names)
         if (i > 0) then
-          pri_matrix(icount,i) = cur_gas_spec%eqrxn%stoich(ispec)
+          pri_matrix(icount,i) = cur_gas_spec%dbaserxn%stoich(ispec)
         else
-          sec_matrix(icount,-i) = cur_gas_spec%eqrxn%stoich(ispec)
+          sec_matrix(icount,-i) = cur_gas_spec%dbaserxn%stoich(ispec)
         endif
       enddo
     endif
     cur_gas_spec => cur_gas_spec%next
   enddo
 
-  ncomp_secondary = reaction%neqcmplx+reaction%ngas
+  ncomp_secondary = reaction%neqcplx+reaction%ngas
   allocate(indices(ncomp_secondary))
   indices = 0
   allocate(unit_vector(ncomp_secondary))
@@ -1011,8 +1013,8 @@ subroutine BasisInit(reaction,option)
   cur_pri_aq_spec => reaction%primary_species_list
   do
     if (.not.associated(cur_pri_aq_spec)) exit
-    if (associated(cur_pri_aq_spec%eqrxn)) then
-      call EquilibriumRxnDestroy(cur_pri_aq_spec%eqrxn)
+    if (associated(cur_pri_aq_spec%dbaserxn)) then
+      call DatabaseRxnDestroy(cur_pri_aq_spec%dbaserxn)
     endif
     cur_pri_aq_spec => cur_pri_aq_spec%next
   enddo
@@ -1023,38 +1025,38 @@ subroutine BasisInit(reaction,option)
     if (.not.associated(cur_sec_aq_spec)) exit
     icount = icount + 1
     ! destory old reaction
-    call EquilibriumRxnDestroy(cur_sec_aq_spec%eqrxn)
+    call DatabaseRxnDestroy(cur_sec_aq_spec%dbaserxn)
     ! allocate new
-    cur_sec_aq_spec%eqrxn => EquilibriumRxnCreate()
+    cur_sec_aq_spec%dbaserxn => DatabaseRxnCreate()
 
     ! count # of species in reaction
     icount2 = 0
     do icol = 1, ncomp_h2o
       if (dabs(stoich_matrix(icount,icol)) > 1.d-40) then
-        cur_sec_aq_spec%eqrxn%nspec = cur_sec_aq_spec%eqrxn%nspec + 1
+        cur_sec_aq_spec%dbaserxn%nspec = cur_sec_aq_spec%dbaserxn%nspec + 1
       endif
     enddo
     
-    allocate(cur_sec_aq_spec%eqrxn%stoich(cur_sec_aq_spec%eqrxn%nspec))
-    cur_sec_aq_spec%eqrxn%stoich = 0.d0
-    allocate(cur_sec_aq_spec%eqrxn%spec_name(cur_sec_aq_spec%eqrxn%nspec))
-    cur_sec_aq_spec%eqrxn%spec_name = ''
-    allocate(cur_sec_aq_spec%eqrxn%spec_ids(cur_sec_aq_spec%eqrxn%nspec))
-    cur_sec_aq_spec%eqrxn%spec_ids = 0
-    allocate(cur_sec_aq_spec%eqrxn%logK(reaction%num_dbase_temperatures))
-    cur_sec_aq_spec%eqrxn%logK = 0.d0
+    allocate(cur_sec_aq_spec%dbaserxn%stoich(cur_sec_aq_spec%dbaserxn%nspec))
+    cur_sec_aq_spec%dbaserxn%stoich = 0.d0
+    allocate(cur_sec_aq_spec%dbaserxn%spec_name(cur_sec_aq_spec%dbaserxn%nspec))
+    cur_sec_aq_spec%dbaserxn%spec_name = ''
+    allocate(cur_sec_aq_spec%dbaserxn%spec_ids(cur_sec_aq_spec%dbaserxn%nspec))
+    cur_sec_aq_spec%dbaserxn%spec_ids = 0
+    allocate(cur_sec_aq_spec%dbaserxn%logK(reaction%num_dbase_temperatures))
+    cur_sec_aq_spec%dbaserxn%logK = 0.d0
 
     ispec = 0
     do icol = 1, ncomp_h2o
       if (dabs(stoich_matrix(icount,icol)) > 1.d-40) then
         ispec = ispec + 1
-        cur_sec_aq_spec%eqrxn%spec_name(ispec) = pri_names(icol)
-        cur_sec_aq_spec%eqrxn%stoich(ispec) = stoich_matrix(icount,icol)
-        cur_sec_aq_spec%eqrxn%spec_ids(ispec) = icol
+        cur_sec_aq_spec%dbaserxn%spec_name(ispec) = pri_names(icol)
+        cur_sec_aq_spec%dbaserxn%stoich(ispec) = stoich_matrix(icount,icol)
+        cur_sec_aq_spec%dbaserxn%spec_ids(ispec) = icol
       endif
     enddo
 
-    cur_sec_aq_spec%eqrxn%logK = logKvector_swapped(:,icount)
+    cur_sec_aq_spec%dbaserxn%logK = logKvector_swapped(:,icount)
 
     cur_sec_aq_spec => cur_sec_aq_spec%next
   enddo
@@ -1064,38 +1066,38 @@ subroutine BasisInit(reaction,option)
     if (.not.associated(cur_gas_spec)) exit
     icount = icount + 1
     ! destory old reaction
-    call EquilibriumRxnDestroy(cur_gas_spec%eqrxn)
+    call DatabaseRxnDestroy(cur_gas_spec%dbaserxn)
     ! allocate new
-    cur_gas_spec%eqrxn => EquilibriumRxnCreate()
+    cur_gas_spec%dbaserxn => DatabaseRxnCreate()
 
     ! count # of species in reaction
     icount2 = 0
     do icol = 1, ncomp_h2o
       if (dabs(stoich_matrix(icount,icol)) > 1.d-40) then
-        cur_gas_spec%eqrxn%nspec = cur_gas_spec%eqrxn%nspec + 1
+        cur_gas_spec%dbaserxn%nspec = cur_gas_spec%dbaserxn%nspec + 1
       endif
     enddo
     
-    allocate(cur_gas_spec%eqrxn%stoich(cur_gas_spec%eqrxn%nspec))
-    cur_gas_spec%eqrxn%stoich = 0.d0
-    allocate(cur_gas_spec%eqrxn%spec_name(cur_gas_spec%eqrxn%nspec))
-    cur_gas_spec%eqrxn%spec_name = ''
-    allocate(cur_gas_spec%eqrxn%spec_ids(cur_gas_spec%eqrxn%nspec))
-    cur_gas_spec%eqrxn%spec_ids = 0
-    allocate(cur_gas_spec%eqrxn%logK(reaction%num_dbase_temperatures))
-    cur_gas_spec%eqrxn%logK = 0.d0
+    allocate(cur_gas_spec%dbaserxn%stoich(cur_gas_spec%dbaserxn%nspec))
+    cur_gas_spec%dbaserxn%stoich = 0.d0
+    allocate(cur_gas_spec%dbaserxn%spec_name(cur_gas_spec%dbaserxn%nspec))
+    cur_gas_spec%dbaserxn%spec_name = ''
+    allocate(cur_gas_spec%dbaserxn%spec_ids(cur_gas_spec%dbaserxn%nspec))
+    cur_gas_spec%dbaserxn%spec_ids = 0
+    allocate(cur_gas_spec%dbaserxn%logK(reaction%num_dbase_temperatures))
+    cur_gas_spec%dbaserxn%logK = 0.d0
 
     ispec = 0
     do icol = 1, ncomp_h2o
       if (dabs(stoich_matrix(icount,icol)) > 1.d-40) then
         ispec = ispec + 1
-        cur_gas_spec%eqrxn%spec_name(ispec) = pri_names(icol)
-        cur_gas_spec%eqrxn%stoich(ispec) = stoich_matrix(icount,icol)
-        cur_gas_spec%eqrxn%spec_ids(ispec) = icol
+        cur_gas_spec%dbaserxn%spec_name(ispec) = pri_names(icol)
+        cur_gas_spec%dbaserxn%stoich(ispec) = stoich_matrix(icount,icol)
+        cur_gas_spec%dbaserxn%spec_ids(ispec) = icol
       endif
     enddo
 
-    cur_gas_spec%eqrxn%logK = logKvector_swapped(:,icount)
+    cur_gas_spec%dbaserxn%logK = logKvector_swapped(:,icount)
 
     cur_gas_spec => cur_gas_spec%next
   enddo
@@ -1112,8 +1114,8 @@ subroutine BasisInit(reaction,option)
   nullify(cur_sec_aq_spec)
   nullify(cur_gas_spec)
   nullify(cur_mineral)
-  nullify(cur_surfcplx_rxn)
-  nullify(cur_surfcplx)
+  nullify(cur_srfcplx_rxn)
+  nullify(cur_srfcplx)
     
   ! first off, lets remove all the secondary gases from all other reactions
   cur_gas_spec => reaction%gas_species_list
@@ -1128,12 +1130,12 @@ subroutine BasisInit(reaction,option)
       if (associated(cur_mineral%tstrxn)) then
         ispec = 1
         do
-          if (ispec > cur_mineral%tstrxn%nspec) exit
+          if (ispec > cur_mineral%tstrxn%dbaserxn%nspec) exit
           if (StringCompare(cur_gas_spec%name, &
-                              cur_mineral%tstrxn%spec_name(ispec), &
+                              cur_mineral%tstrxn%dbaserxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInMineralRxn(cur_gas_spec%name, &
-                                             cur_gas_spec%eqrxn, &
+                                             cur_gas_spec%dbaserxn, &
                                              cur_mineral%tstrxn)
             ispec = 0
           endif
@@ -1145,34 +1147,34 @@ subroutine BasisInit(reaction,option)
     nullify(cur_mineral)
 
     ! gases in surface complex reactions
-    cur_surfcplx_rxn => reaction%surface_complexation_rxn_list
+    cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
     do
-      if (.not.associated(cur_surfcplx_rxn)) exit
-      cur_surfcplx2 => cur_surfcplx_rxn%complex_list
+      if (.not.associated(cur_srfcplx_rxn)) exit
+      cur_srfcplx2 => cur_srfcplx_rxn%complex_list
       do
-        if (.not.associated(cur_surfcplx2)) exit
+        if (.not.associated(cur_srfcplx2)) exit
         
-        if (associated(cur_surfcplx2%eqrxn)) then
+        if (associated(cur_srfcplx2%dbaserxn)) then
           ispec = 1
           do
-            if (ispec > cur_surfcplx2%eqrxn%nspec) exit
+            if (ispec > cur_srfcplx2%dbaserxn%nspec) exit
             if (StringCompare(cur_gas_spec%name, &
-                                cur_surfcplx2%eqrxn%spec_name(ispec), &
+                                cur_srfcplx2%dbaserxn%spec_name(ispec), &
                                 MAXWORDLENGTH)) then
               call BasisSubSpeciesInGasOrSecRxn(cur_gas_spec%name, &
-                                                cur_gas_spec%eqrxn, &
-                                                cur_surfcplx2%eqrxn)
+                                                cur_gas_spec%dbaserxn, &
+                                                cur_srfcplx2%dbaserxn)
               ispec = 0
             endif
             ispec = ispec + 1
           enddo
         endif
-        cur_surfcplx2 => cur_surfcplx2%next
+        cur_srfcplx2 => cur_srfcplx2%next
       enddo
-      nullify(cur_surfcplx2)
-      cur_surfcplx_rxn => cur_surfcplx_rxn%next
+      nullify(cur_srfcplx2)
+      cur_srfcplx_rxn => cur_srfcplx_rxn%next
     enddo
-    nullify(cur_surfcplx_rxn)
+    nullify(cur_srfcplx_rxn)
 
     cur_gas_spec => cur_gas_spec%next
   enddo
@@ -1180,8 +1182,8 @@ subroutine BasisInit(reaction,option)
   nullify(cur_sec_aq_spec)
   nullify(cur_gas_spec)
   nullify(cur_mineral)
-  nullify(cur_surfcplx_rxn)
-  nullify(cur_surfcplx)
+  nullify(cur_srfcplx_rxn)
+  nullify(cur_srfcplx)
 
   ! secondary aqueous species
   cur_sec_aq_spec => reaction%secondary_species_list
@@ -1197,12 +1199,12 @@ subroutine BasisInit(reaction,option)
       if (associated(cur_mineral%tstrxn)) then
         ispec = 1
         do
-          if (ispec > cur_mineral%tstrxn%nspec) exit
+          if (ispec > cur_mineral%tstrxn%dbaserxn%nspec) exit
           if (StringCompare(cur_sec_aq_spec%name, &
-                              cur_mineral%tstrxn%spec_name(ispec), &
+                              cur_mineral%tstrxn%dbaserxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInMineralRxn(cur_sec_aq_spec%name, &
-                                             cur_sec_aq_spec%eqrxn, &
+                                             cur_sec_aq_spec%dbaserxn, &
                                              cur_mineral%tstrxn)
             ispec = 0
           endif
@@ -1213,34 +1215,34 @@ subroutine BasisInit(reaction,option)
     enddo
 
     ! secondary aqueous species in surface complex reactions
-    cur_surfcplx_rxn => reaction%surface_complexation_rxn_list
+    cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
     do
-      if (.not.associated(cur_surfcplx_rxn)) exit
-      cur_surfcplx2 => cur_surfcplx_rxn%complex_list
+      if (.not.associated(cur_srfcplx_rxn)) exit
+      cur_srfcplx2 => cur_srfcplx_rxn%complex_list
       do
-        if (.not.associated(cur_surfcplx2)) exit
+        if (.not.associated(cur_srfcplx2)) exit
         
-        if (associated(cur_surfcplx2%eqrxn)) then
+        if (associated(cur_srfcplx2%dbaserxn)) then
           ispec = 1
           do
-            if (ispec > cur_surfcplx2%eqrxn%nspec) exit
+            if (ispec > cur_srfcplx2%dbaserxn%nspec) exit
             if (StringCompare(cur_sec_aq_spec%name, &
-                                cur_surfcplx2%eqrxn%spec_name(ispec), &
+                                cur_srfcplx2%dbaserxn%spec_name(ispec), &
                                 MAXWORDLENGTH)) then
               call BasisSubSpeciesInGasOrSecRxn(cur_sec_aq_spec%name, &
-                                                cur_sec_aq_spec%eqrxn, &
-                                                cur_surfcplx2%eqrxn)
+                                                cur_sec_aq_spec%dbaserxn, &
+                                                cur_srfcplx2%dbaserxn)
               ispec = 0
             endif
             ispec = ispec + 1
           enddo
         endif
-        cur_surfcplx2 => cur_surfcplx2%next
+        cur_srfcplx2 => cur_srfcplx2%next
       enddo
-      nullify(cur_surfcplx2)
-      cur_surfcplx_rxn => cur_surfcplx_rxn%next
+      nullify(cur_srfcplx2)
+      cur_srfcplx_rxn => cur_srfcplx_rxn%next
     enddo
-    nullify(cur_surfcplx_rxn)    
+    nullify(cur_srfcplx_rxn)    
     
     cur_sec_aq_spec => cur_sec_aq_spec%next
   enddo
@@ -1248,8 +1250,8 @@ subroutine BasisInit(reaction,option)
   nullify(cur_sec_aq_spec)
   nullify(cur_gas_spec)
   nullify(cur_mineral)
-  nullify(cur_surfcplx_rxn)
-  nullify(cur_surfcplx)
+  nullify(cur_srfcplx_rxn)
+  nullify(cur_srfcplx)
 
 #else
   
@@ -1267,7 +1269,7 @@ subroutine BasisInit(reaction,option)
     if (.not.associated(cur_aq_spec)) exit
     icount_new = icount_new + 1
     new_basis_names(icount_new) = cur_aq_spec%name
-    if (.not.associated(cur_aq_spec%eqrxn)) then
+    if (.not.associated(cur_aq_spec%dbaserxn)) then
       icount_old = icount_old + 1
       old_basis_names(icount_old) = cur_aq_spec%name
     endif
@@ -1276,7 +1278,7 @@ subroutine BasisInit(reaction,option)
   cur_aq_spec => reaction%secondary_species_list
   do
     if (.not.associated(cur_aq_spec)) exit
-    if (.not.associated(cur_aq_spec%eqrxn)) then
+    if (.not.associated(cur_aq_spec%dbaserxn)) then
       icount_old = icount_old + 1
       old_basis_names(icount_old) = cur_aq_spec%name
     endif
@@ -1292,16 +1294,16 @@ subroutine BasisInit(reaction,option)
   nullify(cur_gas_spec1)
   nullify(cur_gas_spec2)
   nullify(cur_mineral)
-  nullify(cur_surfcplx_rxn)
-  nullify(cur_surfcplx)
-  nullify(cur_surfcplx2)
+  nullify(cur_srfcplx_rxn)
+  nullify(cur_srfcplx)
+  nullify(cur_srfcplx2)
     
   ! first off, lets remove all the secondary gases from all other reactions
   cur_gas_spec1 => reaction%gas_species_list
   do
     if (.not.associated(cur_gas_spec1)) exit
     
-    if (.not.associated(cur_gas_spec1%eqrxn)) then
+    if (.not.associated(cur_gas_spec1%dbaserxn)) then
       cur_gas_spec1 => cur_gas_spec1%next
       cycle
     endif
@@ -1311,16 +1313,16 @@ subroutine BasisInit(reaction,option)
     do
       if (.not.associated(cur_pri_aq_spec)) exit
       
-      if (associated(cur_pri_aq_spec%eqrxn)) then
+      if (associated(cur_pri_aq_spec%dbaserxn)) then
         ispec = 1
         do
-          if (ispec > cur_pri_aq_spec%eqrxn%nspec) exit
+          if (ispec > cur_pri_aq_spec%dbaserxn%nspec) exit
           if (StringCompare(cur_gas_spec1%name, &
-                              cur_pri_aq_spec%eqrxn%spec_name(ispec), &
+                              cur_pri_aq_spec%dbaserxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInGasOrSecRxn(cur_gas_spec1%name, &
-                                              cur_gas_spec1%eqrxn, &
-                                              cur_pri_aq_spec%eqrxn)
+                                              cur_gas_spec1%dbaserxn, &
+                                              cur_pri_aq_spec%dbaserxn)
             ispec = 0
           endif
           ispec = ispec + 1
@@ -1335,16 +1337,16 @@ subroutine BasisInit(reaction,option)
     do
       if (.not.associated(cur_sec_aq_spec2)) exit
       
-      if (associated(cur_sec_aq_spec2%eqrxn)) then
+      if (associated(cur_sec_aq_spec2%dbaserxn)) then
         ispec = 1
         do
-          if (ispec > cur_sec_aq_spec2%eqrxn%nspec) exit
+          if (ispec > cur_sec_aq_spec2%dbaserxn%nspec) exit
           if (StringCompare(cur_gas_spec1%name, &
-                              cur_sec_aq_spec2%eqrxn%spec_name(ispec), &
+                              cur_sec_aq_spec2%dbaserxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInGasOrSecRxn(cur_gas_spec1%name, &
-                                              cur_gas_spec1%eqrxn, &
-                                              cur_sec_aq_spec2%eqrxn)
+                                              cur_gas_spec1%dbaserxn, &
+                                              cur_sec_aq_spec2%dbaserxn)
             ispec = 0
           endif
           ispec = ispec + 1
@@ -1366,9 +1368,9 @@ subroutine BasisInit(reaction,option)
   nullify(cur_gas_spec1)
   nullify(cur_gas_spec2)
   nullify(cur_mineral)
-  nullify(cur_surfcplx_rxn)
-  nullify(cur_surfcplx)
-  nullify(cur_surfcplx2)
+  nullify(cur_srfcplx_rxn)
+  nullify(cur_srfcplx)
+  nullify(cur_srfcplx2)
 
   ! check if basis needs to be swapped
   compute_new_basis = PETSC_FALSE
@@ -1415,16 +1417,16 @@ subroutine BasisInit(reaction,option)
       do irow = 1, ncomp_h2o
         if (StringCompare(cur_pri_aq_spec%name,new_basis_names(irow), &
                             MAXWORDLENGTH)) then
-          if (associated(cur_pri_aq_spec%eqrxn)) then
+          if (associated(cur_pri_aq_spec%dbaserxn)) then
             logKvector(:,ipri_spec) = &
-              cur_pri_aq_spec%eqrxn%logK(:)
-            do i=1,cur_pri_aq_spec%eqrxn%nspec
+              cur_pri_aq_spec%dbaserxn%logK(:)
+            do i=1,cur_pri_aq_spec%dbaserxn%nspec
               found = PETSC_FALSE
               do icol = 1, icount_old
-                if (StringCompare(cur_pri_aq_spec%eqrxn%spec_name(i), &
+                if (StringCompare(cur_pri_aq_spec%dbaserxn%spec_name(i), &
                                     old_basis_names(icol), &
                                     MAXWORDLENGTH)) then
-                  new_basis(irow,icol) = cur_pri_aq_spec%eqrxn%stoich(i)
+                  new_basis(irow,icol) = cur_pri_aq_spec%dbaserxn%stoich(i)
                   found = PETSC_TRUE
                   exit
                 endif
@@ -1433,10 +1435,10 @@ subroutine BasisInit(reaction,option)
                 string = 'One or more species not found in problem statement' // &
                          ' for species: ' // &
                          trim(cur_pri_aq_spec%name) // ' ('
-                do j=1,cur_pri_aq_spec%eqrxn%nspec
+                do j=1,cur_pri_aq_spec%dbaserxn%nspec
                   found = PETSC_FALSE
                   do icol = 1, icount_old
-                    if (StringCompare(cur_pri_aq_spec%eqrxn%spec_name(j), &
+                    if (StringCompare(cur_pri_aq_spec%dbaserxn%spec_name(j), &
                                         old_basis_names(icol), &
                                       MAXWORDLENGTH)) then
                       found = PETSC_TRUE
@@ -1445,7 +1447,7 @@ subroutine BasisInit(reaction,option)
                   enddo
                   if (.not.found) then
                     string = trim(string) // ' ' // &
-                             trim(cur_pri_aq_spec%eqrxn%spec_name(j))
+                             trim(cur_pri_aq_spec%dbaserxn%spec_name(j))
                   endif
                 enddo
                 string = trim(string) // ' )'
@@ -1481,14 +1483,14 @@ subroutine BasisInit(reaction,option)
       transformation(:,ispec) = stoich_prev(:)
     enddo
   
-    ! at this point, any primary species with eqrxns can have them removed
-    ! and secondary species without eqrxns need one added
+    ! at this point, any primary species with dbaserxns can have them removed
+    ! and secondary species without dbaserxns need one added
 
     cur_pri_aq_spec => reaction%primary_species_list
     do
       if (.not.associated(cur_pri_aq_spec)) exit
-      if (associated(cur_pri_aq_spec%eqrxn)) then
-        call EquilibriumRxnDestroy(cur_pri_aq_spec%eqrxn)
+      if (associated(cur_pri_aq_spec%dbaserxn)) then
+        call DatabaseRxnDestroy(cur_pri_aq_spec%dbaserxn)
       endif
       cur_pri_aq_spec => cur_pri_aq_spec%next
     enddo
@@ -1496,8 +1498,8 @@ subroutine BasisInit(reaction,option)
     cur_sec_aq_spec => reaction%secondary_species_list
     do
       if (.not.associated(cur_sec_aq_spec)) exit
-      if (.not.associated(cur_sec_aq_spec%eqrxn)) then
-        cur_sec_aq_spec%eqrxn => EquilibriumRxnCreate()
+      if (.not.associated(cur_sec_aq_spec%dbaserxn)) then
+        cur_sec_aq_spec%dbaserxn => DatabaseRxnCreate()
         stoich_prev = 0.d0
         logK = 0.d0
         found = PETSC_FALSE
@@ -1528,27 +1530,27 @@ subroutine BasisInit(reaction,option)
         ! count # of species in reaction
         do icol = 1, ncomp_h2o
           if (dabs(stoich_new(icol)) > 1.d-40) &
-            cur_sec_aq_spec%eqrxn%nspec = cur_sec_aq_spec%eqrxn%nspec + 1
+            cur_sec_aq_spec%dbaserxn%nspec = cur_sec_aq_spec%dbaserxn%nspec + 1
         enddo
-        allocate(cur_sec_aq_spec%eqrxn%stoich(cur_sec_aq_spec%eqrxn%nspec))
-        cur_sec_aq_spec%eqrxn%stoich = 0.d0
-        allocate(cur_sec_aq_spec%eqrxn%spec_name(cur_sec_aq_spec%eqrxn%nspec))
-        cur_sec_aq_spec%eqrxn%spec_name = ''
-        allocate(cur_sec_aq_spec%eqrxn%spec_ids(cur_sec_aq_spec%eqrxn%nspec))
-        cur_sec_aq_spec%eqrxn%spec_ids = 0
-        allocate(cur_sec_aq_spec%eqrxn%logK(reaction%num_dbase_temperatures))
-        cur_sec_aq_spec%eqrxn%logK = 0.d0
+        allocate(cur_sec_aq_spec%dbaserxn%stoich(cur_sec_aq_spec%dbaserxn%nspec))
+        cur_sec_aq_spec%dbaserxn%stoich = 0.d0
+        allocate(cur_sec_aq_spec%dbaserxn%spec_name(cur_sec_aq_spec%dbaserxn%nspec))
+        cur_sec_aq_spec%dbaserxn%spec_name = ''
+        allocate(cur_sec_aq_spec%dbaserxn%spec_ids(cur_sec_aq_spec%dbaserxn%nspec))
+        cur_sec_aq_spec%dbaserxn%spec_ids = 0
+        allocate(cur_sec_aq_spec%dbaserxn%logK(reaction%num_dbase_temperatures))
+        cur_sec_aq_spec%dbaserxn%logK = 0.d0
 
         ispec = 0
         do icol = 1, ncomp_h2o
           if (dabs(stoich_new(icol)) > 1.d-40) then
             ispec = ispec + 1
-            cur_sec_aq_spec%eqrxn%spec_name(ispec) = new_basis_names(icol)
-            cur_sec_aq_spec%eqrxn%stoich(ispec) = stoich_new(icol)
-            cur_sec_aq_spec%eqrxn%spec_ids(ispec) = icol
+            cur_sec_aq_spec%dbaserxn%spec_name(ispec) = new_basis_names(icol)
+            cur_sec_aq_spec%dbaserxn%stoich(ispec) = stoich_new(icol)
+            cur_sec_aq_spec%dbaserxn%spec_ids(ispec) = icol
           endif
         enddo
-        cur_sec_aq_spec%eqrxn%logK = logK
+        cur_sec_aq_spec%dbaserxn%logK = logK
     
       endif
       cur_sec_aq_spec => cur_sec_aq_spec%next
@@ -1576,7 +1578,7 @@ subroutine BasisInit(reaction,option)
   do
     if (.not.associated(cur_gas_spec1)) exit
     
-    if (.not.associated(cur_gas_spec1%eqrxn)) then
+    if (.not.associated(cur_gas_spec1%dbaserxn)) then
       cur_gas_spec1 => cur_gas_spec1%next
       cycle
     endif
@@ -1586,16 +1588,16 @@ subroutine BasisInit(reaction,option)
     do
       if (.not.associated(cur_gas_spec2)) exit
       
-      if (associated(cur_gas_spec2%eqrxn)) then
+      if (associated(cur_gas_spec2%dbaserxn)) then
         ispec = 1
         do
-          if (ispec > cur_gas_spec2%eqrxn%nspec) exit
+          if (ispec > cur_gas_spec2%dbaserxn%nspec) exit
           if (StringCompare(cur_gas_spec1%name, &
-                              cur_gas_spec2%eqrxn%spec_name(ispec), &
+                              cur_gas_spec2%dbaserxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInGasOrSecRxn(cur_gas_spec1%name, &
-                                              cur_gas_spec1%eqrxn, &
-                                              cur_gas_spec2%eqrxn)
+                                              cur_gas_spec1%dbaserxn, &
+                                              cur_gas_spec2%dbaserxn)
             ispec = 0
           endif
           ispec = ispec + 1
@@ -1610,16 +1612,16 @@ subroutine BasisInit(reaction,option)
     do
       if (.not.associated(cur_sec_aq_spec2)) exit
       
-      if (associated(cur_sec_aq_spec2%eqrxn)) then
+      if (associated(cur_sec_aq_spec2%dbaserxn)) then
         ispec = 1
         do
-          if (ispec > cur_sec_aq_spec2%eqrxn%nspec) exit
+          if (ispec > cur_sec_aq_spec2%dbaserxn%nspec) exit
           if (StringCompare(cur_gas_spec1%name, &
-                              cur_sec_aq_spec2%eqrxn%spec_name(ispec), &
+                              cur_sec_aq_spec2%dbaserxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInGasOrSecRxn(cur_gas_spec1%name, &
-                                              cur_gas_spec1%eqrxn, &
-                                              cur_sec_aq_spec2%eqrxn)
+                                              cur_gas_spec1%dbaserxn, &
+                                              cur_sec_aq_spec2%dbaserxn)
             ispec = 0
           endif
           ispec = ispec + 1
@@ -1642,7 +1644,7 @@ subroutine BasisInit(reaction,option)
                               cur_mineral%tstrxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInMineralRxn(cur_gas_spec1%name, &
-                                             cur_gas_spec1%eqrxn, &
+                                             cur_gas_spec1%dbaserxn, &
                                              cur_mineral%tstrxn)
             ispec = 0
           endif
@@ -1654,34 +1656,34 @@ subroutine BasisInit(reaction,option)
     nullify(cur_mineral)
 
     ! gases in surface complex reactions
-    cur_surfcplx_rxn => reaction%surface_complexation_rxn_list
+    cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
     do
-      if (.not.associated(cur_surfcplx_rxn)) exit
-      cur_surfcplx2 => cur_surfcplx_rxn%complex_list
+      if (.not.associated(cur_srfcplx_rxn)) exit
+      cur_srfcplx2 => cur_srfcplx_rxn%complex_list
       do
-        if (.not.associated(cur_surfcplx2)) exit
+        if (.not.associated(cur_srfcplx2)) exit
         
-        if (associated(cur_surfcplx2%eqrxn)) then
+        if (associated(cur_srfcplx2%dbaserxn)) then
           ispec = 1
           do
-            if (ispec > cur_surfcplx2%eqrxn%nspec) exit
+            if (ispec > cur_srfcplx2%dbaserxn%nspec) exit
             if (StringCompare(cur_gas_spec1%name, &
-                                cur_surfcplx2%eqrxn%spec_name(ispec), &
+                                cur_srfcplx2%dbaserxn%spec_name(ispec), &
                                 MAXWORDLENGTH)) then
               call BasisSubSpeciesInGasOrSecRxn(cur_gas_spec1%name, &
-                                                cur_gas_spec1%eqrxn, &
-                                                cur_surfcplx2%eqrxn)
+                                                cur_gas_spec1%dbaserxn, &
+                                                cur_srfcplx2%dbaserxn)
               ispec = 0
             endif
             ispec = ispec + 1
           enddo
         endif
-        cur_surfcplx2 => cur_surfcplx2%next
+        cur_srfcplx2 => cur_srfcplx2%next
       enddo
-      nullify(cur_surfcplx2)
-      cur_surfcplx_rxn => cur_surfcplx_rxn%next
+      nullify(cur_srfcplx2)
+      cur_srfcplx_rxn => cur_srfcplx_rxn%next
     enddo
-    nullify(cur_surfcplx_rxn)
+    nullify(cur_srfcplx_rxn)
 
     cur_gas_spec1 => cur_gas_spec1%next
   enddo
@@ -1695,9 +1697,9 @@ subroutine BasisInit(reaction,option)
   nullify(cur_gas_spec1)
   nullify(cur_gas_spec2)
   nullify(cur_mineral)
-  nullify(cur_surfcplx_rxn)
-  nullify(cur_surfcplx)
-  nullify(cur_surfcplx2)
+  nullify(cur_srfcplx_rxn)
+  nullify(cur_srfcplx)
+  nullify(cur_srfcplx2)
 
   ! secondary aqueous species
   cur_sec_aq_spec1 => reaction%secondary_species_list
@@ -1705,7 +1707,7 @@ subroutine BasisInit(reaction,option)
 
     if (.not.associated(cur_sec_aq_spec1)) exit
     
-    if (.not.associated(cur_sec_aq_spec1%eqrxn)) then
+    if (.not.associated(cur_sec_aq_spec1%dbaserxn)) then
       cur_sec_aq_spec1 => cur_sec_aq_spec1%next
       cycle
     endif
@@ -1715,16 +1717,16 @@ subroutine BasisInit(reaction,option)
     do
       if (.not.associated(cur_gas_spec2)) exit
       
-      if (associated(cur_gas_spec2%eqrxn)) then
+      if (associated(cur_gas_spec2%dbaserxn)) then
         ispec = 1
         do
-          if (ispec > cur_gas_spec2%eqrxn%nspec) exit
+          if (ispec > cur_gas_spec2%dbaserxn%nspec) exit
           if (StringCompare(cur_sec_aq_spec1%name, &
-                              cur_gas_spec2%eqrxn%spec_name(ispec), &
+                              cur_gas_spec2%dbaserxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInGasOrSecRxn(cur_sec_aq_spec1%name, &
-                                              cur_sec_aq_spec1%eqrxn, &
-                                              cur_gas_spec2%eqrxn)
+                                              cur_sec_aq_spec1%dbaserxn, &
+                                              cur_gas_spec2%dbaserxn)
             ispec = 0
           endif
           ispec = ispec + 1
@@ -1739,16 +1741,16 @@ subroutine BasisInit(reaction,option)
     do
       if (.not.associated(cur_sec_aq_spec2)) exit
       
-      if (associated(cur_sec_aq_spec2%eqrxn)) then
+      if (associated(cur_sec_aq_spec2%dbaserxn)) then
         ispec = 1
         do
-          if (ispec > cur_sec_aq_spec2%eqrxn%nspec) exit
+          if (ispec > cur_sec_aq_spec2%dbaserxn%nspec) exit
           if (StringCompare(cur_sec_aq_spec1%name, &
-                              cur_sec_aq_spec2%eqrxn%spec_name(ispec), &
+                              cur_sec_aq_spec2%dbaserxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInGasOrSecRxn(cur_sec_aq_spec1%name, &
-                                              cur_sec_aq_spec1%eqrxn, &
-                                              cur_sec_aq_spec2%eqrxn)
+                                              cur_sec_aq_spec1%dbaserxn, &
+                                              cur_sec_aq_spec2%dbaserxn)
             ispec = 0
           endif
           ispec = ispec + 1
@@ -1771,7 +1773,7 @@ subroutine BasisInit(reaction,option)
                               cur_mineral%tstrxn%spec_name(ispec), &
                               MAXWORDLENGTH)) then
             call BasisSubSpeciesInMineralRxn(cur_sec_aq_spec1%name, &
-                                             cur_sec_aq_spec1%eqrxn, &
+                                             cur_sec_aq_spec1%dbaserxn, &
                                              cur_mineral%tstrxn)
             ispec = 0
           endif
@@ -1782,34 +1784,34 @@ subroutine BasisInit(reaction,option)
     enddo
 
     ! secondary aqueous species in surface complex reactions
-    cur_surfcplx_rxn => reaction%surface_complexation_rxn_list
+    cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
     do
-      if (.not.associated(cur_surfcplx_rxn)) exit
-      cur_surfcplx2 => cur_surfcplx_rxn%complex_list
+      if (.not.associated(cur_srfcplx_rxn)) exit
+      cur_srfcplx2 => cur_srfcplx_rxn%complex_list
       do
-        if (.not.associated(cur_surfcplx2)) exit
+        if (.not.associated(cur_srfcplx2)) exit
         
-        if (associated(cur_surfcplx2%eqrxn)) then
+        if (associated(cur_srfcplx2%dbaserxn)) then
           ispec = 1
           do
-            if (ispec > cur_surfcplx2%eqrxn%nspec) exit
+            if (ispec > cur_srfcplx2%dbaserxn%nspec) exit
             if (StringCompare(cur_sec_aq_spec1%name, &
-                                cur_surfcplx2%eqrxn%spec_name(ispec), &
+                                cur_srfcplx2%dbaserxn%spec_name(ispec), &
                                 MAXWORDLENGTH)) then
               call BasisSubSpeciesInGasOrSecRxn(cur_sec_aq_spec1%name, &
-                                                cur_sec_aq_spec1%eqrxn, &
-                                                cur_surfcplx2%eqrxn)
+                                                cur_sec_aq_spec1%dbaserxn, &
+                                                cur_srfcplx2%dbaserxn)
               ispec = 0
             endif
             ispec = ispec + 1
           enddo
         endif
-        cur_surfcplx2 => cur_surfcplx2%next
+        cur_srfcplx2 => cur_srfcplx2%next
       enddo
-      nullify(cur_surfcplx2)
-      cur_surfcplx_rxn => cur_surfcplx_rxn%next
+      nullify(cur_srfcplx2)
+      cur_srfcplx_rxn => cur_srfcplx_rxn%next
     enddo
-    nullify(cur_surfcplx_rxn)    
+    nullify(cur_srfcplx_rxn)    
     
     cur_sec_aq_spec1 => cur_sec_aq_spec1%next
   enddo
@@ -1824,38 +1826,38 @@ subroutine BasisInit(reaction,option)
   nullify(cur_gas_spec1)
   nullify(cur_gas_spec2)
   nullify(cur_mineral)
-  nullify(cur_surfcplx_rxn)
-  nullify(cur_surfcplx)
-  nullify(cur_surfcplx2)  
+  nullify(cur_srfcplx_rxn)
+  nullify(cur_srfcplx)
+  nullify(cur_srfcplx2)  
 
   ! align all species in rxns with basis
   cur_sec_aq_spec => reaction%secondary_species_list
   do
     if (.not.associated(cur_sec_aq_spec)) exit
-    if (.not.associated(cur_sec_aq_spec%eqrxn%spec_ids)) then
-      allocate(cur_sec_aq_spec%eqrxn%spec_ids(cur_sec_aq_spec%eqrxn%nspec))
-      cur_sec_aq_spec%eqrxn%spec_ids = 0
+    if (.not.associated(cur_sec_aq_spec%dbaserxn%spec_ids)) then
+      allocate(cur_sec_aq_spec%dbaserxn%spec_ids(cur_sec_aq_spec%dbaserxn%nspec))
+      cur_sec_aq_spec%dbaserxn%spec_ids = 0
     endif
     call BasisAlignSpeciesInRxn(ncomp_h2o,new_basis_names, &
-                                cur_sec_aq_spec%eqrxn%nspec, &
-                                cur_sec_aq_spec%eqrxn%spec_name, &
-                                cur_sec_aq_spec%eqrxn%stoich, &
-                                cur_sec_aq_spec%eqrxn%spec_ids,option)  
+                                cur_sec_aq_spec%dbaserxn%nspec, &
+                                cur_sec_aq_spec%dbaserxn%spec_name, &
+                                cur_sec_aq_spec%dbaserxn%stoich, &
+                                cur_sec_aq_spec%dbaserxn%spec_ids,option)  
     cur_sec_aq_spec => cur_sec_aq_spec%next
   enddo
 
   cur_gas_spec => reaction%gas_species_list
   do
     if (.not.associated(cur_gas_spec)) exit
-    if (.not.associated(cur_gas_spec%eqrxn%spec_ids)) then
-      allocate(cur_gas_spec%eqrxn%spec_ids(cur_gas_spec%eqrxn%nspec))
-      cur_gas_spec%eqrxn%spec_ids = 0
+    if (.not.associated(cur_gas_spec%dbaserxn%spec_ids)) then
+      allocate(cur_gas_spec%dbaserxn%spec_ids(cur_gas_spec%dbaserxn%nspec))
+      cur_gas_spec%dbaserxn%spec_ids = 0
     endif
     call BasisAlignSpeciesInRxn(ncomp_h2o,new_basis_names, &
-                                cur_gas_spec%eqrxn%nspec, &
-                                cur_gas_spec%eqrxn%spec_name, &
-                                cur_gas_spec%eqrxn%stoich, &
-                                cur_gas_spec%eqrxn%spec_ids,option)     
+                                cur_gas_spec%dbaserxn%nspec, &
+                                cur_gas_spec%dbaserxn%spec_name, &
+                                cur_gas_spec%dbaserxn%stoich, &
+                                cur_gas_spec%dbaserxn%spec_ids,option)     
     cur_gas_spec => cur_gas_spec%next
   enddo
 
@@ -1866,39 +1868,39 @@ subroutine BasisInit(reaction,option)
   cur_mineral => reaction%mineral_list
   do
     if (.not.associated(cur_mineral)) exit
-    if (.not.associated(cur_mineral%tstrxn%spec_ids)) then
-      allocate(cur_mineral%tstrxn%spec_ids(cur_mineral%tstrxn%nspec))
-      cur_mineral%tstrxn%spec_ids = 0
+    if (.not.associated(cur_mineral%tstrxn%dbaserxn%spec_ids)) then
+      allocate(cur_mineral%tstrxn%dbaserxn%spec_ids(cur_mineral%tstrxn%dbaserxn%nspec))
+      cur_mineral%tstrxn%dbaserxn%spec_ids = 0
     endif    
     call BasisAlignSpeciesInRxn(ncomp_h2o,new_basis_names, &
-                                cur_mineral%tstrxn%nspec, &
-                                cur_mineral%tstrxn%spec_name, &
-                                cur_mineral%tstrxn%stoich, &
-                                cur_mineral%tstrxn%spec_ids,option)     
+                                cur_mineral%tstrxn%dbaserxn%nspec, &
+                                cur_mineral%tstrxn%dbaserxn%spec_name, &
+                                cur_mineral%tstrxn%dbaserxn%stoich, &
+                                cur_mineral%tstrxn%dbaserxn%spec_ids,option)     
     cur_mineral => cur_mineral%next
   enddo  
 
-  cur_surfcplx_rxn => reaction%surface_complexation_rxn_list
+  cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
   do
-    if (.not.associated(cur_surfcplx_rxn)) exit
-    cur_surfcplx => cur_surfcplx_rxn%complex_list
+    if (.not.associated(cur_srfcplx_rxn)) exit
+    cur_srfcplx => cur_srfcplx_rxn%complex_list
     do
-      if (.not.associated(cur_surfcplx)) exit
-      if (.not.associated(cur_surfcplx%eqrxn%spec_ids)) then
-        allocate(cur_surfcplx%eqrxn%spec_ids(cur_surfcplx%eqrxn%nspec))
-        cur_surfcplx%eqrxn%spec_ids = 0
+      if (.not.associated(cur_srfcplx)) exit
+      if (.not.associated(cur_srfcplx%dbaserxn%spec_ids)) then
+        allocate(cur_srfcplx%dbaserxn%spec_ids(cur_srfcplx%dbaserxn%nspec))
+        cur_srfcplx%dbaserxn%spec_ids = 0
       endif
       call BasisAlignSpeciesInRxn(ncomp_h2o,new_basis_names, &
-                                  cur_surfcplx%eqrxn%nspec, &
-                                  cur_surfcplx%eqrxn%spec_name, &
-                                  cur_surfcplx%eqrxn%stoich, &
-                                  cur_surfcplx%eqrxn%spec_ids,option) 
-      cur_surfcplx => cur_surfcplx%next
+                                  cur_srfcplx%dbaserxn%nspec, &
+                                  cur_srfcplx%dbaserxn%spec_name, &
+                                  cur_srfcplx%dbaserxn%stoich, &
+                                  cur_srfcplx%dbaserxn%spec_ids,option) 
+      cur_srfcplx => cur_srfcplx%next
     enddo
-    nullify(cur_surfcplx)
-    cur_surfcplx_rxn => cur_surfcplx_rxn%next
+    nullify(cur_srfcplx)
+    cur_srfcplx_rxn => cur_srfcplx_rxn%next
   enddo
-  nullify(cur_surfcplx_rxn)  
+  nullify(cur_srfcplx_rxn)  
 
   ! fill reaction arrays, swapping if necessary
   if (associated(reaction%primary_species_names)) &
@@ -1952,48 +1954,48 @@ subroutine BasisInit(reaction,option)
   ispec = -1 ! to catch bugs
   
   ! secondary aqueous complexes
-  reaction%neqcmplx = GetSecondarySpeciesCount(reaction)
+  reaction%neqcplx = GetSecondarySpeciesCount(reaction)
   
-  if (reaction%neqcmplx > 0) then
-    allocate(reaction%secondary_species_names(reaction%neqcmplx))
+  if (reaction%neqcplx > 0) then
+    allocate(reaction%secondary_species_names(reaction%neqcplx))
     reaction%secondary_species_names = ''
 
-    allocate(reaction%secondary_species_print(reaction%neqcmplx))
+    allocate(reaction%secondary_species_print(reaction%neqcplx))
     reaction%secondary_species_print = PETSC_FALSE
 
-    allocate(reaction%eqcmplx_basis_names(reaction%ncomp,reaction%neqcmplx))
-    reaction%eqcmplx_basis_names = ''
+    allocate(reaction%eqcplx_basis_names(reaction%ncomp,reaction%neqcplx))
+    reaction%eqcplx_basis_names = ''
 
-    allocate(reaction%eqcmplxspecid(0:reaction%ncomp,reaction%neqcmplx))
-    reaction%eqcmplxspecid = 0
+    allocate(reaction%eqcplxspecid(0:reaction%ncomp,reaction%neqcplx))
+    reaction%eqcplxspecid = 0
 
-    allocate(reaction%eqcmplxstoich(0:reaction%ncomp,reaction%neqcmplx))
-    reaction%eqcmplxstoich = 0.d0
+    allocate(reaction%eqcplxstoich(0:reaction%ncomp,reaction%neqcplx))
+    reaction%eqcplxstoich = 0.d0
 
-    allocate(reaction%eqcmplxh2oid(reaction%neqcmplx))
-    reaction%eqcmplxh2oid = 0
+    allocate(reaction%eqcplxh2oid(reaction%neqcplx))
+    reaction%eqcplxh2oid = 0
 
-    allocate(reaction%eqcmplxh2ostoich(reaction%neqcmplx))
-    reaction%eqcmplxh2ostoich = 0.d0
+    allocate(reaction%eqcplxh2ostoich(reaction%neqcplx))
+    reaction%eqcplxh2ostoich = 0.d0
 
-    allocate(reaction%eqcmplx_logK(reaction%neqcmplx))
-    reaction%eqcmplx_logK = 0.d0
+    allocate(reaction%eqcplx_logK(reaction%neqcplx))
+    reaction%eqcplx_logK = 0.d0
 
 #if TEMP_DEPENDENT_LOGK
-    allocate(reaction%eqcmplx_logKcoef(FIVE_INTEGER,reaction%neqcmplx))
-    reaction%eqcmplx_logKcoef = 0.d0
+    allocate(reaction%eqcplx_logKcoef(FIVE_INTEGER,reaction%neqcplx))
+    reaction%eqcplx_logKcoef = 0.d0
 #else
-    allocate(reaction%eqcmplx_logKcoef(reaction%num_dbase_temperatures,reaction%neqcmplx))
-    reaction%eqcmplx_logKcoef = 0.d0
+    allocate(reaction%eqcplx_logKcoef(reaction%num_dbase_temperatures,reaction%neqcplx))
+    reaction%eqcplx_logKcoef = 0.d0
 #endif
-    allocate(reaction%eqcmplx_Z(reaction%neqcmplx))
-    reaction%eqcmplx_Z = 0.d0
+    allocate(reaction%eqcplx_Z(reaction%neqcplx))
+    reaction%eqcplx_Z = 0.d0
 
-    allocate(reaction%eqcmplx_molar_wt(reaction%neqcmplx))
-    reaction%eqcmplx_molar_wt = 0.d0
+    allocate(reaction%eqcplx_molar_wt(reaction%neqcplx))
+    reaction%eqcplx_molar_wt = 0.d0
 
-    allocate(reaction%eqcmplx_a0(reaction%neqcmplx))
-    reaction%eqcmplx_a0 = 0.d0
+    allocate(reaction%eqcplx_a0(reaction%neqcplx))
+    reaction%eqcplx_a0 = 0.d0
 
     ! pack in reaction arrays
     cur_sec_aq_spec => reaction%secondary_species_list
@@ -2006,45 +2008,45 @@ subroutine BasisInit(reaction,option)
       reaction%secondary_species_print(isec_spec) = cur_sec_aq_spec%print_me .or. &
                                             reaction%print_all_species
       ispec = 0
-      do i = 1, cur_sec_aq_spec%eqrxn%nspec
+      do i = 1, cur_sec_aq_spec%dbaserxn%nspec
       
-!       print *,'database: ',i,cur_sec_aq_spec%eqrxn%spec_name(i)
+!       print *,'database: ',i,cur_sec_aq_spec%dbaserxn%spec_name(i)
         
-        if (cur_sec_aq_spec%eqrxn%spec_ids(i) /= h2o_id) then
+        if (cur_sec_aq_spec%dbaserxn%spec_ids(i) /= h2o_id) then
           ispec = ispec + 1
-          spec_id = cur_sec_aq_spec%eqrxn%spec_ids(i)
+          spec_id = cur_sec_aq_spec%dbaserxn%spec_ids(i)
           if (spec_id > h2o_id) spec_id = spec_id - 1
-          reaction%eqcmplxspecid(ispec,isec_spec) = spec_id
-          reaction%eqcmplx_basis_names(ispec,isec_spec) = &
-            cur_sec_aq_spec%eqrxn%spec_name(i)
-          reaction%eqcmplxstoich(ispec,isec_spec) = cur_sec_aq_spec%eqrxn%stoich(i)
+          reaction%eqcplxspecid(ispec,isec_spec) = spec_id
+          reaction%eqcplx_basis_names(ispec,isec_spec) = &
+            cur_sec_aq_spec%dbaserxn%spec_name(i)
+          reaction%eqcplxstoich(ispec,isec_spec) = cur_sec_aq_spec%dbaserxn%stoich(i)
             
         else ! fill in h2o id and stoich
-          reaction%eqcmplxh2oid(isec_spec) = h2o_id
-          reaction%eqcmplxh2ostoich(isec_spec) = cur_sec_aq_spec%eqrxn%stoich(i)
+          reaction%eqcplxh2oid(isec_spec) = h2o_id
+          reaction%eqcplxh2ostoich(isec_spec) = cur_sec_aq_spec%dbaserxn%stoich(i)
         endif
       enddo
-      reaction%eqcmplxspecid(0,isec_spec) = ispec
+      reaction%eqcplxspecid(0,isec_spec) = ispec
 
 #if TEMP_DEPENDENT_LOGK
-      call ReactionFitLogKCoef(reaction%eqcmplx_logKcoef(:,isec_spec), &
-                               cur_sec_aq_spec%eqrxn%logK, &
+      call ReactionFitLogKCoef(reaction%eqcplx_logKcoef(:,isec_spec), &
+                               cur_sec_aq_spec%dbaserxn%logK, &
                                reaction%secondary_species_names(isec_spec), &
                                option,reaction)
-      call ReactionInitializeLogK(reaction%eqcmplx_logKcoef(:,isec_spec), &
-                                  cur_sec_aq_spec%eqrxn%logK, &
-                                  reaction%eqcmplx_logK(isec_spec), &
+      call ReactionInitializeLogK(reaction%eqcplx_logKcoef(:,isec_spec), &
+                                  cur_sec_aq_spec%dbaserxn%logK, &
+                                  reaction%eqcplx_logK(isec_spec), &
                                   option,reaction)
 #else
       call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                       cur_sec_aq_spec%eqrxn%logK(itemp_high), &
-                       cur_sec_aq_spec%eqrxn%logK(itemp_low), &
-                       reaction%eqcmplx_logK(isec_spec))
-!      reaction%eqcmplx_logK(isec_spec) = cur_sec_aq_spec%eqrxn%logK(option%itemp_ref)
+                       cur_sec_aq_spec%dbaserxn%logK(itemp_high), &
+                       cur_sec_aq_spec%dbaserxn%logK(itemp_low), &
+                       reaction%eqcplx_logK(isec_spec))
+!      reaction%eqcplx_logK(isec_spec) = cur_sec_aq_spec%dbaserxn%logK(option%itemp_ref)
 #endif  
-      reaction%eqcmplx_Z(isec_spec) = cur_sec_aq_spec%Z
-      reaction%eqcmplx_molar_wt(isec_spec) = cur_sec_aq_spec%molar_weight
-      reaction%eqcmplx_a0(isec_spec) = cur_sec_aq_spec%a0
+      reaction%eqcplx_Z(isec_spec) = cur_sec_aq_spec%Z
+      reaction%eqcplx_molar_wt(isec_spec) = cur_sec_aq_spec%molar_weight
+      reaction%eqcplx_a0(isec_spec) = cur_sec_aq_spec%a0
   
       isec_spec = isec_spec + 1
       cur_sec_aq_spec => cur_sec_aq_spec%next
@@ -2091,38 +2093,38 @@ subroutine BasisInit(reaction,option)
       reaction%gas_species_print(igas_spec) = cur_gas_spec%print_me .or. &
                                             reaction%print_all_species
       ispec = 0
-      do i = 1, cur_gas_spec%eqrxn%nspec
-        if (cur_gas_spec%eqrxn%spec_ids(i) /= h2o_id) then
+      do i = 1, cur_gas_spec%dbaserxn%nspec
+        if (cur_gas_spec%dbaserxn%spec_ids(i) /= h2o_id) then
           ispec = ispec + 1
-          spec_id = cur_gas_spec%eqrxn%spec_ids(i)
+          spec_id = cur_gas_spec%dbaserxn%spec_ids(i)
           if (spec_id > h2o_id) spec_id = spec_id - 1
           reaction%eqgasspecid(ispec,igas_spec) = spec_id
           reaction%eqgasstoich(ispec,igas_spec) = &
-            cur_gas_spec%eqrxn%stoich(i)
+            cur_gas_spec%dbaserxn%stoich(i)
             
         else ! fill in h2o id and stoich
           reaction%eqgash2oid(igas_spec) = h2o_id
           reaction%eqgash2ostoich(igas_spec) = &
-            cur_gas_spec%eqrxn%stoich(i)
+            cur_gas_spec%dbaserxn%stoich(i)
         endif
       enddo
       reaction%eqgasspecid(0,igas_spec) = ispec
       
 #if TEMP_DEPENDENT_LOGK
-      call ReactionFitLogKCoef(reaction%eqgas_logKcoef(:,igas_spec),cur_gas_spec%eqrxn%logK, &
+      call ReactionFitLogKCoef(reaction%eqgas_logKcoef(:,igas_spec),cur_gas_spec%dbaserxn%logK, &
                                reaction%gas_species_names(igas_spec), &
                                option,reaction)
       call ReactionInitializeLogK(reaction%eqgas_logKcoef(:,igas_spec), &
-                                  cur_gas_spec%eqrxn%logK, &
+                                  cur_gas_spec%dbaserxn%logK, &
                                   reaction%eqgas_logK(igas_spec), &
                                   option,reaction)
 #else
-      reaction%eqgas_logKcoef(:,igas_spec) = cur_gas_spec%eqrxn%logK
+      reaction%eqgas_logKcoef(:,igas_spec) = cur_gas_spec%dbaserxn%logK
       call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                       cur_gas_spec%eqrxn%logK(itemp_high), &
-                       cur_gas_spec%eqrxn%logK(itemp_low), &
+                       cur_gas_spec%dbaserxn%logK(itemp_high), &
+                       cur_gas_spec%dbaserxn%logK(itemp_low), &
                        reaction%eqgas_logK(igas_spec))
-!      reaction%eqgas_logK(igas_spec) = cur_gas_spec%eqrxn%logK(option%itemp_ref)
+!      reaction%eqgas_logK(igas_spec) = cur_gas_spec%dbaserxn%logK(option%itemp_ref)
 #endif      
   
       igas_spec = igas_spec + 1
@@ -2195,19 +2197,19 @@ subroutine BasisInit(reaction,option)
 
       reaction%mineral_names(imnrl) = cur_mineral%name
       ispec = 0
-      do i = 1, cur_mineral%tstrxn%nspec
-        if (cur_mineral%tstrxn%spec_ids(i) /= h2o_id) then
+      do i = 1, cur_mineral%tstrxn%dbaserxn%nspec
+        if (cur_mineral%tstrxn%dbaserxn%spec_ids(i) /= h2o_id) then
           ispec = ispec + 1
-          spec_id = cur_mineral%tstrxn%spec_ids(i)
+          spec_id = cur_mineral%tstrxn%dbaserxn%spec_ids(i)
           if (spec_id > h2o_id) spec_id = spec_id - 1
           reaction%mnrlspecid(ispec,imnrl) = spec_id
           reaction%mnrlstoich(ispec,imnrl) = &
-            cur_mineral%tstrxn%stoich(i)
+            cur_mineral%tstrxn%dbaserxn%stoich(i)
             
         else ! fill in h2o id and stoich
           reaction%mnrlh2oid(imnrl) = h2o_id
           reaction%mnrlh2ostoich(imnrl) = &
-            cur_mineral%tstrxn%stoich(i)
+            cur_mineral%tstrxn%dbaserxn%stoich(i)
         endif
       enddo
       reaction%mnrlspecid(0,imnrl) = ispec
@@ -2222,8 +2224,8 @@ subroutine BasisInit(reaction,option)
                                   option,reaction)
 #else
       call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                       cur_mineral%tstrxn%logK(itemp_high), &
-                       cur_mineral%tstrxn%logK(itemp_low), &
+                       cur_mineral%tstrxn%dbaserxn%logK(itemp_high), &
+                       cur_mineral%tstrxn%dbaserxn%logK(itemp_low), &
                        reaction%mnrl_logK(imnrl))
 !      reaction%mnrl_logK(imnrl) = cur_mineral%tstrxn%logK(option%itemp_ref)
 #endif
@@ -2246,8 +2248,8 @@ subroutine BasisInit(reaction,option)
                                     option,reaction)
 #else
       call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                       cur_mineral%tstrxn%logK(itemp_high), &
-                       cur_mineral%tstrxn%logK(itemp_low), &
+                       cur_mineral%tstrxn%dbaserxn%logK(itemp_high), &
+                       cur_mineral%tstrxn%dbaserxn%logK(itemp_low), &
                        reaction%kinmnrl_logK(ikinmnrl))
 !      reaction%kinmnrl_logK(imnrl) = cur_mineral%tstrxn%logK(option%itemp_ref)
 #endif
@@ -2261,148 +2263,346 @@ subroutine BasisInit(reaction,option)
     enddo
   endif
   
-  if (reaction%neqsurfcmplx > 0) then
+  if (reaction%neqsrfcplx > 0) then
   
     ! determine max # complexes for a given site
     icount = 0
-    cur_surfcplx_rxn => reaction%surface_complexation_rxn_list
+    cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
     do
-      if (.not.associated(cur_surfcplx_rxn)) exit
-      isurfcplx = 0
-      cur_surfcplx => cur_surfcplx_rxn%complex_list
-      do
-        if (.not.associated(cur_surfcplx)) exit
-        isurfcplx = isurfcplx + 1
-        cur_surfcplx => cur_surfcplx%next
-      enddo
-      if (isurfcplx > icount) icount = isurfcplx
-      cur_surfcplx_rxn => cur_surfcplx_rxn%next
-    enddo
-    nullify(cur_surfcplx_rxn)  
-
-    allocate(reaction%eqsurfcmplx_rxn_to_mineral(reaction%neqsurfcmplxrxn))
-    reaction%eqsurfcmplx_rxn_to_mineral = 0
-    allocate(reaction%eqsurfcmplx_rxn_to_complex(0:icount, &
-                                                 reaction%neqsurfcmplxrxn))
-    reaction%eqsurfcmplx_rxn_to_complex = 0
-    allocate(reaction%surface_site_names(reaction%neqsurfcmplxrxn))
-    reaction%surface_site_names = ''
-    allocate(reaction%surface_site_print(reaction%neqsurfcmplxrxn))
-    reaction%surface_site_print = PETSC_FALSE
-    allocate(reaction%eqsurfcmplx_rxn_site_density(reaction%neqsurfcmplxrxn))
-    reaction%eqsurfcmplx_rxn_site_density = 0.d0
-    allocate(reaction%eqsurfcmplx_rxn_stoich_flag(reaction%neqsurfcmplxrxn))
-    reaction%eqsurfcmplx_rxn_stoich_flag = PETSC_FALSE
-    allocate(reaction%surface_complex_names(reaction%neqsurfcmplx))
-    reaction%surface_complex_names = ''
-    allocate(reaction%surface_complex_print(reaction%neqsurfcmplx))
-    reaction%surface_complex_print = PETSC_FALSE
-    allocate(reaction%eqsurfcmplxspecid(0:reaction%ncomp,reaction%neqsurfcmplx))
-    reaction%eqsurfcmplxspecid = 0
-    allocate(reaction%eqsurfcmplxstoich(reaction%ncomp,reaction%neqsurfcmplx))
-    reaction%eqsurfcmplxstoich = 0.d0
-    allocate(reaction%eqsurfcmplxh2oid(reaction%neqsurfcmplx))
-    reaction%eqsurfcmplxh2oid = 0
-    allocate(reaction%eqsurfcmplxh2ostoich(reaction%neqsurfcmplx))
-    reaction%eqsurfcmplxh2ostoich = 0.d0
-    allocate(reaction%eqsurfcmplx_free_site_id(reaction%neqsurfcmplx))
-    reaction%eqsurfcmplx_free_site_id = 0
-    allocate(reaction%eqsurfcmplx_free_site_stoich(reaction%neqsurfcmplx))
-    reaction%eqsurfcmplx_free_site_stoich = 0.d0
-    allocate(reaction%eqsurfcmplx_mineral_id(reaction%neqsurfcmplx))
-    reaction%eqsurfcmplx_mineral_id = 0
-    allocate(reaction%eqsurfcmplx_logK(reaction%neqsurfcmplx))
-    reaction%eqsurfcmplx_logK = 0.d0
-#if TEMP_DEPENDENT_LOGK
-    allocate(reaction%eqsurfcmplx_logKcoef(FIVE_INTEGER,reaction%neqsurfcmplx))
-    reaction%eqsurfcmplx_logKcoef = 0.d0
-#else
-    allocate(reaction%eqsurfcmplx_logKcoef(reaction%num_dbase_temperatures, &
-                                           reaction%neqsurfcmplx))
-    reaction%eqsurfcmplx_logKcoef = 0.d0
-#endif
-    allocate(reaction%eqsurfcmplx_Z(reaction%neqsurfcmplx))
-    reaction%eqsurfcmplx_Z = 0.d0
-
-    isurfcplx = 0
-    irxn = 0
-    cur_surfcplx_rxn => reaction%surface_complexation_rxn_list
-    do
-      if (.not.associated(cur_surfcplx_rxn)) exit
-      
-      irxn = irxn + 1
-      reaction%surface_site_names(irxn) = cur_surfcplx_rxn%free_site_name
-      reaction%surface_site_print(irxn) = cur_surfcplx_rxn%free_site_print_me .or. &
-                                            reaction%print_all_species
-      reaction%eqsurfcmplx_rxn_to_mineral(irxn) = &
-        GetMineralIDFromName(reaction,cur_surfcplx_rxn%mineral_name)
-      reaction%eqsurfcmplx_rxn_site_density(irxn) = cur_surfcplx_rxn%site_density
-            
-      cur_surfcplx => cur_surfcplx_rxn%complex_list
-      do
-        if (.not.associated(cur_surfcplx)) exit
-        
-        isurfcplx = isurfcplx + 1
-        
-        ! set up integer pointers from site to complexes
-        ! increment count for site
-        reaction%eqsurfcmplx_rxn_to_complex(0,irxn) = &
-          reaction%eqsurfcmplx_rxn_to_complex(0,irxn) + 1
-        reaction%eqsurfcmplx_rxn_to_complex( &
-          reaction%eqsurfcmplx_rxn_to_complex(0,irxn),irxn) = isurfcplx 
-        
-        reaction%surface_complex_names(isurfcplx) = cur_surfcplx%name
-        reaction%surface_complex_print(isurfcplx) = cur_surfcplx%print_me .or. &
-                                            reaction%print_all_species
-        reaction%eqsurfcmplx_free_site_id(isurfcplx) = &
-          cur_surfcplx_rxn%free_site_id
-        reaction%eqsurfcmplx_free_site_stoich(isurfcplx) =  &
-          cur_surfcplx%free_site_stoich
-          
-        if (cur_surfcplx%free_site_stoich > 1.d0) then
-          reaction%eqsurfcmplx_rxn_stoich_flag(irxn) = PETSC_TRUE
-        endif
- 
-        ispec = 0
-        do i = 1, cur_surfcplx%eqrxn%nspec
-          if (cur_surfcplx%eqrxn%spec_ids(i) /= h2o_id) then
-            ispec = ispec + 1
-            spec_id = cur_surfcplx%eqrxn%spec_ids(i)
-            if (spec_id > h2o_id) spec_id = spec_id - 1
-            reaction%eqsurfcmplxspecid(ispec,isurfcplx) = spec_id
-            reaction%eqsurfcmplxstoich(ispec,isurfcplx) = &
-              cur_surfcplx%eqrxn%stoich(i)
-            
-          else ! fill in h2o id and stoich
-            reaction%eqsurfcmplxh2oid(isurfcplx) = h2o_id
-            reaction%eqsurfcmplxh2ostoich(isurfcplx) = &
-              cur_surfcplx%eqrxn%stoich(i)
-          endif
+      if (.not.associated(cur_srfcplx_rxn)) exit
+      if (cur_srfcplx_rxn%itype == SRFCMPLX_RXN_EQUILIBRIUM .or. &
+          cur_srfcplx_rxn%itype == SRFCMPLX_RXN_MULTIRATE_KINETIC) then
+        isrfcplx = 0
+        cur_srfcplx => cur_srfcplx_rxn%complex_list
+        do
+          if (.not.associated(cur_srfcplx)) exit
+          isrfcplx = isrfcplx + 1
+          cur_srfcplx => cur_srfcplx%next
         enddo
-        reaction%eqsurfcmplxspecid(0,isurfcplx) = ispec
-#if TEMP_DEPENDENT_LOGK
-      call ReactionFitLogKCoef(reaction%eqsurfcmplx_logKcoef(:,isurfcplx),cur_surfcplx%eqrxn%logK, &
-                               reaction%surface_complex_names(isurfcplx), &
-                               option,reaction)
-      call ReactionInitializeLogK(reaction%eqsurfcmplx_logKcoef(:,isurfcplx), &
-                                  cur_surfcplx%eqrxn%logK, &
-                                  reaction%eqsurfcmplx_logK(isurfcplx), &
-                                  option,reaction)
-#else
-        call Interpolate(temp_high,temp_low,option%reference_temperature, &
-                         cur_surfcplx%eqrxn%logK(itemp_high), &
-                         cur_surfcplx%eqrxn%logK(itemp_low), &
-                         reaction%eqsurfcmplx_logK(isurfcplx))
-        !reaction%eqsurfcmplx_logK(isurfcplx) = cur_surfcplx%eqrxn%logK(option%itemp_ref)
-#endif
-        reaction%eqsurfcmplx_Z(isurfcplx) = cur_surfcplx%Z
-
-        cur_surfcplx => cur_surfcplx%next
-      enddo
-      nullify(cur_surfcplx)
-      cur_surfcplx_rxn => cur_surfcplx_rxn%next
+        if (isrfcplx > icount) icount = isrfcplx
+      endif
+      cur_srfcplx_rxn => cur_srfcplx_rxn%next
     enddo
-    nullify(cur_surfcplx_rxn)  
+    nullify(cur_srfcplx_rxn)  
+
+    allocate(reaction%eqsrfcplx_rxn_to_mineral(reaction%neqsrfcplxrxn))
+    reaction%eqsrfcplx_rxn_to_mineral = 0
+    
+    allocate(reaction%eqsrfcplx_rxn_to_complex(0:icount, &
+                                                 reaction%neqsrfcplxrxn))
+    reaction%eqsrfcplx_rxn_to_complex = 0
+    
+    allocate(reaction%eqsrfcplx_site_names(reaction%neqsrfcplxrxn))
+    reaction%eqsrfcplx_site_names = ''
+    
+    allocate(reaction%eqsrfcplx_site_print(reaction%neqsrfcplxrxn))
+    reaction%eqsrfcplx_site_print = PETSC_FALSE
+    
+    allocate(reaction%eqsrfcplx_rxn_site_density(reaction%neqsrfcplxrxn))
+    reaction%eqsrfcplx_rxn_site_density = 0.d0
+    
+    allocate(reaction%eqsrfcplx_rxn_stoich_flag(reaction%neqsrfcplxrxn))
+    reaction%eqsrfcplx_rxn_stoich_flag = PETSC_FALSE
+    
+    allocate(reaction%eqsrfcplx_names(reaction%neqsrfcplx))
+    reaction%eqsrfcplx_names = ''
+    
+    allocate(reaction%eqsrfcplx_print(reaction%neqsrfcplx))
+    reaction%eqsrfcplx_print = PETSC_FALSE
+    
+    allocate(reaction%eqsrfcplxspecid(0:reaction%ncomp,reaction%neqsrfcplx))
+    reaction%eqsrfcplxspecid = 0
+    
+    allocate(reaction%eqsrfcplxstoich(reaction%ncomp,reaction%neqsrfcplx))
+    reaction%eqsrfcplxstoich = 0.d0
+    
+    allocate(reaction%eqsrfcplxh2oid(reaction%neqsrfcplx))
+    reaction%eqsrfcplxh2oid = 0
+    
+    allocate(reaction%eqsrfcplxh2ostoich(reaction%neqsrfcplx))
+    reaction%eqsrfcplxh2ostoich = 0.d0
+    
+    allocate(reaction%eqsrfcplx_free_site_id(reaction%neqsrfcplx))
+    reaction%eqsrfcplx_free_site_id = 0
+    
+    allocate(reaction%eqsrfcplx_free_site_stoich(reaction%neqsrfcplx))
+    reaction%eqsrfcplx_free_site_stoich = 0.d0
+    
+    allocate(reaction%eqsrfcplx_mineral_id(reaction%neqsrfcplx))
+    reaction%eqsrfcplx_mineral_id = 0
+    
+    allocate(reaction%eqsrfcplx_logK(reaction%neqsrfcplx))
+    reaction%eqsrfcplx_logK = 0.d0
+    
+#if TEMP_DEPENDENT_LOGK
+    allocate(reaction%eqsrfcplx_logKcoef(FIVE_INTEGER,reaction%neqsrfcplx))
+    reaction%eqsrfcplx_logKcoef = 0.d0
+#else
+    allocate(reaction%eqsrfcplx_logKcoef(reaction%num_dbase_temperatures, &
+                                           reaction%neqsrfcplx))
+    reaction%eqsrfcplx_logKcoef = 0.d0
+#endif
+    allocate(reaction%eqsrfcplx_Z(reaction%neqsrfcplx))
+    reaction%eqsrfcplx_Z = 0.d0
+
+    isrfcplx = 0
+    irxn = 0
+    cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
+    do
+      if (.not.associated(cur_srfcplx_rxn)) exit
+      
+      if (cur_srfcplx_rxn%itype == SRFCMPLX_RXN_EQUILIBRIUM .or. &
+          cur_srfcplx_rxn%itype == SRFCMPLX_RXN_MULTIRATE_KINETIC) then
+
+        irxn = irxn + 1
+        reaction%eqsrfcplx_site_names(irxn) = cur_srfcplx_rxn%free_site_name
+        reaction%eqsrfcplx_site_print(irxn) = cur_srfcplx_rxn%free_site_print_me .or. &
+                                              reaction%print_all_species
+        reaction%eqsrfcplx_rxn_to_mineral(irxn) = &
+          GetMineralIDFromName(reaction,cur_srfcplx_rxn%mineral_name)
+        reaction%eqsrfcplx_rxn_site_density(irxn) = cur_srfcplx_rxn%site_density
+              
+        cur_srfcplx => cur_srfcplx_rxn%complex_list
+        do
+          if (.not.associated(cur_srfcplx)) exit
+          
+          isrfcplx = isrfcplx + 1
+          
+          ! set up integer pointers from site to complexes
+          ! increment count for site
+          reaction%eqsrfcplx_rxn_to_complex(0,irxn) = &
+            reaction%eqsrfcplx_rxn_to_complex(0,irxn) + 1
+          reaction%eqsrfcplx_rxn_to_complex( &
+            reaction%eqsrfcplx_rxn_to_complex(0,irxn),irxn) = isrfcplx 
+          
+          reaction%eqsrfcplx_names(isrfcplx) = cur_srfcplx%name
+          reaction%eqsrfcplx_print(isrfcplx) = cur_srfcplx%print_me .or. &
+                                              reaction%print_all_species
+          reaction%eqsrfcplx_free_site_id(isrfcplx) = &
+            cur_srfcplx_rxn%free_site_id
+          reaction%eqsrfcplx_free_site_stoich(isrfcplx) =  &
+            cur_srfcplx%free_site_stoich
+            
+          if (cur_srfcplx%free_site_stoich > 1.d0) then
+            reaction%eqsrfcplx_rxn_stoich_flag(irxn) = PETSC_TRUE
+          endif
+   
+          ispec = 0
+          do i = 1, cur_srfcplx%dbaserxn%nspec
+            if (cur_srfcplx%dbaserxn%spec_ids(i) /= h2o_id) then
+              ispec = ispec + 1
+              spec_id = cur_srfcplx%dbaserxn%spec_ids(i)
+              if (spec_id > h2o_id) spec_id = spec_id - 1
+              reaction%eqsrfcplxspecid(ispec,isrfcplx) = spec_id
+              reaction%eqsrfcplxstoich(ispec,isrfcplx) = &
+                cur_srfcplx%dbaserxn%stoich(i)
+              
+            else ! fill in h2o id and stoich
+              reaction%eqsrfcplxh2oid(isrfcplx) = h2o_id
+              reaction%eqsrfcplxh2ostoich(isrfcplx) = &
+                cur_srfcplx%dbaserxn%stoich(i)
+            endif
+          enddo
+          reaction%eqsrfcplxspecid(0,isrfcplx) = ispec
+#if TEMP_DEPENDENT_LOGK
+          call ReactionFitLogKCoef(reaction%eqsrfcplx_logKcoef(:,isrfcplx),cur_srfcplx%dbaserxn%logK, &
+                                   reaction%eqsrfcplx_names(isrfcplx), &
+                                   option,reaction)
+          call ReactionInitializeLogK(reaction%eqsrfcplx_logKcoef(:,isrfcplx), &
+                                      cur_srfcplx%dbaserxn%logK, &
+                                      reaction%eqsrfcplx_logK(isrfcplx), &
+                                      option,reaction)
+#else
+          call Interpolate(temp_high,temp_low,option%reference_temperature, &
+                           cur_srfcplx%dbaserxn%logK(itemp_high), &
+                           cur_srfcplx%dbaserxn%logK(itemp_low), &
+                           reaction%eqsrfcplx_logK(isrfcplx))
+          !reaction%eqsrfcplx_logK(isrfcplx) = cur_srfcplx%dbaserxn%logK(option%itemp_ref)
+#endif
+          reaction%eqsrfcplx_Z(isrfcplx) = cur_srfcplx%Z
+
+          cur_srfcplx => cur_srfcplx%next
+        enddo
+        nullify(cur_srfcplx)
+        
+      endif
+      cur_srfcplx_rxn => cur_srfcplx_rxn%next
+    enddo
+    nullify(cur_srfcplx_rxn)  
+  
+  endif
+
+  if (reaction%nkinsrfcplxrxn > 0) then
+  
+    allocate(reaction%kinsrfcplx_rxn_to_mineral(reaction%nkinsrfcplxrxn))
+    reaction%kinsrfcplx_rxn_to_mineral = 0
+    
+    ! determine max # complexes for a given site
+    icount = 0
+    cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
+    do
+      if (.not.associated(cur_srfcplx_rxn)) exit
+      if (cur_srfcplx_rxn%itype == SRFCMPLX_RXN_KINETIC) then
+        isrfcplx = 0
+        cur_srfcplx => cur_srfcplx_rxn%complex_list
+        do
+          if (.not.associated(cur_srfcplx)) exit
+          isrfcplx = isrfcplx + 1
+          cur_srfcplx => cur_srfcplx%next
+        enddo
+        if (isrfcplx > icount) icount = isrfcplx
+      endif
+      cur_srfcplx_rxn => cur_srfcplx_rxn%next
+    enddo
+    nullify(cur_srfcplx_rxn) 
+    allocate(reaction%kinsrfcplx_rxn_to_complex(0:icount, &
+                                                 reaction%nkinsrfcplxrxn))
+    reaction%kinsrfcplx_rxn_to_complex = 0
+    
+    allocate(reaction%kinsrfcplx_rxn_to_site(reaction%nkinsrfcplxrxn))
+    reaction%kinsrfcplx_rxn_to_site = 0
+    
+    allocate(reaction%kinsrfcplx_site_names(reaction%nkinsrfcplxrxn))
+    reaction%kinsrfcplx_site_names = ''
+    
+    allocate(reaction%kinsrfcplx_site_print(reaction%nkinsrfcplxrxn))
+    reaction%kinsrfcplx_site_print = PETSC_FALSE
+    
+    allocate(reaction%kinsrfcplx_rxn_site_density(reaction%nkinsrfcplxrxn))
+    reaction%kinsrfcplx_rxn_site_density = 0.d0
+    
+    allocate(reaction%kinsrfcplx_rxn_stoich_flag(reaction%nkinsrfcplxrxn))
+    reaction%kinsrfcplx_rxn_stoich_flag = PETSC_FALSE
+    
+    allocate(reaction%kinsrfcplx_names(reaction%nkinsrfcplx))
+    reaction%kinsrfcplx_names = ''
+    
+    allocate(reaction%kinsrfcplx_print(reaction%nkinsrfcplx))
+    reaction%kinsrfcplx_print = PETSC_FALSE
+    
+    allocate(reaction%kinsrfcplxspecid(0:reaction%ncomp,reaction%nkinsrfcplx))
+    reaction%kinsrfcplxspecid = 0
+    
+    allocate(reaction%kinsrfcplxstoich(reaction%ncomp,reaction%nkinsrfcplx))
+    reaction%kinsrfcplxstoich = 0.d0
+    
+    allocate(reaction%kinsrfcplxh2oid(reaction%nkinsrfcplx))
+    reaction%kinsrfcplxh2oid = 0
+    
+    allocate(reaction%kinsrfcplxh2ostoich(reaction%nkinsrfcplx))
+    reaction%kinsrfcplxh2ostoich = 0.d0
+    
+    allocate(reaction%kinsrfcplx_free_site_id(reaction%nkinsrfcplx))
+    reaction%kinsrfcplx_free_site_id = 0
+    
+    allocate(reaction%kinsrfcplx_free_site_stoich(reaction%nkinsrfcplx))
+    reaction%kinsrfcplx_free_site_stoich = 0.d0
+    
+    allocate(reaction%kinsrfcplx_forward_rate(reaction%nkinsrfcplx))
+    reaction%kinsrfcplx_forward_rate = 0.d0
+    
+    allocate(reaction%kinsrfcplx_backward_rate(reaction%nkinsrfcplx))
+    reaction%kinsrfcplx_backward_rate = 0.d0
+
+!    allocate(reaction%kinsrfcplx_logK(reaction%nkinsrfcplx))
+!    reaction%kinsrfcplx_logK = 0.d0
+!#if TEMP_DEPENDENT_LOGK
+!    allocate(reaction%kinsrfcplx_logKcoef(FIVE_INTEGER,reaction%nkinsrfcplx))
+!    reaction%kinsrfcplx_logKcoef = 0.d0
+!#else
+!    allocate(reaction%kinsrfcplx_logKcoef(reaction%num_dbase_temperatures, &
+!                                           reaction%nkinsrfcplx))
+!    reaction%kinsrfcplx_logKcoef = 0.d0
+!#endif
+    allocate(reaction%kinsrfcplx_Z(reaction%nkinsrfcplx))
+    reaction%kinsrfcplx_Z = 0.d0
+
+    isrfcplx = 0
+    irxn = 0
+    cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
+    do
+      if (.not.associated(cur_srfcplx_rxn)) exit
+      
+      if (cur_srfcplx_rxn%itype == SRFCMPLX_RXN_KINETIC) then
+
+        irxn = irxn + 1
+        
+        reaction%kinsrfcplx_site_names(irxn) = cur_srfcplx_rxn%free_site_name
+        reaction%kinsrfcplx_site_print(irxn) = cur_srfcplx_rxn%free_site_print_me .or. &
+                                              reaction%print_all_species
+        reaction%kinsrfcplx_rxn_to_mineral(irxn) = &
+          GetMineralIDFromName(reaction,cur_srfcplx_rxn%mineral_name)
+        reaction%kinsrfcplx_rxn_site_density(irxn) = cur_srfcplx_rxn%site_density
+              
+        cur_srfcplx => cur_srfcplx_rxn%complex_list
+        do
+          if (.not.associated(cur_srfcplx)) exit
+          
+          isrfcplx = isrfcplx + 1
+          
+          reaction%kinsrfcplx_forward_rate(isrfcplx) = cur_srfcplx%forward_rate
+          reaction%kinsrfcplx_backward_rate(isrfcplx) = cur_srfcplx%backward_rate
+          ! set up integer pointers from site to complexes
+          ! increment count for site
+          reaction%kinsrfcplx_rxn_to_complex(0,irxn) = &
+            reaction%kinsrfcplx_rxn_to_complex(0,irxn) + 1
+          reaction%kinsrfcplx_rxn_to_complex( &
+            reaction%kinsrfcplx_rxn_to_complex(0,irxn),irxn) = isrfcplx 
+          reaction%kinsrfcplx_rxn_to_site(irxn) = cur_srfcplx_rxn%free_site_id
+
+          
+          reaction%kinsrfcplx_names(isrfcplx) = cur_srfcplx%name
+          reaction%kinsrfcplx_print(isrfcplx) = cur_srfcplx%print_me .or. &
+                                              reaction%print_all_species
+          reaction%kinsrfcplx_free_site_stoich(isrfcplx) =  &
+            cur_srfcplx%free_site_stoich
+            
+          if (cur_srfcplx%free_site_stoich > 1.d0) then
+            reaction%kinsrfcplx_rxn_stoich_flag(irxn) = PETSC_TRUE
+          endif
+   
+          ispec = 0
+          do i = 1, cur_srfcplx%dbaserxn%nspec
+            if (cur_srfcplx%dbaserxn%spec_ids(i) /= h2o_id) then
+              ispec = ispec + 1
+              spec_id = cur_srfcplx%dbaserxn%spec_ids(i)
+              if (spec_id > h2o_id) spec_id = spec_id - 1
+              reaction%kinsrfcplxspecid(ispec,isrfcplx) = spec_id
+              reaction%kinsrfcplxstoich(ispec,isrfcplx) = &
+                cur_srfcplx%dbaserxn%stoich(i)
+            else ! fill in h2o id and stoich
+              reaction%kinsrfcplxh2oid(isrfcplx) = h2o_id
+              reaction%kinsrfcplxh2ostoich(isrfcplx) = &
+                cur_srfcplx%dbaserxn%stoich(i)
+            endif
+          enddo
+          reaction%kinsrfcplxspecid(0,isrfcplx) = ispec
+!  #if TEMP_DEPENDENT_LOGK
+!        call ReactionFitLogKCoef(reaction%kinsrfcplx_logKcoef(:,isrfcplx),cur_srfcplx%dbaserxn%logK, &
+!                                 reaction%kinsrfcplx_names(isrfcplx), &
+!                                 option,reaction)
+!        call ReactionInitializeLogK(reaction%kinsrfcplx_logKcoef(:,isrfcplx), &
+!                                    cur_srfcplx%dbaserxn%logK, &
+!                                    reaction%kinsrfcplx_logK(isrfcplx), &
+!                                    option,reaction)
+!  #else
+!          call Interpolate(temp_high,temp_low,option%reference_temperature, &
+!                           cur_srfcplx%dbaserxn%logK(itemp_high), &
+!                           cur_srfcplx%dbaserxn%logK(itemp_low), &
+!                           reaction%kinsrfcplx_logK(isrfcplx))
+!          !reaction%kinsrfcplx_logK(isrfcplx) = cur_srfcplx%dbaserxn%logK(option%itemp_ref)
+!  #endif
+          reaction%kinsrfcplx_Z(isrfcplx) = cur_srfcplx%Z
+
+          cur_srfcplx => cur_srfcplx%next
+        enddo
+        nullify(cur_srfcplx)
+        
+      endif
+      
+      cur_srfcplx_rxn => cur_srfcplx_rxn%next
+    enddo
+    nullify(cur_srfcplx_rxn)  
   
   endif
 
@@ -2533,7 +2733,7 @@ subroutine BasisInit(reaction,option)
     endif
   enddo
   
-  do ispec = 1, reaction%neqcmplx
+  do ispec = 1, reaction%neqcplx
     if (reaction%h_ion_id == 0) then
       word = 'H+'
       if (StringCompare(reaction%secondary_species_names(ispec), &
@@ -2597,8 +2797,8 @@ subroutine BasisInit(reaction,option)
     write(option%fid_out,100) reaction%ncomp, 'Primary Species'
     write(option%fid_out,110) (reaction%primary_species_names(i),i=1,reaction%ncomp)
     
-    write(option%fid_out,100) reaction%neqcmplx, 'Secondary Complex Species'
-    write(option%fid_out,110) (reaction%secondary_species_names(i),i=1,reaction%neqcmplx)
+    write(option%fid_out,100) reaction%neqcplx, 'Secondary Complex Species'
+    write(option%fid_out,110) (reaction%secondary_species_names(i),i=1,reaction%neqcplx)
     
     write(option%fid_out,100) reaction%ngas, 'Gas Species'
     write(option%fid_out,110) (reaction%gas_species_names(i),i=1,reaction%ngas)
@@ -2609,10 +2809,10 @@ subroutine BasisInit(reaction,option)
     write(option%fid_out,100) reaction%nkinmnrl, 'Kinetic Mineral Reactions'
     write(option%fid_out,110) (reaction%kinmnrl_names(i),i=1,reaction%nkinmnrl)
     
-    write(option%fid_out,100) reaction%neqsurfcmplxrxn, 'Surface Complexation Reactions'
-    write(option%fid_out,110) (reaction%surface_site_names(i),i=1,reaction%neqsurfcmplxrxn)
-    write(option%fid_out,100) reaction%neqsurfcmplx, 'Surface Complexes'
-    write(option%fid_out,110) (reaction%surface_complex_names(i),i=1,reaction%neqsurfcmplx)
+    write(option%fid_out,100) reaction%neqsrfcplxrxn, 'Surface Complexation Reactions'
+    write(option%fid_out,110) (reaction%eqsrfcplx_site_names(i),i=1,reaction%neqsrfcplxrxn)
+    write(option%fid_out,100) reaction%neqsrfcplx, 'Surface Complexes'
+    write(option%fid_out,110) (reaction%eqsrfcplx_names(i),i=1,reaction%neqsrfcplx)
     
     write(option%fid_out,100) reaction%neqionxrxn, 'Ion Exchange Reactions'
     write(option%fid_out,100) reaction%neqionxcation, 'Ion Exchange Cations'
@@ -2669,7 +2869,7 @@ function GetSpeciesBasisID(reaction,option,ncomp_h2o,reaction_name, &
     endif
   enddo
   ! secondary aqueous and gas species denoted by negative id
-  do i=1,reaction%neqcmplx
+  do i=1,reaction%neqcplx
     if (StringCompare(species_name, &
                         sec_names(i),MAXWORDLENGTH)) then
       GetSpeciesBasisID = -i
@@ -2679,7 +2879,7 @@ function GetSpeciesBasisID(reaction,option,ncomp_h2o,reaction_name, &
   do i=1,reaction%ngas
     if (StringCompare(species_name, &
                         gas_names(i),MAXWORDLENGTH)) then
-      GetSpeciesBasisID = -(reaction%neqcmplx+i)
+      GetSpeciesBasisID = -(reaction%neqcplx+i)
       return
     endif
   enddo
@@ -2776,15 +2976,15 @@ end subroutine BasisAlignSpeciesInRxn
 ! date: 10/06/08
 !
 ! ************************************************************************** !
-subroutine BasisSubSpeciesInGasOrSecRxn(name1,eqrxn1,eqrxn2)
+subroutine BasisSubSpeciesInGasOrSecRxn(name1,dbaserxn1,dbaserxn2)
 
   use String_module
   
   implicit none
   
   character(len=MAXWORDLENGTH) :: name1
-  type(equilibrium_rxn_type) :: eqrxn1
-  type(equilibrium_rxn_type) :: eqrxn2
+  type(database_rxn_type) :: dbaserxn1
+  type(database_rxn_type) :: dbaserxn2
   
   PetscInt :: i, j, tempcount, prevcount
   character(len=MAXWORDLENGTH) :: tempnames(20)
@@ -2798,41 +2998,41 @@ subroutine BasisSubSpeciesInGasOrSecRxn(name1,eqrxn1,eqrxn2)
   ! load species in reaction other than species 1 into new arrays
   scale = 1.d0
   tempcount = 0
-  do i=1,eqrxn2%nspec
+  do i=1,dbaserxn2%nspec
     if (.not.StringCompare(name1, &
-                             eqrxn2%spec_name(i), &
+                             dbaserxn2%spec_name(i), &
                              MAXWORDLENGTH)) then
       tempcount = tempcount + 1
-      tempnames(tempcount) = eqrxn2%spec_name(i)
-      tempstoich(tempcount) = eqrxn2%stoich(i)
+      tempnames(tempcount) = dbaserxn2%spec_name(i)
+      tempstoich(tempcount) = dbaserxn2%stoich(i)
     else
-      scale = eqrxn2%stoich(i)
+      scale = dbaserxn2%stoich(i)
     endif
   enddo
   
   ! search for duplicate species and add stoichs or add new species
   ! if not duplicated
-  do j=1,eqrxn1%nspec
+  do j=1,dbaserxn1%nspec
     found = PETSC_FALSE
     do i=1,tempcount
       if (StringCompare(tempnames(i), &
-                          eqrxn1%spec_name(j), &
+                          dbaserxn1%spec_name(j), &
                           MAXWORDLENGTH)) then
-        tempstoich(i) = tempstoich(i) + scale*eqrxn1%stoich(j)
+        tempstoich(i) = tempstoich(i) + scale*dbaserxn1%stoich(j)
         found = PETSC_TRUE
         exit
       endif
     enddo
     if (.not.found) then
       tempcount = tempcount + 1
-      tempnames(tempcount) = eqrxn1%spec_name(j)
-      tempstoich(tempcount) = scale*eqrxn1%stoich(j)
+      tempnames(tempcount) = dbaserxn1%spec_name(j)
+      tempstoich(tempcount) = scale*dbaserxn1%stoich(j)
     endif
   enddo
   
   ! deallocate arrays
-  deallocate(eqrxn2%spec_name)
-  deallocate(eqrxn2%stoich)
+  deallocate(dbaserxn2%spec_name)
+  deallocate(dbaserxn2%stoich)
   
   ! check for zero stoichiometries due to cancelation
   prevcount = tempcount
@@ -2849,18 +3049,18 @@ subroutine BasisSubSpeciesInGasOrSecRxn(name1,eqrxn1,eqrxn2)
   tempstoich(tempcount+1:) = 0.d0
   
   ! reallocate
-  allocate(eqrxn2%spec_name(tempcount))
-  allocate(eqrxn2%stoich(tempcount))
+  allocate(dbaserxn2%spec_name(tempcount))
+  allocate(dbaserxn2%stoich(tempcount))
   
-  ! fill arrays in eqrxn
-  eqrxn2%nspec = tempcount
+  ! fill arrays in dbaserxn
+  dbaserxn2%nspec = tempcount
   do i=1,tempcount
-    eqrxn2%spec_name(i) = tempnames(i)
-    eqrxn2%stoich(i) = tempstoich(i)
+    dbaserxn2%spec_name(i) = tempnames(i)
+    dbaserxn2%stoich(i) = tempstoich(i)
   enddo
   
   ! adjust the equilibrium coefficient
-  eqrxn2%logK = eqrxn2%logK + scale*eqrxn1%logK
+  dbaserxn2%logK = dbaserxn2%logK + scale*dbaserxn1%logK
 
 end subroutine BasisSubSpeciesInGasOrSecRxn
 
@@ -2873,14 +3073,14 @@ end subroutine BasisSubSpeciesInGasOrSecRxn
 ! date: 10/06/08
 !
 ! ************************************************************************** !
-subroutine BasisSubSpeciesInMineralRxn(name,eqrxn,tstrxn)
+subroutine BasisSubSpeciesInMineralRxn(name,dbaserxn,tstrxn)
 
   use String_module
   
   implicit none
   
   character(len=MAXWORDLENGTH) :: name
-  type(equilibrium_rxn_type) :: eqrxn
+  type(database_rxn_type) :: dbaserxn
   type(transition_state_rxn_type) :: tstrxn
   
   PetscInt :: i, j, tempcount, prevcount
@@ -2895,41 +3095,41 @@ subroutine BasisSubSpeciesInMineralRxn(name,eqrxn,tstrxn)
   ! load species in reaction other than species 1 into new arrays
   scale = 1.d0
   tempcount = 0
-  do i=1,tstrxn%nspec
+  do i=1,tstrxn%dbaserxn%nspec
     if (.not.StringCompare(name, &
-                             tstrxn%spec_name(i), &
+                             tstrxn%dbaserxn%spec_name(i), &
                              MAXWORDLENGTH)) then
       tempcount = tempcount + 1
-      tempnames(tempcount) = tstrxn%spec_name(i)
-      tempstoich(tempcount) = tstrxn%stoich(i)
+      tempnames(tempcount) = tstrxn%dbaserxn%spec_name(i)
+      tempstoich(tempcount) = tstrxn%dbaserxn%stoich(i)
     else
-      scale = tstrxn%stoich(i)
+      scale = tstrxn%dbaserxn%stoich(i)
     endif
   enddo
   
   ! search for duplicate species and add stoichs or add new species
   ! if not duplicated
-  do j=1,eqrxn%nspec
+  do j=1,dbaserxn%nspec
     found = PETSC_FALSE
-    do i=1,tstrxn%nspec
+    do i=1,tstrxn%dbaserxn%nspec
       if (StringCompare(tempnames(i), &
-                          eqrxn%spec_name(j), &
+                          dbaserxn%spec_name(j), &
                           MAXWORDLENGTH)) then
-        tempstoich(i) = tempstoich(i) + scale*eqrxn%stoich(j)
+        tempstoich(i) = tempstoich(i) + scale*dbaserxn%stoich(j)
         found = PETSC_TRUE
         exit
       endif
     enddo
     if (.not.found) then
       tempcount = tempcount + 1
-      tempnames(tempcount) = eqrxn%spec_name(j)
-      tempstoich(tempcount) = scale*eqrxn%stoich(j)
+      tempnames(tempcount) = dbaserxn%spec_name(j)
+      tempstoich(tempcount) = scale*dbaserxn%stoich(j)
     endif
   enddo
   
   ! deallocate arrays
-  deallocate(tstrxn%spec_name)
-  deallocate(tstrxn%stoich)
+  deallocate(tstrxn%dbaserxn%spec_name)
+  deallocate(tstrxn%dbaserxn%stoich)
   
   ! check for zero stoichiometries due to cancelation
   prevcount = tempcount
@@ -2946,18 +3146,18 @@ subroutine BasisSubSpeciesInMineralRxn(name,eqrxn,tstrxn)
   tempstoich(tempcount+1:) = 0.d0
     
   ! reallocate
-  allocate(tstrxn%spec_name(tempcount))
-  allocate(tstrxn%stoich(tempcount))
+  allocate(tstrxn%dbaserxn%spec_name(tempcount))
+  allocate(tstrxn%dbaserxn%stoich(tempcount))
   
-  ! fill arrays in eqrxn
-  tstrxn%nspec = tempcount
+  ! fill arrays in dbaserxn
+  tstrxn%dbaserxn%nspec = tempcount
   do i=1,tempcount
-    tstrxn%spec_name(i) = tempnames(i)
-    tstrxn%stoich(i) = tempstoich(i)
+    tstrxn%dbaserxn%spec_name(i) = tempnames(i)
+    tstrxn%dbaserxn%stoich(i) = tempstoich(i)
   enddo
   
   ! adjust the equilibrium coefficient
-  tstrxn%logK = tstrxn%logK + scale*eqrxn%logK
+  tstrxn%dbaserxn%logK = tstrxn%dbaserxn%logK + scale*dbaserxn%logK
 
 end subroutine BasisSubSpeciesInMineralRxn
 
@@ -2982,8 +3182,8 @@ subroutine BasisPrint(reaction,title,option)
   type(aq_species_type), pointer :: cur_aq_spec
   type(gas_species_type), pointer :: cur_gas_spec
   type(mineral_type), pointer :: cur_mineral
-  type(surface_complexation_rxn_type), pointer :: cur_surfcplx_rxn
-  type(surface_complex_type), pointer :: cur_surfcplx
+  type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
+  type(surface_complex_type), pointer :: cur_srfcplx
   type(ion_exchange_rxn_type), pointer :: cur_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cur_cation
 
@@ -3012,14 +3212,14 @@ subroutine BasisPrint(reaction,title,option)
       write(option%fid_out,140) '    Charge: ', cur_aq_spec%Z
       write(option%fid_out,110) '    Molar Weight: ', cur_aq_spec%molar_weight
       write(option%fid_out,110) '    Debye-Huckel a0: ', cur_aq_spec%a0
-      if (associated(cur_aq_spec%eqrxn)) then
+      if (associated(cur_aq_spec%dbaserxn)) then
         write(option%fid_out,100) '    Equilibrium Aqueous Reaction: '
         write(option%fid_out,120) '      ', -1.d0, cur_aq_spec%name
-        do ispec = 1, cur_aq_spec%eqrxn%nspec
-          write(option%fid_out,120) '      ', cur_aq_spec%eqrxn%stoich(ispec), &
-                          cur_aq_spec%eqrxn%spec_name(ispec)
+        do ispec = 1, cur_aq_spec%dbaserxn%nspec
+          write(option%fid_out,120) '      ', cur_aq_spec%dbaserxn%stoich(ispec), &
+                          cur_aq_spec%dbaserxn%spec_name(ispec)
         enddo
-        write(option%fid_out,130) '      logK:', (cur_aq_spec%eqrxn%logK(itemp),itemp=1, &
+        write(option%fid_out,130) '      logK:', (cur_aq_spec%dbaserxn%logK(itemp),itemp=1, &
                                        reaction%num_dbase_temperatures)
       endif
       write(option%fid_out,*)
@@ -3040,14 +3240,14 @@ subroutine BasisPrint(reaction,title,option)
       write(option%fid_out,140) '    Charge: ', cur_aq_spec%Z
       write(option%fid_out,110) '    Molar Weight: ', cur_aq_spec%molar_weight
       write(option%fid_out,110) '    Debye-Huckel a0: ', cur_aq_spec%a0
-      if (associated(cur_aq_spec%eqrxn)) then
+      if (associated(cur_aq_spec%dbaserxn)) then
         write(option%fid_out,100) '    Equilibrium Aqueous Reaction: '
         write(option%fid_out,120) '      ', -1.d0, cur_aq_spec%name
-        do ispec = 1, cur_aq_spec%eqrxn%nspec
-          write(option%fid_out,120) '      ', cur_aq_spec%eqrxn%stoich(ispec), &
-                          cur_aq_spec%eqrxn%spec_name(ispec)
+        do ispec = 1, cur_aq_spec%dbaserxn%nspec
+          write(option%fid_out,120) '      ', cur_aq_spec%dbaserxn%stoich(ispec), &
+                          cur_aq_spec%dbaserxn%spec_name(ispec)
         enddo
-        write(option%fid_out,130) '      logK:', (cur_aq_spec%eqrxn%logK(itemp),itemp=1, &
+        write(option%fid_out,130) '      logK:', (cur_aq_spec%dbaserxn%logK(itemp),itemp=1, &
                                        reaction%num_dbase_temperatures)
       endif
       write(option%fid_out,*)
@@ -3066,14 +3266,14 @@ subroutine BasisPrint(reaction,title,option)
       if (.not.associated(cur_gas_spec)) exit
       write(option%fid_out,100) '  ' // trim(cur_gas_spec%name)
       write(option%fid_out,110) '    Molar Weight: ', cur_gas_spec%molar_weight
-      if (associated(cur_gas_spec%eqrxn)) then
+      if (associated(cur_gas_spec%dbaserxn)) then
         write(option%fid_out,100) '    Gas Reaction: '
         write(option%fid_out,120) '      ', -1.d0, cur_gas_spec%name
-        do ispec = 1, cur_gas_spec%eqrxn%nspec
-          write(option%fid_out,120) '      ', cur_gas_spec%eqrxn%stoich(ispec), &
-                          cur_gas_spec%eqrxn%spec_name(ispec)
+        do ispec = 1, cur_gas_spec%dbaserxn%nspec
+          write(option%fid_out,120) '      ', cur_gas_spec%dbaserxn%stoich(ispec), &
+                          cur_gas_spec%dbaserxn%spec_name(ispec)
         enddo
-        write(option%fid_out,130) '      logK:', (cur_gas_spec%eqrxn%logK(itemp),itemp=1, &
+        write(option%fid_out,130) '      logK:', (cur_gas_spec%dbaserxn%logK(itemp),itemp=1, &
                                        reaction%num_dbase_temperatures)
       endif
       write(option%fid_out,*)
@@ -3096,19 +3296,19 @@ subroutine BasisPrint(reaction,title,option)
       if (associated(cur_mineral%tstrxn)) then
         write(option%fid_out,100) '    Mineral Reaction: '
         write(option%fid_out,120) '      ', -1.d0, cur_mineral%name
-        do ispec = 1, cur_mineral%tstrxn%nspec
-          write(option%fid_out,120) '      ', cur_mineral%tstrxn%stoich(ispec), &
-                          cur_mineral%tstrxn%spec_name(ispec)
+        do ispec = 1, cur_mineral%tstrxn%dbaserxn%nspec
+          write(option%fid_out,120) '      ', cur_mineral%tstrxn%dbaserxn%stoich(ispec), &
+                          cur_mineral%tstrxn%dbaserxn%spec_name(ispec)
         enddo
-        write(option%fid_out,130) '      logK:', (cur_mineral%tstrxn%logK(itemp),itemp=1, &
+        write(option%fid_out,130) '      logK:', (cur_mineral%tstrxn%dbaserxn%logK(itemp),itemp=1, &
                                        reaction%num_dbase_temperatures)
       endif
       write(option%fid_out,*)
       cur_mineral => cur_mineral%next
     enddo
     
-    cur_surfcplx_rxn => reaction%surface_complexation_rxn_list
-    if (associated(cur_surfcplx)) then
+    cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
+    if (associated(cur_srfcplx)) then
       write(option%fid_out,*)
       write(option%fid_out,*) 'Surface Complexation Reactions:'
     else
@@ -3116,9 +3316,9 @@ subroutine BasisPrint(reaction,title,option)
       write(option%fid_out,*) 'Surface Complexation Reactions: None'
     endif
     do
-      if (.not.associated(cur_surfcplx_rxn)) exit
-      cur_surfcplx => cur_surfcplx_rxn%complex_list
-      if (associated(cur_surfcplx)) then
+      if (.not.associated(cur_srfcplx_rxn)) exit
+      cur_srfcplx => cur_srfcplx_rxn%complex_list
+      if (associated(cur_srfcplx)) then
         write(option%fid_out,*)
         write(option%fid_out,*) '  Surface Complexes:'
       else
@@ -3126,23 +3326,23 @@ subroutine BasisPrint(reaction,title,option)
         write(option%fid_out,*) '  Surface Complexes: None'
       endif
       do
-        if (.not.associated(cur_surfcplx)) exit
-        write(option%fid_out,100) '  ' // trim(cur_surfcplx%name)
-        write(option%fid_out,140) '    Charge: ', cur_surfcplx%Z
+        if (.not.associated(cur_srfcplx)) exit
+        write(option%fid_out,100) '  ' // trim(cur_srfcplx%name)
+        write(option%fid_out,140) '    Charge: ', cur_srfcplx%Z
         write(option%fid_out,100) '    Surface Complex Reaction: '
-        write(option%fid_out,120) '      ', -1.d0, cur_surfcplx%name
-        write(option%fid_out,120) '      ', cur_surfcplx%free_site_stoich, &
-          cur_surfcplx_rxn%free_site_name
-        do ispec = 1, cur_surfcplx%eqrxn%nspec
-          write(option%fid_out,120) '      ', cur_surfcplx%eqrxn%stoich(ispec), &
-                          cur_surfcplx%eqrxn%spec_name(ispec)
+        write(option%fid_out,120) '      ', -1.d0, cur_srfcplx%name
+        write(option%fid_out,120) '      ', cur_srfcplx%free_site_stoich, &
+          cur_srfcplx_rxn%free_site_name
+        do ispec = 1, cur_srfcplx%dbaserxn%nspec
+          write(option%fid_out,120) '      ', cur_srfcplx%dbaserxn%stoich(ispec), &
+                          cur_srfcplx%dbaserxn%spec_name(ispec)
         enddo
-        write(option%fid_out,130) '      logK:', (cur_surfcplx%eqrxn%logK(itemp),itemp=1, &
+        write(option%fid_out,130) '      logK:', (cur_srfcplx%dbaserxn%logK(itemp),itemp=1, &
                                        reaction%num_dbase_temperatures)
         write(option%fid_out,*)
-        cur_surfcplx => cur_surfcplx%next
+        cur_srfcplx => cur_srfcplx%next
       enddo
-      cur_surfcplx_rxn => cur_surfcplx_rxn%next
+      cur_srfcplx_rxn => cur_srfcplx_rxn%next
     enddo
     
     cur_ionx_rxn => reaction%ion_exchange_rxn_list

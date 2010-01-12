@@ -98,6 +98,7 @@ module Condition_module
     character(len=MAXWORDLENGTH) :: name         
     type(aq_species_constraint_type), pointer :: aqueous_species
     type(mineral_constraint_type), pointer :: minerals
+    type(srfcplx_constraint_type), pointer :: surface_complexes
     type(tran_constraint_type), pointer :: next    
   end type tran_constraint_type
   
@@ -120,6 +121,7 @@ module Condition_module
     character(len=MAXWORDLENGTH) :: time_units
     type(aq_species_constraint_type), pointer :: aqueous_species
     type(mineral_constraint_type), pointer :: minerals
+    type(srfcplx_constraint_type), pointer :: surface_complexes
     type(global_auxvar_type), pointer :: global_auxvar
     type(reactive_transport_auxvar_type), pointer :: rt_auxvar
     type(tran_constraint_coupler_type), pointer :: next   
@@ -232,6 +234,7 @@ function TranConstraintCreate(option)
   allocate(constraint)
   nullify(constraint%aqueous_species)
   nullify(constraint%minerals)
+  nullify(constraint%surface_complexes)
   nullify(constraint%next)
   constraint%id = 0
   constraint%name = ''
@@ -262,6 +265,7 @@ function TranConstraintCouplerCreate(option)
   allocate(coupler)
   nullify(coupler%aqueous_species)
   nullify(coupler%minerals)
+  nullify(coupler%surface_complexes)
   
   coupler%num_iterations = 0
   coupler%iflag = 0
@@ -648,6 +652,7 @@ subroutine FlowConditionRead(condition,input,option)
           if (InputError(input)) exit
           call InputReadWord(input,option,word,PETSC_TRUE)
           call InputErrorMsg(input,option,'keyword','CONDITION,TYPE')   
+          call StringToUpper(word)
           select case(trim(word))
             case('PRESSURE')
               sub_condition_ptr => pressure
@@ -662,7 +667,8 @@ subroutine FlowConditionRead(condition,input,option)
             case('ENTHALPY')
               sub_condition_ptr => enthalpy
             case default
-              option%io_buffer = 'keyword not recognized in condition,type'
+              option%io_buffer = 'keyword (' // trim(word) // &
+                                 ') not recognized in condition,type'
               call printErrMsg(option)
           end select
           call InputReadWord(input,option,word,PETSC_TRUE)
@@ -1095,9 +1101,11 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   PetscInt :: icomp
+  PetscInt :: isrfcplx
   PetscInt :: length
   type(aq_species_constraint_type), pointer :: aq_species_constraint
   type(mineral_constraint_type), pointer :: mineral_constraint
+  type(srfcplx_constraint_type), pointer :: srfcplx_constraint
   PetscErrorCode :: ierr
 
   call PetscLogEventBegin(logging%event_tran_constraint_read, &
@@ -1255,6 +1263,52 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
           call MineralConstraintDestroy(constraint%minerals)
         endif
         constraint%minerals => mineral_constraint 
+                            
+      case('SURFACE_COMPLEXES')
+
+        srfcplx_constraint => SurfaceComplexConstraintCreate(reaction,option)
+
+        isrfcplx = 0
+        do
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,'CONSTRAINT, SURFACE_COMPLEXES')
+          
+          if (InputCheckExit(input,option)) exit          
+          
+          isrfcplx = isrfcplx + 1
+
+          if (isrfcplx > reaction%nkinsrfcplx) then
+            option%io_buffer = &
+                     'Number of surface complex constraints exceeds number of ' // &
+                     'kinetic surface compleses in constraint: ' // &
+                      trim(constraint%name)
+            call printErrMsg(option)
+          endif
+          
+          call InputReadWord(input,option,srfcplx_constraint%names(isrfcplx), &
+                          PETSC_TRUE)
+          call InputErrorMsg(input,option,'surface complex name', &
+                          'CONSTRAINT, SURFACE COMPLEX')  
+          option%io_buffer = 'Constraint Surface Complex: ' // &
+                             trim(srfcplx_constraint%names(isrfcplx))
+          call printMsg(option)
+          call InputReadDouble(input,option,srfcplx_constraint%constraint_conc(isrfcplx))
+          call InputErrorMsg(input,option,'concentration', &
+                          'CONSTRAINT, SURFACE COMPLEX')          
+        enddo  
+        
+        if (isrfcplx < reaction%nkinsrfcplx) then
+          option%io_buffer = &
+                   'Number of surface complex constraints is less than ' // &
+                   'number of kinetic surface complexes in surface complex ' // &
+                   'constraint.'
+          call printErrMsg(option)        
+        endif
+        
+        if (associated(constraint%surface_complexes)) then
+          call SurfaceComplexConstraintDestroy(constraint%surface_complexes)
+        endif
+        constraint%surface_complexes => srfcplx_constraint 
                             
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
@@ -2302,6 +2356,7 @@ subroutine TranConstraintCouplerDestroy(coupler_list)
     nullify(prev_coupler%global_auxvar)
     nullify(prev_coupler%aqueous_species)
     nullify(prev_coupler%minerals)
+    nullify(prev_coupler%surface_complexes)
     nullify(prev_coupler%next)
     deallocate(prev_coupler)
     nullify(prev_coupler)
