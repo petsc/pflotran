@@ -138,6 +138,7 @@ subroutine GlobalAuxVarInit(aux_var,option)
     allocate(aux_var%den_store(option%nphase,TWO_INTEGER))
     aux_var%den_store = 0.d0
   else
+    nullify(aux_var%xmass)
     nullify(aux_var%pres_store)
     nullify(aux_var%temp_store)
     nullify(aux_var%fugacoeff)
