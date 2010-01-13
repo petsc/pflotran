@@ -1280,7 +1280,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
           if (isrfcplx > reaction%nkinsrfcplx) then
             option%io_buffer = &
                      'Number of surface complex constraints exceeds number of ' // &
-                     'kinetic surface compleses in constraint: ' // &
+                     'kinetic surface complexes in constraint: ' // &
                       trim(constraint%name)
             call printErrMsg(option)
           endif
