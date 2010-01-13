@@ -1348,7 +1348,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
   character(len=MAXWORDLENGTH) :: units
   
   character(len=MAXSTRINGLENGTH) :: string2
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: word, realization_word
   character(len=MAXSTRINGLENGTH) :: error_string
   PetscInt :: length, i
   PetscInt :: irank
@@ -1364,18 +1364,25 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
   call StringToLower(word)
   length = len_trim(word)
   if (StringCompare(word,'file',length)) then
+    input%err_buf2 = trim(keyword) // ', FILE'
+    input%err_buf = 'keyword'
     call InputReadNChars(input,option,string2,MAXSTRINGLENGTH,PETSC_TRUE)
-    input%err_buf = trim(keyword) // ' FILE'
-    input%err_buf2 = 'CONDITION'
     call InputErrorMsg(input,option)
     word = string2
     call StringToLower(word)
     length = len_trim(word)
     if (StringCompare(word,'realization_dependent',length)) then
-      input%err_buf = trim(keyword) // ' REALIZATION_DEPENDENT FILE'
-      call InputReadNChars(input,option,string2,MAXSTRINGLENGTH,PETSC_TRUE)
-      call InputErrorMsg(input,option)
       write(word,*) option%id
+      realization_word = adjustl(word)
+      input%err_buf2 = trim(keyword) // ', REALIZATION_DEPENDENT FILE'
+    endif
+    input%err_buf = 'filename'
+    call InputReadNChars(input,option,string2,MAXSTRINGLENGTH,PETSC_TRUE)
+    call InputErrorMsg(input,option)
+    ! check to see if it is an hdf5 file
+    if (index(string2,'.h5') > 0) then
+    ! otherwise a raw text file
+    else
       word = adjustl(word)
       i = index(string2,'.',PETSC_TRUE)
       if (i > 2) then
@@ -1383,8 +1390,8 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
       else
         string2 = trim(string2) // trim(word)
       endif
+      call FlowConditionReadValuesFromFile(string2,dataset,option)
     endif
-    call FlowConditionReadValuesFromFile(string2,dataset,option)
   else
     input%buf = trim(string2)
     allocate(dataset%values(dataset%rank,1))

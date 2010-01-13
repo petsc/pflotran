@@ -86,7 +86,7 @@ subroutine ReadStructuredGridHDF5(realization)
   PetscInt :: i, local_ghosted_id, iconn
   PetscInt, pointer :: indices(:)
   PetscInt, allocatable :: integer_array(:)
-  PetscReal, allocatable :: real_array(:)
+  PetscReal, pointer :: real_array(:)
   
   Vec :: global_vec
   Vec :: local_vec

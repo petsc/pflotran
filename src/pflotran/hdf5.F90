@@ -430,7 +430,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   integer(HID_T) :: file_id
   PetscInt :: indices(:)
   PetscInt :: num_indices
-  PetscReal :: real_array(:)
+  PetscReal, pointer :: real_array(:)
   
   integer(HID_T) :: file_space_id
   integer(HID_T) :: memory_space_id
@@ -466,7 +466,6 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
     call printErrMsg(option)   
   endif
 #endif
-  allocate(real_buffer(read_block_size))
   
   rank = 1
   offset = 0
@@ -483,79 +482,112 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   prev_real_count = 0
   index_count = 0
   memory_space_id = -1
-  do i=1,num_indices
-    index = indices(i)
-    if (index > real_count) then
-      do 
-        if (index <= real_count) exit
-        temp_int = num_reals_in_file-real_count
-        temp_int = min(temp_int,read_block_size)
-        if (dims(1) /= temp_int) then
-          if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
-          dims(1) = temp_int
-          call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
-        endif
-        ! offset is zero-based
-        offset(1) = real_count
-        length(1) = dims(1)
-        call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
-                                   length,hdf5_err,stride,stride) 
+  ! if a list of indices exists, use the indexed approach
+  if (num_indices > 0) then
+    allocate(real_buffer(read_block_size))
+    do i=1,num_indices
+      index = indices(i)
+      if (index > real_count) then
+        do 
+          if (index <= real_count) exit
+          temp_int = num_reals_in_file-real_count
+          temp_int = min(temp_int,read_block_size)
+          if (dims(1) /= temp_int) then
+            if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
+            dims(1) = temp_int
+            call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+          endif
+          ! offset is zero-based
+          offset(1) = real_count
+          length(1) = dims(1)
+          call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
+                                     length,hdf5_err,stride,stride) 
 #ifdef HDF5_BROADCAST
-        if (option%myrank == option%io_rank) then                           
+          if (option%myrank == option%io_rank) then                           
 #endif
-          call PetscLogEventBegin(logging%event_h5dread_f, &
+            call PetscLogEventBegin(logging%event_h5dread_f, &
+                                    PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                                    PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+            call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_buffer,dims, &
+                           hdf5_err,memory_space_id,file_space_id,prop_id)
+            call PetscLogEventEnd(logging%event_h5dread_f, &
                                   PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                                  PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
-          call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_buffer,dims, &
-                         hdf5_err,memory_space_id,file_space_id,prop_id)
-          call PetscLogEventEnd(logging%event_h5dread_f, &
-                                PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                                PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+                                  PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
 #ifdef HDF5_BROADCAST
-        endif
-        if (option%mycommsize > 1) &
-          call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION, &
-                         option%io_rank,option%mycomm,ierr)
+          endif
+          if (option%mycommsize > 1) &
+            call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION, &
+                           option%io_rank,option%mycomm,ierr)
 #endif
-        prev_real_count = real_count
-        real_count = real_count + length(1)                  
-      enddo
-    endif
-    real_array(i) = real_buffer(index-prev_real_count)
-  enddo
+          prev_real_count = real_count
+          real_count = real_count + length(1)                  
+        enddo
+      endif
+      real_array(i) = real_buffer(index-prev_real_count)
+    enddo
 
 #ifdef HDF5_BROADCAST
-  do 
-    if (real_count >= num_reals_in_file) exit
-    temp_int = num_reals_in_file-real_count
-    temp_int = min(temp_int,read_block_size)
-    if (dims(1) /= temp_int) then
-      if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
-      dims(1) = temp_int
-      call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+    do 
+      if (real_count >= num_reals_in_file) exit
+      temp_int = num_reals_in_file-real_count
+      temp_int = min(temp_int,read_block_size)
+      if (dims(1) /= temp_int) then
+        if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
+        dims(1) = temp_int
+        call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+      endif
+      ! offset is zero-based
+      offset(1) = real_count
+      length(1) = dims(1)
+      call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
+                                 length,hdf5_err,stride,stride) 
+      if (option%myrank == io_rank) then 
+        call PetscLogEventBegin(logging%event_h5dread_f, &
+                                PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                                PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+        call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_buffer,dims, &
+                       hdf5_err,memory_space_id,file_space_id,prop_id)
+        call PetscLogEventEnd(logging%event_h5dread_f, &
+                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+      endif
+      if (option%mycommsize > 1) &
+        call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION, &
+                       option%io_rank,option%mycomm,ierr)
+      real_count = real_count + length(1)                  
+    enddo
+#endif
+    deallocate(real_buffer)
+  ! otherwise, read the entire array
+  else
+    if (.not.associated(real_array)) then
+      allocate(real_array(num_reals_in_file))
     endif
-    ! offset is zero-based
-    offset(1) = real_count
+    real_array = 0.d0
+    dims(1) = num_reals_in_file
+    call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+    offset(1) = 0
     length(1) = dims(1)
     call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
-    if (option%myrank == io_rank) then 
+#ifdef HDF5_BROADCAST
+    if (option%myrank == option%io_rank) then                           
+#endif
       call PetscLogEventBegin(logging%event_h5dread_f, &
                               PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
-      call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_buffer,dims, &
+                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+      call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_array,dims, &
                      hdf5_err,memory_space_id,file_space_id,prop_id)
       call PetscLogEventEnd(logging%event_h5dread_f, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+#ifdef HDF5_BROADCAST
     endif
     if (option%mycommsize > 1) &
-      call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION, &
+      call mpi_bcast(real_array,dims(1),MPI_DOUBLE_PRECISION, &
                      option%io_rank,option%mycomm,ierr)
-    real_count = real_count + length(1)                  
-  enddo
 #endif
-  deallocate(real_buffer)
+  endif
   
   call h5pclose_f(prop_id,hdf5_err)
   if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
