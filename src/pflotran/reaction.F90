@@ -2992,8 +2992,10 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
     do k = 1, ncplx
       icplx = reaction%eqsrfcplx_rxn_to_complex(k,irxn)
 
-!     rt_auxvar%eqsrfcplx_conc(icplx) = srfcplx_conc(icplx)
-      rt_auxvar%eqsrfcplx_conc(k) = srfcplx_conc(icplx)
+      rt_auxvar%eqsrfcplx_conc(icplx) = srfcplx_conc(icplx)
+!geh - indexing by k results in 1-ncplx begin set, but this does not work when
+!      more than 1 surface complexation reaction is included.
+!     rt_auxvar%eqsrfcplx_conc(k) = srfcplx_conc(icplx)
 
       ncomp = reaction%eqsrfcplxspecid(0,icplx)
       do i = 1, ncomp
