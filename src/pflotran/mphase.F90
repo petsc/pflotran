@@ -594,7 +594,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
   PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:), iphase_loc_p(:)
   PetscReal :: xxbc(realization%option%nflowdof)
   PetscErrorCode :: ierr
-  PetscReal :: xphi
+  PetscReal :: xphi, ynacl, mnacl
   
   option => realization%option
   patch => realization%patch
@@ -640,6 +640,18 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
       global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
+      
+      mnacl= global_aux_vars(ghosted_id)%m_nacl(1)
+      if(global_aux_vars(ghosted_id)%m_nacl(2)>mnacl) mnacl= global_aux_vars(ghosted_id)%m_nacl(2)
+      ynacl =  mnacl/(1.d3/FMWH2O + mnacl)
+      global_aux_vars(ghosted_id)%xmass(1)= (1.d0-ynacl)&
+                              *aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1) * FMWH2O&
+                              /((1.d0-ynacl)*aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1) * FMWH2O &
+                              +aux_vars(ghosted_id)%aux_var_elem(0)%xmol(2) * FMWCO2 &
+                              +ynacl*aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1)*FMWNACL)
+      global_aux_vars(ghosted_id)%xmass(2)=aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3) * FMWH2O&
+                              /(aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3) * FMWH2O&
+                              +aux_vars(ghosted_id)%aux_var_elem(0)%xmol(4) * FMWCO2) 
 !      global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
 !     print *,'UPdate mphase and gloable vars', ghosted_id, global_aux_vars(ghosted_id)%m_nacl(:), & 
 !       global_aux_vars(ghosted_id)%pres(:)

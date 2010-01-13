@@ -1769,6 +1769,7 @@ subroutine setFlowMode(option)
       option%nflowdof = 3
       option%nflowspec = 2
       option%itable = 2
+      option%use_isothermal = PETSC_FALSE
    case('IMS','IMMIS','THS')
       option%iflowmode = IMS_MODE
       option%nphase = 2
