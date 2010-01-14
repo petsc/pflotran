@@ -30,10 +30,16 @@ module Option_module
     PetscMPIInt :: io_rank
     PetscTruth :: broadcast_read
 
-#ifdef VAMSI_HDF5
-    MPI_Comm :: iogroup, readers 
-    PetscMPIInt :: localsize, localrank, reader_rank, reader_size
-    PetscInt :: color, key, reader_color, reader_key, broadcast_size
+#ifdef VAMSI_HDF5_READ
+    MPI_Comm :: read_group,readers
+    PetscMPIInt :: read_grp_size,read_grp_rank,readers_size,readers_rank 
+    PetscInt :: read_bcast_size,rcolor,rkey,reader_color,reader_key
+#endif
+
+#ifdef VAMSI_HDF5_WRITE    
+    MPI_Comm :: write_group,writers
+    PetscMPIInt:: write_grp_size,write_grp_rank,writers_size,writers_rank
+    PetscInt :: write_bcast_size,wcolor,wkey,writer_color,writer_key
 #endif	
 
     character(len=MAXSTRINGLENGTH) :: io_buffer
@@ -283,20 +289,34 @@ subroutine OptionInitAll(option)
   option%broadcast_read = PETSC_FALSE
   option%io_rank = 0
 
-#ifdef VAMSI_HDF5
-  option%iogroup = 0
+#ifdef VAMSI_HDF5_READ
+  option%read_group = 0
   option%readers = 0
-  option%localsize = 0
-  option%localrank = 0
-  option%reader_rank = 0
-  option%reader_size = 0
-  option%color = 0
-  option%key = 0
+  option%read_grp_size = 0
+  option%read_grp_rank = 0
+  option%readers_size = 0
+  option%readers_rank = 0
+  option%read_bcast_size = 0
+  option%rcolor = 0
+  option%rkey = 0
   option%reader_color = 0
   option%reader_key = 0
-  option%broadcast_size = 0
 #endif
   
+#ifdef VAMSI_HDF5_WRITE
+  option%write_group = 0
+  option%writers = 0
+  option%write_grp_size = 0
+  option%write_grp_rank = 0
+  option%writers_size = 0
+  option%writers_rank = 0
+  option%write_bcast_size = 0
+  option%wcolor = 0
+  option%wkey = 0
+  option%writer_color = 0
+  option%writer_key = 0
+#endif
+
   option%print_screen_flag = PETSC_FALSE
   option%print_file_flag = PETSC_FALSE
   option%print_to_screen = PETSC_TRUE

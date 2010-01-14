@@ -617,19 +617,19 @@ subroutine Init(simulation)
   
 #ifdef USE_HDF5
   #ifndef HDF5_BROADCAST 
-  #ifndef VAMSI_HDF5
-  call printMsg(option,"Default HDF5 Mechanism is used")
+  #ifndef VAMSI_HDF5_READ
+  call printMsg(option,"Default HDF5 method is used in Initialization")
   #endif
   #endif
   
   #ifdef HDF5_BROADCAST
-  call printMsg(option,"Glenn's HDF5 Broadcast Mechanism is used")
+  call printMsg(option,"Glenn's HDF5 broadcast method is used in Initialization")
   #endif
 
-  #ifdef VAMSI_HDF5
-  call printMsg(option,"Vamsi's HDF5 Broadcast Mechanism is used")
+  #ifdef VAMSI_HDF5_READ
+  call printMsg(option,"Vamsi's HDF5 broadcast method is used in Initialization")
   if (option%myrank == 0) then
-     write(*,'(" HDF5_BROADCAST_SIZE = ",i5)') option%broadcast_size
+     write(*,'(" HDF5_READ_BCAST_SIZE = ",i6)') option%read_bcast_size
   endif  
   #endif
 #endif
@@ -1549,7 +1549,9 @@ subroutine InitReadInput(simulation)
               call printErrMsg(option)              
           end select
        enddo
-       
+      
+       call create_iogroups(option)
+    
        if (velocities) then
          if (output_option%print_tecplot) &
            output_option%print_tecplot_velocities = PETSC_TRUE
@@ -2466,5 +2468,83 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
   endif
   
 end subroutine readVectorFromFile
+
+! ************************************************************************** !
+!
+! create_iogroups: Create sub-communicators that are used in initialization 
+!                  and output HDF5 routines. 
+! author: Vamsi Sripathi
+! date: 07/14/09
+!
+! ************************************************************************** !
+
+subroutine create_iogroups(option)
+
+ use Option_module
+ use Logging_module
+
+ implicit none
+
+#include "definitions.h"
+
+ type(option_type) :: option
+
+ PetscErrorCode :: ierr
+
+#ifdef VAMSI_HDF5_READ  
+    call PetscLogEventBegin(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,ierr)
+
+    option%read_bcast_size = HDF5_READ_BCAST_SIZE
+    option%rcolor = floor(real(option%global_rank / option%read_bcast_size))
+    option%rkey = option%global_rank
+    call MPI_Comm_split(option%global_comm,option%rcolor,option%rkey,option%read_group,ierr)
+    call MPI_Comm_size(option%read_group,option%read_grp_size,ierr)
+    call MPI_Comm_rank(option%read_group,option%read_grp_rank,ierr)
+
+    if (mod(option%global_rank,option%read_bcast_size) == 0) then 
+       option%reader_color = 1
+    else
+       option%reader_color = 0
+    endif
+    option%reader_key = option%global_rank
+    call MPI_Comm_split(option%global_comm,option%reader_color,option%reader_key,option%readers,ierr)
+    call MPI_Comm_size(option%readers,option%readers_size,ierr)
+    call MPI_Comm_rank(option%readers,option%readers_rank,ierr)
+
+    call PetscLogEventEnd(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)
+#endif
+
+#ifdef VAMSI_HDF5_WRITE  
+    call PetscLogEventBegin(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,ierr)
+
+    option%write_bcast_size = HDF5_WRITE_BCAST_SIZE
+    option%wcolor = floor(real(option%global_rank / option%write_bcast_size))
+    option%wkey = option%global_rank
+    call MPI_Comm_split(option%global_comm,option%wcolor,option%wkey,option%write_group,ierr)
+    call MPI_Comm_size(option%write_group,option%write_grp_size,ierr)
+    call MPI_Comm_rank(option%write_group,option%write_grp_rank,ierr)
+
+    if (mod(option%global_rank,option%write_bcast_size) == 0) then 
+       option%writer_color = 1
+    else
+       option%writer_color = 0
+    endif
+    option%writer_key = option%global_rank
+    call MPI_Comm_split(option%global_comm,option%writer_color,option%writer_key,option%writers,ierr)
+    call MPI_Comm_size(option%writers,option%writers_size,ierr)
+    call MPI_Comm_rank(option%writers,option%writers_rank,ierr)
+
+    call PetscLogEventEnd(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)
+#endif
+ 
+end subroutine create_iogroups
 
 end module Init_module

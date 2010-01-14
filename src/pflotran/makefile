@@ -8,12 +8,12 @@ bindir = ./${PETSC_ARCH}/bin
 
 ifdef hdf5
   ifndef jaguar
-    HDF5_FLAGS = -I$(HDF5_INCLUDE) -I$(HDF5_LIB) -DUSE_HDF5
+    HDF5_FLAGS = -I$(HDF5_INCLUDE) -I$(HDF5_LIB) -DUSE_HDF5  
     HDF5_LIBS = -L$(HDF5_LIB) -lhdf5_fortran -lhdf5 -lz  
 #    HDF5_LIBS = -L$(HDF5_LIB) $(HDF5_LIB)/libhdf5_fortran.a $(HDF5_LIB)/libhdf5.a -lz
   else
 # the below is for jaguar
-    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5 
+    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5 #-DVAMSI_DEFAULT
     HDF5_LIBS = $(HDF5_FLIB) -lhdf5_fortran -lhdf5 -lz -lsz
   endif
 endif
@@ -24,9 +24,10 @@ ifdef hdf5-glenn
 endif
 
 ifdef hdf5-vamsi
-    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5 -DVAMSI_HDF5
+    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5 -DVAMSI_HDF5_READ -DVAMSI_STAGE_BARRIER
+#    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5 -DVAMSI_HDF5_READ -DVAMSI_HDF5_WRITE -DVAMSI_STAGE_BARRIER
     HDF5_LIBS = $(HDF5_FLIB) -lhdf5_fortran -lhdf5 -lz -lsz
-endif	
+endif   
 
 ifdef compile_broken
   COMPILE_BROKEN_FLAGS = -DCOMPILE_BROKEN
@@ -49,7 +50,7 @@ CHUAN_FLAGS = -DCHUAN_CO2
 endif
 
 ifdef vamsi_hdf5
-  HDF5_FLAGS += -DVAMSI_HDF5
+  HDF5_FLAGS += -DVAMSI_HDF5_READ -DVAMSI_HDF5_WRITE
 endif
 
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) \
