@@ -26,6 +26,10 @@ module Output_module
   PetscErrorCode :: ierr
   PetscInt, save :: max_local_size_saved = -1
   
+#ifdef VAMSI_HDF5_WRITE
+  PetscInt :: write_bcast_size = HDF5_WRITE_BCAST_SIZE
+#endif
+
   ! flags signifying the first time a routine is called during a given
   ! simulation
   PetscTruth :: observation_first
@@ -87,6 +91,11 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
 
   option => realization%option
 
+#ifdef VAMSI_STAGE_BARRIER
+  ! barrier to calculate the accurate timing of Output Stage
+  call mpi_barrier(option%mycomm,ierr)
+#endif 
+
   call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr)
 
   ! check for plot request from active directory
@@ -114,6 +123,10 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
       call PetscGetTime(tend,ierr)
+#ifdef VAMSI_HDF5_WRITE
+      if (option%global_rank == 0) write (*,'(" Vamsi''s HDF5 method is used in & 
+                                          writing the output, HDF5_WRITE_BCAST_SIZE = ",i5)') write_bcast_size
+#endif      
       write(option%io_buffer,'(f6.2," Seconds to write HDF5 file.")') tend-tstart
       call printMsg(option)
     endif
@@ -190,6 +203,11 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
   plot_flag = PETSC_FALSE
   transient_plot_flag = PETSC_FALSE
   realization%output_option%plot_name = ''
+
+#ifdef VAMSI_STAGE_BARRIER
+  call mpi_barrier(option%mycomm,ierr)
+  ! barrier to calculate the accurate timing of Output Stage
+#endif 
 
   call PetscLogStagePop(ierr)
   
@@ -4738,9 +4756,17 @@ subroutine OutputHDF5(realization)
      ! initialize fortran interface
      call h5open_f(hdf5_err)
 
+#ifdef VAMSI_HDF5_WRITE
+   if (mod(option%global_rank,write_bcast_size) == 0) then 
+#endif
+
      call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
+#ifdef VAMSI_HDF5_WRITE
+     call h5pset_fapl_mpio_f(prop_id,option%writers,MPI_INFO_NULL,hdf5_err) 
+#else
      call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+#endif
 #endif
      if (.not.first) then
        call h5eset_auto_f(OFF,hdf5_err)
@@ -4813,6 +4839,10 @@ subroutine OutputHDF5(realization)
        call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
      endif
      call h5eset_auto_f(ON,hdf5_err)
+
+#ifdef VAMSI_HDF5_WRITE
+   endif
+#endif
   
   else
 
@@ -5352,8 +5382,14 @@ subroutine OutputHDF5(realization)
   call VecDestroy(global_vec,ierr)
 
   if(.not.(option%use_samr)) then
-     call h5gclose_f(grp_id,hdf5_err)
-     call h5fclose_f(file_id,hdf5_err)
+#ifdef VAMSI_HDF5_WRITE
+    if (mod(option%global_rank,write_bcast_size) == 0) then 
+#endif
+       call h5gclose_f(grp_id,hdf5_err)
+       call h5fclose_f(file_id,hdf5_err)
+#ifdef VAMSI_HDF5_WRITE
+    endif
+#endif
      call h5close_f(hdf5_err)
   else
      call SAMRWritePlotData(app_ptr, option%time/output_option%tconv)
@@ -5665,7 +5701,7 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   array(1:nx_local*ny_local*nz_local) = &  ! convert time units
     array(1:nx_local*ny_local*nz_local) * output_option%tconv
 
-  call HDF5WriteStructuredDataSet(name,array,file_id,H5T_NATIVE_DOUBLE, &
+  call HDF5WriteStructuredDataSet(name,array,file_id,H5T_NATIVE_DOUBLE,option, &
                         nx_global,ny_global,nz_global, &
                         nx_local,ny_local,nz_local, &
                         grid%structured_grid%nxs,grid%structured_grid%nys,grid%structured_grid%nzs)
@@ -5705,6 +5741,10 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   call PetscLogEventBegin(logging%event_output_coordinates_hdf5, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+
+#ifdef VAMSI_HDF5_WRITE
+  if (mod(option%global_rank,write_bcast_size) == 0) then
+#endif
                             
   ! write out grid structure
   rank = 1
@@ -5722,18 +5762,22 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err) ! must be independent and only from p0
 #endif
   if (option%myrank == option%io_rank) then
-    call PetscLogEventBegin(logging%event_h5dwrite_f, &
+     call PetscLogEventBegin(logging%event_h5dwrite_f, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)     
-    call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,array,dims, &
+     call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,array,dims, &
                     hdf5_err,H5S_ALL_F,H5S_ALL_F,prop_id)
-    call PetscLogEventEnd(logging%event_h5dwrite_f, &
+     call PetscLogEventEnd(logging%event_h5dwrite_f, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
   endif
   call h5pclose_f(prop_id,hdf5_err)
   call h5dclose_f(data_set_id,hdf5_err)
   call h5sclose_f(file_space_id,hdf5_err)
+
+#ifdef VAMSI_HDF5_WRITE
+  endif
+#endif
 
   call PetscLogEventEnd(logging%event_output_coordinates_hdf5, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &

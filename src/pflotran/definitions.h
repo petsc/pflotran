@@ -204,9 +204,9 @@ PetscInt, parameter :: EOS_MRK = 2
 
 ! HDF5 stuff
 PetscInt, parameter :: HDF5_READ_BUFFER_SIZE = 1000000
+PetscInt, parameter :: HDF5_READ_BCAST_SIZE = 16384 
+PetscInt, parameter :: HDF5_WRITE_BCAST_SIZE = 16
 !#define HDF5_BROADCAST
-!#define VAMSI_HDF5
-PetscInt, parameter :: HDF5_BROADCAST_SIZE = 1024
 
 ! Tecplot stuff
 PetscInt, parameter :: TECPLOT_POINT_FORMAT = 1

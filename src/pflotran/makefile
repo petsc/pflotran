@@ -36,9 +36,10 @@ ifdef hdf5-glenn
 endif
 
 ifdef hdf5-vamsi
-    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5 -DVAMSI_HDF5
+    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5 -DVAMSI_HDF5_READ -DVAMSI_STAGE_BARRIER
+#    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5 -DVAMSI_HDF5_READ -DVAMSI_HDF5_WRITE -DVAMSI_STAGE_BARRIER
     HDF5_LIBS = $(HDF5_FLIB) -lhdf5_fortran -lhdf5 -lz -lsz
-endif	
+endif   
 
 ifdef compile_broken
   COMPILE_BROKEN_FLAGS = -DCOMPILE_BROKEN
@@ -61,7 +62,7 @@ CHUAN_FLAGS = -DCHUAN_CO2
 endif
 
 ifdef vamsi_hdf5
-  HDF5_FLAGS += -DVAMSI_HDF5
+  HDF5_FLAGS += -DVAMSI_HDF5_READ -DVAMSI_HDF5_WRITE
 endif
 
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) \
