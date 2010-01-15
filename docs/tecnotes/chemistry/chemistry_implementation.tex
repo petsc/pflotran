@@ -1897,7 +1897,7 @@ end type colloid type
 
 \subsection{Input File}
 
-\noindent\underline{Read in colloid names, selectivity coefficients, and reaction stoichiometry:}
+\noindent\underline{Read in colloid names, type, and formula weight from database:}
 
 \begin{deflist}{spa}
 \item[COLLOIDS, COLLOID, COLL] 
@@ -1935,8 +1935,8 @@ end type colloid type
 \begin{deflist}{spa}
 \item[FORWARD\_RATE\_CONSTANT] \ $k_f$
 \item[BACKWARD\_RATE\_CONSTANT] \ $k_b$
-\item[END] ~
 \end{deflist}
+\item[END] ~
 
 \item[SITE\_FRACTION] ~
 $\omega_l$
@@ -1945,12 +1945,8 @@ $k_l$
 \item[MINERAL] min\_name
 \item[SITE] \ site\_name \ site\_conc [mol/m$^3$]
 
-\begin{deflist}{spa}
 \item[COMPLEXES] ~
 \item srfcmplx\_name
-\item[END] ~
-\end{deflist}
-
 \item[END] ~
 \end{deflist}
 
