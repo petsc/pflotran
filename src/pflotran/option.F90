@@ -59,6 +59,7 @@ module Option_module
     PetscInt :: nflowspec
 
     PetscInt :: ntrandof
+    PetscInt :: naqtrandof
   
     PetscInt :: iflag
     PetscTruth :: init_stage
@@ -351,6 +352,7 @@ subroutine OptionInitRealization(option)
   option%tranmode = ""
   option%itranmode = NULL_MODE
   option%ntrandof = 0
+  option%naqtrandof = 0
   
   option%ivar_centering = CELL_CENTERED
   option%use_samr = PETSC_FALSE

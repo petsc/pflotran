@@ -969,7 +969,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   if (.not.reaction%use_full_geochemistry) then
 !    aq_species_constraint%basis_molarity = conc*convert_molar_to_molal
     aq_species_constraint%basis_molarity = conc ! don't need to convert
-    rt_auxvar%pri_molal = aq_species_constraint%basis_molarity
+    rt_auxvar%pri_molal = aq_species_constraint%basis_molarity* &
+                          convert_molar_to_molal
     rt_auxvar%total(:,iphase) = aq_species_constraint%basis_molarity
     return
   endif
@@ -1421,7 +1422,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     srfcplx_constraint%basis_free_site_conc = srfcplx_constraint%constraint_free_site_conc
   endif
   
-  ! remember that a density of 1 kg/L was assumed, thus molal and molarity are equal
   ! do not scale by molal_to_molar since it could be 1.d0 if MOLAL flag set
   aq_species_constraint%basis_molarity = rt_auxvar%pri_molal* &
                                          global_auxvar%den_kg(option%liquid_phase)/ &
