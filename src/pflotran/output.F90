@@ -4640,9 +4640,10 @@ subroutine OutputHDF5(realization)
   
   type(realization_type) :: realization
 
+  call printMsg(realization%option,'')
   write(realization%option%io_buffer, &
-        '(/,"PFLOTRAN must be compiled with -DUSE_HDF5 to ", &
-        &"read HDF5 formatted structured grids.",/)')
+        '("PFLOTRAN must be compiled with -DUSE_HDF5 to &
+        &write HDF5 formatted structured grids.")')
   call printErrMsg(realization%option)
 #else
 
@@ -5389,9 +5390,10 @@ subroutine OutputMAD(realization)
   
   type(realization_type) :: realization
 
+  call printMsg(realization%option,'')
   write(realization%option%io_buffer, &
-        '(/,"PFLOTRAN must be compiled with -DUSE_HDF5 to ", &
-        &"read HDF5 formatted structured grids.",/)')
+        '("PFLOTRAN must be compiled with -DUSE_HDF5 to ", &
+        &"write HDF5 formatted structured grids.")')
   call printErrMsg(realization%option)
 #else
 
