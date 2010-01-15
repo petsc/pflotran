@@ -26,9 +26,10 @@ module HDF5_aux_module
 
   public :: HDF5ReadNDimRealArray
 
+contains
+
 #endif
   
-contains
 
 #ifdef USE_HDF5
 
