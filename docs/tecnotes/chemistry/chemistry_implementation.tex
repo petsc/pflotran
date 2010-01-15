@@ -1876,23 +1876,56 @@ R_j\eq 1+\dfrac{K_j}{1+K_j^c},
 Note that if $K_j^c \!\geq\! K_j \!\gg\! 1$, $R_j\!\leq\! 2$, and there is little or no retardation. However, there still remains a reduction in kinetic homogeneous and heterogeneous rates. Finally, it should be noted that if colloids are to compete with stationary solid phase, they must be sufficiently concentrated to provide an equivalent surface site density (or cation exchange capacity).
 \end{comment}
 
-\section{Implementation into PFLOTRAN}
+\section{Colloid Implementation into PFLOTRAN}
+
+\subsection{Summary of Equations}
+
+\noindent Colloids:
+\EQ
+\frac{\p}{\p t} \varphi C_c^f + \bnabla\cdot\bq C_c^f \eq -\frac{\p C_c^s}{\p t},
+\EN
+\EQ
+\frac{\p C_c^s}{\p t} \eq k_c^f C_c^f - k_c^b C_c^s,
+\EN
+
+Sorbed Concentrations:
+\EQ
+\frac{\p}{\p t} \varphi\Psi_j +\bnabla\cdot\bOmega_j \eq -\sum_{ic} \nu_{ji} \frac{\p S_{ic}}{\p t},
+\EN
 
 \subsection{Colloid Data Structures}
 
 \begin{verbatim}
-type, public :: colloid_type
-  character(len=MAXWORDLENGTH) :: name
-  PetscInt :: ncoll
-  PetscInt :: id
-  PetscReal :: coll_formula_wt(:)
-  PetscReal :: coll_surf_site_den(:)
-  PetscReal :: coll_surf_area(:)
+  type, public :: colloid_type
+    character(len=MAXWORDLENGTH) :: name
+    PetscInt :: ncoll
+    PetscInt :: id
+    PetscReal :: coll_formula_wt(:)
+    PetscReal :: coll_surf_site_den(:)
+    PetscReal :: coll_surf_area(:)
   
-  type(surface_complexation_rxn_type), pointer :: 
-    surface_complexation_rxn_list
+    type(surface_complexation_rxn_type), pointer :: 
+      surface_complexation_rxn_list
 
-end type colloid type
+  end type colloid_type
+
+ 
+  type, public :: reactive_transport_auxvar_type
+    ! molality
+    PetscReal, pointer :: pri_molal(:)     ! mol/kg water
+
+    ! colloids
+    ! (mobile/immobile = 1, 2, site) [mol/L]
+    PetscReal, pointer :: coll_molar(:,:)
+    
+    ! colloid sorption reactions
+    PetscReal, pointer :: coll_kinsrfcplx_conc(:) ! S_{ic}^k
+    PetscReal, pointer :: coll_kinsrfcplx_conc_kp1(:) ! S_{ic}^k+1
+    PetscReal, pointer :: coll_kinsrfcplx_free_site_conc(:) ! S_c
+    PetscReal, pointer :: coll_eqsrfcplx_conc(:)
+    PetscReal, pointer :: coll_eqsrfcplx_free_site_conc(:)
+    
+  end type reactive_transport_auxvar_type
 \end{verbatim}
 
 \subsection{Input File}
