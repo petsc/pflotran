@@ -1443,26 +1443,9 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
       call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
       call h5pclose_f(prop_id,hdf5_err)
 
-      ! open the grid cells group
-!      if (option%id > 0) then
-!        write(string,*) option%id
-!        hdf5_path = hdf5_path // trim(adjustl(string))
-!        option%io_buffer = 'Opening group: ' // trim(string)
-!        call printMsg(option)
-!        call h5gopen_f(file_id,string,grp_id,hdf5_err)
-!      else
-!        grp_id = file_id
-!      endif
       hdf5_path = trim(hdf5_path) // trim(realization_word)
-!      dataset_name = 'Flow Condition'
-      ! read the data into a 1D buffer just to simplify life!
       call HDF5ReadNDimRealArray(option,file_id,hdf5_path,ndims,dims, &
                                  real_buffer)
-!      if (option%id > 0) then
-!        option%io_buffer = 'Closing group: ' // trim(string)
-!        call printMsg(option)
-!        call h5gclose_f(grp_id,hdf5_err)
-!      endif
       option%io_buffer = 'Closing hdf5 file: ' // trim(filename)
       call printMsg(option)  
       call h5fclose_f(file_id,hdf5_err)
