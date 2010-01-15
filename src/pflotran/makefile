@@ -53,11 +53,15 @@ GLENN_FLAGS = -DGLENN -DENABLE_UNSTRUCTURED
 endif
 
 ifdef temp
-TEMP_FLAGS = -DTEMP_DEPENDENT_LOGK
+TEMP_FLAG = -DTEMP_DEPENDENT_LOGK
 endif
 
 ifdef chuan_co2
-CHUAN_FLAGS = -DCHUAN_CO2
+CHUAN_FLAG = -DCHUAN_CO2
+endif
+
+ifdef coll
+COLL_FLAG = -DCOLL
 endif
 
 ifdef vamsi_hdf5
@@ -65,8 +69,8 @@ ifdef vamsi_hdf5
 endif
 
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) \
-          $(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG) $(TEMP_FLAGS)\
- 					$(CHUAN_FLAGS)
+          $(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG) $(TEMP_FLAG)\
+ 					$(CHUAN_FLAG) $(COLL_FLAG)
 LIBS = $(HDF5_LIBS)
 
 CFLAGS		 = 

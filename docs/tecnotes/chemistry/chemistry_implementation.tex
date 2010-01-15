@@ -1882,15 +1882,73 @@ Note that if $K_j^c \!\geq\! K_j \!\gg\! 1$, $R_j\!\leq\! 2$, and there is littl
 
 \noindent Colloids:
 \EQ
-\frac{\p}{\p t} \varphi C_c^f + \bnabla\cdot\bq C_c^f \eq -\frac{\p C_c^s}{\p t},
+\frac{\p}{\p t} \varphi s_l C_c^l + \bnabla\cdot\bq C_c^l \eq -\frac{\p C_c^s}{\p t},
 \EN
 \EQ
-\frac{\p C_c^s}{\p t} \eq k_c^f C_c^f - k_c^b C_c^s,
+\frac{\p C_c^s}{\p t} \eq k_c^f C_c^s - k_c^b C_c^s,
+\EN
+$l=$liq, $s=$solid.
+
+\noindent
+Primary Species Concentrations:
+\EQ
+\frac{\p}{\p t} \varphi\Psi_j +\bnabla\cdot\bOmega_j \eq - \sum_{ic} \nu_{ji} \frac{\p\varphi s_l S_{ic}^l}{\p t} - \sum_{ic} \nu_{ji} \frac{\p S_{ic}^s}{\p t} - \sum_{m} \nu_{jm} \frac{\p S_{m}^{}}{\p t} - \sum_m\nu_{jm}I_m
+\EN
+\noindent Kinetic Sorption Equations:
+\EQ
+\frac{\p}{\p t} \varphi s_l S_{ic}^l + \bnabla\cdot\bq_c S_{ic}^l \eq I_{ic}^l,
+\EN
+\EQ
+\frac{\p}{\p t} S_{ic}^s \eq I_{ic}^s,
+\EN
+\EQ
+I_{ic}^{l,\,s} \eq k_{ic}^f K_{ic} Q_i S_{c}^{l,\,s} - k_{ic}^b S_{ic}^{l,\,s}.
+\EN
+\noindent Alternatively:
+\BA
+\frac{\p}{\p t} \left[\varphi s_l\Psi_j + \varphi\sum_{ic} \nu_{ji} S_{ic}^l + \sum_{ic} \nu_{ji} S_{ic}^s + \sum_{m} \nu_{jm} S_{m}^{} \right] +\bnabla\cdot\left[\bOmega_j + \sum_{ic}\bq_c\nu_{ji} S_{ic}^l \right] \eq \nonumber\\
+-\sum_m\nu_{jm}I_m
+\EA
+\noindent Site Concentration:
+\EQ
+\omega_{c}^{l,\,s} \eq \eta_c A_c W_c C_c^{l,\,s}.
 \EN
 
-Sorbed Concentrations:
+\noindent Jacobian Structure:
 \EQ
-\frac{\p}{\p t} \varphi\Psi_j +\bnabla\cdot\bOmega_j \eq -\sum_{ic} \nu_{ji} \frac{\p S_{ic}}{\p t},
+\bJ \delta\bx \eq -\bR
+\EN
+\noindent Equilibrium Sorption Reactions:
+\EQ
+\left(\begin{array}{c} \dfrac{\p R_{j}}{\p\ln C_{l}}\\
+\end{array}\right)
+\left[
+\begin{array}{c}
+\delta\ln C_j\\
+\end{array}
+\right] \eq
+-\left[\begin{array}{c}
+R_j\\
+\end{array}\right]
+\EN
+
+\noindent Kinetic Sorption Reactions:
+\EQ
+\left(\begin{array}{cc} \dfrac{\p R_{j}}{\p\ln C_{l}} & \dfrac{\p R_{j}}{\p\ln S_{i'c'}} \\
+\dfrac{\p R_{ic}}{\p\ln C_{l}} & \dfrac{\p R_{ic}}{\p\ln S_{i'c'}} \\
+\end{array}\right)
+\left[
+\begin{array}{c}
+\delta\ln C_j\\
+~\\
+\delta\ln S_{ic}
+\end{array}
+\right] \eq
+-\left[\begin{array}{c}
+R_j\\
+~\\
+R_{ic}
+\end{array}\right]
 \EN
 
 \subsection{Colloid Data Structures}
@@ -1905,15 +1963,30 @@ Sorbed Concentrations:
     PetscReal :: coll_surf_area(:)
   
     type(surface_complexation_rxn_type), pointer :: 
-      surface_complexation_rxn_list
+      surface_complexation_rxn_type
 
+    type(colloid_type), pointer :: next
   end type colloid_type
 
+  type, public :: surface_complexation_rxn_type
+    PetscInt :: id
+    PetscInt :: itype
+    PetscInt :: free_site_id
+    character(len=MAXWORDLENGTH) :: free_site_name
+    PetscTruth :: free_site_print_me
+    PetscInt :: mineral_id
+    character(len=MAXWORDLENGTH) :: mineral_name
+    character(len=MAXWORDLENGTH) :: coll_name
+    PetscReal :: site_density
+    type(surface_complex_type), pointer :: complex_list
+    type (surface_complexation_rxn_type), pointer :: next
+  end type surface_complexation_rxn_type    
  
   type, public :: reactive_transport_auxvar_type
     ! molality
     PetscReal, pointer :: pri_molal(:)     ! mol/kg water
-
+    ...
+    
     ! colloids
     ! (mobile/immobile = 1, 2, site) [mol/L]
     PetscReal, pointer :: coll_molar(:,:)
@@ -1965,16 +2038,14 @@ Sorbed Concentrations:
 \item[COMPLEX\_KINETICS] ~
 
 \item srf\_name
-\begin{deflist}{spa}
+\begin{deflist}{spacingspacingspacingspacingspace}
 \item[FORWARD\_RATE\_CONSTANT] \ $k_f$
 \item[BACKWARD\_RATE\_CONSTANT] \ $k_b$
 \end{deflist}
 \item[END] ~
 
-\item[SITE\_FRACTION] ~
-$\omega_l$
-\item[RATE] ~
-$k_l$
+\item[SITE\_FRACTION] $\omega_i$
+\item[RATE] $k_i$
 \item[MINERAL] min\_name
 \item[SITE] \ site\_name \ site\_conc [mol/m$^3$]
 
@@ -1994,7 +2065,7 @@ $k_l$
 \begin{deflist}{spa}
 \item[COLLOIDS, COLLOID, COLL] ~
 \item coll\_name
-\begin{deflist}{spa}
+\begin{deflist}{spacingspaceingspacingspace}
 \item[COLL\_SURFACE\_SITE\_DEN] \ coll\_site\_density [mol/nm$^2$]
 \item[COLL\_FORMULA\_WT] \ coll\_formula\_weight [kg/mol]
 \item[COLL\_SURFACE\_AREA] \ coll\_surface\_area [kg/m$^2$]
@@ -2029,9 +2100,9 @@ $k_l$
 
 \begin{deflist}{spa}
 \item[COLLOIDS] ~
-\begin{deflist}{spa}
-\item[MOBILE\_COLL] coll\_name \ conc [mol/m$^3$]
-\item[IMMOBILE\_COLL] coll\_name \ conc [mol/m$^3$]
+\begin{deflist}{spacingspace}
+\item[MOBILE] coll\_name \ conc [mol/m$^3$]
+\item[IMMOBILE] coll\_name \ conc [mol/m$^3$]
 \end{deflist}
 \item[END] ~
 \end{deflist}
