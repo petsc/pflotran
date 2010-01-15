@@ -1029,6 +1029,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
   PetscInt :: local_id, ghosted_id
   type(grid_type), pointer :: grid
   PetscReal, pointer :: vec_ptr(:), vec_ptr2(:)
+  PetscReal :: xmass
   PetscInt :: irate
   PetscErrorCode :: ierr
 
@@ -1223,8 +1224,11 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
         case(PRIMARY_MOLARITY)
           do local_id=1,grid%nlmax
             ghosted_id = grid%nL2G(local_id)
+             xmass =1.D0
+             if(associated(patch%aux%Global%aux_vars(ghosted_id)%xmass))&
+                xmass = patch%aux%Global%aux_vars(ghosted_id)%xmass(iphase)
             vec_ptr(local_id) = &
-              patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar)* &
+              patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar)* xmass*&
               (patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0)
           enddo
         case(SECONDARY_MOLALITY)
@@ -1236,14 +1240,21 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
         case(SECONDARY_MOLARITY)
           do local_id=1,grid%nlmax
             ghosted_id = grid%nL2G(local_id)
+             xmass =1.D0
+            if(associated(patch%aux%Global%aux_vars(ghosted_id)%xmass))&
+               xmass = patch%aux%Global%aux_vars(ghosted_id)%xmass(iphase)
             vec_ptr(local_id) = &
-              patch%aux%RT%aux_vars(ghosted_id)%sec_molal(isubvar)* &
+              patch%aux%RT%aux_vars(ghosted_id)%sec_molal(isubvar)* xmass *&
               (patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0)
           enddo
         case(TOTAL_MOLALITY)
           do local_id=1,grid%nlmax
+            ghosted_id =grid%nL2G(local_id)
+            xmass =1.D0
+            if(associated(patch%aux%Global%aux_vars(ghosted_id)%xmass))&
+               xmass = patch%aux%Global%aux_vars(ghosted_id)%xmass(iphase)
             vec_ptr(local_id) = &
-              patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)/ &
+              patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)/ xmass /&
               (patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0)
           enddo
         case(TOTAL_MOLARITY)
@@ -1370,7 +1381,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
   PetscInt :: iphase
   PetscInt :: ghosted_id
 
-  PetscReal :: value
+  PetscReal :: value, xmass
   PetscInt :: irate
   type(grid_type), pointer :: grid
   PetscReal, pointer :: vec_ptr2(:)  
@@ -1381,6 +1392,10 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
   value = -999.99d0
 
   iphase = 1
+  xmass =1.D0
+  if(associated(patch%aux%Global%aux_vars(ghosted_id)%xmass))&
+     xmass = patch%aux%Global%aux_vars(ghosted_id)%xmass(iphase)
+             
   select case(ivar)
     case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
@@ -1495,15 +1510,15 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
         case(PRIMARY_MOLALITY)
           value = patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar)
         case(PRIMARY_MOLARITY)
-          value = patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar)* &
+          value = patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar)* xmass *&
                   patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0
         case(SECONDARY_MOLALITY)
           value = patch%aux%RT%aux_vars(ghosted_id)%sec_molal(isubvar)
         case(SECONDARY_MOLARITY)
-          value = patch%aux%RT%aux_vars(ghosted_id)%sec_molal(isubvar)* &
+          value = patch%aux%RT%aux_vars(ghosted_id)%sec_molal(isubvar)* xmass*&
                   patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0
         case(TOTAL_MOLALITY)
-          value = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)/ &
+          value = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)/ xmass/&
                   patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)*1000.d0
         case(TOTAL_MOLARITY)
           value = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)
