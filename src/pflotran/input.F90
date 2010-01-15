@@ -73,6 +73,7 @@ module Input_module
             InputDefaultMsg, InputReadStringErrorMsg, &
             InputFindStringErrorMsg, InputError, &
             InputReadNChars, InputReadQuotedWord, &
+            InputReadPath, &
             InputGetCommandLineInt, &
             InputGetCommandLineReal, &
             InputGetCommandLineTruth, &
@@ -905,6 +906,75 @@ end subroutine InputReadQuotedWord
 
 ! ************************************************************************** !
 !
+! InputReadPath: reads and removes a words from a path
+! author: Glenn Hammond
+! date: 01/14/10
+!
+! ************************************************************************** !
+subroutine InputReadPath(string, word, return_blank_error, ierr)
+
+  implicit none
+
+  character(len=*) :: string
+  character(len=*) :: word
+  PetscTruth :: return_blank_error
+  PetscErrorCode :: ierr
+  
+  PetscInt :: i, begins, ends
+  character(len=1) :: slash, backslash  
+
+  if (ierr /= 0) return
+
+  slash = achar(47)
+  backslash = achar(92)
+
+  ! Initialize character string to blank.
+  do i=1,len_trim(word)
+    word(i:i) = ' '
+  enddo
+
+  ierr = len_trim(string)
+  
+  if (ierr == 0) then
+    if (return_blank_error) then
+      ierr = 1
+    else
+      ierr = 0
+    endif
+    return
+  else
+    ierr = 0
+
+    ! Remove leading blanks and tabs
+    i=1
+    do while(string(i:i) == ' ' .and. string(i:i) == slash) 
+      i=i+1
+    enddo
+
+    begins=i
+
+    ! Count # of characters (no slashes in between)
+    do while (string(i:i) /= slash .and. &
+              (i == begins .or. string(i:i) /= backslash))
+      i=i+1
+    enddo
+
+    ends=i-1
+
+    ! Avoid copying beyond the end of the word (32 characters).
+    if (ends-begins > (MAXWORDLENGTH-1)) ends = begins + (MAXWORDLENGTH-1)
+
+    ! Copy (ends-begins) characters to 'word'
+    word = string(begins:ends)
+    ! Remove chars from string
+    string = string(ends+1:)
+
+  endif
+  
+end subroutine InputReadPath
+
+! ************************************************************************** !
+!
 ! InputFindStringInFile1: Rewinds file and finds the first occurrence of
 !                     'string'.  Note that the line must start with 'string'
 !                     in order to match and that line is NOT returned
@@ -1193,7 +1263,6 @@ subroutine InputGetCommandLineReal(string,double_value,found,option)
   enddo
   
 end subroutine InputGetCommandLineReal
-
 
 ! ************************************************************************** !
 !

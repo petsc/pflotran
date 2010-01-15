@@ -1337,6 +1337,10 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
   use String_module
   use Option_module
   use Logging_module
+  use HDF5_aux_module
+#ifdef USE_HDF5
+  use hdf5
+#endif
 
   implicit none
   
@@ -1347,16 +1351,30 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
   type(flow_condition_dataset_type) :: dataset
   character(len=MAXWORDLENGTH) :: units
   
-  character(len=MAXSTRINGLENGTH) :: string2
+  character(len=MAXSTRINGLENGTH) :: string2, filename, hdf5_path
   character(len=MAXWORDLENGTH) :: word, realization_word
   character(len=MAXSTRINGLENGTH) :: error_string
-  PetscInt :: length, i
+  PetscInt :: length, i, icount
   PetscInt :: irank
+  PetscInt :: ndims
+  PetscInt, pointer :: dims(:)
+  PetscReal, pointer :: real_buffer(:)
   PetscErrorCode :: ierr
+
+#ifdef USE_HDF5  
+  integer(HID_T) :: file_id
+  integer(HID_T) :: prop_id
+  PetscMPIInt :: hdf5_err
+#endif
 
   call PetscLogEventBegin(logging%event_flow_condition_read_values, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+
+  filename = ''
+  realization_word = ''
+  hdf5_path = ''
+  
   input%ierr = 0
   string2 = trim(input%buf)
   call InputReadWord(input,option,word,PETSC_TRUE)
@@ -1367,30 +1385,125 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
     input%err_buf2 = trim(keyword) // ', FILE'
     input%err_buf = 'keyword'
     call InputReadNChars(input,option,string2,MAXSTRINGLENGTH,PETSC_TRUE)
-    call InputErrorMsg(input,option)
-    word = string2
-    call StringToLower(word)
-    length = len_trim(word)
-    if (StringCompare(word,'realization_dependent',length)) then
-      write(word,*) option%id
-      realization_word = adjustl(word)
-      input%err_buf2 = trim(keyword) // ', REALIZATION_DEPENDENT FILE'
-    endif
-    input%err_buf = 'filename'
-    call InputReadNChars(input,option,string2,MAXSTRINGLENGTH,PETSC_TRUE)
-    call InputErrorMsg(input,option)
-    ! check to see if it is an hdf5 file
-    if (index(string2,'.h5') > 0) then
-    ! otherwise a raw text file
+    if (input%ierr == 0) then
+      filename = string2
     else
-      word = adjustl(word)
-      i = index(string2,'.',PETSC_TRUE)
-      if (i > 2) then
-        string2 = string2(1:i-1) // trim(word) // string2(i:)
-      else
-        string2 = trim(string2) // trim(word)
+      do
+        call InputReadFlotranString(input,option)
+        call InputReadStringErrorMsg(input,option,'FLOW_CONDITION')
+        if (InputCheckExit(input,option)) exit
+        call InputReadWord(input,option,word,PETSC_TRUE)
+        call InputErrorMsg(input,option,'keyword','OUTPUT') 
+        call StringToUpper(word)
+        select case(trim(word))
+          case('FILENAME')
+            call InputReadNChars(input,option,filename,MAXSTRINGLENGTH,PETSC_TRUE)
+            call InputErrorMsg(input,option,'filename','CONDITION')
+          case('REALIZATION_DEPENDENT')
+            ! we only want realization dependent if a realization id exists
+            if (option%id > 0) then
+              write(word,*) option%id
+              realization_word = adjustl(word)
+            else
+              realization_word = ''
+            endif
+          case('HDF5_PATH')
+            ! we assume that the remainder of the string is the path
+            hdf5_path = adjustl(input%buf)
+          case('UNITS')
+        end select          
+      enddo      
+    endif
+    
+    if (len_trim(filename) < 2) then
+      option%io_buffer = 'No filename listed under Flow_Condition: ' // &
+                         trim(keyword)
+      call printErrMsg(option)
+    endif
+
+    if (index(filename,'.h5') > 0) then
+#ifndef USE_HDF5
+      write(option%io_buffer,'("PFLOTRAN must be compiled with -DUSE_HDF5 to ", &
+                               &"read HDF5 formatted flow conditions.")')
+      call printErrMsg(option)
+#else   
+      if (len_trim(hdf5_path) < 1) then
+        option%io_buffer = 'No hdf5 path listed under Flow_Condition: ' // &
+                           trim(keyword)
+        call printErrMsg(option)
       endif
-      call FlowConditionReadValuesFromFile(string2,dataset,option)
+
+      call h5open_f(hdf5_err)
+      option%io_buffer = 'Opening hdf5 file: ' // trim(filename)
+      call printMsg(option)
+      call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+      call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+#endif
+      call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
+      call h5pclose_f(prop_id,hdf5_err)
+
+      ! open the grid cells group
+!      if (option%id > 0) then
+!        write(string,*) option%id
+!        hdf5_path = hdf5_path // trim(adjustl(string))
+!        option%io_buffer = 'Opening group: ' // trim(string)
+!        call printMsg(option)
+!        call h5gopen_f(file_id,string,grp_id,hdf5_err)
+!      else
+!        grp_id = file_id
+!      endif
+      hdf5_path = trim(hdf5_path) // trim(realization_word)
+!      dataset_name = 'Flow Condition'
+      ! read the data into a 1D buffer just to simplify life!
+      call HDF5ReadNDimRealArray(option,file_id,hdf5_path,ndims,dims, &
+                                 real_buffer)
+!      if (option%id > 0) then
+!        option%io_buffer = 'Closing group: ' // trim(string)
+!        call printMsg(option)
+!        call h5gclose_f(grp_id,hdf5_err)
+!      endif
+      option%io_buffer = 'Closing hdf5 file: ' // trim(filename)
+      call printMsg(option)  
+      call h5fclose_f(file_id,hdf5_err)
+      call h5close_f(hdf5_err)
+      
+      ! dims(1) = size of array
+      ! dims(2) = number of data point in time
+      if (dims(1)-1 == dataset%rank) then
+        ! alright, the 2d data is layed out in C-style.  now place it in
+        ! the appropriate arrays
+        allocate(dataset%times(dims(2)))
+        dataset%times = -999.d0
+        allocate(dataset%values(dataset%rank,dims(2))) 
+        dataset%values = -999.d0
+        icount = 1
+        do i = 1, dims(2)
+          dataset%times(i) = real_buffer(icount)
+          icount = icount + 1
+          do irank = 1, dataset%rank
+            dataset%values(irank,i) = real_buffer(icount)
+            icount = icount + 1
+          enddo
+        enddo  
+      else
+        option%io_buffer = 'HDF condition data set rank does not match' // &
+          'rank of internal data set.  Email Glenn for additions'
+        call printErrMsg(option)
+      endif
+      if (associated(dims)) deallocate(dims)
+      nullify(dims)
+      if (associated(real_buffer)) deallocate(real_buffer)
+      nullify(real_buffer)
+#endif      
+    else
+      i = index(filename,'.',PETSC_TRUE)
+      if (i > 2) then
+        filename = filename(1:i-1) // trim(realization_word) // filename(i:)
+      else
+        filename = trim(filename) // trim(realization_word)
+      endif
+      call FlowConditionReadValuesFromFile(filename,dataset,option)
     endif
   else
     input%buf = trim(string2)
@@ -1401,15 +1514,14 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
       input%err_buf2 = 'CONDITION'
       call InputErrorMsg(input,option) 
     enddo
+    call InputReadWord(input,option,word,PETSC_TRUE)
+    if (InputError(input)) then
+      word = trim(keyword) // ' UNITS'
+      call InputDefaultMsg(input,option,word)
+    else
+      units = trim(word)
+    endif
   endif
-  call InputReadWord(input,option,word,PETSC_TRUE)
-  if (InputError(input)) then
-    word = trim(keyword) // ' UNITS'
-    call InputDefaultMsg(input,option,word)
-  else
-    units = trim(word)
-  endif
-
   call PetscLogEventEnd(logging%event_flow_condition_read_values, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    

@@ -101,6 +101,7 @@ util_obj  = ${common_src}input.o \
 common_obj = ${common_src}option.o \
 	${common_src}units.o\
 	${common_src}logging.o \
+	${common_src}hdf5_aux.o \
 	${common_src}global_aux.o\
 	${common_src}reactive_transport_aux.o\
 	${common_src}reaction_aux.o\
@@ -209,7 +210,8 @@ saturation_function.o : option.o input.o string.o utility.o
 coupler.o : condition.o connection.o region.o input.o grid.o
 observation.o : region.o option.o input.o
 convergence.o : option.o solver.o grid.o
-condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o string.o
+condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o \
+	      string.o hdf5_aux.F90
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
                 strata.o waypoint.o field.o hydrostatic.o debug.o \
 		observation.o velocity.o \
@@ -253,6 +255,7 @@ timestepper.o : thc.o richards.o mphase.o \
                 output.o convergence.o checkpoint.o waypoint.o logging.o \
                 mass_balance.o input.o string.o
 hdf5.o : realization.o option.o logging.o
+hdf5_aux.o : option.o logging.o
 checkpoint.o : realization.o logging.o
 mass_balance.o : realization.o option.o field.o solver.o logging.o thc.o
 database.o : reaction.o input.o option.o utility.o reaction_aux.o string.o
