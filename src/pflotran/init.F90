@@ -1635,9 +1635,9 @@ subroutine InitReadInput(simulation)
               call printErrMsg(option)              
           end select
        enddo
-      
+#ifdef VAMSI_HDF5      
        call create_iogroups(option)
-    
+#endif    
        if (velocities) then
          if (output_option%print_tecplot) &
            output_option%print_tecplot_velocities = PETSC_TRUE

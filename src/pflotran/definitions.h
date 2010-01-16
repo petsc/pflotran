@@ -204,7 +204,7 @@ PetscInt, parameter :: EOS_MRK = 2
 
 ! HDF5 stuff
 PetscInt, parameter :: HDF5_READ_BUFFER_SIZE = 1000000
-PetscInt, parameter :: HDF5_READ_BCAST_SIZE = 16384 
+PetscInt, parameter :: HDF5_READ_BCAST_SIZE = 128
 PetscInt, parameter :: HDF5_WRITE_BCAST_SIZE = 16
 !#define HDF5_BROADCAST
 
