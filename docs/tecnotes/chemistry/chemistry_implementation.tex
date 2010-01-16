@@ -5,7 +5,7 @@
 %\usepackage{ssss}
 \usepackage{amsmath,amsbsy,amssymb}
 \usepackage{sectsty,hangcaption}
-%\usepackage{deflist}
+\usepackage{deflist}
 \usepackage{fancyhdr}
 \usepackage{tabularx}
 \usepackage{verbatim}
@@ -191,7 +191,7 @@
 
 %\documentclass{report}
 %\usepackage{fullpage}
-\renewcommand{\baselinestretch}{1.2}
+\renewcommand{\baselinestretch}{1.0}
 \author{P.C. Lichtner}
 \title{PFLOTRAN: Reactive Transport Implementation}
 %\begin{document}
@@ -1851,18 +1851,6 @@ K_j^f \eq \frac{1}{\Psi_j} \sum_{ic}\nu_{ji}^c S_{ic}^f.
 \EN
 Note that if $K_j^f \!\geq\! K_j^s \!\gg\! 1$, $R_j\!\leq\! 2$, and there is little or no retardation. However, there still remains a reduction in kinetic homogeneous and heterogeneous rates. Finally, it should be noted that if colloids are to compete with stationary solid phase, they must be sufficiently concentrated to provide an equivalent surface site density (or cation exchange capacity).
 
-\section{Colloid Type Structure}
-
-\begin{verbatim}
-type, public :: colloid_type
-  character(len=MAXWORDLENGTH) :: name
-  PetscInt :: ncoll
-  PetscInt :: id
-  PetscReal :: coll_formula_wt
-  PetscReal :: coll_surf_site_den
-end type colloid type
-\end{verbatim}
-
 \begin{comment}
 From the primary species transport equations it is possible to define a retardation factor assuming constant aqueous and sorbed concentrations and neglecting diffusion by writing the transport equations in the form
 \EQ\label{retcolloid}
@@ -1888,13 +1876,249 @@ R_j\eq 1+\dfrac{K_j}{1+K_j^c},
 Note that if $K_j^c \!\geq\! K_j \!\gg\! 1$, $R_j\!\leq\! 2$, and there is little or no retardation. However, there still remains a reduction in kinetic homogeneous and heterogeneous rates. Finally, it should be noted that if colloids are to compete with stationary solid phase, they must be sufficiently concentrated to provide an equivalent surface site density (or cation exchange capacity).
 \end{comment}
 
-\section{Solid Solutions}
+\section{Colloid Implementation into PFLOTRAN}
+
+\subsection{Summary of Equations}
+
+\noindent Colloids:
+\EQ
+\frac{\p}{\p t} \varphi s_l C_c^l + \bnabla\cdot\bq C_c^l \eq -\frac{\p C_c^s}{\p t},
+\EN
+\EQ
+\frac{\p C_c^s}{\p t} \eq k_c^f C_c^s - k_c^b C_c^s,
+\EN
+$l=$liq, $s=$solid.
+
+\noindent
+Primary Species Concentrations:
+\EQ
+\frac{\p}{\p t} \varphi\Psi_j +\bnabla\cdot\bOmega_j \eq - \sum_{ic} \nu_{ji} \frac{\p\varphi s_l S_{ic}^l}{\p t} - \sum_{ic} \nu_{ji} \frac{\p S_{ic}^s}{\p t} - \sum_{m} \nu_{jm} \frac{\p S_{m}^{}}{\p t} - \sum_m\nu_{jm}I_m
+\EN
+\noindent Kinetic Sorption Equations:
+\EQ
+\frac{\p}{\p t} \varphi s_l S_{ic}^l + \bnabla\cdot\bq_c S_{ic}^l \eq I_{ic}^l,
+\EN
+\EQ
+\frac{\p}{\p t} S_{ic}^s \eq I_{ic}^s,
+\EN
+\EQ
+I_{ic}^{l,\,s} \eq k_{ic}^f K_{ic} Q_i S_{c}^{l,\,s} - k_{ic}^b S_{ic}^{l,\,s}.
+\EN
+\noindent Alternatively:
+\BA
+\frac{\p}{\p t} \left[\varphi s_l\Psi_j + \varphi\sum_{ic} \nu_{ji} S_{ic}^l + \sum_{ic} \nu_{ji} S_{ic}^s + \sum_{m} \nu_{jm} S_{m}^{} \right] +\bnabla\cdot\left[\bOmega_j + \sum_{ic}\bq_c\nu_{ji} S_{ic}^l \right] \eq \nonumber\\
+-\sum_m\nu_{jm}I_m
+\EA
+\noindent Site Concentration:
+\EQ
+\omega_{c}^{l,\,s} \eq \eta_c A_c W_c C_c^{l,\,s}.
+\EN
+
+\noindent Jacobian Structure:
+\EQ
+\bJ \delta\bx \eq -\bR
+\EN
+\noindent Equilibrium Sorption Reactions:
+\EQ
+\left(\begin{array}{c} \dfrac{\p R_{j}}{\p\ln C_{l}}\\
+\end{array}\right)
+\left[
+\begin{array}{c}
+\delta\ln C_j\\
+\end{array}
+\right] \eq
+-\left[\begin{array}{c}
+R_j\\
+\end{array}\right]
+\EN
+
+\noindent Kinetic Sorption Reactions:
+\EQ
+\left(\begin{array}{cc} \dfrac{\p R_{j}}{\p\ln C_{l}} & \dfrac{\p R_{j}}{\p\ln S_{i'c'}} \\
+\dfrac{\p R_{ic}}{\p\ln C_{l}} & \dfrac{\p R_{ic}}{\p\ln S_{i'c'}} \\
+\end{array}\right)
+\left[
+\begin{array}{c}
+\delta\ln C_j\\
+~\\
+\delta\ln S_{ic}
+\end{array}
+\right] \eq
+-\left[\begin{array}{c}
+R_j\\
+~\\
+R_{ic}
+\end{array}\right]
+\EN
+
+\subsection{Colloid Data Structures}
+
+\begin{verbatim}
+  type, public :: colloid_type
+    character(len=MAXWORDLENGTH) :: name
+    PetscInt :: ncoll
+    PetscInt :: id
+    PetscReal :: coll_formula_wt(:)
+    PetscReal :: coll_surf_site_den(:)
+    PetscReal :: coll_surf_area(:)
+  
+    type(surface_complexation_rxn_type), pointer :: 
+      surface_complexation_rxn_type
+
+    type(colloid_type), pointer :: next
+  end type colloid_type
+
+  type, public :: surface_complexation_rxn_type
+    PetscInt :: id
+    PetscInt :: itype
+    PetscInt :: free_site_id
+    character(len=MAXWORDLENGTH) :: free_site_name
+    PetscTruth :: free_site_print_me
+    PetscInt :: mineral_id
+    character(len=MAXWORDLENGTH) :: mineral_name
+    character(len=MAXWORDLENGTH) :: coll_name
+    PetscReal :: site_density
+    type(surface_complex_type), pointer :: complex_list
+    type (surface_complexation_rxn_type), pointer :: next
+  end type surface_complexation_rxn_type    
+ 
+  type, public :: reactive_transport_auxvar_type
+    ! molality
+    PetscReal, pointer :: pri_molal(:)     ! mol/kg water
+    ...
+    
+    ! colloids
+    ! (mobile/immobile = 1, 2, site) [mol/L]
+    PetscReal, pointer :: coll_molar(:,:)
+    
+    ! colloid sorption reactions
+    PetscReal, pointer :: coll_kinsrfcplx_conc(:) ! S_{ic}^k
+    PetscReal, pointer :: coll_kinsrfcplx_conc_kp1(:) ! S_{ic}^k+1
+    PetscReal, pointer :: coll_kinsrfcplx_free_site_conc(:) ! S_c
+    PetscReal, pointer :: coll_eqsrfcplx_conc(:)
+    PetscReal, pointer :: coll_eqsrfcplx_free_site_conc(:)
+    
+  end type reactive_transport_auxvar_type
+\end{verbatim}
+
+\subsection{Input File}
+
+\noindent\underline{Read in colloid names, type, and formula weight from database:}
+
+\begin{deflist}{spa}
+\item[COLLOIDS, COLLOID, COLL] 
+\item \ coll\_name
+\item \ldots
+\item[END, /, .]
+\end{deflist}
+
+\noindent \underline{Mineral Kinetics:}
+
+\begin{deflist}{spa}
+\item[MINERAL\_KINETICS] ~
+\item min\_name
+\begin{deflist}{spa}
+\item[RATE\_CONSTANT] rate\_constant [mol/cm$^2$/s]
+\item[END, /, .] ~
+\end{deflist}
+\item[END, /, .] ~
+\end{deflist}
+
+\noindent \underline{Surface Complexes:}
+\begin{deflist}{spa}
+\item[SORPTION] ~
+
+\begin{deflist}{spa}
+\item[SURFACE\_COMPLEXATION\_RXN] ~
+\begin{deflist}{spa}
+\item[MULTIRATE\_SCALE\_FACTOR] \ scale\_factor
+\item[EQUILIBRIUM] ~
+\item[MULTIRATE\_KINETIC] ~
+\item[KINETIC] ~
+\item[COMPLEX\_KINETICS] ~
+
+\item srf\_name
+\begin{deflist}{spacingspacingspacingspacingspace}
+\item[FORWARD\_RATE\_CONSTANT] \ $k_f$
+\item[BACKWARD\_RATE\_CONSTANT] \ $k_b$
+\end{deflist}
+\item[END] ~
+
+\item[SITE\_FRACTION] $\omega_i$
+\item[RATE] $k_i$
+\item[MINERAL] min\_name
+\item[SITE] \ site\_name \ site\_conc [mol/m$^3$]
+
+\item[COMPLEXES] ~
+\item srfcmplx\_name
+\item[END] ~
+\end{deflist}
+
+\item[END] ~
+\end{deflist}
+
+\item[END] ~
+\end{deflist}
+
+\noindent \underline{Colloid Properties:}
+
+\begin{deflist}{spa}
+\item[COLLOIDS, COLLOID, COLL] ~
+\item coll\_name
+\begin{deflist}{spacingspaceingspacingspace}
+\item[COLL\_SURFACE\_SITE\_DEN] \ coll\_site\_density [mol/nm$^2$]
+\item[COLL\_FORMULA\_WT] \ coll\_formula\_weight [kg/mol]
+\item[COLL\_SURFACE\_AREA] \ coll\_surface\_area [kg/m$^2$]
+\item[END] ~
+\end{deflist}
+\item[END] ~
+\end{deflist}
+
+\noindent
+\underline{Constraint Condition:}
+
+\begin{deflist}{spa}
+\item[CONSTRAINT] initial
+
+\begin{deflist}{spa}
+\item[CONCENTRATIONS] ~
+\item spec\_name \ conc [mol/L, mol/kg-H$_2$O] \ constraint
+\item[END] ~
+\end{deflist}
+
+\begin{deflist}{spa}
+\item[MINERALS] ~
+\item min\_name \ volume\_fraction [---] \ area [cm$^{-1}$]
+\item[END] ~
+\end{deflist}
+
+\begin{deflist}{spa}
+\item[SURFACE\_COMPLEXES] ~
+\item surf\_name \ conc [mol/m$^3$]
+\item[END] ~
+\end{deflist}
+
+\begin{deflist}{spa}
+\item[COLLOIDS] ~
+\begin{deflist}{spacingspace}
+\item[MOBILE] coll\_name \ conc [mol/m$^3$]
+\item[IMMOBILE] coll\_name \ conc [mol/m$^3$]
+\end{deflist}
+\item[END] ~
+\end{deflist}
+
+\item[END] ~
+\end{deflist}
+
+\chapter{Solid Solutions}
 
 \setcounter{equation}{0}
 
-\section{Biogeochemical Reactions}
+\chapter{Biogeochemical Reactions}
 
 \setcounter{equation}{0}
+
+\section{Microbial Reactions}
 
 Microbial processes are playing an increasingly important role in our understanding of the subsurface geochemical environment (Lovley and Chapelle, 1995). An excellent introduction into modeling microbially induced processes has been given by Rittmann and VanBriesen (1996). They derive overall reactions for biomass synthesis resulting from biodegradation reactions based on H$_3$NTA as the electron-donor primary substrate. Two different electron-acceptor substrates O$_{2(aq)}$ and NO$_3^-$ are considered by the authors. In addition to these species, other important electron-acceptor primary substrates include SO$_4^{2-}$, CO$_{2(aq)}$ and Fe$^{3+}$. 
 
@@ -2076,15 +2300,15 @@ and for biomass synthesis as
 \EN
 The equations may be further generalized to more than one electron donor substrate if desired.
 
-\section{Pitzer Activity Coefficient Algorithm}
+\chapter{Pitzer Activity Coefficient Algorithm}
 
 \setcounter{equation}{0}
 
-\section{Species-Dependent Diffusion}
+\chapter{Diffusion}
 
 \setcounter{equation}{0}
 
-\subsection{Species-Independent Diffusion Coefficients}
+\section{Species-Independent Diffusion Coefficients}
 
 For the case of species-independent diffusion coefficients, because the homogeneous and heterogeneous reactions conserve charge, expressed by Eqn.\eqref{chrg},
 the mass conservation equations also conserve charge. The total charge density $\rho_e$ in solution must vanish
@@ -2102,7 +2326,7 @@ where $\bOmega_{\rho_e}$ is defined as
 \EN
 Thus the flux can be expressed in terms of $\rho_e$ alone, and therefore if $\rho_e=0$ initially, it must remain zero as the system evolves in time.
 
-\subsection{Species-Dependent Diffusion Coefficients}
+\section{Species-Dependent Diffusion Coefficients}
 
 Real aqueous electrolyte solutions consist of charged species that diffuse at different rates. This requires consideration of electrochemical effects on transport in order to maintain charge balance. For charged species the solute flux is obtained from the Nernst-Planck equation involving the sum of gradients of the chemical and electric potentials as (Newman, 1991)
 %\EQ\label{eflux}
@@ -2742,9 +2966,9 @@ by solving the primary continuum equations.
 \numberwithin{equation}{section}
 \renewcommand{\theequation}{\arabic{chapter}.\arabic{section}-\arabic{equation}}
 
-\section{Electrical Conductivity}
+%\chapter{Electrical Conductivity}
 
-\section{Hydration-Dehydration Reactions}
+%\chapter{Hydration-Dehydration Reactions}
 
 \chapter{Multiphase Systems}
 

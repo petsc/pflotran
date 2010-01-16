@@ -969,7 +969,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   if (.not.reaction%use_full_geochemistry) then
 !    aq_species_constraint%basis_molarity = conc*convert_molar_to_molal
     aq_species_constraint%basis_molarity = conc ! don't need to convert
-    rt_auxvar%pri_molal = aq_species_constraint%basis_molarity
+    rt_auxvar%pri_molal = aq_species_constraint%basis_molarity* &
+                          convert_molar_to_molal
     rt_auxvar%total(:,iphase) = aq_species_constraint%basis_molarity
     return
   endif
@@ -1421,7 +1422,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     srfcplx_constraint%basis_free_site_conc = srfcplx_constraint%constraint_free_site_conc
   endif
   
-  ! remember that a density of 1 kg/L was assumed, thus molal and molarity are equal
   ! do not scale by molal_to_molar since it could be 1.d0 if MOLAL flag set
   aq_species_constraint%basis_molarity = rt_auxvar%pri_molal* &
                                          global_auxvar%den_kg(option%liquid_phase)/ &
@@ -1773,6 +1773,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   if (reaction%neqsrfcplxrxn > 0) then
     ! sort surface complex concentrations from largest to smallest
     ! note that we include free site concentrations; their ids negated
+#if 0
     do i = 1, reaction%neqsrfcplx
       eqsrfcplxsort(i) = i
     enddo
@@ -1803,12 +1804,9 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       if (finished) exit
     enddo
             
-    120 format(/,'  surf complex          mol/m^3 blk logK')  
     write(option%fid_out,120)
     write(option%fid_out,90)
-    121 format(2x,a20,es12.4,es12.4)
-    122 format(2x,a20,es12.4,'  free site')
-    do i = 1, reaction%neqsrfcplx+reaction%neqsrfcplxrxn
+    do i = 1, reaction%neqsrfcplxrxn + reaction%neqsrfcplx
       icplx = eqsrfcplxsort(i)
       if (icplx > 0) then
         write(option%fid_out,121) reaction%eqsrfcplx_names(icplx), &
@@ -1818,7 +1816,27 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
         write(option%fid_out,122) reaction%eqsrfcplx_site_names(-icplx), &
                                   rt_auxvar%eqsrfcplx_free_site_conc(-icplx)
       endif
-    enddo 
+    enddo
+#endif
+
+    120 format(/,'  surf complex          mol/m^3 blk logK')  
+    121 format(2x,a20,es12.4,es12.4)
+    122 format(2x,a20,es12.4,'  free site')
+
+    write(option%fid_out,120)
+    write(option%fid_out,90)
+    do irxn = 1, reaction%neqsrfcplxrxn
+      write(option%fid_out,122) reaction%eqsrfcplx_site_names(irxn), &
+                                rt_auxvar%eqsrfcplx_free_site_conc(irxn)
+      ncplx = reaction%eqsrfcplx_rxn_to_complex(0,irxn)
+      do i = 1, ncplx
+        icplx = reaction%eqsrfcplx_rxn_to_complex(i,irxn)
+        write(option%fid_out,121) reaction%eqsrfcplx_names(icplx), &
+                                  rt_auxvar%eqsrfcplx_conc(icplx), &
+                                  reaction%eqsrfcplx_logK(icplx)
+      enddo
+    enddo
+  
   endif
 
 ! retardation
