@@ -1984,6 +1984,28 @@ or, in terms of $\omega_c$:
 \EN
 yields the site conservation equation.
 
+\subsection{Local Equilibrium}
+
+Mass Action Equations:
+\begin{subequations}
+\BA
+S_{ic}^{l,s} &\eq K_{ic} Q_i S_c^{l,s},\\
+C_c^l &\eq K_{ls}^{} C_c^s.
+\EA
+\end{subequations}
+\EQ
+K_{ls}^{} \eq \frac{C_c^l}{C_c^s} \eq \frac{S_c^l}{S_c^s} \eq \frac{S_{ic}^l}{S_{ic}^s}.
+\EN
+\EQ
+\omega_c \eq \big(1+\varphi s_l K_{ls}\big)\big(1+\sum_i K_{ic} Q_i\big) S_c^s.
+\EN
+\begin{subequations}
+\BA
+S_c^s &\eq \frac{\omega_c}{\big(1+\varphi s_l K_{ls}\big)\big(1+\sum_i K_{ic} Q_i\big)},\\
+S_{ic}^s &\eq \frac{\omega_c K_{ic} Q_i}{\big(1+\varphi s_l K_{ls}\big)\big(1+\sum_{i'} K_{ic} Q_{i'}\big)}.
+\EA
+\end{subequations}
+
 \subsection{Numerical Implementation}
 
 \noindent Residual Function:
@@ -1997,7 +2019,7 @@ R_{jn} &\eq \left[\varphi_n s_{ln} \big(\Psi_{jn}^{k+1}-\Psi_{jn}^k\big)
 R_{cn} &\eq \Big[\varphi s_l^{} \big(C_{cn}^{l,k+1}-C_{cn}^{l,k}\big) 
 + C_{cn}^{s,k+1}-C_{cn}^{s,k} \Big]\frac{V_n}{\Delta t} + \sum_{n'} q_{cnn'} C_{cnn'}^l A_{nn'}^{},\\
 R_{ic,\,n} &\eq \Big[\varphi s_l^{} \big(S_{ic,n}^{l,k+1}-S_{ic,n}^{l,k}\big) 
-\Big]\frac{V_n}{\Delta t} + \sum_{n'} q_{cnn'}^{} S_{ic,nn'}^l A_{nn'}^{} - I_{ic,n}^l V_n^{}.
+\Big]\frac{V_n}{\Delta t} + \sum_{n'} q_{cnn'}^{} S_{ic,nn'}^l A_{nn'}^{} + \Big(I_{cn}^{} - I_{ic,n}^l\Big) V_n^{}.
 \EA
 \end{subequations}
 \noindent Auxiliary Equations:
@@ -2115,9 +2137,11 @@ R_{ic}
 %R_ic:C_j'
 \dfrac{\p R_{icn}}{\p C_{j'n'}}&\eq \varphi_n^{} s_{ln}^{}\delta_{nn'}\frac{\p S_{icn}^l}{\p C_{j'n}} \frac{V_n}{\Delta t} + \sum_{n''} q_{cnn''} \frac{\p S_{ic,nn''}^l}{\p C_{j'n'}^{}} A_{nn''}-\delta_{nn'} V_n\frac{\p I_{icn}^l}{\p C_{j'n}},\\
 %R_ic:C_c'
-\dfrac{\p R_{icn}}{\p C_{c'}^l}&\eq  \varphi_n^{} s_{ln}^{}\delta_{nn'}\delta_{cc'} \frac{\p S_{icn}^l}{\p C_{cn}}\frac{V_n}{\Delta t} + \delta_{cc'}\sum_{n''} q_{cnn''} \frac{\p S_{ic,nn''}^l}{\p C_{cn'}^l} A_{nn''}-\delta_{nn'}\delta_{cc'} V_n\frac{\p I_{icn}^l}{\p C_{cn}},\\
+\dfrac{\p R_{icn}}{\p C_{c'}^l}&\eq  \varphi_n^{} s_{ln}^{}\delta_{nn'}\delta_{cc'} \frac{\p S_{icn}^l}{\p C_{cn}}\frac{V_n}{\Delta t} + \delta_{cc'}\sum_{n''} q_{cnn''} \frac{\p S_{ic,nn''}^l}{\p C_{cn'}^l} A_{nn''}\nonumber\\
+&\hspace{5cm} +\delta_{nn'}\delta_{cc'} V_n\left(\frac{\p I_{cn}}{\p C_c^l}-\frac{\p I_{icn}^l}{\p C_{cn}}\right),\\
 %R_ic:S_i'c'
-\dfrac{\p R_{icn}}{\p S_{i'c'}^l}&\eq  \varphi_n^{} s_{ln}^{}\delta_{nn'}\delta_{ii'}\delta_{cc'} \frac{V_n}{\Delta t} + \delta_{cc'}\sum_{n''} q_{cnn''} \frac{\p S_{ic,nn''}^l}{\p S_{icn'}^l} A_{nn''}-\delta_{nn'}\delta_{cc'} V_n\frac{\p I_{icn}^l}{\p S_{i'cn}}.
+\dfrac{\p R_{icn}}{\p S_{i'c'}^l}&\eq  \varphi_n^{} s_{ln}^{}\delta_{nn'}\delta_{ii'}\delta_{cc'} \frac{V_n}{\Delta t} + \delta_{cc'}\sum_{n''} q_{cnn''} \frac{\p S_{ic,nn''}^l}{\p S_{icn'}^l} A_{nn''}
+-\delta_{nn'}\delta_{cc'} V_n \frac{\p I_{icn}^l}{\p S_{i'cn}}.
 \EA
 \end{subequations}
 
