@@ -2814,6 +2814,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
   PetscReal :: weight
   PetscInt, parameter :: iphase = 1
   PetscErrorCode :: ierr
+  PetscTruth :: skip_equilibrate_constraint
   
   option => realization%option
   patch => realization%patch  
@@ -2917,6 +2918,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
                                patch%aux%Global%aux_vars_bc(sum_connection), &
                                reaction,option)
         else
+          skip_equilibrate_constraint = PETSC_FALSE
           ! Chuan needs to fill this in.
           select case(boundary_condition%tran_condition%itype)
             case(CONCENTRATION_SS,DIRICHLET_BC,NEUMANN_BC)
@@ -2928,25 +2930,29 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
                   ! the concentrations, etc.
                 else
                   ! same as zero_gradient below
+                  skip_equilibrate_constraint = PETSC_TRUE
                   do idof=1,reaction%ncomp
                     patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(idof) = &
                       xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
                   enddo
                 endif
             case(ZERO_GRADIENT_BC)
+              skip_equilibrate_constraint = PETSC_TRUE
               do idof=1,reaction%ncomp
                 patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(idof) = &
                   xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
               enddo
           end select
           ! no need to update boundary fluid density since it is already set
-          call ReactionEquilibrateConstraint(patch%aux%RT%aux_vars_bc(sum_connection), &
-            patch%aux%Global%aux_vars_bc(sum_connection),reaction, &
-            boundary_condition%tran_condition%cur_constraint_coupler%constraint_name, &
-            boundary_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
-            boundary_condition%tran_condition%cur_constraint_coupler%surface_complexes, &
-            boundary_condition%tran_condition%cur_constraint_coupler%num_iterations, &
-            PETSC_TRUE,option)          
+          if (.not.skip_equilibrate_constraint) then
+            call ReactionEquilibrateConstraint(patch%aux%RT%aux_vars_bc(sum_connection), &
+              patch%aux%Global%aux_vars_bc(sum_connection),reaction, &
+              boundary_condition%tran_condition%cur_constraint_coupler%constraint_name, &
+              boundary_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
+              boundary_condition%tran_condition%cur_constraint_coupler%surface_complexes, &
+              boundary_condition%tran_condition%cur_constraint_coupler%num_iterations, &
+              PETSC_TRUE,option)
+          endif         
         endif
 
         if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
