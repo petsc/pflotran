@@ -2929,26 +2929,23 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
           ! Chuan needs to fill this in.
           select case(boundary_condition%tran_condition%itype)
             case(CONCENTRATION_SS,DIRICHLET_BC,NEUMANN_BC)
-              ! since basis_molarity is in molarity, must convert to molality
-              ! by dividing by density of water (mol/L -> mol/kg)
-              xxbc(1:reaction%ncomp) = basis_molarity_p(1:reaction%ncomp) / &
-                patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * 1000.d0
+              ! don't need to do anything as the constraint below provides all
+              ! the concentrations, etc.
             case(DIRICHLET_ZERO_GRADIENT_BC)
-  !geh            do iphase = 1, option%nphase
                 if (patch%boundary_velocities(iphase,sum_connection) >= 0.d0) then
-                  ! same as dirichlet above
-                  xxbc(1:reaction%ncomp) = basis_molarity_p(1:reaction%ncomp) / &
-                    patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * 1000.d0
+                  ! don't need to do anything as the constraint below provides all
+                  ! the concentrations, etc.
                 else
                   ! same as zero_gradient below
                   do idof=1,reaction%ncomp
-                    xxbc(idof) = xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
+                    patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(idof) = &
+                      xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
                   enddo
                 endif
-  !geh            enddo
             case(ZERO_GRADIENT_BC)
               do idof=1,reaction%ncomp
-                xxbc(idof) = xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
+                patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(idof) = &
+                  xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
               enddo
           end select
           ! no need to update boundary fluid density since it is already set
