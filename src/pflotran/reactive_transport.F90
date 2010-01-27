@@ -2916,15 +2916,6 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
           call RTAuxVarCompute(patch%aux%RT%aux_vars_bc(sum_connection), &
                                patch%aux%Global%aux_vars_bc(sum_connection), &
                                reaction,option)
-          if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
-            patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl(1) = &
-                  patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(reaction%na_ion_id)
-            patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl(2) = &
-                  patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(reaction%cl_ion_id)
-           else
-            patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl = option%m_nacl
-          endif
-        
         else
           ! Chuan needs to fill this in.
           select case(boundary_condition%tran_condition%itype)
@@ -2956,6 +2947,15 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
             boundary_condition%tran_condition%cur_constraint_coupler%surface_complexes, &
             boundary_condition%tran_condition%cur_constraint_coupler%num_iterations, &
             PETSC_TRUE,option)          
+        endif
+
+        if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
+          patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl(1) = &
+                patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(reaction%na_ion_id)
+          patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl(2) = &
+                patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(reaction%cl_ion_id)
+         else
+          patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl = option%m_nacl
         endif
           
       enddo
