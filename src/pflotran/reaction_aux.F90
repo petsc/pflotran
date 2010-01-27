@@ -141,6 +141,8 @@ module Reaction_Aux_module
     PetscTruth :: print_act_coefs
     PetscTruth :: print_total_component
     PetscTruth :: print_free_ion
+    PetscTruth :: initialize_with_molality
+    PetscInt :: print_pri_conc_type
     PetscInt :: num_dbase_temperatures
     PetscInt :: h_ion_id
     PetscInt :: na_ion_id
@@ -381,7 +383,9 @@ function ReactionCreate()
   reaction%use_activity_h2o = PETSC_FALSE
   reaction%print_total_component = PETSC_TRUE
   reaction%print_free_ion = PETSC_FALSE
-  
+
+  reaction%initialize_with_molality = PETSC_FALSE
+  reaction%print_pri_conc_type = 0
   reaction%h_ion_id = 0
   reaction%na_ion_id = 0
   reaction%cl_ion_id = 0
