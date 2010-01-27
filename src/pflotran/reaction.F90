@@ -522,8 +522,7 @@ subroutine ReactionRead(reaction,input,option)
       case('UPDATE_MINERAL_SURFACE_AREA')
         option%update_mineral_surface_area = PETSC_TRUE
       case('MOLAL','MOLALITY')
-        option%initialize_with_molality = PETSC_TRUE
-        option%output_with_molality = PETSC_TRUE
+        reaction%initialize_with_molality = PETSC_TRUE
       case('ACTIVITY_H2O','ACTIVITY_WATER')
         reaction%use_activity_h2o = PETSC_TRUE
       case('OUTPUT')
@@ -538,6 +537,14 @@ subroutine ReactionRead(reaction,input,option)
   enddo
   
   reaction%neqsorb = reaction%neqsrfcplxrxn + reaction%neqionxrxn
+
+  if (reaction%print_pri_conc_type == 0) then
+    if (reaction%initialize_with_molality) then
+      reaction%print_pri_conc_type = PRIMARY_MOLALITY
+    else
+      reaction%print_pri_conc_type = PRIMARY_MOLARITY
+    endif
+  endif
 
   if (reaction%neqcplx + reaction%neqsorb + reaction%nmnrl > 0) then
     reaction%use_full_geochemistry = PETSC_TRUE
@@ -959,7 +966,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   xmass =1.d0  
   if (associated(global_auxvar%xmass)) xmass = global_auxvar%xmass(iphase)
   
-  if (option%initialize_with_molality) then
+  if (reaction%initialize_with_molality) then
     convert_molal_to_molar = global_auxvar%den_kg(iphase)*xmass/1000.d0
     convert_molar_to_molal = 1.d0
   else
@@ -2021,6 +2028,7 @@ subroutine ReactionReadOutput(reaction,input,option)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: name
   PetscTruth :: found
+  PetscInt :: temp_int
 
   type(aq_species_type), pointer :: cur_aq_spec
   type(gas_species_type), pointer :: cur_gas_spec
@@ -2046,119 +2054,108 @@ subroutine ReactionReadOutput(reaction,input,option)
     call InputReadWord(input,option,name,PETSC_TRUE)  
     call InputErrorMsg(input,option,'keyword','CHEMISTRY,OUTPUT,SPECIES_NAME')
     
-    found = PETSC_FALSE
-    
     word = name
-    call StringToLower(word)
-    if (StringCompare(word,'all',THREE_INTEGER)) then
-      reaction%print_all_species = PETSC_TRUE
-      reaction%print_pH = PETSC_TRUE
-      found = PETSC_TRUE
-    endif
-
-    if (StringCompare(name,'pH',TWO_INTEGER)) then
-      reaction%print_pH = PETSC_TRUE
-      found = PETSC_TRUE
-    endif
-
-    if (StringCompare(word,'kd',TWO_INTEGER)) then
-      reaction%print_kd = PETSC_TRUE
-      found = PETSC_TRUE
-    endif
-
-    if (StringCompare(word,'total_sorbed',TWELVE_INTEGER)) then
-      reaction%print_total_sorb = PETSC_TRUE
-      found = PETSC_TRUE
-    endif
-
-    if (StringCompare(word,'free_ion',EIGHT_INTEGER)) then
-      reaction%print_total_component = PETSC_FALSE
-      reaction%print_free_ion = PETSC_TRUE
-      found = PETSC_TRUE
-    endif
-
-    if (StringCompare(word,'activity_coefficients',TWO_INTEGER)) then
-      reaction%print_act_coefs = PETSC_TRUE
-    endif    
-
-    if (.not.found) then
-      cur_aq_spec => reaction%primary_species_list
-      do
-        if (.not.associated(cur_aq_spec)) exit
-        if (StringCompare(name,cur_aq_spec%name,MAXWORDLENGTH)) then
-          cur_aq_spec%print_me = PETSC_TRUE
-          found = PETSC_TRUE
-          exit
-        endif
-        cur_aq_spec => cur_aq_spec%next
-      enddo
-    endif
-    if (.not.found) then
-      cur_aq_spec => reaction%secondary_species_list
-      do
-        if (.not.associated(cur_aq_spec)) exit
-        if (StringCompare(name,cur_aq_spec%name,MAXWORDLENGTH)) then
-          cur_aq_spec%print_me = PETSC_TRUE
-          found = PETSC_TRUE
-          exit
-        endif
-        cur_aq_spec => cur_aq_spec%next
-      enddo  
-    endif
-    if (.not.found) then
-      cur_gas_spec => reaction%gas_species_list
-      do
-        if (.not.associated(cur_gas_spec)) exit
-        if (StringCompare(name,cur_gas_spec%name,MAXWORDLENGTH)) then
-          cur_gas_spec%print_me = PETSC_TRUE
-          found = PETSC_TRUE
-          exit
-        endif
-        cur_gas_spec => cur_gas_spec%next
-      enddo  
-    endif
-    if (.not.found) then
-      cur_mineral => reaction%mineral_list
-      do
-        if (.not.associated(cur_mineral)) exit
-        if (StringCompare(name,cur_mineral%name,MAXWORDLENGTH)) then
-          cur_mineral%print_me = PETSC_TRUE
-          found = PETSC_TRUE
-          exit
-        endif
-        cur_mineral => cur_mineral%next
-      enddo
-    endif
-    if (.not.found) then
-      cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
-      do
-        if (.not.associated(cur_srfcplx_rxn)) exit
-        if (StringCompare(name,cur_srfcplx_rxn%free_site_name,MAXWORDLENGTH)) then
-          cur_srfcplx_rxn%free_site_print_me = PETSC_TRUE
-          found = PETSC_TRUE
-          exit
-        endif
+    call StringToUpper(word)
+    select case(word)
+      case('ALL')
+        reaction%print_all_species = PETSC_TRUE
+        reaction%print_pH = PETSC_TRUE
+      case('PH')
+        reaction%print_pH = PETSC_TRUE
+      case('KD')
+        reaction%print_kd = PETSC_TRUE
+      case('TOTAL_SORBED')
+        reaction%print_total_sorb = PETSC_TRUE
+      case('FREE_ION')
+        reaction%print_total_component = PETSC_FALSE
+        reaction%print_free_ion = PETSC_TRUE
+      case('ACTIVITY_COEFFICIENTS')
+        reaction%print_act_coefs = PETSC_TRUE
+      case('MOLARITY')
+        reaction%print_pri_conc_type = PRIMARY_MOLARITY
+      case('MOLALITY')
+        reaction%print_pri_conc_type = PRIMARY_MOLALITY
+      case default        
+        found = PETSC_FALSE
         if (.not.found) then
-          cur_srfcplx => cur_srfcplx_rxn%complex_list
-          do  
-            if (.not.associated(cur_srfcplx)) exit
-          if (StringCompare(name,cur_srfcplx%name,MAXWORDLENGTH)) then
-            cur_srfcplx%print_me = PETSC_TRUE
-            found = PETSC_TRUE
-            exit
-          endif
-            cur_srfcplx => cur_srfcplx%next
+          cur_aq_spec => reaction%primary_species_list
+          do
+            if (.not.associated(cur_aq_spec)) exit
+            if (StringCompare(name,cur_aq_spec%name,MAXWORDLENGTH)) then
+              cur_aq_spec%print_me = PETSC_TRUE
+              found = PETSC_TRUE
+              exit
+            endif
+            cur_aq_spec => cur_aq_spec%next
           enddo
         endif
-        cur_srfcplx_rxn => cur_srfcplx_rxn%next
-      enddo  
-    endif
+        if (.not.found) then
+          cur_aq_spec => reaction%secondary_species_list
+          do
+            if (.not.associated(cur_aq_spec)) exit
+            if (StringCompare(name,cur_aq_spec%name,MAXWORDLENGTH)) then
+              cur_aq_spec%print_me = PETSC_TRUE
+              found = PETSC_TRUE
+              exit
+            endif
+            cur_aq_spec => cur_aq_spec%next
+          enddo  
+        endif
+        if (.not.found) then
+          cur_gas_spec => reaction%gas_species_list
+          do
+            if (.not.associated(cur_gas_spec)) exit
+            if (StringCompare(name,cur_gas_spec%name,MAXWORDLENGTH)) then
+              cur_gas_spec%print_me = PETSC_TRUE
+              found = PETSC_TRUE
+              exit
+            endif
+            cur_gas_spec => cur_gas_spec%next
+          enddo  
+        endif
+        if (.not.found) then
+          cur_mineral => reaction%mineral_list
+          do
+            if (.not.associated(cur_mineral)) exit
+            if (StringCompare(name,cur_mineral%name,MAXWORDLENGTH)) then
+              cur_mineral%print_me = PETSC_TRUE
+              found = PETSC_TRUE
+              exit
+            endif
+            cur_mineral => cur_mineral%next
+          enddo
+        endif
+        if (.not.found) then
+          cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
+          do
+            if (.not.associated(cur_srfcplx_rxn)) exit
+            if (StringCompare(name,cur_srfcplx_rxn%free_site_name,MAXWORDLENGTH)) then
+              cur_srfcplx_rxn%free_site_print_me = PETSC_TRUE
+              found = PETSC_TRUE
+              exit
+            endif
+            if (.not.found) then
+              cur_srfcplx => cur_srfcplx_rxn%complex_list
+              do  
+                if (.not.associated(cur_srfcplx)) exit
+              if (StringCompare(name,cur_srfcplx%name,MAXWORDLENGTH)) then
+                cur_srfcplx%print_me = PETSC_TRUE
+                found = PETSC_TRUE
+                exit
+              endif
+                cur_srfcplx => cur_srfcplx%next
+              enddo
+            endif
+            cur_srfcplx_rxn => cur_srfcplx_rxn%next
+          enddo  
+        endif
 
-    if (.not.found) then
-      option%io_buffer = 'CHEMISTRY,OUTPUT species name: '//trim(name)// &
-                         ' not found among chemical species'
-      call printErrMsg(option)
-    endif
+        if (.not.found) then
+          option%io_buffer = 'CHEMISTRY,OUTPUT species name: '//trim(name)// &
+                             ' not found among chemical species'
+          call printErrMsg(option)
+        endif
+    end select
 
   enddo
 
