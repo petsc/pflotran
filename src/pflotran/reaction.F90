@@ -523,6 +523,7 @@ subroutine ReactionRead(reaction,input,option)
         option%update_mineral_surface_area = PETSC_TRUE
       case('MOLAL','MOLALITY')
         option%initialize_with_molality = PETSC_TRUE
+        option%output_with_molality = PETSC_TRUE
       case('ACTIVITY_H2O','ACTIVITY_WATER')
         reaction%use_activity_h2o = PETSC_TRUE
       case('OUTPUT')

@@ -3075,6 +3075,7 @@ function RTGetTecplotHeader(realization,icolumn)
   PetscInt :: icolumn
   
   character(len=MAXHEADERLENGTH) :: string, string2
+  character(len=2) :: mol_char
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
   PetscInt :: i
@@ -3083,6 +3084,12 @@ function RTGetTecplotHeader(realization,icolumn)
   reaction => realization%reaction
   
   string = ''
+  
+  if (option%output_with_molality) then
+    mol_char = 'm'
+  else
+    mol_char = 'M'
+  endif
   
   if ((reaction%print_pH) .and. &
       reaction%h_ion_id > 0) then
@@ -3100,10 +3107,11 @@ function RTGetTecplotHeader(realization,icolumn)
       if (reaction%primary_species_print(i)) then
         if (icolumn > -1) then
           icolumn = icolumn + 1
-          write(string2,'('',"'',i2,''-'',a,''_tot"'')') icolumn, &
-            trim(reaction%primary_species_names(i))
+          write(string2,'('',"'',i2,''-'',a,''_tot'',''_'',a,''"'')') icolumn, &
+            trim(reaction%primary_species_names(i)), trim(mol_char)
         else
-          write(string2,'('',"'',a,''"'')') trim(reaction%primary_species_names(i))
+          write(string2,'('',"'',a,''_tot"'',''_'',a,''"'')') &
+            trim(reaction%primary_species_names(i)), trim(mol_char)
         endif
         string = trim(string) // trim(string2)
       endif
@@ -3115,10 +3123,11 @@ function RTGetTecplotHeader(realization,icolumn)
       if (reaction%primary_species_print(i)) then
         if (icolumn > -1) then
           icolumn = icolumn + 1
-          write(string2,'('',"'',i2,''-'',a,''_free"'')') icolumn, &
-            trim(reaction%primary_species_names(i))
+          write(string2,'('',"'',i2,''-'',a,''_free"'',''_'',a,''"'')') icolumn, &
+            trim(reaction%primary_species_names(i)), trim(mol_char)
         else
-          write(string2,'('',"'',a,''"'')') trim(reaction%primary_species_names(i))
+          write(string2,'('',"'',a,''"'',''_free'',a,''"'')') &
+            trim(reaction%primary_species_names(i)), trim(mol_char)
         endif
         string = trim(string) // trim(string2)
       endif
