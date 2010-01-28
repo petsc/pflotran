@@ -2815,6 +2815,9 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
   PetscInt, parameter :: iphase = 1
   PetscErrorCode :: ierr
   PetscTruth :: skip_equilibrate_constraint
+  PetscInt, save :: icall
+  
+  data icall/0/
   
   option => realization%option
   patch => realization%patch  
@@ -2875,13 +2878,14 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
         if (associated(patch%imat)) then
           if (patch%imat(ghosted_id) <= 0) cycle
         endif
-
-        if (1) then
-
-          select case(boundary_condition%tran_condition%itype)
+  
+!       if (option%iflowmode /= MPH_MODE .or. icall>1) then
+        if (option%iflowmode /= MPH_MODE)then
+!       Note: the  DIRICHLET_BC is not time dependent in this case (icall)    
+        select case(boundary_condition%tran_condition%itype)
             case(CONCENTRATION_SS,DIRICHLET_BC,NEUMANN_BC)
               ! since basis_molarity is in molarity, must convert to molality
-              ! by dividing by density of water (mol/L -> mol/kg)
+                ! by dividing by density of water (mol/L -> mol/kg)
               xxbc(1:reaction%ncomp) = basis_molarity_p(1:reaction%ncomp) / &
                 patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * 1000.d0
             case(DIRICHLET_ZERO_GRADIENT_BC)
@@ -2896,7 +2900,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
                     xxbc(idof) = xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
                   enddo
                 endif
-  !geh            enddo
+  !geh          enddo
             case(ZERO_GRADIENT_BC)
               do idof=1,reaction%ncomp
                 xxbc(idof) = xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
@@ -2917,8 +2921,8 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
           call RTAuxVarCompute(patch%aux%RT%aux_vars_bc(sum_connection), &
                                patch%aux%Global%aux_vars_bc(sum_connection), &
                                reaction,option)
-        else
-          skip_equilibrate_constraint = PETSC_FALSE
+         else
+           skip_equilibrate_constraint = PETSC_FALSE
           ! Chuan needs to fill this in.
           select case(boundary_condition%tran_condition%itype)
             case(CONCENTRATION_SS,DIRICHLET_BC,NEUMANN_BC)
@@ -2945,6 +2949,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
           end select
           ! no need to update boundary fluid density since it is already set
           if (.not.skip_equilibrate_constraint) then
+           ! print *,'RT redo constrain on BCs: 1: ', sum_connection
             call ReactionEquilibrateConstraint(patch%aux%RT%aux_vars_bc(sum_connection), &
               patch%aux%Global%aux_vars_bc(sum_connection),reaction, &
               boundary_condition%tran_condition%cur_constraint_coupler%constraint_name, &
@@ -2952,6 +2957,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
               boundary_condition%tran_condition%cur_constraint_coupler%surface_complexes, &
               boundary_condition%tran_condition%cur_constraint_coupler%num_iterations, &
               PETSC_TRUE,option)
+           ! print *,'RT redo constrain on BCs: 2: ', sum_connection  
           endif         
         endif
 
@@ -2973,7 +2979,8 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
   endif 
   
   call GridVecRestoreArrayF90(grid,field%tran_xx_loc,xx_loc_p, ierr)
-  
+  icall = icall+ 1
+
 end subroutine RTUpdateAuxVarsPatch
 
 ! ************************************************************************** !

@@ -1293,7 +1293,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             else
               call Henry_duan_sun(tc,pres*1D-5,henry,xphico2,lngamco2, &
                 option%m_nacl,option%m_nacl,sat_pressure*1D-5)
-                print *, 'SC: mnacl=', option%m_nacl,'stioh2o=',reaction%eqgash2ostoich(igas)
+             !   print *, 'SC: mnacl=', option%m_nacl,'stioh2o=',reaction%eqgash2ostoich(igas)
             endif
             
             lnQk = -log(xphico2*henry)-lngamco2
@@ -1302,9 +1302,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 
             reaction%eqgas_logK(igas) = -lnQK*LN_TO_LOG
             
-            print *, 'SC CO2 constraint',igas,pres,pco2,tc,xphico2,henry,lnQk,yco2, &
-               lngamco2,m_na,m_cl,reaction%eqgas_logK(igas),rt_auxvar%ln_act_h2o,&
-                reaction%eqgash2oid(igas), global_auxvar%fugacoeff(1)
+            !print *, 'SC CO2 constraint',igas,pres,pco2,tc,xphico2,henry,lnQk,yco2, &
+            !   lngamco2,m_na,m_cl,reaction%eqgas_logK(igas),rt_auxvar%ln_act_h2o,&
+            !    reaction%eqgash2oid(igas), global_auxvar%fugacoeff(1)
             
             ! activity of water
             if (reaction%eqgash2oid(igas) > 0) then
@@ -1315,8 +1315,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
               lnQK = lnQK + reaction%eqgasstoich(jcomp,igas)* &
 !                log(rt_auxvar%pri_molal(comp_id))
                log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
-                print *,'SC: ',rt_auxvar%pri_molal(comp_id), &
-                  rt_auxvar%pri_act_coef(comp_id),exp(lngamco2)
+            !    print *,'SC: ',rt_auxvar%pri_molal(comp_id), &
+            !      rt_auxvar%pri_act_coef(comp_id),exp(lngamco2)
             enddo
           
 !           QK = exp(lnQK)

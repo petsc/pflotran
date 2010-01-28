@@ -683,7 +683,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
          xxbc(2:option%nflowdof) = &
                xx_loc_p((ghosted_id-1)*option%nflowdof+2:ghosted_id*option%nflowdof)
 
-     !  case(CONST_TEMPERATURE)
+    !  case(CONST_TEMPERATURE)
       
     !  case(PRODUCTION_WELL) ! 102      
    
