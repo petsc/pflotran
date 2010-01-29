@@ -22,7 +22,9 @@ MINERALS
 Calcite
 /
 MINERAL_KINETICS
-Calcite 1.e-8 
+Calcite
+RATE_CONSTANT 1.e-8 
+/
 /
 :DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
 :DATABASE /Users/lichtner/flotran/database/hanford.dat
