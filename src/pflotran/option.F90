@@ -120,7 +120,6 @@ module Option_module
     PetscTruth :: update_mineral_surface_area
     PetscTruth :: update_mnrl_surf_with_porosity
     
-    PetscTruth :: initialize_with_molality
     PetscTruth :: jumpstart_kinetic_sorption
     PetscTruth :: no_restart_kinetic_sorption
         
@@ -382,7 +381,6 @@ subroutine OptionInitRealization(option)
   option%update_mineral_surface_area = PETSC_FALSE
   option%update_mnrl_surf_with_porosity = PETSC_FALSE
     
-  option%initialize_with_molality = PETSC_FALSE
   option%jumpstart_kinetic_sorption = PETSC_FALSE
   option%no_restart_kinetic_sorption = PETSC_FALSE
   

@@ -11,6 +11,16 @@ module Reaction_Aux_module
   PetscInt, parameter, public :: SRFCMPLX_RXN_MULTIRATE_KINETIC = 2
   PetscInt, parameter, public :: SRFCMPLX_RXN_KINETIC = 3
   
+  type, public :: species_idx_type
+    PetscInt :: h2o_aq_id
+    PetscInt :: h_ion_id
+    PetscInt :: na_ion_id
+    PetscInt :: cl_ion_id
+    PetscInt :: co2_aq_id
+    PetscInt :: co2_gas_id
+    PetscInt :: o2_gas_id
+  end type species_idx_type
+  
   type, public :: aq_species_type
     PetscInt :: id
     character(len=MAXWORDLENGTH) :: name
@@ -141,15 +151,13 @@ module Reaction_Aux_module
     PetscTruth :: print_act_coefs
     PetscTruth :: print_total_component
     PetscTruth :: print_free_ion
+    PetscTruth :: initialize_with_molality
+    PetscInt :: print_pri_conc_type
     PetscInt :: num_dbase_temperatures
-    PetscInt :: h_ion_id
-    PetscInt :: na_ion_id
-    PetscInt :: cl_ion_id
-    PetscInt :: co2_aq_id
-    PetscInt :: h2o_aq_id
-    PetscInt :: co2_gas_id
-    PetscInt :: o2_gas_id
     PetscReal, pointer :: dbase_temperatures(:)
+    
+    type(species_idx_type), pointer :: species_idx
+
     type(aq_species_type), pointer :: primary_species_list
     type(aq_species_type), pointer :: secondary_species_list
     type(gas_species_type), pointer :: gas_species_list
@@ -308,10 +316,11 @@ module Reaction_Aux_module
     PetscReal, pointer :: kinmnrl_affinity_power(:)
     
     PetscReal :: max_dlnC
-    
+
   end type reaction_type
 
   public :: ReactionCreate, &
+            SpeciesIndexCreate, &
             AqueousSpeciesCreate, &
             GasSpeciesCreate, &
             MineralCreate, &
@@ -381,14 +390,11 @@ function ReactionCreate()
   reaction%use_activity_h2o = PETSC_FALSE
   reaction%print_total_component = PETSC_TRUE
   reaction%print_free_ion = PETSC_FALSE
+
+  reaction%initialize_with_molality = PETSC_FALSE
+  reaction%print_pri_conc_type = 0
   
-  reaction%h_ion_id = 0
-  reaction%na_ion_id = 0
-  reaction%cl_ion_id = 0
-  reaction%o2_gas_id = 0
-  reaction%co2_aq_id = 0
-  reaction%h2o_aq_id = 0
-  reaction%co2_gas_id = 0
+  nullify(reaction%species_idx)
 
   nullify(reaction%primary_species_list)
   nullify(reaction%secondary_species_list)
@@ -539,6 +545,37 @@ function ReactionCreate()
   ReactionCreate => reaction
   
 end function ReactionCreate
+
+! ************************************************************************** !
+!
+! SpeciesIndexCreate: Allocate and initialize a species index object
+! author: Peter Lichtner
+! date: 01/29/10
+!
+! ************************************************************************** !
+function SpeciesIndexCreate()
+
+  use Option_module
+
+  implicit none
+  
+  type(species_idx_type), pointer :: SpeciesIndexCreate
+  
+  type(species_idx_type), pointer :: species_idx
+
+  allocate(species_idx) 
+
+  species_idx%h2o_aq_id = 0
+  species_idx%h_ion_id = 0
+  species_idx%na_ion_id = 0
+  species_idx%cl_ion_id = 0
+  species_idx%co2_aq_id = 0
+  species_idx%co2_gas_id = 0
+  species_idx%o2_gas_id = 0
+
+  SpeciesIndexCreate => species_idx
+  
+end function SpeciesIndexCreate
 
 ! ************************************************************************** !
 !
@@ -1249,6 +1286,24 @@ end function GetMineralIDFromName
 
 ! ************************************************************************** !
 !
+! SpeciesIndexDestroy: Deallocates a species index object
+! author: Glenn Hammond
+! date: 01/29/10
+!
+! ************************************************************************** !
+subroutine SpeciesIndexDestroy(species_idx)
+
+  implicit none
+    
+  type(species_idx_type), pointer :: species_idx
+
+  deallocate(species_idx)  
+  nullify(species_idx)
+
+end subroutine SpeciesIndexDestroy
+
+! ************************************************************************** !
+!
 ! AqueousSpeciesDestroy: Deallocates an aqueous species
 ! author: Glenn Hammond
 ! date: 05/29/08
@@ -1596,7 +1651,10 @@ subroutine ReactionDestroy(reaction)
   type(ion_exchange_rxn_type), pointer :: ionxrxn, prev_ionxrxn
   type(surface_complexation_rxn_type), pointer :: srfcplxrxn, prev_srfcplxrxn
 
-  if (.not.associated(reaction)) return 
+  if (.not.associated(reaction)) return
+  
+  !species index
+  call SpeciesIndexDestroy(reaction%species_idx)
 
   ! primary species
   aq_species => reaction%primary_species_list

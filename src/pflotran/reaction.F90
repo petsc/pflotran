@@ -522,7 +522,7 @@ subroutine ReactionRead(reaction,input,option)
       case('UPDATE_MINERAL_SURFACE_AREA')
         option%update_mineral_surface_area = PETSC_TRUE
       case('MOLAL','MOLALITY')
-        option%initialize_with_molality = PETSC_TRUE
+        reaction%initialize_with_molality = PETSC_TRUE
       case('ACTIVITY_H2O','ACTIVITY_WATER')
         reaction%use_activity_h2o = PETSC_TRUE
       case('OUTPUT')
@@ -537,6 +537,14 @@ subroutine ReactionRead(reaction,input,option)
   enddo
   
   reaction%neqsorb = reaction%neqsrfcplxrxn + reaction%neqionxrxn
+
+  if (reaction%print_pri_conc_type == 0) then
+    if (reaction%initialize_with_molality) then
+      reaction%print_pri_conc_type = PRIMARY_MOLALITY
+    else
+      reaction%print_pri_conc_type = PRIMARY_MOLARITY
+    endif
+  endif
 
   if (reaction%neqcplx + reaction%neqsorb + reaction%nmnrl > 0) then
     reaction%use_full_geochemistry = PETSC_TRUE
@@ -958,7 +966,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   xmass =1.d0  
   if (associated(global_auxvar%xmass)) xmass = global_auxvar%xmass(iphase)
   
-  if (option%initialize_with_molality) then
+  if (reaction%initialize_with_molality) then
     convert_molal_to_molar = global_auxvar%den_kg(iphase)*xmass/1000.d0
     convert_molar_to_molal = 1.d0
   else
@@ -1013,9 +1021,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         free_conc(icomp) = conc(icomp)*convert_molar_to_molal ! just a guess
       case(CONSTRAINT_PH)
         ! check if H+ id set
-        if (reaction%h_ion_id /= 0) then
+        if (reaction%species_idx%h_ion_id /= 0) then
           ! check if icomp is H+
-          if (reaction%h_ion_id /= icomp) then
+          if (reaction%species_idx%h_ion_id /= icomp) then
             string = 'OH-'
             if (.not.StringCompare(reaction%primary_species_names(icomp), &
                                    string,MAXWORDLENGTH)) then
@@ -1134,12 +1142,12 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           Jac(icomp,:) = 0.d0
 !          Jac(:,icomp) = 0.d0
           Jac(icomp,icomp) = 1.d0
-          if (reaction%h_ion_id > 0) then ! conc(icomp) = 10**-pH
+          if (reaction%species_idx%h_ion_id > 0) then ! conc(icomp) = 10**-pH
             rt_auxvar%pri_molal(icomp) = 10.d0**(-conc(icomp)) / &
                                           rt_auxvar%pri_act_coef(icomp)
           else ! H+ is a complex
           
-            icplx = abs(reaction%h_ion_id)
+            icplx = abs(reaction%species_idx%h_ion_id)
             
             ! compute secondary species concentration
             ! *note that the sign was flipped below
@@ -1245,7 +1253,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           igas = constraint_id(icomp)
          
           ! compute secondary species concentration
-          if(abs(reaction%co2_gas_id) == igas) then
+          if(abs(reaction%species_idx%co2_gas_id) == igas) then
            pres = global_auxvar%pres(2)
 !           pres = conc(icomp)*1.D5
             tc = global_auxvar%temp(1)
@@ -1274,9 +1282,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 !           call Henry_duan_sun_0NaCl(pco2*1.d-5, tc, henry)
             m_na = 0.d0
             m_cl = 0.d0
-            if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
-              m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
-              m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
+            if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
+              m_na = rt_auxvar%pri_molal(reaction%species_idx%na_ion_id)
+              m_cl = rt_auxvar%pri_molal(reaction%species_idx%cl_ion_id)
 !              call Henry_duan_sun(tc,pco2*1D-5,henry,xphico2,lngamco2, &
 !                m_na,m_cl,sat_pressure*1D-5)
               call Henry_duan_sun(tc,pres*1D-5,henry,xphico2,lngamco2, &
@@ -1285,7 +1293,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             else
               call Henry_duan_sun(tc,pres*1D-5,henry,xphico2,lngamco2, &
                 option%m_nacl,option%m_nacl,sat_pressure*1D-5)
-                print *, 'SC: mnacl=', option%m_nacl,'stioh2o=',reaction%eqgash2ostoich(igas)
+             !   print *, 'SC: mnacl=', option%m_nacl,'stioh2o=',reaction%eqgash2ostoich(igas)
             endif
             
             lnQk = -log(xphico2*henry)-lngamco2
@@ -1294,9 +1302,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 
             reaction%eqgas_logK(igas) = -lnQK*LN_TO_LOG
             
-            print *, 'SC CO2 constraint',igas,pres,pco2,tc,xphico2,henry,lnQk,yco2, &
-               lngamco2,m_na,m_cl,reaction%eqgas_logK(igas),rt_auxvar%ln_act_h2o,&
-                reaction%eqgash2oid(igas), global_auxvar%fugacoeff(1)
+            !print *, 'SC CO2 constraint',igas,pres,pco2,tc,xphico2,henry,lnQk,yco2, &
+            !   lngamco2,m_na,m_cl,reaction%eqgas_logK(igas),rt_auxvar%ln_act_h2o,&
+            !    reaction%eqgash2oid(igas), global_auxvar%fugacoeff(1)
             
             ! activity of water
             if (reaction%eqgash2oid(igas) > 0) then
@@ -1307,8 +1315,8 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
               lnQK = lnQK + reaction%eqgasstoich(jcomp,igas)* &
 !                log(rt_auxvar%pri_molal(comp_id))
                log(rt_auxvar%pri_molal(comp_id)*rt_auxvar%pri_act_coef(comp_id))
-                print *,'SC: ',rt_auxvar%pri_molal(comp_id), &
-                  rt_auxvar%pri_act_coef(comp_id),exp(lngamco2)
+            !    print *,'SC: ',rt_auxvar%pri_molal(comp_id), &
+            !      rt_auxvar%pri_act_coef(comp_id),exp(lngamco2)
             enddo
           
 !           QK = exp(lnQK)
@@ -1560,14 +1568,14 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     write(option%fid_out,90)
     write(option%fid_out,201) '      iterations: ', &
       constraint_coupler%num_iterations
-    if (reaction%h_ion_id > 0) then
+    if (reaction%species_idx%h_ion_id > 0) then
       write(option%fid_out,203) '              pH: ', &
-        -log10(rt_auxvar%pri_molal(reaction%h_ion_id)* &
-               rt_auxvar%pri_act_coef(reaction%h_ion_id))
-    else if (reaction%h_ion_id < 0) then
+        -log10(rt_auxvar%pri_molal(reaction%species_idx%h_ion_id)* &
+               rt_auxvar%pri_act_coef(reaction%species_idx%h_ion_id))
+    else if (reaction%species_idx%h_ion_id < 0) then
       write(option%fid_out,203) '              pH: ', &
-        -log10(rt_auxvar%sec_molal(abs(reaction%h_ion_id))* &
-               rt_auxvar%sec_act_coef(abs(reaction%h_ion_id)))
+        -log10(rt_auxvar%sec_molal(abs(reaction%species_idx%h_ion_id))* &
+               rt_auxvar%sec_act_coef(abs(reaction%species_idx%h_ion_id)))
     endif
     
     ionic_strength = 0.d0
@@ -1611,8 +1619,8 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       write(option%fid_out,'(a20,es12.4,a9)') '            xphi: ', &
         global_auxvar%fugacoeff(1)
 
-      if (reaction%co2_aq_id /= 0) then
-        icomp = reaction%co2_aq_id
+      if (reaction%species_idx%co2_aq_id /= 0) then
+        icomp = reaction%species_idx%co2_aq_id
         mass_fraction_co2 = reaction%primary_spec_molar_wt(icomp)*rt_auxvar%pri_molal(icomp)* &
           mass_fraction_h2o*1.d-3
         mole_fraction_co2 = rt_auxvar%pri_molal(icomp)*FMWH2O*mole_fraction_h2o*1.e-3
@@ -2020,6 +2028,7 @@ subroutine ReactionReadOutput(reaction,input,option)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: name
   PetscTruth :: found
+  PetscInt :: temp_int
 
   type(aq_species_type), pointer :: cur_aq_spec
   type(gas_species_type), pointer :: cur_gas_spec
@@ -2045,119 +2054,108 @@ subroutine ReactionReadOutput(reaction,input,option)
     call InputReadWord(input,option,name,PETSC_TRUE)  
     call InputErrorMsg(input,option,'keyword','CHEMISTRY,OUTPUT,SPECIES_NAME')
     
-    found = PETSC_FALSE
-    
     word = name
-    call StringToLower(word)
-    if (StringCompare(word,'all',THREE_INTEGER)) then
-      reaction%print_all_species = PETSC_TRUE
-      reaction%print_pH = PETSC_TRUE
-      found = PETSC_TRUE
-    endif
-
-    if (StringCompare(name,'pH',TWO_INTEGER)) then
-      reaction%print_pH = PETSC_TRUE
-      found = PETSC_TRUE
-    endif
-
-    if (StringCompare(word,'kd',TWO_INTEGER)) then
-      reaction%print_kd = PETSC_TRUE
-      found = PETSC_TRUE
-    endif
-
-    if (StringCompare(word,'total_sorbed',TWELVE_INTEGER)) then
-      reaction%print_total_sorb = PETSC_TRUE
-      found = PETSC_TRUE
-    endif
-
-    if (StringCompare(word,'free_ion',EIGHT_INTEGER)) then
-      reaction%print_total_component = PETSC_FALSE
-      reaction%print_free_ion = PETSC_TRUE
-      found = PETSC_TRUE
-    endif
-
-    if (StringCompare(word,'activity_coefficients',TWO_INTEGER)) then
-      reaction%print_act_coefs = PETSC_TRUE
-    endif    
-
-    if (.not.found) then
-      cur_aq_spec => reaction%primary_species_list
-      do
-        if (.not.associated(cur_aq_spec)) exit
-        if (StringCompare(name,cur_aq_spec%name,MAXWORDLENGTH)) then
-          cur_aq_spec%print_me = PETSC_TRUE
-          found = PETSC_TRUE
-          exit
-        endif
-        cur_aq_spec => cur_aq_spec%next
-      enddo
-    endif
-    if (.not.found) then
-      cur_aq_spec => reaction%secondary_species_list
-      do
-        if (.not.associated(cur_aq_spec)) exit
-        if (StringCompare(name,cur_aq_spec%name,MAXWORDLENGTH)) then
-          cur_aq_spec%print_me = PETSC_TRUE
-          found = PETSC_TRUE
-          exit
-        endif
-        cur_aq_spec => cur_aq_spec%next
-      enddo  
-    endif
-    if (.not.found) then
-      cur_gas_spec => reaction%gas_species_list
-      do
-        if (.not.associated(cur_gas_spec)) exit
-        if (StringCompare(name,cur_gas_spec%name,MAXWORDLENGTH)) then
-          cur_gas_spec%print_me = PETSC_TRUE
-          found = PETSC_TRUE
-          exit
-        endif
-        cur_gas_spec => cur_gas_spec%next
-      enddo  
-    endif
-    if (.not.found) then
-      cur_mineral => reaction%mineral_list
-      do
-        if (.not.associated(cur_mineral)) exit
-        if (StringCompare(name,cur_mineral%name,MAXWORDLENGTH)) then
-          cur_mineral%print_me = PETSC_TRUE
-          found = PETSC_TRUE
-          exit
-        endif
-        cur_mineral => cur_mineral%next
-      enddo
-    endif
-    if (.not.found) then
-      cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
-      do
-        if (.not.associated(cur_srfcplx_rxn)) exit
-        if (StringCompare(name,cur_srfcplx_rxn%free_site_name,MAXWORDLENGTH)) then
-          cur_srfcplx_rxn%free_site_print_me = PETSC_TRUE
-          found = PETSC_TRUE
-          exit
-        endif
+    call StringToUpper(word)
+    select case(word)
+      case('ALL')
+        reaction%print_all_species = PETSC_TRUE
+        reaction%print_pH = PETSC_TRUE
+      case('PH')
+        reaction%print_pH = PETSC_TRUE
+      case('KD')
+        reaction%print_kd = PETSC_TRUE
+      case('TOTAL_SORBED')
+        reaction%print_total_sorb = PETSC_TRUE
+      case('FREE_ION')
+        reaction%print_total_component = PETSC_FALSE
+        reaction%print_free_ion = PETSC_TRUE
+      case('ACTIVITY_COEFFICIENTS')
+        reaction%print_act_coefs = PETSC_TRUE
+      case('MOLARITY')
+        reaction%print_pri_conc_type = PRIMARY_MOLARITY
+      case('MOLALITY')
+        reaction%print_pri_conc_type = PRIMARY_MOLALITY
+      case default        
+        found = PETSC_FALSE
         if (.not.found) then
-          cur_srfcplx => cur_srfcplx_rxn%complex_list
-          do  
-            if (.not.associated(cur_srfcplx)) exit
-          if (StringCompare(name,cur_srfcplx%name,MAXWORDLENGTH)) then
-            cur_srfcplx%print_me = PETSC_TRUE
-            found = PETSC_TRUE
-            exit
-          endif
-            cur_srfcplx => cur_srfcplx%next
+          cur_aq_spec => reaction%primary_species_list
+          do
+            if (.not.associated(cur_aq_spec)) exit
+            if (StringCompare(name,cur_aq_spec%name,MAXWORDLENGTH)) then
+              cur_aq_spec%print_me = PETSC_TRUE
+              found = PETSC_TRUE
+              exit
+            endif
+            cur_aq_spec => cur_aq_spec%next
           enddo
         endif
-        cur_srfcplx_rxn => cur_srfcplx_rxn%next
-      enddo  
-    endif
+        if (.not.found) then
+          cur_aq_spec => reaction%secondary_species_list
+          do
+            if (.not.associated(cur_aq_spec)) exit
+            if (StringCompare(name,cur_aq_spec%name,MAXWORDLENGTH)) then
+              cur_aq_spec%print_me = PETSC_TRUE
+              found = PETSC_TRUE
+              exit
+            endif
+            cur_aq_spec => cur_aq_spec%next
+          enddo  
+        endif
+        if (.not.found) then
+          cur_gas_spec => reaction%gas_species_list
+          do
+            if (.not.associated(cur_gas_spec)) exit
+            if (StringCompare(name,cur_gas_spec%name,MAXWORDLENGTH)) then
+              cur_gas_spec%print_me = PETSC_TRUE
+              found = PETSC_TRUE
+              exit
+            endif
+            cur_gas_spec => cur_gas_spec%next
+          enddo  
+        endif
+        if (.not.found) then
+          cur_mineral => reaction%mineral_list
+          do
+            if (.not.associated(cur_mineral)) exit
+            if (StringCompare(name,cur_mineral%name,MAXWORDLENGTH)) then
+              cur_mineral%print_me = PETSC_TRUE
+              found = PETSC_TRUE
+              exit
+            endif
+            cur_mineral => cur_mineral%next
+          enddo
+        endif
+        if (.not.found) then
+          cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
+          do
+            if (.not.associated(cur_srfcplx_rxn)) exit
+            if (StringCompare(name,cur_srfcplx_rxn%free_site_name,MAXWORDLENGTH)) then
+              cur_srfcplx_rxn%free_site_print_me = PETSC_TRUE
+              found = PETSC_TRUE
+              exit
+            endif
+            if (.not.found) then
+              cur_srfcplx => cur_srfcplx_rxn%complex_list
+              do  
+                if (.not.associated(cur_srfcplx)) exit
+              if (StringCompare(name,cur_srfcplx%name,MAXWORDLENGTH)) then
+                cur_srfcplx%print_me = PETSC_TRUE
+                found = PETSC_TRUE
+                exit
+              endif
+                cur_srfcplx => cur_srfcplx%next
+              enddo
+            endif
+            cur_srfcplx_rxn => cur_srfcplx_rxn%next
+          enddo  
+        endif
 
-    if (.not.found) then
-      option%io_buffer = 'CHEMISTRY,OUTPUT species name: '//trim(name)// &
-                         ' not found among chemical species'
-      call printErrMsg(option)
-    endif
+        if (.not.found) then
+          option%io_buffer = 'CHEMISTRY,OUTPUT species name: '//trim(name)// &
+                             ' not found among chemical species'
+          call printErrMsg(option)
+        endif
+    end select
 
   enddo
 
@@ -2386,15 +2384,15 @@ subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
   sat_pressure =0D0
 
   m_na = option%m_nacl; m_cl = m_na
-  if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
-     m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
-     m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
+  if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
+     m_na = rt_auxvar%pri_molal(reaction%species_idx%na_ion_id)
+     m_cl = rt_auxvar%pri_molal(reaction%species_idx%cl_ion_id)
   endif
 
   call Henry_duan_sun(tc,pco2*1D-5,henry, 1.D0,lngamco2, &
          m_na,m_cl,sat_pressure*1D-5, co2aqact)
          
-  rt_auxvar%pri_act_coef(reaction%co2_aq_id) = co2aqact 
+  rt_auxvar%pri_act_coef(reaction%species_idx%co2_aq_id) = co2aqact 
  ! print *, 'CO2AqActCoeff', tc, pco2, m_na,m_cl, sat_pressure,co2aqact
 end subroutine CO2AqActCoeff
 
@@ -2775,11 +2773,11 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 !            global_auxvar%fugacoeff(1) = xphico2
 
 
-      if(abs(reaction%co2_gas_id) == ieqgas )then
+      if(abs(reaction%species_idx%co2_gas_id) == ieqgas )then
 !          call Henry_duan_sun_0NaCl(pco2*1D-5, temperature, henry)
-        if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
-          m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
-          m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
+        if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
+          m_na = rt_auxvar%pri_molal(reaction%species_idx%na_ion_id)
+          m_cl = rt_auxvar%pri_molal(reaction%species_idx%cl_ion_id)
           call Henry_duan_sun(temperature,pressure*1D-5,muco2,xphico2, &
                 lngamco2,m_na,m_cl,sat_pressure*1D-5)
         else

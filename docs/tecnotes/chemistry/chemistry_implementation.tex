@@ -1835,21 +1835,21 @@ Note that colloids are only transported by advection and not diffusion in this f
 From the primary species transport equations it is possible to define a retardation factor assuming constant aqueous and sorbed concentrations and neglecting diffusion by writing the transport equations in the form
 \BA\label{retcolloid}
 \frac{\p}{\p t}\big(\varphi s_l^{} \Psi_j\big) &+ \bnabla\bdot\bigg(\frac{\bq}{R_j} \Psi_j\bigg) \eq \nonumber\\
-&-\frac{1}{1+K_j^s + K_j^f}\left[\sum_m\nu_{jm} I_m + \sum_{c}\nu_{jc}^{} \big(I_{c}^l+I_{c}^s\big) - \sum_r\nu_{jr}^{\kin}I_r^{\rm kin}\right],
+&-\frac{1}{1+K_j^s + K_j^l}\left[\sum_m\nu_{jm} I_m + \sum_{c}\nu_{jc}^{} \big(I_{c}^l+I_{c}^s\big) - \sum_r\nu_{jr}^{\kin}I_r^{\rm kin}\right],
 \EA
 where the retardation factor $R_j$ is defined as
 \EQ
-R_j\eq 1+\dfrac{K_j^s}{1+K_j^f},
+R_j\eq 1+\dfrac{K_j^s}{1+K_j^l},
 \EN
-where the distribution coefficients, $K_j^s$ for the stationary solid phase including contributions from minerals and colloids, and $K_j^f$ for colloids present in the aqueous phase are defined by
+where the distribution coefficients, $K_j^s$ for the stationary solid phase including contributions from minerals and colloids, and $K_j^l$ for colloids present in the aqueous phase are defined by
 \EQ
 K_j^s \eq \frac{1}{\varphi s_l^{}\Psi_j} \left[\sum_{im}\nu_{ji}^m S_{im} + \sum_{ic}\nu_{ji}^c S_{ic}^s\right],
 \EN
 and
 \EQ
-K_j^f \eq \frac{1}{\Psi_j} \sum_{ic}\nu_{ji}^c S_{ic}^f.
+K_j^l \eq \frac{1}{\Psi_j} \sum_{ic}\nu_{ji}^c S_{ic}^l.
 \EN
-Note that if $K_j^f \!\geq\! K_j^s \!\gg\! 1$, $R_j\!\leq\! 2$, and there is little or no retardation. However, there still remains a reduction in kinetic homogeneous and heterogeneous rates. Finally, it should be noted that if colloids are to compete with stationary solid phase, they must be sufficiently concentrated to provide an equivalent surface site density (or cation exchange capacity).
+Note that if $K_j^l \!\geq\! K_j^s \!\gg\! 1$, $R_j\!\leq\! 2$, and there is little or no retardation. However, there still remains a reduction in kinetic homogeneous and heterogeneous rates. Finally, it should be noted that if colloids are to compete with stationary solid phase, they must be sufficiently concentrated to provide an equivalent surface site density (or cation exchange capacity).
 
 \begin{comment}
 From the primary species transport equations it is possible to define a retardation factor assuming constant aqueous and sorbed concentrations and neglecting diffusion by writing the transport equations in the form
@@ -2005,6 +2005,15 @@ S_c^s &\eq \frac{\omega_c}{\big(1+\varphi s_l K_{ls}\big)\big(1+\sum_i K_{ic} Q_
 S_{ic}^s &\eq \frac{\omega_c K_{ic} Q_i}{\big(1+\varphi s_l K_{ls}\big)\big(1+\sum_{i'} K_{ic} Q_{i'}\big)}.
 \EA
 \end{subequations}
+
+In the absence of mineral surface complexation reactions it follows that
+\EQ
+K_j^l \eq K_{ls}^{} K_j^s.
+\EN
+Thus if $K_j^l\gg1$,
+\EQ
+R_j\eq 1+\frac{K_j^s}{K_j^l} \eq 1+K_{ls}^{-1}.
+\EN
 
 \subsection{Numerical Implementation}
 

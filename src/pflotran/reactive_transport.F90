@@ -692,18 +692,18 @@ subroutine RTUpdateSolutionPatch(realization)
             ncomp = reaction%kinmnrlspecid(0,imnrl)
             do iaqspec=1, ncomp  
               icomp = reaction%kinmnrlspecid(iaqspec,imnrl)
-              if(icomp == reaction%co2_aq_id)then
+              if(icomp == realization%reaction%species_idx%co2_aq_id) then
                 global_aux_vars(ghosted_id)%reaction_rate(2) &
                   = global_aux_vars(ghosted_id)%reaction_rate(2)& 
-                   + rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* option%tran_dt&
-                   * reaction%mnrlstoich(icomp,imnrl)/option%flow_dt
-               else if(icomp == reaction%h2o_aq_id)then
-                 global_aux_vars(ghosted_id)%reaction_rate(1) &
-                   = global_aux_vars(ghosted_id)%reaction_rate(1)& 
-                    + rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* option%tran_dt&
-                    * reaction%mnrlstoich(icomp,imnrl)/option%flow_dt
+                  + rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* option%tran_dt&
+                  * reaction%mnrlstoich(icomp,imnrl)/option%flow_dt
+              else if(icomp == reaction%species_idx%h2o_aq_id)then
+                global_aux_vars(ghosted_id)%reaction_rate(1) &
+                  = global_aux_vars(ghosted_id)%reaction_rate(1)& 
+                  + rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* option%tran_dt&
+                  * reaction%mnrlstoich(icomp,imnrl)/option%flow_dt
               endif
-            enddo  
+            enddo 
           endif   
 #endif
 
@@ -1995,7 +1995,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       select case(source_sink%flow_condition%itype(1))
         case(MASS_RATE_SS)
           do ieqgas = 1, reaction%ngas
-            if(abs(reaction%co2_gas_id) == ieqgas) then
+            if(abs(reaction%species_idx%co2_gas_id) == ieqgas) then
               icomp = reaction%eqgasspecid(1,ieqgas)
               iend = local_id*reaction%ncomp
               istart = iend-reaction%ncomp
@@ -2814,6 +2814,10 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
   PetscReal :: weight
   PetscInt, parameter :: iphase = 1
   PetscErrorCode :: ierr
+  PetscTruth :: skip_equilibrate_constraint
+  PetscInt, save :: icall
+  
+  data icall/0/
   
   option => realization%option
   patch => realization%patch  
@@ -2846,11 +2850,11 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
     call RTAuxVarCompute(patch%aux%RT%aux_vars(ghosted_id), &
                          patch%aux%Global%aux_vars(ghosted_id), &
                          reaction,option)
-    if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
+    if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
       patch%aux%Global%aux_vars(ghosted_id)%m_nacl(1) = &
-            patch%aux%RT%aux_vars(ghosted_id)%pri_molal(reaction%na_ion_id)
+            patch%aux%RT%aux_vars(ghosted_id)%pri_molal(reaction%species_idx%na_ion_id)
       patch%aux%Global%aux_vars(ghosted_id)%m_nacl(2) = &
-            patch%aux%RT%aux_vars(ghosted_id)%pri_molal(reaction%cl_ion_id)
+            patch%aux%RT%aux_vars(ghosted_id)%pri_molal(reaction%species_idx%cl_ion_id)
      else
       patch%aux%Global%aux_vars(ghosted_id)%m_nacl = option%m_nacl
     endif
@@ -2874,54 +2878,98 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
         if (associated(patch%imat)) then
           if (patch%imat(ghosted_id) <= 0) cycle
         endif
-
+  
+!       if (option%iflowmode /= MPH_MODE .or. icall>1) then
+        if (option%iflowmode /= MPH_MODE)then
+!       Note: the  DIRICHLET_BC is not time dependent in this case (icall)    
         select case(boundary_condition%tran_condition%itype)
-          case(CONCENTRATION_SS,DIRICHLET_BC,NEUMANN_BC)
-            ! since basis_molarity is in molarity, must convert to molality
-            ! by dividing by density of water (mol/L -> mol/kg)
-            xxbc(1:reaction%ncomp) = basis_molarity_p(1:reaction%ncomp) / &
-              patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * 1000.d0
-          case(DIRICHLET_ZERO_GRADIENT_BC)
-!geh            do iphase = 1, option%nphase
-              if (patch%boundary_velocities(iphase,sum_connection) >= 0.d0) then
-                ! same as dirichlet above
-                xxbc(1:reaction%ncomp) = basis_molarity_p(1:reaction%ncomp) / &
-                  patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * 1000.d0
-              else
-                ! same as zero_gradient below
-                do idof=1,reaction%ncomp
-                  xxbc(idof) = xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
-                enddo
-              endif
-!geh            enddo
-          case(ZERO_GRADIENT_BC)
-            do idof=1,reaction%ncomp
-              xxbc(idof) = xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
-            enddo
-        end select
-        ! no need to update boundary fluid density since it is already set
-        patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal = xxbc
-        if (compute_activity_coefs) then
-          call RActivityCoefficients(patch%aux%RT%aux_vars_bc(sum_connection), &
-                                     patch%aux%Global%aux_vars_bc(sum_connection), &
-                                     reaction,option)
-          if(option%iflowmode == MPH_MODE)then
-            call CO2AqActCoeff(patch%aux%RT%aux_vars_bc(sum_connection), &
+            case(CONCENTRATION_SS,DIRICHLET_BC,NEUMANN_BC)
+              ! since basis_molarity is in molarity, must convert to molality
+                ! by dividing by density of water (mol/L -> mol/kg)
+              xxbc(1:reaction%ncomp) = basis_molarity_p(1:reaction%ncomp) / &
+                patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * 1000.d0
+            case(DIRICHLET_ZERO_GRADIENT_BC)
+  !geh            do iphase = 1, option%nphase
+                if (patch%boundary_velocities(iphase,sum_connection) >= 0.d0) then
+                  ! same as dirichlet above
+                  xxbc(1:reaction%ncomp) = basis_molarity_p(1:reaction%ncomp) / &
+                    patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * 1000.d0
+                else
+                  ! same as zero_gradient below
+                  do idof=1,reaction%ncomp
+                    xxbc(idof) = xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
+                  enddo
+                endif
+  !geh          enddo
+            case(ZERO_GRADIENT_BC)
+              do idof=1,reaction%ncomp
+                xxbc(idof) = xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
+              enddo
+          end select
+          ! no need to update boundary fluid density since it is already set
+          patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal = xxbc
+          if (compute_activity_coefs) then
+            call RActivityCoefficients(patch%aux%RT%aux_vars_bc(sum_connection), &
+                                       patch%aux%Global%aux_vars_bc(sum_connection), &
+                                       reaction,option)
+            if(option%iflowmode == MPH_MODE)then
+              call CO2AqActCoeff(patch%aux%RT%aux_vars_bc(sum_connection), &
+                                 patch%aux%Global%aux_vars_bc(sum_connection), &
+                                 reaction,option) 
+             endif                           
+          endif
+          call RTAuxVarCompute(patch%aux%RT%aux_vars_bc(sum_connection), &
                                patch%aux%Global%aux_vars_bc(sum_connection), &
-                               reaction,option) 
-           endif                           
+                               reaction,option)
+         else
+           skip_equilibrate_constraint = PETSC_FALSE
+          ! Chuan needs to fill this in.
+          select case(boundary_condition%tran_condition%itype)
+            case(CONCENTRATION_SS,DIRICHLET_BC,NEUMANN_BC)
+              ! don't need to do anything as the constraint below provides all
+              ! the concentrations, etc.
+            case(DIRICHLET_ZERO_GRADIENT_BC)
+                if (patch%boundary_velocities(iphase,sum_connection) >= 0.d0) then
+                  ! don't need to do anything as the constraint below provides all
+                  ! the concentrations, etc.
+                else
+                  ! same as zero_gradient below
+                  skip_equilibrate_constraint = PETSC_TRUE
+                  do idof=1,reaction%ncomp
+                    patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(idof) = &
+                      xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
+                  enddo
+                endif
+            case(ZERO_GRADIENT_BC)
+              skip_equilibrate_constraint = PETSC_TRUE
+              do idof=1,reaction%ncomp
+                patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(idof) = &
+                  xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
+              enddo
+          end select
+          ! no need to update boundary fluid density since it is already set
+          if (.not.skip_equilibrate_constraint) then
+           ! print *,'RT redo constrain on BCs: 1: ', sum_connection
+            call ReactionEquilibrateConstraint(patch%aux%RT%aux_vars_bc(sum_connection), &
+              patch%aux%Global%aux_vars_bc(sum_connection),reaction, &
+              boundary_condition%tran_condition%cur_constraint_coupler%constraint_name, &
+              boundary_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
+              boundary_condition%tran_condition%cur_constraint_coupler%surface_complexes, &
+              boundary_condition%tran_condition%cur_constraint_coupler%num_iterations, &
+              PETSC_TRUE,option)
+           ! print *,'RT redo constrain on BCs: 2: ', sum_connection  
+          endif         
         endif
-        call RTAuxVarCompute(patch%aux%RT%aux_vars_bc(sum_connection), &
-                             patch%aux%Global%aux_vars_bc(sum_connection), &
-                             reaction,option)
-        if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
+
+        if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
           patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl(1) = &
-                patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(reaction%na_ion_id)
+                patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(reaction%species_idx%na_ion_id)
           patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl(2) = &
-                patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(reaction%cl_ion_id)
+                patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(reaction%species_idx%cl_ion_id)
          else
           patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl = option%m_nacl
         endif
+          
       enddo
       boundary_condition => boundary_condition%next
     enddo
@@ -2931,7 +2979,8 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
   endif 
   
   call GridVecRestoreArrayF90(grid,field%tran_xx_loc,xx_loc_p, ierr)
-  
+  icall = icall+ 1
+
 end subroutine RTUpdateAuxVarsPatch
 
 ! ************************************************************************** !
@@ -3075,6 +3124,7 @@ function RTGetTecplotHeader(realization,icolumn)
   PetscInt :: icolumn
   
   character(len=MAXHEADERLENGTH) :: string, string2
+  character(len=2) :: mol_char
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
   PetscInt :: i
@@ -3084,8 +3134,14 @@ function RTGetTecplotHeader(realization,icolumn)
   
   string = ''
   
+  if (reaction%print_pri_conc_type == PRIMARY_MOLALITY) then
+    mol_char = 'm'
+  else
+    mol_char = 'M'
+  endif
+  
   if ((reaction%print_pH) .and. &
-      reaction%h_ion_id > 0) then
+      reaction%species_idx%h_ion_id > 0) then
     if (icolumn > -1) then
       icolumn = icolumn + 1
       write(string2,'('',"'',i2,''-pH"'')') icolumn
@@ -3100,10 +3156,11 @@ function RTGetTecplotHeader(realization,icolumn)
       if (reaction%primary_species_print(i)) then
         if (icolumn > -1) then
           icolumn = icolumn + 1
-          write(string2,'('',"'',i2,''-'',a,''_tot"'')') icolumn, &
-            trim(reaction%primary_species_names(i))
+          write(string2,'('',"'',i2,''-'',a,''_tot_'',a,''"'')') icolumn, &
+            trim(reaction%primary_species_names(i)), trim(mol_char)
         else
-          write(string2,'('',"'',a,''"'')') trim(reaction%primary_species_names(i))
+          write(string2,'('',"'',a,''_tot_'',a,''"'')') &
+            trim(reaction%primary_species_names(i)), trim(mol_char)
         endif
         string = trim(string) // trim(string2)
       endif
@@ -3115,10 +3172,11 @@ function RTGetTecplotHeader(realization,icolumn)
       if (reaction%primary_species_print(i)) then
         if (icolumn > -1) then
           icolumn = icolumn + 1
-          write(string2,'('',"'',i2,''-'',a,''_free"'')') icolumn, &
-            trim(reaction%primary_species_names(i))
+          write(string2,'('',"'',i2,''-'',a,''_free_'',a,''"'')') icolumn, &
+            trim(reaction%primary_species_names(i)), trim(mol_char)
         else
-          write(string2,'('',"'',a,''"'')') trim(reaction%primary_species_names(i))
+          write(string2,'('',"'',a,''_free_'',a,''"'')') &
+            trim(reaction%primary_species_names(i)), trim(mol_char)
         endif
         string = trim(string) // trim(string2)
       endif
