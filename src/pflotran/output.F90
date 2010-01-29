@@ -518,8 +518,8 @@ subroutine OutputTecplotBlock(realization)
   
   if (option%ntrandof > 0) then
     if (associated(reaction)) then
-      if (reaction%print_pH .and. reaction%species_id%h_ion_id > 0) then
-        call OutputGetVarFromArray(realization,global_vec,PH,reaction%species_id%h_ion_id)
+      if (reaction%print_pH .and. reaction%species_idx%h_ion_id > 0) then
+        call OutputGetVarFromArray(realization,global_vec,PH,reaction%species_idx%h_ion_id)
         call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       endif
@@ -1425,9 +1425,9 @@ subroutine OutputTecplotPoint(realization)
     
     if (option%ntrandof > 0) then
       if (associated(reaction)) then
-        if (reaction%print_pH .and. reaction%species_id%h_ion_id > 0) then
+        if (reaction%print_pH .and. reaction%species_idx%h_ion_id > 0) then
           value = RealizGetDatasetValueAtCell(realization,PH, &
-                                              reaction%species_id%h_ion_id,ghosted_id)
+                                              reaction%species_idx%h_ion_id,ghosted_id)
           write(IUNIT3,1000,advance='no') value
         endif
         if (reaction%print_total_component) then
@@ -2466,7 +2466,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
  
     reaction => realization%reaction
     if ((reaction%print_pH) .and. &
-        reaction%species_id%h_ion_id > 0) then
+        reaction%species_idx%h_ion_id > 0) then
       write(fid,'('',"pH '',a,''"'')',advance="no") trim(cell_string)
     endif
 
@@ -2694,7 +2694,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
 
     reaction => realization%reaction
     if ((reaction%print_pH) .and. &
-        reaction%species_id%h_ion_id > 0) then
+        reaction%species_idx%h_ion_id > 0) then
       write(fid,'('',"pH '',a,''"'')',advance="no") trim(cell_string)
     endif
 
@@ -2987,9 +2987,9 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
     reaction => realization%reaction
     ghosted_id = grid%nL2G(local_id)
     if (associated(reaction)) then
-      if (reaction%print_pH .and. reaction%species_id%h_ion_id > 0) then
+      if (reaction%print_pH .and. reaction%species_idx%h_ion_id > 0) then
         write(fid,110,advance="no") &
-          RealizGetDatasetValueAtCell(realization,PH,reaction%species_id%h_ion_id,ghosted_id)
+          RealizGetDatasetValueAtCell(realization,PH,reaction%species_idx%h_ion_id,ghosted_id)
       endif
       if (reaction%print_total_component) then
         do i=1,reaction%ncomp
@@ -3319,9 +3319,9 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
   if (option%ntrandof > 0) then
     reaction => realization%reaction
     if (associated(reaction)) then
-      if (reaction%print_pH .and. reaction%species_id%h_ion_id > 0) then
+      if (reaction%print_pH .and. reaction%species_idx%h_ion_id > 0) then
         write(fid,110,advance="no") &
-          OutputGetVarFromArrayAtCoord(realization,PH,reaction%species_id%h_ion_id, &
+          OutputGetVarFromArrayAtCoord(realization,PH,reaction%species_idx%h_ion_id, &
                                        region%coordinates(ONE_INTEGER)%x, &
                                        region%coordinates(ONE_INTEGER)%y, &
                                        region%coordinates(ONE_INTEGER)%z, &
@@ -5109,15 +5109,15 @@ subroutine OutputHDF5(realization)
       mol_char = 'M'
     endif  
     if (associated(reaction)) then
-      if (reaction%print_pH .and. reaction%species_id%h_ion_id > 0) then
-        call OutputGetVarFromArray(realization,global_vec,PH,reaction%species_id%h_ion_id)
+      if (reaction%print_pH .and. reaction%species_idx%h_ion_id > 0) then
+        call OutputGetVarFromArray(realization,global_vec,PH,reaction%species_idx%h_ion_id)
         if (.not.(option%use_samr)) then
           write(string,'(''pH'')')
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
         else
           call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
           if(first) then
-             call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,PH,reaction%species_id%h_ion_id)
+             call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,PH,reaction%species_idx%h_ion_id)
           endif
           current_component=current_component+1
         endif
