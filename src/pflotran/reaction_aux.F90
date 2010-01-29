@@ -11,6 +11,16 @@ module Reaction_Aux_module
   PetscInt, parameter, public :: SRFCMPLX_RXN_MULTIRATE_KINETIC = 2
   PetscInt, parameter, public :: SRFCMPLX_RXN_KINETIC = 3
   
+  type, public :: species_id_type
+    PetscInt :: h2o_aq_id
+    PetscInt :: h_ion_id
+    PetscInt :: na_ion_id
+    PetscInt :: cl_ion_id
+    PetscInt :: co2_aq_id
+    PetscInt :: co2_gas_id
+    PetscInt :: o2_gas_id
+  end type species_id_type
+  
   type, public :: aq_species_type
     PetscInt :: id
     character(len=MAXWORDLENGTH) :: name
@@ -144,14 +154,10 @@ module Reaction_Aux_module
     PetscTruth :: initialize_with_molality
     PetscInt :: print_pri_conc_type
     PetscInt :: num_dbase_temperatures
-    PetscInt :: h_ion_id
-    PetscInt :: na_ion_id
-    PetscInt :: cl_ion_id
-    PetscInt :: co2_aq_id
-    PetscInt :: h2o_aq_id
-    PetscInt :: co2_gas_id
-    PetscInt :: o2_gas_id
     PetscReal, pointer :: dbase_temperatures(:)
+    
+    type(species_id_type), pointer :: species_id
+
     type(aq_species_type), pointer :: primary_species_list
     type(aq_species_type), pointer :: secondary_species_list
     type(gas_species_type), pointer :: gas_species_list
@@ -310,10 +316,11 @@ module Reaction_Aux_module
     PetscReal, pointer :: kinmnrl_affinity_power(:)
     
     PetscReal :: max_dlnC
-    
+
   end type reaction_type
 
   public :: ReactionCreate, &
+            SpeciesIndexCreate, &
             AqueousSpeciesCreate, &
             GasSpeciesCreate, &
             MineralCreate, &
@@ -386,13 +393,8 @@ function ReactionCreate()
 
   reaction%initialize_with_molality = PETSC_FALSE
   reaction%print_pri_conc_type = 0
-  reaction%h_ion_id = 0
-  reaction%na_ion_id = 0
-  reaction%cl_ion_id = 0
-  reaction%o2_gas_id = 0
-  reaction%co2_aq_id = 0
-  reaction%h2o_aq_id = 0
-  reaction%co2_gas_id = 0
+  
+  nullify(reaction%species_id)
 
   nullify(reaction%primary_species_list)
   nullify(reaction%secondary_species_list)
@@ -543,6 +545,30 @@ function ReactionCreate()
   ReactionCreate => reaction
   
 end function ReactionCreate
+
+function SpeciesIndexCreate()
+
+  use Option_module
+
+  implicit none
+  
+  type(species_id_type), pointer :: SpeciesIndexCreate
+  
+  type(species_id_type), pointer :: species_id
+
+  allocate(species_id) 
+
+  species_id%h2o_aq_id = 0
+  species_id%h_ion_id = 0
+  species_id%na_ion_id = 0
+  species_id%cl_ion_id = 0
+  species_id%co2_aq_id = 0
+  species_id%co2_gas_id = 0
+  species_id%o2_gas_id = 0
+
+  SpeciesIndexCreate => species_id
+  
+end function SpeciesIndexCreate
 
 ! ************************************************************************** !
 !
@@ -1258,6 +1284,17 @@ end function GetMineralIDFromName
 ! date: 05/29/08
 !
 ! ************************************************************************** !
+subroutine SpeciesIndexDestroy(species_id)
+
+  implicit none
+    
+  type(species_id_type), pointer :: species_id
+
+  deallocate(species_id)  
+  nullify(species_id)
+
+end subroutine SpeciesIndexDestroy
+
 subroutine AqueousSpeciesDestroy(species)
 
   implicit none
@@ -1600,7 +1637,12 @@ subroutine ReactionDestroy(reaction)
   type(ion_exchange_rxn_type), pointer :: ionxrxn, prev_ionxrxn
   type(surface_complexation_rxn_type), pointer :: srfcplxrxn, prev_srfcplxrxn
 
-  if (.not.associated(reaction)) return 
+  type(species_id_type), pointer :: species_id
+  
+  if (.not.associated(reaction)) return
+  
+  !species index
+  call SpeciesIndexDestroy(species_id)
 
   ! primary species
   aq_species => reaction%primary_species_list

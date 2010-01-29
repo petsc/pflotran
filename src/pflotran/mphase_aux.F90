@@ -434,9 +434,9 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
   !den(1) = 1.D0/(xmol(2)/dg + xmol(1)/dw_mol) !*c+(1-c)* 
 
 !  m_nacl=option%m_nacl
-!  if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
-!     m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
-!     m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
+!  if (reaction%species_id%na_ion_id /= 0 .and. reaction%species_id%cl_ion_id /= 0) then
+!     m_na = rt_auxvar%pri_molal(reaction%species_id%na_ion_id)
+!     m_cl = rt_auxvar%pri_molal(reaction%species_id%cl_ion_id)
 !     m_nacl=m_na
 !     if(m_cl>m_nacl) m_nacl=m_cl
 !   endif  

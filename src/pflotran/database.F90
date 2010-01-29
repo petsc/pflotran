@@ -648,6 +648,8 @@ subroutine BasisInit(reaction,option)
   type(surface_complex_type), pointer :: cur_srfcplx2
   type(ion_exchange_rxn_type), pointer :: cur_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cur_cation
+
+  type(species_id_type), pointer :: species_id
   
   character(len=MAXWORDLENGTH), allocatable :: old_basis_names(:)
   character(len=MAXWORDLENGTH), allocatable :: new_basis_names(:)
@@ -2693,95 +2695,97 @@ subroutine BasisInit(reaction,option)
   endif
 
   call BasisPrint(reaction,'Final Basis',option)
+
+  species_id => SpeciesIndexCreate()
   
   ! locate specific species
   do ispec = 1, reaction%ncomp
-    if (reaction%h_ion_id == 0) then
+    if (reaction%species_id%h_ion_id == 0) then
       word = 'H+'
       if (StringCompare(reaction%primary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%h_ion_id = ispec
+        reaction%species_id%h_ion_id = ispec
       endif
     endif
-    if (reaction%na_ion_id == 0) then
+    if (reaction%species_id%na_ion_id == 0) then
       word = 'Na+'
       if (StringCompare(reaction%primary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%na_ion_id = ispec
+        reaction%species_id%na_ion_id = ispec
       endif
     endif
-    if (reaction%cl_ion_id == 0) then
+    if (reaction%species_id%cl_ion_id == 0) then
       word = 'Cl-'
       if (StringCompare(reaction%primary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%cl_ion_id = ispec
+        reaction%species_id%cl_ion_id = ispec
       endif
     endif
-    if (reaction%co2_aq_id == 0) then
+    if (species_id%co2_aq_id == 0) then
       word = 'CO2(aq)'
       if (StringCompare(reaction%primary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%co2_aq_id = ispec
+        reaction%species_id%co2_aq_id = ispec
       endif
     endif
-    if (reaction%h2o_aq_id == 0) then
+    if (reaction%species_id%h2o_aq_id == 0) then
       word = 'H2O'
       if (StringCompare(reaction%primary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%h2o_aq_id = ispec
+        reaction%species_id%h2o_aq_id = ispec
       endif
     endif
   enddo
   
   do ispec = 1, reaction%neqcplx
-    if (reaction%h_ion_id == 0) then
+    if (reaction%species_id%h_ion_id == 0) then
       word = 'H+'
       if (StringCompare(reaction%secondary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%h_ion_id = -ispec
+        reaction%species_id%h_ion_id = -ispec
       endif
     endif
-    if (reaction%na_ion_id == 0) then
+    if (reaction%species_id%na_ion_id == 0) then
       word = 'Na+'
       if (StringCompare(reaction%secondary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%na_ion_id = -ispec
+        reaction%species_id%na_ion_id = -ispec
       endif
     endif
-    if (reaction%cl_ion_id == 0) then
+    if (species_id%cl_ion_id == 0) then
       word = 'Cl-'
       if (StringCompare(reaction%secondary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%cl_ion_id = -ispec
+        reaction%species_id%cl_ion_id = -ispec
       endif
     endif
-    if (reaction%co2_aq_id == 0) then
+    if (reaction%species_id%co2_aq_id == 0) then
       word = 'CO2(aq)'
       if (StringCompare(reaction%secondary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%co2_aq_id = -ispec
+        species_id%co2_aq_id = -ispec
       endif
     endif
   enddo
 
   do ispec = 1, reaction%ngas
-    if (reaction%o2_gas_id == 0) then
+    if (reaction%species_id%o2_gas_id == 0) then
       word = 'O2(g)'
       if (StringCompare(reaction%gas_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%o2_gas_id = ispec
+        reaction%species_id%o2_gas_id = ispec
       endif
     endif
-    if (reaction%co2_gas_id == 0) then
+    if (reaction%species_id%co2_gas_id == 0) then
       word = 'CO2(g)'
       if (StringCompare(reaction%gas_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%co2_gas_id = ispec
+        reaction%species_id%co2_gas_id = ispec
       endif
       word = 'CO2(g)*'
       if (StringCompare(reaction%gas_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%co2_gas_id = ispec
+        reaction%species_id%co2_gas_id = ispec
       endif
 
     endif

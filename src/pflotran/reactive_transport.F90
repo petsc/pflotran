@@ -692,18 +692,18 @@ subroutine RTUpdateSolutionPatch(realization)
             ncomp = reaction%kinmnrlspecid(0,imnrl)
             do iaqspec=1, ncomp  
               icomp = reaction%kinmnrlspecid(iaqspec,imnrl)
-              if(icomp == reaction%co2_aq_id)then
+              if(icomp == realization%reaction%species_id%co2_aq_id) then
                 global_aux_vars(ghosted_id)%reaction_rate(2) &
                   = global_aux_vars(ghosted_id)%reaction_rate(2)& 
-                   + rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* option%tran_dt&
-                   * reaction%mnrlstoich(icomp,imnrl)/option%flow_dt
-               else if(icomp == reaction%h2o_aq_id)then
-                 global_aux_vars(ghosted_id)%reaction_rate(1) &
-                   = global_aux_vars(ghosted_id)%reaction_rate(1)& 
-                    + rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* option%tran_dt&
-                    * reaction%mnrlstoich(icomp,imnrl)/option%flow_dt
+                  + rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* option%tran_dt&
+                  * reaction%mnrlstoich(icomp,imnrl)/option%flow_dt
+              else if(icomp == reaction%species_id%h2o_aq_id)then
+                global_aux_vars(ghosted_id)%reaction_rate(1) &
+                  = global_aux_vars(ghosted_id)%reaction_rate(1)& 
+                  + rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* option%tran_dt&
+                  * reaction%mnrlstoich(icomp,imnrl)/option%flow_dt
               endif
-            enddo  
+            enddo 
           endif   
 #endif
 
@@ -1995,7 +1995,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       select case(source_sink%flow_condition%itype(1))
         case(MASS_RATE_SS)
           do ieqgas = 1, reaction%ngas
-            if(abs(reaction%co2_gas_id) == ieqgas) then
+            if(abs(reaction%species_id%co2_gas_id) == ieqgas) then
               icomp = reaction%eqgasspecid(1,ieqgas)
               iend = local_id*reaction%ncomp
               istart = iend-reaction%ncomp
@@ -2850,11 +2850,11 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
     call RTAuxVarCompute(patch%aux%RT%aux_vars(ghosted_id), &
                          patch%aux%Global%aux_vars(ghosted_id), &
                          reaction,option)
-    if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
+    if (reaction%species_id%na_ion_id /= 0 .and. reaction%species_id%cl_ion_id /= 0) then
       patch%aux%Global%aux_vars(ghosted_id)%m_nacl(1) = &
-            patch%aux%RT%aux_vars(ghosted_id)%pri_molal(reaction%na_ion_id)
+            patch%aux%RT%aux_vars(ghosted_id)%pri_molal(reaction%species_id%na_ion_id)
       patch%aux%Global%aux_vars(ghosted_id)%m_nacl(2) = &
-            patch%aux%RT%aux_vars(ghosted_id)%pri_molal(reaction%cl_ion_id)
+            patch%aux%RT%aux_vars(ghosted_id)%pri_molal(reaction%species_id%cl_ion_id)
      else
       patch%aux%Global%aux_vars(ghosted_id)%m_nacl = option%m_nacl
     endif
@@ -2961,11 +2961,11 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
           endif         
         endif
 
-        if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
+        if (reaction%species_id%na_ion_id /= 0 .and. reaction%species_id%cl_ion_id /= 0) then
           patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl(1) = &
-                patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(reaction%na_ion_id)
+                patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(reaction%species_id%na_ion_id)
           patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl(2) = &
-                patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(reaction%cl_ion_id)
+                patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(reaction%species_id%cl_ion_id)
          else
           patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl = option%m_nacl
         endif
@@ -3141,7 +3141,7 @@ function RTGetTecplotHeader(realization,icolumn)
   endif
   
   if ((reaction%print_pH) .and. &
-      reaction%h_ion_id > 0) then
+      reaction%species_id%h_ion_id > 0) then
     if (icolumn > -1) then
       icolumn = icolumn + 1
       write(string2,'('',"'',i2,''-pH"'')') icolumn

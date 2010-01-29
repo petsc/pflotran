@@ -1021,9 +1021,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         free_conc(icomp) = conc(icomp)*convert_molar_to_molal ! just a guess
       case(CONSTRAINT_PH)
         ! check if H+ id set
-        if (reaction%h_ion_id /= 0) then
+        if (reaction%species_id%h_ion_id /= 0) then
           ! check if icomp is H+
-          if (reaction%h_ion_id /= icomp) then
+          if (reaction%species_id%h_ion_id /= icomp) then
             string = 'OH-'
             if (.not.StringCompare(reaction%primary_species_names(icomp), &
                                    string,MAXWORDLENGTH)) then
@@ -1142,12 +1142,12 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           Jac(icomp,:) = 0.d0
 !          Jac(:,icomp) = 0.d0
           Jac(icomp,icomp) = 1.d0
-          if (reaction%h_ion_id > 0) then ! conc(icomp) = 10**-pH
+          if (reaction%species_id%h_ion_id > 0) then ! conc(icomp) = 10**-pH
             rt_auxvar%pri_molal(icomp) = 10.d0**(-conc(icomp)) / &
                                           rt_auxvar%pri_act_coef(icomp)
           else ! H+ is a complex
           
-            icplx = abs(reaction%h_ion_id)
+            icplx = abs(reaction%species_id%h_ion_id)
             
             ! compute secondary species concentration
             ! *note that the sign was flipped below
@@ -1253,7 +1253,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           igas = constraint_id(icomp)
          
           ! compute secondary species concentration
-          if(abs(reaction%co2_gas_id) == igas) then
+          if(abs(reaction%species_id%co2_gas_id) == igas) then
            pres = global_auxvar%pres(2)
 !           pres = conc(icomp)*1.D5
             tc = global_auxvar%temp(1)
@@ -1282,9 +1282,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 !           call Henry_duan_sun_0NaCl(pco2*1.d-5, tc, henry)
             m_na = 0.d0
             m_cl = 0.d0
-            if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
-              m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
-              m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
+            if (reaction%species_id%na_ion_id /= 0 .and. reaction%species_id%cl_ion_id /= 0) then
+              m_na = rt_auxvar%pri_molal(reaction%species_id%na_ion_id)
+              m_cl = rt_auxvar%pri_molal(reaction%species_id%cl_ion_id)
 !              call Henry_duan_sun(tc,pco2*1D-5,henry,xphico2,lngamco2, &
 !                m_na,m_cl,sat_pressure*1D-5)
               call Henry_duan_sun(tc,pres*1D-5,henry,xphico2,lngamco2, &
@@ -1568,14 +1568,14 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     write(option%fid_out,90)
     write(option%fid_out,201) '      iterations: ', &
       constraint_coupler%num_iterations
-    if (reaction%h_ion_id > 0) then
+    if (reaction%species_id%h_ion_id > 0) then
       write(option%fid_out,203) '              pH: ', &
-        -log10(rt_auxvar%pri_molal(reaction%h_ion_id)* &
-               rt_auxvar%pri_act_coef(reaction%h_ion_id))
-    else if (reaction%h_ion_id < 0) then
+        -log10(rt_auxvar%pri_molal(reaction%species_id%h_ion_id)* &
+               rt_auxvar%pri_act_coef(reaction%species_id%h_ion_id))
+    else if (reaction%species_id%h_ion_id < 0) then
       write(option%fid_out,203) '              pH: ', &
-        -log10(rt_auxvar%sec_molal(abs(reaction%h_ion_id))* &
-               rt_auxvar%sec_act_coef(abs(reaction%h_ion_id)))
+        -log10(rt_auxvar%sec_molal(abs(reaction%species_id%h_ion_id))* &
+               rt_auxvar%sec_act_coef(abs(reaction%species_id%h_ion_id)))
     endif
     
     ionic_strength = 0.d0
@@ -1619,8 +1619,8 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       write(option%fid_out,'(a20,es12.4,a9)') '            xphi: ', &
         global_auxvar%fugacoeff(1)
 
-      if (reaction%co2_aq_id /= 0) then
-        icomp = reaction%co2_aq_id
+      if (reaction%species_id%co2_aq_id /= 0) then
+        icomp = reaction%species_id%co2_aq_id
         mass_fraction_co2 = reaction%primary_spec_molar_wt(icomp)*rt_auxvar%pri_molal(icomp)* &
           mass_fraction_h2o*1.d-3
         mole_fraction_co2 = rt_auxvar%pri_molal(icomp)*FMWH2O*mole_fraction_h2o*1.e-3
@@ -2384,15 +2384,15 @@ subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
   sat_pressure =0D0
 
   m_na = option%m_nacl; m_cl = m_na
-  if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
-     m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
-     m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
+  if (reaction%species_id%na_ion_id /= 0 .and. reaction%species_id%cl_ion_id /= 0) then
+     m_na = rt_auxvar%pri_molal(reaction%species_id%na_ion_id)
+     m_cl = rt_auxvar%pri_molal(reaction%species_id%cl_ion_id)
   endif
 
   call Henry_duan_sun(tc,pco2*1D-5,henry, 1.D0,lngamco2, &
          m_na,m_cl,sat_pressure*1D-5, co2aqact)
          
-  rt_auxvar%pri_act_coef(reaction%co2_aq_id) = co2aqact 
+  rt_auxvar%pri_act_coef(reaction%species_id%co2_aq_id) = co2aqact 
  ! print *, 'CO2AqActCoeff', tc, pco2, m_na,m_cl, sat_pressure,co2aqact
 end subroutine CO2AqActCoeff
 
@@ -2773,11 +2773,11 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 !            global_auxvar%fugacoeff(1) = xphico2
 
 
-      if(abs(reaction%co2_gas_id) == ieqgas )then
+      if(abs(reaction%species_id%co2_gas_id) == ieqgas )then
 !          call Henry_duan_sun_0NaCl(pco2*1D-5, temperature, henry)
-        if (reaction%na_ion_id /= 0 .and. reaction%cl_ion_id /= 0) then
-          m_na = rt_auxvar%pri_molal(reaction%na_ion_id)
-          m_cl = rt_auxvar%pri_molal(reaction%cl_ion_id)
+        if (reaction%species_id%na_ion_id /= 0 .and. reaction%species_id%cl_ion_id /= 0) then
+          m_na = rt_auxvar%pri_molal(reaction%species_id%na_ion_id)
+          m_cl = rt_auxvar%pri_molal(reaction%species_id%cl_ion_id)
           call Henry_duan_sun(temperature,pressure*1D-5,muco2,xphico2, &
                 lngamco2,m_na,m_cl,sat_pressure*1D-5)
         else
