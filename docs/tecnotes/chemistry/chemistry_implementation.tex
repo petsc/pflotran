@@ -1449,19 +1449,20 @@ for the $k+1$st time increment. The free site concentration $S_\a^{k+1}$ is obta
 \EQ\label{sfree}
 S_\a^{k+1} \eq \omega_\a^{k+1} - \sum_{i'} S_{i'\a}^{k+1}.
 \EN
-In the numerical implementation it is customary to lag the site concentration $\omega_\a$ one time step behind giving the equation
+In the numerical implementation for sorption on mineral surfaces it is customary to lag the site concentration $\omega_\a$ one time step behind giving the equation
 \EQ\label{sfree1}
 S_\a^{k+1} \eq \omega_\a^{k} - \sum_{i'} S_{i'\a}^{k+1}.
 \EN
 \end{subequations}
+However, this approximation may not be adequate for colloids.
 Noting that Eqn.\eqref{fdskin} can be considered a linear function of $S_{i\a}^{k+1}$, it may be solved to give
 \EQ\label{sia}
 S_{i\a}^{k+1} \eq \frac{S_{i\a}^k + k_{i\a}^f\Delta t S_\a^{k+1} Q_i^{k+1}}{1+k_{i\a}^b\Delta t}.
 \EN
-Substituting this result into Eqn.\eqref{sfree1} and solving for $S_\a^{k+1}$ yields the result
+Substituting this result into Eqn.\eqref{sfree} and solving for $S_\a^{k+1}$ yields the result
 \EQ
 S_\a^{k+1} \eq \frac{
-\omega_\a^k - \displaystyle\sum_{i} \dfrac{S_{{i}\a}^{k}}{1+k_{i\a}^b\Delta t}
+\omega_\a^{k+1} - \displaystyle\sum_{i} \dfrac{S_{{i}\a}^{k}}{1+k_{i\a}^b\Delta t}
 }
 {1+\displaystyle\sum_{i}\dfrac{k_{i\a}^f\Delta t}{1+k_{i\a}^b\Delta t} Q_{i}^{k+1}} \eq \frac{N_\a}{D_\a},
 \EN
@@ -2076,11 +2077,23 @@ R_j\eq 1+\frac{K_j^s}{K_j^l} \eq 1+K_{ls}^{-1}.
 
 \subsection{Numerical Implementation}
 
-\noindent\underline{\bf Residual Function:} 
+\noindent {\bf Residual Function Independent and Dependent Variables} 
 
-\noindent Unknown Variables: $\{C_j, \, C_c^l, \, S_{ic}^l\}$
-
-\noindent Auxiliary Variables: $\{C_i^{}, \, C_c^s, \, S_c^s, \, S_c^l, \, S_{ic}^s, \, S_m^{},\,S_{im}^{}\}$
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\multicolumn{2}{c}{Kinetic Formulation}\\
+\midrule
+Independent Variables: & $\{C_j, \, C_c^l, \, S_{ic}^l\}$ \\
+Dependent Variables: & $\{C_i^{}, \, C_c^{s}, \, S_c^{l,s}, \, S_{ic}^s, \, S_m^{},\,S_{im}^{}\}$ \\
+\midrule
+\multicolumn{2}{c}{Sorption Equilibrium Formulation -- Kinetic Filtration}\\
+\midrule
+Independent Variables: & $\{C_j, \, C_c^l\}$ \\
+Dependent Variables: & $\{C_i^{}, \, C_c^s, \, S_c^{l,s}, \, S_{ic}^{l,s}, \, S_m^{},\,S_{im}^{}\}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
 
 \noindent Primary Species:
 \begin{subequations}
@@ -2103,23 +2116,29 @@ R_{ic,\,n} \eq \Big[\varphi s_l^{} \big(S_{ic,n}^{l,k+1}-S_{ic,n}^{l,k}\big)
 \EN
 \end{subequations}
 \noindent Auxiliary Equations:
+\begin{subequations}
 \BA
 C_{cn}^{s,k+1}-C_{cn}^{s,k} & \eq \Delta t \frac{k_c^f C_c^{l,k+1}-k_c^b C_c^{s,k}}{1+k_c^f\Delta t},\\
-S_{ic}^{s,k+1}-S_{ic}^{s,k} &\eq \frac{k_{ic}^b S_{ic}^k}{1+k_{ic}^b\Delta t} + \frac{k_{ic}^f}{1+k_{ic}^b \Delta t} \left(
+S_{ic}^{s,k+1}-S_{ic}^{s,k} &\eq \frac{k_{ic}^b S_{ic}^k}{1+k_{ic}^b\Delta t} 
++ \frac{k_{ic}^f}{1+k_{ic}^b \Delta t} \left(
 \frac{N_c}{D_c}
 \right) Q_{ic}^{k+1},\\
-S_i^{m,k+1}-S_i^{m,k} &\eq \frac{k_{im}^b S_{im}^k}{1+k_{im}^b\Delta t} + \frac{k_{im}^f}{1+k_{im}^b \Delta t} \left(
+S_i^{m,k+1}-S_i^{m,k} &\eq \frac{k_{im}^b S_{im}^k}{1+k_{im}^b\Delta t} 
++ \frac{k_{im}^f}{1+k_{im}^b \Delta t} \left(
 \frac{N_m}{D_m}\right) Q_{im}^{k+1},\\
 S_c^{l,s} &\eq \omega_c^{l,s} - \sum_i S_{ic}^{l,s},\\
 S_m^{} &\eq \omega_m^{} - \sum_i S_{i}^{m},
 \EA
+\end{subequations}
 where the quantities $N_c$ and $N_m$ are defined by
+\begin{subequations}
 \EQ
 N_c \eq\omega_c^{s,k+1} - \displaystyle\sum_{i} \dfrac{S_{ic}^{s,k}}{1+k_{ic}^b\Delta t},
 \EN
 \EQ
 N_m \eq\omega_m^{k+1} - \displaystyle\sum_{i} \dfrac{S_{im}^{k}}{1+k_{im}^b\Delta t},
 \EN
+\end{subequations}
 and ($\a=c,\,m$)
 \EQ
 D_\a \eq 1+\displaystyle\sum_{i}\dfrac{k_{i\a}^f\Delta t}{1+k_{i\a}^b\Delta t} Q_{i\a}^{k+1}.
@@ -2133,7 +2152,7 @@ S_{ic,nn'}^l \eq \frac{d_n S_{icn}^l + d_{n'} S_{icn'}^l}{d_n + d_{n'}}.
 \EQ
 \bJ \delta\bx \eq -\bR
 \EN
-\noindent Equilibrium and Mineral Kinetic Sorption Reactions:
+\noindent Equilibrium Colloid/Mineral Sorption Reactions:
 \EQ
 \left(\begin{array}{c} \dfrac{\p R_{j}}{\p\ln C_{l}}\\
 \end{array}\right)
@@ -2146,8 +2165,27 @@ S_{ic,nn'}^l \eq \frac{d_n S_{icn}^l + d_{n'} S_{icn'}^l}{d_n + d_{n'}}.
 R_j\\
 \end{array}\Big]
 \EN
+\begin{subequations}
+\BA
+%R_j:C_j'
+\left(\dfrac{\p R_{jn}}{\p C_{j'n'}}\right)_{C_c^l}^{} &\eq\delta_{nn'}\left[
+\varphi_n^{} s_{ln}^{}\frac{\p\Psi_{jn}^{k+1}}{\p C_{j'n}} 
++ \varphi_n^{} s_{ln}^{}\sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{l,k+1}}{\p C_{j'n}} 
++ \sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{s,k+1}}{\p C_{j'n}}\right. \nonumber\\
+&\left. \quad + \sum_{im} \nu_{ji}^{m} \frac{\p S_{i}^{m,k+1}}{\p C_{j'n}}
+\right] \frac{V_n}{\Delta t}
++\sum_{n''}\left[\frac{\p\Omega_{jnn''}}{\p C_{j'n'}}+q_{cnn''}\sum_{ic}\nu_{ji}^{c} \frac{\p S_{ic,nn''}^{l,k+1}}{\p C_{j'n'}}\right] A_{nn''}^{}\nonumber \\
+&\qquad+\delta_{nn'}^{} V_n^{}\sum_m\nu_{jm}^{}\frac{\p I_{mn}}{\p C_{j'n}},\\
+%R_j:C_c'
+\left(\dfrac{\p R_{jn}}{\p C_{c'n'}^l}\right)_{C_j^{}}^{} &\eq \delta_{jc'}\delta_{nn'}\left[ 
+\varphi_n^{} s_{ln}^{}\sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{l,k+1}}{\p C_{c'n}^l} 
++ \sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{s,k+1}}{\p C_{c'n}^l}
+\right] \frac{V_n}{\Delta t} \nonumber\\
+&\qquad\qquad+\sum_{n''} q_{cnn''}\sum_{ic}\nu_{ji}^{c} \frac{\p S_{ic,nn''}^{l,k+1}}{\p C_{c'n'}^l} A_{nn''}^{}.
+\EA
+\end{subequations}
 
-\noindent Colloid/Mineral Kinetic Sorption Reactions:
+\noindent Kinetic Colloid/Mineral Sorption Reactions:
 %\renewcommand{\tabcolsep}{1cm}
 \renewcommand{\arraystretch}{2.5}
 \EQ
@@ -2179,26 +2217,32 @@ R_{ic}
 \begin{subequations}
 \BA
 %R_j:C_j'
-\dfrac{\p R_{jn}}{\p C_{j'n'}}&\eq\delta_{nn'}\left[
+\left(\dfrac{\p R_{jn}}{\p C_{j'n'}}\right)_{C_c^l,\,S_{ic}^l}^{} &\eq\delta_{nn'}\left[
 \varphi_n^{} s_{ln}^{}\frac{\p\Psi_{jn}^{k+1}}{\p C_{j'n}} 
-+ \varphi_n^{} s_{ln}^{}\sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{l,k+1}}{\p C_{j'n}} 
+%+ \varphi_n^{} s_{ln}^{}\sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{l,k+1}}{\p C_{j'n}} 
 + \sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{s,k+1}}{\p C_{j'n}}\right. \nonumber\\
-&\left. \quad + \sum_{im} \nu_{ji}^{m} \frac{\p S_{i}^{m,k+1}}{\p C_{j'n}}
+&\left. \quad 
++ \sum_{im} \nu_{ji}^{m} \frac{\p S_{i}^{m,k+1}}{\p C_{j'n}}
 \right] \frac{V_n}{\Delta t}
-+\sum_{n''}\left[\frac{\p\Omega_{jnn''}}{\p C_{j'n'}}+q_{cnn''}\sum_{ic}\nu_{ji}^{c} \frac{\p S_{ic,nn''}^{l,k+1}}{\p C_{j'n'}}\right] A_{nn''}^{}\nonumber \\
++\sum_{n''}
+%\left[
+\frac{\p\Omega_{jnn''}}{\p C_{j'n'}}
+%+q_{cnn''}\sum_{ic}\nu_{ji}^{c} \frac{\p S_{ic,nn''}^{l,k+1}}{\p C_{j'n'}}\right]
+A_{nn''}^{}\nonumber \\
 &\qquad+\delta_{nn'}^{} V_n^{}\sum_m\nu_{jm}^{}\frac{\p I_{mn}}{\p C_{j'n}},\\
 %R_j:C_c'
-\dfrac{\p R_{jn}}{\p C_{c'n'}^l}&\eq \delta_{jc'}\delta_{nn'}\left[ 
-\varphi_n^{} s_{ln}^{}\sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{l,k+1}}{\p C_{c'n}^l} 
-+ \sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{s,k+1}}{\p C_{c'n}^l}
-\right] \frac{V_n}{\Delta t} \nonumber\\
-&\qquad\qquad+\sum_{n''} q_{cnn''}\sum_{ic}\nu_{ji}^{c} \frac{\p S_{ic,nn''}^{l,k+1}}{\p C_{c'n'}^l} A_{nn''}^{},\\
+\left(\dfrac{\p R_{jn}}{\p C_{cn'}^l}\right)_{C_j^{},\,S_{ic}^l}^{} &\eq \delta_{nn'}\left[ 
+%\varphi_n^{} s_{ln}^{}\sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{l,k+1}}{\p C_{c'n}^l} + 
+\sum_{i} \nu_{ji}^{c} \frac{\p S_{ic}^{s,k+1}}{\p C_{cn}^l}
+\right] \frac{V_n}{\Delta t} \\
+%&\qquad\qquad+\sum_{n''} q_{cnn''}\sum_{ic}\nu_{ji}^{c} \frac{\p S_{ic,nn''}^{l,k+1}}{\p C_{c'n'}^l} A_{nn''}^{},\\
 %R_j:S_i'c'
-\dfrac{\p R_{jn}}{\p S_{i'c'n'}^l}&\eq\delta_{nn'}\left[
-\varphi_n^{} s_{ln}^{}\sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{l,k+1}}{\p S_{i'c'n}^l} 
-+ \sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{s,k+1}}{\p S_{i'c'n}^l}\right] \frac{V_n}{\Delta t} \nonumber\\
+\left(\dfrac{\p R_{jn}}{\p S_{icn'}^l}\right)_{C_j^{},\,C_c^l}^{} &\eq\delta_{nn'}\nu_{ji}^c \left[
+\varphi_n^{} s_{ln}^{} +
+%\varphi_n^{} s_{ln}^{}\sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{l,k+1}}{\p S_{i'c'n}^l} + 
+\frac{\p S_{ic}^{s,k+1}}{\p S_{icn}^l}\right] \frac{V_n}{\Delta t} \nonumber\\
 &\qquad \qquad
-+\sum_{n''}q_{cnn''}\sum_{ic}\nu_{ji}^{c} \frac{\p S_{ic,nn''}^{l,k+1}}{\p S_{i'c'n'}^l} A_{nn''}^{},
++\sum_{n''}q_{cnn''}\sum_{ic}\nu_{ji}^{c} \frac{\p S_{ic,nn''}^{l,k+1}}{\p S_{icn'}^l} A_{nn''}^{},
 \EA
 \end{subequations}
 \begin{subequations}
@@ -2226,45 +2270,62 @@ R_{ic}
 \EA
 \end{subequations}
 
-\noindent Auxiliary Derivatives (Kinetic):
+\noindent Auxiliary Derivatives:
 \EQ
-\frac{\p C_{c}^s}{\p C_{c}^l} \eq \frac{k_c^f \Delta t}{1+k_c^f\Delta t},
-\EN
-\EQ
-\frac{\p S_{ic}^l}{\p C_{j}} \eq
-\EN
-\EQ
-\frac{\p S_{ic}^s}{\p C_{j}} \eq
-\EN
-\EQ
-\frac{\p S_{im}^s}{\p C_{j}} \eq
-\EN
-\EQ
-\frac{\p S_{ic}^l}{\p C_{c}^l} \eq
-\EN
-\EQ
-\frac{\p S_{ic}^s}{\p C_{c}^l} \eq
+\frac{\p Q_{ic}}{\p \ln C_j} \eq \nu_{ji}^c Q_{ic}^{},
 \EN
 
-\noindent Auxiliary Derivatives (Local Equilibrium):
-\EQ
-\frac{\p C_{c}^s}{\p C_{c}^l} \eq \frac{k_c^f \Delta t}{1+k_c^f\Delta t},
-\EN
-\EQ
-\frac{\p S_{ic}^l}{\p C_{j}} \eq
-\EN
-\EQ
-\frac{\p S_{ic}^s}{\p C_{j}} \eq
-\EN
-\EQ
-\frac{\p S_{im}^s}{\p C_{j}} \eq
-\EN
-\EQ
-\frac{\p S_{ic}^l}{\p C_{c}^l} \eq
-\EN
-\EQ
-\frac{\p S_{ic}^s}{\p C_{c}^l} \eq
-\EN
+\noindent Auxiliary Derivatives (Kinetic Sorption):
+\begin{subequations}
+\BA
+\frac{\p S_{c}^{s}}{\p\ln C_{j}} &\eq ,\\
+%\EN
+%\EQ
+\frac{\p S_{ic}^{s}}{\p\ln C_{j}} &\eq\frac{k_{ic}^f}{1+k_{ic}^b \Delta t} \left(
+\frac{N_c}{D_c}\right) \nu_{ji}^c Q_{ic}^{k+1},\\
+%\EN
+%\EQ
+\frac{\p S_{i}^m}{\p\ln C_{j}} &\eq \frac{k_{im}^f}{1+k_{im}^b \Delta t} \left(
+\frac{N_m}{D_m}\right) \nu_{ji}^m Q_{im}^{k+1},\\
+%\EN
+%\EQ
+\frac{\p S_{ic}^s}{\p\ln C_{c}^l} &\eq C_c^l\frac{S_{ic}^s}{C_c^s}\frac{k_c^f \Delta t}{1+k_c^f\Delta t},\\
+%\EN
+%\EQ
+\frac{\p I_{icn}^l}{\p C_{j'n}} \eq ,\\
+\frac{\p S_{ic,n}^l}{\p C_{cn'}^l} \eq ,\\
+\frac{\p I_{icn}^l}{\p S_{i'cn}} \eq ,\\
+%\EN
+%\EQ
+\frac{\p C_{c}^s}{\p C_{c}^l} &\eq \frac{k_c^f \Delta t}{1+k_c^f\Delta t}.
+\EA
+\end{subequations}
+
+\noindent Auxiliary Derivatives (Local Equilibrium Sorption):
+\begin{subequations}
+%\EQ
+%\frac{\p C_{c}^s}{\p C_{c}^l} \eq K_{ls}^{-1},
+%\EN
+\BA
+\frac{\p S_{c}^{l,s}}{\p C_{j}} &\eq \\
+%\EN
+%\EQ
+\frac{\p S_{ic}^{l,s}}{\p\ln C_{j}} &\eq S_{ic}^{l,s}\left[
+\nu_{ji}^c - \frac{1}{\omega_{l,s}}\sum_{i'}\nu_{ji'}^c S_{i'c}^{l,s}
+\right],\\
+%\EN
+%\EQ
+\frac{\p S_{i}^m}{\p\ln C_{j}} &\eq S_{i}^{m}\left[
+\nu_{ji}^m - \frac{1}{\omega_{m}}\sum_{i'}\nu_{ji'}^m S_{i'}^{m}
+\right],\\
+%\EN
+%\EQ
+\frac{\p S_{ic}^{l}}{\p\ln C_{c'}^{l}} &\eq \delta_{cc'} S_{ic}^{l},\\
+%\EN
+%\EQ
+\frac{\p S_{ic}^s}{\p\ln C_{c'}^l} &\eq \delta_{cc'} C_c^l \frac{S_{ic}^{s}}{C_c^s}\frac{k_c^f \Delta t}{1+k_c^f\Delta t}.
+\EA
+\end{subequations}
 
 \begin{comment}
 \renewcommand{\tabcolsep}{1cm}
