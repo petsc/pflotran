@@ -166,8 +166,6 @@
 \def\sohuotwocothree{$>$SOHUO$_2$CO$_3$}
 \def\soh{$>$SOH}
 
-\setcounter{secnumdepth}{5}
-\setcounter{tocdepth}{5}
 %\renewcommand{\thepage}{\roman{page}}
 %\renewcommand{\thepage}{\arabic{page}}
 %\renewcommand{\theequation}{\arabic{section}.\arabic{subsection}-\arabic{equation}}
@@ -180,8 +178,9 @@
 \setlength{\parindent}{0.3125in}
 \setlength{\parskip}{2ex plus 0.2ex minus 0.2ex}
 
+\setcounter{secnumdepth}{4}
+\setcounter{tocdepth}{4}
 \renewcommand{\contentsname}{CONTENTS}
-\setcounter{secnumdepth}{5}
 
 \setlongtables
 
@@ -1877,44 +1876,49 @@ R_j\eq 1+\dfrac{K_j}{1+K_j^c},
 Note that if $K_j^c \!\geq\! K_j \!\gg\! 1$, $R_j\!\leq\! 2$, and there is little or no retardation. However, there still remains a reduction in kinetic homogeneous and heterogeneous rates. Finally, it should be noted that if colloids are to compete with stationary solid phase, they must be sufficiently concentrated to provide an equivalent surface site density (or cation exchange capacity).
 \end{comment}
 
-\section{Colloid Implementation into PFLOTRAN}
+\section{PFLOTRAN Colloid Implementation}
 
 Implementation of colloids in PFLOTRAN accounts for competing sorption in the form of surface complexation reactions between both immobile and mobile colloids and minerals.
 
 \subsection{Summary of Equations}
 
-\noindent Colloid Reactions:
+\subsubsection{Colloid Reactions:}
 %\renewcommand{\tabcolsep}{-8pt}
 \EQ
 \begin{array}{rll}
-\A_c^l &\arrows \A_c^s, & \text{(Filtration: $I_c$)},\\
->\!\A_{ic}^l &\arrows >\!\A_{ic}^s, & \text{(Mobile-Immobile Colloid Exchange: $I_c$)},\\
->\!X_{c}^l &\arrows >\!X_{c}^s, & \text{(Mobile-Immobile Free Site Exchange: $I_c$)},\\
->\!X_c^{l,s} + \displaystyle\sum_i\nu_{ji}^c\A_j^{} &\arrows >\!A_{ic}^{l,s}, & \text{(Sorption: $I_{ic}^{l,s}$)},
+\A_c^l &\!\!\!\!\!\arrows \A_c^s, & \text{(Filtration: $I_c$)},\\
+>\!\A_{ic}^l &\!\!\!\!\!\arrows\! >\!\A_{ic}^s, & \text{(Mobile-Immobile Colloid Exchange: $I_c$)},\\
+>\!X_{c}^l &\!\!\!\!\!\arrows\! >\!X_{c}^s, & \text{(Mobile-Immobile Free Site Exchange: $I_c$)},\\
+>\!X_c^{l,s} + \displaystyle\sum_i\nu_{ji}^c\A_j^{} &\!\!\!\!\!\arrows\! >\!A_{ic}^{l,s}, & \text{(Sorption: $I_{ic}^{l,s}$)},
 \end{array}
 \EN
 for mobile $(l)$ and immobile $(s)$ colloids where $l$ and $s$ refer to liquid and solid phases, respectively.
 
-\noindent Sorption site concentration is related to mobile and immobile colloid concentration and mineral volume fraction according to the expressions:
+\noindent Sorption site concentration is related to mobile and immobile colloid concentrations and mineral volume fractions according to the expressions:
 \BA
 \omega_{c}^{l,\,s} &\eq \eta_c A_c W_c C_c^{l,\,s},\\
 &\eq \Gamma_c^{} C_c^{l,\,s},
 \EA
 where
 \EQ
-\Gamma_c \eq \eta_c A_c W_c.
+\Gamma_c \eq \eta_c A_c W_c,
 \EN
+for colloids, and
 \EQ
-\omega_{m} \eq \eta_m A_m W_m \bar V_m^{-1} \varphi_m.
+\omega_{m} \eq \eta_m A_m W_m \bar V_m^{-1} \varphi_m,
 \EN
+for minerals.
+
 \noindent Total Site Conservation:
 \BA
 \omega_c &\eq \varphi s_l^{} \omega_c^l + \omega_c^s, \\
+&\eq \varphi s_l^{} \Big(S_c^l+ \sum_{i=1}^{N_c^{\rm srf}} S_{ic}^{l}\Big) + S_c^s + \sum_{i=1}^{N_c^{\rm srf}} S_{ic}^{s},\\
 &\eq \varphi s_l^{} S_c^l + S_c^s 
 + \sum_{i=1}^{N_c^{\rm srf}} \big(\varphi s_l^{} S_{ic}^{l}+S_{ic}^{s}\big),\\
 \omega_m &\eq S_m + \sum_{i=1}^{N_m^{\rm srf}} S_{i}^{m}.
 \EA
-\noindent Colloid Filtration:
+
+\subsubsection{Colloid Filtration}
 \EQ
 \frac{\p}{\p t} \varphi s_l^{} C_c^l + \bnabla\cdot\bq_c^{} C_c^l \eq -I_c,
 \EN
@@ -1926,23 +1930,23 @@ I_c \eq k_c^f C_c^l - k_c^b C_c^s,
 \EN
 $l=$ liq, $s=$ solid. Alternatively, the mobile colloid transport equation can be written as
 \EQ
-\frac{\p}{\p t} \Big[\varphi s_l C_c^l + C_c^s\Big] + \bnabla\cdot\bq_c^{} C_c^l \eq 0.
+\frac{\p}{\p t} \Big[\varphi s_l C_c^l + C_c^s\Big] + \bnabla\cdot\bq_c^{} C_c^l \eq 0,
 \EN
-\noindent Site Conservation Equation:
+implying the site conservation equation:
 \EQ
 \frac{\p}{\p t} \Big[\varphi s_l \omega_c^l + \omega_c^s\Big] + \bnabla\cdot\bq_c^{} \omega_c^l \eq 0,
 \EN
-coupled to
+coupled to the immobile colloid concentration field
 \EQ
 \frac{\p \omega_c^s}{\p t} \eq \Gamma_c I_c.
 \EN
 
-\noindent Primary Species Concentrations:
+\subsubsection{Primary Species Transport Equations}
 %\EQ
 %\frac{\p}{\p t} \varphi s_l\Psi_j +\bnabla\cdot\bOmega_j \eq - \sum_{ic} \nu_{ji} \frac{\p}{\p t}\big(\varphi s_l S_{ic}^l\big) - \sum_{ic} \nu_{ji} \frac{\p S_{ic}^s}{\p t} - \sum_{im} \nu_{jm} \frac{\p S_{i}^{m}}{\p t} - \sum_m\nu_{jm}I_m
 %\EN
 \EQ
-\frac{\p}{\p t} \varphi s_l\Psi_j +\bnabla\cdot\bOmega_j \eq - \sum_{ic} \nu_{ji} I_{ic}^l - \sum_{ic} \nu_{ji} I_{ic}^s - \sum_{im} \nu_{jm} I_i^m - \sum_m\nu_{jm}I_m
+\frac{\p}{\p t} \varphi s_l\Psi_j +\bnabla\cdot\bOmega_j \eq - \sum_{ic} \nu_{ji}^c I_{ic}^l - \sum_{ic} \nu_{ji}^c I_{ic}^s - \sum_{im} \nu_{ji}^m I_i^m - \sum_m\nu_{jm}I_m
 \EN
 \noindent Kinetic Sorption Equations---Colloids:\\
 \noindent
@@ -2001,7 +2005,7 @@ or, in terms of $\omega_c^{l,s}$:
 \EN
 yields the site conservation equation.
 
-\noindent \underline{Relation Between Mobile-Immobile Collloid Exchange Rates $\widetilde I_c$ and $I_c$:}
+\paragraph{Relation Between Mobile-Immobile Colloid Exchange Rates $\widetilde I_c$ and $I_c$:}
 \BA
 \frac{\p\omega_c^s}{\p t} &\eq \frac{\p S_c^s}{\p t} + \sum_{i=1}^{N_c^{\rm srf}} \frac{\p S_{ic}^s}{\p t},\\
 &\eq \widetilde I_c + \sum_{i=1}^{N_c^{\rm srf}}\widetilde I_c,\\
@@ -2046,6 +2050,7 @@ S_{ic}^{l,s} \eq \frac{\omega_c^{l,s} K_{ic} Q_{ic}}{1+\sum_i K_{ic} Q_{ic}},
 \omega_c^{l,s} \eq S_c^{l,s} + \sum_i S_{ic}^{l,s}.
 \EN
 \end{subequations}
+\noindent Filtration Equilibrium:
 \EQ
 K_{ls}^{} \eq \frac{C_c^l}{C_c^s},
 \EN
@@ -2154,16 +2159,22 @@ S_{ic,nn'}^l \eq \frac{d_n S_{icn}^l + d_{n'} S_{icn'}^l}{d_n + d_{n'}}.
 \EN
 \noindent Equilibrium Colloid/Mineral Sorption Reactions:
 \EQ
-\left(\begin{array}{c} \dfrac{\p R_{j}}{\p\ln C_{l}}\\
+\left(\begin{array}{cc} 
+\dfrac{\p R_{j}}{\p\ln C_{l}} & \dfrac{\p R_{j}}{\p\ln C_c^{l}}\\
+\dfrac{\p R_{c}}{\p\ln C_{l}} & \dfrac{\p R_{c}}{\p\ln C_{c'}^{l}}\\
 \end{array}\right)
-\Big[
+\left[
 \begin{array}{c}
 \delta\ln C_j\\
+~\\
+\delta\ln C_c^l\\
 \end{array}
-\Big] \eq
--\Big[\begin{array}{c}
+\right] \eq
+-\left[\begin{array}{c}
 R_j\\
-\end{array}\Big]
+~\\
+R_c\\
+\end{array}\right]
 \EN
 \begin{subequations}
 \BA
