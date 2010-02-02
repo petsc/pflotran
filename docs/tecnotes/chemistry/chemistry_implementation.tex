@@ -141,7 +141,7 @@
 \newcommand{\by}{\boldsymbol{y}}
 \newcommand{\bY}{\boldsymbol{Y}}
 \newcommand{\bz}{\boldsymbol{z}}
-%\newcommand{\b0}{\boldsymbol{0}}
+\newcommand{\bzero}{\boldsymbol{0}}
 
 \newcommand{\arrows}{~\rightleftharpoons~}
 \newcommand{\arrowstab}{\!\!\!\rightleftharpoons\!\!\!}
@@ -1467,7 +1467,7 @@ S_\a^{k+1} \eq \frac{
 \EN
 where
 \EQ
-N_\a \eq\omega_\a^k - \displaystyle\sum_{i} \dfrac{S_{i\a}^{k}}{1+k_{i\a}^b\Delta t},
+N_\a \eq\omega_\a^{k+1} - \displaystyle\sum_{i} \dfrac{S_{i\a}^{k}}{1+k_{i\a}^b\Delta t},
 \EN
 and
 \EQ
@@ -1488,7 +1488,7 @@ For the case of irreversible desorption with $k_{i\a}^b=0$, this expression redu
 \EQ
 S_{i\a}^{k+1} \eq S_{i\a}^k + k_{i\a}^f\Delta t \left[
 \frac{
-\omega_\a^k - \displaystyle\sum_{i'} S_{i'\a}^{k}
+\omega_\a^{k+1} - \displaystyle\sum_{i'} S_{i'\a}^{k}
 }
 {1+\Delta t\displaystyle\sum_{i'} k_{i'\a}^f Q_{i'}^{k+1}}
 \right] Q_i^{k+1}.
@@ -2005,7 +2005,7 @@ or, in terms of $\omega_c^{l,s}$:
 \EN
 yields the site conservation equation.
 
-\paragraph{Relation Between Mobile-Immobile Colloid Exchange Rates $\widetilde I_c$ and $I_c$:}
+\subsubsection{Relation Between Mobile-Immobile Colloid Exchange Rates $\widetilde I_c$ and $I_c$:}
 \BA
 \frac{\p\omega_c^s}{\p t} &\eq \frac{\p S_c^s}{\p t} + \sum_{i=1}^{N_c^{\rm srf}} \frac{\p S_{ic}^s}{\p t},\\
 &\eq \widetilde I_c + \sum_{i=1}^{N_c^{\rm srf}}\widetilde I_c,\\
@@ -2154,15 +2154,26 @@ S_{ic,nn'}^l \eq \frac{d_n S_{icn}^l + d_{n'} S_{icn'}^l}{d_n + d_{n'}}.
 \EN
 
 \subsubsection{Jacobian Structure}
+
+For a fully implicit formulation the nonlinear equations
 \EQ
-\bJ \delta\bx \eq -\bR
+\bR(\bx) \eq \bzero,
 \EN
+are solved for the logarithm of the concentration using the Newton-Raphson equations
+\EQ
+\bJ^{(i)} \delta\ln\bx^{(i+1)} \eq -\bR^{(i)},
+\EN
+for the $i$th iteration. The solution is then updated according to the equation
+\EQ
+\bx^{(i+1)} \eq \bx^{(i)} {\rm e}^{\delta\ln\bx^{(i+1)}}.
+\EN
+
 \paragraph{Equilibrium Colloid/Mineral Sorption Reactions}
 \EQ
 \renewcommand{\arraystretch}{2.5}
 \left(\begin{array}{cc} 
 \dfrac{\p R_{j}}{\p\ln C_{l}} & \dfrac{\p R_{j}}{\p\ln C_c^{l}}\\
-\dfrac{\p R_{c}}{\p\ln C_{l}} & \dfrac{\p R_{c}}{\p\ln C_{c'}^{l}}\\
+\dfrac{\p R_{c}}{\p\ln C_{l}} & \dfrac{\p R_{c}}{\p\ln C_{c}^{l}}\\
 \end{array}\right)
 \left[
 \begin{array}{c}
