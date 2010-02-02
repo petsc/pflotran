@@ -2600,10 +2600,8 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
     call mpi_bcast(count,ONE_INTEGER,MPI_INTEGER,option%io_rank, &
                    option%mycomm,ierr)      
     if (count /= grid%nmax) then
-      write(option%io_buffer, &
-            '("Number of data in file (",i8, &
-            &") does not match size of vector (", &
-            &i8,")")'), count, grid%nlmax
+      write(option%io_buffer,'("Number of data in file (",i8, &
+      & ") does not match size of vector (",i8,")")') count, grid%nlmax
       call printErrMsg(option)
     endif
     close(fid)
