@@ -321,10 +321,10 @@ subroutine Init(simulation)
 
     ! If we are using a structured grid, set the corresponding flow DA 
     ! as the DA for the PCEXOTIC preconditioner, in case we choose to use it.
-    ! The PCExoticSetDA() call is ignored if the PCEXOTIC preconditioner is 
+    ! The PCSetDA() call is ignored if the PCEXOTIC preconditioner is 
     ! no used.  We need to put this call after SolverCreateSNES() so that 
     ! KSPSetFromOptions() will already have been called.
-    ! I also note that this preconditioner is intended only for the flow, 
+    ! I also note that this preconditioner is intended only for the flow 
     ! solver.  --RTM
     if (realization%discretization%itype == STRUCTURED_GRID) then
       call PCSetDA(flow_solver%pc, &
