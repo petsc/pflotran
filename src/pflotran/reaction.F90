@@ -1021,27 +1021,29 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         free_conc(icomp) = conc(icomp)*convert_molar_to_molal ! just a guess
       case(CONSTRAINT_PH)
         ! check if H+ id set
-        if (reaction%species_idx%h_ion_id /= 0) then
-          ! check if icomp is H+
-          if (reaction%species_idx%h_ion_id /= icomp) then
-            string = 'OH-'
-            if (.not.StringCompare(reaction%primary_species_names(icomp), &
-                                   string,MAXWORDLENGTH)) then
-              option%io_buffer = &
-                       'pH specified as constraint (constraint =' // &
-                       trim(constraint_name) // &
-                       ') for species other than H+ or OH-: ' // &
-                       trim(reaction%primary_species_names(icomp))
-              call printErrMsg(option)
+        if (associated(reaction%species_idx)) then
+          if (reaction%species_idx%h_ion_id /= 0) then
+            ! check if icomp is H+
+            if (reaction%species_idx%h_ion_id /= icomp) then
+              string = 'OH-'
+              if (.not.StringCompare(reaction%primary_species_names(icomp), &
+                                     string,MAXWORDLENGTH)) then
+                option%io_buffer = &
+                         'pH specified as constraint (constraint =' // &
+                         trim(constraint_name) // &
+                         ') for species other than H+ or OH-: ' // &
+                         trim(reaction%primary_species_names(icomp))
+                call printErrMsg(option)
+              endif
             endif
+            free_conc(icomp) = 10.d0**(-conc(icomp))
+          else
+            option%io_buffer = &
+                     'pH specified as constraint (constraint =' // &
+                     trim(constraint_name) // &
+                     '), but H+ not found in chemical species.'
+            call printErrMsg(option)
           endif
-          free_conc(icomp) = 10.d0**(-conc(icomp))
-        else
-          option%io_buffer = &
-                   'pH specified as constraint (constraint =' // &
-                   trim(constraint_name) // &
-                   '), but H+ not found in chemical species.'
-          call printErrMsg(option)
         endif        
       case(CONSTRAINT_MINERAL)
         free_conc(icomp) = conc(icomp)*convert_molar_to_molal ! guess
@@ -1142,38 +1144,40 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           Jac(icomp,:) = 0.d0
 !          Jac(:,icomp) = 0.d0
           Jac(icomp,icomp) = 1.d0
-          if (reaction%species_idx%h_ion_id > 0) then ! conc(icomp) = 10**-pH
-            rt_auxvar%pri_molal(icomp) = 10.d0**(-conc(icomp)) / &
-                                          rt_auxvar%pri_act_coef(icomp)
-          else ! H+ is a complex
-          
-            icplx = abs(reaction%species_idx%h_ion_id)
+          if (associated(reaction%species_idx)) then
+            if (reaction%species_idx%h_ion_id > 0) then ! conc(icomp) = 10**-pH
+              rt_auxvar%pri_molal(icomp) = 10.d0**(-conc(icomp)) / &
+                                            rt_auxvar%pri_act_coef(icomp)
+            else ! H+ is a complex
             
-            ! compute secondary species concentration
-            ! *note that the sign was flipped below
-            lnQK = -reaction%eqcplx_logK(icplx)*LOG_TO_LN
+              icplx = abs(reaction%species_idx%h_ion_id)
+              
+              ! compute secondary species concentration
+              ! *note that the sign was flipped below
+              lnQK = -reaction%eqcplx_logK(icplx)*LOG_TO_LN
 
-            ! activity of water
-            if (reaction%eqcplxh2oid(icplx) > 0) then
-              lnQK = lnQK + reaction%eqcplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
+              ! activity of water
+              if (reaction%eqcplxh2oid(icplx) > 0) then
+                lnQK = lnQK + reaction%eqcplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
+              endif
+
+              do jcomp = 1, reaction%eqcplxspecid(0,icplx)
+                comp_id = reaction%eqcplxspecid(jcomp,icplx)
+                lnQK = lnQK + reaction%eqcplxstoich(jcomp,icplx)* &
+                              log(rt_auxvar%pri_molal(comp_id)* &
+                              rt_auxvar%pri_act_coef(comp_id))
+              enddo
+              lnQK = lnQK - log(conc(icomp)) ! this is log activity H+
+              QK = exp(lnQK)
+              
+              Res(icomp) = 1.d0 - QK
+
+              do jcomp = 1,reaction%eqcplxspecid(0,icplx)
+                comp_id = reaction%eqcplxspecid(jcomp,icplx)
+                Jac(icomp,comp_id) = -exp(lnQK-log(rt_auxvar%pri_molal(comp_id)))* &
+                                          reaction%eqcplxstoich(jcomp,icplx)
+              enddo
             endif
-
-            do jcomp = 1, reaction%eqcplxspecid(0,icplx)
-              comp_id = reaction%eqcplxspecid(jcomp,icplx)
-              lnQK = lnQK + reaction%eqcplxstoich(jcomp,icplx)* &
-                            log(rt_auxvar%pri_molal(comp_id)* &
-                            rt_auxvar%pri_act_coef(comp_id))
-            enddo
-            lnQK = lnQK - log(conc(icomp)) ! this is log activity H+
-            QK = exp(lnQK)
-            
-            Res(icomp) = 1.d0 - QK
-
-            do jcomp = 1,reaction%eqcplxspecid(0,icplx)
-              comp_id = reaction%eqcplxspecid(jcomp,icplx)
-              Jac(icomp,comp_id) = -exp(lnQK-log(rt_auxvar%pri_molal(comp_id)))* &
-                                        reaction%eqcplxstoich(jcomp,icplx)
-            enddo
           endif
                       
         case(CONSTRAINT_MINERAL)
@@ -1568,14 +1572,16 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     write(option%fid_out,90)
     write(option%fid_out,201) '      iterations: ', &
       constraint_coupler%num_iterations
-    if (reaction%species_idx%h_ion_id > 0) then
-      write(option%fid_out,203) '              pH: ', &
-        -log10(rt_auxvar%pri_molal(reaction%species_idx%h_ion_id)* &
-               rt_auxvar%pri_act_coef(reaction%species_idx%h_ion_id))
-    else if (reaction%species_idx%h_ion_id < 0) then
-      write(option%fid_out,203) '              pH: ', &
-        -log10(rt_auxvar%sec_molal(abs(reaction%species_idx%h_ion_id))* &
-               rt_auxvar%sec_act_coef(abs(reaction%species_idx%h_ion_id)))
+    if (associated(reaction%species_idx)) then
+      if (reaction%species_idx%h_ion_id > 0) then
+        write(option%fid_out,203) '              pH: ', &
+          -log10(rt_auxvar%pri_molal(reaction%species_idx%h_ion_id)* &
+                 rt_auxvar%pri_act_coef(reaction%species_idx%h_ion_id))
+      else if (reaction%species_idx%h_ion_id < 0) then
+        write(option%fid_out,203) '              pH: ', &
+          -log10(rt_auxvar%sec_molal(abs(reaction%species_idx%h_ion_id))* &
+                 rt_auxvar%sec_act_coef(abs(reaction%species_idx%h_ion_id)))
+      endif
     endif
     
     ionic_strength = 0.d0

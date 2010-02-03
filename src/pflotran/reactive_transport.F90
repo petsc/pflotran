@@ -2850,13 +2850,15 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
     call RTAuxVarCompute(patch%aux%RT%aux_vars(ghosted_id), &
                          patch%aux%Global%aux_vars(ghosted_id), &
                          reaction,option)
-    if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
-      patch%aux%Global%aux_vars(ghosted_id)%m_nacl(1) = &
-            patch%aux%RT%aux_vars(ghosted_id)%pri_molal(reaction%species_idx%na_ion_id)
-      patch%aux%Global%aux_vars(ghosted_id)%m_nacl(2) = &
-            patch%aux%RT%aux_vars(ghosted_id)%pri_molal(reaction%species_idx%cl_ion_id)
-     else
-      patch%aux%Global%aux_vars(ghosted_id)%m_nacl = option%m_nacl
+    if (associated(reaction%species_idx)) then
+      if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
+        patch%aux%Global%aux_vars(ghosted_id)%m_nacl(1) = &
+              patch%aux%RT%aux_vars(ghosted_id)%pri_molal(reaction%species_idx%na_ion_id)
+        patch%aux%Global%aux_vars(ghosted_id)%m_nacl(2) = &
+              patch%aux%RT%aux_vars(ghosted_id)%pri_molal(reaction%species_idx%cl_ion_id)
+       else
+        patch%aux%Global%aux_vars(ghosted_id)%m_nacl = option%m_nacl
+      endif
     endif
   enddo
 
@@ -2961,13 +2963,15 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
           endif         
         endif
 
-        if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
-          patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl(1) = &
-                patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(reaction%species_idx%na_ion_id)
-          patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl(2) = &
-                patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(reaction%species_idx%cl_ion_id)
-         else
-          patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl = option%m_nacl
+        if (associated(reaction%species_idx)) then
+          if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
+            patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl(1) = &
+                  patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(reaction%species_idx%na_ion_id)
+            patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl(2) = &
+                  patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(reaction%species_idx%cl_ion_id)
+           else
+            patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl = option%m_nacl
+          endif
         endif
           
       enddo
@@ -3140,15 +3144,16 @@ function RTGetTecplotHeader(realization,icolumn)
     mol_char = 'M'
   endif
   
-  if ((reaction%print_pH) .and. &
-      reaction%species_idx%h_ion_id > 0) then
-    if (icolumn > -1) then
-      icolumn = icolumn + 1
-      write(string2,'('',"'',i2,''-pH"'')') icolumn
-    else
-      write(string2,'('',"pH"'')') 
+  if (reaction%print_pH .and. associated(reaction%species_idx)) then
+    if (reaction%species_idx%h_ion_id > 0) then
+      if (icolumn > -1) then
+        icolumn = icolumn + 1
+        write(string2,'('',"'',i2,''-pH"'')') icolumn
+      else
+        write(string2,'('',"pH"'')') 
+      endif
+      string = trim(string) // trim(string2)
     endif
-    string = trim(string) // trim(string2)
   endif
   
   if (reaction%print_total_component) then
