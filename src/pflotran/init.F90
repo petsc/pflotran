@@ -1079,6 +1079,7 @@ subroutine InitReadInput(simulation)
                     enddo
                   case('DISTRIBUTION_COEF')
                   case('JUMPSTART_KINETIC_SORPTION')
+                  case('NO_CHECKPOINT_KINETIC_SORPTION')
                   case('NO_RESTART_KINETIC_SORPTION')
                     ! dummy placeholder
                 end select

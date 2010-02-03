@@ -127,6 +127,7 @@ module Option_module
     PetscTruth :: update_mnrl_surf_with_porosity
     
     PetscTruth :: jumpstart_kinetic_sorption
+    PetscTruth :: no_checkpoint_kinetic_sorption
     PetscTruth :: no_restart_kinetic_sorption
         
 !   table lookup
@@ -402,6 +403,7 @@ subroutine OptionInitRealization(option)
   option%update_mnrl_surf_with_porosity = PETSC_FALSE
     
   option%jumpstart_kinetic_sorption = PETSC_FALSE
+  option%no_checkpoint_kinetic_sorption = PETSC_FALSE
   option%no_restart_kinetic_sorption = PETSC_FALSE
   
   option%minimum_hydrostatic_pressure = -1.d20

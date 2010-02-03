@@ -3535,8 +3535,6 @@ subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
   
   checkpoint_flag = PETSC_FALSE
 
-  if (option%no_restart_kinetic_sorption) return
-
   ! Loop over sorption reactions to find the necessary components
   
   do irxn = 1, reaction%neqsrfcplxrxn

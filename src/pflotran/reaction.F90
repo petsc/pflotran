@@ -477,6 +477,9 @@ subroutine ReactionRead(reaction,input,option)
           !   call DistributionCoefRead
             case('JUMPSTART_KINETIC_SORPTION')
               option%jumpstart_kinetic_sorption = PETSC_TRUE
+              option%no_restart_kinetic_sorption = PETSC_TRUE
+            case('NO_CHECKPOINT_KINETIC_SORPTION')
+              option%no_checkpoint_kinetic_sorption = PETSC_TRUE
             case('NO_RESTART_KINETIC_SORPTION')
               option%no_restart_kinetic_sorption = PETSC_TRUE
           end select
