@@ -2243,16 +2243,14 @@ R_{ic}
 \left(\dfrac{\p R_{jn}}{\p C_{j'n'}}\right)_{C_c^l,\,S_{ic}^l}^{} &\eq\delta_{nn'}\left[
 \varphi_n^{} s_{ln}^{}\frac{\p\Psi_{jn}^{k+1}}{\p C_{j'n}} 
 %+ \varphi_n^{} s_{ln}^{}\sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{l,k+1}}{\p C_{j'n}} 
-+ \sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{s,k+1}}{\p C_{j'n}}\right. \nonumber\\
-&\left. \quad 
-+ \sum_{im} \nu_{ji}^{m} \frac{\p S_{i}^{m,k+1}}{\p C_{j'n}}
-\right] \frac{V_n}{\Delta t}
-+\sum_{n''}
++ \sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{s,k+1}}{\p C_{j'n}} + \sum_{im} \nu_{ji}^{m} \frac{\p S_{i}^{m,k+1}}{\p C_{j'n}}
+\right] \frac{V_n}{\Delta t}\nonumber\\
+&+\sum_{n''}
 %\left[
 \frac{\p\Omega_{jnn''}}{\p C_{j'n'}}
 %+q_{cnn''}\sum_{ic}\nu_{ji}^{c} \frac{\p S_{ic,nn''}^{l,k+1}}{\p C_{j'n'}}\right]
-A_{nn''}^{}\nonumber \\
-&\qquad+\delta_{nn'}^{} V_n^{}\sum_m\nu_{jm}^{}\frac{\p I_{mn}}{\p C_{j'n}},\\
+A_{nn''}^{}
++\delta_{nn'}^{} V_n^{}\sum_m\nu_{jm}^{}\frac{\p I_{mn}}{\p C_{j'n}},\\
 %R_j:C_c'
 \left(\dfrac{\p R_{jn}}{\p C_{cn'}^l}\right)_{C_j^{},\,S_{ic}^l}^{} &\eq \delta_{nn'}\left[ 
 %\varphi_n^{} s_{ln}^{}\sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{l,k+1}}{\p C_{c'n}^l} + 
