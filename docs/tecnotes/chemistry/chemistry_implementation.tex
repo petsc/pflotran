@@ -2124,7 +2124,7 @@ R_{ic,\,n} \eq \Big[\varphi s_l^{} \big(S_{ic,n}^{l,k+1}-S_{ic,n}^{l,k}\big)
 \begin{subequations}
 \BA
 C_{cn}^{s,k+1}-C_{cn}^{s,k} & \eq \Delta t \frac{k_c^f C_c^{l,k+1}-k_c^b C_c^{s,k}}{1+k_c^f\Delta t},\\
-S_{ic}^{s,k+1}-S_{ic}^{s,k} &\eq \frac{k_{ic}^b S_{ic}^k}{1+k_{ic}^b\Delta t} 
+S_{ic}^{s,k+1}-S_{ic}^{s,k} &\eq \frac{k_{ic}^b S_{ic}^{s,k}}{1+k_{ic}^b\Delta t} 
 + \frac{k_{ic}^f}{1+k_{ic}^b \Delta t} \left(
 \frac{N_c}{D_c}
 \right) Q_{ic}^{k+1},\\
@@ -2242,52 +2242,47 @@ R_{ic}
 %R_j:C_j'
 \left(\dfrac{\p R_{jn}}{\p C_{j'n'}}\right)_{C_c^l,\,S_{ic}^l}^{} &\eq\delta_{nn'}\left[
 \varphi_n^{} s_{ln}^{}\frac{\p\Psi_{jn}^{k+1}}{\p C_{j'n}} 
-%+ \varphi_n^{} s_{ln}^{}\sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{l,k+1}}{\p C_{j'n}} 
 + \sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{s,k+1}}{\p C_{j'n}} + \sum_{im} \nu_{ji}^{m} \frac{\p S_{i}^{m,k+1}}{\p C_{j'n}}
 \right] \frac{V_n}{\Delta t}\nonumber\\
 &+\sum_{n''}
-%\left[
 \frac{\p\Omega_{jnn''}}{\p C_{j'n'}}
-%+q_{cnn''}\sum_{ic}\nu_{ji}^{c} \frac{\p S_{ic,nn''}^{l,k+1}}{\p C_{j'n'}}\right]
 A_{nn''}^{}
 +\delta_{nn'}^{} V_n^{}\sum_m\nu_{jm}^{}\frac{\p I_{mn}}{\p C_{j'n}},\\
 %R_j:C_c'
 \left(\dfrac{\p R_{jn}}{\p C_{cn'}^l}\right)_{C_j^{},\,S_{ic}^l}^{} &\eq \delta_{nn'}\left[ 
-%\varphi_n^{} s_{ln}^{}\sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{l,k+1}}{\p C_{c'n}^l} + 
 \sum_{i} \nu_{ji}^{c} \frac{\p S_{ic}^{s,k+1}}{\p C_{cn}^l}
 \right] \frac{V_n}{\Delta t} \\
-%&\qquad\qquad+\sum_{n''} q_{cnn''}\sum_{ic}\nu_{ji}^{c} \frac{\p S_{ic,nn''}^{l,k+1}}{\p C_{c'n'}^l} A_{nn''}^{},\\
 %R_j:S_i'c'
-\left(\dfrac{\p R_{jn}}{\p S_{icn'}^l}\right)_{C_j^{},\,C_c^l}^{} &\eq\delta_{nn'}\nu_{ji}^c \left[
-\varphi_n^{} s_{ln}^{} +
-%\varphi_n^{} s_{ln}^{}\sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{l,k+1}}{\p S_{i'c'n}^l} + 
-\frac{\p S_{ic}^{s,k+1}}{\p S_{icn}^l}\right] \frac{V_n}{\Delta t} \nonumber\\
-&\qquad \qquad
+\left(\dfrac{\p R_{jn}}{\p S_{icn'}^l}\right)_{C_j^{},\,C_c^l}^{} &\eq\delta_{nn'}\nu_{ji}^c 
+%\left[
+\varphi_n^{} s_{ln}^{} 
+%+\frac{\p S_{ic}^{s,k+1}}{\p S_{icn}^l}\right] 
+\frac{V_n}{\Delta t} 
 +\sum_{n''}q_{cnn''}\sum_{ic}\nu_{ji}^{c} \frac{\p S_{ic,nn''}^{l,k+1}}{\p S_{icn'}^l} A_{nn''}^{},
 \EA
 \end{subequations}
 \begin{subequations}
 \BA
 %R_c:C_j'
-\dfrac{\p R_{cn}}{\p C_{j'n'}}&\eq 0,\\
+\left(\dfrac{\p R_{cn}}{\p C_{j'n'}}\right)_{C_c^l,\,S_{ic}^l}^{} & \eq 0,\\
 %R_c:C_c'
-\dfrac{\p R_{cn}}{\p C_{c'n'}^l}&\eq\varphi_n^{} s_{ln}^{}\delta_{nn'}^{}\delta_{cc'}^{}
+\left(\dfrac{\p R_{cn}}{\p C_{c'n'}^l}\right)_{C_j,\,S_{ic}^l}^{} &\eq\varphi_n^{} s_{ln}^{}\delta_{nn'}^{}\delta_{cc'}^{}
 \left(1+\frac{\p C_{cn}^s}{\p C_{cn}^l}\right) \frac{V_n}{\Delta t} 
 + \delta_{cc'}\sum_{n''} q_{cnn''} \frac{\p C_{cnn''}^l}{\p C_{cn'}^l} A_{nn''},\\
 %R_c:S_i'c'
-\dfrac{\p R_{cn}}{\p C_{i'c'n'}^l}&\eq 0,
+\left(\dfrac{\p R_{cn}}{\p C_{i'c'n'}^l}\right)_{C_j,\,C_c^l}^{} &\eq 0,
 \EA
 \end{subequations}
 \begin{subequations}
 \BA
 %R_ic:C_j'
-\dfrac{\p R_{icn}}{\p C_{j'n'}}&\eq \varphi_n^{} s_{ln}^{}\delta_{nn'}\frac{\p S_{icn}^l}{\p C_{j'n}} \frac{V_n}{\Delta t} + \sum_{n''} q_{cnn''} \frac{\p S_{ic,nn''}^l}{\p C_{j'n'}^{}} A_{nn''}-\delta_{nn'} V_n\frac{\p I_{icn}^l}{\p C_{j'n}},\\
+\left(\dfrac{\p R_{icn}}{\p C_{j'n'}}\right)_{C_c^l,\,S_{ic}^l}^{} &\eq \varphi_n^{} s_{ln}^{}\delta_{nn'}\frac{\p S_{icn}^l}{\p C_{j'n}} \frac{V_n}{\Delta t} + \sum_{n''} q_{cnn''} \frac{\p S_{ic,nn''}^l}{\p C_{j'n'}^{}} A_{nn''}-\delta_{nn'} V_n\frac{\p I_{icn}^l}{\p C_{j'n}},\\
 %R_ic:C_c'
-\dfrac{\p R_{icn}}{\p C_{c'}^l}&\eq \varphi_n^{} s_{ln}^{}\delta_{nn'}^{}\delta_{cc'}^{} \frac{\p S_{icn}^l}{\p C_{cn}}\frac{V_n}{\Delta t} + \delta_{cc'}^{}\sum_{n''} q_{cnn''} \frac{\p S_{ic,nn''}^l}{\p C_{cn'}^l} A_{nn''}\nonumber\\
+\left(\dfrac{\p R_{icn}}{\p C_{c'}^l}\right)_{C_j,\,S_{ic}^l}^{} &\eq \varphi_n^{} s_{ln}^{}\delta_{nn'}^{}\delta_{cc'}^{} \frac{\p S_{icn}^l}{\p C_{cn}}\frac{V_n}{\Delta t} + \delta_{cc'}^{}\sum_{n''} q_{cnn''} \frac{\p S_{ic,nn''}^l}{\p C_{cn'}^l} A_{nn''}\nonumber\\
 &\hspace{5cm} +\delta_{nn'}\delta_{cc'} V_n\left(\frac{\p\widetilde I_{cn}}{\p C_c^l}-\frac{\p I_{icn}^l}{\p C_{cn}}\right),\\
 %R_ic:S_i'c'
-\dfrac{\p R_{icn}}{\p S_{i'c'}^l}&\eq \varphi_n^{} s_{ln}^{}\delta_{nn'}\delta_{ii'}\delta_{cc'} \frac{V_n}{\Delta t} + \delta_{cc'}\sum_{n''} q_{cnn''} \frac{\p S_{ic,nn''}^l}{\p S_{icn'}^l} A_{nn''}
--\delta_{nn'}\delta_{cc'} V_n \frac{\p I_{icn}^l}{\p S_{i'cn}}.
+\left(\dfrac{\p R_{icn}}{\p S_{i'c'}^l}\right)_{C_j,\,C_c^l}^{} &\eq \varphi_n^{} s_{ln}^{}\delta_{nn'}\delta_{ii'}\delta_{cc'} \frac{V_n}{\Delta t} + \delta_{cc'}\sum_{n''} q_{cnn''} \frac{\p S_{ic,nn''}^l}{\p S_{icn'}^l} A_{nn''}\nonumber\\
+&\hspace{5cm}-\delta_{nn'}\delta_{cc'} V_n \frac{\p I_{icn}^l}{\p S_{i'cn}}.
 \EA
 \end{subequations}
 
