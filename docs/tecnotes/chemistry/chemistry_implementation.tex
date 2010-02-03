@@ -141,7 +141,7 @@
 \newcommand{\by}{\boldsymbol{y}}
 \newcommand{\bY}{\boldsymbol{Y}}
 \newcommand{\bz}{\boldsymbol{z}}
-%\newcommand{\b0}{\boldsymbol{0}}
+\newcommand{\bzero}{\boldsymbol{0}}
 
 \newcommand{\arrows}{~\rightleftharpoons~}
 \newcommand{\arrowstab}{\!\!\!\rightleftharpoons\!\!\!}
@@ -1467,7 +1467,7 @@ S_\a^{k+1} \eq \frac{
 \EN
 where
 \EQ
-N_\a \eq\omega_\a^k - \displaystyle\sum_{i} \dfrac{S_{i\a}^{k}}{1+k_{i\a}^b\Delta t},
+N_\a \eq\omega_\a^{k+1} - \displaystyle\sum_{i} \dfrac{S_{i\a}^{k}}{1+k_{i\a}^b\Delta t},
 \EN
 and
 \EQ
@@ -1488,7 +1488,7 @@ For the case of irreversible desorption with $k_{i\a}^b=0$, this expression redu
 \EQ
 S_{i\a}^{k+1} \eq S_{i\a}^k + k_{i\a}^f\Delta t \left[
 \frac{
-\omega_\a^k - \displaystyle\sum_{i'} S_{i'\a}^{k}
+\omega_\a^{k+1} - \displaystyle\sum_{i'} S_{i'\a}^{k}
 }
 {1+\Delta t\displaystyle\sum_{i'} k_{i'\a}^f Q_{i'}^{k+1}}
 \right] Q_i^{k+1}.
@@ -2005,7 +2005,7 @@ or, in terms of $\omega_c^{l,s}$:
 \EN
 yields the site conservation equation.
 
-\paragraph{Relation Between Mobile-Immobile Colloid Exchange Rates $\widetilde I_c$ and $I_c$:}
+\subsubsection{Relation Between Mobile-Immobile Colloid Exchange Rates $\widetilde I_c$ and $I_c$:}
 \BA
 \frac{\p\omega_c^s}{\p t} &\eq \frac{\p S_c^s}{\p t} + \sum_{i=1}^{N_c^{\rm srf}} \frac{\p S_{ic}^s}{\p t},\\
 &\eq \widetilde I_c + \sum_{i=1}^{N_c^{\rm srf}}\widetilde I_c,\\
@@ -2082,7 +2082,7 @@ R_j\eq 1+\frac{K_j^s}{K_j^l} \eq 1+K_{ls}^{-1}.
 
 \subsection{Numerical Implementation}
 
-\noindent {\bf Residual Function Independent and Dependent Variables} 
+\subsubsection{Residual Function Independent and Dependent Variables} 
 
 \begin{center}
 \begin{tabular}{ll}
@@ -2107,12 +2107,12 @@ R_{jn} &\eq \left[\varphi_n s_{ln} \big(\Psi_{jn}^{k+1}-\Psi_{jn}^k\big)
 + \varphi_n s_{ln}^{} \sum_{ic}\nu_{ji}^{c} \big(S_{icn}^{l,k+1}-S_{icn}^{l,k}\big)\right. \nonumber\\
 &\qquad\left. + \sum_{ic} \nu_{ji}^{c}\big(S_{icn}^{s,k+1}-S_{icn}^{s,k}\big) 
 + \sum_{im} \nu_{ji}^{m}\big(S_{in}^{m,k+1}-S_{in}^{m,k}\big) \right]\frac{V_n}{\Delta t}\nonumber \\
-&\qquad\qquad + \sum_{n'} \Big[\Omega_{jnn'}^{} + q_{cnn'} \sum_{ic}\nu_{ji}^{} S_{ic,nn'}^l \Big] A_{nn'}^{} + V_n^{}\sum_m\nu_{jm}^{}I_{mn}^{},
+&\qquad\qquad + \sum_{n'} \Big[\Omega_{jnn'}^{k+1} + q_{cnn'} \sum_{ic}\nu_{ji}^{} S_{ic,nn'}^{l,k+1} \Big] A_{nn'}^{} + V_n^{}\sum_m\nu_{jm}^{}I_{mn}^{k+1},
 \EA
 \noindent Mobile Colloids:
 \EQ
-R_{cn} \eq \Big[\varphi s_l^{} \big(C_{cn}^{l,k+1}-C_{cn}^{l,k}\big) 
-+ C_{cn}^{s,k+1}-C_{cn}^{s,k} \Big]\frac{V_n}{\Delta t} + \sum_{n'} q_{cnn'} C_{cnn'}^l A_{nn'}^{},
+R_{cn} \eq \Big[\varphi_n^{} s_{ln}^{} \big(C_{cn}^{l,k+1}-C_{cn}^{l,k}\big) 
++ C_{cn}^{s,k+1}-C_{cn}^{s,k} \Big]\frac{V_n}{\Delta t} + \sum_{n'} q_{cnn'} C_{cnn'}^{l,k+1} A_{nn'}^{},
 \EN
 \noindent Mobile Colloid Sorbed Species:
 \EQ
@@ -2153,26 +2153,36 @@ D_\a \eq 1+\displaystyle\sum_{i}\dfrac{k_{i\a}^f\Delta t}{1+k_{i\a}^b\Delta t} Q
 S_{ic,nn'}^l \eq \frac{d_n S_{icn}^l + d_{n'} S_{icn'}^l}{d_n + d_{n'}}.
 \EN
 
-\noindent Jacobian Structure:
+\subsubsection{Jacobian Structure}
+
+For a fully implicit formulation the nonlinear equations
 \EQ
-\bJ \delta\bx \eq -\bR
+\bR(\bx) \eq \bzero,
 \EN
-\noindent Equilibrium Colloid/Mineral Sorption Reactions:
+are solved for the logarithm of the concentration using the Newton-Raphson equations
 \EQ
+\bJ^{(i)} \delta\ln\bx^{(i+1)} \eq -\bR^{(i)},
+\EN
+for the $i$th iteration. The solution is then updated according to the equation
+\EQ
+\bx^{(i+1)} \eq \bx^{(i)} {\rm e}^{\delta\ln\bx^{(i+1)}}.
+\EN
+
+\paragraph{Equilibrium Colloid/Mineral Sorption Reactions}
+\EQ
+\renewcommand{\arraystretch}{2.5}
 \left(\begin{array}{cc} 
 \dfrac{\p R_{j}}{\p\ln C_{l}} & \dfrac{\p R_{j}}{\p\ln C_c^{l}}\\
-\dfrac{\p R_{c}}{\p\ln C_{l}} & \dfrac{\p R_{c}}{\p\ln C_{c'}^{l}}\\
+\dfrac{\p R_{c}}{\p\ln C_{l}} & \dfrac{\p R_{c}}{\p\ln C_{c}^{l}}\\
 \end{array}\right)
 \left[
 \begin{array}{c}
 \delta\ln C_j\\
-~\\
 \delta\ln C_c^l\\
 \end{array}
 \right] \eq
 -\left[\begin{array}{c}
 R_j\\
-~\\
 R_c\\
 \end{array}\right]
 \EN
@@ -2188,18 +2198,20 @@ R_c\\
 +\sum_{n''}\left[\frac{\p\Omega_{jnn''}}{\p C_{j'n'}}+q_{cnn''}\sum_{ic}\nu_{ji}^{c} \frac{\p S_{ic,nn''}^{l,k+1}}{\p C_{j'n'}}\right] A_{nn''}^{}\nonumber \\
 &\qquad+\delta_{nn'}^{} V_n^{}\sum_m\nu_{jm}^{}\frac{\p I_{mn}}{\p C_{j'n}},\\
 %R_j:C_c'
-\left(\dfrac{\p R_{jn}}{\p C_{c'n'}^l}\right)_{C_j^{}}^{} &\eq \delta_{jc'}\delta_{nn'}\left[ 
-\varphi_n^{} s_{ln}^{}\sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{l,k+1}}{\p C_{c'n}^l} 
-+ \sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{s,k+1}}{\p C_{c'n}^l}
+\left(\dfrac{\p R_{jn}}{\p C_{cn'}^l}\right)_{C_j^{}}^{} &\eq \delta_{nn'}\left[ 
+\varphi_n^{} s_{ln}^{}\sum_{i} \nu_{ji}^{c} \frac{\p S_{ic}^{l,k+1}}{\p C_{cn}^l} 
++ \sum_{i} \nu_{ji}^{c} \frac{\p S_{ic}^{s,k+1}}{\p C_{cn}^l}
 \right] \frac{V_n}{\Delta t} \nonumber\\
-&\qquad\qquad+\sum_{n''} q_{cnn''}\sum_{ic}\nu_{ji}^{c} \frac{\p S_{ic,nn''}^{l,k+1}}{\p C_{c'n'}^l} A_{nn''}^{}.
+&\qquad\qquad+\sum_{n''} q_{cnn''}^{}\sum_{i}\nu_{ji}^{c} \frac{\p S_{ic,nn''}^{l,k+1}}{\p C_{cn'}^l} A_{nn''}^{},\\
+\left(\dfrac{\p R_{cn}}{\p C_{jn'}^{}}\right)_{C_j^{}}^{} &\eq 0,\\
+\left(\dfrac{\p R_{cn}}{\p C_{cn'}^l}\right)_{C_j^{}}^{} &\eq \delta_{nn'} \varphi_n s_{ln} \Big(1+\frac{\p C_{cn}^s}{\p C_{cn}^l}\Big)\frac{V_n}{\Delta t}+\sum_{n'} q_{cnn'}^{}\frac{\p C_{cnn'}^l}{\p C_{cn}^l} A_{nn'}^{}.
 \EA
 \end{subequations}
 
-\noindent Kinetic Colloid/Mineral Sorption Reactions:
+\paragraph{Kinetic Colloid/Mineral Sorption Reactions}
 %\renewcommand{\tabcolsep}{1cm}
-\renewcommand{\arraystretch}{2.5}
 \EQ
+\renewcommand{\arraystretch}{2.5}
 \left(\begin{array}{cc|c} 
 \dfrac{\p R_{j}}{\p\ln C_{j'}} & \dfrac{\p R_{j}}{\p\ln C_{c'}} & \dfrac{\p R_{j}}{\p\ln S_{i'c'}} \\
 \dfrac{\p R_{c}}{\p\ln C_{j'}} & \dfrac{\p R_{c}}{\p\ln C_{c'}} & \dfrac{\p R_{c}}{\p\ln S_{i'c'}} \\

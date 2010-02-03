@@ -321,10 +321,10 @@ subroutine Init(simulation)
 
     ! If we are using a structured grid, set the corresponding flow DA 
     ! as the DA for the PCEXOTIC preconditioner, in case we choose to use it.
-    ! The PCExoticSetDA() call is ignored if the PCEXOTIC preconditioner is 
+    ! The PCSetDA() call is ignored if the PCEXOTIC preconditioner is 
     ! no used.  We need to put this call after SolverCreateSNES() so that 
     ! KSPSetFromOptions() will already have been called.
-    ! I also note that this preconditioner is intended only for the flow, 
+    ! I also note that this preconditioner is intended only for the flow 
     ! solver.  --RTM
     if (realization%discretization%itype == STRUCTURED_GRID) then
       call PCSetDA(flow_solver%pc, &
@@ -2600,10 +2600,8 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
     call mpi_bcast(count,ONE_INTEGER,MPI_INTEGER,option%io_rank, &
                    option%mycomm,ierr)      
     if (count /= grid%nmax) then
-      write(option%io_buffer, &
-            '("Number of data in file (",i8, &
-            &") does not match size of vector (", &
-            &i8,")")'), count, grid%nlmax
+      write(option%io_buffer,'("Number of data in file (",i8, &
+      & ") does not match size of vector (",i8,")")') count, grid%nlmax
       call printErrMsg(option)
     endif
     close(fid)
