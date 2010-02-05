@@ -1188,15 +1188,15 @@ subroutine InputGetCommandLineInt(string,int_value,found,option)
   ierr = 0
   ! do not initialize int_value, as it may already have a value
   found = PETSC_FALSE
-  narg = command_argument_count()
+  narg = getCommandLineArgumentCount()
   string = adjustl(string)
   len = len_trim(string)
   do iarg = 1, narg
-    call get_command_argument(iarg,string2)
+    call getCommandLineArgument(iarg,string2)
     if (StringCompare(string,string2,len)) then
       found = PETSC_TRUE
       if (iarg+1 <= narg) then
-        call get_command_argument(iarg+1,string2)
+        call getCommandLineArgument(iarg+1,string2)
         call InputReadInt(string2,option,int_value,ierr)
       else
         ierr = 1
@@ -1240,15 +1240,15 @@ subroutine InputGetCommandLineReal(string,double_value,found,option)
   ierr = 0
   ! do not initialize int_value, as it may already have a value
   found = PETSC_FALSE
-  narg = command_argument_count()
+  narg = getCommandLineArgumentCount()
   string = adjustl(string)
   len = len_trim(string)
   do iarg = 1, narg
-    call get_command_argument(iarg,string2)
+    call getCommandLineArgument(iarg,string2)
     if (StringCompare(string,string2,len)) then
       found = PETSC_TRUE
       if (iarg+1 <= narg) then
-        call get_command_argument(iarg+1,string2)
+        call getCommandLineArgument(iarg+1,string2)
         call InputReadDouble(string2,option,double_value,ierr)
       else
         ierr = 1
@@ -1389,6 +1389,49 @@ subroutine InputGetCommandLineTruth(string,truth_value,found,option)
   enddo
   
 end subroutine InputGetCommandLineTruth
+
+! ************************************************************************** !
+!
+! getCommandLineArgumentCount: Returns the number of command line arguments
+! author: Glenn Hammond
+! date: 02/05/10
+!
+! ************************************************************************** !
+function getCommandLineArgumentCount()
+
+  implicit none
+  
+  PetscInt :: getCommandLineArgumentCount
+  
+#ifndef ABSOFT
+  getCommandLineArgumentCount = command_argument_count()
+#else
+  getCommandLineArgumentCount = iargc()
+#endif
+
+end function getCommandLineArgumentCount
+
+! ************************************************************************** !
+!
+! getCommandLineArgument: Returns the ith command line argument
+! author: Glenn Hammond
+! date: 02/05/10
+!
+! ************************************************************************** !
+subroutine getCommandLineArgument(i,arg)
+
+  implicit none
+  
+  PetscInt :: i
+  character(len=*) :: arg
+
+#ifndef ABSOFT
+    call command_argument_count(i,arg)
+#else
+    call getarg(i,arg)
+#endif
+
+end subroutine getCommandLineArgument
 
 ! ************************************************************************** !
 !
