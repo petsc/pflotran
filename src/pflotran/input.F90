@@ -1426,7 +1426,7 @@ subroutine getCommandLineArgument(i,arg)
   character(len=*) :: arg
 
 #ifndef ABSOFT
-    call command_argument_count(i,arg)
+    call get_command_argument(i,arg)
 #else
     call getarg(i,arg)
 #endif
