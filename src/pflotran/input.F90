@@ -1401,6 +1401,8 @@ function getCommandLineArgumentCount()
 
   implicit none
   
+  integer :: iargc
+  
   PetscInt :: getCommandLineArgumentCount
   
   ! initialize to zero
