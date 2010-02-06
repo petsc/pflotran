@@ -1292,7 +1292,7 @@ subroutine InputGetCommandLineString(string,string_value,found,option)
   ierr = 0
   ! do not initialize int_value, as it may already have a value
   found = PETSC_FALSE
-  narg = command_argument_count()
+  narg = getCommandLineArgumentCount()
   string = adjustl(string)
   len = len_trim(string)
   do iarg = 1, narg
@@ -1354,7 +1354,7 @@ subroutine InputGetCommandLineTruth(string,truth_value,found,option)
   ierr = 0
   ! do not initialize int_value, as it may already have a value
   found = PETSC_FALSE
-  narg = command_argument_count()
+  narg = getCommandLineArgumentCount()
   string = adjustl(string)
   len = len_trim(string)
   do iarg = 1, narg
