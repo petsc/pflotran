@@ -1941,10 +1941,11 @@ coupled to the immobile colloid concentration field
 \frac{\p \omega_c^s}{\p t} \eq \Gamma_c I_c.
 \EN
 
-\subsubsection{Primary Species Transport Equations}
+\subsubsection{Collolid-Facilitated Transport Equations}
 %\EQ
 %\frac{\p}{\p t} \varphi s_l\Psi_j +\bnabla\cdot\bOmega_j \eq - \sum_{ic} \nu_{ji} \frac{\p}{\p t}\big(\varphi s_l S_{ic}^l\big) - \sum_{ic} \nu_{ji} \frac{\p S_{ic}^s}{\p t} - \sum_{im} \nu_{jm} \frac{\p S_{i}^{m}}{\p t} - \sum_m\nu_{jm}I_m
 %\EN
+\paragraph{Primary Species:}
 \EQ
 \frac{\p}{\p t} \varphi s_l\Psi_j +\bnabla\cdot\bOmega_j \eq - \sum_{ic} \nu_{ji}^c I_{ic}^l - \sum_{ic} \nu_{ji}^c I_{ic}^s - \sum_{im} \nu_{ji}^m I_i^m - \sum_m\nu_{jm}I_m
 \EN
@@ -1980,13 +1981,8 @@ K_{ic} \eq \frac{k_{ic}^f}{k_{ic}^b}.
 I_i^m &\eq k_{im}^f Q_{ic}^{} S_{m} - k_{im}^b S_{i}^{m},\\
 &\eq k_{im}^b \big(K_{im}^{} Q_{ic}^{} S_{m} - S_{i}^{m}\big).
 \EA
-\noindent Alternatively (note that the rate $\widetilde I_c$ cancels): % local equilibrium:
-\BA
-\frac{\p}{\p t} &\left[\varphi s_l^{}\Psi_j^{} + \varphi s_l^{}\sum_{ic} \nu_{ji}^{c} S_{ic}^l + \sum_{ic} \nu_{ji}^{c} S_{ic}^s + \sum_{im} \nu_{ji}^{m} S_i^{m} \right] \nonumber\\
-& \qquad\qquad\qquad + \bnabla\cdot\left[\bOmega_j^{} + \sum_{ic}\bq_c^{}\nu_{ji}^{c} S_{ic}^l \right] \eq -\sum_m\nu_{jm}^{}I_m^{}.
-\EA
 
-\noindent Site Conservation:
+\subsubsection{Site Conservation}
 \begin{subequations}
 \EQ
 \frac{\p}{\p t} \Big( \varphi s_l^{} S_{ic}^l + S_{ic}^s\Big) + \bnabla\cdot\bq_c S_{ic}^l \eq I_{ic}^l + I_{ic}^s,
@@ -2004,6 +2000,34 @@ or, in terms of $\omega_c^{l,s}$:
 \frac{\p}{\p t} \Big( \varphi s_l^{} \omega_c^l + \omega_c^s \Big) + \bnabla\cdot\bq_c \omega_c^l \eq 0,
 \EN
 yields the site conservation equation.
+
+\subsubsection{Independent Set of Governing Equations}
+
+Alternatively (note that the rate $\widetilde I_c$ cancels): 
+% local equilibrium:
+\BA
+\frac{\p}{\p t} &\left[\varphi s_l^{}\Psi_j^{} + \varphi s_l^{}\sum_{ic} \nu_{ji}^{c} S_{ic}^l + \sum_{ic} \nu_{ji}^{c} S_{ic}^s + \sum_{im} \nu_{ji}^{m} S_i^{m} \right] \nonumber\\
+& \qquad\qquad\qquad + \bnabla\cdot\left[\bOmega_j^{} + \sum_{ic}\bq_c^{}\nu_{ji}^{c} S_{ic}^l \right] \eq -\sum_m\nu_{jm}^{}I_m^{}.
+\EA
+\EQ
+\frac{\p}{\p t} \varphi s_l^{} S_{ic}^l + \bnabla\cdot\big(\bq_c S_{ic}^l\big) \eq -\widetilde I_c^{} + I_{ic}^l,
+\EN
+\EQ
+\frac{\p S_{ic}^s}{\p t} \eq \widetilde I_c^{} + I_{ic}^s.
+\EN
+\noindent Auxiliary Relations:
+\EQ
+\omega_c^{l,s} \eq S_c^{l,s}+ \sum_iS_{ic}^{l,s}\eq \Gamma_c^{} C_c^{l,s},
+\EN
+\EQ
+I_{ic}^{l,\,s} \eq k_{ic}^f Q_{ic}^{} \Big(\Gamma_c^{} C_{c}^{l,\,s}-\sum_iS_{ic}^{l,s}\big) - k_{ic}^b S_{ic}^{l,\,s},
+\EN
+\EQ
+I_c \eq k_c^f C_c^l - k_c^b C_c^s,
+\EN
+\EQ
+\Gamma_c I_c \eq \widetilde I_c.
+\EN
 
 \subsubsection{Relation Between Mobile-Immobile Colloid Exchange Rates $\widetilde I_c$ and $I_c$:}
 \BA
