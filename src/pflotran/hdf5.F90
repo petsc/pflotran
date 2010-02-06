@@ -1,8 +1,5 @@
 module HDF5_module
 
-#if defined(PETSC_HAVE_HDF5)
-  use hdf5
-#endif
   use Logging_module
 
   implicit none
