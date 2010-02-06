@@ -6,39 +6,8 @@ pflotran_src = ./
 common_src   = ./
 bindir = ./${PETSC_ARCH}/bin
 
-ifdef hdf5
-  ifdef jaguar
-    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5
-    HDF5_LIBS = $(HDF5_FLIB) -lhdf5_fortran -lhdf5 -lz -lsz
-    found=1
-  endif 
-  ifeq ($(machine),jaguar)
-    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5
-    HDF5_LIBS = $(HDF5_FLIB) -lhdf5_fortran -lhdf5 -lz -lsz
-    found=1
-  endif 
-  ifeq ($(machine),franklin)
-# hdf5 libs are screwed up on franklin.  for now use hardwired default
-    HDF5_FLAGS = $(HDF5) -DUSE_HDF5 -I$(HDF5_DIR_NERSC)/lib
-    HDF5_LIBS = $(HDF5)
-    found=1
-  endif
-  ifndef found
-    HDF5_FLAGS = -I$(HDF5_INCLUDE) -I$(HDF5_LIB) -DUSE_HDF5
-    HDF5_LIBS = -L$(HDF5_LIB) -lhdf5_fortran -lhdf5 -lz  
-#    HDF5_LIBS = -L$(HDF5_LIB) $(HDF5_LIB)/libhdf5_fortran.a $(HDF5_LIB)/libhdf5.a -lz
-  endif
-endif
-
-ifdef hdf5-glenn
-    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5 -DHDF5_BROADCAST
-    HDF5_LIBS = $(HDF5_FLIB) -lhdf5_fortran -lhdf5 -lz -lsz
-endif
-
 ifdef hdf5-vamsi
-    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5 -DVAMSI_HDF5 -DVAMSI_HDF5_READ -DVAMSI_HDF5_WRITE -DVAMSI_STAGE_BARRIER 
-#    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5 -DVAMSI_HDF5 -DVAMSI_DEFAULT -DVAMSI_HDF5_READ -DVAMSI_HDF5_WRITE -DVAMSI_STAGE_BARRIER
-    HDF5_LIBS = $(HDF5_FLIB) -lhdf5_fortran -lhdf5 -lz -lsz
+    HDF5_FLAGS = -DVAMSI_HDF5 -DVAMSI_HDF5_READ -DVAMSI_HDF5_WRITE -DVAMSI_STAGE_BARRIER 
 endif   
 
 ifdef compile_broken
@@ -66,23 +35,19 @@ COLL_FLAG = -DCOLL
 endif
 
 ifdef vamsi_hdf5
-  HDF5_FLAGS += -DUSE_HDF5 -DVAMSI_HDF5 -DVAMSI_DEFAULT -DVAMSI_HDF5_READ -DVAMSI_HDF5_WRITE -DVAMSI_STAGE_BARRIER
+  HDF5_FLAGS += -DVAMSI_HDF5 -DVAMSI_DEFAULT -DVAMSI_HDF5_READ -DVAMSI_HDF5_WRITE -DVAMSI_STAGE_BARRIER
 endif
 
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) \
           $(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG) $(TEMP_FLAG)\
  					$(CHUAN_FLAG) $(COLL_FLAG)
-LIBS = $(HDF5_LIBS)
 
 CFLAGS		 = 
 FFLAGS		 = #-Rb
 CPPFLAGS         = ${MYFLAGS}
 FPPFLAGS         = ${MYFLAGS}
-ifdef ABSOFT
-FPPFLAGS         += ${MYFLAGS} -p${HDF5_LIB}
-endif
 
-CLEANFILES       = pflotran pflotran_fc
+CLEANFILES       = pflotran 
 
 ifdef petscrel
  include ${PETSC_DIR}/bmake/common/base
