@@ -1403,7 +1403,7 @@ function getCommandLineArgumentCount()
   
   PetscInt :: getCommandLineArgumentCount
   
-#ifndef USE_ABSOFT_ARGS
+#ifndef USE_ABSOFT
   getCommandLineArgumentCount = command_argument_count()
 #else
   getCommandLineArgumentCount = iargc()
@@ -1425,7 +1425,7 @@ subroutine getCommandLineArgument(i,arg)
   PetscInt :: i
   character(len=*) :: arg
 
-#ifndef USE_ABSOFT_ARGS
+#ifndef USE_ABSOFT
     call get_command_argument(i,arg)
 #else
     call getarg(i,arg)
