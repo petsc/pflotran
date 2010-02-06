@@ -1,6 +1,6 @@
 module HDF5_module
 
-#ifdef USE_HDF5
+#if defined(PETSC_HAVE_HDF5)
   use hdf5
 #endif
   use Logging_module
@@ -23,7 +23,7 @@ module HDF5_module
   PetscInt :: write_bcast_size = HDF5_WRITE_BCAST_SIZE
 #endif  
 
-#ifdef USE_HDF5
+#if defined(PETSC_HAVE_HDF5)
   PetscMPIInt :: hdf5_err
   PetscMPIInt :: io_rank
 ! 64-bit stuff
@@ -52,7 +52,7 @@ module HDF5_module
   
 contains
 
-#ifdef USE_HDF5
+#if defined(PETSC_HAVE_HDF5)
 ! ************************************************************************** !
 !
 ! HDF5MapLocalToNaturalIndices: Set up indices array that maps local cells to 
@@ -2308,7 +2308,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
 
 end subroutine HDF5ReadArray
 
-#endif ! USE_HDF5
+#endif !PETSC_HAVE_HDF5
 
 ! ************************************************************************** !
 !
@@ -2319,7 +2319,7 @@ end subroutine HDF5ReadArray
 ! ************************************************************************** !
 subroutine HDF5ReadRegionFromFile(realization,region,filename)
 
-#ifdef USE_HDF5
+#if defined(PETSC_HAVE_HDF5)
   use hdf5
 #endif
   
@@ -2344,7 +2344,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
 
   character(len=MAXSTRINGLENGTH) :: string 
 
-#ifdef USE_HDF5  
+#if defined(PETSC_HAVE_HDF5)  
   integer(HID_T) :: file_id
   integer(HID_T) :: grp_id, grp_id2
   integer(HID_T) :: prop_id
@@ -2354,10 +2354,10 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   PetscInt, pointer :: indices(:)
   PetscInt, pointer :: integer_array(:)
   
-#ifndef USE_HDF5
+#if !defined(PETSC_HAVE_HDF5)
   option => realization%option
   call printMsg(option,'')
-  write(option%io_buffer,'("PFLOTRAN must be compiled with -DUSE_HDF5 to ", &
+  write(option%io_buffer,'("PFLOTRAN must be compiled with HDF5 to ", &
                            &"read HDF5 formatted structured grids.")')
   call printErrMsg(option)
 #else
@@ -2490,7 +2490,7 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
                                            group_name, &
                                            dataset_name,append_realization_id)
 
-#ifdef USE_HDF5
+#if defined(PETSC_HAVE_HDF5)
   use hdf5
 #endif
   
@@ -2521,7 +2521,7 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
 
   character(len=MAXSTRINGLENGTH) :: string 
 
-#ifdef USE_HDF5  
+#if defined(PETSC_HAVE_HDF5)  
   integer(HID_T) :: file_id
   integer(HID_T) :: grp_id
   integer(HID_T) :: prop_id
@@ -2532,10 +2532,10 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
   PetscInt, pointer :: indices(:)
   PetscInt, allocatable :: integer_array(:)
   
-#ifndef USE_HDF5
+#if !defined(PETSC_HAVE_HDF5)
   option => realization%option
   call printMsg(option,'')
-  write(option%io_buffer,'("PFLOTRAN must be compiled with -DUSE_HDF5 to ", &
+  write(option%io_buffer,'("PFLOTRAN must be compiled with HDF5 to ", &
                            &"read HDF5 formatted structured grids.")')
   call printErrMsg(option)
 #else
@@ -2712,7 +2712,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
                                         group_name, &
                                         dataset_name,append_realization_id)
 
-#ifdef USE_HDF5
+#if defined(PETSC_HAVE_HDF5)
   use hdf5
 #endif
   
@@ -2743,7 +2743,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
 
   character(len=MAXSTRINGLENGTH) :: string 
 
-#ifdef USE_HDF5  
+#if defined(PETSC_HAVE_HDF5)  
   integer(HID_T) :: file_id
   integer(HID_T) :: grp_id
   integer(HID_T) :: prop_id
@@ -2754,10 +2754,10 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
   PetscInt, pointer :: indices(:)
   PetscReal, allocatable :: real_array(:)
   
-#ifndef USE_HDF5
+#if !defined(PETSC_HAVE_HDF5)
   option => realization%option
   call printMsg(option,'')
-  write(option%io_buffer,'("PFLOTRAN must be compiled with -DUSE_HDF5 to ", &
+  write(option%io_buffer,'("PFLOTRAN must be compiled with HDF5 to ", &
                            &"read HDF5 formatted structured grids.")')
   call printErrMsg(option)
 #else

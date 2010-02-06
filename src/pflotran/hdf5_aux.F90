@@ -1,6 +1,6 @@
 module HDF5_aux_module
 
-#ifdef USE_HDF5
+#if defined(PETSC_HAVE_HDF5)
   use hdf5
 #endif
   use Logging_module
@@ -13,7 +13,7 @@ module HDF5_aux_module
   
   PetscErrorCode :: ierr
 
-#ifdef USE_HDF5
+#if defined(PETSC_HAVE_HDF5)
   PetscMPIInt :: hdf5_err
   PetscMPIInt :: io_rank
 ! 64-bit stuff
@@ -31,7 +31,7 @@ contains
 #endif
   
 
-#ifdef USE_HDF5
+#if defined(PETSC_HAVE_HDF5)
 
 ! ************************************************************************** !
 !

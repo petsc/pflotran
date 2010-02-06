@@ -4700,14 +4700,14 @@ subroutine OutputHDF5(realization)
   
   use AMR_Grid_Module
  
-#ifndef USE_HDF5
+#if !defined(PETSC_HAVE_HDF5)
   implicit none
   
   type(realization_type) :: realization
 
   call printMsg(realization%option,'')
   write(realization%option%io_buffer, &
-        '("PFLOTRAN must be compiled with -DUSE_HDF5 to &
+        '("PFLOTRAN must be compiled with HDF5 to &
         &write HDF5 formatted structured grids.")')
   call printErrMsg(realization%option)
 #else
@@ -5476,14 +5476,14 @@ subroutine OutputMAD(realization)
   
   use AMR_Grid_Module
  
-#ifndef USE_HDF5
+#if !defined(PETSC_HAVE_HDF5)
   implicit none
   
   type(realization_type) :: realization
 
   call printMsg(realization%option,'')
   write(realization%option%io_buffer, &
-        '("PFLOTRAN must be compiled with -DUSE_HDF5 to ", &
+        '("PFLOTRAN must be compiled with HDF5 to ", &
         &"write HDF5 formatted structured grids.")')
   call printErrMsg(realization%option)
 #else
@@ -5600,7 +5600,7 @@ subroutine OutputMAD(realization)
 #endif
 end subroutine OutputMAD
 
-#ifdef USE_HDF5
+#if defined(PETSC_HAVE_HDF5)
 ! ************************************************************************** !
 !
 ! WriteHDF5FluxVelocities: Print flux velocities to HDF5 file

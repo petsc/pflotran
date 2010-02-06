@@ -1338,7 +1338,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
   use Option_module
   use Logging_module
   use HDF5_aux_module
-#ifdef USE_HDF5
+#if defined(PETSC_HAVE_HDF5)
   use hdf5
 #endif
 
@@ -1361,7 +1361,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
   PetscReal, pointer :: real_buffer(:)
   PetscErrorCode :: ierr
 
-#ifdef USE_HDF5  
+#if defined(PETSC_HAVE_HDF5)  
   integer(HID_T) :: file_id
   integer(HID_T) :: prop_id
   PetscMPIInt :: hdf5_err
@@ -1422,8 +1422,8 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
     endif
 
     if (index(filename,'.h5') > 0) then
-#ifndef USE_HDF5
-      write(option%io_buffer,'("PFLOTRAN must be compiled with -DUSE_HDF5 to ", &
+#if !defined(PETSC_HAVE_HDF5)
+      write(option%io_buffer,'("PFLOTRAN must be compiled with HDF5 to ", &
                                &"read HDF5 formatted flow conditions.")')
       call printErrMsg(option)
 #else   

@@ -618,7 +618,7 @@ subroutine Init(simulation)
   call printMsg(option," ")
   call printMsg(option,"  Finished Initialization")
   
-#ifdef USE_HDF5
+#if defined(PETSC_HAVE_HDF5)
 #ifndef HDF5_BROADCAST 
 #ifndef VAMSI_HDF5_READ
   call printMsg(option,"Default HDF5 method is used in Initialization")
@@ -633,7 +633,7 @@ subroutine Init(simulation)
      write(*,'(" HDF5_READ_BCAST_SIZE = ",i6)') option%read_bcast_size
   endif  
 #endif !VAMSI_HDF5_READ
-#endif !USE_HDF5
+#endif !PETSC_HAVE_HDF5
 
   call PetscLogEventEnd(logging%event_init,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &

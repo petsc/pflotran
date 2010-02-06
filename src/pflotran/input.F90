@@ -1296,11 +1296,11 @@ subroutine InputGetCommandLineString(string,string_value,found,option)
   string = adjustl(string)
   len = len_trim(string)
   do iarg = 1, narg
-    call get_command_argument(iarg,string2)
+    call getCommandLineArgument(iarg,string2)
     if (StringCompare(string,string2,len)) then
       found = PETSC_TRUE
       if (iarg+1 <= narg) then
-        call get_command_argument(iarg+1,string2)
+        call getCommandLineArgument(iarg+1,string2)
         call InputReadNChars(string2,string_value,MAXSTRINGLENGTH, &
                              PETSC_TRUE,ierr)
         if (string_value(1:1) == '-') then
@@ -1358,11 +1358,11 @@ subroutine InputGetCommandLineTruth(string,truth_value,found,option)
   string = adjustl(string)
   len = len_trim(string)
   do iarg = 1, narg
-    call get_command_argument(iarg,string2)
+    call getCommandLineArgument(iarg,string2)
     if (StringCompare(string,string2,len)) then
       found = PETSC_TRUE
       if (iarg+1 <= narg) then
-        call get_command_argument(iarg+1,string2)
+        call getCommandLineArgument(iarg+1,string2)
         call InputReadWord(string2,word,PETSC_TRUE,ierr)
       else
         ! check if no argument exists, which is valid and means 'true'
@@ -1403,9 +1403,12 @@ function getCommandLineArgumentCount()
   
   PetscInt :: getCommandLineArgumentCount
   
-#ifndef USE_ABSOFT
+  ! initialize to zero
+  getCommandLineArgumentCount = 0
+  
+#if defined(HAVE_GET_COMMAND_ARGUMENT)
   getCommandLineArgumentCount = command_argument_count()
-#else
+#elif defined(HAVE_GETARG)
   getCommandLineArgumentCount = iargc()
 #endif
 
@@ -1425,10 +1428,13 @@ subroutine getCommandLineArgument(i,arg)
   PetscInt :: i
   character(len=*) :: arg
 
-#ifndef USE_ABSOFT
-    call get_command_argument(i,arg)
-#else
-    call getarg(i,arg)
+  integer*4 :: fortran_int
+
+  fortran_int = i
+#if defined(HAVE_GET_COMMAND_ARGUMENT)
+  call get_command_argument(fortran_int,arg)
+#elif defined(HAVE_GETARG)
+  call getarg(fortran_int,arg)
 #endif
 
 end subroutine getCommandLineArgument
