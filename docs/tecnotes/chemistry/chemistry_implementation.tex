@@ -2318,11 +2318,11 @@ A_{nn''}^{}
 \noindent Auxiliary Derivatives (Kinetic Sorption):
 \begin{subequations}
 \BA
-\frac{\p S_{c}^{s}}{\p\ln C_{j}} &\eq ,\\
+\frac{\p S_{c}^{s}}{\p\ln C_{j}} &\eq -\frac{N_c}{\Delta t D_c^2} \sum_i \frac{k_{ic}^f}{1+k_{ic}^b\Delta t} \frac{\p Q_{ic}}{\p\ln C_j},\\
 %\EN
 %\EQ
-\frac{\p S_{ic}^{s}}{\p\ln C_{j}} &\eq\frac{k_{ic}^f}{1+k_{ic}^b \Delta t} \left(
-\frac{N_c}{D_c}\right) \nu_{ji}^c Q_{ic}^{k+1},\\
+%\frac{\p S_{ic}^{s}}{\p\ln C_{j}} &\eq\frac{k_{ic}^f}{1+k_{ic}^b \Delta t} \left(
+%\frac{N_c}{D_c}\right) \nu_{ji}^c Q_{ic}^{k+1},\\
 %\EN
 %\EQ
 \frac{\p S_{i}^m}{\p\ln C_{j}} &\eq \frac{k_{im}^f}{1+k_{im}^b \Delta t} \left(
@@ -2332,9 +2332,9 @@ A_{nn''}^{}
 \frac{\p S_{ic}^s}{\p\ln C_{c}^l} &\eq C_c^l\frac{S_{ic}^s}{C_c^s}\frac{k_c^f \Delta t}{1+k_c^f\Delta t},\\
 %\EN
 %\EQ
-\frac{\p I_{icn}^l}{\p C_{j'n}} \eq ,\\
-\frac{\p S_{ic,n}^l}{\p C_{cn'}^l} \eq ,\\
-\frac{\p I_{icn}^l}{\p S_{i'cn}} \eq ,\\
+\frac{\p I_{icn}^l}{\p\ln C_{j'n}} &\eq k_{ic}^f \ldots,\\
+%\frac{\p S_{ic,n}^l}{\p C_{cn'}^l} &\eq ,\\
+\frac{\p I_{icn}^l}{\p S_{i'cn}} &\eq -k_{ic}^b,\\
 %\EN
 %\EQ
 \frac{\p C_{c}^s}{\p C_{c}^l} &\eq \frac{k_c^f \Delta t}{1+k_c^f\Delta t}.
