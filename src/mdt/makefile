@@ -1,22 +1,8 @@
 common_src   = ./
 
-#hdf5 = 1
-ifdef hdf5
-  ifndef jaguar
-    HDF5_FLAGS = -I${HDF5_INCLUDE} -DUSE_HDF5
-    HDF5_LIBS = -L${HDF5_LIB} -lhdf5 -lz
-  else
-# the below is for jaguar
-    HDF5_FLAGS = $(HDF5_CLIB) -DUSE_HDF5
-    HDF5_LIBS = $(HDF5_CLIB) -lhdf5 -lz
-  endif
-endif
-
-LIBS = ${HDF5_LIBS}
-
-CFLAGS		 =  ${HDF5_FLAGS}
+CFLAGS		 = 
 FFLAGS		 = 
-CPPFLAGS         = ${HDF5_FLAGS}
+CPPFLAGS         = 
 FPPFLAGS         = 
 CLEANFILES       = mdt
 
@@ -24,7 +10,8 @@ CLEANFILES       = mdt
 ifdef rel
  include ${PETSC_DIR}/bmake/common/base
 else
- include ${PETSC_DIR}/conf/base
+ include ${PETSC_DIR}/conf/variables
+ include ${PETSC_DIR}/conf/rules
 endif
 
 mdt_obj = ${common_src}AsciiGrid.o \

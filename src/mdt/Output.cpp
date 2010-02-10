@@ -154,7 +154,7 @@ void Output::printBoundarySets() {
 
 void Output::printHDFMaterialsAndRegions() {
 
-#ifdef USE_HDF5
+#if defined(PETSC_HAVE_HDF5)
   PetscPrintf(PETSC_COMM_WORLD,"Printing HDF Materials and Regions.\n");
 
   char filename[1024];
@@ -287,7 +287,7 @@ void Output::printHDFMaterialsAndRegions() {
 
 void Output::printHDFMesh() {
 
-#ifdef USE_HDF5
+#if defined(PETSC_HAVE_HDF5)
   PetscPrintf(PETSC_COMM_WORLD,"Printing HDF grid.\n");
 
   HDF *file = new HDF("grid.h5",1);
@@ -598,7 +598,7 @@ void Output::printHDFMesh() {
 
 void Output::printHDFSieveMesh() {
 
-#ifdef USE_HDF5
+#if defined(PETSC_HAVE_HDF5)
   PetscPrintf(PETSC_COMM_WORLD,"Printing HDF Sieve grid.\n");
 
   HDF *file = new HDF("sieve.h5",1);
