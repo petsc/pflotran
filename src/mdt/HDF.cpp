@@ -1,7 +1,6 @@
-#ifdef USE_HDF5
-
 #include "HDF.h"
 
+#if defined(PETSC_HAVE_HDF5)
 
 static PetscInt neg_one = -1;
 

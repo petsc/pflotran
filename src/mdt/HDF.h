@@ -3,6 +3,8 @@
 
 #include "petsc.h"
 
+#if defined(PETSC_HAVE_HDF5)
+
 #include "hdf5.h"
 
 //#ifdef PETSC_USE_64BIT_INDICES
@@ -64,4 +66,5 @@ private:
   
 };
 
+#endif /*PETSC_HAVE_HDF5*/
 #endif /*HDF_H_*/
