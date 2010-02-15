@@ -78,6 +78,7 @@ public:
   PetscReal getRotationDegrees();
   Vec getGridCellMaterialIDs();
   Vec getGridCellActivities();
+  PetscInt getNumInactiveCells();
   void setGridSpacing(PetscReal *dx, PetscReal *dy, PetscReal *dz);
   void setGridSpacing(PetscReal dx, PetscReal dy, PetscReal dz);
   void setLocalGridSpacing();

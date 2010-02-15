@@ -575,6 +575,17 @@ Vec Grid::getGridCellActivities() {
   return v;
 }
 
+
+PetscInt Grid::getNumInactiveCells() {
+  PetscInt count = 0;
+  PetscInt global_count = 0;
+  for (PetscInt icell=0; icell<num_cells_local; icell++) {
+    if (cells[icell].getActive() == 0) count++;
+  }
+  MPI_Allreduce(&count,&global_count,1,MPI_INT,MPI_SUM,PETSC_COMM_WORLD);
+  return global_count;
+}
+
 void Grid::receiveFlag(PetscInt *flag, PetscInt direction) {
   structuredGrid->receiveFlag(flag,direction);
 }
