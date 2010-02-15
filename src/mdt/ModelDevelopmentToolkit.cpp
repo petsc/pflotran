@@ -49,6 +49,10 @@ int main(int argc, char **args) {
 //    ifc_2d = new IFC_2D(&grid);
   //  testcase = new TestCase(&grid);
 
+  if (myrank == 0) printf("\n %d inactive cells out of %d cells total\n\n",
+                          grid->getNumInactiveCells(),
+                          grid->getNumberOfCellsGlobal());
+
   Output *out = new Output(grid);
 
 #if 1
