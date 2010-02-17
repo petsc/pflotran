@@ -55,7 +55,7 @@ int main(int argc, char **args) {
 
   Output *out = new Output(grid);
 
-#if 1
+#if 0
   PetscGetTime(&start);
   out->printGMSGrid();
   PetscGetTime(&end);
