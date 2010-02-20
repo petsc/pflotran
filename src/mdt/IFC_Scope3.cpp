@@ -128,7 +128,7 @@ IFC_Scope3::IFC_Scope3(Grid **grid_) {
 
   AsciiGrid::nasciigrids = 6;
   string *grid_filenames = new string[AsciiGrid::nasciigrids];
-#if 0
+#if 1
   grid_filenames[0].append("./basalt_300area.asc");
   grid_filenames[1].append("./u9_300area.asc");
   grid_filenames[2].append("./u8_300area.asc");
