@@ -2301,7 +2301,8 @@ subroutine OutputObservationTecplot(realization)
         if (.not.associated(observation)) exit
         select case(observation%itype)
           case(OBSERVATION_SCALAR)
-            if (associated(observation%region%coordinates)) then
+            if (associated(observation%region%coordinates) .and. &
+                .not.observation%at_cell_center) then
               call WriteObservationHeaderForCoord(fid,realization, &
                                                    observation%region, &
                                                    observation%print_velocities)
@@ -2332,7 +2333,8 @@ subroutine OutputObservationTecplot(realization)
       if (.not.associated(observation)) exit
         select case(observation%itype)
           case(OBSERVATION_SCALAR)
-            if (associated(observation%region%coordinates)) then
+            if (associated(observation%region%coordinates) .and. &
+                .not.observation%at_cell_center) then
               call WriteObservationDataForCoord(fid,realization, &
                                                  observation%region)
               if (observation%print_velocities) then
@@ -2376,7 +2378,7 @@ end subroutine OutputObservationTecplot
 !
 ! ************************************************************************** !  
 subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
-                                          print_velocities)
+                                         print_velocities)
 
   use Realization_module
   use Grid_module
@@ -2394,9 +2396,10 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   PetscInt :: icell
   PetscTruth :: print_velocities
   
-  PetscInt :: i
+  PetscInt :: i, local_id
   character(len=MAXSTRINGLENGTH) :: string, string2
-  character(len=MAXWORDLENGTH) :: cell_string
+  character(len=MAXSTRINGLENGTH) :: cell_string
+  character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
   character(len=2) :: mol_char
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -2411,8 +2414,18 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   field => realization%field
   grid => patch%grid
   
+  local_id = region%cell_ids(icell)
   write(cell_string,*) grid%nL2A(region%cell_ids(icell))
-  cell_string = trim(region%name) // ' ' //adjustl(cell_string)
+  cell_string = trim(region%name) // ' (' // trim(adjustl(cell_string)) // ')'
+
+  ! add coordinate of cell center
+  110 format(1f12.2)
+  write(x_string,110) grid%x(grid%nL2G(local_id))
+  write(y_string,110) grid%y(grid%nL2G(local_id))
+  write(z_string,110) grid%z(grid%nL2G(local_id))
+  cell_string = trim(cell_string) // ' (' // trim(adjustl(x_string)) // &
+                ' ' // trim(adjustl(y_string)) // ' ' // &
+                trim(adjustl(z_string)) // ')'
 
   ! add porosity to header
   if (output_option%print_porosity) then
@@ -2636,12 +2649,13 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
 !  cell_string = trim(region%name) // ' ' //adjustl(cell_string)
   cell_string = trim(region%name)
   
-  110 format(1pg12.4)
+  110 format(1f12.2)
   write(x_string,110) region%coordinates(ONE_INTEGER)%x
   write(y_string,110) region%coordinates(ONE_INTEGER)%y
   write(z_string,110) region%coordinates(ONE_INTEGER)%z
-  cell_string = trim(cell_string) // ' ' // trim(adjustl(x_string)) // ' ' // &
-                   trim(adjustl(y_string)) // ' ' // trim(adjustl(z_string))
+  cell_string = trim(cell_string) // ' (' // trim(adjustl(x_string)) // ' ' // &
+                trim(adjustl(y_string)) // ' ' // &
+                trim(adjustl(z_string)) // ')'
 
   ! add porosity to header
   if (output_option%print_porosity) then
