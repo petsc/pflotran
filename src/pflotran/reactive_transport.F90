@@ -1895,6 +1895,10 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                           porosity_loc_p(ghosted_id), &
                           volume_p(local_id),reaction,option,Res)
       r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)
+      if (reaction%calculate_water_age) then 
+        call RAge(volume_p(local_id),option,reaction,Res)
+        r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)
+      endif
     enddo
   endif
 #endif

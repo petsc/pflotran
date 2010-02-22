@@ -2732,6 +2732,14 @@ subroutine BasisInit(reaction,option)
         reaction%species_idx%h2o_aq_id = ispec
       endif
     endif
+    if (reaction%species_idx%water_age_id == 0) then
+      word = 'Water_Age'
+      if (StringCompare(reaction%primary_species_names(ispec), &
+                          word,MAXWORDLENGTH)) then
+        reaction%species_idx%water_age_id = ispec
+        reaction%calculate_water_age = PETSC_TRUE
+      endif
+    endif
   enddo
   
   do ispec = 1, reaction%neqcplx

@@ -30,7 +30,8 @@ module Reaction_module
             ReactionComputeKd, &
             RAccumulationSorb, &
             RAccumulationSorbDerivative, &
-            RJumpStartKineticSorption
+            RJumpStartKineticSorption, &
+            RAge
 
 contains
 
@@ -4171,5 +4172,28 @@ subroutine ReactionComputeKd(icomp,retardation,rt_auxvar,global_auxvar, &
       rt_auxvar%total(icomp,iphase)
 
 end subroutine ReactionComputeKd
+
+! ************************************************************************** !
+!
+! RAge: Computes the ages of the groundwater
+! author: Glenn Hammond
+! date: 02/22/10
+!
+! ************************************************************************** !
+subroutine RAge(vol,option,reaction,Res)
+
+  use Option_module
+
+  implicit none
+  
+  PetscReal :: vol
+  type(option_type) :: option
+  type(reaction_type) :: reaction
+  PetscReal :: Res(reaction%ncomp)
+  
+  Res(:) = 0.d0
+  Res(reaction%species_idx%water_age_id) = vol
+
+end subroutine RAge
 
 end module Reaction_module

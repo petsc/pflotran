@@ -20,9 +20,18 @@ module Transport_module
 ! Cutoff parameters
   PetscReal, parameter :: eps       = 1.D-8
   
-  public :: TFlux, TFluxDerivative, TBCFlux, TBCFluxDerivative
-  public :: TFluxAdv, TFluxDerivativeAdv, TBCFluxAdv, TBCFluxDerivativeAdv
-  public :: TFluxDiff, TFluxDerivativeDiff, TBCFluxDiff, TBCFluxDerivativeDiff
+  public :: TFlux, &
+            TFluxDerivative, &
+            TBCFlux, &
+            TBCFluxDerivative, &
+            TFluxAdv, &
+            TFluxDerivativeAdv, &
+            TBCFluxAdv, &
+            TBCFluxDerivativeAdv, &
+            TFluxDiff, &
+            TFluxDerivativeDiff, &
+            TBCFluxDiff, &
+            TBCFluxDerivativeDiff
   
 contains
 
