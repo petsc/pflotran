@@ -2493,13 +2493,13 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   ! reactive transport
   if (option%ntrandof > 0) then
   
+    reaction => realization%reaction
     if (reaction%print_pri_conc_type == PRIMARY_MOLALITY) then
       mol_char = 'm'
     else
       mol_char = 'M'
     endif   
  
-    reaction => realization%reaction
     if ((reaction%print_pH) .and. associated(reaction%species_idx)) then
       if (reaction%species_idx%h_ion_id > 0) then
         write(fid,'('',"pH '',a,''"'')',advance="no") trim(cell_string)
