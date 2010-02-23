@@ -4180,12 +4180,14 @@ end subroutine ReactionComputeKd
 ! date: 02/22/10
 !
 ! ************************************************************************** !
-subroutine RAge(vol,option,reaction,Res)
+subroutine RAge(rt_aux_var,global_aux_var,vol,option,reaction,Res)
 
   use Option_module
 
   implicit none
-  
+
+  type(reactive_transport_auxvar_type) :: rt_aux_var
+  type(global_auxvar_type) :: global_aux_var  
   PetscReal :: vol
   type(option_type) :: option
   type(reaction_type) :: reaction
