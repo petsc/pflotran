@@ -546,7 +546,7 @@ subroutine OutputTecplotBlock(realization)
       if (reaction%print_total_component) then
         do i=1,reaction%ncomp
           if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,reaction%print_pri_conc_type,i)
+            call OutputGetVarFromArray(realization,global_vec,reaction%print_tot_conc_type,i)
             call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
             call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
           endif
@@ -555,7 +555,7 @@ subroutine OutputTecplotBlock(realization)
       if (reaction%print_free_ion) then
         do i=1,reaction%ncomp
           if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,reaction%print_pri_conc_type,i)
+            call OutputGetVarFromArray(realization,global_vec,reaction%print_free_conc_type,i)
             call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
             call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
           endif
@@ -1455,7 +1455,7 @@ subroutine OutputTecplotPoint(realization)
         if (reaction%print_total_component) then
           do i=1,reaction%ncomp
             if (reaction%primary_species_print(i)) then
-              value = RealizGetDatasetValueAtCell(realization,reaction%print_pri_conc_type, &
+              value = RealizGetDatasetValueAtCell(realization,reaction%print_tot_conc_type, &
                                                   i,ghosted_id)
               write(IUNIT3,1000,advance='no') value
             endif
@@ -1464,7 +1464,7 @@ subroutine OutputTecplotPoint(realization)
         if (reaction%print_free_ion) then
           do i=1,reaction%ncomp
             if (reaction%primary_species_print(i)) then
-              value = RealizGetDatasetValueAtCell(realization,reaction%print_pri_conc_type, &
+              value = RealizGetDatasetValueAtCell(realization,reaction%print_free_conc_type, &
                                                   i,ghosted_id)
               write(IUNIT3,1000,advance='no') value
             endif
@@ -2400,7 +2400,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   character(len=MAXSTRINGLENGTH) :: string, string2
   character(len=MAXSTRINGLENGTH) :: cell_string
   character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
-  character(len=2) :: mol_char
+  character(len=2) :: free_mol_char, tot_mol_char
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
@@ -2494,10 +2494,15 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   if (option%ntrandof > 0) then
   
     reaction => realization%reaction
-    if (reaction%print_pri_conc_type == PRIMARY_MOLALITY) then
-      mol_char = 'm'
+    if (reaction%print_free_conc_type == PRIMARY_MOLALITY) then
+      free_mol_char = 'm'
     else
-      mol_char = 'M'
+      free_mol_char = 'M'
+    endif   
+    if (reaction%print_tot_conc_type == TOTAL_MOLALITY) then
+      tot_mol_char = 'm'
+    else
+      tot_mol_char = 'M'
     endif   
  
     if ((reaction%print_pH) .and. associated(reaction%species_idx)) then
@@ -2510,7 +2515,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
       do i=1,option%ntrandof
         if (reaction%primary_species_print(i)) then
           write(fid,'('',"'',a,''_tot_'',a,'' '',a,''"'')',advance="no") &
-            trim(reaction%primary_species_names(i)), trim(mol_char), trim(cell_string)
+            trim(reaction%primary_species_names(i)), trim(tot_mol_char), trim(cell_string)
         endif
       enddo
     endif
@@ -2519,7 +2524,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
       do i=1,option%ntrandof
         if (reaction%primary_species_print(i)) then
           write(fid,'('',"'',a,''_free_'',a,'' '',a,''"'')',advance="no") &
-            trim(reaction%primary_species_names(i)), trim(mol_char), trim(cell_string)
+            trim(reaction%primary_species_names(i)), trim(free_mol_char), trim(cell_string)
         endif
       enddo
     endif
@@ -2635,7 +2640,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
   character(len=MAXSTRINGLENGTH) :: cell_string
   character(len=MAXSTRINGLENGTH) :: coordinate_string
   character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
-  character(len=2) :: mol_char
+  character(len=2) :: free_mol_char, tot_mol_char
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch  
   type(reaction_type), pointer :: reaction  
@@ -2724,10 +2729,15 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
   if (option%ntrandof > 0) then
 
     reaction => realization%reaction
-    if (reaction%print_pri_conc_type == PRIMARY_MOLALITY) then
-      mol_char = 'm'
+    if (reaction%print_free_conc_type == PRIMARY_MOLALITY) then
+      free_mol_char = 'm'
     else
-      mol_char = 'M'
+      free_mol_char = 'M'
+    endif 
+    if (reaction%print_tot_conc_type == TOTAL_MOLALITY) then
+      tot_mol_char = 'm'
+    else
+      tot_mol_char = 'M'
     endif 
 
     if ((reaction%print_pH) .and. associated(reaction%species_idx)) then
@@ -2740,7 +2750,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
       do i=1,option%ntrandof
         if (reaction%primary_species_print(i)) then
           write(fid,'('',"'',a,''_tot_'',a,'' '',a,''"'')',advance="no") &
-            trim(reaction%primary_species_names(i)), trim(mol_char), trim(cell_string)
+            trim(reaction%primary_species_names(i)), trim(tot_mol_char), trim(cell_string)
         endif
       enddo
     endif
@@ -2749,7 +2759,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
       do i=1,option%ntrandof
         if (reaction%primary_species_print(i)) then
           write(fid,'('',"'',a,''_free_'',a,'' '',a,''"'')',advance="no") &
-            trim(reaction%primary_species_names(i)), trim(mol_char), trim(cell_string)
+            trim(reaction%primary_species_names(i)), trim(free_mol_char), trim(cell_string)
         endif
       enddo
     endif
@@ -3035,7 +3045,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
         do i=1,reaction%ncomp
           if (reaction%primary_species_print(i)) then
             write(fid,110,advance="no") &
-              RealizGetDatasetValueAtCell(realization,reaction%print_pri_conc_type,i,ghosted_id)
+              RealizGetDatasetValueAtCell(realization,reaction%print_tot_conc_type,i,ghosted_id)
           endif
         enddo
       endif
@@ -3043,7 +3053,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
         do i=1,reaction%ncomp
           if (reaction%primary_species_print(i)) then
             write(fid,110,advance="no") &
-              RealizGetDatasetValueAtCell(realization,reaction%print_pri_conc_type,i,ghosted_id)
+              RealizGetDatasetValueAtCell(realization,reaction%print_free_conc_type,i,ghosted_id)
           endif
         enddo
       endif      
@@ -3373,7 +3383,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
         do i=1,reaction%ncomp
           if (reaction%primary_species_print(i)) then
             write(fid,110,advance="no") &
-              OutputGetVarFromArrayAtCoord(realization,reaction%print_pri_conc_type,i, &
+              OutputGetVarFromArrayAtCoord(realization,reaction%print_tot_conc_type,i, &
                                            region%coordinates(ONE_INTEGER)%x, &
                                            region%coordinates(ONE_INTEGER)%y, &
                                            region%coordinates(ONE_INTEGER)%z, &
@@ -3385,7 +3395,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
         do i=1,reaction%ncomp
           if (reaction%primary_species_print(i)) then
             write(fid,110,advance="no") &
-              OutputGetVarFromArrayAtCoord(realization,reaction%print_pri_conc_type,i, &
+              OutputGetVarFromArrayAtCoord(realization,reaction%print_free_conc_type,i, &
                                            region%coordinates(ONE_INTEGER)%x, &
                                            region%coordinates(ONE_INTEGER)%y, &
                                            region%coordinates(ONE_INTEGER)%z, &
@@ -4083,7 +4093,7 @@ subroutine OutputVTK(realization)
     if (associated(reaction)) then
       if (reaction%print_total_component) then
         do i=1,reaction%ncomp
-          call OutputGetVarFromArray(realization,global_vec,reaction%print_pri_conc_type,i)
+          call OutputGetVarFromArray(realization,global_vec,reaction%print_tot_conc_type,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteVTKDataSetFromVec(IUNIT3,realization,reaction%primary_species_names(i), &
                                       natural_vec,VTK_REAL)
@@ -4091,7 +4101,7 @@ subroutine OutputVTK(realization)
       endif
       if (reaction%print_free_ion) then
         do i=1,reaction%ncomp
-          call OutputGetVarFromArray(realization,global_vec,reaction%print_pri_conc_type,i)
+          call OutputGetVarFromArray(realization,global_vec,reaction%print_free_conc_type,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteVTKDataSetFromVec(IUNIT3,realization,reaction%primary_species_names(i), &
                                       natural_vec,VTK_REAL)
@@ -4791,7 +4801,7 @@ subroutine OutputHDF5(realization)
   
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
-  character(len=2) :: mol_char
+  character(len=2) :: free_mol_char, tot_mol_char
   PetscReal, pointer :: array(:)
   PetscInt :: i
   PetscInt :: nviz_flow, nviz_tran, nviz_dof
@@ -5157,10 +5167,15 @@ subroutine OutputHDF5(realization)
   end select
 
   if (option%ntrandof > 0) then
-    if (reaction%print_pri_conc_type == PRIMARY_MOLALITY) then
-      mol_char = 'm'
+    if (reaction%print_free_conc_type == PRIMARY_MOLALITY) then
+      free_mol_char = 'm'
     else
-      mol_char = 'M'
+      free_mol_char = 'M'
+    endif  
+    if (reaction%print_tot_conc_type == TOTAL_MOLALITY) then
+      tot_mol_char = 'm'
+    else
+      tot_mol_char = 'M'
     endif  
     if (associated(reaction)) then
       if (reaction%print_pH .and. associated(reaction%species_idx)) then
@@ -5181,14 +5196,14 @@ subroutine OutputHDF5(realization)
       if (reaction%print_total_component) then
         do i=1,reaction%ncomp
           if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,reaction%print_pri_conc_type,i)
+            call OutputGetVarFromArray(realization,global_vec,reaction%print_tot_conc_type,i)
             if (.not.(option%use_samr)) then
-              write(string,'(a,''_'',a)') trim(reaction%primary_species_names(i)), trim(mol_char)
+              write(string,'(a,''_'',a)') trim(reaction%primary_species_names(i)), trim(tot_mol_char)
               call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
               if(first) then
-                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,TOTAL_MOLARITY,i)
+                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,reaction%print_tot_conc_type,i)
               endif
               current_component=current_component+1
             endif
@@ -5198,14 +5213,14 @@ subroutine OutputHDF5(realization)
       if (reaction%print_free_ion) then
         do i=1,reaction%ncomp
           if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,reaction%print_pri_conc_type,i)
+            call OutputGetVarFromArray(realization,global_vec,reaction%print_free_conc_type,i)
             if (.not.(option%use_samr)) then
-              write(string,'(a,''_'',a)') trim(reaction%primary_species_names(i)), trim(mol_char)
+              write(string,'(a,''_'',a)') trim(reaction%primary_species_names(i)), trim(free_mol_char)
               call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
               if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,reaction%print_pri_conc_type,i)
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,reaction%print_free_conc_type,i)
               endif
               current_component=current_component+1
             endif
@@ -5352,7 +5367,7 @@ subroutine OutputHDF5(realization)
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
               if(first) then
-                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,PRIMARY_KD,i)
+                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,TOTAL_SORBED,i)
               endif
               current_component=current_component+1
             endif

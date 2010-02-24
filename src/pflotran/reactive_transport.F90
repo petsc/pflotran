@@ -3133,7 +3133,7 @@ function RTGetTecplotHeader(realization,icolumn)
   PetscInt :: icolumn
   
   character(len=MAXHEADERLENGTH) :: string, string2
-  character(len=2) :: mol_char
+  character(len=2) :: free_mol_char, tot_mol_char
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
   PetscInt :: i
@@ -3143,10 +3143,16 @@ function RTGetTecplotHeader(realization,icolumn)
   
   string = ''
   
-  if (reaction%print_pri_conc_type == PRIMARY_MOLALITY) then
-    mol_char = 'm'
+  if (reaction%print_free_conc_type == PRIMARY_MOLALITY) then
+    free_mol_char = 'm'
   else
-    mol_char = 'M'
+    free_mol_char = 'M'
+  endif
+  
+  if (reaction%print_tot_conc_type == TOTAL_MOLALITY) then
+    tot_mol_char = 'm'
+  else
+    tot_mol_char = 'M'
   endif
   
   if (reaction%print_pH .and. associated(reaction%species_idx)) then
@@ -3167,10 +3173,10 @@ function RTGetTecplotHeader(realization,icolumn)
         if (icolumn > -1) then
           icolumn = icolumn + 1
           write(string2,'('',"'',i2,''-'',a,''_tot_'',a,''"'')') icolumn, &
-            trim(reaction%primary_species_names(i)), trim(mol_char)
+            trim(reaction%primary_species_names(i)), trim(tot_mol_char)
         else
           write(string2,'('',"'',a,''_tot_'',a,''"'')') &
-            trim(reaction%primary_species_names(i)), trim(mol_char)
+            trim(reaction%primary_species_names(i)), trim(tot_mol_char)
         endif
         string = trim(string) // trim(string2)
       endif
@@ -3183,10 +3189,10 @@ function RTGetTecplotHeader(realization,icolumn)
         if (icolumn > -1) then
           icolumn = icolumn + 1
           write(string2,'('',"'',i2,''-'',a,''_free_'',a,''"'')') icolumn, &
-            trim(reaction%primary_species_names(i)), trim(mol_char)
+            trim(reaction%primary_species_names(i)), trim(free_mol_char)
         else
           write(string2,'('',"'',a,''_free_'',a,''"'')') &
-            trim(reaction%primary_species_names(i)), trim(mol_char)
+            trim(reaction%primary_species_names(i)), trim(free_mol_char)
         endif
         string = trim(string) // trim(string2)
       endif

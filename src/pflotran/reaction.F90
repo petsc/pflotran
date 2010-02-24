@@ -572,11 +572,18 @@ subroutine ReactionRead(reaction,input,option)
   
   reaction%neqsorb = reaction%neqsrfcplxrxn + reaction%neqionxrxn
 
-  if (reaction%print_pri_conc_type == 0) then
+  if (reaction%print_free_conc_type == 0) then
     if (reaction%initialize_with_molality) then
-      reaction%print_pri_conc_type = PRIMARY_MOLALITY
+      reaction%print_free_conc_type = PRIMARY_MOLALITY
     else
-      reaction%print_pri_conc_type = PRIMARY_MOLARITY
+      reaction%print_free_conc_type = PRIMARY_MOLARITY
+    endif
+  endif
+  if (reaction%print_tot_conc_type == 0) then
+    if (reaction%initialize_with_molality) then
+      reaction%print_tot_conc_type = TOTAL_MOLALITY
+    else
+      reaction%print_tot_conc_type = TOTAL_MOLARITY
     endif
   endif
 
@@ -2112,9 +2119,11 @@ subroutine ReactionReadOutput(reaction,input,option)
       case('ACTIVITY_COEFFICIENTS')
         reaction%print_act_coefs = PETSC_TRUE
       case('MOLARITY')
-        reaction%print_pri_conc_type = PRIMARY_MOLARITY
+        reaction%print_free_conc_type = PRIMARY_MOLARITY
+        reaction%print_tot_conc_type = TOTAL_MOLARITY
       case('MOLALITY')
-        reaction%print_pri_conc_type = PRIMARY_MOLALITY
+        reaction%print_free_conc_type = PRIMARY_MOLALITY
+        reaction%print_tot_conc_type = TOTAL_MOLALITY
       case default        
         found = PETSC_FALSE
         if (.not.found) then

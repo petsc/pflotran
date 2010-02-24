@@ -164,7 +164,8 @@ module Reaction_Aux_module
     PetscTruth :: print_total_component
     PetscTruth :: print_free_ion
     PetscTruth :: initialize_with_molality
-    PetscInt :: print_pri_conc_type
+    PetscInt :: print_free_conc_type
+    PetscInt :: print_tot_conc_type
     PetscInt :: num_dbase_temperatures
     PetscReal, pointer :: dbase_temperatures(:)
     
@@ -417,7 +418,8 @@ function ReactionCreate()
   reaction%print_free_ion = PETSC_FALSE
 
   reaction%initialize_with_molality = PETSC_FALSE
-  reaction%print_pri_conc_type = 0
+  reaction%print_free_conc_type = 0
+  reaction%print_tot_conc_type = 0
   
   nullify(reaction%species_idx)
 
@@ -425,6 +427,7 @@ function ReactionCreate()
   nullify(reaction%secondary_species_list)
   nullify(reaction%gas_species_list)
   nullify(reaction%mineral_list)
+  nullify(reaction%colloid_list)
   nullify(reaction%ion_exchange_rxn_list)
   nullify(reaction%surface_complexation_rxn_list)
   
