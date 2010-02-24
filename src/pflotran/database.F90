@@ -34,6 +34,7 @@ subroutine DatabaseRead(reaction,option)
   type(aq_species_type), pointer :: cur_aq_spec, cur_aq_spec2
   type(gas_species_type), pointer :: cur_gas_spec, cur_gas_spec2
   type(mineral_type), pointer :: cur_mineral, cur_mineral2
+  type(colloid_type), pointer :: cur_colloid
   type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
   type(surface_complex_type), pointer :: cur_srfcplx, cur_srfcplx2
   
@@ -44,6 +45,7 @@ subroutine DatabaseRead(reaction,option)
   PetscTruth :: flag, found
   PetscInt :: ispec, itemp, i
   PetscReal :: stoich
+  PetscReal :: temp_real
   type(input_type), pointer :: input
   PetscInt :: iostat
   PetscInt :: num_nulls
@@ -133,7 +135,7 @@ subroutine DatabaseRead(reaction,option)
     endif
     
     select case(num_nulls)
-      case(0,1) ! primary and secondary aq species
+      case(0,1) ! primary and secondary aq species and colloids
         cur_aq_spec => reaction%primary_species_list
         found = PETSC_FALSE
         do
@@ -156,6 +158,29 @@ subroutine DatabaseRead(reaction,option)
             exit
           endif
           cur_aq_spec => cur_aq_spec%next
+        enddo
+        ! check if a colloid
+        if (.not.found) cur_colloid => reaction%colloid_list
+        do
+          if (found .or. .not.associated(cur_colloid)) exit
+          if (StringCompare(name,cur_colloid%name,MAXWORDLENGTH)) then
+            found = PETSC_TRUE          
+          ! change negative id to positive, indicating it was found in database
+            cur_colloid%id = abs(cur_colloid%id)
+
+            ! skip the Debye-Huckel ion size parameter (a0)
+            call InputReadDouble(input,option,temp_real)
+            call InputErrorMsg(input,option,'Colloid skip a0','DATABASE')            
+            ! skipo the valence
+            call InputReadDouble(input,option,temp_real)
+            call InputErrorMsg(input,option,'Colloid skip Z','DATABASE')            
+            ! read the molar weight
+            call InputReadDouble(input,option,cur_colloid%molar_weight)
+            call InputErrorMsg(input,option,'Colloid molar weight','DATABASE')
+            
+            cycle ! avoid the aqueous species parameters below
+          endif
+          cur_colloid => cur_colloid%next
         enddo
         
         if (.not.found) cycle ! go to next line in database
@@ -186,7 +211,7 @@ subroutine DatabaseRead(reaction,option)
             call InputReadDouble(input,option,cur_aq_spec%dbaserxn%logK(itemp))
             call InputErrorMsg(input,option,'EQRXN logKs','DATABASE')            
           enddo
-        endif 
+        endif
         ! read the Debye-Huckel ion size parameter (a0)
         call InputReadDouble(input,option,cur_aq_spec%a0)
         call InputErrorMsg(input,option,'AQ Species a0','DATABASE')            

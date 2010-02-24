@@ -62,6 +62,16 @@ module Reaction_Aux_module
     type(mineral_type), pointer :: next
   end type mineral_type
 
+  type, public :: colloid_type
+    PetscInt :: id
+    PetscInt :: itype
+    character(len=MAXWORDLENGTH) :: name
+    PetscReal :: surface_area
+    PetscReal :: molar_weight
+    PetscTruth :: print_me
+    type(colloid_type), pointer :: next
+  end type colloid_type
+
   type, public :: transition_state_rxn_type
     type(database_rxn_type), pointer :: dbaserxn
     PetscInt :: nspec_primary_prefactor
@@ -111,6 +121,7 @@ module Reaction_Aux_module
     PetscTruth :: free_site_print_me
     PetscInt :: mineral_id
     character(len=MAXWORDLENGTH) :: mineral_name
+    character(len=MAXWORDLENGTH) :: colloid_name
     PetscReal :: site_density
     type(surface_complex_type), pointer :: complex_list
     type (surface_complexation_rxn_type), pointer :: next
@@ -163,6 +174,7 @@ module Reaction_Aux_module
     type(aq_species_type), pointer :: secondary_species_list
     type(gas_species_type), pointer :: gas_species_list
     type(mineral_type), pointer :: mineral_list
+    type(colloid_type), pointer :: colloid_list
     type(ion_exchange_rxn_type), pointer :: ion_exchange_rxn_list
     type(surface_complexation_rxn_type), pointer :: surface_complexation_rxn_list
     PetscInt :: act_coef_update_frequency
@@ -285,6 +297,10 @@ module Reaction_Aux_module
     PetscInt :: nmnrl
     character(len=MAXWORDLENGTH), pointer :: mineral_names(:)
     
+    ! colloids
+    PetscInt :: ncoll
+    character(len=MAXWORDLENGTH), pointer :: colloid_names(:)
+    
       ! for saturation states
     PetscInt, pointer :: mnrlspecid(:,:)
     PetscReal, pointer :: mnrlstoich(:,:)
@@ -326,6 +342,7 @@ module Reaction_Aux_module
             AqueousSpeciesCreate, &
             GasSpeciesCreate, &
             MineralCreate, &
+            ColloidCreate, &
             GetPrimarySpeciesCount, &
             GetPrimarySpeciesNames, &
             GetSecondarySpeciesCount, &
@@ -415,6 +432,7 @@ function ReactionCreate()
   nullify(reaction%kinsrfcplx_site_names)
   nullify(reaction%kinsrfcplx_names)
   nullify(reaction%mineral_names)
+  nullify(reaction%colloid_names)
   nullify(reaction%kinmnrl_names)
 
   nullify(reaction%primary_species_print)
@@ -521,6 +539,8 @@ function ReactionCreate()
   nullify(reaction%mnrlstoich)
   nullify(reaction%mnrlh2ostoich)
   nullify(reaction%mnrl_logKcoef)
+
+  reaction%ncoll = 0  
   
   reaction%nkinmnrl = 0  
   nullify(reaction%kinmnrlspecid)
@@ -675,6 +695,36 @@ end function MineralCreate
 
 ! ************************************************************************** !
 !
+! ColloidCreate: Allocate and initialize a colloid object
+! author: Glenn Hammond
+! date: 02/24/10
+!
+! ************************************************************************** !
+function ColloidCreate()
+
+  use Option_module
+
+  implicit none
+  
+  type(colloid_type), pointer :: ColloidCreate
+  
+  type(colloid_type), pointer :: colloid
+
+  allocate(colloid)  
+  colloid%id = 0
+  colloid%itype = 0
+  colloid%name = ''
+  colloid%surface_area = 1.d0
+  colloid%molar_weight = 0.d0
+  colloid%print_me = PETSC_FALSE
+  nullify(colloid%next)
+  
+  ColloidCreate => colloid
+  
+end function ColloidCreate
+
+! ************************************************************************** !
+!
 ! DatabaseRxnCreate: Allocate and initialize an equilibrium reaction
 ! author: Glenn Hammond
 ! date: 09/01/08
@@ -757,6 +807,7 @@ function SurfaceComplexationRxnCreate()
 
   srfcplxrxn%mineral_id = 0
   srfcplxrxn%mineral_name = ''
+  srfcplxrxn%colloid_name = ''
   srfcplxrxn%site_density = 0.d0
   
   nullify(srfcplxrxn%complex_list)
@@ -1366,6 +1417,24 @@ end subroutine MineralDestroy
 
 ! ************************************************************************** !
 !
+! ColloidDestroy: Deallocates a colloid
+! author: Glenn Hammond
+! date: 02/24/10
+!
+! ************************************************************************** !
+subroutine ColloidDestroy(colloid)
+
+  implicit none
+    
+  type(colloid_type), pointer :: colloid
+
+  deallocate(colloid)  
+  nullify(colloid)
+
+end subroutine ColloidDestroy
+
+! ************************************************************************** !
+!
 ! DatabaseRxnDestroy: Deallocates a database reaction
 ! author: Glenn Hammond
 ! date: 05/29/08
@@ -1652,6 +1721,7 @@ subroutine ReactionDestroy(reaction)
   type(aq_species_type), pointer :: aq_species, prev_aq_species
   type(gas_species_type), pointer :: gas_species, prev_gas_species
   type(mineral_type), pointer :: mineral, prev_mineral
+  type(colloid_type), pointer :: colloid, prev_colloid
   type(ion_exchange_rxn_type), pointer :: ionxrxn, prev_ionxrxn
   type(surface_complexation_rxn_type), pointer :: srfcplxrxn, prev_srfcplxrxn
 
@@ -1700,6 +1770,16 @@ subroutine ReactionDestroy(reaction)
   enddo    
   nullify(reaction%mineral_list)
   
+  ! mineral species
+  colloid => reaction%colloid_list
+  do
+    if (.not.associated(colloid)) exit
+    prev_colloid => colloid
+    colloid => colloid%next
+    call ColloidDestroy(prev_colloid)
+  enddo    
+  nullify(reaction%colloid_list)
+  
   ! ionx exchange reactions
   ionxrxn => reaction%ion_exchange_rxn_list
   do
@@ -1744,6 +1824,9 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%mineral_names)) &
     deallocate(reaction%mineral_names)
   nullify(reaction%mineral_names)
+  if (associated(reaction%colloid_names)) &
+    deallocate(reaction%colloid_names)
+  nullify(reaction%colloid_names)
   if (associated(reaction%kinmnrl_names)) &
     deallocate(reaction%kinmnrl_names)
   nullify(reaction%kinmnrl_names)

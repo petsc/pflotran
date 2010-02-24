@@ -62,6 +62,7 @@ subroutine ReactionRead(reaction,input,option)
   type(aq_species_type), pointer :: species, prev_species
   type(gas_species_type), pointer :: gas, prev_gas
   type(mineral_type), pointer :: mineral, prev_mineral
+  type(colloid_type), pointer :: colloid, prev_colloid
   type(surface_complex_type), pointer :: srfcplx, cur_srfcplx, prev_srfcplx
   type(surface_complex_type), pointer :: rate_list, cur_srfcplx_rate, prev_srfcplx_rate
   type(surface_complexation_rxn_type), pointer :: srfcplx_rxn, &
@@ -77,6 +78,7 @@ subroutine ReactionRead(reaction,input,option)
   nullify(prev_species)
   nullify(prev_gas)
   nullify(prev_mineral)
+  nullify(prev_colloid)
   nullify(prev_srfcplx_rxn)
   nullify(cur_srfcplx)
   nullify(prev_srfcplx)
@@ -202,6 +204,29 @@ subroutine ReactionRead(reaction,input,option)
           ! skip over remaining cards to end of each mineral entry
           call InputSkipToEnd(input,option,word)
         enddo
+      case('COLLOIDS')
+        nullify(prev_colloid)
+        do
+          call InputReadFlotranString(input,option)
+          if (InputError(input)) exit
+          if (InputCheckExit(input,option)) exit
+          
+          reaction%ncoll = reaction%ncoll + 1
+          
+          colloid => ColloidCreate()
+          call InputReadWord(input,option,colloid%name,PETSC_TRUE)  
+          call InputErrorMsg(input,option,'keyword','CHEMISTRY,MINERALS')    
+          if (.not.associated(reaction%colloid_list)) then
+            reaction%colloid_list => colloid
+            colloid%id = 1
+          endif
+          if (associated(prev_colloid)) then
+            prev_colloid%next => colloid
+            colloid%id = prev_colloid%id + 1
+          endif
+          prev_colloid => colloid
+          nullify(colloid)
+        enddo
       case('SORPTION')
         nullify(prev_srfcplx_rxn)
         do
@@ -299,6 +324,11 @@ subroutine ReactionRead(reaction,input,option)
                       PETSC_TRUE)
                     call InputErrorMsg(input,option,'keyword', &
                       'CHEMISTRY,SURFACE_COMPLEXATION_RXN,MINERAL_NAME')
+                  case('COLLOID')
+                    call InputReadWord(input,option,srfcplx_rxn%colloid_name, &
+                      PETSC_TRUE)
+                    call InputErrorMsg(input,option,'keyword', &
+                      'CHEMISTRY,SURFACE_COMPLEXATION_RXN,COLLOID_NAME')
                   case('SITE')
                     call InputReadWord(input,option,srfcplx_rxn%free_site_name, &
                       PETSC_TRUE)
