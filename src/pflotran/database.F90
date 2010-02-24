@@ -2310,8 +2310,11 @@ subroutine BasisInit(reaction,option)
     enddo
     nullify(cur_srfcplx_rxn)  
 
-    allocate(reaction%eqsrfcplx_rxn_to_mineral(reaction%neqsrfcplxrxn))
-    reaction%eqsrfcplx_rxn_to_mineral = 0
+    allocate(reaction%eqsrfcplx_rxn_to_surf(reaction%neqsrfcplxrxn))
+    reaction%eqsrfcplx_rxn_to_surf = 0
+    
+    allocate(reaction%eqsrfcplx_rxn_surf_type(reaction%neqsrfcplxrxn))
+    reaction%eqsrfcplx_rxn_surf_type = 0
     
     allocate(reaction%eqsrfcplx_rxn_to_complex(0:icount, &
                                                  reaction%neqsrfcplxrxn))
@@ -2353,8 +2356,8 @@ subroutine BasisInit(reaction,option)
     allocate(reaction%eqsrfcplx_free_site_stoich(reaction%neqsrfcplx))
     reaction%eqsrfcplx_free_site_stoich = 0.d0
     
-    allocate(reaction%eqsrfcplx_mineral_id(reaction%neqsrfcplx))
-    reaction%eqsrfcplx_mineral_id = 0
+!    allocate(reaction%eqsrfcplx_mineral_id(reaction%neqsrfcplx))
+!    reaction%eqsrfcplx_mineral_id = 0
     
     allocate(reaction%eqsrfcplx_logK(reaction%neqsrfcplx))
     reaction%eqsrfcplx_logK = 0.d0
@@ -2383,8 +2386,21 @@ subroutine BasisInit(reaction,option)
         reaction%eqsrfcplx_site_names(irxn) = cur_srfcplx_rxn%free_site_name
         reaction%eqsrfcplx_site_print(irxn) = cur_srfcplx_rxn%free_site_print_me .or. &
                                               reaction%print_all_species
-        reaction%eqsrfcplx_rxn_to_mineral(irxn) = &
-          GetMineralIDFromName(reaction,cur_srfcplx_rxn%mineral_name)
+        if (len_trim(cur_srfcplx_rxn%mineral_name) > 1) then
+          reaction%eqsrfcplx_rxn_surf_type(irxn) = MINERAL_SURFACE
+          reaction%eqsrfcplx_rxn_to_surf(irxn) = &
+            GetMineralIDFromName(reaction,cur_srfcplx_rxn%mineral_name)
+        else if (len_trim(cur_srfcplx_rxn%colloid_name) > 1) then
+          reaction%eqsrfcplx_rxn_surf_type(irxn) = COLLOID_SURFACE
+          reaction%eqsrfcplx_rxn_to_surf(irxn) = &
+            GetColloidIDFromName(reaction,cur_srfcplx_rxn%colloid_name)
+        else
+          write(word,*) cur_srfcplx_rxn%id
+          option%io_buffer = 'No mineral or colloid name specified for ' // &
+            'equilibrium surface complexation reaction:' // &
+            trim(adjustl(word))
+          call printErrMsg(option)
+        endif
         reaction%eqsrfcplx_rxn_site_density(irxn) = cur_srfcplx_rxn%site_density
               
         cur_srfcplx => cur_srfcplx_rxn%complex_list
@@ -2459,9 +2475,6 @@ subroutine BasisInit(reaction,option)
 
   if (reaction%nkinsrfcplxrxn > 0) then
   
-    allocate(reaction%kinsrfcplx_rxn_to_mineral(reaction%nkinsrfcplxrxn))
-    reaction%kinsrfcplx_rxn_to_mineral = 0
-    
     ! determine max # complexes for a given site
     icount = 0
     cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
@@ -2484,8 +2497,11 @@ subroutine BasisInit(reaction,option)
                                                  reaction%nkinsrfcplxrxn))
     reaction%kinsrfcplx_rxn_to_complex = 0
     
-    allocate(reaction%kinsrfcplx_rxn_to_site(reaction%nkinsrfcplxrxn))
-    reaction%kinsrfcplx_rxn_to_site = 0
+    allocate(reaction%kinsrfcplx_rxn_to_surf(reaction%nkinsrfcplxrxn))
+    reaction%kinsrfcplx_rxn_to_surf = 0
+    
+    allocate(reaction%kinsrfcplx_rxn_surf_type(reaction%nkinsrfcplxrxn))
+    reaction%kinsrfcplx_rxn_surf_type = 0
     
     allocate(reaction%kinsrfcplx_site_names(reaction%nkinsrfcplxrxn))
     reaction%kinsrfcplx_site_names = ''
@@ -2555,8 +2571,20 @@ subroutine BasisInit(reaction,option)
         reaction%kinsrfcplx_site_names(irxn) = cur_srfcplx_rxn%free_site_name
         reaction%kinsrfcplx_site_print(irxn) = cur_srfcplx_rxn%free_site_print_me .or. &
                                               reaction%print_all_species
-        reaction%kinsrfcplx_rxn_to_mineral(irxn) = &
-          GetMineralIDFromName(reaction,cur_srfcplx_rxn%mineral_name)
+        if (len_trim(cur_srfcplx_rxn%mineral_name) > 1) then
+          reaction%kinsrfcplx_rxn_surf_type(irxn) = MINERAL_SURFACE
+          reaction%kinsrfcplx_rxn_to_surf(irxn) = &
+            GetMineralIDFromName(reaction,cur_srfcplx_rxn%mineral_name)
+        else if (len_trim(cur_srfcplx_rxn%colloid_name) > 1) then
+          reaction%kinsrfcplx_rxn_surf_type(irxn) = COLLOID_SURFACE
+          reaction%kinsrfcplx_rxn_to_surf(irxn) = &
+            GetColloidIDFromName(reaction,cur_srfcplx_rxn%colloid_name)
+        else
+          write(word,*) cur_srfcplx_rxn%id
+          option%io_buffer = 'No mineral or colloid name specified for ' // &
+            'kinetic surface complexation reaction:' // &
+            trim(adjustl(word))
+        endif
         reaction%kinsrfcplx_rxn_site_density(irxn) = cur_srfcplx_rxn%site_density
               
         cur_srfcplx => cur_srfcplx_rxn%complex_list

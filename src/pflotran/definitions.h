@@ -113,6 +113,10 @@ PetscInt, parameter :: MINERAL_REFERENCE = 1
 PetscInt, parameter :: MINERAL_KINETIC = 2
 PetscInt, parameter :: MINERAL_EQUILIBRIUM = 3
 
+! surface complexation surface types
+PetscInt, parameter :: COLLOID_SURFACE = 1
+PetscInt, parameter :: MINERAL_SURFACE = 2
+
 ! coupler types
 PetscInt, parameter :: INITIAL_COUPLER_TYPE = 1
 PetscInt, parameter :: BOUNDARY_COUPLER_TYPE = 2

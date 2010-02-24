@@ -245,7 +245,8 @@ module Reaction_Aux_module
     ! surface complexation reactions
     PetscInt :: neqsrfcplx
     PetscInt :: neqsrfcplxrxn 
-    PetscInt, pointer :: eqsrfcplx_rxn_to_mineral(:)
+    PetscInt, pointer :: eqsrfcplx_rxn_to_surf(:)
+    PetscInt, pointer :: eqsrfcplx_rxn_surf_type(:)
     PetscInt, pointer :: eqsrfcplx_rxn_to_complex(:,:)
     PetscReal, pointer :: eqsrfcplx_rxn_site_density(:)
     PetscTruth, pointer :: eqsrfcplx_rxn_stoich_flag(:)
@@ -259,14 +260,15 @@ module Reaction_Aux_module
     PetscReal, pointer :: eqsrfcplxh2ostoich(:)
     PetscInt, pointer :: eqsrfcplx_free_site_id(:)
     PetscReal, pointer :: eqsrfcplx_free_site_stoich(:)
-    PetscInt, pointer :: eqsrfcplx_mineral_id(:)
+!    PetscInt, pointer :: eqsrfcplx_mineral_id(:)
     PetscReal, pointer :: eqsrfcplx_logK(:)
     PetscReal, pointer :: eqsrfcplx_logKcoef(:,:)
     PetscReal, pointer :: eqsrfcplx_Z(:)  ! valence
 
     PetscInt :: nkinsrfcplx
     PetscInt :: nkinsrfcplxrxn
-    PetscInt, pointer :: kinsrfcplx_rxn_to_mineral(:)
+    PetscInt, pointer :: kinsrfcplx_rxn_to_surf(:)
+    PetscInt, pointer :: kinsrfcplx_rxn_surf_type(:)
     PetscInt, pointer :: kinsrfcplx_rxn_to_complex(:,:) 
     PetscInt, pointer :: kinsrfcplx_rxn_to_site(:)
     PetscReal, pointer :: kinsrfcplx_rxn_site_density(:)
@@ -354,6 +356,9 @@ module Reaction_Aux_module
             GetMineralNames, &
             GetMineralIDFromName, &
             GetKineticMineralCount, &
+            GetColloidCount, &
+            GetColloidNames, &
+            GetColloidIDFromName, &
             DatabaseRxnCreate, &
             DatabaseRxnDestroy, &
             TransitionStateTheoryRxnCreate, &
@@ -491,7 +496,8 @@ function ReactionCreate()
   reaction%neqsorb = 0
   reaction%neqsrfcplx = 0
   reaction%neqsrfcplxrxn = 0
-  nullify(reaction%eqsrfcplx_rxn_to_mineral)
+  nullify(reaction%eqsrfcplx_rxn_to_surf)
+  nullify(reaction%eqsrfcplx_rxn_surf_type)
   nullify(reaction%eqsrfcplx_rxn_to_complex)
   nullify(reaction%eqsrfcplx_rxn_site_density)
   nullify(reaction%eqsrfcplx_rxn_stoich_flag) 
@@ -501,7 +507,7 @@ function ReactionCreate()
   nullify(reaction%eqsrfcplxstoich)
   nullify(reaction%eqsrfcplxh2oid)
   nullify(reaction%eqsrfcplxh2ostoich)
-  nullify(reaction%eqsrfcplx_mineral_id)
+!  nullify(reaction%eqsrfcplx_mineral_id)
   nullify(reaction%eqsrfcplx_free_site_id)
   nullify(reaction%eqsrfcplx_free_site_stoich)
   nullify(reaction%eqsrfcplx_logK)
@@ -510,7 +516,7 @@ function ReactionCreate()
 
   reaction%nkinsrfcplx = 0
   reaction%nkinsrfcplxrxn = 0
-  nullify(reaction%kinsrfcplx_rxn_to_mineral)
+  nullify(reaction%kinsrfcplx_rxn_to_surf)
   nullify(reaction%kinsrfcplx_rxn_to_complex)
   nullify(reaction%kinsrfcplx_rxn_to_site)
   nullify(reaction%kinsrfcplx_rxn_site_density)
@@ -1341,6 +1347,99 @@ end function GetMineralIDFromName
 
 ! ************************************************************************** !
 !
+! GetColloidIDFromName: Returns the id of colloid with the corresponding name
+! author: Glenn Hammond
+! date: 02/24/10
+!
+! ************************************************************************** !
+function GetColloidIDFromName(reaction,name)
+
+  use String_module
+  
+  implicit none
+  
+  type(reaction_type) :: reaction
+  character(len=MAXWORDLENGTH) :: name
+
+  PetscInt :: GetColloidIDFromName
+  type(colloid_type), pointer :: colloid
+
+  GetColloidIDFromName = -1
+ 
+  colloid => reaction%colloid_list
+  do
+    if (.not.associated(colloid)) exit
+    if (StringCompare(name,colloid%name,MAXWORDLENGTH)) then
+      GetColloidIDFromName = colloid%id
+      exit
+    endif
+    colloid => colloid%next
+  enddo
+
+end function GetColloidIDFromName
+
+! ************************************************************************** !
+!
+! GetColloidNames: Returns the names of colloids in an array
+! author: Glenn Hammond
+! date: 09/04/08
+!
+! ************************************************************************** !
+function GetColloidNames(reaction)
+
+  implicit none
+  
+  character(len=MAXWORDLENGTH), pointer :: GetColloidNames(:)
+  type(reaction_type) :: reaction
+
+  PetscInt :: count
+  character(len=MAXWORDLENGTH), pointer :: names(:)
+  type(colloid_type), pointer :: colloid
+
+  count = GetColloidCount(reaction)
+  allocate(names(count))
+  
+  count = 1
+  colloid => reaction%colloid_list
+  do
+    if (.not.associated(colloid)) exit
+    names(count) = colloid%name
+    count = count + 1
+    colloid => colloid%next
+  enddo
+
+  GetColloidNames => names
+  
+end function GetColloidNames
+
+! ************************************************************************** !
+!
+! GetColloidCount: Returns the number of colloids
+! author: Glenn Hammond
+! date: 02/24/10
+!
+! ************************************************************************** !
+function GetColloidCount(reaction)
+
+  implicit none
+  
+  integer :: GetColloidCount
+  type(reaction_type) :: reaction
+
+  type(colloid_type), pointer :: colloid
+
+  GetColloidCount = 0
+  colloid => reaction%colloid_list
+  do
+    if (.not.associated(colloid)) exit
+    GetColloidCount = GetColloidCount + 1
+    colloid => colloid%next
+  enddo
+
+end function GetColloidCount
+
+! ************************************************************************** !
+!
 ! SpeciesIndexDestroy: Deallocates a species index object
 ! author: Glenn Hammond
 ! date: 01/29/10
@@ -1950,9 +2049,12 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%kinionx_cationid)
 #endif
   
-  if (associated(reaction%eqsrfcplx_rxn_to_mineral)) &
-    deallocate(reaction%eqsrfcplx_rxn_to_mineral)
-  nullify(reaction%eqsrfcplx_rxn_to_mineral)
+  if (associated(reaction%eqsrfcplx_rxn_to_surf)) &
+    deallocate(reaction%eqsrfcplx_rxn_to_surf)
+  nullify(reaction%eqsrfcplx_rxn_to_surf)
+  if (associated(reaction%eqsrfcplx_rxn_surf_type)) &
+    deallocate(reaction%eqsrfcplx_rxn_surf_type)
+  nullify(reaction%eqsrfcplx_rxn_surf_type)
   if (associated(reaction%eqsrfcplx_rxn_to_complex)) &
     deallocate(reaction%eqsrfcplx_rxn_to_complex)
   nullify(reaction%eqsrfcplx_rxn_to_complex)
@@ -1982,9 +2084,9 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%eqsrfcplxh2ostoich)) &
     deallocate(reaction%eqsrfcplxh2ostoich)
   nullify(reaction%eqsrfcplxh2ostoich)
-  if (associated(reaction%eqsrfcplx_mineral_id)) &
-    deallocate(reaction%eqsrfcplx_mineral_id)
-  nullify(reaction%eqsrfcplx_mineral_id)
+!  if (associated(reaction%eqsrfcplx_mineral_id)) &
+!    deallocate(reaction%eqsrfcplx_mineral_id)
+!  nullify(reaction%eqsrfcplx_mineral_id)
   if (associated(reaction%eqsrfcplx_free_site_id)) &
     deallocate(reaction%eqsrfcplx_free_site_id)
   nullify(reaction%eqsrfcplx_free_site_id)
@@ -2001,9 +2103,12 @@ subroutine ReactionDestroy(reaction)
     deallocate(reaction%eqsrfcplx_Z)
   nullify(reaction%eqsrfcplx_Z)
 
-  if (associated(reaction%kinsrfcplx_rxn_to_mineral)) &
-    deallocate(reaction%kinsrfcplx_rxn_to_mineral)
-  nullify(reaction%kinsrfcplx_rxn_to_mineral)
+  if (associated(reaction%kinsrfcplx_rxn_to_surf)) &
+    deallocate(reaction%kinsrfcplx_rxn_to_surf)
+  nullify(reaction%kinsrfcplx_rxn_to_surf)
+  if (associated(reaction%kinsrfcplx_rxn_surf_type)) &
+    deallocate(reaction%kinsrfcplx_rxn_surf_type)
+  nullify(reaction%kinsrfcplx_rxn_surf_type)
   if (associated(reaction%kinsrfcplx_rxn_to_complex)) &
     deallocate(reaction%kinsrfcplx_rxn_to_complex)
   nullify(reaction%kinsrfcplx_rxn_to_complex)
