@@ -2497,6 +2497,9 @@ subroutine BasisInit(reaction,option)
                                                  reaction%nkinsrfcplxrxn))
     reaction%kinsrfcplx_rxn_to_complex = 0
     
+    allocate(reaction%kinsrfcplx_rxn_to_site(reaction%nkinsrfcplxrxn))
+    reaction%kinsrfcplx_rxn_to_site = 0
+    
     allocate(reaction%kinsrfcplx_rxn_to_surf(reaction%nkinsrfcplxrxn))
     reaction%kinsrfcplx_rxn_to_surf = 0
     
