@@ -586,6 +586,9 @@ subroutine RTInitializeTimestepPatch(realization)
   type(realization_type) :: realization
 
   call RTUpdateFixedAccumulationPatch(realization)
+#ifdef REVISED_TRANSPORT  
+  call RTUpdateTransportCoefsPatch(realization)
+#endif  
 
 end subroutine RTInitializeTimestepPatch
   
@@ -838,6 +841,138 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   call GridVecRestoreArrayF90(grid,field%tran_accum, accum_p, ierr)
 
 end subroutine RTUpdateFixedAccumulationPatch
+
+#ifdef REVISED_TRANSPORT
+! ************************************************************************** !
+!
+! RTUpdateTransportCoefsPatch: Calculates coefficients for transport matrix 
+! author: Glenn Hammond
+! date: 02/24/10
+!
+! ************************************************************************** !
+subroutine RTUpdateTransportCoefsPatch(realization)
+
+  use Realization_module
+  use Patch_module
+  use Connection_module
+  use Coupler_module
+  use Option_module
+  use Field_module  
+  use Grid_module  
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(reactive_transport_param_type), pointer :: rt_parameter
+  PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:)
+  PetscInt :: local_id, ghosted_id
+  
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set  
+  PetscInt :: sum_connection, iconn
+  PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
+  PetscReal :: fraction_upwind, distance, dist_up, dist_dn
+  PetscErrorCode :: ierr
+    
+  option => realization%option
+  field => realization%field
+  patch => realization%patch
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  grid => patch%grid
+  rt_parameter => patch%aux%RT%rt_parameter
+
+  ! cannot use tran_xx_loc vector here as it has not yet been updated.
+  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  call GridVecGetArrayF90(grid,field%tortuosity_loc,tor_loc_p,ierr)
+
+  ! Interior Flux Terms -----------------------------------
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
+  sum_connection = 0  
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+
+      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
+      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
+
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id_up) <= 0 .or.  &
+          patch%imat(ghosted_id_dn) <= 0) cycle
+      endif
+
+      fraction_upwind = cur_connection_set%dist(-1,iconn)
+      distance = cur_connection_set%dist(0,iconn)
+    ! distance = scalar - magnitude of distance
+      dist_up = distance*fraction_upwind
+      dist_dn = distance-dist_up ! should avoid truncation error
+
+      call TDiffusion(global_aux_vars(ghosted_id_up), &
+                      porosity_loc_p(ghosted_id_up), &
+                      tor_loc_p(ghosted_id_up),dist_up, &
+                      global_aux_vars(ghosted_id_dn), &
+                      porosity_loc_p(ghosted_id_dn), &
+                      tor_loc_p(ghosted_id_dn),dist_dn, &
+                      rt_parameter,option, &
+                      patch%internal_velocities(:,sum_connection), &
+                      patch%internal_tran_coefs(:,sum_connection))
+                     
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo    
+  
+! Boundary Flux Terms -----------------------------------
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(boundary_condition)) exit
+  
+    cur_connection_set => boundary_condition%connection_set
+  
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+  
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+
+      call TDiffusionBC(boundary_condition%tran_condition%itype, &
+                        global_aux_vars_bc(sum_connection), &
+                        global_aux_vars(ghosted_id), &
+                        porosity_loc_p(ghosted_id), &
+                        tor_loc_p(ghosted_id), &
+                        cur_connection_set%dist(0,iconn), &
+                        rt_parameter,option, &
+                        patch%boundary_velocities(:,sum_connection), &
+                        patch%boundary_tran_coefs(:,sum_connection))
+    
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+
+
+  ! Restore vectors
+  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%tortuosity_loc, tor_loc_p, ierr)
+
+end subroutine RTUpdateTransportCoefsPatch
+#endif
 
 ! ************************************************************************** !
 !
@@ -1356,6 +1491,9 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   PetscReal :: fraction_upwind, distance, dist_up, dist_dn
   PetscInt :: axis, side, nlx, nly, nlz, ngx, ngxy, pstart, pend, flux_id
   PetscInt :: direction, max_x_conn, max_y_conn
+  
+  PetscReal :: coef_up(realization%option%nphase)
+  PetscReal :: coef_dn(realization%option%nphase)
 
 #ifdef CHUAN_CO2
   PetscReal :: msrc(1:realization%option%nflowspec)
@@ -1443,7 +1581,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
         call TFluxAdv(rt_aux_vars(ghosted_id_up),global_aux_vars(ghosted_id_up), &
                rt_aux_vars(ghosted_id_dn),global_aux_vars(ghosted_id_dn), &
                cur_connection_set%area(iconn),rt_parameter,option, &
-               patch%internal_velocities(:,iconn),Res)
+               patch%internal_velocities(:,sum_connection),Res)
           
         if (local_id_up>0) then
           iend = local_id_up*reaction%ncomp
@@ -1497,9 +1635,9 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
                dist_up, &
                rt_aux_vars(ghosted_id_dn),global_aux_vars(ghosted_id_dn), &
                porosity_loc_p(ghosted_id_dn),tor_loc_p(ghosted_id_dn), &
-               dist_up, &
+               dist_dn, &
                cur_connection_set%area(iconn),rt_parameter,option, &
-               patch%internal_velocities(:,iconn),Res)
+               patch%internal_velocities(:,sum_connection),Res)
           
         if (sum_connection <= max_x_conn) then
           direction = 0
@@ -1707,6 +1845,14 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
             patch%imat(ghosted_id_dn) <= 0) cycle
         endif
 
+#ifdef REVISED_TRANSPORT
+        call TFluxCoef(option,cur_connection_set%area(iconn), &
+                       patch%internal_velocities(:,sum_connection), &
+                       patch%internal_tran_coefs(:,sum_connection), &
+                       coef_up,coef_dn)
+        call TFlux(rt_aux_vars(ghosted_id_up),rt_aux_vars(ghosted_id_dn), &
+                   coef_up,coef_dn,option,Res)
+#else
         fraction_upwind = cur_connection_set%dist(-1,iconn)
         distance = cur_connection_set%dist(0,iconn)
       ! distance = scalar - magnitude of distance
@@ -1718,9 +1864,10 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
                  dist_up, &
                  rt_aux_vars(ghosted_id_dn),global_aux_vars(ghosted_id_dn), &
                  porosity_loc_p(ghosted_id_dn),tor_loc_p(ghosted_id_dn), &
-                 dist_up, &
+                 dist_dn, &
                  cur_connection_set%area(iconn),rt_parameter,option, &
-                 patch%internal_velocities(:,iconn),Res)
+                 patch%internal_velocities(:,sum_connection),Res)
+#endif
 
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
         rt_aux_vars(local_id_up)%mass_balance_delta(:,iphase) = &
@@ -1765,17 +1912,29 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
           if (patch%imat(ghosted_id) <= 0) cycle
         endif
 
-        call TBCFlux(boundary_condition%tran_condition%itype, &
-                   rt_aux_vars_bc(sum_connection), &
-                   global_aux_vars_bc(sum_connection), &
+#ifdef REVISED_TRANSPORT
+        ! TFluxCoef accomplishes the same as what TBCCoef would
+        call TFluxCoef(option,cur_connection_set%area(iconn), &
+                       patch%boundary_velocities(:,sum_connection), &
+                       patch%boundary_tran_coefs(:,sum_connection), &
+                       coef_up,coef_dn)
+        ! TFlux accomplishes the same as what TBCFlux would
+        call TFlux(rt_aux_vars_bc(sum_connection), &
                    rt_aux_vars(ghosted_id), &
-                   global_aux_vars(ghosted_id), &
-                   porosity_loc_p(ghosted_id), &
-                   tor_loc_p(ghosted_id), &
-                   cur_connection_set%dist(0,iconn), &
-                   cur_connection_set%area(iconn), &
-                   rt_parameter,option, &
-                   patch%boundary_velocities(:,sum_connection),Res)
+                   coef_up,coef_dn,option,Res)
+#else
+        call TBCFlux(boundary_condition%tran_condition%itype, &
+                     rt_aux_vars_bc(sum_connection), &
+                     global_aux_vars_bc(sum_connection), &
+                     rt_aux_vars(ghosted_id), &
+                     global_aux_vars(ghosted_id), &
+                     porosity_loc_p(ghosted_id), &
+                     tor_loc_p(ghosted_id), &
+                     cur_connection_set%dist(0,iconn), &
+                     cur_connection_set%area(iconn), &
+                     rt_parameter,option, &
+                     patch%boundary_velocities(:,sum_connection),Res)
+#endif
  
         iend = local_id*reaction%ncomp
         istart = iend-reaction%ncomp+1
@@ -2226,7 +2385,10 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: sum_connection, iconn
   PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
   PetscReal :: fraction_upwind, distance, dist_up, dist_dn, rdum
-  
+
+  PetscReal :: coef_up(realization%option%nphase)
+  PetscReal :: coef_dn(realization%option%nphase)
+    
   option => realization%option
   field => realization%field
   patch => realization%patch  
@@ -2269,7 +2431,7 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                               global_aux_vars(ghosted_id_dn), &
                               cur_connection_set%area(iconn), &
                               rt_parameter,option, &
-                              patch%internal_velocities(:,iconn),Jup,Jdn)
+                              patch%internal_velocities(:,sum_connection),Jup,Jdn)
 
       if (local_id_up>0) then
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
@@ -2363,7 +2525,7 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                                dist_dn, &
                                cur_connection_set%area(iconn), &
                                rt_parameter,option, &
-                               patch%internal_velocities(:,iconn),Jup,Jdn)
+                               patch%internal_velocities(:,sum_connection),Jup,Jdn)
 
       if (local_id_up>0) then
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
@@ -2444,6 +2606,17 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
             patch%imat(ghosted_id_dn) <= 0) cycle
       endif
 
+#ifdef REVISED_TRANSPORT
+      call TFluxCoef(option,cur_connection_set%area(iconn), &
+                     patch%internal_velocities(:,sum_connection), &
+                     patch%internal_tran_coefs(:,sum_connection), &
+                     coef_up,coef_dn)
+      call TFluxDerivative(rt_aux_vars(ghosted_id_up), &
+                           global_aux_vars(ghosted_id_up), &
+                           rt_aux_vars(ghosted_id_dn), &
+                           global_aux_vars(ghosted_id_dn), &
+                           coef_up,coef_dn,option,Jup,Jdn)
+#else
       fraction_upwind = cur_connection_set%dist(-1,iconn)
       distance = cur_connection_set%dist(0,iconn)
       ! distance = scalar - magnitude of distance
@@ -2462,7 +2635,8 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                            dist_dn, &
                            cur_connection_set%area(iconn), &
                            rt_parameter,option, &
-                           patch%internal_velocities(:,iconn),Jup,Jdn)
+                           patch%internal_velocities(:,sum_connection),Jup,Jdn)
+#endif
 
       if (local_id_up>0) then
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
@@ -2501,6 +2675,19 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
 
+#ifdef REVISED_TRANSPORT
+      ! TFluxCoef accomplishes the same as what TBCCoef would
+      call TFluxCoef(option,cur_connection_set%area(iconn), &
+                     patch%boundary_velocities(:,sum_connection), &
+                     patch%boundary_tran_coefs(:,sum_connection), &
+                     coef_up,coef_dn)
+      ! TFluxDerivative accomplishes the same as what TBCFluxDerivative would
+      call TFluxDerivative(rt_aux_vars_bc(sum_connection), &
+                           global_aux_vars_bc(sum_connection), &
+                           rt_aux_vars(ghosted_id), &
+                           global_aux_vars(ghosted_id), &
+                           coef_up,coef_dn,option,Jup,Jdn)
+#else
       call TBCFluxDerivative(boundary_condition%tran_condition%itype, &
                              rt_aux_vars_bc(sum_connection), &
                              global_aux_vars_bc(sum_connection), &
@@ -2513,7 +2700,9 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                              rt_parameter,option, &
                              patch%boundary_velocities(:,sum_connection), &
                              Jdn)
- 
+#endif
+
+      !Jup not needed 
       Jdn = -Jdn
       
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn,ADD_VALUES,ierr)

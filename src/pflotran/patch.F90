@@ -28,7 +28,11 @@ module Patch_module
     PetscReal, pointer :: internal_velocities(:,:)
     PetscReal, pointer :: boundary_velocities(:,:)
     PetscReal, pointer :: internal_fluxes(:,:,:)    
-    PetscReal, pointer :: boundary_fluxes(:,:,:)    
+    PetscReal, pointer :: boundary_fluxes(:,:,:)  
+#ifdef REVISED_TRANSPORT      
+    PetscReal, pointer :: internal_tran_coefs(:,:)
+    PetscReal, pointer :: boundary_tran_coefs(:,:)
+#endif
     type(grid_type), pointer :: grid
 
     type(region_list_type), pointer :: regions
@@ -93,6 +97,10 @@ function PatchCreate()
   nullify(patch%boundary_velocities)
   nullify(patch%internal_fluxes)
   nullify(patch%boundary_fluxes)
+#ifdef REVISED_TRANSPORT  
+  nullify(patch%internal_tran_coefs)
+  nullify(patch%boundary_tran_coefs)
+#endif
 
   nullify(patch%grid)
 
@@ -477,18 +485,26 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   temp_int = ConnectionGetNumberInList(patch%grid%internal_connection_set_list)
   allocate(patch%internal_velocities(option%nphase,temp_int))
   patch%internal_velocities = 0.d0
+#ifdef REVISED_TRANSPORT  
+  allocate(patch%internal_tran_coefs(option%nphase,temp_int))
+  patch%internal_tran_coefs = 0.d0
   if (option%store_solute_fluxes) then
     allocate(patch%internal_fluxes(option%nphase,option%ntrandof,temp_int))
     patch%internal_fluxes = 0.d0
   endif
+#endif  
   
   temp_int = CouplerGetNumConnectionsInList(patch%boundary_conditions)
   allocate(patch%boundary_velocities(option%nphase,temp_int)) 
-  patch%boundary_velocities = 0.d0          
+  patch%boundary_velocities = 0.d0
+#ifdef REVISED_TRANSPORT
+  allocate(patch%boundary_tran_coefs(option%nphase,temp_int))
+  patch%boundary_tran_coefs = 0.d0
   if (option%store_solute_fluxes) then
     allocate(patch%boundary_fluxes(option%nphase,option%ntrandof,temp_int))
     patch%boundary_fluxes = 0.d0
   endif
+#endif  
 
 end subroutine PatchProcessCouplers
 
@@ -2071,6 +2087,12 @@ subroutine PatchDestroy(patch)
   nullify(patch%internal_fluxes)
   if (associated(patch%boundary_fluxes)) deallocate(patch%boundary_fluxes)
   nullify(patch%boundary_fluxes)
+#ifdef REVISED_TRANSPORT  
+  if (associated(patch%internal_tran_coefs)) deallocate(patch%internal_tran_coefs)
+  nullify(patch%internal_tran_coefs)
+  if (associated(patch%boundary_tran_coefs)) deallocate(patch%boundary_tran_coefs)
+  nullify(patch%boundary_tran_coefs)
+#endif  
 
   call GridDestroy(patch%grid)
   call RegionDestroyList(patch%regions)

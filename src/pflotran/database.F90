@@ -673,6 +673,7 @@ subroutine BasisInit(reaction,option)
   type(surface_complex_type), pointer :: cur_srfcplx2
   type(ion_exchange_rxn_type), pointer :: cur_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cur_cation
+  type(colloid_type), pointer :: cur_colloid
 
   character(len=MAXWORDLENGTH), allocatable :: old_basis_names(:)
   character(len=MAXWORDLENGTH), allocatable :: new_basis_names(:)
@@ -701,7 +702,7 @@ subroutine BasisInit(reaction,option)
   PetscInt :: ncomp_h2o, ncomp_secondary
   PetscInt :: icount_old, icount_new, icount, icount2
   PetscInt :: i, j, irow, icol
-  PetscInt :: ipri_spec, isec_spec, imnrl, igas_spec, ikinmnrl
+  PetscInt :: ipri_spec, isec_spec, imnrl, igas_spec, ikinmnrl, icoll
   PetscInt :: i_old, i_new
   PetscInt :: isrfcplx, irxn
   PetscInt :: ication
@@ -2285,6 +2286,24 @@ subroutine BasisInit(reaction,option)
 
       cur_mineral => cur_mineral%next
       imnrl = imnrl + 1
+    enddo
+  endif
+  
+  ! colloids
+  reaction%ncoll = GetColloidCount(reaction)
+
+  if (reaction%ncoll > 0) then
+    allocate(reaction%colloid_names(reaction%ncoll))
+    reaction%colloid_names = ''
+
+    cur_colloid => reaction%colloid_list
+    icoll = 1
+    do
+      if (.not.associated(cur_colloid)) exit
+
+      reaction%colloid_names(icoll) = cur_colloid%name
+      cur_colloid => cur_colloid%next
+      icoll = icoll + 1
     enddo
   endif
   

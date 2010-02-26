@@ -20,12 +20,15 @@ module Transport_module
 ! Cutoff parameters
   PetscReal, parameter :: eps       = 1.D-8
   
-  public :: TFlux, &
+  public :: TDiffusion, &
+            TDiffusionBC, &
+            TFlux, &
             TFluxDerivative, &
+#ifndef REVISED_TRANSPORT
             TBCFlux, &
             TBCFluxDerivative, &
+#endif
             TFluxCoef, &
-            TBCFluxCoef, &
             TFluxAdv, &
             TFluxDerivativeAdv, &
             TBCFluxAdv, &
@@ -37,6 +40,180 @@ module Transport_module
   
 contains
 
+! ************************************************************************** !
+!
+! TDiffusion: Computes diffusion term at cell interface
+! author: Glenn Hammond
+! date: 02/24/10
+!
+! ************************************************************************** !
+subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
+                      global_aux_var_dn,por_dn,tor_dn,dist_dn, &
+                      rt_parameter,option,velocity,diffusion)
+
+  use Option_module
+
+  implicit none
+  
+  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn 
+  PetscReal :: por_up, tor_up, dist_up
+  PetscReal :: por_dn, tor_dn, dist_dn
+  PetscReal :: velocity(*)
+  type(option_type) :: option
+  type(reactive_transport_param_type) :: rt_parameter
+  PetscReal :: diffusion(option%nphase)
+  
+  PetscInt :: iphase
+  PetscReal :: weight
+  PetscReal :: sat_up, sat_dn
+  PetscReal :: stp_up, stp_dn
+  PetscReal :: q
+  
+  diffusion(:) = 0.d0
+
+  iphase = 1
+  q = velocity(iphase)
+  
+  sat_up = global_aux_var_up%sat(iphase)
+  sat_dn = global_aux_var_dn%sat(iphase)
+  
+  if (sat_up > eps .and. sat_dn > eps) then
+    stp_up = sat_up*tor_up*por_up 
+    stp_dn = sat_dn*tor_dn*por_dn
+    ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
+    weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
+    ! need to account for multiple phases
+    ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
+    diffusion(iphase) = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
+                        weight*rt_parameter%diffusion_coefficient(iphase)
+  endif
+
+! Add in multiphase, clu 12/29/08
+#ifdef CHUAN_CO2  
+  do
+    iphase = iphase +1 
+    if (iphase > option%nphase) exit
+! super critical CO2 phase have the index 2: need implementation
+    q = velocity(iphase)
+    sat_up = global_aux_var_up%sat(iphase)
+    sat_dn = global_aux_var_dn%sat(iphase)
+  
+    if (sat_up > eps .and. sat_dn > eps) then
+      stp_up = sat_up*tor_up*por_up 
+      stp_dn = sat_dn*tor_dn*por_dn
+    ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
+      weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
+    ! need to account for multiple phases
+    ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
+      if(iphase ==2) diffusion(iphase) = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
+                               weight*rt_parameter%diffusion_coefficient(iphase)
+    endif
+  enddo
+#endif  
+  
+end subroutine TDiffusion
+
+! ************************************************************************** !
+!
+! TDiffusionBC: Computes diffusion term at cell boundary interface
+! author: Glenn Hammond
+! date: 02/15/08
+!
+! ************************************************************************** !
+subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
+                        por_dn,tor_dn,dist_dn, &
+                        rt_parameter,option,velocity,diffusion)
+
+  use Option_module
+
+  implicit none
+  
+  PetscInt :: ibndtype
+  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
+  PetscReal :: por_dn, tor_dn,  dist_dn
+  PetscReal :: velocity(1)
+  type(reactive_transport_param_type) :: rt_parameter
+  type(option_type) :: option
+  PetscReal :: diffusion(option%nphase)
+  
+  PetscInt :: icomp
+  PetscInt :: iphase
+  PetscReal :: weight
+  PetscReal :: q
+  PetscReal :: sat_up, sat_dn
+  
+  diffusion(:) = 0.d0
+
+  iphase = 1
+  q = velocity(iphase)
+  
+  sat_up = global_aux_var_up%sat(iphase)
+  sat_dn = global_aux_var_dn%sat(iphase)
+
+  select case(ibndtype)
+    case(DIRICHLET_BC)
+      if (sat_up > eps .and. sat_dn > eps) then
+        ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
+        weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
+        ! need to account for multiple phases
+        ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
+        diffusion(iphase) = rt_parameter%dispersivity*q/dist_dn + &
+                            weight*rt_parameter%diffusion_coefficient(iphase)
+      endif    
+    case(DIRICHLET_ZERO_GRADIENT_BC)
+      if (q >= 0.d0) then
+        ! same as dirichlet above
+        if (sat_up > eps .and. sat_dn > eps) then
+          ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
+          weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
+          ! need to account for multiple phases
+          ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
+          diffusion(iphase) = rt_parameter%dispersivity*q/dist_dn + &
+                              weight*rt_parameter%diffusion_coefficient(iphase)
+        endif    
+      endif
+    case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
+  end select
+
+! Add in multiphase, clu 12/29/08
+#ifdef CHUAN_CO2  
+  do 
+    iphase = iphase + 1
+    if (iphase > option%nphase) exit
+    q = velocity(iphase)
+    sat_up = global_aux_var_up%sat(iphase)
+    sat_dn = global_aux_var_dn%sat(iphase)
+
+    select case(ibndtype)
+      case(DIRICHLET_BC)
+        if (sat_up > eps .and. sat_dn > eps) then
+        ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
+          weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
+         ! need to account for multiple phases
+         ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
+          if( iphase == 2) diffusion(iphase) = rt_parameter%dispersivity*q/dist_dn + &
+                                       weight*rt_parameter%diffusion_coefficient(iphase)
+        endif    
+      case(DIRICHLET_ZERO_GRADIENT_BC)
+        if (q >= 0.d0) then
+         ! same as dirichlet above
+          if (sat_up > eps .and. sat_dn > eps) then
+          ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
+            weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
+        ! need to account for multiple phases
+        ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
+            if(iphase == 2) diffusion(iphase) = rt_parameter%dispersivity*q/dist_dn + &
+                                        weight*rt_parameter%diffusion_coefficient(iphase)
+          endif    
+        endif
+      case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
+    end select
+
+  enddo
+#endif
+
+end subroutine TDiffusionBC
+#ifndef REVISED_TRANSPORT
 ! ************************************************************************** !
 !
 ! TFlux: Computes flux term in residual function
@@ -588,7 +765,173 @@ subroutine TBCFluxDerivative(ibndtype, &
 #endif
 
 end subroutine TBCFluxDerivative
+#else
+! ************************************************************************** !
+!
+! TFlux: Computes flux term in residual function
+! author: Glenn Hammond
+! date: 02/15/08
+!
+! ************************************************************************** !
+subroutine TFlux(rt_aux_var_up,rt_aux_var_dn, &
+                 coef_up,coef_dn,option,Res)
 
+  use Option_module
+
+  implicit none
+  
+  type(reactive_transport_auxvar_type) :: rt_aux_var_up, rt_aux_var_dn
+  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn 
+  PetscReal :: coef_up(*), coef_dn(*)
+  type(option_type) :: option
+  PetscReal :: Res(option%ntrandof)
+  
+  PetscInt :: iphase
+
+  iphase = 1  
+  ! units = (L water/sec)*(mol/L) = mol/s
+  Res(1:option%ntrandof) = coef_up(iphase)*rt_aux_var_up%total(1:option%ntrandof,iphase) + &
+                           coef_dn(iphase)*rt_aux_var_dn%total(1:option%ntrandof,iphase)
+  
+! Add in multiphase, clu 12/29/08
+#ifdef CHUAN_CO2  
+  do
+   iphase = iphase +1 
+   if (iphase > option%nphase) exit
+! super critical CO2 phase have the index 2: need implementation
+  
+  ! units = (L water/sec)*(mol/L) = mol/s
+  Res(1:option%ntrandof) = Res (1:option%ntrandof) + & 
+                      coef_up(iphase)*rt_aux_var_up%total(1:option%ntrandof,iphase) + &
+                      coef_dn(iphase)*rt_aux_var_dn%total(1:option%ntrandof,iphase)
+ enddo
+#endif
+
+end subroutine TFlux
+
+! ************************************************************************** !
+!
+! TFluxDerivative: Computes derivatives of flux term in residual function
+! author: Glenn Hammond
+! date: 02/15/08
+!
+! ************************************************************************** !
+subroutine TFluxDerivative(rt_aux_var_up,global_aux_var_up, &
+                           rt_aux_var_dn,global_aux_var_dn, &
+                           coef_up,coef_dn,option,J_up,J_dn)
+
+  use Option_module
+
+  implicit none
+  
+  type(reactive_transport_auxvar_type) :: rt_aux_var_up, rt_aux_var_dn
+  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn 
+  PetscReal :: coef_up(*), coef_dn(*)
+  type(option_type) :: option
+  PetscReal :: J_up(option%ntrandof,option%ntrandof), J_dn(option%ntrandof,option%ntrandof)
+  
+  PetscInt :: iphase
+  PetscInt :: icomp
+ 
+  iphase = 1
+
+  ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
+  if (associated(rt_aux_var_dn%dtotal)) then
+    J_up = rt_aux_var_up%dtotal(:,:,iphase)*coef_up(iphase)*1000.d0
+    J_dn = rt_aux_var_dn%dtotal(:,:,iphase)*coef_dn(iphase)*1000.d0
+  else  
+    J_up = 0.d0
+    J_dn = 0.d0
+    do icomp = 1, option%ntrandof
+      J_up(icomp,icomp) = coef_up(iphase)*global_aux_var_up%den_kg(iphase)
+      J_dn(icomp,icomp) = coef_dn(iphase)*global_aux_var_dn%den_kg(iphase)
+    enddo
+  endif
+
+! Add in multiphase, clu 12/29/08
+#ifdef CHUAN_CO2  
+  do 
+    iphase = iphase + 1
+    if (iphase > option%nphase) exit
+! super critical CO2 phase
+
+    ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
+    if (associated(rt_aux_var_dn%dtotal)) then
+      J_up = J_up + rt_aux_var_up%dtotal(:,:,iphase)*coef_up(iphase)*1000.d0
+      J_dn = J_dn + rt_aux_var_dn%dtotal(:,:,iphase)*coef_dn(iphase)*1000.d0
+    else  
+      print *,'Dtotal needed for SC problem. STOP'
+      stop 
+   !   J_up = 0.d0
+   !   J_dn = 0.d0
+   !   do icomp = 1, option%ntrandof
+   !     J_up(icomp,icomp) = J_up(icomp,icomp) + coef_up*global_aux_var_up%den_kg(iphase)
+   !     J_dn(icomp,icomp) = J_dn(icomp,icomp) + coef_dn*global_aux_var_dn%den_kg(iphase)
+   !   enddo
+    endif
+  enddo
+#endif
+
+end subroutine TFluxDerivative
+
+#if 0
+! ************************************************************************** !
+!
+! TBCFluxDerivative: Computes derivative of boundary flux term in residual 
+!                    function
+! author: Glenn Hammond
+! date: 02/15/08
+!
+! ************************************************************************** !
+subroutine TBCFluxDerivative(rt_aux_var_up,rt_aux_var_dn, &
+                             coef_dn,option,J_dn)
+
+  use Option_module
+
+  implicit none
+  
+  type(reactive_transport_auxvar_type) :: rt_aux_var_up, rt_aux_var_dn
+  PetscReal :: coef_dn(*)
+  type(option_type) :: option
+  PetscReal :: J_dn(option%ntrandof,option%ntrandof)
+  
+  PetscInt :: icomp
+  PetscInt :: iphase
+
+  iphase = 1
+
+  ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
+  if (associated(rt_aux_var_dn%dtotal)) then
+    J_dn = rt_aux_var_dn%dtotal(:,:,iphase)*coef_dn*1000.d0
+  else
+    J_dn = 0.d0
+    do icomp = 1, option%ntrandof
+      J_dn(icomp,icomp) = coef_dn*global_aux_var_dn%den_kg(iphase)
+    enddo
+  endif
+
+! Add in multiphase, clu 12/29/08
+#ifdef CHUAN_CO2  
+  do 
+    iphase = iphase + 1
+    if (iphase > option%nphase) exit
+
+! super critical CO2 phase
+      ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
+      if (associated(rt_aux_var_dn%dtotal)) then
+        J_dn = J_dn + rt_aux_var_dn%dtotal(:,:,iphase)*coef_dn*1000.d0
+      else
+        J_dn = 0.d0
+        do icomp = 1, option%ntrandof
+          J_dn(icomp,icomp) = J_dn(icomp,icomp) + coef_dn*global_aux_var_dn%den_kg(iphase)
+        enddo
+       endif
+   enddo
+#endif
+
+end subroutine TBCFluxDerivative
+#endif
+#endif
 ! ************************************************************************** !
 !
 ! TFluxCoef: Computes blux coefficients for transport matrix
@@ -596,149 +939,68 @@ end subroutine TBCFluxDerivative
 ! date: 02/22/10
 !
 ! ************************************************************************** !
-subroutine TFluxCoef(global_aux_var_up,por_up,tor_up,dist_up, &
-                     global_aux_var_dn,por_dn,tor_dn,dist_dn, &
-                     area,rt_parameter,option,velocity,T_up,T_dn)
+subroutine TFluxCoef(option,area,velocity,diffusion,T_up,T_dn)
 
   use Option_module
 
   implicit none
   
-  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
-  PetscReal :: por_up, tor_up, dist_up
-  PetscReal :: por_dn, tor_dn, dist_dn
-  PetscReal :: area
-  PetscReal :: velocity(1)
-  type(reactive_transport_param_type) :: rt_parameter
   type(option_type) :: option
-  PetscReal :: T_up, T_dn
+  PetscReal :: area
+  PetscReal :: velocity(*)
+  PetscReal :: diffusion(*)
+  PetscReal :: T_up(*), T_dn(*)
 
-  PetscInt, parameter :: iphase = 1
-  PetscReal :: weight
-  PetscReal :: sat_up, sat_dn
-  PetscReal :: stp_up, stp_dn
+  PetscInt :: iphase
   PetscReal :: coef_up, coef_dn
-  PetscReal :: diffusion, q
+  PetscReal :: q
   
-  diffusion = 0.d0
-
+  iphase = 1
+  
   q = velocity(iphase)
 
-  sat_up = global_aux_var_up%sat(iphase)
-  sat_dn = global_aux_var_dn%sat(iphase)
-    
-  if (sat_up > eps .and. sat_dn > eps) then
-    stp_up = sat_up*tor_up*por_up
-    stp_dn = sat_dn*tor_dn*por_dn
-    ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-    weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
-    ! need to account for multiple phases
-    ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-    diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
-                weight*rt_parameter%diffusion_coefficient(iphase)
-
-  endif
-  
   !upstream weighting
   ! units = (m^3 water/m^2 bulk/sec)
   if (q > 0.d0) then
-    coef_up =  diffusion+q
-    coef_dn = -diffusion
+    coef_up =  diffusion(iphase)+q
+    coef_dn = -diffusion(iphase)
   else
-    coef_up =  diffusion
-    coef_dn = -diffusion+q
+    coef_up =  diffusion(iphase)
+    coef_dn = -diffusion(iphase)+q
   endif
   
-  ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)
-  !       = m^3 water/sec
-  coef_up = coef_up*area
-  coef_dn = coef_dn*area
+  ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)*(1000 L water/m^3 water)
+  !       = L water/sec
+  T_up(iphase) = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
+  T_dn(iphase) = coef_dn*area*1000.d0
 
-  ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
-  T_up = coef_up*global_aux_var_up%den_kg(iphase)
-  T_dn = coef_dn*global_aux_var_dn%den_kg(iphase)
+! Add in multiphase, clu 12/29/08
+#ifdef CHUAN_CO2  
+  do
+    iphase = iphase +1 
+    if (iphase > option%nphase) exit
+    ! super critical CO2 phase have the index 2: need implementation
+    q = velocity(iphase)
+  
+    !upstream weighting
+    ! units = (m^3 water/m^2 bulk/sec)
+    if (q > 0.d0) then
+      coef_up =  diffusion(iphase)+q
+      coef_dn = -diffusion(iphase)
+    else
+      coef_up =  diffusion(iphase)
+      coef_dn = -diffusion(iphase)+q
+    endif
+  
+    ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)*(1000 L water/m^3 water)
+    !       = L water/sec
+    T_up(iphase) = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
+    T_dn(iphase) = coef_dn*area*1000.d0
+  
+  enddo
+#endif
 
 end subroutine TFluxCoef
-
-! ************************************************************************** !
-!
-! TBCFluxCoef: Computes boundary flux coefficients for transport matrix
-! author: Glenn Hammond
-! date: 02/22/10
-!
-! ************************************************************************** !
-subroutine TBCFluxCoef(ibndtype, &
-                       global_aux_var_up, &
-                       global_aux_var_dn, &
-                       por_dn,tor_dn,dist_dn, &
-                       area,rt_parameter,option,velocity,T_dn)
-
-  use Option_module
-
-  implicit none
-  
-  PetscInt :: ibndtype
-  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn 
-  PetscReal :: por_dn, tor_dn, dist_dn
-  PetscReal :: area
-  PetscReal :: velocity(1)
-  type(reactive_transport_param_type) :: rt_parameter
-  type(option_type) :: option
-  PetscReal :: T_dn
-  
-  PetscInt, parameter :: iphase = 1
-  PetscReal :: weight
-  PetscReal :: coef_dn
-  PetscReal :: diffusion, q
-  PetscReal :: sat_up, sat_dn  
-  
-  diffusion = 0.d0
-
-  q = velocity(iphase)
-  
-  sat_up = global_aux_var_up%sat(iphase)
-  sat_dn = global_aux_var_dn%sat(iphase)
-  
-  select case(ibndtype)
-    case(DIRICHLET_BC)
-      if (sat_up > eps .and. sat_dn > eps) then
-        ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-        weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
-        ! need to account for multiple phases
-        ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-        diffusion = rt_parameter%dispersivity*q/dist_dn + &
-                    weight*rt_parameter%diffusion_coefficient(iphase)
-      endif    
-    case(DIRICHLET_ZERO_GRADIENT_BC)
-      if (q >= 0.d0) then
-        if (sat_up > eps .and. sat_dn > eps) then
-          ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-          weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
-          ! need to account for multiple phases
-          ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-          diffusion = rt_parameter%dispersivity*q/dist_dn + &
-                      weight*rt_parameter%diffusion_coefficient(iphase)
-        endif  
-      endif  
-    case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
-  end select
-
-  !upstream weighting
-  ! units = (m^3 water/m^2 bulk/sec)  
-  if (q > 0.d0) then
-    coef_dn = -diffusion
-  else
-    coef_dn = -diffusion+q
-  endif
-
-  ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)
-  !       = m^3 water/sec  
-  coef_dn = coef_dn*area
-
-  ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
-  T_dn = coef_dn*global_aux_var_dn%den_kg(iphase)
-
-end subroutine TBCFluxCoef
 
 ! ************************************************************************** !
 ! ************************************************************************** !
