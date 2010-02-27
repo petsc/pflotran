@@ -10,8 +10,16 @@ void Output::printGMSGrid() {
 
   FILE *fp = NULL;
   
+  char filename[128];
+  char string[128];
+  
+  grid->getFilenamePrefix(string);
+  strcpy(filename,"gms_");
+  strcat(filename,string);
+  strcat(filename,".3dg");
+
   PetscPrintf(PETSC_COMM_WORLD,"Printing GMS grid.\n");
-  PetscFOpen(PETSC_COMM_WORLD,"gms.3dg","w",&fp);
+  PetscFOpen(PETSC_COMM_WORLD,filename,"w",&fp);
   PetscFPrintf(PETSC_COMM_WORLD,fp,"GRID3D\n");
   PetscFPrintf(PETSC_COMM_WORLD,fp,"TYPE 1\n");
   PetscFPrintf(PETSC_COMM_WORLD,fp,"IJK +y +x +z\n");
@@ -157,9 +165,14 @@ void Output::printHDFMaterialsAndRegions() {
 #if defined(PETSC_HAVE_HDF5)
   PetscPrintf(PETSC_COMM_WORLD,"Printing HDF Materials and Regions.\n");
 
-  char filename[1024];
   PetscTruth option_found;
-  strcpy(filename,"input.h5");
+  char filename[128];
+  char string[128];
+  
+  grid->getFilenamePrefix(string);
+  strcpy(filename,"input_");
+  strcat(filename,string);
+  strcat(filename,".h5");
   PetscOptionsGetString(PETSC_NULL,"-mdtout",filename,1024,&option_found);
 
   HDF *file = new HDF(filename,1);

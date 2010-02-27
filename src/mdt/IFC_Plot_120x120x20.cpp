@@ -37,7 +37,7 @@ IFC_Plot_120x120x20::IFC_Plot_120x120x20(Grid **grid_) {
 
   PetscReal len_x = 120.;
   PetscReal len_y = 120.;
-  PetscReal len_z = 20.;
+  PetscReal len_z = 15.;
 
   dx = len_x/(PetscReal)nx;
   dy = len_y/(PetscReal)ny;
@@ -90,10 +90,11 @@ IFC_Plot_120x120x20::IFC_Plot_120x120x20(Grid **grid_) {
 #else
   grid->setGridSpacing(dx,dy,dz);
 #endif
-
   grid->setRotation(35.); // must come before ->setOrigin()
 
-  grid->setOrigin(594239.4155,115982.5663,90.);
+  grid->setOrigin(594239.4155,115982.5663,95.);
+  sprintf(filename,"plot_120_%dx%dx%d",nx,ny,nz);
+  grid->setFilenamePrefix(filename);
 
 //  grid->computeCoordinates();
 //  grid->computeConnectivity();

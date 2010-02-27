@@ -58,10 +58,12 @@ int main(int argc, char **args) {
   Output *out = new Output(grid);
 
 #if 1
-  PetscGetTime(&start);
-  out->printGMSGrid();
-  PetscGetTime(&end);
-  if (myrank == 0) printf("  %f seconds to print to GMS\n",end-start); 
+  if (grid->getN() <= 50000000) {
+    PetscGetTime(&start);
+    out->printGMSGrid();
+    PetscGetTime(&end);
+    if (myrank == 0) printf("  %f seconds to print to GMS\n",end-start); 
+  }
 #endif
 
 //  out->printBoundarySets();

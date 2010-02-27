@@ -37,6 +37,13 @@ void Grid::createStructured(PetscInt nx, PetscInt ny, PetscInt nz) {
   structuredGrid->createDA();
 }
 
+void Grid::getFilenamePrefix(char *filename_prefix_) {
+  if (strlen(filename_prefix) > 1)
+    strcpy(filename_prefix_,filename_prefix);
+  else
+    filename_prefix_[0] = '\0';
+}
+
 PetscInt *Grid::getCellIds() {
 
   PetscInt *ids = new PetscInt[num_cells_local];
@@ -228,6 +235,11 @@ void Grid::nullifyArrays() {
   vertex_mapping_ghosted_to_local = NULL;
   vertices = NULL;
   boundary_sets = NULL;
+  filename_prefix[0] = '\0';
+}
+
+void Grid::setFilenamePrefix(char *filename_prefix_) {
+  strcpy(filename_prefix,filename_prefix_);
 }
 
 void Grid::setGridSpacing(PetscReal *dx, PetscReal *dy, PetscReal *dz) {
