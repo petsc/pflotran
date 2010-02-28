@@ -2059,6 +2059,11 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                   volume_p(local_id),option,reaction,Res)
         r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)
       endif
+      if (reaction%calculate_tracer_age) then 
+        call RAge(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
+                  volume_p(local_id),option,reaction,Res)
+        r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)
+      endif
     enddo
   endif
 #endif

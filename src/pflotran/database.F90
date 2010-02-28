@@ -2800,11 +2800,26 @@ subroutine BasisInit(reaction,option)
         reaction%species_idx%co2_aq_id = ispec
       endif
     endif
+    if (reaction%species_idx%tracer_aq_id == 0) then
+      word = 'Tracer'
+      if (StringCompare(reaction%primary_species_names(ispec), &
+                          word,MAXWORDLENGTH)) then
+        reaction%species_idx%tracer_aq_id = ispec
+      endif
+    endif
     if (reaction%species_idx%h2o_aq_id == 0) then
       word = 'H2O'
       if (StringCompare(reaction%primary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
         reaction%species_idx%h2o_aq_id = ispec
+      endif
+    endif
+    if (reaction%species_idx%tracer_age_id == 0) then
+      word = 'Tracer_Age'
+      if (StringCompare(reaction%primary_species_names(ispec), &
+                          word,MAXWORDLENGTH)) then
+        reaction%species_idx%tracer_age_id = ispec
+        reaction%calculate_tracer_age = PETSC_TRUE
       endif
     endif
     if (reaction%species_idx%water_age_id == 0) then

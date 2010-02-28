@@ -4231,10 +4231,16 @@ subroutine RAge(rt_aux_var,global_aux_var,vol,option,reaction,Res)
   type(option_type) :: option
   type(reaction_type) :: reaction
   PetscReal :: Res(reaction%ncomp)
+  PetscInt, parameter :: iphase = 1
   
   Res(:) = 0.d0
-  Res(reaction%species_idx%water_age_id) = vol
-
+  if (reaction%calculate_water_age) then
+    Res(reaction%species_idx%water_age_id) = vol
+  endif
+  if (reaction%calculate_tracer_age) then
+    Res(reaction%species_idx%tracer_age_id) = &
+    -rt_aux_var%total(reaction%species_idx%tracer_aq_id,iphase) * vol
+  endif
 end subroutine RAge
 
 end module Reaction_module
