@@ -4239,7 +4239,7 @@ subroutine RAge(rt_aux_var,global_aux_var,vol,option,reaction,Res)
   endif
   if (reaction%calculate_tracer_age) then
     Res(reaction%species_idx%tracer_age_id) = &
-    -rt_aux_var%total(reaction%species_idx%tracer_aq_id,iphase) * vol
+    -rt_aux_var%total(reaction%species_idx%tracer_aq_id,iphase) * vol / 3600.d0
   endif
 end subroutine RAge
 
