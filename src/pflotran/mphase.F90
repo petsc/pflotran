@@ -713,8 +713,8 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
         global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
         global_aux_vars_bc(sum_connection)%den_kg(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
-        print *,'xxbc ', xxbc, iphasebc, global_aux_vars_bc(sum_connection)%den_kg(:)
-        mnacl= global_aux_vars_bc(sum_connection)%m_nacl(1)
+!       print *,'xxbc ', xxbc, iphasebc, global_aux_vars_bc(sum_connection)%den_kg(:)
+!       mnacl= global_aux_vars_bc(sum_connection)%m_nacl(1)
         if(global_aux_vars_bc(sum_connection)%m_nacl(2)>mnacl) mnacl= global_aux_vars_bc(sum_connection)%m_nacl(2)
         ynacl =  mnacl/(1.d3/FMWH2O + mnacl)
         global_aux_vars_bc(sum_connection)%xmass(1)= (1.d0-ynacl)&
