@@ -784,7 +784,7 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   PetscReal, pointer :: xx_p(:), porosity_loc_p(:), tor_loc_p(:), &
                         volume_p(:), accum_p(:), density_loc_p(:)
   PetscInt :: local_id, ghosted_id
-  PetscInt :: istart, iend
+  PetscInt :: dof_offset, istart, iend
   PetscErrorCode :: ierr
   
   option => realization%option
@@ -811,10 +811,17 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
-    iend = local_id*reaction%ncomp
-    istart = iend-reaction%ncomp+1
+    
+    ! compute offset in solution vector for first dof in grid cell
+    dof_offset = (local_id-1)*reaction%ncomp
+    
+    ! calculate range of aqueous species
+    istart = dof_offset+1
+    iend = dof_offset+reaction%naqcomp
 
+    ! copy primary aqueous species
     rt_aux_vars(ghosted_id)%pri_molal = xx_p(istart:iend)
+    
     ! DO NOT RECOMPUTE THE ACTIVITY COEFFICIENTS BEFORE COMPUTING THE
     ! FIXED PORTION OF THE ACCUMULATION TERM - geh
     call RTAuxVarCompute(rt_aux_vars(ghosted_id), &
@@ -1085,37 +1092,49 @@ subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
   PetscReal :: por, vol
   type(option_type) :: option
   type(reaction_type) :: reaction
-  PetscReal :: Res(reaction%ncomp)
+  PetscReal :: Res(reaction%naqcomp)
   
   PetscInt :: iphase
+  PetscInt :: istart, iend
   PetscReal :: psv_t
   PetscReal :: v_t
   
   iphase = 1
+  istart = 1
+  iend = reaction%naqcomp
   ! units = (mol solute/L water)*(m^3 por/m^3 bulk)*(m^3 water/m^3 por)*
   !         (m^3 bulk)*(1000L water/m^3 water)/(sec) = mol/sec
   ! 1000.d0 converts vol from m^3 -> L
   ! all residual entries should be in mol/sec
   psv_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
-  Res(:) = psv_t*rt_aux_var%total(:,iphase) 
+  Res(istart:iend) = psv_t*rt_aux_var%total(:,iphase) 
 
 ! Add in multiphase, clu 12/29/08
-#if 1  
+#ifdef CHUAN_CO2
   do 
     iphase = iphase + 1
     if (iphase > option%nphase) exit
 
 ! super critical CO2 phase
     if (iphase == 2) then
-      psv_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
-      Res(:) = Res(:) + psv_t*rt_aux_var%total(:,iphase) 
+      psv_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt 
+      Res(istart:iend) = Res(istart:iend) + psv_t*rt_aux_var%total(:,iphase) 
       ! should sum over gas component only need more implementations
     endif 
 ! add code for other phases here
   enddo
-
 #endif
+
+#ifdef REVISED_TRANSPORT
+  if (reaction%ncolcomp > 0) then
+    istart = reaction%offset_coll_sorb
+    iend = reaction%offset_coll_sorb + reaction%ncolcomp - 1
+    Res(istart:iend) = psv_t*rt_aux_var%coll_total(:)
+  endif
+#endif
+  
 end subroutine RTAccumulation
+
 
 ! ************************************************************************** !
 !
@@ -1140,45 +1159,71 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
   PetscReal :: J(reaction%ncomp,reaction%ncomp)
   
   PetscInt :: icomp, iphase
+  PetscInt :: istart, iend
   PetscReal :: psvd_t, v_t
-  
+
   iphase = 1
+  istart = 1
+  iend = reaction%naqcomp  
   ! units = (m^3 por/m^3 bulk)*(m^3 water/m^3 por)*(m^3 bulk)/(sec)
   !         *(kg water/L water)*(1000L water/m^3 water) = kg water/sec
   ! all Jacobian entries should be in kg water/sec
+  J = 0.d0
+#ifdef REVISED_TRANSPORT
+  if (associated(rt_aux_var%aqueous%dtotal)) then ! units of dtotal = kg water/L water
+    psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt
+    J(istart:iend,istart:iend) = rt_aux_var%aqueous%dtotal(:,:,iphase)*psvd_t
+#else
   if (associated(rt_aux_var%dtotal)) then ! units of dtotal = kg water/L water
-    psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
-    J = rt_aux_var%dtotal(:,:,iphase)*psvd_t
+    psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt
+    J(istart:iend,istart:iend) = rt_aux_var%dtotal(:,:,iphase)*psvd_t
+#endif
   else
-    J = 0.d0
     psvd_t = por*global_aux_var%sat(iphase)* &
              global_aux_var%den_kg(iphase)*vol/option%tran_dt ! units of den = kg water/m^3 water
-    do icomp=1,reaction%ncomp
+    do icomp=istart,iend
       J(icomp,icomp) = psvd_t
     enddo
   endif
 
 ! Add in multiphase, clu 12/29/08
-#if 1  
+#ifdef CHUAN_CO2
   do
     iphase = iphase +1 
     if (iphase > option%nphase) exit
 ! super critical CO2 phase
     if (iphase == 2) then
+#ifdef REVISED_TRANSPORT        
+      if (associated(rt_aux_var%aqueous%dtotal)) then
+        psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
+        J(istart:iend,istart:iend) = J(istart:iend,istart:iend) + &
+          rt_aux_var%aqueous%dtotal(:,:,iphase)*psvd_t
+#else
       if (associated(rt_aux_var%dtotal)) then
         psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
-        J = J + rt_aux_var%dtotal(:,:,iphase)*psvd_t
+        J(istart:iend,istart:iend) = J(istart:iend,istart:iend) + &
+          rt_aux_var%dtotal(:,:,iphase)*psvd_t
+#endif
       else
-        J = 0.d0
         psvd_t = por*global_aux_var%sat(iphase)* &
           global_aux_var%den_kg(iphase)*vol/option%tran_dt ! units of den = kg water/m^3 water
-        do icomp=1,reaction%ncomp
+        do icomp=istart,iend
           J(icomp,icomp) = J(icomp,icomp) + psvd_t
         enddo
       endif   
     endif
   enddo
-#endif     
+#endif
+
+#ifdef REVISED_TRANSPORT 
+  if (reaction%ncolcomp > 0) then
+    istart = reaction%offset_coll_sorb
+    iend = reaction%offset_coll_sorb + reaction%ncolcomp - 1
+    J(istart:iend,istart:iend) = rt_aux_var%colloid%dtotal(:,:,iphase)* &
+                                 psvd_t
+  endif
+#endif
+
 end subroutine RTAccumulationDerivative
 
 ! ************************************************************************** !
@@ -1532,6 +1577,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   r_p = 0.d0
 
   if (option%use_samr) then
+#ifndef REVISED_TRANSPORT
     do axis=0,2  
       call GridVecGetArrayF90(grid,axis,field%tran_face_fluxes, fluxes(axis)%flux_p, ierr)  
     enddo
@@ -1823,7 +1869,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
       enddo
       boundary_condition => boundary_condition%next
     enddo
-
+#endif ! #ifndef REVISED_TRANSPORT
   else
   ! Interior Flux Terms -----------------------------------
     connection_set_list => grid%internal_connection_set_list
@@ -1846,11 +1892,16 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
         endif
 
 #ifdef REVISED_TRANSPORT
+        ! TFluxCoef will eventually be moved to another routine where it should be
+        ! called only once per flux interface at the beginning of a transport
+        ! time step.
         call TFluxCoef(option,cur_connection_set%area(iconn), &
                        patch%internal_velocities(:,sum_connection), &
                        patch%internal_tran_coefs(:,sum_connection), &
                        coef_up,coef_dn)
-        call TFlux(rt_aux_vars(ghosted_id_up),rt_aux_vars(ghosted_id_dn), &
+        call TFlux(reaction%naqcomp, &
+                   rt_aux_vars(ghosted_id_up), &
+                   rt_aux_vars(ghosted_id_dn), &
                    coef_up,coef_dn,option,Res)
 #else
         fraction_upwind = cur_connection_set%dist(-1,iconn)
@@ -1919,7 +1970,8 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
                        patch%boundary_tran_coefs(:,sum_connection), &
                        coef_up,coef_dn)
         ! TFlux accomplishes the same as what TBCFlux would
-        call TFlux(rt_aux_vars_bc(sum_connection), &
+        call TFlux(reaction%naqcomp, &
+                   rt_aux_vars_bc(sum_connection), &
                    rt_aux_vars(ghosted_id), &
                    coef_up,coef_dn,option,Res)
 #else
@@ -1998,7 +2050,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
   PetscReal, pointer :: porosity_loc_p(:), volume_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt, parameter :: iphase = 1
-  PetscInt :: i, istart, iend                        
+  PetscInt :: i, istart, iend                   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -2377,6 +2429,7 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch
   type(reactive_transport_param_type), pointer :: rt_parameter
+  type(reaction_type), pointer :: reaction
       
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:), rt_aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
@@ -2398,6 +2451,7 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   field => realization%field
   patch => realization%patch  
   grid => patch%grid
+  reaction => realization%reaction
   rt_parameter => patch%aux%RT%rt_parameter
   rt_aux_vars => patch%aux%RT%aux_vars
   rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
@@ -2410,6 +2464,7 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   call GridVecGetArrayF90(grid,field%tortuosity_loc, tor_loc_p, ierr)
 
   if (option%use_samr) then
+#ifndef REVISED_TRANSPORT
   ! Interior Advective Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
@@ -2589,6 +2644,7 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     enddo
     boundary_condition => boundary_condition%next
   enddo
+#endif ! #ifndef REVISED_TRANSPORT
   else ! !use_samr
 
   ! Interior Flux Terms -----------------------------------
@@ -2616,7 +2672,8 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                      patch%internal_velocities(:,sum_connection), &
                      patch%internal_tran_coefs(:,sum_connection), &
                      coef_up,coef_dn)
-      call TFluxDerivative(rt_aux_vars(ghosted_id_up), &
+      call TFluxDerivative(reaction%naqcomp, &
+                           rt_aux_vars(ghosted_id_up), &
                            global_aux_vars(ghosted_id_up), &
                            rt_aux_vars(ghosted_id_dn), &
                            global_aux_vars(ghosted_id_dn), &
@@ -2687,7 +2744,8 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                      patch%boundary_tran_coefs(:,sum_connection), &
                      coef_up,coef_dn)
       ! TFluxDerivative accomplishes the same as what TBCFluxDerivative would
-      call TFluxDerivative(rt_aux_vars_bc(sum_connection), &
+      call TFluxDerivative(reaction%naqcomp, &
+                           rt_aux_vars_bc(sum_connection), &
                            global_aux_vars_bc(sum_connection), &
                            rt_aux_vars(ghosted_id), &
                            global_aux_vars(ghosted_id), &

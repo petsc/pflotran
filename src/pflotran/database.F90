@@ -832,7 +832,10 @@ subroutine BasisInit(reaction,option)
     enddo
   endif
 
-  reaction%ncomp = GetPrimarySpeciesCount(reaction)
+  reaction%naqcomp = GetPrimarySpeciesCount(reaction)
+  ! # of components sorbed to colloids
+  reaction%offset_coll_sorb = reaction%naqcomp + 1
+!  reaction%ncolcomp = GetPrimarySpeciesCount(reaction)
   reaction%neqcplx = GetSecondarySpeciesCount(reaction)
   reaction%ngas = GetGasCount(reaction)
 

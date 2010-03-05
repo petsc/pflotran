@@ -191,6 +191,12 @@ module Reaction_Aux_module
     ! compressed arrays for efficient computation
     ! primary aqueous complexes
     PetscInt :: ncomp
+    PetscInt :: naqcomp
+    PetscInt :: ncolcomp
+    
+    ! offsets
+    PetscInt :: offset_coll_sorb
+    
     character(len=MAXWORDLENGTH), pointer :: primary_species_names(:)
     PetscTruth, pointer :: primary_species_print(:)
     PetscReal, pointer :: primary_spec_a0(:)
@@ -460,6 +466,9 @@ function ReactionCreate()
   nullify(reaction%total_sorb_print)
   
   reaction%ncomp = 0
+  reaction%naqcomp = 0
+  reaction%ncolcomp = 0
+  reaction%offset_coll_sorb = 0
   nullify(reaction%primary_spec_a0)
   nullify(reaction%primary_spec_Z)
   nullify(reaction%primary_spec_molar_wt)
