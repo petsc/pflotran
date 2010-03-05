@@ -612,7 +612,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   interface
 
      subroutine SAMRCreateMatrix(p_application, ndof, stencilsize, flowortransport, p_matrix)
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
        PetscFortranAddr :: p_application
@@ -843,7 +843,7 @@ subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_in
   interface
      subroutine SAMRGlobalToLocal(p_application, gvec, lvec, ierr)
        implicit none
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
        PetscFortranAddr :: p_application
@@ -921,7 +921,7 @@ subroutine DiscretizationLocalToLocal(discretization,local_vec1,local_vec2,dm_in
   interface
      subroutine SAMRLocalToLocal(p_application, gvec, lvec, ierr)
        implicit none
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
        PetscFortranAddr :: p_application

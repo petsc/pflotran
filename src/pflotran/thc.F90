@@ -1535,7 +1535,7 @@ subroutine THCResidual(snes,xx,r,realization,ierr)
   interface
      subroutine samrpetscobjectstateincrease(vec)
        implicit none
-#include "finclude/petsc.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
        Vec :: vec
@@ -1965,7 +1965,7 @@ subroutine THCJacobian(snes,xx,A,B,flag,realization,ierr)
 
   interface
      subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
-#include "finclude/petsc.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
        

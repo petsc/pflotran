@@ -69,7 +69,7 @@ subroutine MassBalanceUpdate(realization,flow_solver,tran_solver)
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petsclog.h"
-#include "finclude/petscsys.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscsnes.h"
 
   type(realization_type) :: realization

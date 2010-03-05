@@ -1424,7 +1424,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   interface
      subroutine samrpetscobjectstateincrease(vec)
        implicit none
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
        Vec :: vec
@@ -1432,7 +1432,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
      
      subroutine SAMRCoarsenFaceFluxes(p_application, vec, ierr)
        implicit none
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
        PetscFortranAddr :: p_application
@@ -1641,7 +1641,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
      PetscInt function samr_patch_at_bc(p_patch, axis, dim)
      implicit none
      
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
      
      PetscFortranAddr :: p_patch
      PetscInt :: axis,dim
@@ -2130,7 +2130,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
 
   interface
      subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
        
@@ -2542,7 +2542,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 
   interface
      subroutine SAMRSetJacobianSourceOnPatch(which_pc, index, val, p_application, p_patch) 
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 
        PetscInt :: which_pc
        PetscInt :: index
@@ -2552,7 +2552,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
      end subroutine SAMRSetJacobianSourceOnPatch
 
      subroutine SAMRSetJacobianSrcCoeffsOnPatch(which_pc, p_application, p_patch) 
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 
        PetscInt :: which_pc
        PetscFortranAddr :: p_application

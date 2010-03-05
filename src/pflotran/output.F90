@@ -4752,7 +4752,7 @@ subroutine OutputHDF5(realization)
   interface
 
      subroutine SAMRCopyVecToVecComponent(vec,svec, component)
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
        Vec :: vec, svec
@@ -4760,7 +4760,7 @@ subroutine OutputHDF5(realization)
      end subroutine SAMRCopyVecToVecComponent
 
      subroutine SAMRRegisterForViz(ptr,vec,component,dname,dnamec)
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
        PetscFortranAddr :: ptr
@@ -4770,7 +4770,7 @@ subroutine OutputHDF5(realization)
      end subroutine SAMRRegisterForViz
 
      subroutine SAMRWritePlotData(ptr, time)
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
        PetscFortranAddr :: ptr
        PetscReal :: time
      end subroutine SAMRWritePlotData

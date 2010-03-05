@@ -116,7 +116,7 @@ function AMRGridCreateLevelPatchLists(amrgrid)
    end subroutine samr_physical_dimensions
   end interface
 
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
   PetscFortranAddr :: p_application
   integer :: nlevels
   integer :: npatches
@@ -178,7 +178,7 @@ subroutine AMRGridComputeLocalBounds(amrgrid)
    end function is_local_patch
   end interface
 
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
   PetscFortranAddr :: p_application
 
   integer :: nlevels
@@ -229,7 +229,7 @@ subroutine AMRGridComputeGridSpacing(amrgrid)
    end function is_local_patch
   end interface
 
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
   PetscFortranAddr :: p_application
   PetscFortranAddr :: p_samr_patch
   PetscReal :: dx, dy, dz
@@ -333,7 +333,7 @@ subroutine AMRGridInitialize(amrgrid)
 
   end interface
 
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
   PetscFortranAddr :: p_application
   PetscInt :: nx, ny, nz
   PetscReal:: x0, y0, z0
@@ -420,7 +420,7 @@ subroutine AMRGridCreateVector(amrgrid, dof, vector,vector_type, &
        use Option_module
        implicit none
        
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
        
@@ -502,7 +502,7 @@ subroutine AMRGridComputeGeometryInformation(amrgrid, origin_global, field, &
   type(field_type), pointer :: field
   PetscReal :: origin_global(3)
   
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
   PetscFortranAddr :: p_application
 
   type(grid_type), pointer :: grid
@@ -563,7 +563,7 @@ subroutine AMRGridReadDXYZ(amrgrid, input, option)
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
 
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
   PetscFortranAddr :: p_application
   integer :: nlevels
   integer :: npatches
