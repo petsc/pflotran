@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-#include "petsc.h"
+#include "petscsys.h"
 
 class Connection {
   

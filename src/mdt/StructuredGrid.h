@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 
-#include "petsc.h"
+#include "petscsys.h"
 #include "petscda.h"
 #include "petscvec.h"
 #include "petscmat.h"

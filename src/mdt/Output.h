@@ -3,7 +3,7 @@
 
 #include<stdio.h>
 
-#include "petsc.h"
+#include "petscsys.h"
 
 #include "Grid.h"
 #if defined(PETSC_HAVE_HDF5)
