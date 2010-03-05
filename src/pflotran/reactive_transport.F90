@@ -1203,7 +1203,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   interface
   subroutine samrpetscobjectstateincrease(vec)
   implicit none
-#include "finclude/petsc.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
   Vec :: vec
@@ -1448,7 +1448,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
     PetscInt function samr_patch_at_bc(p_patch, axis, dim)
     implicit none
      
-#include "finclude/petsc.h"
+#include "finclude/petscsys.h"
      
     PetscFortranAddr :: p_patch
     PetscInt :: axis,dim
@@ -2746,7 +2746,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 
   interface
      subroutine SAMRSetJacobianSrcCoeffsOnPatch(which_pc, p_application, p_patch) 
-#include "finclude/petsc.h"
+#include "finclude/petscsys.h"
 
        PetscInt :: which_pc
        PetscFortranAddr :: p_application

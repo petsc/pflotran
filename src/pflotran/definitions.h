@@ -1,4 +1,4 @@
-#include "finclude/petsc.h"
+#include "finclude/petscsys.h"
 
 PetscInt, parameter :: MAXHEADERLENGTH = 2048
 PetscInt, parameter :: MAXSTRINGLENGTH = 512

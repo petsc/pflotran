@@ -88,7 +88,7 @@ subroutine Init(simulation)
   interface
 
      subroutine SAMRInitializePreconditioner(p_application, which_pc, pc)
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscpc.h"
        PC :: pc
        PetscFortranAddr :: p_application

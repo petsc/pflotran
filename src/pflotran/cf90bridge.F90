@@ -1,7 +1,7 @@
 module cf90interface_module
 implicit none
 private
-#include "finclude/petsc.h"
+#include "finclude/petscsys.h"
 
 type, public :: f90ptrwrap
    PetscReal, pointer, dimension(:) :: f90ptr

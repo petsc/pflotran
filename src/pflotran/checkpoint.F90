@@ -59,7 +59,6 @@ module Checkpoint_module
 #include "finclude/petscis.h"
 #include "finclude/petscis.h90"
 #include "finclude/petsclog.h"
-#include "finclude/petscsys.h"
 #include "finclude/petscviewer.h"
 #include "finclude/petscbag.h"
 
