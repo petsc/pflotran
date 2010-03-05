@@ -1,6 +1,10 @@
 module Reactive_Transport_Aux_module
 
-  ! this module cannot depend on any other modules beside Option_module
+  ! this module cannot depend on any other modules besides Option_module
+  ! and Matrix_Block_Aux_module
+#ifdef REVISED_TRANSPORT
+  use Matrix_Block_Aux_module
+#endif  
 
   implicit none
   
@@ -14,8 +18,11 @@ module Reactive_Transport_Aux_module
     
     ! phase dependent totals
     PetscReal, pointer :: total(:,:)       ! mol solute/L water
+#ifdef REVISED_TRANSPORT    
+    type(matrix_block_auxvar_type), pointer :: aqueous
+#else
     PetscReal, pointer :: dtotal(:,:,:)    ! kg water/m^3 water
-    
+#endif    
     ! sorbed totals
     PetscReal, pointer :: total_sorb_eq(:)    ! mol/m^3 bulk
     PetscReal, pointer :: dtotal_sorb_eq(:,:) ! kg water/m^3 bulk
@@ -56,10 +63,17 @@ module Reactive_Transport_Aux_module
     PetscReal, pointer :: mass_balance_delta(:,:)
     
     PetscReal, pointer :: kinmr_total_sorb(:,:)
-        
+
+#ifdef REVISED_TRANSPORT
+    PetscReal, pointer :: coll_total(:)
+    type(matrix_block_auxvar_type), pointer :: colloid
+#endif
+    
   end type reactive_transport_auxvar_type
   
   type, public :: reactive_transport_param_type
+    PetscInt :: naqcomp
+    PetscInt :: nimcomp
     PetscReal :: dispersivity
     PetscReal, pointer :: diffusion_coefficient(:)
   end type reactive_transport_param_type
@@ -137,12 +151,18 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   type(reaction_type) :: reaction
   type(option_type) :: option  
   
-  allocate(aux_var%pri_molal(reaction%ncomp))
+  allocate(aux_var%pri_molal(reaction%naqcomp))
   aux_var%pri_molal = 0.d0
-  allocate(aux_var%total(reaction%ncomp,option%nphase))
+
+  allocate(aux_var%total(reaction%naqcomp,option%nphase))
   aux_var%total = 0.d0
-  allocate(aux_var%dtotal(reaction%ncomp,reaction%ncomp,option%nphase))
+#ifdef REVISED_TRANSPORT 
+  aux_var%aqueous => MatrixBlockAuxVarCreate(option)
+  call MatrixBlockAuxVarInit(aux_var%aqueous,reaction%naqcomp,option)
+#else  
+  allocate(aux_var%dtotal(reaction%naqcomp,reaction%naqcomp,option%nphase))
   aux_var%dtotal = 0.d0
+#endif
   
   if (reaction%neqcplx > 0) then
     allocate(aux_var%sec_molal(reaction%neqcplx))
@@ -268,6 +288,17 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   else
     nullify(aux_var%kinmr_total_sorb)
   endif
+
+#ifdef REVISED_TRANSPORT
+  if (reaction%ncolcomp > 0) then
+    allocate(aux_var%coll_total(reaction%ncolcomp))
+    aux_var%colloid => MatrixBlockAuxVarCreate(option)
+    call MatrixBlockAuxVarInit(aux_var%colloid,reaction%ncolcomp,option)
+  else
+    nullify(aux_var%coll_total)
+    nullify(aux_var%colloid)
+  endif
+#endif
   
 end subroutine RTAuxVarInit
 
@@ -288,8 +319,14 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
   type(option_type) :: option  
   
   aux_var%pri_molal = aux_var2%pri_molal
+
   aux_var%total = aux_var2%total
+
+#ifdef REVISED_TRANSPORT 
+  call MatrixBlockAuxVarCopy(aux_var%aqueous,aux_var2%aqueous,option)
+#else  
   aux_var%dtotal = aux_var2%dtotal
+#endif
   
   if (associated(aux_var%sec_molal)) &
     aux_var%sec_molal = aux_var2%sec_molal
@@ -342,6 +379,13 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
     aux_var%kinmr_total_sorb = aux_var2%kinmr_total_sorb
   endif
 
+#ifdef REVISED_TRANSPORT 
+  if (associated(aux_var%colloid)) then
+    aux_var%coll_total = aux_var2%coll_total
+    call MatrixBlockAuxVarCopy(aux_var%colloid,aux_var2%colloid,option)
+  endif
+#endif
+
 end subroutine RTAuxVarCopy
 
 
@@ -360,11 +404,16 @@ subroutine RTAuxVarDestroy(aux_var)
   
   if (associated(aux_var%pri_molal)) deallocate(aux_var%pri_molal)
   nullify(aux_var%pri_molal)
-  
+
   if (associated(aux_var%total)) deallocate(aux_var%total)
   nullify(aux_var%total)
+
+#ifdef REVISED_TRANSPORT
+  call MatrixBlockAuxVarDestroy(aux_var%aqueous)
+#else  
   if (associated(aux_var%dtotal))deallocate(aux_var%dtotal)
   nullify(aux_var%dtotal)
+#endif  
   
   if (associated(aux_var%sec_molal))deallocate(aux_var%sec_molal)
   nullify(aux_var%sec_molal)
@@ -422,6 +471,12 @@ subroutine RTAuxVarDestroy(aux_var)
 
   if (associated(aux_var%kinmr_total_sorb)) deallocate(aux_var%kinmr_total_sorb)
   nullify(aux_var%kinmr_total_sorb)
+  
+#ifdef REVISED_TRANSPORT
+  if (associated(aux_var%coll_total)) deallocate(aux_var%coll_total)
+  nullify(aux_var%coll_total)
+  call MatrixBlockAuxVarDestroy(aux_var%colloid)
+#endif    
   
 end subroutine RTAuxVarDestroy
 

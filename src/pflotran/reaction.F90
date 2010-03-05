@@ -125,6 +125,7 @@ subroutine ReactionRead(reaction,input,option)
           prev_species => species
           nullify(species)
         enddo
+        reaction%naqcomp = reaction%ncomp
       case('SECONDARY_SPECIES')
         nullify(prev_species)
         do
@@ -1127,8 +1128,11 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           ! dtotal units = kg water/L water
 
           ! Jac units = kg water/L water
+#ifdef REVISED_TRANSPORT          
+          Jac(icomp,:) = rt_auxvar%aqueous%dtotal(icomp,:,1)
+#else
           Jac(icomp,:) = rt_auxvar%dtotal(icomp,:,1)
-      
+#endif      
         case(CONSTRAINT_TOTAL_SORB)
           ! conversion from m^3 bulk -> L water
           tempreal = option%reference_porosity*option%reference_saturation*1000.d0
@@ -1138,7 +1142,11 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           ! dtotal units = kg water/L water
           ! dtotal_sorb units = kg water/m^3 bulk
           ! Jac units = kg water/L water
+#ifdef REVISED_TRANSPORT          
+          Jac(icomp,:) = rt_auxvar%aqueous%dtotal(icomp,:,1) + &
+#else
           Jac(icomp,:) = rt_auxvar%dtotal(icomp,:,1) + &
+#endif
           ! dtotal_sorb units = kg water/m^3 bulk
                          rt_auxvar%dtotal_sorb_eq(icomp,:)/tempreal
 
@@ -1158,7 +1166,11 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
               rt_auxvar%total(jcomp,1)
             do kcomp = 1, reaction%ncomp
               Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
+#ifdef REVISED_TRANSPORT
+                reaction%primary_spec_Z(kcomp)*rt_auxvar%aqueous%dtotal(kcomp,jcomp,1)
+#else
                 reaction%primary_spec_Z(kcomp)*rt_auxvar%dtotal(kcomp,jcomp,1)
+#endif
             enddo
           enddo
           if (rt_auxvar%pri_molal(icomp) < 1.d-20 .and. &
@@ -1660,21 +1672,23 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     write(option%fid_out,'(a20,1pe12.4,a9)') 'mass fraction H2O: ', &
       mass_fraction_h2o,' [---]'
 #ifdef CHUAN_CO2
-    if (global_auxvar%den_kg(2) > 0.d0) then
-      write(option%fid_out,'(a20,f8.2,a9)') '     density CO2: ', &
-        global_auxvar%den_kg(2),' [kg/m^3]'
-      write(option%fid_out,'(a20,es12.4,a9)') '            xphi: ', &
-        global_auxvar%fugacoeff(1)
+    if (option%iflowmode == MPH_MODE) then
+      if (global_auxvar%den_kg(2) > 0.d0) then
+        write(option%fid_out,'(a20,f8.2,a9)') '     density CO2: ', &
+          global_auxvar%den_kg(2),' [kg/m^3]'
+        write(option%fid_out,'(a20,es12.4,a9)') '            xphi: ', &
+          global_auxvar%fugacoeff(1)
 
-      if (reaction%species_idx%co2_aq_id /= 0) then
-        icomp = reaction%species_idx%co2_aq_id
-        mass_fraction_co2 = reaction%primary_spec_molar_wt(icomp)*rt_auxvar%pri_molal(icomp)* &
-          mass_fraction_h2o*1.d-3
-        mole_fraction_co2 = rt_auxvar%pri_molal(icomp)*FMWH2O*mole_fraction_h2o*1.e-3
-        write(option%fid_out,'(a20,es12.4,a9)') 'mole fraction CO2: ', &
-          mole_fraction_co2
-        write(option%fid_out,'(a20,es12.4,a9)') 'mass fraction CO2: ', &
-          mass_fraction_co2
+        if (reaction%species_idx%co2_aq_id /= 0) then
+          icomp = reaction%species_idx%co2_aq_id
+          mass_fraction_co2 = reaction%primary_spec_molar_wt(icomp)*rt_auxvar%pri_molal(icomp)* &
+            mass_fraction_h2o*1.d-3
+          mole_fraction_co2 = rt_auxvar%pri_molal(icomp)*FMWH2O*mole_fraction_h2o*1.e-3
+          write(option%fid_out,'(a20,es12.4,a9)') 'mole fraction CO2: ', &
+            mole_fraction_co2
+          write(option%fid_out,'(a20,es12.4,a9)') 'mass fraction CO2: ', &
+            mass_fraction_co2
+        endif
       endif
     endif
 #endif
@@ -2727,10 +2741,17 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
   rt_auxvar%total(:,iphase) = rt_auxvar%pri_molal(:)
   ! initialize derivatives
+#ifdef REVISED_TRANSPORT  
+  rt_auxvar%aqueous%dtotal = 0.d0
+  do icomp = 1, reaction%ncomp
+    rt_auxvar%aqueous%dtotal(icomp,icomp,iphase) = 1.d0
+  enddo
+#else
   rt_auxvar%dtotal = 0.d0
   do icomp = 1, reaction%ncomp
     rt_auxvar%dtotal(icomp,icomp,iphase) = 1.d0
   enddo
+#endif  
   
 #ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal) then
@@ -2772,7 +2793,11 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
                                                  rt_auxvar%sec_act_coef(icplx)
       do i = 1, ncomp
         icomp = reaction%eqcplxspecid(i,icplx)
+#ifdef REVISED_TRANSPORT        
+        rt_auxvar%aqueous%dtotal(icomp,jcomp,iphase) = rt_auxvar%aqueous%dtotal(icomp,jcomp,iphase) + &
+#else
         rt_auxvar%dtotal(icomp,jcomp,iphase) = rt_auxvar%dtotal(icomp,jcomp,iphase) + &
+#endif
                                                reaction%eqcplxstoich(i,icplx)*tempreal
       enddo
     enddo
@@ -2783,8 +2808,11 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   rt_auxvar%total(:,iphase) = rt_auxvar%total(:,iphase)*den_kg_per_L
   
   ! units of dtotal = kg water/L water
+#ifdef REVISED_TRANSPORT
+  rt_auxvar%aqueous%dtotal = rt_auxvar%aqueous%dtotal*den_kg_per_L
+#else
   rt_auxvar%dtotal = rt_auxvar%dtotal*den_kg_per_L
-  
+#endif  
  !*********** Add SC phase contribution ***************************  
 #ifdef CHUAN_CO2
 
@@ -2798,7 +2826,11 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 
   if(iphase > option%nphase) return 
   rt_auxvar%total(:,iphase) = 0D0
+#ifdef REVISED_TRANSPORT  
+  rt_auxvar%aqueous%dtotal(:,:,iphase)=0D0
+#else
   rt_auxvar%dtotal(:,:,iphase)=0D0
+#endif
 !  do icomp = 1, reaction%ncomp
 !    rt_auxvar%dtotal(icomp,icomp,iphase) = 1.d0
 !  enddo
@@ -2855,7 +2887,6 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
           exp(lnQK+lngamco2)*rt_auxvar%pri_molal(icomp)&
 !          rt_auxvar%pri_act_coef(icomp)*exp(lnQK)*rt_auxvar%pri_molal(icomp)&
           /pressure /xphico2* den
-   
       rt_auxvar%total(icomp,iphase) = rt_auxvar%total(icomp,iphase) + &
                                         reaction%eqgasstoich(1,ieqgas)* &
                                         rt_auxvar%gas_molal(ieqgas)
@@ -2867,7 +2898,11 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
    ! contribute to %dtotal
    !      tempreal = exp(lnQK+lngamco2)/pressure /xphico2* den 
       tempreal = rt_auxvar%pri_act_coef(icomp)*exp(lnQK)/pressure /xphico2* den 
+#ifdef REVISED_TRANSPORT   
+      rt_auxvar%aqueous%dtotal(icomp,icomp,iphase) = rt_auxvar%aqueous%dtotal(icomp,icomp,iphase) + &
+#else
       rt_auxvar%dtotal(icomp,icomp,iphase) = rt_auxvar%dtotal(icomp,icomp,iphase) + &
+#endif
                                                reaction%eqgasstoich(1,ieqgas)*tempreal
     
     enddo
@@ -4205,7 +4240,7 @@ subroutine ReactionComputeKd(icomp,retardation,rt_auxvar,global_auxvar, &
       retardation = retardation + rt_auxvar%kinmr_total_sorb(icomp,irate)
     enddo
   endif
-  
+
   if (dabs(rt_auxvar%total(icomp,iphase)) > 1.d-40) &
     retardation = retardation/bulk_vol_to_fluid_vol/ &
       rt_auxvar%total(icomp,iphase)
