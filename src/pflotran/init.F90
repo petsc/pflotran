@@ -521,6 +521,12 @@ subroutine Init(simulation)
   
     ! assign initial conditionsRealizAssignFlowInitCond
     call RealizAssignFlowInitCond(realization)
+
+    ! override initial conditions if they are to be read from a file
+    if (len_trim(option%initialize_flow_filename) > 1) then
+      call readFlowInitialCondition(realization, &
+                                    option%initialize_flow_filename)
+    endif
   
     select case(option%iflowmode)
       case(THC_MODE)
@@ -551,6 +557,11 @@ subroutine Init(simulation)
 
     ! initial concentrations must be assigned after densities are set !!!
     call RealizAssignTransportInitCond(realization)
+    ! override initial conditions if they are to be read from a file
+    if (len_trim(option%initialize_transport_filename) > 1) then
+      call readFlowInitialCondition(realization, &
+                                    option%initialize_transport_filename)
+    endif
     ! PETSC_FALSE = no activity coefficients
     call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_FALSE)
     ! at this point the auxvars have been computed with activity coef = 1.d0
@@ -1460,6 +1471,16 @@ subroutine InitReadInput(simulation)
 
       case ('OVERWRITE_RESTART_FLOW_PARAMS')
         option%overwrite_restart_flow = PETSC_TRUE
+
+      case ('INITIALIZE_FLOW_FROM_FILE')
+        call InputReadWord(input,option,option%initialize_flow_filename, &
+                           PETSC_TRUE)
+        call InputErrorMsg(input,option,'filename','INITIALIZE_FLOW_FROM_FILE') 
+
+      case ('INITIALIZE_TRANSPORT_FROM_FILE')
+        call InputReadWord(input,option,option%initialize_transport_filename, &
+                           PETSC_TRUE)
+        call InputErrorMsg(input,option,'filename','INITIALIZE_TRANSPORT_FROM_FILE') 
 
 !....................
       case ('OBSERVATION')
@@ -2629,6 +2650,192 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
   endif
   
 end subroutine readVectorFromFile
+
+! ************************************************************************** !
+!
+! readFlowInitialCondition: Assigns flow initial condition from HDF5 file
+! author: Glenn Hammond
+! date: 03/05/10
+!
+! ************************************************************************** !
+subroutine readFlowInitialCondition(realization,filename)
+
+  use Realization_module
+  use Option_module
+  use Field_module
+  use Grid_module
+  use Patch_module
+  use Discretization_module
+  use HDF5_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  
+  type(realization_type) :: realization
+  character(len=MAXSTRINGLENGTH) :: filename
+  
+  PetscInt :: local_id, idx, offset
+  PetscReal, pointer :: xx_p(:)
+  character(len=MAXSTRINGLENGTH) :: group_name
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  PetscReal, pointer :: vec_p(:)  
+  PetscErrorCode :: ierr
+  
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field  
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+
+  option => realization%option
+  discretization => realization%discretization
+  field => realization%field
+  patch => realization%patch
+
+  if (option%iflowmode /= RICHARDS_MODE) then
+    option%io_buffer = 'Reading of flow initial conditions from HDF5 ' // &
+                       'file (' // trim(filename) // &
+                       'not currently not supported for mode: ' // &
+
+                       trim(option%flowmode)
+  endif      
+
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+
+      grid => cur_patch%grid
+
+       ! assign initial conditions values to domain
+      call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
+
+      ! Pressure for all modes 
+      offset = 0
+      group_name = ''
+      dataset_name = 'Pressure'
+      call HDF5ReadCellIndexedRealArray(realization,field%work, &
+                                        filename,group_name, &
+                                        dataset_name,option%id>0)
+      call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+      do local_id=1, grid%nlmax
+        idx = (local_id-1)*option%nflowdof + offset
+        xx_p(idx) = vec_p(local_id)
+      enddo
+      call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+
+      call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
+        
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+   
+  ! update dependent vectors
+  call DiscretizationGlobalToLocal(discretization,field%flow_xx,field%flow_xx_loc,NFLOWDOF)  
+  call VecCopy(field%flow_xx, field%flow_yy, ierr)
+
+end subroutine readFlowInitialCondition
+
+
+! ************************************************************************** !
+!
+! readTransportInitialCondition: Assigns transport initial condition from 
+!                                HDF5 file
+! author: Glenn Hammond
+! date: 03/05/10
+!
+! ************************************************************************** !
+subroutine readTransportInitialCondition(realization,filename)
+
+  use Realization_module
+  use Option_module
+  use Field_module
+  use Grid_module
+  use Patch_module
+  use Reactive_Transport_module
+  use Reaction_module
+  use Discretization_module
+  use HDF5_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  
+  type(realization_type) :: realization
+  character(len=MAXSTRINGLENGTH) :: filename
+  
+  PetscInt :: local_id, idx, offset, idof
+  PetscReal, pointer :: xx_p(:)
+  character(len=MAXSTRINGLENGTH) :: group_name
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  PetscReal, pointer :: vec_p(:)  
+  PetscErrorCode :: ierr
+  
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field  
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  type(reaction_type), pointer :: reaction
+
+  option => realization%option
+  discretization => realization%discretization
+  field => realization%field
+  patch => realization%patch
+  reaction => realization%reaction
+
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+
+      grid => cur_patch%grid
+
+       ! assign initial conditions values to domain
+      call GridVecGetArrayF90(grid,field%tran_xx,xx_p, ierr); CHKERRQ(ierr)
+
+      ! Primary species concentrations for all modes 
+      do idof = 1, option%ntrandof ! primary aqueous concentrations
+        offset = idof-1
+        group_name = ''
+        dataset_name = reaction%primary_species_names(idof)
+        call HDF5ReadCellIndexedRealArray(realization,field%work, &
+                                          filename,group_name, &
+                                          dataset_name,option%id>0)
+        call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+        do local_id=1, grid%nlmax
+          idx = (local_id-1)*option%ntrandof + offset
+          xx_p(idx) = vec_p(local_id)
+        enddo
+        call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+     
+      enddo     
+
+      call GridVecRestoreArrayF90(grid,field%tran_xx,xx_p, ierr)
+        
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+   
+  ! update dependent vectors
+  call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
+                                   field%tran_xx_loc,NTRANDOF)  
+  call VecCopy(field%tran_xx, field%tran_yy, ierr)
+  
+end subroutine readTransportInitialCondition
 
 ! ************************************************************************** !
 !
