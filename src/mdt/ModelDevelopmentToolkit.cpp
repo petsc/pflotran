@@ -1,4 +1,4 @@
-#include "petsc.h"
+#include "petscsys.h"
 #include "petscda.h"
 
 PetscMPIInt myrank = 0;
@@ -44,8 +44,8 @@ int main(int argc, char **args) {
 //  hanford300 = new Hanford300(&grid);
 //  hanford300 = new Hanford300v2(&grid);
 //  ifc = new IFC(&grid);
-//  ifc3 = new IFC_Scope3(&grid);
-  ifc_plot_120x120x20 = new IFC_Plot_120x120x20(&grid);
+  ifc3 = new IFC_Scope3(&grid);
+//  ifc_plot_120x120x20 = new IFC_Plot_120x120x20(&grid);
 //  mad = new MAD(&grid);
 //  midifc = new MidIFC(&grid);
 //    ifc_2d = new IFC_2D(&grid);

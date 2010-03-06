@@ -1,7 +1,7 @@
 #ifndef HDF_H_
 #define HDF_H_
 
-#include "petsc.h"
+#include "petscsys.h"
 
 #if defined(PETSC_HAVE_HDF5)
 
