@@ -5198,7 +5198,7 @@ subroutine OutputHDF5(realization)
           if (reaction%primary_species_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,reaction%print_tot_conc_type,i)
             if (.not.(option%use_samr)) then
-              write(string,'(a,''_'',a)') trim(reaction%primary_species_names(i)), trim(tot_mol_char)
+              write(string,'(a,''_tot_'',a)') trim(reaction%primary_species_names(i)), trim(tot_mol_char)
               call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
@@ -5215,7 +5215,7 @@ subroutine OutputHDF5(realization)
           if (reaction%primary_species_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,reaction%print_free_conc_type,i)
             if (.not.(option%use_samr)) then
-              write(string,'(a,''_'',a)') trim(reaction%primary_species_names(i)), trim(free_mol_char)
+              write(string,'(a,''_free_'',a)') trim(reaction%primary_species_names(i)), trim(free_mol_char)
               call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
