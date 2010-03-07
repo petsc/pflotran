@@ -2664,6 +2664,7 @@ subroutine readFlowInitialCondition(realization,filename)
   use Option_module
   use Field_module
   use Grid_module
+  use Level_module
   use Patch_module
   use Discretization_module
   use HDF5_module
@@ -2738,7 +2739,8 @@ subroutine readFlowInitialCondition(realization,filename)
   enddo
    
   ! update dependent vectors
-  call DiscretizationGlobalToLocal(discretization,field%flow_xx,field%flow_xx_loc,NFLOWDOF)  
+  call DiscretizationGlobalToLocal(discretization,field%flow_xx, &
+                                   field%flow_xx_loc,NFLOWDOF)  
   call VecCopy(field%flow_xx, field%flow_yy, ierr)
 
 end subroutine readFlowInitialCondition
@@ -2759,8 +2761,9 @@ subroutine readTransportInitialCondition(realization,filename)
   use Field_module
   use Grid_module
   use Patch_module
+  use Level_module
   use Reactive_Transport_module
-  use Reaction_module
+  use Reaction_Aux_module
   use Discretization_module
   use HDF5_module
   
