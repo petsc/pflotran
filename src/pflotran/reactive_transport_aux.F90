@@ -65,18 +65,30 @@ module Reactive_Transport_Aux_module
     PetscReal, pointer :: kinmr_total_sorb(:,:)
 
 #ifdef REVISED_TRANSPORT
-    PetscReal, pointer :: coll_total(:)
-    type(matrix_block_auxvar_type), pointer :: colloid
+    type(colloid_auxvar_type), pointer :: colloid
 #endif
     
   end type reactive_transport_auxvar_type
-  
+
   type, public :: reactive_transport_param_type
     PetscInt :: naqcomp
     PetscInt :: nimcomp
     PetscReal :: dispersivity
     PetscReal, pointer :: diffusion_coefficient(:)
   end type reactive_transport_param_type
+
+  ! Colloids
+  type, public :: colloid_auxvar_type
+    PetscReal, pointer :: total(:)
+    type(matrix_block_auxvar_type), pointer :: dRj_dSic
+    type(matrix_block_auxvar_type), pointer :: dRic_dCj
+    type(matrix_block_auxvar_type), pointer :: dRic_dSic
+  end type colloid_auxvar_type
+  
+  type, public :: colloid_param_type
+    PetscInt :: num_colloids
+    PetscInt :: num_colloid_comp
+  end type colloid_param_type
 
   type, public :: reactive_transport_type
     PetscInt :: num_aux, num_aux_bc
@@ -158,7 +170,8 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   aux_var%total = 0.d0
 #ifdef REVISED_TRANSPORT 
   aux_var%aqueous => MatrixBlockAuxVarCreate(option)
-  call MatrixBlockAuxVarInit(aux_var%aqueous,reaction%naqcomp,option)
+  call MatrixBlockAuxVarInit(aux_var%aqueous,reaction%naqcomp, &
+                             reaction%naqcomp,option%nphase,option)
 #else  
   allocate(aux_var%dtotal(reaction%naqcomp,reaction%naqcomp,option%nphase))
   aux_var%dtotal = 0.d0
@@ -291,11 +304,21 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
 
 #ifdef REVISED_TRANSPORT
   if (reaction%ncolcomp > 0) then
-    allocate(aux_var%coll_total(reaction%ncolcomp))
-    aux_var%colloid => MatrixBlockAuxVarCreate(option)
-    call MatrixBlockAuxVarInit(aux_var%colloid,reaction%ncolcomp,option)
+    allocate(aux_var%colloid)
+    allocate(aux_var%colloid%total(reaction%ncolcomp))
+    ! dRj/dSic
+    aux_var%colloid%dRj_dSic => MatrixBlockAuxVarCreate(option)
+    call MatrixBlockAuxVarInit(aux_var%colloid%dRj_dSic,reaction%naqcomp, &
+                               reaction%ncolcomp,ONE_INTEGER,option)
+    ! dRic/dCj
+    aux_var%colloid%dRic_dCj => MatrixBlockAuxVarCreate(option)
+    call MatrixBlockAuxVarInit(aux_var%colloid%dRic_dCj,reaction%ncolcomp, &
+                               reaction%naqcomp,ONE_INTEGER,option)
+    ! dRic/dSic
+    aux_var%colloid%dRic_dSic => MatrixBlockAuxVarCreate(option)
+    call MatrixBlockAuxVarInit(aux_var%colloid%dRic_dSic,reaction%ncolcomp, &
+                               reaction%ncolcomp,ONE_INTEGER,option)
   else
-    nullify(aux_var%coll_total)
     nullify(aux_var%colloid)
   endif
 #endif
@@ -381,8 +404,16 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
 
 #ifdef REVISED_TRANSPORT 
   if (associated(aux_var%colloid)) then
-    aux_var%coll_total = aux_var2%coll_total
-    call MatrixBlockAuxVarCopy(aux_var%colloid,aux_var2%colloid,option)
+    aux_var%colloid%total = aux_var2%colloid%total
+    ! dRj/dCj
+    call MatrixBlockAuxVarCopy(aux_var%colloid%dRj_dSic, &
+                               aux_var2%colloid%dRj_dSic,option)
+    ! dRic/dCj
+    call MatrixBlockAuxVarCopy(aux_var%colloid%dRic_dCj, &
+                               aux_var2%colloid%dRic_dCj,option)
+    ! dRic/dSic
+    call MatrixBlockAuxVarCopy(aux_var%colloid%dRic_dSic, &
+                               aux_var2%colloid%dRic_dSic,option)
   endif
 #endif
 
@@ -473,9 +504,16 @@ subroutine RTAuxVarDestroy(aux_var)
   nullify(aux_var%kinmr_total_sorb)
   
 #ifdef REVISED_TRANSPORT
-  if (associated(aux_var%coll_total)) deallocate(aux_var%coll_total)
-  nullify(aux_var%coll_total)
-  call MatrixBlockAuxVarDestroy(aux_var%colloid)
+  if (associated(aux_var%colloid)) then
+    if (associated(aux_var%colloid%total)) deallocate(aux_var%colloid%total)
+    nullify(aux_var%colloid%total)
+    ! dRj/dSic
+    call MatrixBlockAuxVarDestroy(aux_var%colloid%dRj_dSic)
+    ! dRic/dCj
+    call MatrixBlockAuxVarDestroy(aux_var%colloid%dRic_dCj)
+    ! dRic/dSic
+    call MatrixBlockAuxVarDestroy(aux_var%colloid%dRic_dSic)
+  endif
 #endif    
   
 end subroutine RTAuxVarDestroy
