@@ -3076,6 +3076,11 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
     
     rt_auxvar%eqsrfcplx_free_site_conc(irxn) = free_site_conc
  
+!!!!!!!!!!!!
+    ! 2.3-46
+
+    ! Sx = free site
+    ! m = molality of component i
     dSx_dmi = 0.d0
     tempreal = 0.d0
     do j = 1, ncplx
@@ -3083,12 +3088,12 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
       ncomp = reaction%eqsrfcplxspecid(0,icplx)
       do i = 1, ncomp
         icomp = reaction%eqsrfcplxspecid(i,icplx)
-        ! numerator of 4.39
+        ! sum of nu_li * nu_i * S_i
         dSx_dmi(icomp) = dSx_dmi(icomp) + reaction%eqsrfcplxstoich(i,icplx)* &
                                           reaction%eqsrfcplx_free_site_stoich(icplx)* &
                                           srfcplx_conc(icplx)
       enddo
-      ! denominator of 4.39
+      ! sum of nu_i^2 * S_i
       tempreal = tempreal + reaction%eqsrfcplx_free_site_stoich(icplx)* & 
                             reaction%eqsrfcplx_free_site_stoich(icplx)* &
                             srfcplx_conc(icplx)
@@ -3101,6 +3106,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
     dSx_dmi = -dSx_dmi / tempreal
     ! convert from dlogm to dm
     dSx_dmi = dSx_dmi / rt_auxvar%pri_molal
+!!!!!!!!!!!!
  
     select case(reaction%eqsrfcplx_rxn_surf_type(irxn))
       case(MINERAL_SURFACE,NULL_SURFACE)
@@ -3108,9 +3114,6 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
           icplx = reaction%eqsrfcplx_rxn_to_complex(k,irxn)
 
           rt_auxvar%eqsrfcplx_conc(icplx) = srfcplx_conc(icplx)
-    !geh - indexing by k results in 1-ncplx begin set, but this does not work when
-    !      more than 1 surface complexation reaction is included.
-    !     rt_auxvar%eqsrfcplx_conc(k) = srfcplx_conc(icplx)
 
           ncomp = reaction%eqsrfcplxspecid(0,icplx)
           do i = 1, ncomp
@@ -3119,6 +3122,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
               reaction%eqsrfcplxstoich(i,icplx)*srfcplx_conc(icplx)
           enddo
           
+          ! for 2.3-47 which feeds into 2.3-50
           dSi_dSx = reaction%eqsrfcplx_free_site_stoich(icplx)* &
                     srfcplx_conc(icplx)/ &
                     free_site_conc
