@@ -83,9 +83,11 @@ module Reactive_Transport_Aux_module
   ! Colloids
   type, public :: colloid_auxvar_type
     PetscReal, pointer :: total(:)
+#ifdef REVISED_TRANSPORT  
     type(matrix_block_auxvar_type), pointer :: dRj_dSic
     type(matrix_block_auxvar_type), pointer :: dRic_dCj
     type(matrix_block_auxvar_type), pointer :: dRic_dSic
+#endif    
   end type colloid_auxvar_type
   
   type, public :: colloid_param_type
