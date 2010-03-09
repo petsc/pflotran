@@ -202,10 +202,10 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   endif
 
   if (reaction%neqsorb > 0) then  
-    allocate(aux_var%total_sorb_eq(reaction%ncomp))
+    allocate(aux_var%total_sorb_eq(reaction%naqcomp))
     aux_var%total_sorb_eq = 0.d0
     if (reaction%kinmr_nrate <= 0) then
-      allocate(aux_var%dtotal_sorb_eq(reaction%ncomp,reaction%ncomp))
+      allocate(aux_var%dtotal_sorb_eq(reaction%naqcomp,reaction%naqcomp))
       aux_var%dtotal_sorb_eq = 0.d0
     else
       nullify(aux_var%dtotal_sorb_eq)
@@ -283,7 +283,7 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
     nullify(aux_var%mnrl_rate)
   endif
   
-  allocate(aux_var%pri_act_coef(reaction%ncomp))
+  allocate(aux_var%pri_act_coef(reaction%naqcomp))
   aux_var%pri_act_coef = 1.d0
   if (reaction%neqcplx > 0) then
     allocate(aux_var%sec_act_coef(reaction%neqcplx))
@@ -306,7 +306,7 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   endif
   
   if (reaction%kinmr_nrate > 0) then
-    allocate(aux_var%kinmr_total_sorb(reaction%ncomp,reaction%kinmr_nrate))
+    allocate(aux_var%kinmr_total_sorb(reaction%naqcomp,reaction%kinmr_nrate))
     aux_var%kinmr_total_sorb = 0.d0
   else
     nullify(aux_var%kinmr_total_sorb)

@@ -109,7 +109,7 @@ subroutine ReactionRead(reaction,input,option)
           if (InputError(input)) exit
           if (InputCheckExit(input,option)) exit
           
-          reaction%ncomp = reaction%ncomp + 1
+          reaction%naqcomp = reaction%naqcomp + 1
           
           species => AqueousSpeciesCreate()
           call InputReadWord(input,option,species%name,PETSC_TRUE)  
@@ -125,7 +125,6 @@ subroutine ReactionRead(reaction,input,option)
           prev_species => species
           nullify(species)
         enddo
-        reaction%naqcomp = reaction%ncomp
       case('SECONDARY_SPECIES')
         nullify(prev_species)
         do
@@ -770,12 +769,12 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   PetscInt :: imnrl, jmnrl
   PetscInt :: igas
   PetscInt :: isrfcplx, jsrfcplx
-  PetscReal :: constraint_conc(reaction%ncomp)
-  PetscInt :: constraint_type(reaction%ncomp)
-  character(len=MAXWORDLENGTH) :: constraint_spec_name(reaction%ncomp)
+  PetscReal :: constraint_conc(reaction%naqcomp)
+  PetscInt :: constraint_type(reaction%naqcomp)
+  character(len=MAXWORDLENGTH) :: constraint_spec_name(reaction%naqcomp)
   character(len=MAXWORDLENGTH) :: constraint_mnrl_name(reaction%nkinmnrl)
   character(len=MAXWORDLENGTH) :: constraint_srfcplx_name(reaction%nkinsrfcplx)
-  PetscInt :: constraint_id(reaction%ncomp)
+  PetscInt :: constraint_id(reaction%naqcomp)
     
   constraint_id = 0
   constraint_spec_name = ''
@@ -783,9 +782,9 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   constraint_conc = 0.d0
   
   ! aqueous species
-  do icomp = 1, reaction%ncomp
+  do icomp = 1, reaction%naqcomp
     found = PETSC_FALSE
-    do jcomp = 1, reaction%ncomp
+    do jcomp = 1, reaction%naqcomp
       if (StringCompare(aq_species_constraint%names(icomp), &
                         reaction%primary_species_names(jcomp), &
                         MAXWORDLENGTH)) then
@@ -961,17 +960,17 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscInt :: icplx
   PetscInt :: irxn, isite, ncplx, k
   PetscInt :: igas
-  PetscReal :: conc(reaction%ncomp)
-  PetscInt :: constraint_type(reaction%ncomp)
-  character(len=MAXWORDLENGTH) :: constraint_spec_name(reaction%ncomp)
+  PetscReal :: conc(reaction%naqcomp)
+  PetscInt :: constraint_type(reaction%naqcomp)
+  character(len=MAXWORDLENGTH) :: constraint_spec_name(reaction%naqcomp)
 
   PetscReal :: Res(reaction%ncomp)
-  PetscReal :: total_conc(reaction%ncomp)
-  PetscReal :: free_conc(reaction%ncomp)
+  PetscReal :: total_conc(reaction%naqcomp)
+  PetscReal :: free_conc(reaction%naqcomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
   PetscInt :: indices(reaction%ncomp)
   PetscReal :: norm
-  PetscReal :: prev_molal(reaction%ncomp)
+  PetscReal :: prev_molal(reaction%naqcomp)
   PetscReal, parameter :: tol = 1.d-12
   PetscReal, parameter :: tol_loose = 1.d-6
   PetscTruth :: compute_activity_coefs
@@ -1031,7 +1030,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   if (reaction%kinmr_nrate > 0) then
     kinmr_nrate_store = reaction%kinmr_nrate
     reaction%kinmr_nrate = 0
-    allocate(rt_auxvar%dtotal_sorb_eq(reaction%ncomp,reaction%ncomp))
+    allocate(rt_auxvar%dtotal_sorb_eq(reaction%naqcomp,reaction%naqcomp))
   endif
   
 #ifdef TEMP_DEPENDENT_LOGK
@@ -1050,7 +1049,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 #endif  
   
   total_conc = 0.d0
-  do icomp = 1, reaction%ncomp
+  do icomp = 1, reaction%naqcomp
     select case(constraint_type(icomp))
       case(CONSTRAINT_NULL,CONSTRAINT_TOTAL,CONSTRAINT_TOTAL_SORB)
         total_conc(icomp) = conc(icomp)*convert_molal_to_molar
@@ -1118,7 +1117,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     
     Jac = 0.d0
         
-    do icomp = 1, reaction%ncomp
+    do icomp = 1, reaction%naqcomp
       
       select case(constraint_type(icomp))
       
@@ -1161,10 +1160,10 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
         
           Res(icomp) = 0.d0
           Jac(icomp,:) = 0.d0
-          do jcomp = 1, reaction%ncomp
+          do jcomp = 1, reaction%naqcomp
             Res(icomp) = Res(icomp) + reaction%primary_spec_Z(jcomp) * &
               rt_auxvar%total(jcomp,1)
-            do kcomp = 1, reaction%ncomp
+            do kcomp = 1, reaction%naqcomp
               Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
 #ifdef REVISED_TRANSPORT
                 reaction%primary_spec_Z(kcomp)*rt_auxvar%aqueous%dtotal(kcomp,jcomp,1)
@@ -1406,7 +1405,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     enddo
 
     ! for derivatives with respect to ln conc
-    do icomp = 1, reaction%ncomp
+    do icomp = 1, reaction%naqcomp
       Jac(:,icomp) = Jac(:,icomp)*rt_auxvar%pri_molal(icomp)
     enddo
     
@@ -1425,7 +1424,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 100   format('Constraint iteration count has exceeded: ',i5)
       write(option%io_buffer,100) num_iterations
       call printMsg(option)
-      do icomp=1,reaction%ncomp
+      do icomp=1,reaction%naqcomp
         write(option%io_buffer,200) reaction%primary_species_names(icomp), &
         prev_molal(icomp),Res(icomp)
         call printMsg(option)
@@ -1567,7 +1566,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
 ! compute mass fraction of H2O
   if (reaction%use_full_geochemistry) then
     sum_molality = 0.d0
-    do icomp = 1, reaction%ncomp
+    do icomp = 1, reaction%naqcomp
       sum_molality = sum_molality + rt_auxvar%pri_molal(icomp)
     enddo
     if (reaction%neqcplx > 0) then    
@@ -1578,7 +1577,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     mole_fraction_h2o = 1.d0/(1.d0+FMWH2O*sum_molality*1.d-3)
 
     sum_mass = 0.d0
-    do icomp = 1, reaction%ncomp
+    do icomp = 1, reaction%naqcomp
       sum_mass = sum_mass + reaction%primary_spec_molar_wt(icomp)*rt_auxvar%pri_molal(icomp)
     enddo
     if (reaction%neqcplx > 0) then    
@@ -1596,7 +1595,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     100 format(/,'  species       molality')  
     write(option%fid_out,100)
     101 format(2x,a12,es12.4)
-    do icomp = 1, reaction%ncomp
+    do icomp = 1, reaction%naqcomp
       write(option%fid_out,101) reaction%primary_species_names(icomp), &
                                 rt_auxvar%pri_molal(icomp)
     enddo
@@ -1639,7 +1638,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     
     ionic_strength = 0.d0
     charge_balance = 0.d0
-    do icomp = 1, reaction%ncomp
+    do icomp = 1, reaction%naqcomp
       charge_balance = charge_balance + rt_auxvar%total(icomp,1)* &
                                         reaction%primary_spec_Z(icomp)
       ionic_strength = ionic_strength + rt_auxvar%pri_molal(icomp)* &
@@ -1701,7 +1700,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     write(option%fid_out,90)
   
     104 format(2x,a20,es12.4,es12.4,es12.4,4x,a)
-    do icomp = 1, reaction%ncomp
+    do icomp = 1, reaction%naqcomp
       select case(aq_species_constraint%constraint_type(icomp))
         case(CONSTRAINT_NULL,CONSTRAINT_TOTAL)
           string = 'total'
@@ -1766,7 +1765,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     134 format(2x,'complex species       percent   molality')
     135 format(2x,'primary species: ',a20,2x,' total conc: ',1pe12.4)
     136 format(2x,a20,2x,f6.2,2x,1pe12.4,1p2e12.4)
-    do icomp = 1, reaction%ncomp
+    do icomp = 1, reaction%naqcomp
     
       eqcplxsort = 0
       eqcplxid = 0
@@ -1776,7 +1775,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
       icount = 0
       do icplx = 1, reaction%neqcplx
         found = PETSC_FALSE
-        do i = 1, reaction%ncomp
+        do i = 1, reaction%naqcomp
           if (reaction%eqcplxspecid(i,icplx) == icomp) then
             icount = icount + 1
             found = PETSC_TRUE
@@ -1912,7 +1911,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   if (reaction%neqsrfcplxrxn > 0) then
     write(option%fid_out,123)
     write(option%fid_out,90)
-    do j = 1, reaction%ncomp
+    do j = 1, reaction%naqcomp
       retardation = 1.d0
       do irxn = 1, reaction%neqsrfcplxrxn
         ncplx = reaction%eqsrfcplx_rxn_to_complex(0,irxn)
@@ -1969,7 +1968,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   if (reaction%neqsorb > 0) then
     write(option%fid_out,1128)
     write(option%fid_out,90)
-    do jcomp = 1, reaction%ncomp
+    do jcomp = 1, reaction%naqcomp
       if (abs(rt_auxvar%total(jcomp,iphase)) > 0.d0) &
       retardation = 1.d0 + rt_auxvar%total_sorb_eq(jcomp)/bulk_vol_to_fluid_vol &
         /rt_auxvar%total(jcomp,iphase)
@@ -2246,7 +2245,7 @@ subroutine RJumpStartKineticSorption(rt_auxvar,global_auxvar, &
   PetscInt :: irate
   
   ! WARNING: below assumes site concentration multiplicative factor
-  allocate(rt_auxvar%dtotal_sorb_eq(reaction%ncomp,reaction%ncomp))
+  allocate(rt_auxvar%dtotal_sorb_eq(reaction%naqcomp,reaction%naqcomp))
   rt_auxvar%dtotal_sorb_eq = 0.d0
   call RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
   do irate = 1, reaction%kinmr_nrate
@@ -2481,12 +2480,12 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: I, sqrt_I, II, sqrt_II, f, fpri, didi, dcdi, den, dgamdi, &
     lnQK, sum, sum_pri_molal, sum_sec_molal
   PetscReal :: sum_molality
-  PetscReal :: ln_conc(reaction%ncomp)
-  PetscReal :: ln_act(reaction%ncomp)
+  PetscReal :: ln_conc(reaction%naqcomp)
+  PetscReal :: ln_act(reaction%naqcomp)
 
   if (reaction%use_activity_h2o) then
     sum_pri_molal = 0.d0
-    do j = 1, reaction%ncomp
+    do j = 1, reaction%naqcomp
       sum_pri_molal = sum_pri_molal + rt_auxvar%pri_molal(j)
     enddo
   endif
@@ -2506,7 +2505,7 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
   ! compute primary species contribution to ionic strength
     fpri = 0.d0
     sum_molality = 0.d0
-    do j = 1, reaction%ncomp
+    do j = 1, reaction%naqcomp
       fpri = fpri + rt_auxvar%pri_molal(j)*reaction%primary_spec_Z(j)* &
                                          reaction%primary_spec_Z(j)
     enddo
@@ -2575,7 +2574,7 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
   ! primary species
       I = II
       sqrt_I = sqrt(I)
-      do icomp = 1, reaction%ncomp
+      do icomp = 1, reaction%naqcomp
         if (abs(reaction%primary_spec_Z(icomp)) > 0.d0) then
           rt_auxvar%pri_act_coef(icomp) = exp((-reaction%primary_spec_Z(icomp)* &
                                         reaction%primary_spec_Z(icomp)* &
@@ -2641,7 +2640,7 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
   ! compute ionic strength
   ! primary species
     I = 0.d0
-    do icomp = 1, reaction%ncomp
+    do icomp = 1, reaction%naqcomp
       I = I + rt_auxvar%pri_molal(icomp)*reaction%primary_spec_Z(icomp)* &
                                        reaction%primary_spec_Z(icomp)
     enddo
@@ -2656,7 +2655,7 @@ subroutine RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
   
   ! compute activity coefficients
   ! primary species
-    do icomp = 1, reaction%ncomp
+    do icomp = 1, reaction%naqcomp
       if (abs(reaction%primary_spec_Z(icomp)) > 1.d-10) then
         rt_auxvar%pri_act_coef(icomp) = exp((-reaction%primary_spec_Z(icomp)* &
                                       reaction%primary_spec_Z(icomp)* &
@@ -2719,8 +2718,8 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   type(option_type) :: option
   
   PetscInt :: i, j, icplx, icomp, jcomp, iphase, ncomp, ieqgas,ierr
-  PetscReal :: ln_conc(reaction%ncomp)
-  PetscReal :: ln_act(reaction%ncomp)
+  PetscReal :: ln_conc(reaction%naqcomp)
+  PetscReal :: ln_act(reaction%naqcomp)
   PetscReal :: lnQK, tempreal
   PetscReal :: den_kg_per_L, xmass
   PetscReal :: pressure, temperature, xphico2, muco2, den, m_na, m_cl
@@ -2743,12 +2742,12 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   ! initialize derivatives
 #ifdef REVISED_TRANSPORT  
   rt_auxvar%aqueous%dtotal = 0.d0
-  do icomp = 1, reaction%ncomp
+  do icomp = 1, reaction%naqcomp
     rt_auxvar%aqueous%dtotal(icomp,icomp,iphase) = 1.d0
   enddo
 #else
   rt_auxvar%dtotal = 0.d0
-  do icomp = 1, reaction%ncomp
+  do icomp = 1, reaction%naqcomp
     rt_auxvar%dtotal(icomp,icomp,iphase) = 1.d0
   enddo
 #endif  
@@ -2831,7 +2830,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 #else
   rt_auxvar%dtotal(:,:,iphase)=0D0
 #endif
-!  do icomp = 1, reaction%ncomp
+!  do icomp = 1, reaction%naqcomp
 !    rt_auxvar%dtotal(icomp,icomp,iphase) = 1.d0
 !  enddo
     
@@ -2966,10 +2965,10 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
   type(option_type) :: option
   
   PetscInt :: i, j, k, icplx, icomp, jcomp, ncomp, ncplx
-  PetscReal :: ln_conc(reaction%ncomp)
-  PetscReal :: ln_act(reaction%ncomp)
+  PetscReal :: ln_conc(reaction%naqcomp)
+  PetscReal :: ln_act(reaction%naqcomp)
   PetscReal :: srfcplx_conc(reaction%neqsrfcplx)
-  PetscReal :: dSx_dmi(reaction%ncomp)
+  PetscReal :: dSx_dmi(reaction%naqcomp)
   PetscReal :: dSi_dSx
   PetscReal :: free_site_conc
   PetscReal :: ln_free_site
@@ -3148,8 +3147,8 @@ subroutine RTotalSorbEqIonx(rt_auxvar,global_auxvar,reaction,option)
   type(option_type) :: option
   
   PetscInt :: i, j, k, icplx, icomp, jcomp, iphase, ncomp, ncplx
-  PetscReal :: ln_conc(reaction%ncomp)
-  PetscReal :: ln_act(reaction%ncomp)
+  PetscReal :: ln_conc(reaction%naqcomp)
+  PetscReal :: ln_act(reaction%naqcomp)
   PetscReal :: tempreal, tempreal1, tempreal2, total
   PetscInt :: irxn
   PetscReal, parameter :: tol = 1.d-12
@@ -3159,7 +3158,7 @@ subroutine RTotalSorbEqIonx(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: omega
   PetscReal :: ref_cation_X, ref_cation_conc, ref_cation_Z, ref_cation_k, &
                ref_cation_quotient
-  PetscReal :: cation_X(reaction%ncomp)
+  PetscReal :: cation_X(reaction%naqcomp)
   PetscReal :: dres_dref_cation_X, dref_cation_X
   PetscReal :: sumZX, sumkm
     
@@ -3327,10 +3326,10 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   
   PetscInt :: i, j, k, icplx, icomp, jcomp, ncomp, ncplx
   PetscInt, parameter :: iphase = 1
-  PetscReal :: ln_conc(reaction%ncomp)
-  PetscReal :: ln_act(reaction%ncomp)
+  PetscReal :: ln_conc(reaction%naqcomp)
+  PetscReal :: ln_act(reaction%naqcomp)
   PetscReal :: srfcplx_conc(reaction%neqsrfcplx)
-  PetscReal :: dSx_dmi(reaction%ncomp)
+  PetscReal :: dSx_dmi(reaction%naqcomp)
   PetscReal :: dSi_dSx
   PetscReal :: free_site_conc
   PetscReal :: ln_free_site
@@ -3343,8 +3342,8 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   
   PetscInt :: irate
   PetscReal :: kdt, one_plus_kdt, k_over_one_plus_kdt
-  PetscReal :: total_sorb_eq(reaction%ncomp)
-  PetscReal :: dtotal_sorb_eq(reaction%ncomp,reaction%ncomp)
+  PetscReal :: total_sorb_eq(reaction%naqcomp)
+  PetscReal :: dtotal_sorb_eq(reaction%naqcomp,reaction%naqcomp)
 
   ln_conc = log(rt_auxvar%pri_molal)
   ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
@@ -3535,8 +3534,8 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
   type(option_type) :: option
 
   PetscInt :: i, j, k, l, icplx, icomp, jcomp, lcomp, ncomp, ncplx
-  PetscReal :: ln_conc(reaction%ncomp)
-  PetscReal :: ln_act(reaction%ncomp)
+  PetscReal :: ln_conc(reaction%naqcomp)
+  PetscReal :: ln_act(reaction%naqcomp)
   PetscInt :: irxn, isite
   PetscReal :: dt
 
@@ -3545,7 +3544,7 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
 
   PetscReal :: denominator
   PetscReal :: fac
-  PetscReal :: fac_sum(reaction%ncomp)
+  PetscReal :: fac_sum(reaction%naqcomp)
   PetscReal :: lnQ(reaction%nkinsrfcplx)
   PetscReal :: Q(reaction%nkinsrfcplx)
   PetscReal :: srfcplx_conc_k(reaction%nkinsrfcplx)
@@ -3727,9 +3726,9 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: tempreal, tempreal2
   PetscReal :: affinity_factor, sign_
   PetscReal :: Im, Im_const, dIm_dQK
-  PetscReal :: ln_conc(reaction%ncomp)
+  PetscReal :: ln_conc(reaction%naqcomp)
   PetscReal :: ln_sec(reaction%neqcplx)
-  PetscReal :: ln_act(reaction%ncomp)
+  PetscReal :: ln_act(reaction%naqcomp)
   PetscReal :: ln_sec_act(reaction%neqcplx)
   PetscReal :: QK, lnQK, dQK_dCj, dQK_dmj
   PetscTruth :: prefactor_exists

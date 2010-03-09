@@ -544,7 +544,7 @@ subroutine OutputTecplotBlock(realization)
         endif
       endif
       if (reaction%print_total_component) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,reaction%print_tot_conc_type,i)
             call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -553,7 +553,7 @@ subroutine OutputTecplotBlock(realization)
         enddo
       endif
       if (reaction%print_free_ion) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,reaction%print_free_conc_type,i)
             call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -562,7 +562,7 @@ subroutine OutputTecplotBlock(realization)
         enddo
       endif
       if (reaction%print_act_coefs) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,PRIMARY_ACTIVITY_COEF,i)
             call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -613,7 +613,7 @@ subroutine OutputTecplotBlock(realization)
         endif
       enddo
       if (associated(reaction%kd_print)) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%kd_print(i)) then      
             call OutputGetVarFromArray(realization,global_vec,PRIMARY_KD,i)
             call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -622,7 +622,7 @@ subroutine OutputTecplotBlock(realization)
         enddo
       endif
       if (associated(reaction%total_sorb_print)) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%total_sorb_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED,i)
             call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -1453,7 +1453,7 @@ subroutine OutputTecplotPoint(realization)
           endif
         endif
         if (reaction%print_total_component) then
-          do i=1,reaction%ncomp
+          do i=1,reaction%naqcomp
             if (reaction%primary_species_print(i)) then
               value = RealizGetDatasetValueAtCell(realization,reaction%print_tot_conc_type, &
                                                   i,ghosted_id)
@@ -1462,7 +1462,7 @@ subroutine OutputTecplotPoint(realization)
           enddo
         endif
         if (reaction%print_free_ion) then
-          do i=1,reaction%ncomp
+          do i=1,reaction%naqcomp
             if (reaction%primary_species_print(i)) then
               value = RealizGetDatasetValueAtCell(realization,reaction%print_free_conc_type, &
                                                   i,ghosted_id)
@@ -1471,7 +1471,7 @@ subroutine OutputTecplotPoint(realization)
           enddo
         endif        
         if (reaction%print_act_coefs) then
-          do i=1,reaction%ncomp
+          do i=1,reaction%naqcomp
             if (reaction%primary_species_print(i)) then
               value = RealizGetDatasetValueAtCell(realization,PRIMARY_ACTIVITY_COEF, &
                                                   i,ghosted_id)
@@ -1522,7 +1522,7 @@ subroutine OutputTecplotPoint(realization)
           endif
         enddo
         if (associated(reaction%kd_print)) then
-          do i=1,reaction%ncomp
+          do i=1,reaction%naqcomp
             if (reaction%kd_print(i)) then
               value = RealizGetDatasetValueAtCell(realization,PRIMARY_KD, &
                                                   i,ghosted_id)
@@ -1531,7 +1531,7 @@ subroutine OutputTecplotPoint(realization)
           enddo
         endif
         if (associated(reaction%total_sorb_print)) then
-          do i=1,reaction%ncomp
+          do i=1,reaction%naqcomp
             if (reaction%total_sorb_print(i)) then
               value = RealizGetDatasetValueAtCell(realization,TOTAL_SORBED, &
                                                   i,ghosted_id)
@@ -2886,7 +2886,7 @@ subroutine WriteObservationHeaderForBC(fid,realization,coupler_name)
   write(fid,'(a)',advance="no") trim(string)
 
   if (associated(reaction)) then
-    do i=1, reaction%ncomp 
+    do i=1, reaction%naqcomp 
       ! may need to modify for molality vs molarity, but I believe molarity is correct
       write(fid,'(a)',advance="no") ',"' // &
         trim(reaction%primary_species_names(i)) // ' ' // &
@@ -3042,7 +3042,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
         endif
       endif
       if (reaction%print_total_component) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
             write(fid,110,advance="no") &
               RealizGetDatasetValueAtCell(realization,reaction%print_tot_conc_type,i,ghosted_id)
@@ -3050,7 +3050,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
         enddo
       endif
       if (reaction%print_free_ion) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
             write(fid,110,advance="no") &
               RealizGetDatasetValueAtCell(realization,reaction%print_free_conc_type,i,ghosted_id)
@@ -3058,7 +3058,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
         enddo
       endif      
       if (reaction%print_act_coefs) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
           write(fid,110,advance="no") &
             RealizGetDatasetValueAtCell(realization,PRIMARY_ACTIVITY_COEF,i,ghosted_id)
@@ -3102,7 +3102,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
         endif
       enddo
       if (associated(reaction%kd_print)) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%kd_print(i)) then
             write(fid,110,advance="no") &
               RealizGetDatasetValueAtCell(realization,PRIMARY_KD,i,ghosted_id)
@@ -3110,7 +3110,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
         enddo
       endif
       if (associated(reaction%total_sorb_print)) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%total_sorb_print(i)) then
             write(fid,110,advance="no") &
               RealizGetDatasetValueAtCell(realization,TOTAL_SORBED,i,ghosted_id)
@@ -3380,7 +3380,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
         endif
       endif
       if (reaction%print_total_component) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
             write(fid,110,advance="no") &
               OutputGetVarFromArrayAtCoord(realization,reaction%print_tot_conc_type,i, &
@@ -3392,7 +3392,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
         enddo
       endif
       if (reaction%print_free_ion) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
             write(fid,110,advance="no") &
               OutputGetVarFromArrayAtCoord(realization,reaction%print_free_conc_type,i, &
@@ -3404,7 +3404,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
         enddo
       endif      
       if (reaction%print_act_coefs) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,PRIMARY_ACTIVITY_COEF,i, &
@@ -3476,7 +3476,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
         endif
       enddo
       if (associated(reaction%kd_print)) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%kd_print(i)) then
             write(fid,110,advance="no") &
               OutputGetVarFromArrayAtCoord(realization,PRIMARY_KD,i, &
@@ -3488,7 +3488,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
         enddo
       endif
       if (associated(reaction%total_sorb_print)) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%total_sorb_print(i)) then
             write(fid,110,advance="no") &
               OutputGetVarFromArrayAtCoord(realization,TOTAL_SORBED,i, &
@@ -3532,8 +3532,8 @@ subroutine WriteObservationDataForBC(fid,realization,patch,connection_set)
   PetscInt :: iphase
   PetscReal :: sum_volumetric_flux(realization%option%nphase)
   PetscReal :: sum_volumetric_flux_global(realization%option%nphase)
-  PetscReal :: sum_solute_flux(realization%reaction%ncomp)
-  PetscReal :: sum_solute_flux_global(realization%reaction%ncomp)
+  PetscReal :: sum_solute_flux(realization%option%ntrandof)
+  PetscReal :: sum_solute_flux_global(realization%option%ntrandof)
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
   
@@ -3583,10 +3583,11 @@ subroutine WriteObservationDataForBC(fid,realization,patch,connection_set)
         enddo
       endif
       call MPI_Reduce(sum_solute_flux,sum_solute_flux_global, &
-                      reaction%ncomp,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      option%ntrandof,MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
       if (option%myrank == option%io_rank) then
-        do i = 1, reaction%ncomp
+        !we currently only print the aqueous components
+        do i = 1, reaction%naqcomp
           write(fid,110,advance="no") sum_solute_flux_global(i)
         enddo
       endif
@@ -4092,7 +4093,7 @@ subroutine OutputVTK(realization)
   if (option%ntrandof > 0) then
     if (associated(reaction)) then
       if (reaction%print_total_component) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           call OutputGetVarFromArray(realization,global_vec,reaction%print_tot_conc_type,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteVTKDataSetFromVec(IUNIT3,realization,reaction%primary_species_names(i), &
@@ -4100,7 +4101,7 @@ subroutine OutputVTK(realization)
         enddo
       endif
       if (reaction%print_free_ion) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           call OutputGetVarFromArray(realization,global_vec,reaction%print_free_conc_type,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteVTKDataSetFromVec(IUNIT3,realization,reaction%primary_species_names(i), &
@@ -5194,7 +5195,7 @@ subroutine OutputHDF5(realization)
         endif
       endif
       if (reaction%print_total_component) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,reaction%print_tot_conc_type,i)
             if (.not.(option%use_samr)) then
@@ -5211,7 +5212,7 @@ subroutine OutputHDF5(realization)
         enddo
       endif
       if (reaction%print_free_ion) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,reaction%print_free_conc_type,i)
             if (.not.(option%use_samr)) then
@@ -5228,7 +5229,7 @@ subroutine OutputHDF5(realization)
         enddo
       endif      
       if (reaction%print_act_coefs) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,PRIMARY_ACTIVITY_COEF,i)
             if (.not.(option%use_samr)) then
@@ -5341,7 +5342,7 @@ subroutine OutputHDF5(realization)
 ! Kd
 
       if (associated(reaction%kd_print)) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%kd_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,PRIMARY_KD,i)
             if (.not.(option%use_samr)) then
@@ -5358,7 +5359,7 @@ subroutine OutputHDF5(realization)
         enddo
       endif
       if (associated(reaction%total_sorb_print)) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%neqsorb > 0 .and. reaction%total_sorb_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED,i)
             if (.not.(option%use_samr)) then
@@ -6628,7 +6629,7 @@ subroutine OutputMassBalanceNew(realization)
       end select
       
       if (option%ntrandof > 0) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
@@ -6656,7 +6657,7 @@ subroutine OutputMassBalanceNew(realization)
         end select
         
         if (option%ntrandof > 0) then
-          do i=1,reaction%ncomp
+          do i=1,reaction%naqcomp
             if (reaction%primary_species_print(i)) then
               icol = icol + 1
               write(strcol,'(i3,"-")') icol
@@ -6666,7 +6667,7 @@ subroutine OutputMassBalanceNew(realization)
             endif
           enddo
 
-          do i=1,reaction%ncomp
+          do i=1,reaction%naqcomp
             if (reaction%primary_species_print(i)) then
               icol = icol + 1
               write(strcol,'(i3,"-")') icol
@@ -6691,7 +6692,7 @@ subroutine OutputMassBalanceNew(realization)
         end select
         
         if (option%ntrandof > 0) then
-          do i=1,reaction%ncomp
+          do i=1,reaction%naqcomp
             if (reaction%primary_species_print(i)) then
               write(fid,'(a)',advance="no") ',"' // &
                   trim(adjustl(word)) // 'm ' // &
@@ -6736,13 +6737,13 @@ subroutine OutputMassBalanceNew(realization)
   if (option%ntrandof > 0) then
     sum_mol = 0.d0
     call RTComputeMassBalance(realization,sum_mol)
-    call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*reaction%ncomp, &
+    call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*option%ntrandof, &
                     MPI_DOUBLE_PRECISION,MPI_SUM, &
                     option%io_rank,option%mycomm,ierr)
 
     if (option%myrank == option%io_rank) then
       do iphase = 1, option%nphase
-        do icomp = 1, reaction%ncomp
+        do icomp = 1, reaction%naqcomp
           if (reaction%primary_species_print(icomp)) then
             write(fid,110,advance="no") sum_mol_global(icomp,iphase)
           endif
@@ -6843,14 +6844,14 @@ subroutine OutputMassBalanceNew(realization)
         sum_mol = sum_mol + rt_aux_vars_bc(offset+iconn)%mass_balance
       enddo
 
-      call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*reaction%ncomp, &
+      call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*option%ntrandof, &
                       MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
 
       if (option%myrank == option%io_rank) then
         ! change sign for positive in / negative out
         do iphase = 1, option%nphase
-          do icomp = 1, reaction%ncomp
+          do icomp = 1, reaction%naqcomp
             if (reaction%primary_species_print(icomp)) then
               write(fid,110,advance="no") -sum_mol_global(icomp,iphase)
             endif
@@ -6864,14 +6865,14 @@ subroutine OutputMassBalanceNew(realization)
         sum_mol = sum_mol + rt_aux_vars_bc(offset+iconn)%mass_balance_delta 
       enddo
 
-      call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*reaction%ncomp, &
+      call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*option%ntrandof, &
                       MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
                       
       if (option%myrank == option%io_rank) then
         ! change sign for positive in / negative out
         do iphase = 1, option%nphase
-          do icomp = 1, reaction%ncomp
+          do icomp = 1, reaction%naqcomp
             if (reaction%primary_species_print(icomp)) then
               write(fid,110,advance="no") -sum_mol_global(icomp,iphase)* &
                                           output_option%tconv
@@ -6909,13 +6910,13 @@ subroutine OutputMassBalanceNew(realization)
       sum_mol = 0.d0
       sum_mol = sum_mol + patch%aux%RT%aux_vars(iconn)%mass_balance
 
-      call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*reaction%ncomp, &
+      call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*option%ntrandof, &
                       MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
 
       if (option%myrank == option%io_rank) then
         do iphase = 1, option%nphase
-          do icomp = 1, reaction%ncomp
+          do icomp = 1, reaction%naqcomp
             if (reaction%primary_species_print(icomp)) then
               ! change sign for positive in / negative out
               write(fid,110,advance="no") -sum_mol_global(icomp,iphase)

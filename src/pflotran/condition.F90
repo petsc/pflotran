@@ -1139,7 +1139,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
           
           icomp = icomp + 1        
           
-          if (icomp > reaction%ncomp) then
+          if (icomp > reaction%naqcomp) then
             option%io_buffer = 'Number of concentration constraints ' // &
                                'exceeds number of primary chemical ' // &
                                'components in constraint: ' // &
@@ -1201,7 +1201,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
         
         enddo  
         
-        if (icomp < reaction%ncomp) then
+        if (icomp < reaction%naqcomp) then
           option%io_buffer = &
                    'Number of concentration constraints is less than ' // &
                    'number of primary species in aqueous constraint.'

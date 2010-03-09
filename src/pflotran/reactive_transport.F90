@@ -2207,10 +2207,12 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
       
+      istart = (local_id-1)*reaction%ncomp + 1
+      iend = istart + reaction%naqcomp - 1
       select case(source_sink%tran_condition%itype)
         case(EQUILIBRIUM_SS)
           ! units should be mol/sec
-          Res = -1.d-6* &
+          Res(istart:iend) = -1.d-6* &
                 porosity_loc_p(ghosted_id)* &
                 global_aux_vars(ghosted_id)%sat(option%liquid_phase)* &
                 volume_p(local_id)* & ! convert m^3 water -> L water
@@ -2218,16 +2220,16 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                  rt_auxvar%total(:,iphase) - rt_aux_vars(ghosted_id)%total(:,iphase))* &
                 1000.d0 ! convert kg water/L water -> kg water/m^3 water
         case(MASS_RATE_SS)
-          Res = -source_sink%tran_condition%cur_constraint_coupler% &
-                 rt_auxvar%total(:,iphase) ! actually moles/sec
+          Res(istart:iend) = -source_sink%tran_condition% &
+                 cur_constraint_coupler%rt_auxvar%total(:,iphase) ! actually moles/sec
         case default
           if (qsrc > 0) then ! injection
             if (volumetric) then ! qsrc is volumetric; must be converted to mass
-              Res = -qsrc* &
+              Res(istart:iend) = -qsrc* &
                     source_sink%tran_condition%cur_constraint_coupler% &
                     rt_auxvar%total(:,iphase)*1000.d0
             else
-               Res = -qsrc* &
+               Res(istart:iend) = -qsrc* &
                      source_sink%tran_condition%cur_constraint_coupler% &
                      rt_auxvar%total(:,iphase)/ &
                      global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
@@ -2235,9 +2237,9 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
             endif
           else ! extraction
             if (volumetric) then ! qsrc is volumetric; must be converted to mass
-              Res = -qsrc*rt_aux_vars(ghosted_id)%total(:,iphase)*1000.d0
+              Res(istart:iend) = -qsrc*rt_aux_vars(ghosted_id)%total(:,iphase)*1000.d0
             else
-              Res = -qsrc* &
+              Res(istart:iend) = -qsrc* &
                     rt_aux_vars(ghosted_id)%total(:,iphase)/ &
                     global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
                     1000.d0 ! convert kg water/L water -> kg water/m^3 water
@@ -2249,9 +2251,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
 !        rt_aux_vars_ss(ghosted_id)%mass_balance_delta(:,iphase) = &
 !          rt_aux_vars_ss(ghosted_id)%mass_balance_delta(:,iphase) + Res
 !      endif      
-      iend = local_id*reaction%ncomp
-      istart = iend-reaction%ncomp+1
-      r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%ncomp)                                  
+      r_p(istart:iend) = r_p(istart:iend) + Res(1:reaction%naqcomp)                                  
     enddo
     source_sink => source_sink%next
   enddo
@@ -2965,10 +2965,13 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
 
+      istart = (local_id-1)*reaction%ncomp + 1
+      iend = istart + reaction%naqcomp - 1
+      
       Jup = 0.d0
       select case(source_sink%tran_condition%itype)
         case(EQUILIBRIUM_SS)
-          do istart = 1, reaction%ncomp
+          do istart = 1, reaction%naqcomp
             Jup(istart,istart) = 1.d-6* &
                                  porosity_loc_p(ghosted_id)* &
                                  global_aux_vars(ghosted_id)%sat(option%liquid_phase)* &
@@ -2978,11 +2981,11 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
         case default
           if (qsrc < 0) then ! extraction
             if (volumetric) then ! qsrc is volumetric; must be converted to mass
-              do istart = 1, reaction%ncomp
+              do istart = 1, reaction%naqcomp
                 Jup(istart,istart) = -qsrc
               enddo
             else
-              do istart = 1, reaction%ncomp
+              do istart = 1, reaction%naqcomp
                 Jup(istart,istart) = -qsrc/global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)
               enddo
             endif
@@ -3002,8 +3005,6 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-      iend = local_id*reaction%ncomp
-      istart = iend-reaction%ncomp+1
       Res = 0.d0
       Jup = 0.d0
       call RReactionDerivative(Res,Jup,rt_aux_vars(ghosted_id), &
@@ -3018,8 +3019,8 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   if (reaction%use_log_formulation) then
     call GridVecGetArrayF90(grid,field%tran_work_loc, work_loc_p, ierr)
     do ghosted_id = 1, grid%ngmax  ! For each local node do...
-      iend = ghosted_id*reaction%ncomp
-      istart = iend-reaction%ncomp+1
+      istart = (ghosted_id-1)*reaction%ncomp+1
+      iend = istart + reaction%naqcomp - 1
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) then
           work_loc_p(istart:iend) = 1.d0
@@ -3151,8 +3152,8 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
-    iend = ghosted_id*reaction%ncomp
-    istart = iend-reaction%ncomp+1
+    istart = (ghosted_id-1)*reaction%ncomp + 1
+    iend = istart + reaction%naqcomp - 1
     
     patch%aux%RT%aux_vars(ghosted_id)%pri_molal = xx_loc_p(istart:iend)
     if (compute_activity_coefs) then
@@ -3206,24 +3207,24 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
             case(CONCENTRATION_SS,DIRICHLET_BC,NEUMANN_BC)
               ! since basis_molarity is in molarity, must convert to molality
                 ! by dividing by density of water (mol/L -> mol/kg)
-              xxbc(1:reaction%ncomp) = basis_molarity_p(1:reaction%ncomp) / &
+              xxbc(1:reaction%naqcomp) = basis_molarity_p(1:reaction%naqcomp) / &
                 patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * 1000.d0
             case(DIRICHLET_ZERO_GRADIENT_BC)
   !geh            do iphase = 1, option%nphase
                 if (patch%boundary_velocities(iphase,sum_connection) >= 0.d0) then
                   ! same as dirichlet above
-                  xxbc(1:reaction%ncomp) = basis_molarity_p(1:reaction%ncomp) / &
+                  xxbc(1:reaction%naqcomp) = basis_molarity_p(1:reaction%naqcomp) / &
                     patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * 1000.d0
                 else
                   ! same as zero_gradient below
-                  do idof=1,reaction%ncomp
-                    xxbc(idof) = xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
+                  do idof=1,reaction%naqcomp
+                    xxbc(idof) = xx_loc_p((ghosted_id-1)*reaction%naqcomp+idof)
                   enddo
                 endif
   !geh          enddo
             case(ZERO_GRADIENT_BC)
-              do idof=1,reaction%ncomp
-                xxbc(idof) = xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
+              do idof=1,reaction%naqcomp
+                xxbc(idof) = xx_loc_p((ghosted_id-1)*reaction%naqcomp+idof)
               enddo
           end select
           ! no need to update boundary fluid density since it is already set
@@ -3255,16 +3256,16 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
                 else
                   ! same as zero_gradient below
                   skip_equilibrate_constraint = PETSC_TRUE
-                  do idof=1,reaction%ncomp
+                  do idof=1,reaction%naqcomp
                     patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(idof) = &
-                      xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
+                      xx_loc_p((ghosted_id-1)*reaction%naqcomp+idof)
                   enddo
                 endif
             case(ZERO_GRADIENT_BC)
               skip_equilibrate_constraint = PETSC_TRUE
-              do idof=1,reaction%ncomp
+              do idof=1,reaction%naqcomp
                 patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(idof) = &
-                  xx_loc_p((ghosted_id-1)*reaction%ncomp+idof)
+                  xx_loc_p((ghosted_id-1)*reaction%naqcomp+idof)
               enddo
           end select
           ! no need to update boundary fluid density since it is already set
@@ -3661,8 +3662,8 @@ subroutine RTAuxVarCompute(rt_aux_var,global_aux_var,reaction,option)
   PetscReal :: Res_orig(reaction%ncomp)
   PetscReal :: Res_pert(reaction%ncomp)
   PetscInt :: icomp, jcomp
-  PetscReal :: dtotal(reaction%ncomp,reaction%ncomp)
-  PetscReal :: dtotalsorb(reaction%ncomp,reaction%ncomp)
+  PetscReal :: dtotal(reaction%naqcomp,reaction%naqcomp)
+  PetscReal :: dtotalsorb(reaction%naqcomp,reaction%naqcomp)
   PetscReal :: pert
   type(reactive_transport_auxvar_type) :: rt_auxvar_pert
 #endif
@@ -3684,7 +3685,7 @@ subroutine RTAuxVarCompute(rt_aux_var,global_aux_var,reaction,option)
   dtotalsorb = 0.d0
   option%iflag = 0 ! be sure not to allocate mass_balance array
   call RTAuxVarInit(rt_auxvar_pert,reaction,option)
-  do jcomp = 1, reaction%ncomp
+  do jcomp = 1, reaction%naqcomp
     Res_pert = 0.d0
     call RTAuxVarCopy(rt_auxvar_pert,rt_aux_var,option)
     if (reaction%neqcplx > 0) then
@@ -3712,8 +3713,8 @@ subroutine RTAuxVarCompute(rt_aux_var,global_aux_var,reaction,option)
                                rt_aux_var%total_sorb_eq(:))/pert
     endif
   enddo
-  do icomp = 1, reaction%ncomp
-    do jcomp = 1, reaction%ncomp
+  do icomp = 1, reaction%naqcomp
+    do jcomp = 1, reaction%naqcomp
       if (dabs(dtotal(icomp,jcomp)) < 1.d-16) dtotal(icomp,jcomp) = 0.d0
       if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
         if (dabs(dtotalsorb(icomp,jcomp)) < 1.d-16) dtotalsorb(icomp,jcomp) = 0.d0
@@ -3848,7 +3849,7 @@ subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
   PetscReal, pointer :: vec_p(:)
 
-  PetscTruth :: checkpoint_flag(realization%reaction%ncomp)
+  PetscTruth :: checkpoint_flag(realization%reaction%naqcomp)
   PetscInt :: i, j, irxn, icomp, icplx, ncomp, ncplx, irate
   PetscInt :: local_id
   PetscErrorCode :: ierr
@@ -3881,7 +3882,7 @@ subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
       if (.not.associated(cur_patch)) exit
       rt_auxvars => cur_patch%aux%RT%aux_vars
       grid => cur_patch%grid
-      do icomp = 1, reaction%ncomp
+      do icomp = 1, reaction%naqcomp
         if (checkpoint_flag(icomp)) then
           do irate = 1, reaction%kinmr_nrate
             if (checkpoint) then

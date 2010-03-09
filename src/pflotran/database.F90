@@ -840,7 +840,7 @@ subroutine BasisInit(reaction,option)
   reaction%ngas = GetGasCount(reaction)
 
   ! account for H2O in the basis by adding 1
-  ncomp_h2o = reaction%ncomp+1
+  ncomp_h2o = reaction%naqcomp+1
   
   allocate(old_basis_names(ncomp_h2o+reaction%neqcplx))
   allocate(new_basis_names(ncomp_h2o))
@@ -1935,25 +1935,25 @@ subroutine BasisInit(reaction,option)
   if (associated(reaction%primary_species_names)) &
     deallocate(reaction%primary_species_names)
 
-  allocate(reaction%primary_species_names(reaction%ncomp))
+  allocate(reaction%primary_species_names(reaction%naqcomp))
   reaction%primary_species_names = ''
 
-  allocate(reaction%primary_species_print(reaction%ncomp))
+  allocate(reaction%primary_species_print(reaction%naqcomp))
   reaction%primary_species_print = PETSC_FALSE
 
-  allocate(reaction%primary_spec_Z(reaction%ncomp))
+  allocate(reaction%primary_spec_Z(reaction%naqcomp))
   reaction%primary_spec_Z = 0.d0
 
-  allocate(reaction%primary_spec_molar_wt(reaction%ncomp))
+  allocate(reaction%primary_spec_molar_wt(reaction%naqcomp))
   reaction%primary_spec_molar_wt = 0.d0
 
-  allocate(reaction%primary_spec_a0(reaction%ncomp))
+  allocate(reaction%primary_spec_a0(reaction%naqcomp))
   reaction%primary_spec_a0 = 0.d0
 
-  allocate(reaction%kd_print(reaction%ncomp))
+  allocate(reaction%kd_print(reaction%naqcomp))
   reaction%kd_print = PETSC_FALSE
   if (reaction%neqsorb > 0) then
-    allocate(reaction%total_sorb_print(reaction%ncomp))
+    allocate(reaction%total_sorb_print(reaction%naqcomp))
     reaction%total_sorb_print = PETSC_FALSE
   endif
   
@@ -1992,13 +1992,13 @@ subroutine BasisInit(reaction,option)
     allocate(reaction%secondary_species_print(reaction%neqcplx))
     reaction%secondary_species_print = PETSC_FALSE
 
-    allocate(reaction%eqcplx_basis_names(reaction%ncomp,reaction%neqcplx))
+    allocate(reaction%eqcplx_basis_names(reaction%naqcomp,reaction%neqcplx))
     reaction%eqcplx_basis_names = ''
 
-    allocate(reaction%eqcplxspecid(0:reaction%ncomp,reaction%neqcplx))
+    allocate(reaction%eqcplxspecid(0:reaction%naqcomp,reaction%neqcplx))
     reaction%eqcplxspecid = 0
 
-    allocate(reaction%eqcplxstoich(0:reaction%ncomp,reaction%neqcplx))
+    allocate(reaction%eqcplxstoich(0:reaction%naqcomp,reaction%neqcplx))
     reaction%eqcplxstoich = 0.d0
 
     allocate(reaction%eqcplxh2oid(reaction%neqcplx))
@@ -2093,9 +2093,9 @@ subroutine BasisInit(reaction,option)
     reaction%gas_species_names = ''
     allocate(reaction%gas_species_print(reaction%ngas))
     reaction%gas_species_print = PETSC_FALSE
-    allocate(reaction%eqgasspecid(0:reaction%ncomp,reaction%ngas))
+    allocate(reaction%eqgasspecid(0:reaction%naqcomp,reaction%ngas))
     reaction%eqgasspecid = 0
-    allocate(reaction%eqgasstoich(0:reaction%ncomp,reaction%ngas))
+    allocate(reaction%eqgasstoich(0:reaction%naqcomp,reaction%ngas))
     reaction%eqgasstoich = 0.d0
     allocate(reaction%eqgash2oid(reaction%ngas))
     reaction%eqgash2oid = 0
@@ -2171,9 +2171,9 @@ subroutine BasisInit(reaction,option)
   if (reaction%nmnrl > 0) then
     allocate(reaction%mineral_names(reaction%nmnrl))
     reaction%mineral_names = ''
-    allocate(reaction%mnrlspecid(0:reaction%ncomp,reaction%nmnrl))
+    allocate(reaction%mnrlspecid(0:reaction%naqcomp,reaction%nmnrl))
     reaction%mnrlspecid = 0
-    allocate(reaction%mnrlstoich(reaction%ncomp,reaction%nmnrl))
+    allocate(reaction%mnrlstoich(reaction%naqcomp,reaction%nmnrl))
     reaction%mnrlstoich = 0.d0
     allocate(reaction%mnrlh2oid(reaction%nmnrl))
     reaction%mnrlh2oid = 0
@@ -2193,9 +2193,9 @@ subroutine BasisInit(reaction,option)
     reaction%kinmnrl_names = ''
     allocate(reaction%kinmnrl_print(reaction%nkinmnrl))
     reaction%kinmnrl_print = PETSC_FALSE
-    allocate(reaction%kinmnrlspecid(0:reaction%ncomp,reaction%nkinmnrl))
+    allocate(reaction%kinmnrlspecid(0:reaction%naqcomp,reaction%nkinmnrl))
     reaction%kinmnrlspecid = 0
-    allocate(reaction%kinmnrlstoich(reaction%ncomp,reaction%nkinmnrl))
+    allocate(reaction%kinmnrlstoich(reaction%naqcomp,reaction%nkinmnrl))
     reaction%kinmnrlstoich = 0.d0
     allocate(reaction%kinmnrlh2oid(reaction%nkinmnrl))
     reaction%kinmnrlh2oid = 0
@@ -2360,10 +2360,10 @@ subroutine BasisInit(reaction,option)
     allocate(reaction%eqsrfcplx_print(reaction%neqsrfcplx))
     reaction%eqsrfcplx_print = PETSC_FALSE
     
-    allocate(reaction%eqsrfcplxspecid(0:reaction%ncomp,reaction%neqsrfcplx))
+    allocate(reaction%eqsrfcplxspecid(0:reaction%naqcomp,reaction%neqsrfcplx))
     reaction%eqsrfcplxspecid = 0
     
-    allocate(reaction%eqsrfcplxstoich(reaction%ncomp,reaction%neqsrfcplx))
+    allocate(reaction%eqsrfcplxstoich(reaction%naqcomp,reaction%neqsrfcplx))
     reaction%eqsrfcplxstoich = 0.d0
     
     allocate(reaction%eqsrfcplxh2oid(reaction%neqsrfcplx))
@@ -2546,10 +2546,10 @@ subroutine BasisInit(reaction,option)
     allocate(reaction%kinsrfcplx_print(reaction%nkinsrfcplx))
     reaction%kinsrfcplx_print = PETSC_FALSE
     
-    allocate(reaction%kinsrfcplxspecid(0:reaction%ncomp,reaction%nkinsrfcplx))
+    allocate(reaction%kinsrfcplxspecid(0:reaction%naqcomp,reaction%nkinsrfcplx))
     reaction%kinsrfcplxspecid = 0
     
-    allocate(reaction%kinsrfcplxstoich(reaction%ncomp,reaction%nkinsrfcplx))
+    allocate(reaction%kinsrfcplxstoich(reaction%naqcomp,reaction%nkinsrfcplx))
     reaction%kinsrfcplxstoich = 0.d0
     
     allocate(reaction%kinsrfcplxh2oid(reaction%nkinsrfcplx))
@@ -2733,7 +2733,7 @@ subroutine BasisInit(reaction,option)
         reaction%eqionx_rxn_k(ication,irxn) = cur_cation%k
 
         found = PETSC_FALSE
-        do i = 1, reaction%ncomp
+        do i = 1, reaction%naqcomp
           if (StringCompare(cur_cation%name, &
                               reaction%primary_species_names(i), &
                               MAXWORDLENGTH)) then
@@ -2774,7 +2774,7 @@ subroutine BasisInit(reaction,option)
 
   ! locate specific species
   reaction%species_idx => SpeciesIndexCreate()
-  do ispec = 1, reaction%ncomp
+  do ispec = 1, reaction%naqcomp
     if (reaction%species_idx%h_ion_id == 0) then
       word = 'H+'
       if (StringCompare(reaction%primary_species_names(ispec), &
@@ -2896,8 +2896,8 @@ subroutine BasisInit(reaction,option)
 
   if (OptionPrintToFile(option)) then
     write(option%fid_out,90)
-    write(option%fid_out,100) reaction%ncomp, 'Primary Species'
-    write(option%fid_out,110) (reaction%primary_species_names(i),i=1,reaction%ncomp)
+    write(option%fid_out,100) reaction%naqcomp, 'Primary Species'
+    write(option%fid_out,110) (reaction%primary_species_names(i),i=1,reaction%naqcomp)
     
     write(option%fid_out,100) reaction%neqcplx, 'Secondary Complex Species'
     write(option%fid_out,110) (reaction%secondary_species_names(i),i=1,reaction%neqcplx)

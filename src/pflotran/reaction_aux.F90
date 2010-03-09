@@ -943,17 +943,17 @@ function AqueousSpeciesConstraintCreate(reaction,option)
   type(aq_species_constraint_type), pointer :: constraint
   
   allocate(constraint)
-  allocate(constraint%names(reaction%ncomp))
+  allocate(constraint%names(reaction%naqcomp))
   constraint%names = ''
-  allocate(constraint%constraint_conc(reaction%ncomp))
+  allocate(constraint%constraint_conc(reaction%naqcomp))
   constraint%constraint_conc = 0.d0
-  allocate(constraint%basis_molarity(reaction%ncomp))
+  allocate(constraint%basis_molarity(reaction%naqcomp))
   constraint%basis_molarity = 0.d0
-  allocate(constraint%constraint_spec_id(reaction%ncomp))
+  allocate(constraint%constraint_spec_id(reaction%naqcomp))
   constraint%constraint_spec_id = 0
-  allocate(constraint%constraint_type(reaction%ncomp))
+  allocate(constraint%constraint_type(reaction%naqcomp))
   constraint%constraint_type = 0
-  allocate(constraint%constraint_spec_name(reaction%ncomp))
+  allocate(constraint%constraint_spec_name(reaction%naqcomp))
   constraint%constraint_spec_name = ''
 
   AqueousSpeciesConstraintCreate => constraint
