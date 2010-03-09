@@ -2978,6 +2978,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
   PetscReal, parameter :: tol = 1.d-12
   PetscTruth :: one_more
   PetscReal :: res, dres_dfree_site, dfree_site_conc
+  PetscReal :: site_density  
   
   ln_conc = log(rt_auxvar%pri_molal)
   ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
@@ -2996,6 +2997,15 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
     
     free_site_conc = rt_auxvar%eqsrfcplx_free_site_conc(irxn)
 
+    select case(reaction%eqsrfcplx_rxn_surf_type(irxn))
+      case(MINERAL_SURFACE)
+        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
+      case(COLLOID_SURFACE)
+        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
+      case(NULL_SURFACE)
+        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
+    end select
+    
     ! get a pointer to the first complex (there will always be at least 1)
     ! in order to grab free site conc
     one_more = PETSC_FALSE
@@ -3031,7 +3041,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
       if (reaction%eqsrfcplx_rxn_stoich_flag(irxn)) then 
         ! stoichiometry for free sites in one of reactions is not 1, thus must
         ! use nonlinear iteration to solve
-        res = reaction%eqsrfcplx_rxn_site_density(irxn)-total
+        res = site_density-total
         
         dres_dfree_site = 1.d0
 
@@ -3052,7 +3062,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
       else
       
         total = total / free_site_conc
-        free_site_conc = reaction%eqsrfcplx_rxn_site_density(irxn) / total  
+        free_site_conc = site_density / total  
         
         one_more = PETSC_TRUE 
       
@@ -3362,8 +3372,15 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   do irxn = 1, reaction%neqsrfcplxrxn
   
     !WARNING! the below assumes site density multiplicative factor
-    site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
-  
+    select case(reaction%eqsrfcplx_rxn_surf_type(irxn))
+      case(MINERAL_SURFACE)
+        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
+      case(COLLOID_SURFACE)
+        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
+      case(NULL_SURFACE)
+        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
+    end select  
+
     ncplx = reaction%eqsrfcplx_rxn_to_complex(0,irxn)
     free_site_conc = rt_auxvar%eqsrfcplx_free_site_conc(irxn)
 

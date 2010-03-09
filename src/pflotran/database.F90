@@ -2421,7 +2421,8 @@ subroutine BasisInit(reaction,option)
           option%io_buffer = 'No mineral or colloid name specified for ' // &
             'equilibrium surface complexation reaction:' // &
             trim(adjustl(word))
-          call printErrMsg(option)
+          call printWrnMsg(option)
+          reaction%eqsrfcplx_rxn_surf_type(irxn) = NULL_SURFACE          
         endif
         reaction%eqsrfcplx_rxn_site_density(irxn) = cur_srfcplx_rxn%site_density
               

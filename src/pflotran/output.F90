@@ -6602,8 +6602,8 @@ subroutine OutputMassBalanceNew(realization)
   ! open file
   if (option%myrank == option%io_rank) then
 
-    option%io_buffer = '--> write tecplot mass balance file: ' // trim(filename)
-    call printMsg(option)    
+!geh    option%io_buffer = '--> write tecplot mass balance file: ' // trim(filename)
+!geh    call printMsg(option)    
 
     if (mass_balance_first .and. option%restart_flag) then ! check if file already exists
       ios = 0

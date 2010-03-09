@@ -114,6 +114,7 @@ PetscInt, parameter :: MINERAL_KINETIC = 2
 PetscInt, parameter :: MINERAL_EQUILIBRIUM = 3
 
 ! surface complexation surface types
+PetscInt, parameter :: NULL_SURFACE = 0
 PetscInt, parameter :: COLLOID_SURFACE = 1
 PetscInt, parameter :: MINERAL_SURFACE = 2
 
