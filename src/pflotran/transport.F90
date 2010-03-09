@@ -776,22 +776,26 @@ end subroutine TBCFluxDerivative
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine TFlux(ndof,rt_aux_var_up,rt_aux_var_dn, &
+subroutine TFlux(rt_parameter,rt_aux_var_up,rt_aux_var_dn, &
                  coef_up,coef_dn,option,Res)
 
   use Option_module
 
   implicit none
   
-  PetscInt :: ndof
+  type(reactive_transport_param_type) :: rt_parameter
   type(reactive_transport_auxvar_type) :: rt_aux_var_up, rt_aux_var_dn
   PetscReal :: coef_up(*), coef_dn(*)
   type(option_type) :: option
-  PetscReal :: Res(ndof)
+  PetscReal :: Res(rt_parameter%ncomp)
   
   PetscInt :: iphase
+  PetscInt :: ndof
+  PetscInt :: istart
+  PetscInt :: iend
 
-  iphase = 1  
+  iphase = 1
+  ndof = rt_parameter%ncomp
   ! units = (L water/sec)*(mol/L) = mol/s
   Res(1:ndof) = coef_up(iphase)*rt_aux_var_up%total(1:ndof,iphase) + &
                 coef_dn(iphase)*rt_aux_var_dn%total(1:ndof,iphase)
@@ -810,6 +814,17 @@ subroutine TFlux(ndof,rt_aux_var_up,rt_aux_var_dn, &
  enddo
 #endif
 
+#ifdef REVISED_TRANSPORT
+  if (rt_parameter%ncolcomp > 0) then
+    iphase = 1
+    istart = rt_parameter%offset_coll_sorb
+    iend = rt_parameter%offset_coll_sorb + rt_parameter%ncolcomp - 1
+    Res(istart:iend) = &
+      coef_up(iphase)*rt_aux_var_up%colloid%total(1:rt_parameter%ncolcomp) + &
+      coef_dn(iphase)*rt_aux_var_dn%colloid%total(1:rt_parameter%ncolcomp)
+  endif
+#endif
+
 end subroutine TFlux
 
 ! ************************************************************************** !
@@ -819,7 +834,7 @@ end subroutine TFlux
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine TFluxDerivative(ndof, &
+subroutine TFluxDerivative(rt_parameter, &
                            rt_aux_var_up,global_aux_var_up, & 
                            rt_aux_var_dn,global_aux_var_dn, & 
                            coef_up,coef_dn,option,J_up,J_dn)
@@ -828,26 +843,33 @@ subroutine TFluxDerivative(ndof, &
 
   implicit none
   
-  PetscInt :: ndof
+  type(reactive_transport_param_type) :: rt_parameter
   type(reactive_transport_auxvar_type) :: rt_aux_var_up, rt_aux_var_dn
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn 
   PetscReal :: coef_up(*), coef_dn(*)
   type(option_type) :: option
-  PetscReal :: J_up(ndof,ndof), J_dn(ndof,ndof)
+  PetscReal :: J_up(rt_parameter%ncomp,rt_parameter%ncomp), &
+               J_dn(rt_parameter%ncomp,rt_parameter%ncomp)
   
   PetscInt :: iphase
   PetscInt :: icomp
+  PetscInt :: ndof
+  PetscInt :: istart
+  PetscInt :: iend
  
   iphase = 1
-
+  ndof = rt_parameter%ncomp
+  
   ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
+  istart = 1
+  iend = rt_parameter%naqcomp
   if (associated(rt_aux_var_dn%aqueous%dtotal)) then
-    J_up = rt_aux_var_up%aqueous%dtotal(:,:,iphase)*coef_up(iphase)
-    J_dn = rt_aux_var_dn%aqueous%dtotal(:,:,iphase)*coef_dn(iphase)
+    J_up(istart:iend,istart:iend) = rt_aux_var_up%aqueous%dtotal(:,:,iphase)*coef_up(iphase)
+    J_dn(istart:iend,istart:iend) = rt_aux_var_dn%aqueous%dtotal(:,:,iphase)*coef_dn(iphase)
   else  
     J_up = 0.d0
     J_dn = 0.d0
-    do icomp = 1, ndof
+    do icomp = istart, iend
       J_up(icomp,icomp) = coef_up(iphase)*global_aux_var_up%den_kg(iphase)*1.d-3
       J_dn(icomp,icomp) = coef_dn(iphase)*global_aux_var_dn%den_kg(iphase)*1.d-3
     enddo
@@ -862,8 +884,10 @@ subroutine TFluxDerivative(ndof, &
 
     ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
     if (associated(rt_aux_var_dn%aqueous%dtotal)) then
-      J_up = J_up + rt_aux_var_up%aqueous%dtotal(:,:,iphase)*coef_up(iphase)
-      J_dn = J_dn + rt_aux_var_dn%aqueous%dtotal(:,:,iphase)*coef_dn(iphase)
+      J_up(istart:iend,istart:iend) = J_up(istart:iend,istart:iend) + &
+        rt_aux_var_up%aqueous%dtotal(:,:,iphase)*coef_up(iphase)
+      J_dn(istart:iend,istart:iend) = J_dn(istart:iend,istart:iend) + &
+        rt_aux_var_dn%aqueous%dtotal(:,:,iphase)*coef_dn(iphase)
     else  
       print *,'Dtotal needed for SC problem. STOP'
       stop 
@@ -875,6 +899,22 @@ subroutine TFluxDerivative(ndof, &
    !   enddo
     endif
   enddo
+#endif
+
+#ifdef REVISED_TRANSPORT
+  if (rt_parameter%ncolcomp > 0) then
+    iphase = 1
+    ! dRic_dSic
+    istart = rt_parameter%offset_coll_sorb
+    iend = rt_parameter%offset_coll_sorb + rt_parameter%ncolcomp - 1
+    J_up(istart:iend,istart:iend) = rt_aux_var_up%colloid%dRic_dSic%dtotal(:,:,1)* &
+                                    coef_up(iphase)
+    J_dn(istart:iend,istart:iend) = rt_aux_var_dn%colloid%dRic_dSic%dtotal(:,:,1)* &
+                                    coef_dn(iphase)
+    ! need the below
+    ! dRj_dSic
+    ! dRic_dCj
+  endif
 #endif
 
 end subroutine TFluxDerivative

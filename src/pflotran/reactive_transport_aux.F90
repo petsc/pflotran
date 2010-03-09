@@ -71,8 +71,11 @@ module Reactive_Transport_Aux_module
   end type reactive_transport_auxvar_type
 
   type, public :: reactive_transport_param_type
+    PetscInt :: ncomp
     PetscInt :: naqcomp
     PetscInt :: nimcomp
+    PetscInt :: ncolcomp
+    PetscInt :: offset_coll_sorb
     PetscReal :: dispersivity
     PetscReal, pointer :: diffusion_coefficient(:)
   end type reactive_transport_param_type
@@ -140,7 +143,12 @@ function RTAuxCreate(option)
   allocate(aux%rt_parameter%diffusion_coefficient(option%nphase))
   aux%rt_parameter%diffusion_coefficient = 0.d0
   aux%rt_parameter%dispersivity = 0.d0
-
+  aux%rt_parameter%ncomp = 0
+  aux%rt_parameter%naqcomp = 0
+  aux%rt_parameter%nimcomp = 0
+  aux%rt_parameter%ncolcomp = 0
+  aux%rt_parameter%offset_coll_sorb = 0
+  
   RTAuxCreate => aux
   
 end function RTAuxCreate

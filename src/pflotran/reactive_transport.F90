@@ -22,10 +22,23 @@ module Reactive_Transport_module
 
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
   
-  public :: RTTimeCut, RTSetup, RTMaxChange, RTUpdateSolution, RTResidual, &
-            RTJacobian, RTInitializeTimestep, RTGetTecplotHeader, &
-            RTUpdateAuxVars, RTComputeMassBalance, RTDestroy, RTCheckUpdate, &
-            RTJumpStartKineticSorption, RTCheckpointKineticSorption
+  public :: RTTimeCut, &
+            RTSetup, &
+            RTMaxChange, &
+            RTUpdateSolution, &
+            RTResidual, &
+            RTJacobian, &
+            RTInitializeTimestep, &
+            RTGetTecplotHeader, &
+            RTUpdateAuxVars, &
+            RTComputeMassBalance, &
+            RTDestroy, &
+#ifdef REVISED_TRANSPORT
+            RTUpdateTransportCoefs, &
+#endif
+            RTCheckUpdate, &
+            RTJumpStartKineticSorption, &
+            RTCheckpointKineticSorption
   
 contains
 
@@ -60,11 +73,16 @@ subroutine RTTimeCut(realization)
   endif
   
   call RTInitializeTimestep(realization)  
+  ! note: RTUpdateTransportCoefs() is called within RTInitializeTimestep()  
   
   ! set densities and saturations to t+dt
   if (realization%option%nflowdof > 0) then
     call GlobalUpdateDenAndSat(realization,realization%option%tran_weight_t1)
   endif
+
+#ifdef REVISED_TRANSPORT  
+  call RTUpdateTransportCoefs(realization)
+#endif
  
 end subroutine RTTimeCut
 
@@ -142,6 +160,11 @@ subroutine RTSetupPatch(realization)
   reaction => realization%reaction
 
   patch%aux%RT => RTAuxCreate(option)
+  patch%aux%RT%rt_parameter%ncomp = reaction%ncomp
+  patch%aux%RT%rt_parameter%naqcomp = reaction%naqcomp
+  patch%aux%RT%rt_parameter%nimcomp = 0
+  patch%aux%RT%rt_parameter%ncolcomp = reaction%ncolcomp
+  patch%aux%RT%rt_parameter%offset_coll_sorb = reaction%offset_coll_sorb
     
   ! allocate aux_var data structures for all grid cells
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
@@ -852,6 +875,39 @@ end subroutine RTUpdateFixedAccumulationPatch
 #ifdef REVISED_TRANSPORT
 ! ************************************************************************** !
 !
+! RTUpdateTransportCoefs: 
+! author: Glenn Hammond
+! date: 03/09/10
+!
+! ************************************************************************** !
+subroutine RTUpdateTransportCoefs(realization)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+
+  type(realization_type) :: realization
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RTUpdateTransportCoefsPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RTUpdateTransportCoefs
+
+! ************************************************************************** !
+!
 ! RTUpdateTransportCoefsPatch: Calculates coefficients for transport matrix 
 ! author: Glenn Hammond
 ! date: 02/24/10
@@ -1100,13 +1156,13 @@ subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
   PetscReal :: v_t
   
   iphase = 1
-  istart = 1
-  iend = reaction%naqcomp
   ! units = (mol solute/L water)*(m^3 por/m^3 bulk)*(m^3 water/m^3 por)*
   !         (m^3 bulk)*(1000L water/m^3 water)/(sec) = mol/sec
   ! 1000.d0 converts vol from m^3 -> L
   ! all residual entries should be in mol/sec
   psv_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
+  istart = 1
+  iend = reaction%naqcomp
   Res(istart:iend) = psv_t*rt_aux_var%total(:,iphase) 
 
 ! Add in multiphase, clu 12/29/08
@@ -1218,10 +1274,14 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
 #ifdef REVISED_TRANSPORT 
   if (reaction%ncolcomp > 0) then
     iphase = 1
+    ! dRic_dSic
     istart = reaction%offset_coll_sorb
     iend = reaction%offset_coll_sorb + reaction%ncolcomp - 1
     J(istart:iend,istart:iend) = rt_aux_var%colloid%dRic_dSic%dtotal(:,:,iphase)* &
                                  psvd_t
+    ! need the below
+    ! dRj_dSic
+    ! dRic_dCj                                 
   endif
 #endif
 
@@ -1900,7 +1960,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
                        patch%internal_velocities(:,sum_connection), &
                        patch%internal_tran_coefs(:,sum_connection), &
                        coef_up,coef_dn)
-        call TFlux(reaction%naqcomp, &
+        call TFlux(rt_parameter, &
                    rt_aux_vars(ghosted_id_up), &
                    rt_aux_vars(ghosted_id_dn), &
                    coef_up,coef_dn,option,Res)
@@ -1971,7 +2031,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
                        patch%boundary_tran_coefs(:,sum_connection), &
                        coef_up,coef_dn)
         ! TFlux accomplishes the same as what TBCFlux would
-        call TFlux(reaction%naqcomp, &
+        call TFlux(rt_parameter, &
                    rt_aux_vars_bc(sum_connection), &
                    rt_aux_vars(ghosted_id), &
                    coef_up,coef_dn,option,Res)
@@ -2673,7 +2733,7 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                      patch%internal_velocities(:,sum_connection), &
                      patch%internal_tran_coefs(:,sum_connection), &
                      coef_up,coef_dn)
-      call TFluxDerivative(reaction%naqcomp, &
+      call TFluxDerivative(rt_parameter, &
                            rt_aux_vars(ghosted_id_up), &
                            global_aux_vars(ghosted_id_up), &
                            rt_aux_vars(ghosted_id_dn), &
@@ -2745,7 +2805,7 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                      patch%boundary_tran_coefs(:,sum_connection), &
                      coef_up,coef_dn)
       ! TFluxDerivative accomplishes the same as what TBCFluxDerivative would
-      call TFluxDerivative(reaction%naqcomp, &
+      call TFluxDerivative(rt_parameter, &
                            rt_aux_vars_bc(sum_connection), &
                            global_aux_vars_bc(sum_connection), &
                            rt_aux_vars(ghosted_id), &
