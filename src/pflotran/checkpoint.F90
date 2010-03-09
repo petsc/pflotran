@@ -312,7 +312,7 @@ subroutine Checkpoint(realization, &
         call DiscretizationCreateVector(realization%discretization,ONEDOF, &
                                         global_vec,GLOBAL,option)
       endif
-      do i = 1, realization%reaction%ncomp
+      do i = 1, realization%reaction%naqcomp
         call RealizationGetDataset(realization,global_vec, &
                                    PRIMARY_ACTIVITY_COEF,i)
         call VecView(global_vec,viewer,ierr)
@@ -538,7 +538,7 @@ subroutine Restart(realization, &
       endif    
       call DiscretizationCreateVector(discretization,ONEDOF,local_vec, &
                                       LOCAL,option)
-      do i = 1, realization%reaction%ncomp
+      do i = 1, realization%reaction%naqcomp
         call VecLoadIntoVector(viewer,global_vec,ierr)
         call DiscretizationGlobalToLocal(discretization,global_vec, &
                                          local_vec,ONEDOF)
