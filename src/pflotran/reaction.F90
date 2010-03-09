@@ -3000,8 +3000,12 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
     select case(reaction%eqsrfcplx_rxn_surf_type(irxn))
       case(MINERAL_SURFACE)
         site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
+!        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)* &
+!                       rt_auxvar%mnrl_volfrac(reaction%eqsrfcplx_rxn_to_surf(irxn))
       case(COLLOID_SURFACE)
         site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
+!        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)* &
+!                       rt_auxvar%colloid%total_colloid_conc(reaction%eqsrfcplx_rxn_to_surf(irxn))
       case(NULL_SURFACE)
         site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
     end select
@@ -3098,39 +3102,43 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
     ! convert from dlogm to dm
     dSx_dmi = dSx_dmi / rt_auxvar%pri_molal
  
-    do k = 1, ncplx
-      icplx = reaction%eqsrfcplx_rxn_to_complex(k,irxn)
+    select case(reaction%eqsrfcplx_rxn_surf_type(irxn))
+      case(MINERAL_SURFACE,NULL_SURFACE)
+        do k = 1, ncplx
+          icplx = reaction%eqsrfcplx_rxn_to_complex(k,irxn)
 
-      rt_auxvar%eqsrfcplx_conc(icplx) = srfcplx_conc(icplx)
-!geh - indexing by k results in 1-ncplx begin set, but this does not work when
-!      more than 1 surface complexation reaction is included.
-!     rt_auxvar%eqsrfcplx_conc(k) = srfcplx_conc(icplx)
+          rt_auxvar%eqsrfcplx_conc(icplx) = srfcplx_conc(icplx)
+    !geh - indexing by k results in 1-ncplx begin set, but this does not work when
+    !      more than 1 surface complexation reaction is included.
+    !     rt_auxvar%eqsrfcplx_conc(k) = srfcplx_conc(icplx)
 
-      ncomp = reaction%eqsrfcplxspecid(0,icplx)
-      do i = 1, ncomp
-        icomp = reaction%eqsrfcplxspecid(i,icplx)
-        rt_auxvar%total_sorb_eq(icomp) = rt_auxvar%total_sorb_eq(icomp) + &
-          reaction%eqsrfcplxstoich(i,icplx)*srfcplx_conc(icplx)
-      enddo
-      
-      dSi_dSx = reaction%eqsrfcplx_free_site_stoich(icplx)* &
-                srfcplx_conc(icplx)/ &
-                free_site_conc
+          ncomp = reaction%eqsrfcplxspecid(0,icplx)
+          do i = 1, ncomp
+            icomp = reaction%eqsrfcplxspecid(i,icplx)
+            rt_auxvar%total_sorb_eq(icomp) = rt_auxvar%total_sorb_eq(icomp) + &
+              reaction%eqsrfcplxstoich(i,icplx)*srfcplx_conc(icplx)
+          enddo
+          
+          dSi_dSx = reaction%eqsrfcplx_free_site_stoich(icplx)* &
+                    srfcplx_conc(icplx)/ &
+                    free_site_conc
 
-      do j = 1, ncomp
-        jcomp = reaction%eqsrfcplxspecid(j,icplx)
-        tempreal = reaction%eqsrfcplxstoich(j,icplx)*srfcplx_conc(icplx) / &
-                   rt_auxvar%pri_molal(jcomp)+ &
-                   dSi_dSx*dSx_dmi(jcomp)
-                  
-        do i = 1, ncomp
-          icomp = reaction%eqsrfcplxspecid(i,icplx)
-          rt_auxvar%dtotal_sorb_eq(icomp,jcomp) = rt_auxvar%dtotal_sorb_eq(icomp,jcomp) + &
-                                               reaction%eqsrfcplxstoich(i,icplx)* &
-                                               tempreal
+          do j = 1, ncomp
+            jcomp = reaction%eqsrfcplxspecid(j,icplx)
+            tempreal = reaction%eqsrfcplxstoich(j,icplx)*srfcplx_conc(icplx) / &
+                       rt_auxvar%pri_molal(jcomp)+ &
+                       dSi_dSx*dSx_dmi(jcomp)
+                      
+            do i = 1, ncomp
+              icomp = reaction%eqsrfcplxspecid(i,icplx)
+              rt_auxvar%dtotal_sorb_eq(icomp,jcomp) = rt_auxvar%dtotal_sorb_eq(icomp,jcomp) + &
+                                                   reaction%eqsrfcplxstoich(i,icplx)* &
+                                                   tempreal
+            enddo
+          enddo
         enddo
-      enddo
-    enddo
+      case(COLLOID_SURFACE)
+    end select
   enddo
   
   ! units of total_sorb = mol/m^3
@@ -3375,8 +3383,12 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
     select case(reaction%eqsrfcplx_rxn_surf_type(irxn))
       case(MINERAL_SURFACE)
         site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
+!        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)* &
+!                       rt_auxvar%mnrl_volfrac(reaction%eqsrfcplx_rxn_to_surf(irxn))
       case(COLLOID_SURFACE)
         site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
+!        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)* &
+!                       rt_auxvar%colloid%total(reaction%eqsrfcplx_rxn_to_surf(irxn))
       case(NULL_SURFACE)
         site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
     end select  
