@@ -1996,6 +1996,13 @@ subroutine assignMaterialPropToRegions(realization)
                  size(realization%material_property_array)) then
           material_property => &
             realization%material_property_array(material_id)%ptr
+          if (.not.associated(material_property)) then
+            write(dataset_name,*) material_id
+            option%io_buffer = 'No material property for material id ' // &
+                               trim(adjustl(dataset_name)) &
+                               //  ' defined in input file.'
+            call printErrMsg(option)
+          endif
         else if (material_id < -998) then 
           option%io_buffer = 'Uninitialized material id in patch'
           call printErrMsg(option)
