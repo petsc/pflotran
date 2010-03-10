@@ -215,7 +215,9 @@ subroutine ReactionRead(reaction,input,option)
           
           colloid => ColloidCreate()
           call InputReadWord(input,option,colloid%name,PETSC_TRUE)  
-          call InputErrorMsg(input,option,'keyword','CHEMISTRY,MINERALS')    
+          call InputErrorMsg(input,option,'keyword','CHEMISTRY,COLLOIDS')    
+          call InputReadDouble(input,option,colloid%mobile_fraction)  
+          call InputDefaultMsg(input,option,'CHEMISTRY,COLLOIDS,MOBILE_FRACTION')          
           if (.not.associated(reaction%colloid_list)) then
             reaction%colloid_list => colloid
             colloid%id = 1
@@ -2979,6 +2981,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
   PetscTruth :: one_more
   PetscReal :: res, dres_dfree_site, dfree_site_conc
   PetscReal :: site_density(2)
+  PetscReal :: mobile_fraction
   PetscInt :: num_types_of_sites
   PetscInt :: isite
   
@@ -3006,7 +3009,9 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
 !                       rt_auxvar%mnrl_volfrac(reaction%eqsrfcplx_rxn_to_surf(irxn))
         num_types_of_sites = 1
       case(COLLOID_SURFACE)
-        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
+        mobile_fraction = 0.5d0
+        site_density(1) = (1.d0-mobile_fraction)*reaction%eqsrfcplx_rxn_site_density(irxn)
+        site_density(2) = mobile_fraction*reaction%eqsrfcplx_rxn_site_density(irxn)
 !        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)* &
 !                       rt_auxvar%colloid%total_colloid_conc(reaction%eqsrfcplx_rxn_to_surf(irxn))
         num_types_of_sites = 2 ! two types of sites (mobile and immobile) with separate

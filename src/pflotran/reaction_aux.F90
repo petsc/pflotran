@@ -68,6 +68,7 @@ module Reaction_Aux_module
     PetscInt :: id
     PetscInt :: itype
     character(len=MAXWORDLENGTH) :: name
+    PetscReal :: mobile_fraction
     PetscReal :: surface_area
     PetscReal :: molar_weight
     PetscTruth :: print_me
@@ -314,6 +315,7 @@ module Reaction_Aux_module
     PetscInt :: ncoll
     character(len=MAXWORDLENGTH), pointer :: colloid_names(:)
     character(len=MAXWORDLENGTH), pointer :: colloid_species_names(:)
+    PetscReal, pointer :: colloid_mobile_fraction(:)
     PetscInt, pointer :: pri_spec_to_coll_spec(:)
     PetscInt, pointer :: coll_spec_to_pri_spec(:)
     
@@ -572,6 +574,7 @@ function ReactionCreate()
   reaction%ncoll = 0
   nullify(reaction%pri_spec_to_coll_spec)
   nullify(reaction%coll_spec_to_pri_spec)
+  nullify(reaction%colloid_mobile_fraction)
   
   reaction%nkinmnrl = 0  
   nullify(reaction%kinmnrlspecid)
@@ -747,6 +750,7 @@ function ColloidCreate()
   colloid%id = 0
   colloid%itype = 0
   colloid%name = ''
+  colloid%mobile_fraction = 0.5d0
   colloid%surface_area = 1.d0
   colloid%molar_weight = 0.d0
   colloid%print_me = PETSC_FALSE
@@ -2261,6 +2265,9 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%coll_spec_to_pri_spec)) &
     deallocate(reaction%coll_spec_to_pri_spec)
   nullify(reaction%coll_spec_to_pri_spec)
+  if (associated(reaction%colloid_mobile_fraction)) &
+    deallocate(reaction%colloid_mobile_fraction)
+  nullify(reaction%colloid_mobile_fraction)
   
   deallocate(reaction)
   nullify(reaction)

@@ -2300,7 +2300,9 @@ subroutine BasisInit(reaction,option)
 
   if (reaction%ncoll > 0) then
     allocate(reaction%colloid_names(reaction%ncoll))
+    allocate(reaction%colloid_mobile_fraction(reaction%ncoll))
     reaction%colloid_names = ''
+    reaction%colloid_mobile_fraction = 0.d0
 
     cur_colloid => reaction%colloid_list
     icoll = 1
@@ -2308,6 +2310,7 @@ subroutine BasisInit(reaction,option)
       if (.not.associated(cur_colloid)) exit
 
       reaction%colloid_names(icoll) = cur_colloid%name
+      reaction%colloid_mobile_fraction(icoll) = cur_colloid%mobile_fraction
       cur_colloid => cur_colloid%next
       icoll = icoll + 1
     enddo
