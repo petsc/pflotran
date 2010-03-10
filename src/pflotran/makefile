@@ -31,7 +31,8 @@ CHUAN_FLAG = -DCHUAN_CO2
 endif
 
 ifdef coll
-COLL_FLAG = -DCOLL
+#COLL_FLAG = -DCOLL
+COLL_FLAG = -DREVISED_TRANSPORT
 endif
 
 ifdef vamsi_hdf5
