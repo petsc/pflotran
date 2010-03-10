@@ -74,6 +74,7 @@ common_obj = ${common_src}option.o \
 	${common_src}logging.o \
 	${common_src}hdf5_aux.o \
 	${common_src}global_aux.o\
+	${common_src}matrix_block_aux.o\
 	${common_src}reactive_transport_aux.o\
 	${common_src}reaction_aux.o\
 	${common_src}thc_aux.o\
