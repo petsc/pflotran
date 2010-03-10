@@ -205,7 +205,7 @@ output.o : grid.o structured_grid.o option.o realization.o field.o \
 reaction.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reaction_aux.o : option.o string.o
 transport.o : reactive_transport_aux.o option.o matrix_block_aux.o
-reactive_transport.o : realization.o reaction.o transport.o \ matrix_block_aux.o
+reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
                        reactive_transport_aux.o fluid.o
 reactive_transport_aux.o : option.o reaction_aux.o matrix_block_aux.o
 thc.o : thc_aux.o realization.o saturation_function.o
