@@ -74,6 +74,7 @@ common_obj = ${common_src}option.o \
 	${common_src}logging.o \
 	${common_src}hdf5_aux.o \
 	${common_src}global_aux.o\
+	${common_src}matrix_block_aux.o\
 	${common_src}reactive_transport_aux.o\
 	${common_src}reaction_aux.o\
 	${common_src}thc_aux.o\
@@ -203,10 +204,10 @@ output.o : grid.o structured_grid.o option.o realization.o field.o \
 					 discretization.o logging.o
 reaction.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reaction_aux.o : option.o string.o
-transport.o : reactive_transport_aux.o option.o
-reactive_transport.o : realization.o reaction.o transport.o \
+transport.o : reactive_transport_aux.o option.o matrix_block_aux.o
+reactive_transport.o : realization.o reaction.o transport.o \ matrix_block_aux.o
                        reactive_transport_aux.o fluid.o
-reactive_transport_aux.o : option.o reaction_aux.o
+reactive_transport_aux.o : option.o reaction_aux.o matrix_block_aux.o
 thc.o : thc_aux.o realization.o saturation_function.o
 richards.o : richards_aux.o realization.o saturation_function.o \
              matrix_buffer.o
