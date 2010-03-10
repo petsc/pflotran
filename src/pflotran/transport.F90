@@ -332,16 +332,6 @@ subroutine TFlux(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up, &
                       coef_dn*rt_aux_var_dn%total(1:option%ntrandof,iphase)
  enddo
 #endif
-
-#ifdef REVISED_TRANSPORT
-  if (reaction%ncollcomp > 0) then
-    istart = reaction%offset_collcomp
-    iend = reaction%offset_collcomp + reaction%ncollcomp - 1
-    Res(istart:iend) = &
-      coef_up*rt_aux_var_up%colloid%total_eq_sorb(1:option%ncollcomp,iphase) + &
-      coef_dn*rt_aux_var_dn%colloid%total_eq_sorb(1:option%ncollcomp,iphase)
-  endif
-#endif
   
 end subroutine TFlux
 
@@ -480,19 +470,6 @@ subroutine TFluxDerivative(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up
   enddo
 #endif
 
-#ifdef REVISED_TRANSPORT 
-  if (reaction%ncollcomp > 0) then
-    iphase = 1
-    ! dRj_dCj - mobile
-    istart = reaction%offset_collcomp
-    iend = reaction%offset_collcomp + reaction%ncollcomp - 1
-    J_up(istart:iend,istart:iend) = &
-      rt_aux_var_up%colloid%dRj_dCj%dtotal(:,:,iphase)*coef_up*1000.d0
-    J_dn(istart:iend,istart:iend) = &
-      rt_aux_var_dn%colloid%dRj_dCj%dtotal(:,:,iphase)*coef_dn*1000.d0
-  endif
-#endif
-  
 end subroutine TFluxDerivative
 
 ! ************************************************************************** !
