@@ -3136,11 +3136,13 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
               reaction%eqsrfcplxstoich(i,icplx)*srfcplx_conc(icplx)
           enddo
         else ! mobile sites
+#ifdef REVISED_TRANSPORT        
           do i = 1, ncomp
             icomp = reaction%pri_spec_to_coll_spec(reaction%eqsrfcplxspecid(i,icplx))
             rt_auxvar%colloid%total_eq_mob(icomp) = rt_auxvar%colloid%total_eq_mob(icomp) + &
               reaction%eqsrfcplxstoich(i,icplx)*srfcplx_conc(icplx)
           enddo
+#endif          
         endif
         
         ! for 2.3-47 which feeds into 2.3-50
