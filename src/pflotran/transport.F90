@@ -815,13 +815,13 @@ subroutine TFlux(rt_parameter,rt_aux_var_up,rt_aux_var_dn, &
 #endif
 
 #ifdef REVISED_TRANSPORT
-  if (rt_parameter%ncolcomp > 0) then
+  if (rt_parameter%ncollcomp > 0) then
     iphase = 1
-    istart = rt_parameter%offset_coll_sorb
-    iend = rt_parameter%offset_coll_sorb + rt_parameter%ncolcomp - 1
+    istart = rt_parameter%offset_collcomp
+    iend = rt_parameter%offset_collcomp + rt_parameter%ncollcomp - 1
     Res(istart:iend) = &
-      coef_up(iphase)*rt_aux_var_up%colloid%total(1:rt_parameter%ncolcomp) + &
-      coef_dn(iphase)*rt_aux_var_dn%colloid%total(1:rt_parameter%ncolcomp)
+      coef_up(iphase)*rt_aux_var_up%colloid%total(1:rt_parameter%ncollcomp) + &
+      coef_dn(iphase)*rt_aux_var_dn%colloid%total(1:rt_parameter%ncollcomp)
   endif
 #endif
 
@@ -902,11 +902,11 @@ subroutine TFluxDerivative(rt_parameter, &
 #endif
 
 #ifdef REVISED_TRANSPORT
-  if (rt_parameter%ncolcomp > 0) then
+  if (rt_parameter%ncollcomp > 0) then
     iphase = 1
     ! dRic_dSic
-    istart = rt_parameter%offset_coll_sorb
-    iend = rt_parameter%offset_coll_sorb + rt_parameter%ncolcomp - 1
+    istart = rt_parameter%offset_collcomp
+    iend = rt_parameter%offset_collcomp + rt_parameter%ncollcomp - 1
     J_up(istart:iend,istart:iend) = rt_aux_var_up%colloid%dRic_dSic%dtotal(:,:,1)* &
                                     coef_up(iphase)
     J_dn(istart:iend,istart:iend) = rt_aux_var_dn%colloid%dRic_dSic%dtotal(:,:,1)* &

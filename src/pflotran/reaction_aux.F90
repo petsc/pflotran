@@ -192,10 +192,11 @@ module Reaction_Aux_module
     ! primary aqueous complexes
     PetscInt :: ncomp
     PetscInt :: naqcomp
-    PetscInt :: ncolcomp
+    PetscInt :: ncollcomp
     
     ! offsets
-    PetscInt :: offset_coll_sorb
+    PetscInt :: offset_coll
+    PetscInt :: offset_collcomp
     
     character(len=MAXWORDLENGTH), pointer :: primary_species_names(:)
     PetscTruth, pointer :: primary_species_print(:)
@@ -312,6 +313,9 @@ module Reaction_Aux_module
     ! colloids
     PetscInt :: ncoll
     character(len=MAXWORDLENGTH), pointer :: colloid_names(:)
+    character(len=MAXWORDLENGTH), pointer :: colloid_species_names(:)
+    PetscInt, pointer :: pri_spec_to_coll_spec(:)
+    PetscInt, pointer :: coll_spec_to_pri_spec(:)
     
       ! for saturation states
     PetscInt, pointer :: mnrlspecid(:,:)
@@ -451,6 +455,7 @@ function ReactionCreate()
   nullify(reaction%kinsrfcplx_names)
   nullify(reaction%mineral_names)
   nullify(reaction%colloid_names)
+  nullify(reaction%colloid_species_names)
   nullify(reaction%kinmnrl_names)
 
   nullify(reaction%primary_species_print)
@@ -467,8 +472,10 @@ function ReactionCreate()
   
   reaction%ncomp = 0
   reaction%naqcomp = 0
-  reaction%ncolcomp = 0
-  reaction%offset_coll_sorb = 0
+  reaction%ncoll = 0
+  reaction%ncollcomp = 0
+  reaction%offset_coll = 0
+  reaction%offset_collcomp = 0
   nullify(reaction%primary_spec_a0)
   nullify(reaction%primary_spec_Z)
   nullify(reaction%primary_spec_molar_wt)
@@ -562,7 +569,9 @@ function ReactionCreate()
   nullify(reaction%mnrlh2ostoich)
   nullify(reaction%mnrl_logKcoef)
 
-  reaction%ncoll = 0  
+  reaction%ncoll = 0
+  nullify(reaction%pri_spec_to_coll_spec)
+  nullify(reaction%coll_spec_to_pri_spec)
   
   reaction%nkinmnrl = 0  
   nullify(reaction%kinmnrlspecid)
@@ -1944,6 +1953,9 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%colloid_names)) &
     deallocate(reaction%colloid_names)
   nullify(reaction%colloid_names)
+  if (associated(reaction%colloid_species_names)) &
+    deallocate(reaction%colloid_species_names)
+  nullify(reaction%colloid_species_names)
   if (associated(reaction%kinmnrl_names)) &
     deallocate(reaction%kinmnrl_names)
   nullify(reaction%kinmnrl_names)
@@ -2242,6 +2254,13 @@ subroutine ReactionDestroy(reaction)
 
   if (associated(reaction%kinmr_frac)) deallocate(reaction%kinmr_frac)
   nullify(reaction%kinmr_frac)
+  
+  if (associated(reaction%pri_spec_to_coll_spec)) &
+    deallocate(reaction%pri_spec_to_coll_spec)
+  nullify(reaction%pri_spec_to_coll_spec)
+  if (associated(reaction%coll_spec_to_pri_spec)) &
+    deallocate(reaction%coll_spec_to_pri_spec)
+  nullify(reaction%coll_spec_to_pri_spec)
   
   deallocate(reaction)
   nullify(reaction)

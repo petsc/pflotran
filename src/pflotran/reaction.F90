@@ -2978,7 +2978,9 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
   PetscReal, parameter :: tol = 1.d-12
   PetscTruth :: one_more
   PetscReal :: res, dres_dfree_site, dfree_site_conc
-  PetscReal :: site_density  
+  PetscReal :: site_density(2)
+  PetscInt :: num_types_of_sites
+  PetscInt :: isite
   
   ln_conc = log(rt_auxvar%pri_molal)
   ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
@@ -2999,151 +3001,174 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
 
     select case(reaction%eqsrfcplx_rxn_surf_type(irxn))
       case(MINERAL_SURFACE)
-        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
+        site_density(1) = reaction%eqsrfcplx_rxn_site_density(irxn)
 !        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)* &
 !                       rt_auxvar%mnrl_volfrac(reaction%eqsrfcplx_rxn_to_surf(irxn))
+        num_types_of_sites = 1
       case(COLLOID_SURFACE)
         site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
 !        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)* &
 !                       rt_auxvar%colloid%total_colloid_conc(reaction%eqsrfcplx_rxn_to_surf(irxn))
+        num_types_of_sites = 2 ! two types of sites (mobile and immobile) with separate
+                               ! site densities
       case(NULL_SURFACE)
-        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)
+        site_density(1) = reaction%eqsrfcplx_rxn_site_density(irxn)
+        num_types_of_sites = 1
     end select
     
-    ! get a pointer to the first complex (there will always be at least 1)
-    ! in order to grab free site conc
-    one_more = PETSC_FALSE
-    do
+    do isite=1, num_types_of_sites
+      ! isite == 1 - immobile (colloids, minerals, etc.)
+      ! isite == 2 - mobile (colloids)
+    
+      ! get a pointer to the first complex (there will always be at least 1)
+      ! in order to grab free site conc
+      one_more = PETSC_FALSE
+      do
 
-      total = free_site_conc
-      ln_free_site = log(free_site_conc)
-      do j = 1, ncplx
-        icplx = reaction%eqsrfcplx_rxn_to_complex(j,irxn)
-        ! compute secondary species concentration
-        lnQK = -reaction%eqsrfcplx_logK(icplx)*LOG_TO_LN
+        total = free_site_conc
+        ln_free_site = log(free_site_conc)
+        do j = 1, ncplx
+          icplx = reaction%eqsrfcplx_rxn_to_complex(j,irxn)
+          ! compute secondary species concentration
+          lnQK = -reaction%eqsrfcplx_logK(icplx)*LOG_TO_LN
 
-        ! activity of water
-        if (reaction%eqsrfcplxh2oid(icplx) > 0) then
-          lnQK = lnQK + reaction%eqsrfcplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
+          ! activity of water
+          if (reaction%eqsrfcplxh2oid(icplx) > 0) then
+            lnQK = lnQK + reaction%eqsrfcplxh2ostoich(icplx)*rt_auxvar%ln_act_h2o
+          endif
+
+          lnQK = lnQK + reaction%eqsrfcplx_free_site_stoich(icplx)* &
+                        ln_free_site
+        
+          ncomp = reaction%eqsrfcplxspecid(0,icplx)
+          do i = 1, ncomp
+            icomp = reaction%eqsrfcplxspecid(i,icplx)
+            lnQK = lnQK + reaction%eqsrfcplxstoich(i,icplx)*ln_act(icomp)
+          enddo
+          srfcplx_conc(icplx) = exp(lnQK)
+          total = total + reaction%eqsrfcplx_free_site_stoich(icplx)*srfcplx_conc(icplx) 
+          
+        enddo
+        
+        if (one_more) exit
+        
+        if (reaction%eqsrfcplx_rxn_stoich_flag(irxn)) then 
+          ! stoichiometry for free sites in one of reactions is not 1, thus must
+          ! use nonlinear iteration to solve
+          res = site_density(isite)-total
+          
+          dres_dfree_site = 1.d0
+
+          do j = 1, ncplx
+            icplx = reaction%eqsrfcplx_rxn_to_complex(j,irxn)
+            dres_dfree_site = dres_dfree_site + &
+              reaction%eqsrfcplx_free_site_stoich(icplx)* &
+              srfcplx_conc(icplx)/free_site_conc
+          enddo
+
+          dfree_site_conc = res / dres_dfree_site
+          free_site_conc = free_site_conc - dfree_site_conc
+        
+          if (dabs(dfree_site_conc/free_site_conc) < tol) then
+            one_more = PETSC_TRUE
+          endif
+        
+        else
+        
+          total = total / free_site_conc
+          free_site_conc = site_density(isite) / total  
+          
+          one_more = PETSC_TRUE 
+        
         endif
 
-        lnQK = lnQK + reaction%eqsrfcplx_free_site_stoich(icplx)* &
-                      ln_free_site
+      enddo ! generic do
       
+      rt_auxvar%eqsrfcplx_free_site_conc(irxn) = free_site_conc
+   
+  !!!!!!!!!!!!
+      ! 2.3-46
+
+      ! Sx = free site
+      ! m = molality of component i
+      dSx_dmi = 0.d0
+      tempreal = 0.d0
+      do j = 1, ncplx
+        icplx = reaction%eqsrfcplx_rxn_to_complex(j,irxn)
         ncomp = reaction%eqsrfcplxspecid(0,icplx)
         do i = 1, ncomp
           icomp = reaction%eqsrfcplxspecid(i,icplx)
-          lnQK = lnQK + reaction%eqsrfcplxstoich(i,icplx)*ln_act(icomp)
+          ! sum of nu_li * nu_i * S_i
+          dSx_dmi(icomp) = dSx_dmi(icomp) + reaction%eqsrfcplxstoich(i,icplx)* &
+                                            reaction%eqsrfcplx_free_site_stoich(icplx)* &
+                                            srfcplx_conc(icplx)
         enddo
-        srfcplx_conc(icplx) = exp(lnQK)
-        total = total + reaction%eqsrfcplx_free_site_stoich(icplx)*srfcplx_conc(icplx) 
-        
-      enddo
-      
-      if (one_more) exit
-      
-      if (reaction%eqsrfcplx_rxn_stoich_flag(irxn)) then 
-        ! stoichiometry for free sites in one of reactions is not 1, thus must
-        ! use nonlinear iteration to solve
-        res = site_density-total
-        
-        dres_dfree_site = 1.d0
+        ! sum of nu_i^2 * S_i
+        tempreal = tempreal + reaction%eqsrfcplx_free_site_stoich(icplx)* & 
+                              reaction%eqsrfcplx_free_site_stoich(icplx)* &
+                              srfcplx_conc(icplx)
+      enddo 
+      ! divide denominator by Sx
+      tempreal = tempreal / free_site_conc
+      ! add 1.d0 to denominator
+      tempreal = tempreal + 1.d0
+      ! divide numerator by denominator
+      dSx_dmi = -dSx_dmi / tempreal
+      ! convert from dlogm to dm
+      dSx_dmi = dSx_dmi / rt_auxvar%pri_molal
+  !!!!!!!!!!!!
+   
+      do k = 1, ncplx
+        icplx = reaction%eqsrfcplx_rxn_to_complex(k,irxn)
 
-        do j = 1, ncplx
-          icplx = reaction%eqsrfcplx_rxn_to_complex(j,irxn)
-          dres_dfree_site = dres_dfree_site + &
-            reaction%eqsrfcplx_free_site_stoich(icplx)* &
-            srfcplx_conc(icplx)/free_site_conc
-        enddo
+        rt_auxvar%eqsrfcplx_conc(icplx) = srfcplx_conc(icplx)
 
-        dfree_site_conc = res / dres_dfree_site
-        free_site_conc = free_site_conc - dfree_site_conc
-      
-        if (dabs(dfree_site_conc/free_site_conc) < tol) then
-          one_more = PETSC_TRUE
-        endif
-      
-      else
-      
-        total = total / free_site_conc
-        free_site_conc = site_density / total  
-        
-        one_more = PETSC_TRUE 
-      
-      endif
-
-    enddo
-    
-    rt_auxvar%eqsrfcplx_free_site_conc(irxn) = free_site_conc
- 
-!!!!!!!!!!!!
-    ! 2.3-46
-
-    ! Sx = free site
-    ! m = molality of component i
-    dSx_dmi = 0.d0
-    tempreal = 0.d0
-    do j = 1, ncplx
-      icplx = reaction%eqsrfcplx_rxn_to_complex(j,irxn)
-      ncomp = reaction%eqsrfcplxspecid(0,icplx)
-      do i = 1, ncomp
-        icomp = reaction%eqsrfcplxspecid(i,icplx)
-        ! sum of nu_li * nu_i * S_i
-        dSx_dmi(icomp) = dSx_dmi(icomp) + reaction%eqsrfcplxstoich(i,icplx)* &
-                                          reaction%eqsrfcplx_free_site_stoich(icplx)* &
-                                          srfcplx_conc(icplx)
-      enddo
-      ! sum of nu_i^2 * S_i
-      tempreal = tempreal + reaction%eqsrfcplx_free_site_stoich(icplx)* & 
-                            reaction%eqsrfcplx_free_site_stoich(icplx)* &
-                            srfcplx_conc(icplx)
-    enddo 
-    ! divide denominator by Sx
-    tempreal = tempreal / free_site_conc
-    ! add 1.d0 to denominator
-    tempreal = tempreal + 1.d0
-    ! divide numerator by denominator
-    dSx_dmi = -dSx_dmi / tempreal
-    ! convert from dlogm to dm
-    dSx_dmi = dSx_dmi / rt_auxvar%pri_molal
-!!!!!!!!!!!!
- 
-    select case(reaction%eqsrfcplx_rxn_surf_type(irxn))
-      case(MINERAL_SURFACE,NULL_SURFACE)
-        do k = 1, ncplx
-          icplx = reaction%eqsrfcplx_rxn_to_complex(k,irxn)
-
-          rt_auxvar%eqsrfcplx_conc(icplx) = srfcplx_conc(icplx)
-
-          ncomp = reaction%eqsrfcplxspecid(0,icplx)
+        ncomp = reaction%eqsrfcplxspecid(0,icplx)
+        if (isite == 1) then ! immobile sites  
           do i = 1, ncomp
             icomp = reaction%eqsrfcplxspecid(i,icplx)
             rt_auxvar%total_sorb_eq(icomp) = rt_auxvar%total_sorb_eq(icomp) + &
               reaction%eqsrfcplxstoich(i,icplx)*srfcplx_conc(icplx)
           enddo
-          
-          ! for 2.3-47 which feeds into 2.3-50
-          dSi_dSx = reaction%eqsrfcplx_free_site_stoich(icplx)* &
-                    srfcplx_conc(icplx)/ &
-                    free_site_conc
+        else ! mobile sites
+          do i = 1, ncomp
+            icomp = reaction%pri_spec_to_coll_spec(reaction%eqsrfcplxspecid(i,icplx))
+            rt_auxvar%colloid%total(icomp) = rt_auxvar%colloid%total(icomp) + &
+              reaction%eqsrfcplxstoich(i,icplx)*srfcplx_conc(icplx)
+          enddo
+        endif
+        
+        ! for 2.3-47 which feeds into 2.3-50
+        dSi_dSx = reaction%eqsrfcplx_free_site_stoich(icplx)* &
+                  srfcplx_conc(icplx)/ &
+                  free_site_conc
 
-          do j = 1, ncomp
-            jcomp = reaction%eqsrfcplxspecid(j,icplx)
-            tempreal = reaction%eqsrfcplxstoich(j,icplx)*srfcplx_conc(icplx) / &
-                       rt_auxvar%pri_molal(jcomp)+ &
-                       dSi_dSx*dSx_dmi(jcomp)
-                      
+        do j = 1, ncomp
+          jcomp = reaction%eqsrfcplxspecid(j,icplx)
+          tempreal = reaction%eqsrfcplxstoich(j,icplx)*srfcplx_conc(icplx) / &
+                     rt_auxvar%pri_molal(jcomp)+ &
+                     dSi_dSx*dSx_dmi(jcomp)
+          if (isite == 1) then ! immobile sites                  
             do i = 1, ncomp
               icomp = reaction%eqsrfcplxspecid(i,icplx)
-              rt_auxvar%dtotal_sorb_eq(icomp,jcomp) = rt_auxvar%dtotal_sorb_eq(icomp,jcomp) + &
+              rt_auxvar%dtotal_sorb_eq(icomp,jcomp) = &
+                rt_auxvar%dtotal_sorb_eq(icomp,jcomp) + &
                                                    reaction%eqsrfcplxstoich(i,icplx)* &
                                                    tempreal
-            enddo
-          enddo
-        enddo
-      case(COLLOID_SURFACE)
-    end select
-  enddo
+            enddo ! i
+          else ! mobile sites
+            do i = 1, ncomp
+              icomp = reaction%eqsrfcplxspecid(i,icplx)
+              rt_auxvar%colloid%dRj_dCj%dtotal(icomp,jcomp,1) = &
+                rt_auxvar%colloid%dRj_dCj%dtotal(icomp,jcomp,1) + &
+                                       reaction%eqsrfcplxstoich(i,icplx)* &
+                                       tempreal
+            enddo ! i
+          endif
+        enddo ! j
+      enddo ! k
+    enddo ! isite
+  enddo ! irxn
   
   ! units of total_sorb = mol/m^3
   ! units of dtotal_sorb = kg water/m^3 bulk

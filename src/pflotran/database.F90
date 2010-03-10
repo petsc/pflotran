@@ -696,6 +696,7 @@ subroutine BasisInit(reaction,option)
   character(len=MAXWORDLENGTH), allocatable :: sec_names(:)
   character(len=MAXWORDLENGTH), allocatable :: gas_names(:)
   PetscReal, allocatable :: logKvector_swapped(:,:)
+  PetscTruth, allocatable :: flags(:)
   
   PetscInt :: ispec, itemp
   PetscInt :: spec_id
@@ -834,8 +835,10 @@ subroutine BasisInit(reaction,option)
 
   reaction%naqcomp = GetPrimarySpeciesCount(reaction)
   ! # of components sorbed to colloids
-  reaction%offset_coll_sorb = reaction%naqcomp + 1
-!  reaction%ncolcomp = GetPrimarySpeciesCount(reaction)
+  reaction%offset_coll = reaction%naqcomp + 1
+  reaction%ncoll = GetColloidCount(reaction)
+  reaction%offset_collcomp = reaction%ncoll
+  reaction%ncollcomp = reaction%naqcomp ! set to naqcomp for now, will be adjusted later
   reaction%neqcplx = GetSecondarySpeciesCount(reaction)
   reaction%ngas = GetGasCount(reaction)
 
@@ -2310,6 +2313,11 @@ subroutine BasisInit(reaction,option)
     enddo
   endif
   
+  ! use flags to determine whether a primary aqueous species is included
+  ! in the list of colloid species
+  allocate(flags(reaction%naqcomp))
+  flags = PETSC_FALSE
+
   if (reaction%neqsrfcplx > 0) then
   
     ! determine max # complexes for a given site
@@ -2416,6 +2424,20 @@ subroutine BasisInit(reaction,option)
           reaction%eqsrfcplx_rxn_surf_type(irxn) = COLLOID_SURFACE
           reaction%eqsrfcplx_rxn_to_surf(irxn) = &
             GetColloidIDFromName(reaction,cur_srfcplx_rxn%colloid_name)
+
+          ! loop over primary species associated with colloid sorption and
+          ! add to colloid species list, if not already listed
+          cur_srfcplx => cur_srfcplx_rxn%complex_list
+          do
+            if (.not.associated(cur_srfcplx)) exit
+            do i = 1, cur_srfcplx%dbaserxn%nspec
+              if (cur_srfcplx%dbaserxn%spec_ids(i) == h2o_id) cycle
+              spec_id = cur_srfcplx%dbaserxn%spec_ids(i)
+              flags(spec_id) = PETSC_TRUE
+            enddo
+            cur_srfcplx => cur_srfcplx%next
+          enddo
+          
         else
           write(word,*) cur_srfcplx_rxn%id
           option%io_buffer = 'No mineral or colloid name specified for ' // &
@@ -2495,7 +2517,7 @@ subroutine BasisInit(reaction,option)
     nullify(cur_srfcplx_rxn)  
   
   endif
-
+  
   if (reaction%nkinsrfcplxrxn > 0) then
   
     ! determine max # complexes for a given site
@@ -2605,11 +2627,28 @@ subroutine BasisInit(reaction,option)
           reaction%kinsrfcplx_rxn_surf_type(irxn) = COLLOID_SURFACE
           reaction%kinsrfcplx_rxn_to_surf(irxn) = &
             GetColloidIDFromName(reaction,cur_srfcplx_rxn%colloid_name)
+
+          ! loop over primary species associated with colloid sorption and
+          ! add to colloid species list, if not already listed
+          cur_srfcplx => cur_srfcplx_rxn%complex_list
+          do
+            if (.not.associated(cur_srfcplx)) exit
+            do i = 1, cur_srfcplx%dbaserxn%nspec
+              if (cur_srfcplx%dbaserxn%spec_ids(i) == h2o_id) cycle
+              spec_id = cur_srfcplx%dbaserxn%spec_ids(i)
+              flags(spec_id) = PETSC_TRUE
+            enddo
+            cur_srfcplx => cur_srfcplx%next
+          enddo
+
         else
+          write(word,*) cur_srfcplx_rxn%id
           write(word,*) cur_srfcplx_rxn%id
           option%io_buffer = 'No mineral or colloid name specified for ' // &
             'kinetic surface complexation reaction:' // &
             trim(adjustl(word))
+          call printWrnMsg(option)
+          reaction%eqsrfcplx_rxn_surf_type(irxn) = NULL_SURFACE          
         endif
         reaction%kinsrfcplx_rxn_site_density(irxn) = cur_srfcplx_rxn%site_density
               
@@ -2684,6 +2723,40 @@ subroutine BasisInit(reaction,option)
     nullify(cur_srfcplx_rxn)  
   
   endif
+
+
+  ! allocate colloids species names, mappings, etc.
+  reaction%ncollcomp = 0
+  icount = 0
+  do i = 1, reaction%naqcomp
+    if (flags(i)) then 
+      icount = icount + 1
+    endif
+  enddo
+  if (icount > 0) then
+    allocate(reaction%pri_spec_to_coll_spec(reaction%naqcomp))
+    allocate(reaction%colloid_species_names(icount))
+    allocate(reaction%coll_spec_to_pri_spec(icount))
+    reaction%pri_spec_to_coll_spec = -999
+    reaction%coll_spec_to_pri_spec = -999
+    reaction%colloid_species_names = ''
+    reaction%ncollcomp = icount
+    do i = 1, reaction%naqcomp
+      if (flags(i)) then
+        icount = icount + 1
+        reaction%colloid_species_names(icount) = &
+          trim(reaction%primary_species_names(i))
+        reaction%coll_spec_to_pri_spec(icount) = i
+        reaction%pri_spec_to_coll_spec(i) = icount
+      endif
+    enddo
+    if (minval(reaction%coll_spec_to_pri_spec) < 1) then
+      option%io_buffer = 'Species colloid surface complexation reaction not' // &
+                         ' recognized among primary species'
+      call printErrMsg(option)
+    endif
+  endif
+  deallocate(flags)
 
   if (reaction%neqionxrxn > 0) then
 

@@ -163,8 +163,10 @@ subroutine RTSetupPatch(realization)
   patch%aux%RT%rt_parameter%ncomp = reaction%ncomp
   patch%aux%RT%rt_parameter%naqcomp = reaction%naqcomp
   patch%aux%RT%rt_parameter%nimcomp = 0
-  patch%aux%RT%rt_parameter%ncolcomp = reaction%ncolcomp
-  patch%aux%RT%rt_parameter%offset_coll_sorb = reaction%offset_coll_sorb
+  patch%aux%RT%rt_parameter%ncoll = reaction%ncoll
+  patch%aux%RT%rt_parameter%offset_coll = reaction%offset_coll
+  patch%aux%RT%rt_parameter%ncollcomp = reaction%ncollcomp
+  patch%aux%RT%rt_parameter%offset_collcomp = reaction%offset_collcomp
     
   ! allocate aux_var data structures for all grid cells
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
@@ -1182,9 +1184,9 @@ subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
 #endif
 
 #ifdef REVISED_TRANSPORT
-  if (reaction%ncolcomp > 0) then
-    istart = reaction%offset_coll_sorb
-    iend = reaction%offset_coll_sorb + reaction%ncolcomp - 1
+  if (reaction%ncollcomp > 0) then
+    istart = reaction%offset_collcomp
+    iend = reaction%offset_collcomp + reaction%ncollcomp - 1
     Res(istart:iend) = psv_t*rt_aux_var%colloid%total(:)
   endif
 #endif
@@ -1272,11 +1274,11 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
 #endif
 
 #ifdef REVISED_TRANSPORT 
-  if (reaction%ncolcomp > 0) then
+  if (reaction%ncollcomp > 0) then
     iphase = 1
     ! dRic_dSic
-    istart = reaction%offset_coll_sorb
-    iend = reaction%offset_coll_sorb + reaction%ncolcomp - 1
+    istart = reaction%offset_collcomp
+    iend = reaction%offset_collcomp + reaction%ncollcomp - 1
     J(istart:iend,istart:iend) = rt_aux_var%colloid%dRic_dSic%dtotal(:,:,iphase)* &
                                  psvd_t
     ! need the below

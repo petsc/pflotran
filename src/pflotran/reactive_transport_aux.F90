@@ -74,8 +74,10 @@ module Reactive_Transport_Aux_module
     PetscInt :: ncomp
     PetscInt :: naqcomp
     PetscInt :: nimcomp
-    PetscInt :: ncolcomp
-    PetscInt :: offset_coll_sorb
+    PetscInt :: ncoll
+    PetscInt :: ncollcomp
+    PetscInt :: offset_coll
+    PetscInt :: offset_collcomp
     PetscReal :: dispersivity
     PetscReal, pointer :: diffusion_coefficient(:)
   end type reactive_transport_param_type
@@ -84,6 +86,7 @@ module Reactive_Transport_Aux_module
   type, public :: colloid_auxvar_type
     PetscReal, pointer :: total(:)
 #ifdef REVISED_TRANSPORT  
+    type(matrix_block_auxvar_type), pointer :: dRj_dCj
     type(matrix_block_auxvar_type), pointer :: dRj_dSic
     type(matrix_block_auxvar_type), pointer :: dRic_dCj
     type(matrix_block_auxvar_type), pointer :: dRic_dSic
@@ -148,8 +151,10 @@ function RTAuxCreate(option)
   aux%rt_parameter%ncomp = 0
   aux%rt_parameter%naqcomp = 0
   aux%rt_parameter%nimcomp = 0
-  aux%rt_parameter%ncolcomp = 0
-  aux%rt_parameter%offset_coll_sorb = 0
+  aux%rt_parameter%ncoll = 0
+  aux%rt_parameter%ncollcomp = 0
+  aux%rt_parameter%offset_coll = 0
+  aux%rt_parameter%offset_collcomp = 0
   
   RTAuxCreate => aux
   
@@ -313,21 +318,25 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   endif
 
 #ifdef REVISED_TRANSPORT
-  if (reaction%ncolcomp > 0) then
+  if (reaction%ncollcomp > 0) then
     allocate(aux_var%colloid)
-    allocate(aux_var%colloid%total(reaction%ncolcomp))
+    allocate(aux_var%colloid%total(reaction%ncollcomp))
+    ! dRj/dCj
+    aux_var%colloid%dRj_dCj => MatrixBlockAuxVarCreate(option)
+    call MatrixBlockAuxVarInit(aux_var%colloid%dRj_dCj,reaction%naqcomp, &
+                               reaction%naqcomp,ONE_INTEGER,option)
     ! dRj/dSic
     aux_var%colloid%dRj_dSic => MatrixBlockAuxVarCreate(option)
     call MatrixBlockAuxVarInit(aux_var%colloid%dRj_dSic,reaction%naqcomp, &
-                               reaction%ncolcomp,ONE_INTEGER,option)
+                               reaction%ncollcomp,ONE_INTEGER,option)
     ! dRic/dCj
     aux_var%colloid%dRic_dCj => MatrixBlockAuxVarCreate(option)
-    call MatrixBlockAuxVarInit(aux_var%colloid%dRic_dCj,reaction%ncolcomp, &
+    call MatrixBlockAuxVarInit(aux_var%colloid%dRic_dCj,reaction%ncollcomp, &
                                reaction%naqcomp,ONE_INTEGER,option)
     ! dRic/dSic
     aux_var%colloid%dRic_dSic => MatrixBlockAuxVarCreate(option)
-    call MatrixBlockAuxVarInit(aux_var%colloid%dRic_dSic,reaction%ncolcomp, &
-                               reaction%ncolcomp,ONE_INTEGER,option)
+    call MatrixBlockAuxVarInit(aux_var%colloid%dRic_dSic,reaction%ncollcomp, &
+                               reaction%ncollcomp,ONE_INTEGER,option)
   else
     nullify(aux_var%colloid)
   endif
@@ -416,6 +425,9 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
   if (associated(aux_var%colloid)) then
     aux_var%colloid%total = aux_var2%colloid%total
     ! dRj/dCj
+    call MatrixBlockAuxVarCopy(aux_var%colloid%dRj_dCj, &
+                               aux_var2%colloid%dRj_dCj,option)
+    ! dRj/dSic
     call MatrixBlockAuxVarCopy(aux_var%colloid%dRj_dSic, &
                                aux_var2%colloid%dRj_dSic,option)
     ! dRic/dCj
@@ -517,6 +529,8 @@ subroutine RTAuxVarDestroy(aux_var)
   if (associated(aux_var%colloid)) then
     if (associated(aux_var%colloid%total)) deallocate(aux_var%colloid%total)
     nullify(aux_var%colloid%total)
+    ! dRj/dCj
+    call MatrixBlockAuxVarDestroy(aux_var%colloid%dRj_dCj)
     ! dRj/dSic
     call MatrixBlockAuxVarDestroy(aux_var%colloid%dRj_dSic)
     ! dRic/dCj
