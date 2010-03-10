@@ -3124,19 +3124,21 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
         rt_auxvar%eqsrfcplx_conc(icplx) = srfcplx_conc(icplx)
 
         ncomp = reaction%eqsrfcplxspecid(0,icplx)
-        if (isite == 1) then ! immobile sites  
+! geh - no, colloid%total holds sorbed totals for kinetic reactions
+! therefore, do not loop over isite.
+!        if (isite == 1) then ! immobile sites  
           do i = 1, ncomp
             icomp = reaction%eqsrfcplxspecid(i,icplx)
             rt_auxvar%total_sorb_eq(icomp) = rt_auxvar%total_sorb_eq(icomp) + &
               reaction%eqsrfcplxstoich(i,icplx)*srfcplx_conc(icplx)
           enddo
-        else ! mobile sites
-          do i = 1, ncomp
-            icomp = reaction%pri_spec_to_coll_spec(reaction%eqsrfcplxspecid(i,icplx))
-            rt_auxvar%colloid%total(icomp) = rt_auxvar%colloid%total(icomp) + &
-              reaction%eqsrfcplxstoich(i,icplx)*srfcplx_conc(icplx)
-          enddo
-        endif
+!        else ! mobile sites
+!          do i = 1, ncomp
+!            icomp = reaction%pri_spec_to_coll_spec(reaction%eqsrfcplxspecid(i,icplx))
+!            rt_auxvar%colloid%total(icomp) = rt_auxvar%colloid%total(icomp) + &
+!              reaction%eqsrfcplxstoich(i,icplx)*srfcplx_conc(icplx)
+!          enddo
+!        endif
         
         ! for 2.3-47 which feeds into 2.3-50
         dSi_dSx = reaction%eqsrfcplx_free_site_stoich(icplx)* &
