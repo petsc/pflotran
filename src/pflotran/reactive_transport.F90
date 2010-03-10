@@ -163,10 +163,18 @@ subroutine RTSetupPatch(realization)
   patch%aux%RT%rt_parameter%ncomp = reaction%ncomp
   patch%aux%RT%rt_parameter%naqcomp = reaction%naqcomp
   patch%aux%RT%rt_parameter%nimcomp = 0
-  patch%aux%RT%rt_parameter%ncoll = reaction%ncoll
-  patch%aux%RT%rt_parameter%offset_coll = reaction%offset_coll
-  patch%aux%RT%rt_parameter%ncollcomp = reaction%ncollcomp
-  patch%aux%RT%rt_parameter%offset_collcomp = reaction%offset_collcomp
+  if (reaction%ncoll > 0) then
+    patch%aux%RT%rt_parameter%ncoll = reaction%ncoll
+    patch%aux%RT%rt_parameter%offset_coll = reaction%offset_coll
+    patch%aux%RT%rt_parameter%ncollcomp = reaction%ncollcomp
+    patch%aux%RT%rt_parameter%offset_collcomp = reaction%offset_collcomp
+    allocate(patch%aux%RT%rt_parameter%pri_spec_to_coll_spec(reaction%naqcomp))
+    patch%aux%RT%rt_parameter%pri_spec_to_coll_spec = &
+      reaction%pri_spec_to_coll_spec
+    allocate(patch%aux%RT%rt_parameter%coll_spec_to_pri_spec(reaction%ncollcomp))
+    patch%aux%RT%rt_parameter%coll_spec_to_pri_spec = &
+      reaction%coll_spec_to_pri_spec
+  endif
     
   ! allocate aux_var data structures for all grid cells
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
@@ -1154,6 +1162,8 @@ subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
   
   PetscInt :: iphase
   PetscInt :: istart, iend
+  PetscInt :: icollcomp
+  PetscInt :: iaqcomp
   PetscReal :: psv_t
   PetscReal :: v_t
   
@@ -1185,9 +1195,11 @@ subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
 
 #ifdef REVISED_TRANSPORT
   if (reaction%ncollcomp > 0) then
-    istart = reaction%offset_collcomp
-    iend = reaction%offset_collcomp + reaction%ncollcomp - 1
-    Res(istart:iend) = psv_t*rt_aux_var%colloid%total_eq_mob(:)
+    do icollcomp = 1, reaction%ncollcomp
+      iaqcomp = reaction%coll_spec_to_pri_spec(icollcomp)
+      Res(iaqcomp) = Res(iaqcomp) + &
+        psv_t*rt_aux_var%colloid%total_eq_mob(icollcomp)
+    enddo
   endif
 #endif
   

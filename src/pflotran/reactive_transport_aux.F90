@@ -78,6 +78,8 @@ module Reactive_Transport_Aux_module
     PetscInt :: ncollcomp
     PetscInt :: offset_coll
     PetscInt :: offset_collcomp
+    PetscInt, pointer :: pri_spec_to_coll_spec(:)
+    PetscInt, pointer :: coll_spec_to_pri_spec(:)
     PetscReal :: dispersivity
     PetscReal, pointer :: diffusion_coefficient(:)
   end type reactive_transport_param_type
@@ -156,7 +158,8 @@ function RTAuxCreate(option)
   aux%rt_parameter%ncollcomp = 0
   aux%rt_parameter%offset_coll = 0
   aux%rt_parameter%offset_collcomp = 0
-  
+  nullify(aux%rt_parameter%pri_spec_to_coll_spec)
+  nullify(aux%rt_parameter%coll_spec_to_pri_spec)
   RTAuxCreate => aux
   
 end function RTAuxCreate
@@ -582,8 +585,15 @@ subroutine RTAuxDestroy(aux)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
   nullify(aux%zero_rows_local_ghosted)
   if (associated(aux%rt_parameter)) then
-    deallocate(aux%rt_parameter%diffusion_coefficient)
+    if (associated(aux%rt_parameter%diffusion_coefficient)) &
+      deallocate(aux%rt_parameter%diffusion_coefficient)
     nullify(aux%rt_parameter%diffusion_coefficient)
+    if (associated(aux%rt_parameter%pri_spec_to_coll_spec)) &
+      deallocate(aux%rt_parameter%pri_spec_to_coll_spec)
+    nullify(aux%rt_parameter%pri_spec_to_coll_spec)
+    if (associated(aux%rt_parameter%coll_spec_to_pri_spec)) &
+      deallocate(aux%rt_parameter%coll_spec_to_pri_spec)
+    nullify(aux%rt_parameter%coll_spec_to_pri_spec)
     deallocate(aux%rt_parameter)
   endif
   nullify(aux%rt_parameter)

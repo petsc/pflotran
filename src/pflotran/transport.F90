@@ -816,6 +816,8 @@ subroutine TFlux(rt_parameter,rt_aux_var_up,rt_aux_var_dn, &
   PetscInt :: ndof
   PetscInt :: istart
   PetscInt :: iend
+  PetscInt :: icollcomp
+  PetscInt :: iaqcomp
 
   iphase = 1
   ndof = rt_parameter%ncomp
@@ -839,12 +841,12 @@ subroutine TFlux(rt_parameter,rt_aux_var_up,rt_aux_var_dn, &
 
 #ifdef REVISED_TRANSPORT
   if (rt_parameter%ncollcomp > 0) then
-    iphase = 1
-    istart = rt_parameter%offset_collcomp
-    iend = rt_parameter%offset_collcomp + rt_parameter%ncollcomp - 1
-    Res(istart:iend) = &
-      coef_up(iphase)*rt_aux_var_up%colloid%total_eq_mob(1:rt_parameter%ncollcomp) + &
-      coef_dn(iphase)*rt_aux_var_dn%colloid%total_eq_mob(1:rt_parameter%ncollcomp)
+    do icollcomp = 1, rt_parameter%ncollcomp
+      iaqcomp = rt_parameter%coll_spec_to_pri_spec(icollcomp)
+      Res(iaqcomp) = Res(iaqcomp) + &
+        coef_up(iphase)*rt_aux_var_up%colloid%total_eq_mob(icollcomp) + &
+        coef_dn(iphase)*rt_aux_var_dn%colloid%total_eq_mob(icollcomp)
+    enddo
   endif
 #endif
 
@@ -927,12 +929,11 @@ subroutine TFluxDerivative(rt_parameter, &
 #ifdef REVISED_TRANSPORT
   if (rt_parameter%ncollcomp > 0) then
     ! dRj_dCj - mobile
-    istart = rt_parameter%offset_collcomp
-    iend = rt_parameter%offset_collcomp + rt_parameter%ncollcomp - 1
-    J_up(istart:iend,istart:iend) = rt_aux_var_up%colloid%dRj_dCj%dtotal(:,:,1)* &
-                                    coef_up(iphase)
-    J_dn(istart:iend,istart:iend) = rt_aux_var_dn%colloid%dRj_dCj%dtotal(:,:,1)* &
-                                    coef_dn(iphase)
+    ! istart & iend same as above
+    J_up(istart:iend,istart:iend) = J_up(istart:iend,istart:iend) + &
+      rt_aux_var_up%colloid%dRj_dCj%dtotal(:,:,1)*coef_up(1)
+    J_dn(istart:iend,istart:iend) = J_dn(istart:iend,istart:iend) + &
+      rt_aux_var_dn%colloid%dRj_dCj%dtotal(:,:,1)*coef_dn(1)
     ! need the below
     ! dRj_dSic
     ! dRic_dSic
