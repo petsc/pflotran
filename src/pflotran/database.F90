@@ -2447,6 +2447,7 @@ subroutine BasisInit(reaction,option)
             do i = 1, cur_srfcplx%dbaserxn%nspec
               if (cur_srfcplx%dbaserxn%spec_ids(i) == h2o_id) cycle
               spec_id = cur_srfcplx%dbaserxn%spec_ids(i)
+              if (spec_id > h2o_id) spec_id = spec_id - 1              
               flags(spec_id) = PETSC_TRUE
             enddo
             cur_srfcplx => cur_srfcplx%next
@@ -2661,6 +2662,7 @@ subroutine BasisInit(reaction,option)
             do i = 1, cur_srfcplx%dbaserxn%nspec
               if (cur_srfcplx%dbaserxn%spec_ids(i) == h2o_id) cycle
               spec_id = cur_srfcplx%dbaserxn%spec_ids(i)
+              if (spec_id > h2o_id) spec_id = spec_id - 1              
               flags(spec_id) = PETSC_TRUE
             enddo
             cur_srfcplx => cur_srfcplx%next
@@ -2766,6 +2768,7 @@ subroutine BasisInit(reaction,option)
     reaction%coll_spec_to_pri_spec = -999
     reaction%colloid_species_names = ''
     reaction%ncollcomp = icount
+    icount = 0
     do i = 1, reaction%naqcomp
       if (flags(i)) then
         icount = icount + 1

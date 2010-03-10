@@ -2985,6 +2985,13 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
   PetscInt :: num_types_of_sites
   PetscInt :: isite
   
+#ifdef REVISED_TRANSPORT  
+  if (reaction%ncollcomp > 0) then  
+    rt_auxvar%colloid%total_eq_mob = 0.d0
+    rt_auxvar%colloid%dRj_dCj%dtotal = 0.d0
+  endif
+#endif  
+  
   ln_conc = log(rt_auxvar%pri_molal)
   ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
 
@@ -3009,7 +3016,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
 !                       rt_auxvar%mnrl_volfrac(reaction%eqsrfcplx_rxn_to_surf(irxn))
         num_types_of_sites = 1
       case(COLLOID_SURFACE)
-        mobile_fraction = 0.5d0
+        mobile_fraction = reaction%colloid_mobile_fraction(reaction%eqsrfcplx_rxn_to_surf(irxn))
         site_density(1) = (1.d0-mobile_fraction)*reaction%eqsrfcplx_rxn_site_density(irxn)
         site_density(2) = mobile_fraction*reaction%eqsrfcplx_rxn_site_density(irxn)
 !        site_density = reaction%eqsrfcplx_rxn_site_density(irxn)* &

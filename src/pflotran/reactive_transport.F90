@@ -163,7 +163,7 @@ subroutine RTSetupPatch(realization)
   patch%aux%RT%rt_parameter%ncomp = reaction%ncomp
   patch%aux%RT%rt_parameter%naqcomp = reaction%naqcomp
   patch%aux%RT%rt_parameter%nimcomp = 0
-  if (reaction%ncoll > 0) then
+  if (reaction%ncollcomp > 0) then
     patch%aux%RT%rt_parameter%ncoll = reaction%ncoll
     patch%aux%RT%rt_parameter%offset_coll = reaction%offset_coll
     patch%aux%RT%rt_parameter%ncollcomp = reaction%ncollcomp
@@ -1288,11 +1288,11 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
 #ifdef REVISED_TRANSPORT 
   if (reaction%ncollcomp > 0) then
     ! dRj_dCj - mobile
-    istart = reaction%offset_collcomp
-    iend = reaction%offset_collcomp + reaction%ncollcomp - 1
     J(istart:iend,istart:iend) = rt_aux_var%colloid%dRj_dCj%dtotal(:,:,1)* &
                                  psvd_t
     ! need the below
+!    istart = reaction%offset_collcomp
+!    iend = reaction%offset_collcomp + reaction%ncollcomp - 1
     ! dRj_dSic
     ! dRic_dCj                                 
   endif
@@ -3702,10 +3702,10 @@ subroutine RTAuxVarCompute(rt_aux_var,global_aux_var,reaction,option)
     Res_pert = 0.d0
     call RTAuxVarCopy(rt_auxvar_pert,rt_aux_var,option)
     if (reaction%neqcplx > 0) then
-      aux_var%sec_molal = 0.d0
+      rt_aux_var%sec_molal = 0.d0
     endif
     if (reaction%ngas > 0) then
-      aux_var%gas_molal = 0.d0
+      rt_aux_var%gas_molal = 0.d0
     endif
     if (reaction%neqsrfcplxrxn > 0) then
       rt_auxvar_pert%eqsrfcplx_free_site_conc = 1.d-9
@@ -3734,9 +3734,9 @@ subroutine RTAuxVarCompute(rt_aux_var,global_aux_var,reaction,option)
       endif
     enddo
   enddo
-  rt_aux_var%dtotal(:,:,1) = dtotal
+  rt_aux_var%aqueous%dtotal(:,:,1) = dtotal
   if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) &
-    rt_aux_var%dtotal_sorb = dtotalsorb
+    rt_aux_var%dtotal_sorb_eq = dtotalsorb
   call RTAuxVarDestroy(rt_auxvar_pert)
 #endif
   
