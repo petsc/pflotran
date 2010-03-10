@@ -559,8 +559,8 @@ subroutine Init(simulation)
     call RealizAssignTransportInitCond(realization)
     ! override initial conditions if they are to be read from a file
     if (len_trim(option%initialize_transport_filename) > 1) then
-      call readFlowInitialCondition(realization, &
-                                    option%initialize_transport_filename)
+      call readTransportInitialCondition(realization, &
+                                         option%initialize_transport_filename)
     endif
     ! PETSC_FALSE = no activity coefficients
     call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_FALSE)
