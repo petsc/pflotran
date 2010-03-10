@@ -333,6 +333,16 @@ subroutine TFlux(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up, &
  enddo
 #endif
 
+#ifdef REVISED_TRANSPORT
+  if (reaction%ncollcomp > 0) then
+    istart = reaction%offset_collcomp
+    iend = reaction%offset_collcomp + reaction%ncollcomp - 1
+    Res(istart:iend) = &
+      coef_up*rt_aux_var_up%colloid%total_eq_sorb(1:option%ncollcomp,iphase) + &
+      coef_dn*rt_aux_var_dn%colloid%total_eq_sorb(1:option%ncollcomp,iphase)
+  endif
+#endif
+  
 end subroutine TFlux
 
 ! ************************************************************************** !
@@ -470,6 +480,19 @@ subroutine TFluxDerivative(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up
   enddo
 #endif
 
+#ifdef REVISED_TRANSPORT 
+  if (reaction%ncollcomp > 0) then
+    iphase = 1
+    ! dRj_dCj - mobile
+    istart = reaction%offset_collcomp
+    iend = reaction%offset_collcomp + reaction%ncollcomp - 1
+    J_up(istart:iend,istart:iend) = &
+      rt_aux_var_up%colloid%dRj_dCj%dtotal(:,:,iphase)*coef_up*1000.d0
+    J_dn(istart:iend,istart:iend) = &
+      rt_aux_var_dn%colloid%dRj_dCj%dtotal(:,:,iphase)*coef_dn*1000.d0
+  endif
+#endif
+  
 end subroutine TFluxDerivative
 
 ! ************************************************************************** !
@@ -820,8 +843,8 @@ subroutine TFlux(rt_parameter,rt_aux_var_up,rt_aux_var_dn, &
     istart = rt_parameter%offset_collcomp
     iend = rt_parameter%offset_collcomp + rt_parameter%ncollcomp - 1
     Res(istart:iend) = &
-      coef_up(iphase)*rt_aux_var_up%colloid%total(1:rt_parameter%ncollcomp) + &
-      coef_dn(iphase)*rt_aux_var_dn%colloid%total(1:rt_parameter%ncollcomp)
+      coef_up(iphase)*rt_aux_var_up%colloid%total_eq_mob(1:rt_parameter%ncollcomp) + &
+      coef_dn(iphase)*rt_aux_var_dn%colloid%total_eq_mob(1:rt_parameter%ncollcomp)
   endif
 #endif
 
@@ -903,16 +926,16 @@ subroutine TFluxDerivative(rt_parameter, &
 
 #ifdef REVISED_TRANSPORT
   if (rt_parameter%ncollcomp > 0) then
-    iphase = 1
-    ! dRic_dSic
+    ! dRj_dCj - mobile
     istart = rt_parameter%offset_collcomp
     iend = rt_parameter%offset_collcomp + rt_parameter%ncollcomp - 1
-    J_up(istart:iend,istart:iend) = rt_aux_var_up%colloid%dRic_dSic%dtotal(:,:,1)* &
+    J_up(istart:iend,istart:iend) = rt_aux_var_up%colloid%dRj_dCj%dtotal(:,:,1)* &
                                     coef_up(iphase)
-    J_dn(istart:iend,istart:iend) = rt_aux_var_dn%colloid%dRic_dSic%dtotal(:,:,1)* &
+    J_dn(istart:iend,istart:iend) = rt_aux_var_dn%colloid%dRj_dCj%dtotal(:,:,1)* &
                                     coef_dn(iphase)
     ! need the below
     ! dRj_dSic
+    ! dRic_dSic
     ! dRic_dCj
   endif
 #endif

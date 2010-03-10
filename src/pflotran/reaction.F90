@@ -2969,7 +2969,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: ln_act(reaction%naqcomp)
   PetscReal :: srfcplx_conc(reaction%neqsrfcplx)
   PetscReal :: dSx_dmi(reaction%naqcomp)
-  PetscReal :: dSi_dSx
+  PetscReal :: nui_Si_over_Sx
   PetscReal :: free_site_conc
   PetscReal :: ln_free_site
   PetscReal :: lnQK, tempreal, tempreal1, tempreal2, total
@@ -3124,32 +3124,30 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
         rt_auxvar%eqsrfcplx_conc(icplx) = srfcplx_conc(icplx)
 
         ncomp = reaction%eqsrfcplxspecid(0,icplx)
-! geh - no, colloid%total holds sorbed totals for kinetic reactions
-! therefore, do not loop over isite.
-!        if (isite == 1) then ! immobile sites  
+        if (isite == 1) then ! immobile sites  
           do i = 1, ncomp
             icomp = reaction%eqsrfcplxspecid(i,icplx)
             rt_auxvar%total_sorb_eq(icomp) = rt_auxvar%total_sorb_eq(icomp) + &
               reaction%eqsrfcplxstoich(i,icplx)*srfcplx_conc(icplx)
           enddo
-!        else ! mobile sites
-!          do i = 1, ncomp
-!            icomp = reaction%pri_spec_to_coll_spec(reaction%eqsrfcplxspecid(i,icplx))
-!            rt_auxvar%colloid%total(icomp) = rt_auxvar%colloid%total(icomp) + &
-!              reaction%eqsrfcplxstoich(i,icplx)*srfcplx_conc(icplx)
-!          enddo
-!        endif
+        else ! mobile sites
+          do i = 1, ncomp
+            icomp = reaction%pri_spec_to_coll_spec(reaction%eqsrfcplxspecid(i,icplx))
+            rt_auxvar%colloid%total_eq_mob(icomp) = rt_auxvar%colloid%total_eq_mob(icomp) + &
+              reaction%eqsrfcplxstoich(i,icplx)*srfcplx_conc(icplx)
+          enddo
+        endif
         
         ! for 2.3-47 which feeds into 2.3-50
-        dSi_dSx = reaction%eqsrfcplx_free_site_stoich(icplx)* &
-                  srfcplx_conc(icplx)/ &
-                  free_site_conc
+        nui_Si_over_Sx = reaction%eqsrfcplx_free_site_stoich(icplx)* &
+                         srfcplx_conc(icplx)/ &
+                         free_site_conc
 
         do j = 1, ncomp
           jcomp = reaction%eqsrfcplxspecid(j,icplx)
           tempreal = reaction%eqsrfcplxstoich(j,icplx)*srfcplx_conc(icplx) / &
                      rt_auxvar%pri_molal(jcomp)+ &
-                     dSi_dSx*dSx_dmi(jcomp)
+                     nui_Si_over_Sx*dSx_dmi(jcomp)
           if (isite == 1) then ! immobile sites                  
             do i = 1, ncomp
               icomp = reaction%eqsrfcplxspecid(i,icplx)
@@ -3381,7 +3379,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: ln_act(reaction%naqcomp)
   PetscReal :: srfcplx_conc(reaction%neqsrfcplx)
   PetscReal :: dSx_dmi(reaction%naqcomp)
-  PetscReal :: dSi_dSx
+  PetscReal :: nui_Si_over_Sx
   PetscReal :: free_site_conc
   PetscReal :: ln_free_site
   PetscReal :: lnQK, tempreal, tempreal1, tempreal2, total
@@ -3534,13 +3532,13 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
       enddo
       
       if (compute_derivative) then
-        dSi_dSx = reaction%eqsrfcplx_free_site_stoich(icplx)* &
-          srfcplx_conc(icplx)/free_site_conc
+        nui_Si_over_Sx = reaction%eqsrfcplx_free_site_stoich(icplx)* &
+                         srfcplx_conc(icplx)/free_site_conc
 
         do j = 1, ncomp
           jcomp = reaction%eqsrfcplxspecid(j,icplx)
           tempreal = reaction%eqsrfcplxstoich(j,icplx)*srfcplx_conc(icplx) / &
-            rt_auxvar%pri_molal(jcomp) + dSi_dSx*dSx_dmi(jcomp)
+            rt_auxvar%pri_molal(jcomp) + nui_Si_over_Sx*dSx_dmi(jcomp)
                       
           do i = 1, ncomp
             icomp = reaction%eqsrfcplxspecid(i,icplx)

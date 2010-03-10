@@ -84,7 +84,8 @@ module Reactive_Transport_Aux_module
 
   ! Colloids
   type, public :: colloid_auxvar_type
-    PetscReal, pointer :: total(:)
+    PetscReal, pointer :: total_eq_mob(:)
+    PetscReal, pointer :: total_kin(:)
 #ifdef REVISED_TRANSPORT  
     type(matrix_block_auxvar_type), pointer :: dRj_dCj
     type(matrix_block_auxvar_type), pointer :: dRj_dSic
@@ -320,7 +321,8 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
 #ifdef REVISED_TRANSPORT
   if (reaction%ncollcomp > 0) then
     allocate(aux_var%colloid)
-    allocate(aux_var%colloid%total(reaction%ncollcomp))
+    allocate(aux_var%colloid%total_eq_mob(reaction%ncollcomp))
+    allocate(aux_var%colloid%total_kin(reaction%ncollcomp))
     ! dRj/dCj
     aux_var%colloid%dRj_dCj => MatrixBlockAuxVarCreate(option)
     call MatrixBlockAuxVarInit(aux_var%colloid%dRj_dCj,reaction%naqcomp, &
@@ -423,7 +425,8 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
 
 #ifdef REVISED_TRANSPORT 
   if (associated(aux_var%colloid)) then
-    aux_var%colloid%total = aux_var2%colloid%total
+    aux_var%colloid%total_eq_mob = aux_var2%colloid%total_eq_mob
+    aux_var%colloid%total_kin = aux_var2%colloid%total_kin
     ! dRj/dCj
     call MatrixBlockAuxVarCopy(aux_var%colloid%dRj_dCj, &
                                aux_var2%colloid%dRj_dCj,option)
@@ -527,8 +530,10 @@ subroutine RTAuxVarDestroy(aux_var)
   
 #ifdef REVISED_TRANSPORT
   if (associated(aux_var%colloid)) then
-    if (associated(aux_var%colloid%total)) deallocate(aux_var%colloid%total)
-    nullify(aux_var%colloid%total)
+    if (associated(aux_var%colloid%total_eq_mob)) deallocate(aux_var%colloid%total_eq_mob)
+    nullify(aux_var%colloid%total_eq_mob)
+    if (associated(aux_var%colloid%total_kin)) deallocate(aux_var%colloid%total_kin)
+    nullify(aux_var%colloid%total_kin)
     ! dRj/dCj
     call MatrixBlockAuxVarDestroy(aux_var%colloid%dRj_dCj)
     ! dRj/dSic

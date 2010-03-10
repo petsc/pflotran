@@ -1187,7 +1187,7 @@ subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
   if (reaction%ncollcomp > 0) then
     istart = reaction%offset_collcomp
     iend = reaction%offset_collcomp + reaction%ncollcomp - 1
-    Res(istart:iend) = psv_t*rt_aux_var%colloid%total(:)
+    Res(istart:iend) = psv_t*rt_aux_var%colloid%total_eq_mob(:)
   endif
 #endif
   
@@ -1275,11 +1275,10 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
 
 #ifdef REVISED_TRANSPORT 
   if (reaction%ncollcomp > 0) then
-    iphase = 1
-    ! dRic_dSic
+    ! dRj_dCj - mobile
     istart = reaction%offset_collcomp
     iend = reaction%offset_collcomp + reaction%ncollcomp - 1
-    J(istart:iend,istart:iend) = rt_aux_var%colloid%dRic_dSic%dtotal(:,:,iphase)* &
+    J(istart:iend,istart:iend) = rt_aux_var%colloid%dRj_dCj%dtotal(:,:,1)* &
                                  psvd_t
     ! need the below
     ! dRj_dSic
