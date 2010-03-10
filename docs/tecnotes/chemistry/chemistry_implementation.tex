@@ -896,7 +896,8 @@ C_l\frac{\p S_i}{\p C_l} &\eq \nu_{li} S_i + \nu_iS_i \frac{C_l}{S_X}\frac{\p S_
 \BA
 C_l\frac{\p\Psi_j^S}{\p C_l} &\eq C_l\sum_i \nu_{ji} \frac{\p S_i}{\p C_l},\\
 &\eq \sum_i \nu_{ji} S_i \left[\nu_{li} - \dfrac{\nu_i \displaystyle\sum_{i'}\nu_{li'}\nu_{i'} S_{i'}}{S_X+\displaystyle\sum_{i'}\nu_{i'}^2 S_{i'}}\right],\\
-&\eq \sum_i \nu_{ji} \nu_{li} S_i - \frac{1}{S_X+\displaystyle\sum_{i'}\nu_{i'}^2 S_{i'}}\left(\sum_i \nu_{ji} \nu_i S_i \right) \left( \displaystyle\sum_{i'}\nu_{li'}\nu_{i'} S_{i'}\right)
+&\eq \sum_i \nu_{ji} \nu_{li} S_i - \frac{1}{S_X+\displaystyle\sum_{i'}\nu_{i'}^2 S_{i'}}\left(\sum_i \nu_{ji} \nu_i S_i \right) \left( \displaystyle\sum_{i'}\nu_{li'}\nu_{i'} S_{i'}\right),\\
+&\eq \sum_i \nu_{ji} \nu_{li} S_i + \frac{C_l}{S_X} \frac{\p S_X}{\p C_l}\left(\sum_i \nu_{ji} \nu_i S_i \right).
 \EA
 
 \noindent Special Case: $\nu_i^\a=1$
@@ -3679,7 +3680,7 @@ The total flux (for species-independent diffusion) is given by
 \EN
 for diffusion/dispersion coefficient $D_\a$, Darcy velocity $\bq_a$ defined in terms of relative permeability $k_\a$ as
 \EQ
-\bq_\a \eq \frac{kk_\a}{\mu_\a}\bnabla(p_\a -\rho_\a g z),
+\bq_\a \eq -\frac{kk_\a}{\mu_\a}\bnabla(p_\a -\rho_\a g z),
 \EN
 with bulk permeability $k$, fluid density $\rho_\a$, and acceleration of gravity $\bg$. The fluid pressure $p_\a$ satisfies the relations
 \EQ

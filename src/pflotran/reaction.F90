@@ -3090,7 +3090,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
       ! 2.3-46
 
       ! Sx = free site
-      ! m = molality of component i
+      ! mi = molality of component i
       dSx_dmi = 0.d0
       tempreal = 0.d0
       do j = 1, ncplx
