@@ -3159,6 +3159,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
                                                    tempreal
             enddo ! i
           else ! mobile sites
+#ifdef REVISED_TRANSPORT
             do i = 1, ncomp
               icomp = reaction%eqsrfcplxspecid(i,icplx)
               rt_auxvar%colloid%dRj_dCj%dtotal(icomp,jcomp,1) = &
@@ -3166,6 +3167,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
                                        reaction%eqsrfcplxstoich(i,icplx)* &
                                        tempreal
             enddo ! i
+#endif
           endif
         enddo ! j
       enddo ! k
