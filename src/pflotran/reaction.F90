@@ -4033,7 +4033,8 @@ subroutine RAccumulationSorb(rt_aux_var,global_aux_var,vol,reaction, &
   ! units = (mol solute/m^3 bulk)*(m^3 bulk)/(sec) = mol/sec
   ! all residual entries should be in mol/sec
   v_t = vol/option%tran_dt
-  Res(:) = Res(:) + rt_aux_var%total_sorb_eq(:)*v_t
+  Res(1:reaction%naqcomp) = Res(1:reaction%naqcomp) + &
+    rt_aux_var%total_sorb_eq(:)*v_t
 
 end subroutine RAccumulationSorb
 
@@ -4065,7 +4066,9 @@ subroutine RAccumulationSorbDerivative(rt_aux_var,global_aux_var, &
   ! units = (kg water/m^3 bulk)*(m^3 bulk)/(sec) = kg water/sec
   ! all Jacobian entries should be in kg water/sec
   v_t = vol/option%tran_dt
-  J = J + rt_aux_var%dtotal_sorb_eq(:,:)*v_t
+  J(1:reaction%naqcomp,1:reaction%naqcomp) = &
+    J(1:reaction%naqcomp,1:reaction%naqcomp) + &
+    rt_aux_var%dtotal_sorb_eq(:,:)*v_t
 
 end subroutine RAccumulationSorbDerivative
 
