@@ -890,17 +890,22 @@ Q_i^\a\eq \prod_j \big(a_j\big)^{\nu_{ji}^\a},
 \EQ
 C_l\frac{\p S_X}{\p C_l} \eq -\dfrac{\displaystyle\sum_i\nu_{li}\nu_iS_i}{1+\dfrac{1}{S_X}\displaystyle\sum_i\nu_i^2 S_i}
 \EN
+\begin{subequations}
 \BA
 C_l\frac{\p S_i}{\p C_l} &\eq \nu_{li} S_i + \nu_iS_i \frac{C_l}{S_X}\frac{\p S_X}{\p C_l},\\
 &\eq \nu_{li} S_i - \nu_iS_i \dfrac{\displaystyle\sum_{i'}\nu_{li'}\nu_iS_{i'}}{S_X+\displaystyle\sum_{i'}\nu_{i'}^2 S_{i'}},\\
 &\eq S_i \left\{ \nu_{li} - \dfrac{\nu_i \displaystyle\sum_{i'}\nu_{li'}\nu_{i'} S_{i'}}{S_X+\displaystyle\sum_{i'}\nu_{i'}^2 S_{i'}} \right\}
 \EA
+\end{subequations}
+\begin{subequations}
 \BA
 C_l\frac{\p\Psi_j^S}{\p C_l} &\eq C_l\sum_i \nu_{ji} \frac{\p S_i}{\p C_l},\\
+&\eq \sum_i \nu_{ji} \nu_{li} S_i + \frac{C_l}{S_X} \frac{\p S_X}{\p C_l}\left(\sum_i \nu_{ji} \nu_i S_i \right),\\
 &\eq \sum_i \nu_{ji} S_i \left[\nu_{li} - \dfrac{\nu_i \displaystyle\sum_{i'}\nu_{li'}\nu_{i'} S_{i'}}{S_X+\displaystyle\sum_{i'}\nu_{i'}^2 S_{i'}}\right],\\
-&\eq \sum_i \nu_{ji} \nu_{li} S_i - \frac{1}{S_X+\displaystyle\sum_{i'}\nu_{i'}^2 S_{i'}}\left(\sum_i \nu_{ji} \nu_i S_i \right) \left( \displaystyle\sum_{i'}\nu_{li'}\nu_{i'} S_{i'}\right),\\
-&\eq \sum_i \nu_{ji} \nu_{li} S_i + \frac{C_l}{S_X} \frac{\p S_X}{\p C_l}\left(\sum_i \nu_{ji} \nu_i S_i \right).
+&\eq \sum_i \nu_{ji} \nu_{li} S_i - \frac{1}{S_X+\displaystyle\sum_{i'}\nu_{i'}^2 S_{i'}}\left(\sum_i \nu_{ji} \nu_i S_i \right) \left( \displaystyle\sum_{i'}\nu_{li'}\nu_{i'} S_{i'}\right).
+%&\eq  \sum_i \nu_{ji} \nu_{li} S_i + \frac{\nu_i C_l}{S_X} \frac{\p S_X}{\p C_l},\\
 \EA
+\end{subequations}
 
 \noindent Special Case: $\nu_i^\a=1$
 \EQ
@@ -912,17 +917,21 @@ S_X^\a \eq \frac{\omega_\a}{1+\sum_i K_i^\a Q_i^\a}
 \EQ
 S_i^\a \eq \frac{\omega_\a K_i^\a Q_i^\a}{1+\sum_{i'} K_{i'}^\a Q_{i'}^\a}
 \EN
+\begin{subequations}
 \BA
 C_l\frac{\p S_i}{\p C_l} &\eq \nu_{li} S_i - \frac{\omega Q_i^\a}{\big(1+\sum Q_{i'}\big)^2}\sum\nu_{li'}Q_{i'}^\a,\\
 &\eq \nu_{li} S_i - S_i \frac{1}{\omega}\sum_{i'} \nu_{li'} S_{i'},\\
 &\eq S_i \left[\nu_{li} - \frac{1}{\omega}\sum_{i'} \nu_{li'} S_{i'}\right].
 \EA
+\end{subequations}
+\begin{subequations}
 \BA
 C_l\frac{\p\Psi_j^S}{\p C_l} &\eq C_l\sum_i \nu_{ji} \frac{\p S_i}{\p C_l},\\
 &\eq \sum_i \nu_{ji} S_i \left[\nu_{li} - \frac{1}{\omega}\sum_{i'} \nu_{li'} S_{i'}\right],\\
 &\eq \sum_i \nu_{ji} \nu_{li} S_i - \frac{1}{\omega}\left(\sum_i\nu_{ji}S_i\right) \left(\sum_{i'} \nu_{li'} S_{i'}\right)\\
 &\eq \sum_i \nu_{ji} S_i \left[\nu_{li} - \frac{1}{\omega} \sum_{i'} \nu_{li'} S_{i'}\right].
 \EA
+\end{subequations}
 
 \noindent
 Residual:
