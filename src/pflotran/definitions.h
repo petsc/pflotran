@@ -185,6 +185,7 @@ PetscInt, parameter :: SECONDARY_ACTIVITY_COEF = 33
 PetscInt, parameter :: SC_FUGA_COEFF = 34
 PetscInt, parameter :: PRIMARY_KD = 35
 PetscInt, parameter :: TOTAL_SORBED = 36
+PetscInt, parameter :: TOTAL_SORBED_MOBILE = 37
 
 ! activity coefficients
 PetscInt, parameter :: ACT_COEF_FREQUENCY_OFF = 0

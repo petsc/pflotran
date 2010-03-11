@@ -630,6 +630,15 @@ subroutine OutputTecplotBlock(realization)
           endif
         enddo
       endif
+      if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+        do i=1,reaction%ncollcomp
+          if (reaction%total_sorb_mobile_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED_MOBILE,i)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+            call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+          endif
+        enddo
+      endif
     endif
   endif
   
@@ -1534,6 +1543,15 @@ subroutine OutputTecplotPoint(realization)
           do i=1,reaction%naqcomp
             if (reaction%total_sorb_print(i)) then
               value = RealizGetDatasetValueAtCell(realization,TOTAL_SORBED, &
+                                                  i,ghosted_id)
+              write(IUNIT3,1000,advance='no') value
+            endif
+          enddo
+        endif
+        if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+          do i=1,reaction%ncollcomp
+            if (reaction%total_sorb_mobile_print(i)) then
+              value = RealizGetDatasetValueAtCell(realization,TOTAL_SORBED_MOBILE, &
                                                   i,ghosted_id)
               write(IUNIT3,1000,advance='no') value
             endif
@@ -2512,7 +2530,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
     endif
 
     if (reaction%print_total_component) then
-      do i=1,option%ntrandof
+      do i=1,reaction%naqcomp
         if (reaction%primary_species_print(i)) then
           write(fid,'('',"'',a,''_tot_'',a,'' '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(tot_mol_char), trim(cell_string)
@@ -2521,7 +2539,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
     endif
     
     if (reaction%print_free_ion) then
-      do i=1,option%ntrandof
+      do i=1,reaction%naqcomp
         if (reaction%primary_species_print(i)) then
           write(fid,'('',"'',a,''_free_'',a,'' '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(free_mol_char), trim(cell_string)
@@ -2530,7 +2548,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
     endif
     
     if (reaction%print_act_coefs) then
-      do i=1,option%ntrandof
+      do i=1,reaction%naqcomp
         if (reaction%primary_species_print(i)) then
           write(fid,'('',"'',a,''_gam '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(cell_string)
@@ -2581,7 +2599,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
     enddo
 
     if (associated(reaction%kd_print)) then
-      do i=1,option%ntrandof
+      do i=1,reaction%naqcomp
         if (reaction%kd_print(i)) then
           write(fid,'('',"'',a,''_kd '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(cell_string)
@@ -2590,10 +2608,19 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
     endif
     
     if (associated(reaction%total_sorb_print)) then
-      do i=1,option%ntrandof
+      do i=1,reaction%naqcomp
         if (reaction%total_sorb_print(i)) then
           write(fid,'('',"'',a,''_tot_sorb '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(cell_string)
+        endif
+      enddo
+    endif
+    
+    if (associated(reaction%total_sorb_mobile_print)) then
+      do i=1,reaction%ncollcomp
+        if (reaction%total_sorb_mobile_print(i)) then
+          write(fid,'('',"'',a,''_tot_sorb_mob '',a,''"'')',advance="no") &
+            trim(reaction%colloid_species_names(i)), trim(cell_string)
         endif
       enddo
     endif
@@ -2747,7 +2774,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
     endif
 
     if (reaction%print_total_component) then
-      do i=1,option%ntrandof
+      do i=1,reaction%naqcomp
         if (reaction%primary_species_print(i)) then
           write(fid,'('',"'',a,''_tot_'',a,'' '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(tot_mol_char), trim(cell_string)
@@ -2756,7 +2783,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
     endif
     
     if (reaction%print_free_ion) then
-      do i=1,option%ntrandof
+      do i=1,reaction%naqcomp
         if (reaction%primary_species_print(i)) then
           write(fid,'('',"'',a,''_free_'',a,'' '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(free_mol_char), trim(cell_string)
@@ -2765,7 +2792,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
     endif
     
     if (reaction%print_act_coefs) then
-      do i=1,option%ntrandof
+      do i=1,reaction%naqcomp
         if (reaction%primary_species_print(i)) then
           write(fid,'('',"'',a,''_gam '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(cell_string)
@@ -2816,7 +2843,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
     enddo
 
     if (associated(reaction%kd_print)) then
-      do i=1,option%ntrandof
+      do i=1,reaction%naqcomp
         if (reaction%kd_print(i)) then
           write(fid,'('',"'',a,''_kd '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(cell_string)
@@ -2825,9 +2852,18 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
     endif
     
     if (associated(reaction%total_sorb_print)) then
-      do i=1,option%ntrandof
+      do i=1,reaction%naqcomp
         if (reaction%total_sorb_print(i)) then
           write(fid,'('',"'',a,''_tot_sorb '',a,''"'')',advance="no") &
+            trim(reaction%primary_species_names(i)), trim(cell_string)
+        endif
+      enddo
+    endif
+    
+    if (associated(reaction%total_sorb_mobile_print)) then
+      do i=1,reaction%ncollcomp
+        if (reaction%total_sorb_mobile_print(i)) then
+          write(fid,'('',"'',a,''_tot_sorb_mobile '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(cell_string)
         endif
       enddo
@@ -3114,6 +3150,14 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
           if (reaction%total_sorb_print(i)) then
             write(fid,110,advance="no") &
               RealizGetDatasetValueAtCell(realization,TOTAL_SORBED,i,ghosted_id)
+          endif
+        enddo
+      endif
+      if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+        do i=1,reaction%ncollcomp
+          if (reaction%total_sorb_mobile_print(i)) then
+            write(fid,110,advance="no") &
+              RealizGetDatasetValueAtCell(realization,TOTAL_SORBED_MOBILE,i,ghosted_id)
           endif
         enddo
       endif
@@ -3492,6 +3536,18 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
           if (reaction%total_sorb_print(i)) then
             write(fid,110,advance="no") &
               OutputGetVarFromArrayAtCoord(realization,TOTAL_SORBED,i, &
+                                           region%coordinates(ONE_INTEGER)%x, &
+                                           region%coordinates(ONE_INTEGER)%y, &
+                                           region%coordinates(ONE_INTEGER)%z, &
+                                           count,ghosted_ids)
+          endif
+        enddo
+      endif
+      if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+        do i=1,reaction%ncollcomp
+          if (reaction%total_sorb_mobile_print(i)) then
+            write(fid,110,advance="no") &
+              OutputGetVarFromArrayAtCoord(realization,TOTAL_SORBED_MOBILE,i, &
                                            region%coordinates(ONE_INTEGER)%x, &
                                            region%coordinates(ONE_INTEGER)%y, &
                                            region%coordinates(ONE_INTEGER)%z, &
@@ -5364,6 +5420,23 @@ subroutine OutputHDF5(realization)
             call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED,i)
             if (.not.(option%use_samr)) then
               write(string,'(a)') trim(reaction%primary_species_names(i)) // '_tot_sorb'
+              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+            else
+              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+              if(first) then
+                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,TOTAL_SORBED,i)
+              endif
+              current_component=current_component+1
+            endif
+          endif
+        enddo
+      endif
+      if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+        do i=1,reaction%ncollcomp
+          if (reaction%neqsorb > 0 .and. reaction%total_sorb_mobile_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED,i)
+            if (.not.(option%use_samr)) then
+              write(string,'(a)') trim(reaction%colloid_species_names(i)) // '_tot_sorb_mob'
               call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)

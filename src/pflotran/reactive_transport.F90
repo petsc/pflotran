@@ -3496,7 +3496,7 @@ function RTGetTecplotHeader(realization,icolumn)
   endif
   
   if (reaction%print_total_component) then
-    do i=1,option%ntrandof
+    do i=1,reaction%naqcomp
       if (reaction%primary_species_print(i)) then
         if (icolumn > -1) then
           icolumn = icolumn + 1
@@ -3512,7 +3512,7 @@ function RTGetTecplotHeader(realization,icolumn)
   endif
   
   if (reaction%print_free_ion) then
-    do i=1,option%ntrandof
+    do i=1,reaction%naqcomp
       if (reaction%primary_species_print(i)) then
         if (icolumn > -1) then
           icolumn = icolumn + 1
@@ -3528,7 +3528,7 @@ function RTGetTecplotHeader(realization,icolumn)
   endif
     
   if (reaction%print_act_coefs) then
-    do i=1,option%ntrandof
+    do i=1,reaction%naqcomp
       if (reaction%primary_species_print(i)) then
         if (icolumn > -1) then
           icolumn = icolumn + 1
@@ -3621,7 +3621,7 @@ function RTGetTecplotHeader(realization,icolumn)
   enddo
 
   if (associated(reaction%kd_print)) then
-    do i=1,option%ntrandof
+    do i=1,reaction%naqcomp
       if (reaction%kd_print(i)) then
         if (icolumn > -1) then
           icolumn = icolumn + 1
@@ -3636,7 +3636,7 @@ function RTGetTecplotHeader(realization,icolumn)
   endif
   
   if (associated(reaction%total_sorb_print)) then
-    do i=1,option%ntrandof
+    do i=1,reaction%naqcomp
       if (reaction%total_sorb_print(i)) then
         if (icolumn > -1) then
           icolumn = icolumn + 1
@@ -3644,6 +3644,22 @@ function RTGetTecplotHeader(realization,icolumn)
             trim(reaction%primary_species_names(i))
         else
           write(string2,'('',"'',a,''_total_sorb"'')') trim(reaction%primary_species_names(i))
+        endif
+        string = trim(string) // trim(string2)
+      endif
+    enddo
+  endif
+  
+  if (associated(reaction%total_sorb_mobile_print)) then
+    do i=1,reaction%ncollcomp
+      if (reaction%total_sorb_mobile_print(i)) then
+        if (icolumn > -1) then
+          icolumn = icolumn + 1
+          write(string2,'('',"'',i2,''-'',a,''_total_sorb_mob"'')') icolumn, &
+            trim(reaction%colloid_species_names(i))
+        else
+          write(string2,'('',"'',a,''_total_sorb_mob"'')') &
+            trim(reaction%colloid_species_names(i))
         endif
         string = trim(string) // trim(string2)
       endif

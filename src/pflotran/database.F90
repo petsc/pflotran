@@ -2783,6 +2783,14 @@ subroutine BasisInit(reaction,option)
                          ' recognized among primary species'
       call printErrMsg(option)
     endif
+    allocate(reaction%total_sorb_mobile_print(reaction%ncollcomp))
+    reaction%total_sorb_mobile_print = PETSC_FALSE
+    do i = 1, reaction%ncollcomp
+      reaction%total_sorb_print(ispec) = &
+        (reaction%primary_species_print(reaction%coll_spec_to_pri_spec(i)) .or. &
+         reaction%print_all_species) .and. &
+        reaction%print_total_sorb_mobile
+    enddo
   endif
   deallocate(flags)
 

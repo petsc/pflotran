@@ -1237,7 +1237,8 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY, &
          SECONDARY_MOLARITY,TOTAL_MOLALITY,TOTAL_MOLARITY, &
          MINERAL_RATE,MINERAL_VOLUME_FRACTION,SURFACE_CMPLX,SURFACE_CMPLX_FREE, &
-         PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED)
+         PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
+         TOTAL_SORBED_MOBILE)
          
       select case(ivar)
         case(PH)
@@ -1358,6 +1359,16 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
               endif
             enddo
           endif
+#ifdef REVISED_TRANSPORT          
+        case(TOTAL_SORBED_MOBILE)
+          if (patch%reaction%neqsorb > 0 .and. patch%reaction%ncollcomp > 0) then
+            do local_id=1,grid%nlmax
+              ghosted_id = grid%nL2G(local_id)
+              vec_ptr(local_id) = patch%aux%RT%aux_vars(ghosted_id)%colloid% &
+                total_eq_mob(isubvar)
+            enddo
+          endif
+#endif            
       end select
     case(POROSITY)
       call GridVecGetArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
@@ -1531,7 +1542,8 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
          TOTAL_MOLALITY,TOTAL_MOLARITY, &
          MINERAL_VOLUME_FRACTION,MINERAL_RATE, &
          SURFACE_CMPLX,SURFACE_CMPLX_FREE,KIN_SURFACE_CMPLX,KIN_SURFACE_CMPLX_FREE, &
-         PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED)
+         PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
+         TOTAL_SORBED_MOBILE)
          
       select case(ivar)
         case(PH)
@@ -1593,6 +1605,12 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
               value = patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
             endif
           endif
+#ifdef REVISED_TRANSPORT            
+        case(TOTAL_SORBED_MOBILE)
+          if (patch%reaction%neqsorb > 0 .and. patch%reaction%ncollcomp > 0) then
+            value = patch%aux%RT%aux_vars(ghosted_id)%colloid%total_eq_mob(isubvar)
+          endif
+#endif               
       end select
     case(POROSITY)
       call GridVecGetArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
