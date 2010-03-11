@@ -5434,14 +5434,14 @@ subroutine OutputHDF5(realization)
       if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
         do i=1,reaction%ncollcomp
           if (reaction%neqsorb > 0 .and. reaction%total_sorb_mobile_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED,i)
+            call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED_MOBILE,i)
             if (.not.(option%use_samr)) then
               write(string,'(a)') trim(reaction%colloid_species_names(i)) // '_tot_sorb_mob'
               call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
               if(first) then
-                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,TOTAL_SORBED,i)
+                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,TOTAL_SORBED_MOBILE,i)
               endif
               current_component=current_component+1
             endif

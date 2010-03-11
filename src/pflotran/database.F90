@@ -2786,7 +2786,7 @@ subroutine BasisInit(reaction,option)
     allocate(reaction%total_sorb_mobile_print(reaction%ncollcomp))
     reaction%total_sorb_mobile_print = PETSC_FALSE
     do i = 1, reaction%ncollcomp
-      reaction%total_sorb_print(ispec) = &
+      reaction%total_sorb_mobile_print(i) = &
         (reaction%primary_species_print(reaction%coll_spec_to_pri_spec(i)) .or. &
          reaction%print_all_species) .and. &
         reaction%print_total_sorb_mobile
