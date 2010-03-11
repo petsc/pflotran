@@ -886,9 +886,9 @@ subroutine TFluxDerivative(rt_parameter, &
 
     ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
     if (associated(rt_aux_var_dn%aqueous%dtotal)) then
-      J_up(istart:iendaq,istart:iendaq) = J_up(istart:iend,istart:iend) + &
+      J_up(istart:iendaq,istart:iendaq) = J_up(istart:iendaq,istart:iendaq) + &
         rt_aux_var_up%aqueous%dtotal(:,:,iphase)*coef_up(iphase)
-      J_dn(istart:iendaq,istart:iendaq) = J_dn(istart:iend,istart:iend) + &
+      J_dn(istart:iendaq,istart:iendaq) = J_dn(istart:iendaq,istart:iendaq) + &
         rt_aux_var_dn%aqueous%dtotal(:,:,iphase)*coef_dn(iphase)
     else  
       print *,'Dtotal needed for SC problem. STOP'

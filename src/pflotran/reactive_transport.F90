@@ -1278,7 +1278,7 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
       else
         psvd_t = por*global_aux_var%sat(iphase)* &
           global_aux_var%den_kg(iphase)*vol/option%tran_dt ! units of den = kg water/m^3 water
-        do icomp=istart,iend
+        do icomp=istart,iendaq
           J(icomp,icomp) = J(icomp,icomp) + psvd_t
         enddo
       endif   
