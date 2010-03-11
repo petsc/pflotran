@@ -817,7 +817,7 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   PetscReal, pointer :: xx_p(:), porosity_loc_p(:), tor_loc_p(:), &
                         volume_p(:), accum_p(:), density_loc_p(:)
   PetscInt :: local_id, ghosted_id
-  PetscInt :: dof_offset, istart, iend
+  PetscInt :: dof_offset, istart, iendaq, iendall
   PetscErrorCode :: ierr
   
   option => realization%option
@@ -850,10 +850,11 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
     
     ! calculate range of aqueous species
     istart = dof_offset+1
-    iend = dof_offset+reaction%naqcomp
+    iendaq = dof_offset+reaction%naqcomp
+    iendall = dof_offset+reaction%ncomp
 
     ! copy primary aqueous species
-    rt_aux_vars(ghosted_id)%pri_molal = xx_p(istart:iend)
+    rt_aux_vars(ghosted_id)%pri_molal = xx_p(istart:iendaq)
     
     ! DO NOT RECOMPUTE THE ACTIVITY COEFFICIENTS BEFORE COMPUTING THE
     ! FIXED PORTION OF THE ACCUMULATION TERM - geh
@@ -864,12 +865,12 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
                         global_aux_vars(ghosted_id), &
                         porosity_loc_p(ghosted_id), &
                         volume_p(local_id), &
-                        reaction,option,accum_p(istart:iend)) 
+                        reaction,option,accum_p(istart:iendall)) 
     if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
       call RAccumulationSorb(rt_aux_vars(ghosted_id), &
                              global_aux_vars(ghosted_id), &
                              volume_p(local_id), &
-                             reaction,option,accum_p(istart:iend))
+                             reaction,option,accum_p(istart:iendall))
     endif
   enddo
 
@@ -1229,12 +1230,12 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
   PetscReal :: J(reaction%ncomp,reaction%ncomp)
   
   PetscInt :: icomp, iphase
-  PetscInt :: istart, iend
+  PetscInt :: istart, iendaq
   PetscReal :: psvd_t, v_t
 
   iphase = 1
   istart = 1
-  iend = reaction%naqcomp  
+  iendaq = reaction%naqcomp  
   ! units = (m^3 por/m^3 bulk)*(m^3 water/m^3 por)*(m^3 bulk)/(sec)
   !         *(kg water/L water)*(1000L water/m^3 water) = kg water/sec
   ! all Jacobian entries should be in kg water/sec
@@ -1242,16 +1243,16 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
 #ifdef REVISED_TRANSPORT
   if (associated(rt_aux_var%aqueous%dtotal)) then ! units of dtotal = kg water/L water
     psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt
-    J(istart:iend,istart:iend) = rt_aux_var%aqueous%dtotal(:,:,iphase)*psvd_t
+    J(istart:iendaq,istart:iendaq) = rt_aux_var%aqueous%dtotal(:,:,iphase)*psvd_t
 #else
   if (associated(rt_aux_var%dtotal)) then ! units of dtotal = kg water/L water
     psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt
-    J(istart:iend,istart:iend) = rt_aux_var%dtotal(:,:,iphase)*psvd_t
+    J(istart:iendaq,istart:iendaq) = rt_aux_var%dtotal(:,:,iphase)*psvd_t
 #endif
   else
     psvd_t = por*global_aux_var%sat(iphase)* &
              global_aux_var%den_kg(iphase)*vol/option%tran_dt ! units of den = kg water/m^3 water
-    do icomp=istart,iend
+    do icomp=istart,iendaq
       J(icomp,icomp) = psvd_t
     enddo
   endif
@@ -1266,12 +1267,12 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
 #ifdef REVISED_TRANSPORT        
       if (associated(rt_aux_var%aqueous%dtotal)) then
         psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
-        J(istart:iend,istart:iend) = J(istart:iend,istart:iend) + &
+        J(istart:iendaq,istart:iendaq) = J(istart:iendaq,istart:iendaq) + &
           rt_aux_var%aqueous%dtotal(:,:,iphase)*psvd_t
 #else
       if (associated(rt_aux_var%dtotal)) then
         psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
-        J(istart:iend,istart:iend) = J(istart:iend,istart:iend) + &
+        J(istart:iendaq,istart:iendaq) = J(istart:iendaq,istart:iendaq) + &
           rt_aux_var%dtotal(:,:,iphase)*psvd_t
 #endif
       else
@@ -1288,7 +1289,7 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
 #ifdef REVISED_TRANSPORT 
   if (reaction%ncollcomp > 0) then
     ! dRj_dCj - mobile
-    J(istart:iend,istart:iend) = rt_aux_var%colloid%dRj_dCj%dtotal(:,:,1)* &
+    J(istart:iendaq,istart:iendaq) = rt_aux_var%colloid%dRj_dCj%dtotal(:,:,1)* &
                                  psvd_t
     ! need the below
 !    istart = reaction%offset_collcomp

@@ -3032,6 +3032,8 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
       ! isite == 1 - immobile (colloids, minerals, etc.)
       ! isite == 2 - mobile (colloids)
     
+      if (site_density(isite) < 1.d-40) cycle
+    
       ! get a pointer to the first complex (there will always be at least 1)
       ! in order to grab free site conc
       one_more = PETSC_FALSE

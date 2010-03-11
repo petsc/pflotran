@@ -857,21 +857,21 @@ subroutine TFluxDerivative(rt_parameter, &
   PetscInt :: icomp
   PetscInt :: ndof
   PetscInt :: istart
-  PetscInt :: iend
+  PetscInt :: iendaq
  
   iphase = 1
   ndof = rt_parameter%ncomp
   
   ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
   istart = 1
-  iend = rt_parameter%naqcomp
+  iendaq = rt_parameter%naqcomp
   if (associated(rt_aux_var_dn%aqueous%dtotal)) then
-    J_up(istart:iend,istart:iend) = rt_aux_var_up%aqueous%dtotal(:,:,iphase)*coef_up(iphase)
-    J_dn(istart:iend,istart:iend) = rt_aux_var_dn%aqueous%dtotal(:,:,iphase)*coef_dn(iphase)
+    J_up(istart:iendaq,istart:iendaq) = rt_aux_var_up%aqueous%dtotal(:,:,iphase)*coef_up(iphase)
+    J_dn(istart:iendaq,istart:iendaq) = rt_aux_var_dn%aqueous%dtotal(:,:,iphase)*coef_dn(iphase)
   else  
     J_up = 0.d0
     J_dn = 0.d0
-    do icomp = istart, iend
+    do icomp = istart, iendaq
       J_up(icomp,icomp) = coef_up(iphase)*global_aux_var_up%den_kg(iphase)*1.d-3
       J_dn(icomp,icomp) = coef_dn(iphase)*global_aux_var_dn%den_kg(iphase)*1.d-3
     enddo
@@ -886,9 +886,9 @@ subroutine TFluxDerivative(rt_parameter, &
 
     ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
     if (associated(rt_aux_var_dn%aqueous%dtotal)) then
-      J_up(istart:iend,istart:iend) = J_up(istart:iend,istart:iend) + &
+      J_up(istart:iendaq,istart:iendaq) = J_up(istart:iend,istart:iend) + &
         rt_aux_var_up%aqueous%dtotal(:,:,iphase)*coef_up(iphase)
-      J_dn(istart:iend,istart:iend) = J_dn(istart:iend,istart:iend) + &
+      J_dn(istart:iendaq,istart:iendaq) = J_dn(istart:iend,istart:iend) + &
         rt_aux_var_dn%aqueous%dtotal(:,:,iphase)*coef_dn(iphase)
     else  
       print *,'Dtotal needed for SC problem. STOP'
@@ -907,9 +907,9 @@ subroutine TFluxDerivative(rt_parameter, &
   if (rt_parameter%ncollcomp > 0) then
     ! dRj_dCj - mobile
     ! istart & iend same as above
-    J_up(istart:iend,istart:iend) = J_up(istart:iend,istart:iend) + &
+    J_up(istart:iendaq,istart:iendaq) = J_up(istart:iendaq,istart:iendaq) + &
       rt_aux_var_up%colloid%dRj_dCj%dtotal(:,:,1)*coef_up(1)
-    J_dn(istart:iend,istart:iend) = J_dn(istart:iend,istart:iend) + &
+    J_dn(istart:iendaq,istart:iendaq) = J_dn(istart:iendaq,istart:iendaq) + &
       rt_aux_var_dn%colloid%dRj_dCj%dtotal(:,:,1)*coef_dn(1)
     ! need the below
     ! dRj_dSic
