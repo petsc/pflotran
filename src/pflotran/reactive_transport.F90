@@ -1289,8 +1289,8 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
 #ifdef REVISED_TRANSPORT 
   if (reaction%ncollcomp > 0) then
     ! dRj_dCj - mobile
-    J(istart:iendaq,istart:iendaq) = rt_aux_var%colloid%dRj_dCj%dtotal(:,:,1)* &
-                                 psvd_t
+    J(istart:iendaq,istart:iendaq) = J(istart:iendaq,istart:iendaq) + &
+      rt_aux_var%colloid%dRj_dCj%dtotal(:,:,1)*psvd_t
     ! need the below
 !    istart = reaction%offset_collcomp
 !    iend = reaction%offset_collcomp + reaction%ncollcomp - 1
