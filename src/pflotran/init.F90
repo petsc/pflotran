@@ -2725,7 +2725,7 @@ subroutine readFlowInitialCondition(realization,filename)
       call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
 
       ! Pressure for all modes 
-      offset = 0
+      offset = 1
       group_name = ''
       dataset_name = 'Pressure'
       call HDF5ReadCellIndexedRealArray(realization,field%work, &
@@ -2819,7 +2819,7 @@ subroutine readTransportInitialCondition(realization,filename)
 
       ! Primary species concentrations for all modes 
       do idof = 1, option%ntrandof ! primary aqueous concentrations
-        offset = idof-1
+        offset = idof
         group_name = ''
         dataset_name = reaction%primary_species_names(idof)
         call HDF5ReadCellIndexedRealArray(realization,field%work, &
