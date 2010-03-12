@@ -801,6 +801,17 @@ subroutine TFlux(rt_parameter,rt_aux_var_up,rt_aux_var_dn, &
   ! units = (L water/sec)*(mol/L) = mol/s
   Res(1:ndof) = coef_up(iphase)*rt_aux_var_up%total(1:ndof,iphase) + &
                 coef_dn(iphase)*rt_aux_var_dn%total(1:ndof,iphase)
+
+#ifdef REVISED_TRANSPORT
+  if (rt_parameter%ncollcomp > 0) then
+    do icollcomp = 1, rt_parameter%ncollcomp
+      iaqcomp = rt_parameter%coll_spec_to_pri_spec(icollcomp)
+      Res(iaqcomp) = Res(iaqcomp) + &
+        coef_up(iphase)*rt_aux_var_up%colloid%total_eq_mob(icollcomp) + &
+        coef_dn(iphase)*rt_aux_var_dn%colloid%total_eq_mob(icollcomp)
+    enddo
+  endif
+#endif
   
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
@@ -814,17 +825,6 @@ subroutine TFlux(rt_parameter,rt_aux_var_up,rt_aux_var_dn, &
                 coef_up(iphase)*rt_aux_var_up%total(1:ndof,iphase) + &
                 coef_dn(iphase)*rt_aux_var_dn%total(1:ndof,iphase)
  enddo
-#endif
-
-#ifdef REVISED_TRANSPORT
-  if (rt_parameter%ncollcomp > 0) then
-    do icollcomp = 1, rt_parameter%ncollcomp
-      iaqcomp = rt_parameter%coll_spec_to_pri_spec(icollcomp)
-      Res(iaqcomp) = Res(iaqcomp) + &
-        coef_up(iphase)*rt_aux_var_up%colloid%total_eq_mob(icollcomp) + &
-        coef_dn(iphase)*rt_aux_var_dn%colloid%total_eq_mob(icollcomp)
-    enddo
-  endif
 #endif
 
 end subroutine TFlux
@@ -877,6 +877,21 @@ subroutine TFluxDerivative(rt_parameter, &
     enddo
   endif
 
+#ifdef REVISED_TRANSPORT
+  if (rt_parameter%ncollcomp > 0) then
+    ! dRj_dCj - mobile
+    ! istart & iend same as above
+    J_up(istart:iendaq,istart:iendaq) = J_up(istart:iendaq,istart:iendaq) + &
+      rt_aux_var_up%colloid%dRj_dCj%dtotal(:,:,1)*coef_up(1)
+    J_dn(istart:iendaq,istart:iendaq) = J_dn(istart:iendaq,istart:iendaq) + &
+      rt_aux_var_dn%colloid%dRj_dCj%dtotal(:,:,1)*coef_dn(1)
+    ! need the below
+    ! dRj_dSic
+    ! dRic_dSic
+    ! dRic_dCj
+  endif
+#endif
+
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
   do 
@@ -901,21 +916,6 @@ subroutine TFluxDerivative(rt_parameter, &
    !   enddo
     endif
   enddo
-#endif
-
-#ifdef REVISED_TRANSPORT
-  if (rt_parameter%ncollcomp > 0) then
-    ! dRj_dCj - mobile
-    ! istart & iend same as above
-    J_up(istart:iendaq,istart:iendaq) = J_up(istart:iendaq,istart:iendaq) + &
-      rt_aux_var_up%colloid%dRj_dCj%dtotal(:,:,1)*coef_up(1)
-    J_dn(istart:iendaq,istart:iendaq) = J_dn(istart:iendaq,istart:iendaq) + &
-      rt_aux_var_dn%colloid%dRj_dCj%dtotal(:,:,1)*coef_dn(1)
-    ! need the below
-    ! dRj_dSic
-    ! dRic_dSic
-    ! dRic_dCj
-  endif
 #endif
 
 end subroutine TFluxDerivative
