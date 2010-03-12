@@ -2734,6 +2734,10 @@ subroutine readFlowInitialCondition(realization,filename)
       call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
       do local_id=1, grid%nlmax
         if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
+        if (dabs(vec_p(local_id)) < 1.d-40) then
+          print *,  option%myrank, grid%nL2A(local_id)+1, &
+               ': Potential error - zero pressure in Initial Condition read from file.'
+        endif
         idx = (local_id-1)*option%nflowdof + offset
         xx_p(idx) = vec_p(local_id)
       enddo
@@ -2828,6 +2832,10 @@ subroutine readTransportInitialCondition(realization,filename)
         call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
         do local_id=1, grid%nlmax
           if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
+          if (vec_p(local_id) < 1.d-40) then
+            print *,  option%myrank, grid%nL2A(local_id)+1, &
+              ': Zero free-ion concentration in Initial Condition read from file.'
+          endif
           idx = (local_id-1)*option%ntrandof + offset
           xx_p(idx) = vec_p(local_id)
         enddo
