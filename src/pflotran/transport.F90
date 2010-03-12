@@ -882,9 +882,9 @@ subroutine TFluxDerivative(rt_parameter, &
     ! dRj_dCj - mobile
     ! istart & iend same as above
     J_up(istart:iendaq,istart:iendaq) = J_up(istart:iendaq,istart:iendaq) + &
-      rt_aux_var_up%colloid%dRj_dCj%dtotal(:,:,1)*coef_up(1)
+      rt_aux_var_up%colloid%dRj_dCj%dtotal(:,:,iphase)*coef_up(iphase)
     J_dn(istart:iendaq,istart:iendaq) = J_dn(istart:iendaq,istart:iendaq) + &
-      rt_aux_var_dn%colloid%dRj_dCj%dtotal(:,:,1)*coef_dn(1)
+      rt_aux_var_dn%colloid%dRj_dCj%dtotal(:,:,iphase)*coef_dn(iphase)
     ! need the below
     ! dRj_dSic
     ! dRic_dSic
