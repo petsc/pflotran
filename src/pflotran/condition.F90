@@ -237,6 +237,7 @@ function TranConstraintCreate(option)
   nullify(constraint%aqueous_species)
   nullify(constraint%minerals)
   nullify(constraint%surface_complexes)
+  nullify(constraint%colloids)
   nullify(constraint%next)
   constraint%id = 0
   constraint%name = ''
@@ -268,6 +269,7 @@ function TranConstraintCouplerCreate(option)
   nullify(coupler%aqueous_species)
   nullify(coupler%minerals)
   nullify(coupler%surface_complexes)
+  nullify(coupler%colloids)
   
   coupler%num_iterations = 0
   coupler%iflag = 0

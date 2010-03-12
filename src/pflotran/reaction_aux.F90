@@ -69,6 +69,8 @@ module Reaction_Aux_module
     PetscInt :: itype
     character(len=MAXWORDLENGTH) :: name
     PetscReal :: mobile_fraction
+    PetscReal :: forward_rate
+    PetscReal :: backward_rate
     PetscReal :: surface_area
     PetscReal :: molar_weight
     PetscTruth :: print_me
@@ -768,6 +770,8 @@ function ColloidCreate()
   colloid%itype = 0
   colloid%name = ''
   colloid%mobile_fraction = 0.5d0
+  colloid%forward_rate = 0.d0
+  colloid%backward_rate = 0.d0
   colloid%surface_area = 1.d0
   colloid%molar_weight = 0.d0
   colloid%print_me = PETSC_FALSE
