@@ -86,6 +86,8 @@ module Reactive_Transport_Aux_module
 
   ! Colloids
   type, public :: colloid_auxvar_type
+    PetscReal, pointer :: conc_mob(:)
+    PetscReal, pointer :: conc_imb(:)
     PetscReal, pointer :: total_eq_mob(:)
     PetscReal, pointer :: total_kin(:)
 #ifdef REVISED_TRANSPORT  
@@ -324,6 +326,8 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
 #ifdef REVISED_TRANSPORT
   if (reaction%ncollcomp > 0) then
     allocate(aux_var%colloid)
+    allocate(aux_var%colloid%conc_mob(reaction%ncoll))
+    allocate(aux_var%colloid%conc_imb(reaction%ncoll))
     allocate(aux_var%colloid%total_eq_mob(reaction%ncollcomp))
     allocate(aux_var%colloid%total_kin(reaction%ncollcomp))
     ! dRj/dCj
@@ -428,6 +432,8 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
 
 #ifdef REVISED_TRANSPORT 
   if (associated(aux_var%colloid)) then
+    aux_var%colloid%conc_mob = aux_var2%colloid%conc_mob
+    aux_var%colloid%conc_imb = aux_var2%colloid%conc_imb
     aux_var%colloid%total_eq_mob = aux_var2%colloid%total_eq_mob
     aux_var%colloid%total_kin = aux_var2%colloid%total_kin
     ! dRj/dCj
@@ -533,6 +539,10 @@ subroutine RTAuxVarDestroy(aux_var)
   
 #ifdef REVISED_TRANSPORT
   if (associated(aux_var%colloid)) then
+    if (associated(aux_var%colloid%conc_mob)) deallocate(aux_var%colloid%conc_mob)
+    nullify(aux_var%colloid%conc_mob)
+    if (associated(aux_var%colloid%conc_imb)) deallocate(aux_var%colloid%conc_imb)
+    nullify(aux_var%colloid%conc_imb)
     if (associated(aux_var%colloid%total_eq_mob)) deallocate(aux_var%colloid%total_eq_mob)
     nullify(aux_var%colloid%total_eq_mob)
     if (associated(aux_var%colloid%total_kin)) deallocate(aux_var%colloid%total_kin)

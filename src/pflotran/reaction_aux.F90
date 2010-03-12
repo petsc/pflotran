@@ -155,6 +155,14 @@ module Reaction_Aux_module
     PetscReal, pointer :: basis_free_site_conc(:)
   end type srfcplx_constraint_type
 
+  type, public :: colloid_constraint_type
+    character(len=MAXWORDLENGTH), pointer :: names(:)
+    PetscReal, pointer :: constraint_conc_mob(:)
+    PetscReal, pointer :: constraint_conc_imb(:)
+    PetscReal, pointer :: basis_conc_mob(:)
+    PetscReal, pointer :: basis_conc_imb(:)
+  end type colloid_constraint_type
+
   type, public :: reaction_type
     character(len=MAXSTRINGLENGTH) :: database_filename
     PetscTruth :: use_full_geochemistry
@@ -359,10 +367,7 @@ module Reaction_Aux_module
 
   public :: ReactionCreate, &
             SpeciesIndexCreate, &
-            AqueousSpeciesCreate, &
             GasSpeciesCreate, &
-            MineralCreate, &
-            ColloidCreate, &
             GetPrimarySpeciesCount, &
             GetPrimarySpeciesNames, &
             GetSecondarySpeciesCount, &
@@ -382,14 +387,22 @@ module Reaction_Aux_module
             TransitionStateTheoryRxnCreate, &
             TransitionStateTheoryRxnDestroy, &
             SurfaceComplexationRxnCreate, &
-            AqueousSpeciesConstraintDestroy, &
-            MineralConstraintDestroy, &
-            SurfaceComplexConstraintDestroy, &
+            AqueousSpeciesCreate, &
+            AqueousSpeciesDestroy, &
             AqueousSpeciesConstraintCreate, &
+            AqueousSpeciesConstraintDestroy, &
+            MineralCreate, &
+            MineralDestroy, &
             MineralConstraintCreate, &
-            SurfaceComplexConstraintCreate, &
+            MineralConstraintDestroy, &
             SurfaceComplexCreate, &
             SurfaceComplexDestroy, &
+            SurfaceComplexConstraintCreate, &
+            SurfaceComplexConstraintDestroy, &
+            ColloidCreate, &
+            ColloidDestroy, &
+            ColloidConstraintCreate, &
+            ColloidConstraintDestroy, &
             IonExchangeRxnCreate, &
             IonExchangeCationCreate
              
@@ -1046,6 +1059,41 @@ function SurfaceComplexConstraintCreate(reaction,option)
   SurfaceComplexConstraintCreate => constraint
 
 end function SurfaceComplexConstraintCreate
+  
+! ************************************************************************** !
+!
+! ColloidConstraintCreate: Creates a colloid constraint object
+! author: Glenn Hammond
+! date: 03/12/10
+!
+! ************************************************************************** !
+function ColloidConstraintCreate(reaction,option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+  type(colloid_constraint_type), pointer :: ColloidConstraintCreate
+
+  type(colloid_constraint_type), pointer :: constraint  
+
+  allocate(constraint)
+  allocate(constraint%names(reaction%ncoll))
+  constraint%names = ''
+  allocate(constraint%constraint_conc_mob(reaction%ncoll))
+  constraint%constraint_conc_mob = 0.d0
+  allocate(constraint%constraint_conc_imb(reaction%ncoll))
+  constraint%constraint_conc_imb = 0.d0
+  allocate(constraint%basis_conc_mob(reaction%ncoll))
+  constraint%basis_conc_mob = 0.d0
+  allocate(constraint%basis_conc_imb(reaction%ncoll))
+  constraint%basis_conc_imb = 0.d0
+
+  ColloidConstraintCreate => constraint
+
+end function ColloidConstraintCreate
   
 ! ************************************************************************** !
 !
@@ -1838,6 +1886,42 @@ subroutine SurfaceComplexConstraintDestroy(constraint)
   nullify(constraint)
 
 end subroutine SurfaceComplexConstraintDestroy
+
+! ************************************************************************** !
+!
+! ColloidConstraintDestroy: Destroys a colloid constraint object
+! author: Glenn Hammond
+! date: 03/12/10
+!
+! ************************************************************************** !
+subroutine ColloidConstraintDestroy(constraint)
+
+  implicit none
+  
+  type(colloid_constraint_type), pointer :: constraint
+  
+  if (.not.associated(constraint)) return
+  
+  if (associated(constraint%names)) &
+    deallocate(constraint%names)
+  nullify(constraint%names)
+  if (associated(constraint%constraint_conc_mob)) &
+    deallocate(constraint%constraint_conc_mob)
+  nullify(constraint%constraint_conc_mob)
+  if (associated(constraint%constraint_conc_imb)) &
+    deallocate(constraint%constraint_conc_imb)
+  nullify(constraint%constraint_conc_imb)
+  if (associated(constraint%basis_conc_mob)) &
+    deallocate(constraint%basis_conc_mob)
+  nullify(constraint%basis_conc_mob)
+  if (associated(constraint%basis_conc_imb)) &
+    deallocate(constraint%basis_conc_imb)
+  nullify(constraint%basis_conc_imb)
+
+  deallocate(constraint)
+  nullify(constraint)
+
+end subroutine ColloidConstraintDestroy
 
 ! ************************************************************************** !
 !

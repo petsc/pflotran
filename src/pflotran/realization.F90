@@ -705,6 +705,7 @@ subroutine RealProcessTranConditions(realization)
                                    cur_constraint%aqueous_species, &
                                    cur_constraint%minerals, &
                                    cur_constraint%surface_complexes, &
+                                   cur_constraint%colloids, &
                                    realization%option)
     cur_constraint => cur_constraint%next
   enddo

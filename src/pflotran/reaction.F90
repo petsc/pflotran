@@ -748,10 +748,11 @@ end subroutine ReactionReadMineralKinetics
 !
 ! ************************************************************************** !
 subroutine ReactionProcessConstraint(reaction,constraint_name, &
-                                        aq_species_constraint, &
-                                        mineral_constraint, &
-                                        srfcplx_constraint, &
-                                        option)
+                                     aq_species_constraint, &
+                                     mineral_constraint, &
+                                     srfcplx_constraint, &
+                                     colloid_constraint, &
+                                     option)
   use Option_module
   use Input_module
   use String_module
@@ -764,11 +765,13 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   type(aq_species_constraint_type), pointer :: aq_species_constraint
   type(mineral_constraint_type), pointer :: mineral_constraint
   type(srfcplx_constraint_type), pointer :: srfcplx_constraint
+  type(colloid_constraint_type), pointer :: colloid_constraint
   type(option_type) :: option
   
   PetscTruth :: found
   PetscInt :: icomp, jcomp
   PetscInt :: imnrl, jmnrl
+  PetscInt :: icoll, jcoll
   PetscInt :: igas
   PetscInt :: isrfcplx, jsrfcplx
   PetscReal :: constraint_conc(reaction%naqcomp)
@@ -776,6 +779,7 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   character(len=MAXWORDLENGTH) :: constraint_spec_name(reaction%naqcomp)
   character(len=MAXWORDLENGTH) :: constraint_mnrl_name(reaction%nkinmnrl)
   character(len=MAXWORDLENGTH) :: constraint_srfcplx_name(reaction%nkinsrfcplx)
+  character(len=MAXWORDLENGTH) :: constraint_colloid_name(reaction%ncoll)
   PetscInt :: constraint_id(reaction%naqcomp)
     
   constraint_id = 0
@@ -918,6 +922,38 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
     srfcplx_constraint%names = constraint_srfcplx_name
     srfcplx_constraint%constraint_conc = srfcplx_constraint%basis_conc
   endif
+  
+  ! colloids
+  if (reaction%use_full_geochemistry .and. associated(colloid_constraint)) then
+    constraint_colloid_name = ''
+    do icoll = 1, reaction%ncoll
+      found = PETSC_FALSE
+      do jcoll = 1, reaction%ncoll
+        if (StringCompare(colloid_constraint%names(icoll), &
+                          reaction%colloid_names(jcoll), &
+                            MAXWORDLENGTH)) then
+          found = PETSC_TRUE
+          exit
+        endif
+      enddo
+      if (.not.found) then
+        option%io_buffer = &
+                 'Surface complex ' // trim(colloid_constraint%names(icoll)) // &
+                 'from CONSTRAINT ' // trim(constraint_name) // &
+                 ' not found among colloids.'
+        call printErrMsg(option)
+      else
+        colloid_constraint%basis_conc_mob(jcoll) = &
+          colloid_constraint%constraint_conc_mob(icoll)
+        colloid_constraint%basis_conc_imb(jcoll) = &
+          colloid_constraint%constraint_conc_imb(icoll)
+        constraint_colloid_name(jcoll) = colloid_constraint%names(icoll)
+      endif  
+    enddo
+    colloid_constraint%names = constraint_colloid_name
+    colloid_constraint%constraint_conc_mob = colloid_constraint%basis_conc_mob
+    colloid_constraint%constraint_conc_imb = colloid_constraint%basis_conc_imb
+  endif
 
 end subroutine ReactionProcessConstraint
 
@@ -952,6 +988,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   character(len=MAXWORDLENGTH) :: constraint_name
   type(aq_species_constraint_type), pointer :: aq_species_constraint
   type(srfcplx_constraint_type), pointer :: srfcplx_constraint
+  type(colloid_constraint_type), pointer :: colloid_constraint
   PetscInt :: num_iterations
   PetscTruth :: initialize_rt_auxvar
   type(option_type) :: option
