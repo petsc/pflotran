@@ -2733,6 +2733,7 @@ subroutine readFlowInitialCondition(realization,filename)
                                         dataset_name,option%id>0)
       call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
       do local_id=1, grid%nlmax
+        if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
         idx = (local_id-1)*option%nflowdof + offset
         xx_p(idx) = vec_p(local_id)
       enddo
@@ -2826,6 +2827,7 @@ subroutine readTransportInitialCondition(realization,filename)
                                           dataset_name,option%id>0)
         call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
         do local_id=1, grid%nlmax
+          if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
           idx = (local_id-1)*option%ntrandof + offset
           xx_p(idx) = vec_p(local_id)
         enddo
