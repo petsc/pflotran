@@ -48,7 +48,7 @@ module Grid_module
     ! nG2N :  collective,  ghosted local => global index , used for   
     !                      matsetvaluesblocked ( not matsetvaluesblockedlocal)  
     ! nL2A :   collective, local => natural index, used for initialization   
-    !                               and source/sink setup  
+    !                               and source/sink setup  (zero-based)
     PetscInt, pointer :: nL2G(:), nG2L(:), nL2A(:)
     PetscInt, pointer :: nG2A(:)
     

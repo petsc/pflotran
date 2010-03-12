@@ -2427,14 +2427,16 @@ subroutine UGridMapIndices(unstructured_grid,ugdm,nG2L,nL2G,nL2A,nG2A)
   do local_id = 1, unstructured_grid%num_cells_local
     nL2G(local_id) = local_id
     nG2L(local_id) = local_id
-    nL2A(local_id) = int_ptr(local_id)+1
+    ! actually, nL2A is zero-based
+    !nL2A(local_id) = int_ptr(local_id)+1
+    nL2A(local_id) = int_ptr(local_id)
   enddo
   call ISRestoreIndicesF90(ugdm%is_local_petsc,int_ptr,ierr)
-  nL2A = nL2A - 1
+!zero-based  nL2A = nL2A - 1
   call AOPetscToApplication(unstructured_grid%ao_natural_to_petsc, &
                             unstructured_grid%num_cells_local, &
                             nL2A,ierr)
-  nL2A = nL2A + 1
+!zero-based  nL2A = nL2A + 1
 
   call ISGetIndicesF90(ugdm%is_ghosted_petsc,int_ptr,ierr)
   do ghosted_id = 1, unstructured_grid%num_cells_ghosted

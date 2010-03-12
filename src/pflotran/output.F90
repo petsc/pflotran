@@ -2433,7 +2433,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   grid => patch%grid
   
   local_id = region%cell_ids(icell)
-  write(cell_string,*) grid%nL2A(region%cell_ids(icell))
+  write(cell_string,*) grid%nL2A(region%cell_ids(icell))+1 ! nL2A is zero-based
   cell_string = trim(region%name) // ' (' // trim(adjustl(cell_string)) // ')'
 
   ! add coordinate of cell center
@@ -2677,7 +2677,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
   option => realization%option
   output_option => realization%output_option
   
-!  write(cell_string,*) grid%nL2A(region%cell_ids(icell))
+!  write(cell_string,*) grid%nL2A(region%cell_ids(icell)) + 1 ! nL2A is zero-based
 !  cell_string = trim(region%name) // ' ' //adjustl(cell_string)
   cell_string = trim(region%name)
   
