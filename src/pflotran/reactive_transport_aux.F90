@@ -87,9 +87,9 @@ module Reactive_Transport_Aux_module
 
   ! Colloids
   type, public :: colloid_auxvar_type
-    PetscReal, pointer :: conc_mob(:)
-    PetscReal, pointer :: conc_imb(:)
-    PetscReal, pointer :: total_eq_mob(:)
+    PetscReal, pointer :: conc_mob(:) ! mol/L water
+    PetscReal, pointer :: conc_imb(:) ! mol/m^3 bulk
+    PetscReal, pointer :: total_eq_mob(:) ! mol/L water
     PetscReal, pointer :: total_kin(:)
 #ifdef REVISED_TRANSPORT  
     type(matrix_block_auxvar_type), pointer :: dRj_dCj

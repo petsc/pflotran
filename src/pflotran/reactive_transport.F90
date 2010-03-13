@@ -857,7 +857,8 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
     if (reaction%ncoll > 0) then
       istartcoll = dof_offset + reaction%offset_coll + 1
       iendcoll = dof_offset + reaction%offset_coll + reaction%ncoll
-      rt_aux_vars(ghosted_id)%colloid%conc_mob = xx_p(istartcoll:iendcoll)
+      rt_aux_vars(ghosted_id)%colloid%conc_mob = xx_p(istartcoll:iendcoll)* &
+        global_aux_vars(ghosted_id)%den_kg(1)*1.d-3
     endif
     
     ! DO NOT RECOMPUTE THE ACTIVITY COEFFICIENTS BEFORE COMPUTING THE
@@ -1180,11 +1181,6 @@ subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
 
 #ifdef REVISED_TRANSPORT
   if (reaction%ncoll > 0) then
-    !in this case, conc_mob is in molality 
-    ! units = (mol colloid /kg water*(m^3 por/m^3 bulk)*(m^3 water/m^3 por)* 
-    !         (m^3 bulk)*(kg water/m^3 water)/(sec) = mol colloid/sec
-    psv_t = por*global_aux_var%sat(iphase)*global_aux_var%den_kg(iphase)* &
-            vol/option%tran_dt  
     do icoll = 1, reaction%ncoll
       idof = reaction%offset_coll + icoll
       Res(idof) = psv_t*rt_aux_var%colloid%conc_mob(icoll)
@@ -1272,11 +1268,6 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
 
 #ifdef REVISED_TRANSPORT 
   if (reaction%ncoll > 0) then
-  ! units = (m^3 por/m^3 bulk)*(m^3 water/m^3 por)*(m^3 bulk)/(sec)
-  !         *(kg water/L water) = kg water/sec
-  ! all Jacobian entries should be in kg water/sec  
-    psvd_t = por*global_aux_var%sat(iphase)* &
-             global_aux_var%den_kg(iphase)*vol/option%tran_dt 
     do icoll = 1, reaction%ncoll
       idof = reaction%offset_coll + icoll
       ! shouldn't have to sum a this point
@@ -2254,7 +2245,6 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
           ! units should be mol/sec
           Res(istartaq:iendaq) = -1.d-6* &
                 porosity_loc_p(ghosted_id)* &
-                global_aux_vars(ghosted_id)%sat(option%liquid_phase)* &
                 volume_p(local_id)* & ! convert m^3 water -> L water
                 (source_sink%tran_condition%cur_constraint_coupler% &
                  rt_auxvar%total(:,iphase) - rt_aux_vars(ghosted_id)%total(:,iphase))* &
@@ -2266,11 +2256,10 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
               !         (m^3 bulk)*(kg water/m^3 water)/(sec)*
               !         (mol colloid /kg water) = mol colloid/sec
                 porosity_loc_p(ghosted_id)* &
-                global_aux_vars(ghosted_id)%sat(option%liquid_phase)* &
                 volume_p(local_id)* & ! convert m^3 water -> L water
-                global_aux_vars(ghosted_id)%den_kg(iphase)* &
                 (source_sink%tran_condition%cur_constraint_coupler% &
-                 rt_auxvar%colloid%conc_mob(:) - rt_aux_vars(ghosted_id)%colloid%conc_mob(:))
+                 rt_auxvar%colloid%conc_mob(:) - rt_aux_vars(ghosted_id)%colloid%conc_mob(:))* &
+                1000.d0 ! convert kg water/L water -> kg water/m^3 water
           endif
         case(MASS_RATE_SS)
           Res(istartaq:iendaq) = -source_sink%tran_condition% &
@@ -2279,7 +2268,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
             option%io_buffer = 'Need to implement MASS_RATE_SS source/sink term correctly'
             call printErrMsg(option)
             Res(istartcoll:iendcoll) = -source_sink%tran_condition% &
-                 cur_constraint_coupler%rt_auxvar%total(:,iphase) ! actually moles/sec
+                 cur_constraint_coupler%rt_auxvar%colloid%conc_mob(:) ! actually moles/sec
           endif          
         case default
           if (qsrc > 0) then ! injection
@@ -2289,9 +2278,8 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                     rt_auxvar%total(:,iphase)*1000.d0
               if (reaction%ncoll > 0) then
                 Res(istartcoll:iendcoll) = -qsrc* & ! m^3 water / sec
-                    global_aux_vars(ghosted_id)%den_kg(iphase)* &
                     source_sink%tran_condition%cur_constraint_coupler% &
-                    rt_auxvar%colloid%conc_mob(:)
+                    rt_auxvar%colloid%conc_mob(:)*1000.d0
               endif                     
             else ! mass
               Res(istartaq:iendaq) = -qsrc* & ! kg water / sec
@@ -2302,7 +2290,9 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
               if (reaction%ncoll > 0) then  ! needs to be moles/sec
                 Res(istartcoll:iendcoll) = -qsrc* & ! kg water / sec
                     source_sink%tran_condition%cur_constraint_coupler% &
-                    rt_auxvar%colloid%conc_mob(:) ! already molality
+                    rt_auxvar%colloid%conc_mob(:)/ &
+                    global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
+                    1000.d0
               endif                     
             endif
           else ! extraction
@@ -2310,8 +2300,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
               Res(istartaq:iendaq) = -qsrc*rt_aux_vars(ghosted_id)%total(:,iphase)*1000.d0
               if (reaction%ncoll > 0) then
                 Res(istartcoll:iendcoll) = -qsrc* & ! m^3 water / sec
-                    global_aux_vars(ghosted_id)%den_kg(iphase)* &
-                    rt_aux_vars(ghosted_id)%colloid%conc_mob(:)
+                    rt_aux_vars(ghosted_id)%colloid%conc_mob(:)*1000.d0
               endif               
             else
               Res(istartaq:iendaq) = -qsrc* &
@@ -2320,7 +2309,9 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                     1000.d0 ! convert kg water/L water -> kg water/m^3 water
               if (reaction%ncoll > 0) then  ! needs to be moles/sec
                 Res(istartcoll:iendcoll) = -qsrc* & ! kg water / sec
-                    rt_aux_vars(ghosted_id)%colloid%conc_mob(:) ! already molality
+                    rt_aux_vars(ghosted_id)%colloid%conc_mob(:)/ & 
+                    global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
+                    1000.d0 ! convert kg water/L water -> kg water/m^3 water
               endif                     
             endif
           endif
@@ -3262,7 +3253,8 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
     if (reaction%ncoll > 0) then
       istartcoll = offset + reaction%offset_coll + 1
       iendcoll = offset + reaction%offset_coll + reaction%ncoll
-      patch%aux%RT%aux_vars(ghosted_id)%colloid%conc_mob = xx_loc_p(istartcoll:iendcoll)
+      patch%aux%RT%aux_vars(ghosted_id)%colloid%conc_mob = xx_loc_p(istartcoll:iendcoll)* &
+        patch%aux%Global%aux_vars(ghosted_id)%den_kg(1)*1.d-3
     endif
     
     if (compute_activity_coefs) then
@@ -3351,22 +3343,27 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
                   endif
                 else
                   ! same as zero_gradient below
-                  do idof=istartaq_loc,iendaq_loc
-                    xxbc(idof) = xx_loc_p(offset+idof)
-                  enddo
+                  xxbc(istartaq_loc:iendaq_loc) = xx_loc_p(istartaq:iendaq)
+                  if (reaction%ncoll > 0) then
+                    xxbc(istartcoll_loc:iendcoll_loc) = basis_coll_conc_p(1:reaction%ncoll) / &
+                      patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * 1000.d0
+                  endif
                 endif
   !geh          enddo
             case(ZERO_GRADIENT_BC)
-              do idof=istartaq_loc,iendaq_loc
-                xxbc(idof) = xx_loc_p(offset+idof)
-              enddo
+              xxbc(istartaq_loc:iendaq_loc) = xx_loc_p(istartaq:iendaq)
+              if (reaction%ncoll > 0) then
+                xxbc(istartcoll_loc:iendcoll_loc) = basis_coll_conc_p(1:reaction%ncoll) / &
+                  patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(iphase) * 1000.d0
+              endif
           end select
           ! no need to update boundary fluid density since it is already set
           patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal = &
             xxbc(istartaq_loc:iendaq_loc)
           if (reaction%ncoll > 0) then
             patch%aux%RT%aux_vars_bc(sum_connection)%colloid%conc_mob = &
-              xxbc(istartcoll_loc:iendcoll_loc)
+              xxbc(istartcoll_loc:iendcoll_loc)* &
+              patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(1)*1.d-3
           endif
           if (compute_activity_coefs) then
             call RActivityCoefficients(patch%aux%RT%aux_vars_bc(sum_connection), &
@@ -3399,7 +3396,8 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
                     xx_loc_p(istartaq:iendaq)
                   if (reaction%ncoll > 0) then
                     patch%aux%RT%aux_vars_bc(sum_connection)%colloid%conc_mob = &
-                      xx_loc_p(istartcoll:iendcoll)
+                      xx_loc_p(istartcoll:iendcoll)* &
+                      patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(1)*1.d-3
                   endif                  
                 endif
             case(ZERO_GRADIENT_BC)
@@ -3408,7 +3406,8 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
                 xx_loc_p(istartaq:iendaq)
               if (reaction%ncoll > 0) then
                 patch%aux%RT%aux_vars_bc(sum_connection)%colloid%conc_mob = &
-                  xx_loc_p(istartcoll:iendcoll)
+                  xx_loc_p(istartcoll:iendcoll)* &
+                  patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(1)*1.d-3
               endif                
           end select
           ! no need to update boundary fluid density since it is already set

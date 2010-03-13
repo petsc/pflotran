@@ -805,6 +805,7 @@ subroutine TFlux(rt_parameter, &
   ndof = rt_parameter%naqcomp
   
   ! units = (L water/sec)*(mol/L) = mol/s
+  ! total = mol/L water
   Res(1:ndof) = coef_up(iphase)*rt_aux_var_up%total(1:ndof,iphase) + &
                 coef_dn(iphase)*rt_aux_var_dn%total(1:ndof,iphase)
 
@@ -813,15 +814,15 @@ subroutine TFlux(rt_parameter, &
     do icoll = 1, rt_parameter%ncoll
       idof = rt_parameter%offset_coll + icoll
       Res(idof) = &
-        coef_up(iphase)*rt_aux_var_up%colloid%conc_mob(icoll)* &
-                        global_aux_var_up%den_kg(iphase)*1.d-3 + &
-        coef_dn(iphase)*rt_aux_var_dn%colloid%conc_mob(icoll)* &
-                        global_aux_var_dn%den_kg(iphase)*1.d-3
+       ! conc_mob = mol/L water
+        coef_up(iphase)*rt_aux_var_up%colloid%conc_mob(icoll)+ &
+        coef_dn(iphase)*rt_aux_var_dn%colloid%conc_mob(icoll)
     enddo
   endif
   if (rt_parameter%ncollcomp > 0) then
     do icollcomp = 1, rt_parameter%ncollcomp
       iaqcomp = rt_parameter%coll_spec_to_pri_spec(icollcomp)
+      ! total_eq_mob = mol/L water
       Res(iaqcomp) = Res(iaqcomp) + &
         coef_up(iphase)*rt_aux_var_up%colloid%total_eq_mob(icollcomp) + &
         coef_dn(iphase)*rt_aux_var_dn%colloid%total_eq_mob(icollcomp)
