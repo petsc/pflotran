@@ -2358,10 +2358,10 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
           do ieqgas = 1, reaction%ngas
             if(abs(reaction%species_idx%co2_gas_id) == ieqgas) then
               icomp = reaction%eqgasspecid(1,ieqgas)
-              iend = local_id*reaction%ncomp
-              istart = iend-reaction%ncomp
+              iendall = local_id*reaction%ncomp
+              istartall = iendall-reaction%ncomp
               Res(icomp) = -msrc(2)
-              r_p(istart+icomp) = r_p(istart+icomp) + Res(icomp)
+              r_p(istartall+icomp) = r_p(istartall+icomp) + Res(icomp)
               print *,'RT SC source', ieqgas,icomp, res(icomp)  
             endif 
           enddo
