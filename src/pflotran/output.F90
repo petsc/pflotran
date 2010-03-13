@@ -639,6 +639,22 @@ subroutine OutputTecplotBlock(realization)
           endif
         enddo
       endif
+      if (reaction%print_colloid) then
+        do i=1,reaction%ncoll
+          if (reaction%colloid_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,COLLOID_MOBILE,i)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+            call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+          endif
+        enddo
+        do i=1,reaction%ncoll
+          if (reaction%colloid_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,COLLOID_IMMOBILE,i)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+            call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+          endif
+        enddo
+      endif
     endif
   endif
   
@@ -1557,6 +1573,22 @@ subroutine OutputTecplotPoint(realization)
             endif
           enddo
         endif
+        if (reaction%print_colloid) then
+          do i=1,reaction%ncoll
+            if (reaction%colloid_print(i)) then
+              value = RealizGetDatasetValueAtCell(realization,COLLOID_MOBILE, &
+                                                  i,ghosted_id)
+              write(IUNIT3,1000,advance='no') value
+            endif
+          enddo
+          do i=1,reaction%ncoll
+            if (reaction%colloid_print(i)) then
+              value = RealizGetDatasetValueAtCell(realization,COLLOID_IMMOBILE, &
+                                                  i,ghosted_id)
+              write(IUNIT3,1000,advance='no') value
+            endif
+          enddo        
+        endif        
       endif
     endif
     
@@ -2625,6 +2657,21 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
       enddo
     endif
     
+    if (reaction%print_colloid) then
+      do i=1,reaction%ncoll
+        if (reaction%colloid_print(i)) then
+          write(fid,'('',"'',a,''_col_mob_'',a,'' '',a,''"'')',advance="no") &
+            trim(reaction%colloid_species_names(i)), trim(tot_mol_char), trim(cell_string)
+        endif
+      enddo
+      do i=1,reaction%ncoll
+        if (reaction%colloid_print(i)) then
+          write(fid,'('',"'',a,''_col_imb_'',a,'' '',a,''"'')',advance="no") &
+            trim(reaction%colloid_species_names(i)), trim(tot_mol_char), trim(cell_string)
+        endif
+      enddo
+    endif    
+    
   endif
 
   if (print_velocities) then 
@@ -2868,6 +2915,21 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
         endif
       enddo
     endif
+    
+    if (reaction%print_colloid) then
+      do i=1,reaction%ncoll
+        if (reaction%colloid_print(i)) then
+          write(fid,'('',"'',a,''_col_mob_'',a,'' '',a,''"'')',advance="no") &
+            trim(reaction%colloid_names(i)), trim(tot_mol_char), trim(cell_string)
+        endif
+      enddo
+      do i=1,reaction%ncoll
+        if (reaction%colloid_print(i)) then
+          write(fid,'('',"'',a,''_col_imb_'',a,'' '',a,''"'')',advance="no") &
+            trim(reaction%colloid_names(i)), trim(tot_mol_char), trim(cell_string)
+        endif
+      enddo
+    endif    
     
   endif
 
@@ -3161,6 +3223,20 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
           endif
         enddo
       endif
+      if (reaction%print_colloid) then
+        do i=1,reaction%ncoll
+          if (reaction%colloid_print(i)) then
+            write(fid,110,advance="no") &
+              RealizGetDatasetValueAtCell(realization,COLLOID_MOBILE,i,ghosted_id)
+          endif
+        enddo
+        do i=1,reaction%ncoll
+          if (reaction%colloid_print(i)) then
+            write(fid,110,advance="no") &
+              RealizGetDatasetValueAtCell(realization,COLLOID_IMMOBILE,i,ghosted_id)
+          endif
+        enddo      
+      endif      
     endif
   endif
           
@@ -3555,6 +3631,28 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
           endif
         enddo
       endif
+      if (reaction%print_colloid) then
+        do i=1,reaction%ncoll
+          if (reaction%colloid_print(i)) then
+            write(fid,110,advance="no") &
+              OutputGetVarFromArrayAtCoord(realization,COLLOID_MOBILE,i, &
+                                           region%coordinates(ONE_INTEGER)%x, &
+                                           region%coordinates(ONE_INTEGER)%y, &
+                                           region%coordinates(ONE_INTEGER)%z, &
+                                           count,ghosted_ids)
+          endif
+        enddo
+        do i=1,reaction%ncoll
+          if (reaction%colloid_print(i)) then
+            write(fid,110,advance="no") &
+              OutputGetVarFromArrayAtCoord(realization,COLLOID_IMMOBILE,i, &
+                                           region%coordinates(ONE_INTEGER)%x, &
+                                           region%coordinates(ONE_INTEGER)%y, &
+                                           region%coordinates(ONE_INTEGER)%z, &
+                                           count,ghosted_ids)
+          endif
+        enddo      
+      endif      
     endif
   endif
     
@@ -5448,6 +5546,38 @@ subroutine OutputHDF5(realization)
           endif
         enddo
       endif
+      if (reaction%print_colloid) then
+        do i=1,reaction%ncoll
+          if (reaction%colloid_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,COLLOID_MOBILE,i)
+            if (.not.(option%use_samr)) then
+              write(string,'(a,''_col_mob_'',a)') trim(reaction%colloid_names(i)), trim(tot_mol_char)
+              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+            else
+              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+              if(first) then
+                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,reaction%print_tot_conc_type,i)
+              endif
+              current_component=current_component+1
+            endif
+          endif
+        enddo
+        do i=1,reaction%ncoll
+          if (reaction%colloid_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,COLLOID_IMMOBILE,i)
+            if (.not.(option%use_samr)) then
+              write(string,'(a,''_col_imb_'',a)') trim(reaction%colloid_names(i)), trim(tot_mol_char)
+              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+            else
+              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+              if(first) then
+                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,reaction%print_tot_conc_type,i)
+              endif
+              current_component=current_component+1
+            endif
+          endif
+        enddo
+      endif      
     endif
   endif
   

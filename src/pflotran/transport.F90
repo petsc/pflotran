@@ -776,7 +776,9 @@ end subroutine TBCFluxDerivative
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine TFlux(rt_parameter,rt_aux_var_up,rt_aux_var_dn, &
+subroutine TFlux(rt_parameter, &
+                 rt_aux_var_up,global_aux_var_up, & 
+                 rt_aux_var_dn,global_aux_var_dn, & 
                  coef_up,coef_dn,option,Res)
 
   use Option_module
@@ -785,24 +787,38 @@ subroutine TFlux(rt_parameter,rt_aux_var_up,rt_aux_var_dn, &
   
   type(reactive_transport_param_type) :: rt_parameter
   type(reactive_transport_auxvar_type) :: rt_aux_var_up, rt_aux_var_dn
+  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn 
   PetscReal :: coef_up(*), coef_dn(*)
   type(option_type) :: option
   PetscReal :: Res(rt_parameter%ncomp)
   
   PetscInt :: iphase
+  PetscInt :: idof
   PetscInt :: ndof
   PetscInt :: istart
   PetscInt :: iend
   PetscInt :: icollcomp
+  PetscInt :: icoll
   PetscInt :: iaqcomp
 
   iphase = 1
-  ndof = rt_parameter%ncomp
+  ndof = rt_parameter%naqcomp
+  
   ! units = (L water/sec)*(mol/L) = mol/s
   Res(1:ndof) = coef_up(iphase)*rt_aux_var_up%total(1:ndof,iphase) + &
                 coef_dn(iphase)*rt_aux_var_dn%total(1:ndof,iphase)
 
 #ifdef REVISED_TRANSPORT
+  if (rt_parameter%ncoll > 0) then
+    do icoll = 1, rt_parameter%ncoll
+      idof = rt_parameter%offset_coll + icoll
+      Res(idof) = &
+        coef_up(iphase)*rt_aux_var_up%colloid%conc_mob(icoll)* &
+                        global_aux_var_up%den_kg(iphase)*1.d-3 + &
+        coef_dn(iphase)*rt_aux_var_dn%colloid%conc_mob(icoll)* &
+                        global_aux_var_dn%den_kg(iphase)*1.d-3
+    enddo
+  endif
   if (rt_parameter%ncollcomp > 0) then
     do icollcomp = 1, rt_parameter%ncollcomp
       iaqcomp = rt_parameter%coll_spec_to_pri_spec(icollcomp)
@@ -855,12 +871,12 @@ subroutine TFluxDerivative(rt_parameter, &
   
   PetscInt :: iphase
   PetscInt :: icomp
-  PetscInt :: ndof
+  PetscInt :: icoll
+  PetscInt :: idof
   PetscInt :: istart
   PetscInt :: iendaq
  
   iphase = 1
-  ndof = rt_parameter%ncomp
   
   ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
   istart = 1
@@ -878,6 +894,13 @@ subroutine TFluxDerivative(rt_parameter, &
   endif
 
 #ifdef REVISED_TRANSPORT
+  if (rt_parameter%ncoll > 0) then
+    do icoll = 1, rt_parameter%ncoll
+      idof = rt_parameter%offset_coll + icoll
+      J_up(idof,idof) = coef_up(iphase)*global_aux_var_up%den_kg(iphase)*1.d-3
+      J_dn(idof,idof) = coef_dn(iphase)*global_aux_var_dn%den_kg(iphase)*1.d-3
+    enddo
+  endif
   if (rt_parameter%ncollcomp > 0) then
     ! dRj_dCj - mobile
     ! istart & iend same as above

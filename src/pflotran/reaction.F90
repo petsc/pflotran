@@ -588,7 +588,13 @@ subroutine ReactionRead(reaction,input,option)
       reaction%print_tot_conc_type = TOTAL_MOLARITY
     endif
   endif
-
+  if (reaction%print_tot_conc_type == 0) then
+    if (reaction%initialize_with_molality) then
+      reaction%print_tot_conc_type = TOTAL_MOLALITY
+    else
+      reaction%print_tot_conc_type = TOTAL_MOLARITY
+    endif
+  endif
   if (reaction%neqcplx + reaction%neqsorb + reaction%nmnrl > 0) then
     reaction%use_full_geochemistry = PETSC_TRUE
   endif
@@ -924,7 +930,12 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   endif
   
   ! colloids
-  if (reaction%use_full_geochemistry .and. associated(colloid_constraint)) then
+  if (reaction%ncoll > 0) then
+    if (.not.associated(colloid_constraint)) then
+      option%io_buffer = 'Constraint "' // trim(constraint_name) // &
+        'missing colloid entries when colloids present in problem.'
+      call printErrMsg(option)
+    endif
     constraint_colloid_name = ''
     do icoll = 1, reaction%ncoll
       found = PETSC_FALSE
@@ -969,6 +980,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          reaction,constraint_name, &
                                          aq_species_constraint, &
                                          srfcplx_constraint, &
+                                         colloid_constraint, &
                                          num_iterations, &
                                          initialize_rt_auxvar,option)
   use Option_module
@@ -1003,18 +1015,18 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscInt :: constraint_type(reaction%naqcomp)
   character(len=MAXWORDLENGTH) :: constraint_spec_name(reaction%naqcomp)
 
-  PetscReal :: Res(reaction%ncomp)
+  PetscReal :: Res(reaction%naqcomp)
   PetscReal :: total_conc(reaction%naqcomp)
   PetscReal :: free_conc(reaction%naqcomp)
-  PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
-  PetscInt :: indices(reaction%ncomp)
+  PetscReal :: Jac(reaction%naqcomp,reaction%naqcomp)
+  PetscInt :: indices(reaction%naqcomp)
   PetscReal :: norm
   PetscReal :: prev_molal(reaction%naqcomp)
   PetscReal, parameter :: tol = 1.d-12
   PetscReal, parameter :: tol_loose = 1.d-6
   PetscTruth :: compute_activity_coefs
 
-  PetscInt :: constraint_id(reaction%ncomp)
+  PetscInt :: constraint_id(reaction%naqcomp)
   PetscReal :: lnQK, QK
   PetscReal :: tempreal
   PetscReal :: pres, tc, xphico2, henry, m_na, m_cl, xmass 
@@ -1024,10 +1036,12 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   
   PetscTruth :: charge_balance_warning_flag = PETSC_FALSE
 
-  PetscReal :: Jac_num(reaction%ncomp)
+  PetscReal :: Jac_num(reaction%naqcomp)
   PetscReal :: Res_pert, pert, prev_value
 
   PetscInt :: iphase
+  PetscInt :: idof
+  PetscInt :: istartaq, iendaq
   PetscInt :: kinmr_nrate_store, irate
 
 #ifdef CHUAN_CO2  
@@ -1041,9 +1055,12 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   constraint_id = aq_species_constraint%constraint_spec_id
   conc = aq_species_constraint%constraint_conc
 
+  istartaq = reaction%offset_aq
+  iendaq = reaction%offset_aq + reaction%naqcomp    
 
   iphase = 1
-  xmass =1.d0  
+  
+  xmass = 1.d0  
   if (associated(global_auxvar%xmass)) xmass = global_auxvar%xmass(iphase)
   
   if (reaction%initialize_with_molality) then
@@ -1054,8 +1071,16 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     convert_molar_to_molal = 1000.d0/global_auxvar%den_kg(iphase)/xmass
   endif
   
+  if (associated(colloid_constraint)) then      
+    colloid_constraint%basis_conc_mob = colloid_constraint%constraint_conc_mob        
+    colloid_constraint%basis_conc_imb = colloid_constraint%constraint_conc_imb        
+    rt_auxvar%colloid%conc_mob = colloid_constraint%basis_conc_mob* &
+                                 convert_molar_to_molal
+    rt_auxvar%colloid%conc_imb = colloid_constraint%basis_conc_imb* &
+                                 convert_molar_to_molal
+  endif  
+  
   if (.not.reaction%use_full_geochemistry) then
-!    aq_species_constraint%basis_molarity = conc*convert_molar_to_molal
     aq_species_constraint%basis_molarity = conc ! don't need to convert
     rt_auxvar%pri_molal = aq_species_constraint%basis_molarity* &
                           convert_molar_to_molal
@@ -1155,6 +1180,13 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
     
     Jac = 0.d0
+
+! for colloids later on    
+!    if (reaction%ncoll > 0) then
+!      do idof = istartcoll, iendcoll
+!        Jac(idof,idof) = 1.d0
+!      enddo
+!    endif
         
     do icomp = 1, reaction%naqcomp
       
@@ -1436,7 +1468,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     enddo
     
     ! scale Jacobian
-    do icomp = 1, reaction%ncomp
+    do icomp = 1, reaction%naqcomp
       norm = max(1.d0,maxval(abs(Jac(icomp,:))))
       norm = 1.d0/norm
       Res(icomp) = Res(icomp)*norm
@@ -1448,13 +1480,13 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
       Jac(:,icomp) = Jac(:,icomp)*rt_auxvar%pri_molal(icomp)
     enddo
     
-    call ludcmp(Jac,reaction%ncomp,indices,icomp)
-    call lubksb(Jac,reaction%ncomp,indices,Res)
+    call ludcmp(Jac,reaction%naqcomp,indices,icomp)
+    call lubksb(Jac,reaction%naqcomp,indices,Res)
 
     prev_molal = rt_auxvar%pri_molal
 
     Res = dsign(1.d0,Res)*min(dabs(Res),5.d0)
-      
+    
     rt_auxvar%pri_molal = rt_auxvar%pri_molal*exp(-Res)
 
     num_iterations = num_iterations + 1
@@ -1529,7 +1561,15 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   aq_species_constraint%basis_molarity = rt_auxvar%pri_molal* &
                                          global_auxvar%den_kg(option%liquid_phase)/ &
                                          1000.d0
-  
+
+! this is performed above
+!  if (associated(colloid_constraint%colloids)) then                        
+!    colloid_constraint%colloids%basis_conc_mob = rt_auxvar%colloid%conc_mob* &
+!                           global_auxvar%den_kg(option%liquid_phase)/1000.d0
+!    colloid_constraint%colloids%basis_conc_imb = rt_auxvar%colloid%conc_imb* &
+!                           global_auxvar%den_kg(option%liquid_phase)/1000.d0
+!  endif
+    
   write(option%io_buffer,111) trim(constraint_name),num_iterations
   call printMsg(option)
 111 format(' Equilibrate Constraint: ',a30,i4)
@@ -2163,6 +2203,8 @@ subroutine ReactionReadOutput(reaction,input,option)
         reaction%print_pH = PETSC_TRUE
       case('KD')
         reaction%print_kd = PETSC_TRUE
+      case('COLLOIDS')
+        reaction%print_colloid = PETSC_TRUE
       case('TOTAL_SORBED')
         reaction%print_total_sorb = PETSC_TRUE
       case('TOTAL_SORBED_MOBILE')

@@ -1055,6 +1055,8 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
         call TranConstraintAddToList(constraint,constraint_list)
         constraint_coupler%aqueous_species => constraint%aqueous_species
         constraint_coupler%minerals => constraint%minerals
+        constraint_coupler%surface_complexes => constraint%surface_complexes
+        constraint_coupler%colloids => constraint%colloids
         constraint_coupler%time = default_time
         ! add to end of coupler list
         if (.not.associated(condition%constraint_coupler_list)) then

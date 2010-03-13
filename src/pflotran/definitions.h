@@ -186,6 +186,8 @@ PetscInt, parameter :: SC_FUGA_COEFF = 34
 PetscInt, parameter :: PRIMARY_KD = 35
 PetscInt, parameter :: TOTAL_SORBED = 36
 PetscInt, parameter :: TOTAL_SORBED_MOBILE = 37
+PetscInt, parameter :: COLLOID_MOBILE = 38
+PetscInt, parameter :: COLLOID_IMMOBILE = 39
 
 ! activity coefficients
 PetscInt, parameter :: ACT_COEF_FREQUENCY_OFF = 0

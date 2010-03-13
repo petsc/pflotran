@@ -833,14 +833,16 @@ subroutine BasisInit(reaction,option)
     enddo
   endif
 
-  reaction%naqcomp = GetPrimarySpeciesCount(reaction)
   ! # of components sorbed to colloids
-  reaction%offset_coll = reaction%naqcomp + 1
+  reaction%naqcomp = GetPrimarySpeciesCount(reaction)
   reaction%ncoll = GetColloidCount(reaction)
-  reaction%offset_collcomp = reaction%ncoll
-  reaction%ncollcomp = reaction%naqcomp ! set to naqcomp for now, will be adjusted later
   reaction%neqcplx = GetSecondarySpeciesCount(reaction)
   reaction%ngas = GetGasCount(reaction)
+
+  reaction%ncollcomp = reaction%naqcomp ! set to naqcomp for now, will be adjusted later
+  reaction%offset_aq = 0
+  reaction%offset_coll = reaction%offset_aq + reaction%naqcomp
+  reaction%offset_collcomp = reaction%offset_coll + reaction%ncoll
 
   ! account for H2O in the basis by adding 1
   ncomp_h2o = reaction%naqcomp+1
@@ -2301,8 +2303,10 @@ subroutine BasisInit(reaction,option)
   if (reaction%ncoll > 0) then
     allocate(reaction%colloid_names(reaction%ncoll))
     allocate(reaction%colloid_mobile_fraction(reaction%ncoll))
+    allocate(reaction%colloid_print(reaction%ncoll))
     reaction%colloid_names = ''
     reaction%colloid_mobile_fraction = 0.d0
+    reaction%colloid_print = PETSC_FALSE
 
     cur_colloid => reaction%colloid_list
     icoll = 1
@@ -2311,6 +2315,8 @@ subroutine BasisInit(reaction,option)
 
       reaction%colloid_names(icoll) = cur_colloid%name
       reaction%colloid_mobile_fraction(icoll) = cur_colloid%mobile_fraction
+      reaction%colloid_print(icoll) = cur_colloid%print_me .or. &
+                                      reaction%print_all_species
       cur_colloid => cur_colloid%next
       icoll = icoll + 1
     enddo

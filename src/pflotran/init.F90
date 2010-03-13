@@ -882,6 +882,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
     reaction%primary_species_names => GetPrimarySpeciesNames(reaction)
     ! PCL add in colloid dofs
     option%ntrandof = GetPrimarySpeciesCount(reaction)
+    option%ntrandof = option%ntrandof + GetColloidCount(reaction)
     reaction%ncomp = option%ntrandof
   endif
     

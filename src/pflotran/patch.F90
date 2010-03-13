@@ -914,6 +914,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
                             reaction,cur_constraint_coupler%constraint_name, &
                             cur_constraint_coupler%aqueous_species, &
                             cur_constraint_coupler%surface_complexes, &
+                            cur_constraint_coupler%colloids, &
                             cur_constraint_coupler%num_iterations, &
                             PETSC_TRUE,option)
       ! turn on flag indicating constraint has not yet been used
@@ -1238,7 +1239,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
          SECONDARY_MOLARITY,TOTAL_MOLALITY,TOTAL_MOLARITY, &
          MINERAL_RATE,MINERAL_VOLUME_FRACTION,SURFACE_CMPLX,SURFACE_CMPLX_FREE, &
          PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
-         TOTAL_SORBED_MOBILE)
+         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE)
          
       select case(ivar)
         case(PH)
@@ -1366,6 +1367,34 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
               ghosted_id = grid%nL2G(local_id)
               vec_ptr(local_id) = patch%aux%RT%aux_vars(ghosted_id)%colloid% &
                 total_eq_mob(isubvar)
+            enddo
+          endif
+        case(COLLOID_MOBILE)
+          if (patch%reaction%print_tot_conc_type == TOTAL_MOLALITY) then
+            do local_id=1,grid%nlmax
+              ghosted_id =grid%nL2G(local_id)
+              vec_ptr(local_id) = &
+                patch%aux%RT%aux_vars(grid%nL2G(local_id))%colloid%conc_mob(isubvar) /&
+                (patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0)
+            enddo
+          else
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = &
+                patch%aux%RT%aux_vars(grid%nL2G(local_id))%colloid%conc_mob(isubvar)
+            enddo
+          endif      
+        case(COLLOID_IMMOBILE)
+          if (patch%reaction%print_tot_conc_type == TOTAL_MOLALITY) then
+            do local_id=1,grid%nlmax
+              ghosted_id =grid%nL2G(local_id)
+              vec_ptr(local_id) = &
+                patch%aux%RT%aux_vars(grid%nL2G(local_id))%colloid%conc_imb(isubvar) /&
+                (patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0)
+            enddo
+          else
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = &
+                patch%aux%RT%aux_vars(grid%nL2G(local_id))%colloid%conc_imb(isubvar)
             enddo
           endif
 #endif            
@@ -1543,7 +1572,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
          MINERAL_VOLUME_FRACTION,MINERAL_RATE, &
          SURFACE_CMPLX,SURFACE_CMPLX_FREE,KIN_SURFACE_CMPLX,KIN_SURFACE_CMPLX_FREE, &
          PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
-         TOTAL_SORBED_MOBILE)
+         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE)
          
       select case(ivar)
         case(PH)
@@ -1609,6 +1638,20 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
         case(TOTAL_SORBED_MOBILE)
           if (patch%reaction%neqsorb > 0 .and. patch%reaction%ncollcomp > 0) then
             value = patch%aux%RT%aux_vars(ghosted_id)%colloid%total_eq_mob(isubvar)
+          endif
+        case(COLLOID_MOBILE)
+          if (patch%reaction%print_tot_conc_type == TOTAL_MOLALITY) then
+            value = patch%aux%RT%aux_vars(ghosted_id)%colloid%conc_mob(isubvar) / &
+                    patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)*1000.d0
+          else
+            value = patch%aux%RT%aux_vars(ghosted_id)%colloid%conc_mob(isubvar)
+          endif
+        case(COLLOID_IMMOBILE)
+          if (patch%reaction%print_tot_conc_type == TOTAL_MOLALITY) then
+            value = patch%aux%RT%aux_vars(ghosted_id)%colloid%conc_imb(isubvar) / &
+                    patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)*1000.d0
+          else
+            value = patch%aux%RT%aux_vars(ghosted_id)%colloid%conc_imb(isubvar)
           endif
 #endif               
       end select
@@ -2016,7 +2059,8 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
             enddo
           endif
       end select
-    case(PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY,TOTAL_MOLALITY)
+    case(PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY,TOTAL_MOLALITY, &
+         COLLOID_MOBILE,COLLOID_IMMOBILE)
       select case(ivar)
         case(PRIMARY_MOLARITY)
           call printErrMsg(option,'Setting of primary molarity at grid cell not supported.')
@@ -2026,6 +2070,10 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
           call printErrMsg(option,'Setting of secondary molarity at grid cell not supported.')
         case(TOTAL_MOLALITY)
           call printErrMsg(option,'Setting of total molality at grid cell not supported.')
+        case(COLLOID_MOBILE)
+          call printErrMsg(option,'Setting of mobile colloid concentration at grid cell not supported.')
+        case(COLLOID_IMMOBILE)
+          call printErrMsg(option,'Setting of immobile colloid concentration at grid cell not supported.')
       end select
     case(POROSITY)
       if (vec_format == GLOBAL) then

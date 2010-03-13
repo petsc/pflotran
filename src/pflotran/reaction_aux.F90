@@ -174,6 +174,7 @@ module Reaction_Aux_module
     PetscTruth :: print_kd
     PetscTruth :: print_total_sorb
     PetscTruth :: print_total_sorb_mobile
+    PetscTruth :: print_colloid
     PetscTruth :: print_act_coefs
     PetscTruth :: print_total_component
     PetscTruth :: print_free_ion
@@ -207,6 +208,7 @@ module Reaction_Aux_module
     PetscInt :: ncollcomp
     
     ! offsets
+    PetscInt :: offset_aq
     PetscInt :: offset_coll
     PetscInt :: offset_collcomp
     
@@ -330,6 +332,7 @@ module Reaction_Aux_module
     PetscInt, pointer :: pri_spec_to_coll_spec(:)
     PetscInt, pointer :: coll_spec_to_pri_spec(:)
     PetscTruth, pointer :: total_sorb_mobile_print(:)
+    PetscTruth, pointer :: colloid_print(:)
     
       ! for saturation states
     PetscInt, pointer :: mnrlspecid(:,:)
@@ -442,6 +445,7 @@ function ReactionCreate()
   reaction%print_kd = PETSC_FALSE
   reaction%print_total_sorb = PETSC_FALSE
   reaction%print_total_sorb_mobile = PETSC_FALSE
+  reaction%print_colloid = PETSC_FALSE
   reaction%print_act_coefs = PETSC_FALSE
   reaction%use_log_formulation = PETSC_FALSE
   reaction%use_full_geochemistry = PETSC_FALSE
@@ -490,11 +494,13 @@ function ReactionCreate()
   nullify(reaction%kd_print)
   nullify(reaction%total_sorb_print)
   nullify(reaction%total_sorb_mobile_print)
+  nullify(reaction%colloid_print)
   
   reaction%ncomp = 0
   reaction%naqcomp = 0
   reaction%ncoll = 0
   reaction%ncollcomp = 0
+  reaction%offset_aq = 0
   reaction%offset_coll = 0
   reaction%offset_collcomp = 0
   nullify(reaction%primary_spec_a0)
@@ -1992,7 +1998,7 @@ subroutine ReactionDestroy(reaction)
   enddo    
   nullify(reaction%mineral_list)
   
-  ! mineral species
+  ! colloid species
   colloid => reaction%colloid_list
   do
     if (.not.associated(colloid)) exit
@@ -2092,6 +2098,9 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%total_sorb_mobile_print)) &
     deallocate(reaction%total_sorb_mobile_print)
   nullify(reaction%total_sorb_mobile_print)
+  if (associated(reaction%colloid_print)) &
+    deallocate(reaction%colloid_print)
+  nullify(reaction%colloid_print)
     
     
   if (associated(reaction%primary_spec_a0)) &

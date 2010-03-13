@@ -76,6 +76,7 @@ module Reactive_Transport_Aux_module
     PetscInt :: nimcomp
     PetscInt :: ncoll
     PetscInt :: ncollcomp
+    PetscInt :: offset_aq
     PetscInt :: offset_coll
     PetscInt :: offset_collcomp
     PetscInt, pointer :: pri_spec_to_coll_spec(:)
@@ -158,6 +159,7 @@ function RTAuxCreate(option)
   aux%rt_parameter%nimcomp = 0
   aux%rt_parameter%ncoll = 0
   aux%rt_parameter%ncollcomp = 0
+  aux%rt_parameter%offset_aq = 0
   aux%rt_parameter%offset_coll = 0
   aux%rt_parameter%offset_collcomp = 0
   nullify(aux%rt_parameter%pri_spec_to_coll_spec)
