@@ -1473,12 +1473,12 @@ subroutine InitReadInput(simulation)
         option%overwrite_restart_flow = PETSC_TRUE
 
       case ('INITIALIZE_FLOW_FROM_FILE')
-        call InputReadWord(input,option,option%initialize_flow_filename, &
-                           PETSC_TRUE)
+        call InputReadNChars(input,option,option%initialize_flow_filename, &
+                             MAXSTRINGLENGTH,PETSC_TRUE)
         call InputErrorMsg(input,option,'filename','INITIALIZE_FLOW_FROM_FILE') 
 
       case ('INITIALIZE_TRANSPORT_FROM_FILE')
-        call InputReadWord(input,option,option%initialize_transport_filename, &
+        call InputReadNChars(input,option,option%initialize_transport_filename, &
                            PETSC_TRUE)
         call InputErrorMsg(input,option,'filename','INITIALIZE_TRANSPORT_FROM_FILE') 
 
