@@ -1480,7 +1480,7 @@ subroutine InitReadInput(simulation)
 
       case ('INITIALIZE_TRANSPORT_FROM_FILE')
         call InputReadNChars(input,option,option%initialize_transport_filename, &
-                           PETSC_TRUE)
+                             MAXSTRINGLENGTH,PETSC_TRUE)
         call InputErrorMsg(input,option,'filename','INITIALIZE_TRANSPORT_FROM_FILE') 
 
 !....................

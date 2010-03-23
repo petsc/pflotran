@@ -1071,6 +1071,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     convert_molar_to_molal = 1000.d0/global_auxvar%den_kg(iphase)/xmass
   endif
   
+#ifdef REVISED_TRANSPORT          
   if (associated(colloid_constraint)) then      
     colloid_constraint%basis_conc_mob = colloid_constraint%constraint_conc_mob        
     colloid_constraint%basis_conc_imb = colloid_constraint%constraint_conc_imb        
@@ -1079,6 +1080,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     rt_auxvar%colloid%conc_imb = colloid_constraint%basis_conc_imb* &
                                  convert_molar_to_molal
   endif  
+#endif
   
   if (.not.reaction%use_full_geochemistry) then
     aq_species_constraint%basis_molarity = conc ! don't need to convert
