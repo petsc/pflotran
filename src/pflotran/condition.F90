@@ -99,6 +99,7 @@ module Condition_module
     type(aq_species_constraint_type), pointer :: aqueous_species
     type(mineral_constraint_type), pointer :: minerals
     type(srfcplx_constraint_type), pointer :: surface_complexes
+    type(colloid_constraint_type), pointer :: colloids
     type(tran_constraint_type), pointer :: next    
   end type tran_constraint_type
   
@@ -122,6 +123,7 @@ module Condition_module
     type(aq_species_constraint_type), pointer :: aqueous_species
     type(mineral_constraint_type), pointer :: minerals
     type(srfcplx_constraint_type), pointer :: surface_complexes
+    type(colloid_constraint_type), pointer :: colloids
     type(global_auxvar_type), pointer :: global_auxvar
     type(reactive_transport_auxvar_type), pointer :: rt_auxvar
     type(tran_constraint_coupler_type), pointer :: next   
@@ -235,6 +237,7 @@ function TranConstraintCreate(option)
   nullify(constraint%aqueous_species)
   nullify(constraint%minerals)
   nullify(constraint%surface_complexes)
+  nullify(constraint%colloids)
   nullify(constraint%next)
   constraint%id = 0
   constraint%name = ''
@@ -266,6 +269,7 @@ function TranConstraintCouplerCreate(option)
   nullify(coupler%aqueous_species)
   nullify(coupler%minerals)
   nullify(coupler%surface_complexes)
+  nullify(coupler%colloids)
   
   coupler%num_iterations = 0
   coupler%iflag = 0
@@ -1051,6 +1055,8 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
         call TranConstraintAddToList(constraint,constraint_list)
         constraint_coupler%aqueous_species => constraint%aqueous_species
         constraint_coupler%minerals => constraint%minerals
+        constraint_coupler%surface_complexes => constraint%surface_complexes
+        constraint_coupler%colloids => constraint%colloids
         constraint_coupler%time = default_time
         ! add to end of coupler list
         if (.not.associated(condition%constraint_coupler_list)) then
@@ -1106,6 +1112,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
   type(aq_species_constraint_type), pointer :: aq_species_constraint
   type(mineral_constraint_type), pointer :: mineral_constraint
   type(srfcplx_constraint_type), pointer :: srfcplx_constraint
+  type(colloid_constraint_type), pointer :: colloid_constraint
   PetscErrorCode :: ierr
 
   call PetscLogEventBegin(logging%event_tran_constraint_read, &
@@ -1308,8 +1315,60 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
         if (associated(constraint%surface_complexes)) then
           call SurfaceComplexConstraintDestroy(constraint%surface_complexes)
         endif
-        constraint%surface_complexes => srfcplx_constraint 
-                            
+        constraint%surface_complexes => srfcplx_constraint
+         
+      case('COLL','COLLOIDS')
+
+        colloid_constraint => ColloidConstraintCreate(reaction,option)
+
+        icomp = 0
+        do
+          call InputReadFlotranString(input,option)
+          call InputReadStringErrorMsg(input,option,'CONSTRAINT, COLLOIDS')
+          
+          if (InputCheckExit(input,option)) exit          
+          
+          icomp = icomp + 1
+
+          if (icomp > reaction%ncoll) then
+            option%io_buffer = &
+                     'Number of colloid constraints exceeds number of ' // &
+                     'colloids in constraint: ' // &
+                      trim(constraint%name)
+            call printErrMsg(option)
+          endif
+          
+          call InputReadWord(input,option,colloid_constraint%names(icomp), &
+                          PETSC_TRUE)
+          call InputErrorMsg(input,option,'colloid name', &
+                          'CONSTRAINT, COLLOIDS')  
+          option%io_buffer = 'Constraint Colloids: ' // &
+                             trim(colloid_constraint%names(icomp))
+          call printMsg(option)
+          call InputReadDouble(input,option,colloid_constraint%constraint_conc_mob(icomp))
+          call InputErrorMsg(input,option,'mobile concentration', &
+                          'CONSTRAINT, COLLOIDS')          
+          call InputReadDouble(input,option,colloid_constraint%constraint_conc_imb(icomp))
+          call InputErrorMsg(input,option,'immobile concentration', &
+                          'CONSTRAINT, COLLOIDS')          
+        
+        enddo  
+        
+        if (icomp < reaction%ncoll) then
+          option%io_buffer = &
+                   'Colloid lists in constraints must provide mobile ' // &
+                   'and immobile concentrations for all colloids ' // &
+                   '(listed under the COLLOIDS card in CHEMISTRY), ' // &
+                   'regardless of whether or not they are present (just ' // &
+                   'assign a small value (e.g. 1.d-40) if not present).'
+          call printErrMsg(option)        
+        endif
+        
+        if (associated(constraint%colloids)) then
+          call ColloidConstraintDestroy(constraint%colloids)
+        endif
+        constraint%colloids => colloid_constraint 
+                                         
       case default
         option%io_buffer = 'Keyword: ' // trim(word) // &
                  ' not recognized in transport constraint'
@@ -2361,6 +2420,13 @@ subroutine TranConstraintDestroy(constraint)
   if (associated(constraint%minerals)) &
     call MineralConstraintDestroy(constraint%minerals)
   nullify(constraint%minerals)
+  if (associated(constraint%surface_complexes)) &
+    call SurfaceComplexConstraintDestroy(constraint%surface_complexes)
+  nullify(constraint%surface_complexes)
+  if (associated(constraint%colloids)) &
+    call ColloidConstraintDestroy(constraint%colloids)
+  nullify(constraint%colloids)
+
   deallocate(constraint)
   nullify(constraint)
 

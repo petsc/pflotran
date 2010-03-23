@@ -882,6 +882,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
     reaction%primary_species_names => GetPrimarySpeciesNames(reaction)
     ! PCL add in colloid dofs
     option%ntrandof = GetPrimarySpeciesCount(reaction)
+    option%ntrandof = option%ntrandof + GetColloidCount(reaction)
     reaction%ncomp = option%ntrandof
   endif
     
@@ -2725,7 +2726,7 @@ subroutine readFlowInitialCondition(realization,filename)
       call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
 
       ! Pressure for all modes 
-      offset = 0
+      offset = 1
       group_name = ''
       dataset_name = 'Pressure'
       call HDF5ReadCellIndexedRealArray(realization,field%work, &
@@ -2733,6 +2734,11 @@ subroutine readFlowInitialCondition(realization,filename)
                                         dataset_name,option%id>0)
       call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
       do local_id=1, grid%nlmax
+        if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
+        if (dabs(vec_p(local_id)) < 1.d-40) then
+          print *,  option%myrank, grid%nL2A(local_id)+1, &
+               ': Potential error - zero pressure in Initial Condition read from file.'
+        endif
         idx = (local_id-1)*option%nflowdof + offset
         xx_p(idx) = vec_p(local_id)
       enddo
@@ -2818,7 +2824,7 @@ subroutine readTransportInitialCondition(realization,filename)
 
       ! Primary species concentrations for all modes 
       do idof = 1, option%ntrandof ! primary aqueous concentrations
-        offset = idof-1
+        offset = idof
         group_name = ''
         dataset_name = reaction%primary_species_names(idof)
         call HDF5ReadCellIndexedRealArray(realization,field%work, &
@@ -2826,6 +2832,11 @@ subroutine readTransportInitialCondition(realization,filename)
                                           dataset_name,option%id>0)
         call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
         do local_id=1, grid%nlmax
+          if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
+          if (vec_p(local_id) < 1.d-40) then
+            print *,  option%myrank, grid%nL2A(local_id)+1, &
+              ': Zero free-ion concentration in Initial Condition read from file.'
+          endif
           idx = (local_id-1)*option%ntrandof + offset
           xx_p(idx) = vec_p(local_id)
         enddo

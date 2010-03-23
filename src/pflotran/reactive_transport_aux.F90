@@ -76,6 +76,7 @@ module Reactive_Transport_Aux_module
     PetscInt :: nimcomp
     PetscInt :: ncoll
     PetscInt :: ncollcomp
+    PetscInt :: offset_aq
     PetscInt :: offset_coll
     PetscInt :: offset_collcomp
     PetscInt, pointer :: pri_spec_to_coll_spec(:)
@@ -86,7 +87,9 @@ module Reactive_Transport_Aux_module
 
   ! Colloids
   type, public :: colloid_auxvar_type
-    PetscReal, pointer :: total_eq_mob(:)
+    PetscReal, pointer :: conc_mob(:) ! mol/L water
+    PetscReal, pointer :: conc_imb(:) ! mol/m^3 bulk
+    PetscReal, pointer :: total_eq_mob(:) ! mol/L water
     PetscReal, pointer :: total_kin(:)
 #ifdef REVISED_TRANSPORT  
     type(matrix_block_auxvar_type), pointer :: dRj_dCj
@@ -156,6 +159,7 @@ function RTAuxCreate(option)
   aux%rt_parameter%nimcomp = 0
   aux%rt_parameter%ncoll = 0
   aux%rt_parameter%ncollcomp = 0
+  aux%rt_parameter%offset_aq = 0
   aux%rt_parameter%offset_coll = 0
   aux%rt_parameter%offset_collcomp = 0
   nullify(aux%rt_parameter%pri_spec_to_coll_spec)
@@ -324,6 +328,8 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
 #ifdef REVISED_TRANSPORT
   if (reaction%ncollcomp > 0) then
     allocate(aux_var%colloid)
+    allocate(aux_var%colloid%conc_mob(reaction%ncoll))
+    allocate(aux_var%colloid%conc_imb(reaction%ncoll))
     allocate(aux_var%colloid%total_eq_mob(reaction%ncollcomp))
     allocate(aux_var%colloid%total_kin(reaction%ncollcomp))
     ! dRj/dCj
@@ -428,6 +434,8 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
 
 #ifdef REVISED_TRANSPORT 
   if (associated(aux_var%colloid)) then
+    aux_var%colloid%conc_mob = aux_var2%colloid%conc_mob
+    aux_var%colloid%conc_imb = aux_var2%colloid%conc_imb
     aux_var%colloid%total_eq_mob = aux_var2%colloid%total_eq_mob
     aux_var%colloid%total_kin = aux_var2%colloid%total_kin
     ! dRj/dCj
@@ -533,6 +541,10 @@ subroutine RTAuxVarDestroy(aux_var)
   
 #ifdef REVISED_TRANSPORT
   if (associated(aux_var%colloid)) then
+    if (associated(aux_var%colloid%conc_mob)) deallocate(aux_var%colloid%conc_mob)
+    nullify(aux_var%colloid%conc_mob)
+    if (associated(aux_var%colloid%conc_imb)) deallocate(aux_var%colloid%conc_imb)
+    nullify(aux_var%colloid%conc_imb)
     if (associated(aux_var%colloid%total_eq_mob)) deallocate(aux_var%colloid%total_eq_mob)
     nullify(aux_var%colloid%total_eq_mob)
     if (associated(aux_var%colloid%total_kin)) deallocate(aux_var%colloid%total_kin)

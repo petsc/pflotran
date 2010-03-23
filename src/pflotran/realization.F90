@@ -705,6 +705,7 @@ subroutine RealProcessTranConditions(realization)
                                    cur_constraint%aqueous_species, &
                                    cur_constraint%minerals, &
                                    cur_constraint%surface_complexes, &
+                                   cur_constraint%colloids, &
                                    realization%option)
     cur_constraint => cur_constraint%next
   enddo
@@ -726,6 +727,7 @@ subroutine RealProcessTranConditions(realization)
             cur_constraint_coupler%aqueous_species => cur_constraint%aqueous_species
             cur_constraint_coupler%minerals => cur_constraint%minerals
             cur_constraint_coupler%surface_complexes => cur_constraint%surface_complexes
+            cur_constraint_coupler%colloids => cur_constraint%colloids
             exit
           endif
           cur_constraint => cur_constraint%next
@@ -1224,6 +1226,7 @@ subroutine RealizAssignTransportInitCond(realization)
   type(global_auxvar_type), pointer :: global_aux_vars(:)
  
   PetscInt :: iphase
+  PetscInt :: offset
   
   option => realization%option
   discretization => realization%discretization
@@ -1273,6 +1276,7 @@ subroutine RealizAssignTransportInitCond(realization)
                   initial_condition%tran_condition%cur_constraint_coupler%constraint_name, &
                   initial_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
                   initial_condition%tran_condition%cur_constraint_coupler%surface_complexes, &
+                  initial_condition%tran_condition%cur_constraint_coupler%colloids, &
                   initial_condition%tran_condition%cur_constraint_coupler%num_iterations, &
                   PETSC_TRUE,option)
               else
@@ -1284,16 +1288,31 @@ subroutine RealizAssignTransportInitCond(realization)
                   initial_condition%tran_condition%cur_constraint_coupler%constraint_name, &
                   initial_condition%tran_condition%cur_constraint_coupler%aqueous_species, &
                   initial_condition%tran_condition%cur_constraint_coupler%surface_complexes, &
+                  initial_condition%tran_condition%cur_constraint_coupler%colloids, &
                   initial_condition%tran_condition%cur_constraint_coupler%num_iterations, &
                   PETSC_FALSE,option)
               endif
             endif
-            do idof = 1, option%ntrandof ! primary aqueous concentrations
-              xx_p(ibegin+idof-1) = &
+            offset = ibegin + reaction%offset_aq - 1
+            do idof = 1, reaction%naqcomp ! primary aqueous concentrations
+              xx_p(offset+idof) = &
                 initial_condition%tran_condition%cur_constraint_coupler% &
                 aqueous_species%basis_molarity(idof) / &
                 global_aux_vars(ghosted_id)%den_kg(iphase)*1000.d0 ! convert molarity -> molality
             enddo
+            ! colloids fractions
+            if (associated(initial_condition%tran_condition%cur_constraint_coupler%colloids)) then
+              offset = ibegin + reaction%offset_coll - 1
+              do idof = 1, reaction%ncoll ! primary aqueous concentrations
+                xx_p(offset+idof) = &
+                  initial_condition%tran_condition%cur_constraint_coupler% &
+                  colloids%basis_conc_mob(idof) / &
+                  global_aux_vars(ghosted_id)%den_kg(iphase)*1000.d0 ! convert molarity -> molality
+                rt_aux_vars(ghosted_id)%colloid%conc_imb(idof) = &
+                  initial_condition%tran_condition%cur_constraint_coupler% &
+                  colloids%basis_conc_imb(idof)
+              enddo
+            endif
             ! mineral volume fractions
             if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
               do idof = 1, reaction%nkinmnrl

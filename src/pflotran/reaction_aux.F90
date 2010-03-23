@@ -69,6 +69,8 @@ module Reaction_Aux_module
     PetscInt :: itype
     character(len=MAXWORDLENGTH) :: name
     PetscReal :: mobile_fraction
+    PetscReal :: forward_rate
+    PetscReal :: backward_rate
     PetscReal :: surface_area
     PetscReal :: molar_weight
     PetscTruth :: print_me
@@ -155,6 +157,14 @@ module Reaction_Aux_module
     PetscReal, pointer :: basis_free_site_conc(:)
   end type srfcplx_constraint_type
 
+  type, public :: colloid_constraint_type
+    character(len=MAXWORDLENGTH), pointer :: names(:)
+    PetscReal, pointer :: constraint_conc_mob(:)
+    PetscReal, pointer :: constraint_conc_imb(:)
+    PetscReal, pointer :: basis_conc_mob(:)
+    PetscReal, pointer :: basis_conc_imb(:)
+  end type colloid_constraint_type
+
   type, public :: reaction_type
     character(len=MAXSTRINGLENGTH) :: database_filename
     PetscTruth :: use_full_geochemistry
@@ -164,6 +174,7 @@ module Reaction_Aux_module
     PetscTruth :: print_kd
     PetscTruth :: print_total_sorb
     PetscTruth :: print_total_sorb_mobile
+    PetscTruth :: print_colloid
     PetscTruth :: print_act_coefs
     PetscTruth :: print_total_component
     PetscTruth :: print_free_ion
@@ -197,6 +208,7 @@ module Reaction_Aux_module
     PetscInt :: ncollcomp
     
     ! offsets
+    PetscInt :: offset_aq
     PetscInt :: offset_coll
     PetscInt :: offset_collcomp
     
@@ -320,6 +332,7 @@ module Reaction_Aux_module
     PetscInt, pointer :: pri_spec_to_coll_spec(:)
     PetscInt, pointer :: coll_spec_to_pri_spec(:)
     PetscTruth, pointer :: total_sorb_mobile_print(:)
+    PetscTruth, pointer :: colloid_print(:)
     
       ! for saturation states
     PetscInt, pointer :: mnrlspecid(:,:)
@@ -359,10 +372,7 @@ module Reaction_Aux_module
 
   public :: ReactionCreate, &
             SpeciesIndexCreate, &
-            AqueousSpeciesCreate, &
             GasSpeciesCreate, &
-            MineralCreate, &
-            ColloidCreate, &
             GetPrimarySpeciesCount, &
             GetPrimarySpeciesNames, &
             GetSecondarySpeciesCount, &
@@ -382,14 +392,22 @@ module Reaction_Aux_module
             TransitionStateTheoryRxnCreate, &
             TransitionStateTheoryRxnDestroy, &
             SurfaceComplexationRxnCreate, &
-            AqueousSpeciesConstraintDestroy, &
-            MineralConstraintDestroy, &
-            SurfaceComplexConstraintDestroy, &
+            AqueousSpeciesCreate, &
+            AqueousSpeciesDestroy, &
             AqueousSpeciesConstraintCreate, &
+            AqueousSpeciesConstraintDestroy, &
+            MineralCreate, &
+            MineralDestroy, &
             MineralConstraintCreate, &
-            SurfaceComplexConstraintCreate, &
+            MineralConstraintDestroy, &
             SurfaceComplexCreate, &
             SurfaceComplexDestroy, &
+            SurfaceComplexConstraintCreate, &
+            SurfaceComplexConstraintDestroy, &
+            ColloidCreate, &
+            ColloidDestroy, &
+            ColloidConstraintCreate, &
+            ColloidConstraintDestroy, &
             IonExchangeRxnCreate, &
             IonExchangeCationCreate
              
@@ -427,6 +445,7 @@ function ReactionCreate()
   reaction%print_kd = PETSC_FALSE
   reaction%print_total_sorb = PETSC_FALSE
   reaction%print_total_sorb_mobile = PETSC_FALSE
+  reaction%print_colloid = PETSC_FALSE
   reaction%print_act_coefs = PETSC_FALSE
   reaction%use_log_formulation = PETSC_FALSE
   reaction%use_full_geochemistry = PETSC_FALSE
@@ -475,11 +494,13 @@ function ReactionCreate()
   nullify(reaction%kd_print)
   nullify(reaction%total_sorb_print)
   nullify(reaction%total_sorb_mobile_print)
+  nullify(reaction%colloid_print)
   
   reaction%ncomp = 0
   reaction%naqcomp = 0
   reaction%ncoll = 0
   reaction%ncollcomp = 0
+  reaction%offset_aq = 0
   reaction%offset_coll = 0
   reaction%offset_collcomp = 0
   nullify(reaction%primary_spec_a0)
@@ -755,6 +776,8 @@ function ColloidCreate()
   colloid%itype = 0
   colloid%name = ''
   colloid%mobile_fraction = 0.5d0
+  colloid%forward_rate = 0.d0
+  colloid%backward_rate = 0.d0
   colloid%surface_area = 1.d0
   colloid%molar_weight = 0.d0
   colloid%print_me = PETSC_FALSE
@@ -1046,6 +1069,41 @@ function SurfaceComplexConstraintCreate(reaction,option)
   SurfaceComplexConstraintCreate => constraint
 
 end function SurfaceComplexConstraintCreate
+  
+! ************************************************************************** !
+!
+! ColloidConstraintCreate: Creates a colloid constraint object
+! author: Glenn Hammond
+! date: 03/12/10
+!
+! ************************************************************************** !
+function ColloidConstraintCreate(reaction,option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+  type(colloid_constraint_type), pointer :: ColloidConstraintCreate
+
+  type(colloid_constraint_type), pointer :: constraint  
+
+  allocate(constraint)
+  allocate(constraint%names(reaction%ncoll))
+  constraint%names = ''
+  allocate(constraint%constraint_conc_mob(reaction%ncoll))
+  constraint%constraint_conc_mob = 0.d0
+  allocate(constraint%constraint_conc_imb(reaction%ncoll))
+  constraint%constraint_conc_imb = 0.d0
+  allocate(constraint%basis_conc_mob(reaction%ncoll))
+  constraint%basis_conc_mob = 0.d0
+  allocate(constraint%basis_conc_imb(reaction%ncoll))
+  constraint%basis_conc_imb = 0.d0
+
+  ColloidConstraintCreate => constraint
+
+end function ColloidConstraintCreate
   
 ! ************************************************************************** !
 !
@@ -1841,6 +1899,42 @@ end subroutine SurfaceComplexConstraintDestroy
 
 ! ************************************************************************** !
 !
+! ColloidConstraintDestroy: Destroys a colloid constraint object
+! author: Glenn Hammond
+! date: 03/12/10
+!
+! ************************************************************************** !
+subroutine ColloidConstraintDestroy(constraint)
+
+  implicit none
+  
+  type(colloid_constraint_type), pointer :: constraint
+  
+  if (.not.associated(constraint)) return
+  
+  if (associated(constraint%names)) &
+    deallocate(constraint%names)
+  nullify(constraint%names)
+  if (associated(constraint%constraint_conc_mob)) &
+    deallocate(constraint%constraint_conc_mob)
+  nullify(constraint%constraint_conc_mob)
+  if (associated(constraint%constraint_conc_imb)) &
+    deallocate(constraint%constraint_conc_imb)
+  nullify(constraint%constraint_conc_imb)
+  if (associated(constraint%basis_conc_mob)) &
+    deallocate(constraint%basis_conc_mob)
+  nullify(constraint%basis_conc_mob)
+  if (associated(constraint%basis_conc_imb)) &
+    deallocate(constraint%basis_conc_imb)
+  nullify(constraint%basis_conc_imb)
+
+  deallocate(constraint)
+  nullify(constraint)
+
+end subroutine ColloidConstraintDestroy
+
+! ************************************************************************** !
+!
 ! ReactionDestroy: Deallocates a reaction object
 ! author: Glenn Hammond
 ! date: 05/29/08
@@ -1904,7 +1998,7 @@ subroutine ReactionDestroy(reaction)
   enddo    
   nullify(reaction%mineral_list)
   
-  ! mineral species
+  ! colloid species
   colloid => reaction%colloid_list
   do
     if (.not.associated(colloid)) exit
@@ -2004,6 +2098,9 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%total_sorb_mobile_print)) &
     deallocate(reaction%total_sorb_mobile_print)
   nullify(reaction%total_sorb_mobile_print)
+  if (associated(reaction%colloid_print)) &
+    deallocate(reaction%colloid_print)
+  nullify(reaction%colloid_print)
     
     
   if (associated(reaction%primary_spec_a0)) &

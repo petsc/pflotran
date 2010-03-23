@@ -93,25 +93,27 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  do
-    iphase = iphase +1 
-    if (iphase > option%nphase) exit
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+    do
+      iphase = iphase +1 
+      if (iphase > option%nphase) exit
 ! super critical CO2 phase have the index 2: need implementation
-    q = velocity(iphase)
-    sat_up = global_aux_var_up%sat(iphase)
-    sat_dn = global_aux_var_dn%sat(iphase)
+      q = velocity(iphase)
+      sat_up = global_aux_var_up%sat(iphase)
+      sat_dn = global_aux_var_dn%sat(iphase)
   
-    if (sat_up > eps .and. sat_dn > eps) then
-      stp_up = sat_up*tor_up*por_up 
-      stp_dn = sat_dn*tor_dn*por_dn
+      if (sat_up > eps .and. sat_dn > eps) then
+        stp_up = sat_up*tor_up*por_up 
+        stp_dn = sat_dn*tor_dn*por_dn
     ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-      weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
+        weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-      if(iphase ==2) diffusion(iphase) = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
+        if(iphase ==2) diffusion(iphase) = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
                                weight*rt_parameter%diffusion_coefficient(iphase)
-    endif
-  enddo
+      endif
+    enddo
+  endif
 #endif  
   
 end subroutine TDiffusion
@@ -180,39 +182,40 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  do 
-    iphase = iphase + 1
-    if (iphase > option%nphase) exit
-    q = velocity(iphase)
-    sat_up = global_aux_var_up%sat(iphase)
-    sat_dn = global_aux_var_dn%sat(iphase)
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+    do 
+      iphase = iphase + 1
+      if (iphase > option%nphase) exit
+      q = velocity(iphase)
+      sat_up = global_aux_var_up%sat(iphase)
+      sat_dn = global_aux_var_dn%sat(iphase)
 
-    select case(ibndtype)
-      case(DIRICHLET_BC)
-        if (sat_up > eps .and. sat_dn > eps) then
+      select case(ibndtype)
+        case(DIRICHLET_BC)
+          if (sat_up > eps .and. sat_dn > eps) then
         ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-          weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
+            weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
          ! need to account for multiple phases
          ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-          if( iphase == 2) diffusion(iphase) = rt_parameter%dispersivity*q/dist_dn + &
+            if( iphase == 2) diffusion(iphase) = rt_parameter%dispersivity*q/dist_dn + &
                                        weight*rt_parameter%diffusion_coefficient(iphase)
-        endif    
-      case(DIRICHLET_ZERO_GRADIENT_BC)
-        if (q >= 0.d0) then
+          endif    
+        case(DIRICHLET_ZERO_GRADIENT_BC)
+          if (q >= 0.d0) then
          ! same as dirichlet above
-          if (sat_up > eps .and. sat_dn > eps) then
+            if (sat_up > eps .and. sat_dn > eps) then
           ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-            weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
+              weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
         ! need to account for multiple phases
         ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-            if(iphase == 2) diffusion(iphase) = rt_parameter%dispersivity*q/dist_dn + &
+              if(iphase == 2) diffusion(iphase) = rt_parameter%dispersivity*q/dist_dn + &
                                         weight*rt_parameter%diffusion_coefficient(iphase)
-          endif    
-        endif
-      case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
-    end select
-
-  enddo
+            endif    
+          endif
+        case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
+      end select
+    enddo
+  endif
 #endif
 
 end subroutine TDiffusionBC
@@ -290,47 +293,48 @@ subroutine TFlux(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up, &
   
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  do
-   iphase = iphase +1 
-   if (iphase > option%nphase) exit
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+    do
+      iphase = iphase +1 
+      if (iphase > option%nphase) exit
 ! super critical CO2 phase have the index 2: need implementation
-   q = velocity(iphase)
-   diffusion = 0.d0
-   sat_up = global_aux_var_up%sat(iphase)
-   sat_dn = global_aux_var_dn%sat(iphase)
+      q = velocity(iphase)
+      diffusion = 0.d0
+      sat_up = global_aux_var_up%sat(iphase)
+      sat_dn = global_aux_var_dn%sat(iphase)
   
-   if (sat_up > eps .and. sat_dn > eps) then
-     stp_up = sat_up*tor_up*por_up 
-     stp_dn = sat_dn*tor_dn*por_dn
+      if (sat_up > eps .and. sat_dn > eps) then
+        stp_up = sat_up*tor_up*por_up 
+        stp_dn = sat_dn*tor_dn*por_dn
     ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-     weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
+        weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-    if(iphase ==2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
+        if(iphase == 2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
                               weight*rt_parameter%diffusion_coefficient(iphase)
-
-  endif
+      endif
   
   !upstream weighting
   ! units = (m^3 water/m^2 bulk/sec)
-  if (q > 0.d0) then
-    coef_up =  diffusion+q
-    coef_dn = -diffusion
-  else
-    coef_up =  diffusion
-    coef_dn = -diffusion+q
-  endif
+      if (q > 0.d0) then
+        coef_up =  diffusion+q
+        coef_dn = -diffusion
+      else
+        coef_up =  diffusion
+        coef_dn = -diffusion+q
+      endif
   
   ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)*(1000 L water/m^3 water)
   !       = L water/sec
-  coef_up = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
-  coef_dn = coef_dn*area*1000.d0
+      coef_up = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
+      coef_dn = coef_dn*area*1000.d0
   
   ! units = (L water/sec)*(mol/L) = mol/s
-  Res(1:option%ntrandof) = Res (1:option%ntrandof) + & 
+      Res(1:option%ntrandof) = Res (1:option%ntrandof) + & 
                       coef_up*rt_aux_var_up%total(1:option%ntrandof,iphase) + &
                       coef_dn*rt_aux_var_dn%total(1:option%ntrandof,iphase)
- enddo
+    enddo
+  endif
 #endif
   
 end subroutine TFlux
@@ -418,56 +422,58 @@ subroutine TFluxDerivative(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  do 
-    iphase = iphase + 1
-    if (iphase > option%nphase) exit
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+    do 
+      iphase = iphase + 1
+      if (iphase > option%nphase) exit
 ! super critical CO2 phase
-    q = velocity(iphase)
-    diffusion = 0D0
-    sat_up = global_aux_var_up%sat(iphase)
-    sat_dn = global_aux_var_dn%sat(iphase)
+      q = velocity(iphase)
+      diffusion = 0D0
+      sat_up = global_aux_var_up%sat(iphase)
+      sat_dn = global_aux_var_dn%sat(iphase)
     
-    if (sat_up > eps .and. sat_dn > eps) then
-      stp_up = sat_up*tor_up*por_up
-      stp_dn = sat_dn*tor_dn*por_dn
+      if (sat_up > eps .and. sat_dn > eps) then
+        stp_up = sat_up*tor_up*por_up
+        stp_dn = sat_dn*tor_dn*por_dn
       ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-      weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
+        weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-      if(iphase==2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
+        if(iphase==2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
                                 weight*rt_parameter%diffusion_coefficient(iphase)
-    endif
+      endif
   
     !upstream weighting
     ! units = (m^3 water/m^2 bulk/sec)
-    if (q > 0.d0) then
-      coef_up =  diffusion+q
-      coef_dn = -diffusion
-    else
-      coef_up =  diffusion
-      coef_dn = -diffusion+q
-    endif
+      if (q > 0.d0) then
+        coef_up =  diffusion+q
+        coef_dn = -diffusion
+      else
+        coef_up =  diffusion
+        coef_dn = -diffusion+q
+      endif
   
     ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)
     !       = m^3 water/sec
-    coef_up = coef_up*area
-    coef_dn = coef_dn*area
+      coef_up = coef_up*area
+      coef_dn = coef_dn*area
 
     ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
-    if (associated(rt_aux_var_dn%dtotal)) then
-      J_up = J_up + rt_aux_var_up%dtotal(:,:,iphase)*coef_up*1000.d0
-      J_dn = J_dn + rt_aux_var_dn%dtotal(:,:,iphase)*coef_dn*1000.d0
-    else  
-      print *,'Dtotal needed for SC problem. STOP'
-      stop 
+      if (associated(rt_aux_var_dn%dtotal)) then
+        J_up = J_up + rt_aux_var_up%dtotal(:,:,iphase)*coef_up*1000.d0
+        J_dn = J_dn + rt_aux_var_dn%dtotal(:,:,iphase)*coef_dn*1000.d0
+      else  
+        print *,'Dtotal needed for SC problem. STOP'
+        stop 
    !   J_up = 0.d0
    !   J_dn = 0.d0
    !   do icomp = 1, option%ntrandof
    !     J_up(icomp,icomp) = J_up(icomp,icomp) + coef_up*global_aux_var_up%den_kg(iphase)
    !     J_dn(icomp,icomp) = J_dn(icomp,icomp) + coef_dn*global_aux_var_dn%den_kg(iphase)
    !   enddo
-    endif
-  enddo
+      endif
+    enddo
+  endif
 #endif
 
 end subroutine TFluxDerivative
@@ -560,9 +566,10 @@ subroutine TBCFlux(ibndtype, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  do 
-    iphase = iphase + 1
-    if (iphase > option%nphase) exit
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+    do 
+      iphase = iphase + 1
+      if (iphase > option%nphase) exit
       q = velocity(iphase)
       diffusion = 0D0
       sat_up = global_aux_var_up%sat(iphase)
@@ -591,29 +598,30 @@ subroutine TBCFlux(ibndtype, &
                                           weight*rt_parameter%diffusion_coefficient(iphase)
             endif    
           endif
-    case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
-  end select
+        case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
+      end select
 
   !upstream weighting
   ! units = (m^3 water/m^2 bulk/sec)
-  if (q > 0.d0) then
-    coef_up =  diffusion+q
-    coef_dn = -diffusion
-  else
-    coef_up =  diffusion
-    coef_dn = -diffusion+q
-  endif
+      if (q > 0.d0) then
+        coef_up =  diffusion+q
+        coef_dn = -diffusion
+      else
+        coef_up =  diffusion
+        coef_dn = -diffusion+q
+      endif
 
   ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)*(1000 L water/m^3 water)
   !       = L water/sec
-  coef_up = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
-  coef_dn = coef_dn*area*1000.d0
+      coef_up = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
+      coef_dn = coef_dn*area*1000.d0
 
   ! units = (L water/sec)*(mol/L) = mol/s  
-  Res(1:option%ntrandof) = Res(1:option%ntrandof) + &
+      Res(1:option%ntrandof) = Res(1:option%ntrandof) + &
                            coef_up*rt_aux_var_up%total(1:option%ntrandof,iphase) + &
                            coef_dn*rt_aux_var_dn%total(1:option%ntrandof,iphase)  
- enddo
+    enddo
+  endif
 #endif
 
 end subroutine TBCFlux
@@ -709,9 +717,10 @@ subroutine TBCFluxDerivative(ibndtype, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  do 
-    iphase = iphase + 1
-    if (iphase > option%nphase) exit
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+    do 
+      iphase = iphase + 1
+      if (iphase > option%nphase) exit
 
 ! super critical CO2 phase
       q = velocity(iphase)
@@ -763,8 +772,9 @@ subroutine TBCFluxDerivative(ibndtype, &
         do icomp = 1, option%ntrandof
           J_dn(icomp,icomp) = J_dn(icomp,icomp) + coef_dn*global_aux_var_dn%den_kg(iphase)
         enddo
-       endif
-   enddo
+      endif
+    enddo
+  endif
 #endif
 
 end subroutine TBCFluxDerivative
@@ -776,7 +786,9 @@ end subroutine TBCFluxDerivative
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine TFlux(rt_parameter,rt_aux_var_up,rt_aux_var_dn, &
+subroutine TFlux(rt_parameter, &
+                 rt_aux_var_up,global_aux_var_up, & 
+                 rt_aux_var_dn,global_aux_var_dn, & 
                  coef_up,coef_dn,option,Res)
 
   use Option_module
@@ -785,44 +797,61 @@ subroutine TFlux(rt_parameter,rt_aux_var_up,rt_aux_var_dn, &
   
   type(reactive_transport_param_type) :: rt_parameter
   type(reactive_transport_auxvar_type) :: rt_aux_var_up, rt_aux_var_dn
+  type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn 
   PetscReal :: coef_up(*), coef_dn(*)
   type(option_type) :: option
   PetscReal :: Res(rt_parameter%ncomp)
   
   PetscInt :: iphase
+  PetscInt :: idof
   PetscInt :: ndof
   PetscInt :: istart
   PetscInt :: iend
   PetscInt :: icollcomp
+  PetscInt :: icoll
   PetscInt :: iaqcomp
 
   iphase = 1
-  ndof = rt_parameter%ncomp
+  ndof = rt_parameter%naqcomp
+  
   ! units = (L water/sec)*(mol/L) = mol/s
+  ! total = mol/L water
   Res(1:ndof) = coef_up(iphase)*rt_aux_var_up%total(1:ndof,iphase) + &
                 coef_dn(iphase)*rt_aux_var_dn%total(1:ndof,iphase)
-  
-! Add in multiphase, clu 12/29/08
-#ifdef CHUAN_CO2  
-  do
-   iphase = iphase +1 
-   if (iphase > option%nphase) exit
-! super critical CO2 phase have the index 2: need implementation
-  
-  ! units = (L water/sec)*(mol/L) = mol/s
-  Res(1:ndof) = Res (1:ndof) + & 
-                coef_up(iphase)*rt_aux_var_up%total(1:ndof,iphase) + &
-                coef_dn(iphase)*rt_aux_var_dn%total(1:ndof,iphase)
- enddo
-#endif
 
 #ifdef REVISED_TRANSPORT
+  if (rt_parameter%ncoll > 0) then
+    do icoll = 1, rt_parameter%ncoll
+      idof = rt_parameter%offset_coll + icoll
+      Res(idof) = &
+       ! conc_mob = mol/L water
+        coef_up(iphase)*rt_aux_var_up%colloid%conc_mob(icoll)+ &
+        coef_dn(iphase)*rt_aux_var_dn%colloid%conc_mob(icoll)
+    enddo
+  endif
   if (rt_parameter%ncollcomp > 0) then
     do icollcomp = 1, rt_parameter%ncollcomp
       iaqcomp = rt_parameter%coll_spec_to_pri_spec(icollcomp)
+      ! total_eq_mob = mol/L water
       Res(iaqcomp) = Res(iaqcomp) + &
         coef_up(iphase)*rt_aux_var_up%colloid%total_eq_mob(icollcomp) + &
         coef_dn(iphase)*rt_aux_var_dn%colloid%total_eq_mob(icollcomp)
+    enddo
+  endif
+#endif
+  
+! Add in multiphase, clu 12/29/08
+#ifdef CHUAN_CO2
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+    do
+     iphase = iphase +1 
+     if (iphase > option%nphase) exit
+!    super critical CO2 phase have the index 2: need implementation
+  
+!    units = (L water/sec)*(mol/L) = mol/s
+     Res(1:ndof) = Res (1:ndof) + & 
+                coef_up(iphase)*rt_aux_var_up%total(1:ndof,iphase) + &
+                coef_dn(iphase)*rt_aux_var_dn%total(1:ndof,iphase)
     enddo
   endif
 #endif
@@ -855,12 +884,12 @@ subroutine TFluxDerivative(rt_parameter, &
   
   PetscInt :: iphase
   PetscInt :: icomp
-  PetscInt :: ndof
+  PetscInt :: icoll
+  PetscInt :: idof
   PetscInt :: istart
   PetscInt :: iendaq
  
   iphase = 1
-  ndof = rt_parameter%ncomp
   
   ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
   istart = 1
@@ -877,44 +906,53 @@ subroutine TFluxDerivative(rt_parameter, &
     enddo
   endif
 
+#ifdef REVISED_TRANSPORT
+  if (rt_parameter%ncoll > 0) then
+    do icoll = 1, rt_parameter%ncoll
+      idof = rt_parameter%offset_coll + icoll
+      J_up(idof,idof) = coef_up(iphase)*global_aux_var_up%den_kg(iphase)*1.d-3
+      J_dn(idof,idof) = coef_dn(iphase)*global_aux_var_dn%den_kg(iphase)*1.d-3
+    enddo
+  endif
+  if (rt_parameter%ncollcomp > 0) then
+    ! dRj_dCj - mobile
+    ! istart & iend same as above
+    J_up(istart:iendaq,istart:iendaq) = J_up(istart:iendaq,istart:iendaq) + &
+      rt_aux_var_up%colloid%dRj_dCj%dtotal(:,:,iphase)*coef_up(iphase)
+    J_dn(istart:iendaq,istart:iendaq) = J_dn(istart:iendaq,istart:iendaq) + &
+      rt_aux_var_dn%colloid%dRj_dCj%dtotal(:,:,iphase)*coef_dn(iphase)
+    ! need the below
+    ! dRj_dSic
+    ! dRic_dSic
+    ! dRic_dCj
+  endif
+#endif
+
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  do 
-    iphase = iphase + 1
-    if (iphase > option%nphase) exit
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+    do 
+      iphase = iphase + 1
+      if (iphase > option%nphase) exit
 ! super critical CO2 phase
 
     ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
-    if (associated(rt_aux_var_dn%aqueous%dtotal)) then
-      J_up(istart:iendaq,istart:iendaq) = J_up(istart:iendaq,istart:iendaq) + &
-        rt_aux_var_up%aqueous%dtotal(:,:,iphase)*coef_up(iphase)
-      J_dn(istart:iendaq,istart:iendaq) = J_dn(istart:iendaq,istart:iendaq) + &
-        rt_aux_var_dn%aqueous%dtotal(:,:,iphase)*coef_dn(iphase)
-    else  
-      print *,'Dtotal needed for SC problem. STOP'
-      stop 
+      if (associated(rt_aux_var_dn%aqueous%dtotal)) then
+        J_up(istart:iendaq,istart:iendaq) = J_up(istart:iendaq,istart:iendaq) + &
+          rt_aux_var_up%aqueous%dtotal(:,:,iphase)*coef_up(iphase)
+        J_dn(istart:iendaq,istart:iendaq) = J_dn(istart:iendaq,istart:iendaq) + &
+          rt_aux_var_dn%aqueous%dtotal(:,:,iphase)*coef_dn(iphase)
+      else  
+        print *,'Dtotal needed for SC problem. STOP'
+        stop 
    !   J_up = 0.d0
    !   J_dn = 0.d0
    !   do icomp = 1, ndof
    !     J_up(icomp,icomp) = J_up(icomp,icomp) + coef_up*global_aux_var_up%den_kg(iphase)
    !     J_dn(icomp,icomp) = J_dn(icomp,icomp) + coef_dn*global_aux_var_dn%den_kg(iphase)
    !   enddo
-    endif
-  enddo
-#endif
-
-#ifdef REVISED_TRANSPORT
-  if (rt_parameter%ncollcomp > 0) then
-    ! dRj_dCj - mobile
-    ! istart & iend same as above
-    J_up(istart:iendaq,istart:iendaq) = J_up(istart:iendaq,istart:iendaq) + &
-      rt_aux_var_up%colloid%dRj_dCj%dtotal(:,:,1)*coef_up(1)
-    J_dn(istart:iendaq,istart:iendaq) = J_dn(istart:iendaq,istart:iendaq) + &
-      rt_aux_var_dn%colloid%dRj_dCj%dtotal(:,:,1)*coef_dn(1)
-    ! need the below
-    ! dRj_dSic
-    ! dRic_dSic
-    ! dRic_dCj
+      endif
+    enddo
   endif
 #endif
 
@@ -958,9 +996,10 @@ subroutine TBCFluxDerivative(rt_aux_var_up,rt_aux_var_dn, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  do 
-    iphase = iphase + 1
-    if (iphase > option%nphase) exit
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+    do 
+      iphase = iphase + 1
+      if (iphase > option%nphase) exit
 
 ! super critical CO2 phase
       ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
@@ -971,8 +1010,9 @@ subroutine TBCFluxDerivative(rt_aux_var_up,rt_aux_var_dn, &
         do icomp = 1, option%ntrandof
           J_dn(icomp,icomp) = J_dn(icomp,icomp) + coef_dn*global_aux_var_dn%den_kg(iphase)
         enddo
-       endif
-   enddo
+      endif
+    enddo
+  endif
 #endif
 
 end subroutine TBCFluxDerivative
@@ -1022,28 +1062,30 @@ subroutine TFluxCoef(option,area,velocity,diffusion,T_up,T_dn)
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  do
-    iphase = iphase +1 
-    if (iphase > option%nphase) exit
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+    do
+      iphase = iphase +1 
+      if (iphase > option%nphase) exit
     ! super critical CO2 phase have the index 2: need implementation
-    q = velocity(iphase)
+      q = velocity(iphase)
   
     !upstream weighting
     ! units = (m^3 water/m^2 bulk/sec)
-    if (q > 0.d0) then
-      coef_up =  diffusion(iphase)+q
-      coef_dn = -diffusion(iphase)
-    else
-      coef_up =  diffusion(iphase)
-      coef_dn = -diffusion(iphase)+q
-    endif
+      if (q > 0.d0) then
+        coef_up =  diffusion(iphase)+q
+        coef_dn = -diffusion(iphase)
+      else
+        coef_up =  diffusion(iphase)
+        coef_dn = -diffusion(iphase)+q
+      endif
   
     ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)*(1000 L water/m^3 water)
     !       = L water/sec
-    T_up(iphase) = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
-    T_dn(iphase) = coef_dn*area*1000.d0
+      T_up(iphase) = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
+      T_dn(iphase) = coef_dn*area*1000.d0
   
-  enddo
+    enddo
+  endif
 #endif
 
 end subroutine TFluxCoef
@@ -1109,49 +1151,51 @@ subroutine TFluxAdv(rt_aux_var_up,global_aux_var_up, &
   
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  do
-    iphase = iphase + 1 
-    if (iphase > option%nphase) exit
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+    do
+      iphase = iphase + 1 
+      if (iphase > option%nphase) exit
 !   super critical CO2 phase have the index 2: need implementation
-    q = velocity(iphase)
+      q = velocity(iphase)
   
-    sat_up = global_aux_var_up%sat(iphase)
-    sat_dn = global_aux_var_dn%sat(iphase)
+      sat_up = global_aux_var_up%sat(iphase)
+      sat_dn = global_aux_var_dn%sat(iphase)
   
-    if (sat_up > eps .and. sat_dn > eps) then
-      stp_up = sat_up*tor_up*por_up 
-      stp_dn = sat_dn*tor_dn*por_dn
+      if (sat_up > eps .and. sat_dn > eps) then
+        stp_up = sat_up*tor_up*por_up 
+        stp_dn = sat_dn*tor_dn*por_dn
     ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-      weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
+        weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
 
-     diffusion = 0.d0 
-     if(iphase == 2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn)+ &
+       diffusion = 0.d0 
+       if(iphase == 2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn)+ &
                               weight*rt_parameter%diffusion_coefficient(iphase)
 
-    endif
+      endif
   
   !upstream weighting
   ! units = (m^3 water/m^2 bulk/sec)
-    if (q > 0.d0) then
-      coef_up =  diffusion+q
-      coef_dn = -diffusion
-    else
-      coef_up =  diffusion
-      coef_dn = -diffusion+q
-    endif
+      if (q > 0.d0) then
+        coef_up =  diffusion+q
+        coef_dn = -diffusion
+      else
+        coef_up =  diffusion
+        coef_dn = -diffusion+q
+      endif
   
   ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)*(1000 L water/m^3 water)
   !       = L water/sec
-    coef_up = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
-    coef_dn = coef_dn*area*1000.d0
+      coef_up = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
+      coef_dn = coef_dn*area*1000.d0
   
   ! units = (L water/sec)*(mol/L) = mol/s
-    Res(1:option%ntrandof) = Res (1:option%ntrandof) + & 
+      Res(1:option%ntrandof) = Res (1:option%ntrandof) + & 
                       coef_up*rt_aux_var_up%total(1:option%ntrandof,iphase) + &
                       coef_dn*rt_aux_var_dn%total(1:option%ntrandof,iphase)
-  enddo
+    enddo
+  endif
 #endif
 
 end subroutine TFluxAdv
@@ -1220,56 +1264,58 @@ subroutine TFluxDerivativeAdv(rt_aux_var_up,global_aux_var_up, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  do 
-    iphase = iphase + 1
-    if (iphase > option%nphase) exit
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+    do 
+      iphase = iphase + 1
+      if (iphase > option%nphase) exit
 ! super critical CO2 phase
-    q = velocity(iphase)
+      q = velocity(iphase)
 
-    sat_up = global_aux_var_up%sat(iphase)
-    sat_dn = global_aux_var_dn%sat(iphase)
+      sat_up = global_aux_var_up%sat(iphase)
+      sat_dn = global_aux_var_dn%sat(iphase)
     
-    if (sat_up > eps .and. sat_dn > eps) then
-      stp_up = sat_up*tor_up*por_up
-      stp_dn = sat_dn*tor_dn*por_dn
+      if (sat_up > eps .and. sat_dn > eps) then
+        stp_up = sat_up*tor_up*por_up
+        stp_dn = sat_dn*tor_dn*por_dn
       ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-      weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
+        weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-      if(iphase==2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
+        if(iphase==2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
                                 weight*rt_parameter%diffusion_coefficient(iphase)
-        endif
+      endif
   
     !upstream weighting
     ! units = (m^3 water/m^2 bulk/sec)
-    if (q > 0.d0) then
-      coef_up =  diffusion+q
-      coef_dn = -diffusion
-    else
-      coef_up =  diffusion
-      coef_dn = -diffusion+q
-    endif
+      if (q > 0.d0) then
+        coef_up =  diffusion+q
+        coef_dn = -diffusion
+      else
+        coef_up =  diffusion
+        coef_dn = -diffusion+q
+      endif
   
     ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)
     !       = m^3 water/sec
-    coef_up = coef_up*area
-    coef_dn = coef_dn*area
+      coef_up = coef_up*area
+      coef_dn = coef_dn*area
 
     ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
-    if (associated(rt_aux_var_dn%dtotal)) then
-      J_up = J_up + rt_aux_var_up%dtotal(:,:,iphase)*coef_up*1000.d0
-      J_dn = J_dn + rt_aux_var_dn%dtotal(:,:,iphase)*coef_dn*1000.d0
-    else  
-      print *,'Dtotal needed for SC problem. STOP'
-      stop 
+      if (associated(rt_aux_var_dn%dtotal)) then
+        J_up = J_up + rt_aux_var_up%dtotal(:,:,iphase)*coef_up*1000.d0
+        J_dn = J_dn + rt_aux_var_dn%dtotal(:,:,iphase)*coef_dn*1000.d0
+      else  
+        print *,'Dtotal needed for SC problem. STOP'
+        stop 
    !   J_up = 0.d0
    !   J_dn = 0.d0
    !   do icomp = 1, option%ntrandof
    !     J_up(icomp,icomp) = J_up(icomp,icomp) + coef_up*global_aux_var_up%den_kg(iphase)
    !     J_dn(icomp,icomp) = J_dn(icomp,icomp) + coef_dn*global_aux_var_dn%den_kg(iphase)
    !   enddo
-    endif
-  enddo
+      endif
+    enddo
+  endif
 #endif
 
 end subroutine TFluxDerivativeAdv
@@ -1330,60 +1376,62 @@ subroutine TBCFluxAdv(ibndtype, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  do 
-    iphase = iphase + 1
-    if (iphase > option%nphase) exit
-    q = velocity(iphase)
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+    do 
+      iphase = iphase + 1
+      if (iphase > option%nphase) exit
+      q = velocity(iphase)
   
-    sat_up = global_aux_var_up%sat(iphase)
-    sat_dn = global_aux_var_dn%sat(iphase)
+      sat_up = global_aux_var_up%sat(iphase)
+      sat_dn = global_aux_var_dn%sat(iphase)
 
-    select case(ibndtype)
-      case(DIRICHLET_BC)
-        if (sat_up > eps .and. sat_dn > eps) then
+      select case(ibndtype)
+        case(DIRICHLET_BC)
+          if (sat_up > eps .and. sat_dn > eps) then
           ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-          weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
+            weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
            ! need to account for multiple phases
            ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-          if( iphase == 2) diffusion = rt_parameter%dispersivity*q/dist_dn + &
+            if( iphase == 2) diffusion = rt_parameter%dispersivity*q/dist_dn + &
                                        weight*rt_parameter%diffusion_coefficient(iphase)
-        endif    
-      case(DIRICHLET_ZERO_GRADIENT_BC)
-        if (q >= 0.d0) then
+          endif    
+        case(DIRICHLET_ZERO_GRADIENT_BC)
+          if (q >= 0.d0) then
            ! same as dirichlet above
-          if (sat_up > eps .and. sat_dn > eps) then
+            if (sat_up > eps .and. sat_dn > eps) then
             ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-            weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
+              weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
           ! need to account for multiple phases
           ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-            diffusion = 0.d0
-            if(iphase == 2) diffusion = rt_parameter%dispersivity*q/dist_dn+ &
+              diffusion = 0.d0
+              if(iphase == 2) diffusion = rt_parameter%dispersivity*q/dist_dn+ &
                                         weight*rt_parameter%diffusion_coefficient(iphase)
-          endif    
-        endif
-      case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
-    end select
+            endif    
+          endif
+        case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
+      end select
 
   !upstream weighting
   ! units = (m^3 water/m^2 bulk/sec)
-    if (q > 0.d0) then
-      coef_up =  diffusion+q
-      coef_dn = -diffusion
-    else
-      coef_up =  diffusion
-      coef_dn = -diffusion+q
-    endif
+      if (q > 0.d0) then
+        coef_up =  diffusion+q
+        coef_dn = -diffusion
+      else
+        coef_up =  diffusion
+        coef_dn = -diffusion+q
+      endif
 
   ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)*(1000 L water/m^3 water)
   !       = L water/sec
-    coef_up = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
-    coef_dn = coef_dn*area*1000.d0
+      coef_up = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
+      coef_dn = coef_dn*area*1000.d0
 
   ! units = (L water/sec)*(mol/L) = mol/s  
-    Res(1:option%ntrandof) = Res(1:option%ntrandof) + &
+      Res(1:option%ntrandof) = Res(1:option%ntrandof) + &
                            coef_up*rt_aux_var_up%total(1:option%ntrandof,iphase) + &
                            coef_dn*rt_aux_var_dn%total(1:option%ntrandof,iphase)  
-  enddo
+    enddo
+  endif
 #endif
 
 end subroutine TBCFluxAdv
@@ -1448,15 +1496,16 @@ subroutine TBCFluxDerivativeAdv(ibndtype, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  do 
-    iphase = iphase + 1
-    if (iphase > option%nphase) exit
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+    do 
+      iphase = iphase + 1
+      if (iphase > option%nphase) exit
 
 ! super critical CO2 phase
-      q = velocity(iphase)
+        q = velocity(iphase)
   
-      sat_up = global_aux_var_up%sat(iphase)
-      sat_dn = global_aux_var_dn%sat(iphase)
+        sat_up = global_aux_var_up%sat(iphase)
+        sat_dn = global_aux_var_dn%sat(iphase)
   
       select case(ibndtype)
         case(DIRICHLET_BC)
@@ -1502,8 +1551,9 @@ subroutine TBCFluxDerivativeAdv(ibndtype, &
         do icomp = 1, option%ntrandof
           J_dn(icomp,icomp) = J_dn(icomp,icomp) + coef_dn*global_aux_var_dn%den_kg(iphase)
         enddo
-       endif
-   enddo
+      endif
+    enddo
+  endif
 #endif
 
 end subroutine TBCFluxDerivativeAdv
@@ -1589,49 +1639,49 @@ subroutine TFluxDiff(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up, &
   
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  do
-   iphase = iphase +1 
-   if (iphase > option%nphase) exit
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+    do
+      iphase = iphase +1 
+      if (iphase > option%nphase) exit
 ! super critical CO2 phase have the index 2: need implementation
-   q = velocity(iphase)
-   diffusion = 0.d0
-   sat_up = global_aux_var_up%sat(iphase)
-   sat_dn = global_aux_var_dn%sat(iphase)
+      q = velocity(iphase)
+      diffusion = 0.d0
+      sat_up = global_aux_var_up%sat(iphase)
+      sat_dn = global_aux_var_dn%sat(iphase)
   
-   if (sat_up > eps .and. sat_dn > eps) then
-     stp_up = sat_up*tor_up*por_up 
-     stp_dn = sat_dn*tor_dn*por_dn
+      if (sat_up > eps .and. sat_dn > eps) then
+        stp_up = sat_up*tor_up*por_up 
+        stp_dn = sat_dn*tor_dn*por_dn
     ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-     weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
+        weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
 
-    
-    if(iphase ==2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
+        if(iphase ==2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
                               weight*rt_parameter%diffusion_coefficient(iphase)
-
-   endif
+      endif
   
   !upstream weighting
   ! units = (m^3 water/m^2 bulk/sec)
-  if (q > 0.d0) then
-    coef_up =  diffusion+q
-    coef_dn = -diffusion
-  else
-    coef_up =  diffusion
-    coef_dn = -diffusion+q
-  endif
+      if (q > 0.d0) then
+        coef_up =  diffusion+q
+        coef_dn = -diffusion
+      else
+        coef_up =  diffusion
+        coef_dn = -diffusion+q
+      endif
   
   ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)*(1000 L water/m^3 water)
   !       = L water/sec
-  coef_up = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
-  coef_dn = coef_dn*area*1000.d0
+      coef_up = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
+      coef_dn = coef_dn*area*1000.d0
   
   ! units = (L water/sec)*(mol/L) = mol/s
-  Res(1:option%ntrandof) = Res (1:option%ntrandof) + & 
+      Res(1:option%ntrandof) = Res (1:option%ntrandof) + & 
                       coef_up*rt_aux_var_up%total(1:option%ntrandof,iphase) + &
                       coef_dn*rt_aux_var_dn%total(1:option%ntrandof,iphase)
- enddo
+    enddo
+  endif
 #endif
 
 end subroutine TFluxDiff
@@ -1721,56 +1771,58 @@ subroutine TFluxDerivativeDiff(rt_aux_var_up,global_aux_var_up, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  do 
-    iphase = iphase + 1
-    if (iphase > option%nphase) exit
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+    do 
+      iphase = iphase + 1
+      if (iphase > option%nphase) exit
 ! super critical CO2 phase
-    q = velocity(iphase)
+      q = velocity(iphase)
 
-    sat_up = global_aux_var_up%sat(iphase)
-    sat_dn = global_aux_var_dn%sat(iphase)
+      sat_up = global_aux_var_up%sat(iphase)
+      sat_dn = global_aux_var_dn%sat(iphase)
     
-    if (sat_up > eps .and. sat_dn > eps) then
-      stp_up = sat_up*tor_up*por_up
-      stp_dn = sat_dn*tor_dn*por_dn
+      if (sat_up > eps .and. sat_dn > eps) then
+        stp_up = sat_up*tor_up*por_up
+        stp_dn = sat_dn*tor_dn*por_dn
       ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
-      weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
+        weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
     ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
-      if(iphase==2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
+        if(iphase==2) diffusion = rt_parameter%dispersivity*q/(dist_up+dist_dn) + &
                                 weight*rt_parameter%diffusion_coefficient(iphase)
-        endif
+      endif
   
     !upstream weighting
     ! units = (m^3 water/m^2 bulk/sec)
-    if (q > 0.d0) then
-      coef_up =  diffusion+q
-      coef_dn = -diffusion
-    else
-      coef_up =  diffusion
-      coef_dn = -diffusion+q
-    endif
+      if (q > 0.d0) then
+        coef_up =  diffusion+q
+        coef_dn = -diffusion
+      else
+        coef_up =  diffusion
+        coef_dn = -diffusion+q
+      endif
   
     ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)
     !       = m^3 water/sec
-    coef_up = coef_up*area
-    coef_dn = coef_dn*area
+      coef_up = coef_up*area
+      coef_dn = coef_dn*area
 
     ! units = (m^3 water/sec)*(kg water/L water)*(1000L water/m^3 water) = kg water/sec
-    if (associated(rt_aux_var_dn%dtotal)) then
-      J_up = J_up + rt_aux_var_up%dtotal(:,:,iphase)*coef_up*1000.d0
-      J_dn = J_dn + rt_aux_var_dn%dtotal(:,:,iphase)*coef_dn*1000.d0
-    else  
-      print *,'Dtotal needed for SC problem. STOP'
-      stop 
+      if (associated(rt_aux_var_dn%dtotal)) then
+        J_up = J_up + rt_aux_var_up%dtotal(:,:,iphase)*coef_up*1000.d0
+        J_dn = J_dn + rt_aux_var_dn%dtotal(:,:,iphase)*coef_dn*1000.d0
+      else  
+        print *,'Dtotal needed for SC problem. STOP'
+        stop 
    !   J_up = 0.d0
    !   J_dn = 0.d0
    !   do icomp = 1, option%ntrandof
    !     J_up(icomp,icomp) = J_up(icomp,icomp) + coef_up*global_aux_var_up%den_kg(iphase)
    !     J_dn(icomp,icomp) = J_dn(icomp,icomp) + coef_dn*global_aux_var_dn%den_kg(iphase)
    !   enddo
-    endif
-  enddo
+      endif
+    enddo
+  endif
 #endif
 
 end subroutine TFluxDerivativeDiff
@@ -1863,9 +1915,10 @@ subroutine TBCFluxDiff(ibndtype, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  do 
-    iphase = iphase + 1
-    if (iphase > option%nphase) exit
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+    do 
+      iphase = iphase + 1
+      if (iphase > option%nphase) exit
       q = velocity(iphase)
   
       sat_up = global_aux_var_up%sat(iphase)
@@ -1894,29 +1947,30 @@ subroutine TBCFluxDiff(ibndtype, &
                                           weight*rt_parameter%diffusion_coefficient(iphase)
             endif    
           endif
-    case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
-  end select
+        case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
+      end select
 
   !upstream weighting
   ! units = (m^3 water/m^2 bulk/sec)
-  if (q > 0.d0) then
-    coef_up =  diffusion+q
-    coef_dn = -diffusion
-  else
-    coef_up =  diffusion
-    coef_dn = -diffusion+q
-  endif
+      if (q > 0.d0) then
+        coef_up =  diffusion+q
+        coef_dn = -diffusion
+      else
+        coef_up =  diffusion
+        coef_dn = -diffusion+q
+      endif
 
   ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)*(1000 L water/m^3 water)
   !       = L water/sec
-  coef_up = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
-  coef_dn = coef_dn*area*1000.d0
+      coef_up = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
+      coef_dn = coef_dn*area*1000.d0
 
   ! units = (L water/sec)*(mol/L) = mol/s  
-  Res(1:option%ntrandof) = Res(1:option%ntrandof) + &
+      Res(1:option%ntrandof) = Res(1:option%ntrandof) + &
                            coef_up*rt_aux_var_up%total(1:option%ntrandof,iphase) + &
                            coef_dn*rt_aux_var_dn%total(1:option%ntrandof,iphase)  
- enddo
+    enddo
+  endif
 #endif
 
 end subroutine TBCFluxDiff
@@ -2012,6 +2066,7 @@ subroutine TBCFluxDerivativeDiff(ibndtype, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
   do 
     iphase = iphase + 1
     if (iphase > option%nphase) exit
@@ -2066,8 +2121,9 @@ subroutine TBCFluxDerivativeDiff(ibndtype, &
         do icomp = 1, option%ntrandof
           J_dn(icomp,icomp) = J_dn(icomp,icomp) + coef_dn*global_aux_var_dn%den_kg(iphase)
         enddo
-       endif
-   enddo
+      endif
+    enddo
+  endif
 #endif
 
 end subroutine TBCFluxDerivativeDiff
