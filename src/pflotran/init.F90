@@ -1215,7 +1215,6 @@ subroutine InitReadInput(simulation)
         call StrataRead(strata,input,option)
         call RealizationAddStrata(realization,strata)
         nullify(strata)
-      
 !.....................
       case ('DATASET') 
         call InputReadWord(input,option,word,PETSC_TRUE)
@@ -1750,6 +1749,10 @@ subroutine InitReadInput(simulation)
         call printErrMsg(option)
 
     end select
+
+    option%io_buffer = 'DONE -- pflotran card:: ' // trim(card)
+    call printMsg(option)
+
 
   enddo
                                         
