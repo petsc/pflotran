@@ -166,6 +166,8 @@ subroutine Init(simulation)
   ! read in the remainder of the input file
   call InitReadInput(simulation)
   call InputDestroy(realization%input)
+  call printMsg(option,"  After InputDestroy ")
+  
 
   ! initialize reference density
   if (option%reference_water_density < 1.d-40) then
@@ -191,6 +193,8 @@ subroutine Init(simulation)
     case(MPH_MODE)
       call init_span_wanger(realization)
   end select
+  
+  call printMsg(option,"  Before RealizationCreateDiscretization")
 
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
@@ -199,6 +203,8 @@ subroutine Init(simulation)
 !    call MassBalanceCreate(realization)
 !  endif  
   
+  call printMsg(option,"  After RealizationCreateDiscretization")
+
   if (OptionPrintToScreen(option)) then
     ! general print statements for both flow and transport modes
     write(*,'(/,"++++++++++++++++++++++++++++++++++++++++++++++++++++&
@@ -1755,6 +1761,9 @@ subroutine InitReadInput(simulation)
 
 
   enddo
+
+    option%io_buffer = 'Leave InitReadInput'
+    call printMsg(option)
                                         
 end subroutine InitReadInput
 

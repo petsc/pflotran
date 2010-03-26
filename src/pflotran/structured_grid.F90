@@ -60,6 +60,7 @@ module Structured_Grid_module
             StructuredGridCreateDA, &
             StructGridComputeLocalBounds, &
             StructGridComputeInternConnect, &
+            StructGridComputeBoundConnect, &
             StructuredGridCreateVecFromDA, &
             StructuredGridMapIndices, &
             StructuredGridComputeSpacing, &
@@ -1090,6 +1091,7 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
       case(SPHERICAL_GRID)
         option%io_buffer = 'Spherical coordinates not applicable.'
         call printErrMsg(option)
+
     end select
   endif
       
@@ -1147,6 +1149,229 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
   StructGridComputeInternConnect => connections
 
 end function StructGridComputeInternConnect
+
+
+! ************************************************************************** !
+!
+! StructGridComputeBoundConnect: computes boundary connectivity of a  
+!                               structured grid
+! author: Daniil Svyatskiy
+! date: 02/04/10
+!
+! ************************************************************************** !
+function StructGridComputeBoundConnect(radius,structured_grid,option)
+
+  use Connection_module
+  use Option_module
+  
+  implicit none
+
+  interface
+     PetscInt function samr_patch_at_bc(p_patch, axis, dim)
+#include "finclude/petscsysdef.h"
+       PetscFortranAddr :: p_patch
+       PetscInt :: axis,dim
+     end function samr_patch_at_bc
+  end interface
+
+  PetscReal :: radius(:)
+  type(connection_set_type), pointer :: StructGridComputeBoundConnect
+  type(option_type) :: option
+  type(structured_grid_type) :: structured_grid
+  
+  PetscReal, parameter :: Pi=3.141592653590d0
+  
+  PetscInt :: i, j, k, iconn, id_up, id_dn
+  PetscInt :: samr_ofx, samr_ofy, samr_ofz
+  PetscInt :: nconn
+  PetscInt :: lenx, leny, lenz
+  PetscReal :: dist_up, dist_dn
+  type(connection_set_type), pointer :: connections
+  PetscErrorCode :: ierr
+  
+  samr_ofx = 0
+  samr_ofy = 0
+  samr_ofz = 0
+  ! the adjustments in the case of AMR are based on the PIMS code adjustments by LC
+
+  nconn = structured_grid%nly*structured_grid%nlz*(structured_grid%nlx + 2 - structured_grid%ngx)&
+         +structured_grid%nlx*structured_grid%nlz*(structured_grid%nly + 2 - structured_grid%ngy)&  
+         +structured_grid%nlx*structured_grid%nly*(structured_grid%nlz + 2 - structured_grid%ngz)
+
+  lenx = structured_grid%nlx 
+  leny = structured_grid%nly 
+  lenz = structured_grid%nlz 
+
+
+  write(*,*) 'nlx=',structured_grid%nlx,' nly=',structured_grid%nly, ' nlz=',structured_grid%nlz 
+  write(*,*) 'ngx=',structured_grid%ngx,' ngy=',structured_grid%ngy, ' ngz=',structured_grid%ngz
+  write(*,*) 'nx=',structured_grid%nlx,' ny=',structured_grid%ny, ' nz=',structured_grid%nz  
+  write(*,*) 'istart=',structured_grid%istart,' iend=',structured_grid%iend
+  write(*,*) 'jstart=',structured_grid%jstart,' jend=',structured_grid%jend
+  write(*,*) 'kstart=',structured_grid%kstart,' kend=',structured_grid%kend
+  write(*,*) 'nconn=',nconn
+
+!  stop
+
+
+  connections => ConnectionCreate(nconn, &
+                                  option%nphase,BOUNDARY_CONNECTION_TYPE)
+
+  iconn = 0
+  ! x-connections
+  if (structured_grid%nlx + 2 - structured_grid%ngx > 0) then
+    select case(structured_grid%itype)
+      case(CARTESIAN_GRID)
+        if (structured_grid%istart == 0) then
+          i = 1
+          do k = structured_grid%kstart, structured_grid%kend
+            do j = structured_grid%jstart, structured_grid%jend
+              iconn = iconn+1
+              id_dn = i + j * structured_grid%ngx + k * structured_grid%ngxy+samr_ofx
+              write(*,*) iconn, id_dn
+              connections%id_dn(iconn) = id_dn
+              connections%dist(-1:3,iconn) = 0.d0
+              dist_dn = 0.5d0*structured_grid%dx(id_dn)
+              connections%dist(-1,iconn) = 0.
+              connections%dist(0,iconn) = dist_dn
+              connections%dist(1,iconn) = -1.d0  ! x component of unit vector
+              connections%area(iconn) = structured_grid%dy(id_up)* &
+                                        structured_grid%dz(id_up)
+            enddo
+          enddo
+        endif
+        write(*,*)
+        if (structured_grid%iend == structured_grid%nx - 1 ) then
+          i = lenx
+          do k = structured_grid%kstart, structured_grid%kend
+            do j = structured_grid%jstart, structured_grid%jend
+              iconn = iconn+1
+              id_dn = i + j * structured_grid%ngx + k * structured_grid%ngxy+samr_ofx
+              write(*,*) iconn, id_dn
+              connections%id_dn(iconn) = id_dn
+              connections%dist(-1:3,iconn) = 0.d0
+              dist_dn = 0.5d0*structured_grid%dx(id_dn)
+              connections%dist(0,iconn) = dist_dn
+              connections%dist(1,iconn) = 1.d0  ! x component of unit vector
+              connections%area(iconn) = structured_grid%dy(id_up)* &
+                                        structured_grid%dz(id_up)
+            enddo
+          enddo
+        endif
+      case(CYLINDRICAL_GRID)
+        print *, 'Boundary connection - Cylindrical coordinates are not implemented.'
+        stop
+      case(SPHERICAL_GRID)
+        print *, 'Boundary connection -  Spherical coordinates are not implemented.'
+        stop
+  end select
+    
+  endif
+
+
+
+  ! y-connections
+  if (structured_grid%nly + 2  -  structured_grid%ngy > 0) then
+    select case(structured_grid%itype)
+      case(CARTESIAN_GRID)
+        if (structured_grid%jstart == 0) then 
+          j = 1
+          do k = structured_grid%kstart, structured_grid%kend
+            do i = structured_grid%istart, structured_grid%iend
+              iconn = iconn+1
+              id_dn = i + 1 + (j-1) * structured_grid%ngx + k * structured_grid%ngxy &
+                  +samr_ofy
+              connections%id_dn(iconn) = id_dn
+              connections%dist(-1:3,iconn) = 0.d0
+              dist_dn = 0.5d0*structured_grid%dy(id_dn)
+              connections%dist(0,iconn) = dist_dn
+              connections%dist(2,iconn) = -1.d0  ! y component of unit vector
+              connections%area(iconn) = structured_grid%dx(id_up)* &
+                                    structured_grid%dz(id_up)
+            enddo
+          enddo
+        endif
+        if (structured_grid%jend == structured_grid%ny - 1) then 
+          j = leny
+          do k = structured_grid%kstart, structured_grid%kend
+            do i = structured_grid%istart, structured_grid%iend
+              iconn = iconn+1
+              id_dn = i + 1 + (j-1) * structured_grid%ngx + k * structured_grid%ngxy &
+                  +samr_ofy
+              connections%id_dn(iconn) = id_dn
+              connections%dist(-1:3,iconn) = 0.d0
+              dist_dn = 0.5d0*structured_grid%dy(id_dn)
+              connections%dist(0,iconn) = dist_dn
+              connections%dist(2,iconn) = 1.d0  ! y component of unit vector
+              connections%area(iconn) = structured_grid%dx(id_up)* &
+                                    structured_grid%dz(id_up)
+            enddo
+          enddo
+        endif
+      case(CYLINDRICAL_GRID)
+        print *, 'Boundary connection - Cylindrical coordinates are not implemented.'
+        stop
+      case(SPHERICAL_GRID)
+        print *, 'Boundary connection -  Spherical coordinates are not implemented.'
+        stop
+    end select
+  endif
+      
+  ! z-connections
+  if (structured_grid%nlz + 2 - structured_grid%ngz > 0) then
+    select case(structured_grid%itype)
+      case(CARTESIAN_GRID)
+        if (structured_grid%kstart == 0) then
+          k = 1
+          do j = structured_grid%jstart, structured_grid%jend
+            do i = structured_grid%istart, structured_grid%iend
+              iconn = iconn+1
+              id_dn = i + 1 + j * structured_grid%ngx + (k-1) * &
+                  structured_grid%ngxy + samr_ofz
+              connections%id_dn(iconn) = id_dn
+              connections%dist(-1:3,iconn) = 0.d0
+              dist_dn = 0.5d0*structured_grid%dz(id_dn)
+              connections%dist(0,iconn) = dist_dn
+              connections%dist(3,iconn) = -1.d0  ! z component of unit vector
+              connections%area(iconn) = structured_grid%dx(id_up) * &
+                                        structured_grid%dy(id_up)
+            enddo
+          enddo
+        endif    
+        if (structured_grid%kend == structured_grid%nz -1 ) then
+          k = lenz
+          do j = structured_grid%jstart, structured_grid%jend
+            do i = structured_grid%istart, structured_grid%iend
+              iconn = iconn+1
+              id_dn = i + 1 + j * structured_grid%ngx + (k-1) * &
+                  structured_grid%ngxy + samr_ofz
+              connections%id_dn(iconn) = id_dn
+              connections%dist(-1:3,iconn) = 0.d0
+              dist_dn = 0.5d0*structured_grid%dz(id_dn)
+              connections%dist(0,iconn) = dist_dn
+              connections%dist(3,iconn) = 1.d0  ! z component of unit vector
+              connections%area(iconn) = structured_grid%dx(id_up) * &
+                                        structured_grid%dy(id_up)
+            enddo
+          enddo
+        endif    
+      case(CYLINDRICAL_GRID)
+        print *, 'Boundary connection - Cylindrical coordinates are not implemented.'
+        stop
+      case(SPHERICAL_GRID)
+        print *, 'Boundary connection -  Spherical coordinates are not implemented.'
+        stop
+  end select
+  endif
+  
+  StructGridComputeBoundConnect => connections
+!    stop
+
+end function StructGridComputeBoundConnect
+
+
+
+
 
 ! ************************************************************************** !
 !

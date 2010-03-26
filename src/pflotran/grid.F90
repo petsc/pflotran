@@ -64,8 +64,16 @@ module Grid_module
     type(unstructured_grid_type), pointer :: unstructured_grid
     
     type(connection_set_list_type), pointer :: internal_connection_set_list
+    type(connection_set_list_type), pointer :: boundary_connection_set_list
+    type(face_type), pointer :: faces(:)
+    PetscInt :: total_faces
 
   end type grid_type
+
+  type, public :: face_type
+    type(connection_set_type), pointer :: conn_set_ptr
+    PetscInt :: id
+  end type face_type
 
   interface GridVecGetArrayF90
      module procedure GridVecGetArrayCellF90
@@ -81,6 +89,7 @@ module Grid_module
             GridComputeVolumes, &
             GridLocalizeRegions, &
             GridPopulateConnection, &
+            GridPopulateFaces, & 
             GridCopyIntegerArrayToPetscVec, &
             GridCopyRealArrayToPetscVec, &
             GridCopyPetscVecToIntegerArray, &
@@ -144,6 +153,8 @@ function GridCreate()
   grid%nlmax = 0 
   grid%ngmax = 0
   
+  nullify(grid%faces)
+
   nullify(grid%hash)
   grid%num_hash_bins = 1000
 
@@ -168,7 +179,7 @@ subroutine GridComputeInternalConnect(grid,option)
   type(grid_type) :: grid
   type(option_type) :: option
   
-  type(connection_set_type), pointer :: connection_set
+  type(connection_set_type), pointer :: connection_set, connection_bound_set
   
   select case(grid%itype)
     case(STRUCTURED_GRID)
@@ -183,7 +194,26 @@ subroutine GridComputeInternalConnect(grid,option)
   allocate(grid%internal_connection_set_list)
   call ConnectionInitList(grid%internal_connection_set_list)
   call ConnectionAddToList(connection_set,grid%internal_connection_set_list)
-  
+  write (*,*) 'LIST CREATED', grid%internal_connection_set_list%num_connection_objects, &
+                            connection_set%num_connections
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
+      connection_bound_set => &
+        StructGridComputeBoundConnect(grid%x,grid%structured_grid,option)
+    case(UNSTRUCTURED_GRID) 
+!      connection_bound_set => &
+!        UGridComputeBoundConnect(grid%unstructured_grid,option)
+  end select
+!  
+  allocate(grid%boundary_connection_set_list)
+  call ConnectionInitList(grid%boundary_connection_set_list)
+  call ConnectionAddToList(connection_bound_set,grid%boundary_connection_set_list)
+  write (*,*) 'LIST CREATED', grid%boundary_connection_set_list%num_connection_objects, &
+                            connection_bound_set%num_connections
+
+  call GridPopulateFaces(grid)
+  write(*,*) 'Exit GridComputeInternalConnect'
+  stop  
 end subroutine GridComputeInternalConnect
 
 ! ************************************************************************** !
@@ -221,6 +251,77 @@ subroutine GridPopulateConnection(grid,connection,iface,iconn,cell_id_local)
   end select
 
 end subroutine GridPopulateConnection
+
+
+! ************************************************************************** !
+!
+! GridPopulateFaces: allocate and populate array of faces
+! author: Daniil Svyatskiy
+! date: 02/04/10
+!
+! ************************************************************************** !
+subroutine GridPopulateFaces(grid)
+
+   use Connection_module
+    
+   type(grid_type) :: grid
+
+   PetscInt :: total_faces, face_id, iconn
+   type(connection_set_type), pointer :: cur_connection_set
+   type(connection_set_list_type), pointer :: connection_set_list
+   type(face_type), pointer :: faces(:)
+
+   connection_set_list => grid%internal_connection_set_list
+   cur_connection_set => connection_set_list%first
+   total_faces = 0  
+   do 
+     if (.not.associated(cur_connection_set)) exit
+     total_faces = total_faces + cur_connection_set%num_connections
+     cur_connection_set => cur_connection_set%next
+   enddo
+
+   connection_set_list => grid%boundary_connection_set_list
+   cur_connection_set => connection_set_list%first
+   do 
+     if (.not.associated(cur_connection_set)) exit
+     total_faces = total_faces + cur_connection_set%num_connections
+     cur_connection_set => cur_connection_set%next
+   enddo
+ 
+   allocate(faces(total_faces))
+
+   face_id = 0
+   connection_set_list => grid%internal_connection_set_list
+   cur_connection_set => connection_set_list%first
+   do 
+     if (.not.associated(cur_connection_set)) exit
+     do iconn = 1, cur_connection_set%num_connections 
+       face_id = face_id + 1
+       faces(face_id)%conn_set_ptr => cur_connection_set
+       faces(face_id)%id = iconn
+     enddo
+     cur_connection_set => cur_connection_set%next
+   enddo
+
+   connection_set_list => grid%boundary_connection_set_list
+   cur_connection_set => connection_set_list%first
+   do 
+     if (.not.associated(cur_connection_set)) exit
+     do iconn = 1, cur_connection_set%num_connections 
+       face_id = face_id + 1
+       faces(face_id)%conn_set_ptr => cur_connection_set
+       faces(face_id)%id = iconn
+     enddo
+     cur_connection_set => cur_connection_set%next
+   enddo
+
+
+   grid%faces => faces
+   grid%total_faces = total_faces  
+
+
+end subroutine GridPopulateFaces 
+
 
 ! ************************************************************************** !
 !
@@ -1030,7 +1131,10 @@ subroutine GridDestroyHashTable(grid)
   type(grid_type), pointer :: grid
   
   if (associated(grid%hash)) deallocate(grid%hash)
+  if (associated(grid%faces)) deallocate(grid%faces)
+
   nullify(grid%hash)
+  nullify(grid%faces)
   grid%num_hash_bins = 100
 
 end subroutine GridDestroyHashTable

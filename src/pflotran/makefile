@@ -92,6 +92,7 @@ common_obj = ${common_src}option.o \
 	${common_src}pckr_mod.o \
 	${common_src}strata.o \
 	${common_src}connection.o \
+        ${common_src}mfd_aux.o\
 	${common_src}observation.o \
 	${common_src}solver.o \
 	${common_src}cf90bridge.o\
@@ -154,7 +155,7 @@ test: functions.o test.o
 # Dependencies stemming from "use" statements.
 # These ensure that the module files are built in the correct order.
 auxilliary.o : thc_aux.o richards_aux.o reactive_transport_aux.o \
-	mphase_aux.o
+	mphase_aux.o mfd_aux.o
 pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
 	     stochastic_aux.o stochastic.o
 simulation.o : timestepper.o realization.o 
@@ -240,3 +241,4 @@ stochastic.o : simulation.o option.o realization.o timestepper.o \
 stochastic_aux.o : simulation.o input.o option.o
 matrix_buffer.o : grid.o structured_grid.o
 velocity.o : option.o input.o string.o logging.o units.o
+mfd_aux.o : connection.o
