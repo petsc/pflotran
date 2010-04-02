@@ -782,7 +782,7 @@ subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
         call DASetRefinementFactor(dm_fine_ptr%sgdm, refine_x, refine_y, refine_z, &
                                    ierr)
         call DASetInterpolationType(dm_fine_ptr%sgdm, DA_Q0, ierr)
-        call DACoarsen(dm_fine_ptr, option%mycomm, dmc_ptr(i)%sgdm, ierr)
+        call DACoarsen(dm_fine_ptr%sgdm, option%mycomm, dmc_ptr(i)%sgdm, ierr)
         call DAGetInterpolation(dmc_ptr(i)%sgdm, dm_fine_ptr%sgdm, interpolation(i), &
                                 PETSC_NULL_OBJECT, ierr)
         dm_fine_ptr => dmc_ptr(i)
@@ -820,7 +820,7 @@ subroutine DiscretizationCreateColoring(discretization,dm_index,option,coloring)
     
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      call DAGetColoring(dm_ptr%sgdm,IS_COLORING_GLOBAL,coloring,ierr)
+      call DAGetColoring(dm_ptr%sgdm,IS_COLORING_GLOBAL,MATAIJ,coloring,ierr)
     case(UNSTRUCTURED_GRID)
   end select
   

@@ -2233,13 +2233,12 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
 
       if (patch%imat(ghosted_id) <= 0) cycle
       
-      offset = (local_id-1)*reaction%ncomp
-      istartaq = offset + reaction%offset_aq + 1
-      iendaq = offset + reaction%offset_aq + reaction%naqcomp
+      istartaq = reaction%offset_aq + 1
+      iendaq = reaction%offset_aq + reaction%naqcomp
       
       if (reaction%ncoll > 0) then
-        istartcoll = offset + reaction%offset_coll + 1
-        iendcoll = offset + reaction%offset_coll + reaction%ncoll
+        istartcoll = reaction%offset_coll + 1
+        iendcoll = reaction%offset_coll + reaction%ncoll
       endif
       
       select case(source_sink%tran_condition%itype)
@@ -3037,13 +3036,12 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 
       if (patch%imat(ghosted_id) <= 0) cycle
 
-      offset = (local_id-1)*reaction%ncomp
-      istartaq = offset + reaction%offset_aq + 1
-      iendaq = offset + reaction%offset_aq + reaction%naqcomp
+      istartaq = reaction%offset_aq + 1
+      iendaq = reaction%offset_aq + reaction%naqcomp
       
       if (reaction%ncoll > 0) then
-        istartcoll = offset + reaction%offset_coll + 1
-        iendcoll = offset + reaction%offset_coll + reaction%ncoll
+        istartcoll = reaction%offset_coll + 1
+        iendcoll = reaction%offset_coll + reaction%ncoll
       endif
       
       Jup = 0.d0
