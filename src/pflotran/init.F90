@@ -327,7 +327,7 @@ subroutine Init(simulation)
     ! I also note that this preconditioner is intended only for the flow 
     ! solver.  --RTM
     if (realization%discretization%itype == STRUCTURED_GRID) then
-      call PCSetDA(flow_solver%pc, &
+      call PCSetDM(flow_solver%pc, &
                    realization%discretization%dm_nflowdof,ierr);
     endif
 
