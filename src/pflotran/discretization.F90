@@ -820,7 +820,13 @@ subroutine DiscretizationCreateColoring(discretization,dm_index,option,coloring)
     
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      call DAGetColoring(dm_ptr%sgdm,IS_COLORING_GLOBAL,MATAIJ,coloring,ierr)
+      call DAGetColoring(dm_ptr%sgdm,IS_COLORING_GLOBAL,MATBAIJ,coloring,ierr)
+      ! I have set the above to use matrix type MATBAIJ, as that is what we 
+      ! usually want (note: for DAs with 1 degree of freedom per grid cell, 
+      ! the MATAIJ and MATBAIJ colorings should be equivalent).  What we should 
+      ! eventually do here is query the type of the Jacobian matrix, but I'm 
+      ! not sure of the best way to do this, as this is currently stashed in 
+      ! the 'solver' object. --RTM
     case(UNSTRUCTURED_GRID)
   end select
   
