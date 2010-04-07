@@ -470,7 +470,6 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \hyperlink{target_fluid_properties}{\bf FLUID\_PROPERTIES} & \\
 \hyperlink{target_gravity}{\bf GRAVITY} & \\
 \hyperlink{target_grid}{\bf GRID} & \\
-\hyperlink{target_hdf5}{\bf HDF5} & \\
 \hyperlink{target_invert}{\bf INVERT\_Z (INVERTZ)} & \\
 \hyperlink{target_init}{\bf INITIAL\_CONDITION} & \\
 \hyperlink{target_linsolv}{\bf LINEAR\_SOLVER} & \\
@@ -479,13 +478,13 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \hyperlink{target_newt}{\bf NEWTON\_SOLVER} & \\
 \hyperlink{target_numjac}{\bf NUMERICAL\_JACOBIAN} & \\
 \hyperlink{target_orig}{\bf ORIG, ORIGIN} & \\
+\hyperlink{target_output}{\bf OUTPUT} & \\
 \hyperlink{target_overwrite}{\bf OVERWRITE\_RESTART\_TRANSPORT} & \\
 \hyperlink{target_region}{\bf REGION} & \\
 \hyperlink{target_restart}{\bf RESTART} & \\
 \hyperlink{target_sat}{\bf SATURATION\_FUNCTION (SATURATION\_FUNCTION, PCKR)} & \\
 \hyperlink{target_src}{\bf SOURCE\_SINK} & \\
 \hyperlink{target_strata}{\bf STRATIGRAPHY (STRATA)} & \\
-%\hyperlink{target_tecp}{TECP} & \\
 \hyperlink{target_thrm}{\bf THERMAL\_PROPERTY (THERMAL\_PROPERTIES)} & \\
 \hyperlink{target_time}{\bf TIME} & \\
 \hyperlink{target_timestep}{\bf TIMESTEPPER} & \\
@@ -498,29 +497,26 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \end{longtable}
 
 
+\noindent{\bf Conventions and Notation:} Keywords are in boldface with optional modifying keywords in square brackets [\ldots], and user entries in typewriter font.
+
 \begin{comment}
+\begin{verbatim}
 \protect\hypertarget{target_XXX}{}
 \subsection{Keyword: XXX}
-{\noindent\bf Description}
+{\noindent\bf Description:}
 {\noindent\bf Input:}
-\shadowbox{
-\begin{minipage}{6.5in}
 \begin{deflist}{0000000000}
 \item[]
 \end{deflist}
-\end{minipage}
-}
 {\noindent\bf Explanation:}
 \begin{description}
 \item[Keyword XXX]
 \end{description}
 {\noindent\bf Examples:}
-\begin{verbatim}
 \end{verbatim}
 \end{comment}
 
-\noindent{\bf Conventions and Notation:} Keywords are in boldface with optional modifying keywords in square brackets [\ldots], and user entries in typewriter font.
-
+\newpage
 \protect\hypertarget{target_bcon}{}
 
 \subsection{Keyword: BOUNDARY\_CONDITION}
@@ -529,25 +525,23 @@ The BOUNDARY\_CONDITION keyword couples conditions specified under the FLOW\_\-C
 
 {\noindent\bf Input:}
 
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000000000000000000}
+\begin{deflist}{000}
 \item[BOUNDARY\_CONDITION] {\tt boundary\_condition\_name}
+\begin{deflist}{000}
 \item[FLOW\_CONDITION] {\tt flow\_condition\_name}
 \item[TRANSPORT\_CONDITION] {\tt transport\_condition\_name}
 \item[REGION] {\tt region\_name}
-\item[END]
 \end{deflist}
-%\end{minipage}
-%}
+\item[(.,/,END)]
+\end{deflist}
 
 {\noindent\bf Explanation:}
 \begin{description}
-\item[Keyword BOUNDARY\_CONDITION] defines the beginning of a boundary condition entry and the name of the boundary condition.
-\item[Keyword FLOW\_CONDITION] defines the name of the flow condition to be linked to this boundary condition.
-\item[Keyword TRANSPORT\_CONDITION] defines the name of the transport condition to be linked to this boundary condition.
-\item[Keyword REGION] defines the name of the region to which the conditions are linked.
-\item[Keyword END] terminates the boundary condition entry.
+\item[Keyword BOUNDARY\_CONDITION:] defines the beginning of a boundary condition entry and the name of the boundary condition.
+\item[Keyword FLOW\_CONDITION:] defines the name of the flow condition to be linked to this boundary condition.
+\item[Keyword TRANSPORT\_CONDITION:] defines the name of the transport condition to be linked to this boundary condition.
+\item[Keyword REGION:] defines the name of the region to which the conditions are linked.
+\item[Keyword END:] terminates the boundary condition entry.
 \end{description}
 
 {\noindent\bf Examples:}
@@ -567,6 +561,7 @@ END
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_obs}{}
 
 \subsection{Keyword: OBSERVATION}
@@ -614,6 +609,7 @@ END
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_brine}{}
 
 \subsection{Keyword: BRINE (BRIN)}
@@ -628,6 +624,7 @@ END
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_ckpt}{}
 
 \subsection{Keyword: CHECKPOINT}
@@ -657,14 +654,14 @@ CHECKPOINT 5
 \end{verbatim}
 
 %========================================================================
-
+\newpage
 \protect\hypertarget{target_chem}{}
 
 \subsection{Keyword: CHEMISTRY}
 
 \noindent
 {\bf Description:}
-The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides input for primary species, secondary species, minerals, gases, colloids and colloid-facilitated transport, and sorption including ion exchange and surface complexation including a multirate formulation of surface complexation.
+The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides input for primary species, secondary species, minerals, gases, colloids and colloid-facilitated transport, and sorption including ion exchange and surface complexation. Mineral reactions are described through a kinetic rate law based on transition state theory and surface complexation reactions may involve equilibrium, kinetic (reversible or irreversible) or a multirate formulation.
 
 %\shadowbox{
 %\begin{minipage}{6.5in}
@@ -829,6 +826,7 @@ Gas\_Species & List of gas species.\\
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_stat}{}
 
 \subsection{Keyword: COMPUTE\_STATISTICS (STATISTICS)}
@@ -853,6 +851,7 @@ COMPUTE\_STATISTICS enables the calculation statistical analysis of flow velocit
 
 %================================================================
 
+\newpage
 \protect\hypertarget{target_cond}{}
 
 \subsection{Keyword: CONDITION (FLOW/TRANSPORT\_CONDITION)}
@@ -1021,6 +1020,7 @@ CONSTRAINT_LIST
 \end{comment}
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_datset}{}
 
 \subsection{Keyword: DATASET}
@@ -1040,6 +1040,7 @@ CONSTRAINT_LIST
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_dbg}{}
 
 \subsection{Keyword: DEBUG}
@@ -1063,6 +1064,7 @@ CONSTRAINT_LIST
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_dif}{}
 
 \subsection{Keyword: DIFF}
@@ -1076,6 +1078,7 @@ CONSTRAINT_LIST
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_dtst}{}
 
 \subsection{Keyword: DTST}
@@ -1109,6 +1112,7 @@ CONSTRAINT_LIST
 \end{comment}
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_fluid_properties}{}
 
 \subsection{Keyword: FLUID\_PROPERTIES (FLUID\_PROPERTY)}
@@ -1125,6 +1129,7 @@ CONSTRAINT_LIST
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_gravity}{}
 
 \subsection{Keyword: GRAVITY (GRAV)}
@@ -1138,6 +1143,7 @@ CONSTRAINT_LIST
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_grid}{}
 
 \subsection{Keyword: GRID}
@@ -1211,32 +1217,7 @@ END
 
 %========================================================================
 
-\protect\hypertarget{target_hdf5}{}
-
-\subsection{Keyword: HDF5}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[HDF5] [VELO, FLUX]
-\end{deflist}
-%\end{minipage}
-%}
-
-%========================================================================
-
-\protect\hypertarget{target_imod}{}
-
-\subsection{Keyword: IMOD}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[IMOD] mod
-\end{deflist}
-%\end{minipage}
-%}
-
-%========================================================================
-
+\newpage
 \protect\hypertarget{target_invert}{}
 
 \subsection{Keyword: INVERT\_Z (INVERTZ)}
@@ -1250,6 +1231,7 @@ END
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_init}{}
 
 \subsection{Keyword: INITIAL\_CONDITION}
@@ -1269,6 +1251,7 @@ END
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_linsolv}{}
 
 \subsection{Keyword: LINEAR\_SOLVER}
@@ -1302,6 +1285,7 @@ END
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_mat}{}
 
 \subsection{Keyword: MATERIAL (MATERIALS, PHIK)}
@@ -1317,19 +1301,27 @@ END
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_mode}{}
 
 \subsection{Keyword: MODE}
-%\shadowbox{
-%\begin{minipage}{6.5in}
+
+\noindent{\bf Description:} determines the mode of operation: IMMIS (immisible), MPH (CO$_2$ + H$_2$O), Richards (vadose-saturated zones), THC (thermal-hydrologic-chemical, not implemented).
+
+\noindent{\bf Input:}
 \begin{deflist}{0000000000}
-\item[MODE] [RICHARDS\_LITE, RICHARDS, MPH]
+\item[MODE] \bf [IMMIS, MPH, RICHARDS, RICHARDS\_LITE, THC (\rm not implemented)]
 \end{deflist}
-%\end{minipage}
-%}
+
+\noindent{\bf Explanation:}
+
+\noindent{\bf Example:}
+
+MODE THC
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_newt}{}
 
 \subsection{Keyword: NEWTON\_SOLVER}
@@ -1358,6 +1350,7 @@ END
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_numjac}{}
 
 \subsection{Keyword: NUMERICAL\_JACOBIAN}
@@ -1371,6 +1364,7 @@ END
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_orig}{}
 
 \subsection{Keyword: ORIGIN (ORIG)}
@@ -1384,6 +1378,86 @@ END
 
 %========================================================================
 
+
+\newpage
+\protect\hypertarget{target_output}{}
+
+\subsection{Keyword: OUTPUT}
+
+\noindent {\bf Description:} The {\bf OUTPUT} keyword controls formatting and time of output.
+
+\noindent {\bf Input:}
+
+\begin{deflist}{00}
+\item[OUTPUT] ~
+\begin{deflist}{00}
+\item[TIMES] {\tt Unit (s, h, y)} \ \ \ {\tt Value} 
+\item[SCREEN PERIODIC] {\tt Value}
+\item[PERIODIC TIME] {\tt Value} \ {\tt Unit}
+\item[PERIODIC\_OBSERVATION TIMESTEP] {\tt Value}
+\item[PERIODIC\_OBSERVATION TIME] {\tt Value} \ {\tt Unit}
+\item[FORMAT TECPLOT POINT]
+\item[FORMAT TECPLOT BLOCK]
+\item[FORMAT HDF5]
+\item[VELOCITIES]
+\item[MASS\_BALANCE]
+\end{deflist}
+\item[(.,/,END)]
+\end{deflist}
+
+\noindent {\bf Explanation:}
+
+\begin{tabularx}{\linewidth}{lX}
+OUTPUT: & keyword to control output.\\
+TIMES: & list of output times.\\
+SCREEN PERIODIC: & controls screen output frequency.\\
+PERIODIC TIME: & controls frequency of output times.\\
+PERIODIC\_OBSERVATION TIMESTEP: & frequency of output time step.\\
+PERIODIC\_OBSERVATION TIME: & frequency of output time.\\
+FORMAT TECPLOT POINT: & Tecplot POINT output, valid for 1D and 2D problems.\\
+FORMAT TECPLOT BLOCK: & Tecplot BLOCK output.\\
+FORMAT HDF5: & HDF5 output format written to a .h5 file which can be read by Visit.\\
+UNIT: & time units of seconds (s), days (d), and years (y).\\
+VELOCITIES: & keyword to output velocities.\\
+MASS\_BALANCE: & keyword to output global mass balances and boundary fluxes.
+\end{tabularx}
+
+\begin{comment}
+\begin{description}
+\item OUTPUT:  keyword to control output.\\
+\item SCREEN PERIODIC: controls screen output frequency.\\
+\item PERIODIC TIME: controls frequency of output times.\\
+\item PERIODIC\_OBSERVATION TIMESTEP: frequency of output time step.\\
+\item TIMES: list of output times.\\
+\item PERIODIC\_OBSERVATION TIME: frequency of output time.\\
+\item FORMAT TECPLOT POINT: Tecplot POINT output, valid for 1D and 2D problems.\\
+\item FORMAT TECPLOT BLOCK: Tecplot BLOCK output.\\
+\item FORMAT HDF5: HDF5 output format written to a .h5 file which can be read by Visit.\\
+\item UNIT: time units of seconds (s), days (d), and years (y).\\
+\item VELOCITIES: keyword to output velocities.\\
+\item MASS\_BALANCE: keyword to output global mass balances and boundary fluxes.
+\end{description}
+\end{comment}
+
+\noindent {\bf Examples:}
+
+\begin{verbatim}
+OUTPUT
+:SCREEN PERIODIC 10
+:PERIODIC TIME 10 h
+PERIODIC_OBSERVATION TIMESTEP 1
+:times h 1.
+:PERIODIC_OBSERVATION TIME 50 h
+FORMAT TECPLOT POINT
+FORMAT HDF5
+VELOCITIES
+MASS_BALANCE
+/
+\end{verbatim}
+
+%========================================================================
+
+\newpage
 \protect\hypertarget{target_overwrite}{}
 
 \subsection{Keyword: OVERWRITE\_RESTART\_TRANSPORT}
@@ -1397,6 +1471,7 @@ END
 
 %================================================================
 
+\newpage
 \protect\hypertarget{target_region}{}
 
 
@@ -1490,6 +1565,7 @@ END
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_restart}{}
 
 \subsection{Keyword: RESTART}
@@ -1524,6 +1600,7 @@ RESTART restart.chk
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_sat}{}
 
 \subsection{Keyword: SATURATION\_FUNCTION (SATURATION\_FUNCTIONS, PCKR)}
@@ -1539,6 +1616,7 @@ RESTART restart.chk
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_src}{}
 
 \subsection{Keyword: SOURCE\_SINK}
@@ -1557,6 +1635,7 @@ RESTART restart.chk
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_strata}{}
 
 \subsection{Keyword: STRATIGRAPHY (STRATA)}
@@ -1574,19 +1653,7 @@ RESTART restart.chk
 
 %========================================================================
 
-\protect\hypertarget{target_tecp}{}
-
-\subsection{Keyword: TECP}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[TECP] [VELO, FLUX]
-\end{deflist}
-%\end{minipage}
-%}
-
-%========================================================================
-
+\newpage
 \protect\hypertarget{target_thrm}{}
 
 \subsection{Keyword: THRM (THERMAL\_PROPERTY, THERMAL\_PROPERTIES)}
@@ -1602,73 +1669,62 @@ RESTART restart.chk
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_time}{}
 
-\subsection{Keyword: TIME}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[TIME] [s, m, h, d, mo, y] [every \#]
-\item t1, t2, t3, \ldots
-\end{deflist}
-%\end{minipage}
-%}
+\noindent {\bf Description:} the keyword {\bf TIME} controls the simulation time.
 
+\noindent {\bf Input:}
+\subsection{Keyword: TIME}
+\begin{deflist}{000}
+\item[TIME] ~
+\begin{deflist}{000}
+\item[FINAL\_TIME] {\tt Value} \ {\tt Unit (s, m, h, d, mo, y)}
+\item[INITIAL\_TIMESTEP\_SIZE] {\tt Value} \ {\tt Unit (s, m, h, d, mo, y)}
+\item[MAXIMUM\_TIMESTEP\_SIZE] {\tt Value} \ {\tt Unit (s, m, h, d, mo, y)}
+\end{deflist}
+\item[(.,/.END)]
+\end{deflist}
+
+\noindent{\bf Explanation:}
+
+\noindent{\bf Example:}
+\begin{verbatim}
+TIME
+FINAL_TIME 100. h
+INITIAL_TIMESTEP_SIZE 1.d-3 h
+MAXIMUM_TIMESTEP_SIZE 1.d0 h
+/
+\end{verbatim}
 %================================================================
 
+\newpage
 \protect\hypertarget{target_timestep}{}
 
+\noindent{\bf Description:} the keyword {\bf TIMESTEPPER} controls time stepping.
 \subsection{Keyword: TIMESTEPPER}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[TIMESTEPPER]
-\item  NUM\_STEPS\_AFTER\_TS\_CUT [5]
-\item  MAX\_STEPS [999999]
-\item  TS\_ACCELERATION [5]
-\item  MAX\_TS\_CUTS [16]
-\item  MAX\_PRESSURE\_CHANGE [5.d4]
-\item  MAX\_TEMPERATURE\_CHANGE [5.d0]
-\item  MAX\_CONCENTRATION\_CHANGE [1.d0]
-\item  MAX\_SATURATION\_CHANGE [0.5d0]
+\begin{deflist}{000}
+\item[TIMESTEPPER] ~
+\begin{deflist}{000}
+\item[NUM\_STEPS\_AFTER\_TS\_CUT] [5]
+\item[MAX\_STEPS] [999999]
+\item[TS\_ACCELERATION] [5]
+\item[MAX\_TS\_CUTS] [16]
+\item[MAX\_PRESSURE\_CHANGE] [5.d4]
+\item[MAX\_TEMPERATURE\_CHANGE] [5.d0]
+\item[MAX\_CONCENTRATION\_CHANGE] [1.d0]
+\item[MAX\_SATURATION\_CHANGE] [0.5d0]
+\end{deflist}
 \item[(., /, END)]
 \end{deflist}
-%\end{minipage}
-%}
+
+\noindent{\bf Explanation:}
+
+\noindent{\bf Example:}
 
 %========================================================================
 
-\protect\hypertarget{target_tran}{}
-
-\subsection{Keyword: TOLR}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[TOLR] steps  \  iaccel \ newtmx \ icutmx  \  dpmx  \ dtmpmx  \ dcmx  \  dsmx
-\end{deflist}
-%\end{minipage}
-%}
-
-\noindent
-{\bf Example:}\\
-:      steps    iaccel newtmx icutmx    dpmx   dtmpmx   dcmx    dsmx\\
-TOLR   10000       6     16      16     5.e-3     1.     0.01    0.025
-
-%========================================================================
-
-\protect\hypertarget{target_tran}{}
-
-\subsection{Keyword: TRAN}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[TRAN] ntrandof
-\end{deflist}
-%\end{minipage}
-%}
-
-%========================================================================
-
+\newpage
 \protect\hypertarget{target_unifvel}{}
 
 \subsection{Keyword: UNIFORM\_VELOCITY}
@@ -1682,6 +1738,7 @@ TOLR   10000       6     16      16     5.e-3     1.     0.01    0.025
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_touch}{}
 
 \subsection{Keyword: USE\_TOUCH\_OPTIONS}
@@ -1695,6 +1752,7 @@ TOLR   10000       6     16      16     5.e-3     1.     0.01    0.025
 
 %========================================================================
 
+\newpage
 \protect\hypertarget{target_wallclk}{}
 
 \subsection{Keyword: WALLCLOCK\_STOP}
