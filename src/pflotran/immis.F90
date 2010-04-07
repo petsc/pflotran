@@ -24,7 +24,7 @@ module Immis_module
 !#endif
 #include "finclude/petscsnes.h"
 #include "finclude/petscviewer.h"
-#include "finclude/petscsys.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscis.h"
 #include "finclude/petscis.h90"
 #include "finclude/petsclog.h"
@@ -186,14 +186,14 @@ subroutine ImmisSetupPatch(realization)
   allocate(patch%aux%Immis%Immis_parameter%dencpr(size(realization%material_property_array)))
   do ipara = 1, size(realization%material_property_array)
     patch%aux%Immis%Immis_parameter%dencpr(realization%material_property_array(ipara)%ptr%id) = &
-      realization%material_property_array(ipara)%ptr%rock_density*&
+      realization%material_property_array(ipara)%ptr%rock_density*option%scale*&
       realization%material_property_array(ipara)%ptr%specific_heat
   enddo
 ! ckwet
   allocate(patch%aux%Immis%Immis_parameter%ckwet(size(realization%material_property_array)))
   do ipara = 1, size(realization%material_property_array)
     patch%aux%Immis%Immis_parameter%ckwet(realization%material_property_array(ipara)%ptr%id) = &
-      realization%material_property_array(ipara)%ptr%thermal_conductivity_wet
+      realization%material_property_array(ipara)%ptr%thermal_conductivity_wet*option%scale
   enddo
 ! immis_parameters create_end *****************************************
 
@@ -1276,7 +1276,7 @@ subroutine ImmisResidual(snes,xx,r,realization,ierr)
   interface
      subroutine samrpetscobjectstateincrease(vec)
        implicit none
-#include "finclude/petsc.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
        Vec :: vec
@@ -1806,7 +1806,7 @@ subroutine ImmisJacobian(snes,xx,A,B,flag,realization,ierr)
 
   interface
      subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
-#include "finclude/petsc.h"
+#include "finclude/petscsys.h"
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
        

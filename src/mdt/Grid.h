@@ -1,7 +1,9 @@
 #ifndef GRID_H_
 #define GRID_H_
 
-#include "petsc.h"
+#include <string.h>
+
+#include "petscsys.h"
 #include "petscvec.h"
 #include "petscmat.h"
 #include "petscis.h"
@@ -27,6 +29,7 @@ public:
 //  void computeConnectivity();
   void computeCellMapping();
   void computeVertexMapping();
+  void setFilenamePrefix(char *);
   void setUpCells();
   void setUpVertices();
   void mapVerticesToCells();
@@ -42,6 +45,7 @@ public:
   void addSource(PetscInt is, PetscInt ie, PetscInt js, PetscInt je, 
                  PetscInt ks, PetscInt ke, char *type, PetscReal scalar);
 
+  void getFilenamePrefix(char *);
   void getVectorNatural(Vec *v);
   void getVectorLocal(Vec *v);
   void getVectorGlobal(Vec *v);
@@ -78,6 +82,7 @@ public:
   PetscReal getRotationDegrees();
   Vec getGridCellMaterialIDs();
   Vec getGridCellActivities();
+  PetscInt getNumInactiveCells();
   void setGridSpacing(PetscReal *dx, PetscReal *dy, PetscReal *dz);
   void setGridSpacing(PetscReal dx, PetscReal dy, PetscReal dz);
   void setLocalGridSpacing();
@@ -125,6 +130,7 @@ public:
 private:
   PetscErrorCode ierr;
   StructuredGrid *structuredGrid;
+  char filename_prefix[128];
 
 };
 

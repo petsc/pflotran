@@ -1424,7 +1424,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   interface
      subroutine samrpetscobjectstateincrease(vec)
        implicit none
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
        Vec :: vec
@@ -1432,7 +1432,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
      
      subroutine SAMRCoarsenFaceFluxes(p_application, vec, ierr)
        implicit none
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
        PetscFortranAddr :: p_application
@@ -1537,7 +1537,7 @@ end subroutine RichardsResidual
 
 ! ************************************************************************** !
 !
-! RichardsResidualfuxContribsPatch: should be called only for SAMR
+! RichardsResidualFluxContribsPatch: should be called only for SAMR
 ! author: Bobby Philip
 ! date: 02/17/09
 !
@@ -1617,7 +1617,8 @@ end subroutine RichardsResidualFluxContribPatch
 
 ! ************************************************************************** !
 !
-! RichardsResidualPatch1: Computes the residual equation 
+! RichardsResidualPatch1: Computes the interior flux and boundary flux 
+!   terms of the residual equation 
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
@@ -1641,7 +1642,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
      PetscInt function samr_patch_at_bc(p_patch, axis, dim)
      implicit none
      
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
      
      PetscFortranAddr :: p_patch
      PetscInt :: axis,dim
@@ -1979,7 +1980,8 @@ end subroutine RichardsResidualPatch1
 
 ! ************************************************************************** !
 !
-! RichardsResidualPatch2: Computes the residual equation 
+! RichardsResidualPatch2: Computes the accumulation and source/sink terms of 
+!   the residual equation 
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
@@ -2130,7 +2132,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
 
   interface
      subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
        
@@ -2239,7 +2241,8 @@ end subroutine RichardsJacobian
                 
 ! ************************************************************************** !
 !
-! RichardsJacobianPatch1: Computes the Jacobian
+! RichardsJacobianPatch1: Computes the interior flux and boundary flux 
+!   terms of the Jacobian
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
@@ -2520,7 +2523,8 @@ end subroutine RichardsJacobianPatch1
 
 ! ************************************************************************** !
 !
-! RichardsJacobianPatch2: Computes the Jacobian
+! RichardsJacobianPatch2: Computes the accumulation and source/sink terms of 
+!   the Jacobian
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
@@ -2542,7 +2546,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 
   interface
      subroutine SAMRSetJacobianSourceOnPatch(which_pc, index, val, p_application, p_patch) 
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 
        PetscInt :: which_pc
        PetscInt :: index
@@ -2552,7 +2556,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
      end subroutine SAMRSetJacobianSourceOnPatch
 
      subroutine SAMRSetJacobianSrcCoeffsOnPatch(which_pc, p_application, p_patch) 
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 
        PetscInt :: which_pc
        PetscFortranAddr :: p_application

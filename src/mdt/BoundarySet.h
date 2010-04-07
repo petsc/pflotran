@@ -4,8 +4,8 @@
 #include <stddef.h>
 #include <string.h>
 
-//#include "include/petsc.h"
-#include "petsc.h"
+//#include "include/petscsys.h"
+#include "petscsys.h"
 
 #include "Connection.h"
 #include "Condition.h"

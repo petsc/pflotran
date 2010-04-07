@@ -1,0 +1,16 @@
+% *** DEFLIST ****
+%
+% Aufruf: \begin{deflist}{Label}
+%         \item[label] TeX
+%         \end{deflist}
+% erzeugt: Liste, bei der das laengste Label die Einrueckungstiefe bestimmt
+%
+\def\deflabel#1{\textbf{#1}\hfill}
+%\def\deflabel#1{#1\hfill}
+\def\deflist#1{
+    \list{}{\settowidth{\labelwidth}{\textbf{#1}}
+%    \list{}{\settowidth{\labelwidth}{#1}
+            \setlength{\leftmargin}{\labelwidth}
+            \addtolength{\leftmargin}{\labelsep}
+            \let\makelabel \deflabel}}
+\let\enddeflist\endlist

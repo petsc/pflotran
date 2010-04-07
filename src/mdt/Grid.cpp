@@ -37,6 +37,13 @@ void Grid::createStructured(PetscInt nx, PetscInt ny, PetscInt nz) {
   structuredGrid->createDA();
 }
 
+void Grid::getFilenamePrefix(char *filename_prefix_) {
+  if (strlen(filename_prefix) > 1)
+    strcpy(filename_prefix_,filename_prefix);
+  else
+    filename_prefix_[0] = '\0';
+}
+
 PetscInt *Grid::getCellIds() {
 
   PetscInt *ids = new PetscInt[num_cells_local];
@@ -228,6 +235,11 @@ void Grid::nullifyArrays() {
   vertex_mapping_ghosted_to_local = NULL;
   vertices = NULL;
   boundary_sets = NULL;
+  filename_prefix[0] = '\0';
+}
+
+void Grid::setFilenamePrefix(char *filename_prefix_) {
+  strcpy(filename_prefix,filename_prefix_);
 }
 
 void Grid::setGridSpacing(PetscReal *dx, PetscReal *dy, PetscReal *dz) {
@@ -573,6 +585,17 @@ Vec Grid::getGridCellActivities() {
   }
   VecRestoreArray(v,&ptr);
   return v;
+}
+
+
+PetscInt Grid::getNumInactiveCells() {
+  PetscInt count = 0;
+  PetscInt global_count = 0;
+  for (PetscInt icell=0; icell<num_cells_local; icell++) {
+    if (cells[icell].getActive() == 0) count++;
+  }
+  MPI_Allreduce(&count,&global_count,1,MPI_INT,MPI_SUM,PETSC_COMM_WORLD);
+  return global_count;
 }
 
 void Grid::receiveFlag(PetscInt *flag, PetscInt direction) {

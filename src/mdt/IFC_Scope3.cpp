@@ -97,6 +97,8 @@ IFC_Scope3::IFC_Scope3(Grid **grid_) {
 
 //  grid->setOrigin(593925.,115160.,90.);
   grid->setOrigin(593950.,115070.,90.);
+  sprintf(filename,"%dx%dx%d",nx,ny,nz);
+  grid->setFilenamePrefix(filename);
 
 //  grid->computeCoordinates();
 //  grid->computeConnectivity();
@@ -153,8 +155,8 @@ IFC_Scope3::IFC_Scope3(Grid **grid_) {
   ascii_grids[0]->setMaterialId(10);
   ascii_grids[1]->setMaterialId(9);
   ascii_grids[2]->setMaterialId(8);
-  ascii_grids[3]->setMaterialId(6);
-  ascii_grids[4]->setMaterialId(5);
+  ascii_grids[3]->setMaterialId(5);
+  ascii_grids[4]->setMaterialId(4);
   ascii_grids[5]->setMaterialId(1);
 
   PetscInt mod = grid->num_cells_ghosted/10;

@@ -34,6 +34,7 @@ subroutine DatabaseRead(reaction,option)
   type(aq_species_type), pointer :: cur_aq_spec, cur_aq_spec2
   type(gas_species_type), pointer :: cur_gas_spec, cur_gas_spec2
   type(mineral_type), pointer :: cur_mineral, cur_mineral2
+  type(colloid_type), pointer :: cur_colloid
   type(surface_complexation_rxn_type), pointer :: cur_srfcplx_rxn
   type(surface_complex_type), pointer :: cur_srfcplx, cur_srfcplx2
   
@@ -44,6 +45,7 @@ subroutine DatabaseRead(reaction,option)
   PetscTruth :: flag, found
   PetscInt :: ispec, itemp, i
   PetscReal :: stoich
+  PetscReal :: temp_real
   type(input_type), pointer :: input
   PetscInt :: iostat
   PetscInt :: num_nulls
@@ -133,7 +135,7 @@ subroutine DatabaseRead(reaction,option)
     endif
     
     select case(num_nulls)
-      case(0,1) ! primary and secondary aq species
+      case(0,1) ! primary and secondary aq species and colloids
         cur_aq_spec => reaction%primary_species_list
         found = PETSC_FALSE
         do
@@ -156,6 +158,29 @@ subroutine DatabaseRead(reaction,option)
             exit
           endif
           cur_aq_spec => cur_aq_spec%next
+        enddo
+        ! check if a colloid
+        if (.not.found) cur_colloid => reaction%colloid_list
+        do
+          if (found .or. .not.associated(cur_colloid)) exit
+          if (StringCompare(name,cur_colloid%name,MAXWORDLENGTH)) then
+            found = PETSC_TRUE          
+          ! change negative id to positive, indicating it was found in database
+            cur_colloid%id = abs(cur_colloid%id)
+
+            ! skip the Debye-Huckel ion size parameter (a0)
+            call InputReadDouble(input,option,temp_real)
+            call InputErrorMsg(input,option,'Colloid skip a0','DATABASE')            
+            ! skipo the valence
+            call InputReadDouble(input,option,temp_real)
+            call InputErrorMsg(input,option,'Colloid skip Z','DATABASE')            
+            ! read the molar weight
+            call InputReadDouble(input,option,cur_colloid%molar_weight)
+            call InputErrorMsg(input,option,'Colloid molar weight','DATABASE')
+            
+            cycle ! avoid the aqueous species parameters below
+          endif
+          cur_colloid => cur_colloid%next
         enddo
         
         if (.not.found) cycle ! go to next line in database
@@ -186,7 +211,7 @@ subroutine DatabaseRead(reaction,option)
             call InputReadDouble(input,option,cur_aq_spec%dbaserxn%logK(itemp))
             call InputErrorMsg(input,option,'EQRXN logKs','DATABASE')            
           enddo
-        endif 
+        endif
         ! read the Debye-Huckel ion size parameter (a0)
         call InputReadDouble(input,option,cur_aq_spec%a0)
         call InputErrorMsg(input,option,'AQ Species a0','DATABASE')            
@@ -648,7 +673,8 @@ subroutine BasisInit(reaction,option)
   type(surface_complex_type), pointer :: cur_srfcplx2
   type(ion_exchange_rxn_type), pointer :: cur_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cur_cation
-  
+  type(colloid_type), pointer :: cur_colloid
+
   character(len=MAXWORDLENGTH), allocatable :: old_basis_names(:)
   character(len=MAXWORDLENGTH), allocatable :: new_basis_names(:)
 
@@ -670,13 +696,14 @@ subroutine BasisInit(reaction,option)
   character(len=MAXWORDLENGTH), allocatable :: sec_names(:)
   character(len=MAXWORDLENGTH), allocatable :: gas_names(:)
   PetscReal, allocatable :: logKvector_swapped(:,:)
+  PetscTruth, allocatable :: flags(:)
   
   PetscInt :: ispec, itemp
   PetscInt :: spec_id
   PetscInt :: ncomp_h2o, ncomp_secondary
   PetscInt :: icount_old, icount_new, icount, icount2
   PetscInt :: i, j, irow, icol
-  PetscInt :: ipri_spec, isec_spec, imnrl, igas_spec, ikinmnrl
+  PetscInt :: ipri_spec, isec_spec, imnrl, igas_spec, ikinmnrl, icoll
   PetscInt :: i_old, i_new
   PetscInt :: isrfcplx, irxn
   PetscInt :: ication
@@ -806,12 +833,19 @@ subroutine BasisInit(reaction,option)
     enddo
   endif
 
-  reaction%ncomp = GetPrimarySpeciesCount(reaction)
+  ! # of components sorbed to colloids
+  reaction%naqcomp = GetPrimarySpeciesCount(reaction)
+  reaction%ncoll = GetColloidCount(reaction)
   reaction%neqcplx = GetSecondarySpeciesCount(reaction)
   reaction%ngas = GetGasCount(reaction)
 
+  reaction%ncollcomp = reaction%naqcomp ! set to naqcomp for now, will be adjusted later
+  reaction%offset_aq = 0
+  reaction%offset_coll = reaction%offset_aq + reaction%naqcomp
+  reaction%offset_collcomp = reaction%offset_coll + reaction%ncoll
+
   ! account for H2O in the basis by adding 1
-  ncomp_h2o = reaction%ncomp+1
+  ncomp_h2o = reaction%naqcomp+1
   
   allocate(old_basis_names(ncomp_h2o+reaction%neqcplx))
   allocate(new_basis_names(ncomp_h2o))
@@ -1906,25 +1940,25 @@ subroutine BasisInit(reaction,option)
   if (associated(reaction%primary_species_names)) &
     deallocate(reaction%primary_species_names)
 
-  allocate(reaction%primary_species_names(reaction%ncomp))
+  allocate(reaction%primary_species_names(reaction%naqcomp))
   reaction%primary_species_names = ''
 
-  allocate(reaction%primary_species_print(reaction%ncomp))
+  allocate(reaction%primary_species_print(reaction%naqcomp))
   reaction%primary_species_print = PETSC_FALSE
 
-  allocate(reaction%primary_spec_Z(reaction%ncomp))
+  allocate(reaction%primary_spec_Z(reaction%naqcomp))
   reaction%primary_spec_Z = 0.d0
 
-  allocate(reaction%primary_spec_molar_wt(reaction%ncomp))
+  allocate(reaction%primary_spec_molar_wt(reaction%naqcomp))
   reaction%primary_spec_molar_wt = 0.d0
 
-  allocate(reaction%primary_spec_a0(reaction%ncomp))
+  allocate(reaction%primary_spec_a0(reaction%naqcomp))
   reaction%primary_spec_a0 = 0.d0
 
-  allocate(reaction%kd_print(reaction%ncomp))
+  allocate(reaction%kd_print(reaction%naqcomp))
   reaction%kd_print = PETSC_FALSE
   if (reaction%neqsorb > 0) then
-    allocate(reaction%total_sorb_print(reaction%ncomp))
+    allocate(reaction%total_sorb_print(reaction%naqcomp))
     reaction%total_sorb_print = PETSC_FALSE
   endif
   
@@ -1963,13 +1997,13 @@ subroutine BasisInit(reaction,option)
     allocate(reaction%secondary_species_print(reaction%neqcplx))
     reaction%secondary_species_print = PETSC_FALSE
 
-    allocate(reaction%eqcplx_basis_names(reaction%ncomp,reaction%neqcplx))
+    allocate(reaction%eqcplx_basis_names(reaction%naqcomp,reaction%neqcplx))
     reaction%eqcplx_basis_names = ''
 
-    allocate(reaction%eqcplxspecid(0:reaction%ncomp,reaction%neqcplx))
+    allocate(reaction%eqcplxspecid(0:reaction%naqcomp,reaction%neqcplx))
     reaction%eqcplxspecid = 0
 
-    allocate(reaction%eqcplxstoich(0:reaction%ncomp,reaction%neqcplx))
+    allocate(reaction%eqcplxstoich(0:reaction%naqcomp,reaction%neqcplx))
     reaction%eqcplxstoich = 0.d0
 
     allocate(reaction%eqcplxh2oid(reaction%neqcplx))
@@ -2064,9 +2098,9 @@ subroutine BasisInit(reaction,option)
     reaction%gas_species_names = ''
     allocate(reaction%gas_species_print(reaction%ngas))
     reaction%gas_species_print = PETSC_FALSE
-    allocate(reaction%eqgasspecid(0:reaction%ncomp,reaction%ngas))
+    allocate(reaction%eqgasspecid(0:reaction%naqcomp,reaction%ngas))
     reaction%eqgasspecid = 0
-    allocate(reaction%eqgasstoich(0:reaction%ncomp,reaction%ngas))
+    allocate(reaction%eqgasstoich(0:reaction%naqcomp,reaction%ngas))
     reaction%eqgasstoich = 0.d0
     allocate(reaction%eqgash2oid(reaction%ngas))
     reaction%eqgash2oid = 0
@@ -2142,9 +2176,9 @@ subroutine BasisInit(reaction,option)
   if (reaction%nmnrl > 0) then
     allocate(reaction%mineral_names(reaction%nmnrl))
     reaction%mineral_names = ''
-    allocate(reaction%mnrlspecid(0:reaction%ncomp,reaction%nmnrl))
+    allocate(reaction%mnrlspecid(0:reaction%naqcomp,reaction%nmnrl))
     reaction%mnrlspecid = 0
-    allocate(reaction%mnrlstoich(reaction%ncomp,reaction%nmnrl))
+    allocate(reaction%mnrlstoich(reaction%naqcomp,reaction%nmnrl))
     reaction%mnrlstoich = 0.d0
     allocate(reaction%mnrlh2oid(reaction%nmnrl))
     reaction%mnrlh2oid = 0
@@ -2164,9 +2198,9 @@ subroutine BasisInit(reaction,option)
     reaction%kinmnrl_names = ''
     allocate(reaction%kinmnrl_print(reaction%nkinmnrl))
     reaction%kinmnrl_print = PETSC_FALSE
-    allocate(reaction%kinmnrlspecid(0:reaction%ncomp,reaction%nkinmnrl))
+    allocate(reaction%kinmnrlspecid(0:reaction%naqcomp,reaction%nkinmnrl))
     reaction%kinmnrlspecid = 0
-    allocate(reaction%kinmnrlstoich(reaction%ncomp,reaction%nkinmnrl))
+    allocate(reaction%kinmnrlstoich(reaction%naqcomp,reaction%nkinmnrl))
     reaction%kinmnrlstoich = 0.d0
     allocate(reaction%kinmnrlh2oid(reaction%nkinmnrl))
     reaction%kinmnrlh2oid = 0
@@ -2263,6 +2297,36 @@ subroutine BasisInit(reaction,option)
     enddo
   endif
   
+  ! colloids
+  reaction%ncoll = GetColloidCount(reaction)
+
+  if (reaction%ncoll > 0) then
+    allocate(reaction%colloid_names(reaction%ncoll))
+    allocate(reaction%colloid_mobile_fraction(reaction%ncoll))
+    allocate(reaction%colloid_print(reaction%ncoll))
+    reaction%colloid_names = ''
+    reaction%colloid_mobile_fraction = 0.d0
+    reaction%colloid_print = PETSC_FALSE
+
+    cur_colloid => reaction%colloid_list
+    icoll = 1
+    do
+      if (.not.associated(cur_colloid)) exit
+
+      reaction%colloid_names(icoll) = cur_colloid%name
+      reaction%colloid_mobile_fraction(icoll) = cur_colloid%mobile_fraction
+      reaction%colloid_print(icoll) = cur_colloid%print_me .or. &
+                                      reaction%print_all_species
+      cur_colloid => cur_colloid%next
+      icoll = icoll + 1
+    enddo
+  endif
+  
+  ! use flags to determine whether a primary aqueous species is included
+  ! in the list of colloid species
+  allocate(flags(reaction%naqcomp))
+  flags = PETSC_FALSE
+
   if (reaction%neqsrfcplx > 0) then
   
     ! determine max # complexes for a given site
@@ -2285,8 +2349,11 @@ subroutine BasisInit(reaction,option)
     enddo
     nullify(cur_srfcplx_rxn)  
 
-    allocate(reaction%eqsrfcplx_rxn_to_mineral(reaction%neqsrfcplxrxn))
-    reaction%eqsrfcplx_rxn_to_mineral = 0
+    allocate(reaction%eqsrfcplx_rxn_to_surf(reaction%neqsrfcplxrxn))
+    reaction%eqsrfcplx_rxn_to_surf = 0
+    
+    allocate(reaction%eqsrfcplx_rxn_surf_type(reaction%neqsrfcplxrxn))
+    reaction%eqsrfcplx_rxn_surf_type = 0
     
     allocate(reaction%eqsrfcplx_rxn_to_complex(0:icount, &
                                                  reaction%neqsrfcplxrxn))
@@ -2310,10 +2377,10 @@ subroutine BasisInit(reaction,option)
     allocate(reaction%eqsrfcplx_print(reaction%neqsrfcplx))
     reaction%eqsrfcplx_print = PETSC_FALSE
     
-    allocate(reaction%eqsrfcplxspecid(0:reaction%ncomp,reaction%neqsrfcplx))
+    allocate(reaction%eqsrfcplxspecid(0:reaction%naqcomp,reaction%neqsrfcplx))
     reaction%eqsrfcplxspecid = 0
     
-    allocate(reaction%eqsrfcplxstoich(reaction%ncomp,reaction%neqsrfcplx))
+    allocate(reaction%eqsrfcplxstoich(reaction%naqcomp,reaction%neqsrfcplx))
     reaction%eqsrfcplxstoich = 0.d0
     
     allocate(reaction%eqsrfcplxh2oid(reaction%neqsrfcplx))
@@ -2328,8 +2395,8 @@ subroutine BasisInit(reaction,option)
     allocate(reaction%eqsrfcplx_free_site_stoich(reaction%neqsrfcplx))
     reaction%eqsrfcplx_free_site_stoich = 0.d0
     
-    allocate(reaction%eqsrfcplx_mineral_id(reaction%neqsrfcplx))
-    reaction%eqsrfcplx_mineral_id = 0
+!    allocate(reaction%eqsrfcplx_mineral_id(reaction%neqsrfcplx))
+!    reaction%eqsrfcplx_mineral_id = 0
     
     allocate(reaction%eqsrfcplx_logK(reaction%neqsrfcplx))
     reaction%eqsrfcplx_logK = 0.d0
@@ -2358,8 +2425,48 @@ subroutine BasisInit(reaction,option)
         reaction%eqsrfcplx_site_names(irxn) = cur_srfcplx_rxn%free_site_name
         reaction%eqsrfcplx_site_print(irxn) = cur_srfcplx_rxn%free_site_print_me .or. &
                                               reaction%print_all_species
-        reaction%eqsrfcplx_rxn_to_mineral(irxn) = &
-          GetMineralIDFromName(reaction,cur_srfcplx_rxn%mineral_name)
+        if (len_trim(cur_srfcplx_rxn%mineral_name) > 1) then
+          reaction%eqsrfcplx_rxn_surf_type(irxn) = MINERAL_SURFACE
+          reaction%eqsrfcplx_rxn_to_surf(irxn) = &
+            GetMineralIDFromName(reaction,cur_srfcplx_rxn%mineral_name)
+          if (reaction%eqsrfcplx_rxn_to_surf(irxn) < 0) then
+            option%io_buffer = 'Mineral ' // trim(cur_srfcplx_rxn%mineral_name) // &
+                               'listed in surface complexation reaction not ' // &
+                               ' found in mineral list'
+            call printErrMsg(option)
+          endif
+        else if (len_trim(cur_srfcplx_rxn%colloid_name) > 1) then
+          reaction%eqsrfcplx_rxn_surf_type(irxn) = COLLOID_SURFACE
+          reaction%eqsrfcplx_rxn_to_surf(irxn) = &
+            GetColloidIDFromName(reaction,cur_srfcplx_rxn%colloid_name)
+          if (reaction%eqsrfcplx_rxn_to_surf(irxn) < 0) then
+            option%io_buffer = 'Colloid ' // trim(cur_srfcplx_rxn%colloid_name) // &
+                               'listed in surface complexation reaction not ' // &
+                               ' found in colloid list'
+            call printErrMsg(option)
+          endif
+          ! loop over primary species associated with colloid sorption and
+          ! add to colloid species list, if not already listed
+          cur_srfcplx => cur_srfcplx_rxn%complex_list
+          do
+            if (.not.associated(cur_srfcplx)) exit
+            do i = 1, cur_srfcplx%dbaserxn%nspec
+              if (cur_srfcplx%dbaserxn%spec_ids(i) == h2o_id) cycle
+              spec_id = cur_srfcplx%dbaserxn%spec_ids(i)
+              if (spec_id > h2o_id) spec_id = spec_id - 1              
+              flags(spec_id) = PETSC_TRUE
+            enddo
+            cur_srfcplx => cur_srfcplx%next
+          enddo
+          
+        else
+          write(word,*) cur_srfcplx_rxn%id
+          option%io_buffer = 'No mineral or colloid name specified for ' // &
+            'equilibrium surface complexation reaction:' // &
+            trim(adjustl(word))
+          call printWrnMsg(option)
+          reaction%eqsrfcplx_rxn_surf_type(irxn) = NULL_SURFACE          
+        endif
         reaction%eqsrfcplx_rxn_site_density(irxn) = cur_srfcplx_rxn%site_density
               
         cur_srfcplx => cur_srfcplx_rxn%complex_list
@@ -2431,12 +2538,9 @@ subroutine BasisInit(reaction,option)
     nullify(cur_srfcplx_rxn)  
   
   endif
-
+  
   if (reaction%nkinsrfcplxrxn > 0) then
   
-    allocate(reaction%kinsrfcplx_rxn_to_mineral(reaction%nkinsrfcplxrxn))
-    reaction%kinsrfcplx_rxn_to_mineral = 0
-    
     ! determine max # complexes for a given site
     icount = 0
     cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
@@ -2462,6 +2566,12 @@ subroutine BasisInit(reaction,option)
     allocate(reaction%kinsrfcplx_rxn_to_site(reaction%nkinsrfcplxrxn))
     reaction%kinsrfcplx_rxn_to_site = 0
     
+    allocate(reaction%kinsrfcplx_rxn_to_surf(reaction%nkinsrfcplxrxn))
+    reaction%kinsrfcplx_rxn_to_surf = 0
+    
+    allocate(reaction%kinsrfcplx_rxn_surf_type(reaction%nkinsrfcplxrxn))
+    reaction%kinsrfcplx_rxn_surf_type = 0
+    
     allocate(reaction%kinsrfcplx_site_names(reaction%nkinsrfcplxrxn))
     reaction%kinsrfcplx_site_names = ''
     
@@ -2480,10 +2590,10 @@ subroutine BasisInit(reaction,option)
     allocate(reaction%kinsrfcplx_print(reaction%nkinsrfcplx))
     reaction%kinsrfcplx_print = PETSC_FALSE
     
-    allocate(reaction%kinsrfcplxspecid(0:reaction%ncomp,reaction%nkinsrfcplx))
+    allocate(reaction%kinsrfcplxspecid(0:reaction%naqcomp,reaction%nkinsrfcplx))
     reaction%kinsrfcplxspecid = 0
     
-    allocate(reaction%kinsrfcplxstoich(reaction%ncomp,reaction%nkinsrfcplx))
+    allocate(reaction%kinsrfcplxstoich(reaction%naqcomp,reaction%nkinsrfcplx))
     reaction%kinsrfcplxstoich = 0.d0
     
     allocate(reaction%kinsrfcplxh2oid(reaction%nkinsrfcplx))
@@ -2530,8 +2640,49 @@ subroutine BasisInit(reaction,option)
         reaction%kinsrfcplx_site_names(irxn) = cur_srfcplx_rxn%free_site_name
         reaction%kinsrfcplx_site_print(irxn) = cur_srfcplx_rxn%free_site_print_me .or. &
                                               reaction%print_all_species
-        reaction%kinsrfcplx_rxn_to_mineral(irxn) = &
-          GetMineralIDFromName(reaction,cur_srfcplx_rxn%mineral_name)
+        if (len_trim(cur_srfcplx_rxn%mineral_name) > 1) then
+          reaction%kinsrfcplx_rxn_surf_type(irxn) = MINERAL_SURFACE
+          reaction%kinsrfcplx_rxn_to_surf(irxn) = &
+            GetMineralIDFromName(reaction,cur_srfcplx_rxn%mineral_name)
+          if (reaction%eqsrfcplx_rxn_to_surf(irxn) < 0) then
+            option%io_buffer = 'Mineral ' // trim(cur_srfcplx_rxn%mineral_name) // &
+                               'listed in surface complexation reaction not ' // &
+                               ' found in mineral list'
+            call printErrMsg(option)
+          endif
+        else if (len_trim(cur_srfcplx_rxn%colloid_name) > 1) then
+          reaction%kinsrfcplx_rxn_surf_type(irxn) = COLLOID_SURFACE
+          reaction%kinsrfcplx_rxn_to_surf(irxn) = &
+            GetColloidIDFromName(reaction,cur_srfcplx_rxn%colloid_name)
+          if (reaction%eqsrfcplx_rxn_to_surf(irxn) < 0) then
+            option%io_buffer = 'Colloid ' // trim(cur_srfcplx_rxn%colloid_name) // &
+                               'listed in surface complexation reaction not ' // &
+                               ' found in colloid list'
+            call printErrMsg(option)
+          endif
+          ! loop over primary species associated with colloid sorption and
+          ! add to colloid species list, if not already listed
+          cur_srfcplx => cur_srfcplx_rxn%complex_list
+          do
+            if (.not.associated(cur_srfcplx)) exit
+            do i = 1, cur_srfcplx%dbaserxn%nspec
+              if (cur_srfcplx%dbaserxn%spec_ids(i) == h2o_id) cycle
+              spec_id = cur_srfcplx%dbaserxn%spec_ids(i)
+              if (spec_id > h2o_id) spec_id = spec_id - 1              
+              flags(spec_id) = PETSC_TRUE
+            enddo
+            cur_srfcplx => cur_srfcplx%next
+          enddo
+
+        else
+          write(word,*) cur_srfcplx_rxn%id
+          write(word,*) cur_srfcplx_rxn%id
+          option%io_buffer = 'No mineral or colloid name specified for ' // &
+            'kinetic surface complexation reaction:' // &
+            trim(adjustl(word))
+          call printWrnMsg(option)
+          reaction%eqsrfcplx_rxn_surf_type(irxn) = NULL_SURFACE          
+        endif
         reaction%kinsrfcplx_rxn_site_density(irxn) = cur_srfcplx_rxn%site_density
               
         cur_srfcplx => cur_srfcplx_rxn%complex_list
@@ -2606,6 +2757,49 @@ subroutine BasisInit(reaction,option)
   
   endif
 
+
+  ! allocate colloids species names, mappings, etc.
+  reaction%ncollcomp = 0
+  icount = 0
+  do i = 1, reaction%naqcomp
+    if (flags(i)) then 
+      icount = icount + 1
+    endif
+  enddo
+  if (icount > 0) then
+    allocate(reaction%pri_spec_to_coll_spec(reaction%naqcomp))
+    allocate(reaction%colloid_species_names(icount))
+    allocate(reaction%coll_spec_to_pri_spec(icount))
+    reaction%pri_spec_to_coll_spec = -999
+    reaction%coll_spec_to_pri_spec = -999
+    reaction%colloid_species_names = ''
+    reaction%ncollcomp = icount
+    icount = 0
+    do i = 1, reaction%naqcomp
+      if (flags(i)) then
+        icount = icount + 1
+        reaction%colloid_species_names(icount) = &
+          trim(reaction%primary_species_names(i))
+        reaction%coll_spec_to_pri_spec(icount) = i
+        reaction%pri_spec_to_coll_spec(i) = icount
+      endif
+    enddo
+    if (minval(reaction%coll_spec_to_pri_spec) < 1) then
+      option%io_buffer = 'Species colloid surface complexation reaction not' // &
+                         ' recognized among primary species'
+      call printErrMsg(option)
+    endif
+    allocate(reaction%total_sorb_mobile_print(reaction%ncollcomp))
+    reaction%total_sorb_mobile_print = PETSC_FALSE
+    do i = 1, reaction%ncollcomp
+      reaction%total_sorb_mobile_print(i) = &
+        (reaction%primary_species_print(reaction%coll_spec_to_pri_spec(i)) .or. &
+         reaction%print_all_species) .and. &
+        reaction%print_total_sorb_mobile
+    enddo
+  endif
+  deallocate(flags)
+
   if (reaction%neqionxrxn > 0) then
 
     ! determine max # cations for a given ionx exchange rxn
@@ -2655,7 +2849,7 @@ subroutine BasisInit(reaction,option)
         reaction%eqionx_rxn_k(ication,irxn) = cur_cation%k
 
         found = PETSC_FALSE
-        do i = 1, reaction%ncomp
+        do i = 1, reaction%naqcomp
           if (StringCompare(cur_cation%name, &
                               reaction%primary_species_names(i), &
                               MAXWORDLENGTH)) then
@@ -2693,95 +2887,119 @@ subroutine BasisInit(reaction,option)
   endif
 
   call BasisPrint(reaction,'Final Basis',option)
-  
+
   ! locate specific species
-  do ispec = 1, reaction%ncomp
-    if (reaction%h_ion_id == 0) then
+  reaction%species_idx => SpeciesIndexCreate()
+  do ispec = 1, reaction%naqcomp
+    if (reaction%species_idx%h_ion_id == 0) then
       word = 'H+'
       if (StringCompare(reaction%primary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%h_ion_id = ispec
+        reaction%species_idx%h_ion_id = ispec
       endif
     endif
-    if (reaction%na_ion_id == 0) then
+    if (reaction%species_idx%na_ion_id == 0) then
       word = 'Na+'
       if (StringCompare(reaction%primary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%na_ion_id = ispec
+        reaction%species_idx%na_ion_id = ispec
       endif
     endif
-    if (reaction%cl_ion_id == 0) then
+    if (reaction%species_idx%cl_ion_id == 0) then
       word = 'Cl-'
       if (StringCompare(reaction%primary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%cl_ion_id = ispec
+        reaction%species_idx%cl_ion_id = ispec
       endif
     endif
-    if (reaction%co2_aq_id == 0) then
+    if (reaction%species_idx%co2_aq_id == 0) then
       word = 'CO2(aq)'
       if (StringCompare(reaction%primary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%co2_aq_id = ispec
+        reaction%species_idx%co2_aq_id = ispec
       endif
     endif
-    if (reaction%h2o_aq_id == 0) then
+    if (reaction%species_idx%tracer_aq_id == 0) then
+      word = 'Tracer'
+      if (StringCompare(reaction%primary_species_names(ispec), &
+                          word,MAXWORDLENGTH)) then
+        reaction%species_idx%tracer_aq_id = ispec
+      endif
+    endif
+    if (reaction%species_idx%h2o_aq_id == 0) then
       word = 'H2O'
       if (StringCompare(reaction%primary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%h2o_aq_id = ispec
+        reaction%species_idx%h2o_aq_id = ispec
+      endif
+    endif
+    if (reaction%species_idx%tracer_age_id == 0) then
+      word = 'Tracer_Age'
+      if (StringCompare(reaction%primary_species_names(ispec), &
+                          word,MAXWORDLENGTH)) then
+        reaction%species_idx%tracer_age_id = ispec
+        reaction%calculate_tracer_age = PETSC_TRUE
+      endif
+    endif
+    if (reaction%species_idx%water_age_id == 0) then
+      word = 'Water_Age'
+      if (StringCompare(reaction%primary_species_names(ispec), &
+                          word,MAXWORDLENGTH)) then
+        reaction%species_idx%water_age_id = ispec
+        reaction%calculate_water_age = PETSC_TRUE
       endif
     endif
   enddo
   
   do ispec = 1, reaction%neqcplx
-    if (reaction%h_ion_id == 0) then
+    if (reaction%species_idx%h_ion_id == 0) then
       word = 'H+'
       if (StringCompare(reaction%secondary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%h_ion_id = -ispec
+        reaction%species_idx%h_ion_id = -ispec
       endif
     endif
-    if (reaction%na_ion_id == 0) then
+    if (reaction%species_idx%na_ion_id == 0) then
       word = 'Na+'
       if (StringCompare(reaction%secondary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%na_ion_id = -ispec
+        reaction%species_idx%na_ion_id = -ispec
       endif
     endif
-    if (reaction%cl_ion_id == 0) then
+    if (reaction%species_idx%cl_ion_id == 0) then
       word = 'Cl-'
       if (StringCompare(reaction%secondary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%cl_ion_id = -ispec
+        reaction%species_idx%cl_ion_id = -ispec
       endif
     endif
-    if (reaction%co2_aq_id == 0) then
+    if (reaction%species_idx%co2_aq_id == 0) then
       word = 'CO2(aq)'
       if (StringCompare(reaction%secondary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%co2_aq_id = -ispec
+        reaction%species_idx%co2_aq_id = -ispec
       endif
     endif
   enddo
 
   do ispec = 1, reaction%ngas
-    if (reaction%o2_gas_id == 0) then
+    if (reaction%species_idx%o2_gas_id == 0) then
       word = 'O2(g)'
       if (StringCompare(reaction%gas_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%o2_gas_id = ispec
+        reaction%species_idx%o2_gas_id = ispec
       endif
     endif
-    if (reaction%co2_gas_id == 0) then
+    if (reaction%species_idx%co2_gas_id == 0) then
       word = 'CO2(g)'
       if (StringCompare(reaction%gas_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%co2_gas_id = ispec
+        reaction%species_idx%co2_gas_id = ispec
       endif
       word = 'CO2(g)*'
       if (StringCompare(reaction%gas_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
-        reaction%co2_gas_id = ispec
+        reaction%species_idx%co2_gas_id = ispec
       endif
 
     endif
@@ -2794,8 +3012,8 @@ subroutine BasisInit(reaction,option)
 
   if (OptionPrintToFile(option)) then
     write(option%fid_out,90)
-    write(option%fid_out,100) reaction%ncomp, 'Primary Species'
-    write(option%fid_out,110) (reaction%primary_species_names(i),i=1,reaction%ncomp)
+    write(option%fid_out,100) reaction%naqcomp, 'Primary Species'
+    write(option%fid_out,110) (reaction%primary_species_names(i),i=1,reaction%naqcomp)
     
     write(option%fid_out,100) reaction%neqcplx, 'Secondary Complex Species'
     write(option%fid_out,110) (reaction%secondary_species_names(i),i=1,reaction%neqcplx)

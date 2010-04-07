@@ -73,6 +73,7 @@ module Input_module
             InputDefaultMsg, InputReadStringErrorMsg, &
             InputFindStringErrorMsg, InputError, &
             InputReadNChars, InputReadQuotedWord, &
+            InputReadPath, &
             InputGetCommandLineInt, &
             InputGetCommandLineReal, &
             InputGetCommandLineTruth, &
@@ -905,6 +906,75 @@ end subroutine InputReadQuotedWord
 
 ! ************************************************************************** !
 !
+! InputReadPath: reads and removes a words from a path
+! author: Glenn Hammond
+! date: 01/14/10
+!
+! ************************************************************************** !
+subroutine InputReadPath(string, word, return_blank_error, ierr)
+
+  implicit none
+
+  character(len=*) :: string
+  character(len=*) :: word
+  PetscTruth :: return_blank_error
+  PetscErrorCode :: ierr
+  
+  PetscInt :: i, begins, ends
+  character(len=1) :: slash, backslash  
+
+  if (ierr /= 0) return
+
+  slash = achar(47)
+  backslash = achar(92)
+
+  ! Initialize character string to blank.
+  do i=1,len_trim(word)
+    word(i:i) = ' '
+  enddo
+
+  ierr = len_trim(string)
+  
+  if (ierr == 0) then
+    if (return_blank_error) then
+      ierr = 1
+    else
+      ierr = 0
+    endif
+    return
+  else
+    ierr = 0
+
+    ! Remove leading blanks and tabs
+    i=1
+    do while(string(i:i) == ' ' .and. string(i:i) == slash) 
+      i=i+1
+    enddo
+
+    begins=i
+
+    ! Count # of characters (no slashes in between)
+    do while (string(i:i) /= slash .and. &
+              (i == begins .or. string(i:i) /= backslash))
+      i=i+1
+    enddo
+
+    ends=i-1
+
+    ! Avoid copying beyond the end of the word (32 characters).
+    if (ends-begins > (MAXWORDLENGTH-1)) ends = begins + (MAXWORDLENGTH-1)
+
+    ! Copy (ends-begins) characters to 'word'
+    word = string(begins:ends)
+    ! Remove chars from string
+    string = string(ends+1:)
+
+  endif
+  
+end subroutine InputReadPath
+
+! ************************************************************************** !
+!
 ! InputFindStringInFile1: Rewinds file and finds the first occurrence of
 !                     'string'.  Note that the line must start with 'string'
 !                     in order to match and that line is NOT returned
@@ -1118,15 +1188,15 @@ subroutine InputGetCommandLineInt(string,int_value,found,option)
   ierr = 0
   ! do not initialize int_value, as it may already have a value
   found = PETSC_FALSE
-  narg = command_argument_count()
+  narg = getCommandLineArgumentCount()
   string = adjustl(string)
   len = len_trim(string)
   do iarg = 1, narg
-    call get_command_argument(iarg,string2)
+    call getCommandLineArgument(iarg,string2)
     if (StringCompare(string,string2,len)) then
       found = PETSC_TRUE
       if (iarg+1 <= narg) then
-        call get_command_argument(iarg+1,string2)
+        call getCommandLineArgument(iarg+1,string2)
         call InputReadInt(string2,option,int_value,ierr)
       else
         ierr = 1
@@ -1170,15 +1240,15 @@ subroutine InputGetCommandLineReal(string,double_value,found,option)
   ierr = 0
   ! do not initialize int_value, as it may already have a value
   found = PETSC_FALSE
-  narg = command_argument_count()
+  narg = getCommandLineArgumentCount()
   string = adjustl(string)
   len = len_trim(string)
   do iarg = 1, narg
-    call get_command_argument(iarg,string2)
+    call getCommandLineArgument(iarg,string2)
     if (StringCompare(string,string2,len)) then
       found = PETSC_TRUE
       if (iarg+1 <= narg) then
-        call get_command_argument(iarg+1,string2)
+        call getCommandLineArgument(iarg+1,string2)
         call InputReadDouble(string2,option,double_value,ierr)
       else
         ierr = 1
@@ -1193,7 +1263,6 @@ subroutine InputGetCommandLineReal(string,double_value,found,option)
   enddo
   
 end subroutine InputGetCommandLineReal
-
 
 ! ************************************************************************** !
 !
@@ -1223,15 +1292,15 @@ subroutine InputGetCommandLineString(string,string_value,found,option)
   ierr = 0
   ! do not initialize int_value, as it may already have a value
   found = PETSC_FALSE
-  narg = command_argument_count()
+  narg = getCommandLineArgumentCount()
   string = adjustl(string)
   len = len_trim(string)
   do iarg = 1, narg
-    call get_command_argument(iarg,string2)
+    call getCommandLineArgument(iarg,string2)
     if (StringCompare(string,string2,len)) then
       found = PETSC_TRUE
       if (iarg+1 <= narg) then
-        call get_command_argument(iarg+1,string2)
+        call getCommandLineArgument(iarg+1,string2)
         call InputReadNChars(string2,string_value,MAXSTRINGLENGTH, &
                              PETSC_TRUE,ierr)
         if (string_value(1:1) == '-') then
@@ -1285,15 +1354,15 @@ subroutine InputGetCommandLineTruth(string,truth_value,found,option)
   ierr = 0
   ! do not initialize int_value, as it may already have a value
   found = PETSC_FALSE
-  narg = command_argument_count()
+  narg = getCommandLineArgumentCount()
   string = adjustl(string)
   len = len_trim(string)
   do iarg = 1, narg
-    call get_command_argument(iarg,string2)
+    call getCommandLineArgument(iarg,string2)
     if (StringCompare(string,string2,len)) then
       found = PETSC_TRUE
       if (iarg+1 <= narg) then
-        call get_command_argument(iarg+1,string2)
+        call getCommandLineArgument(iarg+1,string2)
         call InputReadWord(string2,word,PETSC_TRUE,ierr)
       else
         ! check if no argument exists, which is valid and means 'true'
@@ -1320,6 +1389,57 @@ subroutine InputGetCommandLineTruth(string,truth_value,found,option)
   enddo
   
 end subroutine InputGetCommandLineTruth
+
+! ************************************************************************** !
+!
+! getCommandLineArgumentCount: Returns the number of command line arguments
+! author: Glenn Hammond
+! date: 02/05/10
+!
+! ************************************************************************** !
+function getCommandLineArgumentCount()
+
+  implicit none
+  
+  integer :: iargc
+  
+  PetscInt :: getCommandLineArgumentCount
+  
+  ! initialize to zero
+  getCommandLineArgumentCount = 0
+  
+#if defined(PETSC_HAVE_FORTRAN_GET_COMMAND_ARGUMENT)
+  getCommandLineArgumentCount = command_argument_count()
+#elif defined(PETSC_HAVE_GETARG)
+  getCommandLineArgumentCount = iargc()
+#endif
+
+end function getCommandLineArgumentCount
+
+! ************************************************************************** !
+!
+! getCommandLineArgument: Returns the ith command line argument
+! author: Glenn Hammond
+! date: 02/05/10
+!
+! ************************************************************************** !
+subroutine getCommandLineArgument(i,arg)
+
+  implicit none
+  
+  PetscInt :: i
+  character(len=*) :: arg
+
+  integer*4 :: fortran_int
+
+  fortran_int = i
+#if defined(PETSC_HAVE_FORTRAN_GET_COMMAND_ARGUMENT)
+  call get_command_argument(fortran_int,arg)
+#elif defined(PETSC_HAVE_GETARG)
+  call getarg(fortran_int,arg)
+#endif
+
+end subroutine getCommandLineArgument
 
 ! ************************************************************************** !
 !

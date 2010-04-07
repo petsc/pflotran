@@ -26,6 +26,10 @@ module Output_module
   PetscErrorCode :: ierr
   PetscInt, save :: max_local_size_saved = -1
   
+#ifdef VAMSI_HDF5_WRITE
+  PetscInt :: write_bcast_size = HDF5_WRITE_BCAST_SIZE
+#endif
+
   ! flags signifying the first time a routine is called during a given
   ! simulation
   PetscTruth :: observation_first
@@ -87,6 +91,11 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
 
   option => realization%option
 
+#ifdef VAMSI_STAGE_BARRIER
+  ! barrier to calculate the accurate timing of Output Stage
+  call mpi_barrier(option%mycomm,ierr)
+#endif 
+
   call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr)
 
   ! check for plot request from active directory
@@ -114,6 +123,10 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
       call PetscGetTime(tend,ierr)
+#ifdef VAMSI_HDF5_WRITE
+      if (option%global_rank == 0) write (*,'(" Vamsi''s HDF5 method is used in & 
+                                          writing the output, HDF5_WRITE_BCAST_SIZE = ",i5)') write_bcast_size
+#endif      
       write(option%io_buffer,'(f6.2," Seconds to write HDF5 file.")') tend-tstart
       call printMsg(option)
     endif
@@ -190,6 +203,11 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
   plot_flag = PETSC_FALSE
   transient_plot_flag = PETSC_FALSE
   realization%output_option%plot_name = ''
+
+#ifdef VAMSI_STAGE_BARRIER
+  call mpi_barrier(option%mycomm,ierr)
+  ! barrier to calculate the accurate timing of Output Stage
+#endif 
 
   call PetscLogStagePop(ierr)
   
@@ -518,31 +536,33 @@ subroutine OutputTecplotBlock(realization)
   
   if (option%ntrandof > 0) then
     if (associated(reaction)) then
-      if (reaction%print_pH .and. reaction%h_ion_id > 0) then
-        call OutputGetVarFromArray(realization,global_vec,PH,reaction%h_ion_id)
-        call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-        call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      if (reaction%print_pH .and. associated(reaction%species_idx)) then
+        if (reaction%species_idx%h_ion_id > 0) then
+          call OutputGetVarFromArray(realization,global_vec,PH,reaction%species_idx%h_ion_id)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        endif
       endif
       if (reaction%print_total_component) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,TOTAL_MOLARITY,i)
+            call OutputGetVarFromArray(realization,global_vec,reaction%print_tot_conc_type,i)
             call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
             call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
           endif
         enddo
       endif
       if (reaction%print_free_ion) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,PRIMARY_MOLARITY,i)
+            call OutputGetVarFromArray(realization,global_vec,reaction%print_free_conc_type,i)
             call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
             call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
           endif
         enddo
       endif
       if (reaction%print_act_coefs) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,PRIMARY_ACTIVITY_COEF,i)
             call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -593,7 +613,7 @@ subroutine OutputTecplotBlock(realization)
         endif
       enddo
       if (associated(reaction%kd_print)) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%kd_print(i)) then      
             call OutputGetVarFromArray(realization,global_vec,PRIMARY_KD,i)
             call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -602,9 +622,34 @@ subroutine OutputTecplotBlock(realization)
         enddo
       endif
       if (associated(reaction%total_sorb_print)) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%total_sorb_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED,i)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+            call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+          endif
+        enddo
+      endif
+      if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+        do i=1,reaction%ncollcomp
+          if (reaction%total_sorb_mobile_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED_MOBILE,i)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+            call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+          endif
+        enddo
+      endif
+      if (reaction%print_colloid) then
+        do i=1,reaction%ncoll
+          if (reaction%colloid_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,COLLOID_MOBILE,i)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+            call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+          endif
+        enddo
+        do i=1,reaction%ncoll
+          if (reaction%colloid_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,COLLOID_IMMOBILE,i)
             call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
             call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
           endif
@@ -1425,31 +1470,33 @@ subroutine OutputTecplotPoint(realization)
     
     if (option%ntrandof > 0) then
       if (associated(reaction)) then
-        if (reaction%print_pH .and. reaction%h_ion_id > 0) then
-          value = RealizGetDatasetValueAtCell(realization,PH, &
-                                              reaction%h_ion_id,ghosted_id)
-          write(IUNIT3,1000,advance='no') value
+        if (reaction%print_pH .and. associated(reaction%species_idx)) then
+          if (reaction%species_idx%h_ion_id > 0) then
+            value = RealizGetDatasetValueAtCell(realization,PH, &
+                                              reaction%species_idx%h_ion_id,ghosted_id)
+            write(IUNIT3,1000,advance='no') value
+          endif
         endif
         if (reaction%print_total_component) then
-          do i=1,reaction%ncomp
+          do i=1,reaction%naqcomp
             if (reaction%primary_species_print(i)) then
-              value = RealizGetDatasetValueAtCell(realization,TOTAL_MOLARITY, &
+              value = RealizGetDatasetValueAtCell(realization,reaction%print_tot_conc_type, &
                                                   i,ghosted_id)
               write(IUNIT3,1000,advance='no') value
             endif
           enddo
         endif
         if (reaction%print_free_ion) then
-          do i=1,reaction%ncomp
+          do i=1,reaction%naqcomp
             if (reaction%primary_species_print(i)) then
-              value = RealizGetDatasetValueAtCell(realization,PRIMARY_MOLARITY, &
+              value = RealizGetDatasetValueAtCell(realization,reaction%print_free_conc_type, &
                                                   i,ghosted_id)
               write(IUNIT3,1000,advance='no') value
             endif
           enddo
         endif        
         if (reaction%print_act_coefs) then
-          do i=1,reaction%ncomp
+          do i=1,reaction%naqcomp
             if (reaction%primary_species_print(i)) then
               value = RealizGetDatasetValueAtCell(realization,PRIMARY_ACTIVITY_COEF, &
                                                   i,ghosted_id)
@@ -1500,7 +1547,7 @@ subroutine OutputTecplotPoint(realization)
           endif
         enddo
         if (associated(reaction%kd_print)) then
-          do i=1,reaction%ncomp
+          do i=1,reaction%naqcomp
             if (reaction%kd_print(i)) then
               value = RealizGetDatasetValueAtCell(realization,PRIMARY_KD, &
                                                   i,ghosted_id)
@@ -1509,7 +1556,7 @@ subroutine OutputTecplotPoint(realization)
           enddo
         endif
         if (associated(reaction%total_sorb_print)) then
-          do i=1,reaction%ncomp
+          do i=1,reaction%naqcomp
             if (reaction%total_sorb_print(i)) then
               value = RealizGetDatasetValueAtCell(realization,TOTAL_SORBED, &
                                                   i,ghosted_id)
@@ -1517,6 +1564,31 @@ subroutine OutputTecplotPoint(realization)
             endif
           enddo
         endif
+        if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+          do i=1,reaction%ncollcomp
+            if (reaction%total_sorb_mobile_print(i)) then
+              value = RealizGetDatasetValueAtCell(realization,TOTAL_SORBED_MOBILE, &
+                                                  i,ghosted_id)
+              write(IUNIT3,1000,advance='no') value
+            endif
+          enddo
+        endif
+        if (reaction%print_colloid) then
+          do i=1,reaction%ncoll
+            if (reaction%colloid_print(i)) then
+              value = RealizGetDatasetValueAtCell(realization,COLLOID_MOBILE, &
+                                                  i,ghosted_id)
+              write(IUNIT3,1000,advance='no') value
+            endif
+          enddo
+          do i=1,reaction%ncoll
+            if (reaction%colloid_print(i)) then
+              value = RealizGetDatasetValueAtCell(realization,COLLOID_IMMOBILE, &
+                                                  i,ghosted_id)
+              write(IUNIT3,1000,advance='no') value
+            endif
+          enddo        
+        endif        
       endif
     endif
     
@@ -2279,7 +2351,8 @@ subroutine OutputObservationTecplot(realization)
         if (.not.associated(observation)) exit
         select case(observation%itype)
           case(OBSERVATION_SCALAR)
-            if (associated(observation%region%coordinates)) then
+            if (associated(observation%region%coordinates) .and. &
+                .not.observation%at_cell_center) then
               call WriteObservationHeaderForCoord(fid,realization, &
                                                    observation%region, &
                                                    observation%print_velocities)
@@ -2310,7 +2383,8 @@ subroutine OutputObservationTecplot(realization)
       if (.not.associated(observation)) exit
         select case(observation%itype)
           case(OBSERVATION_SCALAR)
-            if (associated(observation%region%coordinates)) then
+            if (associated(observation%region%coordinates) .and. &
+                .not.observation%at_cell_center) then
               call WriteObservationDataForCoord(fid,realization, &
                                                  observation%region)
               if (observation%print_velocities) then
@@ -2354,7 +2428,7 @@ end subroutine OutputObservationTecplot
 !
 ! ************************************************************************** !  
 subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
-                                          print_velocities)
+                                         print_velocities)
 
   use Realization_module
   use Grid_module
@@ -2372,9 +2446,11 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   PetscInt :: icell
   PetscTruth :: print_velocities
   
-  PetscInt :: i
+  PetscInt :: i, local_id
   character(len=MAXSTRINGLENGTH) :: string, string2
-  character(len=MAXWORDLENGTH) :: cell_string
+  character(len=MAXSTRINGLENGTH) :: cell_string
+  character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
+  character(len=2) :: free_mol_char, tot_mol_char
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
@@ -2388,8 +2464,18 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   field => realization%field
   grid => patch%grid
   
-  write(cell_string,*) grid%nL2A(region%cell_ids(icell))
-  cell_string = trim(region%name) // ' ' //adjustl(cell_string)
+  local_id = region%cell_ids(icell)
+  write(cell_string,*) grid%nL2A(region%cell_ids(icell))+1 ! nL2A is zero-based
+  cell_string = trim(region%name) // ' (' // trim(adjustl(cell_string)) // ')'
+
+  ! add coordinate of cell center
+  110 format(1f12.2)
+  write(x_string,110) grid%x(grid%nL2G(local_id))
+  write(y_string,110) grid%y(grid%nL2G(local_id))
+  write(z_string,110) grid%z(grid%nL2G(local_id))
+  cell_string = trim(cell_string) // ' (' // trim(adjustl(x_string)) // &
+                ' ' // trim(adjustl(y_string)) // ' ' // &
+                trim(adjustl(z_string)) // ')'
 
   ! add porosity to header
   if (output_option%print_porosity) then
@@ -2456,22 +2542,45 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
 
   ! reactive transport
   if (option%ntrandof > 0) then
- 
+  
     reaction => realization%reaction
-    if ((reaction%print_pH) .and. &
-        reaction%h_ion_id > 0) then
-      write(fid,'('',"pH '',a,''"'')',advance="no") trim(cell_string)
+    if (reaction%print_free_conc_type == PRIMARY_MOLALITY) then
+      free_mol_char = 'm'
+    else
+      free_mol_char = 'M'
+    endif   
+    if (reaction%print_tot_conc_type == TOTAL_MOLALITY) then
+      tot_mol_char = 'm'
+    else
+      tot_mol_char = 'M'
+    endif   
+ 
+    if ((reaction%print_pH) .and. associated(reaction%species_idx)) then
+      if (reaction%species_idx%h_ion_id > 0) then
+        write(fid,'('',"pH '',a,''"'')',advance="no") trim(cell_string)
+      endif
+    endif
+
+    if (reaction%print_total_component) then
+      do i=1,reaction%naqcomp
+        if (reaction%primary_species_print(i)) then
+          write(fid,'('',"'',a,''_tot_'',a,'' '',a,''"'')',advance="no") &
+            trim(reaction%primary_species_names(i)), trim(tot_mol_char), trim(cell_string)
+        endif
+      enddo
     endif
     
-    do i=1,option%ntrandof
-      if (reaction%primary_species_print(i)) then
-        write(fid,'('',"'',a,'' '',a,''"'')',advance="no") &
-          trim(reaction%primary_species_names(i)), trim(cell_string)
-      endif
-    enddo
+    if (reaction%print_free_ion) then
+      do i=1,reaction%naqcomp
+        if (reaction%primary_species_print(i)) then
+          write(fid,'('',"'',a,''_free_'',a,'' '',a,''"'')',advance="no") &
+            trim(reaction%primary_species_names(i)), trim(free_mol_char), trim(cell_string)
+        endif
+      enddo
+    endif
     
     if (reaction%print_act_coefs) then
-      do i=1,option%ntrandof
+      do i=1,reaction%naqcomp
         if (reaction%primary_species_print(i)) then
           write(fid,'('',"'',a,''_gam '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(cell_string)
@@ -2522,7 +2631,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
     enddo
 
     if (associated(reaction%kd_print)) then
-      do i=1,option%ntrandof
+      do i=1,reaction%naqcomp
         if (reaction%kd_print(i)) then
           write(fid,'('',"'',a,''_kd '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(cell_string)
@@ -2531,13 +2640,37 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
     endif
     
     if (associated(reaction%total_sorb_print)) then
-      do i=1,option%ntrandof
+      do i=1,reaction%naqcomp
         if (reaction%total_sorb_print(i)) then
           write(fid,'('',"'',a,''_tot_sorb '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(cell_string)
         endif
       enddo
     endif
+    
+    if (associated(reaction%total_sorb_mobile_print)) then
+      do i=1,reaction%ncollcomp
+        if (reaction%total_sorb_mobile_print(i)) then
+          write(fid,'('',"'',a,''_tot_sorb_mob '',a,''"'')',advance="no") &
+            trim(reaction%colloid_species_names(i)), trim(cell_string)
+        endif
+      enddo
+    endif
+    
+    if (reaction%print_colloid) then
+      do i=1,reaction%ncoll
+        if (reaction%colloid_print(i)) then
+          write(fid,'('',"'',a,''_col_mob_'',a,'' '',a,''"'')',advance="no") &
+            trim(reaction%colloid_species_names(i)), trim(tot_mol_char), trim(cell_string)
+        endif
+      enddo
+      do i=1,reaction%ncoll
+        if (reaction%colloid_print(i)) then
+          write(fid,'('',"'',a,''_col_imb_'',a,'' '',a,''"'')',advance="no") &
+            trim(reaction%colloid_species_names(i)), trim(tot_mol_char), trim(cell_string)
+        endif
+      enddo
+    endif    
     
   endif
 
@@ -2581,6 +2714,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
   character(len=MAXSTRINGLENGTH) :: cell_string
   character(len=MAXSTRINGLENGTH) :: coordinate_string
   character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
+  character(len=2) :: free_mol_char, tot_mol_char
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch  
   type(reaction_type), pointer :: reaction  
@@ -2590,16 +2724,17 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
   option => realization%option
   output_option => realization%output_option
   
-!  write(cell_string,*) grid%nL2A(region%cell_ids(icell))
+!  write(cell_string,*) grid%nL2A(region%cell_ids(icell)) + 1 ! nL2A is zero-based
 !  cell_string = trim(region%name) // ' ' //adjustl(cell_string)
   cell_string = trim(region%name)
   
-  110 format(1pg12.4)
+  110 format(1f12.2)
   write(x_string,110) region%coordinates(ONE_INTEGER)%x
   write(y_string,110) region%coordinates(ONE_INTEGER)%y
   write(z_string,110) region%coordinates(ONE_INTEGER)%z
-  cell_string = trim(cell_string) // ' ' // trim(adjustl(x_string)) // ' ' // &
-                   trim(adjustl(y_string)) // ' ' // trim(adjustl(z_string))
+  cell_string = trim(cell_string) // ' (' // trim(adjustl(x_string)) // ' ' // &
+                trim(adjustl(y_string)) // ' ' // &
+                trim(adjustl(z_string)) // ')'
 
   ! add porosity to header
   if (output_option%print_porosity) then
@@ -2668,20 +2803,43 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
   if (option%ntrandof > 0) then
 
     reaction => realization%reaction
-    if ((reaction%print_pH) .and. &
-        reaction%h_ion_id > 0) then
-      write(fid,'('',"pH '',a,''"'')',advance="no") trim(cell_string)
+    if (reaction%print_free_conc_type == PRIMARY_MOLALITY) then
+      free_mol_char = 'm'
+    else
+      free_mol_char = 'M'
+    endif 
+    if (reaction%print_tot_conc_type == TOTAL_MOLALITY) then
+      tot_mol_char = 'm'
+    else
+      tot_mol_char = 'M'
+    endif 
+
+    if ((reaction%print_pH) .and. associated(reaction%species_idx)) then
+      if (reaction%species_idx%h_ion_id > 0) then
+        write(fid,'('',"pH '',a,''"'')',advance="no") trim(cell_string)
+      endif
+    endif
+
+    if (reaction%print_total_component) then
+      do i=1,reaction%naqcomp
+        if (reaction%primary_species_print(i)) then
+          write(fid,'('',"'',a,''_tot_'',a,'' '',a,''"'')',advance="no") &
+            trim(reaction%primary_species_names(i)), trim(tot_mol_char), trim(cell_string)
+        endif
+      enddo
     endif
     
-    do i=1,option%ntrandof
-      if (reaction%primary_species_print(i)) then
-        write(fid,'('',"'',a,'' '',a,''"'')',advance="no") &
-          trim(reaction%primary_species_names(i)), trim(cell_string)
-      endif
-    enddo
+    if (reaction%print_free_ion) then
+      do i=1,reaction%naqcomp
+        if (reaction%primary_species_print(i)) then
+          write(fid,'('',"'',a,''_free_'',a,'' '',a,''"'')',advance="no") &
+            trim(reaction%primary_species_names(i)), trim(free_mol_char), trim(cell_string)
+        endif
+      enddo
+    endif
     
     if (reaction%print_act_coefs) then
-      do i=1,option%ntrandof
+      do i=1,reaction%naqcomp
         if (reaction%primary_species_print(i)) then
           write(fid,'('',"'',a,''_gam '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(cell_string)
@@ -2732,7 +2890,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
     enddo
 
     if (associated(reaction%kd_print)) then
-      do i=1,option%ntrandof
+      do i=1,reaction%naqcomp
         if (reaction%kd_print(i)) then
           write(fid,'('',"'',a,''_kd '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(cell_string)
@@ -2741,13 +2899,37 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
     endif
     
     if (associated(reaction%total_sorb_print)) then
-      do i=1,option%ntrandof
+      do i=1,reaction%naqcomp
         if (reaction%total_sorb_print(i)) then
           write(fid,'('',"'',a,''_tot_sorb '',a,''"'')',advance="no") &
             trim(reaction%primary_species_names(i)), trim(cell_string)
         endif
       enddo
     endif
+    
+    if (associated(reaction%total_sorb_mobile_print)) then
+      do i=1,reaction%ncollcomp
+        if (reaction%total_sorb_mobile_print(i)) then
+          write(fid,'('',"'',a,''_tot_sorb_mobile '',a,''"'')',advance="no") &
+            trim(reaction%primary_species_names(i)), trim(cell_string)
+        endif
+      enddo
+    endif
+    
+    if (reaction%print_colloid) then
+      do i=1,reaction%ncoll
+        if (reaction%colloid_print(i)) then
+          write(fid,'('',"'',a,''_col_mob_'',a,'' '',a,''"'')',advance="no") &
+            trim(reaction%colloid_names(i)), trim(tot_mol_char), trim(cell_string)
+        endif
+      enddo
+      do i=1,reaction%ncoll
+        if (reaction%colloid_print(i)) then
+          write(fid,'('',"'',a,''_col_imb_'',a,'' '',a,''"'')',advance="no") &
+            trim(reaction%colloid_names(i)), trim(tot_mol_char), trim(cell_string)
+        endif
+      enddo
+    endif    
     
   endif
 
@@ -2802,7 +2984,8 @@ subroutine WriteObservationHeaderForBC(fid,realization,coupler_name)
   write(fid,'(a)',advance="no") trim(string)
 
   if (associated(reaction)) then
-    do i=1, reaction%ncomp 
+    do i=1, reaction%naqcomp 
+      ! may need to modify for molality vs molarity, but I believe molarity is correct
       write(fid,'(a)',advance="no") ',"' // &
         trim(reaction%primary_species_names(i)) // ' ' // &
         trim(coupler_name) // &
@@ -2950,28 +3133,30 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
     reaction => realization%reaction
     ghosted_id = grid%nL2G(local_id)
     if (associated(reaction)) then
-      if (reaction%print_pH .and. reaction%h_ion_id > 0) then
-        write(fid,110,advance="no") &
-          RealizGetDatasetValueAtCell(realization,PH,reaction%h_ion_id,ghosted_id)
+      if (reaction%print_pH .and. associated(reaction%species_idx)) then
+        if (reaction%species_idx%h_ion_id > 0) then
+          write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,PH,reaction%species_idx%h_ion_id,ghosted_id)
+        endif
       endif
       if (reaction%print_total_component) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
             write(fid,110,advance="no") &
-              RealizGetDatasetValueAtCell(realization,TOTAL_MOLARITY,i,ghosted_id)
+              RealizGetDatasetValueAtCell(realization,reaction%print_tot_conc_type,i,ghosted_id)
           endif
         enddo
       endif
       if (reaction%print_free_ion) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
             write(fid,110,advance="no") &
-              RealizGetDatasetValueAtCell(realization,PRIMARY_MOLARITY,i,ghosted_id)
+              RealizGetDatasetValueAtCell(realization,reaction%print_free_conc_type,i,ghosted_id)
           endif
         enddo
       endif      
       if (reaction%print_act_coefs) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
           write(fid,110,advance="no") &
             RealizGetDatasetValueAtCell(realization,PRIMARY_ACTIVITY_COEF,i,ghosted_id)
@@ -3015,7 +3200,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
         endif
       enddo
       if (associated(reaction%kd_print)) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%kd_print(i)) then
             write(fid,110,advance="no") &
               RealizGetDatasetValueAtCell(realization,PRIMARY_KD,i,ghosted_id)
@@ -3023,13 +3208,35 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
         enddo
       endif
       if (associated(reaction%total_sorb_print)) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%total_sorb_print(i)) then
             write(fid,110,advance="no") &
               RealizGetDatasetValueAtCell(realization,TOTAL_SORBED,i,ghosted_id)
           endif
         enddo
       endif
+      if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+        do i=1,reaction%ncollcomp
+          if (reaction%total_sorb_mobile_print(i)) then
+            write(fid,110,advance="no") &
+              RealizGetDatasetValueAtCell(realization,TOTAL_SORBED_MOBILE,i,ghosted_id)
+          endif
+        enddo
+      endif
+      if (reaction%print_colloid) then
+        do i=1,reaction%ncoll
+          if (reaction%colloid_print(i)) then
+            write(fid,110,advance="no") &
+              RealizGetDatasetValueAtCell(realization,COLLOID_MOBILE,i,ghosted_id)
+          endif
+        enddo
+        do i=1,reaction%ncoll
+          if (reaction%colloid_print(i)) then
+            write(fid,110,advance="no") &
+              RealizGetDatasetValueAtCell(realization,COLLOID_IMMOBILE,i,ghosted_id)
+          endif
+        enddo      
+      endif      
     endif
   endif
           
@@ -3282,19 +3489,21 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
   if (option%ntrandof > 0) then
     reaction => realization%reaction
     if (associated(reaction)) then
-      if (reaction%print_pH .and. reaction%h_ion_id > 0) then
-        write(fid,110,advance="no") &
-          OutputGetVarFromArrayAtCoord(realization,PH,reaction%h_ion_id, &
-                                       region%coordinates(ONE_INTEGER)%x, &
-                                       region%coordinates(ONE_INTEGER)%y, &
-                                       region%coordinates(ONE_INTEGER)%z, &
-                                       count,ghosted_ids)
+      if (reaction%print_pH .and. associated(reaction%species_idx)) then
+        if (reaction%species_idx%h_ion_id > 0) then
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,PH,reaction%species_idx%h_ion_id, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
+        endif
       endif
       if (reaction%print_total_component) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
             write(fid,110,advance="no") &
-              OutputGetVarFromArrayAtCoord(realization,TOTAL_MOLARITY,i, &
+              OutputGetVarFromArrayAtCoord(realization,reaction%print_tot_conc_type,i, &
                                            region%coordinates(ONE_INTEGER)%x, &
                                            region%coordinates(ONE_INTEGER)%y, &
                                            region%coordinates(ONE_INTEGER)%z, &
@@ -3303,10 +3512,10 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
         enddo
       endif
       if (reaction%print_free_ion) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
             write(fid,110,advance="no") &
-              OutputGetVarFromArrayAtCoord(realization,PRIMARY_MOLARITY,i, &
+              OutputGetVarFromArrayAtCoord(realization,reaction%print_free_conc_type,i, &
                                            region%coordinates(ONE_INTEGER)%x, &
                                            region%coordinates(ONE_INTEGER)%y, &
                                            region%coordinates(ONE_INTEGER)%z, &
@@ -3315,7 +3524,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
         enddo
       endif      
       if (reaction%print_act_coefs) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,PRIMARY_ACTIVITY_COEF,i, &
@@ -3387,7 +3596,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
         endif
       enddo
       if (associated(reaction%kd_print)) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%kd_print(i)) then
             write(fid,110,advance="no") &
               OutputGetVarFromArrayAtCoord(realization,PRIMARY_KD,i, &
@@ -3399,7 +3608,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
         enddo
       endif
       if (associated(reaction%total_sorb_print)) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%total_sorb_print(i)) then
             write(fid,110,advance="no") &
               OutputGetVarFromArrayAtCoord(realization,TOTAL_SORBED,i, &
@@ -3410,6 +3619,40 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
           endif
         enddo
       endif
+      if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+        do i=1,reaction%ncollcomp
+          if (reaction%total_sorb_mobile_print(i)) then
+            write(fid,110,advance="no") &
+              OutputGetVarFromArrayAtCoord(realization,TOTAL_SORBED_MOBILE,i, &
+                                           region%coordinates(ONE_INTEGER)%x, &
+                                           region%coordinates(ONE_INTEGER)%y, &
+                                           region%coordinates(ONE_INTEGER)%z, &
+                                           count,ghosted_ids)
+          endif
+        enddo
+      endif
+      if (reaction%print_colloid) then
+        do i=1,reaction%ncoll
+          if (reaction%colloid_print(i)) then
+            write(fid,110,advance="no") &
+              OutputGetVarFromArrayAtCoord(realization,COLLOID_MOBILE,i, &
+                                           region%coordinates(ONE_INTEGER)%x, &
+                                           region%coordinates(ONE_INTEGER)%y, &
+                                           region%coordinates(ONE_INTEGER)%z, &
+                                           count,ghosted_ids)
+          endif
+        enddo
+        do i=1,reaction%ncoll
+          if (reaction%colloid_print(i)) then
+            write(fid,110,advance="no") &
+              OutputGetVarFromArrayAtCoord(realization,COLLOID_IMMOBILE,i, &
+                                           region%coordinates(ONE_INTEGER)%x, &
+                                           region%coordinates(ONE_INTEGER)%y, &
+                                           region%coordinates(ONE_INTEGER)%z, &
+                                           count,ghosted_ids)
+          endif
+        enddo      
+      endif      
     endif
   endif
     
@@ -3443,8 +3686,8 @@ subroutine WriteObservationDataForBC(fid,realization,patch,connection_set)
   PetscInt :: iphase
   PetscReal :: sum_volumetric_flux(realization%option%nphase)
   PetscReal :: sum_volumetric_flux_global(realization%option%nphase)
-  PetscReal :: sum_solute_flux(realization%reaction%ncomp)
-  PetscReal :: sum_solute_flux_global(realization%reaction%ncomp)
+  PetscReal :: sum_solute_flux(realization%option%ntrandof)
+  PetscReal :: sum_solute_flux_global(realization%option%ntrandof)
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
   
@@ -3494,10 +3737,11 @@ subroutine WriteObservationDataForBC(fid,realization,patch,connection_set)
         enddo
       endif
       call MPI_Reduce(sum_solute_flux,sum_solute_flux_global, &
-                      reaction%ncomp,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      option%ntrandof,MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
       if (option%myrank == option%io_rank) then
-        do i = 1, reaction%ncomp
+        !we currently only print the aqueous components
+        do i = 1, reaction%naqcomp
           write(fid,110,advance="no") sum_solute_flux_global(i)
         enddo
       endif
@@ -4003,16 +4247,16 @@ subroutine OutputVTK(realization)
   if (option%ntrandof > 0) then
     if (associated(reaction)) then
       if (reaction%print_total_component) then
-        do i=1,reaction%ncomp
-          call OutputGetVarFromArray(realization,global_vec,TOTAL_MOLARITY,i)
+        do i=1,reaction%naqcomp
+          call OutputGetVarFromArray(realization,global_vec,reaction%print_tot_conc_type,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteVTKDataSetFromVec(IUNIT3,realization,reaction%primary_species_names(i), &
                                       natural_vec,VTK_REAL)
         enddo
       endif
       if (reaction%print_free_ion) then
-        do i=1,reaction%ncomp
-          call OutputGetVarFromArray(realization,global_vec,PRIMARY_MOLARITY,i)
+        do i=1,reaction%naqcomp
+          call OutputGetVarFromArray(realization,global_vec,reaction%print_free_conc_type,i)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteVTKDataSetFromVec(IUNIT3,realization,reaction%primary_species_names(i), &
                                       natural_vec,VTK_REAL)
@@ -4635,14 +4879,15 @@ subroutine OutputHDF5(realization)
   
   use AMR_Grid_Module
  
-#ifndef USE_HDF5
+#if !defined(PETSC_HAVE_HDF5)
   implicit none
   
   type(realization_type) :: realization
 
+  call printMsg(realization%option,'')
   write(realization%option%io_buffer, &
-        '(/,"PFLOTRAN must be compiled with -DUSE_HDF5 to ", &
-        &"read HDF5 formatted structured grids.",/)')
+        '("PFLOTRAN must be compiled with HDF5 to &
+        &write HDF5 formatted structured grids.")')
   call printErrMsg(realization%option)
 #else
 
@@ -4662,7 +4907,7 @@ subroutine OutputHDF5(realization)
   interface
 
      subroutine SAMRCopyVecToVecComponent(vec,svec, component)
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
        Vec :: vec, svec
@@ -4670,7 +4915,7 @@ subroutine OutputHDF5(realization)
      end subroutine SAMRCopyVecToVecComponent
 
      subroutine SAMRRegisterForViz(ptr,vec,component,dname,dnamec)
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
        PetscFortranAddr :: ptr
@@ -4680,7 +4925,7 @@ subroutine OutputHDF5(realization)
      end subroutine SAMRRegisterForViz
 
      subroutine SAMRWritePlotData(ptr, time)
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
        PetscFortranAddr :: ptr
        PetscReal :: time
      end subroutine SAMRWritePlotData
@@ -4711,6 +4956,7 @@ subroutine OutputHDF5(realization)
   
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
+  character(len=2) :: free_mol_char, tot_mol_char
   PetscReal, pointer :: array(:)
   PetscInt :: i
   PetscInt :: nviz_flow, nviz_tran, nviz_dof
@@ -4738,9 +4984,17 @@ subroutine OutputHDF5(realization)
      ! initialize fortran interface
      call h5open_f(hdf5_err)
 
+#ifdef VAMSI_HDF5_WRITE
+   if (mod(option%global_rank,write_bcast_size) == 0) then 
+#endif
+
      call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
+#ifdef VAMSI_HDF5_WRITE
+     call h5pset_fapl_mpio_f(prop_id,option%writers,MPI_INFO_NULL,hdf5_err) 
+#else
      call h5pset_fapl_mpio_f(prop_id,option%mycomm,MPI_INFO_NULL,hdf5_err)
+#endif
 #endif
      if (.not.first) then
        call h5eset_auto_f(OFF,hdf5_err)
@@ -4813,6 +5067,10 @@ subroutine OutputHDF5(realization)
        call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
      endif
      call h5eset_auto_f(ON,hdf5_err)
+
+#ifdef VAMSI_HDF5_WRITE
+   endif
+#endif
   
   else
 
@@ -5064,31 +5322,43 @@ subroutine OutputHDF5(realization)
   end select
 
   if (option%ntrandof > 0) then
+    if (reaction%print_free_conc_type == PRIMARY_MOLALITY) then
+      free_mol_char = 'm'
+    else
+      free_mol_char = 'M'
+    endif  
+    if (reaction%print_tot_conc_type == TOTAL_MOLALITY) then
+      tot_mol_char = 'm'
+    else
+      tot_mol_char = 'M'
+    endif  
     if (associated(reaction)) then
-      if (reaction%print_pH .and. reaction%h_ion_id > 0) then
-        call OutputGetVarFromArray(realization,global_vec,PH,reaction%h_ion_id)
-        if (.not.(option%use_samr)) then
-          write(string,'(''pH'')')
-          call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-        else
-          call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-          if(first) then
-             call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,PH,reaction%h_ion_id)
+      if (reaction%print_pH .and. associated(reaction%species_idx)) then
+        if (reaction%species_idx%h_ion_id > 0) then
+          call OutputGetVarFromArray(realization,global_vec,PH,reaction%species_idx%h_ion_id)
+          if (.not.(option%use_samr)) then
+            write(string,'(''pH'')')
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+          else
+            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+            if(first) then
+               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,PH,reaction%species_idx%h_ion_id)
+            endif
+            current_component=current_component+1
           endif
-          current_component=current_component+1
         endif
       endif
       if (reaction%print_total_component) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,TOTAL_MOLARITY,i)
+            call OutputGetVarFromArray(realization,global_vec,reaction%print_tot_conc_type,i)
             if (.not.(option%use_samr)) then
-              write(string,'(a)') reaction%primary_species_names(i)
+              write(string,'(a,''_tot_'',a)') trim(reaction%primary_species_names(i)), trim(tot_mol_char)
               call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
               if(first) then
-                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,TOTAL_MOLARITY,i)
+                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,reaction%print_tot_conc_type,i)
               endif
               current_component=current_component+1
             endif
@@ -5096,16 +5366,16 @@ subroutine OutputHDF5(realization)
         enddo
       endif
       if (reaction%print_free_ion) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
-            call OutputGetVarFromArray(realization,global_vec,PRIMARY_MOLARITY,i)
+            call OutputGetVarFromArray(realization,global_vec,reaction%print_free_conc_type,i)
             if (.not.(option%use_samr)) then
-              write(string,'(a)') reaction%primary_species_names(i)
+              write(string,'(a,''_free_'',a)') trim(reaction%primary_species_names(i)), trim(free_mol_char)
               call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
-              if(first) then
-                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,PRIMARY_MOLARITY,i)
+              if (first) then
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,reaction%print_free_conc_type,i)
               endif
               current_component=current_component+1
             endif
@@ -5113,7 +5383,7 @@ subroutine OutputHDF5(realization)
         enddo
       endif      
       if (reaction%print_act_coefs) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,PRIMARY_ACTIVITY_COEF,i)
             if (.not.(option%use_samr)) then
@@ -5226,7 +5496,7 @@ subroutine OutputHDF5(realization)
 ! Kd
 
       if (associated(reaction%kd_print)) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%kd_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,PRIMARY_KD,i)
             if (.not.(option%use_samr)) then
@@ -5243,7 +5513,7 @@ subroutine OutputHDF5(realization)
         enddo
       endif
       if (associated(reaction%total_sorb_print)) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%neqsorb > 0 .and. reaction%total_sorb_print(i)) then
             call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED,i)
             if (.not.(option%use_samr)) then
@@ -5252,13 +5522,62 @@ subroutine OutputHDF5(realization)
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
               if(first) then
-                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,PRIMARY_KD,i)
+                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,TOTAL_SORBED,i)
               endif
               current_component=current_component+1
             endif
           endif
         enddo
       endif
+      if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+        do i=1,reaction%ncollcomp
+          if (reaction%neqsorb > 0 .and. reaction%total_sorb_mobile_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,TOTAL_SORBED_MOBILE,i)
+            if (.not.(option%use_samr)) then
+              write(string,'(a)') trim(reaction%colloid_species_names(i)) // '_tot_sorb_mob'
+              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+            else
+              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+              if(first) then
+                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,TOTAL_SORBED_MOBILE,i)
+              endif
+              current_component=current_component+1
+            endif
+          endif
+        enddo
+      endif
+      if (reaction%print_colloid) then
+        do i=1,reaction%ncoll
+          if (reaction%colloid_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,COLLOID_MOBILE,i)
+            if (.not.(option%use_samr)) then
+              write(string,'(a,''_col_mob_'',a)') trim(reaction%colloid_names(i)), trim(tot_mol_char)
+              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+            else
+              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+              if(first) then
+                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,reaction%print_tot_conc_type,i)
+              endif
+              current_component=current_component+1
+            endif
+          endif
+        enddo
+        do i=1,reaction%ncoll
+          if (reaction%colloid_print(i)) then
+            call OutputGetVarFromArray(realization,global_vec,COLLOID_IMMOBILE,i)
+            if (.not.(option%use_samr)) then
+              write(string,'(a,''_col_imb_'',a)') trim(reaction%colloid_names(i)), trim(tot_mol_char)
+              call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+            else
+              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+              if(first) then
+                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,reaction%print_tot_conc_type,i)
+              endif
+              current_component=current_component+1
+            endif
+          endif
+        enddo
+      endif      
     endif
   endif
   
@@ -5352,8 +5671,14 @@ subroutine OutputHDF5(realization)
   call VecDestroy(global_vec,ierr)
 
   if(.not.(option%use_samr)) then
-     call h5gclose_f(grp_id,hdf5_err)
-     call h5fclose_f(file_id,hdf5_err)
+#ifdef VAMSI_HDF5_WRITE
+    if (mod(option%global_rank,write_bcast_size) == 0) then 
+#endif
+       call h5gclose_f(grp_id,hdf5_err)
+       call h5fclose_f(file_id,hdf5_err)
+#ifdef VAMSI_HDF5_WRITE
+    endif
+#endif
      call h5close_f(hdf5_err)
   else
      call SAMRWritePlotData(app_ptr, option%time/output_option%tconv)
@@ -5384,14 +5709,15 @@ subroutine OutputMAD(realization)
   
   use AMR_Grid_Module
  
-#ifndef USE_HDF5
+#if !defined(PETSC_HAVE_HDF5)
   implicit none
   
   type(realization_type) :: realization
 
+  call printMsg(realization%option,'')
   write(realization%option%io_buffer, &
-        '(/,"PFLOTRAN must be compiled with -DUSE_HDF5 to ", &
-        &"read HDF5 formatted structured grids.",/)')
+        '("PFLOTRAN must be compiled with HDF5 to ", &
+        &"write HDF5 formatted structured grids.")')
   call printErrMsg(realization%option)
 #else
 
@@ -5507,7 +5833,7 @@ subroutine OutputMAD(realization)
 #endif
 end subroutine OutputMAD
 
-#ifdef USE_HDF5
+#if defined(PETSC_HAVE_HDF5)
 ! ************************************************************************** !
 !
 ! WriteHDF5FluxVelocities: Print flux velocities to HDF5 file
@@ -5665,7 +5991,7 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   array(1:nx_local*ny_local*nz_local) = &  ! convert time units
     array(1:nx_local*ny_local*nz_local) * output_option%tconv
 
-  call HDF5WriteStructuredDataSet(name,array,file_id,H5T_NATIVE_DOUBLE, &
+  call HDF5WriteStructuredDataSet(name,array,file_id,H5T_NATIVE_DOUBLE,option, &
                         nx_global,ny_global,nz_global, &
                         nx_local,ny_local,nz_local, &
                         grid%structured_grid%nxs,grid%structured_grid%nys,grid%structured_grid%nzs)
@@ -5705,6 +6031,10 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   call PetscLogEventBegin(logging%event_output_coordinates_hdf5, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+
+#ifdef VAMSI_HDF5_WRITE
+  if (mod(option%global_rank,write_bcast_size) == 0) then
+#endif
                             
   ! write out grid structure
   rank = 1
@@ -5722,18 +6052,22 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err) ! must be independent and only from p0
 #endif
   if (option%myrank == option%io_rank) then
-    call PetscLogEventBegin(logging%event_h5dwrite_f, &
+     call PetscLogEventBegin(logging%event_h5dwrite_f, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)     
-    call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,array,dims, &
+     call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,array,dims, &
                     hdf5_err,H5S_ALL_F,H5S_ALL_F,prop_id)
-    call PetscLogEventEnd(logging%event_h5dwrite_f, &
+     call PetscLogEventEnd(logging%event_h5dwrite_f, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
   endif
   call h5pclose_f(prop_id,hdf5_err)
   call h5dclose_f(data_set_id,hdf5_err)
   call h5sclose_f(file_space_id,hdf5_err)
+
+#ifdef VAMSI_HDF5_WRITE
+  endif
+#endif
 
   call PetscLogEventEnd(logging%event_output_coordinates_hdf5, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -6471,8 +6805,8 @@ subroutine OutputMassBalanceNew(realization)
   ! open file
   if (option%myrank == option%io_rank) then
 
-    option%io_buffer = '--> write tecplot mass balance file: ' // trim(filename)
-    call printMsg(option)    
+!geh    option%io_buffer = '--> write tecplot mass balance file: ' // trim(filename)
+!geh    call printMsg(option)    
 
     if (mass_balance_first .and. option%restart_flag) then ! check if file already exists
       ios = 0
@@ -6498,7 +6832,7 @@ subroutine OutputMassBalanceNew(realization)
       end select
       
       if (option%ntrandof > 0) then
-        do i=1,reaction%ncomp
+        do i=1,reaction%naqcomp
           if (reaction%primary_species_print(i)) then
             icol = icol + 1
             write(strcol,'(i3,"-")') icol
@@ -6526,7 +6860,7 @@ subroutine OutputMassBalanceNew(realization)
         end select
         
         if (option%ntrandof > 0) then
-          do i=1,reaction%ncomp
+          do i=1,reaction%naqcomp
             if (reaction%primary_species_print(i)) then
               icol = icol + 1
               write(strcol,'(i3,"-")') icol
@@ -6536,7 +6870,7 @@ subroutine OutputMassBalanceNew(realization)
             endif
           enddo
 
-          do i=1,reaction%ncomp
+          do i=1,reaction%naqcomp
             if (reaction%primary_species_print(i)) then
               icol = icol + 1
               write(strcol,'(i3,"-")') icol
@@ -6561,7 +6895,7 @@ subroutine OutputMassBalanceNew(realization)
         end select
         
         if (option%ntrandof > 0) then
-          do i=1,reaction%ncomp
+          do i=1,reaction%naqcomp
             if (reaction%primary_species_print(i)) then
               write(fid,'(a)',advance="no") ',"' // &
                   trim(adjustl(word)) // 'm ' // &
@@ -6606,13 +6940,13 @@ subroutine OutputMassBalanceNew(realization)
   if (option%ntrandof > 0) then
     sum_mol = 0.d0
     call RTComputeMassBalance(realization,sum_mol)
-    call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*reaction%ncomp, &
+    call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*option%ntrandof, &
                     MPI_DOUBLE_PRECISION,MPI_SUM, &
                     option%io_rank,option%mycomm,ierr)
 
     if (option%myrank == option%io_rank) then
       do iphase = 1, option%nphase
-        do icomp = 1, reaction%ncomp
+        do icomp = 1, reaction%naqcomp
           if (reaction%primary_species_print(icomp)) then
             write(fid,110,advance="no") sum_mol_global(icomp,iphase)
           endif
@@ -6713,14 +7047,14 @@ subroutine OutputMassBalanceNew(realization)
         sum_mol = sum_mol + rt_aux_vars_bc(offset+iconn)%mass_balance
       enddo
 
-      call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*reaction%ncomp, &
+      call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*option%ntrandof, &
                       MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
 
       if (option%myrank == option%io_rank) then
         ! change sign for positive in / negative out
         do iphase = 1, option%nphase
-          do icomp = 1, reaction%ncomp
+          do icomp = 1, reaction%naqcomp
             if (reaction%primary_species_print(icomp)) then
               write(fid,110,advance="no") -sum_mol_global(icomp,iphase)
             endif
@@ -6734,14 +7068,14 @@ subroutine OutputMassBalanceNew(realization)
         sum_mol = sum_mol + rt_aux_vars_bc(offset+iconn)%mass_balance_delta 
       enddo
 
-      call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*reaction%ncomp, &
+      call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*option%ntrandof, &
                       MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
                       
       if (option%myrank == option%io_rank) then
         ! change sign for positive in / negative out
         do iphase = 1, option%nphase
-          do icomp = 1, reaction%ncomp
+          do icomp = 1, reaction%naqcomp
             if (reaction%primary_species_print(icomp)) then
               write(fid,110,advance="no") -sum_mol_global(icomp,iphase)* &
                                           output_option%tconv
@@ -6779,13 +7113,13 @@ subroutine OutputMassBalanceNew(realization)
       sum_mol = 0.d0
       sum_mol = sum_mol + patch%aux%RT%aux_vars(iconn)%mass_balance
 
-      call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*reaction%ncomp, &
+      call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*option%ntrandof, &
                       MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
 
       if (option%myrank == option%io_rank) then
         do iphase = 1, option%nphase
-          do icomp = 1, reaction%ncomp
+          do icomp = 1, reaction%naqcomp
             if (reaction%primary_species_print(icomp)) then
               ! change sign for positive in / negative out
               write(fid,110,advance="no") -sum_mol_global(icomp,iphase)

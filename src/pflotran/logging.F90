@@ -23,6 +23,8 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 5
     
     PetscLogEvent :: event_init
     PetscLogEvent :: event_setup
+   
+    PetscLogEvent :: event_create_iogroups
 
     PetscLogEvent :: event_restart
     PetscLogEvent :: event_checkpoint
@@ -39,6 +41,7 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 5
     PetscLogEvent :: event_hash_create
     PetscLogEvent :: event_hash_map
     PetscLogEvent :: event_read_real_array_hdf5
+    PetscLogEvent :: event_read_ndim_real_array_hdf5
     PetscLogEvent :: event_read_int_array_hdf5
     PetscLogEvent :: event_write_real_array_hdf5
     PetscLogEvent :: event_write_int_array_hdf5
@@ -110,6 +113,10 @@ subroutine LoggingCreate()
                              logging%class_pflotran, &
                              logging%event_setup,ierr)
 
+  call PetscLogEventRegister('Create_iogroups', &
+                             logging%class_pflotran, &
+                             logging%event_create_iogroups,ierr)
+
   call PetscLogEventRegister('Restart', &
                              logging%class_pflotran, &
                              logging%event_restart,ierr)
@@ -151,6 +158,9 @@ subroutine LoggingCreate()
   call PetscLogEventRegister('H5ReadRealArray', &
                              logging%class_pflotran, &
                              logging%event_read_real_array_hdf5,ierr)
+  call PetscLogEventRegister('H5ReadNDimRealArray', &
+                             logging%class_pflotran, &
+                             logging%event_read_ndim_real_array_hdf5,ierr)
   call PetscLogEventRegister('H5ReadIntArray', &
                              logging%class_pflotran, &
                              logging%event_read_int_array_hdf5,ierr)

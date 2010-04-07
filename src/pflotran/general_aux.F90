@@ -1,5 +1,9 @@
 module General_Aux_module
 
+#ifdef GLENN
+  use Matrix_Buffer_module
+#endif
+
   implicit none
   
   private 

@@ -24,7 +24,7 @@ module Mphase_module
 !#endif
 #include "finclude/petscsnes.h"
 #include "finclude/petscviewer.h"
-#include "finclude/petscsys.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscis.h"
 #include "finclude/petscis.h90"
 #include "finclude/petsclog.h"
@@ -206,14 +206,14 @@ subroutine MphaseSetupPatch(realization)
   allocate(patch%aux%Mphase%Mphase_parameter%dencpr(size(realization%material_property_array)))
   do ipara = 1, size(realization%material_property_array)
     patch%aux%Mphase%mphase_parameter%dencpr(realization%material_property_array(ipara)%ptr%id) = &
-      realization%material_property_array(ipara)%ptr%rock_density*&
+      realization%material_property_array(ipara)%ptr%rock_density*option%scale*&
       realization%material_property_array(ipara)%ptr%specific_heat
   enddo
 ! ckwet
   allocate(patch%aux%Mphase%Mphase_parameter%ckwet(size(realization%material_property_array)))
   do ipara = 1, size(realization%material_property_array)
     patch%aux%Mphase%mphase_parameter%ckwet(realization%material_property_array(ipara)%ptr%id) = &
-      realization%material_property_array(ipara)%ptr%thermal_conductivity_wet
+      realization%material_property_array(ipara)%ptr%thermal_conductivity_wet*option%scale
   enddo
   
 
@@ -594,7 +594,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
   PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:), iphase_loc_p(:)
   PetscReal :: xxbc(realization%option%nflowdof)
   PetscErrorCode :: ierr
-  PetscReal :: xphi
+  PetscReal :: xphi, ynacl, mnacl
   
   option => realization%option
   patch => realization%patch
@@ -640,6 +640,18 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
       global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
+      
+      mnacl= global_aux_vars(ghosted_id)%m_nacl(1)
+      if(global_aux_vars(ghosted_id)%m_nacl(2)>mnacl) mnacl= global_aux_vars(ghosted_id)%m_nacl(2)
+      ynacl =  mnacl/(1.d3/FMWH2O + mnacl)
+      global_aux_vars(ghosted_id)%xmass(1)= (1.d0-ynacl)&
+                              *aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1) * FMWH2O&
+                              /((1.d0-ynacl)*aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1) * FMWH2O &
+                              +aux_vars(ghosted_id)%aux_var_elem(0)%xmol(2) * FMWCO2 &
+                              +ynacl*aux_vars(ghosted_id)%aux_var_elem(0)%xmol(1)*FMWNACL)
+      global_aux_vars(ghosted_id)%xmass(2)=aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3) * FMWH2O&
+                              /(aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3) * FMWH2O&
+                              +aux_vars(ghosted_id)%aux_var_elem(0)%xmol(4) * FMWCO2) 
 !      global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
 !     print *,'UPdate mphase and gloable vars', ghosted_id, global_aux_vars(ghosted_id)%m_nacl(:), & 
 !       global_aux_vars(ghosted_id)%pres(:)
@@ -662,8 +674,8 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-    do idof=1,option%nflowdof
-      select case(boundary_condition%flow_condition%itype(idof))
+!    do idof=1,option%nflowdof
+      select case(boundary_condition%flow_condition%itype(1))
       case(DIRICHLET_BC)
          xxbc(:) = boundary_condition%flow_aux_real_var(:,iconn)
       case(HYDROSTATIC_BC)
@@ -671,14 +683,14 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
          xxbc(2:option%nflowdof) = &
                xx_loc_p((ghosted_id-1)*option%nflowdof+2:ghosted_id*option%nflowdof)
 
-     !  case(CONST_TEMPERATURE)
+    !  case(CONST_TEMPERATURE)
       
     !  case(PRODUCTION_WELL) ! 102      
    
       case(NEUMANN_BC,ZERO_GRADIENT_BC)
          xxbc(:) = xx_loc_p((ghosted_id-1)*option%nflowdof+1:ghosted_id*option%nflowdof)
       end select
-      enddo
+!    enddo
       select case(boundary_condition%flow_condition%itype(1))
         case(DIRICHLET_BC,SEEPAGE_BC)
           iphasebc = boundary_condition%flow_aux_int_var(1,iconn)
@@ -693,14 +705,29 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
     
       if( associated(global_aux_vars_bc))then
         global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
-                     aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
+                     aux_vars_bc(sum_connection)%aux_var_elem(0)%pc(:)
         global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
         global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
         !    global_aux_vars(ghosted_id)%sat_store = 
         global_aux_vars_bc(sum_connection)%fugacoeff(1)=xphi
         global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
-        global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
+        global_aux_vars_bc(sum_connection)%den_kg(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
+!       print *,'xxbc ', xxbc, iphasebc, global_aux_vars_bc(sum_connection)%den_kg(:)
+!       mnacl= global_aux_vars_bc(sum_connection)%m_nacl(1)
+        if(global_aux_vars_bc(sum_connection)%m_nacl(2)>mnacl) mnacl= global_aux_vars_bc(sum_connection)%m_nacl(2)
+        ynacl =  mnacl/(1.d3/FMWH2O + mnacl)
+        global_aux_vars_bc(sum_connection)%xmass(1)= (1.d0-ynacl)&
+                              *aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(1) * FMWH2O&
+                              /((1.d0-ynacl)*aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(1) * FMWH2O &
+                              +aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(2) * FMWCO2 &
+                              +ynacl*aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(1)*FMWNACL)
+      global_aux_vars_bc(sum_connection)%xmass(2)=aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(3) * FMWH2O&
+                              /(aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(3) * FMWH2O&
+                              +aux_vars_bc(sum_connection)%aux_var_elem(0)%xmol(4) * FMWCO2) 
+ 
+   
+     
   !    global_aux_vars(ghosted_id)%den_kg_store
   !    global_aux_vars(ghosted_id)%mass_balance 
   !    global_aux_vars(ghosted_id)%mass_balance_delta                   
@@ -1523,7 +1550,7 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
   interface
      subroutine samrpetscobjectstateincrease(vec)
        implicit none
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
        Vec :: vec
@@ -1742,7 +1769,8 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   
     m_na=option%m_nacl; m_cl=m_na; m_nacl = m_na 
     if(associated(realization%reaction))then
-      if (realization%reaction%na_ion_id /= 0 .and. realization%reaction%cl_ion_id /= 0) then
+      if (realization%reaction%species_idx%na_ion_id /= 0 .and. &
+        realization%reaction%species_idx%cl_ion_id /= 0) then
         m_na = global_aux_vars(ghosted_id)%m_nacl(1)
         m_cl = global_aux_vars(ghosted_id)%m_nacl(2)
         m_nacl = m_na
@@ -2405,7 +2433,7 @@ subroutine MphaseJacobian(snes,xx,A,B,flag,realization,ierr)
 
   interface
      subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
        

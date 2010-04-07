@@ -235,7 +235,7 @@ subroutine StructGridComputeLocalBounds(structured_grid,da)
      subroutine samr_patch_get_corners(p_patch, nxs, nys, nzs, nlx, nly, nlz)
        implicit none
        
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 
        PetscFortranAddr :: p_patch
        PetscInt :: nxs, nys, nzs, nlx, nly, nlz
@@ -245,7 +245,7 @@ subroutine StructGridComputeLocalBounds(structured_grid,da)
      subroutine samr_patch_get_ghostcorners(p_patch, nxs, nys, nzs, nlx, nly, nlz)
        implicit none
        
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
        
        PetscFortranAddr :: p_patch
        PetscInt :: nxs, nys, nzs, nlx, nly, nlz
@@ -661,7 +661,7 @@ subroutine StructuredGridComputeCoord(structured_grid,option,origin_global, &
   interface
      subroutine samr_patch_get_origin(p_patch, xs, ys, zs)
        implicit none
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
        PetscFortranAddr, intent(inout) :: p_patch
        PetscReal, intent(inout) :: xs
        PetscReal, intent(inout) :: ys
@@ -768,7 +768,7 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
 
   interface
      PetscInt function samr_patch_at_bc(p_patch, axis, dim)
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
        PetscFortranAddr :: p_patch
        PetscInt :: axis,dim
      end function samr_patch_at_bc
@@ -927,7 +927,7 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
 
   interface
      PetscInt function samr_patch_at_bc(p_patch, axis, dim)
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
        PetscFortranAddr :: p_patch
        PetscInt :: axis,dim
      end function samr_patch_at_bc
@@ -1085,11 +1085,11 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
           enddo
         enddo
       case(CYLINDRICAL_GRID)
-        print *, 'Cylindrical coordinates not applicable.'
-        stop
+        option%io_buffer = 'Cylindrical coordinates not applicable.'
+        call printErrMsg(option)
       case(SPHERICAL_GRID)
-        print *, 'Spherical coordinates not applicable.'
-        stop
+        option%io_buffer = 'Spherical coordinates not applicable.'
+        call printErrMsg(option)
     end select
   endif
       
@@ -1375,7 +1375,7 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
 
   interface
      PetscInt function samr_patch_at_bc(p_patch, axis, dim)
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
        PetscFortranAddr :: p_patch
        PetscInt :: axis,dim
      end function samr_patch_at_bc
@@ -1613,7 +1613,7 @@ subroutine StructuredGridVecGetArrayCellF90(structured_grid, vec, f90ptr, ierr)
  interface
     subroutine samr_vecgetarraycellf90(patch, petscvec, f90wrap)
       implicit none
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
       PetscFortranAddr, intent(inout):: patch
@@ -1622,7 +1622,7 @@ subroutine StructuredGridVecGetArrayCellF90(structured_grid, vec, f90ptr, ierr)
     end subroutine samr_vecgetarraycellf90
  end interface
 
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
@@ -1664,7 +1664,7 @@ subroutine StructuredGridVecGetArraySideF90(structured_grid, axis, vec, f90ptr, 
  interface
     subroutine samr_vecgetarraysidef90(patch, axis, petscvec, f90wrap)
       implicit none
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
       PetscFortranAddr, intent(inout):: patch
@@ -1674,7 +1674,7 @@ subroutine StructuredGridVecGetArraySideF90(structured_grid, axis, vec, f90ptr, 
     end subroutine samr_vecgetarraysidef90
  end interface
 
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 
@@ -1714,7 +1714,7 @@ subroutine StructGridVecRestoreArrayF90(structured_grid, vec, f90ptr, ierr)
 
  implicit none 
 
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 

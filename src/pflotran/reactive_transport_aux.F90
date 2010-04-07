@@ -1,6 +1,10 @@
 module Reactive_Transport_Aux_module
 
-  ! this module cannot depend on any other modules beside Option_module
+  ! this module cannot depend on any other modules besides Option_module
+  ! and Matrix_Block_Aux_module
+#ifdef REVISED_TRANSPORT
+  use Matrix_Block_Aux_module
+#endif  
 
   implicit none
   
@@ -14,8 +18,11 @@ module Reactive_Transport_Aux_module
     
     ! phase dependent totals
     PetscReal, pointer :: total(:,:)       ! mol solute/L water
+#ifdef REVISED_TRANSPORT    
+    type(matrix_block_auxvar_type), pointer :: aqueous
+#else
     PetscReal, pointer :: dtotal(:,:,:)    ! kg water/m^3 water
-    
+#endif    
     ! sorbed totals
     PetscReal, pointer :: total_sorb_eq(:)    ! mol/m^3 bulk
     PetscReal, pointer :: dtotal_sorb_eq(:,:) ! kg water/m^3 bulk
@@ -56,13 +63,46 @@ module Reactive_Transport_Aux_module
     PetscReal, pointer :: mass_balance_delta(:,:)
     
     PetscReal, pointer :: kinmr_total_sorb(:,:)
-        
+
+#ifdef REVISED_TRANSPORT
+    type(colloid_auxvar_type), pointer :: colloid
+#endif
+    
   end type reactive_transport_auxvar_type
-  
+
   type, public :: reactive_transport_param_type
+    PetscInt :: ncomp
+    PetscInt :: naqcomp
+    PetscInt :: nimcomp
+    PetscInt :: ncoll
+    PetscInt :: ncollcomp
+    PetscInt :: offset_aq
+    PetscInt :: offset_coll
+    PetscInt :: offset_collcomp
+    PetscInt, pointer :: pri_spec_to_coll_spec(:)
+    PetscInt, pointer :: coll_spec_to_pri_spec(:)
     PetscReal :: dispersivity
     PetscReal, pointer :: diffusion_coefficient(:)
   end type reactive_transport_param_type
+
+  ! Colloids
+  type, public :: colloid_auxvar_type
+    PetscReal, pointer :: conc_mob(:) ! mol/L water
+    PetscReal, pointer :: conc_imb(:) ! mol/m^3 bulk
+    PetscReal, pointer :: total_eq_mob(:) ! mol/L water
+    PetscReal, pointer :: total_kin(:)
+#ifdef REVISED_TRANSPORT  
+    type(matrix_block_auxvar_type), pointer :: dRj_dCj
+    type(matrix_block_auxvar_type), pointer :: dRj_dSic
+    type(matrix_block_auxvar_type), pointer :: dRic_dCj
+    type(matrix_block_auxvar_type), pointer :: dRic_dSic
+#endif    
+  end type colloid_auxvar_type
+  
+  type, public :: colloid_param_type
+    PetscInt :: num_colloids
+    PetscInt :: num_colloid_comp
+  end type colloid_param_type
 
   type, public :: reactive_transport_type
     PetscInt :: num_aux, num_aux_bc
@@ -114,7 +154,16 @@ function RTAuxCreate(option)
   allocate(aux%rt_parameter%diffusion_coefficient(option%nphase))
   aux%rt_parameter%diffusion_coefficient = 0.d0
   aux%rt_parameter%dispersivity = 0.d0
-
+  aux%rt_parameter%ncomp = 0
+  aux%rt_parameter%naqcomp = 0
+  aux%rt_parameter%nimcomp = 0
+  aux%rt_parameter%ncoll = 0
+  aux%rt_parameter%ncollcomp = 0
+  aux%rt_parameter%offset_aq = 0
+  aux%rt_parameter%offset_coll = 0
+  aux%rt_parameter%offset_collcomp = 0
+  nullify(aux%rt_parameter%pri_spec_to_coll_spec)
+  nullify(aux%rt_parameter%coll_spec_to_pri_spec)
   RTAuxCreate => aux
   
 end function RTAuxCreate
@@ -137,12 +186,19 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   type(reaction_type) :: reaction
   type(option_type) :: option  
   
-  allocate(aux_var%pri_molal(reaction%ncomp))
+  allocate(aux_var%pri_molal(reaction%naqcomp))
   aux_var%pri_molal = 0.d0
-  allocate(aux_var%total(reaction%ncomp,option%nphase))
+
+  allocate(aux_var%total(reaction%naqcomp,option%nphase))
   aux_var%total = 0.d0
-  allocate(aux_var%dtotal(reaction%ncomp,reaction%ncomp,option%nphase))
+#ifdef REVISED_TRANSPORT 
+  aux_var%aqueous => MatrixBlockAuxVarCreate(option)
+  call MatrixBlockAuxVarInit(aux_var%aqueous,reaction%naqcomp, &
+                             reaction%naqcomp,option%nphase,option)
+#else  
+  allocate(aux_var%dtotal(reaction%naqcomp,reaction%naqcomp,option%nphase))
   aux_var%dtotal = 0.d0
+#endif
   
   if (reaction%neqcplx > 0) then
     allocate(aux_var%sec_molal(reaction%neqcplx))
@@ -159,10 +215,10 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   endif
 
   if (reaction%neqsorb > 0) then  
-    allocate(aux_var%total_sorb_eq(reaction%ncomp))
+    allocate(aux_var%total_sorb_eq(reaction%naqcomp))
     aux_var%total_sorb_eq = 0.d0
     if (reaction%kinmr_nrate <= 0) then
-      allocate(aux_var%dtotal_sorb_eq(reaction%ncomp,reaction%ncomp))
+      allocate(aux_var%dtotal_sorb_eq(reaction%naqcomp,reaction%naqcomp))
       aux_var%dtotal_sorb_eq = 0.d0
     else
       nullify(aux_var%dtotal_sorb_eq)
@@ -240,7 +296,7 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
     nullify(aux_var%mnrl_rate)
   endif
   
-  allocate(aux_var%pri_act_coef(reaction%ncomp))
+  allocate(aux_var%pri_act_coef(reaction%naqcomp))
   aux_var%pri_act_coef = 1.d0
   if (reaction%neqcplx > 0) then
     allocate(aux_var%sec_act_coef(reaction%neqcplx))
@@ -263,11 +319,39 @@ subroutine RTAuxVarInit(aux_var,reaction,option)
   endif
   
   if (reaction%kinmr_nrate > 0) then
-    allocate(aux_var%kinmr_total_sorb(reaction%ncomp,reaction%kinmr_nrate))
+    allocate(aux_var%kinmr_total_sorb(reaction%naqcomp,reaction%kinmr_nrate))
     aux_var%kinmr_total_sorb = 0.d0
   else
     nullify(aux_var%kinmr_total_sorb)
   endif
+
+#ifdef REVISED_TRANSPORT
+  if (reaction%ncollcomp > 0) then
+    allocate(aux_var%colloid)
+    allocate(aux_var%colloid%conc_mob(reaction%ncoll))
+    allocate(aux_var%colloid%conc_imb(reaction%ncoll))
+    allocate(aux_var%colloid%total_eq_mob(reaction%ncollcomp))
+    allocate(aux_var%colloid%total_kin(reaction%ncollcomp))
+    ! dRj/dCj
+    aux_var%colloid%dRj_dCj => MatrixBlockAuxVarCreate(option)
+    call MatrixBlockAuxVarInit(aux_var%colloid%dRj_dCj,reaction%naqcomp, &
+                               reaction%naqcomp,ONE_INTEGER,option)
+    ! dRj/dSic
+    aux_var%colloid%dRj_dSic => MatrixBlockAuxVarCreate(option)
+    call MatrixBlockAuxVarInit(aux_var%colloid%dRj_dSic,reaction%naqcomp, &
+                               reaction%ncollcomp,ONE_INTEGER,option)
+    ! dRic/dCj
+    aux_var%colloid%dRic_dCj => MatrixBlockAuxVarCreate(option)
+    call MatrixBlockAuxVarInit(aux_var%colloid%dRic_dCj,reaction%ncollcomp, &
+                               reaction%naqcomp,ONE_INTEGER,option)
+    ! dRic/dSic
+    aux_var%colloid%dRic_dSic => MatrixBlockAuxVarCreate(option)
+    call MatrixBlockAuxVarInit(aux_var%colloid%dRic_dSic,reaction%ncollcomp, &
+                               reaction%ncollcomp,ONE_INTEGER,option)
+  else
+    nullify(aux_var%colloid)
+  endif
+#endif
   
 end subroutine RTAuxVarInit
 
@@ -288,8 +372,14 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
   type(option_type) :: option  
   
   aux_var%pri_molal = aux_var2%pri_molal
+
   aux_var%total = aux_var2%total
+
+#ifdef REVISED_TRANSPORT 
+  call MatrixBlockAuxVarCopy(aux_var%aqueous,aux_var2%aqueous,option)
+#else  
   aux_var%dtotal = aux_var2%dtotal
+#endif
   
   if (associated(aux_var%sec_molal)) &
     aux_var%sec_molal = aux_var2%sec_molal
@@ -342,6 +432,27 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
     aux_var%kinmr_total_sorb = aux_var2%kinmr_total_sorb
   endif
 
+#ifdef REVISED_TRANSPORT 
+  if (associated(aux_var%colloid)) then
+    aux_var%colloid%conc_mob = aux_var2%colloid%conc_mob
+    aux_var%colloid%conc_imb = aux_var2%colloid%conc_imb
+    aux_var%colloid%total_eq_mob = aux_var2%colloid%total_eq_mob
+    aux_var%colloid%total_kin = aux_var2%colloid%total_kin
+    ! dRj/dCj
+    call MatrixBlockAuxVarCopy(aux_var%colloid%dRj_dCj, &
+                               aux_var2%colloid%dRj_dCj,option)
+    ! dRj/dSic
+    call MatrixBlockAuxVarCopy(aux_var%colloid%dRj_dSic, &
+                               aux_var2%colloid%dRj_dSic,option)
+    ! dRic/dCj
+    call MatrixBlockAuxVarCopy(aux_var%colloid%dRic_dCj, &
+                               aux_var2%colloid%dRic_dCj,option)
+    ! dRic/dSic
+    call MatrixBlockAuxVarCopy(aux_var%colloid%dRic_dSic, &
+                               aux_var2%colloid%dRic_dSic,option)
+  endif
+#endif
+
 end subroutine RTAuxVarCopy
 
 
@@ -360,11 +471,16 @@ subroutine RTAuxVarDestroy(aux_var)
   
   if (associated(aux_var%pri_molal)) deallocate(aux_var%pri_molal)
   nullify(aux_var%pri_molal)
-  
+
   if (associated(aux_var%total)) deallocate(aux_var%total)
   nullify(aux_var%total)
+
+#ifdef REVISED_TRANSPORT
+  call MatrixBlockAuxVarDestroy(aux_var%aqueous)
+#else  
   if (associated(aux_var%dtotal))deallocate(aux_var%dtotal)
   nullify(aux_var%dtotal)
+#endif  
   
   if (associated(aux_var%sec_molal))deallocate(aux_var%sec_molal)
   nullify(aux_var%sec_molal)
@@ -423,6 +539,27 @@ subroutine RTAuxVarDestroy(aux_var)
   if (associated(aux_var%kinmr_total_sorb)) deallocate(aux_var%kinmr_total_sorb)
   nullify(aux_var%kinmr_total_sorb)
   
+#ifdef REVISED_TRANSPORT
+  if (associated(aux_var%colloid)) then
+    if (associated(aux_var%colloid%conc_mob)) deallocate(aux_var%colloid%conc_mob)
+    nullify(aux_var%colloid%conc_mob)
+    if (associated(aux_var%colloid%conc_imb)) deallocate(aux_var%colloid%conc_imb)
+    nullify(aux_var%colloid%conc_imb)
+    if (associated(aux_var%colloid%total_eq_mob)) deallocate(aux_var%colloid%total_eq_mob)
+    nullify(aux_var%colloid%total_eq_mob)
+    if (associated(aux_var%colloid%total_kin)) deallocate(aux_var%colloid%total_kin)
+    nullify(aux_var%colloid%total_kin)
+    ! dRj/dCj
+    call MatrixBlockAuxVarDestroy(aux_var%colloid%dRj_dCj)
+    ! dRj/dSic
+    call MatrixBlockAuxVarDestroy(aux_var%colloid%dRj_dSic)
+    ! dRic/dCj
+    call MatrixBlockAuxVarDestroy(aux_var%colloid%dRic_dCj)
+    ! dRic/dSic
+    call MatrixBlockAuxVarDestroy(aux_var%colloid%dRic_dSic)
+  endif
+#endif    
+  
 end subroutine RTAuxVarDestroy
 
 ! ************************************************************************** !
@@ -460,8 +597,15 @@ subroutine RTAuxDestroy(aux)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
   nullify(aux%zero_rows_local_ghosted)
   if (associated(aux%rt_parameter)) then
-    deallocate(aux%rt_parameter%diffusion_coefficient)
+    if (associated(aux%rt_parameter%diffusion_coefficient)) &
+      deallocate(aux%rt_parameter%diffusion_coefficient)
     nullify(aux%rt_parameter%diffusion_coefficient)
+    if (associated(aux%rt_parameter%pri_spec_to_coll_spec)) &
+      deallocate(aux%rt_parameter%pri_spec_to_coll_spec)
+    nullify(aux%rt_parameter%pri_spec_to_coll_spec)
+    if (associated(aux%rt_parameter%coll_spec_to_pri_spec)) &
+      deallocate(aux%rt_parameter%coll_spec_to_pri_spec)
+    nullify(aux%rt_parameter%coll_spec_to_pri_spec)
     deallocate(aux%rt_parameter)
   endif
   nullify(aux%rt_parameter)

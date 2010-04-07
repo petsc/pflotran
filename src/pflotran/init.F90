@@ -88,7 +88,7 @@ subroutine Init(simulation)
   interface
 
      subroutine SAMRInitializePreconditioner(p_application, which_pc, pc)
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscpc.h"
        PC :: pc
        PetscFortranAddr :: p_application
@@ -321,13 +321,13 @@ subroutine Init(simulation)
 
     ! If we are using a structured grid, set the corresponding flow DA 
     ! as the DA for the PCEXOTIC preconditioner, in case we choose to use it.
-    ! The PCExoticSetDA() call is ignored if the PCEXOTIC preconditioner is 
+    ! The PCSetDA() call is ignored if the PCEXOTIC preconditioner is 
     ! no used.  We need to put this call after SolverCreateSNES() so that 
     ! KSPSetFromOptions() will already have been called.
-    ! I also note that this preconditioner is intended only for the flow, 
+    ! I also note that this preconditioner is intended only for the flow 
     ! solver.  --RTM
     if (realization%discretization%itype == STRUCTURED_GRID) then
-      call PCSetDA(flow_solver%pc, &
+      call PCSetDM(flow_solver%pc, &
                    realization%discretization%dm_nflowdof,ierr);
     endif
 
@@ -521,6 +521,12 @@ subroutine Init(simulation)
   
     ! assign initial conditionsRealizAssignFlowInitCond
     call RealizAssignFlowInitCond(realization)
+
+    ! override initial conditions if they are to be read from a file
+    if (len_trim(option%initialize_flow_filename) > 1) then
+      call readFlowInitialCondition(realization, &
+                                    option%initialize_flow_filename)
+    endif
   
     select case(option%iflowmode)
       case(THC_MODE)
@@ -551,6 +557,11 @@ subroutine Init(simulation)
 
     ! initial concentrations must be assigned after densities are set !!!
     call RealizAssignTransportInitCond(realization)
+    ! override initial conditions if they are to be read from a file
+    if (len_trim(option%initialize_transport_filename) > 1) then
+      call readTransportInitialCondition(realization, &
+                                         option%initialize_transport_filename)
+    endif
     ! PETSC_FALSE = no activity coefficients
     call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_FALSE)
     ! at this point the auxvars have been computed with activity coef = 1.d0
@@ -618,24 +629,22 @@ subroutine Init(simulation)
   call printMsg(option," ")
   call printMsg(option,"  Finished Initialization")
   
-#ifdef USE_HDF5
+#if defined(PETSC_HAVE_HDF5)
 #ifndef HDF5_BROADCAST 
-#ifndef VAMSI_HDF5
-  call printMsg(option,"Default HDF5 Mechanism is used")
-#endif
-#endif
-  
+#ifndef VAMSI_HDF5_READ
+  call printMsg(option,"Default HDF5 method is used in Initialization")
+#endif !VAMSI_HDF5_READ
+#endif HDF5_BROADCAST
 #ifdef HDF5_BROADCAST
-  call printMsg(option,"Glenn's HDF5 Broadcast Mechanism is used")
-#endif
-
-#ifdef VAMSI_HDF5
-  call printMsg(option,"Vamsi's HDF5 Broadcast Mechanism is used")
+  call printMsg(option,"Glenn's HDF5 broadcast method is used in Initialization")
+#endif !HDF5_BROADCAST
+#ifdef VAMSI_HDF5_READ
+  call printMsg(option,"Vamsi's HDF5 broadcast method is used in Initialization")
   if (option%myrank == 0) then
-     write(*,'(" HDF5_BROADCAST_SIZE = ",i5)') option%broadcast_size
+     write(*,'(" HDF5_READ_BCAST_SIZE = ",i6)') option%read_bcast_size
   endif  
-#endif
-#endif
+#endif !VAMSI_HDF5_READ
+#endif !PETSC_HAVE_HDF5
 
   call PetscLogEventEnd(logging%event_init,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -871,7 +880,10 @@ subroutine InitReadRequiredCardsFromInput(realization)
     realization%reaction => reaction
     call ReactionRead(reaction,input,option)
     reaction%primary_species_names => GetPrimarySpeciesNames(reaction)
+    ! PCL add in colloid dofs
     option%ntrandof = GetPrimarySpeciesCount(reaction)
+    option%ntrandof = option%ntrandof + GetColloidCount(reaction)
+    reaction%ncomp = option%ntrandof
   endif
     
 end subroutine InitReadRequiredCardsFromInput
@@ -1040,7 +1052,7 @@ subroutine InitReadInput(simulation)
           call InputErrorMsg(input,option,'word','CHEMISTRY') 
           select case(trim(word))
             case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
-                 'MINERALS')
+                 'MINERALS','COLLOIDS')
               call InputSkipToEND(input,option,card)
             case('OUTPUT')
               call ReactionReadOutput(reaction,input,option)
@@ -1079,6 +1091,7 @@ subroutine InitReadInput(simulation)
                     enddo
                   case('DISTRIBUTION_COEF')
                   case('JUMPSTART_KINETIC_SORPTION')
+                  case('NO_CHECKPOINT_KINETIC_SORPTION')
                   case('NO_RESTART_KINETIC_SORPTION')
                     ! dummy placeholder
                 end select
@@ -1460,6 +1473,16 @@ subroutine InitReadInput(simulation)
       case ('OVERWRITE_RESTART_FLOW_PARAMS')
         option%overwrite_restart_flow = PETSC_TRUE
 
+      case ('INITIALIZE_FLOW_FROM_FILE')
+        call InputReadNChars(input,option,option%initialize_flow_filename, &
+                             MAXSTRINGLENGTH,PETSC_TRUE)
+        call InputErrorMsg(input,option,'filename','INITIALIZE_FLOW_FROM_FILE') 
+
+      case ('INITIALIZE_TRANSPORT_FROM_FILE')
+        call InputReadNChars(input,option,option%initialize_transport_filename, &
+                             MAXSTRINGLENGTH,PETSC_TRUE)
+        call InputErrorMsg(input,option,'filename','INITIALIZE_TRANSPORT_FROM_FILE') 
+
 !....................
       case ('OBSERVATION')
         observation => ObservationCreate()
@@ -1637,7 +1660,9 @@ subroutine InitReadInput(simulation)
               call printErrMsg(option)              
           end select
        enddo
-       
+#ifdef VAMSI_HDF5      
+       call create_iogroups(option)
+#endif    
        if (velocities) then
          if (output_option%print_tecplot) &
            output_option%print_tecplot_velocities = PETSC_TRUE
@@ -1769,6 +1794,7 @@ subroutine setFlowMode(option)
       option%nflowdof = 3
       option%nflowspec = 2
       option%itable = 2
+      option%use_isothermal = PETSC_FALSE
    case('IMS','IMMIS','THS')
       option%iflowmode = IMS_MODE
       option%nphase = 2
@@ -1971,6 +1997,13 @@ subroutine assignMaterialPropToRegions(realization)
                  size(realization%material_property_array)) then
           material_property => &
             realization%material_property_array(material_id)%ptr
+          if (.not.associated(material_property)) then
+            write(dataset_name,*) material_id
+            option%io_buffer = 'No material property for material id ' // &
+                               trim(adjustl(dataset_name)) &
+                               //  ' defined in input file.'
+            call printErrMsg(option)
+          endif
         else if (material_id < -998) then 
           option%io_buffer = 'Uninitialized material id in patch'
           call printErrMsg(option)
@@ -2597,10 +2630,8 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
     call mpi_bcast(count,ONE_INTEGER,MPI_INTEGER,option%io_rank, &
                    option%mycomm,ierr)      
     if (count /= grid%nmax) then
-      write(option%io_buffer, &
-            '("Number of data in file (",i8, &
-            &") does not match size of vector (", &
-            &i8,")")'), count, grid%nlmax
+      write(option%io_buffer,'("Number of data in file (",i8, &
+      & ") does not match size of vector (",i8,")")') count, grid%nlmax
       call printErrMsg(option)
     endif
     close(fid)
@@ -2627,5 +2658,282 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
   endif
   
 end subroutine readVectorFromFile
+
+! ************************************************************************** !
+!
+! readFlowInitialCondition: Assigns flow initial condition from HDF5 file
+! author: Glenn Hammond
+! date: 03/05/10
+!
+! ************************************************************************** !
+subroutine readFlowInitialCondition(realization,filename)
+
+  use Realization_module
+  use Option_module
+  use Field_module
+  use Grid_module
+  use Level_module
+  use Patch_module
+  use Discretization_module
+  use HDF5_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  
+  type(realization_type) :: realization
+  character(len=MAXSTRINGLENGTH) :: filename
+  
+  PetscInt :: local_id, idx, offset
+  PetscReal, pointer :: xx_p(:)
+  character(len=MAXSTRINGLENGTH) :: group_name
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  PetscReal, pointer :: vec_p(:)  
+  PetscErrorCode :: ierr
+  
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field  
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+
+  option => realization%option
+  discretization => realization%discretization
+  field => realization%field
+  patch => realization%patch
+
+  if (option%iflowmode /= RICHARDS_MODE) then
+    option%io_buffer = 'Reading of flow initial conditions from HDF5 ' // &
+                       'file (' // trim(filename) // &
+                       'not currently not supported for mode: ' // &
+
+                       trim(option%flowmode)
+  endif      
+
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+
+      grid => cur_patch%grid
+
+       ! assign initial conditions values to domain
+      call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
+
+      ! Pressure for all modes 
+      offset = 1
+      group_name = ''
+      dataset_name = 'Pressure'
+      call HDF5ReadCellIndexedRealArray(realization,field%work, &
+                                        filename,group_name, &
+                                        dataset_name,option%id>0)
+      call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+      do local_id=1, grid%nlmax
+        if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
+        if (dabs(vec_p(local_id)) < 1.d-40) then
+          print *,  option%myrank, grid%nL2A(local_id)+1, &
+               ': Potential error - zero pressure in Initial Condition read from file.'
+        endif
+        idx = (local_id-1)*option%nflowdof + offset
+        xx_p(idx) = vec_p(local_id)
+      enddo
+      call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+
+      call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
+        
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+   
+  ! update dependent vectors
+  call DiscretizationGlobalToLocal(discretization,field%flow_xx, &
+                                   field%flow_xx_loc,NFLOWDOF)  
+  call VecCopy(field%flow_xx, field%flow_yy, ierr)
+
+end subroutine readFlowInitialCondition
+
+
+! ************************************************************************** !
+!
+! readTransportInitialCondition: Assigns transport initial condition from 
+!                                HDF5 file
+! author: Glenn Hammond
+! date: 03/05/10
+!
+! ************************************************************************** !
+subroutine readTransportInitialCondition(realization,filename)
+
+  use Realization_module
+  use Option_module
+  use Field_module
+  use Grid_module
+  use Patch_module
+  use Level_module
+  use Reactive_Transport_module
+  use Reaction_Aux_module
+  use Discretization_module
+  use HDF5_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  
+  type(realization_type) :: realization
+  character(len=MAXSTRINGLENGTH) :: filename
+  
+  PetscInt :: local_id, idx, offset, idof
+  PetscReal, pointer :: xx_p(:)
+  character(len=MAXSTRINGLENGTH) :: group_name
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  PetscReal, pointer :: vec_p(:)  
+  PetscErrorCode :: ierr
+  
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field  
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  type(reaction_type), pointer :: reaction
+
+  option => realization%option
+  discretization => realization%discretization
+  field => realization%field
+  patch => realization%patch
+  reaction => realization%reaction
+
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+
+      grid => cur_patch%grid
+
+       ! assign initial conditions values to domain
+      call GridVecGetArrayF90(grid,field%tran_xx,xx_p, ierr); CHKERRQ(ierr)
+
+      ! Primary species concentrations for all modes 
+      do idof = 1, option%ntrandof ! primary aqueous concentrations
+        offset = idof
+        group_name = ''
+        dataset_name = reaction%primary_species_names(idof)
+        call HDF5ReadCellIndexedRealArray(realization,field%work, &
+                                          filename,group_name, &
+                                          dataset_name,option%id>0)
+        call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
+        do local_id=1, grid%nlmax
+          if (cur_patch%imat(grid%nL2G(local_id)) <= 0) cycle
+          if (vec_p(local_id) < 1.d-40) then
+            print *,  option%myrank, grid%nL2A(local_id)+1, &
+              ': Zero free-ion concentration in Initial Condition read from file.'
+          endif
+          idx = (local_id-1)*option%ntrandof + offset
+          xx_p(idx) = vec_p(local_id)
+        enddo
+        call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
+     
+      enddo     
+
+      call GridVecRestoreArrayF90(grid,field%tran_xx,xx_p, ierr)
+        
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+   
+  ! update dependent vectors
+  call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
+                                   field%tran_xx_loc,NTRANDOF)  
+  call VecCopy(field%tran_xx, field%tran_yy, ierr)
+  
+end subroutine readTransportInitialCondition
+
+! ************************************************************************** !
+!
+! create_iogroups: Create sub-communicators that are used in initialization 
+!                  and output HDF5 routines. 
+! author: Vamsi Sripathi
+! date: 07/14/09
+!
+! ************************************************************************** !
+
+subroutine create_iogroups(option)
+
+ use Option_module
+ use Logging_module
+
+ implicit none
+
+#include "definitions.h"
+
+ type(option_type) :: option
+
+ PetscErrorCode :: ierr
+
+#ifdef VAMSI_HDF5_READ  
+    call PetscLogEventBegin(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,ierr)
+
+    option%read_bcast_size = HDF5_READ_BCAST_SIZE
+    option%rcolor = floor(real(option%global_rank / option%read_bcast_size))
+    option%rkey = option%global_rank
+    call MPI_Comm_split(option%global_comm,option%rcolor,option%rkey,option%read_group,ierr)
+    call MPI_Comm_size(option%read_group,option%read_grp_size,ierr)
+    call MPI_Comm_rank(option%read_group,option%read_grp_rank,ierr)
+
+    if (mod(option%global_rank,option%read_bcast_size) == 0) then 
+       option%reader_color = 1
+    else
+       option%reader_color = 0
+    endif
+    option%reader_key = option%global_rank
+    call MPI_Comm_split(option%global_comm,option%reader_color,option%reader_key,option%readers,ierr)
+    call MPI_Comm_size(option%readers,option%readers_size,ierr)
+    call MPI_Comm_rank(option%readers,option%readers_rank,ierr)
+
+    call PetscLogEventEnd(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)
+#endif
+
+#ifdef VAMSI_HDF5_WRITE  
+    call PetscLogEventBegin(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,ierr)
+
+    option%write_bcast_size = HDF5_WRITE_BCAST_SIZE
+    option%wcolor = floor(real(option%global_rank / option%write_bcast_size))
+    option%wkey = option%global_rank
+    call MPI_Comm_split(option%global_comm,option%wcolor,option%wkey,option%write_group,ierr)
+    call MPI_Comm_size(option%write_group,option%write_grp_size,ierr)
+    call MPI_Comm_rank(option%write_group,option%write_grp_rank,ierr)
+
+    if (mod(option%global_rank,option%write_bcast_size) == 0) then 
+       option%writer_color = 1
+    else
+       option%writer_color = 0
+    endif
+    option%writer_key = option%global_rank
+    call MPI_Comm_split(option%global_comm,option%writer_color,option%writer_key,option%writers,ierr)
+    call MPI_Comm_size(option%writers,option%writers_size,ierr)
+    call MPI_Comm_rank(option%writers,option%writers_rank,ierr)
+
+    call PetscLogEventEnd(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)
+#endif
+ 
+end subroutine create_iogroups
 
 end module Init_module

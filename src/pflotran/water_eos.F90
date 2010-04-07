@@ -1222,13 +1222,15 @@ subroutine nacl_den (t,p,xnacl,dnacl)
 implicit none
 
 PetscReal :: rw0,dnacl,t,p,xnacl
-
+PetscReal :: rw_mol, hw
+PetscInt  :: ierr
 !units: t [C], p [MPa], xnacl [mass fraction NaCl], dnacl [g/cm^3]
 
-rw0 = 1.d0 + 1.d-6*(-80.d0*t - 3.3d0*t**2 + 0.00175d0*t**3 &
-      + 489.d0*p - 2.d0*t*p + 0.016d0*t**2*p - 1.3d-5*t**3*p &
-      - 0.333d0*p**2 - 0.002d0*t*p**2)
-
+!rw0 = 1.d0 + 1.d-6*(-80.d0*t - 3.3d0*t**2 + 0.00175d0*t**3 &
+!      + 489.d0*p - 2.d0*t*p + 0.016d0*t**2*p - 1.3d-5*t**3*p &
+!      - 0.333d0*p**2 - 0.002d0*t*p**2)
+call wateos_noderiv(t, p*1D6, rw0, rw_mol,hw,1.D-6, ierr)
+rw0=rw0*1.d-3
 dnacl = rw0 + xnacl*(0.668d0 + 0.44d0*xnacl  &
         + 1.d-6*(300d0*p - 2400d0*p*xnacl + t*(80d0 &
         + 3.d0*t - 3300.d0*xnacl - 13.d0*p + 47.d0*p*xnacl)))

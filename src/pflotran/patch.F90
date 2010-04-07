@@ -28,7 +28,11 @@ module Patch_module
     PetscReal, pointer :: internal_velocities(:,:)
     PetscReal, pointer :: boundary_velocities(:,:)
     PetscReal, pointer :: internal_fluxes(:,:,:)    
-    PetscReal, pointer :: boundary_fluxes(:,:,:)    
+    PetscReal, pointer :: boundary_fluxes(:,:,:)  
+#ifdef REVISED_TRANSPORT      
+    PetscReal, pointer :: internal_tran_coefs(:,:)
+    PetscReal, pointer :: boundary_tran_coefs(:,:)
+#endif
     type(grid_type), pointer :: grid
 
     type(region_list_type), pointer :: regions
@@ -93,6 +97,10 @@ function PatchCreate()
   nullify(patch%boundary_velocities)
   nullify(patch%internal_fluxes)
   nullify(patch%boundary_fluxes)
+#ifdef REVISED_TRANSPORT  
+  nullify(patch%internal_tran_coefs)
+  nullify(patch%boundary_tran_coefs)
+#endif
 
   nullify(patch%grid)
 
@@ -273,7 +281,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
                                            patch%regions)
     if (.not.associated(coupler%region)) then
       option%io_buffer = 'Region ' // trim(coupler%region_name) // &
-               ' not found in boundary condition list'
+                 '" in boundary condition ' // &
+                 trim(coupler%name) // &
+                 ' not found in region list'
       call printErrMsg(option)
     endif
     if (associated(patch%grid%structured_grid)) then
@@ -291,9 +301,11 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       coupler%flow_condition => &
         FlowConditionGetPtrFromList(coupler%flow_condition_name,flow_conditions)
       if (.not.associated(coupler%flow_condition)) then
-        option%io_buffer = 'Condition ' // &
+        option%io_buffer = 'Flow condition "' // &
                  trim(coupler%flow_condition_name) // &
-                 ' not found in boundary condition list'
+                 '" in boundary condition ' // &
+                 trim(coupler%name) // &
+                 ' not found in flow condition list'
         call printErrMsg(option)
       endif
     endif
@@ -302,9 +314,11 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       coupler%tran_condition => &
         TranConditionGetPtrFromList(coupler%tran_condition_name,transport_conditions)
       if (.not.associated(coupler%tran_condition)) then
-        option%io_buffer = 'Condition ' // &
-                 trim(coupler%tran_condition_name) // &
-                 ' not found in boundary condition list'
+         option%io_buffer = 'Transport condition "' // &
+                 trim(coupler%flow_condition_name) // &
+                 '" in boundary condition ' // &
+                 trim(coupler%name) // &
+                 ' not found in transport condition list'
         call printErrMsg(option)
       endif
     endif
@@ -321,7 +335,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
                                            patch%regions)
     if (.not.associated(coupler%region)) then
       option%io_buffer = 'Region ' // trim(coupler%region_name) // &
-               ' not found in initial condition list'
+                 '" in initial condition ' // &
+                 trim(coupler%name) // &
+                 ' not found in region list'
       call printErrMsg(option)
     endif
     ! pointer to flow condition
@@ -329,9 +345,11 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       coupler%flow_condition => &
         FlowConditionGetPtrFromList(coupler%flow_condition_name,flow_conditions)
       if (.not.associated(coupler%flow_condition)) then
-        option%io_buffer = 'Condition ' // &
+        option%io_buffer = 'Flow condition "' // &
                  trim(coupler%flow_condition_name) // &
-                 ' not found in initial condition list'
+                 '" in initial condition ' // &
+                 trim(coupler%name) // &
+                 ' not found in flow condition list'
         call printErrMsg(option)
       endif
     endif
@@ -340,9 +358,11 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       coupler%tran_condition => &
         TranConditionGetPtrFromList(coupler%tran_condition_name,transport_conditions)
       if (.not.associated(coupler%tran_condition)) then
-        option%io_buffer = 'Condition ' // &
-                 trim(coupler%tran_condition_name) // &
-                 ' not found in initial condition list'
+        option%io_buffer = 'Transport condition "' // &
+                 trim(coupler%flow_condition_name) // &
+                 '" in initial condition ' // &
+                 trim(coupler%name) // &
+                 ' not found in transport condition list'
         call printErrMsg(option)
       endif
     endif
@@ -358,7 +378,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
                                            patch%regions)
     if (.not.associated(coupler%region)) then
       option%io_buffer = 'Region ' // trim(coupler%region_name) // &
-               ' not found in source/sink list'
+                 '" in source/sink ' // &
+                 trim(coupler%name) // &
+                 ' not found in region list'
       call printErrMsg(option)
     endif
     ! pointer to flow condition
@@ -366,9 +388,11 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       coupler%flow_condition => &
         FlowConditionGetPtrFromList(coupler%flow_condition_name,flow_conditions)
       if (.not.associated(coupler%flow_condition)) then
-        option%io_buffer = 'Condition ' // &
+        option%io_buffer = 'Flow condition "' // &
                  trim(coupler%flow_condition_name) // &
-                 ' not found in source/sink condition list'
+                 '" in source/sink ' // &
+                 trim(coupler%name) // &
+                 ' not found in flow condition list'
         call printErrMsg(option)
       endif
     endif
@@ -378,9 +402,11 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         TranConditionGetPtrFromList(coupler%tran_condition_name, &
                                     transport_conditions)
       if (.not.associated(coupler%tran_condition)) then
-        option%io_buffer = 'Condition ' // &
-                 trim(coupler%tran_condition_name) // &
-                 ' not found in source/sink condition list'
+        option%io_buffer = 'Transport condition "' // &
+                 trim(coupler%flow_condition_name) // &
+                 '" in source/sink ' // &
+                 trim(coupler%name) // &
+                 ' not found in transport condition list'
         call printErrMsg(option)
       endif
     endif
@@ -400,8 +426,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       strata%region => RegionGetPtrFromList(strata%region_name, &
                                                   patch%regions)
       if (.not.associated(strata%region)) then
-        option%io_buffer = 'Region ' // trim(strata%region_name) // &
-                 ' not found in region list'
+      option%io_buffer = 'Region ' // trim(coupler%region_name) // &
+                 '" in strata not found in region list'
         call printErrMsg(option)
       endif
       if (strata%active) then
@@ -444,9 +470,11 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         observation%region => RegionGetPtrFromList(observation%linkage_name, &
                                                     patch%regions)
         if (.not.associated(observation%region)) then
-          option%io_buffer = 'Region ' // &
+          option%io_buffer = 'Region "' // &
                    trim(observation%linkage_name) // &
-                   ' not found in region list'
+                 '" in observation point ' // &
+                 trim(observation%name) // &
+                 ' not found in region list'                   
           call printErrMsg(option)
         endif
         if (observation%region%num_cells == 0) then
@@ -477,18 +505,26 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   temp_int = ConnectionGetNumberInList(patch%grid%internal_connection_set_list)
   allocate(patch%internal_velocities(option%nphase,temp_int))
   patch%internal_velocities = 0.d0
+#ifdef REVISED_TRANSPORT  
+  allocate(patch%internal_tran_coefs(option%nphase,temp_int))
+  patch%internal_tran_coefs = 0.d0
   if (option%store_solute_fluxes) then
     allocate(patch%internal_fluxes(option%nphase,option%ntrandof,temp_int))
     patch%internal_fluxes = 0.d0
   endif
+#endif  
   
   temp_int = CouplerGetNumConnectionsInList(patch%boundary_conditions)
   allocate(patch%boundary_velocities(option%nphase,temp_int)) 
-  patch%boundary_velocities = 0.d0          
+  patch%boundary_velocities = 0.d0
+#ifdef REVISED_TRANSPORT
+  allocate(patch%boundary_tran_coefs(option%nphase,temp_int))
+  patch%boundary_tran_coefs = 0.d0
   if (option%store_solute_fluxes) then
     allocate(patch%boundary_fluxes(option%nphase,option%ntrandof,temp_int))
     patch%boundary_fluxes = 0.d0
   endif
+#endif  
 
 end subroutine PatchProcessCouplers
 
@@ -878,6 +914,7 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
                             reaction,cur_constraint_coupler%constraint_name, &
                             cur_constraint_coupler%aqueous_species, &
                             cur_constraint_coupler%surface_complexes, &
+                            cur_constraint_coupler%colloids, &
                             cur_constraint_coupler%num_iterations, &
                             PETSC_TRUE,option)
       ! turn on flag indicating constraint has not yet been used
@@ -1029,6 +1066,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
   PetscInt :: local_id, ghosted_id
   type(grid_type), pointer :: grid
   PetscReal, pointer :: vec_ptr(:), vec_ptr2(:)
+  PetscReal :: xmass
   PetscInt :: irate
   PetscErrorCode :: ierr
 
@@ -1200,7 +1238,8 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
     case(PH,PRIMARY_MOLALITY,PRIMARY_MOLARITY,SECONDARY_MOLALITY, &
          SECONDARY_MOLARITY,TOTAL_MOLALITY,TOTAL_MOLARITY, &
          MINERAL_RATE,MINERAL_VOLUME_FRACTION,SURFACE_CMPLX,SURFACE_CMPLX_FREE, &
-         PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED)
+         PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
+         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE)
          
       select case(ivar)
         case(PH)
@@ -1223,8 +1262,11 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
         case(PRIMARY_MOLARITY)
           do local_id=1,grid%nlmax
             ghosted_id = grid%nL2G(local_id)
+             xmass =1.D0
+             if(associated(patch%aux%Global%aux_vars(ghosted_id)%xmass))&
+                xmass = patch%aux%Global%aux_vars(ghosted_id)%xmass(iphase)
             vec_ptr(local_id) = &
-              patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar)* &
+              patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar)* xmass*&
               (patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0)
           enddo
         case(SECONDARY_MOLALITY)
@@ -1236,14 +1278,21 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
         case(SECONDARY_MOLARITY)
           do local_id=1,grid%nlmax
             ghosted_id = grid%nL2G(local_id)
+             xmass =1.D0
+            if(associated(patch%aux%Global%aux_vars(ghosted_id)%xmass))&
+               xmass = patch%aux%Global%aux_vars(ghosted_id)%xmass(iphase)
             vec_ptr(local_id) = &
-              patch%aux%RT%aux_vars(ghosted_id)%sec_molal(isubvar)* &
+              patch%aux%RT%aux_vars(ghosted_id)%sec_molal(isubvar)* xmass *&
               (patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0)
           enddo
         case(TOTAL_MOLALITY)
           do local_id=1,grid%nlmax
+            ghosted_id =grid%nL2G(local_id)
+            xmass =1.D0
+            if(associated(patch%aux%Global%aux_vars(ghosted_id)%xmass))&
+               xmass = patch%aux%Global%aux_vars(ghosted_id)%xmass(iphase)
             vec_ptr(local_id) = &
-              patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)/ &
+              patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)/ xmass /&
               (patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0)
           enddo
         case(TOTAL_MOLARITY)
@@ -1311,6 +1360,44 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
               endif
             enddo
           endif
+#ifdef REVISED_TRANSPORT          
+        case(TOTAL_SORBED_MOBILE)
+          if (patch%reaction%neqsorb > 0 .and. patch%reaction%ncollcomp > 0) then
+            do local_id=1,grid%nlmax
+              ghosted_id = grid%nL2G(local_id)
+              vec_ptr(local_id) = patch%aux%RT%aux_vars(ghosted_id)%colloid% &
+                total_eq_mob(isubvar)
+            enddo
+          endif
+        case(COLLOID_MOBILE)
+          if (patch%reaction%print_tot_conc_type == TOTAL_MOLALITY) then
+            do local_id=1,grid%nlmax
+              ghosted_id =grid%nL2G(local_id)
+              vec_ptr(local_id) = &
+                patch%aux%RT%aux_vars(grid%nL2G(local_id))%colloid%conc_mob(isubvar) /&
+                (patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0)
+            enddo
+          else
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = &
+                patch%aux%RT%aux_vars(grid%nL2G(local_id))%colloid%conc_mob(isubvar)
+            enddo
+          endif      
+        case(COLLOID_IMMOBILE)
+          if (patch%reaction%print_tot_conc_type == TOTAL_MOLALITY) then
+            do local_id=1,grid%nlmax
+              ghosted_id =grid%nL2G(local_id)
+              vec_ptr(local_id) = &
+                patch%aux%RT%aux_vars(grid%nL2G(local_id))%colloid%conc_imb(isubvar) /&
+                (patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0)
+            enddo
+          else
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = &
+                patch%aux%RT%aux_vars(grid%nL2G(local_id))%colloid%conc_imb(isubvar)
+            enddo
+          endif
+#endif            
       end select
     case(POROSITY)
       call GridVecGetArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
@@ -1370,7 +1457,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
   PetscInt :: iphase
   PetscInt :: ghosted_id
 
-  PetscReal :: value
+  PetscReal :: value, xmass
   PetscInt :: irate
   type(grid_type), pointer :: grid
   PetscReal, pointer :: vec_ptr2(:)  
@@ -1381,6 +1468,10 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
   value = -999.99d0
 
   iphase = 1
+  xmass =1.D0
+  if(associated(patch%aux%Global%aux_vars(ghosted_id)%xmass))&
+     xmass = patch%aux%Global%aux_vars(ghosted_id)%xmass(iphase)
+             
   select case(ivar)
     case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
@@ -1480,7 +1571,8 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
          TOTAL_MOLALITY,TOTAL_MOLARITY, &
          MINERAL_VOLUME_FRACTION,MINERAL_RATE, &
          SURFACE_CMPLX,SURFACE_CMPLX_FREE,KIN_SURFACE_CMPLX,KIN_SURFACE_CMPLX_FREE, &
-         PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED)
+         PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
+         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE)
          
       select case(ivar)
         case(PH)
@@ -1495,15 +1587,15 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
         case(PRIMARY_MOLALITY)
           value = patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar)
         case(PRIMARY_MOLARITY)
-          value = patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar)* &
+          value = patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar)* xmass *&
                   patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0
         case(SECONDARY_MOLALITY)
           value = patch%aux%RT%aux_vars(ghosted_id)%sec_molal(isubvar)
         case(SECONDARY_MOLARITY)
-          value = patch%aux%RT%aux_vars(ghosted_id)%sec_molal(isubvar)* &
+          value = patch%aux%RT%aux_vars(ghosted_id)%sec_molal(isubvar)* xmass*&
                   patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)/1000.d0
         case(TOTAL_MOLALITY)
-          value = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)/ &
+          value = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)/ xmass/&
                   patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)*1000.d0
         case(TOTAL_MOLARITY)
           value = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)
@@ -1542,6 +1634,26 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
               value = patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
             endif
           endif
+#ifdef REVISED_TRANSPORT            
+        case(TOTAL_SORBED_MOBILE)
+          if (patch%reaction%neqsorb > 0 .and. patch%reaction%ncollcomp > 0) then
+            value = patch%aux%RT%aux_vars(ghosted_id)%colloid%total_eq_mob(isubvar)
+          endif
+        case(COLLOID_MOBILE)
+          if (patch%reaction%print_tot_conc_type == TOTAL_MOLALITY) then
+            value = patch%aux%RT%aux_vars(ghosted_id)%colloid%conc_mob(isubvar) / &
+                    patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)*1000.d0
+          else
+            value = patch%aux%RT%aux_vars(ghosted_id)%colloid%conc_mob(isubvar)
+          endif
+        case(COLLOID_IMMOBILE)
+          if (patch%reaction%print_tot_conc_type == TOTAL_MOLALITY) then
+            value = patch%aux%RT%aux_vars(ghosted_id)%colloid%conc_imb(isubvar) / &
+                    patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)*1000.d0
+          else
+            value = patch%aux%RT%aux_vars(ghosted_id)%colloid%conc_imb(isubvar)
+          endif
+#endif               
       end select
     case(POROSITY)
       call GridVecGetArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
@@ -1947,7 +2059,8 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
             enddo
           endif
       end select
-    case(PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY,TOTAL_MOLALITY)
+    case(PRIMARY_MOLARITY,SECONDARY_MOLALITY,SECONDARY_MOLARITY,TOTAL_MOLALITY, &
+         COLLOID_MOBILE,COLLOID_IMMOBILE)
       select case(ivar)
         case(PRIMARY_MOLARITY)
           call printErrMsg(option,'Setting of primary molarity at grid cell not supported.')
@@ -1957,6 +2070,10 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
           call printErrMsg(option,'Setting of secondary molarity at grid cell not supported.')
         case(TOTAL_MOLALITY)
           call printErrMsg(option,'Setting of total molality at grid cell not supported.')
+        case(COLLOID_MOBILE)
+          call printErrMsg(option,'Setting of mobile colloid concentration at grid cell not supported.')
+        case(COLLOID_IMMOBILE)
+          call printErrMsg(option,'Setting of immobile colloid concentration at grid cell not supported.')
       end select
     case(POROSITY)
       if (vec_format == GLOBAL) then
@@ -2056,6 +2173,12 @@ subroutine PatchDestroy(patch)
   nullify(patch%internal_fluxes)
   if (associated(patch%boundary_fluxes)) deallocate(patch%boundary_fluxes)
   nullify(patch%boundary_fluxes)
+#ifdef REVISED_TRANSPORT  
+  if (associated(patch%internal_tran_coefs)) deallocate(patch%internal_tran_coefs)
+  nullify(patch%internal_tran_coefs)
+  if (associated(patch%boundary_tran_coefs)) deallocate(patch%boundary_tran_coefs)
+  nullify(patch%boundary_tran_coefs)
+#endif  
 
   call GridDestroy(patch%grid)
   call RegionDestroyList(patch%regions)

@@ -942,7 +942,7 @@ subroutine SolverDestroy(solver)
   if (solver%Jpre == solver%J) then
     solver%Jpre = 0
   else if (solver%Jpre /= 0) then
-    call MatDestroy(solver%Jpre)
+    call MatDestroy(solver%Jpre,ierr)
   endif
   if (solver%J /= 0) call MatDestroy(solver%J,ierr)
   if (associated(solver%interpolation)) then

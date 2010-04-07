@@ -612,7 +612,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   interface
 
      subroutine SAMRCreateMatrix(p_application, ndof, stencilsize, flowortransport, p_matrix)
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
        PetscFortranAddr :: p_application
@@ -782,7 +782,7 @@ subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
         call DASetRefinementFactor(dm_fine_ptr%sgdm, refine_x, refine_y, refine_z, &
                                    ierr)
         call DASetInterpolationType(dm_fine_ptr%sgdm, DA_Q0, ierr)
-        call DACoarsen(dm_fine_ptr, option%mycomm, dmc_ptr(i)%sgdm, ierr)
+        call DACoarsen(dm_fine_ptr%sgdm, option%mycomm, dmc_ptr(i)%sgdm, ierr)
         call DAGetInterpolation(dmc_ptr(i)%sgdm, dm_fine_ptr%sgdm, interpolation(i), &
                                 PETSC_NULL_OBJECT, ierr)
         dm_fine_ptr => dmc_ptr(i)
@@ -820,7 +820,13 @@ subroutine DiscretizationCreateColoring(discretization,dm_index,option,coloring)
     
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      call DAGetColoring(dm_ptr%sgdm,IS_COLORING_GLOBAL,coloring,ierr)
+      call DAGetColoring(dm_ptr%sgdm,IS_COLORING_GLOBAL,MATBAIJ,coloring,ierr)
+      ! I have set the above to use matrix type MATBAIJ, as that is what we 
+      ! usually want (note: for DAs with 1 degree of freedom per grid cell, 
+      ! the MATAIJ and MATBAIJ colorings should be equivalent).  What we should 
+      ! eventually do here is query the type of the Jacobian matrix, but I'm 
+      ! not sure of the best way to do this, as this is currently stashed in 
+      ! the 'solver' object. --RTM
     case(UNSTRUCTURED_GRID)
   end select
   
@@ -843,7 +849,7 @@ subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_in
   interface
      subroutine SAMRGlobalToLocal(p_application, gvec, lvec, ierr)
        implicit none
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
        PetscFortranAddr :: p_application
@@ -921,7 +927,7 @@ subroutine DiscretizationLocalToLocal(discretization,local_vec1,local_vec2,dm_in
   interface
      subroutine SAMRLocalToLocal(p_application, gvec, lvec, ierr)
        implicit none
-#include "finclude/petsc.h"
+#include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
        PetscFortranAddr :: p_application

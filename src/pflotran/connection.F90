@@ -13,11 +13,11 @@ module Connection_module
     PetscInt :: offset
     PetscInt, pointer :: id_up(:)      ! list of ids of upwind cells
     PetscInt, pointer :: id_dn(:)      ! list of ids of downwind cells
-    PetscReal, pointer :: dist(:,:)      ! list of distance vectors, size(-1:3,num_connections) where
-                                      !   -1 = fraction upwind
-                                      !   0 = magnitude of distance 
-                                      !   1-3 = components of unit vector
-    PetscReal, pointer :: area(:)        ! list of areas of faces normal to distance vectors
+    PetscReal, pointer :: dist(:,:)    ! list of distance vectors, size(-1:3,num_connections) where
+                                       !   -1 = fraction upwind
+                                       !   0 = magnitude of distance 
+                                       !   1-3 = components of unit vector
+    PetscReal, pointer :: area(:)      ! list of areas of faces normal to distance vectors
     type(connection_set_type), pointer :: next
   end type connection_set_type
 

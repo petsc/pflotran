@@ -30,10 +30,16 @@ module Option_module
     PetscMPIInt :: io_rank
     PetscTruth :: broadcast_read
 
-#ifdef VAMSI_HDF5
-    MPI_Comm :: iogroup, readers 
-    PetscMPIInt :: localsize, localrank, reader_rank, reader_size
-    PetscInt :: color, key, reader_color, reader_key, broadcast_size
+#ifdef VAMSI_HDF5_READ
+    MPI_Comm :: read_group,readers
+    PetscMPIInt :: read_grp_size,read_grp_rank,readers_size,readers_rank 
+    PetscInt :: read_bcast_size,rcolor,rkey,reader_color,reader_key
+#endif
+
+#ifdef VAMSI_HDF5_WRITE    
+    MPI_Comm :: write_group,writers
+    PetscMPIInt:: write_grp_size,write_grp_rank,writers_size,writers_rank
+    PetscInt :: write_bcast_size,wcolor,wkey,writer_color,writer_key
 #endif	
 
     character(len=MAXSTRINGLENGTH) :: io_buffer
@@ -119,8 +125,8 @@ module Option_module
     PetscTruth :: update_mineral_surface_area
     PetscTruth :: update_mnrl_surf_with_porosity
     
-    PetscTruth :: initialize_with_molality
     PetscTruth :: jumpstart_kinetic_sorption
+    PetscTruth :: no_checkpoint_kinetic_sorption
     PetscTruth :: no_restart_kinetic_sorption
         
 !   table lookup
@@ -147,7 +153,10 @@ module Option_module
     PetscTruth :: overwrite_restart_transport
     PetscTruth :: overwrite_restart_flow
     PetscInt :: io_handshake_buffer_size
-    
+
+    character(len=MAXSTRINGLENGTH) :: initialize_flow_filename
+    character(len=MAXSTRINGLENGTH) :: initialize_transport_filename
+        
     character(len=MAXSTRINGLENGTH) :: permx_filename
     character(len=MAXSTRINGLENGTH) :: permy_filename
     character(len=MAXSTRINGLENGTH) :: permz_filename
@@ -293,20 +302,34 @@ subroutine OptionInitAll(option)
   option%broadcast_read = PETSC_FALSE
   option%io_rank = 0
 
-#ifdef VAMSI_HDF5
-  option%iogroup = 0
+#ifdef VAMSI_HDF5_READ
+  option%read_group = 0
   option%readers = 0
-  option%localsize = 0
-  option%localrank = 0
-  option%reader_rank = 0
-  option%reader_size = 0
-  option%color = 0
-  option%key = 0
+  option%read_grp_size = 0
+  option%read_grp_rank = 0
+  option%readers_size = 0
+  option%readers_rank = 0
+  option%read_bcast_size = 0
+  option%rcolor = 0
+  option%rkey = 0
   option%reader_color = 0
   option%reader_key = 0
-  option%broadcast_size = 0
 #endif
   
+#ifdef VAMSI_HDF5_WRITE
+  option%write_group = 0
+  option%writers = 0
+  option%write_grp_size = 0
+  option%write_grp_rank = 0
+  option%writers_size = 0
+  option%writers_rank = 0
+  option%write_bcast_size = 0
+  option%wcolor = 0
+  option%wkey = 0
+  option%writer_color = 0
+  option%writer_key = 0
+#endif
+
   option%print_screen_flag = PETSC_FALSE
   option%print_file_flag = PETSC_FALSE
   option%print_to_screen = PETSC_TRUE
@@ -380,8 +403,8 @@ subroutine OptionInitRealization(option)
   option%update_mineral_surface_area = PETSC_FALSE
   option%update_mnrl_surf_with_porosity = PETSC_FALSE
     
-  option%initialize_with_molality = PETSC_FALSE
   option%jumpstart_kinetic_sorption = PETSC_FALSE
+  option%no_checkpoint_kinetic_sorption = PETSC_FALSE
   option%no_restart_kinetic_sorption = PETSC_FALSE
   
   option%minimum_hydrostatic_pressure = -1.d20
@@ -445,6 +468,9 @@ subroutine OptionInitRealization(option)
   option%prev_dt = 0.d0
 
   option%io_handshake_buffer_size = 0
+
+  option%initialize_flow_filename = ''
+  option%initialize_transport_filename = ''
   
   option%permx_filename = ""
   option%permy_filename = ""

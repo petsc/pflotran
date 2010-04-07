@@ -5,7 +5,7 @@
 %\usepackage{ssss}
 \usepackage{amsmath,amsbsy,amssymb}
 \usepackage{sectsty,hangcaption}
-%\usepackage{deflist}
+\usepackage{deflist}
 \usepackage{fancyhdr}
 \usepackage{tabularx}
 \usepackage{verbatim}
@@ -45,6 +45,8 @@
 \newcommand{\eq}{\ =\ }
 \newcommand{\degc}{$^\circ$C}
 \renewcommand{\c}{{\rm CO_2}}
+\newcommand{\im}{{\rm imb}}
+\newcommand{\m}{{\rm mb}}
 \newcommand{\ecm}{{\rm ecm}}
 \newcommand{\eff}{{\rm eff}}
 \newcommand{\eqr}{{\rm le}}
@@ -141,7 +143,7 @@
 \newcommand{\by}{\boldsymbol{y}}
 \newcommand{\bY}{\boldsymbol{Y}}
 \newcommand{\bz}{\boldsymbol{z}}
-%\newcommand{\b0}{\boldsymbol{0}}
+\newcommand{\bzero}{\boldsymbol{0}}
 
 \newcommand{\arrows}{~\rightleftharpoons~}
 \newcommand{\arrowstab}{\!\!\!\rightleftharpoons\!\!\!}
@@ -166,8 +168,6 @@
 \def\sohuotwocothree{$>$SOHUO$_2$CO$_3$}
 \def\soh{$>$SOH}
 
-\setcounter{secnumdepth}{5}
-\setcounter{tocdepth}{5}
 %\renewcommand{\thepage}{\roman{page}}
 %\renewcommand{\thepage}{\arabic{page}}
 %\renewcommand{\theequation}{\arabic{section}.\arabic{subsection}-\arabic{equation}}
@@ -180,8 +180,9 @@
 \setlength{\parindent}{0.3125in}
 \setlength{\parskip}{2ex plus 0.2ex minus 0.2ex}
 
+\setcounter{secnumdepth}{4}
+\setcounter{tocdepth}{4}
 \renewcommand{\contentsname}{CONTENTS}
-\setcounter{secnumdepth}{5}
 
 \setlongtables
 
@@ -191,7 +192,7 @@
 
 %\documentclass{report}
 %\usepackage{fullpage}
-\renewcommand{\baselinestretch}{1.2}
+\renewcommand{\baselinestretch}{1.0}
 \author{P.C. Lichtner}
 \title{PFLOTRAN: Reactive Transport Implementation}
 %\begin{document}
@@ -889,16 +890,22 @@ Q_i^\a\eq \prod_j \big(a_j\big)^{\nu_{ji}^\a},
 \EQ
 C_l\frac{\p S_X}{\p C_l} \eq -\dfrac{\displaystyle\sum_i\nu_{li}\nu_iS_i}{1+\dfrac{1}{S_X}\displaystyle\sum_i\nu_i^2 S_i}
 \EN
+\begin{subequations}
 \BA
 C_l\frac{\p S_i}{\p C_l} &\eq \nu_{li} S_i + \nu_iS_i \frac{C_l}{S_X}\frac{\p S_X}{\p C_l},\\
 &\eq \nu_{li} S_i - \nu_iS_i \dfrac{\displaystyle\sum_{i'}\nu_{li'}\nu_iS_{i'}}{S_X+\displaystyle\sum_{i'}\nu_{i'}^2 S_{i'}},\\
 &\eq S_i \left\{ \nu_{li} - \dfrac{\nu_i \displaystyle\sum_{i'}\nu_{li'}\nu_{i'} S_{i'}}{S_X+\displaystyle\sum_{i'}\nu_{i'}^2 S_{i'}} \right\}
 \EA
+\end{subequations}
+\begin{subequations}
 \BA
 C_l\frac{\p\Psi_j^S}{\p C_l} &\eq C_l\sum_i \nu_{ji} \frac{\p S_i}{\p C_l},\\
+&\eq \sum_i \nu_{ji} \nu_{li} S_i + \frac{C_l}{S_X} \frac{\p S_X}{\p C_l}\left(\sum_i \nu_{ji} \nu_i S_i \right),\\
 &\eq \sum_i \nu_{ji} S_i \left[\nu_{li} - \dfrac{\nu_i \displaystyle\sum_{i'}\nu_{li'}\nu_{i'} S_{i'}}{S_X+\displaystyle\sum_{i'}\nu_{i'}^2 S_{i'}}\right],\\
-&\eq \sum_i \nu_{ji} \nu_{li} S_i - \frac{1}{S_X+\displaystyle\sum_{i'}\nu_{i'}^2 S_{i'}}\left(\sum_i \nu_{ji} \nu_i S_i \right) \left( \displaystyle\sum_{i'}\nu_{li'}\nu_{i'} S_{i'}\right)
+&\eq \sum_i \nu_{ji} \nu_{li} S_i - \frac{1}{S_X+\displaystyle\sum_{i'}\nu_{i'}^2 S_{i'}}\left(\sum_i \nu_{ji} \nu_i S_i \right) \left( \displaystyle\sum_{i'}\nu_{li'}\nu_{i'} S_{i'}\right).
+%&\eq  \sum_i \nu_{ji} \nu_{li} S_i + \frac{\nu_i C_l}{S_X} \frac{\p S_X}{\p C_l},\\
 \EA
+\end{subequations}
 
 \noindent Special Case: $\nu_i^\a=1$
 \EQ
@@ -910,17 +917,21 @@ S_X^\a \eq \frac{\omega_\a}{1+\sum_i K_i^\a Q_i^\a}
 \EQ
 S_i^\a \eq \frac{\omega_\a K_i^\a Q_i^\a}{1+\sum_{i'} K_{i'}^\a Q_{i'}^\a}
 \EN
+\begin{subequations}
 \BA
 C_l\frac{\p S_i}{\p C_l} &\eq \nu_{li} S_i - \frac{\omega Q_i^\a}{\big(1+\sum Q_{i'}\big)^2}\sum\nu_{li'}Q_{i'}^\a,\\
 &\eq \nu_{li} S_i - S_i \frac{1}{\omega}\sum_{i'} \nu_{li'} S_{i'},\\
 &\eq S_i \left[\nu_{li} - \frac{1}{\omega}\sum_{i'} \nu_{li'} S_{i'}\right].
 \EA
+\end{subequations}
+\begin{subequations}
 \BA
 C_l\frac{\p\Psi_j^S}{\p C_l} &\eq C_l\sum_i \nu_{ji} \frac{\p S_i}{\p C_l},\\
 &\eq \sum_i \nu_{ji} S_i \left[\nu_{li} - \frac{1}{\omega}\sum_{i'} \nu_{li'} S_{i'}\right],\\
 &\eq \sum_i \nu_{ji} \nu_{li} S_i - \frac{1}{\omega}\left(\sum_i\nu_{ji}S_i\right) \left(\sum_{i'} \nu_{li'} S_{i'}\right)\\
 &\eq \sum_i \nu_{ji} S_i \left[\nu_{li} - \frac{1}{\omega} \sum_{i'} \nu_{li'} S_{i'}\right].
 \EA
+\end{subequations}
 
 \noindent
 Residual:
@@ -1449,29 +1460,30 @@ for the $k+1$st time increment. The free site concentration $S_\a^{k+1}$ is obta
 \EQ\label{sfree}
 S_\a^{k+1} \eq \omega_\a^{k+1} - \sum_{i'} S_{i'\a}^{k+1}.
 \EN
-In the numerical implementation it is customary to lag the site concentration $\omega_\a$ one time step behind giving the equation
+In the numerical implementation for sorption on mineral surfaces it is customary to lag the site concentration $\omega_\a$ one time step behind giving the equation
 \EQ\label{sfree1}
 S_\a^{k+1} \eq \omega_\a^{k} - \sum_{i'} S_{i'\a}^{k+1}.
 \EN
 \end{subequations}
+However, this approximation may not be adequate for colloids.
 Noting that Eqn.\eqref{fdskin} can be considered a linear function of $S_{i\a}^{k+1}$, it may be solved to give
 \EQ\label{sia}
 S_{i\a}^{k+1} \eq \frac{S_{i\a}^k + k_{i\a}^f\Delta t S_\a^{k+1} Q_i^{k+1}}{1+k_{i\a}^b\Delta t}.
 \EN
-Substituting this result into Eqn.\eqref{sfree1} and solving for $S_\a^{k+1}$ yields the result
+Substituting this result into Eqn.\eqref{sfree} and solving for $S_\a^{k+1}$ yields the result
 \EQ
 S_\a^{k+1} \eq \frac{
-\omega_\a^k - \displaystyle\sum_{i'} \dfrac{S_{{i'}\a}^{k}}{1+k_{i'\a}^b\Delta t}
+\omega_\a^{k+1} - \displaystyle\sum_{i} \dfrac{S_{{i}\a}^{k}}{1+k_{i\a}^b\Delta t}
 }
-{1+\displaystyle\sum_{i'}\dfrac{k_{i'\a}^f\Delta t}{1+k_{i'\a}^b\Delta t} Q_{i'}^{k+1}} \eq \frac{N_\a}{D_\a},
+{1+\displaystyle\sum_{i}\dfrac{k_{i\a}^f\Delta t}{1+k_{i\a}^b\Delta t} Q_{i}^{k+1}} \eq \frac{N_\a}{D_\a},
 \EN
 where
 \EQ
-N_\a \eq\omega_\a^k - \displaystyle\sum_{i'} \dfrac{S_{i'\a}^{k}}{1+k_{i'\a}^b\Delta t},
+N_\a \eq\omega_\a^{k+1} - \displaystyle\sum_{i} \dfrac{S_{i\a}^{k}}{1+k_{i\a}^b\Delta t},
 \EN
 and
 \EQ
-D_\a \eq 1+\displaystyle\sum_{i'}\dfrac{k_{i'\a}^f\Delta t}{1+k_{i'\a}^b\Delta t} Q_{i'}^{k+1}.
+D_\a \eq 1+\displaystyle\sum_{i}\dfrac{k_{i\a}^f\Delta t}{1+k_{i\a}^b\Delta t} Q_{i}^{k+1}.
 \EN
 Finally, substituting this result for $S_\a^{k+1}$ into Eqn.\eqref{sia} yields the result
 \EQ
@@ -1488,7 +1500,7 @@ For the case of irreversible desorption with $k_{i\a}^b=0$, this expression redu
 \EQ
 S_{i\a}^{k+1} \eq S_{i\a}^k + k_{i\a}^f\Delta t \left[
 \frac{
-\omega_\a^k - \displaystyle\sum_{i'} S_{i'\a}^{k}
+\omega_\a^{k+1} - \displaystyle\sum_{i'} S_{i'\a}^{k}
 }
 {1+\Delta t\displaystyle\sum_{i'} k_{i'\a}^f Q_{i'}^{k+1}}
 \right] Q_i^{k+1}.
@@ -1699,19 +1711,19 @@ In what follows a continuum-based approach is used to formulate colloid-facilita
 The above formulation for heterogeneous reactions involving mineral precipitation/dis\-solution, ion exchange and surface complexation, also apply to colloids. This presents an added complication since now the solid phase in the form of the suspended colloid load is moving with the fluid. 
 In this case the primary species transport equations contain contributions from both reactions with stationary solid grains which may include filtered colloids and mobile colloids in solution. 
 
-It is necessary to distinguish between two distinct colloid states: colloids suspended in solution, and colloids attached to solid surfaces which are not moving. The two states are described by the concentrations $C_c^f$ and $C_c^s$. 
+It is necessary to distinguish between two distinct colloid states: colloids suspended in solution, and colloids attached to solid surfaces which are not moving. The two states are described by the concentrations $C_c^\m$ and $C_c^\im$. 
 Filtration processes may occur in which a mobile colloid becomes trapped by the porous rock matrix and attaches to stationary solid surfaces. Conversely, stationary colloids may be remobilized into solution. The transformation between filtered and suspended colloids is represented by the first order reaction
 \EQ
-\A_c^f \arrows \A_c^s,
+\A_c^\m \arrows \A_c^\im,
 \EN
-where $\A_c^f$ and $\A_c^s$ refer to suspended mobile colloids in the fluid phase and stationary colloids, respectively.
-The colloid concentration $C_c^f$ is equal to the number of moles of colloids of type $c$ in solution, $N_c^{f}$, divided by the aqueous volume $V_{\rm aq}$
+where $\A_c^\m$ and $\A_c^\im$ refer to suspended mobile colloids in the fluid phase and stationary colloids, respectively.
+The colloid concentration $C_c^\m$ is equal to the number of moles of colloids of type $c$ in solution, $N_c^{\m}$, divided by the aqueous volume $V_{\rm aq}$
 \EQ
-C_c^f\eq\frac{N_c^{f}}{V_{\rm aq}}.
+C_c^\m\eq\frac{N_c^{\m}}{V_{\rm aq}}.
 \EN
-Whereas the stationary colloid concentration $C_c^s$ is defined as
+Whereas the stationary colloid concentration $C_c^\im$ is defined as
 \EQ
-C_c^s\eq\frac{N_c^s}{V},
+C_c^\im\eq\frac{N_c^\im}{V},
 \EN
 referenced to the bulk volume $V$. The bulk volume is the sum of aqueous, gaseous and solid volumes
 \EQ
@@ -1720,9 +1732,9 @@ V \eq V_s+V_g+V_{\rm aq}.
 
 The colloids themselves may react with the fluid through mineral precipitation and dissolution reactions and sorption reactions through ion exchange and surface complexation at the colloid surface. In addition, sorption on colloids competes with the host rock minerals. These processes are described through the reactions
 \EQ
-\sum_j\nu_{jc_{f,\,s}}\A_j\arrows\A_{c_{f,\,s}},
+\sum_j\nu_{jc_{\m,\,\im}}\A_j\arrows\A_{c_{\m,\,\im}},
 \EN
-describing precipitation and dissolution (formation and degradation) of colloid $\A_c^{f,\,s}$ for mobile and immobile colloids, surface complexation
+describing precipitation and dissolution (formation and degradation) of colloid $\A_c^{\m,\,\im}$ for mobile and immobile colloids, surface complexation
 \EQ
 >\!\!X_c + \sum_j\nu_{ji}^c\A_j\arrows >\!\!\A_i^c,
 \EN
@@ -1732,29 +1744,29 @@ for surface complex $\A_i^c$, and ion exchange
 \EN
 with sorption sites $X_c$ and $X_{z_l}^c$. Note that the subscript $c$ may refer to mobile or immobile colloids.
 
-In the case of surface complexation reactions, two different surface site densities may be defined corresponding to suspended and filtered colloids. The site concentrations for suspended and filtered colloids are equal to the number of sorption sites $N_c^{\rm srf}$ associated with colloid type $\A_c^{f,\,s}$ divided by the pore  or bulk volume
+In the case of surface complexation reactions, two different surface site densities may be defined corresponding to suspended and filtered colloids. The site concentrations for suspended and filtered colloids are equal to the number of sorption sites $N_c^{\rm srf}$ associated with colloid type $\A_c^{\m,\,\im}$ divided by the pore or bulk volume
 \EQ
-\omega_c^f\eq\frac{N_c^{f,\,{\rm srf}}}{V_p},
+\omega_c^\m\eq\frac{N_c^{\m,\,{\rm srf}}}{V_p},
 \EN
 and
 \EQ
-\omega_c^s \eq \frac{N_c^{s,\,{\rm srf}}}{V}.
+\omega_c^\im \eq \frac{N_c^{\im,\,{\rm srf}}}{V}.
 \EN
-For suspended colloids, the site concentration is related to the suspended colloid concentration $C_c^f$ according to the relation
+For suspended colloids, the site concentration is related to the suspended colloid concentration $C_c^\m$ according to the relation
 \BA
-\omega_c^f &\eq\frac{N_c^{f,\,{\rm srf}}}{A_c^f}\frac{A_c^f}{M_c^f}\frac{M_c^f}{N_c^{f}}\frac{N_c^{f}}{V_p},\\
-&\eq \eta_c^{} A_c^M W_c^{} C_c^{f},\\
-&\eq\Gamma_c^{} C_c^f,
+\omega_c^\m &\eq\frac{N_c^{\m,\,{\rm srf}}}{A_c^\m}\frac{A_c^\m}{M_c^\m}\frac{M_c^\m}{N_c^{\m}}\frac{N_c^{\m}}{V_p},\\
+&\eq \eta_c^{} A_c^M W_c^{} C_c^{\m},\\
+&\eq\Gamma_c^{} C_c^\m,
 \EA
 where $\eta_c$ denotes the site density, $A_c^M$ the colloid area per mass of colloid, and $W_c$ represents the formula weight of the colloid. The quantity $\Gamma_c$ depends only on intrinsic colloid properties, defined as
 \EQ
-\Gamma_c\eq\frac{N_c^{f,\,{\rm srf}}}{N_c^{f}}\eq \frac{N_c^{s,\,{\rm srf}}}{N_c^s}\eq \eta_c^{} A_c^M W_c^{}.
+\Gamma_c\eq\frac{N_c^{\m,\,{\rm srf}}}{N_c^{\m}}\eq \frac{N_c^{\im,\,{\rm srf}}}{N_c^\im}\eq \eta_c^{} A_c^M W_c^{}.
 \EN
-For stationary colloids, the site concentration is given in terms of the trapped or immobile colloid concentration $C_c^s$ as
+For stationary colloids, the site concentration is given in terms of the trapped or immobile colloid concentration $C_c^\im$ as
 \BA
-\omega_c^s &\eq \frac{N_c^{s,\,{\rm srf}}}{A_c^s}\frac{A_c^s}{M_c^s}\frac{M_c^s}{N_c^s}\frac{N_c^s}{V},\\
-&\eq \eta_c^{} A_c^M W_c^{} C_c^s,\\
-&\eq\Gamma_c^{} C_c^s.
+\omega_c^\im &\eq \frac{N_c^{\im,\,{\rm srf}}}{A_c^s}\frac{A_c^s}{M_c^s}\frac{M_c^\im}{N_c^\im}\frac{N_c^\im}{V},\\
+&\eq \eta_c^{} A_c^M W_c^{} C_c^\im,\\
+&\eq\Gamma_c^{} C_c^\im.
 \EA
 
 The site conservation equation
@@ -1780,88 +1792,76 @@ S_{ic}\eq \frac{K_{ic}Q_{ic}}{1+\sum_{i'} K_{i'c}Q_{i'c}}\Gamma_c C_c .
 
 In the case of ion exchange, the site concentration is related to the colloid concentration and cation exchange capacity by the expression
 \BA
-\omega_c^{f,\,\rm ex} &\eq \frac{N_c^{f,\,\rm ex}}{V_p},\\
-&\eq \frac{N_c^{f,\,\rm ex}}{M_c^f} \frac{M_c^f}{N_c^{f}}\frac{N_c^{f}}{V_p},\\
-&\eq \Q_c W_c C_c^f,
+\omega_c^{\m,\,\rm ex} &\eq \frac{N_c^{\m,\,\rm ex}}{V_p},\\
+&\eq \frac{N_c^{\m,\,\rm ex}}{M_c^\m} \frac{M_c^\m}{N_c^{\m}}\frac{N_c^{\m}}{V_p},\\
+&\eq \Q_c W_c C_c^\m,
 \EA
 where $\Q_c$ denotes the cation exchange capacity in units of mol sites/kg colloid.
 
 Mass conservation equations for colloids, minerals, sorbed and aqueous species can now be written in the following forms. The colloid mass conservation equations have the forms
 \EQ
-\frac{\p}{\p t}\varphi s_l^{} C_c^f + \bnabla\cdot\bF_c^f \eq -I_c^{fs} - I_c^f,
+\frac{\p}{\p t}\varphi s_l^{} C_c^\m + \bnabla\cdot\bF_c^\m \eq -I_c^{\m,\,\im} - I_c^\m,
 \EN
-for mobile (liquid phase) colloids with concentration $C_c^f$ and flux $\bF_c^f$, and
+for mobile (liquid phase) colloids with concentration $C_c^\m$ and flux $\bF_c^\m$, and
 \EQ
-\frac{\p C_c^s}{\p t} \eq I_c^{fs} + I_c^s,
+\frac{\p C_c^\im}{\p t} \eq I_c^{\m,\,\im} + I_c^\im,
 \EN
-for immobile colloids with concentration $C_c^s$ attached to the stationary solid phase. 
+for immobile colloids with concentration $C_c^\im$ attached to the stationary solid phase. 
 
 Adding these two equations leads to an alternative form in which the reaction rates do not appear explicitly
 \EQ
-\frac{\p}{\p t}\left(\varphi s_l^{} C_c^f + C_c^s\right) + \bnabla\cdot\bF_c^f \eq 0.
+\frac{\p}{\p t}\left(\varphi s_l^{} C_c^\m + C_c^\im\right) + \bnabla\cdot\bF_c^\m \eq 0.
 \EN
 
 Transport equations for surface complexes associated with mobile and immobile colloids obey the conservation equations   
 \EQ
-\frac{\p}{\p t}\varphi s_l^{} S_{ic}^f + \bnabla\cdot\bq_c S_{ic}^f \eq I_{ic}^f,
+\frac{\p}{\p t}\varphi s_l^{} S_{ic}^\m + \bnabla\cdot\bq_c S_{ic}^\m \eq I_{ic}^\m,
 \EN
 \EQ
-\frac{\p S_{ic}^s}{\p t} \eq I_{ic}^s,
+\frac{\p S_{ic}^\im}{\p t} \eq I_{ic}^\im,
 \EN
 with colloid Darcy velocity $\bq_c$ and neglecting colloid diffusion. Free (empty) sites obey the equations
 \EQ
-\frac{\p}{\p t}\varphi s_l^{} S_{c}^f + \bnabla\cdot\bq_c S_{c}^f \eq -\sum_i I_{ic}^f,
+\frac{\p}{\p t}\varphi s_l^{} S_{c}^\m + \bnabla\cdot\bq_c S_{c}^\m \eq -\sum_i I_{ic}^\m,
 \EN
 \EQ
-\frac{\p S_{c}^s}{\p t} \eq -\sum_i I_{ic}^s.
+\frac{\p S_{c}^\im}{\p t} \eq -\sum_i I_{ic}^\im.
 \EN
 Aqueous phase primary species transport equations have the form
 \BA
 \frac{\p}{\p t}\varphi s_l^{}\Psi_j &+ \bnabla\bdot\bOmega_j \eq 
 -\sum_m\nu_{jm} I_m -\sum_{im}\nu_{ji}^m I_i^m \nonumber\\
-&-\sum_c \nu_{jc}^{} \big(I_c^f+I_c^s\big) 
-- \sum_{ic}^{}\nu_{ji}^c\big(I_{ic}^f+I_{ic}^s\big) 
+&-\sum_c \nu_{jc}^{} \big(I_c^\m+I_c^\im\big) 
+- \sum_{ic}^{}\nu_{ji}^c\big(I_{ic}^\m+I_{ic}^\im\big) 
 + \sum_r\nu_{jr}^{\kin}I_r^{\rm kin},
 \EA
 including mineral precipitation and dissolution and surface complexation reactions. Ion exchange can be handled similarly. 
 
 Eliminating the surface complexation reaction rates gives
 \BA\label{pricolloid}
-\frac{\p}{\p t}\bigg(\varphi s_l^{}\Psi_j + \sum_{im} \nu_{ji}^m S_{im} &+ \sum_{ic} \nu_{ji}^c \big(\varphi s_l^{} S_{ic}^f+S_{ic}^s\big)\bigg) + \bnabla\bdot\bigg(\bOmega_j + \sum_{ic}\nu_{ji}^c\bq_c S_{ic}^f\bigg) \eq \nonumber\\
-&-\sum_m\nu_{jm} I_m - \sum_{c}\nu_{jc}^{} \big(I_{c}^l+I_{c}^s\big) + \sum_r\nu_{jr}^{\kin}I_r^{\rm kin}.
+\frac{\p}{\p t}\bigg(\varphi s_l^{}\Psi_j + \sum_{im} \nu_{ji}^m S_{im} &+ \sum_{ic} \nu_{ji}^c \big(\varphi s_l^{} S_{ic}^\m+S_{ic}^\im\big)\bigg) + \bnabla\bdot\bigg(\bOmega_j + \sum_{ic}\nu_{ji}^c\bq_c S_{ic}^\m\bigg) \eq \nonumber\\
+&-\sum_m\nu_{jm} I_m - \sum_{c}\nu_{jc}^{} \big(I_{c}^\m+I_{c}^\im\big) + \sum_r\nu_{jr}^{\kin}I_r^{\rm kin}.
 \EA
 Note that colloids are only transported by advection and not diffusion in this formulation. The possibility for a different Darcy flow rate is allowed for colloids compared to the fluid phase, because colloids have been shown to actually move slightly faster because of their tendency to be concentrated away from the pore walls due to electrostatic repulsion.
 
 From the primary species transport equations it is possible to define a retardation factor assuming constant aqueous and sorbed concentrations and neglecting diffusion by writing the transport equations in the form
 \BA\label{retcolloid}
 \frac{\p}{\p t}\big(\varphi s_l^{} \Psi_j\big) &+ \bnabla\bdot\bigg(\frac{\bq}{R_j} \Psi_j\bigg) \eq \nonumber\\
-&-\frac{1}{1+K_j^s + K_j^f}\left[\sum_m\nu_{jm} I_m + \sum_{c}\nu_{jc}^{} \big(I_{c}^l+I_{c}^s\big) - \sum_r\nu_{jr}^{\kin}I_r^{\rm kin}\right],
+&-\frac{1}{1+K_j^\im + K_j^\m}\left[\sum_m\nu_{jm} I_m + \sum_{c}\nu_{jc}^{} \big(I_{c}^\m+I_{c}^\im\big) - \sum_r\nu_{jr}^{\kin}I_r^{\rm kin}\right],
 \EA
 where the retardation factor $R_j$ is defined as
 \EQ
-R_j\eq 1+\dfrac{K_j^s}{1+K_j^f},
+R_j\eq 1+\dfrac{K_j^\im}{1+K_j^\m},
 \EN
-where the distribution coefficients, $K_j^s$ for the stationary solid phase including contributions from minerals and colloids, and $K_j^f$ for colloids present in the aqueous phase are defined by
+where the distribution coefficients, $K_j^\im$ for the stationary solid phase including contributions from minerals and colloids, and $K_j^\m$ for colloids present in the aqueous phase are defined by
 \EQ
-K_j^s \eq \frac{1}{\varphi s_l^{}\Psi_j} \left[\sum_{im}\nu_{ji}^m S_{im} + \sum_{ic}\nu_{ji}^c S_{ic}^s\right],
+K_j^\im \eq \frac{1}{\varphi s_l^{}\Psi_j} \left[\sum_{im}\nu_{ji}^m S_{im} + \sum_{ic}\nu_{ji}^c S_{ic}^\im\right],
 \EN
 and
 \EQ
-K_j^f \eq \frac{1}{\Psi_j} \sum_{ic}\nu_{ji}^c S_{ic}^f.
+K_j^\m \eq \frac{1}{\Psi_j} \sum_{ic}\nu_{ji}^c S_{ic}^\m.
 \EN
-Note that if $K_j^f \!\geq\! K_j^s \!\gg\! 1$, $R_j\!\leq\! 2$, and there is little or no retardation. However, there still remains a reduction in kinetic homogeneous and heterogeneous rates. Finally, it should be noted that if colloids are to compete with stationary solid phase, they must be sufficiently concentrated to provide an equivalent surface site density (or cation exchange capacity).
-
-\section{Colloid Type Structure}
-
-\begin{verbatim}
-type, public :: colloid_type
-  character(len=MAXWORDLENGTH) :: name
-  PetscInt :: ncoll
-  PetscInt :: id
-  PetscReal :: coll_formula_wt
-  PetscReal :: coll_surf_site_den
-end type colloid type
-\end{verbatim}
+Note that if $K_j^\m \!\geq\! K_j^\im \!\gg\! 1$, $R_j\!\leq\! 2$, and there is little or no retardation. However, there still remains a reduction in kinetic homogeneous and heterogeneous rates. Finally, it should be noted that if colloids are to compete with stationary solid phase, they must be sufficiently concentrated to provide an equivalent surface site density (or cation exchange capacity).
 
 \begin{comment}
 From the primary species transport equations it is possible to define a retardation factor assuming constant aqueous and sorbed concentrations and neglecting diffusion by writing the transport equations in the form
@@ -1888,13 +1888,677 @@ R_j\eq 1+\dfrac{K_j}{1+K_j^c},
 Note that if $K_j^c \!\geq\! K_j \!\gg\! 1$, $R_j\!\leq\! 2$, and there is little or no retardation. However, there still remains a reduction in kinetic homogeneous and heterogeneous rates. Finally, it should be noted that if colloids are to compete with stationary solid phase, they must be sufficiently concentrated to provide an equivalent surface site density (or cation exchange capacity).
 \end{comment}
 
-\section{Solid Solutions}
+\section{PFLOTRAN Colloid Implementation}
+
+Implementation of colloids in PFLOTRAN accounts for competing sorption in the form of surface complexation reactions between both immobile and mobile colloids and minerals.
+
+\subsection{Summary of Equations}
+
+\subsubsection{Colloid Reactions:}
+%\renewcommand{\tabcolsep}{-8pt}
+\EQ
+\begin{array}{rll}
+\A_c^\m &\!\!\!\!\!\arrows \A_c^\im, & \text{(Filtration: $I_c$)},\\
+>\!\A_{ic}^\m &\!\!\!\!\!\arrows\! >\!\A_{ic}^\im, & \text{(Mobile-Immobile Colloid Exchange: $I_c$)},\\
+>\!X_{c}^\m &\!\!\!\!\!\arrows\! >\!X_{c}^\im, & \text{(Mobile-Immobile Free Site Exchange: $I_c$)},\\
+>\!X_c^{\m,\,\im} + \displaystyle\sum_i\nu_{ji}^c\A_j^{} &\!\!\!\!\!\arrows\! >\!A_{ic}^{\m,\,\im}, & \text{(Sorption: $I_{ic}^{\m,\,\im}$)},
+\end{array}
+\EN
+for mobile $(\m)$ and immobile $(\im)$ colloids where $\m$ and $\im$ refer to liquid and solid phases, respectively.
+
+\noindent Sorption site concentration is related to mobile and immobile colloid concentrations and mineral volume fractions according to the expressions:
+\BA
+\omega_{c}^{\m,\,\im} &\eq \eta_c A_c W_c C_c^{\m,\,\im},\\
+&\eq \Gamma_c^{} C_c^{\m,\,\im},
+\EA
+where
+\EQ
+\Gamma_c \eq \eta_c A_c W_c,
+\EN
+for colloids, and
+\EQ
+\omega_{m} \eq \eta_m A_m W_m \bar V_m^{-1} \varphi_m,
+\EN
+for minerals.
+
+\noindent Total Site Conservation:
+\BA
+\omega_c &\eq \varphi s_l^{} \omega_c^\m + \omega_c^\im, \\
+&\eq \varphi s_l^{} \Big(S_c^\m+ \sum_{i=1}^{N_c^{\rm srf}} S_{ic}^{\m}\Big) + S_c^\im + \sum_{i=1}^{N_c^{\rm srf}} S_{ic}^{\im},\\
+&\eq \varphi s_l^{} S_c^\m + S_c^\im 
++ \sum_{i=1}^{N_c^{\rm srf}} \big(\varphi s_l^{} S_{ic}^{\m}+S_{ic}^{\im}\big),\\
+\omega_m &\eq S_m + \sum_{i=1}^{N_m^{\rm srf}} S_{i}^{m}.
+\EA
+
+\subsubsection{Colloid Filtration}
+\EQ
+\frac{\p}{\p t} \varphi s_l^{} C_c^\m + \bnabla\cdot\bq_c^{} C_c^\m \eq -I_c,
+\EN
+\EQ
+\frac{\p C_c^\im}{\p t} \eq I_c,
+\EN
+\EQ
+I_c \eq k_c^f C_c^\m - k_c^b C_c^\im,
+\EN
+$\m=$ liq, $\im=$ solid. Alternatively, the mobile colloid transport equation can be written as
+\EQ
+\frac{\p}{\p t} \Big[\varphi s_l C_c^\m + C_c^\im\Big] + \bnabla\cdot\bq_c^{} C_c^\m \eq 0,
+\EN
+implying the site conservation equation:
+\EQ
+\frac{\p}{\p t} \Big[\varphi s_l \omega_c^\m + \omega_c^\im\Big] + \bnabla\cdot\bq_c^{} \omega_c^\m \eq 0,
+\EN
+coupled to the immobile colloid concentration field
+\EQ
+\frac{\p \omega_c^\im}{\p t} \eq \Gamma_c I_c.
+\EN
+
+\subsubsection{Collolid-Facilitated Transport Equations}
+%\EQ
+%\frac{\p}{\p t} \varphi s_l\Psi_j +\bnabla\cdot\bOmega_j \eq - \sum_{ic} \nu_{ji} \frac{\p}{\p t}\big(\varphi s_l S_{ic}^l\big) - \sum_{ic} \nu_{ji} \frac{\p S_{ic}^s}{\p t} - \sum_{im} \nu_{jm} \frac{\p S_{i}^{m}}{\p t} - \sum_m\nu_{jm}I_m
+%\EN
+\paragraph{Primary Species:}
+\EQ
+\frac{\p}{\p t} \varphi s_l\Psi_j +\bnabla\cdot\bOmega_j \eq - \sum_{ic} \nu_{ji}^c I_{ic}^\m - \sum_{ic} \nu_{ji}^c I_{ic}^\im - \sum_{im} \nu_{ji}^m I_i^m - \sum_m\nu_{jm}I_m
+\EN
+\noindent Kinetic Sorption Equations---Colloids:\\
+\noindent
+mobile:
+\EQ
+\frac{\p}{\p t} \varphi s_l^{} S_{ic}^\m + \bnabla\cdot\big(\bq_c S_{ic}^\m\big) \eq -\widetilde I_c^{} + I_{ic}^\m,
+\EN
+\EQ
+\frac{\p}{\p t} \varphi s_l^{} S_{c}^\m + \bnabla\cdot\big(\bq_c S_{c}^\m\big) \eq -\widetilde I_c^{} - \sum_i I_{ic}^\m,
+\EN
+immobile:
+\EQ
+\frac{\p S_{ic}^\im}{\p t} \eq \widetilde I_c^{} + I_{ic}^\im,
+\EN
+\EQ
+\frac{\p S_{c}^\im}{\p t} \eq \widetilde I_c^{} - \sum_i I_{ic}^\im,
+\EN
+kinetic rate law:
+\BA
+I_{ic}^{\m,\,\im} &\eq k_{ic}^f Q_{ic}^{} S_{c}^{\m,\,\im} - k_{ic}^b S_{ic}^{\m,\,\im},\\
+&\eq k_{ic}^b \big(K_{ic}^{} Q_{ic}^{} S_{c}^{\m,\,\im} - S_{ic}^{\m,\,\im}\big),
+\EA
+\EQ
+K_{ic} \eq \frac{k_{ic}^f}{k_{ic}^b}.
+\EN
+\noindent Kinetic Sorption Equations---Minerals:
+\EQ
+\frac{\p S_{i}^m}{\p t} \eq I_{i}^m,
+\EN
+\BA
+I_i^m &\eq k_{im}^f Q_{ic}^{} S_{m} - k_{im}^b S_{i}^{m},\\
+&\eq k_{im}^b \big(K_{im}^{} Q_{ic}^{} S_{m} - S_{i}^{m}\big).
+\EA
+
+\subsubsection{Site Conservation}
+\begin{subequations}
+\EQ
+\frac{\p}{\p t} \Big( \varphi s_l^{} S_{ic}^\m + S_{ic}^\im\Big) + \bnabla\cdot\bq_c S_{ic}^\m \eq I_{ic}^\m + I_{ic}^\im,
+\EN
+\EQ
+\frac{\p}{\p t} \Big( \varphi s_l^{} S_c^\m + S_c^\im\Big) + \bnabla\cdot\bq_c S_c^\m \eq -\sum_i\big(I_{ic}^\m + I_{ic}^\im\big).
+\EN
+\end{subequations}
+Summing:
+\EQ
+\frac{\p}{\p t} \Big[ \varphi s_l^{} S_c^\m + S_c^\im + \sum_i \big(\varphi s_l^{} S_{ic}^\m + S_{ic}^\im\big)\Big] + \bnabla\cdot \Big[\bq_c \big( S_c^\m + \sum_i S_{ic}^\m\big)\Big] \eq 0,
+\EN
+or, in terms of $\omega_c^{\m,\,\im}$:
+\EQ
+\frac{\p}{\p t} \Big( \varphi s_l^{} \omega_c^\m + \omega_c^\im \Big) + \bnabla\cdot\bq_c \omega_c^\m \eq 0,
+\EN
+yields the site conservation equation.
+
+\subsubsection{Independent Set of Governing Equations}
+
+Alternatively (note that the rate $\widetilde I_c$ cancels): 
+% local equilibrium:
+\BA
+\frac{\p}{\p t} &\left[\varphi s_l^{}\Psi_j^{} + \varphi s_l^{}\sum_{ic} \nu_{ji}^{c} S_{ic}^\m + \sum_{ic} \nu_{ji}^{c} S_{ic}^\im + \sum_{im} \nu_{ji}^{m} S_i^{m} \right] \nonumber\\
+& \qquad\qquad\qquad + \bnabla\cdot\left[\bOmega_j^{} + \sum_{ic}\bq_c^{}\nu_{ji}^{c} S_{ic}^\m \right] \eq -\sum_m\nu_{jm}^{}I_m^{}.
+\EA
+\EQ
+\frac{\p}{\p t} \varphi s_l^{} S_{ic}^\m + \bnabla\cdot\big(\bq_c S_{ic}^\m\big) \eq -\widetilde I_c^{} + I_{ic}^\m,
+\EN
+\EQ
+\frac{\p S_{ic}^\im}{\p t} \eq \widetilde I_c^{} + I_{ic}^\im.
+\EN
+\noindent Auxiliary Relations:
+\EQ
+\omega_c^{\m,\im} \eq S_c^{\m,\,\im}+ \sum_iS_{ic}^{\m,\,\im}\eq \Gamma_c^{} C_c^{\m,\,\im},
+\EN
+\EQ
+I_{ic}^{\m,\,\im} \eq k_{ic}^f Q_{ic}^{} \Big(\Gamma_c^{} C_{c}^{\m,\,\im}-\sum_iS_{ic}^{\m,\,\im}\big) - k_{ic}^b S_{ic}^{\m,\,\im},
+\EN
+\EQ
+I_c \eq k_c^f C_c^\m - k_c^b C_c^\im,
+\EN
+\EQ
+\Gamma_c I_c \eq \widetilde I_c.
+\EN
+
+\subsubsection{Relation Between Mobile-Immobile Colloid Exchange Rates $\widetilde I_c$ and $I_c$:}
+\BA
+\frac{\p\omega_c^\im}{\p t} &\eq \frac{\p S_c^\im}{\p t} + \sum_{i=1}^{N_c^{\rm srf}} \frac{\p S_{ic}^\im}{\p t},\\
+&\eq \widetilde I_c + \sum_{i=1}^{N_c^{\rm srf}}\widetilde I_c,\\
+&\eq \Big(N_c^{\rm srf}+1\Big) \widetilde I_c,\\
+&\eq \Gamma_c I_c.
+\EA
+\EQ
+\widetilde I_c \eq \left(\frac{\Gamma_c}{N_c^{\rm srf}+1}\right) I_c.
+\EN
+
+\subsection{Local Equilibrium}
+
+The equilibrium state of the system consistent with kinetic rate law expressions follows.
+
+\noindent
+Minerals:
+\EQ
+S_{i}^{m} \eq K_{im}^{} Q_{ic}^{} S_{m}. 
+\EN
+\EQ
+S_m \eq \frac{\omega_m}{1+\sum K_{im} Q_{im}},
+\EN
+\EQ
+S_{im} \eq \frac{\omega_m K_{im} Q_{im}}{1+\sum K_{im} Q_{im}},
+\EN
+\EQ
+\omega_m \eq S_m + \sum_i S_{im}.
+\EN
+\noindent Colloids:
+\begin{subequations}
+\BA
+S_{ic}^{\m,\,\im} &\eq K_{ic}^{} Q_{ic}^{} S_c^{\m,\,\im},\\
+C_c^\m &\eq K_{\m,\,\im}^{} C_c^\im.
+\EA
+\EQ
+S_c^{\m,\,\im} \eq \frac{\omega_c^{\m,\,\im}}{1+\sum_i K_{ic} Q_{ic}},
+\EN
+\EQ
+S_{ic}^{\m,\,\im} \eq \frac{\omega_c^{\m,\,\im} K_{ic} Q_{ic}}{1+\sum_i K_{ic} Q_{ic}},
+\EN
+\EQ
+\omega_c^{\m,\,\im} \eq S_c^{\m,\,\im} + \sum_i S_{ic}^{\m,\,\im}.
+\EN
+\end{subequations}
+\noindent Filtration Equilibrium:
+\EQ
+K_{\m,\,\im}^{} \eq \frac{C_c^\m}{C_c^\im},
+\EN
+\EQ
+\frac{S_c^\m}{S_c^\im} \eq \frac{S_{ic}^\m}{S_{ic}^\im} \eq \frac{\omega_c^\m}{\omega_c^\im} \eq \frac{C_c^\m}{C_c^\im} \eq K_{\m,\,\im}^{}.
+\EN
+\EQ
+\omega_c \eq \big(1+\varphi s_l K_{\m,\,\im}\big) \omega_c^\im 
+\eq \left(\frac{1+\varphi s_l K_{\m,\,\im}}{K_{\m,\,\im}}\right) \omega_c^\m.
+%\big(1+\sum_i K_{ic}^{} Q_{ic}^{}\big) S_c^\im.
+\EN
+\begin{subequations}
+\BA
+S_c^\im &\eq \frac{\omega_c}{\big(1+\varphi s_l K_{\m,\,\im}\big)\big(1+\sum_i K_{ic} Q_{ic}\big)},\\
+S_{ic}^\im &\eq \frac{\omega_c K_{ic} Q_{ic}}{\big(1+\varphi s_l K_{ls}\big)\big(1+\sum_{i'} K_{i'c} Q_{i'c}\big)},\\
+S_c^\m &\eq \frac{\omega_c K_{ls}}{\big(1+\varphi s_l K_{\m,\,\im}\big)\big(1+\sum_i K_{ic} Q_{ic}\big)},\\
+S_{ic}^\m &\eq \frac{\omega_c K_{\m,\,\im} K_{ic} Q_{ic}}{\big(1+\varphi s_l K_{\m,\,\im}\big)\big(1+\sum_{i'} K_{i'c} Q_{i'c}\big)}.
+\EA
+\end{subequations}
+
+In the absence of mineral surface complexation reactions it follows that
+\EQ
+K_j^\m \eq K_{\m,\,\im}^{} K_j^\im.
+\EN
+Thus if $K_j^\m\gg1$,
+\EQ
+R_j\eq 1+\frac{K_j^\im}{K_j^\m} \eq 1+K_{\m,\,\im}^{-1}.
+\EN
+
+\subsection{Numerical Implementation}
+
+\subsubsection{Residual Function Independent and Dependent Variables} 
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\multicolumn{2}{c}{Kinetic Formulation}\\
+\midrule
+Independent Variables: & $\{C_j, \, C_c^\m, \, S_{ic}^\m\}$ \\
+Dependent Variables: & $\{C_i^{}, \, C_c^{\im}, \, S_c^{\m,\,\im}, \, S_{ic}^\im, \, S_m^{},\,S_{im}^{}\}$ \\
+\midrule
+\multicolumn{2}{c}{Sorption Equilibrium Formulation -- Kinetic Filtration}\\
+\midrule
+Independent Variables: & $\{C_j, \, C_c^\m\}$ \\
+Dependent Variables: & $\{C_i^{}, \, C_c^\im, \, S_c^{l,s}, \, S_{ic}^{l,s}, \, S_m^{},\,S_{im}^{}\}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent Primary Species:
+\begin{subequations}
+\BA
+R_{jn} &\eq \left[\varphi_n s_{ln} \big(\Psi_{jn}^{k+1}-\Psi_{jn}^k\big) 
++ \varphi_n s_{ln}^{} \sum_{ic}\nu_{ji}^{c} \big(S_{icn}^{\m,k+1}-S_{icn}^{\m,k}\big)\right. \nonumber\\
+&\qquad\left. + \sum_{ic} \nu_{ji}^{c}\big(S_{icn}^{\im,k+1}-S_{icn}^{\im,k}\big) 
++ \sum_{im} \nu_{ji}^{m}\big(S_{in}^{m,k+1}-S_{in}^{m,k}\big) \right]\frac{V_n}{\Delta t}\nonumber \\
+&\qquad\qquad + \sum_{n'} \Big[\Omega_{jnn'}^{k+1} + q_{cnn'} \sum_{ic}\nu_{ji}^{} S_{ic,nn'}^{\m,k+1} \Big] A_{nn'}^{} + V_n^{}\sum_m\nu_{jm}^{}I_{mn}^{k+1},
+\EA
+\noindent Mobile Colloids:
+\EQ
+R_{cn} \eq \Big[\varphi_n^{} s_{ln}^{} \big(C_{cn}^{\m,k+1}-C_{cn}^{\m,k}\big) 
++ C_{cn}^{\im,k+1}-C_{cn}^{\im,k} \Big]\frac{V_n}{\Delta t} + \sum_{n'} q_{cnn'} C_{cnn'}^{\m,k+1} A_{nn'}^{},
+\EN
+\noindent Mobile Colloid Sorbed Species:
+\EQ
+R_{ic,\,n} \eq \Big[\varphi s_l^{} \big(S_{ic,n}^{\m,k+1}-S_{ic,n}^{\m,k}\big) 
+\Big]\frac{V_n}{\Delta t} + \sum_{n'} q_{cnn'}^{} S_{ic,nn'}^\m A_{nn'}^{} + \Big(\widetilde I_{cn}^{} - I_{ic,n}^\m\Big) V_n^{}.
+\EN
+\end{subequations}
+\noindent Auxiliary Equations:
+\begin{subequations}
+\BA
+C_{cn}^{\im,k+1}-C_{cn}^{\im,k} & \eq \Delta t \frac{k_c^f C_c^{\im,k+1}-k_c^b C_c^{\im,k}}{1+k_c^f\Delta t},\\
+S_{ic}^{\im,k+1}-S_{ic}^{\im,k} &\eq \frac{k_{ic}^b S_{ic}^{\im,k}}{1+k_{ic}^b\Delta t} 
++ \frac{k_{ic}^f}{1+k_{ic}^b \Delta t} \left(
+\frac{N_c}{D_c}
+\right) Q_{ic}^{k+1},\\
+S_i^{m,k+1}-S_i^{m,k} &\eq \frac{k_{im}^b S_{im}^k}{1+k_{im}^b\Delta t} 
++ \frac{k_{im}^f}{1+k_{im}^b \Delta t} \left(
+\frac{N_m}{D_m}\right) Q_{im}^{k+1},\\
+S_c^{\m,\,\im} &\eq \omega_c^{\m,\,\im} - \sum_i S_{ic}^{\m,\,\im},\\
+S_m^{} &\eq \omega_m^{} - \sum_i S_{i}^{m},
+\EA
+\end{subequations}
+where the quantities $N_c$ and $N_m$ are defined by
+\begin{subequations}
+\EQ
+N_c \eq\omega_c^{\im,k+1} - \displaystyle\sum_{i} \dfrac{S_{ic}^{\im,k}}{1+k_{ic}^b\Delta t},
+\EN
+\EQ
+N_m \eq\omega_m^{k+1} - \displaystyle\sum_{i} \dfrac{S_{im}^{k}}{1+k_{im}^b\Delta t},
+\EN
+\end{subequations}
+and ($\a=c,\,m$)
+\EQ
+D_\a \eq 1+\displaystyle\sum_{i}\dfrac{k_{i\a}^f\Delta t}{1+k_{i\a}^b\Delta t} Q_{i\a}^{k+1}.
+\EN
+\noindent Interface Sorbed Concentration:
+\EQ
+S_{ic,nn'}^\m \eq \frac{d_n S_{icn}^\m + d_{n'} S_{icn'}^\m}{d_n + d_{n'}}.
+\EN
+
+\subsubsection{Jacobian Structure}
+
+For a fully implicit formulation the nonlinear equations
+\EQ
+\bR(\bx) \eq \bzero,
+\EN
+are solved for the logarithm of the concentration using the Newton-Raphson equations
+\EQ
+\bJ^{(i)} \delta\ln\bx^{(i+1)} \eq -\bR^{(i)},
+\EN
+for the $i$th iteration. The solution is then updated according to the equation
+\EQ
+\bx^{(i+1)} \eq \bx^{(i)} {\rm e}^{\delta\ln\bx^{(i+1)}}.
+\EN
+
+\paragraph{Equilibrium Colloid/Mineral Sorption Reactions}
+\EQ
+\renewcommand{\arraystretch}{2.5}
+\left(\begin{array}{cc} 
+\dfrac{\p R_{j}}{\p\ln C_{l}} & \dfrac{\p R_{j}}{\p\ln C_c^{\m}}\\
+\dfrac{\p R_{c}}{\p\ln C_{l}} & \dfrac{\p R_{c}}{\p\ln C_{c}^{\m}}\\
+\end{array}\right)
+\left[
+\begin{array}{c}
+\delta\ln C_j\\
+\delta\ln C_c^\m\\
+\end{array}
+\right] \eq
+-\left[\begin{array}{c}
+R_j\\
+R_c\\
+\end{array}\right]
+\EN
+\begin{subequations}
+\BA
+%R_j:C_j'
+\left(\dfrac{\p R_{jn}}{\p C_{j'n'}}\right)_{C_c^\m}^{} &\eq\delta_{nn'}\left[
+\varphi_n^{} s_{ln}^{}\frac{\p\Psi_{jn}^{k+1}}{\p C_{j'n}} 
++ \varphi_n^{} s_{ln}^{}\sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{\m,k+1}}{\p C_{j'n}} 
++ \sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{\im,k+1}}{\p C_{j'n}}\right. \nonumber\\
+&\left. \quad + \sum_{im} \nu_{ji}^{m} \frac{\p S_{i}^{m,k+1}}{\p C_{j'n}}
+\right] \frac{V_n}{\Delta t}
++\sum_{n''}\left[\frac{\p\Omega_{jnn''}}{\p C_{j'n'}}+q_{cnn''}\sum_{ic}\nu_{ji}^{c} \frac{\p S_{ic,nn''}^{\m,k+1}}{\p C_{j'n'}}\right] A_{nn''}^{}\nonumber \\
+&\qquad+\delta_{nn'}^{} V_n^{}\sum_m\nu_{jm}^{}\frac{\p I_{mn}}{\p C_{j'n}},\\
+%R_j:C_c'
+\left(\dfrac{\p R_{jn}}{\p C_{cn'}^\m}\right)_{C_j^{}}^{} &\eq \delta_{nn'}\left[ 
+\varphi_n^{} s_{ln}^{}\sum_{i} \nu_{ji}^{c} \frac{\p S_{ic}^{\m,k+1}}{\p C_{cn}^\m} 
++ \sum_{i} \nu_{ji}^{c} \frac{\p S_{ic}^{\im,k+1}}{\p C_{cn}^\m}
+\right] \frac{V_n}{\Delta t} \nonumber\\
+&\qquad\qquad+\sum_{n''} q_{cnn''}^{}\sum_{i}\nu_{ji}^{c} \frac{\p S_{ic,nn''}^{\m,k+1}}{\p C_{cn'}^\m} A_{nn''}^{},\\
+\left(\dfrac{\p R_{cn}}{\p C_{jn'}^{}}\right)_{C_j^{}}^{} &\eq 0,\\
+\left(\dfrac{\p R_{cn}}{\p C_{cn'}^\m}\right)_{C_j^{}}^{} &\eq \delta_{nn'} \varphi_n s_{ln} \Big(1+\frac{\p C_{cn}^\im}{\p C_{cn}^\m}\Big)\frac{V_n}{\Delta t}+\sum_{n'} q_{cnn'}^{}\frac{\p C_{cnn'}^\m}{\p C_{cn}^\m} A_{nn'}^{}.
+\EA
+\end{subequations}
+
+\paragraph{Kinetic Colloid/Mineral Sorption Reactions}
+%\renewcommand{\tabcolsep}{1cm}
+\EQ
+\renewcommand{\arraystretch}{2.5}
+\left(\begin{array}{cc|c} 
+\dfrac{\p R_{j}}{\p\ln C_{j'}} & \dfrac{\p R_{j}}{\p\ln C_{c'}} & \dfrac{\p R_{j}}{\p\ln S_{i'c'}} \\
+\dfrac{\p R_{c}}{\p\ln C_{j'}} & \dfrac{\p R_{c}}{\p\ln C_{c'}} & \dfrac{\p R_{c}}{\p\ln S_{i'c'}} \\
+\hline
+\dfrac{\p R_{ic}}{\p\ln C_{j'}} & \dfrac{\p R_{ic}}{\p\ln C_{c'}} & \dfrac{\p R_{ic}}{\p\ln S_{i'c'}} \\
+\end{array}\right)
+\left[
+\begin{array}{c}
+\delta\ln C_{j'}\\
+%~\\
+\delta\ln C_{c'}\\
+%~\\
+\hline
+\delta\ln S_{i'c'}
+\end{array}
+\right] \eq
+-\left[\begin{array}{c}
+R_j\\
+%~\\
+R_c\\
+\hline
+%~\\
+R_{ic}
+\end{array}\right]
+\EN
+\begin{subequations}
+\BA
+%R_j:C_j'
+\left(\dfrac{\p R_{jn}}{\p C_{j'n'}}\right)_{C_c^\m,\,S_{ic}^\m}^{} &\eq\delta_{nn'}\left[
+\varphi_n^{} s_{ln}^{}\frac{\p\Psi_{jn}^{k+1}}{\p C_{j'n}} 
++ \sum_{ic} \nu_{ji}^{c} \frac{\p S_{ic}^{\im,k+1}}{\p C_{j'n}} + \sum_{im} \nu_{ji}^{m} \frac{\p S_{i}^{m,k+1}}{\p C_{j'n}}
+\right] \frac{V_n}{\Delta t}\nonumber\\
+&+\sum_{n''}
+\frac{\p\Omega_{jnn''}}{\p C_{j'n'}}
+A_{nn''}^{}
++\delta_{nn'}^{} V_n^{}\sum_m\nu_{jm}^{}\frac{\p I_{mn}}{\p C_{j'n}},\\
+%R_j:C_c'
+\left(\dfrac{\p R_{jn}}{\p C_{cn'}^\m}\right)_{C_j^{},\,S_{ic}^\m}^{} &\eq \delta_{nn'}\left[ 
+\sum_{i} \nu_{ji}^{c} \frac{\p S_{ic}^{\im,k+1}}{\p C_{cn}^\m}
+\right] \frac{V_n}{\Delta t} \\
+%R_j:S_i'c'
+\left(\dfrac{\p R_{jn}}{\p S_{icn'}^\m}\right)_{C_j^{},\,C_c^\m}^{} &\eq\delta_{nn'}\nu_{ji}^c 
+%\left[
+\varphi_n^{} s_{ln}^{} 
+%+\frac{\p S_{ic}^{s,k+1}}{\p S_{icn}^\m}\right] 
+\frac{V_n}{\Delta t} 
++\sum_{n''}q_{cnn''}\sum_{ic}\nu_{ji}^{c} \frac{\p S_{ic,nn''}^{l,k+1}}{\p S_{icn'}^\m} A_{nn''}^{},
+\EA
+\end{subequations}
+\begin{subequations}
+\BA
+%R_c:C_j'
+\left(\dfrac{\p R_{cn}}{\p C_{j'n'}}\right)_{C_c^\m,\,S_{ic}^\m}^{} & \eq 0,\\
+%R_c:C_c'
+\left(\dfrac{\p R_{cn}}{\p C_{c'n'}^\m}\right)_{C_j,\,S_{ic}^\m}^{} &\eq\varphi_n^{} s_{ln}^{}\delta_{nn'}^{}\delta_{cc'}^{}
+\left(1+\frac{\p C_{cn}^\im}{\p C_{cn}^\m}\right) \frac{V_n}{\Delta t} 
++ \delta_{cc'}\sum_{n''} q_{cnn''} \frac{\p C_{cnn''}^\m}{\p C_{cn'}^\m} A_{nn''},\\
+%R_c:S_i'c'
+\left(\dfrac{\p R_{cn}}{\p C_{i'c'n'}^\m}\right)_{C_j,\,C_c^\m}^{} &\eq 0,
+\EA
+\end{subequations}
+\begin{subequations}
+\BA
+%R_ic:C_j'
+\left(\dfrac{\p R_{icn}}{\p C_{j'n'}}\right)_{C_c^\m,\,S_{ic}^\m}^{} &\eq \varphi_n^{} s_{ln}^{}\delta_{nn'}\frac{\p S_{icn}^\m}{\p C_{j'n}} \frac{V_n}{\Delta t} + \sum_{n''} q_{cnn''} \frac{\p S_{ic,nn''}^\m}{\p C_{j'n'}^{}} A_{nn''}-\delta_{nn'} V_n\frac{\p I_{icn}^\m}{\p C_{j'n}},\\
+%R_ic:C_c'
+\left(\dfrac{\p R_{icn}}{\p C_{c'}^\m}\right)_{C_j,\,S_{ic}^\m}^{} &\eq \varphi_n^{} s_{ln}^{}\delta_{nn'}^{}\delta_{cc'}^{} \frac{\p S_{icn}^\m}{\p C_{cn}}\frac{V_n}{\Delta t} + \delta_{cc'}^{}\sum_{n''} q_{cnn''} \frac{\p S_{ic,nn''}^\m}{\p C_{cn'}^\m} A_{nn''}\nonumber\\
+&\hspace{5cm} +\delta_{nn'}\delta_{cc'} V_n\left(\frac{\p\widetilde I_{cn}}{\p C_c^\m}-\frac{\p I_{icn}^\m}{\p C_{cn}}\right),\\
+%R_ic:S_i'c'
+\left(\dfrac{\p R_{icn}}{\p S_{i'c'}^\m}\right)_{C_j,\,C_c^\m}^{} &\eq \varphi_n^{} s_{ln}^{}\delta_{nn'}\delta_{ii'}\delta_{cc'} \frac{V_n}{\Delta t} + \delta_{cc'}\sum_{n''} q_{cnn''} \frac{\p S_{ic,nn''}^\m}{\p S_{icn'}^\m} A_{nn''}\nonumber\\
+&\hspace{5cm}-\delta_{nn'}\delta_{cc'} V_n \frac{\p I_{icn}^\m}{\p S_{i'cn}}.
+\EA
+\end{subequations}
+
+\noindent Auxiliary Derivatives:
+\EQ
+\frac{\p Q_{ic}}{\p \ln C_j} \eq \nu_{ji}^c Q_{ic}^{},
+\EN
+
+\noindent Auxiliary Derivatives (Kinetic Sorption):
+\begin{subequations}
+\BA
+\frac{\p S_{c}^{\im}}{\p\ln C_{j}} &\eq -\frac{N_c}{\Delta t D_c^2} \sum_i \frac{k_{ic}^f}{1+k_{ic}^b\Delta t} \frac{\p Q_{ic}}{\p\ln C_j},\\
+%\EN
+%\EQ
+%\frac{\p S_{ic}^{s}}{\p\ln C_{j}} &\eq\frac{k_{ic}^f}{1+k_{ic}^b \Delta t} \left(
+%\frac{N_c}{D_c}\right) \nu_{ji}^c Q_{ic}^{k+1},\\
+%\EN
+%\EQ
+\frac{\p S_{i}^m}{\p\ln C_{j}} &\eq \frac{k_{im}^f}{1+k_{im}^b \Delta t} \left(
+\frac{N_m}{D_m}\right) \nu_{ji}^m Q_{im}^{k+1},\\
+%\EN
+%\EQ
+\frac{\p S_{ic}^\im}{\p\ln C_{c}^\m} &\eq C_c^\m\frac{S_{ic}^\im}{C_c^\im}\frac{k_c^f \Delta t}{1+k_c^f\Delta t},\\
+%\EN
+%\EQ
+\frac{\p I_{icn}^\m}{\p\ln C_{j'n}} &\eq k_{ic}^f \ldots,\\
+%\frac{\p S_{ic,n}^\m}{\p C_{cn'}^\m} &\eq ,\\
+\frac{\p I_{icn}^\m}{\p S_{i'cn}} &\eq -k_{ic}^b,\\
+%\EN
+%\EQ
+\frac{\p C_{c}^\im}{\p C_{c}^\m} &\eq \frac{k_c^f \Delta t}{1+k_c^f\Delta t}.
+\EA
+\end{subequations}
+
+\noindent Auxiliary Derivatives (Local Equilibrium Sorption):
+\begin{subequations}
+%\EQ
+%\frac{\p C_{c}^\im}{\p C_{c}^\m} \eq K_{ls}^{-1},
+%\EN
+\BA
+\frac{\p S_{c}^{\m,\,\im}}{\p C_{j}} &\eq \\
+%\EN
+%\EQ
+\frac{\p S_{ic}^{\m,\,\im}}{\p\ln C_{j}} &\eq S_{ic}^{\m,\,\im}\left[
+\nu_{ji}^c - \frac{1}{\omega_{\m,\,\im}}\sum_{i'}\nu_{ji'}^c S_{i'c}^{\m,\,\im}
+\right],\\
+%\EN
+%\EQ
+\frac{\p S_{i}^m}{\p\ln C_{j}} &\eq S_{i}^{m}\left[
+\nu_{ji}^m - \frac{1}{\omega_{m}}\sum_{i'}\nu_{ji'}^m S_{i'}^{m}
+\right],\\
+%\EN
+%\EQ
+\frac{\p S_{ic}^{\im}}{\p\ln C_{c'}^{\im}} &\eq \delta_{cc'} S_{ic}^{\im},\\
+%\EN
+%\EQ
+\frac{\p S_{ic}^\im}{\p\ln C_{c'}^\m} &\eq \delta_{cc'} C_c^\m \frac{S_{ic}^{\im}}{C_c^\im}\frac{k_c^f \Delta t}{1+k_c^f\Delta t}.
+\EA
+\end{subequations}
+
+\begin{comment}
+\renewcommand{\tabcolsep}{1cm}
+\renewcommand{\arraystretch}{2}
+\begin{tabular}{|p{2cm}|p{3cm}|}
+\hline
+c & c \\
+\hline
+c & c \\
+\hline
+\end{tabular}
+\end{comment}
+
+\subsection{Colloid Data Structures}
+
+\begin{verbatim}
+  type, public :: colloid_type
+    character(len=MAXWORDLENGTH) :: name
+    PetscInt :: ncoll
+    PetscInt :: id
+    PetscReal :: coll_formula_wt(:)
+    PetscReal :: coll_surf_site_den(:)
+    PetscReal :: coll_surf_area(:)
+  
+    type(surface_complexation_rxn_type), pointer :: 
+      surface_complexation_rxn_type
+
+    type(colloid_type), pointer :: next
+  end type colloid_type
+
+  type, public :: surface_complexation_rxn_type
+    PetscInt :: id
+    PetscInt :: itype
+    PetscInt :: free_site_id
+    character(len=MAXWORDLENGTH) :: free_site_name
+    PetscTruth :: free_site_print_me
+    PetscInt :: mineral_id
+    character(len=MAXWORDLENGTH) :: mineral_name
+    character(len=MAXWORDLENGTH) :: coll_name
+    PetscReal :: site_density
+    type(surface_complex_type), pointer :: complex_list
+    type (surface_complexation_rxn_type), pointer :: next
+  end type surface_complexation_rxn_type    
+ 
+  type, public :: reactive_transport_auxvar_type
+    ! molality
+    PetscReal, pointer :: pri_molal(:)     ! mol/kg water
+    ...
+    
+    ! colloids
+    ! (mobile/immobile = 1, 2, site) [mol/L]
+    PetscReal, pointer :: coll_molar(:,:)
+    
+    ! colloid sorption reactions
+    PetscReal, pointer :: coll_kinsrfcplx_conc(:) ! S_{ic}^k
+    PetscReal, pointer :: coll_kinsrfcplx_conc_kp1(:) ! S_{ic}^k+1
+    PetscReal, pointer :: coll_kinsrfcplx_free_site_conc(:) ! S_c
+    PetscReal, pointer :: coll_eqsrfcplx_conc(:)
+    PetscReal, pointer :: coll_eqsrfcplx_free_site_conc(:)
+    
+  end type reactive_transport_auxvar_type
+\end{verbatim}
+
+\subsection{Input File}
+
+\begin{comment}
+\noindent\underline{Read in colloid names, type, and formula weight from database:}
+\begin{deflist}{spa}
+\item[COLLOIDS, COLLOID, COLL] 
+\item \ coll\_name
+\item \ldots
+\item[END, /, .]
+\end{deflist}
+\end{comment}
+
+\noindent \underline{Mineral Kinetics:}
+
+\begin{deflist}{spa}
+\item[MINERAL\_KINETICS] ~
+\item min\_name
+\begin{deflist}{spa}
+\item[RATE\_CONSTANT] rate\_constant [mol/cm$^2$/s]
+\item[END, /, .] ~
+\end{deflist}
+\item[END, /, .] ~
+\end{deflist}
+
+\noindent \underline{Surface Complexes:}
+\begin{deflist}{spa}
+\item[SORPTION] ~
+\begin{deflist}{spa}
+\item[SURFACE\_COMPLEXATION\_RXN] ~
+\begin{deflist}{spa}
+\item[MULTIRATE\_SCALE\_FACTOR] \ scale\_factor
+\item[EQUILIBRIUM] ~
+\item[MULTIRATE\_KINETIC] ~
+\item[KINETIC] ~
+\item[COMPLEX\_KINETICS] ~
+
+\item srf\_name
+\begin{deflist}{spa}
+\item[FORWARD\_RATE\_CONSTANT] \ $k_f$
+\item[BACKWARD\_RATE\_CONSTANT] \ $k_b$
+\end{deflist}
+\item[END] ~
+
+\item[SITE\_FRACTION] $\omega_i$
+\item[RATE] $k_i$
+\item[MINERAL] min\_name
+\item[SITE] site\_name \ site\_conc [mol/m$^3$]
+
+\item[COMPLEXES] ~
+\item srfcmplx\_name
+\item[END] ~
+\end{deflist}
+
+\item[END] ~
+\end{deflist}
+
+\item[END] ~
+\end{deflist}
+
+\noindent \underline{Colloid Properties:}
+
+\begin{deflist}{spa}
+\item[COLLOIDS, COLLOID, COLL] ~
+\item coll\_name
+\begin{deflist}{spacingspaceingspacingspace}
+\item[COLL\_SURFACE\_SITE\_DEN] \ coll\_site\_density [mol/nm$^2$]
+\item[COLL\_FORMULA\_WT] \ coll\_formula\_weight [kg/mol]
+\item[COLL\_SURFACE\_AREA] \ coll\_surface\_area [kg/m$^2$]
+\item[END] ~
+\end{deflist}
+\item[END] ~
+\end{deflist}
+
+\noindent
+\underline{Constraint Condition:}
+
+\begin{deflist}{spa}
+\item[CONSTRAINT] initial
+
+\begin{deflist}{spa}
+\item[CONCENTRATIONS] ~
+\item spec\_name \ conc [mol/L, mol/kg-H$_2$O] \ constraint
+\item[END] ~
+\end{deflist}
+
+\begin{deflist}{spa}
+\item[MINERALS] ~
+\item min\_name \ volume\_fraction [---] \ area [cm$^{-1}$]
+\item[END] ~
+\end{deflist}
+
+\begin{deflist}{spa}
+\item[SURFACE\_COMPLEXES] ~
+\item surf\_name \ conc [mol/m$^3$]
+\item[END] ~
+\end{deflist}
+
+\begin{deflist}{spa}
+\item[COLLOIDS] ~
+\begin{deflist}{spacingspace}
+\item[MOBILE] coll\_name \ conc [mol/L]
+\item[IMMOBILE] coll\_name \ conc [mol/L]
+\end{deflist}
+\item[END] ~
+\end{deflist}
+
+\item[END] ~
+\end{deflist}
+
+\chapter{Solid Solutions}
 
 \setcounter{equation}{0}
 
-\section{Biogeochemical Reactions}
+\chapter{Biogeochemical Reactions}
 
 \setcounter{equation}{0}
+
+\section{Microbial Reactions}
 
 Microbial processes are playing an increasingly important role in our understanding of the subsurface geochemical environment (Lovley and Chapelle, 1995). An excellent introduction into modeling microbially induced processes has been given by Rittmann and VanBriesen (1996). They derive overall reactions for biomass synthesis resulting from biodegradation reactions based on H$_3$NTA as the electron-donor primary substrate. Two different electron-acceptor substrates O$_{2(aq)}$ and NO$_3^-$ are considered by the authors. In addition to these species, other important electron-acceptor primary substrates include SO$_4^{2-}$, CO$_{2(aq)}$ and Fe$^{3+}$. 
 
@@ -2076,15 +2740,15 @@ and for biomass synthesis as
 \EN
 The equations may be further generalized to more than one electron donor substrate if desired.
 
-\section{Pitzer Activity Coefficient Algorithm}
+\chapter{Pitzer Activity Coefficient Algorithm}
 
 \setcounter{equation}{0}
 
-\section{Species-Dependent Diffusion}
+\chapter{Diffusion}
 
 \setcounter{equation}{0}
 
-\subsection{Species-Independent Diffusion Coefficients}
+\section{Species-Independent Diffusion Coefficients}
 
 For the case of species-independent diffusion coefficients, because the homogeneous and heterogeneous reactions conserve charge, expressed by Eqn.\eqref{chrg},
 the mass conservation equations also conserve charge. The total charge density $\rho_e$ in solution must vanish
@@ -2102,7 +2766,7 @@ where $\bOmega_{\rho_e}$ is defined as
 \EN
 Thus the flux can be expressed in terms of $\rho_e$ alone, and therefore if $\rho_e=0$ initially, it must remain zero as the system evolves in time.
 
-\subsection{Species-Dependent Diffusion Coefficients}
+\section{Species-Dependent Diffusion Coefficients}
 
 Real aqueous electrolyte solutions consist of charged species that diffuse at different rates. This requires consideration of electrochemical effects on transport in order to maintain charge balance. For charged species the solute flux is obtained from the Nernst-Planck equation involving the sum of gradients of the chemical and electric potentials as (Newman, 1991)
 %\EQ\label{eflux}
@@ -2742,9 +3406,9 @@ by solving the primary continuum equations.
 \numberwithin{equation}{section}
 \renewcommand{\theequation}{\arabic{chapter}.\arabic{section}-\arabic{equation}}
 
-\section{Electrical Conductivity}
+%\chapter{Electrical Conductivity}
 
-\section{Hydration-Dehydration Reactions}
+%\chapter{Hydration-Dehydration Reactions}
 
 \chapter{Multiphase Systems}
 
@@ -3027,7 +3691,7 @@ The total flux (for species-independent diffusion) is given by
 \EN
 for diffusion/dispersion coefficient $D_\a$, Darcy velocity $\bq_a$ defined in terms of relative permeability $k_\a$ as
 \EQ
-\bq_\a \eq \frac{kk_\a}{\mu_\a}\bnabla(p_\a -\rho_\a g z),
+\bq_\a \eq -\frac{kk_\a}{\mu_\a}\bnabla(p_\a -\rho_\a g z),
 \EN
 with bulk permeability $k$, fluid density $\rho_\a$, and acceleration of gravity $\bg$. The fluid pressure $p_\a$ satisfies the relations
 \EQ

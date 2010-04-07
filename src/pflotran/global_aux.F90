@@ -20,6 +20,7 @@ module Global_Aux_module
     PetscReal, pointer :: fugacoeff(:)
     PetscReal, pointer :: fugacoeff_store(:,:)
     PetscReal, pointer :: m_nacl(:)
+    PetscReal, pointer :: xmass(:)
     PetscReal, pointer :: mass_balance(:) ! kg
     PetscReal, pointer :: mass_balance_delta(:) ! kmol
     PetscReal, pointer :: reaction_rate(:)
@@ -124,6 +125,8 @@ subroutine GlobalAuxVarInit(aux_var,option)
   endif
 
   if(option%iflowmode == MPH_MODE)then
+    allocate(aux_var%xmass(option%nphase))
+    aux_var%xmass = 1.d0
     allocate(aux_var%pres_store(option%nphase,TWO_INTEGER))
     aux_var%pres_store = 0.d0
     allocate(aux_var%temp_store(ONE_INTEGER,TWO_INTEGER))
@@ -135,6 +138,7 @@ subroutine GlobalAuxVarInit(aux_var,option)
     allocate(aux_var%den_store(option%nphase,TWO_INTEGER))
     aux_var%den_store = 0.d0
   else
+    nullify(aux_var%xmass)
     nullify(aux_var%pres_store)
     nullify(aux_var%temp_store)
     nullify(aux_var%fugacoeff)
@@ -184,6 +188,10 @@ subroutine GlobalAuxVarCopy(aux_var,aux_var2,option)
   if (associated(aux_var%fugacoeff) .and. &
       associated(aux_var2%fugacoeff)) then
     aux_var2%fugacoeff = aux_var%fugacoeff  
+  endif
+  if (associated(aux_var%xmass) .and. &
+      associated(aux_var2%xmass)) then
+    aux_var2%xmass = aux_var%xmass  
   endif
   if (associated(aux_var%pres_store) .and. &
       associated(aux_var2%pres_store)) then
@@ -238,6 +246,8 @@ subroutine GlobalAuxVarDestroy(aux_var)
   nullify(aux_var%den_kg)
   if (associated(aux_var%m_nacl)) deallocate(aux_var%m_nacl)
   nullify(aux_var%m_nacl)
+  if (associated(aux_var%xmass)) deallocate(aux_var%xmass)
+  nullify(aux_var%xmass)
   if (associated(aux_var%reaction_rate)) deallocate(aux_var%reaction_rate)
   nullify(aux_var%reaction_rate)
   

@@ -59,7 +59,6 @@ module Checkpoint_module
 #include "finclude/petscis.h"
 #include "finclude/petscis.h90"
 #include "finclude/petsclog.h"
-#include "finclude/petscsys.h"
 #include "finclude/petscviewer.h"
 #include "finclude/petscbag.h"
 
@@ -313,7 +312,7 @@ subroutine Checkpoint(realization, &
         call DiscretizationCreateVector(realization%discretization,ONEDOF, &
                                         global_vec,GLOBAL,option)
       endif
-      do i = 1, realization%reaction%ncomp
+      do i = 1, realization%reaction%naqcomp
         call RealizationGetDataset(realization,global_vec, &
                                    PRIMARY_ACTIVITY_COEF,i)
         call VecView(global_vec,viewer,ierr)
@@ -324,7 +323,8 @@ subroutine Checkpoint(realization, &
         call VecView(global_vec,viewer,ierr)
       enddo
     endif
-    if (realization%reaction%kinmr_nrate > 0) then
+    if (realization%reaction%kinmr_nrate > 0 .and. &
+        .not.option%no_checkpoint_kinetic_sorption) then
       ! PETSC_TRUE flag indicates write to file
       call RTCheckpointKineticSorption(realization,viewer,PETSC_TRUE)
     endif
@@ -459,7 +459,7 @@ subroutine Restart(realization, &
     flow_read = PETSC_TRUE
   endif
   ! TRANSPORT
-  if (option%ntrandof > 0.and. option%ntrandof == header%ntrandof) then
+  if (option%ntrandof > 0 .and. option%ntrandof == header%ntrandof) then
     option%tran_time = header%tran_time
     option%tran_dt = header%tran_dt
     tran_num_newton_iterations = header%tran_num_newton_iterations
@@ -538,7 +538,7 @@ subroutine Restart(realization, &
       endif    
       call DiscretizationCreateVector(discretization,ONEDOF,local_vec, &
                                       LOCAL,option)
-      do i = 1, realization%reaction%ncomp
+      do i = 1, realization%reaction%naqcomp
         call VecLoadIntoVector(viewer,global_vec,ierr)
         call DiscretizationGlobalToLocal(discretization,global_vec, &
                                          local_vec,ONEDOF)
@@ -552,7 +552,8 @@ subroutine Restart(realization, &
         call RealizationSetDataset(realization,local_vec,LOCAL, &
                                    SECONDARY_ACTIVITY_COEF,i)
       enddo
-      if (realization%reaction%kinmr_nrate > 0) then
+      if (realization%reaction%kinmr_nrate > 0 .and. &
+          .not.option%no_restart_kinetic_sorption) then
         ! PETSC_FALSE flag indicates read from file
         call RTCheckpointKineticSorption(realization,viewer,PETSC_FALSE)
       endif

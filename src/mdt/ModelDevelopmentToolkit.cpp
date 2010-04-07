@@ -1,4 +1,4 @@
-#include "petsc.h"
+#include "petscsys.h"
 #include "petscda.h"
 
 PetscMPIInt myrank = 0;
@@ -14,6 +14,7 @@ PetscMPIInt commsize = 0;
 #include "MAD.h"
 #include "MidIFC.h"
 #include "IFC_2D.h"
+#include "IFC_Plot_120x120x20.h"
 #include "Output.h"
 
 #undef __FUNCT__
@@ -35,7 +36,7 @@ int main(int argc, char **args) {
   Hanford300v2 *hanford300 = NULL;
   IFC *ifc = NULL;
   IFC_Scope3 *ifc3 = NULL;
-  IFC_2D *ifc_2d = NULL;
+  IFC_Plot_120x120x20 *ifc_plot_120x120x20 = NULL;
   MAD *mad = NULL;
   MidIFC *midifc = NULL;
   TestCase *testcase = NULL;
@@ -44,18 +45,25 @@ int main(int argc, char **args) {
 //  hanford300 = new Hanford300v2(&grid);
 //  ifc = new IFC(&grid);
   ifc3 = new IFC_Scope3(&grid);
+//  ifc_plot_120x120x20 = new IFC_Plot_120x120x20(&grid);
 //  mad = new MAD(&grid);
 //  midifc = new MidIFC(&grid);
 //    ifc_2d = new IFC_2D(&grid);
   //  testcase = new TestCase(&grid);
 
+  if (myrank == 0) printf("\n %d inactive cells out of %d cells total\n\n",
+                          grid->getNumInactiveCells(),
+                          grid->getNumberOfCellsGlobal());
+
   Output *out = new Output(grid);
 
 #if 1
-  PetscGetTime(&start);
-  out->printGMSGrid();
-  PetscGetTime(&end);
-  if (myrank == 0) printf("  %f seconds to print to GMS\n",end-start); 
+  if (grid->getN() <= 50000000) {
+    PetscGetTime(&start);
+    out->printGMSGrid();
+    PetscGetTime(&end);
+    if (myrank == 0) printf("  %f seconds to print to GMS\n",end-start); 
+  }
 #endif
 
 //  out->printBoundarySets();

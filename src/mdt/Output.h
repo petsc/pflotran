@@ -3,10 +3,10 @@
 
 #include<stdio.h>
 
-#include "petsc.h"
+#include "petscsys.h"
 
 #include "Grid.h"
-#ifdef USE_HDF5
+#if defined(PETSC_HAVE_HDF5)
 #include "HDF.h"
 #endif
 

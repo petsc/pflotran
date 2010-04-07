@@ -1239,12 +1239,18 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
     endif
 
     call RTInitializeTimestep(realization)
+    ! note: RTUpdateTransportCoefs() is called within RTInitializeTimestep()
+
 
     ! set densities and saturations to t+dt
     if (option%nflowdof > 0) then
       call GlobalUpdateDenAndSat(realization,option%tran_weight_t1)
     endif
 
+#ifdef REVISED_TRANSPORT
+    call RTUpdateTransportCoefs(realization)
+#endif
+    
     sum_newton_iterations = 0
     sum_linear_iterations = 0
     icut = 0

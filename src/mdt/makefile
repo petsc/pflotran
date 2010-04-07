@@ -1,22 +1,8 @@
 common_src   = ./
 
-#hdf5 = 1
-ifdef hdf5
-  ifndef jaguar
-    HDF5_FLAGS = -I${HDF5_INCLUDE} -DUSE_HDF5
-    HDF5_LIBS = -L${HDF5_LIB} -lhdf5 -lz
-  else
-# the below is for jaguar
-    HDF5_FLAGS = $(HDF5_CLIB) -DUSE_HDF5
-    HDF5_LIBS = $(HDF5_CLIB) -lhdf5 -lz
-  endif
-endif
-
-LIBS = ${HDF5_LIBS}
-
-CFLAGS		 =  ${HDF5_FLAGS}
+CFLAGS		 = 
 FFLAGS		 = 
-CPPFLAGS         = ${HDF5_FLAGS}
+CPPFLAGS         = 
 FPPFLAGS         = 
 CLEANFILES       = mdt
 
@@ -24,7 +10,8 @@ CLEANFILES       = mdt
 ifdef rel
  include ${PETSC_DIR}/bmake/common/base
 else
- include ${PETSC_DIR}/conf/base
+ include ${PETSC_DIR}/conf/variables
+ include ${PETSC_DIR}/conf/rules
 endif
 
 mdt_obj = ${common_src}AsciiGrid.o \
@@ -41,6 +28,7 @@ mdt_obj = ${common_src}AsciiGrid.o \
 	${common_src}HDF.o \
 	${common_src}IFC.o \
 	${common_src}IFC_Scope3.o \
+	${common_src}IFC_Plot_120x120x20.o \
 	${common_src}IFC_2D.o \
 	${common_src}MAD.o \
 	${common_src}MidIFC.o \
@@ -69,6 +57,7 @@ GridVertex.o :
 Hanford300.o : AsciiGrid.o BoundarySet.o Connection.o Grid.o Polygon.o
 Hanford300v2.o : AsciiGrid.o BoundarySet.o Connection.o Grid.o Polygon.o
 IFC.o : AsciiGrid.o BoundarySet.o Connection.o Grid.o Polygon.o
+IFC_Plot_120x120x20.o : AsciiGrid.o BoundarySet.o Connection.o Grid.o Polygon.o
 IFC_2D.o : AsciiGrid.o BoundarySet.o Connection.o Grid.o Polygon.o
 MAD.o : AsciiGrid.o BoundarySet.o Connection.o Grid.o Polygon.o
 HDF.o :

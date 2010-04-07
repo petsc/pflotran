@@ -28,7 +28,7 @@ module General_Grid_module
   
 contains
   
-#ifndef USE_HDF5
+#if !defined(PETSC_HAVE_HDF5)
 subroutine ReadStructuredGridHDF5(realization)
 
   use Realization_module
@@ -38,9 +38,10 @@ subroutine ReadStructuredGridHDF5(realization)
 
   type(realization_type) :: realization
 
+  call printMsg(realization%option,'')
   write(realization%option%io_buffer, &
-        '(/,"PFLOTRAN must be compiled with -DUSE_HDF5 "&
-            &"to read HDF5 formatted structured grids.",/)')
+        '("PFLOTRAN must be compiled with HDF5 &
+          &to read HDF5 formatted structured grids.",/)')
   call printErrMsg(realization%option)
   
 end subroutine ReadStructuredGridHDF5
@@ -86,7 +87,7 @@ subroutine ReadStructuredGridHDF5(realization)
   PetscInt :: i, local_ghosted_id, iconn
   PetscInt, pointer :: indices(:)
   PetscInt, allocatable :: integer_array(:)
-  PetscReal, allocatable :: real_array(:)
+  PetscReal, pointer :: real_array(:)
   
   Vec :: global_vec
   Vec :: local_vec

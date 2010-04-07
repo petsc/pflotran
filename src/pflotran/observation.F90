@@ -14,6 +14,7 @@ module Observation_module
     PetscInt :: id
     PetscInt :: itype
     PetscTruth :: print_velocities
+    PetscTruth :: at_cell_center
     character(len=MAXWORDLENGTH) :: name
     character(len=MAXWORDLENGTH) :: linkage_name
     type(connection_set_type), pointer :: connection_set
@@ -61,6 +62,7 @@ function ObservationCreate1()
   observation%id = 0
   observation%itype = OBSERVATION_SCALAR
   observation%print_velocities = PETSC_FALSE
+  observation%at_cell_center = PETSC_FALSE
   nullify(observation%region)
   nullify(observation%next)
   
@@ -91,6 +93,7 @@ function ObservationCreateFromObservation(observation)
   new_observation%id = observation%id
   new_observation%itype = observation%itype
   new_observation%print_velocities = observation%print_velocities
+  new_observation%at_cell_center = observation%at_cell_center
   ! keep these null for now to catch bugs
   nullify(new_observation%region)
   nullify(new_observation%next)
@@ -143,6 +146,8 @@ subroutine ObservationRead(observation,input,option)
         observation%itype = OBSERVATION_SCALAR
       case('VELOCITY')
         observation%print_velocities = PETSC_TRUE
+      case('AT_CELL_CENTER')
+        observation%at_cell_center = PETSC_TRUE
       case default
         option%io_buffer = 'Keyword (' // trim(keyword) // &
                            ') not recognized under' // &

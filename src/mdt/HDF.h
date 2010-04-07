@@ -1,7 +1,9 @@
 #ifndef HDF_H_
 #define HDF_H_
 
-#include "petsc.h"
+#include "petscsys.h"
+
+#if defined(PETSC_HAVE_HDF5)
 
 #include "hdf5.h"
 
@@ -64,4 +66,5 @@ private:
   
 };
 
+#endif /*PETSC_HAVE_HDF5*/
 #endif /*HDF_H_*/

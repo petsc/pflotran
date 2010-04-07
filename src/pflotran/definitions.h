@@ -1,4 +1,4 @@
-#include "finclude/petsc.h"
+#include "finclude/petscsys.h"
 
 PetscInt, parameter :: MAXHEADERLENGTH = 2048
 PetscInt, parameter :: MAXSTRINGLENGTH = 512
@@ -113,6 +113,11 @@ PetscInt, parameter :: MINERAL_REFERENCE = 1
 PetscInt, parameter :: MINERAL_KINETIC = 2
 PetscInt, parameter :: MINERAL_EQUILIBRIUM = 3
 
+! surface complexation surface types
+PetscInt, parameter :: NULL_SURFACE = 0
+PetscInt, parameter :: COLLOID_SURFACE = 1
+PetscInt, parameter :: MINERAL_SURFACE = 2
+
 ! coupler types
 PetscInt, parameter :: INITIAL_COUPLER_TYPE = 1
 PetscInt, parameter :: BOUNDARY_COUPLER_TYPE = 2
@@ -180,6 +185,9 @@ PetscInt, parameter :: SECONDARY_ACTIVITY_COEF = 33
 PetscInt, parameter :: SC_FUGA_COEFF = 34
 PetscInt, parameter :: PRIMARY_KD = 35
 PetscInt, parameter :: TOTAL_SORBED = 36
+PetscInt, parameter :: TOTAL_SORBED_MOBILE = 37
+PetscInt, parameter :: COLLOID_MOBILE = 38
+PetscInt, parameter :: COLLOID_IMMOBILE = 39
 
 ! activity coefficients
 PetscInt, parameter :: ACT_COEF_FREQUENCY_OFF = 0
@@ -204,9 +212,9 @@ PetscInt, parameter :: EOS_MRK = 2
 
 ! HDF5 stuff
 PetscInt, parameter :: HDF5_READ_BUFFER_SIZE = 1000000
+PetscInt, parameter :: HDF5_READ_BCAST_SIZE = 128
+PetscInt, parameter :: HDF5_WRITE_BCAST_SIZE = 16
 !#define HDF5_BROADCAST
-!#define VAMSI_HDF5
-PetscInt, parameter :: HDF5_BROADCAST_SIZE = 1024
 
 ! Tecplot stuff
 PetscInt, parameter :: TECPLOT_POINT_FORMAT = 1

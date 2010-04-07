@@ -6,39 +6,9 @@ pflotran_src = ./
 common_src   = ./
 bindir = ./${PETSC_ARCH}/bin
 
-ifdef hdf5
-  ifdef jaguar
-    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5
-    HDF5_LIBS = $(HDF5_FLIB) -lhdf5_fortran -lhdf5 -lz -lsz
-    found=1
-  endif 
-  ifeq ($(machine),jaguar)
-    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5
-    HDF5_LIBS = $(HDF5_FLIB) -lhdf5_fortran -lhdf5 -lz -lsz
-    found=1
-  endif 
-  ifeq ($(machine),franklin)
-# hdf5 libs are screwed up on franklin.  for now use hardwired default
-    HDF5_FLAGS = $(HDF5) -DUSE_HDF5 -I$(HDF5_DIR_NERSC)/lib
-    HDF5_LIBS = $(HDF5)
-    found=1
-  endif
-  ifndef found
-    HDF5_FLAGS = -I$(HDF5_INCLUDE) -I$(HDF5_LIB) -DUSE_HDF5
-    HDF5_LIBS = -L$(HDF5_LIB) -lhdf5_fortran -lhdf5 -lz  
-#    HDF5_LIBS = -L$(HDF5_LIB) $(HDF5_LIB)/libhdf5_fortran.a $(HDF5_LIB)/libhdf5.a -lz
-  endif
-endif
-
-ifdef hdf5-glenn
-    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5 -DHDF5_BROADCAST
-    HDF5_LIBS = $(HDF5_FLIB) -lhdf5_fortran -lhdf5 -lz -lsz
-endif
-
 ifdef hdf5-vamsi
-    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5 -DVAMSI_HDF5
-    HDF5_LIBS = $(HDF5_FLIB) -lhdf5_fortran -lhdf5 -lz -lsz
-endif	
+    HDF5_FLAGS = -DVAMSI_HDF5 -DVAMSI_HDF5_READ -DVAMSI_HDF5_WRITE -DVAMSI_STAGE_BARRIER 
+endif   
 
 ifdef compile_broken
   COMPILE_BROKEN_FLAGS = -DCOMPILE_BROKEN
@@ -53,31 +23,32 @@ GLENN_FLAGS = -DGLENN -DENABLE_UNSTRUCTURED
 endif
 
 ifdef temp
-TEMP_FLAGS = -DTEMP_DEPENDENT_LOGK
+TEMP_FLAG = -DTEMP_DEPENDENT_LOGK
 endif
 
 ifdef chuan_co2
-CHUAN_FLAGS = -DCHUAN_CO2
+CHUAN_FLAG = -DCHUAN_CO2
+endif
+
+ifdef coll
+#COLL_FLAG = -DCOLL
+COLL_FLAG = -DREVISED_TRANSPORT
 endif
 
 ifdef vamsi_hdf5
-  HDF5_FLAGS += -DVAMSI_HDF5
+  HDF5_FLAGS += -DVAMSI_HDF5 -DVAMSI_DEFAULT -DVAMSI_HDF5_READ -DVAMSI_HDF5_WRITE -DVAMSI_STAGE_BARRIER
 endif
 
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) \
-          $(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG) $(TEMP_FLAGS)\
- 					$(CHUAN_FLAGS)
-LIBS = $(HDF5_LIBS)
+          $(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG) $(TEMP_FLAG)\
+ 					$(CHUAN_FLAG) $(COLL_FLAG)
 
 CFLAGS		 = 
 FFLAGS		 = #-Rb
 CPPFLAGS         = ${MYFLAGS}
 FPPFLAGS         = ${MYFLAGS}
-ifdef ABSOFT
-FPPFLAGS         += ${MYFLAGS} -p${HDF5_LIB}
-endif
 
-CLEANFILES       = pflotran pflotran_fc
+CLEANFILES       = pflotran 
 
 ifdef petscrel
  include ${PETSC_DIR}/bmake/common/base
@@ -101,7 +72,9 @@ util_obj  = ${common_src}input.o \
 common_obj = ${common_src}option.o \
 	${common_src}units.o\
 	${common_src}logging.o \
+	${common_src}hdf5_aux.o \
 	${common_src}global_aux.o\
+	${common_src}matrix_block_aux.o\
 	${common_src}reactive_transport_aux.o\
 	${common_src}reaction_aux.o\
 	${common_src}thc_aux.o\
@@ -209,7 +182,8 @@ saturation_function.o : option.o input.o string.o utility.o
 coupler.o : condition.o connection.o region.o input.o grid.o
 observation.o : region.o option.o input.o
 convergence.o : option.o solver.o grid.o
-condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o string.o
+condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o \
+	      string.o hdf5_aux.F90
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
                 strata.o waypoint.o field.o hydrostatic.o debug.o \
 		observation.o velocity.o \
@@ -230,10 +204,10 @@ output.o : grid.o structured_grid.o option.o realization.o field.o \
 					 discretization.o logging.o
 reaction.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reaction_aux.o : option.o string.o
-transport.o : reactive_transport_aux.o option.o
-reactive_transport.o : realization.o reaction.o transport.o \
+transport.o : reactive_transport_aux.o option.o matrix_block_aux.o
+reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
                        reactive_transport_aux.o fluid.o
-reactive_transport_aux.o : option.o reaction_aux.o
+reactive_transport_aux.o : option.o reaction_aux.o matrix_block_aux.o
 thc.o : thc_aux.o realization.o saturation_function.o
 richards.o : richards_aux.o realization.o saturation_function.o \
              matrix_buffer.o
@@ -253,6 +227,7 @@ timestepper.o : thc.o richards.o mphase.o \
                 output.o convergence.o checkpoint.o waypoint.o logging.o \
                 mass_balance.o input.o string.o
 hdf5.o : realization.o option.o logging.o
+hdf5_aux.o : option.o logging.o
 checkpoint.o : realization.o logging.o
 mass_balance.o : realization.o option.o field.o solver.o logging.o thc.o
 database.o : reaction.o input.o option.o utility.o reaction_aux.o string.o
