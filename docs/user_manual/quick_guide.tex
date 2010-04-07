@@ -466,31 +466,30 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \hyperlink{target_cond}{\bf CONDITION} & \\
 \hyperlink{target_datset}{\bf DATASET} & \\
 \hyperlink{target_dbg}{\bf DEBUG} & \\
-\hyperlink{target_dif}{\bf DIFF} & \\
-\hyperlink{target_fluid_properties}{\bf FLUID\_PROPERTIES} & \\
-\hyperlink{target_gravity}{\bf GRAVITY} & \\
-\hyperlink{target_grid}{\bf GRID} & \\
-\hyperlink{target_invert}{\bf INVERT\_Z (INVERTZ)} & \\
+\hyperlink{target_fluid_property}{\bf FLUID\_PROPERTY} & \\
+\hyperlink{target_grid}{\bf GRID} & (required)\\
 \hyperlink{target_init}{\bf INITIAL\_CONDITION} & \\
 \hyperlink{target_linsolv}{\bf LINEAR\_SOLVER} & \\
 \hyperlink{target_mat}{\bf MATERIAL (MATERIALS, PHIK)} & \\
 \hyperlink{target_mode}{\bf MODE} & \\
 \hyperlink{target_newt}{\bf NEWTON\_SOLVER} & \\
 \hyperlink{target_numjac}{\bf NUMERICAL\_JACOBIAN} & \\
+\hyperlink{target_observation}{\bf OBSERVATION} & \\
 \hyperlink{target_orig}{\bf ORIG, ORIGIN} & \\
 \hyperlink{target_output}{\bf OUTPUT} & \\
 \hyperlink{target_overwrite}{\bf OVERWRITE\_RESTART\_TRANSPORT} & \\
+\hyperlink{target_proc}{\bf PROC} & (optional)\\
 \hyperlink{target_region}{\bf REGION} & \\
 \hyperlink{target_restart}{\bf RESTART} & \\
-\hyperlink{target_sat}{\bf SATURATION\_FUNCTION (SATURATION\_FUNCTION, PCKR)} & \\
+\hyperlink{target_sat}{\bf SATURATION\_FUNCTION} & \\
 \hyperlink{target_src}{\bf SOURCE\_SINK} & \\
 \hyperlink{target_strata}{\bf STRATIGRAPHY (STRATA)} & \\
 \hyperlink{target_thrm}{\bf THERMAL\_PROPERTY (THERMAL\_PROPERTIES)} & \\
 \hyperlink{target_time}{\bf TIME} & \\
 \hyperlink{target_timestep}{\bf TIMESTEPPER} & \\
-%\hyperlink{target_tran}{TRAN} & \\
 \hyperlink{target_unifvel}{\bf UNIFORM\_VELOCITY} & \\
 \hyperlink{target_touch}{\bf USE\_TOUCH\_OPTIONS} & \\
+\hyperlink{target_veldata}{\bf VELOCITY\_DATASET} & (optional) \\
 \hyperlink{target_wallclk}{\bf WALLCLOCK\_STOP} & \\
 \bottomrule[1.5pt]
 %\end{tabular}
@@ -562,65 +561,13 @@ END
 %========================================================================
 
 \newpage
-\protect\hypertarget{target_obs}{}
-
-\subsection{Keyword: OBSERVATION}
-{\noindent\bf Description:}
-The OBSERVATION card specifies a location (REGION) at which flow and transport results (e.g. pressure, saturation, flow velocities, solute concentrations, etc.) will be monitored in the output.
-The user must specify either a region or boundary condition to which the observation object is linked.  The velocity keyword toggles on the printing of velocities at a point in space.
-
-{\noindent\bf Input:}
-
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[OBSERVATION]
-\item[REGION] region\_name
-\item[BOUNDARY\_CONDITION] boundary\_condition\_name
-\item[VELOCITY]
-\item[END]
-\end{deflist}
-%\end{minipage}
-%}
-
-{\noindent\bf Explanation:}
-\begin{description}
-\item[Keyword OBSERVATION] initiates an observation point entry.
-\item[Keyword REGION] (optional) defines the name of the region (usually a point in space) to which the observation point is linked.
-\item[Keyword BOUNDARY\_CONDITION] (optional) specifies the name of a boundary condition to which the observation point is tied (e.g. to monitor fluxes across a boundary face).
-\item[Keyword VELOCITY] (optional) toggles on the printing of Darcy velocities at the observation point.
-\item[Keyword END] initiates an observation point entry.
-\item[Keyword OBSERVATION] terminates the observation point entry.
-\end{description}
-
-{\noindent\bf Examples:}
-\begin{verbatim}
-OBSERVATION
-REGION well1
-VELOCITY
-END
-
-OBSERVATION
-BOUNDARY_CONDITION river
-END
-
-\end{verbatim}
-
-
-%========================================================================
-
-\newpage
 \protect\hypertarget{target_brine}{}
 
 \subsection{Keyword: BRINE (BRIN)}
 
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[BRIN, BRINE] m\_nacl [MOLAL, MASS, MOLE]
+\begin{deflist}{000}
+\item[BRINE, BRIN] {\tt Value m\_nacl} [MOLAL, MASS, MOLE]
 \end{deflist}
-%\end{minipage}
-%}
 
 %========================================================================
 
@@ -628,18 +575,14 @@ END
 \protect\hypertarget{target_ckpt}{}
 
 \subsection{Keyword: CHECKPOINT}
-{\noindent\bf Description}
+{\noindent\bf Description:}
 Checkpoint files enable the restart of a simulation at any discrete point in simulation where a checkpoint file has been printed.  When the CHECKPOINT card is included in the input deck, checkpoint files are printed every N time steps, where N is the checkpoint frequency, and at the end of the simulation, should the simulation finish or the be shut down properly mid-simulation using the WALL\_CLOCK\_STOP card.  Checkpoint files are named 'pflotran.chkN', where N is the number of the timestep when the checkpoint file was printed, or 'restart.chk' when printed as PFLOTRAN properly terminates execution.
 
 {\noindent\bf Input:}
 
-%\shadowbox{
-%\begin{minipage}{6.5in}
 \begin{deflist}{0000000000}
 \item [CHECKPOINT] checkpoint\_frequency
 \end{deflist}
-%\end{minipage}
-%}
 
 {\noindent\bf Explanation:}
 \begin{description}
@@ -829,7 +772,7 @@ Gas\_Species & List of gas species.\\
 \newpage
 \protect\hypertarget{target_stat}{}
 
-\subsection{Keyword: COMPUTE\_STATISTICS (STATISTICS)}
+\subsection{Keyword: COMPUTE\_STATISTICS}
 
 \noindent
 {\bf Description:}
@@ -839,7 +782,7 @@ COMPUTE\_STATISTICS enables the calculation statistical analysis of flow velocit
 %\shadowbox{
 %\begin{minipage}{6.5in}
 \begin{deflist}{0000000000}
-\item [COMPUTE\_STATISTICS, STATISTICS] \{compute\_statistics = .true.\}
+\item [COMPUTE\_STATISTICS] \{compute\_statistics = .true.\}
 \end{deflist}
 %\end{minipage}
 %}
@@ -848,6 +791,9 @@ COMPUTE\_STATISTICS enables the calculation statistical analysis of flow velocit
 
 \noindent
 {\bf Example:}
+\begin{verbatim}
+COMPUTE_STATISTICS
+\end{verbatim}
 
 %================================================================
 
@@ -1044,8 +990,6 @@ CONSTRAINT_LIST
 \protect\hypertarget{target_dbg}{}
 
 \subsection{Keyword: DEBUG}
-%\shadowbox{
-%\begin{minipage}{6.5in}
 \begin{deflist}{00}
 \item[DEBUG]~
 \begin{deflist}{00}
@@ -1059,147 +1003,117 @@ CONSTRAINT_LIST
 \end{deflist}
 \item[(.,/,END)]
 \end{deflist}
-%\end{minipage}
-%}
 
 %========================================================================
 
 \newpage
-\protect\hypertarget{target_dif}{}
+\protect\hypertarget{target_fluid_property}{}
 
-\subsection{Keyword: DIFF}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[DIFF] difaq delhaq
+\subsection{Keyword: FLUID\_PROPERTY}
+
+\noindent{\bf Description:}
+
+\noindent{\bf Input:}
+\begin{deflist}{000}
+\item[FLUID\_PROPERTY]~
+\begin{deflist}{000}
+\item[PHASE] \ {\tt Name}
+\item[DIFFUSION\_COEFFICIENT] \ {\tt Value} [m$^2$/s]
 \end{deflist}
-%\end{minipage}
-%}
-
-%========================================================================
-
-\newpage
-\protect\hypertarget{target_dtst}{}
-
-\subsection{Keyword: DTST}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[DTST] $\Delta t$\_min
-\item $t_1$ \ $\Delta t_1$
-\item $t_2$ \ $\Delta t_2$
-\item \ldots
-\item $t_N$ \ $\Delta t$\_max
-\end{deflist}
-%\end{minipage}
-%}
-
-%========================================================================
-\begin{comment}
-\protect\hypertarget{target_dxyz}{}
-
-\subsection{Keyword: DXYZ}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[DXYZ] [STRUCTURED\_GRID, AMR\_GRID]
-\item dx0
-\item dy0
-\item dz0
-\end{deflist}
-%\end{minipage}
-%}
-\end{comment}
-%========================================================================
-
-\newpage
-\protect\hypertarget{target_fluid_properties}{}
-
-\subsection{Keyword: FLUID\_PROPERTIES (FLUID\_PROPERTY)}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[FLUID\_PROPERTIES (FLUID\_PROPERTY)]
-\item diff\_base
-\item diff\_exp
 \item[(., /, END)]
 \end{deflist}
-%\end{minipage}
-%}
 
-%========================================================================
+\noindent{\bf Explanation:}
 
-\newpage
-\protect\hypertarget{target_gravity}{}
-
-\subsection{Keyword: GRAVITY (GRAV)}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[GRAVITY (GRAV)] gravity
-\end{deflist}
-%\end{minipage}
-%}
+\noindent{\bf Example:}
+\begin{verbatim}
+FLUID_PROPERTY
+DIFFUSION_COEFFICIENT 1.d-9
+/
+\end{verbatim}
 
 %========================================================================
 
 \newpage
 \protect\hypertarget{target_grid}{}
 
-\subsection{Keyword: GRID}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{00}
-\item[GRID]
-\item TYPE
-\begin{deflist}{00}
-\item STRUCTURED
-\begin{deflist}{00}
-\item cartesian
-\item cylindrical
-\item spherical
-\end{deflist}
-\item UNSTRUCTURED
-\item amr
-\end{deflist}
-\item NXYZ nx ny nz
-\item ORIGIN (ORIG)
-\item FILE
-\item DXYZ
-\begin{deflist}{00}
-\item dx
-\item dy
-\item dz
-\end{deflist}
-\item END
+\subsection{Keyword: GRID \hfill Required}
 
-\item BOUNDS
-\begin{deflist}{00}
-\item For CARTESIAN coordinates input:
-\begin{deflist}{00000}
-\item x\_min, x\_max
-\item y\_min, y\_max
-\item z\_min, z\_max
+\noindent{\bf Description:}
+
+\noindent{\bf Input:}
+\begin{deflist}{000}
+\item[GRID]~
+\begin{deflist}{000}
+\item[TYPE] {\bf structured \ [cartesian]}
+\item[TYPE] {\bf structured \ cylindrical}
+\item[TYPE] {\bf structured \ spherical}
+
+\item[TYPE] {\bf unstructured} \ {\tt file\_name}
+\item[TYPE] {\bf amr}
+
+\item[ORIG, ORIGIN] {\tt X, Y, Z}
+\item[NXYZ] \ {\tt nx ny nz}
+\item[FILE]
+\item[GRAVITY]
+\item[INVERT\_Z]
+\item[DXYZ]~
+\begin{deflist}{000}
+\item[{\tt dx}]
+\item[{\tt dy}]
+\item[{\tt dz}]
 \end{deflist}
-\item For CYLINDRICAL coordinates input:
-\begin{deflist}{00}
-\item r\_min, r\_max
-\item z\_min, z\_max
+\item[(., /, END)]~
+
+\item[CARTESIAN coordinates input:]~
+\begin{deflist}{000}
+\item[BOUNDS]~
+\begin{deflist}{000}
+\item[{\tt x\_min, x\_max}]
+\item[{\tt y\_min, y\_max}]
+\item[{\tt z\_min, z\_max}]
 \end{deflist}
-\item For SPHERICAL coordinates input:
-\begin{deflist}{00}
-\item r\_min, r\_max
+\item[(., /, END)]~
 \end{deflist}
-\item UNSTRUCTURED
-\item AMR
+
+\item[CYLINDRICAL coordinates input:]~
+\begin{deflist}{000}
+\item[BOUNDS]~
+\begin{deflist}{000}
+\item[{\tt r\_min, r\_max}]
+\item[{\tt z\_min, z\_max}]
 \end{deflist}
-\item END
-\item[END]
+\item[(., /, END)]~
 \end{deflist}
+
+\item[SPHERICAL coordinates input:]~
+\begin{deflist}{000}
+\item[BOUNDS]~
+\begin{deflist}{000}
+\item[{\tt r\_min, r\_max}]
+\end{deflist}
+\item[(., /, END)]~
+\end{deflist}
+
+%\item UNSTRUCTURED
+\item[AMR input:] ~
+\begin{deflist}{000}
+\item[BOUNDS]~
+\begin{deflist}{000}
+\item[{\tt dx}]
+\item[{\tt dy}]
+\item[{\tt dz}]
+\end{deflist}
+\item[(., /, END)]
+\end{deflist}
+\end{deflist}
+\item[(., /, END)]
+\end{deflist}
+
+\noindent{\bf Explanation:}
 
 \noindent
-Example: GRID
-
+{\bf Example:}
 \begin{verbatim}
 GRID
 TYPE structured cylindrical
@@ -1209,6 +1123,7 @@ DXYZ
 1.d0
 2.d0
 END
+
 BOUNDS
 0. 1000.
 0. 64.
@@ -1218,36 +1133,28 @@ END
 %========================================================================
 
 \newpage
-\protect\hypertarget{target_invert}{}
-
-\subsection{Keyword: INVERT\_Z (INVERTZ)}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[INVERT\_Z (INVERTZ)] \{invert\_z\_axis = .true.\}
-\end{deflist}
-%\end{minipage}
-%}
-
-%========================================================================
-
-\newpage
 \protect\hypertarget{target_init}{}
 
 \subsection{Keyword: INITIAL\_CONDITION}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[INITIAL\_CONDITION]
-\item REGION region\_name
-\item FLOW\_CONDITION condition\_name
-\item TRANSPORT\_CONDITION condition\_name
-\item TYPE [initial, boundary, source\_sink]
-\item FACE [WEST, EAST, NORTH, SOUTH, BOTTOM, TOP]
-\item[END]
+
+\noindent{\bf Description:}
+
+\noindent{\bf Input:}
+\begin{deflist}{000}
+\item[INITIAL\_CONDITION] \ [{\tt Name}]
+\begin{deflist}{000}
+\item[REGION] {\tt region\_name}
+\item[FLOW\_CONDITION] {\tt condition\_name}
+\item[TRANSPORT\_CONDITION] {\tt condition\_name}
+%\item[TYPE] [{\tt initial, boundary, source\_sink}]
+%\item[FACE] \ {\bf [WEST, EAST, NORTH, SOUTH, BOTTOM, TOP]}
 \end{deflist}
-%\end{minipage}
-%}
+\item[(., /, END)] ~
+\end{deflist}
+
+\noindent{\bf Explanation:}
+
+\noindent{\bf Example:}
 
 %========================================================================
 
@@ -1255,49 +1162,145 @@ END
 \protect\hypertarget{target_linsolv}{}
 
 \subsection{Keyword: LINEAR\_SOLVER}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[LINEAR\_SOLVER]
-\item TRAN, TRANSPORT (tran\_solver) / DEFAULT (flow\_solver)
-\item SOLVER\_TYPE (SOLVER, KRYLOV\_TYPE, KRYLOV, KSP, KSP\_TYPE)
-\begin{deflist}{0000000000}
-\item    NONE (PREONLY)
-\item    GMRES
-\item    BCGS (BICGSTAB, BI-CGSTAB)
+
+\noindent{\bf Description:}
+
+\noindent{\bf Input:}
+\begin{deflist}{000}
+\item[LINEAR\_SOLVER] \ [{\bf TRAN, TRANSPORT / FLOW}]
+
+\begin{deflist}{000}
+\item[SOLVER\_TYPE (SOLVER, KRYLOV\_TYPE, KRYLOV, KSP, KSP\_TYPE)] ~
+
+\begin{deflist}{000}
+\item[NONE (PREONLY)]
+\item[GMRES]
+\item[FGMRES]
+\item[BCGS] \ (BICGSTAB, BI-CGSTAB)
+\item[IBCGS] \ (IBICGSTAB, IBI-CGSTAB)
+\item[RICHARDSON]
+\item[CG]
 \end{deflist}
-\item  PRECONDITIONER\_TYPE (PRECONDITIONER, PC, PC\_TYPE)
-\begin{deflist}{0000000000}
-\item    ILU (PCILU)
-\item    LU (PCLU)
-\item    BJACOBI (BLOCK\_JACOBI)
-\item    ASM (ADDITIVE\_SCHWARTZ)
-\item    PCASM
-\item  ATOL
-\item  RTOL
-\item  DTOL
-\item  MAXIT
+
+\item[PRECONDITIONER\_TYPE (PRECONDITIONER, PC, PC\_TYPE)] ~
+
+\begin{deflist}{000}
+\item[NONE (PCNONE)]
+\item[ILU (PCILU)]
+\item[LU (PCLU)]
+\item[BJACOBI (BLOCK\_JACOBI)]
+\item[ASM (ADDITIVE\_SCHWARTZ)]
+\item[PCASM]
+\item[HYPRE]
+\item[SHELL]
+\end{deflist}
+
+\item[HYPRE\_OPTIONS]
+\begin{deflist}{000}
+\item[TYPE] \ [{\tt pilut, parasails, boomeramg, euclid}]
+\item[BOOMERAMG\_CYCLE\_TYPE] / [{\tt V, W}]
+\item[BOOMERAMG\_MAX\_LEVELS] \ {\tt Value}
+\item[BOOMERAMG\_MAX\_ITER] \ {\tt Value}
+\item[BOOMERAMG\_TOL] \ {\tt Value}
+\item[BOOMERAMG\_TRUNCFACTOR] \ {\tt Value}
+\item[BOOMERAMG\_AGG\_NL] \ {\tt Value}
+\item[BOOMERAMG\_AGG\_NUM\_PATHS] \ {\tt Value}
+\item[BOOMERAMG\_STRONG\_THRESHOLD] \ {\tt Value}
+\item[BOOMERAMG\_GRID\_SWEEPS\_ALL] \ {\tt Value}
+\item[BOOMERAMG\_GRID\_SWEEPS\_DOWN] \ {\tt Value}
+\item[BOOMERAMG\_GRID\_SWEEPS\_UP] \ {\tt Value}
+\item[BOOMERAMG\_GRID\_SWEEPS\_COARSE] \ {\tt Value}
+\item[BOOMERAMG\_RELAX\_TYPE\_ALL] \ {\tt Value}
+\item[BOOMERAMG\_RELAX\_TYPE\_DOWN] \ {\tt Value}
+\item[BOOMERAMG\_RELAX\_TYPE\_UP] \ {\tt Value}
+\item[BOOMERAMG\_RELAX\_TYPE\_COARSE] \ {\tt Value}
+\item[BOOMERAMG\_RELAX\_WEIGHT\_ALL] \ {\tt Value}
+\item[BOOMERAMG\_RELAX\_WEIGHT\_LEVEL] \ {\tt Value}
+\item[BOOMERAMG\_OUTER\_RELAX\_WEIGHT\_ALL] \ {\tt Value}
+\item[BOOMERAMG\_OUTER\_RELAX\_WEIGHT\_LEVEL] \ {\tt Value}
+\item[BOOMERAMG\_NO\_CF] \ {\tt Value}
+\item[BOOMERAMG\_MEASURE\_TYPE] \ {\tt Value}
+\item[BOOMERAMG\_COARSEN\_TYPE] \ {\tt Value}
+\item[BOOMERAMG\_INTERPOLATION\_TYPE, BOOMERAMG\_INTERP\_TYPE] \ {\tt Value}
+\item[BOOMERAMG\_NODAL\_COARSEN] \ {\tt Value}
+\item[BOOMERAMG\_NODAL\_RELAXATION] \ {\tt Value}
+\end{deflist}
+
+\item[ATOL] \ {\tt Value}
+\item[RTOL] \ {\tt Value}
+\item[DTOL] \ {\tt Value}
+\item[MAXIT] \ {\tt Value}
+
 \end{deflist}
 \item[(., /, END)]
 \end{deflist}
-%\end{minipage}
-%}
+
+\noindent{\bf Explanation:}
+
+\noindent{\bf Example:}
 
 %========================================================================
 
 \newpage
 \protect\hypertarget{target_mat}{}
 
-\subsection{Keyword: MATERIAL (MATERIALS, PHIK)}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[MATERIAL (MATERIALS, PHIK)]
-\item name id \ icap \ ithrm \ por \ tor \ permx \ permy \ permz \ permpwr
+\subsection{Keyword: MATERIAL\_PROPERTY}
+
+\noindent{\bf Description:}
+
+\noindent{\bf Input:}
+\begin{deflist}{000}
+\item[MATERIAL\_PROPERTY] \ {\tt Name}
+\begin{deflist}{000}
+\item[ID] \ {\tt Value}
+\item[SATURATION\_FUNCTION] \ {\tt Name}
+\item[ROCK\_DENSITY] \ {\tt Value}
+\item[SPECIFIC\_HEAT] \ {\tt Value}
+\item[LONGITUDINAL\_DISPERSIVITY] \ {\tt Value}
+\item[TRANSVERSE\_DISPERSIVITY] \ (not implemented)
+\item[THERMAL\_CONDUCTIVITY\_DRY] \ {\tt Value}
+\item[THERMAL\_CONDUCTIVITY\_WET] \ {\tt Value}
+\item[PORE\_COMPRESSIBILITY] \ {\tt Value}
+\item[THERMAL\_EXPANSITIVITY] \ {\tt Value}
+\item[POROSITY] \ {\tt Value}
+\item[POROSITY] \ {\tt porosity\_filename}
+\item[TORTUOSITY] \ {\tt Value}
+\item[PERMEABILITY] ~
+\begin{deflist}{000}
+\item[ANISOTROPIC]
+\item[VERTICAL\_ANISOTROPY\_RATIO] \ {\tt Value}
+\item[ISOTROPIC]
+\item[PERM\_X] \ {\tt Value}
+\item[PERM\_Y] \ {\tt Value}
+\item[PERM\_Z] \ {\tt Value}
+\item[PERM\_ISO] \ {\tt Value}
+\end{deflist}
+\item[(., /, END)]
+\item[PERMEABILITY\_POWER] \ {\tt Value}
+\item[TORTUOSITY\_POWER] \ {\tt Value}
+\item[MINERAL\_SURFACE\_AREA\_POWER] \ {\bf VOLUME FRACTION} \ {\tt Value}
+\item[MINERAL\_SURFACE\_AREA\_POWER] \ {\bf POROSITY} \ {\tt Value}
+\item[RANDOM\_DATASET] \ {\tt permeability\_filename}
+\end{deflist}
 \item[(., /, END)]
 \end{deflist}
-%\end{minipage}
-%}
+
+\noindent{\bf Explanation:}
+
+\noindent{\bf Example:}
+\begin{verbatim}
+MATERIAL_PROPERTY  Hanford
+ID 1
+SATURATION_FUNCTION sf1
+POROSITY 0.332
+TORTUOSITY 1.
+PERMEABILITY
+PERM_X 1.d-12
+PERM_Y 1.d-12
+PERM_Z 1.d-12
+/
+/
+\end{verbatim}
 
 %========================================================================
 
@@ -1306,18 +1309,26 @@ END
 
 \subsection{Keyword: MODE}
 
-\noindent{\bf Description:} determines the mode of operation: IMMIS (immisible), MPH (CO$_2$ + H$_2$O), Richards (vadose-saturated zones), THC (thermal-hydrologic-chemical, not implemented).
+\noindent{\bf Description:} determines the mode of operation: IMMIS (Immisible), MPH (CO$_2$ + H$_2$O), Richards (vadose-saturated zones), THC (Thermal-Hydrologic-Chemical, not implemented).
 
 \noindent{\bf Input:}
-\begin{deflist}{0000000000}
-\item[MODE] \bf [IMMIS, MPH, RICHARDS, RICHARDS\_LITE, THC (\rm not implemented)]
+\begin{deflist}{000}
+\item[MODE] ~
+\begin{deflist}{000}
+\item[IMMIS]
+\item[MPH]
+\item[RICHARDS]
+%\item[RICHARDS\_LITE]
+\item[THC (\rm not implemented)]
+\end{deflist}
 \end{deflist}
 
 \noindent{\bf Explanation:}
 
 \noindent{\bf Example:}
-
+\begin{verbatim}
 MODE THC
+\end{verbatim}
 
 %========================================================================
 
@@ -1325,28 +1336,34 @@ MODE THC
 \protect\hypertarget{target_newt}{}
 
 \subsection{Keyword: NEWTON\_SOLVER}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[NEWTON\_SOLVER]
-\item  TRAN, TRANSPORT (tran\_solver) / DEFAULT (flow\_solver)
-\item  INEXACT\_NEWTON
-\item  NO\_PRINT\_CONVERGENCE
-\item  NO\_INF\_NORM (NO\_INFINITY\_NORM)
-\item  NO\_FORCE\_ITERATION
-\item  PRINT\_DETAILED\_CONVERGENCE
-\item  ATOL
-\item  RTOL
-\item  STOL
-\item  DTOL
-\item  ITOL (INF\_TOL, ITOL\_RES, INF\_TOL\_RES)
-\item  ITOL\_UPDATE (INF\_TOL\_UPDATE)
-\item  MAXIT
-\item  MAXF
+
+\noindent{\bf Description:} 
+
+\noindent{\bf Input:}
+\begin{deflist}{000}
+\item[NEWTON\_SOLVER] ~
+\begin{deflist}{000}
+\item[TRAN, TRANSPORT (tran\_solver) / DEFAULT (flow\_solver)]
+\item[INEXACT\_NEWTON]
+\item[NO\_PRINT\_CONVERGENCE]
+\item[NO\_INF\_NORM (NO\_INFINITY\_NORM)]
+\item[NO\_FORCE\_ITERATION]
+\item[PRINT\_DETAILED\_CONVERGENCE]
+\item[ATOL]
+\item[RTOL]
+\item[STOL]
+\item[DTOL]
+\item[ITOL (INF\_TOL, ITOL\_RES, INF\_TOL\_RES)]
+\item[ITOL\_UPDATE (INF\_TOL\_UPDATE)]
+\item[MAXIT]
+\item[MAXF]
+\end{deflist}
 \item[(., /, END)]
 \end{deflist}
-%\end{minipage}
-%}
+
+\noindent{\bf Explanation:}
+
+\noindent{\bf Example:}
 
 %========================================================================
 
@@ -1354,13 +1371,52 @@ MODE THC
 \protect\hypertarget{target_numjac}{}
 
 \subsection{Keyword: NUMERICAL\_JACOBIAN}
-%\shadowbox{
-%\begin{minipage}{6.5in}
 \begin{deflist}{0000000000}
 \item[NUMERICAL\_JACOBIAN] \{numerical\_derivatives = .true.\}
 \end{deflist}
-%\end{minipage}
-%}
+
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_observation}{}
+
+\subsection{Keyword: OBSERVATION}
+
+{\noindent\bf Description:}
+The OBSERVATION card specifies a location (REGION) at which flow and transport results (e.g. pressure, saturation, flow velocities, solute concentrations, etc.) will be monitored in the output.
+The user must specify either a region or boundary condition to which the observation object is linked.  The velocity keyword toggles on the printing of velocities at a point in space.
+
+\noindent{\bf Input:}
+\begin{deflist}{000}
+\item[OBSERVATION] ~
+\begin{deflist}{000}
+\item[BOUNDARY\_CONDITION] \ {\tt boundary condition name}
+\item[REGION] \ {\tt region name}
+\item[VELOCITY]
+\item[AT\_CELL\_CENTER]
+\end{deflist}
+\item[(., /, END)]
+\end{deflist}
+
+{\noindent\bf Explanation:}
+\begin{description}
+\item[Keyword OBSERVATION] initiates an observation point entry.
+\item[Keyword REGION] (optional) defines the name of the region (usually a point in space) to which the observation point is linked.
+\item[Keyword BOUNDARY\_CONDITION] (optional) specifies the name of a boundary condition to which the observation point is tied (e.g. to monitor fluxes across a boundary face).
+\item[Keyword VELOCITY] (optional) toggles on the printing of Darcy velocities at the observation point.
+\end{description}
+
+{\noindent\bf Examples:}
+\begin{verbatim}
+OBSERVATION
+REGION well1
+VELOCITY
+END
+
+OBSERVATION
+BOUNDARY_CONDITION river
+END
+\end{verbatim}
 
 %========================================================================
 
@@ -1368,13 +1424,9 @@ MODE THC
 \protect\hypertarget{target_orig}{}
 
 \subsection{Keyword: ORIGIN (ORIG)}
-%\shadowbox{
-%\begin{minipage}{6.5in}
 \begin{deflist}{0000000000}
 \item[ORIGIN (ORIG)] X\_DIRECTION Y\_DIRECTION Z\_DIRECTION
 \end{deflist}
-%\end{minipage}
-%}
 
 %========================================================================
 
@@ -1392,17 +1444,25 @@ MODE THC
 \item[OUTPUT] ~
 \begin{deflist}{00}
 \item[TIMES] {\tt Unit (s, h, y)} \ \ \ {\tt Value} 
+\item[SCREEN OFF]
 \item[SCREEN PERIODIC] {\tt Value}
 \item[PERIODIC TIME] {\tt Value} \ {\tt Unit}
-\item[PERIODIC\_OBSERVATION TIMESTEP] {\tt Value}
+\item[PERIODIC TIMESTEP] {\tt Value} \ {\tt Unit}
 \item[PERIODIC\_OBSERVATION TIME] {\tt Value} \ {\tt Unit}
+\item[PERIODIC\_OBSERVATION TIMESTEP] {\tt Value}
+\item[NO\_FINAL, NO\_PRINT\_FINAL]
 \item[FORMAT TECPLOT POINT]
 \item[FORMAT TECPLOT BLOCK]
 \item[FORMAT HDF5]
+\item[FORMAT MAD]
+\item[FORMAT VTK]
+\item[PERMEABILITY]
+\item[POROSITY]
+\item[FLUXES]
 \item[VELOCITIES]
 \item[MASS\_BALANCE]
 \end{deflist}
-\item[(.,/,END)]
+\item[(., /, END)]
 \end{deflist}
 
 \noindent {\bf Explanation:}
@@ -1410,34 +1470,25 @@ MODE THC
 \begin{tabularx}{\linewidth}{lX}
 OUTPUT: & keyword to control output.\\
 TIMES: & list of output times.\\
+SCREEN OFF: & turns off screen output\\
 SCREEN PERIODIC: & controls screen output frequency.\\
 PERIODIC TIME: & controls frequency of output times.\\
-PERIODIC\_OBSERVATION TIMESTEP: & frequency of output time step.\\
+PERIODIC TIMESTEP: & controls frequency of output time steps.\\
 PERIODIC\_OBSERVATION TIME: & frequency of output time.\\
+PERIODIC\_OBSERVATION TIMESTEP: & frequency of output time step.\\
+NO\_FINAL, NO\_PRINT\_FINAL: & \\
 FORMAT TECPLOT POINT: & Tecplot POINT output, valid for 1D and 2D problems.\\
 FORMAT TECPLOT BLOCK: & Tecplot BLOCK output.\\
 FORMAT HDF5: & HDF5 output format written to a .h5 file which can be read by Visit.\\
+FORMAT MAD: & MAD (Method of Anchored Distributions) format.\\
+FORMAT VTK: & VTK format.\\
 UNIT: & time units of seconds (s), days (d), and years (y).\\
+PERMEABILITY: & \\
+POROSITY: & \\
+FLUXES: & \\
 VELOCITIES: & keyword to output velocities.\\
 MASS\_BALANCE: & keyword to output global mass balances and boundary fluxes.
 \end{tabularx}
-
-\begin{comment}
-\begin{description}
-\item OUTPUT:  keyword to control output.\\
-\item SCREEN PERIODIC: controls screen output frequency.\\
-\item PERIODIC TIME: controls frequency of output times.\\
-\item PERIODIC\_OBSERVATION TIMESTEP: frequency of output time step.\\
-\item TIMES: list of output times.\\
-\item PERIODIC\_OBSERVATION TIME: frequency of output time.\\
-\item FORMAT TECPLOT POINT: Tecplot POINT output, valid for 1D and 2D problems.\\
-\item FORMAT TECPLOT BLOCK: Tecplot BLOCK output.\\
-\item FORMAT HDF5: HDF5 output format written to a .h5 file which can be read by Visit.\\
-\item UNIT: time units of seconds (s), days (d), and years (y).\\
-\item VELOCITIES: keyword to output velocities.\\
-\item MASS\_BALANCE: keyword to output global mass balances and boundary fluxes.
-\end{description}
-\end{comment}
 
 \noindent {\bf Examples:}
 
@@ -1477,29 +1528,29 @@ MASS_BALANCE
 
 \subsection{Keyword: REGION}
 
-{\noindent\bf Description}
-
-The REGION card defines a set of grid cells encompassed by a volume or intersected by a plane or point, or a list of grid cell ids.  The REGION name can then be used to link this set of grid cells to material properties, strata, boundary and initial conditions, source sinks, observation points, etc.  Although a region may be defined though the use of IJK indices using the BLOCK keyword, the user is encouraged to define regions either through COORDINATES or lists read in from an HDF5 file in order to minimize the dependence of the input file on grid resolution.  In the case of the FILE keyword, a list of grid cell ids is read from an HDF5 file where the region\_name defines the HDF5 data set.  It should be noted that given a region defined by a plane or point shared by two grid cells (e.g. a plane defining the surface between two grid cells) PFLOTRAN will select the upwind cell(s) as the region.
+{\noindent\bf Description:}
+The {\bf REGION} keyword defines a set of grid cells encompassed by a volume or intersected by a plane or point, or a list of grid cell ids.  The {\bf REGION} name can then be used to link this set of grid cells to material properties, strata, boundary and initial conditions, source sinks, observation points, etc.  Although a region may be defined though the use of (I, J, K) indices using the {\bf BLOCK} keyword, the user is encouraged to define regions either through {\bf COORDINATES} or lists read in from an HDF5 file in order to minimize the dependence of the input file on grid resolution.  In the case of the {\bf FILE} keyword, a list of grid cell ids is read from an HDF5 file where the {\tt region\_name} defines the HDF5 data set.  It should be noted that given a region defined by a plane or point shared by two grid cells (e.g. a plane defining the surface between two grid cells), {\bf PFLOTRAN} will select the upwind cell(s) as the region.
 
 {\noindent\bf Input:}
 
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[REGION] region\_name
-\item[BLOCK] i1 i2 j1 j2 k1 k2
-\item[COORDINATE] x y z
-\item[COORDINATES] ~\\
-x1 y1 z1\\
-x2 y2 z2\\
-\ldots
-\item[FILE] file\_name
-\item[LIST] (to be implemented)
-\item[FACE] face\_name
-\item[END] (.,\,/,\,END)
+\begin{deflist}{000}
+\item[REGION] {\tt region\_name}
+\begin{deflist}{000}
+\item[FILE] \ {\tt file\_name}
+\item[LIST] \ (to be implemented)
+\item[FACE] \ {\tt face\_name}
+\item[BLOCK] \ {\tt i1 \ i2 \ j1 \ j2 \ k1 \ k2}
+\item[COORDINATE] \ {\tt x \ y \ z}
+\item[COORDINATES] ~
+\begin{deflist}{000}
+\item[\tt x1 y1 z1]
+\item[\tt x2 y2 z2]
+\item[\tt x3 y3 z3]
 \end{deflist}
-%\end{minipage}
-%}
+\item[(., /, END)]
+\end{deflist}
+\item[(., /, END)]
+\end{deflist}
 
 {\noindent\bf Explanation:}
 \begin{description}
@@ -1603,16 +1654,43 @@ RESTART restart.chk
 \newpage
 \protect\hypertarget{target_sat}{}
 
-\subsection{Keyword: SATURATION\_FUNCTION (SATURATION\_FUNCTIONS, PCKR)}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[SATURATION\_FUNCTION (SATURATION\_FUNCTIONS, PCKR)]
-\item id \ icaptype \ [(Sr[np],np=1,nphase), Sr] \ pckrm \ alpha \ pcwmax \ pbetac \ pwrprm
+\subsection{Keyword: SATURATION\_FUNCTION}
+
+\noindent{\bf Description:}
+
+\noindent{\bf Input:}
+\begin{deflist}{000}
+\item[SATURATION\_FUNCTION] \ {\tt Name}
+
+\begin{deflist}{000}
+\item[SATURATION\_FUNCTION\_TYPE] \ {\bf VAN\_GENUCHTEN}
+\item[SATURATION\_FUNCTION\_TYPE] \ {\bf MUALEM}
+\item[PERMEABILITY\_FUNCTION\_TYPE] \ {\bf VAN\_GENUCHTEN}
+\item[PERMEABILITY\_FUNCTION\_TYPE] \ {\bf MUALEM}
+\item[RESIDUAL\_SATURATION] \ {\tt Value}
+\item[LAMBDA] \ {\tt Value}
+\item[ALPHA] \ {\tt Value}
+\item[MAX\_CAPILLARY\_PRESSURE] \ {\tt Value}
+\item[BETAC] \ {\tt Value}
+\item[POWER] \ {\tt Value}
+\end{deflist}
 \item[(., /, END)]
 \end{deflist}
-%\end{minipage}
-%}
+
+\noindent{\bf Explanation:}
+
+\noindent{\bf Example:}
+\begin{verbatim}
+SATURATION_FUNCTION sf1
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.1d0
+LAMBDA 2.67d0
+ALPHA 2.042d-4
+MAX_CAPILLARY_PRESSURE 1d8
+BETAC 0.d0
+POWER 1.d0
+/
+\end{verbatim}
 
 %========================================================================
 
@@ -1620,8 +1698,6 @@ RESTART restart.chk
 \protect\hypertarget{target_src}{}
 
 \subsection{Keyword: SOURCE\_SINK}
-%\shadowbox{
-%\begin{minipage}{6.5in}
 \begin{deflist}{0000000000}
 \item[SOURCE\_SINK]
 \item  REGION region\_name
@@ -1630,8 +1706,6 @@ RESTART restart.chk
 \item  FACE [WEST, EAST, NORTH, SOUTH, BOTTOM, TOP]
 \item END
 \end{deflist}
-%\end{minipage}
-%}
 
 %========================================================================
 
@@ -1682,8 +1756,9 @@ RESTART restart.chk
 \item[FINAL\_TIME] {\tt Value} \ {\tt Unit (s, m, h, d, mo, y)}
 \item[INITIAL\_TIMESTEP\_SIZE] {\tt Value} \ {\tt Unit (s, m, h, d, mo, y)}
 \item[MAXIMUM\_TIMESTEP\_SIZE] {\tt Value} \ {\tt Unit (s, m, h, d, mo, y)}
+\item[STEADY\_STATE]
 \end{deflist}
-\item[(.,/.END)]
+\item[(., /, END)]
 \end{deflist}
 
 \noindent{\bf Explanation:}
@@ -1701,8 +1776,11 @@ MAXIMUM_TIMESTEP_SIZE 1.d0 h
 \newpage
 \protect\hypertarget{target_timestep}{}
 
-\noindent{\bf Description:} the keyword {\bf TIMESTEPPER} controls time stepping.
 \subsection{Keyword: TIMESTEPPER}
+
+\noindent{\bf Description:} the keyword {\bf TIMESTEPPER} controls time stepping.
+
+\noindent{\bf Input:}
 \begin{deflist}{000}
 \item[TIMESTEPPER] ~
 \begin{deflist}{000}
@@ -1727,14 +1805,22 @@ MAXIMUM_TIMESTEP_SIZE 1.d0 h
 \newpage
 \protect\hypertarget{target_unifvel}{}
 
-\subsection{Keyword: UNIFORM\_VELOCITY}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[UNIFORM\_VELOCITY] vlx vly vlz
+\subsection{Keyword: UNIFORM\_VELOCITY \hfill Optional}
+%\addcontentsline{toc}{subsection}{\thesubsection\ Keyword: UNIFORM\_VELOCITY} 
+
+\noindent{\bf Description:}
+
+\noindent{\bf Input:}
+\begin{deflist}{000}
+\item[UNIFORM\_VELOCITY] \ {\tt vlx \ vly \ vlz} \ [m/s]
 \end{deflist}
-%\end{minipage}
-%}
+
+\noindent{\bf Explanation:} Set uniform velocity for transport mode.
+
+\noindent{\bf Example:}
+\begin{verbatim}
+UNIFORM_VELOCITY 3.84259d-6 0.d0 0.d0  ! 1.38333 cm/h
+\end{verbatim}
 
 %========================================================================
 
@@ -1742,13 +1828,61 @@ MAXIMUM_TIMESTEP_SIZE 1.d0 h
 \protect\hypertarget{target_touch}{}
 
 \subsection{Keyword: USE\_TOUCH\_OPTIONS}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
+
+\noindent{\bf Description:}
+
+\noindent{\bf Input:}
+\begin{deflist}{000}
 \item[USE\_TOUCH\_OPTIONS] \{use\_touch\_options = .true.\}
 \end{deflist}
-%\end{minipage}
-%}
+
+\noindent{\bf Explanation:}
+
+\noindent{\bf Example:}
+
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_veldata}{}
+
+\subsection{Keyword: VELOCITY\_DATASET}
+
+\noindent{\bf Description:} Set time-dependent velocity for transport mode.
+
+\noindent{\bf Input:}
+\begin{deflist}{000}
+\item[VELOCITY\_DATASET] ~
+\begin{deflist}{000}
+\item[UNITS] \ cm/h
+\item[CYCLIC]
+\item[INTERPOLATION] \ {\bf step} [default]
+\item[INTERPOLATION] \ {\bf linear}
+\item[VELOCITY] ~
+\begin{deflist}{000}
+\item[{\tt Time \ velx \ vely \ velz}]
+\end{deflist}
+\item[(., /, END)]
+\end{deflist}
+\item[(., /, END)]
+\end{deflist}
+
+\noindent{\bf Explanation:}
+
+\noindent{\bf Example:}
+\begin{verbatim}
+VELOCITY_DATASET
+UNITS cm/h
+CYCLIC ! cycles the data set using last time as offset
+:INTERPOLATION STEP ! interpolation method (step [default] or linear)
+VELOCITY
+:time velx vely velz
+:time units = time unit in velocity units
+0.d0       1.38333d0 0.d0 0.d0 
+12.d0     -1.38333d0 0.d0 0.d0 
+24.d0      1.38333d0 0.d0 0.d0 
+/
+/
+\end{verbatim}
 
 %========================================================================
 
@@ -1761,46 +1895,15 @@ MAXIMUM_TIMESTEP_SIZE 1.d0 h
 \begin{deflist}{0000000000}
 \item[WALLCLOCK\_STOP] wallclock\_stop\_time
 \end{deflist}
-%\end{minipage}
-%}
+
+\noindent{\bf Explanation:}
+
+\noindent{\bf Example:}
 
 %========================================================================
 %========================================================================
-
-%Obsolete
-
 %========================================================================
-
-%COMP (not implemented)
-
-%========================================================================
-
-%PHAS (not implemented)
-
-%========================================================================
-
-%TOLR nstepmax iaccel newton\_max icut\_max dpmxe dtmpmxe dcmxe dsmxe
-
-%========================================================================
-
-%COUP (not implemented)
-
-%========================================================================
-
-%PHAR (not implemented)
-
-%========================================================================
-
-%RCTR (not implemented)
-
-%========================================================================
-
-%========================================================================
-
-%========================================================================
-
-%========================================================================
-
+\newpage
 \section*{Example Input File}
 
 %\footnotesize
@@ -2279,6 +2382,7 @@ DATASET permz perm_inv.dat
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\begin{comment}
 \section{PFLOTRAN Objects}
 
 This section gives an overview in alphabetical order of the objects and their data structures used in PFLOTRAN. The upper most object is {\bf Simulation} followed by {\bf Realization}, followed by {\bf Level}, {\bf Patch} and {\bf Grid}.
@@ -3234,6 +3338,7 @@ before building PFLOTRAN, and seeing if that works. Unfortunately, it
 may be necessary to mess with the configuration files for the PETSc builds to
 make sure that you don't link with the iobuf library.
 
+\end{comment}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{References}
