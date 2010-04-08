@@ -463,7 +463,8 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \hyperlink{target_brine}{\bf BRINE (BRIN)} & \\
 \hyperlink{target_ckpt}{\bf CHECKPOINT} & \\
 \hyperlink{target_chem}{\bf CHEMISTRY} & \\
-\hyperlink{target_stat}{\bf COMPUTE\_STATISTICS (STATISTICS)} & \\
+\hyperlink{target_stat}{\bf COMPUTE\_STATISTICS} & \\
+\hyperlink{target_constraint}{\bf CONSTRAINT} & transport (optional)\\
 \hyperlink{target_datset}{\bf DATASET} & \\
 \hyperlink{target_dbg}{\bf DEBUG} & \\
 \hyperlink{target_flow_cond}{\bf FLOW\_CONDITION} & \\
@@ -471,7 +472,7 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \hyperlink{target_grid}{\bf GRID} & (required)\\
 \hyperlink{target_init}{\bf INITIAL\_CONDITION} & \\
 \hyperlink{target_linsolv}{\bf LINEAR\_SOLVER} & \\
-\hyperlink{target_mat}{\bf MATERIAL (MATERIALS, PHIK)} & \\
+\hyperlink{target_mat}{\bf MATERIAL\_PROPERTY} & \\
 \hyperlink{target_mode}{\bf MODE} & \\
 \hyperlink{target_newt}{\bf NEWTON\_SOLVER} & \\
 \hyperlink{target_numjac}{\bf NUMERICAL\_JACOBIAN} & \\
@@ -780,13 +781,9 @@ Gas\_Species & List of gas species.\\
 COMPUTE\_STATISTICS enables the calculation statistical analysis of flow velocities during a simulation.  The average, maximum, minimum, and standard deviations velocities are computed.
 
 \noindent{\bf Input:}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
+\begin{deflist}{000}
 \item [COMPUTE\_STATISTICS] \{compute\_statistics = .true.\}
 \end{deflist}
-%\end{minipage}
-%}
 
 \noindent {\bf Explanation:}
 
@@ -794,6 +791,79 @@ COMPUTE\_STATISTICS enables the calculation statistical analysis of flow velocit
 {\bf Example:}
 \begin{verbatim}
 COMPUTE_STATISTICS
+\end{verbatim}
+
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_constraint}{}
+
+\subsection{Keyword: CONSTRAINT}
+
+\noindent
+{\bf Description:}
+The keyword {\bf CONSTRAINT} sets up fluid compositions based on various constraint conditions chosen by the user.
+
+\noindent{\bf Input:}
+\begin{deflist}{000}
+\item [CONSTRAINT] \ {\tt constrain\_name}
+\begin{deflist}{000}
+\item[CONC, CONCENTRATIONS]
+\begin{deflist}{000}
+\item[{\tt Name, Concentration\_Value, Constraint}] ~\\
+The variable {\tt Constraint} is chosen from the following list:
+\item[F, FREE]
+\item[T, TOTAL] 
+\item[TOTAL\_SORB]
+\item[P, PH]
+\item[L, LOG] 
+\item[M, MINERAL, MNRL]
+\item[G, GAS]
+\item[SC, CONSTRAINT\_SUPERCRIT\_CO2] 
+\item[Z, CHG]
+\end{deflist}
+\item[(., /, END)]
+\item[MNRL, MINERALS] ~
+\begin{deflist}{000}
+\item[{\tt mineral\_name, volume\_fraction, surface\_area}]
+\end{deflist}
+\item[(., /, END)]
+\end{deflist}
+\item[(., /, END)]
+\end{deflist}
+
+\noindent {\bf Explanation:}
+
+\noindent
+{\bf Example:}
+\begin{verbatim}
+CONSTRAINT initial
+CONCENTRATIONS
+H+       7.3             pH
+O2(aq)   1.78132e-4       T
+Al+++    1.e-9            M K-Feldspar
+Ca++     1.20644e-3       M Calcite
+Cu++     1.e-6            T
+Fe++     1.e-9            M Ferrihydrite
+Mg++     5.09772e-4       T
+UO2++    2.34845e-7       T
+K+       1.54789e-4       T
+Na+      2.03498e-3       T
+HCO3-    2.57305e-3       T
+Cl-      6.97741e-4       T
+F-       2.09491e-5       T
+HPO4--   1.e-6            T
+NO3-     4.69979e-3       T
+SO4--    6.37961e-4       T
+SiO2(aq) 5.36989e-4       T
+Tracer   2.34845e-7       F
+/
+MINERALS
+Quartz         0.35  1.
+Calcite        0.    1.
+Metatorbernite 0.    1.
+/
+/
 \end{verbatim}
 
 %========================================================================
@@ -808,13 +878,9 @@ COMPUTE_STATISTICS
 \noindent{\bf Description:} Dataset for permeability.
 
 \noindent{\bf Input:}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
+\begin{deflist}{000}
 \item[DATASET] [permx, permy, permz] [permx\_filename, permy\_filename, permz\_filename]
 \end{deflist}
-%\end{minipage}
-%}
 
 %========================================================================
 
@@ -1101,6 +1167,18 @@ DIFFUSION_COEFFICIENT 1.d-9
 
 \noindent{\bf Explanation:}
 
+\begin{tabularx}{\linewidth}{lX}
+GRAVITY <\# \# \#>: Specifies gravity vector
+
+ORIGIN <\# \# \#>: Coorindate of grid origin (default: 0. 0. 0.)
+
+BOUNDS: Specifies bounds of structured cartesian grid (see examples below)
+
+DXYZ: Specifies grid spacing of structured cartesian grid (see examples below)
+
+INVERT\_Z: Inverts the z axis (positive Z is down)
+\end{tabularx}
+
 \noindent
 {\bf Example:}
 \begin{verbatim}
@@ -1304,8 +1382,8 @@ PERM_Z 1.d-12
 \begin{deflist}{000}
 \item[MODE] ~
 \begin{deflist}{000}
-\item[IMMIS]
-\item[MPH]
+\item[IMS, IMMIS, THS]
+\item[MPH, MPHASE]
 \item[RICHARDS]
 %\item[RICHARDS\_LITE]
 \item[THC (\rm not implemented)]
@@ -1313,6 +1391,13 @@ PERM_Z 1.d-12
 \end{deflist}
 
 \noindent{\bf Explanation:}
+
+\begin{tabularx}{\linewidth}{lX}
+HC: &Thermo-Hydro-Chemical Coupled groundwater flow, thermal and solute transport\\
+Richards: &Single-phase variable saturated groundwater flow using Richards Equation\\
+MPH, MPHASE: &Multiphase CO$_2$-water-energy\\
+IMS, IMMIS, THS: &Immissible CO$_2$-water-energy
+\end{tabularx}
 
 \noindent{\bf Example:}
 \begin{verbatim}
@@ -1753,12 +1838,14 @@ MAXIMUM_TIMESTEP_SIZE 1.d0 h
 
 \noindent{\bf Input:}
 \begin{deflist}{000}
-\item[TIMESTEPPER] ~
+\item[TIMESTEPPER] [{\bf FLOW, TRAN, TRANSPORT}]
 \begin{deflist}{000}
 \item[NUM\_STEPS\_AFTER\_TS\_CUT] [5]
 \item[MAX\_STEPS] [999999]
 \item[TS\_ACCELERATION] [5]
 \item[MAX\_TS\_CUTS] [16]
+\item[INITIALIZE\_TO\_STEADY\_STATE]
+\item[RUN\_AS\_STEADY\_STATE]
 \item[MAX\_PRESSURE\_CHANGE] [5.d4]
 \item[MAX\_TEMPERATURE\_CHANGE] [5.d0]
 \item[MAX\_CONCENTRATION\_CHANGE] [1.d0]
@@ -1777,14 +1864,28 @@ MAXIMUM_TIMESTEP_SIZE 1.d0 h
 \protect\hypertarget{target_trans_cond}{}
 
 \subsection{Keyword: TRANSPORT\_CONDITION}
+
+\noindent{\bf Description:}
+
+\noindent{\bf Input:}
 \begin{deflist}{000}
-\item[TRANSPORT\_CONDITION]
-\item  REGION region\_name
-\item  CONDITION condition\_name
-\item  TYPE [initial, boundary, source\_sink]
-\item  FACE [WEST, EAST, NORTH, SOUTH, BOTTOM, TOP]
+\item[TRANSPORT\_CONDITION] \ {\tt Name}
+
+\begin{deflist}{000}
+\item[TYPE] [{\bf dirichlet, dirichlet\_zero\_gradient, equilibrium, neumann, mole, mole\_rate, zero\_gradient}]
+\item[TIME] \ {\tt Value}
+\item[UNITS] \ {\bf s, sec, min, hr, d, day, y, yr}
+\item[CONSTRAINT\_LIST]
+\item {\tt time} \ {\tt constraint\_name}
+\item[(., /, END)]
+\item[CONSTRAINT] \ {\tt constraint\_name}
+\end{deflist}
 \item[(., /, END)]
 \end{deflist}
+
+\noindent{\bf Explanation:}
+
+\noindent{\bf Example:}
 
 %========================================================================
 
