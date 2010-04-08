@@ -21,18 +21,19 @@
 \usepackage[debug=false, colorlinks=true, pdfstartview=FitV, linkcolor=blue, citecolor=black, urlcolor=blue]{hyperref}
 
 \textwidth 6.5in
-\textheight 8.75in
-\topmargin -0.75in
+\textheight 9.5in
+\topmargin -1.0in
 %\topmargin -3.280cm
 \newlength{\boxwidth}
 \setlength{\boxwidth}{5.8in}
 \oddsidemargin 0.in
 \evensidemargin 0.in
 \headheight 0.25in
-\lhead{\sl PFLOTRAN Quick Reference User Guide}
-\chead{}
+\lhead{\sl PFLOTRAN: Quick Reference User Guide}
+\chead{\sl DRAFT}
 %\chead{\rm - \thepage\ -}
-\rhead{DRAFT \qquad \qquad \ \today}
+%\rhead{DRAFT \qquad \qquad \ \today}
+\rhead{\today}
 %\rfoot{\today--[\thepage]}
 \rfoot{}
 \cfoot{\rm - \thepage\ -}
@@ -463,9 +464,9 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \hyperlink{target_ckpt}{\bf CHECKPOINT} & \\
 \hyperlink{target_chem}{\bf CHEMISTRY} & \\
 \hyperlink{target_stat}{\bf COMPUTE\_STATISTICS (STATISTICS)} & \\
-\hyperlink{target_cond}{\bf CONDITION} & \\
 \hyperlink{target_datset}{\bf DATASET} & \\
 \hyperlink{target_dbg}{\bf DEBUG} & \\
+\hyperlink{target_flow_cond}{\bf FLOW\_CONDITION} & \\
 \hyperlink{target_fluid_property}{\bf FLUID\_PROPERTY} & \\
 \hyperlink{target_grid}{\bf GRID} & (required)\\
 \hyperlink{target_init}{\bf INITIAL\_CONDITION} & \\
@@ -484,9 +485,9 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \hyperlink{target_sat}{\bf SATURATION\_FUNCTION} & \\
 \hyperlink{target_src}{\bf SOURCE\_SINK} & \\
 \hyperlink{target_strata}{\bf STRATIGRAPHY (STRATA)} & \\
-\hyperlink{target_thrm}{\bf THERMAL\_PROPERTY (THERMAL\_PROPERTIES)} & \\
 \hyperlink{target_time}{\bf TIME} & \\
 \hyperlink{target_timestep}{\bf TIMESTEPPER} & \\
+\hyperlink{target_trans_cond}{\bf TRANSPORT\_CONDITION} & \\
 \hyperlink{target_unifvel}{\bf UNIFORM\_VELOCITY} & \\
 \hyperlink{target_touch}{\bf USE\_TOUCH\_OPTIONS} & \\
 \hyperlink{target_veldata}{\bf VELOCITY\_DATASET} & (optional) \\
@@ -795,175 +796,6 @@ COMPUTE\_STATISTICS enables the calculation statistical analysis of flow velocit
 COMPUTE_STATISTICS
 \end{verbatim}
 
-%================================================================
-
-\newpage
-\protect\hypertarget{target_cond}{}
-
-\subsection{Keyword: CONDITION (FLOW/TRANSPORT\_CONDITION)}
-
-{\noindent\bf Description}
-The CONDITION card specifies scalar or vector data sets to be associated with a given boundary or initial condition.  For instance, to specify a hydrostatic boundary condition, the use would specify a condition with a pressure associated with a point in space (i.e. datum) in space and a gradient, both vector quantities.  [Note that in the case of a hydrostatic boundary condition, the vertical gradient specified in the input deck must be 0. in order to enable the hydrostatic pressure calculation.  Otherwise, the specified vertical gradient overrides the hydrostatic pressure.]  Transient pressures, temperatures, concentrations, datums, gradients, etc. are specified using the 'FILE filename' combination for the name of the data set.
-
-{\noindent\bf Input:}
-
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item [FLOW/TRANSPORT\_CONDITION] condition\_name
-\item [UNITS] (not currently supported)
-\begin{deflist}{0000000000}
-\item    s, sec, min, hr, d, day, w, week, mo, month, y, yr
-\item    mm, cm, m, met, meter, dm, km
-\item    Pa, KPa
-\item    m/s, m/yr
-\item    C, K
-\item    M, mol/L
-\item    KJ/mol
-\end{deflist}
-
-\item[END]
-
-\item[CYCLIC] 
-
-\item[INTERPOLATION] (step/linear)
-
-\item[TYPE] ~
-
-\begin{deflist}{00000000000000000}
-    \item[PRESSURE]
-      [dirichlet,
-      hydrostatic,,
-      zero\_gradient,
-      seepage]
-    \item[FLUX]
-      [neumann]
-    \item[RATE]
-      [mass\_rate]
-    \item[FLUX]
-      [dirichlet,
-      neumann,
-      mass,
-      hydrostatic (hydro, hydrostat), static,
-      zero\_gradient,
-      seepage]
-    \item[TEMPERATURE]
-      [dirichlet,hydrostatic,
-      zero\_gradient]
-    \item[CONCENTRATION]
-      [dirichlet,hydrostatic,
-      zero\_gradient]
-    \item[ENTHALPY (H)]
-      [dirichlet,hydrostatic,
-      zero\_gradient]
-  \item[END]
-\end{deflist}
-\item[TIME] (not currently supported)
-
-\item[IPHASE] ~
-
-\item[DATUM] x y z
-\item[GRADIENT] ~
-\begin{deflist}{0}
-\item [PRESSURE] $d_{dx}$ $d_{dy}$ $d_{dz}$
-\item [FLUX]
-\item [TEMPERATURE]
-\item [CONCENTRATION]
-\item [ENTHALPY]
-\end{deflist}
-\item[END]
-\item[TEMPERATURE] ~
-\item[ENTHALPY] ~
-\item[PRESSURE] ~
-\item[FLUX] ~
-\item[CONCENTRATION] ~
-\item[CONSTRAINT\_LIST]
-\item[END] ~
-\end{deflist}
-%\end{minipage}
-%}
-
-{\noindent\bf Explanation:}
-\begin{description}
-\item[FLOW/TRANSPORT\_CONDITION] initiates a condition entry and defines its name.
-\item[CYCLIC] instructs PFLOTRAN to cycle the transient data set should the simulation time exceed the last time in the data set.
-\item[INTERPOLATION] defines the method for interpolating between data set times.
-\item[DATUM] location is space where prescribed scalar (e.g. pressure, temperature concentration, etc.) is defined.
-\item[TYPE] specifies the type of condition.
-\begin{deflist}{0000000000}
-    \item[PRESSURE] specifies the type of pressure condition.
-    \item[TEMPERATURE] specifies the type of temperature condition.
-    \item[CONCENTRATION] specifies the type of concentration condition.
-    \item[ENTHALPY] specifies the type of enthalpy condition.
-    \item[END] terminates the type entry.
-\end{deflist}
-\item[GRADIENT] gradient of the scalar in 3D space.
-\begin{deflist}{0000000000}
-    \item[PRESSURE] pressure gradient in $x$-, $y$-, and $z$-directions.
-    \item[TEMPERATURE] temperature gradient in $x$-, $y$-, and $z$-directions.
-    \item[CONCENTRATION] concentration gradient in $x$-, $y$-, and $z$-directions.
-    \item[ENTHALPY] enthalpy gradient in $x$-, $y$-, and $z$-directions.
-    \item[END] terminates the gradient entry.
-\end{deflist}
-\item[PRESSURE] absolute fluid pressure at the datum.
-\item[FLUX] Darcy velocity of fluid defining flux across a boundary.
-\item[TEMPERATURE] temperature in $^\circ$C at the datum.
-\item[CONCENTRATION] solute concentration at the datum.
-\item[ENTHALPY] enthalpy at the datum.
-\item[CONSTRAINT\_LIST] specifies a list of concentration constraints for solute transport.
-\item[END] terminates the condition entry.
-\end{description}
-
-{\noindent\bf Examples:}
-\begin{verbatim}
-FLOW_CONDITION initial
-TYPE
-PRESSURE hydrostatic
-/
-PRESSURE 1956741.84 ! 200 meter piezometric head (200*997.32*9.81)
-/
-
-FLOW_CONDITION source
-TYPE
-RATE volumetric_rate
-/
-RATE 2.77777778d-3  ! 10 m^3/hr
-/
-
-TRANSPORT_CONDITION initial
-TYPE zero_gradient
-CONSTRAINT_LIST
-0.d0 initial
-/
-END
-
-TRANSPORT_CONDITION source
-TYPE dirichlet
-CONSTRAINT_LIST
-0.d0 well
-/
-\end{verbatim}
-
-\begin{comment}
-\protect\hypertarget{target_XXX}{}
-\subsection{Keyword: XXX}
-{\noindent\bf Description}
-{\noindent\bf Input:}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[]
-\end{deflist}
-\end{minipage}
-}
-{\noindent\bf Explanation:}
-\begin{description}
-\item[Keyword XXX]
-\end{description}
-{\noindent\bf Examples:}
-\begin{verbatim}
-\end{verbatim}
-\end{comment}
 %========================================================================
 
 \newpage
@@ -1003,6 +835,163 @@ CONSTRAINT_LIST
 \end{deflist}
 \item[(.,/,END)]
 \end{deflist}
+
+%================================================================
+
+\newpage
+\protect\hypertarget{target_flow_cond}{}
+
+\subsection{Keyword: FLOW\_CONDITION}
+
+{\noindent\bf Description:}
+The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be associated with a given boundary or initial condition.  For instance, to specify a hydrostatic boundary condition, the use would specify a condition with a pressure associated with a point in space (i.e. datum) in space and a gradient, both vector quantities.  Note that in the case of a hydrostatic boundary condition, the vertical gradient specified in the input deck must be zero in order to enable the hydrostatic pressure calculation.  Otherwise, the specified vertical gradient overrides the hydrostatic pressure.  Transient pressures, temperatures, concentrations, datums, gradients, etc. are specified using the {\bf FILE} {\tt filename} combination for the name of the data set.
+
+{\noindent\bf Input:}
+\begin{deflist}{000}
+\item [FLOW\_CONDITION] \ {\tt flow\_condition\_name}
+\begin{deflist}{000}
+\item [UNITS] {\tt Value} (not currently supported)
+\begin{deflist}{000000000}
+{\tt Value} is one of the following entries:
+\item[s, sec, min, hr, d, day, w, week, mo, month, y, yr] (time)
+\item[mm, cm, m, met, meter, dm, km] (length)
+\item[kg/s, kg/yr] (rate)
+\item[Pa, KPa] (pressure)
+\item[m/s, m/yr] (velocity)
+\item[C, K] (temperature)
+\item[M, mol/L] (concentration)
+\item[KJ/mol] (enthalpy)
+\end{deflist}
+
+%\item[(., /, END)]
+
+\item[CYCLIC] 
+
+\item[INTERPOLATION] ~
+\begin{deflist}{000}
+\item[step]
+\item[linear]
+\end{deflist}
+
+\item[TYPE] ~
+
+\begin{deflist}{000}
+\item[PRESSURE] [{\bf dirichlet, hydrostatic, zero\_gradient, conductance, seepage}]
+\item[RATE] [{\bf mass\_rate}]
+\item[FLUX] [{\bf dirichlet, neumann, mass\_rate, hydrostatic, conductance, zero\_gradient, production\_well, seepage, volumetric, volumetric\_rate, equilibrium}]
+\item[TEMPERATURE] [{\bf dirichlet, hydrostatic, zero\_gradient}]
+\item[CONCENTRATION] [{\bf dirichlet, hydrostatic, zero\_gradient}]
+\item[ENTHALPY (H)] [{\bf dirichlet, hydrostatic, zero\_gradient}]
+\end{deflist}
+\item[(., /, END)]
+\item[TIME] (not currently supported)
+
+\item[IPHASE] {\tt Value[integer]}
+
+\item[DATUM] ~
+\begin{deflist}{000}
+\item[{\tt x \ y \ z}]
+\item[{\bf FILE} \ {\tt file\_name}]
+\end{deflist}
+\item[GRADIENT, GRAD] ~
+\begin{deflist}{000}
+\item [PRES, PRESS, PRESSURE] ~
+\begin{deflist}{000}
+\item[$d_{dx}$ $d_{dy}$ $d_{dz}$]
+\item[{\bf FILE} \ {\tt file\_name}]
+\end{deflist}
+\item [FLUX]
+\item [TEMP, TEMPERATURE]
+\item [CONC, CONCENTRATION]
+\item [H, ENTHALPY]
+\end{deflist}
+\item[(., /, END)]
+\item[TEMPERATURE, TEMP] \ {\tt Value}
+\item[ENTHALPY, H] \ {\tt Value}
+\item[PRESSURE, PRES, PRESS] \ {\tt Value}
+\item[RATE] \ {\tt Value}
+\item[FLUX, VELOCITY, VEL] \ {\tt Value}
+\item[CONC, CONCENTRATION] \ {\tt Value}
+\item[CONDUCTANCE] \ {\tt Value}
+%\item[CONSTRAINT\_LIST]
+\end{deflist}
+\item[(., /, END)] ~
+\end{deflist}
+
+{\noindent\bf Explanation:}
+\begin{description}
+\item[FLOW/TRANSPORT\_CONDITION] initiates a condition entry and defines its name.
+\item[CYCLIC] instructs PFLOTRAN to cycle the transient data set should the simulation time exceed the last time in the data set.
+\item[INTERPOLATION] defines the method for interpolating between data set times.
+\item[DATUM] location is space where prescribed scalar (e.g. pressure, temperature concentration, etc.) is defined.
+\item[TYPE] specifies the type of condition.
+\begin{deflist}{0000000000}
+    \item[PRESSURE] specifies the type of pressure condition.
+    \item[TEMPERATURE] specifies the type of temperature condition.
+    \item[CONCENTRATION] specifies the type of concentration condition.
+    \item[ENTHALPY] specifies the type of enthalpy condition.
+    \item[END] terminates type entry.
+\end{deflist}
+\item[GRADIENT] gradient of the scalar in 3D space.
+\begin{deflist}{0000000000}
+    \item[PRESSURE] pressure gradient in $x$-, $y$-, and $z$-directions.
+    \item[TEMPERATURE] temperature gradient in $x$-, $y$-, and $z$-directions.
+    \item[CONCENTRATION] concentration gradient in $x$-, $y$-, and $z$-directions.
+    \item[ENTHALPY] enthalpy gradient in $x$-, $y$-, and $z$-directions.
+    \item[END] terminates gradient entry.
+\end{deflist}
+\item[PRESSURE] absolute fluid pressure at the datum.
+\item[FLUX] Darcy velocity of fluid defining flux across a boundary.
+\item[TEMPERATURE] temperature in $^\circ$C at the datum.
+\item[CONCENTRATION] solute concentration at the datum.
+\item[ENTHALPY] enthalpy at the datum.
+\item[CONSTRAINT\_LIST] specifies a list of concentration constraints for solute transport.
+\item[END] terminates the condition entry.
+\end{description}
+
+{\noindent\bf Examples:}
+\begin{verbatim}
+FLOW_CONDITION initial
+TYPE
+PRESSURE hydrostatic
+/
+PRESSURE 1956741.84 ! 200 meter piezometric head (200*997.32*9.81)
+/
+
+FLOW_CONDITION source
+TYPE
+RATE volumetric_rate
+/
+RATE 2.77777778d-3  ! 10 m^3/hr
+/
+
+TRANSPORT_CONDITION initial
+TYPE zero_gradient
+CONSTRAINT_LIST
+0.d0 initial
+/
+END
+
+TRANSPORT_CONDITION source
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 well
+/
+
+FLOW_CONDITION East
+TYPE
+:PRESSURE seepage
+PRESSURE conductance
+/
+CYCLIC
+DATUM file ../../river_scope3.datum
+GRADIENT
+PRESSURE file ../../river_scope3.gradient
+/
+CONDUCTANCE 1.d-12
+PRESSURE 101325.d0
+/
+\end{verbatim}
 
 %========================================================================
 
@@ -1440,9 +1429,9 @@ END
 
 \noindent {\bf Input:}
 
-\begin{deflist}{00}
+\begin{deflist}{000}
 \item[OUTPUT] ~
-\begin{deflist}{00}
+\begin{deflist}{000}
 \item[TIMES] {\tt Unit (s, h, y)} \ \ \ {\tt Value} 
 \item[SCREEN OFF]
 \item[SCREEN PERIODIC] {\tt Value}
@@ -1612,8 +1601,6 @@ FACE WEST
 END
 \end{verbatim}
 
-
-
 %========================================================================
 
 \newpage
@@ -1628,7 +1615,7 @@ The RESTART card defines a checkpoint file from which the current simulation sho
 
 %\shadowbox{
 %\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
+\begin{deflist}{000}
 \item[RESTART] restart\_file restart\_time time\_units
 \end{deflist}
 %\end{minipage}
@@ -1728,22 +1715,6 @@ POWER 1.d0
 %========================================================================
 
 \newpage
-\protect\hypertarget{target_thrm}{}
-
-\subsection{Keyword: THRM (THERMAL\_PROPERTY, THERMAL\_PROPERTIES)}
-%\shadowbox{
-%\begin{minipage}{6.5in}
-\begin{deflist}{0000000000}
-\item[THRM (THERMAL\_PROPERTY, THERMAL\_PROPERTIES)]
-\item id \ rock\_density \ spec\_heat \ therm\_cond\_dry \ therm\_cond\_wet \ tort\_bin\_diff \ vap\_air\_diff\_coef \ exp\_binary\_diff
-\item[(., /, END)]
-\end{deflist}
-%\end{minipage}
-%}
-
-%========================================================================
-
-\newpage
 \protect\hypertarget{target_time}{}
 
 \noindent {\bf Description:} the keyword {\bf TIME} controls the simulation time.
@@ -1799,6 +1770,21 @@ MAXIMUM_TIMESTEP_SIZE 1.d0 h
 \noindent{\bf Explanation:}
 
 \noindent{\bf Example:}
+
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_trans_cond}{}
+
+\subsection{Keyword: TRANSPORT\_CONDITION}
+\begin{deflist}{000}
+\item[TRANSPORT\_CONDITION]
+\item  REGION region\_name
+\item  CONDITION condition\_name
+\item  TYPE [initial, boundary, source\_sink]
+\item  FACE [WEST, EAST, NORTH, SOUTH, BOTTOM, TOP]
+\item[(., /, END)]
+\end{deflist}
 
 %========================================================================
 
