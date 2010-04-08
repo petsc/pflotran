@@ -1051,7 +1051,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   endif
     
 ! print screen output
-  call VecNorm(field%flow_r,NORM_2,fnorm,ierr) 
+  call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
   call VecNorm(field%flow_r,NORM_INFINITY,inorm,ierr)
   if (option%print_screen_flag) then
     write(*, '(/," FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
@@ -1384,7 +1384,7 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
     stepper%icutcum = stepper%icutcum + icut
 
   ! print screen output
-    call VecNorm(field%tran_r,NORM_2,fnorm,ierr) 
+    call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
     call VecNorm(field%tran_r,NORM_INFINITY,inorm,ierr)
     if (option%print_screen_flag) then
 
@@ -1702,7 +1702,7 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
   endif
     
 ! print screen output
-  call VecNorm(field%flow_r,NORM_2,fnorm,ierr) 
+  call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
   call VecNorm(field%flow_r,NORM_INFINITY,inorm,ierr)
   if (option%print_screen_flag) then
     ! the grid pointer is null if we are working with SAMRAI
@@ -1856,7 +1856,7 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
   stepper%linear_cum = num_linear_iterations
 
   ! print screen output
-  call VecNorm(field%tran_r,NORM_2,fnorm,ierr) 
+  call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
   call VecNorm(field%tran_r,NORM_INFINITY,inorm,ierr)
   if (option%print_screen_flag) then
     ! the grid pointer is null if we are working with SAMRAI
