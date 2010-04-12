@@ -2249,11 +2249,12 @@ subroutine BasisInit(reaction,option)
       reaction%mnrlspecid(0,imnrl) = ispec
 
 #if TEMP_DEPENDENT_LOGK
-      call ReactionFitLogKCoef(reaction%mnrl_logKcoef(:,imnrl),cur_mineral%tstrxn%logK, &
+      call ReactionFitLogKCoef(reaction%mnrl_logKcoef(:,imnrl), &
+                               cur_mineral%tstrxn%dbaserxn%logK, &
                                reaction%mineral_names(imnrl), &
                                option,reaction)
       call ReactionInitializeLogK(reaction%mnrl_logKcoef(:,imnrl), &
-                                  cur_mineral%tstrxn%logK, &
+                                  cur_mineral%tstrxn%dbaserxn%logK, &
                                   reaction%mnrl_logK(imnrl), &
                                   option,reaction)
 #else
@@ -2273,11 +2274,12 @@ subroutine BasisInit(reaction,option)
         reaction%kinmnrlh2oid(ikinmnrl) = reaction%mnrlh2oid(imnrl)
         reaction%kinmnrlh2ostoich(ikinmnrl) = reaction%mnrlh2ostoich(imnrl)
 #if TEMP_DEPENDENT_LOGK
-        call ReactionFitLogKCoef(reaction%kinmnrl_logKcoef(:,ikinmnrl),cur_mineral%tstrxn%logK, &
+        call ReactionFitLogKCoef(reaction%kinmnrl_logKcoef(:,ikinmnrl), &
+                                 cur_mineral%tstrxn%dbaserxn%logK, &
                                  reaction%kinmnrl_names(ikinmnrl), &
                                  option,reaction)
         call ReactionInitializeLogK(reaction%kinmnrl_logKcoef(:,ikinmnrl), &
-                                    cur_mineral%tstrxn%logK, &
+                                    cur_mineral%tstrxn%dbaserxn%logK, &
                                     reaction%kinmnrl_logK(ikinmnrl), &
                                     option,reaction)
 #else
