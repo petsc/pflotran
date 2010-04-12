@@ -1769,13 +1769,15 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   
     m_na=option%m_nacl; m_cl=m_na; m_nacl = m_na 
     if(associated(realization%reaction))then
-      if (realization%reaction%species_idx%na_ion_id /= 0 .and. &
-        realization%reaction%species_idx%cl_ion_id /= 0) then
-        m_na = global_aux_vars(ghosted_id)%m_nacl(1)
-        m_cl = global_aux_vars(ghosted_id)%m_nacl(2)
-        m_nacl = m_na
-        if (m_cl> m_na) m_nacl = m_cl
-    endif  
+      if (associated(realization%reaction%species_idx)) then
+        if (realization%reaction%species_idx%na_ion_id /= 0 .and. &
+          realization%reaction%species_idx%cl_ion_id /= 0) then
+          m_na = global_aux_vars(ghosted_id)%m_nacl(1)
+          m_cl = global_aux_vars(ghosted_id)%m_nacl(2)
+          m_nacl = m_na
+          if (m_cl> m_na) m_nacl = m_cl
+        endif
+      endif  
     endif
 
     call Henry_duan_sun(t,p2*1.D-5,henry,xphi,lngamco2, &
