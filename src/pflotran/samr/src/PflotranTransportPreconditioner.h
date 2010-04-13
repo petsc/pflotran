@@ -31,14 +31,14 @@ typedef SAMRAI::tbox::List< SAMRAI::tbox::Pointer<SAMRAI::xfer::CoarsenSchedule<
 
 namespace SAMRAI{
 
-class PflotranTransportPreconditioner: public SAMRSolvers::PreconditionerStrategy
+class PflotranTransportPreconditioner: public PreconditionerStrategy
 {
 public:
    PflotranTransportPreconditioner(PflotranTransportPreconditionerParameters *parameters);
 
    ~PflotranTransportPreconditioner();
    
-   int setupPreconditioner(  SAMRSolvers::PreconditionerParameters* parameters );
+   int setupPreconditioner(  PreconditionerParameters* parameters );
    
    int applyPreconditioner( tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> > r,
                             tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> > z );
@@ -110,9 +110,9 @@ private:
 
    RefinementBoundaryInterpolation *d_cf_interpolant;
 
-   SAMRSolvers::MultilevelSolverFactory *d_PCSolverFactory;
+   MultilevelSolverFactory *d_PCSolverFactory;
 
-   SAMRSolvers::MultilevelSolver *d_pc_solver;
+   MultilevelSolver *d_pc_solver;
 
    PflotranJacobianMultilevelOperator *d_pc_operator;
 

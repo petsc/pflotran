@@ -27,7 +27,7 @@ extern "C" {
 
 namespace SAMRAI{
 
-class PflotranJacobianLevelOperator: public SAMRSolvers::LevelOperator
+class PflotranJacobianLevelOperator: public LevelOperator
 {
 public:
 
@@ -37,7 +37,7 @@ public:
    *        A LevelOperatorParameters class used to provide arguments
    *        to initialize the PflotranJacobianLevelOperator class
    */
-   PflotranJacobianLevelOperator(SAMRSolvers::LevelOperatorParameters *parameters);
+   PflotranJacobianLevelOperator(LevelOperatorParameters *parameters);
 
    ~PflotranJacobianLevelOperator();
 

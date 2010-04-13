@@ -13,7 +13,7 @@ extern "C" {
 
 namespace SAMRAI{
 
-class PflotranJacobianMultilevelOperatorParameters: public SAMRSolvers::MultilevelOperatorParameters
+class PflotranJacobianMultilevelOperatorParameters: public MultilevelOperatorParameters
 {
 public:
    PflotranJacobianMultilevelOperatorParameters(const tbox::Pointer<tbox::Database> &database );

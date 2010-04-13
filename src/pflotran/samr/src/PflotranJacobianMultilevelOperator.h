@@ -31,11 +31,11 @@ extern "C" {
 
 namespace SAMRAI{
 
-class PflotranJacobianMultilevelOperator: public SAMRSolvers::MultilevelOperator
+class PflotranJacobianMultilevelOperator: public MultilevelOperator
 {
 public:
 
-  PflotranJacobianMultilevelOperator(SAMRSolvers::MultilevelOperatorParameters *parameters);
+  PflotranJacobianMultilevelOperator(MultilevelOperatorParameters *parameters);
 
    ~PflotranJacobianMultilevelOperator();
 
@@ -214,7 +214,7 @@ public:
 
    tbox::Pointer<hier::PatchHierarchy<NDIM> > getHierarchy(void){ return d_hierarchy; }
 
-   SAMRSolvers::LevelOperator *getLevelOperator(const int ln){ return d_level_operators[ln];}
+   LevelOperator *getLevelOperator(const int ln){ return d_level_operators[ln];}
 
    void setCurrentPatch(hier::Patch <NDIM> *patch){d_patch = patch;}
 

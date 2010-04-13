@@ -259,7 +259,7 @@ void samrcreatematrix_(SAMRAI::PflotranApplicationStrategy **application_strateg
    parameters->d_cf_interpolant = (*application_strategy)->getRefinementBoundaryInterpolant();
    parameters->d_set_boundary_ghosts.setNull();
 
-   SAMRAI::PflotranJacobianMultilevelOperator *pJacobian = new SAMRAI::PflotranJacobianMultilevelOperator((SAMRAI::SAMRSolvers::MultilevelOperatorParameters *)parameters);
+   SAMRAI::PflotranJacobianMultilevelOperator *pJacobian = new SAMRAI::PflotranJacobianMultilevelOperator((SAMRAI::MultilevelOperatorParameters *)parameters);
    if(*flowortransport==0)
    {
       (*application_strategy)->setFlowJacobianMatrix(pJacobian);

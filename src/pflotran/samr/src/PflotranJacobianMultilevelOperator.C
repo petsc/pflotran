@@ -23,8 +23,8 @@ PflotranJacobianMultilevelOperator::~PflotranJacobianMultilevelOperator()
 {
 }
 
-PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(SAMRSolvers::MultilevelOperatorParameters *parameters)
-  :SAMRSolvers::MultilevelOperator(parameters)
+PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(MultilevelOperatorParameters *parameters)
+  :MultilevelOperator(parameters)
 {
    d_flux_id                      = -1;
    d_coarsen_diffusive_fluxes     = true;
@@ -73,7 +73,7 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(SAMRSolve
 
    for(int ln=0; ln<hierarchy_size; ln++)
    {
-      SAMRSolvers::LevelOperatorParameters *params = new SAMRSolvers::LevelOperatorParameters(parameters->d_db);
+      LevelOperatorParameters *params = new LevelOperatorParameters(parameters->d_db);
       // The next call is important
       // It lets the level operators know what object_id to use as a suffix
       // when creating internal data to minimize the number of variables created

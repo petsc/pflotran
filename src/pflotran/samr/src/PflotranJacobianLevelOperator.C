@@ -9,7 +9,7 @@
 
 namespace SAMRAI{
 
-  PflotranJacobianLevelOperator::PflotranJacobianLevelOperator(SAMRSolvers::LevelOperatorParameters *parameters):LevelOperator(parameters)
+  PflotranJacobianLevelOperator::PflotranJacobianLevelOperator(LevelOperatorParameters *parameters):LevelOperator(parameters)
 {
    d_sibling_fill_cached          = false;
    d_interpolate_ghost_values     = true;
@@ -480,7 +480,7 @@ PflotranJacobianLevelOperator::getStencilOffsets(const int i,
 void 
 PflotranJacobianLevelOperator::getFromInput(const tbox::Pointer<tbox::Database> &db)
 {
-   SAMRSolvers::LevelOperator::getFromInput(db);
+   LevelOperator::getFromInput(db);
 
 #ifdef DEBUG_CHECK_ASSERTIONS
    assert(!db.isNull());
