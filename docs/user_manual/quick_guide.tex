@@ -282,6 +282,60 @@ PFLOTRAN solves a system of generally nonlinear partial differential equations d
 
 \section{Installation}
 
+
+\subsection{PETSc}
+
+The PETSc {\tt ./configure} script can be used not only to install PETSc but also HDF5, Parmetis, and various direct solvers such as Mumps and Trilinos solvers. To use PETSc with PFLOTRAN the PETSc developer version petsc-dev is necessary which can be downloaded from the PETSc web page (http://www.mcs.anl.gov/petsc/petsc-as/developers/index.html). The recommended way to do this is to use the version control program Mercurial \break (http://mercurial.selenic.com/wiki/Download?action=show\&redirect=BinaryPackages).
+
+\subsubsection{MacOSX}
+
+\begin{verbatim}
+./config/configure.py 
+--with-blas-lapack-lib="-framework vecLib" 
+--download-openmpi=1 
+--with-debugging=1 
+--with-shared=0 
+--download-mumps=1 
+--download-parmetis=1 
+--download-scalapack=1 
+--download-blacs=1 
+--download-ml=1 
+--download-hdf5=1
+
+make all
+make test
+\end{verbatim}
+
+\subsubsection{ORNL's Jaguar XT4/5}
+
+\footnotesize
+\begin{verbatim}
+./config/configure.py PETSC_ARCH=cray-xt4-pgi_fast \
+--configModules=PETSc.Configure --optionsModule=PETSc.compilerOptions
+--known-level1-dcache-size=65536 --known-level1-dcache-linesize=64
+--known-level1-dcache-assoc=2 --known-memcmp-ok=1 --known-sizeof-char=1
+--known-sizeof-void-p=8 --known-sizeof-short=2 --known-sizeof-int=4
+--known-sizeof-long=8 --known-sizeof-long-long=8 --known-sizeof-float=4
+--known-sizeof-double=8 --known-sizeof-size_t=8 --known-bits-per-byte=8
+--known-sizeof-MPI_Comm=4 --known-sizeof-MPI_Fint=4 --known-mpi-long-double=0 \
+--with-batch=1 --with-shared=0 --with-dynamic=0 --with-cc=cc --with-cxx=CC
+--with-fc=ftn --COPTFLAGS="-tp barcelona-64 -fastsse -Mipa=fast" --CXXOPTFLAGS="-tp
+  barcelona-64 -fastsse -Mipa=fast" --FOPTFLAGS="-tp barcelona-64 -fastsse"
+--with-debugging=0 --with-blas-lib=sci --with-lapack-lib=sci --with-x=0
+--with-mpi-dir=$MPICH_DIR --download-hypre=1 --download-parmetis=1 --with-hdf5=1 \
+--with-hdf5-dir=$HDF5_DIR \
+--known-mpi-shared=0
+\end{verbatim}
+\normalsize
+The user will need to load the following HDF5 module beforehand: \ \verb|module load hdf5-parallel|.
+
+\subsection{Building PFLOTRAN}
+
+The source code for PFLOTRAN can be downloaded from the LANL web site using Mercurial: \verb|hg clone https://software.lanl.gov/pflotran/hg/pflotran|.
+
+\verb|make [chuan_co2=1 hdf5=1 coll=1] pflotran|
+
+\begin{comment}
 The following instructions should aid in installing openmpi, PETSc, HDF5 and PFLOTRAN on a UNIX or Mac computer running MacOSX 10.4 or later.
 
 \subsection{Openmpi}
@@ -441,7 +495,7 @@ The estimates will get better the closer one is to the GMRES restart.  (When res
  {\tt -flow\_ksp\_gmres\_restart <positive integer>}
 
 The default restart frequency is 30.
-
+\end{comment}
 
 \section{Creating the Input File: PFLOTRAN Keywords}
 
