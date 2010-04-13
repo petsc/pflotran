@@ -146,7 +146,7 @@ subroutine GeneralAuxVarCompute(x,aux_var,global_aux_var,&
   kr = 0.d0
  
   global_aux_var%pres = x(1)
-  global_aux_var%temp = 25.d0
+  global_aux_var%temp = option%reference_temperature
  
   aux_var%pc = option%reference_pressure - global_aux_var%pres(1)
 

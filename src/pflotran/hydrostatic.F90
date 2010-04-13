@@ -62,7 +62,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   nullify(pressure_array)
   
   delta_z = min((grid%z_max_global-grid%z_min_global/500),1.d0)
-  temperature_at_datum = 25.d0
+  temperature_at_datum = option%reference_temperature
   concentration_at_datum = 0.d0
   
   
@@ -315,7 +315,7 @@ subroutine HydrostaticUpdateCouplerRotate(coupler,option,grid)
   max_distance = max(
   
   delta_depth = min((max_distance/500),1.d0)
-  temperature_at_datum = 25.d0
+  temperature_at_datum = option%reference_temperature
   concentration_at_datum = 0.d0
   
   ! for now, just set it; in future need to account for a different temperature datum
