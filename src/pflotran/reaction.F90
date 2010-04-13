@@ -2838,9 +2838,9 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 #endif  
   
 #ifdef TEMP_DEPENDENT_LOGK
-  if (.not.option%use_isothermal) then
+  if (.not.option%use_isothermal .and. reaction%neqcplx > 0) then
     call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
-                               global_auxvar%temp(iphase),reaction%neqcplx)
+                                 global_auxvar%temp(iphase),reaction%neqcplx)
   endif
 #endif  
   
@@ -2902,9 +2902,9 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 
   iphase = 2           
 #ifdef TEMP_DEPENDENT_LOGK
-  if (.not.option%use_isothermal) then
+  if (.not.option%use_isothermal .and. reaction%ngas) then
     call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
-                               global_auxvar%temp(1),reaction%ngas)
+                                 global_auxvar%temp(1),reaction%ngas)
   endif
 #endif  
 
