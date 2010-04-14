@@ -181,6 +181,8 @@ subroutine Init(simulation)
       call DatabaseRead(realization%reaction,option)
       call BasisInit(realization%reaction,option)    
     else
+      ! turn off activity coefficients since the database has not been read
+      realization%reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
       allocate(realization%reaction%primary_species_print(option%ntrandof))
       realization%reaction%primary_species_print = PETSC_TRUE
     endif
