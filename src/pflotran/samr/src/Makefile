@@ -126,11 +126,7 @@ ifndef jaguar
 CXX=mpicxx
 endif
 
-ifndef jaguar
-FPPFLAGS         = -g ${MYFLAGS} -I${PETSC_DIR}/include
-else
 FPPFLAGS         = -g ${MYFLAGS} -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include
-endif
 
 $(FORTOBJS):$(FORTM4SRC)
 	cd $(FORTDIR); ${MAKE}

@@ -20,7 +20,7 @@
 
 #include "MultilevelSolverFactory.h"
 #include "MultilevelSolver.h"
-#include "MultilevelLinearOperatorFactory.h"
+#include "MultilevelOperatorFactory.h"
 #include "PflotranJacobianMultilevelOperator.h"
 #include "CoarsenSchedule.h"
 #include "CoarsenAlgorithm.h"

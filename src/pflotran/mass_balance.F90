@@ -94,10 +94,10 @@ subroutine MassBalanceUpdate(realization,flow_solver,tran_solver)
       case(THC_MODE)
         call THCResidualToMass(realization)      
         call VecAXPY(field%tran_total_mass_balance, &
-                     field%tran_ts_mass_balance,1.d0,ierr)
+                     1.d0,field%tran_ts_mass_balance,ierr)
       case(RICHARDS_MODE)
         call VecAXPY(field%tran_total_mass_balance, &
-                     field%tran_ts_mass_balance,1.d0,ierr)
+                     1.d0,field%tran_ts_mass_balance,ierr)
       case(MPH_MODE)
       case(IMS_MODE)
     end select
@@ -108,7 +108,7 @@ subroutine MassBalanceUpdate(realization,flow_solver,tran_solver)
                              field%tran_ts_mass_balance,ierr)
     call VecScale(field%tran_ts_mass_balance,option%tran_dt,ierr)                     
     call VecAXPY(field%tran_total_mass_balance, &
-                 field%tran_ts_mass_balance,1.d0,ierr)
+                 1.d0,field%tran_ts_mass_balance,ierr)
   endif
 
   call PetscLogEventEnd(logging%event_mass_balance, &

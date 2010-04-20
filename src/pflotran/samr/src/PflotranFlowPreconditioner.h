@@ -20,7 +20,7 @@
 
 #include "MultilevelSolverFactory.h"
 #include "MultilevelSolver.h"
-#include "MultilevelLinearOperatorFactory.h"
+#include "MultilevelOperatorFactory.h"
 #include "PflotranJacobianMultilevelOperator.h"
 #include "CoarsenSchedule.h"
 #include "CoarsenAlgorithm.h"
@@ -31,7 +31,7 @@ typedef SAMRAI::tbox::List< SAMRAI::tbox::Pointer<SAMRAI::xfer::CoarsenSchedule<
 
 namespace SAMRAI{
 
-class PflotranFlowPreconditioner: public PreconditionerStrategy
+  class PflotranFlowPreconditioner: public PreconditionerStrategy
 {
 public:
    PflotranFlowPreconditioner(PflotranFlowPreconditionerParameters *parameters);

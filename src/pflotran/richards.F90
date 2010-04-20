@@ -1537,7 +1537,7 @@ end subroutine RichardsResidual
 
 ! ************************************************************************** !
 !
-! RichardsResidualfuxContribsPatch: should be called only for SAMR
+! RichardsResidualFluxContribsPatch: should be called only for SAMR
 ! author: Bobby Philip
 ! date: 02/17/09
 !
@@ -1617,7 +1617,8 @@ end subroutine RichardsResidualFluxContribPatch
 
 ! ************************************************************************** !
 !
-! RichardsResidualPatch1: Computes the residual equation 
+! RichardsResidualPatch1: Computes the interior flux and boundary flux 
+!   terms of the residual equation 
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
@@ -1979,7 +1980,8 @@ end subroutine RichardsResidualPatch1
 
 ! ************************************************************************** !
 !
-! RichardsResidualPatch2: Computes the residual equation 
+! RichardsResidualPatch2: Computes the accumulation and source/sink terms of 
+!   the residual equation 
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
@@ -2239,7 +2241,8 @@ end subroutine RichardsJacobian
                 
 ! ************************************************************************** !
 !
-! RichardsJacobianPatch1: Computes the Jacobian
+! RichardsJacobianPatch1: Computes the interior flux and boundary flux 
+!   terms of the Jacobian
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
@@ -2520,7 +2523,8 @@ end subroutine RichardsJacobianPatch1
 
 ! ************************************************************************** !
 !
-! RichardsJacobianPatch2: Computes the Jacobian
+! RichardsJacobianPatch2: Computes the accumulation and source/sink terms of 
+!   the Jacobian
 ! author: Glenn Hammond
 ! date: 12/13/07
 !

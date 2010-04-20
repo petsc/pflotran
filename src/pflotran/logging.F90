@@ -19,7 +19,7 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 5
   
     PetscLogStage :: stage(10)
     
-    PetscCookie :: class_pflotran
+    PetscClassId :: class_pflotran
     
     PetscLogEvent :: event_init
     PetscLogEvent :: event_setup
@@ -104,7 +104,8 @@ subroutine LoggingCreate()
   call PetscLogStageRegister('Output Stage', &
                              logging%stage(OUTPUT_STAGE),ierr)
                              
-  call PetscCookieRegister('PFLOTRAN',logging%class_pflotran,ierr)
+!!  call PetscCookieRegister('PFLOTRAN',logging%class_pflotran,ierr)
+  call PetscClassIdRegister('PFLOTRAN',logging%class_pflotran,ierr)
 
   call PetscLogEventRegister('Init', &
                              logging%class_pflotran, &

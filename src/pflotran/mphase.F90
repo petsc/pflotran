@@ -206,14 +206,14 @@ subroutine MphaseSetupPatch(realization)
   allocate(patch%aux%Mphase%Mphase_parameter%dencpr(size(realization%material_property_array)))
   do ipara = 1, size(realization%material_property_array)
     patch%aux%Mphase%mphase_parameter%dencpr(realization%material_property_array(ipara)%ptr%id) = &
-      realization%material_property_array(ipara)%ptr%rock_density*&
+      realization%material_property_array(ipara)%ptr%rock_density*option%scale*&
       realization%material_property_array(ipara)%ptr%specific_heat
   enddo
 ! ckwet
   allocate(patch%aux%Mphase%Mphase_parameter%ckwet(size(realization%material_property_array)))
   do ipara = 1, size(realization%material_property_array)
     patch%aux%Mphase%mphase_parameter%ckwet(realization%material_property_array(ipara)%ptr%id) = &
-      realization%material_property_array(ipara)%ptr%thermal_conductivity_wet
+      realization%material_property_array(ipara)%ptr%thermal_conductivity_wet*option%scale
   enddo
   
 
@@ -1769,13 +1769,15 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   
     m_na=option%m_nacl; m_cl=m_na; m_nacl = m_na 
     if(associated(realization%reaction))then
-      if (realization%reaction%species_idx%na_ion_id /= 0 .and. &
-        realization%reaction%species_idx%cl_ion_id /= 0) then
-        m_na = global_aux_vars(ghosted_id)%m_nacl(1)
-        m_cl = global_aux_vars(ghosted_id)%m_nacl(2)
-        m_nacl = m_na
-        if (m_cl> m_na) m_nacl = m_cl
-    endif  
+      if (associated(realization%reaction%species_idx)) then
+        if (realization%reaction%species_idx%na_ion_id /= 0 .and. &
+          realization%reaction%species_idx%cl_ion_id /= 0) then
+          m_na = global_aux_vars(ghosted_id)%m_nacl(1)
+          m_cl = global_aux_vars(ghosted_id)%m_nacl(2)
+          m_nacl = m_na
+          if (m_cl> m_na) m_nacl = m_cl
+        endif
+      endif  
     endif
 
     call Henry_duan_sun(t,p2*1.D-5,henry,xphi,lngamco2, &

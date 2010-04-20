@@ -13,42 +13,53 @@ module Unstructured_Grid_module
 #include "finclude/petscis.h90"
 
   type, public :: unstructured_grid_type
-    PetscInt :: num_cells_global, num_cells_local, num_cells_ghosted
-    PetscInt :: num_ghost_cells
-    PetscInt :: num_vertices_global, num_vertices_local
-    PetscInt :: global_offset
+    ! num_cells_ghosted =
+    ! num_cells_global =
+    ! num_cells_local = 
+    PetscInt :: num_cells_global  ! number of cells in entire problem domain
+    PetscInt :: num_cells_local   ! number of local (non-ghosted) cells
+    PetscInt :: num_cells_ghosted ! number of local and ghosted cells on the process
+    PetscInt :: num_ghost_cells   ! number of ghost cells (only) on processor
+    PetscInt :: num_vertices_global ! number of vertices in entire problem domain
+    PetscInt :: num_vertices_local  ! number of vertices in local grid cells
+    PetscInt :: global_offset ! offset in petsc ordering for the first cell on a processor???
     PetscInt :: nmax   ! Total number of nodes in global domain
     PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
     PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
     PetscInt, pointer :: hash(:,:,:)
     PetscInt :: num_hash
-    PetscInt, pointer :: cell_vertices_0(:,:)
-    PetscInt, pointer :: cell_ids_natural(:)
-    PetscInt, pointer :: cell_ids_petsc(:)
-    PetscInt, pointer :: ghost_cell_ids_natural(:)
-    PetscInt, pointer :: ghost_cell_ids_petsc(:)
-    PetscInt, pointer :: cell_neighbors_local_ghosted(:,:)
+    PetscInt, pointer :: cell_vertices_0(:,:) ! vertices for each grid cell (zero-based)
+    PetscInt, pointer :: cell_ids_natural(:) ! natural 1d right-hand i,j,k ordering
+    PetscInt, pointer :: cell_ids_petsc(:) ! petsc ordering of cell ids
+    PetscInt, pointer :: ghost_cell_ids_natural(:) ! natural ordering of ghost cell ids
+    PetscInt, pointer :: ghost_cell_ids_petsc(:) ! petsc ordering of ghost cells ids
+    PetscInt, pointer :: cell_neighbors_local_ghosted(:,:) ! local neighbors
     type(point_type), pointer :: vertices(:)
-    AO :: ao_natural_to_petsc 
+    AO :: ao_natural_to_petsc ! mappsing of natural to petsc ordering
   end type unstructured_grid_type
 
   type, public :: ugdm_type
+    ! local: included both local (non-ghosted) and ghosted cells
+    ! global: includes only local (non-ghosted) cells
     PetscInt :: ndof
-    IS :: is_ghosted_local
-    IS :: is_local_local
-    IS :: is_ghosted_petsc
-    IS :: is_local_petsc
-    IS :: is_ghosts_local
-    IS :: is_ghosts_petsc
-    IS :: is_local_natural
-    VecScatter :: scatter_ltog
-    VecScatter :: scatter_gtol
-    VecScatter :: scatter_ltol 
-    VecScatter :: scatter_gton
-    ISLocalToGlobalMapping :: mapping_ltog  
-    ISLocalToGlobalMapping :: mapping_ltogb
-    Vec :: global_vec
-    Vec :: local_vec
+    ! for the below
+    ! ghosted = local (non-ghosted) and ghosted cells
+    ! local = local (non-ghosted) cells
+    IS :: is_ghosted_local ! IS for ghosted cells with local on-processor numbering
+    IS :: is_local_local ! IS for local cells with local on-processor numbering
+    IS :: is_ghosted_petsc ! IS for ghosted cells with petsc numbering
+    IS :: is_local_petsc ! IS for local cells with petsc numbering
+    IS :: is_ghosts_local ! IS for ghosted cells with local on-processor numbering
+    IS :: is_ghosts_petsc ! IS for ghosted cells with petsc numbering
+    IS :: is_local_natural ! IS for local cells with natural (global) numbering
+    VecScatter :: scatter_ltog ! scatter context for local to global updates
+    VecScatter :: scatter_gtol ! scatter context for global to local updates
+    VecScatter :: scatter_ltol ! scatter context for local to local updates
+    VecScatter :: scatter_gton ! scatter context for global to natural updates
+    ISLocalToGlobalMapping :: mapping_ltog  ! petsc vec local to global mapping
+    ISLocalToGlobalMapping :: mapping_ltogb ! block form of mapping_ltog
+    Vec :: global_vec ! global vec (no ghost cells), petsc-ordering
+    Vec :: local_vec ! local vec (includes local and ghosted cells), local ordering
   end type ugdm_type
 
   type, public :: point_type
@@ -2529,11 +2540,11 @@ subroutine UGDMDestroy(ugdm)
   call VecScatterDestroy(ugdm%scatter_gtol,ierr)
   call VecScatterDestroy(ugdm%scatter_ltol,ierr)
   call VecScatterDestroy(ugdm%scatter_gton,ierr)
-  call ISLocalToGlobalMappingDestroy(ugdm%mapping_ltog)
+  call ISLocalToGlobalMappingDestroy(ugdm%mapping_ltog,ierr)
   if (ugdm%mapping_ltogb /= 0) &
-    call ISLocalToGlobalMappingDestroy(ugdm%mapping_ltogb)
-  call VecDestroy(ugdm%global_vec)
-  call VecDestroy(ugdm%local_vec)
+    call ISLocalToGlobalMappingDestroy(ugdm%mapping_ltogb,ierr)
+  call VecDestroy(ugdm%global_vec,ierr)
+  call VecDestroy(ugdm%local_vec,ierr)
   deallocate(ugdm)
   nullify(ugdm)
 

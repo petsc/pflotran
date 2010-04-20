@@ -106,7 +106,7 @@ PflotranFlowPreconditioner::getFromInput( tbox::Pointer<tbox::Database> &db,
    {
       if (db->keyExists("pc_solver"))
       {
-         d_PCSolverFactory = new MultilevelSolverFactory();         
+	d_PCSolverFactory = new MultilevelSolverFactory();         
       } 
       else 
       {

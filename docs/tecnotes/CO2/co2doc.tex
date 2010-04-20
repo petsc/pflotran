@@ -1,0 +1,401 @@
+\documentclass[12pt]{article} 
+%\usepackage{times,helvet}
+\usepackage{palatino}
+%\usepackage[utf8]{inputenc} %useful to type directly diacritic characters
+%\usepackage{ssss}
+\usepackage{amsmath,amsbsy,amssymb}
+\usepackage{sectsty,hangcaption}
+\usepackage{deflist}
+\usepackage{fancyhdr}
+\usepackage{tabularx}
+\usepackage{verbatim}
+\usepackage{moreverb}
+\usepackage{float,comment}
+\usepackage{graphicx}
+\usepackage{longtable}
+%\usepackage{portland}
+\usepackage{booktabs}
+
+%must be last package
+%\usepackage{hyperref}
+\usepackage[debug=false, colorlinks=true, pdfstartview=FitV, linkcolor=blue, citecolor=blue, urlcolor=blue, pdfpagelabels=true]{hyperref}
+
+\textwidth 6.5in
+\textheight 9.5in
+%\topmargin -.1in
+\topmargin -.75in
+\newlength{\boxwidth}
+\setlength{\boxwidth}{5.8in}
+\oddsidemargin -0in
+\evensidemargin -0in
+\headheight 0.25in
+
+\lhead{{\sl PFLOTRAN: Governing Equations}}
+\chead{\rm - \thepage\ -}
+\rhead{\sl DRAFT: \today}
+\cfoot{}
+
+\newcommand\flotran{{\sl FloTran}}
+\renewcommand{\baselinestretch}{1.0}
+\def\EQ#1\EN{\begin{equation}#1\end{equation}}
+\def\BA#1\EA{\begin{align}#1\end{align}}
+\def\BS#1\ES{\begin{split}#1\end{split}}
+%\newcommand{\EQ}{\begin{equation}}
+%\newcommand{\EN}{\end{equation}}
+\newcommand{\bcr}{\begin{center}}
+\newcommand{\ecr}{\end{center}}
+\newcommand{\eq}{\ =\ }
+\newcommand{\degc}{$^\circ$C}
+\renewcommand{\c}{{\rm CO_2}}
+\newcommand{\im}{{\rm imb}}
+\newcommand{\m}{{\rm mb}}
+\newcommand{\ecm}{{\rm ecm}}
+\newcommand{\eff}{{\rm eff}}
+\newcommand{\eqr}{{\rm le}}
+\newcommand{\equ}{{\rm eq}}
+\newcommand{\kin}{{\rm kin}}
+\newcommand{\rdx}{{\rm rdx}}
+\newcommand{\ind}{{\rm id}}
+\newcommand{\dep}{{\rm dp}}
+\newcommand{\e}{{\rm{e}}}
+\newcommand{\erf}{{\rm{erf}}}
+\newcommand{\erfc}{{\rm{erfc}}}
+\newcommand{\p}{{\partial}}
+\newcommand{\A}{{\mathcal A}}
+\newcommand{\B}{{\mathcal B}}
+\newcommand{\C}{{\mathcal C}}
+\newcommand{\D}{{\mathcal D}}
+\newcommand{\E}{{\mathcal E}}
+\newcommand{\F}{{\mathcal F}}
+\newcommand{\G}{{\mathcal G}}
+\newcommand{\I}{{\mathcal I}}
+\newcommand{\J}{{\mathcal J}}
+\newcommand{\M}{{\mathcal M}}
+\newcommand{\cO}{{\mathcal O}}
+\renewcommand{\P}{{{\mathcal P}}}
+\newcommand{\Q}{{\mathcal Q}}
+\newcommand{\R}{{{\mathcal R}}}
+\renewcommand{\S}{{\mathcal S}}
+\newcommand{\T}{{\mathcal T}}
+\newcommand{\W}{{\mathcal W}}
+\newcommand{\Y}{{\mathcal Y}}
+\newcommand{\Z}{{\mathcal Z}}
+\newcommand{\rev}{{\rm rev}}
+\newcommand{\irr}{{\rm irr}}
+\renewcommand{\a}{{\alpha}}
+\newcommand{\abar}{{\bar \alpha}}
+\renewcommand{\b}{{\beta}}
+\renewcommand{\e}{{\epsilon}}
+\newcommand{\s}{{\sigma}}
+\newcommand{\w}{{\rm H_2O}}
+\newcommand{\air}{{\rm N_2}}
+\newcommand{\pe}{{\rm Pe}}
+\newcommand{\da}{{\rm Da}}
+\renewcommand{\k}{{\dot R}^0}
+\renewcommand{\L}{\widehat{\mathcal L}}
+%\renewcommand{\bar}{\overline}
+\newcommand{\dsty}{{\displaystyle}}
+\newcommand{\diff}{{\mathcal D}}
+\newcommand{\surf}{\equiv \!\!\!}
+\newcommand{\bnabla}{\boldsymbol{\nabla}}
+\newcommand{\ba}{\boldsymbol{a}}
+
+\newcommand{\balpha}{\boldsymbol{\alpha}}
+\newcommand{\bbeta}{\boldsymbol{\beta}}
+\newcommand{\bgamma}{\boldsymbol{\gamma}}
+\renewcommand{\d}{{\delta}}
+
+\newcommand{\bA}{\boldsymbol{A}}
+\newcommand{\bB}{\boldsymbol{B}}
+\newcommand{\bb}{\boldsymbol{b}}
+\newcommand{\bC}{\boldsymbol{C}}
+\newcommand{\bc}{\boldsymbol{c}}
+\newcommand{\bcolon}{\boldsymbol{:}}
+\newcommand{\bdot}{\boldsymbol{\cdot}}
+\newcommand{\bD}{\boldsymbol{D}}
+\newcommand{\bE}{\boldsymbol{E}}
+\newcommand{\bF}{\boldsymbol{F}}
+\newcommand{\bG}{\boldsymbol{G}}
+\newcommand{\bg}{\boldsymbol{g}}
+\newcommand{\bi}{\boldsymbol{i}}
+\newcommand{\bI}{\boldsymbol{I}}
+\newcommand{\bJ}{\boldsymbol{J}}
+\newcommand{\bK}{\boldsymbol{K}}
+\newcommand{\bL}{\boldsymbol{L}}
+\newcommand{\bM}{\boldsymbol{M}}
+\newcommand{\bn}{\boldsymbol{n}}
+\newcommand{\bdelta}{\boldsymbol{\delta}}
+\newcommand{\bGamma}{\boldsymbol{\Gamma}}
+\newcommand{\bomega}{\boldsymbol{\omega}}
+\newcommand{\bOmega}{\boldsymbol{\Omega}}
+\newcommand{\bPsi}{\boldsymbol{\Psi}}
+\newcommand{\bO}{\boldsymbol{O}}
+\newcommand{\bnu}{\boldsymbol{\nu}}
+\newcommand{\bdS}{\boldsymbol{dS}}
+\newcommand{\bP}{\boldsymbol{P}}
+\newcommand{\bq}{\boldsymbol{q}}
+\newcommand{\br}{\boldsymbol{r}}
+\newcommand{\bR}{\boldsymbol{R}}
+\newcommand{\bS}{\boldsymbol{S}}
+\newcommand{\bU}{\boldsymbol{U}}
+\newcommand{\bu}{\boldsymbol{u}}
+\newcommand{\bv}{\boldsymbol{v}}
+\newcommand{\bw}{\boldsymbol{w}}
+\newcommand{\bx}{\boldsymbol{x}}
+\newcommand{\by}{\boldsymbol{y}}
+\newcommand{\bY}{\boldsymbol{Y}}
+\newcommand{\bz}{\boldsymbol{z}}
+\newcommand{\bzero}{\boldsymbol{0}}
+
+\newcommand{\arrows}{~\rightleftharpoons~}
+\newcommand{\arrowstab}{\!\!\!\rightleftharpoons\!\!\!}
+\newcommand{\longline}{\noindent\rule[-0.1in]{\textwidth}{0.01in}}
+
+\def\water{H$_2$O}
+\def\calcium{Ca$^{2+}$}
+\def\copper{Cu$^{2+}$}
+\def\magnesium{Mg$^{2+}$}
+\def\sodium{Na$^+$}
+\def\potassium{K$^+$}
+\def\uranium{UO$_2^{2+}$}
+\def\hion{H$^+$}
+\def\bicarbonate{HCO$_3^-$}
+\def\cotwo{CO$_2$}
+\def\chloride{Cl$^-$}
+\def\fluoride{F$^-$}
+\def\phosphoricacid{HPO$_4^{2-}$}
+\def\nitrate{NO$_3^-$}
+\def\sulfate{SO$_4^{2-}$}
+\def\souotwooh{$>$SOUO$_2$OH}
+\def\sohuotwocothree{$>$SOHUO$_2$CO$_3$}
+\def\soh{$>$SOH}
+
+%\renewcommand{\thepage}{\roman{page}}
+%\renewcommand{\thepage}{\arabic{page}}
+%\renewcommand{\theequation}{\arabic{section}.\arabic{subsection}-\arabic{equation}}
+%\renewcommand{\theequation}{\arabic{section}-\arabic{equation}}
+%\setcounter{page}{1}
+
+\setlength{\parindent}{0.3125in}
+\setlength{\parskip}{2ex plus 0.2ex minus 0.2ex}
+
+\setcounter{secnumdepth}{4}
+\setcounter{tocdepth}{4}
+\renewcommand{\contentsname}{CONTENTS}
+
+\setlongtables
+
+\pagestyle{fancy}
+
+\thispagestyle{empty}
+
+\begin{document}
+
+\section{Modeling CO$_2$ Sequestration}
+
+\subsection{Governing Equations}
+
+Mass conservation equations employed by PFLOTRAN can be written in the form
+\EQ\label{massconv}
+\sum_\a \left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a X_i^\a\big) + \bnabla\cdot \big[\bq_\a \rho_\a X_i^\a -\varphi s_\a \rho_\a D_\a \bnabla X_i^\a\big]\right\} \eq Q_i,
+\EN
+with porosity $\varphi$, molar density $\rho_\a$, diffusivity/dispersivity $D_\a$ and source/sink term $Q_i$. The sum over $\a$ is over all fluid phases present in a particular control volume. In these equations $s_\a$ denotes the volume fraction of phase $\a$ satisfying
+\EQ
+\sum_\a s_\a \eq 1.
+\EN
+The mole fraction $X_i^\a$ satisfies the constraint condition
+\EQ\label{molefrac}
+\sum_i X_i^\a \eq 1.
+\EN
+The Darcy velocity $\bq_\a$ is given as
+\EQ
+\bq_\a \eq -\frac{kk_\a}{\mu_\a} \bnabla \Big(P_\a - \rho_\a g z\Big),
+\EN
+with viscosity $\mu_\a$, acceleration of gravity $g$, and height $z$.
+
+Summing Eqns.\eqref{massconv} over all components $i$ making use of Eqn.\eqref{molefrac} gives
+\EQ\label{masstot}
+\sum_\a \left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a \big) + \bnabla\cdot \big(\bq_\a \rho_\a \big)\right\} \eq Q,
+\EN
+where
+\EQ
+Q \eq \sum_i Q_i.
+\EN
+The equation for $i$ = H$_2$O in Eqn.\eqref{massconv} may be replaced with Eqn.\eqref{masstot}, for example, thereby eliminating the need to consider the diffusion term for H$_2$O.
+
+The energy conservation equation can be written in the form
+\EQ
+\sum_\a\left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a U_\a\big) + \bnabla\cdot\big(\bq_\a \rho_\a H_\a\big) \right\} + \frac{\p}{\p t} \big(\rho_r C_p T \big) - \bnabla\cdot\big(\kappa\bnabla T\big) \eq Q_e,
+\EN
+as the sum of contributions from each fluid phase and rock,
+with internal energy $U_\a$ and enthalpy $H_\a$ of fluid phase $\a$, and rock heat capacity $C_p$ and thermal conductivity $\kappa$. The quantity $Q_e$ denotes the heat source/sink term.
+
+\subsection{Choice of Independent Variables}
+
+Depending on the number and type of phases present within a control volume, the independent variables are chosen according to Table~\ref{tindepvar}. There exist $2^2-1=3$ possible phases in the system corresponding to liquid, gas and liquid-gas. In general for a system made up of $N_p$ individual phases, there are $2^{N_p}-1$ possible phase combinations.
+
+\tabcolsep 3pt
+\begin{table}[H]\centering
+\caption{Independent variables in a two-phase system.}\label{tindepvar}
+\vspace{3mm}
+\begin{tabular}{lccc}
+\toprule
+Phases & \multicolumn{3}{c}{Variables}\\
+\midrule
+liquid & $P_l$ & $T$ & $X_i^l$\\
+gas & $P_g$ & $T$ & $X_i^l$\\
+two-phase & $P_g$ & $T$ & $s_g$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Constitutive Relations}
+
+Various constitutive relations hold depending on the phases present.
+
+\subsubsection{Liquid Phase: Variables $\{P_l,\,T,\,X_\c^l\}$}
+
+For a pure liquid phase $s_l=1$. The molality of dissolved $\c$ is found from the relation
+\EQ
+m_\c^{l} \eq \frac{X_\c^l W_\w^{-1}}{\big(1- X_\c^l\big)}.
+\EN
+
+
+\subsubsection{Gas Phase: Variables $\{P_g,\,T,\,X_\c^g\}$}
+
+For a pure gas phase $s_g=1$.
+
+\subsubsection{Two-Phase: Variables $\{P_g,\,T,\,s_g\}$}
+
+In a two-phase system
+$X_\c^g$, is assumed to be given by
+\EQ
+X_\c^g \eq \frac{P_\c^g}{P_g} \eq \frac{P_g-P_\w^{\rm sat}(T)}{P_g} \eq 1-\frac{P_\w^{\rm sat}(T)}{P_g},
+\EN
+with total gas pressure $P_g$ equal to
+\EQ\label{totalp}
+P_g \eq P_\c^g + P_\w^{\rm sat}(T),
+\EN
+and where $P_\w^{\rm sat}(T)$ denotes the saturation pressure of pure water. One also has
+\EQ
+X_\c^l = 1-X_\c^g. 
+\EN
+The molality of dissolved $\c$ is found from the relation
+\EQ
+m_\c^{} \eq \frac{\phi_\c^{} X_\c^g}{\gamma_\c^{}K_\c^{}} P_g^{}.
+\EN
+
+\subsection{Conditions for Change in Phase}
+
+Possible changes in phase that may occur in the system are listed in Table~\ref{tphasechng}. In Table~\ref{tphasechng}, $\mu_i^\a$ refers to the chemical potential of the $i$th species in phase $\a$.
+
+\begin{table}[H]\centering
+\caption{Independent variables in a two-phase system.}\label{tphasechng}
+\vspace{3mm}
+\begin{tabular}{rclcrcl}
+\toprule
+\multicolumn{3}{c}{Phase Transformation} & Condition & \multicolumn{3}{c}{Variable Switching}\\
+\midrule
+liquid &$\rightarrow$& two-phase & $\mu_\c^l > \mu_\c^g$ & $\{P_l, \, T, X_\c^l\}$ &$\rightarrow$& $\{P_g, \, T, s_g\}$\\
+gas &$\rightarrow$& two-phase & $\mu_\c^l < \mu_\c^g$ & $\{P_g, \, T, X_\c^g\}$ &$\rightarrow$& $\{P_g, \, T, s_g\}$\\
+two-phase &$\rightarrow$& liquid & $s_g < 0$ & $\{P_g, \, T, s_g\}$ &$\rightarrow$& $\{P_g, \, T, X_\c^l\}$\\
+two-phase &$\rightarrow$& gas & $s_g > 0$ & $\{P_g, \, T, s_g\}$ &$\rightarrow$& $\{P_g, \, T, X_\c^g\}$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Finite Volume Discretization}
+
+Using a finite volume discretization approach, the governing flow and transport equations are discretized according to
+\BA
+R_{in}^{k+1} \eq &\sum_\a \left\{\frac{\big(\varphi s_\a \rho_\a X_i^\a\big)_n^{k+1}-(\varphi s_\a \rho_\a X_i^\a)_n^k}{\Delta t} V_n \right. \nonumber\\
+&\left. + \sum_{n'} \left[\bq_{\a,nn'}^{k+1} \rho_{\a,nn'}^{k+1} X_{inn'}^{\a,k+1} -(\varphi s_{\a} \rho_\a D_\a)_{nn'}^{k+1} \frac{X_{i n'}^{\a, k+1}-X_{i n}^{\a,k+1}}{d_{n'}+d_n}\right] A_{nn'}\right\} \nonumber\\
+&- Q_i^{k+1} V_n,
+\EA
+providing the residual function for the $i$th component at the $n$th control volume and $k+1$st time step, where the sum over $n'$ is over all control volumes which connect to the $n$th control volume, $d_n$, $d_{n'}$ refers to the distance for the control volume center to the interface, and $A_{nn'}$ denotes the interfacial area.
+
+\section{Flash Method}
+
+An alternative approach to variable switching is the flash method.
+
+\section*{Appendix: Supercritical CO$_2$--H$_2$O Equilibrium Relations}
+
+This section follows Duan \& Sun (2003).
+For an aqueous fluid in equilibrium with supercritical CO$_2$ it is necessary to use an equation of state for CO$_2$ to obtain the solubility of CO$_2$ in solution. The presentation follows Duan and Sun (2003). Equilibrium of supercritical CO$_2$ with an aqueous solution described by the reaction
+\EQ
+{\rm CO}_2^l \arrows {\rm CO}_2^g,
+\EN
+implies equality of the chemical potentials
+\EQ
+\mu_\c^l \eq \mu_\c^g,
+\EN
+where
+\EQ
+\mu_\c^l \eq \mu_\c^{l\ominus} + \ln a_\c^{},
+\EN
+and
+\EQ
+\mu_\c^g \eq \mu_\c^{g\ominus} + \ln f_\c^{},
+\EN
+with standard state chemical potentials $\mu_\c^{\ominus l}$ and $\mu_\c^{\ominus g}$. The activity of $\c$ in an aqueous solution is related to its molality $m_\c$ by
+\EQ
+a_\c^{} \eq \gamma_\c^{} m_\c^{},
+\EN
+where $\gamma_\c$ denotes the activity coefficient for aqueous $\c$.
+The fugacity is given by
+\EQ
+f_\c^{} \eq \phi_\c^{} P_\c^{} \eq \phi_\c^{} X_\c^g P_g^{},
+\EN
+with fugacity coefficient $\phi_\c$ where the mole fraction of $\c$ in the supercritical (gas) phase, $X_\c^g$, is assumed to be given by
+\EQ
+X_\c^g \eq \frac{P_\c^g}{P_g} \eq \frac{P_g-P_\w^{\rm sat}(T)}{P_g} \eq 1-\frac{P_\w^{\rm sat}(T)}{P_g},
+\EN
+with total gas pressure $P_g$ equal to
+\EQ\label{totalp}
+P_g \eq P_\c^g + P_\w^{\rm sat}(T),
+\EN
+and where $P_\w^{\rm sat}(T)$ denotes the saturation pressure of pure water. 
+
+Introducing the equilibrium constant $K_\c$ defined as
+\EQ
+\ln K_\c \eq -\frac{1}{RT}\big(\mu_{\rm CO_2}^{g\ominus} - \mu_{\rm CO_2}^{l\ominus}\big),
+\EN
+yields the mass action equation
+\EQ\label{massactco2}
+K_\c^{} \eq \frac{f_\c^{}}{a_\c^{}} \eq \frac{\phi_\c^{} P_\c^g}{a_\c} \eq \frac{\phi_\c^{} X_\c^g P_g^{}}{a_\c^{}}.
+\EN
+The equilibrium CO$_2$ molality is thus given by
+\EQ
+m_\c^{} \eq \frac{\phi_\c^{} X_\c^g}{\gamma_\c^{}K_\c^{}}  P_g^{}.
+\EN
+%Of the three quantities: $P_g$, $P_\c^g$, and $T$, two may be specified and the other computed from Eqn.\eqref{totalp}.
+
+Solving Eqn.\eqref{massactco2} for the $\c$ partial pressure gives
+\BA
+P_\c^g &\eq \frac{K_\c}{\phi_\c} a_\c,\\
+&\eq \widetilde K_\c a_\c,
+\EA
+where the effective equilibrium constant $\widetilde K_\c$ is defined as
+\EQ
+\widetilde K_\c \eq \frac{K_\c}{\phi_\c}.
+\EN
+For a two-component system molality is related to the mole fraction by the equation
+\begin{subequations}
+\EQ
+x_\c^l \eq\frac{m_\c W_\w}{1+m_\c W_\w},
+\EN
+and conversely mole fraction is related to molality by the equation
+\EQ
+m_\c \eq \frac{x_\c^l}{W_\w(1-x_\c^l)},
+\EN
+\end{subequations}
+where $W_\w$ denotes the formula weight of water. 
+
+The concentration of $\c$ in the gas phase, $C_\c^g$, is obtained as
+\BA
+C_\c^g &\eq \frac{n_i^g}{V_g} \eq \frac{n_i^g}{N_g}\frac{N_g}{V_g} \eq \rho_\c^{} X_\c^g,\\
+&\eq \rho_\c \frac{f_\c}{\phi_\c P_g},\\
+&\eq \rho_\c K_\c \frac{a_\c}{\phi_\c P_g}.
+\EA
+
+\end{document}

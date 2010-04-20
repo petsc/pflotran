@@ -183,6 +183,8 @@ subroutine Init(simulation)
       call DatabaseRead(realization%reaction,option)
       call BasisInit(realization%reaction,option)    
     else
+      ! turn off activity coefficients since the database has not been read
+      realization%reaction%act_coef_update_frequency = ACT_COEF_FREQUENCY_OFF
       allocate(realization%reaction%primary_species_print(option%ntrandof))
       realization%reaction%primary_species_print = PETSC_TRUE
     endif
@@ -333,7 +335,7 @@ subroutine Init(simulation)
     ! I also note that this preconditioner is intended only for the flow 
     ! solver.  --RTM
     if (realization%discretization%itype == STRUCTURED_GRID) then
-      call PCSetDA(flow_solver%pc, &
+      call PCSetDM(flow_solver%pc, &
                    realization%discretization%dm_nflowdof,ierr);
     endif
 

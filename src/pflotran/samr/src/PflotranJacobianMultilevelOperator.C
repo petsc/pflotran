@@ -24,7 +24,7 @@ PflotranJacobianMultilevelOperator::~PflotranJacobianMultilevelOperator()
 }
 
 PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(MultilevelOperatorParameters *parameters)
-   :MultilevelLinearOperator(parameters)
+  :MultilevelOperator(parameters)
 {
    d_flux_id                      = -1;
    d_coarsen_diffusive_fluxes     = true;

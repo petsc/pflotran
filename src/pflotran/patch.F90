@@ -470,9 +470,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
         observation%region => RegionGetPtrFromList(observation%linkage_name, &
                                                     patch%regions)
         if (.not.associated(observation%region)) then
-          option%io_buffer = 'Region ' // &
+          option%io_buffer = 'Region "' // &
                    trim(observation%linkage_name) // &
-                 '" in observation point  ' // &
+                 '" in observation point ' // &
                  trim(observation%name) // &
                  ' not found in region list'                   
           call printErrMsg(option)

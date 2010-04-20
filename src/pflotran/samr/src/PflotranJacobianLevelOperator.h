@@ -15,7 +15,7 @@ extern "C"{
 #include "CCellVariable.h"
 #include "CSideVariable.h"
 #include "LevelOperatorParameters.h"
-#include "LevelLinearOperator.h"
+#include "LevelOperator.h"
 #include <vector>
 #include "RefinementBoundaryInterpolation.h"
 
@@ -27,7 +27,7 @@ extern "C" {
 
 namespace SAMRAI{
 
-class PflotranJacobianLevelOperator: public LevelLinearOperator
+class PflotranJacobianLevelOperator: public LevelOperator
 {
 public:
 
