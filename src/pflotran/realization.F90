@@ -195,11 +195,14 @@ subroutine RealizationCreateDiscretization(realization)
   discretization => realization%discretization
   
   call DiscretizationCreateDMs(discretization,option)
+
+  write(*,*) "stop 1"
   
   option%ivar_centering = CELL_CENTERED
   ! 1 degree of freedom, global
   call DiscretizationCreateVector(discretization,ONEDOF,field%porosity0, &
                                   GLOBAL,option)
+ 
   call DiscretizationDuplicateVector(discretization,field%porosity0, &
                                      field%tortuosity0)
   call DiscretizationDuplicateVector(discretization,field%porosity0, &
@@ -216,7 +219,9 @@ subroutine RealizationCreateDiscretization(realization)
 
   call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
                                      field%work_loc)
-  
+
+   
+
   if (option%nflowdof > 0) then
 
     ! 1-dof global  
@@ -317,10 +322,14 @@ subroutine RealizationCreateDiscretization(realization)
       ! set up nG2L, NL2G, etc.
       call UGridMapIndices(grid%unstructured_grid,discretization%dm_1dof%ugdm, &
                            grid%nG2L,grid%nL2G,grid%nL2A,grid%nG2A)
+      write(*,*) "After UGridMapIndices" 
       call GridComputeCoordinates(grid,discretization%origin,option)
       ! set up internal connectivity, distance, etc.
+       write(*,*) "After GridComputeCoordinates"
       call GridComputeInternalConnect(grid,option)
+        write(*,*) "After GridComputeInternalConnect"  
       call GridComputeVolumes(grid,field%volume,option)
+         write(*,*) "After GridComputeVolumes"
     case(AMR_GRID)
        call AMRGridComputeGeometryInformation(discretization%amrgrid, &
                                               discretization%origin, &
