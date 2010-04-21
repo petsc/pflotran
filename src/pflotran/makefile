@@ -22,6 +22,10 @@ ifdef glenn
 GLENN_FLAGS = -DGLENN -DENABLE_UNSTRUCTURED
 endif
 
+ifdef unstr
+UNSTR_FLAGS = -DENABLE_UNSTRUCTURED -DGEH_DEBUG
+endif
+
 ifdef temp
 TEMP_FLAG = -DTEMP_DEPENDENT_LOGK
 endif
@@ -41,7 +45,7 @@ endif
 
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) \
           $(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG) $(TEMP_FLAG)\
- 					$(CHUAN_FLAG) $(COLL_FLAG)
+ 					$(CHUAN_FLAG) $(COLL_FLAG) $(UNSTR_FLAGS)
 
 CFLAGS		 = 
 FFLAGS		 = #-Rb
@@ -79,6 +83,7 @@ common_obj = ${common_src}option.o \
 	${common_src}reaction_aux.o\
 	${common_src}thc_aux.o\
 	${common_src}richards_aux.o\
+	${common_src}mfd_aux.o\
 	${common_src}mphase_aux.o\
 	${common_src}immis_aux.o\
 	${common_src}auxilliary.o\
@@ -92,7 +97,6 @@ common_obj = ${common_src}option.o \
 	${common_src}pckr_mod.o \
 	${common_src}strata.o \
 	${common_src}connection.o \
-        ${common_src}mfd_aux.o\
 	${common_src}observation.o \
 	${common_src}solver.o \
 	${common_src}cf90bridge.o\
@@ -173,7 +177,7 @@ general_grid.o : grid.o realization.o hdf5.o logging.o
 discretization.o : grid.o structured_grid.o unstructured_grid.o option.o \
                    input.o string.o
 grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
-         input.o
+         input.o mfd_aux.o
 input.o : string.o option.o
 solver.o : option.o field.o input.o string.o
 region.o : input.o utility.o logging.o string.o
@@ -189,7 +193,7 @@ realization.o : grid.o option.o region.o condition.o coupler.o material.o \
                 strata.o waypoint.o field.o hydrostatic.o debug.o \
 		observation.o velocity.o \
                 patch.o level.o discretization.o reaction.o reaction_aux.o \
-                fluid.o saturation_function.o
+                fluid.o saturation_function.o mfd_aux.o
 level.o : patch.o option.o
 patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
           auxilliary.o reaction.o condition.o connection.o hydrostatic.o \

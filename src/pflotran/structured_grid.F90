@@ -33,6 +33,8 @@ module Structured_Grid_module
 
     PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
     PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
+    PetscInt :: nlmax_faces  ! Total number of non-ghosted faces in local domain.
+    PetscInt :: ngmax_faces  ! Number of ghosted & non-ghosted faces in local domain.
 
     PetscReal :: origin(3) ! local origin of non-ghosted grid
     PetscReal :: bounds(3,3)
@@ -957,6 +959,9 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
           structured_grid%nlx*(structured_grid%ngy-1)*structured_grid%nlz+ &
           structured_grid%nlx*structured_grid%nly*(structured_grid%ngz-1)
 
+  structured_grid%nlmax_faces = 0
+  structured_grid%ngmax_faces = 0
+
   lenx = structured_grid%ngx - 1
   leny = structured_grid%ngy - 1
   lenz = structured_grid%ngz - 1
@@ -1003,8 +1008,23 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
           do j = structured_grid%jstart, structured_grid%jend
             do i = 1, lenx
               iconn = iconn+1
+        
+              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
+               
+ 
               id_up = i + j * structured_grid%ngx + k * structured_grid%ngxy+samr_ofx
               id_dn = id_up + 1
+
+
+              if (i==1) then
+                if (structured_grid%nxs==structured_grid%ngxs) then
+                   structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+                end if
+              else 
+                   structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+              end if
+
+
               connections%id_up(iconn) = id_up
               connections%id_dn(iconn) = id_dn
               connections%dist(-1:3,iconn) = 0.d0
@@ -1069,6 +1089,16 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
           do i = structured_grid%istart, structured_grid%iend
             do j = 1, leny
               iconn = iconn+1
+
+              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
+              if (j==1) then
+                if (structured_grid%nys==structured_grid%ngys) then
+                   structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+                end if
+              else 
+                   structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+              end if
+
               id_up = i + 1 + (j-1) * structured_grid%ngx + k * structured_grid%ngxy &
                   +samr_ofy
               id_dn = id_up + structured_grid%ngx
@@ -1103,6 +1133,16 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
           do i = structured_grid%istart, structured_grid%iend
             do k = 1, lenz
               iconn = iconn+1
+
+              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
+              if (k==1) then
+                if (structured_grid%nzs==structured_grid%ngzs) then
+                   structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+                end if
+              else 
+                   structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+              end if
+
               id_up = i + 1 + j * structured_grid%ngx + (k-1) * &
                   structured_grid%ngxy + samr_ofz
               id_dn = id_up + structured_grid%ngxy
@@ -1203,19 +1243,21 @@ function StructGridComputeBoundConnect(radius,structured_grid,option)
   lenz = structured_grid%nlz 
 
 
-  write(*,*) 'nlx=',structured_grid%nlx,' nly=',structured_grid%nly, ' nlz=',structured_grid%nlz 
-  write(*,*) 'ngx=',structured_grid%ngx,' ngy=',structured_grid%ngy, ' ngz=',structured_grid%ngz
-  write(*,*) 'nx=',structured_grid%nlx,' ny=',structured_grid%ny, ' nz=',structured_grid%nz  
-  write(*,*) 'istart=',structured_grid%istart,' iend=',structured_grid%iend
-  write(*,*) 'jstart=',structured_grid%jstart,' jend=',structured_grid%jend
-  write(*,*) 'kstart=',structured_grid%kstart,' kend=',structured_grid%kend
-  write(*,*) 'nconn=',nconn
+!  write(*,*) option%myrank, 'nlx=',structured_grid%nlx,' nly=',structured_grid%nly, ' nlz=',structured_grid%nlz 
+!  write(*,*) option%myrank, 'ngx=',structured_grid%ngx,' ngy=',structured_grid%ngy, ' ngz=',structured_grid%ngz
+!  write(*,*) option%myrank, 'nx=',structured_grid%nlx,' ny=',structured_grid%ny, ' nz=',structured_grid%nz  
+!  write(*,*) option%myrank, 'istart=',structured_grid%istart,' iend=',structured_grid%iend
+!  write(*,*) option%myrank, 'jstart=',structured_grid%jstart,' jend=',structured_grid%jend
+!  write(*,*) option%myrank, 'kstart=',structured_grid%kstart,' kend=',structured_grid%kend
+!  write(*,*) option%myrank, 'nconn=',nconn
 
 !  stop
 
 
   connections => ConnectionCreate(nconn, &
                                   option%nphase,BOUNDARY_CONNECTION_TYPE)
+
+!  StructGridComputeBoundConnect => connections
 
   iconn = 0
   ! x-connections
@@ -1227,34 +1269,39 @@ function StructGridComputeBoundConnect(radius,structured_grid,option)
           do k = structured_grid%kstart, structured_grid%kend
             do j = structured_grid%jstart, structured_grid%jend
               iconn = iconn+1
+
+              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
+              structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+
               id_dn = i + j * structured_grid%ngx + k * structured_grid%ngxy+samr_ofx
-              write(*,*) iconn, id_dn
               connections%id_dn(iconn) = id_dn
               connections%dist(-1:3,iconn) = 0.d0
               dist_dn = 0.5d0*structured_grid%dx(id_dn)
               connections%dist(-1,iconn) = 0.
               connections%dist(0,iconn) = dist_dn
               connections%dist(1,iconn) = -1.d0  ! x component of unit vector
-              connections%area(iconn) = structured_grid%dy(id_up)* &
-                                        structured_grid%dz(id_up)
+              connections%area(iconn) = structured_grid%dy(id_dn)* &
+                                        structured_grid%dz(id_dn)
             enddo
           enddo
         endif
-        write(*,*)
         if (structured_grid%iend == structured_grid%nx - 1 ) then
           i = lenx
           do k = structured_grid%kstart, structured_grid%kend
             do j = structured_grid%jstart, structured_grid%jend
               iconn = iconn+1
+
+              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
+              structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+
               id_dn = i + j * structured_grid%ngx + k * structured_grid%ngxy+samr_ofx
-              write(*,*) iconn, id_dn
               connections%id_dn(iconn) = id_dn
               connections%dist(-1:3,iconn) = 0.d0
               dist_dn = 0.5d0*structured_grid%dx(id_dn)
               connections%dist(0,iconn) = dist_dn
               connections%dist(1,iconn) = 1.d0  ! x component of unit vector
-              connections%area(iconn) = structured_grid%dy(id_up)* &
-                                        structured_grid%dz(id_up)
+              connections%area(iconn) = structured_grid%dy(id_dn)* &
+                                        structured_grid%dz(id_dn)
             enddo
           enddo
         endif
@@ -1269,7 +1316,6 @@ function StructGridComputeBoundConnect(radius,structured_grid,option)
   endif
 
 
-
   ! y-connections
   if (structured_grid%nly + 2  -  structured_grid%ngy > 0) then
     select case(structured_grid%itype)
@@ -1279,6 +1325,10 @@ function StructGridComputeBoundConnect(radius,structured_grid,option)
           do k = structured_grid%kstart, structured_grid%kend
             do i = structured_grid%istart, structured_grid%iend
               iconn = iconn+1
+
+              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
+              structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+
               id_dn = i + 1 + (j-1) * structured_grid%ngx + k * structured_grid%ngxy &
                   +samr_ofy
               connections%id_dn(iconn) = id_dn
@@ -1286,8 +1336,8 @@ function StructGridComputeBoundConnect(radius,structured_grid,option)
               dist_dn = 0.5d0*structured_grid%dy(id_dn)
               connections%dist(0,iconn) = dist_dn
               connections%dist(2,iconn) = -1.d0  ! y component of unit vector
-              connections%area(iconn) = structured_grid%dx(id_up)* &
-                                    structured_grid%dz(id_up)
+              connections%area(iconn) = structured_grid%dx(id_dn)* &
+                                    structured_grid%dz(id_dn)
             enddo
           enddo
         endif
@@ -1296,6 +1346,10 @@ function StructGridComputeBoundConnect(radius,structured_grid,option)
           do k = structured_grid%kstart, structured_grid%kend
             do i = structured_grid%istart, structured_grid%iend
               iconn = iconn+1
+
+              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
+              structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+
               id_dn = i + 1 + (j-1) * structured_grid%ngx + k * structured_grid%ngxy &
                   +samr_ofy
               connections%id_dn(iconn) = id_dn
@@ -1303,8 +1357,8 @@ function StructGridComputeBoundConnect(radius,structured_grid,option)
               dist_dn = 0.5d0*structured_grid%dy(id_dn)
               connections%dist(0,iconn) = dist_dn
               connections%dist(2,iconn) = 1.d0  ! y component of unit vector
-              connections%area(iconn) = structured_grid%dx(id_up)* &
-                                    structured_grid%dz(id_up)
+              connections%area(iconn) = structured_grid%dx(id_dn)* &
+                                    structured_grid%dz(id_dn)
             enddo
           enddo
         endif
@@ -1316,6 +1370,7 @@ function StructGridComputeBoundConnect(radius,structured_grid,option)
         stop
     end select
   endif
+
       
   ! z-connections
   if (structured_grid%nlz + 2 - structured_grid%ngz > 0) then
@@ -1326,6 +1381,10 @@ function StructGridComputeBoundConnect(radius,structured_grid,option)
           do j = structured_grid%jstart, structured_grid%jend
             do i = structured_grid%istart, structured_grid%iend
               iconn = iconn+1
+
+              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
+              structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+
               id_dn = i + 1 + j * structured_grid%ngx + (k-1) * &
                   structured_grid%ngxy + samr_ofz
               connections%id_dn(iconn) = id_dn
@@ -1333,8 +1392,8 @@ function StructGridComputeBoundConnect(radius,structured_grid,option)
               dist_dn = 0.5d0*structured_grid%dz(id_dn)
               connections%dist(0,iconn) = dist_dn
               connections%dist(3,iconn) = -1.d0  ! z component of unit vector
-              connections%area(iconn) = structured_grid%dx(id_up) * &
-                                        structured_grid%dy(id_up)
+              connections%area(iconn) = structured_grid%dx(id_dn) * &
+                                        structured_grid%dy(id_dn)
             enddo
           enddo
         endif    
@@ -1343,6 +1402,10 @@ function StructGridComputeBoundConnect(radius,structured_grid,option)
           do j = structured_grid%jstart, structured_grid%jend
             do i = structured_grid%istart, structured_grid%iend
               iconn = iconn+1
+
+              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
+              structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+
               id_dn = i + 1 + j * structured_grid%ngx + (k-1) * &
                   structured_grid%ngxy + samr_ofz
               connections%id_dn(iconn) = id_dn
@@ -1350,8 +1413,8 @@ function StructGridComputeBoundConnect(radius,structured_grid,option)
               dist_dn = 0.5d0*structured_grid%dz(id_dn)
               connections%dist(0,iconn) = dist_dn
               connections%dist(3,iconn) = 1.d0  ! z component of unit vector
-              connections%area(iconn) = structured_grid%dx(id_up) * &
-                                        structured_grid%dy(id_up)
+              connections%area(iconn) = structured_grid%dx(id_dn) * &
+                                        structured_grid%dy(id_dn)
             enddo
           enddo
         endif    
@@ -1363,7 +1426,8 @@ function StructGridComputeBoundConnect(radius,structured_grid,option)
         stop
   end select
   endif
-  
+ 
+ 
   StructGridComputeBoundConnect => connections
 !    stop
 

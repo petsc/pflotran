@@ -18,6 +18,9 @@ module Grid_module
     PetscInt :: nmax   ! Total number of nodes in global domain
     PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
     PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
+    PetscInt :: nmax_faces   ! Total number of faces in global domain
+    PetscInt :: nlmax_faces  ! Total number of non-ghosted faces in local domain.
+    PetscInt :: ngmax_faces  ! Number of ghosted & non-ghosted faces in local domain.
    
     ! Below, we define several arrays used for mapping between different 
     ! types of array indices.  Our terminology is as follows:
@@ -51,6 +54,8 @@ module Grid_module
     !                               and source/sink setup  (zero-based)
     PetscInt, pointer :: nL2G(:), nG2L(:), nL2A(:)
     PetscInt, pointer :: nG2A(:)
+
+    PetscInt, pointer :: nL2G_faces(:), nG2L_faces(:)
     
     PetscReal, pointer :: x(:), y(:), z(:) ! coordinates of ghosted grid cells
 
@@ -99,7 +104,8 @@ module Grid_module
             GridGetLocalGhostedIdFromHash, &
             GridVecGetArrayF90, &
             GridVecRestoreArrayF90, &
-            GridIndexToCellID
+            GridIndexToCellID, &
+            GridComputeCell2FaceConnectivity
 contains
 
 ! ************************************************************************** !
@@ -176,6 +182,8 @@ subroutine GridComputeInternalConnect(grid,option)
     
   implicit none
   
+  PetscInt ierr
+
   type(grid_type) :: grid
   type(option_type) :: option
   
@@ -194,8 +202,8 @@ subroutine GridComputeInternalConnect(grid,option)
   allocate(grid%internal_connection_set_list)
   call ConnectionInitList(grid%internal_connection_set_list)
   call ConnectionAddToList(connection_set,grid%internal_connection_set_list)
-  write (*,*) 'LIST CREATED', grid%internal_connection_set_list%num_connection_objects, &
-                            connection_set%num_connections
+!  write (*,*) 'LIST CREATED', grid%internal_connection_set_list%num_connection_objects, &
+!                            connection_set%num_connections
   select case(grid%itype)
     case(STRUCTURED_GRID)
       connection_bound_set => &
@@ -204,16 +212,29 @@ subroutine GridComputeInternalConnect(grid,option)
 !      connection_bound_set => &
 !        UGridComputeBoundConnect(grid%unstructured_grid,option)
   end select
-!  
+  
   allocate(grid%boundary_connection_set_list)
   call ConnectionInitList(grid%boundary_connection_set_list)
   call ConnectionAddToList(connection_bound_set,grid%boundary_connection_set_list)
-  write (*,*) 'LIST CREATED', grid%boundary_connection_set_list%num_connection_objects, &
-                            connection_bound_set%num_connections
+!  write (*,*) 'LIST CREATED', grid%boundary_connection_set_list%num_connection_objects, &
+!                            connection_bound_set%num_connections
+
+  write(*,*) "nlmax_faces, ngmax_faces", option%myrank, grid%structured_grid%nlmax_faces, grid%structured_grid%ngmax_faces
+
+  grid%nlmax_faces = grid%structured_grid%nlmax_faces;
+  grid%ngmax_faces = grid%structured_grid%ngmax_faces;
+
+  grid%nmax_faces = 0
+
+  call MPI_Scan(grid%nlmax_faces, &
+                  grid%nmax_faces, &
+                  ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
+
+  write(*,*) "Total number of faces ", option%myrank, grid%nmax_faces
 
   call GridPopulateFaces(grid)
   write(*,*) 'Exit GridComputeInternalConnect'
-  stop  
+ ! stop  
 end subroutine GridComputeInternalConnect
 
 ! ************************************************************************** !
@@ -290,6 +311,8 @@ subroutine GridPopulateFaces(grid)
  
    allocate(faces(total_faces))
 
+   write(*,*) "Total Faces", total_faces
+
    face_id = 0
    connection_set_list => grid%internal_connection_set_list
    cur_connection_set => connection_set_list%first
@@ -299,6 +322,7 @@ subroutine GridPopulateFaces(grid)
        face_id = face_id + 1
        faces(face_id)%conn_set_ptr => cur_connection_set
        faces(face_id)%id = iconn
+ !      write(*,*) "Internal faces ", "face_id=",face_id," iconn=",iconn, cur_connection_set%id_dn(iconn),  cur_connection_set%id_up(iconn)
      enddo
      cur_connection_set => cur_connection_set%next
    enddo
@@ -311,6 +335,7 @@ subroutine GridPopulateFaces(grid)
        face_id = face_id + 1
        faces(face_id)%conn_set_ptr => cur_connection_set
        faces(face_id)%id = iconn
+!       write(*,*) "Boundary faces ", "face_id=",face_id," iconn=",iconn, cur_connection_set%id_dn(iconn)
      enddo
      cur_connection_set => cur_connection_set%next
    enddo
@@ -322,7 +347,79 @@ subroutine GridPopulateFaces(grid)
 
 end subroutine GridPopulateFaces 
 
+subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
 
+  use MFD_Aux_module
+  use Option_module
+
+  implicit none
+
+  type(grid_type) :: grid
+  type(mfd_type), pointer :: MFD_aux
+!  type(auxilliary_type) :: aux
+  type(option_type) :: option
+
+  type(mfd_auxvar_type), pointer :: aux_var
+  type(connection_set_type), pointer :: conn
+  PetscInt :: icount, icell, iface
+  PetscInt local_id_dn, local_id_up, ghosted_id_dn, ghosted_id_up
+
+
+  PetscInt, pointer :: numfaces(:)
+
+  MFD_aux => MFDAuxCreate();
+  call MFDAuxInit(MFD_aux, grid%nlmax, option)
+
+  allocate(numfaces(grid%nlmax))
+
+  numfaces = 6
+
+  do icell = 1, grid%nlmax
+    aux_var => MFD_aux%aux_vars(icell)
+    call MFDAuxVarInit(aux_var, numfaces(icell), option)
+  end do
+
+  write(*,*) option%myrank, "grid%ngmax_faces ", grid%ngmax_faces
+  do icount = 1, grid%ngmax_faces
+    conn => grid%faces(icount)%conn_set_ptr
+    iface = grid%faces(icount)%id
+    if (conn%itype==BOUNDARY_CONNECTION_TYPE) then
+!        write(*,*) icount, iface,  conn%id_dn(iface)
+        ghosted_id_dn = conn%id_dn(iface)
+        local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping
+   
+        if (local_id_dn>0) then
+           aux_var => MFD_aux%aux_vars(local_id_dn)
+           call MFDAuxAddFace(aux_var,option, icount)
+        end if
+        
+    else if(conn%itype==INTERNAL_CONNECTION_TYPE) then 
+!        write(*,*) icount, iface, conn%id_up(iface), conn%id_dn(iface)
+        ghosted_id_up = conn%id_up(iface)
+        ghosted_id_dn = conn%id_dn(iface)
+
+        local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
+        local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping
+        if (local_id_dn>0) then
+           aux_var => MFD_aux%aux_vars(local_id_dn)
+           call MFDAuxAddFace(aux_var,option, icount)
+        end if
+        if (local_id_up>0) then
+           aux_var => MFD_aux%aux_vars(local_id_up)
+           call MFDAuxAddFace(aux_var,option, icount)
+        end if
+    end if
+  end do
+    
+  do icell = 1, grid%nlmax
+    aux_var => MFD_aux%aux_vars(icell)
+    write(*,*) option%myrank, icell
+    write(*,*) option%myrank, (aux_var%face_id_gh(icount),icount=1,6)
+  end do
+  
+  deallocate(numfaces)
+
+end subroutine GridComputeCell2FaceConnectivity
 ! ************************************************************************** !
 !
 ! GridMapIndices: maps global, local and natural indices of cells 

@@ -178,6 +178,7 @@ subroutine RealizationCreateDiscretization(realization)
   use Grid_module
   use Unstructured_Grid_module, only : UGridMapIndices
   use AMR_Grid_module
+  use MFD_Aux_module
   
   implicit none
   
@@ -317,6 +318,9 @@ subroutine RealizationCreateDiscretization(realization)
       call GridComputeVolumes(grid,field%volume,option)
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option)
+      call GridComputeCell2FaceConnectivity(grid, realization%patch%aux%MFD, option)
+      write(*,*) "After GridComputeCell2FaceConnectivity"
+      stop
     case(UNSTRUCTURED_GRID)
       grid => discretization%grid
       ! set up nG2L, NL2G, etc.
