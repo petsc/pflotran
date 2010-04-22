@@ -1101,16 +1101,26 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   
 #ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal) then
-  call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
-                               global_auxvar%temp(iphase),reaction%neqcplx)
-  call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
-                               global_auxvar%temp(iphase),reaction%ngas)
-  call ReactionInterpolateLogK(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
-                               global_auxvar%temp(iphase),reaction%neqsrfcplx)
-  call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
-                               global_auxvar%temp(iphase),reaction%nkinmnrl)
-  call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
-                               global_auxvar%temp(iphase),reaction%nmnrl)
+    if (associated(reaction%eqcplx_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
+                                   global_auxvar%temp(iphase),reaction%neqcplx)
+    endif
+    if (associated(reaction%eqgas_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
+                                   global_auxvar%temp(iphase),reaction%ngas)
+    endif
+    if (associated(reaction%eqsrfcplx_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
+                                   global_auxvar%temp(iphase),reaction%neqsrfcplx)
+    endif
+    if (associated(reaction%kinmnrl_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
+                                   global_auxvar%temp(iphase),reaction%nkinmnrl)
+    endif
+    if (associated(reaction%mnrl_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
+                                   global_auxvar%temp(iphase),reaction%nmnrl)
+    endif
   endif
 #endif  
   
