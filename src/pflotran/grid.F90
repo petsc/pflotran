@@ -71,7 +71,6 @@ module Grid_module
     type(connection_set_list_type), pointer :: internal_connection_set_list
     type(connection_set_list_type), pointer :: boundary_connection_set_list
     type(face_type), pointer :: faces(:)
-    PetscInt :: total_faces
 
   end type grid_type
 
@@ -208,6 +207,8 @@ subroutine GridComputeInternalConnect(grid,option)
     case(STRUCTURED_GRID)
       connection_bound_set => &
         StructGridComputeBoundConnect(grid%x,grid%structured_grid,option)
+        grid%nlmax_faces = grid%structured_grid%nlmax_faces;
+        grid%ngmax_faces = grid%structured_grid%ngmax_faces;
     case(UNSTRUCTURED_GRID) 
 !      connection_bound_set => &
 !        UGridComputeBoundConnect(grid%unstructured_grid,option)
@@ -221,18 +222,14 @@ subroutine GridComputeInternalConnect(grid,option)
 
   write(*,*) "nlmax_faces, ngmax_faces", option%myrank, grid%structured_grid%nlmax_faces, grid%structured_grid%ngmax_faces
 
-  grid%nlmax_faces = grid%structured_grid%nlmax_faces;
-  grid%ngmax_faces = grid%structured_grid%ngmax_faces;
 
-  grid%nmax_faces = 0
 
-  call MPI_Scan(grid%nlmax_faces, &
-                  grid%nmax_faces, &
-                  ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
+!  call MPI_Scan(grid%nlmax_faces, &
+!                  grid%nmax_faces, &
+!                  ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
 
-  write(*,*) "Total number of faces ", option%myrank, grid%nmax_faces
 
-  call GridPopulateFaces(grid)
+  call GridPopulateFaces(grid, option)
   write(*,*) 'Exit GridComputeInternalConnect'
  ! stop  
 end subroutine GridComputeInternalConnect
@@ -281,37 +278,31 @@ end subroutine GridPopulateConnection
 ! date: 02/04/10
 !
 ! ************************************************************************** !
-subroutine GridPopulateFaces(grid)
+subroutine GridPopulateFaces(grid, option)
 
    use Connection_module
+   use Option_module
     
    type(grid_type) :: grid
+   type(option_type) :: option
 
    PetscInt :: total_faces, face_id, iconn
    type(connection_set_type), pointer :: cur_connection_set
    type(connection_set_list_type), pointer :: connection_set_list
    type(face_type), pointer :: faces(:)
+   character(len=MAXWORDLENGTH) :: filename
 
-   connection_set_list => grid%internal_connection_set_list
-   cur_connection_set => connection_set_list%first
-   total_faces = 0  
-   do 
-     if (.not.associated(cur_connection_set)) exit
-     total_faces = total_faces + cur_connection_set%num_connections
-     cur_connection_set => cur_connection_set%next
-   enddo
+!   if (option%myrank==0) filename = "faces0"
+!   if (option%myrank==1) filename = "faces1"
+!   if (option%myrank==2) filename = "faces2"
+!   if (option%myrank==3) filename = "faces3"
 
-   connection_set_list => grid%boundary_connection_set_list
-   cur_connection_set => connection_set_list%first
-   do 
-     if (.not.associated(cur_connection_set)) exit
-     total_faces = total_faces + cur_connection_set%num_connections
-     cur_connection_set => cur_connection_set%next
-   enddo
+!   open(unit=9, file=filename)
+
+   total_faces = grid%ngmax_faces
  
    allocate(faces(total_faces))
 
-   write(*,*) "Total Faces", total_faces
 
    face_id = 0
    connection_set_list => grid%internal_connection_set_list
@@ -322,7 +313,7 @@ subroutine GridPopulateFaces(grid)
        face_id = face_id + 1
        faces(face_id)%conn_set_ptr => cur_connection_set
        faces(face_id)%id = iconn
- !      write(*,*) "Internal faces ", "face_id=",face_id," iconn=",iconn, cur_connection_set%id_dn(iconn),  cur_connection_set%id_up(iconn)
+!       write(9,*) "Internal faces ", "face_id=",face_id," iconn=",iconn, cur_connection_set%id_dn(iconn),  cur_connection_set%id_up(iconn)
      enddo
      cur_connection_set => cur_connection_set%next
    enddo
@@ -335,15 +326,15 @@ subroutine GridPopulateFaces(grid)
        face_id = face_id + 1
        faces(face_id)%conn_set_ptr => cur_connection_set
        faces(face_id)%id = iconn
-!       write(*,*) "Boundary faces ", "face_id=",face_id," iconn=",iconn, cur_connection_set%id_dn(iconn)
+!       write(9,*) "Boundary faces ", "face_id=",face_id," iconn=",iconn, cur_connection_set%id_dn(iconn)
      enddo
      cur_connection_set => cur_connection_set%next
    enddo
 
 
    grid%faces => faces
-   grid%total_faces = total_faces  
 
+!   Close(UNIT=9)
 
 end subroutine GridPopulateFaces 
 
@@ -363,9 +354,20 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
   type(connection_set_type), pointer :: conn
   PetscInt :: icount, icell, iface
   PetscInt local_id_dn, local_id_up, ghosted_id_dn, ghosted_id_up
+  character(len=MAXWORDLENGTH) :: filename
 
 
   PetscInt, pointer :: numfaces(:)
+
+  if (option%myrank==0) filename = "connect0" 
+  if (option%myrank==1) filename = "connect1" 
+  if (option%myrank==2) filename = "connect2" 
+  if (option%myrank==3) filename = "connect3" 
+  
+
+  write(*,*) filename  
+
+  OPEN(UNIT=9, FILE=filename)
 
   MFD_aux => MFDAuxCreate();
   call MFDAuxInit(MFD_aux, grid%nlmax, option)
@@ -373,13 +375,52 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
   allocate(numfaces(grid%nlmax))
 
   numfaces = 6
+  
+!  do icount = 1, grid%ngmax_faces
+!    conn => grid%faces(icount)%conn_set_ptr
+!    iface = grid%faces(icount)%id
+!    write(9,*) icount, iface, grid%ngmax_faces, "+++++++"
+!    if (conn%itype==BOUNDARY_CONNECTION_TYPE) then
+!        ghosted_id_dn = conn%id_dn(iface)
+!        local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping
+!
+!        write(9,*) icount, iface, "dn", conn%id_dn(iface),  local_id_dn
+!   
+!        if (local_id_dn>0) then
+!           aux_var => MFD_aux%aux_vars(local_id_dn)
+!           numfaces(local_id_dn) = numfaces(local_id_dn) + 1
+!        end if
+!        
+!    else if(conn%itype==INTERNAL_CONNECTION_TYPE) then 
+!        ghosted_id_up = conn%id_up(iface)
+!        ghosted_id_dn = conn%id_dn(iface)
+!
+!        local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
+!        local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping
+!
+!        write(9,*) icount, iface, "dn", conn%id_dn(iface), local_id_dn
+!        write(9,*) icount, iface, "up", conn%id_up(iface), local_id_up
+!
+!        if (local_id_dn>0) then
+!           aux_var => MFD_aux%aux_vars(local_id_dn)
+!           numfaces(local_id_dn) = numfaces(local_id_dn) + 1
+!        end if
+!        if (local_id_up>0) then
+!           aux_var => MFD_aux%aux_vars(local_id_up)
+!           numfaces(local_id_up) = numfaces(local_id_up) + 1
+!        end if
+!    end if
+!  end do
+!
+!  write(9,*)"+++++++++++++++++++"
 
   do icell = 1, grid%nlmax
+!    write(9,*) option%myrank, icell, numfaces(icell)
     aux_var => MFD_aux%aux_vars(icell)
     call MFDAuxVarInit(aux_var, numfaces(icell), option)
   end do
 
-  write(*,*) option%myrank, "grid%ngmax_faces ", grid%ngmax_faces
+  write(9,*) option%myrank, "grid%ngmax_faces ", grid%ngmax_faces
   do icount = 1, grid%ngmax_faces
     conn => grid%faces(icount)%conn_set_ptr
     iface = grid%faces(icount)%id
@@ -413,11 +454,12 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
     
   do icell = 1, grid%nlmax
     aux_var => MFD_aux%aux_vars(icell)
-    write(*,*) option%myrank, icell
-    write(*,*) option%myrank, (aux_var%face_id_gh(icount),icount=1,6)
+    write(9,*) option%myrank, icell
+    write(9,*) option%myrank, "+++++++++++++++", (aux_var%face_id_gh(icount),icount=1,6)
   end do
   
   deallocate(numfaces)
+  Close(UNIT=9)
 
 end subroutine GridComputeCell2FaceConnectivity
 ! ************************************************************************** !

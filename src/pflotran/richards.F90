@@ -846,7 +846,10 @@ subroutine RichardsAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
 !         print *, 'dkr_dp:', aux_var%dkr_dp, (aux_var_pert%kr-aux_var%kr)/pert(ideriv)
           print *, 'dsat_dp:', aux_var%dsat_dp, (global_aux_var_pert%sat-global_aux_var%sat)/pert
           print *, 'dden_dp:', aux_var%dden_dp, (global_aux_var_pert%den-global_aux_var%den)/pert
-          print *, 'dkvr_dp:', aux_var%dkvr_dp, (rich_aux_var_pert%kvr-rich_aux_var%kvr)/pert
+!          print *, 'dkvr_dp:', aux_var%dkvr_dp, (rich_aux_var_pert%kvr-rich_aux_var%kvr)/pert
+          print *, 'dkvr_x_dp:', aux_var%dkvr_x_dp, (rich_aux_var_pert%kvr_x-rich_aux_var%kvr_x)/pert
+          print *, 'dkvr_y_dp:', aux_var%dkvr_y_dp, (rich_aux_var_pert%kvr_y-rich_aux_var%kvr_y)/pert
+          print *, 'dkvr_z_dp:', aux_var%dkvr_z_dp, (rich_aux_var_pert%kvr_z-rich_aux_var%kvr_z)/pert
       end select     
 #endif     
     call RichardsAccumulation(rich_aux_var_pert,global_aux_var,por,vol, &
@@ -897,7 +900,7 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
                                   sir_up,dd_up,perm_up, &
                                   rich_aux_var_dn,global_aux_var_dn,por_dn, &
                                   sir_dn,dd_dn,perm_dn, &
-                                  area,dist_gravity,upweight, &
+                                  area, norm, dist_gravity,upweight, &
                                   option,sat_func_up,sat_func_dn,Jup,Jdn)
   use Option_module 
   use Saturation_Function_module                        
@@ -911,19 +914,23 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
   PetscReal :: por_up, por_dn
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
-  PetscReal :: v_darcy,area
+  PetscReal :: v_darcy, area, norm(3)
   PetscReal :: dist_gravity  ! distance along gravity vector
   type(saturation_function_type) :: sat_func_up, sat_func_dn
   PetscReal :: Jup(option%nflowdof,option%nflowdof), Jdn(option%nflowdof,option%nflowdof)
      
   PetscReal :: q
   PetscReal :: ukvr,Dq
+!  PetscReal :: ukvr_x, ukvr_y, ukvr_z, Dq
   PetscReal :: upweight,density_ave,cond,gravity,dphi
   
   PetscReal :: dden_ave_dp_up, dden_ave_dp_dn
   PetscReal :: dgravity_dden_up, dgravity_dden_dn
   PetscReal :: dphi_dp_up, dphi_dp_dn
   PetscReal :: dukvr_dp_up, dukvr_dp_dn
+!  PetscReal :: dukvr_x_dp_up, dukvr_x_dp_dn
+!  PetscReal :: dukvr_y_dp_up, dukvr_y_dp_dn
+!  PetscReal :: dukvr_z_dp_up, dukvr_z_dp_dn
   PetscReal :: dq_dp_up, dq_dp_dn
 
   PetscInt :: iphase, ideriv
@@ -973,11 +980,27 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
     dphi_dp_dn = -1.d0 + dgravity_dden_dn*rich_aux_var_dn%dden_dp
 
     if (dphi>=0.D0) then
-      ukvr = rich_aux_var_up%kvr
-      dukvr_dp_up = rich_aux_var_up%dkvr_dp
+      if (dabs(norm(1))==1) then
+        ukvr = rich_aux_var_up%kvr_x
+        dukvr_dp_up = rich_aux_var_up%dkvr_x_dp
+      else if (dabs(norm(2))==1) then
+        ukvr = rich_aux_var_up%kvr_y
+        dukvr_dp_up = rich_aux_var_up%dkvr_y_dp
+      else if (dabs(norm(3))==1) then
+        ukvr = rich_aux_var_up%kvr_z
+        dukvr_dp_up = rich_aux_var_up%dkvr_z_dp
+      end if
     else
-      ukvr = rich_aux_var_dn%kvr
-      dukvr_dp_dn = rich_aux_var_dn%dkvr_dp
+      if (dabs(norm(1))==1) then
+        ukvr = rich_aux_var_dn%kvr_x
+        dukvr_dp_dn = rich_aux_var_dn%dkvr_x_dp
+      else if (dabs(norm(2))==1) then
+        ukvr = rich_aux_var_dn%kvr_y
+        dukvr_dp_dn = rich_aux_var_dn%dkvr_y_dp
+      else if (dabs(norm(3))==1) then
+        ukvr = rich_aux_var_dn%kvr_z
+        dukvr_dp_dn = rich_aux_var_dn%dkvr_z_dp
+      end if
     endif      
    
     if (ukvr>floweps) then
@@ -1006,7 +1029,7 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
     x_dn(1) = global_aux_var_dn%pres(1)
     call RichardsFlux(rich_aux_var_up,global_aux_var_up,por_up,sir_up,dd_up,perm_up, &
                       rich_aux_var_dn,global_aux_var_dn,por_dn,sir_dn,dd_dn,perm_dn, &
-                      area,dist_gravity,upweight, &
+                      area, norm, dist_gravity,upweight, &
                       option,v_darcy,res)
     ideriv = 1
     pert_up = x_up(ideriv)*perturbation_tolerance
@@ -1025,13 +1048,13 @@ subroutine RichardsFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
                       por_up,sir_up,dd_up,perm_up, &
                       rich_aux_var_dn,global_aux_var_dn, &
                       por_dn,sir_dn,dd_dn,perm_dn, &
-                      area,dist_gravity,upweight, &
+                      area, norm, dist_gravity,upweight, &
                       option,v_darcy,res_pert_up)
     call RichardsFlux(rich_aux_var_up,global_aux_var_up, &
                       por_up,sir_up,dd_up,perm_up, &
                       rich_aux_var_pert_dn,global_aux_var_pert_dn, &
                       por_dn,sir_dn,dd_dn,perm_dn, &
-                      area,dist_gravity,upweight, &
+                      area, norm, dist_gravity,upweight, &
                       option,v_darcy,res_pert_dn)
     J_pert_up(1,ideriv) = (res_pert_up(1)-res(1))/pert_up
     J_pert_dn(1,ideriv) = (res_pert_dn(1)-res(1))/pert_dn
@@ -1054,7 +1077,7 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
                         por_up,sir_up,dd_up,perm_up, &
                         rich_aux_var_dn,global_aux_var_dn, &
                         por_dn,sir_dn,dd_dn,perm_dn, &
-                        area,dist_gravity,upweight, &
+                        area, norm, dist_gravity,upweight, &
                         option,v_darcy,Res)
   use Option_module                              
   
@@ -1067,7 +1090,7 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
   PetscReal :: por_up, por_dn
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
-  PetscReal :: v_darcy,area
+  PetscReal :: v_darcy,area, norm(3)
   PetscReal :: Res(1:option%nflowdof) 
   PetscReal :: dist_gravity  ! distance along gravity vector
      
@@ -1098,9 +1121,23 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
     dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)  + gravity
 
     if (dphi>=0.D0) then
-      ukvr = rich_aux_var_up%kvr
+!      ukvr = rich_aux_var_up%kvr
+      if (dabs(dabs(norm(1))-1) < 1e-6) then
+        ukvr = rich_aux_var_up%kvr_x
+      else if (dabs(dabs(norm(2))-1) < 1e-6) then
+        ukvr = rich_aux_var_up%kvr_y
+      else if (dabs(dabs(norm(3))-1) < 1e-6) then
+        ukvr = rich_aux_var_up%kvr_z
+      end if
     else
-      ukvr = rich_aux_var_dn%kvr
+!      ukvr = rich_aux_var_dn%kvr
+      if (dabs(dabs(norm(1))-1) < 1e-6) then
+        ukvr = rich_aux_var_dn%kvr_x
+      else if (dabs(dabs(norm(2))-1) < 1e-6) then
+        ukvr = rich_aux_var_dn%kvr_y
+      else if (dabs(dabs(norm(3))-1) < 1e-6) then
+        ukvr = rich_aux_var_dn%kvr_z
+      end if
     endif      
    
 
@@ -1131,7 +1168,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
                                     rich_aux_var_up,global_aux_var_up, &
                                     rich_aux_var_dn,global_aux_var_dn, &
                                     por_dn,sir_dn,dd_up,perm_dn, &
-                                    area,dist_gravity,option, &
+                                    area, norm, dist_gravity,option, &
                                     sat_func_dn,Jdn)
   use Option_module
   use Saturation_Function_module
@@ -1145,7 +1182,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
   PetscReal :: dd_up, sir_dn
   PetscReal :: aux_vars(:) ! from aux_real_var array in boundary condition
   PetscReal :: por_dn,perm_dn
-  PetscReal :: area
+  PetscReal :: area, norm(3)
   type(saturation_function_type) :: sat_func_dn  
   PetscReal :: Jdn(option%nflowdof,option%nflowdof)
   
@@ -1222,10 +1259,28 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
         endif
         
         if (dphi>=0.D0) then
-          ukvr = rich_aux_var_up%kvr
+!          ukvr = rich_aux_var_up%kvr
+          if (dabs(dabs(norm(1))-1) < 1e-6) then
+            ukvr = rich_aux_var_up%kvr_x
+          else if (dabs(dabs(norm(2))-1) < 1e-6) then
+            ukvr = rich_aux_var_up%kvr_y
+          else if (dabs(dabs(norm(3))-1) < 1e-6) then
+            ukvr = rich_aux_var_up%kvr_z
+          end if
         else
-          ukvr = rich_aux_var_dn%kvr
-          dukvr_dp_dn = rich_aux_var_dn%dkvr_dp
+!          ukvr = rich_aux_var_dn%kvr
+!          dukvr_dp_dn = rich_aux_var_dn%dkvr_dp
+          if (dabs(dabs(norm(1))-1) < 1e-6) then
+            ukvr = rich_aux_var_dn%kvr_x
+            dukvr_dp_dn = rich_aux_var_dn%dkvr_x_dp
+          else if (dabs(dabs(norm(2))-1) < 1e-6) then
+            ukvr = rich_aux_var_dn%kvr_y
+            dukvr_dp_dn = rich_aux_var_dn%dkvr_y_dp
+          else if (dabs(dabs(norm(3))-1) < 1e-6) then
+            ukvr = rich_aux_var_dn%kvr_z
+            dukvr_dp_dn = rich_aux_var_dn%dkvr_z_dp
+          end if
+
         endif      
      
         if (ukvr*Dq>floweps) then
@@ -1268,7 +1323,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
                         rich_aux_var_up,global_aux_var_up, &
                         rich_aux_var_dn,global_aux_var_dn, &
                         por_dn,sir_dn,dd_up,perm_dn, &
-                        area,dist_gravity,option,v_darcy,res)
+                        area, norm, dist_gravity,option,v_darcy,res)
     if (pressure_bc_type == ZERO_GRADIENT_BC) then
       x_pert_up = x_up
     endif
@@ -1290,7 +1345,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars, &
                         rich_aux_var_pert_up,global_aux_var_pert_up, &
                         rich_aux_var_pert_dn,global_aux_var_pert_dn, &
                         por_dn,sir_dn,dd_up,perm_dn, &
-                        area,dist_gravity,option,v_darcy,res_pert_dn)
+                        area, norm, dist_gravity,option,v_darcy,res_pert_dn)
     J_pert_dn(1,ideriv) = (res_pert_dn(1)-res(1))/pert_dn
     Jdn = J_pert_dn
     call GlobalAuxVarDestroy(global_aux_var_pert_up)
@@ -1310,7 +1365,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
                           rich_aux_var_up,global_aux_var_up, &
                           rich_aux_var_dn,global_aux_var_dn, &
                           por_dn,sir_dn,dd_up,perm_dn, &
-                          area,dist_gravity,option,v_darcy,Res)
+                          area, norm, dist_gravity,option,v_darcy,Res)
   use Option_module
  
   implicit none
@@ -1322,7 +1377,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
   PetscReal :: dd_up, sir_dn
   PetscReal :: aux_vars(:) ! from aux_real_var array
   PetscReal :: por_dn,perm_dn
-  PetscReal :: v_darcy, area
+  PetscReal :: v_darcy, area, norm(3)
   PetscReal :: Res(1:option%nflowdof) 
   
   PetscReal :: dist_gravity  ! distance along gravity vector
@@ -1373,11 +1428,25 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
           endif
         endif
    
-        if (dphi>=0.D0) then
-          ukvr = rich_aux_var_up%kvr
-        else
-          ukvr = rich_aux_var_dn%kvr
-        endif      
+       if (dphi>=0.D0) then
+!        ukvr = rich_aux_var_up%kvr
+         if (dabs(dabs(norm(1))-1) < 1e-6) then
+           ukvr = rich_aux_var_up%kvr_x
+         else if (dabs(dabs(norm(2))-1) < 1e-6) then
+           ukvr = rich_aux_var_up%kvr_y
+         else if (dabs(dabs(norm(3))-1) < 1e-6) then
+           ukvr = rich_aux_var_up%kvr_z
+         end if
+       else
+!        ukvr = rich_aux_var_dn%kvr
+         if (dabs(dabs(norm(1))-1) < 1e-6) then
+           ukvr = rich_aux_var_dn%kvr_x
+         else if (dabs(dabs(norm(2))-1) < 1e-6) then
+           ukvr = rich_aux_var_dn%kvr_y
+         else if (dabs(dabs(norm(3))-1) < 1e-6) then
+           ukvr = rich_aux_var_dn%kvr_z
+         end if
+       endif      
      
         if (ukvr*Dq>floweps) then
           v_darcy = Dq * ukvr * dphi
@@ -1806,7 +1875,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
                           porosity_loc_p(ghosted_id_dn), &
                           richards_parameter%sir(1,icap_dn), &
                           dd_dn,perm_dn, &
-                        cur_connection_set%area(iconn),distance_gravity, &
+                        cur_connection_set%area(iconn), cur_connection_set%dist(1:3,iconn), distance_gravity, &
                         upweight,option,v_darcy,Res)
 
       patch%internal_velocities(1,sum_connection) = v_darcy
@@ -1904,6 +1973,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
                                 richards_parameter%sir(1,icap_dn), &
                                 cur_connection_set%dist(0,iconn),perm_dn, &
                                 cur_connection_set%area(iconn), &
+                                cur_connection_set%dist(1:3,iconn), &
                                 distance_gravity,option, &
                                 v_darcy,Res)
       patch%boundary_velocities(1,sum_connection) = v_darcy
@@ -2386,7 +2456,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                                     porosity_loc_p(ghosted_id_dn), &
                                     richards_parameter%sir(1,icap_dn), &
                                     dd_dn,perm_dn, &
-                                  cur_connection_set%area(iconn),distance_gravity, &
+                                  cur_connection_set%area(iconn), cur_connection_set%dist(1:3,iconn), distance_gravity, &
                                   upweight,option,&
                                   realization%saturation_function_array(icap_up)%ptr,&
                                   realization%saturation_function_array(icap_dn)%ptr,&
@@ -2485,6 +2555,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                                 richards_parameter%sir(1,icap_dn), &
                                 cur_connection_set%dist(0,iconn),perm_dn, &
                                 cur_connection_set%area(iconn), &
+                                cur_connection_set%dist(1:3,iconn), &
                                 distance_gravity,option, &
                                 realization%saturation_function_array(icap_dn)%ptr,&
                                 Jdn)

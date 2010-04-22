@@ -197,7 +197,6 @@ subroutine RealizationCreateDiscretization(realization)
   
   call DiscretizationCreateDMs(discretization,option)
 
-  write(*,*) "stop 1"
   
   option%ivar_centering = CELL_CENTERED
   ! 1 degree of freedom, global
@@ -320,7 +319,6 @@ subroutine RealizationCreateDiscretization(realization)
       call GridComputeInternalConnect(grid,option)
       call GridComputeCell2FaceConnectivity(grid, realization%patch%aux%MFD, option)
       write(*,*) "After GridComputeCell2FaceConnectivity"
-      stop
     case(UNSTRUCTURED_GRID)
       grid => discretization%grid
       ! set up nG2L, NL2G, etc.
@@ -339,11 +337,34 @@ subroutine RealizationCreateDiscretization(realization)
                                               discretization%origin, &
                                               field,option)
   end select 
-  
+ 
+  ! Vectors with face degrees of freedom
+
+   if (option%nflowdof > 0) then
+   
+     call VecCreateMPI(option%mycomm,grid%nlmax_faces*NFLOWDOF, &
+                    PETSC_DETERMINE,field%flow_xx_faces,ierr)
+     call VecSetBlockSize(field%flow_xx_faces,NFLOWDOF,ierr)
+
+     call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
+                                                        field%flow_r_faces)
+
+     call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
+                                                        field%flow_dxx_faces)
+
+     call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
+                                                        field%flow_yy_faces)
+
+
+   end if
+
+ 
   ! initialize to -999.d0 for check later that verifies all values 
   ! have been set
   call VecSet(field%porosity0,-999.d0,ierr)
        
+      write(*,*) "End of RealizationCreateDiscretization"
+!      stop
 
 end subroutine RealizationCreateDiscretization
 
