@@ -351,6 +351,17 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     if (output_option%print_permeability) then
       call OutputPermeability(realization)
     endif
+    if (output_option%print_porosity) then
+      if (len_trim(option%group_prefix) > 1) then
+        string = 'porosity-' // trim(option%group_prefix) // '.tec'
+      else
+        string = 'porosity.tec'
+      endif
+      call DiscretizationLocalToGlobal(realization%discretization, &
+                                       realization%field%porosity_loc, &
+                                       realization%field%work,ONEDOF)
+      call OutputVectorTecplot(string,string,realization,realization%field%work)
+    endif
 
   endif
   ! increment plot number so that 000 is always the initial condition, and nothing else
