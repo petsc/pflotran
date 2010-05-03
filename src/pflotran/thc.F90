@@ -112,7 +112,6 @@ subroutine THCSetupPatch(realization)
   use Grid_module
   use Region_module
   use Coupler_module
-  use Condition_module
   use Connection_module
  
   implicit none
@@ -136,7 +135,9 @@ subroutine THCSetupPatch(realization)
 !                    'must be initialized with the proper variables ' // &
 !                    'THCAuxCreate() is called anywhere.'
 ! call printErrMsg(option)
-    
+  allocate(patch%aux%THC%thc_parameter%sir(option%nphase, &
+                                  size(realization%saturation_function_array)))
+  
   ! allocate aux_var data structures for all grid cells
   allocate(aux_vars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
