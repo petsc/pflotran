@@ -24,11 +24,11 @@ module THC_module
 
   public THCResidual,THCJacobian, &
          THCUpdateFixedAccumulation,THCTimeCut,&
-         THCNumericalJacobianTest, &
+         THCSetup, THCNumericalJacobianTest, &
          THCMaxChange, THCUpdateSolution, &
          THCGetTecplotHeader, THCInitializeTimestep, &
-         THCSetup, THCResidualToMass, &
-         THCUpdateAuxVars
+         THCSetup, THCComputeMassBalance, &
+         THCUpdateAuxVars, THCDestroy
 
   PetscInt, parameter :: jh2o = 1
 
@@ -59,6 +59,7 @@ subroutine THCTimeCut(realization)
   field => realization%field
  
   call VecCopy(field%flow_yy,field%flow_xx,ierr)
+  call THCInitializeTimestep(realization)
  
 end subroutine THCTimeCut
 
