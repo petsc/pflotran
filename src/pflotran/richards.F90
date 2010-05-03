@@ -418,7 +418,6 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   type(connection_set_type), pointer :: cur_connection_set
   type(richards_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)  
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)  
-
   PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase
   PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:)
@@ -442,7 +441,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)  
 
   do ghosted_id = 1, grid%ngmax
-     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
+    if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
      
     !geh - Ignore inactive cells with inactive materials
     if (associated(patch%imat)) then
