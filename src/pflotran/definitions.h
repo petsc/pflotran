@@ -234,4 +234,8 @@ PetscInt, parameter :: GAS_PHASE = 2
 PetscInt, parameter :: CELL_CENTERED = 0
 PetscInt, parameter :: SIDE_CENTERED = 1
 
+! approaches to coupling reactive transport
+PetscInt, parameter :: GLOBAL_IMPLICIT = 0
+PetscInt, parameter :: OPERATOR_SPLIT = 1
+
 #define HASH

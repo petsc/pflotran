@@ -1020,7 +1020,7 @@ end subroutine TBCFluxDerivative
 #endif
 ! ************************************************************************** !
 !
-! TFluxCoef: Computes blux coefficients for transport matrix
+! TFluxCoef: Computes flux coefficients for transport matrix
 ! author: Glenn Hammond
 ! date: 02/22/10
 !

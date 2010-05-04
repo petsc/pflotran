@@ -1027,7 +1027,7 @@ function PatchAuxVarsUpToDate(patch)
     transport_up_to_date = patch%aux%RT%aux_vars_up_to_date
   endif
   
-  PatchAuxVarsUpToDate = flow_up_to_date .or. transport_up_to_date
+  PatchAuxVarsUpToDate = flow_up_to_date .and. transport_up_to_date
   
 end function PatchAuxVarsUpToDate
 

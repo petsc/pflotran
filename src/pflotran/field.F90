@@ -29,11 +29,15 @@ module Field_module
     
     ! residual vectors
     Vec :: flow_r          
-    Vec :: tran_r          
-      
+    Vec :: tran_r
+    
     ! Solution vectors
     Vec :: flow_xx, flow_xx_loc, flow_dxx, flow_yy, flow_accum
     Vec :: tran_xx, tran_xx_loc, tran_dxx, tran_yy, tran_accum
+
+    ! vectors for operator splitting
+    Vec :: tran_rhs
+    Vec :: tran_rhs_coef
     
     Vec :: tran_log_xx, tran_work_loc
     
@@ -112,6 +116,9 @@ function FieldCreate()
   field%tran_yy = 0
   field%tran_accum = 0
   field%tran_work_loc = 0
+
+  field%tran_rhs = 0
+  field%tran_rhs_coef = 0
   
   field%flow_ts_mass_balance = 0
   field%flow_total_mass_balance = 0
@@ -175,6 +182,9 @@ subroutine FieldDestroy(field)
   if (field%tran_yy /= 0) call VecDestroy(field%tran_yy,ierr)
   if (field%tran_accum /= 0) call VecDestroy(field%tran_accum,ierr)
   if (field%tran_work_loc /= 0) call VecDestroy(field%tran_work_loc,ierr)
+  
+  if (field%tran_rhs /= 0) call VecDestroy(field%tran_rhs,ierr)
+  if (field%tran_rhs_coef /= 0) call VecDestroy(field%tran_rhs_coef,ierr)
 
   if (field%flow_ts_mass_balance /= 0) &
     call VecDestroy(field%flow_ts_mass_balance,ierr)

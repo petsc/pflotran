@@ -29,6 +29,8 @@ module Option_module
         
     PetscMPIInt :: io_rank
     PetscTruth :: broadcast_read
+    
+    PetscTruth :: reactive_transport_coupling
 
 #ifdef VAMSI_HDF5_READ
     MPI_Comm :: read_group,readers
@@ -375,6 +377,7 @@ subroutine OptionInitRealization(option)
   option%itranmode = NULL_MODE
   option%ntrandof = 0
   
+  option%reactive_transport_coupling = GLOBAL_IMPLICIT
   option%ivar_centering = CELL_CENTERED
   option%use_samr = PETSC_FALSE
 

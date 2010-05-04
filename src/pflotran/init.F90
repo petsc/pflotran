@@ -369,17 +369,23 @@ subroutine Init(simulation)
     call SNESSetOptionsPrefix(tran_solver%snes, "tran_",ierr)
     call SolverCheckCommandLine(tran_solver)
 
-    if (tran_solver%Jpre_mat_type == '') then
-      if (tran_solver%J_mat_type /= MATMFFD) then
-        tran_solver%Jpre_mat_type = tran_solver%J_mat_type
-      else
-        tran_solver%Jpre_mat_type = MATBAIJ
+    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+      if (tran_solver%Jpre_mat_type == '') then
+        if (tran_solver%J_mat_type /= MATMFFD) then
+          tran_solver%Jpre_mat_type = tran_solver%J_mat_type
+        else
+          tran_solver%Jpre_mat_type = MATBAIJ
+        endif
       endif
+      call DiscretizationCreateJacobian(discretization,NTRANDOF, &
+                                        tran_solver%Jpre_mat_type, &
+                                        tran_solver%Jpre,option)
+    else
+      tran_solver%Jpre_mat_type = MATAIJ
+      call DiscretizationCreateJacobian(discretization,ONEDOF, &
+                                        tran_solver%Jpre_mat_type, &
+                                        tran_solver%Jpre,option)
     endif
-
-    call DiscretizationCreateJacobian(discretization,NTRANDOF, &
-                                      tran_solver%Jpre_mat_type, &
-                                      tran_solver%Jpre,option)
 
     if (tran_solver%J_mat_type /= MATMFFD) then
       tran_solver%J = tran_solver%Jpre
@@ -396,28 +402,31 @@ subroutine Init(simulation)
                                              option)
     endif
 
-    call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,&
-                         realization,ierr)
+    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
 
-    if (tran_solver%J_mat_type == MATMFFD) then
-      call MatCreateSNESMF(tran_solver%snes,tran_solver%J,ierr)
-    endif
+      call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,&
+                           realization,ierr)
+
+      if (tran_solver%J_mat_type == MATMFFD) then
+        call MatCreateSNESMF(tran_solver%snes,tran_solver%J,ierr)
+      endif
+      
+      call SNESSetJacobian(tran_solver%snes,tran_solver%J,tran_solver%Jpre, &
+                           RTJacobian,realization,ierr)
+
+      ! this could be changed in the future if there is a way to ensure that the linesearch
+      ! update does not perturb concentrations negative.
+      call SNESLineSearchSet(tran_solver%snes,SNESLineSearchNo, &
+                             PETSC_NULL_OBJECT,ierr)
     
-    call SNESSetJacobian(tran_solver%snes,tran_solver%J,tran_solver%Jpre, &
-                         RTJacobian,realization,ierr)
+      ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
+      if (option%verbosity >= 1) then
+        string = '-tran_snes_view'
+        call PetscOptionsInsertString(string, ierr)
+      endif
 
-    ! this could be changed in the future if there is a way to ensure that the linesearch
-    ! update does not perturb concentrations negative.
-    call SNESLineSearchSet(tran_solver%snes,SNESLineSearchNo, &
-                           PETSC_NULL_OBJECT,ierr)
-
-    ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
-    if (option%verbosity >= 1) then
-      string = '-tran_snes_view'
-      call PetscOptionsInsertString(string, ierr)
+      call SolverSetSNESOptions(tran_solver)
     endif
-
-    call SolverSetSNESOptions(tran_solver)
 
     ! setup a shell preconditioner and initialize in the case of AMR
     if(associated(discretization%amrgrid)) then
@@ -433,20 +442,24 @@ subroutine Init(simulation)
     option%io_buffer = 'Preconditioner: ' // trim(tran_solver%pc_type)
     call printMsg(option)
 
-    ! shell for custom convergence test.  The default SNES convergence test  
-    ! is call within this function. 
-    tran_stepper%convergence_context => &
-      ConvergenceContextCreate(tran_solver,option,grid)
-    call SNESSetConvergenceTest(tran_solver%snes,ConvergenceTest, &
-                                tran_stepper%convergence_context, &
-                                PETSC_NULL_FUNCTION,ierr) 
+    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
 
-    ! this update check must be in place, otherwise reactive transport is likely
-    ! to fail
-    if(.not.(option%use_samr)) then
-       call SNESLineSearchSetPreCheck(tran_solver%snes,RTCheckUpdate, &
-            realization,ierr)
+      ! shell for custom convergence test.  The default SNES convergence test  
+      ! is call within this function. 
+      tran_stepper%convergence_context => &
+        ConvergenceContextCreate(tran_solver,option,grid)
+      call SNESSetConvergenceTest(tran_solver%snes,ConvergenceTest, &
+                                  tran_stepper%convergence_context, &
+                                  PETSC_NULL_FUNCTION,ierr) 
+
+      ! this update check must be in place, otherwise reactive transport is likely
+      ! to fail
+      if(.not.(option%use_samr)) then
+         call SNESLineSearchSetPreCheck(tran_solver%snes,RTCheckUpdate, &
+              realization,ierr)
+      endif
     endif
+    
     call printMsg(option,"  Finished setting up TRAN SNES ")
   
   endif
