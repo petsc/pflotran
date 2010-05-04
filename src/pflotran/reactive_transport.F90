@@ -3922,14 +3922,14 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
       iendaq = offset + reaction%offset_aq + reaction%naqcomp
       
       patch%aux%RT%aux_vars(ghosted_id)%pri_molal = xx_loc_p(istartaq:iendaq)
-  #ifdef REVISED_TRANSPORT
+#ifdef REVISED_TRANSPORT
       if (reaction%ncoll > 0) then
         istartcoll = offset + reaction%offset_coll + 1
         iendcoll = offset + reaction%offset_coll + reaction%ncoll
         patch%aux%RT%aux_vars(ghosted_id)%colloid%conc_mob = xx_loc_p(istartcoll:iendcoll)* &
           patch%aux%Global%aux_vars(ghosted_id)%den_kg(1)*1.d-3
       endif
-  #endif
+#endif
       
       if (compute_activity_coefs) then
         call RActivityCoefficients(patch%aux%RT%aux_vars(ghosted_id), &
