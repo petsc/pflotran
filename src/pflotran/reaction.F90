@@ -2390,6 +2390,8 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
   
   PetscInt, parameter :: iphase = 1
   PetscReal, parameter :: tol = 1.d-12
+
+#ifdef REVISED_TRANSPORT
   
   one_over_dt = 1.d0/option%tran_dt
   num_iterations = 0
@@ -2436,6 +2438,8 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
     if (maximum_relative_change < tol) exit
   
   enddo
+
+#endif
 
 end subroutine RReact
       
