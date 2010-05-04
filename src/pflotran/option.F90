@@ -30,7 +30,8 @@ module Option_module
     PetscMPIInt :: io_rank
     PetscTruth :: broadcast_read
     
-    PetscTruth :: reactive_transport_coupling
+!   PetscTruth :: reactive_transport_coupling
+    PetscInt :: reactive_transport_coupling
 
 #ifdef VAMSI_HDF5_READ
     MPI_Comm :: read_group,readers
