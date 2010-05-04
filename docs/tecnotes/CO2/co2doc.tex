@@ -243,7 +243,7 @@ Depending on the number and type of phases present within a control volume, the 
 Phases & \multicolumn{3}{c}{Variables}\\
 \midrule
 liquid & $P_l$ & $T$ & $X_i^l$\\
-gas & $P_g$ & $T$ & $X_i^l$\\
+gas & $P_g$ & $T$ & $X_i^g$\\
 two-phase & $P_g$ & $T$ & $s_g$\\
 \bottomrule
 \end{tabular}
@@ -257,9 +257,12 @@ Various constitutive relations hold depending on the phases present.
 
 For a pure liquid phase $s_l=1$. The molality of dissolved $\c$ is found from the relation
 \EQ
-m_\c^{l} \eq \frac{X_\c^l W_\w^{-1}}{\big(1- X_\c^l\big)}.
+m_\c^{l} \eq \frac{X_\c^l W_\w^{-1}}{1- X_\c^l - \displaystyle\sum_{i\ne \w,\c} \!\!\!\!\!\!X_i^l}.
 \EN
-
+with the inverse relation
+\EQ
+X_\c^l \eq \frac{m_\c}{ W_\w^{-1} + m_\c + \displaystyle\sum_{i\ne \w,\c}\!\!\! \!\!\! m_i}.
+\EN
 
 \subsubsection{Gas Phase: Variables $\{P_g,\,T,\,X_\c^g\}$}
 
