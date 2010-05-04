@@ -1617,7 +1617,7 @@ end subroutine RichardsResidualFluxContribPatch
 ! ************************************************************************** !
 !
 ! RichardsResidualPatch1: Computes the interior flux and boundary flux 
-!   terms of the residual equation 
+!   terms of the residual equation on a single patch
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
@@ -1980,7 +1980,7 @@ end subroutine RichardsResidualPatch1
 ! ************************************************************************** !
 !
 ! RichardsResidualPatch2: Computes the accumulation and source/sink terms of 
-!   the residual equation 
+!   the residual equation on a single patch
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
