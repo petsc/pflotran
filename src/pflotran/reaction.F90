@@ -31,7 +31,8 @@ module Reaction_module
             RAccumulationSorb, &
             RAccumulationSorbDerivative, &
             RJumpStartKineticSorption, &
-            RAge
+            RAge, &
+            RReact
 
 contains
 
@@ -2353,6 +2354,90 @@ subroutine RJumpStartKineticSorption(rt_auxvar,global_auxvar, &
   nullify(rt_auxvar%dtotal_sorb_eq)
 
 end subroutine RJumpStartKineticSorption
+
+! ************************************************************************** !
+!
+! RReact: Solves reaction portion of operator splitting using Newton-Raphson
+! author: Glenn Hammond
+! date: 05/04/10
+!
+! ************************************************************************** !
+subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
+                  reaction,option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(reaction_type), pointer :: reaction
+  type(reactive_transport_auxvar_type) :: rt_auxvar 
+  type(global_auxvar_type) :: global_auxvar
+  PetscReal :: total(reaction%ncomp)
+  type(option_type) :: option
+  PetscReal :: volume
+  PetscReal :: porosity
+  
+  PetscReal :: residual(reaction%ncomp)
+  PetscReal :: res(reaction%ncomp)
+  PetscReal :: J(reaction%ncomp,reaction%ncomp)
+  PetscReal :: one_over_dt
+  PetscReal :: prev_molal(reaction%ncomp)
+  PetscReal :: update(reaction%ncomp)
+  PetscReal :: maximum_relative_change
+  PetscReal :: accumulation_coef
+  PetscInt :: num_iterations
+  PetscInt :: icomp
+  
+  PetscInt, parameter :: iphase = 1
+  PetscReal, parameter :: tol = 1.d-12
+  
+  one_over_dt = 1.d0/option%tran_dt
+  num_iterations = 0
+    
+  do
+  
+    num_iterations = num_iterations + 1
+
+    if (reaction%act_coef_update_frequency == ACT_COEF_FREQUENCY_NEWTON_ITER) then
+      call RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
+    endif
+    call RTotal(rt_auxvar,global_auxvar,reaction,option)
+    if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
+    
+    J = 0.d0
+    residual = 0.d0  
+    
+    ! Accumulation
+    accumulation_coef = porosity*global_auxvar%sat(iphase)*1000.d0*volume* &
+                        one_over_dt
+    residual = accumulation_coef*(rt_auxvar%total(:,iphase)-total(:))
+
+!    if (.false.) then
+    if (associated(rt_auxvar%aqueous%dtotal)) then ! units of dtotal = kg water/L water
+      J(:,:) = rt_auxvar%aqueous%dtotal(:,:,iphase)*accumulation_coef
+    else
+      do icomp = 1, reaction%ncomp
+        J(icomp,icomp) = accumulation_coef*global_auxvar%den_kg(iphase)*1.d-3
+      enddo
+    endif
+                         ! derivative
+    call RReaction(residual,J,PETSC_TRUE,rt_auxvar,global_auxvar,volume, &
+                   reaction,option)
+    
+    call RSolve(residual,J,rt_auxvar%pri_molal,update,reaction%ncomp)
+    
+    update = dsign(1.d0,update)*min(dabs(update),5.d0)
+    
+    prev_molal = rt_auxvar%pri_molal
+    rt_auxvar%pri_molal = rt_auxvar%pri_molal*exp(-update)    
+  
+    maximum_relative_change = maxval(abs((rt_auxvar%pri_molal-prev_molal)/ &
+                                         prev_molal))
+    if (maximum_relative_change < tol) exit
+  
+  enddo
+
+end subroutine RReact
       
 ! ************************************************************************** !
 !
@@ -4188,6 +4273,7 @@ subroutine RSolve(Res,Jac,conc,update,ncomp)
   PetscReal :: conc(ncomp)
   
   PetscInt :: indices(ncomp)
+  PetscReal :: rhs(ncomp)
   PetscInt :: icomp
   PetscReal :: norm
 
@@ -4195,7 +4281,7 @@ subroutine RSolve(Res,Jac,conc,update,ncomp)
   do icomp = 1, ncomp
     norm = max(1.d0,maxval(abs(Jac(icomp,:))))
     norm = 1.d0/norm
-    res(icomp) = res(icomp)*norm
+    rhs(icomp) = Res(icomp)*norm
     Jac(icomp,:) = Jac(icomp,:)*norm
   enddo
     
@@ -4204,10 +4290,10 @@ subroutine RSolve(Res,Jac,conc,update,ncomp)
     Jac(:,icomp) = Jac(:,icomp)*conc(icomp)
   enddo
   call ludcmp(Jac,ncomp,indices,icomp)
-  call lubksb(Jac,ncomp,indices,res)
-
-  update = dsign(1.d0,res)*min(dabs(res),5.d0)
+  call lubksb(Jac,ncomp,indices,rhs)
   
+  update = rhs
+
 end subroutine RSolve
 
 ! ************************************************************************** !

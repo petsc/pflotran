@@ -1650,38 +1650,52 @@ subroutine RTReactPatch(realization)
   type(realization_type) :: realization
   
   type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(reaction_type), pointer :: reaction
-  PetscReal, pointer :: tran_xx_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: istart, iend
   PetscInt :: iphase
+  PetscReal, pointer :: tran_xx_p(:)
+  PetscReal, pointer :: volume_p(:)
+  PetscReal, pointer :: porosity_loc_p(:)
   PetscErrorCode :: ierr
     
   option => realization%option
   field => realization%field
   patch => realization%patch
   global_aux_vars => patch%aux%Global%aux_vars
+  rt_aux_vars => patch%aux%RT%aux_vars
   grid => patch%grid
   reaction => realization%reaction
 
   ! Get vectors
   call GridVecGetArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
+  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
+  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
 
   iphase = 1
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     iend = local_id*reaction%naqcomp
     istart = iend-reaction%naqcomp+1
-    tran_xx_p(istart:iend) = tran_xx_p(istart:iend)/ &
-      (global_aux_vars(ghosted_id)%den_kg(iphase)*1.d-3)
+!    tran_xx_p(istart:iend) = tran_xx_p(istart:iend)/ &
+!      (global_aux_vars(ghosted_id)%den_kg(iphase)*1.d-3)
+    call RReact(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
+                tran_xx_p(istart:iend),volume_p(local_id), &
+                porosity_loc_p(ghosted_id), &
+                reaction,option)
+    ! set primary dependent var back to free-ion molality
+    tran_xx_p(istart:iend) = rt_aux_vars(ghosted_id)%pri_molal
   enddo
 
   ! Restore vectors
   call GridVecRestoreArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
+  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
 
 end subroutine RTReactPatch
 
