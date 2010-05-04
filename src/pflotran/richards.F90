@@ -1536,7 +1536,7 @@ end subroutine RichardsResidual
 
 ! ************************************************************************** !
 !
-! RichardsResidualFluxContribsPatch: should be called only for SAMR
+! RichardsResidualFluxContribPatch: should be called only for SAMR
 ! author: Bobby Philip
 ! date: 02/17/09
 !
