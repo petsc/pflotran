@@ -1479,9 +1479,11 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
 
   use Reactive_Transport_module, only : RTUpdateTransportCoefs, &
                                         RTUpdateRHSCoefs, &
-                                        RTCalculateRHS, &
+                                        RTCalculateRHS_t0, &
+                                        RTCalculateRHS_t1, &
                                         RTUpdateAuxVars, &
-                                        RTCalculateTransportMatrix
+                                        RTCalculateTransportMatrix, &
+                                        RTReact
 
   use Output_module, only : Output
   
@@ -1582,7 +1584,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
     else
       call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE)
     endif
-    call RTCalculateRHS(realization)
+    call RTCalculateRHS_t0(realization)
       
     ! set densities and saturations to t+dt
     if (option%nflowdof > 0) then
@@ -1591,6 +1593,9 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
 
     ! update coefficients
     call RTUpdateTransportCoefs(realization)
+    ! note that aux vars for bcs in RHS will be updated based on
+    ! sat/den at time k+1 in RTCalculateRHS_t1Patch().
+    call RTCalculateRHS_t1(realization)
     call RTCalculateTransportMatrix(realization,solver%J)
 
     call KSPSetOperators(solver%ksp,solver%J,solver%Jpre, &
@@ -1604,13 +1609,18 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
       call VecStrideGather(field%tran_rhs,idof-1,field%work,INSERT_VALUES,ierr)
       call KSPSolve(solver%ksp,field%work,field%work,ierr)
       call VecStrideScatter(field%work,idof-1,field%tran_xx,INSERT_VALUES,ierr)
+
 !      call VecGetArrayF90(field%work,vec_ptr,ierr)
 !      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
+
       call KSPGetIterationNumber(solver%ksp,num_linear_iterations,ierr)
       call KSPGetConvergedReason(solver%ksp,ksp_reason,ierr)
       sum_linear_iterations = sum_linear_iterations + num_linear_iterations
     enddo
     stepper%linear_cum = stepper%linear_cum + sum_linear_iterations
+ 
+    call RTReact(realization)
+ 
     if (option%print_screen_flag) then
       write(*, '(" TRAN ",i6," Time= ",1pe12.4," Dt= ", &
             1pe12.4," [",a1,"]"," ksp_conv_reason: ",i4,/," linear = ",i5, &

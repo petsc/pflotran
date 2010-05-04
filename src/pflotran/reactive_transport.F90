@@ -36,8 +36,10 @@ module Reactive_Transport_module
 #ifdef REVISED_TRANSPORT
             RTUpdateTransportCoefs, &
             RTUpdateRHSCoefs, &
-            RTCalculateRHS, &
+            RTCalculateRHS_t0, &
+            RTCalculateRHS_t1, &
             RTCalculateTransportMatrix, &
+            RTReact, &
 #endif
             RTCheckUpdate, &
             RTJumpStartKineticSorption, &
@@ -76,7 +78,8 @@ subroutine RTTimeCut(realization)
   endif
   
   call RTInitializeTimestep(realization)  
-  ! note: RTUpdateTransportCoefs() is called within RTInitializeTimestep()  
+  ! note: RTUpdateTransportCoefs() is called within RTInitializeTimestep()
+  ! geh - not any longer, tran coefs should always be evaluated at time k+1  
   
   ! set densities and saturations to t+dt
   if (realization%option%nflowdof > 0) then
@@ -621,9 +624,11 @@ subroutine RTInitializeTimestepPatch(realization)
   type(realization_type) :: realization
 
   call RTUpdateFixedAccumulationPatch(realization)
-#ifdef REVISED_TRANSPORT  
-  call RTUpdateTransportCoefsPatch(realization)
-#endif  
+  
+  ! geh: never use transport coefs evaluated at time k
+!#ifdef REVISED_TRANSPORT  
+!  call RTUpdateTransportCoefsPatch(realization)
+!#endif  
 
 end subroutine RTInitializeTimestepPatch
   
@@ -709,7 +714,8 @@ subroutine RTUpdateSolutionPatch(realization)
   rt_aux_vars => patch%aux%RT%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
 
-  call RTUpdateAuxVarsPatch(realization,PETSC_FALSE,PETSC_FALSE)
+  ! update:                             cells      bcs         act. coefs.
+  call RTUpdateAuxVarsPatch(realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
 
   if (.not.option%init_stage) then
     ! update mineral volume fractions
@@ -1139,7 +1145,9 @@ subroutine RTUpdateRHSCoefsPatch(realization)
     ghosted_id = grid%nL2G(local_id)
     rhs_coef_p(local_id) = porosity_loc_p(ghosted_id)* &
                            global_aux_vars(ghosted_id)%sat(iphase)* &
-                           global_aux_vars(ghosted_id)%den_kg(iphase)* &
+! total already has den_kg within 
+!                           global_aux_vars(ghosted_id)%den_kg(iphase)* &
+                           1000.d0* &
                            volume_p(local_id)/option%tran_dt
   enddo
 
@@ -1152,12 +1160,13 @@ end subroutine RTUpdateRHSCoefsPatch
 
 ! ************************************************************************** !
 !
-! RTCalculateRHS: Calculate RHS of transport system
+! RTCalculateRHS_t0: Calculate porition of RHS of transport system
+!                  at time t0 or time level k
 ! author: Glenn Hammond
 ! date: 04/25/10
 !
 ! ************************************************************************** !
-subroutine RTCalculateRHS(realization)
+subroutine RTCalculateRHS_t0(realization)
 
   use Realization_module
   use Level_module
@@ -1175,22 +1184,119 @@ subroutine RTCalculateRHS(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RTCalculateRHSPatch(realization)
+      call RTCalculateRHS_t0Patch(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
 
-end subroutine RTCalculateRHS
+end subroutine RTCalculateRHS_t0
 
 ! ************************************************************************** !
 !
-! RTCalculateRHSPatch: Calculate RHS of transport system
+! RTCalculateRHS_t0Patch: Calculate porition of RHS of transport system
+!                         at time t0 or time level k
 ! author: Glenn Hammond
 ! date: 04/25/10
 !
 ! ************************************************************************** !
-subroutine RTCalculateRHSPatch(realization)
+subroutine RTCalculateRHS_t0Patch(realization)
+
+  use Realization_module
+  use Patch_module
+  use Connection_module
+  use Coupler_module
+  use Option_module
+  use Field_module  
+  use Grid_module  
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(reaction_type), pointer :: reaction
+  PetscReal, pointer :: rhs_coef_p(:)
+  PetscReal, pointer :: rhs_p(:)
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: iphase
+  PetscInt :: istartaq, iendaq
+
+  PetscErrorCode :: ierr
+    
+  option => realization%option
+  field => realization%field
+  patch => realization%patch
+  rt_aux_vars => patch%aux%RT%aux_vars
+  grid => patch%grid
+  reaction => realization%reaction
+
+  ! Get vectors
+  call GridVecGetArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)
+  call GridVecGetArrayF90(grid,field%tran_rhs,rhs_p,ierr)
+
+  iphase = 1
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    iendaq = local_id*reaction%naqcomp
+    istartaq = iendaq-reaction%naqcomp+1
+    rhs_p(istartaq:iendaq) = rt_aux_vars(ghosted_id)%total(:,iphase)* &
+                             rhs_coef_p(local_id)
+  enddo
+
+  ! Restore vectors
+  call GridVecRestoreArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%tran_rhs,rhs_p,ierr)
+
+end subroutine RTCalculateRHS_t0Patch
+
+! ************************************************************************** !
+!
+! RTCalculateRHS_t1: Calculate porition of RHS of transport system
+!                    at time t1 or time level k+1
+! author: Glenn Hammond
+! date: 04/25/10
+!
+! ************************************************************************** !
+subroutine RTCalculateRHS_t1(realization)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+
+  type(realization_type) :: realization
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RTCalculateRHS_t1Patch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RTCalculateRHS_t1
+
+! ************************************************************************** !
+!
+! RTCalculateRHS_t1Patch: Calculate porition of RHS of transport system
+!                         at time level k+1
+! author: Glenn Hammond
+! date: 04/25/10
+!
+! ************************************************************************** !
+subroutine RTCalculateRHS_t1Patch(realization)
 
   use Realization_module
   use Patch_module
@@ -1211,9 +1317,7 @@ subroutine RTCalculateRHSPatch(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(reaction_type), pointer :: reaction
-  PetscReal, pointer :: rhs_coef_p(:)
   PetscReal, pointer :: rhs_p(:)
-  PetscInt :: idof
   PetscInt :: local_id, ghosted_id
   PetscInt :: iphase
   PetscReal :: coef_up(1), coef_dn(1)
@@ -1233,20 +1337,19 @@ subroutine RTCalculateRHSPatch(realization)
   grid => patch%grid
   reaction => realization%reaction
 
-  ! Get vectors
-  call GridVecGetArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)
-  call GridVecGetArrayF90(grid,field%tran_rhs,rhs_p,ierr)
-
   iphase = 1
-  do local_id = 1, grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    iendaq = local_id*reaction%naqcomp
-    istartaq = iendaq-reaction%naqcomp+1
-    rhs_p(istartaq:iendaq) = rt_aux_vars(ghosted_id)%total(:,iphase)* &
-                             rhs_coef_p(local_id)
-  enddo
 
-  call GridVecRestoreArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)
+  ! for RHS at time k+1, no need to update local cells, only bcs
+  if (realization%reaction%act_coef_update_frequency == ACT_COEF_FREQUENCY_OFF) then
+    ! update:                             cells      bcs        act. coefs.
+    call RTUpdateAuxVarsPatch(realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
+  else
+    ! update:                             cells      bcs        act. coefs.
+    call RTUpdateAuxVarsPatch(realization,PETSC_FALSE,PETSC_TRUE,PETSC_TRUE)
+  endif
+
+  ! Get vectors
+  call GridVecGetArrayF90(grid,field%tran_rhs,rhs_p,ierr)
 
   ! add in inflowing boundary conditions
   ! Boundary Flux Terms -----------------------------------
@@ -1286,7 +1389,7 @@ subroutine RTCalculateRHSPatch(realization)
   ! Restore vectors
   call GridVecRestoreArrayF90(grid,field%tran_rhs,rhs_p,ierr)
 
-end subroutine RTCalculateRHSPatch
+end subroutine RTCalculateRHS_t1Patch
 
 ! ************************************************************************** !
 !
@@ -1399,7 +1502,8 @@ subroutine RTCalculateTranMatrixPatch(realization,T)
     ghosted_id = grid%nL2G(local_id)
     coef = porosity_loc_p(ghosted_id)* &
            global_aux_vars(ghosted_id)%sat(iphase)* &
-           global_aux_vars(ghosted_id)%den_kg(iphase)* &
+!geh           global_aux_vars(ghosted_id)%den_kg(iphase)* &
+           1000.d0* &
            volume_p(local_id)/option%tran_dt
     call MatSetValuesLocal(T,1,local_id-1,1,local_id-1,coef, &
                            ADD_VALUES,ierr)
@@ -1428,8 +1532,8 @@ subroutine RTCalculateTranMatrixPatch(realization,T)
                      patch%internal_tran_coefs(:,sum_connection), &
                      coef_up,coef_dn)
 
-      coef_up = coef_up*global_aux_vars(ghosted_id_up)%den_kg*1.d-3
-      coef_dn = coef_dn*global_aux_vars(ghosted_id_dn)%den_kg*1.d-3
+!      coef_up = coef_up*global_aux_vars(ghosted_id_up)%den_kg*1.d-3
+!      coef_dn = coef_dn*global_aux_vars(ghosted_id_dn)%den_kg*1.d-3
                      
       if (local_id_up > 0) then
         call MatSetValuesLocal(T,1,ghosted_id_up-1,1,ghosted_id_up-1, &
@@ -1472,7 +1576,7 @@ subroutine RTCalculateTranMatrixPatch(realization,T)
                      patch%boundary_tran_coefs(:,sum_connection), &
                      coef_up,coef_dn)
 
-      coef_dn = coef_dn*global_aux_vars(ghosted_id)%den_kg*1.d-3
+ !     coef_dn = coef_dn*global_aux_vars(ghosted_id)%den_kg*1.d-3
 
       !Jup not needed 
       coef_dn = -coef_dn
@@ -1490,6 +1594,97 @@ subroutine RTCalculateTranMatrixPatch(realization,T)
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
 
 end subroutine RTCalculateTranMatrixPatch
+
+! ************************************************************************** !
+!
+! RTReactPatch: Calculate reaction
+! author: Glenn Hammond
+! date: 05/03/10
+!
+! ************************************************************************** !
+subroutine RTReact(realization)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+
+  type(realization_type) :: realization
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RTReactPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RTReact
+
+! ************************************************************************** !
+!
+! RTReactPatch: Calculate reaction
+! author: Glenn Hammond
+! date: 05/03/10
+!
+! ************************************************************************** !
+subroutine RTReactPatch(realization)
+
+  use Realization_module
+  use Patch_module
+  use Connection_module
+  use Coupler_module
+  use Option_module
+  use Field_module  
+  use Grid_module  
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(reaction_type), pointer :: reaction
+  PetscReal, pointer :: tran_xx_p(:)
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: istart, iend
+  PetscInt :: iphase
+  PetscErrorCode :: ierr
+    
+  option => realization%option
+  field => realization%field
+  patch => realization%patch
+  global_aux_vars => patch%aux%Global%aux_vars
+  grid => patch%grid
+  reaction => realization%reaction
+
+  ! Get vectors
+  call GridVecGetArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
+
+  iphase = 1
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    iend = local_id*reaction%naqcomp
+    istart = iend-reaction%naqcomp+1
+    tran_xx_p(istart:iend) = tran_xx_p(istart:iend)/ &
+      (global_aux_vars(ghosted_id)%den_kg(iphase)*1.d-3)
+  enddo
+
+  ! Restore vectors
+  call GridVecRestoreArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
+
+end subroutine RTReactPatch
+
 #endif
 
 ! ************************************************************************** !
@@ -2090,9 +2285,11 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   
   if (.not.patch%aux%RT%aux_vars_up_to_date) then
     if (reaction%act_coef_update_frequency == ACT_COEF_FREQUENCY_NEWTON_ITER) then
-      call RTUpdateAuxVarsPatch(realization,PETSC_TRUE,PETSC_TRUE)
+      ! update:                             cells      bcs        act. coefs.
+      call RTUpdateAuxVarsPatch(realization,PETSC_TRUE,PETSC_TRUE,PETSC_TRUE)
     else 
-      call RTUpdateAuxVarsPatch(realization,PETSC_TRUE,PETSC_FALSE)
+      ! update:                             cells      bcs        act. coefs.
+      call RTUpdateAuxVarsPatch(realization,PETSC_TRUE,PETSC_TRUE,PETSC_FALSE)
     endif
   endif
   patch%aux%RT%aux_vars_up_to_date = PETSC_FALSE 
@@ -3628,7 +3825,9 @@ subroutine RTUpdateAuxVars(realization,update_bcs,update_activity_coefs)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RTUpdateAuxVarsPatch(realization,update_bcs,update_activity_coefs)
+      ! PETSC_TRUE to update cells
+      call RTUpdateAuxVarsPatch(realization,PETSC_TRUE,update_bcs, &
+                                update_activity_coefs)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -3644,7 +3843,8 @@ end subroutine RTUpdateAuxVars
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
+subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
+                                compute_activity_coefs)
 
   use Realization_module
   use Patch_module
@@ -3658,8 +3858,8 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
 
   type(realization_type) :: realization
   PetscTruth :: update_bcs
+  PetscTruth :: update_cells
   PetscTruth :: compute_activity_coefs
-  PetscTruth :: time0
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -3695,50 +3895,54 @@ subroutine RTUpdateAuxVarsPatch(realization,update_bcs,compute_activity_coefs)
   
   call GridVecGetArrayF90(grid,field%tran_xx_loc,xx_loc_p, ierr)
 
-  do ghosted_id = 1, grid%ngmax
-    if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
-    !geh - Ignore inactive cells with inactive materials
+  if (update_cells) then
 
-    if (patch%imat(ghosted_id) <= 0) cycle
+    do ghosted_id = 1, grid%ngmax
+      if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
+      !geh - Ignore inactive cells with inactive materials
 
-    offset = (ghosted_id-1)*reaction%ncomp
-    istartaq = offset + reaction%offset_aq + 1
-    iendaq = offset + reaction%offset_aq + reaction%naqcomp
-    
-    patch%aux%RT%aux_vars(ghosted_id)%pri_molal = xx_loc_p(istartaq:iendaq)
-#ifdef REVISED_TRANSPORT
-    if (reaction%ncoll > 0) then
-      istartcoll = offset + reaction%offset_coll + 1
-      iendcoll = offset + reaction%offset_coll + reaction%ncoll
-      patch%aux%RT%aux_vars(ghosted_id)%colloid%conc_mob = xx_loc_p(istartcoll:iendcoll)* &
-        patch%aux%Global%aux_vars(ghosted_id)%den_kg(1)*1.d-3
-    endif
-#endif
-    
-    if (compute_activity_coefs) then
-      call RActivityCoefficients(patch%aux%RT%aux_vars(ghosted_id), &
-                                 patch%aux%Global%aux_vars(ghosted_id), &
-                                 reaction,option)
-      if(option%iflowmode == MPH_MODE)then
-        call CO2AqActCoeff(patch%aux%RT%aux_vars(ghosted_id), &
-                                 patch%aux%Global%aux_vars(ghosted_id), &
-                                 reaction,option)
-      endif                           
-    endif
-    call RTAuxVarCompute(patch%aux%RT%aux_vars(ghosted_id), &
-                         patch%aux%Global%aux_vars(ghosted_id), &
-                         reaction,option)
-    if (associated(reaction%species_idx)) then
-      if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
-        patch%aux%Global%aux_vars(ghosted_id)%m_nacl(1) = &
-              patch%aux%RT%aux_vars(ghosted_id)%pri_molal(reaction%species_idx%na_ion_id)
-        patch%aux%Global%aux_vars(ghosted_id)%m_nacl(2) = &
-              patch%aux%RT%aux_vars(ghosted_id)%pri_molal(reaction%species_idx%cl_ion_id)
-       else
-        patch%aux%Global%aux_vars(ghosted_id)%m_nacl = option%m_nacl
+      if (patch%imat(ghosted_id) <= 0) cycle
+
+      offset = (ghosted_id-1)*reaction%ncomp
+      istartaq = offset + reaction%offset_aq + 1
+      iendaq = offset + reaction%offset_aq + reaction%naqcomp
+      
+      patch%aux%RT%aux_vars(ghosted_id)%pri_molal = xx_loc_p(istartaq:iendaq)
+  #ifdef REVISED_TRANSPORT
+      if (reaction%ncoll > 0) then
+        istartcoll = offset + reaction%offset_coll + 1
+        iendcoll = offset + reaction%offset_coll + reaction%ncoll
+        patch%aux%RT%aux_vars(ghosted_id)%colloid%conc_mob = xx_loc_p(istartcoll:iendcoll)* &
+          patch%aux%Global%aux_vars(ghosted_id)%den_kg(1)*1.d-3
       endif
-    endif
-  enddo
+  #endif
+      
+      if (compute_activity_coefs) then
+        call RActivityCoefficients(patch%aux%RT%aux_vars(ghosted_id), &
+                                   patch%aux%Global%aux_vars(ghosted_id), &
+                                   reaction,option)
+        if(option%iflowmode == MPH_MODE)then
+          call CO2AqActCoeff(patch%aux%RT%aux_vars(ghosted_id), &
+                                   patch%aux%Global%aux_vars(ghosted_id), &
+                                   reaction,option)
+        endif                           
+      endif
+      call RTAuxVarCompute(patch%aux%RT%aux_vars(ghosted_id), &
+                           patch%aux%Global%aux_vars(ghosted_id), &
+                           reaction,option)
+      if (associated(reaction%species_idx)) then
+        if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
+          patch%aux%Global%aux_vars(ghosted_id)%m_nacl(1) = &
+                patch%aux%RT%aux_vars(ghosted_id)%pri_molal(reaction%species_idx%na_ion_id)
+          patch%aux%Global%aux_vars(ghosted_id)%m_nacl(2) = &
+                patch%aux%RT%aux_vars(ghosted_id)%pri_molal(reaction%species_idx%cl_ion_id)
+         else
+          patch%aux%Global%aux_vars(ghosted_id)%m_nacl = option%m_nacl
+        endif
+      endif
+    enddo
+
+  endif
 
   if (update_bcs) then
 
