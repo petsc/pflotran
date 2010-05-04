@@ -1697,7 +1697,111 @@ subroutine RTReactPatch(realization)
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
 
+  if (option%compute_mass_balance_new) then
+    call RTZeroMassBalanceDeltaPatch(realization)
+    call RTComputeBCMassBalanceOSPatch(realization)
+  endif
+
 end subroutine RTReactPatch
+
+! ************************************************************************** !
+!
+! RTComputeBCMassBalanceOSPatch: Calculates mass balance at boundary 
+!                                conditions for operator split mode
+! author: Glenn Hammond
+! date: 05/04/10
+!
+! ************************************************************************** !
+subroutine RTComputeBCMassBalanceOSPatch(realization)
+
+  use Realization_module
+  use Patch_module
+  use Transport_module
+  use Option_module
+  use Field_module
+  use Grid_module
+  use Connection_module
+  use Coupler_module  
+  use Debug_module
+  
+  implicit none
+
+  type(realization_type) :: realization  
+
+  PetscInt :: local_id, ghosted_id
+  PetscInt, parameter :: iphase = 1
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+  type(reaction_type), pointer :: reaction
+  type(reactive_transport_param_type), pointer :: rt_parameter
+  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:), rt_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
+  PetscReal :: Res(realization%reaction%ncomp)
+  
+  PetscReal, pointer :: face_fluxes_p(:)
+
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  PetscInt :: sum_connection, iconn
+  
+  PetscReal :: coef_up(realization%option%nphase)
+  PetscReal :: coef_dn(realization%option%nphase)
+
+  option => realization%option
+  field => realization%field
+  patch => realization%patch
+  reaction => realization%reaction
+  grid => patch%grid
+  rt_parameter => patch%aux%RT%rt_parameter
+  rt_aux_vars => patch%aux%RT%aux_vars
+  rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+  
+! Boundary Flux Terms -----------------------------------
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(boundary_condition)) exit
+  
+    cur_connection_set => boundary_condition%connection_set
+  
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+  
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+
+      if (patch%imat(ghosted_id) <= 0) cycle
+
+      ! TFluxCoef accomplishes the same as what TBCCoef would
+      call TFluxCoef(option,cur_connection_set%area(iconn), &
+                     patch%boundary_velocities(:,sum_connection), &
+                     patch%boundary_tran_coefs(:,sum_connection), &
+                     coef_up,coef_dn)
+      ! TFlux accomplishes the same as what TBCFlux would
+      call TFlux(rt_parameter, &
+                 rt_aux_vars_bc(sum_connection), &
+                 global_aux_vars_bc(sum_connection), &
+                 rt_aux_vars(ghosted_id), &
+                 global_aux_vars(ghosted_id), &
+                 coef_up,coef_dn,option,Res)
+
+    ! contribution to boundary 
+      rt_aux_vars_bc(sum_connection)%mass_balance_delta(:,iphase) = &
+        rt_aux_vars_bc(sum_connection)%mass_balance_delta(:,iphase) - Res
+!        ! contribution to internal 
+!        rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) = &
+!          rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) + Res
+    
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+
+end subroutine RTComputeBCMassBalanceOSPatch
 
 #endif
 
