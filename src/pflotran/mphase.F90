@@ -652,7 +652,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
       global_aux_vars(ghosted_id)%xmass(2)=aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3) * FMWH2O&
                               /(aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3) * FMWH2O&
                               +aux_vars(ghosted_id)%aux_var_elem(0)%xmol(4) * FMWCO2) 
-!      global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
+      global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
 !     print *,'UPdate mphase and gloable vars', ghosted_id, global_aux_vars(ghosted_id)%m_nacl(:), & 
 !       global_aux_vars(ghosted_id)%pres(:)
 !     global_aux_vars(ghosted_id)%mass_balance 
@@ -714,7 +714,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
         global_aux_vars_bc(sum_connection)%den_kg(:) = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
 !       print *,'xxbc ', xxbc, iphasebc, global_aux_vars_bc(sum_connection)%den_kg(:)
-!       mnacl= global_aux_vars_bc(sum_connection)%m_nacl(1)
+        mnacl= global_aux_vars_bc(sum_connection)%m_nacl(1)
         if(global_aux_vars_bc(sum_connection)%m_nacl(2)>mnacl) mnacl= global_aux_vars_bc(sum_connection)%m_nacl(2)
         ynacl =  mnacl/(1.d3/FMWH2O + mnacl)
         global_aux_vars_bc(sum_connection)%xmass(1)= (1.d0-ynacl)&
@@ -2033,7 +2033,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
        global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
        global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
-       global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
+!       global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
 !      print *,'UPdate mphase and gloable vars', ghosted_id, global_aux_vars(ghosted_id) %m_nacl(:), & 
 !      global_aux_vars(ghosted_id)%pres(:)
 !      global_aux_vars(ghosted_id)%mass_balance 
