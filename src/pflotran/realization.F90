@@ -270,27 +270,46 @@ subroutine RealizationCreateDiscretization(realization)
   endif
 
   if (option%ntrandof > 0) then
-    ! ndof degrees of freedom, global
-    call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_xx, &
-                                    GLOBAL,option)
-    call DiscretizationDuplicateVector(discretization,field%tran_xx, &
-                                       field%tran_yy)
-    call DiscretizationDuplicateVector(discretization,field%tran_xx, &
-                                       field%tran_dxx)
-    call DiscretizationDuplicateVector(discretization,field%tran_xx, &
-                                       field%tran_r)
-    call DiscretizationDuplicateVector(discretization,field%tran_xx, &
-                                       field%tran_accum)
-
-    ! ndof degrees of freedom, local
-    call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_xx_loc, &
-                                    LOCAL,option)
-                                    
-    if (realization%reaction%use_log_formulation) then
+    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+      ! ndof degrees of freedom, global
+      call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_xx, &
+                                      GLOBAL,option)
       call DiscretizationDuplicateVector(discretization,field%tran_xx, &
-                                         field%tran_log_xx)
-      call DiscretizationDuplicateVector(discretization,field%tran_xx_loc, &
-                                         field%tran_work_loc)
+                                         field%tran_yy)
+      call DiscretizationDuplicateVector(discretization,field%tran_xx, &
+                                         field%tran_dxx)
+      call DiscretizationDuplicateVector(discretization,field%tran_xx, &
+                                         field%tran_r)
+      call DiscretizationDuplicateVector(discretization,field%tran_xx, &
+                                         field%tran_accum)
+
+      ! ndof degrees of freedom, local
+      call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_xx_loc, &
+                                      LOCAL,option)
+                                      
+      if (realization%reaction%use_log_formulation) then
+        call DiscretizationDuplicateVector(discretization,field%tran_xx, &
+                                           field%tran_log_xx)
+        call DiscretizationDuplicateVector(discretization,field%tran_xx_loc, &
+                                           field%tran_work_loc)
+      endif
+    else ! operator splitting
+      ! ndof degrees of freedom, global
+      ! create the 1 dof vector for solving the individual linear systems
+      call DiscretizationCreateVector(discretization,ONEDOF,field%tran_rhs_coef, &
+                                      GLOBAL,option)
+      ! create the ntran dof vector for storage of the solution
+      call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_xx, &
+                                      GLOBAL,option)
+      call DiscretizationDuplicateVector(discretization,field%tran_xx, &
+                                         field%tran_yy)
+      call DiscretizationDuplicateVector(discretization,field%tran_xx, &
+                                         field%tran_rhs)
+
+      ! ndof degrees of freedom, local
+      ! again, just for storage of the current colution
+      call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_xx_loc, &
+                                      LOCAL,option)
     endif
     
     if(option%use_samr) then
@@ -1109,6 +1128,7 @@ subroutine RealizAssignFlowInitCond(realization)
         case(THC_MODE)
         case(MPH_MODE)
         case(IMS_MODE)
+        case(FLASH2_MODE)
 !            call pflow_mphase_setupini(realization)
       end select 
 
@@ -1374,7 +1394,8 @@ subroutine RealizAssignTransportInitCond(realization)
   enddo
   
   ! update dependent vectors
-  call DiscretizationGlobalToLocal(discretization,field%tran_xx,field%tran_xx_loc,NTRANDOF)  
+  call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
+                                   field%tran_xx_loc,NTRANDOF)  
   call VecCopy(field%tran_xx, field%tran_yy, ierr)
 
 end subroutine RealizAssignTransportInitCond

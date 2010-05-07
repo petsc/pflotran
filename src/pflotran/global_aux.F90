@@ -146,6 +146,27 @@ subroutine GlobalAuxVarInit(aux_var,option)
     nullify(aux_var%den_store)
   endif
 
+  if(option%iflowmode == FLASH2_MODE)then
+    allocate(aux_var%xmass(option%nphase))
+    aux_var%xmass = 1.d0
+    allocate(aux_var%pres_store(option%nphase,TWO_INTEGER))
+    aux_var%pres_store = 0.d0
+    allocate(aux_var%temp_store(ONE_INTEGER,TWO_INTEGER))
+    aux_var%temp_store = 0.d0
+    allocate(aux_var%fugacoeff(ONE_INTEGER))
+    aux_var%fugacoeff = 1.d0
+    allocate(aux_var%fugacoeff_store(ONE_INTEGER,TWO_INTEGER))
+    aux_var%fugacoeff_store = 1.d0
+    allocate(aux_var%den_store(option%nphase,TWO_INTEGER))
+    aux_var%den_store = 0.d0
+  else
+    nullify(aux_var%xmass)
+    nullify(aux_var%pres_store)
+    nullify(aux_var%temp_store)
+    nullify(aux_var%fugacoeff)
+    nullify(aux_var%fugacoeff_store)
+    nullify(aux_var%den_store)
+  endif
 
   if (option%iflag /= 0 .and. option%compute_mass_balance_new) then
     allocate(aux_var%mass_balance(option%nphase))

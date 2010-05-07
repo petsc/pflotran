@@ -149,6 +149,19 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
                            'SATURATION_FUNCTION')
       case('RESIDUAL_SATURATION') 
         select case(option%iflowmode)
+          case(FLASH2_MODE)
+            call InputReadWord(input,option,keyword,PETSC_TRUE)
+            call InputErrorMsg(input,option,'keyword','SATURATION_FUNCTION')
+            call StringToUpper(keyword)   
+            select case(trim(keyword))
+              case('WATER','WATER_PHASE','LIQUID','LIQUID_PHASE')
+                iphase = 1
+              case('CO2','CO2_PHASE','GAS','GAS_PHASE')
+                iphase = 2
+            end select
+            call InputReadDouble(input,option,saturation_function%Sr(iphase))
+            word = trim(keyword) // ' residual saturation'
+            call InputErrorMsg(input,option,word,'SATURATION_FUNCTION')
           case(MPH_MODE)
             call InputReadWord(input,option,keyword,PETSC_TRUE)
             call InputErrorMsg(input,option,'keyword','SATURATION_FUNCTION')

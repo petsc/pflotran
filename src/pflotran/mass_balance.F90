@@ -100,6 +100,7 @@ subroutine MassBalanceUpdate(realization,flow_solver,tran_solver)
                      1.d0,field%tran_ts_mass_balance,ierr)
       case(MPH_MODE)
       case(IMS_MODE)
+      case(FLASH2_MODE)
     end select
   endif
   

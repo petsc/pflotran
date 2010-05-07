@@ -73,6 +73,7 @@ PetscInt, parameter :: MPH_MODE = 2
 PetscInt, parameter :: RICHARDS_MODE = 3
 PetscInt, parameter :: REACTIVE_TRANSPORT_MODE = 4
 PetscInt, parameter :: IMS_MODE = 5
+PetscInt, parameter :: FLASH2_MODE = 6
 
 ! grid types
 PetscInt, parameter :: STRUCTURED_GRID = 1
@@ -233,5 +234,9 @@ PetscInt, parameter :: GAS_PHASE = 2
 ! variable centerings
 PetscInt, parameter :: CELL_CENTERED = 0
 PetscInt, parameter :: SIDE_CENTERED = 1
+
+! approaches to coupling reactive transport
+PetscInt, parameter :: GLOBAL_IMPLICIT = 0
+PetscInt, parameter :: OPERATOR_SPLIT = 1
 
 #define HASH

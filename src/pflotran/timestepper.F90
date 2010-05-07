@@ -429,10 +429,19 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     ! (reactive) transport solution
     if (associated(tran_stepper)) then
       call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr)
-      call StepperStepTransportDT(realization,tran_stepper, &
-                                  flow_timestep_cut_flag, &
-                                  tran_timestep_cut_flag, &
-                                  idum,failure)
+      if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then      
+        call StepperStepTransportDT(realization,tran_stepper, &
+                                    flow_timestep_cut_flag, &
+                                    tran_timestep_cut_flag, &
+                                    idum,failure)
+      else
+#ifdef REVISED_TRANSPORT      
+        call StepperStepTransportDT1(realization,tran_stepper, &
+                                     flow_timestep_cut_flag, &
+                                     tran_timestep_cut_flag, &
+                                     idum,failure)
+#endif
+      endif
       call PetscLogStagePop(ierr)
       if (failure) return ! if flow solve fails, exit
       if (.not.associated(flow_stepper) .or. run_flow_as_steady_state) &
@@ -610,6 +619,18 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option,timestep_cut_flag, &
   if (stepper%iaccel == 0) return
 
   select case(option%iflowmode)
+    case(FLASH2_MODE)   
+      fac = 0.5d0
+      if (num_newton_iterations >= stepper%iaccel) then
+        fac = 0.33d0
+        ut = 0.d0
+      else
+        up = option%dpmxe/(option%dpmax+0.1)
+        utmp = option%dtmpmxe/(option%dtmpmax+1.d-5)
+        uus= option%dsmxe/(option%dsmax+1.d-6)
+        ut = min(up,utmp,uus)
+      endif
+      dtt = fac * dt * (1.d0 + ut)
     case(IMS_MODE)   
       fac = 0.5d0
       if (num_newton_iterations >= stepper%iaccel) then
@@ -809,6 +830,8 @@ end subroutine StepperSetTargetTimes
 subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
                              num_newton_iterations,step_to_steady_state, &
                              failure)
+  use Flash2_module, only : Flash2MaxChange, Flash2InitializeTimestep, &
+                           Flash2TimeCut, Flash2UpdateReason
   use MPHASE_module, only : MphaseMaxChange, MphaseInitializeTimestep, &
                            MphaseTimeCut, MPhaseUpdateReason
   use Immis_module, only : ImmisMaxChange, ImmisInitializeTimestep, &
@@ -909,13 +932,15 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
         call MphaseInitializeTimestep(realization)
       case(IMS_MODE)
         call ImmisInitializeTimestep(realization)
+      case(FLASH2_MODE)
+        call Flash2InitializeTimestep(realization)
     end select
     
     do
       
       call PetscGetTime(log_start_time, ierr)
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
           call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
       end select
       call PetscGetTime(log_end_time, ierr)
@@ -936,6 +961,8 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
             call ImmisUpdateReason(update_reason,realization)
           case(MPH_MODE)
             call MPhaseUpdateReason(update_reason,realization)
+          case(FLASH2_MODE)
+            call Flash2UpdateReason(update_reason,realization)
           case(THC_MODE)
             update_reason=1
           case(RICHARDS_MODE)
@@ -987,6 +1014,8 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
             call MphaseTimeCut(realization)
           case(IMS_MODE)
             call ImmisTimeCut(realization)
+          case(FLASH2_MODE)
+            call Flash2TimeCut(realization)
         end select
         call VecCopy(field%iphas_old_loc, field%iphas_loc, ierr)
 
@@ -1141,6 +1170,20 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
         & " dtmpmx= ",1pe12.4," dsmx= ",1pe12.4)') &
         option%dpmax,option%dtmpmax,option%dsmax
     endif
+  else if (option%iflowmode == FLASH2_MODE) then
+    call FLASH2MaxChange(realization)
+    ! note use mph will use variable switching, the x and s change is not meaningful 
+    if (option%print_screen_flag) then
+      write(*,'("  --> max chng: dpmx= ",1pe12.4, &
+        & " dtmpmx= ",1pe12.4," dsmx= ",1pe12.4)') &
+        option%dpmax,option%dtmpmax,option%dsmax
+    endif
+    if (option%print_file_flag) then  
+      write(option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
+        & " dtmpmx= ",1pe12.4," dsmx= ",1pe12.4)') &
+        option%dpmax,option%dtmpmax,option%dsmax
+    endif
+
   endif
 
   if (option%print_screen_flag) print *, ""
@@ -1251,7 +1294,6 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
 
     call RTInitializeTimestep(realization)
     ! note: RTUpdateTransportCoefs() is called within RTInitializeTimestep()
-
 
     ! set densities and saturations to t+dt
     if (option%nflowdof > 0) then
@@ -1468,6 +1510,222 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
 
 end subroutine StepperStepTransportDT
 
+#ifdef REVISED_TRANSPORT
+! ************************************************************************** !
+!
+! StepperStepTransportDT1: Steps forward one step in time
+! author: Glenn Hammond
+! date: 02/19/08
+!
+! ************************************************************************** !
+subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
+                                  tran_timestep_cut_flag, &
+                                  num_newton_iterations,failure)
+
+  use Reactive_Transport_module, only : RTUpdateTransportCoefs, &
+                                        RTUpdateRHSCoefs, &
+                                        RTCalculateRHS_t0, &
+                                        RTCalculateRHS_t1, &
+                                        RTUpdateAuxVars, &
+                                        RTCalculateTransportMatrix, &
+                                        RTReact
+
+  use Output_module, only : Output
+  
+  use Realization_module
+  use Discretization_module
+  use Option_module
+  use Solver_module
+
+  use Field_module
+  use Grid_module
+  use Patch_module
+  use Global_module  
+  
+  implicit none
+
+#include "finclude/petsclog.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscviewer.h"
+#include "finclude/petscsnes.h"
+
+  type(realization_type) :: realization
+  type(stepper_type) :: stepper
+
+  PetscTruth :: flow_timestep_cut_flag
+  PetscTruth :: tran_timestep_cut_flag
+  PetscInt :: num_newton_iterations
+  PetscTruth :: failure
+  
+  PetscErrorCode :: ierr
+  KSPConvergedReason :: ksp_reason 
+  PetscInt :: sum_linear_iterations, num_linear_iterations
+  PetscInt :: idof
+  PetscReal :: start_time, end_time, dt_orig
+  PetscTruth :: plot_flag  
+  PetscTruth :: transient_plot_flag  
+  PetscReal, parameter :: time_tol = 1.d-10
+  PetscReal, pointer :: vec_ptr(:)
+
+  PetscViewer :: viewer
+
+  type(option_type), pointer :: option
+  type(discretization_type), pointer :: discretization
+  type(field_type), pointer :: field  
+  type(solver_type), pointer :: solver
+  type(patch_type), pointer :: cur_patch
+
+  option => realization%option
+  discretization => realization%discretization
+  field => realization%field
+  solver => stepper%solver
+
+! PetscReal, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
+
+  call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
+                                  field%porosity_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
+                                  field%tortuosity_loc,ONEDOF)
+
+  if (flow_timestep_cut_flag) then
+    option%tran_time = option%flow_time
+    option%tran_dt = option%flow_dt
+    option%time = option%flow_time
+  endif
+  
+  end_time = option%tran_time
+  start_time = end_time-option%tran_dt
+  dt_orig = option%tran_dt
+  
+  ! test
+!  option%tran_time = option%tran_time - option%tran_dt
+!  option%tran_dt = option%tran_dt * 0.5d0
+!  option%tran_time = option%tran_time + option%tran_dt
+  do
+  
+    sum_linear_iterations = 0
+
+    if (option%print_screen_flag) write(*,'(/,2("=")" TRANSPORT ",47("="))')
+
+    call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
+                                     field%tran_xx_loc,NTRANDOF)
+
+    if (option%nflowdof > 0) then
+      option%tran_weight_t0 = (option%tran_time-option%tran_dt-start_time)/ &
+                              (end_time-start_time)
+      option%tran_weight_t1 = (option%tran_time-start_time)/ &
+                              (end_time-start_time)
+      ! set densities and saturations to t
+      call GlobalUpdateDenAndSat(realization,option%tran_weight_t0)
+    endif
+
+    ! update time derivative on RHS
+    call RTUpdateRHSCoefs(realization)
+    ! calculate total component concentrations
+    if (realization%reaction%act_coef_update_frequency == ACT_COEF_FREQUENCY_OFF) then
+      call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE)
+    else
+      call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE)
+    endif
+    call RTCalculateRHS_t0(realization)
+      
+    ! set densities and saturations to t+dt
+    if (option%nflowdof > 0) then
+      call GlobalUpdateDenAndSat(realization,option%tran_weight_t1)
+    endif
+
+    ! update coefficients
+    call RTUpdateTransportCoefs(realization)
+    ! note that aux vars for bcs in RHS will be updated based on
+    ! sat/den at time k+1 in RTCalculateRHS_t1Patch().
+    call RTCalculateRHS_t1(realization)
+    call RTCalculateTransportMatrix(realization,solver%J)
+
+    call KSPSetOperators(solver%ksp,solver%J,solver%Jpre, &
+                         SAME_PRECONDITIONER,ierr)
+
+!      call VecGetArrayF90(field%tran_xx,vec_ptr,ierr)
+!      call VecRestoreArrayF90(field%tran_xx,vec_ptr,ierr)
+
+    ! loop over chemical component and transport
+    do idof = 1, option%ntrandof
+      call VecStrideGather(field%tran_rhs,idof-1,field%work,INSERT_VALUES,ierr)
+      call KSPSolve(solver%ksp,field%work,field%work,ierr)
+      call VecStrideScatter(field%work,idof-1,field%tran_xx,INSERT_VALUES,ierr)
+
+!      call VecGetArrayF90(field%work,vec_ptr,ierr)
+!      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
+
+      call KSPGetIterationNumber(solver%ksp,num_linear_iterations,ierr)
+      call KSPGetConvergedReason(solver%ksp,ksp_reason,ierr)
+      sum_linear_iterations = sum_linear_iterations + num_linear_iterations
+    enddo
+    stepper%linear_cum = stepper%linear_cum + sum_linear_iterations
+ 
+    call RTReact(realization)
+ 
+    if (option%print_screen_flag) then
+      write(*, '(" TRAN ",i6," Time= ",1pe12.4," Dt= ", &
+            1pe12.4," [",a1,"]"," ksp_conv_reason: ",i4,/," linear = ",i5, &
+            " [",i10,"]")') stepper%steps, &
+        option%tran_time/realization%output_option%tconv, &
+        option%tran_dt/realization%output_option%tconv, &
+        realization%output_option%tunit,ksp_reason,sum_linear_iterations, &
+        stepper%linear_cum
+    endif
+
+    if (option%print_file_flag) then
+      write(option%fid_out, '(" TRAN ",i6," Time= ",1pe12.4," Dt= ", &
+            1pe12.4," [",a1,"]"," ksp_conv_reason: ",i4,/," linear = ",i5, &
+            " [",i10,"]")') stepper%steps, &
+        option%tran_time/realization%output_option%tconv, &
+        option%tran_dt/realization%output_option%tconv, &
+        realization%output_option%tunit,ksp_reason,sum_linear_iterations, &
+        stepper%linear_cum
+    endif
+
+#if 0    
+    call RTMaxChange(realization)
+    if (option%print_screen_flag) then
+      write(*,'("  --> max chng: dcmx= ",1pe12.4," dc/dt= ",1pe12.4," [mol/s]")') &
+        option%dcmax,option%dcmax/option%tran_dt
+    endif
+    if (option%print_file_flag) then  
+      write(option%fid_out,'("  --> max chng: dcmx= ",1pe12.4," dc/dt= ",1pe12.4," [mol/s]")') &
+        option%dcmax,option%dcmax/option%tran_dt
+    endif
+#endif
+
+    if (option%print_screen_flag) print *, ""
+
+    ! get out if not simulating flow or time is met
+    if (option%nflowdof == 0 .or. &
+        option%flow_time - option%tran_time <= time_tol*option%flow_time) exit
+
+    ! taking intermediate time step, need to update solution
+      
+    call StepperUpdateTransportSolution(realization)
+
+    ! if dt is smaller than dt_orig/4, try growing it by 0.25d0
+    if (option%tran_dt < 0.25d0*dt_orig) then
+      option%tran_dt = 1.25d0*option%tran_dt
+    endif
+
+    ! compute next time step
+    ! can't exceed the flow step
+    if (option%tran_time + 1.0001d0*option%tran_dt >= option%flow_time) then
+      option%tran_dt = option%flow_time - option%tran_time
+      option%tran_time = option%flow_time
+    else
+      option%tran_time = option%tran_time + option%tran_dt
+    endif
+
+  enddo
+
+end subroutine StepperStepTransportDT1
+#endif
 ! ************************************************************************** !
 !
 ! StepperRunSteadyState: Solves steady state solution for flow and transport
@@ -1919,6 +2177,7 @@ end subroutine StepperUpdateSolution
 ! ************************************************************************** !
 subroutine StepperUpdateFlowSolution(realization)
   
+  use Flash2_module, only: Flash2UpdateSolution
   use MPHASE_module, only: MphaseUpdateSolution
   use Immis_module, only: ImmisUpdateSolution
   use Richards_module, only : RichardsUpdateSolution
@@ -1942,6 +2201,8 @@ subroutine StepperUpdateFlowSolution(realization)
       call MphaseUpdateSolution(realization)
     case(IMS_MODE)
       call ImmisUpdateSolution(realization)
+    case(FLASH2_MODE)
+      call Flash2UpdateSolution(realization)
     case(THC_MODE)
       call THCUpdateSolution(realization)
     case(RICHARDS_MODE)
@@ -2007,6 +2268,7 @@ end subroutine StepperJumpStart
 ! ************************************************************************** !
 subroutine StepperUpdateFlowAuxVars(realization)
   
+  use Flash2_module, only: Flash2UpdateAuxVars
   use MPHASE_module, only: MphaseUpdateAuxVars
   use Immis_module, only: ImmisUpdateAuxVars
   use Richards_module, only : RichardsUpdateAuxVars
@@ -2026,6 +2288,8 @@ subroutine StepperUpdateFlowAuxVars(realization)
   option => realization%option
   
   select case(option%iflowmode)
+    case(FLASH2_MODE)
+      call Flash2UpdateAuxVars(realization)
     case(IMS_MODE)
       call ImmisUpdateAuxVars(realization)
     case(MPH_MODE)
