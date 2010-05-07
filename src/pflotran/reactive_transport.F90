@@ -736,7 +736,7 @@ subroutine RTUpdateSolutionPatch(realization)
             rt_aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = 0.d0
 
 #ifdef CHUAN_CO2
-          if(option%iflowmode == MPH_MODE)then
+          if(option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE)then
             ncomp = reaction%kinmnrlspecid(0,imnrl)
             do iaqspec=1, ncomp  
               icomp = reaction%kinmnrlspecid(iaqspec,imnrl)
@@ -4039,7 +4039,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
         call RActivityCoefficients(patch%aux%RT%aux_vars(ghosted_id), &
                                    patch%aux%Global%aux_vars(ghosted_id), &
                                    reaction,option)
-        if(option%iflowmode == MPH_MODE)then
+        if(option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE)then
           call CO2AqActCoeff(patch%aux%RT%aux_vars(ghosted_id), &
                                    patch%aux%Global%aux_vars(ghosted_id), &
                                    reaction,option)
@@ -4101,7 +4101,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
         endif
 
 !       if (option%iflowmode /= MPH_MODE .or. icall>1) then
-        if (option%iflowmode /= MPH_MODE)then
+        if (option%iflowmode /= MPH_MODE .and. option%iflowmode /= FLASH2_MODE)then
 !       Note: the  DIRICHLET_BC is not time dependent in this case (icall)    
         select case(boundary_condition%tran_condition%itype)
             case(CONCENTRATION_SS,DIRICHLET_BC,NEUMANN_BC)
@@ -4153,7 +4153,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
             call RActivityCoefficients(patch%aux%RT%aux_vars_bc(sum_connection), &
                                        patch%aux%Global%aux_vars_bc(sum_connection), &
                                        reaction,option)
-            if(option%iflowmode == MPH_MODE)then
+            if(option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE)then
               call CO2AqActCoeff(patch%aux%RT%aux_vars_bc(sum_connection), &
                                  patch%aux%Global%aux_vars_bc(sum_connection), &
                                  reaction,option) 

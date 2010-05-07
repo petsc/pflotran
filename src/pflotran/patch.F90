@@ -621,7 +621,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
               coupler%flow_aux_real_var = 0.d0
               coupler%flow_aux_int_var = 0
 
-            case(MPH_MODE, IMS_MODE)
+            case(MPH_MODE, IMS_MODE, FLASH2_MODE)
               allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
               allocate(coupler%flow_aux_int_var(1,num_connections))
               coupler%flow_aux_real_var = 0.d0
@@ -728,7 +728,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
 
       update = PETSC_FALSE
       select case(option%iflowmode)
-        case(THC_MODE,MPH_MODE, IMS_MODE)
+        case(THC_MODE,MPH_MODE, IMS_MODE, FLASH2_MODE)
           if (force_update_flag .or. &
               flow_condition%pressure%dataset%is_transient .or. &
               flow_condition%pressure%gradient%is_transient .or. &
@@ -762,6 +762,15 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
 !                endif
 !              enddo
               select case(option%iflowmode)
+                case(FLASH2_MODE)
+                  coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
+                    flow_condition%pressure%dataset%cur_value(1)  ! <-- Chuan Fix
+                   coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
+                    flow_condition%temperature%dataset%cur_value(1)! <-- Chuan Fix
+                  coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
+                    flow_condition%concentration%dataset%cur_value(1)! <-- Chuan Fix
+                  coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+                    flow_condition%iphase
                 case(MPH_MODE)
                   coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
                     flow_condition%pressure%dataset%cur_value(1)  ! <-- Chuan Fix

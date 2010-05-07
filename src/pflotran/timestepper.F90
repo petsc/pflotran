@@ -608,6 +608,18 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option,timestep_cut_flag, &
   if (stepper%iaccel == 0) return
 
   select case(option%iflowmode)
+    case(FLASH2_MODE)   
+      fac = 0.5d0
+      if (num_newton_iterations >= stepper%iaccel) then
+        fac = 0.33d0
+        ut = 0.d0
+      else
+        up = option%dpmxe/(option%dpmax+0.1)
+        utmp = option%dtmpmxe/(option%dtmpmax+1.d-5)
+        uus= option%dsmxe/(option%dsmax+1.d-6)
+        ut = min(up,utmp,uus)
+      endif
+      dtt = fac * dt * (1.d0 + ut)
     case(IMS_MODE)   
       fac = 0.5d0
       if (num_newton_iterations >= stepper%iaccel) then
@@ -807,6 +819,8 @@ end subroutine StepperSetTargetTimes
 subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
                              num_newton_iterations,step_to_steady_state, &
                              failure)
+  use Flash2_module, only : Flash2MaxChange, Flash2InitializeTimestep, &
+                           Flash2TimeCut, Flash2UpdateReason
   use MPHASE_module, only : MphaseMaxChange, MphaseInitializeTimestep, &
                            MphaseTimeCut, MPhaseUpdateReason
   use Immis_module, only : ImmisMaxChange, ImmisInitializeTimestep, &
@@ -907,13 +921,15 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
         call MphaseInitializeTimestep(realization)
       case(IMS_MODE)
         call ImmisInitializeTimestep(realization)
+      case(FLASH2_MODE)
+        call Flash2InitializeTimestep(realization)
     end select
     
     do
       
       call PetscGetTime(log_start_time, ierr)
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
           call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
       end select
       call PetscGetTime(log_end_time, ierr)
@@ -934,6 +950,8 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
             call ImmisUpdateReason(update_reason,realization)
           case(MPH_MODE)
             call MPhaseUpdateReason(update_reason,realization)
+          case(FLASH2_MODE)
+            call Flash2UpdateReason(update_reason,realization)
           case(THC_MODE)
             update_reason=1
           case(RICHARDS_MODE)
@@ -985,6 +1003,8 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
             call MphaseTimeCut(realization)
           case(IMS_MODE)
             call ImmisTimeCut(realization)
+          case(FLASH2_MODE)
+            call Flash2TimeCut(realization)
         end select
         call VecCopy(field%iphas_old_loc, field%iphas_loc, ierr)
 
@@ -1139,6 +1159,20 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
         & " dtmpmx= ",1pe12.4," dsmx= ",1pe12.4)') &
         option%dpmax,option%dtmpmax,option%dsmax
     endif
+  else if (option%iflowmode == FLASH2_MODE) then
+    call FLASH2MaxChange(realization)
+    ! note use mph will use variable switching, the x and s change is not meaningful 
+    if (option%print_screen_flag) then
+      write(*,'("  --> max chng: dpmx= ",1pe12.4, &
+        & " dtmpmx= ",1pe12.4," dsmx= ",1pe12.4)') &
+        option%dpmax,option%dtmpmax,option%dsmax
+    endif
+    if (option%print_file_flag) then  
+      write(option%fid_out,'("  --> max chng: dpmx= ",1pe12.4, &
+        & " dtmpmx= ",1pe12.4," dsmx= ",1pe12.4)') &
+        option%dpmax,option%dtmpmax,option%dsmax
+    endif
+
   endif
 
   if (option%print_screen_flag) print *, ""
@@ -2132,6 +2166,7 @@ end subroutine StepperUpdateSolution
 ! ************************************************************************** !
 subroutine StepperUpdateFlowSolution(realization)
   
+  use Flash2_module, only: Flash2UpdateSolution
   use MPHASE_module, only: MphaseUpdateSolution
   use Immis_module, only: ImmisUpdateSolution
   use Richards_module, only : RichardsUpdateSolution
@@ -2155,6 +2190,8 @@ subroutine StepperUpdateFlowSolution(realization)
       call MphaseUpdateSolution(realization)
     case(IMS_MODE)
       call ImmisUpdateSolution(realization)
+    case(FLASH2_MODE)
+      call Flash2UpdateSolution(realization)
     case(THC_MODE)
       call THCUpdateSolution(realization)
     case(RICHARDS_MODE)
@@ -2220,6 +2257,7 @@ end subroutine StepperJumpStart
 ! ************************************************************************** !
 subroutine StepperUpdateFlowAuxVars(realization)
   
+  use Flash2_module, only: Flash2UpdateAuxVars
   use MPHASE_module, only: MphaseUpdateAuxVars
   use Immis_module, only: ImmisUpdateAuxVars
   use Richards_module, only : RichardsUpdateAuxVars
@@ -2239,6 +2277,8 @@ subroutine StepperUpdateFlowAuxVars(realization)
   option => realization%option
   
   select case(option%iflowmode)
+    case(FLASH2_MODE)
+      call Flash2UpdateAuxVars(realization)
     case(IMS_MODE)
       call ImmisUpdateAuxVars(realization)
     case(MPH_MODE)

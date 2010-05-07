@@ -1187,7 +1187,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     if (reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF .and. &
         compute_activity_coefs) then
       call RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
-      if(option%iflowmode == MPH_MODE)then
+      if(option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE)then
             call CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)  
        endif
      endif
@@ -1765,7 +1765,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
     write(option%fid_out,'(a20,1pe12.4,a9)') 'mass fraction H2O: ', &
       mass_fraction_h2o,' [---]'
 #ifdef CHUAN_CO2
-    if (option%iflowmode == MPH_MODE) then
+    if (option%iflowmode == MPH_MODE .or. option%iflowmode == FLASH2_MODE) then
       if (global_auxvar%den_kg(2) > 0.d0) then
         write(option%fid_out,'(a20,f8.2,a9)') '     density CO2: ', &
           global_auxvar%den_kg(2),' [kg/m^3]'

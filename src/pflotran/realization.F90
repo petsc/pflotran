@@ -1128,6 +1128,7 @@ subroutine RealizAssignFlowInitCond(realization)
         case(THC_MODE)
         case(MPH_MODE)
         case(IMS_MODE)
+        case(FLASH2_MODE)
 !            call pflow_mphase_setupini(realization)
       end select 
 

@@ -73,6 +73,7 @@ PetscInt, parameter :: MPH_MODE = 2
 PetscInt, parameter :: RICHARDS_MODE = 3
 PetscInt, parameter :: REACTIVE_TRANSPORT_MODE = 4
 PetscInt, parameter :: IMS_MODE = 5
+PetscInt, parameter :: FLASH2_MODE = 6
 
 ! grid types
 PetscInt, parameter :: STRUCTURED_GRID = 1

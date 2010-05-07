@@ -93,7 +93,8 @@ subroutine TDiffusion(global_aux_var_up,por_up,tor_up,dist_up, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
+       .or. option%iflowmode == FLASH2_MODE) then
     do
       iphase = iphase +1 
       if (iphase > option%nphase) exit
@@ -182,7 +183,8 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
+      .or. option%iflowmode == FLASH2_MODE) then
     do 
       iphase = iphase + 1
       if (iphase > option%nphase) exit
@@ -293,7 +295,8 @@ subroutine TFlux(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up, &
   
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
+      .or. option%iflowmode == FLASH2_MODE) then
     do
       iphase = iphase +1 
       if (iphase > option%nphase) exit
@@ -422,7 +425,8 @@ subroutine TFluxDerivative(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
+      .or. option%iflowmode == FLASH2_MODE) then
     do 
       iphase = iphase + 1
       if (iphase > option%nphase) exit
@@ -566,7 +570,8 @@ subroutine TBCFlux(ibndtype, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
+      .or. option%iflowmode == FLASH2_MODE) then
     do 
       iphase = iphase + 1
       if (iphase > option%nphase) exit
@@ -717,7 +722,8 @@ subroutine TBCFluxDerivative(ibndtype, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
+      .or. option%iflowmode == FLASH2_MODE) then
     do 
       iphase = iphase + 1
       if (iphase > option%nphase) exit
@@ -842,7 +848,8 @@ subroutine TFlux(rt_parameter, &
   
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2
-  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
+      .or. option%iflowmode == FLASH2_MODE) then
     do
      iphase = iphase +1 
      if (iphase > option%nphase) exit
@@ -930,7 +937,8 @@ subroutine TFluxDerivative(rt_parameter, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
+      .or. option%iflowmode == FLASH2_MODE) then
     do 
       iphase = iphase + 1
       if (iphase > option%nphase) exit
@@ -996,7 +1004,8 @@ subroutine TBCFluxDerivative(rt_aux_var_up,rt_aux_var_dn, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
+      .or. option%iflowmode == FLASH2_MODE) then
     do 
       iphase = iphase + 1
       if (iphase > option%nphase) exit
@@ -1062,7 +1071,8 @@ subroutine TFluxCoef(option,area,velocity,diffusion,T_up,T_dn)
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
+      .or. option%iflowmode == FLASH2_MODE) then
     do
       iphase = iphase +1 
       if (iphase > option%nphase) exit
@@ -1151,7 +1161,8 @@ subroutine TFluxAdv(rt_aux_var_up,global_aux_var_up, &
   
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
+      .or. option%iflowmode == FLASH2_MODE) then
     do
       iphase = iphase + 1 
       if (iphase > option%nphase) exit
@@ -1264,7 +1275,8 @@ subroutine TFluxDerivativeAdv(rt_aux_var_up,global_aux_var_up, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
+      .or. option%iflowmode == FLASH2_MODE) then
     do 
       iphase = iphase + 1
       if (iphase > option%nphase) exit
@@ -1376,7 +1388,8 @@ subroutine TBCFluxAdv(ibndtype, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
+      .or. option%iflowmode == FLASH2_MODE) then
     do 
       iphase = iphase + 1
       if (iphase > option%nphase) exit
@@ -1496,7 +1509,8 @@ subroutine TBCFluxDerivativeAdv(ibndtype, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
+      .or. option%iflowmode == FLASH2_MODE) then
     do 
       iphase = iphase + 1
       if (iphase > option%nphase) exit
@@ -1639,7 +1653,8 @@ subroutine TFluxDiff(rt_aux_var_up,global_aux_var_up,por_up,tor_up,dist_up, &
   
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
+      .or. option%iflowmode == FLASH2_MODE) then
     do
       iphase = iphase +1 
       if (iphase > option%nphase) exit
@@ -1771,7 +1786,8 @@ subroutine TFluxDerivativeDiff(rt_aux_var_up,global_aux_var_up, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
+      .or. option%iflowmode == FLASH2_MODE) then
     do 
       iphase = iphase + 1
       if (iphase > option%nphase) exit
@@ -1915,7 +1931,8 @@ subroutine TBCFluxDiff(ibndtype, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
+      .or. option%iflowmode == FLASH2_MODE) then
     do 
       iphase = iphase + 1
       if (iphase > option%nphase) exit
@@ -2066,7 +2083,8 @@ subroutine TBCFluxDerivativeDiff(ibndtype, &
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
-  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE) then
+  if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
+      .or. option%iflowmode == FLASH2_MODE) then
   do 
     iphase = iphase + 1
     if (iphase > option%nphase) exit

@@ -47,6 +47,7 @@ subroutine Init(simulation)
   use Database_module
   use Input_module
   
+  use Flash2_module
   use MPHASE_module
   use Immis_module
   use Richards_module
@@ -190,7 +191,7 @@ subroutine Init(simulation)
 
   ! Initialize flow databases (e.g. span wagner, etc.)
   select case(option%iflowmode)
-    case(MPH_MODE)
+    case(MPH_MODE, FLASH2_MODE)
       call init_span_wanger(realization)
   end select
 
@@ -220,7 +221,7 @@ subroutine Init(simulation)
   
     if (flow_solver%J_mat_type == MATAIJ) then
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE, IMS_MODE)
+        case(MPH_MODE,THC_MODE, IMS_MODE, FLASH2_MODE)
           option%io_buffer = 'AIJ matrix not supported for current mode: '// &
                              option%flowmode
           call printErrMsg(option)
@@ -231,10 +232,12 @@ subroutine Init(simulation)
       write(*,'(" number of dofs = ",i3,", number of phases = ",i3,i2)') &
         option%nflowdof,option%nphase
       select case(option%iflowmode)
+        case(FLASH2_MODE)
+          write(*,'(" mode = FLASH2: p, T, s/X")')
         case(MPH_MODE)
           write(*,'(" mode = MPH: p, T, s/X")')
         case(IMS_MODE)
-          write(*,'(" mode = MPH: p, T, s")')
+          write(*,'(" mode = IMS: p, T, s")')
         case(THC_MODE)
           write(*,'(" mode = THC: p, T, s/X")')
         case(RICHARDS_MODE)
@@ -288,6 +291,9 @@ subroutine Init(simulation)
       case(IMS_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,ImmisResidual, &
                              realization,ierr)
+      case(FLASH2_MODE)
+        call SNESSetFunction(flow_solver%snes,field%flow_r,FLASH2Residual, &
+                             realization,ierr)
     end select
     
     if (flow_solver%J_mat_type == MATMFFD) then
@@ -307,6 +313,9 @@ subroutine Init(simulation)
       case(IMS_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              ImmisJacobian,realization,ierr)
+      case(FLASH2_MODE)
+        call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
+                             FLASH2Jacobian,realization,ierr)
     end select
     
     ! by default turn off line search
@@ -532,6 +541,8 @@ subroutine Init(simulation)
         call MphaseSetup(realization)
       case(IMS_MODE)
         call ImmisSetup(realization)
+      case(FLASH2_MODE)
+        call Flash2Setup(realization)
     end select
   
     ! assign initial conditionsRealizAssignFlowInitCond
@@ -552,6 +563,8 @@ subroutine Init(simulation)
         call MphaseUpdateAuxVars(realization)
       case(IMS_MODE)
         call ImmisUpdateAuxVars(realization)
+      case(FLASH2_MODE)
+        call Flash2UpdateAuxVars(realization)
     end select
   endif
 
@@ -1803,6 +1816,15 @@ subroutine setFlowMode(option)
       option%use_isothermal = PETSC_TRUE
     case('MPH','MPHASE')
       option%iflowmode = MPH_MODE
+      option%nphase = 2
+      option%liquid_phase = 1      
+      option%gas_phase = 2      
+      option%nflowdof = 3
+      option%nflowspec = 2
+      option%itable = 2
+      option%use_isothermal = PETSC_FALSE
+    case('FLA2','FLASH2')
+      option%iflowmode = FLASH2_MODE
       option%nphase = 2
       option%liquid_phase = 1      
       option%gas_phase = 2      

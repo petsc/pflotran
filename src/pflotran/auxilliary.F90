@@ -6,6 +6,7 @@ module Auxilliary_module
   use Reactive_Transport_Aux_module
   use Mphase_Aux_module
   use Immis_Aux_module
+  use Flash2_Aux_Module
 #ifdef GENERAL
   use General_Aux_module
 #endif
@@ -23,6 +24,7 @@ module Auxilliary_module
     type(richards_type), pointer :: Richards
     type(mphase_type), pointer :: Mphase
     type(immis_type), pointer :: Immis
+    type(flash2_type), pointer :: Flash2
 #ifdef GENERAL
     type(general_type), pointer :: General
 #endif
@@ -61,6 +63,7 @@ subroutine AuxInit(aux)
   nullify(aux%Richards)
   nullify(aux%Mphase)
   nullify(aux%Immis)
+  nullify(aux%Flash2)
 #ifdef GENERAL
   nullify(aux%General)
 #endif
