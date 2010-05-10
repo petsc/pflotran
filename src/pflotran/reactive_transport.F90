@@ -1427,9 +1427,6 @@ subroutine RTCalculateTransportMatrix(realization,T)
     cur_level => cur_level%next
   enddo
 
-  call MatAssemblyBegin(T,MAT_FINAL_ASSEMBLY,ierr)
-  call MatAssemblyEnd(T,MAT_FINAL_ASSEMBLY,ierr)
-  
   if (realization%debug%matview_Jacobian) then
 #if 1
     call PetscViewerASCIIOpen(realization%option%mycomm,'Tmatrix.out', &
@@ -1593,6 +1590,15 @@ subroutine RTCalculateTranMatrixPatch(realization,T)
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
 
+  call MatAssemblyBegin(T,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyEnd(T,MAT_FINAL_ASSEMBLY,ierr)
+
+  if (patch%aux%RT%inactive_cells_exist) then
+    coef = 1.d0
+    call MatZeroRowsLocal(T,patch%aux%RT%n_zero_rows, &
+                          patch%aux%RT%zero_rows_local_ghosted,coef,ierr) 
+  endif
+  
 end subroutine RTCalculateTranMatrixPatch
 
 ! ************************************************************************** !
@@ -1680,6 +1686,7 @@ subroutine RTReactPatch(realization)
   iphase = 1
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle
     iend = local_id*reaction%naqcomp
     istart = iend-reaction%naqcomp+1
 !    tran_xx_p(istart:iend) = tran_xx_p(istart:iend)/ &
@@ -4261,6 +4268,7 @@ subroutine RTCreateZeroArray(patch,reaction,option)
 
   type(grid_type), pointer :: grid
   PetscInt :: flag
+  PetscInt :: ndof
   PetscInt :: n_zero_rows
   PetscInt, pointer :: zero_rows_local(:)
   PetscInt, pointer :: zero_rows_local_ghosted(:)
@@ -4270,11 +4278,17 @@ subroutine RTCreateZeroArray(patch,reaction,option)
   grid => patch%grid
   
   n_zero_rows = 0
+  
+  if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+    ndof = reaction%ncomp
+  else
+    ndof = 1
+  endif
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) then
-      n_zero_rows = n_zero_rows + reaction%ncomp
+      n_zero_rows = n_zero_rows + ndof
     else
     endif
   enddo
@@ -4289,10 +4303,10 @@ subroutine RTCreateZeroArray(patch,reaction,option)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) then
-      do icomp = 1, reaction%ncomp
+      do icomp = 1, ndof
         ncount = ncount + 1
-        zero_rows_local(ncount) = (local_id-1)*reaction%ncomp+icomp
-        zero_rows_local_ghosted(ncount) = (ghosted_id-1)*reaction%ncomp+icomp-1
+        zero_rows_local(ncount) = (local_id-1)*ndof
+        zero_rows_local_ghosted(ncount) = (ghosted_id-1)*ndof+icomp-1
       enddo
     else
     endif
