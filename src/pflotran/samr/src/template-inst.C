@@ -20,3 +20,4 @@ template class SAMRAI::tbox::Array<SAMRAI::PflotranJacobianLevelOperator*>;
 template class SAMRAI::tbox::Pointer<BoundaryConditionStrategy>;
 template class SAMRAI::tbox::Array< SAMRAI::tbox::Pointer< SAMRAI::xfer::CoarsenSchedule<NDIM> > >;
 template class SAMRAI::tbox::Array< SAMRAI::tbox::Array< SAMRAI::tbox::Pointer< SAMRAI::xfer::CoarsenSchedule<NDIM> > > >;
+template class std::_Rb_tree<int, std::pair<int const, SAMRAI::tbox::Pointer<SAMRAI::hier::PatchData<3> > >, std::_Select1st<std::pair<int const, SAMRAI::tbox::Pointer<SAMRAI::hier::PatchData<3> > > >, std::less<int>, std::allocator<std::pair<int const, SAMRAI::tbox::Pointer<SAMRAI::hier::PatchData<3> > > > >;
