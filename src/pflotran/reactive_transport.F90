@@ -2995,6 +2995,8 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
+      offset = (local_id-1)*reaction%ncomp
+
       if (patch%imat(ghosted_id) <= 0) cycle
       
       istartaq = reaction%offset_aq + 1
