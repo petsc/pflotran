@@ -32,7 +32,13 @@ subroutine f_create_simulation(simulation_obj, application_ptr)
  type(realization_type), pointer :: realization
  type(option_type), pointer :: option
  type(discretization_type), pointer :: discretization
- 
+
+ nullify(stochastic)
+ nullify(simulation)
+ nullify(realization)
+ nullify(discretization)
+ nullify(option)
+
  option => OptionCreate()
  option%fid_out = IUNIT2
 

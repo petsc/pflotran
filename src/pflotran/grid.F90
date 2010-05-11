@@ -81,10 +81,10 @@ module Grid_module
             GridComputeVolumes, &
             GridLocalizeRegions, &
             GridPopulateConnection, &
-            GridCopyIntegerArrayToPetscVec, &
-            GridCopyRealArrayToPetscVec, &
-            GridCopyPetscVecToIntegerArray, &
-            GridCopyPetscVecToRealArray, &
+            GridCopyIntegerArrayToVec, &
+            GridCopyRealArrayToVec, &
+            GridCopyVecToIntegerArray, &
+            GridCopyVecToRealArray, &
             GridCreateNaturalToGhostedHash, &
             GridDestroyHashTable, &
             GridGetLocalGhostedIdFromHash, &
@@ -741,13 +741,14 @@ end subroutine GridLocalizeRegions
 ! date: 12/18/07
 !
 ! ************************************************************************** !
-subroutine GridCopyIntegerArrayToPetscVec(array,vector,num_values)
+subroutine GridCopyIntegerArrayToVec(grid, array,vector,num_values)
 
   implicit none
 
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
   
+  type(grid_type) :: grid
   PetscInt :: array(:)
   Vec :: vector
   PetscInt :: num_values
@@ -755,11 +756,11 @@ subroutine GridCopyIntegerArrayToPetscVec(array,vector,num_values)
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
   
-  call VecGetArrayF90(vector,vec_ptr,ierr)
+  call GridVecGetArrayF90(grid, vector,vec_ptr,ierr)
   vec_ptr(1:num_values) = array(1:num_values)
-  call VecRestoreArrayF90(vector,vec_ptr,ierr)
+  call GridVecRestoreArrayF90(grid, vector,vec_ptr,ierr)
   
-end subroutine GridCopyIntegerArrayToPetscVec
+end subroutine GridCopyIntegerArrayToVec
 
 ! ************************************************************************** !
 !
@@ -769,13 +770,14 @@ end subroutine GridCopyIntegerArrayToPetscVec
 ! date: 12/18/07
 !
 ! ************************************************************************** !
-subroutine GridCopyRealArrayToPetscVec(array,vector,num_values)
+subroutine GridCopyRealArrayToVec(array,vector,num_values)
 
   implicit none
   
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
     
+  type(grid_type) :: grid
   PetscReal :: array(:)
   Vec :: vector
   PetscInt :: num_values
@@ -783,11 +785,11 @@ subroutine GridCopyRealArrayToPetscVec(array,vector,num_values)
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
   
-  call VecGetArrayF90(vector,vec_ptr,ierr)
+  call GridVecGetArrayF90(grid,vector,vec_ptr,ierr)
   vec_ptr(1:num_values) = array(1:num_values)
-  call VecRestoreArrayF90(vector,vec_ptr,ierr)
+  call GridVecRestoreArrayF90(grid,vector,vec_ptr,ierr)
   
-end subroutine GridCopyRealArrayToPetscVec
+end subroutine GridCopyRealArrayToVec
 
 ! ************************************************************************** !
 !
@@ -797,13 +799,14 @@ end subroutine GridCopyRealArrayToPetscVec
 ! date: 12/18/07
 !
 ! ************************************************************************** !
-subroutine GridCopyPetscVecToIntegerArray(array,vector,num_values)
+subroutine GridCopyVecToIntegerArray(grid,array,vector,num_values)
 
   implicit none
 
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
   
+  type(grid_type) :: grid
   PetscInt :: array(:)
   Vec :: vector
   PetscInt :: num_values
@@ -812,13 +815,13 @@ subroutine GridCopyPetscVecToIntegerArray(array,vector,num_values)
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
   
-  call VecGetArrayF90(vector,vec_ptr,ierr)
+  call GridVecGetArrayF90(grid,vector,vec_ptr,ierr)
   do i=1,num_values
     array(i) = int(vec_ptr(i)+1.d-4)
   enddo
-  call VecRestoreArrayF90(vector,vec_ptr,ierr)
+  call GridVecRestoreArrayF90(grid,vector,vec_ptr,ierr)
   
-end subroutine GridCopyPetscVecToIntegerArray
+end subroutine GridCopyVecToIntegerArray
 
 ! ************************************************************************** !
 !
@@ -828,13 +831,14 @@ end subroutine GridCopyPetscVecToIntegerArray
 ! date: 12/18/07
 !
 ! ************************************************************************** !
-subroutine GridCopyPetscVecToRealArray(array,vector,num_values)
+subroutine GridCopyVecToRealArray(grid,array,vector,num_values)
 
   implicit none
   
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
     
+  type(grid_type) :: grid
   PetscReal :: array(:)
   Vec :: vector
   PetscInt :: num_values
@@ -842,11 +846,11 @@ subroutine GridCopyPetscVecToRealArray(array,vector,num_values)
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
   
-  call VecGetArrayF90(vector,vec_ptr,ierr)
+  call GridVecGetArrayF90(grid,vector,vec_ptr,ierr)
   array(1:num_values) = vec_ptr(1:num_values)
-  call VecRestoreArrayF90(vector,vec_ptr,ierr)
+  call GridVecRestoreArrayF90(grid,vector,vec_ptr,ierr)
   
-end subroutine GridCopyPetscVecToRealArray
+end subroutine GridCopyVecToRealArray
 
 ! ************************************************************************** !
 !
