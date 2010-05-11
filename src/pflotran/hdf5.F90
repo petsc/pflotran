@@ -2660,7 +2660,7 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
   call printMsg(option)   
   call HDF5ReadIntegerArray(option,grp_id,string,grid%nlmax,indices, &
                             grid%nlmax,integer_array)
-  call GridCopyIntegerArrayToPetscVec(integer_array,global_vec,grid%nlmax)
+  call GridCopyIntegerArrayToVec(integer_array,global_vec,grid%nlmax)
   deallocate(integer_array)
 #ifdef HASH  
   call GridDestroyHashTable(grid)
@@ -2882,7 +2882,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
   call PetscGetTime(tstart,ierr)
   call HDF5ReadRealArray(option,file_id,string,grid%nlmax,indices, &
                          grid%nlmax,real_array)
-  call GridCopyRealArrayToPetscVec(real_array,global_vec,grid%nlmax)
+  call GridCopyRealArrayToVec(real_array,global_vec,grid%nlmax)
   deallocate(real_array)
   
 #ifdef HASH  

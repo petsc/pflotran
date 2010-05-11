@@ -166,10 +166,10 @@ subroutine ReadStructuredGridHDF5(realization)
   call printMsg(option)
   call HDF5ReadIntegerArray(option,grp_id,string,grid%nmax,indices, &
                             grid%nlmax,integer_array)
-  call GridCopyIntegerArrayToPetscVec(integer_array,global_vec,grid%nlmax)
+  call GridCopyIntegerArrayToVec(integer_array,global_vec,grid%nlmax)
   deallocate(integer_array)
   call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)
-  call GridCopyPetscVecToIntegerArray(patch%imat,local_vec,grid%ngmax)
+  call GridCopyVecToIntegerArray(patch%imat,local_vec,grid%ngmax)
   
   allocate(real_array(grid%nlmax))
   string = "X-Coordinate"
@@ -177,27 +177,27 @@ subroutine ReadStructuredGridHDF5(realization)
   call printMsg(option)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          real_array)
-  call GridCopyRealArrayToPetscVec(real_array,global_vec,grid%nlmax)
+  call GridCopyRealArrayToVec(real_array,global_vec,grid%nlmax)
   call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)  
-  call GridCopyPetscVecToRealArray(grid%x,local_vec,grid%ngmax)
+  call GridCopyVecToRealArray(grid%x,local_vec,grid%ngmax)
 
   string = "Y-Coordinate"
   option%io_buffer = 'Reading dataset: ' // trim(string)
   call printMsg(option)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          real_array)
-  call GridCopyRealArrayToPetscVec(real_array,global_vec,grid%nlmax)
+  call GridCopyRealArrayToVec(real_array,global_vec,grid%nlmax)
   call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)  
-  call GridCopyPetscVecToRealArray(grid%y,local_vec,grid%ngmax)
+  call GridCopyVecToRealArray(grid%y,local_vec,grid%ngmax)
 
   string = "Z-Coordinate"
   option%io_buffer = 'Reading dataset: ' // trim(string)
   call printMsg(option)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          real_array)
-  call GridCopyRealArrayToPetscVec(real_array,global_vec,grid%nlmax)
+  call GridCopyRealArrayToVec(real_array,global_vec,grid%nlmax)
   call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)  
-  call GridCopyPetscVecToRealArray(grid%z,local_vec,grid%ngmax)
+  call GridCopyVecToRealArray(grid%z,local_vec,grid%ngmax)
 
   deallocate(real_array)
   
