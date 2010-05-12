@@ -122,6 +122,7 @@ select case(option%iflowmode)
     allocate(aux_var%den_store(option%nphase,TWO_INTEGER))
     aux_var%den_store = 0.d0
   case default
+    nullify(aux_var%xmass)
     nullify(aux_var%pres_store)
     nullify(aux_var%temp_store)
     nullify(aux_var%fugacoeff)
