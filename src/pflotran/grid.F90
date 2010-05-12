@@ -771,7 +771,7 @@ end subroutine GridCopyIntegerArrayToVec
 ! date: 12/18/07
 !
 ! ************************************************************************** !
-subroutine GridCopyRealArrayToVec(array,vector,num_values)
+subroutine GridCopyRealArrayToVec(grid,array,vector,num_values)
 
   implicit none
   
