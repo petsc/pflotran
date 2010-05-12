@@ -652,7 +652,8 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
       global_aux_vars(ghosted_id)%xmass(2)=aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3) * FMWH2O&
                               /(aux_vars(ghosted_id)%aux_var_elem(0)%xmol(3) * FMWH2O&
                               +aux_vars(ghosted_id)%aux_var_elem(0)%xmol(4) * FMWCO2) 
-      global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
+      global_aux_vars(ghosted_id)%reaction_rate_store(:)=global_aux_vars(ghosted_id)%reaction_rate(:)
+      global_aux_vars(ghosted_id)%reaction_rate(:) = 0D0
 !     print *,'UPdate mphase and gloable vars', ghosted_id, global_aux_vars(ghosted_id)%m_nacl(:), & 
 !       global_aux_vars(ghosted_id)%pres(:)
 !     global_aux_vars(ghosted_id)%mass_balance 
@@ -972,9 +973,9 @@ subroutine MphaseAccumulation(aux_var,global_aux_var,por,vol,rock_dencpr, &
   if(option%ntrandof > 0)then 
     if (iireac>0) then
      !H2O
-      mol(1) = mol(1) - global_aux_var%reaction_rate(1) * option%flow_dt * 1.d3
+      mol(1) = mol(1) - global_aux_var%reaction_rate_store(1) * option%flow_dt * 1.d3
      !CO2     
-      mol(2) = mol(2) - global_aux_var%reaction_rate(2) * option%flow_dt * 1.d3
+      mol(2) = mol(2) - global_aux_var%reaction_rate_store(2) * option%flow_dt * 1.d3
     endif
   endif
   

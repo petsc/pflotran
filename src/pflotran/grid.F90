@@ -735,12 +735,13 @@ end subroutine GridLocalizeRegions
 
 ! ************************************************************************** !
 !
-! GridCopyIntegerArrayToPetscVec: Copies values from an integer array into a 
+! GridCopyIntegerArrayToVec: Copies values from an integer array into a 
 !                                 PETSc Vec
 ! author: Glenn Hammond
 ! date: 12/18/07
 !
 ! ************************************************************************** !
+
 subroutine GridCopyIntegerArrayToVec(grid, array,vector,num_values)
 
   implicit none
@@ -764,7 +765,7 @@ end subroutine GridCopyIntegerArrayToVec
 
 ! ************************************************************************** !
 !
-! GridCopyRealArrayToPetscVec: Copies values from an integer array into a 
+! GridCopyRealArrayToVec: Copies values from an integer array into a 
 !                              PETSc Vec
 ! author: Glenn Hammond
 ! date: 12/18/07
@@ -793,7 +794,7 @@ end subroutine GridCopyRealArrayToVec
 
 ! ************************************************************************** !
 !
-! GridCopyPetscVecToIntegerArray: Copies values from a PETSc Vec to an  
+! GridCopyVecToIntegerArray: Copies values from a PETSc Vec to an  
 !                                 integer array
 ! author: Glenn Hammond
 ! date: 12/18/07
@@ -825,7 +826,7 @@ end subroutine GridCopyVecToIntegerArray
 
 ! ************************************************************************** !
 !
-! GridCopyPetscVecToRealArray: Copies values from a PETSc Vec to an integer 
+! GridCopyVecToRealArray: Copies values from a PETSc Vec to an integer 
 !                              array
 ! author: Glenn Hammond
 ! date: 12/18/07
@@ -1106,6 +1107,13 @@ subroutine GridDestroy(grid)
 
 end subroutine GridDestroy
 
+! ************************************************************************** !
+!
+! GridDestroy: Returns pointer to cell-centered vector values
+! author: Bobby Philip
+! date: 
+!
+! ************************************************************************** !
 subroutine GridVecGetArrayCellF90(grid, vec, f90ptr, ierr)
 
   implicit none
@@ -1126,6 +1134,13 @@ subroutine GridVecGetArrayCellF90(grid, vec, f90ptr, ierr)
 
 end subroutine GridVecGetArrayCellF90
 
+! ************************************************************************** !
+!
+! GridDestroy: Returns pointer to edge-based vector values?
+! author: Bobby Philip
+! date: 
+!
+! ************************************************************************** !
 subroutine GridVecGetArraySideF90(grid, axis, vec, f90ptr, ierr)
 
   implicit none
@@ -1147,6 +1162,13 @@ subroutine GridVecGetArraySideF90(grid, axis, vec, f90ptr, ierr)
 
 end subroutine GridVecGetArraySideF90
 
+! ************************************************************************** !
+!
+! GridDestroy: Restores pointer to vector values
+! author: Bobby Philip
+! date: 
+!
+! ************************************************************************** !
 subroutine GridVecRestoreArrayF90(grid, vec, f90ptr, ierr)
 
   implicit none

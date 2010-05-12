@@ -169,7 +169,9 @@ subroutine ReadStructuredGridHDF5(realization)
   call GridCopyIntegerArrayToVec(grid,integer_array,global_vec,grid%nlmax)
   deallocate(integer_array)
   call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)
+
   call GridCopyVecToIntegerArray(grid,patch%imat,local_vec,grid%ngmax)
+
   
   allocate(real_array(grid%nlmax))
   string = "X-Coordinate"
@@ -177,8 +179,11 @@ subroutine ReadStructuredGridHDF5(realization)
   call printMsg(option)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          real_array)
+
   call GridCopyRealArrayToVec(grid,real_array,global_vec,grid%nlmax)
+
   call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)  
+
   call GridCopyVecToRealArray(grid,grid%x,local_vec,grid%ngmax)
 
   string = "Y-Coordinate"
@@ -186,8 +191,11 @@ subroutine ReadStructuredGridHDF5(realization)
   call printMsg(option)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          real_array)
+
   call GridCopyRealArrayToVec(grid,real_array,global_vec,grid%nlmax)
+
   call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)  
+
   call GridCopyVecToRealArray(grid,grid%y,local_vec,grid%ngmax)
 
   string = "Z-Coordinate"
@@ -195,8 +203,10 @@ subroutine ReadStructuredGridHDF5(realization)
   call printMsg(option)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          real_array)
+
   call GridCopyRealArrayToVec(grid,real_array,global_vec,grid%nlmax)
   call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)  
+
   call GridCopyVecToRealArray(grid,grid%z,local_vec,grid%ngmax)
 
   deallocate(real_array)
