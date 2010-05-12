@@ -284,7 +284,7 @@ PFLOTRAN solves a system of generally nonlinear partial differential equations d
 
 \section{Governing Equations}
 
-\subsection{Mode {\tt RICHARDS}}
+\subsection{Mode: {\tt RICHARDS}}
 
 {\tt RICHARDS} Mode applies to single phase, variably saturated, isothermal systems.
 The governing mass conservation equation is given by
@@ -297,7 +297,7 @@ and
 \EN
 Here, $\varphi$ denotes porosity, $s$ saturation, $\rho$ water density, $\bq$ Darcy flux, $k$ intrinsic permeability, $k_r$ relative permeability, $\mu$ viscosity, $P$ pressure, $g$ gravity, and $z$ the vertical component of the position vector.  Supported relative permeability functions $k_r$ for Richards' equation include van Genuchten, Books-Corey and Thomeer-Corey, while the saturation functions include Burdine and Mualem.  Water density and viscosity are computed as a function of temperature and pressure through an equation of state for water.
 
-\subsection{Mode {\tt MPHASE}}
+\subsection{Mode: {\tt MPHASE}}
 Local equilibrium is assumed between phases for modeling multiphase systems with PFLOTRAN. The multiphase partial differential equations for mass and energy conservation solved by PFLOTRAN have the general form:
 \begin{subequations}
 \BA\label{mass_conservation_equation}
@@ -332,11 +332,11 @@ degrees of freedom are equal to $N_{\rm int}\!=\!N_C \!-\! N_P \!+\!2$, where $N
 extensive
 degrees of freedom equals $N_{\rm ext}\!=\!N_P\!-\!1.$ This gives a total number of degrees of freedom $N_{\rm dof}\!=\!N_{\rm int}\!+\!N_{\rm ext}\!=\!N_C\!+\!1$, independent of the number of phases $N_P$ in the system.
 
-\subsection{Mode {\tt IMMIS}}
+\subsection{Mode: {\tt IMMIS}}
 
 The {\tt IMMIS} mode applies to multiple immiscible phases.
 
-\subsection{Mode {\tt THC}}
+\subsection{Mode: {\tt THC}}
 
 The {\tt THC} mode involves two phase liquid-gas flow coupled to the reactive transport mode.
 
@@ -356,47 +356,118 @@ In this equation the subscript $l$ represents the aqueous electrolyte phase from
 
 \section{Installation}
 
+\subsection{Mac OS X}
 
-\subsection{PETSc}
+This installation requires compiler versions 4.4.2 for gfortran, gcc, and g++. The compiler g++ is needed for installing SAMRAI.
+Define environment variables: {\tt MPI\_HOME}, {\tt PKGS}, \linebreak {\tt HYPRE\_INSTALL\_DIR}
 
-The PETSc {\tt ./configure} script can be used not only to install PETSc but also HDF5, Parmetis, and various direct solvers such as Mumps and Trilinos solvers. To use PETSc with PFLOTRAN the PETSc developer version petsc-dev is necessary which can be downloaded from the PETSc web page (http://www.mcs.anl.gov/petsc/petsc-as/developers/index.html). The recommended way to do this is to use the version control program Mercurial \break (http://mercurial.selenic.com/wiki/Download?action=show\&redirect=BinaryPackages).
-
-\subsubsection{MacOSX}
+\subsubsection{OpenMPI}
 
 \begin{verbatim}
-./config/configure.py 
---with-blas-lapack-lib="-framework vecLib" 
---download-openmpi=1 
---with-debugging=1 
---with-shared=0 
---download-mumps=1 
---download-parmetis=1 
---download-scalapack=1 
---download-blacs=1 
---download-ml=1 
---download-hdf5=1
+setenv F90 gfortran
+setenv F77 gfortran
+setenv FC gfortran
+setenv CC gcc-4
+setenv CXX g++-4
+
+./configure \
+--prefix=$PKGS/openmpi/openmpi-1.4.1-gcc-4.4.2-gfortran \
+--disable-debug \
+--enable-static \
+--disable-shared
+
+make
+make install
+\end{verbatim}
+
+\subsubsection{Hypre}
+
+\begin{verbatim}
+./configure \
+--with-MPI \
+--enable-debug \
+--disable-opt \
+--prefix=${HYPRE_INSTALL_DIR} \
+--with-MPI-include=${MPI_HOME}/include \
+--with-MPI-libs=openmpi \
+--with-MPI-lib-dirs=${MPI_HOME}/lib \
+CC=mpicc \
+CXX=mpicxx \
+F77=mpif90
+
+make
+make install
+\end{verbatim}
+
+\subsubsection{PETSc}
+
+The PETSc {\tt ./configure} script can be used not only to install PETSc but also HDF5, Parmetis, and various direct solvers such as Mumps and Trilinos solvers. To use PETSc with PFLOTRAN the PETSc developer version petsc-dev is necessary which can be downloaded from the PETSc web page (http://www.mcs.anl.gov/petsc/petsc-as/developers/index.html). The recommended way to do this is to use the version control program Mercurial \linebreak (http://mercurial.selenic.com/wiki).
+
+Define environment variables: $\verb|PETSC_DIR|$ and $\verb|PETSC_ARCH|$ giving the location of the petsc-dev source and the architecture.
+
+\paragraph{MacOSX 10.5.8 (Leopard)}
+
+\begin{verbatim}
+./config/configure.py \
+--with-blas-lapack-lib="-framework vecLib" \
+--with-mpi-dir=$MPI_HOME \
+--download-openmpi=1 \
+--with-debugging=1 \
+--with-shared=0 \
+--download-mumps=1 \
+--download-parmetis=1 \
+--download-scalapack=1 \
+--download-blacs=1 \
+--download-ml=1 \
+--download-hdf5=1 
 
 make all
 make test
 \end{verbatim}
+
+\paragraph{MacOSX 10.6.3 (Snow Leopard)}
 
 \subsubsection{ORNL's Jaguar XT4/5}
 
 \footnotesize
 \begin{verbatim}
 ./config/configure.py PETSC_ARCH=cray-xt4-pgi_fast \
---configModules=PETSc.Configure --optionsModule=PETSc.compilerOptions
---known-level1-dcache-size=65536 --known-level1-dcache-linesize=64
---known-level1-dcache-assoc=2 --known-memcmp-ok=1 --known-sizeof-char=1
---known-sizeof-void-p=8 --known-sizeof-short=2 --known-sizeof-int=4
---known-sizeof-long=8 --known-sizeof-long-long=8 --known-sizeof-float=4
---known-sizeof-double=8 --known-sizeof-size_t=8 --known-bits-per-byte=8
---known-sizeof-MPI_Comm=4 --known-sizeof-MPI_Fint=4 --known-mpi-long-double=0 \
---with-batch=1 --with-shared=0 --with-dynamic=0 --with-cc=cc --with-cxx=CC
---with-fc=ftn --COPTFLAGS="-tp barcelona-64 -fastsse -Mipa=fast" --CXXOPTFLAGS="-tp
-  barcelona-64 -fastsse -Mipa=fast" --FOPTFLAGS="-tp barcelona-64 -fastsse"
---with-debugging=0 --with-blas-lib=sci --with-lapack-lib=sci --with-x=0
---with-mpi-dir=$MPICH_DIR --download-hypre=1 --download-parmetis=1 --with-hdf5=1 \
+--configModules=PETSc.Configure \
+--optionsModule=PETSc.compilerOptions \
+--known-level1-dcache-size=65536 \
+--known-level1-dcache-linesize=64 \
+--known-level1-dcache-assoc=2 \
+--known-memcmp-ok=1 \
+--known-sizeof-char=1 \
+--known-sizeof-void-p=8 \
+--known-sizeof-short=2 \
+--known-sizeof-int=4
+--known-sizeof-long=8 \
+--known-sizeof-long-long=8 \
+--known-sizeof-float=4 \
+--known-sizeof-double=8 \
+--known-sizeof-size_t=8 \
+--known-bits-per-byte=8 \
+--known-sizeof-MPI_Comm=4 \
+--known-sizeof-MPI_Fint=4 \
+--known-mpi-long-double=0 \
+--with-batch=1 \
+--with-shared=0 \
+--with-dynamic=0 \
+--with-cc=cc \
+--with-cxx=CC \
+--with-fc=ftn \
+--COPTFLAGS="-tp barcelona-64 -fastsse -Mipa=fast" \
+--CXXOPTFLAGS="-tp barcelona-64 -fastsse -Mipa=fast" \
+--FOPTFLAGS="-tp barcelona-64 -fastsse" \
+--with-debugging=0 \
+--with-blas-lib=sci \
+--with-lapack-lib=sci \
+--with-x=0 \
+--with-mpi-dir=$MPICH_DIR \
+--download-hypre=1 \
+--download-parmetis=1 \
+--with-hdf5=1 \
 --with-hdf5-dir=$HDF5_DIR \
 --known-mpi-shared=0
 \end{verbatim}
@@ -408,6 +479,133 @@ The user will need to load the following HDF5 module beforehand: \ \verb|module 
 The source code for PFLOTRAN can be downloaded from the LANL web site using Mercurial: \verb|hg clone https://software.lanl.gov/pflotran/hg/pflotran|.
 
 \verb|make [chuan_co2=1 hdf5=1 coll=1] pflotran|
+
+\subsection{Building SAMRAI Version 2.4.4}
+
+\noindent
+To build SAMRAI follow the instructions listed below.
+
+{\tt mkdir SAMRAI-v2.4.4}
+
+{\tt cd SAMRAI-v2.4.4}
+
+{\tt hg clone http://software.lanl.gov/pflotran/hg/samrai SAMRAI}
+
+{\tt mkdir samrai-objs in directory SAMRAI-v2.4.4}
+
+{\tt cd samrai-objs}
+
+Define the environment variables $\verb|SAMRAI_INSTALL_DIR|$, $\verb|MPI_HOME|$, $\verb|HDF5_HOME|$, \linebreak $\verb|PETSC_DIR|$ to be the top level directories of the appropriate packages
+
+\noindent
+With MPICH:
+\begin{verbatim}
+../SAMRAI/configure --prefix=${SAMRAI_INSTALL_DIR} \
+--with-CC=mpicc \
+--with-CXX=mpicxx \
+--with-F77=mpif90 \
+--with-mpi \
+--with-mpi-include=${MPI_HOME}/include \
+--with-mpi-lib-dirs=${MPI_HOME}/lib \
+--with-MPICC=mpicc \
+--with-x \
+--with-hdf5=${HDF5_HOME} \
+--with-hypre=${HYPRE_HOME} \
+--with-petsc=${PETSC_DIR} \
+--with-blaslapack \
+--enable-opt \
+ --enable-debug \
+--enable-char \
+--enable-bool \
+CXXFLAGS="-DMPICH_IGNORE_CXX_SEEK -DMPICH_SKIP_MPICXX" \
+CPPFLAGS="-DMPICH_IGNORE_CXX_SEEK -DMPICH_SKIP_MPICXX"
+\end{verbatim}
+
+\noindent
+With OPENMPI:
+\begin{verbatim}
+../${SAMRAI_SRC_DIR}/configure \
+--prefix=${SAMRAI_INSTALL_DIR} \
+--with-CC=mpicc \
+--with-CXX=mpicxx \
+--with-F77=mpif90 \
+--with-mpi \
+--with-mpi-include=${MPI_HOME}/include 
+--with-mpi-lib-dirs=${MPI_HOME}/lib 
+--with-MPICC=mpicc \
+--with-x \
+--with-hdf5=${HDF5_INSTALL_DIR} \
+--with-hypre=${HYPRE_INSTALL_DIR} \
+--with-petsc=${PETSC_DIR} \
+--with-blaslapack \
+--disable-opt \
+--enable-debug \
+--enable-char \
+--enable-bool \
+CXXFLAGS="-DOMPI_IGNORE_CXX_SEEK -DOMPI_SKIP_MPICXX \
+  -I${PETSC_DIR}/${PETSC_ARCH}/include -I${PETSC_DIR}/include" \
+CPPFLAGS="-DOMPI_IGNORE_CXX_SEEK -DOMPI_SKIP_MPICXX"
+\end{verbatim}
+
+{\tt make}
+
+{\tt make install}
+
+Define the environment variable $\verb|SAMRAI|$ to point to $\verb|SAMRAI_INSTALL_DIR|$ (for example in your .cshrc)
+
+Instructions for SAMR utils package
+
+{\tt hg clone  http://software.lanl.gov/pflotran/hg/samrutils}
+
+{\tt cd samrutils}
+
+Define the environment variable $\verb|AMRUTILITIES_HOME|$ to be the directory where you want the libraries and headers installed, it can point to the top level src dir if you like.
+
+\verb|make prefix=${AMRUTILITIES_HOME} lib3d|
+
+Instructions for SAMR solvers package
+
+{\tt hg clone  http://software.lanl.gov/pflotran/hg/samrsolvers}
+
+{\tt cd samrsolvers}
+
+Define the environment variable $\verb|SAMRSOLVERS_HOME|$ to be the directory where you want the libraries and headers installed, it can point to the top level src dir if you like.
+
+\verb|make prefix=${SAMRSOLVERS_HOME} lib3d|
+
+\noindent
+Assumptions:
+\begin{enumerate}
+\item External packages needed by PFLOTRAN are built: petsc-dev, hypre,  
+hdf5, \linebreak mpich2/openmpi/some mpi
+\item External packages needed by PFLOTRAN AMR interface are built:  
+SAMRAI, SAMRUtils, SAMRSolvers
+\end{enumerate}
+
+\noindent
+Define the environment variables:
+\begin{center}
+\begin{tabularx}{\linewidth}{lX}
+\bf SAMRAI &--points to where SAMRAI is installed\\
+\bf AMRUTILITIES\_HOME &--points to where SAMRUtils is installed\\
+\bf SAMRSOLVERS\_HOME &--points to where SAMRSolvers is installed
+\end{tabularx}
+\end{center}
+
+\noindent
+Instructions for building $\verb|SAMRAIDriver|$:
+\begin{center}
+\begin{verbatim}
+cd pflotran/src/pflotran
+make hdf5=1 pflotranamr
+
+cd samr/src
+make
+\end{verbatim}
+\end{center}
+
+\noindent
+At this point there should exist an executable named SAMRAIDriver.
 
 \begin{comment}
 The following instructions should aid in installing openmpi, PETSc, HDF5 and PFLOTRAN on a UNIX or Mac computer running MacOSX 10.4 or later.
