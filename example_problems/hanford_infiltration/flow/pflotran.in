@@ -11,6 +11,7 @@ DEBUG
 MODE RICHARDS
 
 : == chemistry ================================================================
+skip
 CHEMISTRY
 PRIMARY_SPECIES
 Tracer
@@ -19,6 +20,7 @@ OUTPUT
 All
 /
 /
+noskip
 
 : == reference variables ======================================================
 REFERENCE_POROSITY 0.25d0
@@ -316,8 +318,8 @@ TYPE
 FLUX neumann
 /
 :FLUX 0.317098d-7 ! 1 m/y
-:FLUX 1.5855d-9 ! 5 cm/y
-FLUX file 200w_recharge_1951-2000_daily.dat
+FLUX 1.5855d-9 ! 5 cm/y
+:FLUX file 200w_recharge_1951-2000_daily.dat
 /
 
 FLOW_CONDITION Initial
@@ -330,6 +332,7 @@ PRESSURE 101325.d0
 
 
 : == transport conditions =====================================================
+skip
 TRANSPORT_CONDITION Inlet
 TYPE dirichlet
 CONSTRAINT_LIST
@@ -356,23 +359,24 @@ CONCENTRATIONS
 Tracer   1.e-1             F
 /
 /
+noskip
 
 : == couplers =================================================================
 BOUNDARY_CONDITION Inlet
 FLOW_CONDITION Inlet
-TRANSPORT_CONDITION Inlet
+:TRANSPORT_CONDITION Inlet
 REGION Top
 /
 
 BOUNDARY_CONDITION Outlet
 FLOW_CONDITION Initial
-TRANSPORT_CONDITION Initial
+:TRANSPORT_CONDITION Initial
 REGION Bottom
 /
 
 INITIAL_CONDITION Initial
 FLOW_CONDITION Initial
-TRANSPORT_CONDITION Initial
+:TRANSPORT_CONDITION Initial
 REGION all
 /
 

@@ -1585,9 +1585,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 !                           global_auxvar%den_kg(option%liquid_phase)/1000.d0
 !  endif
     
-  write(option%io_buffer,111) trim(constraint_name),num_iterations
-  call printMsg(option)
-111 format(' Equilibrate Constraint: ',a30,i4)
+!  write(option%io_buffer,111) trim(constraint_name),num_iterations
+!  call printMsg(option)
+!111 format(' Equilibrate Constraint: ',a30,i4)
 
 end subroutine ReactionEquilibrateConstraint
 

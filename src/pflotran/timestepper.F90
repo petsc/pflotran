@@ -1665,6 +1665,9 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
     stepper%linear_cum = stepper%linear_cum + sum_linear_iterations
  
     call RTReact(realization)
+
+    ! increment time steps number
+    stepper%steps = stepper%steps + 1      
  
     if (option%print_screen_flag) then
       write(*, '(" TRAN ",i6," Time= ",1pe12.4," Dt= ", &
