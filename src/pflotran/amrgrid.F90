@@ -506,11 +506,14 @@ subroutine AMRGridComputeGeometryInformation(amrgrid, origin_global, field, &
   PetscFortranAddr :: p_application
 
   type(grid_type), pointer :: grid
+  DA, pointer :: dummy_ptr
 
   integer :: nlevels
   integer :: npatches
   integer :: ln
   integer :: pn
+
+  dummy_ptr = PETSC_NULL
 
   call AMRGridComputeGridSpacing(amrgrid)
   
@@ -523,7 +526,7 @@ subroutine AMRGridComputeGeometryInformation(amrgrid, origin_global, field, &
      do pn=0,npatches-1
         if (associated(amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr)) then
            grid => amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr
-           call GridMapIndices(grid)
+           call GridMapIndices(grid, dummy_ptr)
            call GridComputeCoordinates(grid,origin_global,option)
            call GridComputeVolumes(grid,field%volume,option)
            ! set up internal connectivity, distance, etc.

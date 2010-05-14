@@ -259,9 +259,9 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   global_aux_var%den = dw_mol
   global_aux_var%den_kg = dw_kg
 !  aux_var%kvr = kr/visl
-  aux_var%kvr_x = kr/visl
-  aux_var%kvr_y = kr/visl
-  aux_var%kvr_z = kr/visl
+  aux_var%kvr_x = kr/visl       ! For anisotropic relative perm
+  aux_var%kvr_y = kr/visl       ! For anisotropic relative perm         
+  aux_var%kvr_z = kr/visl       ! For anisotropic relative perm
   
 !  aux_var%vis = visl
 !  aux_var%dvis_dp = dvis_dp

@@ -246,3 +246,4 @@ stochastic_aux.o : simulation.o input.o option.o
 matrix_buffer.o : grid.o structured_grid.o
 velocity.o : option.o input.o string.o logging.o units.o
 mfd_aux.o : connection.o
+amrgrid.o : option.o grid.o field.o 

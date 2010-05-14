@@ -1843,7 +1843,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       ! distance = scalar - magnitude of distance
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
-      distance_gravity = distance * &
+      distance_gravity = distance * &                  ! distance_gravity = dx*g*n
                          dot_product(option%gravity, &
                                      cur_connection_set%dist(1:3,iconn))
       dd_up = distance*fraction_upwind

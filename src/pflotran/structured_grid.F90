@@ -1019,12 +1019,15 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
               id_dn = id_up + 1
 
 
+              
               if (i==1) then
                 if (structured_grid%nxs==structured_grid%ngxs) then
                    structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+                   connections%local(iconn) = 1
                 end if
               else 
                    structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+                   connections%local(iconn) = 1
               end if
 
 
@@ -1097,9 +1100,11 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
               if (j==1) then
                 if (structured_grid%nys==structured_grid%ngys) then
                    structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+                   connections%local(iconn) = 1
                 end if
               else 
                    structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+                   connections%local(iconn) = 1
               end if
 
               id_up = i + 1 + (j-1) * structured_grid%ngx + k * structured_grid%ngxy &
@@ -1141,9 +1146,11 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
               if (k==1) then
                 if (structured_grid%nzs==structured_grid%ngzs) then
                    structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+                   connections%local(iconn) = 1
                 end if
               else 
                    structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+                   connections%local(iconn) = 1
               end if
 
               id_up = i + 1 + j * structured_grid%ngx + (k-1) * &

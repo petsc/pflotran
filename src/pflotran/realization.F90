@@ -189,6 +189,9 @@ subroutine RealizationCreateDiscretization(realization)
   type(field_type), pointer :: field
   type(option_type), pointer :: option
   PetscErrorCode :: ierr
+  PetscInt, allocatable :: int_tmp(:)
+  PetscInt :: test
+  PetscOffset :: i_da
   
   option => realization%option
   field => realization%field
@@ -197,7 +200,6 @@ subroutine RealizationCreateDiscretization(realization)
   
   call DiscretizationCreateDMs(discretization,option)
 
-  
   option%ivar_centering = CELL_CENTERED
   ! 1 degree of freedom, global
   call DiscretizationCreateVector(discretization,ONEDOF,field%porosity0, &
@@ -310,8 +312,8 @@ subroutine RealizationCreateDiscretization(realization)
   select case(discretization%itype)
     case(STRUCTURED_GRID)
       grid => discretization%grid
-      ! set up nG2L, NL2G, etc.
-      call GridMapIndices(grid)
+      ! set up nG2L, nL2G, etc.
+      call GridMapIndices(grid, discretization%dm_1dof%sgdm)
       call GridComputeSpacing(grid,option)
       call GridComputeCoordinates(grid,discretization%origin,option)
       call GridComputeVolumes(grid,field%volume,option)
@@ -358,13 +360,14 @@ subroutine RealizationCreateDiscretization(realization)
 
    end if
 
+   call GridComputeiGlobalCell2FaceConnectivity(grid, realization%patch%aux%MFD, NFLOWDOF, option)
  
   ! initialize to -999.d0 for check later that verifies all values 
   ! have been set
   call VecSet(field%porosity0,-999.d0,ierr)
        
       write(*,*) "End of RealizationCreateDiscretization"
-!      stop
+      stop
 
 end subroutine RealizationCreateDiscretization
 

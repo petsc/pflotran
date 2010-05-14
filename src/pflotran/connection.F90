@@ -11,6 +11,7 @@ module Connection_module
     PetscInt :: itype                  ! connection type (boundary, internal, source sink
     PetscInt :: num_connections
     PetscInt :: offset
+    PetscInt, pointer :: local(:)      ! 1 if connection is local, 0 if connection is ghosted
     PetscInt, pointer :: id_up(:)      ! list of ids of upwind cells
     PetscInt, pointer :: id_dn(:)      ! list of ids of downwind cells
     PetscReal, pointer :: dist(:,:)    ! list of distance vectors, size(-1:3,num_connections) where
@@ -64,6 +65,7 @@ function ConnectionCreate(num_connections,num_dof,connection_itype)
   connection%itype = connection_itype
   connection%offset = 0
   connection%num_connections = num_connections
+  nullify(connection%local)
   nullify(connection%id_up)
   nullify(connection%id_dn)
   nullify(connection%dist)
@@ -71,11 +73,13 @@ function ConnectionCreate(num_connections,num_dof,connection_itype)
 !  nullify(connection%velocity)
   select case(connection_itype)
     case(INTERNAL_CONNECTION_TYPE)
+      allocate(connection%local(num_connections))
       allocate(connection%id_up(num_connections))
       allocate(connection%id_dn(num_connections))
       allocate(connection%dist(-1:3,num_connections))
       allocate(connection%area(num_connections))
 !      allocate(connection%velocity(num_dof,num_connections))
+      connection%local = 0
       connection%id_up = 0
       connection%id_dn = 0
       connection%dist = 0.d0
@@ -214,6 +218,8 @@ subroutine ConnectionDestroy(connection)
   
   if (.not.associated(connection)) return
   
+  if (associated(connection%local)) deallocate(connection%local)
+  nullify(connection%local)
   if (associated(connection%id_up)) deallocate(connection%id_up)
   nullify(connection%id_up)
   if (associated(connection%id_dn)) deallocate(connection%id_dn)

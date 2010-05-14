@@ -344,8 +344,8 @@ subroutine Init(simulation)
 !     flow_solver%pc_type = PCSHELL
       pcside = PC_RIGHT
       if(flow_solver%pc_type==PCSHELL) then
-        call KSPSetPreconditionerSide(flow_solver%ksp, pcside,ierr)
-        call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 0, flow_solver%pc)
+      !  call KSPSetPreconditionerSide(flow_solver%ksp, pcside,ierr)
+      !  call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 0, flow_solver%pc)
       endif
     endif
 
@@ -430,8 +430,8 @@ subroutine Init(simulation)
 !       flow_solver%pc_type = PCSHELL
        pcside = PC_RIGHT
        if(tran_solver%pc_type==PCSHELL) then
-          call KSPSetPreconditionerSide(tran_solver%ksp, pcside,ierr)
-          call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 1, tran_solver%pc)
+!          call KSPSetPreconditionerSide(tran_solver%ksp, pcside,ierr)
+!          call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 1, tran_solver%pc)
        endif
     endif
     option%io_buffer = 'Solver: ' // trim(tran_solver%ksp_type)
