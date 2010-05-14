@@ -4,6 +4,8 @@ module Discretization_module
   use Structured_Grid_module
   use Unstructured_Grid_module
   use AMR_Grid_Module
+  use MFD_Aux_module
+  use MFD_Module
 
   implicit none
 
@@ -36,6 +38,7 @@ module Discretization_module
     type(dm_ptr_type), pointer :: dm_1dof
     type(dm_ptr_type), pointer :: dm_nflowdof
     type(dm_ptr_type), pointer :: dm_ntrandof
+    type(mfd_type), pointer :: MFD
   end type discretization_type
 
   public :: DiscretizationCreate, &
@@ -98,6 +101,7 @@ function DiscretizationCreate()
   
   nullify(discretization%grid)
   nullify(discretization%amrgrid)
+  nullify(discretization%MFD)
   
   DiscretizationCreate => discretization
 
@@ -182,6 +186,8 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
               call InputErrorMsg(input,option,'unstructured filename','GRID')
             case('amr')
               discretization%itype = AMR_GRID
+            case('structured_mimetic')
+              discretization%itype = STRUCTURED_GRID_MIMETIC
             case default
               option%io_buffer = 'Discretization type: ' // &
                                  trim(discretization%ctype) // &
@@ -226,7 +232,7 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
         case('FILE')
         case('DXYZ')
           select case(discretization%itype)
-            case(STRUCTURED_GRID)
+            case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
               call StructuredGridReadDXYZ(discretization%grid%structured_grid,input,option)
             case(AMR_GRID)
               call AMRGridReadDXYZ(discretization%amrgrid,input,option)
@@ -662,12 +668,17 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
     
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      call DAGetMatrix(dm_ptr%sgdm,mat_type,Jacobian,ierr)
+!      call DAGetMatrix(dm_ptr%sgdm,mat_type,Jacobian,ierr)
+      call MFDCreateJacobian(discretization%grid, discretization%MFD, mat_type, Jacobian, option)
       call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
       call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
     case(UNSTRUCTURED_GRID)
       call UGDMCreateJacobian(discretization%grid%unstructured_grid, &
                               dm_ptr%ugdm,mat_type,Jacobian,option)
+      call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
+      call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
+    case(STRUCTURED_GRID_MIMETIC)
+      call MFDCreateJacobian(discretization%grid, discretization%MFD, mat_type, Jacobian, option)
       call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
       call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
     case(AMR_GRID)
@@ -712,6 +723,9 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
        endif
 
   end select
+
+  write(*,*) "End DiscretizationCreateJacobian"
+  stop
 
 end subroutine DiscretizationCreateJacobian
 
@@ -1306,7 +1320,12 @@ subroutine DiscretizationDestroy(discretization)
   if (associated(discretization%dm_ntrandof)) &
     deallocate(discretization%dm_ntrandof)
   nullify(discretization%dm_ntrandof)
-  
+
+
+  if (associated(discretization%MFD)) &
+        call MFDAuxDestroy(discretization%MFD) 
+  nullify(discretization%MFD)
+
 end subroutine DiscretizationDestroy
  
 end module Discretization_module

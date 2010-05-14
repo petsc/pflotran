@@ -566,7 +566,7 @@ subroutine GridComputeiGlobalCell2FaceConnectivity(grid, MFD_aux, DOF, option)
    end select
 
 
-
+   MFD_aux%ndof = ndof
 
 
     allocate(grid%fL2P(grid%nlmax_faces))

@@ -105,6 +105,7 @@ common_obj = ${common_src}option.o \
 	${common_src}condition.o \
 	${common_src}coupler.o \
 	${common_src}grid.o \
+	${common_src}mfd.o\
 	${common_src}matrix_buffer.o \
 	${common_src}hydrostatic.o \
 	${common_src}patch.o \
@@ -159,7 +160,7 @@ test: functions.o test.o
 # Dependencies stemming from "use" statements.
 # These ensure that the module files are built in the correct order.
 auxilliary.o : thc_aux.o richards_aux.o reactive_transport_aux.o \
-	mphase_aux.o mfd_aux.o
+	mphase_aux.o 
 pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
 	     stochastic_aux.o stochastic.o
 simulation.o : timestepper.o realization.o 
@@ -175,7 +176,7 @@ unstructured_grid.o : option.o connection.o
 structured_grid.o : connection.o option.o input.o cf90bridge.o
 general_grid.o : grid.o realization.o hdf5.o logging.o
 discretization.o : grid.o structured_grid.o unstructured_grid.o option.o \
-                   input.o string.o
+                   input.o string.o mfd_aux.o mfd.o
 grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
          input.o mfd_aux.o
 input.o : string.o option.o
@@ -193,7 +194,7 @@ realization.o : grid.o option.o region.o condition.o coupler.o material.o \
                 strata.o waypoint.o field.o hydrostatic.o debug.o \
 		observation.o velocity.o \
                 patch.o level.o discretization.o reaction.o reaction_aux.o \
-                fluid.o saturation_function.o mfd_aux.o
+                fluid.o saturation_function.o 
 level.o : patch.o option.o
 patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
           auxilliary.o reaction.o condition.o connection.o hydrostatic.o \
@@ -247,3 +248,4 @@ matrix_buffer.o : grid.o structured_grid.o
 velocity.o : option.o input.o string.o logging.o units.o
 mfd_aux.o : connection.o
 amrgrid.o : option.o grid.o field.o 
+mfd.o     : option.o mfd_aux.o grid.o 

@@ -178,7 +178,6 @@ subroutine RealizationCreateDiscretization(realization)
   use Grid_module
   use Unstructured_Grid_module, only : UGridMapIndices
   use AMR_Grid_module
-  use MFD_Aux_module
   
   implicit none
   
@@ -319,7 +318,7 @@ subroutine RealizationCreateDiscretization(realization)
       call GridComputeVolumes(grid,field%volume,option)
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option)
-      call GridComputeCell2FaceConnectivity(grid, realization%patch%aux%MFD, option)
+      call GridComputeCell2FaceConnectivity(grid, discretization%MFD, option)
       write(*,*) "After GridComputeCell2FaceConnectivity"
     case(UNSTRUCTURED_GRID)
       grid => discretization%grid
@@ -360,14 +359,14 @@ subroutine RealizationCreateDiscretization(realization)
 
    end if
 
-   call GridComputeiGlobalCell2FaceConnectivity(grid, realization%patch%aux%MFD, NFLOWDOF, option)
+   call GridComputeiGlobalCell2FaceConnectivity(grid, discretization%MFD, NFLOWDOF, option)
  
   ! initialize to -999.d0 for check later that verifies all values 
   ! have been set
   call VecSet(field%porosity0,-999.d0,ierr)
        
       write(*,*) "End of RealizationCreateDiscretization"
-      stop
+!      stop
 
 end subroutine RealizationCreateDiscretization
 
