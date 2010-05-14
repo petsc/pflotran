@@ -325,23 +325,33 @@ providing the residual function for the $i$th component at the $n$th control vol
 An alternative approach to variable switching is the flash method.
 Although the variable switching method is often considered stable and efficient \citep{Pruess99}, it has several shortcomings: 1) it causes perturbation during Newton iterations during phase changes; 2) the change in the definition of independent variables affects the structure of Newton-Raphson matrix; and 3) as a consequence this degrades performance of the preconditioner during the linear solve step.    
 
-An altertative to variable switching is to keep the primary variables preserved using the flash method. The flash method has been implemented in the FLASH2 mode in PFLOTRAN. The primary variables are $P$, $T$ and the total mole fraction $z_i$ of the $i$th component summed over all phases, defined as:
+An altertative to variable switching is to keep the primary variables preserved using the solution of the governing equations. The flash method has been implemented in the FLASH2 mode in PFLOTRAN. The primary variables are $P$, $T$ and the total mole fraction $z_i$ of the $i$th component summed over all phases, defined as:
 \EQ
 z_i\eq\dfrac{\displaystyle\sum_\a n_i^\a}{\displaystyle\sum_\a \sum_j n^\a_j}.
 \EN
-Explicitly for a two-component ($\w$--$\c$), two-phase ($w$-SC) system $z_i$ reads
+Explicitly for a two-component ($i=\w$,\,$\c$), two-phase ($\a=w$, SC) system where $w$ designate the phase $\w$ and SC designates supercritical $\c$, $z_i$ reads
 \EQ
 z_i \eq \frac{\rho_w s_w x_i^w + \rho_{\rm SC} s_{\rm SC} x_i^{\rm SC}}{\rho_w s_w + \rho_{\rm SC} s_{\rm SC}}.
 \EN
+This variable is a persistent degree of freedom throughout the simulation.
+
 Following the notation and formulation found in \cite{nghiem-1985} and \cite{michelsen-1-1982}, let $x_i$, $y_i$ be the mole fraction of component $i$ in liquid and vapor phases, respectively, related by the equilibrium constant $K_i$
-\EQ
-K_i x_i \eq y_i, 
+\EQ\label{yi}
+y_i \eq K_i x_i, 
 \EN
 and let $\Phi$ represent the vapor phase mole fraction defined as
 \EQ
 \Phi\eq\dfrac{\displaystyle\sum_i n_i^g}{\displaystyle\sum_\a \sum_i n^\a_i}.
 \EN
-Mass conservation implies the relations
+Mass conservation implies the relation
+\EQ
+z_i \eq \Phi y_i + (1-\Phi) x_i.
+\EN
+Using Eqn.\eqref{yi} it follows that
+\EQ
+z_i \eq \Phi K_i x_i + (1-\Phi) x_i,
+\EN
+from which
 \begin{subequations}\label{addphase_N2}
 \BA
 x_i \eq \frac{z_i}{1+(K_i-1)\Phi}, 
