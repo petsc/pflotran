@@ -2955,9 +2955,17 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       istartall = offset + 1
       iendall = offset + reaction%ncomp
 
-      call RTAccumulation(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
+      call RTAccumulation(rt_aux_vars(ghosted_id), &
+                          global_aux_vars(ghosted_id), &
                           porosity_loc_p(ghosted_id), &
-                          volume_p(local_id),reaction,option,Res)
+                          volume_p(local_id), &
+                          reaction,option,Res)
+      if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
+        call RAccumulationSorb(rt_aux_vars(ghosted_id), &
+                               global_aux_vars(ghosted_id), &
+                               volume_p(local_id), &
+                               reaction,option,Res)
+      endif
       r_p(istartall:iendall) = r_p(istartall:iendall) + Res(1:reaction%ncomp)
       if (reaction%calculate_water_age) then 
         call RAge(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
@@ -3773,6 +3781,12 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                                     global_aux_vars(ghosted_id), &
                                     porosity_loc_p(ghosted_id), &
                                     volume_p(local_id),reaction,option,Jup) 
+      if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
+        call RAccumulationSorbDerivative(rt_aux_vars(ghosted_id), &
+                                         global_aux_vars(ghosted_id), &
+                                         volume_p(local_id),reaction, &
+                                         option,Jup)
+      endif
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
     enddo
 #endif

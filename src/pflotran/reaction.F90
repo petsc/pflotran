@@ -2466,11 +2466,6 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,volume, &
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
   PetscReal :: volume
 
-  if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
-    call RAccumulationSorb(rt_auxvar,global_auxvar, &
-                           volume,reaction,option,Res) 
-  endif
-   
   if (reaction%nkinmnrl > 0) then
     call RKineticMineral(Res,Jac,derivative,rt_auxvar,global_auxvar, &
                          volume,reaction,option)
@@ -2525,10 +2520,6 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
   if (.not.option%numerical_derivatives) then ! analytical derivative
   !if (PETSC_FALSE) then
     compute_derivative = PETSC_TRUE
-    if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
-      call RAccumulationSorbDerivative(rt_auxvar,global_auxvar, &
-                                       volume,reaction,option,Jac)
-    endif
     if (reaction%nkinmnrl > 0) then
       call RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
                            global_auxvar,volume,reaction,option)
@@ -2550,10 +2541,6 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
     option%iflag = 0 ! be sure not to allocate mass_balance array
     call RTAuxVarInit(rt_auxvar_pert,reaction,option)
     call RTAuxVarCopy(rt_auxvar_pert,rt_auxvar,option)
-    if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
-      call RAccumulationSorb(rt_auxvar,global_auxvar, &
-                             volume,reaction,option,Res_orig) 
-    endif    
     if (reaction%nkinmnrl > 0) then
       call RKineticMineral(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
                            global_auxvar,volume,reaction,option)
@@ -2562,6 +2549,10 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
       call RMultiRateSorption(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
                               global_auxvar,volume,reaction,option)
     endif     
+    if (reaction%nkinsrfcplxrxn > 0) then
+      call RKineticSurfCplx(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
+                            global_auxvar,volume,reaction,option)
+    endif
 
     ! #2: add new reactions here
 
@@ -2575,10 +2566,6 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
       if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar_pert,global_auxvar, &
                                               reaction,option)
 
-      if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
-        call RAccumulationSorb(rt_auxvar_pert,global_auxvar, &
-                               volume,reaction,option,Res_pert) 
-      endif       
       if (reaction%nkinmnrl > 0) then
         call RKineticMineral(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
                              global_auxvar,volume,reaction,option)
@@ -2587,6 +2574,10 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
         call RMultiRateSorption(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
                                 global_auxvar,volume,reaction,option)
       endif      
+      if (reaction%nkinsrfcplxrxn > 0) then
+        call RKineticSurfCplx(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
+                              global_auxvar,volume,reaction,option)
+      endif
 
       ! #3: add new reactions here
 
