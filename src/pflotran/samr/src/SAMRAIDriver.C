@@ -250,14 +250,14 @@ int main( int argc, char *argv[] )
    i++;
    
    f_initialize_simulation_(&p_pflotran_sim);
-
+#if 0
    tbox::pout << "Reached here:" << i << std::endl;
    i++;
    
    f_stepper_run_(&p_pflotran_sim);
-
    tbox::pout << "Reached here:" << i << std::endl;
    i++;
+#endif
    
    /*
     * At conclusion of simulation, stop timer and deallocate objects.
