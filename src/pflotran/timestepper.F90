@@ -1583,6 +1583,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
   field => realization%field
   solver => stepper%solver
 
+  num_newton_iterations = 1
 ! PetscReal, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
 
   call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
@@ -1663,6 +1664,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
       call KSPGetConvergedReason(solver%ksp,ksp_reason,ierr)
       sum_linear_iterations = sum_linear_iterations + num_linear_iterations
     enddo
+    sum_linear_iterations = sum_linear_iterations / option%ntrandof
     stepper%linear_cum = stepper%linear_cum + sum_linear_iterations
  
     call RTReact(realization)
