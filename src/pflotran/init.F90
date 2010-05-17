@@ -178,7 +178,7 @@ subroutine Init(simulation)
   
   ! read reaction database
   
-      isc  if (associated(realization%reaction)) then
+  if (associated(realization%reaction)) then
     if (realization%reaction%use_full_geochemistry) then
       call DatabaseRead(realization%reaction,option)
       call BasisInit(realization%reaction,option)    
