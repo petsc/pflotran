@@ -1980,7 +1980,8 @@ subroutine assignMaterialPropToRegions(realization)
       do
         if (.not.associated(cur_patch)) exit
         grid => cur_patch%grid
-        call GridCopyIntegerArrayToVec(cur_patch%imat,field%work_loc, &
+
+        call GridCopyIntegerArrayToVec(grid, cur_patch%imat,field%work_loc, &
                                             grid%ngmax)
         cur_patch => cur_patch%next
       enddo
@@ -1995,7 +1996,8 @@ subroutine assignMaterialPropToRegions(realization)
       do
         if (.not.associated(cur_patch)) exit
         grid => cur_patch%grid
-        call GridCopyVecToIntegerArray(cur_patch%imat,field%work_loc, &
+
+        call GridCopyVecToIntegerArray(grid,cur_patch%imat,field%work_loc, &
                                             grid%ngmax)
         cur_patch => cur_patch%next
       enddo
@@ -2380,7 +2382,9 @@ subroutine readMaterialsFromFile(realization,filename)
                                          filename,group_name, &
                                          dataset_name,append_realization_id)
     call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)
-    call GridCopyVecToIntegerArray(patch%imat,local_vec,grid%ngmax)
+
+    call GridCopyVecToIntegerArray(grid,patch%imat,local_vec,grid%ngmax)
+
     call VecDestroy(global_vec,ierr)
     call VecDestroy(local_vec,ierr)
   else

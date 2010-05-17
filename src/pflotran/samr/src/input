@@ -5,21 +5,21 @@ MIXED     = 3
 ROBIN     = 4
 
 CartesianGeometry{
-   domain_boxes = [(0,0,0), (99,9,9)]
+   domain_boxes = [(0,0,0), (19,19,79)]
    x_lo         = 0.0e0, 0.0e0, 0.0e0  
-   x_up         = 100.0e0, 10.0e0, 10.0e0
+   x_up         = 20.0e0, 20.0e0, 80.0e0
 }
 
 
 GriddingAlgorithm{
    max_levels = 2
    largest_patch_size {
-      level_0 = 100, 10, 10
-      level_1 = 100, 10, 10
+      level_0 = 20, 20, 80
+      level_1 = 20, 20, 40
    }
  smallest_patch_size {
-      level_0 = 100,10,10
-      level_1 = 100,6,6
+      level_0 = 20,20,80
+      level_1 = 20,20,40
    }
    ratio_to_coarser {
       level_1  = 2, 2, 2
@@ -31,7 +31,8 @@ GriddingAlgorithm{
 StandardTagAndInitialize{
    tagging_method = "REFINE_BOXES"
    RefineBoxes{
-      level_0 = [(25,4,4),(74,6,6)]
+      level_0 = [(0,0,60),(19,19,79)]
+      level_1 = [(0,0,140),(39,39,159)]
    }
 }
 
@@ -52,12 +53,14 @@ PflotranApplicationStrategy{
 	       adjust_cf_coefficients          = FALSE
 	       interpolate_ghost_values        = TRUE
 	       extrapolation_order             = 2
-	       boundary_conditions             = PERIODIC, PERIODIC, DIRICHLET, DIRICHLET
+	       boundary_conditions             = NEUMANN, NEUMANN, NEUMANN, NEUMANN, NEUMANN, DIRICHLET
 	       coarsen_diffusive_fluxes        = TRUE
 	       coarsen_convective_fluxes       = TRUE
 	       print_info_level                = 0
 	       cell_refine_op                  = "CONSTANT_REFINE"
 	       cell_coarsen_op                 = "CONSERVATIVE_COARSEN"
+	       cell_soln_coarsen_op                 = "CONSERVATIVE_COARSEN"
+	       cell_src_coarsen_op                 = "SUM_COARSEN"
 	       face_refine_op                  = "CONSTANT_REFINE"
 	       face_coarsen_op                 = "CONSERVATIVE_COARSEN"
 	       variable_order_interpolation    = FALSE
@@ -103,3 +106,7 @@ PflotranApplicationStrategy{
 
 }
 
+
+TimerManager{
+   timer_list = "xfer::*::*", "FAC::*::*", "AMRUtilities::*::*", "apps::main::main", "RD2T::*::*", "LevelSolver::*::*"
+}

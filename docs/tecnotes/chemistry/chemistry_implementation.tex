@@ -2919,10 +2919,10 @@ which in turn requires that $\bi_e\!=\!\boldsymbol 0$. This will be the case if 
 
 \section{Dual Continuum Connected Matrix (DCCM)}
 
-For a dual continuum model with continua $\a$ and $\b$, and with multirate sorption and mineral precipitation and dissolution the transport equations read
+For a dual continuum model with primary continuum $\a$ and secondary continua denoted by $\b$, and with multirate sorption and mineral precipitation and dissolution the transport equations read
 \begin{subequations}
 \EQ\label{acont}
-\frac{\p}{\p t} \varphi_\a\Psi_j^\a + \bnabla\cdot\bOmega_j^\a \eq - \Gamma_{\a\b} \big(\Psi_j^\a - \Psi_j^\b\big) -\sum_{il}\nu_{ji} \frac{\p S_{il}^\a}{\p t} -\sum_m\nu_{jm}I_m^\a,
+\frac{\p}{\p t} \varphi_\a\Psi_j^\a + \bnabla\cdot\bOmega_j^\a \eq - \sum_\b\Gamma_{\a\b} \big(\Psi_j^\a - \Psi_j^\b\big) -\sum_{il}\nu_{ji} \frac{\p S_{il}^\a}{\p t} -\sum_m\nu_{jm}I_m^\a,
 \EN
 for the primary continuum, and
 \EQ
@@ -2944,9 +2944,11 @@ and mineral mass transfer equations
 \frac{\p \varphi_m^{\a,\b}}{\p t} \eq \overline V_m^{-1} I_m^{\a,\b}.
 \EN
 Adding Eqns.\eqref{acont} and \eqref{bcont} eliminates the mass transfer coupling term between continua
-\EQ
-\frac{\p}{\p t} \left(\varphi_\a\Psi_j^\a + \varphi_\b\Psi_j^\b \right) + \bnabla\cdot\bOmega_j^\a \eq -\sum_{il}\nu_{ji}\left(\frac{\p S_{il}^\a}{\p t} + \frac{\p S_{il}^\b}{\p t}\right) -\sum_m\nu_{jm}\big(I_m^\a + I_m^\b\big).
-\EN
+\BA
+\frac{\p}{\p t} \left(\varphi_\a\Psi_j^\a + \sum_\b\varphi_\b\Psi_j^\b \right) + \bnabla\cdot\bOmega_j^\a \eq -\sum_{il}\nu_{ji}&\left(\frac{\p S_{il}^\a}{\p t} + \sum_\b\frac{\p S_{il}^\b}{\p t}\right)\nonumber\\
+& -\sum_m\nu_{jm}\big(I_m^\a + \sum_\b I_m^\b\big).
+\EA
+As can be seen from the form of this equation it is not possible to eliminate the secondary continua variables.
 
 \subsection{Numerical Implementation}
 
@@ -3717,7 +3719,7 @@ An alternative form of the mass conservation equations Eqn.\eqref{genmass} that 
 \EN
 The energy conservation equation can be written in the form
 \EQ
-\sum_\a\left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a U_\a\big) + \bnabla\cdot\big(\bq_\a \rho_\a H_\a\big) \right\} + \frac{\p}{\p t} \big(\rho_r C_p T \big) - \bnabla\cdot\big(\kappa\bnabla T\big) \eq Q,
+\sum_\a\left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a U_\a\big) + \bnabla\cdot\big(\bq_\a \rho_\a H_\a\big) \right\} + \frac{\p}{\p t} \big((1-\varphi)\rho_r C_p T \big) - \bnabla\cdot\big(\kappa\bnabla T\big) \eq Q,
 \EN
 as the sum of contributions from different fluid phases and rock,
 with internal energy $U_\a$ and enthalpy $H_\a$ of fluid phase $\a$, and rock heat capacity $C_p$ and thermal conductivity $\kappa$.

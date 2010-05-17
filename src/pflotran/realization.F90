@@ -161,7 +161,8 @@ function RealizationCreate2(option)
   nullify(realization%velocity_dataset)
   
   nullify(realization%reaction)
-  
+
+  nullify(realization%patch)    
   RealizationCreate2 => realization
   
 end function RealizationCreate2 

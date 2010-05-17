@@ -16,6 +16,9 @@
 %\usepackage{portland}
 \usepackage{booktabs}
 
+\usepackage[super,comma,sort]{natbib} 
+\bibpunct[, ]{(}{)}{;}{a}{,}{,}
+
 %must be last package
 %\usepackage{hyperref}
 \usepackage[debug=false, colorlinks=true, pdfstartview=FitV, linkcolor=blue, citecolor=blue, urlcolor=blue, pdfpagelabels=true]{hyperref}
@@ -276,7 +279,7 @@ $X_\c^g$, is assumed to be given by
 X_\c^g \eq \frac{P_\c^g}{P_g} \eq \frac{P_g-P_\w^{\rm sat}(T)}{P_g} \eq 1-\frac{P_\w^{\rm sat}(T)}{P_g},
 \EN
 with total gas pressure $P_g$ equal to
-\EQ\label{totalp}
+\EQ
 P_g \eq P_\c^g + P_\w^{\rm sat}(T),
 \EN
 and where $P_\w^{\rm sat}(T)$ denotes the saturation pressure of pure water. One also has
@@ -320,6 +323,257 @@ providing the residual function for the $i$th component at the $n$th control vol
 \section{Flash Method}
 
 An alternative approach to variable switching is the flash method.
+Although the variable switching method is often considered stable and efficient \citep{Pruess99}, it has several shortcomings: 1) it causes perturbation during Newton iterations during phase changes; 2) the change in the definition of independent variables affects the structure of Newton-Raphson matrix; and 3) as a consequence this degrades performance of the preconditioner during the linear solve step.
+
+\subsection{Two-Phase System}
+
+An altertative to variable switching is to keep the primary variables preserved using the solution of the governing equations. The flash method has been implemented in the FLASH2 mode in PFLOTRAN. The primary variables are $P$, $T$ and the total mole fraction $z_i$ of the $i$th component summed over all phases, defined as:
+\BA
+z_i &\eq\dfrac{\sum_\a n_i^\a}{\sum_\a \sum_j n^\a_j},\\
+&\eq \frac{\sum_\a \rho_\a s_\a x_i^\a}{\sum_{\a} \rho_\a s_\a},
+\EA
+using the expansion
+\BA
+\frac{n_i^\a}{V} &\eq \frac{n_i^\a}{n_\a}\frac{n_\a}{V_\a}\frac{V_\a}{V_p}\frac{V_p}{V},\\
+&\eq \varphi \rho_\a s_\a x_i^\a,
+\EA
+where $V_p$ denotes the pore volume.
+Explicitly for a two-phase ($\a=w$, SC) system where $w$ designates the phase $\w$ and SC designates supercritical $\c$, $z_i$ can be expressed as
+\EQ
+z_i \eq \frac{\rho_w s_w x_i^w + \rho_{\rm SC} s_{\rm SC} x_i^{\rm SC}}{\rho_w s_w + \rho_{\rm SC} s_{\rm SC}},
+\EN
+for molar fluid densities $\rho_w$, $\rho_{\rm SC}$ and saturation $s_w$, $s_{\rm SC} = 1\!-\!s_w$.
+The variable $z_i$ is a persistent degree of freedom throughout the simulation.
+
+Following the notation and formulation found in \cite{nghiem-1985} and \cite{michelsen-1-1982}, let $x_i$, $y_i$ be the mole fraction of component $i$ in liquid and vapor phases, respectively, related by the equilibrium constant $K_i$
+\EQ\label{yi}
+y_i \eq K_i x_i, 
+\EN
+and let $\zeta_v$ represent the vapor phase mole fraction defined as
+\EQ
+\zeta_v\eq\dfrac{\sum_i n_i^v}{\sum_\a \sum_i n^\a_i}.
+\EN
+Under a phase transformation mass conservation implies the relation
+\EQ
+z_i \eq \zeta_v y_i + (1-\zeta_v) x_i.
+\EN
+Using Eqn.\eqref{yi} it follows that
+\EQ
+z_i \eq \zeta_v K_i x_i + (1-\zeta_v) x_i,
+\EN
+from which
+\begin{subequations}\label{addphase_N2}
+\BA
+x_i \eq \frac{z_i}{1+(K_i-1)\zeta_v}, 
+\EA
+and
+\BA
+y_i \eq \frac{K_i z_i}{1+(K_i-1)\zeta_v}. 
+\EA
+\end{subequations}
+The value of $\zeta_v$ can be found by solving the flash equation (i.e. the Rachford-Rice equation)
+\EQ\label{flash}
+F(\zeta_v)=\sum_i(y_i-x_i)=\sum_i \frac {z_i(K_i-1)}{1+(K_i-1)\zeta_v} =0.
+\EN
+Eqn.(\ref{flash}) indicates that the flash method is not able to calculate phase separation for a multiphase system with phase equilibrium distribution coefficients $K_i$ equal to unity, e.g. the water-steam system. Under such situations Eqn.(\ref{flash}) is always satisfied.
+ 
+Since $F(\zeta_v)$ is a monotonically decreasing function of $\zeta_v$, a meaningful solution $0\leq\zeta_v\leq1$ can exist only if 
+\begin{subequations}\label{addphase_N3}
+\BA\label{liqbc}
+\sum_i K_i z_i \geq 1,
+\EA
+and
+\BA\label{vapbc}
+\sum_i \frac{z_i}{K_i} \leq 1.
+\EA
+\end{subequations}
+If the equality in Eqn.(\ref{liqbc}) is satisfied the vapor phase is stable, whereas if the equality in Eqn.(\ref{vapbc}) is valid the liquid phase is stable. 
+These conditions were referred to by \cite{michelsen-2-1982} in his discussion on phase change calculations. 
+It was demonstrated that this criteria is consistent with the tangent plane method applied to the minimization of the Gibbs free energy [\cite{michelsen-1-1982}, \cite{nghiem-1985}]. A more detailed discussion can be found in these references. In the PFLOTRAN MPHASE mode in which variable switching is employed, the solution of Eqn.(\ref{flash}) for a single node is used as the initial guess for saturation for a phase transition from single to two phase, although the efficiency of this initial guess is not entirely satisfactory because the node does not represent a closed system.
+
+Eqns.(\ref{addphase_N3}) a, b are used as criteria to determine the existence of a change in phase in the implementation of the flash mode; i.e. if $\sum_i K_i z_i \leq 1$, then only a liquid phase exists; if $\sum_i {z_i}/{K_i} \geq 1$, then only a gas phase exists; otherwise two phases coexist. Once the phase configuration (single aqueous phase, single SC phase, and coexisting two-phase system) is determined, the secondary variables are evaluated in the following steps: 
+
+\noindent
+Case 1: single aqueous ($\w$) phase:
+\begin{subequations}\label{fla-sec-c1}
+the aqueous concentration is obtained as
+\BA
+x_i^w = z_i
+\EA
+and phase saturations are given by
+\BA
+s_w = 1, \ s_{SC} =0 
+\EA
+\end{subequations}
+
+\noindent
+Case 2: single supercritical (SC $\c$) phase:
+\begin{subequations}\label{fla-sec-c2}
+the aqueous concentration is obtained as
+\BA
+x_i^{SC} = z_i
+\EA
+and phase saturations are given by
+\BA
+ s_w = 0, \ s_{SC} =1 
+\EA
+\end{subequations}
+For both cases 1 and 2, the density of either aqueous and SC phase can be obtained from the EOS, since $P$, $T$ and $x_i$ have been determined.
+
+\noindent
+Case 3: two phases coexist:
+As stated previously, the coefficients $K_i$ are not functions of the $\c$ concentration, with their values at given $P$ and $T$ given explicitly by
+\begin{subequations}\label{k_value_c}
+\BA
+K_{\c} =\frac{H_{\c}\gamma_{\c}}{P\phi_{\c}},
+\EA
+and
+\BA
+K_{\c} =\frac{P_{\w}^{\rm sat}(T)}{P}.
+\EA
+\end{subequations}
+From these relations the phase composition can be obtained by solving a linear set of equation for the four unknown secondary variables $x_i^\alpha$, ($i$=H$_2$O, CO$_2$) and $\alpha=\w$, SC $\c$. One has
+\begin{subequations}\label{k_value_w}
+\BA
+x_i^{SC} = K_i x_i^w,  \ (i = \w, \ \c),
+\EA
+subject to the constraints
+\BA
+{\displaystyle\sum_i} x_i^\alpha=1, \ (\alpha=\w, \ {\rm SC} \ \c).
+\EA
+\end{subequations}
+From these results the phase densities $\rho_\alpha, \alpha=\w$, SC $\c$ can be calculated from $P$, $T$ and $x_i^\alpha$. Once the phase densities are obtained, the saturations $s_\alpha, \alpha=\w$, SC $\c$ can be obtained by solving the linear mass conservation equation
+\EQ
+\rho_w s_w x_{CO_2}^w + 
+\rho_{SC} s_{SC} x_{CO_2}^{SC} = (\rho_w s_w+\rho_{SC} s_{SC}) z_{CO_2},
+\EN 
+with $s_w=1-s_{SC}$ to give
+\EQ
+s_{\rm SC} \eq \frac{\rho_w s_w x_{CO_2}^w + 
+\rho_{SC} s_{SC} x_{CO_2}^{SC}-\rho_w z_{CO_2}}{(\rho_{SC}-\rho_w) z_{CO_2}}.
+\EN
+
+\subsection{Two-Component System}
+
+Currently the FLASH2 mode in PFLOTRAN can only handle systems with two components and two phases, enabling the flash calculation to be carried out in a simplified manner. One important assumption in the implementation in PFLOTRAN is that the activity coefficients in the aqueous phase and the fugacity coefficient in SC phase are not functions of the $\c$ concentration. 
+%I.e. non-ideality is weak in the aqueous and gas mixtures. 
+This assumption is consistent with the solubility equations for $\c$ [\cite {garcia01}, \cite{duan2003}, \cite{duan2008}] adapted in PLOTRAN. With this assumption, the phase distribution parameters $K_i(P,\,T)$ are not functions of the mole fractions $z_i, x_i$ and $y_i$, which greatly simplifies the flash calculation. 
+
+For a two-component system the problem may be solved analytically. In this case
+\EQ
+x_1+x_2\eq 1,
+\EN
+and
+\EQ
+K_1 x_1 + K_2 x_2 \eq 1,
+\EN
+giving
+\EQ
+x_1 = \frac{1-K_2}{K_1-K_2}, \ \ \ x_2=1-x_1 \eq \frac{K_1-1}{K_1-K_2},
+\EN
+and
+\EQ
+y_1 = \frac{K_1(1-K_2)}{K_1-K_2},
+\EN
+It then follows that
+\EQ
+\zeta_v \eq \frac{z_i - x_i}{(K_i-1)x_i}, \ (i=1,\,2).
+\EN
+
+%\EQ
+%F(y)=\sum_{i}^{n_c} y_i (\mu _i(y)-\mu _0) >= 0
+%\EN
+%The applications of this method are closely related with the formulation of Gibbs free energy. In PFLOTRAN, we do not explicitly  evaluate the Gibbs free energy, and the extended Henry coefficient was adopted to calculate the phase composition directly. Concerned these features, this condition should be proposed as: for a initially single phase system at given temperature and pressure $(T_0, P_0)$, a $n_c$ -component mixture with mole fraction $(x_1, x_2, ... ,x_{n_c})$, whether the Gibbs  free energy will reduce , resulting in 2 phase system by forming a new infinitesimal new phase with composition  $(K_1x_1, K_2x_2, ... ,K_{n_c}x_{n_c})$. 
+%With the tangent plane method, if the phase transition is not feasible, namely the single phase is stable, then the tangent plane to the Gibbs free energy surface at $\bold X$ should lie below the surface. If the evaluation of chemical potential in both phases employ the same standard condition, then 
+%\EQ
+%F(y)=RT \sum_{i}^{n_c} y_i ln \frac {f_i(y,p,T)}{f_i(x,p,T)} \ge  0 
+%\EN 
+%for all y, where by definition 
+%\EQ
+%y_i=Y_i/\sum_{i}^{n_c} Y_i 
+%\EN
+%and
+%\EQ
+%Y_i=K_i x_i
+%\EN  
+% Where $K_i$ is the phase equilibrium coefficient, namely the $K$ value. From Nghiem's results,  at the stationary condition, 
+ %\EQ
+ %F(y)=-ln(\sum_{i}^{n_c} Y)
+ %\EN
+ 
+ %then the phase stability condition turns into the form
+ %\EQ
+ %\sum_{i}^{n_c} Y_i \le 1
+ %\EN
+ %And when $F=0$,  which stands for a thermal equilibrium point, $Y=y$, both stationary condition and extend Henry's law are satisfied.
+
+%\begin{comment}
+\subsection{Flash Method for Multiphase-Multicomponent Systems}
+
+A multiphase system is described by the mole numbers $n_i^\a$. Input to the flash calculation is the total mole fraction of each species $z_i$ defined by
+\EQ
+z_i \eq \frac{n_i}{n} \eq \frac{\sum_\a n_i^\a}{\sum_{i'\a'} n_{i'}^{\a'}},
+\EN
+where $n_i$ is defined by
+\EQ
+n_i \eq \sum_\a n_i^\a,
+\EN
+and the total number of moles in the system $n$ is obtained from
+\EQ
+n \eq \sum_i n_i.
+\EN
+There are $N_C\!-\!1$ independent values $z_i$ because of the constraint
+\EQ
+\sum_i z_i \eq 1.
+\EN
+The result of the flash calculation is to provide the composition of each phase through the mole fractions $x_i^\a$ given by
+\EQ
+x_i^\a \eq \frac{n_i^\a}{n_\a}, \ \ \ \sum_i x_i^\a \eq 1,
+\EN
+and the fraction of each phase present in the system $\zeta_\a$ defined by
+\EQ
+\zeta_\a \eq \frac{n_\a}{n}, \ \ \ \sum_\a \zeta_\a \eq 1,
+\EN
+where
+\EQ
+n_\a \eq \sum_i n_i^\a.
+\EN
+The total number of unknowns is thus equal to $(N_C\!-\!1)N_P \!+\! N_P\!-\!1 \!=\! N_C N_P \!-\!1$.
+
+To determine the number of equations, first the dual variables $\lambda_\a^i$ are introduced defined by
+\EQ
+\lambda_\a^i \eq \frac{n_i^\a}{n_i}, \ \ \ \sum_\a \lambda_\a^i \eq 1.
+\EN
+The identity is obtained
+\EQ\label{identity}
+\zeta_\a x_i^\a \eq z_i \lambda_\a^i.
+\EN
+Summing this equation over all phases $\a$ yields the mass balance equations
+\EQ
+z_i \eq \sum_\a \zeta_\a x_i^\a,
+\EN
+of which there are $N_C\!-\!1$ independent equations.
+Combining this equation with the conditions for equilibrium in a multiphase system described by the equality of the chemical potentials for each component between each phase
+\EQ\label{chempot}
+\mu_i^\b \eq \mu_i^\a,
+\EN
+provides an additional set of $N_C(N_P\!-\!1)$ equations. Thus there are a total of $N_C(N_P\!-\!1) \!+\! N_C\!-\!1= N_C N_P\!-\!1$ equations in all.
+
+In terms of the dual variables $\lambda_\a^i$ it follows that
+\EQ
+\zeta_\a \eq \sum_i z_i \lambda_\a^i,
+\EN
+and
+\EQ
+x_i^\a \eq \frac{z_i \lambda_\a^i}{\sum_{i'} z_{i'} \lambda_\a^{i'}}.
+\EN
+Thus the set of variables $\{\zeta_\a,\, x_i^\a\}$ is equivalent to the set $\{z_i,\,\lambda_\a^i\}$. Expressing the equilibrium constraints Eqn.\eqref{chempot} in terms of the latter set then provides a generally nonlinear system of $N_C (N_P\!-\!1)$ equations in an equal number of unknowns.
+
+%\end{comment}
+
+\bibliographystyle{./agu04}
+%\bibliographystyle{./agums}
+\bibliography{./reference-new}
 
 \section*{Appendix: Supercritical CO$_2$--H$_2$O Equilibrium Relations}
 

@@ -57,8 +57,8 @@ ifndef jaguar
 HDF5_FLAGS = -I$(HDF5_INCLUDE) -I$(HDF5_LIB) -DUSE_HDF5
 HDF5_LIBS = -L$(HDF5_LIB) -lhdf5_fortran
 else
-HDF5_FFLAGS = $(HDF5_FLIB) -DUSE_HDF5
-HDF5_LIBS = -lhdf5_fortran -lhdf5 -lz -lsz
+#HDF5_FFLAGS = $(HDF5_FLIB) -DUSE_HDF5
+#HDF5_LIBS = -lhdf5_fortran -lhdf5 -lz -lsz
 endif
 
 CPPFLAGS_EXTRA += ${HDF5_FLAGS}
@@ -124,9 +124,12 @@ endif
 
 ifndef jaguar
 CXX=mpicxx
+else
+CXX=CC
 endif
 
-FPPFLAGS         = -g ${MYFLAGS} -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include
+#FPPFLAGS         = -g ${MYFLAGS} -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include
+FPPFLAGS         =  ${MYFLAGS} -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include
 
 $(FORTOBJS):$(FORTM4SRC)
 	cd $(FORTDIR); ${MAKE}
