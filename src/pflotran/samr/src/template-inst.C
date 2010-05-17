@@ -9,6 +9,8 @@
 #endif
 #include "tbox/Array.h"
 #include "tbox/Array.C"
+#include "tbox/List.h"
+#include "tbox/List.C"
 #include "CoarsenSchedule.h"
 #include "CoarsenSchedule.C"
 #include "BoundaryConditionStrategy.h"

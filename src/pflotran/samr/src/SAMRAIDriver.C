@@ -120,7 +120,7 @@ int main( int argc, char *argv[] )
    tbox::pout << "Reached here:" << i << std::endl;
    i++;
    
-   tbox::PIO::logOnlyNodeZero(log_file);
+   //   tbox::PIO::logOnlyNodeZero(log_file);
 
    /*
     * Create input database and parse all data in input file.  This
@@ -158,71 +158,74 @@ int main( int argc, char *argv[] )
    tbox::pout << "Reached here:" << i << std::endl;
    i++;
    
+   BogusTagAndInitStrategy* test_object=NULL;
+   
    if(mode==1)
-   {
-
-      /*
-      * Create an application object.  Some TagAndInitStrategy must be
-      * provided in order to build an object that specifies cells that
-      * need refinement.  Here an empty object is provided, since a
-      * prescribed set of refinement regions are read in from the input
-      * file; it would be a useful exercise to fill in the
-      * applyGradientDetector method and to generate custom refinement
-      * regions.
-      */
-      BogusTagAndInitStrategy* test_object = new BogusTagAndInitStrategy();
-      
-      /*
-      * Create the AMR hierarchy and initialize it
-      */
-      initializeAMRHierarchy(input_db,
-                             test_object,
-                             hierarchy);
-
-   tbox::pout << "Reached here:" << i << std::endl;
-   i++;
+     {
+       
+       /*
+	* Create an application object.  Some TagAndInitStrategy must be
+	* provided in order to build an object that specifies cells that
+	* need refinement.  Here an empty object is provided, since a
+	* prescribed set of refinement regions are read in from the input
+	* file; it would be a useful exercise to fill in the
+	* applyGradientDetector method and to generate custom refinement
+	* regions.
+	*/
+       test_object = new BogusTagAndInitStrategy();
+       
+       /*
+	* Create the AMR hierarchy and initialize it
+	*/
+       initializeAMRHierarchy(input_db,
+			      test_object,
+			      hierarchy);
+       
+       tbox::pout << "Reached here:" << i << std::endl;
+       i++;
+       
+       tbox::Pointer<geom::CartesianGridGeometry<NDIM> > grid_geometry = hierarchy->getGridGeometry();
+       
+       pdat::CCellDoubleConstantRefine<NDIM> *ccell_const_refine_op = new pdat::CCellDoubleConstantRefine<NDIM>();
+       grid_geometry->addSpatialRefineOperator(ccell_const_refine_op);
+       
+       geom::CartesianCCellDoubleWeightedAverage<NDIM> *ccell_cons_coarsen_op = new geom::CartesianCCellDoubleWeightedAverage<NDIM>();
+       grid_geometry->addSpatialCoarsenOperator(ccell_cons_coarsen_op);
+       
+       geom::CartesianCSideDoubleWeightedAverage<NDIM> *cside_cons_coarsen_op = new geom::CartesianCSideDoubleWeightedAverage<NDIM>();
+       grid_geometry->addSpatialCoarsenOperator(cside_cons_coarsen_op);
+       
+       geom::CartesianCCellDoubleSum<NDIM> *ccell_sum_coarsen_op = new geom::CartesianCCellDoubleSum<NDIM>();
+       grid_geometry->addSpatialCoarsenOperator(ccell_sum_coarsen_op);
+       
+       geom::CartesianCSideDoubleSum<NDIM> *cside_sum_coarsen_op = new geom::CartesianCSideDoubleSum<NDIM>();
+       grid_geometry->addSpatialCoarsenOperator(cside_sum_coarsen_op);
+       
+       PflotranApplicationParameters *params  =new PflotranApplicationParameters(app_database);
+       params->d_hierarchy = hierarchy;
+       
+       pflotranApplication = new PflotranApplicationStrategy(params);
+       
+       
+       tbox::pout << "Reached here:" << i << std::endl;
+       i++;
+       
+       // create a RefinementBoundaryInterpolation object
+       RefinementBoundaryInterpolation *cf_interpolant = new RefinementBoundaryInterpolation(hierarchy);
+       cf_interpolant->setVariableOrderInterpolation(false);
+       
+       tbox::pout << "Reached here:" << i << std::endl;
+       i++;
+       
+       /*
+	* Add the RefinementBoundaryInterpolation object
+	*/
+       pflotranApplication->setRefinementBoundaryInterpolant(cf_interpolant);
+       tbox::pout << "Reached here:" << i << std::endl;
+       i++;
+       
+     }
    
-      tbox::Pointer<geom::CartesianGridGeometry<NDIM> > grid_geometry = hierarchy->getGridGeometry();
-      
-      pdat::CCellDoubleConstantRefine<NDIM> *ccell_const_refine_op = new pdat::CCellDoubleConstantRefine<NDIM>();
-      grid_geometry->addSpatialRefineOperator(ccell_const_refine_op);
-
-      geom::CartesianCCellDoubleWeightedAverage<NDIM> *ccell_cons_coarsen_op = new geom::CartesianCCellDoubleWeightedAverage<NDIM>();
-      grid_geometry->addSpatialCoarsenOperator(ccell_cons_coarsen_op);
-
-      geom::CartesianCSideDoubleWeightedAverage<NDIM> *cside_cons_coarsen_op = new geom::CartesianCSideDoubleWeightedAverage<NDIM>();
-      grid_geometry->addSpatialCoarsenOperator(cside_cons_coarsen_op);
-
-      geom::CartesianCCellDoubleSum<NDIM> *ccell_sum_coarsen_op = new geom::CartesianCCellDoubleSum<NDIM>();
-      grid_geometry->addSpatialCoarsenOperator(ccell_sum_coarsen_op);
-
-      geom::CartesianCSideDoubleSum<NDIM> *cside_sum_coarsen_op = new geom::CartesianCSideDoubleSum<NDIM>();
-      grid_geometry->addSpatialCoarsenOperator(cside_sum_coarsen_op);
-
-      PflotranApplicationParameters *params  =new PflotranApplicationParameters(app_database);
-      params->d_hierarchy = hierarchy;
-
-      pflotranApplication = new PflotranApplicationStrategy(params);
-      
-   tbox::pout << "Reached here:" << i << std::endl;
-   i++;
-   
-      // create a RefinementBoundaryInterpolation object
-      RefinementBoundaryInterpolation *cf_interpolant = new RefinementBoundaryInterpolation(hierarchy);
-      cf_interpolant->setVariableOrderInterpolation(false);
-      
-   tbox::pout << "Reached here:" << i << std::endl;
-   i++;
-   
-      /*
-      * Add the RefinementBoundaryInterpolation object
-      */
-      pflotranApplication->setRefinementBoundaryInterpolant(cf_interpolant);
-   tbox::pout << "Reached here:" << i << std::endl;
-   i++;
-   
-   }
-
    void *p_pflotran_sim = NULL;
 
    /*
@@ -265,8 +268,12 @@ int main( int argc, char *argv[] )
    i++;
    
 
+   f_simulation_destroy_(&p_pflotran_sim);
+   
    tbox::TimerManager::getManager()->print();
 
+   //   if(pflotranApplication!=NULL)  delete pflotranApplication;
+   if(test_object) delete test_object;
    /* 
     * That's all, folks!
     */

@@ -50,6 +50,7 @@
 #define TOTAL_SORBED 33
 
 extern "C" {
+#include "petsc.h"
 #include "petscvec.h"
 #include "petscmat.h"
 void  cf90bridge_(void *, int*, void *);
@@ -73,7 +74,7 @@ int level_number_patches_(SAMRAI::PflotranApplicationStrategy **application_stra
    return level->getNumberOfPatches();
 }
 
-bool is_local_patch_(SAMRAI::PflotranApplicationStrategy **application_strategy, int *ln, int *pn)
+int is_local_patch_(SAMRAI::PflotranApplicationStrategy **application_strategy, int *ln, int *pn)
 {
 
    SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->getHierarchy();

@@ -181,6 +181,8 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
               call InputErrorMsg(input,option,'unstructured filename','GRID')
             case('amr')
               discretization%itype = AMR_GRID
+                  structured_grid_itype = CARTESIAN_GRID
+                  structured_grid_ctype = 'cartesian'
             case default
               option%io_buffer = 'Discretization type: ' // &
                                  trim(discretization%ctype) // &
@@ -631,7 +633,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
        integer, intent(in) :: ln
      end function level_number_patches
 
-     logical function is_local_patch(p_hierarchy, ln, pn)
+     integer function is_local_patch(p_hierarchy, ln, pn)
        PetscFortranAddr, intent(inout) :: p_hierarchy
        integer, intent(in) :: ln
        integer, intent(in) :: pn
@@ -655,7 +657,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   PetscInt :: flowortransport
   type(dm_ptr_type), pointer :: dm_ptr
   ISLocalToGlobalMapping :: ptmap
-  PetscTruth :: islocal
+  integer :: islocal
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
     
@@ -693,7 +695,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
              npatches = level_number_patches(discretization%amrgrid%p_application, ln )
              do pn=0,npatches-1
                 islocal = is_local_patch(discretization%amrgrid%p_application, ln, pn);
-                if(islocal) then
+                if(islocal.eq.1) then
                    ngmax =  discretization%amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr%ngmax
                    imax = max(ngmax,imax) 
                 endif

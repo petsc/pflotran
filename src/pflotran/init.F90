@@ -85,7 +85,7 @@ subroutine Init(simulation)
   PetscErrorCode :: ierr
   PCSide:: pcside
   PetscReal :: r1, r2, r3, r4, r5, r6
-
+      
   interface
 
      subroutine SAMRInitializePreconditioner(p_application, which_pc, pc)
@@ -119,9 +119,10 @@ subroutine Init(simulation)
   nullify(tran_solver)
   
   realization%input => InputCreate(IUNIT1,option%input_filename)
+
   filename_out = trim(option%global_prefix) // trim(option%group_prefix) // &
                  '.out'
-  
+
   if (option%print_to_file) then
     open(option%fid_out, file=filename_out, action="write", status="unknown")
   endif
@@ -177,7 +178,7 @@ subroutine Init(simulation)
   
   ! read reaction database
   
-  if (associated(realization%reaction)) then
+      isc  if (associated(realization%reaction)) then
     if (realization%reaction%use_full_geochemistry) then
       call DatabaseRead(realization%reaction,option)
       call BasisInit(realization%reaction,option)    

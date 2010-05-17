@@ -73,13 +73,15 @@ CXXFLAGS_EXTRA += -I${SAMRSOLVERS_HOME}/include
 
 
 PFLOTRAN_LDFLAGS = -L${AMRUTILITIES_HOME}/lib   
-PFLOTRAN_LDFLAGS += -L${SAMRSOLVERS_HOME}/lib   
+PFLOTRAN_LDFLAGS += -L${SAMRSOLVERS_HOME}/lib -L${HOME}/packages/duma/duma_2_5_15   
+#PFLOTRAN_LDFLAGS += -L${SAMRSOLVERS_HOME}/lib
 
 PFLOTRAN_LDLIBS = ${SAMRSOLVERS_HOME}/lib/libpreconditionerbase3d.a
 PFLOTRAN_LDLIBS += ${SAMRSOLVERS_HOME}/lib/libmlsolvers3d.a
 PFLOTRAN_LDLIBS += ${SAMRSOLVERS_HOME}/lib/liblinearops3d.a
 PFLOTRAN_LDLIBS += ${AMRUTILITIES_HOME}/lib/libAMRUtils3d.a
-PFLOTRAN_LDLIBS += -lpflotranamr
+PFLOTRAN_LDLIBS += -lpflotranamr ${HOME}/packages/duma/duma_2_5_15/libduma.a  
+#PFLOTRAN_LDLIBS += -lpflotranamr
 PFLOTRAN_LDLIBS += ${HDF5_LIBS}
 
 
@@ -102,7 +104,7 @@ F90OBJS = ${F90SRC:.F90=.o}
 ifndef jaguar
 FFLAGS		 = -g
 else
-FFLAGS += ${HDF5_FFLAGS}
+FFLAGS += ${HDF5_FFLAGS} 
 endif
 
 PFLOTRAN_LDFLAGS += -L${PFLOTRAN_DIR}

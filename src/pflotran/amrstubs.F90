@@ -71,14 +71,14 @@ implicit none
   level_number_patches=-1
 end function level_number_patches
 
-logical function is_local_patch(p_application, ln, pn)
+integer function is_local_patch(p_application, ln, pn)
 implicit none
 #include "finclude/petscsysdef.h"
   PetscFortranAddr, intent(inout) :: p_application
   PetscInt, intent(in) :: ln
   PetscInt, intent(in) :: pn
 
-  is_local_patch = .TRUE.
+  is_local_patch = 1
 
 end function is_local_patch
 

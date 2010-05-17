@@ -41,10 +41,10 @@ endif
 
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) \
           $(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG) $(TEMP_FLAG)\
- 					$(CHUAN_FLAG) $(COLL_FLAG)
+ 					$(CHUAN_FLAG) $(COLL_FLAG) 
 
 CFLAGS		 = 
-FFLAGS		 = #-Rb
+FFLAGS		 =
 CPPFLAGS         = ${MYFLAGS}
 FPPFLAGS         = ${MYFLAGS}
 

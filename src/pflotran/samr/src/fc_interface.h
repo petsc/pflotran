@@ -17,6 +17,7 @@ extern "C"{
    void f_initialize_simulation_(void **p_simulation);
 
    void f_stepper_run_(void **p_simulation);
+   void f_simulation_destroy_(void **p_simulation);
 
 }
 

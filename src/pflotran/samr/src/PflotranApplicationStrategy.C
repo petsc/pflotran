@@ -148,11 +148,16 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
                                                                          0, d_hierarchy->getFinestLevelNumber());
 
    d_visit_writer = new appu::VisItDataWriter<NDIM>("rmhd visit writer", d_viz_directory);
-   
+
+   delete params;
 }
 
 PflotranApplicationStrategy::~PflotranApplicationStrategy()
 {
+  if(d_visit_writer) delete d_visit_writer;
+  if(d_refine_patch_strategy) delete d_refine_patch_strategy;
+  // the deletion of this object needs to be fixed later
+  //  if(d_cf_interpolant) delete d_cf_interpolant;
 }
 
 void
