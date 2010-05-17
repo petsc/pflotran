@@ -591,6 +591,9 @@ subroutine AMRGridReadDXYZ(amrgrid, input, option)
            endif
            call StructuredGridReadDXYZ(grid%structured_grid,input,option)
            readdxyz = .TRUE.
+        else
+           call InputSkipToEND(input,option,'DXYZ')
+           BACKSPACE(UNIT=input%fid)
         endif
      end do
   end do
