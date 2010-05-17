@@ -1904,182 +1904,6 @@ end subroutine RTNumericalJacobianTest
 
 ! ************************************************************************** !
 !
-! RTAccumulation: Computes aqueous portion of the accumulation term in 
-!                 residual function
-! author: Glenn Hammond
-! date: 02/15/08
-!
-! ************************************************************************** !
-subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
-
-  use Option_module
-
-  implicit none
-  
-  type(reactive_transport_auxvar_type) :: rt_aux_var
-  type(global_auxvar_type) :: global_aux_var
-  PetscReal :: por, vol
-  type(option_type) :: option
-  type(reaction_type) :: reaction
-  PetscReal :: Res(reaction%ncomp)
-  
-  PetscInt :: iphase
-  PetscInt :: istart, iend
-  PetscInt :: idof
-  PetscInt :: icoll
-  PetscInt :: icollcomp
-  PetscInt :: iaqcomp
-  PetscReal :: psv_t
-  PetscReal :: v_t
-  
-  iphase = 1
-  ! units = (mol solute/L water)*(m^3 por/m^3 bulk)*(m^3 water/m^3 por)*
-  !         (m^3 bulk)*(1000L water/m^3 water)/(sec) = mol/sec
-  ! 1000.d0 converts vol from m^3 -> L
-  ! all residual entries should be in mol/sec
-  psv_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
-  istart = 1
-  iend = reaction%naqcomp
-  Res(istart:iend) = psv_t*rt_aux_var%total(:,iphase) 
-
-#ifdef REVISED_TRANSPORT
-  if (reaction%ncoll > 0) then
-    do icoll = 1, reaction%ncoll
-      idof = reaction%offset_coll + icoll
-      Res(idof) = psv_t*rt_aux_var%colloid%conc_mob(icoll)
-    enddo
-  endif
-  if (reaction%ncollcomp > 0) then
-    do icollcomp = 1, reaction%ncollcomp
-      iaqcomp = reaction%coll_spec_to_pri_spec(icollcomp)
-      Res(iaqcomp) = Res(iaqcomp) + &
-        psv_t*rt_aux_var%colloid%total_eq_mob(icollcomp)
-    enddo
-  endif
-#endif
-
-! Add in multiphase, clu 12/29/08
-#ifdef CHUAN_CO2
-  do 
-    iphase = iphase + 1
-    if (iphase > option%nphase) exit
-
-! super critical CO2 phase
-    if (iphase == 2) then
-      psv_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt 
-      Res(istart:iend) = Res(istart:iend) + psv_t*rt_aux_var%total(:,iphase) 
-      ! should sum over gas component only need more implementations
-    endif 
-! add code for other phases here
-  enddo
-#endif
-  
-end subroutine RTAccumulation
-
-
-! ************************************************************************** !
-!
-! RTAccumulationDerivative: Computes derivative of aqueous portion of the 
-!                           accumulation term in residual function 
-! author: Glenn Hammond
-! date: 02/15/08
-!
-! ************************************************************************** !
-subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
-                                    por,vol,reaction,option,J)
-
-  use Option_module
-
-  implicit none
-  
-  type(reactive_transport_auxvar_type) :: rt_aux_var
-  type(global_auxvar_type) :: global_aux_var  
-  PetscReal :: por, vol
-  type(option_type) :: option
-  type(reaction_type) :: reaction
-  PetscReal :: J(reaction%ncomp,reaction%ncomp)
-  
-  PetscInt :: icomp, iphase
-  PetscInt :: istart, iendaq
-  PetscInt :: idof
-  PetscInt :: icoll
-  PetscReal :: psvd_t, v_t
-
-  iphase = 1
-  istart = 1
-  iendaq = reaction%naqcomp  
-  ! units = (m^3 por/m^3 bulk)*(m^3 water/m^3 por)*(m^3 bulk)/(sec)
-  !         *(kg water/L water)*(1000L water/m^3 water) = kg water/sec
-  ! all Jacobian entries should be in kg water/sec
-  J = 0.d0
-#ifdef REVISED_TRANSPORT
-  if (associated(rt_aux_var%aqueous%dtotal)) then ! units of dtotal = kg water/L water
-    psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt
-    J(istart:iendaq,istart:iendaq) = rt_aux_var%aqueous%dtotal(:,:,iphase)*psvd_t
-#else
-  if (associated(rt_aux_var%dtotal)) then ! units of dtotal = kg water/L water
-    psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt
-    J(istart:iendaq,istart:iendaq) = rt_aux_var%dtotal(:,:,iphase)*psvd_t
-#endif
-  else
-    psvd_t = por*global_aux_var%sat(iphase)* &
-             global_aux_var%den_kg(iphase)*vol/option%tran_dt ! units of den = kg water/m^3 water
-    do icomp=istart,iendaq
-      J(icomp,icomp) = psvd_t
-    enddo
-  endif
-
-#ifdef REVISED_TRANSPORT 
-  if (reaction%ncoll > 0) then
-    do icoll = 1, reaction%ncoll
-      idof = reaction%offset_coll + icoll
-      ! shouldn't have to sum a this point
-      J(idof,idof) = psvd_t
-    enddo
-  endif
-  if (reaction%ncollcomp > 0) then
-    ! dRj_dCj - mobile
-    J(istart:iendaq,istart:iendaq) = J(istart:iendaq,istart:iendaq) + &
-      rt_aux_var%colloid%dRj_dCj%dtotal(:,:,1)*psvd_t
-    ! need the below
-    ! dRj_dSic
-    ! dRic_dCj                                 
-  endif
-#endif
-
-! Add in multiphase, clu 12/29/08
-#ifdef CHUAN_CO2
-  do
-    iphase = iphase +1 
-    if (iphase > option%nphase) exit
-! super critical CO2 phase
-    if (iphase == 2) then
-#ifdef REVISED_TRANSPORT        
-      if (associated(rt_aux_var%aqueous%dtotal)) then
-        psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
-        J(istart:iendaq,istart:iendaq) = J(istart:iendaq,istart:iendaq) + &
-          rt_aux_var%aqueous%dtotal(:,:,iphase)*psvd_t
-#else
-      if (associated(rt_aux_var%dtotal)) then
-        psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
-        J(istart:iendaq,istart:iendaq) = J(istart:iendaq,istart:iendaq) + &
-          rt_aux_var%dtotal(:,:,iphase)*psvd_t
-#endif
-      else
-        psvd_t = por*global_aux_var%sat(iphase)* &
-          global_aux_var%den_kg(iphase)*vol/option%tran_dt ! units of den = kg water/m^3 water
-        do icomp=istart,iendaq
-          J(icomp,icomp) = J(icomp,icomp) + psvd_t
-        enddo
-      endif   
-    endif
-  enddo
-#endif
-
-end subroutine RTAccumulationDerivative
-
-! ************************************************************************** !
-!
 ! RTResidual: Computes the residual equation 
 ! author: Glenn Hammond
 ! date: 12/10/07
@@ -2955,9 +2779,17 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       istartall = offset + 1
       iendall = offset + reaction%ncomp
 
-      call RTAccumulation(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
+      call RTAccumulation(rt_aux_vars(ghosted_id), &
+                          global_aux_vars(ghosted_id), &
                           porosity_loc_p(ghosted_id), &
-                          volume_p(local_id),reaction,option,Res)
+                          volume_p(local_id), &
+                          reaction,option,Res)
+      if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
+        call RAccumulationSorb(rt_aux_vars(ghosted_id), &
+                               global_aux_vars(ghosted_id), &
+                               volume_p(local_id), &
+                               reaction,option,Res)
+      endif
       r_p(istartall:iendall) = r_p(istartall:iendall) + Res(1:reaction%ncomp)
       if (reaction%calculate_water_age) then 
         call RAge(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
@@ -3773,6 +3605,12 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                                     global_aux_vars(ghosted_id), &
                                     porosity_loc_p(ghosted_id), &
                                     volume_p(local_id),reaction,option,Jup) 
+      if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
+        call RAccumulationSorbDerivative(rt_aux_vars(ghosted_id), &
+                                         global_aux_vars(ghosted_id), &
+                                         volume_p(local_id),reaction, &
+                                         option,Jup)
+      endif
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
     enddo
 #endif

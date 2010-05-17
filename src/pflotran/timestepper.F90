@@ -1528,7 +1528,8 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
                                         RTCalculateRHS_t1, &
                                         RTUpdateAuxVars, &
                                         RTCalculateTransportMatrix, &
-                                        RTReact
+                                        RTReact, &
+                                        RTMaxChange
 
   use Output_module, only : Output
   
@@ -1689,7 +1690,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
         stepper%linear_cum
     endif
 
-#if 0    
+#if 1    
     call RTMaxChange(realization)
     if (option%print_screen_flag) then
       write(*,'("  --> max chng: dcmx= ",1pe12.4," dc/dt= ",1pe12.4," [mol/s]")') &

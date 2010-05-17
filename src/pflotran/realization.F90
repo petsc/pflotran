@@ -305,6 +305,8 @@ subroutine RealizationCreateDiscretization(realization)
       call DiscretizationDuplicateVector(discretization,field%tran_xx, &
                                          field%tran_yy)
       call DiscretizationDuplicateVector(discretization,field%tran_xx, &
+                                         field%tran_dxx)
+      call DiscretizationDuplicateVector(discretization,field%tran_xx, &
                                          field%tran_rhs)
 
       ! ndof degrees of freedom, local
