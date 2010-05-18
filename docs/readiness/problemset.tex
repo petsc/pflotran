@@ -1,0 +1,650 @@
+\documentclass[12pt]{article} 
+%\usepackage{times,helvet}
+\usepackage{palatino}
+%\usepackage[utf8]{inputenc} %useful to type directly diacritic characters
+%\usepackage{ssss}
+\usepackage{amsmath,amsbsy,amssymb}
+\usepackage{sectsty,hangcaption}
+\usepackage{deflist}
+\usepackage{fancyhdr}
+\usepackage{tabularx}
+\usepackage{verbatim}
+\usepackage{moreverb}
+\usepackage{float,comment}
+\usepackage{graphicx}
+\usepackage{longtable}
+%\usepackage{portland}
+\usepackage{booktabs}
+
+\usepackage[super,comma,sort]{natbib} 
+\bibpunct[, ]{(}{)}{;}{a}{,}{,}
+
+%must be last package
+%\usepackage{hyperref}
+\usepackage[debug=false, colorlinks=true, pdfstartview=FitV, linkcolor=blue, citecolor=blue, urlcolor=blue, pdfpagelabels=true]{hyperref}
+
+\textwidth 6.5in
+\textheight 9.5in
+%\topmargin -.1in
+\topmargin -.75in
+\newlength{\boxwidth}
+\setlength{\boxwidth}{5.8in}
+\oddsidemargin -0in
+\evensidemargin -0in
+\headheight 0.25in
+
+\lhead{{\sl PFLOTRAN Readiness \ldots}}
+\chead{\rm - \thepage\ -}
+\rhead{\sl\today}
+\cfoot{}
+
+\newcommand\flotran{{\sl FloTran}}
+\renewcommand{\baselinestretch}{1.0}
+\def\EQ#1\EN{\begin{equation}#1\end{equation}}
+\def\BA#1\EA{\begin{align}#1\end{align}}
+\def\BS#1\ES{\begin{split}#1\end{split}}
+%\newcommand{\EQ}{\begin{equation}}
+%\newcommand{\EN}{\end{equation}}
+\newcommand{\bcr}{\begin{center}}
+\newcommand{\ecr}{\end{center}}
+\newcommand{\eq}{\ =\ }
+\newcommand{\degc}{$^\circ$C}
+\renewcommand{\c}{{\rm CO_2}}
+\newcommand{\im}{{\rm imb}}
+\newcommand{\m}{{\rm mb}}
+\newcommand{\ecm}{{\rm ecm}}
+\newcommand{\eff}{{\rm eff}}
+\newcommand{\eqr}{{\rm le}}
+\newcommand{\equ}{{\rm eq}}
+\newcommand{\kin}{{\rm kin}}
+\newcommand{\rdx}{{\rm rdx}}
+\newcommand{\ind}{{\rm id}}
+\newcommand{\dep}{{\rm dp}}
+\newcommand{\e}{{\rm{e}}}
+\newcommand{\erf}{{\rm{erf}}}
+\newcommand{\erfc}{{\rm{erfc}}}
+\newcommand{\p}{{\partial}}
+\newcommand{\A}{{\mathcal A}}
+\newcommand{\B}{{\mathcal B}}
+\newcommand{\C}{{\mathcal C}}
+\newcommand{\D}{{\mathcal D}}
+\newcommand{\E}{{\mathcal E}}
+\newcommand{\F}{{\mathcal F}}
+\newcommand{\G}{{\mathcal G}}
+\newcommand{\I}{{\mathcal I}}
+\newcommand{\J}{{\mathcal J}}
+\newcommand{\M}{{\mathcal M}}
+\newcommand{\cO}{{\mathcal O}}
+\renewcommand{\P}{{{\mathcal P}}}
+\newcommand{\Q}{{\mathcal Q}}
+\newcommand{\R}{{{\mathcal R}}}
+\renewcommand{\S}{{\mathcal S}}
+\newcommand{\T}{{\mathcal T}}
+\newcommand{\W}{{\mathcal W}}
+\newcommand{\Y}{{\mathcal Y}}
+\newcommand{\Z}{{\mathcal Z}}
+\newcommand{\rev}{{\rm rev}}
+\newcommand{\irr}{{\rm irr}}
+\renewcommand{\a}{{\alpha}}
+\newcommand{\abar}{{\bar \alpha}}
+\renewcommand{\b}{{\beta}}
+\renewcommand{\e}{{\epsilon}}
+\newcommand{\s}{{\sigma}}
+\newcommand{\w}{{\rm H_2O}}
+\newcommand{\air}{{\rm N_2}}
+\newcommand{\pe}{{\rm Pe}}
+\newcommand{\da}{{\rm Da}}
+\renewcommand{\k}{{\dot R}^0}
+\renewcommand{\L}{\widehat{\mathcal L}}
+%\renewcommand{\bar}{\overline}
+\newcommand{\dsty}{{\displaystyle}}
+\newcommand{\diff}{{\mathcal D}}
+\newcommand{\surf}{\equiv \!\!\!}
+\newcommand{\bnabla}{\boldsymbol{\nabla}}
+\newcommand{\ba}{\boldsymbol{a}}
+
+\newcommand{\balpha}{\boldsymbol{\alpha}}
+\newcommand{\bbeta}{\boldsymbol{\beta}}
+\newcommand{\bgamma}{\boldsymbol{\gamma}}
+\renewcommand{\d}{{\delta}}
+
+\newcommand{\bA}{\boldsymbol{A}}
+\newcommand{\bB}{\boldsymbol{B}}
+\newcommand{\bb}{\boldsymbol{b}}
+\newcommand{\bC}{\boldsymbol{C}}
+\newcommand{\bc}{\boldsymbol{c}}
+\newcommand{\bcolon}{\boldsymbol{:}}
+\newcommand{\bdot}{\boldsymbol{\cdot}}
+\newcommand{\bD}{\boldsymbol{D}}
+\newcommand{\bE}{\boldsymbol{E}}
+\newcommand{\bF}{\boldsymbol{F}}
+\newcommand{\bG}{\boldsymbol{G}}
+\newcommand{\bg}{\boldsymbol{g}}
+\newcommand{\bi}{\boldsymbol{i}}
+\newcommand{\bI}{\boldsymbol{I}}
+\newcommand{\bJ}{\boldsymbol{J}}
+\newcommand{\bK}{\boldsymbol{K}}
+\newcommand{\bL}{\boldsymbol{L}}
+\newcommand{\bM}{\boldsymbol{M}}
+\newcommand{\bn}{\boldsymbol{n}}
+\newcommand{\bdelta}{\boldsymbol{\delta}}
+\newcommand{\bGamma}{\boldsymbol{\Gamma}}
+\newcommand{\bomega}{\boldsymbol{\omega}}
+\newcommand{\bOmega}{\boldsymbol{\Omega}}
+\newcommand{\bPsi}{\boldsymbol{\Psi}}
+\newcommand{\bO}{\boldsymbol{O}}
+\newcommand{\bnu}{\boldsymbol{\nu}}
+\newcommand{\bdS}{\boldsymbol{dS}}
+\newcommand{\bP}{\boldsymbol{P}}
+\newcommand{\bq}{\boldsymbol{q}}
+\newcommand{\br}{\boldsymbol{r}}
+\newcommand{\bR}{\boldsymbol{R}}
+\newcommand{\bS}{\boldsymbol{S}}
+\newcommand{\bU}{\boldsymbol{U}}
+\newcommand{\bu}{\boldsymbol{u}}
+\newcommand{\bv}{\boldsymbol{v}}
+\newcommand{\bw}{\boldsymbol{w}}
+\newcommand{\bx}{\boldsymbol{x}}
+\newcommand{\by}{\boldsymbol{y}}
+\newcommand{\bY}{\boldsymbol{Y}}
+\newcommand{\bz}{\boldsymbol{z}}
+\newcommand{\bzero}{\boldsymbol{0}}
+
+\newcommand{\arrows}{~\rightleftharpoons~}
+\newcommand{\arrowstab}{\!\!\!\rightleftharpoons\!\!\!}
+\newcommand{\longline}{\noindent\rule[-0.1in]{\textwidth}{0.01in}}
+
+\def\water{H$_2$O}
+\def\calcium{Ca$^{2+}$}
+\def\copper{Cu$^{2+}$}
+\def\magnesium{Mg$^{2+}$}
+\def\sodium{Na$^+$}
+\def\potassium{K$^+$}
+\def\uranium{UO$_2^{2+}$}
+\def\hion{H$^+$}
+\def\bicarbonate{HCO$_3^-$}
+\def\cotwo{CO$_2$}
+\def\chloride{Cl$^-$}
+\def\fluoride{F$^-$}
+\def\phosphoricacid{HPO$_4^{2-}$}
+\def\nitrate{NO$_3^-$}
+\def\sulfate{SO$_4^{2-}$}
+\def\souotwooh{$>$SOUO$_2$OH}
+\def\sohuotwocothree{$>$SOHUO$_2$CO$_3$}
+\def\soh{$>$SOH}
+
+%\renewcommand{\thepage}{\roman{page}}
+%\renewcommand{\thepage}{\arabic{page}}
+%\renewcommand{\theequation}{\arabic{section}.\arabic{subsection}-\arabic{equation}}
+%\renewcommand{\theequation}{\arabic{section}-\arabic{equation}}
+%\setcounter{page}{1}
+
+\setlength{\parindent}{0.3125in}
+\setlength{\parskip}{2ex plus 0.2ex minus 0.2ex}
+
+\setcounter{secnumdepth}{4}
+\setcounter{tocdepth}{4}
+\renewcommand{\contentsname}{CONTENTS}
+
+\setlongtables
+
+\pagestyle{fancy}
+
+\thispagestyle{empty}
+
+\begin{document}
+
+\section{Readiness Review: Problem Set 1}
+
+\subsection{Problem Description}
+
+The first problem involves solving Richards equation for an isothermal, variably saturated porous medium with infiltration at the top boundary surface. In the Richards formulation the gas pressure is kept constant fixed at atmospheric pressure (101,325 Pa).
+
+A structured grid is used in the calculation.
+A domain size is 80 meters in the vertical. The lateral domain size is determined by the {\tt GRID} keyword through the number of nodes specified by {\tt NXYZ} for {\tt nx} and {\tt ny} and the grid spacing specified by {\tt DXYZ} for {\tt dx} and {\tt dy}. The vertical grid spacing must be fixed at {\tt dz} = 1 meter. The watertable is located at an elevation of 6 meters from the bottom. 
+
+Either a constant infiltration rate or variable infiltration may be specified at the top boundary. Variable infiltration is read from a file and based on transient rainfall events.
+
+The computational domain is divided into eight stratigraphic units listed in Table~\ref{tstrata}.
+
+\begin{table}[h]\centering
+\caption{Material properties for each stratigraphic unit.}\label{tstrata}
+\vspace{3mm}
+\begin{tabular}{lccccccc}
+\toprule
+Unit & Elevation [m] & $\varphi$ & $\tau$ [---] & $k$ [m$^2$] & $\a$ [m$^{-1}$] & $\lambda$ & $s_r$ [---] \\
+\midrule
+HD & 80--77 & 0.262 & 1 & 5.43d-13 & 1.9401d-4 & 0.286 & 0.03 \\ 
+H1 & 77--66 & 0.317 & 1 & 9.91d-13 & 3.8801d-4 & 0.486 & 0.035\\
+H2 & 66--51 & 0.356 & 1 & 3.34d-14 & 1.0211d-4 & 0.541 & 0.042\\
+H3 & 51--45 & 0.398 & 1 & 1.74d-14 & 5.1054d-5 & 0.527 & 0.057\\
+CCUz & 45--41 & 0.419 & 1 & 5.06d-14 & 5.1054d-5 & 0.555 & 0.04\\
+CCUc & 41--37 & 0.281 & 1 & 7.68d-13 & 1.1232d-4 & 0.425 & 0.054\\
+Rtf & 37--35 & 0.419 & 1 & 5.06d-14 & 5.1054d-5 & 0.555 & 0.04 \\
+Rwi &  35--0 & 0.294 & 1 & 9.63d-14 & 1.4295d-4 & 0.402 & 0.041\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Governing Equations}
+
+The governing equation is Richards equation given by
+\EQ
+\frac{\p}{\p t} \varphi s \rho + \bnabla\cdot\bq\rho \eq Q,
+\EN
+where $\varphi$ denotes the porosity of the porous medium, liquid saturation is denoted by $s$, $\rho$ designates the molar fluid density taken as pure water, and $Q$ denotes a source/sink term. The Darcy velocity $\bq$ is computed from the expression
+$\bq_\a$ denotes the Darcy flow rate defined by
+\EQ
+\bq \eq -\frac{kk_r}{\mu} \bnabla \big(P-W\rho g \bz\big),
+\EN
+where $P$ denotes fluid pressure, $k$ refers to the intrinsic permeability, $k_r$ denotes the relative permeability, $\mu$ denotes the fluid viscosity, $W$ denotes the formula weight of water, $g$ denotes the acceleration of gravity, and $z$ designates the vertical of the position vector. 
+
+The relative permeability $k_r$ is computed from the van Genuchten correlation (van Genuchten, 1980) given by
+\EQ\label{krl} 
+k_{r} \eq \sqrt{s_e} \left\{1-\left[1-s_e^{1/m} \right]^m \right\}^2, 
+\EN 
+where the effective saturation $s_e$ is defined as
+\EQ 
+s_e \eq \frac{s - s_r}{s_0 - s_r}, 
+\EN 
+where $s_r$ denotes the residual saturation, and $s_0$ denotes the maximum saturation. Note that $k_{r}$ = 0 for saturations below the residual saturation. 
+The liquid saturation is related to capillary pressure $P_c$ [Pa] by the expression
+\EQ\label{seff}
+s_e \eq \left[1+\left( \alpha |P_c| \right)^n \right]^{-m}. 
+\EN 
+The constants $n$ and $m$ are related by the expressions 
+\EQ\label{lambda} 
+m \eq 1-\frac{1}{n}, \ \ \ \ \ n \eq \frac{1}{1-m}. 
+\EN 
+The inverse relation is given by
+\EQ
+P_c \eq \frac{1}{\alpha} \left[\left(s_e\right)^{-1/m} -1 \right]^{1/n}.
+\EN
+
+Boundary conditions imposed on the system are specified infiltration at the surface $\bq_0(t)$, fixed pressure at the bottom surface, and no flow conditions at the sides of the domain.
+
+\subsection{Input File}
+
+The PFLOTRAN input file for this problem is listed below.
+\footnotesize
+\begin{verbatim}
+:Description: 3D infiltration problem for Markus Flury
+ 
+: == debugging ================================================================
+DEBUG
+:MATVIEW_JACOBIAN
+:VECVIEW_RESIDUAL
+:VECVIEW_SOLUTION
+/
+
+: == mode =====================================================================
+MODE RICHARDS
+
+: == reference variables ======================================================
+REFERENCE_POROSITY 0.25d0
+
+: == time stepping ============================================================
+TIMESTEPPER
+TS_ACCELERATION 8
+/
+
+: == discretization ===========================================================
+GRID
+TYPE structured
+NXYZ 20 20 80
+DXYZ
+1.
+1.
+1.
+/
+/
+
+: == flow solvers =============================================================
+NEWTON_SOLVER FLOW
+PRECONDITIONER_MATRIX_TYPE AIJ
+RTOL 1.d-8
+ATOL 1.d-8
+STOL 1.d-30
+ITOL_UPDATE 1.d0
+:NO_INFINITY_NORM
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
+
+LINEAR_SOLVER FLOW
+:KSP_TYPE FGMRES
+:KSP_TYPE PREONLY
+:PC_TYPE LU
+/
+
+: == transport solvers ========================================================
+NEWTON_SOLVER TRANSPORT
+PRECONDITIONER_MATRIX_TYPE AIJ
+RTOL 1.d-12
+ATOL 1.d-12
+STOL 1.d-30
+:NO_INFINITY_NORM
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
+
+LINEAR_SOLVER TRANSPORT
+:KSP_TYPE PREONLY
+:PC_TYPE LU
+/
+
+: == fluid properties =========================================================
+FLUID_PROPERTY
+DIFFUSION_COEFFICIENT 1.d-9
+/
+
+: == material properties ======================================================
+MATERIAL_PROPERTY HD
+ID 1
+SATURATION_FUNCTION HD
+POROSITY 0.262
+TORTUOSITY 1.0
+PERMEABILITY
+PERM_ISO 5.43d-13
+/
+/
+
+MATERIAL_PROPERTY H1
+ID 2
+SATURATION_FUNCTION H1
+POROSITY 0.317
+TORTUOSITY 1.0
+PERMEABILITY
+PERM_ISO 9.91d-13
+/
+/
+
+MATERIAL_PROPERTY H2
+ID 3
+SATURATION_FUNCTION H2
+POROSITY 0.356
+TORTUOSITY 1.0
+PERMEABILITY
+PERM_ISO 3.34d-14
+/
+/
+
+MATERIAL_PROPERTY H3
+ID 4
+SATURATION_FUNCTION H3
+POROSITY 0.398
+TORTUOSITY 1.0
+PERMEABILITY
+PERM_ISO 1.74d-14
+/
+/
+
+MATERIAL_PROPERTY CCUz
+ID 5
+SATURATION_FUNCTION CCUz
+POROSITY 0.419
+TORTUOSITY 1.0
+PERMEABILITY
+PERM_ISO 5.06d-14
+/
+/
+
+MATERIAL_PROPERTY CCUc
+ID 6
+SATURATION_FUNCTION CCUc
+POROSITY 0.281
+TORTUOSITY 1.0
+PERMEABILITY
+PERM_ISO 7.68d-13
+/
+/
+
+MATERIAL_PROPERTY Rtf
+ID 7
+SATURATION_FUNCTION Rtf
+POROSITY 0.419
+TORTUOSITY 1.0
+PERMEABILITY
+PERM_ISO 5.06d-14
+/
+/
+
+MATERIAL_PROPERTY Rwi
+ID 8
+SATURATION_FUNCTION Rwi
+POROSITY 0.294
+TORTUOSITY 1.0
+PERMEABILITY
+PERM_ISO 9.63d-14
+/
+/
+
+: == saturation / permeability functions ======================================
+SATURATION_FUNCTION HD
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.03
+LAMBDA 0.286
+ALPHA 1.9401d-4
+/
+
+SATURATION_FUNCTION H1
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.035
+LAMBDA 0.486
+ALPHA 3.8801d-4
+/
+
+SATURATION_FUNCTION H2
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.042
+LAMBDA 0.541
+ALPHA 1.0211d-4
+/
+
+SATURATION_FUNCTION H3
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.057
+LAMBDA 0.527
+ALPHA 5.1054d-5
+/
+
+SATURATION_FUNCTION CCUz
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.04
+LAMBDA 0.555
+ALPHA 5.1054d-5
+/
+
+SATURATION_FUNCTION CCUc
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.054
+LAMBDA 0.425
+ALPHA 1.1232d-4
+/
+
+SATURATION_FUNCTION Rtf
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.04
+LAMBDA 0.555
+ALPHA 5.1054d-5
+/
+
+SATURATION_FUNCTION Rwi
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.041
+LAMBDA 0.402
+ALPHA 1.4295d-4
+/
+
+: == output ===================================================================
+OUTPUT
+:PERIODIC TIMESTEP 1
+PERIODIC TIME .1 y
+FORMAT TECPLOT BLOCK
+/
+
+: == times ====================================================================
+TIME
+FINAL_TIME 1. y
+INITIAL_TIMESTEP_SIZE 1. d
+MAXIMUM_TIMESTEP_SIZE 1. d
+/
+
+: == regions ==================================================================
+REGION all
+COORDINATES
+-1.d20 -1.d20 0.d0
+1.d20 1.d20 80.d0
+/
+/
+
+REGION Top
+COORDINATES
+-1.d20 -1.d20 80.d0
+1.d20 1.d20 80.d0
+/
+FACE TOP
+/
+
+REGION Bottom
+COORDINATES
+-1.d20 -1.d20 0.d0
+1.d20 1.d20 0.d0
+/
+FACE BOTTOM
+/
+
+REGION HD
+COORDINATES
+-1.d20 -1.d20 77.d0
+1.d20 1.d20 80.d0
+/
+/
+
+REGION H1
+COORDINATES
+-1.d20 -1.d20 66.d0
+1.d20 1.d20 77.d0
+/
+/
+
+REGION H2
+COORDINATES
+-1.d20 -1.d20 51.d0
+1.d20 1.d20 66.d0
+/
+/
+
+REGION H3
+COORDINATES
+-1.d20 -1.d20 45.d0
+1.d20 1.d20 51.d0
+/
+/
+
+REGION CCUz
+COORDINATES
+-1.d20 -1.d20 41.d0
+1.d20 1.d20 45.d0
+/
+/
+
+REGION CCUc
+COORDINATES
+-1.d20 -1.d20 41.d0
+1.d20 1.d20 37.d0
+/
+/
+
+REGION Rtf
+COORDINATES
+-1.d20 -1.d20 37.d0
+1.d20 1.d20 35.d0
+/
+/
+
+REGION Rwi
+COORDINATES
+-1.d20 -1.d20 35.d0
+1.d20 1.d20 0.d0
+/
+/
+
+: == flow conditions ==============================
+FLOW_CONDITION Inlet
+TYPE
+FLUX neumann
+/
+:FLUX 0.317098d-7 ! 1 m/y
+FLUX 1.5855d-9 ! 5 cm/y
+:FLUX file 200w_recharge_1951-2000_daily.dat
+/
+
+FLOW_CONDITION Initial
+TYPE
+PRESSURE hydrostatic
+/
+DATUM 0.d0 0.d0 6.d0
+PRESSURE 101325.d0
+/
+
+: == couplers ====================================
+BOUNDARY_CONDITION Inlet
+FLOW_CONDITION Inlet
+REGION Top
+/
+
+BOUNDARY_CONDITION Outlet
+FLOW_CONDITION Initial
+REGION Bottom
+/
+
+INITIAL_CONDITION Initial
+FLOW_CONDITION Initial
+REGION all
+/
+
+: == stratigraphy ================================
+STRATA
+MATERIAL HD
+REGION HD
+/
+
+STRATA
+MATERIAL H1
+REGION H1
+/
+
+STRATA
+MATERIAL H2
+REGION H2
+/
+
+STRATA
+MATERIAL H3
+REGION H3
+/
+
+STRATA
+MATERIAL CCUz
+REGION CCUz
+/
+
+STRATA
+MATERIAL CCUc
+REGION CCUc
+/
+
+STRATA
+MATERIAL Rtf
+REGION Rtf
+/
+
+STRATA
+MATERIAL Rwi
+REGION Rwi
+/
+\end{verbatim}
+\normalsize
+
+\end{document}
