@@ -435,8 +435,10 @@ subroutine Init(simulation)
         call PetscOptionsInsertString(string, ierr)
       endif
 
-      call SolverSetSNESOptions(tran_solver)
     endif
+
+    ! ensure setting of SNES options since they set KSP and PC options too
+    call SolverSetSNESOptions(tran_solver)
 
     ! setup a shell preconditioner and initialize in the case of AMR
     if(associated(discretization%amrgrid)) then
