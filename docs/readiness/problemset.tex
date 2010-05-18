@@ -194,37 +194,46 @@
 
 \begin{document}
 
+\noindent
+\begin{tabular}{llll}
+{\bf Contacts:} &Peter C. Lichtner & 505-667-3420 & lichtner@lanl.gov\\
+&Glenn E. Hammond & 509-375-3875 & glenn.hammond@pnl.gov\\
+&Bobby Philip & & philipb@ornl.gov
+\end{tabular}
+
 \section{Readiness Review: Problem Set 1}
+
+Readiness test for PFLOTRAN will consist of several problem sets. The first problem set described below applies to a partially saturated groundwater problem with infiltration at the surface. A second dataset in preparation will apply to injection of supercritical CO$_2$ in a deep geologic formation.
 
 \subsection{Problem Description}
 
-The first problem involves solving Richards equation for an isothermal, variably saturated porous medium with infiltration at the top boundary surface. In the Richards formulation the gas pressure is kept constant fixed at atmospheric pressure (101,325 Pa).
+The first problem involves solving Richards equation for an isothermal, variably saturated porous medium with infiltration at the top boundary surface. In the Richards formulation the gas pressure is kept constant fixed at atmospheric pressure (101,325 Pa). The porous media is layered consisting of eight homogeneous stratigraphic units from the Hanford 200 Area.
 
 A structured grid is used in the calculation.
-A domain size is 80 meters in the vertical. The lateral domain size is determined by the {\tt GRID} keyword through the number of nodes specified by {\tt NXYZ} for {\tt nx} and {\tt ny} and the grid spacing specified by {\tt DXYZ} for {\tt dx} and {\tt dy}. The vertical grid spacing must be fixed at {\tt dz} = 1 meter. The watertable is located at an elevation of 6 meters from the bottom. 
-
+A domain size is 80 meters in the vertical. The lateral domain size is determined by the {\tt GRID} keyword through the number of nodes specified by {\tt NXYZ} for {\tt nx} and {\tt ny} and the grid spacing specified by {\tt DXYZ} for {\tt dx} and {\tt dy}. The vertical grid spacing should be fixed at {\tt dz} = 1 meter to accurately determine the boundaries between stratigraphic units. The watertable is located at an elevation of 6 meters from the bottom. 
 Either a constant infiltration rate or variable infiltration may be specified at the top boundary. Variable infiltration is read from a file and based on transient rainfall events.
-
-The computational domain is divided into eight stratigraphic units listed in Table~\ref{tstrata}.
+The computational domain is divided into eight stratigraphic units with the material properties listed in Table~\ref{tstrata}.
 
 \begin{table}[h]\centering
 \caption{Material properties for each stratigraphic unit.}\label{tstrata}
 \vspace{3mm}
 \begin{tabular}{lccccccc}
 \toprule
-Unit & Elevation [m] & $\varphi$ & $\tau$ [---] & $k$ [m$^2$] & $\a$ [m$^{-1}$] & $\lambda$ & $s_r$ [---] \\
+Unit & Elevation [m] & $\varphi$ & $\tau$ [---] & $k$ [m$^2$] & $\a$ [Pa$^{-1}$] & $\lambda$ & $s_r$ [---] \\
 \midrule
-HD & 80--77 & 0.262 & 1 & 5.43d-13 & 1.9401d-4 & 0.286 & 0.03 \\ 
-H1 & 77--66 & 0.317 & 1 & 9.91d-13 & 3.8801d-4 & 0.486 & 0.035\\
-H2 & 66--51 & 0.356 & 1 & 3.34d-14 & 1.0211d-4 & 0.541 & 0.042\\
-H3 & 51--45 & 0.398 & 1 & 1.74d-14 & 5.1054d-5 & 0.527 & 0.057\\
-CCUz & 45--41 & 0.419 & 1 & 5.06d-14 & 5.1054d-5 & 0.555 & 0.04\\
-CCUc & 41--37 & 0.281 & 1 & 7.68d-13 & 1.1232d-4 & 0.425 & 0.054\\
-Rtf & 37--35 & 0.419 & 1 & 5.06d-14 & 5.1054d-5 & 0.555 & 0.04 \\
-Rwi &  35--0 & 0.294 & 1 & 9.63d-14 & 1.4295d-4 & 0.402 & 0.041\\
+HD   & 77--80 & 0.262 & 1 & 5.43d-13 & 1.9401d-4 & 0.286 & 0.115 \\ 
+H1   & 66--77 & 0.317 & 1 & 9.91d-13 & 3.8801d-4 & 0.486 & 0.110\\
+H2   & 51--66 & 0.356 & 1 & 3.34d-14 & 1.0211d-4 & 0.541 & 0.118\\
+H3   & 45--51 & 0.398 & 1 & 1.74d-14 & 5.1054d-5 & 0.527 & 0.143\\
+CCUz & 41--45 & 0.419 & 1 & 5.06d-14 & 5.1054d-5 & 0.555 & 0.095\\
+CCUc & 37--41 & 0.281 & 1 & 7.68d-13 & 1.1232d-4 & 0.425 & 0.192\\
+Rtf  & 35--37 & 0.419 & 1 & 5.06d-14 & 5.1054d-5 & 0.555 & 0.095\\
+Rwi  & 0--35 & 0.294 & 1 & 9.63d-14 & 1.4295d-4 & 0.402 & 0.139\\
 \bottomrule
 \end{tabular}
 \end{table}
+
+Boundary conditions imposed on the system are specified infiltration at the surface $\bq_0(t)$, fixed pressure at the bottom surface, and no flow conditions at the sides of the domain.
 
 \subsection{Governing Equations}
 
@@ -241,34 +250,36 @@ where $P$ denotes fluid pressure, $k$ refers to the intrinsic permeability, $k_r
 
 The relative permeability $k_r$ is computed from the van Genuchten correlation (van Genuchten, 1980) given by
 \EQ\label{krl} 
-k_{r} \eq \sqrt{s_e} \left\{1-\left[1-s_e^{1/m} \right]^m \right\}^2, 
+k_{r} \eq \sqrt{s_e} \left\{1-\left[1-s_e^{1/\lambda} \right]^\lambda \right\}^2, 
 \EN 
 where the effective saturation $s_e$ is defined as
 \EQ 
-s_e \eq \frac{s - s_r}{s_0 - s_r}, 
+s_e \eq \frac{s - s_r}{1 - s_r}, 
 \EN 
-where $s_r$ denotes the residual saturation, and $s_0$ denotes the maximum saturation. Note that $k_{r}$ = 0 for saturations below the residual saturation. 
+where $s_r$ denotes the residual saturation. Note that $k_{r}$ = 0 for saturations below the residual saturation. 
 The liquid saturation is related to capillary pressure $P_c$ [Pa] by the expression
-\EQ\label{seff}
-s_e \eq \left[1+\left( \alpha |P_c| \right)^n \right]^{-m}. 
+\EQ\label{sat}
+s_e \eq \left[1+\left( \alpha |P_c| \right)^n \right]^{-\lambda}. 
 \EN 
-The constants $n$ and $m$ are related by the expressions 
+The constants $n$ and $\lambda$ are related by the expressions 
 \EQ\label{lambda} 
-m \eq 1-\frac{1}{n}, \ \ \ \ \ n \eq \frac{1}{1-m}. 
+\lambda \eq 1-\frac{1}{n}, \ \ \ \ \ n \eq \frac{1}{1-\lambda}. 
 \EN 
 The inverse relation is given by
 \EQ
-P_c \eq \frac{1}{\alpha} \left[\left(s_e\right)^{-1/m} -1 \right]^{1/n}.
+P_c \eq \frac{1}{\alpha} \left[\left(s_e\right)^{-1/\lambda} -1 \right]^{1/n}.
 \EN
+For $P\!>\!P_{\rm ref}$, $s\!=\!1$ and the porous medium is fully saturated. 
+For $P\!<\!P_{\rm ref}$, the capillary pressure is equal to $P_c \!=\! P_{\rm ref} \!-\!P$ and the saturation is calculated from Eqn.\eqref{sat}.
 
-Boundary conditions imposed on the system are specified infiltration at the surface $\bq_0(t)$, fixed pressure at the bottom surface, and no flow conditions at the sides of the domain.
+Boundary conditions of type Dirichlet or Neumann can be imposed on the system of specified pressure or flux, respectively.
 
 \subsection{Input File}
 
 The PFLOTRAN input file for this problem is listed below.
 \footnotesize
 \begin{verbatim}
-:Description: 3D infiltration problem for Markus Flury
+:Description: 3D infiltration problem
  
 : == debugging ================================================================
 DEBUG
@@ -422,56 +433,56 @@ PERM_ISO 9.63d-14
 : == saturation / permeability functions ======================================
 SATURATION_FUNCTION HD
 SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-RESIDUAL_SATURATION 0.03
+RESIDUAL_SATURATION 0.115
 LAMBDA 0.286
 ALPHA 1.9401d-4
 /
 
 SATURATION_FUNCTION H1
 SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-RESIDUAL_SATURATION 0.035
+RESIDUAL_SATURATION 0.110
 LAMBDA 0.486
 ALPHA 3.8801d-4
 /
 
 SATURATION_FUNCTION H2
 SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-RESIDUAL_SATURATION 0.042
+RESIDUAL_SATURATION 0.118
 LAMBDA 0.541
 ALPHA 1.0211d-4
 /
 
 SATURATION_FUNCTION H3
 SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-RESIDUAL_SATURATION 0.057
+RESIDUAL_SATURATION 0.143
 LAMBDA 0.527
 ALPHA 5.1054d-5
 /
 
 SATURATION_FUNCTION CCUz
 SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-RESIDUAL_SATURATION 0.04
+RESIDUAL_SATURATION 0.095
 LAMBDA 0.555
 ALPHA 5.1054d-5
 /
 
 SATURATION_FUNCTION CCUc
 SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-RESIDUAL_SATURATION 0.054
+RESIDUAL_SATURATION 0.192
 LAMBDA 0.425
 ALPHA 1.1232d-4
 /
 
 SATURATION_FUNCTION Rtf
 SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-RESIDUAL_SATURATION 0.04
+RESIDUAL_SATURATION 0.095
 LAMBDA 0.555
 ALPHA 5.1054d-5
 /
 
 SATURATION_FUNCTION Rwi
 SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-RESIDUAL_SATURATION 0.041
+RESIDUAL_SATURATION 0.139
 LAMBDA 0.402
 ALPHA 1.4295d-4
 /
