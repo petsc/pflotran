@@ -2421,8 +2421,7 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
     if (reaction%act_coef_update_frequency == ACT_COEF_FREQUENCY_NEWTON_ITER) then
       call RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
     endif
-    call RTotal(rt_auxvar,global_auxvar,reaction,option)
-    if (reaction%neqsorb > 0) call RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
+    call RTAuxVarCompute(rt_auxvar,global_auxvar,reaction,option)
     
     ! Accumulation
     ! residual is overwritten in RTAccumulation()
@@ -2457,6 +2456,9 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
     if (maximum_relative_change < tol) exit
   
   enddo
+
+  ! one last update
+  call RTAuxVarCompute(rt_auxvar,global_auxvar,reaction,option)
 
 #endif
 

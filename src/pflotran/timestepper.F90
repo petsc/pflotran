@@ -1646,7 +1646,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
     call RTCalculateTransportMatrix(realization,solver%J)
 
     call KSPSetOperators(solver%ksp,solver%J,solver%Jpre, &
-                         SAME_PRECONDITIONER,ierr)
+                         SAME_NONZERO_PATTERN,ierr)
 
 !      call VecGetArrayF90(field%tran_xx,vec_ptr,ierr)
 !      call VecRestoreArrayF90(field%tran_xx,vec_ptr,ierr)
