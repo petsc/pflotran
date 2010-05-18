@@ -80,11 +80,6 @@ int main( int argc, char *argv[] )
    string input_file;
    string log_file;
    bool is_from_restart = false;
-
-   int i=0;
-
-   tbox::pout << "Reached here:" << i << std::endl;
-   i++;
    
    tbox::Pointer<hier::PatchHierarchy<NDIM> > hierarchy;
 
@@ -94,33 +89,18 @@ int main( int argc, char *argv[] )
    tbox::SAMRAI_MPI::init(&argc, &argv);
    tbox::SAMRAIManager::startup();
 
-   tbox::pout << "Reached here:" << i << std::endl;
-   i++;
-   
    PETSC_COMM_WORLD = SAMRAI::tbox::SAMRAI_MPI::getCommunicator();
 
-   tbox::pout << "Reached here:" << i << std::endl;
-   i++;
-   
    int ierr = PetscInitialize(&argc,&argv,PETSC_NULL,PETSC_NULL);
 
-   tbox::pout << "Reached here:" << i << std::endl;
-   i++;
-   
    PetscInitializeFortran();
 
    /*
     * Process command line arguments and dump to log file.
     */
-   tbox::pout << "Reached here:" << i << std::endl;
-   i++;
-   
    processCommandLine(argc, argv, input_file, log_file);
 
-   tbox::pout << "Reached here:" << i << std::endl;
-   i++;
-   
-   //   tbox::PIO::logOnlyNodeZero(log_file);
+   tbox::PIO::logOnlyNodeZero(log_file);
 
    /*
     * Create input database and parse all data in input file.  This
@@ -129,10 +109,6 @@ int main( int argc, char *argv[] )
    tbox::Pointer<tbox::Database> input_db = new tbox::InputDatabase("input_db");
    tbox::InputManager::getManager()->parseInputFile(input_file, input_db);
 
- 
-   tbox::pout << "Reached here:" << i << std::endl;
-   i++;
-   
    tbox::Pointer<tbox::Database> app_database = input_db->getDatabase("PflotranApplicationStrategy");
 
    int mode =  app_database->getInteger("DriverMode");
@@ -154,9 +130,6 @@ int main( int argc, char *argv[] )
    }
 
    input_db->getDatabase("TimerManager")->printClassData(tbox::plog);
-
-   tbox::pout << "Reached here:" << i << std::endl;
-   i++;
    
    BogusTagAndInitStrategy* test_object=NULL;
    
@@ -180,10 +153,7 @@ int main( int argc, char *argv[] )
        initializeAMRHierarchy(input_db,
 			      test_object,
 			      hierarchy);
-       
-       tbox::pout << "Reached here:" << i << std::endl;
-       i++;
-       
+              
        tbox::Pointer<geom::CartesianGridGeometry<NDIM> > grid_geometry = hierarchy->getGridGeometry();
        
        pdat::CCellDoubleConstantRefine<NDIM> *ccell_const_refine_op = new pdat::CCellDoubleConstantRefine<NDIM>();
@@ -205,25 +175,15 @@ int main( int argc, char *argv[] )
        params->d_hierarchy = hierarchy;
        
        pflotranApplication = new PflotranApplicationStrategy(params);
-       
-       
-       tbox::pout << "Reached here:" << i << std::endl;
-       i++;
-       
+              
        // create a RefinementBoundaryInterpolation object
        RefinementBoundaryInterpolation *cf_interpolant = new RefinementBoundaryInterpolation(hierarchy);
        cf_interpolant->setVariableOrderInterpolation(false);
        
-       tbox::pout << "Reached here:" << i << std::endl;
-       i++;
-       
        /*
 	* Add the RefinementBoundaryInterpolation object
 	*/
-       pflotranApplication->setRefinementBoundaryInterpolant(cf_interpolant);
-       tbox::pout << "Reached here:" << i << std::endl;
-       i++;
-       
+       pflotranApplication->setRefinementBoundaryInterpolant(cf_interpolant);       
      }
    
    void *p_pflotran_sim = NULL;
@@ -239,34 +199,17 @@ int main( int argc, char *argv[] )
       tbox::TimerManager::getManager()->getTimer("apps::main::main");
 
    main_timer->start();
-
-
-   tbox::pout << "Reached here:" << i << std::endl;
-   i++;
    
    f_create_simulation_(&p_pflotran_sim, (void **)&pflotranApplication);
-
-   tbox::pout << "Reached here:" << i << std::endl;
-   i++;
    
    f_initialize_simulation_(&p_pflotran_sim);
-#if 0
-   tbox::pout << "Reached here:" << i << std::endl;
-   i++;
    
    f_stepper_run_(&p_pflotran_sim);
-   tbox::pout << "Reached here:" << i << std::endl;
-   i++;
-#endif
    
    /*
     * At conclusion of simulation, stop timer and deallocate objects.
     */
    main_timer->stop();
-
-   tbox::pout << "Reached here:" << i << std::endl;
-   i++;
-   
 
    f_simulation_destroy_(&p_pflotran_sim);
    

@@ -562,6 +562,7 @@ subroutine AMRGridReadDXYZ(amrgrid, input, option)
   type(input_type), pointer :: input
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
+  type(structured_grid_type),pointer :: structured_grid
 
 #include "finclude/petscsysdef.h"
   PetscFortranAddr :: p_application
@@ -571,11 +572,13 @@ subroutine AMRGridReadDXYZ(amrgrid, input, option)
   integer :: pn
   integer :: islocal
   logical :: readdxyz
-
+  integer :: ndim    
+  PetscReal :: dxdydz(3)
+ 
   p_application = amrgrid%p_application
-
-  readdxyz = .FALSE.
-  ! note that this will need to be modified for parallel processing
+  ! for now we assume uniform grid spacings 
+  ndim=3    
+  call AMRGridReadDXDYDZ(dxdydz,ndim, input,option)
   
   nlevels =  hierarchy_number_levels(p_application)
   do ln=0,nlevels-1
@@ -584,21 +587,61 @@ subroutine AMRGridReadDXYZ(amrgrid, input, option)
         islocal = is_local_patch(p_application, ln, pn);
         if(islocal.eq.1) then
            grid => amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr
-           if(readdxyz) then
-              BACKSPACE(UNIT=input%fid)
-              BACKSPACE(UNIT=input%fid)
-              BACKSPACE(UNIT=input%fid)
-           endif
-           call StructuredGridReadDXYZ(grid%structured_grid,input,option)
-           readdxyz = .TRUE.
-        else
-           call InputSkipToEND(input,option,'DXYZ')
-           BACKSPACE(UNIT=input%fid)
+           structured_grid => grid%structured_grid           
+           allocate(structured_grid%dx_global(structured_grid%nx))
+           structured_grid%dx_global = dxdydz(1)
+           allocate(structured_grid%dy_global(structured_grid%ny))
+           structured_grid%dy_global = dxdydz(2)
+           allocate(structured_grid%dz_global(structured_grid%nz))
+           structured_grid%dz_global = dxdydz(3)
         endif
      end do
+     ! we make the assumption of a refinement ratio of 2 in each direction   
+     dxdydz(:) = dxdydz(:)/2.0   
   end do
 
 end subroutine AMRGridReadDXYZ
+
+! ************************************************************************** !
+!
+! StructuredGridReadArrayNew: Reads structured grid spacing along an axis from  
+!                         input file
+! author: Glenn Hammond
+! date: 05/21/09
+!
+! ************************************************************************** !
+subroutine AMRGridReadDXDYDZ(array,ndim,input,option)
+
+  use Input_module
+  use String_module
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  type(input_type) :: input
+  PetscInt :: ndim
+  PetscReal :: array(ndim)
+  
+  PetscInt :: i
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXWORDLENGTH) :: word
+  PetscReal :: value
+  PetscErrorCode :: ierr
+
+  do i=1,ndim
+
+      call InputReadFlotranString(input,option)
+      call InputReadStringErrorMsg(input,option,'DXYZ')
+      call InputReadWord(input,option,word,PETSC_TRUE)
+      if (InputError(input)) exit
+      string = word
+      call InputReadDouble(string,option,value,input%ierr)
+      call InputErrorMsg(input,option,'value','AMRGridReadDXDYDZ')
+      array(i) = value
+  enddo
+
+end subroutine AMRGridReadDXDYDZ
 
 ! ************************************************************************** !
 !
