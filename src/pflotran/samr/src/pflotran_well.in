@@ -57,8 +57,8 @@ ITOL_UPDATE 1.d0
 /
 
 LINEAR_SOLVER FLOW
-KSP_TYPE FGMRES
-:KSP_TYPE PREONLY
+:KSP_TYPE FGMRES
+KSP_TYPE PREONLY
 :PC_TYPE LU
 PC_TYPE SHELL
 /
@@ -232,8 +232,8 @@ PERIODIC TIME .1 y
 : == times ====================================================================
 TIME
 FINAL_TIME .05 y
-INITIAL_TIMESTEP_SIZE 1. d
-MAXIMUM_TIMESTEP_SIZE 1. d
+INITIAL_TIMESTEP_SIZE 3. d
+MAXIMUM_TIMESTEP_SIZE 3. d
 /
 
 : == regions ==================================================================
@@ -322,8 +322,8 @@ TYPE
 FLUX neumann
 /
 :FLUX 0.317098d-7 ! 1 m/y
-FLUX 1.5855d-9 ! 5 cm/y
-:FLUX file 200w_recharge_1951-2000_daily.dat
+:FLUX 1.5855d-9 ! 5 cm/y
+FLUX file 200w_recharge_1951-2000_daily.dat
 /
 
 FLOW_CONDITION Initial
