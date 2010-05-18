@@ -33,6 +33,7 @@ module Reaction_module
             RJumpStartKineticSorption, &
             RAge, &
             RReact, &
+            RTAuxVarCompute, &
             RTAccumulation, &
             RTAccumulationDerivative
 
@@ -2398,7 +2399,7 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
   
   one_over_dt = 1.d0/option%tran_dt
   num_iterations = 0
-  
+
   ! calculate fixed portion of accumulation term
   ! fixed_accum is overwritten in RTAccumulation
   ! Since RTAccumulation uses rt_auxvar%total, we must overwrite the 
@@ -4551,6 +4552,95 @@ subroutine RAge(rt_aux_var,global_aux_var,vol,option,reaction,Res)
     -rt_aux_var%total(reaction%species_idx%tracer_aq_id,iphase) * vol / 3600.d0
   endif
 end subroutine RAge
+
+! ************************************************************************** !
+!
+! RTAuxVarCompute: Computes secondary variables for each grid cell
+! author: Glenn Hammond
+! date: 08/28/08
+!
+! ************************************************************************** !
+subroutine RTAuxVarCompute(rt_aux_var,global_aux_var,reaction,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(option_type) :: option
+  type(reaction_type) :: reaction
+  type(reactive_transport_auxvar_type) :: rt_aux_var
+  type(global_auxvar_type) :: global_aux_var
+  
+#if 0  
+  PetscReal :: Res_orig(reaction%ncomp)
+  PetscReal :: Res_pert(reaction%ncomp)
+  PetscInt :: icomp, jcomp
+  PetscReal :: dtotal(reaction%naqcomp,reaction%naqcomp)
+  PetscReal :: dtotalsorb(reaction%naqcomp,reaction%naqcomp)
+  PetscReal :: pert
+  type(reactive_transport_auxvar_type) :: rt_auxvar_pert
+#endif
+
+  ! any changes to the below must also be updated in 
+  ! Reaction.F90:RReactionDerivative()
+  
+!already set  rt_aux_var%pri_molal = x
+
+  call RTotal(rt_aux_var,global_aux_var,reaction,option)
+  if (reaction%neqsorb > 0) then
+    call RTotalSorb(rt_aux_var,global_aux_var,reaction,option)
+  endif
+
+#if 0
+! numerical check
+  Res_orig = 0.d0
+  dtotal = 0.d0
+  dtotalsorb = 0.d0
+  option%iflag = 0 ! be sure not to allocate mass_balance array
+  call RTAuxVarInit(rt_auxvar_pert,reaction,option)
+  do jcomp = 1, reaction%naqcomp
+    Res_pert = 0.d0
+    call RTAuxVarCopy(rt_auxvar_pert,rt_aux_var,option)
+    if (reaction%neqcplx > 0) then
+      rt_aux_var%sec_molal = 0.d0
+    endif
+    if (reaction%ngas > 0) then
+      rt_aux_var%gas_molal = 0.d0
+    endif
+    if (reaction%neqsrfcplxrxn > 0) then
+      rt_auxvar_pert%eqsrfcplx_free_site_conc = 1.d-9
+      rt_auxvar_pert%eqsrfcplx_conc = 0.d0
+    endif
+    if (reaction%neqionxrxn > 0) then
+      rt_aux_var%eqionx_ref_cation_sorbed_conc = 1.d-9
+    endif
+    pert = rt_auxvar_pert%pri_molal(jcomp)*perturbation_tolerance
+    rt_auxvar_pert%pri_molal(jcomp) = rt_auxvar_pert%pri_molal(jcomp) + pert
+    
+    call RTotal(rt_auxvar_pert,global_aux_var,reaction,option)
+    dtotal(:,jcomp) = (rt_auxvar_pert%total(:,1) - rt_aux_var%total(:,1))/pert
+    if (reaction%neqsorb > 0) then
+      call RTotalSorb(rt_auxvar_pert,global_aux_var,reaction,option)
+      if (reaction%kinmr_nrate <= 0) &
+        dtotalsorb(:,jcomp) = (rt_auxvar_pert%total_sorb_eq(:) - &
+                               rt_aux_var%total_sorb_eq(:))/pert
+    endif
+  enddo
+  do icomp = 1, reaction%naqcomp
+    do jcomp = 1, reaction%naqcomp
+      if (dabs(dtotal(icomp,jcomp)) < 1.d-16) dtotal(icomp,jcomp) = 0.d0
+      if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
+        if (dabs(dtotalsorb(icomp,jcomp)) < 1.d-16) dtotalsorb(icomp,jcomp) = 0.d0
+      endif
+    enddo
+  enddo
+  rt_aux_var%aqueous%dtotal(:,:,1) = dtotal
+  if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) &
+    rt_aux_var%dtotal_sorb_eq = dtotalsorb
+  call RTAuxVarDestroy(rt_auxvar_pert)
+#endif
+  
+end subroutine RTAuxVarCompute
 
 ! ************************************************************************** !
 !
