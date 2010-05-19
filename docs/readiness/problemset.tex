@@ -303,9 +303,7 @@ where $d_n$, $d_{n'}$ refer to the distances from the control volume center to t
 The PFLOTRAN input file for this problem is listed below.
 
 \tiny
-
 \verbatiminput{pflotran_1.in}
-
 \normalsize
 
 \subsubsection{SAMRAI Input File}
@@ -313,10 +311,7 @@ The PFLOTRAN input file for this problem is listed below.
 The associated SAMRAI input file is given by:
 
 \tiny
-
 \verbatiminput{pflotran_amr_1.in}
-
-
 \normalsize
 
 \section{Readiness Review: Problem Set 2}
@@ -369,10 +364,32 @@ Either fully implicit or operator splitting may be used in the reactive transpor
 \EN
 followed by
 \EQ
-\frac{d}{d t} \varphi s \Psi_j \eq - \sum_m\nu_{jm}I_m.
+\frac{d}{dt} \varphi s \Psi_j \eq - \sum_m\nu_{jm}I_m.
 \EN
 
 \subsection{Input Files}
+
+\subsubsection{PFLOTRAN Input File}
+
+In the PFLOTRAN input file the source region representing a leaking tank is located at an elevation of 65 meters at the center of the domain. For the input file below, the source region occupies four grid cells horizontally. To keep the same injection volume, this would need to be modified if the grid size is changed.
+
+\tiny
+\verbatiminput{pflotran_2.in}
+\normalsize
+
+\subsubsection{Auxillary PFLOTRAN Input File}
+
+\tiny
+\verbatiminput{src.dat}
+\normalsize
+
+\subsubsection{SAMRAI Input File}
+
+The associated SAMRAI input file is given by:
+
+\tiny
+%\verbatiminput{pflotran_amr_2.in}
+\normalsize
 
 \section{References}
 
