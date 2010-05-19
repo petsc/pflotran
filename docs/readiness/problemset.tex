@@ -322,9 +322,9 @@ This problem involves flow and transport in which transport of a tracer is combi
 
 \subsection{Governing Equations}
 
-The same equations for flow are used as in Problem Set 1. The transport equations for a tracer are coupled to the flow equations through the flow velocity $\bq$ and saturation $s$. The transport equation for a non-reactive tracer has the form
+The same equations for flow are used as in Problem Set 1 with the addition of a source term to represent leaking from an underground storage tank. The transport equations are coupled to the flow equations through the flow velocity $\bq$ and saturation $s$. The reactive transport equations have the form
 \EQ\label{rxntp}
-\frac{\p}{\p t} \varphi s \Psi_j + \bnabla\cdot\big(\bq \Psi_j - \varphi s D \bnabla \Psi_j\big) \eq Q_j - \sum_m\nu_{jm}I_m,
+\frac{\p}{\p t} \varphi s \Psi_j + \bnabla\cdot\big(\bq \Psi_j - \varphi s D \bnabla \Psi_j\big) \eq Q_j - \sum_m\nu_{jm}I_m.
 \EN
 In this equation $D$ denotes the diffusion/dispersion coefficient taken as a constant, and $Q_j$ denotes the source term from the leaking tank. The quantity $\Psi_j$ denotes the total concentration of the $j$th primary species defined as
 \EQ
@@ -360,11 +360,11 @@ with molar volume $\overline V_m$.
 
 Either fully implicit or operator splitting may be used in the reactive transport mode. For operator splitting the fully coupled transport equations are split into non-reactive and reactive components according to
 \EQ
-\frac{\p}{\p t} \varphi s \Psi_j + \bnabla\cdot\big(\bq \Psi_j - \varphi s D \bnabla \Psi_j\big) \eq Q_j,
+\frac{\p}{\p t} \varphi s \Psi_j + \bnabla\cdot\big(\bq \Psi_j - \varphi s D \bnabla \Psi_j\big) \eq Q_j, \ \ \ \ \ \text{(Step 1)},
 \EN
 followed by
 \EQ
-\frac{d}{dt} \varphi s \Psi_j \eq - \sum_m\nu_{jm}I_m.
+\frac{d}{dt} \varphi s \Psi_j \eq - \sum_m\nu_{jm}I_m \ \ \ \ \ \ \ \ \ \ \ \ (\text{Step 2}).
 \EN
 
 \subsection{Input Files}
