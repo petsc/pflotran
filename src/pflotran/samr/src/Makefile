@@ -21,7 +21,7 @@
 ## Release:     $Name$
 ## Revision:    $Revision: 2854 $
 ## Modified:    $Date: 2006-08-23 15:10:50 -0600 (Wed, 23 Aug 2006) $
-## Description: makefile for application to test implicit/nonlinear solver
+## Description: makefile for application to test regridding
 ##
 BUILDTYPE :=$(shell echo "`uname -m`-`uname -s`")
  .SUFFIXES: .F90
@@ -137,12 +137,16 @@ $(FORTOBJS):$(FORTM4SRC)
 	cd $(FORTDIR); ${MAKE}
 
 OBJS =${CXXOBJS} ${COBJS} ${F90OBJS} ${FORTOBJS}
+DRIVER_OBJS = $(filter-out ./SAMRAIStartup.o, $(OBJS))
 
 %.o: %.F90
 	${F90} -c ${FFLAGS} ${FC_FLAGS} ${FPPFLAGS} -o $@ $<
 
-SAMRAIDriver: SAMRAIDriver.o ${OBJS} ${PFLOTRAN_DIR}/libpflotranamr.a
-	$(CXX) -g ${OBJS} ${PFLOTRAN_LDLIBS} ${PFLOTRAN_LDFLAGS} $(LIBSAMRAI3D) $(LIBSAMRAI) ${LDFLAGS} ${LDLIBS} -o $@
+SAMRAIDriver: SAMRAIDriver.o ${DRIVER_OBJS} ${PFLOTRAN_DIR}/libpflotranamr.a
+	$(CXX) -g ${DRIVER_OBJS} ${PFLOTRAN_LDLIBS} ${PFLOTRAN_LDFLAGS} $(LIBSAMRAI3D) $(LIBSAMRAI) ${LDFLAGS} ${LDLIBS} -o $@
+
+SAMRAIStartup: SAMRAIStartup.o BogusTagAndInitStrategy.o
+	$(CXX) -g SAMRAIStartup.o BogusTagAndInitStrategy.o ${PFLOTRAN_LDLIBS} ${PFLOTRAN_LDFLAGS} $(LIBSAMRAI3D) $(LIBSAMRAI) ${LDFLAGS} ${LDLIBS} -o $@
 
 clean:
 	$(RM) SAMRAIDriver *.f core *~ *.mod

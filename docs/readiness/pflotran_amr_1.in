@@ -10,16 +10,15 @@ CartesianGeometry{
    x_up         = 20.0e0, 20.0e0, 80.0e0
 }
 
-
 GriddingAlgorithm{
-   max_levels = 2
+   max_levels = 6 
    largest_patch_size {
       level_0 = 10, 10, 40
-      level_1 = 40, 40, 40
+      level_1 = 10, 10, 10
    }
  smallest_patch_size {
       level_0 = 10,10,40
-      level_1 = 40,40,40
+      level_1 = 5,5,10
    }
    ratio_to_coarser {
       level_1  = 2, 2, 2
@@ -33,6 +32,10 @@ StandardTagAndInitialize{
    RefineBoxes{
       level_0 = [(0,0,60),(19,19,79)]
       level_1 = [(0,0,140),(39,39,159)]
+      level_2 = [(0,0,300),(79,79,319)]
+      level_3 = [(0,0,620),(159,159,639)]
+      level_4 = [(0,0,1260),(319,319,1279)]
+      level_5 = [(0,0,2540),(639,639,2559)]
    }
 }
 
@@ -73,9 +76,9 @@ PflotranApplicationStrategy{
 
      pc_solver{
        solver_name                      =  "FAC"
-       max_iterations                   =  20
-       max_error                        =  1.0e-9
-       print_info_level                 =  1
+       max_iterations                   =  30 
+       max_error                        =  1.0e-12
+       print_info_level                 =  1 
        presolve_iterations              =  2
        postsolve_iterations             =  2
        use_visit                        =  FALSE
@@ -84,7 +87,6 @@ PflotranApplicationStrategy{
 
        level_solver_0 {
             solver_name                = "CellHYPRELevelSolver"
-            mg_solver_type          = 0
             print_info_level           = 0
             max_iterations             = 1
             max_error                  = 1.0e-12
@@ -95,19 +97,58 @@ PflotranApplicationStrategy{
 
        level_solver_1 {
             solver_name                 =  "CellLevelSmoother"
-            smoother_type               =  "Gauss-Seidel"
+            smoother_type               =  "Red-black Gauss-Seidel"
+            print_info_level            =  0
+            max_iterations              =  1
+            max_error                   =  1.0e-12
+            num_sweeps                  =  10
+	       cell_refine_op                  = "CONSTANT_REFINE"
+	       cell_coarsen_op                 = "CONSERVATIVE_COARSEN"
+	       cell_soln_coarsen_op                 = "CONSERVATIVE_COARSEN"
+	       cell_src_coarsen_op                 = "SUM_COARSEN"
+	       face_refine_op                  = "CONSTANT_REFINE"
+	       face_coarsen_op                 = "CONSERVATIVE_COARSEN"
+	       variable_order_interpolation    = FALSE
+	       use_cf_interpolant              = TRUE
+   }
+
+   PflotranFlowPreconditioner{
+
+     preconditioner_print_flag = FALSE
+
+     pc_solver{
+       solver_name                      =  "FAC"
+       max_iterations                   =  30 
+       max_error                        =  1.0e-12
+       print_info_level                 =  1 
+       presolve_iterations              =  2
+       postsolve_iterations             =  2
+       use_visit                        =  FALSE
+       viz_directory                    =  "fac_viz"
+       zero_initial_guess               =  TRUE
+
+       level_solver_0 {
+            solver_name                = "CellHYPRELevelSolver"
+            print_info_level           = 0
+            max_iterations             = 1
+            max_error                  = 1.0e-12
+            num_presweeps              = 2
+            num_postsweeps             = 2
+            preprocess_rhs             = FALSE
+       }
+
+       level_solver_1 {
+            solver_name                 =  "CellLevelSmoother"
+            smoother_type               =  "Red-black Gauss-Seidel"
             print_info_level            =  0
             max_iterations              =  1
             max_error                   =  1.0e-12
             num_sweeps                  =  10
        }
-     }
-        
+     }   
    }
-
 }
 
- 
 TimerManager{
    timer_list = "xfer::*::*", "FAC::*::*", "AMRUtilities::*::*", "apps::main::main", "RD2T::*::*", "LevelSolver::*::*"
 }

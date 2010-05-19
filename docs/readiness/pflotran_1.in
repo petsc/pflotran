@@ -1,28 +1,15 @@
-:Description: 3D infiltration problem for Markus Flury
+\begin{verbatim}
+:Description: 3D infiltration problem
  
 : == debugging ================================================================
-skip
 DEBUG
 :MATVIEW_JACOBIAN
 :VECVIEW_RESIDUAL
 :VECVIEW_SOLUTION
 /
-noskip
 
 : == mode =====================================================================
 MODE RICHARDS
-
-: == chemistry ================================================================
-skip
-CHEMISTRY
-PRIMARY_SPECIES
-Tracer
-/
-OUTPUT
-All
-/
-/
-noskip
 
 : == reference variables ======================================================
 REFERENCE_POROSITY 0.25d0
@@ -34,7 +21,7 @@ TS_ACCELERATION 8
 
 : == discretization ===========================================================
 GRID
-TYPE amr
+TYPE structured
 NXYZ 20 20 80
 DXYZ
 1.
@@ -48,7 +35,7 @@ NEWTON_SOLVER FLOW
 PRECONDITIONER_MATRIX_TYPE AIJ
 RTOL 1.d-8
 ATOL 1.d-8
-STOL 1.d-30y
+STOL 1.d-30
 ITOL_UPDATE 1.d0
 :NO_INFINITY_NORM
 :NO_PRINT_CONVERGENCE
@@ -57,9 +44,8 @@ ITOL_UPDATE 1.d0
 
 LINEAR_SOLVER FLOW
 :KSP_TYPE FGMRES
-KSP_TYPE PREONLY
+:KSP_TYPE PREONLY
 :PC_TYPE LU
-PC_TYPE SHELL
 /
 
 : == transport solvers ========================================================
@@ -225,14 +211,14 @@ ALPHA 1.4295d-4
 OUTPUT
 :PERIODIC TIMESTEP 1
 PERIODIC TIME .1 y
-:FORMAT TECPLOT BLOCK
+FORMAT TECPLOT BLOCK
 /
 
 : == times ====================================================================
 TIME
-FINAL_TIME .05 y
-INITIAL_TIMESTEP_SIZE 2. d
-MAXIMUM_TIMESTEP_SIZE 2. d
+FINAL_TIME 1. y
+INITIAL_TIMESTEP_SIZE 1. d
+MAXIMUM_TIMESTEP_SIZE 1. d
 /
 
 : == regions ==================================================================
@@ -242,7 +228,6 @@ COORDINATES
 1.d20 1.d20 80.d0
 /
 /
-
 REGION Top
 COORDINATES
 -1.d20 -1.d20 80.d0
@@ -250,7 +235,6 @@ COORDINATES
 /
 FACE TOP
 /
-
 REGION Bottom
 COORDINATES
 -1.d20 -1.d20 0.d0
@@ -258,56 +242,48 @@ COORDINATES
 /
 FACE BOTTOM
 /
-
 REGION HD
 COORDINATES
 -1.d20 -1.d20 77.d0
 1.d20 1.d20 80.d0
 /
 /
-
 REGION H1
 COORDINATES
 -1.d20 -1.d20 66.d0
 1.d20 1.d20 77.d0
 /
 /
-
 REGION H2
 COORDINATES
 -1.d20 -1.d20 51.d0
 1.d20 1.d20 66.d0
 /
 /
-
 REGION H3
 COORDINATES
 -1.d20 -1.d20 45.d0
 1.d20 1.d20 51.d0
 /
 /
-
 REGION CCUz
 COORDINATES
 -1.d20 -1.d20 41.d0
 1.d20 1.d20 45.d0
 /
 /
-
 REGION CCUc
 COORDINATES
 -1.d20 -1.d20 41.d0
 1.d20 1.d20 37.d0
 /
 /
-
 REGION Rtf
 COORDINATES
 -1.d20 -1.d20 37.d0
 1.d20 1.d20 35.d0
 /
 /
-
 REGION Rwi
 COORDINATES
 -1.d20 -1.d20 35.d0
@@ -315,14 +291,14 @@ COORDINATES
 /
 /
 
-: == flow conditions ==========================================================
+: == flow conditions ==============================
 FLOW_CONDITION Inlet
 TYPE
 FLUX neumann
 /
 :FLUX 0.317098d-7 ! 1 m/y
-:FLUX 1.5855d-9 ! 5 cm/y
-FLUX file 200w_recharge_1951-2000_daily.dat
+FLUX 1.5855d-9 ! 5 cm/y
+:FLUX file 200w_recharge_1951-2000_daily.dat
 /
 
 FLOW_CONDITION Initial
@@ -333,94 +309,50 @@ DATUM 0.d0 0.d0 6.d0
 PRESSURE 101325.d0
 /
 
-
-: == transport conditions =====================================================
-skip
-TRANSPORT_CONDITION Inlet
-TYPE dirichlet
-CONSTRAINT_LIST
-0.d0 Inlet
-/
-/
-
-TRANSPORT_CONDITION Initial
-TYPE zero_gradient
-CONSTRAINT_LIST
-0.d0 Initial
-/
-/
-
-: == transport constraints ====================================================
-CONSTRAINT Initial
-CONCENTRATIONS
-Tracer   1.e-10            F
-/
-/
-
-CONSTRAINT Inlet
-CONCENTRATIONS
-Tracer   1.e-1             F
-/
-/
-noskip
-
-: == couplers =================================================================
+: == couplers ====================================
 BOUNDARY_CONDITION Inlet
 FLOW_CONDITION Inlet
-:TRANSPORT_CONDITION Inlet
 REGION Top
 /
-
 BOUNDARY_CONDITION Outlet
 FLOW_CONDITION Initial
-:TRANSPORT_CONDITION Initial
 REGION Bottom
 /
-
 INITIAL_CONDITION Initial
 FLOW_CONDITION Initial
-:TRANSPORT_CONDITION Initial
 REGION all
 /
 
-: == stratigraphy =============================================================
+: == stratigraphy ================================
 STRATA
 MATERIAL HD
 REGION HD
 /
-
 STRATA
 MATERIAL H1
 REGION H1
 /
-
 STRATA
 MATERIAL H2
 REGION H2
 /
-
 STRATA
 MATERIAL H3
 REGION H3
 /
-
 STRATA
 MATERIAL CCUz
 REGION CCUz
 /
-
 STRATA
 MATERIAL CCUc
 REGION CCUc
 /
-
 STRATA
 MATERIAL Rtf
 REGION Rtf
 /
-
 STRATA
 MATERIAL Rwi
 REGION Rwi
 /
-

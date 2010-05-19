@@ -194,12 +194,22 @@
 
 \begin{document}
 
+{\bf\Large Readiness Review \hfill \today}
+
+\longline
+
 \noindent
 \begin{tabular}{llll}
 {\bf Contacts:} &Peter C. Lichtner & 505-667-3420 & lichtner@lanl.gov\\
 &Glenn E. Hammond & 509-375-3875 & glenn.hammond@pnl.gov\\
 &Bobby Philip & & philipb@ornl.gov
 \end{tabular}
+
+\longline
+
+\tableofcontents
+
+\longline
 
 \section{Readiness Review: Problem Set 1}
 
@@ -215,7 +225,7 @@ Either a constant infiltration rate or variable infiltration may be specified at
 The computational domain is divided into eight stratigraphic units with the material properties listed in Table~\ref{tstrata}.
 
 \begin{table}[h]\centering
-\caption{Material properties for each stratigraphic unit.}\label{tstrata}
+\caption{Material properties for each stratigraphic unit taken from Last et al. (2009) and recently updated (Last private comm.).}\label{tstrata}
 \vspace{3mm}
 \begin{tabular}{lccccccc}
 \toprule
@@ -274,388 +284,98 @@ For $P\!<\!P_{\rm ref}$, the capillary pressure is equal to $P_c \!=\! P_{\rm re
 
 Boundary conditions of type Dirichlet or Neumann can be imposed on the system of specified pressure or flux, respectively.
 
-\subsection{Input File}
+\subsection{Numerical Discretization}
+
+A fully implicit backward Euler time stepping method is used for Richards mode. Richards equation is discretized spatially using integrated finite volume. The residual equation for a time step $\Delta t$ thus has the form
+\EQ
+R_{n} \eq \frac{(\varphi s \rho)_n^{t+\Delta t} - (\varphi s \rho)_n^{t}}{\Delta t} V_n + \sum_{n'} q_{nn'}^{t+\Delta t} \rho_{nn'}^{t+\Delta t} A_{nn'} - Q_n^{t+\Delta t} V_n,
+\EN
+where $V_n$ denotes the volume of the $n$th control volume, and $q_{nn'}$, $\rho_{nn'}$, and $A_{nn'}$ refer to the Darcy flow velocity, density, and interfacial area at the interface between control volumes $n$ and $n'$. Upstream weighting is used to calculate the density $\rho_{nn'}$. The velocity $q_{nn'}$ is obtained from Darcy's law
+\EQ
+q_{nn'} \eq -\left(\frac{kk_r}{\mu}\right)_{nn'} \left(\frac{P_n - P_{n'} -W\rho g z_{nn'}}{d_n+d_{n'}}\right),
+\EN
+where $d_n$, $d_{n'}$ refer to the distances from the control volume center to the interface, and $z_{nn'}$ denotes the vertical distance between control volumes $n$ and $n'$. Harmonic averaging is used to calculate $kk_r/\mu$ at the interface.
+
+\subsection{Input Files}
+
+\subsubsection{PFLOTRAN Input File}
 
 The PFLOTRAN input file for this problem is listed below.
-\footnotesize
-\begin{verbatim}
-:Description: 3D infiltration problem
- 
-: == debugging ================================================================
-DEBUG
-:MATVIEW_JACOBIAN
-:VECVIEW_RESIDUAL
-:VECVIEW_SOLUTION
-/
 
-: == mode =====================================================================
-MODE RICHARDS
+\tiny
 
-: == reference variables ======================================================
-REFERENCE_POROSITY 0.25d0
+\verbatiminput{pflotran_1.in}
 
-: == time stepping ============================================================
-TIMESTEPPER
-TS_ACCELERATION 8
-/
-
-: == discretization ===========================================================
-GRID
-TYPE structured
-NXYZ 20 20 80
-DXYZ
-1.
-1.
-1.
-/
-/
-
-: == flow solvers =============================================================
-NEWTON_SOLVER FLOW
-PRECONDITIONER_MATRIX_TYPE AIJ
-RTOL 1.d-8
-ATOL 1.d-8
-STOL 1.d-30
-ITOL_UPDATE 1.d0
-:NO_INFINITY_NORM
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
-/
-
-LINEAR_SOLVER FLOW
-:KSP_TYPE FGMRES
-:KSP_TYPE PREONLY
-:PC_TYPE LU
-/
-
-: == transport solvers ========================================================
-NEWTON_SOLVER TRANSPORT
-PRECONDITIONER_MATRIX_TYPE AIJ
-RTOL 1.d-12
-ATOL 1.d-12
-STOL 1.d-30
-:NO_INFINITY_NORM
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
-/
-
-LINEAR_SOLVER TRANSPORT
-:KSP_TYPE PREONLY
-:PC_TYPE LU
-/
-
-: == fluid properties =========================================================
-FLUID_PROPERTY
-DIFFUSION_COEFFICIENT 1.d-9
-/
-
-: == material properties ======================================================
-MATERIAL_PROPERTY HD
-ID 1
-SATURATION_FUNCTION HD
-POROSITY 0.262
-TORTUOSITY 1.0
-PERMEABILITY
-PERM_ISO 5.43d-13
-/
-/
-
-MATERIAL_PROPERTY H1
-ID 2
-SATURATION_FUNCTION H1
-POROSITY 0.317
-TORTUOSITY 1.0
-PERMEABILITY
-PERM_ISO 9.91d-13
-/
-/
-
-MATERIAL_PROPERTY H2
-ID 3
-SATURATION_FUNCTION H2
-POROSITY 0.356
-TORTUOSITY 1.0
-PERMEABILITY
-PERM_ISO 3.34d-14
-/
-/
-
-MATERIAL_PROPERTY H3
-ID 4
-SATURATION_FUNCTION H3
-POROSITY 0.398
-TORTUOSITY 1.0
-PERMEABILITY
-PERM_ISO 1.74d-14
-/
-/
-
-MATERIAL_PROPERTY CCUz
-ID 5
-SATURATION_FUNCTION CCUz
-POROSITY 0.419
-TORTUOSITY 1.0
-PERMEABILITY
-PERM_ISO 5.06d-14
-/
-/
-
-MATERIAL_PROPERTY CCUc
-ID 6
-SATURATION_FUNCTION CCUc
-POROSITY 0.281
-TORTUOSITY 1.0
-PERMEABILITY
-PERM_ISO 7.68d-13
-/
-/
-
-MATERIAL_PROPERTY Rtf
-ID 7
-SATURATION_FUNCTION Rtf
-POROSITY 0.419
-TORTUOSITY 1.0
-PERMEABILITY
-PERM_ISO 5.06d-14
-/
-/
-
-MATERIAL_PROPERTY Rwi
-ID 8
-SATURATION_FUNCTION Rwi
-POROSITY 0.294
-TORTUOSITY 1.0
-PERMEABILITY
-PERM_ISO 9.63d-14
-/
-/
-
-: == saturation / permeability functions ======================================
-SATURATION_FUNCTION HD
-SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-RESIDUAL_SATURATION 0.115
-LAMBDA 0.286
-ALPHA 1.9401d-4
-/
-
-SATURATION_FUNCTION H1
-SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-RESIDUAL_SATURATION 0.110
-LAMBDA 0.486
-ALPHA 3.8801d-4
-/
-
-SATURATION_FUNCTION H2
-SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-RESIDUAL_SATURATION 0.118
-LAMBDA 0.541
-ALPHA 1.0211d-4
-/
-
-SATURATION_FUNCTION H3
-SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-RESIDUAL_SATURATION 0.143
-LAMBDA 0.527
-ALPHA 5.1054d-5
-/
-
-SATURATION_FUNCTION CCUz
-SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-RESIDUAL_SATURATION 0.095
-LAMBDA 0.555
-ALPHA 5.1054d-5
-/
-
-SATURATION_FUNCTION CCUc
-SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-RESIDUAL_SATURATION 0.192
-LAMBDA 0.425
-ALPHA 1.1232d-4
-/
-
-SATURATION_FUNCTION Rtf
-SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-RESIDUAL_SATURATION 0.095
-LAMBDA 0.555
-ALPHA 5.1054d-5
-/
-
-SATURATION_FUNCTION Rwi
-SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
-RESIDUAL_SATURATION 0.139
-LAMBDA 0.402
-ALPHA 1.4295d-4
-/
-
-: == output ===================================================================
-OUTPUT
-:PERIODIC TIMESTEP 1
-PERIODIC TIME .1 y
-FORMAT TECPLOT BLOCK
-/
-
-: == times ====================================================================
-TIME
-FINAL_TIME 1. y
-INITIAL_TIMESTEP_SIZE 1. d
-MAXIMUM_TIMESTEP_SIZE 1. d
-/
-
-: == regions ==================================================================
-REGION all
-COORDINATES
--1.d20 -1.d20 0.d0
-1.d20 1.d20 80.d0
-/
-/
-
-REGION Top
-COORDINATES
--1.d20 -1.d20 80.d0
-1.d20 1.d20 80.d0
-/
-FACE TOP
-/
-
-REGION Bottom
-COORDINATES
--1.d20 -1.d20 0.d0
-1.d20 1.d20 0.d0
-/
-FACE BOTTOM
-/
-
-REGION HD
-COORDINATES
--1.d20 -1.d20 77.d0
-1.d20 1.d20 80.d0
-/
-/
-
-REGION H1
-COORDINATES
--1.d20 -1.d20 66.d0
-1.d20 1.d20 77.d0
-/
-/
-
-REGION H2
-COORDINATES
--1.d20 -1.d20 51.d0
-1.d20 1.d20 66.d0
-/
-/
-
-REGION H3
-COORDINATES
--1.d20 -1.d20 45.d0
-1.d20 1.d20 51.d0
-/
-/
-
-REGION CCUz
-COORDINATES
--1.d20 -1.d20 41.d0
-1.d20 1.d20 45.d0
-/
-/
-
-REGION CCUc
-COORDINATES
--1.d20 -1.d20 41.d0
-1.d20 1.d20 37.d0
-/
-/
-
-REGION Rtf
-COORDINATES
--1.d20 -1.d20 37.d0
-1.d20 1.d20 35.d0
-/
-/
-
-REGION Rwi
-COORDINATES
--1.d20 -1.d20 35.d0
-1.d20 1.d20 0.d0
-/
-/
-
-: == flow conditions ==============================
-FLOW_CONDITION Inlet
-TYPE
-FLUX neumann
-/
-:FLUX 0.317098d-7 ! 1 m/y
-FLUX 1.5855d-9 ! 5 cm/y
-:FLUX file 200w_recharge_1951-2000_daily.dat
-/
-
-FLOW_CONDITION Initial
-TYPE
-PRESSURE hydrostatic
-/
-DATUM 0.d0 0.d0 6.d0
-PRESSURE 101325.d0
-/
-
-: == couplers ====================================
-BOUNDARY_CONDITION Inlet
-FLOW_CONDITION Inlet
-REGION Top
-/
-
-BOUNDARY_CONDITION Outlet
-FLOW_CONDITION Initial
-REGION Bottom
-/
-
-INITIAL_CONDITION Initial
-FLOW_CONDITION Initial
-REGION all
-/
-
-: == stratigraphy ================================
-STRATA
-MATERIAL HD
-REGION HD
-/
-
-STRATA
-MATERIAL H1
-REGION H1
-/
-
-STRATA
-MATERIAL H2
-REGION H2
-/
-
-STRATA
-MATERIAL H3
-REGION H3
-/
-
-STRATA
-MATERIAL CCUz
-REGION CCUz
-/
-
-STRATA
-MATERIAL CCUc
-REGION CCUc
-/
-
-STRATA
-MATERIAL Rtf
-REGION Rtf
-/
-
-STRATA
-MATERIAL Rwi
-REGION Rwi
-/
-\end{verbatim}
 \normalsize
+
+\subsubsection{SAMRAI Input File}
+
+The associated SAMRAI input file is given by:
+
+\tiny
+
+\verbatiminput{pflotran_amr_1.in}
+
+
+\normalsize
+
+\section{Readiness Review: Problem Set 2}
+
+\subsection{Problem Description}
+
+This problem involves flow and transport in which transport of a tracer is combined with the flow problem of Problem Set 1. In this problem a tracer is injected at a depth of 15 meters with a flow rate of 0.187 kg/s over a duration of two weeks representing a 60,000 gallon leak from one of the storage tanks at the Hanford tank farm.
+
+\subsection{Governing Equations}
+
+The same equations for flow are used as in Problem Set 1. The transport equations for a tracer are coupled to the flow equations through the flow velocity $\bq$ and saturation $s$. The transport equation for a non-reactive tracer has the form
+\EQ\label{rxntp}
+\frac{\p}{\p t} \varphi s \Psi_j + \bnabla\cdot\big(\bq \Psi_j - \varphi s D \bnabla \Psi_j\big) \eq Q_j - \sum_m\nu_{jm}I_m,
+\EN
+In this equation $D$ denotes the diffusion/dispersion coefficient taken as a constant, and $Q_j$ denotes the source term from the leaking tank. The quantity $\Psi_j$ denotes the total concentration of the $j$th primary species defined as
+\EQ
+\Psi_j \eq C_j + \sum_i\nu_{ji} C_i,
+\EN
+for primary species concentration $C_j$ and secondary species $C_i$ with
+\EQ
+C_i \eq \gamma_i^{-1} K_i \prod_j\big(\gamma_j C_j\big)^{\nu_{ji}},
+\EN
+with activity coefficients $\gamma_j$, $\gamma_i$ and equilibrium constant $K_i$. The coefficients $\nu_{ji}$ refer to the stoichiometric reaction coefficients. The second term on the right-hand side of Eqn.\eqref{rxntp} describes mineral reactions with rate $I_m$ provided by transition state theory
+\EQ
+I_m \eq -k_m a_m \big(1-K_m Q_m\big) \zeta_m,
+\EN
+where $k_m$ denotes the kinetic rate constant, $a_m$ refers to the specific surface area, $K_m$ denotes the equilibrium constant and $Q_m$ designates the ion activity product defined by
+\EQ
+Q_m \eq \prod\big(\gamma_j C_j\big)^{\nu_{jm}}.
+\EN
+The factor $\zeta_m$ takes on the values 0 or 1 depending on whether the mineral is present or supersaturated
+\EQ
+\zeta_m \eq \left\{
+\begin{array}{ll}
+1, & K_m Q_m >0 \ \text{or} \ \varphi_m>0\\
+0, & \text{otherwise}
+\end{array} \right.,
+\EN
+where $\varphi_m$ denotes the mineral volume fraction. The change in mineral concentration is provided by the equation
+\EQ
+\frac{\p\varphi_m}{\p t} \eq \overline V_m I_m,
+\EN
+with molar volume $\overline V_m$.
+
+\subsection{Numerical Discretization}
+
+Either fully implicit or operator splitting may be used in the reactive transport mode. For operator splitting the fully coupled transport equations are split into non-reactive and reactive components according to
+\EQ
+\frac{\p}{\p t} \varphi s \Psi_j + \bnabla\cdot\big(\bq \Psi_j - \varphi s D \bnabla \Psi_j\big) \eq Q_j,
+\EN
+followed by
+\EQ
+\frac{d}{d t} \varphi s \Psi_j \eq - \sum_m\nu_{jm}I_m.
+\EN
+
+\subsection{Input Files}
+
+\section{References}
+
+Last, G. V., P. D. Thorne, J. A. Horner, K. R. Parker, B. N. Bjornstad, R.D. Mackley, D. C. Lanigan and B. A. Williams. 2009. Hydrogeology of the Hanford Site Central Plateau---A Status Report for the 200 West Area. PNNL-17913, Rev. 1, Pacific Northwest National Laboratory, Richland, Washington.
 
 \end{document}
