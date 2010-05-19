@@ -45,7 +45,6 @@ DXYZ
 
 : == flow solvers =============================================================
 NEWTON_SOLVER FLOW
-MATRIX_TYPE MFFD
 PRECONDITIONER_MATRIX_TYPE AIJ
 RTOL 1.d-8
 ATOL 1.d-8
@@ -232,8 +231,8 @@ PERIODIC TIME .1 y
 : == times ====================================================================
 TIME
 FINAL_TIME .05 y
-INITIAL_TIMESTEP_SIZE 3. d
-MAXIMUM_TIMESTEP_SIZE 3. d
+INITIAL_TIMESTEP_SIZE 2. d
+MAXIMUM_TIMESTEP_SIZE 2. d
 /
 
 : == regions ==================================================================
