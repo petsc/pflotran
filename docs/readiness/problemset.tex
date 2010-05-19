@@ -322,11 +322,11 @@ This problem involves flow and transport in which transport of a tracer is combi
 
 \subsection{Governing Equations}
 
-The same equations for flow are used as in Problem Set 1 with the addition of a source term to represent leaking from an underground storage tank. The transport equations are coupled to the flow equations through the flow velocity $\bq$ and saturation $s$. The reactive transport equations have the form
+The same equations for flow are used as in Problem Set 1 with the addition of a source term to represent leaking from an underground storage tank. The transport equations are coupled to the flow equations through the flow velocity $\bq$ and saturation $s$. The reactive transport equations have the general form
 \EQ\label{rxntp}
-\frac{\p}{\p t} \varphi s \Psi_j + \bnabla\cdot\big(\bq \Psi_j - \varphi s D \bnabla \Psi_j\big) \eq Q_j - \sum_m\nu_{jm}I_m.
+\frac{\p}{\p t} \varphi s \Psi_j + \bnabla\cdot\big(\bq \Psi_j - \varphi s D \bnabla \Psi_j\big) \eq Q_j - \sum_m\nu_{jm}I_m - \frac{\p S_j}{\p t}.
 \EN
-In this equation $D$ denotes the diffusion/dispersion coefficient taken as a constant, and $Q_j$ denotes the source term from the leaking tank. The quantity $\Psi_j$ denotes the total concentration of the $j$th primary species defined as
+In this equation $D$ denotes the diffusion/dispersion coefficient taken as a constant, $S_j$ represents sorption processes including ion exchange and surface complexation reactions, and $Q_j$ denotes the source term from the leaking tank. The quantity $\Psi_j$ denotes the total concentration of the $j$th primary species defined as
 \EQ
 \Psi_j \eq C_j + \sum_i\nu_{ji} C_i,
 \EN
@@ -334,7 +334,7 @@ for primary species concentration $C_j$ and secondary species $C_i$ with
 \EQ
 C_i \eq \gamma_i^{-1} K_i \prod_j\big(\gamma_j C_j\big)^{\nu_{ji}},
 \EN
-with activity coefficients $\gamma_j$, $\gamma_i$ and equilibrium constant $K_i$. The coefficients $\nu_{ji}$ refer to the stoichiometric reaction coefficients. The second term on the right-hand side of Eqn.\eqref{rxntp} describes mineral reactions with rate $I_m$ provided by transition state theory
+with activity coefficients $\gamma_j$, $\gamma_i$ and equilibrium constant $K_i$. The coefficients $\nu_{ji}$ refer to the stoichiometric reaction coefficients. The second term on the right-hand side of Eqn.\eqref{rxntp} describes mineral reactions with rate $I_m$ for the $m$th mineral provided by transition state theory
 \EQ
 I_m \eq -k_m a_m \big(1-K_m Q_m\big) \zeta_m,
 \EN
@@ -356,6 +356,8 @@ where $\varphi_m$ denotes the mineral volume fraction. The change in mineral con
 \EN
 with molar volume $\overline V_m$.
 
+For a non-reactive tracer terms containing the mineral and sorption reaction rates on the right-hand side of Eqn.\eqref{rxntp} vanish and $\Psi_j$ is replaced by the tracer concentration $C_j$. The tracer transport equation is coupled to the flow equation through the saturation and Darcy velocity.
+
 \subsection{Numerical Discretization}
 
 Either fully implicit or operator splitting may be used in the reactive transport mode. For operator splitting the fully coupled transport equations are split into non-reactive and reactive components according to
@@ -364,7 +366,7 @@ Either fully implicit or operator splitting may be used in the reactive transpor
 \EN
 followed by
 \EQ
-\frac{d}{dt} \varphi s \Psi_j \eq - \sum_m\nu_{jm}I_m \ \ \ \ \ \ \ \ \ \ \ \ (\text{Step 2}).
+\frac{d}{dt} \varphi s \Psi_j \eq - \sum_m\nu_{jm}I_m - \frac{d S_j}{d t} \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ (\text{Step 2}).
 \EN
 
 \subsection{Input Files}
