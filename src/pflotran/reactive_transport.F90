@@ -2940,37 +2940,40 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
   enddo
 
 #ifdef CHUAN_CO2
-  source_sink => patch%source_sinks%first 
-  do 
-    if (.not.associated(source_sink)) exit
+  select case(option%iflowmode)
+    case(MPH_MODE,IMS_MODE,FLASH2_MODE)
+      source_sink => patch%source_sinks%first 
+      do 
+        if (.not.associated(source_sink)) exit
 
-    msrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
-    msrc(1) =  msrc(1) / FMWH2O*1D3
-    msrc(2) =  msrc(2) / FMWCO2*1D3
-    ! print *,'RT SC source'
-    do iconn = 1, cur_connection_set%num_connections      
-      local_id = cur_connection_set%id_dn(iconn)
-      ghosted_id = grid%nL2G(local_id)
-      Res=0D0
-      
-      if (patch%imat(ghosted_id) <= 0) cycle
-      
-      select case(source_sink%flow_condition%itype(1))
-        case(MASS_RATE_SS)
-          do ieqgas = 1, reaction%ngas
-            if(abs(reaction%species_idx%co2_gas_id) == ieqgas) then
-              icomp = reaction%eqgasspecid(1,ieqgas)
-              iendall = local_id*reaction%ncomp
-              istartall = iendall-reaction%ncomp
-              Res(icomp) = -msrc(2)
-              r_p(istartall+icomp) = r_p(istartall+icomp) + Res(icomp)
-              print *,'RT SC source', ieqgas,icomp, res(icomp)  
-            endif 
-          enddo
-      end select 
-    enddo
-    source_sink => source_sink%next
-  enddo 
+        msrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
+        msrc(1) =  msrc(1) / FMWH2O*1D3
+        msrc(2) =  msrc(2) / FMWCO2*1D3
+        ! print *,'RT SC source'
+        do iconn = 1, cur_connection_set%num_connections      
+          local_id = cur_connection_set%id_dn(iconn)
+          ghosted_id = grid%nL2G(local_id)
+          Res=0D0
+          
+          if (patch%imat(ghosted_id) <= 0) cycle
+          
+          select case(source_sink%flow_condition%itype(1))
+            case(MASS_RATE_SS)
+              do ieqgas = 1, reaction%ngas
+                if(abs(reaction%species_idx%co2_gas_id) == ieqgas) then
+                  icomp = reaction%eqgasspecid(1,ieqgas)
+                  iendall = local_id*reaction%ncomp
+                  istartall = iendall-reaction%ncomp
+                  Res(icomp) = -msrc(2)
+                  r_p(istartall+icomp) = r_p(istartall+icomp) + Res(icomp)
+                  print *,'RT SC source', ieqgas,icomp, res(icomp)  
+                endif 
+              enddo
+          end select 
+        enddo
+        source_sink => source_sink%next
+      enddo
+  end select
      
 #endif
 #endif
