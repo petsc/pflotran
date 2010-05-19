@@ -12,14 +12,14 @@ CartesianGeometry{
 
 
 GriddingAlgorithm{
-   max_levels = 2
+   max_levels = 7 
    largest_patch_size {
       level_0 = 10, 10, 40
-      level_1 = 40, 40, 40
+      level_1 = 10, 10, 10
    }
  smallest_patch_size {
       level_0 = 10,10,40
-      level_1 = 40,40,40
+      level_1 = 5,5,10
    }
    ratio_to_coarser {
       level_1  = 2, 2, 2
@@ -33,6 +33,10 @@ StandardTagAndInitialize{
    RefineBoxes{
       level_0 = [(0,0,60),(19,19,79)]
       level_1 = [(0,0,140),(39,39,159)]
+      level_2 = [(0,0,300),(79,79,319)]
+      level_3 = [(0,0,620),(159,159,639)]
+      level_4 = [(0,0,1260),(319,319,1279)]
+      level_5 = [(0,0,2540),(639,639,2559)]
    }
 }
 
@@ -95,7 +99,7 @@ PflotranApplicationStrategy{
 
        level_solver_1 {
             solver_name                 =  "CellLevelSmoother"
-            smoother_type               =  "Gauss-Seidel"
+            smoother_type               =  "Red-black Gauss-Seidel"
             print_info_level            =  0
             max_iterations              =  1
             max_error                   =  1.0e-12
