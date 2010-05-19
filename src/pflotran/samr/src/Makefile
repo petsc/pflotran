@@ -137,12 +137,13 @@ $(FORTOBJS):$(FORTM4SRC)
 	cd $(FORTDIR); ${MAKE}
 
 OBJS =${CXXOBJS} ${COBJS} ${F90OBJS} ${FORTOBJS}
+DRIVER_OBJS = $(filter-out ./SAMRAIStartup.o, $(OBJS))
 
 %.o: %.F90
 	${F90} -c ${FFLAGS} ${FC_FLAGS} ${FPPFLAGS} -o $@ $<
 
-SAMRAIDriver: SAMRAIDriver.o ${OBJS} ${PFLOTRAN_DIR}/libpflotranamr.a
-	$(CXX) -g ${OBJS} ${PFLOTRAN_LDLIBS} ${PFLOTRAN_LDFLAGS} $(LIBSAMRAI3D) $(LIBSAMRAI) ${LDFLAGS} ${LDLIBS} -o $@
+SAMRAIDriver: SAMRAIDriver.o ${DRIVER_OBJS} ${PFLOTRAN_DIR}/libpflotranamr.a
+	$(CXX) -g ${DRIVER_OBJS} ${PFLOTRAN_LDLIBS} ${PFLOTRAN_LDFLAGS} $(LIBSAMRAI3D) $(LIBSAMRAI) ${LDFLAGS} ${LDLIBS} -o $@
 
 SAMRAIStartup: SAMRAIStartup.o BogusTagAndInitStrategy.o
 	$(CXX) -g SAMRAIStartup.o BogusTagAndInitStrategy.o ${PFLOTRAN_LDLIBS} ${PFLOTRAN_LDFLAGS} $(LIBSAMRAI3D) $(LIBSAMRAI) ${LDFLAGS} ${LDLIBS} -o $@
