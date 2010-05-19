@@ -194,12 +194,22 @@
 
 \begin{document}
 
+{\bf\Large Readiness Review \hfill \today}
+
+\longline
+
 \noindent
 \begin{tabular}{llll}
 {\bf Contacts:} &Peter C. Lichtner & 505-667-3420 & lichtner@lanl.gov\\
 &Glenn E. Hammond & 509-375-3875 & glenn.hammond@pnl.gov\\
 &Bobby Philip & & philipb@ornl.gov
 \end{tabular}
+
+\longline
+
+\tableofcontents
+
+\longline
 
 \section{Readiness Review: Problem Set 1}
 
@@ -215,7 +225,7 @@ Either a constant infiltration rate or variable infiltration may be specified at
 The computational domain is divided into eight stratigraphic units with the material properties listed in Table~\ref{tstrata}.
 
 \begin{table}[h]\centering
-\caption{Material properties for each stratigraphic unit.}\label{tstrata}
+\caption{Material properties for each stratigraphic unit taken from Last et al. (2009) and recently updated (Last private comm.).}\label{tstrata}
 \vspace{3mm}
 \begin{tabular}{lccccccc}
 \toprule
@@ -274,10 +284,18 @@ For $P\!<\!P_{\rm ref}$, the capillary pressure is equal to $P_c \!=\! P_{\rm re
 
 Boundary conditions of type Dirichlet or Neumann can be imposed on the system of specified pressure or flux, respectively.
 
-\subsection{Input File}
+\subsection{Numerical Approach}
+
+A fully implicit backward Euler method is used for Richards mode.
+
+\subsection{Input Files}
+
+\subsubsection{PFLOTRAN Input File}
 
 The PFLOTRAN input file for this problem is listed below.
-\footnotesize
+
+\tiny
+
 \begin{verbatim}
 :Description: 3D infiltration problem
  
@@ -658,9 +676,11 @@ REGION Rwi
 \end{verbatim}
 \normalsize
 
+\subsubsection{SAMRAI Input File}
+
 The associated SAMRAI input file is given by:
 
-\footnotesize
+\tiny
 \begin{verbatim}
 DIRICHLET = 0
 NEUMANN   = 1
@@ -820,4 +840,38 @@ TimerManager{
 }
 
 \end{verbatim}
+
+\normalsize
+
+\section{Readiness Review: Problem Set 2}
+
+\subsection{Problem Description}
+
+This problem involves flow and transport in which transport of a tracer is combined with the flow problem of Problem Set 1. In this problem a tracer is injected at a depth of 15 meters with a flow rate of 0.187 kg/s over a duration of two weeks representing a 60,000 gallon leak from one of the storage tanks at the Hanford tank farm.
+
+\subsection{Governing Equations}
+
+The same equations for flow are used as in Problem Set 1. The transport equations for a tracer are coupled to the flow equations through the flow velocity $\bq$ and saturation $s$. The transport equation for a non-reactive tracer has the form
+\EQ
+\frac{\p}{\p t} \varphi s \Psi_j + \bnabla\cdot\big(\bq \Psi_j - \varphi s D \bnabla \Psi_j\big) \eq Q_j,
+\EN
+In this equation $D$ denotes the diffusion/dispersion coefficient taken as a constant, and $Q_j$ denotes the source term from the leaking tank. The quantity $\Psi_j$ denotes the total concentration of the $j$th primary species defined as
+\EQ
+\Psi_j \eq C_j + \sum_i\nu_{ji} C_i,
+\EN
+for primary species concentration $C_j$ and secondary species $C_i$ with
+\EQ
+C_i \eq \gamma_i^{-1} K_i \prod_j\big(\gamma_j C_j\big)^{\nu_{ji}},
+\EN
+with activity coefficients $\gamma_j$, $\gamma_i$ and equilibrium constant $K_i$. The coefficients $\nu_{ji}$ refer to the stoichiometric reaction coefficients.
+
+
+\subsection{Numerical Approach}
+
+\subsection{Input Files}
+
+\section{References}
+
+Last, G. V., P. D. Thorne, J. A. Horner, K. R. Parker, B. N. Bjornstad, R.D. Mackley, D. C. Lanigan and B. A. Williams. 2009. Hydrogeology of the Hanford Site Central Plateau---A Status Report for the 200 West Area. PNNL-17913, Rev. 1, Pacific Northwest National Laboratory, Richland, Washington.
+
 \end{document}
