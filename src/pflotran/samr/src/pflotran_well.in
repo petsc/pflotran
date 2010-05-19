@@ -323,8 +323,8 @@ TYPE
 FLUX neumann
 /
 :FLUX 0.317098d-7 ! 1 m/y
-:FLUX 1.5855d-9 ! 5 cm/y
-FLUX file 200w_recharge_1951-2000_daily.dat
+FLUX 1.5855d-9 ! 5 cm/y
+:FLUX file 200w_recharge_1951-2000_daily.dat
 /
 
 FLOW_CONDITION Initial
