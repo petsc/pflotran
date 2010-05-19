@@ -213,7 +213,24 @@
 
 \section{Readiness Review: Problem Set 1}
 
-Readiness test for PFLOTRAN will consist of several problem sets. The first problem set described below applies to a partially saturated groundwater problem with infiltration at the surface. A second dataset in preparation will apply to injection of supercritical CO$_2$ in a deep geologic formation.
+Readiness test for PFLOTRAN will consist of several problem sets. 
+The first set of problem sets described below applies to a partially saturated groundwater problem with infiltration at the surface with and without transport. A second problem set will apply to injection of supercritical CO$_2$ in a deep geologic formation with and without transport. The problem sets are briefly described in Table~\ref{tprobset}.
+
+\begin{table}[h]\centering
+\caption{Definition of readiness problem sets.}\label{tprobset}
+\vspace{3mm}
+\begin{tabular}{cl}
+\toprule
+{\bf Problem Set} & \multicolumn{1}{c}{\bf Description}\\
+\midrule
+\#1 & Richards mode flow only\\
+\#2 & Richards mode coupled to non-reactive transport\\
+\#3 & Richards mode coupled to reactive transport\\
+\#4 & CO$_2$ mode without transport\\
+\#5 & CO$_2$ mode with reactive transport\\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection{Problem Description}
 
@@ -303,9 +320,7 @@ where $d_n$, $d_{n'}$ refer to the distances from the control volume center to t
 The PFLOTRAN input file for this problem is listed below.
 
 \tiny
-
 \verbatiminput{pflotran_1.in}
-
 \normalsize
 
 \subsubsection{SAMRAI Input File}
@@ -313,10 +328,7 @@ The PFLOTRAN input file for this problem is listed below.
 The associated SAMRAI input file is given by:
 
 \tiny
-
 \verbatiminput{pflotran_amr_1.in}
-
-
 \normalsize
 
 \section{Readiness Review: Problem Set 2}
@@ -327,11 +339,11 @@ This problem involves flow and transport in which transport of a tracer is combi
 
 \subsection{Governing Equations}
 
-The same equations for flow are used as in Problem Set 1. The transport equations for a tracer are coupled to the flow equations through the flow velocity $\bq$ and saturation $s$. The transport equation for a non-reactive tracer has the form
+The same equations for flow are used as in Problem Set 1 with the addition of a source term to represent leaking from an underground storage tank. The transport equations are coupled to the flow equations through the flow velocity $\bq$ and saturation $s$. The reactive transport equations have the general form
 \EQ\label{rxntp}
-\frac{\p}{\p t} \varphi s \Psi_j + \bnabla\cdot\big(\bq \Psi_j - \varphi s D \bnabla \Psi_j\big) \eq Q_j - \sum_m\nu_{jm}I_m,
+\frac{\p}{\p t} \varphi s \Psi_j + \bnabla\cdot\big(\bq \Psi_j - \varphi s D \bnabla \Psi_j\big) \eq Q_j - \sum_m\nu_{jm}I_m - \frac{\p S_j}{\p t}.
 \EN
-In this equation $D$ denotes the diffusion/dispersion coefficient taken as a constant, and $Q_j$ denotes the source term from the leaking tank. The quantity $\Psi_j$ denotes the total concentration of the $j$th primary species defined as
+In this equation $D$ denotes the diffusion/dispersion coefficient taken as a constant, $S_j$ represents sorption processes including ion exchange and surface complexation reactions, and $Q_j$ denotes the source term from the leaking tank. The quantity $\Psi_j$ denotes the total concentration of the $j$th primary species defined as
 \EQ
 \Psi_j \eq C_j + \sum_i\nu_{ji} C_i,
 \EN
@@ -339,7 +351,7 @@ for primary species concentration $C_j$ and secondary species $C_i$ with
 \EQ
 C_i \eq \gamma_i^{-1} K_i \prod_j\big(\gamma_j C_j\big)^{\nu_{ji}},
 \EN
-with activity coefficients $\gamma_j$, $\gamma_i$ and equilibrium constant $K_i$. The coefficients $\nu_{ji}$ refer to the stoichiometric reaction coefficients. The second term on the right-hand side of Eqn.\eqref{rxntp} describes mineral reactions with rate $I_m$ provided by transition state theory
+with activity coefficients $\gamma_j$, $\gamma_i$ and equilibrium constant $K_i$. The coefficients $\nu_{ji}$ refer to the stoichiometric reaction coefficients. The second term on the right-hand side of Eqn.\eqref{rxntp} describes mineral reactions with rate $I_m$ for the $m$th mineral provided by transition state theory
 \EQ
 I_m \eq -k_m a_m \big(1-K_m Q_m\big) \zeta_m,
 \EN
@@ -361,18 +373,42 @@ where $\varphi_m$ denotes the mineral volume fraction. The change in mineral con
 \EN
 with molar volume $\overline V_m$.
 
+For a non-reactive tracer terms containing the mineral and sorption reaction rates on the right-hand side of Eqn.\eqref{rxntp} vanish and $\Psi_j$ is replaced by the tracer concentration $C_j$. The tracer transport equation is coupled to the flow equation through the saturation and Darcy velocity.
+
 \subsection{Numerical Discretization}
 
 Either fully implicit or operator splitting may be used in the reactive transport mode. For operator splitting the fully coupled transport equations are split into non-reactive and reactive components according to
 \EQ
-\frac{\p}{\p t} \varphi s \Psi_j + \bnabla\cdot\big(\bq \Psi_j - \varphi s D \bnabla \Psi_j\big) \eq Q_j,
+\frac{\p}{\p t} \varphi s \Psi_j + \bnabla\cdot\big(\bq \Psi_j - \varphi s D \bnabla \Psi_j\big) \eq Q_j, \ \ \ \ \ \text{(Step 1)},
 \EN
 followed by
 \EQ
-\frac{d}{d t} \varphi s \Psi_j \eq - \sum_m\nu_{jm}I_m.
+\frac{d}{dt} \varphi s \Psi_j \eq - \sum_m\nu_{jm}I_m - \frac{d S_j}{d t} \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ (\text{Step 2}).
 \EN
 
 \subsection{Input Files}
+
+\subsubsection{PFLOTRAN Input File}
+
+In the PFLOTRAN input file the source region representing a leaking tank is located at an elevation of 65 meters at the center of the domain. For the input file below, the source region occupies four grid cells horizontally. To keep the same injection volume, this would need to be modified if the grid size is changed.
+
+\tiny
+\verbatiminput{pflotran_2.in}
+\normalsize
+
+\subsubsection{Auxillary PFLOTRAN Input File}
+
+\tiny
+\verbatiminput{src.dat}
+\normalsize
+
+\subsubsection{SAMRAI Input File}
+
+The associated SAMRAI input file is given by:
+
+\tiny
+%\verbatiminput{pflotran_amr_2.in}
+\normalsize
 
 \section{References}
 

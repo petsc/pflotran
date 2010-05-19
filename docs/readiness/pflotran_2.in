@@ -1,4 +1,3 @@
-\begin{verbatim}
 :Description: 3D infiltration problem
  
 : == debugging ================================================================
@@ -10,6 +9,16 @@ DEBUG
 
 : == mode =====================================================================
 MODE RICHARDS
+
+: == chemistry ================================================================
+CHEMISTRY
+PRIMARY_SPECIES
+Tracer
+/
+OUTPUT
+All
+/
+/
 
 : == reference variables ======================================================
 REFERENCE_POROSITY 0.25d0
@@ -214,6 +223,7 @@ COORDINATES
 1.d20 1.d20 80.d0
 /
 /
+
 REGION Top
 COORDINATES
 -1.d20 -1.d20 80.d0
@@ -276,8 +286,14 @@ COORDINATES
 1.d20 1.d20 0.d0
 /
 /
+REGION Leak
+COORDINATES
+10.d0 11.d0 65.d0
+10.d0 11.d0 65.d0
+/
+/
 
-: == flow conditions ==============================
+: == flow conditions ==========================================================
 FLOW_CONDITION Inlet
 TYPE
 FLUX neumann
@@ -295,21 +311,69 @@ DATUM 0.d0 0.d0 6.d0
 PRESSURE 101325.d0
 /
 
-: == couplers ====================================
+FLOW_CONDITION source
+TYPE
+RATE mass_rate
+/
+INTERPOLATION STEP
+RATE file src.dat ! 0.187 kg/s for 2 weeks (60,000 gallons)
+/
+
+: == transport conditions =====================================================
+TRANSPORT_CONDITION Inlet
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 Inlet
+/
+/
+TRANSPORT_CONDITION Initial
+TYPE zero_gradient
+CONSTRAINT_LIST
+0.d0 Initial
+/
+/
+TRANSPORT_CONDITION source
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 well
+/
+/
+
+: == transport constraints ====================================================
+CONSTRAINT Initial
+CONCENTRATIONS
+Tracer   1.e-10            F
+/
+/
+CONSTRAINT Inlet
+CONCENTRATIONS
+Tracer   1.e-1             F
+/
+/
+CONSTRAINT well
+CONCENTRATIONS
+Tracer 1.d0 T
+/
+/
+
+: == couplers =================================================================
 BOUNDARY_CONDITION Inlet
 FLOW_CONDITION Inlet
+TRANSPORT_CONDITION Inlet
 REGION Top
 /
 BOUNDARY_CONDITION Outlet
 FLOW_CONDITION Initial
+TRANSPORT_CONDITION Initial
 REGION Bottom
 /
 INITIAL_CONDITION Initial
 FLOW_CONDITION Initial
+TRANSPORT_CONDITION Initial
 REGION all
 /
 
-: == stratigraphy ================================
+: == stratigraphy =============================================================
 STRATA
 MATERIAL HD
 REGION HD
