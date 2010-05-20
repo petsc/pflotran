@@ -213,8 +213,8 @@
 
 \section{Introduction}
 
-Readiness test for PFLOTRAN will consist of several problem sets. 
-The first set of problem sets described below applies to a partially saturated groundwater problem with infiltration at the surface with and without transport. A second problem set will apply to injection of supercritical CO$_2$ in a deep geologic formation with and without transport. The problem sets are briefly described in Table~\ref{tprobset}.
+Readiness test for PFLOTRAN consists of several problem sets. 
+The first set of problem sets described below applies to a partially saturated groundwater problem with infiltration at the surface with and without transport. A second problem set applies to injection of supercritical CO$_2$ in a deep geologic formation with and without multicomponent reactive transport. The problem sets are briefly described in Table~\ref{tprobset}.
 
 \begin{table}[h]\centering
 \caption{Definition of readiness problem sets.}\label{tprobset}
@@ -233,6 +233,10 @@ The first set of problem sets described below applies to a partially saturated g
 \end{table}
 
 \section{Readiness Application: Problem Set 1}
+
+\subsection{Background}
+
+The Hanford tank farm complex is situated on the Columbia River plateau in a semiarid region in south-central Washington. The site served as a plutonium production facility for nuclear weapons from 1944 to the end of the Cold War era. Storage tanks at the site contain waste fluid streams from the plutonium extraction process. Numerous leaks have occurred at the Hanford Site from single-shelled tanks containing high-level radioactive waste (it has been estimated that 67 out of 149 single-shell tanks have leaked). The largest areas of vadose zone contamination occur in the S-SX Waste Management Area located in the 200 Area of the Hanford site, consisting of the 241-S and 241-SX tank farms, near tanks S-104, SX-108/SX-109, and SX-115. 
 
 \subsection{Problem Description}
 
@@ -414,12 +418,6 @@ The associated SAMRAI input file is given by:
 
 \section{Readiness Application: Problem Set 3}
 
-$\c$ sequestration (capture, separation, and long term storage) in various geologic media including depleted oil reservoirs, saline aquifers, and oceanic sediments is being considered as a possible solution to reduce green house gas emissions. 
-Sequestration in subsurface geologic formations containing saline aquifers could provide permanent storage and thereby help mitigate global climate change. 
-Saline aquifers have an estimated world-wide storage capacity for $\c$ of 100-10,000 Gt $\c$ \cite{doe07}. 
-
-Injection of supercritical $\c$ into deep underground reservoirs introduces unique computational challenges. At appropriate $p$-$T$ conditions, supercritical $\c$ is buoyant because of its lower density compared to the brine and rises, eventually becoming trapped by a caprock and spreading laterally as it gradually dissolves into the surrounding brine. As the $\c$ dissolves into the brine, however, the brine becomes heavier and begins to sink resulting in density-driven convective instabilities leading in the formation of $\c$-concentrated brine fingers protruding downward. Convective mixing can result in much more rapid dissipation of the supercritical $\c$ plume compared to diffusive processes alone. Also important is the areal extent of the plume, controlled by competition between the rate of spreading of the plume and the rate at which it dissolves into the brine, which can increase accidental release of $\c$ to the surface through abandoned bore holes and faults. 
-
 \subsection{Problem Description}
 
 This problem set is derived from Problem Set 2 coupling Richards equation to reactive transport describing a leak from an underground storage tank at the legacy Hanford nuclear waste site. This is a three-dimensional version of the one-dimensional model presented in \cite{lichtner04}. The model includes transport of cesium release from the underground storage tank with ion exchange reactions resulting in its retardation.
@@ -430,15 +428,41 @@ Operator splitting will be used to solve the reactive transport equations.
 
 \section{Readiness Application: Problem Set 4}
 
+\subsection{Background}
+
+$\c$ sequestration (capture, separation, and long term storage) in various geologic media including depleted oil reservoirs, saline aquifers, and oceanic sediments is being considered as a possible solution to reduce green house gas emissions. 
+Sequestration in subsurface geologic formations containing saline aquifers could provide permanent storage and thereby help mitigate global climate change. 
+
+Injection of supercritical $\c$ into deep underground reservoirs introduces unique computational challenges. At appropriate $p$-$T$ conditions, supercritical $\c$ is buoyant because of its lower density compared to the brine and rises, eventually becoming trapped by a caprock and spreading laterally as it gradually dissolves into the surrounding brine. As the $\c$ dissolves into the brine, however, the brine becomes heavier and begins to sink resulting in density-driven convective instabilities leading in the formation of $\c$-concentrated brine fingers protruding downward. Convective mixing can result in much more rapid dissipation of the supercritical $\c$ plume compared to diffusive processes alone. Also important is the areal extent of the plume, controlled by competition between the rate of spreading of the plume and the rate at which it dissolves into the brine, which can increase accidental release of $\c$ to the surface through abandoned bore holes and faults. 
+
 \subsection{Problem Description}
 
 This problem involves injection of supercritical $\c$ into a deep geologic formation without chemical reactions. The problem domain is $8000\!\times\!8000\!\times\!250$ cubic meters. Supercritical $\c$ is injected at a depth of 50 meters from the top of the domain. A temperature of 50\degc\ is used at the top boundary at a pressure of $200$ MPa.
+An example calculation at two different grid resolutions is shown in Figure~\ref{fco2}.
+
+
+\begin{figure}[t!]\centering
+\includegraphics[height=0.325\textheight]{./figs/xl300y-pri-coarse}
+  
+\vspace{-2.5cm}
+  
+\includegraphics[height=0.325\textheight]{./figs/xl300y-pri-fine} 
+  
+\vspace{-1.25cm}
+
+\caption{Simulations carried out using PFLOTRAN showing dissolved $\c$ at an elapsed time of 300 years illustrating the dependence of fingering on coarse (top) and fine (lower) grid resolutions \cite{lulich07}. 
+The coarse grid consists of $40\!\times\!40\!\times\!25$ nodes with spacing $\Delta x \!=\!\Delta y \!=\! 175$ m and $\Delta z\!=\!10$ m. The fine grid is refined in the $x$ and $y$ directions by a factor 4.
+An isotropic permeability of $2\!\times\! 10^{-12}$ m$^2$ is used with a porosity of 15\% typical of sandstone. 
+The computational domain is 250 m thick and $7 \!\times\! 7$ km in lateral extent. $\c$ is injected at a rate of 1 Mt/y for 20 years at a depth of 50 m below the top of the domain, corresponding to roughly 75\% of the $\c$ produced by a 1000 MW gas-fired power plant in 20 years. No flow boundary conditions are imposed at the top and bottom and front and back of the domain, and with constant pressure at the left and right sides. 
+}\label{fco2}
+\end{figure}
+
 
 \subsection{Governing Equations}
 
 Mass conservation equations employed by PFLOTRAN can be written in the form
 \EQ\label{massconv}
-\sum_\a \left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a X_i^\a\big) + \bnabla\cdot \big[\bq_\a \rho_\a X_i^\a -\varphi s_\a \rho_\a D_\a \bnabla X_i^\a\big]\right\} \eq Q_i,
+\sum_{\a=\w,\,\c} \left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a X_i^\a\big) + \bnabla\cdot \big[\bq_\a \rho_\a X_i^\a -\varphi s_\a \rho_\a D_\a \bnabla X_i^\a\big]\right\} \eq Q_i,
 \EN
 with porosity $\varphi$, molar density $\rho_\a$, diffusivity/dispersivity $D_\a$ and source/sink term $Q_i$. The sum over $\a$ is over all fluid phases present in a particular control volume. In these equations $s_\a$ denotes the volume fraction of phase $\a$ satisfying
 \EQ
