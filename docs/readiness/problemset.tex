@@ -500,7 +500,7 @@ with internal energy $U_\a$ and enthalpy $H_\a$ of fluid phase $\a$, and rock he
 Using a finite volume discretization approach, the governing flow and transport equations are discretized according to
 \BA
 R_{in}^{k+1} \eq &\sum_\a \left\{\frac{\big(\varphi s_\a \rho_\a X_i^\a\big)_n^{k+1}-(\varphi s_\a \rho_\a X_i^\a)_n^k}{\Delta t} V_n \right. \nonumber\\
-&\left. + \sum_{n'} \left[\bq_{\a,nn'}^{k+1} \rho_{\a,nn'}^{k+1} X_{inn'}^{\a,k+1} -(\varphi s_{\a} \rho_\a D_\a)_{nn'}^{k+1} \frac{X_{i n'}^{\a, k+1}-X_{i n}^{\a,k+1}}{d_{n'}+d_n}\right] A_{nn'}\right\} \nonumber\\
+&\left. + \sum_{n'} \left[q_{\a,nn'}^{k+1} \rho_{\a,nn'}^{k+1} X_{inn'}^{\a,k+1} -(\varphi s_{\a} \rho_\a D_\a)_{nn'}^{k+1} \frac{X_{i n'}^{\a, k+1}-X_{i n}^{\a,k+1}}{d_{n'}+d_n}\right] A_{nn'}\right\} \nonumber\\
 &- Q_i^{k+1} V_n,
 \EA
 providing the residual function for the $i$th component at the $n$th control volume and $k+1$st time step, where the sum over $n'$ is over all control volumes which connect to the $n$th control volume, $d_n$, $d_{n'}$ refers to the distance for the control volume center to the interface, and $A_{nn'}$ denotes the interfacial area.
@@ -508,7 +508,7 @@ providing the residual function for the $i$th component at the $n$th control vol
 \subsubsection{Flash Method}
 
 An alternative approach to variable switching is the flash method.
-Although the variable switching method is often considered stable and efficient \citep{Pruess99}, it has several shortcomings: 1) it causes perturbation during Newton iterations during phase changes; 2) the change in the definition of independent variables affects the structure of Newton-Raphson matrix; and 3) as a consequence this degrades performance of the preconditioner during the linear solve step.
+Although the variable switching method is often considered stable and efficient \citep{Pruess99}, it has several shortcomings: 1) it causes perturbation during Newton iterations during phase changes; 2) the change in the definition of independent variables affects the structure of Newton-Raphson matrix; and 3) as a consequence this degrades performance of the preconditioner during the linear solve step. Finally, the variable switching approach is not appropriate for use with multilevel solvers because of the possibility for the need to solve for different independent variables on different levels.
 
 %\subsection{Two-Phase System}
 
@@ -522,12 +522,12 @@ using the expansion
 \frac{n_i^\a}{V} &\eq \frac{n_i^\a}{n_\a}\frac{n_\a}{V_\a}\frac{V_\a}{V_p}\frac{V_p}{V},\\
 &\eq \varphi \rho_\a s_\a x_i^\a,
 \EA
-where $V_p$ denotes the pore volume.
+where where $V$ is the total control volume and $V_p$ denotes the pore volume.
 Explicitly for a two-phase ($\a=w$, SC) system where $w$ designates the phase $\w$ and SC designates supercritical $\c$, $z_i$ can be expressed as
 \EQ
 z_i \eq \frac{\rho_w s_w x_i^w + \rho_{\rm SC} s_{\rm SC} x_i^{\rm SC}}{\rho_w s_w + \rho_{\rm SC} s_{\rm SC}},
 \EN
-for molar fluid densities $\rho_w$, $\rho_{\rm SC}$ and saturation $s_w$, $s_{\rm SC} = 1\!-\!s_w$.
+for molar fluid densities $\rho_w$, $\rho_{\rm SC}$ and saturation $s_w$, $s_{\rm SC} \!=\! 1\!-\!s_w$.
 The variable $z_i$ is a persistent degree of freedom throughout the simulation.
 
 Following the notation and formulation found in \cite{nghiem-1985} and \cite{michelsen-1-1982}, let $x_i$, $y_i$ be the mole fraction of component $i$ in liquid and vapor phases, respectively, related by the equilibrium constant $K_i$
@@ -574,40 +574,40 @@ and
 \end{subequations}
 If the equality in Eqn.(\ref{liqbc}) is satisfied the vapor phase is stable, whereas if the equality in Eqn.(\ref{vapbc}) is valid the liquid phase is stable. 
 These conditions were referred to by \cite{michelsen-2-1982} in his discussion on phase change calculations. 
-It was demonstrated that this criteria is consistent with the tangent plane method applied to the minimization of the Gibbs free energy [\cite{michelsen-1-1982}, \cite{nghiem-1985}]. A more detailed discussion can be found in these references. In the PFLOTRAN MPHASE mode in which variable switching is employed, the solution of Eqn.(\ref{flash}) for a single node is used as the initial guess for saturation for a phase transition from single to two phase, although the efficiency of this initial guess is not entirely satisfactory because the node does not represent a closed system.
+It was demonstrated that this criteria is consistent with the tangent plane method applied to the minimization of the Gibbs free energy [\cite{michelsen-1-1982}, \cite{nghiem-1985}]. A more detailed discussion can be found in these references. (In the PFLOTRAN MPHASE mode in which variable switching is employed, the solution of Eqn.(\ref{flash}) for a single node is used as the initial guess for saturation for a phase transition from single to two phase, although the efficiency of this initial guess is not entirely satisfactory because the node does not represent a closed system.)
 
 Eqns.(\ref{addphase_N3}) a, b are used as criteria to determine the existence of a change in phase in the implementation of the flash mode; i.e. if $\sum_i K_i z_i \leq 1$, then only a liquid phase exists; if $\sum_i {z_i}/{K_i} \geq 1$, then only a gas phase exists; otherwise two phases coexist. Once the phase configuration (single aqueous phase, single SC phase, and coexisting two-phase system) is determined, the secondary variables are evaluated in the following steps: 
 
 \noindent
-Case 1: single aqueous ($\w$) phase:
+Case 1: single aqueous ($\w$) phase.
+The aqueous concentration of the $i$th component is obtained as
 \begin{subequations}\label{fla-sec-c1}
-the aqueous concentration is obtained as
 \BA
-x_i^w = z_i
+x_i^w = z_i,
 \EA
 and phase saturations are given by
 \BA
-s_w = 1, \ s_{SC} =0 
+s_w = 1, \ s_{SC} =0.
 \EA
 \end{subequations}
 
 \noindent
-Case 2: single supercritical (SC $\c$) phase:
+Case 2: single supercritical (SC $\c$) phase.
+The concentration of the $i$th component in the supercritical phase is obtained as
 \begin{subequations}\label{fla-sec-c2}
-the aqueous concentration is obtained as
 \BA
-x_i^{SC} = z_i
+x_i^{SC} = z_i,
 \EA
 and phase saturations are given by
 \BA
- s_w = 0, \ s_{SC} =1 
+ s_w = 0, \ s_{SC} =1.
 \EA
 \end{subequations}
 For both cases 1 and 2, the density of either aqueous and SC phase can be obtained from the EOS, since $P$, $T$ and $x_i$ have been determined.
 
 \noindent
-Case 3: two phases coexist:
-As stated previously, the coefficients $K_i$ are not functions of the $\c$ concentration, with their values at given $P$ and $T$ given explicitly by
+Case 3: two phases coexist.
+As noted below, the coefficients $K_i$ are not functions of the $\c$ concentration, with their values at given $P$ and $T$ given explicitly by
 \begin{subequations}\label{k_value_c}
 \BA
 K_{\c} =\frac{H_{\c}\gamma_{\c}}{P\phi_{\c}},
