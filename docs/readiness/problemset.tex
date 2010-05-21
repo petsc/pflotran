@@ -307,7 +307,7 @@ For $P\!<\!P_{\rm ref}$, the capillary pressure is equal to $P_c \!=\! P_{\rm re
 
 Boundary conditions of type Dirichlet or Neumann can be imposed on the system of specified pressure or flux, respectively.
 
-\subsection{Numerical Discretization}
+\subsection{Numerical Implementation}
 
 A fully implicit backward Euler time stepping method is used for Richards mode. Richards equation is discretized spatially using integrated finite volume. The residual equation for a time step $\Delta t$ thus has the form
 \EQ
@@ -381,7 +381,7 @@ with molar volume $\overline V_m$.
 
 For a non-reactive tracer terms containing the mineral and sorption reaction rates on the right-hand side of Eqn.\eqref{rxntp} vanish and $\Psi_j$ is replaced by the tracer concentration $C_j$. The tracer transport equation is coupled to the flow equation through the saturation and Darcy velocity. The flow equation may be solved independently of the transport equation.
 
-\subsection{Numerical Discretization}
+\subsection{Numerical Implementation}
 
 Either fully implicit or operator splitting may be used in the reactive transport mode. For operator splitting the fully coupled transport equations are split into non-reactive and reactive components according to
 \EQ
@@ -422,7 +422,7 @@ The associated SAMRAI input file is given by:
 
 This problem set is derived from Problem Set 2 coupling Richards equation to reactive transport describing a leak from an underground storage tank at the legacy Hanford nuclear waste site. This is a three-dimensional version of the one-dimensional model presented in \cite{lichtner04}. The model includes transport of cesium release from the underground storage tank with ion exchange reactions resulting in its retardation.
 
-\subsection{Numerical Discretization}
+\subsection{Numerical Implementation}
 
 Operator splitting will be used to solve the reactive transport equations.
 
@@ -495,7 +495,7 @@ The energy conservation equation can be written in the form
 as the sum of contributions from each fluid phase and rock,
 with internal energy $U_\a$ and enthalpy $H_\a$ of fluid phase $\a$, and rock heat capacity $C_p$ and thermal conductivity $\kappa$. The quantity $Q_e$ denotes the heat source/sink term.
 
-\subsection{Numerical Discretization}
+\subsection{Numerical Implementation}
 
 Using a finite volume discretization approach, the governing flow and transport equations are discretized according to
 \BA
@@ -504,6 +504,8 @@ R_{in}^{k+1} \eq &\sum_\a \left\{\frac{\big(\varphi s_\a \rho_\a X_i^\a\big)_n^{
 &- Q_i^{k+1} V_n,
 \EA
 providing the residual function for the $i$th component at the $n$th control volume and $k+1$st time step, where the sum over $n'$ is over all control volumes which connect to the $n$th control volume, $d_n$, $d_{n'}$ refers to the distance for the control volume center to the interface, and $A_{nn'}$ denotes the interfacial area.
+
+The flash method described in the next section is used to solve the governing equations. This approach avoids difficulties encountered with variable switching when used with multilevel solvers.
 
 \subsubsection{Flash Method}
 
@@ -515,20 +517,26 @@ Although the variable switching method is often considered stable and efficient 
 In the flash approach the primary variables preserved during the solution of the governing equations. The flash method has been implemented in the FLASH2 mode in PFLOTRAN. The primary variables are $P$, $T$ and the total mole fraction $z_i$ of the $i$th component summed over all phases, defined as:
 \BA
 z_i &\eq\dfrac{\sum_\a n_i^\a}{\sum_\a \sum_j n^\a_j},\\
-&\eq \frac{\sum_\a \rho_\a s_\a x_i^\a}{\sum_{\a} \rho_\a s_\a},
+&\eq \frac{\sum_\a s_\a \rho_\a x_i^\a}{\sum_{\a} s_\a \rho_\a},
 \EA
 using the expansion
 \BA
 \frac{n_i^\a}{V} &\eq \frac{n_i^\a}{n_\a}\frac{n_\a}{V_\a}\frac{V_\a}{V_p}\frac{V_p}{V},\\
-&\eq \varphi \rho_\a s_\a x_i^\a,
+&\eq \varphi s_\a \rho_\a x_i^\a,
 \EA
 where where $V$ is the total control volume and $V_p$ denotes the pore volume.
 Explicitly for a two-phase ($\a=w$, SC) system where $w$ designates the phase $\w$ and SC designates supercritical $\c$, $z_i$ can be expressed as
 \EQ
-z_i \eq \frac{\rho_w s_w x_i^w + \rho_{\rm SC} s_{\rm SC} x_i^{\rm SC}}{\rho_w s_w + \rho_{\rm SC} s_{\rm SC}},
+z_i \eq \frac{s_w \rho_w x_i^w + s_{\rm SC} \rho_{\rm SC} x_i^{\rm SC}}{s_w \rho_w + s_{\rm SC} \rho_{\rm SC}},
 \EN
 for molar fluid densities $\rho_w$, $\rho_{\rm SC}$ and saturation $s_w$, $s_{\rm SC} \!=\! 1\!-\!s_w$.
 The variable $z_i$ is a persistent degree of freedom throughout the simulation.
+
+Introducing $z_i$ into the mass conservation equations gives
+\EQ
+\sum_\a \left\{\frac{\p}{\p t} \big(\varphi z_i s_\a\rho_\a\big) + \bnabla\cdot \big[\bq_\a \rho_\a x_i^\a -\varphi s_\a \rho_\a D_\a \bnabla x_i^\a\big]\right\} \eq Q_i.
+\EN
+In this equation $x_i^\a$ is expressed as a nonlinear function of the variables $z_i$. The Jacobian is computed numerically.
 
 Following the notation and formulation found in \cite{nghiem-1985} and \cite{michelsen-1-1982}, let $x_i$, $y_i$ be the mole fraction of component $i$ in liquid and vapor phases, respectively, related by the equilibrium constant $K_i$
 \EQ\label{yi}
@@ -669,6 +677,8 @@ It then follows that
 This problem involves injection of supercritical $\c$ into a deep geologic formation with chemical reactions between dissolved $\c$ and the formation brine.
 
 \subsection{Problem Description}
+
+In this problem supercritical $\c$ is injected into a sandstone reservoir with carbonate cement in equilibrium with a low concentration brine formation fluid. 
 
 \bibliographystyle{plainnat}
 \bibliography{./reference-new}

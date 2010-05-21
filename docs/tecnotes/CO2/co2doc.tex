@@ -330,12 +330,12 @@ Although the variable switching method is often considered stable and efficient 
 An altertative to variable switching is to keep the primary variables preserved using the solution of the governing equations. The flash method has been implemented in the FLASH2 mode in PFLOTRAN. The primary variables are $P$, $T$ and the total mole fraction $z_i$ of the $i$th component summed over all phases, defined as:
 \BA
 z_i &\eq\dfrac{\sum_\a n_i^\a}{\sum_\a \sum_j n^\a_j},\\
-&\eq \frac{\sum_\a \rho_\a s_\a x_i^\a}{\sum_{\a} \rho_\a s_\a},
+&\eq \frac{\sum_\a s_\a \rho_\a x_i^\a}{\sum_{\a} s_\a \rho_\a},
 \EA
 using the expansion
 \BA
 \frac{n_i^\a}{V} &\eq \frac{n_i^\a}{n_\a}\frac{n_\a}{V_\a}\frac{V_\a}{V_p}\frac{V_p}{V},\\
-&\eq \varphi \rho_\a s_\a x_i^\a,
+&\eq \varphi s_\a \rho_\a x_i^\a,
 \EA
 where $V_p$ denotes the pore volume.
 Explicitly for a two-phase ($\a=w$, SC) system where $w$ designates the phase $\w$ and SC designates supercritical $\c$, $z_i$ can be expressed as
@@ -344,6 +344,12 @@ z_i \eq \frac{\rho_w s_w x_i^w + \rho_{\rm SC} s_{\rm SC} x_i^{\rm SC}}{\rho_w s
 \EN
 for molar fluid densities $\rho_w$, $\rho_{\rm SC}$ and saturation $s_w$, $s_{\rm SC} = 1\!-\!s_w$.
 The variable $z_i$ is a persistent degree of freedom throughout the simulation.
+
+Introducing $z_i$ into the mass conservation equations gives
+\EQ
+\sum_\a \left\{\frac{\p}{\p t} \big(\varphi z_i s_\a\rho_\a\big) + \bnabla\cdot \big[\bq_\a \rho_\a x_i^\a -\varphi s_\a \rho_\a D_\a \bnabla x_i^\a\big]\right\} \eq Q_i.
+\EN
+In this equation $x_i^\a$ is expressed as a nonlinear function of the variables $z_i$. The Jacobian is computed numerically.
 
 Following the notation and formulation found in \cite{nghiem-1985} and \cite{michelsen-1-1982}, let $x_i$, $y_i$ be the mole fraction of component $i$ in liquid and vapor phases, respectively, related by the equilibrium constant $K_i$
 \EQ\label{yi}
