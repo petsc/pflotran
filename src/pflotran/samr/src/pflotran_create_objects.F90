@@ -1,5 +1,5 @@
-subroutine f_create_simulation(simulation_obj, application_ptr)
- 
+subroutine f_create_simulation(simulation_obj, application_ptr, pflotran_filename, len)
+
  use Simulation_module
  use Realization_module
  use Discretization_module
@@ -10,7 +10,8 @@ subroutine f_create_simulation(simulation_obj, application_ptr)
  use Stochastic_module
  use Stochastic_Aux_module  
  use AMR_Grid_module
-
+ use, intrinsic :: iso_c_binding
+      
  implicit none
 
 #include "definitions.h"
@@ -18,6 +19,8 @@ subroutine f_create_simulation(simulation_obj, application_ptr)
 
  PetscFortranAddr :: simulation_obj
  PetscFortranAddr :: application_ptr
+ type(c_ptr), intent(in), value :: pflotran_filename
+ integer :: len     
  PetscLogDouble :: timex(4), timex_wall(4)
  
  PetscTruth :: truth
@@ -26,13 +29,24 @@ subroutine f_create_simulation(simulation_obj, application_ptr)
  PetscErrorCode :: ierr
  character(len=MAXSTRINGLENGTH) :: string
  PetscMPIInt :: myrank, commsize
- 
+ character(kind=c_char), pointer :: input_file(:)
+
  type(stochastic_type), pointer :: stochastic
  type(simulation_type), pointer :: simulation
  type(realization_type), pointer :: realization
  type(option_type), pointer :: option
  type(discretization_type), pointer :: discretization
 
+ character(c_char), dimension(1), save, target :: dummy_string="?"
+ integer :: i
+
+ if( c_associated(pflotran_filename) ) then
+   call c_f_pointer(pflotran_filename, input_file, [len])
+ else
+! To avoid segfaults, associate FPTR with a dummy target:
+    input_file => dummy_string
+ endif 
+      
  nullify(stochastic)
  nullify(simulation)
  nullify(realization)
@@ -50,8 +64,11 @@ subroutine f_create_simulation(simulation_obj, application_ptr)
  option%mycommsize = commsize
 
  option%use_samr = PETSC_TRUE
- option%input_filename = "pflotran_well.in"
-
+                                ! option%input_filename = "pflotran_well.in"
+ do i=1,len     
+   option%input_filename(i:i) = input_file(i)(1:1)
+ end do
+      
  string = '-pflotranin'
  call InputGetCommandLineString(string,option%input_filename,option_found,option)
  
