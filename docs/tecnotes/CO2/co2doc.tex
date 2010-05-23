@@ -536,7 +536,7 @@ The result of the flash calculation is to provide the composition of each phase 
 \EQ
 x_i^\a \eq \frac{n_i^\a}{n_\a}, \ \ \ \sum_i x_i^\a \eq 1,
 \EN
-and the fraction of each phase present in the system $\zeta_\a$ defined by
+and the mole fraction of each phase present in the system $\zeta_\a$ defined by
 \EQ
 \zeta_\a \eq \frac{n_\a}{n}, \ \ \ \sum_\a \zeta_\a \eq 1,
 \EN
@@ -574,6 +574,11 @@ and
 x_i^\a \eq \frac{z_i \lambda_\a^i}{\sum_{i'} z_{i'} \lambda_\a^{i'}}.
 \EN
 Thus the set of variables $\{\zeta_\a,\, x_i^\a\}$ is equivalent to the set $\{z_i,\,\lambda_\a^i\}$. Expressing the equilibrium constraints Eqn.\eqref{chempot} in terms of the latter set then provides a generally nonlinear system of $N_C (N_P\!-\!1)$ equations in an equal number of unknowns.
+
+\BA
+\zeta_\a &\eq \frac{n_\a}{n} \eq \frac{(n_\a/V_\a) (V_\a/V_p)}{\sum_\b (n_\b/ V_\b) (V_\b/V_p)},\nonumber\\
+&\eq \frac{s_\a \rho_\a}{\sum_\b s_\b\rho_\b}.
+\EA
 
 %\end{comment}
 
