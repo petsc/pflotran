@@ -4056,7 +4056,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     
 !     check for supersaturation threshold for precipitation
       if (associated(reaction%kinmnrl_affinity_threshold)) then
-        if (QK < reaction%kinmnrl_affinity_threshold(imnrl)) exit
+        if (sign_ < 0.d0 .and. QK < reaction%kinmnrl_affinity_threshold(imnrl)) exit
       endif
 
       ! compute prefactor
