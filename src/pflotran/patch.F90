@@ -909,9 +909,14 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
           global_auxvar%temp = option%reference_temperature
         endif
 
+#ifndef DONT_USE_WATEOS
         call wateos(global_auxvar%temp(1),global_auxvar%pres(1), &
                     global_auxvar%den_kg(1),r1,r2,r3,r4,r5,r6, &
-                    option%scale,ierr) 
+                    option%scale,ierr)
+#else
+        call density(global_auxvar%temp(1),global_auxvar%pres(1), &
+                     global_auxvar%den_kg(1))
+#endif                     
       else
         global_auxvar%pres = option%reference_pressure
         global_auxvar%temp = option%reference_temperature

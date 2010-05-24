@@ -1662,7 +1662,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
 !      call VecGetArrayF90(field%work,vec_ptr,ierr)
 !      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
 
-#if 1 
+#if 0 
       ! for testing residual calculation for Bobby
       ! solution is stored in field%work vector, but we need it in ghosted
       ! form for the residual calculation
@@ -1673,7 +1673,8 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
       call RTTransportResidual(realization,field%work_loc,field%work,idof)
       call VecNorm(field%work,NORM_2,euclid_norm,ierr)
       call VecNorm(field%work,NORM_INFINITY,inf_norm,ierr)
-      print *, trim(realization%reaction%primary_species_names(idof))//': ', euclid_norm, inf_norm
+      print *, trim(realization%reaction%primary_species_names(idof))//': ', &
+        euclid_norm, inf_norm
 #endif
 
       call KSPGetIterationNumber(solver%ksp,num_linear_iterations,ierr)
