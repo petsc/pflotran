@@ -174,7 +174,7 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   PetscReal :: dvis_dt, dvis_dp, dvis_dpsat
   PetscReal :: dw_dp, dw_dt, hw_dp, hw_dt
   PetscReal :: pert, pw_pert, dw_kg_pert
-  PetscReal, parameter :: tol = 1.d-6
+  PetscReal, parameter :: tol = 1.d-3
   
   global_aux_var%sat = 0.d0
   global_aux_var%den = 0.d0
