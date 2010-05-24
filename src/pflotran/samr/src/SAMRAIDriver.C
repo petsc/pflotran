@@ -203,9 +203,10 @@ int main( int argc, char *argv[] )
    f_create_simulation_(&p_pflotran_sim, (void **)&pflotranApplication);
    
    f_initialize_simulation_(&p_pflotran_sim);
-   
+
+#if 1   
    f_stepper_run_(&p_pflotran_sim);
-   
+#endif   
    /*
     * At conclusion of simulation, stop timer and deallocate objects.
     */
