@@ -705,6 +705,10 @@ subroutine ReactionReadMineralKinetics(reaction,input,option)
 !             read rate constant
               call InputReadDouble(input,option,cur_mineral%tstrxn%rate)
               call InputErrorMsg(input,option,'rate','CHEMISTRY,MINERAL_KINETICS')
+            case('AFFINITY_THRESHOLD')
+!             read affinity threshold for precipitation
+              call InputReadDouble(input,option,cur_mineral%tstrxn%affinity_threshold)
+              call InputErrorMsg(input,option,'threshold','CHEMISTRY,MINERAL_KINETICS')
             case default
               option%io_buffer = 'CHEMISTRY,MINERAL_KINETICS keyword: ' // &
                                  trim(word) // ' not recognized'
@@ -4025,7 +4029,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
 #endif  
 
   do imnrl = 1, reaction%nkinmnrl ! for each mineral
-    ! compute secondary species concentration
+    ! compute ion activity product
     lnQK = -reaction%kinmnrl_logK(imnrl)*LOG_TO_LN
 
     ! activity of water
@@ -4041,7 +4045,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     QK = exp(lnQK)
     
     if (associated(reaction%kinmnrl_Tempkin_const)) then
-      affinity_factor = 1.d0-QK**(1/reaction%kinmnrl_Tempkin_const(imnrl))
+      affinity_factor = 1.d0-QK**(1.d0/reaction%kinmnrl_Tempkin_const(imnrl))
     else
       affinity_factor = 1.d0-QK
     endif
@@ -4049,9 +4053,15 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     sign_ = sign(1.d0,affinity_factor)
 
     if (rt_auxvar%mnrl_volfrac(imnrl) > 0 .or. sign_ < 0.d0) then
+    
+!     check for supersaturation threshold for precipitation
+      if (associated(reaction%kinmnrl_affinity_threshold)) then
+        if (sign_ < 0.d0 .and. QK < reaction%kinmnrl_affinity_threshold(imnrl)) exit
+      endif
+
       ! compute prefactor
       if (reaction%kinmnrl_num_prefactors(imnrl) > 0) then
-        print *, 'Kinetic mineral reaction prefactor calculations have not been verified.  Ask Glenn.'
+        print *, 'Kinetic mineral reaction prefactor calculations have not been verified.'
         stop
         sum_prefactor_rate = 0
         do ipref = 1, reaction%kinmnrl_num_prefactors(imnrl)
@@ -4059,21 +4069,21 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
           do i = 1, reaction%kinmnrl_pri_prefactor_id(0,ipref,imnrl) ! primary contribution
             icomp = reaction%kinmnrl_pri_prefactor_id(i,ipref,imnrl)
             prefactor(ipref) = prefactor(ipref) * &
-                               exp(reaction%kinmnrl_pri_pref_alpha_stoich(i,ipref,imnrl)* &
-                                   ln_act(icomp))/ &
-                               ((1.d0+reaction%kinmnrl_pri_pref_atten_coef(i,ipref,imnrl))* &
-                                 exp(reaction%kinmnrl_pri_pref_beta_stoich(i,ipref,imnrl)* &
-                                     ln_act(icomp)))
+              exp(reaction%kinmnrl_pri_pref_alpha_stoich(i,ipref,imnrl)* &
+              ln_act(icomp))/ &
+              ((1.d0+reaction%kinmnrl_pri_pref_atten_coef(i,ipref,imnrl))* &
+              exp(reaction%kinmnrl_pri_pref_beta_stoich(i,ipref,imnrl)* &
+              ln_act(icomp)))
           enddo
           if (reaction%neqcplx > 0) then
             do k = 1, reaction%kinmnrl_sec_prefactor_id(0,ipref,imnrl) ! secondary contribution
               kcplx = reaction%kinmnrl_sec_prefactor_id(k,ipref,imnrl)
               prefactor(ipref) = prefactor(ipref) * &
-                                 exp(reaction%kinmnrl_sec_pref_alpha_stoich(k,ipref,imnrl)* &
-                                     ln_sec_act(kcplx))/ &
-                                 ((1.d0+reaction%kinmnrl_sec_pref_atten_coef(i,ipref,imnrl))* &
-                                   exp(reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
-                                       ln_sec_act(kcplx)))
+                exp(reaction%kinmnrl_sec_pref_alpha_stoich(k,ipref,imnrl)* &
+                ln_sec_act(kcplx))/ &
+                ((1.d0+reaction%kinmnrl_sec_pref_atten_coef(i,ipref,imnrl))* &
+                exp(reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
+                ln_sec_act(kcplx)))
             enddo
           endif
           sum_prefactor_rate = sum_prefactor_rate + prefactor(ipref)*reaction%kinmnrl_rate(ipref,imnrl)
@@ -4121,7 +4131,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
       dIm_dQK = -Im_const*sum_prefactor_rate
     endif
     if (associated(reaction%kinmnrl_Tempkin_const)) then
-      dIm_dQK = dIm_dQK*(1/reaction%kinmnrl_Tempkin_const(imnrl))/QK
+      dIm_dQK = dIm_dQK*(1.d0/reaction%kinmnrl_Tempkin_const(imnrl))/QK
     endif
     
     ! derivatives with respect to primary species in reaction quotient
@@ -4141,7 +4151,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
     enddo
 
     if (reaction%kinmnrl_num_prefactors(imnrl) > 0) then ! add contribution of derivative in prefactor - messy
-      print *, 'Kinetic mineral reaction prefactor calculations have not been verified.  Ask Glenn.'
+      print *, 'Kinetic mineral reaction prefactor calculations have not been verified.'
       stop
       
       dIm_dsum_prefactor_rate = Im/sum_prefactor_rate
@@ -4154,14 +4164,14 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
                                        prefactor(ipref)/rt_auxvar%pri_molal(jcomp) ! dR_dm
           ! denominator
           dprefactor_dcomp_denominator = -prefactor(ipref)/ &
-                                         ((1.d0+reaction%kinmnrl_pri_pref_atten_coef(j,ipref,imnrl))* &
-                                           exp(reaction%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)* &
-                                               ln_act(jcomp)))* & 
-                                         reaction%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)* &
-                                         reaction%kinmnrl_pri_pref_atten_coef(j,ipref,imnrl)* &
-                                         exp((reaction%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)-1.d0)* &
-                                             ln_act(jcomp))* & ! dR_da
-                                         rt_auxvar%pri_act_coef(jcomp) ! da_dc
+            ((1.d0+reaction%kinmnrl_pri_pref_atten_coef(j,ipref,imnrl))* &
+            exp(reaction%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)* &
+            ln_act(jcomp)))* & 
+            reaction%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)* &
+            reaction%kinmnrl_pri_pref_atten_coef(j,ipref,imnrl)* &
+            exp((reaction%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)-1.d0)* &
+            ln_act(jcomp))* & ! dR_da
+            rt_auxvar%pri_act_coef(jcomp) ! da_dc
           tempreal = dIm_dprefactor_rate*(dprefactor_dcomp_numerator+ &
                      dprefactor_dcomp_denominator)*global_auxvar%den_kg(iphase)
           do i = 1, ncomp
@@ -4174,17 +4184,17 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
             kcplx = reaction%kinmnrl_sec_prefactor_id(k,ipref,imnrl)
             ! numerator
             dprefactor_dcomp_numerator = reaction%kinmnrl_sec_pref_alpha_stoich(k,ipref,imnrl)* &
-                                         prefactor(ipref)/(rt_auxvar%sec_molal(kcplx)* &
-                                                           rt_auxvar%sec_act_coef(kcplx)) ! dR_dax
+              prefactor(ipref)/(rt_auxvar%sec_molal(kcplx)* &
+              rt_auxvar%sec_act_coef(kcplx)) ! dR_dax
             ! denominator
             dprefactor_dcomp_denominator = -prefactor(ipref)/ &
-                                           (1.d0+reaction%kinmnrl_sec_pref_atten_coef(k,ipref,imnrl)* &
-                                            exp(reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
+              (1.d0+reaction%kinmnrl_sec_pref_atten_coef(k,ipref,imnrl)* &
+              exp(reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
                                                 ln_sec_act(kcplx)))* &
-                                           reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
-                                           reaction%kinmnrl_sec_pref_atten_coef(k,ipref,imnrl)* &
-                                           exp((reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)-1.d0)* &
-                                                ln_sec_act(kcplx)) ! dR_dax
+              reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
+              reaction%kinmnrl_sec_pref_atten_coef(k,ipref,imnrl)* &
+              exp((reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)-1.d0)* &
+              ln_sec_act(kcplx)) ! dR_dax
             tempreal = dIm_dprefactor_rate*(dprefactor_dcomp_numerator+ &
                        dprefactor_dcomp_denominator)*global_auxvar%den_kg(iphase)
             do j = 1, reaction%eqcplxspecid(0,kcplx)
