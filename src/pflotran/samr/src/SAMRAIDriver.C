@@ -112,7 +112,7 @@ int main( int argc, char *argv[] )
    tbox::Pointer<tbox::Database> app_database = input_db->getDatabase("PflotranApplicationStrategy");
 
    int mode =  app_database->getInteger("DriverMode");
-   pflotran_filename=input_db->getStringWithDefault(pflotran_filename, "pflotran_well.in");
+   pflotran_filename=input_db->getStringWithDefault("pflotran_filename", "pflotran_well.in");
    
    PflotranApplicationStrategy *pflotranApplication = NULL;
 
