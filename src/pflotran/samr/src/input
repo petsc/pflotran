@@ -4,6 +4,8 @@ PERIODIC  = 2
 MIXED     = 3
 ROBIN     = 4
 
+pflotran_filename="pflotran_well.in"
+
 CartesianGeometry{
    domain_boxes = [(0,0,0), (19,19,79)]
    x_lo         = 0.0e0, 0.0e0, 0.0e0  
@@ -12,13 +14,13 @@ CartesianGeometry{
 
 
 GriddingAlgorithm{
-   max_levels = 2 
+   max_levels = 1 
    largest_patch_size {
-      level_0 = 10, 10, 40
+      level_0 = 20, 20, 80
       level_1 = 10, 10, 10
    }
  smallest_patch_size {
-      level_0 = 10,10,40
+      level_0 = 20,20,80
       level_1 = 5,5,10
    }
    ratio_to_coarser {
@@ -80,15 +82,15 @@ PflotranApplicationStrategy{
        max_iterations                   =  20
        max_error                        =  1.0e-9
        print_info_level                 =  1
-       presolve_iterations              =  2
-       postsolve_iterations             =  2
+       presolve_iterations              =  3
+       postsolve_iterations             =  3
        use_visit                        =  FALSE
        viz_directory                    =  "fac_viz"
        zero_initial_guess               =  TRUE
 
        level_solver_0 {
             solver_name                = "CellHYPRELevelSolver"
-            mg_solver_type          = 0
+            mg_solver_type          = 1
             print_info_level           = 0
             max_iterations             = 1
             max_error                  = 1.0e-12
@@ -113,5 +115,7 @@ PflotranApplicationStrategy{
 
  
 TimerManager{
-   timer_list = "xfer::*::*", "FAC::*::*", "AMRUtilities::*::*", "apps::main::main", "RD2T::*::*", "LevelSolver::*::*"
+  print_concurrent=TRUE
+  print_threshold=0.0
+  timer_list = "xfer::*::*", "FAC::*::*", "AMRUtilities::*::*", "apps::main::main", "PflotranJacobianLevelOperator::*", "LevelSolver::*::*", "PFlotran::*::*"
 }

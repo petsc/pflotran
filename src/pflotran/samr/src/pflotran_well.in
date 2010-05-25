@@ -233,9 +233,9 @@ PERIODIC TIME .1 y
 
 : == times ====================================================================
 TIME
-FINAL_TIME 1. y
-INITIAL_TIMESTEP_SIZE .5 d
-MAXIMUM_TIMESTEP_SIZE .5 d
+FINAL_TIME .2 y
+INITIAL_TIMESTEP_SIZE 2. d
+MAXIMUM_TIMESTEP_SIZE 2. d
 /
 
 : == regions ==================================================================
