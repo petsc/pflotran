@@ -3,6 +3,8 @@ use Mphase_pckr_module
   implicit none
   
   private 
+!#define GARCIA 1
+#define DUANDEN 1
 
 #include "definitions.h"
 
@@ -144,8 +146,8 @@ subroutine Flash2AuxVarInit(aux_var,option)
      allocate ( aux_var%aux_var_elem(nvar)%u(option%nphase))
      allocate ( aux_var%aux_var_elem(nvar)%pc(option%nphase))
      allocate ( aux_var%aux_var_elem(nvar)%kvr(option%nphase))
- !    allocate ( aux_var%aux_var_elem(nvar)%xmol(option%nphase*option%nflowspec))
- !    allocate ( aux_var%aux_var_elem(nvar)%diff(option%nphase*option%nflowspec))
+     allocate ( aux_var%aux_var_elem(nvar)%xmol(option%nphase*option%nflowspec))
+     allocate ( aux_var%aux_var_elem(nvar)%diff(option%nphase*option%nflowspec))
      if(nvar>0)&
      aux_var%aux_var_elem(nvar)%hysdat => aux_var%aux_var_elem(0)%hysdat
 
@@ -158,8 +160,8 @@ subroutine Flash2AuxVarInit(aux_var,option)
      aux_var%aux_var_elem(nvar)%u = 0.d0
      aux_var%aux_var_elem(nvar)%pc = 0.d0
      aux_var%aux_var_elem(nvar)%kvr = 0.d0
- !    aux_var%aux_var_elem(nvar)%xmol = 0.d0
- !    aux_var%aux_var_elem(nvar)%diff = 0.d0
+     aux_var%aux_var_elem(nvar)%xmol = 0.d0
+     aux_var%aux_var_elem(nvar)%diff = 0.d0
 #if 0
      aux_var%aux_var_elem(nvar)%dsat_dp = 0.d0
      aux_var%aux_var_elem(nvar)%dden_dp = 0.d0
@@ -332,7 +334,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var, global_aux_var,saturation_functio
       fg=p2
       xphi = 1.D0
    endif
-
+ 
 !*********** Get Salniity properties ***********************
    m_na=option%m_nacl; m_cl=m_na; m_nacl=m_na 
     if (option%ntrandof>0) then
@@ -392,7 +394,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var, global_aux_var,saturation_functio
       aux_var%xmol(4)= 1D0 - aux_var%xmol(3)
    endif 
 !   endif
-     
+
 ! **************  Gas pahse properties ********************
     aux_var%avgmw(2)= aux_var%xmol(3)* FMWH2O + aux_var%xmol(4) * FMWCO2
     pw = p

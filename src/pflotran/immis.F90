@@ -102,7 +102,8 @@ subroutine ImmisSetup(realization)
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
-  
+
+#if 0  
   if (realization%option%co2eos == EOS_SPAN_WAGNER)then
     select case(realization%option%itable)
        case(0,1,2)
@@ -117,6 +118,7 @@ subroutine ImmisSetup(realization)
       stop
     end select
   endif
+#endif 
  
   cur_level => realization%level_list%first
   do

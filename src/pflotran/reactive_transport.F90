@@ -1340,14 +1340,9 @@ subroutine RTCalculateRHS_t1Patch(realization)
 
   iphase = 1
 
-  ! for RHS at time k+1, no need to update local cells, only bcs
-  if (realization%reaction%act_coef_update_frequency == ACT_COEF_FREQUENCY_OFF) then
-    ! update:                             cells      bcs        act. coefs.
-    call RTUpdateAuxVarsPatch(realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
-  else
-    ! update:                             cells      bcs        act. coefs.
-    call RTUpdateAuxVarsPatch(realization,PETSC_FALSE,PETSC_TRUE,PETSC_TRUE)
-  endif
+!geh - activity coef updates must always be off!!!
+!geh    ! update:                             cells      bcs        act. coefs.
+  call RTUpdateAuxVarsPatch(realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
 
   ! Get vectors
   call GridVecGetArrayF90(grid,field%tran_rhs,rhs_p,ierr)
@@ -1877,6 +1872,7 @@ subroutine RTTransportResidualPatch(realization,solution_loc,residual,idof)
   PetscInt :: idof
   
   type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_bc(:)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
@@ -1886,7 +1882,7 @@ subroutine RTTransportResidualPatch(realization,solution_loc,residual,idof)
   PetscReal, pointer :: volume_p(:)
   PetscReal, pointer :: solution_loc_p(:)
   PetscReal, pointer :: residual_p(:)
-  PetscReal, pointer :: rhs_p(:)
+  PetscReal, pointer :: rhs_coef_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
   PetscInt :: iphase
@@ -1905,6 +1901,7 @@ subroutine RTTransportResidualPatch(realization,solution_loc,residual,idof)
   field => realization%field
   patch => realization%patch
   global_aux_vars => patch%aux%Global%aux_vars
+  rt_aux_vars => patch%aux%RT%aux_vars
   rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
   grid => patch%grid
 
@@ -1913,25 +1910,11 @@ subroutine RTTransportResidualPatch(realization,solution_loc,residual,idof)
   call GridVecGetArrayF90(grid,residual, residual_p, ierr)  
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
   call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
-  call GridVecGetArrayF90(grid,field%tran_rhs,rhs_p,ierr)
+  call GridVecGetArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)  
   
   iphase = 1
   
-  ! Accumulation term
-  
-  do local_id = 1, grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    coef = porosity_loc_p(ghosted_id)* &
-           global_aux_vars(ghosted_id)%sat(iphase)* &
-!geh           global_aux_vars(ghosted_id)%den_kg(iphase)* &
-           1000.d0* &
-           volume_p(local_id)/option%tran_dt
-    residual_p(local_id) = coef*solution_loc_p(ghosted_id)- &
-  ! RHS will not change, but is moved to lhs (thus, the -1.d0*)
-                           rhs_p((local_id-1)*option%ntrandof+idof)
-  enddo
-
-  call GridVecRestoreArrayF90(grid,field%tran_rhs,rhs_p,ierr)
+  residual_p = 0.d0
 
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
@@ -1989,11 +1972,13 @@ subroutine RTTransportResidualPatch(realization,solution_loc,residual,idof)
 
       ! leave off the boundary contribution since it is already inclued in the
       ! rhs value
-!      res = coef_up(iphase)*rt_aux_vars_bc(sum_connection)%total(idof,iphase) + &
-!            coef_dn(iphase)*solution_loc_p(ghosted_id)
-      res = coef_dn(iphase)*solution_loc_p(ghosted_id)
+      res = coef_up(iphase)*rt_aux_vars_bc(sum_connection)%total(idof,iphase) + &
+            coef_dn(iphase)*solution_loc_p(ghosted_id)
+!geh - the below assumes that the boundary contribution was provided in the
+!      rhs vector above.
+!geh      res = coef_dn(iphase)*solution_loc_p(ghosted_id)
 
-      residual_p(local_id_dn) = residual_p(local_id_dn) - res
+      residual_p(local_id) = residual_p(local_id) - res
     
     enddo
     boundary_condition => boundary_condition%next
@@ -2001,7 +1986,30 @@ subroutine RTTransportResidualPatch(realization,solution_loc,residual,idof)
 
   ! need to add source/sink
 
+  ! Accumulation term
+  
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    coef = porosity_loc_p(ghosted_id)* &
+           global_aux_vars(ghosted_id)%sat(iphase)* &
+           1000.d0* &
+           volume_p(local_id)/option%tran_dt
+!geh need to separate out accumulation from boundary fluxes
+!geh    residual_p(local_id) = coef*solution_loc_p(ghosted_id)- &
+!geh ! RHS will not change, but is moved to lhs (thus, the -1.d0*)
+!geh                           rhs_p((local_id-1)*option%ntrandof+idof)
+
+!geh    residual_p(local_id) = coef*solution_loc_p(ghosted_id)- &
+
+    residual_p(local_id) = residual_p(local_id) + &
+                           coef*solution_loc_p(ghosted_id)- &
+                           rhs_coef_p(local_id)* &
+                           rt_aux_vars(ghosted_id)%total(idof,iphase)
+
+  enddo
+
   ! Restore vectors
+  call GridVecRestoreArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)  
   call GridVecRestoreArrayF90(grid,solution_loc, solution_loc_p, ierr)  
   call GridVecRestoreArrayF90(grid,residual, residual_p, ierr)  
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
