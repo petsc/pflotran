@@ -352,13 +352,13 @@ end subroutine Flash2SetupPatch
            endif
      end do
   
-    if(re<=0) print *,'Sat out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
+    !if(re<=0) print *,'Sat out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
     call GridVecRestoreArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
     call GridVecRestoreArrayF90(grid,field%flow_yy, yy_p, ierr)
     call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr); 
 
    endif
-  
+  ! reason = re!; print *,'reason:',reason
  end subroutine Flash2UpdateReasonPatch
 
 
@@ -400,11 +400,11 @@ subroutine Flash2UpdateReason(reason, realization)
         endif
         cur_patch => cur_patch%next
      enddo
-    cur_level => cur_level%next
+    if(re>0) cur_level => cur_level%next
  enddo
 
  call MPI_Barrier(realization%option%mycomm,ierr)
-  
+  print *, 'flash reason ', re
   if(realization%option%mycommsize >1)then
      call MPI_ALLREDUCE(re, re0,1, MPI_INTEGER,MPI_SUM, &
           realization%option%mycomm,ierr)
