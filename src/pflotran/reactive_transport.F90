@@ -1340,14 +1340,9 @@ subroutine RTCalculateRHS_t1Patch(realization)
 
   iphase = 1
 
-  ! for RHS at time k+1, no need to update local cells, only bcs
-  if (realization%reaction%act_coef_update_frequency == ACT_COEF_FREQUENCY_OFF) then
-    ! update:                             cells      bcs        act. coefs.
-    call RTUpdateAuxVarsPatch(realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
-  else
-    ! update:                             cells      bcs        act. coefs.
-    call RTUpdateAuxVarsPatch(realization,PETSC_FALSE,PETSC_TRUE,PETSC_TRUE)
-  endif
+!geh - activity coef updates must always be off!!!
+!geh    ! update:                             cells      bcs        act. coefs.
+  call RTUpdateAuxVarsPatch(realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
 
   ! Get vectors
   call GridVecGetArrayF90(grid,field%tran_rhs,rhs_p,ierr)
