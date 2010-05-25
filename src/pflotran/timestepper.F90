@@ -1634,12 +1634,8 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
 
     ! update time derivative on RHS
     call RTUpdateRHSCoefs(realization)
-    ! calculate total component concentrations
-!    if (realization%reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
-!      call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE)
-!    else
-      call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE)
-!    endif
+    ! calculate total component concentrations based on t0 densities
+    call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE)
     call RTCalculateRHS_t0(realization)
       
     ! set densities and saturations to t+dt
@@ -1688,7 +1684,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
       call VecRestoreArrayF90(field%work,vec_ptr,ierr)
 #endif      
 
-#if 0 
+#if 1 
       ! for testing residual calculation for Bobby
       ! solution is stored in field%work vector, but we need it in ghosted
       ! form for the residual calculation
