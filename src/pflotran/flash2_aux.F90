@@ -472,6 +472,8 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var, global_aux_var,saturation_functio
   case(3)
     aux_var%sat(2) = aux_var%den(1)* ( x(3) - aux_var%xmol(2))/&
       (aux_var%den(2) * (aux_var%xmol(4)-x(3)) - aux_var%den(1)*(aux_var%xmol(2)-x(3)))
+    if(aux_var%sat(2) >1D0) aux_var%sat(2) = 1D0
+    if(aux_var%sat(2) <0D0) aux_var%sat(2) = 0D0  
     aux_var%sat(1) = 1D0 - aux_var%sat(2)
   end select
  
