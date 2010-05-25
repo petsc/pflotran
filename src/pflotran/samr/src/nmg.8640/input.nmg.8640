@@ -26,6 +26,8 @@ GriddingAlgorithm{
    }
    combine_efficiency = 0.95
    efficiency_tolerance = 0.95
+   coalesce_boxes=FALSE
+   check_nonrefined_tags='i'
 }
 
 StandardTagAndInitialize{

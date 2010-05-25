@@ -233,7 +233,7 @@ PERIODIC TIME .1 y
 
 : == times ====================================================================
 TIME
-FINAL_TIME 1.5 y
+FINAL_TIME 1.0 y
 INITIAL_TIMESTEP_SIZE .5 d
 MAXIMUM_TIMESTEP_SIZE .5 d
 /
