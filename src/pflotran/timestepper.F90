@@ -1529,7 +1529,8 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
                                         RTUpdateAuxVars, &
                                         RTCalculateTransportMatrix, &
                                         RTReact, &
-                                        RTMaxChange
+                                        RTMaxChange, &
+                                        RTTransportResidual
 
   use Output_module, only : Output
   
@@ -1569,6 +1570,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
   PetscTruth :: transient_plot_flag  
   PetscReal, parameter :: time_tol = 1.d-10
   PetscReal, pointer :: vec_ptr(:)
+  PetscReal :: inf_norm, euclid_norm
 
   PetscViewer :: viewer
 
@@ -1659,6 +1661,21 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
 
 !      call VecGetArrayF90(field%work,vec_ptr,ierr)
 !      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
+
+#if 0 
+      ! for testing residual calculation for Bobby
+      ! solution is stored in field%work vector, but we need it in ghosted
+      ! form for the residual calculation
+      call DiscretizationLocalToLocal(discretization,field%work, &
+                                      field%work_loc,ONEDOF)
+      ! now we use field%work as the residual and field%work_loc as the
+      ! current solution
+      call RTTransportResidual(realization,field%work_loc,field%work,idof)
+      call VecNorm(field%work,NORM_2,euclid_norm,ierr)
+      call VecNorm(field%work,NORM_INFINITY,inf_norm,ierr)
+      print *, trim(realization%reaction%primary_species_names(idof))//': ', &
+        euclid_norm, inf_norm
+#endif
 
       call KSPGetIterationNumber(solver%ksp,num_linear_iterations,ierr)
       call KSPGetConvergedReason(solver%ksp,ksp_reason,ierr)
