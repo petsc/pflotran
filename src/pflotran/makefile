@@ -31,8 +31,11 @@ CHUAN_FLAG = -DCHUAN_CO2
 endif
 
 ifdef coll
-#COLL_FLAG = -DCOLL
-COLL_FLAG = -DREVISED_TRANSPORT
+COLL_FLAG = -DCOLL
+endif
+
+ifdef dont_use_wateos
+DENSITY_FLAG = -DDONT_USE_WATEOS
 endif
 
 ifdef vamsi_hdf5
@@ -40,8 +43,9 @@ ifdef vamsi_hdf5
 endif
 
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) \
+          -DREVISED_TRANSPORT \
           $(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG) $(TEMP_FLAG)\
- 					$(CHUAN_FLAG) $(COLL_FLAG) 
+ 					$(CHUAN_FLAG) $(COLL_FLAG) $(DENSITY_FLAG)
 
 CFLAGS		 = 
 FFLAGS		 =

@@ -1529,7 +1529,8 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
                                         RTUpdateAuxVars, &
                                         RTCalculateTransportMatrix, &
                                         RTReact, &
-                                        RTMaxChange
+                                        RTMaxChange, &
+                                        RTTransportResidual
 
   use Output_module, only : Output
   
@@ -1569,6 +1570,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
   PetscTruth :: transient_plot_flag  
   PetscReal, parameter :: time_tol = 1.d-10
   PetscReal, pointer :: vec_ptr(:)
+  PetscReal :: inf_norm, euclid_norm
 
   PetscViewer :: viewer
 
@@ -1614,6 +1616,13 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
     call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
                                      field%tran_xx_loc,NTRANDOF)
 
+    ! activity coefficients need to be updated prior to transport if turned on.
+    if (realization%reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
+      call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE)
+    else
+      call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE)
+    endif
+
     if (option%nflowdof > 0) then
       option%tran_weight_t0 = (option%tran_time-option%tran_dt-start_time)/ &
                               (end_time-start_time)
@@ -1625,12 +1634,8 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
 
     ! update time derivative on RHS
     call RTUpdateRHSCoefs(realization)
-    ! calculate total component concentrations
-    if (realization%reaction%act_coef_update_frequency == ACT_COEF_FREQUENCY_OFF) then
-      call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE)
-    else
-      call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE)
-    endif
+    ! calculate total component concentrations based on t0 densities
+    call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE)
     call RTCalculateRHS_t0(realization)
       
     ! set densities and saturations to t+dt
@@ -1653,12 +1658,46 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
 
     ! loop over chemical component and transport
     do idof = 1, option%ntrandof
+
+! for debugging
+# if 0    
+      call RealizationGetDataset(realization,field%work,TOTAL_MOLARITY,idof)
+      call VecGetArrayF90(field%work,vec_ptr,ierr)
+      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
+    
+      call RealizationGetDataset(realization,field%work,TOTAL_MOLALITY,idof)
+      call VecGetArrayF90(field%work,vec_ptr,ierr)
+      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
+    
+      call RealizationGetDataset(realization,field%work,PRIMARY_MOLALITY,idof)
+      call VecGetArrayF90(field%work,vec_ptr,ierr)
+      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
+#endif
+    
       call VecStrideGather(field%tran_rhs,idof-1,field%work,INSERT_VALUES,ierr)
       call KSPSolve(solver%ksp,field%work,field%work,ierr)
       call VecStrideScatter(field%work,idof-1,field%tran_xx,INSERT_VALUES,ierr)
 
-!      call VecGetArrayF90(field%work,vec_ptr,ierr)
-!      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
+! for debugging
+#if 0
+      call VecGetArrayF90(field%work,vec_ptr,ierr)
+      call VecRestoreArrayF90(field%work,vec_ptr,ierr)
+#endif      
+
+#if 1 
+      ! for testing residual calculation for Bobby
+      ! solution is stored in field%work vector, but we need it in ghosted
+      ! form for the residual calculation
+      call DiscretizationGlobalToLocal(discretization,field%work, &
+                                       field%work_loc,ONEDOF)
+      ! now we use field%work as the residual and field%work_loc as the
+      ! current solution
+      call RTTransportResidual(realization,field%work_loc,field%work,idof)
+      call VecNorm(field%work,NORM_2,euclid_norm,ierr)
+      call VecNorm(field%work,NORM_INFINITY,inf_norm,ierr)
+      print *, trim(realization%reaction%primary_species_names(idof))//': ', &
+        euclid_norm, inf_norm
+#endif
 
       call KSPGetIterationNumber(solver%ksp,num_linear_iterations,ierr)
       call KSPGetConvergedReason(solver%ksp,ksp_reason,ierr)

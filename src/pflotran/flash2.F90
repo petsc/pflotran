@@ -94,15 +94,16 @@ subroutine Flash2Setup(realization)
   use Realization_module
   use Level_module
   use Patch_module
-  use span_wagner_module
-  use co2_sw_module
-  use span_wagner_spline_module 
+!  use span_wagner_module
+!  use co2_sw_module
+!  use span_wagner_spline_module 
    
   type(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
+#if 0
   if (realization%option%co2eos == EOS_SPAN_WAGNER)then
     select case(realization%option%itable)
        case(0,1,2)
@@ -117,6 +118,7 @@ subroutine Flash2Setup(realization)
       stop
     end select
   endif
+#endif
  
   cur_level => realization%level_list%first
   do
@@ -130,7 +132,7 @@ subroutine Flash2Setup(realization)
     enddo
     cur_level => cur_level%next
   enddo
-
+ 
 end subroutine Flash2Setup
 
 ! ************************************************************************** !
@@ -350,13 +352,13 @@ end subroutine Flash2SetupPatch
            endif
      end do
   
-    if(re<=0) print *,'Sat out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
+    !if(re<=0) print *,'Sat out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
     call GridVecRestoreArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
     call GridVecRestoreArrayF90(grid,field%flow_yy, yy_p, ierr)
     call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr); 
 
    endif
-  
+  ! reason = re!; print *,'reason:',reason
  end subroutine Flash2UpdateReasonPatch
 
 
@@ -398,11 +400,11 @@ subroutine Flash2UpdateReason(reason, realization)
         endif
         cur_patch => cur_patch%next
      enddo
-    cur_level => cur_level%next
+    if(re>0) cur_level => cur_level%next
  enddo
 
  call MPI_Barrier(realization%option%mycomm,ierr)
-  
+  print *, 'flash reason ', re
   if(realization%option%mycommsize >1)then
      call MPI_ALLREDUCE(re, re0,1, MPI_INTEGER,MPI_SUM, &
           realization%option%mycomm,ierr)
@@ -573,15 +575,16 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
     if(.not. associated(realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr))then
        print*, 'error!!! saturation function not allocated', ghosted_id,icap_loc_p(ghosted_id)
     endif
-   
+    
     call Flash2AuxVarCompute_NINC(xx_loc_p(istart:iend), &
                        aux_vars(ghosted_id)%aux_var_elem(0), &
                        global_aux_vars(ghosted_id), &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        realization%fluid_properties,option)
+                      
  ! update global variables
     if( associated(global_aux_vars))then
-     
+    
       global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
                aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
       global_aux_vars(ghosted_id)%temp=aux_vars(ghosted_id)%aux_var_elem(0)%temp
@@ -603,11 +606,12 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
                               +aux_vars(ghosted_id)%aux_var_elem(0)%xmol(4) * FMWCO2) 
 
     else
-      print *,'Not associated global for IMS'
+      print *,'Not associated global for FLASH2'
     endif
 
 
   enddo
+! print *,'Flash2UpdateAuxVarsPatch: end internal'
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
@@ -669,7 +673,6 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
     enddo
     boundary_condition => boundary_condition%next
   enddo
-
 
   call GridVecRestoreArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
@@ -1828,6 +1831,8 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   Flash2_parameter => patch%aux%Flash2%Flash2_parameter
   aux_vars => patch%aux%Flash2%aux_vars
   aux_vars_bc => patch%aux%Flash2%aux_vars_bc
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
  ! call Flash2UpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
@@ -1849,7 +1854,6 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
 !  call GridVecGetArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
  
- 
 ! Multiphase flash calculation is more expansive, so calculate once per iterration
 #if 1
   ! Pertubations for aux terms --------------------------------
@@ -1858,31 +1862,31 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
      if (associated(patch%imat)) then
         if (patch%imat(ng) <= 0) cycle
      endif
-        
+     ghosted_id = ng   
      istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
-     iphase =int(iphase_loc_p(ng))
+     ! iphase =int(iphase_loc_p(ng))
      call Flash2AuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
           global_aux_vars(ng),&
           realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
           realization%fluid_properties,option)
+!    print *,'flash ', xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0)%den
 #if 1
      if( associated(global_aux_vars))then
        global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
                aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
        global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
        global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
-!      global_aux_vars(ghosted_id)%sat_store = 
+!      global_aux_vars(ghosted_id)%sat_store =
        global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
        global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
        global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
 !       global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
-!      print *,'UPdate mphase and gloable vars', ghosted_id, global_aux_vars(ghosted_id) %m_nacl(:), & 
 !      global_aux_vars(ghosted_id)%pres(:)
 !      global_aux_vars(ghosted_id)%mass_balance 
 !      global_aux_vars(ghosted_id)%mass_balance_delta                   
      else
-       print *,'Not associated global for mph'
+       print *,'Not associated global for Flash2'
      endif
 #endif
 
@@ -1914,7 +1918,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
 #endif
 
    Resold_AR=0.D0; ResOld_FL=0.D0; r_p = 0.d0
-
+  
 #if 1
   ! Accumulation terms ------------------------------------
   r_p = - accum_p
@@ -2180,6 +2184,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
      istart = 1 + (local_id-1)*option%nflowdof
      if(volume_p(local_id)>1.D0) r_p (istart:istart+2)=r_p(istart:istart+2)/volume_p(local_id)
      if(r_p(istart) >1E20 .or. r_p(istart) <-1E20) print *, r_p (istart:istart+2)
+!     print *,'flash res', local_id, r_p (istart:istart+2)
   enddo
 
 ! print *,'finished rp vol scale'
@@ -2259,6 +2264,7 @@ subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
   SNES :: snes
   Vec :: xx
   Mat :: A, B, J
+  MatType :: mat_type
   type(realization_type) :: realization
   MatStructure flag
   PetscErrorCode :: ierr
@@ -2266,7 +2272,19 @@ subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
+
+ flag = SAME_NONZERO_PATTERN
+  call MatGetType(A,mat_type,ierr)
+  if (mat_type == MATMFFD) then
+    J = B
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+  else
+    J = A
+  endif
+
   
+  call MatZeroEntries(J,ierr)
   cur_level => realization%level_list%first
   do
     if (.not.associated(cur_level)) exit
@@ -2281,7 +2299,7 @@ subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
         (.not.(grid%structured_grid%p_samr_patch.eq.0))) then
          call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
       endif
-      call Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
+      call Flash2JacobianPatch(snes,xx,J,J,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -2392,11 +2410,13 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
   Flash2_parameter => patch%aux%Flash2%Flash2_parameter
   aux_vars => patch%aux%Flash2%aux_vars
   aux_vars_bc => patch%aux%Flash2%aux_vars_bc
-  
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
 !   2. Average molecular weights to p,t,s
-  flag = SAME_NONZERO_PATTERN
+!  flag = SAME_NONZERO_PATTERN
 
 #if 0
 !  call Flash2NumericalJacobianTest(xx,realization)
@@ -2606,7 +2626,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
      Jup=ra(1:option%nflowdof,1:option%nflowdof)
      if(volume_p(local_id)>1.D0 ) Jup=Jup / volume_p(local_id)
    
-     ! if(n==1) print *,  blkmat11, volume_p(n), ra
+!      if(local_id==1) print *, 'flash jac', volume_p(local_id), ra
      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
   end do
 
