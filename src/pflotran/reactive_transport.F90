@@ -1342,7 +1342,12 @@ subroutine RTCalculateRHS_t1Patch(realization)
 
 !geh - activity coef updates must always be off!!!
 !geh    ! update:                             cells      bcs        act. coefs.
-  call RTUpdateAuxVarsPatch(realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
+!  call RTUpdateAuxVarsPatch(realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
+  if (reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
+    call RTUpdateAuxVarsPatch(realization,PETSC_FALSE,PETSC_TRUE,PETSC_TRUE)
+  else
+    call RTUpdateAuxVarsPatch(realization,PETSC_FALSE,PETSC_TRUE,PETSC_FALSE)
+  endif
 
   ! Get vectors
   call GridVecGetArrayF90(grid,field%tran_rhs,rhs_p,ierr)
@@ -1674,6 +1679,10 @@ subroutine RTReactPatch(realization)
   grid => patch%grid
   reaction => realization%reaction
 
+  ! need up update aux vars based on current density/saturation,
+  ! but NOT activity coefficients
+  call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_FALSE)
+  
   ! Get vectors
   call GridVecGetArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  

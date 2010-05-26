@@ -2417,6 +2417,11 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
     call RAccumulationSorb(rt_auxvar,global_auxvar,volume,reaction, &
                            option,fixed_accum)  
   endif
+
+  ! now update activity coefficients
+  if (reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
+    call RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
+  endif
   
   do
   
