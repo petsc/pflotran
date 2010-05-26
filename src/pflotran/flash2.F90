@@ -1064,7 +1064,7 @@ subroutine Flash2Flux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   PetscReal :: upweight,density_ave,cond,gravity,dphi
      
   Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
-!  diffdp = (por_up *tor_up * por_dn*tor_dn) / (dd_dn*por_up*tor_up + dd_up*por_dn*tor_dn)*area
+  diffdp = (por_up *tor_up * por_dn*tor_dn) / (dd_dn*por_up*tor_up + dd_up*por_dn*tor_dn)*area
   
   fluxm = 0.D0
   fluxe = 0.D0
@@ -1287,7 +1287,7 @@ subroutine Flash2FluxDiffusion(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_
   PetscReal :: upweight,density_ave,cond,gravity,dphi
      
 
-!  diffdp = (por_up *tor_up * por_dn*tor_dn) / (dd_dn*por_up*tor_up + dd_up*por_dn*tor_dn)*area
+  diffdp = (por_up *tor_up * por_dn*tor_dn) / (dd_dn*por_up*tor_up + dd_up*por_dn*tor_dn)*area
   
   fluxm = 0.D0
   fluxe = 0.D0
@@ -1366,7 +1366,7 @@ subroutine Flash2BCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   q = 0.d0
 
   ! Flow   
-!  diffdp = por_dn*tor_dn/dd_up*area
+  diffdp = por_dn*tor_dn/dd_up*area
   do np = 1, option%nphase  
      select case(ibndtype(1))
         ! figure out the direction of flow
@@ -1624,6 +1624,7 @@ subroutine Flash2BCFluxDiffusion(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   q = 0.d0
 
 ! Diffusion term   
+  diffdp = por_dn*tor_dn/dd_up*area
   select case(ibndtype(3))
   case(DIRICHLET_BC) 
      !      if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
@@ -1868,7 +1869,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
      call Flash2AuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
           global_aux_vars(ng),&
           realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
-          realization%fluid_properties,option)
+          realization%fluid_properties,option, xphi)
 !    print *,'flash ', xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0)%den
 #if 1
      if( associated(global_aux_vars))then
@@ -3082,6 +3083,22 @@ function Flash2GetTecplotHeader(realization, icolumn)
     
   if (icolumn > -1) then
     icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-d(l)"'')') icolumn
+  else
+    write(string2,'('',"d(l)"'')')
+  endif
+  string = trim(string) // trim(string2)
+
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
+    write(string2,'('',"'',i2,''-d(g)"'')') icolumn
+  else
+    write(string2,'('',"d(g)"'')')
+  endif
+  string = trim(string) // trim(string2)
+    
+  if (icolumn > -1) then
+    icolumn = icolumn + 1
     write(string2,'('',"'',i2,''-u(l)"'')') icolumn
   else
     write(string2,'('',"u(l)"'')')
@@ -3095,6 +3112,25 @@ function Flash2GetTecplotHeader(realization, icolumn)
     write(string2,'('',"u(g)"'')')
   endif
   string = trim(string) // trim(string2)
+  do i=1,option%nflowspec
+    if (icolumn > -1) then
+      icolumn = icolumn + 1
+      write(string2,'('',"'',i2,''-Xl('',i2,'')"'')') icolumn, i
+    else
+      write(string2,'('',"Xl('',i2,'')"'')') i
+    endif
+    string = trim(string) // trim(string2)
+  enddo
+
+  do i=1,option%nflowspec
+    if (icolumn > -1) then
+      icolumn = icolumn + 1
+      write(string2,'('',"'',i2,''-Xg('',i2,'')"'')') icolumn, i
+    else
+      write(string2,'('',"Xg('',i2,'')"'')') i
+    endif
+    string = trim(string) // trim(string2)
+  enddo
 
   Flash2GetTecplotHeader = string
 
