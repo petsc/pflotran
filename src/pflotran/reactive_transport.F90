@@ -1503,7 +1503,7 @@ subroutine RTCalculateTranMatrixPatch(realization,T)
 !geh           global_aux_vars(ghosted_id)%den_kg(iphase)* &
            1000.d0* &
            volume_p(local_id)/option%tran_dt
-    call MatSetValuesLocal(T,1,local_id-1,1,local_id-1,coef, &
+    call MatSetValuesLocal(T,1,ghosted_id-1,1,ghosted_id-1,coef, &
                            ADD_VALUES,ierr)
   enddo
 
