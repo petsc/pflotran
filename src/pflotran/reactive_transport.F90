@@ -1397,17 +1397,36 @@ end subroutine RTCalculateRHS_t1Patch
 subroutine RTCalculateTransportMatrix(realization,T)
 
   use Realization_module
+  use Option_module
   use Level_module
   use Patch_module
+  use Grid_module
 
+  implicit none
+
+  interface
+     subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
+#include "finclude/petscsysdef.h"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+       
+       Mat :: mat
+       PetscFortranAddr :: patch
+     end subroutine SAMRSetCurrentJacobianPatch
+  end interface
+      
   type(realization_type) :: realization
   Mat :: T
   
+  type(grid_type), pointer :: grid
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
+  type(option_type), pointer :: option 
   PetscViewer :: viewer
   PetscErrorCode :: ierr
-  
+
+  option => realization%option
+ 
   call MatZeroEntries(T,ierr)
   
   cur_level => realization%level_list%first
@@ -1417,7 +1436,34 @@ subroutine RTCalculateTransportMatrix(realization,T)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RTCalculateTranMatrixPatch(realization,T)
+      grid => cur_patch%grid
+      ! need to set the current patch in the Jacobian operator
+      ! so that entries will be set correctly
+      if(option%use_samr) then
+         call SAMRSetCurrentJacobianPatch(T, grid%structured_grid%p_samr_patch)
+      endif
+
+      call RTCalculateTranMatrixPatch1(realization,T)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      grid => cur_patch%grid
+      ! need to set the current patch in the Jacobian operator
+      ! so that entries will be set correctly
+      if(option%use_samr) then
+         call SAMRSetCurrentJacobianPatch(T, grid%structured_grid%p_samr_patch)
+      endif
+
+      call RTCalculateTranMatrixPatch2(realization,T)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -1444,7 +1490,7 @@ end subroutine RTCalculateTransportMatrix
 ! date: 04/25/10
 !
 ! ************************************************************************** !
-subroutine RTCalculateTranMatrixPatch(realization,T)
+subroutine RTCalculateTranMatrixPatch1(realization,T)
 
   use Realization_module
   use Patch_module
@@ -1488,19 +1534,6 @@ subroutine RTCalculateTranMatrixPatch(realization,T)
   ! Get vectors
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
   call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
-
-  ! Accumulation term
-  iphase = 1
-  do local_id = 1, grid%nlmax
-    ghosted_id = grid%nL2G(local_id)
-    coef = porosity_loc_p(ghosted_id)* &
-           global_aux_vars(ghosted_id)%sat(iphase)* &
-!geh           global_aux_vars(ghosted_id)%den_kg(iphase)* &
-           1000.d0* &
-           volume_p(local_id)/option%tran_dt
-    call MatSetValuesLocal(T,1,local_id-1,1,local_id-1,coef, &
-                           ADD_VALUES,ierr)
-  enddo
 
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
@@ -1595,7 +1628,108 @@ subroutine RTCalculateTranMatrixPatch(realization,T)
                           patch%aux%RT%zero_rows_local_ghosted,coef,ierr) 
   endif
   
-end subroutine RTCalculateTranMatrixPatch
+end subroutine RTCalculateTranMatrixPatch1
+
+
+! ************************************************************************** !
+!
+! RTCalculateTranMatrixPatch: Calculate transport matrix
+! author: Glenn Hammond
+! date: 04/25/10
+!
+! ************************************************************************** !
+subroutine RTCalculateTranMatrixPatch2(realization,T)
+
+  use Realization_module
+  use Patch_module
+  use Connection_module
+  use Coupler_module
+  use Option_module
+  use Field_module  
+  use Grid_module  
+
+  implicit none
+ 
+  interface
+
+     subroutine SAMRSetJacobianSrcCoeffsOnPatch(which_pc, p_application, p_patch) 
+#include "finclude/petscsysdef.h"
+
+       PetscInt :: which_pc
+       PetscFortranAddr :: p_application
+       PetscFortranAddr :: p_patch
+     end subroutine SAMRSetJacobianSrcCoeffsOnPatch
+  end interface
+ 
+  type(realization_type) :: realization
+  Mat :: T
+  
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  PetscReal, pointer :: porosity_loc_p(:)
+  PetscReal, pointer :: volume_p(:)
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
+  PetscInt :: iphase
+  
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  PetscInt :: sum_connection, iconn
+  PetscReal :: coef
+  PetscReal :: coef_up(1), coef_dn(1)
+  PetscErrorCode :: ierr
+  PetscInt :: flow_pc
+    
+  ! Get vectors
+  option => realization%option
+  field => realization%field
+  patch => realization%patch
+  global_aux_vars => patch%aux%Global%aux_vars
+  grid => patch%grid
+
+  ! Get vectors
+  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
+  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
+
+  ! Accumulation term
+  iphase = 1
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    coef = porosity_loc_p(ghosted_id)* &
+           global_aux_vars(ghosted_id)%sat(iphase)* &
+!geh           global_aux_vars(ghosted_id)%den_kg(iphase)* &
+           1000.d0* &
+           volume_p(local_id)/option%tran_dt
+    call MatSetValuesLocal(T,1,local_id-1,1,local_id-1,coef, &
+                           ADD_VALUES,ierr)
+  enddo
+                        
+  ! need to add source/sink
+
+  ! Restore vectors
+  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
+  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
+
+  call MatAssemblyBegin(T,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyEnd(T,MAT_FINAL_ASSEMBLY,ierr)
+
+  if (patch%aux%RT%inactive_cells_exist) then
+    coef = 1.d0
+    call MatZeroRowsLocal(T,patch%aux%RT%n_zero_rows, &
+                          patch%aux%RT%zero_rows_local_ghosted,coef,ierr) 
+  endif
+
+  if(option%use_samr) then
+     flow_pc = 1
+     call SAMRSetJacobianSrcCoeffsOnPatch(flow_pc, &
+          realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
+  endif
+  
+end subroutine RTCalculateTranMatrixPatch2
 
 ! ************************************************************************** !
 !
