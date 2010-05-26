@@ -1,4 +1,4 @@
-//
+ //
 // $Id: test_gradient.C 1832 2005-08-23 21:10:00Z bphilip $
 // $Revision: 1832 $
 // $Date: 2005-08-23 15:10:00 -0600 (Tue, 23 Aug 2005) $
@@ -80,7 +80,7 @@ int main( int argc, char *argv[] )
    string input_file;
    string log_file;
    bool is_from_restart = false;
-   
+   std::string pflotran_filename;
    tbox::Pointer<hier::PatchHierarchy<NDIM> > hierarchy;
 
    __argc_save = argc;
@@ -112,7 +112,8 @@ int main( int argc, char *argv[] )
    tbox::Pointer<tbox::Database> app_database = input_db->getDatabase("PflotranApplicationStrategy");
 
    int mode =  app_database->getInteger("DriverMode");
-
+   pflotran_filename=input_db->getStringWithDefault("pflotran_filename", "pflotran_well.in");
+   
    PflotranApplicationStrategy *pflotranApplication = NULL;
 
    /*
@@ -199,8 +200,9 @@ int main( int argc, char *argv[] )
       tbox::TimerManager::getManager()->getTimer("apps::main::main");
 
    main_timer->start();
-   
-   f_create_simulation_(&p_pflotran_sim, (void **)&pflotranApplication);
+
+   int slen=strlen(pflotran_filename.c_str());
+   f_create_simulation_(&p_pflotran_sim, (void **)&pflotranApplication, pflotran_filename.c_str(), &slen);
    
    f_initialize_simulation_(&p_pflotran_sim);
 

@@ -294,6 +294,13 @@ subroutine RealizationCreateDiscretization(realization)
         call DiscretizationDuplicateVector(discretization,field%tran_xx_loc, &
                                            field%tran_work_loc)
       endif
+
+      if(option%use_samr) then
+         option%ivar_centering = SIDE_CENTERED
+         call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_face_fluxes, &
+                                      GLOBAL,option)
+         option%ivar_centering = CELL_CENTERED
+      endif 
     else ! operator splitting
       ! ndof degrees of freedom, global
       ! create the 1 dof vector for solving the individual linear systems
@@ -313,15 +320,15 @@ subroutine RealizationCreateDiscretization(realization)
       ! again, just for storage of the current colution
       call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_xx_loc, &
                                       LOCAL,option)
+      if(option%use_samr) then
+         option%ivar_centering = SIDE_CENTERED
+         call DiscretizationCreateVector(discretization,ONEDOF,field%tran_face_fluxes, &
+                                      GLOBAL,option)
+         option%ivar_centering = CELL_CENTERED
+      endif 
+
     endif
     
-    if(option%use_samr) then
-       option%ivar_centering = SIDE_CENTERED
-        call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_face_fluxes, &
-                                    GLOBAL,option)
-      option%ivar_centering = CELL_CENTERED
-    endif
-
   endif
 
   select case(discretization%itype)
