@@ -2266,6 +2266,10 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
     write(option%io_buffer,'("inf norm: ",es11.4)') norm
     call printMsg(option) 
   endif
+
+  call PetscLogEventEnd(logging%event_r_jacobian,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,ierr)
   
 end subroutine RichardsJacobian
                 
