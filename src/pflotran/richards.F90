@@ -405,6 +405,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   use Coupler_module
   use Connection_module
   use Material_module
+  use Logging_module
   
   implicit none
 
@@ -426,6 +427,10 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   PetscReal :: xxbc(realization%option%nflowdof)
   PetscErrorCode :: ierr
   
+  call PetscLogEventBegin(logging%event_r_auxvars,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)
+
   option => realization%option
   patch => realization%patch
   grid => patch%grid
@@ -456,6 +461,14 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
                        option)
   enddo
 
+  call PetscLogEventEnd(logging%event_r_auxvars,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,ierr)
+
+  call PetscLogEventBegin(logging%event_r_auxvars_bc,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)
+
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
@@ -485,13 +498,16 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
     boundary_condition => boundary_condition%next
   enddo
 
-
   call GridVecRestoreArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)  
   
   patch%aux%Richards%aux_vars_up_to_date = PETSC_TRUE
+
+  call PetscLogEventEnd(logging%event_r_auxvars_bc,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,ierr)
 
 end subroutine RichardsUpdateAuxVarsPatch
 
@@ -1419,6 +1435,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   use Level_module
   use Discretization_module
   use Option_module
+  use Logging_module
 
   implicit none
   interface
@@ -1454,10 +1471,14 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   type(patch_type), pointer :: cur_patch
   type(option_type), pointer :: option
   
+  call PetscLogEventBegin(logging%event_r_residual,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)
+  
   field => realization%field
   discretization => realization%discretization
   option => realization%option
-  
+
   ! Communication -----------------------------------------
   ! These 3 must be called before RichardsUpdateAuxVars()
   call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
@@ -1533,6 +1554,10 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   
+  call PetscLogEventEnd(logging%event_r_residual,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)
+
 end subroutine RichardsResidual
 
 ! ************************************************************************** !
@@ -2127,6 +2152,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
   use Patch_module
   use Grid_module
   use Option_module
+  use Logging_module
 
   implicit none
 
@@ -2157,6 +2183,10 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
   type(option_type), pointer :: option
   PetscReal :: norm
   
+  call PetscLogEventBegin(logging%event_r_jacobian,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)
+
   option => realization%option
 
   flag = SAME_NONZERO_PATTERN

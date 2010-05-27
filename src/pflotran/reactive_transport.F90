@@ -1748,12 +1748,19 @@ subroutine RTReact(realization)
   use Realization_module
   use Level_module
   use Patch_module
+  use Logging_module
 
   type(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
+  PetscErrorCode :: ierr
+  
+  call PetscLogEventBegin(logging%event_rt_react,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)
+
   cur_level => realization%level_list%first
   do
     if (.not.associated(cur_level)) exit
@@ -1767,6 +1774,10 @@ subroutine RTReact(realization)
     cur_level => cur_level%next
   enddo
 
+  call PetscLogEventEnd(logging%event_rt_react,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,ierr)
+                        
 end subroutine RTReact
 
 ! ************************************************************************** !
@@ -2602,6 +2613,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   use Discretization_module
   use Option_module
   use Grid_module
+  use Logging_module
 
   implicit none
   
@@ -2629,6 +2641,10 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   type(patch_type), pointer :: cur_patch
   PetscViewer :: viewer  
   
+  call PetscLogEventBegin(logging%event_rt_residual,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)
+
   field => realization%field
   discretization => realization%discretization
   option => realization%option
@@ -2720,6 +2736,10 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   
+  call PetscLogEventEnd(logging%event_rt_residual,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,ierr)
+
 end subroutine RTResidual
 
 ! ************************************************************************** !
@@ -3392,6 +3412,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
   use Connection_module
   use Coupler_module  
   use Debug_module
+  use Logging_module
   
   implicit none
 
@@ -3664,6 +3685,11 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
 #if 1  
 ! Reactions
   if (associated(reaction)) then
+  
+    call PetscLogEventBegin(logging%event_rt_res_reaction,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,ierr)  
+    
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
       !geh - Ignore inactive cells with inactive materials
@@ -3679,6 +3705,10 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       r_p(istartall:iendall) = r_p(istartall:iendall) + Res(1:reaction%ncomp)                    
 
     enddo
+
+    call PetscLogEventEnd(logging%event_rt_res_reaction,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)   
   endif
 #endif
 
@@ -3712,6 +3742,7 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   use Grid_module
   use Option_module
   use Field_module
+  use Logging_module
 
   implicit none
 
@@ -3728,6 +3759,10 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
+
+  call PetscLogEventBegin(logging%event_rt_jacobian,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)
 
 #if 0
   call RTNumericalJacobianTest(realization)
@@ -3817,6 +3852,10 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
     endif
     
   endif
+
+  call PetscLogEventEnd(logging%event_rt_jacobian,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,ierr)
   
 end subroutine RTJacobian
 
@@ -4220,6 +4259,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   use Connection_module
   use Coupler_module  
   use Debug_module
+  use Logging_module
   
   implicit none
 
@@ -4384,6 +4424,11 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 #if 1  
 ! Reactions
   if (associated(reaction)) then
+
+    call PetscLogEventBegin(logging%event_rt_jac_reaction,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,ierr)
+                              
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
       !geh - Ignore inactive cells with inactive materials
@@ -4396,6 +4441,11 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1, &
                                     Jup,ADD_VALUES,ierr)                        
     enddo
+    
+    call PetscLogEventEnd(logging%event_rt_jac_reaction,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)
+    
   endif
 #endif
  
@@ -4505,6 +4555,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
   use Connection_module
   use Option_module
   use Field_module
+  use Logging_module
   
   implicit none
 
@@ -4538,7 +4589,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
   PetscInt, save :: icall
   
   data icall/0/
-  
+
   option => realization%option
   patch => realization%patch  
   grid => patch%grid
@@ -4549,6 +4600,10 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
 
   if (update_cells) then
 
+    call PetscLogEventBegin(logging%event_rt_auxvars,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,ierr)
+  
     do ghosted_id = 1, grid%ngmax
       if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
       !geh - Ignore inactive cells with inactive materials
@@ -4594,9 +4649,17 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
       endif
     enddo
 
+    call PetscLogEventEnd(logging%event_rt_auxvars,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)
   endif
 
   if (update_bcs) then
+
+    call PetscLogEventBegin(logging%event_rt_auxvars_bc,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,ierr)
+
 
     boundary_condition => patch%boundary_conditions%first
     sum_connection = 0    
@@ -4763,6 +4826,10 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
     enddo
 
     patch%aux%RT%aux_vars_up_to_date = PETSC_TRUE
+
+    call PetscLogEventEnd(logging%event_rt_auxvars_bc,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)
 
   endif 
   

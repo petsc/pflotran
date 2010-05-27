@@ -70,11 +70,15 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 5
     PetscLogEvent :: event_r_residual
     PetscLogEvent :: event_r_jacobian
     PetscLogEvent :: event_r_auxvars
+    PetscLogEvent :: event_r_auxvars_bc
     
     PetscLogEvent :: event_rt_residual
     PetscLogEvent :: event_rt_jacobian
+    PetscLogEvent :: event_rt_res_reaction
+    PetscLogEvent :: event_rt_jac_reaction
     PetscLogEvent :: event_rt_react
     PetscLogEvent :: event_rt_auxvars
+    PetscLogEvent :: event_rt_auxvars_bc
     
     PetscLogEvent :: event_mass_balance
 
@@ -251,6 +255,9 @@ subroutine LoggingCreate()
   call PetscLogEventRegister('RAuxVars', &
                              logging%class_pflotran, &
                              logging%event_r_auxvars,ierr)
+  call PetscLogEventRegister('RAuxVarsBC', &
+                             logging%class_pflotran, &
+                             logging%event_r_auxvars_bc,ierr)
 
   call PetscLogEventRegister('RTResidual', &
                              logging%class_pflotran, &
@@ -258,12 +265,21 @@ subroutine LoggingCreate()
   call PetscLogEventRegister('RTJacobian', &
                              logging%class_pflotran, &
                              logging%event_rt_jacobian,ierr)
+  call PetscLogEventRegister('RTResReaction', &
+                             logging%class_pflotran, &
+                             logging%event_rt_res_reaction,ierr)
+  call PetscLogEventRegister('RTJacReaction', &
+                             logging%class_pflotran, &
+                             logging%event_rt_jac_reaction,ierr)
   call PetscLogEventRegister('RTReact', &
                              logging%class_pflotran, &
                              logging%event_rt_react,ierr)
   call PetscLogEventRegister('RTAuxVars', &
                              logging%class_pflotran, &
                              logging%event_rt_auxvars,ierr)
+  call PetscLogEventRegister('RTAuxVarsBC', &
+                             logging%class_pflotran, &
+                             logging%event_rt_auxvars_bc,ierr)
                              
   call PetscLogEventRegister('MassBalance', &
                              logging%class_pflotran, &
