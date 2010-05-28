@@ -1383,7 +1383,7 @@ subroutine Flash2BCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
               upweight=1.d0
            endif
            density_ave = upweight*aux_var_up%den(np) + (1.D0-upweight)*aux_var_dn%den(np)
-           
+!           print *,'flbc den:', upweight, aux_var_up%den(np), aux_var_dn%den(np)
            gravity = (upweight*aux_var_up%den(np) * aux_var_up%avgmw(np) + &
                 (1.D0-upweight)*aux_var_dn%den(np) * aux_var_dn%avgmw(np)) &
                 * dist_gravity
@@ -1435,7 +1435,7 @@ subroutine Flash2BCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
      end do 
       !if(option%use_isothermal == PETSC_FALSE) &
       fluxe = fluxe + q*density_ave*uh
- !print *,'FLBC', ibndtype(1),np, ukvr, v_darcy, uh, uxmol
+!     print *,'FLBC', ibndtype(1),np, ukvr, v_darcy, uh, uxmol, density_ave
    enddo
 
 #if 1 
@@ -2038,6 +2038,11 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
        select case(boundary_condition%flow_condition%itype(idof))
        case(DIRICHLET_BC)
           xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
+       case(HYDROSTATIC_BC)
+          xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
+          if(idof>=2)then
+             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+          endif 
        case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
           xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
@@ -2562,6 +2567,12 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
        case(DIRICHLET_BC)
           xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
           delxbc(idof)=0.D0
+      case(HYDROSTATIC_BC)
+          xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
+          if(idof>=2)then
+             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+             delxbc(idof)=delx(idof,ghosted_id)
+          endif 
        case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
           xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
