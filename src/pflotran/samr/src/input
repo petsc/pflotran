@@ -4,8 +4,6 @@ PERIODIC  = 2
 MIXED     = 3
 ROBIN     = 4
 
-pflotran_filename="pflotran_well.in"
-
 CartesianGeometry{
    domain_boxes = [(0,0,0), (19,19,79)]
    x_lo         = 0.0e0, 0.0e0, 0.0e0  
@@ -16,11 +14,11 @@ CartesianGeometry{
 GriddingAlgorithm{
    max_levels = 2 
    largest_patch_size {
-      level_0 = 10, 10, 20
+      level_0 = 10, 10, 40
       level_1 = 10, 10, 10
    }
  smallest_patch_size {
-      level_0 = 5,5,10
+      level_0 = 10,10,40
       level_1 = 5,5,10
    }
    ratio_to_coarser {
@@ -28,6 +26,8 @@ GriddingAlgorithm{
    }
    combine_efficiency = 0.95
    efficiency_tolerance = 0.95
+   coalesce_boxes=FALSE
+   check_nonrefined_tags='i'
 }
 
 StandardTagAndInitialize{
@@ -79,19 +79,19 @@ PflotranApplicationStrategy{
 
      pc_solver{
        solver_name                      =  "FAC"
-       max_iterations                   =  20
-       max_error                        =  1.0e-9
-       print_info_level                 =  1
-       presolve_iterations              =  3
-       postsolve_iterations             =  3
+       max_iterations                   =  30 
+       max_error                        =  1.0e-12
+       print_info_level                 =  1 
+       presolve_iterations              =  2
+       postsolve_iterations             =  2
        use_visit                        =  FALSE
        viz_directory                    =  "fac_viz"
        zero_initial_guess               =  TRUE
 
        level_solver_0 {
             solver_name                = "CellHYPRELevelSolver"
-            mg_solver_type          = 1
-            print_info_level           = 0
+            print_info_level           = 0 
+            mg_solver_type             = 1
             max_iterations             = 1
             max_error                  = 1.0e-12
             num_presweeps              = 2
@@ -102,7 +102,7 @@ PflotranApplicationStrategy{
        level_solver_1 {
             solver_name                 =  "CellLevelSmoother"
             smoother_type               =  "Red-black Gauss-Seidel"
-            print_info_level            =  0
+            print_info_level            =  0 
             max_iterations              =  1
             max_error                   =  1.0e-12
             num_sweeps                  =  10
@@ -113,9 +113,7 @@ PflotranApplicationStrategy{
 
 }
 
- 
+
 TimerManager{
-  print_concurrent=TRUE
-  print_threshold=0.0
-  timer_list = "xfer::*::*", "FAC::*::*", "AMRUtilities::*::*", "apps::main::main", "PflotranJacobianLevelOperator::*", "LevelSolver::*::*", "PFlotran::*::*"
+   timer_list = "xfer::*::*", "FAC::*::*", "AMRUtilities::*::*", "apps::main::main", "RD2T::*::*", "LevelSolver::*::*"
 }

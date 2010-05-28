@@ -14,8 +14,8 @@ CartesianGeometry{
 GriddingAlgorithm{
    max_levels = 7 
    largest_patch_size {
-      level_0 = 10, 10, 40
-      level_1 = 10, 10, 10
+      level_0 = 20, 20, 80
+      level_1 = 40, 40, 40
    }
  smallest_patch_size {
       level_0 = 10,10,40
@@ -81,7 +81,7 @@ PflotranApplicationStrategy{
        solver_name                      =  "FAC"
        max_iterations                   =  30 
        max_error                        =  1.0e-12
-       print_info_level                 =  2 
+       print_info_level                 =  1 
        presolve_iterations              =  2
        postsolve_iterations             =  2
        use_visit                        =  FALSE
@@ -90,7 +90,8 @@ PflotranApplicationStrategy{
 
        level_solver_0 {
             solver_name                = "CellHYPRELevelSolver"
-            print_info_level           = 2 
+            print_info_level           = 0
+            mg_solver_type             = 1
             max_iterations             = 1
             max_error                  = 1.0e-12
             num_presweeps              = 2
@@ -101,7 +102,7 @@ PflotranApplicationStrategy{
        level_solver_1 {
             solver_name                 =  "CellLevelSmoother"
             smoother_type               =  "Red-black Gauss-Seidel"
-            print_info_level            =  2 
+            print_info_level            =  0 
             max_iterations              =  1
             max_error                   =  1.0e-12
             num_sweeps                  =  10
