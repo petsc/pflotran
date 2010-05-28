@@ -1138,8 +1138,8 @@ contains
       SC=SC*X1+A2
       SC=SC*X1+A1
       SC=SC*X1
-      PC=EXP(SC/(TC*(1.+A6*X1+A7*X2))-X1/(A8*X2+A9))
-      P=PC*2.212E7
+      PC_=EXP(SC/(TC*(1.+A6*X1+A7*X2))-X1/(A8*X2+A9))
+      P=PC_*2.212E7
       RETURN
    10 IGOOD=2
       WRITE(6,1) ' ',T

@@ -257,7 +257,7 @@ contains
     PetscErrorCode, intent(out) :: ierr
   
     PetscReal, save, dimension(9) :: A(9)
-    PetscReal :: TC, SC, PC
+    PetscReal :: TC, SC, PC_
     PetscInt :: J
     
 !   SAVE A
@@ -274,9 +274,9 @@ contains
     DO J = 1,5
       SC = SC+A(J)*(1.d0-TC)**J
     end do
-    PC = EXP(SC/(TC*(1.d0+A(6)*(1.d0-TC)+A(7)*(1.d0-TC)**2))-(1.d0-TC)/(A(8)* &
+    PC_ = EXP(SC/(TC*(1.d0+A(6)*(1.d0-TC)+A(7)*(1.d0-TC)**2))-(1.d0-TC)/(A(8)* &
          (1.d0-TC)**2+A(9)))
-    P = PC*2.212d7
+    P = PC_*2.212d7
     ierr = 0
 
   end subroutine PSAT_orig  
@@ -290,7 +290,7 @@ contains
     PetscErrorCode, intent(out) :: ierr
   
     PetscReal, save, dimension(9) :: A(9)
-    PetscReal :: TC, SC, PC, E1, E2
+    PetscReal :: TC, SC, PC_, E1, E2
     PetscReal :: one_m_tc, one_m_tc_sq, E2_bottom
     PetscReal :: dTC_dT, dSC_dTC, dE1_dTC, dE2_dTC, dPC_dSC, dPC_dTC
     
@@ -316,11 +316,11 @@ contains
     E2_bottom = A(8)*one_m_tc_sq+A(9)
     E2 = one_m_tc/E2_bottom
     dE2_dTC = -1.d0/E2_bottom+one_m_tc/(E2_bottom*E2_bottom)*2.d0*one_m_tc
-    PC = EXP(SC/E1-E2)
-    dPC_dTC = (-SC/(E1*E1)*dE1_dTC-dE2_dTC)*PC
-    dPC_dSC = 1.d0/E1*PC
+    PC_ = EXP(SC/E1-E2)
+    dPC_dTC = (-SC/(E1*E1)*dE1_dTC-dE2_dTC)*PC_
+    dPC_dSC = 1.d0/E1*PC_
    
-    psat = PC*2.212d7
+    psat = PC_*2.212d7
     dpsat_dt = (dPC_dSC*dSC_dTC+dPC_dTC)*dTC_dT*2.212d7
     ierr = 0
 
