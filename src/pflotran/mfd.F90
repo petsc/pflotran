@@ -16,7 +16,8 @@ module MFD_module
 
 
 
-  public :: MFDCreateJacobian
+  public :: MFDCreateJacobian, &
+            MFDInitializeMassMatrices
 
 contains
 
@@ -88,9 +89,9 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
     end do
   end do
 
- ! do iface = 1, grid%nlmax_faces
- !   write(*,*) iface, d_nnz(iface), o_nnz(iface)
- ! end do 
+!  do iface = 1, grid%nlmax_faces
+!    write(*,*) iface, d_nnz(iface), o_nnz(iface)
+!  end do 
 
   ndof_local = mfd_aux%ndof * grid%nlmax_faces
 
@@ -104,14 +105,14 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
                              PETSC_NULL_INTEGER,d_nnz, &
                              PETSC_NULL_INTEGER,o_nnz,J,ierr)
         call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_faces,ierr)
-        call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltogb_faces,ierr)
+        call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_faces,ierr)
       case(MATBAIJ)
         call MatCreateMPIBAIJ(option%mycomm,mfd_aux%ndof,ndof_local,ndof_local, &
                              PETSC_DETERMINE,PETSC_DETERMINE, &
                              PETSC_NULL_INTEGER,d_nnz, &
                              PETSC_NULL_INTEGER,o_nnz,J,ierr)
         call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_faces,ierr)
-        call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltogb_faces,ierr)
+        call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_faces,ierr)
       case default
         option%io_buffer = 'MatType not recognized in MFDCreateJacobian'
         call printErrMsg(option)
@@ -138,5 +139,57 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
 
 
 end subroutine MFDCreateJacobian
+
+
+
+subroutine MFDInitializeMassMatrices(grid, volume,  mfd_aux, option)
+
+ use Option_module
+ use Grid_module
+ use MFD_Aux_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+#include "finclude/petscda.h"
+#include "finclude/petscda.h90"
+#include "finclude/petscis.h"
+#include "finclude/petscis.h90"
+#include "finclude/petscviewer.h"
+
+  type(grid_type) :: grid
+  Vec :: volume
+  type(mfd_type) :: mfd_aux
+  type(option_type) :: option
+
+
+  type(mfd_auxvar_type), pointer :: aux_var
+  PetscInt :: icell, ierr,i,j
+  PetscReal :: PermTensor(3,3) 
+  PetscReal, pointer :: volume_p(:)
+
+  call VecGetArrayF90(volume, volume_p, ierr)
+
+  do icell = 1, grid%nlmax
+    aux_var => mfd_aux%aux_vars(icell)
+    call MFDAuxGenerateMassMatrixInv(aux_var, volume_p(icell), PermTensor, option)
+  end do
+
+  call VecRestoreArrayF90(volume, volume_p, ierr)
+
+!  do icell = 1, grid%nlmax
+!    aux_var => mfd_aux%aux_vars(icell)
+!    do i = 1, aux_var%numfaces
+!       write(*,*) (aux_var%MassMatrixInv(i,j),j=1,aux_var%numfaces)
+!    end do
+!  end do 
+
+end subroutine MFDInitializeMassMatrices
+
+
+
 
 end module MFD_module

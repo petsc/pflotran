@@ -32,7 +32,7 @@ module Richards_module
          RichardsInitializeTimestep, RichardsUpdateAuxVars, &
          RichardsMaxChange, RichardsUpdateSolution, &
          RichardsGetTecplotHeader, RichardsComputeMassBalance, &
-         RichardsDestroy
+         RichardsDestroy, RichardsResidualMFD
 
 contains
 
@@ -508,9 +508,20 @@ subroutine RichardsInitializeTimestep(realization)
   
   implicit none
   
+
+
   type(realization_type) :: realization
 
+  PetscViewer :: viewer
+  PetscErrorCode :: ierr
+
   call RichardsUpdateFixedAccum(realization)
+
+  call PetscViewerASCIIOpen(realization%option%mycomm,'Rxx_init.out', &
+                              viewer,ierr)
+  call VecView(realization%field%flow_xx,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+
 
 end subroutine RichardsInitializeTimestep
 
@@ -556,6 +567,50 @@ subroutine RichardsUpdateSolution(realization)
   enddo
   
 end subroutine RichardsUpdateSolution
+
+
+! ************************************************************************** !
+!
+! RichardsUpdateSolutionFaces: Updates data in module after a successful time 
+!                             step
+! author: Glenn Hammond
+! date: 02/13/08
+!
+! ************************************************************************** !
+subroutine RichardsUpdateSolutionFaces(realization)
+
+  use Realization_module
+  use Field_module
+  use Level_module
+  use Patch_module
+  
+  implicit none
+  
+  type(realization_type) :: realization
+
+  type(field_type), pointer :: field
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  PetscErrorCode :: ierr
+  
+  field => realization%field
+  
+  call VecCopy(field%flow_xx_faces,field%flow_yy_faces,ierr)   
+
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RichardsUpdateSolutionPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+  
+end subroutine RichardsUpdateSolutionFaces
 
 
 ! ************************************************************************** !
@@ -1606,6 +1661,121 @@ end subroutine RichardsResidual
 
 ! ************************************************************************** !
 !
+! RichardsResidualMFD: Computes the residual equation for MFD discretization
+! author: Daniil Svyatskiy
+! date: 05/26/10
+!
+! ************************************************************************** !
+subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
+
+  use Realization_module
+  use Field_module
+  use Patch_module
+  use Level_module
+  use Discretization_module
+  use Option_module
+
+  implicit none
+
+
+  SNES :: snes
+  Vec :: xx
+  Vec :: r
+  type(realization_type) :: realization
+  PetscViewer :: viewer
+  PetscErrorCode :: ierr
+  
+  type(discretization_type), pointer :: discretization
+  type(field_type), pointer :: field
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  type(option_type), pointer :: option
+  
+  field => realization%field
+  discretization => realization%discretization
+  option => realization%option
+  
+  ! Communication -----------------------------------------
+  ! These 3 must be called before RichardsUpdateAuxVars()
+  call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
+  call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%icap_loc,field%icap_loc,ONEDOF)
+
+  call DiscretizationLocalToLocal(discretization,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
+  
+  ! pass #1 for flux terms and accumulation term
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+ ! ! now coarsen all face fluxes in case we are using SAMRAI to 
+ ! ! ensure consistent fluxes at coarse-fine interfaces
+ ! if(option%use_samr) then
+ !    call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%flow_face_fluxes, ierr)
+!
+!     cur_level => realization%level_list%first
+!     do
+!        if (.not.associated(cur_level)) exit
+!        cur_patch => cur_level%patch_list%first
+!        do
+!           if (.not.associated(cur_patch)) exit
+!           realization%patch => cur_patch
+!           call RichardsResidualFluxContribPatch(r,realization,ierr)
+!           cur_patch => cur_patch%next
+!        enddo
+!        cur_level => cur_level%next
+!     enddo
+!  endif
+
+
+!  ! pass #2 for boundary and source data
+!  cur_level => realization%level_list%first
+!  do
+!    if (.not.associated(cur_level)) exit
+!    cur_patch => cur_level%patch_list%first
+!    do
+!      if (.not.associated(cur_patch)) exit
+!      realization%patch => cur_patch
+!      call RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
+!      cur_patch => cur_patch%next
+!    enddo
+!    cur_level => cur_level%next
+!  enddo
+!
+!  if (discretization%itype==AMR_GRID) then
+!     call samrpetscobjectstateincrease(r)
+!  endif
+!   
+!  if (realization%debug%vecview_residual) then
+    call PetscViewerASCIIOpen(realization%option%mycomm,'Rresidual.out', &
+                              viewer,ierr)
+    call VecView(r,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+!  endif
+!  if (realization%debug%vecview_solution) then
+    call PetscViewerASCIIOpen(realization%option%mycomm,'Rxx.out', &
+                              viewer,ierr)
+    call VecView(xx,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+!  endif
+
+   stop
+  
+end subroutine RichardsResidualMFD
+
+! ************************************************************************** !
+!
 ! RichardsResidualFluxContribsPatch: should be called only for SAMR
 ! author: Bobby Philip
 ! date: 02/17/09
@@ -2182,6 +2352,106 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
 
 end subroutine RichardsResidualPatch2
+
+
+
+! ************************************************************************** !
+!
+! RichardsResidualPatchMFD1: Computes flux and accumulation 
+!   terms of the residual equation 
+! author: Glenn Hammond
+! date: 12/10/07
+!
+! ************************************************************************** !
+subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
+
+  use water_eos_module
+
+  use Connection_module
+  use Realization_module
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Coupler_module  
+  use Field_module
+  use Debug_module
+  
+  implicit none
+
+     
+     
+
+  SNES, intent(in) :: snes
+  Vec, intent(inout) :: xx
+  Vec, intent(out) :: r
+  type(realization_type) :: realization
+
+  PetscErrorCode :: ierr
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
+
+  PetscReal, pointer :: r_p(:), porosity_loc_p(:), &
+                        perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
+  PetscReal, pointer :: icap_loc_p(:)
+
+  PetscReal, pointer :: face_fluxes_p(:)
+  PetscInt :: icap_up, icap_dn
+  PetscReal :: dd_up, dd_dn
+  PetscReal :: perm_up, perm_dn
+  PetscReal :: upweight
+  PetscReal :: Res(realization%option%nflowdof), v_darcy
+
+
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(coupler_type), pointer :: boundary_condition
+  type(richards_parameter_type), pointer :: richards_parameter
+  type(richards_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  PetscInt :: iconn
+  PetscInt :: sum_connection
+  PetscReal :: distance, fraction_upwind
+  PetscReal :: distance_gravity
+  PetscInt :: axis, side, nlx, nly, nlz, ngx, ngxy, pstart, pend, flux_id
+  PetscInt :: direction, max_x_conn, max_y_conn
+  
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+  richards_parameter => patch%aux%Richards%richards_parameter
+  rich_aux_vars => patch%aux%Richards%aux_vars
+  rich_aux_vars_bc => patch%aux%Richards%aux_vars_bc
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+
+  call RichardsUpdateAuxVarsPatch(realization)
+  patch%aux%Richards%aux_vars_up_to_date = PETSC_FALSE ! override flags since they will soon be out of date
+  if (option%compute_mass_balance_new) then
+    call RichardsZeroMassBalDeltaPatch(realization)
+  endif
+
+! now assign access pointer to local variables
+  call GridVecGetArrayF90(grid,r, r_p, ierr)
+  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
+  !print *,' Finished scattering non deriv'
+
+  call GridVecRestoreArrayF90(grid,r, r_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
+
+end subroutine RichardsResidualPatchMFD1
 
 ! ************************************************************************** !
 !

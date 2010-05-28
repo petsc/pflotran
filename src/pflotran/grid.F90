@@ -57,7 +57,7 @@ module Grid_module
     ! nL2A :   collective, local => natural index, used for initialization   
     !                               and source/sink setup  (zero-based)
     PetscInt, pointer :: nL2G(:), nG2L(:), nL2A(:)
-    PetscInt, pointer :: nG2A(:), nG2P(:), nL2P(:)
+    PetscInt, pointer :: nG2A(:), nG2P(:)
 
     ! nL2G :  not collective, local processor: local  =>  ghosted local  
     ! nG2L :  not collective, local processor:  ghosted local => local  
@@ -206,7 +206,7 @@ subroutine GridComputeInternalConnect(grid,option)
   type(connection_set_type), pointer :: connection_set, connection_bound_set
   
   select case(grid%itype)
-    case(STRUCTURED_GRID)
+    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       connection_set => &
         StructGridComputeInternConnect(grid%x,grid%structured_grid,option)
     case(UNSTRUCTURED_GRID) 
@@ -221,7 +221,8 @@ subroutine GridComputeInternalConnect(grid,option)
 
 
   select case(grid%itype)
-    case(STRUCTURED_GRID)
+    case(STRUCTURED_GRID_MIMETIC)
+!    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       connection_bound_set => &
         StructGridComputeBoundConnect(grid%x,grid%structured_grid,option)
         grid%nlmax_faces = grid%structured_grid%nlmax_faces;
@@ -231,23 +232,21 @@ subroutine GridComputeInternalConnect(grid,option)
 !        UGridComputeBoundConnect(grid%unstructured_grid,option)
   end select
   
-  allocate(grid%boundary_connection_set_list)
-  call ConnectionInitList(grid%boundary_connection_set_list)
-  call ConnectionAddToList(connection_bound_set,grid%boundary_connection_set_list)
+  if (associated(connection_bound_set)) then
+    allocate(grid%boundary_connection_set_list)
+    call ConnectionInitList(grid%boundary_connection_set_list)
+    call ConnectionAddToList(connection_bound_set,grid%boundary_connection_set_list)
+  end if
 
-  allocate(grid%fL2G(grid%nlmax_faces))
-  allocate(grid%fG2L(grid%ngmax_faces))
+!  if ((grid%itype==STRUCTURED_GRID).or.(grid%itype==STRUCTURED_GRID_MIMETIC)) then
+  if ((grid%itype==STRUCTURED_GRID_MIMETIC)) then
+    allocate(grid%fL2G(grid%nlmax_faces))
+    allocate(grid%fG2L(grid%ngmax_faces))
   
-  grid%fL2G = 0
-  grid%fG2L = 0
-
-
-!  call MPI_Scan(grid%nlmax_faces, &
-!                  grid%nmax_faces, &
-!                  ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
-
-
-  call GridPopulateFaces(grid, option)
+    grid%fL2G = 0
+    grid%fG2L = 0
+    call GridPopulateFaces(grid, option)
+  end if
   write(*,*) 'Exit GridComputeInternalConnect'
  ! stop  
 end subroutine GridComputeInternalConnect
@@ -280,7 +279,7 @@ subroutine GridPopulateConnection(grid,connection,iface,iconn,cell_id_local)
   ! interior node connections.
   
   select case(grid%itype)
-    case(STRUCTURED_GRID)
+    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       call StructGridPopulateConnection(grid%x,grid%structured_grid,connection, &
                                         iface,iconn,cell_id_ghosted)
     case(UNSTRUCTURED_GRID)
@@ -377,19 +376,12 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
 
   PetscInt, pointer :: numfaces(:)
 
-  if (option%myrank==0) filename = "connect0" 
-  if (option%myrank==1) filename = "connect1" 
-  if (option%myrank==2) filename = "connect2" 
-  if (option%myrank==3) filename = "connect3" 
-  
 
-  write(*,*) filename  
 
-  OPEN(UNIT=9, FILE=filename)
+
 
   MFD_aux => MFDAuxCreate();
   call MFDAuxInit(MFD_aux, grid%nlmax, option)
-
   allocate(numfaces(grid%nlmax))
 
   numfaces = 6
@@ -428,6 +420,7 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
     aux_var => MFD_aux%aux_vars(icell)
     call MFDAuxVarInit(aux_var, numfaces(icell), option)
   end do
+
 
   local_id = 1
   do icount = 1, grid%ngmax_faces
@@ -473,15 +466,16 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
         end if
     end if
   end do
+
+ 
     
-  do icell = 1, grid%nlmax
-    aux_var => MFD_aux%aux_vars(icell)
-    write(9,*) option%myrank, icell
-    write(9,*) option%myrank, "+++++++++++++++", (aux_var%face_id_gh(icount),icount=1,6)
-  end do
+!  do icell = 1, grid%nlmax
+!    aux_var => MFD_aux%aux_vars(icell)
+!    write(9,*) option%myrank, icell
+!    write(9,*) option%myrank, "+++++++++++++++", (aux_var%face_id_gh(icount),icount=1,6)
+!  end do
   
   deallocate(numfaces)
-  Close(UNIT=9)
 
 end subroutine GridComputeCell2FaceConnectivity
 
@@ -944,11 +938,11 @@ subroutine GridMapIndices(grid, sgdm)
   PetscOffset :: i_da
   
   select case(grid%itype)
-    case(STRUCTURED_GRID)
+    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       call StructuredGridMapIndices(grid%structured_grid,grid%nG2L,grid%nL2G, &
                                     grid%nL2A,grid%nG2A)
 
-!      if (sgdm) then
+      if ((grid%itype==STRUCTURED_GRID_MIMETIC)) then
          allocate(grid%nG2P(grid%ngmax))
          allocate(int_tmp(grid%ngmax))
          call DAGetGlobalIndices(sgdm,  grid%ngmax, int_tmp, i_da, ierr)
@@ -957,7 +951,7 @@ subroutine GridMapIndices(grid, sgdm)
             grid%nG2P(icount) = int_tmp(icount + i_da)
          end do
         deallocate(int_tmp)
-!      end if
+      end if
     case(UNSTRUCTURED_GRID)
   end select
  
@@ -981,7 +975,7 @@ subroutine GridComputeSpacing(grid,option)
   type(option_type) :: option
   
   select case(grid%itype)
-    case(STRUCTURED_GRID)
+    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       call StructuredGridComputeSpacing(grid%structured_grid,grid%nG2A, &
                                         grid%nG2L,option)
     case(UNSTRUCTURED_GRID)
@@ -1009,7 +1003,7 @@ subroutine GridComputeCoordinates(grid,origin_global,option)
   PetscErrorCode :: ierr  
   
   select case(grid%itype)
-    case(STRUCTURED_GRID)
+    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
       allocate(grid%x(grid%ngmax))
       grid%x = 0.d0
       allocate(grid%y(grid%ngmax))
@@ -1077,7 +1071,7 @@ subroutine GridComputeVolumes(grid,volume,option)
   Vec :: volume
   
   select case(grid%itype)
-    case(STRUCTURED_GRID)
+    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
       call StructuredGridComputeVolumes(grid%x,grid%structured_grid,option, &
                                         grid%nL2G,volume)
     case(UNSTRUCTURED_GRID)
@@ -1225,7 +1219,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
               if (z_shift - grid%z_min_global < tol) &
                 z_shift = region%coordinates(ONE_INTEGER)%z
               select case(grid%itype)
-                case(STRUCTURED_GRID)
+                case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
                   call StructGridGetIJKFromCoordinate(grid%structured_grid, &
                                                       x_shift,y_shift,z_shift, &
                                                       i,j,k)
@@ -1292,7 +1286,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
             z_max = z_max-z_shift
                  
             ! if plane or line, ensure it is within the grid cells     
-            if (grid%itype == STRUCTURED_GRID) then
+            if ((grid%itype == STRUCTURED_GRID).or.(grid%itype == STRUCTURED_GRID_MIMETIC)) then
               if (x_max-x_min < 1.d-10) then
                 x_max = region%coordinates(ONE_INTEGER)%x
                 x_shift = 1.d-8*(grid%x_max_global-grid%x_min_global)
@@ -1335,7 +1329,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                 
               ! get I,J,K bounds
               select case(grid%itype)
-                case(STRUCTURED_GRID)
+                case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
                   ! local, non-ghosted i,j,k's are returned
                   call StructGridGetIJKFromCoordinate(grid%structured_grid, &
                                             max(x_min,grid%x_min_local+x_shift), &
@@ -1395,7 +1389,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
 #if 0
       allocate(temp_int_array(region%num_cells))
       temp_int_array = 0
-      if (grid%itype == STRUCTURED_GRID) then
+      if ((grid%itype == STRUCTURED_GRID).or.(grid%itype == STRUCTURED_GRID_MIMETIC)) then
         do count=1,region%num_cells
           i = mod(region%cell_ids(count),grid%structured_grid%nx) - &
                 grid%structured_grid%nxs

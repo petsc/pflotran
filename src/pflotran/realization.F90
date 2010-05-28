@@ -178,6 +178,7 @@ subroutine RealizationCreateDiscretization(realization)
   use Grid_module
   use Unstructured_Grid_module, only : UGridMapIndices
   use AMR_Grid_module
+  use MFD_module
   
   implicit none
   
@@ -189,12 +190,14 @@ subroutine RealizationCreateDiscretization(realization)
   type(option_type), pointer :: option
   PetscErrorCode :: ierr
   PetscInt, allocatable :: int_tmp(:)
-  PetscInt :: test
+  PetscInt :: test,j
   PetscOffset :: i_da
+  PetscReal, pointer :: real_tmp(:)
   
   option => realization%option
   field => realization%field
-  
+ 
+ 
   discretization => realization%discretization
   
   call DiscretizationCreateDMs(discretization,option)
@@ -220,7 +223,7 @@ subroutine RealizationCreateDiscretization(realization)
 
   call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
                                      field%work_loc)
-
+  
    
 
   if (option%nflowdof > 0) then
@@ -267,6 +270,9 @@ subroutine RealizationCreateDiscretization(realization)
     call DiscretizationCreateVector(discretization,NFLOWDOF,field%flow_xx_loc, &
                                     LOCAL,option)
 
+    write(*,*) "NFLOWDOF ", NFLOWDOF
+
+
     if(option%use_samr) then
        option%ivar_centering = SIDE_CENTERED
        call DiscretizationCreateVector(discretization,NFLOWDOF,field%flow_face_fluxes, &
@@ -309,7 +315,7 @@ subroutine RealizationCreateDiscretization(realization)
   endif
 
   select case(discretization%itype)
-    case(STRUCTURED_GRID)
+    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
       grid => discretization%grid
       ! set up nG2L, nL2G, etc.
       call GridMapIndices(grid, discretization%dm_1dof%sgdm)
@@ -318,8 +324,8 @@ subroutine RealizationCreateDiscretization(realization)
       call GridComputeVolumes(grid,field%volume,option)
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option)
-      call GridComputeCell2FaceConnectivity(grid, discretization%MFD, option)
-      write(*,*) "After GridComputeCell2FaceConnectivity"
+      if (discretization%itype == STRUCTURED_GRID_MIMETIC) &
+          call GridComputeCell2FaceConnectivity(grid, discretization%MFD, option)
     case(UNSTRUCTURED_GRID)
       grid => discretization%grid
       ! set up nG2L, NL2G, etc.
@@ -341,25 +347,44 @@ subroutine RealizationCreateDiscretization(realization)
  
   ! Vectors with face degrees of freedom
 
-   if (option%nflowdof > 0) then
-   
-     call VecCreateMPI(option%mycomm,grid%nlmax_faces*NFLOWDOF, &
-                    PETSC_DETERMINE,field%flow_xx_faces,ierr)
-     call VecSetBlockSize(field%flow_xx_faces,NFLOWDOF,ierr)
+   if (discretization%itype==STRUCTURED_GRID_MIMETIC) then
 
-     call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
+     if (option%nflowdof > 0) then
+   
+       call VecCreateMPI(option%mycomm,grid%nlmax_faces*option%nflowdof, &
+                    PETSC_DETERMINE,field%flow_xx_faces,ierr)
+
+
+
+       call VecSetBlockSize(field%flow_xx_faces,NFLOWDOF,ierr)
+
+       call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
                                                         field%flow_r_faces)
 
-     call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
+       call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
                                                         field%flow_dxx_faces)
 
-     call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
+       call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
                                                         field%flow_yy_faces)
 
+       call MFDInitializeMassMatrices(grid, field%volume, discretization%MFD, option)
 
+
+     end if
+
+     call GridComputeiGlobalCell2FaceConnectivity(grid, discretization%MFD, NFLOWDOF, option)
+
+     
+  
    end if
 
-   call GridComputeiGlobalCell2FaceConnectivity(grid, discretization%MFD, NFLOWDOF, option)
+     
+     call GridVecGetArrayF90(grid, grid%e2n, real_tmp, ierr)
+     do test = 1, grid%nlmax
+       write(*,*) (real_tmp((test -1)*6 + j), j=1,6)
+       write(*,*)
+     end do
+     call GridVecRestoreArrayF90(grid, grid%e2n, real_tmp, ierr)
  
   ! initialize to -999.d0 for check later that verifies all values 
   ! have been set

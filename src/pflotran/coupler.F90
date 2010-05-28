@@ -287,8 +287,12 @@ subroutine CouplerListComputeConnections(grid,option,coupler_list)
   offset = 0
   coupler => coupler_list%first
   do
-    if (.not.associated(coupler)) exit  
-    call CouplerComputeConnections(grid,option,coupler)
+    if (.not.associated(coupler)) exit 
+    if (grid%itype /= STRUCTURED_GRID_MIMETIC) then  
+       call CouplerComputeConnections(grid,option,coupler)
+    else
+       call CouplerComputeConnectionsFaces(grid,option,coupler)      
+    end if
     if (associated(coupler%connection_set)) then
       coupler%connection_set%offset = offset
       offset = offset + coupler%connection_set%num_connections
@@ -369,6 +373,101 @@ subroutine CouplerComputeConnections(grid,option,coupler)
   nullify(connection_set)
  
 end subroutine CouplerComputeConnections
+
+! ************************************************************************** !
+!
+! CouplerComputeConnections: computes connectivity coupler to a grid
+! author: Glenn Hammond
+! date: 02/20/08
+!
+! ************************************************************************** !
+subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
+
+  use Connection_module
+  use Option_module
+  use Region_module
+  use Grid_module
+  
+  implicit none
+ 
+  type(grid_type) :: grid
+  type(option_type) :: option
+  type(coupler_type), pointer :: coupler_list
+  
+  PetscInt :: iconn, reg_numconn
+  PetscInt :: cell_id_local, cell_id_ghosted, cell_id_petsc
+  PetscInt :: connection_itype
+  PetscInt :: iface, icell
+  type(connection_set_type), pointer :: connection_set
+  type(region_type), pointer :: region
+  type(coupler_type), pointer :: coupler
+  PetscErrorCode :: ierr
+  PetscReal, pointer :: e2n_local_values(:)
+
+  if (.not.associated(coupler)) return
+  
+  select case(coupler%itype)
+    case(INITIAL_COUPLER_TYPE)
+      if (associated(coupler%flow_condition)) then
+        if (coupler%flow_condition%pressure%itype /= HYDROSTATIC_BC .and. &
+            coupler%flow_condition%pressure%itype /= SEEPAGE_BC .and. &
+            coupler%flow_condition%pressure%itype /= CONDUCTANCE_BC) then
+          nullify(coupler%connection_set)
+          return
+        endif
+      else
+        nullify(coupler%connection_set)
+        return
+      endif
+      connection_itype = INITIAL_CONNECTION_TYPE
+    case(SRC_SINK_COUPLER_TYPE)
+      connection_itype = SRC_SINK_CONNECTION_TYPE
+    case(BOUNDARY_COUPLER_TYPE)
+      connection_itype = BOUNDARY_CONNECTION_TYPE
+  end select
+  
+  region => coupler%region
+ 
+  reg_numconn = 0
+ 
+  call GridVecGetArrayF90(grid, grid%e2n, e2n_local_values, ierr)
+
+  do icell = 1, region%num_cells
+    
+    cell_id_local = region%cell_ids(icell)
+    cell_id_petsc = grid%nG2P(grid%nL2G(cell_id_local)) + 1
+    do iface = 1,6
+      if (cell_id_petsc > e2n_local_values((icell -1)*6 + iface)) then
+         reg_numconn = reg_numconn + 1
+      end if
+      write(*,*) reg_numconn, cell_id_petsc, e2n_local_values((icell -1)*6 + iface)
+    end do
+ end do
+
+ write(*,*) "reg_numconn ", reg_numconn
+
+  connection_set => ConnectionCreate(region%num_cells,option%nphase, &
+                                     connection_itype)
+
+  iface = coupler%iface
+  do iconn = 1,region%num_cells
+    
+    cell_id_local = region%cell_ids(iconn)
+    if (associated(region%faces)) iface = region%faces(iconn)
+    
+    connection_set%id_dn(iconn) = cell_id_local
+
+    call GridPopulateConnection(grid,connection_set,iface,iconn,cell_id_local)
+  enddo
+
+  coupler%connection_set => connection_set
+  nullify(connection_set)
+
+  call GridVecRestoreArrayF90(grid, grid%e2n, e2n_local_values, ierr)
+
+  stop
+ 
+end subroutine CouplerComputeConnectionsFaces
 
 ! ************************************************************************** !
 !

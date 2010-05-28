@@ -673,9 +673,19 @@ subroutine PatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
   type(patch_type) :: patch
   PetscTruth :: force_update_flag
   type(option_type) :: option
+
+  PetscInt :: iconn
+  do iconn = 1, 64
+   write(*,*) patch%initial_conditions%first%flow_aux_real_var(1:option%nflowdof,iconn)
+  end do 
   
   call PatchUpdateCouplerAuxVars(patch,patch%initial_conditions, &
                                  force_update_flag,option)
+!  do iconn = 1, 64
+!   write(*,*) patch%initial_conditions%first%flow_aux_real_var(1:option%nflowdof,iconn)
+!  end do 
+
+  stop
   call PatchUpdateCouplerAuxVars(patch,patch%boundary_conditions, &
                                  force_update_flag,option)
   call PatchUpdateCouplerAuxVars(patch,patch%source_sinks, &
@@ -749,6 +759,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
             update = PETSC_TRUE
           endif
       end select
+
       
       if (update) then
         if (associated(flow_condition%pressure)) then
@@ -792,6 +803,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                 case(RICHARDS_MODE)
                   coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
                     flow_condition%pressure%dataset%cur_value(1)
+                    
               end select
             case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
               call HydrostaticUpdateCoupler(coupler,option,patch%grid)

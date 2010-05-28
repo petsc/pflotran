@@ -211,7 +211,8 @@ subroutine Init(simulation)
     ! general print statements for both flow and transport modes
     write(*,'(/,"++++++++++++++++++++++++++++++++++++++++++++++++++++&
       &++++++++")')
-    if (realization%discretization%itype == STRUCTURED_GRID) then
+    if ((realization%discretization%itype == STRUCTURED_GRID).or.&
+        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
       write(*,'(" Requested processors and decomposition = ",i5,", npx,y,z= ",3i5)') &
         option%mycommsize,grid%structured_grid%npx,grid%structured_grid%npy, &
         grid%structured_grid%npz
@@ -286,8 +287,13 @@ subroutine Init(simulation)
         call SNESSetFunction(flow_solver%snes,field%flow_r,THCResidual, &
                              realization,ierr)
       case(RICHARDS_MODE)
-        call SNESSetFunction(flow_solver%snes,field%flow_r,RichardsResidual, &
+        if(realization%discretization%itype == STRUCTURED_GRID) then
+          call SNESSetFunction(flow_solver%snes,field%flow_r,RichardsResidual, &
                              realization,ierr)
+        else if(realization%discretization%itype == STRUCTURED_GRID_MIMETIC) then
+          call SNESSetFunction(flow_solver%snes,field%flow_r_faces,RichardsResidualMFD, &
+                             realization,ierr)
+        end if
       case(MPH_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,MPHASEResidual, &
                              realization,ierr)
@@ -334,7 +340,7 @@ subroutine Init(simulation)
     ! KSPSetFromOptions() will already have been called.
     ! I also note that this preconditioner is intended only for the flow 
     ! solver.  --RTM
-    if (realization%discretization%itype == STRUCTURED_GRID) then
+    if ((realization%discretization%itype == STRUCTURED_GRID_MIMETIC).or.(realization%discretization%itype == STRUCTURED_GRID)) then
       call PCSetDM(flow_solver%pc, &
                    realization%discretization%dm_nflowdof,ierr);
     endif
@@ -821,7 +827,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   call DiscretizationRead(discretization,input,PETSC_TRUE,option)
   
   select case(discretization%itype)
-    case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
+    case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       patch => PatchCreate()
       patch%grid => discretization%grid
       if (.not.associated(realization%level_list)) then
@@ -838,7 +844,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   end select
 !.........................................................................
 
-  if (realization%discretization%itype == STRUCTURED_GRID) then  ! look for processor decomposition
+  if ((realization%discretization%itype == STRUCTURED_GRID).or.(realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then  ! look for processor decomposition
     
     ! PROC information
     string = "PROC"
@@ -2737,7 +2743,7 @@ subroutine readFlowInitialCondition(realization,filename)
       grid => cur_patch%grid
 
        ! assign initial conditions values to domain
-      call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
+      call GridVecGetArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
 
       ! Pressure for all modes 
       offset = 1
@@ -2755,6 +2761,7 @@ subroutine readFlowInitialCondition(realization,filename)
         endif
         idx = (local_id-1)*option%nflowdof + offset
         xx_p(idx) = vec_p(local_id)
+        write(*,*) vec_p(local_id)
       enddo
       call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
 
