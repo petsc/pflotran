@@ -54,8 +54,13 @@ contains
 
 !********1*********2*********3*********4*********5*********6*********7**
       SUBROUTINE CO2(TX,PCX,DC,FC,PHI,HC)
-      implicit PetscReal(A-H,O-Z)
-      implicit PetscInt(I-N)
+      
+      implicit none
+      
+      PetscReal :: AT,T,TOL,TX,PCX,DC,DV,FC,PHI,H,HC,XMWC,R,B,V, &
+                Y,Y2,Y3,Z
+      
+      PetscInt :: KOUNT
 !
 !     This subroutine calculates the specific density, fugacity, and 
 !     specific enthalpy of gaseous and supercritical CO2 as a function of
@@ -90,28 +95,20 @@ contains
 !               PHI  = Fugacity coefficient [-] 
 !               H    = Molar enthalpy in J/mol
 !
-!pcl  COMMON/E1/ELEM(1)
+
       PARAMETER(XMWC = 4.40098D-02)
       PARAMETER(R    = 8.3147295D0)
       PARAMETER(B    = 5.8D-05)
 !      
-!pcl  COMMON/KONIT/KON,DELT,IGOOD       
-!
-!     SAVE ICALL
-!     DATA ICALL/0/
-!     ICALL=ICALL+1
-!     IF(ICALL.EQ.1) WRITE(11,899)
-! 899 FORMAT(6X,'CO2      2.0       1 SEPT      1999',6X,
-!    X'CALCULATE SPECIFIC DENSITY, ENTHALPY, AND FUGACITY OF CO2')
 !
       IF(PCX.LE..1D6)THEN
-         DC=0.D0
-           FC=0.D0
-           HC=0.D0
-           RETURN
+        DC=0.D0
+        FC=0.D0
+        HC=0.D0
+        RETURN
       END IF
 !    Convert temperature from degrees C to K:
-      T   = TX + 2.7315D+02
+      T = TX + 2.7315D+02
 !
 !    First calculate V as a function of T and PCX using Newton Iteration 
 !    with tolerance TOL:
@@ -131,52 +128,54 @@ contains
 !--> appropriate boundary cells to have correct pressures); uncomment,
 !--> run model till it stops, then use the SAVE file:
       DO WHILE(DABS(DV/V).GT.TOL)
-         CALL MRK(Y,T,PCX,V,DV,AT)
-         V = V - DV
-         Y = B / (4.D0*V)
-         KOUNT = KOUNT + 1
-         IF(KOUNT.GT.25000) GO TO 5
+        CALL MRK(Y,T,PCX,V,DV,AT)
+        V = V - DV
+        Y = B / (4.D0*V)
+        KOUNT = KOUNT + 1
+        IF(KOUNT.GT.25000) GO TO 5
       END DO
-!
+
 !    Calculate density (DC) in kg/m3 from V in m3/mol:
       DC = XMWC / V
-!
+
 !    Calculate Y to the 2nd and 3rd powers for later use:
       Y2 = Y * Y
       Y3 = Y2 * Y
-!       
+ 
 !    Calculate compressibility factor (Z) by substituting MRK EOS
 !    into Z=PV/RT:
-      Z  = ((1.D0+Y+Y2-Y3)/((1.D0-Y)**3.D0)) - (AT/(R*T*DSQRT(T)*(V+B)))      
-!
+      Z = ((1.D0+Y+Y2-Y3)/((1.D0-Y)**3.D0)) - (AT/(R*T*DSQRT(T)*(V+B)))      
+
 !    Initialize fugacity coefficient (PHI):
       PHI = 0.D0
-!
+
 !    Calculate fugacity (FC):
       CALL FUGACITY(Y,T,V,Z,PHI)
       FC = PHI * PCX
-!
+
 !    Initialize molar enthalpy (H):
       H = 0.D0
-!
+
 !    Calculate specific enthalpy (HC):
       CALL ENTHALPY(T,V,Z,H)
       HC = (H/XMWC)+8.1858447D+05
       RETURN
-!
+
 !    Come here when no convergence:
 5     CONTINUE
       PRINT 6
 6     FORMAT('NO CONVERGENCE IN SUBROUTINE CO2')
       print*, PCX,T,V,Y,DV
-      IGOOD = 2      
+      
       RETURN
       END subroutine CO2
       
 !********1*********2*********3*********4*********5*********6*********7**
       SUBROUTINE MRK(Y,T,PCX,V,DV,AT)
-      implicit PetscReal(A-H,O-Z)
-!
+      
+      implicit none
+
+!     MODIFIED REDLICH-KWONG EQUATION OF STATE FOR CO2
 !     This subroutine is called from subroutine CO2 during the Newton
 !     Iteration for the molar volume (V) of CO2 as function of temperature
 !     (T) and pressure of CO2 (PCX).  This subroutine calculates  
@@ -204,7 +203,12 @@ contains
 !               AT  = Attractive term of MRK EOS        
 !               FV  = V at which MRK EOS is 0 for T and PCX
 !               DV  = -FV / Value of derivative wrt V of MRK EOS
-!
+
+      PetscReal :: Y,T,PCX,V,DV,AT
+      PetscReal :: R,B,C1,C2,C3,D1,D2,D3,E1,E2,E3,F1,F2,F3
+      PetscReal :: T2,V2,V3,V4,Y2,Y3
+      PetscReal :: B2,B3,CT,DT,ET,FT,FV
+
       PARAMETER(R   =  8.3147295D0)
       PARAMETER(B   =  5.8D-05)
       PARAMETER(C1  =  2.39534D+01)
@@ -220,13 +224,6 @@ contains
       PARAMETER(F2  =  2.01284D-14)
       PARAMETER(F3  = -2.17304D-17)
 
-!     SAVE ICALL
-!     DATA ICALL/0/
-!     ICALL=ICALL+1
-!     IF(ICALL.EQ.1) WRITE(11,899)
-! 899 FORMAT(6X,'MRK      2.0       1 SEPT      1999',6X,
-!    X'MODIFIED REDLICH-KWONG EQUATION OF STATE FOR CO2')
-!
 !    Calculate T squared for later use:
       T2 = T * T
 !
@@ -268,7 +265,9 @@ contains
       
 !********1*********2*********3*********4*********5*********6*********7**
       SUBROUTINE FUGACITY(Y,T,V,Z,PHI)
-      implicit PetscReal(A-H,O-Z)
+      
+      implicit none
+
 !
 !     This subroutine is called from subroutine CO2 during the       
 !     calculation of fugacity of CO2 as function of temperature (T),
@@ -297,7 +296,10 @@ contains
 !       CT thru FT= Temperature-dependent functions for evaluating
 !                     attractive term of MRK EOS
 !
-
+      PetscReal :: Y,T,V,Z,PHI
+      PetscReal :: R,B,C1,C2,C3,D1,D2,D3,E1,E2,E3,F1,F2,F3
+      PetscReal :: T2,V2,V3,B2,B3,B4,CT,DT,ET,FT
+      
       PARAMETER(R   =  8.3147295D0)
       PARAMETER(B   =  5.8D-05)
       PARAMETER(C1  =  2.39534D+01)
@@ -313,12 +315,6 @@ contains
       PARAMETER(F2  =  2.01284D-14)
       PARAMETER(F3  = -2.17304D-17)
 
-!     SAVE ICALL
-!     DATA ICALL/0/
-!     ICALL=ICALL+1
-!     IF(ICALL.EQ.1) WRITE(11,899)
-! 899 FORMAT(6X,'FUGACITY 2.0       1 SEPT      1999',6X,
-!    X'CALCULATE FUGACITY COEFFICIENT FOR SEPARATE PHASE CO2')
 !
 !    Calculate T to the 2nd power for later use:
       T2 = T * T
@@ -363,7 +359,8 @@ contains
       
 !********1*********2*********3*********4*********5*********6*********7**
       SUBROUTINE ENTHALPY(T,V,Z,H)
-      implicit PetscReal(A-H,O-Z)
+
+      implicit none
 !
 !     This subroutine is called from subroutine CO2 during the       
 !     calculation of the specific enthalpy of CO2 as function of
@@ -405,6 +402,13 @@ contains
 !               XI2  = Second Integral (see above)
 !               URES = Residual internal energy
 !
+      PetscReal :: T,V,Z,H
+      PetscReal :: BETA,R,TREF,B,C1,C2,C3,D1,D2,D3,E1,E2,E3,F1,F2,F3, &
+                   G0,G1,G2,G3,G4,G5,G6,G7, &
+                   RHO,RHO2,BETA2,BETA3,BETA4,BETA5,BETA6,BETA7, &
+                   TREF2,TREF3,TREF4,TREF5,TREF6,T2,T3,T4,T5,T6, &
+                   B2,B3,B4,XI1,XI2,URES
+      
       PARAMETER(BETA=  304.21D0)
       PARAMETER(R   =  8.3147295D0)
       PARAMETER(TREF=  2.7316D+02)
@@ -517,9 +521,15 @@ contains
 
       subroutine duanco2 (tt,p,dc,fc,phi)
 
-      implicit PetscReal (a-h,o-z)
-      implicit PetscInt (i-n)
-
+      implicit none
+      
+      PetscReal :: a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,alpha,beta,gamma
+      PetscReal :: t,tt,tc,pc,tr,tr1,tr2,tr3,pr,p,a,b,c,d,e,rgas,vc
+      PetscReal :: epsilon,videal,v,v1,xmwc,vr,vr1,vr2,gamvr,expgam,z,zeq
+      PetscReal :: f1,ov,df1,phi,fc,dc
+      
+      PetscInt :: itmax,iter
+      
       data xmwc /4.40098d-02/
 
       data a1    / 8.99288497d-2/
@@ -604,7 +614,7 @@ contains
       v = v1-f1/df1
       
 !     Protect against negative volume solutions
-      if ( v < 0 ) v = v1 /2.d0
+      if (v < 0) v = v1 /2.d0
 
 !     write(*,*) 'v,v1,f,df: ',iter,v,v1,f1,df1
 
@@ -659,12 +669,7 @@ contains
 
   return
   end subroutine Henry_duan_sun_0NaCl
-
-
-
-
-
-
+  
 
   subroutine Henry_duan_sun(tc,p,mco2,phico2,lngamco2,mc,ma,psat,co2_aq_actcoef)
   
@@ -740,9 +745,6 @@ contains
 
   return
   end subroutine duan_sun_param
-
-
-
 
 
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -854,8 +856,8 @@ contains
       
       SUBROUTINE HENRY_sullivan (TX,PCX,PS,FC,X1M,XCO2,HP)
 
-      implicit PetscReal(A-H,O-Z)
-!
+      implicit none
+
 !     This subroutine calculates the mass fraction of CO2 in the liquid 
 !     phase using an extended Henry's Law relationship from Reid et al.
 !     (1987). The relationship is ln(FC/XCO2) = ln(HP) + VID(PCX-PS)/RT. 
@@ -894,48 +896,38 @@ contains
 !                      of Henry's Coefficient in degrees C
 !               HP   = Henry's Coefficient in bars, then Pa
 !               XCO2 = Mole fraction CO2 in liquid phase [-]
-!
 
-!     These commons are used by the rate prescribed phase partitioning
-!     COMMON/DM/DELTEN,DELTEX,FOR,FORD  ! for time step in secs
-!pcl  common/lastxco24rate/CO2OLD(1),lastt2mfac(1)  ! last massfract and conv
-!pcl  COMMON/CYC/KCYC,IITER,ITERC,TIMIN,SUMTIM,GF,TIMOUT ! indicates timeteps >0
-
+      PetscReal :: TX,PCX,PS,FC,X1M,XCO2,HP
+      PetscReal :: XMWC,XMWW,R,VID,TAU,TAU2,TAU4,T
+      
       PARAMETER(XMWC = 4.40098D-02)
       PARAMETER(XMWW = 1.801534D-02)
       PARAMETER(R    = 8.3147295D0)
       PARAMETER(VID  = 3.0D-05)
 
-!     SAVE ICALL
-!     DATA ICALL/0/
-!     ICALL=ICALL+1
-!     IF(ICALL.EQ.1) WRITE(11,899)
-! 899 FORMAT(6X,'HENRY    2.0       1 SEPT      1999',6X,
-!    X'CALCULATE MASS FRACTION DISSOLVED CO2 IN AQUEOUS PHASE')
-!
 !    Calculate TAU:
       TAU = (TX-1.7D+02) / 1.0D+02
-!
+
 !    Calculate TAU to the 2nd and 4th powers for later use:
       TAU2 = TAU * TAU
       TAU4 = TAU2 * TAU2
-!
+
 !    Calculate Henry's Coefficient (HP) in bars:
       IF(TAU.GE.0.D0)THEN
          HP = 6.4D+03 - (2.07778D+03*TAU2) + (3.1111D+02*TAU4)
       ELSEIF(TAU.LT.0.D0)THEN
          HP = 6.4D+03 - (2.14914D+03*TAU2) - (1.9543D+02*TAU4)
       ENDIF
-!
+
 !    Convert Henry's Coefficient to Pa:
       HP = HP * 1.0D+05
-!
+
 !    Convert temperature to K:
       T = TX + 2.7315D+02
-!
+
 !    Calculate mole fraction of CO2 (XMOLE):
       XCO2 = DEXP(DLOG(FC/HP)-(VID*(PCX-PS))/(R*T)) 
-!
+
 !    Calculate mass fraction of CO2 (XMASS):
       X1M = (XMWC*XCO2) / (((1.D0-XCO2)*XMWW)+(XCO2*XMWC))
 
@@ -944,20 +936,16 @@ contains
       
 !********1*********2*********3*********4*********5*********6*********7**
       SUBROUTINE SOLUT(PCX,TX,HSOL)
-      implicit PetscReal(A-H,O-Z)
-!
+      implicit none
+      
+      PetscReal :: PCX,TX,HSOL
+      PetscReal :: T,T2,T3,T4
+
 !     This subroutine calculates the enthalpy of CO2 dissolution in
 !     liquid water. The expression is from O'Sullivan et al. (1985).
 !     The expression was created using a quadratic fit to data published
 !     by Ellis and Goulding (1963).
 
-!     SAVE ICALL
-!     DATA ICALL/0/
-!     ICALL=ICALL+1
-!     IF(ICALL.EQ.1) WRITE(11,899)
-! 899 FORMAT(6X,'SOLUT    1.0      26 JANUARY   1990',6X,
-!    X'CALCULATE SPECIFIC ENTHALPY OF CO2 DISSOLUTION IN WATER')
-!
       T  = 1.D-2 * TX
       T2 = T * T
       T3 = T * T2
@@ -970,8 +958,11 @@ contains
       
 !********1*********2*********3*********4*********5*********6*********7**
       SUBROUTINE DENMIX(TX,DW,X1M,D1M)
-      implicit PetscReal(A-H,O-Z)
-!
+      implicit none
+      
+      PetscReal :: TX,DW,X1M,D1M
+      PetscReal :: TX2,TX3,TX4,RHO,DC,XMWC,X2M
+
 !     This subroutine returns density of CO2-H2O liquid mixture. The
 !     expression is from Anderson et al. (1992).
 !
@@ -990,36 +981,29 @@ contains
 !               RHO  = Density of CO2 at saturation pressure in mol/cm3
 !               DC   = Density of CO2 at saturation pressure in kg/m3
 !               X2M  = Mass fraction H2O [-]
-!
+
       PARAMETER(XMWC=4.40098D-02)
 
-!     SAVE ICALL
-!     DATA ICALL/0/
-!     ICALL=ICALL+1
-!     IF(ICALL.EQ.1) WRITE(11,899)
-! 899 FORMAT(6X,'DENMIX   2.0       1 SEPT      1999',6X,'
-!    XCALCULATE DENSITY OF CO2-H2O AQUEOUS MIXTURE')
-!
       IF(X1M.LE.0.D0) THEN
-         D1M = DW
-         RETURN
+        D1M = DW
+        RETURN
       ENDIF
-!
+
 !    Calculate TX to the 2nd, 3rd and 4th powers for later use:
       TX2 = TX * TX
       TX3 = TX2 * TX
       TX4 = TX3 * TX
-!
+
 !    Calculate density of CO2 (RHO) at saturation pressure in mol/cm3:
       RHO = 1.D0/(3.736D+01 - (7.109D-02*TX) - (3.812D-05*TX2) + &
             (3.296D-06*TX3) - (3.702D-09*TX4))
-!     
+
 !    Convert RHO to kg/m3 (DC):
       DC = RHO * 1.0D+06 * XMWC
-!
+
 !    Calculate mass fraction of H2O:
       X2M = 1.D0 - X1M
-!
+
 !    Calculate density of CO2-H2O mixture in kg/m3:
       D1M = (DW*DC) / (X1M*DW + X2M*DC)
 
@@ -1028,7 +1012,7 @@ contains
       
 !********1*********2*********3*********4*********5*********6*********7**
       SUBROUTINE VISCO2(TX,DC,VC)
-      implicit PetscReal(A-H,O-Z)
+      implicit none
 !
 !     This subroutine calculates the viscosity of pure CO2 as a function 
 !     of temperature and density of CO2.  The expressions for calculating
@@ -1059,6 +1043,11 @@ contains
 !               ETA0   = Zero-density viscosity in muPa-s
 !               DETA   = Excess viscosity in muPa-s
 !
+      PetscReal :: TX,DC,VC
+      PetscReal :: A0,A1,A2,A3,A4,ESCL,D11,D21,D64,D81,D82
+      PetscReal :: T,DC2,DC6,DC8,TSTAR,TSTAR3,BETA1,BETA2,BETA3,BETA4
+      PetscReal :: EXS,ETA0,DETA
+      
       PARAMETER(A0   =  2.35156D-01)
       PARAMETER(A1   = -4.91266D-01)
       PARAMETER(A2   =  5.211155D-02)
@@ -1071,42 +1060,35 @@ contains
       PARAMETER(D81  =  0.2971072D-22)
       PARAMETER(D82  = -0.1627888D-22)
 
-!     SAVE ICALL
-!     DATA ICALL/0/
-!     ICALL=ICALL+1
-!     IF(ICALL.EQ.1) WRITE(11,899)
-! 899 FORMAT(6X,'VISCO2   2.0      11 DEC       1999',6X,
-!    X'CALCULATE VISCOSITY OF SEPARATE PHASE CO2')
-!
 !    Convert temperature from degrees C to K:
       T = TX + 2.7315D+02
-!
+
 !    Calculate DC to 2nd, 6th, and 8th powers:
       DC2 = DC*DC
-        DC6 = DC2*DC2*DC2
-        DC8 = DC6*DC2
-!
+      DC6 = DC2*DC2*DC2
+      DC8 = DC6*DC2
+
 !    Calculate TSTAR and 3rd power:
       TSTAR = T/ESCL
-        TSTAR3=TSTAR*TSTAR*TSTAR
-!
+      TSTAR3=TSTAR*TSTAR*TSTAR
+
 !    Calculate ln(TSTAR) and 2nd, 3rd, and 4th powers:
       BETA1 = DLOG(TSTAR)
       BETA2 = BETA1*BETA1
-        BETA3 = BETA2*BETA1
-        BETA4 = BETA3*BETA1
-!
+      BETA3 = BETA2*BETA1
+      BETA4 = BETA3*BETA1
+
 !    Calculate zero-density limit viscosity in muPa-s:
       EXS = DEXP(A0+(A1*BETA1)+(A2*BETA2)+(A3*BETA3)+(A4*BETA4))
       ETA0 = (1.00697D0 * DSQRT(T)) / EXS 
-!
+
 !    Calculate excess viscosity in muPa-s:
       DETA = (D11*DC)+(D21*DC2)+((D64*DC6)/TSTAR3)+(D81*DC8)+ &
              ((D82*DC8)/TSTAR) 
-!
+
 !    Calculate total viscosity in muPa-s:
       VC = ETA0 + DETA
-!
+
 !    Convert viscosity from muPa-s to Pa-s:
       VC = VC * 1.0D-06
       RETURN
@@ -1116,38 +1098,28 @@ contains
       SUBROUTINE SAT(T,P)
 !--------- Fast SAT M.J.O'Sullivan - 17 SEPT 1990 ---------
 !
-!     20 September 1990.  VAX needs double precision, CRAY does not.
-      IMPLICIT PetscReal (A-H,O-Z)
-      implicit PetscInt (I-N)
-!     IMPLICIT REAL (A-H,O-Z)
-!     COMMON/KONIT/KON,DELT,IGOOD
+      implicit none
 
-!     save icall
-!
+      PetscReal :: T,P,A1,A2,A3,A4,A5,A6,A7,A8,A9
+      PetscReal :: TC,X1,X2,SC,PC_
+      
       DATA A1,A2,A3,A4,A5,A6,A7,A8,A9/ &
       -7.691234564,-2.608023696E1,-1.681706546E2,6.423285504E1, &
       -1.189646225E2,4.167117320,2.097506760E1,1.E9,6./
-!
-!     DATA ICALL/0/
-!     ICALL=ICALL+1
-!     IF(ICALL.EQ.1) WRITE(11,899)
-! 899 FORMAT(6X,'SAT      1.0 S    17 SEPTEMBER 1990',6X,
-!    X'STEAM TABLE EQUATION: SATURATION PRESSURE AS FUNCTION OF',
-!    X' TEMPERATURE (M. OS.)')
-!C
+
       IF(T.LT.1..OR.T.GT.500.) GOTO 10
-      TC=(T+273.15)/647.3
-      X1=1.-TC
+      TC=(T+273.15d0)/647.3d0
+      X1=1.d0-TC
       X2=X1*X1
       SC=A5*X1+A4
       SC=SC*X1+A3
       SC=SC*X1+A2
       SC=SC*X1+A1
       SC=SC*X1
-      PC_=EXP(SC/(TC*(1.+A6*X1+A7*X2))-X1/(A8*X2+A9))
+      PC_=EXP(SC/(TC*(1.d0+A6*X1+A7*X2))-X1/(A8*X2+A9))
       P=PC_*2.212E7
       RETURN
-   10 IGOOD=2
+   10 continue
       WRITE(6,1) ' ',T
     1 FORMAT(A1,'TEMPERATURE = ',E12.6,'  OUT OF RANGE IN SAT ')
       RETURN
@@ -1155,12 +1127,18 @@ contains
       
       SUBROUTINE COWAT0(TF,PP,D,U)
 !--------- Fast COWAT M.J.O'Sullivan - 17 SEPT 1990 ---------
-!     20 September 1990.  VAX needs double precision, CRAY does not.
-      IMPLICIT PetscReal (A-H,O-Z)
-      implicit PetscInt (I-N)
-!     IMPLICIT REAL (A-H,O-Z)
-!pcl  COMMON/KONIT/KON,DELT,IGOOD
-!     save icall
+
+      implicit none
+      
+      PetscReal :: TF,PP,D,U
+      PetscReal :: A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12, &
+                   A13,A14,A15,A16,A17,A18,A19,A20,A21,A22,A23, &
+                   SA1,SA2,SA3,SA4,SA5,SA6,SA7,SA8,SA9,SA10,SA11,SA12
+      PetscReal :: TKR,TKR2,TKR3,TKR4,TKR5,TKR6,TKR7,TKR8,TKR9,TKR10,TKR11, &
+        TKR18,TKR19,TKR20,PNMR,PNMR2,PNMR3,PNMR4,Y,YD,Z,ZP,V,VMKR, &
+        CC1,CC2,CC4,CC8,CC10,CZ,SNUM,PRT1,PRT2,PRT3,PRT4,PRT5, &
+        AA1,BB1,BB2,EE1,EE3,H,DD1,DD2,DD4,ENTR,PAR1,PAR2,PAR3,PAR4,PAR5
+
       DATA A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12 / &
       6.824687741E3,-5.422063673E2,-2.096666205E4,3.941286787E4, &
       -13.466555478E4,29.707143084E4,-4.375647096E5,42.954208335E4, &
@@ -1174,13 +1152,6 @@ contains
       4.975858870E-2,6.537154300E-1,1.150E-6,1.51080E-5, &
       1.41880E-1,7.002753165E0,2.995284926E-4,2.040E-1   /
 
-!     DATA ICALL/0/
-!     ICALL=ICALL+1
-!     IF(ICALL.EQ.1) WRITE(11,899)
-! 899 FORMAT(6X,'COWAT    1.0 S    17 SEPTEMBER 1990',6X,
-!    X'LIQUID WATER DENSITY AND INT.',
-!    X' ENERGY VERSUS TEMPERATURE AND PRESSURE (M. OS.)')
-!
       TKR=(TF+273.15)/647.3
       TKR2=TKR*TKR
       TKR3=TKR*TKR2
@@ -1199,7 +1170,7 @@ contains
       PNMR2=PNMR*PNMR
       PNMR3=PNMR*PNMR2
       PNMR4=PNMR*PNMR3
-      Y=1.-SA1*TKR2-SA2/TKR6
+      Y=1.d0-SA1*TKR2-SA2/TKR6
       ZP=SA3*Y*Y-2.*SA4*TKR+2.*SA5*PNMR
       IF(ZP.LT.0.) GOTO 1
 !     19 September 1990.  double on VAX, single on CRAY
@@ -1222,8 +1193,8 @@ contains
       PAR5=3.*A22*(SA12-TKR)*PNMR2+4.*A23/TKR20*PNMR3
       VMKR=PAR1+PAR2-PAR3-PAR4+PAR5
       V=VMKR*3.17E-3
-      D=1./V
-      YD=-2.*SA1*TKR+6.*SA2/TKR7
+      D=1.d0/V
+      YD=-2.d0*SA1*TKR+6.*SA2/TKR7
       SNUM= A10+A11*TKR
       SNUM=SNUM*TKR + A9
       SNUM=SNUM*TKR + A8
@@ -1248,7 +1219,7 @@ contains
       H=ENTR*70120.4
       U=H-PP*V
       RETURN
-    1 IGOOD=2
+    1 continue
       WRITE(6,2)TF
       WRITE(7,2)TF
     2 FORMAT(' TEMPERATURE = ',E12.6,'  OUT OF RANGE IN COWAT')
@@ -1259,12 +1230,23 @@ contains
       
       SUBROUTINE SUPST(T,P,D,U)
 !--------- Fast SUPST M.J.O'Sullivan - 17 SEPT 1990 ---------
-!     20 September 1990.  VAX needs double precision, CRAY does not.
-      IMPLICIT PetscReal (A-H,O-Z)
-!     IMPLICIT REAL (A-H,O-Z)
-!     PetscReal I1
-      REAL  I1
-!     save icall
+! SUPST    1.0 S     1 February  1991
+! VAPOR DENSITY AND INTERNAL ENERGY AS FUNCTION OF TEMPERATURE AND 
+! PRESSURE (M. OS.)
+      
+      implicit none
+      
+      PetscReal :: T,P,D,U
+      PetscReal :: I1
+      PetscReal :: B0,B01,B02,B03,B04,B05,B11,B12,B21,B22,B23,B31,B32,B41,B42, &
+                   B51,B52,B53,B61,B62,B71,B72,B81,B82, &
+                   B90,B91,B92,B93,B94,B95,B96,SB,SB61,SB71,SB81,SB82
+      PetscReal :: THETA,THETA2,THETA3,THETA4
+      PetscReal :: BETA,BETA2,BETA3,BETA4,BETA5,BETA6,BETA7,BETAL,DBETAL
+      PetscReal :: X,X2,X3,X4,X5,X6,X8,X10,X11,X14,X18,X19,X24,X27
+      PetscReal :: R,R2,R4,R6,R10,SD1,SD2,SD3,SC,SN,CHI1,CHI2,V
+      PetscReal :: SN6,SN7,SN8,OS1,OS2,OS5,OS6,OS7,EPS2,H
+
       DATA B0,B01,B02,B03,B04,B05/ &
       16.83599274,28.56067796,-54.38923329,0.4330662834,-0.6547711697, &
       8.565182058E-2/
@@ -1283,18 +1265,11 @@ contains
       7.633333333E-1,4.006073948E-1,8.636081627E-2,-8.532322921E-1, &
       3.460208861E-1/
 
-!     DATA ICALL/0/
-!     ICALL=ICALL+1
-!     IF(ICALL.EQ.1) WRITE(11,899)
-  899 FORMAT(6X,'SUPST    1.0 S     1 February  1991',6X, &
-      'VAPOR DENSITY AND INTERNAL ENERGY AS FUNCTION OF', &
-      ' TEMPERATURE AND PRESSURE (M. OS.)')
-!
       THETA=(T+273.15)/647.3
       BETA=P/2.212E7
       I1=4.260321148
-      X=EXP(SB*(1.-THETA))
-!
+      X=EXP(SB*(1.d0-THETA))
+
       X2=X*X
       X3=X2*X
       X4=X3*X
@@ -1308,18 +1283,18 @@ contains
       X19=X18*X
       X24=X18*X6
       X27=X24*X3
-!
+
       THETA2=THETA*THETA
       THETA3=THETA2*THETA
       THETA4=THETA3*THETA
-!
+
       BETA2=BETA*BETA
       BETA3=BETA2*BETA
       BETA4=BETA3*BETA
       BETA5=BETA4*BETA
       BETA6=BETA5*BETA
       BETA7=BETA6*BETA
-!
+
       BETAL=15.74373327-34.17061978*THETA+19.31380707*THETA2
       DBETAL=-34.17061978+38.62761414*THETA
       R=BETA/BETAL
@@ -1327,7 +1302,7 @@ contains
       R4=R2*R2
       R6=R4*R2
       R10=R6*R4
-!
+
       CHI2=I1*THETA/BETA
       SC=(B11*X10+B12)*X3
       CHI2=CHI2-SC
@@ -1339,11 +1314,11 @@ contains
       CHI2=CHI2-4*BETA3*SC
       SC=(B51*X8+B52*X4+B53)*X24
       CHI2=CHI2-5*BETA4*SC
-!
+
       SD1=1./BETA4+SB61*X14
       SD2=1./BETA5+SB71*X19
       SD3=1./BETA6+(SB81*X27+SB82)*X27
-!
+
       SN=(B61*X+B62)*X11
 !over CHI2=CHI2-SN/SD12*4/BETA5
       chi2=chi2-(sn/sd1*4/beta5)/sd1
@@ -1363,7 +1338,7 @@ contains
       CHI2=CHI2+11.*R10*SC
       V=CHI2*0.00317
       D=1./V
-!
+
       OS1=SB*THETA
       EPS2=0.0+B0*THETA-(-B01+B03*THETA2+2*B04*THETA3+3*B05*THETA4)
       SC=(B11*(1.+13.*OS1)*X10+B12*(1.+3.*OS1))*X3
@@ -1377,7 +1352,7 @@ contains
       SC=(B51*(1.+32.*OS1)*X8+B52*(1.+28.*OS1)*X4+ &
        B53*(1.+24.*OS1))*X24
       EPS2=EPS2-BETA5*SC
-!
+
       SN6=14.*SB61*X14
       SN7=19.*SB71*X19
       SN8=(54.*SB81*X27+27.*SB82)*X27
@@ -1405,84 +1380,71 @@ contains
       END subroutine SUPST
 
       SUBROUTINE TSAT(PX,TX00,TS)
-      implicit PetscReal (a-h,o-z)
-!pcl  COMMON/KONIT/KON,DELT,IGOOD
-!
-!-----FIND SATURATION TEMPERATURE TS AT PRESSURE PX.
-!     SAVE ICALL
-!     DATA ICALL/0/
-!     ICALL=ICALL+1
-!     IF(ICALL.EQ.1) WRITE(11,899)
-! 899 FORMAT(6X,'TSAT     1.0      14 MARCH     1991',6X, &
-!     'SATURATION TEMPERATURE AS FUNCTION OF PRESSURE')
-!
-!     TX0 IS STARTING TEMPERATURE FOR ITERATION.
-!
+      implicit none
+      
+!     SATURATION TEMPERATURE TS AT PRESSURE PX.
+
+      PetscReal :: PX,TX00,TX0,TS,PS,DT,TSD,PSD
+      
       TX0=TX00
       IF(TX0.NE.0.) GOTO 2
 !
 !-----COME HERE TO OBTAIN ROUGH STARTING VALUE FOR ITERATION.
       TX0=4606./(24.02-LOG(PX)) - 273.15
       TX0=MAX(TX0,5.d0)
-!
+
     2 CONTINUE
       TS=TX0
       DT=TS*1.E-8
       TSD=TS+DT
-!
+
     1 CONTINUE
-!
+
       CALL SAT(TS,PS)
-!     IF(IGOOD.NE.0) RETURN
+
       IF(ABS((PX-PS)/PX).LE.1.E-10) RETURN
-!
+
       TSD=TS+DT
       CALL SAT(TSD,PSD)
       TS=TS+(PX-PS)*DT/(PSD-PS)
-      GOTO 1
-!
+
+      goto 1
+      
       END subroutine TSAT
       
       SUBROUTINE SIGMA(T,ST)
-      implicit PetscReal (a-h,o-z)
+      implicit none
 !
 !-----COMPUTE SURFACE TENSION OF WATER, USING THE
 !     "INTERNATIONAL REPRESENTATION OF THE SURFACE TENSION OF
 !                                               WATER SUBSTANCE" (1975).
 
-!     SAVE ICALL
-!     DATA ICALL/0/
-!     ICALL=ICALL+1
-!     IF(ICALL.EQ.1) WRITE(11,899)
-! 899 FORMAT(6X,'SIGMA    1.0      19 OCTOBER   1990',6X, &
-!     'SURFACE TENSION OF WATER AS FUNCTION OF TEMPERATURE')
-
+      PetscReal :: T,ST
+      
       IF(T.GE.374.15) GOTO 1
       ST=1.-0.625*(374.15-T)/647.3
       ST=ST*.2358*((374.15-T)/647.3)**1.256
       RETURN
-!
+
     1 CONTINUE
       ST=0.
       RETURN
       END subroutine SIGMA
       
       SUBROUTINE VIS(T,P,D,VW,VS,PS)
-      implicit PetscReal (a-h,o-z)
+      implicit none
+      
+!     VISCOSITY OF LIQUID WATER AND VAPOR AS FUNCTION OF
+!     TEMPERATURE AND PRESSURE
 
-!     SAVE ICALL
-!     DATA ICALL/0/
-!     ICALL=ICALL+1
-!     IF(ICALL.EQ.1) WRITE(11,899)
-! 899 FORMAT(6X,'VIS      1.0      22 JANUARY   1990',6X, &
-!     'VISCOSITY OF LIQUID WATER AND VAPOR AS FUNCTION OF', &
-!     ' TEMPERATURE AND PRESSURE')
-
+      PetscReal :: T,P,D,VW,VS,PS
+      PetscReal :: EX,PHI,AM,V1
+      
       EX=247.8/(T+133.15)
       PHI=1.0467*(T-31.85)
       AM=1.+PHI*(P-PS)*1.E-11
       VW=1.E-7*AM*241.4*10.**EX
-!
+
       V1=.407*T+80.4
       IF(T.LE.350.) VS=1.E-7*(V1-D*(1858.-5.9*T)*1.E-3)
       IF(T.GT.350.) VS=1.E-7*(V1+.353*D+676.5E-6*D**2+102.1E-9*D**3)
@@ -1490,63 +1452,57 @@ contains
       END subroutine VIS
       
       SUBROUTINE VISW0(T,P,PS,VW)
-      implicit PetscReal (a-h,o-z)
+      implicit none
 
-!     SAVE ICALL
-!     DATA ICALL/0/
-!     ICALL=ICALL+1
-!     IF(ICALL.EQ.1) WRITE(11,899)
-! 899 FORMAT(6X,'VISW     1.0      22 JANUARY   1990',6X, &
-!     'VISCOSITY OF LIQUID WATER AS FUNCTION OF', &
-!     ' TEMPERATURE AND PRESSURE')
+!     VISCOSITY OF LIQUID WATER AS FUNCTION OF
+!     TEMPERATURE AND PRESSURE
+
+      PetscReal :: T,P,PS,VW
+      PetscReal :: EX,PHI,AM
 
       EX=247.8/(T+133.15)
       PHI=1.0467*(T-31.85)
       AM=1.+PHI*(P-PS)*1.E-11
       VW=1.E-7*AM*241.4*10.**EX
-!
+
       RETURN
       END subroutine VISW0
       
       SUBROUTINE VISS(T,P,D,VS)
-      implicit PetscReal (a-h,o-z)
+      implicit none
 
-!     SAVE ICALL
-!     DATA ICALL/0/
-!     ICALL=ICALL+1
-!     IF(ICALL.EQ.1) WRITE(11,899)
-! 899 FORMAT(6X,'VISS     1.0      22 JANUARY   1990',6X, &
-!     'VISCOSITY OF VAPOR AS FUNCTION OF', &
-!     ' TEMPERATURE AND PRESSURE')
+!     VISCOSITY OF VAPOR AS FUNCTION OF
+!     TEMPERATURE AND PRESSURE
 
+      PetscReal :: T,P,D,VS,V1
+      
       V1=.407*T+80.4
       IF(T.LE.350.) VS=1.E-7*(V1-D*(1858.-5.9*T)*1.E-3)
       IF(T.GT.350.) VS=1.E-7*(V1+.353*D+676.5E-6*D**2+102.1E-9*D**3)
-!
+
       RETURN
       END subroutine VISS
 
       SUBROUTINE THERC(T,P,D,CONW,CONS,PS)
-      implicit PetscReal (a-h,o-z)
-!
-!     SAVE ICALL,A0,A1,A2,A3,A4,B0,B1,B2,B3,C0,C1,C2,C3,T0
+      implicit none
+
+!     THERMAL CONDUCTIVITY OF WATER AND VAPOR AS FUNCTION OF
+!     TEMPERATURE AND PRESSURE
+
+      PetscReal :: T,P,D,CONW,CONS,PS
+      PetscReal :: A0,A1,A2,A3,A4,B0,B1,B2,B3,C0,C1,C2,C3,T0,T1,T2,T3,T4
+      PetscReal :: CON1,CON2,CON3,CONS1
+
       DATA A0,A1,A2,A3,A4/-922.47,2839.5,-1800.7,525.77,-73.440/
       DATA B0,B1,B2,B3/-.94730,2.5186,-2.0012,.51536/
       DATA C0,C1,C2,C3/1.6563E-3,-3.8929E-3,2.9323E-3,-7.1693E-4/
       DATA T0/273.15/
 
-!     DATA ICALL/0/
-!     ICALL=ICALL+1
-!     IF(ICALL.EQ.1) WRITE(11,899)
-! 899 FORMAT(6X,'THERC    1.0       4 MARCH     1991',6X, &
-!     'THERMAL CONDUCTIVITY OF WATER AND VAPOR AS FUNCTION OF', &
-!     ' TEMPERATURE AND PRESSURE')
-
       T1=(T+273.15)/T0
       T2=T1*T1
       T3=T2*T1
       T4=T3*T1
-!
+
 !     IF(P-PS.LT.0.) GOTO1
       CON1=A0+A1*T1+A2*T2+A3*T3+A4*T4
       CON2=(P-PS)*(B0+B1*T1+B2*T2+B3*T3)*1.E-5
@@ -1558,10 +1514,10 @@ contains
       CONS1=1.E-3*(CON1+CON2-CON3)
       CONS=CONS1+1.E-6*(103.51+.4198*T-2.771E-5*T*T)*D &
       +1.E-9*D*D*2.1482E14/T**4.2
-!
+
 !     PRINT 10,T,P,PS,CON
    10 FORMAT(5H T = ,E12.6,5H P = ,E12.6,6H PS = ,E12.6,7H CON = ,E12.6)
-!
+
       RETURN
     1 CONTINUE
 !     PRINT 2,T,P,PS
