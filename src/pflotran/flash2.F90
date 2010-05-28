@@ -404,7 +404,7 @@ subroutine Flash2UpdateReason(reason, realization)
  enddo
 
  call MPI_Barrier(realization%option%mycomm,ierr)
-  print *, 'flash reason ', re
+!  print *, 'flash reason ', re
   if(realization%option%mycommsize >1)then
      call MPI_ALLREDUCE(re, re0,1, MPI_INTEGER,MPI_SUM, &
           realization%option%mycomm,ierr)
