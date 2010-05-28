@@ -96,7 +96,7 @@ function AMRGridCreateLevelPatchLists(amrgrid)
      integer, intent(in) :: ln
    end function level_number_patches
 
-   logical function is_local_patch(p_hierarchy, ln, pn)
+   integer function is_local_patch(p_hierarchy, ln, pn)
      PetscFortranAddr, intent(inout) :: p_hierarchy
      integer, intent(in) :: ln
      integer, intent(in) :: pn
@@ -122,7 +122,7 @@ function AMRGridCreateLevelPatchLists(amrgrid)
   integer :: npatches
   integer :: ln
   integer :: pn
-  logical :: islocal
+  integer :: islocal
 
   p_application = amrgrid%p_application
 
@@ -137,7 +137,7 @@ function AMRGridCreateLevelPatchLists(amrgrid)
      npatches = level_number_patches(p_application, ln )
      do pn=0,npatches-1
         islocal = is_local_patch(p_application, ln, pn);
-        if(islocal) then
+        if(islocal.eq.1) then
            patch => PatchCreate()
            patch%grid => amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr
            call PatchAddToList(patch,level%patch_list)
@@ -171,7 +171,7 @@ subroutine AMRGridComputeLocalBounds(amrgrid)
      integer, intent(in) :: ln
    end function level_number_patches
 
-   logical function is_local_patch(p_hierarchy, ln, pn)
+   integer function is_local_patch(p_hierarchy, ln, pn)
      PetscFortranAddr, intent(inout) :: p_hierarchy
      integer, intent(in) :: ln
      integer, intent(in) :: pn
@@ -185,7 +185,7 @@ subroutine AMRGridComputeLocalBounds(amrgrid)
   integer :: npatches
   integer :: ln
   integer :: pn
-  logical :: islocal
+  integer :: islocal
   DA :: da
 
   p_application = amrgrid%p_application
@@ -196,7 +196,7 @@ subroutine AMRGridComputeLocalBounds(amrgrid)
      npatches = level_number_patches(p_application, ln )
      do pn=0,npatches-1
         islocal = is_local_patch(p_application, ln, pn);
-        if(islocal) then
+        if(islocal.eq.1) then
            structured_grid=>amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr%structured_grid
            call StructGridComputeLocalBounds(structured_grid, da)
            amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr%nlmax = structured_grid%nlmax
@@ -222,7 +222,7 @@ subroutine AMRGridComputeGridSpacing(amrgrid)
      integer, intent(in) :: ln
    end function level_number_patches
 
-   logical function is_local_patch(p_hierarchy, ln, pn)
+   integer function is_local_patch(p_hierarchy, ln, pn)
      PetscFortranAddr, intent(inout) :: p_hierarchy
      integer, intent(in) :: ln
      integer, intent(in) :: pn
@@ -238,7 +238,7 @@ subroutine AMRGridComputeGridSpacing(amrgrid)
   integer :: npatches
   integer :: ln
   integer :: pn
-  logical :: islocal
+  integer :: islocal
 
   
   p_application = amrgrid%p_application
@@ -249,7 +249,7 @@ subroutine AMRGridComputeGridSpacing(amrgrid)
      npatches = level_number_patches(p_application, ln )
      do pn=0,npatches-1
         islocal = is_local_patch(p_application, ln, pn);
-        if(islocal) then
+        if(islocal.eq.1) then
            structured_grid =>amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr%structured_grid
            p_samr_patch = structured_grid%p_samr_patch
            call samr_patch_get_spacing(p_samr_patch, dx, dy, dz)
@@ -298,7 +298,7 @@ subroutine AMRGridInitialize(amrgrid)
      integer, intent(in) :: ln
    end function level_number_patches
 
-   logical function is_local_patch(p_hierarchy, ln, pn)
+   integer function is_local_patch(p_hierarchy, ln, pn)
      PetscFortranAddr, intent(inout) :: p_hierarchy
      integer, intent(in) :: ln
      integer, intent(in) :: pn
@@ -343,7 +343,7 @@ subroutine AMRGridInitialize(amrgrid)
   integer :: npatches
   integer :: ln
   integer :: pn
-  logical :: islocal
+  integer :: islocal
 
   type(gridlevelptr_type), dimension(:), pointer :: gridlevel
   type(structured_grid_type), pointer :: struct_grid
@@ -365,7 +365,7 @@ subroutine AMRGridInitialize(amrgrid)
         allocate(gridlevel(ln+1)%grids(npatches))
         do pn=0,npatches-1
            islocal = is_local_patch(p_application, ln, pn);
-           if(islocal) then
+           if(islocal.eq.1) then
               gridlevel(ln+1)%grids(pn+1)%grid_ptr => GridCreate()
               gridlevel(ln+1)%grids(pn+1)%grid_ptr%itype = STRUCTURED_GRID 
               gridlevel(ln+1)%grids(pn+1)%grid_ptr%ctype = 'structured'
@@ -553,7 +553,7 @@ subroutine AMRGridReadDXYZ(amrgrid, input, option)
        integer, intent(in) :: ln
      end function level_number_patches
  
-     logical function is_local_patch(p_hierarchy, ln, pn)
+     integer function is_local_patch(p_hierarchy, ln, pn)
        PetscFortranAddr, intent(inout) :: p_hierarchy
        integer, intent(in) :: ln
        integer, intent(in) :: pn
@@ -565,6 +565,7 @@ subroutine AMRGridReadDXYZ(amrgrid, input, option)
   type(input_type), pointer :: input
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
+  type(structured_grid_type),pointer :: structured_grid
 
 #include "finclude/petscsysdef.h"
   PetscFortranAddr :: p_application
@@ -572,33 +573,78 @@ subroutine AMRGridReadDXYZ(amrgrid, input, option)
   integer :: npatches
   integer :: ln
   integer :: pn
-  logical :: islocal
+  integer :: islocal
   logical :: readdxyz
-
+  integer :: ndim    
+  PetscReal :: dxdydz(3)
+ 
   p_application = amrgrid%p_application
-
-  readdxyz = .FALSE.
-  ! note that this will need to be modified for parallel processing
+  ! for now we assume uniform grid spacings 
+  ndim=3    
+  call AMRGridReadDXDYDZ(dxdydz,ndim, input,option)
   
   nlevels =  hierarchy_number_levels(p_application)
   do ln=0,nlevels-1
      npatches = level_number_patches(p_application, ln )
      do pn=0,npatches-1
         islocal = is_local_patch(p_application, ln, pn);
-        if(islocal) then
+        if(islocal.eq.1) then
            grid => amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr
-           if(readdxyz) then
-              BACKSPACE(UNIT=input%fid)
-              BACKSPACE(UNIT=input%fid)
-              BACKSPACE(UNIT=input%fid)
-           endif
-           call StructuredGridReadDXYZ(grid%structured_grid,input,option)
-           readdxyz = .TRUE.
+           structured_grid => grid%structured_grid           
+           allocate(structured_grid%dx_global(structured_grid%nx))
+           structured_grid%dx_global = dxdydz(1)
+           allocate(structured_grid%dy_global(structured_grid%ny))
+           structured_grid%dy_global = dxdydz(2)
+           allocate(structured_grid%dz_global(structured_grid%nz))
+           structured_grid%dz_global = dxdydz(3)
         endif
      end do
+     ! we make the assumption of a refinement ratio of 2 in each direction   
+     dxdydz(:) = dxdydz(:)/2.0   
   end do
 
 end subroutine AMRGridReadDXYZ
+
+! ************************************************************************** !
+!
+! StructuredGridReadArrayNew: Reads structured grid spacing along an axis from  
+!                         input file
+! author: Glenn Hammond
+! date: 05/21/09
+!
+! ************************************************************************** !
+subroutine AMRGridReadDXDYDZ(array,ndim,input,option)
+
+  use Input_module
+  use String_module
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  type(input_type) :: input
+  PetscInt :: ndim
+  PetscReal :: array(ndim)
+  
+  PetscInt :: i
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXWORDLENGTH) :: word
+  PetscReal :: value
+  PetscErrorCode :: ierr
+
+  do i=1,ndim
+
+      call InputReadFlotranString(input,option)
+      call InputReadStringErrorMsg(input,option,'DXYZ')
+      call InputReadWord(input,option,word,PETSC_TRUE)
+      if (InputError(input)) exit
+      string = word
+      call InputReadDouble(string,option,value,input%ierr)
+      call InputErrorMsg(input,option,'value','AMRGridReadDXDYDZ')
+      array(i) = value
+  enddo
+
+end subroutine AMRGridReadDXDYDZ
 
 ! ************************************************************************** !
 !

@@ -47,6 +47,7 @@ subroutine Init(simulation)
   use Database_module
   use Input_module
   
+  use Flash2_module
   use MPHASE_module
   use Immis_module
   use Richards_module
@@ -84,7 +85,7 @@ subroutine Init(simulation)
   PetscErrorCode :: ierr
   PCSide:: pcside
   PetscReal :: r1, r2, r3, r4, r5, r6
-
+      
   interface
 
      subroutine SAMRInitializePreconditioner(p_application, which_pc, pc)
@@ -118,9 +119,10 @@ subroutine Init(simulation)
   nullify(tran_solver)
   
   realization%input => InputCreate(IUNIT1,option%input_filename)
+
   filename_out = trim(option%global_prefix) // trim(option%group_prefix) // &
                  '.out'
-  
+
   if (option%print_to_file) then
     open(option%fid_out, file=filename_out, action="write", status="unknown")
   endif
@@ -171,9 +173,14 @@ subroutine Init(simulation)
 
   ! initialize reference density
   if (option%reference_water_density < 1.d-40) then
+#ifndef DONT_USE_WATEOS
     call wateos(option%reference_temperature,option%reference_pressure, &
                 option%reference_water_density,r1,r2,r3,r4,r5,r6, &
                 option%scale,ierr)
+#else
+        call density(option%reference_temperature,option%reference_pressure, &
+                     option%reference_water_density)
+#endif                 
   endif
   
   ! read reaction database
@@ -192,7 +199,7 @@ subroutine Init(simulation)
 
   ! Initialize flow databases (e.g. span wagner, etc.)
   select case(option%iflowmode)
-    case(MPH_MODE)
+    case(MPH_MODE, FLASH2_MODE)
       call init_span_wanger(realization)
   end select
   
@@ -227,7 +234,7 @@ subroutine Init(simulation)
   
     if (flow_solver%J_mat_type == MATAIJ) then
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE, IMS_MODE)
+        case(MPH_MODE,THC_MODE, IMS_MODE, FLASH2_MODE)
           option%io_buffer = 'AIJ matrix not supported for current mode: '// &
                              option%flowmode
           call printErrMsg(option)
@@ -238,10 +245,12 @@ subroutine Init(simulation)
       write(*,'(" number of dofs = ",i3,", number of phases = ",i3,i2)') &
         option%nflowdof,option%nphase
       select case(option%iflowmode)
+        case(FLASH2_MODE)
+          write(*,'(" mode = FLASH2: p, T, s/X")')
         case(MPH_MODE)
           write(*,'(" mode = MPH: p, T, s/X")')
         case(IMS_MODE)
-          write(*,'(" mode = MPH: p, T, s")')
+          write(*,'(" mode = IMS: p, T, s")')
         case(THC_MODE)
           write(*,'(" mode = THC: p, T, s/X")')
         case(RICHARDS_MODE)
@@ -300,6 +309,9 @@ subroutine Init(simulation)
       case(IMS_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,ImmisResidual, &
                              realization,ierr)
+      case(FLASH2_MODE)
+        call SNESSetFunction(flow_solver%snes,field%flow_r,FLASH2Residual, &
+                             realization,ierr)
     end select
     
     if (flow_solver%J_mat_type == MATMFFD) then
@@ -319,6 +331,9 @@ subroutine Init(simulation)
       case(IMS_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              ImmisJacobian,realization,ierr)
+      case(FLASH2_MODE)
+        call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
+                             FLASH2Jacobian,realization,ierr)
     end select
     
     ! by default turn off line search
@@ -350,7 +365,7 @@ subroutine Init(simulation)
 !     flow_solver%pc_type = PCSHELL
       pcside = PC_RIGHT
       if(flow_solver%pc_type==PCSHELL) then
-      !  call KSPSetPreconditionerSide(flow_solver%ksp, pcside,ierr)
+        call KSPSetPCSide(flow_solver%ksp, pcside,ierr)
       !  call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 0, flow_solver%pc)
       endif
     endif
@@ -381,17 +396,23 @@ subroutine Init(simulation)
     call SNESSetOptionsPrefix(tran_solver%snes, "tran_",ierr)
     call SolverCheckCommandLine(tran_solver)
 
-    if (tran_solver%Jpre_mat_type == '') then
-      if (tran_solver%J_mat_type /= MATMFFD) then
-        tran_solver%Jpre_mat_type = tran_solver%J_mat_type
-      else
-        tran_solver%Jpre_mat_type = MATBAIJ
+    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+      if (tran_solver%Jpre_mat_type == '') then
+        if (tran_solver%J_mat_type /= MATMFFD) then
+          tran_solver%Jpre_mat_type = tran_solver%J_mat_type
+        else
+          tran_solver%Jpre_mat_type = MATBAIJ
+        endif
       endif
+      call DiscretizationCreateJacobian(discretization,NTRANDOF, &
+                                        tran_solver%Jpre_mat_type, &
+                                        tran_solver%Jpre,option)
+    else
+      tran_solver%Jpre_mat_type = MATAIJ
+      call DiscretizationCreateJacobian(discretization,ONEDOF, &
+                                        tran_solver%Jpre_mat_type, &
+                                        tran_solver%Jpre,option)
     endif
-
-    call DiscretizationCreateJacobian(discretization,NTRANDOF, &
-                                      tran_solver%Jpre_mat_type, &
-                                      tran_solver%Jpre,option)
 
     if (tran_solver%J_mat_type /= MATMFFD) then
       tran_solver%J = tran_solver%Jpre
@@ -408,27 +429,32 @@ subroutine Init(simulation)
                                              option)
     endif
 
-    call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,&
-                         realization,ierr)
+    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
 
-    if (tran_solver%J_mat_type == MATMFFD) then
-      call MatCreateSNESMF(tran_solver%snes,tran_solver%J,ierr)
-    endif
+      call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,&
+                           realization,ierr)
+
+      if (tran_solver%J_mat_type == MATMFFD) then
+        call MatCreateSNESMF(tran_solver%snes,tran_solver%J,ierr)
+      endif
+      
+      call SNESSetJacobian(tran_solver%snes,tran_solver%J,tran_solver%Jpre, &
+                           RTJacobian,realization,ierr)
+
+      ! this could be changed in the future if there is a way to ensure that the linesearch
+      ! update does not perturb concentrations negative.
+      call SNESLineSearchSet(tran_solver%snes,SNESLineSearchNo, &
+                             PETSC_NULL_OBJECT,ierr)
     
-    call SNESSetJacobian(tran_solver%snes,tran_solver%J,tran_solver%Jpre, &
-                         RTJacobian,realization,ierr)
+      ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
+      if (option%verbosity >= 1) then
+        string = '-tran_snes_view'
+        call PetscOptionsInsertString(string, ierr)
+      endif
 
-    ! this could be changed in the future if there is a way to ensure that the linesearch
-    ! update does not perturb concentrations negative.
-    call SNESLineSearchSet(tran_solver%snes,SNESLineSearchNo, &
-                           PETSC_NULL_OBJECT,ierr)
-
-    ! Have PETSc do a SNES_View() at the end of each solve if verbosity > 0.
-    if (option%verbosity >= 1) then
-      string = '-tran_snes_view'
-      call PetscOptionsInsertString(string, ierr)
     endif
 
+    ! ensure setting of SNES options since they set KSP and PC options too
     call SolverSetSNESOptions(tran_solver)
 
     ! setup a shell preconditioner and initialize in the case of AMR
@@ -436,7 +462,7 @@ subroutine Init(simulation)
 !       flow_solver%pc_type = PCSHELL
        pcside = PC_RIGHT
        if(tran_solver%pc_type==PCSHELL) then
-!          call KSPSetPreconditionerSide(tran_solver%ksp, pcside,ierr)
+          call KSPSetPCSide(tran_solver%ksp, pcside,ierr)
 !          call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 1, tran_solver%pc)
        endif
     endif
@@ -445,20 +471,24 @@ subroutine Init(simulation)
     option%io_buffer = 'Preconditioner: ' // trim(tran_solver%pc_type)
     call printMsg(option)
 
-    ! shell for custom convergence test.  The default SNES convergence test  
-    ! is call within this function. 
-    tran_stepper%convergence_context => &
-      ConvergenceContextCreate(tran_solver,option,grid)
-    call SNESSetConvergenceTest(tran_solver%snes,ConvergenceTest, &
-                                tran_stepper%convergence_context, &
-                                PETSC_NULL_FUNCTION,ierr) 
+    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
 
-    ! this update check must be in place, otherwise reactive transport is likely
-    ! to fail
-    if(.not.(option%use_samr)) then
-       call SNESLineSearchSetPreCheck(tran_solver%snes,RTCheckUpdate, &
-            realization,ierr)
+      ! shell for custom convergence test.  The default SNES convergence test  
+      ! is call within this function. 
+      tran_stepper%convergence_context => &
+        ConvergenceContextCreate(tran_solver,option,grid)
+      call SNESSetConvergenceTest(tran_solver%snes,ConvergenceTest, &
+                                  tran_stepper%convergence_context, &
+                                  PETSC_NULL_FUNCTION,ierr) 
+
+      ! this update check must be in place, otherwise reactive transport is likely
+      ! to fail
+      if(.not.(option%use_samr)) then
+         call SNESLineSearchSetPreCheck(tran_solver%snes,RTCheckUpdate, &
+              realization,ierr)
+      endif
     endif
+    
     call printMsg(option,"  Finished setting up TRAN SNES ")
   
   endif
@@ -531,6 +561,8 @@ subroutine Init(simulation)
         call MphaseSetup(realization)
       case(IMS_MODE)
         call ImmisSetup(realization)
+      case(FLASH2_MODE)
+        call Flash2Setup(realization)
     end select
   
     ! assign initial conditionsRealizAssignFlowInitCond
@@ -551,6 +583,8 @@ subroutine Init(simulation)
         call MphaseUpdateAuxVars(realization)
       case(IMS_MODE)
         call ImmisUpdateAuxVars(realization)
+      case(FLASH2_MODE)
+        call Flash2UpdateAuxVars(realization)
     end select
   endif
 
@@ -1815,6 +1849,15 @@ subroutine setFlowMode(option)
       option%nflowspec = 2
       option%itable = 2
       option%use_isothermal = PETSC_FALSE
+    case('FLA2','FLASH2')
+      option%iflowmode = FLASH2_MODE
+      option%nphase = 2
+      option%liquid_phase = 1      
+      option%gas_phase = 2      
+      option%nflowdof = 3
+      option%nflowspec = 2
+      option%itable = 2
+      option%use_isothermal = PETSC_FALSE
    case('IMS','IMMIS','THS')
       option%iflowmode = IMS_MODE
       option%nphase = 2
@@ -1963,7 +2006,8 @@ subroutine assignMaterialPropToRegions(realization)
       do
         if (.not.associated(cur_patch)) exit
         grid => cur_patch%grid
-        call GridCopyIntegerArrayToPetscVec(cur_patch%imat,field%work_loc, &
+
+        call GridCopyIntegerArrayToVec(grid, cur_patch%imat,field%work_loc, &
                                             grid%ngmax)
         cur_patch => cur_patch%next
       enddo
@@ -1978,7 +2022,8 @@ subroutine assignMaterialPropToRegions(realization)
       do
         if (.not.associated(cur_patch)) exit
         grid => cur_patch%grid
-        call GridCopyPetscVecToIntegerArray(cur_patch%imat,field%work_loc, &
+
+        call GridCopyVecToIntegerArray(grid,cur_patch%imat,field%work_loc, &
                                             grid%ngmax)
         cur_patch => cur_patch%next
       enddo
@@ -2363,7 +2408,9 @@ subroutine readMaterialsFromFile(realization,filename)
                                          filename,group_name, &
                                          dataset_name,append_realization_id)
     call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)
-    call GridCopyPetscVecToIntegerArray(patch%imat,local_vec,grid%ngmax)
+
+    call GridCopyVecToIntegerArray(grid,patch%imat,local_vec,grid%ngmax)
+
     call VecDestroy(global_vec,ierr)
     call VecDestroy(local_vec,ierr)
   else

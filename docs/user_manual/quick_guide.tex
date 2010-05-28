@@ -112,6 +112,7 @@
 \newcommand{\ba}{\boldsymbol{a}}
 \newcommand{\bB}{\boldsymbol{B}}
 \newcommand{\bC}{\boldsymbol{C}}
+\newcommand{\bD}{\boldsymbol{D}}
 \newcommand{\bE}{\boldsymbol{E}}
 \newcommand{\bF}{\boldsymbol{F}}
 \newcommand{\bi}{\boldsymbol{i}}
@@ -213,7 +214,8 @@
 \bc
 \begin{tabular}{r|l}
 ~ & ~\\
-{\em Title:} & {\sl Quick Reference Guide: PFLOTRAN 1.0 (LA-CC 06-093)}\\
+%{\em Title:} & {\sl Quick Reference Guide: PFLOTRAN 1.0 (LA-CC 06-093)}\\
+{\em Title:} & {\sl Quick Reference Guide: PFLOTRAN 2.0 (LA-CC-09-047)}\\
 ~ & {\sl Multiphase-Multicomponent-Multiscale Massively Parallel} \\
 ~ & {\sl Reactive Transport Code}\\
 ~ & ~\\
@@ -280,49 +282,192 @@ endorse the viewpoint of a publication or guarantee its technical correctness.
 
 PFLOTRAN solves a system of generally nonlinear partial differential equations describing multiphase, multicomponent and multiscale reactive flow and transport in porous materials. The code is designed to run on massively parallel computing architectures as well as workstations and labtops. Parallelization is achieved through domain decomposition using the PETSc (Port\-a\-ble Extensible Toolkit for Scientific Computation) libraries for the parallelization framework  (Balay et al., 1997).
 
+\section{Governing Equations}
+
+\subsection{Mode: {\tt RICHARDS}}
+
+{\tt RICHARDS} Mode applies to single phase, variably saturated, isothermal systems.
+The governing mass conservation equation is given by
+\EQ
+\frac{\p}{\p t}\left(\varphi s\rho\right) + \bnabla\cdot\left(\rho\bq\right) = Q_w,
+\EN
+and
+\EQ
+\bq = -\frac{kk_r}{\mu}\bnabla\left(P-\rho g z\right).
+\EN
+Here, $\varphi$ denotes porosity, $s$ saturation, $\rho$ water density, $\bq$ Darcy flux, $k$ intrinsic permeability, $k_r$ relative permeability, $\mu$ viscosity, $P$ pressure, $g$ gravity, and $z$ the vertical component of the position vector.  Supported relative permeability functions $k_r$ for Richards' equation include van Genuchten, Books-Corey and Thomeer-Corey, while the saturation functions include Burdine and Mualem.  Water density and viscosity are computed as a function of temperature and pressure through an equation of state for water.
+
+\subsection{Mode: {\tt MPHASE}}
+Local equilibrium is assumed between phases for modeling multiphase systems with PFLOTRAN. The multiphase partial differential equations for mass and energy conservation solved by PFLOTRAN have the general form:
+\begin{subequations}
+\BA\label{mass_conservation_equation}
+&\frac{\p}{\p t} \bigg(\varphi \sum_\a s_\a^{}\rho_\a^{} X_i^\a \bigg)
++ \bnabla\cdot\sum_\a\bigg[\bq_\a^{}\rho_\a^{} X_i^\a \bigg.\nonumber\\
+& \qquad - \varphi s_\a^{} D_\a^{} \rho_\a^{} \bnabla X_i^\a \bigg] \eq Q_i,
+\EA
+for the $i$th component, and
+\BA\label{energy_equation}
+&\frac{\p}{\p t} \bigg(\varphi \sum_\a s_\a\rho_\a U_\a + (1-\varphi) \rho_r c_r T\bigg)\nonumber\\
+&+ \bnabla\cdot\sum_\a\bigg[\bq_\a\rho_\a H_\a - \kappa\bnabla T\bigg] \eq Q_e.
+\EA
+\end{subequations}
+for energy. 
+In these equations $\a$ designates a fluid phase (e.g. H$_\textrm{2}$O, supercritical CO$_\textrm{2}$) at temperature $T$ and pressure $P_\a$ with the sums over all fluid phases present in the system; 
+species are designated by the subscript $i$ 
+(e.g. $w\!=\!\textrm{H}_\textrm{2}\textrm{O}$, $c\!=\!$~CO$_\textrm{2}$); 
+$\varphi$ denotes the porosity of the geologic formation; 
+$s_\a$ denotes the phase saturation state; 
+$X_i^\a$ denotes the mole fraction of species $i$ ($\sum_i X_i^\alpha=1$); 
+$\rho_\a$, $H_\a$, $U_\a$ refer to the molar density, enthalpy, and internal energy of each fluid phase, respectively; and 
+$\bq_\a$ denotes the Darcy flow rate defined by
+\EQ
+\bq_\a \eq -\frac{kk_\a}{\mu_\a} \bnabla \big(P_\a-W_\a^{}\rho_\a g \bz\big),
+\EN
+where $k$ refers to the intrinsic permeability, $k_\a$ denotes the relative permeability, $\mu_\a$ denotes the fluid viscosity, $W_\a^{}$ denotes the formula weight, $g$ denotes the acceleration of gravity, and $z$ designates the vertical of the position vector. The source/sink terms, $Q_i$ and $Q_e$, describe injection and extraction of mass and heat at wells, respectively. The quantities $\rho_r$, $c_r$, and $\kappa$ refer to the density, heat capacity, and thermal conductivity of the porous rock.
+
+Additional constitutive relations are needed to account for capillary pressure, and changes in phase which are not discussed in detail here (see \cite{lichtner:pflotran07}).
+In PFLOTRAN a variable switching approach is used to account for phase changes enforcing local equilibrium. According to the Gibbs phase rule there are a total of $N_C\!+\!1$ degrees of freedom where $N_C$ denotes the number of independent components. This can be seen by noting that the
+intensive
+degrees of freedom are equal to $N_{\rm int}\!=\!N_C \!-\! N_P \!+\!2$, where $N_P$ denotes the number of phases. The 
+extensive
+degrees of freedom equals $N_{\rm ext}\!=\!N_P\!-\!1.$ This gives a total number of degrees of freedom $N_{\rm dof}\!=\!N_{\rm int}\!+\!N_{\rm ext}\!=\!N_C\!+\!1$, independent of the number of phases $N_P$ in the system.
+
+\subsection{Mode: {\tt IMMIS}}
+
+The {\tt IMMIS} mode applies to multiple immiscible phases.
+
+\subsection{Mode: {\tt THC}}
+
+The {\tt THC} mode involves two phase liquid-gas flow coupled to the reactive transport mode.
+
+\subsection{Reactive Transport (Keyword {\tt CHEMISTRY})}
+
+The governing mass conservation equation for Pthe geochemical transport mode for a multiphase system written in terms of a set of independent aqueous primary or basis species with the form
+\BA
+&\frac{\p}{\p t}\big(\varphi \sum_\a s_\a \Psi_j^\a\big) +
+\nabla\cdot\sum_\a\big(\bq_\a - \varphi s_\a \bD_\a\bnabla\big)\Psi_j^\a \nonumber\\
+&\qquad\eq Q_j - \sum_m\nu_{jm} I_m -\frac{\p S_j}{\p t},
+\EA
+where the sums over $\a$ are over all fluid phases in the system, and where $\Psi_j^\a$ denotes the total concentration in the $\a$th fluid phase for primary species $\A_j^{\rm pri}$ defined by
+\EQ
+\Psi_j^\a = \delta_{l\a}^{} C_j^l + \sum_{i=1}^{N_{\rm sec}}\nu_{ji}^{} C_i^\a.
+\EN
+In this equation the subscript $l$ represents the aqueous electrolyte phase from which the primary species are chosen.
+
 \section{Installation}
 
+\subsection{Mac OS X}
 
-\subsection{PETSc}
+This installation requires compiler versions 4.4.2 for gfortran, gcc, and g++. The compiler g++ is needed for installing SAMRAI.
+Define environment variables: {\tt MPI\_HOME}, {\tt PKGS}, \linebreak {\tt HYPRE\_INSTALL\_DIR}
 
-The PETSc {\tt ./configure} script can be used not only to install PETSc but also HDF5, Parmetis, and various direct solvers such as Mumps and Trilinos solvers. To use PETSc with PFLOTRAN the PETSc developer version petsc-dev is necessary which can be downloaded from the PETSc web page (http://www.mcs.anl.gov/petsc/petsc-as/developers/index.html). The recommended way to do this is to use the version control program Mercurial \break (http://mercurial.selenic.com/wiki/Download?action=show\&redirect=BinaryPackages).
-
-\subsubsection{MacOSX}
+\subsubsection{OpenMPI}
 
 \begin{verbatim}
-./config/configure.py 
---with-blas-lapack-lib="-framework vecLib" 
---download-openmpi=1 
---with-debugging=1 
---with-shared=0 
---download-mumps=1 
---download-parmetis=1 
---download-scalapack=1 
---download-blacs=1 
---download-ml=1 
---download-hdf5=1
+setenv F90 gfortran
+setenv F77 gfortran
+setenv FC gfortran
+setenv CC gcc-4
+setenv CXX g++-4
+
+./configure \
+--prefix=$PKGS/openmpi/openmpi-1.4.1-gcc-4.4.2-gfortran \
+--disable-debug \
+--enable-static \
+--disable-shared
+
+make
+make install
+\end{verbatim}
+
+\subsubsection{Hypre}
+
+\begin{verbatim}
+./configure \
+--with-MPI \
+--enable-debug \
+--disable-opt \
+--prefix=${HYPRE_INSTALL_DIR} \
+--with-MPI-include=${MPI_HOME}/include \
+--with-MPI-libs=openmpi \
+--with-MPI-lib-dirs=${MPI_HOME}/lib \
+CC=mpicc \
+CXX=mpicxx \
+F77=mpif90
+
+make
+make install
+\end{verbatim}
+
+\subsubsection{PETSc}
+
+The PETSc {\tt ./configure} script can be used not only to install PETSc but also HDF5, Parmetis, and various direct solvers such as Mumps and Trilinos solvers. To use PETSc with PFLOTRAN the PETSc developer version petsc-dev is necessary which can be downloaded from the PETSc web page (http://www.mcs.anl.gov/petsc/petsc-as/developers/index.html). The recommended way to do this is to use the version control program Mercurial \linebreak (http://mercurial.selenic.com/wiki).
+
+Define environment variables: $\verb|PETSC_DIR|$ and $\verb|PETSC_ARCH|$ giving the location of the petsc-dev source and the architecture.
+
+\paragraph{MacOSX 10.5.8 (Leopard)}
+
+\begin{verbatim}
+./config/configure.py \
+--with-blas-lapack-lib="-framework vecLib" \
+--with-mpi-dir=$MPI_HOME \
+--download-openmpi=1 \
+--with-debugging=1 \
+--with-shared=0 \
+--download-mumps=1 \
+--download-parmetis=1 \
+--download-scalapack=1 \
+--download-blacs=1 \
+--download-ml=1 \
+--download-hdf5=1 
 
 make all
 make test
 \end{verbatim}
+
+\paragraph{MacOSX 10.6.3 (Snow Leopard)}
 
 \subsubsection{ORNL's Jaguar XT4/5}
 
 \footnotesize
 \begin{verbatim}
 ./config/configure.py PETSC_ARCH=cray-xt4-pgi_fast \
---configModules=PETSc.Configure --optionsModule=PETSc.compilerOptions
---known-level1-dcache-size=65536 --known-level1-dcache-linesize=64
---known-level1-dcache-assoc=2 --known-memcmp-ok=1 --known-sizeof-char=1
---known-sizeof-void-p=8 --known-sizeof-short=2 --known-sizeof-int=4
---known-sizeof-long=8 --known-sizeof-long-long=8 --known-sizeof-float=4
---known-sizeof-double=8 --known-sizeof-size_t=8 --known-bits-per-byte=8
---known-sizeof-MPI_Comm=4 --known-sizeof-MPI_Fint=4 --known-mpi-long-double=0 \
---with-batch=1 --with-shared=0 --with-dynamic=0 --with-cc=cc --with-cxx=CC
---with-fc=ftn --COPTFLAGS="-tp barcelona-64 -fastsse -Mipa=fast" --CXXOPTFLAGS="-tp
-  barcelona-64 -fastsse -Mipa=fast" --FOPTFLAGS="-tp barcelona-64 -fastsse"
---with-debugging=0 --with-blas-lib=sci --with-lapack-lib=sci --with-x=0
---with-mpi-dir=$MPICH_DIR --download-hypre=1 --download-parmetis=1 --with-hdf5=1 \
+--configModules=PETSc.Configure \
+--optionsModule=PETSc.compilerOptions \
+--known-level1-dcache-size=65536 \
+--known-level1-dcache-linesize=64 \
+--known-level1-dcache-assoc=2 \
+--known-memcmp-ok=1 \
+--known-sizeof-char=1 \
+--known-sizeof-void-p=8 \
+--known-sizeof-short=2 \
+--known-sizeof-int=4
+--known-sizeof-long=8 \
+--known-sizeof-long-long=8 \
+--known-sizeof-float=4 \
+--known-sizeof-double=8 \
+--known-sizeof-size_t=8 \
+--known-bits-per-byte=8 \
+--known-sizeof-MPI_Comm=4 \
+--known-sizeof-MPI_Fint=4 \
+--known-mpi-long-double=0 \
+--with-batch=1 \
+--with-shared=0 \
+--with-dynamic=0 \
+--with-cc=cc \
+--with-cxx=CC \
+--with-fc=ftn \
+--COPTFLAGS="-tp barcelona-64 -fastsse -Mipa=fast" \
+--CXXOPTFLAGS="-tp barcelona-64 -fastsse -Mipa=fast" \
+--FOPTFLAGS="-tp barcelona-64 -fastsse" \
+--with-debugging=0 \
+--with-blas-lib=sci \
+--with-lapack-lib=sci \
+--with-x=0 \
+--with-mpi-dir=$MPICH_DIR \
+--download-hypre=1 \
+--download-parmetis=1 \
+--with-hdf5=1 \
 --with-hdf5-dir=$HDF5_DIR \
 --known-mpi-shared=0
 \end{verbatim}
@@ -334,6 +479,133 @@ The user will need to load the following HDF5 module beforehand: \ \verb|module 
 The source code for PFLOTRAN can be downloaded from the LANL web site using Mercurial: \verb|hg clone https://software.lanl.gov/pflotran/hg/pflotran|.
 
 \verb|make [chuan_co2=1 hdf5=1 coll=1] pflotran|
+
+\subsection{Building SAMRAI Version 2.4.4}
+
+\noindent
+To build SAMRAI follow the instructions listed below.
+
+{\tt mkdir SAMRAI-v2.4.4}
+
+{\tt cd SAMRAI-v2.4.4}
+
+{\tt hg clone http://software.lanl.gov/pflotran/hg/samrai SAMRAI}
+
+{\tt mkdir samrai-objs in directory SAMRAI-v2.4.4}
+
+{\tt cd samrai-objs}
+
+Define the environment variables $\verb|SAMRAI_INSTALL_DIR|$, $\verb|MPI_HOME|$, $\verb|HDF5_HOME|$, \linebreak $\verb|PETSC_DIR|$ to be the top level directories of the appropriate packages
+
+\noindent
+With MPICH:
+\begin{verbatim}
+../SAMRAI/configure --prefix=${SAMRAI_INSTALL_DIR} \
+--with-CC=mpicc \
+--with-CXX=mpicxx \
+--with-F77=mpif90 \
+--with-mpi \
+--with-mpi-include=${MPI_HOME}/include \
+--with-mpi-lib-dirs=${MPI_HOME}/lib \
+--with-MPICC=mpicc \
+--with-x \
+--with-hdf5=${HDF5_HOME} \
+--with-hypre=${HYPRE_HOME} \
+--with-petsc=${PETSC_DIR} \
+--with-blaslapack \
+--enable-opt \
+ --enable-debug \
+--enable-char \
+--enable-bool \
+CXXFLAGS="-DMPICH_IGNORE_CXX_SEEK -DMPICH_SKIP_MPICXX" \
+CPPFLAGS="-DMPICH_IGNORE_CXX_SEEK -DMPICH_SKIP_MPICXX"
+\end{verbatim}
+
+\noindent
+With OPENMPI:
+\begin{verbatim}
+../${SAMRAI_SRC_DIR}/configure \
+--prefix=${SAMRAI_INSTALL_DIR} \
+--with-CC=mpicc \
+--with-CXX=mpicxx \
+--with-F77=mpif90 \
+--with-mpi \
+--with-mpi-include=${MPI_HOME}/include 
+--with-mpi-lib-dirs=${MPI_HOME}/lib 
+--with-MPICC=mpicc \
+--with-x \
+--with-hdf5=${HDF5_INSTALL_DIR} \
+--with-hypre=${HYPRE_INSTALL_DIR} \
+--with-petsc=${PETSC_DIR} \
+--with-blaslapack \
+--disable-opt \
+--enable-debug \
+--enable-char \
+--enable-bool \
+CXXFLAGS="-DOMPI_IGNORE_CXX_SEEK -DOMPI_SKIP_MPICXX \
+  -I${PETSC_DIR}/${PETSC_ARCH}/include -I${PETSC_DIR}/include" \
+CPPFLAGS="-DOMPI_IGNORE_CXX_SEEK -DOMPI_SKIP_MPICXX"
+\end{verbatim}
+
+{\tt make}
+
+{\tt make install}
+
+Define the environment variable $\verb|SAMRAI|$ to point to $\verb|SAMRAI_INSTALL_DIR|$ (for example in your .cshrc)
+
+Instructions for SAMR utils package
+
+{\tt hg clone  http://software.lanl.gov/pflotran/hg/samrutils}
+
+{\tt cd samrutils}
+
+Define the environment variable $\verb|AMRUTILITIES_HOME|$ to be the directory where you want the libraries and headers installed, it can point to the top level src dir if you like.
+
+\verb|make prefix=${AMRUTILITIES_HOME} lib3d|
+
+Instructions for SAMR solvers package
+
+{\tt hg clone  http://software.lanl.gov/pflotran/hg/samrsolvers}
+
+{\tt cd samrsolvers}
+
+Define the environment variable $\verb|SAMRSOLVERS_HOME|$ to be the directory where you want the libraries and headers installed, it can point to the top level src dir if you like.
+
+\verb|make prefix=${SAMRSOLVERS_HOME} lib3d|
+
+\noindent
+Assumptions:
+\begin{enumerate}
+\item External packages needed by PFLOTRAN are built: petsc-dev, hypre,  
+hdf5, \linebreak mpich2/openmpi/some mpi
+\item External packages needed by PFLOTRAN AMR interface are built:  
+SAMRAI, SAMRUtils, SAMRSolvers
+\end{enumerate}
+
+\noindent
+Define the environment variables:
+\begin{center}
+\begin{tabularx}{\linewidth}{lX}
+\bf SAMRAI &--points to where SAMRAI is installed\\
+\bf AMRUTILITIES\_HOME &--points to where SAMRUtils is installed\\
+\bf SAMRSOLVERS\_HOME &--points to where SAMRSolvers is installed
+\end{tabularx}
+\end{center}
+
+\noindent
+Instructions for building $\verb|SAMRAIDriver|$:
+\begin{center}
+\begin{verbatim}
+cd pflotran/src/pflotran
+make hdf5=1 pflotranamr
+
+cd samr/src
+make
+\end{verbatim}
+\end{center}
+
+\noindent
+At this point there should exist an executable named SAMRAIDriver.
 
 \begin{comment}
 The following instructions should aid in installing openmpi, PETSc, HDF5 and PFLOTRAN on a UNIX or Mac computer running MacOSX 10.4 or later.
@@ -591,13 +863,27 @@ The BOUNDARY\_CONDITION keyword couples conditions specified under the FLOW\_\-C
 \end{deflist}
 
 {\noindent\bf Explanation:}
-\begin{description}
-\item[Keyword BOUNDARY\_CONDITION:] defines the beginning of a boundary condition entry and the name of the boundary condition.
-\item[Keyword FLOW\_CONDITION:] defines the name of the flow condition to be linked to this boundary condition.
-\item[Keyword TRANSPORT\_CONDITION:] defines the name of the transport condition to be linked to this boundary condition.
-\item[Keyword REGION:] defines the name of the region to which the conditions are linked.
-\item[Keyword END:] terminates the boundary condition entry.
-\end{description}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lX}
+\toprule[1.5pt]
+\bf Keyword & \bf Description\\
+\midrule
+\bf BOUNDARY\_CONDITION & Defines the beginning of a boundary condition entry and the name of the boundary condition.\\
+\midrule
+\bf FLOW\_CONDITION & Defines the name of the flow condition to be linked to this boundary condition.\\
+\midrule
+\bf TRANSPORT\_CONDITION & Defines the name of the transport condition to be linked to this boundary condition.\\
+\midrule
+\bf REGION & Defines the name of the region to which the conditions are linked.\\
+\midrule
+\bf END & Terminates the boundary condition entry.\\
+\midrule\midrule
+\bottomrule[1.5pt]
+\end{tabularx}
+\end{center}
+
+\bigskip
 
 {\noindent\bf Examples:}
 \begin{verbatim}
@@ -641,9 +927,18 @@ Checkpoint files enable the restart of a simulation at any discrete point in sim
 \end{deflist}
 
 {\noindent\bf Explanation:}
-\begin{description}
-\item[Keyword CHECKPOINT] toggles on checkpointing and defines the frequency at which checkpoint files will be printed
-\end{description}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lX}
+\toprule[1.5pt]
+\bf Keyword & \bf Description\\
+\midrule
+\bf CHECKPOINT & Toggles on checkpointing and defines the frequency at which checkpoint files will be printed.\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\bigskip
 
 {\noindent\bf Examples:}
 \begin{verbatim}
@@ -813,12 +1108,23 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \noindent
 {\bf Explanation:}
 
+\begin{center}
 \begin{tabularx}{\linewidth}{lX}
-Primary\_Species & List of primary species that fully describe the chemical composition of the fluid. The set of primary species must form an independent set of species in terms of which all homogeneous aqueous equilibrium reactions can be expressed.\\
-Secondary\_Species & List of aqueous species in equilibrium with primary species.\\
-Gas\_Species & List of gas species.\\
-\ldots &
+\toprule
+\bf Keyword & \bf Description\\
+\midrule
+\bf Primary\_Species & List of primary species that fully describe the chemical composition of the fluid. The set of primary species must form an independent set of species in terms of which all homogeneous aqueous equilibrium reactions can be expressed.\\
+\midrule
+\bf Secondary\_Species & List of aqueous species in equilibrium with primary species.\\
+\midrule
+\bf Gas\_Species & List of gas species.\\
+\midrule
+\ldots & \\
+\bottomrule
 \end{tabularx}
+\end{center}
+
+\bigskip
 
 \noindent
 {\bf Examples:}
@@ -941,6 +1247,8 @@ Metatorbernite 0.    1.
 \newpage
 \protect\hypertarget{target_dbg}{}
 
+{\noindent\bf Input:}
+
 \subsection{Keyword: DEBUG}
 \begin{deflist}{00}
 \item[DEBUG]~
@@ -955,6 +1263,12 @@ Metatorbernite 0.    1.
 \end{deflist}
 \item[(.,/,END)]
 \end{deflist}
+
+{\noindent\bf Explanation:}
+
+\bigskip
+
+{\noindent\bf Examples:}
 
 %================================================================
 
@@ -1039,35 +1353,48 @@ The {\bf FLOW\_CONDITION} keyword specifies scalar or vector data sets to be ass
 \end{deflist}
 
 {\noindent\bf Explanation:}
-\begin{description}
-\item[FLOW/TRANSPORT\_CONDITION] initiates a condition entry and defines its name.
-\item[CYCLIC] instructs PFLOTRAN to cycle the transient data set should the simulation time exceed the last time in the data set.
-\item[INTERPOLATION] defines the method for interpolating between data set times.
-\item[DATUM] location is space where prescribed scalar (e.g. pressure, temperature concentration, etc.) is defined.
-\item[TYPE] specifies the type of condition.
-\begin{deflist}{0000000000}
-    \item[PRESSURE] specifies the type of pressure condition.
-    \item[TEMPERATURE] specifies the type of temperature condition.
-    \item[CONCENTRATION] specifies the type of concentration condition.
-    \item[ENTHALPY] specifies the type of enthalpy condition.
-    \item[END] terminates type entry.
-\end{deflist}
-\item[GRADIENT] gradient of the scalar in 3D space.
-\begin{deflist}{0000000000}
-    \item[PRESSURE] pressure gradient in $x$-, $y$-, and $z$-directions.
-    \item[TEMPERATURE] temperature gradient in $x$-, $y$-, and $z$-directions.
-    \item[CONCENTRATION] concentration gradient in $x$-, $y$-, and $z$-directions.
-    \item[ENTHALPY] enthalpy gradient in $x$-, $y$-, and $z$-directions.
-    \item[END] terminates gradient entry.
-\end{deflist}
-\item[PRESSURE] absolute fluid pressure at the datum.
-\item[FLUX] Darcy velocity of fluid defining flux across a boundary.
-\item[TEMPERATURE] temperature in $^\circ$C at the datum.
-\item[CONCENTRATION] solute concentration at the datum.
-\item[ENTHALPY] enthalpy at the datum.
-\item[CONSTRAINT\_LIST] specifies a list of concentration constraints for solute transport.
-\item[END] terminates the condition entry.
-\end{description}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lX}
+\toprule[1.5pt]
+\bf Keyword & \bf Description\\
+\midrule
+\bf FLOW/TRANSPORT\_CONDITION & Initiates a condition entry and defines its name.\\
+\midrule
+\bf CYCLIC & Instructs PFLOTRAN to cycle the transient data set should the simulation time exceed the last time in the data set.\\
+\midrule
+\bf INTERPOLATION & Defines the method for interpolating between data set times.\\
+\midrule
+\bf DATUM & Location is space where prescribed scalar (e.g. pressure, temperature concentration, etc.) is defined.\\
+\midrule
+\bf TYPE & Specifies the type of condition.\\
+\midrule
+\bf PRESSURE & Specifies the type of pressure condition.\\
+ \bf TEMPERATURE & Specifies the type of temperature condition.\\
+    \bf CONCENTRATION & Specifies the type of concentration condition.\\
+    \bf ENTHALPY & Specifies the type of enthalpy condition.\\
+    \bf END & Terminates type entry.\\
+\midrule\midrule
+\bf GRADIENT & Gradient of the scalar field in 3D space.\\
+\midrule
+\bf PRESSURE & Pressure gradient in $x$-, $y$-, and $z$-directions.\\
+\bf TEMPERATURE & Temperature gradient in $x$-, $y$-, and $z$-directions.\\
+\bf CONCENTRATION & Concentration gradient in $x$-, $y$-, and $z$-directions.\\
+\bf ENTHALPY & Enthalpy gradient in $x$-, $y$-, and $z$-directions.\\
+\bf END & Terminates gradient entry.\\
+\midrule\midrule
+\bf PRESSURE & Absolute fluid pressure at the datum.\\
+\bf FLUX & Darcy velocity of fluid defining flux across a boundary.\\
+\bf TEMPERATURE & Temperature in $^\circ$C at the datum.\\
+\bf CONCENTRATION & Solute concentration at the datum.\\
+\bf ENTHALPY & Enthalpy at the datum.\\
+\bf CONSTRAINT\_LIST & Specifies a list of concentration constraints for solute transport.\\
+\bf END & Terminates the condition entry.\\
+\bottomrule[1.5pt]
+\end{tabularx}
+\end{center}
+
+\bigskip
 
 {\noindent\bf Examples:}
 \begin{verbatim}
@@ -1148,7 +1475,7 @@ DIFFUSION_COEFFICIENT 1.d-9
 
 \subsection{Keyword: GRID \hfill Required}
 
-\noindent{\bf Description:}
+\noindent{\bf Description: this keyword defines a spatial grid.}
 
 \noindent{\bf Input:}
 \begin{deflist}{000}
@@ -1221,17 +1548,17 @@ DIFFUSION_COEFFICIENT 1.d-9
 
 \noindent{\bf Explanation:}
 
+\begin{center}
 \begin{tabularx}{\linewidth}{lX}
-GRAVITY <\# \# \#>: Specifies gravity vector
+GRAVITY <\# \# \#>: &Specifies gravity vector\\
 
-ORIGIN <\# \# \#>: Coorindate of grid origin (default: 0. 0. 0.)
+ORIGIN <\# \# \#>: &Coorindate of grid origin (default: 0. 0. 0.)\\
 
-BOUNDS: Specifies bounds of structured cartesian grid (see examples below)
-
-DXYZ: Specifies grid spacing of structured cartesian grid (see examples below)
-
-INVERT\_Z: Inverts the z axis (positive Z is down)
+BOUNDS: &Specifies bounds of structured cartesian grid (see examples below)
+DXYZ: Specifies grid spacing of structured cartesian grid (see examples below)\\
+INVERT\_Z: &Inverts the z axis (positive Z is down)
 \end{tabularx}
+\end{center}
 
 \noindent
 {\bf Example:}
@@ -1446,12 +1773,14 @@ PERM_Z 1.d-12
 
 \noindent{\bf Explanation:}
 
+\begin{center}
 \begin{tabularx}{\linewidth}{lX}
 HC: &Thermo-Hydro-Chemical Coupled groundwater flow, thermal and solute transport\\
 Richards: &Single-phase variable saturated groundwater flow using Richards Equation\\
 MPH, MPHASE: &Multiphase CO$_2$-water-energy\\
 IMS, IMMIS, THS: &Immissible CO$_2$-water-energy
 \end{tabularx}
+\end{center}
 
 \noindent{\bf Example:}
 \begin{verbatim}
@@ -1595,6 +1924,7 @@ END
 
 \noindent {\bf Explanation:}
 
+\begin{center}
 \begin{tabularx}{\linewidth}{lX}
 OUTPUT: & keyword to control output.\\
 TIMES: & list of output times.\\
@@ -1617,6 +1947,7 @@ FLUXES: & \\
 VELOCITIES: & keyword to output velocities.\\
 MASS\_BALANCE: & keyword to output global mass balances and boundary fluxes.
 \end{tabularx}
+\end{center}
 
 \noindent {\bf Examples:}
 

@@ -2216,6 +2216,8 @@ subroutine BasisInit(reaction,option)
                                        reaction%nkinmnrl))
     reaction%kinmnrl_logKcoef = 0.d0
 #endif
+    allocate(reaction%kinmnrl_affinity_threshold(reaction%nkinmnrl))
+    reaction%kinmnrl_affinity_threshold = 0.d0
     allocate(reaction%kinmnrl_rate(1,reaction%nkinmnrl))
     reaction%kinmnrl_rate = 0.d0
     allocate(reaction%kinmnrl_molar_vol(reaction%nkinmnrl))
@@ -2289,6 +2291,8 @@ subroutine BasisInit(reaction,option)
                        reaction%kinmnrl_logK(ikinmnrl))
 !      reaction%kinmnrl_logK(imnrl) = cur_mineral%tstrxn%logK(option%itemp_ref)
 #endif
+        reaction%kinmnrl_affinity_threshold(ikinmnrl) = &
+          cur_mineral%tstrxn%affinity_threshold
         reaction%kinmnrl_rate(1,ikinmnrl) = cur_mineral%tstrxn%rate
         reaction%kinmnrl_molar_vol(ikinmnrl) = cur_mineral%molar_volume
         ikinmnrl = ikinmnrl + 1

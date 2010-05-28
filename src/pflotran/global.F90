@@ -535,6 +535,23 @@ subroutine GlobalUpdateDenAndSatPatch(realization,weight)
 !         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%den_store(:,TIME_T))
     enddo     
   endif 
+  if (option%iflowmode == FLASH2_MODE) then
+    do ghosted_id = 1, patch%aux%Global%num_aux
+      patch%aux%Global%aux_vars(ghosted_id)%pres(:) = &
+        (weight*patch%aux%Global%aux_vars(ghosted_id)%pres_store(:,TIME_TpDT)+ &
+         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%pres_store(:,TIME_T))
+      patch%aux%Global%aux_vars(ghosted_id)%temp(:) = &
+        (weight*patch%aux%Global%aux_vars(ghosted_id)%temp_store(:,TIME_TpDT)+ &
+         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%temp_store(:,TIME_T))
+      patch%aux%Global%aux_vars(ghosted_id)%fugacoeff(:) = &
+        (weight*patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(:,TIME_TpDT)+ &
+         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(:,TIME_T))
+      if(weight<1D-12) patch%aux%Global%aux_vars(ghosted_id)%reaction_rate(:)=0D0
+!      patch%aux%Global%aux_vars(ghosted_id)%den(:) = &
+!        (weight*patch%aux%Global%aux_vars(ghosted_id)%den_store(:,TIME_TpDT)+ &
+!         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%den_store(:,TIME_T))
+    enddo     
+  endif 
   
 end subroutine GlobalUpdateDenAndSatPatch
 
@@ -578,7 +595,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
                                    field%work,field%work_loc,ONEDOF)
   call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_SATURATION,time_level)                                     
   select case(option%iflowmode)
-    case(MPH_MODE, IMS_MODE)
+    case(MPH_MODE, IMS_MODE, FLASH2_MODE)
       ! Gas density
       call RealizationGetDataset(realization,field%work,GAS_DENSITY, &
                              ZERO_INTEGER)

@@ -93,6 +93,7 @@ subroutine Checkpoint(realization, &
   use Field_module
   use Logging_module
   
+  use Flash2_module
   use MPHASE_module
   use Immis_module
 
@@ -277,7 +278,7 @@ subroutine Checkpoint(realization, &
     ! that indicates what phases are present, as well as the 'var' vector 
     ! that holds variables derived from the primary ones via the translator.
     select case(option%iflowmode)
-      case(MPH_MODE,THC_MODE,RICHARDS_MODE, IMS_MODE)
+      case(MPH_MODE,THC_MODE,RICHARDS_MODE, IMS_MODE, FLASH2_MODE)
         call DiscretizationLocalToGlobal(realization%discretization, &
                                          field%iphas_loc,global_vec,ONEDOF)
         call VecView(global_vec, viewer, ierr)
@@ -373,6 +374,7 @@ subroutine Restart(realization, &
   use Field_module
   use Logging_module
 
+  use Flash2_module
   use MPHASE_module
   use Immis_module
   
@@ -492,7 +494,7 @@ subroutine Restart(realization, &
     call VecCopy(field%flow_xx,field%flow_yy,ierr)
     
     select case(option%iflowmode)
-      case(MPH_MODE,THC_MODE,RICHARDS_MODE, IMS_MODE)
+      case(MPH_MODE,THC_MODE,RICHARDS_MODE, IMS_MODE, FLASH2_MODE)
         call VecLoadIntoVector(viewer, global_vec, ierr)      
         call DiscretizationGlobalToLocal(discretization,global_vec, &
                                          field%iphas_loc,ONEDOF)
@@ -505,7 +507,10 @@ subroutine Restart(realization, &
         if (option%iflowmode == IMS_MODE) then
         ! set vardof vec in mphase
         endif
-
+        if (option%iflowmode == FLASH2_MODE) then
+        ! set vardof vec in mphase
+        endif
+ 
       case default
     end select
     
