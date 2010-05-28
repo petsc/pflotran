@@ -1743,24 +1743,45 @@ end subroutine RTCalculateTranMatrixPatch2
 ! date: 05/03/10
 !
 ! ************************************************************************** !
-subroutine RTReact(realization,ave_newton_iter)
+subroutine RTReact(realization)
 
   use Realization_module
   use Level_module
   use Patch_module
+  use Option_module
   use Logging_module
 
   type(realization_type) :: realization
-  PetscInt :: ave_newton_iter
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
+  type(option_type), pointer :: option
+
+#ifdef OS_STATISTICS
+  PetscInt :: call_count
+  PetscInt :: sum_newton_iterations
+  PetscInt :: max_newton_iterations_in_a_cell
+  PetscInt :: max_newton_iterations_on_a_core
+  PetscInt :: min_newton_iterations_on_a_core
+  PetscInt :: temp_int_in(3)
+  PetscInt :: temp_int_out(3)
+#endif
   
   PetscErrorCode :: ierr
   
   call PetscLogEventBegin(logging%event_rt_react,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,ierr)
+                          
+  option => realization%option
+  
+#ifdef OS_STATISTICS
+  call_count = 0
+  sum_newton_iterations = 0
+  max_newton_iterations_in_a_cell = -99999999
+  max_newton_iterations_on_a_core = -99999999
+  min_newton_iterations_on_a_core = 99999999
+#endif  
 
   cur_level => realization%level_list%first
   do
@@ -1769,11 +1790,71 @@ subroutine RTReact(realization,ave_newton_iter)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RTReactPatch(realization,ave_newton_iter)
+      call RTReactPatch(realization)
+
+#ifdef OS_STATISTICS
+      call_count = call_count + cur_patch%aux%RT%rt_parameter%newton_call_count
+      sum_newton_iterations = sum_newton_iterations + &
+        cur_patch%aux%RT%rt_parameter%newton_iterations
+      if (cur_patch%aux%RT%rt_parameter%max_newton_iterations > &
+          max_newton_iterations_in_a_cell) then
+        max_newton_iterations_in_a_cell = &
+          cur_patch%aux%RT%rt_parameter%max_newton_iterations
+      endif
+      if (cur_patch%aux%RT%rt_parameter%max_newton_iterations > &
+          cur_patch%aux%RT%rt_parameter%overall_max_newton_iterations) then
+        cur_patch%aux%RT%rt_parameter%overall_max_newton_iterations = &
+          cur_patch%aux%RT%rt_parameter%max_newton_iterations
+      endif
+#endif 
+
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
+    
+#ifdef OS_STATISTICS
+  temp_int_in(1) = call_count
+  temp_int_in(2) = sum_newton_iterations
+  call MPI_Allreduce(temp_int_in,temp_int_out,TWO_INTEGER, &
+                     MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
+  call_count = temp_int_out(1)
+  sum_newton_iterations = temp_int_out(2)
+
+  temp_int_in(1) = max_newton_iterations_in_a_cell
+  temp_int_in(2) = sum_newton_iterations ! to calc max # iteration on a core
+  temp_int_in(3) = -sum_newton_iterations ! to calc min # iteration on a core
+  call MPI_Allreduce(temp_int_in,temp_int_out,THREE_INTEGER, &
+                     MPI_INTEGER,MPI_MAX,option%mycomm,ierr)
+  max_newton_iterations_in_a_cell = temp_int_out(1)
+  max_newton_iterations_on_a_core = temp_int_out(2)
+  min_newton_iterations_on_a_core = -temp_int_out(3)
+  
+  if (option%print_screen_flag) then
+    write(*, '(" OS Reaction Statistics: ",/, &
+             & "   Ave Newton Its / Cell: ",1pe12.4,/, &
+             & "   Max Newton Its / Cell: ",i4,/, &
+             & "   Max Newton Its / Core: ",i6,/, &
+             & "   Min Newton Its / Core: ",i6)') &
+               float(sum_newton_iterations) / call_count, &
+               max_newton_iterations_in_a_cell, &
+               max_newton_iterations_on_a_core, &
+               min_newton_iterations_on_a_core
+  endif
+
+  if (option%print_file_flag) then
+    write(option%fid_out, '(" OS Reaction Statistics: ",/, &
+             & "   Ave Newton Its / Cell: ",1pe12.4,/, &
+             & "   Max Newton Its / Cell: ",i4,/, &
+             & "   Max Newton Its / Core: ",i6,/, &
+             & "   Min Newton Its / Core: ",i6)') &
+               float(sum_newton_iterations) / call_count, &
+               max_newton_iterations_in_a_cell, &
+               max_newton_iterations_on_a_core, &
+               min_newton_iterations_on_a_core
+  endif
+
+#endif 
 
   call PetscLogEventEnd(logging%event_rt_react,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -1788,7 +1869,7 @@ end subroutine RTReact
 ! date: 05/03/10
 !
 ! ************************************************************************** !
-subroutine RTReactPatch(realization,ave_newton_iter)
+subroutine RTReactPatch(realization)
 
   use Realization_module
   use Patch_module
@@ -1801,7 +1882,6 @@ subroutine RTReactPatch(realization,ave_newton_iter)
   implicit none
   
   type(realization_type) :: realization
-  PetscInt :: ave_newton_iter
   
   type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
@@ -1817,7 +1897,11 @@ subroutine RTReactPatch(realization,ave_newton_iter)
   PetscReal, pointer :: volume_p(:)
   PetscReal, pointer :: porosity_loc_p(:)
   PetscInt :: num_iterations
+#ifdef OS_STATISTICS
   PetscInt :: sum_iterations
+  PetscInt :: max_iterations
+  PetscInt :: icount
+#endif
   PetscErrorCode :: ierr
     
   option => realization%option
@@ -1838,7 +1922,11 @@ subroutine RTReactPatch(realization,ave_newton_iter)
   call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
 
   iphase = 1
+#ifdef OS_STATISTICS
   sum_iterations = 0
+  max_iterations = 0
+  icount = 0
+#endif
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
@@ -1852,9 +1940,24 @@ subroutine RTReactPatch(realization,ave_newton_iter)
                 num_iterations,reaction,option)
     ! set primary dependent var back to free-ion molality
     tran_xx_p(istart:iend) = rt_aux_vars(ghosted_id)%pri_molal
+#ifdef OS_STATISTICS
+    if (num_iterations > max_iterations) then
+      max_iterations = num_iterations
+    endif
     sum_iterations = sum_iterations + num_iterations
+    icount = icount + 1
+#endif
   enddo
-  ave_newton_iter = sum_iterations / grid%nlmax
+  
+#ifdef OS_STATISTICS
+  patch%aux%RT%rt_parameter%newton_call_count = icount
+  patch%aux%RT%rt_parameter%sum_newton_call_count = &
+    patch%aux%RT%rt_parameter%sum_newton_call_count + dble(icount)
+  patch%aux%RT%rt_parameter%newton_iterations = sum_iterations
+  patch%aux%RT%rt_parameter%sum_newton_iterations = &
+    patch%aux%RT%rt_parameter%sum_newton_iterations + dble(sum_iterations)
+  patch%aux%RT%rt_parameter%max_newton_iterations = max_iterations
+#endif
   
   ! Restore vectors
   call GridVecRestoreArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
@@ -5418,24 +5521,134 @@ subroutine RTDestroy(realization)
   use Realization_module
   use Level_module
   use Patch_module
+  use Option_module
 
   type(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
+
+#ifdef OS_STATISTICS
+  type(option_type), pointer :: option
+  PetscErrorCode :: ierr
   
+  PetscReal :: temp_real_in(3), temp_real_out(3)
+  PetscReal :: call_count
+  PetscReal :: sum_newton_iterations
+  PetscReal :: ave_newton_iterations_in_a_cell
+  PetscInt :: max_newton_iterations_in_a_cell
+  PetscReal :: max_newton_iterations_on_a_core
+  PetscReal :: min_newton_iterations_on_a_core
+  
+  PetscReal :: sum, ave, var, value
+  PetscInt :: irank
+  PetscReal, allocatable :: tot_newton_iterations(:)
+  
+  option => realization%option
+  call_count = 0.d0
+  sum_newton_iterations = 0.d0
+  max_newton_iterations_in_a_cell = -99999999
+  max_newton_iterations_on_a_core = -99999999.d0
+  min_newton_iterations_on_a_core = 99999999.d0
+  
+#endif  
+
   cur_level => realization%level_list%first
   do
     if (.not.associated(cur_level)) exit
     cur_patch => cur_level%patch_list%first
     do
       if (.not.associated(cur_patch)) exit
+
+#ifdef OS_STATISTICS
+      call_count = call_count + &
+        cur_patch%aux%RT%rt_parameter%sum_newton_call_count
+      sum_newton_iterations = sum_newton_iterations + &
+        cur_patch%aux%RT%rt_parameter%sum_newton_iterations
+      if (cur_patch%aux%RT%rt_parameter%overall_max_newton_iterations > &
+          max_newton_iterations_in_a_cell) then
+        max_newton_iterations_in_a_cell = &
+          cur_patch%aux%RT%rt_parameter%overall_max_newton_iterations
+      endif
+#endif
       realization%patch => cur_patch
       call RTDestroyPatch(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
+
+#ifdef OS_STATISTICS
+  temp_real_in(1) = call_count
+  temp_real_in(2) = sum_newton_iterations
+  call MPI_Allreduce(temp_real_in,temp_real_out,TWO_INTEGER, &
+                     MPI_DOUBLE_PRECISION,MPI_SUM,option%mycomm,ierr)
+  ave_newton_iterations_in_a_cell = temp_real_out(2)/temp_real_out(1)
+
+  temp_real_in(1) = dble(max_newton_iterations_in_a_cell)
+  temp_real_in(2) = sum_newton_iterations
+  temp_real_in(3) = -sum_newton_iterations
+  call MPI_Allreduce(temp_real_in,temp_real_out,THREE_INTEGER, &
+                     MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+  max_newton_iterations_in_a_cell = int(temp_real_out(1)+1.d-4)
+  max_newton_iterations_on_a_core = temp_real_out(2)
+  min_newton_iterations_on_a_core = -temp_real_out(3)
+
+  ! Now let's compute the variance!
+  ! Note: This operation does not scale
+  allocate(tot_newton_iterations(option%mycommsize))
+  call MPI_Gather(sum_newton_iterations,1,MPI_DOUBLE_PRECISION, &
+                  tot_newton_iterations,option%mycommsize, &
+                  MPI_DOUBLE_PRECISION,option%io_rank,option%mycomm,ierr)
+  sum = 0.d0
+  do irank = 1, option%mycommsize
+    sum = sum + tot_newton_iterations(irank)
+  enddo
+  ave = sum / dble(option%mycommsize)
+  var = 0.d0
+  do irank = 1, option%mycommsize
+    value = tot_newton_iterations(irank)
+    var = var + (value-ave)*(value-ave)
+  enddo
+  var = var / dble(option%mycommsize)
+  deallocate(tot_newton_iterations)
+
+  
+  if (option%print_screen_flag) then
+    write(*, '(/,/" OS Reaction Statistics (Overall): ",/, &
+             & "   Ave Newton Its / Cell: ",1pe12.4,/, &
+             & "   Max Newton Its / Cell: ",i4,/, &
+             & "   Max Newton Its / Core: ",1pe12.4,/, &
+             & "   Min Newton Its / Core: ",1pe12.4,/, &
+             & "   Ave Newton Its / Core: ",1pe12.4,/, &
+             & "   Var Newton Its / Core: ",1pe12.4,/)') &
+               ave_newton_iterations_in_a_cell, &
+               max_newton_iterations_in_a_cell, &
+               max_newton_iterations_on_a_core, &
+               min_newton_iterations_on_a_core, &
+               ave, &
+               var
+
+  endif
+
+  if (option%print_file_flag) then
+    write(option%fid_out, '(/,/" OS Reaction Statistics (Overall): ",/, &
+             & "   Ave Newton Its / Cell: ",1pe12.4,/, &
+             & "   Max Newton Its / Cell: ",i4,/, &
+             & "   Max Newton Its / Core: ",1pe12.4,/, &
+             & "   Min Newton Its / Core: ",1pe12.4,/, &
+             & "   Ave Newton Its / Core: ",1pe12.4,/, &
+             & "   Var Newton Its / Core: ",1pe12.4,/)') &
+               ave_newton_iterations_in_a_cell, &
+               max_newton_iterations_in_a_cell, &
+               max_newton_iterations_on_a_core, &
+               min_newton_iterations_on_a_core, &
+               ave, &
+               var
+  endif
+
+#endif 
+
 
 end subroutine RTDestroy
 

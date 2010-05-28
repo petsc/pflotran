@@ -1571,7 +1571,6 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
   PetscReal, parameter :: time_tol = 1.d-10
   PetscReal, pointer :: vec_ptr(:)
   PetscReal :: inf_norm, euclid_norm
-  PetscInt :: ave_newton_iterations
   PetscLogDouble :: log_start_time, log_end_time
 
   PetscViewer :: viewer
@@ -1709,7 +1708,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
     ! activity coefficients are updated within RReact!  DO NOT updated
     ! here as doing so will cause errors in the t0 portion of the
     ! accumulation term for equilibrium sorbed species
-    call RTReact(realization,ave_newton_iterations)
+    call RTReact(realization)
     
     call PetscBarrier(solver%ksp,ierr)
     call PetscGetTime(log_end_time, ierr)
@@ -1726,7 +1725,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
         option%tran_time/realization%output_option%tconv, &
         option%tran_dt/realization%output_option%tconv, &
         realization%output_option%tunit,ksp_reason,sum_linear_iterations, &
-        stepper%linear_cum,ave_newton_iterations
+        stepper%linear_cum
     endif
 
     if (option%print_file_flag) then
@@ -1736,7 +1735,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
         option%tran_time/realization%output_option%tconv, &
         option%tran_dt/realization%output_option%tconv, &
         realization%output_option%tunit,ksp_reason,sum_linear_iterations, &
-        stepper%linear_cum,ave_newton_iterations
+        stepper%linear_cum
     endif
 
 #if 1    
