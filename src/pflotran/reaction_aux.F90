@@ -369,6 +369,7 @@ module Reaction_Aux_module
     PetscReal, pointer :: kinmnrl_affinity_threshold(:)
     
     PetscReal :: max_dlnC
+    PetscReal :: reaction_tolerance
 
   end type reaction_type
 
@@ -627,6 +628,7 @@ function ReactionCreate()
   nullify(reaction%kinmnrl_affinity_threshold)
   
   reaction%max_dlnC = 5.d0
+  reaction%reaction_tolerance = 1.d-12
 
   ReactionCreate => reaction
   

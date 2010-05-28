@@ -1571,6 +1571,8 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
   PetscReal, parameter :: time_tol = 1.d-10
   PetscReal, pointer :: vec_ptr(:)
   PetscReal :: inf_norm, euclid_norm
+  PetscInt :: ave_newton_iterations
+  PetscLogDouble :: log_start_time, log_end_time
 
   PetscViewer :: viewer
 
@@ -1613,15 +1615,11 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
 
     if (option%print_screen_flag) write(*,'(/,2("=")" TRANSPORT ",47("="))')
 
+    ! do we need this...don't think so - geh
     call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
                                      field%tran_xx_loc,NTRANDOF)
 
-    ! activity coefficients need to be updated prior to transport if turned on.
-    if (realization%reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
-      call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_TRUE)
-    else
-      call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE)
-    endif
+    call PetscGetTime(log_start_time, ierr)
 
     if (option%nflowdof > 0) then
       option%tran_weight_t0 = (option%tran_time-option%tran_dt-start_time)/ &
@@ -1635,7 +1633,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
     ! update time derivative on RHS
     call RTUpdateRHSCoefs(realization)
     ! calculate total component concentrations based on t0 densities
-    call RTUpdateAuxVars(realization,PETSC_TRUE,PETSC_FALSE)
+    call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_FALSE)
     call RTCalculateRHS_t0(realization)
       
     ! set densities and saturations to t+dt
@@ -1660,7 +1658,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
     do idof = 1, option%ntrandof
 
 ! for debugging
-# if 0    
+#if 0    
       call RealizationGetDataset(realization,field%work,TOTAL_MOLARITY,idof)
       call VecGetArrayF90(field%work,vec_ptr,ierr)
       call VecRestoreArrayF90(field%work,vec_ptr,ierr)
@@ -1676,6 +1674,8 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
     
       call VecStrideGather(field%tran_rhs,idof-1,field%work,INSERT_VALUES,ierr)
       call KSPSolve(solver%ksp,field%work,field%work,ierr)
+      ! tran_xx will contain transported totals
+      ! tran_xx_loc will still contain free-ion from previous solution
       call VecStrideScatter(field%work,idof-1,field%tran_xx,INSERT_VALUES,ierr)
 
 ! for debugging
@@ -1684,7 +1684,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
       call VecRestoreArrayF90(field%work,vec_ptr,ierr)
 #endif      
 
-#if 1 
+#if 0 
       ! for testing residual calculation for Bobby
       ! solution is stored in field%work vector, but we need it in ghosted
       ! form for the residual calculation
@@ -1706,7 +1706,15 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
     sum_linear_iterations = sum_linear_iterations / option%ntrandof
     stepper%linear_cum = stepper%linear_cum + sum_linear_iterations
  
-    call RTReact(realization)
+    ! activity coefficients are updated within RReact!  DO NOT updated
+    ! here as doing so will cause errors in the t0 portion of the
+    ! accumulation term for equilibrium sorbed species
+    call RTReact(realization,ave_newton_iterations)
+    
+    call PetscBarrier(solver%ksp,ierr)
+    call PetscGetTime(log_end_time, ierr)
+    stepper%cumulative_solver_time = stepper%cumulative_solver_time + &
+                                     (log_end_time - log_start_time)          
 
     ! increment time steps number
     stepper%steps = stepper%steps + 1      
@@ -1714,21 +1722,21 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
     if (option%print_screen_flag) then
       write(*, '(" TRAN ",i6," Time= ",1pe12.4," Dt= ", &
           & 1pe12.4," [",a1,"]"," ksp_conv_reason: ",i4,/," linear = ",i5, &
-          & " [",i10,"]")') stepper%steps, &
+          & " [",i10,"]",/," average reaction its = ",i5)') stepper%steps, &
         option%tran_time/realization%output_option%tconv, &
         option%tran_dt/realization%output_option%tconv, &
         realization%output_option%tunit,ksp_reason,sum_linear_iterations, &
-        stepper%linear_cum
+        stepper%linear_cum,ave_newton_iterations
     endif
 
     if (option%print_file_flag) then
       write(option%fid_out, '(" TRAN ",i6," Time= ",1pe12.4," Dt= ", &
-          & 1pe12.4," [",a1,"]"," ksp_conv_reason: ",i4,/," linear = ",i5, &
-          & " [",i10,"]")') stepper%steps, &
+          & 1pe12.4," [",a1,"]"," ksp_conv_reason = ",i4,/," linear = ",i5, &
+          & " [",i10,"]",/," average reaction its = ",i5)') stepper%steps, &
         option%tran_time/realization%output_option%tconv, &
         option%tran_dt/realization%output_option%tconv, &
         realization%output_option%tunit,ksp_reason,sum_linear_iterations, &
-        stepper%linear_cum
+        stepper%linear_cum,ave_newton_iterations
     endif
 
 #if 1    

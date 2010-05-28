@@ -212,11 +212,11 @@ reaction.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reaction_aux.o : option.o string.o
 transport.o : reactive_transport_aux.o option.o matrix_block_aux.o
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
-                       reactive_transport_aux.o fluid.o
+                       reactive_transport_aux.o fluid.o logging.o
 reactive_transport_aux.o : option.o reaction_aux.o matrix_block_aux.o
 thc.o : thc_aux.o realization.o saturation_function.o
 richards.o : richards_aux.o realization.o saturation_function.o \
-             matrix_buffer.o
+             matrix_buffer.o logging.o
 thc_aux.o : option.o material.o water_eos.o saturation_function.o
 richards_aux.o : option.o material.o water_eos.o saturation_function.o \
                  matrix_buffer.o
@@ -235,7 +235,7 @@ flash2_aux.o :  option.o material.o water_eos.o co2_span_wagner.o \
 timestepper.o : thc.o richards.o mphase.o flash2.o \
                 realization.o grid.o option.o field.o solver.o \
                 output.o convergence.o checkpoint.o waypoint.o logging.o \
-                mass_balance.o input.o string.o
+                mass_balance.o input.o string.o reactive_transport.o
 hdf5.o : realization.o option.o logging.o
 hdf5_aux.o : option.o logging.o
 checkpoint.o : realization.o logging.o

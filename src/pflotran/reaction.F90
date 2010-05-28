@@ -572,6 +572,9 @@ subroutine ReactionRead(reaction,input,option)
         call InputErrorMsg(input,option,trim(word),'CHEMISTRY')
       case('OPERATOR_SPLIT','OPERATOR_SPLITTING')
         option%reactive_transport_coupling = OPERATOR_SPLIT    
+      case('REACTION_TOLERANCE')
+        call InputReadDouble(input,option,reaction%reaction_tolerance)
+        call InputErrorMsg(input,option,'reaction tolerance','CHEMISTRY')
       case default
         option%io_buffer = 'CHEMISTRY keyword: '//trim(word)//' not recognized'
         call printErrMsg(option)
@@ -2370,7 +2373,7 @@ end subroutine RJumpStartKineticSorption
 !
 ! ************************************************************************** !
 subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
-                  reaction,option)
+                  num_iterations_,reaction,option)
 
   use Option_module
   
@@ -2383,6 +2386,7 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
   type(option_type) :: option
   PetscReal :: volume
   PetscReal :: porosity
+  PetscInt :: num_iterations_
   
   PetscReal :: residual(reaction%ncomp)
   PetscReal :: res(reaction%ncomp)
@@ -2397,7 +2401,6 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
   PetscInt :: icomp
   
   PetscInt, parameter :: iphase = 1
-  PetscReal, parameter :: tol = 1.d-12
 
 #ifdef REVISED_TRANSPORT
   
@@ -2416,6 +2419,11 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
   if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
     call RAccumulationSorb(rt_auxvar,global_auxvar,volume,reaction, &
                            option,fixed_accum)  
+  endif
+
+  ! now update activity coefficients
+  if (reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
+    call RActivityCoefficients(rt_auxvar,global_auxvar,reaction,option)
   endif
   
   do
@@ -2457,13 +2465,15 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
   
     maximum_relative_change = maxval(abs((rt_auxvar%pri_molal-prev_molal)/ &
                                          prev_molal))
-    if (maximum_relative_change < tol) exit
+    if (maximum_relative_change < reaction%reaction_tolerance) exit
   
   enddo
 
   ! one last update
   call RTAuxVarCompute(rt_auxvar,global_auxvar,reaction,option)
 
+  num_iterations_ = num_iterations
+  
 #endif
 
 end subroutine RReact
