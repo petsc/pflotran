@@ -694,12 +694,12 @@ contains
 
   t=tc+273.15
   ! adding temparray to improve efficiency (and remove Intel warning) - geh
+  temparray = coef(1,:)
   call duan_sun_param(t,p,temparray,mu0)
-  coef(1,:) = temparray(:)
+  temparray = coef(2,:)
   call duan_sun_param(t,p,temparray,lamc)
-  coef(2,:) = temparray(:)
+  temparray = coef(3,:)
   call duan_sun_param(t,p,temparray,lamca)
-  coef(3,:) = temparray(:)
   
   !activity coef. co2
   lngamco2 = 2.d0*lamc*mc + lamca*mc*ma ! = log(gam(jco2))
