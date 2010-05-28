@@ -675,6 +675,7 @@ contains
   PetscReal, save :: coef(3,11)
   PetscReal :: tc,p,mco2,phico2,mc,ma,psat, t
   PetscReal, optional :: co2_aq_actcoef
+  PetscReal :: temparray(11)
 
   PetscReal :: lngamco2, tmp, mu0, lamc, lamca, yco2
 
@@ -692,9 +693,13 @@ contains
 
 
   t=tc+273.15
-  call duan_sun_param(t,p,coef(1,:),mu0)
-  call duan_sun_param(t,p,coef(2,:),lamc)
-  call duan_sun_param(t,p,coef(3,:),lamca)
+  ! adding temparray to improve efficiency (and remove Intel warning) - geh
+  call duan_sun_param(t,p,temparray,mu0)
+  coef(1,:) = temparray(:)
+  call duan_sun_param(t,p,temparray,lamc)
+  coef(2,:) = temparray(:)
+  call duan_sun_param(t,p,temparray,lamca)
+  coef(3,:) = temparray(:)
   
   !activity coef. co2
   lngamco2 = 2.d0*lamc*mc + lamca*mc*ma ! = log(gam(jco2))
