@@ -1743,7 +1743,7 @@ end subroutine RTCalculateTranMatrixPatch2
 ! date: 05/03/10
 !
 ! ************************************************************************** !
-subroutine RTReact(realization)
+subroutine RTReact(realization,ave_newton_iter)
 
   use Realization_module
   use Level_module
@@ -1751,6 +1751,7 @@ subroutine RTReact(realization)
   use Logging_module
 
   type(realization_type) :: realization
+  PetscInt :: ave_newton_iter
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -1768,7 +1769,7 @@ subroutine RTReact(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RTReactPatch(realization)
+      call RTReactPatch(realization,ave_newton_iter)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -1787,7 +1788,7 @@ end subroutine RTReact
 ! date: 05/03/10
 !
 ! ************************************************************************** !
-subroutine RTReactPatch(realization)
+subroutine RTReactPatch(realization,ave_newton_iter)
 
   use Realization_module
   use Patch_module
@@ -1800,6 +1801,7 @@ subroutine RTReactPatch(realization)
   implicit none
   
   type(realization_type) :: realization
+  PetscInt :: ave_newton_iter
   
   type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
@@ -1814,6 +1816,8 @@ subroutine RTReactPatch(realization)
   PetscReal, pointer :: tran_xx_p(:)
   PetscReal, pointer :: volume_p(:)
   PetscReal, pointer :: porosity_loc_p(:)
+  PetscInt :: num_iterations
+  PetscInt :: sum_iterations
   PetscErrorCode :: ierr
     
   option => realization%option
@@ -1834,6 +1838,7 @@ subroutine RTReactPatch(realization)
   call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
 
   iphase = 1
+  sum_iterations = 0
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
@@ -1844,11 +1849,13 @@ subroutine RTReactPatch(realization)
     call RReact(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                 tran_xx_p(istart:iend),volume_p(local_id), &
                 porosity_loc_p(ghosted_id), &
-                reaction,option)
+                num_iterations,reaction,option)
     ! set primary dependent var back to free-ion molality
     tran_xx_p(istart:iend) = rt_aux_vars(ghosted_id)%pri_molal
+    sum_iterations = sum_iterations + num_iterations
   enddo
-
+  ave_newton_iter = sum_iterations / grid%nlmax
+  
   ! Restore vectors
   call GridVecRestoreArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  

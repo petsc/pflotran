@@ -58,6 +58,8 @@
       character*3 :: q
       character*1 :: tab
       
+      PetscReal :: temparray(15)
+      
       tab = char(9)
       q = '","'
 
@@ -429,7 +431,8 @@
     read(122,*)
     do i = 0, ntab_p
       do j = 0, ntab_t
-        read(122,'(1p15e14.6)') co2_prop_spwag(i,j,1:15)
+        read(122,'(1p15e14.6)') temparray
+        co2_prop_spwag(i,j,1:15) = temparray(:)
       enddo
     enddo
     close (122)
