@@ -1571,6 +1571,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
   PetscReal, parameter :: time_tol = 1.d-10
   PetscReal, pointer :: vec_ptr(:)
   PetscReal :: inf_norm, euclid_norm
+  PetscLogDouble :: log_start_time, log_end_time
 
   PetscViewer :: viewer
 
@@ -1613,8 +1614,11 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
 
     if (option%print_screen_flag) write(*,'(/,2("=")" TRANSPORT ",47("="))')
 
+    ! do we need this...don't think so - geh
     call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
                                      field%tran_xx_loc,NTRANDOF)
+
+    call PetscGetTime(log_start_time, ierr)
 
     if (option%nflowdof > 0) then
       option%tran_weight_t0 = (option%tran_time-option%tran_dt-start_time)/ &
@@ -1705,6 +1709,11 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
     ! here as doing so will cause errors in the t0 portion of the
     ! accumulation term for equilibrium sorbed species
     call RTReact(realization)
+
+    call PetscBarrier(solver%ksp,ierr)
+    call PetscGetTime(log_end_time, ierr)
+    stepper%cumulative_solver_time = stepper%cumulative_solver_time + &
+                                     (log_end_time - log_start_time)          
 
     ! increment time steps number
     stepper%steps = stepper%steps + 1      
