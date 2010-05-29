@@ -5595,24 +5595,7 @@ subroutine RTDestroy(realization)
   min_newton_iterations_on_a_core = -temp_real_out(3)
 
   ! Now let's compute the variance!
-  ! Note: This operation does not scale
-  allocate(tot_newton_iterations(option%mycommsize))
-  call MPI_Gather(sum_newton_iterations,1,MPI_DOUBLE_PRECISION, &
-                  tot_newton_iterations,option%mycommsize, &
-                  MPI_DOUBLE_PRECISION,option%io_rank,option%mycomm,ierr)
-  sum = 0.d0
-  do irank = 1, option%mycommsize
-    sum = sum + tot_newton_iterations(irank)
-  enddo
-  ave = sum / dble(option%mycommsize)
-  var = 0.d0
-  do irank = 1, option%mycommsize
-    value = tot_newton_iterations(irank)
-    var = var + (value-ave)*(value-ave)
-  enddo
-  var = var / dble(option%mycommsize)
-  deallocate(tot_newton_iterations)
-
+  call OptionMeanVariance(sum_newton_iterations,ave,var,PETSC_TRUE,option)
   
   if (option%print_screen_flag) then
     write(*, '(/,/" OS Reaction Statistics (Overall): ",/, &
