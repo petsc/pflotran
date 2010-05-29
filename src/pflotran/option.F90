@@ -238,7 +238,8 @@ module Option_module
             OptionPrintToScreen, &
             OptionPrintToFile, &
             OutputOptionDestroy, &
-            OptionInitRealization
+            OptionInitRealization, &
+            OptionMeanVariance
 
 contains
 
@@ -795,6 +796,41 @@ function OptionPrintToFile(option)
   endif
 
 end function OptionPrintToFile
+
+! ************************************************************************** !
+!
+! OptionMeanVariance: Calculates the mean and optionally variance of a number
+!                     across processor cores
+! author: Glenn Hammond
+! date: 05/29/10
+!
+! ************************************************************************** !
+subroutine OptionMeanVariance(value,mean,variance,calculate_variance,option)
+
+  implicit none
+
+  type(option_type) :: option
+  PetscReal :: value
+  PetscReal :: mean
+  PetscReal :: variance
+  PetscTruth :: calculate_variance
+
+  PetscReal :: temp_real
+  PetscErrorCode :: ierr
+  
+  call MPI_Allreduce(value,temp_real,ONE_INTEGER,MPI_DOUBLE_PRECISION, &
+                     MPI_SUM,option%mycomm,ierr)
+  mean = temp_real / dble(option%mycommsize)
+  
+  if (calculate_variance) then
+    temp_real = value-mean
+    temp_real = temp_real*temp_real
+    call MPI_Allreduce(temp_real,variance,ONE_INTEGER,MPI_DOUBLE_PRECISION, &
+                       MPI_SUM,option%mycomm,ierr)
+    variance = variance / dble(option%mycommsize)
+  endif
+  
+end subroutine OptionMeanVariance
 
 ! ************************************************************************** !
 !

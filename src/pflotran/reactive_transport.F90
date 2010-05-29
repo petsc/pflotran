@@ -1760,6 +1760,7 @@ subroutine RTReact(realization)
 #ifdef OS_STATISTICS
   PetscInt :: call_count
   PetscInt :: sum_newton_iterations
+  PetscReal :: ave_newton_iterations_in_a_cell
   PetscInt :: max_newton_iterations_in_a_cell
   PetscInt :: max_newton_iterations_on_a_core
   PetscInt :: min_newton_iterations_on_a_core
@@ -1818,8 +1819,7 @@ subroutine RTReact(realization)
   temp_int_in(2) = sum_newton_iterations
   call MPI_Allreduce(temp_int_in,temp_int_out,TWO_INTEGER, &
                      MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
-  call_count = temp_int_out(1)
-  sum_newton_iterations = temp_int_out(2)
+  ave_newton_iterations_in_a_cell = float(temp_int_out(2)) / temp_int_out(1)
 
   temp_int_in(1) = max_newton_iterations_in_a_cell
   temp_int_in(2) = sum_newton_iterations ! to calc max # iteration on a core
@@ -1836,7 +1836,7 @@ subroutine RTReact(realization)
              & "   Max Newton Its / Cell: ",i4,/, &
              & "   Max Newton Its / Core: ",i6,/, &
              & "   Min Newton Its / Core: ",i6)') &
-               float(sum_newton_iterations) / call_count, &
+               ave_newton_iterations_in_a_cell, &
                max_newton_iterations_in_a_cell, &
                max_newton_iterations_on_a_core, &
                min_newton_iterations_on_a_core
@@ -1848,7 +1848,7 @@ subroutine RTReact(realization)
              & "   Max Newton Its / Cell: ",i4,/, &
              & "   Max Newton Its / Core: ",i6,/, &
              & "   Min Newton Its / Core: ",i6)') &
-               float(sum_newton_iterations) / call_count, &
+               ave_newton_iterations_in_a_cell, &
                max_newton_iterations_in_a_cell, &
                max_newton_iterations_on_a_core, &
                min_newton_iterations_on_a_core
@@ -5579,72 +5579,57 @@ subroutine RTDestroy(realization)
   enddo
 
 #ifdef OS_STATISTICS
-  temp_real_in(1) = call_count
-  temp_real_in(2) = sum_newton_iterations
-  call MPI_Allreduce(temp_real_in,temp_real_out,TWO_INTEGER, &
-                     MPI_DOUBLE_PRECISION,MPI_SUM,option%mycomm,ierr)
-  ave_newton_iterations_in_a_cell = temp_real_out(2)/temp_real_out(1)
+  if (option%reactive_transport_coupling == OPERATOR_SPLIT) then
+    temp_real_in(1) = call_count
+    temp_real_in(2) = sum_newton_iterations
+    call MPI_Allreduce(temp_real_in,temp_real_out,TWO_INTEGER, &
+                       MPI_DOUBLE_PRECISION,MPI_SUM,option%mycomm,ierr)
+    ave_newton_iterations_in_a_cell = temp_real_out(2)/temp_real_out(1)
 
-  temp_real_in(1) = dble(max_newton_iterations_in_a_cell)
-  temp_real_in(2) = sum_newton_iterations
-  temp_real_in(3) = -sum_newton_iterations
-  call MPI_Allreduce(temp_real_in,temp_real_out,THREE_INTEGER, &
-                     MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
-  max_newton_iterations_in_a_cell = int(temp_real_out(1)+1.d-4)
-  max_newton_iterations_on_a_core = temp_real_out(2)
-  min_newton_iterations_on_a_core = -temp_real_out(3)
+    temp_real_in(1) = dble(max_newton_iterations_in_a_cell)
+    temp_real_in(2) = sum_newton_iterations
+    temp_real_in(3) = -sum_newton_iterations
+    call MPI_Allreduce(temp_real_in,temp_real_out,THREE_INTEGER, &
+                       MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+    max_newton_iterations_in_a_cell = int(temp_real_out(1)+1.d-4)
+    max_newton_iterations_on_a_core = temp_real_out(2)
+    min_newton_iterations_on_a_core = -temp_real_out(3)
 
-  ! Now let's compute the variance!
-  ! Note: This operation does not scale
-  allocate(tot_newton_iterations(option%mycommsize))
-  call MPI_Gather(sum_newton_iterations,1,MPI_DOUBLE_PRECISION, &
-                  tot_newton_iterations,option%mycommsize, &
-                  MPI_DOUBLE_PRECISION,option%io_rank,option%mycomm,ierr)
-  sum = 0.d0
-  do irank = 1, option%mycommsize
-    sum = sum + tot_newton_iterations(irank)
-  enddo
-  ave = sum / dble(option%mycommsize)
-  var = 0.d0
-  do irank = 1, option%mycommsize
-    value = tot_newton_iterations(irank)
-    var = var + (value-ave)*(value-ave)
-  enddo
-  var = var / dble(option%mycommsize)
-  deallocate(tot_newton_iterations)
-
+    ! Now let's compute the variance!
+    call OptionMeanVariance(sum_newton_iterations,ave,var,PETSC_TRUE,option)
   
-  if (option%print_screen_flag) then
-    write(*, '(/,/" OS Reaction Statistics (Overall): ",/, &
-             & "   Ave Newton Its / Cell: ",1pe12.4,/, &
-             & "   Max Newton Its / Cell: ",i4,/, &
-             & "   Max Newton Its / Core: ",1pe12.4,/, &
-             & "   Min Newton Its / Core: ",1pe12.4,/, &
-             & "   Ave Newton Its / Core: ",1pe12.4,/, &
-             & "   Var Newton Its / Core: ",1pe12.4,/)') &
-               ave_newton_iterations_in_a_cell, &
-               max_newton_iterations_in_a_cell, &
-               max_newton_iterations_on_a_core, &
-               min_newton_iterations_on_a_core, &
-               ave, &
-               var
+    if (option%print_screen_flag) then
+      write(*, '(/,/" OS Reaction Statistics (Overall): ",/, &
+               & "       Ave Newton Its / Cell: ",1pe12.4,/, &
+               & "       Max Newton Its / Cell: ",i4,/, &
+               & "       Max Newton Its / Core: ",1pe12.4,/, &
+               & "       Min Newton Its / Core: ",1pe12.4,/, &
+               & "       Ave Newton Its / Core: ",1pe12.4,/, &
+               & "   Std Dev Newton Its / Core: ",1pe12.4,/)') &
+                 ave_newton_iterations_in_a_cell, &
+                 max_newton_iterations_in_a_cell, &
+                 max_newton_iterations_on_a_core, &
+                 min_newton_iterations_on_a_core, &
+                 ave, &
+                 sqrt(var)
 
-  endif
+    endif
 
-  if (option%print_file_flag) then
-    write(option%fid_out, '(/,/" OS Reaction Statistics (Overall): ",/, &
-             & "   Ave Newton Its / Cell: ",1pe12.4,/, &
-             & "   Max Newton Its / Cell: ",i4,/, &
-             & "   Max Newton Its / Core: ",1pe12.4,/, &
-             & "   Min Newton Its / Core: ",1pe12.4,/, &
-             & "   Ave Newton Its / Core: ",1pe12.4,/, &
-             & "   Var Newton Its / Core: ",1pe12.4,/)') &
-               ave_newton_iterations_in_a_cell, &
-               max_newton_iterations_in_a_cell, &
-               max_newton_iterations_on_a_core, &
-               min_newton_iterations_on_a_core, &
-               ave, &
-               var
+    if (option%print_file_flag) then
+      write(option%fid_out, '(/,/" OS Reaction Statistics (Overall): ",/, &
+               & "       Ave Newton Its / Cell: ",1pe12.4,/, &
+               & "       Max Newton Its / Cell: ",i4,/, &
+               & "       Max Newton Its / Core: ",1pe12.4,/, &
+               & "       Min Newton Its / Core: ",1pe12.4,/, &
+               & "       Ave Newton Its / Core: ",1pe12.4,/, &
+               & "   Std Dev Newton Its / Core: ",1pe12.4,/)') &
+                 ave_newton_iterations_in_a_cell, &
+                 max_newton_iterations_in_a_cell, &
+                 max_newton_iterations_on_a_core, &
+                 min_newton_iterations_on_a_core, &
+                 ave, &
+                 sqrt(var)
+    endif
   endif
 
 #endif 
