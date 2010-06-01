@@ -86,7 +86,9 @@ private
             RealizationInitConstraints, &
             RealProcessMatPropAndSatFunc, &
             RealProcessFluidProperties, &
-            RealizationUpdateProperties
+            RealizationUpdateProperties, &
+            RealizationCountCells, &
+            RealizationPrintGridStatistics
             
 contains
   
@@ -1956,6 +1958,257 @@ subroutine RealizationUpdatePropertiesPatch(realization)
   
 end subroutine RealizationUpdatePropertiesPatch
  
+! ************************************************************************** !
+!
+! RealizationCountCells: Counts # of active and inactive grid cells 
+! author: Glenn Hammond
+! date: 06/01/10
+!
+! ************************************************************************** !
+subroutine RealizationCountCells(realization,global_total_count, &
+                                 global_active_count,total_count,active_count)
+
+  use Option_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  PetscInt :: global_total_count
+  PetscInt :: global_active_count
+  PetscInt :: total_count
+  PetscInt :: active_count
+  
+  PetscInt :: patch_total_count
+  PetscInt :: patch_active_count
+  PetscInt :: temp_int_in(2), temp_int_out(2)
+  PetscErrorCode :: ierr
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  total_count = 0
+  active_count = 0
+    
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      call PatchCountCells(cur_patch,patch_total_count,patch_active_count)
+      total_count = total_count + patch_total_count
+      active_count = active_count + patch_active_count
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+  
+  temp_int_in(1) = total_count
+  temp_int_in(2) = active_count
+  call MPI_Allreduce(temp_int_in,temp_int_out,TWO_INTEGER,MPI_INTEGER, &
+                     MPI_SUM,realization%option%mycomm,ierr)
+  global_total_count = temp_int_out(1)
+  global_active_count = temp_int_out(2)
+
+end subroutine RealizationCountCells
+
+! ************************************************************************** !
+!
+! RealizationPrintGridStatistics: Prints statistics regarding the numerical
+!                                 discretization 
+! author: Glenn Hammond
+! date: 06/01/10
+!
+! ************************************************************************** !
+subroutine RealizationPrintGridStatistics(realization)
+
+  use Grid_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+
+  PetscInt :: i1, i2, i3
+  PetscReal :: r1, r2, r3
+  PetscInt :: global_total_count, global_active_count
+  PetscInt :: total_count, active_count
+  PetscReal :: total_min, total_max, total_mean, total_variance
+  PetscReal :: active_min, active_max, active_mean, active_variance
+  PetscInt :: inactive_histogram(12), temp_int_out(12)
+  PetscReal :: inactive_percentages(12)
+  PetscErrorCode :: ierr
+
+  option => realization%option
+  grid => realization%patch%grid
+
+  ! print # of active and inactive grid cells
+  call RealizationCountCells(realization,global_total_count, &
+                             global_active_count,total_count,active_count)
+  r1 = dble(total_count)
+  call OptionMaxMinMeanVariance(r1,total_max, &
+                                total_min,total_mean, &
+                                total_variance,PETSC_TRUE,option)
+  r1 = dble(active_count)
+  call OptionMaxMinMeanVariance(r1,active_max, &
+                                active_min,active_mean, &
+                                active_variance,PETSC_TRUE,option)
+                  
+  r1 = dble(active_count) / dble(total_count)    
+  inactive_histogram = 0                          
+  if (r1 >= (1.d0-1.d-8)) then
+    inactive_histogram(12) = 1
+  else if (r1 >= .9d0 .and. r1 < (1.d0-1.d-8)) then
+    inactive_histogram(11) = 1
+  else if (r1 >= .8d0 .and. r1 < .9d0) then
+    inactive_histogram(10) = 1
+  else if (r1 >= .7d0 .and. r1 < .8d0) then
+    inactive_histogram(9) = 1
+  else if (r1 >= .6d0 .and. r1 < .7d0) then
+    inactive_histogram(8) = 1
+  else if (r1 >= .5d0 .and. r1 < .6d0) then
+    inactive_histogram(7) = 1
+  else if (r1 >= .4d0 .and. r1 < .5d0) then
+    inactive_histogram(6) = 1
+  else if (r1 >= .3d0 .and. r1 < .4d0) then
+    inactive_histogram(5) = 1
+  else if (r1 >= .2d0 .and. r1 < .3d0) then
+    inactive_histogram(4) = 1
+  else if (r1 >= .1d0 .and. r1 < .2d0) then
+    inactive_histogram(3) = 1
+  else if (r1 > 1.d-20 .and. r1 < .1d0) then
+    inactive_histogram(2) = 1
+  else if (r1 < 1.d-20) then
+    inactive_histogram(1) = 1
+  endif
+  
+  call MPI_Allreduce(inactive_histogram,temp_int_out,TWELVE_INTEGER, &
+                     MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
+
+  ! why I cannot use *100, I do not know....geh
+  inactive_percentages = dble(temp_int_out)/dble(option%mycommsize)*10.d0
+  inactive_percentages = inactive_percentages+1.d-8
+
+  r1 = 0.d0
+  do i1 = 1, 12
+    r1 = r1 + inactive_percentages(i1)
+  enddo
+                                
+  i1 = -999
+  i2 = -999
+  i3 = -999
+  if (associated(grid%structured_grid)) then
+    i1 = grid%structured_grid%npx_final
+    i2 = grid%structured_grid%npy_final
+    i3 = grid%structured_grid%npz_final
+  endif
+  if (OptionPrintToScreen(option)) then
+    write(*,'(/," Grid Stats:",/, &
+                "                       Global # cells: ",i12,/, &
+                "                Global # active cells: ",i12,/, &
+                "                              # cores: ",i12,/, &
+                "         Processor core decomposition: ",3i6,/, &
+                "               Maximum # cells / core: ",i12,/, &
+                "               Minimum # cells / core: ",i12,/, &
+                "               Average # cells / core: ",1pe12.4,/, &
+                "               Std Dev # cells / core: ",1pe12.4,/, &
+                "        Maximum # active cells / core: ",i12,/, &
+                "        Minimum # active cells / core: ",i12,/, &
+                "        Average # active cells / core: ",1pe12.4,/, &
+                "        Std Dev # active cells / core: ",1pe12.4,/,/, &
+                "        % cores with % active cells =       0%: ",1f7.2,/, &
+                "        % cores with % active cells =  0.1-10%: ",1f7.2,/, &
+                "        % cores with % active cells =   10-20%: ",1f7.2,/, &
+                "        % cores with % active cells =   20-30%: ",1f7.2,/, &
+                "        % cores with % active cells =   30-40%: ",1f7.2,/, &
+                "        % cores with % active cells =   40-50%: ",1f7.2,/, &
+                "        % cores with % active cells =   50-60%: ",1f7.2,/, &
+                "        % cores with % active cells =   60-70%: ",1f7.2,/, &
+                "        % cores with % active cells =   70-80%: ",1f7.2,/, &
+                "        % cores with % active cells =   80-90%: ",1f7.2,/, &
+                "        % cores with % active cells = 90-99.9%: ",1f7.2,/, &
+                "        % cores with % active cells =     100%: ",1f7.2,/, &
+                "                                        Check : ",1f7.2,/)') &
+           global_total_count, &
+           global_active_count, &
+           option%mycommsize, &
+           i1,i2,i3, &
+           int(total_max+1.d-4), &
+           int(total_min+1.d-4), &
+           total_mean, sqrt(total_variance), &
+           int(active_max+1.d-4), &
+           int(active_min+1.d-4), &
+           active_mean, sqrt(active_variance), &
+           inactive_percentages(1), &
+           inactive_percentages(2), &
+           inactive_percentages(3), &
+           inactive_percentages(4), &
+           inactive_percentages(5), &
+           inactive_percentages(6), &
+           inactive_percentages(7), &
+           inactive_percentages(8), &
+           inactive_percentages(9), &
+           inactive_percentages(10), &
+           inactive_percentages(11), &
+           inactive_percentages(12), &
+           r1
+  endif
+  if (OptionPrintToFile(option)) then
+    write(option%fid_out,'(/," Grid Stats:",/, &
+                "                       Global # cells: ",i12,/, &
+                "                Global # active cells: ",i12,/, &
+                "                              # cores: ",i12,/, &
+                "         Processor core decomposition: ",3i6,/, &
+                "               Maximum # cells / core: ",i12,/, &
+                "               Minimum # cells / core: ",i12,/, &
+                "               Average # cells / core: ",1pe12.4,/, &
+                "               Std Dev # cells / core: ",1pe12.4,/, &
+                "        Maximum # active cells / core: ",i12,/, &
+                "        Minimum # active cells / core: ",i12,/, &
+                "        Average # active cells / core: ",1pe12.4,/, &
+                "        Std Dev # active cells / core: ",1pe12.4,/,/, &
+                "        % cores with % active cells =       0%: ",1f7.2,/, &
+                "        % cores with % active cells =  0.1-10%: ",1f7.2,/, &
+                "        % cores with % active cells =   10-20%: ",1f7.2,/, &
+                "        % cores with % active cells =   20-30%: ",1f7.2,/, &
+                "        % cores with % active cells =   30-40%: ",1f7.2,/, &
+                "        % cores with % active cells =   40-50%: ",1f7.2,/, &
+                "        % cores with % active cells =   50-60%: ",1f7.2,/, &
+                "        % cores with % active cells =   60-70%: ",1f7.2,/, &
+                "        % cores with % active cells =   70-80%: ",1f7.2,/, &
+                "        % cores with % active cells =   80-90%: ",1f7.2,/, &
+                "        % cores with % active cells = 90-99.9%: ",1f7.2,/, &
+                "        % cores with % active cells =     100%: ",1f7.2,/, &
+                "                                        Check : ",1f7.2,/)') &
+           global_total_count, &
+           global_active_count, &
+           option%mycommsize, &
+           i1,i2,i3, &
+           int(total_max+1.d-4), &
+           int(total_min+1.d-4), &
+           total_mean, sqrt(total_variance), &
+           int(active_max+1.d-4), &
+           int(active_min+1.d-4), &
+           active_mean, sqrt(active_variance), &
+           inactive_percentages(1), &
+           inactive_percentages(2), &
+           inactive_percentages(3), &
+           inactive_percentages(4), &
+           inactive_percentages(5), &
+           inactive_percentages(6), &
+           inactive_percentages(7), &
+           inactive_percentages(8), &
+           inactive_percentages(9), &
+           inactive_percentages(10), &
+           inactive_percentages(11), &
+           inactive_percentages(12), &
+           r1
+  endif
+
+end subroutine RealizationPrintGridStatistics
+
 ! ************************************************************************** !
 !
 ! RealizationDestroy: Deallocates a realization

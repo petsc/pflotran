@@ -239,7 +239,8 @@ module Option_module
             OptionPrintToFile, &
             OutputOptionDestroy, &
             OptionInitRealization, &
-            OptionMeanVariance
+            OptionMeanVariance, &
+            OptionMaxMinMeanVariance
 
 contains
 
@@ -796,6 +797,43 @@ function OptionPrintToFile(option)
   endif
 
 end function OptionPrintToFile
+
+! ************************************************************************** !
+!
+! OptionMaxMinMeanVariance: Calculates the maximum, minumum, mean and 
+!                           optionally variance of a number across processor 
+!                           cores
+! author: Glenn Hammond
+! date: 06/01/10
+!
+! ************************************************************************** !
+subroutine OptionMaxMinMeanVariance(value,max,min,mean,variance, &
+                                    calculate_variance,option)
+
+  implicit none
+
+  type(option_type) :: option
+  PetscReal :: value
+  PetscReal :: max
+  PetscReal :: min
+  PetscReal :: mean
+  PetscReal :: variance
+  PetscTruth :: calculate_variance
+
+  PetscReal :: temp_real_in(2), temp_real_out(2)
+  PetscErrorCode :: ierr
+  
+  temp_real_in(1) = value
+  temp_real_in(2) = -1.d0*value
+  call MPI_Allreduce(temp_real_in,temp_real_out,TWO_INTEGER, &
+                     MPI_DOUBLE_PRECISION, &
+                     MPI_MAX,option%mycomm,ierr)
+  max = temp_real_out(1)
+  min = -1.d0*temp_real_out(2)
+  
+  call OptionMeanVariance(value,mean,variance,calculate_variance,option)
+  
+end subroutine OptionMaxMinMeanVariance
 
 ! ************************************************************************** !
 !

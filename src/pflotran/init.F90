@@ -85,6 +85,7 @@ subroutine Init(simulation)
   PetscErrorCode :: ierr
   PCSide:: pcside
   PetscReal :: r1, r2, r3, r4, r5, r6
+ 
       
   interface
 
@@ -645,6 +646,10 @@ subroutine Init(simulation)
   if (debug%print_couplers) then
     call verifyAllCouplers(realization)
   endif
+  
+#ifdef OS_STATISTICS
+  call RealizationPrintGridStatistics(realization)
+#endif
   
   ! check that material properties have been set at all grid cells
   ! right now, we check just perms; maybe more needed later
