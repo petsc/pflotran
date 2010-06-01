@@ -1896,13 +1896,13 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
         delx(2,ng) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
  
         if(xx_loc_p((ng-1)*option%nflowdof+3) <=0.9)then
-           delx(3,ng) = dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
+           delx(3,ng) = dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
          else
-            delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
+            delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
          endif
            
-         if( delx(3,ng) < 1D-12 .and.  delx(3,ng)>=0.D0) delx(3,ng) = 1D-12
-         if( delx(3,ng) >-1D-12 .and.  delx(3,ng)<0.D0) delx(3,ng) =-1D-12
+         if( delx(3,ng) < 1D-8 .and.  delx(3,ng)>=0.D0) delx(3,ng) = 1D-8
+         if( delx(3,ng) >-1D-8 .and.  delx(3,ng)<0.D0) delx(3,ng) =-1D-8
         
          if(( delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0)then
             delx(3,ng) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-6
@@ -1914,6 +1914,10 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
             aux_vars(ng)%aux_var_elem(1:option%nflowdof),global_aux_vars(ng),&
             realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
             realization%fluid_properties,option)
+!         if(aux_vars(ng)%aux_var_elem(option%nflowdof)%sat(2)>1D-8 .and. &
+!            aux_vars(ng)%aux_var_elem(0)%sat(2)<1D-12)then
+!            print *, 'Flash winc', delx(3,ng)
+!         endif   
       endif
    enddo
 #endif
