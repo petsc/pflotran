@@ -84,12 +84,8 @@ subroutine Init(simulation)
   PetscInt :: temp_int
   PetscErrorCode :: ierr
   PCSide:: pcside
-  PetscInt :: i1, i2, i3
   PetscReal :: r1, r2, r3, r4, r5, r6
-  PetscInt :: global_total_count, global_active_count
-  PetscInt :: total_count, active_count
-  PetscReal :: total_min, total_max, total_mean, total_variance
-  PetscReal :: active_min, active_max, active_mean, active_variance  
+ 
       
   interface
 
@@ -651,75 +647,7 @@ subroutine Init(simulation)
     call verifyAllCouplers(realization)
   endif
   
-  ! print # of active and inactive grid cells
-  call RealizationCountCells(realization,global_total_count, &
-                             global_active_count,total_count,active_count)
-  r1 = dble(total_count)
-  call OptionMaxMinMeanVariance(r1,total_max, &
-                                total_min,total_mean, &
-                                total_variance,PETSC_TRUE,option)
-  r1 = dble(active_count)
-  call OptionMaxMinMeanVariance(r1,active_max, &
-                                active_min,active_mean, &
-                                active_variance,PETSC_TRUE,option)
-  i1 = -999
-  i2 = -999
-  i3 = -999
-  if (associated(grid%structured_grid)) then
-    i1 = grid%structured_grid%npx_final
-    i2 = grid%structured_grid%npy_final
-    i3 = grid%structured_grid%npz_final
-  endif
-  if (OptionPrintToScreen(option)) then
-    write(*,'(/," Grid Stats:",/, &
-                "                  Global # cells: ",i12,/, &
-                "           Global # active cells: ",i12,/, &
-                "                         # cores: ",i12,/, &
-                "    Processor core decomposition: ",3i6,/, &
-                "          Maximum # cells / core: ",i12,/, &
-                "          Minimum # cells / core: ",i12,/, &
-                "          Average # cells / core: ",1pe12.4,/, &
-                "          Std Dev # cells / core: ",1pe12.4,/, &
-                "   Maximum # active cells / core: ",i12,/, &
-                "   Minimum # active cells / core: ",i12,/, &
-                "   Average # active cells / core: ",1pe12.4,/, &
-                "   Std Dev # active cells / core: ",1pe12.4,/)') &
-           global_total_count, &
-           global_active_count, &
-           option%mycommsize, &
-           i1,i2,i3, &
-           int(total_max+1.d-4), &
-           int(total_min+1.d-4), &
-           total_mean, sqrt(total_variance), &
-           int(active_max+1.d-4), &
-           int(active_min+1.d-4), &
-           active_mean, sqrt(active_variance)
-  endif
-  if (OptionPrintToFile(option)) then
-    write(option%fid_out,'(/," Grid Stats:",/, &
-                "                  Global # cells: ",i12,/, &
-                "           Global # active cells: ",i12,/, &
-                "                         # cores: ",i12,/, &
-                "    Processor core decomposition: ",3i6,/, &
-                "          Maximum # cells / core: ",i12,/, &
-                "          Minimum # cells / core: ",i12,/, &
-                "          Average # cells / core: ",1pe12.4,/, &
-                "          Std Dev # cells / core: ",1pe12.4,/, &
-                "   Maximum # active cells / core: ",i12,/, &
-                "   Minimum # active cells / core: ",i12,/, &
-                "   Average # active cells / core: ",1pe12.4,/, &
-                "   Std Dev # active cells / core: ",1pe12.4,/)') &
-           global_total_count, &
-           global_active_count, &
-           option%mycommsize, &
-           i1,i2,i3, &
-           int(total_max+1.d-4), &
-           int(total_min+1.d-4), &
-           total_mean, sqrt(total_variance), &
-           int(active_max+1.d-4), &
-           int(active_min+1.d-4), &
-           active_mean, sqrt(active_variance)
-  endif
+  call RealizationPrintGridStatistics(realization)
   
   ! check that material properties have been set at all grid cells
   ! right now, we check just perms; maybe more needed later
