@@ -2084,11 +2084,17 @@ subroutine RealizationPrintGridStatistics(realization)
     inactive_histogram(1) = 1
   endif
   
-  call MPI_Allreduce(inactive_histogram,temp_int_out,ELEVEN_INTEGER, &
+  call MPI_Allreduce(inactive_histogram,temp_int_out,TWELVE_INTEGER, &
                      MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
 
-  inactive_percentages = dble(inactive_histogram)/dble(option%mycommsize)+1.d-12
-  inactive_percentages = inactive_percentages * 100.d0
+  ! why I cannot use *100, I do not know....geh
+  inactive_percentages = dble(temp_int_out)/dble(option%mycommsize)*10.d0
+  inactive_percentages = inactive_percentages+1.d-8
+
+  r1 = 0.d0
+  do i1 = 1, 12
+    r1 = r1 + inactive_percentages(i1)
+  enddo
                                 
   i1 = -999
   i2 = -999
@@ -2123,7 +2129,8 @@ subroutine RealizationPrintGridStatistics(realization)
                 "        % cores with % active cells =   70-80%: ",1f7.2,/, &
                 "        % cores with % active cells =   80-90%: ",1f7.2,/, &
                 "        % cores with % active cells = 90-99.9%: ",1f7.2,/, &
-                "        % cores with % active cells =     100%: ",1f7.2,/)') &
+                "        % cores with % active cells =     100%: ",1f7.2,/, &
+                "                                        Check : ",1f7.2,/)') &
            global_total_count, &
            global_active_count, &
            option%mycommsize, &
@@ -2145,7 +2152,8 @@ subroutine RealizationPrintGridStatistics(realization)
            inactive_percentages(9), &
            inactive_percentages(10), &
            inactive_percentages(11), &
-           inactive_percentages(12)
+           inactive_percentages(12), &
+           r1
   endif
   if (OptionPrintToFile(option)) then
     write(option%fid_out,'(/," Grid Stats:",/, &
@@ -2172,7 +2180,8 @@ subroutine RealizationPrintGridStatistics(realization)
                 "        % cores with % active cells =   70-80%: ",1f7.2,/, &
                 "        % cores with % active cells =   80-90%: ",1f7.2,/, &
                 "        % cores with % active cells = 90-99.9%: ",1f7.2,/, &
-                "        % cores with % active cells =     100%: ",1f7.2,/)') &
+                "        % cores with % active cells =     100%: ",1f7.2,/, &
+                "                                        Check : ",1f7.2,/)') &
            global_total_count, &
            global_active_count, &
            option%mycommsize, &
@@ -2194,7 +2203,8 @@ subroutine RealizationPrintGridStatistics(realization)
            inactive_percentages(9), &
            inactive_percentages(10), &
            inactive_percentages(11), &
-           inactive_percentages(12)
+           inactive_percentages(12), &
+           r1
   endif
 
 end subroutine RealizationPrintGridStatistics

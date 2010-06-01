@@ -647,7 +647,9 @@ subroutine Init(simulation)
     call verifyAllCouplers(realization)
   endif
   
+#ifdef OS_STATISTICS
   call RealizationPrintGridStatistics(realization)
+#endif
   
   ! check that material properties have been set at all grid cells
   ! right now, we check just perms; maybe more needed later
