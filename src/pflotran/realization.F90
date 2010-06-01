@@ -86,7 +86,8 @@ private
             RealizationInitConstraints, &
             RealProcessMatPropAndSatFunc, &
             RealProcessFluidProperties, &
-            RealizationUpdateProperties
+            RealizationUpdateProperties, &
+            RealizationCountCells
             
 contains
   
@@ -1956,6 +1957,60 @@ subroutine RealizationUpdatePropertiesPatch(realization)
   
 end subroutine RealizationUpdatePropertiesPatch
  
+! ************************************************************************** !
+!
+! RealizationCountCells: Counts # of active and inactive grid cells 
+! author: Glenn Hammond
+! date: 06/01/10
+!
+! ************************************************************************** !
+subroutine RealizationCountCells(realization,global_total_count, &
+                                 global_active_count,total_count,active_count)
+
+  use Option_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  PetscInt :: global_total_count
+  PetscInt :: global_active_count
+  PetscInt :: total_count
+  PetscInt :: active_count
+  
+  PetscInt :: patch_total_count
+  PetscInt :: patch_active_count
+  PetscInt :: temp_int_in(2), temp_int_out(2)
+  PetscErrorCode :: ierr
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  total_count = 0
+  active_count = 0
+    
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      call PatchCountCells(cur_patch,patch_total_count,patch_active_count)
+      total_count = total_count + patch_total_count
+      active_count = active_count + patch_active_count
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+  
+  temp_int_in(1) = total_count
+  temp_int_in(2) = active_count
+  call MPI_Allreduce(temp_int_in,temp_int_out,TWO_INTEGER,MPI_INTEGER, &
+                     MPI_SUM,realization%option%mycomm,ierr)
+  global_total_count = temp_int_out(1)
+  global_active_count = temp_int_out(2)
+
+end subroutine RealizationCountCells
+
 ! ************************************************************************** !
 !
 ! RealizationDestroy: Deallocates a realization

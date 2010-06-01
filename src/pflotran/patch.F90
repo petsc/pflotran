@@ -69,7 +69,8 @@ module Patch_module
             PatchLocalizeRegions, PatchUpdateUniformVelocity, &
             PatchGetDataset, PatchGetDatasetValueAtCell, &
             PatchSetDataset, &
-            PatchInitConstraints
+            PatchInitConstraints, &
+            PatchCountCells
 
 contains
 
@@ -2313,6 +2314,38 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
   call GridVecRestoreArrayF90(grid,vec,vec_ptr,ierr)
   
 end subroutine PatchSetDataset
+
+! ************************************************************************** !
+!
+! PatchCountCells: Counts # of active and inactive grid cells 
+! author: Glenn Hammond
+! date: 06/01/10
+!
+! ************************************************************************** !
+subroutine PatchCountCells(patch,total_count,active_count)
+
+  use Option_module
+
+  implicit none
+  
+  type(patch_type) :: patch
+  PetscInt :: total_count
+  PetscInt :: active_count
+  
+  type(grid_type), pointer :: grid
+  PetscInt :: local_id
+  
+  grid => patch%grid
+  
+  total_count = grid%nlmax
+  
+  active_count = 0
+  do local_id = 1, grid%nlmax
+    if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
+    active_count = active_count + 1
+  enddo
+
+end subroutine PatchCountCells
 
 ! ************************************************************************** !
 !
