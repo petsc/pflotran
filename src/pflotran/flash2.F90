@@ -1900,16 +1900,17 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
          else
             delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
          endif
-           
          if( delx(3,ng) < 1D-8 .and.  delx(3,ng)>=0.D0) delx(3,ng) = 1D-8
          if( delx(3,ng) >-1D-8 .and.  delx(3,ng)<0.D0) delx(3,ng) =-1D-8
-        
+
+           
          if(( delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0)then
-            delx(3,ng) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-6
+            delx(3,ng) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-4
          endif
          if(( delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0)then
-            delx(3,ng) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-6
+            delx(3,ng) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-4
          endif
+
          call Flash2AuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:,ng),&
             aux_vars(ng)%aux_var_elem(1:option%nflowdof),global_aux_vars(ng),&
             realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
