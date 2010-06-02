@@ -397,6 +397,7 @@ subroutine Init(simulation)
                                         tran_solver%Jpre_mat_type, &
                                         tran_solver%Jpre,option)
     else
+      tran_solver%J_mat_type = MATAIJ
       tran_solver%Jpre_mat_type = MATAIJ
       call DiscretizationCreateJacobian(discretization,ONEDOF, &
                                         tran_solver%Jpre_mat_type, &

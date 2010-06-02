@@ -693,7 +693,12 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option,timestep_cut_flag, &
   
   if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
   if (dtt > stepper%dt_max) dtt = stepper%dt_max
-  if (dtt>.25d0*time .and. time>5.d2) dtt=.25d0*time
+  ! for restarted simulations, we will give 5 time steps to get caught up
+  if (option%restart_flag .and. stepper%steps <= 5) then
+    ! do nothing
+  else
+    if (dtt>.25d0*time .and. time>5.d2) dtt=.25d0*time
+  endif
   dt = dtt
 
   if (update_dt_with_flow_stepper) then
