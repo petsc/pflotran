@@ -724,6 +724,7 @@ subroutine RTUpdateSolutionPatch(realization)
     
       do local_id = 1, grid%nlmax
         ghosted_id = grid%nL2G(local_id)
+        if (patch%imat(ghosted_id) <= 0) cycle
         do imnrl = 1, reaction%nkinmnrl
           ! rate = mol/m^3/sec
           ! dvolfrac = m^3 mnrl/m^3 bulk = rate (mol mnrl/m^3 bulk/sec) *
@@ -765,6 +766,7 @@ subroutine RTUpdateSolutionPatch(realization)
   ! WARNING: below assumes site concentration multiplicative factor
     if (reaction%kinmr_nrate > 0) then 
       do ghosted_id = 1, grid%ngmax 
+        if (patch%imat(ghosted_id) <= 0) cycle
         do irate = 1, reaction%kinmr_nrate 
           kdt = reaction%kinmr_rate(irate) * option%tran_dt 
           one_plus_kdt = 1.d0 + kdt 
@@ -780,6 +782,7 @@ subroutine RTUpdateSolutionPatch(realization)
     ! update kinetic sorption concentrations
     if (reaction%nkinsrfcplxrxn > 0) then
       do ghosted_id = 1, grid%ngmax 
+        if (patch%imat(ghosted_id) <= 0) cycle
         do irxn = 1, reaction%nkinsrfcplxrxn
           ncplx = reaction%kinsrfcplx_rxn_to_complex(0,irxn)
           do k = 1, ncplx ! ncplx in rxn
@@ -1144,6 +1147,7 @@ subroutine RTUpdateRHSCoefsPatch(realization)
   iphase = 1
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle
     rhs_coef_p(local_id) = porosity_loc_p(ghosted_id)* &
                            global_aux_vars(ghosted_id)%sat(iphase)* &
 ! total already has den_kg within 
@@ -1243,6 +1247,7 @@ subroutine RTCalculateRHS_t0Patch(realization)
   iphase = 1
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle    
     iendaq = local_id*reaction%naqcomp
     istartaq = iendaq-reaction%naqcomp+1
     rhs_p(istartaq:iendaq) = rt_aux_vars(ghosted_id)%total(:,iphase)* &
@@ -1704,6 +1709,7 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
   iphase = 1
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle    
     coef = porosity_loc_p(ghosted_id)* &
            global_aux_vars(ghosted_id)%sat(iphase)* &
 !geh           global_aux_vars(ghosted_id)%den_kg(iphase)* &
@@ -2512,6 +2518,7 @@ subroutine RTTransportResidualPatch2(realization,solution_loc,residual,idof)
   
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle
     coef = porosity_loc_p(ghosted_id)* &
            global_aux_vars(ghosted_id)%sat(iphase)* &
            1000.d0* &
