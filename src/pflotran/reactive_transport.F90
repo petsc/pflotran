@@ -1920,7 +1920,7 @@ subroutine RTReactPatch(realization)
 
   ! need up update aux vars based on current density/saturation,
   ! but NOT activity coefficients
-  call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_FALSE)
+  call RTUpdateAuxVarsPatch(realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
   
   ! Get vectors
   call GridVecGetArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
