@@ -9,6 +9,7 @@ module String_module
 #include "definitions.h"
 
   public :: StringCompare, &
+            StringCompareIgnoreCase, &
             StringToUpper, &
             StringToLower, &
             StringReadQuotedWord
@@ -40,6 +41,40 @@ PetscTruth function StringCompare(string1,string2,n)
   return
 
 end function StringCompare
+
+! ************************************************************************** !
+!
+! StringCompare: compares two strings
+! author: Glenn Hammond
+! date: 11/10/08
+!
+! ************************************************************************** !
+PetscTruth function StringCompareIgnoreCase(string1,string2,n)
+
+  implicit none
+
+  PetscInt :: i, n
+  character(len=n) :: string1, string2
+  
+  character(len=n) :: upper1, upper2
+  
+  upper1 = string1
+  upper2 = string2
+  
+  call StringToUpper(upper1)
+  call StringToUpper(upper2)
+  
+  do i=1,n
+    if (upper1(i:i) /= upper2(i:i)) then
+      StringCompareIgnoreCase = PETSC_FALSE
+      return
+    endif
+  enddo
+
+  StringCompareIgnoreCase = PETSC_TRUE
+  return
+
+end function StringCompareIgnoreCase
 
 ! ************************************************************************** !
 !
