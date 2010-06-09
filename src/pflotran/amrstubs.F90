@@ -198,6 +198,15 @@ implicit none
 
 end subroutine SAMRLocalToLocal
 
+subroutine SAMRCoarsenVector(p_application, vec)
+implicit none
+#include "finclude/petscsysdef.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  PetscFortranAddr :: p_application
+  Vec :: vec
+end subroutine SAMRCoarsenVector
+      
 subroutine SAMRCoarsenFaceFluxes(p_application, vec, ierr)
 implicit none
 #include "finclude/petscsysdef.h"

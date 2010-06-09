@@ -130,9 +130,12 @@ public:
                                       tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  destVec,
                                       int ierr);
 
+   void coarsenVector(tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  localVec);
+   
    void coarsenFaceFluxes(tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> > faceVec, 
                           int ierr);
 
+ 
    void setRefinementBoundaryInterpolant(RefinementBoundaryInterpolation *cf_interpolant);
 
    RefinementBoundaryInterpolation *getRefinementBoundaryInterpolant(void){return d_cf_interpolant; }

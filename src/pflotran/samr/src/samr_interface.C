@@ -298,6 +298,15 @@ void samrlocaltolocal_(SAMRAI::PflotranApplicationStrategy **application_strateg
    
 }
 
+void samrcoarsenvector_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
+			Vec *dvec)
+{
+  SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > dstVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(*dvec);
+
+   (*application_strategy)->coarsenVector(dstVec);
+  
+}
+
 void samrcoarsenfacefluxes_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
                             Vec *vec, 
                             int *ierr)

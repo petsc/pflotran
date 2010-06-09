@@ -476,6 +476,67 @@ PflotranApplicationStrategy::interpolateLocalToLocalVector(tbox::Pointer< solv::
 }
 
 void
+PflotranApplicationStrategy::coarsenVector(tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  dstVec)
+{
+#ifdef DEBUG_CHECK_ASSERTIONS
+   assert(!dstVec.isNull());
+#endif
+
+    tbox::Pointer<hier::PatchHierarchy<NDIM> > hierarchy =  d_hierarchy;
+
+    static tbox::Pointer<tbox::Timer> t_coarsen_variable = tbox::TimerManager::getManager()->getTimer("PFlotran::PflotranApplicationStrategy::coarsenVector");
+
+    t_coarsen_variable->start();
+
+    int dest_id = dstVec->getComponentDescriptorIndex(0);   
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+    assert(dest_id>=0);
+#endif
+
+    tbox::Pointer< hier::Variable< NDIM > > dstVar = dstVec->getComponentVariable(0);
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+    assert(!dstVar.isNull());
+#endif
+
+    tbox::Pointer< pdat::CCellDataFactory< NDIM, double > > dstFactory = dstVar->getPatchDataFactory(); 
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+    assert(!dstFactory.isNull());
+#endif
+
+    int dstDOF = dstFactory->getDefaultDepth();
+
+    // should add code to coarsen variables
+    xfer::CoarsenAlgorithm<NDIM> cell_coarsen;
+    cell_coarsen.registerCoarsen(dest_id, dest_id, d_soln_coarsen_op);
+
+    for (int ln = hierarchy->getNumberOfLevels()-2; ln>=0; ln-- ) 
+    {
+      tbox::Pointer<hier::PatchLevel<NDIM> > clevel = hierarchy->getPatchLevel(ln);
+      tbox::Pointer<hier::PatchLevel<NDIM> > flevel = hierarchy->getPatchLevel(ln+1);
+
+      for ( int i=0; i<dstDOF; i++)
+      {
+         if((!d_CoarsenSchedule[ln][i].isNull()) && cell_coarsen.checkConsistency(d_CoarsenSchedule[ln][i]))
+         {
+            cell_coarsen.resetSchedule(d_CoarsenSchedule[ln][i]);
+         }
+         else
+         {
+            d_CoarsenSchedule[ln][i] = cell_coarsen.createSchedule(clevel, 
+                                                                   flevel);
+         }
+         
+         d_CoarsenSchedule[ln][i]->coarsenData();            
+      }
+    }
+
+    t_coarsen_variable->stop();
+}
+
+void
 PflotranApplicationStrategy::interpolateGlobalToLocalVector(tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  globalVec,
                                                             tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  localVec,
                                                             int ierr)

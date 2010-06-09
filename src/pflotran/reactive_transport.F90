@@ -1752,13 +1752,29 @@ end subroutine RTCalculateTranMatrixPatch2
 subroutine RTReact(realization)
 
   use Realization_module
+  use Field_module
+  use Discretization_module    
   use Level_module
   use Patch_module
   use Option_module
   use Logging_module
 
+  implicit none
+      
+  interface
+     subroutine SAMRCoarsenVector(p_application, vec)
+       implicit none
+#include "finclude/petscsysdef.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+       PetscFortranAddr :: p_application
+       Vec :: vec
+      end subroutine SAMRCoarsenVector
+  end interface 
+
   type(realization_type) :: realization
-  
+  type(discretization_type), pointer :: discretization
+  type(field_type), pointer ::field
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(option_type), pointer :: option
@@ -1780,8 +1796,12 @@ subroutine RTReact(realization)
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,ierr)
                           
+  discretization => realization%discretization
   option => realization%option
-  
+  field => realization%field
+
+  call SAMRCoarsenVector(discretization%amrgrid%p_application, field%tran_xx)
+      
 #ifdef OS_STATISTICS
   call_count = 0
   sum_newton_iterations = 0
