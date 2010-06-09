@@ -1919,14 +1919,9 @@ subroutine RTReactPatch(realization)
   reaction => realization%reaction
 
   ! need up update aux vars based on current density/saturation,
-                                ! but NOT activity coefficients
-#if 0      
-  call RTUpdateAuxVars(realization,PETSC_FALSE,PETSC_FALSE)
-#else
-      call RTUpdateAuxVarsPatch(realization, PETSC_TRUE, PETSC_FALSE, &
-                                                   PETSC_FALSE)
-#endif
-      
+  ! but NOT activity coefficients
+  call RTUpdateAuxVarsPatch(realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
+
   ! Get vectors
   call GridVecGetArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
