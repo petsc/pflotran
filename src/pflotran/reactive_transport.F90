@@ -41,6 +41,7 @@ module Reactive_Transport_module
             RTCalculateTransportMatrix, &
             RTReact, &
             RTTransportResidual, &
+            RTTransportMatVec, &
 #endif
             RTCheckUpdate, &
             RTJumpStartKineticSorption, &
@@ -2566,6 +2567,72 @@ subroutine RTTransportResidualPatch2(realization,solution_loc,residual,idof)
 
 end subroutine RTTransportResidualPatch2
 
+subroutine RTTransportMatVec(mat, x, y)
+  use Realization_module
+  use Discretization_module
+  use Level_module
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Field_module
+  use Debug_module
+  
+  implicit none
+
+  Mat, intent(in) :: mat    
+  Vec, intent(in) :: x
+  Vec, intent(out) :: y
+  type(realization_type), pointer :: realization
+  type(option_type), pointer :: option
+  type(discretization_type), pointer :: discretization
+  type(field_type), pointer :: field
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+
+  PetscInt :: idof
+  PetscErrorCode :: ierr
+
+  call MatShellGetContext(mat, realization)
+  field => realization%field
+  discretization => realization%discretization
+  option => realization%option
+  idof = option%rt_idof
+      
+
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RTTransportResidualPatch1(realization,x,y,idof)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+  ! now coarsen all face fluxes in case we are using SAMRAI to 
+  ! ensure consistent fluxes at coarse-fine interfaces
+  if(option%use_samr) then
+    call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%tran_face_fluxes, ierr)
+
+    cur_level => realization%level_list%first
+    do
+      if (.not.associated(cur_level)) exit
+      cur_patch => cur_level%patch_list%first
+      do
+        if (.not.associated(cur_patch)) exit
+        realization%patch => cur_patch
+        call RTTransportResidualFluxContribPatch(y,realization,ierr)
+        cur_patch => cur_patch%next
+      enddo
+      cur_level => cur_level%next
+    enddo
+      endif
+      
+end subroutine RTTransportMatVec
+      
 ! ************************************************************************** !
 !
 ! RichardsResidualFluxContribsPatch: should be called only for SAMR
