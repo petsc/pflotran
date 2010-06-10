@@ -1156,6 +1156,10 @@ subroutine RealizAssignFlowInitCond(realization)
         if (.not.associated(initial_condition)) exit
 
         if (.not.associated(initial_condition%flow_aux_real_var)) then
+          if (.not.associated(initial_condition%flow_condition)) then
+            option%io_buffer = 'Flow condition is NULL in initial condition'
+            call printErrMsg(option)
+          endif
           do icell=1,initial_condition%region%num_cells
             local_id = initial_condition%region%cell_ids(icell)
             ghosted_id = grid%nL2G(local_id)
