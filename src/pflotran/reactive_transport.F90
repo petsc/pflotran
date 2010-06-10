@@ -5016,7 +5016,7 @@ subroutine RTCreateZeroArray(patch,reaction,option)
     if (patch%imat(ghosted_id) <= 0) then
       do icomp = 1, ndof
         ncount = ncount + 1
-        zero_rows_local(ncount) = (local_id-1)*ndof
+        zero_rows_local(ncount) = (local_id-1)*ndof+icomp
         zero_rows_local_ghosted(ncount) = (ghosted_id-1)*ndof+icomp-1
       enddo
     else
