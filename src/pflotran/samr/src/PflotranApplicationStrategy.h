@@ -154,6 +154,9 @@ public:
 
    PflotranJacobianMultilevelOperator *getJacobianOperator(int *which_pc);
 
+   void setRealization(void *pflotranRealizationObj){ d_pflotranRealizationObj=pflotranRealizationObj; }
+   void *getRealization(void){ return d_pflotranRealizationObj; }
+   
 protected:
 
 private:
@@ -195,6 +198,9 @@ private:
 
    int  d_pflotran_weight_id;
 
+   // pointer to PFLOTRAN simulation object
+   void *d_pflotranRealizationObj; 
+   
    double d_current_time;
 
    // Name of application

@@ -188,7 +188,8 @@ int main( int argc, char *argv[] )
      }
    
    void *p_pflotran_sim = NULL;
-
+   void *p_realization = NULL;
+   
    /*
     * Initialize AMR hierarchy configuration and data on all patches
     * at initial time.  Close restart file after all simulation state
@@ -202,10 +203,12 @@ int main( int argc, char *argv[] )
    main_timer->start();
 
    int slen=strlen(pflotran_filename.c_str());
-   f_create_simulation_(&p_pflotran_sim, (void **)&pflotranApplication, pflotran_filename.c_str(), &slen);
-   
+   f_create_simulation_(&p_pflotran_sim, &p_realization, (void **)&pflotranApplication, pflotran_filename.c_str(), &slen);
+
    f_initialize_simulation_(&p_pflotran_sim);
 
+   pflotranApplication->setRealization(p_realization);
+   
 #if 1   
    f_stepper_run_(&p_pflotran_sim);
 #endif   

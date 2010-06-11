@@ -7,7 +7,7 @@ extern "C"{
 
 #include "petsc.h"
 
-  void f_create_simulation_(void **p_data, void **p_application, const char *pflotran_filename, int *len);
+  void f_create_simulation_(void **p_data, void **r_data, void **p_application, const char *pflotran_filename, int *len);
    void f_create_local_patch_data_(void **p_data);
    void f_create_hierarchy_data_(void **p_data);
    void f_create_integrator_(void **p_data);

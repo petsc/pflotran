@@ -23,7 +23,6 @@ module Realization_module
 private
 
 #include "definitions.h"
-
   type, public :: realization_type
 
     PetscInt :: id

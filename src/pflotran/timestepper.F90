@@ -1549,7 +1549,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
   use Grid_module
   use Patch_module
   use Global_module  
-  
+  use iso_c_binding
   implicit none
 
 #include "finclude/petsclog.h"
@@ -1561,7 +1561,6 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
 
   type(realization_type),target :: realization
   type(stepper_type) :: stepper
-  type(realization_type), pointer :: realization_p
   PetscTruth :: flow_timestep_cut_flag
   PetscTruth :: tran_timestep_cut_flag
   PetscInt :: num_newton_iterations
@@ -1591,7 +1590,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
   discretization => realization%discretization
   field => realization%field
   solver => stepper%solver
-  realization_p => realization
+      
   num_newton_iterations = 1
 ! PetscReal, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
 
@@ -1654,7 +1653,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
     if(option%use_samr) then
        call MatCreateShell(option%mycomm, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, solver%J, ierr)
        call MatShellSetOperation(solver%J,MATOP_MULT,RTTransportMatVec, ierr)
-       call MatShellSetContext(solver%J, realization_p, ierr)
+       call MatShellSetContext(solver%J, discretization%amrgrid%p_application, ierr)
        call RTCalculateTransportMatrix(realization,solver%Jpre)
     else     
         call RTCalculateTransportMatrix(realization,solver%J)

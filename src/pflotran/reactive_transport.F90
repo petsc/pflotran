@@ -2568,6 +2568,7 @@ subroutine RTTransportResidualPatch2(realization,solution_loc,residual,idof)
 end subroutine RTTransportResidualPatch2
 
 subroutine RTTransportMatVec(mat, x, y)
+
   use Realization_module
   use Discretization_module
   use Level_module
@@ -2576,23 +2577,38 @@ subroutine RTTransportMatVec(mat, x, y)
   use Option_module
   use Field_module
   use Debug_module
-  
+  use ISO_C_BINDING
+      
   implicit none
+
+  interface
+     subroutine SAMRGetRealization(p_application, realization) 
+      use Realization_module
+#include "finclude/petscsys.h"
+      
+      PetscFortranAddr :: p_application
+      type(realization_type), pointer :: realization
+      end subroutine SAMRGetRealization
+  end interface
 
   Mat, intent(in) :: mat    
   Vec, intent(in) :: x
   Vec, intent(out) :: y
-  type(realization_type), pointer :: realization
+
+  type(realization_type),pointer :: realization
   type(option_type), pointer :: option
   type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
-
+  type(c_ptr) :: realization_cptr
   PetscInt :: idof
   PetscErrorCode :: ierr
+  PetscFortranAddr :: p_application
+      
+  call MatShellGetContext(mat, p_application, ierr)
+  call SAMRGetRealization(p_application, realization)
 
-  call MatShellGetContext(mat, realization)
   field => realization%field
   discretization => realization%discretization
   option => realization%option

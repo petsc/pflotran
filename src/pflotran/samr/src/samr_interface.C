@@ -175,6 +175,12 @@ void samr_patch_get_ghostcorners_(SAMRAI::hier::Patch<NDIM> **patch,
    
 }
 
+void samrgetrealization_(SAMRAI::PflotranApplicationStrategy ***application_strategy,
+			 void **simulation)
+{
+  (*simulation) = (**application_strategy)->getRealization();
+}
+
 void samr_vecgetarraycellf90_(SAMRAI::hier::Patch<NDIM> **patch, 
                           Vec *petscVec,
                           void **f90wrap)
