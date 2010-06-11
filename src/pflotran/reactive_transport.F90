@@ -2567,6 +2567,107 @@ subroutine RTTransportResidualPatch2(realization,solution_loc,residual,idof)
 
 end subroutine RTTransportResidualPatch2
 
+! ************************************************************************** !
+!
+! RTTransportMatVecPatch2: Calculates the transport residual equation for  
+!                           a single chemical component (total component 
+!                           concentration)
+! author: Bobby Philip
+! date: 06/11/2010
+!
+! ************************************************************************** !
+subroutine RTTransportMatVecPatch2(realization,solution_loc,residual,idof)
+
+  use Realization_module
+  use Patch_module
+  use Connection_module
+  use Coupler_module
+  use Option_module
+  use Field_module  
+  use Grid_module  
+
+  implicit none
+  
+  type(realization_type) :: realization
+  Vec :: solution_loc
+  Vec :: residual
+  PetscInt :: idof
+  
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
+  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_bc(:)
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  PetscReal, pointer :: porosity_loc_p(:)
+  PetscReal, pointer :: volume_p(:)
+  PetscReal, pointer :: solution_loc_p(:)
+  PetscReal, pointer :: residual_p(:)
+  PetscReal, pointer :: rhs_coef_p(:)
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
+  PetscInt :: iphase
+  PetscReal :: res
+  
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  PetscInt :: sum_connection, iconn
+  PetscReal :: coef
+  PetscReal :: coef_up(1), coef_dn(1)
+  PetscErrorCode :: ierr
+    
+  ! Get vectors
+  option => realization%option
+  field => realization%field
+  patch => realization%patch
+  global_aux_vars => patch%aux%Global%aux_vars
+  rt_aux_vars => patch%aux%RT%aux_vars
+  rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
+  grid => patch%grid
+
+  ! Get vectors
+  call GridVecGetArrayF90(grid,solution_loc, solution_loc_p, ierr)  
+  call GridVecGetArrayF90(grid,residual, residual_p, ierr)  
+  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
+  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
+  call GridVecGetArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)  
+  
+  iphase = 1
+
+  ! need to add source/sink
+
+  ! Accumulation term
+  
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle
+    coef = porosity_loc_p(ghosted_id)* &
+           global_aux_vars(ghosted_id)%sat(iphase)* &
+           1000.d0* &
+           volume_p(local_id)/option%tran_dt
+!geh need to separate out accumulation from boundary fluxes
+!geh    residual_p(local_id) = coef*solution_loc_p(ghosted_id)- &
+!geh ! RHS will not change, but is moved to lhs (thus, the -1.d0*)
+!geh                           rhs_p((local_id-1)*option%ntrandof+idof)
+
+!geh    residual_p(local_id) = coef*solution_loc_p(ghosted_id)- &
+
+    residual_p(local_id) = residual_p(local_id) + &
+                           coef*solution_loc_p(ghosted_id)
+
+  enddo
+
+  ! Restore vectors
+  call GridVecRestoreArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)  
+  call GridVecRestoreArrayF90(grid,solution_loc, solution_loc_p, ierr)  
+  call GridVecRestoreArrayF90(grid,residual, residual_p, ierr)  
+  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
+  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
+
+end subroutine RTTransportMatVecPatch2
+
 subroutine RTTransportMatVec(mat, x, y)
 
   use Realization_module
@@ -2614,6 +2715,10 @@ subroutine RTTransportMatVec(mat, x, y)
   option => realization%option
   idof = option%rt_idof
       
+  ! solution is stored in x vector, but we need it in ghosted
+  ! form for the residual calculation
+  call DiscretizationGlobalToLocal(discretization,x, &
+                                       field%work_loc,ONEDOF)
 
   cur_level => realization%level_list%first
   do
@@ -2622,7 +2727,7 @@ subroutine RTTransportMatVec(mat, x, y)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RTTransportResidualPatch1(realization,x,y,idof)
+      call RTTransportResidualPatch1(realization,field%work_loc,y,idof)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -2646,7 +2751,21 @@ subroutine RTTransportMatVec(mat, x, y)
       cur_level => cur_level%next
     enddo
       endif
-      
+
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RTTransportMatVecPatch2(realization,field%work_loc,y,idof)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+   call VecScale(y, -1.0, ierr)  
 end subroutine RTTransportMatVec
       
 ! ************************************************************************** !
