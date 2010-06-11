@@ -1819,7 +1819,13 @@ subroutine RTReact(realization)
     enddo
     cur_level => cur_level%next
   enddo
-    
+
+  ! Logging must come before statistics since the global reductions
+  ! will synchonize the cores
+  call PetscLogEventEnd(logging%event_rt_react,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,ierr)
+                        
 #ifdef OS_STATISTICS
   temp_int_in(1) = call_count
   temp_int_in(2) = sum_newton_iterations
@@ -1862,10 +1868,6 @@ subroutine RTReact(realization)
 
 #endif 
 
-  call PetscLogEventEnd(logging%event_rt_react,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,ierr)
-                        
 end subroutine RTReact
 
 ! ************************************************************************** !
