@@ -161,7 +161,7 @@ test: functions.o test.o
 # Dependencies stemming from "use" statements.
 # These ensure that the module files are built in the correct order.
 auxilliary.o : thc_aux.o richards_aux.o reactive_transport_aux.o \
-	mphase_aux.o flash2_aux.o
+	mphase_aux.o flash2_aux.o global_aux.o
 pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
 	     stochastic_aux.o stochastic.o
 simulation.o : timestepper.o realization.o 
@@ -213,17 +213,17 @@ reaction.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reaction_aux.o : option.o string.o
 transport.o : reactive_transport_aux.o option.o matrix_block_aux.o
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
-                       reactive_transport_aux.o fluid.o logging.o
+                       reactive_transport_aux.o fluid.o logging.o global_aux.o
 reactive_transport_aux.o : option.o reaction_aux.o matrix_block_aux.o
 thc.o : thc_aux.o realization.o saturation_function.o
 richards.o : richards_aux.o realization.o saturation_function.o \
              matrix_buffer.o logging.o
 thc_aux.o : option.o material.o water_eos.o saturation_function.o
 richards_aux.o : option.o material.o water_eos.o saturation_function.o \
-                 matrix_buffer.o
-mphase.o : mphase_aux.o realization.o fluid.o
-immis.o : immis_aux.o realization.o 
-flash2.o : flash2_aux.o realization.o fluid.o
+                 matrix_buffer.o global_aux.o
+mphase.o : mphase_aux.o realization.o fluid.o global_aux.o
+immis.o : immis_aux.o realization.o  global_aux.o
+flash2.o : flash2_aux.o realization.o fluid.o global_aux.o
 mphase_aux.o :  option.o material.o water_eos.o co2_span_wagner.o \
 		co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o \
 		fluid.o saturation_function.o
