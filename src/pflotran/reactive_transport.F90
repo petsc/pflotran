@@ -4756,7 +4756,8 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
       call RTAuxVarCompute(patch%aux%RT%aux_vars(ghosted_id), &
                            patch%aux%Global%aux_vars(ghosted_id), &
                            reaction,option)
-      if (associated(reaction%species_idx)) then
+      if (associated(reaction%species_idx) .and. &
+          associated(patch%aux%Global%aux_vars(ghosted_id)%m_nacl)) then
         if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
           patch%aux%Global%aux_vars(ghosted_id)%m_nacl(1) = &
                 patch%aux%RT%aux_vars(ghosted_id)%pri_molal(reaction%species_idx%na_ion_id)
@@ -4929,7 +4930,8 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
           endif         
         endif
 
-        if (associated(reaction%species_idx)) then
+        if (associated(reaction%species_idx) .and. &
+            associated(patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl)) then
           if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
             patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl(1) = &
                   patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(reaction%species_idx%na_ion_id)
