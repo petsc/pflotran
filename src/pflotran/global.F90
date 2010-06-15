@@ -105,12 +105,15 @@ subroutine GlobalSetupPatch(realization)
                      boundary_condition%connection_set%num_connections
     boundary_condition => boundary_condition%next
   enddo
-  option%iflag = 1 ! enable allocation of mass_balance array 
-  allocate(aux_vars_bc(sum_connection))
-  do iconn = 1, sum_connection
-    call GlobalAuxVarInit(aux_vars_bc(iconn),option)
-  enddo
-  patch%aux%Global%aux_vars_bc => aux_vars_bc
+
+  if (sum_connection > 0) then
+    option%iflag = 1 ! enable allocation of mass_balance array 
+    allocate(aux_vars_bc(sum_connection))
+    do iconn = 1, sum_connection
+      call GlobalAuxVarInit(aux_vars_bc(iconn),option)
+    enddo
+    patch%aux%Global%aux_vars_bc => aux_vars_bc
+  endif
   patch%aux%Global%num_aux_bc = sum_connection
 
   option%iflag = 0

@@ -206,11 +206,14 @@ subroutine RTSetupPatch(realization)
                      boundary_condition%connection_set%num_connections
     boundary_condition => boundary_condition%next
   enddo
-  option%iflag = 1 ! enable allocation of mass_balance array 
-  allocate(patch%aux%RT%aux_vars_bc(sum_connection))
-  do iconn = 1, sum_connection
-    call RTAuxVarInit(patch%aux%RT%aux_vars_bc(iconn),reaction,option)
-  enddo
+  
+  if (sum_connection > 0) then
+    option%iflag = 1 ! enable allocation of mass_balance array 
+    allocate(patch%aux%RT%aux_vars_bc(sum_connection))
+    do iconn = 1, sum_connection
+      call RTAuxVarInit(patch%aux%RT%aux_vars_bc(iconn),reaction,option)
+    enddo
+  endif
   patch%aux%RT%num_aux_bc = sum_connection
   option%iflag = 0
 
