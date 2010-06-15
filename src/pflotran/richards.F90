@@ -303,6 +303,8 @@ subroutine RichardsZeroMassBalDeltaPatch(realization)
   enddo
 #endif
 
+  ! Intel 10.1 on Chinook reports a SEGV if this conditional is not
+  ! placed around the internal do loop - geh
   if (patch%aux%Richards%num_aux_bc > 0) then
     do iconn = 1, patch%aux%Richards%num_aux_bc
       global_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
@@ -349,11 +351,15 @@ subroutine RichardsUpdateMassBalancePatch(realization)
   enddo
 #endif
 
-  do iconn = 1, patch%aux%Richards%num_aux_bc
-    global_aux_vars_bc(iconn)%mass_balance = &
-      global_aux_vars_bc(iconn)%mass_balance + &
-      global_aux_vars_bc(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
-  enddo
+  ! Intel 10.1 on Chinook reports a SEGV if this conditional is not
+  ! placed around the internal do loop - geh
+  if (patch%aux%Richards%num_aux_bc > 0) then
+    do iconn = 1, patch%aux%Richards%num_aux_bc
+      global_aux_vars_bc(iconn)%mass_balance = &
+        global_aux_vars_bc(iconn)%mass_balance + &
+        global_aux_vars_bc(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
+    enddo
+  endif
 
 end subroutine RichardsUpdateMassBalancePatch
 
