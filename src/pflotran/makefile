@@ -177,7 +177,7 @@ unstructured_grid.o : option.o connection.o
 structured_grid.o : connection.o option.o input.o cf90bridge.o
 general_grid.o : grid.o realization.o hdf5.o logging.o
 discretization.o : grid.o structured_grid.o unstructured_grid.o option.o \
-                   input.o string.o amrgrid.o amrstubs.o
+                   input.o string.o amrgrid.o 
 grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
          input.o
 input.o : string.o option.o
