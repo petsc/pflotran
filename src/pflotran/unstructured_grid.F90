@@ -391,8 +391,10 @@ subroutine UnstructuredGridRead(unstructured_grid,filename,option)
   PetscInt :: remainder
   PetscErrorCode :: ierr
   PetscInt :: status(MPI_STATUS_SIZE)
+  PetscInt :: fileid
   
-  input => InputCreate(86,filename)
+  fileid = 86
+  input => InputCreate(fileid,filename)
 
   card = 'Unstructured Grid'
 

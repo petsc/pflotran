@@ -317,10 +317,12 @@ subroutine ReactionRead(reaction,input,option)
                   case('RATE','RATES') 
                     srfcplx_rxn%itype = SRFCMPLX_RXN_MULTIRATE_KINETIC
                     string = 'RATES inside SURFACE_COMPLEXATION_RXN'
-                    call UtilityReadArray(reaction%kinmr_rate,-1,string,input,option) 
+                    call UtilityReadArray(reaction%kinmr_rate,NEG_ONE_INTEGER,string,input, &
+                                          option) 
                   case('SITE_FRACTION') 
                     string = 'SITE_FRACTION inside SURFACE_COMPLEXATION_RXN'
-                    call UtilityReadArray(reaction%kinmr_frac,-1,string,input,option) 
+                    call UtilityReadArray(reaction%kinmr_frac,NEG_ONE_INTEGER,string,input, &
+                                          option) 
                   case('MULTIRATE_SCALE_FACTOR')
                     call InputReadDouble(input,option,reaction%kinmr_scale_factor)
                     call InputErrorMsg(input,option,'keyword', &

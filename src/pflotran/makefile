@@ -177,7 +177,7 @@ unstructured_grid.o : option.o connection.o
 structured_grid.o : connection.o option.o input.o cf90bridge.o
 general_grid.o : grid.o realization.o hdf5.o logging.o
 discretization.o : grid.o structured_grid.o unstructured_grid.o option.o \
-                   input.o string.o
+                   input.o string.o amrgrid.o amrstubs.o
 grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
          input.o
 input.o : string.o option.o
@@ -206,18 +206,18 @@ hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
 waypoint.o : option.o 
 output.o : grid.o structured_grid.o option.o realization.o field.o \
            coupler.o connection.o hdf5.o observation.o \
-					 reactive_transport.o \
+           reactive_transport.o \
            thc.o richards.o mphase.o flash2.o \
-					 discretization.o logging.o
+           discretization.o logging.o amrgrid.o
 reaction.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reaction_aux.o : option.o string.o
 transport.o : reactive_transport_aux.o option.o matrix_block_aux.o
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
-                       reactive_transport_aux.o fluid.o logging.o
+                       reactive_transport_aux.o fluid.o logging.o amrgrid.o
 reactive_transport_aux.o : option.o reaction_aux.o matrix_block_aux.o
 thc.o : thc_aux.o realization.o saturation_function.o
 richards.o : richards_aux.o realization.o saturation_function.o \
-             matrix_buffer.o logging.o
+             matrix_buffer.o logging.o amrgrid.o
 thc_aux.o : option.o material.o water_eos.o saturation_function.o
 richards_aux.o : option.o material.o water_eos.o saturation_function.o \
                  matrix_buffer.o

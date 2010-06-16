@@ -6,27 +6,30 @@ module co2_sw_module
   !                 eng,ent,dhdt,dhdp,visc,dvdt,dvdp)
 
       implicit none
+
+#include "definitions.h"
+
       private
       save
-      real*8,  public :: co2_sw_c_t0_tab = -5.d0+273.15D0, co2_sw_c_p0_tab = 0.5d0
-      real*8,  public :: co2_sw_c_t1_tab = 5.d2+273.15D0, co2_sw_c_p1_tab = 250.d0
-      real*8,  public :: co2_sw_f_t0_tab = -5.d0+273.15D0, co2_sw_f_p0_tab = 0.5d0
-  !   real*8,  public :: co2_sw_f_t1_tab = 1.d2+273.15D0, co2_sw_f_p1_tab = 15.d0
-      real*8,  public :: co2_sw_f_t1_tab = 1.d2+273.15D0, co2_sw_f_p1_tab = 30.d0
+      PetscReal,  public :: co2_sw_c_t0_tab = -5.d0+273.15D0, co2_sw_c_p0_tab = 0.5d0
+      PetscReal,  public :: co2_sw_c_t1_tab = 5.d2+273.15D0, co2_sw_c_p1_tab = 250.d0
+      PetscReal,  public :: co2_sw_f_t0_tab = -5.d0+273.15D0, co2_sw_f_p0_tab = 0.5d0
+  !   PetscReal,  public :: co2_sw_f_t1_tab = 1.d2+273.15D0, co2_sw_f_p1_tab = 15.d0
+      PetscReal,  public :: co2_sw_f_t1_tab = 1.d2+273.15D0, co2_sw_f_p1_tab = 30.d0
 
-      integer :: ntab_t_c = 50, ntab_p_c = 100
-     ! integer :: ntab_t_f = 105, ntab_p_f = 145
-      integer :: ntab_t_f = 105, ntab_p_f = 295
+      PetscInt :: ntab_t_c = 50, ntab_p_c = 100
+     ! PetscInt :: ntab_t_f = 105, ntab_p_f = 145
+      PetscInt :: ntab_t_f = 105, ntab_p_f = 295
        
-      real*8 :: dt_tab_c = 10.d0, dp_tab_c = 2.5d0
-      real*8 :: dt_tab_f = 1.d0, dp_tab_f = 0.1d0
+      PetscReal :: dt_tab_c = 10.d0, dp_tab_c = 2.5d0
+      PetscReal :: dt_tab_f = 1.d0, dp_tab_f = 0.1d0
   
-      real*8 ,private, allocatable :: co2_prop_sw_c(:,:,:)
-      real*8 ,private, allocatable :: co2_prop_sw_f(:,:,:)
-      integer var_index(4)
+      PetscReal ,private, allocatable :: co2_prop_sw_c(:,:,:)
+      PetscReal ,private, allocatable :: co2_prop_sw_f(:,:,:)
+      PetscInt var_index(4)
       logical ifinetable
 
-      real*8, parameter, private ::  denc = 467.6d0, tc = 304.1282d0,&
+      PetscReal, parameter, private ::  denc = 467.6d0, tc = 304.1282d0,&
                                      rg = 0.1889241d0, pc = 7.3773d0
 
       public initialize_sw_interp, co2_sw_interp      
@@ -38,15 +41,15 @@ module co2_sw_module
       use span_wagner_module, only: co2_span_wagner, vappr
         
         implicit none
-        integer itable
-        integer myrank 
+        PetscInt itable
+        PetscMPIInt myrank 
         
-        integer i, j
+        PetscInt i, j
         
-        real*8 p,t, ts,tmp2, tmp, dum1, dum2
-!       real*8 dtmp,dddt,dddp
-        real*8 dtemp,dpres
-        real*8 rhodp,rhodt,fgdp,fgdt,engdp,engdt,entdp,entdt,vdp,vdt
+        PetscReal p,t, ts,tmp2, tmp, dum1, dum2
+!       PetscReal dtmp,dddt,dddp
+        PetscReal dtemp,dpres
+        PetscReal rhodp,rhodt,fgdp,fgdt,engdp,engdt,entdp,entdt,vdp,vdt
 
         character*3 :: q
         character*1 :: tab
@@ -84,7 +87,7 @@ module co2_sw_module
              
                ts = 1000.D0
                if (p .le.pc .and. t .le.tc) then
-                 call vappr (ts,p,dum1,dum2,12)
+                 call vappr (ts,p,dum1,dum2,TWELVE_INTEGER)
                 endif
 
              
@@ -157,7 +160,7 @@ module co2_sw_module
              
                ts = 1000.D0
                if (p .le.pc .and. t .le.tc) then
-                 call vappr (ts,p,dum1,dum2,12)
+                 call vappr (ts,p,dum1,dum2,TWELVE_INTEGER)
                 endif
 
              
@@ -279,10 +282,10 @@ module co2_sw_module
 
  
      
-  real*8  function co2_prop_spwag(ip,it,iv)
+  PetscReal  function co2_prop_spwag(ip,it,iv)
      implicit none 
- !    real*8 co2_prop_spwag
-     integer ip,it,iv
+ !    PetscReal co2_prop_spwag
+     PetscInt ip,it,iv
       
       
       if(ifinetable)then
@@ -302,13 +305,13 @@ module co2_sw_module
   
 #include "finclude/petscsys.h"
   
-      real*8:: x1,x2,y(15)   
+      PetscReal:: x1,x2,y(15)   
       
-      real*8 factor(1:4), fac(2,2) , iindex, jindex
-      real*8 funv(1:2,1:2,0:2), funi(1:2,1:2,0:2)
+      PetscReal factor(1:4), fac(2,2) , iindex, jindex
+      PetscReal funv(1:2,1:2,0:2), funi(1:2,1:2,0:2)
              
-      real*8 ps, tmp, tmp2, ntab_t, ntab_p, dt_tab, dp_tab, p0_tab, t0_tab 
-      integer isucc, i1,i2,j1,j2, icross, i,j
+      PetscReal ps, tmp, tmp2, ntab_t, ntab_p, dt_tab, dp_tab, p0_tab, t0_tab 
+      PetscInt isucc, i1,i2,j1,j2, icross, i,j
       
       ifinetable = PETSC_FALSE
       if(x2 <= co2_sw_f_t1_tab .and. x1<= co2_sw_f_p1_tab) then
@@ -344,16 +347,16 @@ module co2_sw_module
  ! Check wether the table block covers the saturation line, missed special case.
     icross =0
     if (ifinetable) then
-      call vappr(co2_prop_spwag(i1,j1,2),ps,tmp,tmp2,11)
-      if((ps - co2_prop_spwag(i1,j1,1)) * (ps - co2_prop_spwag(i1,j2,1)) <0.D0)then
+      call vappr(co2_prop_spwag(i1,j1,TWO_INTEGER),ps,tmp,tmp2,ELEVEN_INTEGER)
+      if((ps - co2_prop_spwag(i1,j1,ONE_INTEGER)) * (ps - co2_prop_spwag(i1,j2,ONE_INTEGER)) <0.D0)then
         icross = 1; isucc=0
       else
-        call vappr(co2_prop_spwag(i2,j1,2),ps,tmp,tmp,11)
-        if((ps - co2_prop_spwag(i2,j1,1)) * (ps - co2_prop_spwag(i2,j2,1)) <0.D0)then
+        call vappr(co2_prop_spwag(i2,j1,TWO_INTEGER),ps,tmp,tmp,ELEVEN_INTEGER)
+        if((ps - co2_prop_spwag(i2,j1,ONE_INTEGER)) * (ps - co2_prop_spwag(i2,j2,ONE_INTEGER)) <0.D0)then
           icross = 1; isucc=0
     !     else
-    !     call vappr(0.5D0 * (co2_prop_spwag(i1,j1,2)+co2_prop_spwag(i2,j1,2)),ps, tmp,tmp2,12)
-    !     if((ts - co2_prop_spwag(i2,j1,2)) * (ts - co2_prop_spwag(i2,j2,2)) <0.D0)then
+    !     call vappr(0.5D0 * (co2_prop_spwag(i1,j1,TWO_INTEGER)+co2_prop_spwag(i2,j1,TWO_INTEGER)),ps, tmp,tmp2,TWELVE_INTEGER)
+    !     if((ts - co2_prop_spwag(i2,j1,TWO_INTEGER)) * (ts - co2_prop_spwag(i2,j2,TWO_INTEGER)) <0.D0)then
     !       icross = 1; isucc=0
     !     endif
         endif
@@ -458,7 +461,7 @@ module co2_sw_module
       if((icross ==1 .and. ifinetable).or. isucc < 1)then
       ! print *, ' Exit table looking', icross, isucc, ifinetable
        call co2_span_wagner(x1,x2,y(3),y(4),y(5),y(6),y(7),y(8), &
-        y(9),y(10),y(11),y(12),y(13),y(14),y(15),0)
+        y(9),y(10),y(11),y(12),y(13),y(14),y(15),ZERO_INTEGER)
        
       endif  
     end subroutine 
@@ -469,11 +472,11 @@ module co2_sw_module
          
        implicit none
        
-      real*8 :: p,tc,rho,eng,ent,dhdt,dhdp,dddt,dddp,visc,dvdt,dvdp
-      real*8 :: fg,dfgdp,dfgdt
-      integer itable
+      PetscReal :: p,tc,rho,eng,ent,dhdt,dhdp,dddt,dddp,visc,dvdt,dvdp
+      PetscReal :: fg,dfgdp,dfgdt
+      PetscInt itable
        
-      real*8 :: t, prop(15)
+      PetscReal :: t, prop(15)
      
   
       t=tc+273.15D0

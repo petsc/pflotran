@@ -60,6 +60,7 @@ subroutine HDF5ReadNDimRealArray(option,file_id,dataset_name,ndims,dims, &
   integer(HID_T) :: memory_space_id
   integer(HID_T) :: data_set_id
   integer(HID_T) :: prop_id
+  integer(HID_T) :: ndims_hdf5
   integer(HSIZE_T), allocatable :: dims_h5(:), max_dims_h5(:)
   integer(HSIZE_T) :: offset(1), length(1), stride(1)
   PetscMPIInt :: rank
@@ -76,7 +77,8 @@ subroutine HDF5ReadNDimRealArray(option,file_id,dataset_name,ndims,dims, &
   call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
   ! should be a rank=1 data space
   
-  call h5sget_simple_extent_ndims_f(file_space_id,ndims,hdf5_err)
+  ndims_hdf5 = ndims
+  call h5sget_simple_extent_ndims_f(file_space_id,ndims_hdf5,hdf5_err)
   allocate(dims_h5(ndims))
   allocate(max_dims_h5(ndims))
   allocate(dims(ndims))

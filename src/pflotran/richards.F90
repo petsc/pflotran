@@ -1454,7 +1454,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
 #include "finclude/petscvec.h90"
        PetscFortranAddr :: p_application
        Vec :: vec
-       PetscInt :: ierr
+       PetscErrorCode :: ierr
      end subroutine SAMRCoarsenFaceFluxes
   end interface
 
@@ -1758,15 +1758,19 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
     ngx = grid%structured_grid%ngx   
     ngxy = grid%structured_grid%ngxy
 
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 0, 0)==1) nlx = nlx-1
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 0, 1)==1) nlx = nlx-1
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
+                        ZERO_INTEGER)==1) nlx = nlx-1
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
+                        ONE_INTEGER)==1) nlx = nlx-1
     
     max_x_conn = (nlx+1)*nly*nlz
     ! reinitialize nlx
     nlx = grid%structured_grid%nlx  
 
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 1, 0)==1) nly = nly-1
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 1, 1)==1) nly = nly-1
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
+                        ZERO_INTEGER)==1) nly = nly-1
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
+                        ONE_INTEGER)==1) nly = nly-1
     
     max_y_conn = max_x_conn + nlx*(nly+1)*nlz
 

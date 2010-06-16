@@ -114,6 +114,8 @@ subroutine MaterialPropertyRead(material_property,input,option)
   character(len=MAXWORDLENGTH) :: keyword, word
   character(len=MAXSTRINGLENGTH) :: string
 
+  PetscInt :: length
+
   input%ierr = 0
   do
   
@@ -172,8 +174,8 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputReadNChars(input,option,string,MAXSTRINGLENGTH,PETSC_TRUE)
         call InputErrorMsg(input,option,'porosity','MATERIAL_PROPERTY')
         call StringToUpper(string)
-        if (StringCompare(string,'RANDOM_DATASET', &
-                          len_trim('RANDOM_DATASET'))) then
+        length = len_trim('RANDOM_DATASET')
+        if (StringCompare(string,'RANDOM_DATASET',length)) then
           call InputReadNChars(input,option,&
                                material_property%porosity_filename,&
                                MAXSTRINGLENGTH,PETSC_TRUE)

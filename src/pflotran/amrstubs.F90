@@ -71,7 +71,7 @@ implicit none
   level_number_patches=-1
 end function level_number_patches
 
-integer function is_local_patch(p_application, ln, pn)
+PetscInt function is_local_patch(p_application, ln, pn)
 implicit none
 #include "finclude/petscsysdef.h"
   PetscFortranAddr, intent(inout) :: p_application
@@ -182,7 +182,7 @@ implicit none
   PetscFortranAddr :: p_application
   Vec :: lvec
   Vec :: gvec
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
 
 end subroutine SAMRGlobalToLocal
 
@@ -194,7 +194,7 @@ implicit none
   PetscFortranAddr :: p_application
   Vec :: lvec
   Vec :: gvec
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
 
 end subroutine SAMRLocalToLocal
 
@@ -205,7 +205,7 @@ implicit none
 #include "finclude/petscvec.h90"
   PetscFortranAddr :: p_application
   Vec :: vec
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
 
 end subroutine SAMRCoarsenFaceFluxes
 
