@@ -1,7 +1,7 @@
 #include "HDF.h"
 
 #if defined(PETSC_HAVE_HDF5)
-#define FIX
+//#define FIX
 
 static PetscInt neg_one = -1;
 
