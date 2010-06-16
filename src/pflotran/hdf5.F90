@@ -1833,11 +1833,13 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
 #endif
         call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
         call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,offset, &
-                                    group_length,hdf5_err,stride,stride)
+!geh                                    group_length,hdf5_err,stride,stride)
+                                    group_length(1),hdf5_err,stride,stride)
         call PetscLogEventBegin(logging%event_h5dread_f, &
                                 PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                                 PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
-        call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,group_indices(1:group_length), &
+!geh        call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,group_indices(1:group_length), &
+        call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,group_indices(1:group_length(1)), &
                        dims,hdf5_err,memory_space_id,file_space_id,prop_id)
         call PetscLogEventEnd(logging%event_h5dread_f, &
                               PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -1845,7 +1847,8 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
     endif
   endif
 
-  call mpi_scatterv(group_indices(1:group_length),glength,displacement,MPI_INTEGER, &
+!geh  call mpi_scatterv(group_indices(1:group_length),glength,displacement,MPI_INTEGER, &
+  call mpi_scatterv(group_indices(1:group_length(1)),glength,displacement,MPI_INTEGER, &
                     indices(1:length),length,MPI_INTEGER,0,option%read_group,ierr)
 
   if (mod(option%global_rank,read_bcast_size) == 0) then
@@ -2086,7 +2089,8 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
       
         call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
         call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
-                                   group_length,hdf5_err,stride,stride) 
+!geh                                   group_length,hdf5_err,stride,stride) 
+                                   group_length(1),hdf5_err,stride,stride) 
     
         if (data_type == H5T_NATIVE_DOUBLE) then
            allocate(real_group_buffer(group_length(1)))
