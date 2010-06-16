@@ -99,14 +99,16 @@ subroutine init_span_wanger(realization)
 
   implicit none
   type(realization_type) :: realization
+  PetscMPIInt :: myrank 
 
   if (realization%option%co2eos == EOS_SPAN_WAGNER)then
     select case(realization%option%itable)
        case(0,1,2)
          call initialize_span_wagner(realization%option%itable,realization%option%myrank)
        case(4,5)
-         call initialize_span_wagner(0,realization%option%myrank)
-         call initialize_sw_interp(realization%option%itable, realization%option%myrank)
+         myrank = realization%option%myrank
+         call initialize_span_wagner(ZERO_INTEGER,myrank)
+         call initialize_sw_interp(realization%option%itable,myrank)
        case(3)
          call sw_spline_read
        case default
@@ -332,7 +334,8 @@ end subroutine MphaseSetupPatch
   type(option_type), pointer :: option 
   PetscReal, pointer :: xx_p(:),iphase_loc_p(:), yy_p(:) 
   PetscInt :: n,n0,re
-  PetscInt :: re0, ierr, iipha
+  PetscInt :: re0, iipha
+  PetscErrorCode :: ierr
   
   option => realization%option
   field => realization%field  
@@ -485,8 +488,9 @@ end subroutine MPhaseUpdateReason
     type(option_type), pointer :: option
     type(field_type), pointer :: field
       
-    PetscInt :: local_id, ghosted_id, ierr, ipass
+    PetscInt :: local_id, ghosted_id, ipass
     PetscReal, pointer :: xx_p(:)
+    PetscErrorCode :: ierr
 
 
     patch => realization%patch
@@ -906,7 +910,7 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-                              option,0, accum_p(istart:iend)) 
+                              option,ZERO_INTEGER, accum_p(istart:iend)) 
   enddo
 
   call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
@@ -1019,7 +1023,8 @@ subroutine MphaseSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, &
   PetscReal :: enth_src_h2o, enth_src_co2 
   PetscReal :: rho, fg, dfgdp, dfgdt, eng, dhdt, dhdp, visc, dvdt, dvdp, xphi
   PetscReal :: ukvr, v_darcy, dq, dphi
-  PetscInt  :: np, ierr  
+  PetscInt  :: np
+  PetscErrorCode :: ierr
   
   Res=0D0
  ! if (present(ireac)) iireac=ireac
@@ -1600,7 +1605,7 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call MphaseVarSwitchPatch(xx, realization, 0, ichange)
+      call MphaseVarSwitchPatch(xx, realization, ZERO_INTEGER, ichange)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -2109,7 +2114,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
                             porosity_loc_p(ghosted_id), &
                             volume_p(local_id), &
                             mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-                            option,1,Res) 
+                            option,ONE_INTEGER,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
  !   print *,'REs, acm: ', res
     Resold_AR(local_id, :)= Res(1:option%nflowdof)
@@ -2659,7 +2664,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
              porosity_loc_p(ghosted_id), &
              volume_p(local_id), &
              mphase_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-             option,1, res) 
+             option,ONE_INTEGER, res) 
         ResInc( local_id,:,nvar) =  ResInc(local_id,:,nvar) + Res(:)
      enddo
      

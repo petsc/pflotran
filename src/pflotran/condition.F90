@@ -341,11 +341,13 @@ function GetFlowSubCondFromArrayByName(sub_condition_ptr_list,name)
   character(len=MAXWORDLENGTH) :: name
   
   PetscInt :: idof
+  PetscInt :: length
   
   nullify(GetFlowSubCondFromArrayByName)
+  length = len_trim(name)
   do idof = 1, size(sub_condition_ptr_list)
-    if (len_trim(name) == len_trim(sub_condition_ptr_list(idof)%ptr%name) .and. &
-        StringCompare(name,sub_condition_ptr_list(idof)%ptr%name,len_trim(name))) then
+    if (length == len_trim(sub_condition_ptr_list(idof)%ptr%name) .and. &
+        StringCompare(name,sub_condition_ptr_list(idof)%ptr%name,length)) then
       GetFlowSubCondFromArrayByName => sub_condition_ptr_list(idof)%ptr
       return
     endif

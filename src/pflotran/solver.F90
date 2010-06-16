@@ -935,7 +935,7 @@ subroutine SolverDestroy(solver)
   type(solver_type), pointer :: solver
   
   PetscErrorCode :: ierr
-  integer :: i
+  PetscInt :: i
 
   if (.not.associated(solver)) return
 

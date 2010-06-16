@@ -1124,7 +1124,7 @@ subroutine GridVecGetArrayCellF90(grid, vec, f90ptr, ierr)
   type(grid_type) :: grid
   Vec:: vec
   PetscReal, pointer :: f90ptr(:)
-  integer :: ierr
+  PetscErrorCode :: ierr
 
   if (.not.associated(grid%structured_grid)) then
      call VecGetArrayF90(vec, f90ptr, ierr)
@@ -1152,7 +1152,7 @@ subroutine GridVecGetArraySideF90(grid, axis, vec, f90ptr, ierr)
   PetscInt :: axis 
   Vec:: vec
   PetscReal, pointer :: f90ptr(:)
-  integer :: ierr
+  PetscErrorCode :: ierr
 
   if (.not.associated(grid%structured_grid)) then
      call VecGetArrayF90(vec, f90ptr, ierr)
@@ -1179,7 +1179,7 @@ subroutine GridVecRestoreArrayF90(grid, vec, f90ptr, ierr)
   type(grid_type) :: grid
   Vec:: vec
   PetscReal, pointer :: f90ptr(:)
-  integer :: ierr
+  PetscErrorCode :: ierr
 
   if (.not.associated(grid%structured_grid)) then
      call VecRestoreArrayF90(vec, f90ptr, ierr)

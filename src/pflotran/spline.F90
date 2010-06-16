@@ -1,4 +1,6 @@
   module spline_module
+
+#include "definitions.h"
   
   public
   
@@ -16,9 +18,9 @@
 
       implicit none
       
-      integer :: i,n,k
-      real*8 :: x(n),y(n),y2(n),u(n)
-      real*8 :: sig,p,qn,un
+      PetscInt :: i,n,k
+      PetscReal :: x(n),y(n),y2(n),u(n)
+      PetscReal :: sig,p,qn,un
 
       y2(1) = 0.d0
       u(1) = 0.d0
@@ -50,9 +52,9 @@
 
 
       implicit none
-      integer :: n,k,klo,khi
-      real*8 :: xa(n),ya(n),y2a(n)
-      real*8 :: h,a,b,x,y
+      PetscInt :: n,k,klo,khi
+      PetscReal :: xa(n),ya(n),y2a(n)
+      PetscReal :: h,a,b,x,y
 
       klo = 1
       khi = n
@@ -90,9 +92,9 @@
 !     cambridge university press, cambridge.
 
       implicit none
-      integer :: jl,ju,jm,j,n
-      real*8 :: xx(n)
-      real*8 :: x
+      PetscInt :: jl,ju,jm,j,n
+      PetscReal :: xx(n)
+      PetscReal :: x
       
       jl = 0
       ju = n+1

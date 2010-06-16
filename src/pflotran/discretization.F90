@@ -624,19 +624,19 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
        Mat :: p_matrix
      end subroutine SAMRCreateMatrix
      
-     integer function hierarchy_number_levels(p_hierarchy)
+     PetscInt function hierarchy_number_levels(p_hierarchy)
        PetscFortranAddr, intent(inout) :: p_hierarchy
      end function hierarchy_number_levels
    
-     integer function level_number_patches(p_hierarchy, ln)
+     PetscInt function level_number_patches(p_hierarchy, ln)
        PetscFortranAddr, intent(inout) :: p_hierarchy
-       integer, intent(in) :: ln
+       PetscInt, intent(in) :: ln
      end function level_number_patches
 
-     integer function is_local_patch(p_hierarchy, ln, pn)
+     PetscInt function is_local_patch(p_hierarchy, ln, pn)
        PetscFortranAddr, intent(inout) :: p_hierarchy
-       integer, intent(in) :: ln
-       integer, intent(in) :: pn
+       PetscInt, intent(in) :: ln
+       PetscInt, intent(in) :: pn
      end function is_local_patch
      
   end interface
@@ -657,7 +657,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   PetscInt :: flowortransport
   type(dm_ptr_type), pointer :: dm_ptr
   ISLocalToGlobalMapping :: ptmap
-  integer :: islocal
+  PetscInt :: islocal
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
     
@@ -858,7 +858,7 @@ subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_in
        Vec :: lvec
        Vec :: gvec
        PetscInt :: ndof
-       PetscInt :: ierr
+       PetscErrorCode :: ierr
        
      end subroutine SAMRGlobalToLocal
 
@@ -936,7 +936,7 @@ subroutine DiscretizationLocalToLocal(discretization,local_vec1,local_vec2,dm_in
        Vec :: lvec
        Vec :: gvec
        PetscInt :: ndof
-       PetscInt :: ierr
+       PetscErrorCode :: ierr
        
      end subroutine SAMRLocalToLocal
 
@@ -1261,7 +1261,7 @@ subroutine DiscretizationDestroy(discretization)
   type(discretization_type), pointer :: discretization
   
   PetscErrorCode :: ierr
-  integer :: i
+  PetscInt :: i
     
   if (.not.associated(discretization)) return
       

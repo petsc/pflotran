@@ -1025,7 +1025,7 @@ function PatchAuxVarsUpToDate(patch)
   PetscTruth :: PatchAuxVarsUpToDate
   PetscTruth :: flow_up_to_date
   PetscTruth :: transport_up_to_date
-  integer :: dummy
+  PetscInt :: dummy
   dummy = 1
 
   if (associated(patch%aux%THC)) then

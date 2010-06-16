@@ -311,7 +311,8 @@ end subroutine ImmisSetupPatch
   type(option_type), pointer :: option 
   PetscReal, pointer :: xx_p(:),iphase_loc_p(:), yy_p(:) 
   PetscInt :: n,n0,re
-  PetscInt :: re0, ierr, iipha
+  PetscInt :: re0, iipha
+  PetscErrorCode :: ierr
   
   option => realization%option
   field => realization%field  
@@ -383,7 +384,8 @@ subroutine ImmisUpdateReason(reason, realization)
   type(patch_type), pointer :: cur_patch
   PetscInt :: reason
 
-  PetscInt :: re, re0, ierr
+  PetscInt :: re, re0
+  PetscErrorCode :: ierr
 
   re = 1
   cur_level => realization%level_list%first
@@ -406,7 +408,7 @@ subroutine ImmisUpdateReason(reason, realization)
  call MPI_Barrier(realization%option%mycomm,ierr)
   
   if(realization%option%mycommsize >1)then
-     call MPI_ALLREDUCE(re, re0,1, MPI_INTEGER,MPI_SUM, &
+     call MPI_ALLREDUCE(re, re0,ONE_INTEGER,MPI_INTEGER,MPI_SUM, &
           realization%option%mycomm,ierr)
      if(re0<realization%option%mycommsize) re=0
   endif
@@ -439,8 +441,9 @@ end subroutine ImmisUpdateReason
     type(option_type), pointer :: option
     type(field_type), pointer :: field
       
-    PetscInt :: local_id, ghosted_id, ierr, ipass
+    PetscInt :: local_id, ghosted_id, ipass
     PetscReal, pointer :: xx_p(:)
+    PetscErrorCode :: ierr
 
 
     patch => realization%patch
@@ -793,7 +796,7 @@ subroutine ImmisUpdateFixedAccumPatch(realization)
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               immis_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-                              option,0, accum_p(istart:iend)) 
+                              option,ZERO_INTEGER, accum_p(istart:iend)) 
   enddo
 
   call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
@@ -895,7 +898,8 @@ subroutine ImmisSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fla
   PetscReal :: enth_src_h2o, enth_src_co2 
   PetscReal :: rho, fg, dfgdp, dfgdt, eng, dhdt, dhdp, visc, dvdt, dvdp, xphi
   PetscReal :: ukvr, v_darcy, dq, dphi
-  PetscInt  :: np, ierr  
+  PetscInt  :: np
+  PetscErrorCode :: ierr
   
   Res=0D0
  ! if (present(ireac)) iireac=ireac
@@ -1510,7 +1514,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
     call ImmisAccumulation(aux_vars(ghosted_id)%aux_var_elem(0),porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               immis_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-                              option,1,Res) 
+                              option,ONE_INTEGER,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
     !print *,'REs, acm: ', res
     Resold_AR(local_id, :)= Res(1:option%nflowdof)
@@ -1995,7 +1999,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
              porosity_loc_p(ghosted_id), &
              volume_p(local_id), &
              immis_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-             option,1, res) 
+             option,ONE_INTEGER, res) 
         ResInc( local_id,:,nvar) =  ResInc(local_id,:,nvar) + Res(:)
      enddo
      

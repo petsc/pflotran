@@ -60,6 +60,7 @@
   PetscTruth :: option_found  
   PetscTruth :: single_inputfile
   PetscInt :: i
+  PetscInt :: temp_int
   PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXSTRINGLENGTH), pointer :: filenames(:)
@@ -119,7 +120,8 @@
       call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
     else
       call InitReadInputFilenames(option,filenames)
-      call SimulationCreateProcessorGroups(option,size(filenames))
+      temp_int = size(filenames) 
+      call SimulationCreateProcessorGroups(option,temp_int)
       option%input_filename = filenames(option%mygroup_id)
       i = index(option%input_filename,'.',PETSC_TRUE)
       if (i > 1) then
