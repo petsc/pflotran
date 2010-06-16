@@ -158,11 +158,13 @@ subroutine RichardsSetupPatch(realization)
                      boundary_condition%connection_set%num_connections
     boundary_condition => boundary_condition%next
   enddo
-  allocate(rich_aux_vars_bc(sum_connection))
-  do iconn = 1, sum_connection
-    call RichardsAuxVarInit(rich_aux_vars_bc(iconn),option)
-  enddo
-  patch%aux%Richards%aux_vars_bc => rich_aux_vars_bc
+  if (sum_connection > 0) then
+    allocate(rich_aux_vars_bc(sum_connection))
+    do iconn = 1, sum_connection
+      call RichardsAuxVarInit(rich_aux_vars_bc(iconn),option)
+    enddo
+    patch%aux%Richards%aux_vars_bc => rich_aux_vars_bc
+  endif
   patch%aux%Richards%num_aux_bc = sum_connection
   
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
@@ -301,9 +303,13 @@ subroutine RichardsZeroMassBalDeltaPatch(realization)
   enddo
 #endif
 
-  do iconn = 1, patch%aux%Richards%num_aux_bc
-    global_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
-  enddo
+  ! Intel 10.1 on Chinook reports a SEGV if this conditional is not
+  ! placed around the internal do loop - geh
+  if (patch%aux%Richards%num_aux_bc > 0) then
+    do iconn = 1, patch%aux%Richards%num_aux_bc
+      global_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
+    enddo
+  endif
 
 end subroutine RichardsZeroMassBalDeltaPatch
 
@@ -345,11 +351,15 @@ subroutine RichardsUpdateMassBalancePatch(realization)
   enddo
 #endif
 
-  do iconn = 1, patch%aux%Richards%num_aux_bc
-    global_aux_vars_bc(iconn)%mass_balance = &
-      global_aux_vars_bc(iconn)%mass_balance + &
-      global_aux_vars_bc(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
-  enddo
+  ! Intel 10.1 on Chinook reports a SEGV if this conditional is not
+  ! placed around the internal do loop - geh
+  if (patch%aux%Richards%num_aux_bc > 0) then
+    do iconn = 1, patch%aux%Richards%num_aux_bc
+      global_aux_vars_bc(iconn)%mass_balance = &
+        global_aux_vars_bc(iconn)%mass_balance + &
+        global_aux_vars_bc(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
+    enddo
+  endif
 
 end subroutine RichardsUpdateMassBalancePatch
 
