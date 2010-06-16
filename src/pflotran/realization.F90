@@ -209,6 +209,9 @@ subroutine RealizationCreateDiscretization(realization)
 
   call DiscretizationDuplicateVector(discretization,field%porosity0, &
                                      field%work)
+  ! temporary for samr testing
+  call DiscretizationDuplicateVector(discretization,field%porosity0, &
+                                     field%work_samr)
   
   ! 1 degree of freedom, local
   call DiscretizationCreateVector(discretization,ONEDOF,field%porosity_loc, &
@@ -218,6 +221,10 @@ subroutine RealizationCreateDiscretization(realization)
 
   call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
                                      field%work_loc)
+  
+  ! temporary for samr testing
+  call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                     field%work_samr_loc)
   
   if (option%nflowdof > 0) then
 

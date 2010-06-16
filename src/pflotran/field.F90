@@ -25,6 +25,9 @@ module Field_module
     
     Vec :: work, work_loc
 
+    ! temporary Vec's for testing AMR  
+    Vec :: work_samr, work_samr_loc
+
     Vec :: volume 
     
     ! residual vectors

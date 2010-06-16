@@ -2720,6 +2720,10 @@ subroutine RTTransportMatVec(mat, x, y)
   call DiscretizationGlobalToLocal(discretization,x, &
                                        field%work_loc,ONEDOF)
 
+   ! temporary for samr testing                                     
+  call DiscretizationGlobalToLocal(discretization,x, &
+                                       field%work_samr_loc,ONEDOF)
+
   cur_level => realization%level_list%first
   do
     if (.not.associated(cur_level)) exit
@@ -2765,6 +2769,7 @@ subroutine RTTransportMatVec(mat, x, y)
     cur_level => cur_level%next
   enddo
 
+      
    call VecScale(y, -1.0, ierr)  
 end subroutine RTTransportMatVec
       
