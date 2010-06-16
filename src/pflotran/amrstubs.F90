@@ -295,3 +295,11 @@ subroutine SAMRInitializePreconditioner(p_application, which_pc, pc)
   PetscFortranAddr :: p_application
   PetscInt :: which_pc
 end subroutine SAMRInitializePreconditioner
+
+subroutine SAMRGetRealization(p_application, realization) 
+use Realization_module
+#include "finclude/petscsys.h"
+      
+PetscFortranAddr :: p_application
+type(realization_type), pointer :: realization
+end subroutine SAMRGetRealization
