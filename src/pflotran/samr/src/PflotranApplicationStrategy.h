@@ -130,9 +130,12 @@ public:
                                       tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  destVec,
                                       int ierr);
 
+   void coarsenVector(tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  localVec);
+   
    void coarsenFaceFluxes(tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> > faceVec, 
                           int ierr);
 
+ 
    void setRefinementBoundaryInterpolant(RefinementBoundaryInterpolation *cf_interpolant);
 
    RefinementBoundaryInterpolation *getRefinementBoundaryInterpolant(void){return d_cf_interpolant; }
@@ -151,6 +154,9 @@ public:
 
    PflotranJacobianMultilevelOperator *getJacobianOperator(int *which_pc);
 
+   void setRealization(void *pflotranRealizationObj){ d_pflotranRealizationObj=pflotranRealizationObj; }
+   void *getRealization(void){ return d_pflotranRealizationObj; }
+   
 protected:
 
 private:
@@ -192,6 +198,9 @@ private:
 
    int  d_pflotran_weight_id;
 
+   // pointer to PFLOTRAN simulation object
+   void *d_pflotranRealizationObj; 
+   
    double d_current_time;
 
    // Name of application

@@ -175,6 +175,12 @@ void samr_patch_get_ghostcorners_(SAMRAI::hier::Patch<NDIM> **patch,
    
 }
 
+void samrgetrealization_(SAMRAI::PflotranApplicationStrategy ***application_strategy,
+			 void **simulation)
+{
+  (*simulation) = (**application_strategy)->getRealization();
+}
+
 void samr_vecgetarraycellf90_(SAMRAI::hier::Patch<NDIM> **patch, 
                           Vec *petscVec,
                           void **f90wrap)
@@ -296,6 +302,15 @@ void samrlocaltolocal_(SAMRAI::PflotranApplicationStrategy **application_strateg
 
    (*application_strategy)->interpolateLocalToLocalVector(srcVec, dstVec, *ierr);
    
+}
+
+void samrcoarsenvector_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
+			Vec *dvec)
+{
+  SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > dstVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(*dvec);
+
+   (*application_strategy)->coarsenVector(dstVec);
+  
 }
 
 void samrcoarsenfacefluxes_(SAMRAI::PflotranApplicationStrategy **application_strategy, 

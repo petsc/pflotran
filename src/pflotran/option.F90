@@ -59,7 +59,11 @@ module Option_module
     ! 1 - FACE CENTERED
     PetscInt :: ivar_centering
     PetscTruth :: use_samr
-
+    ! the next variable is used by SAMR to determine
+    ! what dof the linear system in operator split mode   
+    ! needs to be formed for
+    PetscInt :: rt_idof
+      
     PetscInt :: nphase
     PetscInt :: liquid_phase
     PetscInt :: gas_phase

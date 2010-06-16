@@ -77,11 +77,7 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
 #if 1
    if(!variable_db->checkVariableExists("pflotranWeight"))
    {
-#if 0
-      d_pflotran_weight = new pdat::CCellVariable<NDIM,double>("pflotranWeight", d_number_solution_components);
-#else
       d_pflotran_weight = new pdat::CCellVariable<NDIM,double>("pflotranWeight", 1);
-#endif
    }
    else
    {
@@ -388,6 +384,9 @@ PflotranApplicationStrategy::interpolateLocalToLocalVector(tbox::Pointer< solv::
     assert(srcDOF==dstDOF);
 #endif
 
+    // index into the schedule array
+    int index=(srcDOF==1)?0:1;
+    
     xfer::RefineAlgorithm<NDIM> ghost_cell_fill;
 
     ghost_cell_fill.registerRefine(dest_id,
@@ -403,25 +402,25 @@ PflotranApplicationStrategy::interpolateLocalToLocalVector(tbox::Pointer< solv::
 
       d_refine_patch_strategy->setDataID(dest_id);
 
-      if((!d_LocalToLocalRefineSchedule[ln][srcDOF-1].isNull()) && ghost_cell_fill.checkConsistency(d_LocalToLocalRefineSchedule[ln][srcDOF-1]))
+      if((!d_LocalToLocalRefineSchedule[ln][index].isNull()) && ghost_cell_fill.checkConsistency(d_LocalToLocalRefineSchedule[ln][index]))
       {
-         ghost_cell_fill.resetSchedule(d_LocalToLocalRefineSchedule[ln][srcDOF-1]);
+         ghost_cell_fill.resetSchedule(d_LocalToLocalRefineSchedule[ln][index]);
       }
       else
       {
-         d_LocalToLocalRefineSchedule[ln][srcDOF-1] = ghost_cell_fill.createSchedule(
+         d_LocalToLocalRefineSchedule[ln][index] = ghost_cell_fill.createSchedule(
             level, 
             ln-1,
             hierarchy,
             d_refine_patch_strategy);
 
 #ifdef DEBUG_CHECK_ASSERTIONS
-         assert(!d_LocalToLocalRefineSchedule[ln][srcDOF-1].isNull());
+         assert(!d_LocalToLocalRefineSchedule[ln][index].isNull());
 #endif
 
       }
       
-      d_LocalToLocalRefineSchedule[ln][srcDOF-1]->fillData(d_current_time);            
+      d_LocalToLocalRefineSchedule[ln][index]->fillData(d_current_time);            
 
       if(ln>0)
       {	
@@ -455,6 +454,7 @@ PflotranApplicationStrategy::interpolateLocalToLocalVector(tbox::Pointer< solv::
       tbox::Pointer<hier::PatchLevel<NDIM> > clevel = hierarchy->getPatchLevel(ln);
       tbox::Pointer<hier::PatchLevel<NDIM> > flevel = hierarchy->getPatchLevel(ln+1);
 
+#if 0      
       for ( int i=0; i<srcDOF; i++)
       {
          if((!d_CoarsenSchedule[ln][i].isNull()) && cell_coarsen.checkConsistency(d_CoarsenSchedule[ln][i]))
@@ -469,10 +469,103 @@ PflotranApplicationStrategy::interpolateLocalToLocalVector(tbox::Pointer< solv::
          
          d_CoarsenSchedule[ln][i]->coarsenData();            
       }
+#else
+
+    if((!d_CoarsenSchedule[ln][index].isNull()) && cell_coarsen.checkConsistency(d_CoarsenSchedule[ln][index]))
+      {
+	cell_coarsen.resetSchedule(d_CoarsenSchedule[ln][index]);
+      }
+    else
+      {
+	d_CoarsenSchedule[ln][index] = cell_coarsen.createSchedule(clevel, 
+							       flevel);
+      }
+    
+    d_CoarsenSchedule[ln][index]->coarsenData();            
+#endif
     }
+    
 #endif
 
     t_interpolate_variable->stop();
+}
+
+void
+PflotranApplicationStrategy::coarsenVector(tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  dstVec)
+{
+#ifdef DEBUG_CHECK_ASSERTIONS
+   assert(!dstVec.isNull());
+#endif
+
+    tbox::Pointer<hier::PatchHierarchy<NDIM> > hierarchy =  d_hierarchy;
+
+    static tbox::Pointer<tbox::Timer> t_coarsen_variable = tbox::TimerManager::getManager()->getTimer("PFlotran::PflotranApplicationStrategy::coarsenVector");
+
+    t_coarsen_variable->start();
+
+    int dest_id = dstVec->getComponentDescriptorIndex(0);   
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+    assert(dest_id>=0);
+#endif
+
+    tbox::Pointer< hier::Variable< NDIM > > dstVar = dstVec->getComponentVariable(0);
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+    assert(!dstVar.isNull());
+#endif
+
+    tbox::Pointer< pdat::CCellDataFactory< NDIM, double > > dstFactory = dstVar->getPatchDataFactory(); 
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+    assert(!dstFactory.isNull());
+#endif
+
+    int dstDOF = dstFactory->getDefaultDepth();
+
+    int idx=(dstDOF==1)?0:1;
+    
+    // should add code to coarsen variables
+    xfer::CoarsenAlgorithm<NDIM> cell_coarsen;
+    cell_coarsen.registerCoarsen(dest_id, dest_id, d_soln_coarsen_op);
+
+    for (int ln = hierarchy->getNumberOfLevels()-2; ln>=0; ln-- ) 
+    {
+      tbox::Pointer<hier::PatchLevel<NDIM> > clevel = hierarchy->getPatchLevel(ln);
+      tbox::Pointer<hier::PatchLevel<NDIM> > flevel = hierarchy->getPatchLevel(ln+1);
+
+#if 0      
+      for ( int i=0; i<dstDOF; i++)
+      {
+         if((!d_CoarsenSchedule[ln][i].isNull()) && cell_coarsen.checkConsistency(d_CoarsenSchedule[ln][i]))
+         {
+            cell_coarsen.resetSchedule(d_CoarsenSchedule[ln][i]);
+         }
+         else
+         {
+            d_CoarsenSchedule[ln][i] = cell_coarsen.createSchedule(clevel, 
+                                                                   flevel);
+         }
+         
+         d_CoarsenSchedule[ln][i]->coarsenData();            
+      }
+#else
+      if((!d_CoarsenSchedule[ln][idx].isNull()) && cell_coarsen.checkConsistency(d_CoarsenSchedule[ln][idx]))
+	{
+	  cell_coarsen.resetSchedule(d_CoarsenSchedule[ln][idx]);
+	}
+      else
+	{
+	  d_CoarsenSchedule[ln][idx] = cell_coarsen.createSchedule(clevel, 
+								 flevel);
+	}
+      
+      d_CoarsenSchedule[ln][idx]->coarsenData();            
+#endif
+      
+    }
+
+    t_coarsen_variable->stop();
 }
 
 void
@@ -507,6 +600,7 @@ PflotranApplicationStrategy::interpolateGlobalToLocalVector(tbox::Pointer< solv:
 				   dest_id,
 				   d_soln_refine_op);
 
+    int idx=(localDOF==1)?0:1;
     // now refine and set physical boundaries also
     for (int ln = 0; ln < hierarchy->getNumberOfLevels(); ln++ ) 
     {
@@ -515,20 +609,20 @@ PflotranApplicationStrategy::interpolateGlobalToLocalVector(tbox::Pointer< solv:
 
       d_refine_patch_strategy->setDataID(dest_id);
 
-      if((!d_GlobalToLocalRefineSchedule[ln][globalDOF-1].isNull()) && ghost_cell_fill.checkConsistency(d_GlobalToLocalRefineSchedule[ln][globalDOF-1]))
+      if((!d_GlobalToLocalRefineSchedule[ln][idx].isNull()) && ghost_cell_fill.checkConsistency(d_GlobalToLocalRefineSchedule[ln][idx]))
       {
-         ghost_cell_fill.resetSchedule(d_GlobalToLocalRefineSchedule[ln][globalDOF-1]);
+         ghost_cell_fill.resetSchedule(d_GlobalToLocalRefineSchedule[ln][idx]);
       }
       else
       {
-         d_GlobalToLocalRefineSchedule[ln][globalDOF-1] = ghost_cell_fill.createSchedule(
+         d_GlobalToLocalRefineSchedule[ln][idx] = ghost_cell_fill.createSchedule(
             level, 
             ln-1,
             hierarchy,
             d_refine_patch_strategy);
       }
       
-      d_GlobalToLocalRefineSchedule[ln][globalDOF-1]->fillData(d_current_time);            
+      d_GlobalToLocalRefineSchedule[ln][idx]->fillData(d_current_time);            
 
       if(ln>0)
       {	
@@ -537,14 +631,14 @@ PflotranApplicationStrategy::interpolateGlobalToLocalVector(tbox::Pointer< solv:
                                                             dest_id,
                                                             0);
           d_cf_interpolant->setGhostCellData(ln, dest_id);
-
-	  for ( int idx=0; idx<globalDOF; idx++)
-	  {
-             d_cf_interpolant->interpolateGhostValues(ln,
-                                                      d_nl_tangential_interp_scheme,
-                                                      d_nl_normal_interp_scheme,
-                                                      dest_id,
-                                                      idx);     
+	  
+          for ( int idx=0; idx<globalDOF; idx++)
+	    {
+	      d_cf_interpolant->interpolateGhostValues(ln,
+						       d_nl_tangential_interp_scheme,
+						       d_nl_normal_interp_scheme,
+						       dest_id,
+						       idx);     
           }
       }
 
@@ -576,6 +670,7 @@ PflotranApplicationStrategy::interpolateGlobalToLocalVector(tbox::Pointer< solv:
       tbox::Pointer<hier::PatchLevel<NDIM> > clevel = hierarchy->getPatchLevel(ln);
       tbox::Pointer<hier::PatchLevel<NDIM> > flevel = hierarchy->getPatchLevel(ln+1);
 
+#if 0      
       for ( int i=0; i<globalDOF; i++)
       {
          if((!d_CoarsenSchedule[ln][i].isNull()) && cell_coarsen.checkConsistency(d_CoarsenSchedule[ln][i]))
@@ -590,6 +685,20 @@ PflotranApplicationStrategy::interpolateGlobalToLocalVector(tbox::Pointer< solv:
          
          d_CoarsenSchedule[ln][i]->coarsenData();            
       }
+#else
+      if((!d_CoarsenSchedule[ln][idx].isNull()) && cell_coarsen.checkConsistency(d_CoarsenSchedule[ln][idx]))
+	{
+	  cell_coarsen.resetSchedule(d_CoarsenSchedule[ln][idx]);
+	}
+      else
+	{
+	  d_CoarsenSchedule[ln][idx] = cell_coarsen.createSchedule(clevel, 
+								 flevel);
+	}
+      
+      d_CoarsenSchedule[ln][idx]->coarsenData();            
+#endif
+      
     }
 
     t_interpolate_variable->stop();

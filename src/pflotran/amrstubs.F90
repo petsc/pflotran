@@ -198,6 +198,15 @@ implicit none
 
 end subroutine SAMRLocalToLocal
 
+subroutine SAMRCoarsenVector(p_application, vec)
+implicit none
+#include "finclude/petscsysdef.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  PetscFortranAddr :: p_application
+  Vec :: vec
+end subroutine SAMRCoarsenVector
+      
 subroutine SAMRCoarsenFaceFluxes(p_application, vec, ierr)
 implicit none
 #include "finclude/petscsysdef.h"
@@ -286,3 +295,11 @@ subroutine SAMRInitializePreconditioner(p_application, which_pc, pc)
   PetscFortranAddr :: p_application
   PetscInt :: which_pc
 end subroutine SAMRInitializePreconditioner
+
+subroutine SAMRGetRealization(p_application, realization) 
+use Realization_module
+#include "finclude/petscsys.h"
+      
+PetscFortranAddr :: p_application
+type(realization_type), pointer :: realization
+end subroutine SAMRGetRealization

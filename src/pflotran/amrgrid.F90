@@ -457,7 +457,11 @@ subroutine AMRGridCreateVector(amrgrid, dof, vector,vector_type, &
     case(NATURAL)
       call printErrMsg(option,'SAMRAI will not create PETSc Natural Vecs!!')
   end select
-    
+
+  if(dof>1) then
+      call VecSetBlockSize(vector, dof)
+  endif
+      
 end subroutine AMRGridCreateVector
 
 ! ************************************************************************** !
