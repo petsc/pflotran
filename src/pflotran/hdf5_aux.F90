@@ -68,6 +68,7 @@ subroutine HDF5ReadNDimRealArray(option,file_id,dataset_name,ndims,dims, &
   PetscInt :: real_count, prev_real_count
   integer(HSIZE_T) :: num_reals_in_dataset
   PetscInt :: temp_int, i, index
+  PetscMPIInt :: mpi_int
   
   call PetscLogEventBegin(logging%event_read_ndim_real_array_hdf5, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -116,8 +117,9 @@ subroutine HDF5ReadNDimRealArray(option,file_id,dataset_name,ndims,dims, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
 #ifdef HDF5_BROADCAST
   endif
-  if (option%mycommsize > 1) &
-    call mpi_bcast(real_array,num_reals_in_dataset,MPI_DOUBLE_PRECISION, &
+  if (option%mycommsize > 1) then
+    mpi_int = num_reals_in_dataset
+    call MPI_Bcast(real_array,mpi_int,MPI_DOUBLE_PRECISION, &
                    option%io_rank,option%mycomm,ierr)
   endif
 #endif

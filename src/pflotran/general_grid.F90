@@ -505,7 +505,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
 #ifdef HDF5_BROADCAST
     endif
     if (option%mycommsize > 1) &
-      call mpi_bcast(upwind_ids,dims(1),MPI_INTEGER,option%io_rank, &
+      call MPI_Bcast(upwind_ids,dims(1),MPI_INTEGER,option%io_rank, &
                      option%mycomm,ierr)
 #endif    
     call h5sselect_hyperslab_f(file_space_id_down, H5S_SELECT_SET_F,offset, &
@@ -524,7 +524,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
 #ifdef HDF5_BROADCAST
     endif
     if (option%mycommsize > 1) &
-      call mpi_bcast(downwind_ids,dims(1),MPI_INTEGER,option%io_rank, &
+      call MPI_Bcast(downwind_ids,dims(1),MPI_INTEGER,option%io_rank, &
                      option%mycomm,ierr)
 #endif    
     do i=1,dims(1)

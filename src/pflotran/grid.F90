@@ -926,7 +926,7 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
   grid%hash => hash
   
 !  call GridPrintHashTable(grid)
-  call mpi_allreduce(max_num_ids_per_hash,num_in_hash,ONE_INTEGER,MPI_INTEGER, &
+  call MPI_Allreduce(max_num_ids_per_hash,num_in_hash,ONE_INTEGER,MPI_INTEGER, &
                      MPI_MAX,option%mycomm,ierr)
   write(option%io_buffer,'("max_num_ids_per_hash: ",i5)') num_in_hash
   call printMsg(option)
@@ -1226,7 +1226,7 @@ function GridIndexToCellID(vec,index,grid,vec_type)
     endif
   endif
   
-  call MPI_AllReduce(cell_id,GridIndexToCellID,1,MPI_INTEGER,MPI_MAX, &
+  call MPI_Allreduce(cell_id,GridIndexToCellID,1,MPI_INTEGER,MPI_MAX, &
                      PETSC_COMM_WORLD,ierr)
                      
 end function GridIndexToCellID

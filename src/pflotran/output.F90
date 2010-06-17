@@ -93,7 +93,7 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
 
 #ifdef VAMSI_STAGE_BARRIER
   ! barrier to calculate the accurate timing of Output Stage
-  call mpi_barrier(option%mycomm,ierr)
+  call MPI_Barrier(option%mycomm,ierr)
 #endif 
 
   call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr)
@@ -205,7 +205,7 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
   realization%output_option%plot_name = ''
 
 #ifdef VAMSI_STAGE_BARRIER
-  call mpi_barrier(option%mycomm,ierr)
+  call MPI_Barrier(option%mycomm,ierr)
   ! barrier to calculate the accurate timing of Output Stage
 #endif 
 

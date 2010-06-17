@@ -339,7 +339,7 @@ subroutine RTCheckUpdatePatch(snes_,C,dC,realization,changed,ierr)
     ratio = min_ratio
     
     ! get global minimum
-    call MPI_AllReduce(ratio,min_ratio,1,MPI_DOUBLE_PRECISION,MPI_MIN, &
+    call MPI_Allreduce(ratio,min_ratio,1,MPI_DOUBLE_PRECISION,MPI_MIN, &
                        PETSC_COMM_WORLD,ierr)
                        
     ! scale if necessary

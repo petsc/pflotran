@@ -304,7 +304,7 @@ end subroutine MphaseSetupPatch
 
    call MPI_Barrier(option%mycomm,ierr)
    if(option%mycommsize >1)then
-      call MPI_ALLREDUCE(ipass,ipass0,ONE_INTEGER, MPI_INTEGER,MPI_SUM, &
+      call MPI_Allreduce(ipass,ipass0,ONE_INTEGER, MPI_INTEGER,MPI_SUM, &
            option%mycomm,ierr)
       if(ipass0 < option%mycommsize) ipass=-1
    endif
@@ -455,7 +455,7 @@ subroutine MPhaseUpdateReason(reason, realization)
  call MPI_Barrier(realization%option%mycomm,ierr)
   
   if(realization%option%mycommsize >1)then
-     call MPI_ALLREDUCE(re, re0,1, MPI_INTEGER,MPI_SUM, &
+     call MPI_Allreduce(re, re0,1, MPI_INTEGER,MPI_SUM, &
           realization%option%mycomm,ierr)
      if(re0<realization%option%mycommsize) re=0
   endif
@@ -3203,8 +3203,8 @@ subroutine MphaseMaxChange(realization)
   enddo
 
   if(option%mycommsize >1)then
-    call MPI_ALLREDUCE(dcmax, max_c,1, MPI_DOUBLE_PRECISION,MPI_MAX, option%mycomm,ierr)
-    call MPI_ALLREDUCE(dsmax, max_s,1, MPI_DOUBLE_PRECISION,MPI_MAX, option%mycomm,ierr)
+    call MPI_Allreduce(dcmax, max_c,1, MPI_DOUBLE_PRECISION,MPI_MAX, option%mycomm,ierr)
+    call MPI_Allreduce(dsmax, max_s,1, MPI_DOUBLE_PRECISION,MPI_MAX, option%mycomm,ierr)
     dcmax= max_C
     dsmax = max_s
   endif 

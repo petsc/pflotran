@@ -282,7 +282,7 @@ end subroutine Flash2SetupPatch
 
    call MPI_Barrier(option%mycomm,ierr)
    if(option%mycommsize >1)then
-      call MPI_ALLREDUCE(ipass,ipass0,ONE_INTEGER, MPI_INTEGER,MPI_SUM, &
+      call MPI_Allreduce(ipass,ipass0,ONE_INTEGER, MPI_INTEGER,MPI_SUM, &
            option%mycomm,ierr)
       if(ipass0 < option%mycommsize) ipass=-1
    endif
@@ -409,7 +409,7 @@ subroutine Flash2UpdateReason(reason, realization)
  call MPI_Barrier(realization%option%mycomm,ierr)
 !  print *, 'flash reason ', re
   if(realization%option%mycommsize >1)then
-     call MPI_ALLREDUCE(re, re0,ONE_INTEGER, MPI_INTEGER,MPI_SUM, &
+     call MPI_Allreduce(re, re0,ONE_INTEGER, MPI_INTEGER,MPI_SUM, &
           realization%option%mycomm,ierr)
      if(re0<realization%option%mycommsize) re=0
   endif
@@ -3024,7 +3024,7 @@ subroutine Flash2MaxChange(realization)
   enddo
 
   if(option%mycommsize >1)then
-    call MPI_ALLREDUCE(dsmax, max_s,1, MPI_DOUBLE_PRECISION,MPI_MAX, option%mycomm,ierr)
+    call MPI_Allreduce(dsmax, max_s,1, MPI_DOUBLE_PRECISION,MPI_MAX, option%mycomm,ierr)
     dsmax = max_s
   endif 
   option%dsmax=dsmax
