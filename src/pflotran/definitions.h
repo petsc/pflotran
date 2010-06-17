@@ -42,7 +42,11 @@ PetscInt, parameter :: NEG_ONE_INTEGER = -1
 
 PetscMPIInt, parameter :: MPI_ZERO_INTEGER = ZERO_INTEGER
 PetscMPIInt, parameter :: MPI_ONE_INTEGER = ONE_INTEGER
+PetscMPIInt, parameter :: MPI_TWO_INTEGER = TWO_INTEGER
+PetscMPIInt, parameter :: MPI_THREE_INTEGER = THREE_INTEGER
+PetscMPIInt, parameter :: MPI_FOUR_INTEGER = FOUR_INTEGER
 PetscMPIInt, parameter :: MPI_SEVEN_INTEGER = SEVEN_INTEGER
+PetscMPIInt, parameter :: MPI_TWELVE_INTEGER = TWELVE_INTEGER
 PetscMPIInt, parameter :: MPI_MAXSTRINGLENGTH = MAXSTRINGLENGTH
 
 PetscInt, parameter :: X_DIRECTION = 1

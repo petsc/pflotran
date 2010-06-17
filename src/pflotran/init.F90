@@ -2636,8 +2636,9 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
   PetscInt :: ghosted_id, natural_id, material_id
   PetscInt :: fid = 86
   PetscInt :: status
-  PetscErrorCode :: ierr, ierr2
+  PetscErrorCode :: ierr
   PetscInt :: count, read_count, i
+  PetscInt :: flag
   PetscInt, pointer :: indices(:)
   PetscReal, pointer :: values(:)
   PetscInt, parameter :: block_size = 10000
@@ -2671,9 +2672,10 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
       ierr = 0
       if (option%myrank == option%io_rank) &
         read(fid,*,iostat=ierr) values(1:read_count)
-      call MPI_Bcast(ierr,ONE_INTEGER,MPIU_INTEGER,option%io_rank, &
-                     option%mycomm,ierr2)      
-      if (ierr /= 0) then
+      flag = ierr
+      call MPI_Bcast(flag,MPI_ONE_INTEGER,MPIU_INTEGER,option%io_rank, &
+                     option%mycomm,ierr)      
+      if (flag /= 0) then
         option%io_buffer = 'Insufficent data in file: ' // filename
         call printErrMsg(option)
       endif
@@ -2683,7 +2685,7 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
       endif
       count = count + read_count
     enddo
-    call MPI_Bcast(count,ONE_INTEGER,MPIU_INTEGER,option%io_rank, &
+    call MPI_Bcast(count,MPI_ONE_INTEGER,MPIU_INTEGER,option%io_rank, &
                    option%mycomm,ierr)      
     if (count /= grid%nmax) then
       write(option%io_buffer,'("Number of data in file (",i8, &

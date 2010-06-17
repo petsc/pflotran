@@ -39,18 +39,6 @@ subroutine StochasticInit(stochastic,option)
   PetscTruth :: option_found
   PetscErrorCode :: ierr
 
-#if 0
-  ! set up global and local communicator groups, processor ranks, and group sizes
-  call MPI_Init(ierr)
-  global_comm = MPI_COMM_WORLD
-  call MPI_Comm_rank(MPI_COMM_WORLD,global_rank, ierr)
-  call MPI_Comm_size(MPI_COMM_WORLD,global_commsize,ierr)
-  call MPI_Comm_group(MPI_COMM_WORLD,global_group,ierr)
-  PETSC_COMM_WORLD = global_comm
-  call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
-#endif
-
-#if 1
   ! query user for number of communicator groups and realizations
   string = '-num_groups'
   call InputGetCommandLineInt(string,stochastic%num_groups,option_found,option)
@@ -71,34 +59,9 @@ subroutine StochasticInit(stochastic,option)
     call printWrnMsg(option)
     stochastic%num_realizations = 1
   endif
-#endif
   
   call SimulationCreateProcessorGroups(option,stochastic%num_groups)
   
-#if 0
-! this section is now located in SimulationCreateProcessorGroups()
-  local_commsize = option%global_commsize / stochastic%num_groups
-  remainder = option%global_commsize - stochastic%num_groups * local_commsize
-  offset = 0
-  do igroup = 1, stochastic%num_groups
-    delta = local_commsize
-    if (igroup < remainder) delta = delta + 1
-    if (option%global_rank >= offset .and. &
-        option%global_rank < offset + delta) exit
-    offset = offset + delta
-  enddo
-  mycolor = igroup
-  option%mygroup_id = igroup
-  mykey = option%global_rank - offset
-  call MPI_Comm_split(MPI_COMM_WORLD,mycolor,mykey,option%mycomm,ierr)
-  call MPI_Comm_group(option%mycomm,option%mygroup,ierr)
-
-  PETSC_COMM_WORLD = option%mycomm
-  call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
-  call MPI_Comm_rank(option%mycomm,option%myrank, ierr)
-  call MPI_Comm_size(option%mycomm,option%mycommsize,ierr)
-#endif
-
   ! divvy up the realizations
   stochastic%num_local_realizations = stochastic%num_realizations / &
                                       stochastic%num_groups

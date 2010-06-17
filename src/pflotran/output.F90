@@ -2083,7 +2083,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   PetscMPIInt :: iproc, recv_size
   PetscInt :: max_local_size, local_size
   PetscInt :: istart, iend, num_in_array
-  PetscInt :: status(MPI_STATUS_SIZE)
+  PetscMPIInt :: status(MPI_STATUS_SIZE)
   PetscInt, allocatable :: integer_data(:), integer_data_recv(:)
   PetscReal, allocatable :: real_data(:), real_data_recv(:)
 
@@ -2106,15 +2106,15 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   max_proc_prefetch = option%io_handshake_buffer_size / 10
 
   if (size_flag /= 0) then
-    call MPI_Allreduce(size_flag,max_local_size,ONE_INTEGER,MPIU_INTEGER,MPI_MAX, &
-                       option%mycomm,ierr)
+    call MPI_Allreduce(size_flag,max_local_size,MPI_ONE_INTEGER,MPIU_INTEGER, &
+                       MPI_MAX,option%mycomm,ierr)
     local_size = size_flag
   else 
   ! if first time, determine the maximum size of any local array across 
   ! all procs
     if (max_local_size_saved < 0) then
-      call MPI_Allreduce(grid%nlmax,max_local_size,ONE_INTEGER,MPIU_INTEGER,MPI_MAX, &
-                         option%mycomm,ierr)
+      call MPI_Allreduce(grid%nlmax,max_local_size,MPI_ONE_INTEGER, &
+                         MPIU_INTEGER,MPI_MAX,option%mycomm,ierr)
       max_local_size_saved = max_local_size
       write(option%io_buffer,'("max_local_size_saved: ",i9)') max_local_size
       call printMsg(option)
@@ -2170,8 +2170,8 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
       if (option%io_handshake_buffer_size > 0 .and. &
           iproc+max_proc_prefetch >= max_proc) then
         max_proc = max_proc + option%io_handshake_buffer_size
-        call MPI_Bcast(max_proc,1,MPIU_INTEGER,option%io_rank,option%mycomm, &
-                       ierr)
+        call MPI_Bcast(max_proc,MPI_ONE_INTEGER,MPIU_INTEGER,option%io_rank, &
+                       option%mycomm,ierr)
       endif
 #endif      
       call MPI_Probe(iproc,MPI_ANY_TAG,option%mycomm,status,ierr)
@@ -2219,8 +2219,8 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
 #ifdef HANDSHAKE    
     if (option%io_handshake_buffer_size > 0) then
       max_proc = -1
-      call MPI_Bcast(max_proc,1,MPIU_INTEGER,option%io_rank,option%mycomm, &
-                     ierr)
+      call MPI_Bcast(max_proc,MPI_ONE_INTEGER,MPIU_INTEGER,option%io_rank, &
+                     option%mycomm,ierr)
     endif
 #endif      
     ! Print the remaining values, if they exist
@@ -3691,6 +3691,7 @@ subroutine WriteObservationDataForBC(fid,realization,patch,connection_set)
   PetscInt :: iconn
   PetscInt :: offset
   PetscInt :: iphase
+  PetscMPIInt :: mpi_int
   PetscReal :: sum_volumetric_flux(realization%option%nphase)
   PetscReal :: sum_volumetric_flux_global(realization%option%nphase)
   PetscReal :: sum_solute_flux(realization%option%ntrandof)
@@ -3724,8 +3725,9 @@ subroutine WriteObservationDataForBC(fid,realization,patch,connection_set)
                                   connection_set%area(iconn)
           enddo
         endif
+        mpi_int = option%nphase
         call MPI_Reduce(sum_volumetric_flux,sum_volumetric_flux_global, &
-                        option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                        mpi_int,MPI_DOUBLE_PRECISION,MPI_SUM, &
                         option%io_rank,option%mycomm,ierr)
         if (option%myrank == option%io_rank) then
           do i = 1, option%nphase
@@ -3743,8 +3745,9 @@ subroutine WriteObservationDataForBC(fid,realization,patch,connection_set)
                                connection_set%area(iconn)
         enddo
       endif
+      mpi_int = option%ntrandof
       call MPI_Reduce(sum_solute_flux,sum_solute_flux_global, &
-                      option%ntrandof,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      mpi_int,MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
       if (option%myrank == option%io_rank) then
         !we currently only print the aqueous components
@@ -4669,7 +4672,8 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
   PetscInt :: i
   PetscInt :: max_proc, max_proc_prefetch
   PetscMPIInt :: iproc, recv_size
-  PetscInt :: max_local_size, local_size
+  PetscInt :: max_local_size
+  PetscMPIInt :: local_size
   PetscInt :: istart, iend, num_in_array
   PetscInt :: status(MPI_STATUS_SIZE)
   PetscInt, allocatable :: integer_data(:), integer_data_recv(:)
@@ -4692,17 +4696,18 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
   max_proc_prefetch = option%io_handshake_buffer_size / 10
 
   if (size_flag /= 0) then
-    call MPI_Allreduce(size_flag,max_local_size,ONE_INTEGER,MPIU_INTEGER,MPI_MAX, &
-                       option%mycomm,ierr)
+    call MPI_Allreduce(size_flag,max_local_size,MPI_ONE_INTEGER,MPIU_INTEGER, &
+                       MPI_MAX,option%mycomm,ierr)
     local_size = size_flag
   else 
   ! if first time, determine the maximum size of any local array across 
   ! all procs
     if (max_local_size_saved < 0) then
-      call MPI_Allreduce(grid%nlmax,max_local_size,ONE_INTEGER,MPIU_INTEGER,MPI_MAX, &
-                         option%mycomm,ierr)
+      call MPI_Allreduce(grid%nlmax,max_local_size,MPI_ONE_INTEGER, &
+                         MPIU_INTEGER,MPI_MAX,option%mycomm,ierr)
       max_local_size_saved = max_local_size
-      if (OptionPrintToScreen(option)) print *, 'max_local_size_saved: ', max_local_size
+      if (OptionPrintToScreen(option)) print *, 'max_local_size_saved: ', &
+                                                 max_local_size
     endif
     max_local_size = max_local_size_saved
     local_size = grid%nlmax
@@ -4766,8 +4771,8 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
       if (option%io_handshake_buffer_size > 0 .and. &
           iproc+max_proc_prefetch >= max_proc) then
         max_proc = max_proc + option%io_handshake_buffer_size
-        call MPI_Bcast(max_proc,1,MPIU_INTEGER,option%io_rank,option%mycomm, &
-                       ierr)
+        call MPI_Bcast(max_proc,MPI_ONE_INTEGER,MPIU_INTEGER,option%io_rank, &
+                       option%mycomm,ierr)
       endif
 #endif      
       call MPI_Probe(iproc,MPI_ANY_TAG,option%mycomm,status,ierr)
@@ -4815,8 +4820,8 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
 #ifdef HANDSHAKE    
     if (option%io_handshake_buffer_size > 0) then
       max_proc = -1
-      call MPI_Bcast(max_proc,1,MPIU_INTEGER,option%io_rank,option%mycomm, &
-                     ierr)
+      call MPI_Bcast(max_proc,MPI_ONE_INTEGER,MPIU_INTEGER,option%io_rank, &
+                     option%mycomm,ierr)
     endif
 #endif      
     ! Print the remaining values, if they exist
@@ -4833,8 +4838,8 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
     if (option%io_handshake_buffer_size > 0) then
       do
         if (option%myrank < max_proc) exit
-        call MPI_Bcast(max_proc,1,MPIU_INTEGER,option%io_rank,option%mycomm, &
-                       ierr)
+        call MPI_Bcast(max_proc,MPI_ONE_INTEGER,MPIU_INTEGER,option%io_rank, &
+                       option%mycomm,ierr)
       enddo
     endif
 #endif    
@@ -4848,8 +4853,8 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
 #ifdef HANDSHAKE    
     if (option%io_handshake_buffer_size > 0) then
       do
-        call MPI_Bcast(max_proc,1,MPIU_INTEGER,option%io_rank,option%mycomm, &
-                       ierr)
+        call MPI_Bcast(max_proc,MPI_ONE_INTEGER,MPIU_INTEGER,option%io_rank, &
+                       option%mycomm,ierr)
         if (max_proc < 0) exit
       enddo
     endif
@@ -5919,17 +5924,20 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
     if (grid%structured_grid%ngxe-grid%structured_grid%nxe == 0) then
       nx_local = grid%structured_grid%nlx-1
     endif
-    call MPI_Allreduce(nx_local,i,ONE_INTEGER,MPIU_INTEGER,MPI_MIN,option%mycomm,ierr)
+    call MPI_Allreduce(nx_local,i,MPI_ONE_INTEGER,MPIU_INTEGER,MPI_MIN, &
+                       option%mycomm,ierr)
     if (i == 0) trick_flux_vel_x = PETSC_TRUE
     if (grid%structured_grid%ngye-grid%structured_grid%nye == 0) then
       ny_local = grid%structured_grid%nly-1
     endif
-    call MPI_Allreduce(ny_local,j,ONE_INTEGER,MPIU_INTEGER,MPI_MIN,option%mycomm,ierr)
+    call MPI_Allreduce(ny_local,j,MPI_ONE_INTEGER,MPIU_INTEGER,MPI_MIN, &
+                       option%mycomm,ierr)
     if (j == 0) trick_flux_vel_y = PETSC_TRUE
     if (grid%structured_grid%ngze-grid%structured_grid%nze == 0) then
       nz_local = grid%structured_grid%nlz-1
     endif
-    call MPI_Allreduce(nz_local,k,ONE_INTEGER,MPIU_INTEGER,MPI_MIN,option%mycomm,ierr)
+    call MPI_Allreduce(nz_local,k,MPI_ONE_INTEGER,MPIU_INTEGER,MPI_MIN, &
+                       option%mycomm,ierr)
     if (k == 0) trick_flux_vel_z = PETSC_TRUE
   endif
 
@@ -6798,6 +6806,7 @@ subroutine OutputMassBalanceNew(realization)
   PetscReal :: sum_mol(realization%option%ntrandof,realization%option%nphase)
   PetscReal :: sum_mol_global(realization%option%ntrandof,realization%option%nphase)
   PetscTruth :: local_first
+  PetscMPIInt :: mpi_int
   
   patch => realization%patch
   grid => patch%grid
@@ -6939,8 +6948,9 @@ subroutine OutputMassBalanceNew(realization)
   if (option%nflowdof > 0) then
     sum_kg = 0.d0
     call RichardsComputeMassBalance(realization,sum_kg)
+    mpi_int = option%nphase
     call MPI_Reduce(sum_kg,sum_kg_global, &
-                    option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                    mpi_int,MPI_DOUBLE_PRECISION,MPI_SUM, &
                     option%io_rank,option%mycomm,ierr)
                         
     if (option%myrank == option%io_rank) then
@@ -6951,7 +6961,8 @@ subroutine OutputMassBalanceNew(realization)
   if (option%ntrandof > 0) then
     sum_mol = 0.d0
     call RTComputeMassBalance(realization,sum_mol)
-    call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*option%ntrandof, &
+    mpi_int = option%nphase*option%ntrandof
+    call MPI_Reduce(sum_mol,sum_mol_global,mpi_int, &
                     MPI_DOUBLE_PRECISION,MPI_SUM, &
                     option%io_rank,option%mycomm,ierr)
 
@@ -6994,7 +7005,7 @@ subroutine OutputMassBalanceNew(realization)
       enddo
 
       call MPI_Reduce(sum_area,sum_area_global, &
-                      FOUR_INTEGER,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      MPI_FOUR_INTEGER,MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
                           
       if (option%myrank == option%io_rank) then
@@ -7023,8 +7034,9 @@ subroutine OutputMassBalanceNew(realization)
         sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance
       enddo
 
+      mpi_int = option%nphase
       call MPI_Reduce(sum_kg,sum_kg_global, &
-                      option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      mpi_int,MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
                           
       if (option%myrank == option%io_rank) then
@@ -7040,8 +7052,9 @@ subroutine OutputMassBalanceNew(realization)
       ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
       sum_kg = sum_kg*FMWH2O
 
+      mpi_int = option%nphase
       call MPI_Reduce(sum_kg,sum_kg_global, &
-                      option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      mpi_int,MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
                           
       if (option%myrank == option%io_rank) then
@@ -7058,7 +7071,8 @@ subroutine OutputMassBalanceNew(realization)
         sum_mol = sum_mol + rt_aux_vars_bc(offset+iconn)%mass_balance
       enddo
 
-      call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*option%ntrandof, &
+      mpi_int = option%nphase*option%ntrandof
+      call MPI_Reduce(sum_mol,sum_mol_global,mpi_int, &
                       MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
 
@@ -7079,7 +7093,8 @@ subroutine OutputMassBalanceNew(realization)
         sum_mol = sum_mol + rt_aux_vars_bc(offset+iconn)%mass_balance_delta 
       enddo
 
-      call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*option%ntrandof, &
+      mpi_int = option%nphase*option%ntrandof
+      call MPI_Reduce(sum_mol,sum_mol_global,mpi_int, &
                       MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
                       
@@ -7109,8 +7124,9 @@ subroutine OutputMassBalanceNew(realization)
       sum_kg = 0.d0
       sum_kg = sum_kg + patch%aux%Global%aux_vars(iconn)%mass_balance
 
+      mpi_int = option%nphase
       call MPI_Reduce(sum_kg,sum_kg_global, &
-                      option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      mpi_int,MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
                           
       if (option%myrank == option%io_rank) then
@@ -7124,7 +7140,8 @@ subroutine OutputMassBalanceNew(realization)
       sum_mol = 0.d0
       sum_mol = sum_mol + patch%aux%RT%aux_vars(iconn)%mass_balance
 
-      call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*option%ntrandof, &
+      mpi_int = option%nphase*option%ntrandof
+      call MPI_Reduce(sum_mol,sum_mol_global,mpi_int, &
                       MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
 
