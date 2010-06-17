@@ -35,13 +35,13 @@ module Option_module
 #ifdef VAMSI_HDF5_READ
     MPI_Comm :: read_group,readers
     PetscMPIInt :: read_grp_size,read_grp_rank,readers_size,readers_rank 
-    PetscInt :: read_bcast_size,rcolor,rkey,reader_color,reader_key
+    PetscMPIInt :: read_bcast_size,rcolor,rkey,reader_color,reader_key
 #endif
 
 #ifdef VAMSI_HDF5_WRITE    
     MPI_Comm :: write_group,writers
     PetscMPIInt:: write_grp_size,write_grp_rank,writers_size,writers_rank
-    PetscInt :: write_bcast_size,wcolor,wkey,writer_color,writer_key
+    PetscMPIInt :: write_bcast_size,wcolor,wkey,writer_color,writer_key
 #endif	
 
     character(len=MAXSTRINGLENGTH) :: io_buffer

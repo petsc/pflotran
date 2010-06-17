@@ -2941,19 +2941,21 @@ subroutine create_iogroups(option)
                             PETSC_NULL_OBJECT,ierr)
 
     option%read_bcast_size = HDF5_READ_BCAST_SIZE
-    option%rcolor = floor(real(option%global_rank / option%read_bcast_size))
-    option%rkey = option%global_rank
-    call MPI_Comm_split(option%global_comm,option%rcolor,option%rkey,option%read_group,ierr)
+    option%rcolor = floor(real(option%myrank / option%read_bcast_size))
+    option%rkey = option%myrank
+    call MPI_Comm_split(option%mycomm,option%rcolor,option%rkey, &
+                        option%read_group,ierr)
     call MPI_Comm_size(option%read_group,option%read_grp_size,ierr)
     call MPI_Comm_rank(option%read_group,option%read_grp_rank,ierr)
 
-    if (mod(option%global_rank,option%read_bcast_size) == 0) then 
+    if (mod(option%myrank,option%read_bcast_size) == 0) then 
        option%reader_color = 1
     else
        option%reader_color = 0
     endif
-    option%reader_key = option%global_rank
-    call MPI_Comm_split(option%global_comm,option%reader_color,option%reader_key,option%readers,ierr)
+    option%reader_key = option%myrank
+    call MPI_Comm_split(option%mycomm,option%reader_color, &
+                        option%reader_key,option%readers,ierr)
     call MPI_Comm_size(option%readers,option%readers_size,ierr)
     call MPI_Comm_rank(option%readers,option%readers_rank,ierr)
 
@@ -2968,19 +2970,19 @@ subroutine create_iogroups(option)
                             PETSC_NULL_OBJECT,ierr)
 
     option%write_bcast_size = HDF5_WRITE_BCAST_SIZE
-    option%wcolor = floor(real(option%global_rank / option%write_bcast_size))
-    option%wkey = option%global_rank
-    call MPI_Comm_split(option%global_comm,option%wcolor,option%wkey,option%write_group,ierr)
+    option%wcolor = floor(real(option%myrank / option%write_bcast_size))
+    option%wkey = option%myrank
+    call MPI_Comm_split(option%mycomm,option%wcolor,option%wkey,option%write_group,ierr)
     call MPI_Comm_size(option%write_group,option%write_grp_size,ierr)
     call MPI_Comm_rank(option%write_group,option%write_grp_rank,ierr)
 
-    if (mod(option%global_rank,option%write_bcast_size) == 0) then 
+    if (mod(option%myrank,option%write_bcast_size) == 0) then 
        option%writer_color = 1
     else
        option%writer_color = 0
     endif
-    option%writer_key = option%global_rank
-    call MPI_Comm_split(option%global_comm,option%writer_color,option%writer_key,option%writers,ierr)
+    option%writer_key = option%myrank
+    call MPI_Comm_split(option%mycomm,option%writer_color,option%writer_key,option%writers,ierr)
     call MPI_Comm_size(option%writers,option%writers_size,ierr)
     call MPI_Comm_rank(option%writers,option%writers_rank,ierr)
 

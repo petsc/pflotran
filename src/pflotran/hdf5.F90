@@ -141,7 +141,8 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
      num_cells_in_file = int(num_cells)
   endif
     
-  call MPI_Bcast(num_cells_in_file,1,MPIU_INTEGER,0,option%read_group,ierr)
+  call MPI_Bcast(num_cells_in_file,MPI_ONE_INTEGER,MPIU_INTEGER, &
+                 MPI_ZERO_INTEGER,option%read_group,ierr)
                      
   do
     if (cell_count >= num_cells_in_file) exit
