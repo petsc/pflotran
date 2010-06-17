@@ -2691,15 +2691,16 @@ subroutine RTTransportMatVec(mat, x, y)
       
   implicit none
 
+#ifndef PC_BUG
   interface
-     subroutine SAMRGetRealization(p_application, realization) 
+    subroutine SAMRGetRealization(p_application, realization) 
       use Realization_module
 #include "finclude/petscsys.h"
-      
       PetscFortranAddr :: p_application
       type(realization_type), pointer :: realization
-      end subroutine SAMRGetRealization
+    end subroutine SAMRGetRealization
   end interface
+#endif
 
   Mat, intent(in) :: mat    
   Vec, intent(in) :: x
@@ -2717,7 +2718,9 @@ subroutine RTTransportMatVec(mat, x, y)
   PetscFortranAddr :: p_application
       
   call MatShellGetContext(mat, p_application, ierr)
+#ifndef PC_BUG  
   call SAMRGetRealization(p_application, realization)
+#endif
 
   field => realization%field
   discretization => realization%discretization
