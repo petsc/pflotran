@@ -2526,8 +2526,8 @@ subroutine THCCreateZeroArray(patch,option)
   patch%aux%THC%zero_rows_local_ghosted => zero_rows_local_ghosted
   patch%aux%THC%n_zero_rows = n_zero_rows
 
-  call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPIU_INTEGER,MPI_MAX, &
-                     option%mycomm,ierr)
+  call MPI_Allreduce(n_zero_rows,flag,MPI_ONE_INTEGER,MPIU_INTEGER, &
+                     MPI_MAX,option%mycomm,ierr)
   if (flag > 0) patch%aux%THC%inactive_cells_exist = PETSC_TRUE
 
   if (ncount /= n_zero_rows) then
