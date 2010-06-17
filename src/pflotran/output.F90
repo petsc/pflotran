@@ -2106,14 +2106,14 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   max_proc_prefetch = option%io_handshake_buffer_size / 10
 
   if (size_flag /= 0) then
-    call MPI_Allreduce(size_flag,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
+    call MPI_Allreduce(size_flag,max_local_size,ONE_INTEGER,MPIU_INTEGER,MPI_MAX, &
                        option%mycomm,ierr)
     local_size = size_flag
   else 
   ! if first time, determine the maximum size of any local array across 
   ! all procs
     if (max_local_size_saved < 0) then
-      call MPI_Allreduce(grid%nlmax,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
+      call MPI_Allreduce(grid%nlmax,max_local_size,ONE_INTEGER,MPIU_INTEGER,MPI_MAX, &
                          option%mycomm,ierr)
       max_local_size_saved = max_local_size
       write(option%io_buffer,'("max_local_size_saved: ",i9)') max_local_size
@@ -2170,14 +2170,14 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
       if (option%io_handshake_buffer_size > 0 .and. &
           iproc+max_proc_prefetch >= max_proc) then
         max_proc = max_proc + option%io_handshake_buffer_size
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
+        call MPI_Bcast(max_proc,1,MPIU_INTEGER,option%io_rank,option%mycomm, &
                        ierr)
       endif
 #endif      
       call MPI_Probe(iproc,MPI_ANY_TAG,option%mycomm,status,ierr)
       recv_size = status(MPI_TAG)
       if (datatype == 0) then
-        call MPI_Recv(integer_data_recv,recv_size,MPI_INTEGER,iproc, &
+        call MPI_Recv(integer_data_recv,recv_size,MPIU_INTEGER,iproc, &
                       MPI_ANY_TAG,option%mycomm,status,ierr)
         if (recv_size > 0) then
           integer_data(num_in_array+1:num_in_array+recv_size) = &
@@ -2219,7 +2219,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
 #ifdef HANDSHAKE    
     if (option%io_handshake_buffer_size > 0) then
       max_proc = -1
-      call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
+      call MPI_Bcast(max_proc,1,MPIU_INTEGER,option%io_rank,option%mycomm, &
                      ierr)
     endif
 #endif      
@@ -2236,13 +2236,13 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
     if (option%io_handshake_buffer_size > 0) then
       do
         if (option%myrank < max_proc) exit
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
+        call MPI_Bcast(max_proc,1,MPIU_INTEGER,option%io_rank,option%mycomm, &
                        ierr)
       enddo
     endif
 #endif    
     if (datatype == TECPLOT_INTEGER) then
-      call MPI_Send(integer_data,local_size,MPI_INTEGER,option%io_rank,local_size, &
+      call MPI_Send(integer_data,local_size,MPIU_INTEGER,option%io_rank,local_size, &
                     option%mycomm,ierr)
     else
       call MPI_Send(real_data,local_size,MPI_DOUBLE_PRECISION,option%io_rank,local_size, &
@@ -2251,7 +2251,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
 #ifdef HANDSHAKE    
     if (option%io_handshake_buffer_size > 0) then
       do
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
+        call MPI_Bcast(max_proc,1,MPIU_INTEGER,option%io_rank,option%mycomm, &
                        ierr)
         if (max_proc < 0) exit
       enddo
@@ -4692,14 +4692,14 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
   max_proc_prefetch = option%io_handshake_buffer_size / 10
 
   if (size_flag /= 0) then
-    call MPI_Allreduce(size_flag,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
+    call MPI_Allreduce(size_flag,max_local_size,ONE_INTEGER,MPIU_INTEGER,MPI_MAX, &
                        option%mycomm,ierr)
     local_size = size_flag
   else 
   ! if first time, determine the maximum size of any local array across 
   ! all procs
     if (max_local_size_saved < 0) then
-      call MPI_Allreduce(grid%nlmax,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
+      call MPI_Allreduce(grid%nlmax,max_local_size,ONE_INTEGER,MPIU_INTEGER,MPI_MAX, &
                          option%mycomm,ierr)
       max_local_size_saved = max_local_size
       if (OptionPrintToScreen(option)) print *, 'max_local_size_saved: ', max_local_size
@@ -4766,14 +4766,14 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
       if (option%io_handshake_buffer_size > 0 .and. &
           iproc+max_proc_prefetch >= max_proc) then
         max_proc = max_proc + option%io_handshake_buffer_size
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
+        call MPI_Bcast(max_proc,1,MPIU_INTEGER,option%io_rank,option%mycomm, &
                        ierr)
       endif
 #endif      
       call MPI_Probe(iproc,MPI_ANY_TAG,option%mycomm,status,ierr)
       recv_size = status(MPI_TAG)
       if (datatype == 0) then
-        call MPI_Recv(integer_data_recv,recv_size,MPI_INTEGER,iproc, &
+        call MPI_Recv(integer_data_recv,recv_size,MPIU_INTEGER,iproc, &
                       MPI_ANY_TAG,option%mycomm,status,ierr)
         if (recv_size > 0) then
           integer_data(num_in_array+1:num_in_array+recv_size) = &
@@ -4815,7 +4815,7 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
 #ifdef HANDSHAKE    
     if (option%io_handshake_buffer_size > 0) then
       max_proc = -1
-      call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
+      call MPI_Bcast(max_proc,1,MPIU_INTEGER,option%io_rank,option%mycomm, &
                      ierr)
     endif
 #endif      
@@ -4833,13 +4833,13 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
     if (option%io_handshake_buffer_size > 0) then
       do
         if (option%myrank < max_proc) exit
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
+        call MPI_Bcast(max_proc,1,MPIU_INTEGER,option%io_rank,option%mycomm, &
                        ierr)
       enddo
     endif
 #endif    
     if (datatype == VTK_INTEGER) then
-      call MPI_Send(integer_data,local_size,MPI_INTEGER,option%io_rank, &
+      call MPI_Send(integer_data,local_size,MPIU_INTEGER,option%io_rank, &
                     local_size,option%mycomm,ierr)
     else
       call MPI_Send(real_data,local_size,MPI_DOUBLE_PRECISION,option%io_rank, &
@@ -4848,7 +4848,7 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
 #ifdef HANDSHAKE    
     if (option%io_handshake_buffer_size > 0) then
       do
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
+        call MPI_Bcast(max_proc,1,MPIU_INTEGER,option%io_rank,option%mycomm, &
                        ierr)
         if (max_proc < 0) exit
       enddo
@@ -5919,17 +5919,17 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
     if (grid%structured_grid%ngxe-grid%structured_grid%nxe == 0) then
       nx_local = grid%structured_grid%nlx-1
     endif
-    call MPI_Allreduce(nx_local,i,ONE_INTEGER,MPI_INTEGER,MPI_MIN,option%mycomm,ierr)
+    call MPI_Allreduce(nx_local,i,ONE_INTEGER,MPIU_INTEGER,MPI_MIN,option%mycomm,ierr)
     if (i == 0) trick_flux_vel_x = PETSC_TRUE
     if (grid%structured_grid%ngye-grid%structured_grid%nye == 0) then
       ny_local = grid%structured_grid%nly-1
     endif
-    call MPI_Allreduce(ny_local,j,ONE_INTEGER,MPI_INTEGER,MPI_MIN,option%mycomm,ierr)
+    call MPI_Allreduce(ny_local,j,ONE_INTEGER,MPIU_INTEGER,MPI_MIN,option%mycomm,ierr)
     if (j == 0) trick_flux_vel_y = PETSC_TRUE
     if (grid%structured_grid%ngze-grid%structured_grid%nze == 0) then
       nz_local = grid%structured_grid%nlz-1
     endif
-    call MPI_Allreduce(nz_local,k,ONE_INTEGER,MPI_INTEGER,MPI_MIN,option%mycomm,ierr)
+    call MPI_Allreduce(nz_local,k,ONE_INTEGER,MPIU_INTEGER,MPI_MIN,option%mycomm,ierr)
     if (k == 0) trick_flux_vel_z = PETSC_TRUE
   endif
 

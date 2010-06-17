@@ -747,7 +747,7 @@ function OptionCheckTouch(option,filename)
 
   if (option%myrank == option%io_rank) &
     open(unit=fid,file=trim(filename),status='old',iostat=ios)
-  call MPI_Bcast(ios,1,MPI_INTEGER,option%io_rank,option%mycomm,ierr)
+  call MPI_Bcast(ios,1,MPIU_INTEGER,option%io_rank,option%mycomm,ierr)
 
   if (ios == 0) then
     if (option%myrank == option%io_rank) close(fid,status='delete')

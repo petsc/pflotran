@@ -2015,7 +2015,7 @@ subroutine RealizationCountCells(realization,global_total_count, &
   
   temp_int_in(1) = total_count
   temp_int_in(2) = active_count
-  call MPI_Allreduce(temp_int_in,temp_int_out,TWO_INTEGER,MPI_INTEGER, &
+  call MPI_Allreduce(temp_int_in,temp_int_out,TWO_INTEGER,MPIU_INTEGER, &
                      MPI_SUM,realization%option%mycomm,ierr)
   global_total_count = temp_int_out(1)
   global_active_count = temp_int_out(2)
@@ -2095,7 +2095,7 @@ subroutine RealizationPrintGridStatistics(realization)
   endif
   
   call MPI_Allreduce(inactive_histogram,temp_int_out,TWELVE_INTEGER, &
-                     MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
+                     MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
 
   ! why I cannot use *100, I do not know....geh
   inactive_percentages = dble(temp_int_out)/dble(option%mycommsize)*10.d0

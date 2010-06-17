@@ -2807,7 +2807,7 @@ subroutine GeneralCreateZeroArray(patch,option)
   patch%aux%General%n_zero_rows = n_zero_rows
   
   if(.not. (option%use_samr)) then
-     call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
+     call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPIU_INTEGER,MPI_MAX, &
           option%mycomm,ierr)
      if (flag > 0) patch%aux%General%inactive_cells_exist = PETSC_TRUE
      

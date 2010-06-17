@@ -440,7 +440,7 @@ print *, '0: ', unstructured_grid%num_cells_local, ' cells'
           temp_int_array(:,1:unstructured_grid%num_cells_local)
       else
 print *, '0: ', num_to_read, ' cells sent'
-        call MPI_Send(temp_int_array,num_to_read*8,MPI_INTEGER,irank, &
+        call MPI_Send(temp_int_array,num_to_read*8,MPIU_INTEGER,irank, &
                       num_to_read,option%mycomm,ierr)
       endif
     enddo
@@ -448,7 +448,7 @@ print *, '0: ', num_to_read, ' cells sent'
   else
 print *, option%myrank,': ',unstructured_grid%num_cells_local, ' cells recv'
     call MPI_Recv(unstructured_grid%cell_vertices_0, &
-                  unstructured_grid%num_cells_local*8,MPI_INTEGER,option%io_rank, &
+                  unstructured_grid%num_cells_local*8,MPIU_INTEGER,option%io_rank, &
                   MPI_ANY_TAG,option%mycomm,status,ierr)
   endif
 
@@ -631,7 +631,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   unstructured_grid%global_offset = 0
   call MPI_Exscan(unstructured_grid%num_cells_local, &
                   unstructured_grid%global_offset, &
-                  ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
+                  ONE_INTEGER,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
 
 #if GEH_DEBUG  
   call printMsg(option,'Adjacency matrix')
@@ -1137,7 +1137,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   global_vertex_offset = 0
   call MPI_Exscan(unstructured_grid%num_vertices_local, &
                   global_vertex_offset, &
-                  ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
+                  ONE_INTEGER,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
 #endif
 
   ! IS for scatter - provide petsc gobal numbering

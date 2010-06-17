@@ -1854,14 +1854,14 @@ subroutine RTReact(realization)
   temp_int_in(1) = call_count
   temp_int_in(2) = sum_newton_iterations
   call MPI_Allreduce(temp_int_in,temp_int_out,TWO_INTEGER, &
-                     MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
+                     MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
   ave_newton_iterations_in_a_cell = float(temp_int_out(2)) / temp_int_out(1)
 
   temp_int_in(1) = max_newton_iterations_in_a_cell
   temp_int_in(2) = sum_newton_iterations ! to calc max # iteration on a core
   temp_int_in(3) = -sum_newton_iterations ! to calc min # iteration on a core
   call MPI_Allreduce(temp_int_in,temp_int_out,THREE_INTEGER, &
-                     MPI_INTEGER,MPI_MAX,option%mycomm,ierr)
+                     MPIU_INTEGER,MPI_MAX,option%mycomm,ierr)
   max_newton_iterations_in_a_cell = temp_int_out(1)
   max_newton_iterations_on_a_core = temp_int_out(2)
   min_newton_iterations_on_a_core = -temp_int_out(3)
@@ -5270,7 +5270,7 @@ subroutine RTCreateZeroArray(patch,reaction,option)
 
 
   if(.not.(option%use_samr)) then
-     call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
+     call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPIU_INTEGER,MPI_MAX, &
           option%mycomm,ierr)
      
      if (flag > 0) patch%aux%RT%inactive_cells_exist = PETSC_TRUE

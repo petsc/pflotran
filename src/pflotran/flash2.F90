@@ -282,7 +282,7 @@ end subroutine Flash2SetupPatch
 
    call MPI_Barrier(option%mycomm,ierr)
    if(option%mycommsize >1)then
-      call MPI_Allreduce(ipass,ipass0,ONE_INTEGER, MPI_INTEGER,MPI_SUM, &
+      call MPI_Allreduce(ipass,ipass0,ONE_INTEGER, MPIU_INTEGER,MPI_SUM, &
            option%mycomm,ierr)
       if(ipass0 < option%mycommsize) ipass=-1
    endif
@@ -409,7 +409,7 @@ subroutine Flash2UpdateReason(reason, realization)
  call MPI_Barrier(realization%option%mycomm,ierr)
 !  print *, 'flash reason ', re
   if(realization%option%mycommsize >1)then
-     call MPI_Allreduce(re, re0,ONE_INTEGER, MPI_INTEGER,MPI_SUM, &
+     call MPI_Allreduce(re, re0,ONE_INTEGER, MPIU_INTEGER,MPI_SUM, &
           realization%option%mycomm,ierr)
      if(re0<realization%option%mycommsize) re=0
   endif
@@ -2956,7 +2956,7 @@ print *,'zero rows point 2'
 print *,'zero rows point 3'  
   patch%aux%Flash2%zero_rows_local_ghosted => zero_rows_local_ghosted
 print *,'zero rows point 4'
-  call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
+  call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPIU_INTEGER,MPI_MAX, &
                      option%mycomm,ierr)
   if (flag > 0) patch%aux%Flash2%inactive_cells_exist = PETSC_TRUE
 

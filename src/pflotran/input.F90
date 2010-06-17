@@ -405,7 +405,7 @@ subroutine InputReadFlotranString1(option, fid, string, ierr)
     if (option%myrank == option%io_rank) then
       call fiReadFlotranString(fid, string, ierr)
     endif
-    call MPI_Bcast(ierr,ONE_INTEGER,MPI_INTEGER,option%io_rank, &
+    call MPI_Bcast(ierr,ONE_INTEGER,MPIU_INTEGER,option%io_rank, &
                    option%mycomm,ierr2)
     if (ierr == 0) then  
       call MPI_Bcast(string,MAXSTRINGLENGTH,MPI_CHARACTER, &
@@ -440,7 +440,7 @@ subroutine InputReadFlotranString2(input, option)
     if (option%myrank == option%io_rank) then
       call InputReadFlotranStringSlave(input, option)
     endif
-    call MPI_Bcast(input%ierr,ONE_INTEGER,MPI_INTEGER,option%io_rank, &
+    call MPI_Bcast(input%ierr,ONE_INTEGER,MPIU_INTEGER,option%io_rank, &
                    option%mycomm,ierr2)
     if (.not.InputError(input)) then  
       call MPI_Bcast(input%buf,MAXSTRINGLENGTH,MPI_CHARACTER, &

@@ -525,7 +525,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                   endif
   ! the next test as designed will only work on a uniform grid
                   if(.not. (option%use_samr)) then
-                     call MPI_Allreduce(region%num_cells,count,ONE_INTEGER,MPI_INTEGER,MPI_SUM, &
+                     call MPI_Allreduce(region%num_cells,count,ONE_INTEGER,MPIU_INTEGER,MPI_SUM, &
                           option%mycomm,ierr)   
 
                      if (count == 0) then
@@ -654,7 +654,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
             endif
 
             if(.not. (option%use_samr)) then
-               call MPI_Allreduce(iflag,i,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
+               call MPI_Allreduce(iflag,i,ONE_INTEGER,MPIU_INTEGER,MPI_MAX, &
                     option%mycomm,ierr)
             else
                i=0
@@ -926,7 +926,7 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
   grid%hash => hash
   
 !  call GridPrintHashTable(grid)
-  call MPI_Allreduce(max_num_ids_per_hash,num_in_hash,ONE_INTEGER,MPI_INTEGER, &
+  call MPI_Allreduce(max_num_ids_per_hash,num_in_hash,ONE_INTEGER,MPIU_INTEGER, &
                      MPI_MAX,option%mycomm,ierr)
   write(option%io_buffer,'("max_num_ids_per_hash: ",i5)') num_in_hash
   call printMsg(option)
@@ -1226,7 +1226,7 @@ function GridIndexToCellID(vec,index,grid,vec_type)
     endif
   endif
   
-  call MPI_Allreduce(cell_id,GridIndexToCellID,1,MPI_INTEGER,MPI_MAX, &
+  call MPI_Allreduce(cell_id,GridIndexToCellID,1,MPIU_INTEGER,MPI_MAX, &
                      PETSC_COMM_WORLD,ierr)
                      
 end function GridIndexToCellID
