@@ -3691,7 +3691,7 @@ subroutine WriteObservationDataForBC(fid,realization,patch,connection_set)
   PetscInt :: iconn
   PetscInt :: offset
   PetscInt :: iphase
-  PetscMPIInt :: mpi_int
+  PetscMPIInt :: int_mpi
   PetscReal :: sum_volumetric_flux(realization%option%nphase)
   PetscReal :: sum_volumetric_flux_global(realization%option%nphase)
   PetscReal :: sum_solute_flux(realization%option%ntrandof)
@@ -3725,9 +3725,9 @@ subroutine WriteObservationDataForBC(fid,realization,patch,connection_set)
                                   connection_set%area(iconn)
           enddo
         endif
-        mpi_int = option%nphase
+        int_mpi = option%nphase
         call MPI_Reduce(sum_volumetric_flux,sum_volumetric_flux_global, &
-                        mpi_int,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                        int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                         option%io_rank,option%mycomm,ierr)
         if (option%myrank == option%io_rank) then
           do i = 1, option%nphase
@@ -3745,9 +3745,9 @@ subroutine WriteObservationDataForBC(fid,realization,patch,connection_set)
                                connection_set%area(iconn)
         enddo
       endif
-      mpi_int = option%ntrandof
+      int_mpi = option%ntrandof
       call MPI_Reduce(sum_solute_flux,sum_solute_flux_global, &
-                      mpi_int,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
       if (option%myrank == option%io_rank) then
         !we currently only print the aqueous components
@@ -6806,7 +6806,7 @@ subroutine OutputMassBalanceNew(realization)
   PetscReal :: sum_mol(realization%option%ntrandof,realization%option%nphase)
   PetscReal :: sum_mol_global(realization%option%ntrandof,realization%option%nphase)
   PetscTruth :: local_first
-  PetscMPIInt :: mpi_int
+  PetscMPIInt :: int_mpi
   
   patch => realization%patch
   grid => patch%grid
@@ -6948,9 +6948,9 @@ subroutine OutputMassBalanceNew(realization)
   if (option%nflowdof > 0) then
     sum_kg = 0.d0
     call RichardsComputeMassBalance(realization,sum_kg)
-    mpi_int = option%nphase
+    int_mpi = option%nphase
     call MPI_Reduce(sum_kg,sum_kg_global, &
-                    mpi_int,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                    int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                     option%io_rank,option%mycomm,ierr)
                         
     if (option%myrank == option%io_rank) then
@@ -6961,8 +6961,8 @@ subroutine OutputMassBalanceNew(realization)
   if (option%ntrandof > 0) then
     sum_mol = 0.d0
     call RTComputeMassBalance(realization,sum_mol)
-    mpi_int = option%nphase*option%ntrandof
-    call MPI_Reduce(sum_mol,sum_mol_global,mpi_int, &
+    int_mpi = option%nphase*option%ntrandof
+    call MPI_Reduce(sum_mol,sum_mol_global,int_mpi, &
                     MPI_DOUBLE_PRECISION,MPI_SUM, &
                     option%io_rank,option%mycomm,ierr)
 
@@ -7034,9 +7034,9 @@ subroutine OutputMassBalanceNew(realization)
         sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance
       enddo
 
-      mpi_int = option%nphase
+      int_mpi = option%nphase
       call MPI_Reduce(sum_kg,sum_kg_global, &
-                      mpi_int,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
                           
       if (option%myrank == option%io_rank) then
@@ -7052,9 +7052,9 @@ subroutine OutputMassBalanceNew(realization)
       ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
       sum_kg = sum_kg*FMWH2O
 
-      mpi_int = option%nphase
+      int_mpi = option%nphase
       call MPI_Reduce(sum_kg,sum_kg_global, &
-                      mpi_int,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
                           
       if (option%myrank == option%io_rank) then
@@ -7071,8 +7071,8 @@ subroutine OutputMassBalanceNew(realization)
         sum_mol = sum_mol + rt_aux_vars_bc(offset+iconn)%mass_balance
       enddo
 
-      mpi_int = option%nphase*option%ntrandof
-      call MPI_Reduce(sum_mol,sum_mol_global,mpi_int, &
+      int_mpi = option%nphase*option%ntrandof
+      call MPI_Reduce(sum_mol,sum_mol_global,int_mpi, &
                       MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
 
@@ -7093,8 +7093,8 @@ subroutine OutputMassBalanceNew(realization)
         sum_mol = sum_mol + rt_aux_vars_bc(offset+iconn)%mass_balance_delta 
       enddo
 
-      mpi_int = option%nphase*option%ntrandof
-      call MPI_Reduce(sum_mol,sum_mol_global,mpi_int, &
+      int_mpi = option%nphase*option%ntrandof
+      call MPI_Reduce(sum_mol,sum_mol_global,int_mpi, &
                       MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
                       
@@ -7124,9 +7124,9 @@ subroutine OutputMassBalanceNew(realization)
       sum_kg = 0.d0
       sum_kg = sum_kg + patch%aux%Global%aux_vars(iconn)%mass_balance
 
-      mpi_int = option%nphase
+      int_mpi = option%nphase
       call MPI_Reduce(sum_kg,sum_kg_global, &
-                      mpi_int,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
                           
       if (option%myrank == option%io_rank) then
@@ -7140,8 +7140,8 @@ subroutine OutputMassBalanceNew(realization)
       sum_mol = 0.d0
       sum_mol = sum_mol + patch%aux%RT%aux_vars(iconn)%mass_balance
 
-      mpi_int = option%nphase*option%ntrandof
-      call MPI_Reduce(sum_mol,sum_mol_global,mpi_int, &
+      int_mpi = option%nphase*option%ntrandof
+      call MPI_Reduce(sum_mol,sum_mol_global,int_mpi, &
                       MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
 
