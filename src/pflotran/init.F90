@@ -170,6 +170,10 @@ subroutine Init(simulation)
   call InitReadInput(simulation)
   call InputDestroy(realization%input)
 
+#ifdef VAMSI_HDF5      
+  call Create_IOGroups(option)
+#endif    
+
   ! initialize reference density
   if (option%reference_water_density < 1.d-40) then
 #ifndef DONT_USE_WATEOS
@@ -1702,9 +1706,6 @@ subroutine InitReadInput(simulation)
               call printErrMsg(option)              
           end select
        enddo
-#ifdef VAMSI_HDF5      
-       call create_iogroups(option)
-#endif    
        if (velocities) then
          if (output_option%print_tecplot) &
            output_option%print_tecplot_velocities = PETSC_TRUE
@@ -2915,14 +2916,14 @@ end subroutine readTransportInitialCondition
 
 ! ************************************************************************** !
 !
-! create_iogroups: Create sub-communicators that are used in initialization 
+! Create_IOGroups: Create sub-communicators that are used in initialization 
 !                  and output HDF5 routines. 
 ! author: Vamsi Sripathi
 ! date: 07/14/09
 !
 ! ************************************************************************** !
 
-subroutine create_iogroups(option)
+subroutine Create_IOGroups(option)
 
  use Option_module
  use Logging_module
@@ -2991,6 +2992,6 @@ subroutine create_iogroups(option)
                           PETSC_NULL_OBJECT,ierr)
 #endif
  
-end subroutine create_iogroups
+end subroutine Create_IOGroups
 
 end module Init_module
