@@ -200,7 +200,7 @@
   call PetscOptionsSetValue('-options_left','no',ierr);
 
   call OptionDestroy(option)
-  call PetscFinalize (ierr)
-  call MPI_Finalize (ierr)
+  call PetscFinalize(ierr)
+  call MPI_Finalize(ierr)
 
   end program pflotran

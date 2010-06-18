@@ -40,6 +40,15 @@ PetscInt, parameter :: ELEVEN_INTEGER = 11
 PetscInt, parameter :: TWELVE_INTEGER = 12
 PetscInt, parameter :: NEG_ONE_INTEGER = -1
 
+PetscMPIInt, parameter :: ZERO_INTEGER_MPI = ZERO_INTEGER
+PetscMPIInt, parameter :: ONE_INTEGER_MPI = ONE_INTEGER
+PetscMPIInt, parameter :: TWO_INTEGER_MPI = TWO_INTEGER
+PetscMPIInt, parameter :: THREE_INTEGER_MPI = THREE_INTEGER
+PetscMPIInt, parameter :: FOUR_INTEGER_MPI = FOUR_INTEGER
+PetscMPIInt, parameter :: SEVEN_INTEGER_MPI = SEVEN_INTEGER
+PetscMPIInt, parameter :: TWELVE_INTEGER_MPI = TWELVE_INTEGER
+PetscMPIInt, parameter :: MAXSTRINGLENGTH_MPI = MAXSTRINGLENGTH
+
 PetscInt, parameter :: X_DIRECTION = 1
 PetscInt, parameter :: Y_DIRECTION = 2
 PetscInt, parameter :: Z_DIRECTION = 3

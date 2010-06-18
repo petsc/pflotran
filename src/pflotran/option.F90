@@ -35,13 +35,13 @@ module Option_module
 #ifdef VAMSI_HDF5_READ
     MPI_Comm :: read_group,readers
     PetscMPIInt :: read_grp_size,read_grp_rank,readers_size,readers_rank 
-    PetscInt :: read_bcast_size,rcolor,rkey,reader_color,reader_key
+    PetscMPIInt :: read_bcast_size,rcolor,rkey,reader_color,reader_key
 #endif
 
 #ifdef VAMSI_HDF5_WRITE    
     MPI_Comm :: write_group,writers
     PetscMPIInt:: write_grp_size,write_grp_rank,writers_size,writers_rank
-    PetscInt :: write_bcast_size,wcolor,wkey,writer_color,writer_key
+    PetscMPIInt :: write_bcast_size,wcolor,wkey,writer_color,writer_key
 #endif	
 
     character(len=MAXSTRINGLENGTH) :: io_buffer
@@ -747,7 +747,8 @@ function OptionCheckTouch(option,filename)
 
   if (option%myrank == option%io_rank) &
     open(unit=fid,file=trim(filename),status='old',iostat=ios)
-  call MPI_Bcast(ios,1,MPI_INTEGER,option%io_rank,option%mycomm,ierr)
+  call MPI_Bcast(ios,ONE_INTEGER_MPI,MPIU_INTEGER,option%io_rank, &
+                 option%mycomm,ierr)
 
   if (ios == 0) then
     if (option%myrank == option%io_rank) close(fid,status='delete')
@@ -829,7 +830,7 @@ subroutine OptionMaxMinMeanVariance(value,max,min,mean,variance, &
   
   temp_real_in(1) = value
   temp_real_in(2) = -1.d0*value
-  call MPI_Allreduce(temp_real_in,temp_real_out,TWO_INTEGER, &
+  call MPI_Allreduce(temp_real_in,temp_real_out,TWO_INTEGER_MPI, &
                      MPI_DOUBLE_PRECISION, &
                      MPI_MAX,option%mycomm,ierr)
   max = temp_real_out(1)
@@ -860,14 +861,15 @@ subroutine OptionMeanVariance(value,mean,variance,calculate_variance,option)
   PetscReal :: temp_real
   PetscErrorCode :: ierr
   
-  call MPI_Allreduce(value,temp_real,ONE_INTEGER,MPI_DOUBLE_PRECISION, &
+  call MPI_Allreduce(value,temp_real,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
                      MPI_SUM,option%mycomm,ierr)
   mean = temp_real / dble(option%mycommsize)
   
   if (calculate_variance) then
     temp_real = value-mean
     temp_real = temp_real*temp_real
-    call MPI_Allreduce(temp_real,variance,ONE_INTEGER,MPI_DOUBLE_PRECISION, &
+    call MPI_Allreduce(temp_real,variance,ONE_INTEGER_MPI, &
+                       MPI_DOUBLE_PRECISION, &
                        MPI_SUM,option%mycomm,ierr)
     variance = variance / dble(option%mycommsize)
   endif

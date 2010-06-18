@@ -98,7 +98,7 @@ subroutine SimulationCreateProcessorGroups(option,num_groups)
   PetscInt :: local_commsize
   PetscInt :: offset, delta, remainder
   PetscInt :: igroup
-  PetscMPIInt :: mycolor, mykey  
+  PetscMPIInt :: mycolor_mpi, mykey_mpi
   PetscErrorCode :: ierr
 
   local_commsize = option%global_commsize / num_groups
@@ -111,10 +111,10 @@ subroutine SimulationCreateProcessorGroups(option,num_groups)
         option%global_rank < offset + delta) exit
     offset = offset + delta
   enddo
-  mycolor = igroup
+  mycolor_mpi = igroup
   option%mygroup_id = igroup
-  mykey = option%global_rank - offset
-  call MPI_Comm_split(MPI_COMM_WORLD,mycolor,mykey,option%mycomm,ierr)
+  mykey_mpi = option%global_rank - offset
+  call MPI_Comm_split(MPI_COMM_WORLD,mycolor_mpi,mykey_mpi,option%mycomm,ierr)
   call MPI_Comm_group(option%mycomm,option%mygroup,ierr)
 
   PETSC_COMM_WORLD = option%mycomm
