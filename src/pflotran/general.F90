@@ -1432,7 +1432,7 @@ subroutine GeneralResidual(snes,xx,r,realization,ierr)
 #include "finclude/petscvec.h90"
        PetscFortranAddr :: p_application
        Vec :: vec
-       PetscInt :: ierr
+       PetscErrorCode :: ierr
      end subroutine SAMRCoarsenFaceFluxes
   end interface
 

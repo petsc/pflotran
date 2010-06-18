@@ -251,8 +251,10 @@ subroutine ludcmp(A,N,INDX,D)
   PetscInt :: INDX(N)
   PetscInt :: D
 
-  PetscInt :: i, j, k, imax, ierr, rank
+  PetscInt :: i, j, k, imax
   PetscReal :: aamax, sum, dum
+  PetscMPIInt ::  rank
+  PetscErrorCode :: ierr
 
   D=1
   do i=1,N

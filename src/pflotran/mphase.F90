@@ -281,7 +281,8 @@ end subroutine MphaseSetupPatch
   type(option_type), pointer:: option
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
-  PetscInt :: ipass, ipass0, ierr    
+  PetscInt :: ipass, ipass0
+  PetscErrorCode :: ierr    
 
   option => realization%option
   cur_level => realization%level_list%first
@@ -432,7 +433,8 @@ subroutine MPhaseUpdateReason(reason, realization)
   type(patch_type), pointer :: cur_patch
   PetscInt :: reason
 
-  PetscInt :: re, re0, ierr
+  PetscInt :: re, re0
+  PetscErrorCode :: ierr
 
   re = 1
   cur_level => realization%level_list%first
@@ -3171,7 +3173,7 @@ subroutine MphaseMaxChange(realization)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscReal :: dcmax, dsmax, max_c, max_S  
-  PetscInt :: ierr 
+  PetscErrorCode :: ierr 
 
   option => realization%option
   field => realization%field

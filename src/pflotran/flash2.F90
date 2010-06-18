@@ -2992,7 +2992,7 @@ subroutine Flash2MaxChange(realization)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscReal :: dsmax, max_S  
-  PetscInt :: ierr 
+  PetscErrorCode :: ierr 
 
   option => realization%option
   field => realization%field

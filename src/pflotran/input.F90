@@ -399,7 +399,7 @@ subroutine InputReadFlotranString1(option, fid, string, ierr)
   type(option_type) :: option
   PetscInt :: fid
   character(len=MAXSTRINGLENGTH) :: string
-  PetscErrorCode :: ierr, ierr2
+  PetscErrorCode :: ierr
   PetscInt :: flag = 0
 
   if (option%broadcast_read) then
@@ -411,7 +411,7 @@ subroutine InputReadFlotranString1(option, fid, string, ierr)
                    option%mycomm,ierr2)
     if (flag == 0) then  
       call MPI_Bcast(string,MAXSTRINGLENGTH_MPI,MPI_CHARACTER, &
-                     option%io_rank,option%mycomm,ierr2)      
+                     option%io_rank,option%mycomm,ierr)      
     endif
   else
     call fiReadFlotranString(fid, string, ierr)

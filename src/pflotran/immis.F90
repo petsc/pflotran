@@ -258,7 +258,8 @@ end subroutine ImmisSetupPatch
   type(option_type), pointer:: option
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
-  PetscInt :: ipass, ipass0, ierr    
+  PetscInt :: ipass, ipass0
+  PetscErrorCode :: ierr    
 
   option => realization%option
   cur_level => realization%level_list%first
@@ -2511,7 +2512,7 @@ subroutine ImmisMaxChange(realization)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscReal :: dsmax, max_S  
-  PetscInt :: ierr 
+  PetscErrorCode :: ierr 
 
   option => realization%option
   field => realization%field
