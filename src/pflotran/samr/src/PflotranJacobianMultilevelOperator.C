@@ -709,14 +709,24 @@ PflotranJacobianMultilevelOperator::wrapperMatMult(Mat mat,Vec x,Vec y)
    
    MatShellGetContext(mat,(void**)&pMatrix);
 
-   return pMatrix->MatMult(mat,x,y);
+   return pMatrix->MatMult(x,y);
 
 }
 
 PetscErrorCode
-PflotranJacobianMultilevelOperator::MatMult(Mat mat,Vec x,Vec y)
+PflotranJacobianMultilevelOperator::MatMult(Vec x,Vec y)
 {
+  initializeScratchVector(x);
+  
+   for(int ln=0; ln<d_hierarchy->getNumberOfLevels(); ln++)
+   {
+#ifdef DEBUG_CHECK_ASSERTIONS
+      assert(d_level_operators[ln]!=NULL);
+#endif
+      d_level_operators[ln]->MatMult(d_scratch_vector,y);
+   }
 
+   return (0);
 }
 
 

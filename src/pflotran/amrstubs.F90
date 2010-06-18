@@ -303,3 +303,12 @@ use Realization_module
 PetscFortranAddr :: p_application
 type(realization_type), pointer :: realization
 end subroutine SAMRGetRealization
+
+subroutine SAMRSetPetscTransportMatrix(p_application, transportMat) 
+use Realization_module
+#include "finclude/petscsys.h"
+#include "finclude/petscmat.h"
+      
+PetscFortranAddr :: p_application
+Mat :: transportMat
+end subroutine SAMRSetPetscTransportMatrix

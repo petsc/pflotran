@@ -1552,6 +1552,18 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
   use iso_c_binding
   implicit none
 
+  interface
+     subroutine SAMRSetPetscTransportMatrix(p_application, transportMat) 
+      use Realization_module
+#include "finclude/petscsys.h"
+#include "finclude/petscmat.h"
+      
+      PetscFortranAddr :: p_application
+      Mat :: transportMat
+      end subroutine SAMRSetPetscTransportMatrix
+
+  end interface
+
 #include "finclude/petsclog.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
@@ -1652,15 +1664,18 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
     call RTCalculateRHS_t1(realization)
     if(option%use_samr) then
        call MatCreateShell(option%mycomm, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, solver%J, ierr)
-       call MatShellSetOperation(solver%J,MATOP_MULT,RTTransportMatVec, ierr)
+       call MatShellSetOperation(solver%J, MATOP_MULT,RTTransportMatVec, ierr)
        call MatShellSetContext(solver%J, discretization%amrgrid%p_application, ierr)
        call RTCalculateTransportMatrix(realization,solver%Jpre)
+       call SAMRSetPetscTransportMatrix(discretization%amrgrid%p_application, solver%Jpre)
+       call KSPSetOperators(solver%ksp,solver%J,solver%Jpre, &
+                                            DIFFERENT_NONZERO_PATTERN,ierr)
     else     
-        call RTCalculateTransportMatrix(realization,solver%J)
-    endif
+        call RTCalculateTransportMatrix(realization,solver%J) 
+        call KSPSetOperators(solver%ksp,solver%J,solver%Jpre, &
+                                            SAME_NONZERO_PATTERN,ierr)
+   endif
       
-    call KSPSetOperators(solver%ksp,solver%J,solver%Jpre, &
-                         SAME_NONZERO_PATTERN,ierr)
 
 !      call VecGetArrayF90(field%tran_xx,vec_ptr,ierr)
 !      call VecRestoreArrayF90(field%tran_xx,vec_ptr,ierr)
