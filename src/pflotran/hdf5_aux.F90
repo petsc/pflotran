@@ -15,7 +15,7 @@ module HDF5_aux_module
 
 #if defined(PETSC_HAVE_HDF5)
   PetscMPIInt :: hdf5_err
-  PetscMPIInt :: io_rank
+  PetscMPIInt :: io_rank_mpi
 ! 64-bit stuff
 #ifdef PETSC_USE_64BIT_INDICES
 !#define HDF_NATIVE_INTEGER H5T_STD_I64LE  
@@ -63,11 +63,12 @@ subroutine HDF5ReadNDimRealArray(option,file_id,dataset_name,ndims,dims, &
   integer(HID_T) :: ndims_hdf5
   integer(HSIZE_T), allocatable :: dims_h5(:), max_dims_h5(:)
   integer(HSIZE_T) :: offset(1), length(1), stride(1)
-  PetscMPIInt :: rank
+  PetscMPIInt :: rank_mpi
   PetscInt :: index_count
   PetscInt :: real_count, prev_real_count
   integer(HSIZE_T) :: num_reals_in_dataset
   PetscInt :: temp_int, i, index
+  PetscMPIInt :: int_mpi
   
   call PetscLogEventBegin(logging%event_read_ndim_real_array_hdf5, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -90,7 +91,7 @@ subroutine HDF5ReadNDimRealArray(option,file_id,dataset_name,ndims,dims, &
     temp_int = temp_int * dims(i)
   enddo
 
-  rank = 1
+  rank_mpi = 1
   offset = 0
   length = num_reals_in_dataset
   stride = 1
@@ -99,7 +100,7 @@ subroutine HDF5ReadNDimRealArray(option,file_id,dataset_name,ndims,dims, &
 #ifndef SERIAL_HDF5
   call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err)
 #endif
-  call h5screate_simple_f(rank,length,memory_space_id,hdf5_err,length)
+  call h5screate_simple_f(rank_mpi,length,memory_space_id,hdf5_err,length)
 
   allocate(real_array(num_reals_in_dataset))
   real_array = 0.d0
@@ -116,8 +117,9 @@ subroutine HDF5ReadNDimRealArray(option,file_id,dataset_name,ndims,dims, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
 #ifdef HDF5_BROADCAST
   endif
-  if (option%mycommsize > 1) &
-    call mpi_bcast(real_array,num_reals_in_dataset,MPI_DOUBLE_PRECISION, &
+  if (option%mycommsize > 1) then
+    int_mpi = num_reals_in_dataset
+    call MPI_Bcast(real_array,int_mpi,MPI_DOUBLE_PRECISION, &
                    option%io_rank,option%mycomm,ierr)
   endif
 #endif

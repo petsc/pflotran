@@ -251,8 +251,10 @@ subroutine ludcmp(A,N,INDX,D)
   PetscInt :: INDX(N)
   PetscInt :: D
 
-  PetscInt :: i, j, k, imax, ierr, rank
+  PetscInt :: i, j, k, imax
   PetscReal :: aamax, sum, dum
+  PetscMPIInt ::  rank
+  PetscErrorCode :: ierr
 
   D=1
   do i=1,N
@@ -261,9 +263,9 @@ subroutine ludcmp(A,N,INDX,D)
       if (abs(A(i,j)).gt.aamax) aamax=abs(A(i,j))
     enddo
     if (aamax.eq.0) then
-      call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
+      call MPI_Comm_rank(MPI_COMM_WORLD,rank,ierr)
       print *, "ERROR: Singular value encountered in ludcmp() on processor", rank
-      call MPI_Abort(MPI_COMM_WORLD, 1, ierr)
+      call MPI_Abort(MPI_COMM_WORLD,ONE_INTEGER_MPI,ierr)
       call MPI_Finalize(ierr)
       stop
     endif

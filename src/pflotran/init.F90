@@ -170,6 +170,10 @@ subroutine Init(simulation)
   call InitReadInput(simulation)
   call InputDestroy(realization%input)
 
+#ifdef VAMSI_HDF5      
+  call Create_IOGroups(option)
+#endif    
+
   ! initialize reference density
   if (option%reference_water_density < 1.d-40) then
 #ifndef DONT_USE_WATEOS
@@ -1702,9 +1706,6 @@ subroutine InitReadInput(simulation)
               call printErrMsg(option)              
           end select
        enddo
-#ifdef VAMSI_HDF5      
-       call create_iogroups(option)
-#endif    
        if (velocities) then
          if (output_option%print_tecplot) &
            output_option%print_tecplot_velocities = PETSC_TRUE
@@ -2635,8 +2636,9 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
   PetscInt :: ghosted_id, natural_id, material_id
   PetscInt :: fid = 86
   PetscInt :: status
-  PetscErrorCode :: ierr, ierr2
+  PetscErrorCode :: ierr
   PetscInt :: count, read_count, i
+  PetscInt :: flag
   PetscInt, pointer :: indices(:)
   PetscReal, pointer :: values(:)
   PetscInt, parameter :: block_size = 10000
@@ -2670,9 +2672,10 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
       ierr = 0
       if (option%myrank == option%io_rank) &
         read(fid,*,iostat=ierr) values(1:read_count)
-      call mpi_bcast(ierr,ONE_INTEGER,MPI_INTEGER,option%io_rank, &
-                     option%mycomm,ierr2)      
-      if (ierr /= 0) then
+      flag = ierr
+      call MPI_Bcast(flag,ONE_INTEGER_MPI,MPIU_INTEGER,option%io_rank, &
+                     option%mycomm,ierr)      
+      if (flag /= 0) then
         option%io_buffer = 'Insufficent data in file: ' // filename
         call printErrMsg(option)
       endif
@@ -2682,7 +2685,7 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
       endif
       count = count + read_count
     enddo
-    call mpi_bcast(count,ONE_INTEGER,MPI_INTEGER,option%io_rank, &
+    call MPI_Bcast(count,ONE_INTEGER_MPI,MPIU_INTEGER,option%io_rank, &
                    option%mycomm,ierr)      
     if (count /= grid%nmax) then
       write(option%io_buffer,'("Number of data in file (",i8, &
@@ -2915,14 +2918,14 @@ end subroutine readTransportInitialCondition
 
 ! ************************************************************************** !
 !
-! create_iogroups: Create sub-communicators that are used in initialization 
+! Create_IOGroups: Create sub-communicators that are used in initialization 
 !                  and output HDF5 routines. 
 ! author: Vamsi Sripathi
 ! date: 07/14/09
 !
 ! ************************************************************************** !
 
-subroutine create_iogroups(option)
+subroutine Create_IOGroups(option)
 
  use Option_module
  use Logging_module
@@ -2941,19 +2944,21 @@ subroutine create_iogroups(option)
                             PETSC_NULL_OBJECT,ierr)
 
     option%read_bcast_size = HDF5_READ_BCAST_SIZE
-    option%rcolor = floor(real(option%global_rank / option%read_bcast_size))
-    option%rkey = option%global_rank
-    call MPI_Comm_split(option%global_comm,option%rcolor,option%rkey,option%read_group,ierr)
+    option%rcolor = floor(real(option%myrank / option%read_bcast_size))
+    option%rkey = option%myrank
+    call MPI_Comm_split(option%mycomm,option%rcolor,option%rkey, &
+                        option%read_group,ierr)
     call MPI_Comm_size(option%read_group,option%read_grp_size,ierr)
     call MPI_Comm_rank(option%read_group,option%read_grp_rank,ierr)
 
-    if (mod(option%global_rank,option%read_bcast_size) == 0) then 
+    if (mod(option%myrank,option%read_bcast_size) == 0) then 
        option%reader_color = 1
     else
        option%reader_color = 0
     endif
-    option%reader_key = option%global_rank
-    call MPI_Comm_split(option%global_comm,option%reader_color,option%reader_key,option%readers,ierr)
+    option%reader_key = option%myrank
+    call MPI_Comm_split(option%mycomm,option%reader_color, &
+                        option%reader_key,option%readers,ierr)
     call MPI_Comm_size(option%readers,option%readers_size,ierr)
     call MPI_Comm_rank(option%readers,option%readers_rank,ierr)
 
@@ -2968,19 +2973,19 @@ subroutine create_iogroups(option)
                             PETSC_NULL_OBJECT,ierr)
 
     option%write_bcast_size = HDF5_WRITE_BCAST_SIZE
-    option%wcolor = floor(real(option%global_rank / option%write_bcast_size))
-    option%wkey = option%global_rank
-    call MPI_Comm_split(option%global_comm,option%wcolor,option%wkey,option%write_group,ierr)
+    option%wcolor = floor(real(option%myrank / option%write_bcast_size))
+    option%wkey = option%myrank
+    call MPI_Comm_split(option%mycomm,option%wcolor,option%wkey,option%write_group,ierr)
     call MPI_Comm_size(option%write_group,option%write_grp_size,ierr)
     call MPI_Comm_rank(option%write_group,option%write_grp_rank,ierr)
 
-    if (mod(option%global_rank,option%write_bcast_size) == 0) then 
+    if (mod(option%myrank,option%write_bcast_size) == 0) then 
        option%writer_color = 1
     else
        option%writer_color = 0
     endif
-    option%writer_key = option%global_rank
-    call MPI_Comm_split(option%global_comm,option%writer_color,option%writer_key,option%writers,ierr)
+    option%writer_key = option%myrank
+    call MPI_Comm_split(option%mycomm,option%writer_color,option%writer_key,option%writers,ierr)
     call MPI_Comm_size(option%writers,option%writers_size,ierr)
     call MPI_Comm_rank(option%writers,option%writers_rank,ierr)
 
@@ -2989,6 +2994,6 @@ subroutine create_iogroups(option)
                           PETSC_NULL_OBJECT,ierr)
 #endif
  
-end subroutine create_iogroups
+end subroutine Create_IOGroups
 
 end module Init_module
