@@ -1,4 +1,4 @@
-subroutine f_create_simulation(simulation_obj, application_ptr, pflotran_filename, len)
+subroutine f_create_simulation(simulation_obj, realization_obj, application_ptr, pflotran_filename, len)
 
  use Simulation_module
  use Realization_module
@@ -18,6 +18,7 @@ subroutine f_create_simulation(simulation_obj, application_ptr, pflotran_filenam
 #include "finclude/petsclog.h"
 
  PetscFortranAddr :: simulation_obj
+ PetscFortranAddr :: realization_obj
  PetscFortranAddr :: application_ptr
  type(c_ptr), intent(in), value :: pflotran_filename
  integer :: len     
@@ -100,6 +101,7 @@ subroutine f_create_simulation(simulation_obj, application_ptr, pflotran_filenam
     endif
     
     call assign_c_ptr(simulation_obj, simulation)
+    call assign_c_ptr(realization_obj, realization)
  endif
 
 end subroutine f_create_simulation

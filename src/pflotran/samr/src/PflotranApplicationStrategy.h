@@ -130,9 +130,12 @@ public:
                                       tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  destVec,
                                       int ierr);
 
+   void coarsenVector(tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  localVec);
+   
    void coarsenFaceFluxes(tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> > faceVec, 
                           int ierr);
 
+ 
    void setRefinementBoundaryInterpolant(RefinementBoundaryInterpolation *cf_interpolant);
 
    RefinementBoundaryInterpolation *getRefinementBoundaryInterpolant(void){return d_cf_interpolant; }
@@ -151,6 +154,15 @@ public:
 
    PflotranJacobianMultilevelOperator *getJacobianOperator(int *which_pc);
 
+   void setRealization(void *pflotranRealizationObj){ d_pflotranRealizationObj=pflotranRealizationObj; }
+   void *getRealization(void){ return d_pflotranRealizationObj; }
+   
+   void setSimulation(void *pflotranSimulationObj){ d_pflotranSimulationObj=pflotranSimulationObj; }
+   void *getSimulation(void){ return d_pflotranSimulationObj; }
+
+   void setTransportMatrix( Mat *mat){ d_transportMatrix=mat; }
+
+   Mat *getTransportMatrix(void){ return d_transportMatrix; }
 protected:
 
 private:
@@ -175,6 +187,8 @@ private:
    bool d_coarsen_fluxes;
    bool d_error_checkpoint;
 
+   Mat *d_transportMatrix;
+   
    // Hierarchy
    tbox::Pointer< hier::PatchHierarchy<NDIM> > d_hierarchy;
 
@@ -192,6 +206,10 @@ private:
 
    int  d_pflotran_weight_id;
 
+   // pointer to PFLOTRAN simulation object
+   void *d_pflotranRealizationObj; 
+   void *d_pflotranSimulationObj; 
+   
    double d_current_time;
 
    // Name of application

@@ -23,7 +23,6 @@ module Realization_module
 private
 
 #include "definitions.h"
-
   type, public :: realization_type
 
     PetscInt :: id
@@ -210,6 +209,9 @@ subroutine RealizationCreateDiscretization(realization)
 
   call DiscretizationDuplicateVector(discretization,field%porosity0, &
                                      field%work)
+  ! temporary for samr testing
+  call DiscretizationDuplicateVector(discretization,field%porosity0, &
+                                     field%work_samr)
   
   ! 1 degree of freedom, local
   call DiscretizationCreateVector(discretization,ONEDOF,field%porosity_loc, &
@@ -219,6 +221,10 @@ subroutine RealizationCreateDiscretization(realization)
 
   call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
                                      field%work_loc)
+  
+  ! temporary for samr testing
+  call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                     field%work_samr_loc)
   
   if (option%nflowdof > 0) then
 
@@ -2009,7 +2015,7 @@ subroutine RealizationCountCells(realization,global_total_count, &
   
   temp_int_in(1) = total_count
   temp_int_in(2) = active_count
-  call MPI_Allreduce(temp_int_in,temp_int_out,TWO_INTEGER,MPI_INTEGER, &
+  call MPI_Allreduce(temp_int_in,temp_int_out,TWO_INTEGER_MPI,MPIU_INTEGER, &
                      MPI_SUM,realization%option%mycomm,ierr)
   global_total_count = temp_int_out(1)
   global_active_count = temp_int_out(2)
@@ -2088,8 +2094,8 @@ subroutine RealizationPrintGridStatistics(realization)
     inactive_histogram(1) = 1
   endif
   
-  call MPI_Allreduce(inactive_histogram,temp_int_out,TWELVE_INTEGER, &
-                     MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
+  call MPI_Allreduce(inactive_histogram,temp_int_out,TWELVE_INTEGER_MPI, &
+                     MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
 
   ! why I cannot use *100, I do not know....geh
   inactive_percentages = dble(temp_int_out)/dble(option%mycommsize)*10.d0

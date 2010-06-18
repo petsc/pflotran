@@ -125,7 +125,7 @@ else
 endif
 
 ifndef jaguar
-CXX=mpicxx
+#CXX=mpicxx
 else
 CXX=CC
 endif

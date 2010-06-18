@@ -178,7 +178,7 @@ public:
    
    static PetscErrorCode wrapperMatMult(Mat mat,Vec x,Vec y);
 
-   PetscErrorCode MatMult(Mat mat,Vec x,Vec y);
+   PetscErrorCode MatMult(Vec x,Vec y);
 
    static PetscErrorCode wrapperMatZeroEntries(Mat mat);
 

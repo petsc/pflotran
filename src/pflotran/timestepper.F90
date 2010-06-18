@@ -1535,7 +1535,8 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
                                         RTCalculateTransportMatrix, &
                                         RTReact, &
                                         RTMaxChange, &
-                                        RTTransportResidual
+                                        RTTransportResidual, &
+                                        RTTransportMatVec
 
   use Output_module, only : Output
   
@@ -1548,8 +1549,20 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
   use Grid_module
   use Patch_module
   use Global_module  
-  
+  use iso_c_binding
   implicit none
+
+  interface
+     subroutine SAMRSetPetscTransportMatrix(p_application, transportMat) 
+      use Realization_module
+#include "finclude/petscsys.h"
+#include "finclude/petscmat.h"
+      
+      PetscFortranAddr :: p_application
+      Mat :: transportMat
+      end subroutine SAMRSetPetscTransportMatrix
+
+  end interface
 
 #include "finclude/petsclog.h"
 #include "finclude/petscvec.h"
@@ -1558,9 +1571,8 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
 #include "finclude/petscviewer.h"
 #include "finclude/petscsnes.h"
 
-  type(realization_type) :: realization
+  type(realization_type),target :: realization
   type(stepper_type) :: stepper
-
   PetscTruth :: flow_timestep_cut_flag
   PetscTruth :: tran_timestep_cut_flag
   PetscInt :: num_newton_iterations
@@ -1590,7 +1602,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
   discretization => realization%discretization
   field => realization%field
   solver => stepper%solver
-
+      
   num_newton_iterations = 1
 ! PetscReal, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
 
@@ -1650,10 +1662,20 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
     ! note that aux vars for bcs in RHS will be updated based on
     ! sat/den at time k+1 in RTCalculateRHS_t1Patch().
     call RTCalculateRHS_t1(realization)
-    call RTCalculateTransportMatrix(realization,solver%J)
-
-    call KSPSetOperators(solver%ksp,solver%J,solver%Jpre, &
-                         SAME_NONZERO_PATTERN,ierr)
+    if(option%use_samr) then
+       call MatCreateShell(option%mycomm, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, solver%J, ierr)
+       call MatShellSetOperation(solver%J, MATOP_MULT,RTTransportMatVec, ierr)
+       call MatShellSetContext(solver%J, discretization%amrgrid%p_application, ierr)
+       call RTCalculateTransportMatrix(realization,solver%Jpre)
+       call SAMRSetPetscTransportMatrix(discretization%amrgrid%p_application, solver%Jpre)
+       call KSPSetOperators(solver%ksp,solver%J,solver%Jpre, &
+                                            DIFFERENT_NONZERO_PATTERN,ierr)
+    else     
+        call RTCalculateTransportMatrix(realization,solver%J) 
+        call KSPSetOperators(solver%ksp,solver%J,solver%Jpre, &
+                                            SAME_NONZERO_PATTERN,ierr)
+   endif
+      
 
 !      call VecGetArrayF90(field%tran_xx,vec_ptr,ierr)
 !      call VecRestoreArrayF90(field%tran_xx,vec_ptr,ierr)
@@ -1677,6 +1699,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
 #endif
     
       call VecStrideGather(field%tran_rhs,idof-1,field%work,INSERT_VALUES,ierr)
+      option%rt_idof = idof
       call KSPSolve(solver%ksp,field%work,field%work,ierr)
       ! tran_xx will contain transported totals
       ! tran_xx_loc will still contain free-ion from previous solution

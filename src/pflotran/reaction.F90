@@ -317,10 +317,12 @@ subroutine ReactionRead(reaction,input,option)
                   case('RATE','RATES') 
                     srfcplx_rxn%itype = SRFCMPLX_RXN_MULTIRATE_KINETIC
                     string = 'RATES inside SURFACE_COMPLEXATION_RXN'
-                    call UtilityReadArray(reaction%kinmr_rate,-1,string,input,option) 
+                    call UtilityReadArray(reaction%kinmr_rate,NEG_ONE_INTEGER,string,input, &
+                                          option) 
                   case('SITE_FRACTION') 
                     string = 'SITE_FRACTION inside SURFACE_COMPLEXATION_RXN'
-                    call UtilityReadArray(reaction%kinmr_frac,-1,string,input,option) 
+                    call UtilityReadArray(reaction%kinmr_frac,NEG_ONE_INTEGER,string,input, &
+                                          option) 
                   case('MULTIRATE_SCALE_FACTOR')
                     call InputReadDouble(input,option,reaction%kinmr_scale_factor)
                     call InputErrorMsg(input,option,'keyword', &
@@ -1060,7 +1062,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 #ifdef CHUAN_CO2  
   PetscReal :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,&
                yco2,pco2,sat_pressure,lngamco2
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
 #endif
     
   constraint_type = aq_species_constraint%constraint_type
@@ -2651,7 +2653,7 @@ subroutine CO2AqActCoeff(rt_auxvar,global_auxvar,reaction,option)
    
   PetscReal :: m_na, m_cl, tc, co2aqact, lngamco2, henry, xphico2, pco2
   PetscReal :: sat_pressure
-  PetscInt :: ierr 
+  PetscErrorCode :: ierr 
 
   tc = global_auxvar%temp(1)
   pco2 = global_auxvar%pres(2)
@@ -2929,7 +2931,8 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   type(reaction_type) :: reaction
   type(option_type) :: option
   
-  PetscInt :: i, j, icplx, icomp, jcomp, iphase, ncomp, ieqgas,ierr
+  PetscInt :: i, j, icplx, icomp, jcomp, iphase, ncomp, ieqgas
+  PetscErrorCode :: ierr
   PetscReal :: ln_conc(reaction%naqcomp)
   PetscReal :: ln_act(reaction%naqcomp)
   PetscReal :: lnQK, tempreal

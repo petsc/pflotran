@@ -390,9 +390,12 @@ subroutine UnstructuredGridRead(unstructured_grid,filename,option)
   PetscInt :: icell, ivertex, idir, irank
   PetscInt :: remainder
   PetscErrorCode :: ierr
-  PetscInt :: status(MPI_STATUS_SIZE)
+  PetscMPIInt :: status_mpi(MPI_STATUS_SIZE)
+  PetscMPIInt :: int_mpi
+  PetscInt :: fileid
   
-  input => InputCreate(86,filename)
+  fileid = 86
+  input => InputCreate(fileid,filename)
 
   card = 'Unstructured Grid'
 
@@ -438,16 +441,18 @@ print *, '0: ', unstructured_grid%num_cells_local, ' cells'
           temp_int_array(:,1:unstructured_grid%num_cells_local)
       else
 print *, '0: ', num_to_read, ' cells sent'
-        call MPI_Send(temp_int_array,num_to_read*8,MPI_INTEGER,irank, &
+        int_mpi = num_to_read*8
+        call MPI_Send(temp_int_array,int_mpi,MPIU_INTEGER,irank, &
                       num_to_read,option%mycomm,ierr)
       endif
     enddo
     deallocate(temp_int_array)
   else
 print *, option%myrank,': ',unstructured_grid%num_cells_local, ' cells recv'
-    call MPI_Recv(unstructured_grid%cell_vertices_0, &
-                  unstructured_grid%num_cells_local*8,MPI_INTEGER,option%io_rank, &
-                  MPI_ANY_TAG,option%mycomm,status,ierr)
+    int_mpi = unstructured_grid%num_cells_local*8
+    call MPI_Recv(unstructured_grid%cell_vertices_0,int_mpi, &
+                  MPIU_INTEGER,option%io_rank, &
+                  MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
   endif
 
 
@@ -481,16 +486,18 @@ print *, option%myrank,': ',unstructured_grid%num_cells_local, ' cells recv'
         vertex_coordinates(:,1:unstructured_grid%num_vertices_local) = &
           temp_real_array(:,1:unstructured_grid%num_vertices_local)
       else
-        call MPI_Send(temp_real_array,num_to_read*3,MPI_DOUBLE_PRECISION,irank, &
+        int_mpi = num_to_read*3
+        call MPI_Send(temp_real_array,int_mpi,MPI_DOUBLE_PRECISION,irank, &
                       num_to_read,option%mycomm,ierr)
       endif
     enddo
     deallocate(temp_real_array)
   else
+    int_mpi = unstructured_grid%num_vertices_local*3
     call MPI_Recv(vertex_coordinates, &
-                  unstructured_grid%num_vertices_local*3, &
+                  int_mpi, &
                   MPI_DOUBLE_PRECISION,option%io_rank, &
-                  MPI_ANY_TAG,option%mycomm,status,ierr)
+                  MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
   endif
   
   allocate(unstructured_grid%vertices(unstructured_grid%num_vertices_local))
@@ -629,7 +636,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   unstructured_grid%global_offset = 0
   call MPI_Exscan(unstructured_grid%num_cells_local, &
                   unstructured_grid%global_offset, &
-                  ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
+                  ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
 
 #if GEH_DEBUG  
   call printMsg(option,'Adjacency matrix')
@@ -1135,7 +1142,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   global_vertex_offset = 0
   call MPI_Exscan(unstructured_grid%num_vertices_local, &
                   global_vertex_offset, &
-                  ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
+                  ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
 #endif
 
   ! IS for scatter - provide petsc gobal numbering

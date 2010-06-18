@@ -1,18 +1,19 @@
   module span_wagner_spline_module
 
-
-  
   implicit none
+
+#include "definitions.h"
+  
   save
 
   private
   
-  integer :: nptab,nttab0,ncrit_pts
-  integer, allocatable :: nttab(:),ncrit(:)
-  real*8, allocatable :: p_tab(:),t_tab(:,:),r_tab(:,:), &
+  PetscInt :: nptab,nttab0,ncrit_pts
+  PetscInt, allocatable :: nttab(:),ncrit(:)
+  PetscReal, allocatable :: p_tab(:),t_tab(:,:),r_tab(:,:), &
                          h_tab(:,:),u_tab(:,:),s_tab(:,:),f_tab(:,:), &
                          rr(:,:),hh(:,:),uu(:,:),ss(:,:),ff(:,:)
-  real*8, allocatable :: tcrit(:),pcrit(:),rhol(:),ul(:),hl(:),sl(:), &
+  PetscReal, allocatable :: tcrit(:),pcrit(:),rhol(:),ul(:),hl(:),sl(:), &
                          rhov(:),hv(:),uv(:),sv(:),fv(:)
   
   public sw_spline_read, sw_prop
@@ -22,7 +23,7 @@
 
   use spline_module
 
-  integer :: i,ipx,j,n,iunit=9
+  PetscInt :: i,ipx,j,n,iunit=9
   
   open (unit=iunit,file='co2_prop_TC.dat',status='old')
   
@@ -135,13 +136,13 @@
       implicit none
       save
 
-      real*8 :: tx,px,rho, h,u,fg
-      integer :: ipx,jpx,n
-      real*8 :: tkx,pcx,ptx,tcx,ttx
-      real*8 :: rtab(nptab+1) !,rtab2(nptab+1)
-      real*8 :: htab(nptab+1) !,htab2(nptab+1)
-      real*8 :: utab(nptab+1) !,utab2(nptab+1)
-      real*8 :: fgtab(nptab+1) !,fgtab2(nptab+1)
+      PetscReal :: tx,px,rho, h,u,fg
+      PetscInt :: ipx,jpx,n
+      PetscReal :: tkx,pcx,ptx,tcx,ttx
+      PetscReal :: rtab(nptab+1) !,rtab2(nptab+1)
+      PetscReal :: htab(nptab+1) !,htab2(nptab+1)
+      PetscReal :: utab(nptab+1) !,utab2(nptab+1)
+      PetscReal :: fgtab(nptab+1) !,fgtab2(nptab+1)
 
       tkx = tx + 273.15d0
       pcx = 7.3773d0

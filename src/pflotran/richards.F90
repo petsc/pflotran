@@ -158,11 +158,13 @@ subroutine RichardsSetupPatch(realization)
                      boundary_condition%connection_set%num_connections
     boundary_condition => boundary_condition%next
   enddo
-  allocate(rich_aux_vars_bc(sum_connection))
-  do iconn = 1, sum_connection
-    call RichardsAuxVarInit(rich_aux_vars_bc(iconn),option)
-  enddo
-  patch%aux%Richards%aux_vars_bc => rich_aux_vars_bc
+  if (sum_connection > 0) then
+    allocate(rich_aux_vars_bc(sum_connection))
+    do iconn = 1, sum_connection
+      call RichardsAuxVarInit(rich_aux_vars_bc(iconn),option)
+    enddo
+    patch%aux%Richards%aux_vars_bc => rich_aux_vars_bc
+  endif
   patch%aux%Richards%num_aux_bc = sum_connection
   
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
@@ -301,9 +303,13 @@ subroutine RichardsZeroMassBalDeltaPatch(realization)
   enddo
 #endif
 
-  do iconn = 1, patch%aux%Richards%num_aux_bc
-    global_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
-  enddo
+  ! Intel 10.1 on Chinook reports a SEGV if this conditional is not
+  ! placed around the internal do loop - geh
+  if (patch%aux%Richards%num_aux_bc > 0) then
+    do iconn = 1, patch%aux%Richards%num_aux_bc
+      global_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
+    enddo
+  endif
 
 end subroutine RichardsZeroMassBalDeltaPatch
 
@@ -345,11 +351,15 @@ subroutine RichardsUpdateMassBalancePatch(realization)
   enddo
 #endif
 
-  do iconn = 1, patch%aux%Richards%num_aux_bc
-    global_aux_vars_bc(iconn)%mass_balance = &
-      global_aux_vars_bc(iconn)%mass_balance + &
-      global_aux_vars_bc(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
-  enddo
+  ! Intel 10.1 on Chinook reports a SEGV if this conditional is not
+  ! placed around the internal do loop - geh
+  if (patch%aux%Richards%num_aux_bc > 0) then
+    do iconn = 1, patch%aux%Richards%num_aux_bc
+      global_aux_vars_bc(iconn)%mass_balance = &
+        global_aux_vars_bc(iconn)%mass_balance + &
+        global_aux_vars_bc(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
+    enddo
+  endif
 
 end subroutine RichardsUpdateMassBalancePatch
 
@@ -1454,7 +1464,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
 #include "finclude/petscvec.h90"
        PetscFortranAddr :: p_application
        Vec :: vec
-       PetscInt :: ierr
+       PetscErrorCode :: ierr
      end subroutine SAMRCoarsenFaceFluxes
   end interface
 
@@ -1758,15 +1768,19 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
     ngx = grid%structured_grid%ngx   
     ngxy = grid%structured_grid%ngxy
 
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 0, 0)==1) nlx = nlx-1
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 0, 1)==1) nlx = nlx-1
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
+                        ZERO_INTEGER)==1) nlx = nlx-1
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
+                        ONE_INTEGER)==1) nlx = nlx-1
     
     max_x_conn = (nlx+1)*nly*nlz
     ! reinitialize nlx
     nlx = grid%structured_grid%nlx  
 
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 1, 0)==1) nly = nly-1
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 1, 1)==1) nly = nly-1
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
+                        ZERO_INTEGER)==1) nly = nly-1
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
+                        ONE_INTEGER)==1) nly = nly-1
     
     max_y_conn = max_x_conn + nlx*(nly+1)*nlz
 
@@ -2843,8 +2857,8 @@ subroutine RichardsCreateZeroArray(patch,option)
   patch%aux%Richards%n_zero_rows = n_zero_rows
   
   if(.not. (option%use_samr)) then
-     call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
-          option%mycomm,ierr)
+     call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                        MPI_MAX,option%mycomm,ierr)
      if (flag > 0) patch%aux%Richards%inactive_cells_exist = PETSC_TRUE
      
      if (ncount /= n_zero_rows) then

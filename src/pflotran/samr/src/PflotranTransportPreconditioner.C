@@ -167,17 +167,18 @@ PflotranTransportPreconditioner::setRefinementBoundaryInterpolant(RefinementBoun
 }
 
 PetscErrorCode
-PflotranTransportPreconditioner::wrapperApplyPreconditioner(PC ptr, Vec r, Vec z)
+PflotranTransportPreconditioner::wrapperApplyPreconditioner(PC pcshell, Vec r, Vec z)
 {
    
-   PflotranTransportPreconditioner *pc = (PflotranTransportPreconditioner *)ptr;
-
-   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > rVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(r);
-   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > zVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(z);
-
-   pc->applyPreconditioner(rVec,zVec);
-
-   return(0);
+  PflotranTransportPreconditioner *pc = NULL;
+  PCShellGetContext(pcshell, (void**)&pc);
+  
+  SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > rVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(r);
+  SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > zVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(z);
+  
+  pc->applyPreconditioner(rVec,zVec);
+  
+  return(0);
 }
 
 /*
@@ -208,9 +209,10 @@ PflotranTransportPreconditioner::applyPreconditioner(
 }   
 
 PetscErrorCode
-PflotranTransportPreconditioner::wrapperSetupPreconditioner( PC ptr)
+PflotranTransportPreconditioner::wrapperSetupPreconditioner( PC pcshell)
 {
-   PflotranTransportPreconditioner *pc = (PflotranTransportPreconditioner *)ptr;
+  PflotranTransportPreconditioner *pc = NULL;
+  PCShellGetContext(pcshell, (void**)&pc);  
    PreconditionerParameters* params = NULL;
    pc->setupPreconditioner(params);
 

@@ -41,6 +41,7 @@ module Reactive_Transport_module
             RTCalculateTransportMatrix, &
             RTReact, &
             RTTransportResidual, &
+            RTTransportMatVec, &
 #endif
             RTCheckUpdate, &
             RTJumpStartKineticSorption, &
@@ -206,11 +207,14 @@ subroutine RTSetupPatch(realization)
                      boundary_condition%connection_set%num_connections
     boundary_condition => boundary_condition%next
   enddo
-  option%iflag = 1 ! enable allocation of mass_balance array 
-  allocate(patch%aux%RT%aux_vars_bc(sum_connection))
-  do iconn = 1, sum_connection
-    call RTAuxVarInit(patch%aux%RT%aux_vars_bc(iconn),reaction,option)
-  enddo
+  
+  if (sum_connection > 0) then
+    option%iflag = 1 ! enable allocation of mass_balance array 
+    allocate(patch%aux%RT%aux_vars_bc(sum_connection))
+    do iconn = 1, sum_connection
+      call RTAuxVarInit(patch%aux%RT%aux_vars_bc(iconn),reaction,option)
+    enddo
+  endif
   patch%aux%RT%num_aux_bc = sum_connection
   option%iflag = 0
 
@@ -335,8 +339,8 @@ subroutine RTCheckUpdatePatch(snes_,C,dC,realization,changed,ierr)
     ratio = min_ratio
     
     ! get global minimum
-    call MPI_AllReduce(ratio,min_ratio,1,MPI_DOUBLE_PRECISION,MPI_MIN, &
-                       PETSC_COMM_WORLD,ierr)
+    call MPI_Allreduce(ratio,min_ratio,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+                       MPI_MIN,realization%option%mycomm,ierr)
                        
     ! scale if necessary
     if (min_ratio < 1.d0) then
@@ -1752,13 +1756,29 @@ end subroutine RTCalculateTranMatrixPatch2
 subroutine RTReact(realization)
 
   use Realization_module
+  use Field_module
+  use Discretization_module    
   use Level_module
   use Patch_module
   use Option_module
   use Logging_module
 
+  implicit none
+      
+  interface
+     subroutine SAMRCoarsenVector(p_application, vec)
+       implicit none
+#include "finclude/petscsysdef.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+       PetscFortranAddr :: p_application
+       Vec :: vec
+      end subroutine SAMRCoarsenVector
+  end interface 
+
   type(realization_type) :: realization
-  
+  type(discretization_type), pointer :: discretization
+  type(field_type), pointer ::field
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(option_type), pointer :: option
@@ -1780,8 +1800,12 @@ subroutine RTReact(realization)
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,ierr)
                           
+  discretization => realization%discretization
   option => realization%option
-  
+  field => realization%field
+
+  call SAMRCoarsenVector(discretization%amrgrid%p_application, field%tran_xx)
+      
 #ifdef OS_STATISTICS
   call_count = 0
   sum_newton_iterations = 0
@@ -1829,15 +1853,15 @@ subroutine RTReact(realization)
 #ifdef OS_STATISTICS
   temp_int_in(1) = call_count
   temp_int_in(2) = sum_newton_iterations
-  call MPI_Allreduce(temp_int_in,temp_int_out,TWO_INTEGER, &
-                     MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
+  call MPI_Allreduce(temp_int_in,temp_int_out,TWO_INTEGER_MPI, &
+                     MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
   ave_newton_iterations_in_a_cell = float(temp_int_out(2)) / temp_int_out(1)
 
   temp_int_in(1) = max_newton_iterations_in_a_cell
   temp_int_in(2) = sum_newton_iterations ! to calc max # iteration on a core
   temp_int_in(3) = -sum_newton_iterations ! to calc min # iteration on a core
-  call MPI_Allreduce(temp_int_in,temp_int_out,THREE_INTEGER, &
-                     MPI_INTEGER,MPI_MAX,option%mycomm,ierr)
+  call MPI_Allreduce(temp_int_in,temp_int_out,THREE_INTEGER_MPI, &
+                     MPIU_INTEGER,MPI_MAX,option%mycomm,ierr)
   max_newton_iterations_in_a_cell = temp_int_out(1)
   max_newton_iterations_on_a_core = temp_int_out(2)
   min_newton_iterations_on_a_core = -temp_int_out(3)
@@ -1923,7 +1947,7 @@ subroutine RTReactPatch(realization)
   ! need up update aux vars based on current density/saturation,
   ! but NOT activity coefficients
   call RTUpdateAuxVarsPatch(realization,PETSC_TRUE,PETSC_FALSE,PETSC_FALSE)
-  
+
   ! Get vectors
   call GridVecGetArrayF90(grid,field%tran_xx,tran_xx_p,ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
@@ -2280,15 +2304,19 @@ subroutine RTTransportResidualPatch1(realization,solution_loc,residual,idof)
     ngx = grid%structured_grid%ngx   
     ngxy = grid%structured_grid%ngxy
 
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 0, 0)==1) nlx = nlx-1
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 0, 1)==1) nlx = nlx-1
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
+                        ZERO_INTEGER)==1) nlx = nlx-1
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
+                        ONE_INTEGER)==1) nlx = nlx-1
     
     max_x_conn = (nlx+1)*nly*nlz
     ! reinitialize nlx
     nlx = grid%structured_grid%nlx  
 
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 1, 0)==1) nly = nly-1
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 1, 1)==1) nly = nly-1
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
+                        ZERO_INTEGER)==1) nly = nly-1
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
+                        ONE_INTEGER)==1) nly = nly-1
     
     max_y_conn = max_x_conn + nlx*(nly+1)*nlz
 
@@ -2548,6 +2576,240 @@ subroutine RTTransportResidualPatch2(realization,solution_loc,residual,idof)
 
 end subroutine RTTransportResidualPatch2
 
+! ************************************************************************** !
+!
+! RTTransportMatVecPatch2: Calculates the transport residual equation for  
+!                           a single chemical component (total component 
+!                           concentration)
+! author: Bobby Philip
+! date: 06/11/2010
+!
+! ************************************************************************** !
+subroutine RTTransportMatVecPatch2(realization,solution_loc,residual,idof)
+
+  use Realization_module
+  use Patch_module
+  use Connection_module
+  use Coupler_module
+  use Option_module
+  use Field_module  
+  use Grid_module  
+
+  implicit none
+  
+  type(realization_type) :: realization
+  Vec :: solution_loc
+  Vec :: residual
+  PetscInt :: idof
+  
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
+  type(reactive_transport_auxvar_type), pointer :: rt_aux_vars_bc(:)
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  PetscReal, pointer :: porosity_loc_p(:)
+  PetscReal, pointer :: volume_p(:)
+  PetscReal, pointer :: solution_loc_p(:)
+  PetscReal, pointer :: residual_p(:)
+  PetscReal, pointer :: rhs_coef_p(:)
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
+  PetscInt :: iphase
+  PetscReal :: res
+  
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  PetscInt :: sum_connection, iconn
+  PetscReal :: coef
+  PetscReal :: coef_up(1), coef_dn(1)
+  PetscErrorCode :: ierr
+    
+  ! Get vectors
+  option => realization%option
+  field => realization%field
+  patch => realization%patch
+  global_aux_vars => patch%aux%Global%aux_vars
+  rt_aux_vars => patch%aux%RT%aux_vars
+  rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
+  grid => patch%grid
+
+  ! Get vectors
+  call GridVecGetArrayF90(grid,solution_loc, solution_loc_p, ierr)  
+  call GridVecGetArrayF90(grid,residual, residual_p, ierr)  
+  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
+  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
+  call GridVecGetArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)  
+  
+  iphase = 1
+
+  ! need to add source/sink
+
+  ! Accumulation term
+  
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    if (patch%imat(ghosted_id) <= 0) cycle
+    coef = porosity_loc_p(ghosted_id)* &
+           global_aux_vars(ghosted_id)%sat(iphase)* &
+           1000.d0* &
+           volume_p(local_id)/option%tran_dt
+!geh need to separate out accumulation from boundary fluxes
+!geh    residual_p(local_id) = coef*solution_loc_p(ghosted_id)- &
+!geh ! RHS will not change, but is moved to lhs (thus, the -1.d0*)
+!geh                           rhs_p((local_id-1)*option%ntrandof+idof)
+
+!geh    residual_p(local_id) = coef*solution_loc_p(ghosted_id)- &
+
+    residual_p(local_id) = residual_p(local_id) + &
+                           coef*solution_loc_p(ghosted_id)
+
+  enddo
+
+  ! Restore vectors
+  call GridVecRestoreArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)  
+  call GridVecRestoreArrayF90(grid,solution_loc, solution_loc_p, ierr)  
+  call GridVecRestoreArrayF90(grid,residual, residual_p, ierr)  
+  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
+  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
+
+end subroutine RTTransportMatVecPatch2
+
+subroutine RTTransportMatVec(mat, x, y)
+
+!  use Simulation_module
+!  use Timestepper_module
+!  use Solver_module
+  use Realization_module
+  use Discretization_module
+  use Level_module
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Field_module
+  use Debug_module
+  use ISO_C_BINDING
+      
+  implicit none
+
+#ifndef PC_BUG
+  interface
+    subroutine SAMRGetRealization(p_application, realization) 
+      use Realization_module
+#include "finclude/petscsys.h"
+      PetscFortranAddr :: p_application
+      type(realization_type), pointer :: realization
+      end subroutine SAMRGetRealization
+
+     subroutine SAMRGetPetscTransportMatrix(p_application, transportMat) 
+      use Realization_module
+#include "finclude/petscsys.h"
+#include "finclude/petscmat.h"
+      
+      PetscFortranAddr :: p_application
+      Mat :: transportMat
+      end subroutine SAMRGetPetscTransportMatrix      
+
+  end interface
+#endif
+
+  Mat, intent(in) :: mat    
+  Vec, intent(in) :: x
+  Vec, intent(out) :: y
+
+!  type(simulation_type),pointer :: simulation
+  type(realization_type),pointer :: realization
+  type(option_type), pointer :: option
+  type(discretization_type), pointer :: discretization
+  type(field_type), pointer :: field
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  type(c_ptr) :: realization_cptr
+  PetscInt :: idof
+  PetscReal :: alpha    
+  PetscErrorCode :: ierr
+  PetscFortranAddr :: p_application
+  PetscReal :: diff
+  Mat :: vmat    
+      
+!  call MatShellGetContext(mat, p_application, ierr)
+#ifndef PC_BUG  
+!  call SAMRGetRealization(p_application, realization)
+#endif
+!  call SAMRGetPetscTransportMatrix(p_application, vmat)
+
+  field => realization%field
+  discretization => realization%discretization
+  option => realization%option
+  idof = option%rt_idof
+      
+  ! solution is stored in x vector, but we need it in ghosted
+  ! form for the residual calculation
+  call DiscretizationGlobalToLocal(discretization,x, &
+                                       field%work_loc,ONEDOF)
+
+   ! temporary for samr testing                                     
+  call DiscretizationGlobalToLocal(discretization,x, &
+                                       field%work_samr_loc,ONEDOF)
+
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RTTransportResidualPatch1(realization,field%work_loc,y,idof)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+  ! now coarsen all face fluxes in case we are using SAMRAI to 
+  ! ensure consistent fluxes at coarse-fine interfaces
+  if(option%use_samr) then
+    call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%tran_face_fluxes, ierr)
+
+    cur_level => realization%level_list%first
+    do
+      if (.not.associated(cur_level)) exit
+      cur_patch => cur_level%patch_list%first
+      do
+        if (.not.associated(cur_patch)) exit
+        realization%patch => cur_patch
+        call RTTransportResidualFluxContribPatch(y,realization,ierr)
+        cur_patch => cur_patch%next
+      enddo
+      cur_level => cur_level%next
+    enddo
+      endif
+
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RTTransportMatVecPatch2(realization,field%work_loc,y,idof)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+!  alpha=-1.0    
+!  call VecScale(y, alpha, ierr)
+
+!  call MatMult(vmat, x, field%work_samr, ierr)
+
+!  call VecAXPY(field%work_samr, alpha, y, ierr)
+
+!    call VecNorm(field%work_samr, NORM_2, diff, ierr)
+      
+end subroutine RTTransportMatVec
+      
 ! ************************************************************************** !
 !
 ! RichardsResidualFluxContribsPatch: should be called only for SAMR
@@ -4756,7 +5018,8 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
       call RTAuxVarCompute(patch%aux%RT%aux_vars(ghosted_id), &
                            patch%aux%Global%aux_vars(ghosted_id), &
                            reaction,option)
-      if (associated(reaction%species_idx)) then
+      if (associated(reaction%species_idx) .and. &
+          associated(patch%aux%Global%aux_vars(ghosted_id)%m_nacl)) then
         if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
           patch%aux%Global%aux_vars(ghosted_id)%m_nacl(1) = &
                 patch%aux%RT%aux_vars(ghosted_id)%pri_molal(reaction%species_idx%na_ion_id)
@@ -4929,7 +5192,8 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
           endif         
         endif
 
-        if (associated(reaction%species_idx)) then
+        if (associated(reaction%species_idx) .and. &
+            associated(patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl)) then
           if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
             patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl(1) = &
                   patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal(reaction%species_idx%na_ion_id)
@@ -5031,8 +5295,8 @@ subroutine RTCreateZeroArray(patch,reaction,option)
 
 
   if(.not.(option%use_samr)) then
-     call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
-          option%mycomm,ierr)
+     call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                        MPI_MAX,option%mycomm,ierr)
      
      if (flag > 0) patch%aux%RT%inactive_cells_exist = PETSC_TRUE
      
@@ -5591,14 +5855,14 @@ subroutine RTDestroy(realization)
   if (option%reactive_transport_coupling == OPERATOR_SPLIT) then
     temp_real_in(1) = call_count
     temp_real_in(2) = sum_newton_iterations
-    call MPI_Allreduce(temp_real_in,temp_real_out,TWO_INTEGER, &
+    call MPI_Allreduce(temp_real_in,temp_real_out,TWO_INTEGER_MPI, &
                        MPI_DOUBLE_PRECISION,MPI_SUM,option%mycomm,ierr)
     ave_newton_iterations_in_a_cell = temp_real_out(2)/temp_real_out(1)
 
     temp_real_in(1) = dble(max_newton_iterations_in_a_cell)
     temp_real_in(2) = sum_newton_iterations
     temp_real_in(3) = -sum_newton_iterations
-    call MPI_Allreduce(temp_real_in,temp_real_out,THREE_INTEGER, &
+    call MPI_Allreduce(temp_real_in,temp_real_out,THREE_INTEGER_MPI, &
                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
     max_newton_iterations_in_a_cell = int(temp_real_out(1)+1.d-4)
     max_newton_iterations_on_a_core = temp_real_out(2)

@@ -1223,7 +1223,7 @@ implicit none
 
 PetscReal :: rw0,dnacl,t,p,xnacl
 PetscReal :: rw_mol, hw
-PetscInt  :: ierr
+PetscErrorCode  :: ierr
 !units: t [C], p [MPa], xnacl [mass fraction NaCl], dnacl [g/cm^3]
 
 !rw0 = 1.d0 + 1.d-6*(-80.d0*t - 3.3d0*t**2 + 0.00175d0*t**3 &

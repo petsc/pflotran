@@ -320,18 +320,18 @@ subroutine GridComputeCoordinates(grid,origin_global,option)
   if (associated(grid%structured_grid)) then
     if (grid%structured_grid%p_samr_patch==0) then
      ! compute global max/min from the local max/in
-     call MPI_Allreduce(grid%x_min_local,grid%x_min_global,ONE_INTEGER, &
-          MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
-     call MPI_Allreduce(grid%y_min_local,grid%y_min_global,ONE_INTEGER, &
-          MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
-     call MPI_Allreduce(grid%z_min_local,grid%z_min_global,ONE_INTEGER, &
-          MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
-     call MPI_Allreduce(grid%x_max_local,grid%x_max_global,ONE_INTEGER, &
-          MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
-     call MPI_Allreduce(grid%y_max_local,grid%y_max_global,ONE_INTEGER, &
-          MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
-     call MPI_Allreduce(grid%z_max_local,grid%z_max_global,ONE_INTEGER, &
-          MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+     call MPI_Allreduce(grid%x_min_local,grid%x_min_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+     call MPI_Allreduce(grid%y_min_local,grid%y_min_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+     call MPI_Allreduce(grid%z_min_local,grid%z_min_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+     call MPI_Allreduce(grid%x_max_local,grid%x_max_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+     call MPI_Allreduce(grid%y_max_local,grid%y_max_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+     call MPI_Allreduce(grid%z_max_local,grid%z_max_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
    endif
  endif
 
@@ -525,8 +525,9 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                   endif
   ! the next test as designed will only work on a uniform grid
                   if(.not. (option%use_samr)) then
-                     call MPI_Allreduce(region%num_cells,count,ONE_INTEGER,MPI_INTEGER,MPI_SUM, &
-                          option%mycomm,ierr)   
+                     call MPI_Allreduce(region%num_cells,count, &
+                                        ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
+                                        option%mycomm,ierr)   
 
                      if (count == 0) then
                       write(option%io_buffer,*) 'Region: (coord)', &
@@ -654,8 +655,8 @@ subroutine GridLocalizeRegions(grid,region_list,option)
             endif
 
             if(.not. (option%use_samr)) then
-               call MPI_Allreduce(iflag,i,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
-                    option%mycomm,ierr)
+               call MPI_Allreduce(iflag,i,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
+                                  option%mycomm,ierr)
             else
                i=0
             endif
@@ -926,8 +927,8 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
   grid%hash => hash
   
 !  call GridPrintHashTable(grid)
-  call mpi_allreduce(max_num_ids_per_hash,num_in_hash,ONE_INTEGER,MPI_INTEGER, &
-                     MPI_MAX,option%mycomm,ierr)
+  call MPI_Allreduce(max_num_ids_per_hash,num_in_hash,ONE_INTEGER_MPI, &
+                     MPIU_INTEGER,MPI_MAX,option%mycomm,ierr)
   write(option%io_buffer,'("max_num_ids_per_hash: ",i5)') num_in_hash
   call printMsg(option)
 
@@ -1124,7 +1125,7 @@ subroutine GridVecGetArrayCellF90(grid, vec, f90ptr, ierr)
   type(grid_type) :: grid
   Vec:: vec
   PetscReal, pointer :: f90ptr(:)
-  integer :: ierr
+  PetscErrorCode :: ierr
 
   if (.not.associated(grid%structured_grid)) then
      call VecGetArrayF90(vec, f90ptr, ierr)
@@ -1152,7 +1153,7 @@ subroutine GridVecGetArraySideF90(grid, axis, vec, f90ptr, ierr)
   PetscInt :: axis 
   Vec:: vec
   PetscReal, pointer :: f90ptr(:)
-  integer :: ierr
+  PetscErrorCode :: ierr
 
   if (.not.associated(grid%structured_grid)) then
      call VecGetArrayF90(vec, f90ptr, ierr)
@@ -1179,7 +1180,7 @@ subroutine GridVecRestoreArrayF90(grid, vec, f90ptr, ierr)
   type(grid_type) :: grid
   Vec:: vec
   PetscReal, pointer :: f90ptr(:)
-  integer :: ierr
+  PetscErrorCode :: ierr
 
   if (.not.associated(grid%structured_grid)) then
      call VecRestoreArrayF90(vec, f90ptr, ierr)
@@ -1226,8 +1227,8 @@ function GridIndexToCellID(vec,index,grid,vec_type)
     endif
   endif
   
-  call MPI_AllReduce(cell_id,GridIndexToCellID,1,MPI_INTEGER,MPI_MAX, &
-                     PETSC_COMM_WORLD,ierr)
+  call MPI_Allreduce(cell_id,GridIndexToCellID,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                     MPI_MAX,PETSC_COMM_WORLD,ierr)
                      
 end function GridIndexToCellID
 

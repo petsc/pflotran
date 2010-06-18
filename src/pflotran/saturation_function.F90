@@ -285,8 +285,8 @@ subroutine SaturationFunctionComputeSpline(option,saturation_function)
         (pressure_high*alpha)**(-saturation_function%lambda)
   b(4) = 0.d0
   
-  call ludcmp(A,4,indx,d)
-  call lubksb(A,4,indx,b)
+  call ludcmp(A,FOUR_INTEGER,indx,d)
+  call lubksb(A,FOUR_INTEGER,indx,b)
   
   saturation_function%BC_spline_coefficients(1:4) = b(1:4)
   
