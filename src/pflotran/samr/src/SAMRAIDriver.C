@@ -208,6 +208,7 @@ int main( int argc, char *argv[] )
    f_initialize_simulation_(&p_pflotran_sim);
 
    pflotranApplication->setRealization(p_realization);
+   pflotranApplication->setSimulation(p_pflotran_sim);
    
 #if 1   
    f_stepper_run_(&p_pflotran_sim);

@@ -2679,6 +2679,9 @@ end subroutine RTTransportMatVecPatch2
 
 subroutine RTTransportMatVec(mat, x, y)
 
+!  use Simulation_module
+!  use Timestepper_module
+!  use Solver_module
   use Realization_module
   use Discretization_module
   use Level_module
@@ -2698,7 +2701,17 @@ subroutine RTTransportMatVec(mat, x, y)
 #include "finclude/petscsys.h"
       PetscFortranAddr :: p_application
       type(realization_type), pointer :: realization
-    end subroutine SAMRGetRealization
+      end subroutine SAMRGetRealization
+
+     subroutine SAMRGetPetscTransportMatrix(p_application, transportMat) 
+      use Realization_module
+#include "finclude/petscsys.h"
+#include "finclude/petscmat.h"
+      
+      PetscFortranAddr :: p_application
+      Mat :: transportMat
+      end subroutine SAMRGetPetscTransportMatrix      
+
   end interface
 #endif
 
@@ -2706,6 +2719,7 @@ subroutine RTTransportMatVec(mat, x, y)
   Vec, intent(in) :: x
   Vec, intent(out) :: y
 
+!  type(simulation_type),pointer :: simulation
   type(realization_type),pointer :: realization
   type(option_type), pointer :: option
   type(discretization_type), pointer :: discretization
@@ -2714,13 +2728,17 @@ subroutine RTTransportMatVec(mat, x, y)
   type(patch_type), pointer :: cur_patch
   type(c_ptr) :: realization_cptr
   PetscInt :: idof
+  PetscReal :: alpha    
   PetscErrorCode :: ierr
   PetscFortranAddr :: p_application
+  PetscReal :: diff
+  Mat :: vmat    
       
-  call MatShellGetContext(mat, p_application, ierr)
+!  call MatShellGetContext(mat, p_application, ierr)
 #ifndef PC_BUG  
-  call SAMRGetRealization(p_application, realization)
+!  call SAMRGetRealization(p_application, realization)
 #endif
+!  call SAMRGetPetscTransportMatrix(p_application, vmat)
 
   field => realization%field
   discretization => realization%discretization
@@ -2781,8 +2799,15 @@ subroutine RTTransportMatVec(mat, x, y)
     cur_level => cur_level%next
   enddo
 
+!  alpha=-1.0    
+!  call VecScale(y, alpha, ierr)
+
+!  call MatMult(vmat, x, field%work_samr, ierr)
+
+!  call VecAXPY(field%work_samr, alpha, y, ierr)
+
+!    call VecNorm(field%work_samr, NORM_2, diff, ierr)
       
-   call VecScale(y, -1.0, ierr)  
 end subroutine RTTransportMatVec
       
 ! ************************************************************************** !

@@ -181,6 +181,12 @@ void samrgetrealization_(SAMRAI::PflotranApplicationStrategy ***application_stra
   (*simulation) = (**application_strategy)->getRealization();
 }
 
+void samrgetsimulation_(SAMRAI::PflotranApplicationStrategy ***application_strategy,
+			 void **simulation)
+{
+  (*simulation) = (**application_strategy)->getSimulation();
+}
+
 void samr_vecgetarraycellf90_(SAMRAI::hier::Patch<NDIM> **patch, 
                           Vec *petscVec,
                           void **f90wrap)
@@ -277,6 +283,21 @@ void samrcreatematrix_(SAMRAI::PflotranApplicationStrategy **application_strateg
    }
 
 }
+
+void samrsetpetsctransportmatrix_(SAMRAI::PflotranApplicationStrategy **application_strategy,
+		           Mat *transportMatrix)
+{
+  (*application_strategy)->setTransportMatrix(transportMatrix);
+}
+
+
+void samrgetpetsctransportmatrix_(SAMRAI::PflotranApplicationStrategy ***application_strategy,
+			    Mat *mat)
+{
+  Mat *pMat = (**application_strategy)->getTransportMatrix();
+  (*mat) = (*pMat);
+}
+
 
 void samrglobaltolocal_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
                         Vec *gvec, 

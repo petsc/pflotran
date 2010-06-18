@@ -82,6 +82,7 @@ subroutine Init(simulation)
   character(len=MAXSTRINGLENGTH) :: string
   Vec :: global_vec
   PetscInt :: temp_int
+  PetscInt :: flowortranpc    
   PetscErrorCode :: ierr
   PCSide:: pcside
   PetscReal :: r1, r2, r3, r4, r5, r6
@@ -359,7 +360,8 @@ subroutine Init(simulation)
       pcside = PC_RIGHT
       if(flow_solver%pc_type==PCSHELL) then
         call KSPSetPCSide(flow_solver%ksp, pcside,ierr)
-        call SAMRInitializePreconditioner(discretization%amrgrid%p_application, ONE_INTEGER, flow_solver%pc)
+        flowortranpc=0 
+        call SAMRInitializePreconditioner(discretization%amrgrid%p_application, flowortranpc, flow_solver%pc)
       endif
     endif
 
@@ -457,7 +459,8 @@ subroutine Init(simulation)
        pcside = PC_RIGHT
        if(tran_solver%pc_type==PCSHELL) then
           call KSPSetPCSide(tran_solver%ksp, pcside,ierr)
-          call SAMRInitializePreconditioner(discretization%amrgrid%p_application, ONE_INTEGER, tran_solver%pc)
+          flowortranpc=1
+          call SAMRInitializePreconditioner(discretization%amrgrid%p_application, flowortranpc, tran_solver%pc)
        endif
     endif
     option%io_buffer = 'Solver: ' // trim(tran_solver%ksp_type)
