@@ -42,7 +42,7 @@ module co2_sw_module
         
         implicit none
         PetscInt itable
-        PetscMPIInt myrank 
+        PetscMPIInt myrank
         
         PetscInt i, j
         

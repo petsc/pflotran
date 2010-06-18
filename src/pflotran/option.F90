@@ -747,7 +747,7 @@ function OptionCheckTouch(option,filename)
 
   if (option%myrank == option%io_rank) &
     open(unit=fid,file=trim(filename),status='old',iostat=ios)
-  call MPI_Bcast(ios,MPI_ONE_INTEGER,MPIU_INTEGER,option%io_rank, &
+  call MPI_Bcast(ios,ONE_INTEGER_MPI,MPIU_INTEGER,option%io_rank, &
                  option%mycomm,ierr)
 
   if (ios == 0) then
@@ -830,7 +830,7 @@ subroutine OptionMaxMinMeanVariance(value,max,min,mean,variance, &
   
   temp_real_in(1) = value
   temp_real_in(2) = -1.d0*value
-  call MPI_Allreduce(temp_real_in,temp_real_out,MPI_TWO_INTEGER, &
+  call MPI_Allreduce(temp_real_in,temp_real_out,TWO_INTEGER_MPI, &
                      MPI_DOUBLE_PRECISION, &
                      MPI_MAX,option%mycomm,ierr)
   max = temp_real_out(1)
@@ -861,14 +861,14 @@ subroutine OptionMeanVariance(value,mean,variance,calculate_variance,option)
   PetscReal :: temp_real
   PetscErrorCode :: ierr
   
-  call MPI_Allreduce(value,temp_real,MPI_ONE_INTEGER,MPI_DOUBLE_PRECISION, &
+  call MPI_Allreduce(value,temp_real,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
                      MPI_SUM,option%mycomm,ierr)
   mean = temp_real / dble(option%mycommsize)
   
   if (calculate_variance) then
     temp_real = value-mean
     temp_real = temp_real*temp_real
-    call MPI_Allreduce(temp_real,variance,MPI_ONE_INTEGER, &
+    call MPI_Allreduce(temp_real,variance,ONE_INTEGER_MPI, &
                        MPI_DOUBLE_PRECISION, &
                        MPI_SUM,option%mycomm,ierr)
     variance = variance / dble(option%mycommsize)

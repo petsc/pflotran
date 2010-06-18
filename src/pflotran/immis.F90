@@ -281,7 +281,7 @@ end subroutine ImmisSetupPatch
 
    call MPI_Barrier(option%mycomm,ierr)
    if(option%mycommsize >1)then
-      call MPI_Allreduce(ipass,ipass0,MPI_ONE_INTEGER,MPIU_INTEGER, &
+      call MPI_Allreduce(ipass,ipass0,ONE_INTEGER_MPI,MPIU_INTEGER, &
                          MPI_SUM,option%mycomm,ierr)
       if(ipass0 < option%mycommsize) ipass=-1
    endif
@@ -408,7 +408,7 @@ subroutine ImmisUpdateReason(reason, realization)
  call MPI_Barrier(realization%option%mycomm,ierr)
   
   if(realization%option%mycommsize >1)then
-     call MPI_Allreduce(re,re0,MPI_ONE_INTEGER,MPIU_INTEGER,MPI_SUM, &
+     call MPI_Allreduce(re,re0,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
           realization%option%mycomm,ierr)
      if(re0<realization%option%mycommsize) re=0
   endif
@@ -2475,7 +2475,7 @@ print *,'zero rows point 2'
 print *,'zero rows point 3'  
   patch%aux%Immis%zero_rows_local_ghosted => zero_rows_local_ghosted
 print *,'zero rows point 4'
-  call MPI_Allreduce(n_zero_rows,flag,MPI_ONE_INTEGER,MPIU_INTEGER,MPI_MAX, &
+  call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
                      option%mycomm,ierr)
   if (flag > 0) patch%aux%Immis%inactive_cells_exist = PETSC_TRUE
 
@@ -2543,7 +2543,7 @@ subroutine ImmisMaxChange(realization)
   enddo
 
   if(option%mycommsize >1)then
-    call MPI_Allreduce(dsmax,max_s,MPI_ONE_INTEGER,MPI_DOUBLE_PRECISION, &
+    call MPI_Allreduce(dsmax,max_s,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
                        MPI_MAX,option%mycomm,ierr)
     dsmax = max_s
   endif 

@@ -434,8 +434,9 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
   integer(HSIZE_T) :: num_connections_in_file
   PetscInt :: temp_int, i, num_internal_connections
   PetscErrorCode :: ierr
+  PetscMPIInt :: int_mpi
   
-  PetscMPIInt, allocatable :: upwind_ids(:), downwind_ids(:)
+  PetscInt, allocatable :: upwind_ids(:), downwind_ids(:)
   
   PetscInt :: read_block_size
 
@@ -504,9 +505,11 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
 #ifdef HDF5_BROADCAST
     endif
-    if (option%mycommsize > 1) &
-      call MPI_Bcast(upwind_ids,dims(1),MPIU_INTEGER,option%io_rank, &
+    if (option%mycommsize > 1) then
+      int_mpi = dims(1)
+      call MPI_Bcast(upwind_ids,int_mpi,MPIU_INTEGER,option%io_rank, &
                      option%mycomm,ierr)
+    endif
 #endif    
     call h5sselect_hyperslab_f(file_space_id_down, H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
@@ -523,9 +526,11 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
 #ifdef HDF5_BROADCAST
     endif
-    if (option%mycommsize > 1) &
-      call MPI_Bcast(downwind_ids,dims(1),MPIU_INTEGER,option%io_rank, &
+    if (option%mycommsize > 1) then
+      int_mpi = dims(1)
+      call MPI_Bcast(downwind_ids,int_mpi,MPIU_INTEGER,option%io_rank, &
                      option%mycomm,ierr)
+    endif
 #endif    
     do i=1,dims(1)
       connection_count = connection_count + 1

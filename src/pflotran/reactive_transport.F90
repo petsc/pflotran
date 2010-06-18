@@ -339,7 +339,7 @@ subroutine RTCheckUpdatePatch(snes_,C,dC,realization,changed,ierr)
     ratio = min_ratio
     
     ! get global minimum
-    call MPI_Allreduce(ratio,min_ratio,MPI_ONE_INTEGER,MPI_DOUBLE_PRECISION, &
+    call MPI_Allreduce(ratio,min_ratio,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
                        MPI_MIN,realization%option%mycomm,ierr)
                        
     ! scale if necessary
@@ -1853,14 +1853,14 @@ subroutine RTReact(realization)
 #ifdef OS_STATISTICS
   temp_int_in(1) = call_count
   temp_int_in(2) = sum_newton_iterations
-  call MPI_Allreduce(temp_int_in,temp_int_out,MPI_TWO_INTEGER, &
+  call MPI_Allreduce(temp_int_in,temp_int_out,TWO_INTEGER_MPI, &
                      MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
   ave_newton_iterations_in_a_cell = float(temp_int_out(2)) / temp_int_out(1)
 
   temp_int_in(1) = max_newton_iterations_in_a_cell
   temp_int_in(2) = sum_newton_iterations ! to calc max # iteration on a core
   temp_int_in(3) = -sum_newton_iterations ! to calc min # iteration on a core
-  call MPI_Allreduce(temp_int_in,temp_int_out,MPI_THREE_INTEGER, &
+  call MPI_Allreduce(temp_int_in,temp_int_out,THREE_INTEGER_MPI, &
                      MPIU_INTEGER,MPI_MAX,option%mycomm,ierr)
   max_newton_iterations_in_a_cell = temp_int_out(1)
   max_newton_iterations_on_a_core = temp_int_out(2)
@@ -5270,7 +5270,7 @@ subroutine RTCreateZeroArray(patch,reaction,option)
 
 
   if(.not.(option%use_samr)) then
-     call MPI_Allreduce(n_zero_rows,flag,MPI_ONE_INTEGER,MPIU_INTEGER, &
+     call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER, &
                         MPI_MAX,option%mycomm,ierr)
      
      if (flag > 0) patch%aux%RT%inactive_cells_exist = PETSC_TRUE
@@ -5830,14 +5830,14 @@ subroutine RTDestroy(realization)
   if (option%reactive_transport_coupling == OPERATOR_SPLIT) then
     temp_real_in(1) = call_count
     temp_real_in(2) = sum_newton_iterations
-    call MPI_Allreduce(temp_real_in,temp_real_out,MPI_TWO_INTEGER, &
+    call MPI_Allreduce(temp_real_in,temp_real_out,TWO_INTEGER_MPI, &
                        MPI_DOUBLE_PRECISION,MPI_SUM,option%mycomm,ierr)
     ave_newton_iterations_in_a_cell = temp_real_out(2)/temp_real_out(1)
 
     temp_real_in(1) = dble(max_newton_iterations_in_a_cell)
     temp_real_in(2) = sum_newton_iterations
     temp_real_in(3) = -sum_newton_iterations
-    call MPI_Allreduce(temp_real_in,temp_real_out,MPI_THREE_INTEGER, &
+    call MPI_Allreduce(temp_real_in,temp_real_out,THREE_INTEGER_MPI, &
                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
     max_newton_iterations_in_a_cell = int(temp_real_out(1)+1.d-4)
     max_newton_iterations_on_a_core = temp_real_out(2)

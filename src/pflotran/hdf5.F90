@@ -142,8 +142,8 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
      num_cells_in_file = int(num_cells)
   endif
     
-  call MPI_Bcast(num_cells_in_file,MPI_ONE_INTEGER,MPIU_INTEGER, &
-                 MPI_ZERO_INTEGER,option%read_group,ierr)
+  call MPI_Bcast(num_cells_in_file,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                 ZERO_INTEGER_MPI,option%read_group,ierr)
                      
   do
     if (cell_count >= num_cells_in_file) exit
@@ -172,7 +172,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
     endif
     if (option%mycommsize > 1) then
       int_mpi = dims(1)
-      call MPI_Bcast(cell_ids,int_mpi,MPIU_INTEGER,MPI_ZERO_INTEGER, &
+      call MPI_Bcast(cell_ids,int_mpi,MPIU_INTEGER,ZERO_INTEGER_MPI, &
                      option%read_group,ierr)
     endif
   
@@ -265,6 +265,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
   PetscInt :: cell_count
   integer(HSIZE_T) :: num_cells_in_file
   PetscInt :: temp_int, i
+  PetscMPIInt :: int_mpi
   
   PetscInt, allocatable :: cell_ids(:)
   PetscInt, allocatable :: temp(:)
@@ -297,7 +298,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
     allocate(indices(indices_array_size))
   endif
   
-  rank = 1
+  rank_mpi = 1
   offset = 0
   length = 0
   stride = 1
@@ -318,7 +319,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
     if (dims(1) /= temp_int) then
       if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
       dims(1) = temp_int
-      call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+      call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
     endif
     ! offset is zero-based
     offset(1) = cell_count
@@ -449,6 +450,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   PetscInt :: real_count, prev_real_count
   integer(HSIZE_T) :: num_reals_in_file
   PetscInt :: temp_int, i, index
+  PetscMPIInt :: int_mpi
   
   PetscReal, allocatable :: real_buffer(:)
   
@@ -695,8 +697,8 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
      num_integers_in_file = int(num_integers) 
   endif  
 
-  call MPI_Bcast(num_integers_in_file,MPI_ONE_INTEGER,MPIU_INTEGER, &
-                 MPI_ZERO_INTEGER,option%read_group,ierr) 
+  call MPI_Bcast(num_integers_in_file,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                 ZERO_INTEGER_MPI,option%read_group,ierr) 
                   
   do i=1,num_indices
     index = indices(i)
@@ -729,7 +731,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
         if (option%mycommsize > 1) then
           int_mpi = dims(1)
           call MPI_Bcast(integer_buffer,int_mpi,MPIU_INTEGER, &
-                         MPI_ZERO_INTEGER,option%read_group,ierr) 
+                         ZERO_INTEGER_MPI,option%read_group,ierr) 
         endif
         prev_integer_count = integer_count
         integer_count = integer_count + length(1)                  
@@ -765,7 +767,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
     endif 
     if (option%mycommsize > 1) then 
       int_mpi = dims(1)
-      call MPI_Bcast(integer_buffer,int_mpi,MPIU_INTEGER,MPI_ZERO_INTEGER, &
+      call MPI_Bcast(integer_buffer,int_mpi,MPIU_INTEGER,ZERO_INTEGER_MPI, &
                      option%read_group,ierr) 
     endif                    
     integer_count = integer_count + length(1)                  
@@ -805,6 +807,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
   PetscInt :: integer_count, prev_integer_count
   integer(HSIZE_T) :: num_integers_in_file
   PetscInt :: temp_int, i, index
+  PetscMPIInt :: int_mpi
   
   PetscInt, allocatable :: integer_buffer(:)
   
@@ -1096,6 +1099,7 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
   PetscInt :: integer_count, prev_integer_count
   integer(HSIZE_T) :: num_integers_in_file
   PetscInt :: temp_int, i, index
+  PetscMPIInt :: int_mpi
   
   PetscInt, allocatable :: integer_buffer(:)
   
@@ -1212,7 +1216,7 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
       int_mpi = dims(1)
       call MPI_Bcast(integer_buffer,int_mpi,MPIU_INTEGER,option%io_rank, &
                      option%mycomm,ierr)
-    emdof
+    endif
     integer_count = integer_count + length(1)                  
   enddo
 #endif
@@ -1401,9 +1405,9 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
   xyz(5) = kstart_local
   xyz(6) = num_to_write_mpi
 
-  call MPI_Gather(xyz(0),MPI_SEVEN_INTEGER,MPIU_INTEGER, &
-                  group_xyz(0),MPI_SEVEN_INTEGER,MPIU_INTEGER, &
-                  MPI_ZERO_INTEGER,option%write_group,ierr)
+  call MPI_Gather(xyz(0),SEVEN_INTEGER_MPI,MPIU_INTEGER, &
+                  group_xyz(0),SEVEN_INTEGER_MPI,MPIU_INTEGER, &
+                  ZERO_INTEGER_MPI,option%write_group,ierr)
 
   if (mod(option%global_rank,write_bcast_size) == 0) then
 
@@ -1428,13 +1432,13 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
 
   if (data_type == HDF_NATIVE_INTEGER) then
       call MPI_Gatherv(int_array,num_to_write_mpi,MPIU_INTEGER,group_int_array,&
-                       group_count_mpi(0),disp_mpi(0),MPIU_INTEGER,MPI_ZERO_INTEGER, &
+                       group_count_mpi(0),disp_mpi(0),MPIU_INTEGER,ZERO_INTEGER_MPI, &
                        option%write_group,ierr)
   else
       call MPI_Gatherv(double_array,num_to_write_mpi,MPI_DOUBLE_PRECISION, &
                        group_double_array,&
                        group_count_mpi(0),disp_mpi(0),MPI_DOUBLE_PRECISION, &
-                       MPI_ZERO_INTEGER,option%write_group,ierr)
+                       ZERO_INTEGER_MPI,option%write_group,ierr)
   endif
 
   ! write (*,'(" Starting HDF5 stuff in ",A," dataset,my rank = ",i6)') name,option%global_rank
@@ -1579,13 +1583,13 @@ end subroutine HDF5WriteStructuredDataSet
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
   
   ny_local_X_nz_local = ny_local*nz_local
-  num_to_write = nx_local*ny_local_X_nz_local
+  num_to_write_mpi = nx_local*ny_local_X_nz_local
   
   ! memory space which is a 1D vector  
   rank_mpi = 1
   dims = 0
-  dims(1) = num_to_write
-  if (num_to_write == 0) dims(1) = 1
+  dims(1) = num_to_write_mpi
+  if (num_to_write_mpi == 0) dims(1) = 1
   call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
 
   ! file space which is a 3D block
@@ -1633,7 +1637,7 @@ end subroutine HDF5WriteStructuredDataSet
   length(2) =  ny_local
   length(1) =  nz_local
 #endif
-  if (num_to_write == 0) length(1) = 1
+  if (num_to_write_mpi == 0) length(1) = 1
   stride = 1
   call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
                              hdf5_err,stride,stride)
@@ -1649,7 +1653,7 @@ end subroutine HDF5WriteStructuredDataSet
                             hdf5_err)
   endif
 #endif
-  if (num_to_write > 0) then
+  if (num_to_write_mpi > 0) then
     if (data_type == HDF_NATIVE_INTEGER) then
       allocate(int_array(nx_local*ny_local*nz_local))
 #ifdef INVERT
@@ -1785,9 +1789,9 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   group_size = option%read_grp_size
 
   ! first determine upper and lower bound on PETSc global array
-  call MPI_Exscan(grid%nlmax,istart,MPI_ONE_INTEGER,MPIU_INTEGER, &
+  call MPI_Exscan(grid%nlmax,istart,ONE_INTEGER_MPI,MPIU_INTEGER, &
                   MPI_SUM,option%mycomm,ierr)
-  call MPI_Scan(grid%nlmax,iend,MPI_ONE_INTEGER,MPIU_INTEGER, &
+  call MPI_Scan(grid%nlmax,iend,ONE_INTEGER_MPI,MPIU_INTEGER, &
                 MPI_SUM,option%mycomm,ierr)
   if (iend /= istart + grid%nlmax) then
     call printErrMsg(option,'iend /= istart+grid%nlmax')
@@ -1815,11 +1819,11 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   endif
 
 
-  call MPI_Bcast(num_data_in_file,MPI_ONE_INTEGER,MPIU_INTEGER, &
-                 MPI_ZERO_INTEGER,option%read_group,ierr) 
+  call MPI_Bcast(num_data_in_file,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                 ZERO_INTEGER_MPI,option%read_group,ierr) 
   length = iend - istart 
-  call MPI_Gather(length,MPI_ONE_INTEGER,MPIU_INTEGER,glength(0),MPI_ONE_INTEGER, &
-                  MPIU_INTEGER,MPI_ZERO_INTEGER,option%read_group,ierr)
+  call MPI_Gather(length,ONE_INTEGER_MPI,MPIU_INTEGER,glength(0),ONE_INTEGER_MPI, &
+                  MPIU_INTEGER,ZERO_INTEGER_MPI,option%read_group,ierr)
 
   if (istart < num_data_in_file) then
      if (mod(option%global_rank,read_bcast_size) .NE. 0) then 
@@ -1877,7 +1881,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   glength_mpi = glength
   call MPI_Scatterv(group_indices(1:group_length(1)),glength_mpi,displacement_mpi, &
                     MPIU_INTEGER,indices(1:length),length_mpi,MPIU_INTEGER, &
-                    MPI_ZERO_INTEGER,option%read_group,ierr)
+                    ZERO_INTEGER_MPI,option%read_group,ierr)
 
   if (mod(option%global_rank,read_bcast_size) == 0) then
       deallocate(group_indices)
@@ -1914,7 +1918,8 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
   PetscMPIInt :: rank_mpi
-  PetscMPIInt, allocatable :: indices_i4_mpi(:)
+  ! seeting to MPIInt to ensure i4
+  PetscMPIInt, allocatable :: indices_i4(:)
   integer(HSIZE_T) :: num_data_in_file
   
   PetscInt :: istart, iend
@@ -1927,7 +1932,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   iend = 0
   
   ! first determine upper and lower bound on PETSc global array
-  call MPI_Scan(grid%nlmax,iend,MPI_ONE_INTEGER,MPIU_INTEGER,MPI_SUM, &
+  call MPI_Scan(grid%nlmax,iend,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
                 option%mycomm,ierr)
   istart = iend - grid%nlmax
   
@@ -2100,8 +2105,8 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
      iend = indices(0)
      length = iend - istart
      ! Gather the length values from the group to rank 0 in each group
-     call MPI_Gather(length,MPI_ONE_INTEGER,MPIU_INTEGER,glength_mpi(0), &
-                     MPI_ONE_INTEGER,MPIU_INTEGER,MPI_ZERO_INTEGER, &
+     call MPI_Gather(length,ONE_INTEGER_MPI,MPIU_INTEGER,glength_mpi(0), &
+                     ONE_INTEGER_MPI,MPIU_INTEGER,ZERO_INTEGER_MPI, &
                      option%read_group,ierr)
 
      if (mod(option%global_rank,read_bcast_size) == 0) then
@@ -2155,7 +2160,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
         allocate(real_buffer(length_mpi))
         call MPI_Scatterv(real_group_buffer,glength_mpi,displacement_mpi, &
                           MPI_DOUBLE_PRECISION,real_buffer,length_mpi, &
-                          MPI_DOUBLE_PRECISION,MPI_ZERO_INTEGER, &
+                          MPI_DOUBLE_PRECISION,ZERO_INTEGER_MPI, &
                           option%read_group,ierr)          
         if (mod(option%global_rank,read_bcast_size) == 0) then
            deallocate(real_group_buffer)
@@ -2167,7 +2172,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
         allocate(real_buffer(length_mpi))
         call MPI_Scatterv(integer_group_buffer,glength_mpi,displacement_mpi, &
                           MPIU_INTEGER,integer_buffer,length_mpi,MPIU_INTEGER, &
-                          MPI_ZERO_INTEGER,option%read_group,ierr)          
+                          ZERO_INTEGER_MPI,option%read_group,ierr)          
         do i = 1,length_mpi,1
            real_buffer(i) = real(integer_buffer(i))
         enddo
