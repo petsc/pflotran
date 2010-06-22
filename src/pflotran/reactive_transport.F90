@@ -2734,9 +2734,9 @@ subroutine RTTransportMatVec(mat, x, y)
   PetscReal :: diff
   Mat :: vmat    
       
-!  call MatShellGetContext(mat, p_application, ierr)
+  call MatShellGetContext(mat, p_application, ierr)
 #ifndef PC_BUG  
-!  call SAMRGetRealization(p_application, realization)
+  call SAMRGetRealization(p_application, realization)
 #endif
 !  call SAMRGetPetscTransportMatrix(p_application, vmat)
 

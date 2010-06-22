@@ -4,7 +4,7 @@ PERIODIC  = 2
 MIXED     = 3
 ROBIN     = 4
 
-pflotran_filename="pflotran.in"
+pflotran_filename="pflotran.15c.in"
 
 CartesianGeometry{
    domain_boxes = [(0,0,0), (19,19,79)]
@@ -14,10 +14,10 @@ CartesianGeometry{
 
 
 GriddingAlgorithm{
-   max_levels = 2 
+   max_levels = 3 
    largest_patch_size {
-      level_0 = 10, 10, 40
-      level_1 = 10, 10, 10
+      level_0 = 20, 20, 80
+      level_1 = 40, 40, 40
    }
  smallest_patch_size {
       level_0 = 10,10,40
@@ -81,7 +81,7 @@ PflotranApplicationStrategy{
 
      pc_solver{
        solver_name                      =  "FAC"
-       max_iterations                   =  2
+       max_iterations                   =  30 
        max_error                        =  1.0e-12
        print_info_level                 =  1 
        presolve_iterations              =  2
@@ -112,7 +112,6 @@ PflotranApplicationStrategy{
      }
         
    }
-
    PflotranTransportPreconditioner{
 
      preconditioner_print_flag = FALSE
