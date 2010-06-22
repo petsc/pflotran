@@ -4,6 +4,8 @@ PERIODIC  = 2
 MIXED     = 3
 ROBIN     = 4
 
+pflotran_filename="pflotran.15c.in"
+
 CartesianGeometry{
    domain_boxes = [(0,0,0), (19,19,79)]
    x_lo         = 0.0e0, 0.0e0, 0.0e0  
@@ -80,6 +82,43 @@ PflotranApplicationStrategy{
      pc_solver{
        solver_name                      =  "FAC"
        max_iterations                   =  30 
+       max_error                        =  1.0e-12
+       print_info_level                 =  1 
+       presolve_iterations              =  2
+       postsolve_iterations             =  2
+       use_visit                        =  FALSE
+       viz_directory                    =  "fac_viz"
+       zero_initial_guess               =  TRUE
+
+       level_solver_0 {
+            solver_name                = "CellHYPRELevelSolver"
+            print_info_level           = 0 
+            mg_solver_type             = 1
+            max_iterations             = 1
+            max_error                  = 1.0e-12
+            num_presweeps              = 2
+            num_postsweeps             = 2
+            preprocess_rhs             = FALSE
+       }
+
+       level_solver_1 {
+            solver_name                 =  "CellLevelSmoother"
+            smoother_type               =  "Red-black Gauss-Seidel"
+            print_info_level            =  0 
+            max_iterations              =  1
+            max_error                   =  1.0e-12
+            num_sweeps                  =  10
+       }
+     }
+        
+   }
+   PflotranTransportPreconditioner{
+
+     preconditioner_print_flag = FALSE
+
+     pc_solver{
+       solver_name                      =  "FAC"
+       max_iterations                   =  2 
        max_error                        =  1.0e-12
        print_info_level                 =  1 
        presolve_iterations              =  2
