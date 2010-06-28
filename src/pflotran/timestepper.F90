@@ -1667,7 +1667,9 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
        call MatShellSetOperation(solver%J, MATOP_MULT,RTTransportMatVec, ierr)
        call MatShellSetContext(solver%J, discretization%amrgrid%p_application, ierr)
        call RTCalculateTransportMatrix(realization,solver%Jpre)
+#ifndef PC_BUG       
        call SAMRSetPetscTransportMatrix(discretization%amrgrid%p_application, solver%Jpre)
+#endif       
        call KSPSetOperators(solver%ksp,solver%J,solver%Jpre, &
                                             DIFFERENT_NONZERO_PATTERN,ierr)
     else     
