@@ -26,10 +26,6 @@ module Output_module
   PetscErrorCode :: ierr
   PetscInt, save :: max_local_size_saved = -1
   
-#ifdef VAMSI_HDF5_WRITE
-  PetscInt :: write_bcast_size = HDF5_WRITE_BCAST_SIZE
-#endif
-
   ! flags signifying the first time a routine is called during a given
   ! simulation
   PetscTruth :: observation_first
@@ -124,8 +120,8 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
       call PetscGetTime(tend,ierr)
 #ifdef VAMSI_HDF5_WRITE
-      if (option%global_rank == 0) write (*,'(" Vamsi''s HDF5 method is used in & 
-                                          writing the output, HDF5_WRITE_BCAST_SIZE = ",i5)') write_bcast_size
+      if (option%myrank == 0) write (*,'(" Vamsi''s HDF5 method is used in & 
+                                          writing the output, HDF5_WRITE_GROUP_SIZE = ",i5)') option%hdf5_write_group_size
 #endif      
       write(option%io_buffer,'(f6.2," Seconds to write HDF5 file.")') tend-tstart
       call printMsg(option)
@@ -4999,7 +4995,7 @@ subroutine OutputHDF5(realization)
      call h5open_f(hdf5_err)
 
 #ifdef VAMSI_HDF5_WRITE
-   if (mod(option%global_rank,write_bcast_size) == 0) then 
+   if (mod(option%myrank,option%hdf5_write_group_size) == 0) then 
 #endif
 
      call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
@@ -5688,7 +5684,7 @@ subroutine OutputHDF5(realization)
 
   if(.not.(option%use_samr)) then
 #ifdef VAMSI_HDF5_WRITE
-    if (mod(option%global_rank,write_bcast_size) == 0) then 
+    if (mod(option%myrank,option%hdf5_write_group_size) == 0) then 
 #endif
        call h5gclose_f(grp_id,hdf5_err)
        call h5fclose_f(file_id,hdf5_err)
@@ -6052,7 +6048,7 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
 
 #ifdef VAMSI_HDF5_WRITE
-  if (mod(option%global_rank,write_bcast_size) == 0) then
+  if (mod(option%myrank,option%hdf5_write_group_size) == 0) then
 #endif
                             
   ! write out grid structure

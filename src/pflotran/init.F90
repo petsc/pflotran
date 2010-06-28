@@ -679,18 +679,14 @@ subroutine Init(simulation)
   call printMsg(option,"  Finished Initialization")
   
 #if defined(PETSC_HAVE_HDF5)
-#ifndef HDF5_BROADCAST 
-#ifndef VAMSI_HDF5_READ
+#if !defined(HDF5_BROADCAST) && !defined(VAMSI_HDF5_READ)
   call printMsg(option,"Default HDF5 method is used in Initialization")
-#endif !VAMSI_HDF5_READ
-#endif HDF5_BROADCAST
-#ifdef HDF5_BROADCAST
+#elif defined(HDF5_BROADCAST)
   call printMsg(option,"Glenn's HDF5 broadcast method is used in Initialization")
-#endif !HDF5_BROADCAST
-#ifdef VAMSI_HDF5_READ
+#elif defined(VAMSI_HDF5_READ)
   call printMsg(option,"Vamsi's HDF5 broadcast method is used in Initialization")
   if (option%myrank == 0) then
-     write(*,'(" HDF5_READ_BCAST_SIZE = ",i6)') option%read_bcast_size
+     write(*,'(" HDF5_READ_GROUP_SIZE = ",i6)') option%hdf5_read_group_size
   endif  
 #endif !VAMSI_HDF5_READ
 #endif !PETSC_HAVE_HDF5
@@ -1385,6 +1381,12 @@ subroutine InitReadInput(simulation)
 
 !......................
 
+      case ('HDF5_READ_GROUP_SIZE')
+        call InputReadInt(input,option,option%hdf5_read_group_size)
+        call InputErrorMsg(input,option,'HDF5_READ_GROUP_SIZE','Group size')
+
+!......................
+
       case ('NUMERICAL_JACOBIAN')
         option%numerical_derivatives = PETSC_TRUE
 
@@ -1703,6 +1705,9 @@ subroutine InitReadInput(simulation)
               velocities = PETSC_TRUE
             case('FLUXES')
               fluxes = PETSC_TRUE
+            case ('HDF5_WRITE_GROUP_SIZE')
+              call InputReadInt(input,option,option%hdf5_write_group_size)
+              call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
             case default
               option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in OUTPUT.'
@@ -2935,10 +2940,7 @@ subroutine Create_IOGroups(option)
 
  implicit none
 
-#include "definitions.h"
-
  type(option_type) :: option
-
  PetscErrorCode :: ierr
 
 #ifdef VAMSI_HDF5_READ  
@@ -2946,15 +2948,24 @@ subroutine Create_IOGroups(option)
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                             PETSC_NULL_OBJECT,ierr)
 
-    option%read_bcast_size = HDF5_READ_BCAST_SIZE
-    option%rcolor = floor(real(option%myrank / option%read_bcast_size))
+    if (option%hdf5_read_group_size <= 0) then
+       write(option%io_buffer,& 
+             '("The keyword HDF5_READ_GROUP_SIZE & 
+             in the input file (pflotran.in) is either not set or &
+             its value is less than or equal to ZERO. &
+             HDF5_READ_GROUP_SIZE =  ",i6)') &
+             option%hdf5_read_group_size
+       call printErrMsg(option)      
+    endif         
+                  
+    option%rcolor = floor(real(option%myrank / option%hdf5_read_group_size))
     option%rkey = option%myrank
     call MPI_Comm_split(option%mycomm,option%rcolor,option%rkey, &
                         option%read_group,ierr)
     call MPI_Comm_size(option%read_group,option%read_grp_size,ierr)
     call MPI_Comm_rank(option%read_group,option%read_grp_rank,ierr)
 
-    if (mod(option%myrank,option%read_bcast_size) == 0) then 
+    if (mod(option%myrank,option%hdf5_read_group_size) == 0) then 
        option%reader_color = 1
     else
        option%reader_color = 0
@@ -2968,6 +2979,13 @@ subroutine Create_IOGroups(option)
     call PetscLogEventEnd(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,ierr)
+#ifdef VAMSI_DEBUG    
+    if (option%myrank == 0) write (*,'("Number of readers = ",i6)') option%readers_size
+    if (mod(option%myrank,option%hdf5_read_group_size) == 0) then 
+       write(*,'("I''m a reader, My rank = ",i6)') option%myrank
+    endif   
+#endif
+
 #endif
 
 #ifdef VAMSI_HDF5_WRITE  
@@ -2975,14 +2993,23 @@ subroutine Create_IOGroups(option)
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                             PETSC_NULL_OBJECT,ierr)
 
-    option%write_bcast_size = HDF5_WRITE_BCAST_SIZE
-    option%wcolor = floor(real(option%myrank / option%write_bcast_size))
+    if (option%hdf5_write_group_size <= 0) then
+       write(option%io_buffer,& 
+             '("The keyword HDF5_WRITE_GROUP_SIZE & 
+             in the input file (pflotran.in) is either not set or &
+             its value is less than or equal to ZERO. &
+             HDF5_WRITE_GROUP_SIZE =  ",i6)') &
+             option%hdf5_write_group_size
+       call printErrMsg(option)      
+    endif         
+                  
+    option%wcolor = floor(real(option%myrank / option%hdf5_write_group_size))
     option%wkey = option%myrank
     call MPI_Comm_split(option%mycomm,option%wcolor,option%wkey,option%write_group,ierr)
     call MPI_Comm_size(option%write_group,option%write_grp_size,ierr)
     call MPI_Comm_rank(option%write_group,option%write_grp_rank,ierr)
 
-    if (mod(option%myrank,option%write_bcast_size) == 0) then 
+    if (mod(option%myrank,option%hdf5_write_group_size) == 0) then 
        option%writer_color = 1
     else
        option%writer_color = 0

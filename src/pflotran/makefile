@@ -7,7 +7,7 @@ common_src   = ./
 bindir = ./${PETSC_ARCH}/bin
 
 ifdef hdf5-vamsi
-    HDF5_FLAGS = -DVAMSI_HDF5 -DVAMSI_HDF5_READ -DVAMSI_HDF5_WRITE -DVAMSI_STAGE_BARRIER 
+    HDF5_FLAGS = -DVAMSI_HDF5 -DVAMSI_HDF5_READ -DVAMSI_HDF5_WRITE -DVAMSI_STAGE_BARRIER
 endif   
 
 ifdef compile_broken
@@ -49,7 +49,7 @@ MYFLAGS = -I${objdir} $(HDF5_FLAGS) \
  					$(CHUAN_FLAG) $(COLL_FLAG) $(DENSITY_FLAG)
 
 CFLAGS		 = 
-FFLAGS		 =
+FFLAGS		 = 
 CPPFLAGS         = ${MYFLAGS}
 FPPFLAGS         = ${MYFLAGS}
 

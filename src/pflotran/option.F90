@@ -28,20 +28,21 @@ module Option_module
 ! to crash.  Don't know why....
         
     PetscMPIInt :: io_rank
+    PetscMPIInt :: hdf5_read_group_size, hdf5_write_group_size
     PetscTruth :: broadcast_read
     
     PetscInt :: reactive_transport_coupling
 
 #ifdef VAMSI_HDF5_READ
-    MPI_Comm :: read_group,readers
-    PetscMPIInt :: read_grp_size,read_grp_rank,readers_size,readers_rank 
-    PetscMPIInt :: read_bcast_size,rcolor,rkey,reader_color,reader_key
+    MPI_Comm :: read_group, readers
+    PetscMPIInt :: read_grp_size, read_grp_rank, readers_size, readers_rank 
+    PetscMPIInt :: rcolor, rkey, reader_color, reader_key
 #endif
 
 #ifdef VAMSI_HDF5_WRITE    
-    MPI_Comm :: write_group,writers
-    PetscMPIInt:: write_grp_size,write_grp_rank,writers_size,writers_rank
-    PetscMPIInt :: write_bcast_size,wcolor,wkey,writer_color,writer_key
+    MPI_Comm :: write_group, writers
+    PetscMPIInt:: write_grp_size, write_grp_rank, writers_size, writers_rank
+    PetscMPIInt :: wcolor, wkey, writer_color, writer_key
 #endif	
 
     character(len=MAXSTRINGLENGTH) :: io_buffer
@@ -309,6 +310,8 @@ subroutine OptionInitAll(option)
     
   option%broadcast_read = PETSC_FALSE
   option%io_rank = 0
+  option%hdf5_read_group_size = 0
+  option%hdf5_write_group_size = 0
 
 #ifdef VAMSI_HDF5_READ
   option%read_group = 0
@@ -317,7 +320,6 @@ subroutine OptionInitAll(option)
   option%read_grp_rank = 0
   option%readers_size = 0
   option%readers_rank = 0
-  option%read_bcast_size = 0
   option%rcolor = 0
   option%rkey = 0
   option%reader_color = 0
@@ -331,7 +333,6 @@ subroutine OptionInitAll(option)
   option%write_grp_rank = 0
   option%writers_size = 0
   option%writers_rank = 0
-  option%write_bcast_size = 0
   option%wcolor = 0
   option%wkey = 0
   option%writer_color = 0
