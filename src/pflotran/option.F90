@@ -621,6 +621,7 @@ subroutine printErrMsg1(option)
     print *, 'ERROR: ' // trim(option%io_buffer)
     print *, 'Stopping!'
   endif    
+  call MPI_Barrier(option%mycomm,ierr)
   call PetscInitialized(petsc_initialized, ierr)
   if (petsc_initialized) call PetscFinalize(ierr)
   stop
@@ -649,6 +650,7 @@ subroutine printErrMsg2(option,string)
     print *, 'ERROR: ' // trim(string)
     print *, 'Stopping!'
   endif    
+  call MPI_Barrier(option%mycomm,ierr)
   call PetscInitialized(petsc_initialized, ierr)
   if (petsc_initialized) call PetscFinalize(ierr)
   stop

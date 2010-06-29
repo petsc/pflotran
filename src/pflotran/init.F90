@@ -675,9 +675,6 @@ subroutine Init(simulation)
     call printErrMsg(option)
   endif
   
-  call printMsg(option," ")
-  call printMsg(option,"  Finished Initialization")
-  
 #if defined(PETSC_HAVE_HDF5)
 #if !defined(HDF5_BROADCAST) && !defined(VAMSI_HDF5_READ)
   call printMsg(option,"Default HDF5 method is used in Initialization")
@@ -685,12 +682,16 @@ subroutine Init(simulation)
   call printMsg(option,"Glenn's HDF5 broadcast method is used in Initialization")
 #elif defined(VAMSI_HDF5_READ)
   call printMsg(option,"Vamsi's HDF5 broadcast method is used in Initialization")
-  if (option%myrank == 0) then
-     write(*,'(" HDF5_READ_GROUP_SIZE = ",i6)') option%hdf5_read_group_size
+  if (option%myrank == option%io_rank) then
+    write(*,'(" HDF5_READ_GROUP_SIZE = ",i6)') option%hdf5_read_group_size
+    write(*,'(" HDF5_WRITE_GROUP_SIZE = ",i6)') option%hdf5_write_group_size
   endif  
 #endif !VAMSI_HDF5_READ
 #endif !PETSC_HAVE_HDF5
 
+  call printMsg(option," ")
+  call printMsg(option,"  Finished Initialization")
+  
   call PetscLogEventEnd(logging%event_init,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,ierr)
@@ -2935,93 +2936,93 @@ end subroutine readTransportInitialCondition
 
 subroutine Create_IOGroups(option)
 
- use Option_module
- use Logging_module
+  use Option_module
+  use Logging_module
 
- implicit none
+  implicit none
 
- type(option_type) :: option
- PetscErrorCode :: ierr
+  type(option_type) :: option
+  PetscErrorCode :: ierr
 
 #ifdef VAMSI_HDF5_READ  
-    call PetscLogEventBegin(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
+  call PetscLogEventBegin(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                             PETSC_NULL_OBJECT,ierr)
 
-    if (option%hdf5_read_group_size <= 0) then
-       write(option%io_buffer,& 
-             '("The keyword HDF5_READ_GROUP_SIZE & 
-             in the input file (pflotran.in) is either not set or &
-             its value is less than or equal to ZERO. &
-             HDF5_READ_GROUP_SIZE =  ",i6)') &
+  if (option%hdf5_read_group_size <= 0) then
+    write(option%io_buffer,& 
+          '("The keyword HDF5_READ_GROUP_SIZE & 
+            & in the input file (pflotran.in) is either not set or &
+            & its value is less than or equal to ZERO. &
+            & HDF5_READ_GROUP_SIZE =  ",i6)') &
              option%hdf5_read_group_size
-       call printErrMsg(option)      
-    endif         
+    call printErrMsg(option)      
+  endif         
                   
-    option%rcolor = floor(real(option%myrank / option%hdf5_read_group_size))
-    option%rkey = option%myrank
-    call MPI_Comm_split(option%mycomm,option%rcolor,option%rkey, &
-                        option%read_group,ierr)
-    call MPI_Comm_size(option%read_group,option%read_grp_size,ierr)
-    call MPI_Comm_rank(option%read_group,option%read_grp_rank,ierr)
+  option%rcolor = floor(real(option%myrank / option%hdf5_read_group_size))
+  option%rkey = option%myrank
+  call MPI_Comm_split(option%mycomm,option%rcolor,option%rkey, &
+                      option%read_group,ierr)
+  call MPI_Comm_size(option%read_group,option%read_grp_size,ierr)
+  call MPI_Comm_rank(option%read_group,option%read_grp_rank,ierr)
 
-    if (mod(option%myrank,option%hdf5_read_group_size) == 0) then 
-       option%reader_color = 1
-    else
-       option%reader_color = 0
-    endif
-    option%reader_key = option%myrank
-    call MPI_Comm_split(option%mycomm,option%reader_color, &
-                        option%reader_key,option%readers,ierr)
-    call MPI_Comm_size(option%readers,option%readers_size,ierr)
-    call MPI_Comm_rank(option%readers,option%readers_rank,ierr)
+  if (mod(option%myrank,option%hdf5_read_group_size) == 0) then 
+    option%reader_color = 1
+  else
+    option%reader_color = 0
+  endif
+  option%reader_key = option%myrank
+  call MPI_Comm_split(option%mycomm,option%reader_color, &
+                      option%reader_key,option%readers,ierr)
+  call MPI_Comm_size(option%readers,option%readers_size,ierr)
+  call MPI_Comm_rank(option%readers,option%readers_rank,ierr)
 
-    call PetscLogEventEnd(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,ierr)
 #ifdef VAMSI_DEBUG    
-    if (option%myrank == 0) write (*,'("Number of readers = ",i6)') option%readers_size
-    if (mod(option%myrank,option%hdf5_read_group_size) == 0) then 
-       write(*,'("I''m a reader, My rank = ",i6)') option%myrank
-    endif   
+  if (option%myrank == 0) write (*,'("Number of readers = ",i6)') option%readers_size
+  if (mod(option%myrank,option%hdf5_read_group_size) == 0) then 
+    write(*,'("I''m a reader, My rank = ",i6)') option%myrank
+  endif   
 #endif
 
 #endif
 
 #ifdef VAMSI_HDF5_WRITE  
-    call PetscLogEventBegin(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,ierr)
-
-    if (option%hdf5_write_group_size <= 0) then
-       write(option%io_buffer,& 
-             '("The keyword HDF5_WRITE_GROUP_SIZE & 
-             in the input file (pflotran.in) is either not set or &
-             its value is less than or equal to ZERO. &
-             HDF5_WRITE_GROUP_SIZE =  ",i6)') &
-             option%hdf5_write_group_size
-       call printErrMsg(option)      
-    endif         
-                  
-    option%wcolor = floor(real(option%myrank / option%hdf5_write_group_size))
-    option%wkey = option%myrank
-    call MPI_Comm_split(option%mycomm,option%wcolor,option%wkey,option%write_group,ierr)
-    call MPI_Comm_size(option%write_group,option%write_grp_size,ierr)
-    call MPI_Comm_rank(option%write_group,option%write_grp_rank,ierr)
-
-    if (mod(option%myrank,option%hdf5_write_group_size) == 0) then 
-       option%writer_color = 1
-    else
-       option%writer_color = 0
-    endif
-    option%writer_key = option%myrank
-    call MPI_Comm_split(option%mycomm,option%writer_color,option%writer_key,option%writers,ierr)
-    call MPI_Comm_size(option%writers,option%writers_size,ierr)
-    call MPI_Comm_rank(option%writers,option%writers_rank,ierr)
-
-    call PetscLogEventEnd(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
+  call PetscLogEventBegin(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,ierr)
+
+  if (option%hdf5_write_group_size <= 0) then
+    write(option%io_buffer,& 
+          '("The keyword HDF5_WRITE_GROUP_SIZE & 
+            &in the input file (pflotran.in) is either not set or &
+            &its value is less than or equal to ZERO. &
+            &HDF5_WRITE_GROUP_SIZE =  ",i6)') &
+             option%hdf5_write_group_size
+    call printErrMsg(option)      
+  endif         
+                  
+  option%wcolor = floor(real(option%myrank / option%hdf5_write_group_size))
+  option%wkey = option%myrank
+  call MPI_Comm_split(option%mycomm,option%wcolor,option%wkey,option%write_group,ierr)
+  call MPI_Comm_size(option%write_group,option%write_grp_size,ierr)
+  call MPI_Comm_rank(option%write_group,option%write_grp_rank,ierr)
+
+  if (mod(option%myrank,option%hdf5_write_group_size) == 0) then 
+    option%writer_color = 1
+  else
+    option%writer_color = 0
+  endif
+  option%writer_key = option%myrank
+  call MPI_Comm_split(option%mycomm,option%writer_color,option%writer_key,option%writers,ierr)
+  call MPI_Comm_size(option%writers,option%writers_size,ierr)
+  call MPI_Comm_rank(option%writers,option%writers_rank,ierr)
+
+  call PetscLogEventEnd(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,ierr)
 #endif
  
 end subroutine Create_IOGroups

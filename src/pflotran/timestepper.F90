@@ -1751,7 +1751,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
     if (option%print_screen_flag) then
       write(*, '(" TRAN ",i6," Time= ",1pe12.4," Dt= ", &
           & 1pe12.4," [",a1,"]"," ksp_conv_reason: ",i4,/," linear = ",i5, &
-          & " [",i10,"]",/," average reaction its = ",i4)') stepper%steps, &
+          & " [",i10,"]")') stepper%steps, &
         option%tran_time/realization%output_option%tconv, &
         option%tran_dt/realization%output_option%tconv, &
         realization%output_option%tunit,ksp_reason,sum_linear_iterations, &
@@ -1761,7 +1761,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
     if (option%print_file_flag) then
       write(option%fid_out, '(" TRAN ",i6," Time= ",1pe12.4," Dt= ", &
           & 1pe12.4," [",a1,"]"," ksp_conv_reason = ",i4,/," linear = ",i5, &
-          & " [",i10,"]",/," average reaction its = ",i4)') stepper%steps, &
+          & " [",i10,"]")') stepper%steps, &
         option%tran_time/realization%output_option%tconv, &
         option%tran_dt/realization%output_option%tconv, &
         realization%output_option%tunit,ksp_reason,sum_linear_iterations, &
