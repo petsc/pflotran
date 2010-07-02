@@ -62,6 +62,10 @@ else
  include ${PETSC_DIR}/conf/rules
 endif
 
+ifdef tau
+FC = tau_f90.sh
+endif
+
 util_obj  = ${common_src}input.o \
 	${common_src}string.o \
 	${common_src}water_eos.o \
