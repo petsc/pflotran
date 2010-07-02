@@ -4276,6 +4276,7 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   use Connection_module
   use Coupler_module  
   use Debug_module
+  use Logging_module  
   
   implicit none
 
@@ -4507,6 +4508,11 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 
   ! Interior Flux Terms -----------------------------------
   ! must zero out Jacobian blocks
+
+  call PetscLogEventBegin(logging%event_rt_jacobian_flux,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)
+
   Jup = 0.d0  
   Jdn = 0.d0  
   connection_set_list => grid%internal_connection_set_list
@@ -4578,8 +4584,18 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     enddo
     cur_connection_set => cur_connection_set%next
   enddo    
+
+  call PetscLogEventEnd(logging%event_rt_jacobian_flux,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,ierr)
+  
   ! Boundary Flux Terms -----------------------------------
   ! must zero out Jacobian block
+
+  call PetscLogEventBegin(logging%event_rt_jacobian_fluxbc,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)
+
   Jdn = 0.d0
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
@@ -4632,6 +4648,9 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     enddo
     boundary_condition => boundary_condition%next
   enddo
+  call PetscLogEventEnd(logging%event_rt_jacobian_fluxbc,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,ierr)  
   endif ! #else AMR_FLUX
 
   ! Restore vectors
@@ -4722,6 +4741,9 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
     
   if (.not.option%steady_state) then
+  call PetscLogEventBegin(logging%event_rt_jacobian_accum,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)  
 #if 1  
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
@@ -4740,9 +4762,15 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
     enddo
 #endif
+  call PetscLogEventEnd(logging%event_rt_jacobian_accum,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,ierr)  
   endif
 #if 1
   ! Source/Sink terms -------------------------------------
+  call PetscLogEventBegin(logging%event_rt_jacobian_ss,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)   
   source_sink => patch%source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
@@ -4819,6 +4847,9 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     enddo                       
     source_sink => source_sink%next
   enddo
+  call PetscLogEventEnd(logging%event_rt_jacobian_ss,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,ierr)  
 #endif
 #if 1  
 ! Reactions
@@ -4849,6 +4880,9 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 #endif
  
   if (reaction%use_log_formulation) then
+    call PetscLogEventBegin(logging%event_rt_jacobian_zero_calc,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,ierr)  
     call GridVecGetArrayF90(grid,field%tran_work_loc, work_loc_p, ierr)
     do ghosted_id = 1, grid%ngmax  ! For each local node do...
       offset = (ghosted_id-1)*reaction%ncomp
@@ -4873,6 +4907,9 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       endif
     enddo
     call GridVecRestoreArrayF90(grid,field%tran_work_loc, work_loc_p, ierr)
+    call PetscLogEventEnd(logging%event_rt_jacobian_zero_calc,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)    
   endif
 
   ! Restore vectors
@@ -4885,9 +4922,15 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
   
   if (patch%aux%RT%inactive_cells_exist) then
+    call PetscLogEventBegin(logging%event_rt_jacobian_zero,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,ierr)    
     rdum = 1.d0
     call MatZeroRowsLocal(A,patch%aux%RT%n_zero_rows, &
                           patch%aux%RT%zero_rows_local_ghosted,rdum,ierr) 
+    call PetscLogEventEnd(logging%event_rt_jacobian_zero,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)                          
   endif
 
   if(option%use_samr) then
