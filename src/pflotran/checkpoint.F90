@@ -488,14 +488,14 @@ subroutine Restart(realization, &
     call DiscretizationCreateVector(realization%discretization,ONEDOF, &
                                     global_vec,GLOBAL,option)
   ! Load the PETSc vectors.
-    call VecLoadIntoVector(viewer,field%flow_xx,ierr)
+    call VecLoad(viewer,field%flow_xx,ierr)
     call DiscretizationGlobalToLocal(discretization,field%flow_xx, &
                                      field%flow_xx_loc,NFLOWDOF)
     call VecCopy(field%flow_xx,field%flow_yy,ierr)
     
     select case(option%iflowmode)
       case(MPH_MODE,THC_MODE,RICHARDS_MODE, IMS_MODE, FLASH2_MODE)
-        call VecLoadIntoVector(viewer, global_vec, ierr)      
+        call VecLoad(viewer, global_vec, ierr)      
         call DiscretizationGlobalToLocal(discretization,global_vec, &
                                          field%iphas_loc,ONEDOF)
         call VecCopy(field%iphas_loc,field%iphas_old_loc,ierr)
@@ -514,23 +514,23 @@ subroutine Restart(realization, &
       case default
     end select
     
-    call VecLoadIntoVector(viewer, global_vec, ierr)
+    call VecLoad(viewer, global_vec, ierr)
     call DiscretizationGlobalToLocal(discretization,global_vec, &
                                      field%porosity_loc,ONEDOF)
-    call VecLoadIntoVector(viewer,global_vec,ierr)
+    call VecLoad(viewer,global_vec,ierr)
     call DiscretizationGlobalToLocal(discretization,global_vec, &
                                      field%perm_xx_loc,ONEDOF)
-    call VecLoadIntoVector(viewer,global_vec,ierr)
+    call VecLoad(viewer,global_vec,ierr)
     call DiscretizationGlobalToLocal(discretization,global_vec, &
                                      field%perm_yy_loc,ONEDOF)
-    call VecLoadIntoVector(viewer,global_vec,ierr)
+    call VecLoad(viewer,global_vec,ierr)
     call DiscretizationGlobalToLocal(discretization,global_vec, &
                                      field%perm_zz_loc,ONEDOF)
     
   endif
   
   if (transport_read) then
-    call VecLoadIntoVector(viewer,field%tran_xx,ierr)
+    call VecLoad(viewer,field%tran_xx,ierr)
     call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
                                      field%tran_xx_loc,NTRANDOF)
     call VecCopy(field%tran_xx,field%tran_yy,ierr)
@@ -544,14 +544,14 @@ subroutine Restart(realization, &
       call DiscretizationCreateVector(discretization,ONEDOF,local_vec, &
                                       LOCAL,option)
       do i = 1, realization%reaction%naqcomp
-        call VecLoadIntoVector(viewer,global_vec,ierr)
+        call VecLoad(viewer,global_vec,ierr)
         call DiscretizationGlobalToLocal(discretization,global_vec, &
                                          local_vec,ONEDOF)
         call RealizationSetDataset(realization,local_vec,LOCAL, &
                                    PRIMARY_ACTIVITY_COEF,i)
       enddo
       do i = 1, realization%reaction%neqcplx
-        call VecLoadIntoVector(viewer,global_vec,ierr)
+        call VecLoad(viewer,global_vec,ierr)
         call DiscretizationGlobalToLocal(discretization,global_vec, &
                                          local_vec,ONEDOF)
         call RealizationSetDataset(realization,local_vec,LOCAL, &
