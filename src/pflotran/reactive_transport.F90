@@ -1796,9 +1796,7 @@ subroutine RTReact(realization)
   
   PetscErrorCode :: ierr
   
-  call PetscLogEventBegin(logging%event_rt_react,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_rt_react,ierr)
                           
   discretization => realization%discretization
   option => realization%option
@@ -1846,9 +1844,7 @@ subroutine RTReact(realization)
 
   ! Logging must come before statistics since the global reductions
   ! will synchonize the cores
-  call PetscLogEventEnd(logging%event_rt_react,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_rt_react,ierr)
                         
 #ifdef OS_STATISTICS
   temp_int_in(1) = call_count
@@ -3022,9 +3018,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   type(patch_type), pointer :: cur_patch
   PetscViewer :: viewer  
   
-  call PetscLogEventBegin(logging%event_rt_residual,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_rt_residual,ierr)
 
   field => realization%field
   discretization => realization%discretization
@@ -3117,9 +3111,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   
-  call PetscLogEventEnd(logging%event_rt_residual,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_rt_residual,ierr)
 
 end subroutine RTResidual
 
@@ -4067,9 +4059,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
 ! Reactions
   if (associated(reaction)) then
   
-    call PetscLogEventBegin(logging%event_rt_res_reaction,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,ierr)  
+    call PetscLogEventBegin(logging%event_rt_res_reaction,ierr)  
     
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
@@ -4087,9 +4077,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
 
     enddo
 
-    call PetscLogEventEnd(logging%event_rt_res_reaction,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)   
+    call PetscLogEventEnd(logging%event_rt_res_reaction,ierr)   
   endif
 #endif
 
@@ -4141,9 +4129,7 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
 
-  call PetscLogEventBegin(logging%event_rt_jacobian,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_rt_jacobian,ierr)
 
 #if 0
   call RTNumericalJacobianTest(realization)
@@ -4162,9 +4148,7 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   call MatZeroEntries(J,ierr)
 
 
-  call PetscLogEventBegin(logging%event_rt_jacobian1,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_rt_jacobian1,ierr)
 
 
   ! pass #1 for internal and boundary flux terms  
@@ -4189,13 +4173,9 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
     cur_level => cur_level%next
   enddo
 
-  call PetscLogEventEnd(logging%event_rt_jacobian1,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_rt_jacobian1,ierr)
 
-  call PetscLogEventBegin(logging%event_rt_jacobian2,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_rt_jacobian2,ierr)
   
   ! pass #2 for everything else
   cur_level => realization%level_list%first
@@ -4219,9 +4199,7 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
     cur_level => cur_level%next
   enddo
 
-  call PetscLogEventEnd(logging%event_rt_jacobian2,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_rt_jacobian2,ierr)
     
   if (realization%debug%matview_Jacobian) then
 #if 1
@@ -4252,9 +4230,7 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
     
   endif
 
-  call PetscLogEventEnd(logging%event_rt_jacobian,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_rt_jacobian,ierr)
   
 end subroutine RTJacobian
 
@@ -4509,9 +4485,7 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   ! Interior Flux Terms -----------------------------------
   ! must zero out Jacobian blocks
 
-  call PetscLogEventBegin(logging%event_rt_jacobian_flux,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_rt_jacobian_flux,ierr)
 
   Jup = 0.d0  
   Jdn = 0.d0  
@@ -4585,16 +4559,12 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     cur_connection_set => cur_connection_set%next
   enddo    
 
-  call PetscLogEventEnd(logging%event_rt_jacobian_flux,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_rt_jacobian_flux,ierr)
   
   ! Boundary Flux Terms -----------------------------------
   ! must zero out Jacobian block
 
-  call PetscLogEventBegin(logging%event_rt_jacobian_fluxbc,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_rt_jacobian_fluxbc,ierr)
 
   Jdn = 0.d0
   boundary_condition => patch%boundary_conditions%first
@@ -4648,9 +4618,7 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     enddo
     boundary_condition => boundary_condition%next
   enddo
-  call PetscLogEventEnd(logging%event_rt_jacobian_fluxbc,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,ierr)  
+  call PetscLogEventEnd(logging%event_rt_jacobian_fluxbc,ierr)  
   endif ! #else AMR_FLUX
 
   ! Restore vectors
@@ -4741,9 +4709,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
     
   if (.not.option%steady_state) then
-  call PetscLogEventBegin(logging%event_rt_jacobian_accum,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)  
+  call PetscLogEventBegin(logging%event_rt_jacobian_accum,ierr)  
 #if 1  
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
@@ -4762,15 +4728,11 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
     enddo
 #endif
-  call PetscLogEventEnd(logging%event_rt_jacobian_accum,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,ierr)  
+  call PetscLogEventEnd(logging%event_rt_jacobian_accum,ierr)  
   endif
 #if 1
   ! Source/Sink terms -------------------------------------
-  call PetscLogEventBegin(logging%event_rt_jacobian_ss,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)   
+  call PetscLogEventBegin(logging%event_rt_jacobian_ss,ierr)   
   source_sink => patch%source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
@@ -4847,17 +4809,13 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     enddo                       
     source_sink => source_sink%next
   enddo
-  call PetscLogEventEnd(logging%event_rt_jacobian_ss,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,ierr)  
+  call PetscLogEventEnd(logging%event_rt_jacobian_ss,ierr)  
 #endif
 #if 1  
 ! Reactions
   if (associated(reaction)) then
 
-    call PetscLogEventBegin(logging%event_rt_jac_reaction,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,ierr)
+    call PetscLogEventBegin(logging%event_rt_jac_reaction,ierr)
                               
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
@@ -4872,17 +4830,13 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
                                     Jup,ADD_VALUES,ierr)                        
     enddo
     
-    call PetscLogEventEnd(logging%event_rt_jac_reaction,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+    call PetscLogEventEnd(logging%event_rt_jac_reaction,ierr)
     
   endif
 #endif
  
   if (reaction%use_log_formulation) then
-    call PetscLogEventBegin(logging%event_rt_jacobian_zero_calc,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,ierr)  
+    call PetscLogEventBegin(logging%event_rt_jacobian_zero_calc,ierr)  
     call GridVecGetArrayF90(grid,field%tran_work_loc, work_loc_p, ierr)
     do ghosted_id = 1, grid%ngmax  ! For each local node do...
       offset = (ghosted_id-1)*reaction%ncomp
@@ -4907,9 +4861,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       endif
     enddo
     call GridVecRestoreArrayF90(grid,field%tran_work_loc, work_loc_p, ierr)
-    call PetscLogEventEnd(logging%event_rt_jacobian_zero_calc,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)    
+    call PetscLogEventEnd(logging%event_rt_jacobian_zero_calc,ierr)    
   endif
 
   ! Restore vectors
@@ -4922,15 +4874,11 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
   
   if (patch%aux%RT%inactive_cells_exist) then
-    call PetscLogEventBegin(logging%event_rt_jacobian_zero,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,ierr)    
+    call PetscLogEventBegin(logging%event_rt_jacobian_zero,ierr)    
     rdum = 1.d0
     call MatZeroRowsLocal(A,patch%aux%RT%n_zero_rows, &
                           patch%aux%RT%zero_rows_local_ghosted,rdum,ierr) 
-    call PetscLogEventEnd(logging%event_rt_jacobian_zero,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)                          
+    call PetscLogEventEnd(logging%event_rt_jacobian_zero,ierr)                          
   endif
 
   if(option%use_samr) then
@@ -5042,9 +4990,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
 
   if (update_cells) then
 
-    call PetscLogEventBegin(logging%event_rt_auxvars,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,ierr)
+    call PetscLogEventBegin(logging%event_rt_auxvars,ierr)
   
     do ghosted_id = 1, grid%ngmax
       if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
@@ -5092,16 +5038,12 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
       endif
     enddo
 
-    call PetscLogEventEnd(logging%event_rt_auxvars,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+    call PetscLogEventEnd(logging%event_rt_auxvars,ierr)
   endif
 
   if (update_bcs) then
 
-    call PetscLogEventBegin(logging%event_rt_auxvars_bc,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,ierr)
+    call PetscLogEventBegin(logging%event_rt_auxvars_bc,ierr)
 
 
     boundary_condition => patch%boundary_conditions%first
@@ -5271,9 +5213,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
 
     patch%aux%RT%aux_vars_up_to_date = PETSC_TRUE
 
-    call PetscLogEventEnd(logging%event_rt_auxvars_bc,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+    call PetscLogEventEnd(logging%event_rt_auxvars_bc,ierr)
 
   endif 
   

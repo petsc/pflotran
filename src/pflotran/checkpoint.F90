@@ -138,9 +138,7 @@ subroutine Checkpoint(realization, &
   PetscInt :: i
 
   call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr)
-  call PetscLogEventBegin(logging%event_checkpoint, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)  
+  call PetscLogEventBegin(logging%event_checkpoint,ierr)  
     
   field => realization%field
   option => realization%option
@@ -346,9 +344,7 @@ subroutine Checkpoint(realization, &
         '("      Seconds to write to checkpoint file: ", f6.2)') tend-tstart
   call printMsg(option)
 
-  call PetscLogEventEnd(logging%event_checkpoint, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)  
+  call PetscLogEventEnd(logging%event_checkpoint,ierr)  
   call PetscLogStagePop(ierr)
 
 end subroutine Checkpoint
@@ -411,9 +407,7 @@ subroutine Restart(realization, &
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
 
-  call PetscLogEventBegin(logging%event_restart, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)  
+  call PetscLogEventBegin(logging%event_restart,ierr)  
   
   field => realization%field
   option => realization%option
@@ -579,9 +573,7 @@ subroutine Restart(realization, &
         '("      Seconds to read to checkpoint file: ", f6.2)') tend-tstart
   call printMsg(option)
 
-  call PetscLogEventEnd(logging%event_restart, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)  
+  call PetscLogEventEnd(logging%event_restart,ierr)  
   
 end subroutine Restart
 

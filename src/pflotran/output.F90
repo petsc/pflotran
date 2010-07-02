@@ -111,13 +111,9 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
   
     if (realization%output_option%print_hdf5) then
       call PetscGetTime(tstart,ierr) 
-      call PetscLogEventBegin(logging%event_output_hdf5, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+      call PetscLogEventBegin(logging%event_output_hdf5,ierr)    
       call OutputHDF5(realization)
-      call PetscLogEventEnd(logging%event_output_hdf5, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+      call PetscLogEventEnd(logging%event_output_hdf5,ierr)    
       call PetscGetTime(tend,ierr)
 #ifdef VAMSI_HDF5_WRITE
       if (option%myrank == 0) write (*,'(" Vamsi''s HDF5 method is used in & 
@@ -129,17 +125,13 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
    
     if (realization%output_option%print_tecplot) then
       call PetscGetTime(tstart,ierr) 
-      call PetscLogEventBegin(logging%event_output_tecplot, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+      call PetscLogEventBegin(logging%event_output_tecplot,ierr) 
       if (realization%output_option%tecplot_format == TECPLOT_BLOCK_FORMAT) then
         call OutputTecplotBlock(realization)
       else
         call OutputTecplotPoint(realization)
       endif
-      call PetscLogEventEnd(logging%event_output_tecplot, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+      call PetscLogEventEnd(logging%event_output_tecplot,ierr)    
       call PetscGetTime(tend,ierr) 
       write(option%io_buffer,'(f6.2," Seconds to write to Tecplot file(s)")') &
             tend-tstart
@@ -148,14 +140,10 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
 
     if (realization%output_option%print_vtk) then
       call PetscGetTime(tstart,ierr) 
-      call PetscLogEventBegin(logging%event_output_vtk, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+      call PetscLogEventBegin(logging%event_output_vtk,ierr) 
       call OutputVTK(realization)
 
-      call PetscLogEventEnd(logging%event_output_vtk, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+      call PetscLogEventEnd(logging%event_output_vtk,ierr)    
       call PetscGetTime(tend,ierr) 
       write(option%io_buffer,'(f6.2," Seconds to write to VTK file(s)")') &
             tend-tstart
@@ -164,14 +152,10 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
       
     if (realization%output_option%print_mad) then
       call PetscGetTime(tstart,ierr) 
-      call PetscLogEventBegin(logging%event_output_mad, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+      call PetscLogEventBegin(logging%event_output_mad,ierr) 
       call OutputMAD(realization)
 
-      call PetscLogEventEnd(logging%event_output_mad, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+      call PetscLogEventEnd(logging%event_output_mad,ierr)    
       call PetscGetTime(tend,ierr) 
       write(option%io_buffer,'(f6.2," Seconds to write to MAD HDF5 file(s)")') &
             tend-tstart
@@ -941,9 +925,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
     
   nullify(array)
 
-  call PetscLogEventBegin(logging%event_output_write_flux_tecplot, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventBegin(logging%event_output_write_flux_tecplot,ierr) 
                           
   discretization => realization%discretization
   patch => realization%patch
@@ -1210,9 +1192,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
 
   if (option%myrank == option%io_rank) close(IUNIT3)
 
-  call PetscLogEventEnd(logging%event_output_write_flux_tecplot, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventEnd(logging%event_output_write_flux_tecplot,ierr) 
   
 end subroutine OutputFluxVelocitiesTecplotBlk
 
@@ -1799,9 +1779,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   Vec :: global_vec
   PetscInt, parameter :: fid=86
 
-  call PetscLogEventBegin(logging%event_output_vec_tecplot, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventBegin(logging%event_output_vec_tecplot,ierr) 
 
   option => realization%option
   patch => realization%patch
@@ -1892,9 +1870,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
 
   close(fid)
 
-  call PetscLogEventEnd(logging%event_output_vec_tecplot, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventEnd(logging%event_output_vec_tecplot,ierr) 
                             
 end subroutine OutputVectorTecplot
 
@@ -1953,9 +1929,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
 1000 format(es13.6,1x)
 1001 format(10(es13.6,1x))
   
-  call PetscLogEventBegin(logging%event_output_str_grid_tecplot, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventBegin(logging%event_output_str_grid_tecplot,ierr) 
                               
   patch => realization%patch
   grid => patch%grid
@@ -2042,9 +2016,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
 
   endif
 
-  call PetscLogEventEnd(logging%event_output_str_grid_tecplot, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventEnd(logging%event_output_str_grid_tecplot,ierr) 
                             
 end subroutine WriteTecplotStructuredGrid
 
@@ -2093,9 +2065,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   grid => patch%grid
   option => realization%option
 
-  call PetscLogEventBegin(logging%event_output_write_tecplot, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+  call PetscLogEventBegin(logging%event_output_write_tecplot,ierr)    
 
   ! maximum number of initial messages  
 #define HANDSHAKE  
@@ -2262,9 +2232,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
     deallocate(real_data)
   endif
 
-  call PetscLogEventEnd(logging%event_output_write_tecplot, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+  call PetscLogEventEnd(logging%event_output_write_tecplot,ierr)    
 
 end subroutine WriteTecplotDataSet
 
@@ -2301,9 +2269,7 @@ subroutine OutputObservationTecplot(realization)
   PetscTruth, save :: open_file = PETSC_FALSE
   PetscInt :: local_id
 
-  call PetscLogEventBegin(logging%event_output_observation, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+  call PetscLogEventBegin(logging%event_output_observation,ierr)    
   
   patch => realization%patch
   grid => patch%grid
@@ -2417,9 +2383,7 @@ subroutine OutputObservationTecplot(realization)
 
   observation_first = PETSC_FALSE
   
-  call PetscLogEventEnd(logging%event_output_observation, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+  call PetscLogEventEnd(logging%event_output_observation,ierr)    
       
 end subroutine OutputObservationTecplot
 
@@ -4531,9 +4495,7 @@ subroutine WriteVTKGrid(fid,realization)
 1000 format(es13.6,1x,es13.6,1x,es13.6)
 1001 format(i1,8(1x,i8))
   
-  call PetscLogEventBegin(logging%event_output_grid_vtk, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventBegin(logging%event_output_grid_vtk,ierr) 
                               
   patch => realization%patch
   grid => patch%grid
@@ -4603,9 +4565,7 @@ subroutine WriteVTKGrid(fid,realization)
     endif
   endif
 
-  call PetscLogEventEnd(logging%event_output_grid_vtk, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventEnd(logging%event_output_grid_vtk,ierr) 
                             
 end subroutine WriteVTKGrid
 
@@ -4683,9 +4643,7 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
   grid => patch%grid
   option => realization%option
 
-  call PetscLogEventBegin(logging%event_output_write_vtk, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+  call PetscLogEventBegin(logging%event_output_write_vtk,ierr)    
 
   ! maximum number of initial messages  
 #define HANDSHAKE  
@@ -4864,9 +4822,7 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
     deallocate(real_data)
   endif
 
-  call PetscLogEventEnd(logging%event_output_write_vtk, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+  call PetscLogEventEnd(logging%event_output_write_vtk,ierr)    
 
 end subroutine WriteVTKDataSet
 
@@ -6043,9 +5999,7 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   integer(HSIZE_T) :: dims(3)
   PetscMPIInt :: rank
   
-  call PetscLogEventBegin(logging%event_output_coordinates_hdf5, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventBegin(logging%event_output_coordinates_hdf5,ierr) 
 
 #ifdef VAMSI_HDF5_WRITE
   if (mod(option%myrank,option%hdf5_write_group_size) == 0) then
@@ -6067,14 +6021,10 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err) ! must be independent and only from p0
 #endif
   if (option%myrank == option%io_rank) then
-     call PetscLogEventBegin(logging%event_h5dwrite_f, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)     
+     call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)     
      call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,array,dims, &
                     hdf5_err,H5S_ALL_F,H5S_ALL_F,prop_id)
-     call PetscLogEventEnd(logging%event_h5dwrite_f, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+     call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
   endif
   call h5pclose_f(prop_id,hdf5_err)
   call h5dclose_f(data_set_id,hdf5_err)
@@ -6084,9 +6034,7 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   endif
 #endif
 
-  call PetscLogEventEnd(logging%event_output_coordinates_hdf5, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventEnd(logging%event_output_coordinates_hdf5,ierr) 
 
 end subroutine WriteHDF5Coordinates
 #endif
@@ -6256,15 +6204,11 @@ subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar)
   PetscInt :: ivar
   PetscInt :: isubvar
 
-  call PetscLogEventBegin(logging%event_output_get_var_from_array, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventBegin(logging%event_output_get_var_from_array,ierr) 
                         
   call RealizationGetDataset(realization,vec,ivar,isubvar)
 
-  call PetscLogEventEnd(logging%event_output_get_var_from_array, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventEnd(logging%event_output_get_var_from_array,ierr) 
   
 end subroutine OutputGetVarFromArray
 
@@ -6312,9 +6256,7 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
 
-  call PetscLogEventBegin(logging%event_output_get_cell_vel, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventBegin(logging%event_output_get_cell_vel,ierr) 
                             
   patch => realization%patch
   grid => patch%grid
@@ -6385,9 +6327,7 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
 
   deallocate(sum_area)
 
-  call PetscLogEventEnd(logging%event_output_get_cell_vel, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventEnd(logging%event_output_get_cell_vel,ierr) 
 
 end subroutine GetCellCenteredVelocities
 
