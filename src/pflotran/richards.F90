@@ -437,9 +437,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   PetscReal :: xxbc(realization%option%nflowdof)
   PetscErrorCode :: ierr
   
-  call PetscLogEventBegin(logging%event_r_auxvars,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_r_auxvars,ierr)
 
   option => realization%option
   patch => realization%patch
@@ -471,13 +469,9 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
                        option)
   enddo
 
-  call PetscLogEventEnd(logging%event_r_auxvars,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_r_auxvars,ierr)
 
-  call PetscLogEventBegin(logging%event_r_auxvars_bc,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_r_auxvars_bc,ierr)
 
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
@@ -515,9 +509,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   
   patch%aux%Richards%aux_vars_up_to_date = PETSC_TRUE
 
-  call PetscLogEventEnd(logging%event_r_auxvars_bc,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_r_auxvars_bc,ierr)
 
 end subroutine RichardsUpdateAuxVarsPatch
 
@@ -1481,9 +1473,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   type(patch_type), pointer :: cur_patch
   type(option_type), pointer :: option
   
-  call PetscLogEventBegin(logging%event_r_residual,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_r_residual,ierr)
   
   field => realization%field
   discretization => realization%discretization
@@ -1564,9 +1554,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   
-  call PetscLogEventEnd(logging%event_r_residual,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_r_residual,ierr)
 
 end subroutine RichardsResidual
 
@@ -2197,9 +2185,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
   type(option_type), pointer :: option
   PetscReal :: norm
   
-  call PetscLogEventBegin(logging%event_r_jacobian,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_r_jacobian,ierr)
 
   option => realization%option
 
@@ -2281,9 +2267,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
     call printMsg(option) 
   endif
 
-  call PetscLogEventEnd(logging%event_r_jacobian,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_r_jacobian,ierr)
   
 end subroutine RichardsJacobian
                 

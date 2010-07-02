@@ -496,14 +496,10 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
 #ifdef HDF5_BROADCAST
     if (option%myrank == option%io_rank) then                           
 #endif
-      call PetscLogEventBegin(logging%event_h5dread_f, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+      call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
       call h5dread_f(data_set_id_up,HDF_NATIVE_INTEGER,upwind_ids_i4,dims, &
                      hdf5_err,memory_space_id,file_space_id_up,prop_id)                     
-      call PetscLogEventEnd(logging%event_h5dread_f, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+      call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
 #ifdef HDF5_BROADCAST
     endif
     if (option%mycommsize > 1) then
@@ -518,14 +514,10 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
 #ifdef HDF5_BROADCAST
     if (option%myrank == option%io_rank) then                           
 #endif
-      call PetscLogEventBegin(logging%event_h5dread_f, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+      call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
       call h5dread_f(data_set_id_down,HDF_NATIVE_INTEGER,downwind_ids_i4,dims, &
                      hdf5_err,memory_space_id,file_space_id_down,prop_id)                     
-      call PetscLogEventEnd(logging%event_h5dread_f, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+      call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
 #ifdef HDF5_BROADCAST
     endif
     if (option%mycommsize > 1) then

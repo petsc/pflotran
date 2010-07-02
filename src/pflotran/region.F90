@@ -420,9 +420,7 @@ subroutine RegionReadFromFileId(region,input,option)
   PetscInt :: count, temp_int
   PetscErrorCode :: ierr
 
-  call PetscLogEventBegin(logging%event_region_read_ascii, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_region_read_ascii,ierr)
 
   max_size = 1000
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
@@ -464,9 +462,7 @@ subroutine RegionReadFromFileId(region,input,option)
 
   deallocate(temp_int_array) 
 
-  call PetscLogEventEnd(logging%event_region_read_ascii, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_region_read_ascii,ierr)
 
 end subroutine RegionReadFromFileId
 
