@@ -74,6 +74,8 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 5
     
     PetscLogEvent :: event_rt_residual
     PetscLogEvent :: event_rt_jacobian
+    PetscLogEvent :: event_rt_jacobian1
+    PetscLogEvent :: event_rt_jacobian2
     PetscLogEvent :: event_rt_res_reaction
     PetscLogEvent :: event_rt_jac_reaction
     PetscLogEvent :: event_rt_react
@@ -265,6 +267,12 @@ subroutine LoggingCreate()
   call PetscLogEventRegister('RTJacobian', &
                              logging%class_pflotran, &
                              logging%event_rt_jacobian,ierr)
+  call PetscLogEventRegister('RTJacobian1', &
+                             logging%class_pflotran, &
+                             logging%event_rt_jacobian1,ierr)
+  call PetscLogEventRegister('RTJacobian2', &
+                             logging%class_pflotran, &
+                             logging%event_rt_jacobian2,ierr)
   call PetscLogEventRegister('RTResReaction', &
                              logging%class_pflotran, &
                              logging%event_rt_res_reaction,ierr)

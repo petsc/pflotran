@@ -4161,6 +4161,12 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
     
   call MatZeroEntries(J,ierr)
 
+
+  call PetscLogEventBegin(logging%event_rt_jacobian1,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)
+
+
   ! pass #1 for internal and boundary flux terms  
   cur_level => realization%level_list%first
   do
@@ -4182,6 +4188,14 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
     enddo
     cur_level => cur_level%next
   enddo
+
+  call PetscLogEventEnd(logging%event_rt_jacobian1,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,ierr)
+
+  call PetscLogEventBegin(logging%event_rt_jacobian2,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)
   
   ! pass #2 for everything else
   cur_level => realization%level_list%first
@@ -4204,6 +4218,10 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
     enddo
     cur_level => cur_level%next
   enddo
+
+  call PetscLogEventEnd(logging%event_rt_jacobian2,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,ierr)
     
   if (realization%debug%matview_Jacobian) then
 #if 1
