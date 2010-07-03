@@ -101,9 +101,7 @@ subroutine Init(simulation)
   end interface
 
   call PetscLogStagePush(logging%stage(INIT_STAGE),ierr)
-  call PetscLogEventBegin(logging%event_init,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_init,ierr)
   
   ! set pointers to objects
   flow_stepper => simulation%flow_stepper
@@ -502,9 +500,7 @@ subroutine Init(simulation)
                      &++++++++++++++++++++++++++++",/)')
 
 
-  call PetscLogEventBegin(logging%event_setup,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_setup,ierr)
   ! read any regions provided in external files
   call readRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  
@@ -530,9 +526,7 @@ subroutine Init(simulation)
       allocate(patch%imat(grid%ngmax))  ! allocate material id array
     call ReadStructuredGridHDF5(realization)
   endif
-  call PetscLogEventEnd(logging%event_setup,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_setup,ierr)
   if (.not.option%steady_state) then
     ! add waypoints associated with boundary conditions, source/sinks etc. to list
     call RealizationAddWaypointsToList(realization)
@@ -700,9 +694,7 @@ subroutine Init(simulation)
   call printMsg(option," ")
   call printMsg(option,"  Finished Initialization")
   
-  call PetscLogEventEnd(logging%event_init,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_init,ierr)
 
 end subroutine Init
 
@@ -2420,9 +2412,7 @@ subroutine readMaterialsFromFile(realization,filename)
     call VecDestroy(global_vec,ierr)
     call VecDestroy(local_vec,ierr)
   else
-    call PetscLogEventBegin(logging%event_hash_map, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+    call PetscLogEventBegin(logging%event_hash_map,ierr)
     call GridCreateNaturalToGhostedHash(grid,option)
     input => InputCreate(IUNIT_TEMP,filename)
     do
@@ -2439,9 +2429,7 @@ subroutine readMaterialsFromFile(realization,filename)
     enddo
     call InputDestroy(input)
     call GridDestroyHashTable(grid)
-    call PetscLogEventEnd(logging%event_hash_map, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+    call PetscLogEventEnd(logging%event_hash_map,ierr)
   endif
   
 end subroutine readMaterialsFromFile
@@ -2580,9 +2568,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
     call VecDestroy(global_vec,ierr)
   else
 
-    call PetscLogEventBegin(logging%event_hash_map, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+    call PetscLogEventBegin(logging%event_hash_map,ierr)
     call GridCreateNaturalToGhostedHash(grid,option)
     input => InputCreate(IUNIT_TEMP,material_property%permeability_filename)
     do
@@ -2608,9 +2594,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
 
     call InputDestroy(input)
     call GridDestroyHashTable(grid)
-    call PetscLogEventEnd(logging%event_hash_map, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+    call PetscLogEventEnd(logging%event_hash_map,ierr)
   endif
   
   call GridVecRestoreArrayF90(grid,field%perm0_xx,perm_xx_p,ierr)
@@ -2953,9 +2937,7 @@ subroutine Create_IOGroups(option)
   PetscErrorCode :: ierr
 
 #ifdef VAMSI_HDF5_READ  
-  call PetscLogEventBegin(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_create_iogroups,ierr)
 
   if (option%hdf5_read_group_size <= 0) then
     write(option%io_buffer,& 
@@ -2985,9 +2967,7 @@ subroutine Create_IOGroups(option)
   call MPI_Comm_size(option%readers,option%readers_size,ierr)
   call MPI_Comm_rank(option%readers,option%readers_rank,ierr)
 
-  call PetscLogEventEnd(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_create_iogroups,ierr)
 #ifdef VAMSI_DEBUG    
   if (option%myrank == 0) write (*,'("Number of readers = ",i6)') option%readers_size
   if (mod(option%myrank,option%hdf5_read_group_size) == 0) then 
@@ -2998,9 +2978,7 @@ subroutine Create_IOGroups(option)
 #endif
 
 #ifdef VAMSI_HDF5_WRITE  
-  call PetscLogEventBegin(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_create_iogroups,ierr)
 
   if (option%hdf5_write_group_size <= 0) then
     write(option%io_buffer,& 
@@ -3028,9 +3006,7 @@ subroutine Create_IOGroups(option)
   call MPI_Comm_size(option%writers,option%writers_size,ierr)
   call MPI_Comm_rank(option%writers,option%writers_rank,ierr)
 
-  call PetscLogEventEnd(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_create_iogroups,ierr)
 #endif
  
 end subroutine Create_IOGroups

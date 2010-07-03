@@ -74,6 +74,16 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 5
     
     PetscLogEvent :: event_rt_residual
     PetscLogEvent :: event_rt_jacobian
+
+    PetscLogEvent :: event_rt_jacobian_flux
+    PetscLogEvent :: event_rt_jacobian_fluxbc
+    PetscLogEvent :: event_rt_jacobian_accum
+    PetscLogEvent :: event_rt_jacobian_zero_calc
+    PetscLogEvent :: event_rt_jacobian_zero
+    PetscLogEvent :: event_rt_jacobian_ss
+    PetscLogEvent :: event_rt_jacobian1
+    PetscLogEvent :: event_rt_jacobian2
+
     PetscLogEvent :: event_rt_res_reaction
     PetscLogEvent :: event_rt_jac_reaction
     PetscLogEvent :: event_rt_react
@@ -265,6 +275,33 @@ subroutine LoggingCreate()
   call PetscLogEventRegister('RTJacobian', &
                              logging%class_pflotran, &
                              logging%event_rt_jacobian,ierr)
+
+  call PetscLogEventRegister('RTJacobianFlux', &
+                             logging%class_pflotran, &
+                             logging%event_rt_jacobian_flux,ierr)
+  call PetscLogEventRegister('RTJacobianFluxBC', &
+                             logging%class_pflotran, &
+                             logging%event_rt_jacobian_fluxbc,ierr)
+  call PetscLogEventRegister('RTJacobianAccum', &
+                             logging%class_pflotran, &
+                             logging%event_rt_jacobian_accum,ierr)
+  call PetscLogEventRegister('RTJacobianZeroCalc', &
+                             logging%class_pflotran, &
+                             logging%event_rt_jacobian_zero_calc,ierr)
+  call PetscLogEventRegister('RTJacobianZero', &
+                             logging%class_pflotran, &
+                             logging%event_rt_jacobian_zero,ierr)
+  call PetscLogEventRegister('RTJacobianSS', &
+                             logging%class_pflotran, &
+                             logging%event_rt_jacobian_ss,ierr)
+
+  call PetscLogEventRegister('RTJacobian1', &
+                             logging%class_pflotran, &
+                             logging%event_rt_jacobian1,ierr)
+  call PetscLogEventRegister('RTJacobian2', &
+                             logging%class_pflotran, &
+                             logging%event_rt_jacobian2,ierr)
+
   call PetscLogEventRegister('RTResReaction', &
                              logging%class_pflotran, &
                              logging%event_rt_res_reaction,ierr)

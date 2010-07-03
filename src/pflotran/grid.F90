@@ -881,9 +881,7 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
 
   if (associated(grid%hash)) return
 
-  call PetscLogEventBegin(logging%event_hash_create, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_hash_create,ierr)
                           
   max_num_ids_per_hash = 0
   ! initial guess of 10% of ids per hash
@@ -932,9 +930,7 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
   write(option%io_buffer,'("max_num_ids_per_hash: ",i5)') num_in_hash
   call printMsg(option)
 
-  call PetscLogEventEnd(logging%event_hash_create, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_hash_create,ierr)
 
 end subroutine GridCreateNaturalToGhostedHash
 

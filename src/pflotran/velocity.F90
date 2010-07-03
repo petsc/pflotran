@@ -87,9 +87,7 @@ subroutine VelocityDatasetRead(dataset,input,option)
 
   PetscErrorCode :: ierr
 
-!  call PetscLogEventBegin(logging%event_flow_condition_read, &
-!                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-!                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+!  call PetscLogEventBegin(logging%event_flow_condition_read,ierr)
 
   dataset%rank = 3
   dataset%interpolation_method = STEP
@@ -147,9 +145,7 @@ subroutine VelocityDatasetRead(dataset,input,option)
   
   call VelocityDatasetVerify(option, dataset)
   
-!  call PetscLogEventEnd(logging%event_flow_condition_read, &
-!                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-!                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+!  call PetscLogEventEnd(logging%event_flow_condition_read,ierr)
 
 end subroutine VelocityDatasetRead
 
@@ -185,9 +181,7 @@ subroutine VelocityDatasetReadValues(input,option,keyword,string,dataset,units)
   PetscInt :: irank
   PetscErrorCode :: ierr
 
-!  call PetscLogEventBegin(logging%event_flow_condition_read_values, &
-!                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-!                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+!  call PetscLogEventBegin(logging%event_flow_condition_read_values,ierr)    
 
   read_from_file = PETSC_FALSE
   read_multiple_values = PETSC_TRUE
@@ -237,9 +231,7 @@ subroutine VelocityDatasetReadValues(input,option,keyword,string,dataset,units)
     endif
   endif
 
-!  call PetscLogEventEnd(logging%event_flow_condition_read_values, &
-!                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-!                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+!  call PetscLogEventEnd(logging%event_flow_condition_read_values,ierr)    
 
 end subroutine VelocityDatasetReadValues
 
