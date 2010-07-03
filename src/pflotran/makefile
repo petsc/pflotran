@@ -63,7 +63,8 @@ else
 endif
 
 ifdef tau
-FC = tau_f90.sh
+FC = /ccs/proj/geo002/tau/tau-2.19.1/craycnl/bin/tau_f90.sh -optCompInst -tau_makefile=$(TAU_MAKEFILE)
+FLINKER = /ccs/proj/geo002/tau/tau-2.19.1/craycnl/bin/tau_f90.sh -optCompInst -tau_makefile=$(TAU_MAKEFILE)
 endif
 
 util_obj  = ${common_src}input.o \
