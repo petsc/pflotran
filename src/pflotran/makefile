@@ -49,7 +49,7 @@ MYFLAGS = -I${objdir} $(HDF5_FLAGS) \
 					$(CHUAN_FLAG) $(COLL_FLAG) $(DENSITY_FLAG)
 
 CFLAGS		 = 
-FFLAGS		 = -g
+FFLAGS		 =
 CPPFLAGS         = ${MYFLAGS}
 FPPFLAGS         = ${MYFLAGS}
 
