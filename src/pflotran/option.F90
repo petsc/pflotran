@@ -64,6 +64,7 @@ module Option_module
     ! what dof the linear system in operator split mode   
     ! needs to be formed for
     PetscInt :: rt_idof
+    PetscInt :: samr_mode
       
     PetscInt :: nphase
     PetscInt :: liquid_phase

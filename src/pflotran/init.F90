@@ -271,6 +271,10 @@ subroutine Init(simulation)
       endif
     endif
 
+    if(option%use_samr) then
+       option%samr_mode=0
+    endif
+      
     call DiscretizationCreateJacobian(discretization,NFLOWDOF, &
                                       flow_solver%Jpre_mat_type, &
                                       flow_solver%Jpre, &
@@ -390,8 +394,11 @@ subroutine Init(simulation)
     call SolverCreateSNES(tran_solver,option%mycomm)  
     call SNESSetOptionsPrefix(tran_solver%snes, "tran_",ierr)
     call SolverCheckCommandLine(tran_solver)
-
-    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+      
+     if(option%use_samr) then
+        option%samr_mode=1
+     endif
+     if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
       if (tran_solver%Jpre_mat_type == '') then
         if (tran_solver%J_mat_type /= MATMFFD) then
           tran_solver%Jpre_mat_type = tran_solver%J_mat_type
@@ -405,6 +412,7 @@ subroutine Init(simulation)
     else
       tran_solver%J_mat_type = MATAIJ
       tran_solver%Jpre_mat_type = MATAIJ
+
       call DiscretizationCreateJacobian(discretization,ONEDOF, &
                                         tran_solver%Jpre_mat_type, &
                                         tran_solver%Jpre,option)
