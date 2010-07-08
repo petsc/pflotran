@@ -654,7 +654,6 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   PetscInt, pointer :: indices(:)
   PetscInt :: ngmax
   PetscInt :: imax, nlevels, ln, npatches, pn, i
-  PetscInt :: flowortransport
   type(dm_ptr_type), pointer :: dm_ptr
   ISLocalToGlobalMapping :: ptmap
   PetscInt :: islocal
@@ -677,17 +676,15 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
           ndof = 1
        case(NFLOWDOF)
           ndof = option%nflowdof
-          flowortransport = 0
        case(NTRANDOF)
           ndof = option%ntrandof
-          flowortransport = 1
        end select
 
        stencilsize=7;
        call MatCreateShell(option%mycomm, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, Jacobian, ierr)
-       call SAMRCreateMatrix(discretization%amrgrid%p_application, ndof, stencilsize, flowortransport, Jacobian)
+       call SAMRCreateMatrix(discretization%amrgrid%p_application, ndof, stencilsize, option%samr_mode, Jacobian)
 
-       if(flowortransport==1) then
+       if(option%samr_mode==1) then
 ! we create a dummy mapping to satisfy the PETSc mapping requirements   
           imax=0
           nlevels =  hierarchy_number_levels(discretization%amrgrid%p_application)

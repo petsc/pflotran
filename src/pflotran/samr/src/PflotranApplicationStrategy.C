@@ -26,7 +26,10 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
 #ifdef DEBUG_CHECK_ASSERTIONS
    assert(params!=NULL);
 #endif
-
+   d_FlowPreconditioner=NULL;
+   d_TransportPreconditioner=NULL;
+   d_FlowJacobian=NULL;
+   d_TransportJacobian=NULL;
    d_read_regrid_boxes                       = false;
    d_is_after_regrid                         = false;
    d_use_variable_order_interpolation        = false;
@@ -152,6 +155,8 @@ PflotranApplicationStrategy::~PflotranApplicationStrategy()
 {
   if(d_visit_writer) delete d_visit_writer;
   if(d_refine_patch_strategy) delete d_refine_patch_strategy;
+  if(d_FlowPreconditioner) delete d_FlowPreconditioner;
+  if(d_TransportPreconditioner) delete d_TransportPreconditioner;
   // the deletion of this object needs to be fixed later
   //  if(d_cf_interpolant) delete d_cf_interpolant;
 }
@@ -763,22 +768,22 @@ PflotranApplicationStrategy::setRefinementBoundaryInterpolant(RefinementBoundary
 #endif
    d_cf_interpolant = cf_interpolant;
 
-   if(d_FlowJacobian.get()!=NULL)
+   if(d_FlowJacobian!=NULL)
    {
       d_FlowJacobian->setRefinementBoundaryInterpolant(cf_interpolant);
    }
 
-   if(d_TransportJacobian.get()!=NULL)
+   if(d_TransportJacobian!=NULL)
    {
       d_TransportJacobian->setRefinementBoundaryInterpolant(cf_interpolant);
    }
 
-   if(d_FlowPreconditioner.get()!=NULL)
+   if(d_FlowPreconditioner!=NULL)
    {
       d_FlowPreconditioner->setRefinementBoundaryInterpolant(cf_interpolant);
    }
 
-   if(d_TransportPreconditioner.get()!=NULL)
+   if(d_TransportPreconditioner!=NULL)
    {
       d_TransportPreconditioner->setRefinementBoundaryInterpolant(cf_interpolant);
    }
@@ -894,7 +899,7 @@ PflotranApplicationStrategy::initializePreconditioner(int *which_pc, PC *pc)
 {
    if(*which_pc==0)
    {
-      if(d_FlowPreconditioner.get()==NULL)
+      if(d_FlowPreconditioner==NULL)
       {
          tbox::Pointer<tbox::Database> application_db = this->getDatabase();
          tbox::Pointer<tbox::Database> pc_db = application_db->getDatabase("PflotranFlowPreconditioner");
@@ -903,15 +908,14 @@ PflotranApplicationStrategy::initializePreconditioner(int *which_pc, PC *pc)
          parameters->d_pc = pc;
          parameters->d_cf_interpolant = this->getRefinementBoundaryInterpolant();
 
-         SAMRAI::PflotranFlowPreconditioner *pFlowPC = new SAMRAI::PflotranFlowPreconditioner(parameters);
-         d_FlowPreconditioner.reset(pFlowPC);
-         d_FlowPreconditioner->setOperator(d_FlowJacobian.get());
+         d_FlowPreconditioner = new SAMRAI::PflotranFlowPreconditioner(parameters);
+         d_FlowPreconditioner->setOperator(d_FlowJacobian);
       }
 
    }
    else
    {
-      if(d_TransportPreconditioner.get()==NULL)
+      if(d_TransportPreconditioner==NULL)
       {
          tbox::Pointer<tbox::Database> application_db = this->getDatabase();
          tbox::Pointer<tbox::Database> pc_db = application_db->getDatabase("PflotranTransportPreconditioner");
@@ -920,9 +924,8 @@ PflotranApplicationStrategy::initializePreconditioner(int *which_pc, PC *pc)
          parameters->d_pc = pc;
          parameters->d_cf_interpolant = this->getRefinementBoundaryInterpolant();
 
-         SAMRAI::PflotranTransportPreconditioner *pTransportPC = new SAMRAI::PflotranTransportPreconditioner(parameters);
-         d_TransportPreconditioner.reset(pTransportPC);
-         d_TransportPreconditioner->setOperator(d_TransportJacobian.get());
+         d_TransportPreconditioner = new SAMRAI::PflotranTransportPreconditioner(parameters);
+         d_TransportPreconditioner->setOperator(d_TransportJacobian);
       }
 
    }
@@ -933,7 +936,7 @@ PflotranApplicationStrategy::getJacobianOperator(int *which_pc)
 {
    PflotranJacobianMultilevelOperator *retOp = NULL;
 
-   retOp = (*which_pc==0)?d_FlowJacobian.get():d_TransportJacobian.get();
+   retOp = (*which_pc==0)?d_FlowJacobian:d_TransportJacobian;
 
    return retOp;
 }

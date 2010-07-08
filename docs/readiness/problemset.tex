@@ -510,16 +510,14 @@ The flash method described in the next section is used to solve the governing eq
 \subsubsection{Flash Method}
 
 An alternative approach to variable switching is the flash method.
-Although the variable switching method is often considered stable and efficient \citep{Pruess99}, it has several shortcomings: 1) it causes perturbation during Newton iterations during phase changes; 2) the change in the definition of independent variables affects the structure of Newton-Raphson matrix; and 3) as a consequence this degrades performance of the preconditioner during the linear solve step. Finally, the variable switching approach is not appropriate for use with multilevel solvers because of the possibility for the need to solve for different independent variables on different levels.
-
-%\subsection{Two-Phase System}
+Although the variable switching method is often considered stable and efficient \citep{Pruess99}, it has several shortcomings: 1) it causes perturbations during Newton iterations when phase changes take place; 2) the change in the definition of independent variables affects the structure of the Jacobian matrix; and 3) as a consequence this degrades performance of the preconditioner during the linear solve. Finally, the variable switching approach is not appropriate for use with multilevel solvers because of the possibility for the need to solve for different independent variables on different levels.
 
 In the flash approach the primary variables preserved during the solution of the governing equations. The flash method has been implemented in the FLASH2 mode in PFLOTRAN. The primary variables are $P$, $T$ and the total mole fraction $z_i$ of the $i$th component summed over all phases, defined as:
 \BA
 z_i &\eq\dfrac{\sum_\a n_i^\a}{\sum_\a \sum_j n^\a_j},\\
-&\eq \frac{\sum_\a s_\a \rho_\a x_i^\a}{\sum_{\a} s_\a \rho_\a},
+&\eq \frac{\sum_\a s_\a \rho_\a x_i^\a}{\sum_{\a} s_\a \rho_\a}.
 \EA
-using the expansion
+Using the expansion
 \BA
 \frac{n_i^\a}{V} &\eq \frac{n_i^\a}{n_\a}\frac{n_\a}{V_\a}\frac{V_\a}{V_p}\frac{V_p}{V},\\
 &\eq \varphi s_\a \rho_\a x_i^\a,

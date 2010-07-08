@@ -182,14 +182,14 @@ public:
 
    static PetscErrorCode wrapperMatZeroEntries(Mat mat);
 
-   PetscErrorCode MatZeroEntries(Mat mat);
+   PetscErrorCode MatZeroEntries();
 
    static PetscErrorCode wrapperMatSetValuesLocal(Mat mat,
                                                   PetscInt nrow,const PetscInt irow[],
                                                   PetscInt ncol,const PetscInt icol[],
                                                   const PetscScalar y[],InsertMode addv);
       
-   PetscErrorCode MatSetValuesLocal(Mat mat,
+   PetscErrorCode MatSetValuesLocal(
                                     PetscInt nrow,const PetscInt irow[],
                                     PetscInt ncol,const PetscInt icol[],
                                     const PetscScalar y[],InsertMode addv);
@@ -199,18 +199,18 @@ public:
                                                          PetscInt ncol,const PetscInt icol[],
                                                          const PetscScalar y[],InsertMode addv);
       
-   PetscErrorCode MatSetValuesBlockedLocal(Mat mat,
+   PetscErrorCode MatSetValuesBlockedLocal(
                                            PetscInt nrow,const PetscInt irow[],
                                            PetscInt ncol,const PetscInt icol[],
                                            const PetscScalar y[],InsertMode addv);
       
    static PetscErrorCode wrapperMatDiagonalScaleLocal(Mat mat,Vec diag);
 
-   PetscErrorCode MatDiagonalScaleLocal(Mat mat,Vec diag);
+   PetscErrorCode MatDiagonalScaleLocal(Vec diag);
 
    static PetscErrorCode wrapperMatDiagonalScale(Mat mat, Vec l, Vec r);  
 
-   PetscErrorCode MatDiagonalScale(Mat mat, Vec l, Vec r);
+   PetscErrorCode MatDiagonalScale(Vec l, Vec r);
 
    tbox::Pointer<hier::PatchHierarchy<NDIM> > getHierarchy(void){ return d_hierarchy; }
 

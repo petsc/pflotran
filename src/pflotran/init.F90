@@ -269,6 +269,10 @@ subroutine Init(simulation)
       endif
     endif
 
+    if(option%use_samr) then
+       option%samr_mode=0
+    endif
+      
     call DiscretizationCreateJacobian(discretization,NFLOWDOF, &
                                       flow_solver%Jpre_mat_type, &
                                       flow_solver%Jpre, &
@@ -388,8 +392,11 @@ subroutine Init(simulation)
     call SolverCreateSNES(tran_solver,option%mycomm)  
     call SNESSetOptionsPrefix(tran_solver%snes, "tran_",ierr)
     call SolverCheckCommandLine(tran_solver)
-
-    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+      
+     if(option%use_samr) then
+        option%samr_mode=1
+     endif
+     if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
       if (tran_solver%Jpre_mat_type == '') then
         if (tran_solver%J_mat_type /= MATMFFD) then
           tran_solver%Jpre_mat_type = tran_solver%J_mat_type
@@ -403,6 +410,7 @@ subroutine Init(simulation)
     else
       tran_solver%J_mat_type = MATAIJ
       tran_solver%Jpre_mat_type = MATAIJ
+
       call DiscretizationCreateJacobian(discretization,ONEDOF, &
                                         tran_solver%Jpre_mat_type, &
                                         tran_solver%Jpre,option)
@@ -2465,6 +2473,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
   PetscInt :: fid = 86
   PetscInt :: status
   PetscInt :: idirection
+  PetscReal :: ratio
   Vec :: global_vec
   PetscErrorCode :: ierr
   
@@ -2502,20 +2511,23 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
                                         group_name, &
                                         dataset_name,append_realization_id)
       call GridVecGetArrayF90(grid,global_vec,vec_p,ierr)
+      ratio = 1.d0
+      if (material_property%vertical_anisotropy_ratio > 0.d0) then
+        ratio = material_property%vertical_anisotropy_ratio
+      endif
       if (associated(patch%imat)) then
         do local_id = 1, grid%nlmax
           if (patch%imat(grid%nL2G(local_id)) == material_property%id) then
             perm_xx_p(local_id) = vec_p(local_id)
             perm_yy_p(local_id) = vec_p(local_id)
-            perm_zz_p(local_id) = vec_p(local_id)* &
-              material_property%vertical_anisotropy_ratio
+            perm_zz_p(local_id) = vec_p(local_id)*ratio
           endif
         enddo
       else
         do local_id = 1, grid%nlmax
           perm_xx_p(local_id) = vec_p(local_id)
           perm_yy_p(local_id) = vec_p(local_id)
-          perm_zz_p(local_id) = vec_p(local_id)
+          perm_zz_p(local_id) = vec_p(local_id)*ratio         
         enddo
       endif
       call GridVecRestoreArrayF90(grid,global_vec,vec_p,ierr)
