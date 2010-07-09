@@ -310,7 +310,7 @@ end subroutine Flash2SetupPatch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(option_type), pointer :: option 
-  PetscReal, pointer :: xx_p(:),iphase_loc_p(:), yy_p(:) 
+  PetscReal, pointer :: xx_p(:), yy_p(:) 
   PetscInt :: n,n0,re
   PetscInt :: re0, iipha
   PetscErrorCode :: ierr
@@ -357,7 +357,6 @@ end subroutine Flash2SetupPatch
     !if(re<=0) print *,'Sat out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
     call GridVecRestoreArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
     call GridVecRestoreArrayF90(grid,field%flow_yy, yy_p, ierr)
-    call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr); 
 
    endif
   ! reason = re!; print *,'reason:',reason
@@ -2214,7 +2213,6 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
         r_p(istart) = 0.D0 ! xx_loc_p(2 + (ng-1)*option%nflowdof) - yy_p(p1-1)
      enddo
   endif
-  !call GridVecRestoreArrayF90(grid,r, r_p, ierr)
 
 
   if (patch%aux%Flash2%inactive_cells_exist) then
