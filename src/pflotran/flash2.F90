@@ -41,7 +41,7 @@ module Flash2_module
 
   PetscInt, parameter :: jh2o=1, jco2=2
 
-  PetscReal, allocatable, save :: Resold_AR(:,:), Resold_FL(:,:), delx(:,:)
+! PetscReal, allocatable, save :: Resold_AR(:,:), Resold_FL(:,:), delx(:,:)
   
   public Flash2Residual,Flash2Jacobian, &
          Flash2UpdateFixedAccumulation,Flash2TimeCut,&
@@ -209,10 +209,10 @@ subroutine Flash2SetupPatch(realization)
   patch%aux%Flash2%num_aux = grid%ngmax
   print *,' Flash2 setup get Aux init'
 
-  allocate(delx(option%nflowdof, grid%ngmax))
-  allocate(Resold_AR(grid%nlmax,option%nflowdof))
-  allocate(Resold_FL(ConnectionGetNumberInList(patch%grid%&
-           internal_connection_set_list),option%nflowdof))
+!  allocate(delx(option%nflowdof, grid%ngmax))
+!  allocate(Resold_AR(grid%nlmax,option%nflowdof))
+!  allocate(Resold_FL(ConnectionGetNumberInList(patch%grid%&
+!           internal_connection_set_list),option%nflowdof))
   print *,' Flash2 setup allocate app array'
    ! count the number of boundary connections and allocate
   ! aux_var data structures for them  
@@ -232,7 +232,12 @@ subroutine Flash2SetupPatch(realization)
   patch%aux%Flash2%aux_vars_bc => aux_vars_bc
   patch%aux%Flash2%num_aux_bc = sum_connection
   option%numerical_derivatives = PETSC_TRUE
-
+  
+  allocate(patch%aux%Flash2%delx(option%nflowdof, grid%ngmax))
+  allocate(patch%aux%Flash2%Resold_AR(grid%nlmax,option%nflowdof))
+  allocate(patch%aux%Flash2%Resold_FL(ConnectionGetNumberInList(patch%grid%&
+           internal_connection_set_list),option%nflowdof))
+  
   print *,' Flash2 setup get AuxBc point'
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
@@ -310,7 +315,7 @@ end subroutine Flash2SetupPatch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(option_type), pointer :: option 
-  PetscReal, pointer :: xx_p(:),iphase_loc_p(:), yy_p(:) 
+  PetscReal, pointer :: xx_p(:), yy_p(:) 
   PetscInt :: n,n0,re
   PetscInt :: re0, iipha
   PetscErrorCode :: ierr
@@ -357,7 +362,6 @@ end subroutine Flash2SetupPatch
     !if(re<=0) print *,'Sat out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
     call GridVecRestoreArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
     call GridVecRestoreArrayF90(grid,field%flow_yy, yy_p, ierr)
-    call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr); 
 
    endif
   ! reason = re!; print *,'reason:',reason
@@ -1828,6 +1832,8 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity
+  PetscReal, pointer :: Resold_AR(:), Resold_FL(:), delx(:)
+  
   
   patch => realization%patch
   grid => patch%grid
@@ -1859,6 +1865,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
 !  call GridVecGetArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
+  allocate(Resold_AR(option%nflowdof), Resold_FL(option%nflowdof), delx(option%nflowdof))
  
 ! Multiphase flash calculation is more expansive, so calculate once per iterration
 #if 1
@@ -1897,26 +1904,27 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
 #endif
 
      if (option%numerical_derivatives) then
-        delx(1,ng) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
-        delx(2,ng) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
+        delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
+        delx(2) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
  
         if(xx_loc_p((ng-1)*option%nflowdof+3) <=0.9)then
-           delx(3,ng) = dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
+           delx(3) = dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
          else
-            delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
+            delx(3) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
          endif
-         if( delx(3,ng) < 1D-8 .and.  delx(3,ng)>=0.D0) delx(3,ng) = 1D-8
-         if( delx(3,ng) >-1D-8 .and.  delx(3,ng)<0.D0) delx(3,ng) =-1D-8
+         if( delx(3) < 1D-8 .and.  delx(3)>=0.D0) delx(3) = 1D-8
+         if( delx(3) >-1D-8 .and.  delx(3)<0.D0) delx(3) =-1D-8
 
            
-         if(( delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0)then
-            delx(3,ng) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-4
+         if(( delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0)then
+            delx(3) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-4
          endif
-         if(( delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0)then
-            delx(3,ng) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-4
+         if(( delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0)then
+            delx(3) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-4
          endif
 
-         call Flash2AuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:,ng),&
+         patch%aux%Flash2%delx(:,ng)=delx(:)
+         call Flash2AuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
             aux_vars(ng)%aux_var_elem(1:option%nflowdof),global_aux_vars(ng),&
             realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
             realization%fluid_properties,option)
@@ -1929,7 +1937,9 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
 #endif
 
    Resold_AR=0.D0; ResOld_FL=0.D0; r_p = 0.d0
-  
+   patch%aux%Flash2%Resold_AR=0.D0
+   patch%aux%Flash2%ResOld_FL=0.D0
+   
 #if 1
   ! Accumulation terms ------------------------------------
   r_p = - accum_p
@@ -1950,7 +1960,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
                             option,ONE_INTEGER,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
     !print *,'REs, acm: ', res
-    Resold_AR(local_id, :)= Res(1:option%nflowdof)
+    patch%aux%Flash2%Resold_AR(local_id, :)= Res(1:option%nflowdof)
   enddo
 #endif
 #if 1
@@ -1992,11 +2002,12 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
  
       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
       r_p((local_id-1)*option%nflowdof + jco2) = r_p((local_id-1)*option%nflowdof + jco2)-Res(jco2)
-      Resold_AR(local_id,jh2o)= Resold_AR(local_id,jh2o) - Res(jh2o)    
-      Resold_AR(local_id,jco2)= Resold_AR(local_id,jco2) - Res(jco2)    
+      patch%aux%Flash2%Resold_AR(local_id,jh2o)= patch%aux%Flash2%Resold_AR(local_id,jh2o) - Res(jh2o)    
+      patch%aux%Flash2%Resold_AR(local_id,jco2)= patch%aux%Flash2%Resold_AR(local_id,jco2) - Res(jco2)    
       if (enthalpy_flag)then
         r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - Res(option%nflowdof)
-        Resold_AR(local_id,option%nflowdof)= Resold_AR(local_id,option%nflowdof) - Res(option%nflowdof)
+        patch%aux%Flash2%Resold_AR(local_id,option%nflowdof)=&
+          patch%aux%Flash2%Resold_AR(local_id,option%nflowdof) - Res(option%nflowdof)
        endif 
   !  else if (qsrc1 < 0.d0) then ! withdrawal
   !  endif
@@ -2097,7 +2108,8 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
     r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
-    Resold_AR(local_id,1:option%nflowdof) = ResOld_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
+    patch%aux%Flash2%Resold_AR(local_id,1:option%nflowdof) = &
+      patch%aux%Flash2%ResOld_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
   enddo
   boundary_condition => boundary_condition%next
  enddo
@@ -2165,7 +2177,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
                           upweight,option,v_darcy,Res)
 
       patch%internal_velocities(:,sum_connection) = v_darcy(:)
-      Resold_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
+      patch%aux%Flash2%Resold_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
  
      if (local_id_up>0) then
         iend = local_id_up*option%nflowdof
@@ -2214,7 +2226,6 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
         r_p(istart) = 0.D0 ! xx_loc_p(2 + (ng-1)*option%nflowdof) - yy_p(p1-1)
      enddo
   endif
-  !call GridVecRestoreArrayF90(grid,r, r_p, ierr)
 
 
   if (patch%aux%Flash2%inactive_cells_exist) then
@@ -2236,7 +2247,8 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
 !  call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
-
+  deallocate(Resold_AR, Resold_FL, delx)
+  
   if (realization%debug%vecview_residual) then
     call PetscViewerASCIIOpen(option%mycomm,'Rresidual.out',viewer,ierr)
     call VecView(r,viewer,ierr)
@@ -2581,13 +2593,13 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
           xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
           if(idof>=2)then
              xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
-             delxbc(idof)=delx(idof,ghosted_id)
+             delxbc(idof)=patch%aux%Flash2%delx(idof,ghosted_id)
           endif 
        case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
           xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
           !iphasebc = int(iphase_loc_p(ghosted_id))
-          delxbc(idof)=delx(idof,ghosted_id)
+          delxbc(idof)=patch%aux%Flash2%delx(idof,ghosted_id)
        end select
     enddo
     !print *,'BC:',boundary_condition%flow_condition%itype, xxbc, delxbc
@@ -2633,7 +2645,8 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
      max_dev=0.D0
      do neq=1, option%nflowdof
         do nvar=1, option%nflowdof
-           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-ResOld_AR(local_id,neq))/delx(nvar,ghosted_id)
+           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Flash2%ResOld_AR(local_id,neq))&
+              /patch%aux%Flash2%delx(nvar,ghosted_id)
            if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
         enddo
      enddo
@@ -2727,8 +2740,8 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
                           upweight, option, vv_darcy, Res)
-            ra(:,nvar)= (Res(:)-ResOld_FL(iconn,:))/delx(nvar,ghosted_id_up)
-
+            ra(:,nvar)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
+              /patch%aux%Flash2%delx(nvar,ghosted_id_up)
          call Flash2Flux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
                           tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
                           dd_up,perm_up,D_up, &
@@ -2737,7 +2750,8 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
                           upweight, option, vv_darcy, Res)
-         ra(:,nvar+option%nflowdof)= (Res(:)-ResOld_FL(iconn,:))/delx(nvar,ghosted_id_dn)
+         ra(:,nvar+option%nflowdof)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
+           /patch%aux%Flash2%delx(nvar,ghosted_id_dn)
     enddo
 
     select case(option%idt_switch)

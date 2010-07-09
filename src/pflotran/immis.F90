@@ -310,7 +310,7 @@ end subroutine ImmisSetupPatch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(option_type), pointer :: option 
-  PetscReal, pointer :: xx_p(:),iphase_loc_p(:), yy_p(:) 
+  PetscReal, pointer :: xx_p(:), yy_p(:) 
   PetscInt :: n,n0,re
   PetscInt :: re0, iipha
   PetscErrorCode :: ierr
@@ -357,7 +357,6 @@ end subroutine ImmisSetupPatch
     if(re<=0) print *,'Sat out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
     call GridVecRestoreArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
     call GridVecRestoreArrayF90(grid,field%flow_yy, yy_p, ierr)
-    call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr); 
 
    endif
   
