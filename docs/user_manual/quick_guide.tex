@@ -39,6 +39,7 @@
 \cfoot{\rm - \thepage\ -}
 %\cfoot{}
 %\footrulewidth 0.4pt
+\newcommand\keyend{{(.,\,/,\,END)}}
 \newcommand{\negsp}{\vspace{-4mm}}
 \newcommand\secsp{\vspace{-3 mm}}
 \newcommand\secspb{\vspace{-2 mm}}
@@ -133,7 +134,10 @@
 \newcommand{\bS}{\boldsymbol{S}}
 \newcommand{\bu}{\boldsymbol{u}}
 \newcommand{\bv}{\boldsymbol{v}}
+\newcommand{\bx}{\boldsymbol{x}}
+\newcommand{\by}{\boldsymbol{y}}
 \newcommand{\bz}{\boldsymbol{z}}
+\newcommand{\bzero}{\boldsymbol{0}}
 \newcommand{\arrows}{~\rightleftharpoons~}
 \newcommand{\arrowstab}{\!\!\!\rightleftharpoons\!\!\!}
 \newcommand{\CA}{C_{\rm A}}
@@ -336,14 +340,56 @@ degrees of freedom equals $N_{\rm ext}\!=\!N_P\!-\!1.$ This gives a total number
 
 The {\tt IMMIS} mode applies to multiple immiscible phases.
 
-\subsection{Mode: {\tt THC}}
+\subsection{Mode: {\tt 2PH}}
 
-The {\tt THC} mode involves two phase liquid-gas flow coupled to the reactive transport mode.
+The {\tt 2PH} mode involves two phase liquid-gas flow coupled to the reactive transport mode.
 
-\subsection{Reactive Transport (Keyword {\tt CHEMISTRY})}
+The energy conservation equation can be written in the form
+\EQ
+\sum_\a\left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a U_\a\big) + \bnabla\cdot\big(\bq_\a \rho_\a H_\a\big) \right\} + \frac{\p}{\p t} \big((1-\varphi)\rho_r C_p T \big) - \bnabla\cdot\big(\kappa\bnabla T\big) \eq Q,
+\EN
+as the sum of contributions from different fluid phases and rock,
+with internal energy $U_\a$ and enthalpy $H_\a$ of fluid phase $\a$, and rock heat capacity $C_p$ and thermal conductivity $\kappa$. Note that
+\EQ
+U_\a \eq H_\a -\frac{P_\a}{\rho_\a}.
+\EN
+
+
+
+\subsection{Mode: {\tt THC} (Thermal-Hydrologic-Chemical)}
+
+{\tt THC} Mode applies to single phase, variably saturated, nonisothermal systems
+with incorporation of density variations coupled to fluid flow. The THC equations may be coupled to the reactive transport mode (see section \ref{sec:chem}).
+The governing equations for mass and energy are given by
+\EQ\label{masseqn}
+\frac{\p}{\p t}\left(\varphi s\rho\right) + \bnabla\cdot\left(\rho\bq\right) = Q_w,
+\EN
+and
+\EQ
+\frac{\p}{\p t}\left(\varphi s\rho U + (1-\varphi) c_p T\right) + \bnabla\cdot\left(\rho\bq H -\kappa \bnabla T\right) = Q_e,
+\EN
+with the Darcy flow velocity $\bq$ given by
+\EQ
+\bq = -\frac{kk_r}{\mu}\bnabla\left(P-\rho g z\right).
+\EN
+Here, $\varphi$ denotes porosity, $s$ saturation, $\rho$ mixture density of the brine, $\bq$ Darcy flux, $k$ intrinsic permeability, $k_r$ relative permeability, $\mu$ viscosity, $P$ pressure, $g$ gravity, and $z$ the vertical component of the position vector.  Supported relative permeability functions $k_r$ for Richards' equation include van Genuchten, Books-Corey and Thomeer-Corey, while the saturation functions include Burdine and Mualem.  Water density and viscosity are computed as a function of temperature and pressure through an equation of state for water. The quantity $\kappa$ denotes the thermal conductivity of the porous medium-fluid system. The internal energy and enthalpy of the fluid, $U$ and $H$, are obtained from an equation of state for pure water. These two quantities are related by the thermodynamic expression
+\EQ
+U \eq H -\frac{P}{\rho}.
+\EN
+Nonreactive solute transport equations representing e.g. NaCl have the form
+\EQ
+\frac{\p}{\p t} \varphi s \rho x_i + \bnabla\cdot\Big(\bq \rho x_i -\varphi D \rho\bnabla x_i\Big) \eq Q_i,
+\EN
+with mole fraction $x_i$, source term $Q_i$, and diffusion/dispersion coefficient $D$. Summing this equation over all components $i$ using $\sum_ix_i=1$, leads to Eqn.\eqref{masseqn} with
+\EQ
+Q_w \eq \sum_i Q_i.
+\EN
+Additional constitutive relations are needed to close the set of governing equations.
+
+\subsection{Reactive Transport (Keyword {\tt CHEMISTRY})}\label{sec:chem}
 
 The governing mass conservation equation for Pthe geochemical transport mode for a multiphase system written in terms of a set of independent aqueous primary or basis species with the form
-\BA
+\BA\label{rteqn}
 &\frac{\p}{\p t}\big(\varphi \sum_\a s_\a \Psi_j^\a\big) +
 \nabla\cdot\sum_\a\big(\bq_\a - \varphi s_\a \bD_\a\bnabla\big)\Psi_j^\a \nonumber\\
 &\qquad\eq Q_j - \sum_m\nu_{jm} I_m -\frac{\p S_j}{\p t},
@@ -353,6 +399,91 @@ where the sums over $\a$ are over all fluid phases in the system, and where $\Ps
 \Psi_j^\a = \delta_{l\a}^{} C_j^l + \sum_{i=1}^{N_{\rm sec}}\nu_{ji}^{} C_i^\a.
 \EN
 In this equation the subscript $l$ represents the aqueous electrolyte phase from which the primary species are chosen.
+
+\section{Method of Solution}
+
+The flow and heat equations (Modes: RICHARDS, MPHASE, FLASH2, THC, and 2PH) are solved using a fully implicit backward Euler approach based on Newton-Krylov iteration.
+Both fully implicit backward Euler and operator splitting solution methods are supported for reactive transport.
+
+\subsection{Fully Implicit}
+
+For a fully implicit formulation the nonlinear equations
+\EQ
+\bR(\bx) \eq \bzero,
+\EN
+for the residual function $\bR$ are solved using an iterative solver based on the Newton-Raphson equations
+\EQ
+\bJ^{(i)} \delta\!\bx^{(i+1)} \eq -\bR^{(i)},
+\EN
+at the $i$th iteration. Iteration stops when
+\EQ
+\left|\bR^{(i+1)}\right| < \epsilon,
+\EN
+or if
+\EQ
+\big|\delta\!\bx^{(i+1)}\big| < \delta.
+\EN
+However, the latter criteria does not necessarily guarantee that the residual equations are satisfied.
+The solution is updated from the relation
+\EQ
+\bx^{(i+1)} \eq \bx^{(i)} + \delta\!\bx^{(i+1)}.
+\EN
+For the logarithm of the concentration with $\bx=\ln\by$,
+the solution is updated according to the equation
+\EQ
+\by^{(i+1)} \eq \by^{(i)} {\rm e}^{\delta\!\ln\by^{(i+1)}}.
+\EN
+
+
+\subsection{Operator Splitting}
+
+Operator splitting involves splitting the reactive transport equations into a nonreactive part and a part incorporating reactions. This is accomplished by writing Eqns.\eqref{rteqn} as the two coupled equations
+\EQ
+\frac{\p}{\p t}\big(\varphi \sum_\a s_\a \Psi_j^\a\big) +
+\nabla\cdot\sum_\a\big(\bq_\a - \varphi s_\a \bD_\a\bnabla\big)\Psi_j^\a \eq Q_j,
+\EN
+and
+\EQ
+\frac{d}{d t}\big(\varphi \sum_\a s_\a \Psi_j^\a\big) \eq - \sum_m\nu_{jm} I_m -\frac{\p S_j}{\p t},
+\EN
+The first set of equations are linear in $\Psi_j$ (for species-independent diffusion coeffients) and solved over over a time step $\Delta t$ resulting in $\Psi_j^*$. The result for $\Psi_j^*$ is inverted to give the concentrations $C_j^*$ by solving the equations
+\EQ
+\Psi_j^* \eq C_j^* + \sum_i \nu_{ji} C_i^*,
+\EN
+where the secondary species concentrations $C_i^*$ are nonlinear functions of the primary species concentrations $C_j^*$. With this result the second set of equations are solved implicitly for $C_j$ at $t+\Delta t$ using $\Psi_j^*$ for the starting value at time $t$.
+
+As a simple example of operator splitting consider a single component system with retardation described by a constant $K_d$. According to this model the sorbed concentration $S$ is related to the aqueous concentration by the linear equation
+\EQ\label{skd}
+S \eq K_d C.
+\EN
+The governing equation is given by
+\EQ
+\frac{\p}{\p t} \varphi C + \bnabla\cdot\big(\bq C -\varphi D \bnabla C\big) \eq -\frac{\p S}{\p t}.
+\EN
+If $C(x,\,t;\, \bq,\,D)$ is the solution to the case with no retardation (i.e. $K_d=0$), then $C(x,\,t;\, \bq/R,\,D/R)$ is the solution with retardation $(K_d>0)$,
+with
+\EQ
+R = 1+\frac{1}{\varphi}K_d.
+\EN
+Thus propagation of a front is retarded by the retardation factor $R$.
+
+In operator splitting form this equation becomes
+\EQ
+\frac{\p}{\p t} \varphi C + \bnabla\cdot\big(\bq C -\varphi D \bnabla C\big) \eq 0,
+\EN
+and
+\EQ
+\frac{d}{d t} \varphi C \eq -\frac{d S}{d t}.
+\EN
+The solution to the latter equation is given by
+\EQ
+\varphi C^{t+\Delta t} - \varphi C^* \eq -\big(S^{t+\Delta t} - S^t\big),
+\EN
+where $C^*$ is the solution to the nonreactive transport equation. Using Eqn.\eqref{skd}, this result can be written as
+\EQ
+C^{t+\Delta t} \eq \frac{1}{R} C^* + \left(1-\frac{1}{R}\right) C^t.
+\EN
+Thus for $R=1$, $C^{t+\Delta t}=C^*$ and the solution advances unretarded.
 
 \section{Installation}
 
@@ -607,6 +738,16 @@ make
 \noindent
 At this point there should exist an executable named SAMRAIDriver.
 
+\subsubsection{Running PFLOTRAN/SAMRAI on Jaguar}
+
+Add to the {\tt .tcshrc} (or equivalent) file:
+\begin{verbatim}
+umask 0002set LD_LIBRARY_PATH=/usr/lib64:${LD_LIBRARY_PATH}setenv ARCH cray-xt5setenv COMPILER gcc-4.4.2setenv OPT opt#setenv OPT debug setenv PROJ_DIR /tmp/proj/csc025/csc025geo3setenv PKGS ${PROJ_DIR}/packagessetenv PKG_POSTFIX ${ARCH}-${COMPILER}-${OPT}setenv PETSC_ARCH ${PKG_POSTFIX} setenv PETSC_VERSION petsc-devsetenv PETSC_DIR ${PKGS}/petsc/${PETSC_VERSION}-${OPT}setenv SAMRAI ${PKGS}/samrai/SAMRAI-v2.4.4/${PETSC_VERSION}-${PKG_POSTFIX}setenv AMRUTILITIES_HOME ${PKGS}/samrutils/${PKG_POSTFIX}setenv SAMRSOLVERS_HOME ${PKGS}/samrsolvers/${PKG_POSTFIX}setenv PCH ${SAMRSOLVERS_HOME}  setenv MPICH_UNEX_BUFFER_SIZE 400Msetenv MPICH_PTL_OTHER_EVENTS 4096setenv MPICH_PTL_SEND_CREDITS -1setenv MPICH_MSGS_PER_PROC 60000
+\end{verbatim}
+
+Load the following modules:
+\begin{verbatim}module swap PrgEnv-pgi PrgEnv-gnu module load mercurialmodule load hdf5-parallel/1.8.3.1module load hypre/2.4.0bmodule load szip/2.1module load totalview/8.6.0-1\end{verbatim}%########################################################################The user will need to set: PETSC\_DIR, PETSC\_ARCH, AMRUTILITIES\_HOME, SAMRSOLVERS\_HOMEto be defined as above. Also, note the swap to gnu\begin{verbatim} cd pflotranhg pull -ucd src/pflotranmake hdf5=1 jaguar=1 pflotranamrcd samr/srcmake hdf5=1 jaguar=1\end{verbatim}At this point you should have a executable SAMRAIDriver  To run the code do:cd nmg.4320qsub run.4320 This should run the coupled flow (richards) and transport (15 species).
+
 \begin{comment}
 The following instructions should aid in installing openmpi, PETSc, HDF5 and PFLOTRAN on a UNIX or Mac computer running MacOSX 10.4 or later.
 
@@ -859,7 +1000,7 @@ The BOUNDARY\_CONDITION keyword couples conditions specified under the FLOW\_\-C
 \item[TRANSPORT\_CONDITION] {\tt transport\_condition\_name}
 \item[REGION] {\tt region\_name}
 \end{deflist}
-\item[(.,/,END)]
+\item[\keyend]
 \end{deflist}
 
 {\noindent\bf Explanation:}
@@ -969,33 +1110,33 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 
 \item [PRIMARY\_SPECIES] ~
 \item {\tt Name}
-\item [(.,\,/,\,END)]
+\item [\keyend]
 
 \item [SECONDARY\_SPECIES] ~
 \item {\tt Name}
-\item [(.,\,/,\,END)]
+\item [\keyend]
 
 \item[GAS\_SPECIES] ~
 \item {\tt Name}
-\item [(.,\,/,\,END)]
+\item [\keyend]
 
 \item[MINERALS]
 \item {\tt Name}
-\item [(.,\,/,\,END)]
+\item [\keyend]
 
 \item[COLLOIDS]
 \item {\tt Name} \ \ \ \ {\tt Mobile\_Fraction} [---]
-\item [(.,\,/,\,END)]
+\item [\keyend]
 
 \item[MINERAL\_KINETICS] ~
 
 \begin{deflist}{000}
 \item [{\tt Mineral Name}]
 \item [RATE\_CONSTANT] \ {\tt Value} [mol/cm$^2$/s]
-\item [(.,\,/,\,END)]
+\item [\keyend]
 \end{deflist}
 
-\item [(.,\,/,\,END)]
+\item [\keyend]
 
 \item[SORPTION] ~
 \begin{deflist}{000}
@@ -1025,9 +1166,9 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \begin{deflist}{000}
 \item[\tt Complex Name]
 \end{deflist}
-\item [(.,\,/,\,END)] ~
+\item [\keyend] ~
 \end{deflist}
-\item [(.,\,/,\,END)] ~
+\item [\keyend] ~
 
 \item [COLLOID] {\tt Name}
 \begin{deflist}{000}
@@ -1036,12 +1177,12 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \begin{deflist}{000}
 \item[\tt Complex Name]
 \end{deflist}
-\item [(.,\,/,\,END)] ~
+\item [\keyend] ~
 \end{deflist}
-\item [(.,\,/,\,END)] ~
+\item [\keyend] ~
 \end{deflist}
 
-\item [(.,\,/,\,END)]
+\item [\keyend]
 \end{deflist}
 
 \begin{deflist}{000}
@@ -1056,11 +1197,11 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \begin{deflist}{000}
 \item[\tt Name]
 \end{deflist}
-\item [(.,\,/,\,END)] ~
+\item [\keyend] ~
 \end{deflist}
-\item [(.,\,/,\,END)] ~
+\item [\keyend] ~
 \end{deflist}
-\item [(.,\,/,\,END)] ~
+\item [\keyend] ~
 
 \item[DISTRIBUTION\_COEF] \ (not implemented)
 \item[JUMPSTART\_KINETIC\_SORPTION]
@@ -1068,7 +1209,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[NO\_RESTART\_KINETIC\_SORPTION]
 \end{deflist}
 
-\item [(.,\,/,\,END)]
+\item [\keyend]
 
 \item[DATABASE] {\tt Path/Database\_Name}
 \item[LOG\_FORMULATION]
@@ -1096,11 +1237,11 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[KD]
 \end{deflist}
 
-\item [(.,\,/,\,END)]
+\item [\keyend]
 
 \end{deflist}
 
-\item [(.,\,/,\,END)]
+\item [\keyend]
 \end{deflist}
 %\end{minipage}
 %}

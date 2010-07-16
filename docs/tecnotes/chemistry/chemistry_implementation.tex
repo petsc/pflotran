@@ -3722,7 +3722,10 @@ The energy conservation equation can be written in the form
 \sum_\a\left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a U_\a\big) + \bnabla\cdot\big(\bq_\a \rho_\a H_\a\big) \right\} + \frac{\p}{\p t} \big((1-\varphi)\rho_r C_p T \big) - \bnabla\cdot\big(\kappa\bnabla T\big) \eq Q,
 \EN
 as the sum of contributions from different fluid phases and rock,
-with internal energy $U_\a$ and enthalpy $H_\a$ of fluid phase $\a$, and rock heat capacity $C_p$ and thermal conductivity $\kappa$.
+with internal energy $U_\a$ and enthalpy $H_\a$ of fluid phase $\a$, and rock heat capacity $C_p$ and thermal conductivity $\kappa$. Note that
+\EQ
+U_\a \eq H_\a -\frac{P_\a}{\rho_\a}.
+\EN
 
 The residual function for mass conservation has the form
 \EQ
