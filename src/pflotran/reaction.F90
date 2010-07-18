@@ -1394,11 +1394,11 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             Jac(icomp,comp_id) = reaction%eqgasstoich(jcomp,igas)/ &
               rt_auxvar%pri_molal(comp_id)
 
-#ifdef CHUAN_CO2
-            print *,'Gas CO2 constraint Jac,',igas, icomp, comp_id, &
-              reaction%eqgasstoich(jcomp,igas),&
-              Jac(icomp,comp_id), rt_auxvar%pri_molal(comp_id), lnQK
-#endif
+!#ifdef CHUAN_CO2
+!            print *,'Gas CO2 constraint Jac,',igas, icomp, comp_id, &
+!              reaction%eqgasstoich(jcomp,igas),&
+!              Jac(icomp,comp_id), rt_auxvar%pri_molal(comp_id), lnQK
+!#endif
           enddo
 
 #ifdef CHUAN_CO2        
@@ -1408,8 +1408,13 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
          
           ! compute secondary species concentration
           if(abs(reaction%species_idx%co2_gas_id) == igas) then
-           pres = global_auxvar%pres(2)
-!           pres = conc(icomp)*1.D5
+          
+!           pres = global_auxvar%pres(2)
+            pres = conc(icomp)*1.D5
+            global_auxvar%pres(2) = pres
+
+!           print *,'reaction-SC: ',icomp,igas,pres,conc(icomp)*1.d5
+            
             tc = global_auxvar%temp(1)
 
             call PSAT(tc, sat_pressure, ierr)
@@ -1419,9 +1424,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             
 !            pres = conc(icomp)*1.D5 + sat_pressure
             yco2 = pco2/pres
-                        
-           call co2_span_wagner(pres*1D-6,tc+273.15D0,dg,dddt,dddp,fg, &
-             dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
+             
+            call co2_span_wagner(pres*1D-6,tc+273.15D0,dg,dddt,dddp,fg, &
+              dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
 
 !            call co2_span_wagner(pco2*1D-6,tc+273.15D0,dg,dddt,dddp,fg, &
 !              dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
