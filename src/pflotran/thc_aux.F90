@@ -36,8 +36,8 @@ module THC_Aux_module
 
   type, public :: thc_parameter_type
     PetscReal, pointer :: dencpr(:)
-    PetscReal, pointer :: ckdry(:)
-    PetscReal, pointer :: ckwet(:)
+    PetscReal, pointer :: ckdry(:) ! Thermal conductivity (dry)
+    PetscReal, pointer :: ckwet(:) ! Therman conductivity (wet)
     PetscReal, pointer :: sir(:,:)
   end type thc_parameter_type
   

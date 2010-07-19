@@ -239,6 +239,7 @@ subroutine THCUpdateAuxVarsPatch(realization)
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
   type(thc_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase
@@ -254,6 +255,8 @@ subroutine THCUpdateAuxVarsPatch(realization)
   
   aux_vars => patch%aux%THC%aux_vars
   aux_vars_bc => patch%aux%THC%aux_vars_bc
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   
   call GridVecGetArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
@@ -263,6 +266,7 @@ subroutine THCUpdateAuxVarsPatch(realization)
 
   do ghosted_id = 1, grid%ngmax
     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
+
     !geh - Ignore inactive cells with inactive materials
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
@@ -472,7 +476,7 @@ subroutine THCUpdateFixedAccumPatch(realization)
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
                        option)
     iphase_loc_p(ghosted_id) = iphase
-    call THCAccumulation(aux_vars(ghosted_id), &
+    call THCAccumulation(aux_vars(ghosted_id),global_aux_vars(ghosted_id) &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               thc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
@@ -604,6 +608,7 @@ subroutine THCAccumulationDerivative(aux_var,por,vol,rock_dencpr,option, &
   implicit none
 
   type(thc_auxvar_type) :: aux_var
+  type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
   PetscReal vol,por,rock_dencpr
   type(saturation_function_type) :: sat_func
@@ -1542,6 +1547,16 @@ subroutine THCResidual(snes,xx,r,realization,ierr)
 #include "finclude/petscvec.h90"
        Vec :: vec
      end subroutine samrpetscobjectstateincrease
+
+subroutine SAMRCoarsenFaceFluxes(p_application, vec, ierr)
+       implicit none
+#include "finclude/petscsysdef.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+       PetscFortranAddr :: p_application
+       Vec :: vec
+       PetscInt :: ierr
+     end subroutine SAMRCoarsenFaceFluxes
      
   end interface
 
@@ -1555,9 +1570,11 @@ subroutine THCResidual(snes,xx,r,realization,ierr)
   type(field_type), pointer :: field
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
+  type(option_type), pointer :: option
   
   field => realization%field
   discretization => realization%discretization
+  option => realization%option
   
   ! Communication -----------------------------------------
   ! These 3 must be called before THCUpdateAuxVars()
@@ -1570,6 +1587,7 @@ subroutine THCResidual(snes,xx,r,realization,ierr)
   call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%ithrm_loc,field%ithrm_loc,ONEDOF)
   
+  ! Compute internal and boundary flux terms
   cur_level => realization%level_list%first
   do
     if (.not.associated(cur_level)) exit
@@ -1577,7 +1595,44 @@ subroutine THCResidual(snes,xx,r,realization,ierr)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call THCResidualPatch(snes,xx,r,realization,ierr)
+      call THCResidualPatch1(snes,xx,r,realization,ierr)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+  ! now coarsen all face fluxes in case we are using SAMRAI to 
+  ! ensure consistent fluxes at coarse-fine interfaces
+  ! RTM: This may not be the correct way to do things.  I think the heat 
+  ! flux might need to be treated differently?  Ask Bobby.
+  if(option%use_samr) then
+     call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%flow_face_fluxes, ierr)
+
+     cur_level => realization%level_list%first
+     do
+        if (.not.associated(cur_level)) exit
+        cur_patch => cur_level%patch_list%first
+        do
+           if (.not.associated(cur_patch)) exit
+           realization%patch => cur_patch
+           call THCResidualFluxContribPatch(r,realization,ierr)
+           ! IMPORTANT:  I need to write the above subroutine!  --RTM
+           cur_patch => cur_patch%next
+        enddo
+        cur_level => cur_level%next
+     enddo
+  endif
+
+  ! Now make a second pass and compute everything that isn't an internal 
+  ! or boundary flux term
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call THCResidualPatch1(snes,xx,r,realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -1588,6 +1643,27 @@ subroutine THCResidual(snes,xx,r,realization,ierr)
   endif
 
 end subroutine THCResidual
+
+! ************************************************************************** !
+!
+! THCResidualFluxContribPatch: should be called only for SAMR
+! author: Richard Mills
+! date: 05/??/10
+!
+! ************************************************************************** !
+subroutine THCResidualFluxContribPatch(r,realization,ierr)
+  use Realization_module
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Field_module
+  use Debug_module
+  
+  implicit none
+
+  ! Need to put something here! --RTM
+end subroutine THCResidualFluxContribPatch
+
 
 ! ************************************************************************** !
 !
