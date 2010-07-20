@@ -496,7 +496,7 @@
   tmp = (t - t0_tab) / dt_tab; j1 = floor(tmp); j2 = ceiling(tmp); jindex=tmp 
 
   if(iindex > ntab_p .or. iindex < 0.d0 .or. jindex < 0.d0 .or. jindex > ntab_t) then
-    print  *,' Out of Table Bounds: ', 'p=',p,' t=',t,' i=',iindex,' j=',jindex
+    print  *,' Out of Table Bounds (Span-Wagner): ', 'p=',p,' t=',t,' i=',iindex,' j=',jindex
     isucc=0
   endif
 
