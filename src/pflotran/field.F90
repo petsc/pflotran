@@ -12,7 +12,7 @@ module Field_module
 
   type, public :: field_type 
     
-!geh material id
+    !get material id
     ! 1 degree of freedom
     Vec :: porosity0, porosity_loc
     Vec :: tortuosity0, tortuosity_loc

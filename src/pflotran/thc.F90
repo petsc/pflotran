@@ -1,6 +1,7 @@
 module THC_module
 
   use THC_Aux_module
+  use Global_Aux_module
   
   implicit none
   
@@ -27,7 +28,7 @@ module THC_module
          THCSetup, THCNumericalJacobianTest, &
          THCMaxChange, THCUpdateSolution, &
          THCGetTecplotHeader, THCInitializeTimestep, &
-         THCSetup, THCComputeMassBalance, &
+         THCComputeMassBalance, &
          THCUpdateAuxVars, THCDestroy
 
   PetscInt, parameter :: jh2o = 1
@@ -175,6 +176,106 @@ subroutine THCSetupPatch(realization)
 
 end subroutine THCSetupPatch
 
+
+! ************************************************************************** !
+!
+! THComputeMassBalance: 
+!                        
+! author: Jitendra Kumar 
+! date: 07/21/2010
+! Adapted from RichardsComputeMassBalance: need to be checked
+! ************************************************************************** !
+subroutine THCComputeMassBalance(realization, mass_balance)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+
+  type(realization_type) :: realization
+  PetscReal :: mass_balance(realization%option%nphase)
+   
+  type(level_type), pointer :: cur_level
+  type(path_level), pointer :: cur_patch
+
+  mass_balance = 0.d0
+
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call THCComputeMassBalancePatch(realization, mass_balance)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine THCComputeMassBalance    
+
+! ************************************************************************** !
+!
+! THComputeMassBalancePatch: 
+!                        
+! author: Jitendra Kumar 
+! date: 07/21/2010
+! Adapted from RichardsComputeMassBalancePatch: need to be checked
+! ************************************************************************** !
+subroutine THCComputeMassBalancePatch(realization,mass_balance)
+ 
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Field_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+  PetscReal :: mass_balance(realization%option%nphase)
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(field_type), pointer :: field
+  type(grid_type), pointer :: grid
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  PetscReal, pointer :: volume_p(:), porosity_loc_p(:)
+
+  PetscErrorCode :: ierr
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+  field => realization%field
+
+  global_aux_vars => patch%aux%Global%aux_vars
+
+  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
+  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
+    ! mass = volume*saturation*density
+    mass_balance = mass_balance + &
+      global_aux_vars(ghosted_id)%den_kg* &
+      global_aux_vars(ghosted_id)%sat* &
+      porosity_loc_p(ghosted_id)*volume_p(local_id)
+  enddo
+
+  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  
+end subroutine THCComputeMassBalancePatch
+
+
+
 ! ************************************************************************** !
 !
 ! THCUpdateAuxVars: Updates the auxilliary variables associated with 
@@ -221,8 +322,8 @@ subroutine THCUpdateAuxVarsPatch(realization)
 
   use Realization_module
   use Patch_module
-  use Field_module
   use Option_module
+  use Field_module
   use Grid_module
   use Coupler_module
   use Connection_module
@@ -476,7 +577,7 @@ subroutine THCUpdateFixedAccumPatch(realization)
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
                        option)
     iphase_loc_p(ghosted_id) = iphase
-    call THCAccumulation(aux_vars(ghosted_id),global_aux_vars(ghosted_id) &
+    call THCAccumulation(aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               thc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
@@ -610,7 +711,7 @@ subroutine THCAccumulationDerivative(aux_var,por,vol,rock_dencpr,option, &
   type(thc_auxvar_type) :: aux_var
   type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
-  PetscReal vol,por,rock_dencpr
+  PetscReal ::vol,por,rock_dencpr
   type(saturation_function_type) :: sat_func
   PetscReal :: J(option%nflowdof,option%nflowdof)
      
@@ -1660,6 +1761,10 @@ subroutine THCResidualFluxContribPatch(r,realization,ierr)
   use Debug_module
   
   implicit none
+  Vec, intent(out) :: r
+  type(realization_type) :: realization
+
+  PetscErrorCode :: ierr
 
   ! Need to put something here! --RTM
 end subroutine THCResidualFluxContribPatch
