@@ -207,6 +207,8 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   PetscReal :: kr, ds_dp, dkr_dp
   PetscReal :: dvis_dt, dvis_dp, dvis_dpsat
   PetscReal :: dw_dp, dw_dt, hw_dp, hw_dt
+  PetscReal :: pert, pw_pert, dw_kg_pert
+  PetscReal, parameter :: tol = 1.d-3
   
   global_aux_var%sat = 0.d0
   global_aux_var%den = 0.d0
@@ -242,9 +244,21 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   endif  
 
 !  call wateos_noderiv(option%temp,pw,dw_kg,dw_mol,hw,option%scale,ierr)
+#ifndef DONT_USE_WATEOS
   call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw, &
               hw_dp,hw_dt,option%scale,ierr)
-
+#else
+  call density(global_aux_var%temp(1),pw,dw_kg)
+  pert = tol*pw
+  pw_pert = pw+pert
+  call density(global_aux_var%temp(1),pw_pert,dw_kg_pert)
+  dw_dp = (dw_kg_pert-dw_kg)/pert
+  ! dw_kg = kg/m^3
+  ! dw_mol = kmol/m^3
+  ! FMWH2O = kg/kmol h2o
+  dw_mol = dw_kg/FMWH2O
+  dw_dp = dw_dp/FMWH2O
+#endif
 ! may need to compute dpsat_dt to pass to VISW
   call psat(global_aux_var%temp(1),sat_pressure,ierr)
 !  call VISW_noderiv(option%temp,pw,sat_pressure,visl,ierr)

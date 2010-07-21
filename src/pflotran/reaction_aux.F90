@@ -1157,7 +1157,7 @@ function GetPrimarySpeciesCount(reaction)
 
   implicit none
   
-  integer :: GetPrimarySpeciesCount
+  PetscInt :: GetPrimarySpeciesCount
   type(reaction_type) :: reaction
 
   type(aq_species_type), pointer :: species
@@ -1217,7 +1217,7 @@ function GetSecondarySpeciesCount(reaction)
 
   implicit none
   
-  integer :: GetSecondarySpeciesCount
+  PetscInt :: GetSecondarySpeciesCount
   type(reaction_type) :: reaction
 
   type(aq_species_type), pointer :: species
@@ -1277,7 +1277,7 @@ function GetGasCount(reaction)
 
   implicit none
   
-  integer :: GetGasCount
+  PetscInt :: GetGasCount
   type(reaction_type) :: reaction
 
   type(gas_species_type), pointer :: gas
@@ -1370,7 +1370,7 @@ function GetMineralCount(reaction)
 
   implicit none
   
-  integer :: GetMineralCount
+  PetscInt :: GetMineralCount
   type(reaction_type) :: reaction
 
   type(mineral_type), pointer :: mineral
@@ -1396,7 +1396,7 @@ function GetKineticMineralCount(reaction)
 
   implicit none
   
-  integer :: GetKineticMineralCount
+  PetscInt :: GetKineticMineralCount
   type(reaction_type) :: reaction
 
   type(mineral_type), pointer :: mineral
@@ -1523,7 +1523,7 @@ function GetColloidCount(reaction)
 
   implicit none
   
-  integer :: GetColloidCount
+  PetscInt :: GetColloidCount
   type(reaction_type) :: reaction
 
   type(colloid_type), pointer :: colloid

@@ -520,7 +520,7 @@ subroutine StructuredGridReadArrayNew(array,array_size,axis,input,option)
 
     do 
       call InputReadWord(input,option,word,PETSC_TRUE)
-      if (InputError(input) .or. StringCompare(word,backslash,1)) exit
+      if (InputError(input) .or. StringCompare(word,backslash,ONE_INTEGER)) exit
       i = index(word,'*')
       if (i == 0) i = index(word,'@')
       if (i /= 0) then
@@ -678,7 +678,7 @@ subroutine StructuredGridComputeCoord(structured_grid,option,origin_global, &
   PetscReal :: grid_x(:), grid_y(:), grid_z(:)
   PetscReal :: x_min, x_max, y_min, y_max, z_min, z_max
 
-! PetscInt :: ierr
+! PetscErrorCode :: ierr
   PetscInt :: i, j, k, ghosted_id
   PetscReal :: x, y, z
   PetscInt :: prevnode
@@ -972,30 +972,30 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
   lenz = structured_grid%ngz - 1
 
   if(.not.(structured_grid%p_samr_patch.eq.0)) then
-     if(samr_patch_at_bc(structured_grid%p_samr_patch, 0, 0) ==1) then
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, ZERO_INTEGER, ZERO_INTEGER) ==1) then
         nconn = nconn - structured_grid%nlyz
         lenx = lenx-1
         samr_ofx = 1
      endif  
-     if(samr_patch_at_bc(structured_grid%p_samr_patch, 0, 1) ==1) then 
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, ZERO_INTEGER, ONE_INTEGER) ==1) then 
         nconn = nconn - structured_grid%nlyz
         lenx = lenx-1
      endif  
-     if(samr_patch_at_bc(structured_grid%p_samr_patch, 1, 0) ==1) then
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, ONE_INTEGER, ZERO_INTEGER) ==1) then
         nconn = nconn - structured_grid%nlxz
         leny=leny-1
         samr_ofy = structured_grid%ngx
      endif  
-     if(samr_patch_at_bc(structured_grid%p_samr_patch, 1, 1) ==1) then
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, ONE_INTEGER, ONE_INTEGER) ==1) then
         nconn = nconn - structured_grid%nlxz
         leny=leny-1
      endif  
-     if(samr_patch_at_bc(structured_grid%p_samr_patch, 2, 0) ==1) then
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, TWO_INTEGER, ZERO_INTEGER) ==1) then
         nconn = nconn - structured_grid%nlxy
         lenz=lenz-1
         samr_ofz = structured_grid%ngxy
      endif  
-     if(samr_patch_at_bc(structured_grid%p_samr_patch, 2, 1) ==1) then
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, TWO_INTEGER, ONE_INTEGER) ==1) then
         nconn = nconn - structured_grid%nlxy
         lenz=lenz-1
      endif  
@@ -1142,10 +1142,10 @@ function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
           enddo
         enddo
       case(CYLINDRICAL_GRID)
-        option%io_buffer = 'Cylindrical coordinates not applicable.'
+        option%io_buffer = 'Cylindrical coordinates not implemented.'
         call printErrMsg(option)
       case(SPHERICAL_GRID)
-        option%io_buffer = 'Spherical coordinates not applicable.'
+        option%io_buffer = 'Spherical coordinates not implemented.'
         call printErrMsg(option)
 
     end select
@@ -1816,7 +1816,7 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
   enddo
 
   if(.not.(structured_grid%p_samr_patch.eq.0)) then
-     if(samr_patch_at_bc(structured_grid%p_samr_patch, 0, 0) ==1) then
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, ZERO_INTEGER, ZERO_INTEGER) ==1) then
         do k=1,structured_grid%ngz
            do j=1,structured_grid%ngy
               ghosted_id = 1+(j-1)*structured_grid%ngx+(k-1)*structured_grid%ngxy
@@ -1824,7 +1824,7 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
            enddo
         enddo
      endif  
-     if(samr_patch_at_bc(structured_grid%p_samr_patch, 0, 1) ==1) then 
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, ZERO_INTEGER, ONE_INTEGER) ==1) then 
         i=structured_grid%ngx
         do k=1,structured_grid%ngz
            do j=1,structured_grid%ngy
@@ -1833,7 +1833,7 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
            enddo
         enddo
      endif
-     if(samr_patch_at_bc(structured_grid%p_samr_patch, 1, 0) ==1) then
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, ONE_INTEGER, ZERO_INTEGER) ==1) then
         do k=1,structured_grid%ngz
            do i=1,structured_grid%ngx
               ghosted_id = i+(k-1)*structured_grid%ngxy
@@ -1841,7 +1841,7 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
            enddo
         enddo
      endif  
-     if(samr_patch_at_bc(structured_grid%p_samr_patch, 1, 1) ==1) then
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, ONE_INTEGER, ONE_INTEGER) ==1) then
         j=structured_grid%ngy
         do k=1,structured_grid%ngz
            do i=1,structured_grid%ngx
@@ -1850,7 +1850,7 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
            enddo
         enddo
      endif  
-     if(samr_patch_at_bc(structured_grid%p_samr_patch, 2, 0) ==1) then
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, TWO_INTEGER, ZERO_INTEGER) ==1) then
         do j=1,structured_grid%ngy
            do i=1,structured_grid%ngx
               ghosted_id = i+(j-1)*structured_grid%ngx
@@ -1858,7 +1858,7 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
            enddo
         enddo
      endif  
-     if(samr_patch_at_bc(structured_grid%p_samr_patch, 2, 1) ==1) then
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, TWO_INTEGER, ONE_INTEGER) ==1) then
         k=structured_grid%ngz
         do j=1,structured_grid%ngy
            do i=1,structured_grid%ngx
@@ -1975,7 +1975,7 @@ subroutine StructuredGridVecGetArrayCellF90(structured_grid, vec, f90ptr, ierr)
  type(structured_grid_type) :: structured_grid
  Vec:: vec
  PetscReal, pointer :: f90ptr(:)
- PetscInt :: ierr
+ PetscErrorCode :: ierr
  
  type(f90ptrwrap), pointer :: ptr
  PetscFortranAddr :: cptr
@@ -2028,7 +2028,7 @@ subroutine StructuredGridVecGetArraySideF90(structured_grid, axis, vec, f90ptr, 
  PetscInt :: axis
  Vec:: vec
  PetscReal, pointer :: f90ptr(:)
- PetscInt :: ierr
+ PetscErrorCode :: ierr
  
  type(f90ptrwrap), pointer :: ptr
  PetscFortranAddr :: cptr
@@ -2067,7 +2067,7 @@ subroutine StructGridVecRestoreArrayF90(structured_grid, vec, f90ptr, ierr)
  type(structured_grid_type) :: structured_grid
  Vec:: vec
  PetscReal, pointer :: f90ptr(:)
- PetscInt :: ierr
+ PetscErrorCode :: ierr
  
  type(f90ptrwrap), pointer :: ptr
  PetscFortranAddr :: cptr

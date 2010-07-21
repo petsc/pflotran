@@ -158,11 +158,13 @@ subroutine RichardsSetupPatch(realization)
                      boundary_condition%connection_set%num_connections
     boundary_condition => boundary_condition%next
   enddo
-  allocate(rich_aux_vars_bc(sum_connection))
-  do iconn = 1, sum_connection
-    call RichardsAuxVarInit(rich_aux_vars_bc(iconn),option)
-  enddo
-  patch%aux%Richards%aux_vars_bc => rich_aux_vars_bc
+  if (sum_connection > 0) then
+    allocate(rich_aux_vars_bc(sum_connection))
+    do iconn = 1, sum_connection
+      call RichardsAuxVarInit(rich_aux_vars_bc(iconn),option)
+    enddo
+    patch%aux%Richards%aux_vars_bc => rich_aux_vars_bc
+  endif
   patch%aux%Richards%num_aux_bc = sum_connection
   
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
@@ -301,9 +303,13 @@ subroutine RichardsZeroMassBalDeltaPatch(realization)
   enddo
 #endif
 
-  do iconn = 1, patch%aux%Richards%num_aux_bc
-    global_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
-  enddo
+  ! Intel 10.1 on Chinook reports a SEGV if this conditional is not
+  ! placed around the internal do loop - geh
+  if (patch%aux%Richards%num_aux_bc > 0) then
+    do iconn = 1, patch%aux%Richards%num_aux_bc
+      global_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
+    enddo
+  endif
 
 end subroutine RichardsZeroMassBalDeltaPatch
 
@@ -345,11 +351,15 @@ subroutine RichardsUpdateMassBalancePatch(realization)
   enddo
 #endif
 
-  do iconn = 1, patch%aux%Richards%num_aux_bc
-    global_aux_vars_bc(iconn)%mass_balance = &
-      global_aux_vars_bc(iconn)%mass_balance + &
-      global_aux_vars_bc(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
-  enddo
+  ! Intel 10.1 on Chinook reports a SEGV if this conditional is not
+  ! placed around the internal do loop - geh
+  if (patch%aux%Richards%num_aux_bc > 0) then
+    do iconn = 1, patch%aux%Richards%num_aux_bc
+      global_aux_vars_bc(iconn)%mass_balance = &
+        global_aux_vars_bc(iconn)%mass_balance + &
+        global_aux_vars_bc(iconn)%mass_balance_delta*FMWH2O*option%flow_dt
+    enddo
+  endif
 
 end subroutine RichardsUpdateMassBalancePatch
 
@@ -405,6 +415,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   use Coupler_module
   use Connection_module
   use Material_module
+  use Logging_module
   
   implicit none
 
@@ -426,6 +437,8 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   PetscReal :: xxbc(realization%option%nflowdof)
   PetscErrorCode :: ierr
   
+  call PetscLogEventBegin(logging%event_r_auxvars,ierr)
+
   option => realization%option
   patch => realization%patch
   grid => patch%grid
@@ -442,7 +455,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)  
 
   do ghosted_id = 1, grid%ngmax
-     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
+    if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
      
     !geh - Ignore inactive cells with inactive materials
     if (associated(patch%imat)) then
@@ -455,6 +468,10 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
                        option)
   enddo
+
+  call PetscLogEventEnd(logging%event_r_auxvars,ierr)
+
+  call PetscLogEventBegin(logging%event_r_auxvars_bc,ierr)
 
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
@@ -485,13 +502,14 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
     boundary_condition => boundary_condition%next
   enddo
 
-
   call GridVecRestoreArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)  
   
   patch%aux%Richards%aux_vars_up_to_date = PETSC_TRUE
+
+  call PetscLogEventEnd(logging%event_r_auxvars_bc,ierr)
 
 end subroutine RichardsUpdateAuxVarsPatch
 
@@ -724,9 +742,7 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif
+    if (patch%imat(ghosted_id) <= 0) cycle
     call RichardsAuxVarCompute(xx_p(local_id:local_id), &
                    rich_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                    realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
@@ -1550,6 +1566,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   use Level_module
   use Discretization_module
   use Option_module
+  use Logging_module
 
   implicit none
   interface
@@ -1568,7 +1585,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
 #include "finclude/petscvec.h90"
        PetscFortranAddr :: p_application
        Vec :: vec
-       PetscInt :: ierr
+       PetscErrorCode :: ierr
      end subroutine SAMRCoarsenFaceFluxes
   end interface
 
@@ -1585,10 +1602,12 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   type(patch_type), pointer :: cur_patch
   type(option_type), pointer :: option
   
+  call PetscLogEventBegin(logging%event_r_residual,ierr)
+  
   field => realization%field
   discretization => realization%discretization
   option => realization%option
-  
+
   ! Communication -----------------------------------------
   ! These 3 must be called before RichardsUpdateAuxVars()
   call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
@@ -1663,6 +1682,8 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
+
+  call PetscLogEventEnd(logging%event_r_residual,ierr)
 
   write(*,*) "End of RichardsResidual"
   stop 
@@ -2005,15 +2026,19 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
     ngx = grid%structured_grid%ngx   
     ngxy = grid%structured_grid%ngxy
 
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 0, 0)==1) nlx = nlx-1
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 0, 1)==1) nlx = nlx-1
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
+                        ZERO_INTEGER)==1) nlx = nlx-1
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
+                        ONE_INTEGER)==1) nlx = nlx-1
     
     max_x_conn = (nlx+1)*nly*nlz
     ! reinitialize nlx
     nlx = grid%structured_grid%nlx  
 
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 1, 0)==1) nly = nly-1
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, 1, 1)==1) nly = nly-1
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
+                        ZERO_INTEGER)==1) nly = nly-1
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
+                        ONE_INTEGER)==1) nly = nly-1
     
     max_y_conn = max_x_conn + nlx*(nly+1)*nlz
 
@@ -2036,10 +2061,8 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
 
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id_up) <= 0 .or.  &
-            patch%imat(ghosted_id_dn) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id_up) <= 0 .or.  &
+          patch%imat(ghosted_id_dn) <= 0) cycle
 
       fraction_upwind = cur_connection_set%dist(-1,iconn)
       distance = cur_connection_set%dist(0,iconn)
@@ -2144,9 +2167,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id) <= 0) cycle
 
       if (ghosted_id<=0) then
         print *, "Wrong boundary node index... STOP!!!"
@@ -2330,9 +2351,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
       !geh - Ignore inactive cells with inactive materials
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id) <= 0) cycle
       call RichardsAccumulation(rich_aux_vars(ghosted_id), &
                                 global_aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
@@ -2355,9 +2374,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id) <= 0) cycle
 
       select case(source_sink%flow_condition%rate%itype)
         case(MASS_RATE_SS)
@@ -2542,6 +2559,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
   use Patch_module
   use Grid_module
   use Option_module
+  use Logging_module
 
   implicit none
 
@@ -2572,6 +2590,8 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
   type(option_type), pointer :: option
   PetscReal :: norm
   
+  call PetscLogEventBegin(logging%event_r_jacobian,ierr)
+
   option => realization%option
 
   flag = SAME_NONZERO_PATTERN
@@ -2651,6 +2671,8 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
     write(option%io_buffer,'("inf norm: ",es11.4)') norm
     call printMsg(option) 
   endif
+
+  call PetscLogEventEnd(logging%event_r_jacobian,ierr)
   
 end subroutine RichardsJacobian
                 
@@ -2756,10 +2778,8 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       ghosted_id_up = cur_connection_set%id_up(iconn)
       ghosted_id_dn = cur_connection_set%id_dn(iconn)
 
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id_up) <= 0 .or. &
-            patch%imat(ghosted_id_dn) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id_up) <= 0 .or. &
+          patch%imat(ghosted_id_dn) <= 0) cycle
 
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
@@ -2868,9 +2888,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id) <= 0) cycle
 
       if (ghosted_id<=0) then
         print *, "Wrong boundary node index... STOP!!!"
@@ -3026,9 +3044,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif
+    if (patch%imat(ghosted_id) <= 0) cycle
     icap = int(icap_loc_p(ghosted_id))
     call RichardsAccumDerivative(rich_aux_vars(ghosted_id), &
                               global_aux_vars(ghosted_id), &
@@ -3077,9 +3093,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id) <= 0) cycle
       
       Jup = 0.d0
       select case(source_sink%flow_condition%rate%itype)
@@ -3225,8 +3239,8 @@ subroutine RichardsCreateZeroArray(patch,option)
   patch%aux%Richards%n_zero_rows = n_zero_rows
   
   if(.not. (option%use_samr)) then
-     call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
-          option%mycomm,ierr)
+     call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                        MPI_MAX,option%mycomm,ierr)
      if (flag > 0) patch%aux%Richards%inactive_cells_exist = PETSC_TRUE
      
      if (ncount /= n_zero_rows) then
@@ -3364,7 +3378,7 @@ subroutine RichardsDestroyPatch(realization)
 
   type(realization_type) :: realization
   
-  ! place anything that needs to be freed here.
+  ! taken care of in auxilliary.F90
 
 end subroutine RichardsDestroyPatch
 

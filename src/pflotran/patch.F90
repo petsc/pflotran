@@ -69,7 +69,8 @@ module Patch_module
             PatchLocalizeRegions, PatchUpdateUniformVelocity, &
             PatchGetDataset, PatchGetDatasetValueAtCell, &
             PatchSetDataset, &
-            PatchInitConstraints
+            PatchInitConstraints, &
+            PatchCountCells
 
 contains
 
@@ -622,7 +623,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
               coupler%flow_aux_real_var = 0.d0
               coupler%flow_aux_int_var = 0
 
-            case(MPH_MODE, IMS_MODE)
+            case(MPH_MODE, IMS_MODE, FLASH2_MODE)
               allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
               allocate(coupler%flow_aux_int_var(1,num_connections))
               coupler%flow_aux_real_var = 0.d0
@@ -737,7 +738,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
 
       update = PETSC_FALSE
       select case(option%iflowmode)
-        case(THC_MODE,MPH_MODE, IMS_MODE)
+        case(THC_MODE,MPH_MODE, IMS_MODE, FLASH2_MODE)
           if (force_update_flag .or. &
               flow_condition%pressure%dataset%is_transient .or. &
               flow_condition%pressure%gradient%is_transient .or. &
@@ -772,6 +773,15 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
 !                endif
 !              enddo
               select case(option%iflowmode)
+                case(FLASH2_MODE)
+                  coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
+                    flow_condition%pressure%dataset%cur_value(1)  ! <-- Chuan Fix
+                   coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
+                    flow_condition%temperature%dataset%cur_value(1)! <-- Chuan Fix
+                  coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
+                    flow_condition%concentration%dataset%cur_value(1)! <-- Chuan Fix
+                  coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+                    flow_condition%iphase
                 case(MPH_MODE)
                   coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
                     flow_condition%pressure%dataset%cur_value(1)  ! <-- Chuan Fix
@@ -911,9 +921,14 @@ subroutine PatchInitCouplerConstraints(coupler_list,reaction,option)
           global_auxvar%temp = option%reference_temperature
         endif
 
+#ifndef DONT_USE_WATEOS
         call wateos(global_auxvar%temp(1),global_auxvar%pres(1), &
                     global_auxvar%den_kg(1),r1,r2,r3,r4,r5,r6, &
-                    option%scale,ierr) 
+                    option%scale,ierr)
+#else
+        call density(global_auxvar%temp(1),global_auxvar%pres(1), &
+                     global_auxvar%den_kg(1))
+#endif                     
       else
         global_auxvar%pres = option%reference_pressure
         global_auxvar%temp = option%reference_temperature
@@ -1021,7 +1036,7 @@ function PatchAuxVarsUpToDate(patch)
   PetscTruth :: PatchAuxVarsUpToDate
   PetscTruth :: flow_up_to_date
   PetscTruth :: transport_up_to_date
-  integer :: dummy
+  PetscInt :: dummy
   dummy = 1
 
   if (associated(patch%aux%THC)) then
@@ -1030,6 +1045,8 @@ function PatchAuxVarsUpToDate(patch)
     flow_up_to_date = patch%aux%Richards%aux_vars_up_to_date
   else if (associated(patch%aux%Mphase)) then
     flow_up_to_date = patch%aux%Mphase%aux_vars_up_to_date
+  else if (associated(patch%aux%Flash2)) then
+    flow_up_to_date = patch%aux%Flash2%aux_vars_up_to_date
   else if (associated(patch%aux%Immis)) then
     flow_up_to_date = patch%aux%Immis%aux_vars_up_to_date
   endif
@@ -1038,7 +1055,7 @@ function PatchAuxVarsUpToDate(patch)
     transport_up_to_date = patch%aux%RT%aux_vars_up_to_date
   endif
   
-  PatchAuxVarsUpToDate = flow_up_to_date .or. transport_up_to_date
+  PatchAuxVarsUpToDate = flow_up_to_date .and. transport_up_to_date
   
 end function PatchAuxVarsUpToDate
 
@@ -1152,6 +1169,61 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = &
                 patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(1)
+            enddo
+        end select
+      else if (associated(patch%aux%Flash2)) then
+        select case(ivar)
+          case(TEMPERATURE)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%temp(1)
+            enddo
+          case(PRESSURE)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%pres(2)
+            enddo
+          case(LIQUID_SATURATION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%sat(1)
+            enddo
+          case(LIQUID_DENSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(1)
+            enddo
+          case(GAS_SATURATION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%sat(2)
+            enddo
+          case(GAS_MOLE_FRACTION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Flash2%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%xmol(2+isubvar)
+            enddo
+          case(GAS_ENERGY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Flash2%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%u(2)
+            enddo
+          case(GAS_DENSITY) 
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%den_kg(2)
+            enddo
+          case(GAS_DENSITY_MOL) 
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%den(2)
+            enddo
+          case(SC_FUGA_COEFF)
+            if (.not.associated(patch%aux%Global%aux_vars(1)%fugacoeff) .and. &
+                OptionPrintToScreen(option))then
+               print *,'ERRor, fugacoeff not allocated for ', option%iflowmode, 1
+            endif
+            do local_id=1,grid%nlmax
+             vec_ptr(local_id) = patch%aux%Global%aux_vars(grid%nL2G(local_id))%fugacoeff(1)
+            enddo 
+          case(LIQUID_MOLE_FRACTION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Flash2%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%xmol(isubvar)
+            enddo
+          case(LIQUID_ENERGY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Flash2%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%u(1)
             enddo
         end select
       else if (associated(patch%aux%Mphase)) then
@@ -1528,6 +1600,33 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
           case(LIQUID_DENSITY)
             value = patch%aux%Global%aux_vars(ghosted_id)%den_kg(1)
         end select
+      else if (associated(patch%aux%Flash2)) then
+        select case(ivar)
+          case(TEMPERATURE)
+            value = patch%aux%Global%aux_vars(ghosted_id)%temp(1)
+          case(PRESSURE)
+            value = patch%aux%Global%aux_vars(ghosted_id)%pres(2)
+          case(LIQUID_SATURATION)
+            value = patch%aux%Global%aux_vars(ghosted_id)%sat(1)
+          case(LIQUID_DENSITY)
+            value = patch%aux%Global%aux_vars(ghosted_id)%den_kg(1)
+          case(GAS_SATURATION)
+            value = patch%aux%Global%aux_vars(ghosted_id)%sat(2)
+          case(GAS_MOLE_FRACTION)
+            value = patch%aux%Flash2%aux_vars(ghosted_id)%aux_var_elem(0)%xmol(2+isubvar)
+          case(GAS_ENERGY)
+            value = patch%aux%Flash2%aux_vars(ghosted_id)%aux_var_elem(0)%u(2)
+          case(GAS_DENSITY) 
+            value = patch%aux%Global%aux_vars(ghosted_id)%den_kg(2)
+          case(GAS_DENSITY_MOL) 
+            value = patch%aux%Global%aux_vars(ghosted_id)%den(2)
+          case(SC_FUGA_COEFF)
+            value = patch%aux%Global%aux_vars(ghosted_id)%fugacoeff(1)   
+          case(LIQUID_MOLE_FRACTION)
+            value = patch%aux%Flash2%aux_vars(ghosted_id)%aux_var_elem(0)%xmol(isubvar)
+          case(LIQUID_ENERGY)
+            value = patch%aux%Flash2%aux_vars(ghosted_id)%aux_var_elem(0)%u(1)
+        end select
       else if (associated(patch%aux%Mphase)) then
         select case(ivar)
           case(TEMPERATURE)
@@ -1839,6 +1938,109 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
               enddo
             endif
         end select
+      else if (associated(patch%aux%Flash2)) then
+        select case(ivar)
+          case(TEMPERATURE)
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Flash2%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%temp = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Flash2%aux_vars(ghosted_id)%aux_var_elem(0)%temp = vec_ptr(ghosted_id)
+              enddo
+            endif
+          case(PRESSURE)
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Flash2%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%pres = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Flash2%aux_vars(ghosted_id)%aux_var_elem(0)%pres = vec_ptr(ghosted_id)
+              enddo
+            endif
+          case(LIQUID_SATURATION)
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Flash2%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%sat(1) = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Flash2%aux_vars(ghosted_id)%aux_var_elem(0)%sat(1) = vec_ptr(ghosted_id)
+              enddo
+            endif
+          case(LIQUID_DENSITY)
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Flash2%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%den(1) = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Flash2%aux_vars(ghosted_id)%aux_var_elem(0)%den(1) = vec_ptr(ghosted_id)
+              enddo
+            endif
+          case(GAS_SATURATION)
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Flash2%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%sat(2) = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Flash2%aux_vars(ghosted_id)%aux_var_elem(0)%sat(2) = vec_ptr(ghosted_id)
+              enddo
+            endif
+          case(GAS_MOLE_FRACTION)
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Flash2%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%xmol(2+isubvar) = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Flash2%aux_vars(ghosted_id)%aux_var_elem(0)%xmol(2+isubvar) = vec_ptr(ghosted_id)
+              enddo
+            endif
+          case(GAS_ENERGY)
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Flash2%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%u(2) = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Flash2%aux_vars(ghosted_id)%aux_var_elem(0)%u(2) = vec_ptr(ghosted_id)
+              enddo
+            endif
+          case(GAS_DENSITY, GAS_DENSITY_MOL) 
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Flash2%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%den(2) = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Flash2%aux_vars(ghosted_id)%aux_var_elem(0)%den(2) = vec_ptr(ghosted_id)
+              enddo
+            endif
+          case(LIQUID_MOLE_FRACTION)
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Flash2%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%xmol(isubvar) = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Flash2%aux_vars(ghosted_id)%aux_var_elem(0)%xmol(isubvar) = vec_ptr(ghosted_id)
+              enddo
+            endif
+          case(LIQUID_ENERGY)
+            if (vec_format == GLOBAL) then
+              do local_id=1,grid%nlmax
+                patch%aux%Flash2%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%u(1) = vec_ptr(local_id)
+              enddo
+            else if (vec_format == LOCAL) then
+              do ghosted_id=1,grid%ngmax
+                patch%aux%Flash2%aux_vars(ghosted_id)%aux_var_elem(0)%u(1) = vec_ptr(ghosted_id)
+              enddo
+            endif
+        end select
       else if (associated(patch%aux%Mphase)) then
         select case(ivar)
           case(TEMPERATURE)
@@ -2123,6 +2325,38 @@ subroutine PatchSetDataset(patch,field,option,vec,vec_format,ivar,isubvar)
   call GridVecRestoreArrayF90(grid,vec,vec_ptr,ierr)
   
 end subroutine PatchSetDataset
+
+! ************************************************************************** !
+!
+! PatchCountCells: Counts # of active and inactive grid cells 
+! author: Glenn Hammond
+! date: 06/01/10
+!
+! ************************************************************************** !
+subroutine PatchCountCells(patch,total_count,active_count)
+
+  use Option_module
+
+  implicit none
+  
+  type(patch_type) :: patch
+  PetscInt :: total_count
+  PetscInt :: active_count
+  
+  type(grid_type), pointer :: grid
+  PetscInt :: local_id
+  
+  grid => patch%grid
+  
+  total_count = grid%nlmax
+  
+  active_count = 0
+  do local_id = 1, grid%nlmax
+    if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
+    active_count = active_count + 1
+  enddo
+
+end subroutine PatchCountCells
 
 ! ************************************************************************** !
 !

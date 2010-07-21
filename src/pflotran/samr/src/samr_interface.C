@@ -50,6 +50,7 @@
 #define TOTAL_SORBED 33
 
 extern "C" {
+#include "petsc.h"
 #include "petscvec.h"
 #include "petscmat.h"
 void  cf90bridge_(void *, int*, void *);
@@ -73,7 +74,7 @@ int level_number_patches_(SAMRAI::PflotranApplicationStrategy **application_stra
    return level->getNumberOfPatches();
 }
 
-bool is_local_patch_(SAMRAI::PflotranApplicationStrategy **application_strategy, int *ln, int *pn)
+int is_local_patch_(SAMRAI::PflotranApplicationStrategy **application_strategy, int *ln, int *pn)
 {
 
    SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->getHierarchy();
@@ -174,6 +175,18 @@ void samr_patch_get_ghostcorners_(SAMRAI::hier::Patch<NDIM> **patch,
    
 }
 
+void samrgetrealization_(SAMRAI::PflotranApplicationStrategy ***application_strategy,
+			 void **simulation)
+{
+  (*simulation) = (**application_strategy)->getRealization();
+}
+
+void samrgetsimulation_(SAMRAI::PflotranApplicationStrategy ***application_strategy,
+			 void **simulation)
+{
+  (*simulation) = (**application_strategy)->getSimulation();
+}
+
 void samr_vecgetarraycellf90_(SAMRAI::hier::Patch<NDIM> **patch, 
                           Vec *petscVec,
                           void **f90wrap)
@@ -271,6 +284,21 @@ void samrcreatematrix_(SAMRAI::PflotranApplicationStrategy **application_strateg
 
 }
 
+void samrsetpetsctransportmatrix_(SAMRAI::PflotranApplicationStrategy **application_strategy,
+		           Mat *transportMatrix)
+{
+  (*application_strategy)->setTransportMatrix(transportMatrix);
+}
+
+
+void samrgetpetsctransportmatrix_(SAMRAI::PflotranApplicationStrategy ***application_strategy,
+			    Mat *mat)
+{
+  Mat *pMat = (**application_strategy)->getTransportMatrix();
+  (*mat) = (*pMat);
+}
+
+
 void samrglobaltolocal_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
                         Vec *gvec, 
                         Vec *lvec, 
@@ -295,6 +323,15 @@ void samrlocaltolocal_(SAMRAI::PflotranApplicationStrategy **application_strateg
 
    (*application_strategy)->interpolateLocalToLocalVector(srcVec, dstVec, *ierr);
    
+}
+
+void samrcoarsenvector_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
+			Vec *dvec)
+{
+  SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > dstVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(*dvec);
+
+   (*application_strategy)->coarsenVector(dstVec);
+  
 }
 
 void samrcoarsenfacefluxes_(SAMRAI::PflotranApplicationStrategy **application_strategy, 

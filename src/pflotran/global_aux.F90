@@ -98,12 +98,6 @@ subroutine GlobalAuxVarInit(aux_var,option)
   aux_var%sat_store = 0.d0
   allocate(aux_var%den_kg_store(option%nphase,TWO_INTEGER))
   aux_var%den_kg_store = 0.d0
-    nullify(aux_var%xmass)
-select case(option%iflowmode)
-  case( IMS_MODE, MPH_MODE, FLASH2_MODE)
-    allocate(aux_var%xmass(option%nphase))
-    aux_var%xmass = 1.d0
-    nullify(aux_var%xmass)
 
 select case(option%iflowmode)
   case( IMS_MODE, MPH_MODE, FLASH2_MODE)

@@ -935,7 +935,7 @@ subroutine SolverDestroy(solver)
   type(solver_type), pointer :: solver
   
   PetscErrorCode :: ierr
-  integer :: i
+  PetscInt :: i
 
   if (.not.associated(solver)) return
 
@@ -953,9 +953,9 @@ subroutine SolverDestroy(solver)
   endif
   if (solver%matfdcoloring /= 0) &
     call MatFDColoringDestroy(solver%matfdcoloring,ierr)
-#ifndef PC_BUG
-  if (solver%snes /= 0) call SNESDestroy(solver%snes)
-#endif
+
+  if (solver%snes /= 0) call SNESDestroy(solver%snes,ierr)
+
   solver%ksp = 0
   solver%pc = 0
     

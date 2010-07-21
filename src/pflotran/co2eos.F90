@@ -709,6 +709,7 @@ contains
 #else
 #endif
 #endif
+#endif
   
   !activity coef. co2
   lngamco2 = 2.d0*lamc*mc + lamca*mc*ma ! = log(gam(jco2))

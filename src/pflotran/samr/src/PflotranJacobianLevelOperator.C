@@ -6,17 +6,25 @@
 #include "CSideData.h"
 #include "PETSc_SAMRAIVectorReal.h"
 #include "fortran/3d/prototypes.h"
+#include "tbox/Timer.h"
+#include "tbox/TimerManager.h"
 
 namespace SAMRAI{
 
   PflotranJacobianLevelOperator::PflotranJacobianLevelOperator(LevelOperatorParameters *parameters):LevelOperator(parameters)
 {
+   static tbox::Pointer<tbox::Timer> t_create_PflotranJacobianLevelOperator = 
+      tbox::TimerManager::getManager()->getTimer("PflotranJacobianLevelOperator::constructor()");
+   t_create_PflotranJacobianLevelOperator->start();
+
    d_sibling_fill_cached          = false;
    d_interpolate_ghost_values     = true;
 
    PflotranJacobianLevelOperator::getFromInput(parameters->d_db);
 
    initializeInternalVariableData();
+
+   t_create_PflotranJacobianLevelOperator->stop();
 }
 
 
@@ -117,6 +125,10 @@ PflotranJacobianLevelOperator::apply(const int *f_id,
                                      const double a,
                                      const double b)
 {
+   static tbox::Pointer<tbox::Timer> t_stencilapply_PflotranJacobianLevelOperator = 
+      tbox::TimerManager::getManager()->getTimer("PflotranJacobianLevelOperator::stencilapply()");
+   t_stencilapply_PflotranJacobianLevelOperator->start();
+
    for (hier::PatchLevel<NDIM>::Iterator p(d_level); p; p++) 
    {
       tbox::Pointer<hier::Patch<NDIM> > patch = d_level->getPatch(p());
@@ -171,6 +183,8 @@ PflotranJacobianLevelOperator::apply(const int *f_id,
       }
       
    }
+
+   t_stencilapply_PflotranJacobianLevelOperator->stop();
 }
 
 void
@@ -184,6 +198,10 @@ PflotranJacobianLevelOperator::apply(const int flux_id,
                                      const double a, 
                                      const double b)
 {
+   static tbox::Pointer<tbox::Timer> t_fluxapply_PflotranJacobianLevelOperator = 
+      tbox::TimerManager::getManager()->getTimer("PflotranJacobianLevelOperator::fluxapply()");
+   t_fluxapply_PflotranJacobianLevelOperator->start();
+
 #ifdef DEBUG_CHECK_ASSERTIONS
    assert(f_id!=NULL);
    assert(u_id!=NULL);
@@ -240,6 +258,8 @@ PflotranJacobianLevelOperator::apply(const int flux_id,
          r_data->getPointer());
 
    }
+
+   t_fluxapply_PflotranJacobianLevelOperator->stop();
 }
 
 void
@@ -247,6 +267,10 @@ PflotranJacobianLevelOperator::setFlux(const int flux_id,
                                        const int *u_id,
                                        const int *u_idx)
 {
+   static tbox::Pointer<tbox::Timer> t_setflux_PflotranJacobianLevelOperator = 
+      tbox::TimerManager::getManager()->getTimer("PflotranJacobianLevelOperator::setflux()");
+   t_setflux_PflotranJacobianLevelOperator->start();
+
    for (hier::PatchLevel<NDIM>::Iterator p(d_level); p; p++) 
    {
       tbox::Pointer<hier::Patch<NDIM> > patch = d_level->getPatch(p());
@@ -277,6 +301,8 @@ PflotranJacobianLevelOperator::setFlux(const int flux_id,
                         flux_data->getPointer(1),
                         flux_data->getPointer(2));
    }
+
+   t_setflux_PflotranJacobianLevelOperator->stop();
 }
 
 void
@@ -285,6 +311,10 @@ PflotranJacobianLevelOperator::applyBoundaryCondition(const int *var_id,
                                                       const int *var_components,
                                                       const int number_of_variables)
 {
+   static tbox::Pointer<tbox::Timer> t_PflotranJacobianLevelOperator_applyBoundaryCondition = 
+      tbox::TimerManager::getManager()->getTimer("PflotranJacobianLevelOperator::applyBoundaryCondition()");
+   t_PflotranJacobianLevelOperator_applyBoundaryCondition->start();
+
 #ifdef DEBUG_CHECK_ASSERTIONS
    assert(var_id!=NULL);
    assert(var_components==NULL);
@@ -343,6 +373,8 @@ PflotranJacobianLevelOperator::applyBoundaryCondition(const int *var_id,
 
       d_cf_interpolant->setVariableOrderInterpolation(cachedIsVariableInterpolationOrder);
    }
+
+   t_PflotranJacobianLevelOperator_applyBoundaryCondition->stop();
 }
 
 const int 
