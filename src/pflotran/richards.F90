@@ -455,7 +455,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)  
 
   do ghosted_id = 1, grid%ngmax
-     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
+    if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
      
     !geh - Ignore inactive cells with inactive materials
     if (associated(patch%imat)) then
@@ -686,9 +686,7 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif
+    if (patch%imat(ghosted_id) <= 0) cycle
     call RichardsAuxVarCompute(xx_p(local_id:local_id), &
                    rich_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                    realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
@@ -1791,10 +1789,8 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
 
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id_up) <= 0 .or.  &
-            patch%imat(ghosted_id_dn) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id_up) <= 0 .or.  &
+          patch%imat(ghosted_id_dn) <= 0) cycle
 
       fraction_upwind = cur_connection_set%dist(-1,iconn)
       distance = cur_connection_set%dist(0,iconn)
@@ -1899,9 +1895,7 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id) <= 0) cycle
 
       if (ghosted_id<=0) then
         print *, "Wrong boundary node index... STOP!!!"
@@ -2080,9 +2074,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
       !geh - Ignore inactive cells with inactive materials
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id) <= 0) cycle
       call RichardsAccumulation(rich_aux_vars(ghosted_id), &
                                 global_aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
@@ -2105,9 +2097,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id) <= 0) cycle
 
       select case(source_sink%flow_condition%rate%itype)
         case(MASS_RATE_SS)
@@ -2373,10 +2363,8 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       ghosted_id_up = cur_connection_set%id_up(iconn)
       ghosted_id_dn = cur_connection_set%id_dn(iconn)
 
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id_up) <= 0 .or. &
-            patch%imat(ghosted_id_dn) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id_up) <= 0 .or. &
+          patch%imat(ghosted_id_dn) <= 0) cycle
 
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
@@ -2485,9 +2473,7 @@ subroutine RichardsJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id) <= 0) cycle
 
       if (ghosted_id<=0) then
         print *, "Wrong boundary node index... STOP!!!"
@@ -2642,9 +2628,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(patch%imat)) then
-      if (patch%imat(ghosted_id) <= 0) cycle
-    endif
+    if (patch%imat(ghosted_id) <= 0) cycle
     icap = int(icap_loc_p(ghosted_id))
     call RichardsAccumDerivative(rich_aux_vars(ghosted_id), &
                               global_aux_vars(ghosted_id), &
@@ -2693,9 +2677,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      if (associated(patch%imat)) then
-        if (patch%imat(ghosted_id) <= 0) cycle
-      endif
+      if (patch%imat(ghosted_id) <= 0) cycle
       
       Jup = 0.d0
       select case(source_sink%flow_condition%rate%itype)
@@ -2980,7 +2962,7 @@ subroutine RichardsDestroyPatch(realization)
 
   type(realization_type) :: realization
   
-  ! place anything that needs to be freed here.
+  ! taken care of in auxilliary.F90
 
 end subroutine RichardsDestroyPatch
 

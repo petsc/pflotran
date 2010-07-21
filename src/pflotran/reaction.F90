@@ -1594,6 +1594,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          global_auxvar%den_kg(option%liquid_phase)/ &
                                          1000.d0
 
+  call RCalculateCompression(global_auxvar,rt_auxvar,reaction,option)
+
+
 ! this is performed above
 !  if (associated(colloid_constraint%colloids)) then                        
 !    colloid_constraint%colloids%basis_conc_mob = rt_auxvar%colloid%conc_mob* &
@@ -4846,5 +4849,85 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
 #endif
 
 end subroutine RTAccumulationDerivative
+
+! ************************************************************************** !
+!
+! RCalculateCompression: Calculates the compression for the Jacobian block 
+! author: Glenn Hammond
+! date: 07/12/10
+!
+! ************************************************************************** !
+subroutine RCalculateCompression(global_auxvar,rt_auxvar,reaction,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(reaction_type), pointer :: reaction
+  type(option_type) :: option
+
+  PetscInt :: dfill(reaction%ncomp,reaction%ncomp)
+  PetscInt :: ofill(reaction%ncomp,reaction%ncomp)
+  PetscReal :: J(reaction%ncomp,reaction%ncomp)
+  PetscReal :: residual(reaction%ncomp)
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  
+  PetscInt :: i, jj
+  PetscReal :: vol = 1.d0
+  PetscReal :: por = 0.25d0
+  PetscReal :: sum
+  
+  dfill = 0
+  ofill = 0
+  J = 0.d0
+  residual = 0.d0
+
+  call RTAuxVarCompute(rt_auxvar,global_auxvar,reaction,option)
+  call RTAccumulationDerivative(rt_auxvar,global_auxvar, &
+                                por,vol,reaction,option,J)
+    
+  do jj = 1, reaction%ncomp
+    do i = 1, reaction%ncomp
+      if (dabs(J(i,jj)) > 1.d-20) ofill(i,jj) = 1
+    enddo
+  enddo
+
+  if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
+    call RAccumulationSorbDerivative(rt_auxvar,global_auxvar,vol, &
+                                     reaction,option,J)
+  endif
+
+  call RReaction(residual,J,PETSC_TRUE,rt_auxvar,global_auxvar,vol, &
+                 reaction,option)
+ 
+  do jj = 1, reaction%ncomp
+    do i = 1, reaction%ncomp
+      if (dabs(J(i,jj)) > 1.d-20) dfill(i,jj) = 1
+    enddo
+  enddo
+
+  sum = 0.d0
+  do jj = 1, reaction%ncomp
+    do i = 1, reaction%ncomp
+      if (dfill(i,jj) == 1) sum = sum + 1.d0
+    enddo
+  enddo
+  write(option%io_buffer,'(''Diagonal Fill (%): '',f6.2)') &
+    sum / (reaction%ncomp*reaction%ncomp) * 100.d0
+  call printMsg(option)
+ 
+ 
+  sum = 0.d0
+  do jj = 1, reaction%ncomp
+    do i = 1, reaction%ncomp
+      if (ofill(i,jj) == 1) sum = sum + 1.d0
+    enddo
+  enddo
+  write(option%io_buffer,'(''Off-Diagonal Fill (%): '',f6.2)') &
+    sum / (reaction%ncomp*reaction%ncomp) * 100.d0
+  call printMsg(option)
+
+end subroutine RCalculateCompression
 
 end module Reaction_module

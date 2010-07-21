@@ -5926,6 +5926,8 @@ subroutine RTDestroyPatch(realization)
 
   type(realization_type) :: realization
   
+  ! taken care of in auxilliary.F90
+  
 end subroutine RTDestroyPatch
 
 end module Reactive_Transport_module

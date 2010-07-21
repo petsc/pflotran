@@ -113,6 +113,7 @@ subroutine StochasticRun(stochastic,option)
   type(realization_type), pointer :: realization
   character(len=MAXSTRINGLENGTH) :: string
   PetscErrorCode :: ierr
+  PetscInt :: status
 
   call OptionCheckCommandLine(option)
 
@@ -128,6 +129,16 @@ subroutine StochasticRun(stochastic,option)
     option%id = stochastic%realization_ids(irealization)
     write(string,'(i6)') option%id
     option%group_prefix = 'R' // trim(adjustl(string))
+
+#if 0
+    string = 'restart' // trim(adjustl(option%group_prefix)) // '.chk.info'
+    open(unit=86,file=string,status="old",iostat=status)
+    ! if file found, cycle
+    if (status == 0) then
+      close(86)
+      cycle
+    endif
+#endif
 
     call PetscGetCPUTime(timex(1), ierr)
     call PetscGetTime(timex_wall(1), ierr)
