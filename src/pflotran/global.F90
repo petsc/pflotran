@@ -105,12 +105,15 @@ subroutine GlobalSetupPatch(realization)
                      boundary_condition%connection_set%num_connections
     boundary_condition => boundary_condition%next
   enddo
-  option%iflag = 1 ! enable allocation of mass_balance array 
-  allocate(aux_vars_bc(sum_connection))
-  do iconn = 1, sum_connection
-    call GlobalAuxVarInit(aux_vars_bc(iconn),option)
-  enddo
-  patch%aux%Global%aux_vars_bc => aux_vars_bc
+
+  if (sum_connection > 0) then
+    option%iflag = 1 ! enable allocation of mass_balance array 
+    allocate(aux_vars_bc(sum_connection))
+    do iconn = 1, sum_connection
+      call GlobalAuxVarInit(aux_vars_bc(iconn),option)
+    enddo
+    patch%aux%Global%aux_vars_bc => aux_vars_bc
+  endif
   patch%aux%Global%num_aux_bc = sum_connection
 
   option%iflag = 0
@@ -535,6 +538,23 @@ subroutine GlobalUpdateDenAndSatPatch(realization,weight)
 !         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%den_store(:,TIME_T))
     enddo     
   endif 
+  if (option%iflowmode == FLASH2_MODE) then
+    do ghosted_id = 1, patch%aux%Global%num_aux
+      patch%aux%Global%aux_vars(ghosted_id)%pres(:) = &
+        (weight*patch%aux%Global%aux_vars(ghosted_id)%pres_store(:,TIME_TpDT)+ &
+         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%pres_store(:,TIME_T))
+      patch%aux%Global%aux_vars(ghosted_id)%temp(:) = &
+        (weight*patch%aux%Global%aux_vars(ghosted_id)%temp_store(:,TIME_TpDT)+ &
+         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%temp_store(:,TIME_T))
+      patch%aux%Global%aux_vars(ghosted_id)%fugacoeff(:) = &
+        (weight*patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(:,TIME_TpDT)+ &
+         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%fugacoeff_store(:,TIME_T))
+      if(weight<1D-12) patch%aux%Global%aux_vars(ghosted_id)%reaction_rate(:)=0D0
+!      patch%aux%Global%aux_vars(ghosted_id)%den(:) = &
+!        (weight*patch%aux%Global%aux_vars(ghosted_id)%den_store(:,TIME_TpDT)+ &
+!         (1.d0-weight)*patch%aux%Global%aux_vars(ghosted_id)%den_store(:,TIME_T))
+    enddo     
+  endif 
   
 end subroutine GlobalUpdateDenAndSatPatch
 
@@ -578,7 +598,7 @@ subroutine GlobalUpdateAuxVars(realization,time_level)
                                    field%work,field%work_loc,ONEDOF)
   call GlobalSetAuxVarVecLoc(realization,field%work_loc,LIQUID_SATURATION,time_level)                                     
   select case(option%iflowmode)
-    case(MPH_MODE, IMS_MODE)
+    case(MPH_MODE, IMS_MODE, FLASH2_MODE)
       ! Gas density
       call RealizationGetDataset(realization,field%work,GAS_DENSITY, &
                              ZERO_INTEGER)

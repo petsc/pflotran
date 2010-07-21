@@ -166,10 +166,12 @@ subroutine ReadStructuredGridHDF5(realization)
   call printMsg(option)
   call HDF5ReadIntegerArray(option,grp_id,string,grid%nmax,indices, &
                             grid%nlmax,integer_array)
-  call GridCopyIntegerArrayToPetscVec(integer_array,global_vec,grid%nlmax)
+  call GridCopyIntegerArrayToVec(grid,integer_array,global_vec,grid%nlmax)
   deallocate(integer_array)
   call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)
-  call GridCopyPetscVecToIntegerArray(patch%imat,local_vec,grid%ngmax)
+
+  call GridCopyVecToIntegerArray(grid,patch%imat,local_vec,grid%ngmax)
+
   
   allocate(real_array(grid%nlmax))
   string = "X-Coordinate"
@@ -177,27 +179,35 @@ subroutine ReadStructuredGridHDF5(realization)
   call printMsg(option)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          real_array)
-  call GridCopyRealArrayToPetscVec(real_array,global_vec,grid%nlmax)
+
+  call GridCopyRealArrayToVec(grid,real_array,global_vec,grid%nlmax)
+
   call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)  
-  call GridCopyPetscVecToRealArray(grid%x,local_vec,grid%ngmax)
+
+  call GridCopyVecToRealArray(grid,grid%x,local_vec,grid%ngmax)
 
   string = "Y-Coordinate"
   option%io_buffer = 'Reading dataset: ' // trim(string)
   call printMsg(option)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          real_array)
-  call GridCopyRealArrayToPetscVec(real_array,global_vec,grid%nlmax)
+
+  call GridCopyRealArrayToVec(grid,real_array,global_vec,grid%nlmax)
+
   call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)  
-  call GridCopyPetscVecToRealArray(grid%y,local_vec,grid%ngmax)
+
+  call GridCopyVecToRealArray(grid,grid%y,local_vec,grid%ngmax)
 
   string = "Z-Coordinate"
   option%io_buffer = 'Reading dataset: ' // trim(string)
   call printMsg(option)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          real_array)
-  call GridCopyRealArrayToPetscVec(real_array,global_vec,grid%nlmax)
+
+  call GridCopyRealArrayToVec(grid,real_array,global_vec,grid%nlmax)
   call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)  
-  call GridCopyPetscVecToRealArray(grid%z,local_vec,grid%ngmax)
+
+  call GridCopyVecToRealArray(grid,grid%z,local_vec,grid%ngmax)
 
   deallocate(real_array)
   
@@ -424,8 +434,10 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
   integer(HSIZE_T) :: num_connections_in_file
   PetscInt :: temp_int, i, num_internal_connections
   PetscErrorCode :: ierr
+  PetscMPIInt :: int_mpi
   
-  PetscMPIInt, allocatable :: upwind_ids(:), downwind_ids(:)
+!  PetscInt, allocatable :: upwind_ids(:), downwind_ids(:)
+  integer, allocatable :: upwind_ids_i4(:), downwind_ids_i4(:)
   
   PetscInt :: read_block_size
 
@@ -451,7 +463,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
   endif
 #endif
   
-  allocate(upwind_ids(read_block_size),downwind_ids(read_block_size))
+  allocate(upwind_ids_i4(read_block_size),downwind_ids_i4(read_block_size))
   
   rank = 1
   offset = 0
@@ -484,43 +496,41 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
 #ifdef HDF5_BROADCAST
     if (option%myrank == option%io_rank) then                           
 #endif
-      call PetscLogEventBegin(logging%event_h5dread_f, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
-      call h5dread_f(data_set_id_up,HDF_NATIVE_INTEGER,upwind_ids,dims, &
+      call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
+      call h5dread_f(data_set_id_up,HDF_NATIVE_INTEGER,upwind_ids_i4,dims, &
                      hdf5_err,memory_space_id,file_space_id_up,prop_id)                     
-      call PetscLogEventEnd(logging%event_h5dread_f, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+      call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
 #ifdef HDF5_BROADCAST
     endif
-    if (option%mycommsize > 1) &
-      call mpi_bcast(upwind_ids,dims(1),MPI_INTEGER,option%io_rank, &
+    if (option%mycommsize > 1) then
+      int_mpi = dims(1)
+!geh      call MPI_Bcast(upwind_ids,int_mpi,MPIU_INTEGER,option%io_rank, &
+      call MPI_Bcast(upwind_ids_i4,int_mpi,MPI_INTEGER,option%io_rank, &
                      option%mycomm,ierr)
+    endif
 #endif    
     call h5sselect_hyperslab_f(file_space_id_down, H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
 #ifdef HDF5_BROADCAST
     if (option%myrank == option%io_rank) then                           
 #endif
-      call PetscLogEventBegin(logging%event_h5dread_f, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
-      call h5dread_f(data_set_id_down,HDF_NATIVE_INTEGER,downwind_ids,dims, &
+      call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
+      call h5dread_f(data_set_id_down,HDF_NATIVE_INTEGER,downwind_ids_i4,dims, &
                      hdf5_err,memory_space_id,file_space_id_down,prop_id)                     
-      call PetscLogEventEnd(logging%event_h5dread_f, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+      call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
 #ifdef HDF5_BROADCAST
     endif
-    if (option%mycommsize > 1) &
-      call mpi_bcast(downwind_ids,dims(1),MPI_INTEGER,option%io_rank, &
+    if (option%mycommsize > 1) then
+      int_mpi = dims(1)
+!geh      call MPI_Bcast(downwind_ids,int_mpi,MPIU_INTEGER,option%io_rank, &
+      call MPI_Bcast(downwind_ids_i4,int_mpi,MPI_INTEGER,option%io_rank, &
                      option%mycomm,ierr)
+    endif
 #endif    
     do i=1,dims(1)
       connection_count = connection_count + 1
-      natural_id_up = upwind_ids(i)
-      natural_id_down = downwind_ids(i)
+      natural_id_up = upwind_ids_i4(i)
+      natural_id_down = downwind_ids_i4(i)
       local_ghosted_id_up = GridGetLocalGhostedIdFromHash(grid,natural_id_up)
       local_ghosted_id_down = GridGetLocalGhostedIdFromHash(grid,natural_id_down)
       if (local_ghosted_id_up > 0 .and. local_ghosted_id_down > 0) then
@@ -534,7 +544,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
     enddo
   enddo
   
-  deallocate(upwind_ids,downwind_ids)
+  deallocate(upwind_ids_i4,downwind_ids_i4)
   
   call h5pclose_f(prop_id,hdf5_err)
   call h5sclose_f(memory_space_id,hdf5_err)

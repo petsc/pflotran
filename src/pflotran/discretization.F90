@@ -181,6 +181,8 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
               call InputErrorMsg(input,option,'unstructured filename','GRID')
             case('amr')
               discretization%itype = AMR_GRID
+                  structured_grid_itype = CARTESIAN_GRID
+                  structured_grid_ctype = 'cartesian'
             case default
               option%io_buffer = 'Discretization type: ' // &
                                  trim(discretization%ctype) // &
@@ -622,19 +624,19 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
        Mat :: p_matrix
      end subroutine SAMRCreateMatrix
      
-     integer function hierarchy_number_levels(p_hierarchy)
+     PetscInt function hierarchy_number_levels(p_hierarchy)
        PetscFortranAddr, intent(inout) :: p_hierarchy
      end function hierarchy_number_levels
    
-     integer function level_number_patches(p_hierarchy, ln)
+     PetscInt function level_number_patches(p_hierarchy, ln)
        PetscFortranAddr, intent(inout) :: p_hierarchy
-       integer, intent(in) :: ln
+       PetscInt, intent(in) :: ln
      end function level_number_patches
 
-     logical function is_local_patch(p_hierarchy, ln, pn)
+     PetscInt function is_local_patch(p_hierarchy, ln, pn)
        PetscFortranAddr, intent(inout) :: p_hierarchy
-       integer, intent(in) :: ln
-       integer, intent(in) :: pn
+       PetscInt, intent(in) :: ln
+       PetscInt, intent(in) :: pn
      end function is_local_patch
      
   end interface
@@ -652,10 +654,9 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   PetscInt, pointer :: indices(:)
   PetscInt :: ngmax
   PetscInt :: imax, nlevels, ln, npatches, pn, i
-  PetscInt :: flowortransport
   type(dm_ptr_type), pointer :: dm_ptr
   ISLocalToGlobalMapping :: ptmap
-  PetscTruth :: islocal
+  PetscInt :: islocal
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
     
@@ -675,17 +676,15 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
           ndof = 1
        case(NFLOWDOF)
           ndof = option%nflowdof
-          flowortransport = 0
        case(NTRANDOF)
           ndof = option%ntrandof
-          flowortransport = 1
        end select
 
        stencilsize=7;
        call MatCreateShell(option%mycomm, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, Jacobian, ierr)
-       call SAMRCreateMatrix(discretization%amrgrid%p_application, ndof, stencilsize, flowortransport, Jacobian)
+       call SAMRCreateMatrix(discretization%amrgrid%p_application, ndof, stencilsize, option%samr_mode, Jacobian)
 
-       if(flowortransport==1) then
+       if(option%samr_mode==1) then
 ! we create a dummy mapping to satisfy the PETSc mapping requirements   
           imax=0
           nlevels =  hierarchy_number_levels(discretization%amrgrid%p_application)
@@ -693,7 +692,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
              npatches = level_number_patches(discretization%amrgrid%p_application, ln )
              do pn=0,npatches-1
                 islocal = is_local_patch(discretization%amrgrid%p_application, ln, pn);
-                if(islocal) then
+                if(islocal.eq.1) then
                    ngmax =  discretization%amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr%ngmax
                    imax = max(ngmax,imax) 
                 endif
@@ -856,7 +855,7 @@ subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_in
        Vec :: lvec
        Vec :: gvec
        PetscInt :: ndof
-       PetscInt :: ierr
+       PetscErrorCode :: ierr
        
      end subroutine SAMRGlobalToLocal
 
@@ -934,7 +933,7 @@ subroutine DiscretizationLocalToLocal(discretization,local_vec1,local_vec2,dm_in
        Vec :: lvec
        Vec :: gvec
        PetscInt :: ndof
-       PetscInt :: ierr
+       PetscErrorCode :: ierr
        
      end subroutine SAMRLocalToLocal
 
@@ -1259,7 +1258,7 @@ subroutine DiscretizationDestroy(discretization)
   type(discretization_type), pointer :: discretization
   
   PetscErrorCode :: ierr
-  integer :: i
+  PetscInt :: i
     
   if (.not.associated(discretization)) return
       

@@ -1,0 +1,20 @@
+: Source File - C:\Documents and Settings\ghammond\My Documents\research\Flury/200w_recharge.txt
+:
+: Start Date - 2009-01-01/00:00:00
+: End Date - 2009-12-31/00:00:00
+: Time Increment - 30 days
+:
+: Data - Time(seconds) Recharge (m/s)
+0 1.127e-007
+2592000 8.035e-008
+5184000 6.076e-008
+7776000 3.822e-008
+10368000 1.764e-008
+12960000 1.568e-008
+15552000 0.000e+000
+18144000 3.920e-009
+20736000 5.880e-009
+23328000 6.860e-008
+25920000 6.272e-008
+28512000 4.018e-008
+31104000 1.940e-007

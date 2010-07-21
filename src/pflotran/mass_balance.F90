@@ -80,9 +80,7 @@ subroutine MassBalanceUpdate(realization,flow_solver,tran_solver)
   type(option_type), pointer :: option
   PetscErrorCode :: ierr
   
-  call PetscLogEventBegin(logging%event_mass_balance, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_mass_balance,ierr)
                                 
   option => realization%option
   field => realization%field
@@ -100,6 +98,7 @@ subroutine MassBalanceUpdate(realization,flow_solver,tran_solver)
                      1.d0,field%tran_ts_mass_balance,ierr)
       case(MPH_MODE)
       case(IMS_MODE)
+      case(FLASH2_MODE)
     end select
   endif
   
@@ -111,9 +110,7 @@ subroutine MassBalanceUpdate(realization,flow_solver,tran_solver)
                  1.d0,field%tran_ts_mass_balance,ierr)
   endif
 
-  call PetscLogEventEnd(logging%event_mass_balance, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_mass_balance,ierr)
   
 end subroutine MassBalanceUpdate
 

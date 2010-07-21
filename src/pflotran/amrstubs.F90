@@ -71,14 +71,14 @@ implicit none
   level_number_patches=-1
 end function level_number_patches
 
-logical function is_local_patch(p_application, ln, pn)
+PetscInt function is_local_patch(p_application, ln, pn)
 implicit none
 #include "finclude/petscsysdef.h"
   PetscFortranAddr, intent(inout) :: p_application
   PetscInt, intent(in) :: ln
   PetscInt, intent(in) :: pn
 
-  is_local_patch = .TRUE.
+  is_local_patch = 1
 
 end function is_local_patch
 
@@ -182,7 +182,7 @@ implicit none
   PetscFortranAddr :: p_application
   Vec :: lvec
   Vec :: gvec
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
 
 end subroutine SAMRGlobalToLocal
 
@@ -194,10 +194,19 @@ implicit none
   PetscFortranAddr :: p_application
   Vec :: lvec
   Vec :: gvec
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
 
 end subroutine SAMRLocalToLocal
 
+subroutine SAMRCoarsenVector(p_application, vec)
+implicit none
+#include "finclude/petscsysdef.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  PetscFortranAddr :: p_application
+  Vec :: vec
+end subroutine SAMRCoarsenVector
+      
 subroutine SAMRCoarsenFaceFluxes(p_application, vec, ierr)
 implicit none
 #include "finclude/petscsysdef.h"
@@ -205,7 +214,7 @@ implicit none
 #include "finclude/petscvec.h90"
   PetscFortranAddr :: p_application
   Vec :: vec
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
 
 end subroutine SAMRCoarsenFaceFluxes
 
@@ -286,3 +295,23 @@ subroutine SAMRInitializePreconditioner(p_application, which_pc, pc)
   PetscFortranAddr :: p_application
   PetscInt :: which_pc
 end subroutine SAMRInitializePreconditioner
+
+#ifndef PC_BUG
+subroutine SAMRGetRealization(p_application, realization) 
+  use Realization_module
+#include "finclude/petscsys.h"
+  PetscFortranAddr :: p_application
+  type(realization_type), pointer :: realization
+end subroutine SAMRGetRealization
+
+
+subroutine SAMRSetPetscTransportMatrix(p_application, transportMat) 
+use Realization_module
+#include "finclude/petscsys.h"
+#include "finclude/petscmat.h"
+      
+PetscFortranAddr :: p_application
+Mat :: transportMat
+end subroutine SAMRSetPetscTransportMatrix
+
+#endif

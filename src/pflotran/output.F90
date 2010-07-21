@@ -26,10 +26,6 @@ module Output_module
   PetscErrorCode :: ierr
   PetscInt, save :: max_local_size_saved = -1
   
-#ifdef VAMSI_HDF5_WRITE
-  PetscInt :: write_bcast_size = HDF5_WRITE_BCAST_SIZE
-#endif
-
   ! flags signifying the first time a routine is called during a given
   ! simulation
   PetscTruth :: observation_first
@@ -93,7 +89,7 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
 
 #ifdef VAMSI_STAGE_BARRIER
   ! barrier to calculate the accurate timing of Output Stage
-  call mpi_barrier(option%mycomm,ierr)
+  call MPI_Barrier(option%mycomm,ierr)
 #endif 
 
   call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr)
@@ -115,17 +111,13 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
   
     if (realization%output_option%print_hdf5) then
       call PetscGetTime(tstart,ierr) 
-      call PetscLogEventBegin(logging%event_output_hdf5, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+      call PetscLogEventBegin(logging%event_output_hdf5,ierr)    
       call OutputHDF5(realization)
-      call PetscLogEventEnd(logging%event_output_hdf5, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+      call PetscLogEventEnd(logging%event_output_hdf5,ierr)    
       call PetscGetTime(tend,ierr)
 #ifdef VAMSI_HDF5_WRITE
-      if (option%global_rank == 0) write (*,'(" Vamsi''s HDF5 method is used in & 
-                                          writing the output, HDF5_WRITE_BCAST_SIZE = ",i5)') write_bcast_size
+      if (option%myrank == 0) write (*,'(" Vamsi''s HDF5 method is used in & 
+                                          writing the output, HDF5_WRITE_GROUP_SIZE = ",i5)') option%hdf5_write_group_size
 #endif      
       write(option%io_buffer,'(f6.2," Seconds to write HDF5 file.")') tend-tstart
       call printMsg(option)
@@ -133,17 +125,13 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
    
     if (realization%output_option%print_tecplot) then
       call PetscGetTime(tstart,ierr) 
-      call PetscLogEventBegin(logging%event_output_tecplot, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+      call PetscLogEventBegin(logging%event_output_tecplot,ierr) 
       if (realization%output_option%tecplot_format == TECPLOT_BLOCK_FORMAT) then
         call OutputTecplotBlock(realization)
       else
         call OutputTecplotPoint(realization)
       endif
-      call PetscLogEventEnd(logging%event_output_tecplot, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+      call PetscLogEventEnd(logging%event_output_tecplot,ierr)    
       call PetscGetTime(tend,ierr) 
       write(option%io_buffer,'(f6.2," Seconds to write to Tecplot file(s)")') &
             tend-tstart
@@ -152,14 +140,10 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
 
     if (realization%output_option%print_vtk) then
       call PetscGetTime(tstart,ierr) 
-      call PetscLogEventBegin(logging%event_output_vtk, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+      call PetscLogEventBegin(logging%event_output_vtk,ierr) 
       call OutputVTK(realization)
 
-      call PetscLogEventEnd(logging%event_output_vtk, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+      call PetscLogEventEnd(logging%event_output_vtk,ierr)    
       call PetscGetTime(tend,ierr) 
       write(option%io_buffer,'(f6.2," Seconds to write to VTK file(s)")') &
             tend-tstart
@@ -168,14 +152,10 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
       
     if (realization%output_option%print_mad) then
       call PetscGetTime(tstart,ierr) 
-      call PetscLogEventBegin(logging%event_output_mad, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+      call PetscLogEventBegin(logging%event_output_mad,ierr) 
       call OutputMAD(realization)
 
-      call PetscLogEventEnd(logging%event_output_mad, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+      call PetscLogEventEnd(logging%event_output_mad,ierr)    
       call PetscGetTime(tend,ierr) 
       write(option%io_buffer,'(f6.2," Seconds to write to MAD HDF5 file(s)")') &
             tend-tstart
@@ -205,7 +185,7 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
   realization%output_option%plot_name = ''
 
 #ifdef VAMSI_STAGE_BARRIER
-  call mpi_barrier(option%mycomm,ierr)
+  call MPI_Barrier(option%mycomm,ierr)
   ! barrier to calculate the accurate timing of Output Stage
 #endif 
 
@@ -264,6 +244,7 @@ subroutine OutputTecplotBlock(realization)
   use Immis_module
   use THC_module
   use Richards_module
+  use Flash2_module
   
   use Reactive_Transport_module
   use Reaction_Aux_module
@@ -340,6 +321,8 @@ subroutine OutputTecplotBlock(realization)
         string2 = ImmisGetTecplotHeader(realization,icolumn)
       case (MPH_MODE)
         string2 = MphaseGetTecplotHeader(realization,icolumn)
+      case (FLASH2_MODE)
+        string2 = FLASH2GetTecplotHeader(realization,icolumn)
       case(THC_MODE)
         string2 = THCGetTecplotHeader(realization,icolumn)
       case(RICHARDS_MODE)
@@ -428,11 +411,11 @@ subroutine OutputTecplotBlock(realization)
   endif
 
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE)
+    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
 
       ! temperature
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -440,7 +423,7 @@ subroutine OutputTecplotBlock(realization)
 
       ! pressure
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -448,7 +431,7 @@ subroutine OutputTecplotBlock(realization)
 
       ! phase
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
@@ -456,7 +439,7 @@ subroutine OutputTecplotBlock(realization)
 
       ! liquid saturation
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -464,7 +447,7 @@ subroutine OutputTecplotBlock(realization)
 
       ! gas saturation
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -472,7 +455,7 @@ subroutine OutputTecplotBlock(realization)
     
       ! liquid density
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -480,7 +463,7 @@ subroutine OutputTecplotBlock(realization)
     
      ! gas density
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_DENSITY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -488,7 +471,7 @@ subroutine OutputTecplotBlock(realization)
     
       ! liquid energy
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -496,14 +479,14 @@ subroutine OutputTecplotBlock(realization)
     
      ! gas energy
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_ENERGY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
 
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
           ! liquid mole fractions
           do i=1,option%nflowspec
             call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
@@ -513,7 +496,7 @@ subroutine OutputTecplotBlock(realization)
       end select
   
       select case(option%iflowmode)
-        case(MPH_MODE)
+        case(MPH_MODE,FLASH2_MODE)
           ! gas mole fractions
           do i=1,option%nflowspec
             call OutputGetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i)
@@ -679,7 +662,7 @@ subroutine OutputTecplotBlock(realization)
       call OutputFluxVelocitiesTecplotBlk(realization,LIQUID_PHASE, &
                                           X_DIRECTION)
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE)
           call OutputFluxVelocitiesTecplotBlk(realization,GAS_PHASE, &
                                               X_DIRECTION)
       end select
@@ -688,7 +671,7 @@ subroutine OutputTecplotBlock(realization)
       call OutputFluxVelocitiesTecplotBlk(realization,LIQUID_PHASE, &
                                           Y_DIRECTION)
       select case(option%iflowmode)
-        case(MPH_MODE, IMS_MODE)
+        case(MPH_MODE, IMS_MODE,FLASH2_MODE)
           call OutputFluxVelocitiesTecplotBlk(realization,GAS_PHASE, &
                                               Y_DIRECTION)
       end select
@@ -697,7 +680,7 @@ subroutine OutputTecplotBlock(realization)
       call OutputFluxVelocitiesTecplotBlk(realization,LIQUID_PHASE, &
                                           Z_DIRECTION)
       select case(option%iflowmode)
-        case(MPH_MODE, IMS_MODE)
+        case(MPH_MODE, IMS_MODE,FLASH2_MODE)
           call OutputFluxVelocitiesTecplotBlk(realization,GAS_PHASE, &
                                               Z_DIRECTION)
       end select
@@ -942,9 +925,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
     
   nullify(array)
 
-  call PetscLogEventBegin(logging%event_output_write_flux_tecplot, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventBegin(logging%event_output_write_flux_tecplot,ierr) 
                           
   discretization => realization%discretization
   patch => realization%patch
@@ -1211,9 +1192,7 @@ subroutine OutputFluxVelocitiesTecplotBlk(realization,iphase, &
 
   if (option%myrank == option%io_rank) close(IUNIT3)
 
-  call PetscLogEventEnd(logging%event_output_write_flux_tecplot, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventEnd(logging%event_output_write_flux_tecplot,ierr) 
   
 end subroutine OutputFluxVelocitiesTecplotBlk
 
@@ -1238,6 +1217,7 @@ subroutine OutputTecplotPoint(realization)
   use Immis_module
   use THC_module
   use Richards_module
+  use Flash2_module
   
   use Reactive_Transport_module
   use Reaction_Aux_module
@@ -1317,7 +1297,9 @@ subroutine OutputTecplotPoint(realization)
     ! write flow variables
     string2 = ''
     select case(option%iflowmode)
-      case (IMS_MODE)
+      case (Flash2_MODE)
+        string2 = Flash2GetTecplotHeader(realization,icolumn)
+       case (IMS_MODE)
         string2 = ImmisGetTecplotHeader(realization,icolumn)
       case (MPH_MODE)
         string2 = MphaseGetTecplotHeader(realization,icolumn)
@@ -1370,11 +1352,11 @@ subroutine OutputTecplotPoint(realization)
     endif
     
     select case(option%iflowmode)
-      case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE)
+      case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
 
         ! temperature
         select case(option%iflowmode)
-          case(MPH_MODE,THC_MODE,IMS_MODE)
+          case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
             value = RealizGetDatasetValueAtCell(realization,TEMPERATURE, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -1382,7 +1364,7 @@ subroutine OutputTecplotPoint(realization)
 
         ! pressure
         select case(option%iflowmode)
-          case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE)
+          case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
             value = RealizGetDatasetValueAtCell(realization,PRESSURE, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -1390,7 +1372,7 @@ subroutine OutputTecplotPoint(realization)
 
         ! phase
         select case(option%iflowmode)
-          case(MPH_MODE,IMS_MODE)
+          case(MPH_MODE,IMS_MODE,FLASH2_MODE)
             value = RealizGetDatasetValueAtCell(realization,PHASE, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1001,advance='no') int(value)
@@ -1398,7 +1380,7 @@ subroutine OutputTecplotPoint(realization)
 
         ! liquid saturation
         select case(option%iflowmode)
-          case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE)
+          case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
             value = RealizGetDatasetValueAtCell(realization,LIQUID_SATURATION, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -1406,7 +1388,7 @@ subroutine OutputTecplotPoint(realization)
 
         ! gas saturation
         select case(option%iflowmode)
-          case(MPH_MODE,IMS_MODE)
+          case(MPH_MODE,IMS_MODE,FLASH2_MODE)
             value = RealizGetDatasetValueAtCell(realization,GAS_SATURATION, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -1414,7 +1396,7 @@ subroutine OutputTecplotPoint(realization)
       
         ! liquid density
         select case(option%iflowmode)
-          case(MPH_MODE,THC_MODE,IMS_MODE)
+          case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
             value = RealizGetDatasetValueAtCell(realization,LIQUID_DENSITY, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -1422,7 +1404,7 @@ subroutine OutputTecplotPoint(realization)
       
        ! gas density
         select case(option%iflowmode)
-          case(MPH_MODE,IMS_MODE)
+          case(MPH_MODE,IMS_MODE,FLASH2_MODE)
             value = RealizGetDatasetValueAtCell(realization,GAS_DENSITY, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -1430,7 +1412,7 @@ subroutine OutputTecplotPoint(realization)
       
         ! liquid energy
         select case(option%iflowmode)
-          case(MPH_MODE,THC_MODE,IMS_MODE)
+          case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
             value = RealizGetDatasetValueAtCell(realization,LIQUID_ENERGY, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
@@ -1438,14 +1420,14 @@ subroutine OutputTecplotPoint(realization)
       
        ! gas energy
         select case(option%iflowmode)
-          case(MPH_MODE,IMS_MODE)
+          case(MPH_MODE,IMS_MODE,FLASH2_MODE)
             value = RealizGetDatasetValueAtCell(realization,GAS_ENERGY, &
                                                 ZERO_INTEGER,ghosted_id)
             write(IUNIT3,1000,advance='no') value
         end select
 
         select case(option%iflowmode)
-          case(MPH_MODE,THC_MODE)
+          case(MPH_MODE,THC_MODE,FLASH2_MODE)
             ! liquid mole fractions
             do i=1,option%nflowspec
               value = RealizGetDatasetValueAtCell(realization,LIQUID_MOLE_FRACTION, &
@@ -1455,7 +1437,7 @@ subroutine OutputTecplotPoint(realization)
         end select
     
         select case(option%iflowmode)
-          case(MPH_MODE)
+          case(MPH_MODE,FLASH2_MODE)
             ! gas mole fractions
             do i=1,option%nflowspec
               value = RealizGetDatasetValueAtCell(realization,GAS_MOLE_FRACTION, &
@@ -1797,9 +1779,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   Vec :: global_vec
   PetscInt, parameter :: fid=86
 
-  call PetscLogEventBegin(logging%event_output_vec_tecplot, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventBegin(logging%event_output_vec_tecplot,ierr) 
 
   option => realization%option
   patch => realization%patch
@@ -1890,9 +1870,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
 
   close(fid)
 
-  call PetscLogEventEnd(logging%event_output_vec_tecplot, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventEnd(logging%event_output_vec_tecplot,ierr) 
                             
 end subroutine OutputVectorTecplot
 
@@ -1951,9 +1929,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
 1000 format(es13.6,1x)
 1001 format(10(es13.6,1x))
   
-  call PetscLogEventBegin(logging%event_output_str_grid_tecplot, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventBegin(logging%event_output_str_grid_tecplot,ierr) 
                               
   patch => realization%patch
   grid => patch%grid
@@ -2040,9 +2016,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
 
   endif
 
-  call PetscLogEventEnd(logging%event_output_str_grid_tecplot, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventEnd(logging%event_output_str_grid_tecplot,ierr) 
                             
 end subroutine WriteTecplotStructuredGrid
 
@@ -2074,10 +2048,11 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   type(patch_type), pointer :: patch  
   PetscInt :: i
   PetscInt :: max_proc, max_proc_prefetch
-  PetscMPIInt :: iproc, recv_size
-  PetscInt :: max_local_size, local_size
+  PetscMPIInt :: iproc_mpi, recv_size_mpi
+  PetscInt :: max_local_size
+  PetscMPIInt :: local_size_mpi
   PetscInt :: istart, iend, num_in_array
-  PetscInt :: status(MPI_STATUS_SIZE)
+  PetscMPIInt :: status_mpi(MPI_STATUS_SIZE)
   PetscInt, allocatable :: integer_data(:), integer_data_recv(:)
   PetscReal, allocatable :: real_data(:), real_data_recv(:)
 
@@ -2090,9 +2065,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   grid => patch%grid
   option => realization%option
 
-  call PetscLogEventBegin(logging%event_output_write_tecplot, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+  call PetscLogEventBegin(logging%event_output_write_tecplot,ierr)    
 
   ! maximum number of initial messages  
 #define HANDSHAKE  
@@ -2100,34 +2073,34 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   max_proc_prefetch = option%io_handshake_buffer_size / 10
 
   if (size_flag /= 0) then
-    call MPI_Allreduce(size_flag,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
-                       option%mycomm,ierr)
-    local_size = size_flag
+    call MPI_Allreduce(size_flag,max_local_size,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                       MPI_MAX,option%mycomm,ierr)
+    local_size_mpi = size_flag
   else 
   ! if first time, determine the maximum size of any local array across 
   ! all procs
     if (max_local_size_saved < 0) then
-      call MPI_Allreduce(grid%nlmax,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
-                         option%mycomm,ierr)
+      call MPI_Allreduce(grid%nlmax,max_local_size,ONE_INTEGER_MPI, &
+                         MPIU_INTEGER,MPI_MAX,option%mycomm,ierr)
       max_local_size_saved = max_local_size
       write(option%io_buffer,'("max_local_size_saved: ",i9)') max_local_size
       call printMsg(option)
     endif
     max_local_size = max_local_size_saved
-    local_size = grid%nlmax
+    local_size_mpi = grid%nlmax
   endif
   
   ! transfer the data to an integer or real array
   if (datatype == TECPLOT_INTEGER) then
     allocate(integer_data(max_local_size+10))
     allocate(integer_data_recv(max_local_size))
-    do i=1,local_size
+    do i=1,local_size_mpi
       integer_data(i) = int(array(i))
     enddo
   else
     allocate(real_data(max_local_size+10))
     allocate(real_data_recv(max_local_size))
-    do i=1,local_size
+    do i=1,local_size_mpi
       real_data(i) = array(i)
     enddo
   endif
@@ -2140,43 +2113,43 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
       iend = 0
       do
         istart = iend+1
-        if (iend+10 > local_size) exit
+        if (iend+10 > local_size_mpi) exit
         iend = istart+9
         write(fid,'(10(i3,x))') integer_data(istart:iend)
       enddo
       ! shift remaining data to front of array
-      integer_data(1:local_size-iend) = integer_data(iend+1:local_size)
-      num_in_array = local_size-iend
+      integer_data(1:local_size_mpi-iend) = integer_data(iend+1:local_size_mpi)
+      num_in_array = local_size_mpi-iend
     else
       iend = 0
       do
         istart = iend+1
-        if (iend+10 > local_size) exit
+        if (iend+10 > local_size_mpi) exit
         iend = istart+9
         write(fid,1001) real_data(istart:iend)
       enddo
       ! shift remaining data to front of array
-      real_data(1:local_size-iend) = real_data(iend+1:local_size)
-      num_in_array = local_size-iend
+      real_data(1:local_size_mpi-iend) = real_data(iend+1:local_size_mpi)
+      num_in_array = local_size_mpi-iend
     endif
-    do iproc=1,option%mycommsize-1
+    do iproc_mpi=1,option%mycommsize-1
 #ifdef HANDSHAKE    
       if (option%io_handshake_buffer_size > 0 .and. &
-          iproc+max_proc_prefetch >= max_proc) then
+          iproc_mpi+max_proc_prefetch >= max_proc) then
         max_proc = max_proc + option%io_handshake_buffer_size
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
-                       ierr)
+        call MPI_Bcast(max_proc,ONE_INTEGER_MPI,MPIU_INTEGER,option%io_rank, &
+                       option%mycomm,ierr)
       endif
 #endif      
-      call MPI_Probe(iproc,MPI_ANY_TAG,option%mycomm,status,ierr)
-      recv_size = status(MPI_TAG)
+      call MPI_Probe(iproc_mpi,MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
+      recv_size_mpi = status_mpi(MPI_TAG)
       if (datatype == 0) then
-        call MPI_Recv(integer_data_recv,recv_size,MPI_INTEGER,iproc, &
-                      MPI_ANY_TAG,option%mycomm,status,ierr)
-        if (recv_size > 0) then
-          integer_data(num_in_array+1:num_in_array+recv_size) = &
-                                             integer_data_recv(1:recv_size)
-          num_in_array = num_in_array+recv_size
+        call MPI_Recv(integer_data_recv,recv_size_mpi,MPIU_INTEGER,iproc_mpi, &
+                      MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
+        if (recv_size_mpi > 0) then
+          integer_data(num_in_array+1:num_in_array+recv_size_mpi) = &
+                                             integer_data_recv(1:recv_size_mpi)
+          num_in_array = num_in_array+recv_size_mpi
         endif
         iend = 0
         do
@@ -2190,12 +2163,12 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
           num_in_array = num_in_array-iend
         endif
       else
-        call MPI_Recv(real_data_recv,recv_size,MPI_DOUBLE_PRECISION,iproc, &
-                      MPI_ANY_TAG,option%mycomm,status,ierr)
-        if (recv_size > 0) then
-          real_data(num_in_array+1:num_in_array+recv_size) = &
-                                             real_data_recv(1:recv_size)
-          num_in_array = num_in_array+recv_size
+        call MPI_Recv(real_data_recv,recv_size_mpi,MPI_DOUBLE_PRECISION,iproc_mpi, &
+                      MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
+        if (recv_size_mpi > 0) then
+          real_data(num_in_array+1:num_in_array+recv_size_mpi) = &
+                                             real_data_recv(1:recv_size_mpi)
+          num_in_array = num_in_array+recv_size_mpi
         endif
         iend = 0
         do
@@ -2213,8 +2186,8 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
 #ifdef HANDSHAKE    
     if (option%io_handshake_buffer_size > 0) then
       max_proc = -1
-      call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
-                     ierr)
+      call MPI_Bcast(max_proc,ONE_INTEGER_MPI,MPIU_INTEGER,option%io_rank, &
+                     option%mycomm,ierr)
     endif
 #endif      
     ! Print the remaining values, if they exist
@@ -2230,22 +2203,22 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
     if (option%io_handshake_buffer_size > 0) then
       do
         if (option%myrank < max_proc) exit
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
+        call MPI_Bcast(max_proc,1,MPIU_INTEGER,option%io_rank,option%mycomm, &
                        ierr)
       enddo
     endif
 #endif    
     if (datatype == TECPLOT_INTEGER) then
-      call MPI_Send(integer_data,local_size,MPI_INTEGER,option%io_rank,local_size, &
-                    option%mycomm,ierr)
+      call MPI_Send(integer_data,local_size_mpi,MPIU_INTEGER,option%io_rank, &
+                    local_size_mpi,option%mycomm,ierr)
     else
-      call MPI_Send(real_data,local_size,MPI_DOUBLE_PRECISION,option%io_rank,local_size, &
-                    option%mycomm,ierr)
+      call MPI_Send(real_data,local_size_mpi,MPI_DOUBLE_PRECISION,option%io_rank, &
+                    local_size_mpi,option%mycomm,ierr)
     endif
 #ifdef HANDSHAKE    
     if (option%io_handshake_buffer_size > 0) then
       do
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
+        call MPI_Bcast(max_proc,1,MPIU_INTEGER,option%io_rank,option%mycomm, &
                        ierr)
         if (max_proc < 0) exit
       enddo
@@ -2259,9 +2232,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
     deallocate(real_data)
   endif
 
-  call PetscLogEventEnd(logging%event_output_write_tecplot, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+  call PetscLogEventEnd(logging%event_output_write_tecplot,ierr)    
 
 end subroutine WriteTecplotDataSet
 
@@ -2298,9 +2269,7 @@ subroutine OutputObservationTecplot(realization)
   PetscTruth, save :: open_file = PETSC_FALSE
   PetscInt :: local_id
 
-  call PetscLogEventBegin(logging%event_output_observation, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+  call PetscLogEventBegin(logging%event_output_observation,ierr)    
   
   patch => realization%patch
   grid => patch%grid
@@ -2414,9 +2383,7 @@ subroutine OutputObservationTecplot(realization)
 
   observation_first = PETSC_FALSE
   
-  call PetscLogEventEnd(logging%event_output_observation, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+  call PetscLogEventEnd(logging%event_output_observation,ierr)    
       
 end subroutine OutputObservationTecplot
 
@@ -2494,7 +2461,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
                '"sg '// trim(cell_string) // '",' // &
                '"Ul '// trim(cell_string) // '",' // &
                '"Ug '// trim(cell_string) // '",'
-    case (MPH_MODE)
+    case (MPH_MODE, FLASH2_MODE)
 !      string = ',"X [m] '// trim(cell_string) // '",' // &
 !               '"Y [m] '// trim(cell_string) // '",' // &
 !               '"Z [m] '// trim(cell_string) // '",' // &
@@ -2753,7 +2720,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
                '"sg '// trim(cell_string) // '",' // &
                '"Ul '// trim(cell_string) // '",' // &
                '"Ug '// trim(cell_string) // '",'
-    case (MPH_MODE)
+    case (MPH_MODE,FLASH2_MODE)
 !      string = ',"X [m] '// trim(cell_string) // '",' // &
 !               '"Y [m] '// trim(cell_string) // '",' // &
 !               '"Z [m] '// trim(cell_string) // '",' // &
@@ -2973,8 +2940,9 @@ subroutine WriteObservationHeaderForBC(fid,realization,coupler_name)
   reaction => realization%reaction
   
   select case(option%iflowmode)
-    case (MPH_MODE)
-    case (IMS_MODE)
+    case(FLASH2_MODE)
+    case(MPH_MODE)
+    case(IMS_MODE)
     case(THC_MODE)
     case(RICHARDS_MODE)
       string = ',"Darcy flux ' // trim(coupler_name) // &
@@ -3050,63 +3018,63 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   ! temperature
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,TEMPERATURE,ZERO_INTEGER,ghosted_id)
   end select
 
   ! pressure
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE)
+    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,PRESSURE,ZERO_INTEGER,ghosted_id)
   end select
 
   ! liquid saturation
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE)
+    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,LIQUID_SATURATION,ZERO_INTEGER,ghosted_id)
   end select
 
  ! gas saturation
   select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE)
+    case(MPH_MODE,IMS_MODE,FLASH2_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,GAS_SATURATION,ZERO_INTEGER,ghosted_id)
   end select
 
   ! liquid density
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,LIQUID_DENSITY,ZERO_INTEGER,ghosted_id)
   end select
 
   ! gas density
   select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE)
+    case(MPH_MODE,IMS_MODE,FLASH2_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,GAS_DENSITY,ZERO_INTEGER,ghosted_id)
   end select
 
   ! liquid energy
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,LIQUID_ENERGY,ZERO_INTEGER,ghosted_id)
   end select
 
   ! gas energy
   select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE)
+    case(MPH_MODE,IMS_MODE,FLASH2_MODE)
       write(fid,110,advance="no") &
         RealizGetDatasetValueAtCell(realization,GAS_ENERGY,ZERO_INTEGER,ghosted_id)
   end select
 
   ! liquid mole fractions
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE)
+    case(MPH_MODE,THC_MODE,FLASH2_MODE)
       do i=1,option%nflowspec
         write(fid,110,advance="no") &
           RealizGetDatasetValueAtCell(realization,LIQUID_MOLE_FRACTION,i,ghosted_id)
@@ -3115,7 +3083,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   ! gas mole fractions
   select case(option%iflowmode)
-    case(MPH_MODE)
+    case(MPH_MODE,FLASH2_MODE)
       do i=1,option%nflowspec
         write(fid,110,advance="no") &
           RealizGetDatasetValueAtCell(realization,GAS_MOLE_FRACTION,i,ghosted_id)
@@ -3124,7 +3092,7 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
 
   ! phase
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
       write(fid,111,advance="no") &
         int(RealizGetDatasetValueAtCell(realization,PHASE,ZERO_INTEGER,ghosted_id))
   end select
@@ -3362,7 +3330,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
   
   ! temperature
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,TEMPERATURE,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -3373,7 +3341,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! pressure
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE)
+    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,PRESSURE,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -3384,7 +3352,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! liquid saturation
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE)
+    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,LIQUID_SATURATION,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -3395,7 +3363,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! gas saturation
   select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE)
+    case(MPH_MODE,IMS_MODE,FLASH2_MODE)
       ! gas saturation
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,GAS_SATURATION,ZERO_INTEGER, &
@@ -3407,7 +3375,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! liquid density
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,LIQUID_DENSITY,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -3418,7 +3386,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! gas density
   select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE)
+    case(MPH_MODE,IMS_MODE,FLASH2_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,GAS_DENSITY,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -3429,7 +3397,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! liquid energy
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,LIQUID_ENERGY,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -3440,7 +3408,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! gas energy
   select case(option%iflowmode)
-    case(MPH_MODE,IMS_MODE)
+    case(MPH_MODE,IMS_MODE,FLASH2_MODE)
       write(fid,110,advance="no") &
         OutputGetVarFromArrayAtCoord(realization,GAS_ENERGY,ZERO_INTEGER, &
                                      region%coordinates(ONE_INTEGER)%x, &
@@ -3451,7 +3419,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! liquid mole fraction
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE)
+    case(MPH_MODE,THC_MODE,FLASH2_MODE)
       do i=1,option%nflowspec
         write(fid,110,advance="no") &
           OutputGetVarFromArrayAtCoord(realization,LIQUID_MOLE_FRACTION,i, &
@@ -3464,7 +3432,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
  ! gas mole fractions
   select case(option%iflowmode)
-    case(MPH_MODE)
+    case(MPH_MODE,FLASH2_MODE)
       do i=1,option%nflowspec
         write(fid,110,advance="no") &
           OutputGetVarFromArrayAtCoord(realization,GAS_MOLE_FRACTION,i, &
@@ -3477,7 +3445,7 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
 
   ! phase
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,IMS_MODE)
+    case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
       write(fid,111,advance="no") &
         int(OutputGetVarFromArrayAtCoord(realization,PHASE,ZERO_INTEGER, &
                                          region%coordinates(ONE_INTEGER)%x, &
@@ -3684,6 +3652,7 @@ subroutine WriteObservationDataForBC(fid,realization,patch,connection_set)
   PetscInt :: iconn
   PetscInt :: offset
   PetscInt :: iphase
+  PetscMPIInt :: int_mpi
   PetscReal :: sum_volumetric_flux(realization%option%nphase)
   PetscReal :: sum_volumetric_flux_global(realization%option%nphase)
   PetscReal :: sum_solute_flux(realization%option%ntrandof)
@@ -3707,7 +3676,7 @@ subroutine WriteObservationDataForBC(fid,realization,patch,connection_set)
   if (associated(connection_set)) then
     offset = connection_set%offset
     select case(option%iflowmode)
-      case(MPH_MODE,THC_MODE,IMS_MODE)
+      case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
       case(RICHARDS_MODE)
         sum_volumetric_flux = 0.d0
         if (associated(connection_set)) then
@@ -3717,8 +3686,9 @@ subroutine WriteObservationDataForBC(fid,realization,patch,connection_set)
                                   connection_set%area(iconn)
           enddo
         endif
+        int_mpi = option%nphase
         call MPI_Reduce(sum_volumetric_flux,sum_volumetric_flux_global, &
-                        option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                        int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                         option%io_rank,option%mycomm,ierr)
         if (option%myrank == option%io_rank) then
           do i = 1, option%nphase
@@ -3736,8 +3706,9 @@ subroutine WriteObservationDataForBC(fid,realization,patch,connection_set)
                                connection_set%area(iconn)
         enddo
       endif
+      int_mpi = option%ntrandof
       call MPI_Reduce(sum_solute_flux,sum_solute_flux_global, &
-                      option%ntrandof,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
       if (option%myrank == option%io_rank) then
         !we currently only print the aqueous components
@@ -4077,6 +4048,7 @@ subroutine OutputVTK(realization)
   use Field_module
   use Patch_module
   
+  use Flash2_module
   use Mphase_module
   use Immis_module
   use THC_module
@@ -4153,11 +4125,11 @@ subroutine OutputVTK(realization)
   write(IUNIT3,'(''CELL_DATA'',i8)') grid%nmax
 
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE)
+    case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
 
       ! temperature
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
           word = 'Temperature'
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -4166,7 +4138,7 @@ subroutine OutputVTK(realization)
 
       ! pressure
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
           word = 'Pressure'
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -4175,7 +4147,7 @@ subroutine OutputVTK(realization)
 
       ! phase
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE)
           word = 'Phase'
           call OutputGetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -4184,7 +4156,7 @@ subroutine OutputVTK(realization)
 
       ! liquid saturation
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
           word = 'Liquid_Saturation'
           call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -4193,7 +4165,7 @@ subroutine OutputVTK(realization)
 
       ! gas saturation
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE)
           word = 'Gas_Saturation'
           call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -4202,7 +4174,7 @@ subroutine OutputVTK(realization)
     
       ! liquid energy
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
           word = 'Liquid_Energy'
           call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -4211,7 +4183,7 @@ subroutine OutputVTK(realization)
     
      ! gas energy
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE)
           word = 'Gas_Energy'
           call OutputGetVarFromArray(realization,global_vec,GAS_ENERGY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
@@ -4219,7 +4191,7 @@ subroutine OutputVTK(realization)
       end select
 
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE)
+        case(MPH_MODE,THC_MODE,FLASH2_MODE)
           ! liquid mole fractions
           do i=1,option%nflowspec
             write(word,'(''Xl('',i2,'')'')') i
@@ -4230,7 +4202,7 @@ subroutine OutputVTK(realization)
       end select
   
       select case(option%iflowmode)
-        case(MPH_MODE)
+        case(MPH_MODE,FLASH2_MODE)
           ! gas mole fractions
           do i=1,option%nflowspec
             write(word,'(''Xg('',i2,'')'')') i
@@ -4296,7 +4268,7 @@ subroutine OutputVTK(realization)
       call OutputFluxVelocitiesVTK(realization,LIQUID_PHASE, &
                                           X_DIRECTION)
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE)
           call OutputFluxVelocitiesVTK(realization,GAS_PHASE, &
                                               X_DIRECTION)
       end select
@@ -4305,7 +4277,7 @@ subroutine OutputVTK(realization)
       call OutputFluxVelocitiesVTK(realization,LIQUID_PHASE, &
                                           Y_DIRECTION)
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE)
           call OutputFluxVelocitiesVTK(realization,GAS_PHASE, &
                                               Y_DIRECTION)
       end select
@@ -4314,7 +4286,7 @@ subroutine OutputVTK(realization)
       call OutputFluxVelocitiesVTK(realization,LIQUID_PHASE, &
                                           Z_DIRECTION)
       select case(option%iflowmode)
-        case(MPH_MODE,IMS_MODE)
+        case(MPH_MODE,IMS_MODE,FLASH2_MODE)
           call OutputFluxVelocitiesVTK(realization,GAS_PHASE, &
                                               Z_DIRECTION)
       end select
@@ -4523,9 +4495,7 @@ subroutine WriteVTKGrid(fid,realization)
 1000 format(es13.6,1x,es13.6,1x,es13.6)
 1001 format(i1,8(1x,i8))
   
-  call PetscLogEventBegin(logging%event_output_grid_vtk, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventBegin(logging%event_output_grid_vtk,ierr) 
                               
   patch => realization%patch
   grid => patch%grid
@@ -4595,9 +4565,7 @@ subroutine WriteVTKGrid(fid,realization)
     endif
   endif
 
-  call PetscLogEventEnd(logging%event_output_grid_vtk, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventEnd(logging%event_output_grid_vtk,ierr) 
                             
 end subroutine WriteVTKGrid
 
@@ -4660,10 +4628,11 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
   type(patch_type), pointer :: patch  
   PetscInt :: i
   PetscInt :: max_proc, max_proc_prefetch
-  PetscMPIInt :: iproc, recv_size
-  PetscInt :: max_local_size, local_size
+  PetscMPIInt :: iproc_mpi, recv_size_mpi
+  PetscInt :: max_local_size
+  PetscMPIInt :: local_size_mpi
   PetscInt :: istart, iend, num_in_array
-  PetscInt :: status(MPI_STATUS_SIZE)
+  PetscMPIInt :: status_mpi(MPI_STATUS_SIZE)
   PetscInt, allocatable :: integer_data(:), integer_data_recv(:)
   PetscReal, allocatable :: real_data(:), real_data_recv(:)
 
@@ -4674,9 +4643,7 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
   grid => patch%grid
   option => realization%option
 
-  call PetscLogEventBegin(logging%event_output_write_vtk, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+  call PetscLogEventBegin(logging%event_output_write_vtk,ierr)    
 
   ! maximum number of initial messages  
 #define HANDSHAKE  
@@ -4684,33 +4651,34 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
   max_proc_prefetch = option%io_handshake_buffer_size / 10
 
   if (size_flag /= 0) then
-    call MPI_Allreduce(size_flag,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
-                       option%mycomm,ierr)
-    local_size = size_flag
+    call MPI_Allreduce(size_flag,max_local_size,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                       MPI_MAX,option%mycomm,ierr)
+    local_size_mpi = size_flag
   else 
   ! if first time, determine the maximum size of any local array across 
   ! all procs
     if (max_local_size_saved < 0) then
-      call MPI_Allreduce(grid%nlmax,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
-                         option%mycomm,ierr)
+      call MPI_Allreduce(grid%nlmax,max_local_size,ONE_INTEGER_MPI, &
+                         MPIU_INTEGER,MPI_MAX,option%mycomm,ierr)
       max_local_size_saved = max_local_size
-      if (OptionPrintToScreen(option)) print *, 'max_local_size_saved: ', max_local_size
+      if (OptionPrintToScreen(option)) print *, 'max_local_size_saved: ', &
+                                                 max_local_size
     endif
     max_local_size = max_local_size_saved
-    local_size = grid%nlmax
+    local_size_mpi = grid%nlmax
   endif
   
   ! transfer the data to an integer or real array
   if (datatype == VTK_INTEGER) then
     allocate(integer_data(max_local_size+10))
     allocate(integer_data_recv(max_local_size))
-    do i=1,local_size
+    do i=1,local_size_mpi
       integer_data(i) = int(array(i))
     enddo
   else
     allocate(real_data(max_local_size+10))
     allocate(real_data_recv(max_local_size))
-    do i=1,local_size
+    do i=1,local_size_mpi
       real_data(i) = array(i)
     enddo
   endif
@@ -4734,43 +4702,43 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
       iend = 0
       do
         istart = iend+1
-        if (iend+10 > local_size) exit
+        if (iend+10 > local_size_mpi) exit
         iend = istart+9
         write(fid,1002) integer_data(istart:iend)
       enddo
       ! shift remaining data to front of array
-      integer_data(1:local_size-iend) = integer_data(iend+1:local_size)
-      num_in_array = local_size-iend
+      integer_data(1:local_size_mpi-iend) = integer_data(iend+1:local_size_mpi)
+      num_in_array = local_size_mpi-iend
     else
       iend = 0
       do
         istart = iend+1
-        if (iend+10 > local_size) exit
+        if (iend+10 > local_size_mpi) exit
         iend = istart+9
         write(fid,1001) real_data(istart:iend)
       enddo
       ! shift remaining data to front of array
-      real_data(1:local_size-iend) = real_data(iend+1:local_size)
-      num_in_array = local_size-iend
+      real_data(1:local_size_mpi-iend) = real_data(iend+1:local_size_mpi)
+      num_in_array = local_size_mpi-iend
     endif
-    do iproc=1,option%mycommsize-1
+    do iproc_mpi=1,option%mycommsize-1
 #ifdef HANDSHAKE    
       if (option%io_handshake_buffer_size > 0 .and. &
-          iproc+max_proc_prefetch >= max_proc) then
+          iproc_mpi+max_proc_prefetch >= max_proc) then
         max_proc = max_proc + option%io_handshake_buffer_size
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
-                       ierr)
+        call MPI_Bcast(max_proc,ONE_INTEGER_MPI,MPIU_INTEGER,option%io_rank, &
+                       option%mycomm,ierr)
       endif
 #endif      
-      call MPI_Probe(iproc,MPI_ANY_TAG,option%mycomm,status,ierr)
-      recv_size = status(MPI_TAG)
+      call MPI_Probe(iproc_mpi,MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
+      recv_size_mpi = status_mpi(MPI_TAG)
       if (datatype == 0) then
-        call MPI_Recv(integer_data_recv,recv_size,MPI_INTEGER,iproc, &
-                      MPI_ANY_TAG,option%mycomm,status,ierr)
-        if (recv_size > 0) then
-          integer_data(num_in_array+1:num_in_array+recv_size) = &
-                                             integer_data_recv(1:recv_size)
-          num_in_array = num_in_array+recv_size
+        call MPI_Recv(integer_data_recv,recv_size_mpi,MPIU_INTEGER,iproc_mpi, &
+                      MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
+        if (recv_size_mpi > 0) then
+          integer_data(num_in_array+1:num_in_array+recv_size_mpi) = &
+                                             integer_data_recv(1:recv_size_mpi)
+          num_in_array = num_in_array+recv_size_mpi
         endif
         iend = 0
         do
@@ -4784,12 +4752,12 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
           num_in_array = num_in_array-iend
         endif
       else
-        call MPI_Recv(real_data_recv,recv_size,MPI_DOUBLE_PRECISION,iproc, &
-                      MPI_ANY_TAG,option%mycomm,status,ierr)
-        if (recv_size > 0) then
-          real_data(num_in_array+1:num_in_array+recv_size) = &
-                                             real_data_recv(1:recv_size)
-          num_in_array = num_in_array+recv_size
+        call MPI_Recv(real_data_recv,recv_size_mpi,MPI_DOUBLE_PRECISION,iproc_mpi, &
+                      MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
+        if (recv_size_mpi > 0) then
+          real_data(num_in_array+1:num_in_array+recv_size_mpi) = &
+                                             real_data_recv(1:recv_size_mpi)
+          num_in_array = num_in_array+recv_size_mpi
         endif
         iend = 0
         do
@@ -4807,8 +4775,8 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
 #ifdef HANDSHAKE    
     if (option%io_handshake_buffer_size > 0) then
       max_proc = -1
-      call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
-                     ierr)
+      call MPI_Bcast(max_proc,ONE_INTEGER_MPI,MPIU_INTEGER,option%io_rank, &
+                     option%mycomm,ierr)
     endif
 #endif      
     ! Print the remaining values, if they exist
@@ -4825,23 +4793,23 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
     if (option%io_handshake_buffer_size > 0) then
       do
         if (option%myrank < max_proc) exit
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
-                       ierr)
+        call MPI_Bcast(max_proc,ONE_INTEGER_MPI,MPIU_INTEGER,option%io_rank, &
+                       option%mycomm,ierr)
       enddo
     endif
 #endif    
     if (datatype == VTK_INTEGER) then
-      call MPI_Send(integer_data,local_size,MPI_INTEGER,option%io_rank, &
-                    local_size,option%mycomm,ierr)
+      call MPI_Send(integer_data,local_size_mpi,MPIU_INTEGER,option%io_rank, &
+                    local_size_mpi,option%mycomm,ierr)
     else
-      call MPI_Send(real_data,local_size,MPI_DOUBLE_PRECISION,option%io_rank, &
-                    local_size,option%mycomm,ierr)
+      call MPI_Send(real_data,local_size_mpi,MPI_DOUBLE_PRECISION,option%io_rank, &
+                    local_size_mpi,option%mycomm,ierr)
     endif
 #ifdef HANDSHAKE    
     if (option%io_handshake_buffer_size > 0) then
       do
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,option%io_rank,option%mycomm, &
-                       ierr)
+        call MPI_Bcast(max_proc,ONE_INTEGER_MPI,MPIU_INTEGER,option%io_rank, &
+                       option%mycomm,ierr)
         if (max_proc < 0) exit
       enddo
     endif
@@ -4854,9 +4822,7 @@ subroutine WriteVTKDataSet(fid,realization,dataset_name,array,datatype, &
     deallocate(real_data)
   endif
 
-  call PetscLogEventEnd(logging%event_output_write_vtk, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+  call PetscLogEventEnd(logging%event_output_write_vtk,ierr)    
 
 end subroutine WriteVTKDataSet
 
@@ -4985,7 +4951,7 @@ subroutine OutputHDF5(realization)
      call h5open_f(hdf5_err)
 
 #ifdef VAMSI_HDF5_WRITE
-   if (mod(option%global_rank,write_bcast_size) == 0) then 
+   if (mod(option%myrank,option%hdf5_write_group_size) == 0) then 
 #endif
 
      call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
@@ -5079,6 +5045,8 @@ subroutine OutputHDF5(realization)
      select case(option%iflowmode)
         case(RICHARDS_MODE)
            nviz_flow = 2
+       case(FLASH2_MODE)
+           nviz_flow = 7+2*option%nflowspec
         case(MPH_MODE)
            nviz_flow = 7+2*option%nflowspec
         case(IMS_MODE)
@@ -5126,12 +5094,12 @@ subroutine OutputHDF5(realization)
 
   select case(option%iflowmode)
   
-    case(MPH_MODE,THC_MODE, IMS_MODE,&
+    case(FLASH2_MODE, MPH_MODE,THC_MODE, IMS_MODE,&
          RICHARDS_MODE)
 
       ! temperature
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,IMS_MODE)
+        case (MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           if(.not.(option%use_samr)) then
              string = "Temperature"
@@ -5147,7 +5115,7 @@ subroutine OutputHDF5(realization)
 
       ! pressure
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE)
+        case (MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           if(.not.(option%use_samr)) then
              string = "Pressure"
@@ -5163,7 +5131,7 @@ subroutine OutputHDF5(realization)
 
       ! liquid saturation
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE)
+        case (MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           if(.not.(option%use_samr)) then
              string = "Liquid Saturation"
@@ -5179,7 +5147,7 @@ subroutine OutputHDF5(realization)
 
       ! gas saturation
       select case(option%iflowmode)
-        case (MPH_MODE,IMS_MODE)
+        case (MPH_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           if(.not.(option%use_samr)) then
              string = "Gas Saturation"
@@ -5195,7 +5163,7 @@ subroutine OutputHDF5(realization)
       
       ! liquid density
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,IMS_MODE)
+        case (MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
           if(.not.(option%use_samr)) then
              string = "Liquid Density"
@@ -5211,7 +5179,7 @@ subroutine OutputHDF5(realization)
       
       ! gas density
       select case(option%iflowmode)
-        case (MPH_MODE,IMS_MODE)
+        case (MPH_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_DENSITY,ZERO_INTEGER)
           if(.not.(option%use_samr)) then
              string = "Gas Density"
@@ -5227,7 +5195,7 @@ subroutine OutputHDF5(realization)
       
       ! liquid energy
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,IMS_MODE)
+        case (MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           if(.not.(option%use_samr)) then
              string = "Liquid Energy"
@@ -5243,7 +5211,7 @@ subroutine OutputHDF5(realization)
       
       ! gas energy
       select case(option%iflowmode)
-        case (MPH_MODE,IMS_MODE)    
+        case (MPH_MODE,IMS_MODE,FLASH2_MODE)    
           call OutputGetVarFromArray(realization,global_vec,GAS_ENERGY,ZERO_INTEGER)
           if(.not.(option%use_samr)) then
              string = "Gas Energy"
@@ -5259,7 +5227,7 @@ subroutine OutputHDF5(realization)
     
       ! liquid mole fractions
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,IMS_MODE)
+        case (MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
           do i=1,option%nflowspec
             call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
             if(.not.(option%use_samr)) then
@@ -5277,7 +5245,7 @@ subroutine OutputHDF5(realization)
       
       ! gas mole fractions
       select case(option%iflowmode)
-        case (MPH_MODE,IMS_MODE)      
+        case (MPH_MODE,IMS_MODE,FLASH2_MODE)      
           do i=1,option%nflowspec
              call OutputGetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i)
              if(.not.(option%use_samr)) then
@@ -5302,7 +5270,7 @@ subroutine OutputHDF5(realization)
 #endif    
       ! phase
       select case(option%iflowmode)
-        case (MPH_MODE,IMS_MODE)
+        case (MPH_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
           if (.not.(option%use_samr)) then
             string = "Phase"
@@ -5672,7 +5640,7 @@ subroutine OutputHDF5(realization)
 
   if(.not.(option%use_samr)) then
 #ifdef VAMSI_HDF5_WRITE
-    if (mod(option%global_rank,write_bcast_size) == 0) then 
+    if (mod(option%myrank,option%hdf5_write_group_size) == 0) then 
 #endif
        call h5gclose_f(grp_id,hdf5_err)
        call h5fclose_f(file_id,hdf5_err)
@@ -5909,17 +5877,20 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
     if (grid%structured_grid%ngxe-grid%structured_grid%nxe == 0) then
       nx_local = grid%structured_grid%nlx-1
     endif
-    call MPI_Allreduce(nx_local,i,ONE_INTEGER,MPI_INTEGER,MPI_MIN,option%mycomm,ierr)
+    call MPI_Allreduce(nx_local,i,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MIN, &
+                       option%mycomm,ierr)
     if (i == 0) trick_flux_vel_x = PETSC_TRUE
     if (grid%structured_grid%ngye-grid%structured_grid%nye == 0) then
       ny_local = grid%structured_grid%nly-1
     endif
-    call MPI_Allreduce(ny_local,j,ONE_INTEGER,MPI_INTEGER,MPI_MIN,option%mycomm,ierr)
+    call MPI_Allreduce(ny_local,j,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MIN, &
+                       option%mycomm,ierr)
     if (j == 0) trick_flux_vel_y = PETSC_TRUE
     if (grid%structured_grid%ngze-grid%structured_grid%nze == 0) then
       nz_local = grid%structured_grid%nlz-1
     endif
-    call MPI_Allreduce(nz_local,k,ONE_INTEGER,MPI_INTEGER,MPI_MIN,option%mycomm,ierr)
+    call MPI_Allreduce(nz_local,k,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MIN, &
+                       option%mycomm,ierr)
     if (k == 0) trick_flux_vel_z = PETSC_TRUE
   endif
 
@@ -6028,12 +5999,10 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   integer(HSIZE_T) :: dims(3)
   PetscMPIInt :: rank
   
-  call PetscLogEventBegin(logging%event_output_coordinates_hdf5, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventBegin(logging%event_output_coordinates_hdf5,ierr) 
 
 #ifdef VAMSI_HDF5_WRITE
-  if (mod(option%global_rank,write_bcast_size) == 0) then
+  if (mod(option%myrank,option%hdf5_write_group_size) == 0) then
 #endif
                             
   ! write out grid structure
@@ -6052,14 +6021,10 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err) ! must be independent and only from p0
 #endif
   if (option%myrank == option%io_rank) then
-     call PetscLogEventBegin(logging%event_h5dwrite_f, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)     
+     call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)     
      call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,array,dims, &
                     hdf5_err,H5S_ALL_F,H5S_ALL_F,prop_id)
-     call PetscLogEventEnd(logging%event_h5dwrite_f, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+     call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)
   endif
   call h5pclose_f(prop_id,hdf5_err)
   call h5dclose_f(data_set_id,hdf5_err)
@@ -6069,9 +6034,7 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   endif
 #endif
 
-  call PetscLogEventEnd(logging%event_output_coordinates_hdf5, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventEnd(logging%event_output_coordinates_hdf5,ierr) 
 
 end subroutine WriteHDF5Coordinates
 #endif
@@ -6241,15 +6204,11 @@ subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar)
   PetscInt :: ivar
   PetscInt :: isubvar
 
-  call PetscLogEventBegin(logging%event_output_get_var_from_array, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventBegin(logging%event_output_get_var_from_array,ierr) 
                         
   call RealizationGetDataset(realization,vec,ivar,isubvar)
 
-  call PetscLogEventEnd(logging%event_output_get_var_from_array, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventEnd(logging%event_output_get_var_from_array,ierr) 
   
 end subroutine OutputGetVarFromArray
 
@@ -6297,9 +6256,7 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
 
-  call PetscLogEventBegin(logging%event_output_get_cell_vel, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventBegin(logging%event_output_get_cell_vel,ierr) 
                             
   patch => realization%patch
   grid => patch%grid
@@ -6370,9 +6327,7 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
 
   deallocate(sum_area)
 
-  call PetscLogEventEnd(logging%event_output_get_cell_vel, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+  call PetscLogEventEnd(logging%event_output_get_cell_vel,ierr) 
 
 end subroutine GetCellCenteredVelocities
 
@@ -6626,6 +6581,7 @@ subroutine OutputMassBalance(realization)
     select case(option%iflowmode)
       case (MPH_MODE)
       case (IMS_MODE)
+      case (FLASH2_MODE)
       case(THC_MODE)
         string2 = '"Water [kg]","Solute [mol]","Energy []"'
       case(RICHARDS_MODE)
@@ -6706,7 +6662,7 @@ subroutine OutputMassBalance(realization)
 #if 0
       ! water mass
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -6714,7 +6670,7 @@ subroutine OutputMassBalance(realization)
 
       ! solute mass
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -6722,7 +6678,7 @@ subroutine OutputMassBalance(realization)
 
       ! energy
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -6787,6 +6743,7 @@ subroutine OutputMassBalanceNew(realization)
   PetscReal :: sum_mol(realization%option%ntrandof,realization%option%nphase)
   PetscReal :: sum_mol_global(realization%option%ntrandof,realization%option%nphase)
   PetscTruth :: local_first
+  PetscMPIInt :: int_mpi
   
   patch => realization%patch
   grid => patch%grid
@@ -6928,8 +6885,9 @@ subroutine OutputMassBalanceNew(realization)
   if (option%nflowdof > 0) then
     sum_kg = 0.d0
     call RichardsComputeMassBalance(realization,sum_kg)
+    int_mpi = option%nphase
     call MPI_Reduce(sum_kg,sum_kg_global, &
-                    option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                    int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                     option%io_rank,option%mycomm,ierr)
                         
     if (option%myrank == option%io_rank) then
@@ -6940,7 +6898,8 @@ subroutine OutputMassBalanceNew(realization)
   if (option%ntrandof > 0) then
     sum_mol = 0.d0
     call RTComputeMassBalance(realization,sum_mol)
-    call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*option%ntrandof, &
+    int_mpi = option%nphase*option%ntrandof
+    call MPI_Reduce(sum_mol,sum_mol_global,int_mpi, &
                     MPI_DOUBLE_PRECISION,MPI_SUM, &
                     option%io_rank,option%mycomm,ierr)
 
@@ -6983,7 +6942,7 @@ subroutine OutputMassBalanceNew(realization)
       enddo
 
       call MPI_Reduce(sum_area,sum_area_global, &
-                      FOUR_INTEGER,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      FOUR_INTEGER_MPI,MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
                           
       if (option%myrank == option%io_rank) then
@@ -7012,8 +6971,9 @@ subroutine OutputMassBalanceNew(realization)
         sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance
       enddo
 
+      int_mpi = option%nphase
       call MPI_Reduce(sum_kg,sum_kg_global, &
-                      option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
                           
       if (option%myrank == option%io_rank) then
@@ -7029,8 +6989,9 @@ subroutine OutputMassBalanceNew(realization)
       ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
       sum_kg = sum_kg*FMWH2O
 
+      int_mpi = option%nphase
       call MPI_Reduce(sum_kg,sum_kg_global, &
-                      option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
                           
       if (option%myrank == option%io_rank) then
@@ -7047,7 +7008,8 @@ subroutine OutputMassBalanceNew(realization)
         sum_mol = sum_mol + rt_aux_vars_bc(offset+iconn)%mass_balance
       enddo
 
-      call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*option%ntrandof, &
+      int_mpi = option%nphase*option%ntrandof
+      call MPI_Reduce(sum_mol,sum_mol_global,int_mpi, &
                       MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
 
@@ -7068,7 +7030,8 @@ subroutine OutputMassBalanceNew(realization)
         sum_mol = sum_mol + rt_aux_vars_bc(offset+iconn)%mass_balance_delta 
       enddo
 
-      call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*option%ntrandof, &
+      int_mpi = option%nphase*option%ntrandof
+      call MPI_Reduce(sum_mol,sum_mol_global,int_mpi, &
                       MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
                       
@@ -7098,8 +7061,9 @@ subroutine OutputMassBalanceNew(realization)
       sum_kg = 0.d0
       sum_kg = sum_kg + patch%aux%Global%aux_vars(iconn)%mass_balance
 
+      int_mpi = option%nphase
       call MPI_Reduce(sum_kg,sum_kg_global, &
-                      option%nphase,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                      int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
                           
       if (option%myrank == option%io_rank) then
@@ -7113,7 +7077,8 @@ subroutine OutputMassBalanceNew(realization)
       sum_mol = 0.d0
       sum_mol = sum_mol + patch%aux%RT%aux_vars(iconn)%mass_balance
 
-      call MPI_Reduce(sum_mol,sum_mol_global,option%nphase*option%ntrandof, &
+      int_mpi = option%nphase*option%ntrandof
+      call MPI_Reduce(sum_mol,sum_mol_global,int_mpi, &
                       MPI_DOUBLE_PRECISION,MPI_SUM, &
                       option%io_rank,option%mycomm,ierr)
 

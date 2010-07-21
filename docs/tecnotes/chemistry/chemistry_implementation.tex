@@ -2919,10 +2919,10 @@ which in turn requires that $\bi_e\!=\!\boldsymbol 0$. This will be the case if 
 
 \section{Dual Continuum Connected Matrix (DCCM)}
 
-For a dual continuum model with continua $\a$ and $\b$, and with multirate sorption and mineral precipitation and dissolution the transport equations read
+For a dual continuum model with primary continuum $\a$ and secondary continua denoted by $\b$, and with multirate sorption and mineral precipitation and dissolution the transport equations read
 \begin{subequations}
 \EQ\label{acont}
-\frac{\p}{\p t} \varphi_\a\Psi_j^\a + \bnabla\cdot\bOmega_j^\a \eq - \Gamma_{\a\b} \big(\Psi_j^\a - \Psi_j^\b\big) -\sum_{il}\nu_{ji} \frac{\p S_{il}^\a}{\p t} -\sum_m\nu_{jm}I_m^\a,
+\frac{\p}{\p t} \varphi_\a\Psi_j^\a + \bnabla\cdot\bOmega_j^\a \eq - \sum_\b\Gamma_{\a\b} \big(\Psi_j^\a - \Psi_j^\b\big) -\sum_{il}\nu_{ji} \frac{\p S_{il}^\a}{\p t} -\sum_m\nu_{jm}I_m^\a,
 \EN
 for the primary continuum, and
 \EQ
@@ -2944,9 +2944,11 @@ and mineral mass transfer equations
 \frac{\p \varphi_m^{\a,\b}}{\p t} \eq \overline V_m^{-1} I_m^{\a,\b}.
 \EN
 Adding Eqns.\eqref{acont} and \eqref{bcont} eliminates the mass transfer coupling term between continua
-\EQ
-\frac{\p}{\p t} \left(\varphi_\a\Psi_j^\a + \varphi_\b\Psi_j^\b \right) + \bnabla\cdot\bOmega_j^\a \eq -\sum_{il}\nu_{ji}\left(\frac{\p S_{il}^\a}{\p t} + \frac{\p S_{il}^\b}{\p t}\right) -\sum_m\nu_{jm}\big(I_m^\a + I_m^\b\big).
-\EN
+\BA
+\frac{\p}{\p t} \left(\varphi_\a\Psi_j^\a + \sum_\b\varphi_\b\Psi_j^\b \right) + \bnabla\cdot\bOmega_j^\a \eq -\sum_{il}\nu_{ji}&\left(\frac{\p S_{il}^\a}{\p t} + \sum_\b\frac{\p S_{il}^\b}{\p t}\right)\nonumber\\
+& -\sum_m\nu_{jm}\big(I_m^\a + \sum_\b I_m^\b\big).
+\EA
+As can be seen from the form of this equation it is not possible to eliminate the secondary continua variables.
 
 \subsection{Numerical Implementation}
 
@@ -3580,7 +3582,7 @@ Several different choices can be made for $\bomega_\a$ and the weight coefficien
 
 The molar volume $\bar V_k^\a\!=\!\p V/\p n_k^\a$ satisfies the constraint
 \EQ
-\sum_k x_k^{\a} \bar V_k^\a \eq 1.
+\sum_k C_k^{\a} \bar V_k^\a \eq 1.
 \EN
 
 \begin{table}[t]\centering
@@ -3642,7 +3644,7 @@ Introducing
 \EN
 and multiplying through by $W_k$, Eqn.\eqref{trans1} becomes
 \EQ\label{trans2}
-~_{\bu}^{}\widetilde\bJ_k^\a \eq W_k^{} ~_{\bu}^{}\bJ_k^\a \eq ~_{\bv}^{}\widetilde\bJ_k^\a - x_k^\a W_k \sum_i W_i^{-1} ~_{\bv}^{}\widetilde\bJ_i^\a.
+~_{\bu}^{}\widetilde\bJ_k^\a \eq W_k^{} ~_{\bu}^{}\bJ_k^\a \eq ~_{\bv}^{}\widetilde\bJ_k^\a - x_k^\a W_k^{} \sum_i W_i^{-1} ~_{\bv}^{}\widetilde\bJ_i^\a.
 \EN
 Kee et al. (2003) relate the molecular and mass diffusive fluxes to Fick's law according to the relations
 \begin{subequations}
@@ -3717,10 +3719,13 @@ An alternative form of the mass conservation equations Eqn.\eqref{genmass} that 
 \EN
 The energy conservation equation can be written in the form
 \EQ
-\sum_\a\left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a U_\a\big) + \bnabla\cdot\big(\bq_\a \rho_\a H_\a\big) \right\} + \frac{\p}{\p t} \big(\rho_r C_p T \big) - \bnabla\cdot\big(\kappa\bnabla T\big) \eq Q,
+\sum_\a\left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a U_\a\big) + \bnabla\cdot\big(\bq_\a \rho_\a H_\a\big) \right\} + \frac{\p}{\p t} \big((1-\varphi)\rho_r C_p T \big) - \bnabla\cdot\big(\kappa\bnabla T\big) \eq Q,
 \EN
 as the sum of contributions from different fluid phases and rock,
-with internal energy $U_\a$ and enthalpy $H_\a$ of fluid phase $\a$, and rock heat capacity $C_p$ and thermal conductivity $\kappa$.
+with internal energy $U_\a$ and enthalpy $H_\a$ of fluid phase $\a$, and rock heat capacity $C_p$ and thermal conductivity $\kappa$. Note that
+\EQ
+U_\a \eq H_\a -\frac{P_\a}{\rho_\a}.
+\EN
 
 The residual function for mass conservation has the form
 \EQ

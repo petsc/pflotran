@@ -1,4 +1,4 @@
-//
+ //
 // $Id: test_gradient.C 1832 2005-08-23 21:10:00Z bphilip $
 // $Revision: 1832 $
 // $Date: 2005-08-23 15:10:00 -0600 (Tue, 23 Aug 2005) $
@@ -80,7 +80,7 @@ int main( int argc, char *argv[] )
    string input_file;
    string log_file;
    bool is_from_restart = false;
-  
+   std::string pflotran_filename;
    tbox::Pointer<hier::PatchHierarchy<NDIM> > hierarchy;
 
    __argc_save = argc;
@@ -109,11 +109,11 @@ int main( int argc, char *argv[] )
    tbox::Pointer<tbox::Database> input_db = new tbox::InputDatabase("input_db");
    tbox::InputManager::getManager()->parseInputFile(input_file, input_db);
 
- 
    tbox::Pointer<tbox::Database> app_database = input_db->getDatabase("PflotranApplicationStrategy");
 
    int mode =  app_database->getInteger("DriverMode");
-
+   pflotran_filename=input_db->getStringWithDefault("pflotran_filename", "pflotran_well.in");
+   
    PflotranApplicationStrategy *pflotranApplication = NULL;
 
    /*
@@ -131,62 +131,65 @@ int main( int argc, char *argv[] )
    }
 
    input_db->getDatabase("TimerManager")->printClassData(tbox::plog);
-
+   
+   BogusTagAndInitStrategy* test_object=NULL;
+   
    if(mode==1)
-   {
-
-      /*
-      * Create an application object.  Some TagAndInitStrategy must be
-      * provided in order to build an object that specifies cells that
-      * need refinement.  Here an empty object is provided, since a
-      * prescribed set of refinement regions are read in from the input
-      * file; it would be a useful exercise to fill in the
-      * applyGradientDetector method and to generate custom refinement
-      * regions.
-      */
-      BogusTagAndInitStrategy* test_object = new BogusTagAndInitStrategy();
-      
-      /*
-      * Create the AMR hierarchy and initialize it
-      */
-      initializeAMRHierarchy(input_db,
-                             test_object,
-                             hierarchy);
-
-      tbox::Pointer<geom::CartesianGridGeometry<NDIM> > grid_geometry = hierarchy->getGridGeometry();
-      
-      pdat::CCellDoubleConstantRefine<NDIM> *ccell_const_refine_op = new pdat::CCellDoubleConstantRefine<NDIM>();
-      grid_geometry->addSpatialRefineOperator(ccell_const_refine_op);
-
-      geom::CartesianCCellDoubleWeightedAverage<NDIM> *ccell_cons_coarsen_op = new geom::CartesianCCellDoubleWeightedAverage<NDIM>();
-      grid_geometry->addSpatialCoarsenOperator(ccell_cons_coarsen_op);
-
-      geom::CartesianCSideDoubleWeightedAverage<NDIM> *cside_cons_coarsen_op = new geom::CartesianCSideDoubleWeightedAverage<NDIM>();
-      grid_geometry->addSpatialCoarsenOperator(cside_cons_coarsen_op);
-
-      geom::CartesianCCellDoubleSum<NDIM> *ccell_sum_coarsen_op = new geom::CartesianCCellDoubleSum<NDIM>();
-      grid_geometry->addSpatialCoarsenOperator(ccell_sum_coarsen_op);
-
-      geom::CartesianCSideDoubleSum<NDIM> *cside_sum_coarsen_op = new geom::CartesianCSideDoubleSum<NDIM>();
-      grid_geometry->addSpatialCoarsenOperator(cside_sum_coarsen_op);
-
-      PflotranApplicationParameters *params  =new PflotranApplicationParameters(app_database);
-      params->d_hierarchy = hierarchy;
-
-      pflotranApplication = new PflotranApplicationStrategy(params);
-      
-      // create a RefinementBoundaryInterpolation object
-      RefinementBoundaryInterpolation *cf_interpolant = new RefinementBoundaryInterpolation(hierarchy);
-      cf_interpolant->setVariableOrderInterpolation(false);
-      
-      /*
-      * Add the RefinementBoundaryInterpolation object
-      */
-      pflotranApplication->setRefinementBoundaryInterpolant(cf_interpolant);
-   }
-
+     {
+       
+       /*
+	* Create an application object.  Some TagAndInitStrategy must be
+	* provided in order to build an object that specifies cells that
+	* need refinement.  Here an empty object is provided, since a
+	* prescribed set of refinement regions are read in from the input
+	* file; it would be a useful exercise to fill in the
+	* applyGradientDetector method and to generate custom refinement
+	* regions.
+	*/
+       test_object = new BogusTagAndInitStrategy();
+       
+       /*
+	* Create the AMR hierarchy and initialize it
+	*/
+       initializeAMRHierarchy(input_db,
+			      test_object,
+			      hierarchy);
+              
+       tbox::Pointer<geom::CartesianGridGeometry<NDIM> > grid_geometry = hierarchy->getGridGeometry();
+       
+       pdat::CCellDoubleConstantRefine<NDIM> *ccell_const_refine_op = new pdat::CCellDoubleConstantRefine<NDIM>();
+       grid_geometry->addSpatialRefineOperator(ccell_const_refine_op);
+       
+       geom::CartesianCCellDoubleWeightedAverage<NDIM> *ccell_cons_coarsen_op = new geom::CartesianCCellDoubleWeightedAverage<NDIM>();
+       grid_geometry->addSpatialCoarsenOperator(ccell_cons_coarsen_op);
+       
+       geom::CartesianCSideDoubleWeightedAverage<NDIM> *cside_cons_coarsen_op = new geom::CartesianCSideDoubleWeightedAverage<NDIM>();
+       grid_geometry->addSpatialCoarsenOperator(cside_cons_coarsen_op);
+       
+       geom::CartesianCCellDoubleSum<NDIM> *ccell_sum_coarsen_op = new geom::CartesianCCellDoubleSum<NDIM>();
+       grid_geometry->addSpatialCoarsenOperator(ccell_sum_coarsen_op);
+       
+       geom::CartesianCSideDoubleSum<NDIM> *cside_sum_coarsen_op = new geom::CartesianCSideDoubleSum<NDIM>();
+       grid_geometry->addSpatialCoarsenOperator(cside_sum_coarsen_op);
+       
+       PflotranApplicationParameters *params  =new PflotranApplicationParameters(app_database);
+       params->d_hierarchy = hierarchy;
+       
+       pflotranApplication = new PflotranApplicationStrategy(params);
+              
+       // create a RefinementBoundaryInterpolation object
+       RefinementBoundaryInterpolation *cf_interpolant = new RefinementBoundaryInterpolation(hierarchy);
+       cf_interpolant->setVariableOrderInterpolation(false);
+       
+       /*
+	* Add the RefinementBoundaryInterpolation object
+	*/
+       pflotranApplication->setRefinementBoundaryInterpolant(cf_interpolant);       
+     }
+   
    void *p_pflotran_sim = NULL;
-
+   void *p_realization = NULL;
+   
    /*
     * Initialize AMR hierarchy configuration and data on all patches
     * at initial time.  Close restart file after all simulation state
@@ -199,21 +202,28 @@ int main( int argc, char *argv[] )
 
    main_timer->start();
 
-
-   f_create_simulation_(&p_pflotran_sim, (void **)&pflotranApplication);
+   int slen=strlen(pflotran_filename.c_str());
+   f_create_simulation_(&p_pflotran_sim, &p_realization, (void **)&pflotranApplication, pflotran_filename.c_str(), &slen);
 
    f_initialize_simulation_(&p_pflotran_sim);
 
+   pflotranApplication->setRealization(p_realization);
+   pflotranApplication->setSimulation(p_pflotran_sim);
+   
+#if 1   
    f_stepper_run_(&p_pflotran_sim);
-
+#endif   
    /*
     * At conclusion of simulation, stop timer and deallocate objects.
     */
    main_timer->stop();
 
-
+   f_simulation_destroy_(&p_pflotran_sim);
+   
    tbox::TimerManager::getManager()->print();
 
+   //   if(pflotranApplication!=NULL)  delete pflotranApplication;
+   if(test_object) delete test_object;
    /* 
     * That's all, folks!
     */

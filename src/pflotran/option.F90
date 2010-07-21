@@ -28,18 +28,21 @@ module Option_module
 ! to crash.  Don't know why....
         
     PetscMPIInt :: io_rank
+    PetscMPIInt :: hdf5_read_group_size, hdf5_write_group_size
     PetscTruth :: broadcast_read
+    
+    PetscInt :: reactive_transport_coupling
 
 #ifdef VAMSI_HDF5_READ
-    MPI_Comm :: read_group,readers
-    PetscMPIInt :: read_grp_size,read_grp_rank,readers_size,readers_rank 
-    PetscInt :: read_bcast_size,rcolor,rkey,reader_color,reader_key
+    MPI_Comm :: read_group, readers
+    PetscMPIInt :: read_grp_size, read_grp_rank, readers_size, readers_rank 
+    PetscMPIInt :: rcolor, rkey, reader_color, reader_key
 #endif
 
 #ifdef VAMSI_HDF5_WRITE    
-    MPI_Comm :: write_group,writers
-    PetscMPIInt:: write_grp_size,write_grp_rank,writers_size,writers_rank
-    PetscInt :: write_bcast_size,wcolor,wkey,writer_color,writer_key
+    MPI_Comm :: write_group, writers
+    PetscMPIInt:: write_grp_size, write_grp_rank, writers_size, writers_rank
+    PetscMPIInt :: wcolor, wkey, writer_color, writer_key
 #endif	
 
     character(len=MAXSTRINGLENGTH) :: io_buffer
@@ -57,7 +60,12 @@ module Option_module
     ! 1 - FACE CENTERED
     PetscInt :: ivar_centering
     PetscTruth :: use_samr
-
+    ! the next variable is used by SAMR to determine
+    ! what dof the linear system in operator split mode   
+    ! needs to be formed for
+    PetscInt :: rt_idof
+    PetscInt :: samr_mode
+      
     PetscInt :: nphase
     PetscInt :: liquid_phase
     PetscInt :: gas_phase
@@ -236,7 +244,9 @@ module Option_module
             OptionPrintToScreen, &
             OptionPrintToFile, &
             OutputOptionDestroy, &
-            OptionInitRealization
+            OptionInitRealization, &
+            OptionMeanVariance, &
+            OptionMaxMinMeanVariance
 
 contains
 
@@ -301,6 +311,8 @@ subroutine OptionInitAll(option)
     
   option%broadcast_read = PETSC_FALSE
   option%io_rank = 0
+  option%hdf5_read_group_size = 0
+  option%hdf5_write_group_size = 0
 
 #ifdef VAMSI_HDF5_READ
   option%read_group = 0
@@ -309,7 +321,6 @@ subroutine OptionInitAll(option)
   option%read_grp_rank = 0
   option%readers_size = 0
   option%readers_rank = 0
-  option%read_bcast_size = 0
   option%rcolor = 0
   option%rkey = 0
   option%reader_color = 0
@@ -323,7 +334,6 @@ subroutine OptionInitAll(option)
   option%write_grp_rank = 0
   option%writers_size = 0
   option%writers_rank = 0
-  option%write_bcast_size = 0
   option%wcolor = 0
   option%wkey = 0
   option%writer_color = 0
@@ -375,6 +385,7 @@ subroutine OptionInitRealization(option)
   option%itranmode = NULL_MODE
   option%ntrandof = 0
   
+  option%reactive_transport_coupling = GLOBAL_IMPLICIT
   option%ivar_centering = CELL_CENTERED
   option%use_samr = PETSC_FALSE
 
@@ -577,6 +588,10 @@ subroutine OptionCheckCommandLine(option)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_mph", &
                            option_found, ierr)
   if (option_found) option%flowmode = "mph"                           
+  option_found = PETSC_FALSE
+  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_flash2", &
+                           option_found, ierr)
+  if (option_found) option%flowmode = "flash2"                           
  
  
   option_found = PETSC_FALSE
@@ -607,6 +622,7 @@ subroutine printErrMsg1(option)
     print *, 'ERROR: ' // trim(option%io_buffer)
     print *, 'Stopping!'
   endif    
+  call MPI_Barrier(option%mycomm,ierr)
   call PetscInitialized(petsc_initialized, ierr)
   if (petsc_initialized) call PetscFinalize(ierr)
   stop
@@ -635,6 +651,7 @@ subroutine printErrMsg2(option,string)
     print *, 'ERROR: ' // trim(string)
     print *, 'Stopping!'
   endif    
+  call MPI_Barrier(option%mycomm,ierr)
   call PetscInitialized(petsc_initialized, ierr)
   if (petsc_initialized) call PetscFinalize(ierr)
   stop
@@ -734,7 +751,8 @@ function OptionCheckTouch(option,filename)
 
   if (option%myrank == option%io_rank) &
     open(unit=fid,file=trim(filename),status='old',iostat=ios)
-  call MPI_Bcast(ios,1,MPI_INTEGER,option%io_rank,option%mycomm,ierr)
+  call MPI_Bcast(ios,ONE_INTEGER_MPI,MPIU_INTEGER,option%io_rank, &
+                 option%mycomm,ierr)
 
   if (ios == 0) then
     if (option%myrank == option%io_rank) close(fid,status='delete')
@@ -788,6 +806,79 @@ function OptionPrintToFile(option)
   endif
 
 end function OptionPrintToFile
+
+! ************************************************************************** !
+!
+! OptionMaxMinMeanVariance: Calculates the maximum, minumum, mean and 
+!                           optionally variance of a number across processor 
+!                           cores
+! author: Glenn Hammond
+! date: 06/01/10
+!
+! ************************************************************************** !
+subroutine OptionMaxMinMeanVariance(value,max,min,mean,variance, &
+                                    calculate_variance,option)
+
+  implicit none
+
+  type(option_type) :: option
+  PetscReal :: value
+  PetscReal :: max
+  PetscReal :: min
+  PetscReal :: mean
+  PetscReal :: variance
+  PetscTruth :: calculate_variance
+
+  PetscReal :: temp_real_in(2), temp_real_out(2)
+  PetscErrorCode :: ierr
+  
+  temp_real_in(1) = value
+  temp_real_in(2) = -1.d0*value
+  call MPI_Allreduce(temp_real_in,temp_real_out,TWO_INTEGER_MPI, &
+                     MPI_DOUBLE_PRECISION, &
+                     MPI_MAX,option%mycomm,ierr)
+  max = temp_real_out(1)
+  min = -1.d0*temp_real_out(2)
+  
+  call OptionMeanVariance(value,mean,variance,calculate_variance,option)
+  
+end subroutine OptionMaxMinMeanVariance
+
+! ************************************************************************** !
+!
+! OptionMeanVariance: Calculates the mean and optionally variance of a number
+!                     across processor cores
+! author: Glenn Hammond
+! date: 05/29/10
+!
+! ************************************************************************** !
+subroutine OptionMeanVariance(value,mean,variance,calculate_variance,option)
+
+  implicit none
+
+  type(option_type) :: option
+  PetscReal :: value
+  PetscReal :: mean
+  PetscReal :: variance
+  PetscTruth :: calculate_variance
+
+  PetscReal :: temp_real
+  PetscErrorCode :: ierr
+  
+  call MPI_Allreduce(value,temp_real,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+                     MPI_SUM,option%mycomm,ierr)
+  mean = temp_real / dble(option%mycommsize)
+  
+  if (calculate_variance) then
+    temp_real = value-mean
+    temp_real = temp_real*temp_real
+    call MPI_Allreduce(temp_real,variance,ONE_INTEGER_MPI, &
+                       MPI_DOUBLE_PRECISION, &
+                       MPI_SUM,option%mycomm,ierr)
+    variance = variance / dble(option%mycommsize)
+  endif
+  
+end subroutine OptionMeanVariance
 
 ! ************************************************************************** !
 !

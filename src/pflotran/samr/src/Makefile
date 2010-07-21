@@ -21,7 +21,7 @@
 ## Release:     $Name$
 ## Revision:    $Revision: 2854 $
 ## Modified:    $Date: 2006-08-23 15:10:50 -0600 (Wed, 23 Aug 2006) $
-## Description: makefile for application to test implicit/nonlinear solver
+## Description: makefile for application to test regridding
 ##
 BUILDTYPE :=$(shell echo "`uname -m`-`uname -s`")
  .SUFFIXES: .F90
@@ -57,8 +57,8 @@ ifndef jaguar
 HDF5_FLAGS = -I$(HDF5_INCLUDE) -I$(HDF5_LIB) -DUSE_HDF5
 HDF5_LIBS = -L$(HDF5_LIB) -lhdf5_fortran
 else
-HDF5_FFLAGS = $(HDF5_FLIB) -DUSE_HDF5
-HDF5_LIBS = -lhdf5_fortran -lhdf5 -lz -lsz
+#HDF5_FFLAGS = $(HDF5_FLIB) -DUSE_HDF5
+#HDF5_LIBS = -lhdf5_fortran -lhdf5 -lz -lsz
 endif
 
 CPPFLAGS_EXTRA += ${HDF5_FLAGS}
@@ -73,12 +73,14 @@ CXXFLAGS_EXTRA += -I${SAMRSOLVERS_HOME}/include
 
 
 PFLOTRAN_LDFLAGS = -L${AMRUTILITIES_HOME}/lib   
-PFLOTRAN_LDFLAGS += -L${SAMRSOLVERS_HOME}/lib   
+#PFLOTRAN_LDFLAGS += -L${SAMRSOLVERS_HOME}/lib -L${HOME}/packages/duma/duma_2_5_15   
+PFLOTRAN_LDFLAGS += -L${SAMRSOLVERS_HOME}/lib
 
 PFLOTRAN_LDLIBS = ${SAMRSOLVERS_HOME}/lib/libpreconditionerbase3d.a
 PFLOTRAN_LDLIBS += ${SAMRSOLVERS_HOME}/lib/libmlsolvers3d.a
 PFLOTRAN_LDLIBS += ${SAMRSOLVERS_HOME}/lib/liblinearops3d.a
 PFLOTRAN_LDLIBS += ${AMRUTILITIES_HOME}/lib/libAMRUtils3d.a
+#PFLOTRAN_LDLIBS += -lpflotranamr ${HOME}/packages/duma/duma_2_5_15/libduma.a  
 PFLOTRAN_LDLIBS += -lpflotranamr
 PFLOTRAN_LDLIBS += ${HDF5_LIBS}
 
@@ -102,7 +104,7 @@ F90OBJS = ${F90SRC:.F90=.o}
 ifndef jaguar
 FFLAGS		 = -g
 else
-FFLAGS += ${HDF5_FFLAGS}
+FFLAGS += ${HDF5_FFLAGS} 
 endif
 
 PFLOTRAN_LDFLAGS += -L${PFLOTRAN_DIR}
@@ -113,7 +115,8 @@ ifdef ABSOFT
 MYFLAGS = ${PETSCFLAGS} -I${PFLOTRAN_DIR} -g -p ${PFLOTRAN_DIR}
 LDLIBS_EXTRA += -lU77
 else
-MYFLAGS = ${PETSCFLAGS} -I${PFLOTRAN_DIR} -g
+MYFLAGS = ${PETSCFLAGS} -I${PFLOTRAN_DIR} -g   
+
 endif
 
 ifdef petscrel
@@ -123,21 +126,28 @@ else
 endif
 
 ifndef jaguar
-CXX=mpicxx
+#CXX=mpicxx
+else
+CXX=CC
 endif
 
-FPPFLAGS         = -g ${MYFLAGS} -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include
+#FPPFLAGS         = -g ${MYFLAGS} -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include
+FPPFLAGS         =  ${MYFLAGS} -I${PETSC_DIR}/include -I${PETSC_DIR}/${PETSC_ARCH}/include
 
 $(FORTOBJS):$(FORTM4SRC)
 	cd $(FORTDIR); ${MAKE}
 
 OBJS =${CXXOBJS} ${COBJS} ${F90OBJS} ${FORTOBJS}
+DRIVER_OBJS = $(filter-out ./SAMRAIStartup.o, $(OBJS))
 
 %.o: %.F90
 	${F90} -c ${FFLAGS} ${FC_FLAGS} ${FPPFLAGS} -o $@ $<
 
-SAMRAIDriver: SAMRAIDriver.o ${OBJS} ${PFLOTRAN_DIR}/libpflotranamr.a
-	$(CXX) -g ${OBJS} ${PFLOTRAN_LDLIBS} ${PFLOTRAN_LDFLAGS} $(LIBSAMRAI3D) $(LIBSAMRAI) ${LDFLAGS} ${LDLIBS} -o $@
+SAMRAIDriver: SAMRAIDriver.o ${DRIVER_OBJS} ${PFLOTRAN_DIR}/libpflotranamr.a
+	$(CXX) ${DRIVER_OBJS} ${PFLOTRAN_LDLIBS} ${PFLOTRAN_LDFLAGS} $(LIBSAMRAI3D) $(LIBSAMRAI) ${LDFLAGS} ${LDLIBS} -o $@ 
+
+SAMRAIStartup: SAMRAIStartup.o BogusTagAndInitStrategy.o
+	$(CXX) -g SAMRAIStartup.o BogusTagAndInitStrategy.o ${PFLOTRAN_LDLIBS} ${PFLOTRAN_LDFLAGS} $(LIBSAMRAI3D) $(LIBSAMRAI) ${LDFLAGS} ${LDLIBS} -o $@
 
 clean:
 	$(RM) SAMRAIDriver *.f core *~ *.mod

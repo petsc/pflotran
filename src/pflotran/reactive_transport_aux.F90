@@ -83,6 +83,16 @@ module Reactive_Transport_Aux_module
     PetscInt, pointer :: coll_spec_to_pri_spec(:)
     PetscReal :: dispersivity
     PetscReal, pointer :: diffusion_coefficient(:)
+#ifdef OS_STATISTICS
+! use PetscReal for large counts
+    PetscInt :: newton_call_count
+    PetscReal :: sum_newton_call_count
+    PetscInt :: newton_iterations
+    PetscReal :: sum_newton_iterations
+    PetscInt :: max_newton_iterations
+    PetscInt :: overall_max_newton_iterations
+#endif    
+
   end type reactive_transport_param_type
 
   ! Colloids
@@ -164,6 +174,14 @@ function RTAuxCreate(option)
   aux%rt_parameter%offset_collcomp = 0
   nullify(aux%rt_parameter%pri_spec_to_coll_spec)
   nullify(aux%rt_parameter%coll_spec_to_pri_spec)
+#ifdef OS_STATISTICS
+  aux%rt_parameter%newton_call_count = 0
+  aux%rt_parameter%sum_newton_call_count = 0.d0
+  aux%rt_parameter%newton_iterations = 0
+  aux%rt_parameter%sum_newton_iterations = 0.d0
+  aux%rt_parameter%max_newton_iterations = 0
+  aux%rt_parameter%overall_max_newton_iterations = 0
+#endif   
   RTAuxCreate => aux
   
 end function RTAuxCreate

@@ -2216,6 +2216,8 @@ subroutine BasisInit(reaction,option)
                                        reaction%nkinmnrl))
     reaction%kinmnrl_logKcoef = 0.d0
 #endif
+    allocate(reaction%kinmnrl_affinity_threshold(reaction%nkinmnrl))
+    reaction%kinmnrl_affinity_threshold = 0.d0
     allocate(reaction%kinmnrl_rate(1,reaction%nkinmnrl))
     reaction%kinmnrl_rate = 0.d0
     allocate(reaction%kinmnrl_molar_vol(reaction%nkinmnrl))
@@ -2289,6 +2291,8 @@ subroutine BasisInit(reaction,option)
                        reaction%kinmnrl_logK(ikinmnrl))
 !      reaction%kinmnrl_logK(imnrl) = cur_mineral%tstrxn%logK(option%itemp_ref)
 #endif
+        reaction%kinmnrl_affinity_threshold(ikinmnrl) = &
+          cur_mineral%tstrxn%affinity_threshold
         reaction%kinmnrl_rate(1,ikinmnrl) = cur_mineral%tstrxn%rate
         reaction%kinmnrl_molar_vol(ikinmnrl) = cur_mineral%molar_volume
         ikinmnrl = ikinmnrl + 1
@@ -2895,58 +2899,58 @@ subroutine BasisInit(reaction,option)
   do ispec = 1, reaction%naqcomp
     if (reaction%species_idx%h_ion_id == 0) then
       word = 'H+'
-      if (StringCompare(reaction%primary_species_names(ispec), &
+      if (StringCompareIgnoreCase(reaction%primary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
         reaction%species_idx%h_ion_id = ispec
       endif
     endif
     if (reaction%species_idx%na_ion_id == 0) then
       word = 'Na+'
-      if (StringCompare(reaction%primary_species_names(ispec), &
+      if (StringCompareIgnoreCase(reaction%primary_species_names(ispec), &
                           word,MAXWORDLENGTH)) then
         reaction%species_idx%na_ion_id = ispec
       endif
     endif
     if (reaction%species_idx%cl_ion_id == 0) then
       word = 'Cl-'
-      if (StringCompare(reaction%primary_species_names(ispec), &
-                          word,MAXWORDLENGTH)) then
+      if (StringCompareIgnoreCase(reaction%primary_species_names(ispec), &
+                                  word,MAXWORDLENGTH)) then
         reaction%species_idx%cl_ion_id = ispec
       endif
     endif
     if (reaction%species_idx%co2_aq_id == 0) then
       word = 'CO2(aq)'
-      if (StringCompare(reaction%primary_species_names(ispec), &
-                          word,MAXWORDLENGTH)) then
+      if (StringCompareIgnoreCase(reaction%primary_species_names(ispec), &
+                                  word,MAXWORDLENGTH)) then
         reaction%species_idx%co2_aq_id = ispec
       endif
     endif
     if (reaction%species_idx%tracer_aq_id == 0) then
       word = 'Tracer'
-      if (StringCompare(reaction%primary_species_names(ispec), &
-                          word,MAXWORDLENGTH)) then
+      if (StringCompareIgnoreCase(reaction%primary_species_names(ispec), &
+                                  word,MAXWORDLENGTH)) then
         reaction%species_idx%tracer_aq_id = ispec
       endif
     endif
     if (reaction%species_idx%h2o_aq_id == 0) then
       word = 'H2O'
-      if (StringCompare(reaction%primary_species_names(ispec), &
-                          word,MAXWORDLENGTH)) then
+      if (StringCompareIgnoreCase(reaction%primary_species_names(ispec), &
+                                  word,MAXWORDLENGTH)) then
         reaction%species_idx%h2o_aq_id = ispec
       endif
     endif
     if (reaction%species_idx%tracer_age_id == 0) then
       word = 'Tracer_Age'
-      if (StringCompare(reaction%primary_species_names(ispec), &
-                          word,MAXWORDLENGTH)) then
+      if (StringCompareIgnoreCase(reaction%primary_species_names(ispec), &
+                                  word,MAXWORDLENGTH)) then
         reaction%species_idx%tracer_age_id = ispec
         reaction%calculate_tracer_age = PETSC_TRUE
       endif
     endif
     if (reaction%species_idx%water_age_id == 0) then
       word = 'Water_Age'
-      if (StringCompare(reaction%primary_species_names(ispec), &
-                          word,MAXWORDLENGTH)) then
+      if (StringCompareIgnoreCase(reaction%primary_species_names(ispec), &
+                                  word,MAXWORDLENGTH)) then
         reaction%species_idx%water_age_id = ispec
         reaction%calculate_water_age = PETSC_TRUE
       endif
@@ -2956,29 +2960,29 @@ subroutine BasisInit(reaction,option)
   do ispec = 1, reaction%neqcplx
     if (reaction%species_idx%h_ion_id == 0) then
       word = 'H+'
-      if (StringCompare(reaction%secondary_species_names(ispec), &
-                          word,MAXWORDLENGTH)) then
+      if (StringCompareIgnoreCase(reaction%secondary_species_names(ispec), &
+                                  word,MAXWORDLENGTH)) then
         reaction%species_idx%h_ion_id = -ispec
       endif
     endif
     if (reaction%species_idx%na_ion_id == 0) then
       word = 'Na+'
-      if (StringCompare(reaction%secondary_species_names(ispec), &
-                          word,MAXWORDLENGTH)) then
+      if (StringCompareIgnoreCase(reaction%secondary_species_names(ispec), &
+                                  word,MAXWORDLENGTH)) then
         reaction%species_idx%na_ion_id = -ispec
       endif
     endif
     if (reaction%species_idx%cl_ion_id == 0) then
       word = 'Cl-'
-      if (StringCompare(reaction%secondary_species_names(ispec), &
-                          word,MAXWORDLENGTH)) then
+      if (StringCompareIgnoreCase(reaction%secondary_species_names(ispec), &
+                                  word,MAXWORDLENGTH)) then
         reaction%species_idx%cl_ion_id = -ispec
       endif
     endif
     if (reaction%species_idx%co2_aq_id == 0) then
       word = 'CO2(aq)'
-      if (StringCompare(reaction%secondary_species_names(ispec), &
-                          word,MAXWORDLENGTH)) then
+      if (StringCompareIgnoreCase(reaction%secondary_species_names(ispec), &
+                                  word,MAXWORDLENGTH)) then
         reaction%species_idx%co2_aq_id = -ispec
       endif
     endif
@@ -2987,20 +2991,20 @@ subroutine BasisInit(reaction,option)
   do ispec = 1, reaction%ngas
     if (reaction%species_idx%o2_gas_id == 0) then
       word = 'O2(g)'
-      if (StringCompare(reaction%gas_species_names(ispec), &
-                          word,MAXWORDLENGTH)) then
+      if (StringCompareIgnoreCase(reaction%gas_species_names(ispec), &
+                                  word,MAXWORDLENGTH)) then
         reaction%species_idx%o2_gas_id = ispec
       endif
     endif
     if (reaction%species_idx%co2_gas_id == 0) then
       word = 'CO2(g)'
-      if (StringCompare(reaction%gas_species_names(ispec), &
-                          word,MAXWORDLENGTH)) then
+      if (StringCompareIgnoreCase(reaction%gas_species_names(ispec), &
+                                  word,MAXWORDLENGTH)) then
         reaction%species_idx%co2_gas_id = ispec
       endif
       word = 'CO2(g)*'
-      if (StringCompare(reaction%gas_species_names(ispec), &
-                          word,MAXWORDLENGTH)) then
+      if (StringCompareIgnoreCase(reaction%gas_species_names(ispec), &
+                                  word,MAXWORDLENGTH)) then
         reaction%species_idx%co2_gas_id = ispec
       endif
 

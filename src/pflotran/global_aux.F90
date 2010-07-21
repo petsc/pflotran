@@ -24,6 +24,7 @@ module Global_Aux_module
     PetscReal, pointer :: mass_balance(:) ! kg
     PetscReal, pointer :: mass_balance_delta(:) ! kmol
     PetscReal, pointer :: reaction_rate(:)
+    PetscReal, pointer :: reaction_rate_store(:)
 !   PetscReal, pointer :: reaction_rate_store(:,:)
   end type global_auxvar_type
   
@@ -97,15 +98,11 @@ subroutine GlobalAuxVarInit(aux_var,option)
   aux_var%sat_store = 0.d0
   allocate(aux_var%den_kg_store(option%nphase,TWO_INTEGER))
   aux_var%den_kg_store = 0.d0
-  allocate(aux_var%m_nacl(TWO_INTEGER))
-  aux_var%m_nacl = option%m_nacl
-  allocate(aux_var%reaction_rate(option%nflowspec))
-  aux_var%reaction_rate = 0.d0
-! allocate(aux_var%reaction_rate_store(option%nflowspec,TWO_INTEGER))
-! aux_var%reaction_rate_store = 0.d0
 
-
-  if(option%iflowmode == IMS_MODE)then
+select case(option%iflowmode)
+  case( IMS_MODE, MPH_MODE, FLASH2_MODE)
+    allocate(aux_var%xmass(option%nphase))
+    aux_var%xmass = 1.d0
     allocate(aux_var%pres_store(option%nphase,TWO_INTEGER))
     aux_var%pres_store = 0.d0
     allocate(aux_var%temp_store(ONE_INTEGER,TWO_INTEGER))
@@ -116,36 +113,25 @@ subroutine GlobalAuxVarInit(aux_var,option)
     aux_var%fugacoeff_store = 1.d0    
     allocate(aux_var%den_store(option%nphase,TWO_INTEGER))
     aux_var%den_store = 0.d0
-  else
-    nullify(aux_var%pres_store)
-    nullify(aux_var%temp_store)
-    nullify(aux_var%fugacoeff)
-    nullify(aux_var%fugacoeff_store)
-    nullify(aux_var%den_store)
-  endif
-
-  if(option%iflowmode == MPH_MODE)then
-    allocate(aux_var%xmass(option%nphase))
-    aux_var%xmass = 1.d0
-    allocate(aux_var%pres_store(option%nphase,TWO_INTEGER))
-    aux_var%pres_store = 0.d0
-    allocate(aux_var%temp_store(ONE_INTEGER,TWO_INTEGER))
-    aux_var%temp_store = 0.d0
-    allocate(aux_var%fugacoeff(ONE_INTEGER))
-    aux_var%fugacoeff = 1.d0
-    allocate(aux_var%fugacoeff_store(ONE_INTEGER,TWO_INTEGER))
-    aux_var%fugacoeff_store = 1.d0
-    allocate(aux_var%den_store(option%nphase,TWO_INTEGER))
-    aux_var%den_store = 0.d0
-  else
+    allocate(aux_var%m_nacl(TWO_INTEGER))
+    aux_var%m_nacl = option%m_nacl
+    allocate(aux_var%reaction_rate(option%nflowspec))
+    aux_var%reaction_rate = 0.d0
+    allocate(aux_var%reaction_rate_store(option%nflowspec))
+    aux_var%reaction_rate_store = 0.d0
+  ! allocate(aux_var%reaction_rate_store(option%nflowspec,TWO_INTEGER))
+  ! aux_var%reaction_rate_store = 0.d0
+  case default
     nullify(aux_var%xmass)
     nullify(aux_var%pres_store)
     nullify(aux_var%temp_store)
     nullify(aux_var%fugacoeff)
     nullify(aux_var%fugacoeff_store)
     nullify(aux_var%den_store)
-  endif
-
+    nullify(aux_var%m_nacl)
+    nullify(aux_var%reaction_rate)
+    nullify(aux_var%reaction_rate_store)
+  end select
 
   if (option%iflag /= 0 .and. option%compute_mass_balance_new) then
     allocate(aux_var%mass_balance(option%nphase))
@@ -180,10 +166,23 @@ subroutine GlobalAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%sat = aux_var%sat
   aux_var2%den = aux_var%den
   aux_var2%den_kg = aux_var%den_kg
-  aux_var2%m_nacl = aux_var%m_nacl
-  aux_var2%reaction_rate = aux_var%reaction_rate
   aux_var2%sat_store = aux_var%sat_store
   aux_var2%den_kg_store = aux_var%den_kg_store
+  
+  if (associated(aux_var%reaction_rate) .and. &
+      associated(aux_var2%reaction_rate)) then
+    aux_var2%reaction_rate = aux_var%reaction_rate
+  endif
+  
+  if (associated(aux_var%m_nacl) .and. &
+      associated(aux_var2%m_nacl)) then
+    aux_var2%m_nacl = aux_var%m_nacl
+  endif
+  
+  if (associated(aux_var%reaction_rate) .and. &
+      associated(aux_var2%reaction_rate)) then
+  endif
+  
   
   if (associated(aux_var%fugacoeff) .and. &
       associated(aux_var2%fugacoeff)) then

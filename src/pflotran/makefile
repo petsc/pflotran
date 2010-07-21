@@ -7,7 +7,7 @@ common_src   = ./
 bindir = ./${PETSC_ARCH}/bin
 
 ifdef hdf5-vamsi
-    HDF5_FLAGS = -DVAMSI_HDF5 -DVAMSI_HDF5_READ -DVAMSI_HDF5_WRITE -DVAMSI_STAGE_BARRIER 
+    HDF5_FLAGS = -DVAMSI_HDF5 -DVAMSI_HDF5_READ -DVAMSI_HDF5_WRITE -DVAMSI_STAGE_BARRIER
 endif   
 
 ifdef compile_broken
@@ -19,7 +19,8 @@ UO2_FLAG = -DCOMPUTE_INTERNAL_MASS_FLUX
 endif
 
 ifdef glenn
-GLENN_FLAGS = -DGLENN -DENABLE_UNSTRUCTURED
+GLENN_FLAGS = -DOS_STATISTICS
+#-DGLENN -DENABLE_UNSTRUCTURED
 endif
 
 ifdef temp
@@ -31,8 +32,11 @@ CHUAN_FLAG = -DCHUAN_CO2
 endif
 
 ifdef coll
-#COLL_FLAG = -DCOLL
-COLL_FLAG = -DREVISED_TRANSPORT
+COLL_FLAG = -DCOLL
+endif
+
+ifdef dont_use_wateos
+DENSITY_FLAG = -DDONT_USE_WATEOS
 endif
 
 ifdef vamsi_hdf5
@@ -40,11 +44,12 @@ ifdef vamsi_hdf5
 endif
 
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) \
+          -DREVISED_TRANSPORT \
           $(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG) $(TEMP_FLAG)\
- 					$(CHUAN_FLAG) $(COLL_FLAG)
+					$(CHUAN_FLAG) $(COLL_FLAG) $(DENSITY_FLAG)
 
 CFLAGS		 = 
-FFLAGS		 = #-Rb
+FFLAGS		 =
 CPPFLAGS         = ${MYFLAGS}
 FPPFLAGS         = ${MYFLAGS}
 
@@ -55,6 +60,11 @@ ifdef petscrel
 else
  include ${PETSC_DIR}/conf/variables
  include ${PETSC_DIR}/conf/rules
+endif
+
+ifdef tau
+FC = /ccs/proj/geo002/tau/tau-2.19.1/craycnl/bin/tau_f90.sh -optCompInst -tau_makefile=$(TAU_MAKEFILE)
+FLINKER = /ccs/proj/geo002/tau/tau-2.19.1/craycnl/bin/tau_f90.sh -optCompInst -tau_makefile=$(TAU_MAKEFILE)
 endif
 
 util_obj  = ${common_src}input.o \
@@ -81,6 +91,7 @@ common_obj = ${common_src}option.o \
 	${common_src}richards_aux.o\
 	${common_src}mphase_aux.o\
 	${common_src}immis_aux.o\
+	${common_src}flash2_aux.o\
 	${common_src}auxilliary.o\
 	${common_src}field.o \
 	${common_src}debug.o \
@@ -113,6 +124,7 @@ common_obj = ${common_src}option.o \
 	${common_src}global.o \
 	${common_src}mphase.o\
 	${common_src}immis.o\
+	${common_src}flash2.o\
 	${common_src}transport.o\
 	${common_src}reaction.o\
 	${common_src}reactive_transport.o\
@@ -154,7 +166,7 @@ test: functions.o test.o
 # Dependencies stemming from "use" statements.
 # These ensure that the module files are built in the correct order.
 auxilliary.o : thc_aux.o richards_aux.o reactive_transport_aux.o \
-	mphase_aux.o
+	mphase_aux.o flash2_aux.o global_aux.o
 pflotran.o : simulation.o output.o init.o timestepper.o logging.o \
 	     stochastic_aux.o stochastic.o
 simulation.o : timestepper.o realization.o 
@@ -162,7 +174,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	simulation.o input.o material.o region.o condition.o convergence.o \
 	waypoint.o field.o general_grid.o co2_span_wagner.o utility.o \
 	co2_span_wagner_spline.o co2_sw.o fluid.o saturation_function.o \
-	coupler.o strata.o pckr_mod.o field.o mphase.o \
+	coupler.o strata.o pckr_mod.o field.o mphase.o flash2.o \
 	richards.o thc.o discretization.o logging.o mass_balance.o \
 	database.o reaction_aux.o string.o units.o stochastic_aux.o \
 	velocity.o
@@ -170,7 +182,7 @@ unstructured_grid.o : option.o connection.o
 structured_grid.o : connection.o option.o input.o cf90bridge.o
 general_grid.o : grid.o realization.o hdf5.o logging.o
 discretization.o : grid.o structured_grid.o unstructured_grid.o option.o \
-                   input.o string.o
+                   input.o string.o amrgrid.o 
 grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
          input.o
 input.o : string.o option.o
@@ -199,33 +211,38 @@ hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
 waypoint.o : option.o 
 output.o : grid.o structured_grid.o option.o realization.o field.o \
            coupler.o connection.o hdf5.o observation.o \
-					 reactive_transport.o \
-           thc.o richards.o mphase.o \
-					 discretization.o logging.o
+           reactive_transport.o \
+           thc.o richards.o mphase.o flash2.o \
+           discretization.o logging.o amrgrid.o
 reaction.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reaction_aux.o : option.o string.o
 transport.o : reactive_transport_aux.o option.o matrix_block_aux.o
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
-                       reactive_transport_aux.o fluid.o
+                       reactive_transport_aux.o fluid.o logging.o global_aux.o \
+                       amrgrid.o
 reactive_transport_aux.o : option.o reaction_aux.o matrix_block_aux.o
 thc.o : thc_aux.o realization.o saturation_function.o
 richards.o : richards_aux.o realization.o saturation_function.o \
-             matrix_buffer.o
+             matrix_buffer.o logging.o amrgrid.o
 thc_aux.o : option.o material.o water_eos.o saturation_function.o
 richards_aux.o : option.o material.o water_eos.o saturation_function.o \
-                 matrix_buffer.o
-mphase.o : mphase_aux.o realization.o fluid.o
-mphase.o : immis_aux.o realization.o 
+                 matrix_buffer.o global_aux.o
+mphase.o : mphase_aux.o realization.o fluid.o global_aux.o
+immis.o : immis_aux.o realization.o  global_aux.o
+flash2.o : flash2_aux.o realization.o fluid.o global_aux.o
 mphase_aux.o :  option.o material.o water_eos.o co2_span_wagner.o \
 		co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o \
 		fluid.o saturation_function.o
 immis_aux.o :  option.o material.o water_eos.o co2_span_wagner.o \
 		co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o fluid.o \
 		saturation_function.o
-timestepper.o : thc.o richards.o mphase.o \
+flash2_aux.o :  option.o material.o water_eos.o co2_span_wagner.o \
+		co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o fluid.o \
+		saturation_function.o
+timestepper.o : thc.o richards.o mphase.o flash2.o \
                 realization.o grid.o option.o field.o solver.o \
                 output.o convergence.o checkpoint.o waypoint.o logging.o \
-                mass_balance.o input.o string.o
+                mass_balance.o input.o string.o reactive_transport.o
 hdf5.o : realization.o option.o logging.o
 hdf5_aux.o : option.o logging.o
 checkpoint.o : realization.o logging.o

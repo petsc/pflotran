@@ -81,10 +81,10 @@ module Grid_module
             GridComputeVolumes, &
             GridLocalizeRegions, &
             GridPopulateConnection, &
-            GridCopyIntegerArrayToPetscVec, &
-            GridCopyRealArrayToPetscVec, &
-            GridCopyPetscVecToIntegerArray, &
-            GridCopyPetscVecToRealArray, &
+            GridCopyIntegerArrayToVec, &
+            GridCopyRealArrayToVec, &
+            GridCopyVecToIntegerArray, &
+            GridCopyVecToRealArray, &
             GridCreateNaturalToGhostedHash, &
             GridDestroyHashTable, &
             GridGetLocalGhostedIdFromHash, &
@@ -320,18 +320,18 @@ subroutine GridComputeCoordinates(grid,origin_global,option)
   if (associated(grid%structured_grid)) then
     if (grid%structured_grid%p_samr_patch==0) then
      ! compute global max/min from the local max/in
-     call MPI_Allreduce(grid%x_min_local,grid%x_min_global,ONE_INTEGER, &
-          MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
-     call MPI_Allreduce(grid%y_min_local,grid%y_min_global,ONE_INTEGER, &
-          MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
-     call MPI_Allreduce(grid%z_min_local,grid%z_min_global,ONE_INTEGER, &
-          MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
-     call MPI_Allreduce(grid%x_max_local,grid%x_max_global,ONE_INTEGER, &
-          MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
-     call MPI_Allreduce(grid%y_max_local,grid%y_max_global,ONE_INTEGER, &
-          MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
-     call MPI_Allreduce(grid%z_max_local,grid%z_max_global,ONE_INTEGER, &
-          MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+     call MPI_Allreduce(grid%x_min_local,grid%x_min_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+     call MPI_Allreduce(grid%y_min_local,grid%y_min_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+     call MPI_Allreduce(grid%z_min_local,grid%z_min_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+     call MPI_Allreduce(grid%x_max_local,grid%x_max_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+     call MPI_Allreduce(grid%y_max_local,grid%y_max_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+     call MPI_Allreduce(grid%z_max_local,grid%z_max_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
    endif
  endif
 
@@ -525,8 +525,9 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                   endif
   ! the next test as designed will only work on a uniform grid
                   if(.not. (option%use_samr)) then
-                     call MPI_Allreduce(region%num_cells,count,ONE_INTEGER,MPI_INTEGER,MPI_SUM, &
-                          option%mycomm,ierr)   
+                     call MPI_Allreduce(region%num_cells,count, &
+                                        ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
+                                        option%mycomm,ierr)   
 
                      if (count == 0) then
                       write(option%io_buffer,*) 'Region: (coord)', &
@@ -654,8 +655,8 @@ subroutine GridLocalizeRegions(grid,region_list,option)
             endif
 
             if(.not. (option%use_samr)) then
-               call MPI_Allreduce(iflag,i,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
-                    option%mycomm,ierr)
+               call MPI_Allreduce(iflag,i,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
+                                  option%mycomm,ierr)
             else
                i=0
             endif
@@ -735,19 +736,21 @@ end subroutine GridLocalizeRegions
 
 ! ************************************************************************** !
 !
-! GridCopyIntegerArrayToPetscVec: Copies values from an integer array into a 
+! GridCopyIntegerArrayToVec: Copies values from an integer array into a 
 !                                 PETSc Vec
 ! author: Glenn Hammond
 ! date: 12/18/07
 !
 ! ************************************************************************** !
-subroutine GridCopyIntegerArrayToPetscVec(array,vector,num_values)
+
+subroutine GridCopyIntegerArrayToVec(grid, array,vector,num_values)
 
   implicit none
 
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
   
+  type(grid_type) :: grid
   PetscInt :: array(:)
   Vec :: vector
   PetscInt :: num_values
@@ -755,27 +758,28 @@ subroutine GridCopyIntegerArrayToPetscVec(array,vector,num_values)
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
   
-  call VecGetArrayF90(vector,vec_ptr,ierr)
+  call GridVecGetArrayF90(grid, vector,vec_ptr,ierr)
   vec_ptr(1:num_values) = array(1:num_values)
-  call VecRestoreArrayF90(vector,vec_ptr,ierr)
+  call GridVecRestoreArrayF90(grid, vector,vec_ptr,ierr)
   
-end subroutine GridCopyIntegerArrayToPetscVec
+end subroutine GridCopyIntegerArrayToVec
 
 ! ************************************************************************** !
 !
-! GridCopyRealArrayToPetscVec: Copies values from an integer array into a 
+! GridCopyRealArrayToVec: Copies values from an integer array into a 
 !                              PETSc Vec
 ! author: Glenn Hammond
 ! date: 12/18/07
 !
 ! ************************************************************************** !
-subroutine GridCopyRealArrayToPetscVec(array,vector,num_values)
+subroutine GridCopyRealArrayToVec(grid,array,vector,num_values)
 
   implicit none
   
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
     
+  type(grid_type) :: grid
   PetscReal :: array(:)
   Vec :: vector
   PetscInt :: num_values
@@ -783,27 +787,28 @@ subroutine GridCopyRealArrayToPetscVec(array,vector,num_values)
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
   
-  call VecGetArrayF90(vector,vec_ptr,ierr)
+  call GridVecGetArrayF90(grid,vector,vec_ptr,ierr)
   vec_ptr(1:num_values) = array(1:num_values)
-  call VecRestoreArrayF90(vector,vec_ptr,ierr)
+  call GridVecRestoreArrayF90(grid,vector,vec_ptr,ierr)
   
-end subroutine GridCopyRealArrayToPetscVec
+end subroutine GridCopyRealArrayToVec
 
 ! ************************************************************************** !
 !
-! GridCopyPetscVecToIntegerArray: Copies values from a PETSc Vec to an  
+! GridCopyVecToIntegerArray: Copies values from a PETSc Vec to an  
 !                                 integer array
 ! author: Glenn Hammond
 ! date: 12/18/07
 !
 ! ************************************************************************** !
-subroutine GridCopyPetscVecToIntegerArray(array,vector,num_values)
+subroutine GridCopyVecToIntegerArray(grid,array,vector,num_values)
 
   implicit none
 
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
   
+  type(grid_type) :: grid
   PetscInt :: array(:)
   Vec :: vector
   PetscInt :: num_values
@@ -812,29 +817,30 @@ subroutine GridCopyPetscVecToIntegerArray(array,vector,num_values)
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
   
-  call VecGetArrayF90(vector,vec_ptr,ierr)
+  call GridVecGetArrayF90(grid,vector,vec_ptr,ierr)
   do i=1,num_values
     array(i) = int(vec_ptr(i)+1.d-4)
   enddo
-  call VecRestoreArrayF90(vector,vec_ptr,ierr)
+  call GridVecRestoreArrayF90(grid,vector,vec_ptr,ierr)
   
-end subroutine GridCopyPetscVecToIntegerArray
+end subroutine GridCopyVecToIntegerArray
 
 ! ************************************************************************** !
 !
-! GridCopyPetscVecToRealArray: Copies values from a PETSc Vec to an integer 
+! GridCopyVecToRealArray: Copies values from a PETSc Vec to an integer 
 !                              array
 ! author: Glenn Hammond
 ! date: 12/18/07
 !
 ! ************************************************************************** !
-subroutine GridCopyPetscVecToRealArray(array,vector,num_values)
+subroutine GridCopyVecToRealArray(grid,array,vector,num_values)
 
   implicit none
   
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
     
+  type(grid_type) :: grid
   PetscReal :: array(:)
   Vec :: vector
   PetscInt :: num_values
@@ -842,11 +848,11 @@ subroutine GridCopyPetscVecToRealArray(array,vector,num_values)
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
   
-  call VecGetArrayF90(vector,vec_ptr,ierr)
+  call GridVecGetArrayF90(grid,vector,vec_ptr,ierr)
   array(1:num_values) = vec_ptr(1:num_values)
-  call VecRestoreArrayF90(vector,vec_ptr,ierr)
+  call GridVecRestoreArrayF90(grid,vector,vec_ptr,ierr)
   
-end subroutine GridCopyPetscVecToRealArray
+end subroutine GridCopyVecToRealArray
 
 ! ************************************************************************** !
 !
@@ -875,9 +881,7 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
 
   if (associated(grid%hash)) return
 
-  call PetscLogEventBegin(logging%event_hash_create, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_hash_create,ierr)
                           
   max_num_ids_per_hash = 0
   ! initial guess of 10% of ids per hash
@@ -921,14 +925,12 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
   grid%hash => hash
   
 !  call GridPrintHashTable(grid)
-  call mpi_allreduce(max_num_ids_per_hash,num_in_hash,ONE_INTEGER,MPI_INTEGER, &
-                     MPI_MAX,option%mycomm,ierr)
+  call MPI_Allreduce(max_num_ids_per_hash,num_in_hash,ONE_INTEGER_MPI, &
+                     MPIU_INTEGER,MPI_MAX,option%mycomm,ierr)
   write(option%io_buffer,'("max_num_ids_per_hash: ",i5)') num_in_hash
   call printMsg(option)
 
-  call PetscLogEventEnd(logging%event_hash_create, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_hash_create,ierr)
 
 end subroutine GridCreateNaturalToGhostedHash
 
@@ -1102,6 +1104,13 @@ subroutine GridDestroy(grid)
 
 end subroutine GridDestroy
 
+! ************************************************************************** !
+!
+! GridDestroy: Returns pointer to cell-centered vector values
+! author: Bobby Philip
+! date: 
+!
+! ************************************************************************** !
 subroutine GridVecGetArrayCellF90(grid, vec, f90ptr, ierr)
 
   implicit none
@@ -1112,7 +1121,7 @@ subroutine GridVecGetArrayCellF90(grid, vec, f90ptr, ierr)
   type(grid_type) :: grid
   Vec:: vec
   PetscReal, pointer :: f90ptr(:)
-  integer :: ierr
+  PetscErrorCode :: ierr
 
   if (.not.associated(grid%structured_grid)) then
      call VecGetArrayF90(vec, f90ptr, ierr)
@@ -1122,6 +1131,13 @@ subroutine GridVecGetArrayCellF90(grid, vec, f90ptr, ierr)
 
 end subroutine GridVecGetArrayCellF90
 
+! ************************************************************************** !
+!
+! GridDestroy: Returns pointer to edge-based vector values?
+! author: Bobby Philip
+! date: 
+!
+! ************************************************************************** !
 subroutine GridVecGetArraySideF90(grid, axis, vec, f90ptr, ierr)
 
   implicit none
@@ -1133,7 +1149,7 @@ subroutine GridVecGetArraySideF90(grid, axis, vec, f90ptr, ierr)
   PetscInt :: axis 
   Vec:: vec
   PetscReal, pointer :: f90ptr(:)
-  integer :: ierr
+  PetscErrorCode :: ierr
 
   if (.not.associated(grid%structured_grid)) then
      call VecGetArrayF90(vec, f90ptr, ierr)
@@ -1143,6 +1159,13 @@ subroutine GridVecGetArraySideF90(grid, axis, vec, f90ptr, ierr)
 
 end subroutine GridVecGetArraySideF90
 
+! ************************************************************************** !
+!
+! GridDestroy: Restores pointer to vector values
+! author: Bobby Philip
+! date: 
+!
+! ************************************************************************** !
 subroutine GridVecRestoreArrayF90(grid, vec, f90ptr, ierr)
 
   implicit none
@@ -1153,7 +1176,7 @@ subroutine GridVecRestoreArrayF90(grid, vec, f90ptr, ierr)
   type(grid_type) :: grid
   Vec:: vec
   PetscReal, pointer :: f90ptr(:)
-  integer :: ierr
+  PetscErrorCode :: ierr
 
   if (.not.associated(grid%structured_grid)) then
      call VecRestoreArrayF90(vec, f90ptr, ierr)
@@ -1200,8 +1223,8 @@ function GridIndexToCellID(vec,index,grid,vec_type)
     endif
   endif
   
-  call MPI_AllReduce(cell_id,GridIndexToCellID,1,MPI_INTEGER,MPI_MAX, &
-                     PETSC_COMM_WORLD,ierr)
+  call MPI_Allreduce(cell_id,GridIndexToCellID,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                     MPI_MAX,PETSC_COMM_WORLD,ierr)
                      
 end function GridIndexToCellID
 

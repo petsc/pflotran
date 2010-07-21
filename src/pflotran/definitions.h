@@ -40,6 +40,15 @@ PetscInt, parameter :: ELEVEN_INTEGER = 11
 PetscInt, parameter :: TWELVE_INTEGER = 12
 PetscInt, parameter :: NEG_ONE_INTEGER = -1
 
+PetscMPIInt, parameter :: ZERO_INTEGER_MPI = ZERO_INTEGER
+PetscMPIInt, parameter :: ONE_INTEGER_MPI = ONE_INTEGER
+PetscMPIInt, parameter :: TWO_INTEGER_MPI = TWO_INTEGER
+PetscMPIInt, parameter :: THREE_INTEGER_MPI = THREE_INTEGER
+PetscMPIInt, parameter :: FOUR_INTEGER_MPI = FOUR_INTEGER
+PetscMPIInt, parameter :: SEVEN_INTEGER_MPI = SEVEN_INTEGER
+PetscMPIInt, parameter :: TWELVE_INTEGER_MPI = TWELVE_INTEGER
+PetscMPIInt, parameter :: MAXSTRINGLENGTH_MPI = MAXSTRINGLENGTH
+
 PetscInt, parameter :: X_DIRECTION = 1
 PetscInt, parameter :: Y_DIRECTION = 2
 PetscInt, parameter :: Z_DIRECTION = 3
@@ -73,6 +82,7 @@ PetscInt, parameter :: MPH_MODE = 2
 PetscInt, parameter :: RICHARDS_MODE = 3
 PetscInt, parameter :: REACTIVE_TRANSPORT_MODE = 4
 PetscInt, parameter :: IMS_MODE = 5
+PetscInt, parameter :: FLASH2_MODE = 6
 
 ! grid types
 PetscInt, parameter :: STRUCTURED_GRID = 1
@@ -212,8 +222,6 @@ PetscInt, parameter :: EOS_MRK = 2
 
 ! HDF5 stuff
 PetscInt, parameter :: HDF5_READ_BUFFER_SIZE = 1000000
-PetscInt, parameter :: HDF5_READ_BCAST_SIZE = 128
-PetscInt, parameter :: HDF5_WRITE_BCAST_SIZE = 16
 !#define HDF5_BROADCAST
 
 ! Tecplot stuff
@@ -233,5 +241,9 @@ PetscInt, parameter :: GAS_PHASE = 2
 ! variable centerings
 PetscInt, parameter :: CELL_CENTERED = 0
 PetscInt, parameter :: SIDE_CENTERED = 1
+
+! approaches to coupling reactive transport
+PetscInt, parameter :: GLOBAL_IMPLICIT = 0
+PetscInt, parameter :: OPERATOR_SPLIT = 1
 
 #define HASH

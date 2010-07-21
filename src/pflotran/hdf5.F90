@@ -12,20 +12,11 @@ module HDF5_module
 
   PetscTruth, public :: trick_hdf5 = PETSC_FALSE
 
-#ifdef VAMSI_HDF5_READ
-  PetscInt :: read_bcast_size = HDF5_READ_BCAST_SIZE
-#endif  
-
-#ifdef VAMSI_HDF5_WRITE
-  PetscInt :: write_bcast_size = HDF5_WRITE_BCAST_SIZE
-#endif  
-
 #if defined(PETSC_HAVE_HDF5)
   PetscMPIInt :: hdf5_err
   PetscMPIInt :: io_rank
 ! 64-bit stuff
 #ifdef PETSC_USE_64BIT_INDICES
-!#define HDF_NATIVE_INTEGER H5T_STD_I64LE  
 #define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
 #else
 #define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
@@ -85,23 +76,22 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  PetscMPIInt :: rank
+  PetscMPIInt :: rank_mpi
   PetscInt :: local_ghosted_id, local_id, natural_id
   PetscInt :: index_count
   PetscInt :: cell_count
   integer(HSIZE_T) :: num_cells
   PetscInt :: num_cells_in_file
   PetscInt :: temp_int, i, counter
+  PetscMPIInt :: int_mpi
   
-  PetscMPIInt, allocatable :: cell_ids(:)
+  integer, allocatable :: cell_ids_i4(:)
   PetscInt, allocatable :: temp(:)
   
   PetscInt :: read_block_size
   PetscInt :: indices_array_size
 
-  call PetscLogEventBegin(logging%event_map_indices_hdf5, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_map_indices_hdf5,ierr)
 
   dims = 0
   cell_count = 0
@@ -110,7 +100,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
   length = 0
   read_block_size = HDF5_READ_BUFFER_SIZE
 
-  allocate(cell_ids(read_block_size))
+  allocate(cell_ids_i4(read_block_size))
   if (num_indices > 0) then
     allocate(indices(num_indices))
   else
@@ -118,7 +108,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
     allocate(indices(indices_array_size))
   endif
   
-  if (mod(option%global_rank,read_bcast_size) == 0) then
+  if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
      call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
      call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
      ! should be a rank=1 data space
@@ -134,14 +124,15 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
 #ifndef SERIAL_HDF5
      call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err)
 #endif
-     rank = 1
+     rank_mpi = 1
      offset = 0
      length = 0
      stride = 1
      num_cells_in_file = int(num_cells)
   endif
     
-  call mpi_bcast(num_cells_in_file,1,MPI_INTEGER,0,option%read_group,ierr)
+  call MPI_Bcast(num_cells_in_file,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                 ZERO_INTEGER_MPI,option%read_group,ierr)
                      
   do
     if (cell_count >= num_cells_in_file) exit
@@ -152,33 +143,30 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
       dims(1) = temp_int
     endif
   
-    if (mod(option%global_rank,read_bcast_size) == 0) then
-       call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+    if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
+       call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
        ! offset is zero-based
        offset(1) = cell_count
        length(1) = dims(1)
        call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset,length, &
                                   hdf5_err,stride,stride) 
-       call PetscLogEventBegin(logging%event_h5dread_f, &
-                               PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                               PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
-       call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,cell_ids,dims,hdf5_err, &
+       call PetscLogEventBegin(logging%event_h5dread_f,ierr)
+       call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,cell_ids_i4,dims,hdf5_err, &
                       memory_space_id,file_space_id,prop_id)                     
-       call PetscLogEventEnd(logging%event_h5dread_f, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+       call PetscLogEventEnd(logging%event_h5dread_f,ierr)
     endif
     if (option%mycommsize > 1) then
-       call mpi_bcast(cell_ids,dims(1),MPI_INTEGER,0,option%read_group,ierr)
+      int_mpi = dims(1)
+!geh      call MPI_Bcast(cell_ids,int_mpi,MPIU_INTEGER,ZERO_INTEGER_MPI, &
+      call MPI_Bcast(cell_ids_i4,int_mpi,MPI_INTEGER,ZERO_INTEGER_MPI, &
+                     option%read_group,ierr)
     endif
   
-    call PetscLogEventBegin(logging%event_hash_map, &
-                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+    call PetscLogEventBegin(logging%event_hash_map,ierr)
 
     do i=1,dims(1)
       cell_count = cell_count + 1
-      natural_id = cell_ids(i)
+      natural_id = cell_ids_i4(i)
       local_ghosted_id = GridGetLocalGhostedIdFromHash(grid,natural_id)
       if (local_ghosted_id > 0) then
         local_id = grid%nG2L(local_ghosted_id)
@@ -201,12 +189,10 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
     enddo
   enddo
 
-  call PetscLogEventEnd(logging%event_hash_map, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_hash_map,ierr)
 
-  deallocate(cell_ids)
-  if (mod(option%global_rank,read_bcast_size) == 0) then
+  deallocate(cell_ids_i4)
+  if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
      call h5pclose_f(prop_id,hdf5_err)
      call h5sclose_f(memory_space_id,hdf5_err)
      call h5sclose_f(file_space_id,hdf5_err)
@@ -233,9 +219,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
   
   if (num_indices <= 0) num_indices = index_count
 
-  call PetscLogEventEnd(logging%event_map_indices_hdf5, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_map_indices_hdf5,ierr)
 ! End of Vamsi's HDF5 Mechanism  
 
 #else
@@ -255,22 +239,23 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  PetscMPIInt :: rank
+  PetscMPIInt :: rank_mpi
   PetscInt :: local_ghosted_id, local_id, natural_id
   PetscInt :: index_count
   PetscInt :: cell_count
   integer(HSIZE_T) :: num_cells_in_file
   PetscInt :: temp_int, i
+  PetscMPIInt :: int_mpi
   
-  PetscMPIInt, allocatable :: cell_ids(:)
+  ! Have to use 'integer' to satisfy HDF5.  PetscMPIInt works, but only if
+  ! it is defined as an integer
+  integer, allocatable :: cell_ids_i4(:)
   PetscInt, allocatable :: temp(:)
   
   PetscInt :: read_block_size
   PetscInt :: indices_array_size
 
-  call PetscLogEventBegin(logging%event_map_indices_hdf5, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_map_indices_hdf5,ierr)
 
   read_block_size = HDF5_READ_BUFFER_SIZE
   call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
@@ -285,7 +270,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
     call printErrMsg(option)    
   endif
   
-  allocate(cell_ids(read_block_size))
+  allocate(cell_ids_i4(read_block_size))
   if (num_indices > 0) then
     allocate(indices(num_indices))
   else
@@ -293,7 +278,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
     allocate(indices(indices_array_size))
   endif
   
-  rank = 1
+  rank_mpi = 1
   offset = 0
   length = 0
   stride = 1
@@ -314,7 +299,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
     if (dims(1) /= temp_int) then
       if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
       dims(1) = temp_int
-      call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+      call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
     endif
     ! offset is zero-based
     offset(1) = cell_count
@@ -324,28 +309,25 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
 #ifdef HDF5_BROADCAST
     if (option%myrank == option%io_rank) then                           
 #endif
-      call PetscLogEventBegin(logging%event_h5dread_f, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
-      call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,cell_ids,dims,hdf5_err, &
+      call PetscLogEventBegin(logging%event_h5dread_f,ierr)
+      call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,cell_ids_i4,dims,hdf5_err, &
                      memory_space_id,file_space_id,prop_id)                     
-      call PetscLogEventEnd(logging%event_h5dread_f, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+      call PetscLogEventEnd(logging%event_h5dread_f,ierr)
 #ifdef HDF5_BROADCAST
     endif
-    if (option%mycommsize > 1) &
-      call mpi_bcast(cell_ids,dims(1),MPI_INTEGER,option%io_rank, &
+    if (option%mycommsize > 1) then
+      int_mpi = dims(1)
+!geh      call MPI_Bcast(cell_ids,int_mpi,MPIU_INTEGER,option%io_rank, &
+      call MPI_Bcast(cell_ids_i4,int_mpi,MPI_INTEGER,option%io_rank, &
                      option%mycomm,ierr)
+    endif
 #endif
         
-  call PetscLogEventBegin(logging%event_hash_map, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+    call PetscLogEventBegin(logging%event_hash_map,ierr)
 
     do i=1,dims(1)
       cell_count = cell_count + 1
-      natural_id = cell_ids(i)
+      natural_id = cell_ids_i4(i)
       local_ghosted_id = GridGetLocalGhostedIdFromHash(grid,natural_id)
       if (local_ghosted_id > 0) then
         local_id = grid%nG2L(local_ghosted_id)
@@ -368,11 +350,9 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
     enddo
   enddo
   
-  call PetscLogEventEnd(logging%event_hash_map, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_hash_map,ierr)
 
-  deallocate(cell_ids)
+  deallocate(cell_ids_i4)
   
   call h5pclose_f(prop_id,hdf5_err)
   call h5sclose_f(memory_space_id,hdf5_err)
@@ -399,9 +379,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
   
   if (num_indices <= 0) num_indices = index_count
 
-  call PetscLogEventEnd(logging%event_map_indices_hdf5, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_map_indices_hdf5,ierr)
 ! End of Default & Glenn's HDF5 Broadcast Mechanism
 
 #endif
@@ -438,19 +416,18 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  PetscMPIInt :: rank
+  PetscMPIInt :: rank_mpi
   PetscInt :: index_count
   PetscInt :: real_count, prev_real_count
   integer(HSIZE_T) :: num_reals_in_file
   PetscInt :: temp_int, i, index
+  PetscMPIInt :: int_mpi
   
   PetscReal, allocatable :: real_buffer(:)
   
   PetscInt :: read_block_size
 
-  call PetscLogEventBegin(logging%event_read_real_array_hdf5, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_read_real_array_hdf5,ierr)
                           
   read_block_size = HDF5_READ_BUFFER_SIZE
   call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
@@ -467,7 +444,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   endif
 #endif
   
-  rank = 1
+  rank_mpi = 1
   offset = 0
   length = 0
   stride = 1
@@ -495,7 +472,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
           if (dims(1) /= temp_int) then
             if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
             dims(1) = temp_int
-            call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+            call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
           endif
           ! offset is zero-based
           offset(1) = real_count
@@ -505,19 +482,17 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
 #ifdef HDF5_BROADCAST
           if (option%myrank == option%io_rank) then                           
 #endif
-            call PetscLogEventBegin(logging%event_h5dread_f, &
-                                    PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                                    PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+            call PetscLogEventBegin(logging%event_h5dread_f,ierr)
             call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_buffer,dims, &
                            hdf5_err,memory_space_id,file_space_id,prop_id)
-            call PetscLogEventEnd(logging%event_h5dread_f, &
-                                  PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                                  PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+            call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
 #ifdef HDF5_BROADCAST
           endif
-          if (option%mycommsize > 1) &
-            call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION, &
+          if (option%mycommsize > 1) then
+            int_mpi = dims(1)
+            call MPI_Bcast(real_buffer,int_mpi,MPI_DOUBLE_PRECISION, &
                            option%io_rank,option%mycomm,ierr)
+          endif
 #endif
           prev_real_count = real_count
           real_count = real_count + length(1)                  
@@ -534,7 +509,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
       if (dims(1) /= temp_int) then
         if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
         dims(1) = temp_int
-        call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+        call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
       endif
       ! offset is zero-based
       offset(1) = real_count
@@ -542,18 +517,16 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
       call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                                  length,hdf5_err,stride,stride) 
       if (option%myrank == io_rank) then 
-        call PetscLogEventBegin(logging%event_h5dread_f, &
-                                PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                                PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+        call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
         call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_buffer,dims, &
                        hdf5_err,memory_space_id,file_space_id,prop_id)
-        call PetscLogEventEnd(logging%event_h5dread_f, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+        call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
       endif
-      if (option%mycommsize > 1) &
-        call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION, &
+      if (option%mycommsize > 1) then
+        int_mpi = dims(1)
+        call MPI_Bcast(real_buffer,int_mpi,MPI_DOUBLE_PRECISION, &
                        option%io_rank,option%mycomm,ierr)
+      endif
       real_count = real_count + length(1)                  
     enddo
 #endif
@@ -565,7 +538,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
     endif
     real_array = 0.d0
     dims(1) = num_reals_in_file
-    call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+    call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
     offset(1) = 0
     length(1) = dims(1)
     call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
@@ -573,19 +546,17 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
 #ifdef HDF5_BROADCAST
     if (option%myrank == option%io_rank) then                           
 #endif
-      call PetscLogEventBegin(logging%event_h5dread_f, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+      call PetscLogEventBegin(logging%event_h5dread_f,ierr)
       call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_array,dims, &
                      hdf5_err,memory_space_id,file_space_id,prop_id)
-      call PetscLogEventEnd(logging%event_h5dread_f, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+      call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
 #ifdef HDF5_BROADCAST
     endif
-    if (option%mycommsize > 1) &
-      call mpi_bcast(real_array,dims(1),MPI_DOUBLE_PRECISION, &
+    if (option%mycommsize > 1) then
+      int_mpi = dims(1)
+      call MPI_Bcast(real_array,int_mpi,MPI_DOUBLE_PRECISION, &
                      option%io_rank,option%mycomm,ierr)
+    endif
 #endif
   endif
   
@@ -594,9 +565,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   call h5sclose_f(file_space_id,hdf5_err)
   call h5dclose_f(data_set_id,hdf5_err)
 
-  call PetscLogEventEnd(logging%event_read_real_array_hdf5, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_read_real_array_hdf5,ierr)
                           
 end subroutine HDF5ReadRealArray
 
@@ -633,22 +602,21 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  PetscMPIInt :: rank
+  PetscMPIInt :: rank_mpi
   PetscInt :: index_count
   PetscInt :: integer_count, prev_integer_count
   integer(HSIZE_T) :: num_integers
   PetscInt :: num_integers_in_file
   PetscInt :: temp_int, i, index
+  PetscMPIInt :: int_mpi
   
-  PetscMPIInt, allocatable :: integer_buffer(:)
+  integer, allocatable :: integer_buffer_i4(:)
   PetscInt :: read_block_size
 
-  call PetscLogEventBegin(logging%event_read_int_array_hdf5, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_read_int_array_hdf5,ierr)
 
   read_block_size = HDF5_READ_BUFFER_SIZE
-  allocate(integer_buffer(read_block_size))
+  allocate(integer_buffer_i4(read_block_size))
   dims = 0
   integer_count = 0
   prev_integer_count = 0
@@ -657,7 +625,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
   length = 0
   num_integers_in_file = 0
 
-  if (mod(option%global_rank,read_bcast_size) == 0) then
+  if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
      call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
      call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
      ! should be a rank=1 data space
@@ -676,13 +644,14 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
 #ifndef SERIAL_HDF5
      call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err)
 #endif
-     rank = 1
+     rank_mpi = 1
      offset = 0
      stride = 1
      num_integers_in_file = int(num_integers) 
   endif  
 
-  call mpi_bcast(num_integers_in_file,1,MPI_INTEGER,0,option%read_group,ierr) 
+  call MPI_Bcast(num_integers_in_file,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                 ZERO_INTEGER_MPI,option%read_group,ierr) 
                   
   do i=1,num_indices
     index = indices(i)
@@ -696,30 +665,29 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
           dims(1) = temp_int
           length(1) = dims(1)
         endif
-        if (mod(option%global_rank,read_bcast_size) == 0) then     
-           call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+        if (mod(option%myrank,option%hdf5_read_group_size) == 0) then     
+           call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
            ! offset is zero-based
            offset(1) = integer_count
            length(1) = dims(1)
            call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                                       length,hdf5_err,stride,stride) 
-           call PetscLogEventBegin(logging%event_h5dread_f, &
-                                  PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                                  PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
-           call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer,dims, &
+           call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
+           call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer_i4,dims, &
                           hdf5_err,memory_space_id,file_space_id,prop_id)   
-           call PetscLogEventEnd(logging%event_h5dread_f, &
-                                PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                                PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+           call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
         endif  
         if (option%mycommsize > 1) then
-            call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,0,option%read_group,ierr) 
+          int_mpi = dims(1)
+!geh          call MPI_Bcast(integer_buffer,int_mpi,MPIU_INTEGER, &
+          call MPI_Bcast(integer_buffer_i4,int_mpi,MPI_INTEGER, &
+                         ZERO_INTEGER_MPI,option%read_group,ierr) 
         endif
         prev_integer_count = integer_count
         integer_count = integer_count + length(1)                  
       enddo
     endif
-    integer_array(i) = integer_buffer(index-prev_integer_count)
+    integer_array(i) = integer_buffer_i4(index-prev_integer_count)
   enddo
 
   do
@@ -731,39 +699,36 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
       dims(1) = temp_int
       length(1) = dims(1)
     endif
-    if (mod(option%global_rank,read_bcast_size) == 0) then
-       call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+    if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
+       call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
        ! offset is zero-based
        offset(1) = integer_count
        length(1) = dims(1)
        call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                                   length,hdf5_err,stride,stride) 
-       call PetscLogEventBegin(logging%event_h5dread_f, &
-                               PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                               PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
-       call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer,dims, &
+       call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
+       call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer_i4,dims, &
                       hdf5_err,memory_space_id,file_space_id,prop_id)   
-       call PetscLogEventEnd(logging%event_h5dread_f, &
-                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                             PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+       call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
     endif 
     if (option%mycommsize > 1) then 
-         call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,0,option%read_group,ierr) 
+      int_mpi = dims(1)
+!      call MPI_Bcast(integer_buffer,int_mpi,MPIU_INTEGER,ZERO_INTEGER_MPI, &
+      call MPI_Bcast(integer_buffer_i4,int_mpi,MPI_INTEGER,ZERO_INTEGER_MPI, &
+                     option%read_group,ierr) 
     endif                    
     integer_count = integer_count + length(1)                  
   enddo
-  deallocate(integer_buffer)
+  deallocate(integer_buffer_i4)
 
-  if (mod(option%global_rank,read_bcast_size) == 0) then
+  if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
      call h5pclose_f(prop_id,hdf5_err)
      if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
      call h5sclose_f(file_space_id,hdf5_err)
      call h5dclose_f(data_set_id,hdf5_err)
   endif
 
-  call PetscLogEventEnd(logging%event_read_int_array_hdf5, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_read_int_array_hdf5,ierr)
 ! End of Vamsi's HDF5 Mechanism  
                           
 #else
@@ -782,22 +747,21 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  PetscMPIInt :: rank
+  PetscMPIInt :: rank_mpi
   PetscInt :: index_count
   PetscInt :: integer_count, prev_integer_count
   integer(HSIZE_T) :: num_integers_in_file
   PetscInt :: temp_int, i, index
+  PetscMPIInt :: int_mpi
   
-  PetscMPIInt, allocatable :: integer_buffer(:)
+  integer, allocatable :: integer_buffer_i4(:)
   
   PetscInt :: read_block_size
 
 #ifdef VAMSI_DEFAULT
 ! Start of read mechanism in HDF5 Collective I/O mode
 ! NOTE: This mechanism fails on Cray XT system because of portal resources exhaustion at higher processor counts. Works fine on IBM BG/P.
-  call PetscLogEventBegin(logging%event_read_int_array_hdf5, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_read_int_array_hdf5,ierr)
 
   read_block_size = HDF5_READ_BUFFER_SIZE
   call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
@@ -815,9 +779,9 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
   endif
 #endif
   
-  allocate(integer_buffer(read_block_size))
+  allocate(integer_buffer_i4(read_block_size))
   
-  rank = 1
+  rank_mpi = 1
   offset = 0
   length = 0
   stride = 1
@@ -827,7 +791,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
 !  call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err)
   call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_COLLECTIVE_F,hdf5_err)
 #endif
-if (option%global_rank == 0) then 
+if (option%myrank == 0) then 
 write (*,'("Executing HDF5 Colletive I/O mode")')
 endif
   
@@ -847,38 +811,26 @@ endif
         if (dims(1) /= temp_int) then
           if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
           dims(1) = temp_int
-          call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+          call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
         endif
         ! offset is zero-based
         offset(1) = integer_count
         length(1) = dims(1)
         call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                                    length,hdf5_err,stride,stride) 
-!#ifdef HDF5_BROADCAST
-!        if (option%myrank == option%io_rank) then                           
-!#endif
-          call PetscLogEventBegin(logging%event_h5dread_f, &
-                                  PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                                  PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
-          call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer,dims, &
-                         hdf5_err,memory_space_id,file_space_id,prop_id)   
-          call PetscLogEventEnd(logging%event_h5dread_f, &
-                                PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                                PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
-!#ifdef HDF5_BROADCAST
-!        endif
-!        if (option%mycommsize > 1) &
-!          call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,option%io_rank, &
-!                         option%mycomm,ierr)
-!#endif
+
+        call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
+        call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer_i4,dims, &
+                       hdf5_err,memory_space_id,file_space_id,prop_id)   
+        call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
+
         prev_integer_count = integer_count
         integer_count = integer_count + length(1)                  
       enddo
     endif
-    integer_array(i) = integer_buffer(index-prev_integer_count)
+    integer_array(i) = integer_buffer_i4(index-prev_integer_count)
   enddo
 
-!#ifdef HDF5_BROADCAST
   do
     if (integer_count >= num_integers_in_file) exit
     temp_int = num_integers_in_file-integer_count
@@ -886,48 +838,34 @@ endif
     if (dims(1) /= temp_int) then
       if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
       dims(1) = temp_int
-      call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+      call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
     endif
     ! offset is zero-based
     offset(1) = integer_count
     length(1) = dims(1)
     call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
-!    if (option%myrank == option%io_rank) then 
-      call PetscLogEventBegin(logging%event_h5dread_f, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
-      call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer,dims, &
-                     hdf5_err,memory_space_id,file_space_id,prop_id)   
-      call PetscLogEventEnd(logging%event_h5dread_f, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
-!    endif
-!    if (option%mycommsize > 1) &
-!      call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,option%io_rank, &
-!                     option%mycomm,ierr)
+    call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
+    call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer_i4,dims, &
+                   hdf5_err,memory_space_id,file_space_id,prop_id)   
+    call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
     integer_count = integer_count + length(1)                  
   enddo
-!#endif
-  deallocate(integer_buffer)
+  deallocate(integer_buffer_i4)
   
   call h5pclose_f(prop_id,hdf5_err)
   if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
   call h5sclose_f(file_space_id,hdf5_err)
   call h5dclose_f(data_set_id,hdf5_err)
 
-  call PetscLogEventEnd(logging%event_read_int_array_hdf5, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_read_int_array_hdf5,ierr)
 
 ! End of read mechanism in HDF5 Collective I/O mode
 
 #else
 ! Default & Glenn's HDF5 Broadcast Mechanism (uses HDF5 Independent I/O mode)
 
-  call PetscLogEventBegin(logging%event_read_int_array_hdf5, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_read_int_array_hdf5,ierr)
 
   read_block_size = HDF5_READ_BUFFER_SIZE
   call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
@@ -945,9 +883,9 @@ endif
   endif
 #endif
   
-  allocate(integer_buffer(read_block_size))
+  allocate(integer_buffer_i4(read_block_size))
   
-  rank = 1
+  rank_mpi = 1
   offset = 0
   length = 0
   stride = 1
@@ -973,7 +911,7 @@ endif
         if (dims(1) /= temp_int) then
           if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
           dims(1) = temp_int
-          call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+          call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
         endif
         ! offset is zero-based
         offset(1) = integer_count
@@ -983,25 +921,24 @@ endif
 #ifdef HDF5_BROADCAST
         if (option%myrank == option%io_rank) then                           
 #endif
-          call PetscLogEventBegin(logging%event_h5dread_f, &
-                                  PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                                  PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
-          call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer,dims, &
+          call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
+          call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer_i4,dims, &
                          hdf5_err,memory_space_id,file_space_id,prop_id)   
-          call PetscLogEventEnd(logging%event_h5dread_f, &
-                                PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                                PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+          call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
 #ifdef HDF5_BROADCAST
         endif
-        if (option%mycommsize > 1) &
-          call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,option%io_rank, &
+        if (option%mycommsize > 1) then
+          int_mpi = dims(1)
+!geh          call MPI_Bcast(integer_buffer,int_mpi,MPIU_INTEGER,option%io_rank, &
+          call MPI_Bcast(integer_buffer_i4,int_mpi,MPI_INTEGER,option%io_rank, &
                          option%mycomm,ierr)
+        endif
 #endif
         prev_integer_count = integer_count
         integer_count = integer_count + length(1)                  
       enddo
     endif
-    integer_array(i) = integer_buffer(index-prev_integer_count)
+    integer_array(i) = integer_buffer_i4(index-prev_integer_count)
   enddo
 
 #ifdef HDF5_BROADCAST
@@ -1012,7 +949,7 @@ endif
     if (dims(1) /= temp_int) then
       if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
       dims(1) = temp_int
-      call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+      call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
     endif
     ! offset is zero-based
     offset(1) = integer_count
@@ -1020,31 +957,28 @@ endif
     call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
     if (option%myrank == option%io_rank) then 
-      call PetscLogEventBegin(logging%event_h5dread_f, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
-      call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer,dims, &
+      call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
+      call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer_i4,dims, &
                      hdf5_err,memory_space_id,file_space_id,prop_id)   
-      call PetscLogEventEnd(logging%event_h5dread_f, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+      call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
     endif
-    if (option%mycommsize > 1) &
-      call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,option%io_rank, &
+    if (option%mycommsize > 1) then
+      int_mpi = dims(1)
+!geh      call MPI_Bcast(integer_buffer,int_mpi,MPIU_INTEGER,option%io_rank, &
+      call MPI_Bcast(integer_buffer_i4,int_mpi,MPI_INTEGER,option%io_rank, &
                      option%mycomm,ierr)
+    endif
     integer_count = integer_count + length(1)                  
   enddo
 #endif
-  deallocate(integer_buffer)
+  deallocate(integer_buffer_i4)
   
   call h5pclose_f(prop_id,hdf5_err)
   if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
   call h5sclose_f(file_space_id,hdf5_err)
   call h5dclose_f(data_set_id,hdf5_err)
 
-  call PetscLogEventEnd(logging%event_read_int_array_hdf5, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_read_int_array_hdf5,ierr)
 
 ! Default & Glenn's HDF5 Broadcast Mechanism (uses HDF5 Independent I/O mode)
                           
@@ -1083,19 +1017,18 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  PetscMPIInt :: rank
+  PetscMPIInt :: rank_mpi
   PetscInt :: index_count
   PetscInt :: integer_count, prev_integer_count
   integer(HSIZE_T) :: num_integers_in_file
   PetscInt :: temp_int, i, index
+  PetscMPIInt :: int_mpi
   
-  PetscMPIInt, allocatable :: integer_buffer(:)
+  integer, allocatable :: integer_buffer_i4(:)
   
   PetscInt :: read_block_size
 
-  call PetscLogEventBegin(logging%event_write_int_array_hdf5, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_write_int_array_hdf5,ierr)
                         
   read_block_size = HDF5_READ_BUFFER_SIZE
   call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
@@ -1113,9 +1046,9 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
   endif
 #endif
   
-  allocate(integer_buffer(read_block_size))
+  allocate(integer_buffer_i4(read_block_size))
   
-  rank = 1
+  rank_mpi = 1
   offset = 0
   length = 0
   stride = 1
@@ -1141,7 +1074,7 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
         if (dims(1) /= temp_int) then
           if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
           dims(1) = temp_int
-          call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+          call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
         endif
         ! offset is zero-based
         offset(1) = integer_count
@@ -1151,25 +1084,24 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
 #ifdef HDF5_BROADCAST
         if (option%myrank == option%io_rank) then                           
 #endif
-          call PetscLogEventBegin(logging%event_h5dread_f, &
-                                  PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                                  PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
-          call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer,dims, &
+          call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
+          call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer_i4,dims, &
                          hdf5_err,memory_space_id,file_space_id,prop_id)   
-          call PetscLogEventEnd(logging%event_h5dread_f, &
-                                PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                                PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+          call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
 #ifdef HDF5_BROADCAST
         endif
-        if (option%mycommsize > 1) &
-          call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,option%io_rank, &
+        if (option%mycommsize > 1) then
+          int_mpi = dims(1)
+!geh          call MPI_Bcast(integer_buffer,int_mpi,MPIU_INTEGER,option%io_rank, &
+          call MPI_Bcast(integer_buffer_i4,int_mpi,MPI_INTEGER,option%io_rank, &
                          option%mycomm,ierr)
+        endif
 #endif
         prev_integer_count = integer_count
         integer_count = integer_count + length(1)                  
       enddo
     endif
-    integer_array(i) = integer_buffer(index-prev_integer_count)
+    integer_array(i) = integer_buffer_i4(index-prev_integer_count)
   enddo
 
 #ifdef HDF5_BROADCAST
@@ -1180,7 +1112,7 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
     if (dims(1) /= temp_int) then
       if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
       dims(1) = temp_int
-      call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+      call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
     endif
     ! offset is zero-based
     offset(1) = integer_count
@@ -1188,32 +1120,29 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
     call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
     if (option%myrank == option%io_rank) then   
-      call PetscLogEventBegin(logging%event_h5dread_f, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+      call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
                             
-      call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer,dims, &
+      call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer_i4,dims, &
                      hdf5_err,memory_space_id,file_space_id,prop_id)   
-      call PetscLogEventEnd(logging%event_h5dread_f, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+      call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
     endif
-    if (option%mycommsize > 1) &
-      call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,option%io_rank, &
+    if (option%mycommsize > 1) then
+      int_mpi = dims(1)
+!      call MPI_Bcast(integer_buffer,int_mpi,MPIU_INTEGER,option%io_rank, &
+      call MPI_Bcast(integer_buffer_i4,int_mpi,MPI_INTEGER,option%io_rank, &
                      option%mycomm,ierr)
+    endif
     integer_count = integer_count + length(1)                  
   enddo
 #endif
-  deallocate(integer_buffer)
+  deallocate(integer_buffer_i4)
   
   call h5pclose_f(prop_id,hdf5_err)
   call h5sclose_f(memory_space_id,hdf5_err)
   call h5sclose_f(file_space_id,hdf5_err)
   call h5dclose_f(data_set_id,hdf5_err)
 
-  call PetscLogEventEnd(logging%event_write_int_array_hdf5, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_write_int_array_hdf5,ierr)
                         
 end subroutine HDF5WriteIntegerArray
 
@@ -1301,40 +1230,39 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
   integer(HID_T) :: data_set_id
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3),mem_dims(3)
-  PetscMPIInt :: rank,file_space_rank
+  PetscMPIInt :: rank_mpi,file_space_rank_mpi
   PetscMPIInt, parameter :: ON=1, OFF=0
   PetscMPIInt :: hdf5_flag
   
-  PetscMPIInt, pointer :: int_array(:)
+  integer, pointer :: int_array_i4(:)
   PetscReal, pointer :: double_array(:)
   PetscInt :: i, j, k, count, id
   integer(HSIZE_T) :: start(3), length(3), stride(3)
   PetscInt :: ny_local_X_nz_local
-  PetscInt :: num_to_write
+  PetscMPIInt :: num_to_write_mpi
 
 #ifdef VAMSI_HDF5_WRITE
 ! Vamsi's HDF5 Write 
 
-  PetscMPIInt, allocatable :: group_xyz(:),group_count(:),disp(:)
+  PetscMPIInt, allocatable :: group_count_mpi(:),disp_mpi(:)
+  PetscInt, allocatable :: group_xyz(:)
   PetscInt :: xyz(0:6),group_num_to_write
-  PetscMPIInt :: group_size
-  PetscMPIInt, pointer :: group_int_array(:)
+  PetscInt :: group_size
+  integer, pointer :: group_int_array_i4(:)
   PetscReal, pointer :: group_double_array(:)
 
-  call PetscLogEventBegin(logging%event_write_struct_dataset_hdf5, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_write_struct_dataset_hdf5,ierr)
 #define INVERT
   
   group_size = option%write_grp_size                      
   group_num_to_write = 0
 
   ny_local_X_nz_local = ny_local*nz_local
-  num_to_write = nx_local*ny_local_X_nz_local
+  num_to_write_mpi = nx_local*ny_local_X_nz_local
 
-  if (num_to_write > 0) then
+  if (num_to_write_mpi > 0) then
     if (data_type == HDF_NATIVE_INTEGER) then
-      allocate(int_array(nx_local*ny_local*nz_local))
+      allocate(int_array_i4(nx_local*ny_local*nz_local))
 #ifdef INVERT
       count = 0
       do k=1,nz_local
@@ -1342,13 +1270,13 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
           do i=1,nx_local
             id = k+(j-1)*nz_local+(i-1)*ny_local_X_nz_local
             count = count+1
-            int_array(id) = int(array(count))
+            int_array_i4(id) = int(array(count))
           enddo
         enddo
       enddo
 #else
       do i=1,grid%nlmax
-        int_array(i) = int(array(i))
+        int_array_i4(i) = int(array(i))
       enddo
 #endif
     else
@@ -1372,12 +1300,12 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
     endif
   endif
 
-  if (mod(option%global_rank,write_bcast_size) == 0) then 
+  if (mod(option%myrank,option%hdf5_write_group_size) == 0) then 
      ! I/O - Masters allocate memory
-     ! write(*,'(" My Global Rank = ",i5," My Reader Rank = ",i5," Group Size = ",i5,"dataset is ",A)') option%global_rank,option%writers_rank,group_size,name
+     ! write(*,'(" My Global Rank = ",i5," My Reader Rank = ",i5," Group Size = ",i5,"dataset is ",A)') option%myrank,option%writers_rank,group_size,name
      allocate(group_xyz(0:(group_size*7)-1))
-     allocate(group_count(0:(group_size-1)))
-     allocate(disp(0:(group_size-1)))
+     allocate(group_count_mpi(0:(group_size-1)))
+     allocate(disp_mpi(0:(group_size-1)))
   endif
 
   xyz(0) = nx_local
@@ -1386,24 +1314,26 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
   xyz(3) = istart_local
   xyz(4) = jstart_local
   xyz(5) = kstart_local
-  xyz(6) = num_to_write
+  xyz(6) = num_to_write_mpi
 
-  call mpi_gather(xyz(0),7,MPI_INTEGER,group_xyz(0),7,MPI_INTEGER,0,option%write_group,ierr)
+  call MPI_Gather(xyz(0),SEVEN_INTEGER_MPI,MPIU_INTEGER, &
+                  group_xyz(0),SEVEN_INTEGER_MPI,MPIU_INTEGER, &
+                  ZERO_INTEGER_MPI,option%write_group,ierr)
 
-  if (mod(option%global_rank,write_bcast_size) == 0) then
+  if (mod(option%myrank,option%hdf5_write_group_size) == 0) then
 
      do i=0,group_size-1,1
         group_num_to_write = group_num_to_write + group_xyz(i*7+6)
-        group_count(i) = group_xyz(i*7+6)
+        group_count_mpi(i) = group_xyz(i*7+6)
      enddo
 
-     disp(0) = 0
+     disp_mpi(0) = 0
      do i=1,group_size-1,1
-        disp(i) = disp(i-1) + group_count(i-1)
+        disp_mpi(i) = disp_mpi(i-1) + group_count_mpi(i-1)
      enddo
 
      if (data_type == HDF_NATIVE_INTEGER) then
-        allocate(group_int_array(group_num_to_write))
+        allocate(group_int_array_i4(group_num_to_write))
      else
         allocate(group_double_array(group_num_to_write))
      endif
@@ -1412,19 +1342,24 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
 
 
   if (data_type == HDF_NATIVE_INTEGER) then
-      call mpi_gatherv(int_array,num_to_write,MPI_INTEGER,group_int_array,&
-                       group_count(0),disp(0),MPI_INTEGER,0,option%write_group,ierr)
+!geh      call MPI_Gatherv(int_array,num_to_write_mpi,MPIU_INTEGER,group_int_array,&
+!geh                       group_count_mpi(0),disp_mpi(0),MPIU_INTEGER,ZERO_INTEGER_MPI, &
+      call MPI_Gatherv(int_array_i4,num_to_write_mpi,MPI_INTEGER,group_int_array_i4,&
+                       group_count_mpi(0),disp_mpi(0),MPI_INTEGER,ZERO_INTEGER_MPI, &
+                       option%write_group,ierr)
   else
-      call mpi_gatherv(double_array,num_to_write,MPI_DOUBLE_PRECISION,group_double_array,&
-                       group_count(0),disp(0),MPI_DOUBLE_PRECISION,0,option%write_group,ierr)
+      call MPI_Gatherv(double_array,num_to_write_mpi,MPI_DOUBLE_PRECISION, &
+                       group_double_array,&
+                       group_count_mpi(0),disp_mpi(0),MPI_DOUBLE_PRECISION, &
+                       ZERO_INTEGER_MPI,option%write_group,ierr)
   endif
 
-  ! write (*,'(" Starting HDF5 stuff in ",A," dataset,my rank = ",i6)') name,option%global_rank
-  if (mod(option%global_rank,write_bcast_size) == 0) then
-     ! write (*,'(" HDF5 Masters at P-1 in ",A," dataset,my rank = ",i6)') name,option%global_rank
+  ! write (*,'(" Starting HDF5 stuff in ",A," dataset,my rank = ",i6)') name,option%myrank
+  if (mod(option%myrank,option%hdf5_write_group_size) == 0) then
+     ! write (*,'(" HDF5 Masters at P-1 in ",A," dataset,my rank = ",i6)') name,option%myrank
   
      ! file space which is a 3D block
-     file_space_rank = 3
+     file_space_rank_mpi = 3
 #ifndef INVERT
      dims(1) = nx_global
      dims(2) = ny_global
@@ -1442,7 +1377,7 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
      hdf5_flag = hdf5_err
      call h5eset_auto_f(ON,hdf5_err)
      if (hdf5_flag < 0) then 
-        call h5screate_simple_f(file_space_rank,dims,file_space_id,hdf5_err,dims)
+        call h5screate_simple_f(file_space_rank_mpi,dims,file_space_id,hdf5_err,dims)
         call h5dcreate_f(file_id,name,data_type,file_space_id, &
                          data_set_id,hdf5_err,prop_id)
      else
@@ -1461,22 +1396,22 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
                                 hdf5_err)
      endif
 #endif
-     ! write (*,'(" HDF5 Masters at P-2 in ",A," dataset,my rank = ",i6)') name,option%global_rank
+     ! write (*,'(" HDF5 Masters at P-2 in ",A," dataset,my rank = ",i6)') name,option%myrank
 
      do i=0,group_size-1,1 
-        rank = 1
+        rank_mpi = 1
         mem_dims = 0
-        mem_dims(1) = group_count(i)
+        mem_dims(1) = group_count_mpi(i)
         ! if (num_to_write == 0) dims(1) = 1  ----> Need to handle this exception -- Vamsi.
-        call h5screate_simple_f(rank,mem_dims,memory_space_id,hdf5_err,mem_dims)
-        ! if (option%global_rank == 0) write (*,'(" Created memory space - ",i4)') i   
+        call h5screate_simple_f(rank_mpi,mem_dims,memory_space_id,hdf5_err,mem_dims)
+        ! if (option%myrank == 0) write (*,'(" Created memory space - ",i4)') i   
 
      if (hdf5_flag < 0) then 
-        call h5screate_simple_f(file_space_rank,dims,file_space_id,hdf5_err,dims)
+        call h5screate_simple_f(file_space_rank_mpi,dims,file_space_id,hdf5_err,dims)
      else
         call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
      endif
-        ! if (option%global_rank == 0) write (*,'(" Created file space id - ",i4)') i  
+        ! if (option%myrank == 0) write (*,'(" Created file space id - ",i4)') i  
 
         ! create the hyperslab
 #ifndef INVERT
@@ -1495,50 +1430,42 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
         length(1) = group_xyz(i*7+2) ! nz_local
 #endif
         !  if (num_to_write == 0) length(1) = 1
-        if (group_count(i) .NE. length(1)*length(2)*length(3)) write (*,'("My Rank is ",i8," Memory space and Hyperslab space do not match!!")') option%global_rank
+        if (group_count_mpi(i) .NE. length(1)*length(2)*length(3)) write (*,'("My Rank is ",i8," Memory space and Hyperslab space do not match!!")') option%myrank
         stride = 1
         call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
                                    hdf5_err,stride,stride)
-        ! if (option%global_rank == 0) write (*,'(" Created  hyperslab - ",i4)') i  
+        ! if (option%myrank == 0) write (*,'(" Created  hyperslab - ",i4)') i  
 
         ! write the data
-        if (num_to_write > 0) then
+        if (num_to_write_mpi > 0) then
            if (data_type == HDF_NATIVE_INTEGER) then
-              call PetscLogEventBegin(logging%event_h5dwrite_f, &
-                                      PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                                      PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
-              call h5dwrite_f(data_set_id,data_type,group_int_array(disp(i)+1),mem_dims, &
+              call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)                              
+              call h5dwrite_f(data_set_id,data_type,group_int_array_i4(disp_mpi(i)+1),mem_dims, &
                               hdf5_err,memory_space_id,file_space_id,prop_id)
-              call PetscLogEventEnd(logging%event_h5dwrite_f, &
-                                    PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                                    PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+              call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)                              
            else
-              call PetscLogEventBegin(logging%event_h5dwrite_f, &
-                                      PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                                      PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)         
-              call h5dwrite_f(data_set_id,data_type,group_double_array(disp(i)+1),mem_dims, &
+              call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)         
+              call h5dwrite_f(data_set_id,data_type,group_double_array(disp_mpi(i)+1),mem_dims, &
                               hdf5_err,memory_space_id,file_space_id,prop_id)  
-              call PetscLogEventEnd(logging%event_h5dwrite_f, &
-                                    PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                                    PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)   
+              call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)   
            endif
         endif
-        ! if (option%global_rank == 0) write (*,'("  Finished h5dwrite_f - ",i4)') i   
+        ! if (option%myrank == 0) write (*,'("  Finished h5dwrite_f - ",i4)') i   
          call h5sclose_f(file_space_id,hdf5_err)
          call h5sclose_f(memory_space_id,hdf5_err)
 
      enddo
-     ! write (*,'(" Finished HDF5 write in ",A," dataset,my rank = ",i6)') name,option%global_rank
-     ! call mpi_barrier(option%readers,ierr)
+     ! write (*,'(" Finished HDF5 write in ",A," dataset,my rank = ",i6)') name,option%myrank
+     ! call MPI_Barrier(option%readers,ierr)
      if (data_type == HDF_NATIVE_INTEGER) then
-         deallocate(group_int_array)
+         deallocate(group_int_array_i4)
      else
          deallocate(group_double_array)
      endif
 
      deallocate(group_xyz)
-     deallocate(group_count)
-     deallocate(disp)
+     deallocate(group_count_mpi)
+     deallocate(disp_mpi)
         !call h5sclose_f(file_space_id,hdf5_err)
         !call h5sclose_f(memory_space_id,hdf5_err)
      call h5pclose_f(prop_id,hdf5_err)
@@ -1546,9 +1473,7 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
      call h5dclose_f(data_set_id,hdf5_err)
   endif
 
-  call PetscLogEventEnd(logging%event_write_struct_dataset_hdf5, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_write_struct_dataset_hdf5,ierr)
                           
 end subroutine HDF5WriteStructuredDataSet
 ! End of Vamsi's HDF5 Write Mechanism
@@ -1556,22 +1481,20 @@ end subroutine HDF5WriteStructuredDataSet
 #else
 ! Default HDF5 Write
 
-  call PetscLogEventBegin(logging%event_write_struct_dataset_hdf5, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_write_struct_dataset_hdf5,ierr)
   
   ny_local_X_nz_local = ny_local*nz_local
-  num_to_write = nx_local*ny_local_X_nz_local
+  num_to_write_mpi = nx_local*ny_local_X_nz_local
   
   ! memory space which is a 1D vector  
-  rank = 1
+  rank_mpi = 1
   dims = 0
-  dims(1) = num_to_write
-  if (num_to_write == 0) dims(1) = 1
-  call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+  dims(1) = num_to_write_mpi
+  if (num_to_write_mpi == 0) dims(1) = 1
+  call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
 
   ! file space which is a 3D block
-  rank = 3
+  rank_mpi = 3
 #define INVERT
 #ifndef INVERT
     dims(1) = nx_global
@@ -1590,7 +1513,7 @@ end subroutine HDF5WriteStructuredDataSet
   hdf5_flag = hdf5_err
   call h5eset_auto_f(ON,hdf5_err)
   if (hdf5_flag < 0) then 
-    call h5screate_simple_f(rank,dims,file_space_id,hdf5_err,dims)
+    call h5screate_simple_f(rank_mpi,dims,file_space_id,hdf5_err,dims)
     call h5dcreate_f(file_id,name,data_type,file_space_id, &
                      data_set_id,hdf5_err,prop_id)
   else
@@ -1615,7 +1538,7 @@ end subroutine HDF5WriteStructuredDataSet
   length(2) =  ny_local
   length(1) =  nz_local
 #endif
-  if (num_to_write == 0) length(1) = 1
+  if (num_to_write_mpi == 0) length(1) = 1
   stride = 1
   call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
                              hdf5_err,stride,stride)
@@ -1631,9 +1554,9 @@ end subroutine HDF5WriteStructuredDataSet
                             hdf5_err)
   endif
 #endif
-  if (num_to_write > 0) then
+  if (num_to_write_mpi > 0) then
     if (data_type == HDF_NATIVE_INTEGER) then
-      allocate(int_array(nx_local*ny_local*nz_local))
+      allocate(int_array_i4(nx_local*ny_local*nz_local))
 #ifdef INVERT
       count = 0
       do k=1,nz_local
@@ -1641,24 +1564,20 @@ end subroutine HDF5WriteStructuredDataSet
           do i=1,nx_local
             id = k+(j-1)*nz_local+(i-1)*ny_local_X_nz_local
             count = count+1
-            int_array(id) = int(array(count))
+            int_array_i4(id) = int(array(count))
           enddo
         enddo
       enddo
 #else
       do i=1,grid%nlmax
-        int_array(i) = int(array(i))
+        int_array_i4(i) = int(array(i))
       enddo
 #endif
-      call PetscLogEventBegin(logging%event_h5dwrite_f, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
-      call h5dwrite_f(data_set_id,data_type,int_array,dims, &
+      call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)                              
+      call h5dwrite_f(data_set_id,data_type,int_array_i4,dims, &
                       hdf5_err,memory_space_id,file_space_id,prop_id)
-      call PetscLogEventEnd(logging%event_h5dwrite_f, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
-      deallocate(int_array)
+      call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)                              
+      deallocate(int_array_i4)
     else
 #ifdef INVERT
       allocate(double_array(nx_local*ny_local*nz_local))
@@ -1672,24 +1591,16 @@ end subroutine HDF5WriteStructuredDataSet
           enddo
         enddo
       enddo
-      call PetscLogEventBegin(logging%event_h5dwrite_f, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)         
+      call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)         
       call h5dwrite_f(data_set_id,data_type,double_array,dims, &
                       hdf5_err,memory_space_id,file_space_id,prop_id)  
-      call PetscLogEventEnd(logging%event_h5dwrite_f, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)   
+      call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)   
       deallocate(double_array)
 #else
-      call PetscLogEventBegin(logging%event_h5dwrite_f, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)   
+      call PetscLogEventBegin(logging%event_h5dwrite_f,ierr)   
       call h5dwrite_f(data_set_id,data_type,array,dims, &
                       hdf5_err,memory_space_id,file_space_id,prop_id)  
-      call PetscLogEventEnd(logging%event_h5dwrite_f, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                         
+      call PetscLogEventEnd(logging%event_h5dwrite_f,ierr)                         
 #endif
     endif
     call h5pclose_f(prop_id,hdf5_err)
@@ -1698,9 +1609,7 @@ end subroutine HDF5WriteStructuredDataSet
   call h5sclose_f(file_space_id,hdf5_err)
   call h5sclose_f(memory_space_id,hdf5_err)
 
-  call PetscLogEventEnd(logging%event_write_struct_dataset_hdf5, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_write_struct_dataset_hdf5,ierr)
                           
 end subroutine HDF5WriteStructuredDataSet
 
@@ -1741,18 +1650,19 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), group_length(3), stride(3) 
-  PetscMPIInt :: rank
-  PetscMPIInt, allocatable :: group_indices(:)
-  PetscMPIInt, allocatable :: glength(:)  
-  PetscMPIInt, allocatable :: displacement(:)  
+  PetscMPIInt :: rank_mpi
+  PetscMPIInt, allocatable :: displacement_mpi(:)  
+  PetscInt, allocatable :: glength(:)  
+  PetscMPIInt, allocatable :: glength_mpi(:)  
+  integer, allocatable :: group_indices_i4(:)
   integer(HSIZE_T) :: num_data
   PetscInt :: num_data_in_file
-  PetscInt :: istart, iend, length, id, i
-  PetscMPIInt :: group_size
+  PetscInt :: istart, iend, id, i
+  PetscInt :: length
+  PetscMPIInt :: length_mpi
+  PetscInt :: group_size 
   
-  call PetscLogEventBegin(logging%event_read_indices_hdf5, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_read_indices_hdf5,ierr)
 
   istart = 0  ! this will be zero-based
   iend = 0
@@ -1764,13 +1674,15 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   group_size = option%read_grp_size
 
   ! first determine upper and lower bound on PETSc global array
-  call mpi_exscan(grid%nlmax,istart,ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
-  call mpi_scan(grid%nlmax,iend,ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
+  call MPI_Exscan(grid%nlmax,istart,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                  MPI_SUM,option%mycomm,ierr)
+  call MPI_Scan(grid%nlmax,iend,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                MPI_SUM,option%mycomm,ierr)
   if (iend /= istart + grid%nlmax) then
     call printErrMsg(option,'iend /= istart+grid%nlmax')
   endif
 
-  if(mod(option%global_rank,read_bcast_size) == 0) then  
+  if(mod(option%myrank,option%hdf5_read_group_size) == 0) then  
      call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
      call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
      ! should be a rank=1 data space
@@ -1787,16 +1699,20 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
      endif  
      ! Allocate arrays that would hold the length and offset values for the group
      allocate(glength(0:group_size-1))
-     allocate(displacement(0:group_size-1))
+     allocate(glength_mpi(0:group_size-1))
+     allocate(displacement_mpi(0:group_size-1))
   endif
 
 
-  call mpi_bcast(num_data_in_file,1,MPI_INTEGER,0,option%read_group,ierr) 
-  length = iend - istart 
-  call mpi_gather(length,1,MPI_INTEGER,glength(0),1,MPI_INTEGER,0,option%read_group,ierr)
+  call MPI_Bcast(num_data_in_file,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                 ZERO_INTEGER_MPI,option%read_group,ierr) 
 
+  length = iend - istart 
+  call MPI_Gather(length,ONE_INTEGER_MPI,MPIU_INTEGER,glength(0),ONE_INTEGER_MPI, &
+                  MPIU_INTEGER,ZERO_INTEGER_MPI,option%read_group,ierr)
+ 
   if (istart < num_data_in_file) then
-     if (mod(option%global_rank,read_bcast_size) .NE. 0) then 
+     if (mod(option%myrank,option%hdf5_read_group_size) .NE. 0) then 
          allocate(indices(-1:iend-istart))
          indices(-1) = istart
          indices(0) = iend
@@ -1805,53 +1721,54 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
             group_length(1) = group_length(1) + glength(i)
          enddo  
       
-         displacement(0) = 0
+         displacement_mpi(0) = 0
          id = glength(0) 
 
          do i = 1,group_size-1,1
-            displacement(i) = id
+            displacement_mpi(i) = id
             id = id + glength(i)
          enddo
 
-         allocate(group_indices(1:group_length(1)))
+         allocate(group_indices_i4(1:group_length(1)))
          allocate(indices(-1:length))  
          indices(-1) = istart
          indices(0) = iend
          dims = 0
          offset = 0
          dims(1) = group_length(1)
-         rank = 1
+         rank_mpi = 1
          stride = 1
          memory_space_id = -1
          offset(1) = istart
      endif   
 
-    if (mod(option%global_rank,read_bcast_size) == 0) then
+    if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
         call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
     call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err)
 #endif
-        call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+        call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
         call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,offset, &
-                                    group_length,hdf5_err,stride,stride)
-        call PetscLogEventBegin(logging%event_h5dread_f, &
-                                PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                                PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
-        call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,group_indices(1:group_length), &
+                                    group_length(1),hdf5_err,stride,stride)
+        call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
+        call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,group_indices_i4(1:group_length(1)), &
                        dims,hdf5_err,memory_space_id,file_space_id,prop_id)
-        call PetscLogEventEnd(logging%event_h5dread_f, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+        call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
     endif
   endif
 
-  call mpi_scatterv(group_indices(1:group_length),glength,displacement,MPI_INTEGER, &
-                    indices(1:length),length,MPI_INTEGER,0,option%read_group,ierr)
+  length_mpi = length
+  if (mod(option%myrank,option%hdf5_read_group_size) == 0) glength_mpi = glength
 
-  if (mod(option%global_rank,read_bcast_size) == 0) then
-      deallocate(group_indices)
-      deallocate(glength) 
-      deallocate(displacement)
+  call MPI_Scatterv(group_indices_i4(1:group_length(1)),glength_mpi,displacement_mpi, &
+                    MPIU_INTEGER,indices(1:length),length_mpi,MPIU_INTEGER, &
+                    ZERO_INTEGER_MPI,option%read_group,ierr)
+
+  if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
+      deallocate(group_indices_i4)
+      deallocate(glength)
+      deallocate(glength_mpi) 
+      deallocate(displacement_mpi)
 
       call h5pclose_f(prop_id,hdf5_err)
       call h5sclose_f(memory_space_id,hdf5_err)
@@ -1859,9 +1776,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
       call h5dclose_f(data_set_id,hdf5_err)
   endif
 
-  call PetscLogEventEnd(logging%event_read_indices_hdf5, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_read_indices_hdf5,ierr)
 ! End of Vamsi's HDF5 Mechansim  
   
 #else
@@ -1881,21 +1796,21 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  PetscMPIInt :: rank
-  PetscMPIInt, allocatable :: indices_i4(:)
+  PetscMPIInt :: rank_mpi
+  ! seeting to MPIInt to ensure i4
+  integer, allocatable :: indices_i4(:)
   integer(HSIZE_T) :: num_data_in_file
   
   PetscInt :: istart, iend
 
-  call PetscLogEventBegin(logging%event_read_indices_hdf5, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_read_indices_hdf5,ierr)
                         
   istart = 0  ! this will be zero-based
   iend = 0
   
   ! first determine upper and lower bound on PETSc global array
-  call mpi_scan(grid%nlmax,iend,ONE_INTEGER,MPI_INTEGER,MPI_SUM,option%mycomm,ierr)
+  call MPI_Scan(grid%nlmax,iend,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
+                option%mycomm,ierr)
   istart = iend - grid%nlmax
   
   call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
@@ -1919,7 +1834,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
     indices_i4(-1) = istart
     indices_i4(0) = iend
   
-    rank = 1
+    rank_mpi = 1
     offset = 0
     length = 0
     stride = 1
@@ -1932,22 +1847,18 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
     dims = 0
     dims(1) = iend-istart
     memory_space_id = -1
-    call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+    call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
 
     ! offset is zero-based
     offset(1) = istart
     length(1) = iend-istart
     call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
-    call PetscLogEventBegin(logging%event_h5dread_f, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+    call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
                                
     call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,indices_i4(1:iend-istart), &
                    dims,hdf5_err,memory_space_id,file_space_id,prop_id)                     
-    call PetscLogEventEnd(logging%event_h5dread_f, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+    call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
     indices(-1:iend-istart) = indices_i4(-1:iend-istart)                
     deallocate(indices_i4)
   endif
@@ -1957,9 +1868,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   call h5sclose_f(file_space_id,hdf5_err)
   call h5dclose_f(data_set_id,hdf5_err)
 
-  call PetscLogEventEnd(logging%event_read_indices_hdf5, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_read_indices_hdf5,ierr)
 ! End of Default HDF5 Mechanism  
   
 #endif
@@ -2008,33 +1917,33 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), group_length(3), stride(3)
-  PetscMPIInt :: rank
+  PetscMPIInt :: rank_mpi
   integer(HSIZE_T) :: num_data_in_file
   Vec :: natural_vec
   PetscInt :: i, istart, iend
   PetscReal, allocatable :: real_buffer(:)
   PetscReal, allocatable :: real_group_buffer(:)  
-  PetscMPIInt, allocatable :: integer_buffer(:)
-  PetscMPIInt, allocatable :: integer_group_buffer(:) 
+  integer, allocatable :: integer_buffer_i4(:)
+  integer, allocatable :: integer_group_buffer_i4(:)
   PetscInt, allocatable :: indices0(:)
-  PetscMPIInt, allocatable :: glength(:) 
-  PetscMPIInt, allocatable :: displacement(:) 
-  PetscInt :: length, id
-  PetscMPIInt :: group_size
+  PetscMPIInt, allocatable :: glength_mpi(:) 
+  PetscMPIInt, allocatable :: displacement_mpi(:) 
+  PetscInt :: id
+  PetscInt :: length
+  PetscMPIInt :: length_mpi
+  PetscInt :: group_size
 
-  call PetscLogEventBegin(logging%event_read_array_hdf5, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_read_array_hdf5,ierr)
                           
   istart = 0
   iend = 0
   group_length = 0
-  length = 0
+  length_mpi = 0
   id = 0
   i = 0
   group_size = option%read_grp_size
   
-  if (mod(option%global_rank,read_bcast_size) == 0) then 
+  if (mod(option%myrank,option%hdf5_read_group_size) == 0) then 
      call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
      call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
      ! should be a rank=1 data space
@@ -2052,12 +1961,12 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
 #endif
      ! must initialize here to avoid error below when closing memory space
      memory_space_id = -1
-     rank = 1
+     rank_mpi = 1
      offset = 0
      stride = 1
      ! Allocate arrays that would hold the length and offset values for the group
-     allocate(glength(0:group_size-1))
-     allocate(displacement(0:group_size-1))
+     allocate(glength_mpi(0:group_size-1))
+     allocate(displacement_mpi(0:group_size-1))
   endif
 
   if (associated(indices)) then
@@ -2065,18 +1974,20 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
      iend = indices(0)
      length = iend - istart
      ! Gather the length values from the group to rank 0 in each group
-     call mpi_gather(length,1,MPI_INTEGER,glength(0),1,MPI_INTEGER,0,option%read_group,ierr)
+     call MPI_Gather(length,ONE_INTEGER_MPI,MPIU_INTEGER,glength_mpi(0), &
+                     ONE_INTEGER_MPI,MPIU_INTEGER,ZERO_INTEGER_MPI, &
+                     option%read_group,ierr)
 
-     if (mod(option%global_rank,read_bcast_size) == 0) then
+     if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
         do i = 0,group_size-1,1
-           group_length(1) = group_length(1) + glength(i)
+           group_length(1) = group_length(1) + glength_mpi(i)
         enddo
       
-        displacement(0) = 0 
-        id = glength(0)
+        displacement_mpi(0) = 0 
+        id = glength_mpi(0)
         do i = 1,group_size-1,1
-           displacement(i) = id
-           id = id + glength(i)
+           displacement_mpi(i) = id
+           id = id + glength_mpi(i)
         enddo
       
         dims = 0
@@ -2084,58 +1995,56 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
         ! offset is zero-based
         offset(1) = istart
       
-        call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+        call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
         call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
-                                   group_length,hdf5_err,stride,stride) 
+                                   group_length(1),hdf5_err,stride,stride) 
     
         if (data_type == H5T_NATIVE_DOUBLE) then
            allocate(real_group_buffer(group_length(1)))
 
-           call PetscLogEventBegin(logging%event_h5dread_f, &
-                                    PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                                    PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+           call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
            call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_group_buffer,dims, &
                            hdf5_err,memory_space_id,file_space_id,prop_id)
-           call PetscLogEventEnd(logging%event_h5dread_f, &
-                                  PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                                  PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+           call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
         else if (data_type == HDF_NATIVE_INTEGER) then
-           allocate(integer_group_buffer(group_length(1)))
+           allocate(integer_group_buffer_i4(group_length(1)))
 
-           call PetscLogEventBegin(logging%event_h5dread_f, &
-                                   PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                                   PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
-           call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_group_buffer,dims, &
+           call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
+           call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_group_buffer_i4,dims, &
                           hdf5_err,memory_space_id,file_space_id,prop_id)
-           call PetscLogEventEnd(logging%event_h5dread_f, &
-                                 PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                                 PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+           call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
         endif
      endif
 
+     length_mpi = length
      if (data_type == H5T_NATIVE_DOUBLE) then
-        allocate(real_buffer(length))
-        call mpi_scatterv(real_group_buffer,glength,displacement,MPI_DOUBLE_PRECISION, &
-                          real_buffer,length,MPI_DOUBLE_PRECISION,0,option%read_group,ierr)          
-        if (mod(option%global_rank,read_bcast_size) == 0) then
+        allocate(real_buffer(length_mpi))
+        call MPI_Scatterv(real_group_buffer,glength_mpi,displacement_mpi, &
+                          MPI_DOUBLE_PRECISION,real_buffer,length_mpi, &
+                          MPI_DOUBLE_PRECISION,ZERO_INTEGER_MPI, &
+                          option%read_group,ierr)          
+        if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
            deallocate(real_group_buffer)
-           deallocate(glength)
-           deallocate(displacement)
+           deallocate(glength_mpi)
+           deallocate(displacement_mpi)
         endif  
      else if (data_type == HDF_NATIVE_INTEGER) then
-        allocate(integer_buffer(length))
-        allocate(real_buffer(length))
-        call mpi_scatterv(integer_group_buffer,glength,displacement,MPI_INTEGER, &
-                          integer_buffer,length,MPI_INTEGER,0,option%read_group,ierr)          
-        do i = 1,length,1
-           real_buffer(i) = real(integer_buffer(i))
+        allocate(integer_buffer_i4(length_mpi))
+        allocate(real_buffer(length_mpi))
+!geh        call MPI_Scatterv(integer_group_buffer_i4,glength_mpi,displacement_mpi, &
+!geh                          MPIU_INTEGER,integer_buffer,length_mpi,MPIU_INTEGER, &
+        call MPI_Scatterv(integer_group_buffer_i4,glength_mpi,displacement_mpi, &
+                          MPI_INTEGER,integer_buffer_i4,length_mpi,MPI_INTEGER, &
+                          ZERO_INTEGER_MPI,option%read_group,ierr)          
+        do i = 1,length_mpi,1
+           real_buffer(i) = real(integer_buffer_i4(i))
         enddo
-        deallocate(integer_buffer)
+        deallocate(integer_buffer_i4)
 
-        if (mod(option%global_rank,read_bcast_size) == 0) then
-           deallocate(integer_group_buffer)
-           deallocate(glength)
-           deallocate(displacement)
+        if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
+           deallocate(integer_group_buffer_i4)
+           deallocate(glength_mpi)
+           deallocate(displacement_mpi)
         endif  
      endif  
 
@@ -2153,7 +2062,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
 
  endif
 
-  if (mod(option%global_rank,read_bcast_size) == 0) then 
+  if (mod(option%myrank,option%hdf5_read_group_size) == 0) then 
      call h5pclose_f(prop_id,hdf5_err)
      if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
      call h5sclose_f(file_space_id,hdf5_err)
@@ -2166,9 +2075,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
                                      ONEDOF)
   call VecDestroy(natural_vec,ierr)
   
-  call PetscLogEventEnd(logging%event_read_array_hdf5, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_read_array_hdf5,ierr)
 ! End of Vamsi's HDF5 Mechanism  
                             
 #else
@@ -2191,17 +2098,15 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  PetscMPIInt :: rank
+  PetscMPIInt :: rank_mpi
   integer(HSIZE_T) :: num_data_in_file
   Vec :: natural_vec
   PetscInt :: i, istart, iend
   PetscReal, allocatable :: real_buffer(:)
-  PetscMPIInt, allocatable :: integer_buffer(:)
+  integer, allocatable :: integer_buffer_i4(:)
   PetscInt, allocatable :: indices0(:)
   
-  call PetscLogEventBegin(logging%event_read_array_hdf5, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_read_array_hdf5,ierr)
                           
   istart = 0
   iend = 0
@@ -2219,7 +2124,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
     call printErrMsg(option)   
   endif
 
-  rank = 1
+  rank_mpi = 1
   offset = 0
   length = 0
   stride = 1
@@ -2243,7 +2148,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
 
     dims = 0
     dims(1) = iend-istart
-    call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+    call h5screate_simple_f(rank_mpi,dims,memory_space_id,hdf5_err,dims)
 
     ! offset is zero-based
     offset(1) = istart
@@ -2252,28 +2157,20 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
                                length,hdf5_err,stride,stride) 
     allocate(real_buffer(iend-istart))
     if (data_type == H5T_NATIVE_DOUBLE) then
-      call PetscLogEventBegin(logging%event_h5dread_f, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+      call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
       call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_buffer,dims, &
                      hdf5_err,memory_space_id,file_space_id,prop_id)
-      call PetscLogEventEnd(logging%event_h5dread_f, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+      call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
     else if (data_type == HDF_NATIVE_INTEGER) then
-      allocate(integer_buffer(iend-istart))
-      call PetscLogEventBegin(logging%event_h5dread_f, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
-      call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer,dims, &
+      allocate(integer_buffer_i4(iend-istart))
+      call PetscLogEventBegin(logging%event_h5dread_f,ierr)                              
+      call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer_i4,dims, &
                      hdf5_err,memory_space_id,file_space_id,prop_id)
-      call PetscLogEventEnd(logging%event_h5dread_f, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
+      call PetscLogEventEnd(logging%event_h5dread_f,ierr)                              
       do i=1,iend-istart
-        real_buffer(i) = real(integer_buffer(i))
+        real_buffer(i) = real(integer_buffer_i4(i))
       enddo
-      deallocate(integer_buffer)
+      deallocate(integer_buffer_i4)
     endif
     ! must convert indices to zero based for VecSetValues
     allocate(indices0(iend-istart))
@@ -2296,9 +2193,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
                                      ONEDOF)
   call VecDestroy(natural_vec,ierr)
   
-  call PetscLogEventEnd(logging%event_read_array_hdf5, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_read_array_hdf5,ierr)
 ! End of Default HDF5 Mechanism
 
 #endif
@@ -2364,9 +2259,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   patch => realization%patch
   grid => patch%grid
 
-  call PetscLogEventBegin(logging%event_region_read_hdf5, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_region_read_hdf5,ierr)
                           
   ! create hash table for fast lookup
 #ifdef HASH
@@ -2376,7 +2269,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   ! initialize fortran hdf5 interface 
   call h5open_f(hdf5_err)
 #ifdef VAMSI_HDF5_READ
-   if (mod(option%global_rank,read_bcast_size) == 0) then
+   if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
 #endif   
       option%io_buffer = 'Opening hdf5 file: ' // trim(filename)
       call printMsg(option)
@@ -2424,15 +2317,11 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
                             integer_array)
 
   ! convert cell ids from natural to local
-  call PetscLogEventBegin(logging%event_hash_map, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_hash_map,ierr)
   do i=1,num_indices
     integer_array(i) = grid%nG2L(GridGetLocalGhostedIdFromHash(grid,integer_array(i))) 
   enddo
-  call PetscLogEventEnd(logging%event_hash_map, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_hash_map,ierr)
   region%cell_ids => integer_array
                             
   allocate(integer_array(num_indices))
@@ -2450,7 +2339,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   nullify(indices)
 
 #ifdef VAMSI_HDF5_READ
- if (mod(option%global_rank,read_bcast_size) == 0) then
+ if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
 #endif 
     option%io_buffer = 'Closing group: ' // trim(region%name)
     call printMsg(option)  
@@ -2469,9 +2358,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   call GridDestroyHashTable(grid)
 #endif  
 
-  call PetscLogEventEnd(logging%event_region_read_hdf5, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_region_read_hdf5,ierr)
 
 end subroutine HDF5ReadRegionFromFile
 
@@ -2545,14 +2432,12 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
   grid => patch%grid
   field => realization%field
 
-  call PetscLogEventBegin(logging%event_cell_indx_int_read_hdf5, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_cell_indx_int_read_hdf5,ierr)
   
  ! initialize fortran hdf5 interface
   call h5open_f(hdf5_err)
 #ifdef VAMSI_HDF5_READ
-  if (mod(option%global_rank,read_bcast_size) == 0) then  
+  if (mod(option%myrank,option%hdf5_read_group_size) == 0) then  
 #endif
      option%io_buffer = 'Opening hdf5 file: ' // trim(filename)
      call printMsg(option) 
@@ -2660,7 +2545,8 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
   call printMsg(option)   
   call HDF5ReadIntegerArray(option,grp_id,string,grid%nlmax,indices, &
                             grid%nlmax,integer_array)
-  call GridCopyIntegerArrayToPetscVec(integer_array,global_vec,grid%nlmax)
+  call GridCopyIntegerArrayToVec(grid,integer_array,global_vec,grid%nlmax)
+
   deallocate(integer_array)
 #ifdef HASH  
   call GridDestroyHashTable(grid)
@@ -2676,7 +2562,7 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
   nullify(indices)
 
 #ifdef VAMSI_HDF5_READ
-  if (mod(option%global_rank,read_bcast_size) == 0) then  
+  if (mod(option%myrank,option%hdf5_read_group_size) == 0) then  
 #endif
   if (file_id /= grp_id) then
     option%io_buffer = 'Closing group: ' // trim(group_name)
@@ -2692,9 +2578,7 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
   call h5close_f(hdf5_err)
 #endif  
 
-  call PetscLogEventEnd(logging%event_cell_indx_int_read_hdf5, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_cell_indx_int_read_hdf5,ierr)
                           
 end subroutine HDF5ReadCellIndexedIntegerArray
 
@@ -2767,14 +2651,12 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
   grid => patch%grid
   field => realization%field
 
-  call PetscLogEventBegin(logging%event_cell_indx_real_read_hdf5, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_cell_indx_real_read_hdf5,ierr)
 
   ! initialize fortran hdf5 interface
   call h5open_f(hdf5_err)
 #ifdef VAMSI_HDF5_READ
-  if (mod(option%global_rank,read_bcast_size) == 0) then
+  if (mod(option%myrank,option%hdf5_read_group_size) == 0) then
 #endif  
      option%io_buffer = 'Opening hdf5 file: ' // trim(filename)
      call printMsg(option) 
@@ -2882,7 +2764,9 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
   call PetscGetTime(tstart,ierr)
   call HDF5ReadRealArray(option,file_id,string,grid%nlmax,indices, &
                          grid%nlmax,real_array)
-  call GridCopyRealArrayToPetscVec(real_array,global_vec,grid%nlmax)
+
+  call GridCopyRealArrayToVec(grid,real_array,global_vec,grid%nlmax)
+
   deallocate(real_array)
   
 #ifdef HASH  
@@ -2899,7 +2783,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
   nullify(indices)
 
 #ifdef VAMSI_HDF5_READ
-  if (mod(option%global_rank,read_bcast_size) == 0) then  
+  if (mod(option%myrank,option%hdf5_read_group_size) == 0) then  
 #endif 
   if (file_id /= grp_id) then
     option%io_buffer = 'Closing group: ' // trim(group_name)
@@ -2916,9 +2800,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
 
 #endif  
 
-  call PetscLogEventEnd(logging%event_cell_indx_real_read_hdf5, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_cell_indx_real_read_hdf5,ierr)
                           
 end subroutine HDF5ReadCellIndexedRealArray
 
