@@ -29,6 +29,8 @@ module Coupler_module
     type(tran_condition_type), pointer :: tran_condition     ! pointer to condition in condition array/list
     type(region_type), pointer :: region                ! pointer to region in region array/list
     type(connection_set_type), pointer :: connection_set ! pointer to an array/list of connections
+    PetscInt, pointer :: faces_set(:)                   ! ids of the elements of array grid%faces. Include local and ghosted faces. Doesn't requiere additional allocation of connections. Implemented in MIMETIC mode.
+    PetscInt :: numfaces_set
     type(coupler_type), pointer :: next                 ! pointer to next coupler
   end type coupler_type
   
@@ -89,7 +91,9 @@ function CouplerCreate1()
   nullify(coupler%tran_condition)
   nullify(coupler%region)
   nullify(coupler%connection_set)
+  nullify(coupler%faces_set)
   nullify(coupler%next)
+   
   
   CouplerCreate1 => coupler
 
@@ -288,10 +292,10 @@ subroutine CouplerListComputeConnections(grid,option,coupler_list)
   coupler => coupler_list%first
   do
     if (.not.associated(coupler)) exit 
-    if (grid%itype /= STRUCTURED_GRID_MIMETIC) then  
-       call CouplerComputeConnections(grid,option,coupler)
-    else
+    if ((grid%itype == STRUCTURED_GRID_MIMETIC).and.(coupler%itype == INITIAL_COUPLER_TYPE)) then  
        call CouplerComputeConnectionsFaces(grid,option,coupler)      
+    else
+       call CouplerComputeConnections(grid,option,coupler)
     end if
     if (associated(coupler%connection_set)) then
       coupler%connection_set%offset = offset
@@ -387,6 +391,7 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
   use Option_module
   use Region_module
   use Grid_module
+  use MFD_Aux_module
   
   implicit none
  
@@ -395,17 +400,23 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
   type(coupler_type), pointer :: coupler_list
   
   PetscInt :: iconn, reg_numconn
-  PetscInt :: cell_id_local, cell_id_ghosted, cell_id_petsc
+  PetscInt :: cell_id_local, cell_id_ghosted, cell_id_petsc, face_id_ghosted
   PetscInt :: connection_itype
   PetscInt :: iface, icell
   type(connection_set_type), pointer :: connection_set
   type(region_type), pointer :: region
   type(coupler_type), pointer :: coupler
+  type(mfd_type), pointer :: mfd_aux
   PetscErrorCode :: ierr
   PetscReal, pointer :: e2n_local_values(:)
+  type(mfd_auxvar_type), pointer :: aux_var
+  PetscInt :: conn_id
+  type(connection_set_type), pointer :: conn_set_ptr
 
   if (.not.associated(coupler)) return
   
+  write(*,*) "coupler%itype ", coupler%itype
+
   select case(coupler%itype)
     case(INITIAL_COUPLER_TYPE)
       if (associated(coupler%flow_condition)) then
@@ -419,53 +430,85 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
         nullify(coupler%connection_set)
         return
       endif
-      connection_itype = INITIAL_CONNECTION_TYPE
+!      connection_itype = INITIAL_CONNECTION_TYPE
+      connection_itype = INTERNAL_CONNECTION_TYPE
     case(SRC_SINK_COUPLER_TYPE)
-      connection_itype = SRC_SINK_CONNECTION_TYPE
+!      connection_itype = SRC_SINK_CONNECTION_TYPE
+      connection_itype = INTERNAL_CONNECTION_TYPE
     case(BOUNDARY_COUPLER_TYPE)
       connection_itype = BOUNDARY_CONNECTION_TYPE
   end select
   
   region => coupler%region
+  mfd_aux => grid%MFD
  
-  reg_numconn = 0
+  coupler%numfaces_set = 0
  
   call GridVecGetArrayF90(grid, grid%e2n, e2n_local_values, ierr)
 
   do icell = 1, region%num_cells
     
     cell_id_local = region%cell_ids(icell)
+
+    aux_var => mfd_aux%aux_vars(cell_id_local)
+
     cell_id_petsc = grid%nG2P(grid%nL2G(cell_id_local)) + 1
-    do iface = 1,6
-      if (cell_id_petsc > e2n_local_values((icell -1)*6 + iface)) then
-         reg_numconn = reg_numconn + 1
+    do iface = 1,aux_var%numfaces
+      face_id_ghosted = aux_var%face_id_gh(iface)
+      if ((cell_id_petsc > e2n_local_values((icell -1)*6 + iface)).and. &
+          (grid%fG2L(face_id_ghosted)>0)) then
+         coupler%numfaces_set = coupler%numfaces_set + 1
       end if
-      write(*,*) reg_numconn, cell_id_petsc, e2n_local_values((icell -1)*6 + iface)
     end do
  end do
 
- write(*,*) "reg_numconn ", reg_numconn
 
-  connection_set => ConnectionCreate(region%num_cells,option%nphase, &
+
+ allocate(coupler%faces_set(coupler%numfaces_set))
+ 
+! connection_set => ConnectionCreate(coupler%numfaces_set,option%nphase, &
+!                                     connection_itype)
+!
+!
+ connection_set => ConnectionCreate(ZERO_INTEGER, option%nphase, &
                                      connection_itype)
-
-  iface = coupler%iface
-  do iconn = 1,region%num_cells
+ iconn = 1 
+ do icell = 1, region%num_cells
     
-    cell_id_local = region%cell_ids(iconn)
-    if (associated(region%faces)) iface = region%faces(iconn)
-    
-    connection_set%id_dn(iconn) = cell_id_local
+    cell_id_local = region%cell_ids(icell)
 
-    call GridPopulateConnection(grid,connection_set,iface,iconn,cell_id_local)
-  enddo
+    aux_var => mfd_aux%aux_vars(cell_id_local)
 
+    cell_id_petsc = grid%nG2P(grid%nL2G(cell_id_local)) + 1
+    do iface = 1,aux_var%numfaces
+      face_id_ghosted = aux_var%face_id_gh(iface)
+      conn_set_ptr => grid%faces(face_id_ghosted)%conn_set_ptr
+      conn_id = grid%faces(face_id_ghosted)%id
+
+      if ((cell_id_petsc > e2n_local_values((icell -1)*6 + iface)).and. &
+          (grid%fG2L(face_id_ghosted)>0)) then
+          coupler%faces_set(iconn) = face_id_ghosted
+          iconn = iconn + 1
+      end if
+    end do
+ end do 
+
+  select case(coupler%itype)
+    case(INITIAL_COUPLER_TYPE)
+      connection_set%itype = INITIAL_CONNECTION_TYPE
+    case(SRC_SINK_COUPLER_TYPE)
+      connection_set%itype = SRC_SINK_CONNECTION_TYPE
+    case(BOUNDARY_COUPLER_TYPE)
+      connection_set%itype = BOUNDARY_CONNECTION_TYPE
+  end select
+   
   coupler%connection_set => connection_set
-  nullify(connection_set)
+ write(*,*) "coupler%numfaces_set ", coupler%numfaces_set
+  
+!  nullify(connection_set)
 
-  call GridVecRestoreArrayF90(grid, grid%e2n, e2n_local_values, ierr)
 
-  stop
+!  stop
  
 end subroutine CouplerComputeConnectionsFaces
 
@@ -602,6 +645,10 @@ subroutine CouplerDestroy(coupler)
 
   call ConnectionDestroy(coupler%connection_set)
   nullify(coupler%connection_set)
+
+  if (associated(coupler%faces_set)) &
+   deallocate(coupler%faces_set)
+  nullify(coupler%faces_set)
   
   deallocate(coupler)
   nullify(coupler)

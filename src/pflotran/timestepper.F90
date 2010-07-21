@@ -909,8 +909,14 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
       
       call PetscGetTime(log_start_time, ierr)
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE)
           call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
+        case(RICHARDS_MODE)
+          if (discretization%itype == STRUCTURED_GRID_MIMETIC) then 
+            call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx_faces, ierr)
+          else 
+            call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
+          end if
       end select
       call PetscGetTime(log_end_time, ierr)
       stepper%cumulative_solver_time = stepper%cumulative_solver_time + (log_end_time - log_start_time)

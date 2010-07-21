@@ -610,6 +610,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
 
             case(RICHARDS_MODE)
 !geh              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
+              if (option%mimetic) num_connections = coupler%numfaces_set
               allocate(coupler%flow_aux_real_var(2,num_connections))
               allocate(coupler%flow_aux_int_var(1,num_connections))
               coupler%flow_aux_real_var = 0.d0
@@ -675,22 +676,20 @@ subroutine PatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
   type(option_type) :: option
 
   PetscInt :: iconn
-  do iconn = 1, 64
-   write(*,*) patch%initial_conditions%first%flow_aux_real_var(1:option%nflowdof,iconn)
-  end do 
   
   call PatchUpdateCouplerAuxVars(patch,patch%initial_conditions, &
                                  force_update_flag,option)
-!  do iconn = 1, 64
-!   write(*,*) patch%initial_conditions%first%flow_aux_real_var(1:option%nflowdof,iconn)
-!  end do 
+!  do iconn = 1, patch%initial_conditions%first%connection_set%num_connections
+  do iconn = 1, 36
+   write(*,*) iconn, patch%initial_conditions%first%flow_aux_real_var(1:option%nflowdof,iconn)
+  end do 
 
-  stop
   call PatchUpdateCouplerAuxVars(patch,patch%boundary_conditions, &
                                  force_update_flag,option)
   call PatchUpdateCouplerAuxVars(patch,patch%source_sinks, &
                                  force_update_flag,option)
 
+!  stop
 end subroutine PatchUpdateAllCouplerAuxVars
 
 ! ************************************************************************** !

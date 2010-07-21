@@ -89,6 +89,7 @@ module Reaction_Aux_module
     PetscReal, pointer :: stoich_secondary_prefactor(:)
     PetscReal :: affinity_factor_sigma
     PetscReal :: affinity_factor_beta
+    PetscReal :: affinity_threshold
     PetscReal :: rate
   end type transition_state_rxn_type
   
@@ -365,8 +366,10 @@ module Reaction_Aux_module
     PetscReal, pointer :: kinmnrl_sec_pref_atten_coef(:,:,:)
     PetscReal, pointer :: kinmnrl_Tempkin_const(:)
     PetscReal, pointer :: kinmnrl_affinity_power(:)
+    PetscReal, pointer :: kinmnrl_affinity_threshold(:)
     
     PetscReal :: max_dlnC
+    PetscReal :: reaction_tolerance
 
   end type reaction_type
 
@@ -608,6 +611,7 @@ function ReactionCreate()
   nullify(reaction%kinmnrlh2ostoich)
   nullify(reaction%kinmnrl_logK)
   nullify(reaction%kinmnrl_logKcoef)
+  nullify(reaction%kinmnrl_affinity_threshold)
   nullify(reaction%kinmnrl_rate)
   nullify(reaction%kinmnrl_molar_vol)
   nullify(reaction%kinmnrl_num_prefactors)
@@ -621,8 +625,10 @@ function ReactionCreate()
   nullify(reaction%kinmnrl_sec_pref_atten_coef)
   nullify(reaction%kinmnrl_Tempkin_const)
   nullify(reaction%kinmnrl_affinity_power)
+  nullify(reaction%kinmnrl_affinity_threshold)
   
   reaction%max_dlnC = 5.d0
+  reaction%reaction_tolerance = 1.d-12
 
   ReactionCreate => reaction
   
@@ -841,6 +847,7 @@ function TransitionStateTheoryRxnCreate()
   nullify(tstrxn%stoich_secondary_prefactor)
   tstrxn%affinity_factor_sigma = 0.d0
   tstrxn%affinity_factor_beta = 0.d0
+  tstrxn%affinity_threshold = 1.d0
   tstrxn%rate = 0.d0
   
   TransitionStateTheoryRxnCreate => tstrxn
@@ -2319,6 +2326,9 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%kinmnrl_logKcoef)) &
     deallocate(reaction%kinmnrl_logKcoef)
   nullify(reaction%kinmnrl_logKcoef)
+  if (associated(reaction%kinmnrl_affinity_threshold)) &
+    deallocate(reaction%kinmnrl_affinity_threshold)
+  nullify(reaction%kinmnrl_affinity_threshold)
   if (associated(reaction%kinmnrl_rate)) deallocate(reaction%kinmnrl_rate)
   nullify(reaction%kinmnrl_rate)
   if (associated(reaction%kinmnrl_molar_vol)) &
@@ -2357,6 +2367,9 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%kinmnrl_affinity_power)) &
     deallocate(reaction%kinmnrl_affinity_power)
   nullify(reaction%kinmnrl_affinity_power)
+  if (associated(reaction%kinmnrl_affinity_threshold)) &
+    deallocate(reaction%kinmnrl_affinity_threshold)
+  nullify(reaction%kinmnrl_affinity_threshold)
 
   if (associated(reaction%kinmr_rate)) deallocate(reaction%kinmr_rate)
   nullify(reaction%kinmr_rate)

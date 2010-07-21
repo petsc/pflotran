@@ -46,6 +46,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   PetscReal :: concentration_at_datum
   PetscReal :: xm_nacl, dw_kg
   PetscReal :: max_z, min_z
+  PetscInt  :: num_faces, face_id_ghosted, conn_id
+  type(connection_set_type), pointer :: conn_set_ptr
   PetscReal, pointer :: pressure_array(:), density_array(:), z(:)
   PetscReal :: pressure_gradient(3), piezometric_head_gradient(3), datum(3)
   PetscReal :: temperature_gradient(3), concentration_gradient(3)
@@ -181,23 +183,51 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   dy_conn = 0.d0
   dz_conn = 0.d0
 
-  do iconn=1,coupler%connection_set%num_connections
-    local_id = coupler%connection_set%id_dn(iconn)
-    ghosted_id = grid%nL2G(local_id)
+  if (grid%itype==STRUCTURED_GRID_MIMETIC) then 
+      num_faces = coupler%numfaces_set
+  else 
+      num_faces = coupler%connection_set%num_connections
+  end if
 
-    if (associated(coupler%connection_set%dist)) then
-      dx_conn = coupler%connection_set%dist(0,iconn)*coupler%connection_set%dist(1,iconn)
-      dy_conn = coupler%connection_set%dist(0,iconn)*coupler%connection_set%dist(2,iconn)
-      dz_conn = coupler%connection_set%dist(0,iconn)*coupler%connection_set%dist(3,iconn)
-    endif
-    ! note the negative (-) d?_conn is required due to the offset of the boundary face
-    dist_x = grid%x(ghosted_id)-dx_conn-datum(X_DIRECTION)
-    dist_y = grid%y(ghosted_id)-dy_conn-datum(Y_DIRECTION)
-    dist_z = grid%z(ghosted_id)-dz_conn-datum(Z_DIRECTION)
+
+  do iconn=1, num_faces
+    if (grid%itype==STRUCTURED_GRID_MIMETIC) then
+      face_id_ghosted = coupler%faces_set(iconn)
+      conn_set_ptr => grid%faces(face_id_ghosted)%conn_set_ptr
+      conn_id = grid%faces(face_id_ghosted)%id
+
+      dist_x = conn_set_ptr%cntr(1,conn_id) - datum(X_DIRECTION)
+      dist_y = conn_set_ptr%cntr(2,conn_id) - datum(Y_DIRECTION)
+      dist_z = conn_set_ptr%cntr(3,conn_id) - datum(Z_DIRECTION)
+!      write(*,*) iconn,  dist_z
+    else 
+
+      local_id = coupler%connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+  
+      if (associated(coupler%connection_set%dist)) then
+        dx_conn = coupler%connection_set%dist(0,iconn)*coupler%connection_set%dist(1,iconn)
+        dy_conn = coupler%connection_set%dist(0,iconn)*coupler%connection_set%dist(2,iconn)
+        dz_conn = coupler%connection_set%dist(0,iconn)*coupler%connection_set%dist(3,iconn)
+      endif
+      ! note the negative (-) d?_conn is required due to the offset of the boundary face
+      dist_x = grid%x(ghosted_id)-dx_conn-datum(X_DIRECTION)
+      dist_y = grid%y(ghosted_id)-dy_conn-datum(Y_DIRECTION)
+      dist_z = grid%z(ghosted_id)-dz_conn-datum(Z_DIRECTION)
+!      write(*,*) iconn,  dist_z
+    end if
+
 
     if (associated(pressure_array)) then
       ipressure = idatum+int(dist_z/delta_z)
-      dist_z = grid%z(ghosted_id)-dz_conn-z(ipressure)
+      if (grid%itype==STRUCTURED_GRID_MIMETIC) then
+        dist_z = conn_set_ptr%cntr(3,conn_id) - z(ipressure)
+!        write(*,*) conn_set_ptr%cntr(3,conn_id)
+      else 
+        dist_z = grid%z(ghosted_id)-dz_conn-z(ipressure)
+!        write(*,*) grid%z(ghosted_id)-dz_conn
+      end if
+!      write(*,*) dist_z, z(ipressure), ipressure
       pressure = pressure_array(ipressure) + &
                  density_array(ipressure)*option%gravity(Z_DIRECTION) * &
                  dist_z + &
@@ -205,12 +235,14 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
                  pressure_gradient(X_DIRECTION)*dist_x + & ! gradient in Pa/m
                  pressure_gradient(Y_DIRECTION)*dist_y
     else
+      write(*,*) "Not associated"
       pressure = pressure_at_datum + &
                  pressure_gradient(X_DIRECTION)*dist_x + & ! gradient in Pa/m
                  pressure_gradient(Y_DIRECTION)*dist_y + &
                  pressure_gradient(Z_DIRECTION)*dist_z 
     endif
-    
+   
+ 
     if (pressure < option%minimum_hydrostatic_pressure) &
       pressure = option%minimum_hydrostatic_pressure
 
@@ -240,10 +272,15 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 !    endif
       
   enddo
-  
+ 
+  do iconn = 1, num_faces
+     write(*,*) iconn, coupler%flow_aux_real_var(1,iconn)
+  end do
+
+ 
   if (associated(pressure_array)) deallocate(pressure_array)
   nullify(pressure_array)
-  
+!  stop
 end subroutine HydrostaticUpdateCoupler
 
 #if 0

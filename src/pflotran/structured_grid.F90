@@ -921,7 +921,7 @@ end subroutine StructGridGetIJKFromGhostedID
 ! date: 10/17/07
 !
 ! ************************************************************************** !
-function StructGridComputeInternConnect(radius,structured_grid,option)
+function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
 
   use Connection_module
   use Option_module
@@ -936,10 +936,11 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
      end function samr_patch_at_bc
   end interface
 
-  PetscReal :: radius(:)
+!  PetscReal :: radius(:)
   type(connection_set_type), pointer :: StructGridComputeInternConnect
   type(option_type) :: option
   type(structured_grid_type) :: structured_grid
+  PetscReal, pointer :: xc(:),yc(:),zc(:)
   
   PetscReal, parameter :: Pi=3.141592653590d0
   
@@ -950,6 +951,9 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
   PetscReal :: dist_up, dist_dn
   type(connection_set_type), pointer :: connections
   PetscErrorCode :: ierr
+  PetscReal, pointer :: radius(:)
+
+  radius => xc
   
   samr_ofx = 0
   samr_ofy = 0
@@ -1041,6 +1045,11 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
               connections%dist(1,iconn) = 1.d0  ! x component of unit vector
               connections%area(iconn) = structured_grid%dy(id_up)* &
                                         structured_grid%dz(id_up)
+              connections%cntr(1,iconn) = xc(id_up) + &
+                  connections%dist(-1,iconn)*(xc(id_dn) - xc(id_up))
+              connections%cntr(2,iconn) = yc(id_up)
+              connections%cntr(3,iconn) = zc(id_up)
+              
             enddo
           enddo
         enddo
@@ -1061,6 +1070,9 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
               connections%dist(1,iconn) = 1.d0  ! x component of unit vector
               connections%area(iconn) = 2.d0 * pi * (radius(id_up)+0.5d0*structured_grid%dx(id_up))* &
                                         structured_grid%dz(id_up)
+              connections%cntr(1,iconn) = xc(id_up) + connections%dist(-1,iconn)*(xc(id_dn) - xc(id_up))
+              connections%cntr(2,iconn) = yc(id_up)
+              connections%cntr(3,iconn) = zc(id_up)
             enddo
           enddo
         enddo
@@ -1080,6 +1092,9 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
               connections%dist(0,iconn) = dist_up+dist_dn
               connections%dist(1,iconn) = 1.d0  ! x component of unit vector
               connections%area(iconn) = 4.d0 * pi * (radius(id_up)+0.5d0*structured_grid%dx(id_up))
+              connections%cntr(1,iconn) = xc(id_up) + connections%dist(-1,iconn)*(xc(id_dn) - xc(id_up))
+              connections%cntr(2,iconn) = yc(id_up)
+              connections%cntr(3,iconn) = zc(id_up)
             enddo
           enddo
         enddo
@@ -1120,6 +1135,9 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
               connections%dist(2,iconn) = 1.d0  ! y component of unit vector
               connections%area(iconn) = structured_grid%dx(id_up)* &
                                     structured_grid%dz(id_up)
+              connections%cntr(1,iconn) = xc(id_up) 
+              connections%cntr(2,iconn) = yc(id_up) + connections%dist(-1,iconn)*(yc(id_dn) - yc(id_up)) 
+              connections%cntr(3,iconn) = zc(id_up)
             enddo
           enddo
         enddo
@@ -1166,6 +1184,9 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
               connections%dist(3,iconn) = 1.d0  ! z component of unit vector
               connections%area(iconn) = structured_grid%dx(id_up) * &
                                         structured_grid%dy(id_up)
+              connections%cntr(1,iconn) = xc(id_up) 
+              connections%cntr(2,iconn) = yc(id_up) 
+              connections%cntr(3,iconn) = zc(id_up) + connections%dist(-1,iconn)*(zc(id_dn) - zc(id_up)) 
             enddo
           enddo
         enddo
@@ -1187,6 +1208,9 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
               connections%dist(3,iconn) = 1.d0  ! z component of unit vector
               connections%area(iconn) = 2.d0 * pi * radius(id_up) * &
                                         structured_grid%dx(id_up)
+              connections%cntr(1,iconn) = xc(id_up) 
+              connections%cntr(2,iconn) = yc(id_up) 
+              connections%cntr(3,iconn) = zc(id_up) + connections%dist(-1,iconn)*(zc(id_dn) - zc(id_up)) 
             enddo
           enddo
         enddo
@@ -1210,7 +1234,7 @@ end function StructGridComputeInternConnect
 ! date: 02/04/10
 !
 ! ************************************************************************** !
-function StructGridComputeBoundConnect(radius,structured_grid,option)
+function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
 
   use Connection_module
   use Option_module
@@ -1225,7 +1249,7 @@ function StructGridComputeBoundConnect(radius,structured_grid,option)
      end function samr_patch_at_bc
   end interface
 
-  PetscReal :: radius(:)
+  PetscReal, pointer :: xc(:), yc(:), zc(:)
   type(connection_set_type), pointer :: StructGridComputeBoundConnect
   type(option_type) :: option
   type(structured_grid_type) :: structured_grid
@@ -1239,6 +1263,9 @@ function StructGridComputeBoundConnect(radius,structured_grid,option)
   PetscReal :: dist_up, dist_dn
   type(connection_set_type), pointer :: connections
   PetscErrorCode :: ierr
+  PetscReal, pointer :: radius(:)
+
+  radius => xc
   
   samr_ofx = 0
   samr_ofy = 0
@@ -1291,9 +1318,12 @@ function StructGridComputeBoundConnect(radius,structured_grid,option)
               dist_dn = 0.5d0*structured_grid%dx(id_dn)
               connections%dist(-1,iconn) = 0.
               connections%dist(0,iconn) = dist_dn
-              connections%dist(1,iconn) = -1.d0  ! x component of unit vector
+              connections%dist(1,iconn) = 1.d0  ! x component of unit vector
               connections%area(iconn) = structured_grid%dy(id_dn)* &
                                         structured_grid%dz(id_dn)
+              connections%cntr(1,iconn) = xc(id_dn) - dist_dn
+              connections%cntr(2,iconn) = yc(id_dn) 
+              connections%cntr(3,iconn) = zc(id_dn) 
             enddo
           enddo
         endif
@@ -1311,9 +1341,12 @@ function StructGridComputeBoundConnect(radius,structured_grid,option)
               connections%dist(-1:3,iconn) = 0.d0
               dist_dn = 0.5d0*structured_grid%dx(id_dn)
               connections%dist(0,iconn) = dist_dn
-              connections%dist(1,iconn) = 1.d0  ! x component of unit vector
+              connections%dist(1,iconn) = -1.d0  ! x component of unit vector
               connections%area(iconn) = structured_grid%dy(id_dn)* &
                                         structured_grid%dz(id_dn)
+              connections%cntr(1,iconn) = xc(id_dn) + dist_dn
+              connections%cntr(2,iconn) = yc(id_dn) 
+              connections%cntr(3,iconn) = zc(id_dn) 
             enddo
           enddo
         endif
@@ -1347,9 +1380,12 @@ function StructGridComputeBoundConnect(radius,structured_grid,option)
               connections%dist(-1:3,iconn) = 0.d0
               dist_dn = 0.5d0*structured_grid%dy(id_dn)
               connections%dist(0,iconn) = dist_dn
-              connections%dist(2,iconn) = -1.d0  ! y component of unit vector
+              connections%dist(2,iconn) = 1.d0  ! y component of unit vector
               connections%area(iconn) = structured_grid%dx(id_dn)* &
                                     structured_grid%dz(id_dn)
+              connections%cntr(1,iconn) = xc(id_dn) 
+              connections%cntr(2,iconn) = yc(id_dn) - dist_dn
+              connections%cntr(3,iconn) = zc(id_dn) 
             enddo
           enddo
         endif
@@ -1368,9 +1404,12 @@ function StructGridComputeBoundConnect(radius,structured_grid,option)
               connections%dist(-1:3,iconn) = 0.d0
               dist_dn = 0.5d0*structured_grid%dy(id_dn)
               connections%dist(0,iconn) = dist_dn
-              connections%dist(2,iconn) = 1.d0  ! y component of unit vector
+              connections%dist(2,iconn) = -1.d0  ! y component of unit vector
               connections%area(iconn) = structured_grid%dx(id_dn)* &
                                     structured_grid%dz(id_dn)
+              connections%cntr(1,iconn) = xc(id_dn) 
+              connections%cntr(2,iconn) = yc(id_dn) + dist_dn
+              connections%cntr(3,iconn) = zc(id_dn) 
             enddo
           enddo
         endif
@@ -1403,9 +1442,12 @@ function StructGridComputeBoundConnect(radius,structured_grid,option)
               connections%dist(-1:3,iconn) = 0.d0
               dist_dn = 0.5d0*structured_grid%dz(id_dn)
               connections%dist(0,iconn) = dist_dn
-              connections%dist(3,iconn) = -1.d0  ! z component of unit vector
+              connections%dist(3,iconn) = 1.d0  ! z component of unit vector
               connections%area(iconn) = structured_grid%dx(id_dn) * &
                                         structured_grid%dy(id_dn)
+              connections%cntr(1,iconn) = xc(id_dn) 
+              connections%cntr(2,iconn) = yc(id_dn) 
+              connections%cntr(3,iconn) = zc(id_dn) - dist_dn 
             enddo
           enddo
         endif    
@@ -1424,9 +1466,12 @@ function StructGridComputeBoundConnect(radius,structured_grid,option)
               connections%dist(-1:3,iconn) = 0.d0
               dist_dn = 0.5d0*structured_grid%dz(id_dn)
               connections%dist(0,iconn) = dist_dn
-              connections%dist(3,iconn) = 1.d0  ! z component of unit vector
+              connections%dist(3,iconn) = -1.d0  ! z component of unit vector
               connections%area(iconn) = structured_grid%dx(id_dn) * &
                                         structured_grid%dy(id_dn)
+              connections%cntr(1,iconn) = xc(id_dn) 
+              connections%cntr(2,iconn) = yc(id_dn) 
+              connections%cntr(3,iconn) = zc(id_dn) + dist_dn 
             enddo
           enddo
         endif    

@@ -3,6 +3,7 @@ module Grid_module
   use Structured_Grid_module
   use Unstructured_Grid_module
   use Connection_module
+  use MFD_Aux_module
  
   implicit none
 
@@ -81,6 +82,7 @@ module Grid_module
     type(connection_set_list_type), pointer :: internal_connection_set_list
     type(connection_set_list_type), pointer :: boundary_connection_set_list
     type(face_type), pointer :: faces(:)
+    type(mfd_type), pointer :: MFD
 
   end type grid_type
 
@@ -103,7 +105,8 @@ module Grid_module
             GridComputeVolumes, &
             GridLocalizeRegions, &
             GridPopulateConnection, &
-            GridPopulateFaces, & 
+            GridPopulateFaces, &
+            GridCopyIntegerArrayToVec, &
             GridCopyRealArrayToVec, &
             GridCopyVecToIntegerArray, &
             GridCopyVecToRealArray, &
@@ -175,6 +178,7 @@ function GridCreate()
   grid%ngmax = 0
   
   nullify(grid%faces)
+  nullify(grid%MFD)
 
   nullify(grid%hash)
   grid%num_hash_bins = 1000
@@ -207,7 +211,8 @@ subroutine GridComputeInternalConnect(grid,option)
   select case(grid%itype)
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       connection_set => &
-        StructGridComputeInternConnect(grid%x,grid%structured_grid,option)
+        StructGridComputeInternConnect( grid%structured_grid, grid%x, grid%y, &
+                                  grid%z, option)
     case(UNSTRUCTURED_GRID) 
       connection_set => &
         UGridComputeInternConnect(grid%unstructured_grid,grid%x,grid%y, &
@@ -223,7 +228,7 @@ subroutine GridComputeInternalConnect(grid,option)
     case(STRUCTURED_GRID_MIMETIC)
 !    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       connection_bound_set => &
-        StructGridComputeBoundConnect(grid%x,grid%structured_grid,option)
+        StructGridComputeBoundConnect(grid%structured_grid, grid%x, grid%y, grid%z, option)
         grid%nlmax_faces = grid%structured_grid%nlmax_faces;
         grid%ngmax_faces = grid%structured_grid%ngmax_faces;
     case(UNSTRUCTURED_GRID) 
@@ -363,6 +368,8 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
 
   type(grid_type) :: grid
   type(mfd_type), pointer :: MFD_aux
+  
+
 !  type(auxilliary_type) :: aux
   type(option_type) :: option
 
@@ -379,7 +386,10 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
 
 
 
-  MFD_aux => MFDAuxCreate();
+  MFD_aux => MFDAuxCreate()
+  grid%MFD => MFD_aux
+ 
+  
   call MFDAuxInit(MFD_aux, grid%nlmax, option)
   allocate(numfaces(grid%nlmax))
 

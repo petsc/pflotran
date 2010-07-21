@@ -50,12 +50,15 @@ module Discretization_module
             DiscretizationCreateInterpolation, &
             DiscretizationCreateColoring, &
             DiscretizationGlobalToLocal, &
+            DiscretizationGlobalToLocalFaces, &
             DiscretizationLocalToGlobal, &
             DiscretizationLocalToLocal, &
             DiscretizationGlobalToNatural, &
             DiscretizationNaturalToGlobal, &
             DiscretizationGlobalToLocalBegin, &
             DiscretizationGlobalToLocalEnd, &
+            DiscretizGlobalToLocalFacesBegin, &
+            DiscretizGlobalToLocalFacesEnd, &
             DiscretizationLocalToLocalBegin, &
             DiscretizationLocalToLocalEnd, &
             DiscretizGlobalToNaturalBegin, &
@@ -189,6 +192,7 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
               discretization%itype = AMR_GRID
             case('structured_mimetic')
               discretization%itype = STRUCTURED_GRID_MIMETIC
+              option%mimetic = PETSC_TRUE
               call InputReadWord(input,option,structured_grid_ctype,PETSC_TRUE)
               call InputDefaultMsg(input,option,'structured_grid_type')   
               call StringToLower(structured_grid_ctype)
@@ -908,6 +912,34 @@ subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_in
   end select
   
 end subroutine DiscretizationGlobalToLocal
+
+! ************************************************************************** !
+!
+! DiscretizationGlobalToLocalFaces: Performs global to local communication for MFD
+! author: Daniil Svyatskiy
+! date: 07/20/10
+!
+!
+! ************************************************************************** !
+subroutine DiscretizationGlobalToLocalFaces(discretization,global_vec,local_vec,dm_index)
+
+  implicit none
+  
+
+  type(discretization_type) :: discretization
+  Vec :: global_vec
+  Vec :: local_vec
+  PetscInt :: dm_index
+  PetscErrorCode :: ierr
+  
+    
+  select case(discretization%itype)
+    case(STRUCTURED_GRID_MIMETIC)
+      call DiscretizGlobalToLocalFacesBegin(discretization,global_vec,local_vec,dm_index)
+      call DiscretizGlobalToLocalFacesEnd(discretization,global_vec,local_vec,dm_index)
+  end select
+  
+end subroutine DiscretizationGlobalToLocalFaces
   
 ! ************************************************************************** !
 !
@@ -1057,6 +1089,8 @@ end subroutine DiscretizationNaturalToGlobal
 ! ************************************************************************** !
 subroutine DiscretizationGlobalToLocalBegin(discretization,global_vec,local_vec,dm_index)
 
+
+
   implicit none
   
   type(discretization_type) :: discretization
@@ -1069,7 +1103,7 @@ subroutine DiscretizationGlobalToLocalBegin(discretization,global_vec,local_vec,
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
   select case(discretization%itype)
-    case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID,UNSTRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
       call DMGlobalToLocalBegin(dm_ptr%sgdm,global_vec,INSERT_VALUES,local_vec,ierr)
   end select
   
@@ -1087,7 +1121,9 @@ end subroutine DiscretizationGlobalToLocalBegin
 ! ************************************************************************** !
 subroutine DiscretizationGlobalToLocalEnd(discretization,global_vec,local_vec,dm_index)
 
-  implicit none
+ 
+
+ implicit none
   
   type(discretization_type) :: discretization
   Vec :: global_vec
@@ -1099,11 +1135,70 @@ subroutine DiscretizationGlobalToLocalEnd(discretization,global_vec,local_vec,dm
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
   select case(discretization%itype)
-    case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID,UNSTRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
       call DMGlobalToLocalEnd(dm_ptr%sgdm,global_vec,INSERT_VALUES,local_vec,ierr)
   end select
   
 end subroutine DiscretizationGlobalToLocalEnd
+  
+! ************************************************************************** !
+!
+! DiscretizGlobalToLocalFacesBegin: Begins global to local communication with MFD
+! author: Daniil Svyatskiy
+! date: 07/20/10
+!
+!
+! ************************************************************************** !
+subroutine DiscretizGlobalToLocalFacesBegin(discretization,global_vec,local_vec,dm_index)
+
+
+  use MFD_Aux_module
+
+  implicit none
+  
+  type(discretization_type) :: discretization
+  Vec :: global_vec
+  Vec :: local_vec
+  PetscInt :: dm_index
+  PetscErrorCode :: ierr
+  
+  select case(discretization%itype)
+    case(STRUCTURED_GRID_MIMETIC)
+      call VecScatterBegin( discretization%MFD%scatter_gtol_faces, global_vec, local_vec, &
+                                INSERT_VALUES,SCATTER_FORWARD, ierr)
+  end select
+  
+end subroutine DiscretizGlobalToLocalFacesBegin
+  
+! ************************************************************************** !
+!
+! DiscretizGlobalToLocalFacesEnd: Ends global to local communication with DM
+! author: Daniil Svyatskiy
+! date: 07/20/10
+!
+!
+! ************************************************************************** !
+subroutine DiscretizGlobalToLocalFacesEnd(discretization,global_vec,local_vec,dm_index)
+
+ 
+ use MFD_Aux_module
+
+ implicit none
+  
+  type(discretization_type) :: discretization
+  Vec :: global_vec
+  Vec :: local_vec
+  PetscInt :: dm_index
+  PetscErrorCode :: ierr
+  
+  
+  select case(discretization%itype)
+    case(STRUCTURED_GRID_MIMETIC)
+      call VecScatterEnd( discretization%MFD%scatter_gtol_faces, global_vec, local_vec, &
+                                INSERT_VALUES,SCATTER_FORWARD, ierr)
+  end select
+  
+end subroutine DiscretizGlobalToLocalFacesEnd
   
 ! ************************************************************************** !
 !

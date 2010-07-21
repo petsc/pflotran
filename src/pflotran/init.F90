@@ -355,7 +355,8 @@ subroutine Init(simulation)
     ! KSPSetFromOptions() will already have been called.
     ! I also note that this preconditioner is intended only for the flow 
     ! solver.  --RTM
-    if ((realization%discretization%itype == STRUCTURED_GRID_MIMETIC).or.(realization%discretization%itype == STRUCTURED_GRID)) then
+    if ((realization%discretization%itype == STRUCTURED_GRID_MIMETIC).or.&
+                (realization%discretization%itype == STRUCTURED_GRID)) then
       call PCSetDM(flow_solver%pc, &
                    realization%discretization%dm_nflowdof,ierr);
     endif
@@ -365,7 +366,7 @@ subroutine Init(simulation)
 !     flow_solver%pc_type = PCSHELL
       pcside = PC_RIGHT
       if(flow_solver%pc_type==PCSHELL) then
-        call KSPSetPCSide(flow_solver%ksp, pcside,ierr)
+!        call KSPSetPCSide(flow_solver%ksp, pcside,ierr)
       !  call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 0, flow_solver%pc)
       endif
     endif
@@ -462,7 +463,7 @@ subroutine Init(simulation)
 !       flow_solver%pc_type = PCSHELL
        pcside = PC_RIGHT
        if(tran_solver%pc_type==PCSHELL) then
-          call KSPSetPCSide(tran_solver%ksp, pcside,ierr)
+!          call KSPSetPCSide(tran_solver%ksp, pcside,ierr)
 !          call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 1, tran_solver%pc)
        endif
     endif
@@ -878,7 +879,8 @@ subroutine InitReadRequiredCardsFromInput(realization)
   end select
 !.........................................................................
 
-  if ((realization%discretization%itype == STRUCTURED_GRID).or.(realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then  ! look for processor decomposition
+  if ((realization%discretization%itype == STRUCTURED_GRID).or. &
+        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then  ! look for processor decomposition
     
     ! PROC information
     string = "PROC"

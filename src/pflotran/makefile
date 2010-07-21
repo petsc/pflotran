@@ -187,7 +187,7 @@ region.o : input.o utility.o logging.o string.o
 material.o : option.o input.o string.o
 fluid.o : option.o input.o string.o
 saturation_function.o : option.o input.o string.o utility.o
-coupler.o : condition.o connection.o region.o input.o grid.o
+coupler.o : condition.o connection.o region.o input.o grid.o mfd_aux.o
 observation.o : region.o option.o input.o
 convergence.o : option.o solver.o grid.o
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o \

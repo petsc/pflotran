@@ -17,7 +17,8 @@ module MFD_module
 
 
   public :: MFDCreateJacobian, &
-            MFDInitializeMassMatrices
+            MFDInitializeMassMatrices, MFDAuxGenerateStiffMatrix
+
 
 contains
 
@@ -189,7 +190,64 @@ subroutine MFDInitializeMassMatrices(grid, volume,  mfd_aux, option)
 
 end subroutine MFDInitializeMassMatrices
 
+subroutine MFDAuxGenerateStiffMatrix(aux_var, rich_aux_var, global_aux_var, Accum, &
+                                       sq_faces, option, StiffMatrix)
 
+ use Option_module
+ use Richards_Aux_module
+ use Global_Aux_module
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+#include "finclude/petscda.h"
+#include "finclude/petscda.h90"
+#include "finclude/petscis.h"
+#include "finclude/petscis.h90"
+#include "finclude/petscviewer.h"
+
+  type(mfd_auxvar_type), pointer :: aux_var
+  type(richards_auxvar_type) :: rich_aux_var
+  type(global_auxvar_type) :: global_aux_var
+  PetscScalar, pointer :: sq_faces(:)
+  type(option_type) :: option
+  PetscScalar, pointer :: StiffMatrix(:,:)
+  PetscReal :: Accum(1:option%nflowdof)
+
+
+  PetscInt :: iface, jface
+  PetscScalar :: E
+  PetscScalar :: ukvr
+  PetscScalar, pointer :: MB(:)
+
+  allocate(MB(aux_var%numfaces))
+
+  ukvr = rich_aux_var%kvr_x
+
+  E = Accum(1)
+  do iface = 1, aux_var%numfaces
+    MB(iface) = 0.
+    do jface = 1, aux_var%numfaces
+       MB(iface) = MB(iface) + ukvr*aux_var%MassMatrixInv(iface,jface)*sq_faces(jface)
+    end do
+    E = E + MB(iface)*sq_faces(iface)
+  end do
+
+  do iface = 1, aux_var%numfaces
+    do jface = 1, aux_var%numfaces
+        StiffMatrix(iface,jface) = sq_faces(iface)*sq_faces(jface)*    &
+                                        (ukvr*aux_var%MassMatrixInv(iface,jface) - &
+                                        (1./E)*MB(iface)*MB(jface))
+    end do
+  end do
+
+
+  deallocate(MB)
+
+end subroutine MFDAuxGenerateStiffMatrix
 
 
 end module MFD_module

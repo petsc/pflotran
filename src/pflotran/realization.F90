@@ -367,7 +367,12 @@ subroutine RealizationCreateDiscretization(realization)
        call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
                                                         field%flow_yy_faces)
 
+       call VecCreateSeq(PETSC_COMM_SELF, grid%ngmax_faces*option%nflowdof, field%flow_xx_loc_faces, ierr)
+       call VecSetBlockSize(field%flow_xx_loc_faces,NFLOWDOF,ierr)
+
        call MFDInitializeMassMatrices(grid, field%volume, discretization%MFD, option)
+
+
 
 
      end if
@@ -379,19 +384,12 @@ subroutine RealizationCreateDiscretization(realization)
    end if
 
      
-     call GridVecGetArrayF90(grid, grid%e2n, real_tmp, ierr)
-     do test = 1, grid%nlmax
-       write(*,*) (real_tmp((test -1)*6 + j), j=1,6)
-       write(*,*)
-     end do
-     call GridVecRestoreArrayF90(grid, grid%e2n, real_tmp, ierr)
  
   ! initialize to -999.d0 for check later that verifies all values 
   ! have been set
   call VecSet(field%porosity0,-999.d0,ierr)
        
       write(*,*) "End of RealizationCreateDiscretization"
-!      stop
 
 end subroutine RealizationCreateDiscretization
 
@@ -1137,7 +1135,7 @@ subroutine RealizAssignFlowInitCond(realization)
   
   type(realization_type) :: realization
   
-  PetscInt :: icell, iconn, idof
+  PetscInt :: icell, iconn, idof, iface
   PetscInt :: local_id, ghosted_id, iend, ibegin
   PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
   PetscErrorCode :: ierr
@@ -1155,6 +1153,8 @@ subroutine RealizAssignFlowInitCond(realization)
   discretization => realization%discretization
   field => realization%field
   patch => realization%patch
+
+  write(*,*) "Enter RealizAssignFlowInitCond"
 
   cur_level => realization%level_list%first
   do 
@@ -1174,7 +1174,11 @@ subroutine RealizAssignFlowInitCond(realization)
       end select 
 
       ! assign initial conditions values to domain
-      call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
+      if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
+         call GridVecGetArrayF90(grid,field%flow_xx_faces, xx_p, ierr); CHKERRQ(ierr)
+      else
+           call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
+      end if
       call GridVecGetArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
       
       xx_p = -999.d0
@@ -1184,43 +1188,83 @@ subroutine RealizAssignFlowInitCond(realization)
       
         if (.not.associated(initial_condition)) exit
 
-        if (.not.associated(initial_condition%flow_aux_real_var)) then
-          do icell=1,initial_condition%region%num_cells
-            local_id = initial_condition%region%cell_ids(icell)
-            ghosted_id = grid%nL2G(local_id)
-            iend = local_id*option%nflowdof
-            ibegin = iend-option%nflowdof+1
-            if (associated(cur_patch%imat)) then
-              if (cur_patch%imat(ghosted_id) <= 0) then
-                xx_p(ibegin:iend) = 0.d0
-                iphase_loc_p(ghosted_id) = 0
-                cycle
-              endif
-            endif
-            do idof = 1, option%nflowdof
-              xx_p(ibegin+idof-1) = &
-                initial_condition%flow_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
-            enddo
-            iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
-          enddo
-        else
-          do iconn=1,initial_condition%connection_set%num_connections
-            local_id = initial_condition%connection_set%id_dn(iconn)
-            ghosted_id = grid%nL2G(local_id)
-            iend = local_id*option%nflowdof
-            ibegin = iend-option%nflowdof+1
-            if (associated(cur_patch%imat)) then
-              if (cur_patch%imat(ghosted_id) <= 0) then
-                xx_p(ibegin:iend) = 0.d0
-                iphase_loc_p(ghosted_id) = 0
-                cycle
-              endif
-            endif
-            xx_p(ibegin:iend) = &
-              initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
-            iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn)
-          enddo
-        endif
+        if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
+           if (.not.associated(initial_condition%flow_aux_real_var)) then
+             do icell=1,initial_condition%region%num_cells
+               local_id = initial_condition%region%cell_ids(icell)
+               ghosted_id = grid%nL2G(local_id)
+               if (associated(cur_patch%imat)) then
+                 if (cur_patch%imat(ghosted_id) <= 0) then
+                   iphase_loc_p(ghosted_id) = 0
+                   cycle
+                 endif
+               endif
+               iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
+             enddo
+           else
+             do icell=1,initial_condition%region%num_cells
+               local_id = initial_condition%region%cell_ids(icell)
+               ghosted_id = grid%nL2G(local_id)
+               if (associated(cur_patch%imat)) then
+                 if (cur_patch%imat(ghosted_id) <= 0) then
+                   iphase_loc_p(ghosted_id) = 0
+                   cycle
+                 endif
+               endif
+               iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,icell)
+             enddo
+             do iface=1,initial_condition%numfaces_set
+                ghosted_id = initial_condition%faces_set(iface)
+                local_id = grid%fG2L(ghosted_id)
+                if (local_id > 0) then
+                  iend = local_id*option%nflowdof
+                  ibegin = iend-option%nflowdof+1
+                  xx_p(ibegin:iend) = &
+                 initial_condition%flow_aux_real_var(1:option%nflowdof,iface)
+                end if
+             end do
+           
+           end if
+        else 
+           if (.not.associated(initial_condition%flow_aux_real_var)) then
+             do icell=1,initial_condition%region%num_cells
+               local_id = initial_condition%region%cell_ids(icell)
+               ghosted_id = grid%nL2G(local_id)
+               iend = local_id*option%nflowdof
+               ibegin = iend-option%nflowdof+1
+               if (associated(cur_patch%imat)) then
+                 if (cur_patch%imat(ghosted_id) <= 0) then
+                   xx_p(ibegin:iend) = 0.d0
+                   iphase_loc_p(ghosted_id) = 0
+                   cycle
+                 endif
+               endif
+               do idof = 1, option%nflowdof
+                 xx_p(ibegin+idof-1) = &
+                   initial_condition%flow_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+               enddo
+               iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
+             enddo
+           else
+             write(*,*) "Using flow_aux_int_var"
+             do iconn=1,initial_condition%connection_set%num_connections
+               local_id = initial_condition%connection_set%id_dn(iconn)
+               ghosted_id = grid%nL2G(local_id)
+               iend = local_id*option%nflowdof
+               ibegin = iend-option%nflowdof+1
+               if (associated(cur_patch%imat)) then
+                 if (cur_patch%imat(ghosted_id) <= 0) then
+                   xx_p(ibegin:iend) = 0.d0
+                   iphase_loc_p(ghosted_id) = 0
+                   cycle
+                 endif
+               endif
+               xx_p(ibegin:iend) = &
+                 initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
+               iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn)
+             enddo
+           endif
+        end if
         initial_condition => initial_condition%next
       enddo
       

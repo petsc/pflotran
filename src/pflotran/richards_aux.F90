@@ -272,9 +272,9 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   aux_var%dden_dp = dw_dp
   
 !  aux_var%dkvr_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp
-  aux_var%dkvr_x_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp
-  aux_var%dkvr_y_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp
-  aux_var%dkvr_z_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp
+  aux_var%dkvr_x_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp ! For anisotropic relative perm 
+  aux_var%dkvr_y_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp ! For anisotropic relative perm
+  aux_var%dkvr_z_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp ! For anisotropic relative perm
 
 end subroutine RichardsAuxVarCompute
 
