@@ -4184,13 +4184,13 @@ GriddingAlgorithm{
    // }
    max_levels = 7 
    largest_patch_size {
-      level_0 = 10, 10, 80
-      level_1 = 10, 10, 10
+      level_0 = 20, 20, 80
+      level_1 = 40, 40, 40
       // all finer levels will use same values as level_1...
    }
    smallest_patch_size {
-      level_0 = 10,10,40
-      level_1 = 5,5,10
+      level_0 = 10, 10, 40
+      level_1 =  5,  5, 10
       // all finer levels will use same values as level_1...
    }
    ratio_to_coarser {
@@ -4210,13 +4210,13 @@ StandardTagAndInitialize{
       // the full index region on level 0 is [(0,0,0),(19,19,79)]
       // Note that this will create a refinement region on level 1 extending from
       // [(0,0,60*2), (19*2+1,19*2+1,79*2+1)] when refined by a factor of 2 in
-      // each direction. The full index space on level one is [(0,0,0), (2*19+1, 2*19+1, 2*79+1)]
-      level_0 = [(0,0,60),(19,19,79)]
-      level_1 = [(0,0,140),(19,19,159)]
-      level_2 = [(0,0,300),(19,19,319)]
-      level_3 = [(0,0,620),(159,159,639)]
-      level_4 = [(0,0,1260),(319,319,1279)]
-      level_5 = [(0,0,2540),(639,639,2559)]
+      // each direction. The full index space on level one is [(0,0,0), (2*19+1,2*19+1,2*79+1)]
+      level_0 = [(0,0,60),(19,19,79)]         // 0.5 m
+      level_1 = [(0,0,140),(39,39,159)]       // 0.25
+      level_2 = [(0,0,300),(79,79,319)]       // 0.125
+      level_3 = [(0,0,620),(159,159,639)]     // 0.0625
+      level_4 = [(0,0,1260),(319,319,1279)]   // 0.03125
+      level_5 = [(0,0,2540),(639,639,2559)]   // 0.015625
    }
 }
 
@@ -4231,7 +4231,7 @@ PflotranApplicationStrategy{
    number_solution_components       = 3
 
    PflotranMultilevelOperator{
-     	   operator_name                   = "PflotranMultilevelOperator"
+       operator_name                   = "PflotranMultilevelOperator"
 	       tangent_interp_scheme           = "LINEAR"
 	       normal_interp_scheme            = "LINEAR"
 	       adjust_cf_coefficients          = FALSE
@@ -4293,34 +4293,34 @@ PflotranApplicationStrategy{
      preconditioner_print_flag = FALSE
 
      pc_solver{
-       solver_name                      =  "FAC"
-       max_iterations                   =  2 
-       max_error                        =  1.0e-12
-       print_info_level                 =  1 
-       presolve_iterations              =  2
-       postsolve_iterations             =  2
-       use_visit                        =  FALSE
-       viz_directory                    =  "fac_viz"
-       zero_initial_guess               =  TRUE
+       solver_name                      = "FAC"
+       max_iterations                   = 2 
+       max_error                        = 1.e-12
+       print_info_level                 = 1 
+       presolve_iterations              = 2
+       postsolve_iterations             = 2
+       use_visit                        = FALSE
+       viz_directory                    = "fac_viz"
+       zero_initial_guess               = TRUE
 
        level_solver_0 {
             solver_name                = "CellHYPRELevelSolver"
             print_info_level           = 0 
             mg_solver_type             = 1
             max_iterations             = 1
-            max_error                  = 1.0e-12
+            max_error                  = 1.e-12
             num_presweeps              = 2
             num_postsweeps             = 2
             preprocess_rhs             = FALSE
        }
 
        level_solver_1 {
-            solver_name                 =  "CellLevelSmoother"
-            smoother_type               =  "Red-black Gauss-Seidel"
-            print_info_level            =  0 
-            max_iterations              =  1
-            max_error                   =  1.0e-12
-            num_sweeps                  =  10
+            solver_name                = "CellLevelSmoother"
+            smoother_type              = "Red-black Gauss-Seidel"
+            print_info_level           = 0 
+            max_iterations             = 1
+            max_error                  = 1.e-12
+            num_sweeps                 = 10
        }
      } 
    }
