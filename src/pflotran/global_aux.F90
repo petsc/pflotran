@@ -98,31 +98,9 @@ subroutine GlobalAuxVarInit(aux_var,option)
   aux_var%sat_store = 0.d0
   allocate(aux_var%den_kg_store(option%nphase,TWO_INTEGER))
   aux_var%den_kg_store = 0.d0
-  allocate(aux_var%reaction_rate_store(option%nflowspec))
-  aux_var%reaction_rate_store = 0.d0
+    nullify(aux_var%xmass)
 select case(option%iflowmode)
   case( IMS_MODE, MPH_MODE, FLASH2_MODE)
-    allocate(aux_var%xmass(option%nphase))
-    aux_var%xmass = 1.d0
-    allocate(aux_var%pres_store(option%nphase,TWO_INTEGER))
-    aux_var%pres_store = 0.d0
-    allocate(aux_var%temp_store(ONE_INTEGER,TWO_INTEGER))
-    aux_var%temp_store = 0.d0
-    allocate(aux_var%fugacoeff(ONE_INTEGER))
-    aux_var%fugacoeff = 1.d0
-    allocate(aux_var%fugacoeff_store(ONE_INTEGER,TWO_INTEGER))
-    aux_var%fugacoeff_store = 1.d0    
-    allocate(aux_var%den_store(option%nphase,TWO_INTEGER))
-    aux_var%den_store = 0.d0
-  case default
-    nullify(aux_var%xmass)
-    nullify(aux_var%pres_store)
-    nullify(aux_var%temp_store)
-    nullify(aux_var%fugacoeff)
-    nullify(aux_var%fugacoeff_store)
-    nullify(aux_var%den_store)
-  end select
-  if(option%iflowmode == MPH_MODE)then
     allocate(aux_var%xmass(option%nphase))
     aux_var%xmass = 1.d0
     nullify(aux_var%xmass)
