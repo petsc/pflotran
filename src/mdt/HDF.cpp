@@ -1,6 +1,7 @@
 #include "HDF.h"
 
 #if defined(PETSC_HAVE_HDF5)
+//#define FIX
 
 static PetscInt neg_one = -1;
 
@@ -35,12 +36,25 @@ HDF::HDF(char *filename, PetscInt overwrite) {
   */
 
   if (!overwrite) { // solely edit file if it exists
+#ifdef FIX
+    H5E_auto_t old_func;
+#else
     H5E_auto2_t old_func;
+#endif
     void  *old_client_data;
+#ifdef FIX
+    H5Eget_auto(&old_func,&old_client_data);
+    H5Eset_auto(NULL,NULL);
+#else
     H5Eget_auto(H5E_DEFAULT,&old_func,&old_client_data);
     H5Eset_auto(H5E_DEFAULT,NULL,NULL);
+#endif
     file_id = H5Fopen(filename,H5F_ACC_RDWR,prop_id);
+#ifdef FIX
+    H5Eset_auto(old_func,old_client_data);
+#else
     H5Eset_auto(H5E_DEFAULT,old_func,old_client_data);
+#endif
   }
   if (file_id < 0 || overwrite) {
     file_id = H5Fcreate(filename, H5F_ACC_TRUNC, H5P_DEFAULT, prop_id);
@@ -54,8 +68,13 @@ HDF::HDF(char *filename, PetscInt overwrite) {
 
 void HDF::createGroup(char *group_name) {
 
+#ifdef FIX
+  H5E_auto_t old_func;
+#else
   H5E_auto2_t old_func;
+#endif
   void  *old_client_data;
+#ifndef FIX
   H5Eget_auto(H5E_DEFAULT,&old_func, &old_client_data);
   H5Eset_auto(H5E_DEFAULT,NULL,NULL);
   if (ngrp > 0)
@@ -71,6 +90,23 @@ void HDF::createGroup(char *group_name) {
       grp_id[ngrp] = H5Gcreate(file_id,group_name,
                                H5P_DEFAULT,H5P_DEFAULT,H5P_DEFAULT);
   }
+#else
+  H5Eget_auto(&old_func, &old_client_data);
+  H5Eset_auto(NULL,NULL);
+  if (ngrp > 0)
+    grp_id[ngrp] = H5Gopen(grp_id[ngrp-1],group_name);
+  else 
+    grp_id[ngrp] = H5Gopen(file_id,group_name);
+  H5Eset_auto(old_func,old_client_data);
+  if (grp_id[ngrp] < 0) {              // < 0 sets to default hint
+    if (ngrp > 0)
+      grp_id[ngrp] = H5Gcreate(grp_id[ngrp-1],group_name,
+                               H5P_DEFAULT);
+    else
+      grp_id[ngrp] = H5Gcreate(file_id,group_name,
+                               H5P_DEFAULT);
+  }
+#endif
   ngrp++;
 }
 
@@ -252,12 +288,21 @@ void HDF::createDataSet(char *data_set_name, hid_t type, PetscInt compress) {
     H5Pset_fill_value(prop_id,type,&d);
   }
 
+#ifdef FIX
+  if (ngrp > 0 && grp_id[ngrp-1] > -1)
+    data_set_id = H5Dcreate(grp_id[ngrp-1],data_set_name,type,file_space_id,
+                            prop_id);
+  else
+    data_set_id = H5Dcreate(file_id,data_set_name,type,file_space_id,
+                            prop_id);
+#else
   if (ngrp > 0 && grp_id[ngrp-1] > -1)
     data_set_id = H5Dcreate(grp_id[ngrp-1],data_set_name,type,file_space_id,
                             H5P_DEFAULT,prop_id,H5P_DEFAULT);
   else
     data_set_id = H5Dcreate(file_id,data_set_name,type,file_space_id,
                             H5P_DEFAULT,prop_id,H5P_DEFAULT);
+#endif
   H5Pclose(prop_id);
 }
 
@@ -420,8 +465,13 @@ void HDF::writeAttribute(char *title, char *string) {
   hsize_t dims = 1;
   hid_t space_id = H5Screate_simple(1,&dims,&dims);
     
+#ifdef FIX
+  hid_t attribute_id = H5Acreate(grp_id[ngrp-1],title,string_type,space_id,
+                                 H5P_DEFAULT);
+#else
   hid_t attribute_id = H5Acreate(grp_id[ngrp-1],title,string_type,space_id,
                                  H5P_DEFAULT,H5P_DEFAULT);
+#endif
   H5Awrite(attribute_id,string_type,string);
   H5Aclose(attribute_id);
   H5Sclose(space_id);
@@ -432,8 +482,13 @@ void HDF::writeAttribute(char *title, PetscInt value) {
   hsize_t dims = 1;
   hid_t space_id = H5Screate_simple(1,&dims,&dims);
     
+#ifdef FIX
+  hid_t attribute_id = H5Acreate(grp_id[ngrp-1],title,HDF_NATIVE_INT,space_id,
+                                 H5P_DEFAULT);
+#else
   hid_t attribute_id = H5Acreate(grp_id[ngrp-1],title,HDF_NATIVE_INT,space_id,
                                  H5P_DEFAULT,H5P_DEFAULT);
+#endif
   H5Awrite(attribute_id,HDF_NATIVE_INT,&value);
   H5Aclose(attribute_id);
   H5Sclose(space_id);
@@ -444,8 +499,13 @@ void HDF::writeAttribute(char *title, double value) {
   hsize_t dims = 1;
   hid_t space_id = H5Screate_simple(1,&dims,&dims);
     
+#ifdef FIX
+  hid_t attribute_id = H5Acreate(grp_id[ngrp-1],title,H5T_NATIVE_DOUBLE,
+                                 space_id,H5P_DEFAULT);
+#else
   hid_t attribute_id = H5Acreate(grp_id[ngrp-1],title,H5T_NATIVE_DOUBLE,
                                  space_id,H5P_DEFAULT,H5P_DEFAULT);
+#endif
   H5Awrite(attribute_id,H5T_NATIVE_DOUBLE,&value);
   H5Aclose(attribute_id);
   H5Sclose(space_id);

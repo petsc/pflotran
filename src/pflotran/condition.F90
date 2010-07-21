@@ -341,11 +341,13 @@ function GetFlowSubCondFromArrayByName(sub_condition_ptr_list,name)
   character(len=MAXWORDLENGTH) :: name
   
   PetscInt :: idof
+  PetscInt :: length
   
   nullify(GetFlowSubCondFromArrayByName)
+  length = len_trim(name)
   do idof = 1, size(sub_condition_ptr_list)
-    if (len_trim(name) == len_trim(sub_condition_ptr_list(idof)%ptr%name) .and. &
-        StringCompare(name,sub_condition_ptr_list(idof)%ptr%name,len_trim(name))) then
+    if (length == len_trim(sub_condition_ptr_list(idof)%ptr%name) .and. &
+        StringCompare(name,sub_condition_ptr_list(idof)%ptr%name,length)) then
       GetFlowSubCondFromArrayByName => sub_condition_ptr_list(idof)%ptr
       return
     endif
@@ -559,9 +561,7 @@ subroutine FlowConditionRead(condition,input,option)
   PetscTruth :: found
   PetscErrorCode :: ierr
 
-  call PetscLogEventBegin(logging%event_flow_condition_read, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_flow_condition_read,ierr)
 
   default_time = 0.d0
   default_iphase = 0
@@ -912,9 +912,7 @@ subroutine FlowConditionRead(condition,input,option)
   call FlowConditionDatasetDestroy(default_datum)
   call FlowConditionDatasetDestroy(default_gradient)
     
-  call PetscLogEventEnd(logging%event_flow_condition_read, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_flow_condition_read,ierr)
 
 end subroutine FlowConditionRead
 
@@ -954,9 +952,7 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
   PetscTruth :: minerals_exist
   PetscErrorCode :: ierr
 
-  call PetscLogEventBegin(logging%event_tran_condition_read, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_tran_condition_read,ierr)
 
   default_time = 0.d0
   default_iphase = 0
@@ -1077,9 +1073,7 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
   
   enddo  
   
-  call PetscLogEventEnd(logging%event_tran_condition_read, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_tran_condition_read,ierr)
 
 end subroutine TranConditionRead
 
@@ -1115,9 +1109,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
   type(colloid_constraint_type), pointer :: colloid_constraint
   PetscErrorCode :: ierr
 
-  call PetscLogEventBegin(logging%event_tran_constraint_read, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_tran_constraint_read,ierr)
 
   ! read the constraint
   input%ierr = 0
@@ -1377,9 +1369,7 @@ subroutine TranConstraintRead(constraint,reaction,input,option)
   
   enddo  
   
-  call PetscLogEventEnd(logging%event_tran_constraint_read, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_tran_constraint_read,ierr)
 
 end subroutine TranConstraintRead
 
@@ -1426,9 +1416,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
   PetscMPIInt :: hdf5_err
 #endif
 
-  call PetscLogEventBegin(logging%event_flow_condition_read_values, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+  call PetscLogEventBegin(logging%event_flow_condition_read_values,ierr)    
 
   filename = ''
   realization_word = ''
@@ -1564,9 +1552,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
       units = trim(word)
     endif
   endif
-  call PetscLogEventEnd(logging%event_flow_condition_read_values, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+  call PetscLogEventEnd(logging%event_flow_condition_read_values,ierr)    
 
 end subroutine FlowConditionReadValues
 

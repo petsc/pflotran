@@ -258,7 +258,8 @@ end subroutine ImmisSetupPatch
   type(option_type), pointer:: option
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
-  PetscInt :: ipass, ipass0, ierr    
+  PetscInt :: ipass, ipass0
+  PetscErrorCode :: ierr    
 
   option => realization%option
   cur_level => realization%level_list%first
@@ -281,8 +282,8 @@ end subroutine ImmisSetupPatch
 
    call MPI_Barrier(option%mycomm,ierr)
    if(option%mycommsize >1)then
-      call MPI_ALLREDUCE(ipass,ipass0,ONE_INTEGER, MPI_INTEGER,MPI_SUM, &
-           option%mycomm,ierr)
+      call MPI_Allreduce(ipass,ipass0,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                         MPI_SUM,option%mycomm,ierr)
       if(ipass0 < option%mycommsize) ipass=-1
    endif
    ImmisInitGuessCheck =ipass
@@ -309,9 +310,10 @@ end subroutine ImmisSetupPatch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(option_type), pointer :: option 
-  PetscReal, pointer :: xx_p(:),iphase_loc_p(:), yy_p(:) 
+  PetscReal, pointer :: xx_p(:), yy_p(:) 
   PetscInt :: n,n0,re
-  PetscInt :: re0, ierr, iipha
+  PetscInt :: re0, iipha
+  PetscErrorCode :: ierr
   
   option => realization%option
   field => realization%field  
@@ -355,7 +357,6 @@ end subroutine ImmisSetupPatch
     if(re<=0) print *,'Sat out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
     call GridVecRestoreArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
     call GridVecRestoreArrayF90(grid,field%flow_yy, yy_p, ierr)
-    call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr); 
 
    endif
   
@@ -383,7 +384,8 @@ subroutine ImmisUpdateReason(reason, realization)
   type(patch_type), pointer :: cur_patch
   PetscInt :: reason
 
-  PetscInt :: re, re0, ierr
+  PetscInt :: re, re0
+  PetscErrorCode :: ierr
 
   re = 1
   cur_level => realization%level_list%first
@@ -406,7 +408,7 @@ subroutine ImmisUpdateReason(reason, realization)
  call MPI_Barrier(realization%option%mycomm,ierr)
   
   if(realization%option%mycommsize >1)then
-     call MPI_ALLREDUCE(re, re0,1, MPI_INTEGER,MPI_SUM, &
+     call MPI_Allreduce(re,re0,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
           realization%option%mycomm,ierr)
      if(re0<realization%option%mycommsize) re=0
   endif
@@ -439,8 +441,9 @@ end subroutine ImmisUpdateReason
     type(option_type), pointer :: option
     type(field_type), pointer :: field
       
-    PetscInt :: local_id, ghosted_id, ierr, ipass
+    PetscInt :: local_id, ghosted_id, ipass
     PetscReal, pointer :: xx_p(:)
+    PetscErrorCode :: ierr
 
 
     patch => realization%patch
@@ -793,7 +796,7 @@ subroutine ImmisUpdateFixedAccumPatch(realization)
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               immis_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-                              option,0, accum_p(istart:iend)) 
+                              option,ZERO_INTEGER, accum_p(istart:iend)) 
   enddo
 
   call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
@@ -895,7 +898,8 @@ subroutine ImmisSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fla
   PetscReal :: enth_src_h2o, enth_src_co2 
   PetscReal :: rho, fg, dfgdp, dfgdt, eng, dhdt, dhdp, visc, dvdt, dvdp, xphi
   PetscReal :: ukvr, v_darcy, dq, dphi
-  PetscInt  :: np, ierr  
+  PetscInt  :: np
+  PetscErrorCode :: ierr
   
   Res=0D0
  ! if (present(ireac)) iireac=ireac
@@ -1510,7 +1514,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
     call ImmisAccumulation(aux_vars(ghosted_id)%aux_var_elem(0),porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               immis_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-                              option,1,Res) 
+                              option,ONE_INTEGER,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
     !print *,'REs, acm: ', res
     Resold_AR(local_id, :)= Res(1:option%nflowdof)
@@ -1995,7 +1999,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
              porosity_loc_p(ghosted_id), &
              volume_p(local_id), &
              immis_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-             option,1, res) 
+             option,ONE_INTEGER, res) 
         ResInc( local_id,:,nvar) =  ResInc(local_id,:,nvar) + Res(:)
      enddo
      
@@ -2471,7 +2475,7 @@ print *,'zero rows point 2'
 print *,'zero rows point 3'  
   patch%aux%Immis%zero_rows_local_ghosted => zero_rows_local_ghosted
 print *,'zero rows point 4'
-  call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
+  call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
                      option%mycomm,ierr)
   if (flag > 0) patch%aux%Immis%inactive_cells_exist = PETSC_TRUE
 
@@ -2507,7 +2511,7 @@ subroutine ImmisMaxChange(realization)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscReal :: dsmax, max_S  
-  PetscInt :: ierr 
+  PetscErrorCode :: ierr 
 
   option => realization%option
   field => realization%field
@@ -2539,7 +2543,8 @@ subroutine ImmisMaxChange(realization)
   enddo
 
   if(option%mycommsize >1)then
-    call MPI_ALLREDUCE(dsmax, max_s,1, MPI_DOUBLE_PRECISION,MPI_MAX, option%mycomm,ierr)
+    call MPI_Allreduce(dsmax,max_s,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+                       MPI_MAX,option%mycomm,ierr)
     dsmax = max_s
   endif 
   option%dsmax=dsmax
@@ -2704,7 +2709,7 @@ subroutine ImmisCheckpointRead(discretization,viewer)
   Vec :: global_var
   PetscErrorCode :: ierr
   
-  call VecLoadIntoVector(viewer, global_var, ierr)
+  call VecLoad(viewer, global_var, ierr)
   call VecDestroy(global_var,ierr)
   
 end subroutine ImmisCheckpointRead

@@ -66,6 +66,9 @@ type, public :: Flash2_auxvar_elem_type
      type(Flash2_parameter_type), pointer :: Flash2_parameter
      type(Flash2_auxvar_type), pointer :: aux_vars(:)
      type(Flash2_auxvar_type), pointer :: aux_vars_bc(:)
+     PetscReal , pointer :: Resold_AR(:,:)
+     PetscReal , pointer :: Resold_FL(:,:)
+     PetscReal , pointer :: delx(:,:)
   end type Flash2_type
 
   
@@ -280,11 +283,12 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var, global_aux_var,saturation_functio
  
   aux_var%pres = x(1)  
   aux_var%temp = x(2)
+
   p= aux_var%pres
   t= aux_var%temp
 
-  if(x(3)<0.D0)x(3)=0.D0
-  if(x(3)>1.D0)x(3)=1.D0
+!  if(x(3)<0.D0)x(3)=0.D0
+!  if(x(3)>1.D0)x(3)=1.D0
   
 
 ! ********************* Gas phase properties ***********************
@@ -384,13 +388,13 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var, global_aux_var,saturation_functio
       aux_var%xmol(3)=1.D0-aux_var%xmol(4) 
       aux_var%xmol(2)=aux_var%xmol(4)/tmp
       aux_var%xmol(1)=1.D0- aux_var%xmol(2)
-      aux_var%sat(1)=1.D-8
+      aux_var%sat(1)=0D0 !1.D-8
       aux_var%sat(2)=1.D0
     else 
       iphase = 3
       aux_var%xmol(1)=1.D0 - xco2eq
       aux_var%xmol(2)= xco2eq
-      aux_var%xmol(3)= sat_pressure/p 
+      aux_var%xmol(3)= sat_pressure/p*aux_var%xmol(1) 
       aux_var%xmol(4)= 1D0 - aux_var%xmol(3)
    endif 
 !   endif
@@ -472,6 +476,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var, global_aux_var,saturation_functio
   case(3)
     aux_var%sat(2) = aux_var%den(1)* ( x(3) - aux_var%xmol(2))/&
       (aux_var%den(2) * (aux_var%xmol(4)-x(3)) - aux_var%den(1)*(aux_var%xmol(2)-x(3)))
+    if(aux_var%sat(2) >1D0 .or. aux_var%sat(2) <0D0) print *,'z->s error: ',aux_var%sat(2)
     if(aux_var%sat(2) >1D0) aux_var%sat(2) = 1D0
     if(aux_var%sat(2) <0D0) aux_var%sat(2) = 0D0  
     aux_var%sat(1) = 1D0 - aux_var%sat(2)

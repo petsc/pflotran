@@ -41,9 +41,9 @@ module Flash2_module
 
   PetscInt, parameter :: jh2o=1, jco2=2
 
-  PetscReal, allocatable, save :: Resold_AR(:,:), Resold_FL(:,:), delx(:,:)
+! PetscReal, allocatable, save :: Resold_AR(:,:), Resold_FL(:,:), delx(:,:)
   
-  public Flash2Residual,Flash2Jacobian, &
+  public Flash2Residual,Flash2Jacobian, Flash2ResidualFluxContribPatch,&
          Flash2UpdateFixedAccumulation,Flash2TimeCut,&
          Flash2Setup,Flash2UpdateReason,&
          Flash2MaxChange, Flash2UpdateSolution, &
@@ -209,10 +209,10 @@ subroutine Flash2SetupPatch(realization)
   patch%aux%Flash2%num_aux = grid%ngmax
   print *,' Flash2 setup get Aux init'
 
-  allocate(delx(option%nflowdof, grid%ngmax))
-  allocate(Resold_AR(grid%nlmax,option%nflowdof))
-  allocate(Resold_FL(ConnectionGetNumberInList(patch%grid%&
-           internal_connection_set_list),option%nflowdof))
+!  allocate(delx(option%nflowdof, grid%ngmax))
+!  allocate(Resold_AR(grid%nlmax,option%nflowdof))
+!  allocate(Resold_FL(ConnectionGetNumberInList(patch%grid%&
+!           internal_connection_set_list),option%nflowdof))
   print *,' Flash2 setup allocate app array'
    ! count the number of boundary connections and allocate
   ! aux_var data structures for them  
@@ -232,7 +232,12 @@ subroutine Flash2SetupPatch(realization)
   patch%aux%Flash2%aux_vars_bc => aux_vars_bc
   patch%aux%Flash2%num_aux_bc = sum_connection
   option%numerical_derivatives = PETSC_TRUE
-
+  
+  allocate(patch%aux%Flash2%delx(option%nflowdof, grid%ngmax))
+  allocate(patch%aux%Flash2%Resold_AR(grid%nlmax,option%nflowdof))
+  allocate(patch%aux%Flash2%Resold_FL(ConnectionGetNumberInList(patch%grid%&
+           internal_connection_set_list),option%nflowdof))
+  
   print *,' Flash2 setup get AuxBc point'
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
@@ -258,7 +263,8 @@ end subroutine Flash2SetupPatch
   type(option_type), pointer:: option
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
-  PetscInt :: ipass, ipass0, ierr    
+  PetscInt :: ipass, ipass0
+  PetscErrorCode :: ierr
 
   option => realization%option
   cur_level => realization%level_list%first
@@ -281,8 +287,8 @@ end subroutine Flash2SetupPatch
 
    call MPI_Barrier(option%mycomm,ierr)
    if(option%mycommsize >1)then
-      call MPI_ALLREDUCE(ipass,ipass0,ONE_INTEGER, MPI_INTEGER,MPI_SUM, &
-           option%mycomm,ierr)
+      call MPI_Allreduce(ipass,ipass0,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
+                         option%mycomm,ierr)
       if(ipass0 < option%mycommsize) ipass=-1
    endif
    Flash2InitGuessCheck =ipass
@@ -309,9 +315,10 @@ end subroutine Flash2SetupPatch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(option_type), pointer :: option 
-  PetscReal, pointer :: xx_p(:),iphase_loc_p(:), yy_p(:) 
+  PetscReal, pointer :: xx_p(:), yy_p(:) 
   PetscInt :: n,n0,re
-  PetscInt :: re0, ierr, iipha
+  PetscInt :: re0, iipha
+  PetscErrorCode :: ierr
   
   option => realization%option
   field => realization%field  
@@ -355,7 +362,6 @@ end subroutine Flash2SetupPatch
     !if(re<=0) print *,'Sat out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
     call GridVecRestoreArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
     call GridVecRestoreArrayF90(grid,field%flow_yy, yy_p, ierr)
-    call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr); 
 
    endif
   ! reason = re!; print *,'reason:',reason
@@ -383,7 +389,8 @@ subroutine Flash2UpdateReason(reason, realization)
   type(patch_type), pointer :: cur_patch
   PetscInt :: reason
 
-  PetscInt :: re, re0, ierr
+  PetscInt :: re, re0
+  PetscErrorCode :: ierr
 
   re = 1
   cur_level => realization%level_list%first
@@ -406,8 +413,8 @@ subroutine Flash2UpdateReason(reason, realization)
  call MPI_Barrier(realization%option%mycomm,ierr)
 !  print *, 'flash reason ', re
   if(realization%option%mycommsize >1)then
-     call MPI_ALLREDUCE(re, re0,1, MPI_INTEGER,MPI_SUM, &
-          realization%option%mycomm,ierr)
+     call MPI_Allreduce(re,re0,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM, &
+                        realization%option%mycomm,ierr)
      if(re0<realization%option%mycommsize) re=0
   endif
   reason=re
@@ -439,7 +446,8 @@ end subroutine Flash2UpdateReason
     type(option_type), pointer :: option
     type(field_type), pointer :: field
       
-    PetscInt :: local_id, ghosted_id, ierr, ipass
+    PetscInt :: local_id, ghosted_id, ipass
+    PetscErrorCode :: ierr
     PetscReal, pointer :: xx_p(:)
 
 
@@ -826,7 +834,7 @@ subroutine Flash2UpdateFixedAccumPatch(realization)
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-                              option,0, accum_p(istart:iend)) 
+                              option,ZERO_INTEGER, accum_p(istart:iend)) 
   enddo
 
   call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
@@ -933,7 +941,8 @@ subroutine Flash2SourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fl
   PetscReal :: enth_src_h2o, enth_src_co2 
   PetscReal :: rho, fg, dfgdp, dfgdt, eng, dhdt, dhdp, visc, dvdt, dvdp, xphi
   PetscReal :: ukvr, v_darcy, dq, dphi
-  PetscInt  :: np, ierr  
+  PetscInt  :: np
+  PetscErrorCode :: ierr
   
   Res=0D0
  ! if (present(ireac)) iireac=ireac
@@ -1674,6 +1683,7 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
   use Field_module
   use Option_module
   use grid_module 
+  use Logging_module
 
   implicit none
 
@@ -1692,6 +1702,7 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
   Vec :: xx
   Vec :: r
   type(realization_type) :: realization
+  PetscViewer :: viewer
   PetscErrorCode :: ierr
   
   type(discretization_type), pointer :: discretization
@@ -1730,7 +1741,8 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
   call DiscretizationLocalToLocal(discretization,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%ithrm_loc,field%ithrm_loc,ONEDOF)
-  
+
+! pass #0 prepare numerical increment  
   cur_level => realization%level_list%first
   do
     if (.not.associated(cur_level)) exit
@@ -1738,7 +1750,54 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call Flash2ResidualPatch(snes,xx,r,realization,ierr)
+      call Flash2ResidualPatch0(snes,xx,r,realization,ierr)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+! pass #1 internal and boundary flux terms
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call Flash2ResidualPatch1(snes,xx,r,realization,ierr)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+ ! now coarsen all face fluxes in case we are using SAMRAI to 
+  ! ensure consistent fluxes at coarse-fine interfaces
+  if(option%use_samr) then
+     call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%flow_face_fluxes, ierr)
+
+     cur_level => realization%level_list%first
+     do
+        if (.not.associated(cur_level)) exit
+        cur_patch => cur_level%patch_list%first
+        do
+           if (.not.associated(cur_patch)) exit
+           realization%patch => cur_patch
+           call Flash2ResidualFluxContribPatch(r,realization,ierr)
+           cur_patch => cur_patch%next
+        enddo
+        cur_level => cur_level%next
+     enddo
+  endif
+
+! pass #2 for everything else
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call Flash2ResidualPatch2(snes,xx,r,realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -1748,11 +1807,27 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
      call samrpetscobjectstateincrease(r)
   endif
 
+  if (realization%debug%vecview_residual) then
+    call PetscViewerASCIIOpen(realization%option%mycomm,'Rresidual.out', &
+                              viewer,ierr)
+    call VecView(r,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+  if (realization%debug%vecview_solution) then
+    call PetscViewerASCIIOpen(realization%option%mycomm,'Rxx.out', &
+                              viewer,ierr)
+    call VecView(xx,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+  
+  call PetscLogEventEnd(logging%event_r_residual,ierr)
+
 end subroutine Flash2Residual
 
 ! ************************************************************************** !
 !
 ! Flash2ResidualPatch: Computes the residual equation at patch level
+!                      original version
 ! author: Chuan Lu
 ! date: 10/10/08
 !
@@ -1823,6 +1898,8 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity
+  PetscReal, pointer :: Resold_AR(:), Resold_FL(:), delx(:)
+  
   
   patch => realization%patch
   grid => patch%grid
@@ -1854,6 +1931,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
 !  call GridVecGetArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
+  allocate(Resold_AR(option%nflowdof), Resold_FL(option%nflowdof), delx(option%nflowdof))
  
 ! Multiphase flash calculation is more expansive, so calculate once per iterration
 #if 1
@@ -1892,34 +1970,42 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
 #endif
 
      if (option%numerical_derivatives) then
-        delx(1,ng) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
-        delx(2,ng) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
+        delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
+        delx(2) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
  
         if(xx_loc_p((ng-1)*option%nflowdof+3) <=0.9)then
-           delx(3,ng) = dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
+           delx(3) = dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
          else
-            delx(3,ng) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3) 
+            delx(3) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
          endif
+         if( delx(3) < 1D-8 .and.  delx(3)>=0.D0) delx(3) = 1D-8
+         if( delx(3) >-1D-8 .and.  delx(3)<0.D0) delx(3) =-1D-8
+
            
-         if( delx(3,ng) < 1D-12 .and.  delx(3,ng)>=0.D0) delx(3,ng) = 1D-12
-         if( delx(3,ng) >-1D-12 .and.  delx(3,ng)<0.D0) delx(3,ng) =-1D-12
-        
-         if(( delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0)then
-            delx(3,ng) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-6
+         if(( delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0)then
+            delx(3) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-4
          endif
-         if(( delx(3,ng)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0)then
-            delx(3,ng) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-6
+         if(( delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0)then
+            delx(3) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-4
          endif
-         call Flash2AuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:,ng),&
+
+         patch%aux%Flash2%delx(:,ng)=delx(:)
+         call Flash2AuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
             aux_vars(ng)%aux_var_elem(1:option%nflowdof),global_aux_vars(ng),&
             realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
             realization%fluid_properties,option)
+!         if(aux_vars(ng)%aux_var_elem(option%nflowdof)%sat(2)>1D-8 .and. &
+!            aux_vars(ng)%aux_var_elem(0)%sat(2)<1D-12)then
+!            print *, 'Flash winc', delx(3,ng)
+!         endif   
       endif
    enddo
 #endif
 
    Resold_AR=0.D0; ResOld_FL=0.D0; r_p = 0.d0
-  
+   patch%aux%Flash2%Resold_AR=0.D0
+   patch%aux%Flash2%ResOld_FL=0.D0
+   
 #if 1
   ! Accumulation terms ------------------------------------
   r_p = - accum_p
@@ -1937,10 +2023,10 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
                             porosity_loc_p(ghosted_id), &
                             volume_p(local_id), &
                             Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-                            option,1,Res) 
+                            option,ONE_INTEGER,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
     !print *,'REs, acm: ', res
-    Resold_AR(local_id, :)= Res(1:option%nflowdof)
+    patch%aux%Flash2%Resold_AR(local_id, :)= Res(1:option%nflowdof)
   enddo
 #endif
 #if 1
@@ -1982,11 +2068,12 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
  
       r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
       r_p((local_id-1)*option%nflowdof + jco2) = r_p((local_id-1)*option%nflowdof + jco2)-Res(jco2)
-      Resold_AR(local_id,jh2o)= Resold_AR(local_id,jh2o) - Res(jh2o)    
-      Resold_AR(local_id,jco2)= Resold_AR(local_id,jco2) - Res(jco2)    
+      patch%aux%Flash2%Resold_AR(local_id,jh2o)= patch%aux%Flash2%Resold_AR(local_id,jh2o) - Res(jh2o)    
+      patch%aux%Flash2%Resold_AR(local_id,jco2)= patch%aux%Flash2%Resold_AR(local_id,jco2) - Res(jco2)    
       if (enthalpy_flag)then
         r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - Res(option%nflowdof)
-        Resold_AR(local_id,option%nflowdof)= Resold_AR(local_id,option%nflowdof) - Res(option%nflowdof)
+        patch%aux%Flash2%Resold_AR(local_id,option%nflowdof)=&
+          patch%aux%Flash2%Resold_AR(local_id,option%nflowdof) - Res(option%nflowdof)
        endif 
   !  else if (qsrc1 < 0.d0) then ! withdrawal
   !  endif
@@ -2087,7 +2174,8 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
     r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
-    Resold_AR(local_id,1:option%nflowdof) = ResOld_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
+    patch%aux%Flash2%Resold_AR(local_id,1:option%nflowdof) = &
+      patch%aux%Flash2%ResOld_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
   enddo
   boundary_condition => boundary_condition%next
  enddo
@@ -2155,7 +2243,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
                           upweight,option,v_darcy,Res)
 
       patch%internal_velocities(:,sum_connection) = v_darcy(:)
-      Resold_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
+      patch%aux%Flash2%Resold_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
  
      if (local_id_up>0) then
         iend = local_id_up*option%nflowdof
@@ -2204,7 +2292,6 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
         r_p(istart) = 0.D0 ! xx_loc_p(2 + (ng-1)*option%nflowdof) - yy_p(p1-1)
      enddo
   endif
-  !call GridVecRestoreArrayF90(grid,r, r_p, ierr)
 
 
   if (patch%aux%Flash2%inactive_cells_exist) then
@@ -2226,7 +2313,8 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
 !  call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
-
+  deallocate(Resold_AR, Resold_FL, delx)
+  
   if (realization%debug%vecview_residual) then
     call PetscViewerASCIIOpen(option%mycomm,'Rresidual.out',viewer,ierr)
     call VecView(r,viewer,ierr)
@@ -2238,6 +2326,896 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
 end subroutine Flash2ResidualPatch
+
+! ************************************************************************** !
+!
+! RichardsResidualFluxContribsPatch: should be called only for SAMR
+! author: Bobby Philip
+! date: 02/17/09
+! not working for flash yet!!!!
+! ************************************************************************** !
+subroutine Flash2ResidualFluxContribPatch(r,realization,ierr)
+  use Realization_module
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Field_module
+  use Debug_module
+  
+  implicit none
+
+  Vec, intent(out) :: r
+  type(realization_type) :: realization
+
+  PetscErrorCode :: ierr
+
+  type :: flux_ptrs
+    PetscReal, dimension(:), pointer :: flux_p 
+  end type
+
+  type (flux_ptrs), dimension(0:2) :: fluxes
+  PetscReal, pointer :: r_p(:)
+  PetscReal, pointer :: face_fluxes_p(:)
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  PetscInt :: axis, nlx, nly, nlz
+  PetscInt :: iconn, i, j, k
+  PetscInt :: xup_id, xdn_id, yup_id, ydn_id, zup_id, zdn_id
+
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+! now assign access pointer to local variables
+  call GridVecGetArrayF90(grid,r, r_p, ierr)
+
+  do axis=0,2  
+     call GridVecGetArrayF90(grid,axis,field%flow_face_fluxes, fluxes(axis)%flux_p, ierr)  
+  enddo
+
+  nlx = grid%structured_grid%nlx  
+  nly = grid%structured_grid%nly  
+  nlz = grid%structured_grid%nlz 
+  
+  iconn=0
+  do k=1,nlz
+     do j=1,nly
+        do i=1,nlx
+           iconn=iconn+1
+           xup_id = ((k-1)*nly+j-1)*(nlx+1)+i
+           xdn_id = xup_id+1
+           yup_id = ((k-1)*(nly+1)+(j-1))*nlx+i
+           ydn_id = yup_id+nlx
+           zup_id = ((k-1)*nly+(j-1))*nlx+i
+           zdn_id = zup_id+nlx*nly
+
+           r_p(iconn) = r_p(iconn)+fluxes(0)%flux_p(xdn_id)-fluxes(0)%flux_p(xup_id) &
+                                  +fluxes(1)%flux_p(ydn_id)-fluxes(1)%flux_p(yup_id) &
+                                  +fluxes(2)%flux_p(zdn_id)-fluxes(2)%flux_p(zup_id)
+
+        enddo
+     enddo
+  enddo
+
+  call GridVecRestoreArrayF90(grid,r, r_p, ierr)
+!!$
+!!$  do axis=0,2  
+!!$     call GridVecRestoreArrayF90(grid,axis,field%flow_face_fluxes, fluxes(axis)%flux_p, ierr)  
+!!$  enddo
+
+end subroutine Flash2ResidualFluxContribPatch
+
+! ************************************************************************** !
+!
+! Flash2Jacobian: Computes the Residual by Flux
+! author: Chuan Lu
+! date: 10/10/08
+!
+! ************************************************************************** !
+subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
+
+  use Connection_module
+  use Realization_module
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Coupler_module  
+  use Field_module
+  use Debug_module
+  
+  implicit none
+  
+  interface
+     PetscInt function samr_patch_at_bc(p_patch, axis, dim)
+     implicit none
+     
+#include "finclude/petscsysdef.h"
+     
+     PetscFortranAddr :: p_patch
+     PetscInt :: axis,dim
+   end function samr_patch_at_bc
+  end interface
+
+  type :: flux_ptrs
+    PetscReal, dimension(:), pointer :: flux_p 
+  end type
+
+  type (flux_ptrs), dimension(0:2) :: fluxes
+  SNES, intent(in) :: snes
+  Vec, intent(inout) :: xx
+  Vec, intent(out) :: r
+  type(realization_type) :: realization
+
+  PetscErrorCode :: ierr
+  PetscInt :: i, jn
+  PetscInt :: ip1, ip2
+  PetscInt :: local_id, ghosted_id, local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
+
+  PetscReal, pointer ::accum_p(:)
+
+  PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
+               xx_loc_p(:), tortuosity_loc_p(:),&
+               perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
+                          
+               
+  PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
+
+  PetscInt :: iphase
+  PetscInt :: icap_up, icap_dn, ithrm_up, ithrm_dn
+  PetscReal :: dd_up, dd_dn
+  PetscReal :: dd, f_up, f_dn, ff
+  PetscReal :: perm_up, perm_dn
+  PetscReal :: D_up, D_dn  ! "Diffusion" constants at upstream, downstream faces.
+  PetscReal :: dw_kg, dw_mol,dddt,dddp
+  PetscReal :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 , hsrc1
+  PetscReal :: rho, fg, dfgdp, dfgdt, eng, dhdt, dhdp, visc, dvdt, dvdp, xphi
+  PetscReal :: upweight
+  PetscReal :: Res(realization%option%nflowdof), v_darcy(realization%option%nphase)
+  PetscReal :: xxbc(realization%option%nflowdof)
+  PetscReal :: msrc(1:realization%option%nflowspec)
+  PetscReal :: psrc(1:realization%option%nphase)
+  PetscViewer :: viewer
+
+
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(Flash2_parameter_type), pointer :: Flash2_parameter
+  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(coupler_type), pointer :: boundary_condition, source_sink
+  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  PetscTruth :: enthalpy_flag
+  PetscInt :: ng
+  PetscInt :: axis, side, nlx, nly, nlz, ngx, ngxy, pstart, pend, flux_id
+   PetscInt :: direction, max_x_conn, max_y_conn
+  PetscInt :: iconn, idof, istart, iend
+  PetscInt :: sum_connection
+  PetscReal :: distance, fraction_upwind
+  PetscReal :: distance_gravity
+  
+  
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+
+  Flash2_parameter => patch%aux%Flash2%Flash2_parameter
+  aux_vars => patch%aux%Flash2%aux_vars
+  aux_vars_bc => patch%aux%Flash2%aux_vars_bc
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+
+ ! call Flash2UpdateAuxVarsPatchNinc(realization)
+  ! override flags since they will soon be out of date  
+ ! patch%Flash2Aux%aux_vars_up_to_date = PETSC_FALSE 
+
+! now assign access pointer to local variables
+  call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
+  call GridVecGetArrayF90(grid, r, r_p, ierr)
+  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%tortuosity_loc, tortuosity_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
+  call GridVecGetArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
+
+  if (option%use_samr) then
+     do axis=0,2  
+        call GridVecGetArrayF90(grid,axis,field%flow_face_fluxes, fluxes(axis)%flux_p, ierr)  
+     enddo
+  endif
+
+  r_p = 0.d0
+ 
+#if 1
+  ! Boundary Flux Terms -----------------------------------
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(boundary_condition)) exit
+    
+    cur_connection_set => boundary_condition%connection_set
+        
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+    
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+
+      if (ghosted_id<=0) then
+        print *, "Wrong boundary node index... STOP!!!"
+        stop
+      endif
+
+      ithrm_dn = int(ithrm_loc_p(ghosted_id))
+      D_dn = Flash2_parameter%ckwet(ithrm_dn)
+
+      ! for now, just assume diagonal tensor
+      perm_dn = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
+                perm_yy_loc_p(ghosted_id)*abs(cur_connection_set%dist(2,iconn))+ &
+                perm_zz_loc_p(ghosted_id)*abs(cur_connection_set%dist(3,iconn))
+      ! dist(0,iconn) = scalar - magnitude of distance
+      ! gravity = vector(3)
+      ! dist(1:3,iconn) = vector(3) - unit vector
+      distance_gravity = cur_connection_set%dist(0,iconn) * &
+                         dot_product(option%gravity, &
+                                     cur_connection_set%dist(1:3,iconn))
+
+      icap_dn = int(icap_loc_p(ghosted_id))  
+! Then need fill up increments for BCs
+    do idof =1, option%nflowdof   
+       select case(boundary_condition%flow_condition%itype(idof))
+       case(DIRICHLET_BC)
+          xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
+       case(HYDROSTATIC_BC)
+          xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
+          if(idof>=2)then
+             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+          endif 
+       case(NEUMANN_BC, ZERO_GRADIENT_BC)
+          ! solve for pb from Darcy's law given qb /= 0
+          xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+!          iphase = int(iphase_loc_p(ghosted_id))
+       end select
+    enddo
+
+ 
+    call Flash2AuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
+           global_aux_vars_bc(sum_connection),&
+           realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
+           realization%fluid_properties, option)
+#if 1
+    if( associated(global_aux_vars_bc))then
+      global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
+                     aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
+      global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
+      global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
+      !    global_aux_vars(ghosted_id)%sat_store = 
+      global_aux_vars_bc(sum_connection)%fugacoeff(1)=xphi
+      global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
+      global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
+                                          * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
+  !   global_aux_vars(ghosted_id)%den_kg_store
+  !   global_aux_vars(ghosted_id)%mass_balance 
+  !   global_aux_vars(ghosted_id)%mass_balance_delta                   
+    endif
+#endif
+
+    call Flash2BCFlux(boundary_condition%flow_condition%itype, &
+         boundary_condition%flow_aux_real_var(:,iconn), &
+         aux_vars_bc(sum_connection)%aux_var_elem(0), &
+         aux_vars(ghosted_id)%aux_var_elem(0), &
+         porosity_loc_p(ghosted_id), &
+         tortuosity_loc_p(ghosted_id), &
+         Flash2_parameter%sir(:,icap_dn), &
+         cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
+         cur_connection_set%area(iconn), &
+         distance_gravity,option, &
+         v_darcy,Res)
+    patch%boundary_velocities(:,sum_connection) = v_darcy(:)
+    patch%aux%Flash2%Resold_AR(local_id,1:option%nflowdof) = &
+    patch%aux%Flash2%ResOld_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
+
+    if (option%compute_mass_balance_new) then
+        ! contribution to boundary
+       global_aux_vars_bc(sum_connection)%mass_balance_delta(:) = &
+        global_aux_vars_bc(sum_connection)%mass_balance_delta(:) - Res(:)
+        ! contribution to internal 
+!        global_aux_vars(ghosted_id)%mass_balance_delta(1) = &
+!          global_aux_vars(ghosted_id)%mass_balance_delta(1) + Res(1)
+     endif
+
+
+      if (option%use_samr) then
+         direction =  (boundary_condition%region%faces(iconn)-1)/2
+
+         ! the ghosted_id gives the id of the cell. Since the
+         ! flux_id is based on the ghosted_id of the downwind
+         ! cell this has to be adjusted in the case of the east, 
+         ! north and top faces before the flux_id is computed
+         select case(boundary_condition%region%faces(iconn)) 
+           case(WEST_FACE)
+              flux_id = ((ghosted_id/ngxy)-1)*(nlx+1)*nly + &
+                        ((mod(ghosted_id,ngxy))/ngx-1)*(nlx+1)+ &
+                        mod(mod(ghosted_id,ngxy),ngx)-1
+              fluxes(direction)%flux_p(flux_id) = Res(1)
+           case(EAST_FACE)
+              ghosted_id = ghosted_id+1
+              flux_id = ((ghosted_id/ngxy)-1)*(nlx+1)*nly + &
+                        ((mod(ghosted_id,ngxy))/ngx-1)*(nlx+1)
+              fluxes(direction)%flux_p(flux_id) = -Res(1)
+           case(SOUTH_FACE)
+              flux_id = ((ghosted_id/ngxy)-1)*nlx*(nly+1) + &
+                        ((mod(ghosted_id,ngxy))/ngx-1)*nlx + &
+                        mod(mod(ghosted_id,ngxy),ngx)-1
+              fluxes(direction)%flux_p(flux_id) = Res(1)
+           case(NORTH_FACE)
+              ghosted_id = ghosted_id+ngx
+              flux_id = ((ghosted_id/ngxy)-1)*nlx*(nly+1) + &
+                        ((mod(ghosted_id,ngxy))/ngx-1)*nlx + &
+                        mod(mod(ghosted_id,ngxy),ngx)-1
+              fluxes(direction)%flux_p(flux_id) = -Res(1)
+           case(BOTTOM_FACE)
+              flux_id = ((ghosted_id/ngxy)-1)*nlx*nly &
+                       +((mod(ghosted_id,ngxy))/ngx-1)*nlx &
+                       +mod(mod(ghosted_id,ngxy),ngx)-1
+              fluxes(direction)%flux_p(flux_id) = Res(1)
+           case(TOP_FACE)
+              ghosted_id = ghosted_id+ngxy
+              flux_id = ((ghosted_id/ngxy)-1)*nlx*nly &
+                       +((mod(ghosted_id,ngxy))/ngx-1)*nlx &
+                       +mod(mod(ghosted_id,ngxy),ngx)-1
+              fluxes(direction)%flux_p(flux_id) = -Res(1)
+         end select
+
+!         fluxes(direction)%flux_p(flux_id) = Res(1)
+
+      else
+       iend = local_id*option%nflowdof
+       istart = iend-option%nflowdof+1
+       r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
+      endif 
+  enddo
+  boundary_condition => boundary_condition%next
+ enddo
+#endif
+
+#if 1
+  if (option%use_samr) then
+    nlx = grid%structured_grid%nlx  
+    nly = grid%structured_grid%nly  
+    nlz = grid%structured_grid%nlz 
+
+    ngx = grid%structured_grid%ngx   
+    ngxy = grid%structured_grid%ngxy
+
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
+                        ZERO_INTEGER)==1) nlx = nlx-1
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
+                        ONE_INTEGER)==1) nlx = nlx-1
+    
+    max_x_conn = (nlx+1)*nly*nlz
+    ! reinitialize nlx
+    nlx = grid%structured_grid%nlx  
+
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
+                        ZERO_INTEGER)==1) nly = nly-1
+    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
+                        ONE_INTEGER)==1) nly = nly-1
+    
+    max_y_conn = max_x_conn + nlx*(nly+1)*nlz
+
+    ! reinitialize nly
+    nly = grid%structured_grid%nly  
+  endif
+
+  ! Interior Flux Terms -----------------------------------
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
+  sum_connection = 0  
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+
+      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
+      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
+
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id_up) <= 0 .or.  &
+            patch%imat(ghosted_id_dn) <= 0) cycle
+      endif
+
+      fraction_upwind = cur_connection_set%dist(-1,iconn)
+      distance = cur_connection_set%dist(0,iconn)
+      ! distance = scalar - magnitude of distance
+      ! gravity = vector(3)
+      ! dist(1:3,iconn) = vector(3) - unit vector
+      distance_gravity = distance * &
+                         dot_product(option%gravity, &
+                                     cur_connection_set%dist(1:3,iconn))
+      dd_up = distance*fraction_upwind
+      dd_dn = distance-dd_up ! should avoid truncation error
+      ! upweight could be calculated as 1.d0-fraction_upwind
+      ! however, this introduces ever so slight error causing pflow-overhaul not
+      ! to match pflow-orig.  This can be changed to 1.d0-fraction_upwind
+      upweight = dd_dn/(dd_up+dd_dn)
+        
+      ! for now, just assume diagonal tensor
+      perm_up = perm_xx_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(1,iconn))+ &
+                perm_yy_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(2,iconn))+ &
+                perm_zz_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(3,iconn))
+
+      perm_dn = perm_xx_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(1,iconn))+ &
+                perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
+                perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
+
+      ithrm_up = int(ithrm_loc_p(ghosted_id_up))
+      ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
+      icap_up = int(icap_loc_p(ghosted_id_up))
+      icap_dn = int(icap_loc_p(ghosted_id_dn))
+   
+      D_up = Flash2_parameter%ckwet(ithrm_up)
+      D_dn = Flash2_parameter%ckwet(ithrm_dn)
+
+      call Flash2Flux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
+                          tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
+                          dd_up,perm_up,D_up, &
+                          aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
+                          tortuosity_loc_p(ghosted_id_dn),Flash2_parameter%sir(:,icap_dn), &
+                          dd_dn,perm_dn,D_dn, &
+                          cur_connection_set%area(iconn),distance_gravity, &
+                          upweight,option,v_darcy,Res)
+
+      patch%internal_velocities(:,sum_connection) = v_darcy(:)
+      patch%aux%Flash2%Resold_FL(sum_connection,1:option%nflowdof)= Res(1:option%nflowdof)
+
+      if (option%use_samr) then
+        if (sum_connection <= max_x_conn) then
+          direction = 0
+          if(mod(mod(ghosted_id_dn,ngxy),ngx).eq.0) then
+             flux_id = ((ghosted_id_dn/ngxy)-1)*(nlx+1)*nly + &
+                       ((mod(ghosted_id_dn,ngxy))/ngx-1)*(nlx+1)
+          else
+             flux_id = ((ghosted_id_dn/ngxy)-1)*(nlx+1)*nly + &
+                       ((mod(ghosted_id_dn,ngxy))/ngx-1)*(nlx+1)+ &
+                       mod(mod(ghosted_id_dn,ngxy),ngx)-1
+          endif
+
+        else if (sum_connection <= max_y_conn) then
+          direction = 1
+          flux_id = ((ghosted_id_dn/ngxy)-1)*nlx*(nly+1) + &
+                    ((mod(ghosted_id_dn,ngxy))/ngx-1)*nlx + &
+                    mod(mod(ghosted_id_dn,ngxy),ngx)-1
+        else
+          direction = 2
+          flux_id = ((ghosted_id_dn/ngxy)-1)*nlx*nly &
+                   +((mod(ghosted_id_dn,ngxy))/ngx-1)*nlx &
+                   +mod(mod(ghosted_id_dn,ngxy),ngx)-1
+        endif
+        fluxes(direction)%flux_p(flux_id) = Res(1)
+      endif
+      
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+      global_aux_vars(local_id_up)%mass_balance_delta(1) = &
+        global_aux_vars(local_id_up)%mass_balance_delta(1) - Res(1)
+#endif
+      
+      if(.not.option%use_samr) then
+        if (local_id_up>0) then
+          iend = local_id_up*option%nflowdof
+          istart = iend-option%nflowdof+1
+          r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
+        endif
+   
+        if (local_id_dn>0) then
+          iend = local_id_dn*option%nflowdof
+          istart = iend-option%nflowdof+1
+          r_p(istart:iend) = r_p(istart:iend) - Res(1:option%nflowdof)
+        endif
+      endif
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo    
+#endif
+
+  call GridVecRestoreArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid, r, r_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%tortuosity_loc, tortuosity_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
+
+ end subroutine Flash2ResidualPatch1
+
+! ************************************************************************** !
+!
+! Flash2Jacobian: Computes the Residual Aux vars for numerical Jacobin
+! author: Chuan Lu
+! date: 10/10/08
+!
+! ************************************************************************** !
+
+subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
+
+  use Connection_module
+  use Realization_module
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Coupler_module  
+  use Field_module
+  use Debug_module
+  
+  implicit none
+
+  SNES, intent(in) :: snes
+  Vec, intent(inout) :: xx
+  Vec, intent(out) :: r
+  type(realization_type) :: realization
+
+  PetscErrorCode :: ierr
+  PetscInt :: i, jn
+  PetscInt :: ip1, ip2
+  PetscInt :: local_id, ghosted_id, local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
+
+  PetscReal, pointer ::accum_p(:)
+
+  PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
+               xx_loc_p(:), xx_p(:), yy_p(:),&
+               tortuosity_loc_p(:),&
+               perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
+                          
+               
+  PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:)
+
+  PetscReal :: dw_kg, dw_mol,dddt,dddp
+  PetscReal :: rho, fg, dfgdp, dfgdt, eng, dhdt, dhdp, visc, dvdt, dvdp, xphi
+  PetscReal :: upweight
+  PetscReal :: Res(realization%option%nflowdof)
+
+
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(Flash2_parameter_type), pointer :: Flash2_parameter
+  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  PetscTruth :: enthalpy_flag
+  PetscInt :: ng
+  PetscInt :: iconn, idof, istart, iend
+  PetscReal, pointer :: delx(:)
+  
+  
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+
+  Flash2_parameter => patch%aux%Flash2%Flash2_parameter
+  aux_vars => patch%aux%Flash2%aux_vars
+  aux_vars_bc => patch%aux%Flash2%aux_vars_bc
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+
+ ! call Flash2UpdateAuxVarsPatchNinc(realization)
+  ! override flags since they will soon be out of date  
+ ! patch%Flash2Aux%aux_vars_up_to_date = PETSC_FALSE 
+
+! now assign access pointer to local variables
+  call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
+
+  allocate(delx(option%nflowdof))
+
+   patch%aux%Flash2%Resold_AR=0.D0
+   patch%aux%Flash2%ResOld_FL=0.D0
+
+! Multiphase flash calculation is more expansive, so calculate once per iterration
+#if 1
+  ! Pertubations for aux terms --------------------------------
+  do ng = 1, grid%ngmax
+     if(grid%nG2L(ng)<0)cycle
+     if (associated(patch%imat)) then
+        if (patch%imat(ng) <= 0) cycle
+     endif
+     ghosted_id = ng   
+     istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
+     ! iphase =int(iphase_loc_p(ng))
+     call Flash2AuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
+          global_aux_vars(ng),&
+          realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
+          realization%fluid_properties,option, xphi)
+!    print *,'flash ', xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0)%den
+#if 1
+     if( associated(global_aux_vars))then
+       global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
+               aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
+       global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
+       global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
+!      global_aux_vars(ghosted_id)%sat_store =
+       global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
+       global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
+       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
+                                          * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
+!       global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
+!      global_aux_vars(ghosted_id)%pres(:)
+!      global_aux_vars(ghosted_id)%mass_balance 
+!      global_aux_vars(ghosted_id)%mass_balance_delta                   
+     else
+       print *,'Not associated global for Flash2'
+     endif
+#endif
+
+     if (option%numerical_derivatives) then
+        delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
+        delx(2) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
+ 
+        if(xx_loc_p((ng-1)*option%nflowdof+3) <=0.9)then
+           delx(3) = dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
+         else
+            delx(3) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
+         endif
+         if( delx(3) < 1D-8 .and.  delx(3)>=0.D0) delx(3) = 1D-8
+         if( delx(3) >-1D-8 .and.  delx(3)<0.D0) delx(3) =-1D-8
+
+           
+         if(( delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0)then
+            delx(3) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-4
+         endif
+         if(( delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0)then
+            delx(3) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-4
+         endif
+
+         patch%aux%Flash2%delx(:,ng)=delx(:)
+         call Flash2AuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
+            aux_vars(ng)%aux_var_elem(1:option%nflowdof),global_aux_vars(ng),&
+            realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
+            realization%fluid_properties,option)
+!         if(aux_vars(ng)%aux_var_elem(option%nflowdof)%sat(2)>1D-8 .and. &
+!            aux_vars(ng)%aux_var_elem(0)%sat(2)<1D-12)then
+!            print *, 'Flash winc', delx(3,ng)
+!         endif   
+      endif
+   enddo
+#endif
+  deallocate(delx)
+  call GridVecRestoreArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
+
+end subroutine Flash2ResidualPatch0
+
+! ************************************************************************** !
+!
+! Flash2ResidualPatch2: Computes other terms in Residual
+!                       (accumulation, source/sink, reaction)
+! author: Chuan Lu
+! date: 10/10/08
+!
+! ************************************************************************** !
+subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
+
+  use Connection_module
+  use Realization_module
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Coupler_module  
+  use Field_module
+  use Debug_module
+  
+  implicit none
+
+  SNES, intent(in) :: snes
+  Vec, intent(inout) :: xx
+  Vec, intent(out) :: r
+  type(realization_type) :: realization
+
+  PetscErrorCode :: ierr
+  PetscInt :: i, jn
+  PetscInt :: ip1, ip2
+  PetscInt :: local_id, ghosted_id
+  
+  PetscReal, pointer ::accum_p(:)
+
+  PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:)
+               
+  PetscReal, pointer :: ithrm_loc_p(:)
+
+  PetscReal :: dw_kg, dw_mol,dddt,dddp
+  PetscReal :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 , hsrc1
+  PetscReal :: rho, fg, dfgdp, dfgdt, eng, dhdt, dhdp, visc, dvdt, dvdp, xphi
+  PetscReal :: Res(realization%option%nflowdof), v_darcy(realization%option%nphase)
+  PetscReal :: xxbc(realization%option%nflowdof)
+  PetscReal :: msrc(1:realization%option%nflowspec)
+  PetscReal :: psrc(1:realization%option%nphase)
+  PetscViewer :: viewer
+
+
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(Flash2_parameter_type), pointer :: Flash2_parameter
+  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(coupler_type), pointer :: boundary_condition, source_sink
+  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  PetscTruth :: enthalpy_flag
+  PetscInt :: ng
+  PetscInt :: iconn, idof, istart, iend
+  PetscInt :: sum_connection
+  PetscReal :: distance, fraction_upwind
+  PetscReal :: distance_gravity
+  
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+
+  Flash2_parameter => patch%aux%Flash2%Flash2_parameter
+  aux_vars => patch%aux%Flash2%aux_vars
+  aux_vars_bc => patch%aux%Flash2%aux_vars_bc
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+
+ ! call Flash2UpdateAuxVarsPatchNinc(realization)
+  ! override flags since they will soon be out of date  
+ ! patch%Flash2Aux%aux_vars_up_to_date = PETSC_FALSE 
+
+! now assign access pointer to local variables
+  call GridVecGetArrayF90(grid,r, r_p, ierr)
+  call GridVecGetArrayF90(grid,field%flow_accum, accum_p, ierr)
+  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
+  call GridVecGetArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
+ 
+  ! Accumulation terms (include reaction------------------------------------
+  if (.not.option%steady_state) then
+#if 1
+    r_p = r_p - accum_p
+
+    do local_id = 1, grid%nlmax  ! For each local node do...
+      ghosted_id = grid%nL2G(local_id)
+      !geh - Ignore inactive cells with inactive materials
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+     iend = local_id*option%nflowdof
+    istart = iend-option%nflowdof+1
+    call Flash2Accumulation(aux_vars(ghosted_id)%aux_var_elem(0),&
+                            global_aux_vars(ghosted_id), &
+                            porosity_loc_p(ghosted_id), &
+                            volume_p(local_id), &
+                            Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
+                            option,ONE_INTEGER,Res) 
+    r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
+    !print *,'REs, acm: ', res
+    patch%aux%Flash2%Resold_AR(local_id, :)= &
+      patch%aux%Flash2%Resold_AR(local_id, :)+ Res(1:option%nflowdof)
+  enddo
+#endif
+  endif
+
+#if 1
+  ! Source/sink terms -------------------------------------
+  source_sink => patch%source_sinks%first 
+  do 
+    if (.not.associated(source_sink)) exit
+    !print *, 'RES s/s begin'
+    ! check whether enthalpy dof is included
+  !  if (source_sink%flow_condition%num_sub_conditions > 3) then
+      enthalpy_flag = PETSC_TRUE
+   ! else
+   !   enthalpy_flag = PETSC_FALSE
+   ! endif
+      
+    psrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
+!    qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%cur_value(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
+!    hsrc1=0D0
+!    qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+!    csrc1 = csrc1 / FMWCO2
+!    msrc(1)=qsrc1; msrc(2) =csrc1
+     msrc(:)= psrc(:)
+     msrc(1) =  msrc(1) / FMWH2O
+     msrc(2) =  msrc(2) / FMWCO2
+
+     cur_connection_set => source_sink%connection_set
+    
+    do iconn = 1, cur_connection_set%num_connections      
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+      call Flash2SourceSink(msrc,psrc,tsrc1,hsrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
+                            source_sink%flow_condition%itype(1),Res,enthalpy_flag, option)
+ 
+      r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
+      r_p((local_id-1)*option%nflowdof + jco2) = r_p((local_id-1)*option%nflowdof + jco2)-Res(jco2)
+      patch%aux%Flash2%Resold_AR(local_id,jh2o)= patch%aux%Flash2%Resold_AR(local_id,jh2o) - Res(jh2o)    
+      patch%aux%Flash2%Resold_AR(local_id,jco2)= patch%aux%Flash2%Resold_AR(local_id,jco2) - Res(jco2)    
+      if (enthalpy_flag)then
+        r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - Res(option%nflowdof)
+        patch%aux%Flash2%Resold_AR(local_id,option%nflowdof)=&
+          patch%aux%Flash2%Resold_AR(local_id,option%nflowdof) - Res(option%nflowdof)
+       endif 
+  !  else if (qsrc1 < 0.d0) then ! withdrawal
+  !  endif
+    enddo
+    source_sink => source_sink%next
+  enddo
+#endif
+  
+  
+! adjust residual to R/dt
+  select case (option%idt_switch) 
+  case(1) 
+     r_p(:) = r_p(:)/option%flow_dt
+  case(-1)
+     if(option%flow_dt>1.D0) r_p(:) = r_p(:)/option%flow_dt
+  end select
+  
+  do local_id = 1, grid%nlmax
+     if (associated(patch%imat)) then
+        if (patch%imat(grid%nL2G(local_id)) <= 0) cycle
+     endif
+
+     istart = 1 + (local_id-1)*option%nflowdof
+     if(volume_p(local_id)>1.D0) r_p (istart:istart+2)=r_p(istart:istart+2)/volume_p(local_id)
+     if(r_p(istart) >1E20 .or. r_p(istart) <-1E20) print *, r_p (istart:istart+2)
+!     print *,'flash res', local_id, r_p (istart:istart+2)
+  enddo
+
+! print *,'finished rp vol scale'
+  if(option%use_isothermal) then
+     do local_id = 1, grid%nlmax  ! For each local node do...
+        ghosted_id = grid%nL2G(local_id)   ! corresponding ghost index
+        if (associated(patch%imat)) then
+           if (patch%imat(ghosted_id) <= 0) cycle
+        endif
+        istart = 3 + (local_id-1)*option%nflowdof
+        r_p(istart) = 0.D0 ! xx_loc_p(2 + (ng-1)*option%nflowdof) - yy_p(p1-1)
+     enddo
+  endif
+ 
+  if (patch%aux%Flash2%inactive_cells_exist) then
+    do i=1,patch%aux%Flash2%n_zero_rows
+      r_p(patch%aux%Flash2%zero_rows_local(i)) = 0.d0
+    enddo
+  endif
+ 
+  call GridVecRestoreArrayF90(grid,r, r_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%flow_accum, accum_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
+ 
+end subroutine Flash2ResidualPatch2
+
 
 ! ************************************************************************** !
 !
@@ -2253,7 +3231,8 @@ subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
   use Level_module
   use Grid_module
   use Option_module
-
+  use Logging_module
+  
   implicit none
 
   interface
@@ -2274,7 +3253,7 @@ subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
   type(realization_type) :: realization
   MatStructure flag
   PetscErrorCode :: ierr
-  
+  PetscViewer :: viewer
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
@@ -2291,6 +3270,8 @@ subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
 
   
   call MatZeroEntries(J,ierr)
+
+ ! pass #1 for internal and boundary flux terms
   cur_level => realization%level_list%first
   do
     if (.not.associated(cur_level)) exit
@@ -2310,6 +3291,57 @@ subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
     enddo
     cur_level => cur_level%next
   enddo
+
+! pass #2 for everything else
+ cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      grid => cur_patch%grid
+      ! need to set the current patch in the Jacobian operator
+      ! so that entries will be set correctly
+      if(associated(grid%structured_grid) .and. &
+        (.not.(grid%structured_grid%p_samr_patch.eq.0))) then
+         call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
+      endif
+      call Flash2JacobianPatch(snes,xx,J,J,flag,realization,ierr)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+
+  if (realization%debug%matview_Jacobian) then
+#if 1  
+    call PetscViewerASCIIOpen(realization%option%mycomm,'Rjacobian.out', &
+                              viewer,ierr)
+#else
+    call PetscViewerBinaryOpen(realization%option%mycomm,'Rjacobian.bin', &
+                               FILE_MODE_WRITE,viewer,ierr)
+#endif    
+    call MatView(J,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+
+#if 0
+  if (realization%debug%norm_Jacobian) then
+    option => realization%option
+    call MatNorm(J,NORM_1,norm,ierr)
+    write(option%io_buffer,'("1 norm: ",es11.4)') norm
+    call printMsg(option) 
+    call MatNorm(J,NORM_FROBENIUS,norm,ierr)
+    write(option%io_buffer,'("2 norm: ",es11.4)') norm
+    call printMsg(option) 
+    call MatNorm(J,NORM_INFINITY,norm,ierr)
+    write(option%io_buffer,'("inf norm: ",es11.4)') norm
+    call printMsg(option) 
+  endif
+#endif
+
+  call PetscLogEventEnd(logging%event_r_jacobian,ierr)
 
 end subroutine Flash2Jacobian
 
@@ -2462,7 +3494,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
              porosity_loc_p(ghosted_id), &
              volume_p(local_id), &
              Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
-             option,1, res) 
+             option,ONE_INTEGER, res) 
         ResInc( local_id,:,nvar) =  ResInc(local_id,:,nvar) + Res(:)
      enddo
      
@@ -2571,13 +3603,13 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
           xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
           if(idof>=2)then
              xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
-             delxbc(idof)=delx(idof,ghosted_id)
+             delxbc(idof)=patch%aux%Flash2%delx(idof,ghosted_id)
           endif 
        case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
           xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
           !iphasebc = int(iphase_loc_p(ghosted_id))
-          delxbc(idof)=delx(idof,ghosted_id)
+          delxbc(idof)=patch%aux%Flash2%delx(idof,ghosted_id)
        end select
     enddo
     !print *,'BC:',boundary_condition%flow_condition%itype, xxbc, delxbc
@@ -2623,7 +3655,8 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
      max_dev=0.D0
      do neq=1, option%nflowdof
         do nvar=1, option%nflowdof
-           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-ResOld_AR(local_id,neq))/delx(nvar,ghosted_id)
+           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Flash2%ResOld_AR(local_id,neq))&
+              /patch%aux%Flash2%delx(nvar,ghosted_id)
            if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
         enddo
      enddo
@@ -2717,8 +3750,8 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
                           upweight, option, vv_darcy, Res)
-            ra(:,nvar)= (Res(:)-ResOld_FL(iconn,:))/delx(nvar,ghosted_id_up)
-
+            ra(:,nvar)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
+              /patch%aux%Flash2%delx(nvar,ghosted_id_up)
          call Flash2Flux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
                           tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
                           dd_up,perm_up,D_up, &
@@ -2727,7 +3760,8 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
                           dd_dn,perm_dn,D_dn, &
                           cur_connection_set%area(iconn),distance_gravity, &
                           upweight, option, vv_darcy, Res)
-         ra(:,nvar+option%nflowdof)= (Res(:)-ResOld_FL(iconn,:))/delx(nvar,ghosted_id_dn)
+         ra(:,nvar+option%nflowdof)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
+           /patch%aux%Flash2%delx(nvar,ghosted_id_dn)
     enddo
 
     select case(option%idt_switch)
@@ -2854,6 +3888,741 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
   endif
 end subroutine Flash2JacobianPatch
 
+! ************************************************************************** !
+!
+! Flash2JacobianPatch: Computes the Jacobian: Flux term
+! author: Chuan Lu
+! date: 10/13/08
+!
+! ************************************************************************** !
+subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
+
+  use Connection_module
+  use Option_module
+  use Grid_module
+  use Realization_module
+  use Patch_module
+  use Coupler_module
+  use Field_module
+  use Debug_module
+  
+  implicit none
+
+  SNES :: snes
+  Vec :: xx
+  Mat :: A, B
+  type(realization_type) :: realization
+  MatStructure flag
+
+  PetscErrorCode :: ierr
+  PetscInt :: nvar,neq,nr
+  PetscInt :: ithrm_up, ithrm_dn, i
+  PetscInt :: ip1, ip2 
+
+  PetscReal, pointer :: porosity_loc_p(:), volume_p(:), &
+                          xx_loc_p(:), tortuosity_loc_p(:),&
+                          perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
+  PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
+  PetscInt :: icap,iphas,iphas_up,iphas_dn,icap_up,icap_dn
+  PetscInt :: ii, jj
+  PetscReal :: dw_kg,dw_mol,enth_src_co2,enth_src_h2o,rho
+  PetscReal :: tsrc1,qsrc1,csrc1,hsrc1
+  PetscReal :: dd_up, dd_dn, dd, f_up, f_dn
+  PetscReal :: perm_up, perm_dn
+  PetscReal :: dw_dp,dw_dt,hw_dp,hw_dt,dresT_dp,dresT_dt
+  PetscReal :: D_up, D_dn  ! "Diffusion" constants upstream and downstream of a face.
+  PetscReal :: zero, norm
+  PetscReal :: upweight
+  PetscReal :: max_dev  
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: local_id_up, local_id_dn
+  PetscInt :: ghosted_id_up, ghosted_id_dn
+  PetscInt ::  natural_id_up,natural_id_dn
+  
+  PetscReal :: Jup(1:realization%option%nflowdof,1:realization%option%nflowdof), &
+            Jdn(1:realization%option%nflowdof,1:realization%option%nflowdof)
+  
+  PetscInt :: istart, iend
+  
+  type(coupler_type), pointer :: boundary_condition, source_sink
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  PetscTruth :: enthalpy_flag
+  PetscInt :: iconn, idof
+  PetscInt :: sum_connection  
+  PetscReal :: distance, fraction_upwind
+  PetscReal :: distance_gravity
+  PetscReal :: Res(realization%option%nflowdof) 
+  PetscReal :: xxbc(1:realization%option%nflowdof), delxbc(1:realization%option%nflowdof)
+  PetscReal :: ResInc(realization%patch%grid%nlmax,realization%option%nflowdof,&
+           realization%option%nflowdof)
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option 
+  type(field_type), pointer :: field 
+  type(Flash2_parameter_type), pointer :: Flash2_parameter
+  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+
+  PetscReal :: vv_darcy(realization%option%nphase), voltemp
+  PetscReal :: ra(1:realization%option%nflowdof,1:realization%option%nflowdof*2) 
+  PetscReal :: msrc(1:realization%option%nflowspec)
+  PetscReal :: psrc(1:realization%option%nphase)
+  PetscReal :: dddt, dddp, fg, dfgdp, dfgdt, eng, dhdt, dhdp, visc, dvdt,&
+               dvdp, xphi
+  PetscInt :: iphasebc                
+  
+  PetscViewer :: viewer
+  Vec :: debug_vec
+!-----------------------------------------------------------------------
+! R stand for residual
+!  ra       1              2              3              4          5              6            7      8
+! 1: p     dR/dpi         dR/dTi          dR/dci        dR/dsi   dR/dpim        dR/dTim
+! 2: T
+! 3: c
+! 4  s         
+!-----------------------------------------------------------------------
+
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+
+  Flash2_parameter => patch%aux%Flash2%Flash2_parameter
+  aux_vars => patch%aux%Flash2%aux_vars
+  aux_vars_bc => patch%aux%Flash2%aux_vars_bc
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+
+! dropped derivatives:
+!   1.D0 gas phase viscocity to all p,t,c,s
+!   2. Average molecular weights to p,t,s
+!  flag = SAME_NONZERO_PATTERN
+
+#if 0
+!  call Flash2NumericalJacobianTest(xx,realization)
+#endif
+
+ ! print *,'*********** In Jacobian ********************** '
+  call MatZeroEntries(A,ierr)
+
+  call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%tortuosity_loc, tortuosity_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
+
+  call GridVecGetArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
+!  call GridVecGetArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
+
+ ResInc = 0.D0
+
+! Boundary conditions
+#if 1
+  ! Boundary Flux Terms -----------------------------------
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(boundary_condition)) exit
+    
+    cur_connection_set => boundary_condition%connection_set
+    
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+    
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+
+      if (ghosted_id<=0) then
+        print *, "Wrong boundary node index... STOP!!!"
+        stop
+      endif
+
+      ithrm_dn = int(ithrm_loc_p(ghosted_id))
+      D_dn = Flash2_parameter%ckwet(ithrm_dn)
+
+      ! for now, just assume diagonal tensor
+      perm_dn = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
+                perm_yy_loc_p(ghosted_id)*abs(cur_connection_set%dist(2,iconn))+ &
+                perm_zz_loc_p(ghosted_id)*abs(cur_connection_set%dist(3,iconn))
+      ! dist(0,iconn) = scalar - magnitude of distance
+      ! gravity = vector(3)
+      ! dist(1:3,iconn) = vector(3) - unit vector
+      distance_gravity = cur_connection_set%dist(0,iconn) * &
+                         dot_product(option%gravity, &
+                                     cur_connection_set%dist(1:3,iconn))
+      icap_dn = int(icap_loc_p(ghosted_id))
+
+! Then need fill up increments for BCs
+    delxbc=0.D0;
+    do idof =1, option%nflowdof   
+       select case(boundary_condition%flow_condition%itype(idof))
+       case(DIRICHLET_BC)
+          xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
+          delxbc(idof)=0.D0
+      case(HYDROSTATIC_BC)
+          xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
+          if(idof>=2)then
+             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+             delxbc(idof)=patch%aux%Flash2%delx(idof,ghosted_id)
+          endif 
+       case(NEUMANN_BC, ZERO_GRADIENT_BC)
+          ! solve for pb from Darcy's law given qb /= 0
+          xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+          !iphasebc = int(iphase_loc_p(ghosted_id))
+          delxbc(idof)=patch%aux%Flash2%delx(idof,ghosted_id)
+       end select
+    enddo
+    !print *,'BC:',boundary_condition%flow_condition%itype, xxbc, delxbc
+
+ 
+    call Flash2AuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
+         global_aux_vars_bc(sum_connection),&
+         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
+         realization%fluid_properties, option)
+    call Flash2AuxVarCompute_Winc(xxbc,delxbc,&
+         aux_vars_bc(sum_connection)%aux_var_elem(1:option%nflowdof),&
+         global_aux_vars_bc(sum_connection),&
+         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
+         realization%fluid_properties,option)
+    
+    do nvar=1,option%nflowdof
+       call Flash2BCFlux(boundary_condition%flow_condition%itype, &
+         boundary_condition%flow_aux_real_var(:,iconn), &
+         aux_vars_bc(sum_connection)%aux_var_elem(nvar), &
+         aux_vars(ghosted_id)%aux_var_elem(nvar), &
+         porosity_loc_p(ghosted_id), &
+         tortuosity_loc_p(ghosted_id), &
+         Flash2_parameter%sir(:,icap_dn), &
+         cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
+         cur_connection_set%area(iconn), &
+         distance_gravity,option, &
+         vv_darcy,Res)
+       ResInc(local_id,1:option%nflowdof,nvar) = ResInc(local_id,1:option%nflowdof,nvar) - Res(1:option%nflowdof)
+    enddo
+ enddo
+    boundary_condition => boundary_condition%next
+ enddo
+#endif
+! Set matrix values related to single node terms: Accumulation, Source/Sink, BC
+  do local_id = 1, grid%nlmax  ! For each local node do...
+     ghosted_id = grid%nL2G(local_id)
+     !geh - Ignore inactive cells with inactive materials
+     if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+     endif
+
+     ra=0.D0
+     max_dev=0.D0
+     do neq=1, option%nflowdof
+        do nvar=1, option%nflowdof
+           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Flash2%ResOld_AR(local_id,neq))&
+              /patch%aux%Flash2%delx(nvar,ghosted_id)
+           if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
+        enddo
+     enddo
+   
+   select case(option%idt_switch)
+      case(1) 
+        ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
+      case(-1)
+        if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:) /option%flow_dt
+    end select
+
+     Jup=ra(1:option%nflowdof,1:option%nflowdof)
+     if(volume_p(local_id)>1.D0 ) Jup=Jup / volume_p(local_id)
+   
+!      if(local_id==1) print *, 'flash jac', volume_p(local_id), ra
+     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
+  end do
+
+  if (realization%debug%matview_Jacobian_detailed) then
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'jacobian_bcflux.out',viewer,ierr)
+    call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+
+#if 1
+  ! Interior Flux Terms -----------------------------------  
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
+  sum_connection = 0    
+  ResInc = 0.D0
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+    
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id_up) <= 0 .or. &
+            patch%imat(ghosted_id_dn) <= 0) cycle
+      endif
+
+      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
+      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
+     ! natural_id_up = grid%nG2N(ghosted_id_up)
+     ! natural_id_dn = grid%nG2N(ghosted_id_dn)
+   
+      fraction_upwind = cur_connection_set%dist(-1,iconn)
+      distance = cur_connection_set%dist(0,iconn)
+      ! distance = scalar - magnitude of distance
+      ! gravity = vector(3)
+      ! dist(1:3,iconn) = vector(3) - unit vector
+      distance_gravity = distance * &
+                         dot_product(option%gravity, &
+                                     cur_connection_set%dist(1:3,iconn))
+      dd_up = distance*fraction_upwind
+      dd_dn = distance-dd_up ! should avoid truncation error
+      ! upweight could be calculated as 1.d0-fraction_upwind
+      ! however, this introduces ever so slight error causing pflow-overhaul not
+      ! to match pflow-orig.  This can be changed to 1.d0-fraction_upwind
+      upweight = dd_dn/(dd_up+dd_dn)
+    
+      ! for now, just assume diagonal tensor
+      perm_up = perm_xx_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(1,iconn))+ &
+                perm_yy_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(2,iconn))+ &
+                perm_zz_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(3,iconn))
+
+      perm_dn = perm_xx_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(1,iconn))+ &
+                perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
+                perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
+    
+      iphas_up = iphase_loc_p(ghosted_id_up)
+      iphas_dn = iphase_loc_p(ghosted_id_dn)
+
+      ithrm_up = int(ithrm_loc_p(ghosted_id_up))
+      ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
+      D_up = Flash2_parameter%ckwet(ithrm_up)
+      D_dn = Flash2_parameter%ckwet(ithrm_dn)
+    
+      icap_up = int(icap_loc_p(ghosted_id_up))
+      icap_dn = int(icap_loc_p(ghosted_id_dn))
+      
+      do nvar = 1, option%nflowdof 
+         call Flash2Flux(aux_vars(ghosted_id_up)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_up), &
+                          tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
+                          dd_up,perm_up,D_up, &
+                          aux_vars(ghosted_id_dn)%aux_var_elem(0),porosity_loc_p(ghosted_id_dn), &
+                          tortuosity_loc_p(ghosted_id_dn),Flash2_parameter%sir(:,icap_dn), &
+                          dd_dn,perm_dn,D_dn, &
+                          cur_connection_set%area(iconn),distance_gravity, &
+                          upweight, option, vv_darcy, Res)
+            ra(:,nvar)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
+              /patch%aux%Flash2%delx(nvar,ghosted_id_up)
+         call Flash2Flux(aux_vars(ghosted_id_up)%aux_var_elem(0),porosity_loc_p(ghosted_id_up), &
+                          tortuosity_loc_p(ghosted_id_up),Flash2_parameter%sir(:,icap_up), &
+                          dd_up,perm_up,D_up, &
+                          aux_vars(ghosted_id_dn)%aux_var_elem(nvar),porosity_loc_p(ghosted_id_dn),&
+                          tortuosity_loc_p(ghosted_id_dn),Flash2_parameter%sir(:,icap_dn), &
+                          dd_dn,perm_dn,D_dn, &
+                          cur_connection_set%area(iconn),distance_gravity, &
+                          upweight, option, vv_darcy, Res)
+         ra(:,nvar+option%nflowdof)= (Res(:)-patch%aux%Flash2%ResOld_FL(iconn,:))&
+           /patch%aux%Flash2%delx(nvar,ghosted_id_dn)
+    enddo
+
+    select case(option%idt_switch)
+    case(1)
+       ra =ra / option%flow_dt
+    case(-1)  
+       if(option%flow_dt>1)  ra =ra / option%flow_dt
+    end select
+    
+    if (local_id_up > 0) then
+       voltemp=1.D0
+       if(volume_p(local_id_up)>1.D0)then
+         voltemp = 1.D0/volume_p(local_id_up)
+       endif
+       Jup(:,1:option%nflowdof)= ra(:,1:option%nflowdof)*voltemp !11
+       jdn(:,1:option%nflowdof)= ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !12
+
+       call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
+            Jup,ADD_VALUES,ierr)
+       call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
+            Jdn,ADD_VALUES,ierr)
+    endif
+    if (local_id_dn > 0) then
+       voltemp=1.D0
+       if(volume_p(local_id_dn)>1.D0)then
+         voltemp=1.D0/volume_p(local_id_dn)
+       endif
+       Jup(:,1:option%nflowdof)= -ra(:,1:option%nflowdof)*voltemp !21
+       jdn(:,1:option%nflowdof)= -ra(:, 1 + option%nflowdof:2 * option%nflowdof)*voltemp !22
+
+ 
+       call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
+            Jdn,ADD_VALUES,ierr)
+       call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
+            Jup,ADD_VALUES,ierr)
+    endif
+ enddo
+    cur_connection_set => cur_connection_set%next
+  enddo
+#endif
+  if (realization%debug%matview_Jacobian_detailed) then
+ ! print *,'end inter flux'
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'jacobian_flux.out',viewer,ierr)
+    call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+  
+  call GridVecRestoreArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%tortuosity_loc, tortuosity_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
+
+   
+  call GridVecRestoreArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
+
+end subroutine Flash2JacobianPatch1
+
+! ************************************************************************** !
+!
+! Flash2JacobianPatch: Computes the Jacobian: Accum, source, reaction
+! author: Chuan Lu
+! date: 10/13/08
+!
+! ************************************************************************** !
+subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
+
+  use Connection_module
+  use Option_module
+  use Grid_module
+  use Realization_module
+  use Patch_module
+  use Coupler_module
+  use Field_module
+  use Debug_module
+  
+  implicit none
+
+  interface
+     subroutine SAMRSetJacobianSourceOnPatch(which_pc, index, val, p_application, p_patch) 
+#include "finclude/petscsysdef.h"
+
+       PetscInt :: which_pc
+       PetscInt :: index
+       PetscReal :: val
+       PetscFortranAddr :: p_application
+       PetscFortranAddr :: p_patch
+     end subroutine SAMRSetJacobianSourceOnPatch
+
+     subroutine SAMRSetJacobianSrcCoeffsOnPatch(which_pc, p_application, p_patch) 
+#include "finclude/petscsysdef.h"
+
+       PetscInt :: which_pc
+       PetscFortranAddr :: p_application
+       PetscFortranAddr :: p_patch
+     end subroutine SAMRSetJacobianSrcCoeffsOnPatch
+  end interface
+
+  SNES :: snes
+  Vec :: xx
+  Mat :: A, B
+  type(realization_type) :: realization
+  MatStructure flag
+
+  PetscErrorCode :: ierr
+  PetscInt :: nvar,neq,nr
+  PetscInt :: ithrm_up, ithrm_dn, i
+  PetscInt :: ip1, ip2 
+
+  PetscReal, pointer :: porosity_loc_p(:), volume_p(:), &
+                          xx_loc_p(:), tortuosity_loc_p(:),&
+                          perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
+  PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
+  PetscInt :: icap,iphas,iphas_up,iphas_dn,icap_up,icap_dn
+  PetscInt :: ii, jj
+  PetscReal :: dw_kg,dw_mol,enth_src_co2,enth_src_h2o,rho
+  PetscReal :: tsrc1,qsrc1,csrc1,hsrc1
+  PetscReal :: dd_up, dd_dn, dd, f_up, f_dn
+  PetscReal :: perm_up, perm_dn
+  PetscReal :: dw_dp,dw_dt,hw_dp,hw_dt,dresT_dp,dresT_dt
+  PetscReal :: D_up, D_dn  ! "Diffusion" constants upstream and downstream of a face.
+  PetscReal :: zero, norm
+  PetscReal :: upweight
+  PetscReal :: max_dev  
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: local_id_up, local_id_dn
+  PetscInt :: ghosted_id_up, ghosted_id_dn
+  PetscInt ::  natural_id_up,natural_id_dn
+  
+  PetscReal :: Jup(1:realization%option%nflowdof,1:realization%option%nflowdof), &
+            Jdn(1:realization%option%nflowdof,1:realization%option%nflowdof)
+  
+  PetscInt :: istart, iend
+  
+  type(coupler_type), pointer :: boundary_condition, source_sink
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  PetscTruth :: enthalpy_flag
+  PetscInt :: iconn, idof
+  PetscInt :: sum_connection  
+  PetscReal :: distance, fraction_upwind
+  PetscReal :: distance_gravity
+  PetscReal :: Res(realization%option%nflowdof) 
+  PetscReal :: xxbc(1:realization%option%nflowdof), delxbc(1:realization%option%nflowdof)
+  PetscReal :: ResInc(realization%patch%grid%nlmax,realization%option%nflowdof,&
+           realization%option%nflowdof)
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option 
+  type(field_type), pointer :: field 
+  type(Flash2_parameter_type), pointer :: Flash2_parameter
+  type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
+
+  PetscReal :: vv_darcy(realization%option%nphase), voltemp
+  PetscReal :: ra(1:realization%option%nflowdof,1:realization%option%nflowdof*2) 
+  PetscReal :: msrc(1:realization%option%nflowspec)
+  PetscReal :: psrc(1:realization%option%nphase)
+  PetscReal :: dddt, dddp, fg, dfgdp, dfgdt, eng, dhdt, dhdp, visc, dvdt,&
+               dvdp, xphi
+  PetscInt :: flow_pc                
+  
+  PetscViewer :: viewer
+  Vec :: debug_vec
+!-----------------------------------------------------------------------
+! R stand for residual
+!  ra       1              2              3              4          5              6            7      8
+! 1: p     dR/dpi         dR/dTi          dR/dci        dR/dsi   dR/dpim        dR/dTim
+! 2: T
+! 3: c
+! 4  s         
+!-----------------------------------------------------------------------
+
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+
+  Flash2_parameter => patch%aux%Flash2%Flash2_parameter
+  aux_vars => patch%aux%Flash2%aux_vars
+  aux_vars_bc => patch%aux%Flash2%aux_vars_bc
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+
+! dropped derivatives:
+!   1.D0 gas phase viscocity to all p,t,c,s
+!   2. Average molecular weights to p,t,s
+!  flag = SAME_NONZERO_PATTERN
+
+#if 0
+!  call Flash2NumericalJacobianTest(xx,realization)
+#endif
+
+ ! print *,'*********** In Jacobian ********************** '
+!  call MatZeroEntries(A,ierr)
+
+  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
+   call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
+  call GridVecGetArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
+!  call GridVecGetArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
+
+ ResInc = 0.D0
+#if 1
+  ! Accumulation terms ------------------------------------
+  do local_id = 1, grid%nlmax  ! For each local node do...
+     ghosted_id = grid%nL2G(local_id)
+     !geh - Ignore inactive cells with inactive materials
+     if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+     endif
+     iend = local_id*option%nflowdof
+     istart = iend-option%nflowdof+1
+     icap = int(icap_loc_p(ghosted_id))
+     
+     do nvar =1, option%nflowdof
+        call Flash2Accumulation(aux_vars(ghosted_id)%aux_var_elem(nvar), &
+             global_aux_vars(ghosted_id),& 
+             porosity_loc_p(ghosted_id), &
+             volume_p(local_id), &
+             Flash2_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
+             option,ONE_INTEGER, res) 
+        ResInc( local_id,:,nvar) =  ResInc(local_id,:,nvar) + Res(:)
+     enddo
+     
+  enddo
+#endif
+#if 1
+  ! Source/sink terms -------------------------------------
+  source_sink => patch%source_sinks%first 
+  do 
+    if (.not.associated(source_sink)) exit
+    
+    ! check whether enthalpy dof is included
+  !  if (source_sink%flow_condition%num_sub_conditions > 3) then
+      enthalpy_flag = PETSC_TRUE
+   ! else
+   !   enthalpy_flag = PETSC_FALSE
+   ! endif
+
+    psrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%cur_value(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
+ !   hsrc1=0.D0
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
+
+   ! qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+   ! csrc1 = csrc1 / FMWCO2
+      msrc(:)= psrc(:)
+      msrc(1) =  msrc(1) / FMWH2O
+      msrc(2) =  msrc(2) / FMWCO2
+ 
+      cur_connection_set => source_sink%connection_set
+ 
+       do iconn = 1, cur_connection_set%num_connections      
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+!      if (enthalpy_flag) then
+!        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
+!      endif         
+     do nvar =1, option%nflowdof
+       call Flash2SourceSink(msrc,psrc,tsrc1,hsrc1,aux_vars(ghosted_id)%aux_var_elem(nvar),&
+                            source_sink%flow_condition%itype(1), Res,enthalpy_flag, option)
+      
+       ResInc(local_id,jh2o,nvar)=  ResInc(local_id,jh2o,nvar) - Res(jh2o)
+       ResInc(local_id,jco2,nvar)=  ResInc(local_id,jco2,nvar) - Res(jco2)
+       if (enthalpy_flag) & 
+           ResInc(local_id,option%nflowdof,nvar)=&
+           ResInc(local_id,option%nflowdof,nvar)- Res(option%nflowdof) 
+
+     enddo 
+    enddo
+    source_sink => source_sink%next
+  enddo
+#endif
+
+! Set matrix values related to single node terms: Accumulation, Source/Sink, BC
+  do local_id = 1, grid%nlmax  ! For each local node do...
+     ghosted_id = grid%nL2G(local_id)
+     !geh - Ignore inactive cells with inactive materials
+     if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+     endif
+
+     ra=0.D0
+     max_dev=0.D0
+     do neq=1, option%nflowdof
+        do nvar=1, option%nflowdof
+           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Flash2%ResOld_AR(local_id,neq))&
+              /patch%aux%Flash2%delx(nvar,ghosted_id)
+           if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
+        enddo
+     enddo
+   
+   select case(option%idt_switch)
+      case(1) 
+        ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
+      case(-1)
+        if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:) /option%flow_dt
+    end select
+
+     Jup=ra(1:option%nflowdof,1:option%nflowdof)
+     if(volume_p(local_id)>1.D0 ) Jup=Jup / volume_p(local_id)
+   
+!      if(local_id==1) print *, 'flash jac', volume_p(local_id), ra
+     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
+  end do
+
+  if (realization%debug%matview_Jacobian_detailed) then
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'jacobian_srcsink.out',viewer,ierr)
+    call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+  
+  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
+! call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
+! print *,'end jac'
+  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+ ! call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr)
+#if 0
+! zero out isothermal and inactive cells
+#ifdef ISOTHERMAL
+  zero = 0.d0
+  call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,zero,ierr) 
+  do i=1, n_zero_rows
+    ii = mod(zero_rows_local(i),option%nflowdof)
+    ip1 = zero_rows_local_ghosted(i)
+    if (ii == 0) then
+      ip2 = ip1-1
+    elseif (ii == option%nflowdof-1) then
+      ip2 = ip1+1
+    else
+      ip2 = ip1
+    endif
+    call MatSetValuesLocal(A,1,ip1,1,ip2,1.d0,INSERT_VALUES,ierr)
+  enddo
+
+  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+#else
+#endif
+#endif
+
+  if (patch%aux%Flash2%inactive_cells_exist) then
+    f_up = 1.d0
+    call MatZeroRowsLocal(A,patch%aux%Flash2%n_zero_rows, &
+                          patch%aux%Flash2%zero_rows_local_ghosted,f_up,ierr) 
+  endif
+
+  if (realization%debug%matview_Jacobian) then
+    call PetscViewerASCIIOpen(option%mycomm,'Rjacobian.out',viewer,ierr)
+    call MatView(A,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+  if (realization%debug%norm_Jacobian) then
+    call MatNorm(A,NORM_1,norm,ierr)
+    write(option%io_buffer,'("1 norm: ",es11.4)') norm
+    call printMsg(option)
+    call MatNorm(A,NORM_FROBENIUS,norm,ierr)
+    write(option%io_buffer,'("2 norm: ",es11.4)') norm
+    call printMsg(option)
+    call MatNorm(A,NORM_INFINITY,norm,ierr)
+    write(option%io_buffer,'("inf norm: ",es11.4)') norm
+    call printMsg(option)
+!    call GridCreateVector(grid,ONEDOF,debug_vec,GLOBAL)
+!    call MatGetRowMaxAbs(A,debug_vec,PETSC_NULL_INTEGER,ierr)
+!    call VecMax(debug_vec,i,norm,ierr)
+!    call VecDestroy(debug_vec,ierr)
+  endif
+
+  if(option%use_samr) then
+     flow_pc = 0
+     call SAMRSetJacobianSrcCoeffsOnPatch(flow_pc, &
+          realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
+  endif
+
+end subroutine Flash2JacobianPatch2
 
 
 ! ************************************************************************** !
@@ -2946,7 +4715,7 @@ print *,'zero rows point 2'
 print *,'zero rows point 3'  
   patch%aux%Flash2%zero_rows_local_ghosted => zero_rows_local_ghosted
 print *,'zero rows point 4'
-  call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
+  call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER_MPI,MPIU_INTEGER,MPI_MAX, &
                      option%mycomm,ierr)
   if (flag > 0) patch%aux%Flash2%inactive_cells_exist = PETSC_TRUE
 
@@ -2982,7 +4751,7 @@ subroutine Flash2MaxChange(realization)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscReal :: dsmax, max_S  
-  PetscInt :: ierr 
+  PetscErrorCode :: ierr 
 
   option => realization%option
   field => realization%field
@@ -3014,7 +4783,8 @@ subroutine Flash2MaxChange(realization)
   enddo
 
   if(option%mycommsize >1)then
-    call MPI_ALLREDUCE(dsmax, max_s,1, MPI_DOUBLE_PRECISION,MPI_MAX, option%mycomm,ierr)
+    call MPI_Allreduce(dsmax,max_s,ONE_INTEGER_MPI,MPI_DOUBLE_PRECISION, &
+                       MPI_MAX,option%mycomm,ierr)
     dsmax = max_s
   endif 
   option%dsmax=dsmax
@@ -3214,7 +4984,7 @@ subroutine Flash2CheckpointRead(discretization,viewer)
   Vec :: global_var
   PetscErrorCode :: ierr
   
-  call VecLoadIntoVector(viewer, global_var, ierr)
+  call VecLoad(viewer, global_var, ierr)
   call VecDestroy(global_var,ierr)
   
 end subroutine Flash2CheckpointRead

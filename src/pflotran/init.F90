@@ -82,9 +82,11 @@ subroutine Init(simulation)
   character(len=MAXSTRINGLENGTH) :: string
   Vec :: global_vec
   PetscInt :: temp_int
+  PetscInt :: flowortranpc    
   PetscErrorCode :: ierr
   PCSide:: pcside
   PetscReal :: r1, r2, r3, r4, r5, r6
+ 
       
   interface
 
@@ -99,9 +101,7 @@ subroutine Init(simulation)
   end interface
 
   call PetscLogStagePush(logging%stage(INIT_STAGE),ierr)
-  call PetscLogEventBegin(logging%event_init,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_init,ierr)
   
   ! set pointers to objects
   flow_stepper => simulation%flow_stepper
@@ -171,6 +171,10 @@ subroutine Init(simulation)
   call printMsg(option,"  After InputDestroy ")
   
 
+#ifdef VAMSI_HDF5      
+  call Create_IOGroups(option)
+#endif    
+
   ! initialize reference density
   if (option%reference_water_density < 1.d-40) then
 #ifndef DONT_USE_WATEOS
@@ -178,8 +182,8 @@ subroutine Init(simulation)
                 option%reference_water_density,r1,r2,r3,r4,r5,r6, &
                 option%scale,ierr)
 #else
-        call density(option%reference_temperature,option%reference_pressure, &
-                     option%reference_water_density)
+    call density(option%reference_temperature,option%reference_pressure, &
+                 option%reference_water_density)
 #endif                 
   endif
   
@@ -272,6 +276,10 @@ subroutine Init(simulation)
       endif
     endif
 
+    if(option%use_samr) then
+       option%samr_mode=0
+    endif
+      
     call DiscretizationCreateJacobian(discretization,NFLOWDOF, &
                                       flow_solver%Jpre_mat_type, &
                                       flow_solver%Jpre, &
@@ -366,8 +374,9 @@ subroutine Init(simulation)
 !     flow_solver%pc_type = PCSHELL
       pcside = PC_RIGHT
       if(flow_solver%pc_type==PCSHELL) then
-!        call KSPSetPCSide(flow_solver%ksp, pcside,ierr)
-      !  call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 0, flow_solver%pc)
+        call KSPSetPCSide(flow_solver%ksp, pcside,ierr)
+        flowortranpc=0 
+        call SAMRInitializePreconditioner(discretization%amrgrid%p_application, flowortranpc, flow_solver%pc)
       endif
     endif
 
@@ -396,8 +405,11 @@ subroutine Init(simulation)
     call SolverCreateSNES(tran_solver,option%mycomm)  
     call SNESSetOptionsPrefix(tran_solver%snes, "tran_",ierr)
     call SolverCheckCommandLine(tran_solver)
-
-    if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+      
+     if(option%use_samr) then
+        option%samr_mode=1
+     endif
+     if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
       if (tran_solver%Jpre_mat_type == '') then
         if (tran_solver%J_mat_type /= MATMFFD) then
           tran_solver%Jpre_mat_type = tran_solver%J_mat_type
@@ -409,7 +421,9 @@ subroutine Init(simulation)
                                         tran_solver%Jpre_mat_type, &
                                         tran_solver%Jpre,option)
     else
+      tran_solver%J_mat_type = MATAIJ
       tran_solver%Jpre_mat_type = MATAIJ
+
       call DiscretizationCreateJacobian(discretization,ONEDOF, &
                                         tran_solver%Jpre_mat_type, &
                                         tran_solver%Jpre,option)
@@ -463,8 +477,9 @@ subroutine Init(simulation)
 !       flow_solver%pc_type = PCSHELL
        pcside = PC_RIGHT
        if(tran_solver%pc_type==PCSHELL) then
-!          call KSPSetPCSide(tran_solver%ksp, pcside,ierr)
-!          call SAMRInitializePreconditioner(discretization%amrgrid%p_application, 1, tran_solver%pc)
+          call KSPSetPCSide(tran_solver%ksp, pcside,ierr)
+          flowortranpc=1
+          call SAMRInitializePreconditioner(discretization%amrgrid%p_application, flowortranpc, tran_solver%pc)
        endif
     endif
     option%io_buffer = 'Solver: ' // trim(tran_solver%ksp_type)
@@ -498,9 +513,7 @@ subroutine Init(simulation)
                      &++++++++++++++++++++++++++++",/)')
 
 
-  call PetscLogEventBegin(logging%event_setup,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_setup,ierr)
   ! read any regions provided in external files
   call readRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  
@@ -513,9 +526,9 @@ subroutine Init(simulation)
   call assignMaterialPropToRegions(realization)
   call RealizationInitAllCouplerAuxVars(realization)
   if (option%ntrandof > 0) then
-    call printMsg(option,"  Setting up TRAN SNES ")
+    call printMsg(option,"  Setting up TRAN Realization ")
     call RealizationInitConstraints(realization)
-    call printMsg(option,"  Finished setting up TRAN SNES ")  
+    call printMsg(option,"  Finished setting up TRAN Realization ")  
   endif
   call RealizationPrintCouplers(realization)
 
@@ -526,9 +539,7 @@ subroutine Init(simulation)
       allocate(patch%imat(grid%ngmax))  ! allocate material id array
     call ReadStructuredGridHDF5(realization)
   endif
-  call PetscLogEventEnd(logging%event_setup,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_setup,ierr)
   if (.not.option%steady_state) then
     ! add waypoints associated with boundary conditions, source/sinks etc. to list
     call RealizationAddWaypointsToList(realization)
@@ -659,6 +670,10 @@ subroutine Init(simulation)
     call verifyAllCouplers(realization)
   endif
   
+#ifdef OS_STATISTICS
+  call RealizationPrintGridStatistics(realization)
+#endif
+  
   ! check that material properties have been set at all grid cells
   ! right now, we check just perms; maybe more needed later
   call VecMin(field%porosity0,temp_int,r1,ierr)
@@ -675,29 +690,24 @@ subroutine Init(simulation)
     call printErrMsg(option)
   endif
   
-  call printMsg(option," ")
-  call printMsg(option,"  Finished Initialization")
-  
 #if defined(PETSC_HAVE_HDF5)
-#ifndef HDF5_BROADCAST 
-#ifndef VAMSI_HDF5_READ
+#if !defined(HDF5_BROADCAST) && !defined(VAMSI_HDF5_READ)
   call printMsg(option,"Default HDF5 method is used in Initialization")
-#endif !VAMSI_HDF5_READ
-#endif HDF5_BROADCAST
-#ifdef HDF5_BROADCAST
+#elif defined(HDF5_BROADCAST)
   call printMsg(option,"Glenn's HDF5 broadcast method is used in Initialization")
-#endif !HDF5_BROADCAST
-#ifdef VAMSI_HDF5_READ
+#elif defined(VAMSI_HDF5_READ)
   call printMsg(option,"Vamsi's HDF5 broadcast method is used in Initialization")
-  if (option%myrank == 0) then
-     write(*,'(" HDF5_READ_BCAST_SIZE = ",i6)') option%read_bcast_size
+  if (option%myrank == option%io_rank) then
+    write(*,'(" HDF5_READ_GROUP_SIZE = ",i6)') option%hdf5_read_group_size
+    write(*,'(" HDF5_WRITE_GROUP_SIZE = ",i6)') option%hdf5_write_group_size
   endif  
 #endif !VAMSI_HDF5_READ
 #endif !PETSC_HAVE_HDF5
 
-  call PetscLogEventEnd(logging%event_init,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                        PETSC_NULL_OBJECT,ierr)
+  call printMsg(option," ")
+  call printMsg(option,"  Finished Initialization")
+  
+  call PetscLogEventEnd(logging%event_init,ierr)
 
 end subroutine Init
 
@@ -1385,6 +1395,12 @@ subroutine InitReadInput(simulation)
 
 !......................
 
+      case ('HDF5_READ_GROUP_SIZE')
+        call InputReadInt(input,option,option%hdf5_read_group_size)
+        call InputErrorMsg(input,option,'HDF5_READ_GROUP_SIZE','Group size')
+
+!......................
+
       case ('NUMERICAL_JACOBIAN')
         option%numerical_derivatives = PETSC_TRUE
 
@@ -1703,15 +1719,15 @@ subroutine InitReadInput(simulation)
               velocities = PETSC_TRUE
             case('FLUXES')
               fluxes = PETSC_TRUE
+            case ('HDF5_WRITE_GROUP_SIZE')
+              call InputReadInt(input,option,option%hdf5_write_group_size)
+              call InputErrorMsg(input,option,'HDF5_WRITE_GROUP_SIZE','Group size')
             case default
               option%io_buffer = 'Keyword: ' // trim(word) // &
                                  ' not recognized in OUTPUT.'
               call printErrMsg(option)              
           end select
        enddo
-#ifdef VAMSI_HDF5      
-       call create_iogroups(option)
-#endif    
        if (velocities) then
          if (output_option%print_tecplot) &
            output_option%print_tecplot_velocities = PETSC_TRUE
@@ -2416,9 +2432,7 @@ subroutine readMaterialsFromFile(realization,filename)
     call VecDestroy(global_vec,ierr)
     call VecDestroy(local_vec,ierr)
   else
-    call PetscLogEventBegin(logging%event_hash_map, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+    call PetscLogEventBegin(logging%event_hash_map,ierr)
     call GridCreateNaturalToGhostedHash(grid,option)
     input => InputCreate(IUNIT_TEMP,filename)
     do
@@ -2435,9 +2449,7 @@ subroutine readMaterialsFromFile(realization,filename)
     enddo
     call InputDestroy(input)
     call GridDestroyHashTable(grid)
-    call PetscLogEventEnd(logging%event_hash_map, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+    call PetscLogEventEnd(logging%event_hash_map,ierr)
   endif
   
 end subroutine readMaterialsFromFile
@@ -2481,6 +2493,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
   PetscInt :: fid = 86
   PetscInt :: status
   PetscInt :: idirection
+  PetscReal :: ratio
   Vec :: global_vec
   PetscErrorCode :: ierr
   
@@ -2518,20 +2531,23 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
                                         group_name, &
                                         dataset_name,append_realization_id)
       call GridVecGetArrayF90(grid,global_vec,vec_p,ierr)
+      ratio = 1.d0
+      if (material_property%vertical_anisotropy_ratio > 0.d0) then
+        ratio = material_property%vertical_anisotropy_ratio
+      endif
       if (associated(patch%imat)) then
         do local_id = 1, grid%nlmax
           if (patch%imat(grid%nL2G(local_id)) == material_property%id) then
             perm_xx_p(local_id) = vec_p(local_id)
             perm_yy_p(local_id) = vec_p(local_id)
-            perm_zz_p(local_id) = vec_p(local_id)* &
-              material_property%vertical_anisotropy_ratio
+            perm_zz_p(local_id) = vec_p(local_id)*ratio
           endif
         enddo
       else
         do local_id = 1, grid%nlmax
           perm_xx_p(local_id) = vec_p(local_id)
           perm_yy_p(local_id) = vec_p(local_id)
-          perm_zz_p(local_id) = vec_p(local_id)
+          perm_zz_p(local_id) = vec_p(local_id)*ratio         
         enddo
       endif
       call GridVecRestoreArrayF90(grid,global_vec,vec_p,ierr)
@@ -2576,9 +2592,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
     call VecDestroy(global_vec,ierr)
   else
 
-    call PetscLogEventBegin(logging%event_hash_map, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+    call PetscLogEventBegin(logging%event_hash_map,ierr)
     call GridCreateNaturalToGhostedHash(grid,option)
     input => InputCreate(IUNIT_TEMP,material_property%permeability_filename)
     do
@@ -2604,9 +2618,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
 
     call InputDestroy(input)
     call GridDestroyHashTable(grid)
-    call PetscLogEventEnd(logging%event_hash_map, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+    call PetscLogEventEnd(logging%event_hash_map,ierr)
   endif
   
   call GridVecRestoreArrayF90(grid,field%perm0_xx,perm_xx_p,ierr)
@@ -2649,8 +2661,9 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
   PetscInt :: ghosted_id, natural_id, material_id
   PetscInt :: fid = 86
   PetscInt :: status
-  PetscErrorCode :: ierr, ierr2
+  PetscErrorCode :: ierr
   PetscInt :: count, read_count, i
+  PetscInt :: flag
   PetscInt, pointer :: indices(:)
   PetscReal, pointer :: values(:)
   PetscInt, parameter :: block_size = 10000
@@ -2684,9 +2697,10 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
       ierr = 0
       if (option%myrank == option%io_rank) &
         read(fid,*,iostat=ierr) values(1:read_count)
-      call mpi_bcast(ierr,ONE_INTEGER,MPI_INTEGER,option%io_rank, &
-                     option%mycomm,ierr2)      
-      if (ierr /= 0) then
+      flag = ierr
+      call MPI_Bcast(flag,ONE_INTEGER_MPI,MPIU_INTEGER,option%io_rank, &
+                     option%mycomm,ierr)      
+      if (flag /= 0) then
         option%io_buffer = 'Insufficent data in file: ' // filename
         call printErrMsg(option)
       endif
@@ -2696,7 +2710,7 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
       endif
       count = count + read_count
     enddo
-    call mpi_bcast(count,ONE_INTEGER,MPI_INTEGER,option%io_rank, &
+    call MPI_Bcast(count,ONE_INTEGER_MPI,MPIU_INTEGER,option%io_rank, &
                    option%mycomm,ierr)      
     if (count /= grid%nmax) then
       write(option%io_buffer,'("Number of data in file (",i8, &
@@ -2930,80 +2944,96 @@ end subroutine readTransportInitialCondition
 
 ! ************************************************************************** !
 !
-! create_iogroups: Create sub-communicators that are used in initialization 
+! Create_IOGroups: Create sub-communicators that are used in initialization 
 !                  and output HDF5 routines. 
 ! author: Vamsi Sripathi
 ! date: 07/14/09
 !
 ! ************************************************************************** !
 
-subroutine create_iogroups(option)
+subroutine Create_IOGroups(option)
 
- use Option_module
- use Logging_module
+  use Option_module
+  use Logging_module
 
- implicit none
+  implicit none
 
-#include "definitions.h"
-
- type(option_type) :: option
-
- PetscErrorCode :: ierr
+  type(option_type) :: option
+  PetscErrorCode :: ierr
 
 #ifdef VAMSI_HDF5_READ  
-    call PetscLogEventBegin(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_create_iogroups,ierr)
 
-    option%read_bcast_size = HDF5_READ_BCAST_SIZE
-    option%rcolor = floor(real(option%global_rank / option%read_bcast_size))
-    option%rkey = option%global_rank
-    call MPI_Comm_split(option%global_comm,option%rcolor,option%rkey,option%read_group,ierr)
-    call MPI_Comm_size(option%read_group,option%read_grp_size,ierr)
-    call MPI_Comm_rank(option%read_group,option%read_grp_rank,ierr)
+  if (option%hdf5_read_group_size <= 0) then
+    write(option%io_buffer,& 
+          '("The keyword HDF5_READ_GROUP_SIZE & 
+            & in the input file (pflotran.in) is either not set or &
+            & its value is less than or equal to ZERO. &
+            & HDF5_READ_GROUP_SIZE =  ",i6)') &
+             option%hdf5_read_group_size
+    call printErrMsg(option)      
+  endif         
+                  
+  option%rcolor = floor(real(option%myrank / option%hdf5_read_group_size))
+  option%rkey = option%myrank
+  call MPI_Comm_split(option%mycomm,option%rcolor,option%rkey, &
+                      option%read_group,ierr)
+  call MPI_Comm_size(option%read_group,option%read_grp_size,ierr)
+  call MPI_Comm_rank(option%read_group,option%read_grp_rank,ierr)
 
-    if (mod(option%global_rank,option%read_bcast_size) == 0) then 
-       option%reader_color = 1
-    else
-       option%reader_color = 0
-    endif
-    option%reader_key = option%global_rank
-    call MPI_Comm_split(option%global_comm,option%reader_color,option%reader_key,option%readers,ierr)
-    call MPI_Comm_size(option%readers,option%readers_size,ierr)
-    call MPI_Comm_rank(option%readers,option%readers_rank,ierr)
+  if (mod(option%myrank,option%hdf5_read_group_size) == 0) then 
+    option%reader_color = 1
+  else
+    option%reader_color = 0
+  endif
+  option%reader_key = option%myrank
+  call MPI_Comm_split(option%mycomm,option%reader_color, &
+                      option%reader_key,option%readers,ierr)
+  call MPI_Comm_size(option%readers,option%readers_size,ierr)
+  call MPI_Comm_rank(option%readers,option%readers_rank,ierr)
 
-    call PetscLogEventEnd(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_create_iogroups,ierr)
+#ifdef VAMSI_DEBUG    
+  if (option%myrank == 0) write (*,'("Number of readers = ",i6)') option%readers_size
+  if (mod(option%myrank,option%hdf5_read_group_size) == 0) then 
+    write(*,'("I''m a reader, My rank = ",i6)') option%myrank
+  endif   
+#endif
+
 #endif
 
 #ifdef VAMSI_HDF5_WRITE  
-    call PetscLogEventBegin(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventBegin(logging%event_create_iogroups,ierr)
 
-    option%write_bcast_size = HDF5_WRITE_BCAST_SIZE
-    option%wcolor = floor(real(option%global_rank / option%write_bcast_size))
-    option%wkey = option%global_rank
-    call MPI_Comm_split(option%global_comm,option%wcolor,option%wkey,option%write_group,ierr)
-    call MPI_Comm_size(option%write_group,option%write_grp_size,ierr)
-    call MPI_Comm_rank(option%write_group,option%write_grp_rank,ierr)
+  if (option%hdf5_write_group_size <= 0) then
+    write(option%io_buffer,& 
+          '("The keyword HDF5_WRITE_GROUP_SIZE & 
+            &in the input file (pflotran.in) is either not set or &
+            &its value is less than or equal to ZERO. &
+            &HDF5_WRITE_GROUP_SIZE =  ",i6)') &
+             option%hdf5_write_group_size
+    call printErrMsg(option)      
+  endif         
+                  
+  option%wcolor = floor(real(option%myrank / option%hdf5_write_group_size))
+  option%wkey = option%myrank
+  call MPI_Comm_split(option%mycomm,option%wcolor,option%wkey,option%write_group,ierr)
+  call MPI_Comm_size(option%write_group,option%write_grp_size,ierr)
+  call MPI_Comm_rank(option%write_group,option%write_grp_rank,ierr)
 
-    if (mod(option%global_rank,option%write_bcast_size) == 0) then 
-       option%writer_color = 1
-    else
-       option%writer_color = 0
-    endif
-    option%writer_key = option%global_rank
-    call MPI_Comm_split(option%global_comm,option%writer_color,option%writer_key,option%writers,ierr)
-    call MPI_Comm_size(option%writers,option%writers_size,ierr)
-    call MPI_Comm_rank(option%writers,option%writers_rank,ierr)
+  if (mod(option%myrank,option%hdf5_write_group_size) == 0) then 
+    option%writer_color = 1
+  else
+    option%writer_color = 0
+  endif
+  option%writer_key = option%myrank
+  call MPI_Comm_split(option%mycomm,option%writer_color,option%writer_key,option%writers,ierr)
+  call MPI_Comm_size(option%writers,option%writers_size,ierr)
+  call MPI_Comm_rank(option%writers,option%writers_rank,ierr)
 
-    call PetscLogEventEnd(logging%event_create_iogroups,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,ierr)
+  call PetscLogEventEnd(logging%event_create_iogroups,ierr)
 #endif
  
-end subroutine create_iogroups
+end subroutine Create_IOGroups
 
 end module Init_module

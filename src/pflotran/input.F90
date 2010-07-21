@@ -399,17 +399,19 @@ subroutine InputReadFlotranString1(option, fid, string, ierr)
   type(option_type) :: option
   PetscInt :: fid
   character(len=MAXSTRINGLENGTH) :: string
-  PetscErrorCode :: ierr, ierr2
+  PetscErrorCode :: ierr
+  PetscInt :: flag = 0
 
   if (option%broadcast_read) then
     if (option%myrank == option%io_rank) then
       call fiReadFlotranString(fid, string, ierr)
     endif
-    call mpi_bcast(ierr,ONE_INTEGER,MPI_INTEGER,option%io_rank, &
+    flag = ierr
+    call MPI_Bcast(flag,ONE_INTEGER_MPI,MPIU_INTEGER,option%io_rank, &
                    option%mycomm,ierr2)
-    if (ierr == 0) then  
-      call mpi_bcast(string,MAXSTRINGLENGTH,MPI_CHARACTER, &
-                     option%io_rank,option%mycomm,ierr2)      
+    if (flag == 0) then  
+      call MPI_Bcast(string,MAXSTRINGLENGTH_MPI,MPI_CHARACTER, &
+                     option%io_rank,option%mycomm,ierr)      
     endif
   else
     call fiReadFlotranString(fid, string, ierr)
@@ -434,17 +436,20 @@ subroutine InputReadFlotranString2(input, option)
   type(input_type) :: input
   type(option_type) :: option
   
-  PetscErrorCode :: ierr2
+  PetscErrorCode :: ierr
+  PetscInt :: flag
 
   if (input%broadcast_read) then
     if (option%myrank == option%io_rank) then
       call InputReadFlotranStringSlave(input, option)
     endif
-    call mpi_bcast(input%ierr,ONE_INTEGER,MPI_INTEGER,option%io_rank, &
-                   option%mycomm,ierr2)
+    flag = input%ierr
+    call MPI_Bcast(flag,ONE_INTEGER_MPI,MPIU_INTEGER,option%io_rank, &
+                   option%mycomm,ierr)
+    input%ierr = flag
     if (.not.InputError(input)) then  
-      call mpi_bcast(input%buf,MAXSTRINGLENGTH,MPI_CHARACTER, &
-                     option%io_rank,option%mycomm,ierr2)      
+      call MPI_Bcast(input%buf,MAXSTRINGLENGTH,MPI_CHARACTER, &
+                     option%io_rank,option%mycomm,ierr)      
     endif
   else
     call InputReadFlotranStringSlave(input, option)

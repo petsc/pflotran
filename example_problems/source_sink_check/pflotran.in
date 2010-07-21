@@ -9,8 +9,8 @@ TIMESTEPPER
 END
 
 LINEAR_SOLVER FLOW
-PC_TYPE LU
-KSP_TYPE PREONLY
+:PC_TYPE LU
+:KSP_TYPE PREONLY
 END
 
 :=========================== discretization ===================================
