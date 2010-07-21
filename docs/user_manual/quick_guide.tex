@@ -561,21 +561,33 @@ make test
 
 \paragraph{MacOSX 10.6.4 (Snow Leopard)}
 
-\begin{enumerate}\item Obtain C compiler gcc4.5 or later for snow leopard (e.g. from http://hpc.sourceforge.net). 
+\begin{enumerate}
+\item Obtain C compiler gcc4.5 or later for snow leopard (e.g. from http://hpc.sourceforge.net). 
 %They just had gcc4.6 available recently. 
 Install gcc under \verb|/opt/local| or \verb|/usr/local|. 
-You don't have to get gcc4.5 or 4.6,but you have to have a verison not older than gcc4.3 for some features inpflotran. Both gcc4.5 and gcc4.6 come with gfortran.\item Install openmpi 1.4.2 from www.open-mpi.org. Configure using the command:
-\begin{verbatim}
+You don't have to get gcc4.5 or 4.6,
+but you have to have a verison not older than gcc4.3 for some features in
+pflotran. Both gcc4.5 and gcc4.6 come with gfortran.
+
+\item Install openmpi 1.4.2 from www.open-mpi.org. Configure using the command:
+
+\begin{verbatim}
 ./configure CC=gcc CXX=g++ FC=gfortran --enable-mpi-f77=no 
 --prefix=/opt/local
-\end{verbatim}\item Download petsc-dev and configure using
-\begin{verbatim}
+\end{verbatim}
+
+\item Download petsc-dev and configure using
+
+\begin{verbatim}
 ./configure --download-hdf5=1 --with-cc=mpicc --with-cxx=mpicxx 
 --with-fc=mpif90,
 \end{verbatim}
 
-then compile with \verb|make all|.\item Compile pflotran using
-\verb|make pflotran|
+then compile with \verb|make all|.
+
+\item Compile pflotran using
+
+\verb|make pflotran|
 \end{enumerate}
 
 \subsubsection{ORNL's Jaguar XT4/5}
@@ -4109,6 +4121,217 @@ make sure that you don't link with the iobuf library.
 
 \end{comment}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Adaptive Mesh Refinement: SAMRAI}
+
+\subsection{Creating the SAMRAI input file}
+
+\footnotesize
+\begin{verbatim}
+DIRICHLET = 0
+NEUMANN   = 1
+PERIODIC  = 2
+MIXED     = 3
+ROBIN     = 4
+
+// name of pflotran specific input file
+pflotran_filename="pflotran.15c.in"
+
+CartesianGeometry{
+  //  Specify lower/upper corners of the computational domain and a
+  //  set of non-overlapping boxes defining domain interior.  If union 
+  //  of boxes is not a parallelpiped, lower/upper corner data corresponds 
+  //  to min/max corner indices over all boxes given.
+  //  x_lo  -- (double array) lower corner of computational domain [REQD]
+  //  x_up  -- (double array) upper corner of computational domain [REQD]
+  //  domain_boxes  -- (box array) set of boxes that define interior of 
+  //                   physical domain. [REQD]
+  //  periodic_dimension -- (int array) coordinate directions in which 
+  //                        domain is periodic.  Zero indicates not
+  //                        periodic, non-zero value indicates periodicity.
+  //                        [0]
+  // indexing always starts at 0 for domain_boxes => 0-79 = 80 cells
+  domain_boxes = [(0,0,0), (19,19,79)]
+   x_lo         = 0.e0, 0.e0, 0.e0  
+   x_up         = 20.e0, 20.e0, 80.e0
+}
+
+GriddingAlgorithm{
+   // Information used to create patches in AMR hierarchy.
+   // max_levels -- (int) max number of mesh levels in hierarchy [REQD]
+   // 
+   // For most of the following parameters, the number of prescribed data
+   // values need not match the number of levels in the hierarchy 
+   // (determined by max_levels).  If more values are given than number 
+   // of levels, extraneous values will be ignored.  If less are given, then
+   // values that correspond to individual levels will apply to those 
+   // levels.  Missing values will be taken from those for the finest
+   // level specified.
+   //
+   // ratio_to_coarser {
+   //   level_1 -- (int array) ratio between index spaces on 
+   //              level 1 to level 0 [REQD]
+   //   level_2 -- (int array)  ratio between index spaces on 
+   //              level 2 to level 1 [REQD]
+   //   etc....
+   // }
+   // largest_patch_size {
+   //   level_0 -- (int array) largest patch allowed on level 0. 
+   //              [REQD]    
+   //   level_1 -- (int array)    "       "      "   "  level 1 
+   //              [level 0 entry]
+   //   etc....                       
+   // }
+   max_levels = 7 
+   largest_patch_size {
+      level_0 = 10, 10, 80
+      level_1 = 10, 10, 10
+      // all finer levels will use same values as level_1...
+   }
+   smallest_patch_size {
+      level_0 = 10,10,40
+      level_1 = 5,5,10
+      // all finer levels will use same values as level_1...
+   }
+   ratio_to_coarser {
+      level_1  = 2, 2, 2
+      // all finer levels will use same values as level_1...
+   }
+   combine_efficiency = 0.95
+   efficiency_tolerance = 0.95
+   coalesce_boxes=FALSE
+   check_nonrefined_tags='i'
+}
+
+StandardTagAndInitialize{
+   tagging_method = "REFINE_BOXES"
+   RefineBoxes{
+      // index region on level 0 to tag for refinement in level 0 indices.
+      // the full index region on level 0 is [(0,0,0),(19,19,79)]
+      // Note that this will create a refinement region on level 1 extending from
+      // [(0,0,60*2), (19*2+1,19*2+1,79*2+1)] when refined by a factor of 2 in
+      // each direction. The full index space on level one is [(0,0,0), (2*19+1, 2*19+1, 2*79+1)]
+      level_0 = [(0,0,60),(19,19,79)]
+      level_1 = [(0,0,140),(19,19,159)]
+      level_2 = [(0,0,300),(19,19,319)]
+      level_3 = [(0,0,620),(159,159,639)]
+      level_4 = [(0,0,1260),(319,319,1279)]
+      level_5 = [(0,0,2540),(639,639,2559)]
+   }
+}
+
+LoadBalancer{
+   bin_pack = "SPATIAL"
+}
+
+PflotranApplicationStrategy{
+   DriverMode                       = 1
+   nl_tangential_coarse_fine_scheme = "LINEAR"
+   nl_normal_coarse_fine_scheme     = "LINEAR"
+   number_solution_components       = 3
+
+   PflotranMultilevelOperator{
+     	   operator_name                   = "PflotranMultilevelOperator"
+	       tangent_interp_scheme           = "LINEAR"
+	       normal_interp_scheme            = "LINEAR"
+	       adjust_cf_coefficients          = FALSE
+	       interpolate_ghost_values        = TRUE
+	       extrapolation_order             = 2
+	       boundary_conditions             = NEUMANN, NEUMANN, NEUMANN, NEUMANN, NEUMANN, DIRICHLET
+	       coarsen_diffusive_fluxes        = TRUE
+	       coarsen_convective_fluxes       = TRUE
+	       print_info_level                = 0
+	       cell_refine_op                  = "CONSTANT_REFINE"
+	       cell_coarsen_op                 = "CONSERVATIVE_COARSEN"
+	       cell_soln_coarsen_op            = "CONSERVATIVE_COARSEN"
+	       cell_src_coarsen_op             = "SUM_COARSEN"
+	       face_refine_op                  = "CONSTANT_REFINE"
+	       face_coarsen_op                 = "CONSERVATIVE_COARSEN"
+	       variable_order_interpolation    = FALSE
+	       use_cf_interpolant              = TRUE
+   }
+
+   PflotranFlowPreconditioner{
+
+     preconditioner_print_flag = FALSE
+
+     pc_solver{
+       solver_name                      = "FAC"
+       max_iterations                   = 2
+       max_error                        = 1.e-12
+       print_info_level                 = 1 
+       presolve_iterations              = 2
+       postsolve_iterations             = 2
+       use_visit                        = FALSE
+       viz_directory                    = "fac_viz"
+       zero_initial_guess               = TRUE
+
+       level_solver_0 {
+            solver_name                 = "CellHYPRELevelSolver"
+            print_info_level            = 0 
+            mg_solver_type              = 1
+            max_iterations              = 1
+            max_error                   = 1.e-12
+            num_presweeps               = 2
+            num_postsweeps              = 2
+            preprocess_rhs              = FALSE
+       }
+
+       level_solver_1 {
+            solver_name                 = "CellLevelSmoother"
+            smoother_type               = "Red-black Gauss-Seidel"
+            print_info_level            = 0 
+            max_iterations              = 1
+            max_error                   = 1.e-12
+            num_sweeps                  = 10
+       }
+     }
+   }
+
+   PflotranTransportPreconditioner{
+
+     preconditioner_print_flag = FALSE
+
+     pc_solver{
+       solver_name                      =  "FAC"
+       max_iterations                   =  2 
+       max_error                        =  1.0e-12
+       print_info_level                 =  1 
+       presolve_iterations              =  2
+       postsolve_iterations             =  2
+       use_visit                        =  FALSE
+       viz_directory                    =  "fac_viz"
+       zero_initial_guess               =  TRUE
+
+       level_solver_0 {
+            solver_name                = "CellHYPRELevelSolver"
+            print_info_level           = 0 
+            mg_solver_type             = 1
+            max_iterations             = 1
+            max_error                  = 1.0e-12
+            num_presweeps              = 2
+            num_postsweeps             = 2
+            preprocess_rhs             = FALSE
+       }
+
+       level_solver_1 {
+            solver_name                 =  "CellLevelSmoother"
+            smoother_type               =  "Red-black Gauss-Seidel"
+            print_info_level            =  0 
+            max_iterations              =  1
+            max_error                   =  1.0e-12
+            num_sweeps                  =  10
+       }
+     } 
+   }
+}
+
+
+TimerManager{
+   timer_list = "xfer::*::*", "FAC::*::*", "AMRUtilities::*::*", "apps::main::main", \
+   "RD2T::*::*", "LevelSolver::*::*"
+}
+\end{verbatim}
 
 \normalsize
 \section{References}
