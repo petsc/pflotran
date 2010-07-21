@@ -4845,7 +4845,7 @@ subroutine OutputHDF5(realization)
   
   use AMR_Grid_Module
  
-#if !defined(PETSC_HAVE_HDF5)
+#if !defined(PETSC_HAVE_HDF5) 
   implicit none
   
   type(realization_type) :: realization
@@ -4892,10 +4892,10 @@ subroutine OutputHDF5(realization)
      end subroutine SAMRRegisterForViz
 #else
      subroutine SAMRRegisterForViz(ptr,vec,component,dname,dnamec, namestr)
+       use ISO_C_BINDING
 #include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
-       use, intrinsic ::ISO_C_BINDING
        PetscFortranAddr :: ptr
        Vec :: vec
        PetscInt :: component
