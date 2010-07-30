@@ -28,7 +28,7 @@ module THC_module
          THCSetup, THCNumericalJacobianTest, &
          THCMaxChange, THCUpdateSolution, &
          THCGetTecplotHeader, THCInitializeTimestep, &
-         THCComputeMassBalance, &
+         THCComputeMassBalance, THCResidualToMass, &
          THCUpdateAuxVars, THCDestroy
 
   PetscInt, parameter :: jh2o = 1
@@ -195,7 +195,7 @@ subroutine THCComputeMassBalance(realization, mass_balance)
   PetscReal :: mass_balance(realization%option%nphase)
    
   type(level_type), pointer :: cur_level
-  type(path_level), pointer :: cur_patch
+  type(patch_type), pointer :: cur_patch
 
   mass_balance = 0.d0
 
@@ -532,6 +532,7 @@ subroutine THCUpdateFixedAccumPatch(realization)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(thc_auxvar_type), pointer :: aux_vars(:)
   type(thc_parameter_type), pointer :: thc_parameter
 
@@ -549,6 +550,7 @@ subroutine THCUpdateFixedAccumPatch(realization)
 
   thc_parameter => patch%aux%THC%thc_parameter
   aux_vars => patch%aux%THC%aux_vars
+  global_aux_vars => patch%aux%Global%aux_vars
     
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
@@ -577,7 +579,7 @@ subroutine THCUpdateFixedAccumPatch(realization)
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
                        option)
     iphase_loc_p(ghosted_id) = iphase
-    call THCAccumulation(aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
+    call THCAccumulation(aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               thc_parameter%dencpr(int(ithrm_loc_p(ghosted_id))), &
@@ -795,23 +797,26 @@ subroutine THCAccumulation(aux_var,por,vol,rock_dencpr,option,Res)
 
   type(thc_auxvar_type) :: aux_var
   type(option_type) :: option
-  PetscReal Res(1:option%nflowdof) 
-  PetscReal vol,por,rock_dencpr
+  PetscReal :: Res(1:option%nflowdof) 
+  PetscReal :: vol,por,rock_dencpr
      
   PetscInt :: ispec 
   PetscReal :: porXvol, mol(option%nflowspec), eng
   
  ! if (present(ireac)) iireac=ireac
 
+! TechNotes, THC Mode: First term of Equation 8
   porXvol = por*vol
       
-  mol=0.d0
   do ispec=1, option%nflowspec  
+    mol(ispec)=0.d0
     mol(ispec) = mol(ispec) + aux_var%sat * &
                               aux_var%den * &
                               aux_var%xmol(ispec)
+    mol(ispec) = mol(ispec) * porXvol
   enddo
-  mol = mol * porXvol
+
+! TechNotes, THC Mode: First term of Equation 9
   eng = aux_var%sat * &
         aux_var%den * &
         aux_var%u * &
@@ -1696,7 +1701,7 @@ subroutine SAMRCoarsenFaceFluxes(p_application, vec, ierr)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call THCResidualPatch1(snes,xx,r,realization,ierr)
+      call THCResidualPatch(snes,xx,r,realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -1733,7 +1738,7 @@ subroutine SAMRCoarsenFaceFluxes(p_application, vec, ierr)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call THCResidualPatch1(snes,xx,r,realization,ierr)
+      call THCResidualPatch(snes,xx,r,realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
