@@ -750,12 +750,12 @@ subroutine RTUpdateSolutionPatch(realization)
                 global_aux_vars(ghosted_id)%reaction_rate(2) &
                   = global_aux_vars(ghosted_id)%reaction_rate(2)& 
                   + rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* option%tran_dt&
-                  * reaction%mnrlstoich(icomp,imnrl)!/option%flow_dt
+                  * reaction%mnrlstoich(icomp,imnrl)/option%flow_dt
               else if(icomp == reaction%species_idx%h2o_aq_id)then
                 global_aux_vars(ghosted_id)%reaction_rate(1) &
                   = global_aux_vars(ghosted_id)%reaction_rate(1)& 
                   + rt_aux_vars(ghosted_id)%mnrl_rate(imnrl)* option%tran_dt&
-                  * reaction%mnrlstoich(icomp,imnrl)!/option%flow_dt
+                  * reaction%mnrlstoich(icomp,imnrl)/option%flow_dt
               endif
             enddo 
           endif   
