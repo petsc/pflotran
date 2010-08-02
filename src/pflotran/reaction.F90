@@ -1594,8 +1594,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          global_auxvar%den_kg(option%liquid_phase)/ &
                                          1000.d0
 
+#if 0
   call RCalculateCompression(global_auxvar,rt_auxvar,reaction,option)
-
+#endif
 
 ! this is performed above
 !  if (associated(colloid_constraint%colloids)) then                        
