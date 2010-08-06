@@ -76,8 +76,8 @@ subroutine HDF5ReadNDimRealArray(option,file_id,dataset_name,ndims,dims, &
   call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
   ! should be a rank=1 data space
   
-  ndims_hdf5 = ndims
   call h5sget_simple_extent_ndims_f(file_space_id,ndims_hdf5,hdf5_err)
+  ndims = ndims_hdf5
   allocate(dims_h5(ndims))
   allocate(max_dims_h5(ndims))
   allocate(dims(ndims))

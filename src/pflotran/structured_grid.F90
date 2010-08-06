@@ -1085,10 +1085,10 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
           enddo
         enddo
       case(CYLINDRICAL_GRID)
-        option%io_buffer = 'Cylindrical coordinates not applicable.'
+        option%io_buffer = 'Cylindrical coordinates not implemented.'
         call printErrMsg(option)
       case(SPHERICAL_GRID)
-        option%io_buffer = 'Spherical coordinates not applicable.'
+        option%io_buffer = 'Spherical coordinates not implemented.'
         call printErrMsg(option)
     end select
   endif

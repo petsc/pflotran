@@ -39,6 +39,7 @@
 \cfoot{\rm - \thepage\ -}
 %\cfoot{}
 %\footrulewidth 0.4pt
+\newcommand\keyend{{(.,\,/,\,END)}}
 \newcommand{\negsp}{\vspace{-4mm}}
 \newcommand\secsp{\vspace{-3 mm}}
 \newcommand\secspb{\vspace{-2 mm}}
@@ -133,7 +134,10 @@
 \newcommand{\bS}{\boldsymbol{S}}
 \newcommand{\bu}{\boldsymbol{u}}
 \newcommand{\bv}{\boldsymbol{v}}
+\newcommand{\bx}{\boldsymbol{x}}
+\newcommand{\by}{\boldsymbol{y}}
 \newcommand{\bz}{\boldsymbol{z}}
+\newcommand{\bzero}{\boldsymbol{0}}
 \newcommand{\arrows}{~\rightleftharpoons~}
 \newcommand{\arrowstab}{\!\!\!\rightleftharpoons\!\!\!}
 \newcommand{\CA}{C_{\rm A}}
@@ -336,14 +340,59 @@ degrees of freedom equals $N_{\rm ext}\!=\!N_P\!-\!1.$ This gives a total number
 
 The {\tt IMMIS} mode applies to multiple immiscible phases.
 
-\subsection{Mode: {\tt THC}}
+\subsection{Mode: {\tt 2PH}}
 
-The {\tt THC} mode involves two phase liquid-gas flow coupled to the reactive transport mode.
+The {\tt 2PH} mode involves two phase liquid water-gas flow coupled to the reactive transport mode. Mass conservation equations have the form
+\EQ
+\frac{\p}{\p t} \varphi \Big(s_l^{} \rho_l^{} x_i^l + s_g^{} \rho_g^{} x_i^g \Big) + \bnabla\cdot\Big(\bq_l^{} \rho_l^{} x_i^l + \bq_g \rho_g^{} x_i^g -\varphi s_l^{} D_l^{} \rho_l^{} \bnabla x_i^l -\varphi s_g^{} D_g^{} \rho_g^{} \bnabla x_i^g \Big) \eq Q_i^{},
+\EN
+for liquid and gas saturation $s_{l,\,g}^{}$, density $\rho_{l,\,g}^{}$, diffusivity $D_{l,\,g}^{}$, Darcy velocity $\bq_{l,\,g}^{}$ and mole fraction $x_i^{l,\,g}$.
+The energy conservation equation can be written in the form
+\EQ
+\sum_{\a=l,\,g}\left\{\frac{\p}{\p t} \big(\varphi s_\a \rho_\a U_\a\big) + \bnabla\cdot\big(\bq_\a \rho_\a H_\a\big) \right\} + \frac{\p}{\p t} \Big((1-\varphi)\rho_r C_p T \big) - \bnabla\cdot (\kappa\bnabla T)\Big) \eq Q,
+\EN
+as the sum of contributions from liquid and gas fluid phases and rock,
+with internal energy $U_\a$ and enthalpy $H_\a$ of fluid phase $\a$, rock heat capacity $C_p$ and thermal conductivity $\kappa$. Note that
+\EQ
+U_\a \eq H_\a -\frac{P_\a}{\rho_\a}.
+\EN
 
-\subsection{Reactive Transport (Keyword {\tt CHEMISTRY})}
+
+
+\subsection{Mode: {\tt THC} (Thermal-Hydrologic-Chemical)}
+
+{\tt THC} Mode applies to single phase, variably saturated, nonisothermal systems
+with incorporation of density variations coupled to fluid flow. The THC equations may be coupled to the reactive transport mode (see section \ref{sec:chem}).
+The governing equations for mass and energy are given by
+\EQ\label{masseqn}
+\frac{\p}{\p t}\left(\varphi s\rho\right) + \bnabla\cdot\left(\rho\bq\right) = Q_w,
+\EN
+and
+\EQ
+\frac{\p}{\p t}\left(\varphi s\rho U + (1-\varphi) c_p T\right) + \bnabla\cdot\left(\rho\bq H -\kappa \bnabla T\right) = Q_e,
+\EN
+with the Darcy flow velocity $\bq$ given by
+\EQ
+\bq = -\frac{kk_r}{\mu}\bnabla\left(P-\rho g z\right).
+\EN
+Here, $\varphi$ denotes porosity, $s$ saturation, $\rho$ mixture density of the brine, $\bq$ Darcy flux, $k$ intrinsic permeability, $k_r$ relative permeability, $\mu$ viscosity, $P$ pressure, $g$ gravity, and $z$ the vertical component of the position vector.  Supported relative permeability functions $k_r$ for Richards' equation include van Genuchten, Books-Corey and Thomeer-Corey, while the saturation functions include Burdine and Mualem.  Water density and viscosity are computed as a function of temperature and pressure through an equation of state for water. The quantity $\kappa$ denotes the thermal conductivity of the porous medium-fluid system. The internal energy and enthalpy of the fluid, $U$ and $H$, are obtained from an equation of state for pure water. These two quantities are related by the thermodynamic expression
+\EQ
+U \eq H -\frac{P}{\rho}.
+\EN
+Nonreactive solute transport equations representing e.g. NaCl have the form
+\EQ
+\frac{\p}{\p t} \varphi s \rho x_i + \bnabla\cdot\Big(\bq \rho x_i -\varphi D \rho\bnabla x_i\Big) \eq Q_i,
+\EN
+with mole fraction $x_i$, source term $Q_i$, and diffusion/dispersion coefficient $D$. Summing this equation over all components $i$ using $\sum_ix_i=1$, leads to Eqn.\eqref{masseqn} with
+\EQ
+Q_w \eq \sum_i Q_i.
+\EN
+Additional constitutive relations are needed to close the set of governing equations.
+
+\subsection{Reactive Transport (Keyword {\tt CHEMISTRY})}\label{sec:chem}
 
 The governing mass conservation equation for Pthe geochemical transport mode for a multiphase system written in terms of a set of independent aqueous primary or basis species with the form
-\BA
+\BA\label{rteqn}
 &\frac{\p}{\p t}\big(\varphi \sum_\a s_\a \Psi_j^\a\big) +
 \nabla\cdot\sum_\a\big(\bq_\a - \varphi s_\a \bD_\a\bnabla\big)\Psi_j^\a \nonumber\\
 &\qquad\eq Q_j - \sum_m\nu_{jm} I_m -\frac{\p S_j}{\p t},
@@ -354,9 +403,94 @@ where the sums over $\a$ are over all fluid phases in the system, and where $\Ps
 \EN
 In this equation the subscript $l$ represents the aqueous electrolyte phase from which the primary species are chosen.
 
+\section{Method of Solution}
+
+The flow and heat equations (Modes: RICHARDS, MPHASE, FLASH2, THC, and 2PH) are solved using a fully implicit backward Euler approach based on Newton-Krylov iteration.
+Both fully implicit backward Euler and operator splitting solution methods are supported for reactive transport.
+
+\subsection{Fully Implicit}
+
+For a fully implicit formulation the nonlinear equations
+\EQ
+\bR(\bx) \eq \bzero,
+\EN
+for the residual function $\bR$ are solved using an iterative solver based on the Newton-Raphson equations
+\EQ
+\bJ^{(i)} \delta\!\bx^{(i+1)} \eq -\bR^{(i)},
+\EN
+at the $i$th iteration. Iteration stops when
+\EQ
+\left|\bR^{(i+1)}\right| < \epsilon,
+\EN
+or if
+\EQ
+\big|\delta\!\bx^{(i+1)}\big| < \delta.
+\EN
+However, the latter criteria does not necessarily guarantee that the residual equations are satisfied.
+The solution is updated from the relation
+\EQ
+\bx^{(i+1)} \eq \bx^{(i)} + \delta\!\bx^{(i+1)}.
+\EN
+For the logarithm of the concentration with $\bx=\ln\by$,
+the solution is updated according to the equation
+\EQ
+\by^{(i+1)} \eq \by^{(i)} {\rm e}^{\delta\!\ln\by^{(i+1)}}.
+\EN
+
+
+\subsection{Operator Splitting}
+
+Operator splitting involves splitting the reactive transport equations into a nonreactive part and a part incorporating reactions. This is accomplished by writing Eqns.\eqref{rteqn} as the two coupled equations
+\EQ
+\frac{\p}{\p t}\big(\varphi \sum_\a s_\a \Psi_j^\a\big) +
+\nabla\cdot\sum_\a\big(\bq_\a - \varphi s_\a \bD_\a\bnabla\big)\Psi_j^\a \eq Q_j,
+\EN
+and
+\EQ
+\frac{d}{d t}\big(\varphi \sum_\a s_\a \Psi_j^\a\big) \eq - \sum_m\nu_{jm} I_m -\frac{\p S_j}{\p t},
+\EN
+The first set of equations are linear in $\Psi_j$ (for species-independent diffusion coeffients) and solved over over a time step $\Delta t$ resulting in $\Psi_j^*$. The result for $\Psi_j^*$ is inverted to give the concentrations $C_j^*$ by solving the equations
+\EQ
+\Psi_j^* \eq C_j^* + \sum_i \nu_{ji} C_i^*,
+\EN
+where the secondary species concentrations $C_i^*$ are nonlinear functions of the primary species concentrations $C_j^*$. With this result the second set of equations are solved implicitly for $C_j$ at $t+\Delta t$ using $\Psi_j^*$ for the starting value at time $t$.
+
+As a simple example of operator splitting consider a single component system with retardation described by a constant $K_d$. According to this model the sorbed concentration $S$ is related to the aqueous concentration by the linear equation
+\EQ\label{skd}
+S \eq K_d C.
+\EN
+The governing equation is given by
+\EQ
+\frac{\p}{\p t} \varphi C + \bnabla\cdot\big(\bq C -\varphi D \bnabla C\big) \eq -\frac{\p S}{\p t}.
+\EN
+If $C(x,\,t;\, \bq,\,D)$ is the solution to the case with no retardation (i.e. $K_d=0$), then $C(x,\,t;\, \bq/R,\,D/R)$ is the solution with retardation $(K_d>0)$,
+with
+\EQ
+R = 1+\frac{1}{\varphi}K_d.
+\EN
+Thus propagation of a front is retarded by the retardation factor $R$.
+
+In operator splitting form this equation becomes
+\EQ
+\frac{\p}{\p t} \varphi C + \bnabla\cdot\big(\bq C -\varphi D \bnabla C\big) \eq 0,
+\EN
+and
+\EQ
+\frac{d}{d t} \varphi C \eq -\frac{d S}{d t}.
+\EN
+The solution to the latter equation is given by
+\EQ
+\varphi C^{t+\Delta t} - \varphi C^* \eq -\big(S^{t+\Delta t} - S^t\big),
+\EN
+where $C^*$ is the solution to the nonreactive transport equation. Using Eqn.\eqref{skd}, this result can be written as
+\EQ
+C^{t+\Delta t} \eq \frac{1}{R} C^* + \left(1-\frac{1}{R}\right) C^t.
+\EN
+Thus for $R=1$, $C^{t+\Delta t}=C^*$ and the solution advances unretarded.
+
 \section{Installation}
 
-\subsection{Mac OS X}
+\subsection{MacOSX}
 
 This installation requires compiler versions 4.4.2 for gfortran, gcc, and g++. The compiler g++ is needed for installing SAMRAI.
 Define environment variables: {\tt MPI\_HOME}, {\tt PKGS}, \linebreak {\tt HYPRE\_INSTALL\_DIR}
@@ -425,7 +559,36 @@ make all
 make test
 \end{verbatim}
 
-\paragraph{MacOSX 10.6.3 (Snow Leopard)}
+\paragraph{MacOSX 10.6.4 (Snow Leopard)}
+
+\begin{enumerate}
+\item Obtain C compiler gcc4.5 or later for snow leopard (e.g. from http://hpc.sourceforge.net). 
+%They just had gcc4.6 available recently. 
+Install gcc under \verb|/opt/local| or \verb|/usr/local|. 
+You don't have to get gcc4.5 or 4.6,
+but you have to have a verison not older than gcc4.3 for some features in
+pflotran. Both gcc4.5 and gcc4.6 come with gfortran.
+
+\item Install openmpi 1.4.2 from www.open-mpi.org. Configure using the command:
+
+\begin{verbatim}
+./configure CC=gcc CXX=g++ FC=gfortran --enable-mpi-f77=no 
+--prefix=/opt/local
+\end{verbatim}
+
+\item Download petsc-dev and configure using
+
+\begin{verbatim}
+./configure --download-hdf5=1 --with-cc=mpicc --with-cxx=mpicxx 
+--with-fc=mpif90,
+\end{verbatim}
+
+then compile with \verb|make all|.
+
+\item Compile pflotran using
+
+\verb|make pflotran|
+\end{enumerate}
 
 \subsubsection{ORNL's Jaguar XT4/5}
 
@@ -606,6 +769,73 @@ make
 
 \noindent
 At this point there should exist an executable named SAMRAIDriver.
+
+\subsubsection{Running PFLOTRAN/SAMRAI on Jaguar}
+
+Add to the {\tt .tcshrc} (or equivalent) file:
+\begin{verbatim}
+umask 0002
+set LD_LIBRARY_PATH=/usr/lib64:${LD_LIBRARY_PATH}
+setenv ARCH cray-xt5
+setenv COMPILER gcc-4.4.2
+setenv OPT opt
+#setenv OPT debug 
+setenv PROJ_DIR /tmp/proj/csc025/csc025geo3
+setenv PKGS ${PROJ_DIR}/packages
+setenv PKG_POSTFIX ${ARCH}-${COMPILER}-${OPT}
+setenv PETSC_ARCH ${PKG_POSTFIX} 
+setenv PETSC_VERSION petsc-dev
+setenv PETSC_DIR ${PKGS}/petsc/${PETSC_VERSION}-${OPT}
+setenv SAMRAI ${PKGS}/samrai/SAMRAI-v2.4.4/${PETSC_VERSION}-${PKG_POSTFIX}
+setenv AMRUTILITIES_HOME ${PKGS}/samrutils/${PKG_POSTFIX}
+setenv SAMRSOLVERS_HOME ${PKGS}/samrsolvers/${PKG_POSTFIX}
+setenv PCH ${SAMRSOLVERS_HOME} 
+ 
+setenv MPICH_UNEX_BUFFER_SIZE 400M
+setenv MPICH_PTL_OTHER_EVENTS 4096
+setenv MPICH_PTL_SEND_CREDITS -1
+setenv MPICH_MSGS_PER_PROC 60000
+\end{verbatim}
+
+\noindent
+Load the following modules:
+\begin{verbatim}
+module swap PrgEnv-pgi PrgEnv-gnu
+ 
+module load mercurial
+module load hdf5-parallel/1.8.3.1
+module load hypre/2.4.0b
+module load szip/2.1
+module load totalview/8.6.0-1
+\end{verbatim}
+
+%########################################################################
+
+\noindent
+The user will need to set: PETSC\_DIR, PETSC\_ARCH, AMRUTILITIES\_HOME, SAMRSOLVERS\_HOME
+to be defined as above. Also, note the swap to gnu.
+\begin{verbatim}
+ 
+cd pflotran
+hg pull -u
+
+cd src/pflotran
+make hdf5=1 jaguar=1 pflotranamr
+
+cd samr/src
+make hdf5=1 jaguar=1
+\end{verbatim}
+At this point you should have an executable \verb|SAMRAIDriver|.
+ 
+%\noindent
+%To run the code do:
+
+%\noindent
+%\verb|cd nmg.4320|\\
+%\verb|qsub run.4320|
+ 
+%\noindent
+%This should run the coupled flow (richards) and transport (15 species).
 
 \begin{comment}
 The following instructions should aid in installing openmpi, PETSc, HDF5 and PFLOTRAN on a UNIX or Mac computer running MacOSX 10.4 or later.
@@ -859,7 +1089,7 @@ The BOUNDARY\_CONDITION keyword couples conditions specified under the FLOW\_\-C
 \item[TRANSPORT\_CONDITION] {\tt transport\_condition\_name}
 \item[REGION] {\tt region\_name}
 \end{deflist}
-\item[(.,/,END)]
+\item[\keyend]
 \end{deflist}
 
 {\noindent\bf Explanation:}
@@ -878,7 +1108,7 @@ The BOUNDARY\_CONDITION keyword couples conditions specified under the FLOW\_\-C
 \bf REGION & Defines the name of the region to which the conditions are linked.\\
 \midrule
 \bf END & Terminates the boundary condition entry.\\
-\midrule\midrule
+%\midrule\midrule
 \bottomrule[1.5pt]
 \end{tabularx}
 \end{center}
@@ -969,33 +1199,33 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 
 \item [PRIMARY\_SPECIES] ~
 \item {\tt Name}
-\item [(.,\,/,\,END)]
+\item [\keyend]
 
 \item [SECONDARY\_SPECIES] ~
 \item {\tt Name}
-\item [(.,\,/,\,END)]
+\item [\keyend]
 
 \item[GAS\_SPECIES] ~
 \item {\tt Name}
-\item [(.,\,/,\,END)]
+\item [\keyend]
 
 \item[MINERALS]
 \item {\tt Name}
-\item [(.,\,/,\,END)]
+\item [\keyend]
 
 \item[COLLOIDS]
 \item {\tt Name} \ \ \ \ {\tt Mobile\_Fraction} [---]
-\item [(.,\,/,\,END)]
+\item [\keyend]
 
 \item[MINERAL\_KINETICS] ~
 
 \begin{deflist}{000}
 \item [{\tt Mineral Name}]
 \item [RATE\_CONSTANT] \ {\tt Value} [mol/cm$^2$/s]
-\item [(.,\,/,\,END)]
+\item [\keyend]
 \end{deflist}
 
-\item [(.,\,/,\,END)]
+\item [\keyend]
 
 \item[SORPTION] ~
 \begin{deflist}{000}
@@ -1025,9 +1255,9 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \begin{deflist}{000}
 \item[\tt Complex Name]
 \end{deflist}
-\item [(.,\,/,\,END)] ~
+\item [\keyend] ~
 \end{deflist}
-\item [(.,\,/,\,END)] ~
+\item [\keyend] ~
 
 \item [COLLOID] {\tt Name}
 \begin{deflist}{000}
@@ -1036,12 +1266,12 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \begin{deflist}{000}
 \item[\tt Complex Name]
 \end{deflist}
-\item [(.,\,/,\,END)] ~
+\item [\keyend] ~
 \end{deflist}
-\item [(.,\,/,\,END)] ~
+\item [\keyend] ~
 \end{deflist}
 
-\item [(.,\,/,\,END)]
+\item [\keyend]
 \end{deflist}
 
 \begin{deflist}{000}
@@ -1056,11 +1286,11 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \begin{deflist}{000}
 \item[\tt Name]
 \end{deflist}
-\item [(.,\,/,\,END)] ~
+\item [\keyend] ~
 \end{deflist}
-\item [(.,\,/,\,END)] ~
+\item [\keyend] ~
 \end{deflist}
-\item [(.,\,/,\,END)] ~
+\item [\keyend] ~
 
 \item[DISTRIBUTION\_COEF] \ (not implemented)
 \item[JUMPSTART\_KINETIC\_SORPTION]
@@ -1068,7 +1298,7 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[NO\_RESTART\_KINETIC\_SORPTION]
 \end{deflist}
 
-\item [(.,\,/,\,END)]
+\item [\keyend]
 
 \item[DATABASE] {\tt Path/Database\_Name}
 \item[LOG\_FORMULATION]
@@ -1096,11 +1326,11 @@ The {\bf CHEMISTRY} keyword invokes the reactive transport mode and provides inp
 \item[KD]
 \end{deflist}
 
-\item [(.,\,/,\,END)]
+\item [\keyend]
 
 \end{deflist}
 
-\item [(.,\,/,\,END)]
+\item [\keyend]
 \end{deflist}
 %\end{minipage}
 %}
@@ -1757,17 +1987,17 @@ PERM_Z 1.d-12
 
 \subsection{Keyword: MODE}
 
-\noindent{\bf Description:} determines the mode of operation: IMMIS (Immisible), MPH (CO$_2$ + H$_2$O), Richards (vadose-saturated zones), THC (Thermal-Hydrologic-Chemical, not implemented).
+\noindent{\bf Description:} determines the mode of operation: IMMIS (Immisible), MPH, MPHASE, FLASH2 (CO$_2$ + H$_2$O), Richards (vadose-saturated zones), THC (Thermal-Hydrologic-Chemical, in pro\-gress).
 
 \noindent{\bf Input:}
 \begin{deflist}{000}
 \item[MODE] ~
 \begin{deflist}{000}
-\item[IMS, IMMIS, THS]
-\item[MPH, MPHASE]
+\item[IMMIS (IMS, THS)]
+\item[MPHASE (MPH)]
+\item[FLASH2]
 \item[RICHARDS]
-%\item[RICHARDS\_LITE]
-\item[THC (\rm not implemented)]
+\item[THC (\rm in progress)]
 \end{deflist}
 \end{deflist}
 
@@ -1775,10 +2005,19 @@ PERM_Z 1.d-12
 
 \begin{center}
 \begin{tabularx}{\linewidth}{lX}
-HC: &Thermo-Hydro-Chemical Coupled groundwater flow, thermal and solute transport\\
-Richards: &Single-phase variable saturated groundwater flow using Richards Equation\\
-MPH, MPHASE: &Multiphase CO$_2$-water-energy\\
-IMS, IMMIS, THS: &Immissible CO$_2$-water-energy
+\toprule[1.5pt]
+\bf Keyword & \bf Description\\
+\midrule
+\bf THC &Thermo-Hydro-Chemical Coupled groundwater flow, thermal and solute transport\\
+\midrule
+\bf RICHARDS &Single-phase, isothermal, variable saturated groundwater flow using Richards Equation\\
+\midrule
+\bf MPHASE (MPH) &Multiphase supercritical CO$_2$-brine-energy based on variable switching for phase changes\\
+\midrule
+\bf FLASH2 &Multiphase supercritical CO$_2$-brine-energy based on the flash method for phase changes with a persistent set of unknowns---required for AMR\\
+\midrule
+\bf IMMIS (IMS, THS) &Immissible CO$_2$-water-energy\\
+\bottomrule[1.5pt]
 \end{tabularx}
 \end{center}
 
@@ -2376,481 +2615,551 @@ VELOCITY
 %========================================================================
 %========================================================================
 \newpage
-\section*{Example Input File}
+\section{Example Input Files}
 
-%\footnotesize
+\subsection{Richards Equation}
+
+\footnotesize
 \begin{verbatim}
-:Description: 3D toy problem for richards equation
-:
-MODE RICHARDS_LITE
-TRAN 1
-:
-CHECKPOINT 1000
-RESTART steady_68_125_20_Scope3.chk 0.d0
-OVERWRITE_RESTART_TRANSPORT
-OVERWRITE_RESTART_FLOW_PARAMS
-WALLCLOCK_STOP 3.95
-:
+:Description: 1D test problem for tracer transport
+
+:=========================== flow mode ========================================
+MODE RICHARDS
+
+:=========================== chemistry ========================================
+CHEMISTRY
+PRIMARY_SPECIES
+Tracer
+/
+/
+
+:=========================== solver options ===================================
+TIMESTEPPER
+MAX_STEPS 10
+TS_ACCELERATION 8
+/
+
+NEWTON_SOLVER FLOW
+:RTOL 1.d-4
+:ATOL 1.d-4
+:STOL 1.e-60
+:DTOL 1.e4
+:ITOL_UPDATE 1.d0
+:NO_INFINITY_NORM
+::NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
+
+LINEAR_SOLVER FLOW
+KSP_TYPE GMRES
+PC_TYPE NONE
+:KSP_TYPE PREONLY
+:PC_TYPE LU
+:SOLVER GMRES
+/
+
+NEWTON_SOLVER TRANSPORT
+:RTOL 1.d-4
+:ATOL 1.d-4
+:STOL 1.e-60
+:DTOL 1.e4
+:ITOL_UPDATE 1.d-4
+NO_INFINITY_NORM
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
+
+LINEAR_SOLVER TRANSPORT
+KSP_TYPE GMRES
+PC_TYPE NONE
+:KSP_TYPE PREONLY
+:PC_TYPE LU
+:SOLVER GMRES
+/
+
+:=========================== discretization ===================================
 GRID
 TYPE structured
-NXYZ 68 125 20
-END
-:
-ORIGIN 0.d0 0.d0 90.d0
-:
-NEWTON_SOLVER FLOW
-:RTOL 1.d-50
-RTOL 1.d-5
-:ATOL 1.d-50
-ATOL 1.d-8
-:STOL 1.d-50
-STOL 1.d-6
-:ITOL_RES 1.d-4
-:ITOL_UPDATE 0.5d0  ! Pa
-NO_INFINITY_NORM
-NO_FORCE_ITERATION
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
-MAXIT 20
-END
-:
-NEWTON_SOLVER TRANSPORT
-:RTOL 1.d-50
-RTOL 1.d-6
-:ATOL 1.d-50
-:STOL 1.d-50
-:STOL 1.d-6
-:ITOL_RES 1.d-8
-NO_INFINITY_NORM
-:NO_FORCE_ITERATION
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
-MAXIT 10
-END
-:
-LINEAR_SOLVER FLOW
-:KSP_TYPE gmres
-:RTOL 1.d-50
-:ATOL 1.d-10
-END
-:
-TIMESTEPPER
-TS_ACCELERATION 8
-END
-:
-:HDF5 !VELO !FLUX
-TECP VELO !FLUX
-:
-DXYZ
-19.8529411765d0
-20.d0
-1.d0
-:
-:  d0[m^2/s] delhaq[kJ/mol]
-DIFF  1.D-9       12.6
-:
-: Richards Equation Pref
-RICH 101325.
-:
-SATURATION_FUNCTIONS
-: van Genuchten
-:id itype swir   m      alpha     pcwmax betac pwr
- 1  1     0.1600 0.3391 7.2727d-4 1.e8   0.d0  1.d0
- 2  1     0.1299 0.7479 1.4319d-4 1.e8   0.d0  1.d0
+ORIGIN 0.d0 0.d0 0.d0
+NXYZ 32 32 32
+BOUNDS
+0.d0 100.d0
+0.d0 100.d0
+0.d0 100.d0
+/
 END
 
-THERMAL_PROPERTIES
-:ithm rho    cpr     ckdry cksat tau cdiff   cexp
-  1   2.76e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
-END
-:
-MATERIALS
-:name   id icap ithm por  tau permx     permy     permz     permpwr
-:Hanford 1  1    1    0.20 0.5 7.387d-9  7.387d-9  7.387d-10 1.d0
-Hanford 1  1    1    0.20 0.5 7.387d-10 7.387d-10 7.387d-10 1.d0
-Unit2   2  2    1    0.25 0.5 0.d0      0.d0      0.d0      1.d0
-Unit3   3  2    1    0.25 0.5 0.d0      0.d0      0.d0      1.d0
-Unit4   4  2    1    0.25 0.5 0.d0      0.d0      0.d0      1.d0
-Unit5   5  2    1    0.25 0.5 4.221d-11 4.221d-11 4.221d-12 1.d0
-Unit6   6  2    1    0.25 0.5 1.052d-14 1.052d-14 1.052d-15 1.e0
-Unit7   7  2    1    0.25 0.5 4.523d-11 4.523d-11 4.523d-12 1.e0
-Unit8   8  2    1    0.25 0.5 5.259d-17 5.259d-17 5.259d-18 1.e0
-Unit9   9  2    1    0.25 0.5 5.259d-17 5.259d-17 5.259d-18 1.e0
-Unit10  10 2    1    0.25 0.5 1.d-20    1.d-20    1.d-20    1.e0
-END
-:
-:TIME h
-:100000.
-TIME h every 168
-7500.
-:
-:DTST 1.d-6
-:1. 100000.
-DTST 1.d-2
-1. 1.d0
-:
+:=========================== fluid properties =================================
+FLUID_PROPERTY 
+DIFFUSION_COEFFICIENT 1.d-9
+/
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+ID 1
+POROSITY 0.25d0
+TORTUOSITY 1.d0
+SATURATION_FUNCTION default
+PERMEABILITY
+PERM_X 1.d-12
+PERM_Y 1.d-12
+PERM_Z 1.d-12
+/
+/
+
+MATERIAL_PROPERTY soil2
+ID 2
+POROSITY 0.25d0
+TORTUOSITY 1.d0
+SATURATION_FUNCTION default
+PERMEABILITY
+PERM_X 5.d-13
+PERM_Y 5.d-13
+PERM_Z 5.d-13
+/
+/
+
+:=========================== saturation functions =============================
+SATURATION_FUNCTION default
+/
+
+:=========================== output options ===================================
+OUTPUT
+:MASS_BALANCE
+TIMES y 0.25d0 0.5d0 0.75d0
+FORMAT TECPLOT BLOCK
+VELOCITIES
+/
+
+:=========================== times ============================================
+TIME
+FINAL_TIME 1.d0 y
+INITIAL_TIMESTEP_SIZE 1.d-3 y
+MAXIMUM_TIMESTEP_SIZE 1.d-1 y
+/
+
+:=========================== regions ==========================================
 REGION all
-BLOCK 1 68 1 125 1 20
+COORDINATES
+0.d0 0.d0 0.d0
+100.d0 100.d0 100.d0
+/
 END
 
-REGION West
-FILE input_68_125_20_Scope3.h5
+REGION top_layer
+COORDINATES
+0.d0 0.d0 60.d0
+100.d0 100.d0 100.d0
+/
 END
 
-REGION East
-FILE input_68_125_20_Scope3.h5
+REGION bottom_layer
+COORDINATES
+0.d0 0.d0 0.d0
+100.d0 100.d0 60.d0
+/
 END
 
-REGION North
-FILE input_68_125_20_Scope3.h5
+REGION west
+FACE WEST
+COORDINATES
+0.d0 0.d0 0.d0
+0.d0 100.d0 100.d0
+/
 END
 
-REGION South
-FILE input_68_125_20_Scope3.h5
+REGION east
+FACE EAST
+COORDINATES
+100.d0 0.d0 0.d0
+100.d0 100.d0 100.d0
+/
 END
 
-REGION Top
-FILE input_68_125_20_Scope3.h5
+REGION north
+FACE NORTH
+COORDINATES
+0.d0 100.d0 0.d0
+100.d0 100.d0 100.d0
+/
 END
 
-REGION North_Pond_West_Trench
-FILE input_68_125_20_Scope3.h5
+REGION south
+FACE SOUTH
+COORDINATES
+0.d0 0.d0 0.d0
+100.d0 0.d0 100.d0
+/
 END
 
-REGION North_Pond_East_Trench
-FILE input_68_125_20_Scope3.h5
+REGION top
+FACE TOP
+COORDINATES
+0.d0 0.d0 100.d0
+100.d0 100.d0 100.d0
+/
 END
 
-:REGION Plume
-:FILE input_68_125_20_Scope3.h5
-:END
-
-REGION Plume_Source
-FILE input_68_125_20_Scope3.h5
-:BLOCK 60 62 70 72 15 17
+REGION bottom
+FACE BOTTOM
+COORDINATES
+0.d0 0.d0 0.d0
+100.d0 100.d0 0.d0
+/
 END
 
-REGION 399-1-1
-COORDINATE 1208.69 1784.40 100.0
+REGION well
+COORDINATES
+50.d0 50.d0 50.d0
+50.d0 50.d0 50.d0
+/
 END
 
-REGION 399-1-2
-COORDINATE 876.57 1599.94 100.0
-END
-
-REGION 399-2-1
-COORDINATE 1199.61 1304.67 100.0
-END
-
-REGION 399-2-2
-COORDINATE 1159.62 1480.95 100.0
-END
-
-REGION 399-3-9
-COORDINATE 1186.58 1098.39 100.0
-END
-
-REGION 399-3-12
-COORDINATE 911.44 1196.74 100.0
-END
-
-REGION 399-4-1
-COORDINATE 870.96 784.91 100.0
-END
-
-REGION 399-4-7
-COORDINATE 1179.54 661.80 100.0
-END
-
-REGION 399-4-9
-COORDINATE 1176.30 919.13 100.0
-END
-
-REGION 399-5-1
-COORDINATE 360.22 899.80 100.0
-END
-
-REGION ifc
-COORDINATE 979.57 1302.39 100.0
-END
-
-BREAKTHROUGH
-REGION 399-1-1
-END
-
-BREAKTHROUGH
-REGION 399-1-2
-END
-
-BREAKTHROUGH
-REGION 399-2-1
-END
-
-BREAKTHROUGH
-REGION 399-2-2
-END
-
-BREAKTHROUGH
-REGION 399-3-9
-END
-
-BREAKTHROUGH
-REGION 399-3-12
-END
-
-BREAKTHROUGH
-REGION 399-4-1
-END
-
-BREAKTHROUGH
-REGION 399-4-9
-END
-
-BREAKTHROUGH
-REGION 399-5-1
-END
-
-BREAKTHROUGH
-REGION ifc
-VELOCITY
-END
-
-CONDITION initial
-UNITS Pa,C,M,yr
-CLASS flow
+:=========================== flow conditions ==================================
+FLOW_CONDITION initial
 TYPE
 PRESSURE hydrostatic
-TEMPERATURE dirichlet
-CONCENTRATION dirichlet
-END
-:DATUM file initial_data.datum
-DATUM 1.2294770e+003 9.4611630e+002 1.0559964e+002
-GRADIENT
-:PRESSURE file initial_data.gradient
-PRESSURE 1.9538819e-004 2.8407287e-004 0.0000000e+000
-END
-PRESSURE 101325.d0
-TEMPERATURE 25.d0
-CONCENTRATION 1.d-6
-END
+/
+PRESSURE 1956741.84 ! 200 meter piezometric head (200*997.32*9.81)
+/
 
-CONDITION river
-CLASS flow
+FLOW_CONDITION source
 TYPE
-PRESSURE seepage
-TEMPERATURE dirichlet
-CONCENTRATION dirichlet
-END
-INTERPOLATION linear
-DATUM file river.datum
-:DATUM  1.2294770e+003 9.4611630e+002 1.0559964e+002
-GRADIENT
-PRESSURE file river.gradient_adj
-:PRESSURE 0.d0 0.00027389 0.d0
-END
-PRESSURE 101325.d0
-TEMPERATURE 25.d0
-CONCENTRATION 1.d-6
+RATE volumetric_rate
+/
+RATE 2.77777778d-3  ! 10 m^3/hr
+/
+
+:=========================== transport conditions =============================
+TRANSPORT_CONDITION initial
+TYPE zero_gradient
+CONSTRAINT_LIST
+0.d0 initial
+/
 END
 
-CONDITION west
-CLASS flow
-TYPE
-PRESSURE hydrostatic
-TEMPERATURE dirichlet
-CONCENTRATION dirichlet
-END
-INTERPOLATION linear
-DATUM file well_data.datum
-:DATUM 2.1149088e+002 1.2272915e+003 1.0548061e+002
-GRADIENT
-PRESSURE file well_data.gradient
-:PRESSURE -7.8414067e-004 3.4105428e-004 0.0000000e+000
-END
-PRESSURE 101325.d0
-TEMPERATURE 25.d0
-CONCENTRATION 1.d-6
+TRANSPORT_CONDITION source
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 well
+/
+/
+
+:=========================== constraints ======================================
+CONSTRAINT well
+CONCENTRATIONS
+Tracer 1.d0 T
+/
 END
 
-CONDITION north
-CLASS flow
-TYPE
-PRESSURE hydrostatic
-TEMPERATURE dirichlet
-CONCENTRATION dirichlet
-END
-INTERPOLATION linear
-DATUM file north.datum
-:DATUM 0. 2500. 106.0805113
-GRADIENT
-PRESSURE file north.gradient
-:PRESSURE -4.09472e-05 0. 0.
-END
-PRESSURE 101325.d0
-TEMPERATURE 25.d0
-CONCENTRATION 1.d-6
+CONSTRAINT initial
+CONCENTRATIONS
+Tracer 1.d-40 T
+/
 END
 
-CONDITION south
-CLASS flow
-TYPE
-PRESSURE hydrostatic
-TEMPERATURE dirichlet
-CONCENTRATION dirichlet
-END
-INTERPOLATION linear
-DATUM file south.datum
-:DATUM 0       0       105.2278756
-GRADIENT
-PRESSURE file south.gradient
-:PRESSURE 8.34319e-05 0. 0.
-END
-PRESSURE 101325.d0
-TEMPERATURE 25.d0
-CONCENTRATION 1.d-6
-END
-
-CONDITION recharge
-CLASS flow
-TYPE
-PRESSURE neumann
-TEMPERATURE dirichlet
-CONCENTRATION dirichlet
-END
-FLUX file recharge.txt
-:FLUX 1.756d-9
-TEMPERATURE 25.d0
-CONCENTRATION 1.d-6
-END
-
-CONDITION plume
-CLASS flow
-TYPE
-PRESSURE neumann
-END
-FLUX 0.d0
-END
-
-CONDITION north_pond_west_trench
-CLASS flow
-TYPE
-PRESSURE neumann
-TEMPERATURE dirichlet
-CONCENTRATION dirichlet
-END
-FLUX file north_pond_west_trench.txt
-:FLUX  4.500d-5
-TEMPERATURE 25.d0
-CONCENTRATION 1.d-6
-END
-
-CONDITION north_pond_east_trench
-CLASS flow
-TYPE
-PRESSURE neumann
-TEMPERATURE dirichlet
-CONCENTRATION dirichlet
-END
-FLUX file north_pond_east_trench.txt
-:FLUX 0.d0
-TEMPERATURE 25.d0
-CONCENTRATION 1.d-6
-END
-
-CONDITION river_c
-CLASS transport
-CONCENTRATION 1.d-40
-END
-
-CONDITION west_c
-CLASS transport
-CONCENTRATION 1.d-40
-END
-
-CONDITION initial_c
-CLASS transport
-CONCENTRATION 1.d-40
-END
-
-CONDITION plume_c
-CLASS transport
-CONCENTRATION 1.d0
-END
-
+:=========================== condition couplers ===============================
 : initial condition
 INITIAL_CONDITION
 FLOW_CONDITION initial
-TRANSPORT_CONDITION initial_c
+TRANSPORT_CONDITION initial
 REGION all
 END
 
-: inland boundary condition
-BOUNDARY_CONDITION
-FLOW_CONDITION west
-TRANSPORT_CONDITION initial_c
-REGION West
+: west boundary condition
+BOUNDARY_CONDITION west
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial
+REGION west
 END
 
-: river boundary condition
-BOUNDARY_CONDITION
-FLOW_CONDITION river
-TRANSPORT_CONDITION initial_c
-REGION East
+: east boundary condition
+BOUNDARY_CONDITION east
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial
+REGION east
 END
 
 : north boundary condition
-BOUNDARY_CONDITION
-FLOW_CONDITION north
-TRANSPORT_CONDITION initial_c
-REGION North
+BOUNDARY_CONDITION north
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial
+REGION north
 END
 
 : south boundary condition
-BOUNDARY_CONDITION
-FLOW_CONDITION south
-TRANSPORT_CONDITION initial_c
-REGION South
+BOUNDARY_CONDITION south
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial
+REGION south
 END
 
-: recharge boundary condition
-BOUNDARY_CONDITION
-FLOW_CONDITION recharge
-TRANSPORT_CONDITION initial_c
-REGION Top
+: top boundary condition
+BOUNDARY_CONDITION top
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial
+REGION top
 END
 
-: north pond west trench boundary condition
-BOUNDARY_CONDITION
-FLOW_CONDITION north_pond_west_trench
-TRANSPORT_CONDITION initial_c
-REGION North_Pond_West_Trench
+: bottom boundary condition
+BOUNDARY_CONDITION bottom
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial
+REGION bottom
 END
 
-: north pond east trench boundary condition
-BOUNDARY_CONDITION
-FLOW_CONDITION north_pond_east_trench
-TRANSPORT_CONDITION initial_c
-REGION North_Pond_East_Trench
+: well source/sink
+SOURCE_SINK well
+FLOW_CONDITION source
+TRANSPORT_CONDITION source
+REGION well
 END
 
-: plume source
-SOURCE_SINK
-FLOW_CONDITION plume
-TRANSPORT_CONDITION plume_c
-REGION Plume_Source
+:=========================== stratigraphy couplers ============================
+STRATA
+REGION top_layer
+MATERIAL soil1
 END
 
 STRATA
-MATERIAL input_68_125_20_Scope3.h5
+REGION bottom_layer
+MATERIAL soil1
 END
 
-:read in permeability field-------------------------------------------------
+\end{verbatim}
 
-DATASET permx perm_inv.dat
-DATASET permy perm_inv.dat
-DATASET permz perm_inv.dat
+\normalsize
+
+\subsection{Carbon Sequestration Problem with Reaction with Calcite}
+
+\footnotesize
+\begin{verbatim}
+MODE FLASH2
+:MODE MPHASE
+
+:CHECKPOINT 100
+:RESTART pflotran.chk800
+
+:=========================== discretization ===================================
+GRID
+TYPE structured
+ORIGIN 0.d0 0.d0 0.d0
+NXYZ 160  160  25
+BOUNDS
+0.d0 7000.d0
+0.d0 7000.d0
+0.d0 250.d0
+/
+END
+
+:PROC 2 1 1
+
+:=========================== solver options ===================================
+TIMESTEPPER
+:MAX_STEPS 50
+TS_ACCELERATION 8
+MAX_PRESSURE_CHANGE 5.D4
+MAX_TEMPERATURE_CHANGE 2.D0   
+MAX_CONCENTRATION_CHANGE 0.005
+MAX_SATURATION_CHANGE  0.01
+/
+
+NEWTON_SOLVER FLOW
+ATOL 1D-8
+RTOL 1D-8
+STOL 1D-30
+DTOL 1D15
+ITOL 1D-8
+MAXIT 25
+MAXF 100
+END
+:
+
+:=========================== times ============================================
+TIME
+FINAL_TIME 300.d0 y
+INITIAL_TIMESTEP_SIZE 1.d-3 y
+MAXIMUM_TIMESTEP_SIZE 0.05 y at 10 y
+MAXIMUM_TIMESTEP_SIZE 0.1 y at 100 y
+MAXIMUM_TIMESTEP_SIZE 0.25 y at 200 y
+MAXIMUM_TIMESTEP_SIZE 0.5 y at 300 y
+MAXIMUM_TIMESTEP_SIZE 1. y at 500 y
+MAXIMUM_TIMESTEP_SIZE 2.5 y at 1000 y
+/
+
+:=========================== output options ===================================
+OUTPUT
+MASS_BALANCE
+TIMES y 10. 50. 100. 200. 300.
+FORMAT TECPLOT BLOCK
+:FORMAT TECPLOT POINT
+VELOCITIES
+/
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY
+DIFFUSION_COEFFICIENT 1.d-9
+/
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY rock2
+ID 1
+POROSITY 0.38d0
+TORTUOSITY 1d-1
+ROCK_DENSITY 2.65E3
+SPECIFIC_HEAT 1E3
+THERMAL_CONDUCTIVITY_DRY 0.5
+THERMAL_CONDUCTIVITY_WET 0.5 
+SATURATION_FUNCTION sf2
+PERMEABILITY
+PERM_X 2.d-12
+PERM_Y 2.d-12
+PERM_Z 2.d-12
+/
+/
+
+:=========================== saturation functions =============================
+SATURATION_FUNCTION sf2
+PERMEABILITY_FUNCTION_TYPE PRUESS_1
+SATURATION_FUNCTION_TYPE PRUESS_1
+RESIDUAL_SATURATION LIQUID_PHASE 0.25
+RESIDUAL_SATURATION GAS_PHASE 0.1
+LAMBDA 0.75d0
+ALPHA 5d-3
+MAX_CAPILLARY_PRESSURE 1.d6
+BETAC 2.d0
+POWER 1.d0
+/
+
+:=========================== regions ==========================================
+REGION all
+COORDINATES
+0.d0   0.d0 0.d0
+7000.D0 7000.D0 250.D0
+/
+END
+
+REGION west
+FACE WEST
+COORDINATES
+0.d0 0.d0 0.d0
+0.d0 7000.d0 250.d0
+/
+END
+
+REGION east
+FACE EAST
+COORDINATES
+7000.d0 0.d0 0.d0
+7000.d0 7000.d0 250.d0
+/
+END
+
+REGION well
+BLOCK 77 84 77 84 5 5
+:COORDINATES
+:50.d0 0.d0 50.d0
+:51.d0 1.d0 51.d0
+/
+:END
+
+:=========================== flow conditions ==================================
+FLOW_CONDITION initial
+UNITS Pa,C,M,yr
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE zero_gradient
+CONCENTRATION zero_gradient
+/
+IPHASE 1
+PRESSURE 2D7 2D7
+TEMPERATURE 50 C
+CONCENTRATION 1d-6 M
+ENTHALPY 0.d0 0.d0
+/
+
+skip
+FLOW_CONDITION top
+UNITS Pa,C,M,yr
+TYPE
+PRESSURE dirichlet
+TEMPERATURE zero_gradient
+CONCENTRATION zero_gradient
+/
+IPHASE 1
+PRESSURE 2D7 2D7
+TEMPERATURE 50
+CONCENTRATION 1d-6
+ENTHALPY 0.d0 0.d0
+/
+noskip
+
+FLOW_CONDITION side
+UNITS Pa,C,M,yr
+TYPE
+PRESSURE hydrostatic
+:PRESSURE dirichlet
+TEMPERATURE zero_gradient
+CONCENTRATION zero_gradient
+/
+IPHASE 1
+PRESSURE 2D7 2D7
+TEMPERATURE 50
+CONCENTRATION 1d-6
+ENTHALPY 0.d0 0.d0
+/
+
+FLOW_CONDITION source
+UNITS Pa,C,M,yr
+TYPE
+PRESSURE mass_rate
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+/
+PRESSURE file c2i.txt  ! kg/s
+TEMPERATURE 50.d0
+CONCENTRATION 0.D0
+ENTHALPY 0.d0 0.d0
+/
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+FLOW_CONDITION initial
+REGION all
+END
+
+: top boundary condition
+:BOUNDARY_CONDITION top
+:FLOW_CONDITION top
+:REGION top
+:END
+
+: boundary condition
+BOUNDARY_CONDITION east
+FLOW_CONDITION side
+REGION east
+END
+
+BOUNDARY_CONDITION west
+FLOW_CONDITION side
+REGION west
+END
+
+SOURCE_SINK
+FLOW_CONDITION source
+REGION well
+END
+
+:=========================== stratigraphy couplers ============================
+STRATA
+REGION all
+MATERIAL rock2
+END
 
 \end{verbatim}
+
+\normalsize
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -3813,6 +4122,218 @@ make sure that you don't link with the iobuf library.
 \end{comment}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\section{Adaptive Mesh Refinement: SAMRAI}
+
+\subsection{Creating the SAMRAI input file}
+
+\footnotesize
+\begin{verbatim}
+DIRICHLET = 0
+NEUMANN   = 1
+PERIODIC  = 2
+MIXED     = 3
+ROBIN     = 4
+
+// name of pflotran specific input file
+pflotran_filename="pflotran.15c.in"
+
+CartesianGeometry{
+  //  Specify lower/upper corners of the computational domain and a
+  //  set of non-overlapping boxes defining domain interior.  If union 
+  //  of boxes is not a parallelpiped, lower/upper corner data corresponds 
+  //  to min/max corner indices over all boxes given.
+  //  x_lo  -- (double array) lower corner of computational domain [REQD]
+  //  x_up  -- (double array) upper corner of computational domain [REQD]
+  //  domain_boxes  -- (box array) set of boxes that define interior of 
+  //                   physical domain. [REQD]
+  //  periodic_dimension -- (int array) coordinate directions in which 
+  //                        domain is periodic.  Zero indicates not
+  //                        periodic, non-zero value indicates periodicity.
+  //                        [0]
+  // indexing always starts at 0 for domain_boxes => 0-79 = 80 cells
+  domain_boxes = [(0,0,0), (19,19,79)]
+   x_lo         = 0.e0, 0.e0, 0.e0  
+   x_up         = 20.e0, 20.e0, 80.e0
+}
+
+GriddingAlgorithm{
+   // Information used to create patches in AMR hierarchy.
+   // max_levels -- (int) max number of mesh levels in hierarchy [REQD]
+   // 
+   // For most of the following parameters, the number of prescribed data
+   // values need not match the number of levels in the hierarchy 
+   // (determined by max_levels).  If more values are given than number 
+   // of levels, extraneous values will be ignored.  If less are given, then
+   // values that correspond to individual levels will apply to those 
+   // levels.  Missing values will be taken from those for the finest
+   // level specified.
+   //
+   // ratio_to_coarser {
+   //   level_1 -- (int array) ratio between index spaces on 
+   //              level 1 to level 0 [REQD]
+   //   level_2 -- (int array)  ratio between index spaces on 
+   //              level 2 to level 1 [REQD]
+   //   etc....
+   // }
+   // largest_patch_size {
+   //   level_0 -- (int array) largest patch allowed on level 0. 
+   //              [REQD]    
+   //   level_1 -- (int array)    "       "      "   "  level 1 
+   //              [level 0 entry]
+   //   etc....                       
+   // }
+   max_levels = 7 
+   largest_patch_size {
+      level_0 = 20, 20, 80
+      level_1 = 40, 40, 40
+      // all finer levels will use same values as level_1...
+   }
+   smallest_patch_size {
+      level_0 = 10, 10, 40
+      level_1 =  5,  5, 10
+      // all finer levels will use same values as level_1...
+   }
+   ratio_to_coarser {
+      level_1  = 2, 2, 2
+      // all finer levels will use same values as level_1...
+   }
+   combine_efficiency = 0.95
+   efficiency_tolerance = 0.95
+   coalesce_boxes=FALSE
+   check_nonrefined_tags='i'
+}
+
+StandardTagAndInitialize{
+   tagging_method = "REFINE_BOXES"
+   RefineBoxes{
+      // index region on level 0 to tag for refinement in level 0 indices.
+      // the full index region on level 0 is [(0,0,0),(19,19,79)]
+      // Note that this will create a refinement region on level 1 extending from
+      // [(0,0,60*2), (19*2+1,19*2+1,79*2+1)] when refined by a factor of 2 in
+      // each direction. The full index space on level one is [(0,0,0), (2*19+1,2*19+1,2*79+1)]
+      level_0 = [(0,0,60),(19,19,79)]         // 0.5 m
+      level_1 = [(0,0,140),(39,39,159)]       // 0.25
+      level_2 = [(0,0,300),(79,79,319)]       // 0.125
+      level_3 = [(0,0,620),(159,159,639)]     // 0.0625
+      level_4 = [(0,0,1260),(319,319,1279)]   // 0.03125
+      level_5 = [(0,0,2540),(639,639,2559)]   // 0.015625
+   }
+}
+
+LoadBalancer{
+   bin_pack = "SPATIAL"
+}
+
+PflotranApplicationStrategy{
+   DriverMode                       = 1
+   nl_tangential_coarse_fine_scheme = "LINEAR"
+   nl_normal_coarse_fine_scheme     = "LINEAR"
+   number_solution_components       = 3
+
+   PflotranMultilevelOperator{
+       operator_name                   = "PflotranMultilevelOperator"
+	       tangent_interp_scheme           = "LINEAR"
+	       normal_interp_scheme            = "LINEAR"
+	       adjust_cf_coefficients          = FALSE
+	       interpolate_ghost_values        = TRUE
+	       extrapolation_order             = 2
+	       boundary_conditions             = NEUMANN, NEUMANN, NEUMANN, NEUMANN, NEUMANN, DIRICHLET
+	       coarsen_diffusive_fluxes        = TRUE
+	       coarsen_convective_fluxes       = TRUE
+	       print_info_level                = 0
+	       cell_refine_op                  = "CONSTANT_REFINE"
+	       cell_coarsen_op                 = "CONSERVATIVE_COARSEN"
+	       cell_soln_coarsen_op            = "CONSERVATIVE_COARSEN"
+	       cell_src_coarsen_op             = "SUM_COARSEN"
+	       face_refine_op                  = "CONSTANT_REFINE"
+	       face_coarsen_op                 = "CONSERVATIVE_COARSEN"
+	       variable_order_interpolation    = FALSE
+	       use_cf_interpolant              = TRUE
+   }
+
+   PflotranFlowPreconditioner{
+
+     preconditioner_print_flag = FALSE
+
+     pc_solver{
+       solver_name                      = "FAC"
+       max_iterations                   = 2
+       max_error                        = 1.e-12
+       print_info_level                 = 1 
+       presolve_iterations              = 2
+       postsolve_iterations             = 2
+       use_visit                        = FALSE
+       viz_directory                    = "fac_viz"
+       zero_initial_guess               = TRUE
+
+       level_solver_0 {
+            solver_name                 = "CellHYPRELevelSolver"
+            print_info_level            = 0 
+            mg_solver_type              = 1
+            max_iterations              = 1
+            max_error                   = 1.e-12
+            num_presweeps               = 2
+            num_postsweeps              = 2
+            preprocess_rhs              = FALSE
+       }
+
+       level_solver_1 {
+            solver_name                 = "CellLevelSmoother"
+            smoother_type               = "Red-black Gauss-Seidel"
+            print_info_level            = 0 
+            max_iterations              = 1
+            max_error                   = 1.e-12
+            num_sweeps                  = 10
+       }
+     }
+   }
+
+   PflotranTransportPreconditioner{
+
+     preconditioner_print_flag = FALSE
+
+     pc_solver{
+       solver_name                      = "FAC"
+       max_iterations                   = 2 
+       max_error                        = 1.e-12
+       print_info_level                 = 1 
+       presolve_iterations              = 2
+       postsolve_iterations             = 2
+       use_visit                        = FALSE
+       viz_directory                    = "fac_viz"
+       zero_initial_guess               = TRUE
+
+       level_solver_0 {
+            solver_name                = "CellHYPRELevelSolver"
+            print_info_level           = 0 
+            mg_solver_type             = 1
+            max_iterations             = 1
+            max_error                  = 1.e-12
+            num_presweeps              = 2
+            num_postsweeps             = 2
+            preprocess_rhs             = FALSE
+       }
+
+       level_solver_1 {
+            solver_name                = "CellLevelSmoother"
+            smoother_type              = "Red-black Gauss-Seidel"
+            print_info_level           = 0 
+            max_iterations             = 1
+            max_error                  = 1.e-12
+            num_sweeps                 = 10
+       }
+     } 
+   }
+}
+
+
+TimerManager{
+   timer_list = "xfer::*::*", "FAC::*::*", "AMRUtilities::*::*", "apps::main::main", \
+   "RD2T::*::*", "LevelSolver::*::*"
+}
+\end{verbatim}
+
+\normalsize
 \section{References}
 
 \begin{description}
