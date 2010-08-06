@@ -85,7 +85,8 @@ function THCAuxCreate()
   nullify(aux%aux_vars)
   nullify(aux%aux_vars_bc)
   aux%n_zero_rows = 0
-  nullify(aux%thc_parameter)
+  allocate(aux%thc_parameter)
+  nullify(aux%thc_parameter%sir)
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
 

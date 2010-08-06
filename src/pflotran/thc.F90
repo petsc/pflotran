@@ -126,12 +126,14 @@ subroutine THCSetupPatch(realization)
   type(thc_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
 
   PetscInt :: ghosted_id, iconn, sum_connection
-  
+  PetscInt :: i 
   option => realization%option
+!  write(*,*)'Checkpoint'
   patch => realization%patch
   grid => patch%grid
     
   patch%aux%THC => THCAuxCreate()
+!  write(*,*)'Checkpoint1 nphase = ', option%nphase, 'satfunc = ', size(realization%saturation_function_array)
 ! option%io_buffer = 'Before THC can be run, the thc_parameter object ' // &
 !                    'must be initialized with the proper variables ' // &
 !                    'THCAuxCreate() is called anywhere.'
@@ -139,6 +141,22 @@ subroutine THCSetupPatch(realization)
   allocate(patch%aux%THC%thc_parameter%sir(option%nphase, &
                                   size(realization%saturation_function_array)))
   
+  !Jitu, 08/04/2010: Check these allocations. Currently assumes only single value in the array	
+  allocate(patch%aux%THC%thc_parameter%dencpr(1))
+  allocate(patch%aux%THC%thc_parameter%ckwet(1))
+  allocate(patch%aux%THC%thc_parameter%ckdry(1))
+  
+  !Copy the values in the thc_parameter from the global realization 
+  patch%aux%THC%thc_parameter%dencpr(1) = realization%material_properties%rock_density  
+  patch%aux%THC%thc_parameter%ckwet(1) = realization%material_properties%thermal_conductivity_wet  
+  patch%aux%THC%thc_parameter%ckdry(1) = realization%material_properties%thermal_conductivity_dry  
+!  write(*,*)'Checkpoint2'
+  do i = 1, size(realization%saturation_function_array)
+    patch%aux%THC%thc_parameter%sir(:,realization%saturation_function_array(i)%ptr%id) = &
+      realization%saturation_function_array(i)%ptr%Sr(:)
+  enddo
+
+!  write(*,*)'Checkpoint3'
   ! allocate aux_var data structures for all grid cells
   allocate(aux_vars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
@@ -147,12 +165,14 @@ subroutine THCSetupPatch(realization)
     aux_vars(ghosted_id)%diff(1:option%nflowspec) = &
       realization%fluid_properties%diffusion_coefficient
   enddo
+!  write(*,*)'Checkpoint4'
   patch%aux%THC%aux_vars => aux_vars
   patch%aux%THC%num_aux = grid%ngmax
   
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them
   boundary_condition => patch%boundary_conditions%first
+!  write(*,*)'Checkpoint5'
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -160,14 +180,18 @@ subroutine THCSetupPatch(realization)
                      boundary_condition%connection_set%num_connections
     boundary_condition => boundary_condition%next
   enddo
-  allocate(aux_vars_bc(sum_connection))
-  do iconn = 1, sum_connection
-    call THCAuxVarInit(aux_vars_bc(iconn),option)
-    ! currently, hardwire to first fluid
-    aux_vars_bc(iconn)%diff(1:option%nflowspec) = &
-      realization%fluid_properties%diffusion_coefficient
-  enddo
-  patch%aux%THC%aux_vars_bc => aux_vars_bc
+!  write(*,*)'Checkpoint6'
+!  write(*,*)'Sum_connection', sum_connection
+  if (sum_connection > 0) then 
+    allocate(aux_vars_bc(sum_connection))
+    do iconn = 1, sum_connection
+      call THCAuxVarInit(aux_vars_bc(iconn),option)
+      ! currently, hardwire to first fluid
+      aux_vars_bc(iconn)%diff(1:option%nflowspec) = &
+        realization%fluid_properties%diffusion_coefficient
+    enddo
+    patch%aux%THC%aux_vars_bc => aux_vars_bc
+  endif
   patch%aux%THC%num_aux_bc = sum_connection
 
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
@@ -569,6 +593,7 @@ subroutine THCUpdateFixedAccumPatch(realization)
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
+!    write(*,*) 'Test THCUpdateAccumPatch'
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
     iphase = int(iphase_loc_p(ghosted_id))
@@ -807,21 +832,28 @@ subroutine THCAccumulation(aux_var,por,vol,rock_dencpr,option,Res)
 
 ! TechNotes, THC Mode: First term of Equation 8
   porXvol = por*vol
-      
   do ispec=1, option%nflowspec  
     mol(ispec)=0.d0
     mol(ispec) = mol(ispec) + aux_var%sat * &
                               aux_var%den * &
                               aux_var%xmol(ispec)
     mol(ispec) = mol(ispec) * porXvol
+!  write(*,*)'nflowspec = ', option%nflowspec, ispec      
   enddo
+!  write(*,*) 'Test thcaccum 1' 
 
+!  write(*,*) 'sat den u prxvol ', aux_var%sat, &
+!    aux_var%den, aux_var%u, porXvol 
+!  write(*,*) 'por ', por
+!  write(*,*) 'vol ', vol
+!  write(*,*) 'rrdencpr ', rock_dencpr
+!  write(*,*) 'temp ', aux_var%temp 
 ! TechNotes, THC Mode: First term of Equation 9
   eng = aux_var%sat * &
         aux_var%den * &
         aux_var%u * &
         porXvol + (1.d0 - por)* vol * rock_dencpr * aux_var%temp 
- 
+!  write(*,*) 'Test thcaccum 2' 
 ! Reaction terms here
 !  if (option%run_coupled .and. iireac>0) then
 !H2O
