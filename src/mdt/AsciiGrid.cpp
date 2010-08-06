@@ -104,6 +104,21 @@ void AsciiGrid::computeCoordinates() {
   }
 }
 
+void AsciiGrid::printRegion(PetscReal origx, PetscReal origy, 
+                            PetscReal lenx, PetscReal leny) {
+  PetscReal half_cellsize = 0.5*cellsize;
+  for (PetscInt j=0; j<nrows; j++) {
+    PetscReal y = yllcorner + half_cellsize + j*cellsize;
+    for (PetscInt i=0; i<ncols; i++) {
+      PetscReal x = xllcorner + half_cellsize + i*cellsize;
+      if (x - origx >= 0 && x - origx <= lenx &&
+          y - origy >= 0 && y - origy <= leny) {
+        printf("%.8f %.8f %.8f\n",x,y,values[i+j*ncols]);
+      }
+    }
+  }
+}
+
 PetscReal AsciiGrid::computeElevationFromCoordinate(PetscReal x, PetscReal y) {
   PetscReal half_cellsize = 0.5*cellsize;
   PetscInt icol = (PetscInt)((x-xllcorner+half_cellsize)/cellsize)-1;
