@@ -35,8 +35,10 @@ IFC_Plot_120x120x15::IFC_Plot_120x120x15(Grid **grid_) {
   PetscReal dy;
   PetscReal dz;// */
 
-  PetscReal len_x = 120.;
-  PetscReal len_y = 120.;
+//  PetscReal len_x = 120.;
+//  PetscReal len_y = 120.;
+  PetscReal len_x = 10.;
+  PetscReal len_y = 10.;
   PetscReal len_z = 15.;
 
   dx = len_x/(PetscReal)nx;
@@ -93,7 +95,7 @@ IFC_Plot_120x120x15::IFC_Plot_120x120x15(Grid **grid_) {
   grid->setRotation(35.); // must come before ->setOrigin()
 //  grid->setRotation(0.); // must come before ->setOrigin()
 
-  grid->setOrigin(594239.4155,115982.5663,95.);
+  grid->setOrigin(594239.42,115982.57,95.);
   sprintf(filename,"plot_120_%dx%dx%d",nx,ny,nz);
   grid->setFilenamePrefix(filename);
 
@@ -110,22 +112,14 @@ IFC_Plot_120x120x15::IFC_Plot_120x120x15(Grid **grid_) {
 //  ifc_polygon = new Polygon();
 //  ifc_polygon->createIFCPolygon();
 
-  AsciiGrid::nasciigrids = 6;
+  AsciiGrid::nasciigrids = 2;
   string *grid_filenames = new string[AsciiGrid::nasciigrids];
 #if 1
-  grid_filenames[0].append("./basalt_300area.asc");
-  grid_filenames[1].append("./u9_300area.asc");
-  grid_filenames[2].append("./u8_300area.asc");
-  grid_filenames[3].append("./u5gravel_300area.asc");
-  grid_filenames[4].append("./u5silt_300area.asc");
-  grid_filenames[5].append("./newbath_10mDEM_grid.ascii");
+  grid_filenames[0].append("./u5silt_300area.asc");
+  grid_filenames[1].append("./newbath_10mDEM_grid.ascii");
 #else
-  grid_filenames[0].append("../basalt_300area.asc");
-  grid_filenames[1].append("../u9_300area.asc");
-  grid_filenames[2].append("../u8_300area.asc");
-  grid_filenames[3].append("../u5gravel_300area.asc");
-  grid_filenames[4].append("../u5silt_300area.asc");
-  grid_filenames[5].append("../newbath_10mDEM_grid.ascii");
+  grid_filenames[0].append("../u5silt_300area.asc");
+  grid_filenames[1].append("../newbath_10mDEM_grid.ascii");
 #endif
 
   ascii_grids = new AsciiGrid*[AsciiGrid::nasciigrids];
@@ -134,12 +128,8 @@ IFC_Plot_120x120x15::IFC_Plot_120x120x15(Grid **grid_) {
     strcpy(filename,grid_filenames[i].c_str());
     ascii_grids[i] = new AsciiGrid(filename);
   }
-  ascii_grids[0]->setMaterialId(10);
-  ascii_grids[1]->setMaterialId(9);
-  ascii_grids[2]->setMaterialId(8);
-  ascii_grids[3]->setMaterialId(5);
-  ascii_grids[4]->setMaterialId(4);
-  ascii_grids[5]->setMaterialId(1);
+  ascii_grids[0]->setMaterialId(4);
+  ascii_grids[1]->setMaterialId(1);
 
   PetscInt mod = grid->num_cells_ghosted/10;
   for (PetscInt i=0; i<grid->num_cells_ghosted; i++) {
@@ -149,6 +139,7 @@ IFC_Plot_120x120x15::IFC_Plot_120x120x15(Grid **grid_) {
     PetscReal z = grid->cells[i].getZ();
     for (PetscInt ilayer=0; ilayer<AsciiGrid::nasciigrids; ilayer++) {
       PetscReal zlayer = ascii_grids[ilayer]->computeElevationFromCoordinate(x,y);
+//      if (ilayer == 0) printf("%.8f %.8f %.8f\n",x,y,zlayer);
       if (zlayer > ascii_grids[ilayer]->nodata && zlayer >= z) {
         material_id = ascii_grids[ilayer]->getMaterialId();
         break;
@@ -162,7 +153,7 @@ IFC_Plot_120x120x15::IFC_Plot_120x120x15(Grid **grid_) {
         grid->cells[i].negateMaterialId();
       }
     }
-    if (i%mod == 0) {
+    if (mod > 0 && i%mod == 0) {
       PetscPrintf(PETSC_COMM_WORLD,"%d of %d cells mapped with materials and activity.\n",
                   i,grid->num_cells_ghosted);
     }
@@ -170,7 +161,8 @@ IFC_Plot_120x120x15::IFC_Plot_120x120x15(Grid **grid_) {
 
   flagGridCells(grid);
 
-  ascii_grids[4]->printRegion(594239.4155,115982.5663,15.,15.);
+#if 0
+  ascii_grids[0]->printRegion(594239.4155,115982.5663,15.,15.);
 
   for (PetscInt j=0; j<8; j++) {
     PetscReal y = 115982. + j*2.;
@@ -184,6 +176,7 @@ IFC_Plot_120x120x15::IFC_Plot_120x120x15(Grid **grid_) {
       printf("%.8f %.8f %.8f %.8f\n",x,y,xx,yy);
     }
   }
+#endif
 
 //  computeEastBoundary(grid,1);
 //  computeWestBoundary(grid,1);

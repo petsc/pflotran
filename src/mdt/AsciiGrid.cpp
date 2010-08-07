@@ -141,6 +141,15 @@ PetscReal AsciiGrid::computeElevationFromCoordinate(PetscReal x, PetscReal y) {
     PetscReal y1 = irow*cellsize+half_cellsize+yllcorner;
     PetscReal y2 = y1+cellsize;
 
+#if 0
+    // for debugging
+    printf("--------------------\n");
+    printf("%d %d %.1f %.1f %.8f\n",icol,irow,x1,y1,z1);
+    printf("%d %d %.1f %.1f %.8f\n",icol+1,irow,x2,y1,z2);
+    printf("%d %d %.1f %.1f %.8f\n",icol,irow+1,x1,y2,z3);
+    printf("%d %d %.1f %.1f %.8f\n",icol+1,irow+1,x2,y2,z4);
+#endif
+
     if (x < x1 || x > x2) {
       PetscPrintf(PETSC_COMM_WORLD,
                   "ERROR:  x out of bounds for interpolation %f %f %f\n",
@@ -153,10 +162,29 @@ PetscReal AsciiGrid::computeElevationFromCoordinate(PetscReal x, PetscReal y) {
                   y,y1,y2);
     }
 
+#if 1
     // bilinear interpolation
     return (z1*(x2-x)*(y2-y)+z2*(x-x1)*(y2-y)+
-            z3*(x-x1)*(y-y1)+z4*(x2-x)*(y-y1))/
+            z3*(x2-x)*(y-y1)+z4*(x-x1)*(y-y1))/
             ((x2-x1)*(y2-y1));
+#else
+    // inverse distance weighted interpolation
+    PetscReal power = 2.;
+    PetscReal temp = sqrt((x-x1)*(x-x1)+(y-y1)*(y-y1));
+    if (temp < 1.e-20) return z1;
+    PetscReal w1 = 1./pow(temp,power);
+    temp = sqrt((x-x2)*(x-x2)+(y-y1)*(y-y1));
+    if (temp < 1.e-20) return z2;
+    PetscReal w2 = 1./pow(temp,power);
+    temp = sqrt((x-x1)*(x-x1)+(y-y2)*(y-y2));
+    if (temp < 1.e-20) return z3;
+    PetscReal w3 = 1./pow(temp,power);
+    temp = sqrt((x-x2)*(x-x2)+(y-y2)*(y-y2));
+    if (temp < 1.e-20) return z4;
+    PetscReal w4 = 1./pow(temp,power);
+    return (w1*z1+w2*z2+w3*z3+w4*z4)/(w1+w2+w3+w4);
+#endif
+    
   }
 }
 

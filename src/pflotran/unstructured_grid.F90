@@ -35,7 +35,7 @@ module Unstructured_Grid_module
     PetscInt, pointer :: ghost_cell_ids_petsc(:) ! petsc ordering of ghost cells ids
     PetscInt, pointer :: cell_neighbors_local_ghosted(:,:) ! local neighbors
     type(point_type), pointer :: vertices(:)
-    AO :: ao_natural_to_petsc ! mappsing of natural to petsc ordering
+    AO :: ao_natural_to_petsc ! mapping of natural to petsc ordering
   end type unstructured_grid_type
 
   type, public :: ugdm_type
@@ -397,18 +397,35 @@ subroutine UnstructuredGridRead(unstructured_grid,filename,option)
   fileid = 86
   input => InputCreate(fileid,filename)
 
+! Format of unstructured grid file
+! Currently assumes hexahedron
+! -----------------------------------------------------------------
+! num_cells num_vertices  (integers)
+! vert1 vert2 vert3 ... vert8  ! for cell 1 (integers)
+! vert1 vert2 vert3 ... vert8  ! for cell 2
+! ...
+! ...
+! vert1 vert2 vert3 ... vert8  ! for cell num_cells
+! xcoord ycoord zcoord ! coordinates of vertex 1 (real)
+! xcoord ycoord zcoord ! coordinates of vertex 2 (real)
+! ...
+! xcoord ycoord zcoord ! coordinates of vertex num_vertices (real)
+! -----------------------------------------------------------------
+
   card = 'Unstructured Grid'
 
   call InputReadFlotranString(input,option)
   string = 'unstructured grid'
   call InputReadStringErrorMsg(input,option,card)  
 
+  ! read num_cells
   call InputReadInt(input,option,unstructured_grid%num_cells_global)
   call InputErrorMsg(input,option,'number of cells',card)
+  ! read num_vertices
   call InputReadInt(input,option,unstructured_grid%num_vertices_global)
   call InputErrorMsg(input,option,'number of vertices',card)
 
-  ! divide elements and vertices across processors
+  ! divide cells across ranks
   unstructured_grid%num_cells_local = unstructured_grid%num_cells_global/ &
                                       option%mycommsize 
   num_cells_local_save = unstructured_grid%num_cells_local
@@ -417,9 +434,12 @@ subroutine UnstructuredGridRead(unstructured_grid,filename,option)
   if (option%myrank < remainder) unstructured_grid%num_cells_local = &
                                   unstructured_grid%num_cells_local + 1
 
+  ! allocate array to store vertices for each cell
   allocate(unstructured_grid%cell_vertices_0(8,unstructured_grid%num_cells_local))
   unstructured_grid%cell_vertices_0 = 0
 
+  ! for now, read all cells from ASCII file through io_rank and communicate
+  ! to other ranks
   if (option%myrank == option%io_rank) then
     allocate(temp_int_array(8,num_cells_local_save+1))
     ! read for other processors
@@ -427,6 +447,7 @@ subroutine UnstructuredGridRead(unstructured_grid,filename,option)
       num_to_read = num_cells_local_save
       if (irank < remainder) num_to_read = num_to_read + 1
       do icell = 1, num_to_read
+        ! read in the vertices defining the grid cell
         call InputReadFlotranString(input,option)
         call InputReadStringErrorMsg(input,option,card)  
         do ivertex = 1, 8
@@ -435,11 +456,13 @@ subroutine UnstructuredGridRead(unstructured_grid,filename,option)
         enddo
       enddo
       
+      ! if the cells reside on io_rank
       if (irank == option%io_rank) then
 print *, '0: ', unstructured_grid%num_cells_local, ' cells'
         unstructured_grid%cell_vertices_0(:,1:unstructured_grid%num_cells_local) = &
           temp_int_array(:,1:unstructured_grid%num_cells_local)
       else
+        ! otherwise communicate to other ranks
 print *, '0: ', num_to_read, ' cells sent'
         int_mpi = num_to_read*8
         call MPI_Send(temp_int_array,int_mpi,MPIU_INTEGER,irank, &
@@ -448,6 +471,7 @@ print *, '0: ', num_to_read, ' cells sent'
     enddo
     deallocate(temp_int_array)
   else
+    ! other ranks post the recv
 print *, option%myrank,': ',unstructured_grid%num_cells_local, ' cells recv'
     int_mpi = unstructured_grid%num_cells_local*8
     call MPI_Recv(unstructured_grid%cell_vertices_0,int_mpi, &
@@ -456,6 +480,7 @@ print *, option%myrank,': ',unstructured_grid%num_cells_local, ' cells recv'
   endif
 
 
+  ! divide vertices across ranks
   unstructured_grid%num_vertices_local = unstructured_grid%num_vertices_global/ &
                                          option%mycommsize 
   num_vertices_local_save = unstructured_grid%num_vertices_local
@@ -467,6 +492,7 @@ print *, option%myrank,': ',unstructured_grid%num_cells_local, ' cells recv'
   allocate(vertex_coordinates(3,unstructured_grid%num_vertices_local))
   vertex_coordinates = 0.d0
 
+  ! just like above, but this time for vertex coordinates
   if (option%myrank == option%io_rank) then
     allocate(temp_real_array(3,num_vertices_local_save+1))
     ! read for other processors
@@ -500,6 +526,7 @@ print *, option%myrank,': ',unstructured_grid%num_cells_local, ' cells recv'
                   MPI_ANY_TAG,option%mycomm,status_mpi,ierr)
   endif
   
+  ! fill the vertices data structure
   allocate(unstructured_grid%vertices(unstructured_grid%num_vertices_local))
   do ivertex = 1, unstructured_grid%num_vertices_local
     unstructured_grid%vertices(ivertex)%id = 0
@@ -515,7 +542,7 @@ end subroutine UnstructuredGridRead
 
 ! ************************************************************************** !
 !
-! UnstructuredGridDecompose: Decomposes an unstructured grid
+! UnstructuredGridDecompose: Decomposes an unstructured grid across ranks
 ! author: Glenn Hammond
 ! date: 09/30/09
 !
@@ -601,9 +628,9 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
 
 
   
-  ! cell distribution across processors (size = num_cores + 1)
-  ! core i owns cells cell_distribution(i):cell_distribution(i+1), note
-  ! the zero-based ordering
+!  cell distribution across processors (size = num_cores + 1)
+!  core i owns cells cell_distribution(i):cell_distribution(i+1), note
+!  the zero-based indexing
 !  allocate(cell_distribution(option%mycommsize+1))
 !  call MPI_Scan(unstructured_grid%num_cells_local,
 !  cell_distribution(1) = 0
@@ -613,6 +640,9 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   
   ! provide ids of vertices for local cells
 
+  ! in order to redistributed vertex/cell data among ranks, I package it
+  ! in a crude way and pass it.  The stride determines the size of each
+  ! cells "packaged" data 
   vertex_ids_offset = 1 + 1 ! +1 for -777
   max_vertex_count = 8
   dual_offset = vertex_ids_offset + max_vertex_count + 1 ! +1 for -888
@@ -631,13 +661,15 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
     local_vertex_offset(icell+1) = count 
   enddo
   index_format_flag = 0 ! C-style indexing
-  num_common_vertices = 3 ! cells must share at least vertices
+  num_common_vertices = 3 ! cells must share at least this number of vertices
 
+  ! determine the global offset from 0 for cells on this rank
   unstructured_grid%global_offset = 0
   call MPI_Exscan(unstructured_grid%num_cells_local, &
                   unstructured_grid%global_offset, &
                   ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
 
+  ! create an adjacency matrix for calculating the duals (connnections)
 #if GEH_DEBUG  
   call printMsg(option,'Adjacency matrix')
 #endif
@@ -660,6 +692,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   call printMsg(option,'Dual matrix')
 #endif
 
+  ! petsc will call parmetis to calculate the graph/dual
   call MatMeshToCellGraph(Adj_mat,num_common_vertices,Dual_mat,ierr)
   call MatDestroy(Adj_mat,ierr)
   deallocate(local_vertices)
@@ -675,6 +708,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   call printMsg(option,'Partitioning')
 #endif
 
+  ! create the partitioning
   call MatPartitioningCreate(option%mycomm,Part,ierr)
   call MatPartitioningSetAdjacency(Part,Dual_mat,ierr)
   call MatPartitioningSetFromOptions(Part,ierr)
