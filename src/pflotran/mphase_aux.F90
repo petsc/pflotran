@@ -426,7 +426,8 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
     xm_nacl = xm_nacl /(1.D3 + xm_nacl)
     call nacl_den(t, p*1D-6, xm_nacl, dw_kg) 
     dw_kg = dw_kg * 1D3
-    call nacl_vis(t,p*1D-6,xm_nacl,visl)
+!   call nacl_vis(t,p*1D-6,xm_nacl,visl)
+    call VISW(t,pw,sat_pressure,visl,dvdt,dvdp,ierr)
 
 !FEHM mixing ****************************
 !  den(1) = xmol(2)*dg + xmol(1)*dw_mol
