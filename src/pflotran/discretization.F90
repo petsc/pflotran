@@ -177,7 +177,8 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
               end select
             case('unstructured')
               discretization%itype = UNSTRUCTURED_GRID
-              call InputReadWord(input,option,filename,PETSC_TRUE)
+              call InputReadNChars(input,option,filename,MAXSTRINGLENGTH, &
+                                   PETSC_TRUE)
               call InputErrorMsg(input,option,'unstructured filename','GRID')
             case('amr')
               discretization%itype = AMR_GRID
