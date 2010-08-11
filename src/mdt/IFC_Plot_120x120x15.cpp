@@ -35,10 +35,10 @@ IFC_Plot_120x120x15::IFC_Plot_120x120x15(Grid **grid_) {
   PetscReal dy;
   PetscReal dz;// */
 
-//  PetscReal len_x = 120.;
-//  PetscReal len_y = 120.;
-  PetscReal len_x = 10.;
-  PetscReal len_y = 10.;
+  PetscReal len_x = 120.;
+  PetscReal len_y = 120.;
+//  PetscReal len_x = 10.;
+//  PetscReal len_y = 10.;
   PetscReal len_z = 15.;
 
   dx = len_x/(PetscReal)nx;
