@@ -2663,7 +2663,7 @@ end subroutine RReactionDerivative
                                
 ! ************************************************************************** !
 !
-! RActivityCoefficients: Computes activity coefficients of aqueous CO2
+! CO2AqActCoeff: Computes activity coefficients of aqueous CO2
 ! author: Chuan Lu
 ! date: 07/13/09
 !
