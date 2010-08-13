@@ -1,7 +1,7 @@
 common_src   = ./
 
-CXX		= 
-CXXFLAGS	= 
+CXX		= g++
+CXXFLAGS	= -g
 CPPFLAGS	= 
 CLEANFILES	= reaction
 
@@ -13,6 +13,12 @@ reaction_obj = ${common_src}Block.o \
 
 reaction: $(reaction_obj)
 	${CXX} -o reaction ${reaction_obj}
+
+%.o : %.cpp
+	${CXX} ${CXXFLAGS} $< -c
+
+clean:
+	rm -f reaction ${reaction_obj}
 
 #Dependencies
 Reaction.o : Speciation.o
