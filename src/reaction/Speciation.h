@@ -61,7 +61,7 @@ private:
 
 public:
 
-static void Speciation::createCarbonateSystem() {
+static void createCarbonateSystem() {
 
   ncomp = 2;
   int count = 0;
@@ -144,7 +144,7 @@ static void Speciation::createCarbonateSystem() {
 
 };
 
-static void Speciation::readReactionFromFile(string filename) {
+static void readReactionFromFile(string filename) {
 
   char word[32];
 
@@ -277,3 +277,4 @@ static void Speciation::readReactionFromFile(string filename) {
 };
 
 #endif /*SPECIATION_H_*/
+
