@@ -288,7 +288,7 @@ int Speciation::speciate(double *target_total) {
   return num_iterations;
 }
 
-// Destructur for freeing instance variables
+// Destructor for freeing instance variables
 Speciation::~Speciation() {
   if (dtotal) delete dtotal;
   if (total) delete [] total;

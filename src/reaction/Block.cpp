@@ -62,7 +62,6 @@ void Block::setValues(double **values) {
 }
 
 void Block::setValues(int ioffset, int joffset, Block *b) {
-  int n_ = b->getSize();
   double **A_ = b->getValues();
   for (int i=0; i<size; i++)
     for (int j=0; j<size; j++)
@@ -80,7 +79,6 @@ void Block::addValues(double **values) {
 }
 
 void Block::addValues(int ioffset, int joffset, Block *b) {
-  int n_ = b->getSize();
   double **A_ = b->getValues();
   for (int i=0; i<size; i++)
     for (int j=0; j<size; j++)
