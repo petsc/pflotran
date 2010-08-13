@@ -303,12 +303,17 @@ int Speciation::speciate(double *target_total) {
       max_rel_change = delta > max_rel_change ? delta : max_rel_change;
     }
 
+#ifdef DEBUG
     for (int i=0; i<ncomp; i++)
       cout << primary_species_names[i] << " " << pri_molal[i] << " " << total[i] << "\n";
+#endif
 
     num_iterations++;
 
   } while (max_rel_change > speciation_tolerance);
+
+  for (int i=0; i<ncomp; i++)
+  cout << primary_species_names[i] << " " << pri_molal[i] << " " << total[i] << "\n";
 
   delete J;
   delete [] residual;
