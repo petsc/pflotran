@@ -234,6 +234,14 @@ void Speciation::calculateActivityCoefficients(int flag) {
 
 int Speciation::speciate(double *target_total) {
 
+  cout << endl;
+  cout << "Target Total Component Concentrations\n";
+  for (int i=0; i<ncomp; i++) {
+    cout << setw(10) << primary_species_names[i];
+    cout << ": " << target_total[i] << endl;
+  }
+  cout << endl;
+
     // initialize free-ion concentration s
   for (int i=0; i<ncomp; i++) 
     pri_molal[i] = 1.e-9;
@@ -312,8 +320,21 @@ int Speciation::speciate(double *target_total) {
 
   } while (max_rel_change > speciation_tolerance);
 
-  for (int i=0; i<ncomp; i++)
-  cout << primary_species_names[i] << " " << pri_molal[i] << " " << total[i] << "\n";
+  cout << endl;
+  cout << "Primary Species ---------------------\n";
+  for (int i=0; i<ncomp; i++) {
+    cout << "  " << primary_species_names[i] << endl;
+    cout << "       Total: " << total[i] << endl;
+    cout << "    Free-Ion: " << pri_molal[i] << endl;
+  }
+  cout << endl;
+  cout << "Secondary Species -------------------\n";
+  for (int i=0; i<neqcplx; i++) {
+    cout << "  " << secondary_species_names[i] << endl;
+    cout << "    Free-Ion: " << sec_molal[i] << endl;
+  }
+  cout << "-------------------------------------\n";
+  cout << endl;
 
   delete J;
   delete [] residual;
