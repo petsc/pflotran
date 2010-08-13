@@ -33,95 +33,22 @@ Speciation::Speciation(int n) {
   total = new double[ncomp];
   dtotal = new Block(ncomp);
   pri_molal = new double[ncomp];
-  sec_molal = new double[ncomp];
+  sec_molal = new double[neqcplx];
   pri_act = new double[ncomp];
-  sec_act = new double[ncomp];
+  sec_act = new double[neqcplx];
+}
+
+Speciation::Speciation() {
+  total = new double[ncomp];
+  dtotal = new Block(ncomp);
+  pri_molal = new double[ncomp];
+  sec_molal = new double[neqcplx];
+  pri_act = new double[ncomp];
+  sec_act = new double[neqcplx];
 }
 
 void Speciation::calculateAQComplexes() {
   cout << "Calculated!\n";
-}
-
-void Speciation::createCarbonateSystem() {
-
-  int count = 0;
-
-  primary_species_names = new string[ncomp];
-  primary_species_names[count++] = "H+";
-  primary_species_names[count++] = "HCO3-";
-  count = 0;
-  primary_species_Z = new double[ncomp];
-  primary_species_Z[0] = 1.;
-  primary_species_Z[count++] = -1.;
-  count = 0;
-  primary_species_a0 = new double[ncomp];
-  primary_species_a0[count++] = 9.;
-  primary_species_a0[count++] = 4.;
-
-  neqcplx = 3;
-  count = 0;
-  secondary_species_names = new string[neqcplx];
-  secondary_species_names[count++] = "OH-";
-  secondary_species_names[count++] = "CO3--";
-  secondary_species_names[count++] = "CO2(aq)";
-  count = 0;
-  secondary_species_Z = new double[neqcplx];
-  secondary_species_Z[count++] = -1.;
-  secondary_species_Z[count++] = -2.;
-  secondary_species_Z[count++] = 0.;
-  count = 0;
-  secondary_species_a0 = new double[neqcplx];
-  secondary_species_a0[count++] = 3.5;
-  secondary_species_a0[count++] = 4.5;
-  secondary_species_a0[count++] = 3.;
-
-  eqcplxspecid = new int*[neqcplx];
-  for (int i=0; i<neqcplx; i++) {
-    eqcplxspecid[i] = new int[3];
-    for (int j=0; j<3; j++)
-      eqcplxspecid[i][j] = 0;
-  }
-  eqcplxstoich = new double*[neqcplx];
-  for (int i=0; i<neqcplx; i++) {
-    eqcplxstoich[i] = new double[3];
-    for (int j=0; j<3; j++)
-      eqcplxstoich[i][j] = 0.;
-  }
-  eqcplxh2oid = new int[neqcplx];
-  h2ostoich = new double[neqcplx];
-  eqcplx_logK = new double[neqcplx];
-  for (int i=0; i<neqcplx; i++) {
-    eqcplxh2oid[i] = -1;
-    h2ostoich[i] = 0.;
-    eqcplx_logK[i] = 0.;
-  }
-
-  // OH-
-  eqcplxspecid[0][0] = 1; // # of components in rxn
-  eqcplxspecid[0][1] = 0; // H+ id
-  eqcplxstoich[0][0] = -1.; // H+ stoich
-  eqcplxh2oid[0] = 1; // id of h2o in rxn
-  h2ostoich[0] = -1.; // stoich of h2o in rxn
-  eqcplx_logK[0] = 13.9951; // equilibrium constant
-  // CO3--
-  eqcplxspecid[1][0] = 2; // # of components in rxn
-  eqcplxspecid[1][1] = 0; // H+ id
-  eqcplxspecid[1][2] = 1; // HCO3- id
-  eqcplxstoich[1][0] = -1.; // H+ stoich
-  eqcplxstoich[1][1] = 1.; // HCO3- stoich
-  eqcplxh2oid[1] = -1; // id of h2o in rxn
-  h2ostoich[1] = 0.; // stoich of h2o in rxn
-  eqcplx_logK[1] = 10.3288; // equilibrium constant
-  // CO2(aq)
-  eqcplxspecid[2][0] = 2; // # of components in rxn
-  eqcplxspecid[2][1] = 0; // H+ id
-  eqcplxspecid[2][2] = 1; // HCO3- id
-  eqcplxstoich[2][0] = 1.; // H+ stoich
-  eqcplxstoich[2][1] = 1.; // HCO3- stoich
-  eqcplxh2oid[2] = 1; // id of h2o in rxn
-  h2ostoich[2] = -1.; // stoich of h2o in rxn
-  eqcplx_logK[2] = -6.3447; // equilibrium constant
-
 }
 
 void Speciation::calculateTotal() {
@@ -274,7 +201,6 @@ int Speciation::speciate(double *target_total) {
     for (int i=0; i<ncomp; i++)
       residual[i] = total[i]-target_total[i];
 
-//#define DEBUG
 #ifdef DEBUG
     cout << "before scale\n";
     J->print();

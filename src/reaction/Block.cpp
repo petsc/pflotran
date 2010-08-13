@@ -90,7 +90,7 @@ void Block::addValues(int ioffset, int joffset, Block *b) {
 void Block::print() {
   for (int i=0; i<size; i++)
     for (int j=0; j<size; j++)
-      cout << i << " " << j << " : " << A[i][j] << endl;
+      cout << i << " " << j << " : " << A[j][i] << endl;
 }
 
 Block::~Block() {
