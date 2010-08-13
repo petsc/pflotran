@@ -15,12 +15,14 @@ public:
   Speciation(int n);
   virtual ~Speciation();
 
+  // class function prototypes
   void calculateAQComplexes();
   void createCarbonateSystem();
   void calculateTotal();
   void calculateActivityCoefficients(int flag);
   int speciate(double *total);
 
+  // static class variables
   static int ncomp;
   static string *primary_species_names;
   static double *primary_species_Z;
@@ -41,8 +43,9 @@ public:
 
   static double speciation_tolerance;
 
-//private:
+private:
 
+  // instance variables
   double *total;
   Block *dtotal;
   double *pri_molal;

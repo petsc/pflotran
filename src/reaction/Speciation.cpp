@@ -1,5 +1,6 @@
 #include "Speciation.h"
 
+  // initialization of static class variables
   int Speciation::ncomp = 0;
 
   int Speciation::neqcplx = 0;
@@ -26,8 +27,8 @@
   // tolerance for speciation convergence
   double Speciation::speciation_tolerance = 1.e-12;
 
+// constructor
 Speciation::Speciation(int n) {
-
   ncomp = n;
   total = new double[ncomp];
   dtotal = new Block(ncomp);
@@ -167,6 +168,7 @@ void Speciation::calculateTotal() {
 
   }
 
+  // scale by density of water to convert total from molality to molarity
   for (int i=0; i<ncomp; i++)
     total[i] *= den_kg_per_L;
   dtotal->scale(den_kg_per_L);
@@ -179,7 +181,7 @@ void Speciation::calculateActivityCoefficients(int flag) {
 
   double I; // ionic strength
 
-  if (flag < 0) {
+  if (flag < 0) {  // activity coefficients = 1.
     for (int i=0; i<ncomp; i++)
       pri_act[i] = 1.;
     for (int i=0; i<neqcplx; i++)
@@ -226,7 +228,7 @@ void Speciation::calculateActivityCoefficients(int flag) {
       }
     }
 
-    // need to add calculation for activity of water
+    // still need to add calculation for activity of water
 
   }
   
@@ -242,25 +244,33 @@ int Speciation::speciate(double *target_total) {
   }
   cout << endl;
 
-    // initialize free-ion concentration s
+  // initialize free-ion concentration s
   for (int i=0; i<ncomp; i++) 
     pri_molal[i] = 1.e-9;
 
+  // allocate arrays for Newton-Raphson
   double *residual = new double[ncomp];
   double *rhs = new double[ncomp];
   double *prev_molal = new double[ncomp];
   double *update = new double[ncomp];
   Block *J = new Block(ncomp);
 
+  // allocate pivoting array for LU
   int *indices = new int[ncomp];
 
   double max_rel_change;
   int num_iterations = 0;
+
   do {
+    
     calculateActivityCoefficients(-1);
     calculateTotal();
+
+    // add derivatives of total with respect to free to Jacobian
     J->zero();
     J->addValues(0,0,dtotal);
+
+    // calculate residual
     for (int i=0; i<ncomp; i++)
       residual[i] = total[i]-target_total[i];
 
@@ -286,7 +296,7 @@ int Speciation::speciate(double *target_total) {
     cout << "after scale\n";
     J->print();
 #endif
-    // for derivatives with respect to ln concentration
+    // for derivatives with respect to ln concentration for log formulation
     for (int i=0; i<ncomp; i++)
       J->scaleColumn(i,pri_molal[i]);
 
@@ -294,10 +304,12 @@ int Speciation::speciate(double *target_total) {
     cout << "before solve\n";
     J->print();
 #endif
+    // LU direct solve
     double D;
     ludcmp(J->getValues(),ncomp,indices,&D);
     lubksb(J->getValues(),ncomp,indices,rhs);
 
+    // calculate update truncating at a maximum of 5 in log space
     for (int i=0; i<ncomp; i++) {
       update[i] = rhs[i] > 0. ? 
         (rhs[i] > 5. ? 5. : rhs[i]) : (rhs[i] < -5. ? -5. : rhs[i]);
@@ -305,6 +317,7 @@ int Speciation::speciate(double *target_total) {
       pri_molal[i] *= exp(-update[i]);
     }
 
+    // calculate maximum relative change in concentration over all species
     max_rel_change = 0.;
     for (int i=0; i<ncomp; i++) {
       double delta = fabs(pri_molal[i]-prev_molal[i])/prev_molal[i];
@@ -318,8 +331,10 @@ int Speciation::speciate(double *target_total) {
 
     num_iterations++;
 
+    // exist if maximum relative change is below tolerance
   } while (max_rel_change > speciation_tolerance);
 
+  // output for testing purposes
   cout << endl;
   cout << "Primary Species ---------------------\n";
   for (int i=0; i<ncomp; i++) {
@@ -336,6 +351,7 @@ int Speciation::speciate(double *target_total) {
   cout << "-------------------------------------\n";
   cout << endl;
 
+  // free up memory
   delete J;
   delete [] residual;
   delete [] rhs;
@@ -346,6 +362,7 @@ int Speciation::speciate(double *target_total) {
   return num_iterations;
 }
 
+// Destructur for freeing instance variables
 Speciation::~Speciation() {
   if (dtotal) delete dtotal;
   if (total) delete [] total;
