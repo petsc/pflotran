@@ -36,8 +36,8 @@ module THC_Aux_module
 
   type, public :: thc_parameter_type
     PetscReal, pointer :: dencpr(:)
-    PetscReal, pointer :: ckdry(:)
-    PetscReal, pointer :: ckwet(:)
+    PetscReal, pointer :: ckdry(:) ! Thermal conductivity (dry)
+    PetscReal, pointer :: ckwet(:) ! Therman conductivity (wet)
     PetscReal, pointer :: sir(:,:)
   end type thc_parameter_type
   
@@ -85,7 +85,8 @@ function THCAuxCreate()
   nullify(aux%aux_vars)
   nullify(aux%aux_vars_bc)
   aux%n_zero_rows = 0
-  nullify(aux%thc_parameter)
+  allocate(aux%thc_parameter)
+  nullify(aux%thc_parameter%sir)
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
 
