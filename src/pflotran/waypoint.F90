@@ -435,6 +435,8 @@ subroutine WaypointDestroy(waypoint)
 
   nullify(waypoint%prev)
   nullify(waypoint%next)
+  if (associated(waypoint%output_option)) &
+    call OutputOptionDestroy(waypoint%output_option)
   deallocate(waypoint)
   nullify(waypoint)
   

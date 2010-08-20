@@ -3043,6 +3043,28 @@ subroutine BasisInit(reaction,option)
     write(option%fid_out,90)
   endif
   
+#if 0
+  ! output for ASCEM reactions
+  if (OptionPrintToFile(option)) then
+    open(unit=86,file='reaction.dat')
+    write(86,'(2i)') reaction%naqcomp, reaction%neqcplx
+    do i = 1, reaction%naqcomp
+      write(86,'(a12,f6.2,f6.2)') reaction%primary_species_names(i), reaction%primary_spec_Z(i), &
+        reaction%primary_spec_a0(i)
+    enddo
+    do i = 1, reaction%neqcplx
+      write(86,'(a32,f6.2,f6.2)') reaction%secondary_species_names(i), reaction%eqcplx_Z(i), &
+        reaction%eqcplx_a0(i)
+      write(86,'(40i4)') reaction%eqcplxspecid(:,i)
+      write(86,'(40f6.2)') reaction%eqcplxstoich(:,i)
+      write(86,'(i)') reaction%eqcplxh2oid(i)
+      write(86,'(f6.2)') reaction%eqcplxh2ostoich(i)
+      write(86,'(f10.5)') reaction%eqcplx_logK(i)
+    enddo
+    close(86)
+  endif
+#endif  
+  
   if (allocated(new_basis)) deallocate(new_basis)
   if (allocated(old_basis)) deallocate(old_basis)
   if (allocated(transformation)) deallocate(transformation)

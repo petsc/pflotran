@@ -366,7 +366,7 @@ module co2_sw_module
     if(icross == 1) print *,'co2_sw: cross sat line'
 
     if(iindex > ntab_p .or. iindex < 0.d0 .or. jindex < 0.d0 .or. jindex > ntab_t) then
-      print  *,' Out of Table Bounds: ', 'p=',x1,' t=',x2,' i=',iindex,' j=',jindex
+      print  *,' Out of Table Bounds (interp): ', 'p=',x1,' t=',x2,' i=',iindex,' j=',jindex
       isucc=0
     endif
 

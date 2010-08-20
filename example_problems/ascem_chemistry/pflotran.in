@@ -1,0 +1,633 @@
+:Description: 3D test problem for diffusion of tracer and reaction of calcite in a cubic domain
+
+:=========================== chemistry ========================================
+CHEMISTRY
+PRIMARY_SPECIES
+Na+
+Ca++
+Zn++
+Fe++
+K+
+Al+++
+Mn++
+Mg++
+H+
+NH4+
+:NH3(aq)
+NO3-
+NO2-
+HCO3-
+Cl-
+SO4--
+HPO4--
+F-
+SiO2(aq)
+Cu++
+UO2++
+O2(aq)
+Tracer
+/
+SECONDARY_SPECIES
+OH-
+CO3--
+CO2(aq)
+CH4(aq)
+:
+NaHCO3(aq)
+NaCl(aq)
+NaF(aq)
+NH4SO4-
+NaAlO2(aq)
+NaHP2O7--
+NaHPO4-
+NaHSiO3(aq)
+NaNO3(aq)
+NaNO2(aq)
+NaOH(aq)
+NaSO4-
+:
+CaCO3(aq)
+CaHCO3+
+MgCO3(aq)
+MgHCO3+
+:
+KCl(aq)
+KHPO4-
+KHSO4(aq)
+KOH(aq)
+KP2O7---
+KSO4-
+:
+:manganese
+Mn+++
+MnO4--
+Mn(NO3)2(aq)
+Mn(OH)2(aq)
+Mn(OH)3-
+Mn(OH)4--
+Mn2(OH)3+
+Mn2OH+++
+MnCO3(aq)
+MnCl+
+MnCl3-
+MnF+
+MnH2PO4+
+MnHCO3+
+MnHPO4(aq)
+MnNO3+
+MnO4-
+MnOH+
+MnPO4-
+MnSO4(aq)
+:
+:iron
+Fe+++
+ Fe(SO4)2-
+ Fe2(OH)2++++
+ Fe3(OH)4(5+)
+ Fe(OH)2(aq)
+ Fe(OH)2+
+ Fe(OH)3(aq)
+ Fe(OH)3-
+ Fe(OH)4-
+ Fe(OH)4--
+ FeCO3(aq)
+ FeCO3+
+ FeCl+
+ FeCl++
+ FeCl2(aq)
+ FeCl2+
+ FeCl4-
+ FeCl4--
+ FeF+
+ FeF++
+ FeF2+
+ FeH2PO4+
+ FeH2PO4++
+ FeHCO3+
+ FeHPO4(aq)
+ FeHPO4+
+ FeNO3++
+ FeOH+
+ FeOH++
+ FePO4-
+ FeSO4(aq)
+ FeSO4+
+:
+AlOH++
+Al(OH)2+
+Al(OH)3(aq)
+Al(OH)4-
+:
+HSO4-
+H2SO4(aq)
+HCl(aq)
+:HN3(aq)
+HNO2(aq)
+HNO3(aq)
+HO2-
+:
+NH3(aq)
+:NH4+
+:NO3-
+:NO2-
+N2(aq)
+N3-
+:
+HS-
+H2S(aq)
+:
+:copper
+Cu+
+Cu(CO3)2--
+:Cu(NO2)2(aq)
+CuCO3(OH)2--
+CuCO3(aq)
+CuCl+
+CuCl2(aq)
+CuCl2-
+CuCl3--
+CuCl4--
+CuF+
+CuH2PO4+
+CuHPO4(aq)
+:CuNH3++
+:CuNO2+
+CuO2--
+CuOH+
+CuPO4-
+CuSO4(aq)
+:O2(aq)
+:uranium species
+U+++
+U++++
+UO2+
+:(UO2)3(CO3)6(6-)
+:
+UO2OH+
+UO2(OH)2(aq)
+UO2(OH)3-
+UO2(OH)4--
+(UO2)2OH+++
+(UO2)2(OH)2++
+(UO2)3(OH)4++
+(UO2)3(OH)5+
+(UO2)3(OH)7-
+(UO2)4(OH)7+
+:
+UO2CO3(aq)
+UO2(CO3)2--
+UO2(CO3)3----
+(UO2)2CO3(OH)3-
+:
+Ca2UO2(CO3)3(aq)
+CaUO2(CO3)3--
+:
+UO2NO3+
+UO2Cl+
+UO2Cl2(aq)
+UO2SO4(aq)
+UO2(SO4)2--
+:
+UO2F+
+UO2F2(aq)
+UO2F3-
+UO2F4--
+:
+:25 C
+UO2(H2PO4)(H3PO4)+
+UO2(H2PO4)2(aq)
+UO2HPO4(aq)
+UO2H2PO4+
+UO2H3PO4++
+UO2PO4-
+:
+:zinc
+Zn(N3)2(aq)
+Zn(NH3)++
+Zn(NH3)2++
+Zn(NH3)3++
+Zn(NH3)4++
+Zn(OH)2(aq)
+Zn(OH)3-
+Zn(OH)4--
+Zn(OH)Cl(aq)
+ZnCl+
+ZnCl2(aq)
+ZnCl3-
+ZnCl4--
+:ZnClO4+
+ZnF+
+ZnH2PO4+
+ZnHCO3+
+ZnHPO4(aq)
+ZnN3+
+ZnOH+
+ZnPO4-
+ZnSO4(aq)
+/
+GAS_SPECIES
+CO2(g)
+O2(g)
+N2(g)
+H2(g)
+NH3(g)
+NO(g)
+NO2(g)
+:CH4(g)
+CO(g)
+/
+MINERALS
+Quartz
+Chalcedony
+SiO2(am)
+Calcite
+Dolomite
+Magnesite
+Brucite
+Nesquehonite
+Gypsum
+Goethite
+Ferrihydrite
+Hematite
+Magnetite
+Pyrite
+K-Feldspar
+Albite
+Kaolinite
+Anorthite
+Gibbsite
+Analcime
+Paragonite
+ Chalcanthite
+ Brochantite
+ Chalcocite
+ Antlerite
+ Tenorite
+ Malachite
+ Fluorapatite
+ Fluorite
+ Hydroxylapatite
+ Torbernite
+Rutherfordine
+Schoepite
+UO2(OH)2(beta)
+UO2CO3
+UO2(PO3)2
+(UO2)3(PO4)2
+(UO2)3(PO4)2.4H2O
+CaUO4
+ Boltwoodite
+ Boltwoodite-Na
+ Boltwoodite_PNNL
+ Boltwoodite-Na_PNNL
+ Soddyite
+ Soddyite_PNNL
+ Uraninite
+ Uranophane
+ Uranophane_PNNL
+ Weeksite
+ Weeksite_PNNL
+ Weeksite-Na_PNNL
+ UPO5
+ UO2SO4
+ UOF4
+ UO3.2H2O
+ UO3.0.9H2O(alpha)
+ UO3(gamma)
+ UO3(beta)
+ UO3(alpha)
+ Bassetite
+ Saleeite
+ Schwertmannite
+ Siderite
+ Jurbanite
+ Alum-K
+ Alunite
+ Birnessite
+ Bixbyite
+ Hausmannite
+ Manganite
+ Manganosite
+ Mn(OH)2(am)
+ Mn
+ Hydrozincite
+ Hopeite
+ Smithsonite
+ Sphalerite
+ Wurtzite
+ Zincite
+ Zn
+ Zn2SiO4
+/
+MINERAL_KINETICS
+Calcite
+RATE_CONSTANT 1.e-8 
+/
+/
+:DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/savannah_river.dat
+:DATABASE /Users/lichtner/flotran/database/savannah_river.dat
+DATABASE ./savannah_river.dat
+LOG_FORMULATION
+:ACTIVITY_COEFFICIENTS
+MOLAL
+/
+:=========================== solver options ===================================
+TIMESTEPPER
+TS_ACCELERATION 8
+MAX_STEPS -1
+/
+
+NEWTON_SOLVER TRANSPORT
+:RTOL 1.d-4
+:ATOL 1.d-4
+:STOL 1.e-60
+:DTOL 1.e4
+:ITOL_UPDATE 1.d-4
+NO_INFINITY_NORM
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
+
+LINEAR_SOLVER TRANSPORT
+:KSP_TYPE GMRES
+:PC_TYPE NONE
+:KSP_TYPE PREONLY
+:PC_TYPE LU
+:SOLVER GMRES
+/
+
+:=========================== discretization ===================================
+GRID
+TYPE structured
+ORIGIN 0.d0 0.d0 0.d0
+NXYZ 32 32 32
+BOUNDS
+0.d0 1.d0
+0.d0 1.d0
+0.d0 1.d0
+/
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY 
+DIFFUSION_COEFFICIENT 1.d-9
+/
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+ID 1
+POROSITY 0.25d0
+TORTUOSITY 1.d0
+SATURATION_FUNCTION default
+PERMEABILITY
+PERM_X 1.d-12
+PERM_Y 1.d-12
+PERM_Z 1.d-12
+/
+/
+
+MATERIAL_PROPERTY soil2
+ID 2
+POROSITY 0.25d0
+TORTUOSITY 1.d0
+SATURATION_FUNCTION default
+PERMEABILITY
+PERM_X 5.d-13
+PERM_Y 5.d-13
+PERM_Z 5.d-13
+/
+/
+
+:=========================== saturation functions =============================
+SATURATION_FUNCTION default
+/
+
+:=========================== output options ===================================
+OUTPUT
+PERIODIC TIME 1.d0 y
+FORMAT TECPLOT BLOCK
+/
+
+:=========================== times ============================================
+TIME
+FINAL_TIME 1.d0 y
+INITIAL_TIMESTEP_SIZE 1.d-6 y
+MAXIMUM_TIMESTEP_SIZE 1.d-1 y
+/
+
+:=========================== regions ==========================================
+REGION all
+COORDINATES
+0.d0 0.d0 0.d0
+1.d0 1.d0 1.d0
+/
+END
+
+REGION top_layer
+COORDINATES
+0.d0 0.d0 0.6d0
+1.d0 1.d0 1.d0
+/
+END
+
+REGION bottom_layer
+COORDINATES
+0.d0 0.d0 0.d0
+1.d0 1.d0 0.6d0
+/
+END
+
+REGION west
+FACE WEST
+COORDINATES
+0.d0 0.d0 0.d0
+0.d0 1.d0 1.d0
+/
+END
+
+REGION east
+FACE EAST
+COORDINATES
+1.d0 0.d0 0.d0
+1.d0 1.d0 1.d0
+/
+END
+
+REGION north
+FACE NORTH
+COORDINATES
+0.d0 1.d0 0.d0
+1.d0 1.d0 1.d0
+/
+END
+
+REGION south
+FACE SOUTH
+COORDINATES
+0.d0 0.d0 0.d0
+1.d0 0.d0 1.d0
+/
+END
+
+REGION top
+FACE TOP
+COORDINATES
+0.d0 0.d0 1.d0
+1.d0 1.d0 1.d0
+/
+END
+
+REGION bottom
+FACE BOTTOM
+COORDINATES
+0.d0 0.d0 0.d0
+1.d0 1.d0 0.d0
+/
+END
+
+REGION center
+COORDINATES
+0.45d0 0.45d0 0.45d0
+0.55d0 0.55d0 0.55d0
+/
+END
+
+:=========================== transport conditions =============================
+TRANSPORT_CONDITION initial
+TYPE zero_gradient
+CONSTRAINT_LIST
+0.d0 initial
+/
+END
+
+TRANSPORT_CONDITION initial_pulse
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 pulse
+/
+/
+
+:=========================== constraints ======================================
+CONSTRAINT initial
+CONCENTRATIONS
+Na+    0.0343631  T
+Ca++   1.2475e-5  T
+Zn++   3.04403e-6 T
+Fe++   3.04403e-5 T
+K+     1.71363e-5 T
+Al+++  2.89087e-5 T
+Mn++   2.91237e-7 T
+Mg++   2.46863e-6 T
+H+     2.93      pH
+:NH3(aq) 0.0196759  T
+NH4+   0.0013305  T
+NO3-   0.0196759  T
+NO2-   4.34731e-5 T
+HCO3-  0.002183   T CO2(g)
+Cl-    3.38476e-5 T
+SO4--  4.78879e-5 T
+HPO4-- 7.10279e-5
+F-     7.8954e-5  T
+SiO2(aq) 2.52799e-4
+Cu++   1.57366e-7 T
+UO2++  3.54135e-5 T
+:O2(aq) 8.00e-23   G O2(g)
+:O2(aq) 1.e-65     G O2(g)
+O2(aq) 2.e-1      G O2(g)
+:O2(aq) 1.e-65     M Pyrite
+Tracer 1.d0       T
+/
+MINERALS
+Calcite        0.75  1.
+/
+/
+
+CONSTRAINT pulse
+CONCENTRATIONS
+Na+    0.0343631  T
+Ca++   1.2475e-5  T
+Zn++   3.04403e-6 T
+Fe++   3.04403e-5 T
+K+     1.71363e-5 T
+Al+++  2.89087e-5 T
+Mn++   2.91237e-7 T
+Mg++   2.46863e-6 T
+H+     2.93      pH
+:NH3(aq) 0.0196759  T
+NH4+   0.0196759  T
+NO3-   0.0196759  T
+NO2-   4.34731e-5 T
+HCO3-  0.002183   T CO2(g)
+Cl-    3.38476e-5 T
+SO4--  4.78879e-5 T
+HPO4-- 7.10279e-5
+F-     7.8954e-5  T
+SiO2(aq) 2.52799e-4
+Cu++   1.57366e-7 T
+UO2++  3.54135e-5 T
+O2(aq) 0.2        G O2(g)
+Tracer 1.d0       T
+/
+/
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+TRANSPORT_CONDITION initial
+REGION all
+END
+
+: initial pulse condition
+INITIAL_CONDITION
+TRANSPORT_CONDITION initial_pulse
+REGION center
+END
+
+: west boundary condition
+BOUNDARY_CONDITION west
+TRANSPORT_CONDITION initial
+REGION west
+END
+
+: east boundary condition
+BOUNDARY_CONDITION east
+TRANSPORT_CONDITION initial
+REGION east
+END
+
+: north boundary condition
+BOUNDARY_CONDITION north
+TRANSPORT_CONDITION initial
+REGION north
+END
+
+: south boundary condition
+BOUNDARY_CONDITION south
+TRANSPORT_CONDITION initial
+REGION south
+END
+
+: top boundary condition
+BOUNDARY_CONDITION top
+TRANSPORT_CONDITION initial
+REGION top
+END
+
+: bottom boundary condition
+BOUNDARY_CONDITION bottom
+TRANSPORT_CONDITION initial
+REGION bottom
+END
+
+:=========================== stratigraphy couplers ============================
+STRATA
+REGION top_layer
+MATERIAL soil1
+END
+
+STRATA
+REGION bottom_layer
+MATERIAL soil1
+END
+

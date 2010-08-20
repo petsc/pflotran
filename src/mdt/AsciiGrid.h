@@ -25,6 +25,9 @@ public:
   void readAsciiGridFile(char *filename);
   void computeCoordinates();
   PetscReal computeElevationFromCoordinate(PetscReal x, PetscReal y);
+  void printRegion(PetscReal origx, PetscReal origy,
+                   PetscReal lenx, PetscReal leny);
+
   void printInfo();
 
   static PetscInt nasciigrids;

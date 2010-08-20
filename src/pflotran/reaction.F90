@@ -1394,11 +1394,11 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             Jac(icomp,comp_id) = reaction%eqgasstoich(jcomp,igas)/ &
               rt_auxvar%pri_molal(comp_id)
 
-#ifdef CHUAN_CO2
-            print *,'Gas CO2 constraint Jac,',igas, icomp, comp_id, &
-              reaction%eqgasstoich(jcomp,igas),&
-              Jac(icomp,comp_id), rt_auxvar%pri_molal(comp_id), lnQK
-#endif
+!#ifdef CHUAN_CO2
+!            print *,'Gas CO2 constraint Jac,',igas, icomp, comp_id, &
+!              reaction%eqgasstoich(jcomp,igas),&
+!              Jac(icomp,comp_id), rt_auxvar%pri_molal(comp_id), lnQK
+!#endif
           enddo
 
 #ifdef CHUAN_CO2        
@@ -1408,8 +1408,13 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
          
           ! compute secondary species concentration
           if(abs(reaction%species_idx%co2_gas_id) == igas) then
-           pres = global_auxvar%pres(2)
-!           pres = conc(icomp)*1.D5
+          
+!           pres = global_auxvar%pres(2)
+            pres = conc(icomp)*1.D5
+            global_auxvar%pres(2) = pres
+
+!           print *,'reaction-SC: ',icomp,igas,pres,conc(icomp)*1.d5
+            
             tc = global_auxvar%temp(1)
 
             call PSAT(tc, sat_pressure, ierr)
@@ -1419,9 +1424,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
             
 !            pres = conc(icomp)*1.D5 + sat_pressure
             yco2 = pco2/pres
-                        
-           call co2_span_wagner(pres*1D-6,tc+273.15D0,dg,dddt,dddp,fg, &
-             dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
+             
+            call co2_span_wagner(pres*1D-6,tc+273.15D0,dg,dddt,dddp,fg, &
+              dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
 
 !            call co2_span_wagner(pco2*1D-6,tc+273.15D0,dg,dddt,dddp,fg, &
 !              dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
@@ -1589,6 +1594,10 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          global_auxvar%den_kg(option%liquid_phase)/ &
                                          1000.d0
 
+#if 0
+  call RCalculateCompression(global_auxvar,rt_auxvar,reaction,option)
+#endif
+
 ! this is performed above
 !  if (associated(colloid_constraint%colloids)) then                        
 !    colloid_constraint%colloids%basis_conc_mob = rt_auxvar%colloid%conc_mob* &
@@ -1663,11 +1672,21 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
 
   rt_auxvar => constraint_coupler%rt_auxvar
   global_auxvar => constraint_coupler%global_auxvar
-  
-  global_auxvar%den_kg(iphase) = option%reference_water_density
-  global_auxvar%temp(1) = option%reference_temperature
-  global_auxvar%sat(iphase) = option%reference_saturation
-  bulk_vol_to_fluid_vol = option%reference_porosity*option%reference_saturation*1000.d0
+
+  select case(option%iflowmode)
+    case(FLASH2_MODE,MPH_MODE,IMS_MODE)
+    case(NULL_MODE)
+      global_auxvar%den_kg(iphase) = option%reference_water_density
+      global_auxvar%temp(1) = option%reference_temperature
+      global_auxvar%sat(iphase) = option%reference_saturation
+    case(RICHARDS_MODE)
+      global_auxvar%temp(1) = option%reference_temperature
+  end select
+        
+!  global_auxvar%den_kg(iphase) = option%reference_water_density
+!  global_auxvar%temp(1) = option%reference_temperature
+!  global_auxvar%sat(iphase) = option%reference_saturation
+  bulk_vol_to_fluid_vol = option%reference_porosity*global_auxvar%sat(iphase)*1000.d0
 
 ! compute mass fraction of H2O
   if (reaction%use_full_geochemistry) then
@@ -1709,16 +1728,26 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
 
 #ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal) then
-    call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
-                                 global_auxvar%temp(iphase),reaction%neqcplx)
-    call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
-                                 global_auxvar%temp(iphase),reaction%ngas)
-    call ReactionInterpolateLogK(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
-                                 global_auxvar%temp(iphase),reaction%neqsrfcplx)
-    call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
-                                 global_auxvar%temp(iphase),reaction%nkinmnrl)
-    call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
-                                 global_auxvar%temp(iphase),reaction%nmnrl)
+    if (associated(reaction%eqcplx_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
+                                   global_auxvar%temp(iphase),reaction%neqcplx)
+    endif
+    if (associated(reaction%eqgas_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
+                                   global_auxvar%temp(iphase),reaction%ngas)
+    endif
+    if (associated(reaction%eqsrfcplx_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
+                                   global_auxvar%temp(iphase),reaction%neqsrfcplx)
+    endif
+    if (associated(reaction%kinmnrl_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
+                                   global_auxvar%temp(iphase),reaction%nkinmnrl)
+    endif
+    if (associated(reaction%mnrl_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
+                                   global_auxvar%temp(iphase),reaction%nmnrl)
+    endif
   endif
 #endif  
 
@@ -2634,7 +2663,7 @@ end subroutine RReactionDerivative
                                
 ! ************************************************************************** !
 !
-! RActivityCoefficients: Computes activity coefficients of aqueous CO2
+! CO2AqActCoeff: Computes activity coefficients of aqueous CO2
 ! author: Chuan Lu
 ! date: 07/13/09
 !
@@ -4841,5 +4870,85 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
 #endif
 
 end subroutine RTAccumulationDerivative
+
+! ************************************************************************** !
+!
+! RCalculateCompression: Calculates the compression for the Jacobian block 
+! author: Glenn Hammond
+! date: 07/12/10
+!
+! ************************************************************************** !
+subroutine RCalculateCompression(global_auxvar,rt_auxvar,reaction,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(reaction_type), pointer :: reaction
+  type(option_type) :: option
+
+  PetscInt :: dfill(reaction%ncomp,reaction%ncomp)
+  PetscInt :: ofill(reaction%ncomp,reaction%ncomp)
+  PetscReal :: J(reaction%ncomp,reaction%ncomp)
+  PetscReal :: residual(reaction%ncomp)
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  
+  PetscInt :: i, jj
+  PetscReal :: vol = 1.d0
+  PetscReal :: por = 0.25d0
+  PetscReal :: sum
+  
+  dfill = 0
+  ofill = 0
+  J = 0.d0
+  residual = 0.d0
+
+  call RTAuxVarCompute(rt_auxvar,global_auxvar,reaction,option)
+  call RTAccumulationDerivative(rt_auxvar,global_auxvar, &
+                                por,vol,reaction,option,J)
+    
+  do jj = 1, reaction%ncomp
+    do i = 1, reaction%ncomp
+      if (dabs(J(i,jj)) > 1.d-20) ofill(i,jj) = 1
+    enddo
+  enddo
+
+  if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
+    call RAccumulationSorbDerivative(rt_auxvar,global_auxvar,vol, &
+                                     reaction,option,J)
+  endif
+
+  call RReaction(residual,J,PETSC_TRUE,rt_auxvar,global_auxvar,vol, &
+                 reaction,option)
+ 
+  do jj = 1, reaction%ncomp
+    do i = 1, reaction%ncomp
+      if (dabs(J(i,jj)) > 1.d-20) dfill(i,jj) = 1
+    enddo
+  enddo
+
+  sum = 0.d0
+  do jj = 1, reaction%ncomp
+    do i = 1, reaction%ncomp
+      if (dfill(i,jj) == 1) sum = sum + 1.d0
+    enddo
+  enddo
+  write(option%io_buffer,'(''Diagonal Fill (%): '',f6.2)') &
+    sum / (reaction%ncomp*reaction%ncomp) * 100.d0
+  call printMsg(option)
+ 
+ 
+  sum = 0.d0
+  do jj = 1, reaction%ncomp
+    do i = 1, reaction%ncomp
+      if (ofill(i,jj) == 1) sum = sum + 1.d0
+    enddo
+  enddo
+  write(option%io_buffer,'(''Off-Diagonal Fill (%): '',f6.2)') &
+    sum / (reaction%ncomp*reaction%ncomp) * 100.d0
+  call printMsg(option)
+
+end subroutine RCalculateCompression
 
 end module Reaction_module

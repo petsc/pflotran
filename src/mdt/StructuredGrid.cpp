@@ -276,6 +276,16 @@ void StructuredGrid::computeCoordinates() {
 
 }
 
+void StructuredGrid::computeCoordinate(PetscReal *x, PetscReal*y) {
+
+  PetscReal distx = *x - global_origin[0];
+  PetscReal disty = *y - global_origin[1];
+  *x = global_origin[0] + distx*cos(rotationZradians) - 
+                          disty*sin(rotationZradians);
+  *y = global_origin[1] + distx*sin(rotationZradians) + 
+                          disty*cos(rotationZradians);
+}
+
 #if 0
 void StructuredGrid::mapBoundaryConnection(PetscInt istart, PetscInt iend, PetscInt jstart,
                                           PetscInt jend, PetscInt kstart, PetscInt kend,

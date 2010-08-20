@@ -1,6 +1,7 @@
 module THC_module
 
   use THC_Aux_module
+  use Global_Aux_module
   
   implicit none
   
@@ -24,11 +25,11 @@ module THC_module
 
   public THCResidual,THCJacobian, &
          THCUpdateFixedAccumulation,THCTimeCut,&
-         THCNumericalJacobianTest, &
+         THCSetup, THCNumericalJacobianTest, &
          THCMaxChange, THCUpdateSolution, &
          THCGetTecplotHeader, THCInitializeTimestep, &
-         THCSetup, THCResidualToMass, &
-         THCUpdateAuxVars
+         THCComputeMassBalance, THCResidualToMass, &
+         THCUpdateAuxVars, THCDestroy
 
   PetscInt, parameter :: jh2o = 1
 
@@ -59,6 +60,7 @@ subroutine THCTimeCut(realization)
   field => realization%field
  
   call VecCopy(field%flow_yy,field%flow_xx,ierr)
+  call THCInitializeTimestep(realization)
  
 end subroutine THCTimeCut
 
@@ -111,7 +113,6 @@ subroutine THCSetupPatch(realization)
   use Grid_module
   use Region_module
   use Coupler_module
-  use Condition_module
   use Connection_module
  
   implicit none
@@ -125,17 +126,37 @@ subroutine THCSetupPatch(realization)
   type(thc_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
 
   PetscInt :: ghosted_id, iconn, sum_connection
-  
+  PetscInt :: i 
   option => realization%option
+!  write(*,*)'Checkpoint'
   patch => realization%patch
   grid => patch%grid
     
   patch%aux%THC => THCAuxCreate()
+!  write(*,*)'Checkpoint1 nphase = ', option%nphase, 'satfunc = ', size(realization%saturation_function_array)
 ! option%io_buffer = 'Before THC can be run, the thc_parameter object ' // &
 !                    'must be initialized with the proper variables ' // &
 !                    'THCAuxCreate() is called anywhere.'
 ! call printErrMsg(option)
-    
+  allocate(patch%aux%THC%thc_parameter%sir(option%nphase, &
+                                  size(realization%saturation_function_array)))
+  
+  !Jitu, 08/04/2010: Check these allocations. Currently assumes only single value in the array	
+  allocate(patch%aux%THC%thc_parameter%dencpr(1))
+  allocate(patch%aux%THC%thc_parameter%ckwet(1))
+  allocate(patch%aux%THC%thc_parameter%ckdry(1))
+  
+  !Copy the values in the thc_parameter from the global realization 
+  patch%aux%THC%thc_parameter%dencpr(1) = realization%material_properties%rock_density  
+  patch%aux%THC%thc_parameter%ckwet(1) = realization%material_properties%thermal_conductivity_wet  
+  patch%aux%THC%thc_parameter%ckdry(1) = realization%material_properties%thermal_conductivity_dry  
+!  write(*,*)'Checkpoint2'
+  do i = 1, size(realization%saturation_function_array)
+    patch%aux%THC%thc_parameter%sir(:,realization%saturation_function_array(i)%ptr%id) = &
+      realization%saturation_function_array(i)%ptr%Sr(:)
+  enddo
+
+!  write(*,*)'Checkpoint3'
   ! allocate aux_var data structures for all grid cells
   allocate(aux_vars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
@@ -144,12 +165,14 @@ subroutine THCSetupPatch(realization)
     aux_vars(ghosted_id)%diff(1:option%nflowspec) = &
       realization%fluid_properties%diffusion_coefficient
   enddo
+!  write(*,*)'Checkpoint4'
   patch%aux%THC%aux_vars => aux_vars
   patch%aux%THC%num_aux = grid%ngmax
   
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them
   boundary_condition => patch%boundary_conditions%first
+!  write(*,*)'Checkpoint5'
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -157,14 +180,18 @@ subroutine THCSetupPatch(realization)
                      boundary_condition%connection_set%num_connections
     boundary_condition => boundary_condition%next
   enddo
-  allocate(aux_vars_bc(sum_connection))
-  do iconn = 1, sum_connection
-    call THCAuxVarInit(aux_vars_bc(iconn),option)
-    ! currently, hardwire to first fluid
-    aux_vars_bc(iconn)%diff(1:option%nflowspec) = &
-      realization%fluid_properties%diffusion_coefficient
-  enddo
-  patch%aux%THC%aux_vars_bc => aux_vars_bc
+!  write(*,*)'Checkpoint6'
+!  write(*,*)'Sum_connection', sum_connection
+  if (sum_connection > 0) then 
+    allocate(aux_vars_bc(sum_connection))
+    do iconn = 1, sum_connection
+      call THCAuxVarInit(aux_vars_bc(iconn),option)
+      ! currently, hardwire to first fluid
+      aux_vars_bc(iconn)%diff(1:option%nflowspec) = &
+        realization%fluid_properties%diffusion_coefficient
+    enddo
+    patch%aux%THC%aux_vars_bc => aux_vars_bc
+  endif
   patch%aux%THC%num_aux_bc = sum_connection
 
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
@@ -172,6 +199,106 @@ subroutine THCSetupPatch(realization)
   call THCCreateZeroArray(patch,option)
 
 end subroutine THCSetupPatch
+
+
+! ************************************************************************** !
+!
+! THComputeMassBalance: 
+!                        
+! author: Jitendra Kumar 
+! date: 07/21/2010
+! Adapted from RichardsComputeMassBalance: need to be checked
+! ************************************************************************** !
+subroutine THCComputeMassBalance(realization, mass_balance)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+
+  type(realization_type) :: realization
+  PetscReal :: mass_balance(realization%option%nphase)
+   
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+
+  mass_balance = 0.d0
+
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call THCComputeMassBalancePatch(realization, mass_balance)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine THCComputeMassBalance    
+
+! ************************************************************************** !
+!
+! THComputeMassBalancePatch: 
+!                        
+! author: Jitendra Kumar 
+! date: 07/21/2010
+! Adapted from RichardsComputeMassBalancePatch: need to be checked
+! ************************************************************************** !
+subroutine THCComputeMassBalancePatch(realization,mass_balance)
+ 
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Field_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+  PetscReal :: mass_balance(realization%option%nphase)
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(field_type), pointer :: field
+  type(grid_type), pointer :: grid
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
+  PetscReal, pointer :: volume_p(:), porosity_loc_p(:)
+
+  PetscErrorCode :: ierr
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+  field => realization%field
+
+  global_aux_vars => patch%aux%Global%aux_vars
+
+  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
+  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
+    ! mass = volume*saturation*density
+    mass_balance = mass_balance + &
+      global_aux_vars(ghosted_id)%den_kg* &
+      global_aux_vars(ghosted_id)%sat* &
+      porosity_loc_p(ghosted_id)*volume_p(local_id)
+  enddo
+
+  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  
+end subroutine THCComputeMassBalancePatch
+
+
 
 ! ************************************************************************** !
 !
@@ -219,8 +346,8 @@ subroutine THCUpdateAuxVarsPatch(realization)
 
   use Realization_module
   use Patch_module
-  use Field_module
   use Option_module
+  use Field_module
   use Grid_module
   use Coupler_module
   use Connection_module
@@ -237,6 +364,7 @@ subroutine THCUpdateAuxVarsPatch(realization)
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
   type(thc_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase
@@ -252,6 +380,8 @@ subroutine THCUpdateAuxVarsPatch(realization)
   
   aux_vars => patch%aux%THC%aux_vars
   aux_vars_bc => patch%aux%THC%aux_vars_bc
+  global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
   
   call GridVecGetArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
@@ -261,6 +391,7 @@ subroutine THCUpdateAuxVarsPatch(realization)
 
   do ghosted_id = 1, grid%ngmax
     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
+
     !geh - Ignore inactive cells with inactive materials
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
@@ -425,6 +556,7 @@ subroutine THCUpdateFixedAccumPatch(realization)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(thc_auxvar_type), pointer :: aux_vars(:)
   type(thc_parameter_type), pointer :: thc_parameter
 
@@ -442,6 +574,7 @@ subroutine THCUpdateFixedAccumPatch(realization)
 
   thc_parameter => patch%aux%THC%thc_parameter
   aux_vars => patch%aux%THC%aux_vars
+  global_aux_vars => patch%aux%Global%aux_vars
     
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
@@ -460,6 +593,7 @@ subroutine THCUpdateFixedAccumPatch(realization)
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
+!    write(*,*) 'Test THCUpdateAccumPatch'
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
     iphase = int(iphase_loc_p(ghosted_id))
@@ -602,8 +736,9 @@ subroutine THCAccumulationDerivative(aux_var,por,vol,rock_dencpr,option, &
   implicit none
 
   type(thc_auxvar_type) :: aux_var
+  type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
-  PetscReal vol,por,rock_dencpr
+  PetscReal ::vol,por,rock_dencpr
   type(saturation_function_type) :: sat_func
   PetscReal :: J(option%nflowdof,option%nflowdof)
      
@@ -687,28 +822,38 @@ subroutine THCAccumulation(aux_var,por,vol,rock_dencpr,option,Res)
 
   type(thc_auxvar_type) :: aux_var
   type(option_type) :: option
-  PetscReal Res(1:option%nflowdof) 
-  PetscReal vol,por,rock_dencpr
+  PetscReal :: Res(1:option%nflowdof) 
+  PetscReal :: vol,por,rock_dencpr
      
   PetscInt :: ispec 
   PetscReal :: porXvol, mol(option%nflowspec), eng
   
  ! if (present(ireac)) iireac=ireac
 
+! TechNotes, THC Mode: First term of Equation 8
   porXvol = por*vol
-      
-  mol=0.d0
   do ispec=1, option%nflowspec  
+    mol(ispec)=0.d0
     mol(ispec) = mol(ispec) + aux_var%sat * &
                               aux_var%den * &
                               aux_var%xmol(ispec)
+    mol(ispec) = mol(ispec) * porXvol
+!  write(*,*)'nflowspec = ', option%nflowspec, ispec      
   enddo
-  mol = mol * porXvol
+!  write(*,*) 'Test thcaccum 1' 
+
+!  write(*,*) 'sat den u prxvol ', aux_var%sat, &
+!    aux_var%den, aux_var%u, porXvol 
+!  write(*,*) 'por ', por
+!  write(*,*) 'vol ', vol
+!  write(*,*) 'rrdencpr ', rock_dencpr
+!  write(*,*) 'temp ', aux_var%temp 
+! TechNotes, THC Mode: First term of Equation 9
   eng = aux_var%sat * &
         aux_var%den * &
         aux_var%u * &
         porXvol + (1.d0 - por)* vol * rock_dencpr * aux_var%temp 
- 
+!  write(*,*) 'Test thcaccum 2' 
 ! Reaction terms here
 !  if (option%run_coupled .and. iireac>0) then
 !H2O
@@ -1540,6 +1685,16 @@ subroutine THCResidual(snes,xx,r,realization,ierr)
 #include "finclude/petscvec.h90"
        Vec :: vec
      end subroutine samrpetscobjectstateincrease
+
+subroutine SAMRCoarsenFaceFluxes(p_application, vec, ierr)
+       implicit none
+#include "finclude/petscsysdef.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+       PetscFortranAddr :: p_application
+       Vec :: vec
+       PetscInt :: ierr
+     end subroutine SAMRCoarsenFaceFluxes
      
   end interface
 
@@ -1553,9 +1708,11 @@ subroutine THCResidual(snes,xx,r,realization,ierr)
   type(field_type), pointer :: field
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
+  type(option_type), pointer :: option
   
   field => realization%field
   discretization => realization%discretization
+  option => realization%option
   
   ! Communication -----------------------------------------
   ! These 3 must be called before THCUpdateAuxVars()
@@ -1568,6 +1725,44 @@ subroutine THCResidual(snes,xx,r,realization,ierr)
   call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%ithrm_loc,field%ithrm_loc,ONEDOF)
   
+  ! Compute internal and boundary flux terms
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call THCResidualPatch(snes,xx,r,realization,ierr)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+  ! now coarsen all face fluxes in case we are using SAMRAI to 
+  ! ensure consistent fluxes at coarse-fine interfaces
+  ! RTM: This may not be the correct way to do things.  I think the heat 
+  ! flux might need to be treated differently?  Ask Bobby.
+  if(option%use_samr) then
+     call SAMRCoarsenFaceFluxes(discretization%amrgrid%p_application, field%flow_face_fluxes, ierr)
+
+     cur_level => realization%level_list%first
+     do
+        if (.not.associated(cur_level)) exit
+        cur_patch => cur_level%patch_list%first
+        do
+           if (.not.associated(cur_patch)) exit
+           realization%patch => cur_patch
+           call THCResidualFluxContribPatch(r,realization,ierr)
+           ! IMPORTANT:  I need to write the above subroutine!  --RTM
+           cur_patch => cur_patch%next
+        enddo
+        cur_level => cur_level%next
+     enddo
+  endif
+
+  ! Now make a second pass and compute everything that isn't an internal 
+  ! or boundary flux term
   cur_level => realization%level_list%first
   do
     if (.not.associated(cur_level)) exit
@@ -1586,6 +1781,31 @@ subroutine THCResidual(snes,xx,r,realization,ierr)
   endif
 
 end subroutine THCResidual
+
+! ************************************************************************** !
+!
+! THCResidualFluxContribPatch: should be called only for SAMR
+! author: Richard Mills
+! date: 05/??/10
+!
+! ************************************************************************** !
+subroutine THCResidualFluxContribPatch(r,realization,ierr)
+  use Realization_module
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Field_module
+  use Debug_module
+  
+  implicit none
+  Vec, intent(out) :: r
+  type(realization_type) :: realization
+
+  PetscErrorCode :: ierr
+
+  ! Need to put something here! --RTM
+end subroutine THCResidualFluxContribPatch
+
 
 ! ************************************************************************** !
 !
