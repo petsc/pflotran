@@ -21,9 +21,10 @@ module Patch_module
     
     PetscInt :: id
     
-    ! thiese arrays will be used by all modes, mode-specific arrays should
+    ! These arrays will be used by all modes, mode-specific arrays should
     ! go in the auxilliary data stucture for that mode
     PetscInt, pointer :: imat(:)
+      ! Integer array of material ids of size ngmax.
     type(material_property_ptr_type), pointer :: material_property_array(:)
     PetscReal, pointer :: internal_velocities(:,:)
     PetscReal, pointer :: boundary_velocities(:,:)
