@@ -2656,7 +2656,7 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
   option => realization%option
 
   if (index(filename,'.h5') > 0) then
-    ! to be taken care of later
+    ! to be taken care of later in readPermeabilitiesFromFile()
   else
     open(unit=fid,file=filename,status="old",iostat=status)
     if (status /= 0) then

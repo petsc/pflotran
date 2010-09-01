@@ -49,8 +49,8 @@ module Unstructured_Grid_module
     IS :: is_local_local ! IS for local cells with local on-processor numbering
     IS :: is_ghosted_petsc ! IS for ghosted cells with petsc numbering
     IS :: is_local_petsc ! IS for local cells with petsc numbering
-    IS :: is_ghosts_local ! IS for ghosted cells with local on-processor numbering
-    IS :: is_ghosts_petsc ! IS for ghosted cells with petsc numbering
+    IS :: is_ghosts_local ! IS for ghost cells with local on-processor numbering
+    IS :: is_ghosts_petsc ! IS for ghost cells with petsc numbering
     IS :: is_local_natural ! IS for local cells with natural (global) numbering
     VecScatter :: scatter_ltog ! scatter context for local to global updates
     VecScatter :: scatter_gtol ! scatter context for global to local updates
@@ -1445,7 +1445,8 @@ end subroutine UnstructuredGridDecompose
 
 ! ************************************************************************** !
 !
-! UnstructuredGridDecompose: Decomposes an unstructured grid
+! UnstructuredGridCreateUGDM: Constructs mappings / scatter contexts for PETSc DM 
+!                                                  object
 ! author: Glenn Hammond
 ! date: 09/30/09
 !
