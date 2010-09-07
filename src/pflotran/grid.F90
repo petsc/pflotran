@@ -117,7 +117,7 @@ module Grid_module
             GridVecRestoreArrayF90, &
             GridIndexToCellID, &
             GridComputeCell2FaceConnectivity, &
-            GridComputeiGlobalCell2FaceConnectivity
+            GridComputeGlobalCell2FaceConnectivity
 contains
 
 ! ************************************************************************** !
@@ -489,13 +489,12 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
 end subroutine GridComputeCell2FaceConnectivity
 
 
-subroutine GridComputeiGlobalCell2FaceConnectivity(grid, MFD_aux, DOF, option)
+subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, DOF, option)
 
     use MFD_Aux_module
     use Option_module
  
     implicit none
-
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
 #include "finclude/petscmat.h"
@@ -507,11 +506,6 @@ subroutine GridComputeiGlobalCell2FaceConnectivity(grid, MFD_aux, DOF, option)
 #include "finclude/petscviewer.h"
 
 
-
-
-
-
-    
     type(grid_type) :: grid
     type(mfd_type), pointer :: MFD_aux
     PetscInt :: DOF
@@ -607,11 +601,13 @@ subroutine GridComputeiGlobalCell2FaceConnectivity(grid, MFD_aux, DOF, option)
       do icount = 1, aux_var%numfaces
          ghost_face_id = aux_var%face_id_gh(icount)
          local_face_id = grid%fG2L(ghost_face_id)
-         if (local_face_id > 0) then
-            conn => grid%faces(ghost_face_id)%conn_set_ptr
-            iface = grid%faces(ghost_face_id)%id
-            e2f_local_values((icell-1)*stride + icount) = grid%fL2P(local_face_id) + 1
-            if(conn%itype==INTERNAL_CONNECTION_TYPE) then
+         conn => grid%faces(ghost_face_id)%conn_set_ptr
+         iface = grid%faces(ghost_face_id)%id
+         if(conn%itype==INTERNAL_CONNECTION_TYPE) then
+
+           if (local_face_id > 0) then
+
+              e2f_local_values((icell-1)*stride + icount) = grid%fL2P(local_face_id) + 1
               ghosted_id_up = conn%id_up(iface)
               ghosted_id_dn = conn%id_dn(iface)
 
@@ -624,13 +620,9 @@ subroutine GridComputeiGlobalCell2FaceConnectivity(grid, MFD_aux, DOF, option)
 !                 e2n_local_values((icell-1)*stride + icount) = grid%nG2A(ghosted_id_up) + 1
                  e2n_local_values((icell-1)*stride + icount) = grid%nG2P(ghosted_id_up) + 1
               end if
-           else if (conn%itype==BOUNDARY_CONNECTION_TYPE) then
-              e2n_local_values((icell-1)*stride + icount) = -1
-           end if
-         else if (local_face_id == 0) then
-            conn => grid%faces(ghost_face_id)%conn_set_ptr
-            iface = grid%faces(ghost_face_id)%id
-            if(conn%itype==INTERNAL_CONNECTION_TYPE) then
+
+          else if (local_face_id == 0) then
+
               ghosted_id_up = conn%id_up(iface)
               ghosted_id_dn = conn%id_dn(iface)
 
@@ -638,20 +630,46 @@ subroutine GridComputeiGlobalCell2FaceConnectivity(grid, MFD_aux, DOF, option)
               local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping
               if (local_id_up==icell) then
                  e2n_local_values((icell-1)*stride + icount) = grid%nG2P(ghosted_id_dn) + 1
-!                 e2n_local_values((icell-1)*stride + icount) = local_id_dn
               else if (local_id_dn==icell) then
                   e2n_local_values((icell-1)*stride + icount) = grid%nG2P(ghosted_id_up) + 1
-!                e2n_local_values((icell-1)*stride + icount) = local_id_up
               end if
-           else if (conn%itype==BOUNDARY_CONNECTION_TYPE) then
-              e2n_local_values((icell-1)*stride + icount) = -1
-           end if
 
          end if
+
+       else if (conn%itype==BOUNDARY_CONNECTION_TYPE) then
+            e2n_local_values((icell-1)*stride + icount) = 0
+            if (local_face_id > 0) e2f_local_values((icell-1)*stride + icount) = grid%fL2P(local_face_id) + 1
+#if 0
+            if ((conn%dist(1,iface)==1).and.(conn%dist(2,iface)==0).and.(conn%dist(3,iface)==0)) then
+               e2n_local_values((icell-1)*stride + icount) = -WEST_FACE
+            else if((conn%dist(1,iface)==-1).and.(conn%dist(2,iface)==0).and.(conn%dist(3,iface)==0)) then
+               e2n_local_values((icell-1)*stride + icount) = -EAST_FACE
+            else if((conn%dist(1,iface)==0).and.(conn%dist(2,iface)==1).and.(conn%dist(3,iface)==0)) then
+               e2n_local_values((icell-1)*stride + icount) = -SOUTH_FACE
+            else if((conn%dist(1,iface)==0).and.(conn%dist(2,iface)==-1).and.(conn%dist(3,iface)==0)) then
+               e2n_local_values((icell-1)*stride + icount) = -NORTH_FACE
+            else if((conn%dist(1,iface)==0).and.(conn%dist(2,iface)==0).and.(conn%dist(3,iface)==1)) then
+               if (grid%structured_grid%invert_z_axis) then
+                  e2n_local_values((icell-1)*stride + icount) = -TOP_FACE
+               else 
+                  e2n_local_values((icell-1)*stride + icount) = -BOTTOM_FACE
+               end if
+            else if((conn%dist(1,iface)==0).and.(conn%dist(2,iface)==0).and.(conn%dist(3,iface)==-1)) then
+               if (grid%structured_grid%invert_z_axis) then
+                 e2n_local_values((icell-1)*stride + icount) = -BOTTOM_FACE
+               else
+                 e2n_local_values((icell-1)*stride + icount) = -TOP_FACE
+               end if
+            end if
+#endif
+        end if
       end do
-!      write (*,*) "e2f: ", (e2f_local((icell-1)*stride + icount),icount=1,6)
+      write (*,*) "e2f: ", (e2f_local_values((icell-1)*stride + icount),icount=1,6)
 !      write (*,*) "e2n: ", (e2n_local((icell-1)*stride + icount),icount=1,6)
    end do
+
+
+  
 
    call VecRestoreArrayF90(grid%e2f, e2f_local_values, ierr)
    call VecRestoreArrayF90(grid%e2n, e2n_local_values, ierr)
@@ -906,6 +924,11 @@ subroutine GridComputeiGlobalCell2FaceConnectivity(grid, MFD_aux, DOF, option)
     call VecScatterCreate(global_vec,MFD_aux%is_ghosted_petsc_faces,local_vec, &
                         MFD_aux%is_ghosted_local_faces, MFD_aux%scatter_gtol_faces, ierr)
 
+    
+   call PetscViewerASCIIOpen(option%mycomm,'scatter_gtol_faces.out',viewer,ierr)
+   call VecScatterView(MFD_aux%scatter_gtol_faces,viewer,ierr)
+   call PetscViewerDestroy(viewer,ierr)
+
  ! Create local to local scatter.  Essentially remap the global to local as
  ! PETSc does in daltol.c
   call VecScatterCopy(MFD_aux%scatter_gtol_faces, MFD_aux%scatter_ltol_faces, ierr)
@@ -924,7 +947,7 @@ subroutine GridComputeiGlobalCell2FaceConnectivity(grid, MFD_aux, DOF, option)
 
 
 
-end subroutine GridComputeiGlobalCell2FaceConnectivity
+end subroutine GridComputeGlobalCell2FaceConnectivity
 
 
 ! ************************************************************************** !

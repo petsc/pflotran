@@ -181,6 +181,7 @@ subroutine RealizationCreateDiscretization(realization)
   use Unstructured_Grid_module, only : UGridMapIndices
   use AMR_Grid_module
   use MFD_module
+  use Coupler_module
   
   implicit none
   
@@ -190,6 +191,7 @@ subroutine RealizationCreateDiscretization(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(option_type), pointer :: option
+  type(coupler_type), pointer :: boundary_condition
   PetscErrorCode :: ierr
   PetscInt, allocatable :: int_tmp(:)
   PetscInt :: test,j
@@ -405,16 +407,17 @@ subroutine RealizationCreateDiscretization(realization)
        call VecCreateSeq(PETSC_COMM_SELF, grid%ngmax_faces*option%nflowdof, field%flow_xx_loc_faces, ierr)
        call VecSetBlockSize(field%flow_xx_loc_faces,NFLOWDOF,ierr)
 
-       call MFDInitializeMassMatrices(grid, field%volume, discretization%MFD, option)
+       call VecCreateSeq(PETSC_COMM_SELF, grid%ngmax_faces*option%nflowdof, field%flow_r_loc_faces, ierr)
+       call VecSetBlockSize(field%flow_r_loc_faces,NFLOWDOF,ierr)
+
+!       call MFDInitializeMassMatrices(grid, field%volume, discretization%MFD, option)
 
 
 
 
      end if
 
-     call GridComputeiGlobalCell2FaceConnectivity(grid, discretization%MFD, NFLOWDOF, option)
-
-     
+     call GridComputeGlobalCell2FaceConnectivity(grid, discretization%MFD, NFLOWDOF, option)
   
    end if
 
@@ -1162,6 +1165,7 @@ subroutine RealizAssignFlowInitCond(realization)
   use Condition_module
   use Grid_module
   use Patch_module
+  use MFD_module, only :MFDInitializeMassMatrices
   
   implicit none
 
@@ -1249,6 +1253,7 @@ subroutine RealizAssignFlowInitCond(realization)
                endif
                iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,icell)
              enddo
+             write(*,*) option%myrank, initial_condition%numfaces_set
              do iface=1,initial_condition%numfaces_set
                 ghosted_id = initial_condition%faces_set(iface)
                 local_id = grid%fG2L(ghosted_id)
@@ -1286,7 +1291,6 @@ subroutine RealizAssignFlowInitCond(realization)
                iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
              enddo
            else
-             write(*,*) "Using flow_aux_int_var"
              do iconn=1,initial_condition%connection_set%num_connections
                local_id = initial_condition%connection_set%id_dn(iconn)
                ghosted_id = grid%nL2G(local_id)
@@ -1321,7 +1325,20 @@ subroutine RealizAssignFlowInitCond(realization)
   call VecCopy(field%flow_xx, field%flow_yy, ierr)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)  
   call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_old_loc,ONEDOF)
-  
+
+  if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
+   call DiscretizationGlobalToLocalFaces(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
+   call MFDInitializeMassMatrices(realization%discretization%grid,&
+                                      realization%field%volume, &
+                                      realization%field%perm_xx_loc, &
+                                      realization%field%perm_yy_loc, &
+                                      realization%field%perm_zz_loc, &
+                                      realization%discretization%MFD, realization%option)
+  end if
+
+  write(*,*) "DONE DiscretizationGlobalToLocalFaces"
+ 
+!  stop 
 end subroutine RealizAssignFlowInitCond
 
 ! ************************************************************************** !

@@ -55,7 +55,7 @@ module Field_module
     Vec :: samr_viz_vec
 
     ! residual vectors for face unknows
-    Vec :: flow_r_faces          
+    Vec :: flow_r_faces, flow_r_loc_faces          
       
     ! Solution vectors for face unknows
     Vec :: flow_xx_faces, flow_xx_loc_faces, flow_dxx_faces, flow_yy_faces, flow_accum_faces

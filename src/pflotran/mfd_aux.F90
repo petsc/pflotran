@@ -32,6 +32,7 @@ module MFD_Aux_module
     VecScatter :: scatter_ltog_faces ! scatter context for local to global updates
     VecScatter :: scatter_gtol_faces ! scatter context for global to local updates
     VecScatter :: scatter_ltol_faces ! scatter context for local to local updates
+    VecScatter :: scatter_gtogh_faces ! scatter context for local to local updates
     ISLocalToGlobalMapping :: mapping_ltog_faces  ! petsc vec local to global mapping
     ISLocalToGlobalMapping :: mapping_ltogb_faces ! block form of mapping_ltog
   end type mfd_type
@@ -74,6 +75,7 @@ function MFDAuxCreate()
   aux%scatter_ltog_faces = 0
   aux%scatter_gtol_faces = 0
   aux%scatter_ltol_faces = 0
+  aux%scatter_gtogh_faces = 0
   aux%mapping_ltog_faces = 0
   aux%mapping_ltogb_faces = 0
 
@@ -266,7 +268,7 @@ subroutine MFDAuxGenerateMassMatrixInv(aux_var, volume, PermTensor, option)
   aux_var%MassMatrixInv = 0.
 
   do iface = 1, aux_var%numfaces
-    aux_var%MassMatrixInv(iface, iface) = 1./volume
+    aux_var%MassMatrixInv(iface, iface) = (2./volume)*PermTensor(1,1)
   end do 
 
 end subroutine MFDAuxGenerateMassMatrixInv

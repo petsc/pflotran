@@ -19,7 +19,7 @@ module Connection_module
                                        !   0 = magnitude of distance 
                                        !   1-3 = components of unit vector
     PetscReal, pointer :: area(:)      ! list of areas of faces normal to distance vectors
-    PetscReal, pointer :: cntr(:,:)    ! coordinates of the mass center of the face
+    PetscReal, pointer :: cntr(:,:)    ! coordinates (1:3, num_connections) of the mass center of the face
     type(connection_set_type), pointer :: next
   end type connection_set_type
 

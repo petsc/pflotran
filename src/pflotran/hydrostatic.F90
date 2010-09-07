@@ -227,13 +227,17 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         dist_z = grid%z(ghosted_id)-dz_conn-z(ipressure)
 !        write(*,*) grid%z(ghosted_id)-dz_conn
       end if
-!      write(*,*) dist_z, z(ipressure), ipressure
       pressure = pressure_array(ipressure) + &
                  density_array(ipressure)*option%gravity(Z_DIRECTION) * &
                  dist_z + &
 !                 (grid%z(ghosted_id)-z(ipressure)) + &
                  pressure_gradient(X_DIRECTION)*dist_x + & ! gradient in Pa/m
                  pressure_gradient(Y_DIRECTION)*dist_y
+
+!      if (grid%itype==STRUCTURED_GRID_MIMETIC) then
+!         pressure = 3*conn_set_ptr%cntr(3,conn_id)    !WORKINGCHECK
+!      end if
+ 
     else
       write(*,*) "Not associated"
       pressure = pressure_at_datum + &

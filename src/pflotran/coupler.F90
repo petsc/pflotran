@@ -47,7 +47,8 @@ module Coupler_module
   
   public :: CouplerCreate, CouplerDestroy, CouplerInitList, CouplerAddToList, &
             CouplerRead, CouplerDestroyList, CouplerGetNumConnectionsInList, &
-            CouplerListComputeConnections, CouplerGetPtrFromList
+            CouplerListComputeConnections, CouplerGetPtrFromList,&
+            CouplerAssignBCtoCells
 
   
   interface CouplerCreate
@@ -292,8 +293,11 @@ subroutine CouplerListComputeConnections(grid,option,coupler_list)
   coupler => coupler_list%first
   do
     if (.not.associated(coupler)) exit 
-    if ((grid%itype == STRUCTURED_GRID_MIMETIC).and.(coupler%itype == INITIAL_COUPLER_TYPE)) then  
+    if ((grid%itype == STRUCTURED_GRID_MIMETIC).and.&
+          ((coupler%itype == INITIAL_COUPLER_TYPE).or.(coupler%itype == BOUNDARY_COUPLER_TYPE))) then  
        call CouplerComputeConnectionsFaces(grid,option,coupler)      
+       call CouplerAssignBCtoCells(grid,option,coupler)
+ 
     else
        call CouplerComputeConnections(grid,option,coupler)
     end if
@@ -397,25 +401,25 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
  
   type(grid_type) :: grid
   type(option_type) :: option
-  type(coupler_type), pointer :: coupler_list
+  type(coupler_type), pointer :: coupler
   
   PetscInt :: iconn, reg_numconn
-  PetscInt :: cell_id_local, cell_id_ghosted, cell_id_petsc, face_id_ghosted
+  PetscInt :: cell_id_local, cell_id_ghosted, face_id_ghosted
+  PetscInt :: face_id_local
   PetscInt :: connection_itype
   PetscInt :: iface, icell
   type(connection_set_type), pointer :: connection_set
   type(region_type), pointer :: region
-  type(coupler_type), pointer :: coupler
   type(mfd_type), pointer :: mfd_aux
   PetscErrorCode :: ierr
-  PetscReal, pointer :: e2n_local_values(:)
+  PetscInt, pointer :: local_faces(:)
   type(mfd_auxvar_type), pointer :: aux_var
-  PetscInt :: conn_id
+  PetscInt :: conn_id, stride, iface_type
   type(connection_set_type), pointer :: conn_set_ptr
+  PetscTruth :: bnd_face
 
   if (.not.associated(coupler)) return
   
-  write(*,*) "coupler%itype ", coupler%itype
 
   select case(coupler%itype)
     case(INITIAL_COUPLER_TYPE)
@@ -444,25 +448,35 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
  
   coupler%numfaces_set = 0
  
-  call GridVecGetArrayF90(grid, grid%e2n, e2n_local_values, ierr)
 
-  do icell = 1, region%num_cells
-    
-    cell_id_local = region%cell_ids(icell)
+  allocate(local_faces(grid%nlmax_faces))
 
-    aux_var => mfd_aux%aux_vars(cell_id_local)
+  local_faces = 0
 
-    cell_id_petsc = grid%nG2P(grid%nL2G(cell_id_local)) + 1
-    do iface = 1,aux_var%numfaces
-      face_id_ghosted = aux_var%face_id_gh(iface)
-      if ((cell_id_petsc > e2n_local_values((icell -1)*6 + iface)).and. &
-          (grid%fG2L(face_id_ghosted)>0)) then
-         coupler%numfaces_set = coupler%numfaces_set + 1
-      end if
+
+  if (coupler%itype == BOUNDARY_COUPLER_TYPE) then
+    coupler%numfaces_set = region%num_cells
+  else 
+    do icell = 1, region%num_cells
+      
+      cell_id_local = region%cell_ids(icell)
+  
+      aux_var => mfd_aux%aux_vars(cell_id_local)
+  
+ 
+      do iface = 1,aux_var%numfaces
+        face_id_ghosted = aux_var%face_id_gh(iface)
+        face_id_local = grid%fG2L(face_id_ghosted)
+ 
+        if (face_id_local > 0) then
+            if (local_faces(face_id_local)==0) then
+              coupler%numfaces_set = coupler%numfaces_set + 1
+              local_faces(face_id_local) = 1
+            end if
+        end if
+      end do
     end do
- end do
-
-
+  end if 
 
  allocate(coupler%faces_set(coupler%numfaces_set))
  
@@ -472,6 +486,10 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
 !
  connection_set => ConnectionCreate(ZERO_INTEGER, option%nphase, &
                                      connection_itype)
+
+ local_faces = 0
+  
+
  iconn = 1 
  do icell = 1, region%num_cells
     
@@ -479,16 +497,80 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
 
     aux_var => mfd_aux%aux_vars(cell_id_local)
 
-    cell_id_petsc = grid%nG2P(grid%nL2G(cell_id_local)) + 1
     do iface = 1,aux_var%numfaces
       face_id_ghosted = aux_var%face_id_gh(iface)
-      conn_set_ptr => grid%faces(face_id_ghosted)%conn_set_ptr
-      conn_id = grid%faces(face_id_ghosted)%id
+      face_id_local = grid%fG2L(face_id_ghosted)
+	
+      if (coupler%itype == BOUNDARY_COUPLER_TYPE) then
+        conn_set_ptr => grid%faces(face_id_ghosted)%conn_set_ptr
+        conn_id = grid%faces(face_id_ghosted)%id
+ 
+!        write(*,*) "cell ", cell_id_local, "face", face_id_ghosted       
+ 
 
-      if ((cell_id_petsc > e2n_local_values((icell -1)*6 + iface)).and. &
-          (grid%fG2L(face_id_ghosted)>0)) then
-          coupler%faces_set(iconn) = face_id_ghosted
-          iconn = iconn + 1
+        if (conn_set_ptr%itype /= BOUNDARY_CONNECTION_TYPE) cycle
+        if (associated(region%faces)) iface_type = region%faces(icell)
+        bnd_face = PETSC_FALSE
+        select case (iface_type)
+             case(WEST_FACE)
+               if ((conn_set_ptr%dist(1,conn_id) == 1).and.&
+                   (conn_set_ptr%dist(2,conn_id) == 0).and.&
+                   (conn_set_ptr%dist(3,conn_id) == 0)) bnd_face = PETSC_TRUE
+             case(EAST_FACE)
+               if ((conn_set_ptr%dist(1,conn_id) == -1).and.&
+                   (conn_set_ptr%dist(2,conn_id) == 0).and.&
+                   (conn_set_ptr%dist(3,conn_id) == 0)) bnd_face = PETSC_TRUE
+             case(SOUTH_FACE)
+               if ((conn_set_ptr%dist(1,conn_id) == 0).and.&
+                   (conn_set_ptr%dist(2,conn_id) == 1).and.&
+                   (conn_set_ptr%dist(3,conn_id) == 0)) bnd_face = PETSC_TRUE
+             case(NORTH_FACE)
+               if ((conn_set_ptr%dist(1,conn_id) == 0).and.&
+                   (conn_set_ptr%dist(2,conn_id) == -1).and.&
+                   (conn_set_ptr%dist(3,conn_id) == 0)) bnd_face = PETSC_TRUE
+             case(TOP_FACE)
+               if (grid%structured_grid%invert_z_axis) then
+                if ((conn_set_ptr%dist(1,conn_id) == 0).and.&
+                    (conn_set_ptr%dist(2,conn_id) == 0).and.&
+                    (conn_set_ptr%dist(3,conn_id) == 1)) bnd_face = PETSC_TRUE
+               else
+                if ((conn_set_ptr%dist(1,conn_id) == 0).and.&
+                    (conn_set_ptr%dist(2,conn_id) == 0).and.&
+                    (conn_set_ptr%dist(3,conn_id) == -1)) bnd_face = PETSC_TRUE
+               end if
+             case(BOTTOM_FACE)
+               if (grid%structured_grid%invert_z_axis) then
+                if ((conn_set_ptr%dist(1,conn_id) == 0).and.&
+                    (conn_set_ptr%dist(2,conn_id) == 0).and.&
+                    (conn_set_ptr%dist(3,conn_id) == -1)) bnd_face = PETSC_TRUE
+               else
+                if ((conn_set_ptr%dist(1,conn_id) == 0).and.&
+                    (conn_set_ptr%dist(2,conn_id) == 0).and.&
+                    (conn_set_ptr%dist(3,conn_id) == 1)) bnd_face = PETSC_TRUE
+               end if
+        end select
+
+
+       if (bnd_face)   then
+!          write(*,*) face_id_ghosted, conn_set_ptr%cntr(1,conn_id), conn_set_ptr%cntr(2,conn_id),conn_set_ptr%cntr(3,conn_id)
+           if (face_id_local > 0) then
+              coupler%faces_set(iconn) = face_id_ghosted
+              iconn = iconn + 1
+           end if
+       end if
+
+      else 
+
+        if (face_id_local > 0) then
+            if (local_faces(face_id_local)==0) then
+  
+              coupler%faces_set(iconn) = face_id_ghosted
+              iconn = iconn + 1
+              local_faces(face_id_local) = 1
+  
+            end if
+        end if
+
       end if
     end do
  end do 
@@ -503,7 +585,9 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
   end select
    
   coupler%connection_set => connection_set
- write(*,*) "coupler%numfaces_set ", coupler%numfaces_set
+
+  deallocate(local_faces)
+
   
 !  nullify(connection_set)
 
@@ -511,6 +595,92 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
 !  stop
  
 end subroutine CouplerComputeConnectionsFaces
+
+
+
+
+subroutine CouplerAssignBCtoCells(grid,option,coupler)
+
+  use Connection_module
+  use Option_module
+  use Region_module
+  use Grid_module
+  use MFD_Aux_module
+
+  
+  implicit none
+ 
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  type(grid_type) :: grid
+  type(option_type) :: option
+  type(coupler_type), pointer :: coupler
+  
+  PetscInt :: iconn, reg_numconn
+  PetscInt :: cell_id_local, cell_id_ghosted, face_id_ghosted
+  PetscInt :: face_id_local
+  PetscInt :: connection_itype
+  PetscInt :: iface, icell
+  type(connection_set_type), pointer :: connection_set
+  type(region_type), pointer :: region
+  type(mfd_type), pointer :: mfd_aux
+  PetscErrorCode :: ierr
+  PetscInt, pointer :: local_faces(:)
+  type(mfd_auxvar_type), pointer :: aux_var
+  PetscInt :: conn_id, stride, iface_type, e2n_size
+  PetscScalar, pointer :: e2n_local(:)
+  type(connection_set_type), pointer :: conn_set_ptr
+  PetscTruth :: bnd_face
+
+
+  stride = 6 !hex only
+
+  if (.not.associated(coupler)) return
+  
+  if (coupler%itype /= BOUNDARY_COUPLER_TYPE) return 
+
+  call VecGetSize(grid%e2n, e2n_size, ierr)
+
+  if (e2n_size > 0) then 
+      call VecGetArrayF90(grid%e2n, e2n_local, ierr)
+  end if
+
+  region => coupler%region
+
+  if (.not.associated(region)) then
+      stop
+  end if
+
+  mfd_aux => grid%MFD
+
+  if (.not.associated(mfd_aux)) then
+     stop
+  end if
+
+  do icell = 1, region%num_cells
+
+    cell_id_local = region%cell_ids(icell)
+
+    aux_var => mfd_aux%aux_vars(cell_id_local)
+
+    do iface = 1,aux_var%numfaces
+      face_id_ghosted = aux_var%face_id_gh(iface)
+      if (coupler%faces_set(icell) == face_id_ghosted) then
+        e2n_local((cell_id_local-1)*stride + iface) = -coupler%flow_condition%itype(RICHARDS_PRESSURE_DOF)
+      end if
+!      write(*,*) coupler%faces_set(icell), face_id_ghosted, e2n_local((cell_id_local-1)*stride + iface)
+    end do
+
+  end do
+
+  if (e2n_size > 0) call VecRestoreArrayF90(grid%e2n, e2n_local, ierr)
+
+!  stop
+
+end subroutine CouplerAssignBCtoCells
+
+
 
 ! ************************************************************************** !
 !

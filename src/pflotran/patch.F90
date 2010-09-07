@@ -514,8 +514,12 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     patch%internal_fluxes = 0.d0
   endif
 #endif  
-  
-  temp_int = CouplerGetNumConnectionsInList(patch%boundary_conditions)
+ 
+  if (patch%grid%itype == STRUCTURED_GRID_MIMETIC) then
+    temp_int = ConnectionGetNumberInList(patch%grid%boundary_connection_set_list)
+  else  
+    temp_int = CouplerGetNumConnectionsInList(patch%boundary_conditions)
+  end if
   allocate(patch%boundary_velocities(option%nphase,temp_int)) 
   patch%boundary_velocities = 0.d0
 #ifdef REVISED_TRANSPORT
