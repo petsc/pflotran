@@ -1599,7 +1599,7 @@ end subroutine OutputTecplotPoint
 
 ! ************************************************************************** !
 !
-! OutputVelocitiesTecplotPoint: Print velocities to Tecplot file in BLOCK format
+! OutputVelocitiesTecplotPoint: Print velocities to Tecplot file in POINT format
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
@@ -1680,9 +1680,9 @@ subroutine OutputVelocitiesTecplotPoint(realization)
                '"vgy [m/' // trim(output_option%tunit) // ']",' // &
                '"vgz [m/' // trim(output_option%tunit) // ']"'
     endif
-        if (associated(patch%imat)) then
-          string = trim(string) // ',"Material_ID"'
-        endif
+    if (associated(patch%imat)) then
+      string = trim(string) // ',"Material_ID"'
+    endif
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
@@ -6222,7 +6222,7 @@ end subroutine OutputGetVarFromArray
 
 ! ************************************************************************** !
 !
-! GetCellCenteredVelocities: Computers the cell-centered velocity component 
+! GetCellCenteredVelocities: Computes the cell-centered velocity component 
 !                            as an averages of cell face velocities
 ! author: Glenn Hammond
 ! date: 10/25/07

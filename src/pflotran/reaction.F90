@@ -1594,8 +1594,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          global_auxvar%den_kg(option%liquid_phase)/ &
                                          1000.d0
 
+#if 0
   call RCalculateCompression(global_auxvar,rt_auxvar,reaction,option)
-
+#endif
 
 ! this is performed above
 !  if (associated(colloid_constraint%colloids)) then                        
@@ -1671,11 +1672,21 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
 
   rt_auxvar => constraint_coupler%rt_auxvar
   global_auxvar => constraint_coupler%global_auxvar
-  
-  global_auxvar%den_kg(iphase) = option%reference_water_density
-  global_auxvar%temp(1) = option%reference_temperature
-  global_auxvar%sat(iphase) = option%reference_saturation
-  bulk_vol_to_fluid_vol = option%reference_porosity*option%reference_saturation*1000.d0
+
+  select case(option%iflowmode)
+    case(FLASH2_MODE,MPH_MODE,IMS_MODE)
+    case(NULL_MODE)
+      global_auxvar%den_kg(iphase) = option%reference_water_density
+      global_auxvar%temp(1) = option%reference_temperature
+      global_auxvar%sat(iphase) = option%reference_saturation
+    case(RICHARDS_MODE)
+      global_auxvar%temp(1) = option%reference_temperature
+  end select
+        
+!  global_auxvar%den_kg(iphase) = option%reference_water_density
+!  global_auxvar%temp(1) = option%reference_temperature
+!  global_auxvar%sat(iphase) = option%reference_saturation
+  bulk_vol_to_fluid_vol = option%reference_porosity*global_auxvar%sat(iphase)*1000.d0
 
 ! compute mass fraction of H2O
   if (reaction%use_full_geochemistry) then
@@ -1717,16 +1728,26 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
 
 #ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal) then
-    call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
-                                 global_auxvar%temp(iphase),reaction%neqcplx)
-    call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
-                                 global_auxvar%temp(iphase),reaction%ngas)
-    call ReactionInterpolateLogK(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
-                                 global_auxvar%temp(iphase),reaction%neqsrfcplx)
-    call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
-                                 global_auxvar%temp(iphase),reaction%nkinmnrl)
-    call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
-                                 global_auxvar%temp(iphase),reaction%nmnrl)
+    if (associated(reaction%eqcplx_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
+                                   global_auxvar%temp(iphase),reaction%neqcplx)
+    endif
+    if (associated(reaction%eqgas_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
+                                   global_auxvar%temp(iphase),reaction%ngas)
+    endif
+    if (associated(reaction%eqsrfcplx_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
+                                   global_auxvar%temp(iphase),reaction%neqsrfcplx)
+    endif
+    if (associated(reaction%kinmnrl_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
+                                   global_auxvar%temp(iphase),reaction%nkinmnrl)
+    endif
+    if (associated(reaction%mnrl_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
+                                   global_auxvar%temp(iphase),reaction%nmnrl)
+    endif
   endif
 #endif  
 
@@ -2642,7 +2663,7 @@ end subroutine RReactionDerivative
                                
 ! ************************************************************************** !
 !
-! RActivityCoefficients: Computes activity coefficients of aqueous CO2
+! CO2AqActCoeff: Computes activity coefficients of aqueous CO2
 ! author: Chuan Lu
 ! date: 07/13/09
 !

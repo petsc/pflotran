@@ -15,6 +15,7 @@ PetscMPIInt commsize = 0;
 #include "MidIFC.h"
 #include "IFC_2D.h"
 #include "IFC_Plot_120x120x20.h"
+#include "IFC_Plot_120x120x15.h"
 #include "Output.h"
 
 #undef __FUNCT__
@@ -37,6 +38,7 @@ int main(int argc, char **args) {
   IFC *ifc = NULL;
   IFC_Scope3 *ifc3 = NULL;
   IFC_Plot_120x120x20 *ifc_plot_120x120x20 = NULL;
+  IFC_Plot_120x120x15 *ifc_plot_120x120x15 = NULL;
   MAD *mad = NULL;
   MidIFC *midifc = NULL;
   TestCase *testcase = NULL;
@@ -44,8 +46,9 @@ int main(int argc, char **args) {
 //  hanford300 = new Hanford300(&grid);
 //  hanford300 = new Hanford300v2(&grid);
 //  ifc = new IFC(&grid);
-  ifc3 = new IFC_Scope3(&grid);
+//  ifc3 = new IFC_Scope3(&grid);
 //  ifc_plot_120x120x20 = new IFC_Plot_120x120x20(&grid);
+  ifc_plot_120x120x15 = new IFC_Plot_120x120x15(&grid);
 //  mad = new MAD(&grid);
 //  midifc = new MidIFC(&grid);
 //    ifc_2d = new IFC_2D(&grid);

@@ -89,6 +89,7 @@ public:
   void setOrigin(PetscReal x, PetscReal y, PetscReal z);
   void setRotation(PetscReal r);
   void computeCoordinates();
+  void computeCoordinate(PetscReal *x, PetscReal *y);
   void addBoundarySet();
   BoundarySet *getBoundarySet(char *name);
 

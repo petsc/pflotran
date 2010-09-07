@@ -296,6 +296,10 @@ void Grid::mapVerticesToCells() {
 void Grid::computeCoordinates() {
   if (structuredGrid) structuredGrid->computeCoordinates();
 }
+
+void Grid::computeCoordinate(PetscReal *x, PetscReal *y) {
+  if (structuredGrid) structuredGrid->computeCoordinate(x,y);
+}
 #if 0
 void Grid::computeConnectivity() {
   if (structuredGrid)

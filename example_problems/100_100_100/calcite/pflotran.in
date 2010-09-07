@@ -112,7 +112,7 @@ FORMAT TECPLOT BLOCK
 :=========================== times ============================================
 TIME
 FINAL_TIME 10.d0 y
-INITIAL_TIMESTEP_SIZE 1.d-3 y
+INITIAL_TIMESTEP_SIZE 1.d-6 y
 MAXIMUM_TIMESTEP_SIZE 1.d0 y
 /
 

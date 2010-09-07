@@ -12,7 +12,7 @@ module Field_module
 
   type, public :: field_type 
     
-!geh material id
+    !get material id
     ! 1 degree of freedom
     Vec :: porosity0, porosity_loc
     Vec :: tortuosity0, tortuosity_loc
@@ -34,7 +34,7 @@ module Field_module
     Vec :: flow_r          
     Vec :: tran_r
     
-    ! Solution vectors
+    ! Solution vectors (yy = previous solution, xx = current iterate)
     Vec :: flow_xx, flow_xx_loc, flow_dxx, flow_yy, flow_accum
     Vec :: tran_xx, tran_xx_loc, tran_dxx, tran_yy, tran_accum
 

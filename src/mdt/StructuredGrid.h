@@ -33,6 +33,7 @@ public:
   void setRotation(PetscReal r);
 //  void computeConnectivity(PetscInt *num_connections, GridConnection **connections);
   void computeCoordinates();
+  void computeCoordinate(PetscReal *x, PetscReal*y);
   void computeCellMapping(PetscInt *num_cells_local, PetscInt *num_cells_ghosted,
                           PetscInt **cell_mapping_local_to_ghosted,
                           PetscInt **cell_mapping_ghosted_to_local,

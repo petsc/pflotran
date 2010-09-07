@@ -29,6 +29,7 @@ mdt_obj = ${common_src}AsciiGrid.o \
 	${common_src}IFC.o \
 	${common_src}IFC_Scope3.o \
 	${common_src}IFC_Plot_120x120x20.o \
+	${common_src}IFC_Plot_120x120x15.o \
 	${common_src}IFC_2D.o \
 	${common_src}MAD.o \
 	${common_src}MidIFC.o \
@@ -58,6 +59,7 @@ Hanford300.o : AsciiGrid.o BoundarySet.o Connection.o Grid.o Polygon.o
 Hanford300v2.o : AsciiGrid.o BoundarySet.o Connection.o Grid.o Polygon.o
 IFC.o : AsciiGrid.o BoundarySet.o Connection.o Grid.o Polygon.o
 IFC_Plot_120x120x20.o : AsciiGrid.o BoundarySet.o Connection.o Grid.o Polygon.o
+IFC_Plot_120x120x15.o : AsciiGrid.o BoundarySet.o Connection.o Grid.o Polygon.o
 IFC_2D.o : AsciiGrid.o BoundarySet.o Connection.o Grid.o Polygon.o
 MAD.o : AsciiGrid.o BoundarySet.o Connection.o Grid.o Polygon.o
 HDF.o :
