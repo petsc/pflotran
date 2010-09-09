@@ -241,7 +241,6 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   option => realization%option
   output_option => realization%output_option
  
-  write(*,*) "Enter StepperRun ", option%steady_state
  
   if (option%steady_state) then
     call StepperRunSteadyState(realization,flow_stepper,tran_stepper)
@@ -896,7 +895,6 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   field => realization%field
   solver => stepper%solver
 
-    write(*,*) "Enter StepperStepFlowDT"
 
 
 ! PetscReal, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
@@ -2028,7 +2026,6 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
   num_newton_iterations = 0
   num_linear_iterations = 0
 
-  write(*,*) "Enter StepperSolveFlowSteadyState"
 
   call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
                                   field%porosity_loc,ONEDOF)

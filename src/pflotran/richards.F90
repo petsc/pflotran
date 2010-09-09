@@ -465,7 +465,6 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
 
-    write(*,*) "xx_loc_p", xx_loc_p(ghosted_id:ghosted_id)
    
     call RichardsAuxVarCompute(xx_loc_p(ghosted_id:ghosted_id),rich_aux_vars(ghosted_id), &
                        global_aux_vars(ghosted_id), &
@@ -628,14 +627,12 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
 
 
 
-    write(*,*) "xx_loc_p ", "loc_id ", local_id, "xx_loc ", xx_loc_p(local_id)
    
     call RichardsAuxVarCompute(xx_loc_p(local_id:local_id),rich_aux_vars(ghosted_id), &
                        global_aux_vars(ghosted_id), &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        porosity_loc_p(local_id),perm_xx_loc_p(local_id), &                       
                        option)
-    write(*,*) "pc", rich_aux_vars(ghosted_id)%pc, "kvr ", rich_aux_vars(ghosted_id)%kvr_x
 
   enddo
 
@@ -693,7 +690,6 @@ subroutine RichardsInitializeTimestep(realization)
 !                              viewer,ierr)
 !  call VecView(realization%field%flow_xx_faces,viewer,ierr)
 !  call PetscViewerDestroy(viewer,ierr)
-  write(*,*) "Exit RichardsInitializeTimestep"
 
 
 end subroutine RichardsInitializeTimestep
@@ -1350,9 +1346,6 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
               (1.D0-upweight)*global_aux_var_dn%den(1)) &
               * FMWH2O * dist_gravity
 
-!    write(*,*) "RichardsFlux"
-!    write(*,*) "pres ", global_aux_var_up%pres(1),  global_aux_var_dn%pres(1)
-!    write(*,*)  global_aux_var_up%pres(1) - global_aux_var_dn%pres(1), gravity
 
     dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)  + gravity
 
@@ -1380,7 +1373,6 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
     if (ukvr>floweps) then
       v_darcy= Dq * ukvr * dphi
 
-      write(*,*) "v_darcy", v_darcy, "Dq ", Dq ,"ukvr", ukvr
    
       q = v_darcy * area
 
@@ -1845,9 +1837,11 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
 
   call PetscLogEventEnd(logging%event_r_residual,ierr)
 
+
+#ifdef DASVYAT
   write(*,*) "End of RichardsResidual"
   stop 
-
+#endif
  
 end subroutine RichardsResidual
 
@@ -1894,7 +1888,6 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
   discretization => realization%discretization
   option => realization%option
 
-  write(*,*) "Enter RichardsResidualMFD"
 
   call PetscViewerASCIIOpen(option%mycomm,'rr.out',viewer,ierr)
   call VecView(r,viewer,ierr)
@@ -1907,7 +1900,6 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
    call DiscretizationGlobalToLocalFaces(discretization, xx, field%flow_xx_loc_faces, NFLOWDOF)
    call DiscretizationGlobalToLocalFaces(discretization, r, field%flow_r_loc_faces, NFLOWDOF)
 
-  write(*,*) "DONE DiscretizationGlobalToLocalFaces"
 
 
   call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
@@ -1994,13 +1986,11 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
     conn => realization%patch%grid%faces(i)%conn_set_ptr
     iface = realization%patch%grid%faces(i)%id
 
-     if (abs(r_p(i)) > 1e-11) write(*,*) option%myrank, i, r_p(i), conn%cntr(3,iface)
 !     write(*,*) option%myrank, i, r_p(i), conn%cntr(3,iface)
   end do
 
   call VecStrideNorm(r ,ZERO_INTEGER,NORM_INFINITY, rnorm ,ierr)
 
-  write(*,*) "NORM of Residual", rnorm
 
   call GridVecRestoreArrayF90(realization%patch%grid, field%flow_r_loc_faces, r_p, ierr)
 #endif  
@@ -2305,7 +2295,6 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
                         upweight,option,v_darcy,Res)
 
       patch%internal_velocities(1,sum_connection) = v_darcy
-      write(*,*) sum_connection, v_darcy
       
       if (option%use_samr) then
         if (sum_connection <= max_x_conn) then

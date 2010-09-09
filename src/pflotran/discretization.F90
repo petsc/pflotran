@@ -742,7 +742,6 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
 
   end select
 
-  write(*,*) "End DiscretizationCreateJacobian"
 
 end subroutine DiscretizationCreateJacobian
 

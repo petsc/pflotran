@@ -251,8 +251,7 @@ subroutine GridComputeInternalConnect(grid,option)
     grid%fG2L = 0
     call GridPopulateFaces(grid, option)
   end if
-  write(*,*) 'Exit GridComputeInternalConnect'
- ! stop  
+
 end subroutine GridComputeInternalConnect
 
 ! ************************************************************************** !

@@ -279,7 +279,6 @@ subroutine RealizationCreateDiscretization(realization)
     call DiscretizationCreateVector(discretization,NFLOWDOF,field%flow_xx_loc, &
                                     LOCAL,option)
 
-    write(*,*) "NFLOWDOF ", NFLOWDOF
 
 
     if(option%use_samr) then
@@ -368,14 +367,10 @@ subroutine RealizationCreateDiscretization(realization)
       ! set up nG2L, NL2G, etc.
       call UGridMapIndices(grid%unstructured_grid,discretization%dm_1dof%ugdm, &
                            grid%nG2L,grid%nL2G,grid%nL2A,grid%nG2A)
-      write(*,*) "After UGridMapIndices" 
       call GridComputeCoordinates(grid,discretization%origin,option)
       ! set up internal connectivity, distance, etc.
-       write(*,*) "After GridComputeCoordinates"
       call GridComputeInternalConnect(grid,option)
-        write(*,*) "After GridComputeInternalConnect"  
       call GridComputeVolumes(grid,field%volume,option)
-         write(*,*) "After GridComputeVolumes"
     case(AMR_GRID)
        call AMRGridComputeGeometryInformation(discretization%amrgrid, &
                                               discretization%origin, &
@@ -427,7 +422,6 @@ subroutine RealizationCreateDiscretization(realization)
   ! have been set
   call VecSet(field%porosity0,-999.d0,ierr)
        
-      write(*,*) "End of RealizationCreateDiscretization"
 
 end subroutine RealizationCreateDiscretization
 
@@ -1193,7 +1187,6 @@ subroutine RealizAssignFlowInitCond(realization)
   field => realization%field
   patch => realization%patch
 
-  write(*,*) "Enter RealizAssignFlowInitCond"
 
   cur_level => realization%level_list%first
   do 
@@ -1253,7 +1246,6 @@ subroutine RealizAssignFlowInitCond(realization)
                endif
                iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,icell)
              enddo
-             write(*,*) option%myrank, initial_condition%numfaces_set
              do iface=1,initial_condition%numfaces_set
                 ghosted_id = initial_condition%faces_set(iface)
                 local_id = grid%fG2L(ghosted_id)
@@ -1336,7 +1328,6 @@ subroutine RealizAssignFlowInitCond(realization)
                                       realization%discretization%MFD, realization%option)
   end if
 
-  write(*,*) "DONE DiscretizationGlobalToLocalFaces"
  
 !  stop 
 end subroutine RealizAssignFlowInitCond

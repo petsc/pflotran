@@ -685,10 +685,6 @@ subroutine PatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
   
   call PatchUpdateCouplerAuxVars(patch,patch%initial_conditions, &
                                  force_update_flag,option)
-!  do iconn = 1, patch%initial_conditions%first%connection_set%num_connections
-  do iconn = 1, 36
-   write(*,*) iconn, patch%initial_conditions%first%flow_aux_real_var(1:option%nflowdof,iconn)
-  end do 
 
   call PatchUpdateCouplerAuxVars(patch,patch%boundary_conditions, &
                                  force_update_flag,option)

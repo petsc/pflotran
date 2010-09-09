@@ -168,7 +168,6 @@ subroutine Init(simulation)
   ! read in the remainder of the input file
   call InitReadInput(simulation)
   call InputDestroy(realization%input)
-  call printMsg(option,"  After InputDestroy ")
   
 
 #ifdef VAMSI_HDF5      
@@ -215,7 +214,6 @@ subroutine Init(simulation)
       call init_span_wanger(realization)
   end select
   
-  call printMsg(option,"  Before RealizationCreateDiscretization")
 
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
@@ -224,7 +222,6 @@ subroutine Init(simulation)
 !    call MassBalanceCreate(realization)
 !  endif  
   
-  call printMsg(option,"  After RealizationCreateDiscretization")
 
   if (OptionPrintToScreen(option)) then
     ! general print statements for both flow and transport modes
@@ -382,7 +379,7 @@ subroutine Init(simulation)
 !     flow_solver%pc_type = PCSHELL
       pcside = PC_RIGHT
       if(flow_solver%pc_type==PCSHELL) then
-!        call KSPSetPCSide(flow_solver%ksp, pcside,ierr)
+        call KSPSetPCSide(flow_solver%ksp, pcside,ierr)
         flowortranpc=0 
         call SAMRInitializePreconditioner(discretization%amrgrid%p_application, flowortranpc, flow_solver%pc)
       endif
@@ -485,7 +482,7 @@ subroutine Init(simulation)
 !       flow_solver%pc_type = PCSHELL
        pcside = PC_RIGHT
        if(tran_solver%pc_type==PCSHELL) then
-!          call KSPSetPCSide(tran_solver%ksp, pcside,ierr)
+          call KSPSetPCSide(tran_solver%ksp, pcside,ierr)
           flowortranpc=1
           call SAMRInitializePreconditioner(discretization%amrgrid%p_application, flowortranpc, tran_solver%pc)
        endif
@@ -1824,14 +1821,10 @@ subroutine InitReadInput(simulation)
 
     end select
 
-    option%io_buffer = 'DONE -- pflotran card:: ' // trim(card)
-    call printMsg(option)
 
 
   enddo
 
-    option%io_buffer = 'Leave InitReadInput'
-    call printMsg(option)
                                         
 end subroutine InitReadInput
 

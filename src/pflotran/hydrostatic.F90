@@ -199,7 +199,6 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       dist_x = conn_set_ptr%cntr(1,conn_id) - datum(X_DIRECTION)
       dist_y = conn_set_ptr%cntr(2,conn_id) - datum(Y_DIRECTION)
       dist_z = conn_set_ptr%cntr(3,conn_id) - datum(Z_DIRECTION)
-!      write(*,*) iconn,  dist_z
     else 
 
       local_id = coupler%connection_set%id_dn(iconn)
@@ -214,7 +213,6 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       dist_x = grid%x(ghosted_id)-dx_conn-datum(X_DIRECTION)
       dist_y = grid%y(ghosted_id)-dy_conn-datum(Y_DIRECTION)
       dist_z = grid%z(ghosted_id)-dz_conn-datum(Z_DIRECTION)
-!      write(*,*) iconn,  dist_z
     end if
 
 
@@ -222,10 +220,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       ipressure = idatum+int(dist_z/delta_z)
       if (grid%itype==STRUCTURED_GRID_MIMETIC) then
         dist_z = conn_set_ptr%cntr(3,conn_id) - z(ipressure)
-!        write(*,*) conn_set_ptr%cntr(3,conn_id)
       else 
         dist_z = grid%z(ghosted_id)-dz_conn-z(ipressure)
-!        write(*,*) grid%z(ghosted_id)-dz_conn
       end if
       pressure = pressure_array(ipressure) + &
                  density_array(ipressure)*option%gravity(Z_DIRECTION) * &
@@ -239,7 +235,6 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 !      end if
  
     else
-      write(*,*) "Not associated"
       pressure = pressure_at_datum + &
                  pressure_gradient(X_DIRECTION)*dist_x + & ! gradient in Pa/m
                  pressure_gradient(Y_DIRECTION)*dist_y + &
@@ -276,11 +271,12 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 !    endif
       
   enddo
- 
+
+#ifdef DASVYAT 
   do iconn = 1, num_faces
      write(*,*) iconn, coupler%flow_aux_real_var(1,iconn)
   end do
-
+#endif
  
   if (associated(pressure_array)) deallocate(pressure_array)
   nullify(pressure_array)
