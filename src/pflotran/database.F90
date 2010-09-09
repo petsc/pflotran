@@ -653,6 +653,7 @@ subroutine BasisInit(reaction,option)
   use Option_module
   use String_module
   use Utility_module
+  use Input_module
 
   implicit none
   
@@ -673,13 +674,16 @@ subroutine BasisInit(reaction,option)
   type(surface_complex_type), pointer :: cur_srfcplx2
   type(ion_exchange_rxn_type), pointer :: cur_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cur_cation
+  type(general_rxn_type), pointer :: cur_general_rxn
   type(colloid_type), pointer :: cur_colloid
+  type(database_rxn_type), pointer :: dbaserxn
 
   character(len=MAXWORDLENGTH), allocatable :: old_basis_names(:)
   character(len=MAXWORDLENGTH), allocatable :: new_basis_names(:)
 
   character(len=MAXWORDLENGTH), parameter :: h2oname = 'H2O'
-  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: word, word2
+  character(len=MAXSTRINGLENGTH) :: string, string2
   
   PetscInt, parameter :: h2o_id = 1
 
@@ -697,6 +701,8 @@ subroutine BasisInit(reaction,option)
   character(len=MAXWORDLENGTH), allocatable :: gas_names(:)
   PetscReal, allocatable :: logKvector_swapped(:,:)
   PetscTruth, allocatable :: flags(:)
+  PetscTruth :: negative_flag
+  PetscReal :: value
   
   PetscInt :: ispec, itemp
   PetscInt :: spec_id
@@ -710,9 +716,14 @@ subroutine BasisInit(reaction,option)
   PetscInt :: idum
   PetscReal :: temp_high, temp_low
   PetscInt :: itemp_high, itemp_low
+  PetscInt :: species_count, max_species_count
+  PetscInt :: forward_count, max_forward_count
+  PetscInt :: backward_count, max_backward_count
+  PetscInt :: midpoint
   
   PetscTruth :: compute_new_basis
   PetscTruth :: found
+  PetscErrorCode :: ierr
 
 ! get database temperature based on REFERENCE_TEMPERATURE
   if (option%reference_temperature <= 0.01d0) then
@@ -2891,6 +2902,256 @@ subroutine BasisInit(reaction,option)
     nullify(cur_ionx_rxn)
 
   endif
+  
+  ! general reaction
+  
+  if (reaction%ngeneral_rxn > 0) then
+  
+    ! process reaction equation into the database format
+    cur_general_rxn => reaction%general_rxn_list
+    do
+      if (.not.associated(cur_general_rxn)) exit
+      
+      ! count # species
+      icount = 0
+      string = cur_general_rxn%reaction
+      do
+        ierr = 0
+        call InputReadWord(string,word,PETSC_TRUE,ierr)
+        if(InputError(ierr)) exit
+
+        select case(word)
+          case('+')
+          case('-')
+          case('=','<=>','<->')
+          case default
+          ! try reading as double precision
+          string2 = word
+          if (.not.StringStartsWithAlpha(string2)) then
+            ! the word is the stoichiometry value
+          else
+            ! the word is the species name
+            icount = icount + 1
+          endif
+        end select
+
+      enddo
+      
+      ! load species into database format
+      
+      cur_general_rxn%dbaserxn => DatabaseRxnCreate()
+      
+      dbaserxn => DatabaseRxnCreate()
+      dbaserxn%nspec = icount
+      allocate(dbaserxn%spec_name(icount))
+      dbaserxn%spec_name = ''
+      allocate(dbaserxn%stoich(icount))
+      dbaserxn%stoich = -999.
+      allocate(dbaserxn%spec_ids(icount))
+      dbaserxn%spec_ids = 0
+
+      string = cur_general_rxn%reaction
+      icount = 1
+      ! midpoint points to the first product species, as in
+      ! reactant1 + reactant2 <-> product1 + product2
+      midpoint = 0
+      negative_flag = PETSC_FALSE
+      do
+        ierr = 0
+        call InputReadWord(string,word,PETSC_TRUE,ierr)
+        if(InputError(ierr)) exit
+
+        select case(word)
+          case('+')
+          case('-')
+            ! toggle negative flag
+            if (negative_flag == PETSC_TRUE) then
+              negative_flag = PETSC_FALSE
+            else
+              negative_flag = PETSC_TRUE
+            endif
+          case('=','<=>','<->')
+            midpoint = icount
+          case default
+            ! try reading as double precision
+            string2 = word
+            if (.not.StringStartsWithAlpha(string2)) then
+              ! negate if a product
+              call InputReadDouble(string2,option,value,ierr)
+              ! negate if negative stoichiometry
+              if (negative_flag == PETSC_TRUE) value = -1.0*value
+              dbaserxn%stoich(icount) = value
+            else
+              dbaserxn%spec_name(icount) = word
+              if (negative_flag == PETSC_TRUE .and. &
+                  (dbaserxn%stoich(icount) + 999.d0) < 1.d-10) then
+                dbaserxn%stoich(icount) = -1.d0
+              endif
+
+              ! set the primary species id
+              found = PETSC_FALSE
+              do i = 1, reaction%naqcomp
+                if (StringCompare(word, &
+                                  reaction%primary_species_names(i), &
+                                  MAXWORDLENGTH)) then
+                  dbaserxn%spec_ids(icount) = i
+                  found = PETSC_TRUE
+                  exit      
+                endif
+              enddo
+              ! check water
+              word2 = 'H2O'
+              if (StringCompareIgnoreCase(word,word2,MAXWORDLENGTH)) then
+                ! don't increment icount
+                exit
+              endif              
+              if (.not.found) then
+                option%io_buffer = 'Species ' // trim(word) // &
+                         ' in general reaction' // &
+                         ' not found among primary species list.'
+                call printErrMsg(option)     
+              endif
+              icount = icount + 1
+            endif
+            negative_flag = PETSC_FALSE
+        end select
+
+      enddo
+      
+      ! if no stoichiometry specified, default = 1.
+      do i = 1, dbaserxn%nspec
+        if ((dbaserxn%stoich(i) + 999.d0) < 1.d-10) dbaserxn%stoich(i) = 1.d0
+      enddo
+      ! negate stoichiometries after midpoint
+      do i = midpoint, dbaserxn%nspec
+        dbaserxn%stoich(i) = -1.d0*dbaserxn%stoich(i)
+      enddo
+      ! now negate all stoichiometries to have - for reactants; + for products
+      do i = 1, dbaserxn%nspec
+        dbaserxn%stoich(i) = -1.d0*dbaserxn%stoich(i)
+      enddo
+      ! reorder species ids in ascending order
+      do i = 1, dbaserxn%nspec
+        do j = i+1, dbaserxn%nspec
+          if (dbaserxn%spec_ids(i) > dbaserxn%spec_ids(j)) then
+            ! swap ids
+            idum = dbaserxn%spec_ids(j)
+            dbaserxn%spec_ids(j) = dbaserxn%spec_ids(i)
+            dbaserxn%spec_ids(i) = idum
+            ! swap stoichiometry
+            value = dbaserxn%stoich(j)
+            dbaserxn%stoich(j) = dbaserxn%stoich(i)
+            dbaserxn%stoich(i) = value
+            ! swap names
+            word = dbaserxn%spec_name(j)
+            dbaserxn%spec_name(j) = dbaserxn%spec_name(i)
+            dbaserxn%spec_name(i) = word
+          endif
+        enddo
+      enddo
+      
+      cur_general_rxn%dbaserxn => dbaserxn
+      
+      cur_general_rxn => cur_general_rxn%next
+    enddo
+    nullify(cur_general_rxn)
+
+    ! determine max # species, forward species and backward species
+    !  for a given general rxn
+    max_species_count = 0
+    max_forward_count = 0
+    max_backward_count = 0
+    cur_general_rxn => reaction%general_rxn_list
+    do
+      if (.not.associated(cur_general_rxn)) exit
+
+      ! zero count
+      forward_count = 0
+      backward_count = 0   
+
+      ! max species in reaction
+      species_count = cur_general_rxn%dbaserxn%nspec
+
+      ! sum forward and reverse species
+      dbaserxn => cur_general_rxn%dbaserxn
+      do i = 1, dbaserxn%nspec
+        if (dbaserxn%stoich(i) < 0.d0) then
+          forward_count = forward_count + 1
+        else if (dbaserxn%stoich(i) > 0.d0) then
+          backward_count = backward_count + 1
+        endif
+      enddo
+
+      ! calculate maximum
+      if (forward_count > max_forward_count) max_forward_count = forward_count
+      if (backward_count > max_backward_count) max_backward_count = backward_count
+      if (species_count > max_species_count) max_species_count = species_count
+
+      cur_general_rxn => cur_general_rxn%next
+
+    enddo
+    nullify(cur_general_rxn)
+    
+    allocate(reaction%generalspecid(0:max_species_count,reaction%ngeneral_rxn))
+    reaction%generalspecid = 0
+    allocate(reaction%generalstoich(max_species_count,reaction%ngeneral_rxn))
+    reaction%generalstoich = 0.d0
+    allocate(reaction%generalforwardspecid(0:max_forward_count,reaction%ngeneral_rxn))
+    reaction%generalforwardspecid = 0
+    allocate(reaction%generalforwardstoich(max_forward_count,reaction%ngeneral_rxn))
+    reaction%generalforwardstoich = 0.d0
+    allocate(reaction%generalbackwardspecid(0:max_backward_count,reaction%ngeneral_rxn))
+    reaction%generalbackwardspecid = 0
+    allocate(reaction%generalbackwardstoich(max_backward_count,reaction%ngeneral_rxn))
+    reaction%generalbackwardstoich = 0.d0
+    allocate(reaction%generalh2oid(reaction%ngeneral_rxn))
+    reaction%generalh2oid = 0
+    allocate(reaction%generalh2ostoich(reaction%ngeneral_rxn))
+    reaction%generalh2ostoich = 0.d0
+    allocate(reaction%general_kf(reaction%ngeneral_rxn))
+    reaction%general_kf = 0.d0
+    allocate(reaction%general_kr(reaction%ngeneral_rxn))    
+    reaction%general_kr = 0.d0
+
+    ! load the data into the compressed arrays
+    irxn = 0
+    cur_general_rxn => reaction%general_rxn_list
+    do
+      if (.not.associated(cur_general_rxn)) exit
+      
+      dbaserxn => cur_general_rxn%dbaserxn
+      
+      irxn = irxn + 1
+     
+      forward_count = 0
+      backward_count = 0
+      do i = 1, dbaserxn%nspec
+        reaction%generalspecid(i,irxn) = dbaserxn%spec_ids(i)
+        reaction%generalstoich(i,irxn) = dbaserxn%stoich(i)
+        if (dbaserxn%stoich(i) < 0.d0) then
+          forward_count = forward_count + 1
+          reaction%generalforwardspecid(forward_count,irxn) = dbaserxn%spec_ids(i)
+          ! ensure that forward stoich is positive for rate expression
+          reaction%generalforwardstoich(forward_count,irxn) = dabs(dbaserxn%stoich(i))
+        else if (dbaserxn%stoich(i) > 0.d0) then
+          backward_count = backward_count + 1
+          reaction%generalbackwardspecid(backward_count,irxn) = dbaserxn%spec_ids(i)
+          reaction%generalbackwardstoich(backward_count,irxn) = dbaserxn%stoich(i)
+        endif
+      enddo
+      reaction%generalspecid(0,irxn) = dbaserxn%nspec
+      reaction%generalforwardspecid(0,irxn) = forward_count
+      reaction%generalbackwardspecid(0,irxn) = backward_count
+      
+      reaction%general_kf(irxn) = cur_general_rxn%forward_rate
+      reaction%general_kr(irxn) = cur_general_rxn%backward_rate
+      
+      cur_general_rxn => cur_general_rxn%next
+      
+    enddo
+              
+  endif  
+  
 
   call BasisPrint(reaction,'Final Basis',option)
 

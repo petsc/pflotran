@@ -133,6 +133,16 @@ module Reaction_Aux_module
     type (surface_complexation_rxn_type), pointer :: next
   end type surface_complexation_rxn_type    
 
+  type, public :: general_rxn_type
+    PetscInt :: id
+    character(len=MAXSTRINGLENGTH) :: reaction
+    PetscReal :: forward_rate
+    PetscReal :: backward_rate
+    PetscTruth :: print_me
+    type(database_rxn_type), pointer :: dbaserxn
+    type(general_rxn_type), pointer :: next
+  end type general_rxn_type
+
   type, public :: aq_species_constraint_type
     character(len=MAXWORDLENGTH), pointer :: names(:)
     PetscReal, pointer :: constraint_conc(:)
@@ -194,6 +204,7 @@ module Reaction_Aux_module
     type(colloid_type), pointer :: colloid_list
     type(ion_exchange_rxn_type), pointer :: ion_exchange_rxn_list
     type(surface_complexation_rxn_type), pointer :: surface_complexation_rxn_list
+    type(general_rxn_type), pointer :: general_rxn_list
     PetscInt :: act_coef_update_frequency
     PetscInt :: act_coef_update_algorithm
     PetscTruth :: checkpoint_activity_coefs
@@ -368,6 +379,24 @@ module Reaction_Aux_module
     PetscReal, pointer :: kinmnrl_affinity_power(:)
     PetscReal, pointer :: kinmnrl_affinity_threshold(:)
     
+    ! general rxn
+    PetscInt :: ngeneral_rxn
+    ! ids and stoichiometries for species involved in reaction
+    PetscInt, pointer :: generalspecid(:,:)
+    PetscReal, pointer :: generalstoich(:,:)
+    ! index of generalspecid & generalstoich for species in forward
+    ! reaction equation 
+    PetscInt, pointer :: generalforwardspecid(:,:)
+    PetscReal, pointer :: generalforwardstoich(:,:)
+    ! index of generalspecid & generalstoich for species in backward
+    ! reaction equation 
+    PetscInt, pointer :: generalbackwardspecid(:,:)
+    PetscReal, pointer :: generalbackwardstoich(:,:)
+    PetscInt, pointer :: generalh2oid(:)
+    PetscReal, pointer :: generalh2ostoich(:)
+    PetscReal, pointer :: general_kf(:)
+    PetscReal, pointer :: general_kr(:)  
+    
     PetscReal :: max_dlnC
     PetscReal :: reaction_tolerance
 
@@ -407,6 +436,8 @@ module Reaction_Aux_module
             SurfaceComplexDestroy, &
             SurfaceComplexConstraintCreate, &
             SurfaceComplexConstraintDestroy, &
+            GeneralRxnCreate, &
+            GeneralRxnDestroy, &
             ColloidCreate, &
             ColloidDestroy, &
             ColloidConstraintCreate, &
@@ -471,6 +502,7 @@ function ReactionCreate()
   nullify(reaction%colloid_list)
   nullify(reaction%ion_exchange_rxn_list)
   nullify(reaction%surface_complexation_rxn_list)
+  nullify(reaction%general_rxn_list)
   
   nullify(reaction%primary_species_names)
   nullify(reaction%secondary_species_names)
@@ -627,6 +659,18 @@ function ReactionCreate()
   nullify(reaction%kinmnrl_affinity_power)
   nullify(reaction%kinmnrl_affinity_threshold)
   
+  reaction%ngeneral_rxn = 0
+  nullify(reaction%generalspecid)
+  nullify(reaction%generalstoich)
+  nullify(reaction%generalforwardspecid)
+  nullify(reaction%generalforwardstoich)
+  nullify(reaction%generalbackwardspecid)
+  nullify(reaction%generalbackwardstoich)
+  nullify(reaction%generalh2oid)
+  nullify(reaction%generalh2ostoich)
+  nullify(reaction%general_kf)
+  nullify(reaction%general_kr)
+      
   reaction%max_dlnC = 5.d0
   reaction%reaction_tolerance = 1.d-12
 
@@ -890,7 +934,7 @@ end function SurfaceComplexationRxnCreate
 
 ! ************************************************************************** !
 !
-! SurfaceComplexCreate: Allocate and initialize a surface complexreaction
+! SurfaceComplexCreate: Allocate and initialize a surface complex reaction
 ! author: Peter Lichtner
 ! date: 10/21/08
 !
@@ -968,6 +1012,34 @@ function IonExchangeCationCreate()
   IonExchangeCationCreate => cation
   
 end function IonExchangeCationCreate
+
+! ************************************************************************** !
+!
+! GeneralRxnCreate: Allocate and initialize a general reaction
+! author: Glenn Hammond
+! date: 09/03/10
+!
+! ************************************************************************** !
+function GeneralRxnCreate()
+
+  implicit none
+    
+  type(general_rxn_type), pointer :: GeneralRxnCreate
+
+  type(general_rxn_type), pointer :: rxn
+  
+  allocate(rxn)
+  rxn%id = 0
+  rxn%reaction = ''
+  rxn%forward_rate = 0.d0
+  rxn%backward_rate = 0.d0
+  rxn%print_me = PETSC_FALSE
+  nullify(rxn%dbaserxn)
+  nullify(rxn%next)
+  
+  GeneralRxnCreate => rxn
+  
+end function GeneralRxnCreate
 
 ! ************************************************************************** !
 !
@@ -1577,6 +1649,32 @@ end subroutine AqueousSpeciesDestroy
 
 ! ************************************************************************** !
 !
+! AqueousSpeciesListDestroy: Deallocates an aqueous species
+! author: Glenn Hammond
+! date: 09/03/10
+!
+! ************************************************************************** !
+subroutine AqueousSpeciesListDestroy(aq_species_list)
+
+  implicit none
+    
+  type(aq_species_type), pointer :: aq_species_list  
+    
+  type(aq_species_type), pointer :: species, prev_species
+
+  species => aq_species_list
+  do
+    if (.not.associated(species)) exit
+    prev_species => species
+    species => species%next
+    call AqueousSpeciesDestroy(prev_species)
+  enddo  
+  nullify(aq_species_list)
+
+end subroutine AqueousSpeciesListDestroy
+
+! ************************************************************************** !
+!
 ! GasSpeciesDestroy: Deallocates a gas species
 ! author: Glenn Hammond
 ! date: 05/29/08
@@ -1793,6 +1891,31 @@ end subroutine IonExchangeRxnDestroy
 
 ! ************************************************************************** !
 !
+! GeneralRxnDestroy: Deallocates a general reaction
+! author: Glenn Hammond
+! date: 09/03/10
+!
+! ************************************************************************** !
+subroutine GeneralRxnDestroy(rxn)
+
+  implicit none
+    
+  type(general_rxn_type), pointer :: rxn
+
+  if (.not.associated(rxn)) return
+  
+  if (associated(rxn%dbaserxn)) &
+    call DatabaseRxnDestroy(rxn%dbaserxn)
+  nullify(rxn%dbaserxn)
+  nullify(rxn%next)
+
+  deallocate(rxn)  
+  nullify(rxn)
+
+end subroutine GeneralRxnDestroy
+
+! ************************************************************************** !
+!
 ! AqueousSpeciesConstraintDestroy: Destroys an aqueous species constraint 
 !                                  object
 ! author: Glenn Hammond
@@ -1959,6 +2082,7 @@ subroutine ReactionDestroy(reaction)
   type(colloid_type), pointer :: colloid, prev_colloid
   type(ion_exchange_rxn_type), pointer :: ionxrxn, prev_ionxrxn
   type(surface_complexation_rxn_type), pointer :: srfcplxrxn, prev_srfcplxrxn
+  type(general_rxn_type), pointer :: general_rxn, prev_general_rxn
 
   if (.not.associated(reaction)) return
   
@@ -1966,23 +2090,13 @@ subroutine ReactionDestroy(reaction)
   call SpeciesIndexDestroy(reaction%species_idx)
 
   ! primary species
-  aq_species => reaction%primary_species_list
-  do
-    if (.not.associated(aq_species)) exit
-    prev_aq_species => aq_species
-    aq_species => aq_species%next
-    call AqueousSpeciesDestroy(prev_aq_species)
-  enddo  
+  if (associated(reaction%primary_species_list)) &
+    call AqueousSpeciesListDestroy(reaction%primary_species_list)
   nullify(reaction%primary_species_list)
 
   ! secondary species
-  aq_species => reaction%secondary_species_list
-  do
-    if (.not.associated(aq_species)) exit
-    prev_aq_species => aq_species
-    aq_species => aq_species%next
-    call AqueousSpeciesDestroy(prev_aq_species)
-  enddo  
+  if (associated(reaction%secondary_species_list)) &
+    call AqueousSpeciesListDestroy(reaction%secondary_species_list)
   nullify(reaction%secondary_species_list)
 
   ! gas species
@@ -2032,6 +2146,16 @@ subroutine ReactionDestroy(reaction)
     prev_srfcplxrxn => srfcplxrxn
     srfcplxrxn => srfcplxrxn%next
     call SurfaceComplexationRxnDestroy(prev_srfcplxrxn)
+  enddo    
+  nullify(reaction%surface_complexation_rxn_list)
+  
+  ! general reactions
+  general_rxn => reaction%general_rxn_list
+  do
+    if (.not.associated(general_rxn)) exit
+    prev_general_rxn => general_rxn
+    general_rxn => general_rxn%next
+    call GeneralRxnDestroy(prev_general_rxn)
   enddo    
   nullify(reaction%surface_complexation_rxn_list)
   
@@ -2386,6 +2510,37 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%colloid_mobile_fraction)) &
     deallocate(reaction%colloid_mobile_fraction)
   nullify(reaction%colloid_mobile_fraction)
+  
+  if (associated(reaction%generalspecid)) &
+    deallocate(reaction%generalspecid)
+  nullify(reaction%generalspecid)
+  if (associated(reaction%generalstoich)) &
+    deallocate(reaction%generalstoich)
+  nullify(reaction%generalstoich)
+  if (associated(reaction%generalforwardspecid)) &
+    deallocate(reaction%generalforwardspecid)
+  nullify(reaction%generalforwardspecid)
+  if (associated(reaction%generalforwardstoich)) &
+    deallocate(reaction%generalforwardstoich)
+  nullify(reaction%generalforwardstoich)
+  if (associated(reaction%generalbackwardspecid)) &
+    deallocate(reaction%generalbackwardspecid)
+  nullify(reaction%generalbackwardspecid)
+  if (associated(reaction%generalbackwardstoich)) &
+    deallocate(reaction%generalbackwardstoich)
+  nullify(reaction%generalbackwardstoich)
+  if (associated(reaction%generalh2oid)) &
+    deallocate(reaction%generalh2oid)
+  nullify(reaction%generalh2oid)
+  if (associated(reaction%generalh2ostoich)) &
+    deallocate(reaction%generalh2ostoich)
+  nullify(reaction%generalh2ostoich)
+  if (associated(reaction%general_kf)) &
+    deallocate(reaction%general_kf)
+  nullify(reaction%general_kf)
+  if (associated(reaction%general_kr)) &
+    deallocate(reaction%general_kr)
+  nullify(reaction%general_kr)
   
   deallocate(reaction)
   nullify(reaction)

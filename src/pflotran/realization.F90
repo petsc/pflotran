@@ -1535,6 +1535,127 @@ end subroutine RealizAssignTransportInitCond
 
 ! ************************************************************************** !
 !
+! RealizationScaleSourceSink: Scales select source/sinks based on perms
+! author: Glenn Hammond
+! date: 09/03/08
+!
+! ************************************************************************** !
+subroutine RealizationScaleSourceSink(realization)
+
+  use Region_module
+  use Option_module
+  use Field_module
+  use Coupler_module
+  use Connection_module
+  use Condition_module
+  use Grid_module
+  use Patch_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  
+  type(realization_type) :: realization
+  
+  PetscErrorCode :: ierr
+  
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field  
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
+  type(coupler_type), pointer :: cur_source_sink
+  type(connection_set_type), pointer :: cur_connection_set
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  PetscReal, pointer :: vec_ptr(:)
+  PetscReal, pointer :: perm_ptr(:)
+  PetscReal, pointer :: vol_ptr(:)
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: iconn
+  PetscReal :: scale
+  
+  option => realization%option
+  discretization => realization%discretization
+  field => realization%field
+  patch => realization%patch
+
+  call GridVecGetArrayF90(grid,field%perm0_xx,perm_ptr, ierr)
+  call GridVecGetArrayF90(grid,field%volume,vol_ptr, ierr)
+
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      ! BIG-TIME warning here.  I assume that all connections are within 
+      ! a single patch - geh
+
+      grid => cur_patch%grid
+
+      cur_source_sink => cur_patch%source_sinks%first
+      do
+        if (.not.associated(cur_source_sink)) exit
+
+        call VecZeroEntries(field%work,ierr)
+        call GridVecGetArrayF90(grid,field%work,vec_ptr, ierr)
+
+        cur_connection_set => cur_source_sink%connection_set
+    
+        do iconn = 1, cur_connection_set%num_connections
+          local_id = cur_connection_set%id_dn(iconn)
+          ghosted_id = grid%nL2G(local_id)
+
+          select case(option%iflowmode)
+            case(RICHARDS_MODE)
+              vec_ptr(local_id) = perm_ptr(local_id)*vol_ptr(ghosted_id)
+            case(THC_MODE)
+            case(MPH_MODE)
+            case(IMS_MODE)
+            case(FLASH2_MODE)
+          end select 
+
+        enddo
+        
+        call GridVecRestoreArrayF90(grid,field%work,vec_ptr, ierr)
+        call VecNorm(field%work,NORM_1,scale,ierr)
+        scale = 1.d0/scale
+        call VecScale(field%work,scale,ierr)
+
+        call GridVecGetArrayF90(grid,field%work,vec_ptr, ierr)
+        do iconn = 1, cur_connection_set%num_connections      
+          local_id = cur_connection_set%id_dn(iconn)
+          select case(option%iflowmode)
+            case(RICHARDS_MODE)
+              cur_source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
+                vec_ptr(local_id)
+            case(THC_MODE)
+            case(MPH_MODE)
+            case(IMS_MODE)
+            case(FLASH2_MODE)
+          end select 
+
+        enddo
+        call GridVecRestoreArrayF90(grid,field%work,vec_ptr, ierr)
+        
+        cur_source_sink => cur_source_sink%next
+      enddo
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+  call GridVecRestoreArrayF90(grid,field%perm0_xx,perm_ptr, ierr)
+  call GridVecRestoreArrayF90(grid,field%volume,vol_ptr, ierr)
+   
+end subroutine RealizationScaleSourceSink
+
+! ************************************************************************** !
+!
 ! RealizationRevertFlowParameters: Assigns initial porosity/perms to vecs
 ! author: Glenn Hammond
 ! date: 05/09/08

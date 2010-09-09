@@ -2571,9 +2571,16 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
       select case(source_sink%flow_condition%rate%itype)
         case(MASS_RATE_SS)
           qsrc_mol = qsrc/FMWH2O ! kg/sec -> kmol/sec
+        case(SCALED_MASS_RATE_SS)
+          qsrc_mol = qsrc/FMWH2O* & ! kg/sec -> kmol/sec
+            source_sink%flow_aux_real_var(ONE_INTEGER,iconn)
         case(VOLUMETRIC_RATE_SS)  ! assume local density for now
           ! qsrc1 = m^3/sec
           qsrc_mol = qsrc*global_aux_vars(ghosted_id)%den(1) ! den = kmol/m^3
+        case(SCALED_VOLUMETRIC_RATE_SS)  ! assume local density for now
+          ! qsrc1 = m^3/sec
+          qsrc_mol = qsrc*global_aux_vars(ghosted_id)%den(1)* & ! den = kmol/m^3
+            source_sink%flow_aux_real_var(ONE_INTEGER,iconn)
       end select
 !      if (option%compute_mass_balance_new) then
         ! need to added global aux_var for src/sink
@@ -3577,9 +3584,12 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       
       Jup = 0.d0
       select case(source_sink%flow_condition%rate%itype)
-        case(MASS_RATE_SS)
+        case(MASS_RATE_SS,SCALED_MASS_RATE_SS)
         case(VOLUMETRIC_RATE_SS)  ! assume local density for now
           Jup(1,1) = -qsrc*rich_aux_vars(ghosted_id)%dden_dp*FMWH2O
+        case(SCALED_VOLUMETRIC_RATE_SS)  ! assume local density for now
+          Jup(1,1) = -qsrc*rich_aux_vars(ghosted_id)%dden_dp*FMWH2O* &
+            source_sink%flow_aux_real_var(ONE_INTEGER,iconn)
 
       end select
 #ifdef GLENN

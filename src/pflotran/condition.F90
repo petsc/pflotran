@@ -686,6 +686,8 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = NEUMANN_BC
             case('mass_rate')
               sub_condition_ptr%itype = MASS_RATE_SS
+            case('scaled_mass_rate')
+              sub_condition_ptr%itype = SCALED_MASS_RATE_SS
             case('hydrostatic')
               sub_condition_ptr%itype = HYDROSTATIC_BC
             case('conductance')
@@ -698,6 +700,8 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = SEEPAGE_BC
             case('volumetric','volumetric_rate')
               sub_condition_ptr%itype = VOLUMETRIC_RATE_SS
+            case('scaled_volumetric_rate')
+              sub_condition_ptr%itype = SCALED_VOLUMETRIC_RATE_SS
             case('equilibrium')
               sub_condition_ptr%itype = EQUILIBRIUM_SS
             case default

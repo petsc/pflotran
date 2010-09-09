@@ -992,7 +992,6 @@ subroutine RTUpdateTransportCoefsPatch(realization)
   grid => patch%grid
   rt_parameter => patch%aux%RT%rt_parameter
 
-  ! cannot use tran_xx_loc vector here as it has not yet been updated.
   call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%tortuosity_loc,tor_loc_p,ierr)
 
