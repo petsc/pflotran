@@ -601,39 +601,48 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
       num_connections = coupler%connection_set%num_connections
 
       ! FLOW
-      if (associated(coupler%flow_condition) .and. &
-          (coupler%itype == INITIAL_COUPLER_TYPE .or. &
-           coupler%itype == BOUNDARY_COUPLER_TYPE)) then
+      if (associated(coupler%flow_condition)) then
+        if (coupler%itype == INITIAL_COUPLER_TYPE .or. &
+            coupler%itype == BOUNDARY_COUPLER_TYPE) then
 
-        if (associated(coupler%flow_condition%pressure)) then
+          if (associated(coupler%flow_condition%pressure)) then
 
-          ! allocate arrays that match the number of connections
-          select case(option%iflowmode)
+            ! allocate arrays that match the number of connections
+            select case(option%iflowmode)
 
-            case(RICHARDS_MODE)
-!geh              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
-              allocate(coupler%flow_aux_real_var(2,num_connections))
-              allocate(coupler%flow_aux_int_var(1,num_connections))
+              case(RICHARDS_MODE)
+  !geh              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
+                allocate(coupler%flow_aux_real_var(2,num_connections))
+                allocate(coupler%flow_aux_int_var(1,num_connections))
+                coupler%flow_aux_real_var = 0.d0
+                coupler%flow_aux_int_var = 0
+
+              case(THC_MODE)
+                allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
+                allocate(coupler%flow_aux_int_var(1,num_connections))
+                coupler%flow_aux_real_var = 0.d0
+                coupler%flow_aux_int_var = 0
+
+              case(MPH_MODE, IMS_MODE, FLASH2_MODE)
+                allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
+                allocate(coupler%flow_aux_int_var(1,num_connections))
+                coupler%flow_aux_real_var = 0.d0
+                coupler%flow_aux_int_var = 0
+                  
+              case default
+            end select
+        
+          endif
+        else if (coupler%itype == SRC_SINK_COUPLER_TYPE) then 
+          if (associated(coupler%flow_condition%rate)) then
+            if (coupler%flow_condition%rate%itype == SCALED_MASS_RATE_SS .or. &
+                coupler%flow_condition%rate%itype == SCALED_VOLUMETRIC_RATE_SS) then
+              ! the auxvar array will be used to scale the rate
+              allocate(coupler%flow_aux_real_var(1,num_connections))
               coupler%flow_aux_real_var = 0.d0
-              coupler%flow_aux_int_var = 0
-
-            case(THC_MODE)
-              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
-              allocate(coupler%flow_aux_int_var(1,num_connections))
-              coupler%flow_aux_real_var = 0.d0
-              coupler%flow_aux_int_var = 0
-
-            case(MPH_MODE, IMS_MODE, FLASH2_MODE)
-              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
-              allocate(coupler%flow_aux_int_var(1,num_connections))
-              coupler%flow_aux_real_var = 0.d0
-              coupler%flow_aux_int_var = 0
-                
-            case default
-          end select
-      
+            endif
+          endif
         endif
-      
       endif
       
     endif

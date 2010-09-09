@@ -12,7 +12,8 @@ module String_module
             StringCompareIgnoreCase, &
             StringToUpper, &
             StringToLower, &
-            StringReadQuotedWord
+            StringReadQuotedWord, &
+            StringStartswithAlpha
 
 contains
 
@@ -189,5 +190,31 @@ subroutine StringReadQuotedWord(string, name, return_blank_error, ierr)
   string = string(realends+1:)
 
 end subroutine StringReadQuotedWord
+
+! ************************************************************************** !
+!
+! StringStartsWithAlpha: Determines whether a string starts with an alpha char
+! author: Glenn Hammond
+! date: 10/07/10
+!
+! ************************************************************************** !
+function StringStartsWithAlpha(string)
+      
+  implicit none
+
+  character(len=*) :: string
+
+  PetscTruth :: StringStartsWithAlpha
+
+  string = adjustl(string)
+
+  if ((string(1:1) >= 'a' .and. string(1:1) <= 'z') .or. &
+      (string(1:1) >= 'A' .and. string(1:1) <= 'Z')) then
+    StringStartsWithAlpha = PETSC_TRUE
+  else
+    StringStartsWithAlpha = PETSC_FALSE
+  endif
+
+end function StringStartsWithAlpha
 
 end module String_module
