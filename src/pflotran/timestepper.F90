@@ -430,13 +430,15 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     ! (reactive) transport solution
     if (associated(tran_stepper)) then
       call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr)
-      if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then      
+      if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+	    !global implicit
         call StepperStepTransportDT(realization,tran_stepper, &
                                     flow_timestep_cut_flag, &
                                     tran_timestep_cut_flag, &
                                     idum,failure)
       else
-#ifdef REVISED_TRANSPORT      
+#ifdef REVISED_TRANSPORT
+        !operator splitting
         call StepperStepTransportDT1(realization,tran_stepper, &
                                      flow_timestep_cut_flag, &
                                      tran_timestep_cut_flag, &
