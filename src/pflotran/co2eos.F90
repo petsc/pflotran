@@ -707,9 +707,6 @@ contains
   temparray = coef(3,:)
   call duan_sun_param(t,p,temparray,lamca)
 #else
-  call duan_sun_param(t,p,coef(1,:),mu0)
-  call duan_sun_param(t,p,coef(2,:),lamc)
-  call duan_sun_param(t,p,coef(3,:),lamca)
 #endif
   
   !activity coef. co2
@@ -761,7 +758,7 @@ contains
 !         poyn  [-]     Poynting factor
 
 ! Crovetto, R. (1991) Evaluation of solubility data of the system CO2-H2O 
-! from 273¡Z K to the critical point of water. Journal of Physical and 
+! from 273ï¿½Z K to the critical point of water. Journal of Physical and 
 ! Chemical Reference Data, 20(3), 575-589.
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 

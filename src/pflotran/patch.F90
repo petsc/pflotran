@@ -515,8 +515,12 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     patch%internal_fluxes = 0.d0
   endif
 #endif  
-  
-  temp_int = CouplerGetNumConnectionsInList(patch%boundary_conditions)
+ 
+  if (patch%grid%itype == STRUCTURED_GRID_MIMETIC) then
+    temp_int = ConnectionGetNumberInList(patch%grid%boundary_connection_set_list)
+  else  
+    temp_int = CouplerGetNumConnectionsInList(patch%boundary_conditions)
+  end if
   allocate(patch%boundary_velocities(option%nphase,temp_int)) 
   patch%boundary_velocities = 0.d0
 #ifdef REVISED_TRANSPORT
@@ -601,48 +605,40 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
       num_connections = coupler%connection_set%num_connections
 
       ! FLOW
-      if (associated(coupler%flow_condition)) then
-        if (coupler%itype == INITIAL_COUPLER_TYPE .or. &
-            coupler%itype == BOUNDARY_COUPLER_TYPE) then
+      if (associated(coupler%flow_condition) .and. &
+          (coupler%itype == INITIAL_COUPLER_TYPE .or. &
+           coupler%itype == BOUNDARY_COUPLER_TYPE)) then
 
-          if (associated(coupler%flow_condition%pressure)) then
+        if (associated(coupler%flow_condition%pressure)) then
 
-            ! allocate arrays that match the number of connections
-            select case(option%iflowmode)
+          ! allocate arrays that match the number of connections
+          select case(option%iflowmode)
 
-              case(RICHARDS_MODE)
-  !geh              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
-                allocate(coupler%flow_aux_real_var(2,num_connections))
-                allocate(coupler%flow_aux_int_var(1,num_connections))
-                coupler%flow_aux_real_var = 0.d0
-                coupler%flow_aux_int_var = 0
-
-              case(THC_MODE)
-                allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
-                allocate(coupler%flow_aux_int_var(1,num_connections))
-                coupler%flow_aux_real_var = 0.d0
-                coupler%flow_aux_int_var = 0
-
-              case(MPH_MODE, IMS_MODE, FLASH2_MODE)
-                allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
-                allocate(coupler%flow_aux_int_var(1,num_connections))
-                coupler%flow_aux_real_var = 0.d0
-                coupler%flow_aux_int_var = 0
-                  
-              case default
-            end select
-        
-          endif
-        else if (coupler%itype == SRC_SINK_COUPLER_TYPE) then 
-          if (associated(coupler%flow_condition%rate)) then
-            if (coupler%flow_condition%rate%itype == SCALED_MASS_RATE_SS .or. &
-                coupler%flow_condition%rate%itype == SCALED_VOLUMETRIC_RATE_SS) then
-              ! the auxvar array will be used to scale the rate
-              allocate(coupler%flow_aux_real_var(1,num_connections))
+            case(RICHARDS_MODE)
+!geh              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
+              if (option%mimetic) num_connections = coupler%numfaces_set
+              allocate(coupler%flow_aux_real_var(2,num_connections))
+              allocate(coupler%flow_aux_int_var(1,num_connections))
               coupler%flow_aux_real_var = 0.d0
-            endif
-          endif
+              coupler%flow_aux_int_var = 0
+
+            case(THC_MODE)
+              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
+              allocate(coupler%flow_aux_int_var(1,num_connections))
+              coupler%flow_aux_real_var = 0.d0
+              coupler%flow_aux_int_var = 0
+
+            case(MPH_MODE, IMS_MODE, FLASH2_MODE)
+              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
+              allocate(coupler%flow_aux_int_var(1,num_connections))
+              coupler%flow_aux_real_var = 0.d0
+              coupler%flow_aux_int_var = 0
+                
+            case default
+          end select
+      
         endif
+      
       endif
       
     endif
@@ -684,14 +680,18 @@ subroutine PatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
   type(patch_type) :: patch
   PetscTruth :: force_update_flag
   type(option_type) :: option
+
+  PetscInt :: iconn
   
   call PatchUpdateCouplerAuxVars(patch,patch%initial_conditions, &
                                  force_update_flag,option)
+
   call PatchUpdateCouplerAuxVars(patch,patch%boundary_conditions, &
                                  force_update_flag,option)
   call PatchUpdateCouplerAuxVars(patch,patch%source_sinks, &
                                  force_update_flag,option)
 
+!  stop
 end subroutine PatchUpdateAllCouplerAuxVars
 
 ! ************************************************************************** !
@@ -760,6 +760,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
             update = PETSC_TRUE
           endif
       end select
+
       
       if (update) then
         if (associated(flow_condition%pressure)) then
@@ -812,6 +813,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                 case(RICHARDS_MODE)
                   coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
                     flow_condition%pressure%dataset%cur_value(1)
+                    
               end select
             case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
               call HydrostaticUpdateCoupler(coupler,option,patch%grid)

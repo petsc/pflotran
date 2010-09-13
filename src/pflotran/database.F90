@@ -2965,7 +2965,7 @@ subroutine BasisInit(reaction,option)
           case('+')
           case('-')
             ! toggle negative flag
-            if (negative_flag == PETSC_TRUE) then
+            if (negative_flag) then
               negative_flag = PETSC_FALSE
             else
               negative_flag = PETSC_TRUE
@@ -2979,11 +2979,11 @@ subroutine BasisInit(reaction,option)
               ! negate if a product
               call InputReadDouble(string2,option,value,ierr)
               ! negate if negative stoichiometry
-              if (negative_flag == PETSC_TRUE) value = -1.0*value
+              if (negative_flag) value = -1.0*value
               dbaserxn%stoich(icount) = value
             else
               dbaserxn%spec_name(icount) = word
-              if (negative_flag == PETSC_TRUE .and. &
+              if (negative_flag .and. &
                   (dbaserxn%stoich(icount) + 999.d0) < 1.d-10) then
                 dbaserxn%stoich(icount) = -1.d0
               endif

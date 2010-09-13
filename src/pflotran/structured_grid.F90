@@ -33,6 +33,8 @@ module Structured_Grid_module
 
     PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
     PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
+    PetscInt :: nlmax_faces  ! Total number of non-ghosted faces in local domain.
+    PetscInt :: ngmax_faces  ! Number of ghosted & non-ghosted faces in local domain.
 
     PetscReal :: origin(3) ! local origin of non-ghosted grid
     PetscReal :: bounds(3,3)
@@ -60,6 +62,7 @@ module Structured_Grid_module
             StructuredGridCreateDA, &
             StructGridComputeLocalBounds, &
             StructGridComputeInternConnect, &
+            StructGridComputeBoundConnect, &
             StructuredGridCreateVecFromDA, &
             StructuredGridMapIndices, &
             StructuredGridComputeSpacing, &
@@ -918,7 +921,7 @@ end subroutine StructGridGetIJKFromGhostedID
 ! date: 10/17/07
 !
 ! ************************************************************************** !
-function StructGridComputeInternConnect(radius,structured_grid,option)
+function StructGridComputeInternConnect(structured_grid, xc, yc, zc, option)
 
   use Connection_module
   use Option_module
@@ -933,10 +936,11 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
      end function samr_patch_at_bc
   end interface
 
-  PetscReal :: radius(:)
+!  PetscReal :: radius(:)
   type(connection_set_type), pointer :: StructGridComputeInternConnect
   type(option_type) :: option
   type(structured_grid_type) :: structured_grid
+  PetscReal, pointer :: xc(:),yc(:),zc(:)
   
   PetscReal, parameter :: Pi=3.141592653590d0
   
@@ -947,6 +951,9 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
   PetscReal :: dist_up, dist_dn
   type(connection_set_type), pointer :: connections
   PetscErrorCode :: ierr
+  PetscReal, pointer :: radius(:)
+
+  radius => xc
   
   samr_ofx = 0
   samr_ofy = 0
@@ -955,6 +962,10 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
   nconn = (structured_grid%ngx-1)*structured_grid%nly*structured_grid%nlz+ &
           structured_grid%nlx*(structured_grid%ngy-1)*structured_grid%nlz+ &
           structured_grid%nlx*structured_grid%nly*(structured_grid%ngz-1)
+  
+
+  structured_grid%nlmax_faces = 0
+  structured_grid%ngmax_faces = 0
 
   lenx = structured_grid%ngx - 1
   leny = structured_grid%ngy - 1
@@ -990,6 +1001,8 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
      endif  
   endif
 
+
+
   connections => ConnectionCreate(nconn, &
                                   option%nphase,INTERNAL_CONNECTION_TYPE)
 
@@ -1002,8 +1015,26 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
           do j = structured_grid%jstart, structured_grid%jend
             do i = 1, lenx
               iconn = iconn+1
+        
+              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
+               
+ 
               id_up = i + j * structured_grid%ngx + k * structured_grid%ngxy+samr_ofx
               id_dn = id_up + 1
+
+
+              
+              if (i==1) then
+                if (structured_grid%nxs==structured_grid%ngxs) then
+                   structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+                   connections%local(iconn) = 1
+                end if
+              else 
+                   structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+                   connections%local(iconn) = 1
+              end if
+
+
               connections%id_up(iconn) = id_up
               connections%id_dn(iconn) = id_dn
               connections%dist(-1:3,iconn) = 0.d0
@@ -1014,6 +1045,11 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
               connections%dist(1,iconn) = 1.d0  ! x component of unit vector
               connections%area(iconn) = structured_grid%dy(id_up)* &
                                         structured_grid%dz(id_up)
+              connections%cntr(1,iconn) = xc(id_up) + &
+                  connections%dist(-1,iconn)*(xc(id_dn) - xc(id_up))
+              connections%cntr(2,iconn) = yc(id_up)
+              connections%cntr(3,iconn) = zc(id_up)
+              
             enddo
           enddo
         enddo
@@ -1034,6 +1070,9 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
               connections%dist(1,iconn) = 1.d0  ! x component of unit vector
               connections%area(iconn) = 2.d0 * pi * (radius(id_up)+0.5d0*structured_grid%dx(id_up))* &
                                         structured_grid%dz(id_up)
+              connections%cntr(1,iconn) = xc(id_up) + connections%dist(-1,iconn)*(xc(id_dn) - xc(id_up))
+              connections%cntr(2,iconn) = yc(id_up)
+              connections%cntr(3,iconn) = zc(id_up)
             enddo
           enddo
         enddo
@@ -1053,6 +1092,9 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
               connections%dist(0,iconn) = dist_up+dist_dn
               connections%dist(1,iconn) = 1.d0  ! x component of unit vector
               connections%area(iconn) = 4.d0 * pi * (radius(id_up)+0.5d0*structured_grid%dx(id_up))
+              connections%cntr(1,iconn) = xc(id_up) + connections%dist(-1,iconn)*(xc(id_dn) - xc(id_up))
+              connections%cntr(2,iconn) = yc(id_up)
+              connections%cntr(3,iconn) = zc(id_up)
             enddo
           enddo
         enddo
@@ -1068,6 +1110,18 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
           do i = structured_grid%istart, structured_grid%iend
             do j = 1, leny
               iconn = iconn+1
+
+              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
+              if (j==1) then
+                if (structured_grid%nys==structured_grid%ngys) then
+                   structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+                   connections%local(iconn) = 1
+                end if
+              else 
+                   structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+                   connections%local(iconn) = 1
+              end if
+
               id_up = i + 1 + (j-1) * structured_grid%ngx + k * structured_grid%ngxy &
                   +samr_ofy
               id_dn = id_up + structured_grid%ngx
@@ -1081,6 +1135,9 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
               connections%dist(2,iconn) = 1.d0  ! y component of unit vector
               connections%area(iconn) = structured_grid%dx(id_up)* &
                                     structured_grid%dz(id_up)
+              connections%cntr(1,iconn) = xc(id_up) 
+              connections%cntr(2,iconn) = yc(id_up) + connections%dist(-1,iconn)*(yc(id_dn) - yc(id_up)) 
+              connections%cntr(3,iconn) = zc(id_up)
             enddo
           enddo
         enddo
@@ -1090,6 +1147,7 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
       case(SPHERICAL_GRID)
         option%io_buffer = 'Spherical coordinates not implemented.'
         call printErrMsg(option)
+
     end select
   endif
       
@@ -1101,6 +1159,18 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
           do i = structured_grid%istart, structured_grid%iend
             do k = 1, lenz
               iconn = iconn+1
+
+              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
+              if (k==1) then
+                if (structured_grid%nzs==structured_grid%ngzs) then
+                   structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+                   connections%local(iconn) = 1
+                end if
+              else 
+                   structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+                   connections%local(iconn) = 1
+              end if
+
               id_up = i + 1 + j * structured_grid%ngx + (k-1) * &
                   structured_grid%ngxy + samr_ofz
               id_dn = id_up + structured_grid%ngxy
@@ -1114,6 +1184,9 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
               connections%dist(3,iconn) = 1.d0  ! z component of unit vector
               connections%area(iconn) = structured_grid%dx(id_up) * &
                                         structured_grid%dy(id_up)
+              connections%cntr(1,iconn) = xc(id_up) 
+              connections%cntr(2,iconn) = yc(id_up) 
+              connections%cntr(3,iconn) = zc(id_up) + connections%dist(-1,iconn)*(zc(id_dn) - zc(id_up)) 
             enddo
           enddo
         enddo
@@ -1135,6 +1208,9 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
               connections%dist(3,iconn) = 1.d0  ! z component of unit vector
               connections%area(iconn) = 2.d0 * pi * radius(id_up) * &
                                         structured_grid%dx(id_up)
+              connections%cntr(1,iconn) = xc(id_up) 
+              connections%cntr(2,iconn) = yc(id_up) 
+              connections%cntr(3,iconn) = zc(id_up) + connections%dist(-1,iconn)*(zc(id_dn) - zc(id_up)) 
             enddo
           enddo
         enddo
@@ -1143,10 +1219,280 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
         stop
   end select
   endif
+
   
   StructGridComputeInternConnect => connections
 
 end function StructGridComputeInternConnect
+
+
+! ************************************************************************** !
+!
+! StructGridComputeBoundConnect: computes boundary connectivity of a  
+!                               structured grid
+! author: Daniil Svyatskiy
+! date: 02/04/10
+!
+! ************************************************************************** !
+function StructGridComputeBoundConnect(structured_grid, xc, yc, zc, option)
+
+  use Connection_module
+  use Option_module
+  
+  implicit none
+
+  interface
+     PetscInt function samr_patch_at_bc(p_patch, axis, dim)
+#include "finclude/petscsysdef.h"
+       PetscFortranAddr :: p_patch
+       PetscInt :: axis,dim
+     end function samr_patch_at_bc
+  end interface
+
+  PetscReal, pointer :: xc(:), yc(:), zc(:)
+  type(connection_set_type), pointer :: StructGridComputeBoundConnect
+  type(option_type) :: option
+  type(structured_grid_type) :: structured_grid
+  
+  PetscReal, parameter :: Pi=3.141592653590d0
+  
+  PetscInt :: i, j, k, iconn, id_up, id_dn
+  PetscInt :: samr_ofx, samr_ofy, samr_ofz
+  PetscInt :: nconn
+  PetscInt :: lenx, leny, lenz
+  PetscReal :: dist_up, dist_dn
+  type(connection_set_type), pointer :: connections
+  PetscErrorCode :: ierr
+  PetscReal, pointer :: radius(:)
+
+  radius => xc
+  
+  samr_ofx = 0
+  samr_ofy = 0
+  samr_ofz = 0
+  ! the adjustments in the case of AMR are based on the PIMS code adjustments by LC
+
+  nconn = structured_grid%nly*structured_grid%nlz*(structured_grid%nlx + 2 - structured_grid%ngx)&
+         +structured_grid%nlx*structured_grid%nlz*(structured_grid%nly + 2 - structured_grid%ngy)&  
+         +structured_grid%nlx*structured_grid%nly*(structured_grid%nlz + 2 - structured_grid%ngz)
+
+  lenx = structured_grid%nlx 
+  leny = structured_grid%nly 
+  lenz = structured_grid%nlz 
+
+
+!  write(*,*) option%myrank, 'nxs=',structured_grid%nxs,' nys=',structured_grid%nys, ' nzs=',structured_grid%nzs 
+!  write(*,*) option%myrank, 'nxe=',structured_grid%nxe,' nye=',structured_grid%nye, ' nze=',structured_grid%nze
+!  write(*,*) option%myrank, 'nx=',structured_grid%nlx,' ny=',structured_grid%ny, ' nz=',structured_grid%nz  
+!  write(*,*) option%myrank, 'istart=',structured_grid%istart,' iend=',structured_grid%iend
+!  write(*,*) option%myrank, 'jstart=',structured_grid%jstart,' jend=',structured_grid%jend
+!  write(*,*) option%myrank, 'kstart=',structured_grid%kstart,' kend=',structured_grid%kend
+!  write(*,*) option%myrank, 'boundary nconn=',nconn
+
+!  stop
+
+
+  connections => ConnectionCreate(nconn, &
+                                  option%nphase,BOUNDARY_CONNECTION_TYPE)
+
+!  StructGridComputeBoundConnect => connections
+
+  iconn = 0
+  ! x-connections
+  if (structured_grid%nlx + 2 - structured_grid%ngx > 0) then
+    select case(structured_grid%itype)
+      case(CARTESIAN_GRID)
+        if (structured_grid%nxs == structured_grid%ngxs) then
+          i = structured_grid%istart 
+          do k = structured_grid%kstart, structured_grid%kend
+            do j = structured_grid%jstart, structured_grid%jend
+              iconn = iconn+1
+
+              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
+              structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+
+              id_dn = i + 1 + j * structured_grid%ngx + k * structured_grid%ngxy+samr_ofx
+
+              connections%id_dn(iconn) = id_dn
+              connections%dist(-1:3,iconn) = 0.d0
+              dist_dn = 0.5d0*structured_grid%dx(id_dn)
+              connections%dist(-1,iconn) = 0.
+              connections%dist(0,iconn) = dist_dn
+              connections%dist(1,iconn) = 1.d0  ! x component of unit vector
+              connections%area(iconn) = structured_grid%dy(id_dn)* &
+                                        structured_grid%dz(id_dn)
+              connections%cntr(1,iconn) = xc(id_dn) - dist_dn
+              connections%cntr(2,iconn) = yc(id_dn) 
+              connections%cntr(3,iconn) = zc(id_dn) 
+            enddo
+          enddo
+        endif
+        if (structured_grid%nxe == structured_grid%ngxe) then
+          i = structured_grid%iend 
+          do k = structured_grid%kstart, structured_grid%kend
+            do j = structured_grid%jstart, structured_grid%jend
+              iconn = iconn+1
+
+              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
+              structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+
+              id_dn = i + 1 + j * structured_grid%ngx + k * structured_grid%ngxy+samr_ofx
+              connections%id_dn(iconn) = id_dn
+              connections%dist(-1:3,iconn) = 0.d0
+              dist_dn = 0.5d0*structured_grid%dx(id_dn)
+              connections%dist(0,iconn) = dist_dn
+              connections%dist(1,iconn) = -1.d0  ! x component of unit vector
+              connections%area(iconn) = structured_grid%dy(id_dn)* &
+                                        structured_grid%dz(id_dn)
+              connections%cntr(1,iconn) = xc(id_dn) + dist_dn
+              connections%cntr(2,iconn) = yc(id_dn) 
+              connections%cntr(3,iconn) = zc(id_dn) 
+            enddo
+          enddo
+        endif
+      case(CYLINDRICAL_GRID)
+        print *, 'Boundary connection - Cylindrical coordinates are not implemented.'
+        stop
+      case(SPHERICAL_GRID)
+        print *, 'Boundary connection -  Spherical coordinates are not implemented.'
+        stop
+  end select
+    
+  endif
+
+
+  ! y-connections
+  if (structured_grid%nly + 2  -  structured_grid%ngy > 0) then
+    select case(structured_grid%itype)
+      case(CARTESIAN_GRID)
+        if (structured_grid%nys == structured_grid%ngys) then 
+          j = structured_grid%jstart
+          do k = structured_grid%kstart, structured_grid%kend
+            do i = structured_grid%istart, structured_grid%iend
+              iconn = iconn+1
+
+              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
+              structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+
+              id_dn = i + 1 + j * structured_grid%ngx + k * structured_grid%ngxy &
+                  +samr_ofy
+              connections%id_dn(iconn) = id_dn
+              connections%dist(-1:3,iconn) = 0.d0
+              dist_dn = 0.5d0*structured_grid%dy(id_dn)
+              connections%dist(0,iconn) = dist_dn
+              connections%dist(2,iconn) = 1.d0  ! y component of unit vector
+              connections%area(iconn) = structured_grid%dx(id_dn)* &
+                                    structured_grid%dz(id_dn)
+              connections%cntr(1,iconn) = xc(id_dn) 
+              connections%cntr(2,iconn) = yc(id_dn) - dist_dn
+              connections%cntr(3,iconn) = zc(id_dn) 
+            enddo
+          enddo
+        endif
+        if (structured_grid%nye == structured_grid%ngye) then 
+          j = structured_grid%jend
+          do k = structured_grid%kstart, structured_grid%kend
+            do i = structured_grid%istart, structured_grid%iend
+              iconn = iconn+1
+
+              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
+              structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+
+              id_dn = i + 1 + j * structured_grid%ngx + k * structured_grid%ngxy &
+                  +samr_ofy
+              connections%id_dn(iconn) = id_dn
+              connections%dist(-1:3,iconn) = 0.d0
+              dist_dn = 0.5d0*structured_grid%dy(id_dn)
+              connections%dist(0,iconn) = dist_dn
+              connections%dist(2,iconn) = -1.d0  ! y component of unit vector
+              connections%area(iconn) = structured_grid%dx(id_dn)* &
+                                    structured_grid%dz(id_dn)
+              connections%cntr(1,iconn) = xc(id_dn) 
+              connections%cntr(2,iconn) = yc(id_dn) + dist_dn
+              connections%cntr(3,iconn) = zc(id_dn) 
+            enddo
+          enddo
+        endif
+      case(CYLINDRICAL_GRID)
+        print *, 'Boundary connection - Cylindrical coordinates are not implemented.'
+        stop
+      case(SPHERICAL_GRID)
+        print *, 'Boundary connection -  Spherical coordinates are not implemented.'
+        stop
+    end select
+  endif
+
+      
+  ! z-connections
+  if (structured_grid%nlz + 2 - structured_grid%ngz > 0) then
+    select case(structured_grid%itype)
+      case(CARTESIAN_GRID)
+        if (structured_grid%nzs == structured_grid%ngzs) then
+          k = structured_grid%kstart
+          do j = structured_grid%jstart, structured_grid%jend
+            do i = structured_grid%istart, structured_grid%iend
+              iconn = iconn+1
+
+              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
+              structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+
+              id_dn = i + 1 + j * structured_grid%ngx + k * &
+                  structured_grid%ngxy + samr_ofz
+              connections%id_dn(iconn) = id_dn
+              connections%dist(-1:3,iconn) = 0.d0
+              dist_dn = 0.5d0*structured_grid%dz(id_dn)
+              connections%dist(0,iconn) = dist_dn
+              connections%dist(3,iconn) = 1.d0  ! z component of unit vector
+              connections%area(iconn) = structured_grid%dx(id_dn) * &
+                                        structured_grid%dy(id_dn)
+              connections%cntr(1,iconn) = xc(id_dn) 
+              connections%cntr(2,iconn) = yc(id_dn) 
+              connections%cntr(3,iconn) = zc(id_dn) - dist_dn 
+            enddo
+          enddo
+        endif    
+        if (structured_grid%nze == structured_grid%ngze ) then
+          k = structured_grid%kend
+          do j = structured_grid%jstart, structured_grid%jend
+            do i = structured_grid%istart, structured_grid%iend
+              iconn = iconn+1
+
+              structured_grid%ngmax_faces = structured_grid%ngmax_faces + 1
+              structured_grid%nlmax_faces = structured_grid%nlmax_faces + 1
+
+              id_dn = i + 1 + j * structured_grid%ngx + k * &
+                  structured_grid%ngxy + samr_ofz
+              connections%id_dn(iconn) = id_dn
+              connections%dist(-1:3,iconn) = 0.d0
+              dist_dn = 0.5d0*structured_grid%dz(id_dn)
+              connections%dist(0,iconn) = dist_dn
+              connections%dist(3,iconn) = -1.d0  ! z component of unit vector
+              connections%area(iconn) = structured_grid%dx(id_dn) * &
+                                        structured_grid%dy(id_dn)
+              connections%cntr(1,iconn) = xc(id_dn) 
+              connections%cntr(2,iconn) = yc(id_dn) 
+              connections%cntr(3,iconn) = zc(id_dn) + dist_dn 
+            enddo
+          enddo
+        endif    
+      case(CYLINDRICAL_GRID)
+        print *, 'Boundary connection - Cylindrical coordinates are not implemented.'
+        stop
+      case(SPHERICAL_GRID)
+        print *, 'Boundary connection -  Spherical coordinates are not implemented.'
+        stop
+  end select
+  endif
+ 
+ 
+  StructGridComputeBoundConnect => connections
+!    stop
+
+end function StructGridComputeBoundConnect
+
+
+
+
 
 ! ************************************************************************** !
 !

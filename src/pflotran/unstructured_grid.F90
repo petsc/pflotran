@@ -794,7 +794,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   call MatGetRowIJF90(Dual_mat,0,PETSC_FALSE,PETSC_FALSE,num_rows,ia_ptr, &
                       ja_ptr,success,ierr)
 
-  if (success == PETSC_FALSE .or. &
+  if (.not.success .or. &
       num_rows /= unstructured_grid%num_cells_local) then
     print *, option%myrank, num_rows, success, unstructured_grid%num_cells_local
     option%io_buffer = 'Error getting IJ row indices from dual matrix'
@@ -1904,7 +1904,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
         else
           match_found = PETSC_FALSE
         endif  
-        if (match_found == PETSC_FALSE) then
+        if (.not.match_found) then
           option%io_buffer = 'Matching faces not found'
           call printErrMsg(option)
         endif
@@ -1965,7 +1965,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
           exit
         endif
       enddo
-      if (found == PETSC_FALSE) then
+      if (.not.found) then
         option%io_buffer = 'Remapping of cell face id unsuccessful'
         call printErrMsg(option)
       endif
@@ -2018,9 +2018,9 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
               exit
             endif
           enddo
-          if (found == PETSC_TRUE) exit
+          if (found) exit
         enddo
-        if (found == PETSC_TRUE) then
+        if (found) then
           dual_to_face(iconn) = face_id
         else
           option%io_buffer = 'face not found in connection loop'

@@ -91,6 +91,8 @@ PetscInt, parameter :: AMR_GRID = 3
 PetscInt, parameter :: CARTESIAN_GRID = 4
 PetscInt, parameter :: CYLINDRICAL_GRID = 5
 PetscInt, parameter :: SPHERICAL_GRID = 6
+PetscInt, parameter :: STRUCTURED_GRID_MIMETIC = 7
+PetscInt, parameter :: UNSTRUCTURED_GRID_MIMETIC = 8
 
 ! condition types
 PetscInt, parameter :: DIRICHLET_BC = 1

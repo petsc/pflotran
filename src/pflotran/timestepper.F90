@@ -240,7 +240,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
   option => realization%option
   output_option => realization%output_option
-  
+ 
+ 
   if (option%steady_state) then
     call StepperRunSteadyState(realization,flow_stepper,tran_stepper)
     return 
@@ -429,13 +430,15 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     ! (reactive) transport solution
     if (associated(tran_stepper)) then
       call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr)
-      if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then      
+      if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+	    !global implicit
         call StepperStepTransportDT(realization,tran_stepper, &
                                     flow_timestep_cut_flag, &
                                     tran_timestep_cut_flag, &
                                     idum,failure)
       else
-#ifdef REVISED_TRANSPORT      
+#ifdef REVISED_TRANSPORT
+        !operator splitting
         call StepperStepTransportDT1(realization,tran_stepper, &
                                      flow_timestep_cut_flag, &
                                      tran_timestep_cut_flag, &
@@ -894,6 +897,8 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   field => realization%field
   solver => stepper%solver
 
+
+
 ! PetscReal, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
 
   num_newton_iterations = 0
@@ -945,8 +950,14 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
       
       call PetscGetTime(log_start_time, ierr)
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE)
           call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
+        case(RICHARDS_MODE)
+          if (discretization%itype == STRUCTURED_GRID_MIMETIC) then 
+            call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx_faces, ierr)
+          else 
+            call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
+          end if
       end select
       call PetscGetTime(log_end_time, ierr)
       stepper%cumulative_solver_time = stepper%cumulative_solver_time + (log_end_time - log_start_time)
@@ -2024,6 +2035,7 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
   num_newton_iterations = 0
   num_linear_iterations = 0
 
+
   call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
                                   field%porosity_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%tortuosity_loc, &
@@ -2386,6 +2398,7 @@ subroutine StepperUpdateFlowAuxVars(realization)
     case(THC_MODE)
       call THCUpdateAuxVars(realization)
     case(RICHARDS_MODE)
+      write(*,*) "call RichardsUpdateAuxVars"
       call RichardsUpdateAuxVars(realization)
   end select    
 

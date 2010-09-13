@@ -11,6 +11,7 @@ module Connection_module
     PetscInt :: itype                  ! connection type (boundary, internal, source sink
     PetscInt :: num_connections
     PetscInt :: offset
+    PetscInt, pointer :: local(:)      ! 1 if connection is local, 0 if connection is ghosted
     PetscInt, pointer :: id_up(:)      ! list of ids of upwind cells
     PetscInt, pointer :: id_dn(:)      ! list of ids of downwind cells
     PetscReal, pointer :: dist(:,:)    ! list of distance vectors, size(-1:3,num_connections) where
@@ -18,6 +19,7 @@ module Connection_module
                                        !   0 = magnitude of distance 
                                        !   1-3 = components of unit vector
     PetscReal, pointer :: area(:)      ! list of areas of faces normal to distance vectors
+    PetscReal, pointer :: cntr(:,:)    ! coordinates (1:3, num_connections) of the mass center of the face
     type(connection_set_type), pointer :: next
   end type connection_set_type
 
@@ -64,18 +66,23 @@ function ConnectionCreate(num_connections,num_dof,connection_itype)
   connection%itype = connection_itype
   connection%offset = 0
   connection%num_connections = num_connections
+  nullify(connection%local)
   nullify(connection%id_up)
   nullify(connection%id_dn)
   nullify(connection%dist)
   nullify(connection%area)
+  nullify(connection%cntr)
 !  nullify(connection%velocity)
   select case(connection_itype)
     case(INTERNAL_CONNECTION_TYPE)
+      allocate(connection%local(num_connections))
       allocate(connection%id_up(num_connections))
       allocate(connection%id_dn(num_connections))
       allocate(connection%dist(-1:3,num_connections))
       allocate(connection%area(num_connections))
+      allocate(connection%cntr(1:3, num_connections))
 !      allocate(connection%velocity(num_dof,num_connections))
+      connection%local = 0
       connection%id_up = 0
       connection%id_dn = 0
       connection%dist = 0.d0
@@ -85,6 +92,7 @@ function ConnectionCreate(num_connections,num_dof,connection_itype)
       allocate(connection%id_dn(num_connections))
       allocate(connection%dist(-1:3,num_connections))
       allocate(connection%area(num_connections))
+      allocate(connection%cntr(1:3, num_connections))
 !      allocate(connection%velocity(num_dof,num_connections))
       connection%id_dn = 0
       connection%dist = 0.d0
@@ -92,6 +100,7 @@ function ConnectionCreate(num_connections,num_dof,connection_itype)
 !      connection%velocity = 0.d0
     case(SRC_SINK_CONNECTION_TYPE,INITIAL_CONNECTION_TYPE)
       allocate(connection%id_dn(num_connections))
+      allocate(connection%cntr(1:3, num_connections))
       connection%id_dn = 0
   end select
   nullify(connection%next)
@@ -214,6 +223,8 @@ subroutine ConnectionDestroy(connection)
   
   if (.not.associated(connection)) return
   
+  if (associated(connection%local)) deallocate(connection%local)
+  nullify(connection%local)
   if (associated(connection%id_up)) deallocate(connection%id_up)
   nullify(connection%id_up)
   if (associated(connection%id_dn)) deallocate(connection%id_dn)
@@ -222,6 +233,8 @@ subroutine ConnectionDestroy(connection)
   nullify(connection%dist)
   if (associated(connection%area)) deallocate(connection%area)
   nullify(connection%area)
+  if (associated(connection%cntr)) deallocate(connection%cntr)
+  nullify(connection%cntr)
 !  if (associated(connection%velocity)) deallocate(connection%velocity)
 !  nullify(connection%velocity)
   nullify(connection%next)

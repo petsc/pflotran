@@ -344,7 +344,8 @@ subroutine OutputTecplotBlock(realization)
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
-    if (realization%discretization%itype == STRUCTURED_GRID) then
+    if ((realization%discretization%itype == STRUCTURED_GRID).or. &
+        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
       ! count vars in string
       quote_count = 0
       comma_count = 0
@@ -387,7 +388,8 @@ subroutine OutputTecplotBlock(realization)
                                   option)  
 
   ! write out coordinates
-  if (realization%discretization%itype == STRUCTURED_GRID) then
+  if ((realization%discretization%itype == STRUCTURED_GRID).or. &
+        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
     call WriteTecplotStructuredGrid(IUNIT3,realization)
   else
     call GetCoordinates(grid,global_vec,X_COORDINATE)
@@ -776,7 +778,8 @@ subroutine OutputVelocitiesTecplotBlock(realization)
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
-    if (realization%discretization%itype == STRUCTURED_GRID) then
+    if ((realization%discretization%itype == STRUCTURED_GRID).or. &
+        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC))  then
       write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
                    &'', K='',i4,'','')') &
                    option%time/output_option%tconv, &
@@ -814,7 +817,8 @@ subroutine OutputVelocitiesTecplotBlock(realization)
                                   option)    
 
   ! write out coorindates
-  if (realization%discretization%itype == STRUCTURED_GRID) then
+  if ((realization%discretization%itype == STRUCTURED_GRID).or. &
+        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC))  then
     call WriteTecplotStructuredGrid(IUNIT3,realization)
   else
     call GetCoordinates(grid,global_vec,X_COORDINATE)
@@ -1808,7 +1812,8 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
     write(fid,'(a)') trim(string)
   
     ! write zone header
-    if (realization%discretization%itype == STRUCTURED_GRID) then
+    if ((realization%discretization%itype == STRUCTURED_GRID).or. &
+        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC))  then
       write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i5,'', J='',i5, &
                    &'', K='',i5,'','')') &
                    option%time/realization%output_option%tconv, &
@@ -1840,7 +1845,8 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
 
   ! write out coorindates
 
-  if (realization%discretization%itype == STRUCTURED_GRID) then
+  if ((realization%discretization%itype == STRUCTURED_GRID).or. &
+        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC))  then
     call WriteTecplotStructuredGrid(fid,realization)
   else  
     call GetCoordinates(grid,global_vec,X_COORDINATE)
@@ -4384,7 +4390,8 @@ subroutine OutputVelocitiesVTK(realization)
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
-    if (realization%discretization%itype == STRUCTURED_GRID) then
+    if ((realization%discretization%itype == STRUCTURED_GRID).or. &
+        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC))  then
       write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
                    &'', K='',i4,'','')') &
                    option%time/output_option%tconv, &
@@ -4501,7 +4508,8 @@ subroutine WriteVTKGrid(fid,realization)
   grid => patch%grid
   option => realization%option
   
-  if (realization%discretization%itype == STRUCTURED_GRID) then
+  if ((realization%discretization%itype == STRUCTURED_GRID).or. &
+        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC))  then
 
     nx = grid%structured_grid%nx
     ny = grid%structured_grid%ny
@@ -6602,7 +6610,8 @@ subroutine OutputMassBalance(realization)
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
-    if (realization%discretization%itype == STRUCTURED_GRID) then
+    if ((realization%discretization%itype == STRUCTURED_GRID).or. &
+        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC))  then
       ! count vars in string
       quote_count = 0
       comma_count = 0
@@ -6641,7 +6650,8 @@ subroutine OutputMassBalance(realization)
                                   option)  
 
   ! write out coordinates
-  if (realization%discretization%itype == STRUCTURED_GRID) then
+  if ((realization%discretization%itype == STRUCTURED_GRID).or. &
+        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC))  then
     call WriteTecplotStructuredGrid(IUNIT3,realization)
   else
     call GetCoordinates(grid,global_vec,X_COORDINATE)
