@@ -1331,6 +1331,9 @@ subroutine InitReadInput(simulation)
 
 !......................
 
+      case('ANI_RELATIVE_PERMEABILTY')
+        option%ani_relative_permeability = PETSC_TRUE
+
       case('REFERENCE_POROSITY')
         call InputReadStringErrorMsg(input,option,card)
         call InputReadDouble(input,option,option%reference_porosity)

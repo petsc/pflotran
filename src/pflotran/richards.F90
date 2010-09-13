@@ -3136,7 +3136,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
   enddo
 
   if (realization%debug%matview_Jacobian) then
-#if 1  
+#if 0  
     call PetscViewerASCIIOpen(realization%option%mycomm,'Rjacobian.out', &
                               viewer,ierr)
 #else

@@ -177,6 +177,7 @@ module Option_module
     PetscTruth :: use_matrix_buffer
   
     PetscTruth :: mimetic
+    PetscTruth :: ani_relative_permeability
 
   end type option_type
   
@@ -351,6 +352,7 @@ subroutine OptionInitAll(option)
   option%input_filename = ''
 
   option%mimetic = PETSC_FALSE
+  option%ani_relative_permeability = PETSC_FALSE
 
   call OptionInitRealization(option)
 
