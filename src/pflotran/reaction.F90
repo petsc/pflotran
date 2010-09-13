@@ -2610,8 +2610,8 @@ end subroutine RReact
 ! date: 09/30/08
 !
 ! ************************************************************************** !
-subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,volume, &
-                     reaction,option)
+subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
+                     volume,reaction,option)
 
   use Option_module
   
@@ -2624,6 +2624,7 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,volume, &
   PetscTruth :: derivative
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
+  PetscReal :: porosity
   PetscReal :: volume
 
   if (reaction%nkinmnrl > 0) then
@@ -2642,7 +2643,7 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,volume, &
   endif
   
   if (reaction%ngeneral_rxn > 0) then
-    call RGeneral(Res,Jac,derivative,rt_auxvar,global_auxvar, &
+    call RGeneral(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
                   volume,reaction,option)
   endif
   
@@ -2657,7 +2658,7 @@ end subroutine RReaction
 ! date: 09/30/08
 !
 ! ************************************************************************** !
-subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
+subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
                                volume,reaction,option)
 
   use Option_module
@@ -2671,6 +2672,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
   type(option_type) :: option
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
+  PetscReal :: porosity
   PetscReal :: volume
    
   PetscReal :: Res_orig(reaction%ncomp)
@@ -2699,7 +2701,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
     endif
     if (reaction%ngeneral_rxn > 0) then
       call RGeneral(Res,Jac,compute_derivative,rt_auxvar, &
-                    global_auxvar,volume,reaction,option)
+                    global_auxvar,porosity,volume,reaction,option)
     endif    
 
     ! #1: add new reactions here
@@ -2724,7 +2726,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
     endif
     if (reaction%ngeneral_rxn > 0) then
       call RGeneral(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
-                    global_auxvar,volume,reaction,option)
+                    global_auxvar,porosity,volume,reaction,option)
     endif    
 
     ! #2: add new reactions here
@@ -2753,7 +2755,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
       endif
       if (reaction%ngeneral_rxn > 0) then
         call RGeneral(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
-                      global_auxvar,volume,reaction,option)
+                      global_auxvar,porosity,volume,reaction,option)
       endif  
       
       ! #3: add new reactions here
@@ -3990,7 +3992,7 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
 ! units
 ! k_f: dm^3/mol/sec
 ! k_b: 1/sec
-! Res: mol/m^3/sec
+! Res: mol/sec
 
   dt = option%dt
   
@@ -4440,8 +4442,8 @@ end subroutine RAccumulationSorbDerivative
 ! date: 09/08/10
 !
 ! ************************************************************************** !
-subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar, &
-                    global_auxvar,volume,reaction,option)
+subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
+                    porosity,volume,reaction,option)
 
   use Option_module
   
@@ -4450,6 +4452,7 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar, &
   PetscTruth :: compute_derivative
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
+  PetscReal :: porosity
   PetscReal :: volume
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
@@ -4462,6 +4465,7 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: kf, kr
   PetscReal :: Qkf, lnQkf
   PetscReal :: Qkr, lnQkr
+  PetscReal :: por_den_sat_vol
 
   PetscInt, parameter :: iphase = 1
 
@@ -4469,6 +4473,11 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar, &
   ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
 
   do irxn = 1, reaction%ngeneral_rxn ! for each mineral
+    
+    ! units
+    ! for nth-order reaction
+    ! kf/kr = kg^(n-1)/mol^(n-1)-sec
+    ! thus for a 1st-order reaction, kf units = 1/sec
     
     kf = reaction%general_kf(irxn)
     kr = reaction%general_kr(irxn)
@@ -4512,10 +4521,17 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar, &
       Qkr = 0.d0
     endif
 
+    ! Qkf/Qkr units are now mol/kg(water)-sec
+
+    por_den_sat_vol = porosity*global_auxvar%den_kg(iphase)* &
+                      global_auxvar%sat(iphase)*volume
+
     ncomp = reaction%generalspecid(0,irxn)
     do i = 1, ncomp
       icomp = reaction%generalspecid(i,irxn)
-      Res(icomp) = Res(icomp) + reaction%generalstoich(i,irxn)*(Qkf-Qkr)
+      ! units = mol/sec
+      Res(icomp) = Res(icomp) - reaction%generalstoich(i,irxn)*(Qkf-Qkr)* &
+                                por_den_sat_vol
     enddo 
     
     if (.not. compute_derivative) cycle   
@@ -4527,8 +4543,8 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar, &
       ! derivatives with respect to primary species in forward reaction
       do j = 1, reaction%generalforwardspecid(0,irxn)
         jcomp = reaction%generalforwardspecid(j,irxn)
-        tempreal = reaction%generalforwardstoich(j,irxn)*exp(lnQkf-ln_conc(jcomp))* &
-                   global_auxvar%den_kg(iphase)*1.d-3
+        tempreal = -1.d0*reaction%generalforwardstoich(j,irxn)*exp(lnQkf-ln_conc(jcomp))* &
+                   por_den_sat_vol
         do i = 1, reaction%generalspecid(0,irxn)
           icomp = reaction%generalspecid(i,irxn)
           ! units = (mol/sec)*(kg water/mol) = kg water/sec
@@ -4542,8 +4558,8 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar, &
       ! derivatives with respect to primary species in forward reaction
       do j = 1, reaction%generalbackwardspecid(0,irxn)
         jcomp = reaction%generalbackwardspecid(j,irxn)
-        tempreal = -1.d0*reaction%generalbackwardstoich(j,irxn)*exp(lnQkr-ln_conc(jcomp))* &
-                   global_auxvar%den_kg(iphase)*1.d-3
+        tempreal = reaction%generalbackwardstoich(j,irxn)*exp(lnQkr-ln_conc(jcomp))* &
+                   por_den_sat_vol
         do i = 1, reaction%generalspecid(0,irxn)
           icomp = reaction%generalspecid(i,irxn)
           ! units = (mol/sec)*(kg water/mol) = kg water/sec
@@ -5154,7 +5170,7 @@ subroutine RCalculateCompression(global_auxvar,rt_auxvar,reaction,option)
                                      reaction,option,J)
   endif
 
-  call RReaction(residual,J,PETSC_TRUE,rt_auxvar,global_auxvar,vol, &
+  call RReaction(residual,J,PETSC_TRUE,rt_auxvar,global_auxvar,por,vol, &
                  reaction,option)
  
   do jj = 1, reaction%ncomp

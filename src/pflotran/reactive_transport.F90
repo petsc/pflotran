@@ -4071,6 +4071,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       Jup = 0.d0
       call RReaction(Res,Jup,PETSC_FALSE,rt_aux_vars(ghosted_id), &
                      global_aux_vars(ghosted_id), &
+                     porosity_loc_p(ghosted_id), &
                      volume_p(local_id),reaction,option)
       r_p(istartall:iendall) = r_p(istartall:iendall) + Res(1:reaction%ncomp)                    
 
@@ -4824,6 +4825,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       Jup = 0.d0
       call RReactionDerivative(Res,Jup,rt_aux_vars(ghosted_id), &
                                global_aux_vars(ghosted_id), &
+                               porosity_loc_p(ghosted_id), &
                                volume_p(local_id),reaction,option)
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1, &
                                     Jup,ADD_VALUES,ierr)                        
