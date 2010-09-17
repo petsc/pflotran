@@ -353,6 +353,8 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
           string = "SNES_DIVERGED_FNORM_NAN"
         case(SNES_DIVERGED_MAX_IT)
           string = "SNES_DIVERGED_MAX_IT"
+!        case(SNES_DIVERGED_LINE_SEARCH)
+!          string = "SNES_DIVERGED_LINE_SEARCH"
         case(SNES_DIVERGED_LS_FAILURE)
           string = "SNES_DIVERGED_LS_FAILURE"
         case(SNES_DIVERGED_LOCAL_MIN)
