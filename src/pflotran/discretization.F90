@@ -903,10 +903,15 @@ subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_in
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
     
   select case(discretization%itype)
-    case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       call DMGlobalToLocalBegin(dm_ptr%sgdm,global_vec,INSERT_VALUES,local_vec,ierr)
       call DMGlobalToLocalEnd(dm_ptr%sgdm,global_vec,INSERT_VALUES,local_vec,ierr)
-      case(AMR_GRID)
+    case(UNSTRUCTURED_GRID)
+      call VecScatterBegin(dm_ptr%ugdm%scatter_gtol,global_vec,local_vec, &
+                           INSERT_VALUES,SCATTER_FORWARD,ierr)
+      call VecScatterEnd(dm_ptr%ugdm%scatter_gtol,global_vec,local_vec, &
+                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+    case(AMR_GRID)
          call SAMRGlobalToLocal(discretization%amrgrid%p_application, global_vec, local_vec, ierr);
   end select
   
@@ -964,8 +969,13 @@ subroutine DiscretizationLocalToGlobal(discretization,local_vec,global_vec,dm_in
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
   select case(discretization%itype)
-    case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       call DMLocalToGlobal(dm_ptr%sgdm,local_vec,INSERT_VALUES,global_vec,ierr)
+   case(UNSTRUCTURED_GRID)
+      call VecScatterBegin(dm_ptr%ugdm%scatter_ltog,local_vec,global_vec, &
+                           INSERT_VALUES,SCATTER_FORWARD,ierr)
+      call VecScatterEnd(dm_ptr%ugdm%scatter_ltog,local_vec,global_vec, &
+                         INSERT_VALUES,SCATTER_FORWARD,ierr)
       case(AMR_GRID)
          call VecCopy(local_vec, global_vec, ierr);
   end select
@@ -1012,6 +1022,10 @@ subroutine DiscretizationLocalToLocal(discretization,local_vec1,local_vec2,dm_in
       call DALocalToLocalBegin(dm_ptr%sgdm,local_vec1,INSERT_VALUES,local_vec2,ierr)
       call DALocalToLocalEnd(dm_ptr%sgdm,local_vec1,INSERT_VALUES,local_vec2,ierr)
     case(UNSTRUCTURED_GRID)
+      call VecScatterBegin(dm_ptr%ugdm%scatter_ltol,local_vec1,local_vec2, &
+                           INSERT_VALUES,SCATTER_FORWARD,ierr)
+      call VecScatterEnd(dm_ptr%ugdm%scatter_ltol,local_vec1,local_vec2, &
+                         INSERT_VALUES,SCATTER_FORWARD,ierr)    
     case(AMR_GRID)
        call SAMRLocalToLocal(discretization%amrgrid%p_application, local_vec1, local_vec2, ierr);
   end select
@@ -1071,6 +1085,10 @@ subroutine DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,d
       call DAGlobalToNaturalBegin(dm_ptr%sgdm,global_vec,INSERT_VALUES,natural_vec,ierr)
       call DAGlobalToNaturalEnd(dm_ptr%sgdm,global_vec,INSERT_VALUES,natural_vec,ierr)
     case(UNSTRUCTURED_GRID)
+      call VecScatterBegin(dm_ptr%ugdm%scatter_gton,global_vec,natural_vec, &
+                           INSERT_VALUES,SCATTER_FORWARD,ierr)
+      call VecScatterEnd(dm_ptr%ugdm%scatter_gton,global_vec,natural_vec, &
+                         INSERT_VALUES,SCATTER_FORWARD,ierr)       
   end select
   
 end subroutine DiscretizationGlobalToNatural
@@ -1130,8 +1148,11 @@ subroutine DiscretizationGlobalToLocalBegin(discretization,global_vec,local_vec,
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
   select case(discretization%itype)
-    case(STRUCTURED_GRID,UNSTRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       call DMGlobalToLocalBegin(dm_ptr%sgdm,global_vec,INSERT_VALUES,local_vec,ierr)
+    case(UNSTRUCTURED_GRID)
+      call VecScatterBegin(dm_ptr%ugdm%scatter_gtol,global_vec,local_vec, &
+                           INSERT_VALUES,SCATTER_FORWARD,ierr)
   end select
   
 end subroutine DiscretizationGlobalToLocalBegin
@@ -1162,8 +1183,11 @@ subroutine DiscretizationGlobalToLocalEnd(discretization,global_vec,local_vec,dm
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
   select case(discretization%itype)
-    case(STRUCTURED_GRID,UNSTRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
+    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       call DMGlobalToLocalEnd(dm_ptr%sgdm,global_vec,INSERT_VALUES,local_vec,ierr)
+    case(UNSTRUCTURED_GRID)
+      call VecScatterEnd(dm_ptr%ugdm%scatter_gtol,global_vec,local_vec, &
+                         INSERT_VALUES,SCATTER_FORWARD,ierr)
   end select
   
 end subroutine DiscretizationGlobalToLocalEnd
@@ -1308,6 +1332,8 @@ subroutine DiscretizationLocalToLocalBegin(discretization,local_vec1,local_vec2,
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       call DALocalToLocalBegin(dm_ptr%sgdm,local_vec1,INSERT_VALUES,local_vec2,ierr)
     case(UNSTRUCTURED_GRID)
+      call VecScatterBegin(dm_ptr%ugdm%scatter_ltol,local_vec1,local_vec2, &
+                           INSERT_VALUES,SCATTER_FORWARD,ierr)
   end select
 
 end subroutine DiscretizationLocalToLocalBegin
@@ -1336,6 +1362,8 @@ subroutine DiscretizationLocalToLocalEnd(discretization,local_vec1,local_vec2,dm
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       call DALocalToLocalEnd(dm_ptr%sgdm,local_vec1,INSERT_VALUES,local_vec2,ierr)
     case(UNSTRUCTURED_GRID)
+      call VecScatterEnd(dm_ptr%ugdm%scatter_ltol,local_vec1,local_vec2, &
+                         INSERT_VALUES,SCATTER_FORWARD,ierr)    
   end select
 
 end subroutine DiscretizationLocalToLocalEnd
@@ -1364,6 +1392,8 @@ subroutine DiscretizGlobalToNaturalBegin(discretization,global_vec,natural_vec,d
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       call DAGlobalToNaturalBegin(dm_ptr%sgdm,global_vec,INSERT_VALUES,natural_vec,ierr)
     case(UNSTRUCTURED_GRID)
+      call VecScatterBegin(dm_ptr%ugdm%scatter_gton,global_vec,natural_vec, &
+                           INSERT_VALUES,SCATTER_FORWARD,ierr)
   end select
   
 end subroutine DiscretizGlobalToNaturalBegin
@@ -1392,6 +1422,8 @@ subroutine DiscretizGlobalToNaturalEnd(discretization,global_vec,natural_vec,dm_
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       call DAGlobalToNaturalEnd(dm_ptr%sgdm,global_vec,INSERT_VALUES,natural_vec,ierr)
     case(UNSTRUCTURED_GRID)
+      call VecScatterEnd(dm_ptr%ugdm%scatter_gton,global_vec,natural_vec, &
+                         INSERT_VALUES,SCATTER_FORWARD,ierr)       
   end select
   
 end subroutine DiscretizGlobalToNaturalEnd
