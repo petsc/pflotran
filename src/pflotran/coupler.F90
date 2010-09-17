@@ -649,12 +649,16 @@ subroutine CouplerAssignBCtoCells(grid,option,coupler)
   region => coupler%region
 
   if (.not.associated(region)) then
+      option%io_buffer = '.not.associated(region)'
+      call printErrMsg(option) 
       stop
   end if
 
   mfd_aux => grid%MFD
 
   if (.not.associated(mfd_aux)) then
+      option%io_buffer = '.not.associated(mfd_aux)'
+      call printErrMsg(option)  
      stop
   end if
 

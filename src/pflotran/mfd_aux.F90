@@ -84,6 +84,10 @@ function MFDAuxCreate()
   
 end function MFDAuxCreate
 
+
+
+
+
 ! ************************************************************************** !
 !
 ! MFDAuxInit: Initialize auxilliary object
@@ -98,11 +102,15 @@ subroutine MFDAuxInit(aux, num_aux, option)
   implicit none
   
   type(mfd_type) :: aux
-  PetscInt :: num_aux
+  PetscInt :: num_aux, i
   type(option_type) :: option
 
   if (associated(aux%aux_vars)) deallocate(aux%aux_vars)
   allocate(aux%aux_vars(num_aux))
+
+  do i=1,num_aux
+    nullify(aux%aux_vars(i)%face_id_gh)
+  end do
 
 
   

@@ -566,6 +566,10 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
   PetscReal, pointer :: sq_faces(:), darcy_v(:), faces_pr(:)
   PetscReal :: Res(realization%option%nflowdof), source_f(realization%option%nflowdof)
   PetscErrorCode :: ierr
+
+#ifdef DASVYAT
+  write(*,*) "ENTER RichardsUpdateAuxVarsPatchMFD"
+#endif
   
   call PetscLogEventBegin(logging%event_r_auxvars,ierr)
 
@@ -649,6 +653,9 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
   call GridVecRestoreArrayF90(grid,field%porosity0, porosity_loc_p,ierr)  
   call GridVecRestoreArrayF90(grid,field%volume, volume_p,ierr)  
 
+#ifdef DASVYAT
+  write(*,*) "EXIT RichardsUpdateAuxVarsPatchMFD"
+#endif
 
 end subroutine RichardsUpdateAuxVarsPatchMFD
 
@@ -2295,6 +2302,11 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
                         upweight,option,v_darcy,Res)
 
       patch%internal_velocities(1,sum_connection) = v_darcy
+
+#ifdef DASVYAT
+      write(*,*) "int flux ", sum_connection, v_darcy      
+#endif
+
       
       if (option%use_samr) then
         if (sum_connection <= max_x_conn) then
@@ -2393,6 +2405,11 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
                                 v_darcy,Res)
 
       patch%boundary_velocities(1,sum_connection) = v_darcy
+
+#ifdef DASVYAT
+      write(*,*) "bound flux ", sum_connection, v_darcy      
+#endif
+
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
         global_aux_vars_bc(sum_connection)%mass_balance_delta(1) = &
@@ -2593,6 +2610,12 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   enddo
 #endif
 
+
+#ifdef DASVYAT
+     write(*,*) "richards 2608"
+     stop
+#endif
+
   if (patch%aux%Richards%inactive_cells_exist) then
     do i=1,patch%aux%Richards%n_zero_rows
       r_p(patch%aux%Richards%zero_rows_local(i)) = 0.d0
@@ -2787,9 +2810,6 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
       
   end do
 
-!  do iface = 1, grid%ngmax_faces
-!  !  r_p(iface) = option%myrank + 1
-!  end do
 
   call GridVecRestoreArrayF90(grid,field%flow_xx, xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
@@ -2805,6 +2825,10 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   deallocate(sq_faces)
   deallocate(Smatrix)
 
+#ifdef DASVYAT
+  write(*,*) "richards 2822"
+  stop
+#endif
 
 end subroutine RichardsResidualPatchMFD1
 

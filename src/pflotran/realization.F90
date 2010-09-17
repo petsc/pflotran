@@ -201,6 +201,7 @@ subroutine RealizationCreateDiscretization(realization)
   option => realization%option
   field => realization%field
  
+  write(*,*) "ENTER RealizationCreateDiscretization"   
  
   discretization => realization%discretization
   
@@ -360,8 +361,11 @@ subroutine RealizationCreateDiscretization(realization)
       call GridComputeVolumes(grid,field%volume,option)
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option)
-      if (discretization%itype == STRUCTURED_GRID_MIMETIC) &
+      if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
+          write(*,*) "Before GridComputeCell2FaceConnectivity "
           call GridComputeCell2FaceConnectivity(grid, discretization%MFD, option)
+          write(*,*) "After GridComputeCell2FaceConnectivity"
+      end if
     case(UNSTRUCTURED_GRID)
       grid => discretization%grid
       ! set up nG2L, NL2G, etc.
@@ -416,7 +420,7 @@ subroutine RealizationCreateDiscretization(realization)
   
    end if
 
-     
+  write(*,*) "EXIT RealizationCreateDiscretization"   
  
   ! initialize to -999.d0 for check later that verifies all values 
   ! have been set
@@ -1328,7 +1332,7 @@ subroutine RealizAssignFlowInitCond(realization)
                                       realization%discretization%MFD, realization%option)
   end if
 
- 
+  write(*,*) "EXIT RealizAssignFlowInitCond" 
 !  stop 
 end subroutine RealizAssignFlowInitCond
 
@@ -1530,6 +1534,8 @@ subroutine RealizAssignTransportInitCond(realization)
   call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
                                    field%tran_xx_loc,NTRANDOF)  
   call VecCopy(field%tran_xx, field%tran_yy, ierr)
+
+  write(*,*) "EXIT RealizAssignTransportInitCond"
 
 end subroutine RealizAssignTransportInitCond
 
