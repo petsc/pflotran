@@ -1887,7 +1887,8 @@ subroutine BasisInit(reaction,option)
                                 cur_sec_aq_spec%dbaserxn%nspec, &
                                 cur_sec_aq_spec%dbaserxn%spec_name, &
                                 cur_sec_aq_spec%dbaserxn%stoich, &
-                                cur_sec_aq_spec%dbaserxn%spec_ids,option)  
+                                cur_sec_aq_spec%dbaserxn%spec_ids, &
+                                cur_sec_aq_spec%name,option)  
     cur_sec_aq_spec => cur_sec_aq_spec%next
   enddo
 
@@ -1902,7 +1903,8 @@ subroutine BasisInit(reaction,option)
                                 cur_gas_spec%dbaserxn%nspec, &
                                 cur_gas_spec%dbaserxn%spec_name, &
                                 cur_gas_spec%dbaserxn%stoich, &
-                                cur_gas_spec%dbaserxn%spec_ids,option)     
+                                cur_gas_spec%dbaserxn%spec_ids, &
+								cur_gas_spec%name,option)     
     cur_gas_spec => cur_gas_spec%next
   enddo
 
@@ -1916,12 +1918,14 @@ subroutine BasisInit(reaction,option)
     if (.not.associated(cur_mineral%tstrxn%dbaserxn%spec_ids)) then
       allocate(cur_mineral%tstrxn%dbaserxn%spec_ids(cur_mineral%tstrxn%dbaserxn%nspec))
       cur_mineral%tstrxn%dbaserxn%spec_ids = 0
-    endif    
+    endif
+	
     call BasisAlignSpeciesInRxn(ncomp_h2o,new_basis_names, &
                                 cur_mineral%tstrxn%dbaserxn%nspec, &
                                 cur_mineral%tstrxn%dbaserxn%spec_name, &
                                 cur_mineral%tstrxn%dbaserxn%stoich, &
-                                cur_mineral%tstrxn%dbaserxn%spec_ids,option)     
+                                cur_mineral%tstrxn%dbaserxn%spec_ids, &
+                                cur_mineral%name,option)     
     cur_mineral => cur_mineral%next
   enddo  
 
@@ -1939,7 +1943,8 @@ subroutine BasisInit(reaction,option)
                                   cur_srfcplx%dbaserxn%nspec, &
                                   cur_srfcplx%dbaserxn%spec_name, &
                                   cur_srfcplx%dbaserxn%stoich, &
-                                  cur_srfcplx%dbaserxn%spec_ids,option) 
+                                  cur_srfcplx%dbaserxn%spec_ids, &
+                                  cur_srfcplx%name,option) 
       cur_srfcplx => cur_srfcplx%next
     enddo
     nullify(cur_srfcplx)
@@ -3410,7 +3415,7 @@ end function GetSpeciesBasisID
 ! ************************************************************************** !
 subroutine BasisAlignSpeciesInRxn(num_basis_species,basis_names, &
                                   num_rxn_species,rxn_species_names, &
-                                  rxn_stoich,rxn_species_ids,option)
+                                  rxn_stoich,rxn_species_ids,species_name,option)
 
   use Option_module
   use String_module
@@ -3418,7 +3423,7 @@ subroutine BasisAlignSpeciesInRxn(num_basis_species,basis_names, &
   implicit none
   
   PetscInt :: num_basis_species
-  character(len=MAXWORDLENGTH) :: basis_names(num_basis_species)
+  character(len=MAXWORDLENGTH) :: basis_names(num_basis_species), species_name
   PetscInt :: num_rxn_species
   character(len=MAXWORDLENGTH) :: rxn_species_names(num_rxn_species)
   PetscReal :: rxn_stoich(num_rxn_species)
@@ -3444,7 +3449,8 @@ subroutine BasisAlignSpeciesInRxn(num_basis_species,basis_names, &
     enddo
     if (.not.found) then
       option%io_buffer = trim(rxn_species_names(i_rxn_species)) // &
-               ' not found in basis (BasisAlignSpeciesInRxn)'
+               ' not found in basis (BasisAlignSpeciesInRxn) for species ' // &
+               trim(species_name)
       call printErrMsg(option)
     endif
   enddo
