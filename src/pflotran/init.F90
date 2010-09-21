@@ -2275,6 +2275,7 @@ subroutine verifyCoupler(realization,patch,coupler_list)
 
   patch => realization%patch
   grid => patch%grid
+  option => realization%option
 
   if (.not.associated(coupler_list)) return
 
