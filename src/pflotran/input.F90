@@ -1112,8 +1112,7 @@ function InputCheckExit(input,option)
   
   PetscTruth :: InputCheckExit
 
-  ! This needs to be fixed!  It doesn't trim leading white space! --RTM
-  ! Remove leading blanks and tabs
+  ! We must remove leading blanks and tabs. --RTM
   tab = achar(9)
   i=1
   do while(input%buf(i:i) == ' ' .or. input%buf(i:i) == tab) 
