@@ -13,7 +13,8 @@ module String_module
             StringToUpper, &
             StringToLower, &
             StringReadQuotedWord, &
-            StringStartswithAlpha
+            StringStartswithAlpha, &
+            StringAdjustl
 
 contains
 
@@ -216,5 +217,37 @@ function StringStartsWithAlpha(string)
   endif
 
 end function StringStartsWithAlpha
+
+! ************************************************************************** !
+!
+! StringAdjustl: Left adjusts a string by removing leading spaces and tabs.
+!                This subroutine is needed because the adjustl() Fortran 90 
+!                intrinsic will not remove leading tabs.
+! author: Richard Tran Mills
+! date: 9/21/2010
+!
+! ************************************************************************** !
+subroutine StringAdjustl(string)
+
+  implicit none
+
+  character(len=*) :: string
+  
+  PetscInt :: i
+  character(len=1) :: tab
+
+  ! We have to manually convert any leading tabs into spaces, as the 
+  ! adjustl() intrinsic does not eliminate leading tabs.
+  tab = achar(9)
+  i=1
+  do while(string(i:i) == ' ' .or. string(i:i) == tab)
+    if (string(i:i) == tab) string(i:i) = ' '
+    i=i+1
+  enddo
+
+  ! adjustl() will do what we want, now that tabs are removed.
+  string = adjustl(string) 
+
+end subroutine StringAdjustl
 
 end module String_module
