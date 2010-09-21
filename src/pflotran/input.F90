@@ -487,6 +487,7 @@ subroutine InputReadFlotranStringSlave(input, option)
   
   do
     read(input%fid,'(a512)',iostat=input%ierr) input%buf
+    call StringAdjustl(input%buf)
 
     if (InputError(input)) exit
 
