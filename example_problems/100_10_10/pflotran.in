@@ -3,6 +3,31 @@
 :=========================== flow mode ========================================
 MODE RICHARDS
 
+:=========================== chemistry ========================================
+CHEMISTRY
+  PRIMARY_SPECIES
+    river_c
+    groundwater_c
+    plume_c
+  /
+/
+
+:=========================== solver options ===================================
+TIMESTEPPER
+  :MAX_STEPS 10
+END
+
+NEWTON_SOLVER FLOW
+  :MATRIX_TYPE MFFD
+  :PRECONDITIONER_MATRIX_TYPE AIJ
+END
+
+LINEAR_SOLVER FLOW
+  KSP_TYPE BCGS
+  :KSP_TYPE GMRES
+  :KSP_TYPE FGMRES
+END
+
 :=========================== discretization ===================================
 GRID
   TYPE structured
@@ -12,33 +37,7 @@ GRID
     0.d0 100.d0
     0.d0 10.d0
     0.d0 10.d0
-  END
-/
-
-
-:=========================== chemistry ========================================
-CHEMISTRY
-  PRIMARY_SPECIES
-    river_c
-    groundwater_c
-    plume_c
-/
-/
-
-:=========================== solver options ===================================
-TIMESTEPPER
-  MAX_STEPS 10
-END
-
-:NEWTON_SOLVER FLOW
-  :MATRIX_TYPE MFFD
-  :PRECONDITIONER_MATRIX_TYPE AIJ
-:END
-
-LINEAR_SOLVER FLOW
-  KSP_TYPE BCGS
-  :KSP_TYPE GMRES
-  :KSP_TYPE FGMRES
+  /
 END
 
 :=========================== fluid properties =================================
