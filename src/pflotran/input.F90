@@ -487,6 +487,7 @@ subroutine InputReadFlotranStringSlave(input, option)
   
   do
     read(input%fid,'(a512)',iostat=input%ierr) input%buf
+    call StringAdjustl(input%buf)
 
     if (InputError(input)) exit
 
@@ -1107,11 +1108,20 @@ function InputCheckExit(input,option)
 
   type(input_type) :: input
   type(option_type) :: option  
+  PetscInt :: i
+  character(len=1) :: tab
   
   PetscTruth :: InputCheckExit
 
-  if (input%buf(1:1) == '.' .or. input%buf(1:1) == '/' .or. &
-      StringCompare(input%buf,'END',THREE_INTEGER)) then
+  ! We must remove leading blanks and tabs. --RTM
+  tab = achar(9)
+  i=1
+  do while(input%buf(i:i) == ' ' .or. input%buf(i:i) == tab) 
+    i=i+1
+  enddo
+
+  if (input%buf(i:i) == '.' .or. input%buf(i:i) == '/' .or. &
+      StringCompare(input%buf(i:),'END',THREE_INTEGER)) then
     InputCheckExit = PETSC_TRUE
   else
     InputCheckExit = PETSC_FALSE
