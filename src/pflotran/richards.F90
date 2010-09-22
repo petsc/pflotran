@@ -32,7 +32,7 @@ module Richards_module
          RichardsInitializeTimestep, RichardsUpdateAuxVars, &
          RichardsMaxChange, RichardsUpdateSolution, &
          RichardsGetTecplotHeader, RichardsComputeMassBalance, &
-         RichardsDestroy, RichardsResidualMFD
+         RichardsDestroy, RichardsResidualMFD, RichardsJacobianMFD
 
 contains
 
@@ -1113,13 +1113,13 @@ subroutine RichardsAccumulation(rich_aux_var,global_aux_var,por,vol, &
        
   ! accumulation term units = kmol/s
 
-  if (option%mimetic) then
-    Res(1) = global_aux_var%sat(1) * global_aux_var%den(1) * por * vol / &
-           (option%flow_dt*global_aux_var%pres(1))
-  else 
+!  if (option%mimetic) then
+!    Res(1) = global_aux_var%sat(1) * global_aux_var%den(1) * por * vol / &
+!           (option%flow_dt*global_aux_var%pres(1))
+!  else 
     Res(1) = global_aux_var%sat(1) * global_aux_var%den(1) * por * vol / &
            option%flow_dt
-  end if
+!  end if
 
 end subroutine RichardsAccumulation
 
@@ -2020,7 +2020,7 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
 !    call PetscViewerDestroy(viewer,ierr)
 !  endif
    write(*,*) "End RichardsResidualMFD"
-   stop
+!   stop
   
 end subroutine RichardsResidualMFD
 
@@ -2697,7 +2697,7 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 
   type(mfd_auxvar_type), pointer :: aux_var
   type(connection_set_type), pointer :: conn
-  PetscScalar, pointer :: sq_faces(:), Smatrix(:,:), e2n_local(:), face_pr(:)
+  PetscScalar, pointer :: sq_faces(:), e2n_local(:), Smatrix(:,:), face_pr(:)
   PetscReal :: Res(realization%option%nflowdof), PermTensor(3,3)
   PetscInt :: icell, iface, jface, i,j, numfaces, ghost_face_id, ghost_face_jd
   
@@ -2738,7 +2738,7 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   numfaces = 6 ! hex only
   allocate(sq_faces(numfaces))
   allocate(face_pr(numfaces))
-  allocate(Smatrix(numfaces, numfaces))
+!  allocate(Smatrix(numfaces, numfaces))
 
   r_p = 0.
 
@@ -2762,14 +2762,16 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
       PermTensor(2,2) = perm_yy_loc_p(ghosted_id)
       PermTensor(3,3) = perm_zz_loc_p(ghosted_id)
 
-      call RichardsAccumulation(rich_aux_vars(ghosted_id), &
-                                global_aux_vars(ghosted_id), &
-                                porosity_loc_p(ghosted_id), &
-                                volume_p(icell), &
-                                option,Res)
+!      call RichardsAccumulation(rich_aux_vars(ghosted_id), &
+!                                global_aux_vars(ghosted_id), &
+!                                porosity_loc_p(ghosted_id), &
+!                                volume_p(icell), &
+!                                option,Res)
       Res = 0.
       call MFDAuxGenerateStiffMatrix(aux_var, rich_aux_vars(ghosted_id), &
-                  global_aux_vars(ghosted_id), Res, sq_faces, option, Smatrix)
+                  global_aux_vars(ghosted_id), Res, sq_faces, option)
+
+      Smatrix => aux_var%StiffMatrix
 
       do i =  1, aux_var%numfaces
 !         write(*,*) "icell",icell,"face",aux_var%face_id_gh(i),"e2n", e2n_local((icell -1)*numfaces + i)
@@ -2826,8 +2828,8 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   deallocate(Smatrix)
 
 #ifdef DASVYAT
-  write(*,*) "richards 2822"
-  stop
+!  write(*,*) "richards 2822"
+!  stop
 #endif
 
 end subroutine RichardsResidualPatchMFD1
@@ -2890,7 +2892,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   type(mfd_auxvar_type), pointer :: aux_var
   type(connection_set_type), pointer :: conn
   PetscScalar, pointer :: sq_faces(:), rhs(:), bc_g(:), e2n_local(:)
-  PetscReal :: Res(realization%option%nflowdof), source_f(realization%option%nflowdof)
+  PetscReal :: Accum(realization%option%nflowdof), source_f(realization%option%nflowdof)
   PetscInt :: icell, iface, jface, numfaces, ghost_face_id, ghost_face_jd
 
 
@@ -2989,15 +2991,16 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
                                 global_aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
                                 volume_p(local_id), &
-                                option,Res)
-        Res = 0.
+                                option,Accum)
+        Accum = 0.
 
         source_f = 0.
 
         call MFDAuxGenerateRhs(bc_g, source_f, aux_var, &
                                  rich_aux_vars(ghosted_id),&
                                  global_aux_vars(ghosted_id),&
-                                 Res, sq_faces, option, rhs) 
+                                 Accum, sq_faces, option, rhs) 
+
         ! for now, just assume diagonal tensor
 !        perm_dn = perm_xx_loc_p(ghosted_id)*dabs(cur_connection_set%dist(1,iconn))+ &
 !                  perm_yy_loc_p(ghosted_id)*dabs(cur_connection_set%dist(2,iconn))+ &
@@ -3026,7 +3029,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
 !               write(*,*) "Enter MFD2", ghost_face_id, r_p(ghost_face_id), e2n_local((local_id -1)*numfaces + iface) 
             end if
           else
-            r_p(ghost_face_id) = r_p(ghost_face_id) - rhs(iface)
+                r_p(ghost_face_id) = r_p(ghost_face_id) - rhs(iface)
           end if
         end do
         
@@ -3186,6 +3189,116 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
   call PetscLogEventEnd(logging%event_r_jacobian,ierr)
   
 end subroutine RichardsJacobian
+! ************************************************************************** !
+!
+! RichardsJacobian: Computes the Jacobian for MFD Discretization
+! author: Daniil Svyatskiy
+! date: 09/17/10
+!
+! ************************************************************************** !
+subroutine RichardsJacobianMFD(snes,xx,A,B,flag,realization,ierr)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+  use Grid_module
+  use Option_module
+  use Logging_module
+
+  implicit none
+
+  interface
+     subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
+#include "finclude/petscsysdef.h"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+       
+       Mat :: mat
+       PetscFortranAddr :: patch
+     end subroutine SAMRSetCurrentJacobianPatch
+  end interface
+
+  SNES :: snes
+  Vec :: xx
+  Mat :: A, B
+  type(realization_type) :: realization
+  MatStructure flag
+  PetscErrorCode :: ierr
+  
+  Mat :: J
+  MatType :: mat_type
+  PetscViewer :: viewer
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  type(grid_type),  pointer :: grid
+  type(option_type), pointer :: option
+  PetscReal :: norm
+  
+  call PetscLogEventBegin(logging%event_r_jacobian,ierr)
+
+  option => realization%option
+
+  flag = SAME_NONZERO_PATTERN
+  call MatGetType(A,mat_type,ierr)
+  if (mat_type == MATMFFD) then
+    J = B
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+  else
+    J = A
+  endif
+
+
+  call MatZeroEntries(J,ierr)
+
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      grid => cur_patch%grid
+      ! need to set the current patch in the Jacobian operator
+      ! so that entries will be set correctly
+!      if(option%use_samr) then
+!         call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
+!      endif
+
+      call RichardsJacobianPatchMFD(snes,xx,J,J,flag,realization,ierr)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+
+!  if (realization%debug%matview_Jacobian) then
+!#if 0  
+    call PetscViewerASCIIOpen(realization%option%mycomm,'Rjacobian.out', &
+                              viewer,ierr)
+!#else
+    call PetscViewerBinaryOpen(realization%option%mycomm,'Rjacobian.bin', &
+                               FILE_MODE_WRITE,viewer,ierr)
+!#endif    
+    call MatView(J,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+!  endif
+  if (realization%debug%norm_Jacobian) then
+    option => realization%option
+    call MatNorm(J,NORM_1,norm,ierr)
+    write(option%io_buffer,'("1 norm: ",es11.4)') norm
+    call printMsg(option) 
+    call MatNorm(J,NORM_FROBENIUS,norm,ierr)
+    write(option%io_buffer,'("2 norm: ",es11.4)') norm
+    call printMsg(option) 
+    call MatNorm(J,NORM_INFINITY,norm,ierr)
+    write(option%io_buffer,'("inf norm: ",es11.4)') norm
+    call printMsg(option) 
+  endif
+
+  call PetscLogEventEnd(logging%event_r_jacobian,ierr)
+  
+end subroutine RichardsJacobianMFD
                 
 ! ************************************************************************** !
 !
@@ -3684,6 +3797,184 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 
 end subroutine RichardsJacobianPatch2
 
+! ************************************************************************** !
+!
+! RichardsJacobianPatch1: Computes local condensed matrices
+!   for the Jacobian
+! author: Daniil Svyatskiy
+! date: 09/17/10
+!
+! ************************************************************************** !
+subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
+       
+  use water_eos_module
+  use mfd_aux_module
+  use Connection_module
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Grid_module
+  use Coupler_module
+  use Field_module
+  use Debug_module
+    
+  implicit none
+
+  SNES, intent(in) :: snes
+  Vec, intent(in) :: xx
+  Mat, intent(out) :: A, B
+  type(realization_type) :: realization
+  MatStructure flag
+
+  PetscErrorCode :: ierr
+
+  PetscReal, pointer :: porosity_loc_p(:), &
+                        perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
+  PetscReal, pointer :: icap_loc_p(:)
+  PetscInt :: icap,icap_up,icap_dn
+  PetscReal :: dd_up, dd_dn
+  PetscReal :: perm_up, perm_dn
+  PetscReal :: upweight
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: local_id_up, local_id_dn
+  PetscInt :: ghosted_id_up, ghosted_id_dn
+  
+  PetscReal, pointer :: J(:, :)       
+  
+  type(coupler_type), pointer :: boundary_condition, source_sink
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
+  PetscInt :: iconn, iface, jface, icell, numfaces
+  PetscInt :: sum_connection  
+  PetscReal :: distance, fraction_upwind
+  PetscReal :: distance_gravity 
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option 
+  type(field_type), pointer :: field 
+  type(richards_parameter_type), pointer :: richards_parameter
+  type(richards_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:) 
+  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
+  type(mfd_auxvar_type), pointer :: aux_var
+  
+  PetscViewer :: viewer
+
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+  richards_parameter => patch%aux%Richards%richards_parameter
+  rich_aux_vars => patch%aux%Richards%aux_vars
+  global_aux_vars => patch%aux%Global%aux_vars
+
+#ifdef GLENN
+  if (option%use_matrix_buffer) then
+    if (associated(patch%aux%Richards%matrix_buffer)) then
+      call MatrixBufferZero(patch%aux%Richards%matrix_buffer)
+    else
+      patch%aux%Richards%matrix_buffer => MatrixBufferCreate()
+      call MatrixBufferInit(A,patch%aux%Richards%matrix_buffer,grid)
+    endif
+  endif
+#endif
+
+  write(*,*) "ENTER MFD JACOBIAN"
+
+
+  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
+ 
+
+  do icell = 1, grid%nlmax
+     aux_var => grid%MFD%aux_vars(icell)
+     numfaces = aux_var%numfaces
+     allocate(J(numfaces,numfaces))
+     do iface = 1, numfaces
+       do jface = 1, numfaces
+         J(iface,jface) = aux_var%StiffMatrix(iface, jface)
+       end do
+     end do
+
+  end do
+
+
+        
+
+
+
+ 
+#if 0
+      if (local_id_up > 0) then
+#ifdef GLENN
+        if (option%use_matrix_buffer) then
+          call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id_up, &
+                               ghosted_id_up,Jup(1,1))
+          call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id_up, &
+                               ghosted_id_dn,Jdn(1,1))
+        else
+#endif
+          call MatSetValuesLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
+                                        Jup,ADD_VALUES,ierr)
+          call MatSetValuesLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
+                                        Jdn,ADD_VALUES,ierr)
+#ifdef GLENN
+        endif
+#endif
+      endif
+      if (local_id_dn > 0) then
+        Jup = -Jup
+        Jdn = -Jdn
+#ifdef GLENN
+        if (option%use_matrix_buffer) then
+          call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id_dn, &
+                               ghosted_id_dn,Jdn(1,1))
+          call MatrixBufferAdd(patch%aux%Richards%matrix_buffer,ghosted_id_dn, &
+                               ghosted_id_up,Jup(1,1))
+        else
+#endif
+          call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
+                                        Jdn,ADD_VALUES,ierr)
+          call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
+                                        Jup,ADD_VALUES,ierr)
+#ifdef GLENN
+        endif
+#endif
+      endif
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo
+#endif
+  if (realization%debug%matview_Jacobian_detailed) then
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'jacobian_flux.out',viewer,ierr)
+    call MatView(A,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+
+  if (realization%debug%matview_Jacobian_detailed) then
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+    call PetscViewerASCIIOpen(option%mycomm,'jacobian_bcflux.out',viewer,ierr)
+    call MatView(A,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+  
+  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
+
+  
+  write(*,*) "EXIT MFD JACOBIAN"
+  write(*,*) "richard 4014"
+  stop
+
+end subroutine RichardsJacobianPatchMFD
 ! ************************************************************************** !
 !
 ! RichardsCreateZeroArray: Computes the zeroed rows for inactive grid cells

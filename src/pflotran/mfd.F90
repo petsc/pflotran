@@ -194,7 +194,7 @@ subroutine MFDInitializeMassMatrices(grid, volume,  perm_xx_loc, &
     PermTensor(2,2) = perm_yy_loc_p(icell)
     PermTensor(3,3) = perm_zz_loc_p(icell)
 
-    write(*,*) icell, volume_p(icell), PermTensor(1,1)
+!    write(*,*) icell, volume_p(icell), PermTensor(1,1)
 
     aux_var => mfd_aux%aux_vars(icell)
     call MFDAuxGenerateMassMatrixInv(aux_var, volume_p(icell), PermTensor, option)
@@ -216,7 +216,7 @@ subroutine MFDInitializeMassMatrices(grid, volume,  perm_xx_loc, &
 end subroutine MFDInitializeMassMatrices
 
 subroutine MFDAuxGenerateStiffMatrix(aux_var, rich_aux_var, global_aux_var, Accum, &
-                                       sq_faces, option, StiffMatrix)
+                                       sq_faces, option)
 
  use Option_module
  use Richards_Aux_module
@@ -255,7 +255,7 @@ subroutine MFDAuxGenerateStiffMatrix(aux_var, rich_aux_var, global_aux_var, Accu
 
   do iface = 1, aux_var%numfaces
     do jface = 1, aux_var%numfaces
-        StiffMatrix(iface,jface) = sq_faces(iface)*sq_faces(jface)*    &
+        aux_var%StiffMatrix(iface,jface) = sq_faces(iface)*sq_faces(jface)*    &
                                         (ukvr*aux_var%MassMatrixInv(iface,jface) - &
                                         (1./E)*MB(iface)*MB(jface))
     end do
@@ -339,7 +339,11 @@ subroutine MFDAuxGenerateRhs(bc_g, source_f, aux_var, rich_aux_var, global_aux_v
 
 
 
-  E = Accum(1)
+!  E = Accum(1)
+
+  E = 0.
+  source_f(1) = source_f(1) - Accum(1)
+  
   gMB = 0.
   do iface = 1, aux_var%numfaces
     MB(iface) = 0.
