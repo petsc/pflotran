@@ -83,7 +83,7 @@
 \renewcommand{\a}{{\alpha}}
 \newcommand{\abar}{{\bar \alpha}}
 \renewcommand{\b}{{\beta}}
-\renewcommand{\e}{{\epsilon}}
+\newcommand{\ee}{{\epsilon}}
 \newcommand{\s}{{\sigma}}
 \newcommand{\w}{{\rm H_2O}}
 \newcommand{\air}{{\rm N_2}}
@@ -4018,28 +4018,28 @@ The displacement at a point $\br$ = $(x_1,\,x_2,\,x_3)$ to point $\br'$ in a def
 \EN
 or in component form
 \EQ
-\e_i \eq x_i^\prime - x_i,
+\ee_i \eq x_i^\prime - x_i,
 \EN
 where $\bu$ represents the displacement vector. The distance between two points $ds$ is transformed to $ds'$ %(Einstein summation implied)
 \EQ
-{ds'}^2 \eq ds^2 + 2 \sum_{ik} \e_{ik} dx_i dx_k,
+{ds'}^2 \eq ds^2 + 2 \sum_{ik} \ee_{ik} dx_i dx_k,
 \EN
 where the strain tensor is defined as
 \BA
-\e_{ik} &\eq \frac{1}{2}\left(\frac{\p u_i}{\p x_k} + \frac{\p u_k}{\p x_i} + \sum_l \frac{\p u_l}{\p x_i} \frac{\p u_l}{\p x_k}\right),\\
+\ee_{ik} &\eq \frac{1}{2}\left(\frac{\p u_i}{\p x_k} + \frac{\p u_k}{\p x_i} + \sum_l \frac{\p u_l}{\p x_i} \frac{\p u_l}{\p x_k}\right),\\
 &~\simeq~ \frac{1}{2}\left(\frac{\p u_i}{\p x_k} + \frac{\p u_k}{\p x_i}\right).
 \EA
-The strain tensor is symmetric $(\e_{ik} \!=\!\e_{ki})$ implying that it may be diagonalized
+The strain tensor is symmetric $(\ee_{ik} \!=\!\ee_{ki})$ implying that it may be diagonalized
 \EQ
-\e_{ik} \eq u^{(i)} \delta_{ik}.
+\ee_{ik} \eq u^{(i)} \delta_{ik}.
 \EN
 A volume element $dV$ to first order transforms as
 \EQ
-dV' \eq dV \big(1 + \sum_i \e_{ii}\big) \eq dV \big(1+ \sum_i \e^{(i)}\big),
+dV' \eq dV \big(1 + \sum_i \ee_{ii}\big) \eq dV \big(1+ \sum_i \ee^{(i)}\big),
 \EN
 with
 \EQ
-\sum_i\e_{ii} \eq \sum_i\frac{\p u_i}{\p x_i} \eq \bnabla\cdot\bu.
+\sum_i\ee_{ii} \eq \sum_i\frac{\p u_i}{\p x_i} \eq \bnabla\cdot\bu.
 \EN
 
 \subsection{Stress Tensor}
@@ -4053,30 +4053,30 @@ where $\p_k\!=\!\p/\p x_k$. The stress tensor must be symmetric $(\sigma_{ik}\!=
 \subsubsection{Fundamental Thermodynamic Relations.}
 \paragraph{Energy}
 \EQ
-d\E \eq T dS + \sum_{ik} \sigma_{ik} d\e_{ik}.
+d\E \eq T dS + \sum_{ik} \sigma_{ik} d\ee_{ik}.
 \EN
 \EQ
-\sigma_{ik} \eq \left(\frac{\p\E}{\p \e_{ik}}\right)_S.
+\sigma_{ik} \eq \left(\frac{\p\E}{\p \ee_{ik}}\right)_S.
 \EN
 \paragraph{Free Energy}
 \EQ
 F \eq \E - TS.
 \EN
 \EQ
-dF \eq -S dT + \sum_{ik} \sigma_{ik} d\e_{ik}.
+dF \eq -S dT + \sum_{ik} \sigma_{ik} d\ee_{ik}.
 \EN
 \EQ
-\sigma_{ik} \eq \left(\frac{\p F}{\p \e_{ik}}\right)_T.
+\sigma_{ik} \eq \left(\frac{\p F}{\p \ee_{ik}}\right)_T.
 \EN
 \paragraph{Gibbs Free Energy}
 \EQ
-G \eq \E- TS + \sum_{ik} \sigma_{ik} \e_{ik}.
+G \eq \E- TS + \sum_{ik} \sigma_{ik} \ee_{ik}.
 \EN
 \EQ
-dG \eq -S dT - \sum_{ik} \e_{ik} d\sigma_{ik}.
+dG \eq -S dT - \sum_{ik} \ee_{ik} d\sigma_{ik}.
 \EN
 \EQ
-\e_{ik} \eq -\left(\frac{\p G}{\p\sigma_{ik}}\right)_T.
+\ee_{ik} \eq -\left(\frac{\p G}{\p\sigma_{ik}}\right)_T.
 \EN
 For $\sigma_{ik} \!=\! -p \delta_{ik}$,
 \EQ
@@ -4091,8 +4091,8 @@ dG \eq -S dT + Vdp.
 
 For a deformed isotropic body
 \BA
-F &\eq F_0 + \frac{1}{2} \sum_{i} \lambda \e_{ii}^2 + \mu  \sum_{ik} \e_{ik}^2 + \ldots,\\
-&\eq \mu \big(\e_{ik} - \frac{1}{3} \delta_{ik} \sum_{l} \e_{ll}\big)^2 + \frac{1}{2} K  \sum_{l} \e_{ll}^2,
+F &\eq F_0 + \frac{1}{2} \sum_{i} \lambda \ee_{ii}^2 + \mu  \sum_{ik} \ee_{ik}^2 + \ldots,\\
+&\eq \mu \big(\ee_{ik} - \frac{1}{3} \delta_{ik} \sum_{l} \ee_{ll}\big)^2 + \frac{1}{2} K  \sum_{l} \ee_{ll}^2,
 \EA
 with Lam\'e coefficients $\lambda$ and $\mu$, where $F_0$ is the free energy of the undeformed body which is omitted in the second form of the free energy and in what follows, and where $K$ (bulk modulus, modulus of hydrostatic compression) is related to $\lambda$ and $\mu$ (shear modulus, modulus of rigidity) by
 \EQ
@@ -4100,9 +4100,9 @@ K \eq \lambda + \frac{2}{3} \mu.
 \EN
 The stress tensor has the form
 \BA
-\sigma_{ik} &\eq \left(\frac{\p F}{\p \e_{ik}}\right)_T,\\
-&\eq K \delta_{ik} \sum_{l} \e_{ll} + 2 \mu \big(\e_{ik}-\frac{1}{3} \delta_{ik} \sum_{l} \e_{ll}\big),\\
-&\eq 2 \mu \e_{ik} + \lambda \delta_{ik} \sum_l \e_{ll},
+\sigma_{ik} &\eq \left(\frac{\p F}{\p \ee_{ik}}\right)_T,\\
+&\eq K \delta_{ik} \sum_{l} \ee_{ll} + 2 \mu \big(\ee_{ik}-\frac{1}{3} \delta_{ik} \sum_{l} \ee_{ll}\big),\\
+&\eq 2 \mu \ee_{ik} + \lambda \delta_{ik} \sum_l \ee_{ll},
 \EA
 with
 \EQ
@@ -4110,25 +4110,25 @@ K\eq \lambda + \frac{2}{3} \mu.
 \EN
 Conversely
 \EQ
-\e_{ik} \eq \frac{1}{9K} \delta_{ik} \sum_{l} \s_{ll} + \frac{1}{2\mu} \big(\s_{ik} - \frac{1}{3} \delta_{ik} \sum_{l} \s_{ll}\big).
+\ee_{ik} \eq \frac{1}{9K} \delta_{ik} \sum_{l} \s_{ll} + \frac{1}{2\mu} \big(\s_{ik} - \frac{1}{3} \delta_{ik} \sum_{l} \s_{ll}\big).
 \EN
 It follows that
 \EQ
-\sum_{l}\e_{ll} \eq \frac{1}{3K}\sum_{l}\s_{ll},
+\sum_{l}\ee_{ll} \eq \frac{1}{3K}\sum_{l}\s_{ll},
 \EN
 or
 \EQ
-K \eq \frac{1}{3}\frac{\sum_{l}\s_{ll}}{\sum_{l}\e_{ll}}.
+K \eq \frac{1}{3}\frac{\sum_{l}\s_{ll}}{\sum_{l}\ee_{ll}}.
 \EN
 
 According to Euler's theorem
 \EQ
-F \eq \frac{1}{2} \sum_{ik} \s_{ik} \e_{ik}.
+F \eq \frac{1}{2} \sum_{ik} \s_{ik} \ee_{ik}.
 \EN
 
 From the quadratic form of the elastic energy
 \EQ
-\e_{ik} \eq \frac{\p F}{\p\s_{ik}}.
+\ee_{ik} \eq \frac{\p F}{\p\s_{ik}}.
 \EN
 These equations represent a generalization of Hooke's law
 \EQ
@@ -4145,36 +4145,36 @@ F \eq -\frac{\p\E}{\p x} \eq -kx.
 \EN
 implying 
 \EQ
-\e_{ik} \eq -\frac{p}{3K} \delta_{ik},
+\ee_{ik} \eq -\frac{p}{3K} \delta_{ik},
 \EN
 and
 \EQ
-\sum_l \e_{ll} \eq -\frac{p}{K}.
+\sum_l \ee_{ll} \eq -\frac{p}{K}.
 \EN
 
 \subsection{Homogeneous Deformation}
 
 \EQ
-F \eq \frac{E}{2(1+\s)} \left[\e_{ik}^2 + \frac{\s}{1-2\s} \sum_l \e_{ll}^2\right],
+F \eq \frac{E}{2(1+\s)} \left[\ee_{ik}^2 + \frac{\s}{1-2\s} \sum_l \ee_{ll}^2\right],
 \EN
 \EQ
-\s_{ik} \eq \frac{E}{1+\s}\left(\e_{ik} + \frac{\s}{1-2\s}\delta_{ik} \sum_l \e_{ll} \right),
+\s_{ik} \eq \frac{E}{1+\s}\left(\ee_{ik} + \frac{\s}{1-2\s}\delta_{ik} \sum_l \ee_{ll} \right),
 \EN
 \EQ
-\e_{ik} \eq \frac{1}{E} \left[(1+\s)\s_{ik} - \s\delta_{ik} \sum_l \s_{ll}\right],
+\ee_{ik} \eq \frac{1}{E} \left[(1+\s)\s_{ik} - \s\delta_{ik} \sum_l \s_{ll}\right],
 \EN
 \begin{subequations}
 \EQ
-\s_{xx} \eq \frac{E}{(1+\s)(1-2\s)} \left[\big(1-\s\big) \e_{xx} + \s \big(\e_{yy}+\e_{zz}\big)\right],
+\s_{xx} \eq \frac{E}{(1+\s)(1-2\s)} \left[\big(1-\s\big) \ee_{xx} + \s \big(\ee_{yy}+\ee_{zz}\big)\right],
 \EN
 \EQ
-\s_{yy} \eq \frac{E}{(1+\s)(1-2\s)} \left[\big(1-\s\big) \e_{yy} + \s \big(\e_{xx}+\e_{zz}\big)\right],
+\s_{yy} \eq \frac{E}{(1+\s)(1-2\s)} \left[\big(1-\s\big) \ee_{yy} + \s \big(\ee_{xx}+\ee_{zz}\big)\right],
 \EN
 \EQ
-\s_{zz} \eq \frac{E}{(1+\s)(1-2\s)} \left[\big(1-\s\big) \e_{zz} + \s \big(\e_{xx}+\e_{yy}\big)\right],
+\s_{zz} \eq \frac{E}{(1+\s)(1-2\s)} \left[\big(1-\s\big) \ee_{zz} + \s \big(\ee_{xx}+\ee_{yy}\big)\right],
 \EN
 \EQ
-\s_{xy}\eq\frac{E}{1+\s} \e_{xy}, \ \s_{xz}\eq\frac{E}{1+\s} \e_{xz}, \ \s_{yz}\eq\frac{E}{1+\s} \e_{yz}.
+\s_{xy}\eq\frac{E}{1+\s} \ee_{xy}, \ \s_{xz}\eq\frac{E}{1+\s} \ee_{xz}, \ \s_{yz}\eq\frac{E}{1+\s} \ee_{yz}.
 \EN
 \end{subequations}
 
@@ -4184,13 +4184,13 @@ F \eq \frac{E}{2(1+\s)} \left[\e_{ik}^2 + \frac{\s}{1-2\s} \sum_l \e_{ll}^2\righ
 \s_{zz} \eq p, \ \s_{ik} = 0, \ (i\ne k),
 \EN
 \EQ
-\e_{xx} \eq \e_{yy} \eq -\frac{1}{3}\left(\frac{1}{2\mu}-\frac{1}{3K}\right)p,
+\ee_{xx} \eq \ee_{yy} \eq -\frac{1}{3}\left(\frac{1}{2\mu}-\frac{1}{3K}\right)p,
 \EN
 \EQ
-\e_{zz} \eq \frac{1}{3}\left(\frac{1}{3K}+\frac{1}{\mu}\right)p.
+\ee_{zz} \eq \frac{1}{3}\left(\frac{1}{3K}+\frac{1}{\mu}\right)p.
 \EN
 \EQ
-\e_{zz} \eq \frac{p}{E},
+\ee_{zz} \eq \frac{p}{E},
 \EN
 where
 \EQ
@@ -4213,13 +4213,13 @@ and conversely
 \subsection{Biot's Theory of Deformation}
 
 \EQ
-\e_{ik} \eq \frac{1}{2G}\s_{ik} - \frac{2\nu}{E} \sum_l \s_{ll} + \frac{1}{H} p,
+\ee_{ik} \eq \frac{1}{2G}\s_{ik} - \frac{2\nu}{E} \sum_l \s_{ll} + \frac{1}{H} p,
 \EN
 \EQ
-\s_{ik} \eq 2\mu \e_{ik} + \left[\lambda\sum_l\e_{ll} - \a p\right] \delta_{ik}.
+\s_{ik} \eq 2\mu \ee_{ik} + \left[\lambda\sum_l\ee_{ll} - \a p\right] \delta_{ik}.
 \EN
 \EQ
-\sum_l\s_{ll} \eq \frac{E}{1-2\nu} \sum_l\e_{ll} -\frac{E}{1-2\nu}\frac{p}{H}.
+\sum_l\s_{ll} \eq \frac{E}{1-2\nu} \sum_l\ee_{ll} -\frac{E}{1-2\nu}\frac{p}{H}.
 \EN
 \EQ
 \a \eq \frac{2G(1+\nu)}{3H(1-2\nu)} \eq \frac{E}{3H(1-2\nu)}, \ \ \ G \eq \frac{E}{2(1+\nu)}.
@@ -4228,10 +4228,10 @@ and conversely
 \subsection{Non-isothermal Systems}
 
 \EQ
-F(T,\, \e_{ik}) \eq F_0(T)-K\b(T-T_0) \sum_l \e_{ll} + \mu \big(\e_{ik}-\frac{1}{3}\delta_{ik}\sum_l \e_{ll}\big)^2+\frac{1}{2}K \sum_l \e_{ll}^2,
+F(T,\, \ee_{ik}) \eq F_0(T)-K\b(T-T_0) \sum_l \ee_{ll} + \mu \big(\ee_{ik}-\frac{1}{3}\delta_{ik}\sum_l \ee_{ll}\big)^2+\frac{1}{2}K \sum_l \ee_{ll}^2,
 \EN
 \EQ
-\s_{ik} \eq -K \b (T-T_0) \delta_{ik} + K \delta_{ik} \sum_l \e_{ll} + 2\mu \big(\e_{ik} - \frac{1}{3} \delta_{ik} \sum_l \e_{ll}\big).
+\s_{ik} \eq -K \b (T-T_0) \delta_{ik} + K \delta_{ik} \sum_l \ee_{ll} + 2\mu \big(\ee_{ik} - \frac{1}{3} \delta_{ik} \sum_l \ee_{ll}\big).
 \EN
 
 %\subsubsection{Adiabatic}
