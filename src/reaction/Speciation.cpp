@@ -200,9 +200,12 @@ int Speciation::speciate(double *target_total) {
     // calculate residual
     for (int i=0; i<ncomp; i++)
       residual[i] = total[i]-target_total[i];
+#define DEBUG
 
 #ifdef DEBUG
     cout << "before scale\n";
+    for (int i=0; i<ncomp; i++)
+      cout << "Res: " << primary_species_names[i] << " " << residual[i] << "\n";
     J->print();
 #endif
     // scale the Jacobian
@@ -220,7 +223,9 @@ int Speciation::speciate(double *target_total) {
 
 #ifdef DEBUG
     cout << "after scale\n";
-    J->print();
+    for (int i=0; i<ncomp; i++)
+      cout << "RHS: " << primary_species_names[i] << " " << rhs[i] << "\n";
+     J->print();
 #endif
     // for derivatives with respect to ln concentration for log formulation
     for (int i=0; i<ncomp; i++)
@@ -228,12 +233,20 @@ int Speciation::speciate(double *target_total) {
 
 #ifdef DEBUG
     cout << "before solve\n";
+    for (int i=0; i<ncomp; i++)
+      cout << "RHS: " << primary_species_names[i] << " " << rhs[i] << "\n";
     J->print();
+
 #endif
     // LU direct solve
     double D;
     ludcmp(J->getValues(),ncomp,indices,&D);
     lubksb(J->getValues(),ncomp,indices,rhs);
+
+#ifdef DEBUG
+    for (int i=0; i<ncomp; i++)
+      cout << "Update: " << primary_species_names[i] << " " << rhs[i] << "\n";
+#endif
 
     // calculate update truncating at a maximum of 5 in log space
     for (int i=0; i<ncomp; i++) {
