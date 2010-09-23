@@ -91,6 +91,8 @@ PetscInt, parameter :: AMR_GRID = 3
 PetscInt, parameter :: CARTESIAN_GRID = 4
 PetscInt, parameter :: CYLINDRICAL_GRID = 5
 PetscInt, parameter :: SPHERICAL_GRID = 6
+PetscInt, parameter :: STRUCTURED_GRID_MIMETIC = 7
+PetscInt, parameter :: UNSTRUCTURED_GRID_MIMETIC = 8
 
 ! condition types
 PetscInt, parameter :: DIRICHLET_BC = 1
@@ -102,9 +104,11 @@ PetscInt, parameter :: HYDROSTATIC_BC = 5
 PetscInt, parameter :: SEEPAGE_BC = 6
 PetscInt, parameter :: MASS_RATE_SS = 7
 PetscInt, parameter :: VOLUMETRIC_RATE_SS = 8
-PetscInt, parameter :: CONCENTRATION_SS = 9
-PetscInt, parameter :: EQUILIBRIUM_SS = 10
-PetscInt, parameter :: CONDUCTANCE_BC = 11
+PetscInt, parameter :: SCALED_MASS_RATE_SS = 9
+PetscInt, parameter :: SCALED_VOLUMETRIC_RATE_SS = 10
+PetscInt, parameter :: CONCENTRATION_SS = 11
+PetscInt, parameter :: EQUILIBRIUM_SS = 12
+PetscInt, parameter :: CONDUCTANCE_BC = 13
 
 ! concentration subcondition types
 PetscInt, parameter :: CONSTRAINT_NULL = 0

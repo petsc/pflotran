@@ -240,7 +240,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
   option => realization%option
   output_option => realization%output_option
-  
+ 
+ 
   if (option%steady_state) then
     call StepperRunSteadyState(realization,flow_stepper,tran_stepper)
     return 
@@ -429,13 +430,15 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     ! (reactive) transport solution
     if (associated(tran_stepper)) then
       call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr)
-      if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then      
+      if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
+	    !global implicit
         call StepperStepTransportDT(realization,tran_stepper, &
                                     flow_timestep_cut_flag, &
                                     tran_timestep_cut_flag, &
                                     idum,failure)
       else
-#ifdef REVISED_TRANSPORT      
+#ifdef REVISED_TRANSPORT
+        !operator splitting
         call StepperStepTransportDT1(realization,tran_stepper, &
                                      flow_timestep_cut_flag, &
                                      tran_timestep_cut_flag, &
@@ -894,6 +897,8 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   field => realization%field
   solver => stepper%solver
 
+
+
 ! PetscReal, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
 
   num_newton_iterations = 0
@@ -945,8 +950,14 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
       
       call PetscGetTime(log_start_time, ierr)
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_MODE,IMS_MODE,FLASH2_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE)
           call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
+        case(RICHARDS_MODE)
+          if (discretization%itype == STRUCTURED_GRID_MIMETIC) then 
+            call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx_faces, ierr)
+          else 
+            call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
+          end if
       end select
       call PetscGetTime(log_end_time, ierr)
       stepper%cumulative_solver_time = stepper%cumulative_solver_time + (log_end_time - log_start_time)
@@ -1646,6 +1657,12 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
       call GlobalUpdateDenAndSat(realization,option%tran_weight_t0)
     endif
 
+    ! Between the next 3 subroutine calls:
+    ! RTUpdateRHSCoefs()
+    ! RTUpdateAuxVars()
+    ! RTCalculateRHS_t0()
+    ! the t0 portion of the accumulation term is calculated for the RHS vector
+    
     ! update time derivative on RHS
     call RTUpdateRHSCoefs(realization)
     ! calculate total component concentrations based on t0 densities
@@ -1657,26 +1674,27 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
       call GlobalUpdateDenAndSat(realization,option%tran_weight_t1)
     endif
 
-    ! update coefficients
+    ! update diffusion/dispersion coefficients
     call RTUpdateTransportCoefs(realization)
-    ! note that aux vars for bcs in RHS will be updated based on
-    ! sat/den at time k+1 in RTCalculateRHS_t1Patch().
+    ! RTCalculateRHS_t1() updates aux vars to k+1 and calculates RHS fluxes and src/sinks
     call RTCalculateRHS_t1(realization)
-    if(option%use_samr) then
-       call MatCreateShell(option%mycomm, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, solver%J, ierr)
-       call MatShellSetOperation(solver%J, MATOP_MULT,RTTransportMatVec, ierr)
-       call MatShellSetContext(solver%J, discretization%amrgrid%p_application, ierr)
-       call RTCalculateTransportMatrix(realization,solver%Jpre)
+    if (option%use_samr) then
+      call MatCreateShell(option%mycomm, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, solver%J, ierr)
+      call MatShellSetOperation(solver%J, MATOP_MULT,RTTransportMatVec, ierr)
+      call MatShellSetContext(solver%J, discretization%amrgrid%p_application, ierr)
+      call RTCalculateTransportMatrix(realization,solver%Jpre)
 #ifndef PC_BUG       
-       call SAMRSetPetscTransportMatrix(discretization%amrgrid%p_application, solver%Jpre)
+      call SAMRSetPetscTransportMatrix(discretization%amrgrid%p_application, solver%Jpre)
 #endif       
-       call KSPSetOperators(solver%ksp,solver%J,solver%Jpre, &
+      call KSPSetOperators(solver%ksp,solver%J,solver%Jpre, &
                                             DIFFERENT_NONZERO_PATTERN,ierr)
     else     
-        call RTCalculateTransportMatrix(realization,solver%J) 
-        call KSPSetOperators(solver%ksp,solver%J,solver%Jpre, &
-                                            SAME_NONZERO_PATTERN,ierr)
-   endif
+      ! RTCalculateTransportMatrix() calculates flux coefficients and the
+      ! t^(k+1) coefficient in accumulation term
+      call RTCalculateTransportMatrix(realization,solver%J) 
+      call KSPSetOperators(solver%ksp,solver%J,solver%Jpre, &
+                           SAME_NONZERO_PATTERN,ierr)
+    endif
       
 
 !      call VecGetArrayF90(field%tran_xx,vec_ptr,ierr)
@@ -2016,6 +2034,7 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
 
   num_newton_iterations = 0
   num_linear_iterations = 0
+
 
   call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
                                   field%porosity_loc,ONEDOF)
@@ -2379,6 +2398,7 @@ subroutine StepperUpdateFlowAuxVars(realization)
     case(THC_MODE)
       call THCUpdateAuxVars(realization)
     case(RICHARDS_MODE)
+      write(*,*) "call RichardsUpdateAuxVars"
       call RichardsUpdateAuxVars(realization)
   end select    
 

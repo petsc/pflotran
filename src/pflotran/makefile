@@ -19,8 +19,7 @@ UO2_FLAG = -DCOMPUTE_INTERNAL_MASS_FLUX
 endif
 
 ifdef glenn
-GLENN_FLAGS = -DOS_STATISTICS
-#-DGLENN -DENABLE_UNSTRUCTURED
+GLENN_FLAGS = -DOS_STATISTICS -DGLENN -DENABLE_UNSTRUCTURED
 endif
 
 ifdef temp
@@ -95,6 +94,7 @@ common_obj = ${common_src}option.o \
 	${common_src}richards_aux.o\
 	${common_src}mphase_aux.o\
 	${common_src}immis_aux.o\
+        ${common_src}mfd_aux.o\
 	${common_src}flash2_aux.o\
 	${common_src}auxilliary.o\
 	${common_src}field.o \
@@ -118,6 +118,7 @@ common_obj = ${common_src}option.o \
 	${common_src}matrix_buffer.o \
 	${common_src}hydrostatic.o \
 	${common_src}patch.o \
+        ${common_src}mfd.o\
 	${common_src}level.o \
 	${common_src}amrgrid.o\
 	${common_src}discretization.o \
@@ -186,16 +187,16 @@ unstructured_grid.o : option.o connection.o
 structured_grid.o : connection.o option.o input.o cf90bridge.o
 general_grid.o : grid.o realization.o hdf5.o logging.o
 discretization.o : grid.o structured_grid.o unstructured_grid.o option.o \
-                   input.o string.o amrgrid.o 
+                   input.o string.o mfd_aux.o mfd.o amrgrid.o
 grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
-         input.o
+         input.o mfd_aux.o
 input.o : string.o option.o
 solver.o : option.o field.o input.o string.o
 region.o : input.o utility.o logging.o string.o
 material.o : option.o input.o string.o
 fluid.o : option.o input.o string.o
 saturation_function.o : option.o input.o string.o utility.o
-coupler.o : condition.o connection.o region.o input.o grid.o
+coupler.o : condition.o connection.o region.o input.o grid.o mfd_aux.o
 observation.o : region.o option.o input.o
 convergence.o : option.o solver.o grid.o
 condition.o : input.o utility.o option.o field.o logging.o reaction_aux.o \
@@ -261,3 +262,5 @@ stochastic.o : simulation.o option.o realization.o timestepper.o \
 stochastic_aux.o : simulation.o input.o option.o
 matrix_buffer.o : grid.o structured_grid.o
 velocity.o : option.o input.o string.o logging.o units.o
+mfd.o     : option.o mfd_aux.o grid.o
+mfd_aux.o : connection.o

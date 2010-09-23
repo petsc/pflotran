@@ -168,6 +168,15 @@ subroutine Init(simulation)
   ! read in the remainder of the input file
   call InitReadInput(simulation)
   call InputDestroy(realization%input)
+  
+
+#ifdef VAMSI_HDF5      
+  call Create_IOGroups(option)
+#endif    
+
+#ifdef VAMSI_HDF5      
+  call Create_IOGroups(option)
+#endif    
 
 #ifdef VAMSI_HDF5      
   call Create_IOGroups(option)
@@ -204,6 +213,7 @@ subroutine Init(simulation)
     case(MPH_MODE, FLASH2_MODE)
       call init_span_wanger(realization)
   end select
+  
 
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
@@ -212,11 +222,13 @@ subroutine Init(simulation)
 !    call MassBalanceCreate(realization)
 !  endif  
   
+
   if (OptionPrintToScreen(option)) then
     ! general print statements for both flow and transport modes
     write(*,'(/,"++++++++++++++++++++++++++++++++++++++++++++++++++++&
       &++++++++")')
-    if (realization%discretization%itype == STRUCTURED_GRID) then
+    if ((realization%discretization%itype == STRUCTURED_GRID).or.&
+        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then
       write(*,'(" Requested processors and decomposition = ",i5,", npx,y,z= ",3i5)') &
         option%mycommsize,grid%structured_grid%npx,grid%structured_grid%npy, &
         grid%structured_grid%npz
@@ -297,8 +309,13 @@ subroutine Init(simulation)
         call SNESSetFunction(flow_solver%snes,field%flow_r,THCResidual, &
                              realization,ierr)
       case(RICHARDS_MODE)
-        call SNESSetFunction(flow_solver%snes,field%flow_r,RichardsResidual, &
+        if(realization%discretization%itype == STRUCTURED_GRID) then
+          call SNESSetFunction(flow_solver%snes,field%flow_r,RichardsResidual, &
                              realization,ierr)
+        else if(realization%discretization%itype == STRUCTURED_GRID_MIMETIC) then
+          call SNESSetFunction(flow_solver%snes,field%flow_r_faces,RichardsResidualMFD, &
+                             realization,ierr)
+        end if
       case(MPH_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,MPHASEResidual, &
                              realization,ierr)
@@ -351,7 +368,8 @@ subroutine Init(simulation)
     ! KSPSetFromOptions() will already have been called.
     ! I also note that this preconditioner is intended only for the flow 
     ! solver.  --RTM
-    if (realization%discretization%itype == STRUCTURED_GRID) then
+    if ((realization%discretization%itype == STRUCTURED_GRID_MIMETIC).or.&
+                (realization%discretization%itype == STRUCTURED_GRID)) then
       call PCSetDM(flow_solver%pc, &
                    realization%discretization%dm_nflowdof,ierr);
     endif
@@ -859,7 +877,7 @@ subroutine InitReadRequiredCardsFromInput(realization)
   call DiscretizationRead(discretization,input,PETSC_TRUE,option)
   
   select case(discretization%itype)
-    case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
+    case(STRUCTURED_GRID,UNSTRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       patch => PatchCreate()
       patch%grid => discretization%grid
       if (.not.associated(realization%level_list)) then
@@ -876,7 +894,8 @@ subroutine InitReadRequiredCardsFromInput(realization)
   end select
 !.........................................................................
 
-  if (realization%discretization%itype == STRUCTURED_GRID) then  ! look for processor decomposition
+  if ((realization%discretization%itype == STRUCTURED_GRID).or. &
+        (realization%discretization%itype == STRUCTURED_GRID_MIMETIC)) then  ! look for processor decomposition
     
     ! PROC information
     string = "PROC"
@@ -1098,7 +1117,7 @@ subroutine InitReadInput(simulation)
           call InputErrorMsg(input,option,'word','CHEMISTRY') 
           select case(trim(word))
             case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
-                 'MINERALS','COLLOIDS')
+                 'MINERALS','COLLOIDS','GENERAL_REACTION')
               call InputSkipToEND(input,option,card)
             case('OUTPUT')
               call ReactionReadOutput(reaction,input,option)
@@ -1261,7 +1280,6 @@ subroutine InitReadInput(simulation)
         call StrataRead(strata,input,option)
         call RealizationAddStrata(realization,strata)
         nullify(strata)
-      
 !.....................
       case ('DATASET') 
         call InputReadWord(input,option,word,PETSC_TRUE)
@@ -1312,6 +1330,9 @@ subroutine InitReadInput(simulation)
         call InputDefaultMsg(input,option,'Reference Temperature') 
 
 !......................
+
+      case('ANI_RELATIVE_PERMEABILTY')
+        option%ani_relative_permeability = PETSC_TRUE
 
       case('REFERENCE_POROSITY')
         call InputReadStringErrorMsg(input,option,card)
@@ -1803,7 +1824,10 @@ subroutine InitReadInput(simulation)
 
     end select
 
+
+
   enddo
+
                                         
 end subroutine InitReadInput
 
@@ -2656,7 +2680,7 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
   option => realization%option
 
   if (index(filename,'.h5') > 0) then
-    ! to be taken care of later
+    ! to be taken care of later in readPermeabilitiesFromFile()
   else
     open(unit=fid,file=filename,status="old",iostat=status)
     if (status /= 0) then
@@ -2786,7 +2810,7 @@ subroutine readFlowInitialCondition(realization,filename)
       grid => cur_patch%grid
 
        ! assign initial conditions values to domain
-      call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
+      call GridVecGetArrayF90(grid,field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
 
       ! Pressure for all modes 
       offset = 1
@@ -2804,6 +2828,7 @@ subroutine readFlowInitialCondition(realization,filename)
         endif
         idx = (local_id-1)*option%nflowdof + offset
         xx_p(idx) = vec_p(local_id)
+        write(*,*) vec_p(local_id)
       enddo
       call GridVecRestoreArrayF90(grid,field%work,vec_p,ierr)
 

@@ -12,7 +12,7 @@ module Field_module
 
   type, public :: field_type 
     
-!geh material id
+    !get material id
     ! 1 degree of freedom
     Vec :: porosity0, porosity_loc
     Vec :: tortuosity0, tortuosity_loc
@@ -34,7 +34,7 @@ module Field_module
     Vec :: flow_r          
     Vec :: tran_r
     
-    ! Solution vectors
+    ! Solution vectors (yy = previous solution, xx = current iterate)
     Vec :: flow_xx, flow_xx_loc, flow_dxx, flow_yy, flow_accum
     Vec :: tran_xx, tran_xx_loc, tran_dxx, tran_yy, tran_accum
 
@@ -53,6 +53,14 @@ module Field_module
     Vec :: tran_face_fluxes
     ! viz vector
     Vec :: samr_viz_vec
+
+    ! residual vectors for face unknows
+    Vec :: flow_r_faces, flow_r_loc_faces          
+      
+    ! Solution vectors for face unknows
+    Vec :: flow_xx_faces, flow_xx_loc_faces, flow_dxx_faces, flow_yy_faces, flow_accum_faces
+   
+
 
   end type field_type
 

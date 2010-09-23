@@ -73,6 +73,7 @@ subroutine ReactionRead(reaction,input,option)
                                                   prev_srfcplx_rxn
   type(ion_exchange_rxn_type), pointer :: ionx_rxn, prev_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cation, prev_cation
+  type(general_rxn_type), pointer :: general_rxn, prev_general_rxn
   PetscInt :: i
   PetscReal :: tempreal
   PetscInt :: srfcplx_count
@@ -91,6 +92,7 @@ subroutine ReactionRead(reaction,input,option)
   nullify(prev_srfcplx_rate)
   nullify(prev_ionx_rxn)
   nullify(prev_cation)
+  nullify(prev_general_rxn)
   
   srfcplx_count = 0
   input%ierr = 0
@@ -175,6 +177,97 @@ subroutine ReactionRead(reaction,input,option)
           prev_gas => gas
           nullify(gas)
         enddo
+      case('GENERAL_REACTION')
+
+        reaction%ngeneral_rxn = reaction%ngeneral_rxn + 1
+        
+        general_rxn => GeneralRxnCreate()
+        do 
+          call InputReadFlotranString(input,option)
+          if (InputError(input)) exit
+          if (InputCheckExit(input,option)) exit
+
+          call InputReadWord(input,option,word,PETSC_TRUE)
+          call InputErrorMsg(input,option,'keyword','CHEMISTRY,GENERAL_REACTION')
+          call StringToUpper(word)   
+
+          select case(trim(word))
+            case('REACTION')
+              ! remainder of string should be the reaction equation
+              general_rxn%reaction = trim(adjustl(input%buf))
+              ! set flag for error message
+              if (len_trim(general_rxn%reaction) < 2) input%ierr = 1
+              call InputErrorMsg(input,option,'reaction','CHEMISTRY, &
+                                 GENERAL_REACTION,REACTION') 
+#if 0
+            case('FORWARD_SPECIES')
+              nullify(prev_species)
+              do
+                call InputReadFlotranString(input,option)
+                if (InputError(input)) exit
+                if (InputCheckExit(input,option)) exit
+                
+                species => AqueousSpeciesCreate()
+                call InputReadWord(input,option,species%name,PETSC_TRUE)  
+                call InputErrorMsg(input,option,'keyword','CHEMISTRY, &
+                                   GENERAL_REACTION,FORWARD_SPECIES')    
+                if (.not.associated(general_rxn%forward_species_list)) then
+                  general_rxn%forward_species_list => species
+                  species%id = 1
+                endif
+                if (associated(prev_species)) then
+                  prev_species%next => species
+                  species%id = prev_species%id + 1
+                endif
+                prev_species => species
+                nullify(species)
+              enddo
+              nullify(prev_species)
+            case('BACKWARD_SPECIES')
+              nullify(prev_species)
+              do
+                call InputReadFlotranString(input,option)
+                if (InputError(input)) exit
+                if (InputCheckExit(input,option)) exit
+                
+                species => AqueousSpeciesCreate()
+                call InputReadWord(input,option,species%name,PETSC_TRUE)  
+                call InputErrorMsg(input,option,'keyword','CHEMISTRY, &
+                                   GENERAL_REACTION,BACKWARD_SPECIES')    
+                if (.not.associated(general_rxn%backward_species_list)) then
+                  general_rxn%forward_species_list => species
+                  species%id = 1
+                endif
+                if (associated(prev_species)) then
+                  prev_species%next => species
+                  species%id = prev_species%id + 1
+                endif
+                prev_species => species
+                nullify(species)
+              enddo
+              nullify(prev_species)
+#endif                
+            case('FORWARD_RATE')
+              call InputReadDouble(input,option,general_rxn%forward_rate)  
+              call InputDefaultMsg(input,option,'CHEMISTRY, &
+                                   GENERAL_REACTION,FORWARD_RATE') 
+            case('BACKWARD_RATE')
+              call InputReadDouble(input,option,general_rxn%backward_rate)  
+              call InputDefaultMsg(input,option,'CHEMISTRY, &
+                                   GENERAL_REACTION,BACKWARD_RATE') 
+          end select
+        enddo   
+        if (.not.associated(reaction%general_rxn_list)) then
+          reaction%general_rxn_list => general_rxn
+          general_rxn%id = 1
+        endif
+        if (associated(prev_general_rxn)) then
+          prev_general_rxn%next => general_rxn
+          general_rxn%id = prev_general_rxn%id + 1
+        endif
+        prev_general_rxn => general_rxn
+        nullify(general_rxn)
+
       case('MINERALS')
         nullify(prev_mineral)
         do
@@ -606,7 +699,8 @@ subroutine ReactionRead(reaction,input,option)
       reaction%print_tot_conc_type = TOTAL_MOLARITY
     endif
   endif
-  if (reaction%neqcplx + reaction%neqsorb + reaction%nmnrl > 0) then
+  if (reaction%neqcplx + reaction%neqsorb + reaction%nmnrl + &
+      reaction%ngeneral_rxn > 0) then
     reaction%use_full_geochemistry = PETSC_TRUE
   endif
  
@@ -1594,8 +1688,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
                                          global_auxvar%den_kg(option%liquid_phase)/ &
                                          1000.d0
 
+#if 0
   call RCalculateCompression(global_auxvar,rt_auxvar,reaction,option)
-
+#endif
 
 ! this is performed above
 !  if (associated(colloid_constraint%colloids)) then                        
@@ -1671,11 +1766,21 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
 
   rt_auxvar => constraint_coupler%rt_auxvar
   global_auxvar => constraint_coupler%global_auxvar
-  
-  global_auxvar%den_kg(iphase) = option%reference_water_density
-  global_auxvar%temp(1) = option%reference_temperature
-  global_auxvar%sat(iphase) = option%reference_saturation
-  bulk_vol_to_fluid_vol = option%reference_porosity*option%reference_saturation*1000.d0
+
+  select case(option%iflowmode)
+    case(FLASH2_MODE,MPH_MODE,IMS_MODE)
+    case(NULL_MODE)
+      global_auxvar%den_kg(iphase) = option%reference_water_density
+      global_auxvar%temp(1) = option%reference_temperature
+      global_auxvar%sat(iphase) = option%reference_saturation
+    case(RICHARDS_MODE)
+      global_auxvar%temp(1) = option%reference_temperature
+  end select
+        
+!  global_auxvar%den_kg(iphase) = option%reference_water_density
+!  global_auxvar%temp(1) = option%reference_temperature
+!  global_auxvar%sat(iphase) = option%reference_saturation
+  bulk_vol_to_fluid_vol = option%reference_porosity*global_auxvar%sat(iphase)*1000.d0
 
 ! compute mass fraction of H2O
   if (reaction%use_full_geochemistry) then
@@ -1717,16 +1822,26 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
 
 #ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal) then
-    call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
-                                 global_auxvar%temp(iphase),reaction%neqcplx)
-    call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
-                                 global_auxvar%temp(iphase),reaction%ngas)
-    call ReactionInterpolateLogK(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
-                                 global_auxvar%temp(iphase),reaction%neqsrfcplx)
-    call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
-                                 global_auxvar%temp(iphase),reaction%nkinmnrl)
-    call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
-                                 global_auxvar%temp(iphase),reaction%nmnrl)
+    if (associated(reaction%eqcplx_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
+                                   global_auxvar%temp(iphase),reaction%neqcplx)
+    endif
+    if (associated(reaction%eqgas_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
+                                   global_auxvar%temp(iphase),reaction%ngas)
+    endif
+    if (associated(reaction%eqsrfcplx_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
+                                   global_auxvar%temp(iphase),reaction%neqsrfcplx)
+    endif
+    if (associated(reaction%kinmnrl_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
+                                   global_auxvar%temp(iphase),reaction%nkinmnrl)
+    endif
+    if (associated(reaction%mnrl_logKcoef)) then
+      call ReactionInterpolateLogK(reaction%mnrl_logKcoef,reaction%mnrl_logK, &
+                                   global_auxvar%temp(iphase),reaction%nmnrl)
+    endif
   endif
 #endif  
 
@@ -2463,8 +2578,8 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
     endif
 
                          ! derivative
-    call RReaction(residual,J,PETSC_TRUE,rt_auxvar,global_auxvar,volume, &
-                   reaction,option)
+    call RReaction(residual,J,PETSC_TRUE,rt_auxvar,global_auxvar,porosity, &
+                   volume,reaction,option)
     
     call RSolve(residual,J,rt_auxvar%pri_molal,update,reaction%ncomp)
     
@@ -2495,8 +2610,8 @@ end subroutine RReact
 ! date: 09/30/08
 !
 ! ************************************************************************** !
-subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,volume, &
-                     reaction,option)
+subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
+                     volume,reaction,option)
 
   use Option_module
   
@@ -2509,6 +2624,7 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,volume, &
   PetscTruth :: derivative
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
+  PetscReal :: porosity
   PetscReal :: volume
 
   if (reaction%nkinmnrl > 0) then
@@ -2526,6 +2642,11 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,volume, &
                           volume,reaction,option)
   endif
   
+  if (reaction%ngeneral_rxn > 0) then
+    call RGeneral(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
+                  volume,reaction,option)
+  endif
+  
   ! add new reactions here
 
 end subroutine RReaction
@@ -2537,7 +2658,7 @@ end subroutine RReaction
 ! date: 09/30/08
 !
 ! ************************************************************************** !
-subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
+subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
                                volume,reaction,option)
 
   use Option_module
@@ -2551,6 +2672,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
   type(option_type) :: option
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
+  PetscReal :: porosity
   PetscReal :: volume
    
   PetscReal :: Res_orig(reaction%ncomp)
@@ -2577,6 +2699,10 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
       call RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
                             global_auxvar,volume,reaction,option)
     endif
+    if (reaction%ngeneral_rxn > 0) then
+      call RGeneral(Res,Jac,compute_derivative,rt_auxvar, &
+                    global_auxvar,porosity,volume,reaction,option)
+    endif    
 
     ! #1: add new reactions here
 
@@ -2598,6 +2724,10 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
       call RKineticSurfCplx(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
                             global_auxvar,volume,reaction,option)
     endif
+    if (reaction%ngeneral_rxn > 0) then
+      call RGeneral(Res_orig,Jac_dummy,compute_derivative,rt_auxvar, &
+                    global_auxvar,porosity,volume,reaction,option)
+    endif    
 
     ! #2: add new reactions here
 
@@ -2623,7 +2753,11 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar, &
         call RKineticSurfCplx(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
                               global_auxvar,volume,reaction,option)
       endif
-
+      if (reaction%ngeneral_rxn > 0) then
+        call RGeneral(Res_pert,Jac_dummy,compute_derivative,rt_auxvar_pert, &
+                      global_auxvar,porosity,volume,reaction,option)
+      endif  
+      
       ! #3: add new reactions here
 
       do icomp = 1, reaction%ncomp
@@ -2642,7 +2776,7 @@ end subroutine RReactionDerivative
                                
 ! ************************************************************************** !
 !
-! RActivityCoefficients: Computes activity coefficients of aqueous CO2
+! CO2AqActCoeff: Computes activity coefficients of aqueous CO2
 ! author: Chuan Lu
 ! date: 07/13/09
 !
@@ -3858,7 +3992,7 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
 ! units
 ! k_f: dm^3/mol/sec
 ! k_b: 1/sec
-! Res: mol/m^3/sec
+! Res: mol/sec
 
   dt = option%dt
   
@@ -4300,6 +4434,144 @@ subroutine RAccumulationSorbDerivative(rt_aux_var,global_aux_var, &
     rt_aux_var%dtotal_sorb_eq(:,:)*v_t
 
 end subroutine RAccumulationSorbDerivative
+
+! ************************************************************************** !
+!
+! RGeneral: Computes the general reaction rates
+! author: Glenn Hammond
+! date: 09/08/10
+!
+! ************************************************************************** !
+subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
+                    porosity,volume,reaction,option)
+
+  use Option_module
+  
+  type(option_type) :: option
+  type(reaction_type) :: reaction
+  PetscTruth :: compute_derivative
+  PetscReal :: Res(reaction%ncomp)
+  PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
+  PetscReal :: porosity
+  PetscReal :: volume
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  
+  PetscReal :: ln_conc(reaction%naqcomp)
+  PetscReal :: ln_act(reaction%naqcomp)
+  
+  PetscInt :: i, j, icomp, jcomp, irxn, ncomp
+  PetscReal :: tempreal
+  PetscReal :: kf, kr
+  PetscReal :: Qkf, lnQkf
+  PetscReal :: Qkr, lnQkr
+  PetscReal :: por_den_sat_vol
+
+  PetscInt, parameter :: iphase = 1
+
+  ln_conc = log(rt_auxvar%pri_molal)
+  ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
+
+  do irxn = 1, reaction%ngeneral_rxn ! for each mineral
+    
+    ! units
+    ! for nth-order reaction
+    ! kf/kr = kg^(n-1)/mol^(n-1)-sec
+    ! thus for a 1st-order reaction, kf units = 1/sec
+    
+    kf = reaction%general_kf(irxn)
+    kr = reaction%general_kr(irxn)
+
+    if (kf > 0.d0) then
+      ! compute ion activity product
+      lnQkf = log(kf)
+
+  ! currently not accommodating activity of water
+      ! activity of water
+  !    if (reaction%kinmnrlh2oid(irxn) > 0) then
+  !      lnQkf = lnQkf + reaction%generalh2ostoich(irxn)*rt_auxvar%ln_act_h2o
+  !    endif
+
+      ncomp = reaction%generalforwardspecid(0,irxn)
+      do i = 1, ncomp
+        icomp = reaction%generalforwardspecid(i,irxn)
+        lnQkf = lnQkf + reaction%generalforwardstoich(i,irxn)*ln_act(icomp)
+      enddo
+      Qkf = exp(lnQkf)
+    else
+      Qkf = 0.d0
+    endif
+    
+    if (kr > 0.d0) then
+      lnQkr = log(kr)
+
+  ! currently not accommodating activity of water
+      ! activity of water
+  !    if (reaction%kinmnrlh2oid(irxn) > 0) then
+  !      lnQkr = lnQkr + reaction%generalh2ostoich(irxn)*rt_auxvar%ln_act_h2o
+  !    endif
+
+      ncomp = reaction%generalbackwardspecid(0,irxn)
+      do i = 1, ncomp
+        icomp = reaction%generalbackwardspecid(i,irxn)
+        lnQkr = lnQkr + reaction%generalbackwardstoich(i,irxn)*ln_act(icomp)
+      enddo
+      Qkr = exp(lnQkr)
+    else
+      Qkr = 0.d0
+    endif
+
+    ! Qkf/Qkr units are now mol/kg(water)-sec
+
+    por_den_sat_vol = porosity*global_auxvar%den_kg(iphase)* &
+                      global_auxvar%sat(iphase)*volume
+
+    ncomp = reaction%generalspecid(0,irxn)
+    do i = 1, ncomp
+      icomp = reaction%generalspecid(i,irxn)
+      ! units = mol/sec
+      Res(icomp) = Res(icomp) - reaction%generalstoich(i,irxn)*(Qkf-Qkr)* &
+                                por_den_sat_vol
+    enddo 
+    
+    if (.not. compute_derivative) cycle   
+
+    ! calculate derivatives of rate with respect to free
+    ! units = mol/sec
+
+    if (kf > 0.d0) then
+      ! derivatives with respect to primary species in forward reaction
+      do j = 1, reaction%generalforwardspecid(0,irxn)
+        jcomp = reaction%generalforwardspecid(j,irxn)
+        tempreal = -1.d0*reaction%generalforwardstoich(j,irxn)*exp(lnQkf-ln_conc(jcomp))* &
+                   por_den_sat_vol
+        do i = 1, reaction%generalspecid(0,irxn)
+          icomp = reaction%generalspecid(i,irxn)
+          ! units = (mol/sec)*(kg water/mol) = kg water/sec
+          Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
+                             reaction%generalstoich(i,irxn)*tempreal
+        enddo
+      enddo
+    endif
+    
+    if (kr > 0.d0) then
+      ! derivatives with respect to primary species in forward reaction
+      do j = 1, reaction%generalbackwardspecid(0,irxn)
+        jcomp = reaction%generalbackwardspecid(j,irxn)
+        tempreal = reaction%generalbackwardstoich(j,irxn)*exp(lnQkr-ln_conc(jcomp))* &
+                   por_den_sat_vol
+        do i = 1, reaction%generalspecid(0,irxn)
+          icomp = reaction%generalspecid(i,irxn)
+          ! units = (mol/sec)*(kg water/mol) = kg water/sec
+          Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
+                             reaction%generalstoich(i,irxn)*tempreal
+        enddo
+      enddo
+    endif
+
+  enddo  ! loop over reactions
+    
+end subroutine RGeneral
 
 ! ************************************************************************** !
 !
@@ -4898,7 +5170,7 @@ subroutine RCalculateCompression(global_auxvar,rt_auxvar,reaction,option)
                                      reaction,option,J)
   endif
 
-  call RReaction(residual,J,PETSC_TRUE,rt_auxvar,global_auxvar,vol, &
+  call RReaction(residual,J,PETSC_TRUE,rt_auxvar,global_auxvar,por,vol, &
                  reaction,option)
  
   do jj = 1, reaction%ncomp

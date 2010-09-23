@@ -21,9 +21,10 @@ module Patch_module
     
     PetscInt :: id
     
-    ! thiese arrays will be used by all modes, mode-specific arrays should
+    ! These arrays will be used by all modes, mode-specific arrays should
     ! go in the auxilliary data stucture for that mode
     PetscInt, pointer :: imat(:)
+      ! Integer array of material ids of size ngmax.
     type(material_property_ptr_type), pointer :: material_property_array(:)
     PetscReal, pointer :: internal_velocities(:,:)
     PetscReal, pointer :: boundary_velocities(:,:)
@@ -298,28 +299,40 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       endif
     endif
     ! pointer to flow condition
-    if (len_trim(coupler%flow_condition_name) > 0) then
-      coupler%flow_condition => &
-        FlowConditionGetPtrFromList(coupler%flow_condition_name,flow_conditions)
-      if (.not.associated(coupler%flow_condition)) then
-        option%io_buffer = 'Flow condition "' // &
-                 trim(coupler%flow_condition_name) // &
-                 '" in boundary condition ' // &
-                 trim(coupler%name) // &
-                 ' not found in flow condition list'
+    if (option%nflowdof > 0) then
+      if (len_trim(coupler%flow_condition_name) > 0) then
+        coupler%flow_condition => &
+          FlowConditionGetPtrFromList(coupler%flow_condition_name,flow_conditions)
+        if (.not.associated(coupler%flow_condition)) then
+          option%io_buffer = 'Flow condition "' // &
+                   trim(coupler%flow_condition_name) // &
+                   '" in boundary condition ' // &
+                   trim(coupler%name) // &
+                   ' not found in flow condition list'
+          call printErrMsg(option)
+        endif
+      else
+        option%io_buffer = 'A FLOW_CONDITION must be specified in ' // &
+                           'BOUNDARY_CONDITION: ' // trim(coupler%name) // '.'
         call printErrMsg(option)
       endif
     endif
     ! pointer to transport condition
-    if (len_trim(coupler%tran_condition_name) > 0) then
-      coupler%tran_condition => &
-        TranConditionGetPtrFromList(coupler%tran_condition_name,transport_conditions)
-      if (.not.associated(coupler%tran_condition)) then
-         option%io_buffer = 'Transport condition "' // &
-                 trim(coupler%flow_condition_name) // &
-                 '" in boundary condition ' // &
-                 trim(coupler%name) // &
-                 ' not found in transport condition list'
+    if (option%ntrandof > 0) then
+      if (len_trim(coupler%tran_condition_name) > 0) then
+        coupler%tran_condition => &
+          TranConditionGetPtrFromList(coupler%tran_condition_name,transport_conditions)
+        if (.not.associated(coupler%tran_condition)) then
+           option%io_buffer = 'Transport condition "' // &
+                   trim(coupler%flow_condition_name) // &
+                   '" in boundary condition ' // &
+                   trim(coupler%name) // &
+                   ' not found in transport condition list'
+          call printErrMsg(option)
+        endif
+      else
+        option%io_buffer = 'A TRANSPORT_CONDITION must be specified in ' // &
+                           'BOUNDARY_CONDITION: ' // trim(coupler%name) // '.'
         call printErrMsg(option)
       endif
     endif
@@ -342,28 +355,40 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       call printErrMsg(option)
     endif
     ! pointer to flow condition
-    if (len_trim(coupler%flow_condition_name) > 0) then
-      coupler%flow_condition => &
-        FlowConditionGetPtrFromList(coupler%flow_condition_name,flow_conditions)
-      if (.not.associated(coupler%flow_condition)) then
-        option%io_buffer = 'Flow condition "' // &
-                 trim(coupler%flow_condition_name) // &
-                 '" in initial condition ' // &
-                 trim(coupler%name) // &
-                 ' not found in flow condition list'
+    if (option%nflowdof > 0) then
+      if (len_trim(coupler%flow_condition_name) > 0) then
+        coupler%flow_condition => &
+          FlowConditionGetPtrFromList(coupler%flow_condition_name,flow_conditions)
+        if (.not.associated(coupler%flow_condition)) then
+          option%io_buffer = 'Flow condition "' // &
+                   trim(coupler%flow_condition_name) // &
+                   '" in initial condition ' // &
+                   trim(coupler%name) // &
+                   ' not found in flow condition list'
+          call printErrMsg(option)
+        endif
+      else
+        option%io_buffer = 'A FLOW_CONDITION must be specified in ' // &
+                           'INITIAL_CONDITION: ' // trim(coupler%name) // '.'
         call printErrMsg(option)
       endif
     endif
     ! pointer to transport condition
-    if (len_trim(coupler%tran_condition_name) > 0) then
-      coupler%tran_condition => &
-        TranConditionGetPtrFromList(coupler%tran_condition_name,transport_conditions)
-      if (.not.associated(coupler%tran_condition)) then
-        option%io_buffer = 'Transport condition "' // &
-                 trim(coupler%flow_condition_name) // &
-                 '" in initial condition ' // &
-                 trim(coupler%name) // &
-                 ' not found in transport condition list'
+    if (option%ntrandof > 0) then
+      if (len_trim(coupler%tran_condition_name) > 0) then
+        coupler%tran_condition => &
+          TranConditionGetPtrFromList(coupler%tran_condition_name,transport_conditions)
+        if (.not.associated(coupler%tran_condition)) then
+          option%io_buffer = 'Transport condition "' // &
+                   trim(coupler%flow_condition_name) // &
+                   '" in initial condition ' // &
+                   trim(coupler%name) // &
+                   ' not found in transport condition list'
+          call printErrMsg(option)
+        endif
+      else
+        option%io_buffer = 'A TRANSPORT_CONDITION must be specified in ' // &
+                           'INITIAL_CONDITION: ' // trim(coupler%name) // '.'
         call printErrMsg(option)
       endif
     endif
@@ -385,29 +410,41 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       call printErrMsg(option)
     endif
     ! pointer to flow condition
-    if (len_trim(coupler%flow_condition_name) > 0) then
-      coupler%flow_condition => &
-        FlowConditionGetPtrFromList(coupler%flow_condition_name,flow_conditions)
-      if (.not.associated(coupler%flow_condition)) then
-        option%io_buffer = 'Flow condition "' // &
-                 trim(coupler%flow_condition_name) // &
-                 '" in source/sink ' // &
-                 trim(coupler%name) // &
-                 ' not found in flow condition list'
+    if (option%nflowdof > 0) then    
+      if (len_trim(coupler%flow_condition_name) > 0) then
+        coupler%flow_condition => &
+          FlowConditionGetPtrFromList(coupler%flow_condition_name,flow_conditions)
+        if (.not.associated(coupler%flow_condition)) then
+          option%io_buffer = 'Flow condition "' // &
+                   trim(coupler%flow_condition_name) // &
+                   '" in source/sink ' // &
+                   trim(coupler%name) // &
+                   ' not found in flow condition list'
+          call printErrMsg(option)
+        endif
+      else
+        option%io_buffer = 'A FLOW_CONDITION must be specified in ' // &
+                           'SOURCE_SINK: ' // trim(coupler%name) // '.'
         call printErrMsg(option)
       endif
     endif
     ! pointer to transport condition
-    if (len_trim(coupler%tran_condition_name) > 0) then
-      coupler%tran_condition => &
-        TranConditionGetPtrFromList(coupler%tran_condition_name, &
-                                    transport_conditions)
-      if (.not.associated(coupler%tran_condition)) then
-        option%io_buffer = 'Transport condition "' // &
-                 trim(coupler%flow_condition_name) // &
-                 '" in source/sink ' // &
-                 trim(coupler%name) // &
-                 ' not found in transport condition list'
+    if (option%ntrandof > 0) then    
+      if (len_trim(coupler%tran_condition_name) > 0) then
+        coupler%tran_condition => &
+          TranConditionGetPtrFromList(coupler%tran_condition_name, &
+                                      transport_conditions)
+        if (.not.associated(coupler%tran_condition)) then
+          option%io_buffer = 'Transport condition "' // &
+                   trim(coupler%flow_condition_name) // &
+                   '" in source/sink ' // &
+                   trim(coupler%name) // &
+                   ' not found in transport condition list'
+          call printErrMsg(option)
+        endif
+      else
+        option%io_buffer = 'A TRANSPORT_CONDITION must be specified in ' // &
+                           'SOURCE_SINK: ' // trim(coupler%name) // '.'
         call printErrMsg(option)
       endif
     endif
@@ -514,8 +551,12 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     patch%internal_fluxes = 0.d0
   endif
 #endif  
-  
-  temp_int = CouplerGetNumConnectionsInList(patch%boundary_conditions)
+ 
+  if (patch%grid%itype == STRUCTURED_GRID_MIMETIC) then
+    temp_int = ConnectionGetNumberInList(patch%grid%boundary_connection_set_list)
+  else  
+    temp_int = CouplerGetNumConnectionsInList(patch%boundary_conditions)
+  end if
   allocate(patch%boundary_velocities(option%nphase,temp_int)) 
   patch%boundary_velocities = 0.d0
 #ifdef REVISED_TRANSPORT
@@ -611,6 +652,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
 
             case(RICHARDS_MODE)
 !geh              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
+              if (option%mimetic) num_connections = coupler%numfaces_set
               allocate(coupler%flow_aux_real_var(2,num_connections))
               allocate(coupler%flow_aux_int_var(1,num_connections))
               coupler%flow_aux_real_var = 0.d0
@@ -674,14 +716,18 @@ subroutine PatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
   type(patch_type) :: patch
   PetscTruth :: force_update_flag
   type(option_type) :: option
+
+  PetscInt :: iconn
   
   call PatchUpdateCouplerAuxVars(patch,patch%initial_conditions, &
                                  force_update_flag,option)
+
   call PatchUpdateCouplerAuxVars(patch,patch%boundary_conditions, &
                                  force_update_flag,option)
   call PatchUpdateCouplerAuxVars(patch,patch%source_sinks, &
                                  force_update_flag,option)
 
+!  stop
 end subroutine PatchUpdateAllCouplerAuxVars
 
 ! ************************************************************************** !
@@ -750,6 +796,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
             update = PETSC_TRUE
           endif
       end select
+
       
       if (update) then
         if (associated(flow_condition%pressure)) then
@@ -802,6 +849,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                 case(RICHARDS_MODE)
                   coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
                     flow_condition%pressure%dataset%cur_value(1)
+                    
               end select
             case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
               call HydrostaticUpdateCoupler(coupler,option,patch%grid)

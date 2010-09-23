@@ -180,6 +180,8 @@ subroutine RealizationCreateDiscretization(realization)
   use Grid_module
   use Unstructured_Grid_module, only : UGridMapIndices
   use AMR_Grid_module
+  use MFD_module
+  use Coupler_module
   
   implicit none
   
@@ -189,19 +191,26 @@ subroutine RealizationCreateDiscretization(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(option_type), pointer :: option
+  type(coupler_type), pointer :: boundary_condition
   PetscErrorCode :: ierr
+  PetscInt, allocatable :: int_tmp(:)
+  PetscInt :: test,j
+  PetscOffset :: i_da
+  PetscReal, pointer :: real_tmp(:)
   
   option => realization%option
   field => realization%field
-  
+ 
+ 
   discretization => realization%discretization
   
   call DiscretizationCreateDMs(discretization,option)
-  
+
   option%ivar_centering = CELL_CENTERED
   ! 1 degree of freedom, global
   call DiscretizationCreateVector(discretization,ONEDOF,field%porosity0, &
                                   GLOBAL,option)
+ 
   call DiscretizationDuplicateVector(discretization,field%porosity0, &
                                      field%tortuosity0)
   call DiscretizationDuplicateVector(discretization,field%porosity0, &
@@ -269,6 +278,8 @@ subroutine RealizationCreateDiscretization(realization)
     ! ndof degrees of freedom, local
     call DiscretizationCreateVector(discretization,NFLOWDOF,field%flow_xx_loc, &
                                     LOCAL,option)
+
+
 
     if(option%use_samr) then
        option%ivar_centering = SIDE_CENTERED
@@ -340,15 +351,17 @@ subroutine RealizationCreateDiscretization(realization)
   endif
 
   select case(discretization%itype)
-    case(STRUCTURED_GRID)
+    case(STRUCTURED_GRID, STRUCTURED_GRID_MIMETIC)
       grid => discretization%grid
-      ! set up nG2L, NL2G, etc.
-      call GridMapIndices(grid)
+      ! set up nG2L, nL2G, etc.
+      call GridMapIndices(grid, discretization%dm_1dof%sgdm)
       call GridComputeSpacing(grid,option)
       call GridComputeCoordinates(grid,discretization%origin,option)
       call GridComputeVolumes(grid,field%volume,option)
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option)
+      if (discretization%itype == STRUCTURED_GRID_MIMETIC) &
+          call GridComputeCell2FaceConnectivity(grid, discretization%MFD, option)
     case(UNSTRUCTURED_GRID)
       grid => discretization%grid
       ! set up nG2L, NL2G, etc.
@@ -363,7 +376,48 @@ subroutine RealizationCreateDiscretization(realization)
                                               discretization%origin, &
                                               field,option)
   end select 
+ 
+  ! Vectors with face degrees of freedom
+
+   if (discretization%itype==STRUCTURED_GRID_MIMETIC) then
+
+     if (option%nflowdof > 0) then
+   
+       call VecCreateMPI(option%mycomm,grid%nlmax_faces*option%nflowdof, &
+                    PETSC_DETERMINE,field%flow_xx_faces,ierr)
+
+
+
+       call VecSetBlockSize(field%flow_xx_faces,NFLOWDOF,ierr)
+
+       call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
+                                                        field%flow_r_faces)
+
+       call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
+                                                        field%flow_dxx_faces)
+
+       call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
+                                                        field%flow_yy_faces)
+
+       call VecCreateSeq(PETSC_COMM_SELF, grid%ngmax_faces*option%nflowdof, field%flow_xx_loc_faces, ierr)
+       call VecSetBlockSize(field%flow_xx_loc_faces,NFLOWDOF,ierr)
+
+       call VecCreateSeq(PETSC_COMM_SELF, grid%ngmax_faces*option%nflowdof, field%flow_r_loc_faces, ierr)
+       call VecSetBlockSize(field%flow_r_loc_faces,NFLOWDOF,ierr)
+
+!       call MFDInitializeMassMatrices(grid, field%volume, discretization%MFD, option)
+
+
+
+
+     end if
+
+     call GridComputeGlobalCell2FaceConnectivity(grid, discretization%MFD, NFLOWDOF, option)
   
+   end if
+
+     
+ 
   ! initialize to -999.d0 for check later that verifies all values 
   ! have been set
   call VecSet(field%porosity0,-999.d0,ierr)
@@ -1105,6 +1159,7 @@ subroutine RealizAssignFlowInitCond(realization)
   use Condition_module
   use Grid_module
   use Patch_module
+  use MFD_module, only :MFDInitializeMassMatrices
   
   implicit none
 
@@ -1113,7 +1168,7 @@ subroutine RealizAssignFlowInitCond(realization)
   
   type(realization_type) :: realization
   
-  PetscInt :: icell, iconn, idof
+  PetscInt :: icell, iconn, idof, iface
   PetscInt :: local_id, ghosted_id, iend, ibegin
   PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
   PetscErrorCode :: ierr
@@ -1131,6 +1186,7 @@ subroutine RealizAssignFlowInitCond(realization)
   discretization => realization%discretization
   field => realization%field
   patch => realization%patch
+
 
   cur_level => realization%level_list%first
   do 
@@ -1151,7 +1207,11 @@ subroutine RealizAssignFlowInitCond(realization)
       end select 
 
       ! assign initial conditions values to domain
-      call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
+      if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
+         call GridVecGetArrayF90(grid,field%flow_xx_faces, xx_p, ierr); CHKERRQ(ierr)
+      else
+           call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
+      end if
       call GridVecGetArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
       
       xx_p = -999.d0
@@ -1161,47 +1221,86 @@ subroutine RealizAssignFlowInitCond(realization)
       
         if (.not.associated(initial_condition)) exit
 
-        if (.not.associated(initial_condition%flow_aux_real_var)) then
+        if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
+           if (.not.associated(initial_condition%flow_aux_real_var)) then
+             do icell=1,initial_condition%region%num_cells
+               local_id = initial_condition%region%cell_ids(icell)
+               ghosted_id = grid%nL2G(local_id)
+               if (associated(cur_patch%imat)) then
+                 if (cur_patch%imat(ghosted_id) <= 0) then
+                   iphase_loc_p(ghosted_id) = 0
+                   cycle
+                 endif
+               endif
+               iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
+             enddo
+           else
+             do icell=1,initial_condition%region%num_cells
+               local_id = initial_condition%region%cell_ids(icell)
+               ghosted_id = grid%nL2G(local_id)
+               if (associated(cur_patch%imat)) then
+                 if (cur_patch%imat(ghosted_id) <= 0) then
+                   iphase_loc_p(ghosted_id) = 0
+                   cycle
+                 endif
+               endif
+               iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,icell)
+             enddo
+             do iface=1,initial_condition%numfaces_set
+                ghosted_id = initial_condition%faces_set(iface)
+                local_id = grid%fG2L(ghosted_id)
+                if (local_id > 0) then
+                  iend = local_id*option%nflowdof
+                  ibegin = iend-option%nflowdof+1
+                  xx_p(ibegin:iend) = &
+                 initial_condition%flow_aux_real_var(1:option%nflowdof,iface)
+                end if
+             end do
+           
+           end if
+        else 
+           if (.not.associated(initial_condition%flow_aux_real_var)) then
           if (.not.associated(initial_condition%flow_condition)) then
             option%io_buffer = 'Flow condition is NULL in initial condition'
             call printErrMsg(option)
           endif
-          do icell=1,initial_condition%region%num_cells
-            local_id = initial_condition%region%cell_ids(icell)
-            ghosted_id = grid%nL2G(local_id)
-            iend = local_id*option%nflowdof
-            ibegin = iend-option%nflowdof+1
-            if (associated(cur_patch%imat)) then
-              if (cur_patch%imat(ghosted_id) <= 0) then
-                xx_p(ibegin:iend) = 0.d0
-                iphase_loc_p(ghosted_id) = 0
-                cycle
-              endif
-            endif
-            do idof = 1, option%nflowdof
-              xx_p(ibegin+idof-1) = &
-                initial_condition%flow_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
-            enddo
-            iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
-          enddo
-        else
-          do iconn=1,initial_condition%connection_set%num_connections
-            local_id = initial_condition%connection_set%id_dn(iconn)
-            ghosted_id = grid%nL2G(local_id)
-            iend = local_id*option%nflowdof
-            ibegin = iend-option%nflowdof+1
-            if (associated(cur_patch%imat)) then
-              if (cur_patch%imat(ghosted_id) <= 0) then
-                xx_p(ibegin:iend) = 0.d0
-                iphase_loc_p(ghosted_id) = 0
-                cycle
-              endif
-            endif
-            xx_p(ibegin:iend) = &
-              initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
-            iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn)
-          enddo
-        endif
+             do icell=1,initial_condition%region%num_cells
+               local_id = initial_condition%region%cell_ids(icell)
+               ghosted_id = grid%nL2G(local_id)
+               iend = local_id*option%nflowdof
+               ibegin = iend-option%nflowdof+1
+               if (associated(cur_patch%imat)) then
+                 if (cur_patch%imat(ghosted_id) <= 0) then
+                   xx_p(ibegin:iend) = 0.d0
+                   iphase_loc_p(ghosted_id) = 0
+                   cycle
+                 endif
+               endif
+               do idof = 1, option%nflowdof
+                 xx_p(ibegin+idof-1) = &
+                   initial_condition%flow_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+               enddo
+               iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
+             enddo
+           else
+             do iconn=1,initial_condition%connection_set%num_connections
+               local_id = initial_condition%connection_set%id_dn(iconn)
+               ghosted_id = grid%nL2G(local_id)
+               iend = local_id*option%nflowdof
+               ibegin = iend-option%nflowdof+1
+               if (associated(cur_patch%imat)) then
+                 if (cur_patch%imat(ghosted_id) <= 0) then
+                   xx_p(ibegin:iend) = 0.d0
+                   iphase_loc_p(ghosted_id) = 0
+                   cycle
+                 endif
+               endif
+               xx_p(ibegin:iend) = &
+                 initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
+               iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn)
+             enddo
+           endif
+        end if
         initial_condition => initial_condition%next
       enddo
       
@@ -1218,7 +1317,19 @@ subroutine RealizAssignFlowInitCond(realization)
   call VecCopy(field%flow_xx, field%flow_yy, ierr)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)  
   call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_old_loc,ONEDOF)
-  
+
+  if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
+   call DiscretizationGlobalToLocalFaces(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
+   call MFDInitializeMassMatrices(realization%discretization%grid,&
+                                      realization%field%volume, &
+                                      realization%field%perm_xx_loc, &
+                                      realization%field%perm_yy_loc, &
+                                      realization%field%perm_zz_loc, &
+                                      realization%discretization%MFD, realization%option)
+  end if
+
+ 
+!  stop 
 end subroutine RealizAssignFlowInitCond
 
 ! ************************************************************************** !
@@ -1421,6 +1532,127 @@ subroutine RealizAssignTransportInitCond(realization)
   call VecCopy(field%tran_xx, field%tran_yy, ierr)
 
 end subroutine RealizAssignTransportInitCond
+
+! ************************************************************************** !
+!
+! RealizationScaleSourceSink: Scales select source/sinks based on perms
+! author: Glenn Hammond
+! date: 09/03/08
+!
+! ************************************************************************** !
+subroutine RealizationScaleSourceSink(realization)
+
+  use Region_module
+  use Option_module
+  use Field_module
+  use Coupler_module
+  use Connection_module
+  use Condition_module
+  use Grid_module
+  use Patch_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  
+  type(realization_type) :: realization
+  
+  PetscErrorCode :: ierr
+  
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field  
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
+  type(coupler_type), pointer :: cur_source_sink
+  type(connection_set_type), pointer :: cur_connection_set
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  PetscReal, pointer :: vec_ptr(:)
+  PetscReal, pointer :: perm_ptr(:)
+  PetscReal, pointer :: vol_ptr(:)
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: iconn
+  PetscReal :: scale
+  
+  option => realization%option
+  discretization => realization%discretization
+  field => realization%field
+  patch => realization%patch
+
+  call GridVecGetArrayF90(grid,field%perm0_xx,perm_ptr, ierr)
+  call GridVecGetArrayF90(grid,field%volume,vol_ptr, ierr)
+
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      ! BIG-TIME warning here.  I assume that all connections are within 
+      ! a single patch - geh
+
+      grid => cur_patch%grid
+
+      cur_source_sink => cur_patch%source_sinks%first
+      do
+        if (.not.associated(cur_source_sink)) exit
+
+        call VecZeroEntries(field%work,ierr)
+        call GridVecGetArrayF90(grid,field%work,vec_ptr, ierr)
+
+        cur_connection_set => cur_source_sink%connection_set
+    
+        do iconn = 1, cur_connection_set%num_connections
+          local_id = cur_connection_set%id_dn(iconn)
+          ghosted_id = grid%nL2G(local_id)
+
+          select case(option%iflowmode)
+            case(RICHARDS_MODE)
+              vec_ptr(local_id) = perm_ptr(local_id)*vol_ptr(ghosted_id)
+            case(THC_MODE)
+            case(MPH_MODE)
+            case(IMS_MODE)
+            case(FLASH2_MODE)
+          end select 
+
+        enddo
+        
+        call GridVecRestoreArrayF90(grid,field%work,vec_ptr, ierr)
+        call VecNorm(field%work,NORM_1,scale,ierr)
+        scale = 1.d0/scale
+        call VecScale(field%work,scale,ierr)
+
+        call GridVecGetArrayF90(grid,field%work,vec_ptr, ierr)
+        do iconn = 1, cur_connection_set%num_connections      
+          local_id = cur_connection_set%id_dn(iconn)
+          select case(option%iflowmode)
+            case(RICHARDS_MODE)
+              cur_source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
+                vec_ptr(local_id)
+            case(THC_MODE)
+            case(MPH_MODE)
+            case(IMS_MODE)
+            case(FLASH2_MODE)
+          end select 
+
+        enddo
+        call GridVecRestoreArrayF90(grid,field%work,vec_ptr, ierr)
+        
+        cur_source_sink => cur_source_sink%next
+      enddo
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+  call GridVecRestoreArrayF90(grid,field%perm0_xx,perm_ptr, ierr)
+  call GridVecRestoreArrayF90(grid,field%volume,vol_ptr, ierr)
+   
+end subroutine RealizationScaleSourceSink
 
 ! ************************************************************************** !
 !

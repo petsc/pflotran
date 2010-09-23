@@ -16,10 +16,22 @@ module Richards_Aux_module
 !    PetscReal :: dvis_dp
 !    PetscReal :: kr
 !    PetscReal :: dkr_dp
-    PetscReal :: kvr
+
+!    PetscReal :: kvr
+
+    PetscReal :: kvr_x
+    PetscReal :: kvr_y
+    PetscReal :: kvr_z
+
     PetscReal :: dsat_dp
     PetscReal :: dden_dp
-    PetscReal :: dkvr_dp
+
+!    PetscReal :: dkvr_dp
+    PetscReal :: dkvr_x_dp
+    PetscReal :: dkvr_y_dp
+    PetscReal :: dkvr_z_dp
+
+
   end type richards_auxvar_type
   
   type, public :: richards_parameter_type
@@ -108,10 +120,21 @@ subroutine RichardsAuxVarInit(aux_var,option)
 !  aux_var%dkr_dp = 0.d0
 !  aux_var%vis = 0.d0
 !  aux_var%dvis_dp = 0.d0
-  aux_var%kvr = 0.d0
+
+!  aux_var%kvr = 0.d0
+
+  aux_var%kvr_x = 0.d0
+  aux_var%kvr_y = 0.d0
+  aux_var%kvr_z = 0.d0
+
   aux_var%dsat_dp = 0.d0
   aux_var%dden_dp = 0.d0
-  aux_var%dkvr_dp = 0.d0
+
+!  aux_var%dkvr_dp = 0.d0
+
+  aux_var%dkvr_x_dp = 0.d0
+  aux_var%dkvr_y_dp = 0.d0
+  aux_var%dkvr_z_dp = 0.d0
 
 end subroutine RichardsAuxVarInit
 
@@ -136,10 +159,21 @@ subroutine RichardsAuxVarCopy(aux_var,aux_var2,option)
 !  aux_var2%dkr_dp = aux_var%dkr_dp
 !  aux_var2%vis = aux_var%vis
 !  aux_var2%dvis_dp = aux_var%dvis_dp
-  aux_var2%kvr = aux_var%kvr
+
+!  aux_var2%kvr = aux_var%kvr
+
+  aux_var2%kvr_x = aux_var%kvr_x 
+  aux_var2%kvr_y = aux_var%kvr_y 
+  aux_var2%kvr_z = aux_var%kvr_z 
+
   aux_var2%dsat_dp = aux_var%dsat_dp
   aux_var2%dden_dp = aux_var%dden_dp
-  aux_var2%dkvr_dp = aux_var%dkvr_dp
+ 
+! aux_var2%dkvr_dp = aux_var%dkvr_dp
+
+  aux_var2%dkvr_x_dp = aux_var%dkvr_x_dp 
+  aux_var2%dkvr_y_dp = aux_var%dkvr_y_dp 
+  aux_var2%dkvr_z_dp = aux_var%dkvr_z_dp 
 
 end subroutine RichardsAuxVarCopy
   
@@ -167,19 +201,23 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   type(global_auxvar_type) :: global_aux_var
   PetscReal :: por, perm
 
-  PetscInt :: iphase
+  PetscInt :: iphase, i
   PetscErrorCode :: ierr
   PetscReal :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
   PetscReal :: kr, ds_dp, dkr_dp
   PetscReal :: dvis_dt, dvis_dp, dvis_dpsat
   PetscReal :: dw_dp, dw_dt, hw_dp, hw_dt
   PetscReal :: pert, pw_pert, dw_kg_pert
+  PetscReal :: fs, ani_A, ani_B, ani_C, ani_n, ani_coef
   PetscReal, parameter :: tol = 1.d-3
   
   global_aux_var%sat = 0.d0
   global_aux_var%den = 0.d0
   global_aux_var%den_kg = 0.d0
-  aux_var%kvr = 0.d0
+!  aux_var%kvr = 0.d0
+  aux_var%kvr_x = 0.d0
+  aux_var%kvr_y = 0.d0
+  aux_var%kvr_z = 0.d0
   kr = 0.d0
  
   global_aux_var%pres = x(1)
@@ -235,8 +273,26 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
  
   global_aux_var%den = dw_mol
   global_aux_var%den_kg = dw_kg
-  aux_var%kvr = kr/visl
+!  aux_var%kvr = kr/visl
+
   
+  aux_var%kvr_x = kr/visl       ! For anisotropic relative perm
+  aux_var%kvr_y = kr/visl       ! For anisotropic relative perm         
+  aux_var%kvr_z = kr/visl       ! For anisotropic relative perm
+
+  ani_coef = 1
+  if (option%ani_relative_permeability) then
+!     do i=1, 100
+!     global_aux_var%sat(1) = 0.01*i
+     ani_A = 3
+     ani_B = 44.8
+     ani_C = -7.26
+     fs = ani_A + ani_B*exp(ani_C*global_aux_var%sat(1))
+     ani_n = 25
+     ani_coef  =  fs/((global_aux_var%sat(1)**ani_n) * (fs -1) + 1)
+     aux_var%kvr_z = aux_var%kvr_z * ani_coef
+  end if
+    
 !  aux_var%vis = visl
 !  aux_var%dvis_dp = dvis_dp
 !  aux_var%kr = kr
@@ -245,7 +301,14 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
 
   aux_var%dden_dp = dw_dp
   
-  aux_var%dkvr_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp
+!  aux_var%dkvr_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp
+  aux_var%dkvr_x_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp ! For anisotropic relative perm 
+  aux_var%dkvr_y_dp = (dkr_dp/visl - kr/(visl*visl)*dvis_dp) ! For anisotropic relative perm
+  aux_var%dkvr_z_dp = (dkr_dp/visl - kr/(visl*visl)*dvis_dp) ! For anisotropic relative perm
+
+  if (option%ani_relative_permeability) then
+     aux_var%dkvr_z_dp = aux_var%dkvr_z_dp * ani_coef
+  end if
 
 end subroutine RichardsAuxVarCompute
 
