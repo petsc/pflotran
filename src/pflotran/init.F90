@@ -309,13 +309,16 @@ subroutine Init(simulation)
         call SNESSetFunction(flow_solver%snes,field%flow_r,THCResidual, &
                              realization,ierr)
       case(RICHARDS_MODE)
-        if(realization%discretization%itype == STRUCTURED_GRID) then
-          call SNESSetFunction(flow_solver%snes,field%flow_r,RichardsResidual, &
-                             realization,ierr)
-        else if(realization%discretization%itype == STRUCTURED_GRID_MIMETIC) then
-          call SNESSetFunction(flow_solver%snes,field%flow_r_faces,RichardsResidualMFD, &
-                             realization,ierr)
-        end if
+        select case(realization%discretization%itype)
+          case(STRUCTURED_GRID_MIMETIC)
+            call SNESSetFunction(flow_solver%snes,field%flow_r_faces, &
+                                 RichardsResidualMFD, &
+                                 realization,ierr)
+          case default
+            call SNESSetFunction(flow_solver%snes,field%flow_r, &
+                                 RichardsResidual, &
+                                 realization,ierr)
+        end select
       case(MPH_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,MPHASEResidual, &
                              realization,ierr)
