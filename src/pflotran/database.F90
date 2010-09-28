@@ -3313,7 +3313,7 @@ subroutine BasisInit(reaction,option)
   ! output for ASCEM reactions
   if (OptionPrintToFile(option)) then
     open(unit=86,file='reaction.dat')
-    write(86,'(2i)') reaction%naqcomp, reaction%neqcplx
+    write(86,'(10i)') reaction%naqcomp, reaction%neqcplx, reaction%ngeneral_rxn
     do i = 1, reaction%naqcomp
       write(86,'(a12,f6.2,f6.2)') reaction%primary_species_names(i), reaction%primary_spec_Z(i), &
         reaction%primary_spec_a0(i)
@@ -3326,6 +3326,17 @@ subroutine BasisInit(reaction,option)
       write(86,'(i)') reaction%eqcplxh2oid(i)
       write(86,'(f6.2)') reaction%eqcplxh2ostoich(i)
       write(86,'(f10.5)') reaction%eqcplx_logK(i)
+    enddo
+    do i = 1, reaction%ngeneral_rxn
+      write(86,'(40i4)') reaction%generalspecid(:,i)
+      write(86,'(40f6.2)') reaction%generalstoich(:,i)
+      write(86,'(40i4)') reaction%generalforwardspecid(:,i)
+      write(86,'(40f6.2)') reaction%generalforwardstoich(:,i)
+      write(86,'(40i4)') reaction%generalbackwardspecid(:,i)
+      write(86,'(40f6.2)') reaction%generalbackwardstoich(:,i)
+      write(86,'(f6.2)') reaction%generalh2ostoich(i)
+      write(86,'(1es13.5)') reaction%general_kf(i)
+      write(86,'(1es13.5)') reaction%general_kr(i)
     enddo
     close(86)
   endif

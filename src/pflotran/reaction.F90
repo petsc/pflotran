@@ -4533,7 +4533,7 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
       Res(icomp) = Res(icomp) - reaction%generalstoich(i,irxn)*(Qkf-Qkr)* &
                                 por_den_sat_vol
     enddo 
-    
+
     if (.not. compute_derivative) cycle   
 
     ! calculate derivatives of rate with respect to free

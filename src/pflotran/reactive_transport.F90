@@ -1801,7 +1801,9 @@ subroutine RTReact(realization)
   option => realization%option
   field => realization%field
 
-  call SAMRCoarsenVector(discretization%amrgrid%p_application, field%tran_xx)
+  if(option%use_samr) then
+    call SAMRCoarsenVector(discretization%amrgrid%p_application, field%tran_xx)
+  endif
       
 #ifdef OS_STATISTICS
   call_count = 0

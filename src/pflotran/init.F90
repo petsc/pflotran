@@ -1793,7 +1793,7 @@ subroutine InitReadInput(simulation)
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (input%ierr == 0) then
                 call StringToUpper(word)
-                if (StringCompare(word,'AT',TWO_INTEGER)) then
+                if (StringCompare(word,'UNTIL',TWO_INTEGER)) then
                   call InputReadDouble(input,option,temp_real)
                   call InputErrorMsg(input,option,'Maximum Timestep Size Update Time','TIME') 
                   call InputReadWord(input,option,word,PETSC_TRUE)
@@ -1801,7 +1801,7 @@ subroutine InitReadInput(simulation)
                   waypoint%time = temp_real*UnitsConvertToInternal(word,option)
                 else
                   option%io_buffer = 'Keyword under "MAXIMUM_TIMESTEP_SIZE" after ' // &
-                                     'maximum timestep size should be "at".'
+                                     'maximum timestep size should be "until".'
                   call printErrMsg(option)
                 endif
               else
