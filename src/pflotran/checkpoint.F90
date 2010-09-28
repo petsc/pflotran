@@ -468,7 +468,7 @@ subroutine Restart(realization, &
     tran_cumulative_solver_time = 0.d0
     read_activity_coefs = header%checkpoint_activity_coefs
     transport_read = PETSC_TRUE
-  else
+  else if (option%ntrandof /= header%ntrandof) then
     write(string,*) header%ntrandof
     option%io_buffer = 'Number of transport dofs in restart file (' // &
                        trim(adjustl(string)) // &

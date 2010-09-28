@@ -2398,7 +2398,6 @@ subroutine StepperUpdateFlowAuxVars(realization)
     case(THC_MODE)
       call THCUpdateAuxVars(realization)
     case(RICHARDS_MODE)
-      write(*,*) "call RichardsUpdateAuxVars"
       call RichardsUpdateAuxVars(realization)
   end select    
 
