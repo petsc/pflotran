@@ -22,6 +22,10 @@ ifdef glenn
 GLENN_FLAGS = -DOS_STATISTICS -DGLENN -DENABLE_UNSTRUCTURED
 endif
 
+ifdef unstructured
+GLENN_FLAGS = -DENABLE_UNSTRUCTURED
+endif
+
 ifdef temp
 TEMP_FLAG = -DTEMP_DEPENDENT_LOGK
 endif
