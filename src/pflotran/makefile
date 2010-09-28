@@ -185,7 +185,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	velocity.o
 unstructured_grid.o : option.o connection.o 
 structured_grid.o : connection.o option.o input.o cf90bridge.o
-general_grid.o : grid.o realization.o hdf5.o logging.o
+general_grid.o : grid.o realization.o hdf5.o logging.o 
 discretization.o : grid.o structured_grid.o unstructured_grid.o option.o \
                    input.o string.o mfd_aux.o mfd.o amrgrid.o
 grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
@@ -205,7 +205,7 @@ realization.o : grid.o option.o region.o condition.o coupler.o material.o \
                 strata.o waypoint.o field.o hydrostatic.o debug.o \
 		observation.o velocity.o \
                 patch.o level.o discretization.o reaction.o reaction_aux.o \
-                fluid.o saturation_function.o
+                fluid.o saturation_function.o mfd_aux.o
 level.o : patch.o option.o
 patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
           auxilliary.o reaction.o condition.o connection.o hydrostatic.o \

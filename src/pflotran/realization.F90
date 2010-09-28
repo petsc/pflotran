@@ -87,7 +87,8 @@ private
             RealProcessFluidProperties, &
             RealizationUpdateProperties, &
             RealizationCountCells, &
-            RealizationPrintGridStatistics
+            RealizationPrintGridStatistics, &
+            RealizationSetUpBC4Faces
             
 contains
   
@@ -403,15 +404,23 @@ subroutine RealizationCreateDiscretization(realization)
        call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
                                                         field%flow_yy_faces)
 
+
        call VecCreateSeq(PETSC_COMM_SELF, grid%ngmax_faces*option%nflowdof, field%flow_xx_loc_faces, ierr)
        call VecSetBlockSize(field%flow_xx_loc_faces,NFLOWDOF,ierr)
 
-       call VecCreateSeq(PETSC_COMM_SELF, grid%ngmax_faces*option%nflowdof, field%flow_r_loc_faces, ierr)
-       call VecSetBlockSize(field%flow_r_loc_faces,NFLOWDOF,ierr)
+!       call VecCreateSeq(PETSC_COMM_SELF, grid%ngmax_faces*option%nflowdof, field%flow_r_loc_faces, ierr)
+!       call VecSetBlockSize(field%flow_r_loc_faces,NFLOWDOF,ierr)
 
-!       call MFDInitializeMassMatrices(grid, field%volume, discretization%MFD, option)
+!       call VecCreateSeq(PETSC_COMM_SELF, grid%ngmax_faces*option%nflowdof, field%flow_bc_loc_faces, ierr)
+!       call VecSetBlockSize(field%flow_bc_loc_faces,NFLOWDOF,ierr)
 
+        call DiscretizationDuplicateVector(discretization, field%flow_xx_loc_faces, field%flow_r_loc_faces) 
 
+        call DiscretizationDuplicateVector(discretization, field%flow_xx_loc_faces, field%flow_bc_loc_faces)
+
+!       call VecGetArrayF90(field%volume, real_tmp, ierr)
+!       call VecRestoreArrayF90(field%volume, real_tmp, ierr)
+ 
 
 
      end if
@@ -421,6 +430,7 @@ subroutine RealizationCreateDiscretization(realization)
    end if
 
   write(*,*) "EXIT RealizationCreateDiscretization"   
+!  stop
  
   ! initialize to -999.d0 for check later that verifies all values 
   ! have been set
@@ -2259,6 +2269,88 @@ subroutine RealizationCountCells(realization,global_total_count, &
   global_active_count = temp_int_out(2)
 
 end subroutine RealizationCountCells
+
+
+
+subroutine RealizationSetUpBC4Faces(realization)
+
+
+
+
+  use Connection_module
+  use Coupler_module
+  use Patch_module
+  use Grid_module
+  use Field_module
+  use MFD_Aux_module
+  
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  type(realization_type) :: realization
+
+
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
+  type(field_type), pointer :: field
+
+  type(mfd_auxvar_type), pointer :: aux_var
+  type(connection_set_type), pointer :: conn
+  type(coupler_type), pointer ::  boundary_condition
+
+  PetscReal, pointer :: bc_faces_p(:)
+  PetscInt :: iconn, sum_connection, bc_type
+  PetscInt :: local_id, ghosted_id, ghost_face_id, j, jface
+  PetscErrorCode :: ierr
+
+
+  patch => realization%patch
+  grid => patch%grid
+  field => realization%field
+
+
+
+  call VecGetArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
+
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0
+  do
+    if (.not.associated(boundary_condition)) exit
+    bc_type = boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF)
+    if ((bc_type == DIRICHLET_BC).or.(bc_type == HYDROSTATIC_BC)  &
+         .or.(bc_type == SEEPAGE_BC).or.(bc_type == CONDUCTANCE_BC) ) then
+
+      do iconn = 1, boundary_condition%numfaces_set
+        sum_connection = sum_connection + 1
+
+        local_id = boundary_condition%region%cell_ids(iconn)
+        ghosted_id = grid%nL2G(local_id)
+
+        aux_var => grid%MFD%aux_vars(local_id)
+        do j = 1, aux_var%numfaces
+          ghost_face_id = aux_var%face_id_gh(j)
+          conn => grid%faces(ghost_face_id)%conn_set_ptr
+          jface = grid%faces(ghost_face_id)%id
+          if (boundary_condition%faces_set(iconn) == ghost_face_id) then
+              bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)*conn%area(jface)
+  !            bc_faces_p(ghost_face_id) = conn%cntr(3,jface)*conn%area(jface) 
+          end if
+        end do
+      end do
+    end if
+    boundary_condition => boundary_condition%next
+  end do
+
+  do j=1,grid%ngmax_faces
+    write(*,*) "bc_faces_p ",j,  bc_faces_p(j)
+  end do 
+
+  call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
+
+  write(*,*) "Exit RealizationSetUpBC4Faces"
+
+end subroutine RealizationSetUpBC4Faces
 
 ! ************************************************************************** !
 !
