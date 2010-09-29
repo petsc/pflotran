@@ -143,6 +143,7 @@ function GridCreate()
   nullify(grid%unstructured_grid)
 
   nullify(grid%internal_connection_set_list)
+  nullify(grid%boundary_connection_set_list)
 
   nullify(grid%nL2G)
   nullify(grid%nG2L)
