@@ -202,7 +202,6 @@ subroutine RealizationCreateDiscretization(realization)
   option => realization%option
   field => realization%field
  
-  write(*,*) "ENTER RealizationCreateDiscretization"   
  
   discretization => realization%discretization
   
@@ -429,8 +428,6 @@ subroutine RealizationCreateDiscretization(realization)
   
    end if
 
-  write(*,*) "EXIT RealizationCreateDiscretization"   
-!  stop
  
   ! initialize to -999.d0 for check later that verifies all values 
   ! have been set

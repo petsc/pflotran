@@ -386,7 +386,6 @@ subroutine RichardsUpdateAuxVars(realization)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
 
-  write(*,*) "RichardsUpdateAuxVars ", realization%discretization%itype
   
   cur_level => realization%level_list%first
   do
@@ -573,9 +572,9 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
   PetscReal :: Res(realization%option%nflowdof), source_f(realization%option%nflowdof)
   PetscErrorCode :: ierr
 
-#ifdef DASVYAT
-  write(*,*) "ENTER RichardsUpdateAuxVarsPatchMFD"
-#endif
+!#ifdef DASVYAT
+!  write(*,*) "ENTER RichardsUpdateAuxVarsPatchMFD"
+!#endif
 
 
   
@@ -667,9 +666,9 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
   call GridVecRestoreArrayF90(grid,field%volume, volume_p,ierr)  
   call GridVecRestoreArrayF90(grid,field%flow_accum, accum_p,ierr)  
 
-#ifdef DASVYAT
-  write(*,*) "EXIT RichardsUpdateAuxVarsPatchMFD"
-#endif
+!#ifdef DASVYAT
+!  write(*,*) "EXIT RichardsUpdateAuxVarsPatchMFD"
+!#endif
 
 end subroutine RichardsUpdateAuxVarsPatchMFD
 
@@ -1391,8 +1390,6 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
       end if
     endif      
    
-    write(*,*) "gravity ", gravity*Dq * ukvr
-    write(*,*) "Dq=", Dq,"ukvr=", ukvr, "gr=",gravity
 
     if (ukvr>floweps) then
       v_darcy= Dq * ukvr * dphi
@@ -1862,10 +1859,10 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   call PetscLogEventEnd(logging%event_r_residual,ierr)
 
 
-#ifdef DASVYAT
-  write(*,*) "End of RichardsResidual"
-  stop 
-#endif
+!#ifdef DASVYAT
+!  write(*,*) "End of RichardsResidual"
+!  stop 
+!#endif
  
 end subroutine RichardsResidual
 
@@ -1942,8 +1939,6 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
     conn => realization%patch%grid%faces(i)%conn_set_ptr
     iface = realization%patch%grid%faces(i)%id
 
-!     write(*,*) option%myrank, "rr  ", r_p(i), flow_xx_loc_p(i), conn%cntr(3,iface)
-     write(*,*)  r_p(i), flow_xx_loc_p(i), conn%cntr(3,iface)
   end do
 
   call GridVecRestoreArrayF90(realization%patch%grid, field%flow_r_loc_faces, r_p, ierr)
@@ -2027,7 +2022,7 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
     call PetscViewerASCIIOpen(realization%option%mycomm,'Rresidual.out', &
                               viewer,ierr)
     call VecView(field%flow_r_loc_faces,viewer,ierr)
-    write(*,*) "VecView error", ierr
+!    write(*,*) "VecView error", ierr
     call PetscViewerDestroy(viewer,ierr)
 !  endif
 !  if (realization%debug%vecview_solution) then
@@ -2320,9 +2315,10 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 
       patch%internal_velocities(1,sum_connection) = v_darcy
 
-#ifdef DASVYAT
-      write(*,*) "int flux ", sum_connection, v_darcy      
-#endif
+!#ifdef DASVYAT
+!
+!      write(*,*) "int flux ", sum_connection, v_darcy      
+!#endif
 
       
       if (option%use_samr) then
@@ -2423,9 +2419,9 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 
       patch%boundary_velocities(1,sum_connection) = v_darcy
 
-#ifdef DASVYAT
-      write(*,*) "bound flux ", sum_connection, v_darcy      
-#endif
+!#ifdef DASVYAT
+!      write(*,*) "bound flux ", sum_connection, v_darcy      
+!#endif
 
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
@@ -2628,10 +2624,10 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
 #endif
 
 
-#ifdef DASVYAT
-     write(*,*) "richards 2608"
-     stop
-#endif
+!#ifdef DASVYAT
+!     write(*,*) "richards 2608"
+!     stop
+!#endif
 
   if (patch%aux%Richards%inactive_cells_exist) then
     do i=1,patch%aux%Richards%n_zero_rows
@@ -3008,7 +3004,6 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
                                 volume_p(local_id), &
                                 option, Res)
             
-         write(*,*) "Accum ", accum_p(local_id), Res(1)
 
         Accum(1) = accum_p(local_id) - Res(1)
 
