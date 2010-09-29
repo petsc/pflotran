@@ -566,7 +566,7 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
   PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn, i,j
   PetscInt :: iphasebc, iphase
   PetscInt :: ghost_face_id, iface, jface, numfaces
-  PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:), xx_faces_p(:), bc_loc_p(:)
+  PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:), xx_faces_p(:), bc_loc_p(:), accum_p(:)
   PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:), volume_p(:)  
   PetscReal :: xxbc(realization%option%nflowdof)
   PetscReal, pointer :: sq_faces(:), darcy_v(:), faces_pr(:)
@@ -596,6 +596,7 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
   call GridVecGetArrayF90(grid,field%perm0_xx, perm_xx_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%porosity0, porosity_loc_p,ierr)  
   call GridVecGetArrayF90(grid,field%volume, volume_p,ierr)  
+  call GridVecGetArrayF90(grid,field%flow_accum, accum_p,ierr)  
 
 
   numfaces = 6     ! hex only
@@ -619,8 +620,9 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
        sq_faces(j) = cur_connection_set%area(jface)
        faces_pr(j) = xx_faces_p(ghost_face_id)
     end do
-
-
+ 
+        call MFDComputeDensity(global_aux_vars(ghosted_id), faces_pr,  option)  
+        
         !geh - Ignore inactive cells with inactive materials
         if (associated(patch%imat)) then
           if (patch%imat(ghosted_id) <= 0) cycle
@@ -630,7 +632,8 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
                                 porosity_loc_p(ghosted_id), &
                                 volume_p(local_id), &
                                 option,Res)
-        Res = 0.
+
+        Res(1) = accum_p(local_id) - Res(1)
 
         source_f = 0.
 
@@ -662,6 +665,7 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
   call GridVecRestoreArrayF90(grid,field%perm0_xx, perm_xx_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity0, porosity_loc_p,ierr)  
   call GridVecRestoreArrayF90(grid,field%volume, volume_p,ierr)  
+  call GridVecRestoreArrayF90(grid,field%flow_accum, accum_p,ierr)  
 
 #ifdef DASVYAT
   write(*,*) "EXIT RichardsUpdateAuxVarsPatchMFD"
@@ -3003,7 +3007,10 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
                                 porosity_loc_p(ghosted_id), &
                                 volume_p(local_id), &
                                 option, Res)
-        Accum(1) = Res(1) - accum_p(local_id)
+            
+         write(*,*) "Accum ", accum_p(local_id), Res(1)
+
+        Accum(1) = accum_p(local_id) - Res(1)
 
         source_f = 0.
         PermTensor = 0.
@@ -3052,9 +3059,9 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
         
   enddo
 
-!  do iface =1,grid%ngmax_faces
-!    write(*,*) "residual_p ", r_p(iface)
-!  end do
+  do iface =1,grid%ngmax_faces
+    write(*,*) "residual_p ", r_p(iface)
+  end do
  
 
   deallocate(sq_faces)
@@ -3070,7 +3077,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
 !  call GridVecRestoreArrayF90(grid,r, r_p, ierr)
   call VecRestoreArrayF90(field%flow_r_loc_faces, r_p, ierr)
   call VecRestoreArrayF90(grid%e2n, e2n_local, ierr)
-!  call GridVecRestoreArrayF90(grid,field%flow_accum, accum_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%flow_accum, accum_p, ierr)
   call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)

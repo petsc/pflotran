@@ -22,7 +22,7 @@ module MFD_module
 
   public :: MFDCreateJacobian, &
             MFDInitializeMassMatrices, MFDAuxGenerateStiffMatrix,&
-            MFDAuxGenerateRhs, MFDAuxReconstruct, MFDAuxFluxes
+            MFDAuxGenerateRhs, MFDAuxReconstruct, MFDAuxFluxes, MFDComputeDensity
 
 
 contains
@@ -348,7 +348,7 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
 !  E = Accum(1)
 
   E = 0.
-  f(1) = source_f(1) - Accum(1)
+  f(1) = (source_f(1) + Accum(1))/global_aux_var%den(1)
   
   gMB = 0.
   do iface = 1, aux_var%numfaces
@@ -366,7 +366,7 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
   E = 1./E
 
   do iface = 1, aux_var%numfaces
-     rhs(iface) = sq_faces(iface)*MB(iface)*E*(source_f(1) + ukvr*gMB) - ukvr*sq_faces(iface)*Mg(iface) + sq_faces(iface)*gr(iface)
+     rhs(iface) = sq_faces(iface)*MB(iface)*E*(f(1) + ukvr*gMB) - ukvr*sq_faces(iface)*Mg(iface) - ukvr*sq_faces(iface)*gr(iface)
   end do
 
 
@@ -415,7 +415,9 @@ subroutine MFDAuxReconstruct(face_pr, source_f, aux_var, rich_aux_var, global_au
 
   E = 1./E
 
-  xx(1) = (source_f(1)+Accum(1))*E
+  write(*,*) "den ", global_aux_var%den(1)
+
+  xx(1) = (source_f(1)+Accum(1))*E/global_aux_var%den(1)
 
 
   do iface = 1, aux_var%numfaces
@@ -517,6 +519,46 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
  
 end subroutine MFDAuxFluxes
 
+subroutine MFDComputeDensity(global_aux_var, face_pr, option)
 
+  use Option_module
+  use Global_Aux_module
+  use water_eos_module
+
+
+
+  type(global_auxvar_type) :: global_aux_var
+  PetscScalar, pointer :: face_pr(:)
+  type(option_type) :: option
+
+
+  PetscInt :: numfaces, i
+  PetscReal :: pres, pc, pw, dw_kg, dw_mol
+
+
+  numfaces = 6                 !hex only
+  pres = 0.
+  do i=1,6
+    pres = pres + face_pr(i)
+  end do
+  pres = pres/numfaces
+
+  pc = option%reference_pressure - pres
+
+  if (pc > 1.0) then
+    pw = option%reference_pressure
+  else 
+    pw = pres
+  end if
+
+  call density(option%reference_temperature, pw, dw_kg) 
+
+  dw_mol = dw_kg/FMWH2O
+
+  global_aux_var%den = dw_mol
+  global_aux_var%den_kg = dw_kg
+  
+
+end subroutine MFDComputeDensity
 
 end module MFD_module
