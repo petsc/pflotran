@@ -32,7 +32,7 @@ function UnitsConvertToInternal(units,option)
   PetscReal :: numerator, denominator
   PetscInt :: istart, iend
   PetscInt :: length
-  PetscTruth :: set_numerator
+  PetscBool :: set_numerator
   
   UnitsConvertToInternal = 1.d0
   

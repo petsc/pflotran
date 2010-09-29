@@ -78,7 +78,7 @@ subroutine ReactionRead(reaction,input,option)
   PetscReal :: tempreal
   PetscInt :: srfcplx_count
   PetscInt :: temp_srfcplx_count
-  PetscTruth :: found
+  PetscBool :: found
 
   nullify(prev_species)
   nullify(prev_gas)
@@ -883,7 +883,7 @@ subroutine ReactionProcessConstraint(reaction,constraint_name, &
   type(colloid_constraint_type), pointer :: colloid_constraint
   type(option_type) :: option
   
-  PetscTruth :: found
+  PetscBool :: found
   PetscInt :: icomp, jcomp
   PetscInt :: imnrl, jmnrl
   PetscInt :: icoll, jcoll
@@ -1111,7 +1111,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   type(srfcplx_constraint_type), pointer :: srfcplx_constraint
   type(colloid_constraint_type), pointer :: colloid_constraint
   PetscInt :: num_iterations
-  PetscTruth :: initialize_rt_auxvar
+  PetscBool :: initialize_rt_auxvar
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -1133,7 +1133,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscReal :: prev_molal(reaction%naqcomp)
   PetscReal, parameter :: tol = 1.d-12
   PetscReal, parameter :: tol_loose = 1.d-6
-  PetscTruth :: compute_activity_coefs
+  PetscBool :: compute_activity_coefs
 
   PetscInt :: constraint_id(reaction%naqcomp)
   PetscReal :: lnQK, QK
@@ -1143,7 +1143,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
   PetscReal :: convert_molal_to_molar
   PetscReal :: convert_molar_to_molal
   
-  PetscTruth :: charge_balance_warning_flag = PETSC_FALSE
+  PetscBool :: charge_balance_warning_flag = PETSC_FALSE
 
   PetscReal :: Jac_num(reaction%naqcomp)
   PetscReal :: Res_pert, pert, prev_value
@@ -1739,7 +1739,7 @@ subroutine ReactionPrintConstraint(constraint_coupler,reaction,option)
   PetscInt :: eqcplxid(reaction%neqcplx+1)
   PetscInt :: eqminsort(reaction%nmnrl)
   PetscInt :: eqsrfcplxsort(reaction%neqsrfcplx+reaction%neqsrfcplxrxn)
-  PetscTruth :: finished, found
+  PetscBool :: finished, found
   PetscReal :: conc, conc2
   PetscReal :: lnQK(reaction%nmnrl), QK(reaction%nmnrl)
   PetscReal :: lnQKgas(reaction%ngas), QKgas(reaction%ngas)
@@ -2316,7 +2316,7 @@ subroutine ReactionReadOutput(reaction,input,option)
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: name
-  PetscTruth :: found
+  PetscBool :: found
   PetscInt :: temp_int
 
   type(aq_species_type), pointer :: cur_aq_spec
@@ -2621,7 +2621,7 @@ subroutine RReaction(Res,Jac,derivative,rt_auxvar,global_auxvar,porosity, &
   type(reactive_transport_auxvar_type) :: rt_auxvar 
   type(global_auxvar_type) :: global_auxvar
   type(option_type) :: option
-  PetscTruth :: derivative
+  PetscBool :: derivative
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
   PetscReal :: porosity
@@ -2680,7 +2680,7 @@ subroutine RReactionDerivative(Res,Jac,rt_auxvar,global_auxvar,porosity, &
   PetscInt :: icomp, jcomp
   PetscReal :: Jac_dummy(reaction%ncomp,reaction%ncomp)
   PetscReal :: pert
-  PetscTruth :: compute_derivative
+  PetscBool :: compute_derivative
 
   ! add new reactions in the 3 locations below
 
@@ -3333,7 +3333,7 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
   PetscInt :: irxn
   PetscInt, parameter :: iphase = 1
   PetscReal, parameter :: tol = 1.d-12
-  PetscTruth :: one_more
+  PetscBool :: one_more
   PetscReal :: res, dres_dfree_site, dfree_site_conc
   PetscReal :: site_density(2)
   PetscReal :: mobile_fraction
@@ -3572,7 +3572,7 @@ subroutine RTotalSorbEqIonx(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: tempreal, tempreal1, tempreal2, total
   PetscInt :: irxn
   PetscReal, parameter :: tol = 1.d-12
-  PetscTruth :: one_more
+  PetscBool :: one_more
   PetscReal :: res
     
   PetscReal :: omega
@@ -3735,7 +3735,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
 
   use Option_module
 
-  PetscTruth :: compute_derivative
+  PetscBool :: compute_derivative
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
   PetscReal :: volume
@@ -3756,7 +3756,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: lnQK, tempreal, tempreal1, tempreal2, total
   PetscInt :: irxn
   PetscReal, parameter :: tol = 1.d-12
-  PetscTruth :: one_more
+  PetscBool :: one_more
   PetscReal :: residual, dres_dfree_site, dfree_site_conc
   PetscReal :: site_density
   
@@ -3955,7 +3955,7 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
 
   use Option_module
   
-  PetscTruth :: compute_derivative
+  PetscBool :: compute_derivative
   type(reactive_transport_auxvar_type) :: rt_auxvar
   type(global_auxvar_type) :: global_auxvar
   PetscReal :: volume
@@ -4145,7 +4145,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   
   type(option_type) :: option
   type(reaction_type) :: reaction
-  PetscTruth :: compute_derivative
+  PetscBool :: compute_derivative
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
   PetscReal :: volume
@@ -4164,7 +4164,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
   PetscReal :: ln_act(reaction%naqcomp)
   PetscReal :: ln_sec_act(reaction%neqcplx)
   PetscReal :: QK, lnQK, dQK_dCj, dQK_dmj
-  PetscTruth :: prefactor_exists
+  PetscBool :: prefactor_exists
 
   iphase = 1                         
 
@@ -4449,7 +4449,7 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
   
   type(option_type) :: option
   type(reaction_type) :: reaction
-  PetscTruth :: compute_derivative
+  PetscBool :: compute_derivative
   PetscReal :: Res(reaction%ncomp)
   PetscReal :: Jac(reaction%ncomp,reaction%ncomp)
   PetscReal :: porosity
@@ -4533,7 +4533,7 @@ subroutine RGeneral(Res,Jac,compute_derivative,rt_auxvar,global_auxvar, &
       Res(icomp) = Res(icomp) - reaction%generalstoich(i,irxn)*(Qkf-Qkr)* &
                                 por_den_sat_vol
     enddo 
-    
+
     if (.not. compute_derivative) cycle   
 
     ! calculate derivatives of rate with respect to free

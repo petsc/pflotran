@@ -14,7 +14,7 @@ module Input_module
     character(len=MAXSTRINGLENGTH) :: buf
     character(len=MAXSTRINGLENGTH) :: err_buf
     character(len=MAXSTRINGLENGTH) :: err_buf2
-    PetscTruth :: broadcast_read
+    PetscBool :: broadcast_read
   end type input_type
 
   interface InputReadFlotranString
@@ -487,6 +487,7 @@ subroutine InputReadFlotranStringSlave(input, option)
   
   do
     read(input%fid,'(a512)',iostat=input%ierr) input%buf
+    call StringAdjustl(input%buf)
 
     if (InputError(input)) exit
 
@@ -546,7 +547,7 @@ subroutine InputReadWord1(input, option, word, return_blank_error)
   type(input_type) :: input
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: word
-  PetscTruth :: return_blank_error
+  PetscBool :: return_blank_error
   
   PetscInt :: i, begins, ends
   character(len=1) :: tab, backslash
@@ -617,7 +618,7 @@ subroutine InputReadWord2(string, word, return_blank_error, ierr)
 
   character(len=*) :: string
   character(len=*) :: word
-  PetscTruth :: return_blank_error
+  PetscBool :: return_blank_error
   PetscErrorCode :: ierr
   
   PetscInt :: i, begins, ends
@@ -689,7 +690,7 @@ subroutine InputReadNChars1(input, option, chars, n, return_blank_error)
 
   type(input_type) :: input
   type(option_type) :: option
-  PetscTruth :: return_blank_error ! Return an error for a blank line
+  PetscBool :: return_blank_error ! Return an error for a blank line
                                    ! Therefore, a blank line is not acceptable.
   
   PetscInt :: i, n, begins, ends
@@ -761,7 +762,7 @@ subroutine InputReadNChars2(string, chars, n, return_blank_error, ierr)
   implicit none
 
   character(len=MAXSTRINGLENGTH) :: string
-  PetscTruth :: return_blank_error ! Return an error for a blank line
+  PetscBool :: return_blank_error ! Return an error for a blank line
                                    ! Therefore, a blank line is not acceptable.
   
   PetscInt :: i, n, begins, ends
@@ -836,10 +837,10 @@ subroutine InputReadQuotedWord(input, option, word, return_blank_error)
   type(input_type) :: input
   type(option_type) :: option
   PetscInt :: i, begins, ends, realends
-  PetscTruth :: return_blank_error ! Return an error for a blank line
+  PetscBool :: return_blank_error ! Return an error for a blank line
                                 ! Therefore, a blank line is not acceptable.
   character(len=*) :: word
-  PetscTruth :: openquotefound
+  PetscBool :: openquotefound
   character(len=1) :: tab, backslash    
 
   if (InputError(input)) return
@@ -922,7 +923,7 @@ subroutine InputReadPath(string, word, return_blank_error, ierr)
 
   character(len=*) :: string
   character(len=*) :: word
-  PetscTruth :: return_blank_error
+  PetscBool :: return_blank_error
   PetscErrorCode :: ierr
   
   PetscInt :: i, begins, ends
@@ -1019,10 +1020,10 @@ end subroutine InputReadPath
   type(input_type) :: input
   type(option_type) :: option
   character(len=MAXSTRINGLENGTH) :: string
-  PetscTruth :: print_warning
+  PetscBool :: print_warning
   
   character(len=MAXWORDLENGTH) :: word
-  PetscTruth :: found = PETSC_FALSE
+  PetscBool :: found = PETSC_FALSE
   PetscInt :: length1, length2, i
 
   input%ierr = 0
@@ -1110,7 +1111,7 @@ function InputCheckExit(input,option)
   PetscInt :: i
   character(len=1) :: tab
   
-  PetscTruth :: InputCheckExit
+  PetscBool :: InputCheckExit
 
   ! We must remove leading blanks and tabs. --RTM
   tab = achar(9)
@@ -1141,7 +1142,7 @@ function InputError1(input)
 
   type(input_type) :: input
   
-  PetscTruth :: InputError1
+  PetscBool :: InputError1
 
   if (input%ierr == 0) then
     InputError1 = PETSC_FALSE
@@ -1164,7 +1165,7 @@ function InputError2(ierr)
 
   PetscErrorCode :: ierr
   
-  PetscTruth :: InputError2
+  PetscBool :: InputError2
 
   if (ierr == 0) then
     InputError2 = PETSC_FALSE
@@ -1191,7 +1192,7 @@ subroutine InputGetCommandLineInt(string,int_value,found,option)
 
   character(len=MAXSTRINGLENGTH) :: string
   type(option_type) :: option
-  PetscTruth :: found
+  PetscBool :: found
   PetscInt :: int_value
 
   PetscInt :: iarg, narg
@@ -1243,7 +1244,7 @@ subroutine InputGetCommandLineReal(string,double_value,found,option)
 
   character(len=MAXSTRINGLENGTH) :: string
   type(option_type) :: option
-  PetscTruth :: found
+  PetscBool :: found
   PetscReal :: double_value
 
   PetscInt :: iarg, narg
@@ -1295,7 +1296,7 @@ subroutine InputGetCommandLineString(string,string_value,found,option)
 
   character(len=MAXSTRINGLENGTH) :: string
   type(option_type) :: option
-  PetscTruth :: found
+  PetscBool :: found
   character(len=MAXSTRINGLENGTH) :: string_value
 
   PetscInt :: iarg, narg
@@ -1356,8 +1357,8 @@ subroutine InputGetCommandLineTruth(string,truth_value,found,option)
 
   character(len=MAXSTRINGLENGTH) :: string
   type(option_type) :: option
-  PetscTruth :: found
-  PetscTruth :: truth_value
+  PetscBool :: found
+  PetscBool :: truth_value
 
   PetscInt :: iarg, narg
   PetscInt :: len

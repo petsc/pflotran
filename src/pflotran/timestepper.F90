@@ -27,8 +27,8 @@ module Timestepper_module
     
     PetscReal :: cumulative_solver_time
     
-    PetscTruth :: init_to_steady_state
-    PetscTruth :: run_as_steady_state
+    PetscBool :: init_to_steady_state
+    PetscBool :: run_as_steady_state
     PetscReal :: steady_state_rel_tol
 
     ! An array of multiplicative factors that specify how to increase time step.
@@ -221,18 +221,18 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   type(waypoint_type), pointer :: prev_waypoint  
 
   character(len=MAXSTRINGLENGTH) :: string
-  PetscTruth :: plot_flag, stop_flag, transient_plot_flag
-  PetscTruth :: master_timestep_cut_flag
-  PetscTruth :: flow_timestep_cut_flag, tran_timestep_cut_flag
+  PetscBool :: plot_flag, stop_flag, transient_plot_flag
+  PetscBool :: master_timestep_cut_flag
+  PetscBool :: flow_timestep_cut_flag, tran_timestep_cut_flag
   PetscInt :: istep, start_step
   PetscInt :: num_const_timesteps
   PetscInt :: num_newton_iterations, idum, idum2
-  PetscTruth :: activity_coefs_read
-  PetscTruth :: flow_read
-  PetscTruth :: transport_read
-  PetscTruth :: step_to_steady_state
-  PetscTruth :: run_flow_as_steady_state
-  PetscTruth :: failure
+  PetscBool :: activity_coefs_read
+  PetscBool :: flow_read
+  PetscBool :: transport_read
+  PetscBool :: step_to_steady_state
+  PetscBool :: run_flow_as_steady_state
+  PetscBool :: failure
   PetscLogDouble :: start_time, end_time
   
   PetscLogDouble :: stepper_start_time, current_time, average_step_time
@@ -578,14 +578,14 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option,timestep_cut_flag, &
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
   type(option_type) :: option
-  PetscTruth :: timestep_cut_flag
+  PetscBool :: timestep_cut_flag
   PetscInt :: num_const_timesteps
   PetscInt :: num_newton_iterations
   
   type(stepper_type), pointer :: stepper
   PetscReal :: time, dt
   PetscReal :: fac,dtt,up,utmp,uc,ut,uus
-  PetscTruth :: update_dt_with_flow_stepper
+  PetscBool :: update_dt_with_flow_stepper
 
   if (num_const_timesteps > 0) num_const_timesteps = num_const_timesteps + 1
   if (timestep_cut_flag) num_const_timesteps = 1
@@ -728,15 +728,15 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
 
   type(stepper_type), pointer :: flow_stepper, tran_stepper
   type(option_type) :: option
-  PetscTruth :: plot_flag
-  PetscTruth :: transient_plot_flag
+  PetscBool :: plot_flag
+  PetscBool :: transient_plot_flag
   
   PetscReal :: time
   PetscReal :: dt
   PetscReal :: dt_max
   PetscInt :: steps
   PetscInt :: nstepmax
-  PetscTruth :: set_target_with_flow_stepper
+  PetscBool :: set_target_with_flow_stepper
   type(waypoint_type), pointer :: cur_waypoint
 
   ! target time will always be dictated by the flow solver, if present
@@ -869,10 +869,10 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   type(realization_type) :: realization
   type(stepper_type) :: stepper
 
-  PetscTruth :: timestep_cut_flag
+  PetscBool :: timestep_cut_flag
   PetscInt :: num_newton_iterations
-  PetscTruth :: step_to_steady_state
-  PetscTruth :: failure
+  PetscBool :: step_to_steady_state
+  PetscBool :: failure
   
   PetscErrorCode :: ierr
   PetscInt :: icut ! Tracks the number of time step reductions applied
@@ -881,8 +881,8 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   PetscInt :: sum_newton_iterations, sum_linear_iterations, num_linear_iterations
   PetscReal :: fnorm, scaled_fnorm, inorm, prev_norm, dif_norm, rel_norm
   Vec :: update_vec
-  PetscTruth :: plot_flag
-  PetscTruth :: transient_plot_flag
+  PetscBool :: plot_flag
+  PetscBool :: transient_plot_flag
   PetscLogDouble :: log_start_time, log_end_time
 
   PetscViewer :: viewer
@@ -1242,10 +1242,10 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
   type(realization_type) :: realization
   type(stepper_type) :: stepper
 
-  PetscTruth :: flow_timestep_cut_flag
-  PetscTruth :: tran_timestep_cut_flag
+  PetscBool :: flow_timestep_cut_flag
+  PetscBool :: tran_timestep_cut_flag
   PetscInt :: num_newton_iterations
-  PetscTruth :: failure
+  PetscBool :: failure
   
   PetscErrorCode :: ierr
   PetscInt :: icut ! Tracks the number of time step reductions applied
@@ -1255,8 +1255,8 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
   PetscInt :: n, nmax_inf
   PetscReal :: fnorm, scaled_fnorm, inorm
   PetscReal :: start_time, end_time, dt_orig
-  PetscTruth :: plot_flag  
-  PetscTruth :: transient_plot_flag  
+  PetscBool :: plot_flag  
+  PetscBool :: transient_plot_flag  
   PetscReal, pointer :: r_p(:), xx_p(:), log_xx_p(:)
   PetscReal, parameter :: time_tol = 1.d-10
   PetscLogDouble :: log_start_time, log_end_time
@@ -1584,18 +1584,18 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
 
   type(realization_type),target :: realization
   type(stepper_type) :: stepper
-  PetscTruth :: flow_timestep_cut_flag
-  PetscTruth :: tran_timestep_cut_flag
+  PetscBool :: flow_timestep_cut_flag
+  PetscBool :: tran_timestep_cut_flag
   PetscInt :: num_newton_iterations
-  PetscTruth :: failure
+  PetscBool :: failure
   
   PetscErrorCode :: ierr
   KSPConvergedReason :: ksp_reason 
   PetscInt :: sum_linear_iterations, num_linear_iterations
   PetscInt :: idof
   PetscReal :: start_time, end_time, dt_orig
-  PetscTruth :: plot_flag  
-  PetscTruth :: transient_plot_flag  
+  PetscBool :: plot_flag  
+  PetscBool :: transient_plot_flag  
   PetscReal, parameter :: time_tol = 1.d-10
   PetscReal, pointer :: vec_ptr(:)
   PetscReal :: inf_norm, euclid_norm
@@ -1846,9 +1846,9 @@ subroutine StepperRunSteadyState(realization,flow_stepper,tran_stepper)
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
 
-  PetscTruth :: transient_plot_flag
-  PetscTruth :: plot_flag
-  PetscTruth :: failure
+  PetscBool :: transient_plot_flag
+  PetscBool :: plot_flag
+  PetscBool :: failure
   PetscLogDouble :: start_time, end_time
   character(len=MAXSTRINGLENGTH) :: string
   type(option_type), pointer :: option
@@ -2012,7 +2012,7 @@ subroutine StepperSolveFlowSteadyState(realization,stepper,failure)
 
   type(realization_type) :: realization
   type(stepper_type) :: stepper
-  PetscTruth :: failure
+  PetscBool :: failure
 
   PetscErrorCode :: ierr
   PetscInt :: num_newton_iterations
@@ -2122,7 +2122,7 @@ subroutine StepperSolveTranSteadyState(realization,stepper,failure)
 
   type(realization_type) :: realization
   type(stepper_type) :: stepper
-  PetscTruth :: failure
+  PetscBool :: failure
   
   PetscErrorCode :: ierr
   SNESConvergedReason :: snes_reason 
@@ -2398,7 +2398,6 @@ subroutine StepperUpdateFlowAuxVars(realization)
     case(THC_MODE)
       call THCUpdateAuxVars(realization)
     case(RICHARDS_MODE)
-      write(*,*) "call RichardsUpdateAuxVars"
       call RichardsUpdateAuxVars(realization)
   end select    
 
@@ -2488,9 +2487,9 @@ subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
   PetscInt :: num_const_timesteps, num_newton_iterations
-  PetscTruth :: activity_coefs_read
-  PetscTruth :: flow_read
-  PetscTruth :: transport_read
+  PetscBool :: activity_coefs_read
+  PetscBool :: flow_read
+  PetscBool :: transport_read
 
   type(option_type), pointer :: option
   PetscInt :: flow_steps, flow_newton_cum, flow_icutcum, flow_linear_cum ,&

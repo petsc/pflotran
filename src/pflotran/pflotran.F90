@@ -56,9 +56,9 @@
 
   PetscLogDouble :: timex(4), timex_wall(4)
 
-  PetscTruth :: truth
-  PetscTruth :: option_found  
-  PetscTruth :: single_inputfile
+  PetscBool :: truth
+  PetscBool :: option_found  
+  PetscBool :: single_inputfile
   PetscInt :: i
   PetscInt :: temp_int
   PetscErrorCode :: ierr

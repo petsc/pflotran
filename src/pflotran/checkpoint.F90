@@ -387,7 +387,7 @@ subroutine Restart(realization, &
   PetscInt :: tran_num_newton_iterations
   PetscInt :: tran_steps, tran_newtcum, tran_icutcum, tran_linear_cum
   PetscReal :: tran_cumulative_solver_time
-  PetscTruth :: activity_coefs_read, flow_read, transport_read
+  PetscBool :: activity_coefs_read, flow_read, transport_read
 
   PetscViewer viewer
   PetscBag bag
@@ -468,7 +468,7 @@ subroutine Restart(realization, &
     tran_cumulative_solver_time = 0.d0
     read_activity_coefs = header%checkpoint_activity_coefs
     transport_read = PETSC_TRUE
-  else
+  else if (option%ntrandof /= header%ntrandof) then
     write(string,*) header%ntrandof
     option%io_buffer = 'Number of transport dofs in restart file (' // &
                        trim(adjustl(string)) // &

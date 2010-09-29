@@ -44,7 +44,7 @@ module Structured_Grid_module
     ! grid spacing for each direction for local, ghosted domain
     PetscReal, pointer :: dxg_local(:), dyg_local(:), dzg_local(:)
     
-    PetscTruth :: invert_z_axis
+    PetscBool :: invert_z_axis
     
     PetscReal, pointer :: dx(:), dy(:), dz(:)  ! ghosted grid spacings for each grid cell
     
@@ -488,7 +488,7 @@ subroutine StructuredGridReadArrayNew(array,array_size,axis,input,option)
   character(len=MAXSTRINGLENGTH) :: string, string2
   character(len=MAXWORDLENGTH) :: word, word2, word3
   character(len=1) :: backslash
-  PetscTruth :: continuation_flag
+  PetscBool :: continuation_flag
   PetscReal :: value
   PetscErrorCode :: ierr
 

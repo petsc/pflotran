@@ -606,7 +606,7 @@ subroutine UtilityReadArray(array,array_size,comment,input,option)
   character(len=MAXSTRINGLENGTH) :: string, string2
   character(len=MAXWORDLENGTH) :: word, word2, word3
   character(len=1) :: backslash
-  PetscTruth :: continuation_flag
+  PetscBool :: continuation_flag
   PetscReal :: value
   PetscReal, pointer :: temp_array(:)
   PetscInt :: max_size

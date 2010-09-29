@@ -28,9 +28,9 @@ module Output_module
   
   ! flags signifying the first time a routine is called during a given
   ! simulation
-  PetscTruth :: observation_first
-  PetscTruth :: hdf5_first
-  PetscTruth :: mass_balance_first
+  PetscBool :: observation_first
+  PetscBool :: hdf5_first
+  PetscBool :: mass_balance_first
 
   public :: OutputInit, Output, OutputVectorTecplot, &
             OutputObservation, OutputGetVarFromArray, &
@@ -77,8 +77,8 @@ subroutine Output(realization,plot_flag,transient_plot_flag)
   implicit none
   
   type(realization_type) :: realization
-  PetscTruth :: plot_flag
-  PetscTruth :: transient_plot_flag
+  PetscBool :: plot_flag
+  PetscBool :: transient_plot_flag
 
   character(len=MAXSTRINGLENGTH) :: string
   PetscErrorCode :: ierr
@@ -2272,7 +2272,7 @@ subroutine OutputObservationTecplot(realization)
   type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
   type(observation_type), pointer :: observation
-  PetscTruth, save :: open_file = PETSC_FALSE
+  PetscBool, save :: open_file = PETSC_FALSE
   PetscInt :: local_id
 
   call PetscLogEventBegin(logging%event_output_observation,ierr)    
@@ -2417,7 +2417,7 @@ subroutine WriteObservationHeaderForCell(fid,realization,region,icell, &
   type(realization_type) :: realization
   type(region_type) :: region
   PetscInt :: icell
-  PetscTruth :: print_velocities
+  PetscBool :: print_velocities
   
   PetscInt :: i, local_id
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -2680,7 +2680,7 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
   PetscInt :: fid
   type(realization_type) :: realization
   type(region_type) :: region
-  PetscTruth :: print_velocities
+  PetscBool :: print_velocities
   
   PetscInt :: i
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -4953,7 +4953,7 @@ subroutine OutputHDF5(realization)
   PetscInt :: current_component
   PetscMPIInt, parameter :: ON=1, OFF=0
   PetscFortranAddr :: app_ptr
-  PetscTruth :: first
+  PetscBool :: first
 
   discretization => realization%discretization
   patch => realization%patch
@@ -5869,9 +5869,9 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   PetscReal, allocatable :: array(:)
   PetscReal, pointer :: vec_ptr(:)
 
-  PetscTruth, save :: trick_flux_vel_x = PETSC_FALSE
-  PetscTruth, save :: trick_flux_vel_y = PETSC_FALSE
-  PetscTruth, save :: trick_flux_vel_z = PETSC_FALSE
+  PetscBool, save :: trick_flux_vel_x = PETSC_FALSE
+  PetscBool, save :: trick_flux_vel_y = PETSC_FALSE
+  PetscBool, save :: trick_flux_vel_z = PETSC_FALSE
 
   Vec :: global_vec
 
@@ -6768,7 +6768,7 @@ subroutine OutputMassBalanceNew(realization)
   PetscReal :: sum_kg_global(realization%option%nphase)
   PetscReal :: sum_mol(realization%option%ntrandof,realization%option%nphase)
   PetscReal :: sum_mol_global(realization%option%ntrandof,realization%option%nphase)
-  PetscTruth :: local_first
+  PetscBool :: local_first
   PetscMPIInt :: int_mpi
   
   patch => realization%patch
@@ -7436,7 +7436,7 @@ subroutine OutputPermeability(realization)
 
   type(realization_type) :: realization
   
-  PetscTruth :: print_all_three
+  PetscBool :: print_all_three
   PetscInt :: material_property_id
   character(len=MAXSTRINGLENGTH) :: string
   type(option_type), pointer :: option

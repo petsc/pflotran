@@ -11,7 +11,7 @@ module Material_module
     PetscInt :: id
     character(len=MAXWORDLENGTH) :: name
     PetscReal :: permeability(3,3)
-    PetscTruth :: isotropic_permeability
+    PetscBool :: isotropic_permeability
     PetscReal :: vertical_anisotropy_ratio ! (vertical / horizontal)
     character(len=MAXSTRINGLENGTH) :: permeability_filename
     PetscReal :: porosity

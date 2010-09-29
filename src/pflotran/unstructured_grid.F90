@@ -589,7 +589,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   PetscInt, allocatable :: strided_indices(:)
   PetscInt, pointer :: ia_ptr(:), ja_ptr(:)
   PetscInt :: num_rows, num_cols, istart, iend, icol
-  PetscTruth :: success
+  PetscBool :: success
   character(len=MAXSTRINGLENGTH) :: string
   PetscErrorCode :: ierr
   
@@ -624,7 +624,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   PetscInt, pointer :: int_array_pointer(:)
   
   PetscInt :: idual, dual_id
-  PetscTruth :: found
+  PetscBool :: found
 
 
   
@@ -1778,8 +1778,8 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   PetscInt, allocatable :: temp_int_2d(:,:)
   PetscInt :: num_match
   PetscInt :: found_count
-  PetscTruth :: found
-  PetscTruth :: match_found
+  PetscBool :: found
+  PetscBool :: match_found
   PetscInt :: face_count
   PetscInt :: count
   PetscInt :: iface, iface2

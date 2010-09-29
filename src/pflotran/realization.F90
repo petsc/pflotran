@@ -652,7 +652,7 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   
   type(realization_type) :: realization
   
-  PetscTruth :: found
+  PetscBool :: found
   PetscInt :: i
   type(option_type), pointer :: option
   type(material_property_type), pointer :: cur_material_property
@@ -709,7 +709,7 @@ subroutine RealProcessFluidProperties(realization)
   
   type(realization_type) :: realization
   
-  PetscTruth :: found
+  PetscBool :: found
   type(option_type), pointer :: option
   type(fluid_property_type), pointer :: cur_fluid_property
   
@@ -756,7 +756,7 @@ subroutine RealProcessTranConditions(realization)
   type(realization_type) :: realization
   
   
-  PetscTruth :: found
+  PetscBool :: found
   type(option_type), pointer :: option
   type(tran_condition_type), pointer :: cur_condition
   type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
@@ -1071,7 +1071,7 @@ subroutine RealizUpdateAllCouplerAuxVars(realization,force_update_flag)
   implicit none
   
   type(realization_type) :: realization
-  PetscTruth :: force_update_flag
+  PetscBool :: force_update_flag
 
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -1104,7 +1104,7 @@ subroutine RealizationUpdate(realization)
   
   type(realization_type) :: realization
   
-  PetscTruth :: force_update_flag = PETSC_FALSE
+  PetscBool :: force_update_flag = PETSC_FALSE
   
   ! must update conditions first
   call FlowConditionUpdate(realization%flow_conditions,realization%option, &
@@ -2047,7 +2047,7 @@ subroutine RealizationUpdatePropertiesPatch(realization)
   PetscInt :: imnrl
   PetscReal :: sum_volfrac
   PetscReal :: scale, porosity_scale, volfrac_scale
-  PetscTruth :: porosity_updated
+  PetscBool :: porosity_updated
   PetscReal, pointer :: vec_p(:)
   PetscReal, pointer :: porosity_loc_p(:), porosity0_p(:)
   PetscReal, pointer :: tortuosity_loc_p(:), tortuosity0_p(:)

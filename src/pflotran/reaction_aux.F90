@@ -30,7 +30,7 @@ module Reaction_Aux_module
     PetscReal :: a0
     PetscReal :: molar_weight
     PetscReal :: Z
-    PetscTruth :: print_me
+    PetscBool :: print_me
     type(database_rxn_type), pointer :: dbaserxn
     type(aq_species_type), pointer :: next
   end type aq_species_type
@@ -40,7 +40,7 @@ module Reaction_Aux_module
     character(len=MAXWORDLENGTH) :: name
     PetscReal :: molar_volume
     PetscReal :: molar_weight
-    PetscTruth :: print_me
+    PetscBool :: print_me
     type(database_rxn_type), pointer :: dbaserxn
     type(gas_species_type), pointer :: next    
   end type gas_species_type
@@ -59,7 +59,7 @@ module Reaction_Aux_module
     character(len=MAXWORDLENGTH) :: name
     PetscReal :: molar_volume
     PetscReal :: molar_weight
-    PetscTruth :: print_me
+    PetscBool :: print_me
     type(transition_state_rxn_type), pointer :: tstrxn
     type(mineral_type), pointer :: next
   end type mineral_type
@@ -73,7 +73,7 @@ module Reaction_Aux_module
     PetscReal :: backward_rate
     PetscReal :: surface_area
     PetscReal :: molar_weight
-    PetscTruth :: print_me
+    PetscBool :: print_me
     type(colloid_type), pointer :: next
   end type colloid_type
 
@@ -114,7 +114,7 @@ module Reaction_Aux_module
     PetscReal :: Z
     PetscReal :: forward_rate
     PetscReal :: backward_rate
-    PetscTruth :: print_me
+    PetscBool :: print_me
     type(database_rxn_type), pointer :: dbaserxn
     type(surface_complex_type), pointer :: next
   end type surface_complex_type
@@ -124,7 +124,7 @@ module Reaction_Aux_module
     PetscInt :: itype
     PetscInt :: free_site_id
     character(len=MAXWORDLENGTH) :: free_site_name
-    PetscTruth :: free_site_print_me
+    PetscBool :: free_site_print_me
     PetscInt :: mineral_id
     character(len=MAXWORDLENGTH) :: mineral_name
     character(len=MAXWORDLENGTH) :: colloid_name
@@ -138,7 +138,7 @@ module Reaction_Aux_module
     character(len=MAXSTRINGLENGTH) :: reaction
     PetscReal :: forward_rate
     PetscReal :: backward_rate
-    PetscTruth :: print_me
+    PetscBool :: print_me
     type(database_rxn_type), pointer :: dbaserxn
     type(general_rxn_type), pointer :: next
   end type general_rxn_type
@@ -178,18 +178,18 @@ module Reaction_Aux_module
 
   type, public :: reaction_type
     character(len=MAXSTRINGLENGTH) :: database_filename
-    PetscTruth :: use_full_geochemistry
-    PetscTruth :: use_log_formulation ! flag for solving for the change in the log of the concentration
-    PetscTruth :: print_all_species
-    PetscTruth :: print_pH
-    PetscTruth :: print_kd
-    PetscTruth :: print_total_sorb
-    PetscTruth :: print_total_sorb_mobile
-    PetscTruth :: print_colloid
-    PetscTruth :: print_act_coefs
-    PetscTruth :: print_total_component
-    PetscTruth :: print_free_ion
-    PetscTruth :: initialize_with_molality
+    PetscBool :: use_full_geochemistry
+    PetscBool :: use_log_formulation ! flag for solving for the change in the log of the concentration
+    PetscBool :: print_all_species
+    PetscBool :: print_pH
+    PetscBool :: print_kd
+    PetscBool :: print_total_sorb
+    PetscBool :: print_total_sorb_mobile
+    PetscBool :: print_colloid
+    PetscBool :: print_act_coefs
+    PetscBool :: print_total_component
+    PetscBool :: print_free_ion
+    PetscBool :: initialize_with_molality
     PetscInt :: print_free_conc_type
     PetscInt :: print_tot_conc_type
     PetscInt :: num_dbase_temperatures
@@ -207,11 +207,11 @@ module Reaction_Aux_module
     type(general_rxn_type), pointer :: general_rxn_list
     PetscInt :: act_coef_update_frequency
     PetscInt :: act_coef_update_algorithm
-    PetscTruth :: checkpoint_activity_coefs
-    PetscTruth :: act_coef_use_bdot
-    PetscTruth :: use_activity_h2o
-    PetscTruth :: calculate_water_age
-    PetscTruth :: calculate_tracer_age
+    PetscBool :: checkpoint_activity_coefs
+    PetscBool :: act_coef_use_bdot
+    PetscBool :: use_activity_h2o
+    PetscBool :: calculate_water_age
+    PetscBool :: calculate_tracer_age
     
     ! compressed arrays for efficient computation
     ! primary aqueous complexes
@@ -225,7 +225,7 @@ module Reaction_Aux_module
     PetscInt :: offset_collcomp
     
     character(len=MAXWORDLENGTH), pointer :: primary_species_names(:)
-    PetscTruth, pointer :: primary_species_print(:)
+    PetscBool, pointer :: primary_species_print(:)
     PetscReal, pointer :: primary_spec_a0(:)
     PetscReal, pointer :: primary_spec_Z(:)
     PetscReal, pointer :: primary_spec_molar_wt(:)
@@ -233,9 +233,9 @@ module Reaction_Aux_module
     ! aqueous complexes
     PetscInt :: neqcplx
     character(len=MAXWORDLENGTH), pointer :: secondary_species_names(:)
-    PetscTruth, pointer :: secondary_species_print(:)
+    PetscBool, pointer :: secondary_species_print(:)
     character(len=MAXWORDLENGTH), pointer :: eqcplx_basis_names(:,:)
-    PetscTruth, pointer :: eqcplx_basis_print(:)
+    PetscBool, pointer :: eqcplx_basis_print(:)
     PetscInt, pointer :: eqcplxspecid(:,:)   ! (0:ncomp in rxn)
     PetscReal, pointer :: eqcplxstoich(:,:)
     PetscInt, pointer :: eqcplxh2oid(:)       ! id of water, if present
@@ -253,7 +253,7 @@ module Reaction_Aux_module
     ! gas species
     PetscInt :: ngas
     character(len=MAXWORDLENGTH), pointer :: gas_species_names(:)
-    PetscTruth, pointer :: gas_species_print(:)
+    PetscBool, pointer :: gas_species_print(:)
     PetscInt, pointer :: eqgasspecid(:,:)   ! (0:ncomp in rxn)
     PetscReal, pointer :: eqgasstoich(:,:)
     PetscInt, pointer :: eqgash2oid(:)       ! id of water, if present
@@ -262,13 +262,13 @@ module Reaction_Aux_module
     PetscReal, pointer :: eqgas_logKcoef(:,:)
     
     PetscInt :: neqsorb
-    PetscTruth, pointer :: kd_print(:)
-    PetscTruth, pointer :: total_sorb_print(:)
+    PetscBool, pointer :: kd_print(:)
+    PetscBool, pointer :: total_sorb_print(:)
 
     ! ionx exchange reactions
     PetscInt :: neqionxrxn
     PetscInt :: neqionxcation 
-    PetscTruth, pointer :: eqionx_rxn_Z_flag(:)
+    PetscBool, pointer :: eqionx_rxn_Z_flag(:)
     PetscInt, pointer :: eqionx_rxn_cation_X_offset(:)
     PetscReal, pointer :: eqionx_rxn_CEC(:)
     PetscReal, pointer :: eqionx_rxn_k(:,:)
@@ -286,11 +286,11 @@ module Reaction_Aux_module
     PetscInt, pointer :: eqsrfcplx_rxn_surf_type(:)
     PetscInt, pointer :: eqsrfcplx_rxn_to_complex(:,:)
     PetscReal, pointer :: eqsrfcplx_rxn_site_density(:)
-    PetscTruth, pointer :: eqsrfcplx_rxn_stoich_flag(:)
+    PetscBool, pointer :: eqsrfcplx_rxn_stoich_flag(:)
     character(len=MAXWORDLENGTH), pointer :: eqsrfcplx_site_names(:)
-    PetscTruth, pointer :: eqsrfcplx_site_print(:)
+    PetscBool, pointer :: eqsrfcplx_site_print(:)
     character(len=MAXWORDLENGTH), pointer :: eqsrfcplx_names(:)
-    PetscTruth, pointer :: eqsrfcplx_print(:)
+    PetscBool, pointer :: eqsrfcplx_print(:)
     PetscInt, pointer :: eqsrfcplxspecid(:,:)
     PetscReal, pointer :: eqsrfcplxstoich(:,:)
     PetscInt, pointer :: eqsrfcplxh2oid(:)
@@ -309,11 +309,11 @@ module Reaction_Aux_module
     PetscInt, pointer :: kinsrfcplx_rxn_to_complex(:,:) 
     PetscInt, pointer :: kinsrfcplx_rxn_to_site(:)
     PetscReal, pointer :: kinsrfcplx_rxn_site_density(:)
-    PetscTruth, pointer :: kinsrfcplx_rxn_stoich_flag(:)
+    PetscBool, pointer :: kinsrfcplx_rxn_stoich_flag(:)
     character(len=MAXWORDLENGTH), pointer :: kinsrfcplx_site_names(:)
-    PetscTruth, pointer :: kinsrfcplx_site_print(:)
+    PetscBool, pointer :: kinsrfcplx_site_print(:)
     character(len=MAXWORDLENGTH), pointer :: kinsrfcplx_names(:)
-    PetscTruth, pointer :: kinsrfcplx_print(:)
+    PetscBool, pointer :: kinsrfcplx_print(:)
     PetscInt, pointer :: kinsrfcplxspecid(:,:)
     PetscReal, pointer :: kinsrfcplxstoich(:,:)
     PetscInt, pointer :: kinsrfcplxh2oid(:)
@@ -343,8 +343,8 @@ module Reaction_Aux_module
     PetscReal, pointer :: colloid_mobile_fraction(:)
     PetscInt, pointer :: pri_spec_to_coll_spec(:)
     PetscInt, pointer :: coll_spec_to_pri_spec(:)
-    PetscTruth, pointer :: total_sorb_mobile_print(:)
-    PetscTruth, pointer :: colloid_print(:)
+    PetscBool, pointer :: total_sorb_mobile_print(:)
+    PetscBool, pointer :: colloid_print(:)
     
       ! for saturation states
     PetscInt, pointer :: mnrlspecid(:,:)
@@ -357,7 +357,7 @@ module Reaction_Aux_module
       ! for kinetic reactions
     PetscInt :: nkinmnrl
     character(len=MAXWORDLENGTH), pointer :: kinmnrl_names(:)
-    PetscTruth, pointer :: kinmnrl_print(:)
+    PetscBool, pointer :: kinmnrl_print(:)
     PetscInt, pointer :: kinmnrlspecid(:,:)
     PetscReal, pointer :: kinmnrlstoich(:,:)
     PetscInt, pointer :: kinmnrlh2oid(:)

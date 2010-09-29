@@ -16,8 +16,8 @@ module Condition_module
 
   type, public :: flow_condition_dataset_type
     PetscInt :: rank
-    PetscTruth :: is_transient
-    PetscTruth :: is_cyclic
+    PetscBool :: is_transient
+    PetscBool :: is_cyclic
     PetscInt :: interpolation_method
     PetscReal, pointer :: times(:)
     PetscReal, pointer :: values(:,:)
@@ -30,7 +30,7 @@ module Condition_module
   
   type, public :: flow_condition_type
     PetscInt :: id                                 ! id from which condition can be referenced
-    PetscTruth :: sync_time_with_update
+    PetscBool :: sync_time_with_update
     character(len=MAXWORDLENGTH) :: name          ! name of condition (e.g. initial, recharge)
     PetscInt :: num_sub_conditions
     PetscInt :: iphase
@@ -74,8 +74,8 @@ module Condition_module
   type, public :: tran_condition_type
     PetscInt :: id                                ! id from which condition can be referenced
     PetscInt :: itype                  ! integer describing type of condition
-    PetscTruth :: sync_time_with_update
-    PetscTruth :: is_transient
+    PetscBool :: sync_time_with_update
+    PetscBool :: is_transient
     character(len=MAXWORDLENGTH) :: name          ! name of condition (e.g. initial, recharge)
     type(tran_constraint_coupler_type), pointer :: constraint_coupler_list
     type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
@@ -407,14 +407,14 @@ subroutine FlowSubConditionVerify(option, condition, sub_condition_name, &
   type(flow_sub_condition_type), pointer :: sub_condition
   character(len=MAXWORDLENGTH) :: default_ctype
   PetscInt :: default_itype
-  PetscTruth :: default_cyclic
+  PetscBool :: default_cyclic
   PetscInt :: default_interpolation
   PetscReal :: default_time
   PetscInt :: default_iphase
   type(flow_condition_dataset_type) :: default_dataset
   type(flow_condition_dataset_type) :: default_datum
   type(flow_condition_dataset_type) :: default_gradient
-  PetscTruth :: destroy_if_null
+  PetscBool :: destroy_if_null
 
   PetscInt :: array_size
 
@@ -558,7 +558,7 @@ subroutine FlowConditionRead(condition,input,option)
   character(len=MAXWORDLENGTH) :: default_ctype
   PetscInt :: default_itype
   PetscInt :: array_size, idof
-  PetscTruth :: found
+  PetscBool :: found
   PetscErrorCode :: ierr
 
   call PetscLogEventBegin(logging%event_flow_condition_read,ierr)
@@ -951,9 +951,9 @@ subroutine TranConditionRead(condition,constraint_list,reaction,input,option)
   PetscInt :: default_iphase
   character(len=MAXWORDLENGTH) :: default_ctype
   PetscInt :: default_itype
-  PetscTruth :: found
+  PetscBool :: found
   PetscInt :: icomp
-  PetscTruth :: minerals_exist
+  PetscBool :: minerals_exist
   PetscErrorCode :: ierr
 
   call PetscLogEventBegin(logging%event_tran_condition_read,ierr)
@@ -1876,7 +1876,7 @@ subroutine FlowSubConditionUpdateDataset(option,time,dataset)
   
   type(option_type) :: option
   PetscReal :: time
-  PetscTruth :: is_cyclic
+  PetscBool :: is_cyclic
   PetscInt :: interpolation_method
   type(flow_condition_dataset_type) :: dataset
   

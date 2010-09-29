@@ -31,7 +31,7 @@ module Solver_module
     PetscInt :: newton_maxit     ! maximum number of iterations
     PetscInt :: newton_maxf      ! maximum number of function evaluations
 
-    PetscTruth :: use_galerkin_mg  ! If true, precondition linear systems with 
+    PetscBool :: use_galerkin_mg  ! If true, precondition linear systems with 
                                    ! Galerkin-type geometric multigrid.
     PetscInt :: galerkin_mg_levels  ! Number of discretization levels for 
                                     ! the Galerkin MG (includes finest level).
@@ -58,13 +58,13 @@ module Solver_module
     KSP   ::  ksp
     PC    ::  pc
     
-    PetscTruth :: inexact_newton
+    PetscBool :: inexact_newton
 
-    PetscTruth :: print_convergence
-    PetscTruth :: print_detailed_convergence
-    PetscTruth :: print_linear_iterations
-    PetscTruth :: check_infinity_norm
-    PetscTruth :: force_at_least_1_iteration    
+    PetscBool :: print_convergence
+    PetscBool :: print_detailed_convergence
+    PetscBool :: print_linear_iterations
+    PetscBool :: check_infinity_norm
+    PetscBool :: force_at_least_1_iteration    
             
   end type solver_type
   
@@ -701,8 +701,8 @@ subroutine SolverPrintLinearInfo(solver,print_to_screen,print_to_file,fid, &
   implicit none
   
   type(solver_type) :: solver
-  PetscTruth :: print_to_screen
-  PetscTruth :: print_to_file
+  PetscBool :: print_to_screen
+  PetscBool :: print_to_file
   PetscInt :: fid
   character(len=MAXSTRINGLENGTH) :: header  
 
@@ -744,8 +744,8 @@ subroutine SolverPrintNewtonInfo(solver,print_to_screen,print_to_file,fid, &
   implicit none
   
   type(solver_type) :: solver
-  PetscTruth :: print_to_screen
-  PetscTruth :: print_to_file  
+  PetscBool :: print_to_screen
+  PetscBool :: print_to_file  
   PetscInt :: fid
   character(len=MAXSTRINGLENGTH) :: header  
 
@@ -869,7 +869,7 @@ subroutine SolverCheckCommandLine(solver)
   PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH) :: prefix
   character(len=MAXSTRINGLENGTH) :: mat_type
-  PetscTruth :: is_present
+  PetscBool :: is_present
 
   if (solver%snes /= 0) then
     call SNESGetOptionsPrefix(solver%snes, prefix, ierr)

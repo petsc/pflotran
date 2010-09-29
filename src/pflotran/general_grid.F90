@@ -96,7 +96,7 @@ subroutine ReadStructuredGridHDF5(realization)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
       
-  PetscTruth :: option_found
+  PetscBool :: option_found
   PetscErrorCode :: ierr
 
   PetscLogDouble :: time0, time1, time3, time4

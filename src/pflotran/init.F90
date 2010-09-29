@@ -309,13 +309,16 @@ subroutine Init(simulation)
         call SNESSetFunction(flow_solver%snes,field%flow_r,THCResidual, &
                              realization,ierr)
       case(RICHARDS_MODE)
-        if(realization%discretization%itype == STRUCTURED_GRID) then
-          call SNESSetFunction(flow_solver%snes,field%flow_r,RichardsResidual, &
-                             realization,ierr)
-        else if(realization%discretization%itype == STRUCTURED_GRID_MIMETIC) then
-          call SNESSetFunction(flow_solver%snes,field%flow_r_faces,RichardsResidualMFD, &
-                             realization,ierr)
-        end if
+        select case(realization%discretization%itype)
+          case(STRUCTURED_GRID_MIMETIC)
+            call SNESSetFunction(flow_solver%snes,field%flow_r_faces, &
+                                 RichardsResidualMFD, &
+                                 realization,ierr)
+          case default
+            call SNESSetFunction(flow_solver%snes,field%flow_r, &
+                                 RichardsResidual, &
+                                 realization,ierr)
+        end select
       case(MPH_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,MPHASEResidual, &
                              realization,ierr)
@@ -736,7 +739,7 @@ subroutine InitReadStochasticCardFromInput(stochastic,option)
   
   character(len=MAXSTRINGLENGTH) :: string
   type(input_type), pointer :: input
-  PetscTruth :: print_warning
+  PetscBool :: print_warning
   
   input => InputCreate(IUNIT1,option%input_filename)
 
@@ -1002,8 +1005,8 @@ subroutine InitReadInput(simulation)
   PetscInt :: ibc, ibrk, ir,np
   PetscReal :: rdum
 
-  PetscTruth :: continuation_flag
-  PetscTruth :: periodic_output_flag = PETSC_FALSE
+  PetscBool :: continuation_flag
+  PetscBool :: periodic_output_flag = PETSC_FALSE
   PetscReal :: periodic_rate = 0.d0
   
   character(len=1) :: backslash
@@ -1012,8 +1015,8 @@ subroutine InitReadInput(simulation)
   PetscInt :: temp_int
   PetscInt :: count, id
   
-  PetscTruth :: velocities
-  PetscTruth :: fluxes
+  PetscBool :: velocities
+  PetscBool :: fluxes
   
   type(region_type), pointer :: region
   type(flow_condition_type), pointer :: flow_condition
@@ -1790,7 +1793,7 @@ subroutine InitReadInput(simulation)
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (input%ierr == 0) then
                 call StringToUpper(word)
-                if (StringCompare(word,'AT',TWO_INTEGER)) then
+                if (StringCompare(word,'UNTIL',TWO_INTEGER)) then
                   call InputReadDouble(input,option,temp_real)
                   call InputErrorMsg(input,option,'Maximum Timestep Size Update Time','TIME') 
                   call InputReadWord(input,option,word,PETSC_TRUE)
@@ -1798,7 +1801,7 @@ subroutine InitReadInput(simulation)
                   waypoint%time = temp_real*UnitsConvertToInternal(word,option)
                 else
                   option%io_buffer = 'Keyword under "MAXIMUM_TIMESTEP_SIZE" after ' // &
-                                     'maximum timestep size should be "at".'
+                                     'maximum timestep size should be "until".'
                   call printErrMsg(option)
                 endif
               else
@@ -1949,7 +1952,7 @@ subroutine assignMaterialPropToRegions(realization)
 
   type(material_property_type), pointer :: material_property, null_material_property
   type(region_type), pointer :: region
-  PetscTruth :: update_ghosted_material_ids
+  PetscBool :: update_ghosted_material_ids
   
   option => realization%option
   discretization => realization%discretization
@@ -2275,6 +2278,7 @@ subroutine verifyCoupler(realization,patch,coupler_list)
 
   patch => realization%patch
   grid => patch%grid
+  option => realization%option
 
   if (.not.associated(coupler_list)) return
 
@@ -2391,7 +2395,7 @@ subroutine readMaterialsFromFile(realization,filename)
   type(discretization_type), pointer :: discretization
   character(len=MAXSTRINGLENGTH) :: group_name
   character(len=MAXSTRINGLENGTH) :: dataset_name
-  PetscTruth :: append_realization_id
+  PetscBool :: append_realization_id
   PetscInt :: ghosted_id, natural_id, material_id
   PetscInt :: fid = 86
   PetscInt :: status
@@ -2493,7 +2497,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
   character(len=MAXSTRINGLENGTH) :: dataset_name
   PetscInt :: local_id, ghosted_id, natural_id
   PetscReal :: permeability
-  PetscTruth :: append_realization_id
+  PetscBool :: append_realization_id
   PetscInt :: fid = 86
   PetscInt :: status
   PetscInt :: idirection

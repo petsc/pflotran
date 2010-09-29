@@ -36,7 +36,7 @@ subroutine StochasticInit(stochastic,option)
 
   PetscInt :: realization_id
   character(len=MAXSTRINGLENGTH) :: string
-  PetscTruth :: option_found
+  PetscBool :: option_found
   PetscErrorCode :: ierr
 
   ! query user for number of communicator groups and realizations

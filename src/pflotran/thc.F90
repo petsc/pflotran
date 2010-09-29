@@ -1871,7 +1871,7 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
-  PetscTruth :: enthalpy_flag
+  PetscBool :: enthalpy_flag
   PetscInt :: iconn, idof, istart, iend
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
@@ -2321,7 +2321,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
-  PetscTruth :: enthalpy_flag
+  PetscBool :: enthalpy_flag
   PetscInt :: iconn, idof
   PetscInt :: sum_connection  
   PetscReal :: distance, fraction_upwind

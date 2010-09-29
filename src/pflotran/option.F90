@@ -29,7 +29,7 @@ module Option_module
         
     PetscMPIInt :: io_rank
     PetscMPIInt :: hdf5_read_group_size, hdf5_write_group_size
-    PetscTruth :: broadcast_read
+    PetscBool :: broadcast_read
     
     PetscInt :: reactive_transport_coupling
 
@@ -59,7 +59,7 @@ module Option_module
     ! 0 - CELL CENTERED
     ! 1 - FACE CENTERED
     PetscInt :: ivar_centering
-    PetscTruth :: use_samr
+    PetscBool :: use_samr
     ! the next variable is used by SAMR to determine
     ! what dof the linear system in operator split mode   
     ! needs to be formed for
@@ -75,30 +75,30 @@ module Option_module
     PetscInt :: ntrandof
   
     PetscInt :: iflag
-    PetscTruth :: init_stage
-    PetscTruth :: print_screen_flag
-    PetscTruth :: print_file_flag
-    PetscTruth :: print_to_screen
-    PetscTruth :: print_to_file
+    PetscBool :: init_stage
+    PetscBool :: print_screen_flag
+    PetscBool :: print_file_flag
+    PetscBool :: print_to_screen
+    PetscBool :: print_to_file
     PetscInt :: verbosity  ! Values >0 indicate additional console output.
     
     PetscInt, pointer :: garbage ! for some reason, Intel will not compile without this
 
     PetscReal :: uniform_velocity(3)
-    PetscTruth :: store_solute_fluxes
+    PetscBool :: store_solute_fluxes
 
     ! Program options
-    PetscTruth :: use_matrix_free  ! If true, do not form the Jacobian.
+    PetscBool :: use_matrix_free  ! If true, do not form the Jacobian.
     
-    PetscTruth :: use_isothermal
+    PetscBool :: use_isothermal
     
     character(len=MAXWORDLENGTH) :: generalized_grid
-    PetscTruth :: use_generalized_grid
+    PetscBool :: use_generalized_grid
       
     PetscReal :: flow_time, tran_time, time  ! The time elapsed in the simulation.
     PetscReal :: tran_weight_t0, tran_weight_t1
     PetscReal :: flow_dt, tran_dt, dt ! The size of the time step.
-    PetscTruth :: match_waypoint
+    PetscBool :: match_waypoint
     PetscReal :: prev_dt
   
       ! Basically our target number of newton iterations per time step.
@@ -127,39 +127,39 @@ module Option_module
     
     PetscReal :: minimum_hydrostatic_pressure
     
-    PetscTruth :: update_porosity
-    PetscTruth :: update_tortuosity
-    PetscTruth :: update_permeability
-    PetscTruth :: update_mineral_surface_area
-    PetscTruth :: update_mnrl_surf_with_porosity
+    PetscBool :: update_porosity
+    PetscBool :: update_tortuosity
+    PetscBool :: update_permeability
+    PetscBool :: update_mineral_surface_area
+    PetscBool :: update_mnrl_surf_with_porosity
     
-    PetscTruth :: jumpstart_kinetic_sorption
-    PetscTruth :: no_checkpoint_kinetic_sorption
-    PetscTruth :: no_restart_kinetic_sorption
+    PetscBool :: jumpstart_kinetic_sorption
+    PetscBool :: no_checkpoint_kinetic_sorption
+    PetscBool :: no_restart_kinetic_sorption
         
 !   table lookup
     PetscInt :: itable
     PetscInt :: co2eos
 
-    PetscTruth :: restart_flag
+    PetscBool :: restart_flag
     PetscReal :: restart_time
     character(len=MAXSTRINGLENGTH) :: restart_filename
     character(len=MAXSTRINGLENGTH) :: input_filename
-    PetscTruth :: checkpoint_flag
+    PetscBool :: checkpoint_flag
     PetscInt :: checkpoint_frequency
     
     PetscLogDouble :: start_time
-    PetscTruth :: wallclock_stop_flag
+    PetscBool :: wallclock_stop_flag
     PetscLogDouble :: wallclock_stop_time
     
     PetscInt :: log_stage(10)
     
-    PetscTruth :: numerical_derivatives
-    PetscTruth :: compute_statistics
-    PetscTruth :: compute_mass_balance_new
-    PetscTruth :: use_touch_options
-    PetscTruth :: overwrite_restart_transport
-    PetscTruth :: overwrite_restart_flow
+    PetscBool :: numerical_derivatives
+    PetscBool :: compute_statistics
+    PetscBool :: compute_mass_balance_new
+    PetscBool :: use_touch_options
+    PetscBool :: overwrite_restart_transport
+    PetscBool :: overwrite_restart_flow
     PetscInt :: io_handshake_buffer_size
 
     character(len=MAXSTRINGLENGTH) :: initialize_flow_filename
@@ -172,12 +172,12 @@ module Option_module
     character(len=MAXWORDLENGTH) :: global_prefix
     character(len=MAXWORDLENGTH) :: group_prefix
     
-    PetscTruth :: steady_state
+    PetscBool :: steady_state
     
-    PetscTruth :: use_matrix_buffer
+    PetscBool :: use_matrix_buffer
   
-    PetscTruth :: mimetic
-    PetscTruth :: ani_relative_permeability
+    PetscBool :: mimetic
+    PetscBool :: ani_relative_permeability
 
   end type option_type
   
@@ -186,24 +186,24 @@ module Option_module
     character(len=2) :: tunit
     PetscReal :: tconv
 
-    PetscTruth :: print_initial
-    PetscTruth :: print_final
+    PetscBool :: print_initial
+    PetscBool :: print_final
   
-    PetscTruth :: print_hdf5
-    PetscTruth :: print_hdf5_velocities
-    PetscTruth :: print_hdf5_flux_velocities
+    PetscBool :: print_hdf5
+    PetscBool :: print_hdf5_velocities
+    PetscBool :: print_hdf5_flux_velocities
 
-    PetscTruth :: print_tecplot 
+    PetscBool :: print_tecplot 
     PetscInt :: tecplot_format
-    PetscTruth :: print_tecplot_velocities
-    PetscTruth :: print_tecplot_flux_velocities
+    PetscBool :: print_tecplot_velocities
+    PetscBool :: print_tecplot_flux_velocities
     
-    PetscTruth :: print_vtk 
-    PetscTruth :: print_vtk_velocities
+    PetscBool :: print_vtk 
+    PetscBool :: print_vtk_velocities
 
-    PetscTruth :: print_observation 
+    PetscBool :: print_observation 
 
-    PetscTruth :: print_mad 
+    PetscBool :: print_mad 
 
     PetscInt :: screen_imod
     
@@ -213,8 +213,8 @@ module Option_module
     PetscReal :: periodic_output_time_incr
     PetscReal :: periodic_tr_output_time_incr
     
-    PetscTruth :: print_permeability
-    PetscTruth :: print_porosity
+    PetscBool :: print_permeability
+    PetscBool :: print_porosity
     
     PetscInt :: plot_number
     character(len=MAXWORDLENGTH) :: plot_name
@@ -566,7 +566,7 @@ subroutine OptionCheckCommandLine(option)
   
   type(option_type) :: option
   
-  PetscTruth :: option_found 
+  PetscBool :: option_found 
   PetscInt :: temp_int
   PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH) :: string
@@ -623,7 +623,7 @@ subroutine printErrMsg1(option)
   
   type(option_type) :: option
   
-  PetscTruth :: petsc_initialized
+  PetscBool :: petsc_initialized
   PetscErrorCode :: ierr
   
   if (OptionPrintToScreen(option)) then
@@ -652,7 +652,7 @@ subroutine printErrMsg2(option,string)
   type(option_type) :: option
   character(len=*) :: string
   
-  PetscTruth :: petsc_initialized
+  PetscBool :: petsc_initialized
   PetscErrorCode :: ierr
   
   if (OptionPrintToScreen(option)) then
@@ -753,7 +753,7 @@ function OptionCheckTouch(option,filename)
   
   PetscInt :: ios
   PetscInt :: fid = 86
-  PetscTruth :: OptionCheckTouch
+  PetscBool :: OptionCheckTouch
   PetscErrorCode :: ierr
   
   OptionCheckTouch = PETSC_FALSE
@@ -783,7 +783,7 @@ function OptionPrintToScreen(option)
 
   type(option_type) :: option
   
-  PetscTruth :: OptionPrintToScreen
+  PetscBool :: OptionPrintToScreen
   
   if (option%myrank == option%io_rank .and. option%print_to_screen) then
     OptionPrintToScreen = PETSC_TRUE
@@ -806,7 +806,7 @@ function OptionPrintToFile(option)
 
   type(option_type) :: option
   
-  PetscTruth :: OptionPrintToFile
+  PetscBool :: OptionPrintToFile
   
   if (option%myrank == option%io_rank .and. option%print_to_file) then
     OptionPrintToFile = PETSC_TRUE
@@ -836,7 +836,7 @@ subroutine OptionMaxMinMeanVariance(value,max,min,mean,variance, &
   PetscReal :: min
   PetscReal :: mean
   PetscReal :: variance
-  PetscTruth :: calculate_variance
+  PetscBool :: calculate_variance
 
   PetscReal :: temp_real_in(2), temp_real_out(2)
   PetscErrorCode :: ierr
@@ -869,7 +869,7 @@ subroutine OptionMeanVariance(value,mean,variance,calculate_variance,option)
   PetscReal :: value
   PetscReal :: mean
   PetscReal :: variance
-  PetscTruth :: calculate_variance
+  PetscBool :: calculate_variance
 
   PetscReal :: temp_real
   PetscErrorCode :: ierr

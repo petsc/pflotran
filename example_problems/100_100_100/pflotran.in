@@ -6,7 +6,7 @@ MODE RICHARDS
 :=========================== chemistry ========================================
 CHEMISTRY
   PRIMARY_SPECIES
-  Tracer
+    Tracer
   /
 /
 
@@ -40,7 +40,7 @@ NEWTON_SOLVER TRANSPORT
   :STOL 1.e-60
   :DTOL 1.e4
   :ITOL_UPDATE 1.d-4
-  NO_INFINITY_NORM
+  :NO_INFINITY_NORM
   :NO_PRINT_CONVERGENCE
   :PRINT_DETAILED_CONVERGENCE
 /

@@ -589,7 +589,7 @@ subroutine PatchInitAllCouplerAuxVars(patch,reaction,option)
   type(reaction_type), pointer :: reaction
   type(option_type) :: option
   
-  PetscTruth :: force_update_flag = PETSC_TRUE
+  PetscBool :: force_update_flag = PETSC_TRUE
   
   call PatchInitCouplerAuxVars(patch%initial_conditions,reaction, &
                                option)
@@ -626,7 +626,7 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
   type(option_type) :: option
   
   PetscInt :: num_connections
-  PetscTruth :: force_update_flag
+  PetscBool :: force_update_flag
   
   type(coupler_type), pointer :: coupler
   type(tran_constraint_coupler_type), pointer :: cur_constraint_coupler
@@ -714,7 +714,7 @@ subroutine PatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
   implicit none
   
   type(patch_type) :: patch
-  PetscTruth :: force_update_flag
+  PetscBool :: force_update_flag
   type(option_type) :: option
 
   PetscInt :: iconn
@@ -749,13 +749,13 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   
   type(patch_type) :: patch
   type(coupler_list_type), pointer :: coupler_list
-  PetscTruth :: force_update_flag
+  PetscBool :: force_update_flag
   type(option_type) :: option
   
   type(coupler_type), pointer :: coupler
   type(flow_condition_type), pointer :: flow_condition
   type(tran_condition_type), pointer :: tran_condition
-  PetscTruth :: update
+  PetscBool :: update
   
   PetscInt :: idof, num_connections
   
@@ -1070,9 +1070,9 @@ function PatchAuxVarsUpToDate(patch)
   
   type(patch_type) :: patch
   
-  PetscTruth :: PatchAuxVarsUpToDate
-  PetscTruth :: flow_up_to_date
-  PetscTruth :: transport_up_to_date
+  PetscBool :: PatchAuxVarsUpToDate
+  PetscBool :: flow_up_to_date
+  PetscBool :: transport_up_to_date
   PetscInt :: dummy
   dummy = 1
 

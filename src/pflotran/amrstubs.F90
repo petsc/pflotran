@@ -8,8 +8,8 @@ implicit none
 PetscFortranAddr :: p_application
 PetscInt :: dof
 PetscInt :: centering
-PetscTruth :: use_ghost
-PetscTruth :: use_components
+PetscBool :: use_ghost
+PetscBool :: use_components
 Vec :: vec
 end subroutine create_samrai_vec
 

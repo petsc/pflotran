@@ -132,7 +132,7 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
   type(option_type), pointer :: option
   type(input_type), pointer :: input
   type(discretization_type),pointer :: discretization
-  PetscTruth :: first_time
+  PetscBool :: first_time
   character(len=MAXWORDLENGTH) :: word
   type(grid_type), pointer :: grid
   type(structured_grid_type), pointer :: str_grid

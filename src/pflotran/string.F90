@@ -13,7 +13,8 @@ module String_module
             StringToUpper, &
             StringToLower, &
             StringReadQuotedWord, &
-            StringStartswithAlpha
+            StringStartswithAlpha, &
+            StringAdjustl
 
 contains
 
@@ -24,7 +25,7 @@ contains
 ! date: 11/10/08
 !
 ! ************************************************************************** !
-PetscTruth function StringCompare(string1,string2,n)
+PetscBool function StringCompare(string1,string2,n)
 
   implicit none
 
@@ -50,7 +51,7 @@ end function StringCompare
 ! date: 11/10/08
 !
 ! ************************************************************************** !
-PetscTruth function StringCompareIgnoreCase(string1,string2,n)
+PetscBool function StringCompareIgnoreCase(string1,string2,n)
 
   implicit none
 
@@ -134,11 +135,11 @@ subroutine StringReadQuotedWord(string, name, return_blank_error, ierr)
   implicit none
 
   PetscInt :: i, begins, ends, realends, length
-  PetscTruth :: return_blank_error ! Return an error for a blank line
+  PetscBool :: return_blank_error ! Return an error for a blank line
                                 ! Therefore, a blank line is not acceptable.
   character(len=*) :: string
   character(len=*) :: name
-  PetscTruth :: openquotefound
+  PetscBool :: openquotefound
   PetscErrorCode :: ierr
 
   if (ierr /= 0) return
@@ -204,7 +205,7 @@ function StringStartsWithAlpha(string)
 
   character(len=*) :: string
 
-  PetscTruth :: StringStartsWithAlpha
+  PetscBool :: StringStartsWithAlpha
 
   string = adjustl(string)
 
@@ -216,5 +217,40 @@ function StringStartsWithAlpha(string)
   endif
 
 end function StringStartsWithAlpha
+
+! ************************************************************************** !
+!
+! StringAdjustl: Left adjusts a string by removing leading spaces and tabs.
+!                This subroutine is needed because the adjustl() Fortran 90 
+!                intrinsic will not remove leading tabs.
+! author: Richard Tran Mills
+! date: 9/21/2010
+!
+! ************************************************************************** !
+subroutine StringAdjustl(string)
+
+  implicit none
+
+  character(len=*) :: string
+  
+  PetscInt :: i
+  PetscInt :: string_length
+  character(len=1) :: tab
+
+  ! We have to manually convert any leading tabs into spaces, as the 
+  ! adjustl() intrinsic does not eliminate leading tabs.
+  tab = achar(9)
+  i=1
+  string_length = len_trim(string)
+  do while((string(i:i) == ' ' .or. string(i:i) == tab) .and. &
+           i <= string_length)
+    if (string(i:i) == tab) string(i:i) = ' '
+    i=i+1
+  enddo
+
+  ! adjustl() will do what we want, now that tabs are removed.
+  string = adjustl(string) 
+
+end subroutine StringAdjustl
 
 end module String_module

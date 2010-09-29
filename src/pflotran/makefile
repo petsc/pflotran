@@ -22,6 +22,10 @@ ifdef glenn
 GLENN_FLAGS = -DOS_STATISTICS -DGLENN -DENABLE_UNSTRUCTURED
 endif
 
+ifdef unstructured
+GLENN_FLAGS = -DENABLE_UNSTRUCTURED
+endif
+
 ifdef temp
 TEMP_FLAG = -DTEMP_DEPENDENT_LOGK
 endif
@@ -45,11 +49,14 @@ endif
 #ifdef samr_hdf5
 HDF5_FLAGS += -I$(HDF5_INCLUDE) -I$(HDF5_LIB) -DUSE_HDF5
 #endif
+ifdef debug
+  DEBUG_FLAGS = -DDEBUG
+endif
 
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) \
           -DREVISED_TRANSPORT \
           $(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG) $(TEMP_FLAG)\
-					$(CHUAN_FLAG) $(COLL_FLAG) $(DENSITY_FLAG)
+					$(CHUAN_FLAG) $(COLL_FLAG) $(DENSITY_FLAG) $(DEBUG_FLAGS)
 
 CFLAGS		 = 
 FFLAGS		 =

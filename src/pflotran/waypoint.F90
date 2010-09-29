@@ -11,13 +11,13 @@ module Waypoint_module
   ! linked-list for waypoints in the simulation
   type, public :: waypoint_type
     PetscReal :: time
-    PetscTruth :: print_output
-    PetscTruth :: print_tr_output
+    PetscBool :: print_output
+    PetscBool :: print_tr_output
     type(output_option_type), pointer :: output_option
-    PetscTruth :: update_bcs
-    PetscTruth :: update_srcs
+    PetscBool :: update_bcs
+    PetscBool :: update_srcs
     PetscReal :: dt_max
-    PetscTruth :: final  ! any waypoint after this will be deleted
+    PetscBool :: final  ! any waypoint after this will be deleted
     type(waypoint_type), pointer :: prev
     type(waypoint_type), pointer :: next
   end type waypoint_type
@@ -112,10 +112,10 @@ subroutine WaypointInsertInList(new_waypoint,waypoint_list)
   type(waypoint_type), pointer :: waypoint
 
 !    PetscReal :: time
-!    PetscTruth :: print_output
+!    PetscBool :: print_output
 !    type(output_option_type), pointer :: output_option
-!    PetscTruth :: update_bcs
-!    PetscTruth :: update_srcs
+!    PetscBool :: update_bcs
+!    PetscBool :: update_srcs
 !    PetscReal :: dt_max
     
     ! place new waypoint in proper location within list
@@ -303,12 +303,12 @@ subroutine WaypointMerge(old_waypoint,new_waypoint)
   new_waypoint%time = 0.d0
 
 !    PetscReal :: time
-!    PetscTruth :: print_output
+!    PetscBool :: print_output
 !    type(output_option_type), pointer :: output_option
-!    PetscTruth :: update_bcs
-!    PetscTruth :: update_srcs
+!    PetscBool :: update_bcs
+!    PetscBool :: update_srcs
 !    PetscReal :: dt_max
-!    PetscTruth :: final  ! any waypoint after this will be deleted
+!    PetscBool :: final  ! any waypoint after this will be deleted
     
   if (old_waypoint%print_output .or. new_waypoint%print_output) then
     old_waypoint%print_output = PETSC_TRUE

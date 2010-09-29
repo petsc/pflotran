@@ -827,9 +827,9 @@ function PatchAuxVarsUpToDate(patch)
   
   type(patch_type) :: patch
   
-  PetscTruth :: PatchAuxVarsUpToDate
-  PetscTruth :: flow_up_to_date
-  PetscTruth :: transport_up_to_date
+  PetscBool :: PatchAuxVarsUpToDate
+  PetscBool :: flow_up_to_date
+  PetscBool :: transport_up_to_date
   
   if (associated(patch%aux%THC)) then
     flow_up_to_date = patch%aux%THC%aux_vars_up_to_date
