@@ -259,7 +259,7 @@ subroutine RTCheckUpdate(snes_,C,dC,realization,changed,ierr)
   Vec :: C
   Vec :: dC
   type(realization_type) :: realization
-  PetscTruth :: changed
+  PetscBool :: changed
   PetscErrorCode :: ierr
 
   type(level_type), pointer :: cur_level
@@ -299,7 +299,7 @@ subroutine RTCheckUpdatePatch(snes_,C,dC,realization,changed,ierr)
   Vec :: C
   Vec :: dC
   type(realization_type) :: realization
-  PetscTruth :: changed
+  PetscBool :: changed
   
   PetscReal, pointer :: C_p(:)
   PetscReal, pointer :: dC_p(:)
@@ -1801,7 +1801,9 @@ subroutine RTReact(realization)
   option => realization%option
   field => realization%field
 
-  call SAMRCoarsenVector(discretization%amrgrid%p_application, field%tran_xx)
+  if(option%use_samr) then
+    call SAMRCoarsenVector(discretization%amrgrid%p_application, field%tran_xx)
+  endif
       
 #ifdef OS_STATISTICS
   call_count = 0
@@ -3819,7 +3821,7 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
   PetscInt :: iconn
   PetscReal :: qsrc, molality
   PetscReal :: Jup(realization%reaction%ncomp,realization%reaction%ncomp)
-  PetscTruth :: volumetric
+  PetscBool :: volumetric
 #ifdef CHUAN_CO2
   PetscReal :: msrc(1:realization%option%nflowspec)
   PetscInt :: icomp, ieqgas
@@ -4688,7 +4690,7 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn
   PetscReal :: qsrc, rdum
-  PetscTruth :: volumetric
+  PetscBool :: volumetric
   
   option => realization%option
   field => realization%field
@@ -4905,8 +4907,8 @@ subroutine RTUpdateAuxVars(realization,update_bcs,update_activity_coefs)
   use Patch_module
 
   type(realization_type) :: realization
-  PetscTruth :: update_bcs
-  PetscTruth :: update_activity_coefs
+  PetscBool :: update_bcs
+  PetscBool :: update_activity_coefs
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -4951,9 +4953,9 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
   implicit none
 
   type(realization_type) :: realization
-  PetscTruth :: update_bcs
-  PetscTruth :: update_cells
-  PetscTruth :: compute_activity_coefs
+  PetscBool :: update_bcs
+  PetscBool :: update_cells
+  PetscBool :: compute_activity_coefs
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -4976,7 +4978,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
   PetscInt, parameter :: iphase = 1
   PetscInt :: offset
   PetscErrorCode :: ierr
-  PetscTruth :: skip_equilibrate_constraint
+  PetscBool :: skip_equilibrate_constraint
   PetscInt, save :: icall
   
   data icall/0/
@@ -5710,7 +5712,7 @@ subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
   
   type(realization_type) :: realization
   PetscViewer :: viewer
-  PetscTruth :: checkpoint
+  PetscBool :: checkpoint
   
   type(option_type), pointer :: option
   type(reaction_type), pointer :: reaction
@@ -5721,7 +5723,7 @@ subroutine RTCheckpointKineticSorption(realization,viewer,checkpoint)
   type(reactive_transport_auxvar_type), pointer :: rt_auxvars(:)
   PetscReal, pointer :: vec_p(:)
 
-  PetscTruth :: checkpoint_flag(realization%reaction%naqcomp)
+  PetscBool :: checkpoint_flag(realization%reaction%naqcomp)
   PetscInt :: i, j, irxn, icomp, icplx, ncomp, ncplx, irate
   PetscInt :: local_id
   PetscErrorCode :: ierr

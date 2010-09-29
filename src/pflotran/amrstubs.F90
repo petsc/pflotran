@@ -8,8 +8,8 @@ implicit none
 PetscFortranAddr :: p_application
 PetscInt :: dof
 PetscInt :: centering
-PetscTruth :: use_ghost
-PetscTruth :: use_components
+PetscBool :: use_ghost
+PetscBool :: use_components
 Vec :: vec
 end subroutine create_samrai_vec
 
@@ -272,6 +272,21 @@ subroutine SAMRCopyVecToVecComponent(vec,svec, component)
   PetscInt :: component
 end subroutine SAMRCopyVecToVecComponent
 
+#if 1
+subroutine SAMRRegisterForViz(ptr,vec,component,dname,dnamec, string)
+  use ISO_C_BINDING
+      
+#include "finclude/petscsysdef.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  PetscFortranAddr :: ptr
+  Vec :: vec
+  PetscInt :: component
+  PetscInt :: dname, dnamec
+  character(kind=C_CHAR), dimension(*) :: string
+end subroutine SAMRRegisterForViz
+      
+#else
 subroutine SAMRRegisterForViz(ptr,vec,component,dname,dnamec)
 #include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
@@ -281,7 +296,8 @@ subroutine SAMRRegisterForViz(ptr,vec,component,dname,dnamec)
   PetscInt :: component
   PetscInt :: dname, dnamec
 end subroutine SAMRRegisterForViz
-
+#endif
+      
 subroutine SAMRWritePlotData(ptr, time)
 #include "finclude/petscsysdef.h"
   PetscFortranAddr :: ptr

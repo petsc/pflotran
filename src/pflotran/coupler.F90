@@ -416,7 +416,7 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
   type(mfd_auxvar_type), pointer :: aux_var
   PetscInt :: conn_id, stride, iface_type
   type(connection_set_type), pointer :: conn_set_ptr
-  PetscTruth :: bnd_face
+  PetscBool :: bnd_face
 
   if (.not.associated(coupler)) return
   
@@ -631,7 +631,7 @@ subroutine CouplerAssignBCtoCells(grid,option,coupler)
   PetscInt :: conn_id, stride, iface_type, e2n_size
   PetscScalar, pointer :: e2n_local(:)
   type(connection_set_type), pointer :: conn_set_ptr
-  PetscTruth :: bnd_face
+  PetscBool :: bnd_face
 
 
   stride = 6 !hex only

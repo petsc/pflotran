@@ -935,7 +935,7 @@ subroutine Flash2SourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fl
   PetscReal Res(1:option%nflowdof) 
   PetscReal mmsrc(option%nflowspec), psrc(option%nphase),tsrc,hsrc 
   PetscInt isrctype
-  PetscTruth :: energy_flag
+  PetscBool :: energy_flag
      
   PetscReal :: msrc(option%nflowspec),dw_kg, dw_mol,dddt,dddp
   PetscReal :: enth_src_h2o, enth_src_co2 
@@ -1892,7 +1892,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
-  PetscTruth :: enthalpy_flag
+  PetscBool :: enthalpy_flag
   PetscInt :: ng
   PetscInt :: iconn, idof, istart, iend
   PetscInt :: sum_connection
@@ -2489,7 +2489,7 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
-  PetscTruth :: enthalpy_flag
+  PetscBool :: enthalpy_flag
   PetscInt :: ng
   PetscInt :: axis, side, nlx, nly, nlz, ngx, ngxy, pstart, pend, flux_id
    PetscInt :: direction, max_x_conn, max_y_conn
@@ -2900,7 +2900,7 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
   type(Flash2_parameter_type), pointer :: Flash2_parameter
   type(Flash2_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
-  PetscTruth :: enthalpy_flag
+  PetscBool :: enthalpy_flag
   PetscInt :: ng
   PetscInt :: iconn, idof, istart, iend
   PetscReal, pointer :: delx(:)
@@ -3061,7 +3061,7 @@ subroutine Flash2ResidualPatch2(snes,xx,r,realization,ierr)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
-  PetscTruth :: enthalpy_flag
+  PetscBool :: enthalpy_flag
   PetscInt :: ng
   PetscInt :: iconn, idof, istart, iend
   PetscInt :: sum_connection
@@ -3404,7 +3404,7 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
-  PetscTruth :: enthalpy_flag
+  PetscBool :: enthalpy_flag
   PetscInt :: iconn, idof
   PetscInt :: sum_connection  
   PetscReal :: distance, fraction_upwind
@@ -3947,7 +3947,7 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
-  PetscTruth :: enthalpy_flag
+  PetscBool :: enthalpy_flag
   PetscInt :: iconn, idof
   PetscInt :: sum_connection  
   PetscReal :: distance, fraction_upwind
@@ -4373,7 +4373,7 @@ subroutine Flash2JacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
-  PetscTruth :: enthalpy_flag
+  PetscBool :: enthalpy_flag
   PetscInt :: iconn, idof
   PetscInt :: sum_connection  
   PetscReal :: distance, fraction_upwind

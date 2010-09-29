@@ -118,8 +118,8 @@ module Reactive_Transport_Aux_module
     PetscInt :: num_aux, num_aux_bc
     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
     PetscInt :: n_zero_rows
-    PetscTruth :: aux_vars_up_to_date
-    PetscTruth :: inactive_cells_exist
+    PetscBool :: aux_vars_up_to_date
+    PetscBool :: inactive_cells_exist
     type(reactive_transport_param_type), pointer :: rt_parameter
     type(reactive_transport_auxvar_type), pointer :: aux_vars(:)
     type(reactive_transport_auxvar_type), pointer :: aux_vars_bc(:)

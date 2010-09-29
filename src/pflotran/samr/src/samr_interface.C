@@ -14,6 +14,7 @@
 #include "PflotranJacobianMultilevelOperatorParameters.h"
 #include "SideGeometry.h"
 
+// output definitions from ../../definitions.h
 #define X_COORDINATE  1
 #define Y_COORDINATE  2
 #define Z_COORDINATE  3
@@ -27,27 +28,33 @@
 #define GAS_ENERGY  11
 #define LIQUID_MOLE_FRACTION  12
 #define GAS_MOLE_FRACTION  13
-#define PHASE  14
-#define MATERIAL_ID  15
-#define GAS_DENSITY_MOL 16
+#define POROSITY  14
+#define PHASE  15
+#define MATERIAL_ID  16
+#define GAS_DENSITY_MOL  17
 
-#define PRIMARY_MOLALITY  17
-#define SECONDARY_MOLALITY  18
-#define TOTAL_MOLALITY  19
-#define PRIMARY_MOLARITY  20
-#define SECONDARY_MOLARITY  21
-#define TOTAL_MOLARITY  22
-#define MINERAL_VOLUME_FRACTION  23
-#define MINERAL_RATE  24
-#define MINERAL_SURFACE_AREA  25
-#define PH  26
-#define SURFACE_CMPLX  27
-#define SURFACE_CMPLX_FREE  28
-#define PRIMARY_ACTIVITY_COEF  29
-#define SECONDARY_ACTIVITY_COEF 30
-#define SC_FUGA_COEFF 31
-#define PRIMARY_KD 32
-#define TOTAL_SORBED 33
+#define PRIMARY_MOLALITY  18
+#define SECONDARY_MOLALITY  19
+#define TOTAL_MOLALITY  20
+#define PRIMARY_MOLARITY  21
+#define SECONDARY_MOLARITY  22
+#define TOTAL_MOLARITY  23
+#define MINERAL_VOLUME_FRACTION  24
+#define MINERAL_RATE  25
+#define MINERAL_SURFACE_AREA  26
+#define PH  27
+#define SURFACE_CMPLX  28
+#define SURFACE_CMPLX_FREE  29
+#define KIN_SURFACE_CMPLX  30
+#define KIN_SURFACE_CMPLX_FREE  31
+#define PRIMARY_ACTIVITY_COEF  32
+#define SECONDARY_ACTIVITY_COEF  33
+#define SC_FUGA_COEFF  34
+#define PRIMARY_KD  35
+#define TOTAL_SORBED  36
+#define TOTAL_SORBED_MOBILE  37
+#define COLLOID_MOBILE  38
+#define COLLOID_IMMOBILE  39
 
 extern "C" {
 #include "petsc.h"
@@ -464,6 +471,26 @@ void samrcopyvectoveccomponent_(Vec *svec, Vec *dvec, int *comp)
    }   
 }
 
+#if 1
+void samrregisterforviz_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
+                         Vec *svec, 
+                         int *component,
+                         int *dname,
+                         int *inx,
+	          char *vName)
+{
+  SAMRAI::appu::VisItDataWriter<NDIM>* vizWriter = (*application_strategy)->getVizWriter();
+  SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > srcVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(*svec);
+  
+  int data_id = srcVec->getComponentDescriptorIndex(*component);
+
+  if(vizWriter!=NULL)
+    {
+      vizWriter->registerPlotQuantity(vName, "SCALAR", data_id,0, 1.0, "CELL");
+    }  
+}
+
+#else
 void samrregisterforviz_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
                          Vec *svec, 
                          int *component,
@@ -501,6 +528,12 @@ void samrregisterforviz_(SAMRAI::PflotranApplicationStrategy **application_strat
          case GAS_SATURATION:
             vName = "Gas Saturation";
             break;
+         case LIQUID_DENSITY:
+            vName = "Liquid Density";
+            break;
+         case GAS_DENSITY:
+            vName = "Gas Density";
+            break;
          case LIQUID_ENERGY:
             vName = "Liquid Energy";
             break;
@@ -513,17 +546,17 @@ void samrregisterforviz_(SAMRAI::PflotranApplicationStrategy **application_strat
          case GAS_MOLE_FRACTION:
             vName = "Gas Mole Fraction "+inxStr;
             break;
-         case PHASE:
-            vName = "Phase";
-            break;
          case MINERAL_VOLUME_FRACTION:
             vName = "Mineral Vol Fraction "+inxStr;
             break;
-         case MATERIAL_ID:
-            vName = "Material_ID";
+         case PHASE:
+            vName = "Phase";
             break;
          case PH:
             vName = "PH";
+            break;
+         case MATERIAL_ID:
+            vName = "Material_ID";
             break;
          case TOTAL_MOLARITY:
             vName = "Total Molarity "+inxStr;
@@ -550,6 +583,7 @@ void samrregisterforviz_(SAMRAI::PflotranApplicationStrategy **application_strat
    }
 
 }
+#endif
 
 void 
 samrwriteplotdata_(SAMRAI::PflotranApplicationStrategy **application_strategy,

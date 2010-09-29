@@ -42,8 +42,8 @@ module Richards_Aux_module
     PetscInt :: n_zero_rows
     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
 
-    PetscTruth :: aux_vars_up_to_date
-    PetscTruth :: inactive_cells_exist
+    PetscBool :: aux_vars_up_to_date
+    PetscBool :: inactive_cells_exist
     PetscInt :: num_aux, num_aux_bc
     type(richards_parameter_type), pointer :: richards_parameter
     type(richards_auxvar_type), pointer :: aux_vars(:)

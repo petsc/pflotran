@@ -10,7 +10,7 @@ module HDF5_module
   
   PetscErrorCode :: ierr
 
-  PetscTruth, public :: trick_hdf5 = PETSC_FALSE
+  PetscBool, public :: trick_hdf5 = PETSC_FALSE
 
 #if defined(PETSC_HAVE_HDF5)
   PetscMPIInt :: hdf5_err
@@ -2395,7 +2395,7 @@ subroutine HDF5ReadCellIndexedIntegerArray(realization,global_vec,filename, &
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: group_name
   character(len=MAXSTRINGLENGTH) :: dataset_name
-  PetscTruth :: append_realization_id
+  PetscBool :: append_realization_id
 
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
@@ -2614,7 +2614,7 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
   character(len=MAXSTRINGLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: group_name
   character(len=MAXSTRINGLENGTH) :: dataset_name
-  PetscTruth :: append_realization_id
+  PetscBool :: append_realization_id
 
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid

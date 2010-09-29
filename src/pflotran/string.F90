@@ -25,7 +25,7 @@ contains
 ! date: 11/10/08
 !
 ! ************************************************************************** !
-PetscTruth function StringCompare(string1,string2,n)
+PetscBool function StringCompare(string1,string2,n)
 
   implicit none
 
@@ -51,7 +51,7 @@ end function StringCompare
 ! date: 11/10/08
 !
 ! ************************************************************************** !
-PetscTruth function StringCompareIgnoreCase(string1,string2,n)
+PetscBool function StringCompareIgnoreCase(string1,string2,n)
 
   implicit none
 
@@ -135,11 +135,11 @@ subroutine StringReadQuotedWord(string, name, return_blank_error, ierr)
   implicit none
 
   PetscInt :: i, begins, ends, realends, length
-  PetscTruth :: return_blank_error ! Return an error for a blank line
+  PetscBool :: return_blank_error ! Return an error for a blank line
                                 ! Therefore, a blank line is not acceptable.
   character(len=*) :: string
   character(len=*) :: name
-  PetscTruth :: openquotefound
+  PetscBool :: openquotefound
   PetscErrorCode :: ierr
 
   if (ierr /= 0) return
@@ -205,7 +205,7 @@ function StringStartsWithAlpha(string)
 
   character(len=*) :: string
 
-  PetscTruth :: StringStartsWithAlpha
+  PetscBool :: StringStartsWithAlpha
 
   string = adjustl(string)
 

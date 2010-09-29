@@ -12,8 +12,8 @@ module Velocity_module
   
   type, public :: velocity_dataset_type
     PetscInt :: rank
-    PetscTruth :: is_transient
-    PetscTruth :: is_cyclic
+    PetscBool :: is_transient
+    PetscBool :: is_cyclic
     PetscInt :: interpolation_method
     PetscReal, pointer :: times(:)
     PetscReal, pointer :: values(:,:)
@@ -176,8 +176,8 @@ subroutine VelocityDatasetReadValues(input,option,keyword,string,dataset,units)
   character(len=MAXSTRINGLENGTH) :: string2, filename
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXSTRINGLENGTH) :: error_string
-  PetscTruth :: read_from_file
-  PetscTruth :: read_multiple_values
+  PetscBool :: read_from_file
+  PetscBool :: read_multiple_values
   PetscInt :: irank
   PetscErrorCode :: ierr
 
@@ -404,7 +404,7 @@ subroutine VelocityDatasetUpdate(option,time,dataset)
   
   type(option_type) :: option
   PetscReal :: time
-  PetscTruth :: is_cyclic
+  PetscBool :: is_cyclic
   PetscInt :: interpolation_method
   type(velocity_dataset_type) :: dataset
   

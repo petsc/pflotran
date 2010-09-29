@@ -13,8 +13,8 @@ module Observation_module
     ! all added variables must be included in ObservationCreateFromObservation
     PetscInt :: id
     PetscInt :: itype
-    PetscTruth :: print_velocities
-    PetscTruth :: at_cell_center
+    PetscBool :: print_velocities
+    PetscBool :: at_cell_center
     character(len=MAXWORDLENGTH) :: name
     character(len=MAXWORDLENGTH) :: linkage_name
     type(connection_set_type), pointer :: connection_set

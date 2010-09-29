@@ -427,8 +427,8 @@ subroutine AMRGridCreateVector(amrgrid, dof, vector,vector_type, &
        PetscFortranAddr :: p_application
        PetscInt :: dof
        PetscInt :: centering
-       PetscTruth :: use_ghost
-       PetscTruth :: use_components
+       PetscBool :: use_ghost
+       PetscBool :: use_components
        Vec :: vec
        type(option_type) :: option
      end subroutine create_samrai_vec
@@ -438,11 +438,11 @@ subroutine AMRGridCreateVector(amrgrid, dof, vector,vector_type, &
   DM :: dm_ptr
   Vec :: vector
   PetscInt :: vector_type
-  PetscTruth :: use_components
+  PetscBool :: use_components
   type(option_type) :: option
   PetscErrorCode :: ierr
   PetscInt :: dof
-  PetscTruth:: use_ghost
+  PetscBool:: use_ghost
   PetscInt :: var_centering
 
   var_centering = option%ivar_centering

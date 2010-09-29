@@ -42,7 +42,7 @@ subroutine DatabaseRead(reaction,option)
   character(len=MAXWORDLENGTH) :: name
   character(len=MAXWORDLENGTH) :: null_name
   
-  PetscTruth :: flag, found
+  PetscBool :: flag, found
   PetscInt :: ispec, itemp, i
   PetscReal :: stoich
   PetscReal :: temp_real
@@ -700,8 +700,8 @@ subroutine BasisInit(reaction,option)
   character(len=MAXWORDLENGTH), allocatable :: sec_names(:)
   character(len=MAXWORDLENGTH), allocatable :: gas_names(:)
   PetscReal, allocatable :: logKvector_swapped(:,:)
-  PetscTruth, allocatable :: flags(:)
-  PetscTruth :: negative_flag
+  PetscBool, allocatable :: flags(:)
+  PetscBool :: negative_flag
   PetscReal :: value
   
   PetscInt :: ispec, itemp
@@ -721,8 +721,8 @@ subroutine BasisInit(reaction,option)
   PetscInt :: backward_count, max_backward_count
   PetscInt :: midpoint
   
-  PetscTruth :: compute_new_basis
-  PetscTruth :: found
+  PetscBool :: compute_new_basis
+  PetscBool :: found
   PetscErrorCode :: ierr
 
 ! get database temperature based on REFERENCE_TEMPERATURE
@@ -3313,7 +3313,7 @@ subroutine BasisInit(reaction,option)
   ! output for ASCEM reactions
   if (OptionPrintToFile(option)) then
     open(unit=86,file='reaction.dat')
-    write(86,'(2i)') reaction%naqcomp, reaction%neqcplx
+    write(86,'(10i)') reaction%naqcomp, reaction%neqcplx, reaction%ngeneral_rxn
     do i = 1, reaction%naqcomp
       write(86,'(a12,f6.2,f6.2)') reaction%primary_species_names(i), reaction%primary_spec_Z(i), &
         reaction%primary_spec_a0(i)
@@ -3326,6 +3326,17 @@ subroutine BasisInit(reaction,option)
       write(86,'(i)') reaction%eqcplxh2oid(i)
       write(86,'(f6.2)') reaction%eqcplxh2ostoich(i)
       write(86,'(f10.5)') reaction%eqcplx_logK(i)
+    enddo
+    do i = 1, reaction%ngeneral_rxn
+      write(86,'(40i4)') reaction%generalspecid(:,i)
+      write(86,'(40f6.2)') reaction%generalstoich(:,i)
+      write(86,'(40i4)') reaction%generalforwardspecid(:,i)
+      write(86,'(40f6.2)') reaction%generalforwardstoich(:,i)
+      write(86,'(40i4)') reaction%generalbackwardspecid(:,i)
+      write(86,'(40f6.2)') reaction%generalbackwardstoich(:,i)
+      write(86,'(f6.2)') reaction%generalh2ostoich(i)
+      write(86,'(1es13.5)') reaction%general_kf(i)
+      write(86,'(1es13.5)') reaction%general_kr(i)
     enddo
     close(86)
   endif
@@ -3433,7 +3444,7 @@ subroutine BasisAlignSpeciesInRxn(num_basis_species,basis_names, &
   PetscInt :: i_rxn_species
   PetscInt :: i_basis_species
   PetscReal :: stoich_new(num_basis_species)
-  PetscTruth :: found
+  PetscBool :: found
   
   stoich_new = 0.d0
   do i_rxn_species = 1, num_rxn_species
@@ -3503,7 +3514,7 @@ subroutine BasisSubSpeciesInGasOrSecRxn(name1,dbaserxn1,dbaserxn2)
   character(len=MAXWORDLENGTH) :: tempnames(20)
   PetscReal :: tempstoich(20)
   PetscReal :: scale
-  PetscTruth :: found
+  PetscBool :: found
 
   tempnames = ''
   tempstoich = 0.d0
@@ -3600,7 +3611,7 @@ subroutine BasisSubSpeciesInMineralRxn(name,dbaserxn,tstrxn)
   character(len=MAXWORDLENGTH) :: tempnames(20)
   PetscReal :: tempstoich(20)
   PetscReal :: scale
-  PetscTruth :: found
+  PetscBool :: found
 
   tempnames = ''
   tempstoich = 0.d0

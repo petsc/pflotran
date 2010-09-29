@@ -207,6 +207,7 @@ subroutine GridComputeInternalConnect(grid,option)
   type(option_type) :: option
   
   type(connection_set_type), pointer :: connection_set, connection_bound_set
+  nullify(connection_set); nullify(connection_bound_set)
   
   select case(grid%itype)
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
@@ -1146,7 +1147,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
   PetscReal, parameter :: pert = 1.d-8, tol = 1.d-20
   PetscReal :: x_shift, y_shift, z_shift
   PetscInt :: iflag
-  PetscTruth :: same_point
+  PetscBool :: same_point
   PetscErrorCode :: ierr
   
   iflag = 0

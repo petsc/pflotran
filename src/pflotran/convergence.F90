@@ -119,14 +119,14 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   PetscReal, pointer :: vec_ptr(:)
   
   character(len=MAXSTRINGLENGTH) :: string, string2, string3
-  PetscTruth :: print_sol_norm_info = PETSC_FALSE
-  PetscTruth :: print_upd_norm_info = PETSC_FALSE
-  PetscTruth :: print_res_norm_info = PETSC_FALSE
-  PetscTruth :: print_norm_by_dof_info = PETSC_FALSE
-  PetscTruth :: print_max_val_and_loc_info = PETSC_FALSE
-  PetscTruth :: print_1_norm_info = PETSC_FALSE
-  PetscTruth :: print_2_norm_info = PETSC_FALSE
-  PetscTruth :: print_inf_norm_info = PETSC_FALSE
+  PetscBool :: print_sol_norm_info = PETSC_FALSE
+  PetscBool :: print_upd_norm_info = PETSC_FALSE
+  PetscBool :: print_res_norm_info = PETSC_FALSE
+  PetscBool :: print_norm_by_dof_info = PETSC_FALSE
+  PetscBool :: print_max_val_and_loc_info = PETSC_FALSE
+  PetscBool :: print_1_norm_info = PETSC_FALSE
+  PetscBool :: print_2_norm_info = PETSC_FALSE
+  PetscBool :: print_inf_norm_info = PETSC_FALSE
 
 !typedef enum {/* converged */
 !              SNES_CONVERGED_FNORM_ABS         =  2, /* F < F_minabs */
