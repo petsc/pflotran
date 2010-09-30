@@ -1800,7 +1800,7 @@ subroutine InitReadInput(simulation)
               call InputReadWord(input,option,word,PETSC_TRUE)
               if (input%ierr == 0) then
                 call StringToUpper(word)
-                if (StringCompare(word,'UNTIL',TWO_INTEGER)) then
+                if (StringCompare(word,'AT',TWO_INTEGER)) then
                   call InputReadDouble(input,option,temp_real)
                   call InputErrorMsg(input,option,'Maximum Timestep Size Update Time','TIME') 
                   call InputReadWord(input,option,word,PETSC_TRUE)

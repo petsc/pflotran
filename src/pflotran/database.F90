@@ -675,6 +675,7 @@ subroutine BasisInit(reaction,option)
   type(ion_exchange_rxn_type), pointer :: cur_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cur_cation
   type(general_rxn_type), pointer :: cur_general_rxn
+  type(kd_rxn_type), pointer :: cur_kd_rxn
   type(colloid_type), pointer :: cur_colloid
   type(database_rxn_type), pointer :: dbaserxn
 
@@ -3157,6 +3158,53 @@ subroutine BasisInit(reaction,option)
               
   endif  
   
+  ! Kd reactions
+  
+  if (reaction%neqkdrxn > 0) then
+  
+    ! allocate arrays
+    allocate(reaction%eqkdspecid(reaction%neqkdrxn))
+    reaction%eqkdspecid = 0
+    allocate(reaction%eqkdtype(reaction%neqkdrxn))
+    reaction%eqkdtype = 0
+    allocate(reaction%eqkddistcoef(reaction%neqkdrxn))
+    reaction%eqkddistcoef = 0.d0
+    allocate(reaction%eqkdlangmuirb(reaction%neqkdrxn))
+    reaction%eqkdlangmuirb = 0.d0
+    allocate(reaction%eqkdfreundlichn(reaction%neqkdrxn))
+    reaction%eqkdfreundlichn = 0.d0
+
+    cur_kd_rxn => reaction%kd_rxn_list
+    irxn = 0
+    do  
+      if (.not.associated(cur_kd_rxn)) exit
+
+      irxn = irxn + 1
+
+      found = PETSC_FALSE
+      do i = 1, reaction%naqcomp
+        if (StringCompare(cur_kd_rxn%species_name, &
+                          reaction%primary_species_names(i), &
+                          MAXWORDLENGTH)) then
+          reaction%eqkdspecid(irxn) = i
+          found = PETSC_TRUE
+          exit      
+        endif
+      enddo
+      if (.not.found) then
+        option%io_buffer = 'Species ' // trim(word) // &
+                 ' in kd reaction' // &
+                 ' not found among primary species list.'
+        call printErrMsg(option)     
+      endif
+      reaction%eqkdtype(irxn) = cur_kd_rxn%itype
+      reaction%eqkddistcoef(irxn) = cur_kd_rxn%Kd
+      reaction%eqkdlangmuirb(irxn) = cur_kd_rxn%Langmuir_b
+      reaction%eqkdfreundlichn(irxn) = cur_kd_rxn%Freundlich_n
+       
+      cur_kd_rxn => cur_kd_rxn%next
+    enddo
+  endif
 
   call BasisPrint(reaction,'Final Basis',option)
 

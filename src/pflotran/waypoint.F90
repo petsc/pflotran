@@ -208,7 +208,7 @@ subroutine WaypointListFillIn(option,waypoint_list)
   waypoint => waypoint_list%first
   if (waypoint%dt_max < 1.d-40) waypoint%dt_max = dt_max
   
-  ! fill in the rest
+  ! fill in missing values
   do
     prev_waypoint => waypoint
     waypoint => waypoint%next
@@ -218,6 +218,25 @@ subroutine WaypointListFillIn(option,waypoint_list)
     endif
   enddo
   
+  ! IMPORTANT NOTE:  The dt_max must be assigned to the "next" waypoint.  The
+  ! "current" waypoint in the stepper is always the next waypoint .  Therefore
+  ! we must shift all the dt_max entries. 
+  waypoint => waypoint_list%last
+  ! work backwards
+  do
+    prev_waypoint => waypoint%prev
+    if (.not.associated(prev_waypoint)) exit 
+    waypoint%dt_max = prev_waypoint%dt_max
+    waypoint => prev_waypoint
+  enddo
+  
+  waypoint => waypoint_list%first
+  do
+    if (.not.associated(waypoint)) exit 
+    print *, waypoint%time/3600/24/365, waypoint%dt_max/3600/24/365
+    waypoint => waypoint%next
+  enddo
+
 end subroutine WaypointListFillIn 
 
 ! ************************************************************************** !

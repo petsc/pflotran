@@ -74,6 +74,7 @@ subroutine ReactionRead(reaction,input,option)
   type(ion_exchange_rxn_type), pointer :: ionx_rxn, prev_ionx_rxn
   type(ion_exchange_cation_type), pointer :: cation, prev_cation
   type(general_rxn_type), pointer :: general_rxn, prev_general_rxn
+  type(kd_rxn_type), pointer :: kd_rxn, prev_kd_rxn
   PetscInt :: i
   PetscReal :: tempreal
   PetscInt :: srfcplx_count
@@ -93,6 +94,7 @@ subroutine ReactionRead(reaction,input,option)
   nullify(prev_ionx_rxn)
   nullify(prev_cation)
   nullify(prev_general_rxn)
+  nullify(prev_kd_rxn)
   
   srfcplx_count = 0
   input%ierr = 0
@@ -199,6 +201,7 @@ subroutine ReactionRead(reaction,input,option)
               if (len_trim(general_rxn%reaction) < 2) input%ierr = 1
               call InputErrorMsg(input,option,'reaction','CHEMISTRY, &
                                  GENERAL_REACTION,REACTION') 
+! For now, the reactants are negative stoich, products positive in reaction equation - geh
 #if 0
             case('FORWARD_SPECIES')
               nullify(prev_species)
@@ -338,6 +341,73 @@ subroutine ReactionRead(reaction,input,option)
           call StringToUpper(word)   
 
           select case(trim(word))
+
+            case('KD_RXN','KD_RXNS')
+              do
+                call InputReadFlotranString(input,option)
+                if (InputError(input)) exit
+                if (InputCheckExit(input,option)) exit
+
+                kd_rxn => KDRxnCreate()
+                ! first string is species name
+                call InputReadWord(input,option,word,PETSC_TRUE)
+                call InputErrorMsg(input,option,'species name', &
+                                   'CHEMISTRY,KD_RXN')
+                kd_rxn%species_name = trim(word                )
+                do 
+                  call InputReadFlotranString(input,option)
+                  if (InputError(input)) exit
+                  if (InputCheckExit(input,option)) exit
+
+                  call InputReadWord(input,option,word,PETSC_TRUE)
+                  call InputErrorMsg(input,option,'keyword', &
+                                     'CHEMISTRY,KD_RXN')
+                  call StringToUpper(word)
+                  
+                  ! default type is linear
+                  kd_rxn%itype = SORPTION_LINEAR
+                  select case(trim(word))
+                    case('TYPE','SORPTION_TYPE')
+                      call InputReadWord(input,option,word,PETSC_TRUE)
+                      call InputErrorMsg(input,option,'type', &
+                                         'CHEMISTRY,KD_RXN')
+                      select case(word)
+                        case('LINEAR')
+                          kd_rxn%itype = SORPTION_LINEAR
+                        case('LANGMUIR')
+                          kd_rxn%itype = SORPTION_LANGMUIR
+                        case('FREUNDLICH')
+                          kd_rxn%itype = SORPTION_FREUNDLICH
+                      end select
+                    case('DISTRIBUTION_COEFFICIENT','KD')
+                      call InputReadDouble(input,option,kd_rxn%Kd)
+                      call InputErrorMsg(input,option,'Kd', &
+                                         'CHEMISTRY,KD_RXN')
+                    case('LANGMUIR_B')
+                      call InputReadDouble(input,option,kd_rxn%Langmuir_B)
+                      call InputErrorMsg(input,option,'Langmuir_B', &
+                                         'CHEMISTRY,KD_RXN')
+                      kd_rxn%itype = SORPTION_LANGMUIR
+                    case('FREUNDLICH_N')
+                      call InputReadDouble(input,option,kd_rxn%Freundlich_N)
+                      call InputErrorMsg(input,option,'Freundlich_N', &
+                                         'CHEMISTRY,KD_RXN')
+                      kd_rxn%itype = SORPTION_FREUNDLICH
+                  end select
+                enddo
+                ! add to list
+                if (.not.associated(reaction%kd_rxn_list)) then
+                  reaction%kd_rxn_list => kd_rxn
+                  kd_rxn%id = 1
+                endif
+                if (associated(prev_kd_rxn)) then
+                  prev_kd_rxn%next => kd_rxn
+                  kd_rxn%id = prev_kd_rxn%id + 1
+                endif
+                prev_kd_rxn => kd_rxn
+                nullify(kd_rxn)
+                
+              enddo
             
             case('SURFACE_COMPLEXATION_RXN')
 
@@ -352,7 +422,7 @@ subroutine ReactionRead(reaction,input,option)
 
                 call InputReadWord(input,option,word,PETSC_TRUE)
                 call InputErrorMsg(input,option,'keyword', &
-                  'CHEMISTRY,SURFACE_COMPLEXATION_RXN')
+                                   'CHEMISTRY,SURFACE_COMPLEXATION_RXN')
                 call StringToUpper(word)
                 
                 select case(trim(word))
@@ -605,8 +675,6 @@ subroutine ReactionRead(reaction,input,option)
               reaction%neqionxrxn = ionx_rxn%id
 
               nullify(ionx_rxn)          
-            case('DISTRIBUTION_COEF')
-          !   call DistributionCoefRead
             case('JUMPSTART_KINETIC_SORPTION')
               option%jumpstart_kinetic_sorption = PETSC_TRUE
               option%no_restart_kinetic_sorption = PETSC_TRUE
@@ -3302,6 +3370,70 @@ subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
   endif
   
 end subroutine RTotalSorb
+
+! ************************************************************************** !
+!
+! RTotalSorbEqSurfCplx: Computes the total sorbed component concentrations and 
+!                       derivative with respect to free-ion for the linear 
+!                       K_D model
+! author: Glenn Hammond
+! date: 09/30/2010
+!
+! ************************************************************************** !
+subroutine RTotalSorbKD(rt_auxvar,global_auxvar,reaction,option)
+
+  use Option_module
+
+  implicit none
+
+  type(reactive_transport_auxvar_type) :: rt_auxvar
+  type(global_auxvar_type) :: global_auxvar
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+  
+  PetscInt :: irxn
+  PetscInt :: icomp
+  PetscReal :: res
+  PetscReal :: dres_dc
+  PetscReal :: activity
+  PetscReal :: molality
+  PetscReal :: tempreal
+  PetscReal :: one_over_n
+  PetscReal :: activity_one_over_n
+  
+  ! Surface Complexation
+  do irxn = 1, reaction%neqkdrxn
+    icomp = reaction%eqkdspecid(irxn)
+    molality = rt_auxvar%pri_molal(icomp)
+    activity = molality*rt_auxvar%pri_act_coef(icomp)
+    select case(reaction%eqkdtype(irxn))
+      case(SORPTION_LINEAR)
+        ! Csorb = Kd*Caq
+        res = reaction%eqkddistcoef(irxn)*activity
+        dres_dc = res/molality
+      case(SORPTION_LANGMUIR)
+        ! Csorb = K*Caq*b/(1+K*Caq)
+        tempreal = reaction%eqkddistcoef(irxn)*activity
+        res = tempreal*reaction%eqkdlangmuirb(irxn) / (1.d0 + tempreal)
+        dres_dc = res/molality - &
+                  res / (1.d0 + tempreal) * tempreal / molality
+      case(SORPTION_FREUNDLICH)
+        ! Csorb = Kd*Caq**(1/n)
+        one_over_n = 1.d0/reaction%eqkdfreundlichn(irxn)
+        activity_one_over_n = activity**one_over_n
+        res = reaction%eqkddistcoef(irxn)* &
+                activity**one_over_n
+        dres_dc = res/molality*one_over_n
+      case default
+        res = 0.d0
+        dres_dc = 0.d0
+    end select
+    rt_auxvar%total_sorb_eq(icomp) = rt_auxvar%total_sorb_eq(icomp) + res
+    rt_auxvar%dtotal_sorb_eq(icomp,icomp) = &
+      rt_auxvar%dtotal_sorb_eq(icomp,icomp) + dres_dc 
+  enddo
+
+end subroutine RTotalSorbKD
 
 ! ************************************************************************** !
 !
