@@ -339,8 +339,15 @@ subroutine Init(simulation)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              THCJacobian,realization,ierr)
       case(RICHARDS_MODE)
-        call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
+
+        if(realization%discretization%itype == STRUCTURED_GRID) then
+            call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              RichardsJacobian,realization,ierr)
+        else if(realization%discretization%itype == STRUCTURED_GRID_MIMETIC) then
+            call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
+                             RichardsJacobianMFD,realization,ierr)
+        end if
+
       case(MPH_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              MPHASEJacobian,realization,ierr)

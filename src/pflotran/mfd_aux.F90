@@ -17,6 +17,7 @@ module MFD_Aux_module
     PetscInt :: numfaces
     PetscInt, pointer :: face_id_gh(:)
     PetscScalar, pointer :: MassMatrixInv(:,:)
+    PetscScalar, pointer :: StiffMatrix(:,:)
   end type mfd_auxvar_type
   
   type, public :: mfd_type
@@ -84,6 +85,10 @@ function MFDAuxCreate()
   
 end function MFDAuxCreate
 
+
+
+
+
 ! ************************************************************************** !
 !
 ! MFDAuxInit: Initialize auxilliary object
@@ -98,11 +103,17 @@ subroutine MFDAuxInit(aux, num_aux, option)
   implicit none
   
   type(mfd_type) :: aux
-  PetscInt :: num_aux
+  PetscInt :: num_aux, i
   type(option_type) :: option
 
   if (associated(aux%aux_vars)) deallocate(aux%aux_vars)
   allocate(aux%aux_vars(num_aux))
+
+  do i=1,num_aux
+    nullify(aux%aux_vars(i)%face_id_gh)
+    nullify(aux%aux_vars(i)%MassMatrixInv)
+    nullify(aux%aux_vars(i)%StiffMatrix)
+  end do
 
 
   
@@ -196,6 +207,9 @@ subroutine MFDAuxVarDestroy(aux_var)
   if (associated(aux_var%MassMatrixInv)) deallocate(aux_var%MassMatrixInv)
   nullify(aux_var%MassMatrixInv)
 
+  if (associated(aux_var%StiffMatrix)) deallocate(aux_var%StiffMatrix)
+  nullify(aux_var%StiffMatrix)
+
   
 
 end subroutine MFDAuxVarDestroy
@@ -264,6 +278,7 @@ subroutine MFDAuxGenerateMassMatrixInv(aux_var, volume, PermTensor, option)
 
 
   allocate(aux_var%MassMatrixInv(aux_var%numfaces, aux_var%numfaces))
+  allocate(aux_var%StiffMatrix(aux_var%numfaces, aux_var%numfaces))
 
   aux_var%MassMatrixInv = 0.
 

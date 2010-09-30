@@ -143,6 +143,7 @@ function GridCreate()
   nullify(grid%unstructured_grid)
 
   nullify(grid%internal_connection_set_list)
+  nullify(grid%boundary_connection_set_list)
 
   nullify(grid%nL2G)
   nullify(grid%nG2L)
@@ -389,8 +390,11 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
   MFD_aux => MFDAuxCreate()
   grid%MFD => MFD_aux
  
-  
+#ifdef DASVYAT
+   write(*,*) "grid%nlmax" , grid%nlmax
+#endif
   call MFDAuxInit(MFD_aux, grid%nlmax, option)
+   write(*,*) "AFTER MFDAuxInit"
   allocate(numfaces(grid%nlmax))
 
   numfaces = 6
@@ -426,8 +430,10 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
 !  end do
 
   do icell = 1, grid%nlmax
+    write(*,*) "icell", icell
     aux_var => MFD_aux%aux_vars(icell)
     call MFDAuxVarInit(aux_var, numfaces(icell), option)
+   write(*,*) "AFTER MFDAuxVarInit"
   end do
 
 
@@ -444,7 +450,7 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
         if (local_id_dn>0) then
            aux_var => MFD_aux%aux_vars(local_id_dn)
            call MFDAuxAddFace(aux_var,option, icount)
-    
+           write(*,*) icount, conn%itype
            grid%fG2L(icount)=local_id
            grid%fL2G(local_id) = icount
            local_id = local_id + 1
@@ -468,12 +474,15 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
         if (local_id_dn>0) then
            aux_var => MFD_aux%aux_vars(local_id_dn)
            call MFDAuxAddFace(aux_var,option, icount)
+           write(*,*) icount, conn%itype
         end if
         if (local_id_up>0) then
            aux_var => MFD_aux%aux_vars(local_id_up)
            call MFDAuxAddFace(aux_var,option, icount)
+           write(*,*) icount, conn%itype
         end if
     end if
+    
   end do
 
  
@@ -484,7 +493,7 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
 !    write(9,*) option%myrank, "+++++++++++++++", (aux_var%face_id_gh(icount),icount=1,6)
 !  end do
   
-  deallocate(numfaces)
+  if (associated(numfaces)) deallocate(numfaces)
 
 end subroutine GridComputeCell2FaceConnectivity
 

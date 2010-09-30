@@ -2646,8 +2646,8 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
     endif
 
                          ! derivative
-    call RReaction(residual,J,PETSC_TRUE,rt_auxvar,global_auxvar,porosity, &
-                   volume,reaction,option)
+    call RReaction(residual,J,PETSC_TRUE,rt_auxvar,global_auxvar, porosity, volume, &
+                   reaction,option)
     
     call RSolve(residual,J,rt_auxvar%pri_molal,update,reaction%ncomp)
     

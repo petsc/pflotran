@@ -291,6 +291,9 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
      ani_n = 25
      ani_coef  =  fs/((global_aux_var%sat(1)**ani_n) * (fs -1) + 1)
      aux_var%kvr_z = aux_var%kvr_z * ani_coef
+!    write(*,*) global_aux_var%sat(1), ani_coef
+!    end do
+!    stop
   end if
     
 !  aux_var%vis = visl
