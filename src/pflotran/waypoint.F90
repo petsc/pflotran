@@ -233,7 +233,6 @@ subroutine WaypointListFillIn(option,waypoint_list)
   waypoint => waypoint_list%first
   do
     if (.not.associated(waypoint)) exit 
-    print *, waypoint%time/3600/24/365, waypoint%dt_max/3600/24/365
     waypoint => waypoint%next
   enddo
 
