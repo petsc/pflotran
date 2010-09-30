@@ -698,9 +698,11 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
       call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
       call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
     case(STRUCTURED_GRID_MIMETIC)
+#ifdef DASVYAT
       call MFDCreateJacobian(discretization%grid, discretization%MFD, mat_type, Jacobian, option)
       call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
       call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
+#endif
     case(AMR_GRID)
        select case(dm_index)
        case(ONEDOF)

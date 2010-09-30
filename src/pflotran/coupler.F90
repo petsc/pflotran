@@ -403,6 +403,7 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
   type(option_type) :: option
   type(coupler_type), pointer :: coupler
   
+#ifdef DASVYAT
   PetscInt :: iconn, reg_numconn
   PetscInt :: cell_id_local, cell_id_ghosted, face_id_ghosted
   PetscInt :: face_id_local
@@ -410,10 +411,12 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
   PetscInt :: iface, icell
   type(connection_set_type), pointer :: connection_set
   type(region_type), pointer :: region
+
   type(mfd_type), pointer :: mfd_aux
+  type(mfd_auxvar_type), pointer :: aux_var
+
   PetscErrorCode :: ierr
   PetscInt, pointer :: local_faces(:)
-  type(mfd_auxvar_type), pointer :: aux_var
   PetscInt :: conn_id, stride, iface_type
   type(connection_set_type), pointer :: conn_set_ptr
   PetscBool :: bnd_face
@@ -500,7 +503,7 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
     do iface = 1,aux_var%numfaces
       face_id_ghosted = aux_var%face_id_gh(iface)
       face_id_local = grid%fG2L(face_id_ghosted)
-	
+
       if (coupler%itype == BOUNDARY_COUPLER_TYPE) then
         conn_set_ptr => grid%faces(face_id_ghosted)%conn_set_ptr
         conn_id = grid%faces(face_id_ghosted)%id
@@ -588,6 +591,7 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
 
   deallocate(local_faces)
 
+#endif
   
 !  nullify(connection_set)
 
@@ -616,6 +620,8 @@ subroutine CouplerAssignBCtoCells(grid,option,coupler)
   type(grid_type) :: grid
   type(option_type) :: option
   type(coupler_type), pointer :: coupler
+
+#ifdef DASVYAT
   
   PetscInt :: iconn, reg_numconn
   PetscInt :: cell_id_local, cell_id_ghosted, face_id_ghosted
@@ -679,6 +685,8 @@ subroutine CouplerAssignBCtoCells(grid,option,coupler)
   end do
 
   if (e2n_size > 0) call VecRestoreArrayF90(grid%e2n, e2n_local, ierr)
+
+#endif 
 
 !  stop
 

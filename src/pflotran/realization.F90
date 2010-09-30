@@ -382,7 +382,7 @@ subroutine RealizationCreateDiscretization(realization)
   end select 
  
   ! Vectors with face degrees of freedom
-
+#ifdef DASVYAT
    if (discretization%itype==STRUCTURED_GRID_MIMETIC) then
 
      if (option%nflowdof > 0) then
@@ -427,7 +427,7 @@ subroutine RealizationCreateDiscretization(realization)
      call GridComputeGlobalCell2FaceConnectivity(grid, discretization%MFD, NFLOWDOF, option)
   
    end if
-
+#endif
  
   ! initialize to -999.d0 for check later that verifies all values 
   ! have been set
@@ -1170,7 +1170,9 @@ subroutine RealizAssignFlowInitCond(realization)
   use Condition_module
   use Grid_module
   use Patch_module
+#ifdef DASVYAT
   use MFD_module, only :MFDInitializeMassMatrices
+#endif
   
   implicit none
 
@@ -1233,6 +1235,7 @@ subroutine RealizAssignFlowInitCond(realization)
         if (.not.associated(initial_condition)) exit
 
         if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
+#ifdef DASVYAT
            if (.not.associated(initial_condition%flow_aux_real_var)) then
              do icell=1,initial_condition%region%num_cells
                local_id = initial_condition%region%cell_ids(icell)
@@ -1269,6 +1272,7 @@ subroutine RealizAssignFlowInitCond(realization)
              end do
            
            end if
+#endif
         else 
            if (.not.associated(initial_condition%flow_aux_real_var)) then
           if (.not.associated(initial_condition%flow_condition)) then
@@ -1329,6 +1333,7 @@ subroutine RealizAssignFlowInitCond(realization)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)  
   call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_old_loc,ONEDOF)
 
+#ifdef DASVYAT
   if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
    call DiscretizationGlobalToLocalFaces(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
    call MFDInitializeMassMatrices(realization%discretization%grid,&
@@ -1338,8 +1343,7 @@ subroutine RealizAssignFlowInitCond(realization)
                                       realization%field%perm_zz_loc, &
                                       realization%discretization%MFD, realization%option)
   end if
-
-  write(*,*) "EXIT RealizAssignFlowInitCond" 
+#endif
 !  stop 
 end subroutine RealizAssignFlowInitCond
 
@@ -1542,7 +1546,6 @@ subroutine RealizAssignTransportInitCond(realization)
                                    field%tran_xx_loc,NTRANDOF)  
   call VecCopy(field%tran_xx, field%tran_yy, ierr)
 
-  write(*,*) "EXIT RealizAssignTransportInitCond"
 
 end subroutine RealizAssignTransportInitCond
 
@@ -2287,6 +2290,7 @@ subroutine RealizationSetUpBC4Faces(realization)
 
   type(realization_type) :: realization
 
+#ifdef DASVYAT
 
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
@@ -2339,13 +2343,9 @@ subroutine RealizationSetUpBC4Faces(realization)
     boundary_condition => boundary_condition%next
   end do
 
-  do j=1,grid%ngmax_faces
-    write(*,*) "bc_faces_p ",j,  bc_faces_p(j)
-  end do 
 
   call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
-
-  write(*,*) "Exit RealizationSetUpBC4Faces"
+#endif
 
 end subroutine RealizationSetUpBC4Faces
 

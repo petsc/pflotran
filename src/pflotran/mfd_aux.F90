@@ -16,8 +16,8 @@ module MFD_Aux_module
   type, public :: mfd_auxvar_type
     PetscInt :: numfaces
     PetscInt, pointer :: face_id_gh(:)
-    PetscScalar, pointer :: MassMatrixInv(:,:)
-    PetscScalar, pointer :: StiffMatrix(:,:)
+    PetscReal, pointer :: MassMatrixInv(:,:)
+    PetscReal, pointer :: StiffMatrix(:,:)
   end type mfd_auxvar_type
   
   type, public :: mfd_type
@@ -40,7 +40,8 @@ module MFD_Aux_module
 
   public :: MFDAuxCreate, MFDAuxDestroy, &
             MFDAuxInit, MFDAuxVarInit, MFDAuxAddFace, & 
-            MFDAuxVarDestroy, MFDAuxGenerateMassMatrixInv 
+            MFDAuxVarDestroy, MFDAuxGenerateMassMatrixInv, &
+            MFDAuxInitStiffMatrix 
 
 contains
 
@@ -278,7 +279,6 @@ subroutine MFDAuxGenerateMassMatrixInv(aux_var, volume, PermTensor, option)
 
 
   allocate(aux_var%MassMatrixInv(aux_var%numfaces, aux_var%numfaces))
-  allocate(aux_var%StiffMatrix(aux_var%numfaces, aux_var%numfaces))
 
   aux_var%MassMatrixInv = 0.
 
@@ -287,6 +287,23 @@ subroutine MFDAuxGenerateMassMatrixInv(aux_var, volume, PermTensor, option)
   end do 
 
 end subroutine MFDAuxGenerateMassMatrixInv
+
+
+subroutine MFDAuxInitStiffMatrix(aux_var, option)
+
+   use Option_module
+
+  implicit none
+
+
+  type(mfd_auxvar_type), pointer :: aux_var
+  type(option_type) :: option
+
+  allocate(aux_var%StiffMatrix(aux_var%numfaces, aux_var%numfaces))
+
+  aux_var%StiffMatrix = 0.
+
+end subroutine MFDAuxInitStiffMatrix
 
 
 

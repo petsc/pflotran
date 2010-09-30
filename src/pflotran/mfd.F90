@@ -18,7 +18,7 @@ module MFD_module
 #include "finclude/petscviewer.h"
 #include "finclude/petsclog.h"
 
-
+#ifdef DASVYAT
 
   public :: MFDCreateJacobian, &
             MFDInitializeMassMatrices, MFDAuxGenerateStiffMatrix,&
@@ -112,6 +112,11 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
                              PETSC_NULL_INTEGER,o_nnz,J,ierr)
         call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_faces,ierr)
         call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_faces,ierr)
+
+#ifdef DASVYAT
+        write(*,*) "JACOBIAN CREATED", ierr
+#endif
+
       case(MATBAIJ)
         call MatCreateMPIBAIJ(option%mycomm,mfd_aux%ndof,ndof_local,ndof_local, &
                              PETSC_DETERMINE,PETSC_DETERMINE, &
@@ -119,6 +124,9 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
                              PETSC_NULL_INTEGER,o_nnz,J,ierr)
         call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_faces,ierr)
         call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_faces,ierr)
+#ifdef DASVYAT
+        write(*,*) "JACOBIAN CREATED", ierr
+#endif
       case default
         option%io_buffer = 'MatType not recognized in MFDCreateJacobian'
         call printErrMsg(option)
@@ -129,9 +137,19 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
         d_nnz = d_nnz*mfd_aux%ndof
         call MatCreateSeqAIJ(option%mycomm,ndof_local,ndof_local, &
                              PETSC_NULL_INTEGER,d_nnz,J,ierr)
+        call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_faces,ierr)
+        call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_faces,ierr)
+#ifdef DASVYAT
+        write(*,*) "JACOBIAN CREATED"
+#endif
       case(MATBAIJ)
         call MatCreateSeqBAIJ(option%mycomm,mfd_aux%ndof,ndof_local,ndof_local, &
                              PETSC_NULL_INTEGER,d_nnz,J,ierr)
+        call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_faces,ierr)
+        call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_faces,ierr)
+#ifdef DASVYAT
+        write(*,*) "JACOBIAN CREATED", ierr
+#endif
       case default
         option%io_buffer = 'MatType not recognized in MFDCreateJacobian'
         call printErrMsg(option)
@@ -198,6 +216,7 @@ subroutine MFDInitializeMassMatrices(grid, volume,  perm_xx_loc, &
 
     aux_var => mfd_aux%aux_vars(icell)
     call MFDAuxGenerateMassMatrixInv(aux_var, volume_p(icell), PermTensor, option)
+    call MFDAuxInitStiffMatrix(aux_var, option)
   end do
 
   call VecRestoreArrayF90(volume, volume_p, ierr)
@@ -560,5 +579,7 @@ subroutine MFDComputeDensity(global_aux_var, face_pr, option)
   
 
 end subroutine MFDComputeDensity
+
+#endif
 
 end module MFD_module

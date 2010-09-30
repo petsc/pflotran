@@ -64,9 +64,13 @@ module Grid_module
     ! nG2L :  not collective, local processor:  ghosted local => local  
     ! nG2A :  collective,  ghosted local => global index , used for   
     !                      matsetvaluesblocked ( not matsetvaluesblockedlocal)  
+#ifdef DASVYAT
+
     PetscInt, pointer :: fL2G(:), fG2L(:), fG2P(:), fL2P(:)
     Vec :: e2f     ! global vector to establish connection between global face_id and cell_id
     Vec :: e2n     ! global cell connectivity vector
+
+#endif
     
     PetscReal, pointer :: x(:), y(:), z(:) ! coordinates of ghosted grid cells
 
@@ -80,9 +84,11 @@ module Grid_module
     type(unstructured_grid_type), pointer :: unstructured_grid
     
     type(connection_set_list_type), pointer :: internal_connection_set_list
+#ifdef DASVYAT
     type(connection_set_list_type), pointer :: boundary_connection_set_list
     type(face_type), pointer :: faces(:)
     type(mfd_type), pointer :: MFD
+#endif
 
   end type grid_type
 
@@ -143,7 +149,9 @@ function GridCreate()
   nullify(grid%unstructured_grid)
 
   nullify(grid%internal_connection_set_list)
+#ifdef DASVYAT
   nullify(grid%boundary_connection_set_list)
+#endif
 
   nullify(grid%nL2G)
   nullify(grid%nG2L)
@@ -151,10 +159,12 @@ function GridCreate()
   nullify(grid%nG2A)
   nullify(grid%nG2P)
 
+#ifdef DASVYAT
   nullify(grid%fL2G)
   nullify(grid%fG2L)
   nullify(grid%fG2P)
   nullify(grid%fL2P)
+#endif
 
   nullify(grid%x)
   nullify(grid%y)
@@ -177,9 +187,11 @@ function GridCreate()
   grid%nmax = 0
   grid%nlmax = 0 
   grid%ngmax = 0
-  
+
+#ifdef DASVYAT  
   nullify(grid%faces)
   nullify(grid%MFD)
+#endif
 
   nullify(grid%hash)
   grid%num_hash_bins = 1000
@@ -229,21 +241,23 @@ subroutine GridComputeInternalConnect(grid,option)
   select case(grid%itype)
     case(STRUCTURED_GRID_MIMETIC)
 !    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+#ifdef DASVYAT
       connection_bound_set => &
         StructGridComputeBoundConnect(grid%structured_grid, grid%x, grid%y, grid%z, option)
         grid%nlmax_faces = grid%structured_grid%nlmax_faces;
         grid%ngmax_faces = grid%structured_grid%ngmax_faces;
+#endif
     case(UNSTRUCTURED_GRID) 
 !      connection_bound_set => &
 !        UGridComputeBoundConnect(grid%unstructured_grid,option)
   end select
-  
+
+#ifdef DASVYAT  
   if (associated(connection_bound_set)) then
     allocate(grid%boundary_connection_set_list)
     call ConnectionInitList(grid%boundary_connection_set_list)
     call ConnectionAddToList(connection_bound_set,grid%boundary_connection_set_list)
   end if
-
 !  if ((grid%itype==STRUCTURED_GRID).or.(grid%itype==STRUCTURED_GRID_MIMETIC)) then
   if ((grid%itype==STRUCTURED_GRID_MIMETIC)) then
     allocate(grid%fL2G(grid%nlmax_faces))
@@ -253,6 +267,7 @@ subroutine GridComputeInternalConnect(grid,option)
     grid%fG2L = 0
     call GridPopulateFaces(grid, option)
   end if
+#endif
 
 end subroutine GridComputeInternalConnect
 
@@ -308,6 +323,7 @@ subroutine GridPopulateFaces(grid, option)
    type(grid_type) :: grid
    type(option_type) :: option
 
+#ifdef DASVYAT
    PetscInt :: total_faces, face_id, iconn
    type(connection_set_type), pointer :: cur_connection_set
    type(connection_set_list_type), pointer :: connection_set_list
@@ -357,10 +373,11 @@ subroutine GridPopulateFaces(grid, option)
    grid%faces => faces
 
 !   Close(UNIT=9)
-
+#endif
 end subroutine GridPopulateFaces 
 
 subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
+
 
   use MFD_Aux_module
   use Option_module
@@ -373,6 +390,8 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
 
 !  type(auxilliary_type) :: aux
   type(option_type) :: option
+
+#ifdef DASVYAT
 
   type(mfd_auxvar_type), pointer :: aux_var
   type(connection_set_type), pointer :: conn
@@ -495,10 +514,13 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
   
   if (associated(numfaces)) deallocate(numfaces)
 
+#endif
+
 end subroutine GridComputeCell2FaceConnectivity
 
 
 subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, DOF, option)
+
 
     use MFD_Aux_module
     use Option_module
@@ -520,6 +542,7 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, DOF, option)
     PetscInt :: DOF
     type(option_type) :: option
 
+#ifdef DASVYAT
     Vec :: e2f_local
     Vec :: e2n_local
     Vec :: ghosted_e2f
@@ -955,9 +978,9 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, DOF, option)
     deallocate(strided_indices_ghosted)
 
 
+#endif
 
 end subroutine GridComputeGlobalCell2FaceConnectivity
-
 
 ! ************************************************************************** !
 !
@@ -969,7 +992,19 @@ end subroutine GridComputeGlobalCell2FaceConnectivity
 ! ************************************************************************** !
 subroutine GridMapIndices(grid, sgdm)
 
+
   implicit none
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+#include "finclude/petscmat.h"
+#include "finclude/petscmat.h90"
+#include "finclude/petscda.h"
+#include "finclude/petscda.h90"
+#include "finclude/petscis.h"
+#include "finclude/petscis.h90"
+#include "finclude/petscviewer.h"
+
+
   
   type(grid_type) :: grid
   DA :: sgdm
@@ -982,7 +1017,7 @@ subroutine GridMapIndices(grid, sgdm)
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       call StructuredGridMapIndices(grid%structured_grid,grid%nG2L,grid%nL2G, &
                                     grid%nL2A,grid%nG2A)
-
+#ifdef DASVYAT
       if ((grid%itype==STRUCTURED_GRID_MIMETIC)) then
          allocate(grid%nG2P(grid%ngmax))
          allocate(int_tmp(grid%ngmax))
@@ -993,6 +1028,7 @@ subroutine GridMapIndices(grid, sgdm)
          end do
         deallocate(int_tmp)
       end if
+#endif
     case(UNSTRUCTURED_GRID)
   end select
  
@@ -1786,10 +1822,13 @@ subroutine GridDestroyHashTable(grid)
   type(grid_type), pointer :: grid
   
   if (associated(grid%hash)) deallocate(grid%hash)
+  
+#ifdef DASVYAT
   if (associated(grid%faces)) deallocate(grid%faces)
+  nullify(grid%faces)
+#endif
 
   nullify(grid%hash)
-  nullify(grid%faces)
   grid%num_hash_bins = 100
 
 end subroutine GridDestroyHashTable
@@ -1847,6 +1886,7 @@ subroutine GridDestroy(grid)
   if (associated(grid%nG2P)) deallocate(grid%nG2P)
   nullify(grid%nG2P)
 
+#ifdef DASVYAT
   if (associated(grid%fL2G)) deallocate(grid%fL2G)
   nullify(grid%fL2G)
   if (associated(grid%fG2L)) deallocate(grid%fG2L)
@@ -1855,6 +1895,7 @@ subroutine GridDestroy(grid)
   nullify(grid%fG2P)
   if (associated(grid%fL2P)) deallocate(grid%fL2P)
   nullify(grid%fL2P)
+#endif
 
   if (associated(grid%x)) deallocate(grid%x)
   nullify(grid%x)
