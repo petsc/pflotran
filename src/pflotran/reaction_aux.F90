@@ -133,6 +133,16 @@ module Reaction_Aux_module
     type (surface_complexation_rxn_type), pointer :: next
   end type surface_complexation_rxn_type    
 
+  type, public :: kd_rxn_type
+    PetscInt :: id
+    PetscInt :: itype
+    character(len=MAXWORDLENGTH) :: species_name
+    PetscReal :: Kd
+    PetscReal :: Langmuir_B
+    PetscReal :: Freundlich_n
+    type (kd_rxn_type), pointer :: next
+  end type kd_rxn_type    
+
   type, public :: general_rxn_type
     PetscInt :: id
     character(len=MAXSTRINGLENGTH) :: reaction
@@ -205,6 +215,7 @@ module Reaction_Aux_module
     type(ion_exchange_rxn_type), pointer :: ion_exchange_rxn_list
     type(surface_complexation_rxn_type), pointer :: surface_complexation_rxn_list
     type(general_rxn_type), pointer :: general_rxn_list
+    type(kd_rxn_type), pointer :: kd_rxn_list
     PetscInt :: act_coef_update_frequency
     PetscInt :: act_coef_update_algorithm
     PetscBool :: checkpoint_activity_coefs
@@ -397,6 +408,14 @@ module Reaction_Aux_module
     PetscReal, pointer :: general_kf(:)
     PetscReal, pointer :: general_kr(:)  
     
+    ! kd rxn
+    PetscInt :: neqkdrxn
+    PetscInt, pointer :: eqkdspecid(:)
+    PetscInt, pointer :: eqkdtype(:)
+    PetscReal, pointer :: eqkddistcoef(:)
+    PetscReal, pointer :: eqkdlangmuirb(:)
+    PetscReal, pointer :: eqkdfreundlichn(:)
+    
     PetscReal :: max_dlnC
     PetscReal :: reaction_tolerance
 
@@ -438,6 +457,8 @@ module Reaction_Aux_module
             SurfaceComplexConstraintDestroy, &
             GeneralRxnCreate, &
             GeneralRxnDestroy, &
+            KDRxnCreate, &
+            KDRxnDestroy, &
             ColloidCreate, &
             ColloidDestroy, &
             ColloidConstraintCreate, &
@@ -503,6 +524,7 @@ function ReactionCreate()
   nullify(reaction%ion_exchange_rxn_list)
   nullify(reaction%surface_complexation_rxn_list)
   nullify(reaction%general_rxn_list)
+  nullify(reaction%kd_rxn_list)
   
   nullify(reaction%primary_species_names)
   nullify(reaction%secondary_species_names)
@@ -670,6 +692,13 @@ function ReactionCreate()
   nullify(reaction%generalh2ostoich)
   nullify(reaction%general_kf)
   nullify(reaction%general_kr)
+
+  reaction%neqkdrxn = 0
+  nullify(reaction%eqkdspecid)
+  nullify(reaction%eqkdtype)
+  nullify(reaction%eqkddistcoef)
+  nullify(reaction%eqkdlangmuirb)
+  nullify(reaction%eqkdfreundlichn)
       
   reaction%max_dlnC = 5.d0
   reaction%reaction_tolerance = 1.d-12
@@ -1040,6 +1069,34 @@ function GeneralRxnCreate()
   GeneralRxnCreate => rxn
   
 end function GeneralRxnCreate
+
+! ************************************************************************** !
+!
+! KDRxnCreate: Allocate and initialize a KD sorption reaction
+! author: Glenn Hammond
+! date: 09/32/10
+!
+! ************************************************************************** !
+function KDRxnCreate()
+
+  implicit none
+    
+  type(kd_rxn_type), pointer :: KDRxnCreate
+
+  type(kd_rxn_type), pointer :: rxn
+  
+  allocate(rxn)
+  rxn%id = 0
+  rxn%itype = 0
+  rxn%species_name = ''
+  rxn%Kd = 0.d0
+  rxn%Langmuir_B = 0.d0
+  rxn%Freundlich_n = 0.d0
+  nullify(rxn%next)
+  
+  KDRxnCreate => rxn
+  
+end function KDRxnCreate
 
 ! ************************************************************************** !
 !
@@ -1916,6 +1973,26 @@ end subroutine GeneralRxnDestroy
 
 ! ************************************************************************** !
 !
+! KDRxnDestroy: Deallocates a KD reaction
+! author: Glenn Hammond
+! date: 09/30/10
+!
+! ************************************************************************** !
+subroutine KDRxnDestroy(rxn)
+
+  implicit none
+    
+  type(kd_rxn_type), pointer :: rxn
+
+  if (.not.associated(rxn)) return
+  
+  deallocate(rxn)  
+  nullify(rxn)
+
+end subroutine KDRxnDestroy
+
+! ************************************************************************** !
+!
 ! AqueousSpeciesConstraintDestroy: Destroys an aqueous species constraint 
 !                                  object
 ! author: Glenn Hammond
@@ -2083,6 +2160,7 @@ subroutine ReactionDestroy(reaction)
   type(ion_exchange_rxn_type), pointer :: ionxrxn, prev_ionxrxn
   type(surface_complexation_rxn_type), pointer :: srfcplxrxn, prev_srfcplxrxn
   type(general_rxn_type), pointer :: general_rxn, prev_general_rxn
+  type(kd_rxn_type), pointer :: kd_rxn, prev_kd_rxn
 
   if (.not.associated(reaction)) return
   
@@ -2158,6 +2236,16 @@ subroutine ReactionDestroy(reaction)
     call GeneralRxnDestroy(prev_general_rxn)
   enddo    
   nullify(reaction%surface_complexation_rxn_list)
+  
+  ! kd reactions
+  kd_rxn => reaction%kd_rxn_list
+  do
+    if (.not.associated(kd_rxn)) exit
+    prev_kd_rxn => kd_rxn
+    kd_rxn => kd_rxn%next
+    call KDRxnDestroy(prev_kd_rxn)
+  enddo    
+  nullify(reaction%kd_rxn_list)
   
   if (associated(reaction%primary_species_names)) &
     deallocate(reaction%primary_species_names)
@@ -2541,6 +2629,25 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%general_kr)) &
     deallocate(reaction%general_kr)
   nullify(reaction%general_kr)
+  
+  if (associated(reaction%eqkdspecid)) &
+    deallocate(reaction%eqkdspecid)
+  nullify(reaction%eqkdspecid)
+  if (associated(reaction%eqkdtype)) &
+    deallocate(reaction%eqkdtype)
+  nullify(reaction%eqkdtype)
+  if (associated(reaction%eqkdspecid)) &
+    deallocate(reaction%eqkdspecid)
+  nullify(reaction%eqkdspecid)
+  if (associated(reaction%eqkddistcoef)) &
+    deallocate(reaction%eqkddistcoef)
+  nullify(reaction%eqkddistcoef)
+  if (associated(reaction%eqkdlangmuirb)) &
+    deallocate(reaction%eqkdlangmuirb)
+  nullify(reaction%eqkdlangmuirb)
+  if (associated(reaction%eqkdfreundlichn)) &
+    deallocate(reaction%eqkdfreundlichn)
+  nullify(reaction%eqkdfreundlichn)
   
   deallocate(reaction)
   nullify(reaction)
