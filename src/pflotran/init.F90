@@ -1141,6 +1141,17 @@ subroutine InitReadInput(simulation)
                 call InputReadWord(input,option,word,PETSC_TRUE)
                 call InputErrorMsg(input,option,'SORPTION','CHEMISTRY') 
                 select case(trim(word))
+                  case('KD_REACTION','KD_REACTIONS')
+                    do
+                      call InputReadFlotranString(input,option)
+                      call InputReadStringErrorMsg(input,option,card)
+                      if (InputCheckExit(input,option)) exit
+                      call InputReadWord(input,option,word,PETSC_TRUE)
+                      call InputErrorMsg(input,option,word, &
+                                         'CHEMISTRY,SORPTION,KD_REACTION') 
+                      ! skip over remaining cards to end of each kd entry
+                      call InputSkipToEnd(input,option,word)
+                    enddo
                   case('SURFACE_COMPLEXATION_RXN','ION_EXCHANGE_RXN')
                     do
                       call InputReadFlotranString(input,option)
@@ -1164,7 +1175,6 @@ subroutine InitReadInput(simulation)
                           enddo
                       end select 
                     enddo
-                  case('DISTRIBUTION_COEF')
                   case('JUMPSTART_KINETIC_SORPTION')
                   case('NO_CHECKPOINT_KINETIC_SORPTION')
                   case('NO_RESTART_KINETIC_SORPTION')

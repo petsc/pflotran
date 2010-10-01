@@ -342,11 +342,13 @@ subroutine ReactionRead(reaction,input,option)
 
           select case(trim(word))
 
-            case('KD_RXN','KD_RXNS')
+            case('KD_REACTION','KD_REACTIONS')
               do
                 call InputReadFlotranString(input,option)
                 if (InputError(input)) exit
                 if (InputCheckExit(input,option)) exit
+
+                reaction%neqkdrxn = reaction%neqkdrxn + 1
 
                 kd_rxn => KDRxnCreate()
                 ! first string is species name
@@ -744,7 +746,8 @@ subroutine ReactionRead(reaction,input,option)
     end select
   enddo
   
-  reaction%neqsorb = reaction%neqsrfcplxrxn + reaction%neqionxrxn
+  reaction%neqsorb = reaction%neqsrfcplxrxn + reaction%neqionxrxn + &
+                     reaction%neqkdrxn
 
   if (reaction%print_free_conc_type == 0) then
     if (reaction%initialize_with_molality) then
@@ -3369,13 +3372,17 @@ subroutine RTotalSorb(rt_auxvar,global_auxvar,reaction,option)
     call RTotalSorbEqIonx(rt_auxvar,global_auxvar,reaction,option)
   endif
   
+  if (reaction%neqkdrxn > 0) then
+    call RTotalSorbKD(rt_auxvar,global_auxvar,reaction,option)
+  endif
+  
 end subroutine RTotalSorb
 
 ! ************************************************************************** !
 !
-! RTotalSorbEqSurfCplx: Computes the total sorbed component concentrations and 
-!                       derivative with respect to free-ion for the linear 
-!                       K_D model
+! RTotalSorbKD: Computes the total sorbed component concentrations and 
+!               derivative with respect to free-ion for the linear 
+!               K_D model
 ! author: Glenn Hammond
 ! date: 09/30/2010
 !
