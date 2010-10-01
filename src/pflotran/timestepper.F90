@@ -255,6 +255,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     return 
   endif
   
+  nullify(master_stepper)
   if (associated(flow_stepper)) then
     if (flow_stepper%master) master_stepper => flow_stepper
   endif
@@ -263,11 +264,16 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   endif
 
   ! if no master stepper specified, use flow, then transport
-  if (associated(flow_stepper)) then
-    master_stepper => flow_stepper
-  else
-    master_stepper => tran_stepper
+  if (.not.associated(master_stepper)) then
+    if (associated(flow_stepper)) then
+      master_stepper => flow_stepper
+    else
+      master_stepper => tran_stepper
+    endif
   endif
+  
+  ! set the master stepper to true
+  master_stepper%master = PETSC_TRUE
 
   plot_flag = PETSC_FALSE
   transient_plot_flag = PETSC_FALSE
