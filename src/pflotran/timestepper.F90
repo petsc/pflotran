@@ -437,13 +437,11 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
                                     tran_timestep_cut_flag, &
                                     idum,failure)
       else
-#ifdef REVISED_TRANSPORT
         !operator splitting
         call StepperStepTransportDT1(realization,tran_stepper, &
                                      flow_timestep_cut_flag, &
                                      tran_timestep_cut_flag, &
                                      idum,failure)
-#endif
       endif
       call PetscLogStagePop(ierr)
       if (failure) return ! if flow solve fails, exit
@@ -1316,9 +1314,7 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
       call GlobalUpdateDenAndSat(realization,option%tran_weight_t1)
     endif
 
-#ifdef REVISED_TRANSPORT
     call RTUpdateTransportCoefs(realization)
-#endif
     
     sum_newton_iterations = 0
     sum_linear_iterations = 0
@@ -1526,7 +1522,6 @@ subroutine StepperStepTransportDT(realization,stepper,flow_timestep_cut_flag, &
 
 end subroutine StepperStepTransportDT
 
-#ifdef REVISED_TRANSPORT
 ! ************************************************************************** !
 !
 ! StepperStepTransportDT1: Steps forward one step in time
@@ -1825,7 +1820,7 @@ subroutine StepperStepTransportDT1(realization,stepper,flow_timestep_cut_flag, &
   enddo
 
 end subroutine StepperStepTransportDT1
-#endif
+
 ! ************************************************************************** !
 !
 ! StepperRunSteadyState: Solves steady state solution for flow and transport

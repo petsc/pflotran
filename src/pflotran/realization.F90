@@ -1469,7 +1469,6 @@ subroutine RealizAssignTransportInitCond(realization)
                 global_aux_vars(ghosted_id)%den_kg(iphase)*1000.d0 ! convert molarity -> molality
             enddo
             ! colloids fractions
-#ifdef REVISED_TRANSPORT
             if (associated(initial_condition%tran_condition%cur_constraint_coupler%colloids)) then
               offset = ibegin + reaction%offset_coll - 1
               do idof = 1, reaction%ncoll ! primary aqueous concentrations
@@ -1482,7 +1481,6 @@ subroutine RealizAssignTransportInitCond(realization)
                   colloids%basis_conc_imb(idof)
               enddo
             endif
-#endif
             ! mineral volume fractions
             if (associated(initial_condition%tran_condition%cur_constraint_coupler%minerals)) then
               do idof = 1, reaction%nkinmnrl

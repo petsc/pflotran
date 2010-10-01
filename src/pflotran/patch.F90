@@ -30,10 +30,9 @@ module Patch_module
     PetscReal, pointer :: boundary_velocities(:,:)
     PetscReal, pointer :: internal_fluxes(:,:,:)    
     PetscReal, pointer :: boundary_fluxes(:,:,:)  
-#ifdef REVISED_TRANSPORT      
     PetscReal, pointer :: internal_tran_coefs(:,:)
     PetscReal, pointer :: boundary_tran_coefs(:,:)
-#endif
+
     type(grid_type), pointer :: grid
 
     type(region_list_type), pointer :: regions
@@ -99,10 +98,8 @@ function PatchCreate()
   nullify(patch%boundary_velocities)
   nullify(patch%internal_fluxes)
   nullify(patch%boundary_fluxes)
-#ifdef REVISED_TRANSPORT  
   nullify(patch%internal_tran_coefs)
   nullify(patch%boundary_tran_coefs)
-#endif
 
   nullify(patch%grid)
 
@@ -543,14 +540,12 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   temp_int = ConnectionGetNumberInList(patch%grid%internal_connection_set_list)
   allocate(patch%internal_velocities(option%nphase,temp_int))
   patch%internal_velocities = 0.d0
-#ifdef REVISED_TRANSPORT  
   allocate(patch%internal_tran_coefs(option%nphase,temp_int))
   patch%internal_tran_coefs = 0.d0
   if (option%store_solute_fluxes) then
     allocate(patch%internal_fluxes(option%nphase,option%ntrandof,temp_int))
     patch%internal_fluxes = 0.d0
   endif
-#endif  
  
   if (patch%grid%itype == STRUCTURED_GRID_MIMETIC) then
 #ifdef DASVYAT
@@ -561,14 +556,12 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   end if
   allocate(patch%boundary_velocities(option%nphase,temp_int)) 
   patch%boundary_velocities = 0.d0
-#ifdef REVISED_TRANSPORT
   allocate(patch%boundary_tran_coefs(option%nphase,temp_int))
   patch%boundary_tran_coefs = 0.d0
   if (option%store_solute_fluxes) then
     allocate(patch%boundary_fluxes(option%nphase,option%ntrandof,temp_int))
     patch%boundary_fluxes = 0.d0
   endif
-#endif  
 
 end subroutine PatchProcessCouplers
 
@@ -1482,7 +1475,6 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
               endif
             enddo
           endif
-#ifdef REVISED_TRANSPORT          
         case(TOTAL_SORBED_MOBILE)
           if (patch%reaction%neqsorb > 0 .and. patch%reaction%ncollcomp > 0) then
             do local_id=1,grid%nlmax
@@ -1519,7 +1511,6 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
                 patch%aux%RT%aux_vars(grid%nL2G(local_id))%colloid%conc_imb(isubvar)
             enddo
           endif
-#endif            
       end select
     case(POROSITY)
       call GridVecGetArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
@@ -1783,7 +1774,6 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
               value = patch%aux%RT%aux_vars(ghosted_id)%total_sorb_eq(isubvar)
             endif
           endif
-#ifdef REVISED_TRANSPORT            
         case(TOTAL_SORBED_MOBILE)
           if (patch%reaction%neqsorb > 0 .and. patch%reaction%ncollcomp > 0) then
             value = patch%aux%RT%aux_vars(ghosted_id)%colloid%total_eq_mob(isubvar)
@@ -1802,7 +1792,6 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
           else
             value = patch%aux%RT%aux_vars(ghosted_id)%colloid%conc_imb(isubvar)
           endif
-#endif               
       end select
     case(POROSITY)
       call GridVecGetArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
@@ -2457,12 +2446,10 @@ subroutine PatchDestroy(patch)
   nullify(patch%internal_fluxes)
   if (associated(patch%boundary_fluxes)) deallocate(patch%boundary_fluxes)
   nullify(patch%boundary_fluxes)
-#ifdef REVISED_TRANSPORT  
   if (associated(patch%internal_tran_coefs)) deallocate(patch%internal_tran_coefs)
   nullify(patch%internal_tran_coefs)
   if (associated(patch%boundary_tran_coefs)) deallocate(patch%boundary_tran_coefs)
   nullify(patch%boundary_tran_coefs)
-#endif  
 
   call GridDestroy(patch%grid)
   call RegionDestroyList(patch%regions)

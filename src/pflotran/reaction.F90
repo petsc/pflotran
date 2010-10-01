@@ -1251,7 +1251,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     convert_molar_to_molal = 1000.d0/global_auxvar%den_kg(iphase)/xmass
   endif
   
-#ifdef REVISED_TRANSPORT          
   if (associated(colloid_constraint)) then      
     colloid_constraint%basis_conc_mob = colloid_constraint%constraint_conc_mob        
     colloid_constraint%basis_conc_imb = colloid_constraint%constraint_conc_imb        
@@ -1260,7 +1259,6 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
     rt_auxvar%colloid%conc_imb = colloid_constraint%basis_conc_imb* &
                                  convert_molar_to_molal
   endif  
-#endif
   
   if (.not.reaction%use_full_geochemistry) then
     aq_species_constraint%basis_molarity = conc ! don't need to convert
@@ -1390,11 +1388,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           ! dtotal units = kg water/L water
 
           ! Jac units = kg water/L water
-#ifdef REVISED_TRANSPORT          
           Jac(icomp,:) = rt_auxvar%aqueous%dtotal(icomp,:,1)
-#else
-          Jac(icomp,:) = rt_auxvar%dtotal(icomp,:,1)
-#endif      
         case(CONSTRAINT_TOTAL_SORB)
           ! conversion from m^3 bulk -> L water
           tempreal = option%reference_porosity*option%reference_saturation*1000.d0
@@ -1404,11 +1398,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
           ! dtotal units = kg water/L water
           ! dtotal_sorb units = kg water/m^3 bulk
           ! Jac units = kg water/L water
-#ifdef REVISED_TRANSPORT          
           Jac(icomp,:) = rt_auxvar%aqueous%dtotal(icomp,:,1) + &
-#else
-          Jac(icomp,:) = rt_auxvar%dtotal(icomp,:,1) + &
-#endif
           ! dtotal_sorb units = kg water/m^3 bulk
                          rt_auxvar%dtotal_sorb_eq(icomp,:)/tempreal
 
@@ -1428,11 +1418,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
               rt_auxvar%total(jcomp,1)
             do kcomp = 1, reaction%naqcomp
               Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
-#ifdef REVISED_TRANSPORT
                 reaction%primary_spec_Z(kcomp)*rt_auxvar%aqueous%dtotal(kcomp,jcomp,1)
-#else
-                reaction%primary_spec_Z(kcomp)*rt_auxvar%dtotal(kcomp,jcomp,1)
-#endif
             enddo
           enddo
           if (rt_auxvar%pri_molal(icomp) < 1.d-20 .and. &
@@ -2598,8 +2584,6 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
   
   PetscInt, parameter :: iphase = 1
 
-#ifdef REVISED_TRANSPORT
-  
   one_over_dt = 1.d0/option%tran_dt
   num_iterations = 0
 
@@ -2670,8 +2654,6 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
 
   num_iterations_ = num_iterations
   
-#endif
-
 end subroutine RReact
       
 ! ************************************************************************** !
@@ -3168,17 +3150,10 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
   rt_auxvar%total(:,iphase) = rt_auxvar%pri_molal(:)
   ! initialize derivatives
-#ifdef REVISED_TRANSPORT  
   rt_auxvar%aqueous%dtotal = 0.d0
   do icomp = 1, reaction%naqcomp
     rt_auxvar%aqueous%dtotal(icomp,icomp,iphase) = 1.d0
   enddo
-#else
-  rt_auxvar%dtotal = 0.d0
-  do icomp = 1, reaction%naqcomp
-    rt_auxvar%dtotal(icomp,icomp,iphase) = 1.d0
-  enddo
-#endif  
   
 #ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal .and. reaction%neqcplx > 0) then
@@ -3220,11 +3195,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
                                                  rt_auxvar%sec_act_coef(icplx)
       do i = 1, ncomp
         icomp = reaction%eqcplxspecid(i,icplx)
-#ifdef REVISED_TRANSPORT        
         rt_auxvar%aqueous%dtotal(icomp,jcomp,iphase) = rt_auxvar%aqueous%dtotal(icomp,jcomp,iphase) + &
-#else
-        rt_auxvar%dtotal(icomp,jcomp,iphase) = rt_auxvar%dtotal(icomp,jcomp,iphase) + &
-#endif
                                                reaction%eqcplxstoich(i,icplx)*tempreal
       enddo
     enddo
@@ -3235,11 +3206,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   rt_auxvar%total(:,iphase) = rt_auxvar%total(:,iphase)*den_kg_per_L
   
   ! units of dtotal = kg water/L water
-#ifdef REVISED_TRANSPORT
   rt_auxvar%aqueous%dtotal = rt_auxvar%aqueous%dtotal*den_kg_per_L
-#else
-  rt_auxvar%dtotal = rt_auxvar%dtotal*den_kg_per_L
-#endif  
  !*********** Add SC phase contribution ***************************  
 #ifdef CHUAN_CO2
 
@@ -3253,11 +3220,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
 
   if(iphase > option%nphase) return 
   rt_auxvar%total(:,iphase) = 0D0
-#ifdef REVISED_TRANSPORT  
   rt_auxvar%aqueous%dtotal(:,:,iphase)=0D0
-#else
-  rt_auxvar%dtotal(:,:,iphase)=0D0
-#endif
 !  do icomp = 1, reaction%naqcomp
 !    rt_auxvar%dtotal(icomp,icomp,iphase) = 1.d0
 !  enddo
@@ -3325,11 +3288,7 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
    ! contribute to %dtotal
    !      tempreal = exp(lnQK+lngamco2)/pressure /xphico2* den 
       tempreal = rt_auxvar%pri_act_coef(icomp)*exp(lnQK)/pressure /xphico2* den 
-#ifdef REVISED_TRANSPORT   
       rt_auxvar%aqueous%dtotal(icomp,icomp,iphase) = rt_auxvar%aqueous%dtotal(icomp,icomp,iphase) + &
-#else
-      rt_auxvar%dtotal(icomp,icomp,iphase) = rt_auxvar%dtotal(icomp,icomp,iphase) + &
-#endif
                                                reaction%eqgasstoich(1,ieqgas)*tempreal
     
     enddo
@@ -3479,12 +3438,10 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
   PetscInt :: num_types_of_sites
   PetscInt :: isite
   
-#ifdef REVISED_TRANSPORT  
   if (reaction%ncollcomp > 0) then  
     rt_auxvar%colloid%total_eq_mob = 0.d0
     rt_auxvar%colloid%dRj_dCj%dtotal = 0.d0
   endif
-#endif  
   
   ln_conc = log(rt_auxvar%pri_molal)
   ln_act = ln_conc+log(rt_auxvar%pri_act_coef)
@@ -3639,13 +3596,11 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
               reaction%eqsrfcplxstoich(i,icplx)*srfcplx_conc(icplx)
           enddo
         else ! mobile sites
-#ifdef REVISED_TRANSPORT        
           do i = 1, ncomp
             icomp = reaction%pri_spec_to_coll_spec(reaction%eqsrfcplxspecid(i,icplx))
             rt_auxvar%colloid%total_eq_mob(icomp) = rt_auxvar%colloid%total_eq_mob(icomp) + &
               reaction%eqsrfcplxstoich(i,icplx)*srfcplx_conc(icplx)
           enddo
-#endif          
         endif
         
         ! for 2.3-47 which feeds into 2.3-50
@@ -3667,7 +3622,6 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
                                                    tempreal
             enddo ! i
           else ! mobile sites
-#ifdef REVISED_TRANSPORT
             do i = 1, ncomp
               icomp = reaction%eqsrfcplxspecid(i,icplx)
               rt_auxvar%colloid%dRj_dCj%dtotal(icomp,jcomp,1) = &
@@ -3675,7 +3629,6 @@ subroutine RTotalSorbEqSurfCplx(rt_auxvar,global_auxvar,reaction,option)
                                        reaction%eqsrfcplxstoich(i,icplx)* &
                                        tempreal
             enddo ! i
-#endif
           endif
         enddo ! j
       enddo ! k
@@ -5126,7 +5079,6 @@ subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
   iend = reaction%naqcomp
   Res(istart:iend) = psv_t*rt_aux_var%total(:,iphase) 
 
-#ifdef REVISED_TRANSPORT
   if (reaction%ncoll > 0) then
     do icoll = 1, reaction%ncoll
       idof = reaction%offset_coll + icoll
@@ -5140,7 +5092,6 @@ subroutine RTAccumulation(rt_aux_var,global_aux_var,por,vol,reaction,option,Res)
         psv_t*rt_aux_var%colloid%total_eq_mob(icollcomp)
     enddo
   endif
-#endif
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2
@@ -5195,15 +5146,9 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
   !         *(kg water/L water)*(1000L water/m^3 water) = kg water/sec
   ! all Jacobian entries should be in kg water/sec
   J = 0.d0
-#ifdef REVISED_TRANSPORT
   if (associated(rt_aux_var%aqueous%dtotal)) then ! units of dtotal = kg water/L water
     psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt
     J(istart:iendaq,istart:iendaq) = rt_aux_var%aqueous%dtotal(:,:,iphase)*psvd_t
-#else
-  if (associated(rt_aux_var%dtotal)) then ! units of dtotal = kg water/L water
-    psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt
-    J(istart:iendaq,istart:iendaq) = rt_aux_var%dtotal(:,:,iphase)*psvd_t
-#endif
   else
     psvd_t = por*global_aux_var%sat(iphase)* &
              global_aux_var%den_kg(iphase)*vol/option%tran_dt ! units of den = kg water/m^3 water
@@ -5212,7 +5157,6 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
     enddo
   endif
 
-#ifdef REVISED_TRANSPORT 
   if (reaction%ncoll > 0) then
     do icoll = 1, reaction%ncoll
       idof = reaction%offset_coll + icoll
@@ -5228,7 +5172,6 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
     ! dRj_dSic
     ! dRic_dCj                                 
   endif
-#endif
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2
@@ -5237,17 +5180,10 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
     if (iphase > option%nphase) exit
 ! super critical CO2 phase
     if (iphase == 2) then
-#ifdef REVISED_TRANSPORT        
       if (associated(rt_aux_var%aqueous%dtotal)) then
         psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
         J(istart:iendaq,istart:iendaq) = J(istart:iendaq,istart:iendaq) + &
           rt_aux_var%aqueous%dtotal(:,:,iphase)*psvd_t
-#else
-      if (associated(rt_aux_var%dtotal)) then
-        psvd_t = por*global_aux_var%sat(iphase)*1000.d0*vol/option%tran_dt  
-        J(istart:iendaq,istart:iendaq) = J(istart:iendaq,istart:iendaq) + &
-          rt_aux_var%dtotal(:,:,iphase)*psvd_t
-#endif
       else
         psvd_t = por*global_aux_var%sat(iphase)* &
           global_aux_var%den_kg(iphase)*vol/option%tran_dt ! units of den = kg water/m^3 water
