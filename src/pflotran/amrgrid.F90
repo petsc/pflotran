@@ -510,7 +510,7 @@ subroutine AMRGridComputeGeometryInformation(amrgrid, origin_global, field, &
   PetscFortranAddr :: p_application
 
   type(grid_type), pointer :: grid
-  DA, pointer :: dummy_ptr
+  DA :: dummy_ptr
 
   PetscInt :: nlevels
   PetscInt :: npatches
