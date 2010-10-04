@@ -343,7 +343,7 @@ subroutine Init(simulation)
           case(STRUCTURED_GRID_MIMETIC)
             call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              RichardsJacobianMFD,realization,ierr)
-          case default
+          case(STRUCTURED_GRID,AMR_GRID)
             call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              RichardsJacobian,realization,ierr)
         end select
