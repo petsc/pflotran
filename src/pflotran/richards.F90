@@ -1845,7 +1845,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
 
-  call PetscLogEventEnd(logging%event_r_residual,ierr)
+call PetscLogEventEnd(logging%event_r_residual,ierr)
 
 
 !#ifdef DASVYAT

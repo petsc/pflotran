@@ -33,7 +33,6 @@ module Reactive_Transport_module
             RTUpdateAuxVars, &
             RTComputeMassBalance, &
             RTDestroy, &
-#ifdef REVISED_TRANSPORT
             RTUpdateTransportCoefs, &
             RTUpdateRHSCoefs, &
             RTCalculateRHS_t0, &
@@ -42,7 +41,6 @@ module Reactive_Transport_module
             RTReact, &
             RTTransportResidual, &
             RTTransportMatVec, &
-#endif
             RTCheckUpdate, &
             RTJumpStartKineticSorption, &
             RTCheckpointKineticSorption
@@ -88,9 +86,7 @@ subroutine RTTimeCut(realization)
     call GlobalUpdateDenAndSat(realization,realization%option%tran_weight_t1)
   endif
 
-#ifdef REVISED_TRANSPORT  
   call RTUpdateTransportCoefs(realization)
-#endif
  
 end subroutine RTTimeCut
 
@@ -631,9 +627,7 @@ subroutine RTInitializeTimestepPatch(realization)
   call RTUpdateFixedAccumulationPatch(realization)
   
   ! geh: never use transport coefs evaluated at time k
-!#ifdef REVISED_TRANSPORT  
 !  call RTUpdateTransportCoefsPatch(realization)
-!#endif  
 
 end subroutine RTInitializeTimestepPatch
   
@@ -878,10 +872,8 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
     if (reaction%ncoll > 0) then
       istartcoll = dof_offset + reaction%offset_coll + 1
       iendcoll = dof_offset + reaction%offset_coll + reaction%ncoll
-#ifdef REVISED_TRANSPORT
       rt_aux_vars(ghosted_id)%colloid%conc_mob = xx_p(istartcoll:iendcoll)* &
         global_aux_vars(ghosted_id)%den_kg(1)*1.d-3
-#endif
     endif
     
     ! DO NOT RECOMPUTE THE ACTIVITY COEFFICIENTS BEFORE COMPUTING THE
@@ -911,7 +903,6 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
 
 end subroutine RTUpdateFixedAccumulationPatch
 
-#ifdef REVISED_TRANSPORT
 ! ************************************************************************** !
 !
 ! RTUpdateTransportCoefs: 
@@ -2883,8 +2874,6 @@ subroutine RTTransportResidualFluxContribPatch(r,realization,ierr)
 
 end subroutine RTTransportResidualFluxContribPatch
 
-#endif
-
 ! ************************************************************************** !
 !
 ! RTNumericalJacobianTest: Computes the a test numerical jacobian
@@ -3334,7 +3323,9 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   r_p = 0.d0
 
   if (option%use_samr) then
-#ifndef REVISED_TRANSPORT
+    ! this section should be broken due to changes in the transport data structures
+!!!!!!!!!!!!!!!!#ifndef REVISED_TRANSPORT
+#if 0
     do axis=0,2  
       call GridVecGetArrayF90(grid,axis,field%tran_face_fluxes, fluxes(axis)%flux_p, ierr)  
     enddo
@@ -3618,7 +3609,8 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
       enddo
       boundary_condition => boundary_condition%next
     enddo
-#endif ! #ifndef REVISED_TRANSPORT
+!!!!!!!!!!!!#endif ! #ifndef REVISED_TRANSPORT
+#endif
   else
   ! Interior Flux Terms -----------------------------------
     connection_set_list => grid%internal_connection_set_list
@@ -3638,7 +3630,6 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
         if (patch%imat(ghosted_id_up) <= 0 .or.  &
             patch%imat(ghosted_id_dn) <= 0) cycle
 
-#ifdef REVISED_TRANSPORT
         ! TFluxCoef will eventually be moved to another routine where it should be
         ! called only once per flux interface at the beginning of a transport
         ! time step.
@@ -3652,22 +3643,6 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
                    rt_aux_vars(ghosted_id_dn), &
                    global_aux_vars(ghosted_id_dn), &
                    coef_up,coef_dn,option,Res)
-#else
-        fraction_upwind = cur_connection_set%dist(-1,iconn)
-        distance = cur_connection_set%dist(0,iconn)
-      ! distance = scalar - magnitude of distance
-        dist_up = distance*fraction_upwind
-        dist_dn = distance-dist_up ! should avoid truncation error
-
-        call TFlux(rt_aux_vars(ghosted_id_up),global_aux_vars(ghosted_id_up), &
-                 porosity_loc_p(ghosted_id_up),tor_loc_p(ghosted_id_up), &
-                 dist_up, &
-                 rt_aux_vars(ghosted_id_dn),global_aux_vars(ghosted_id_dn), &
-                 porosity_loc_p(ghosted_id_dn),tor_loc_p(ghosted_id_dn), &
-                 dist_dn, &
-                 cur_connection_set%area(iconn),rt_parameter,option, &
-                 patch%internal_velocities(:,sum_connection),Res)
-#endif
 
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
         rt_aux_vars(local_id_up)%mass_balance_delta(:,iphase) = &
@@ -3710,7 +3685,6 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
 
         if (patch%imat(ghosted_id) <= 0) cycle
 
-#ifdef REVISED_TRANSPORT
         ! TFluxCoef accomplishes the same as what TBCCoef would
         call TFluxCoef(option,cur_connection_set%area(iconn), &
                        patch%boundary_velocities(:,sum_connection), &
@@ -3723,19 +3697,6 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
                    rt_aux_vars(ghosted_id), &
                    global_aux_vars(ghosted_id), &
                    coef_up,coef_dn,option,Res)
-#else
-        call TBCFlux(boundary_condition%tran_condition%itype, &
-                     rt_aux_vars_bc(sum_connection), &
-                     global_aux_vars_bc(sum_connection), &
-                     rt_aux_vars(ghosted_id), &
-                     global_aux_vars(ghosted_id), &
-                     porosity_loc_p(ghosted_id), &
-                     tor_loc_p(ghosted_id), &
-                     cur_connection_set%dist(0,iconn), &
-                     cur_connection_set%area(iconn), &
-                     rt_parameter,option, &
-                     patch%boundary_velocities(:,sum_connection),Res)
-#endif
  
         iend = local_id*reaction%ncomp
         istart = iend-reaction%ncomp+1
@@ -3927,7 +3888,6 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                 (source_sink%tran_condition%cur_constraint_coupler% &
                  rt_auxvar%total(:,iphase) - rt_aux_vars(ghosted_id)%total(:,iphase))* &
                 1000.d0 ! convert kg water/L water -> kg water/m^3 water
-#ifdef REVISED_TRANSPORT
           if (reaction%ncoll > 0) then
             Res(istartcoll:iendcoll)  =  -1.d-6* &
               !in this case, conc_mob is in molality 
@@ -3940,38 +3900,32 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                  rt_auxvar%colloid%conc_mob(:) - rt_aux_vars(ghosted_id)%colloid%conc_mob(:))* &
                 1000.d0 ! convert kg water/L water -> kg water/m^3 water
           endif
-#endif
         case(MASS_RATE_SS)
           Res(istartaq:iendaq) = -source_sink%tran_condition% &
                  cur_constraint_coupler%rt_auxvar%total(:,iphase) ! actually moles/sec
-#ifdef REVISED_TRANSPORT
           if (reaction%ncoll > 0) then
             option%io_buffer = 'Need to implement MASS_RATE_SS source/sink term correctly'
             call printErrMsg(option)
             Res(istartcoll:iendcoll) = -source_sink%tran_condition% &
                  cur_constraint_coupler%rt_auxvar%colloid%conc_mob(:) ! actually moles/sec
           endif          
-#endif
         case default
           if (qsrc > 0) then ! injection
             if (volumetric) then ! qsrc is volumetric; must be converted to mass
               Res(istartaq:iendaq) = -qsrc* & ! m^3 water / sec
                     source_sink%tran_condition%cur_constraint_coupler% &
                     rt_auxvar%total(:,iphase)*1000.d0
-#ifdef REVISED_TRANSPORT
               if (reaction%ncoll > 0) then
                 Res(istartcoll:iendcoll) = -qsrc* & ! m^3 water / sec
                     source_sink%tran_condition%cur_constraint_coupler% &
                     rt_auxvar%colloid%conc_mob(:)*1000.d0
               endif                     
-#endif
             else ! mass
               Res(istartaq:iendaq) = -qsrc* & ! kg water / sec
                      source_sink%tran_condition%cur_constraint_coupler% &
                      rt_auxvar%total(:,iphase)/ &
                      global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
                      1000.d0
-#ifdef REVISED_TRANSPORT
               if (reaction%ncoll > 0) then  ! needs to be moles/sec
                 Res(istartcoll:iendcoll) = -qsrc* & ! kg water / sec
                     source_sink%tran_condition%cur_constraint_coupler% &
@@ -3979,30 +3933,25 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
                     global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
                     1000.d0
               endif                     
-#endif
             endif
           else ! extraction
             if (volumetric) then ! qsrc is volumetric; must be converted to mass
               Res(istartaq:iendaq) = -qsrc*rt_aux_vars(ghosted_id)%total(:,iphase)*1000.d0
-#ifdef REVISED_TRANSPORT
               if (reaction%ncoll > 0) then
                 Res(istartcoll:iendcoll) = -qsrc* & ! m^3 water / sec
                     rt_aux_vars(ghosted_id)%colloid%conc_mob(:)*1000.d0
               endif               
-#endif
             else
               Res(istartaq:iendaq) = -qsrc* &
                     rt_aux_vars(ghosted_id)%total(:,iphase)/ &
                     global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
                     1000.d0 ! convert kg water/L water -> kg water/m^3 water
-#ifdef REVISED_TRANSPORT
               if (reaction%ncoll > 0) then  ! needs to be moles/sec
                 Res(istartcoll:iendcoll) = -qsrc* & ! kg water / sec
                     rt_aux_vars(ghosted_id)%colloid%conc_mob(:)/ & 
                     global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
                     1000.d0 ! convert kg water/L water -> kg water/m^3 water
               endif                     
-#endif
             endif
           endif
       end select
@@ -4309,7 +4258,9 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   call GridVecGetArrayF90(grid,field%tortuosity_loc, tor_loc_p, ierr)
 
   if (option%use_samr) then
-#ifndef REVISED_TRANSPORT
+#if 0
+    ! again this should be broken
+!!!!!!!!!!#ifndef REVISED_TRANSPORT
   ! Interior Advective Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
@@ -4481,7 +4432,8 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     enddo
     boundary_condition => boundary_condition%next
   enddo
-#endif ! #ifndef REVISED_TRANSPORT
+#endif  
+!!!!!!!!!!!!#endif ! #ifndef REVISED_TRANSPORT
   else ! !use_samr
 
   ! Interior Flux Terms -----------------------------------
@@ -4508,7 +4460,6 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       if (patch%imat(ghosted_id_up) <= 0 .or.  &
           patch%imat(ghosted_id_dn) <= 0) cycle
 
-#ifdef REVISED_TRANSPORT
       call TFluxCoef(option,cur_connection_set%area(iconn), &
                      patch%internal_velocities(:,sum_connection), &
                      patch%internal_tran_coefs(:,sum_connection), &
@@ -4519,27 +4470,6 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                            rt_aux_vars(ghosted_id_dn), &
                            global_aux_vars(ghosted_id_dn), &
                            coef_up,coef_dn,option,Jup,Jdn)
-#else
-      fraction_upwind = cur_connection_set%dist(-1,iconn)
-      distance = cur_connection_set%dist(0,iconn)
-      ! distance = scalar - magnitude of distance
-      dist_up = distance*fraction_upwind
-      dist_dn = distance-dist_up ! should avoid truncation error
-
-      call TFluxDerivative(rt_aux_vars(ghosted_id_up), &
-                           global_aux_vars(ghosted_id_up), &
-                           porosity_loc_p(ghosted_id_up), &
-                           tor_loc_p(ghosted_id_up), &
-                           dist_up, &
-                           rt_aux_vars(ghosted_id_dn), &
-                           global_aux_vars(ghosted_id_dn), &
-                           porosity_loc_p(ghosted_id_dn), &
-                           tor_loc_p(ghosted_id_dn), &
-                           dist_dn, &
-                           cur_connection_set%area(iconn), &
-                           rt_parameter,option, &
-                           patch%internal_velocities(:,sum_connection),Jup,Jdn)
-#endif
 
       if (local_id_up>0) then
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
@@ -4584,7 +4514,6 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 
       if (patch%imat(ghosted_id) <= 0) cycle
 
-#ifdef REVISED_TRANSPORT
       ! TFluxCoef accomplishes the same as what TBCCoef would
       call TFluxCoef(option,cur_connection_set%area(iconn), &
                      patch%boundary_velocities(:,sum_connection), &
@@ -4597,20 +4526,6 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                            rt_aux_vars(ghosted_id), &
                            global_aux_vars(ghosted_id), &
                            coef_up,coef_dn,option,Jup,Jdn)
-#else
-      call TBCFluxDerivative(boundary_condition%tran_condition%itype, &
-                             rt_aux_vars_bc(sum_connection), &
-                             global_aux_vars_bc(sum_connection), &
-                             rt_aux_vars(ghosted_id), &
-                             global_aux_vars(ghosted_id), &
-                             porosity_loc_p(ghosted_id), &
-                             tor_loc_p(ghosted_id), &
-                             cur_connection_set%dist(0,iconn), &
-                             cur_connection_set%area(iconn), &
-                             rt_parameter,option, &
-                             patch%boundary_velocities(:,sum_connection), &
-                             Jdn)
-#endif
 
       !Jup not needed 
       Jdn = -Jdn
@@ -4856,11 +4771,9 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
         endif
       else
         work_loc_p(istartaq:iendaq) = rt_aux_vars(ghosted_id)%pri_molal(:)
-#ifdef REVISED_TRANSPORT
         if (reaction%ncoll > 0) then
           work_loc_p(istartcoll:iendcoll) = rt_aux_vars(ghosted_id)%colloid%conc_mob(:)
         endif
-#endif
       endif
     enddo
     call GridVecRestoreArrayF90(grid,field%tran_work_loc, work_loc_p, ierr)
@@ -5006,14 +4919,12 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
       iendaq = offset + reaction%offset_aq + reaction%naqcomp
       
       patch%aux%RT%aux_vars(ghosted_id)%pri_molal = xx_loc_p(istartaq:iendaq)
-#ifdef REVISED_TRANSPORT
       if (reaction%ncoll > 0) then
         istartcoll = offset + reaction%offset_coll + 1
         iendcoll = offset + reaction%offset_coll + reaction%ncoll
         patch%aux%RT%aux_vars(ghosted_id)%colloid%conc_mob = xx_loc_p(istartcoll:iendcoll)* &
           patch%aux%Global%aux_vars(ghosted_id)%den_kg(1)*1.d-3
       endif
-#endif
       
       if (compute_activity_coefs) then
         call RActivityCoefficients(patch%aux%RT%aux_vars(ghosted_id), &
@@ -5058,12 +4969,10 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
       basis_molarity_p => boundary_condition%tran_condition% &
         cur_constraint_coupler%aqueous_species%basis_molarity
         
-#ifdef REVISED_TRANSPORT
       if (reaction%ncoll > 0) then
         basis_coll_conc_p => boundary_condition%tran_condition% &
                              cur_constraint_coupler%colloids%basis_conc_mob
       endif
-#endif
 
       do iconn = 1, cur_connection_set%num_connections
         sum_connection = sum_connection + 1
@@ -5127,13 +5036,11 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
           ! no need to update boundary fluid density since it is already set
           patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal = &
             xxbc(istartaq_loc:iendaq_loc)
-#ifdef REVISED_TRANSPORT
           if (reaction%ncoll > 0) then
             patch%aux%RT%aux_vars_bc(sum_connection)%colloid%conc_mob = &
               xxbc(istartcoll_loc:iendcoll_loc)* &
               patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(1)*1.d-3
           endif
-#endif
           if (compute_activity_coefs) then
             call RActivityCoefficients(patch%aux%RT%aux_vars_bc(sum_connection), &
                                        patch%aux%Global%aux_vars_bc(sum_connection), &
@@ -5163,25 +5070,21 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
                   skip_equilibrate_constraint = PETSC_TRUE
                   patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal = &
                     xx_loc_p(istartaq:iendaq)
-#ifdef REVISED_TRANSPORT
                   if (reaction%ncoll > 0) then
                     patch%aux%RT%aux_vars_bc(sum_connection)%colloid%conc_mob = &
                       xx_loc_p(istartcoll:iendcoll)* &
                       patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(1)*1.d-3
                   endif                  
-#endif
                 endif
             case(ZERO_GRADIENT_BC)
               skip_equilibrate_constraint = PETSC_TRUE
               patch%aux%RT%aux_vars_bc(sum_connection)%pri_molal = &
                 xx_loc_p(istartaq:iendaq)
-#ifdef REVISED_TRANSPORT
               if (reaction%ncoll > 0) then
                 patch%aux%RT%aux_vars_bc(sum_connection)%colloid%conc_mob = &
                   xx_loc_p(istartcoll:iendcoll)* &
                   patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(1)*1.d-3
               endif                
-#endif
           end select
           ! no need to update boundary fluid density since it is already set
           if (.not.skip_equilibrate_constraint) then

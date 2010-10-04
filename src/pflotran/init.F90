@@ -1046,10 +1046,10 @@ subroutine InitReadInput(simulation)
   type(patch_type), pointer :: patch   
   type(solver_type), pointer :: flow_solver
   type(solver_type), pointer :: tran_solver
-  type(solver_type), pointer :: master_solver
+  type(solver_type), pointer :: default_solver
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
-  type(stepper_type), pointer :: master_stepper
+  type(stepper_type), pointer :: default_stepper
   type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option
   type(velocity_dataset_type), pointer :: velocity_dataset
@@ -1084,11 +1084,11 @@ subroutine InitReadInput(simulation)
   endif
 
   if (associated(flow_stepper)) then
-    master_stepper => flow_stepper
-    master_solver => flow_solver
+    default_stepper => flow_stepper
+    default_solver => flow_solver
   else
-    master_stepper => tran_stepper
-    master_solver => tran_solver
+    default_stepper => tran_stepper
+    default_solver => tran_solver
   endif
 
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
@@ -1141,6 +1141,17 @@ subroutine InitReadInput(simulation)
                 call InputReadWord(input,option,word,PETSC_TRUE)
                 call InputErrorMsg(input,option,'SORPTION','CHEMISTRY') 
                 select case(trim(word))
+                  case('KD_REACTION','KD_REACTIONS')
+                    do
+                      call InputReadFlotranString(input,option)
+                      call InputReadStringErrorMsg(input,option,card)
+                      if (InputCheckExit(input,option)) exit
+                      call InputReadWord(input,option,word,PETSC_TRUE)
+                      call InputErrorMsg(input,option,word, &
+                                         'CHEMISTRY,SORPTION,KD_REACTION') 
+                      ! skip over remaining cards to end of each kd entry
+                      call InputSkipToEnd(input,option,word)
+                    enddo
                   case('SURFACE_COMPLEXATION_RXN','ION_EXCHANGE_RXN')
                     do
                       call InputReadFlotranString(input,option)
@@ -1164,7 +1175,6 @@ subroutine InitReadInput(simulation)
                           enddo
                       end select 
                     enddo
-                  case('DISTRIBUTION_COEF')
                   case('JUMPSTART_KINETIC_SORPTION')
                   case('NO_CHECKPOINT_KINETIC_SORPTION')
                   case('NO_RESTART_KINETIC_SORPTION')
@@ -1446,8 +1456,8 @@ subroutine InitReadInput(simulation)
               call InputSkipToEnd(input,option,card)
             endif
           case default
-            if (associated(master_stepper)) then
-              call TimestepperRead(master_stepper,input,option)
+            if (associated(default_stepper)) then
+              call TimestepperRead(default_stepper,input,option)
             else
               call InputSkipToEnd(input,option,card)
             endif
@@ -1472,8 +1482,8 @@ subroutine InitReadInput(simulation)
               call InputSkipToEnd(input,option,card)
             endif
           case default
-            if (associated(master_solver)) then
-              call SolverReadLinear(master_solver,input,option)
+            if (associated(default_solver)) then
+              call SolverReadLinear(default_solver,input,option)
             else
               call InputSkipToEnd(input,option,card)
             endif
@@ -1498,8 +1508,8 @@ subroutine InitReadInput(simulation)
               call InputSkipToEnd(input,option,card)
             endif
           case default
-            if (associated(master_solver)) then
-              call SolverReadNewton(master_solver,input,option)
+            if (associated(default_solver)) then
+              call SolverReadNewton(default_solver,input,option)
             else
               call InputSkipToEnd(input,option,card)
             endif
@@ -1789,7 +1799,7 @@ subroutine InitReadInput(simulation)
               call InputErrorMsg(input,option,'Initial Timestep Size','TIME') 
               call InputReadWord(input,option,word,PETSC_TRUE)
               call InputErrorMsg(input,option,'Initial Timestep Size Time Units','TIME')
-              master_stepper%dt_min = temp_real*UnitsConvertToInternal(word,option)
+              default_stepper%dt_min = temp_real*UnitsConvertToInternal(word,option)
             case('MAXIMUM_TIMESTEP_SIZE')
               call InputReadDouble(input,option,temp_real)
               call InputErrorMsg(input,option,'Maximum Timestep Size','TIME') 
@@ -1822,8 +1832,8 @@ subroutine InitReadInput(simulation)
           end select
         enddo
 
-        option%flow_dt = master_stepper%dt_min
-        option%tran_dt = master_stepper%dt_min
+        option%flow_dt = default_stepper%dt_min
+        option%tran_dt = default_stepper%dt_min
       
 !....................
       case default
