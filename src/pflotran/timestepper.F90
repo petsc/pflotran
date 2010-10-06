@@ -403,8 +403,10 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   ! ensure that steady_state flag is off
   step_to_steady_state = PETSC_FALSE
   call PetscGetTime(stepper_start_time, ierr)
-  flow_stepper%start_time_step = flow_stepper%steps + 1
-  tran_stepper%start_time_step = tran_stepper%steps + 1
+  if (associated(flow_stepper)) &
+    flow_stepper%start_time_step = flow_stepper%steps + 1
+  if (associated(tran_stepper)) &
+    tran_stepper%start_time_step = tran_stepper%steps + 1
   do
 
     if (OptionPrintToScreen(option) .and. &

@@ -405,11 +405,13 @@ subroutine Restart(realization, &
   type(realization_type) :: realization
   PetscInt :: flow_num_constant_time_steps
   PetscInt :: flow_num_newton_iterations
-  PetscInt :: flow_time_steps, flow_cumulative_newton_iterations, flow_cumulative_time_step_cuts, flow_cumulative_linear_iterations
+  PetscInt :: flow_time_steps, flow_cumulative_newton_iterations
+  PetscInt :: flow_cumulative_time_step_cuts, flow_cumulative_linear_iterations
   PetscReal :: flow_cumulative_solver_time
   PetscInt :: tran_num_constant_time_steps
   PetscInt :: tran_num_newton_iterations
-  PetscInt :: tran_time_steps, tran_cumulative_newton_iterations, tran_cumulative_time_step_cuts, tran_cumulative_linear_iterations
+  PetscInt :: tran_time_steps, tran_cumulative_newton_iterations
+  PetscInt :: tran_cumulative_time_step_cuts, tran_cumulative_linear_iterations
   PetscReal :: tran_cumulative_solver_time
   PetscBool :: activity_coefs_read, flow_read, transport_read
 
