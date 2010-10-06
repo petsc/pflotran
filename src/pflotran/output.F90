@@ -4843,6 +4843,7 @@ end subroutine WriteVTKDataSet
 ! ************************************************************************** !
 subroutine OutputHDF5(realization)
 
+  use ISO_C_BINDING
   use Realization_module
   use Discretization_module
   use Option_module
@@ -4853,7 +4854,7 @@ subroutine OutputHDF5(realization)
   
   use AMR_Grid_Module
  
-#if !defined(PETSC_HAVE_HDF5) 
+#if ( !defined(PETSC_HAVE_HDF5) ) && ( !defined(SAMR_HAVE_HDF5))
   implicit none
   
   type(realization_type) :: realization
@@ -4899,7 +4900,7 @@ subroutine OutputHDF5(realization)
        PetscInt :: dname, dnamec
      end subroutine SAMRRegisterForViz
 #else
-     subroutine SAMRRegisterForViz(ptr,vec,component,dname,dnamec, namestr)
+     subroutine SAMRRegisterForViz(ptr,vec,component, namestr)
        use ISO_C_BINDING
 #include "finclude/petscsysdef.h"
 #include "finclude/petscvec.h"
@@ -4907,7 +4908,6 @@ subroutine OutputHDF5(realization)
        PetscFortranAddr :: ptr
        Vec :: vec
        PetscInt :: component
-       PetscInt :: dname, dnamec
        character(kind=C_CHAR), dimension(*) :: namestr 
        
      end subroutine SAMRRegisterForViz
@@ -5005,6 +5005,8 @@ subroutine OutputHDF5(realization)
      endif
      call printMsg(option)
 
+#if !defined(SAMR_HAVE_HDF5)
+       
      if (first) then
 
         ! create a group for the coordinates data set
@@ -5045,6 +5047,8 @@ subroutine OutputHDF5(realization)
 
      endif
 
+#endif
+        
      ! create a group for the data set
      write(string,'(''Time:'',es12.4,x,a1)') &
           option%time/output_option%tconv,output_option%tunit
@@ -5081,9 +5085,93 @@ subroutine OutputHDF5(realization)
            nviz_flow=0
      end select
 
+     nviz_tran=0
      if (option%ntrandof > 0) then
         if (associated(reaction)) then
-           nviz_tran = option%ntrandof+reaction%nkinmnrl
+           if (reaction%print_pH .and. associated(reaction%species_idx)) then
+              if (reaction%species_idx%h_ion_id > 0) then
+                 nviz_tran=nviz_tran+1
+              endif
+           endif   
+           if (reaction%print_total_component) then
+             do i=1,reaction%naqcomp
+                if (reaction%primary_species_print(i)) then
+                   nviz_tran=nviz_tran+1
+                endif
+             end do
+           endif  
+           if (reaction%print_free_ion) then
+             do i=1,reaction%naqcomp
+                if (reaction%primary_species_print(i)) then
+                   nviz_tran=nviz_tran+1
+                endif
+             end do
+          endif
+          if (reaction%print_act_coefs) then
+            do i=1,reaction%naqcomp
+                if (reaction%primary_species_print(i)) then
+                   nviz_tran=nviz_tran+1
+                endif
+             end do
+          endif
+!! for the next one we add two because the rate and volume fraction are to be plotted         
+          do i=1,reaction%nkinmnrl
+              if (reaction%kinmnrl_print(i)) then
+                    nviz_tran=nviz_tran+2
+             endif
+          end do
+          do i=1,reaction%neqsrfcplxrxn
+               if (reaction%eqsrfcplx_site_print(i)) then
+                    nviz_tran=nviz_tran+1
+               endif
+          end do
+          do i=1,reaction%neqsrfcplx
+              if (reaction%eqsrfcplx_print(i)) then
+                   nviz_tran=nviz_tran+1
+              endif
+          end do
+          do i=1,reaction%nkinsrfcplxrxn
+              if (reaction%kinsrfcplx_site_print(i)) then
+                   nviz_tran=nviz_tran+1
+              endif
+          end do
+          do i=1,reaction%nkinsrfcplx
+             if (reaction%kinsrfcplx_print(i)) then
+                   nviz_tran=nviz_tran+1
+             endif
+          end do
+          if (associated(reaction%kd_print)) then
+            do i=1,reaction%naqcomp
+                if (reaction%kd_print(i)) then
+                   nviz_tran=nviz_tran+1
+                endif
+             end do
+          endif
+
+          if (associated(reaction%total_sorb_print)) then
+             do i=1,reaction%naqcomp
+                 if (reaction%neqsorb > 0 .and. reaction%total_sorb_print(i)) then
+                   nviz_tran=nviz_tran+1
+                 endif
+             end do
+          endif
+
+          if (reaction%neqsorb > 0 .and. associated(reaction%total_sorb_mobile_print)) then
+             do i=1,reaction%ncollcomp
+                if (reaction%neqsorb > 0 .and. reaction%total_sorb_mobile_print(i)) then
+                   nviz_tran=nviz_tran+1
+                endif
+             end do
+          endif
+          if (reaction%print_colloid) then
+            do i=1,reaction%ncoll
+               if (reaction%colloid_print(i)) then
+                   nviz_tran=nviz_tran+1
+               endif
+            end do
+         endif
+    
+!!           nviz_tran = nviz_tran+option%ntrandof
         else
            nviz_tran = reaction%nkinmnrl
         endif
@@ -5107,6 +5195,7 @@ subroutine OutputHDF5(realization)
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                   option)
 
+#if !defined(SAMR_HAVE_HDF5)
   if (output_option%print_porosity) then
     call OutputGetVarFromArray(realization,global_vec,POROSITY,ZERO_INTEGER)
     if (.not.(option%use_samr)) then
@@ -5115,7 +5204,8 @@ subroutine OutputHDF5(realization)
                                          grp_id,H5T_NATIVE_DOUBLE)
     endif
   endif
-
+#endif
+      
   select case(option%iflowmode)
   
     case(FLASH2_MODE, MPH_MODE,THC_MODE, IMS_MODE,&
@@ -5131,7 +5221,7 @@ subroutine OutputHDF5(realization)
           else
              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
              if(first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,TEMPERATURE,ZERO_INTEGER, string)
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component, trim(string)//C_NULL_CHAR)
              endif
              current_component=current_component+1
           endif
@@ -5147,7 +5237,7 @@ subroutine OutputHDF5(realization)
           else
              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
              if(first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,PRESSURE,ZERO_INTEGER, string)
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
              endif
              current_component=current_component+1
           endif
@@ -5163,7 +5253,7 @@ subroutine OutputHDF5(realization)
           else
              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
              if(first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,LIQUID_SATURATION,ZERO_INTEGER, string)
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component, trim(string)//C_NULL_CHAR)
              endif
              current_component=current_component+1
           endif
@@ -5179,7 +5269,7 @@ subroutine OutputHDF5(realization)
           else
              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
              if(first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,GAS_SATURATION,ZERO_INTEGER, string)
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
              endif
              current_component=current_component+1
           endif
@@ -5195,7 +5285,7 @@ subroutine OutputHDF5(realization)
           else
              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
              if(first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,LIQUID_DENSITY,ZERO_INTEGER, string)
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
              endif
              current_component=current_component+1
           endif
@@ -5211,7 +5301,7 @@ subroutine OutputHDF5(realization)
           else
              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
              if(first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,GAS_DENSITY,ZERO_INTEGER, string)
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
              endif
              current_component=current_component+1
           endif
@@ -5227,7 +5317,7 @@ subroutine OutputHDF5(realization)
           else
              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
              if(first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,LIQUID_ENERGY,ZERO_INTEGER, string)
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
              endif
              current_component=current_component+1
           endif
@@ -5243,7 +5333,7 @@ subroutine OutputHDF5(realization)
           else
              call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
              if(first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,GAS_ENERGY,ZERO_INTEGER, string)
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component, trim(string)//C_NULL_CHAR)
              endif
              current_component=current_component+1
           endif
@@ -5260,7 +5350,7 @@ subroutine OutputHDF5(realization)
             else
                call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
              if(first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,LIQUID_MOLE_FRACTION,i, string)
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
              endif
                current_component=current_component+1
             endif
@@ -5278,7 +5368,7 @@ subroutine OutputHDF5(realization)
             else
                call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
              if(first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,GAS_MOLE_FRACTION,i, string)
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
              endif
                current_component=current_component+1
             endif
@@ -5302,7 +5392,7 @@ subroutine OutputHDF5(realization)
           else
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
             if(first) then
-               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,PHASE,ZERO_INTEGER, string)
+               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
             endif
             current_component=current_component+1
           endif
@@ -5334,7 +5424,7 @@ subroutine OutputHDF5(realization)
           else
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
             if(first) then
-               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,PH,reaction%species_idx%h_ion_id, string)
+               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
             endif
             current_component=current_component+1
           endif
@@ -5350,7 +5440,7 @@ subroutine OutputHDF5(realization)
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
               if(first) then
-                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,reaction%print_tot_conc_type,i, string)
+                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
               endif
               current_component=current_component+1
             endif
@@ -5367,7 +5457,7 @@ subroutine OutputHDF5(realization)
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
               if (first) then
-                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,reaction%print_free_conc_type,i, string)
+                call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
               endif
               current_component=current_component+1
             endif
@@ -5384,7 +5474,7 @@ subroutine OutputHDF5(realization)
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
               if(first) then
-                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,PRIMARY_ACTIVITY_COEF,i, string)
+                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
               endif
               current_component=current_component+1
             endif
@@ -5400,7 +5490,7 @@ subroutine OutputHDF5(realization)
           else
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
             if(first) then
-               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,MINERAL_VOLUME_FRACTION,i, string)
+               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
             endif
             current_component=current_component+1
           endif
@@ -5415,7 +5505,7 @@ subroutine OutputHDF5(realization)
           else
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
             if(first) then
-               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,MINERAL_RATE,i, string)
+               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
             endif
             current_component=current_component+1
           endif
@@ -5430,7 +5520,7 @@ subroutine OutputHDF5(realization)
           else
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
             if(first) then
-               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,SURFACE_CMPLX_FREE,i, string)
+               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
             endif
             current_component=current_component+1
           endif
@@ -5445,7 +5535,7 @@ subroutine OutputHDF5(realization)
           else
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
             if(first) then
-               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,SURFACE_CMPLX,i, string)
+               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component, trim(string)//C_NULL_CHAR)
             endif
             current_component=current_component+1
           endif
@@ -5463,7 +5553,7 @@ subroutine OutputHDF5(realization)
           else
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
             if(first) then
-               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,KIN_SURFACE_CMPLX_FREE,i, string)
+               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
             endif
             current_component=current_component+1
           endif
@@ -5478,7 +5568,7 @@ subroutine OutputHDF5(realization)
           else
             call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
             if(first) then
-               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,KIN_SURFACE_CMPLX,i, string)
+               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
             endif
             current_component=current_component+1
           endif
@@ -5497,7 +5587,7 @@ subroutine OutputHDF5(realization)
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
               if(first) then
-                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,PRIMARY_KD,i,string)
+                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
               endif
               current_component=current_component+1
             endif
@@ -5514,7 +5604,7 @@ subroutine OutputHDF5(realization)
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
               if(first) then
-                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,TOTAL_SORBED,i,string)
+                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
               endif
               current_component=current_component+1
             endif
@@ -5531,7 +5621,7 @@ subroutine OutputHDF5(realization)
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
               if(first) then
-                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,TOTAL_SORBED_MOBILE,i,string)
+                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
               endif
               current_component=current_component+1
             endif
@@ -5548,7 +5638,7 @@ subroutine OutputHDF5(realization)
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
               if(first) then
-                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,reaction%print_tot_conc_type,i,string)
+                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
               endif
               current_component=current_component+1
             endif
@@ -5563,7 +5653,7 @@ subroutine OutputHDF5(realization)
             else
               call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
               if(first) then
-                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,reaction%print_tot_conc_type,i,string)
+                 call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
               endif
               current_component=current_component+1
             endif
@@ -5584,7 +5674,7 @@ subroutine OutputHDF5(realization)
         else
            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
            if(first) then
-              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,MATERIAL_ID,ZERO_INTEGER,string)
+              call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
        endif
        current_component=current_component+1
     endif
@@ -5627,6 +5717,8 @@ subroutine OutputHDF5(realization)
         endif
      endif
 
+#if !defined(SAMR_HAVE_HDF5)
+        
      if (output_option%print_hdf5_flux_velocities) then
 
         ! internal flux velocities
@@ -5656,10 +5748,14 @@ subroutine OutputHDF5(realization)
               call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,Z_DIRECTION,grp_id)
            endif
         endif
-
+   
      endif
+
+#endif
+
   endif  
-  ! call VecDestroy(natural_vec,ierr)
+
+                                ! call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
 
   if(.not.(option%use_samr)) then

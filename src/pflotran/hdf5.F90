@@ -33,9 +33,18 @@ module HDF5_module
 
 #else
 
+#if defined (SAMR_HAVE_HDF5)
+  public :: HDF5ReadRegionFromFile, &
+            HDF5ReadCellIndexedIntegerArray, &
+            HDF5ReadCellIndexedRealArray, &
+            HDF5WriteStructDataSetFromVec
+
+#else      
   public :: HDF5ReadRegionFromFile, &
             HDF5ReadCellIndexedIntegerArray, &
             HDF5ReadCellIndexedRealArray
+
+#endif
 #endif
   
 contains
@@ -2804,4 +2813,35 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
                           
 end subroutine HDF5ReadCellIndexedRealArray
 
+#if defined(SAMR_HAVE_HDF5)
+
+! ************************************************************************** !
+!
+! HDF5WriteStructDataSetFromVec: stub for AMR
+! author: Bobby Philip
+! date: 10/04/10
+!
+! ************************************************************************** !
+subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
+
+  use hdf5
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Patch_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  character(len=32) :: name
+  type(realization_type) :: realization
+  Vec :: vec
+  integer(HID_T) :: file_id
+  integer(HID_T) :: data_type
+  
+end subroutine HDF5WriteStructDataSetFromVec
+
+#endif
 end module HDF5_module

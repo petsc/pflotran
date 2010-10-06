@@ -24,8 +24,8 @@ subroutine f_create_simulation(simulation_obj, realization_obj, application_ptr,
  integer :: len     
  PetscLogDouble :: timex(4), timex_wall(4)
  
- PetscTruth :: truth
- PetscTruth :: option_found  
+ PetscBool :: truth
+ PetscBool :: option_found  
  PetscInt :: test_int
  PetscErrorCode :: ierr
  character(len=MAXSTRINGLENGTH) :: string

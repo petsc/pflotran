@@ -43,7 +43,7 @@ ifdef vamsi_hdf5
 endif
 
 ifdef samr_hdf5
-  HDF5_FLAGS += -I$(HDF5_INCLUDE) -I$(HDF5_LIB) -DUSE_HDF5
+  HDF5_FLAGS += -I$(HDF5_INCLUDE) -I$(HDF5_LIB) -DUSE_HDF5 -DSAMR_HAVE_HDF5
 endif
 
 

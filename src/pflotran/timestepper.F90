@@ -281,10 +281,6 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   run_flow_as_steady_state = PETSC_FALSE
   failure = PETSC_FALSE
   
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-vecload_block_size", & 
-                           failure, ierr)
-  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, "-vecload_block_size", option%iflag, failure,ierr)
-                           
   if (option%restart_flag) then
     call StepperRestart(realization,flow_stepper,tran_stepper, &
                         flow_read,transport_read,activity_coefs_read)
@@ -1056,7 +1052,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
       
       call PetscGetTime(log_start_time, ierr)
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
           call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
         case(RICHARDS_MODE)
           if (discretization%itype == STRUCTURED_GRID_MIMETIC) then 

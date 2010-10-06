@@ -444,18 +444,14 @@ subroutine Restart(realization, &
   option%io_buffer = '--> Open checkpoint file: ' // &
                      trim(option%restart_filename)
   call printMsg(option)
-  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, "-vecload_block_size", i, found,ierr)
   call PetscViewerBinaryOpen(option%mycomm,option%restart_filename, &
                              FILE_MODE_READ,viewer,ierr)
-  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, "-vecload_block_size", i, found,ierr)
  
   activity_coefs_read = PETSC_FALSE
   
   ! Get the header data.
   call PetscBagLoad(viewer, bag, ierr)
-  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, "-vecload_block_size", i, found,ierr)
   call PetscBagGetData(bag, header, ierr)
-  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, "-vecload_block_size", i, found,ierr)
   
   if (header%revision_number /= REVISION_NUMBER) then
     write(string,*) header%revision_number
@@ -468,7 +464,6 @@ subroutine Restart(realization, &
     option%io_buffer = trim(option%io_buffer) // trim(adjustl(string)) // ').'
     call printErrMsg(option)
   endif
-  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, "-vecload_block_size", i, found,ierr)
   
   output_option%plot_number = header%plot_number
   ! FLOW
@@ -509,12 +504,10 @@ subroutine Restart(realization, &
     call printWrnMsg(option)
   endif
 
-  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, "-vecload_block_size", i, found,ierr)
   if (flow_read) then
     call DiscretizationCreateVector(realization%discretization,ONEDOF, &
                                     global_vec,GLOBAL,option)
   ! Load the PETSc vectors.
-  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, "-vecload_block_size", i, found,ierr)
     call VecLoad(field%flow_xx,viewer,ierr)
     call DiscretizationGlobalToLocal(discretization,field%flow_xx, &
                                      field%flow_xx_loc,NFLOWDOF)
