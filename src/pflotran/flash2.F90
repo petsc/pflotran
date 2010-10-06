@@ -1729,8 +1729,8 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
   discretization => realization%discretization
   
  
-!  call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
-!  call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
+  call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
+
  ! check initial guess -----------------------------------------------
   ierr = Flash2InitGuessCheck(realization)
   if(ierr<0)then
@@ -1743,8 +1743,7 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
 
   ! Communication -----------------------------------------
   ! These 3 must be called before Flash2UpdateAuxVars()
-  call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
-!  call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
+!  call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
   call DiscretizationLocalToLocal(discretization,field%icap_loc,field%icap_loc,ONEDOF)
 
   call DiscretizationLocalToLocal(discretization,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
@@ -2633,7 +2632,7 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
     call Flash2AuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
            global_aux_vars_bc(sum_connection),&
            realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
-           realization%fluid_properties, option)
+           realization%fluid_properties, option,xphi)
 
     if( associated(global_aux_vars_bc))then
       global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
@@ -3754,9 +3753,6 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
                 perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
                 perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
     
-      iphas_up = iphase_loc_p(ghosted_id_up)
-      iphas_dn = iphase_loc_p(ghosted_id_dn)
-
       ithrm_up = int(ithrm_loc_p(ghosted_id_up))
       ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
       D_up = Flash2_parameter%ckwet(ithrm_up)
