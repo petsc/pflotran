@@ -480,7 +480,6 @@ subroutine OptionInitRealization(option)
   option%tran_weight_t1 = 0.d0
   option%flow_dt = 0.d0
   option%tran_dt = 0.d0
-  option%dt = 0.d0
   option%match_waypoint = PETSC_FALSE
   option%prev_dt = 0.d0
 
