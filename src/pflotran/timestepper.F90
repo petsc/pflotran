@@ -948,7 +948,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
       
       call PetscGetTime(log_start_time, ierr)
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,IMS_MODE)
+        case(MPH_MODE,THC_MODE,IMS_MODE,FLASH2_MODE)
           call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
         case(RICHARDS_MODE)
           if (discretization%itype == STRUCTURED_GRID_MIMETIC) then 
