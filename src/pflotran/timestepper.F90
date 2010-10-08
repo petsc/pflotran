@@ -42,7 +42,8 @@ module Timestepper_module
 
     ! An array of multiplicative factors that specify how to increase time step.
     PetscReal, pointer :: tfac(:)
-        
+    PetscInt :: ntfac             ! size of tfac
+            
     type(solver_type), pointer :: solver
     
     type(waypoint_type), pointer :: cur_waypoint
@@ -96,6 +97,7 @@ function TimestepperCreate()
   
   stepper%time_step_cut_flag = PETSC_FALSE
 
+  stepper%ntfac = 13
   allocate(stepper%tfac(13))
   stepper%tfac(1)  = 2.0d0; stepper%tfac(2)  = 2.0d0
   stepper%tfac(3)  = 2.0d0; stepper%tfac(4)  = 2.0d0
@@ -131,6 +133,7 @@ subroutine TimestepperRead(stepper,input,option)
   use Option_module
   use String_module
   use Input_module
+  use Utility_module
   
   implicit none
 
@@ -139,6 +142,7 @@ subroutine TimestepperRead(stepper,input,option)
   type(option_type) :: option
   
   character(len=MAXWORDLENGTH) :: keyword
+  character(len=MAXSTRINGLENGTH) :: string
 
   input%ierr = 0
   do
@@ -168,6 +172,12 @@ subroutine TimestepperRead(stepper,input,option)
       case('MAX_TS_CUTS')
         call InputReadInt(input,option,stepper%max_time_step_cuts)
         call InputDefaultMsg(input,option,'max_time_step_cuts')
+        
+      case('DT_FACTOR')
+        string='time_step_factor'
+        call UtilityReadArray(stepper%tfac,NEG_ONE_INTEGER,string,input, \
+            option)
+        stepper%ntfac = size(stepper%tfac)
 
       case('INITIALIZE_TO_STEADY_STATE')
         stepper%init_to_steady_state = PETSC_TRUE
@@ -738,7 +748,7 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
     endif
         
   endif
-
+  
   ! TRANSPORT
   update_time_step = PETSC_TRUE
   if (associated(tran_stepper)) then
@@ -772,13 +782,16 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
       if (tran_stepper%iaccel == 0) return
 
       dtt = dt
-      if (tran_stepper%num_newton_iterations <= tran_stepper%iaccel .and. &
+      if ( &
+      !tran_stepper%num_newton_iterations <= tran_stepper%iaccel .and. &
           tran_stepper%num_newton_iterations <= size(tran_stepper%tfac)) then
         if (tran_stepper%num_newton_iterations == 0) then
           dtt = tran_stepper%tfac(1) * dt
         else
           dtt = tran_stepper%tfac(tran_stepper%num_newton_iterations) * dt
         endif
+      else
+        dtt = 2.d0 * dt
       endif
 
       if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
