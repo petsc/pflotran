@@ -538,6 +538,9 @@ subroutine Init(simulation)
   call RealizationProcessConditions(realization)
   call RealProcessFluidProperties(realization)
   call RealProcessMatPropAndSatFunc(realization)
+#ifdef SUBCONTINUUM_MODEL
+  call RealProcessSubcontinuumProp(realization)
+#endif
   call assignMaterialPropToRegions(realization)
   call RealizationInitAllCouplerAuxVars(realization)
   if (option%ntrandof > 0) then
@@ -980,6 +983,9 @@ subroutine InitReadInput(simulation)
   use AMR_Grid_module
   use Solver_module
   use Material_module
+#ifdef SUBCONTINUUM_MODEL
+  use Subcontinuum_module
+#endif
   use Saturation_Function_module  
   use Fluid_module
   use Realization_module
@@ -1036,6 +1042,9 @@ subroutine InitReadInput(simulation)
   type(waypoint_type), pointer :: waypoint
   
   type(material_property_type), pointer :: material_property
+#ifdef SUBCONTINUUM_MODEL
+  type(subcontinuum_property_type), pointer :: subcontinuum_property
+#endif
   type(fluid_property_type), pointer :: fluid_property
   type(saturation_function_type), pointer :: saturation_function
 
@@ -1536,6 +1545,17 @@ subroutine InitReadInput(simulation)
         call SaturationFunctionAddToList(saturation_function, &
                                          realization%saturation_functions)
         nullify(saturation_function)   
+
+!....................
+      
+      case ('SUBCONTINUUM_PROPERTY')
+
+        subcontinuum_property => SubcontinuumPropertyCreate()
+        call InputReadWord(input,option,subcontinuum_property%name,PETSC_TRUE)
+        call InputErrorMsg(input,option,'name','SUBCONTINUUM_PROPERTY')        
+        call SubcontinuumPropertyRead(subcontinuum_property,input,option)
+        call SubcontinuumPropertyAddToList(subcontinuum_property,realization%subcontinuum_properties)
+        nullify(subcontinuum_property)
 
 !....................
       
