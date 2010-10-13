@@ -973,7 +973,7 @@ PflotranJacobianMultilevelOperator::getVariableIndex(std::string &name,
       
       if(!var)
       {
-         var = new pdat::CCellVariable<NDIM, double>(name, depth);         
+         var = new pdat::CCellVariable<NDIM, double>(name, d_ndof);         
       }
 
       var_id = variable_db->registerVariableAndContext(var,
