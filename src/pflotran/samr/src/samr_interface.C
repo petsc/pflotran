@@ -475,8 +475,6 @@ void samrcopyvectoveccomponent_(Vec *svec, Vec *dvec, int *comp)
 void samrregisterforviz_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
                          Vec *svec, 
                          int *component,
-                         int *dname,
-                         int *inx,
 	          char *vName)
 {
   SAMRAI::appu::VisItDataWriter<NDIM>* vizWriter = (*application_strategy)->getVizWriter();
