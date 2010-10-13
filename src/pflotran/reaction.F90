@@ -355,7 +355,7 @@ subroutine ReactionRead(reaction,input,option)
                 call InputReadWord(input,option,word,PETSC_TRUE)
                 call InputErrorMsg(input,option,'species name', &
                                    'CHEMISTRY,KD_RXN')
-                kd_rxn%species_name = trim(word                )
+                kd_rxn%species_name = trim(word)
                 do 
                   call InputReadFlotranString(input,option)
                   if (InputError(input)) exit
