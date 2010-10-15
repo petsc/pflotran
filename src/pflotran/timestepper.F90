@@ -440,24 +440,27 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
                                transient_plot_flag)
 
     ! flow solution
-    if (associated(flow_stepper) .and. &
-        .not.flow_stepper%run_as_steady_state) then
-      flow_t0 = option%flow_time
-      call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
-      call StepperStepFlowDT(realization,flow_stepper,step_to_steady_state, &
-                             failure)
-      call PetscLogStagePop(ierr)
-      if (failure) return ! if flow solve fails, exit
-      option%flow_time = flow_stepper%target_time
+    if (associated(flow_stepper)) then
+      if (.not.flow_stepper%run_as_steady_state) then
+        flow_t0 = option%flow_time
+        call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
+        call StepperStepFlowDT(realization,flow_stepper,step_to_steady_state, &
+                               failure)
+        call PetscLogStagePop(ierr)
+        if (failure) return ! if flow solve fails, exit
+        option%flow_time = flow_stepper%target_time
+      endif
     endif
     ! (reactive) transport solution
     if (associated(tran_stepper)) then
       call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr)
       tran_dt_save = -999.d0
       do ! loop on transport until it reaches the target time
-        if (flow_stepper%time_step_cut_flag) then
-          tran_stepper%target_time = flow_stepper%target_time
-          option%tran_dt = min(option%tran_dt,option%flow_dt)
+        if (associated(flow_stepper)) then
+          if (flow_stepper%time_step_cut_flag) then
+            tran_stepper%target_time = flow_stepper%target_time
+            option%tran_dt = min(option%tran_dt,option%flow_dt)
+          endif
         endif
         if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
 	      !global implicit
