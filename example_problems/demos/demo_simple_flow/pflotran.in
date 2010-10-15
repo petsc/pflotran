@@ -57,7 +57,7 @@ END
 
 REGION top
 COORDINATES
-0.d0 0.d0 0.d0
+0.d0 0.d0 10.d0
 1.d0 1.d0 10.d0
 /
 FACE TOP
@@ -65,8 +65,8 @@ END
 
 REGION bottom
 COORDINATES
-0.d0 0.d0 10.d0
-1.d0 1.d0 10.d0
+0.d0 0.d0 0.d0
+1.d0 1.d0 0.d0
 /
 FACE BOTTOM
 END
