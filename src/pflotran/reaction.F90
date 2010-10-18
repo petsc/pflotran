@@ -355,7 +355,7 @@ subroutine ReactionRead(reaction,input,option)
                 call InputReadWord(input,option,word,PETSC_TRUE)
                 call InputErrorMsg(input,option,'species name', &
                                    'CHEMISTRY,KD_RXN')
-                kd_rxn%species_name = trim(word                )
+                kd_rxn%species_name = trim(word)
                 do 
                   call InputReadFlotranString(input,option)
                   if (InputError(input)) exit
@@ -2403,6 +2403,16 @@ subroutine ReactionReadOutput(reaction,input,option)
     word = name
     call StringToUpper(word)
     select case(word)
+      case('OFF')
+        reaction%print_all_species = PETSC_FALSE
+        reaction%print_pH = PETSC_FALSE
+        reaction%print_kd = PETSC_FALSE
+        reaction%print_total_sorb = PETSC_FALSE
+        reaction%print_total_sorb_mobile = PETSC_FALSE
+        reaction%print_colloid = PETSC_FALSE
+        reaction%print_act_coefs = PETSC_FALSE
+        reaction%print_total_component = PETSC_TRUE
+        reaction%print_free_ion = PETSC_FALSE
       case('ALL')
         reaction%print_all_species = PETSC_TRUE
         reaction%print_pH = PETSC_TRUE
