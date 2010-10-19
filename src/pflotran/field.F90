@@ -19,9 +19,15 @@ module Field_module
     Vec :: ithrm_loc
     Vec :: icap_loc
     Vec :: iphas_loc, iphas_old_loc
-
+    
     Vec :: perm_xx_loc, perm_yy_loc, perm_zz_loc
     Vec :: perm0_xx, perm0_yy, perm0_zz, perm_pow
+   
+#ifdef SUBCONTINUUM_MODEL
+    ! subcontinuum properties
+    Vec :: num_subcontinuua
+    Vec, pointer :: subcontinuum_size(:)
+#endif
     
     Vec :: work, work_loc
 

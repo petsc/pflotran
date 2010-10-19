@@ -26,6 +26,18 @@ module Patch_module
     PetscInt, pointer :: imat(:)
       ! Integer array of material ids of size ngmax.
     type(material_property_ptr_type), pointer :: material_property_array(:)
+
+#ifdef SUBCONTINUUM_MODEL
+    !These arrays will be used to hold subcontinuum type count for cells
+    PetscInt, pointer :: subcontinuum_count(:,:) 
+
+    !These arrays will hold the subcontinuum types ids
+    PetscInt, pointer :: subcontinuum_ids(:)
+
+    type(subcontinuum_property_ptr_type), pointer ::  &
+                          & subcontinuum_property_array(:)
+#endif
+
     PetscReal, pointer :: internal_velocities(:,:)
     PetscReal, pointer :: boundary_velocities(:,:)
     PetscReal, pointer :: internal_fluxes(:,:,:)    
@@ -94,6 +106,11 @@ function PatchCreate()
   patch%id = 0
   nullify(patch%imat)
   nullify(patch%material_property_array)
+#ifdef SUBCONTINUUM_MODEL
+  nullify(patch%subcontinuum_count)
+  nullify(patch%subcontinnuum_ids)
+  nullify(patch%subcontinuum_property_array)  
+#endif
   nullify(patch%internal_velocities)
   nullify(patch%boundary_velocities)
   nullify(patch%internal_fluxes)
@@ -247,17 +264,23 @@ end subroutine PatchLocalizeRegions
 !
 ! ************************************************************************** !
 subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
-                                material_properties,option)
+                                material_properties, subcontinuum_properties, option)
 
   use Option_module
   use Material_module
   use Condition_module
   use Connection_module
+#ifdef SUBCONTINUUM_TYPE
+  use Subcontinuum_module
+#endif
 
   implicit none
   
   type(patch_type) :: patch
   type(material_property_type), pointer :: material_properties
+#ifdef SUBCONTINUUM_MODEL
+  type(subcontinuum_property_type), pointer :: subcontinuum_properties
+#endif
   type(condition_list_type) :: flow_conditions
   type(tran_condition_list_type) :: transport_conditions
   type(option_type) :: option
@@ -267,9 +290,12 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   type(strata_type), pointer :: strata
   type(observation_type), pointer :: observation, next_observation
   
-  PetscInt :: temp_int
+  PetscInt :: temp_int, isub
   
   call MaterialPropConvertListToArray(material_properties,patch%material_property_array)
+#ifdef SUBCONTINUUM_MODEL
+  call SubcontinuumPropConvertListToArray(subcontinuum_properties,patch%subcontinuum_property_array)
+#endif
   
   ! boundary conditions
   coupler => patch%boundary_conditions%first
@@ -476,13 +502,37 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
                              ' not found in material list'
           call printErrMsg(option)
         endif
+
+#ifdef SUBCONTINUUM_PROPERTY
+        ! connect subcontinuum properties pointers
+        ! allocate storage to hold subcontinuum pointers
+        if (strata%material_property%num_subcontinuum_type > 0) then
+          allocate(strata%subcontinuum_property( & 
+                      strata%material_property%subcontinuum_type_count))
+          ! loop over each subcontinuum
+          do isub=1,strata%material_property%num_subcontinuum_type
+            strata%subcontinuum_property(isub) => &
+              SubcontinuumPropGetPtrFromArray( & 
+               strata%material_property%subcontinuum_property_name(isub), &
+               patch%subcontinuum_property_array)
+            if (.not.associated(strata%subcontinuum_property(isub))) then
+              option%io_buffer = 'Subcontinuum ' // &
+                trim(strata%material_property%subcontinuum_property_name(isub)) // &
+                             ' not found in subcontinuum list'
+              call printErrMsg(option)
+            endif
+          enddo
+        endif
+#endif
+
       endif
     else
       nullify(strata%region)
       nullify(strata%material_property)
     endif
     strata => strata%next
-  enddo 
+  enddo
+
 
   ! connectivity between initial conditions, boundary conditions, srcs/sinks, etc and grid
   call CouplerListComputeConnections(patch%grid,option, &

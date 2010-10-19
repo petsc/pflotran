@@ -538,10 +538,10 @@ subroutine Init(simulation)
   call RealizationProcessConditions(realization)
   call RealProcessFluidProperties(realization)
   call RealProcessMatPropAndSatFunc(realization)
+  call assignMaterialPropToRegions(realization)
 #ifdef SUBCONTINUUM_MODEL
   call RealProcessSubcontinuumProp(realization)
 #endif
-  call assignMaterialPropToRegions(realization)
   call RealizationInitAllCouplerAuxVars(realization)
   if (option%ntrandof > 0) then
     call printMsg(option,"  Setting up TRAN Realization ")
@@ -2238,6 +2238,137 @@ subroutine assignMaterialPropToRegions(realization)
                                    field%tortuosity_loc,ONEDOF)
 
 end subroutine assignMaterialPropToRegions
+
+! *********************************************************************** !
+!
+! assignSubcontinuumPropToRegions: Assigns subcontinuum properties to 
+!                                    associated regions in the model
+! author: Jitendra Kumar 
+! date: 10/14/2010
+!
+! *********************************************************************** !
+subroutine assignSubcontinuumPropToRegions(realization)
+
+
+  use Realization_module
+  use Discretization_module
+  use Strata_module
+  use Region_module
+  use Material_module
+  use Option_module
+  use Grid_module
+  use Field_module
+  use Patch_module
+  use Level_module
+
+  use HDF5_module
+
+  implicit none
+
+  type(realization_type) :: realization
+
+  PetscReal, pointer :: ssize_p(:)   !subcontinuum sizes
+  PetscInt, pointer :: scount_p(:)   !subcontinuum unit count for each type
+  PetscInt, pointer :: stype_p(:)    !no. of subcontinuum types
+
+  PetscInt :: icell, local_id, ghosted_id, natural_id, material_id &
+              & subcontinuum_id
+  PetscInt :: istart, iend
+  character(len=MAXSTRINGLENGTH) :: group_name
+  character(len=MAXSTRINGLENGTH) :: dataset_name
+  PetscErrorCode :: ierr
+
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(discretization_type) :: discretization
+  type(field_type) :: field
+  type(strata_type) :: strata
+  type(patch_type) :: patch
+  type(level_type) :: cur_level
+  type(patch_type) :: cur_patch
+    
+  type(material_property_type), pointer :: material_property,
+  null_material_property
+  type(region_type), pointer :: region
+  PetscBool :: updated_ghosted_subcontinuum_ids
+
+  option => realization%option
+  discretization =>realization%discretization
+  patch => realization%patch
+  field => realization%field
+
+  ! loop over all patches and allocate arrays for subcontinuum type
+  ! count arrays
+  cur _level => realization%level_list%first
+  do
+    if(.not,associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do 
+      if (.not.associated(cur_patch)) exit
+      if (.not.associated(cur_patch%subcontinuum_count)) then
+        allocate(cur_patch%subcontinuum_count(cur_patch%grid%ngmax,2))
+        !initialize to "unset"
+        cur_patch%subcontinuum_count = -999
+      endif
+      cur_patch => cur_patch%next 
+    enddo 
+    cur_level => cur_level%next
+  enddo
+
+  ! currently subcontinuum properties are set based on regions only.
+  ! TODO: Add support to read subcontinuum properties from input file
+  update_ghosted_subcontinuum_ids = PETSC_FALSE
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated.(cur_patch)) exit
+      grid => cur_patch%grid
+      strata => cur_patch%strata%first
+      do
+        if (.not.associated.(strata)) exit
+        ! Read in cell by cell subcontunum ids if they exist
+        if (.not.associated.(strata%region) .and. strata%active) then
+          ! readSubcontinuumFromFile(realization, &
+          !                        strata%subcontinuum_property_file_name)
+          ! TODO: Implement the above function
+        else if (strata%active) then
+          update_ghosted_subcontinuum_ids = PETSC_TRUE
+          region => strata%region
+          material_property => strata%material_property
+          subcontinuum_property => material_property%subcontinuum_property
+          if (associated(region)) then 
+            istart = 1
+            iend = region%num_cells
+          else 
+            istart =1 
+            iend = grid%nlmax
+          endif 
+          sum = 1  ! reset the offset counter
+          do icell=istart, iend
+            if (associated(region)) then 
+              local_id = region%cell_ids(icell)
+            else
+              local_id = icell
+            endif
+            ghosted_id = grid%nL2G(local_id)
+            ! save the subcontinuum type counts
+            cur_patch%subcontinuum_type_count(ghosted_id, 1) =  &
+                               & material_property%subcontinuum_type_count
+            ! set the offsets to be used to access subcontinuum ids
+            cur_patch%subcontinuum_type_count(ghosted_id, 2) = sum
+            sum = sum + cur_patch%subcontinuum_type_count(ghosted_id, 1)
+          enddo
+        endif
+        strata => strata%next
+      enddo
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo  
+                                              
+end subroutine assignSubcontinuumPropToRegions
 
 ! ************************************************************************** !
 !
