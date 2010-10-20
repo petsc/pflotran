@@ -17,8 +17,8 @@ module Immis_module
   ! indication of what the problem is.
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
-#include "finclude/petscda.h"
-#include "finclude/petscda.h90"
+#include "finclude/petscdm.h"
+#include "finclude/petscdm.h90"
 !#ifdef USE_PETSC216
 !#include "finclude/petscsles.h"
 !#endif

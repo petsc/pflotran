@@ -9,8 +9,8 @@ module Output_module
 #include "definitions.h"
 #include "finclude/petscvec.h"
 #include "finclude/petscvec.h90"
-#include "finclude/petscda.h"
-#include "finclude/petscda.h90"
+#include "finclude/petscdm.h"
+#include "finclude/petscdm.h90"
 #include "finclude/petsclog.h"
 
   PetscInt, parameter :: TECPLOT_INTEGER = 0

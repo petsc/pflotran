@@ -38,14 +38,14 @@ module Grid_module
     ! 'Ghosted local' (or simply 'ghost') indices are used to access arrays 
     ! that contain additional entries that hold copies of values that are 
     ! owned by neighboring processes.  (These entries are filled in by 
-    ! DAGlobalToLocalBegin/End() in the structured grid case.)
+    ! DMGlobalToLocalBegin/End() in the structured grid case.)
     !
-    ! Entries of a vector created with DACreateGlobalVector() should be 
+    ! Entries of a vector created with DMCreateGlobalVector() should be 
     ! indexed using 'local' indices.  The array returned from a call to 
     ! VecGetArrayF90() on such a vector consists of local entries only and 
     ! NO ghost points.
     !
-    ! Entries of a vector created with DACreateLocalVector() should be 
+    ! Entries of a vector created with DMCreateLocalVector() should be 
     ! indexed using 'ghosted local' indices.  The array returned from a call 
     ! to VecGetArrayF90() on such a vector contains the truly local entries 
     ! as well as ghost points.
@@ -530,8 +530,8 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, DOF, option)
 #include "finclude/petscvec.h90"
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
-#include "finclude/petscda.h"
-#include "finclude/petscda.h90"
+#include "finclude/petscdm.h"
+#include "finclude/petscdm.h90"
 #include "finclude/petscis.h"
 #include "finclude/petscis.h90"
 #include "finclude/petscviewer.h"
@@ -998,8 +998,8 @@ subroutine GridMapIndices(grid, sgdm)
 #include "finclude/petscvec.h90"
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
-#include "finclude/petscda.h"
-#include "finclude/petscda.h90"
+#include "finclude/petscdm.h"
+#include "finclude/petscdm.h90"
 #include "finclude/petscis.h"
 #include "finclude/petscis.h90"
 #include "finclude/petscviewer.h"
@@ -1007,7 +1007,7 @@ subroutine GridMapIndices(grid, sgdm)
 
   
   type(grid_type) :: grid
-  DA :: sgdm
+  DM :: sgdm
 
   PetscInt :: ierr, icount
   PetscInt, allocatable :: int_tmp(:)
@@ -1021,7 +1021,7 @@ subroutine GridMapIndices(grid, sgdm)
       if ((grid%itype==STRUCTURED_GRID_MIMETIC)) then
          allocate(grid%nG2P(grid%ngmax))
          allocate(int_tmp(grid%ngmax))
-         call DAGetGlobalIndices(sgdm,  grid%ngmax, int_tmp, i_da, ierr)
+         call DMDAGetGlobalIndices(sgdm,  grid%ngmax, int_tmp, i_da, ierr)
          do icount = 1, grid%ngmax
          !   write(*,*) icount, int_tmp(icount + i_da)
             grid%nG2P(icount) = int_tmp(icount + i_da)
