@@ -174,7 +174,7 @@ public:
    /**
    * Returns the number of primitive variables for the discretization
    */
-   const int getNumberOfVariables(void){ return d_ndof; }
+   const int getNumberOfVariables(void){ return 1; }
    
    static PetscErrorCode wrapperMatMult(Mat mat,Vec x,Vec y);
 

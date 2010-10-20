@@ -185,7 +185,7 @@ public:
    /**
    * Returns the number of primitive variables for the discretization
    */
-   const int getNumberOfVariables(void){ return d_ndof; }
+   const int getNumberOfVariables(void){ return 1; }
 
    int getStencilID(void){return d_stencil_id;}
 

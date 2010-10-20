@@ -282,15 +282,7 @@ subroutine Init(simulation)
     endif
 
     if(option%use_samr) then
-      select case(option%iflowmode)
-        case(FLASH2_MODE)
-         option%samr_mode=1
-        case(RICHARDS_MODE)
-           option%samr_mode=0
-        case default
-           option%io_buffer = 'AMR implemented only for Richards and FLASH2 modes'
-           call printErrMsg(option)
-      end select
+       option%samr_mode=0
     endif
       
     call DiscretizationCreateJacobian(discretization,NFLOWDOF, &

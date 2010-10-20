@@ -138,19 +138,26 @@ PflotranJacobianLevelOperator::apply(const int *f_id,
 #endif
 
       tbox::Pointer< pdat::CCellData<NDIM, double > > stencil = patch->getPatchData(d_stencil_id);
+      tbox::Pointer< pdat::CCellData<NDIM, double > > u_data = patch->getPatchData(u_id[0]);
+      assert(f_id[0]>=0);
+      tbox::Pointer< pdat::CCellData<NDIM, double > > f_data = patch->getPatchData(f_id[0]);
+      assert(r_id[0]>=0);
+      tbox::Pointer< pdat::CCellData<NDIM, double > > r_data = patch->getPatchData(r_id[0]);
+      
+      hier::Box<NDIM> box = patch->getBox();
+      
+      const hier::Index<NDIM> ifirst = box.lower();
+      const hier::Index<NDIM> ilast = box.upper();
+
+      hier::IntVector<NDIM> ghost_cell_width = u_data->getGhostCellWidth();
+      const int ugcw=ghost_cell_width(0);
+      ghost_cell_width = f_data->getGhostCellWidth();
+      const int fgcw=ghost_cell_width(0);
+      ghost_cell_width = r_data->getGhostCellWidth();
+      const int rgcw=ghost_cell_width(0);
+      
       if(d_ndof==1)
       {
-         tbox::Pointer< pdat::CCellData<NDIM, double > > u_data = patch->getPatchData(u_id[0]);
-         assert(f_id[0]>=0);
-         tbox::Pointer< pdat::CCellData<NDIM, double > > f_data = patch->getPatchData(f_id[0]);
-         assert(r_id[0]>=0);
-         tbox::Pointer< pdat::CCellData<NDIM, double > > r_data = patch->getPatchData(r_id[0]);
-
-         hier::Box<NDIM> box = patch->getBox();
-
-         const hier::Index<NDIM> ifirst = box.lower();
-         const hier::Index<NDIM> ilast = box.upper();
-
          box = u_data->getGhostBox(); 
          const hier::Index<NDIM> ufirst = box.lower();
          const hier::Index<NDIM> ulast = box.upper();
@@ -179,7 +186,16 @@ PflotranJacobianLevelOperator::apply(const int *f_id,
       }
       else
       {
-         abort();
+	samrapply7ptblkstencil3d_(ifirst(0),ifirst(1),ifirst(2),
+				  ilast(0),ilast(1),ilast(2),
+				  d_ndof,
+				  stencil->getPointer(),
+				  ugcw,
+				  u_data->getPointer(),
+				  fgcw,
+				  f_data->getPointer(),
+				  rgcw,
+				  r_data->getPointer());
       }
       
    }
@@ -287,7 +303,6 @@ PflotranJacobianLevelOperator::setFlux(const int flux_id,
       const hier::Index<NDIM> glast = u_data->getGhostBox().upper();
       
       assert(d_stencil_size==7);
-      assert(d_ndof==1);
 
       pflotranpcflux3d_(ifirst(0),ifirst(1),ifirst(2),
                         ilast(0),ilast(1),ilast(2),
@@ -421,90 +436,58 @@ PflotranJacobianLevelOperator::getStencilOffsets(const int i,
 {
 
    std::vector<int> offsets;
-   if(d_ndof==1)
-   {
-      if((NDIM==1)&&i==0)
-      {
-         offsets.resize(d_stencil_size*NDIM);
-         offsets[0]=0;
-         offsets[1]=-1;
-         offsets[2]=1;
-      }
-      else if((NDIM==2)&&i==0&&j==0)
-      {
-         offsets.resize(d_stencil_size*NDIM);
-         offsets[0]=0;
-         offsets[1]=0;
-         offsets[2]=-1;
-         offsets[3]=0;
-         offsets[4]=1;
-         offsets[5]=0;
-         offsets[6]=0;
-         offsets[7]=-1;
-         offsets[8]=0;
-         offsets[9]=1;
-         
-      }
-      else if((NDIM==3)&&i==0&&j==0&&k==0)
-      {
-         offsets.resize(d_stencil_size*NDIM);
-         offsets[0]=0;
-         offsets[1]=0;
-         offsets[2]=0;
-         offsets[3]=-1;
-         offsets[4]=0;
-         offsets[5]=0;
-         offsets[6]=1;
-         offsets[7]=0;
-         offsets[8]=0;
-         offsets[9]=0;
-         offsets[10]=-1;
-         offsets[11]=0;
-         offsets[12]=0;
-         offsets[13]=1;
-         offsets[14]=0;
-         offsets[15]=0;
-         offsets[16]=0;
-         offsets[17]=-1;
-         offsets[18]=0;
-         offsets[19]=0;
-         offsets[20]=1;
-      }
-   }
+
+   if((NDIM==1)&&i==0)
+     {
+       offsets.resize(d_stencil_size*NDIM);
+       offsets[0]=0;
+       offsets[1]=-1;
+       offsets[2]=1;
+     }
+   else if((NDIM==2)&&i==0&&j==0)
+     {
+       offsets.resize(d_stencil_size*NDIM);
+       offsets[0]=0;
+       offsets[1]=0;
+       offsets[2]=-1;
+       offsets[3]=0;
+       offsets[4]=1;
+       offsets[5]=0;
+       offsets[6]=0;
+       offsets[7]=-1;
+       offsets[8]=0;
+       offsets[9]=1;
+       
+     }
+   else if((NDIM==3)&&i==0&&j==0&&k==0)
+     {
+       offsets.resize(d_stencil_size*NDIM);
+       offsets[0]=0;
+       offsets[1]=0;
+       offsets[2]=0;
+       offsets[3]=-1;
+       offsets[4]=0;
+       offsets[5]=0;
+       offsets[6]=1;
+       offsets[7]=0;
+       offsets[8]=0;
+       offsets[9]=0;
+       offsets[10]=-1;
+       offsets[11]=0;
+       offsets[12]=0;
+       offsets[13]=1;
+       offsets[14]=0;
+       offsets[15]=0;
+       offsets[16]=0;
+       offsets[17]=-1;
+       offsets[18]=0;
+       offsets[19]=0;
+       offsets[20]=1;
+     }
    else
-   {
-      if((NDIM==3)&&i==0&&j==0&&k==0)
-      {
-         offsets.resize(d_stencil_size*NDIM*d_ndof*d_ndof);
-
-         if(d_stencil_size==7)
-         {
-            // we are assuming the standard 7 point stencil here 
-            int off[7] = {-1, 1, 0, 0, 0, 0, 0};
-            int xi = 6;
-            int yi = 4;
-            int zi = 2;
-
-            for(int s=0; s<7; s++)
-            {
-               for(int i=0;i<d_ndof*d_ndof; i++)
-               {
-                  offsets[s*d_ndof*d_ndof*NDIM+i*NDIM+0]=off[(xi+s)%7];
-                  offsets[s*d_ndof*d_ndof*NDIM+i*NDIM+1]=off[(yi+s)%7];
-                  offsets[s*d_ndof*d_ndof*NDIM+i*NDIM+2]=off[(zi+s)%7];
-               }
-            }
-         }
-         else
-         {
-            abort();
-         }
-      }
-      else
-      {
-         abort();
-      }
-   }
+     {
+       abort();
+     }
 
    return offsets;
 }
@@ -1012,17 +995,11 @@ PflotranJacobianLevelOperator::MatDiagonalScale(Vec l, Vec r )
       else
       {
          std::vector<int> offsets=this->getStencilOffsets();
-         int stencil_offsets[d_stencil_size*NDIM*d_ndof*d_ndof];
-         
-         for(int s=0; s<d_stencil_size*NDIM*d_ndof*d_ndof; s++)
-         {
-            stencil_offsets[s]=offsets[s];
-         }
 
          samrccellmatdiagscalelocal3d_( ifirst(0),ifirst(1),ifirst(2),
                                         ilast(0),ilast(1),ilast(2),
                                         d_stencil_size,
-                                        stencil_offsets,
+                                        &offsets[0],
                                         d_ndof,
                                         stencil->getPointer(),
                                         rgcw,
@@ -1070,17 +1047,11 @@ PflotranJacobianLevelOperator::MatDiagonalScaleLocal(Vec diag )
 #endif
 
         std::vector<int> offsets=this->getStencilOffsets();
-        int stencil_offsets[d_stencil_size*NDIM*d_ndof*d_ndof];
-
-        for(int s=0; s<d_stencil_size*NDIM*d_ndof*d_ndof; s++)
-        {
-           stencil_offsets[s]=offsets[s];
-        }
 
         samrccellmatdiagscalelocal3d_( ifirst(0),ifirst(1),ifirst(2),
                                        ilast(0),ilast(1),ilast(2),
                                        d_stencil_size,
-                                       stencil_offsets,
+                                       &offsets[0],
                                        d_ndof,
                                        stencil->getPointer(),
                                        sgcw,
@@ -1160,7 +1131,7 @@ PflotranJacobianLevelOperator::getVariableIndex(std::string &name,
       
       if(!var)
       {
-         var = new pdat::CCellVariable<NDIM, double>(name, depth);         
+         var = new pdat::CCellVariable<NDIM, double>(name, d_ndof);         
       }
 
       var_id = variable_db->registerVariableAndContext(var,

@@ -1,3 +1,4 @@
+
 define(NDIM,3)dnl
 define(REAL,`double precision')dnl
 define(PP,0)dnl
@@ -60,6 +61,59 @@ c
       return
       end
 
+c
+c
+      subroutine samrapply7ptblkstencil3d(
+     & ifirst0,ifirst1,ifirst2,ilast0,ilast1,ilast2,
+     & ndof, 
+     & stencil,
+     & ugcw,
+     & u,
+     & fgcw,
+     & f,
+     & rgcw,
+     & r)
+
+c***********************************************************************
+      implicit none
+c
+      integer ifirst0,ifirst1,ifirst2
+      integer ilast0,ilast1,ilast2
+      integer ugcw
+      integer fgcw
+      integer rgcw
+      integer ndof
+      REAL stencil(0:6,ndof,ndof,CELL3d(ifirst,ilast,0))
+      REAL u(ndof,CELL3d(ifirst,ilast,ugcw))
+      REAL f(ndof,CELL3d(ifirst,ilast,fgcw))
+      REAL r(ndof,CELL3d(ifirst,ilast,rgcw))
+
+      integer i,j,k,d
+
+c***********************************************************************
+c
+c not coded efficiently
+
+      do k = ifirst2, ilast2
+         do j = ifirst1, ilast1
+           do i = ifirst0, ilast0
+	     r(:,i,j,k)=f(:,i,j,k)
+	     do d = 1, ndof
+               r(:,i,j,k)=r(:,i,j,k)-(stencil(PP,:,d,i,j,k)*u(d,i,j,k)
+     &                           +stencil(WW,:,d,i,j,k)*u(d,i-1,j,k)
+     &                           +stencil(EE,:,d,i,j,k)*u(d,i+1,j,k)
+     &                           +stencil(SS,:,d,i,j,k)*u(d,i,j-1,k)
+     &                           +stencil(NN,:,d,i,j,k)*u(d,i,j+1,k)
+     &                           +stencil(BB,:,d,i,j,k)*u(d,i,j,k-1)
+     &                           +stencil(TT,:,d,i,j,k)*u(d,i,j,k+1))
+             enddo  
+           enddo
+         enddo
+      enddo
+
+      return
+      end
+      
       subroutine pflotranpcflux3d(
      & ifirst0,ifirst1,ifirst2,ilast0,ilast1,ilast2,
      & ufirst0,ufirst1,ufirst2,ulast0,ulast1,ulast2,
@@ -78,26 +132,35 @@ c
       integer ulast0,ulast1,ulast2
       integer ndof
       integer stencilsize
-      REAL stencil(0:stencilsize-1,CELL3d(ifirst,ilast,0))
-      REAL u(0:ndof-1,CELL3d(ufirst,ulast,0))
-      REAL flux0(0:ndof-1,SIDE3d0(ifirst,ilast,0))
-      REAL flux1(0:ndof-1,SIDE3d1(ifirst,ilast,0))
-      REAL flux2(0:ndof-1,SIDE3d2(ifirst,ilast,0))
+      REAL stencil(stencilsize,ndof,ndof,CELL3d(ifirst,ilast,0))
+      REAL u(ndof,CELL3d(ufirst,ulast,0))
+      REAL flux0(ndof,SIDE3d0(ifirst,ilast,0))
+      REAL flux1(ndof,SIDE3d1(ifirst,ilast,0))
+      REAL flux2(ndof,SIDE3d2(ifirst,ilast,0))
       
-      integer i,j,k
+      integer i,j,k,d
 
 c***********************************************************************
 c
-c for now we assume that ndof is 1 and that the stencil is a 7 pt stencil
+c for now we assume that the stencil is a 7 pt stencil
 c we also assume that the stencil operator is symmetric
+
+      flux0=0.0
+      flux1=0.0
+      flux2=0.0
 
       do k = ifirst2, ilast2
          do j = ifirst1, ilast1
-            do i = ifirst0, ilast0
-             flux0(0,i,j,k)= stencil(1,i,j,k)*(u(0,i,j,k)-u(0,i-1,j,k))
-             flux1(0,i,j,k)= stencil(3,i,j,k)*(u(0,i,j,k)-u(0,i,j-1,k))
-             flux2(0,i,j,k)= stencil(5,i,j,k)*(u(0,i,j,k)-u(0,i,j,k-1))
-            enddo
+           do i = ifirst0, ilast0
+	     do d=1,ndof
+             flux0(:,i,j,k)=flux0(:,i,j,k)
+     &       	         +stencil(2,:,d,i,j,k)*(u(d,i,j,k)-u(d,i-1,j,k))
+             flux1(:,i,j,k)=flux1(:,i,j,k)
+     &                   +stencil(4,:,d,i,j,k)*(u(d,i,j,k)-u(d,i,j-1,k))
+             flux2(:,i,j,k)=flux2(:,i,j,k)
+     &                   +stencil(6,:,d,i,j,k)*(u(d,i,j,k)-u(d,i,j,k-1))
+	     enddo 
+           enddo
          enddo
       enddo
 
@@ -105,7 +168,10 @@ c     we are forced to adjust the upper faces differently
       i=ilast0
       do k = ifirst2, ilast2
          do j = ifirst1, ilast1
-           flux0(0,i+1,j,k)= stencil(2,i,j,k)*(u(0,i+1,j,k)-u(0,i,j,k))
+	   do d=1,ndof
+             flux0(:,i+1,j,k)= flux0(:,i+1,j,k)
+     &       	        +stencil(3,:,d,i,j,k)*(u(d,i+1,j,k)-u(d,i,j,k))
+           enddo
          enddo
       enddo
 
@@ -113,7 +179,10 @@ c     we are forced to adjust the upper face differently
       j=ilast1
       do k = ifirst2, ilast2
          do i = ifirst0, ilast0
-           flux1(0,i,j+1,k)= stencil(4,i,j,k)*(u(0,i,j+1,k)-u(0,i,j,k))
+	   do d=1,ndof
+             flux1(:,i,j+1,k)= flux1(:,i,j+1,k)
+     &	                 +stencil(5,:,d,i,j,k)*(u(d,i,j+1,k)-u(d,i,j,k))
+           enddo
          enddo
       enddo
 
@@ -121,7 +190,10 @@ c     we are forced to adjust the upper face differently
       k=ilast2
       do j = ifirst1, ilast1
          do i = ifirst0, ilast0
-           flux2(0,i,j,k+1)= stencil(6,i,j,k)*(u(0,i,j,k+1)-u(0,i,j,k))
+	   do d=1,ndof
+             flux2(:,i,j,k+1)=flux2(:,i,j,k+1)
+     &	                 +stencil(7,:,d,i,j,k)*(u(d,i,j,k+1)-u(d,i,j,k))
+           enddo
          enddo
       enddo
 
@@ -173,12 +245,10 @@ c
       do k = ifirst2, ilast2
          do j = ifirst1, ilast1
             do i = ifirst0, ilast0
-               do d = 0,ndof-1
-                r(d,i,j,k)= f(d,i,j,k)-(flux0(d,i+1,j,k)-flux0(d,i,j,k)
-     &                                 +flux1(d,i,j+1,k)-flux1(d,i,j,k)
-     &                                 +flux2(d,i,j,k+1)-flux2(d,i,j,k))
-     &                                 -src(d,i,j,k)*u(d,i,j,k)
-               enddo
+               r(:,i,j,k)=f(:,i,j,k)-(flux0(:,i+1,j,k)-flux0(:,i,j,k)
+     &                               +flux1(:,i,j+1,k)-flux1(:,i,j,k)
+     &                               +flux2(:,i,j,k+1)-flux2(:,i,j,k))
+     &                               -src(:,i,j,k)*u(:,i,j,k)
             enddo
          enddo
       enddo

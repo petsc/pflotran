@@ -717,7 +717,8 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
        call MatCreateShell(option%mycomm, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, Jacobian, ierr)
        call SAMRCreateMatrix(discretization%amrgrid%p_application, ndof, stencilsize, option%samr_mode, Jacobian)
 
-       if(option%samr_mode==1) then
+! for now we assume that if there are multiple dof's they are contiguous in mem, ie petsc block form       
+       if(ndof>1) then
 ! we create a dummy mapping to satisfy the PETSc mapping requirements   
           imax=0
           nlevels =  hierarchy_number_levels(discretization%amrgrid%p_application)
