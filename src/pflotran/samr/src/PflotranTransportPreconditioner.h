@@ -30,7 +30,8 @@
 typedef SAMRAI::tbox::List< SAMRAI::tbox::Pointer<SAMRAI::xfer::CoarsenSchedule<NDIM> > > crsList;
 
 namespace SAMRAI{
-
+  namespace SAMRSolvers{
+    
 class PflotranTransportPreconditioner: public PreconditionerStrategy
 {
 public:
@@ -119,5 +120,9 @@ private:
    PC *d_pc;
    
 };
+
+  }
+
 }
+
 #endif

@@ -10,7 +10,8 @@
 #include "tbox/TimerManager.h"
 
 namespace SAMRAI{
-
+  namespace SAMRSolvers{
+    
   PflotranJacobianLevelOperator::PflotranJacobianLevelOperator(LevelOperatorParameters *parameters):LevelOperator(parameters)
 {
    static tbox::Pointer<tbox::Timer> t_create_PflotranJacobianLevelOperator = 
@@ -1146,4 +1147,5 @@ PflotranJacobianLevelOperator::getVariableIndex(std::string &name,
    return var_id;
 }
 
+}
 }

@@ -15,7 +15,11 @@
 #include "MultilevelOperatorParameters.h"
 
 #include "PflotranFlowPreconditioner.h"
- 
+
+namespace SAMRAI{
+  
+namespace SAMRSolvers{
+  
 PflotranFlowPreconditioner::PflotranFlowPreconditioner(PflotranFlowPreconditionerParameters *parameters)
 {
 #ifdef DEBUG_CHECK_ASSERTIONS
@@ -306,4 +310,7 @@ PflotranFlowPreconditioner::getCoarsenSchedule(int ln, xfer::CoarsenAlgorithm<ND
    
    return crs_fill_schedule;
 
+}
+  
+}
 }

@@ -1,7 +1,8 @@
 #include "PflotranJacobianMultilevelOperatorParameters.h"
 
 namespace SAMRAI{
-
+  namespace SAMRSolvers{
+    
 PflotranJacobianMultilevelOperatorParameters::PflotranJacobianMultilevelOperatorParameters()
 {
 }
@@ -14,5 +15,7 @@ PflotranJacobianMultilevelOperatorParameters::PflotranJacobianMultilevelOperator
    :MultilevelOperatorParameters(database)
 {
 }
+
+  }
 
 }

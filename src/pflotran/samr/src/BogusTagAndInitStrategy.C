@@ -4,7 +4,8 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
-using namespace std;
+
+namespace SAMRAI{
 
 BogusTagAndInitStrategy::BogusTagAndInitStrategy()
 {
@@ -44,4 +45,6 @@ void BogusTagAndInitStrategy::applyGradientDetector(
    const bool uses_richardson_extrapolation_too)
 {
   (void) hierarchy;
+}
+
 }

@@ -273,13 +273,13 @@ void samrcreatematrix_(SAMRAI::PflotranApplicationStrategy **application_strateg
    operator_db->putInteger("ndof", *ndof);
    operator_db->putInteger("stencilsize", *stencilSize);
 
-   SAMRAI::PflotranJacobianMultilevelOperatorParameters *parameters = new  SAMRAI::PflotranJacobianMultilevelOperatorParameters(operator_db);
+   SAMRAI::SAMRSolvers::PflotranJacobianMultilevelOperatorParameters *parameters = new  SAMRAI::SAMRSolvers::PflotranJacobianMultilevelOperatorParameters(operator_db);
    parameters->d_hierarchy = hierarchy;
    parameters->d_pMatrix = pMatrix;
    parameters->d_cf_interpolant = (*application_strategy)->getRefinementBoundaryInterpolant();
    parameters->d_set_boundary_ghosts.setNull();
 
-   SAMRAI::PflotranJacobianMultilevelOperator *pJacobian = new SAMRAI::PflotranJacobianMultilevelOperator((SAMRAI::MultilevelOperatorParameters *)parameters);
+   SAMRAI::SAMRSolvers::PflotranJacobianMultilevelOperator *pJacobian = new SAMRAI::SAMRSolvers::PflotranJacobianMultilevelOperator(parameters);
    if(*flowortransport==0)
    {
       (*application_strategy)->setFlowJacobianMatrix(pJacobian);
@@ -352,7 +352,7 @@ void samrcoarsenfacefluxes_(SAMRAI::PflotranApplicationStrategy **application_st
 void 
 samrsetcurrentjacobianpatch_( Mat *mat, SAMRAI::hier::Patch<NDIM> **patch)
 {
-   SAMRAI::PflotranJacobianMultilevelOperator *pJacobian = NULL;
+  SAMRAI::SAMRSolvers::PflotranJacobianMultilevelOperator *pJacobian = NULL;
 
    MatShellGetContext(*mat, (void **)&pJacobian);
    
@@ -366,7 +366,7 @@ void samrsetjacobiansourceonpatch_(int *which_jac,
                                    SAMRAI::hier::Patch<NDIM> **patch) 
 {
 
-   SAMRAI::PflotranJacobianMultilevelOperator *pJacobian = (*application_strategy)->getJacobianOperator(which_jac);
+   SAMRAI::SAMRSolvers::PflotranJacobianMultilevelOperator *pJacobian = (*application_strategy)->getJacobianOperator(which_jac);
 
    pJacobian->setSourceValueOnPatch(patch, index, val);
 
@@ -377,7 +377,7 @@ void samrsetjacobiansrccoeffsonpatch_(int *which_jac,
                                       SAMRAI::hier::Patch<NDIM> **patch) 
 {
 
-   SAMRAI::PflotranJacobianMultilevelOperator *pJacobian = (*application_strategy)->getJacobianOperator(which_jac);
+   SAMRAI::SAMRSolvers::PflotranJacobianMultilevelOperator *pJacobian = (*application_strategy)->getJacobianOperator(which_jac);
 
    pJacobian->setSrcCoefficientsOnPatch(patch);
 

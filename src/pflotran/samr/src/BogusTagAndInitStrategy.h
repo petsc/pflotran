@@ -11,7 +11,7 @@
 #include "tbox/Pointer.h"
 #include "StandardTagAndInitStrategy.h"
 
-using namespace SAMRAI;
+namespace SAMRAI{
 
 /** \class BogusTagAndInitStrategy
  *
@@ -65,4 +65,5 @@ public:
                               const bool uses_richardson_extrapolation_too);
 };
 
+}
 #endif
