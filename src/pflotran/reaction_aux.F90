@@ -128,7 +128,7 @@ module Reaction_Aux_module
     PetscInt :: mineral_id
     character(len=MAXWORDLENGTH) :: mineral_name
     character(len=MAXWORDLENGTH) :: colloid_name
-    PetscReal :: site_density
+    PetscReal :: site_density ! site density in mol/m^3 bulk
     type(surface_complex_type), pointer :: complex_list
     type (surface_complexation_rxn_type), pointer :: next
   end type surface_complexation_rxn_type    
@@ -296,7 +296,7 @@ module Reaction_Aux_module
     PetscInt, pointer :: eqsrfcplx_rxn_to_surf(:)
     PetscInt, pointer :: eqsrfcplx_rxn_surf_type(:)
     PetscInt, pointer :: eqsrfcplx_rxn_to_complex(:,:)
-    PetscReal, pointer :: eqsrfcplx_rxn_site_density(:)
+    PetscReal, pointer :: eqsrfcplx_rxn_site_density(:) ! site density in mol/m^3 bulk
     PetscBool, pointer :: eqsrfcplx_rxn_stoich_flag(:)
     character(len=MAXWORDLENGTH), pointer :: eqsrfcplx_site_names(:)
     PetscBool, pointer :: eqsrfcplx_site_print(:)
