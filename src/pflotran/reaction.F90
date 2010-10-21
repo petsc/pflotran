@@ -507,6 +507,7 @@ subroutine ReactionRead(reaction,input,option)
                       PETSC_TRUE)
                     call InputErrorMsg(input,option,'keyword', &
                       'CHEMISTRY,SURFACE_COMPLEXATION_RXN,SITE_NAME')
+                    ! site density in mol/m^3 bulk
                     call InputReadDouble(input,option,srfcplx_rxn%site_density)
                     call InputErrorMsg(input,option,'keyword', &
                       'CHEMISTRY,SURFACE_COMPLEXATION_RXN,SITE_DENSITY')                   
