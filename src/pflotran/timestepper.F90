@@ -176,7 +176,7 @@ subroutine TimestepperRead(stepper,input,option)
       case('DT_FACTOR')
         string='time_step_factor'
         call UtilityReadArray(stepper%tfac,NEG_ONE_INTEGER,string,input, &
-                              option)
+            option)
         stepper%ntfac = size(stepper%tfac)
 
       case('INITIALIZE_TO_STEADY_STATE')
@@ -440,27 +440,24 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
                                transient_plot_flag)
 
     ! flow solution
-    if (associated(flow_stepper)) then
-      if (.not.flow_stepper%run_as_steady_state) then
-        flow_t0 = option%flow_time
-        call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
-        call StepperStepFlowDT(realization,flow_stepper,step_to_steady_state, &
-                               failure)
-        call PetscLogStagePop(ierr)
-        if (failure) return ! if flow solve fails, exit
-        option%flow_time = flow_stepper%target_time
-      endif
+    if (associated(flow_stepper) .and. &
+        .not.flow_stepper%run_as_steady_state) then
+      flow_t0 = option%flow_time
+      call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
+      call StepperStepFlowDT(realization,flow_stepper,step_to_steady_state, &
+                             failure)
+      call PetscLogStagePop(ierr)
+      if (failure) return ! if flow solve fails, exit
+      option%flow_time = flow_stepper%target_time
     endif
     ! (reactive) transport solution
     if (associated(tran_stepper)) then
       call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr)
       tran_dt_save = -999.d0
       do ! loop on transport until it reaches the target time
-        if (associated(flow_stepper)) then
-          if (flow_stepper%time_step_cut_flag) then
-            tran_stepper%target_time = flow_stepper%target_time
-            option%tran_dt = min(option%tran_dt,option%flow_dt)
-          endif
+        if (flow_stepper%time_step_cut_flag) then
+          tran_stepper%target_time = flow_stepper%target_time
+          option%tran_dt = min(option%tran_dt,option%flow_dt)
         endif
         if (option%reactive_transport_coupling == GLOBAL_IMPLICIT) then
 	      !global implicit
@@ -1075,6 +1072,10 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
         case(RICHARDS_MODE)
           if (discretization%itype == STRUCTURED_GRID_MIMETIC) then 
             call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx_faces, ierr)
+#ifdef DASVYAT
+!write(*,*) "After SNESSolve"
+!stop
+#endif
           else 
             call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
           end if
@@ -1384,6 +1385,11 @@ subroutine StepperStepTransportDT_GI(realization,stepper,flow_t0,flow_t1, &
   discretization => realization%discretization
   field => realization%field
   solver => stepper%solver
+
+#ifdef DASVYAT
+write(*,*) "Beginning of StepperStepTransportDT"
+!stop
+#endif
 
 ! PetscReal, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
 

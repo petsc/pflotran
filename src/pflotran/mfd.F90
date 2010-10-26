@@ -113,9 +113,6 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
         call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_faces,ierr)
         call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_faces,ierr)
 
-#ifdef DASVYAT
-        write(*,*) "JACOBIAN CREATED", ierr
-#endif
 
       case(MATBAIJ)
         call MatCreateMPIBAIJ(option%mycomm,mfd_aux%ndof,ndof_local,ndof_local, &
@@ -124,9 +121,6 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
                              PETSC_NULL_INTEGER,o_nnz,J,ierr)
         call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_faces,ierr)
         call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_faces,ierr)
-#ifdef DASVYAT
-        write(*,*) "JACOBIAN CREATED", ierr
-#endif
       case default
         option%io_buffer = 'MatType not recognized in MFDCreateJacobian'
         call printErrMsg(option)
@@ -139,17 +133,11 @@ subroutine MFDCreateJacobian(grid, mfd_aux, mat_type, J, option)
                              PETSC_NULL_INTEGER,d_nnz,J,ierr)
         call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_faces,ierr)
         call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_faces,ierr)
-#ifdef DASVYAT
-        write(*,*) "JACOBIAN CREATED"
-#endif
       case(MATBAIJ)
         call MatCreateSeqBAIJ(option%mycomm,mfd_aux%ndof,ndof_local,ndof_local, &
                              PETSC_NULL_INTEGER,d_nnz,J,ierr)
         call MatSetLocalToGlobalMapping(J,mfd_aux%mapping_ltog_faces,ierr)
         call MatSetLocalToGlobalMappingBlock(J,mfd_aux%mapping_ltogb_faces,ierr)
-#ifdef DASVYAT
-        write(*,*) "JACOBIAN CREATED", ierr
-#endif
       case default
         option%io_buffer = 'MatType not recognized in MFDCreateJacobian'
         call printErrMsg(option)
@@ -297,7 +285,7 @@ end subroutine MFDAuxGenerateStiffMatrix
 
 !subroutine MFDAuxGenerateRhs(ghosted_cell_id, bc_g, source_f, grid,  PermTensor, aux_var, rich_aux_var, global_aux_var, Accum, &
 !                                       sq_faces, option, rhs)
-subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, aux_var, rich_aux_var, global_aux_var, Accum, &
+subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f,  bc_h, aux_var, rich_aux_var, global_aux_var, Accum, &
                                        sq_faces, option, rhs)
 
  use Option_module
@@ -312,7 +300,7 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
   type(global_auxvar_type) :: global_aux_var
   PetscScalar, pointer :: sq_faces(:)
   type(option_type) :: option
-  PetscScalar, pointer :: bc_g(:), rhs(:)
+  PetscScalar, pointer :: bc_g(:), rhs(:), bc_h(:)
   PetscScalar :: Accum(1:option%nflowdof),source_f(1:option%nflowdof)
   PetscScalar :: PermTensor(3,3)
   PetscInt :: ghosted_cell_id
@@ -384,6 +372,9 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
 
   E = 1./E
 
+  write(*,*) "bc_h"
+  write(*,*) (bc_h(iface), iface=1,aux_var%numfaces)
+
   do iface = 1, aux_var%numfaces
      rhs(iface) = sq_faces(iface)*MB(iface)*E*(f(1) + ukvr*gMB) - ukvr*sq_faces(iface)*Mg(iface) - ukvr*sq_faces(iface)*gr(iface)
   end do
@@ -434,7 +425,6 @@ subroutine MFDAuxReconstruct(face_pr, source_f, aux_var, rich_aux_var, global_au
 
   E = 1./E
 
-  write(*,*) "den ", global_aux_var%den(1)
 
   xx(1) = (source_f(1)+Accum(1))*E/global_aux_var%den(1)
 
@@ -525,10 +515,10 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
 
      if (conn%itype == BOUNDARY_CONNECTION_TYPE) then
         patch%boundary_velocities(option%nphase, iface) = -darcy_v
-        write(*,*) "bound flux", iface , -darcy_v
+!        write(*,*) "bound flux", iface , -darcy_v
      else if (conn%itype == INTERNAL_CONNECTION_TYPE) then
        patch%internal_velocities(option%nphase, iface) = darcy_v
-        write(*,*) "int flux", iface , darcy_v
+!        write(*,*) "int flux", iface , darcy_v
      end if
 
   end do

@@ -646,6 +646,7 @@ subroutine CouplerAssignBCtoCells(grid,option,coupler)
   
   if (coupler%itype /= BOUNDARY_COUPLER_TYPE) return 
 
+
   call VecGetSize(grid%e2n, e2n_size, ierr)
 
   if (e2n_size > 0) then 
@@ -668,6 +669,7 @@ subroutine CouplerAssignBCtoCells(grid,option,coupler)
      stop
   end if
 
+
   do icell = 1, region%num_cells
 
     cell_id_local = region%cell_ids(icell)
@@ -679,9 +681,7 @@ subroutine CouplerAssignBCtoCells(grid,option,coupler)
       if (coupler%faces_set(icell) == face_id_ghosted) then
         e2n_local((cell_id_local-1)*stride + iface) = -coupler%flow_condition%itype(RICHARDS_PRESSURE_DOF)
       end if
-!      write(*,*) coupler%faces_set(icell), face_id_ghosted, e2n_local((cell_id_local-1)*stride + iface)
     end do
-
   end do
 
   if (e2n_size > 0) call VecRestoreArrayF90(grid%e2n, e2n_local, ierr)

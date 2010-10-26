@@ -409,11 +409,7 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
   MFD_aux => MFDAuxCreate()
   grid%MFD => MFD_aux
  
-#ifdef DASVYAT
-   write(*,*) "grid%nlmax" , grid%nlmax
-#endif
   call MFDAuxInit(MFD_aux, grid%nlmax, option)
-   write(*,*) "AFTER MFDAuxInit"
   allocate(numfaces(grid%nlmax))
 
   numfaces = 6
@@ -449,10 +445,8 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
 !  end do
 
   do icell = 1, grid%nlmax
-    write(*,*) "icell", icell
     aux_var => MFD_aux%aux_vars(icell)
     call MFDAuxVarInit(aux_var, numfaces(icell), option)
-   write(*,*) "AFTER MFDAuxVarInit"
   end do
 
 
@@ -696,7 +690,6 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, DOF, option)
 #endif
         end if
       end do
-      write (*,*) "e2f: ", (e2f_local_values((icell-1)*stride + icount),icount=1,6)
 !      write (*,*) "e2n: ", (e2n_local((icell-1)*stride + icount),icount=1,6)
    end do
 

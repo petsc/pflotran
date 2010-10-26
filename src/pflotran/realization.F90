@@ -362,9 +362,7 @@ subroutine RealizationCreateDiscretization(realization)
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option)
       if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
-          write(*,*) "Before GridComputeCell2FaceConnectivity "
           call GridComputeCell2FaceConnectivity(grid, discretization%MFD, option)
-          write(*,*) "After GridComputeCell2FaceConnectivity"
       end if
     case(UNSTRUCTURED_GRID)
       grid => discretization%grid
@@ -2317,27 +2315,30 @@ subroutine RealizationSetUpBC4Faces(realization)
   do
     if (.not.associated(boundary_condition)) exit
     bc_type = boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF)
-    if ((bc_type == DIRICHLET_BC).or.(bc_type == HYDROSTATIC_BC)  &
-         .or.(bc_type == SEEPAGE_BC).or.(bc_type == CONDUCTANCE_BC) ) then
 
-      do iconn = 1, boundary_condition%numfaces_set
-        sum_connection = sum_connection + 1
+    do iconn = 1, boundary_condition%numfaces_set
+      sum_connection = sum_connection + 1
 
-        local_id = boundary_condition%region%cell_ids(iconn)
-        ghosted_id = grid%nL2G(local_id)
+      local_id = boundary_condition%region%cell_ids(iconn)
+      ghosted_id = grid%nL2G(local_id)
 
-        aux_var => grid%MFD%aux_vars(local_id)
-        do j = 1, aux_var%numfaces
-          ghost_face_id = aux_var%face_id_gh(j)
-          conn => grid%faces(ghost_face_id)%conn_set_ptr
-          jface = grid%faces(ghost_face_id)%id
-          if (boundary_condition%faces_set(iconn) == ghost_face_id) then
-              bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)*conn%area(jface)
+      aux_var => grid%MFD%aux_vars(local_id)
+      do j = 1, aux_var%numfaces
+        ghost_face_id = aux_var%face_id_gh(j)
+        conn => grid%faces(ghost_face_id)%conn_set_ptr
+        jface = grid%faces(ghost_face_id)%id
+        if (boundary_condition%faces_set(iconn) == ghost_face_id) then
+           if ((bc_type == DIRICHLET_BC).or.(bc_type == HYDROSTATIC_BC)  &
+              .or.(bc_type == SEEPAGE_BC).or.(bc_type == CONDUCTANCE_BC) ) then
+                    bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)*conn%area(jface)
+           else if ((bc_type == NEUMANN_BC)) then
+                    bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)
+           end if 
+                
   !            bc_faces_p(ghost_face_id) = conn%cntr(3,jface)*conn%area(jface) 
-          end if
-        end do
+        end if
       end do
-    end if
+    end do
     boundary_condition => boundary_condition%next
   end do
 

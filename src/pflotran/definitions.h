@@ -132,11 +132,6 @@ PetscInt, parameter :: NULL_SURFACE = 0
 PetscInt, parameter :: COLLOID_SURFACE = 1
 PetscInt, parameter :: MINERAL_SURFACE = 2
 
-! KD rxn types
-PetscInt, parameter :: SORPTION_LINEAR = 1
-PetscInt, parameter :: SORPTION_LANGMUIR = 2
-PetscInt, parameter :: SORPTION_FREUNDLICH  = 3
-
 ! coupler types
 PetscInt, parameter :: INITIAL_COUPLER_TYPE = 1
 PetscInt, parameter :: BOUNDARY_COUPLER_TYPE = 2

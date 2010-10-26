@@ -3377,34 +3377,34 @@ subroutine RTotalSorbKD(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: tempreal
   PetscReal :: one_over_n
   PetscReal :: activity_one_over_n
-  
+
   ! Surface Complexation
   do irxn = 1, reaction%neqkdrxn
     icomp = reaction%eqkdspecid(irxn)
     molality = rt_auxvar%pri_molal(icomp)
     activity = molality*rt_auxvar%pri_act_coef(icomp)
-    select case(reaction%eqkdtype(irxn))
-      case(SORPTION_LINEAR)
-        ! Csorb = Kd*Caq
-        res = reaction%eqkddistcoef(irxn)*activity
-        dres_dc = res/molality
-      case(SORPTION_LANGMUIR)
-        ! Csorb = K*Caq*b/(1+K*Caq)
-        tempreal = reaction%eqkddistcoef(irxn)*activity
-        res = tempreal*reaction%eqkdlangmuirb(irxn) / (1.d0 + tempreal)
-        dres_dc = res/molality - &
-                  res / (1.d0 + tempreal) * tempreal / molality
-      case(SORPTION_FREUNDLICH)
-        ! Csorb = Kd*Caq**(1/n)
-        one_over_n = 1.d0/reaction%eqkdfreundlichn(irxn)
-        activity_one_over_n = activity**one_over_n
-        res = reaction%eqkddistcoef(irxn)* &
-                activity**one_over_n
-        dres_dc = res/molality*one_over_n
-      case default
-        res = 0.d0
-        dres_dc = 0.d0
-    end select
+!    select case(reaction%eqkdtype(irxn))
+!      case(SORPTION_LINEAR)
+!        ! Csorb = Kd*Caq
+!       res = reaction%eqkddistcoef(irxn)*activity
+!        dres_dc = res/molality
+!      case(SORPTION_LANGMUIR)
+!        ! Csorb = K*Caq*b/(1+K*Caq)
+!        tempreal = reaction%eqkddistcoef(irxn)*activity
+!        res = tempreal*reaction%eqkdlangmuirb(irxn) / (1.d0 + tempreal)
+!        dres_dc = res/molality - &
+!                  res / (1.d0 + tempreal) * tempreal / molality
+!      case(SORPTION_FREUNDLICH)
+!        ! Csorb = Kd*Caq**(1/n)
+!        one_over_n = 1.d0/reaction%eqkdfreundlichn(irxn)
+!        activity_one_over_n = activity**one_over_n
+!        res = reaction%eqkddistcoef(irxn)* &
+!                activity**one_over_n
+!        dres_dc = res/molality*one_over_n
+!      case default
+!        res = 0.d0
+!        dres_dc = 0.d0
+!    end select
     rt_auxvar%total_sorb_eq(icomp) = rt_auxvar%total_sorb_eq(icomp) + res
     rt_auxvar%dtotal_sorb_eq(icomp,icomp) = &
       rt_auxvar%dtotal_sorb_eq(icomp,icomp) + dres_dc 
