@@ -1,5 +1,5 @@
 #include "petscsys.h"
-#include "petscda.h"
+#include "petscdm.h"
 
 PetscMPIInt myrank = 0;
 PetscMPIInt commsize = 0;
