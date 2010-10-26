@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 #include "petscsys.h"
-#include "petscda.h"
+#include "petscdm.h"
 #include "petscvec.h"
 #include "petscmat.h"
 
@@ -101,7 +101,7 @@ private:
   PetscReal local_origin[3];
   PetscReal global_origin[3];
   PetscReal rotationZdegrees, rotationZradians;
-  DA da;
+  DM da;
   PetscInt gnx, gny, gnz, lnx, lny, lnz;
   PetscInt gxs, gys, gzs, lxs, lys, lzs;
   PetscInt gxe, gye, gze, lxe, lye, lze;

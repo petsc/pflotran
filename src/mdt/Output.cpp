@@ -165,7 +165,7 @@ void Output::printHDFMaterialsAndRegions() {
 #if defined(PETSC_HAVE_HDF5)
   PetscPrintf(PETSC_COMM_WORLD,"Printing HDF Materials and Regions.\n");
 
-  PetscTruth option_found;
+  PetscBool option_found;
   char filename[128];
   char string[128];
   

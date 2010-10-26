@@ -38,7 +38,7 @@ Hanford300::Hanford300(Grid **grid_) {
 //  nz = 15;
 
   char filename[1024];
-  PetscTruth option_found;
+  PetscBool option_found;
   strcpy(filename,"mdt.in");
   PetscOptionsGetString(PETSC_NULL,"-mdtin",filename,1024,&option_found);
 

@@ -21,17 +21,17 @@ void StructuredGrid::createDA() {
   if (commsize > 1) pnx = 2; 
   if (commsize > 3) pnz = 2; 
 
-  ierr = DACreate3d(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR,
+  ierr = DMDACreate3d(PETSC_COMM_WORLD,DMDA_NONPERIODIC,DMDA_STENCIL_STAR,
                     nx,ny,nz,pnx,PETSC_DECIDE,pnz,
                     1,1,PETSC_NULL,PETSC_NULL,PETSC_NULL,&da);
 
-  ierr = DAGetCorners(da,&lxs,&lys,&lzs,&lnx,&lny,&lnz);
+  ierr = DMDAGetCorners(da,&lxs,&lys,&lzs,&lnx,&lny,&lnz);
   lxe = lxs+lnx;
   lye = lys+lny;
   lze = lzs+lnz;
   lnxXny = lnx*lny;
   
-  ierr = DAGetGhostCorners(da,&gxs,&gys,&gzs,&gnx,&gny,&gnz);
+  ierr = DMDAGetGhostCorners(da,&gxs,&gys,&gzs,&gnx,&gny,&gnz);
   gxe = gxs+gnx;
   gye = gys+gny;
   gze = gzs+gnz;
@@ -272,7 +272,7 @@ void StructuredGrid::computeCoordinates() {
   
   VecRestoreArray(v,&v_ptr);
 
-  DASetCoordinates(da,v);
+  DMDASetCoordinates(da,v);
 
 }
 
@@ -737,20 +737,20 @@ PetscInt *StructuredGrid::getLocalCellVertexNaturalIDs(GridCell *cells, GridVert
 }
 #endif
 void StructuredGrid::getVectorLocal(Vec *v) {
-  DACreateLocalVector(da,v);
+  DMCreateLocalVector(da,v);
 }
 
 void StructuredGrid::getVectorGlobal(Vec *v) {
-  DACreateGlobalVector(da,v);
+  DMCreateGlobalVector(da,v);
 }
 
 void StructuredGrid::getVectorNatural(Vec *v) {
-  DACreateNaturalVector(da,v);
+  DMDACreateNaturalVector(da,v);
 }
 
 void StructuredGrid::globalToNatural(Vec global, Vec natural) {
-  DAGlobalToNaturalBegin(da,global,INSERT_VALUES,natural);
-  DAGlobalToNaturalEnd(da,global,INSERT_VALUES,natural);
+  DMDAGlobalToNaturalBegin(da,global,INSERT_VALUES,natural);
+  DMDAGlobalToNaturalEnd(da,global,INSERT_VALUES,natural);
 }
 
 void StructuredGrid::convertLocalCellDataGtoN(PetscReal *data) {
@@ -761,8 +761,8 @@ void StructuredGrid::convertLocalCellDataGtoN(PetscReal *data) {
 
   PetscInt num_cells_local = lnx*lny*lnz;
 
-  DACreateGlobalVector(da,&global);
-  DACreateNaturalVector(da,&natural);
+  DMCreateGlobalVector(da,&global);
+  DMDACreateNaturalVector(da,&natural);
 
   VecGetArray(global,&v_ptr);
   for (PetscInt i=0; i<num_cells_local; i++)
@@ -842,7 +842,7 @@ PetscReal StructuredGrid::getRotationDegrees() { return rotationZdegrees; }
 PetscInt StructuredGrid::getNeighboringProcessor(PetscInt direction) {
 
   PetscInt pnx, pny, pnz;
-  DAGetInfo(da,PETSC_NULL,PETSC_NULL,PETSC_NULL,PETSC_NULL,
+  DMDAGetInfo(da,PETSC_NULL,PETSC_NULL,PETSC_NULL,PETSC_NULL,
             &pnx,&pny,&pnz,PETSC_NULL,PETSC_NULL,PETSC_NULL,PETSC_NULL);
   PetscInt iproc = myrank%pnx;
   PetscInt jproc = myrank%(pnx*pny)/pnx;
@@ -894,7 +894,7 @@ void StructuredGrid::printAO() {
 
   PetscErrorCode ierr;
   AO ao;
-  ierr = DAGetAO(da,&ao);
+  ierr = DMDAGetAO(da,&ao);
   AOView(ao,PETSC_VIEWER_STDOUT_WORLD);
   AODestroy(ao);
 
@@ -903,5 +903,5 @@ void StructuredGrid::printAO() {
 
 
 StructuredGrid::~StructuredGrid() {
-  DADestroy(da);
+  DMDestroy(da);
 }
