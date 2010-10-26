@@ -12,7 +12,8 @@ extern "C" {
 }
 
 namespace SAMRAI{
-
+  namespace SAMRSolvers{
+    
 class PflotranJacobianMultilevelOperatorParameters: public MultilevelOperatorParameters
 {
 public:
@@ -24,5 +25,6 @@ private:
    PflotranJacobianMultilevelOperatorParameters();
 };
 
+  }
 }
 #endif //  included_PflotranJacobianMultilevelOperatorParameters

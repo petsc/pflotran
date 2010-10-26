@@ -31,7 +31,8 @@ extern "C"{
 }
 
 namespace SAMRAI{
-
+  namespace SAMRSolvers{
+    
 class PflotranFlowPreconditionerParameters: public PreconditionerParameters
 {
 public:
@@ -65,5 +66,7 @@ protected:
 private:
 
 };
+
+  }
 }
 #endif

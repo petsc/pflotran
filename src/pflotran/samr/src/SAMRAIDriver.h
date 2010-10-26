@@ -18,7 +18,6 @@
 #include "tbox/Pointer.h"
 #include "StandardTagAndInitStrategy.h"
 
-using namespace SAMRAI;
 
 /**
  * Extract name of input and log files from command line.
@@ -33,8 +32,8 @@ using namespace SAMRAI;
  */
 void processCommandLine(int argc,
                         char* argv[],
-                        string& input_file,
-                        string& log_file);
+                        std::string& input_file,
+                        std::string& log_file);
 
 /**
  * Generate a patch hierarchy from information specified in input
@@ -46,9 +45,9 @@ void processCommandLine(int argc,
  * \param hierarchy                    
  *        hier::Patch<NDIM> hierarchy initialized by this routine.
  */
-void initializeAMRHierarchy(tbox::Pointer<tbox::Database> &input_db, 
-			    mesh::StandardTagAndInitStrategy<NDIM>* user_tagging_strategy, 
-			    tbox::Pointer<hier::PatchHierarchy<NDIM> > &hierarchy); 
+void initializeAMRHierarchy(SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> &input_db, 
+			    SAMRAI::mesh::StandardTagAndInitStrategy<NDIM>* user_tagging_strategy, 
+			    SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > &hierarchy); 
 
 /**
  * Allocate data for variables on a patch hierarchy.
@@ -59,10 +58,10 @@ void initializeAMRHierarchy(tbox::Pointer<tbox::Database> &input_db,
  * \param grad_phi_id        
  *        Descriptor index of face centered variable.
  */
-void createVariableOnHierarchy(tbox::Pointer<hier::PatchHierarchy<NDIM> > &hierarchy,
-                                tbox::Pointer< pdat::CellVariable<NDIM,double> > &phi,
+void createVariableOnHierarchy(SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > &hierarchy,
+                                SAMRAI::tbox::Pointer< SAMRAI::pdat::CellVariable<NDIM,double> > &phi,
 				int &phi_id);
 
 void
-initializeVariableOnHierarchy(tbox::Pointer<hier::PatchHierarchy<NDIM> > &hierarchy,
+initializeVariableOnHierarchy(SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > &hierarchy,
                               const int phi_id);

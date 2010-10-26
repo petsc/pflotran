@@ -1,3 +1,4 @@
+
 #ifndef included_PflotranTransportPreconditionerParameters
 #define included_PflotranTransportPreconditionerParameters
 
@@ -31,7 +32,8 @@ extern "C"{
 }
 
 namespace SAMRAI{
-
+  namespace SAMRSolvers{
+    
 class PflotranTransportPreconditionerParameters: public PreconditionerParameters
 {
 public:
@@ -65,5 +67,6 @@ protected:
 private:
 
 };
+  }
 }
 #endif

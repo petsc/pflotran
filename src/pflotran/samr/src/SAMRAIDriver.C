@@ -9,7 +9,6 @@
 #include <iostream>
 
 #include <fstream>
-using namespace std;
 
 #include <sys/stat.h>
 
@@ -77,17 +76,17 @@ char **__argv_save;
 
 int main( int argc, char *argv[] ) 
 {
-   string input_file;
-   string log_file;
+  std::string input_file;
+   std::string log_file;
    bool is_from_restart = false;
    std::string pflotran_filename;
-   tbox::Pointer<hier::PatchHierarchy<NDIM> > hierarchy;
+   SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy;
 
    __argc_save = argc;
    __argv_save = argv;
 
-   tbox::SAMRAI_MPI::init(&argc, &argv);
-   tbox::SAMRAIManager::startup();
+   SAMRAI::tbox::SAMRAI_MPI::init(&argc, &argv);
+   SAMRAI::tbox::SAMRAIManager::startup();
 
    PETSC_COMM_WORLD = SAMRAI::tbox::SAMRAI_MPI::getCommunicator();
 
@@ -100,21 +99,21 @@ int main( int argc, char *argv[] )
     */
    processCommandLine(argc, argv, input_file, log_file);
 
-   tbox::PIO::logOnlyNodeZero(log_file);
+   SAMRAI::tbox::PIO::logOnlyNodeZero(log_file);
 
    /*
     * Create input database and parse all data in input file.  This
     * parsing allows us to subsequently extract individual sections.
     */
-   tbox::Pointer<tbox::Database> input_db = new tbox::InputDatabase("input_db");
-   tbox::InputManager::getManager()->parseInputFile(input_file, input_db);
+   SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db = new SAMRAI::tbox::InputDatabase("input_db");
+   SAMRAI::tbox::InputManager::getManager()->parseInputFile(input_file, input_db);
 
-   tbox::Pointer<tbox::Database> app_database = input_db->getDatabase("PflotranApplicationStrategy");
+   SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> app_database = input_db->getDatabase("PflotranApplicationStrategy");
 
    int mode =  app_database->getInteger("DriverMode");
    pflotran_filename=input_db->getStringWithDefault("pflotran_filename", "pflotran_well.in");
    
-   PflotranApplicationStrategy *pflotranApplication = NULL;
+   SAMRAI::PflotranApplicationStrategy *pflotranApplication = NULL;
 
    /*
     * Setup the timer manager to trace timing statistics during execution
@@ -124,15 +123,15 @@ int main( int argc, char *argv[] )
     * previous state if the run is restarted.  To reset timers to zero,
     * call the resetAllTimers() function as shown.
     */
-   tbox::TimerManager::createManager(input_db->getDatabase("TimerManager"));
+   SAMRAI::tbox::TimerManager::createManager(input_db->getDatabase("TimerManager"));
    if (is_from_restart) 
    {
-      tbox::TimerManager::getManager()->resetAllTimers();
+      SAMRAI::tbox::TimerManager::getManager()->resetAllTimers();
    }
 
    input_db->getDatabase("TimerManager")->printClassData(tbox::plog);
    
-   BogusTagAndInitStrategy* test_object=NULL;
+   SAMRAI::BogusTagAndInitStrategy* test_object=NULL;
    
    if(mode==1)
      {
@@ -146,7 +145,7 @@ int main( int argc, char *argv[] )
 	* applyGradientDetector method and to generate custom refinement
 	* regions.
 	*/
-       test_object = new BogusTagAndInitStrategy();
+       test_object = new SAMRAI::BogusTagAndInitStrategy();
        
        /*
 	* Create the AMR hierarchy and initialize it
@@ -155,30 +154,30 @@ int main( int argc, char *argv[] )
 			      test_object,
 			      hierarchy);
               
-       tbox::Pointer<geom::CartesianGridGeometry<NDIM> > grid_geometry = hierarchy->getGridGeometry();
+       SAMRAI::tbox::Pointer<SAMRAI::geom::CartesianGridGeometry<NDIM> > grid_geometry = hierarchy->getGridGeometry();
        
-       pdat::CCellDoubleConstantRefine<NDIM> *ccell_const_refine_op = new pdat::CCellDoubleConstantRefine<NDIM>();
+       SAMRAI::pdat::CCellDoubleConstantRefine<NDIM> *ccell_const_refine_op = new SAMRAI::pdat::CCellDoubleConstantRefine<NDIM>();
        grid_geometry->addSpatialRefineOperator(ccell_const_refine_op);
        
-       geom::CartesianCCellDoubleWeightedAverage<NDIM> *ccell_cons_coarsen_op = new geom::CartesianCCellDoubleWeightedAverage<NDIM>();
+       SAMRAI::geom::CartesianCCellDoubleWeightedAverage<NDIM> *ccell_cons_coarsen_op = new SAMRAI::geom::CartesianCCellDoubleWeightedAverage<NDIM>();
        grid_geometry->addSpatialCoarsenOperator(ccell_cons_coarsen_op);
        
-       geom::CartesianCSideDoubleWeightedAverage<NDIM> *cside_cons_coarsen_op = new geom::CartesianCSideDoubleWeightedAverage<NDIM>();
+       SAMRAI::geom::CartesianCSideDoubleWeightedAverage<NDIM> *cside_cons_coarsen_op = new SAMRAI::geom::CartesianCSideDoubleWeightedAverage<NDIM>();
        grid_geometry->addSpatialCoarsenOperator(cside_cons_coarsen_op);
        
-       geom::CartesianCCellDoubleSum<NDIM> *ccell_sum_coarsen_op = new geom::CartesianCCellDoubleSum<NDIM>();
+       SAMRAI::geom::CartesianCCellDoubleSum<NDIM> *ccell_sum_coarsen_op = new SAMRAI::geom::CartesianCCellDoubleSum<NDIM>();
        grid_geometry->addSpatialCoarsenOperator(ccell_sum_coarsen_op);
        
-       geom::CartesianCSideDoubleSum<NDIM> *cside_sum_coarsen_op = new geom::CartesianCSideDoubleSum<NDIM>();
+       SAMRAI::geom::CartesianCSideDoubleSum<NDIM> *cside_sum_coarsen_op = new SAMRAI::geom::CartesianCSideDoubleSum<NDIM>();
        grid_geometry->addSpatialCoarsenOperator(cside_sum_coarsen_op);
        
-       PflotranApplicationParameters *params  =new PflotranApplicationParameters(app_database);
+       SAMRAI::PflotranApplicationParameters *params  =new SAMRAI::PflotranApplicationParameters(app_database);
        params->d_hierarchy = hierarchy;
        
-       pflotranApplication = new PflotranApplicationStrategy(params);
+       pflotranApplication = new SAMRAI::PflotranApplicationStrategy(params);
               
        // create a RefinementBoundaryInterpolation object
-       RefinementBoundaryInterpolation *cf_interpolant = new RefinementBoundaryInterpolation(hierarchy);
+       SAMRAI::RefinementBoundaryInterpolation *cf_interpolant = new SAMRAI::RefinementBoundaryInterpolation(hierarchy);
        cf_interpolant->setVariableOrderInterpolation(false);
        
        /*
@@ -197,8 +196,8 @@ int main( int argc, char *argv[] )
     * visualization.  Note that we also start a timer for the
     * simulation part of the main program.
     */
-   static tbox::Pointer<tbox::Timer> main_timer = 
-      tbox::TimerManager::getManager()->getTimer("apps::main::main");
+   static SAMRAI::tbox::Pointer<SAMRAI::tbox::Timer> main_timer = 
+      SAMRAI::tbox::TimerManager::getManager()->getTimer("apps::main::main");
 
    main_timer->start();
 
@@ -220,7 +219,7 @@ int main( int argc, char *argv[] )
 
    f_simulation_destroy_(&p_pflotran_sim);
    
-   tbox::TimerManager::getManager()->print();
+   SAMRAI::tbox::TimerManager::getManager()->print();
 
    //   if(pflotranApplication!=NULL)  delete pflotranApplication;
    if(test_object) delete test_object;
@@ -228,8 +227,8 @@ int main( int argc, char *argv[] )
     * That's all, folks!
     */
    PetscFinalize();
-   tbox::SAMRAIManager::shutdown();
-   tbox::SAMRAI_MPI::finalize();
+   SAMRAI::tbox::SAMRAIManager::shutdown();
+   SAMRAI::tbox::SAMRAI_MPI::finalize();
 
    return(0);
 }
@@ -244,11 +243,11 @@ int main( int argc, char *argv[] )
 */
 void processCommandLine(int argc, 
                         char *argv[], 
-                        string& input_file, 
-                        string& log_file)
+                        std::string& input_file, 
+                        std::string& log_file)
 {
   if ( (argc < 3) ) {
-    tbox::pout << "USAGE:  " << argv[0] << " <input file> <log file> " << endl;
+    SAMRAI::tbox::pout << "USAGE:  " << argv[0] << " <input file> <log file> " << std::endl;
     exit(-1);
   } else {
     input_file = argv[1];
@@ -266,22 +265,22 @@ void processCommandLine(int argc,
 *                                                                      *
 ************************************************************************
 */
-void initializeAMRHierarchy(tbox::Pointer<tbox::Database> &input_db,
-			    mesh::StandardTagAndInitStrategy<NDIM>* user_tagging_strategy,
-			    tbox::Pointer<hier::PatchHierarchy<NDIM> > &hierarchy)
+void initializeAMRHierarchy(SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> &input_db,
+			    SAMRAI::mesh::StandardTagAndInitStrategy<NDIM>* user_tagging_strategy,
+			    SAMRAI::tbox::Pointer<hier::PatchHierarchy<NDIM> > &hierarchy)
 {
    /*
     * Create geometry object.  This specifies the index space of the
     * coarsest level, as well as its physical (Cartesian) coordinates.
     */
-   tbox::Pointer<geom::CartesianGridGeometry<NDIM> > grid_geometry = 
-      new geom::CartesianGridGeometry<NDIM>("CartesianGeometry",
+   SAMRAI::tbox::Pointer<SAMRAI::geom::CartesianGridGeometry<NDIM> > grid_geometry = 
+      new SAMRAI::geom::CartesianGridGeometry<NDIM>("CartesianGeometry",
                                 input_db->getDatabase("CartesianGeometry"));
 
    /*
     * Create patch hierarchy.
     */
-   hierarchy = new hier::PatchHierarchy<NDIM>("PatchHierarchy", grid_geometry);
+   hierarchy = new SAMRAI::hier::PatchHierarchy<NDIM>("PatchHierarchy", grid_geometry);
 
    /* 
     * A mesh::GriddingAlgorithm<NDIM> is used to build the initial grid hierarchy.
@@ -291,8 +290,8 @@ void initializeAMRHierarchy(tbox::Pointer<tbox::Database> &input_db,
     *
     * First build the object used to tag cells that need refinement.
     */
-    tbox::Pointer<mesh::StandardTagAndInitialize<NDIM> > error_detector = 
-	new mesh::StandardTagAndInitialize<NDIM>( 
+    SAMRAI::tbox::Pointer<SAMRAI::mesh::StandardTagAndInitialize<NDIM> > error_detector = 
+	new SAMRAI::mesh::StandardTagAndInitialize<NDIM>( 
 	    "CellTaggingMethod", 
 	    user_tagging_strategy, 
 	    input_db->getDatabase("StandardTagAndInitialize"));
@@ -301,22 +300,22 @@ void initializeAMRHierarchy(tbox::Pointer<tbox::Database> &input_db,
     * Next, specify the built-in Berger-Rigoutsos method for
     * generating boxes from the tagged cells.
     */
-   tbox::Pointer<mesh::BergerRigoutsos<NDIM> > box_generator = new mesh::BergerRigoutsos<NDIM>(); 
+   SAMRAI::tbox::Pointer<SAMRAI::mesh::BergerRigoutsos<NDIM> > box_generator = new SAMRAI::mesh::BergerRigoutsos<NDIM>(); 
 
    /*
     * Next, specify the built-in uniform load balancer to distribute
     * patches across processors.
     */
-   tbox::Pointer<mesh::LoadBalancer<NDIM> > load_balancer =
-      new mesh::LoadBalancer<NDIM>(input_db->getDatabase("LoadBalancer"));
+   SAMRAI::tbox::Pointer<SAMRAI::mesh::LoadBalancer<NDIM> > load_balancer =
+      new SAMRAI::mesh::LoadBalancer<NDIM>(input_db->getDatabase("LoadBalancer"));
 
    /*
     * Finally, build the grid generator, registering the above
     * strategies for tagging cells, generating boxes, and load
     * balancing the calculation.
     */
-   tbox::Pointer<mesh::GriddingAlgorithm<NDIM> > gridding_algorithm =
-      new mesh::GriddingAlgorithm<NDIM>("GriddingAlgorithm",
+   SAMRAI::tbox::Pointer<SAMRAI::mesh::GriddingAlgorithm<NDIM> > gridding_algorithm =
+      new SAMRAI::mesh::GriddingAlgorithm<NDIM>("GriddingAlgorithm",
                             input_db->getDatabase("GriddingAlgorithm"),
                             error_detector,
                             box_generator,

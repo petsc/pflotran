@@ -26,7 +26,8 @@ extern "C" {
 }
 
 namespace SAMRAI{
-
+  namespace SAMRSolvers{
+    
 class PflotranJacobianLevelOperator: public LevelOperator
 {
 public:
@@ -255,5 +256,6 @@ private:
    
 };
 
+  }
 }
 #endif //  included_PflotranJacobianLevelOperator
