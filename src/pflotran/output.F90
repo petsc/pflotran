@@ -371,10 +371,10 @@ subroutine OutputTecplotBlock(realization)
         string = trim(string) // ', VARLOCATION=([4]=CELLCENTERED)'
       endif
     else
-      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                   &'', K='',i4)') &
-                   option%time/output_option%tconv,grid%structured_grid%nx, &
-                   grid%structured_grid%ny,grid%structured_grid%nz 
+     !sp changed from structured to unstructured below 9/24/2010
+      write(string,'(''ZONE T= "'',1es12.4,''",'','' N='',i4)') &
+                   option%time/output_option%tconv, &
+                   grid%ngmax
     endif
     string = trim(string) // ', DATAPACKING=BLOCK'
     write(IUNIT3,'(a)') trim(string)
