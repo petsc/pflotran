@@ -541,6 +541,7 @@ subroutine Init(simulation)
   call assignMaterialPropToRegions(realization)
 #ifdef SUBCONTINUUM_MODEL
   call RealProcessSubcontinuumProp(realization)
+  call assignSubcontinuumPropToRegions(realization)
 #endif
   call RealizationInitAllCouplerAuxVars(realization)
   if (option%ntrandof > 0) then
@@ -2274,6 +2275,7 @@ subroutine assignSubcontinuumPropToRegions(realization)
   PetscInt :: icell, local_id, ghosted_id, natural_id, material_id &
               & subcontinuum_id
   PetscInt :: istart, iend
+  PetscInt :: ssub, scell
   character(len=MAXSTRINGLENGTH) :: group_name
   character(len=MAXSTRINGLENGTH) :: dataset_name
   PetscErrorCode :: ierr
@@ -2298,27 +2300,63 @@ subroutine assignSubcontinuumPropToRegions(realization)
   field => realization%field
 
   ! loop over all patches and allocate arrays for subcontinuum type
-  ! count arrays
-  cur _level => realization%level_list%first
+  ! count arrays: This has to be done only for the last and finest level
+  cur _level => realization%level_list%last
+  if(.not.associated(cur_level)) exit
+  cur_patch => cur_level%patch_list%first
   do
-    if(.not,associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do 
-      if (.not.associated(cur_patch)) exit
-      if (.not.associated(cur_patch%subcontinuum_count)) then
-        allocate(cur_patch%subcontinuum_count(cur_patch%grid%ngmax,2))
-        !initialize to "unset"
-        cur_patch%subcontinuum_count = -999
-      endif
-      cur_patch => cur_patch%next 
-    enddo 
-    cur_level => cur_level%next
-  enddo
+    ! Allocate storage for the subcontinuum id offset
+    allocate(cur_patch%num_subcontinuum_type(cur_patch%grid%nlmax,2)
+    ssub = 0
+    if (.not.associated(cur_patch)) exit
+    strata => cur_patch%strata%first
+    do
+      if (.not.associated.(strata)) exit
+        ! Calculate num of subcontinuum ids to be stored for this strata
+        ssub = ssub + strata%material_property%num_subcontinuum_type * &
+                                              strata%region%num_cells
+        region => strata%region                                      
+        if (associated(region)) then
+          istart = 1
+          iend = region%num_cells
+        else
+          istart = 1
+          iend = grid%nlmax
+        endif
+        do icell=istart, iend
+          if(associated(region)) then
+            local_id = region%cell_ids(icell)
+          else
+            local_id = icell
+          endif
+          cur_patch%num_subcontinuum_type(local_id,1) = &
+                      strata%material_property%num_subcontinuum_type
+        enddo             
+      strata => strata%next
+    enddo
+    if (.not.associated(cur_patch%num_subcontinuum_type)) then
+      ! TODO (Jitu): come back and check the next two lines
+      ! storage for subcontinuum ids for the cells in the patch            
+      allocate(cur_patch%subcontinuum_type_ids(ssub));
+    endif
+
+    ! Loop through all cells in the patch and calculate the offsets
+    ! for the subcontinuum ids
+    do icell=1, cur_patch%grid%nlmax
+      if (icell == 1)
+        cur_patch%num_subcontinuum_type(icell,2) = 1
+      else
+        cur_patch%num_subcontinuum_type(icell,2) = &
+          cur_patch%num_subcontinuum_type(icell-1, 2) + &
+          cur_patch%num_subcontinuum_type(icell-1, 1)
+    enddo
+    cur_patch => cur_patch%next 
+  enddo 
 
   ! currently subcontinuum properties are set based on regions only.
   ! TODO: Add support to read subcontinuum properties from input file
   update_ghosted_subcontinuum_ids = PETSC_FALSE
-  cur_level => realization%level_list%first
+  cur_level => realization%level_list%last
   do
     if (.not.associated(cur_level)) exit
     cur_patch => cur_level%patch_list%first
@@ -2326,6 +2364,7 @@ subroutine assignSubcontinuumPropToRegions(realization)
       if (.not.associated.(cur_patch)) exit
       grid => cur_patch%grid
       strata => cur_patch%strata%first
+      counter = 0
       do
         if (.not.associated.(strata)) exit
         ! Read in cell by cell subcontunum ids if they exist
@@ -2337,7 +2376,7 @@ subroutine assignSubcontinuumPropToRegions(realization)
           update_ghosted_subcontinuum_ids = PETSC_TRUE
           region => strata%region
           material_property => strata%material_property
-          subcontinuum_property => material_property%subcontinuum_property
+          subcontinuum_property => strata%subcontinuum_property
           if (associated(region)) then 
             istart = 1
             iend = region%num_cells
@@ -2352,13 +2391,12 @@ subroutine assignSubcontinuumPropToRegions(realization)
             else
               local_id = icell
             endif
-            ghosted_id = grid%nL2G(local_id)
-            ! save the subcontinuum type counts
-            cur_patch%subcontinuum_type_count(ghosted_id, 1) =  &
-                               & material_property%subcontinuum_type_count
-            ! set the offsets to be used to access subcontinuum ids
-            cur_patch%subcontinuum_type_count(ghosted_id, 2) = sum
-            sum = sum + cur_patch%subcontinuum_type_count(ghosted_id, 1)
+            ! save the subcontinuum id
+            do isub=1,strata%material_type%num_subcontinuum_type
+              cur_patch%subcontinuum_type_ids(counter) = & 
+                 subcontinuum_property(isub)%id
+              counter = counter + 1   
+            enddo
           enddo
         endif
         strata => strata%next

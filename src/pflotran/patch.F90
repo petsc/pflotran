@@ -28,14 +28,14 @@ module Patch_module
     type(material_property_ptr_type), pointer :: material_property_array(:)
 
 #ifdef SUBCONTINUUM_MODEL
-    !These arrays will be used to hold subcontinuum type count for cells
-    PetscInt, pointer :: subcontinuum_count(:,:) 
-
+    !These arrays will hold the no. of subcontinuum types at each cell 
+    PetscInt, pointer :: num_subcontinuum_type(:)
+    
     !These arrays will hold the subcontinuum types ids
-    PetscInt, pointer :: subcontinuum_ids(:)
+    PetscInt, pointer :: subcontinuum_type_ids(:)
 
     type(subcontinuum_property_ptr_type), pointer ::  &
-                          & subcontinuum_property_array(:)
+                          subcontinuum_property_array(:)
 #endif
 
     PetscReal, pointer :: internal_velocities(:,:)
@@ -529,6 +529,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     else
       nullify(strata%region)
       nullify(strata%material_property)
+#ifdef SUBCONTINUUM_MODEL
+      nullify(strata%subcontinuum_property)
+#endif
     endif
     strata => strata%next
   enddo

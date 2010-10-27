@@ -632,6 +632,7 @@ subroutine RealizationProcessCouplers(realization)
       call PatchProcessCouplers(cur_patch,realization%flow_conditions, &
                                 realization%transport_conditions, &
                                 realization%material_properties, &
+                                realization%subcontinuum_properties, &
                                 realization%option)
       cur_patch => cur_patch%next
     enddo
