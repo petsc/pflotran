@@ -687,13 +687,13 @@ subroutine THCNumericalJacobianTest(xx,realization)
       if (patch%imat(grid%nL2G(icell)) <= 0) cycle
     endif
     do idof = (icell-1)*option%nflowdof+1,icell*option%nflowdof 
-      call veccopy(xx,xx_pert,ierr)
-      call vecgetarrayf90(xx_pert,vec_p,ierr)
+      call VecCopy(xx,xx_pert,ierr)
+      call VecGetArrayF90(xx_pert,vec_p,ierr)
       perturbation = vec_p(idof)*perturbation_tolerance
       vec_p(idof) = vec_p(idof)+perturbation
-      call vecrestorearrayf90(xx_pert,vec_p,ierr)
+      call VecRestoreArrayF90(xx_pert,vec_p,ierr)
       call THCResidual(PETSC_NULL_OBJECT,xx_pert,res_pert,realization,ierr)
-      call vecgetarrayf90(res_pert,vec_p,ierr)
+      call VecGetArrayF90(res_pert,vec_p,ierr)
       do idof2 = 1, grid%nlmax*option%nflowdof
         derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
         if (dabs(derivative) > 1.d-30) then

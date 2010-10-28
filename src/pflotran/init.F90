@@ -2357,54 +2357,62 @@ subroutine assignSubcontinuumPropToRegions(realization)
   ! TODO: Add support to read subcontinuum properties from input file
   update_ghosted_subcontinuum_ids = PETSC_FALSE
   cur_level => realization%level_list%last
+  if (.not.associated(cur_level)) exit
+  cur_patch => cur_level%patch_list%first
   do
+    if (.not.associated.(cur_patch)) exit
+    grid => cur_patch%grid
+    strata => cur_patch%strata%first
+    counter = 0
+    do
+      if (.not.associated.(strata)) exit
+      ! Read in cell by cell subcontunum ids if they exist
+      if (.not.associated.(strata%region) .and. strata%active) then
+        ! readSubcontinuumFromFile(realization, &
+        !                        strata%subcontinuum_property_file_name)
+        ! TODO: Implement the above function
+      else if (strata%active) then
+        update_ghosted_subcontinuum_ids = PETSC_TRUE
+        region => strata%region
+        material_property => strata%material_property
+        subcontinuum_property => strata%subcontinuum_property
+        if (associated(region)) then 
+          istart = 1
+          iend = region%num_cells
+        else 
+          istart =1 
+          iend = grid%nlmax
+        endif 
+        sum = 1  ! reset the offset counter
+        do icell=istart, iend
+          if (associated(region)) then 
+            local_id = region%cell_ids(icell)
+          else
+            local_id = icell
+          endif
+          ! save the subcontinuum id
+          do isub=1,strata%material_type%num_subcontinuum_type
+            cur_patch%subcontinuum_type_ids(counter) = & 
+               subcontinuum_property(isub)%id
+            counter = counter + 1   
+          enddo
+        enddo
+      endif
+      strata => strata%next
+    enddo
+    cur_patch => cur_patch%next
+  enddo
+
+  if (update_ghosted_material_ids) then 
+    ! update local material ids
+    cur_level => realization%level_list%last
     if (.not.associated(cur_level)) exit
     cur_patch => cur_level%patch_list%first
-    do
-      if (.not.associated.(cur_patch)) exit
+    do 
+      if (.not.associated(cur_patch)) exit
       grid => cur_patch%grid
-      strata => cur_patch%strata%first
-      counter = 0
-      do
-        if (.not.associated.(strata)) exit
-        ! Read in cell by cell subcontunum ids if they exist
-        if (.not.associated.(strata%region) .and. strata%active) then
-          ! readSubcontinuumFromFile(realization, &
-          !                        strata%subcontinuum_property_file_name)
-          ! TODO: Implement the above function
-        else if (strata%active) then
-          update_ghosted_subcontinuum_ids = PETSC_TRUE
-          region => strata%region
-          material_property => strata%material_property
-          subcontinuum_property => strata%subcontinuum_property
-          if (associated(region)) then 
-            istart = 1
-            iend = region%num_cells
-          else 
-            istart =1 
-            iend = grid%nlmax
-          endif 
-          sum = 1  ! reset the offset counter
-          do icell=istart, iend
-            if (associated(region)) then 
-              local_id = region%cell_ids(icell)
-            else
-              local_id = icell
-            endif
-            ! save the subcontinuum id
-            do isub=1,strata%material_type%num_subcontinuum_type
-              cur_patch%subcontinuum_type_ids(counter) = & 
-                 subcontinuum_property(isub)%id
-              counter = counter + 1   
-            enddo
-          enddo
-        endif
-        strata => strata%next
-      enddo
-      cur_patch => cur_patch%next
-    enddo
-    cur_level => cur_level%next
-  enddo  
+
+      call GridCopyIntegerArrayToVec(grid, cur_patch%subcontinuum_ids, field%
                                               
 end subroutine assignSubcontinuumPropToRegions
 
