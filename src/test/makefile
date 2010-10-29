@@ -1,18 +1,26 @@
+# $Id: makefile,v 1.3 2004/07/31 01:16:44 lichtner Exp $
+
+objdir = ./${PETSC_ARCH}/obj
+srcdir = ./
+pflotran_src = ./
+common_src   = ./
+bindir = ./${PETSC_ARCH}/bin
+
+MYFLAGS          = 
+
+CFLAGS		 = 
+FFLAGS		 =
+CPPFLAGS         = ${MYFLAGS}
+FPPFLAGS         = ${MYFLAGS}
+
 include ${PETSC_DIR}/conf/variables
 include ${PETSC_DIR}/conf/rules
 
-ifdef tau
-#FC = /ccs/proj/geo002/tau/tau-2.19.2/craycnl/bin/tau_f90.sh -optCompInst -tau_makefile=$(TAU_MAKEFILE)
-#FLINKER = /ccs/proj/geo002/tau/tau-2.19.2/craycnl/bin/tau_f90.sh -optCompInst -tau_makefile=$(TAU_MAKEFILE)
-FC = /ccs/proj/geo002/tau/tau-2.19.2/craycnl/bin/tau_f90.sh -tau_makefile=$(TAU_MAKEFILE)
-FLINKER = /ccs/proj/geo002/tau/tau-2.19.2/craycnl/bin/tau_f90.sh -tau_makefile=$(TAU_MAKEFILE)
-endif
+petsc_test_f : petsc_test_f.o
+	${FLINKER}   -o petsc_test_f petsc_test_f.o ${PETSC_LIB} ${LIBS} 
 
-testc: testc.o
-	${CLINKER} -o testc testc.o $(LIBS) $(PETSC_LIB)
-
-testf90: testf90.o
-	${FLINKER} -o testf90 testf90.o $(LIBS) $(PETSC_LIB)
+petsc_test_c: petsc_test_c.o
+	${CLINKER}   -o petsc_test_c petsc_test_c.o ${PETSC_LIB} ${LIBS} 
 
 # Should add this to default PETSc targets as well?
 %.mod : %.F90
