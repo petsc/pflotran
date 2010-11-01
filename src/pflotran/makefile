@@ -30,6 +30,10 @@ ifdef chuan_co2
 CHUAN_FLAG = -DCHUAN_CO2
 endif
 
+ifdef scott
+SCOTT_FLAGS = -DENABLE_UNSTRUCTURED -DGEH_DEBUG 
+endif 
+
 ifdef coll
 COLL_FLAG = -DCOLL
 endif
@@ -54,7 +58,7 @@ endif
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) $(DASVYAT)\
           -DREVISED_TRANSPORT \
           $(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG) $(TEMP_FLAG)\
-					$(CHUAN_FLAG) $(COLL_FLAG) $(DENSITY_FLAG)
+					$(CHUAN_FLAG) $(COLL_FLAG) $(DENSITY_FLAG) $(SCOTT_FLAGS) 
 
 CFLAGS		 = 
 FFLAGS		 =

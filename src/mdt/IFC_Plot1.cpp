@@ -20,7 +20,7 @@ IFC_Plot1::IFC_Plot1(Grid **grid_) {
   PetscInt nx, ny, nz;
 
   char filename[1024];
-  PetscTruth option_found;
+  PetscBool option_found;
   strcpy(filename,"mdt.in");
   PetscOptionsGetString(PETSC_NULL,"-mdtin",filename,1024,&option_found);
 
