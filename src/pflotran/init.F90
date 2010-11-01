@@ -2403,16 +2403,6 @@ subroutine assignSubcontinuumPropToRegions(realization)
     cur_patch => cur_patch%next
   enddo
 
-  if (update_ghosted_material_ids) then 
-    ! update local material ids
-    cur_level => realization%level_list%last
-    if (.not.associated(cur_level)) exit
-    cur_patch => cur_level%patch_list%first
-    do 
-      if (.not.associated(cur_patch)) exit
-      grid => cur_patch%grid
-
-      call GridCopyIntegerArrayToVec(grid, cur_patch%subcontinuum_ids, field%
                                               
 end subroutine assignSubcontinuumPropToRegions
 
