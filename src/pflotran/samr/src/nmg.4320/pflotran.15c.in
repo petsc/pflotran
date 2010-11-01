@@ -224,8 +224,8 @@ DATABASE hanford.dat
 LOG_FORMULATION
 ACTIVITY_COEFFICIENTS NEWTON_ITERATION
 OUTPUT
-All
-pH
+All ! <- comment out to run
+pH ! <- comment out to run
 /
 /
 
@@ -235,6 +235,7 @@ REFERENCE_POROSITY 0.25d0
 : == time stepping ============================================================
 TIMESTEPPER
 TS_ACCELERATION 8
+MAX_STEPS 100000
 /
 
 : == discretization ===========================================================
@@ -261,8 +262,8 @@ ITOL_UPDATE 1.d0
 /
 
 LINEAR_SOLVER FLOW
-:KSP_TYPE FGMRES
-KSP_TYPE PREONLY
+KSP_TYPE FGMRES
+:KSP_TYPE PREONLY
 :PC_TYPE LU
 PC_TYPE SHELL
 /
@@ -431,8 +432,9 @@ ALPHA 1.4295d-4
 : == output ===================================================================
 OUTPUT
 :PERIODIC TIMESTEP 1
-PERIODIC TIME .1 y
+PERIODIC TIME .05 y
 :FORMAT TECPLOT BLOCK
+FORMAT HDF5
 /
 
 : == times ====================================================================
