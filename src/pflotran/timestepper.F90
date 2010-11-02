@@ -813,6 +813,10 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
     
   endif
 
+  ! ensure that transport time step is not larger than flow time step
+  if (associated(flow_stepper) .and. associated(tran_stepper)) then
+    if (option%flow_dt < option%tran_dt) option%tran_dt = option%flow_dt
+  endif
 
 end subroutine StepperUpdateDT
 
