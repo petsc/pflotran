@@ -59,6 +59,10 @@ PetscInt, parameter :: TIME_NULL = 0
 PetscInt, parameter :: TIME_T = 1
 PetscInt, parameter :: TIME_TpDT = 2
 
+PetscInt, parameter :: SORPTION_LINEAR = 1
+PetscInt, parameter :: SORPTION_LANGMUIR = 2
+PetscInt, parameter :: SORPTION_FREUNDLICH  = 3
+
 ! Classes
 PetscInt, parameter :: NULL_CLASS = 0
 PetscInt, parameter :: FLOW_CLASS = 1

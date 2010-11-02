@@ -390,7 +390,7 @@ subroutine RealizationCreateDiscretization(realization)
 
 
 
-       call VecSetBlockSize(field%flow_xx_faces,NFLOWDOF,ierr)
+       call VecSetBlockSize(field%flow_xx_faces,option%nflowdof,ierr)
 
        call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
                                                         field%flow_r_faces)
@@ -403,7 +403,7 @@ subroutine RealizationCreateDiscretization(realization)
 
 
        call VecCreateSeq(PETSC_COMM_SELF, grid%ngmax_faces*option%nflowdof, field%flow_xx_loc_faces, ierr)
-       call VecSetBlockSize(field%flow_xx_loc_faces,NFLOWDOF,ierr)
+       call VecSetBlockSize(field%flow_xx_loc_faces,option%nflowdof,ierr)
 
 !       call VecCreateSeq(PETSC_COMM_SELF, grid%ngmax_faces*option%nflowdof, field%flow_r_loc_faces, ierr)
 !       call VecSetBlockSize(field%flow_r_loc_faces,NFLOWDOF,ierr)
@@ -1334,6 +1334,7 @@ subroutine RealizAssignFlowInitCond(realization)
 #ifdef DASVYAT
   if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
    call DiscretizationGlobalToLocalFaces(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
+   call VecCopy(field%flow_xx_faces, field%flow_yy_faces, ierr)
    call MFDInitializeMassMatrices(realization%discretization%grid,&
                                       realization%field%volume, &
                                       realization%field%perm_xx_loc, &
@@ -2332,7 +2333,7 @@ subroutine RealizationSetUpBC4Faces(realization)
               .or.(bc_type == SEEPAGE_BC).or.(bc_type == CONDUCTANCE_BC) ) then
                     bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)*conn%area(jface)
            else if ((bc_type == NEUMANN_BC)) then
-                    bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)
+                    bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)*conn%area(jface)
            end if 
                 
   !            bc_faces_p(ghost_face_id) = conn%cntr(3,jface)*conn%area(jface) 
@@ -2344,6 +2345,9 @@ subroutine RealizationSetUpBC4Faces(realization)
 
 
   call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
+
+  write(*,*) "RealizationSetUpBC4Faces Finished"
+!  stop
 #endif
 
 end subroutine RealizationSetUpBC4Faces

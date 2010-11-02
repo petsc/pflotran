@@ -61,7 +61,11 @@ subroutine RichardsTimeCut(realization)
   option => realization%option
   field => realization%field
 
+  
   call VecCopy(field%flow_yy,field%flow_xx,ierr)
+
+  if (option%mimetic) call VecCopy(field%flow_yy_faces, field%flow_xx_faces, ierr)
+
   call RichardsInitializeTimestep(realization)  
  
 end subroutine RichardsTimeCut
@@ -592,7 +596,6 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
     
   call GridVecGetArrayF90(grid,field%flow_xx, xx_loc_p, ierr)
   call VecGetArrayF90(field%flow_xx_loc_faces, xx_faces_p, ierr)
-  call VecGetArrayF90(field%flow_bc_loc_faces, bc_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%perm0_xx, perm_xx_loc_p,ierr)
   call GridVecGetArrayF90(grid,field%porosity0, porosity_loc_p,ierr)  
@@ -623,6 +626,8 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
     end do
  
         call MFDComputeDensity(global_aux_vars(ghosted_id), faces_pr,  option)  
+
+
         
         !geh - Ignore inactive cells with inactive materials
         if (associated(patch%imat)) then
@@ -634,9 +639,13 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
                                 volume_p(local_id), &
                                 option,Res)
 
+!        write(*,*) accum_p(local_id), Res(1) 
+
         Res(1) = accum_p(local_id) - Res(1)
 
         source_f = 0.
+		Res(1) = 0. 
+
 
         call MFDAuxReconstruct(faces_pr, source_f, mfd_aux_var,&
                                rich_aux_vars(ghosted_id),global_aux_vars(ghosted_id), Res, &
@@ -661,7 +670,6 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
 
   call GridVecRestoreArrayF90(grid,field%flow_xx, xx_loc_p, ierr)
   call VecRestoreArrayF90(field%flow_xx_loc_faces, xx_faces_p, ierr)
-  call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%perm0_xx, perm_xx_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity0, porosity_loc_p,ierr)  
@@ -737,6 +745,8 @@ subroutine RichardsUpdateSolution(realization)
      call PetscViewerASCIIOpen(realization%option%mycomm,'flow_xx.out',viewer,ierr)
      call VecView(field%flow_xx, viewer,ierr)
      call PetscViewerDestroy(viewer, ierr)
+
+     call VecCopy(field%flow_xx_faces, field%flow_yy_faces, ierr)   
   end if
 
      call VecCopy(field%flow_xx,field%flow_yy,ierr)   
@@ -872,6 +882,9 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
   use Option_module
   use Field_module
   use Grid_module
+  use MFD_aux_module
+  use MFD_module
+  use Connection_module
 
   implicit none
   
@@ -884,11 +897,17 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
   type(richards_auxvar_type), pointer :: rich_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)
 
-  PetscInt :: ghosted_id, local_id
+  PetscInt :: ghosted_id, local_id, numfaces, jface, ghost_face_id, j
   PetscReal, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
   PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:), volume_p(:), &
                           accum_p(:), perm_xx_loc_p(:)
-                          
+!  PetscReal, pointer :: xx_faces_p(:)
+
+!  PetscReal, pointer :: faces_pr(:), sq_faces(:)
+
+!  type(mfd_auxvar_type), pointer :: mfd_aux_var
+!  type(connection_set_type), pointer :: cur_connection_set
+!  PetscReal :: Res(realization%option%nflowdof), source_f(realization%option%nflowdof)                        
   PetscErrorCode :: ierr
   
   option => realization%option
@@ -906,10 +925,35 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
   call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
   call GridVecGetArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)  
 
+!  call VecGetArrayF90(field%flow_xx_loc_faces, xx_faces_p, ierr)
+
   call GridVecGetArrayF90(grid,field%flow_accum, accum_p, ierr)
 
+!  numfaces = 6     ! hex only
+!  allocate(sq_faces(numfaces))
+!  allocate(faces_pr(numfaces))
+
   do local_id = 1, grid%nlmax
+
     ghosted_id = grid%nL2G(local_id)
+
+!    if (option%mimetic) then
+!        mfd_aux_var => grid%MFD%aux_vars(local_id)
+!        do j = 1, mfd_aux_var%numfaces
+!           ghost_face_id = mfd_aux_var%face_id_gh(j)
+!           cur_connection_set => grid%faces(ghost_face_id)%conn_set_ptr
+!           jface = grid%faces(ghost_face_id)%id
+!           sq_faces(j) = cur_connection_set%area(jface)
+!           faces_pr(j) = xx_faces_p(ghost_face_id)
+!        end do
+!
+!        Res = 0.
+!		source_f = 0.
+!        write(*,*) "First time?"
+!        call MFDAuxReconstruct(faces_pr, source_f, mfd_aux_var,&
+!                                   rich_aux_vars(ghosted_id),global_aux_vars(ghosted_id), Res, &
+!		                                 sq_faces, option, xx_p(local_id:local_id))
+!    end if
     !geh - Ignore inactive cells with inactive materials
     if (patch%imat(ghosted_id) <= 0) cycle
     call RichardsAuxVarCompute(xx_p(local_id:local_id), &
@@ -929,6 +973,9 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
   call GridVecRestoreArrayF90(grid,field%tortuosity_loc,tor_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)  
+
+
+!  call VecRestoreArrayF90(field%flow_xx_loc_faces, xx_faces_p, ierr)
 
   call GridVecRestoreArrayF90(grid,field%flow_accum, accum_p, ierr)
 
@@ -1393,6 +1440,9 @@ subroutine RichardsFlux(rich_aux_var_up,global_aux_var_up, &
     if (ukvr>floweps) then
       v_darcy= Dq * ukvr * dphi
 
+!      write(*,*) "Gravity Input", Dq*ukvr*gravity
+!	  write(*,*) "phi", global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)
+!	  write(*,*) "Dq", Dq, "ukvr ", ukvr
    
       q = v_darcy * area
 
@@ -1700,6 +1750,10 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
      
         if (ukvr*Dq>floweps) then
           v_darcy = Dq * ukvr * dphi
+!		  write(*,*) "Dq", Dq, "perm_dn", perm_dn, "dd_up", dd_up
+!		  write(*,*) "ukvr", ukvr
+!		  write(*,*) "dphi", global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)
+!		  write(*,*) "gravity ", gravity*Dq* ukvr
         endif
       endif 
 
@@ -1911,10 +1965,8 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
   option => realization%option
 
 
-  call PetscViewerASCIIOpen(option%mycomm,'rr.out',viewer,ierr)
-  call VecView(r,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
 
+   write(*,*) "Begin RichardsResidualMFD"
 
  
   ! Communication -----------------------------------------
@@ -1997,7 +2049,7 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
                                 ADD_VALUES,SCATTER_REVERSE, ierr)
    call VecScatterEnd ( discretization%MFD%scatter_gtol_faces, field%flow_r_loc_faces, r,&
                                 ADD_VALUES,SCATTER_REVERSE, ierr)
-#if 1   
+#if 0   
    call DiscretizationGlobalToLocalFaces(discretization, r, field%flow_r_loc_faces, NFLOWDOF)
 
   call GridVecGetArrayF90(realization%patch%grid, field%flow_r_loc_faces, r_p, ierr)
@@ -2027,13 +2079,15 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
 !  endif
 !  if (realization%debug%vecview_solution) then
-!    call PetscViewerASCIIOpen(realization%option%mycomm,'Rxx.out', &
-!                              viewer,ierr)
-!    call VecView(xx,viewer,ierr)
-!    call PetscViewerDestroy(viewer,ierr)
+    call PetscViewerASCIIOpen(realization%option%mycomm,'Rxx.out', &
+                              viewer,ierr)
+    call VecView(xx,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
 !  endif
    write(*,*) "End RichardsResidualMFD"
+  ! read(*,*) i
 !   stop
+   
 
 #endif
   
@@ -2318,10 +2372,10 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 
       patch%internal_velocities(1,sum_connection) = v_darcy
 
-!#ifdef DASVYAT
-!
+#ifdef DASVYAT
+
 !      write(*,*) "int flux ", sum_connection, v_darcy      
-!#endif
+#endif
 
       
       if (option%use_samr) then
@@ -2422,9 +2476,9 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 
       patch%boundary_velocities(1,sum_connection) = v_darcy
 
-!#ifdef DASVYAT
+#ifdef DASVYAT
 !      write(*,*) "bound flux ", sum_connection, v_darcy      
-!#endif
+#endif
 
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
@@ -2495,6 +2549,8 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
 
+  !read(*,*) local_id
+
 end subroutine RichardsResidualPatch1
 
 ! ************************************************************************** !
@@ -2526,6 +2582,7 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   type(realization_type) :: realization
 
   PetscErrorCode :: ierr
+  PetscViewer :: viewer
   PetscInt :: i
   PetscInt :: local_id, ghosted_id
 
@@ -2643,6 +2700,18 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
 
+  
+#ifdef DASVYAT
+    call PetscViewerASCIIOpen(realization%option%mycomm,'flow_r.out', &
+                              viewer,ierr)   
+!    call VecView(realization%field%flow_r,viewer,ierr) 
+    call VecView(r,viewer,ierr) 
+
+    call PetscViewerDestroy(viewer,ierr)
+
+#endif
+
+
 end subroutine RichardsResidualPatch2
 
 
@@ -2729,7 +2798,10 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
-  call RichardsUpdateAuxVarsPatch(realization)
+
+  call RichardsUpdateAuxVarsPatchMFD(realization)
+
+
   patch%aux%Richards%aux_vars_up_to_date = PETSC_FALSE ! override flags since they will soon be out of date
   if (option%compute_mass_balance_new) then
     call RichardsZeroMassBalDeltaPatch(realization)
@@ -2758,6 +2830,8 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   allocate(face_pr(numfaces))
 !  allocate(Smatrix(numfaces, numfaces))
 
+  
+
   r_p = 0.
 
   do icell = 1, grid%nlmax
@@ -2768,7 +2842,9 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
        jface = grid%faces(ghost_face_id)%id
        sq_faces(j) = conn%area(jface)
 !       xx_loc_faces_p(ghost_face_id) = conn%cntr(3,jface)     ! dasvyat test
+!       write(*,*) conn%cntr(3,jface), xx_loc_faces_p(ghost_face_id)
     end do
+!	write(*,*)
 
     ghosted_id = grid%nL2G(icell)
       !geh - Ignore inactive cells with inactive materials
@@ -2831,9 +2907,18 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   end do
 
 !  do iface =1,grid%ngmax_faces
-!    write(*,*) "residual_p ", iface, r_p(iface)
+!    write(*,*) iface, "res_p ", r_p(iface), "x", xx_loc_faces_p(iface)
 !  end do
 
+!   write(*,*) "Internal faces"
+!   do iface = 1, grid%internal_connection_set_list%first%num_connections
+!      write(*,*) "int_flux", iface, patch%internal_velocities(option%nphase, iface) 
+!   end do  
+
+!   write(*,*) "Boundary faces"
+!   do iface = 1, grid%boundary_connection_set_list%first%num_connections
+!      write(*,*) "bound_flux", iface, patch%boundary_velocities(option%nphase, iface)
+!   end do  
 
 
   call GridVecRestoreArrayF90(grid,field%flow_xx, xx_loc_p, ierr)
@@ -2850,8 +2935,9 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   deallocate(sq_faces)
 
 #ifdef DASVYAT
-!  write(*,*) "richards 2822"
-!  write(*,*) "RichardsResidualPatchMFD1"
+  write(*,*) "richards 2822"
+  write(*,*) "End RichardsResidualPatchMFD1"
+  !read(*,*) iface
 !  stop
 #endif
 
@@ -2966,6 +3052,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
 
   stride = 6 !hex only
 
+
   do local_id = 1, grid%nlmax
 
         ghosted_id = grid%nL2G(local_id)
@@ -2979,14 +3066,13 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
           conn => grid%faces(ghost_face_id)%conn_set_ptr
           jface = grid%faces(ghost_face_id)%id
           sq_faces(j) = conn%area(jface)
-          write(*,*) j, e2n_local(j + (local_id-1)*stride)
+  !        write(*,*) j, e2n_local(j + (local_id-1)*stride)
           if ( (e2n_local(j + (local_id-1)*stride) == -DIRICHLET_BC).or. &
                  (e2n_local(j + (local_id-1)*stride) == -HYDROSTATIC_BC))  then
             bc_g(j) = bc_faces_p(ghost_face_id)
           else if ( e2n_local(j + (local_id-1)*stride) == -NEUMANN_BC ) then
-            write(*,*) "Neumann", bc_faces_p(ghost_face_id)
+ !           write(*,*) "Neumann", bc_faces_p(ghost_face_id)
             bc_h(j) = bc_faces_p(ghost_face_id)
-            stop
           else if (e2n_local(j + (local_id-1)*stride) < 0) then 
             call printMsg(option,'Type of BC is not supported by MFD mode')
             stop
@@ -3014,15 +3100,11 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
         PermTensor(1,1) = perm_xx_loc_p(ghosted_id)
         PermTensor(2,2) = perm_yy_loc_p(ghosted_id)
         PermTensor(3,3) = perm_zz_loc_p(ghosted_id)
-!        PermTensor(1,1) = 1 
-!        PermTensor(2,2) = 1
-!        PermTensor(3,3) = 1
 
         call MFDAuxGenerateRhs(grid, ghosted_id, PermTensor, bc_g, source_f, bc_h, aux_var, &
                                  rich_aux_vars(ghosted_id),&
                                  global_aux_vars(ghosted_id),&
                                  Accum, sq_faces, option, rhs) 
-
 
       
         do iface=1, aux_var%numfaces
@@ -3036,12 +3118,16 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
                 (e2n_local((local_id -1)*numfaces + iface) == -CONDUCTANCE_BC)) then
 
                 r_p(ghost_face_id) = 0.
-!               write(*,*) "Enter MFD2", ghost_face_id, r_p(ghost_face_id), e2n_local((local_id -1)*numfaces + iface) 
+            else 
+				r_p(ghost_face_id) = r_p(ghost_face_id) - rhs(iface) 
             end if
           else
                 r_p(ghost_face_id) = r_p(ghost_face_id) - rhs(iface)
           end if
         end do
+
+!		write(*,*) (rhs(iface),iface=1,6)
+!		write(*,*)
         
   enddo
 
@@ -3065,6 +3151,9 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
+
+  write(*,*) "End RichardsResidualPatchMFD2"
+!  read(*,*) iface
 
 #endif
 
@@ -3198,6 +3287,19 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
     write(option%io_buffer,'("inf norm: ",es11.4)') norm
     call printMsg(option) 
   endif
+
+#ifdef DASVYAT
+    call PetscViewerASCIIOpen(realization%option%mycomm,'flow_dxx.out', &
+                              viewer,ierr)   
+    call VecView(realization%field%flow_dxx,viewer,ierr) 
+
+    call PetscViewerDestroy(viewer,ierr)
+
+    call PetscViewerASCIIOpen(realization%option%mycomm,'flow_yy.out', &
+                              viewer,ierr)   
+    call VecView(realization%field%flow_yy,viewer,ierr) 
+    call PetscViewerDestroy(viewer,ierr)
+#endif
 
   call PetscLogEventEnd(logging%event_r_jacobian,ierr)
   
@@ -4065,19 +4167,21 @@ subroutine RichardsMaxChange(realization)
   field => realization%field
 
   if (option%mimetic) then
-     call PetscViewerASCIIOpen(realization%option%mycomm,'flow_dxx_faces.out',viewer,ierr)
-     call VecView(field%flow_dxx_faces, viewer,ierr)
-     call PetscViewerDestroy(viewer, ierr)
 
      call VecWAXPY(field%flow_dxx_faces,-1.d0,field%flow_xx_faces,field%flow_yy_faces,ierr)
      call VecStrideNorm(field%flow_dxx_faces,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
-  else 
-     call PetscViewerASCIIOpen(realization%option%mycomm,'flow_dxx.out',viewer,ierr)
-     call VecView(field%flow_dxx, viewer,ierr)
+
+     call PetscViewerASCIIOpen(realization%option%mycomm,'flow_dxx_faces.out',viewer,ierr)
+     call VecView(field%flow_dxx_faces, viewer,ierr)
      call PetscViewerDestroy(viewer, ierr)
+  else 
 
      call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
      call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
+
+     call PetscViewerASCIIOpen(realization%option%mycomm,'flow_dxx.out',viewer,ierr)
+     call VecView(field%flow_dxx, viewer,ierr)
+     call PetscViewerDestroy(viewer, ierr)
   end if
 
 end subroutine RichardsMaxChange

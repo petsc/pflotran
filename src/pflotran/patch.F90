@@ -563,6 +563,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     patch%boundary_fluxes = 0.d0
   endif
 
+
 end subroutine PatchProcessCouplers
 
 ! ************************************************************************** !
@@ -763,8 +764,14 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
     
     ! FLOW
     if (associated(coupler%flow_aux_real_var)) then
-        
+
+
       num_connections = coupler%connection_set%num_connections
+#ifdef DASVYAT      
+      if (option%mimetic) then
+        num_connections = coupler%numfaces_set
+      end if
+#endif
 
       flow_condition => coupler%flow_condition
 
@@ -845,7 +852,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                   coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
                     flow_condition%pressure%dataset%cur_value(1)
  
-                    write(*,*) "RICHARDS_MODE", flow_condition%pressure%dataset%cur_value(1)
+                    write(*,*) "RICHARDS_MODE", coupler%id, num_connections, flow_condition%pressure%dataset%cur_value(1)
                     
               end select
             case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)

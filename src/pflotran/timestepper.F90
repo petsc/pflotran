@@ -994,7 +994,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   PetscErrorCode :: ierr
   PetscInt :: icut ! Tracks the number of time step reductions applied
   SNESConvergedReason :: snes_reason 
-  PetscInt :: update_reason
+  PetscInt :: update_reason, tmp_int
   PetscInt :: sum_newton_iterations, sum_linear_iterations
   PetscInt :: num_newton_iterations, num_linear_iterations
   PetscReal :: fnorm, scaled_fnorm, inorm, prev_norm, dif_norm, rel_norm
@@ -1072,13 +1072,28 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
         case(RICHARDS_MODE)
           if (discretization%itype == STRUCTURED_GRID_MIMETIC) then 
             call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx_faces, ierr)
-#ifdef DASVYAT
-!write(*,*) "After SNESSolve"
-!stop
-#endif
           else 
             call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
           end if
+
+#ifdef DASVYAT
+
+    call PetscViewerASCIIOpen(realization%option%mycomm,'timestepp_flow_xx.out', &
+                              viewer,ierr)
+    if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
+            call VecView(field%flow_xx_faces, viewer, ierr)
+    else
+            call VecView(field%flow_xx, viewer, ierr)
+    end if
+!    write(*,*) "VecView error", ierr
+    call PetscViewerDestroy(viewer,ierr)
+
+!    write(*,*) "After SNESSolve" 
+!    read(*,*) tmp_int   
+#endif
+
+
+
       end select
       call PetscGetTime(log_end_time, ierr)
       stepper%cumulative_solver_time = stepper%cumulative_solver_time + &
@@ -1387,7 +1402,8 @@ subroutine StepperStepTransportDT_GI(realization,stepper,flow_t0,flow_t1, &
   solver => stepper%solver
 
 #ifdef DASVYAT
-write(*,*) "Beginning of StepperStepTransportDT"
+!write(*,*) "Beginning of StepperStepTransportDT"
+!read(*,*)
 !stop
 #endif
 

@@ -684,6 +684,16 @@ subroutine CouplerAssignBCtoCells(grid,option,coupler)
     end do
   end do
 
+!  do icell = 1, region%num_cells
+!
+!    cell_id_local = region%cell_ids(icell)
+!
+!    do iface = 1,aux_var%numfaces
+!        write(*,*) e2n_local((cell_id_local-1)*stride + iface)
+!    end do
+!    write(*,*)
+!  end do
+
   if (e2n_size > 0) call VecRestoreArrayF90(grid%e2n, e2n_local, ierr)
 
 #endif 

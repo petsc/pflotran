@@ -313,6 +313,15 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
      aux_var%dkvr_z_dp = aux_var%dkvr_z_dp * ani_coef
   end if
 
+#ifdef DASVYAT
+
+!write(*,*) global_aux_vars(ghosted_id)%den, global_aux_vars(ghosted_id)%den_kg
+!write(*,*) rich_aux_vars(ghosted_id)%kvr_x, rich_aux_vars(ghosted_id)%kvr_y, rich_aux_vars(ghosted_id)%kvr_z
+!stop
+
+#endif
+
+
 end subroutine RichardsAuxVarCompute
 
 ! ************************************************************************** !
