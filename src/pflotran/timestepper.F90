@@ -29,6 +29,7 @@ module Timestepper_module
     
     PetscReal :: dt_min
     PetscReal :: dt_max
+    PetscReal :: prev_dt
     
     PetscBool :: init_to_steady_state
     PetscBool :: run_as_steady_state
@@ -94,6 +95,7 @@ function TimestepperCreate()
   
   stepper%dt_min = 1.d0
   stepper%dt_max = 3.1536d6 ! One-tenth of a year.  
+  stepper%prev_dt = 0.d0
   
   stepper%time_step_cut_flag = PETSC_FALSE
 
@@ -480,7 +482,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
         option%tran_time = option%tran_time + option%tran_dt
 
         ! if target time reached, we are done
-        if (tran_stepper%target_time-option%tran_time < 1.d-10) exit
+        if ((tran_stepper%target_time-option%tran_time) / &
+            option%tran_time < 1.d-10) exit
 
         call StepperUpdateTransportSolution(realization)
         
@@ -863,7 +866,15 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
     flag = PETSC_FALSE
   endif
 
-  if (flag) then
+  ! this flag allows one to take a shorter or slightly larger step than normal
+  ! in order to synchronize with the waypoint time
+  if (option%match_waypoint) then
+    if (associated(flow_stepper)) option%flow_dt = flow_stepper%prev_dt
+    if (associated(tran_stepper)) option%tran_dt = tran_stepper%prev_dt
+    option%match_waypoint = PETSC_FALSE
+  endif
+
+  if (flag) then ! flow stepper will govern the target time
 !    time = option%flow_time + option%flow_dt
     dt = option%flow_dt
     dt_max = flow_stepper%dt_max
@@ -890,16 +901,8 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
     cur_waypoint => cur_waypoint%next
   endif
   
-  ! this flag allows one to take a shorter or slightly larger step than normal
-  ! in order to synchronize with the waypoint time
-  if (option%match_waypoint) then
-    target_time = target_time - dt
-    dt = option%prev_dt
-    target_time = target_time + dt
-    option%match_waypoint = PETSC_FALSE
-  else
-    option%prev_dt = dt
-  endif
+  if (associated(flow_stepper)) flow_stepper%prev_dt = option%flow_dt
+  if (associated(tran_stepper)) tran_stepper%prev_dt = option%tran_dt
 
 ! If a waypoint calls for a plot or change in src/sinks, adjust time step to match waypoint
   if (target_time + tolerance*dt >= cur_waypoint%time .and. &
@@ -939,7 +942,7 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag, &
     flow_stepper%cur_waypoint => cur_waypoint
   endif
   if (associated(tran_stepper)) then
-    if (flag) then
+    if (flag) then ! flow stepper governs the target time
       ! if transport step is within the tolerance of the flow step, let it 
       ! try to reach the target time with a slightly larger step
       if (option%match_waypoint .and. &
