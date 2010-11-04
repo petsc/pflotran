@@ -40,6 +40,17 @@ extern "C"{
       const int&, const int&, const int&, const int&, const int&, const int&,
       const double*);
 
+   int samrapply7ptblkstencil3d_(
+      const int&, const int&, const int&, const int&, const int&, const int&,
+      const int&,				 
+      const double*,
+      const int&,				 
+      const double*,
+      const int&,				 
+      const double*,
+      const int&,				 
+      const double*);
+
    int pflotranpcflux3d_(
       const int&, const int&, const int&, const int&, const int&, const int&,
       const int&, const int&, const int&, const int&, const int&, const int&,

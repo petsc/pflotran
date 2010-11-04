@@ -118,9 +118,9 @@ public:
                            double time, bool flag=true ); 
 
 
-   void setFlowJacobianMatrix(PflotranJacobianMultilevelOperator *pMatrix){d_FlowJacobian =pMatrix;}
+   void setFlowJacobianMatrix(SAMRSolvers::PflotranJacobianMultilevelOperator *pMatrix){d_FlowJacobian =pMatrix;}
 
-   void setTransportJacobianMatrix(PflotranJacobianMultilevelOperator *pMatrix){d_TransportJacobian=pMatrix;}
+   void setTransportJacobianMatrix(SAMRSolvers::PflotranJacobianMultilevelOperator *pMatrix){d_TransportJacobian=pMatrix;}
 
    void interpolateGlobalToLocalVector(tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  globalVec,
                                        tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  localVec,
@@ -152,7 +152,7 @@ public:
 
    void initializePreconditioner(int *which_pc, PC *pc);
 
-   PflotranJacobianMultilevelOperator *getJacobianOperator(int *which_pc);
+   SAMRSolvers::PflotranJacobianMultilevelOperator *getJacobianOperator(int *which_pc);
 
    void setRealization(void *pflotranRealizationObj){ d_pflotranRealizationObj=pflotranRealizationObj; }
    void *getRealization(void){ return d_pflotranRealizationObj; }
@@ -248,13 +248,13 @@ private:
 
    tbox::Pointer<tbox::Database> d_application_db;
 
-   PflotranJacobianMultilevelOperator *d_FlowJacobian;
+   SAMRSolvers::PflotranJacobianMultilevelOperator *d_FlowJacobian;
 
-   PflotranJacobianMultilevelOperator *d_TransportJacobian;
+   SAMRSolvers::PflotranJacobianMultilevelOperator *d_TransportJacobian;
 
-   PflotranFlowPreconditioner *d_FlowPreconditioner;
+   SAMRSolvers::PflotranFlowPreconditioner *d_FlowPreconditioner;
 
-   PflotranTransportPreconditioner *d_TransportPreconditioner;
+   SAMRSolvers::PflotranTransportPreconditioner *d_TransportPreconditioner;
 
    BoundaryConditionStrategy  *d_refine_patch_strategy;
 

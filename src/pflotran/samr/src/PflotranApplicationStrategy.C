@@ -903,12 +903,12 @@ PflotranApplicationStrategy::initializePreconditioner(int *which_pc, PC *pc)
       {
          tbox::Pointer<tbox::Database> application_db = this->getDatabase();
          tbox::Pointer<tbox::Database> pc_db = application_db->getDatabase("PflotranFlowPreconditioner");
-         PflotranFlowPreconditionerParameters *parameters = new PflotranFlowPreconditionerParameters(pc_db);
+         SAMRSolvers::PflotranFlowPreconditionerParameters *parameters = new SAMRSolvers::PflotranFlowPreconditionerParameters(pc_db);
          parameters->d_hierarchy = d_hierarchy;
          parameters->d_pc = pc;
          parameters->d_cf_interpolant = this->getRefinementBoundaryInterpolant();
 
-         d_FlowPreconditioner = new SAMRAI::PflotranFlowPreconditioner(parameters);
+         d_FlowPreconditioner = new SAMRAI::SAMRSolvers::PflotranFlowPreconditioner(parameters);
          d_FlowPreconditioner->setOperator(d_FlowJacobian);
       }
 
@@ -919,22 +919,22 @@ PflotranApplicationStrategy::initializePreconditioner(int *which_pc, PC *pc)
       {
          tbox::Pointer<tbox::Database> application_db = this->getDatabase();
          tbox::Pointer<tbox::Database> pc_db = application_db->getDatabase("PflotranTransportPreconditioner");
-         PflotranTransportPreconditionerParameters *parameters = new PflotranTransportPreconditionerParameters(pc_db);
+         SAMRSolvers::PflotranTransportPreconditionerParameters *parameters = new SAMRSolvers::PflotranTransportPreconditionerParameters(pc_db);
          parameters->d_hierarchy = d_hierarchy;
          parameters->d_pc = pc;
          parameters->d_cf_interpolant = this->getRefinementBoundaryInterpolant();
 
-         d_TransportPreconditioner = new SAMRAI::PflotranTransportPreconditioner(parameters);
+         d_TransportPreconditioner = new SAMRAI::SAMRSolvers::PflotranTransportPreconditioner(parameters);
          d_TransportPreconditioner->setOperator(d_TransportJacobian);
       }
 
    }
 }
 
-PflotranJacobianMultilevelOperator *
+SAMRSolvers::PflotranJacobianMultilevelOperator *
 PflotranApplicationStrategy::getJacobianOperator(int *which_pc)
 {
-   PflotranJacobianMultilevelOperator *retOp = NULL;
+   SAMRSolvers::PflotranJacobianMultilevelOperator *retOp = NULL;
 
    retOp = (*which_pc==0)?d_FlowJacobian:d_TransportJacobian;
 

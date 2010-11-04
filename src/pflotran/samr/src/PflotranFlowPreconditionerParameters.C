@@ -18,7 +18,8 @@ responsibility for the use of this software.
 #include "PflotranFlowPreconditionerParameters.h"
 
 namespace SAMRAI {
-
+  namespace SAMRSolvers{
+    
 PflotranFlowPreconditionerParameters::PflotranFlowPreconditionerParameters()
 {
    d_db.setNull();
@@ -39,4 +40,6 @@ PflotranFlowPreconditionerParameters::~PflotranFlowPreconditionerParameters()
 {
    d_cf_interpolant          = NULL;
 }
+
+  }
 }

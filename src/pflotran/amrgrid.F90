@@ -13,8 +13,8 @@ module AMR_Grid_module
 #include "finclude/petscvec.h90"
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
-#include "finclude/petscda.h"
-#include "finclude/petscda.h90"
+#include "finclude/petscdm.h"
+#include "finclude/petscdm.h90"
 
   ! the next type encapsulates a pointer to a grid info object
   type, public:: gridptr_type
@@ -186,7 +186,7 @@ subroutine AMRGridComputeLocalBounds(amrgrid)
   PetscInt :: ln
   PetscInt :: pn
   PetscInt :: islocal
-  DA :: da
+  DM :: da
 
   p_application = amrgrid%p_application
 
@@ -510,7 +510,7 @@ subroutine AMRGridComputeGeometryInformation(amrgrid, origin_global, field, &
   PetscFortranAddr :: p_application
 
   type(grid_type), pointer :: grid
-  DA, pointer :: dummy_ptr
+  DM :: dummy_ptr
 
   PetscInt :: nlevels
   PetscInt :: npatches

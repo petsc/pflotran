@@ -1,3 +1,4 @@
+
 #ifndef included_CartesianGridGeometry
 #include "CartesianGridGeometry.h"
 #endif
@@ -16,7 +17,11 @@
 #include "MultilevelOperatorParameters.h"
 
 #include "PflotranTransportPreconditioner.h"
- 
+
+namespace SAMRAI{
+
+  namespace SAMRSolvers{
+
 PflotranTransportPreconditioner::PflotranTransportPreconditioner(PflotranTransportPreconditionerParameters *parameters)
 {
 #ifdef DEBUG_CHECK_ASSERTIONS
@@ -307,4 +312,7 @@ PflotranTransportPreconditioner::getCoarsenSchedule(int ln, xfer::CoarsenAlgorit
    
    return crs_fill_schedule;
 
+}
+
+  }
 }

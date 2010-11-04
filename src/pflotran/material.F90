@@ -501,10 +501,13 @@ function MaterialPropGetPtrFromArray(material_property_name, &
   
   do imaterial_property = 1, size(material_property_array)
     length = len_trim(material_property_name)
-    if (length == len_trim(material_property_array(imaterial_property)%ptr%name) .and. &
+    if (.not.associated(material_property_array(imaterial_property)%ptr)) cycle
+    if (length == &
+        len_trim(material_property_array(imaterial_property)%ptr%name) .and. &
         StringCompare(material_property_array(imaterial_property)%ptr%name, &
                         material_property_name,length)) then
-      MaterialPropGetPtrFromArray => material_property_array(imaterial_property)%ptr
+      MaterialPropGetPtrFromArray => &
+        material_property_array(imaterial_property)%ptr
       return
     endif
   enddo

@@ -18,7 +18,7 @@
 
 template class SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM,double> >;
 template class  SAMRAI::tbox::Array< SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM,double> > >;
-template class SAMRAI::tbox::Array<SAMRAI::PflotranJacobianLevelOperator*>;
+template class SAMRAI::tbox::Array<SAMRAI::SAMRSolvers::PflotranJacobianLevelOperator*>;
 template class SAMRAI::tbox::Pointer<BoundaryConditionStrategy>;
 template class SAMRAI::tbox::Array< SAMRAI::tbox::Pointer< SAMRAI::xfer::CoarsenSchedule<NDIM> > >;
 template class SAMRAI::tbox::Array< SAMRAI::tbox::Array< SAMRAI::tbox::Pointer< SAMRAI::xfer::CoarsenSchedule<NDIM> > > >;

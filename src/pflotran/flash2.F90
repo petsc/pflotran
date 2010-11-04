@@ -17,8 +17,8 @@ module Flash2_module
   ! indication of what the problem is.
 #include "finclude/petscmat.h"
 #include "finclude/petscmat.h90"
-#include "finclude/petscda.h"
-#include "finclude/petscda.h90"
+#include "finclude/petscdm.h"
+#include "finclude/petscdm.h90"
 !#ifdef USE_PETSC216
 !#include "finclude/petscsles.h"
 !#endif
@@ -1695,7 +1695,17 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
 #include "finclude/petscvec.h90"
        Vec :: vec
      end subroutine samrpetscobjectstateincrease
-     
+    
+     subroutine SAMRCoarsenFaceFluxes(p_application, vec, ierr)
+       implicit none
+#include "finclude/petscsysdef.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+       PetscFortranAddr :: p_application
+       Vec :: vec
+       PetscErrorCode :: ierr
+     end subroutine SAMRCoarsenFaceFluxes
+       
   end interface
 
   SNES :: snes
@@ -1719,8 +1729,8 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
   discretization => realization%discretization
   
  
-!  call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
-!  call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
+  call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
+
  ! check initial guess -----------------------------------------------
   ierr = Flash2InitGuessCheck(realization)
   if(ierr<0)then
@@ -1733,8 +1743,7 @@ subroutine Flash2Residual(snes,xx,r,realization,ierr)
 
   ! Communication -----------------------------------------
   ! These 3 must be called before Flash2UpdateAuxVars()
-  call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
-!  call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
+!  call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
   call DiscretizationLocalToLocal(discretization,field%icap_loc,field%icap_loc,ONEDOF)
 
   call DiscretizationLocalToLocal(discretization,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
@@ -2362,8 +2371,9 @@ subroutine Flash2ResidualFluxContribPatch(r,realization,ierr)
   type(field_type), pointer :: field
   PetscInt :: axis, nlx, nly, nlz
   PetscInt :: iconn, i, j, k
-  PetscInt :: xup_id, xdn_id, yup_id, ydn_id, zup_id, zdn_id
-
+  PetscInt :: xup, xdn, yup, ydn, zup, zdn
+  PetscInt :: nd
+      
   patch => realization%patch
   grid => patch%grid
   option => realization%option
@@ -2378,22 +2388,24 @@ subroutine Flash2ResidualFluxContribPatch(r,realization,ierr)
   nlx = grid%structured_grid%nlx  
   nly = grid%structured_grid%nly  
   nlz = grid%structured_grid%nlz 
-  
+  nd = option%nflowdof
+      
   iconn=0
   do k=1,nlz
      do j=1,nly
         do i=1,nlx
-           iconn=iconn+1
-           xup_id = ((k-1)*nly+j-1)*(nlx+1)+i
-           xdn_id = xup_id+1
-           yup_id = ((k-1)*(nly+1)+(j-1))*nlx+i
-           ydn_id = yup_id+nlx
-           zup_id = ((k-1)*nly+(j-1))*nlx+i
-           zdn_id = zup_id+nlx*nly
+           iconn=iconn+nd
+           xup = (((k-1)*nly+j-1)*(nlx+1)+i)*nd
+           xdn = xup+nd
+           yup = (((k-1)*(nly+1)+(j-1))*nlx+i)*nd
+           ydn = yup+nlx*nd
+           zup = (((k-1)*nly+(j-1))*nlx+i)*nd
+           zdn = zup+nlx*nly*nd
 
-           r_p(iconn) = r_p(iconn)+fluxes(0)%flux_p(xdn_id)-fluxes(0)%flux_p(xup_id) &
-                                  +fluxes(1)%flux_p(ydn_id)-fluxes(1)%flux_p(yup_id) &
-                                  +fluxes(2)%flux_p(zdn_id)-fluxes(2)%flux_p(zup_id)
+           r_p(iconn:iconn+nd-1) = r_p(iconn:iconn+nd-1) &
+                                  +fluxes(0)%flux_p(xdn:xdn+nd-1)-fluxes(0)%flux_p(xup:xup+nd-1) &
+                                  +fluxes(1)%flux_p(ydn:ydn+nd-1)-fluxes(1)%flux_p(yup:yup+nd-1) &
+                                  +fluxes(2)%flux_p(zdn:zdn+nd-1)-fluxes(2)%flux_p(zup:zup+nd-1)
 
         enddo
      enddo
@@ -2530,11 +2542,37 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
      do axis=0,2  
         call GridVecGetArrayF90(grid,axis,field%flow_face_fluxes, fluxes(axis)%flux_p, ierr)  
      enddo
+
+     nlx = grid%structured_grid%nlx  
+     nly = grid%structured_grid%nly  
+     nlz = grid%structured_grid%nlz 
+
+     ngx = grid%structured_grid%ngx   
+     ngxy = grid%structured_grid%ngxy
+
+     if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
+                        ZERO_INTEGER)==1) nlx = nlx-1
+     if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
+                        ONE_INTEGER)==1) nlx = nlx-1
+    
+     max_x_conn = (nlx+1)*nly*nlz
+     ! reinitialize nlx
+     nlx = grid%structured_grid%nlx  
+
+     if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
+                        ZERO_INTEGER)==1) nly = nly-1
+     if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
+                        ONE_INTEGER)==1) nly = nly-1
+    
+     max_y_conn = max_x_conn + nlx*(nly+1)*nlz
+
+     ! reinitialize nly
+     nly = grid%structured_grid%nly  
+
   endif
 
   r_p = 0.d0
  
-#if 1
   ! Boundary Flux Terms -----------------------------------
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
@@ -2594,8 +2632,8 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
     call Flash2AuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
            global_aux_vars_bc(sum_connection),&
            realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
-           realization%fluid_properties, option)
-#if 1
+           realization%fluid_properties, option,xphi)
+
     if( associated(global_aux_vars_bc))then
       global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
                      aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
@@ -2610,7 +2648,6 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
   !   global_aux_vars(ghosted_id)%mass_balance 
   !   global_aux_vars(ghosted_id)%mass_balance_delta                   
     endif
-#endif
 
     call Flash2BCFlux(boundary_condition%flow_condition%itype, &
          boundary_condition%flow_aux_real_var(:,iconn), &
@@ -2649,34 +2686,46 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
               flux_id = ((ghosted_id/ngxy)-1)*(nlx+1)*nly + &
                         ((mod(ghosted_id,ngxy))/ngx-1)*(nlx+1)+ &
                         mod(mod(ghosted_id,ngxy),ngx)-1
-              fluxes(direction)%flux_p(flux_id) = Res(1)
+              istart = flux_id*option%nflowdof
+              iend = istart+option%nflowdof-1
+              fluxes(direction)%flux_p(istart:iend) = Res(1:option%nflowdof)
            case(EAST_FACE)
               ghosted_id = ghosted_id+1
               flux_id = ((ghosted_id/ngxy)-1)*(nlx+1)*nly + &
                         ((mod(ghosted_id,ngxy))/ngx-1)*(nlx+1)
-              fluxes(direction)%flux_p(flux_id) = -Res(1)
+              istart = flux_id*option%nflowdof
+              iend = istart+option%nflowdof-1
+              fluxes(direction)%flux_p(istart:iend) = -Res(1:option%nflowdof)
            case(SOUTH_FACE)
               flux_id = ((ghosted_id/ngxy)-1)*nlx*(nly+1) + &
                         ((mod(ghosted_id,ngxy))/ngx-1)*nlx + &
                         mod(mod(ghosted_id,ngxy),ngx)-1
-              fluxes(direction)%flux_p(flux_id) = Res(1)
+              istart = flux_id*option%nflowdof
+              iend = istart+option%nflowdof-1
+              fluxes(direction)%flux_p(istart:iend) = Res(1:option%nflowdof)
            case(NORTH_FACE)
               ghosted_id = ghosted_id+ngx
               flux_id = ((ghosted_id/ngxy)-1)*nlx*(nly+1) + &
                         ((mod(ghosted_id,ngxy))/ngx-1)*nlx + &
                         mod(mod(ghosted_id,ngxy),ngx)-1
-              fluxes(direction)%flux_p(flux_id) = -Res(1)
+              istart = flux_id*option%nflowdof
+              iend = istart+option%nflowdof-1
+              fluxes(direction)%flux_p(istart:iend) = -Res(1:option%nflowdof)
            case(BOTTOM_FACE)
               flux_id = ((ghosted_id/ngxy)-1)*nlx*nly &
                        +((mod(ghosted_id,ngxy))/ngx-1)*nlx &
                        +mod(mod(ghosted_id,ngxy),ngx)-1
-              fluxes(direction)%flux_p(flux_id) = Res(1)
+              istart = flux_id*option%nflowdof
+              iend = istart+option%nflowdof-1
+              fluxes(direction)%flux_p(istart:iend) = Res(1:option%nflowdof)
            case(TOP_FACE)
               ghosted_id = ghosted_id+ngxy
               flux_id = ((ghosted_id/ngxy)-1)*nlx*nly &
                        +((mod(ghosted_id,ngxy))/ngx-1)*nlx &
                        +mod(mod(ghosted_id,ngxy),ngx)-1
-              fluxes(direction)%flux_p(flux_id) = -Res(1)
+              istart = flux_id*option%nflowdof
+              iend = istart+option%nflowdof-1
+              fluxes(direction)%flux_p(istart:iend) = -Res(1:option%nflowdof)
          end select
 
 !         fluxes(direction)%flux_p(flux_id) = Res(1)
@@ -2689,36 +2738,8 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
   enddo
   boundary_condition => boundary_condition%next
  enddo
-#endif
 
 #if 1
-  if (option%use_samr) then
-    nlx = grid%structured_grid%nlx  
-    nly = grid%structured_grid%nly  
-    nlz = grid%structured_grid%nlz 
-
-    ngx = grid%structured_grid%ngx   
-    ngxy = grid%structured_grid%ngxy
-
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
-                        ZERO_INTEGER)==1) nlx = nlx-1
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ZERO_INTEGER, &
-                        ONE_INTEGER)==1) nlx = nlx-1
-    
-    max_x_conn = (nlx+1)*nly*nlz
-    ! reinitialize nlx
-    nlx = grid%structured_grid%nlx  
-
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
-                        ZERO_INTEGER)==1) nly = nly-1
-    if(samr_patch_at_bc(grid%structured_grid%p_samr_patch, ONE_INTEGER, &
-                        ONE_INTEGER)==1) nly = nly-1
-    
-    max_y_conn = max_x_conn + nlx*(nly+1)*nlz
-
-    ! reinitialize nly
-    nly = grid%structured_grid%nly  
-  endif
 
   ! Interior Flux Terms -----------------------------------
   connection_set_list => grid%internal_connection_set_list
@@ -2807,7 +2828,9 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
                    +((mod(ghosted_id_dn,ngxy))/ngx-1)*nlx &
                    +mod(mod(ghosted_id_dn,ngxy),ngx)-1
         endif
-        fluxes(direction)%flux_p(flux_id) = Res(1)
+        istart = flux_id*option%nflowdof
+        iend = istart+option%nflowdof-1
+        fluxes(direction)%flux_p(istart:iend) = Res(1:option%nflowdof)
       endif
       
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
@@ -3730,9 +3753,6 @@ subroutine Flash2JacobianPatch(snes,xx,A,B,flag,realization,ierr)
                 perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
                 perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
     
-      iphas_up = iphase_loc_p(ghosted_id_up)
-      iphas_dn = iphase_loc_p(ghosted_id_dn)
-
       ithrm_up = int(ithrm_loc_p(ghosted_id_up))
       ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
       D_up = Flash2_parameter%ckwet(ithrm_up)

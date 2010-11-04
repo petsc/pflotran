@@ -11,10 +11,13 @@
 #include "CartesianGridGeometry.h"
 
 namespace SAMRAI{
+  namespace SAMRSolvers{
+    
 #ifndef iC
 #define iC(fun) {CHKERRQ(fun);}
 #endif
 
+  
 PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator()
 {
 }
@@ -109,19 +112,19 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
 void
 PflotranJacobianMultilevelOperator::initializePetscMatInterface(void)
 {
-   MatShellSetOperation(*d_pMatrix, MATOP_MULT, (void(*)(void))(&SAMRAI::PflotranJacobianMultilevelOperator::wrapperMatMult));
+   MatShellSetOperation(*d_pMatrix, MATOP_MULT, (void(*)(void))(&PflotranJacobianMultilevelOperator::wrapperMatMult));
 
-   MatShellSetOperation(*d_pMatrix, MATOP_ZERO_ENTRIES, (void(*)(void))(&SAMRAI::PflotranJacobianMultilevelOperator::wrapperMatZeroEntries));
+   MatShellSetOperation(*d_pMatrix, MATOP_ZERO_ENTRIES, (void(*)(void))(&PflotranJacobianMultilevelOperator::wrapperMatZeroEntries));
 
-   MatShellSetOperation(*d_pMatrix, MATOP_SET_VALUES_LOCAL, (void(*)(void))(&SAMRAI::PflotranJacobianMultilevelOperator::wrapperMatSetValuesLocal));
+   MatShellSetOperation(*d_pMatrix, MATOP_SET_VALUES_LOCAL, (void(*)(void))(&PflotranJacobianMultilevelOperator::wrapperMatSetValuesLocal));
 
-   MatShellSetOperation(*d_pMatrix, MATOP_SET_VALUES_BLOCKED, (void(*)(void))(&SAMRAI::PflotranJacobianMultilevelOperator::wrapperMatSetValuesBlockedLocal));
+   MatShellSetOperation(*d_pMatrix, MATOP_SET_VALUES_BLOCKED, (void(*)(void))(&PflotranJacobianMultilevelOperator::wrapperMatSetValuesBlockedLocal));
    
    // the operation below is for the serial case where DiagonalScaleLocal is a call to DiagonalScale
-   MatShellSetOperation(*d_pMatrix, MATOP_DIAGONAL_SCALE, (void(*)(void))(&SAMRAI::PflotranJacobianMultilevelOperator::wrapperMatDiagonalScale));
+   MatShellSetOperation(*d_pMatrix, MATOP_DIAGONAL_SCALE, (void(*)(void))(&PflotranJacobianMultilevelOperator::wrapperMatDiagonalScale));
    
    // the operation below is for the parallel case where the operation is currently registered as a dynamic op
-   PetscObjectComposeFunctionDynamic((PetscObject)*d_pMatrix, "MatDiagonalScaleLocal_C", "SAMRAI::PflotranJacobianMultilevelOperator::wrapperMatDiagonalScaleLocal", (void(*)(void))(&SAMRAI::PflotranJacobianMultilevelOperator::wrapperMatDiagonalScaleLocal));
+   PetscObjectComposeFunctionDynamic((PetscObject)*d_pMatrix, "MatDiagonalScaleLocal_C", "SAMRAI::SAMRSolvers::PflotranJacobianMultilevelOperator::wrapperMatDiagonalScaleLocal", (void(*)(void))(&PflotranJacobianMultilevelOperator::wrapperMatDiagonalScaleLocal));
 
 }
 
@@ -973,7 +976,7 @@ PflotranJacobianMultilevelOperator::getVariableIndex(std::string &name,
       
       if(!var)
       {
-         var = new pdat::CCellVariable<NDIM, double>(name, depth);         
+         var = new pdat::CCellVariable<NDIM, double>(name, d_ndof);         
       }
 
       var_id = variable_db->registerVariableAndContext(var,
@@ -1115,6 +1118,6 @@ PflotranJacobianMultilevelOperator::coarsenSolutionAndSourceTerm(const int ln,
    }
 }
 
-
+  }
 }
 

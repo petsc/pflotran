@@ -113,7 +113,7 @@ c
       integer ilast0,ilast1,ilast2
       integer stencilsize, ndof
       integer dgcw
-      integer offsets(1:stencilsize*ndof*ndof*NDIM)
+      integer offsets(1:stencilsize*NDIM)
       REAL ddata(0:ndof-1,CELL3d(ifirst,ilast,dgcw))
       REAL stencil(0:ndof*ndof*stencilsize-1, 
      &             CELL3d(ifirst,ilast,0))
@@ -128,9 +128,9 @@ c
             do i = ifirst0, ilast0
                do s = 1, stencilsize
 
-                  io=offsets(NDIM*ndof*ndof*(s-1)+1)
-                  jo=offsets(NDIM*ndof*ndof*(s-1)+2)
-                  ko=offsets(NDIM*ndof*ndof*(s-1)+3)
+                  io=offsets(NDIM*(s-1)+1)
+                  jo=offsets(NDIM*(s-1)+2)
+                  ko=offsets(NDIM*(s-1)+3)
 
                   do d=0,ndof-1
                   bs = ndof*ndof*(s-1)+d*ndof

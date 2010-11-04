@@ -672,7 +672,9 @@ subroutine SolverReadNewton(solver,input,option)
           case('MFFD','MATRIX_FREE')
             solver%Jpre_mat_type = MATMFFD
           case('HYPRESTRUCT')
-            solver%Jpre_mat_type = MATHYPRESTRUCT
+             solver%Jpre_mat_type = MATHYPRESTRUCT
+          case('SHELL')
+             solver%Jpre_mat_type = MATSHELL
           case default
             option%io_buffer  = 'Preconditioner Matrix type: ' // trim(word) // ' unknown.'
             call printErrMsg(option)
