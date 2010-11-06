@@ -1567,6 +1567,23 @@ subroutine StepperStepTransportDT_GI(realization,stepper,flow_t0,flow_t1, &
   call SNESGetFunctionNorm(solver%snes,fnorm,ierr)
   call VecNorm(field%tran_r,NORM_INFINITY,inorm,ierr)
   if (option%print_screen_flag) then
+  
+    if (option%nflowdof > 0) then
+
+    write(*, '(/," TRAN ",i6," Time= ",1pe12.4," Target= ",1pe12.4, &
+      & " Dt= ",1pe12.4," [",a1,"]", &
+      & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i6,"]", &
+      & " linear = ",i5," [",i10,"]"," cuts = ",i2," [",i4,"]")') &
+      stepper%steps, &
+      final_tran_time/realization%output_option%tconv, &
+      flow_t1/realization%output_option%tconv, &
+      option%tran_dt/realization%output_option%tconv, &
+      realization%output_option%tunit,snes_reason,sum_newton_iterations, &
+      stepper%cumulative_newton_iterations,sum_linear_iterations, &
+      stepper%cumulative_linear_iterations,icut, &
+      stepper%cumulative_time_step_cuts
+
+    else
 
     write(*, '(/," TRAN ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
       & " snes_conv_reason: ",i4,/,"  newton = ",i3," [",i6,"]", &
@@ -1579,6 +1596,8 @@ subroutine StepperStepTransportDT_GI(realization,stepper,flow_t0,flow_t1, &
       stepper%cumulative_linear_iterations,icut, &
       stepper%cumulative_time_step_cuts
 
+    endif
+    
     ! the grid pointer is null if we are working with SAMRAI
     if(associated(discretization%grid)) then
        scaled_fnorm = fnorm/discretization%grid%nmax   
