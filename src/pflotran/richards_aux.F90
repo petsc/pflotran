@@ -229,8 +229,8 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   pw = option%reference_pressure
   ds_dp = 0.d0
   dkr_dp = 0.d0
-!  if (aux_var%pc > 0.d0) then
-  if (aux_var%pc > 1.d0) then
+  if (aux_var%pc > 0.d0) then
+! if (aux_var%pc > 1.d0) then
     iphase = 3
     call SaturationFunctionCompute(global_aux_var%pres(1),global_aux_var%sat(1),kr, &
                                    ds_dp,dkr_dp, &
