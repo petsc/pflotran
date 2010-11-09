@@ -854,8 +854,6 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                 case(RICHARDS_MODE)
                   coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
                     flow_condition%pressure%dataset%cur_value(1)
- 
-                    write(*,*) "RICHARDS_MODE", coupler%id, num_connections, flow_condition%pressure%dataset%cur_value(1)
                     
               end select
             case(HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)

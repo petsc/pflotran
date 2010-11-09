@@ -1078,18 +1078,18 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
 
 #ifdef DASVYAT
 
-    call PetscViewerASCIIOpen(realization%option%mycomm,'timestepp_flow_xx.out', &
-                              viewer,ierr)
-    if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
-            call VecView(field%flow_xx_faces, viewer, ierr)
-    else
-            call VecView(field%flow_xx, viewer, ierr)
-    end if
-    write(*,*) "VecView error", ierr
-    call PetscViewerDestroy(viewer,ierr)
-
-    write(*,*) "After SNESSolve" 
-    read(*,*) tmp_int   
+!    call PetscViewerASCIIOpen(realization%option%mycomm,'timestepp_flow_xx.out', &
+!                              viewer,ierr)
+!    if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
+!            call VecView(field%flow_xx_faces, viewer, ierr)
+!    else
+!            call VecView(field%flow_xx, viewer, ierr)
+!    end if
+!    write(*,*) "VecView error", ierr
+!    call PetscViewerDestroy(viewer,ierr)
+!
+!    write(*,*) "After SNESSolve" 
+!    read(*,*) tmp_int   
 #endif
 
 

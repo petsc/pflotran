@@ -756,21 +756,22 @@ function CouplerGetNumBoundConnectionsInListMFD(grid, list, option)
   type(coupler_list_type) :: list
   type(grid_type) :: grid
   type(option_type) :: option
-  
   PetscInt :: CouplerGetNumBoundConnectionsInListMFD
+ 
   type(coupler_type), pointer :: coupler
 
   PetscInt :: numfaces_set, iconn, local_face_id, i
   
+  iconn = 0
 
   coupler => list%first
 
+#ifdef DASVYAT  
 
   allocate(grid%fL2B(grid%nlmax_faces))
 
   grid%fL2B = 0
 
-  iconn = 0
   do
     if (.not.associated(coupler)) exit
 	
@@ -787,10 +788,7 @@ function CouplerGetNumBoundConnectionsInListMFD(grid, list, option)
 	enddo
     coupler => coupler%next
   enddo
-
-  do i=1,grid%nlmax_faces
-	  write(*,*) i, grid%fL2B(i)
-  end do
+#endif
 
   CouplerGetNumBoundConnectionsInListMFD = iconn
 

@@ -2950,13 +2950,13 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 !    write(*,*) iface, "res_p ", r_p(iface), "x", xx_loc_faces_p(iface)
 !  end do
 
-   write(*,*) "Internal faces"
-   do iface = 1, grid%internal_connection_set_list%first%num_connections
-      write(*,*) "int_flux", iface, patch%internal_velocities(option%nphase, iface) 
-   end do  
-
+!   write(*,*) "Internal faces"
+!   do iface = 1, grid%internal_connection_set_list%first%num_connections
+!      write(*,*) "int_flux", iface, patch%internal_velocities(option%nphase, iface) 
+!   end do  
+!
    write(*,*) "Boundary faces"
-   do iface = 1, 6 
+   do iface = 1, 11 
       write(*,*) "bound_flux", iface, patch%boundary_velocities(option%nphase, iface)
    end do  
 
@@ -3133,6 +3133,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
             
 
         Accum(1) = accum_p(local_id) - Res(1)
+		Accum(1) = 0
 
         source_f = 0.
         PermTensor = 0.
@@ -4046,7 +4047,6 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
      ukvr = rich_aux_vars(ghosted_id)%kvr_x 
 	 den =  global_aux_vars(ghosted_id)%den(1)
 	  
-	  write(*,*) "ukvr",ukvr,"den",den
 
      allocate(J(numfaces*numfaces))
      allocate(ghosted_face_id(numfaces))

@@ -1048,10 +1048,12 @@ subroutine RTUpdateTransportCoefsPatch(realization)
       sum_connection = sum_connection + 1
   
       if (option%mimetic) then
+#ifdef DASVYAT
 		ghosted_face_id = boundary_condition%faces_set(iconn)
 		cur_connection_set => grid%faces(ghosted_face_id)%conn_set_ptr
 		id = grid%faces(ghosted_face_id)%id
 		local_id = cur_connection_set%id_dn(id)
+#endif
 	  else
 	    local_id = cur_connection_set%id_dn(iconn)
 	  end if
