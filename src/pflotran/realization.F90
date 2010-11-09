@@ -362,9 +362,7 @@ subroutine RealizationCreateDiscretization(realization)
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option)
       if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
-          write(*,*) "Before GridComputeCell2FaceConnectivity "
           call GridComputeCell2FaceConnectivity(grid, discretization%MFD, option)
-          write(*,*) "After GridComputeCell2FaceConnectivity"
       end if
     case(UNSTRUCTURED_GRID)
       grid => discretization%grid
@@ -392,7 +390,7 @@ subroutine RealizationCreateDiscretization(realization)
 
 
 
-       call VecSetBlockSize(field%flow_xx_faces,NFLOWDOF,ierr)
+       call VecSetBlockSize(field%flow_xx_faces,option%nflowdof,ierr)
 
        call DiscretizationDuplicateVector(discretization, field%flow_xx_faces, &
                                                         field%flow_r_faces)
@@ -405,7 +403,7 @@ subroutine RealizationCreateDiscretization(realization)
 
 
        call VecCreateSeq(PETSC_COMM_SELF, grid%ngmax_faces*option%nflowdof, field%flow_xx_loc_faces, ierr)
-       call VecSetBlockSize(field%flow_xx_loc_faces,NFLOWDOF,ierr)
+       call VecSetBlockSize(field%flow_xx_loc_faces,option%nflowdof,ierr)
 
 !       call VecCreateSeq(PETSC_COMM_SELF, grid%ngmax_faces*option%nflowdof, field%flow_r_loc_faces, ierr)
 !       call VecSetBlockSize(field%flow_r_loc_faces,NFLOWDOF,ierr)
@@ -1336,6 +1334,7 @@ subroutine RealizAssignFlowInitCond(realization)
 #ifdef DASVYAT
   if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
    call DiscretizationGlobalToLocalFaces(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
+   call VecCopy(field%flow_xx_faces, field%flow_yy_faces, ierr)
    call MFDInitializeMassMatrices(realization%discretization%grid,&
                                       realization%field%volume, &
                                       realization%field%perm_xx_loc, &
@@ -2317,32 +2316,38 @@ subroutine RealizationSetUpBC4Faces(realization)
   do
     if (.not.associated(boundary_condition)) exit
     bc_type = boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF)
-    if ((bc_type == DIRICHLET_BC).or.(bc_type == HYDROSTATIC_BC)  &
-         .or.(bc_type == SEEPAGE_BC).or.(bc_type == CONDUCTANCE_BC) ) then
 
-      do iconn = 1, boundary_condition%numfaces_set
-        sum_connection = sum_connection + 1
+    do iconn = 1, boundary_condition%numfaces_set
+      sum_connection = sum_connection + 1
 
-        local_id = boundary_condition%region%cell_ids(iconn)
-        ghosted_id = grid%nL2G(local_id)
+      local_id = boundary_condition%region%cell_ids(iconn)
+      ghosted_id = grid%nL2G(local_id)
 
-        aux_var => grid%MFD%aux_vars(local_id)
-        do j = 1, aux_var%numfaces
-          ghost_face_id = aux_var%face_id_gh(j)
-          conn => grid%faces(ghost_face_id)%conn_set_ptr
-          jface = grid%faces(ghost_face_id)%id
-          if (boundary_condition%faces_set(iconn) == ghost_face_id) then
-              bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)*conn%area(jface)
+      aux_var => grid%MFD%aux_vars(local_id)
+      do j = 1, aux_var%numfaces
+        ghost_face_id = aux_var%face_id_gh(j)
+        conn => grid%faces(ghost_face_id)%conn_set_ptr
+        jface = grid%faces(ghost_face_id)%id
+        if (boundary_condition%faces_set(iconn) == ghost_face_id) then
+           if ((bc_type == DIRICHLET_BC).or.(bc_type == HYDROSTATIC_BC)  &
+              .or.(bc_type == SEEPAGE_BC).or.(bc_type == CONDUCTANCE_BC) ) then
+                    bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)*conn%area(jface)
+           else if ((bc_type == NEUMANN_BC)) then
+                    bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)*conn%area(jface)
+           end if 
+                
   !            bc_faces_p(ghost_face_id) = conn%cntr(3,jface)*conn%area(jface) 
-          end if
-        end do
+        end if
       end do
-    end if
+    end do
     boundary_condition => boundary_condition%next
   end do
 
 
   call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
+
+  write(*,*) "RealizationSetUpBC4Faces Finished"
+!  stop
 #endif
 
 end subroutine RealizationSetUpBC4Faces

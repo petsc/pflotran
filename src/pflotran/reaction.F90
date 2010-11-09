@@ -3377,7 +3377,7 @@ subroutine RTotalSorbKD(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: tempreal
   PetscReal :: one_over_n
   PetscReal :: activity_one_over_n
-  
+
   ! Surface Complexation
   do irxn = 1, reaction%neqkdrxn
     icomp = reaction%eqkdspecid(irxn)
@@ -3386,7 +3386,7 @@ subroutine RTotalSorbKD(rt_auxvar,global_auxvar,reaction,option)
     select case(reaction%eqkdtype(irxn))
       case(SORPTION_LINEAR)
         ! Csorb = Kd*Caq
-        res = reaction%eqkddistcoef(irxn)*activity
+       res = reaction%eqkddistcoef(irxn)*activity
         dres_dc = res/molality
       case(SORPTION_LANGMUIR)
         ! Csorb = K*Caq*b/(1+K*Caq)
