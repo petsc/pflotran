@@ -210,6 +210,13 @@ subroutine RTSetupPatch(realization)
     do iconn = 1, sum_connection
       call RTAuxVarInit(patch%aux%RT%aux_vars_bc(iconn),reaction,option)
     enddo
+#ifdef DASVYAT
+!	write(*,*) 'sum_connection',sum_connection
+!    do iconn = 1, sum_connection
+!      write(*,*) "RTAuxVarInit ",patch%aux%RT%aux_vars_bc(iconn)%total(1,1)
+!    enddo
+!	read(*,*)
+#endif
   endif
   patch%aux%RT%num_aux_bc = sum_connection
   option%iflag = 0
@@ -965,12 +972,12 @@ subroutine RTUpdateTransportCoefsPatch(realization)
   type(field_type), pointer :: field
   type(reactive_transport_param_type), pointer :: rt_parameter
   PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:)
-  PetscInt :: local_id, ghosted_id
+  PetscInt :: local_id, ghosted_id, ghosted_face_id, id
   
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set  
-  PetscInt :: sum_connection, iconn
+  PetscInt :: sum_connection, iconn, num_connections
   PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
   PetscReal :: fraction_upwind, distance, dist_up, dist_dn
   PetscErrorCode :: ierr
@@ -1029,15 +1036,26 @@ subroutine RTUpdateTransportCoefsPatch(realization)
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
-  
-    cur_connection_set => boundary_condition%connection_set
-  
-    do iconn = 1, cur_connection_set%num_connections
+ 
+
+	if (option%mimetic) then 
+		num_connections = boundary_condition%numfaces_set
+	else
+		cur_connection_set => boundary_condition%connection_set
+		num_connections = cur_connection_set%num_connections
+	end if
+    do iconn = 1, num_connections
       sum_connection = sum_connection + 1
   
-      local_id = cur_connection_set%id_dn(iconn)
+      if (option%mimetic) then
+		ghosted_face_id = boundary_condition%faces_set(iconn)
+		cur_connection_set => grid%faces(ghosted_face_id)%conn_set_ptr
+		id = grid%faces(ghosted_face_id)%id
+		local_id = cur_connection_set%id_dn(id)
+	  else
+	    local_id = cur_connection_set%id_dn(iconn)
+	  end if
       ghosted_id = grid%nL2G(local_id)
-
       if (patch%imat(ghosted_id) <= 0) cycle
 
       call TDiffusionBC(boundary_condition%tran_condition%itype, &
@@ -1049,7 +1067,6 @@ subroutine RTUpdateTransportCoefsPatch(realization)
                         rt_parameter,option, &
                         patch%boundary_velocities(:,sum_connection), &
                         patch%boundary_tran_coefs(:,sum_connection))
-    
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -3721,6 +3738,12 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
     enddo
   endif
 
+#ifdef DASVYAT
+!  do iconn = 1, grid%nlmax
+!	  write(*,*) "r_p", r_p(iconn)
+!  end do
+!  stop
+#endif  
   ! Restore vectors
   call GridVecRestoreArrayF90(grid,r, r_p, ierr)
  
@@ -4959,6 +4982,11 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
 
     call PetscLogEventBegin(logging%event_rt_auxvars_bc,ierr)
 
+#ifdef DASVYAT
+!		do iconn=1,6
+! 			write(*,*) "total", iconn, patch%aux%RT%aux_vars_bc(iconn)%total(1,1)
+!        end do 
+#endif          
 
     boundary_condition => patch%boundary_conditions%first
     sum_connection = 0    
@@ -4969,6 +4997,7 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
       basis_molarity_p => boundary_condition%tran_condition% &
         cur_constraint_coupler%aqueous_species%basis_molarity
         
+
       if (reaction%ncoll > 0) then
         basis_coll_conc_p => boundary_condition%tran_condition% &
                              cur_constraint_coupler%colloids%basis_conc_mob
@@ -4978,6 +5007,9 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
         sum_connection = sum_connection + 1
         local_id = cur_connection_set%id_dn(iconn)
         ghosted_id = grid%nL2G(local_id)
+#ifdef DASVYAT
+!		write(*,*) "basis_molarity_p",basis_molarity_p,"den_kg",patch%aux%Global%aux_vars_bc(sum_connection)%den_kg(1)
+#endif
         
         if (patch%imat(ghosted_id) <= 0) cycle
 
@@ -5112,7 +5144,6 @@ subroutine RTUpdateAuxVarsPatch(realization,update_cells,update_bcs, &
             patch%aux%Global%aux_vars_bc(sum_connection)%m_nacl = option%m_nacl
           endif
         endif
-          
       enddo
       boundary_condition => boundary_condition%next
     enddo

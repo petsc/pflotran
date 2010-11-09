@@ -242,12 +242,13 @@ subroutine MFDAuxGenerateStiffMatrix(aux_var, rich_aux_var, global_aux_var,  &
 
   PetscInt :: iface, jface, i,j
   PetscScalar :: E
-  PetscScalar :: ukvr
+  PetscScalar :: ukvr, den
   PetscScalar, pointer :: MB(:)
 
   allocate(MB(aux_var%numfaces))
 
   ukvr = rich_aux_var%kvr_x
+  den = global_aux_var%den(1)
 
 
   E = 0 
@@ -261,7 +262,8 @@ subroutine MFDAuxGenerateStiffMatrix(aux_var, rich_aux_var, global_aux_var,  &
 
   do iface = 1, aux_var%numfaces
     do jface = 1, aux_var%numfaces
-        aux_var%StiffMatrix(iface,jface) = ukvr*sq_faces(iface)*sq_faces(jface)*    &
+!        aux_var%StiffMatrix(iface,jface) = den*ukvr*sq_faces(iface)*sq_faces(jface)*    &
+        aux_var%StiffMatrix(iface,jface) = sq_faces(iface)*sq_faces(jface)*    &
                                         (aux_var%MassMatrixInv(iface,jface) - &
                                         (1./E)*MB(iface)*MB(jface))
     end do
@@ -315,7 +317,7 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
 
   PetscInt :: iface, jface
   PetscScalar :: E, gMB
-  PetscScalar :: ukvr
+  PetscScalar :: ukvr, den
   PetscScalar, pointer :: MB(:), Mg(:) 
 
   allocate(MB(aux_var%numfaces))
@@ -323,13 +325,14 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
   allocate(f(option%nflowdof))
 
   ukvr = rich_aux_var%kvr_x
+  den = global_aux_var%den(1)
 
   allocate(gr(aux_var%numfaces))
 
   Kg = matmul(PermTensor, option%gravity)
 
   do i=1,3
-    Kg(i) = Kg(i) * global_aux_var%den(1) * FMWH2O
+    Kg(i) = Kg(i) * den * FMWH2O
 !	Kg(i) = 0
   end do
 
@@ -357,7 +360,8 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
 !  E = Accum(1)
 
   E = 0.
-  f(1) = (source_f(1) + Accum(1))/global_aux_var%den(1)
+ ! f(1) = (source_f(1) + Accum(1))/global_aux_var%den(1)
+  f(1) = (source_f(1) + Accum(1))
 
  ! write(*,*) "Source + Accum", f(1)
   
@@ -378,7 +382,10 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
 
 
   do iface = 1, aux_var%numfaces
-     rhs(iface) = sq_faces(iface)*MB(iface)*E*(f(1) + ukvr*gMB) - ukvr*sq_faces(iface)*Mg(iface) - ukvr*sq_faces(iface)*gr(iface) + bc_h(iface)
+     rhs(iface) = sq_faces(iface)*MB(iface)*E*(f(1) + den*ukvr*gMB) & 
+	             - den*ukvr*sq_faces(iface)*Mg(iface) &
+				 - den*ukvr*sq_faces(iface)*gr(iface) &
+				 + den*bc_h(iface)
 !	 write(*,*) "rhs", iface, rhs(iface)
   end do
 
@@ -473,7 +480,7 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
   PetscInt :: ghosted_cell_id
    
 
-  PetscInt :: iface, jface, i, j, ghost_face_id
+  PetscInt :: iface, jface, i, j, ghost_face_id, local_id, bound_id
   PetscScalar, pointer :: gr(:)
   PetscScalar :: gravity, darcy_v, dir_norm(3), total_flux
   type(connection_set_type), pointer :: conn
@@ -529,7 +536,13 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
 
 
      if (conn%itype == BOUNDARY_CONNECTION_TYPE) then
-        patch%boundary_velocities(option%nphase, iface) = -darcy_v
+		 local_id = grid%fG2L(ghost_face_id)
+		 if (local_id > 0) then
+			 bound_id = grid%fL2B(local_id)
+			 if (bound_id>0) then
+        		patch%boundary_velocities(option%nphase, bound_id) = -darcy_v
+			end if
+		end if
 !        write(*,*) "bound flux", iface , -darcy_v, conn%cntr(3, iface)
      else if (conn%itype == INTERNAL_CONNECTION_TYPE) then
        patch%internal_velocities(option%nphase, iface) = darcy_v

@@ -67,6 +67,7 @@ module Grid_module
 #ifdef DASVYAT
 
     PetscInt, pointer :: fL2G(:), fG2L(:), fG2P(:), fL2P(:)
+    PetscInt, pointer :: fL2B(:)
     Vec :: e2f     ! global vector to establish connection between global face_id and cell_id
     Vec :: e2n     ! global cell connectivity vector
 
@@ -164,6 +165,7 @@ function GridCreate()
   nullify(grid%fG2L)
   nullify(grid%fG2P)
   nullify(grid%fL2P)
+  nullify(grid%fL2B)
 #endif
 
   nullify(grid%x)
@@ -1917,6 +1919,8 @@ subroutine GridDestroy(grid)
   nullify(grid%fG2P)
   if (associated(grid%fL2P)) deallocate(grid%fL2P)
   nullify(grid%fL2P)
+  if (associated(grid%fL2B)) deallocate(grid%fL2B)
+  nullify(grid%fL2B)
 #endif
 
   if (associated(grid%x)) deallocate(grid%x)

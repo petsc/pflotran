@@ -549,7 +549,10 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
  
   if (patch%grid%itype == STRUCTURED_GRID_MIMETIC) then
 #ifdef DASVYAT
-    temp_int = ConnectionGetNumberInList(patch%grid%boundary_connection_set_list)
+!    temp_int = ConnectionGetNumberInList(patch%grid%boundary_connection_set_list)
+    temp_int = CouplerGetNumBoundConnectionsInListMFD(patch%grid, &
+										patch%boundary_conditions, &
+										option)
 #endif
   else  
     temp_int = CouplerGetNumConnectionsInList(patch%boundary_conditions)

@@ -573,7 +573,6 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
   PetscInt :: ghost_face_id, iface, jface, numfaces
   PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:), xx_faces_p(:), bc_loc_p(:), accum_p(:)
   PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:), volume_p(:)  
-  PetscReal :: xxbc(realization%option%nflowdof)
   PetscReal, pointer :: sq_faces(:), darcy_v(:), faces_pr(:)
   PetscReal :: Res(realization%option%nflowdof), source_f(realization%option%nflowdof)
   PetscErrorCode :: ierr
@@ -582,8 +581,12 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
 !  write(*,*) "ENTER RichardsUpdateAuxVarsPatchMFD"
 !#endif
 
+! For Boundary Conditions
+  PetscReal :: xxbc(realization%option%nflowdof)
+  type(richards_auxvar_type), pointer :: rich_aux_vars_bc(:) 
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
 
-  
+
   call PetscLogEventBegin(logging%event_r_auxvars,ierr)
 
   option => realization%option
@@ -591,8 +594,12 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
   grid => patch%grid
   field => realization%field
 
+
   rich_aux_vars => patch%aux%Richards%aux_vars
+  rich_aux_vars_bc => patch%aux%Richards%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+
     
   call GridVecGetArrayF90(grid,field%flow_xx, xx_loc_p, ierr)
   call VecGetArrayF90(field%flow_xx_loc_faces, xx_faces_p, ierr)
@@ -665,6 +672,35 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
 
   deallocate(sq_faces)
   deallocate(faces_pr)
+
+  boundary_condition => patch%boundary_conditions%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(boundary_condition)) exit
+    cur_connection_set => boundary_condition%connection_set
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+
+      select case(boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF))
+        case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,CONDUCTANCE_BC)
+          xxbc(1) = boundary_condition%flow_aux_real_var(RICHARDS_PRESSURE_DOF,iconn)
+        case(NEUMANN_BC,ZERO_GRADIENT_BC)
+          xxbc(1) = xx_loc_p(ghosted_id)
+      end select
+      
+      call RichardsAuxVarCompute(xxbc(1),rich_aux_vars_bc(sum_connection), &
+                         global_aux_vars_bc(sum_connection), &
+                         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+                         porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                         
+                         option)
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
 
   call PetscLogEventEnd(logging%event_r_auxvars,ierr)
 
@@ -763,6 +799,7 @@ subroutine RichardsUpdateSolution(realization)
     enddo
     cur_level => cur_level%next
   enddo
+
   
 end subroutine RichardsUpdateSolution
 
@@ -2785,7 +2822,7 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   type(mfd_auxvar_type), pointer :: aux_var
   type(connection_set_type), pointer :: conn
   PetscScalar, pointer :: sq_faces(:), e2n_local(:), Smatrix(:,:), face_pr(:)
-  PetscReal :: Res(realization%option%nflowdof), PermTensor(3,3)
+  PetscReal :: Res(realization%option%nflowdof), PermTensor(3,3), den, ukvr
   PetscInt :: icell, iface, jface, i,j, numfaces, ghost_face_id, ghost_face_jd
   
   patch => realization%patch
@@ -2881,13 +2918,16 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 !      write(*,*)          
 #endif
 
+      den = global_aux_vars(ghosted_id)%den(1)
+	  ukvr = rich_aux_vars(ghosted_id)%kvr_x
+	
 
       do i =  1, aux_var%numfaces
          ghost_face_id = aux_var%face_id_gh(i)
          face_pr(i) = xx_loc_faces_p(ghost_face_id)
          do j = 1, aux_var%numfaces
             ghost_face_jd = aux_var%face_id_gh(j)
-            r_p(ghost_face_id) = r_p(ghost_face_id) + Smatrix(i,j)*xx_loc_faces_p(ghost_face_jd)
+            r_p(ghost_face_id) = r_p(ghost_face_id) + den*ukvr*Smatrix(i,j)*xx_loc_faces_p(ghost_face_jd)
         end do        
       end do
 
@@ -2910,15 +2950,15 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 !    write(*,*) iface, "res_p ", r_p(iface), "x", xx_loc_faces_p(iface)
 !  end do
 
-!   write(*,*) "Internal faces"
-!   do iface = 1, grid%internal_connection_set_list%first%num_connections
-!      write(*,*) "int_flux", iface, patch%internal_velocities(option%nphase, iface) 
-!   end do  
+   write(*,*) "Internal faces"
+   do iface = 1, grid%internal_connection_set_list%first%num_connections
+      write(*,*) "int_flux", iface, patch%internal_velocities(option%nphase, iface) 
+   end do  
 
-!   write(*,*) "Boundary faces"
-!   do iface = 1, grid%boundary_connection_set_list%first%num_connections
-!      write(*,*) "bound_flux", iface, patch%boundary_velocities(option%nphase, iface)
-!   end do  
+   write(*,*) "Boundary faces"
+   do iface = 1, 6 
+      write(*,*) "bound_flux", iface, patch%boundary_velocities(option%nphase, iface)
+   end do  
 
 
   call GridVecRestoreArrayF90(grid,field%flow_xx, xx_loc_p, ierr)
@@ -2935,9 +2975,8 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   deallocate(sq_faces)
 
 #ifdef DASVYAT
-  write(*,*) "richards 2822"
-  write(*,*) "End RichardsResidualPatchMFD1"
-  !read(*,*) iface
+!  write(*,*) "richards 2822"
+!  write(*,*) "End RichardsResidualPatchMFD1"
 !  stop
 #endif
 
@@ -3152,7 +3191,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
 
-  write(*,*) "End RichardsResidualPatchMFD2"
+!  write(*,*) "End RichardsResidualPatchMFD2"
 !  read(*,*) iface
 
 #endif
@@ -3965,16 +4004,15 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn, iface, jface, icell, numfaces
   PetscInt :: sum_connection  
-  PetscReal :: distance, fraction_upwind
-  PetscReal :: distance_gravity 
+  PetscReal :: ukvr, den 
   PetscInt, pointer :: ghosted_face_id(:)
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
   type(richards_parameter_type), pointer :: richards_parameter
-  type(richards_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:) 
-  type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
+  type(richards_auxvar_type), pointer :: rich_aux_vars(:)
+  type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(mfd_auxvar_type), pointer :: aux_var
   
   PetscViewer :: viewer
@@ -4002,6 +4040,14 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
      aux_var => grid%MFD%aux_vars(icell)
      numfaces = aux_var%numfaces
 !     allocate(J(1))
+
+     ghosted_id = grid%nL2G(icell)
+
+     ukvr = rich_aux_vars(ghosted_id)%kvr_x 
+	 den =  global_aux_vars(ghosted_id)%den(1)
+	  
+	  write(*,*) "ukvr",ukvr,"den",den
+
      allocate(J(numfaces*numfaces))
      allocate(ghosted_face_id(numfaces))
      do iface = 1, numfaces
@@ -4011,7 +4057,7 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
      do iface = 1, numfaces
        do jface = 1, numfaces
 !         J(1) = aux_var%StiffMatrix(iface, jface)
-         J((iface-1)*numfaces + jface) = aux_var%StiffMatrix(iface, jface)
+         J((iface-1)*numfaces + jface) = den*ukvr*aux_var%StiffMatrix(iface, jface)
 !         write(*,*) iface, ghosted_face_id(iface), jface ,ghosted_face_id(jface) ,  J(1)        
 !         call MatSetValuesLocal(A, 1, ghosted_face_id(iface), 1, ghosted_face_id(jface), &
 !                                        J, ADD_VALUES,ierr)

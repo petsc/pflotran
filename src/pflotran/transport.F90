@@ -167,6 +167,8 @@ subroutine TDiffusionBC(ibndtype,global_aux_var_up,global_aux_var_dn, &
     case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
   end select
 
+
+
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2  
   if (option%iflowmode == MPH_MODE .or. option%iflowmode == IMS_MODE &
@@ -248,6 +250,8 @@ subroutine TFlux(rt_parameter, &
   ! total = mol/L water
   Res(1:ndof) = coef_up(iphase)*rt_aux_var_up%total(1:ndof,iphase) + &
                 coef_dn(iphase)*rt_aux_var_dn%total(1:ndof,iphase)
+
+
 
   if (rt_parameter%ncoll > 0) then
     do icoll = 1, rt_parameter%ncoll

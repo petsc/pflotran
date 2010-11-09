@@ -315,8 +315,14 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
 
 #ifdef DASVYAT
 
-!write(*,*) global_aux_vars(ghosted_id)%den, global_aux_vars(ghosted_id)%den_kg
-!write(*,*) rich_aux_vars(ghosted_id)%kvr_x, rich_aux_vars(ghosted_id)%kvr_y, rich_aux_vars(ghosted_id)%kvr_z
+!global_aux_var%den = 55.35245650628916
+!aux_var%kvr_x = 1123.055414382469
+!aux_var%kvr_y = 1123.055414382469
+!aux_var%kvr_z = 1123.055414382469
+
+
+!rite(*,*) global_aux_vars(ghosted_id)%den, global_aux_vars(ghosted_id)%den_kg
+!rite(*,*) rich_aux_vars(ghosted_id)%kvr_x, rich_aux_vars(ghosted_id)%kvr_y, rich_aux_vars(ghosted_id)%kvr_z
 !stop
 
 #endif

@@ -1085,11 +1085,11 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
     else
             call VecView(field%flow_xx, viewer, ierr)
     end if
-!    write(*,*) "VecView error", ierr
+    write(*,*) "VecView error", ierr
     call PetscViewerDestroy(viewer,ierr)
 
-!    write(*,*) "After SNESSolve" 
-!    read(*,*) tmp_int   
+    write(*,*) "After SNESSolve" 
+    read(*,*) tmp_int   
 #endif
 
 
