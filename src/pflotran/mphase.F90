@@ -1855,8 +1855,8 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 !       xmol(4)= 1.D0-xmol(3)
         xmol(1) = 1D0 - xco2eq
         xmol(2) = xco2eq
-        xmol(3) = temp
-        xmol(4) = 1.D0-temp          
+        xmol(3) = tmp
+        xmol(4) = 1.D0-tmp          
 
         if(satu(2)>=1.D0)then
 !         write(*,'('' 2ph -> Gas '',''rank='',i6,'' n='',i8, &
