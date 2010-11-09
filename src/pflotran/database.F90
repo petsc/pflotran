@@ -710,9 +710,10 @@ subroutine BasisInit(reaction,option)
   PetscInt :: ncomp_h2o, ncomp_secondary
   PetscInt :: icount_old, icount_new, icount, icount2
   PetscInt :: i, j, irow, icol
+  PetscInt :: icomp, icplx, irxn
   PetscInt :: ipri_spec, isec_spec, imnrl, igas_spec, ikinmnrl, icoll
   PetscInt :: i_old, i_new
-  PetscInt :: isrfcplx, irxn
+  PetscInt :: isrfcplx
   PetscInt :: ication
   PetscInt :: idum
   PetscReal :: temp_high, temp_low
@@ -3361,30 +3362,51 @@ subroutine BasisInit(reaction,option)
   ! output for ASCEM reactions
   if (OptionPrintToFile(option)) then
     open(unit=86,file='reaction.dat')
-    write(86,'(10i4)') reaction%naqcomp, reaction%neqcplx, reaction%ngeneral_rxn
-    do i = 1, reaction%naqcomp
-      write(86,'(a12,f6.2,f6.2)') reaction%primary_species_names(i), reaction%primary_spec_Z(i), &
-        reaction%primary_spec_a0(i)
+    write(86,'(10i4)') reaction%naqcomp, reaction%neqcplx, reaction%ngeneral_rxn, & 
+                       reaction%neqsrfcplxrxn
+    do icomp = 1, reaction%naqcomp
+      write(86,'(a12,f6.2,f6.2)') reaction%primary_species_names(icomp), &
+                                  reaction%primary_spec_Z(icomp), &
+                                  reaction%primary_spec_a0(icomp)
     enddo
-    do i = 1, reaction%neqcplx
-      write(86,'(a32,f6.2,f6.2)') reaction%secondary_species_names(i), reaction%eqcplx_Z(i), &
-        reaction%eqcplx_a0(i)
-      write(86,'(40i4)') reaction%eqcplxspecid(:,i)
-      write(86,'(40f6.2)') reaction%eqcplxstoich(:,i)
-      write(86,'(i4)') reaction%eqcplxh2oid(i)
-      write(86,'(f6.2)') reaction%eqcplxh2ostoich(i)
-      write(86,'(f10.5)') reaction%eqcplx_logK(i)
+    do icplx = 1, reaction%neqcplx
+      write(86,'(a32,f6.2,f6.2)') reaction%secondary_species_names(icplx), &
+                                  reaction%eqcplx_Z(icplx), &
+                                  reaction%eqcplx_a0(icplx)
+      write(86,'(40i4)') reaction%eqcplxspecid(:,icplx)
+      write(86,'(40f6.2)') reaction%eqcplxstoich(:,icplx)
+      write(86,'(i4)') reaction%eqcplxh2oid(icplx)
+      write(86,'(f6.2)') reaction%eqcplxh2ostoich(icplx)
+      write(86,'(1es13.5)') reaction%eqcplx_logK(icplx)
     enddo
-    do i = 1, reaction%ngeneral_rxn
-      write(86,'(40i4)') reaction%generalspecid(:,i)
-      write(86,'(40f6.2)') reaction%generalstoich(:,i)
-      write(86,'(40i4)') reaction%generalforwardspecid(:,i)
-      write(86,'(40f6.2)') reaction%generalforwardstoich(:,i)
-      write(86,'(40i4)') reaction%generalbackwardspecid(:,i)
-      write(86,'(40f6.2)') reaction%generalbackwardstoich(:,i)
-      write(86,'(f6.2)') reaction%generalh2ostoich(i)
-      write(86,'(1es13.5)') reaction%general_kf(i)
-      write(86,'(1es13.5)') reaction%general_kr(i)
+    do irxn = 1, reaction%ngeneral_rxn
+      write(86,'(40i4)') reaction%generalspecid(:,irxn)
+      write(86,'(40f6.2)') reaction%generalstoich(:,irxn)
+      write(86,'(40i4)') reaction%generalforwardspecid(:,irxn)
+      write(86,'(40f6.2)') reaction%generalforwardstoich(:,irxn)
+      write(86,'(40i4)') reaction%generalbackwardspecid(:,irxn)
+      write(86,'(40f6.2)') reaction%generalbackwardstoich(:,irxn)
+      write(86,'(f6.2)') reaction%generalh2ostoich(irxn)
+      write(86,'(1es13.5)') reaction%general_kf(irxn)
+      write(86,'(1es13.5)') reaction%general_kr(irxn)
+    enddo
+    do irxn = 1, reaction%neqsrfcplxrxn
+      write(86,'(a32)')reaction%eqsrfcplx_site_names(irxn)
+      write(86,'(1es13.5)') reaction%eqsrfcplx_rxn_site_density(irxn)
+      write(86,'(i4)') reaction%eqsrfcplx_rxn_to_complex(0,irxn) ! # complexes
+      do i = 1, reaction%eqsrfcplx_rxn_to_complex(0,irxn)
+        icplx = reaction%eqsrfcplx_rxn_to_complex(i,irxn)
+        write(86,'(a32,f6.2)') reaction%eqsrfcplx_names(icplx), &
+                               reaction%eqsrfcplx_Z(icplx)
+        write(86,'(40i4)') reaction%eqsrfcplxspecid(:,icplx)
+        write(86,'(40f6.2)') reaction%eqsrfcplxstoich(:,icplx)
+        write(86,'(i4)') reaction%eqsrfcplxh2oid(icplx)
+        write(86,'(f6.2)') reaction%eqsrfcplxh2ostoich(icplx)
+        write(86,'(i4)') reaction%eqsrfcplx_free_site_id(icplx)
+        write(86,'(f6.2)') reaction%eqsrfcplx_free_site_stoich(icplx)
+        write(86,'(1es13.5)') reaction%eqsrfcplx_logK(icplx)
+
+      enddo
     enddo
     close(86)
   endif

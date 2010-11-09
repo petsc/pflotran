@@ -1795,7 +1795,10 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
     sat_pressure = sat_pressure * 1D5
     Qkco2 = henry*xphi 
     mco2 = (p - sat_pressure)*1D-5 * Qkco2
+   !  mco2=henry
     xco2eq = mco2/(1D3/fmwh2o + mco2 + m_nacl)
+    
+    
   
     henry = 1.D8 / FMWH2O / henry / xphi !note: henry = H/phi
     wat_sat_x = sat_pressure/p 
@@ -1815,7 +1818,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
 !         write(*,'('' Liq -> 2ph '',''rank='',i6,'' n='',i8,'' p='',1pe10.4, &
 !      &  '' T='',1pe10.4,'' Xl='',1pe11.4,'' xmol4='',1pe11.4, &
 !      &  '' 1-Ps/P='',1pe11.4)') &
-!         option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),xmol(4),co2_sat_x
+!         option%myrank,local_id,xx_p(dof_offset+1:dof_offset+3),xmol(4),xco2eq
           iphase_loc_p(ghosted_id) = 3
         
         ! Rachford-Rice initial guess: 1=H2O, 2=CO2
@@ -1863,9 +1866,9 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
           xx_p(dof_offset+3) = 1.D0-1D-8
           ichange =1  
         else if(satu(2) <= 0.D0)then
-!         write(*,'('' 2ph -> Liq '',''rank= '',i6,'' n='',i8,'' p='',1pe10.4, &
-!      &  '' T='',1pe10.4,'' sg ='',1pe11.4,'' sl='',1pe11.4,'' sg='',1pe11.4)')  &
-!         option%myrank,local_id, xx_p(dof_offset+1:dof_offset+3),satu(2), xmol(2)
+!        write(*,'('' 2ph -> Liq '',''rank= '',i6,'' n='',i8,'' p='',1pe10.4, &
+!     &  '' T='',1pe10.4,'' sg ='',1pe11.4,'' sl='',1pe11.4,'' sg='',1pe11.4)')  &
+!        option%myrank,local_id, xx_p(dof_offset+1:dof_offset+3),satu(2), xmol(2)
           iphase_loc_p(ghosted_id) = 1 ! 2ph -> Liq
           ichange = 1
           tmp = xmol(2) * 0.99
