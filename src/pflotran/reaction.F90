@@ -33,6 +33,7 @@ module Reaction_module
             RJumpStartKineticSorption, &
             RAge, &
             RReact, &
+            RReactChunk, &
             RTAuxVarCompute, &
             RTAccumulation, &
             RTAccumulationDerivative
@@ -2669,6 +2670,167 @@ end subroutine RReact
       
 ! ************************************************************************** !
 !
+! RReactChunk: Solves reaction portion of operator splitting using 
+!              Newton-Raphson
+! author: Glenn Hammond
+! date: 11/10/10
+!
+! ************************************************************************** !
+subroutine RReactChunk(rt_auxvar,global_auxvar,total,volume,porosity, &
+                       num_iterations_,reaction,option)
+
+  use Option_module
+  use Utility_module
+  
+  implicit none
+  
+  type(reaction_type), pointer :: reaction
+  type(option_type) :: option
+  type(reactive_transport_auxvar_type) :: rt_auxvar(option%chunk_size)
+  type(global_auxvar_type) :: global_auxvar(option%chunk_size)
+  PetscReal :: total(reaction%ncomp,option%chunk_size)
+  PetscReal :: volume(option%chunk_size)
+  PetscReal :: porosity(option%chunk_size)
+  PetscInt :: num_iterations_(option%chunk_size)
+  
+  PetscReal :: residual(reaction%ncomp,option%chunk_size)
+  PetscReal :: res(reaction%ncomp,option%chunk_size)
+  PetscReal :: J(reaction%ncomp,reaction%ncomp,option%chunk_size)
+  PetscReal :: one_over_dt
+  PetscReal :: prev_molal(reaction%ncomp,option%chunk_size)
+  PetscReal :: update(reaction%ncomp,option%chunk_size)
+  PetscReal :: maximum_relative_change(option%chunk_size)
+  PetscReal :: accumulation_coef
+  PetscReal :: fixed_accum(reaction%ncomp,option%chunk_size)
+  PetscInt :: num_iterations(option%chunk_size)
+  PetscInt :: icomp
+
+  ! for inlined RSolve() routine
+  PetscReal :: norm
+  PetscInt :: indices(reaction%ncomp,option%chunk_size)
+  PetscReal :: rhs(reaction%ncomp,option%chunk_size)
+  
+  PetscInt :: ichunk
+  PetscInt :: d(option%chunk_size)
+  
+  PetscInt, parameter :: iphase = 1
+
+  one_over_dt = 1.d0/option%tran_dt
+
+  num_iterations(:) = 0
+
+  ! calculate fixed portion of accumulation term
+  ! fixed_accum is overwritten in RTAccumulation
+  ! Since RTAccumulation uses rt_auxvar%total, we must overwrite the 
+  ! rt_auxvar total variables
+  ! aqueous
+  do ichunk = 1, option%chunk_size
+    rt_auxvar(ichunk)%total(:,iphase) = total(1:reaction%naqcomp,ichunk)
+  enddo
+  ! still need code to overwrite other phases
+  call RTAccumulationChunk(rt_auxvar,global_auxvar,porosity,volume,reaction, &
+                           option,fixed_accum)
+#if 0                           
+  if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
+    call RAccumulationSorb(rt_auxvar,global_auxvar,volume,reaction, &
+                           option,fixed_accum)  
+  endif
+#endif  
+
+  ! now update activity coefficients
+  if (reaction%act_coef_update_frequency /= ACT_COEF_FREQUENCY_OFF) then
+    call RActivityCoefficientsChunk(rt_auxvar,global_auxvar,reaction,option)
+  endif
+  
+  do
+  
+    num_iterations(:) = num_iterations(:) + 1
+
+    if (reaction%act_coef_update_frequency == ACT_COEF_FREQUENCY_NEWTON_ITER) then
+      call RActivityCoefficientsChunk(rt_auxvar,global_auxvar,reaction,option)
+    endif
+    call RTAuxVarComputeChunk(rt_auxvar,global_auxvar,reaction,option)
+    
+    ! Accumulation
+    ! residual is overwritten in RTAccumulation()
+    call RTAccumulationChunk(rt_auxvar,global_auxvar,porosity,volume,reaction, &
+                             option,residual)
+                        
+    do ichunk = 1, option%chunk_size
+      residual(:,ichunk) = residual(:,ichunk)-fixed_accum(:,ichunk)
+    enddo
+
+    ! J is overwritten in RTAccumulationDerivative()
+    call RTAccumulationDerivativeChunk(rt_auxvar,global_auxvar,porosity,volume, &
+                                       reaction,option,J)
+
+#if 0
+    if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
+      call RAccumulationSorb(rt_auxvar,global_auxvar,volume,reaction, &
+                             option,residual)
+      call RAccumulationSorbDerivative(rt_auxvar,global_auxvar,volume, &
+                                       reaction,option,J)
+    endif
+                         ! derivative
+    call RReaction(residual,J,PETSC_TRUE,rt_auxvar,global_auxvar, porosity, volume, &
+                   reaction,option)
+#endif
+    
+    ! Manual inlining start
+    ! call RSolveChunk(residual,J,rt_auxvar%pri_molal,update,reaction%ncomp,option%chunk_size)
+
+    ! scale Jacobian
+    do ichunk = 1, option%chunk_size
+    
+      do icomp = 1, reaction%ncomp
+        norm = max(1.d0,maxval(abs(J(icomp,:,ichunk))))
+        norm = 1.d0/norm
+        rhs(icomp,ichunk) = residual(icomp,ichunk)*norm
+        J(icomp,:,ichunk) = J(icomp,:,ichunk)*norm
+      enddo
+      
+      ! for derivatives with respect to ln conc
+      do icomp = 1, reaction%ncomp
+        J(:,icomp,ichunk) = J(:,icomp,ichunk)*rt_auxvar(ichunk)%pri_molal(icomp)
+      enddo
+
+    enddo
+   
+    call ludcmp_chunk(J,reaction%ncomp,indices,d,option%chunk_size)
+    call lubksb_chunk(J,reaction%ncomp,indices,rhs,option%chunk_size)
+    
+    update(:,:) = rhs(:,:)
+
+    ! Manual inlining end
+
+    do ichunk = 1, option%chunk_size
+
+      update(:,ichunk) = dsign(1.d0,update(:,ichunk))*min(dabs(update(:,ichunk)),5.d0)
+
+      prev_molal(:,ichunk) = rt_auxvar(ichunk)%pri_molal(:)
+      rt_auxvar(ichunk)%pri_molal(:) = rt_auxvar(ichunk)%pri_molal(:)*exp(-update(:,ichunk))    
+  
+      maximum_relative_change(ichunk) = &
+        maxval(abs((rt_auxvar(ichunk)%pri_molal(:)-prev_molal(:,ichunk))/ &
+               prev_molal(:,ichunk)))
+    enddo
+  
+!    if (maximum_relative_change < reaction%reaction_tolerance) exit
+    if (maxval(maximum_relative_change) < reaction%reaction_tolerance) exit
+    
+  enddo
+
+  ! one last update
+  call RTAuxVarComputeChunk(rt_auxvar,global_auxvar,reaction,option)
+
+  do ichunk = 1, option%chunk_size
+    num_iterations_(ichunk) = num_iterations(ichunk)
+  enddo
+  
+end subroutine RReactChunk
+      
+! ************************************************************************** !
+!
 ! RReaction: Computes reactions
 ! author: Glenn Hammond
 ! date: 09/30/08
@@ -3120,6 +3282,253 @@ end subroutine RActivityCoefficients
 
 ! ************************************************************************** !
 !
+! RActivityCoefficientsChunk: Computes the ionic strength and activity 
+!                             coefficients
+! author: Glenn Hammond
+! date: 11/10/10
+!
+! ************************************************************************** !
+subroutine RActivityCoefficientsChunk(rt_auxvar,global_auxvar,reaction,option)
+
+  use Option_module
+  
+  implicit none
+
+  type(option_type) :: option
+  type(reactive_transport_auxvar_type) :: rt_auxvar(option%chunk_size)
+  type(global_auxvar_type) :: global_auxvar(option%chunk_size)
+  type(reaction_type) :: reaction
+  
+  PetscInt :: icplx, icomp, it, j, jcomp, ncomp
+  PetscReal :: I, sqrt_I, II, sqrt_II, f, fpri, didi, dcdi, den, dgamdi, &
+    lnQK, sum, sum_pri_molal, sum_sec_molal
+  PetscReal :: sum_molality
+  PetscReal :: ln_conc(reaction%naqcomp)
+  PetscReal :: ln_act(reaction%naqcomp)
+
+  PetscInt :: ichunk
+
+  do ichunk = 1, option%chunk_size
+
+  if (reaction%use_activity_h2o) then
+    sum_pri_molal = 0.d0
+    do j = 1, reaction%naqcomp
+      sum_pri_molal = sum_pri_molal + rt_auxvar(ichunk)%pri_molal(j)
+    enddo
+  endif
+
+  if (reaction%act_coef_update_algorithm == ACT_COEF_ALGORITHM_NEWTON) then
+
+    ln_conc = log(rt_auxvar(ichunk)%pri_molal)
+    ln_act = ln_conc+log(rt_auxvar(ichunk)%pri_act_coef)
+  
+#ifdef TEMP_DEPENDENT_LOGK
+    if (.not.option%use_isothermal) then
+      call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
+                               global_auxvar%temp(1),reaction%neqcplx)
+    endif
+#endif  
+  
+  ! compute primary species contribution to ionic strength
+    fpri = 0.d0
+    sum_molality = 0.d0
+    do j = 1, reaction%naqcomp
+      fpri = fpri + rt_auxvar(ichunk)%pri_molal(j)*reaction%primary_spec_Z(j)* &
+                                                   reaction%primary_spec_Z(j)
+    enddo
+  
+    it = 0
+    II = 0
+    do
+      it = it + 1
+      
+      if (it > 50) then
+        print *,' too many iterations in computing activity coefficients-stop',it,f,I
+        stop
+      endif
+    
+  ! add secondary species contribution to ionic strength
+      I = fpri
+      do icplx = 1, reaction%neqcplx ! for each secondary species
+        I = I + rt_auxvar(ichunk)%sec_molal(icplx)*reaction%eqcplx_Z(icplx)* &
+                                         reaction%eqcplx_Z(icplx)
+      enddo
+      I = 0.5d0*I
+      f = I
+    
+      if (abs(I-II) < 1.d-6*I) exit
+    
+      if (reaction%neqcplx > 0) then
+        didi = 0.d0
+        sqrt_I = sqrt(I)
+        do icplx = 1, reaction%neqcplx
+          if (abs(reaction%eqcplx_Z(icplx)) > 0.d0) then
+            sum = 0.5d0*reaction%debyeA*reaction%eqcplx_Z(icplx)* &
+            reaction%eqcplx_Z(icplx) &
+            /(sqrt_I*(1.d0+reaction%debyeB*reaction%eqcplx_a0(icplx)*sqrt_I)**2) &
+            -reaction%debyeBdot
+            ncomp = reaction%eqcplxspecid(0,icplx)
+            do jcomp = 1, ncomp
+              j = reaction%eqcplxspecid(jcomp,icplx)
+              if(abs(reaction%primary_spec_Z(j)) > 0.d0) then
+                dgamdi = -0.5d0*reaction%debyeA*reaction%primary_spec_Z(j)**2/(sqrt_I* &
+                (1.d0+reaction%debyeB*reaction%primary_spec_a0(j)*sqrt_I)**2)+ &
+                reaction%debyeBdot 
+                sum = sum + reaction%eqcplxstoich(jcomp,icplx)*dgamdi
+              endif
+            enddo
+            dcdi = rt_auxvar(ichunk)%sec_molal(icplx)*LOG_TO_LN*sum
+            didi = didi+0.5d0*reaction%eqcplx_Z(icplx)*reaction%eqcplx_Z(icplx)*dcdi
+          endif
+        enddo
+        den = 1.d0-didi
+        if (abs(den) > 0.d0) then
+          II = (f-I*didi)/den
+        else
+          II = f
+        endif
+      else
+        II = f
+      endif
+    
+      if (II < 0.d0) then
+        write(option%io_buffer,*) 'ionic strength negative! it =',it, &
+          ' I= ',I,II,den,didi,dcdi,sum
+        call printErrMsg(option)        
+      endif
+    
+  ! compute activity coefficients
+  ! primary species
+      I = II
+      sqrt_I = sqrt(I)
+      do icomp = 1, reaction%naqcomp
+        if (abs(reaction%primary_spec_Z(icomp)) > 0.d0) then
+          rt_auxvar(ichunk)%pri_act_coef(icomp) = exp((-reaction%primary_spec_Z(icomp)* &
+                                        reaction%primary_spec_Z(icomp)* &
+                                        sqrt_I*reaction%debyeA/ &
+                                        (1.d0+reaction%primary_spec_a0(icomp)* &
+                                        reaction%debyeB*sqrt_I)+ &
+                                        reaction%debyeBdot*I)* &
+                                        LOG_TO_LN)
+        else
+          rt_auxvar(ichunk)%pri_act_coef(icomp) = 1.d0
+        endif
+      enddo
+                
+  ! secondary species
+      sum_sec_molal = 0.d0
+      do icplx = 1, reaction%neqcplx
+        if (abs(reaction%eqcplx_Z(icplx)) > 0.d0) then
+          rt_auxvar(ichunk)%sec_act_coef(icplx) = exp((-reaction%eqcplx_Z(icplx)* &
+                                        reaction%eqcplx_Z(icplx)* &
+                                        sqrt_I*reaction%debyeA/ &
+                                        (1.d0+reaction%eqcplx_a0(icplx)* &
+                                        reaction%debyeB*sqrt_I)+ &
+                                        reaction%debyeBdot*I)* &
+                                        LOG_TO_LN)
+        else
+          rt_auxvar(ichunk)%sec_act_coef(icplx) = 1.d0
+        endif
+    
+    ! compute secondary species concentration
+        lnQK = -reaction%eqcplx_logK(icplx)*LOG_TO_LN
+
+    ! activity of water
+        if (reaction%eqcplxh2oid(icplx) > 0) then
+          lnQK = lnQK + reaction%eqcplxh2ostoich(icplx)*rt_auxvar(ichunk)%ln_act_h2o
+        endif
+
+        ncomp = reaction%eqcplxspecid(0,icplx)
+        do jcomp = 1, ncomp
+          icomp = reaction%eqcplxspecid(jcomp,icplx)
+          lnQK = lnQK + reaction%eqcplxstoich(jcomp,icplx)*ln_act(icomp)
+        enddo
+        rt_auxvar(ichunk)%sec_molal(icplx) = exp(lnQK)/rt_auxvar(ichunk)%sec_act_coef(icplx)
+        sum_sec_molal = sum_sec_molal + rt_auxvar(ichunk)%sec_molal(icplx)
+      
+      enddo
+      
+      if (reaction%use_activity_h2o) then
+        rt_auxvar(ichunk)%ln_act_h2o = 1.d0-0.017d0*(sum_pri_molal+sum_sec_molal)
+        if (rt_auxvar(ichunk)%ln_act_h2o > 0.d0) then
+          rt_auxvar(ichunk)%ln_act_h2o = log(rt_auxvar(ichunk)%ln_act_h2o)
+        else
+          rt_auxvar(ichunk)%ln_act_h2o = 0.d0
+          write(option%io_buffer,*) 'activity of H2O negative! ln act H2O =', &
+            rt_auxvar(ichunk)%ln_act_h2o
+          call printMsg(option)
+        endif
+      endif
+
+    enddo
+  
+  else
+  
+  ! compute ionic strength
+  ! primary species
+    I = 0.d0
+    do icomp = 1, reaction%naqcomp
+      I = I + rt_auxvar(ichunk)%pri_molal(icomp)*reaction%primary_spec_Z(icomp)* &
+                                       reaction%primary_spec_Z(icomp)
+    enddo
+  
+  ! secondary species
+    do icplx = 1, reaction%neqcplx ! for each secondary species
+      I = I + rt_auxvar(ichunk)%sec_molal(icplx)*reaction%eqcplx_Z(icplx)* &
+                                       reaction%eqcplx_Z(icplx)
+    enddo
+    I = 0.5d0*I
+    sqrt_I = sqrt(I)
+  
+  ! compute activity coefficients
+  ! primary species
+    do icomp = 1, reaction%naqcomp
+      if (abs(reaction%primary_spec_Z(icomp)) > 1.d-10) then
+        rt_auxvar(ichunk)%pri_act_coef(icomp) = exp((-reaction%primary_spec_Z(icomp)* &
+                                      reaction%primary_spec_Z(icomp)* &
+                                      sqrt_I*reaction%debyeA/ &
+                                      (1.d0+reaction%primary_spec_a0(icomp)* &
+                                      reaction%debyeB*sqrt_I)+ &
+                                      reaction%debyeBdot*I)* &
+                                      LOG_TO_LN)
+      else
+        rt_auxvar(ichunk)%pri_act_coef(icomp) = 1.d0
+      endif
+    enddo
+                
+  ! secondary species
+    sum_sec_molal = 0.d0
+    do icplx = 1, reaction%neqcplx
+      if (dabs(reaction%eqcplx_Z(icplx)) > 1.d-10) then
+        rt_auxvar(ichunk)%sec_act_coef(icplx) = exp((-reaction%eqcplx_Z(icplx)* &
+                                      reaction%eqcplx_Z(icplx)* &
+                                      sqrt_I*reaction%debyeA/ &
+                                      (1.d0+reaction%eqcplx_a0(icplx)* &
+                                      reaction%debyeB*sqrt_I)+ &
+                                      reaction%debyeBdot*I)* &
+                                      LOG_TO_LN)
+      else
+        rt_auxvar(ichunk)%sec_act_coef(icplx) = 1.d0
+      endif
+      sum_sec_molal = sum_sec_molal + rt_auxvar(ichunk)%sec_molal(icplx)
+    enddo
+    
+    if (reaction%use_activity_h2o) then
+      rt_auxvar(ichunk)%ln_act_h2o = 1.d0-0.017d0*(sum_pri_molal+sum_sec_molal)
+      if (rt_auxvar(ichunk)%ln_act_h2o > 0.d0) then
+        rt_auxvar(ichunk)%ln_act_h2o = log(rt_auxvar(ichunk)%ln_act_h2o)
+      else
+        rt_auxvar(ichunk)%ln_act_h2o = 0.d0
+      endif
+    endif
+  endif
+  
+  enddo ! over chunks
+  
+end subroutine RActivityCoefficientsChunk
+
+! ************************************************************************** !
+!
 ! RTotal: Computes the total component concentrations and derivative with
 !         respect to free-ion
 ! author: Glenn Hammond
@@ -3310,6 +3719,213 @@ subroutine RTotal(rt_auxvar,global_auxvar,reaction,option)
   
 #endif  
 end subroutine RTotal
+
+! ************************************************************************** !
+!
+! RTotalChunk: Computes the total component concentrations and derivative with
+!              respect to free-ion
+! author: Glenn Hammond
+! date: 11/10/10
+!
+! ************************************************************************** !
+subroutine RTotalChunk(rt_auxvar,global_auxvar,reaction,option)
+
+  use Option_module
+  use co2eos_module, only: Henry_duan_sun
+  use water_eos_module
+  
+  type(option_type) :: option
+  type(reactive_transport_auxvar_type) :: rt_auxvar(option%chunk_size)
+  type(global_auxvar_type) :: global_auxvar(option%chunk_size)
+  type(reaction_type) :: reaction
+  
+  PetscInt :: i, j, icplx, icomp, jcomp, iphase, ncomp, ieqgas
+  PetscErrorCode :: ierr
+  PetscReal :: ln_conc(reaction%naqcomp)
+  PetscReal :: ln_act(reaction%naqcomp)
+  PetscReal :: lnQK, tempreal
+  PetscReal :: den_kg_per_L, xmass
+  PetscReal :: pressure, temperature, xphico2, muco2, den, m_na, m_cl
+  
+  PetscInt :: ichunk
+  
+  do ichunk = 1, option%chunk_size
+  
+#ifdef CHUAN_CO2  
+  PetscReal :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,&
+               yco2,pco2,sat_pressure,lngamco2
+  rt_auxvar(ichunk)%total = 0.d0 !debugging 
+#endif
+  
+  iphase = 1           
+!  den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3              
+  xmass = 1.d0
+  if (associated(global_auxvar(ichunk)%xmass)) xmass = global_auxvar(ichunk)%xmass(iphase)
+  den_kg_per_L = global_auxvar(ichunk)%den_kg(iphase)*xmass*1.d-3
+
+  ln_conc = log(rt_auxvar(ichunk)%pri_molal)
+  ln_act = ln_conc+log(rt_auxvar(ichunk)%pri_act_coef)
+  rt_auxvar(ichunk)%total(:,iphase) = rt_auxvar(ichunk)%pri_molal(:)
+  ! initialize derivatives
+  rt_auxvar(ichunk)%aqueous%dtotal = 0.d0
+  do icomp = 1, reaction%naqcomp
+    rt_auxvar(ichunk)%aqueous%dtotal(icomp,icomp,iphase) = 1.d0
+  enddo
+  
+#ifdef TEMP_DEPENDENT_LOGK
+  if (.not.option%use_isothermal .and. reaction%neqcplx > 0) then
+    call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
+                                 global_auxvar(ichunk)%temp(iphase),reaction%neqcplx)
+  endif
+#endif  
+  
+  do icplx = 1, reaction%neqcplx ! for each secondary species
+    ! compute secondary species concentration
+    lnQK = -reaction%eqcplx_logK(icplx)*LOG_TO_LN
+
+    ! activity of water
+    if (reaction%eqcplxh2oid(icplx) > 0) then
+      lnQK = lnQK + reaction%eqcplxh2ostoich(icplx)*rt_auxvar(ichunk)%ln_act_h2o
+    endif
+
+    ncomp = reaction%eqcplxspecid(0,icplx)
+    do i = 1, ncomp
+      icomp = reaction%eqcplxspecid(i,icplx)
+      lnQK = lnQK + reaction%eqcplxstoich(i,icplx)*ln_act(icomp)
+    enddo
+    rt_auxvar(ichunk)%sec_molal(icplx) = exp(lnQK)/rt_auxvar(ichunk)%sec_act_coef(icplx)
+  
+    ! add contribution to primary totals
+    ! units of total = mol/L
+    do i = 1, ncomp
+      icomp = reaction%eqcplxspecid(i,icplx)
+      rt_auxvar(ichunk)%total(icomp,iphase) = rt_auxvar(ichunk)%total(icomp,iphase) + &
+                                      reaction%eqcplxstoich(i,icplx)* &
+                                      rt_auxvar(ichunk)%sec_molal(icplx)
+    enddo
+    
+    ! add contribution to derivatives of total with respect to free
+    ! bear in mind that the water density portion is scaled below
+    do j = 1, ncomp
+      jcomp = reaction%eqcplxspecid(j,icplx)
+      tempreal = reaction%eqcplxstoich(j,icplx)*exp(lnQK-ln_conc(jcomp))/ &
+                                                 rt_auxvar(ichunk)%sec_act_coef(icplx)
+      do i = 1, ncomp
+        icomp = reaction%eqcplxspecid(i,icplx)
+        rt_auxvar(ichunk)%aqueous%dtotal(icomp,jcomp,iphase) = rt_auxvar(ichunk)%aqueous%dtotal(icomp,jcomp,iphase) + &
+                                               reaction%eqcplxstoich(i,icplx)*tempreal
+      enddo
+    enddo
+  enddo
+
+  ! convert molality -> molarity
+  ! unit of total = mol/L water
+  rt_auxvar(ichunk)%total(:,iphase) = rt_auxvar(ichunk)%total(:,iphase)*den_kg_per_L
+  
+  ! units of dtotal = kg water/L water
+  rt_auxvar(ichunk)%aqueous%dtotal = rt_auxvar(ichunk)%aqueous%dtotal*den_kg_per_L
+
+  enddo ! loop over chunks
+
+ !*********** Add SC phase contribution ***************************  
+
+#ifdef CHUAN_CO2
+
+  iphase = 2           
+#ifdef TEMP_DEPENDENT_LOGK
+  if (.not.option%use_isothermal .and. reaction%ngas > 0) then
+    call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
+                                 global_auxvar(ichunk)%temp(1),reaction%ngas)
+  endif
+#endif  
+
+  if(iphase > option%nphase) return 
+
+  do ichunk = 1, option%chunk_size
+
+  rt_auxvar(ichunk)%total(:,iphase) = 0D0
+  rt_auxvar(ichunk)%aqueous%dtotal(:,:,iphase)=0D0
+!  do icomp = 1, reaction%naqcomp
+!    rt_auxvar%dtotal(icomp,icomp,iphase) = 1.d0
+!  enddo
+    
+!  den_kg_per_L = global_auxvar%den_kg(iphase)*1.d-3     
+  if(global_auxvar(ichunk)%sat(iphase)>1D-20)then
+    do ieqgas = 1, reaction%ngas ! all gas phase species are secondary
+   
+      pressure = global_auxvar(ichunk)%pres(2)
+      temperature = global_auxvar(ichunk)%temp(1)
+      xphico2 = global_auxvar(ichunk)%fugacoeff(1)
+      den = global_auxvar(ichunk)%den(2)
+ 
+      call PSAT(temperature, sat_pressure, ierr)
+      pco2 = pressure - sat_pressure
+!     call co2_span_wagner(pressure*1.D-6,temperature+273.15D0,dg,dddt,dddp,fg, &
+!              dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
+!
+!            fg = fg*1D6
+!            xphico2 = fg / pco2
+!            global_auxvar%fugacoeff(1) = xphico2
+
+
+      if(abs(reaction%species_idx%co2_gas_id) == ieqgas )then
+!          call Henry_duan_sun_0NaCl(pco2*1D-5, temperature, henry)
+        if (reaction%species_idx%na_ion_id /= 0 .and. reaction%species_idx%cl_ion_id /= 0) then
+          m_na = rt_auxvar(ichunk)%pri_molal(reaction%species_idx%na_ion_id)
+          m_cl = rt_auxvar(ichunk)%pri_molal(reaction%species_idx%cl_ion_id)
+          call Henry_duan_sun(temperature,pressure*1D-5,muco2,xphico2, &
+                lngamco2,m_na,m_cl,sat_pressure*1D-5)
+        else
+          call Henry_duan_sun(temperature,pressure*1D-5,muco2,xphico2, &
+                lngamco2,option%m_nacl,option%m_nacl,sat_pressure*1D-5)
+        endif
+        !lnQk = - log(muco2) 
+        lnQk = - log(muco2)-lngamco2
+           
+      else   
+        lnQK = -reaction%eqgas_logK(ieqgas)*LOG_TO_LN
+      endif 
+          
+      if (reaction%eqgash2oid(ieqgas) > 0) then
+        lnQK = lnQK + reaction%eqgash2ostoich(ieqgas)*rt_auxvar%ln_act_h2o
+!       print *,'Ttotal', reaction%eqgash2ostoich(ieqgas), rt_auxvar%ln_act_h2o
+      endif
+   
+   ! contribute to %total          
+   !     do i = 1, ncomp
+   ! removed loop over species, suppose only one primary species is related
+      icomp = reaction%eqgasspecid(1,ieqgas)
+      pressure =pressure *1D-5
+        
+      rt_auxvar(ichunk)%gas_molal(ieqgas) = &
+          exp(lnQK+lngamco2)*rt_auxvar(ichunk)%pri_molal(icomp)&
+!          rt_auxvar%pri_act_coef(icomp)*exp(lnQK)*rt_auxvar%pri_molal(icomp)&
+          /pressure /xphico2* den
+      rt_auxvar(ichunk)%total(icomp,iphase) = rt_auxvar(ichunk)%total(icomp,iphase) + &
+                                        reaction%eqgasstoich(1,ieqgas)* &
+                                        rt_auxvar(ichunk)%gas_molal(ieqgas)
+!       print *,'Ttotal',pressure, temperature, xphico2, den, lnQk,rt_auxvar%pri_molal(icomp),&
+!        global_auxvar%sat(2),rt_auxvar%gas_molal(ieqgas)
+   !     if(rt_auxvar%total(icomp,iphase) > den)rt_auxvar%total(icomp,iphase) = den* .99D0
+   !     enddo
+
+   ! contribute to %dtotal
+   !      tempreal = exp(lnQK+lngamco2)/pressure /xphico2* den 
+      tempreal = rt_auxvar(ichunk)%pri_act_coef(icomp)*exp(lnQK)/pressure /xphico2* den 
+      rt_auxvar(ichunk)%aqueous%dtotal(icomp,icomp,iphase) = &
+        rt_auxvar(ichunk)%aqueous%dtotal(icomp,icomp,iphase) + &
+        reaction%eqgasstoich(1,ieqgas)*tempreal
+    
+    enddo
+   ! rt_auxvar%total(:,iphase) = rt_auxvar%total(:,iphase)!*den_kg_per_L
+    ! units of dtotal = kg water/L water
+   ! rt_auxvar%dtotal(:, :,iphase) = rt_auxvar%dtotal(:,:,iphase)!*den_kg_per_L
+  endif   
+ 
+  enddo
+  
+#endif  
+end subroutine RTotalChunk
 
 ! ************************************************************************** !
 !
@@ -5052,6 +5668,36 @@ end subroutine RTAuxVarCompute
 
 ! ************************************************************************** !
 !
+! RTAuxVarComputeChunk: Computes secondary variables for each grid cell
+! author: Glenn Hammond
+! date: 11/10/10
+!
+! ************************************************************************** !
+subroutine RTAuxVarComputeChunk(rt_aux_var,global_aux_var,reaction,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(option_type) :: option
+  type(reaction_type) :: reaction
+  type(reactive_transport_auxvar_type) :: rt_aux_var(option%chunk_size)
+  type(global_auxvar_type) :: global_aux_var(option%chunk_size)
+  
+  ! any changes to the below must also be updated in 
+  ! Reaction.F90:RReactionDerivative()
+  
+  call RTotalChunk(rt_aux_var,global_aux_var,reaction,option)
+#if 0  
+  if (reaction%neqsorb > 0) then
+    call RTotalSorb(rt_aux_var,global_aux_var,reaction,option)
+  endif
+#endif
+  
+end subroutine RTAuxVarComputeChunk
+
+! ************************************************************************** !
+!
 ! RTAccumulation: Computes aqueous portion of the accumulation term in 
 !                 residual function
 ! author: Glenn Hammond
@@ -5124,6 +5770,95 @@ end subroutine RTAccumulation
 
 ! ************************************************************************** !
 !
+! RTAccumulationChunk: Computes aqueous portion of the accumulation term in 
+!                      residual function
+! author: Glenn Hammond
+! date: 11/10/10
+!
+! ************************************************************************** !
+subroutine RTAccumulationChunk(rt_aux_var,global_aux_var,por,vol,reaction, &
+                               option,Res)
+
+  use Option_module
+
+  implicit none
+  
+  type(option_type) :: option
+  type(reactive_transport_auxvar_type) :: rt_aux_var(option%chunk_size)
+  type(global_auxvar_type) :: global_aux_var(option%chunk_size)
+  PetscReal :: por(option%chunk_size), vol(option%chunk_size)
+  type(reaction_type) :: reaction
+  PetscReal :: Res(reaction%ncomp,option%chunk_size)
+  
+  PetscInt :: iphase
+  PetscInt :: istart, iend
+  PetscInt :: idof
+  PetscInt :: icoll
+  PetscInt :: icollcomp
+  PetscInt :: iaqcomp
+  PetscReal :: psv_t(option%chunk_size)
+  PetscReal :: v_t(option%chunk_size)
+  
+  PetscInt :: ichunk
+  
+  iphase = 1
+  ! units = (mol solute/L water)*(m^3 por/m^3 bulk)*(m^3 water/m^3 por)*
+  !         (m^3 bulk)*(1000L water/m^3 water)/(sec) = mol/sec
+  ! 1000.d0 converts vol from m^3 -> L
+  ! all residual entries should be in mol/sec
+  do ichunk = 1, option%chunk_size
+    psv_t(istart) = por(istart)*global_aux_var(ichunk)%sat(iphase)*1000.d0* &
+                    vol(ichunk)/option%tran_dt  
+  enddo
+  istart = 1
+  iend = reaction%naqcomp
+  
+  do ichunk = 1, option%chunk_size
+    Res(istart:iend,ichunk) = psv_t(ichunk)*rt_aux_var(ichunk)%total(:,iphase) 
+  enddo
+  
+  if (reaction%ncoll > 0) then
+    do ichunk = 1, option%chunk_size
+      do icoll = 1, reaction%ncoll
+        idof = reaction%offset_coll + icoll
+        Res(idof,ichunk) = psv_t(ichunk)*rt_aux_var(ichunk)%colloid%conc_mob(icoll)
+      enddo
+    enddo
+  endif
+  if (reaction%ncollcomp > 0) then
+    do ichunk = 1, option%chunk_size
+      do icollcomp = 1, reaction%ncollcomp
+        iaqcomp = reaction%coll_spec_to_pri_spec(icollcomp)
+        Res(iaqcomp,ichunk) = Res(iaqcomp,ichunk) + &
+          psv_t(ichunk)*rt_aux_var(ichunk)%colloid%total_eq_mob(icollcomp)
+      enddo
+    enddo
+  endif
+
+! Add in multiphase, clu 12/29/08
+#ifdef CHUAN_CO2
+  do 
+    iphase = iphase + 1
+    if (iphase > option%nphase) exit
+
+! super critical CO2 phase
+    if (iphase == 2) then
+      do ichunk = 1, option%chunk_size
+        psv_t(ichunk) = por(ichunk)*global_aux_var(ichunk)%sat(iphase,ichunk)* &
+                        1000.d0*vol(ichunk)/option%tran_dt 
+        Res(istart:iend,ichunk) = Res(istart:iend,ichunk) + 
+                                psv_t(ichunk)*rt_aux_var(ichunk)%total(:,iphase) 
+      enddo
+      ! should sum over gas component only need more implementations
+    endif 
+! add code for other phases here
+  enddo
+#endif
+  
+end subroutine RTAccumulationChunk
+
+! ************************************************************************** !
+!
 ! RTAccumulationDerivative: Computes derivative of aqueous portion of the 
 !                           accumulation term in residual function 
 ! author: Glenn Hammond
@@ -5152,7 +5887,7 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
 
   iphase = 1
   istart = 1
-  iendaq = reaction%naqcomp  
+  iendaq = reaction%naqcomp 
   ! units = (m^3 por/m^3 bulk)*(m^3 water/m^3 por)*(m^3 bulk)/(sec)
   !         *(kg water/L water)*(1000L water/m^3 water) = kg water/sec
   ! all Jacobian entries should be in kg water/sec
@@ -5207,6 +5942,106 @@ subroutine RTAccumulationDerivative(rt_aux_var,global_aux_var, &
 #endif
 
 end subroutine RTAccumulationDerivative
+
+! ************************************************************************** !
+!
+! RTAccumulationDerivativeChunk: Computes derivative of aqueous portion of the 
+!                                accumulation term in residual function 
+! author: Glenn Hammond
+! date: 11/10/10
+!
+! ************************************************************************** !
+subroutine RTAccumulationDerivativeChunk(rt_aux_var,global_aux_var, &
+                                         por,vol,reaction,option,J)
+
+  use Option_module
+
+  implicit none
+  
+  type(option_type) :: option
+  type(reactive_transport_auxvar_type) :: rt_aux_var(option%chunk_size)
+  type(global_auxvar_type) :: global_aux_var(option%chunk_size)
+  PetscReal :: por(option%chunk_size), vol(option%chunk_size)
+  type(reaction_type) :: reaction
+  PetscReal :: J(reaction%ncomp,reaction%ncomp,option%chunk_size)
+  
+  PetscInt :: icomp, iphase
+  PetscInt :: istart, iendaq
+  PetscInt :: idof
+  PetscInt :: icoll
+  PetscReal :: psvd_t(option%chunk_size), v_t(option%chunk_size)
+
+  PetscInt :: ichunk
+
+  iphase = 1
+  istart = 1
+  iendaq = reaction%naqcomp 
+  ! units = (m^3 por/m^3 bulk)*(m^3 water/m^3 por)*(m^3 bulk)/(sec)
+  !         *(kg water/L water)*(1000L water/m^3 water) = kg water/sec
+  ! all Jacobian entries should be in kg water/sec
+  J(:,:,:) = 0.d0
+  do ichunk = 1, option%chunk_size
+    ! this result of this conditional will be the same for all grid cells
+    if (associated(rt_aux_var(ichunk)%aqueous%dtotal)) then ! units of dtotal = kg water/L water
+      psvd_t(ichunk) = por(ichunk)*global_aux_var(ichunk)%sat(iphase)*1000.d0* &
+                       vol(ichunk)/option%tran_dt
+      J(istart:iendaq,istart:iendaq,ichunk) = &
+        rt_aux_var(ichunk)%aqueous%dtotal(:,:,iphase)*psvd_t(ichunk)
+    else
+      psvd_t(ichunk) = por(ichunk)*global_aux_var(ichunk)%sat(iphase)* &
+               global_aux_var(ichunk)%den_kg(iphase)*vol(ichunk)/option%tran_dt ! units of den = kg water/m^3 water
+      do icomp=istart,iendaq
+        J(icomp,icomp,ichunk) = psvd_t(ichunk)
+      enddo
+    endif
+  enddo
+
+  if (reaction%ncoll > 0) then
+    do icoll = 1, reaction%ncoll
+      idof = reaction%offset_coll + icoll
+      ! shouldn't have to sum a this point
+      J(idof,idof,:) = psvd_t(:)
+    enddo
+  endif
+  if (reaction%ncollcomp > 0) then
+    ! dRj_dCj - mobile
+    do ichunk = 1, option%chunk_size
+      J(istart:iendaq,istart:iendaq,ichunk) = J(istart:iendaq,istart:iendaq,ichunk) + &
+        rt_aux_var(ichunk)%colloid%dRj_dCj%dtotal(:,:,1)*psvd_t(ichunk)
+    ! need the below
+    ! dRj_dSic
+    ! dRic_dCj
+    enddo                                 
+  endif
+
+! Add in multiphase, clu 12/29/08
+#ifdef CHUAN_CO2
+  do
+    iphase = iphase +1 
+    if (iphase > option%nphase) exit
+! super critical CO2 phase
+    if (iphase == 2) then
+      do ichunk = 1, option%chunk_size
+        ! this result of this conditional will be the same for all grid cells
+        if (associated(rt_aux_var(ichunk)%aqueous%dtotal)) then
+          psvd_t(ichunk) = por(ichunk)*global_aux_var(ichunk)%sat(iphase)* &
+                           1000.d0*vol(ichunk)/option%tran_dt  
+          J(istart:iendaq,istart:iendaq,ichunk) = 
+            J(istart:iendaq,istart:iendaq,ichunk) + &
+            rt_aux_var(ichunk)%aqueous%dtotal(:,:,iphase)*psvd_t
+        else
+          psvd_t(ichunk) = por(ichunk)*global_aux_var(ichunk)%sat(iphase)* &
+            global_aux_var(ichunk)%den_kg(iphase)*vol(ichunk)/option%tran_dt ! units of den = kg water/m^3 water
+          do icomp=istart,iendaq
+            J(icomp,icomp,ichunk) = J(icomp,icomp,ichunk) + psvd_t(ichunk)
+          enddo
+        endif   
+      enddo
+    endif
+  enddo
+#endif
+
+end subroutine RTAccumulationDerivativeChunk
 
 ! ************************************************************************** !
 !
