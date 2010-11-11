@@ -229,8 +229,8 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   pw = option%reference_pressure
   ds_dp = 0.d0
   dkr_dp = 0.d0
-!  if (aux_var%pc > 0.d0) then
-  if (aux_var%pc > 1.d0) then
+  if (aux_var%pc > 0.d0) then
+! if (aux_var%pc > 1.d0) then
     iphase = 3
     call SaturationFunctionCompute(global_aux_var%pres(1),global_aux_var%sat(1),kr, &
                                    ds_dp,dkr_dp, &
@@ -312,6 +312,21 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   if (option%ani_relative_permeability) then
      aux_var%dkvr_z_dp = aux_var%dkvr_z_dp * ani_coef
   end if
+
+#ifdef DASVYAT
+
+global_aux_var%den = 55.35245650628916
+aux_var%kvr_x = 1123.055414382469
+aux_var%kvr_y = 1123.055414382469
+aux_var%kvr_z = 1123.055414382469
+
+
+!rite(*,*) global_aux_vars(ghosted_id)%den, global_aux_vars(ghosted_id)%den_kg
+!rite(*,*) rich_aux_vars(ghosted_id)%kvr_x, rich_aux_vars(ghosted_id)%kvr_y, rich_aux_vars(ghosted_id)%kvr_z
+!stop
+
+#endif
+
 
 end subroutine RichardsAuxVarCompute
 

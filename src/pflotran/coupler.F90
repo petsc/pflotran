@@ -48,7 +48,7 @@ module Coupler_module
   public :: CouplerCreate, CouplerDestroy, CouplerInitList, CouplerAddToList, &
             CouplerRead, CouplerDestroyList, CouplerGetNumConnectionsInList, &
             CouplerListComputeConnections, CouplerGetPtrFromList,&
-            CouplerAssignBCtoCells
+            CouplerAssignBCtoCells, CouplerGetNumBoundConnectionsInListMFD
 
   
   interface CouplerCreate
@@ -295,6 +295,7 @@ subroutine CouplerListComputeConnections(grid,option,coupler_list)
     if (.not.associated(coupler)) exit 
     if ((grid%itype == STRUCTURED_GRID_MIMETIC).and.&
           ((coupler%itype == INITIAL_COUPLER_TYPE).or.(coupler%itype == BOUNDARY_COUPLER_TYPE))) then  
+       call CouplerComputeConnections(grid,option,coupler)
        call CouplerComputeConnectionsFaces(grid,option,coupler)      
        call CouplerAssignBCtoCells(grid,option,coupler)
  
@@ -482,14 +483,14 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
   end if 
 
  allocate(coupler%faces_set(coupler%numfaces_set))
- 
-! connection_set => ConnectionCreate(coupler%numfaces_set,option%nphase, &
-!                                     connection_itype)
-!
-!
- connection_set => ConnectionCreate(ZERO_INTEGER, option%nphase, &
-                                     connection_itype)
 
+!    connection_set => ConnectionCreate(coupler%numfaces_set,option%nphase, &
+!                                     connection_itype)
+!	stop
+! else
+    connection_set => ConnectionCreate(ZERO_INTEGER, option%nphase, &
+                                      connection_itype)
+! end if
  local_faces = 0
   
 
@@ -587,7 +588,7 @@ subroutine CouplerComputeConnectionsFaces(grid,option,coupler)
       connection_set%itype = BOUNDARY_CONNECTION_TYPE
   end select
    
-  coupler%connection_set => connection_set
+!  coupler%connection_set => connection_set
 
   deallocate(local_faces)
 
@@ -646,6 +647,7 @@ subroutine CouplerAssignBCtoCells(grid,option,coupler)
   
   if (coupler%itype /= BOUNDARY_COUPLER_TYPE) return 
 
+
   call VecGetSize(grid%e2n, e2n_size, ierr)
 
   if (e2n_size > 0) then 
@@ -668,6 +670,7 @@ subroutine CouplerAssignBCtoCells(grid,option,coupler)
      stop
   end if
 
+
   do icell = 1, region%num_cells
 
     cell_id_local = region%cell_ids(icell)
@@ -679,10 +682,18 @@ subroutine CouplerAssignBCtoCells(grid,option,coupler)
       if (coupler%faces_set(icell) == face_id_ghosted) then
         e2n_local((cell_id_local-1)*stride + iface) = -coupler%flow_condition%itype(RICHARDS_PRESSURE_DOF)
       end if
-!      write(*,*) coupler%faces_set(icell), face_id_ghosted, e2n_local((cell_id_local-1)*stride + iface)
     end do
-
   end do
+
+!  do icell = 1, region%num_cells
+!
+!    cell_id_local = region%cell_ids(icell)
+!
+!    do iface = 1,aux_var%numfaces
+!        write(*,*) e2n_local((cell_id_local-1)*stride + iface)
+!    end do
+!    write(*,*)
+!  end do
 
   if (e2n_size > 0) call VecRestoreArrayF90(grid%e2n, e2n_local, ierr)
 
@@ -722,6 +733,66 @@ function CouplerGetNumConnectionsInList(list)
   enddo
 
 end function CouplerGetNumConnectionsInList
+
+! ************************************************************************** !
+!
+! CouplerGetNumBoundConnectionsInListMFD: Returns the number of boundary connections associated
+!	                                    with all couplers in the list. Establish connections between
+!   	                                 local face_id and bound_face_id.
+!										 (Since boundary fluxes allocated only for active boundary faces
+!											they have different indexing
+! author: Daniil Svyatskiy
+! date: 11/04/10
+!
+! ************************************************************************** !
+function CouplerGetNumBoundConnectionsInListMFD(grid, list, option)
+
+  use Grid_module
+  use Option_module
+
+  implicit none
+  
+
+  type(coupler_list_type) :: list
+  type(grid_type) :: grid
+  type(option_type) :: option
+  PetscInt :: CouplerGetNumBoundConnectionsInListMFD
+ 
+  type(coupler_type), pointer :: coupler
+
+  PetscInt :: numfaces_set, iconn, local_face_id, i
+  
+  iconn = 0
+
+  coupler => list%first
+
+#ifdef DASVYAT  
+
+  allocate(grid%fL2B(grid%nlmax_faces))
+
+  grid%fL2B = 0
+
+  do
+    if (.not.associated(coupler)) exit
+	
+	numfaces_set = coupler%numfaces_set
+	do i = 1, numfaces_set
+		iconn = iconn + 1
+		local_face_id = grid%fG2L(coupler%faces_set(i))
+		if (local_face_id<=0) then
+			write(*,*) "local_face_id for boundary face is <=0"
+			call printMsg(option)
+			stop
+		end if
+		grid%fL2B(local_face_id) = iconn
+	enddo
+    coupler => coupler%next
+  enddo
+#endif
+
+  CouplerGetNumBoundConnectionsInListMFD = iconn
+
+end function CouplerGetNumBoundConnectionsInListMFD 
 
 ! ************************************************************************** !
 !

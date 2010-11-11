@@ -168,12 +168,11 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
           call InputReadWord(input,option,discretization%ctype,PETSC_TRUE)
           call InputErrorMsg(input,option,'type','GRID')   
           call StringToLower(discretization%ctype)
-          write(*,*) 
           select case(trim(discretization%ctype))
             case('structured')
               discretization%itype = STRUCTURED_GRID
               call InputReadWord(input,option,structured_grid_ctype,PETSC_TRUE)
-              call InputDefaultMsg(input,option,'structured_grid_type')   
+              call InputDefaultMsg(input,option,'structured_grid_type') 
               call StringToLower(structured_grid_ctype)
               select case(trim(structured_grid_ctype))
                 case('cartesian')
@@ -686,7 +685,11 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   PetscInt :: islocal
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
-    
+
+#ifdef DASVYAT
+  write(*,*) "CreateJacobian", dm_index
+#endif
+
   select case(discretization%itype)
     case(STRUCTURED_GRID)
       call DMGetMatrix(dm_ptr%sgdm,mat_type,Jacobian,ierr)
@@ -699,9 +702,16 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
       call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
     case(STRUCTURED_GRID_MIMETIC)
 #ifdef DASVYAT
-      call MFDCreateJacobian(discretization%grid, discretization%MFD, mat_type, Jacobian, option)
-      call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
-      call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
+      select case(dm_index)
+        case(NFLOWDOF)
+          call MFDCreateJacobian(discretization%grid, discretization%MFD, mat_type, Jacobian, option)
+          call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
+          call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
+        case(NTRANDOF)
+          call DMGetMatrix(dm_ptr%sgdm,mat_type,Jacobian,ierr)
+          call MatSetOption(Jacobian,MAT_KEEP_NONZERO_PATTERN,PETSC_FALSE,ierr)
+          call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
+      end select
 #endif
     case(AMR_GRID)
        select case(dm_index)

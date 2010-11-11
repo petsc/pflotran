@@ -357,6 +357,144 @@ subroutine lubksb(A,N,INDX,B)
 
 end subroutine lubksb
 
+!* Given an NxN matrix A, with physical dimension NP, this routine replaces it
+!* by the LU decomposition of a rowwise permutation of itself.
+!* A and N are input. A is output; INDX is output vector which records the
+!* row permutation effected by the partial pivoting; D id output as +1 or -1
+!* depending on whether the number of row interchanges was odd or even,
+!* respectively. This routine is used in combination with lubksb to solve
+!* linear equations or invert a matrix.
+subroutine ludcmp_chunk(A,N,INDX,D,chunk_size)
+
+  implicit none
+
+  PetscInt :: N
+  PetscInt :: chunk_size
+  PetscReal, parameter :: tiny=1.0d-20
+  PetscReal :: A(N,N,chunk_size),VV(N,chunk_size)
+  PetscInt :: INDX(N,chunk_size)
+  PetscInt :: D(chunk_size)
+
+  PetscInt :: i, j, k, imax
+  PetscReal :: aamax, sum, dum
+  PetscMPIInt ::  rank
+  PetscErrorCode :: ierr
+  
+  PetscInt :: ichunk
+
+  do ichunk = 1, chunk_size
+
+  D(ichunk)=1
+  do i=1,N
+    aamax=0
+    do j=1,N
+      if (abs(A(i,j,ichunk)).gt.aamax) aamax=abs(A(i,j,ichunk))
+    enddo
+    if (aamax.eq.0) then
+      call MPI_Comm_rank(MPI_COMM_WORLD,rank,ierr)
+      print *, "ERROR: Singular value encountered in ludcmp() on processor", rank
+      call MPI_Abort(MPI_COMM_WORLD,ONE_INTEGER_MPI,ierr)
+      call MPI_Finalize(ierr)
+      stop
+    endif
+    VV(i,ichunk)=1./aamax
+  enddo
+  do j=1,N
+    do i=1,j-1
+      sum=A(i,j,ichunk)
+      do k=1,i-1
+        sum=sum-A(i,k,ichunk)*A(k,j,ichunk)
+      enddo
+      A(i,j,ichunk)=sum
+    enddo
+    aamax=0
+    do i=j,N
+      sum=A(i,j,ichunk)
+      do k=1,j-1
+        sum=sum-A(i,k,ichunk)*A(k,j,ichunk)
+      enddo
+      A(i,j,ichunk)=sum
+      dum=VV(i,ichunk)*abs(sum)
+      if (dum.ge.aamax) then
+        imax=i
+        aamax=dum
+      endif
+    enddo
+    if (j.ne.imax) then
+      do k=1,N
+        dum=A(imax,k,ichunk)
+        A(imax,k,ichunk)=A(j,k,ichunk)
+        A(j,k,ichunk)=dum
+      enddo
+      D(ichunk)=-D(ichunk)
+      VV(imax,ichunk)=VV(j,ichunk)
+    endif
+    INDX(j,ichunk)=imax
+    if (A(j,j,ichunk).eq.0.) A(j,j,ichunk)=tiny
+    if (j.ne.N) then
+      dum=1./A(j,j,ichunk)
+      do i=j+1,N
+        A(i,j,ichunk)=A(i,j,ichunk)*dum
+      enddo
+    endif
+  enddo
+  
+  enddo ! chunk loop
+  
+  return
+
+end subroutine ludcmp_chunk
+
+!* Solves the set of N linear equations A.X=D. Here A is input, not as a matrix
+!* A but rather as its LU decomposition. INDX is the input as the permutation
+!* vector returned bu ludcmp. B is input as the right-hand side vector B, and
+!* returns with the solution vector X.
+subroutine lubksb_chunk(A,N,INDX,B,chunk_size)
+
+  implicit none
+
+  PetscInt :: N
+  PetscInt :: chunk_size
+  PetscReal :: A(N,N,chunk_size),B(N,chunk_size)
+  PetscInt :: INDX(N,chunk_size)
+
+  PetscInt :: i, j, ii, ll
+  PetscReal :: sum
+
+  PetscInt :: ichunk
+
+  do ichunk = 1, chunk_size
+  
+  ii=0
+  do i=1,N
+    ll=INDX(i,ichunk)
+    sum=B(ll,ichunk)
+    B(ll,ichunk)=B(i,ichunk)
+    if (ii.ne.0) then
+      do j=ii,i-1
+        sum=sum-A(i,j,ichunk)*B(j,ichunk)
+      enddo
+    else if (sum.ne.0) then
+      ii=i
+    endif
+    B(i,ichunk)=sum
+  enddo
+  do i=N,1,-1
+    sum=B(i,ichunk)
+    if (i.lt.N) then
+      do j=i+1,N
+        sum=sum-A(i,j,ichunk)*B(j,ichunk)
+      enddo
+    endif
+    B(i,ichunk)=sum/A(i,i,ichunk)
+  enddo
+  
+  enddo ! chunk loop
+  
+  return
+
+end subroutine lubksb_chunk
+
 ! ************************************************************************** !
 !
 ! Interpolate: Interpolates values between two reference values
