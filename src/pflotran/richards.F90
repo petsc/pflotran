@@ -4217,17 +4217,13 @@ subroutine RichardsMaxChange(realization)
      call VecWAXPY(field%flow_dxx_faces,-1.d0,field%flow_xx_faces,field%flow_yy_faces,ierr)
      call VecStrideNorm(field%flow_dxx_faces,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
 
-     call PetscViewerASCIIOpen(realization%option%mycomm,'flow_dxx_faces.out',viewer,ierr)
-     call VecView(field%flow_dxx_faces, viewer,ierr)
-     call PetscViewerDestroy(viewer, ierr)
+!     call PetscViewerASCIIOpen(realization%option%mycomm,'flow_dxx_faces.out',viewer,ierr)
+!     call VecView(field%flow_dxx_faces, viewer,ierr)
+!     call PetscViewerDestroy(viewer, ierr)
   else 
 
      call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
      call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
-
-     call PetscViewerASCIIOpen(realization%option%mycomm,'flow_dxx.out',viewer,ierr)
-     call VecView(field%flow_dxx, viewer,ierr)
-     call PetscViewerDestroy(viewer, ierr)
   end if
 
 end subroutine RichardsMaxChange
