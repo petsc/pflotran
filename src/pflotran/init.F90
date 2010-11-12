@@ -1179,6 +1179,7 @@ subroutine InitReadInput(simulation)
                           enddo
                       end select 
                     enddo
+                  case('CHUNK_SIZE')
                   case('JUMPSTART_KINETIC_SORPTION')
                   case('NO_CHECKPOINT_KINETIC_SORPTION')
                   case('NO_RESTART_KINETIC_SORPTION')

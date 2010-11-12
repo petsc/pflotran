@@ -4225,9 +4225,11 @@ subroutine RichardsMaxChange(realization)
      call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
      call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
 
+#ifdef DASVYAT
      call PetscViewerASCIIOpen(realization%option%mycomm,'flow_dxx.out',viewer,ierr)
      call VecView(field%flow_dxx, viewer,ierr)
      call PetscViewerDestroy(viewer, ierr)
+#endif     
   end if
 
 end subroutine RichardsMaxChange
