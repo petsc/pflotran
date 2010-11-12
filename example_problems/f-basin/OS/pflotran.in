@@ -15,7 +15,7 @@ MODE RICHARDS
 
 :============== chemistry =================
 CHEMISTRY
-:CHUNK_SIZE 1
+CHUNK_SIZE 1
 PRIMARY_SPECIES
 Na+
 Ca++

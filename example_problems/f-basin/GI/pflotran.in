@@ -444,7 +444,7 @@ COMPLEXES
 /
 /
 :OPERATOR_SPLITTING
-DATABASE ../../database/savannah_river.dat
+DATABASE ../../../database/savannah_river.dat
 LOG_FORMULATION
 ACTIVITY_COEFFICIENTS
 MOLAL

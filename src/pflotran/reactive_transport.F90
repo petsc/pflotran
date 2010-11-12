@@ -1935,7 +1935,7 @@ subroutine RTReactPatch(realization)
   PetscReal, pointer :: tran_xx_p(:)
   PetscReal, pointer :: volume_p(:)
   PetscReal, pointer :: porosity_loc_p(:)
-#if CHUNK
+#ifdef CHUNK
   PetscInt :: num_iterations(realization%option%chunk_size)
   PetscInt :: local_start
   PetscInt :: local_end
