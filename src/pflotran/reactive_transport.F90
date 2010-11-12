@@ -1979,10 +1979,10 @@ subroutine RTReactPatch(realization)
 
 #ifdef CHUNK
   local_start = 1
+  chunk_size_save = option%chunk_size
   do
     ! change chunk size if array is not evenly divisble by chunk_size
     if (local_start + option%chunk_size - 1 > grid%nlmax) then
-      chunk_size_save = option%chunk_size
       option%chunk_size = grid%nlmax - local_start + 1
     endif
 
@@ -1991,20 +1991,22 @@ subroutine RTReactPatch(realization)
     ghosted_start = grid%nL2G(local_start)
     ghosted_end = grid%nL2G(local_end)
 
-    if (patch%imat(ghosted_id) <= 0) cycle
+    ! We actually need to check all cells for inactives
+    if (patch%imat(ghosted_start) <= 0) cycle
 
     iend = local_end*reaction%naqcomp
-    istart = local_end-reaction%naqcomp*option%chunk_size+1
+    istart = iend-reaction%naqcomp*option%chunk_size+1
 
-!    tran_xx_p(istart:iend) = tran_xx_p(istart:iend)/ &
-!      (global_aux_vars(ghosted_id)%den_kg(iphase)*1.d-3)
+    ! tran_xx_p passes in total component concentrations
+    !       and returns free ion concentrations
     call RReactChunk(rt_aux_vars(ghosted_start:ghosted_end), &
                 global_aux_vars(ghosted_start:ghosted_end), &
                 tran_xx_p(istart:iend),volume_p(local_start:local_end), &
                 porosity_loc_p(ghosted_start:ghosted_end), &
                 num_iterations,reaction,option)
     ! set primary dependent var back to free-ion molality
-    tran_xx_p(istart:iend) = rt_aux_vars(ghosted_id)%pri_molal
+    ! NOW THE BELOW IS PERFORMED WITHIN RReactChunk()
+    !tran_xx_p(istart:iend) = rt_aux_vars(ghosted_id)%pri_molal
 #ifdef OS_STATISTICS
     do ichunk = 1, option%chunk_size
       if (num_iterations(ichunk) > max_iterations) then
@@ -2029,8 +2031,6 @@ subroutine RTReactPatch(realization)
     if (patch%imat(ghosted_id) <= 0) cycle
     iend = local_id*reaction%naqcomp
     istart = iend-reaction%naqcomp+1
-!    tran_xx_p(istart:iend) = tran_xx_p(istart:iend)/ &
-!      (global_aux_vars(ghosted_id)%den_kg(iphase)*1.d-3)
     call RReact(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                 tran_xx_p(istart:iend),volume_p(local_id), &
                 porosity_loc_p(ghosted_id), &
