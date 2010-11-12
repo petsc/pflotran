@@ -2773,7 +2773,7 @@ subroutine RReactChunk(rt_auxvar,global_auxvar,total,volume,porosity, &
     if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
       call RAccumulationSorbChunk(rt_auxvar,global_auxvar,volume,reaction, &
                                   option,residual)
-      call RAccumulationSorbDerivativeChunk(rt_auxvar,global_auxvar,volume, &
+      call RAccumulationSorbDerivChunk(rt_auxvar,global_auxvar,volume, &
                                             reaction,option,J)
     endif
 
@@ -5792,14 +5792,14 @@ end subroutine RAccumulationSorbDerivative
 
 ! ************************************************************************** !
 !
-! RAccumulationSorbDerivativeChunk: Computes derivative of non-aqueous portion
+! RAccumulationSorbDerivChunk: Computes derivative of non-aqueous portion
 !                                   of the accumulation term in residual 
 !                                   function 
 ! author: Glenn Hammond
 ! date: 11/11/10
 !
 ! ************************************************************************** !
-subroutine RAccumulationSorbDerivativeChunk(rt_aux_var,global_aux_var, &
+subroutine RAccumulationSorbDerivChunk(rt_aux_var,global_aux_var, &
                                             vol,reaction,option,J)
 
   use Option_module
@@ -5829,7 +5829,7 @@ subroutine RAccumulationSorbDerivativeChunk(rt_aux_var,global_aux_var, &
     
   enddo
 
-end subroutine RAccumulationSorbDerivativeChunk
+end subroutine RAccumulationSorbDerivChunk
 
 ! ************************************************************************** !
 !
