@@ -1,0 +1,3162 @@
+ "structured_grid_type" set to default value.
+ pflotran card:: MODE
+ pflotran card:: CHEMISTRY
+ pflotran card:: TIMESTEPPER
+ pflotran card:: NEWTON_SOLVER
+ pflotran card:: LINEAR_SOLVER
+ pflotran card:: TIMESTEPPER
+ pflotran card:: NEWTON_SOLVER
+ pflotran card:: LINEAR_SOLVER
+ pflotran card:: GRID
+ pflotran card:: FLUID_PROPERTY
+ pflotran card:: MATERIAL_PROPERTY
+ pflotran card:: MATERIAL_PROPERTY
+ pflotran card:: SATURATION_FUNCTION
+ pflotran card:: SATURATION_FUNCTION
+ pflotran card:: OUTPUT
+ pflotran card:: TIME
+ pflotran card:: REGION
+ all
+ pflotran card:: REGION
+ vadose_zone
+ pflotran card:: REGION
+ sat_zone
+ pflotran card:: REGION
+ top
+ pflotran card:: REGION
+ top_left
+ pflotran card:: REGION
+ top_right
+ pflotran card:: REGION
+ bottom
+ pflotran card:: REGION
+ f-basin
+ pflotran card:: REGION
+ left
+ pflotran card:: REGION
+ right
+ pflotran card:: FLOW_CONDITION
+ Initial
+ "DATUM UNITS" set to default value.
+ "PRESSURE UNITS" set to default value.
+ WARNING: "iphase" not set in condition; set to 1
+ pflotran card:: FLOW_CONDITION
+ F-basin
+ "FLUX UNITS" set to default value.
+ WARNING: "iphase" not set in condition; set to 1
+ pflotran card:: FLOW_CONDITION
+ Infiltration
+ "FLUX UNITS" set to default value.
+ WARNING: "iphase" not set in condition; set to 1
+ pflotran card:: FLOW_CONDITION
+ Upgradient
+ "DATUM UNITS" set to default value.
+ "PRESSURE UNITS" set to default value.
+ WARNING: "iphase" not set in condition; set to 1
+ pflotran card:: FLOW_CONDITION
+ Downgradient
+ "DATUM UNITS" set to default value.
+ "PRESSURE UNITS" set to default value.
+ WARNING: "iphase" not set in condition; set to 1
+ pflotran card:: TRANSPORT_CONDITION
+ Initial
+ pflotran card:: TRANSPORT_CONDITION
+ Infiltration
+ pflotran card:: TRANSPORT_CONDITION
+ F-basin
+ pflotran card:: INITIAL_CONDITION
+ "Initial Condition name" set to default value.
+ pflotran card:: BOUNDARY_CONDITION
+ "Boundary Condition name" set to default value.
+ pflotran card:: BOUNDARY_CONDITION
+ "Boundary Condition name" set to default value.
+ pflotran card:: BOUNDARY_CONDITION
+ "Boundary Condition name" set to default value.
+ pflotran card:: BOUNDARY_CONDITION
+ pflotran card:: BOUNDARY_CONDITION
+ pflotran card:: STRATA
+ pflotran card:: CONSTRAINT
+ initial
+ Constraint Species: Na+
+ Constraint Species: Ca++
+ Constraint Species: Fe++
+ Constraint Species: K+
+ Constraint Species: Al+++
+ Constraint Species: H+
+ Constraint Species: N2(aq)
+ Constraint Species: NO3-
+ Constraint Species: HCO3-
+ Constraint Species: Cl-
+ Constraint Species: SO4--
+ Constraint Species: HPO4--
+ Constraint Species: F-
+ Constraint Species: SiO2(aq)
+ Constraint Species: UO2++
+ Constraint Species: O2(aq)
+ Constraint Species: Tracer
+ Constraint Minerals: Quartz
+ Constraint Minerals: Kaolinite
+ Constraint Minerals: K-Feldspar
+ Constraint Minerals: Ferrihydrite
+ Constraint Minerals: Jurbanite
+ Constraint Minerals: Gibbsite
+ Constraint Minerals: Calcite
+ Constraint Minerals: (UO2)3(PO4)2.4H2O
+ Constraint Minerals: Soddyite
+ Constraint Minerals: Schoepite
+ Constraint Minerals: Chalcedony
+ pflotran card:: CONSTRAINT
+ infiltration
+ Constraint Species: Na+
+ Constraint Species: Ca++
+ Constraint Species: Fe++
+ Constraint Species: K+
+ Constraint Species: Al+++
+ Constraint Species: H+
+ Constraint Species: N2(aq)
+ Constraint Species: NO3-
+ Constraint Species: HCO3-
+ Constraint Species: Cl-
+ Constraint Species: SO4--
+ Constraint Species: HPO4--
+ Constraint Species: F-
+ Constraint Species: SiO2(aq)
+ Constraint Species: UO2++
+ Constraint Species: O2(aq)
+ Constraint Species: Tracer
+ pflotran card:: CONSTRAINT
+ source
+ Constraint Species: Na+
+ Constraint Species: Ca++
+ Constraint Species: Fe++
+ Constraint Species: K+
+ Constraint Species: Al+++
+ Constraint Species: H+
+ Constraint Species: N2(aq)
+ Constraint Species: NO3-
+ Constraint Species: HCO3-
+ Constraint Species: Cl-
+ Constraint Species: SO4--
+ Constraint Species: HPO4--
+ Constraint Species: F-
+ Constraint Species: SiO2(aq)
+ Constraint Species: UO2++
+ Constraint Species: O2(aq)
+ Constraint Species: Tracer
+
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ Requested processors and decomposition =     1, npx,y,z=    -1   -1   -1
+ Actual decomposition: npx,y,z=     1    1    1
+ number of dofs =   1, number of phases =   1
+ mode = Richards: p
+   Beginning setup of FLOW SNES
+ Solver: bcgs
+ Preconditioner: ilu
+   Finished setting up FLOW SNES
+   Beginning setup of TRAN SNES
+ Solver: bcgs
+ Preconditioner: ilu
+   Finished setting up TRAN SNES
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+   Setting up TRAN Realization
+   Finished setting up TRAN Realization
+ WARNING: Waypoint at time:  1.5768E+08 is beyond the end of simulation
+ 
+Flow Stepper:
+max steps: 1000000
+max const cumulative_time_steps:   5
+max cuts:  16
+ 
+Transport Stepper:
+max steps: 1000000
+max const cumulative_time_steps:   5
+max cuts:  16
+ 
+Flow Newton Solver:
+     atol:  1.0000E-09
+     rtol:  1.0000E-09
+     stol:  1.0000E-60
+     dtol: -2.0000E+00
+inftolres:  1.0000E-50
+inftolupd:  1.0000E+00
+    maxit:    16
+     maxf: 10000
+ 
+matrix type:baij                
+precond. matrix type:baij                
+inexact newton: off
+print convergence: on
+print detailed convergence: off
+check infinity norm: on
+force at least 1 iteration: on
+ 
+Transport Newton Solver:
+     atol:  1.0000E-08
+     rtol:  1.0000E-08
+     stol:  1.0000E-60
+     dtol:  1.0000E+04
+inftolres:  1.0000E-50
+inftolupd:  1.0000E-50
+    maxit:    16
+     maxf: 10000
+ 
+matrix type:aij                 
+precond. matrix type:aij                 
+inexact newton: off
+print convergence: on
+print detailed convergence: off
+check infinity norm: off
+force at least 1 iteration: on
+ 
+Flow Linear Solver:
+ solver: bcgs
+precond: ilu
+   atol:  1.0000E-50
+   rtol:  1.0000E-05
+   dtol:  1.0000E+04
+  maxit:  10000
+ 
+Transport Linear Solver
+ solver: bcgs
+precond: ilu
+   atol:  1.0000E-50
+   rtol:  1.0000E-05
+   dtol:  1.0000E+04
+  maxit:  10000
+ Default HDF5 method is used in Initialization
+ 
+   Finished Initialization
+ --> write tecplot output file: pflotran-000.tec
+ max_local_size_saved:        70
+ --> write tecplot velocity output file: pflotran-vel-000.tec
+   0.09 Seconds to write to Tecplot file(s)
+
+== FLOW ====================================================
+  1 fnrm: 7.16E-05 pnrm: 1.78E+02 inrmr: 4.83E-05 inrmu: 9.54E+01 rsn:   0
+  2 fnrm: 3.52E-05 pnrm: 3.18E-01 inrmr: 3.50E-05 inrmu: 2.63E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW      1 Time=   1.0000E-09 Dt=   1.0000E-09 [y] snes_conv_reason:   11
+  newton =   2 [       2] linear =     2 [         2] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =            2  /            2
+  --> SNES Residual:   3.518546E-05  5.026494E-07  3.496057E-05
+  --> max chng: dpmx=   9.5420E+01
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN      1 Time=   0.0000E+00 Dt=   1.0000E-09 [y] ksp_conv_reason:    2
+ linear =     1 [         1]
+  --> max chng: dcmx=   3.5619E-10 dc/dt=   1.1295E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 1.01E-05 pnrm: 1.78E+02 inrmr: 1.01E-05 inrmu: 9.52E+01 rsn:   0
+  2 fnrm: 2.18E-07 pnrm: 2.25E-02 inrmr: 2.14E-07 inrmu: 2.06E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW      2 Time=   2.0000E-09 Dt=   1.0000E-09 [y] snes_conv_reason:   11
+  newton =   2 [       4] linear =     2 [         4] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =            2  /            2
+  --> SNES Residual:   2.177416E-07  3.110595E-09  2.140878E-07
+  --> max chng: dpmx=   9.5246E+01
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN      2 Time=   1.0000E-09 Dt=   1.0000E-09 [y] ksp_conv_reason:    2
+ linear =     1 [         2]
+  --> max chng: dcmx=   3.5608E-10 dc/dt=   1.1291E-08 [mol/s]
+ 
+ --> write tecplot output file: pflotran-001.tec
+ --> write tecplot velocity output file: pflotran-vel-001.tec
+   0.02 Seconds to write to Tecplot file(s)
+
+== FLOW ====================================================
+  1 fnrm: 1.24E-05 pnrm: 1.77E+02 inrmr: 1.24E-05 inrmu: 9.51E+01 rsn:   0
+  2 fnrm: 1.97E-07 pnrm: 1.97E-02 inrmr: 1.97E-07 inrmu: 1.97E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW      3 Time=   3.0000E-09 Dt=   1.0000E-09 [y] snes_conv_reason:   11
+  newton =   2 [       6] linear =     2 [         6] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =            2  /            2
+  --> SNES Residual:   1.969759E-07  2.813942E-09  1.969747E-07
+  --> max chng: dpmx=   9.5072E+01
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN      3 Time=   2.0000E-09 Dt=   1.0000E-09 [y] ksp_conv_reason:    2
+ linear =     1 [         3]
+  --> max chng: dcmx=   3.5597E-10 dc/dt=   1.1288E-08 [mol/s]
+ 
+ --> write tecplot output file: pflotran-002.tec
+ --> write tecplot velocity output file: pflotran-vel-002.tec
+   0.02 Seconds to write to Tecplot file(s)
+
+== FLOW ====================================================
+  1 fnrm: 4.07E-05 pnrm: 3.53E+02 inrmr: 4.07E-05 inrmu: 1.89E+02 rsn:   0
+  2 fnrm: 1.63E-06 pnrm: 8.03E-02 inrmr: 1.63E-06 inrmu: 8.03E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW      4 Time=   5.0000E-09 Dt=   2.0000E-09 [y] snes_conv_reason:   11
+  newton =   2 [       8] linear =     2 [         8] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =            2  /            2
+  --> SNES Residual:   1.628359E-06  2.326228E-08  1.628359E-06
+  --> max chng: dpmx=   1.8945E+02
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN      4 Time=   3.0000E-09 Dt=   2.0000E-09 [y] ksp_conv_reason:    3
+ linear =     1 [         4]
+  --> max chng: dcmx=   7.1205E-10 dc/dt=   1.1289E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 1.10E-04 pnrm: 7.00E+02 inrmr: 1.10E-04 inrmu: 3.76E+02 rsn:   0
+  2 fnrm: 6.93E-06 pnrm: 2.34E-01 inrmr: 6.93E-06 inrmu: 2.34E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW      5 Time=   9.0000E-09 Dt=   4.0000E-09 [y] snes_conv_reason:   11
+  newton =   2 [      10] linear =     2 [        10] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =            2  /            2
+  --> SNES Residual:   6.933350E-06  9.904786E-08  6.933347E-06
+  --> max chng: dpmx=   3.7615E+02
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN      5 Time=   5.0000E-09 Dt=   4.0000E-09 [y] ksp_conv_reason:    3
+ linear =     1 [         5]
+  --> max chng: dcmx=   1.4242E-09 dc/dt=   1.1290E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.45E-04 pnrm: 1.37E+03 inrmr: 2.45E-04 inrmu: 7.41E+02 rsn:   0
+  2 fnrm: 1.83E-05 pnrm: 5.42E-01 inrmr: 1.83E-05 inrmu: 5.39E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW      6 Time=   1.7000E-08 Dt=   8.0000E-09 [y] snes_conv_reason:   11
+  newton =   2 [      12] linear =     2 [        12] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =            2  /            2
+  --> SNES Residual:   1.834977E-05  2.621395E-07  1.834868E-05
+  --> max chng: dpmx=   7.4145E+02
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN      6 Time=   9.0000E-09 Dt=   8.0000E-09 [y] ksp_conv_reason:    2
+ linear =     1 [         6]
+  --> max chng: dcmx=   2.8485E-09 dc/dt=   1.1291E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 4.85E-04 pnrm: 2.65E+03 inrmr: 4.85E-04 inrmu: 1.44E+03 rsn:   0
+  2 fnrm: 3.83E-05 pnrm: 1.12E+00 inrmr: 3.82E-05 inrmu: 1.10E+00 rsn:   0
+  3 fnrm: 3.37E-07 pnrm: 1.09E-01 inrmr: 3.35E-07 inrmu: 1.03E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW      7 Time=   3.3000E-08 Dt=   1.6000E-08 [y] snes_conv_reason:   11
+  newton =   3 [      15] linear =     3 [        15] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =            3  /            3
+  --> SNES Residual:   3.372491E-07  4.817844E-09  3.348177E-07
+  --> max chng: dpmx=   1.4409E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN      7 Time=   1.7000E-08 Dt=   1.6000E-08 [y] ksp_conv_reason:    3
+ linear =     1 [         7]
+  --> max chng: dcmx=   5.6971E-09 dc/dt=   1.1291E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 9.22E-04 pnrm: 4.92E+03 inrmr: 9.21E-04 inrmu: 2.72E+03 rsn:   0
+  2 fnrm: 7.48E-05 pnrm: 2.27E+00 inrmr: 7.46E-05 inrmu: 2.17E+00 rsn:   0
+  3 fnrm: 7.29E-07 pnrm: 2.43E-01 inrmr: 6.95E-07 inrmu: 2.10E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW      8 Time=   6.5000E-08 Dt=   3.2000E-08 [y] snes_conv_reason:   11
+  newton =   3 [      18] linear =     3 [        18] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =            3  /            3
+  --> SNES Residual:   7.291949E-07  1.041707E-08  6.953451E-07
+  --> max chng: dpmx=   2.7233E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN      8 Time=   3.3000E-08 Dt=   3.2000E-08 [y] ksp_conv_reason:    2
+ linear =     1 [         8]
+  --> max chng: dcmx=   1.1394E-08 dc/dt=   1.1291E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 1.57E-03 pnrm: 8.61E+03 inrmr: 1.56E-03 inrmu: 4.88E+03 rsn:   0
+  2 fnrm: 1.24E-04 pnrm: 4.28E+00 inrmr: 1.22E-04 inrmu: 3.93E+00 rsn:   0
+  3 fnrm: 1.24E-06 pnrm: 4.82E-01 inrmr: 1.05E-06 inrmu: 3.65E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW      9 Time=   1.2900E-07 Dt=   6.4000E-08 [y] snes_conv_reason:   11
+  newton =   3 [      21] linear =     3 [        21] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =            3  /            3
+  --> SNES Residual:   1.241204E-06  1.773149E-08  1.052014E-06
+  --> max chng: dpmx=   4.8802E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN      9 Time=   6.5000E-08 Dt=   6.4000E-08 [y] ksp_conv_reason:    2
+ linear =     1 [         9]
+  --> max chng: dcmx=   2.2789E-08 dc/dt=   1.1291E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.35E-03 pnrm: 1.35E+04 inrmr: 2.31E-03 inrmu: 7.93E+03 rsn:   0
+  2 fnrm: 1.74E-04 pnrm: 7.62E+00 inrmr: 1.67E-04 inrmu: 6.50E+00 rsn:   0
+  3 fnrm: 1.84E-06 pnrm: 8.99E-01 inrmr: 1.32E-06 inrmu: 5.79E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     10 Time=   2.5700E-07 Dt=   1.2800E-07 [y] snes_conv_reason:   11
+  newton =   3 [      24] linear =     6 [        27] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =            6  /            3
+  --> SNES Residual:   1.840593E-06  2.629419E-08  1.322001E-06
+  --> max chng: dpmx=   7.9258E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     10 Time=   1.2900E-07 Dt=   1.2800E-07 [y] ksp_conv_reason:    2
+ linear =     1 [        10]
+  --> max chng: dcmx=   4.5578E-08 dc/dt=   1.1291E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.04E-03 pnrm: 1.81E+04 inrmr: 2.93E-03 inrmu: 1.09E+04 rsn:   0
+  2 fnrm: 2.06E-04 pnrm: 1.27E+01 inrmr: 1.85E-04 inrmu: 9.68E+00 rsn:   0
+  3 fnrm: 2.36E-06 pnrm: 1.57E+00 inrmr: 1.74E-06 inrmu: 9.39E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     11 Time=   5.1300E-07 Dt=   2.5600E-07 [y] snes_conv_reason:   11
+  newton =   3 [      27] linear =     6 [        33] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =            6  /            3
+  --> SNES Residual:   2.357361E-06  3.367658E-08  1.738658E-06
+  --> max chng: dpmx=   1.0870E+04
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     11 Time=   2.5700E-07 Dt=   2.5600E-07 [y] ksp_conv_reason:    2
+ linear =     1 [        11]
+  --> max chng: dcmx=   9.1155E-08 dc/dt=   1.1291E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.38E-03 pnrm: 1.99E+04 inrmr: 3.14E-03 inrmu: 1.15E+04 rsn:   0
+  2 fnrm: 2.05E-04 pnrm: 2.00E+01 inrmr: 1.66E-04 inrmu: 1.30E+01 rsn:   0
+  3 fnrm: 2.33E-06 pnrm: 2.46E+00 inrmr: 1.50E-06 inrmu: 1.23E+00 rsn:   0
+  4 fnrm: 4.79E-09 pnrm: 1.02E-01 inrmr: 3.44E-09 inrmu: 5.91E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     12 Time=   1.0250E-06 Dt=   5.1200E-07 [y] snes_conv_reason:   11
+  newton =   4 [      31] linear =     8 [        41] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =            8  /            4
+  --> SNES Residual:   4.785759E-09  6.836799E-11  3.443120E-09
+  --> max chng: dpmx=   1.1546E+04
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     12 Time=   5.1300E-07 Dt=   5.1200E-07 [y] ksp_conv_reason:    2
+ linear =     1 [        12]
+  --> max chng: dcmx=   1.8231E-07 dc/dt=   1.1291E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.31E-03 pnrm: 1.78E+04 inrmr: 2.98E-03 inrmu: 8.86E+03 rsn:   0
+  2 fnrm: 1.70E-04 pnrm: 3.06E+01 inrmr: 1.28E-04 inrmu: 1.61E+01 rsn:   0
+  3 fnrm: 1.48E-06 pnrm: 3.15E+00 inrmr: 8.81E-07 inrmu: 1.34E+00 rsn:   0
+  4 fnrm: 1.66E-09 pnrm: 8.85E-02 inrmr: 1.35E-09 inrmu: 5.23E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     13 Time=   2.0490E-06 Dt=   1.0240E-06 [y] snes_conv_reason:   11
+  newton =   4 [      35] linear =    12 [        53] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           12  /            4
+  --> SNES Residual:   1.664151E-09  2.377359E-11  1.350600E-09
+  --> max chng: dpmx=   8.8551E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     13 Time=   1.0250E-06 Dt=   1.0240E-06 [y] ksp_conv_reason:    2
+ linear =     1 [        13]
+  --> max chng: dcmx=   3.6461E-07 dc/dt=   1.1291E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.99E-03 pnrm: 1.31E+04 inrmr: 2.67E-03 inrmu: 6.40E+03 rsn:   0
+  2 fnrm: 1.23E-04 pnrm: 4.13E+01 inrmr: 9.52E-05 inrmu: 1.97E+01 rsn:   0
+  3 fnrm: 5.06E-07 pnrm: 3.05E+00 inrmr: 2.73E-07 inrmu: 1.05E+00 rsn:   0
+  4 fnrm: 9.76E-11 pnrm: 3.35E-02 inrmr: 8.14E-11 inrmu: 1.82E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     14 Time=   4.0970E-06 Dt=   2.0480E-06 [y] snes_conv_reason:   11
+  newton =   4 [      39] linear =    16 [        69] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           16  /            4
+  --> SNES Residual:   9.756532E-11  1.393790E-12  8.139978E-11
+  --> max chng: dpmx=   6.3952E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     14 Time=   2.0490E-06 Dt=   2.0480E-06 [y] ksp_conv_reason:    2
+ linear =     1 [        14]
+  --> max chng: dcmx=   7.2921E-07 dc/dt=   1.1291E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.66E-03 pnrm: 7.52E+03 inrmr: 2.40E-03 inrmu: 3.39E+03 rsn:   0
+  2 fnrm: 8.90E-05 pnrm: 5.65E+01 inrmr: 7.45E-05 inrmu: 2.63E+01 rsn:   0
+  3 fnrm: 1.50E-07 pnrm: 2.66E+00 inrmr: 8.17E-08 inrmu: 9.66E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     15 Time=   8.1930E-06 Dt=   4.0960E-06 [y] snes_conv_reason:   11
+  newton =   3 [      42] linear =    12 [        81] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           12  /            3
+  --> SNES Residual:   1.504833E-07  2.149762E-09  8.166955E-08
+  --> max chng: dpmx=   3.3888E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     15 Time=   4.0970E-06 Dt=   4.0960E-06 [y] ksp_conv_reason:    2
+ linear =     1 [        15]
+  --> max chng: dcmx=   1.4584E-06 dc/dt=   1.1290E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.43E-03 pnrm: 3.06E+03 inrmr: 2.22E-03 inrmu: 1.21E+03 rsn:   0
+  2 fnrm: 7.13E-05 pnrm: 7.66E+01 inrmr: 6.26E-05 inrmu: 3.73E+01 rsn:   0
+  3 fnrm: 7.47E-08 pnrm: 2.71E+00 inrmr: 5.61E-08 inrmu: 1.16E+00 rsn:   0
+  4 fnrm: 2.43E-13 pnrm: 3.89E-03 inrmr: 1.14E-13 inrmu: 1.26E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     16 Time=   1.6385E-05 Dt=   8.1920E-06 [y] snes_conv_reason:   11
+  newton =   4 [      46] linear =    16 [        97] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           16  /            4
+  --> SNES Residual:   2.427312E-13  3.467589E-15  1.136868E-13
+  --> max chng: dpmx=   1.2146E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     16 Time=   8.1930E-06 Dt=   8.1920E-06 [y] ksp_conv_reason:    2
+ linear =     1 [        16]
+  --> max chng: dcmx=   2.9165E-06 dc/dt=   1.1289E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.86E-04 pnrm: 5.99E+02 inrmr: 5.41E-04 inrmu: 2.13E+02 rsn:   0
+  2 fnrm: 1.86E-06 pnrm: 8.15E+00 inrmr: 1.68E-06 inrmu: 4.13E+00 rsn:   0
+  3 fnrm: 1.94E-11 pnrm: 2.79E-02 inrmr: 1.63E-11 inrmu: 1.32E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     17 Time=   2.0481E-05 Dt=   4.0963E-06 [y] snes_conv_reason:   11
+  newton =   3 [      49] linear =    12 [       109] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           12  /            3
+  --> SNES Residual:   1.941999E-11  2.774285E-13  1.628564E-11
+  --> max chng: dpmx=   2.1307E+02
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     17 Time=   1.6385E-05 Dt=   4.0963E-06 [y] ksp_conv_reason:    2
+ linear =     1 [        17]
+  --> max chng: dcmx=   1.4560E-06 dc/dt=   1.1271E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.77E-04 pnrm: 3.69E+02 inrmr: 5.32E-04 inrmu: 1.21E+02 rsn:   0
+  2 fnrm: 1.79E-06 pnrm: 9.15E+00 inrmr: 1.62E-06 inrmu: 4.64E+00 rsn:   0
+  3 fnrm: 1.76E-11 pnrm: 3.03E-02 inrmr: 1.49E-11 inrmu: 1.45E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     18 Time=   2.5602E-05 Dt=   5.1203E-06 [y] snes_conv_reason:   11
+  newton =   3 [      52] linear =    12 [       121] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           12  /            3
+  --> SNES Residual:   1.761844E-11  2.516920E-13  1.494982E-11
+  --> max chng: dpmx=   1.2066E+02
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     18 Time=   2.0481E-05 Dt=   5.1203E-06 [y] ksp_conv_reason:    2
+ linear =     1 [        18]
+  --> max chng: dcmx=   1.8196E-06 dc/dt=   1.1269E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.68E-04 pnrm: 3.43E+02 inrmr: 5.23E-04 inrmu: 1.50E+02 rsn:   0
+  2 fnrm: 1.73E-06 pnrm: 1.02E+01 inrmr: 1.56E-06 inrmu: 5.18E+00 rsn:   0
+  3 fnrm: 1.58E-11 pnrm: 3.32E-02 inrmr: 1.34E-11 inrmu: 1.59E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     19 Time=   3.2002E-05 Dt=   6.4004E-06 [y] snes_conv_reason:   11
+  newton =   3 [      55] linear =    12 [       133] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           12  /            3
+  --> SNES Residual:   1.576722E-11  2.252460E-13  1.342926E-11
+  --> max chng: dpmx=   1.5009E+02
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     19 Time=   2.5602E-05 Dt=   6.4004E-06 [y] ksp_conv_reason:    2
+ linear =     1 [        19]
+  --> max chng: dcmx=   2.2739E-06 dc/dt=   1.1266E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.59E-04 pnrm: 3.89E+02 inrmr: 5.14E-04 inrmu: 1.87E+02 rsn:   0
+  2 fnrm: 1.67E-06 pnrm: 1.15E+01 inrmr: 1.51E-06 inrmu: 5.78E+00 rsn:   0
+  3 fnrm: 1.37E-11 pnrm: 3.64E-02 inrmr: 1.16E-11 inrmu: 1.74E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     20 Time=   4.0002E-05 Dt=   8.0005E-06 [y] snes_conv_reason:   11
+  newton =   3 [      58] linear =    12 [       145] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           12  /            3
+  --> SNES Residual:   1.366499E-11  1.952141E-13  1.158185E-11
+  --> max chng: dpmx=   1.8646E+02
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     20 Time=   3.2002E-05 Dt=   8.0005E-06 [y] ksp_conv_reason:    2
+ linear =     1 [        20]
+  --> max chng: dcmx=   2.8414E-06 dc/dt=   1.1262E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.50E-04 pnrm: 4.63E+02 inrmr: 5.05E-04 inrmu: 2.32E+02 rsn:   0
+  2 fnrm: 1.62E-06 pnrm: 1.28E+01 inrmr: 1.46E-06 inrmu: 6.43E+00 rsn:   0
+  3 fnrm: 1.22E-11 pnrm: 4.01E-02 inrmr: 1.03E-11 inrmu: 1.90E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     21 Time=   5.0003E-05 Dt=   1.0001E-05 [y] snes_conv_reason:   11
+  newton =   3 [      61] linear =    12 [       157] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           12  /            3
+  --> SNES Residual:   1.219725E-11  1.742465E-13  1.028866E-11
+  --> max chng: dpmx=   2.3130E+02
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     21 Time=   4.0002E-05 Dt=   1.0001E-05 [y] ksp_conv_reason:    2
+ linear =     1 [        21]
+  --> max chng: dcmx=   3.5503E-06 dc/dt=   1.1257E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.42E-04 pnrm: 5.57E+02 inrmr: 4.96E-04 inrmu: 2.87E+02 rsn:   0
+  2 fnrm: 1.57E-06 pnrm: 1.43E+01 inrmr: 1.41E-06 inrmu: 7.13E+00 rsn:   0
+  3 fnrm: 1.22E-11 pnrm: 4.43E-02 inrmr: 1.02E-11 inrmu: 2.08E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     22 Time=   6.2504E-05 Dt=   1.2501E-05 [y] snes_conv_reason:   11
+  newton =   3 [      64] linear =    13 [       170] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   1.215090E-11  1.735842E-13  1.023182E-11
+  --> max chng: dpmx=   2.8638E+02
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     22 Time=   5.0003E-05 Dt=   1.2501E-05 [y] ksp_conv_reason:    2
+ linear =     1 [        22]
+  --> max chng: dcmx=   4.4355E-06 dc/dt=   1.1251E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.34E-04 pnrm: 6.75E+02 inrmr: 4.86E-04 inrmu: 3.55E+02 rsn:   0
+  2 fnrm: 1.52E-06 pnrm: 1.60E+01 inrmr: 1.36E-06 inrmu: 7.91E+00 rsn:   0
+  3 fnrm: 1.26E-11 pnrm: 4.89E-02 inrmr: 1.06E-11 inrmu: 2.26E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     23 Time=   7.8130E-05 Dt=   1.5626E-05 [y] snes_conv_reason:   11
+  newton =   3 [      67] linear =    13 [       183] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   1.255041E-11  1.792916E-13  1.055156E-11
+  --> max chng: dpmx=   3.5377E+02
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     23 Time=   6.2504E-05 Dt=   1.5626E-05 [y] ksp_conv_reason:    2
+ linear =     1 [        23]
+  --> max chng: dcmx=   5.5407E-06 dc/dt=   1.1244E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.26E-04 pnrm: 8.21E+02 inrmr: 4.75E-04 inrmu: 4.38E+02 rsn:   0
+  2 fnrm: 1.46E-06 pnrm: 1.79E+01 inrmr: 1.31E-06 inrmu: 8.75E+00 rsn:   0
+  3 fnrm: 1.25E-11 pnrm: 5.39E-02 inrmr: 1.04E-11 inrmu: 2.46E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     24 Time=   9.7662E-05 Dt=   1.9532E-05 [y] snes_conv_reason:   11
+  newton =   3 [      70] linear =    13 [       196] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   1.248381E-11  1.783402E-13  1.040945E-11
+  --> max chng: dpmx=   4.3578E+02
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     24 Time=   7.8130E-05 Dt=   1.9532E-05 [y] ksp_conv_reason:    2
+ linear =     1 [        24]
+  --> max chng: dcmx=   6.9202E-06 dc/dt=   1.1235E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.18E-04 pnrm: 9.99E+02 inrmr: 4.64E-04 inrmu: 5.38E+02 rsn:   0
+  2 fnrm: 1.41E-06 pnrm: 2.00E+01 inrmr: 1.25E-06 inrmu: 9.66E+00 rsn:   0
+  3 fnrm: 1.20E-11 pnrm: 5.92E-02 inrmr: 9.84E-12 inrmu: 2.66E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     25 Time=   1.2208E-04 Dt=   2.4416E-05 [y] snes_conv_reason:   11
+  newton =   3 [      73] linear =    13 [       209] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   1.196596E-11  1.709423E-13  9.844570E-12
+  --> max chng: dpmx=   5.3497E+02
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     25 Time=   9.7662E-05 Dt=   2.4416E-05 [y] ksp_conv_reason:    2
+ linear =     1 [        25]
+  --> max chng: dcmx=   8.6413E-06 dc/dt=   1.1223E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.11E-04 pnrm: 1.22E+03 inrmr: 4.51E-04 inrmu: 6.58E+02 rsn:   0
+  2 fnrm: 1.35E-06 pnrm: 2.25E+01 inrmr: 1.19E-06 inrmu: 1.06E+01 rsn:   0
+  3 fnrm: 1.05E-11 pnrm: 6.50E-02 inrmr: 8.41E-12 inrmu: 2.87E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     26 Time=   1.5260E-04 Dt=   3.0519E-05 [y] snes_conv_reason:   11
+  newton =   3 [      76] linear =    14 [       223] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.051868E-11  1.502669E-13  8.409273E-12
+  --> max chng: dpmx=   6.5398E+02
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     26 Time=   1.2208E-04 Dt=   3.0519E-05 [y] ksp_conv_reason:    2
+ linear =     1 [        26]
+  --> max chng: dcmx=   1.0788E-05 dc/dt=   1.1208E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.06E-04 pnrm: 1.48E+03 inrmr: 4.38E-04 inrmu: 8.02E+02 rsn:   0
+  2 fnrm: 1.29E-06 pnrm: 2.55E+01 inrmr: 1.13E-06 inrmu: 1.17E+01 rsn:   0
+  3 fnrm: 9.71E-12 pnrm: 7.11E-02 inrmr: 7.54E-12 inrmu: 3.08E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     27 Time=   1.9075E-04 Dt=   3.8149E-05 [y] snes_conv_reason:   11
+  newton =   3 [      79] linear =    14 [       237] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   9.706778E-12  1.386683E-13  7.542411E-12
+  --> max chng: dpmx=   7.9542E+02
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     27 Time=   1.5260E-04 Dt=   3.8149E-05 [y] ksp_conv_reason:    2
+ linear =     1 [        27]
+  --> max chng: dcmx=   1.3463E-05 dc/dt=   1.1190E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.02E-04 pnrm: 1.81E+03 inrmr: 4.23E-04 inrmu: 9.71E+02 rsn:   0
+  2 fnrm: 1.23E-06 pnrm: 2.92E+01 inrmr: 1.06E-06 inrmu: 1.28E+01 rsn:   0
+  3 fnrm: 8.89E-12 pnrm: 7.76E-02 inrmr: 6.66E-12 inrmu: 3.30E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     28 Time=   2.3843E-04 Dt=   4.7687E-05 [y] snes_conv_reason:   11
+  newton =   3 [      82] linear =    13 [       250] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   8.893739E-12  1.270534E-13  6.656009E-12
+  --> max chng: dpmx=   9.6158E+02
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     28 Time=   1.9075E-04 Dt=   4.7687E-05 [y] ksp_conv_reason:    2
+ linear =     1 [        28]
+  --> max chng: dcmx=   1.6795E-05 dc/dt=   1.1168E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.02E-04 pnrm: 2.19E+03 inrmr: 4.08E-04 inrmu: 1.17E+03 rsn:   0
+  2 fnrm: 1.16E-06 pnrm: 3.41E+01 inrmr: 9.86E-07 inrmu: 1.40E+01 rsn:   0
+  3 fnrm: 8.13E-12 pnrm: 8.45E-02 inrmr: 5.80E-12 inrmu: 3.50E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     29 Time=   2.9804E-04 Dt=   5.9608E-05 [y] snes_conv_reason:   11
+  newton =   3 [      85] linear =    13 [       263] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   8.131098E-12  1.161585E-13  5.798029E-12
+  --> max chng: dpmx=   1.1541E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     29 Time=   2.3843E-04 Dt=   5.9608E-05 [y] ksp_conv_reason:    2
+ linear =     1 [        29]
+  --> max chng: dcmx=   2.0940E-05 dc/dt=   1.1140E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.05E-04 pnrm: 2.66E+03 inrmr: 3.90E-04 inrmu: 1.39E+03 rsn:   0
+  2 fnrm: 1.09E-06 pnrm: 4.08E+01 inrmr: 9.11E-07 inrmu: 1.90E+01 rsn:   0
+  3 fnrm: 7.42E-12 pnrm: 9.18E-02 inrmr: 4.98E-12 inrmu: 3.69E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     30 Time=   3.7255E-04 Dt=   7.4510E-05 [y] snes_conv_reason:   11
+  newton =   3 [      88] linear =    15 [       278] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           15  /            3
+  --> SNES Residual:   7.419171E-12  1.059882E-13  4.982681E-12
+  --> max chng: dpmx=   1.3733E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     30 Time=   2.9804E-04 Dt=   7.4510E-05 [y] ksp_conv_reason:    2
+ linear =     1 [        30]
+  --> max chng: dcmx=   2.6093E-05 dc/dt=   1.1104E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.12E-04 pnrm: 3.21E+03 inrmr: 3.72E-04 inrmu: 1.64E+03 rsn:   0
+  2 fnrm: 1.02E-06 pnrm: 5.01E+01 inrmr: 8.32E-07 inrmu: 2.66E+01 rsn:   0
+  3 fnrm: 6.77E-12 pnrm: 9.95E-02 inrmr: 4.21E-12 inrmu: 3.86E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     31 Time=   4.6569E-04 Dt=   9.3138E-05 [y] snes_conv_reason:   11
+  newton =   3 [      91] linear =    15 [       293] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           15  /            3
+  --> SNES Residual:   6.767707E-12  9.668153E-14  4.209078E-12
+  --> max chng: dpmx=   1.6179E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     31 Time=   3.7255E-04 Dt=   9.3138E-05 [y] ksp_conv_reason:    2
+ linear =     1 [        31]
+  --> max chng: dcmx=   3.2487E-05 dc/dt=   1.1061E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.25E-04 pnrm: 3.86E+03 inrmr: 3.52E-04 inrmu: 1.92E+03 rsn:   0
+  2 fnrm: 9.53E-07 pnrm: 6.32E+01 inrmr: 7.50E-07 inrmu: 3.66E+01 rsn:   0
+  3 fnrm: 6.21E-12 pnrm: 1.08E-01 inrmr: 3.94E-12 inrmu: 4.01E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     32 Time=   5.8211E-04 Dt=   1.1642E-04 [y] snes_conv_reason:   11
+  newton =   3 [      94] linear =    15 [       308] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           15  /            3
+  --> SNES Residual:   6.209367E-12  8.870525E-14  3.939071E-12
+  --> max chng: dpmx=   1.8846E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     32 Time=   4.6569E-04 Dt=   1.1642E-04 [y] ksp_conv_reason:    2
+ linear =     1 [        32]
+  --> max chng: dcmx=   4.0409E-05 dc/dt=   1.1006E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.41E-04 pnrm: 4.62E+03 inrmr: 3.68E-04 inrmu: 2.22E+03 rsn:   0
+  2 fnrm: 8.89E-07 pnrm: 8.11E+01 inrmr: 6.66E-07 inrmu: 4.91E+01 rsn:   0
+  3 fnrm: 5.98E-12 pnrm: 1.18E-01 inrmr: 3.82E-12 inrmu: 4.30E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     33 Time=   7.2764E-04 Dt=   1.4553E-04 [y] snes_conv_reason:   11
+  newton =   3 [      97] linear =    15 [       323] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           15  /            3
+  --> SNES Residual:   5.977670E-12  8.539528E-14  3.821832E-12
+  --> max chng: dpmx=   2.1670E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     33 Time=   5.8211E-04 Dt=   1.4553E-04 [y] ksp_conv_reason:    2
+ linear =     1 [        33]
+  --> max chng: dcmx=   5.0200E-05 dc/dt=   1.0938E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.60E-04 pnrm: 5.50E+03 inrmr: 4.09E-04 inrmu: 2.65E+03 rsn:   0
+  2 fnrm: 8.39E-07 pnrm: 1.05E+02 inrmr: 5.81E-07 inrmu: 6.41E+01 rsn:   0
+  3 fnrm: 4.99E-12 pnrm: 1.32E-01 inrmr: 3.20E-12 inrmu: 4.56E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     34 Time=   9.0955E-04 Dt=   1.8191E-04 [y] snes_conv_reason:   11
+  newton =   3 [     100] linear =    16 [       339] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           16  /            3
+  --> SNES Residual:   4.985243E-12  7.121775E-14  3.200107E-12
+  --> max chng: dpmx=   2.6103E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     34 Time=   7.2764E-04 Dt=   1.8191E-04 [y] ksp_conv_reason:    2
+ linear =     1 [        34]
+  --> max chng: dcmx=   6.2267E-05 dc/dt=   1.0854E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.79E-04 pnrm: 6.50E+03 inrmr: 4.46E-04 inrmu: 3.22E+03 rsn:   0
+  2 fnrm: 8.17E-07 pnrm: 1.38E+02 inrmr: 4.96E-07 inrmu: 8.14E+01 rsn:   0
+  3 fnrm: 4.47E-12 pnrm: 1.55E-01 inrmr: 2.81E-12 inrmu: 7.20E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     35 Time=   1.1369E-03 Dt=   2.2739E-04 [y] snes_conv_reason:   11
+  newton =   3 [     103] linear =    16 [       355] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           16  /            3
+  --> SNES Residual:   4.470384E-12  6.386263E-14  2.805312E-12
+  --> max chng: dpmx=   3.1625E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     35 Time=   9.0955E-04 Dt=   2.2739E-04 [y] ksp_conv_reason:    2
+ linear =     1 [        35]
+  --> max chng: dcmx=   7.7084E-05 dc/dt=   1.0750E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.96E-04 pnrm: 7.64E+03 inrmr: 4.75E-04 inrmu: 3.89E+03 rsn:   0
+  2 fnrm: 8.33E-07 pnrm: 1.81E+02 inrmr: 5.30E-07 inrmu: 1.00E+02 rsn:   0
+  3 fnrm: 3.96E-12 pnrm: 1.93E-01 inrmr: 2.38E-12 inrmu: 1.12E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     36 Time=   1.4212E-03 Dt=   2.8423E-04 [y] snes_conv_reason:   11
+  newton =   3 [     106] linear =    15 [       370] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           15  /            3
+  --> SNES Residual:   3.958198E-12  5.654569E-14  2.384759E-12
+  --> max chng: dpmx=   3.8043E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     36 Time=   1.1369E-03 Dt=   2.8423E-04 [y] ksp_conv_reason:    2
+ linear =     1 [        36]
+  --> max chng: dcmx=   9.5195E-05 dc/dt=   1.0620E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 6.08E-04 pnrm: 8.92E+03 inrmr: 4.95E-04 inrmu: 4.66E+03 rsn:   0
+  2 fnrm: 8.88E-07 pnrm: 2.38E+02 inrmr: 6.75E-07 inrmu: 1.20E+02 rsn:   0
+  3 fnrm: 3.59E-12 pnrm: 2.61E-01 inrmr: 2.18E-12 inrmu: 1.63E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     37 Time=   1.7765E-03 Dt=   3.5529E-04 [y] snes_conv_reason:   11
+  newton =   3 [     109] linear =    16 [       386] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           16  /            3
+  --> SNES Residual:   3.590518E-12  5.129311E-14  2.183365E-12
+  --> max chng: dpmx=   4.5373E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     37 Time=   1.4212E-03 Dt=   3.5529E-04 [y] ksp_conv_reason:    2
+ linear =     1 [        37]
+  --> max chng: dcmx=   1.1720E-04 dc/dt=   1.0460E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 6.14E-04 pnrm: 1.03E+04 inrmr: 5.03E-04 inrmu: 5.53E+03 rsn:   0
+  2 fnrm: 9.72E-07 pnrm: 3.13E+02 inrmr: 8.14E-07 inrmu: 1.70E+02 rsn:   0
+  3 fnrm: 3.75E-12 pnrm: 3.84E-01 inrmr: 2.18E-12 inrmu: 2.23E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     38 Time=   2.2206E-03 Dt=   4.4412E-04 [y] snes_conv_reason:   11
+  newton =   3 [     112] linear =    16 [       402] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           16  /            3
+  --> SNES Residual:   3.747471E-12  5.353530E-14  2.175926E-12
+  --> max chng: dpmx=   5.3568E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     38 Time=   1.7765E-03 Dt=   4.4412E-04 [y] ksp_conv_reason:    2
+ linear =     1 [        38]
+  --> max chng: dcmx=   1.4375E-04 dc/dt=   1.0264E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 6.13E-04 pnrm: 1.19E+04 inrmr: 4.99E-04 inrmu: 6.49E+03 rsn:   0
+  2 fnrm: 1.07E-06 pnrm: 4.11E+02 inrmr: 9.27E-07 inrmu: 2.40E+02 rsn:   0
+  3 fnrm: 4.71E-12 pnrm: 6.25E-01 inrmr: 3.60E-12 inrmu: 3.56E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     39 Time=   2.7757E-03 Dt=   5.5515E-04 [y] snes_conv_reason:   11
+  newton =   3 [     115] linear =    16 [       418] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           16  /            3
+  --> SNES Residual:   4.714162E-12  6.734517E-14  3.596456E-12
+  --> max chng: dpmx=   6.2489E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     39 Time=   2.2206E-03 Dt=   5.5515E-04 [y] ksp_conv_reason:    2
+ linear =     1 [        39]
+  --> max chng: dcmx=   1.7546E-04 dc/dt=   1.0022E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 6.07E-04 pnrm: 1.35E+04 inrmr: 4.81E-04 inrmu: 7.52E+03 rsn:   0
+  2 fnrm: 1.19E-06 pnrm: 5.39E+02 inrmr: 9.96E-07 inrmu: 3.32E+02 rsn:   0
+  3 fnrm: 6.33E-12 pnrm: 1.10E+00 inrmr: 4.92E-12 inrmu: 7.13E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     40 Time=   3.4697E-03 Dt=   6.9393E-04 [y] snes_conv_reason:   11
+  newton =   3 [     118] linear =    15 [       433] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           15  /            3
+  --> SNES Residual:   6.327214E-12  9.038877E-14  4.919509E-12
+  --> max chng: dpmx=   7.1884E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     40 Time=   2.7757E-03 Dt=   6.9393E-04 [y] ksp_conv_reason:    2
+ linear =     1 [        40]
+  --> max chng: dcmx=   2.1288E-04 dc/dt=   9.7279E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.98E-04 pnrm: 1.52E+04 inrmr: 4.51E-04 inrmu: 8.59E+03 rsn:   0
+  2 fnrm: 1.38E-06 pnrm: 6.99E+02 inrmr: 1.01E-06 inrmu: 4.48E+02 rsn:   0
+  3 fnrm: 1.11E-11 pnrm: 2.00E+00 inrmr: 6.14E-12 inrmu: 1.37E+00 rsn: atol
+ update_reason:            1
+
+ FLOW     41 Time=   4.3371E-03 Dt=   8.6741E-04 [y] snes_conv_reason:    2
+  newton =   3 [     121] linear =    15 [       448] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           15  /            3
+  --> SNES Residual:   1.113724E-11  1.591034E-13  6.140199E-12
+  --> max chng: dpmx=   8.1378E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     41 Time=   3.4697E-03 Dt=   8.6741E-04 [y] ksp_conv_reason:    2
+ linear =     1 [        41]
+  --> max chng: dcmx=   2.5633E-04 dc/dt=   9.3707E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.49E-04 pnrm: 1.56E+04 inrmr: 3.85E-04 inrmu: 8.89E+03 rsn:   0
+  2 fnrm: 1.40E-06 pnrm: 7.66E+02 inrmr: 7.94E-07 inrmu: 5.03E+02 rsn:   0
+  3 fnrm: 1.69E-11 pnrm: 2.63E+00 inrmr: 1.03E-11 inrmu: 1.83E+00 rsn: atol
+ update_reason:            1
+
+ FLOW     42 Time=   5.3371E-03 Dt=   1.0000E-03 [y] snes_conv_reason:    2
+  newton =   3 [     124] linear =    15 [       463] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           15  /            3
+  --> SNES Residual:   1.685909E-11  2.408441E-13  1.033751E-11
+  --> max chng: dpmx=   8.3845E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     42 Time=   4.3371E-03 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        42]
+  --> max chng: dcmx=   2.7695E-04 dc/dt=   8.7820E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 4.55E-04 pnrm: 1.38E+04 inrmr: 2.91E-04 inrmu: 7.91E+03 rsn:   0
+  2 fnrm: 1.04E-06 pnrm: 6.37E+02 inrmr: 6.54E-07 inrmu: 4.23E+02 rsn:   0
+  3 fnrm: 9.66E-12 pnrm: 1.94E+00 inrmr: 6.75E-12 inrmu: 1.36E+00 rsn: atol
+ update_reason:            1
+
+ FLOW     43 Time=   6.3371E-03 Dt=   1.0000E-03 [y] snes_conv_reason:    2
+  newton =   3 [     127] linear =    15 [       478] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           15  /            3
+  --> SNES Residual:   9.662660E-12  1.380380E-13  6.745160E-12
+  --> max chng: dpmx=   7.4826E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     43 Time=   5.3371E-03 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        43]
+  --> max chng: dcmx=   2.4354E-04 dc/dt=   7.7227E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.85E-04 pnrm: 1.24E+04 inrmr: 2.25E-04 inrmu: 7.08E+03 rsn:   0
+  2 fnrm: 8.24E-07 pnrm: 5.34E+02 inrmr: 5.49E-07 inrmu: 3.59E+02 rsn:   0
+  3 fnrm: 6.37E-12 pnrm: 1.46E+00 inrmr: 4.50E-12 inrmu: 1.03E+00 rsn: atol
+ update_reason:            1
+
+ FLOW     44 Time=   7.3371E-03 Dt=   1.0000E-03 [y] snes_conv_reason:    2
+  newton =   3 [     130] linear =    16 [       494] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           16  /            3
+  --> SNES Residual:   6.372773E-12  9.103961E-14  4.501455E-12
+  --> max chng: dpmx=   6.7198E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     44 Time=   6.3371E-03 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        44]
+  --> max chng: dcmx=   2.0689E-04 dc/dt=   6.5603E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.38E-04 pnrm: 1.12E+04 inrmr: 1.81E-04 inrmu: 6.38E+03 rsn:   0
+  2 fnrm: 6.79E-07 pnrm: 4.54E+02 inrmr: 4.65E-07 inrmu: 3.07E+02 rsn:   0
+  3 fnrm: 5.05E-12 pnrm: 1.12E+00 inrmr: 3.06E-12 inrmu: 7.90E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     45 Time=   8.3371E-03 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     133] linear =    15 [       509] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           15  /            3
+  --> SNES Residual:   5.046183E-12  7.208833E-14  3.062384E-12
+  --> max chng: dpmx=   6.0688E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     45 Time=   7.3371E-03 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        45]
+  --> max chng: dcmx=   1.6832E-04 dc/dt=   5.3374E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.02E-04 pnrm: 1.02E+04 inrmr: 1.72E-04 inrmu: 5.77E+03 rsn:   0
+  2 fnrm: 5.71E-07 pnrm: 3.90E+02 inrmr: 3.96E-07 inrmu: 2.65E+02 rsn:   0
+  3 fnrm: 3.30E-12 pnrm: 8.69E-01 inrmr: 2.12E-12 inrmu: 6.14E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     46 Time=   9.3371E-03 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     136] linear =    15 [       524] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           15  /            3
+  --> SNES Residual:   3.298472E-12  4.712102E-14  2.122746E-12
+  --> max chng: dpmx=   5.5088E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     46 Time=   8.3371E-03 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        46]
+  --> max chng: dcmx=   1.2920E-04 dc/dt=   4.0969E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.74E-04 pnrm: 9.37E+03 inrmr: 1.63E-04 inrmu: 5.25E+03 rsn:   0
+  2 fnrm: 4.87E-07 pnrm: 3.37E+02 inrmr: 3.41E-07 inrmu: 2.30E+02 rsn:   0
+  3 fnrm: 2.26E-12 pnrm: 6.83E-01 inrmr: 1.49E-12 inrmu: 4.82E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     47 Time=   1.0337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     139] linear =    15 [       539] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           15  /            3
+  --> SNES Residual:   2.259727E-12  3.228182E-14  1.494804E-12
+  --> max chng: dpmx=   5.0234E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     47 Time=   9.3371E-03 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        47]
+  --> max chng: dcmx=   9.0810E-05 dc/dt=   2.8796E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.52E-04 pnrm: 8.63E+03 inrmr: 1.55E-04 inrmu: 4.80E+03 rsn:   0
+  2 fnrm: 4.19E-07 pnrm: 2.94E+02 inrmr: 2.94E-07 inrmu: 2.01E+02 rsn:   0
+  3 fnrm: 1.60E-12 pnrm: 5.41E-01 inrmr: 1.07E-12 inrmu: 3.83E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     48 Time=   1.1337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     142] linear =    15 [       554] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           15  /            3
+  --> SNES Residual:   1.600207E-12  2.286010E-14  1.067479E-12
+  --> max chng: dpmx=   4.6000E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     48 Time=   1.0337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        48]
+  --> max chng: dcmx=   5.4307E-05 dc/dt=   1.7221E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.34E-04 pnrm: 7.99E+03 inrmr: 1.48E-04 inrmu: 4.40E+03 rsn:   0
+  2 fnrm: 3.63E-07 pnrm: 2.58E+02 inrmr: 2.56E-07 inrmu: 1.76E+02 rsn:   0
+  3 fnrm: 1.36E-12 pnrm: 4.34E-01 inrmr: 7.75E-13 inrmu: 3.06E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     49 Time=   1.2337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     145] linear =    14 [       568] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.363010E-12  1.947157E-14  7.754908E-13
+  --> max chng: dpmx=   4.2282E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     49 Time=   1.1337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        49]
+  --> max chng: dcmx=   2.0669E-05 dc/dt=   6.5542E-10 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.19E-04 pnrm: 7.43E+03 inrmr: 1.41E-04 inrmu: 4.06E+03 rsn:   0
+  2 fnrm: 3.17E-07 pnrm: 2.27E+02 inrmr: 2.23E-07 inrmu: 1.55E+02 rsn:   0
+  3 fnrm: 1.06E-12 pnrm: 3.50E-01 inrmr: 5.65E-13 inrmu: 2.47E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     50 Time=   1.3337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     148] linear =    14 [       582] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.060505E-12  1.515007E-14  5.652145E-13
+  --> max chng: dpmx=   3.9001E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     50 Time=   1.2337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        50]
+  --> max chng: dcmx=   9.3586E-06 dc/dt=   2.9676E-10 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.06E-04 pnrm: 6.94E+03 inrmr: 1.35E-04 inrmu: 3.75E+03 rsn:   0
+  2 fnrm: 2.78E-07 pnrm: 2.01E+02 inrmr: 1.96E-07 inrmu: 1.38E+02 rsn:   0
+  3 fnrm: 6.16E-13 pnrm: 2.85E-01 inrmr: 4.17E-13 inrmu: 2.01E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     51 Time=   1.4337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     151] linear =    13 [       595] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   6.158069E-13  8.797241E-15  4.173328E-13
+  --> max chng: dpmx=   3.6090E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     51 Time=   1.3337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        51]
+  --> max chng: dcmx=   3.5241E-05 dc/dt=   1.1175E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 1.95E-04 pnrm: 6.51E+03 inrmr: 1.29E-04 inrmu: 3.47E+03 rsn:   0
+  2 fnrm: 2.45E-07 pnrm: 1.79E+02 inrmr: 1.73E-07 inrmu: 1.23E+02 rsn:   0
+  3 fnrm: 4.58E-13 pnrm: 2.34E-01 inrmr: 3.11E-13 inrmu: 1.65E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     52 Time=   1.5337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     154] linear =    13 [       608] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   4.581012E-13  6.544303E-15  3.113620E-13
+  --> max chng: dpmx=   3.3494E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     52 Time=   1.4337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        52]
+  --> max chng: dcmx=   5.6706E-05 dc/dt=   1.7981E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 1.84E-04 pnrm: 6.13E+03 inrmr: 1.23E-04 inrmu: 3.23E+03 rsn:   0
+  2 fnrm: 2.16E-07 pnrm: 1.60E+02 inrmr: 1.53E-07 inrmu: 1.10E+02 rsn:   0
+  3 fnrm: 3.44E-13 pnrm: 1.93E-01 inrmr: 2.34E-13 inrmu: 1.36E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     53 Time=   1.6337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     157] linear =    13 [       621] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   3.441323E-13  4.916176E-15  2.343681E-13
+  --> max chng: dpmx=   3.1169E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     53 Time=   1.5337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        53]
+  --> max chng: dcmx=   7.3695E-05 dc/dt=   2.3369E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 1.75E-04 pnrm: 5.79E+03 inrmr: 1.18E-04 inrmu: 3.01E+03 rsn:   0
+  2 fnrm: 1.91E-07 pnrm: 1.44E+02 inrmr: 1.35E-07 inrmu: 9.84E+01 rsn:   0
+  3 fnrm: 2.62E-13 pnrm: 1.60E-01 inrmr: 1.78E-13 inrmu: 1.13E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     54 Time=   1.7337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     160] linear =    13 [       634] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   2.615795E-13  3.736850E-15  1.776912E-13
+  --> max chng: dpmx=   2.9078E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     54 Time=   1.6337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        54]
+  --> max chng: dcmx=   8.6348E-05 dc/dt=   2.7381E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 1.67E-04 pnrm: 5.48E+03 inrmr: 1.13E-04 inrmu: 2.81E+03 rsn:   0
+  2 fnrm: 1.70E-07 pnrm: 1.29E+02 inrmr: 1.20E-07 inrmu: 8.86E+01 rsn:   0
+  3 fnrm: 2.01E-13 pnrm: 1.33E-01 inrmr: 1.36E-13 inrmu: 9.42E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     55 Time=   1.8337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     163] linear =    13 [       647] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   2.014853E-13  2.878361E-15  1.356693E-13
+  --> max chng: dpmx=   2.7190E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     55 Time=   1.7337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        55]
+  --> max chng: dcmx=   9.4968E-05 dc/dt=   3.0114E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 1.60E-04 pnrm: 5.21E+03 inrmr: 1.09E-04 inrmu: 2.63E+03 rsn:   0
+  2 fnrm: 1.52E-07 pnrm: 1.17E+02 inrmr: 1.07E-07 inrmu: 8.00E+01 rsn:   0
+  3 fnrm: 1.55E-13 pnrm: 1.12E-01 inrmr: 1.04E-13 inrmu: 7.89E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     56 Time=   1.9337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     166] linear =    13 [       660] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   1.551790E-13  2.216843E-15  1.044165E-13
+  --> max chng: dpmx=   2.5479E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     56 Time=   1.8337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        56]
+  --> max chng: dcmx=   9.9979E-05 dc/dt=   3.1703E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 1.53E-04 pnrm: 4.96E+03 inrmr: 1.05E-04 inrmu: 2.46E+03 rsn:   0
+  2 fnrm: 1.35E-07 pnrm: 1.06E+02 inrmr: 9.58E-08 inrmu: 7.24E+01 rsn:   0
+  3 fnrm: 1.21E-13 pnrm: 9.39E-02 inrmr: 8.04E-14 inrmu: 6.64E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     57 Time=   2.0337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     169] linear =    13 [       673] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   1.207213E-13  1.724590E-15  8.038015E-14
+  --> max chng: dpmx=   2.3923E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     57 Time=   1.9337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        57]
+  --> max chng: dcmx=   1.0188E-04 dc/dt=   3.2307E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 1.46E-04 pnrm: 4.74E+03 inrmr: 1.01E-04 inrmu: 2.32E+03 rsn:   0
+  2 fnrm: 1.21E-07 pnrm: 9.61E+01 inrmr: 8.57E-08 inrmu: 6.57E+01 rsn:   0
+  3 fnrm: 9.89E-14 pnrm: 7.93E-02 inrmr: 6.23E-14 inrmu: 5.61E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     58 Time=   2.1337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     172] linear =    14 [       687] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   9.891670E-14  1.413096E-15  6.228351E-14
+  --> max chng: dpmx=   2.2502E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     58 Time=   2.0337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        58]
+  --> max chng: dcmx=   1.0122E-04 dc/dt=   3.2097E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 1.40E-04 pnrm: 4.54E+03 inrmr: 9.68E-05 inrmu: 2.18E+03 rsn:   0
+  2 fnrm: 1.09E-07 pnrm: 8.76E+01 inrmr: 7.68E-08 inrmu: 5.98E+01 rsn:   0
+  3 fnrm: 1.13E-13 pnrm: 6.72E-02 inrmr: 4.92E-14 inrmu: 4.76E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     59 Time=   2.2337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     175] linear =    13 [       700] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   1.128450E-13  1.612071E-15  4.923839E-14
+  --> max chng: dpmx=   2.1203E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     59 Time=   2.1337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        59]
+  --> max chng: dcmx=   9.8542E-05 dc/dt=   3.1247E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 1.34E-04 pnrm: 4.36E+03 inrmr: 9.31E-05 inrmu: 2.06E+03 rsn:   0
+  2 fnrm: 9.74E-08 pnrm: 7.99E+01 inrmr: 6.90E-08 inrmu: 5.45E+01 rsn:   0
+  3 fnrm: 7.59E-14 pnrm: 5.72E-02 inrmr: 3.82E-14 inrmu: 4.04E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     60 Time=   2.3337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     178] linear =    14 [       714] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   7.591750E-14  1.084536E-15  3.819167E-14
+  --> max chng: dpmx=   2.0009E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     60 Time=   2.2337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        60]
+  --> max chng: dcmx=   9.4360E-05 dc/dt=   2.9921E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 1.29E-04 pnrm: 4.19E+03 inrmr: 8.95E-05 inrmu: 1.94E+03 rsn:   0
+  2 fnrm: 8.75E-08 pnrm: 7.32E+01 inrmr: 6.20E-08 inrmu: 4.98E+01 rsn:   0
+  3 fnrm: 7.88E-14 pnrm: 4.88E-02 inrmr: 3.96E-14 inrmu: 3.45E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     61 Time=   2.4337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     181] linear =    14 [       728] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   7.875422E-14  1.125060E-15  3.963496E-14
+  --> max chng: dpmx=   1.8910E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     61 Time=   2.3337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        61]
+  --> max chng: dcmx=   8.9147E-05 dc/dt=   2.8268E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 1.24E-04 pnrm: 4.04E+03 inrmr: 8.61E-05 inrmu: 1.84E+03 rsn:   0
+  2 fnrm: 7.87E-08 pnrm: 6.71E+01 inrmr: 5.57E-08 inrmu: 4.55E+01 rsn:   0
+  3 fnrm: 9.33E-14 pnrm: 4.17E-02 inrmr: 5.81E-14 inrmu: 2.95E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     62 Time=   2.5337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     184] linear =    14 [       742] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   9.332265E-14  1.333181E-15  5.806466E-14
+  --> max chng: dpmx=   1.7895E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     62 Time=   2.4337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        62]
+  --> max chng: dcmx=   8.3310E-05 dc/dt=   2.6417E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 1.19E-04 pnrm: 3.90E+03 inrmr: 8.28E-05 inrmu: 1.74E+03 rsn:   0
+  2 fnrm: 7.08E-08 pnrm: 6.17E+01 inrmr: 5.01E-08 inrmu: 4.17E+01 rsn:   0
+  3 fnrm: 1.13E-13 pnrm: 3.58E-02 inrmr: 7.70E-14 inrmu: 2.53E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     63 Time=   2.6337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     187] linear =    14 [       756] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.133701E-13  1.619574E-15  7.704948E-14
+  --> max chng: dpmx=   1.6956E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     63 Time=   2.5337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        63]
+  --> max chng: dcmx=   7.7185E-05 dc/dt=   2.4475E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 1.14E-04 pnrm: 3.77E+03 inrmr: 7.97E-05 inrmu: 1.65E+03 rsn:   0
+  2 fnrm: 6.37E-08 pnrm: 5.68E+01 inrmr: 4.51E-08 inrmu: 3.83E+01 rsn:   0
+  3 fnrm: 1.41E-13 pnrm: 3.09E-02 inrmr: 1.00E-13 inrmu: 2.17E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     64 Time=   2.7337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     190] linear =    14 [       770] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.409096E-13  2.012994E-15  1.004752E-13
+  --> max chng: dpmx=   1.6084E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     64 Time=   2.6337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        64]
+  --> max chng: dcmx=   7.1038E-05 dc/dt=   2.2526E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 1.10E-04 pnrm: 3.66E+03 inrmr: 7.66E-05 inrmu: 1.56E+03 rsn:   0
+  2 fnrm: 5.74E-08 pnrm: 5.24E+01 inrmr: 4.06E-08 inrmu: 3.52E+01 rsn:   0
+  3 fnrm: 1.83E-14 pnrm: 2.69E-02 inrmr: 1.14E-14 inrmu: 1.86E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     65 Time=   2.8337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     193] linear =    15 [       785] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           15  /            3
+  --> SNES Residual:   1.833415E-14  2.619164E-16  1.143530E-14
+  --> max chng: dpmx=   1.5273E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     65 Time=   2.7337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        65]
+  --> max chng: dcmx=   6.5068E-05 dc/dt=   2.0633E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 1.05E-04 pnrm: 3.55E+03 inrmr: 7.36E-05 inrmu: 1.48E+03 rsn:   0
+  2 fnrm: 5.17E-08 pnrm: 4.84E+01 inrmr: 3.65E-08 inrmu: 3.23E+01 rsn:   0
+  3 fnrm: 1.89E-14 pnrm: 2.38E-02 inrmr: 9.10E-15 inrmu: 1.61E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     66 Time=   2.9337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     196] linear =    15 [       800] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           15  /            3
+  --> SNES Residual:   1.890202E-14  2.700288E-16  9.103829E-15
+  --> max chng: dpmx=   1.4517E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     66 Time=   2.8337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        66]
+  --> max chng: dcmx=   5.9410E-05 dc/dt=   1.8839E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 1.01E-04 pnrm: 3.46E+03 inrmr: 7.07E-05 inrmu: 1.41E+03 rsn:   0
+  2 fnrm: 4.67E-08 pnrm: 4.49E+01 inrmr: 3.28E-08 inrmu: 2.98E+01 rsn:   0
+  3 fnrm: 2.60E-14 pnrm: 2.19E-02 inrmr: 1.79E-14 inrmu: 1.38E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     67 Time=   3.0337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     199] linear =    15 [       815] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           15  /            3
+  --> SNES Residual:   2.603313E-14  3.719019E-16  1.787459E-14
+  --> max chng: dpmx=   1.3809E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     67 Time=   2.9337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        67]
+  --> max chng: dcmx=   5.4150E-05 dc/dt=   1.7171E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 9.69E-05 pnrm: 3.37E+03 inrmr: 6.79E-05 inrmu: 1.34E+03 rsn:   0
+  2 fnrm: 4.23E-08 pnrm: 4.16E+01 inrmr: 2.95E-08 inrmu: 2.74E+01 rsn:   0
+  3 fnrm: 4.69E-14 pnrm: 2.20E-02 inrmr: 3.80E-14 inrmu: 1.19E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     68 Time=   3.1337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     202] linear =    15 [       830] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           15  /            3
+  --> SNES Residual:   4.689516E-14  6.699309E-16  3.796963E-14
+  --> max chng: dpmx=   1.3147E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     68 Time=   3.0337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        68]
+  --> max chng: dcmx=   4.9334E-05 dc/dt=   1.5644E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 9.29E-05 pnrm: 3.29E+03 inrmr: 6.51E-05 inrmu: 1.28E+03 rsn:   0
+  2 fnrm: 3.87E-08 pnrm: 3.88E+01 inrmr: 2.65E-08 inrmu: 2.53E+01 rsn:   0
+  3 fnrm: 9.35E-14 pnrm: 2.52E-02 inrmr: 7.94E-14 inrmu: 1.28E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     69 Time=   3.2337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     205] linear =    15 [       845] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           15  /            3
+  --> SNES Residual:   9.346230E-14  1.335176E-15  7.938095E-14
+  --> max chng: dpmx=   1.2526E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     69 Time=   3.1337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        69]
+  --> max chng: dcmx=   4.4972E-05 dc/dt=   1.4260E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 8.91E-05 pnrm: 3.22E+03 inrmr: 6.24E-05 inrmu: 1.23E+03 rsn:   0
+  2 fnrm: 3.63E-08 pnrm: 3.63E+01 inrmr: 2.38E-08 inrmu: 2.33E+01 rsn:   0
+  3 fnrm: 2.05E-13 pnrm: 3.37E-02 inrmr: 1.86E-13 inrmu: 1.96E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     70 Time=   3.3337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     208] linear =    14 [       859] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   2.047090E-13  2.924414E-15  1.862954E-13
+  --> max chng: dpmx=   1.2213E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     70 Time=   3.2337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        70]
+  --> max chng: dcmx=   4.1054E-05 dc/dt=   1.3018E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 8.53E-05 pnrm: 3.16E+03 inrmr: 5.98E-05 inrmu: 1.21E+03 rsn:   0
+  2 fnrm: 3.57E-08 pnrm: 3.42E+01 inrmr: 2.13E-08 inrmu: 2.15E+01 rsn:   0
+  3 fnrm: 4.64E-13 pnrm: 5.15E-02 inrmr: 4.63E-13 inrmu: 3.14E-02 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     71 Time=   3.4337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     211] linear =    16 [       875] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           16  /            3
+  --> SNES Residual:   4.639794E-13  6.628278E-15  4.630740E-13
+  --> max chng: dpmx=   1.1998E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     71 Time=   3.3337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        71]
+  --> max chng: dcmx=   3.7554E-05 dc/dt=   1.1908E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 8.38E-05 pnrm: 3.10E+03 inrmr: 5.72E-05 inrmu: 1.19E+03 rsn:   0
+  2 fnrm: 2.69E-08 pnrm: 3.37E+01 inrmr: 1.91E-08 inrmu: 1.99E+01 rsn:   0
+  3 fnrm: 3.46E-14 pnrm: 9.49E-03 inrmr: 1.55E-14 inrmu: 6.63E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     72 Time=   3.5337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     214] linear =    13 [       888] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   3.464665E-14  4.949522E-16  1.554312E-14
+  --> max chng: dpmx=   1.1772E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     72 Time=   3.4337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        72]
+  --> max chng: dcmx=   3.4437E-05 dc/dt=   1.0920E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 7.78E-05 pnrm: 3.04E+03 inrmr: 5.47E-05 inrmu: 1.16E+03 rsn:   0
+  2 fnrm: 2.40E-08 pnrm: 2.85E+01 inrmr: 1.71E-08 inrmu: 1.83E+01 rsn:   0
+  3 fnrm: 1.41E-14 pnrm: 8.10E-03 inrmr: 6.72E-15 inrmu: 5.72E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     73 Time=   3.6337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     217] linear =    14 [       902] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.409776E-14  2.013965E-16  6.716849E-15
+  --> max chng: dpmx=   1.1538E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     73 Time=   3.5337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        73]
+  --> max chng: dcmx=   3.1665E-05 dc/dt=   1.0041E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 7.43E-05 pnrm: 3.00E+03 inrmr: 5.23E-05 inrmu: 1.14E+03 rsn:   0
+  2 fnrm: 2.14E-08 pnrm: 2.66E+01 inrmr: 1.52E-08 inrmu: 1.69E+01 rsn:   0
+  3 fnrm: 1.01E-14 pnrm: 7.00E-03 inrmr: 5.11E-15 inrmu: 4.94E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     74 Time=   3.7337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     220] linear =    13 [       915] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   1.009601E-14  1.442287E-16  5.107026E-15
+  --> max chng: dpmx=   1.1297E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     74 Time=   3.6337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        74]
+  --> max chng: dcmx=   2.9197E-05 dc/dt=   9.2582E-10 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 7.08E-05 pnrm: 2.96E+03 inrmr: 4.98E-05 inrmu: 1.11E+03 rsn:   0
+  2 fnrm: 1.91E-08 pnrm: 2.48E+01 inrmr: 1.36E-08 inrmu: 1.56E+01 rsn:   0
+  3 fnrm: 9.51E-15 pnrm: 6.04E-03 inrmr: 4.27E-15 inrmu: 4.26E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     75 Time=   3.8337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     223] linear =    13 [       928] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   9.513808E-15  1.359115E-16  4.274359E-15
+  --> max chng: dpmx=   1.1051E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     75 Time=   3.7337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        75]
+  --> max chng: dcmx=   2.6995E-05 dc/dt=   8.5601E-10 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 6.75E-05 pnrm: 2.93E+03 inrmr: 4.75E-05 inrmu: 1.09E+03 rsn:   0
+  2 fnrm: 1.69E-08 pnrm: 2.32E+01 inrmr: 1.21E-08 inrmu: 1.44E+01 rsn:   0
+  3 fnrm: 9.05E-15 pnrm: 5.21E-03 inrmr: 3.89E-15 inrmu: 3.67E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     76 Time=   3.9337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     226] linear =    13 [       941] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   9.051212E-15  1.293030E-16  3.885781E-15
+  --> max chng: dpmx=   1.0802E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     76 Time=   3.8337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        76]
+  --> max chng: dcmx=   2.5025E-05 dc/dt=   7.9355E-10 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 6.42E-05 pnrm: 2.90E+03 inrmr: 4.52E-05 inrmu: 1.06E+03 rsn:   0
+  2 fnrm: 1.50E-08 pnrm: 2.17E+01 inrmr: 1.07E-08 inrmu: 1.33E+01 rsn:   0
+  3 fnrm: 8.89E-15 pnrm: 4.48E-03 inrmr: 3.72E-15 inrmu: 3.16E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     77 Time=   4.0337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     229] linear =    13 [       954] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   8.886640E-15  1.269520E-16  3.719247E-15
+  --> max chng: dpmx=   1.0550E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     77 Time=   3.9337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        77]
+  --> max chng: dcmx=   2.6681E-05 dc/dt=   8.4604E-10 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 6.10E-05 pnrm: 2.88E+03 inrmr: 4.29E-05 inrmu: 1.04E+03 rsn:   0
+  2 fnrm: 1.33E-08 pnrm: 2.05E+01 inrmr: 9.48E-09 inrmu: 1.23E+01 rsn:   0
+  3 fnrm: 8.55E-15 pnrm: 3.86E-03 inrmr: 3.94E-15 inrmu: 2.71E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     78 Time=   4.1337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     232] linear =    13 [       967] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   8.553942E-15  1.221992E-16  3.941292E-15
+  --> max chng: dpmx=   1.0297E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     78 Time=   4.0337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        78]
+  --> max chng: dcmx=   3.0291E-05 dc/dt=   9.6052E-10 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 6.15E-05 pnrm: 2.87E+03 inrmr: 4.08E-05 inrmu: 1.01E+03 rsn:   0
+  2 fnrm: 1.19E-08 pnrm: 6.57E+01 inrmr: 8.37E-09 inrmu: 3.61E+01 rsn:   0
+  3 fnrm: 9.30E-15 pnrm: 3.62E-03 inrmr: 4.16E-15 inrmu: 2.33E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     79 Time=   4.2337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     235] linear =    14 [       981] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   9.298574E-15  1.328368E-16  4.163336E-15
+  --> max chng: dpmx=   1.0045E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     79 Time=   4.1337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        79]
+  --> max chng: dcmx=   3.4414E-05 dc/dt=   1.0913E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.48E-05 pnrm: 2.82E+03 inrmr: 3.86E-05 inrmu: 1.00E+03 rsn:   0
+  2 fnrm: 1.03E-08 pnrm: 1.83E+01 inrmr: 7.38E-09 inrmu: 1.04E+01 rsn:   0
+  3 fnrm: 7.42E-15 pnrm: 2.83E-03 inrmr: 3.77E-15 inrmu: 2.00E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     80 Time=   4.3337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     238] linear =    14 [       995] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   7.419829E-15  1.059976E-16  3.774758E-15
+  --> max chng: dpmx=   9.9548E+02
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     80 Time=   4.2337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        80]
+  --> max chng: dcmx=   3.9124E-05 dc/dt=   1.2406E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.19E-05 pnrm: 2.80E+03 inrmr: 3.65E-05 inrmu: 1.04E+03 rsn:   0
+  2 fnrm: 9.08E-09 pnrm: 1.75E+01 inrmr: 6.49E-09 inrmu: 9.63E+00 rsn:   0
+  3 fnrm: 6.88E-15 pnrm: 2.42E-03 inrmr: 3.33E-15 inrmu: 1.71E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     81 Time=   4.4337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     241] linear =    14 [      1009] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   6.875320E-15  9.821886E-17  3.330669E-15
+  --> max chng: dpmx=   1.0327E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     81 Time=   4.3337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        81]
+  --> max chng: dcmx=   4.4508E-05 dc/dt=   1.4113E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 4.90E-05 pnrm: 2.80E+03 inrmr: 3.45E-05 inrmu: 1.07E+03 rsn:   0
+  2 fnrm: 7.95E-09 pnrm: 1.69E+01 inrmr: 5.69E-09 inrmu: 8.87E+00 rsn:   0
+  3 fnrm: 6.57E-15 pnrm: 2.06E-03 inrmr: 3.22E-15 inrmu: 1.46E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     82 Time=   4.5337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     244] linear =    14 [      1023] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   6.570279E-15  9.386113E-17  3.219647E-15
+  --> max chng: dpmx=   1.0695E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     82 Time=   4.4337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        82]
+  --> max chng: dcmx=   5.0663E-05 dc/dt=   1.6065E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 6.65E-05 pnrm: 2.79E+03 inrmr: 3.45E-05 inrmu: 1.11E+03 rsn:   0
+  2 fnrm: 1.14E-08 pnrm: 1.76E+02 inrmr: 8.88E-09 inrmu: 9.38E+01 rsn:   0
+  3 fnrm: 1.34E-14 pnrm: 6.73E-03 inrmr: 8.38E-15 inrmu: 6.23E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     83 Time=   4.6337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     247] linear =    15 [      1038] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           15  /            3
+  --> SNES Residual:   1.344768E-14  1.921098E-16  8.382184E-15
+  --> max chng: dpmx=   1.1056E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     83 Time=   4.5337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        83]
+  --> max chng: dcmx=   5.7761E-05 dc/dt=   1.8316E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 4.37E-05 pnrm: 2.73E+03 inrmr: 3.07E-05 inrmu: 1.15E+03 rsn:   0
+  2 fnrm: 6.05E-09 pnrm: 1.60E+01 inrmr: 4.33E-09 inrmu: 7.51E+00 rsn:   0
+  3 fnrm: 3.39E-15 pnrm: 1.51E-03 inrmr: 1.55E-15 inrmu: 1.06E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     84 Time=   4.7337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     250] linear =    14 [      1052] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   3.387090E-15  4.838700E-17  1.554312E-15
+  --> max chng: dpmx=   1.1407E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     84 Time=   4.6337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        84]
+  --> max chng: dcmx=   6.5880E-05 dc/dt=   2.0890E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 4.12E-05 pnrm: 2.73E+03 inrmr: 2.88E-05 inrmu: 1.18E+03 rsn:   0
+  2 fnrm: 5.25E-09 pnrm: 1.59E+01 inrmr: 3.77E-09 inrmu: 6.95E+00 rsn:   0
+  3 fnrm: 2.96E-15 pnrm: 1.30E-03 inrmr: 1.39E-15 inrmu: 9.01E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     85 Time=   4.8337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     253] linear =    14 [      1066] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   2.962445E-15  4.232064E-17  1.387779E-15
+  --> max chng: dpmx=   1.1746E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     85 Time=   4.7337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        85]
+  --> max chng: dcmx=   7.5136E-05 dc/dt=   2.3825E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.88E-05 pnrm: 2.73E+03 inrmr: 2.71E-05 inrmu: 1.21E+03 rsn:   0
+  2 fnrm: 4.55E-09 pnrm: 1.60E+01 inrmr: 3.26E-09 inrmu: 7.52E+00 rsn:   0
+  3 fnrm: 2.80E-15 pnrm: 1.13E-03 inrmr: 1.22E-15 inrmu: 7.64E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     86 Time=   4.9337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     256] linear =    14 [      1080] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   2.798775E-15  3.998250E-17  1.221245E-15
+  --> max chng: dpmx=   1.2072E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     86 Time=   4.8337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        86]
+  --> max chng: dcmx=   8.5733E-05 dc/dt=   2.7186E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.66E-05 pnrm: 2.73E+03 inrmr: 2.54E-05 inrmu: 1.25E+03 rsn:   0
+  2 fnrm: 3.93E-09 pnrm: 1.62E+01 inrmr: 2.82E-09 inrmu: 8.08E+00 rsn:   0
+  3 fnrm: 2.37E-15 pnrm: 1.01E-03 inrmr: 1.05E-15 inrmu: 6.47E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     87 Time=   5.0337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     259] linear =    14 [      1094] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   2.373386E-15  3.390551E-17  1.054712E-15
+  --> max chng: dpmx=   1.2383E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     87 Time=   4.9337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        87]
+  --> max chng: dcmx=   9.7867E-05 dc/dt=   3.1033E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.45E-05 pnrm: 2.74E+03 inrmr: 2.37E-05 inrmu: 1.28E+03 rsn:   0
+  2 fnrm: 3.39E-09 pnrm: 1.65E+01 inrmr: 2.43E-09 inrmu: 8.64E+00 rsn:   0
+  3 fnrm: 2.11E-15 pnrm: 9.39E-04 inrmr: 8.88E-16 inrmu: 5.47E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     88 Time=   5.1337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     262] linear =    14 [      1108] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   2.114530E-15  3.020758E-17  8.881784E-16
+  --> max chng: dpmx=   1.2675E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     88 Time=   5.0337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        88]
+  --> max chng: dcmx=   1.1176E-04 dc/dt=   3.5438E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.27E-05 pnrm: 2.75E+03 inrmr: 2.22E-05 inrmu: 1.30E+03 rsn:   0
+  2 fnrm: 2.93E-09 pnrm: 1.69E+01 inrmr: 2.09E-09 inrmu: 9.19E+00 rsn:   0
+  3 fnrm: 2.27E-15 pnrm: 9.26E-04 inrmr: 9.44E-16 inrmu: 4.61E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     89 Time=   5.2337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     265] linear =    14 [      1122] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   2.273925E-15  3.248465E-17  9.436896E-16
+  --> max chng: dpmx=   1.2949E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     89 Time=   5.1337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        89]
+  --> max chng: dcmx=   1.2766E-04 dc/dt=   4.0480E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.10E-05 pnrm: 2.75E+03 inrmr: 2.07E-05 inrmu: 1.33E+03 rsn:   0
+  2 fnrm: 2.54E-09 pnrm: 1.75E+01 inrmr: 1.79E-09 inrmu: 9.72E+00 rsn:   0
+  3 fnrm: 1.97E-15 pnrm: 9.61E-04 inrmr: 9.99E-16 inrmu: 4.92E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     90 Time=   5.3337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     268] linear =    14 [      1136] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.969668E-15  2.813812E-17  9.992007E-16
+  --> max chng: dpmx=   1.3216E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     90 Time=   5.2337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        90]
+  --> max chng: dcmx=   1.4586E-04 dc/dt=   4.6251E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.95E-05 pnrm: 2.76E+03 inrmr: 1.93E-05 inrmu: 1.36E+03 rsn:   0
+  2 fnrm: 2.21E-09 pnrm: 1.73E+01 inrmr: 1.54E-09 inrmu: 1.03E+01 rsn:   0
+  3 fnrm: 1.40E-15 pnrm: 9.54E-04 inrmr: 6.11E-16 inrmu: 5.74E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     91 Time=   5.4337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     271] linear =    14 [      1150] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.397735E-15  1.996764E-17  6.106227E-16
+  --> max chng: dpmx=   1.3464E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     91 Time=   5.3337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        91]
+  --> max chng: dcmx=   1.6668E-04 dc/dt=   5.2854E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.82E-05 pnrm: 2.77E+03 inrmr: 1.80E-05 inrmu: 1.38E+03 rsn:   0
+  2 fnrm: 1.97E-09 pnrm: 1.86E+01 inrmr: 1.31E-09 inrmu: 1.08E+01 rsn:   0
+  3 fnrm: 1.18E-15 pnrm: 1.14E-03 inrmr: 4.44E-16 inrmu: 6.59E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     92 Time=   5.5337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     274] linear =    14 [      1164] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.184093E-15  1.691562E-17  4.440892E-16
+  --> max chng: dpmx=   1.3689E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     92 Time=   5.4337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        92]
+  --> max chng: dcmx=   1.9049E-04 dc/dt=   6.0405E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.71E-05 pnrm: 2.78E+03 inrmr: 1.67E-05 inrmu: 1.40E+03 rsn:   0
+  2 fnrm: 1.81E-09 pnrm: 1.93E+01 inrmr: 1.11E-09 inrmu: 1.13E+01 rsn:   0
+  3 fnrm: 1.31E-15 pnrm: 1.26E-03 inrmr: 5.00E-16 inrmu: 7.44E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     93 Time=   5.6337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     277] linear =    14 [      1178] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.305398E-15  1.864854E-17  4.996004E-16
+  --> max chng: dpmx=   1.3890E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     93 Time=   5.5337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        93]
+  --> max chng: dcmx=   2.1772E-04 dc/dt=   6.9038E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.63E-05 pnrm: 2.78E+03 inrmr: 1.55E-05 inrmu: 1.42E+03 rsn:   0
+  2 fnrm: 1.72E-09 pnrm: 1.99E+01 inrmr: 9.45E-10 inrmu: 1.18E+01 rsn:   0
+  3 fnrm: 4.44E-15 pnrm: 1.40E-03 inrmr: 1.89E-15 inrmu: 8.27E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     94 Time=   5.7337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     280] linear =    14 [      1192] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   4.436727E-15  6.338181E-17  1.887379E-15
+  --> max chng: dpmx=   1.4068E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     94 Time=   5.6337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        94]
+  --> max chng: dcmx=   2.4882E-04 dc/dt=   7.8900E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.57E-05 pnrm: 2.79E+03 inrmr: 1.44E-05 inrmu: 1.43E+03 rsn:   0
+  2 fnrm: 1.72E-09 pnrm: 2.05E+01 inrmr: 1.02E-09 inrmu: 1.22E+01 rsn:   0
+  3 fnrm: 2.04E-15 pnrm: 1.53E-03 inrmr: 8.88E-16 inrmu: 9.07E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     95 Time=   5.8337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     283] linear =    14 [      1206] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   2.041120E-15  2.915886E-17  8.881784E-16
+  --> max chng: dpmx=   1.4222E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     95 Time=   5.7337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        95]
+  --> max chng: dcmx=   2.8432E-04 dc/dt=   9.0157E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.52E-05 pnrm: 2.79E+03 inrmr: 1.33E-05 inrmu: 1.45E+03 rsn:   0
+  2 fnrm: 1.78E-09 pnrm: 2.11E+01 inrmr: 1.17E-09 inrmu: 1.26E+01 rsn:   0
+  3 fnrm: 1.34E-15 pnrm: 1.67E-03 inrmr: 5.55E-16 inrmu: 9.85E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     96 Time=   5.9337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     286] linear =    14 [      1220] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.342636E-15  1.918051E-17  5.551115E-16
+  --> max chng: dpmx=   1.4354E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     96 Time=   5.8337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        96]
+  --> max chng: dcmx=   3.2480E-04 dc/dt=   1.0299E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.50E-05 pnrm: 2.79E+03 inrmr: 1.25E-05 inrmu: 1.46E+03 rsn:   0
+  2 fnrm: 1.89E-09 pnrm: 2.17E+01 inrmr: 1.32E-09 inrmu: 1.30E+01 rsn:   0
+  3 fnrm: 1.20E-15 pnrm: 1.81E-03 inrmr: 4.44E-16 inrmu: 1.06E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     97 Time=   6.0337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     289] linear =    14 [      1234] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.195747E-15  1.708210E-17  4.440892E-16
+  --> max chng: dpmx=   1.4463E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     97 Time=   5.9337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        97]
+  --> max chng: dcmx=   3.7091E-04 dc/dt=   1.1762E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.50E-05 pnrm: 2.79E+03 inrmr: 1.33E-05 inrmu: 1.47E+03 rsn:   0
+  2 fnrm: 2.03E-09 pnrm: 2.22E+01 inrmr: 1.48E-09 inrmu: 1.33E+01 rsn:   0
+  3 fnrm: 1.10E-15 pnrm: 1.94E-03 inrmr: 4.44E-16 inrmu: 1.13E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     98 Time=   6.1337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     292] linear =    14 [      1248] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.097662E-15  1.568089E-17  4.440892E-16
+  --> max chng: dpmx=   1.4547E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     98 Time=   6.0337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        98]
+  --> max chng: dcmx=   4.2337E-04 dc/dt=   1.3425E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.51E-05 pnrm: 2.79E+03 inrmr: 1.41E-05 inrmu: 1.47E+03 rsn:   0
+  2 fnrm: 2.21E-09 pnrm: 2.27E+01 inrmr: 1.65E-09 inrmu: 1.36E+01 rsn:   0
+  3 fnrm: 1.15E-15 pnrm: 2.06E-03 inrmr: 3.89E-16 inrmu: 1.19E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW     99 Time=   6.2337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     295] linear =    14 [      1262] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.147081E-15  1.638687E-17  3.885781E-16
+  --> max chng: dpmx=   1.4607E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN     99 Time=   6.1337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [        99]
+  --> max chng: dcmx=   4.8294E-04 dc/dt=   1.5314E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.54E-05 pnrm: 2.78E+03 inrmr: 1.49E-05 inrmu: 1.48E+03 rsn:   0
+  2 fnrm: 2.39E-09 pnrm: 2.31E+01 inrmr: 1.81E-09 inrmu: 1.38E+01 rsn:   0
+  3 fnrm: 1.19E-15 pnrm: 2.18E-03 inrmr: 3.33E-16 inrmu: 1.24E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    100 Time=   6.3337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     298] linear =    14 [      1276] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.191875E-15  1.702679E-17  3.330669E-16
+  --> max chng: dpmx=   1.4645E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    100 Time=   6.2337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       100]
+  --> max chng: dcmx=   5.5046E-04 dc/dt=   1.7455E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.57E-05 pnrm: 2.77E+03 inrmr: 1.57E-05 inrmu: 1.48E+03 rsn:   0
+  2 fnrm: 2.59E-09 pnrm: 2.34E+01 inrmr: 1.97E-09 inrmu: 1.40E+01 rsn:   0
+  3 fnrm: 1.10E-15 pnrm: 2.28E-03 inrmr: 4.44E-16 inrmu: 1.29E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    101 Time=   6.4337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     301] linear =    14 [      1290] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.101865E-15  1.574093E-17  4.440892E-16
+  --> max chng: dpmx=   1.4660E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    101 Time=   6.3337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       101]
+  --> max chng: dcmx=   6.2683E-04 dc/dt=   1.9877E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.62E-05 pnrm: 2.76E+03 inrmr: 1.64E-05 inrmu: 1.48E+03 rsn:   0
+  2 fnrm: 2.78E-09 pnrm: 2.37E+01 inrmr: 2.13E-09 inrmu: 1.41E+01 rsn:   0
+  3 fnrm: 1.26E-15 pnrm: 2.38E-03 inrmr: 4.44E-16 inrmu: 1.34E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    102 Time=   6.5337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     304] linear =    14 [      1304] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.264631E-15  1.806616E-17  4.440892E-16
+  --> max chng: dpmx=   1.4654E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    102 Time=   6.4337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       102]
+  --> max chng: dcmx=   7.1298E-04 dc/dt=   2.2608E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.67E-05 pnrm: 2.75E+03 inrmr: 1.71E-05 inrmu: 1.48E+03 rsn:   0
+  2 fnrm: 2.98E-09 pnrm: 2.39E+01 inrmr: 2.28E-09 inrmu: 1.43E+01 rsn:   0
+  3 fnrm: 1.25E-15 pnrm: 2.46E-03 inrmr: 4.44E-16 inrmu: 1.37E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    103 Time=   6.6337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     307] linear =    14 [      1318] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.249926E-15  1.785608E-17  4.440892E-16
+  --> max chng: dpmx=   1.4628E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    103 Time=   6.5337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       103]
+  --> max chng: dcmx=   8.0987E-04 dc/dt=   2.5681E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.72E-05 pnrm: 2.73E+03 inrmr: 1.78E-05 inrmu: 1.47E+03 rsn:   0
+  2 fnrm: 3.17E-09 pnrm: 2.41E+01 inrmr: 2.42E-09 inrmu: 1.43E+01 rsn:   0
+  3 fnrm: 1.11E-15 pnrm: 2.53E-03 inrmr: 3.33E-16 inrmu: 1.40E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    104 Time=   6.7337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     310] linear =    14 [      1332] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.110223E-15  1.586033E-17  3.330669E-16
+  --> max chng: dpmx=   1.4583E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    104 Time=   6.6337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       104]
+  --> max chng: dcmx=   9.1845E-04 dc/dt=   2.9124E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.78E-05 pnrm: 2.72E+03 inrmr: 1.84E-05 inrmu: 1.47E+03 rsn:   0
+  2 fnrm: 3.35E-09 pnrm: 2.42E+01 inrmr: 2.56E-09 inrmu: 1.44E+01 rsn:   0
+  3 fnrm: 1.16E-15 pnrm: 2.59E-03 inrmr: 3.33E-16 inrmu: 1.42E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    105 Time=   6.8337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     313] linear =    14 [      1346] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.159107E-15  1.655867E-17  3.330669E-16
+  --> max chng: dpmx=   1.4521E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    105 Time=   6.7337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       105]
+  --> max chng: dcmx=   1.0396E-03 dc/dt=   3.2966E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.84E-05 pnrm: 2.70E+03 inrmr: 1.90E-05 inrmu: 1.46E+03 rsn:   0
+  2 fnrm: 3.52E-09 pnrm: 2.42E+01 inrmr: 2.69E-09 inrmu: 1.44E+01 rsn:   0
+  3 fnrm: 1.09E-15 pnrm: 2.63E-03 inrmr: 3.33E-16 inrmu: 1.44E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    106 Time=   6.9337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     316] linear =    14 [      1360] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.092033E-15  1.560047E-17  3.330669E-16
+  --> max chng: dpmx=   1.4442E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    106 Time=   6.8337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       106]
+  --> max chng: dcmx=   1.1742E-03 dc/dt=   3.7233E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.90E-05 pnrm: 2.67E+03 inrmr: 1.96E-05 inrmu: 1.45E+03 rsn:   0
+  2 fnrm: 3.68E-09 pnrm: 2.42E+01 inrmr: 2.81E-09 inrmu: 1.43E+01 rsn:   0
+  3 fnrm: 3.55E-15 pnrm: 2.66E-03 inrmr: 1.89E-15 inrmu: 1.44E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    107 Time=   7.0337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     319] linear =    14 [      1374] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   3.545768E-15  5.065383E-17  1.887379E-15
+  --> max chng: dpmx=   1.4347E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    107 Time=   6.9337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       107]
+  --> max chng: dcmx=   1.3227E-03 dc/dt=   4.1943E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.96E-05 pnrm: 2.65E+03 inrmr: 2.02E-05 inrmu: 1.44E+03 rsn:   0
+  2 fnrm: 3.83E-09 pnrm: 2.41E+01 inrmr: 2.92E-09 inrmu: 1.43E+01 rsn:   0
+  3 fnrm: 4.97E-15 pnrm: 2.68E-03 inrmr: 2.11E-15 inrmu: 1.44E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    108 Time=   7.1337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     322] linear =    14 [      1388] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   4.970651E-15  7.100930E-17  2.109424E-15
+  --> max chng: dpmx=   1.4239E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    108 Time=   7.0337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       108]
+  --> max chng: dcmx=   1.4855E-03 dc/dt=   4.7106E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.01E-05 pnrm: 2.63E+03 inrmr: 2.06E-05 inrmu: 1.43E+03 rsn:   0
+  2 fnrm: 3.96E-09 pnrm: 2.40E+01 inrmr: 3.02E-09 inrmu: 1.42E+01 rsn:   0
+  3 fnrm: 5.88E-15 pnrm: 2.69E-03 inrmr: 2.89E-15 inrmu: 1.44E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    109 Time=   7.2337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     325] linear =    14 [      1402] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   5.884444E-15  8.406348E-17  2.886580E-15
+  --> max chng: dpmx=   1.4118E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    109 Time=   7.1337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       109]
+  --> max chng: dcmx=   1.6625E-03 dc/dt=   5.2716E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.07E-05 pnrm: 2.60E+03 inrmr: 2.11E-05 inrmu: 1.41E+03 rsn:   0
+  2 fnrm: 4.08E-09 pnrm: 2.38E+01 inrmr: 3.11E-09 inrmu: 1.41E+01 rsn:   0
+  3 fnrm: 4.56E-15 pnrm: 2.69E-03 inrmr: 2.00E-15 inrmu: 1.44E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    110 Time=   7.3337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     328] linear =    14 [      1416] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   4.556989E-15  6.509984E-17  1.998401E-15
+  --> max chng: dpmx=   1.3985E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    110 Time=   7.2337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       110]
+  --> max chng: dcmx=   1.8527E-03 dc/dt=   5.8749E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.12E-05 pnrm: 2.58E+03 inrmr: 2.15E-05 inrmu: 1.40E+03 rsn:   0
+  2 fnrm: 4.18E-09 pnrm: 2.36E+01 inrmr: 3.18E-09 inrmu: 1.39E+01 rsn:   0
+  3 fnrm: 4.68E-15 pnrm: 2.67E-03 inrmr: 2.33E-15 inrmu: 1.44E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    111 Time=   7.4337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     331] linear =    14 [      1430] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   4.677453E-15  6.682075E-17  2.331468E-15
+  --> max chng: dpmx=   1.3842E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    111 Time=   7.3337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       111]
+  --> max chng: dcmx=   2.0546E-03 dc/dt=   6.5152E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.16E-05 pnrm: 2.55E+03 inrmr: 2.19E-05 inrmu: 1.38E+03 rsn:   0
+  2 fnrm: 4.27E-09 pnrm: 2.34E+01 inrmr: 3.24E-09 inrmu: 1.38E+01 rsn:   0
+  3 fnrm: 4.61E-15 pnrm: 2.65E-03 inrmr: 2.22E-15 inrmu: 1.44E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    112 Time=   7.5337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     334] linear =    14 [      1444] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   4.608094E-15  6.582992E-17  2.220446E-15
+  --> max chng: dpmx=   1.3690E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    112 Time=   7.4337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       112]
+  --> max chng: dcmx=   2.2654E-03 dc/dt=   7.1835E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.21E-05 pnrm: 2.52E+03 inrmr: 2.22E-05 inrmu: 1.37E+03 rsn:   0
+  2 fnrm: 4.34E-09 pnrm: 2.31E+01 inrmr: 3.29E-09 inrmu: 1.36E+01 rsn:   0
+  3 fnrm: 4.47E-15 pnrm: 2.61E-03 inrmr: 1.72E-15 inrmu: 1.42E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    113 Time=   7.6337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     337] linear =    13 [      1457] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   4.469596E-15  6.385137E-17  1.720846E-15
+  --> max chng: dpmx=   1.3529E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    113 Time=   7.5337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       113]
+  --> max chng: dcmx=   2.4806E-03 dc/dt=   7.8661E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.24E-05 pnrm: 2.49E+03 inrmr: 2.25E-05 inrmu: 1.35E+03 rsn:   0
+  2 fnrm: 4.39E-09 pnrm: 2.28E+01 inrmr: 3.33E-09 inrmu: 1.34E+01 rsn:   0
+  3 fnrm: 5.84E-15 pnrm: 2.60E-03 inrmr: 2.66E-15 inrmu: 1.40E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    114 Time=   7.7337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     340] linear =    13 [      1470] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   5.841873E-15  8.345533E-17  2.664535E-15
+  --> max chng: dpmx=   1.3362E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    114 Time=   7.6337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       114]
+  --> max chng: dcmx=   2.6941E-03 dc/dt=   8.5428E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.28E-05 pnrm: 2.46E+03 inrmr: 2.28E-05 inrmu: 1.33E+03 rsn:   0
+  2 fnrm: 4.43E-09 pnrm: 2.25E+01 inrmr: 3.35E-09 inrmu: 1.32E+01 rsn:   0
+  3 fnrm: 1.07E-14 pnrm: 2.55E-03 inrmr: 3.89E-15 inrmu: 1.38E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    115 Time=   7.8337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     343] linear =    13 [      1483] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   1.069825E-14  1.528322E-16  3.885781E-15
+  --> max chng: dpmx=   1.3188E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    115 Time=   7.7337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       115]
+  --> max chng: dcmx=   2.8970E-03 dc/dt=   9.1864E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.31E-05 pnrm: 2.43E+03 inrmr: 2.30E-05 inrmu: 1.31E+03 rsn:   0
+  2 fnrm: 4.45E-09 pnrm: 2.21E+01 inrmr: 3.36E-09 inrmu: 1.29E+01 rsn:   0
+  3 fnrm: 1.16E-14 pnrm: 2.49E-03 inrmr: 4.22E-15 inrmu: 1.35E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    116 Time=   7.9337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     346] linear =    13 [      1496] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   1.160329E-14  1.657613E-16  4.218847E-15
+  --> max chng: dpmx=   1.3010E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    116 Time=   7.8337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       116]
+  --> max chng: dcmx=   3.0780E-03 dc/dt=   9.7601E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.33E-05 pnrm: 2.40E+03 inrmr: 2.32E-05 inrmu: 1.30E+03 rsn:   0
+  2 fnrm: 4.46E-09 pnrm: 2.17E+01 inrmr: 3.37E-09 inrmu: 1.27E+01 rsn:   0
+  3 fnrm: 9.87E-15 pnrm: 2.43E-03 inrmr: 3.89E-15 inrmu: 1.32E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    117 Time=   8.0337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     349] linear =    13 [      1509] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   9.867566E-15  1.409652E-16  3.885781E-15
+  --> max chng: dpmx=   1.2827E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    117 Time=   7.9337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       117]
+  --> max chng: dcmx=   3.2220E-03 dc/dt=   1.0217E-07 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.35E-05 pnrm: 2.36E+03 inrmr: 2.34E-05 inrmu: 1.28E+03 rsn:   0
+  2 fnrm: 4.46E-09 pnrm: 2.13E+01 inrmr: 3.36E-09 inrmu: 1.25E+01 rsn:   0
+  3 fnrm: 7.82E-15 pnrm: 2.36E-03 inrmr: 3.33E-15 inrmu: 1.29E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    118 Time=   8.1337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     352] linear =    13 [      1522] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   7.819589E-15  1.117084E-16  3.330669E-15
+  --> max chng: dpmx=   1.2641E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    118 Time=   8.0337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       118]
+  --> max chng: dcmx=   3.3108E-03 dc/dt=   1.0498E-07 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.37E-05 pnrm: 2.33E+03 inrmr: 2.35E-05 inrmu: 1.26E+03 rsn:   0
+  2 fnrm: 4.43E-09 pnrm: 2.09E+01 inrmr: 3.34E-09 inrmu: 1.22E+01 rsn:   0
+  3 fnrm: 6.60E-15 pnrm: 2.29E-03 inrmr: 2.78E-15 inrmu: 1.25E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    119 Time=   8.2337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     355] linear =    13 [      1535] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   6.599293E-15  9.427561E-17  2.775558E-15
+  --> max chng: dpmx=   1.2452E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    119 Time=   8.1337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       119]
+  --> max chng: dcmx=   3.3223E-03 dc/dt=   1.0535E-07 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.38E-05 pnrm: 2.30E+03 inrmr: 2.36E-05 inrmu: 1.24E+03 rsn:   0
+  2 fnrm: 4.40E-09 pnrm: 2.05E+01 inrmr: 3.31E-09 inrmu: 1.19E+01 rsn:   0
+  3 fnrm: 5.63E-15 pnrm: 2.22E-03 inrmr: 2.33E-15 inrmu: 1.21E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    120 Time=   8.3337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     358] linear =    13 [      1548] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   5.626378E-15  8.037682E-17  2.331468E-15
+  --> max chng: dpmx=   1.2260E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    120 Time=   8.2337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       120]
+  --> max chng: dcmx=   3.2313E-03 dc/dt=   1.0246E-07 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.38E-05 pnrm: 2.27E+03 inrmr: 2.36E-05 inrmu: 1.22E+03 rsn:   0
+  2 fnrm: 4.36E-09 pnrm: 2.01E+01 inrmr: 3.27E-09 inrmu: 1.17E+01 rsn:   0
+  3 fnrm: 4.89E-15 pnrm: 2.15E-03 inrmr: 2.33E-15 inrmu: 1.17E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    121 Time=   8.4337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     361] linear =    13 [      1561] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   4.889080E-15  6.984400E-17  2.331468E-15
+  --> max chng: dpmx=   1.2068E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    121 Time=   8.3337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       121]
+  --> max chng: dcmx=   3.0108E-03 dc/dt=   9.5473E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.38E-05 pnrm: 2.23E+03 inrmr: 2.37E-05 inrmu: 1.20E+03 rsn:   0
+  2 fnrm: 4.30E-09 pnrm: 1.96E+01 inrmr: 3.23E-09 inrmu: 1.14E+01 rsn:   0
+  3 fnrm: 5.66E-15 pnrm: 2.07E-03 inrmr: 2.66E-15 inrmu: 1.12E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    122 Time=   8.5337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     364] linear =    13 [      1574] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   5.655330E-15  8.079044E-17  2.664535E-15
+  --> max chng: dpmx=   1.1874E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    122 Time=   8.4337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       122]
+  --> max chng: dcmx=   2.6343E-03 dc/dt=   8.3532E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.38E-05 pnrm: 2.20E+03 inrmr: 2.36E-05 inrmu: 1.18E+03 rsn:   0
+  2 fnrm: 4.23E-09 pnrm: 1.92E+01 inrmr: 3.17E-09 inrmu: 1.11E+01 rsn:   0
+  3 fnrm: 7.27E-15 pnrm: 2.00E-03 inrmr: 3.11E-15 inrmu: 1.08E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    123 Time=   8.6337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     367] linear =    13 [      1587] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           13  /            3
+  --> SNES Residual:   7.266874E-15  1.038125E-16  3.108624E-15
+  --> max chng: dpmx=   1.1683E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    123 Time=   8.5337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       123]
+  --> max chng: dcmx=   2.0790E-03 dc/dt=   6.5925E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.38E-05 pnrm: 2.17E+03 inrmr: 2.36E-05 inrmu: 1.16E+03 rsn:   0
+  2 fnrm: 4.16E-09 pnrm: 1.87E+01 inrmr: 3.11E-09 inrmu: 1.09E+01 rsn:   0
+  3 fnrm: 1.23E-15 pnrm: 1.92E-03 inrmr: 4.44E-16 inrmu: 1.04E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    124 Time=   8.7337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     370] linear =    14 [      1601] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.228792E-15  1.755417E-17  4.440892E-16
+  --> max chng: dpmx=   1.1491E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    124 Time=   8.6337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       124]
+  --> max chng: dcmx=   1.3316E-03 dc/dt=   4.2226E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.37E-05 pnrm: 2.14E+03 inrmr: 2.35E-05 inrmu: 1.14E+03 rsn:   0
+  2 fnrm: 4.07E-09 pnrm: 1.83E+01 inrmr: 3.05E-09 inrmu: 1.06E+01 rsn:   0
+  3 fnrm: 1.22E-15 pnrm: 1.85E-03 inrmr: 3.33E-16 inrmu: 9.91E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    125 Time=   8.8337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     373] linear =    14 [      1615] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.223766E-15  1.748237E-17  3.330669E-16
+  --> max chng: dpmx=   1.1300E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    125 Time=   8.7337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       125]
+  --> max chng: dcmx=   8.7333E-04 dc/dt=   2.7693E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.35E-05 pnrm: 2.11E+03 inrmr: 2.34E-05 inrmu: 1.12E+03 rsn:   0
+  2 fnrm: 3.98E-09 pnrm: 1.78E+01 inrmr: 2.97E-09 inrmu: 1.03E+01 rsn:   0
+  3 fnrm: 1.27E-15 pnrm: 1.77E-03 inrmr: 4.44E-16 inrmu: 9.46E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    126 Time=   8.9337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     376] linear =    14 [      1629] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.265849E-15  1.808356E-17  4.440892E-16
+  --> max chng: dpmx=   1.1109E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    126 Time=   8.8337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       126]
+  --> max chng: dcmx=   9.5981E-04 dc/dt=   3.0435E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.34E-05 pnrm: 2.08E+03 inrmr: 2.33E-05 inrmu: 1.10E+03 rsn:   0
+  2 fnrm: 3.88E-09 pnrm: 1.74E+01 inrmr: 2.90E-09 inrmu: 1.01E+01 rsn:   0
+  3 fnrm: 1.09E-15 pnrm: 1.70E-03 inrmr: 4.44E-16 inrmu: 9.02E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    127 Time=   9.0337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     379] linear =    14 [      1643] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.087792E-15  1.553989E-17  4.440892E-16
+  --> max chng: dpmx=   1.0920E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    127 Time=   8.9337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       127]
+  --> max chng: dcmx=   1.9271E-03 dc/dt=   6.1109E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.32E-05 pnrm: 2.05E+03 inrmr: 2.31E-05 inrmu: 1.08E+03 rsn:   0
+  2 fnrm: 3.78E-09 pnrm: 1.69E+01 inrmr: 2.82E-09 inrmu: 9.82E+00 rsn:   0
+  3 fnrm: 1.07E-15 pnrm: 1.62E-03 inrmr: 3.33E-16 inrmu: 8.57E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    128 Time=   9.1337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     382] linear =    14 [      1657] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.066334E-15  1.523335E-17  3.330669E-16
+  --> max chng: dpmx=   1.0732E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    128 Time=   9.0337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       128]
+  --> max chng: dcmx=   3.1769E-03 dc/dt=   1.0074E-07 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.29E-05 pnrm: 2.02E+03 inrmr: 2.30E-05 inrmu: 1.06E+03 rsn:   0
+  2 fnrm: 3.67E-09 pnrm: 1.65E+01 inrmr: 2.73E-09 inrmu: 9.56E+00 rsn:   0
+  3 fnrm: 1.10E-15 pnrm: 1.55E-03 inrmr: 4.44E-16 inrmu: 8.14E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    129 Time=   9.2337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     385] linear =    14 [      1671] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.103262E-15  1.576089E-17  4.440892E-16
+  --> max chng: dpmx=   1.0546E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    129 Time=   9.1337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       129]
+  --> max chng: dcmx=   4.3507E-03 dc/dt=   1.3796E-07 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.26E-05 pnrm: 1.99E+03 inrmr: 2.28E-05 inrmu: 1.05E+03 rsn:   0
+  2 fnrm: 3.55E-09 pnrm: 1.60E+01 inrmr: 2.64E-09 inrmu: 9.31E+00 rsn:   0
+  3 fnrm: 1.17E-15 pnrm: 1.48E-03 inrmr: 4.44E-16 inrmu: 7.71E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    130 Time=   9.3337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     388] linear =    14 [      1685] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.167055E-15  1.667222E-17  4.440892E-16
+  --> max chng: dpmx=   1.0362E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    130 Time=   9.2337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       130]
+  --> max chng: dcmx=   5.3259E-03 dc/dt=   1.6888E-07 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.23E-05 pnrm: 1.96E+03 inrmr: 2.26E-05 inrmu: 1.03E+03 rsn:   0
+  2 fnrm: 3.44E-09 pnrm: 1.56E+01 inrmr: 2.55E-09 inrmu: 9.06E+00 rsn:   0
+  3 fnrm: 8.08E-16 pnrm: 1.42E-03 inrmr: 2.22E-16 inrmu: 7.29E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    131 Time=   9.4337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     391] linear =    14 [      1699] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   8.082546E-16  1.154649E-17  2.220446E-16
+  --> max chng: dpmx=   1.0180E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    131 Time=   9.3337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       131]
+  --> max chng: dcmx=   5.9857E-03 dc/dt=   1.8981E-07 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.20E-05 pnrm: 1.93E+03 inrmr: 2.23E-05 inrmu: 1.01E+03 rsn:   0
+  2 fnrm: 3.32E-09 pnrm: 1.52E+01 inrmr: 2.46E-09 inrmu: 8.81E+00 rsn:   0
+  3 fnrm: 8.74E-16 pnrm: 1.35E-03 inrmr: 2.22E-16 inrmu: 6.88E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    132 Time=   9.5337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     394] linear =    14 [      1713] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   8.741905E-16  1.248844E-17  2.220446E-16
+  --> max chng: dpmx=   1.0000E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    132 Time=   9.4337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       132]
+  --> max chng: dcmx=   6.2442E-03 dc/dt=   1.9800E-07 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.16E-05 pnrm: 1.90E+03 inrmr: 2.20E-05 inrmu: 9.91E+02 rsn:   0
+  2 fnrm: 3.20E-09 pnrm: 1.48E+01 inrmr: 2.37E-09 inrmu: 8.57E+00 rsn:   0
+  3 fnrm: 1.02E-15 pnrm: 1.29E-03 inrmr: 3.33E-16 inrmu: 6.52E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    133 Time=   9.6337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     397] linear =    14 [      1727] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.019049E-15  1.455785E-17  3.330669E-16
+  --> max chng: dpmx=   9.8231E+02
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    133 Time=   9.5337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       133]
+  --> max chng: dcmx=   6.0711E-03 dc/dt=   1.9251E-07 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.13E-05 pnrm: 1.88E+03 inrmr: 2.18E-05 inrmu: 9.73E+02 rsn:   0
+  2 fnrm: 3.07E-09 pnrm: 1.44E+01 inrmr: 2.27E-09 inrmu: 8.33E+00 rsn:   0
+  3 fnrm: 9.98E-16 pnrm: 1.23E-03 inrmr: 3.33E-16 inrmu: 6.21E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    134 Time=   9.7337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     400] linear =    14 [      1741] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   9.976576E-16  1.425225E-17  3.330669E-16
+  --> max chng: dpmx=   9.6484E+02
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    134 Time=   9.6337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       134]
+  --> max chng: dcmx=   5.5062E-03 dc/dt=   1.7460E-07 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.08E-05 pnrm: 1.85E+03 inrmr: 2.15E-05 inrmu: 9.56E+02 rsn:   0
+  2 fnrm: 2.95E-09 pnrm: 1.40E+01 inrmr: 2.18E-09 inrmu: 8.10E+00 rsn:   0
+  3 fnrm: 9.24E-16 pnrm: 1.17E-03 inrmr: 3.33E-16 inrmu: 5.92E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    135 Time=   9.8337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     403] linear =    14 [      1755] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   9.238897E-16  1.319842E-17  3.330669E-16
+  --> max chng: dpmx=   9.4763E+02
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    135 Time=   9.7337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       135]
+  --> max chng: dcmx=   4.6559E-03 dc/dt=   1.4764E-07 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.04E-05 pnrm: 1.82E+03 inrmr: 2.12E-05 inrmu: 9.39E+02 rsn:   0
+  2 fnrm: 2.82E-09 pnrm: 1.36E+01 inrmr: 2.08E-09 inrmu: 7.88E+00 rsn:   0
+  3 fnrm: 1.08E-15 pnrm: 1.12E-03 inrmr: 4.44E-16 inrmu: 5.64E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    136 Time=   9.9337E-02 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     406] linear =    14 [      1769] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.077832E-15  1.539759E-17  4.440892E-16
+  --> max chng: dpmx=   9.3070E+02
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    136 Time=   9.8337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       136]
+  --> max chng: dcmx=   3.6651E-03 dc/dt=   1.1622E-07 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.00E-05 pnrm: 1.80E+03 inrmr: 2.08E-05 inrmu: 9.22E+02 rsn:   0
+  2 fnrm: 2.70E-09 pnrm: 1.32E+01 inrmr: 1.99E-09 inrmu: 7.66E+00 rsn:   0
+  3 fnrm: 1.05E-15 pnrm: 1.07E-03 inrmr: 3.33E-16 inrmu: 5.37E-04 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    137 Time=   1.0034E-01 Dt=   1.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     409] linear =    14 [      1783] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           14  /            3
+  --> SNES Residual:   1.050320E-15  1.500458E-17  3.330669E-16
+  --> max chng: dpmx=   9.1405E+02
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    137 Time=   9.9337E-02 Dt=   1.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       137]
+  --> max chng: dcmx=   2.6745E-03 dc/dt=   8.4809E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 6.07E-05 pnrm: 3.54E+03 inrmr: 4.22E-05 inrmu: 1.81E+03 rsn:   0
+  2 fnrm: 2.17E-08 pnrm: 5.11E+01 inrmr: 1.60E-08 inrmu: 2.93E+01 rsn:   0
+  3 fnrm: 1.30E-14 pnrm: 1.61E-02 inrmr: 4.33E-15 inrmu: 7.97E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    138 Time=   1.0234E-01 Dt=   2.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     412] linear =    15 [      1798] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           15  /            3
+  --> SNES Residual:   1.296239E-14  1.851770E-16  4.329870E-15
+  --> max chng: dpmx=   1.7775E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    138 Time=   1.0034E-01 Dt=   2.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       138]
+  --> max chng: dcmx=   2.3497E-03 dc/dt=   3.7255E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 1.24E-04 pnrm: 6.88E+03 inrmr: 8.64E-05 inrmu: 3.47E+03 rsn:   0
+  2 fnrm: 1.76E-07 pnrm: 1.92E+02 inrmr: 1.30E-07 inrmu: 1.08E+02 rsn:   0
+  3 fnrm: 6.27E-13 pnrm: 2.47E-01 inrmr: 2.92E-13 inrmu: 1.13E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    139 Time=   1.0634E-01 Dt=   4.0000E-03 [y] snes_conv_reason:   11
+  newton =   3 [     415] linear =    15 [      1813] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           15  /            3
+  --> SNES Residual:   6.267963E-13  8.954233E-15  2.923217E-13
+  --> max chng: dpmx=   3.3577E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    139 Time=   1.0234E-01 Dt=   4.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       139]
+  --> max chng: dcmx=   3.3721E-03 dc/dt=   2.6732E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.60E-04 pnrm: 1.30E+04 inrmr: 1.79E-04 inrmu: 6.35E+03 rsn:   0
+  2 fnrm: 1.50E-06 pnrm: 6.80E+02 inrmr: 1.08E-06 inrmu: 3.61E+02 rsn:   0
+  3 fnrm: 5.12E-11 pnrm: 3.99E+00 inrmr: 3.97E-11 inrmu: 1.53E+00 rsn: atol
+ update_reason:            1
+
+ FLOW    140 Time=   1.1434E-01 Dt=   8.0000E-03 [y] snes_conv_reason:    2
+  newton =   3 [     418] linear =    19 [      1832] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           19  /            3
+  --> SNES Residual:   5.122587E-11  7.317982E-13  3.969397E-11
+  --> max chng: dpmx=   5.9848E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    140 Time=   1.0634E-01 Dt=   8.0000E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       140]
+  --> max chng: dcmx=   6.3627E-03 dc/dt=   2.5220E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 5.73E-04 pnrm: 2.37E+04 inrmr: 3.65E-04 inrmu: 1.06E+04 rsn:   0
+  2 fnrm: 1.29E-05 pnrm: 2.08E+03 inrmr: 8.59E-06 inrmu: 1.07E+03 rsn:   0
+  3 fnrm: 7.11E-09 pnrm: 5.39E+01 inrmr: 4.93E-09 inrmu: 1.62E+01 rsn:   0
+  4 fnrm: 2.66E-14 pnrm: 3.08E-02 inrmr: 8.32E-15 inrmu: 9.46E-03 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    141 Time=   1.3034E-01 Dt=   1.6000E-02 [y] snes_conv_reason:   11
+  newton =   4 [     422] linear =    27 [      1859] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           27  /            4
+  --> SNES Residual:   2.659106E-14  3.798723E-16  8.319734E-15
+  --> max chng: dpmx=   9.5609E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    141 Time=   1.1434E-01 Dt=   1.6000E-02 [y] ksp_conv_reason:    2
+ linear =     1 [       141]
+  --> max chng: dcmx=   1.0221E-02 dc/dt=   2.0257E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 8.83E-04 pnrm: 4.12E+04 inrmr: 5.35E-04 inrmu: 1.48E+04 rsn:   0
+  2 fnrm: 2.41E-04 pnrm: 3.99E+03 inrmr: 1.70E-04 inrmu: 2.05E+03 rsn:   0
+  3 fnrm: 1.28E-07 pnrm: 2.70E+02 inrmr: 7.85E-08 inrmu: 2.36E+02 rsn:   0
+  4 fnrm: 1.08E-12 pnrm: 3.36E-01 inrmr: 6.02E-13 inrmu: 1.66E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    142 Time=   1.6234E-01 Dt=   3.2000E-02 [y] snes_conv_reason:   11
+  newton =   4 [     426] linear =    31 [      1890] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           31  /            4
+  --> SNES Residual:   1.080273E-12  1.543248E-14  6.018901E-13
+  --> max chng: dpmx=   1.2694E+04
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    142 Time=   1.3034E-01 Dt=   3.2000E-02 [y] ksp_conv_reason:    2
+ linear =     1 [       142]
+  --> max chng: dcmx=   1.3112E-02 dc/dt=   1.2994E-08 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 4.21E-04 pnrm: 4.35E+04 inrmr: 1.73E-04 inrmu: 1.44E+04 rsn:   0
+  2 fnrm: 9.23E-06 pnrm: 3.97E+03 inrmr: 7.52E-06 inrmu: 2.23E+03 rsn:   0
+  3 fnrm: 1.31E-08 pnrm: 1.11E+02 inrmr: 1.28E-08 inrmu: 9.59E+01 rsn:   0
+  4 fnrm: 3.54E-14 pnrm: 1.59E-01 inrmr: 3.21E-14 inrmu: 1.55E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    143 Time=   2.0292E-01 Dt=   4.0584E-02 [y] snes_conv_reason:   11
+  newton =   4 [     430] linear =    31 [      1921] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           31  /            4
+  --> SNES Residual:   3.540639E-14  5.058055E-16  3.213749E-14
+  --> max chng: dpmx=   1.2077E+04
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    143 Time=   1.6234E-01 Dt=   4.0584E-02 [y] ksp_conv_reason:    2
+ linear =     1 [       143]
+  --> max chng: dcmx=   9.8358E-03 dc/dt=   7.6850E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.92E-04 pnrm: 4.16E+04 inrmr: 2.26E-04 inrmu: 1.31E+04 rsn:   0
+  2 fnrm: 1.24E-05 pnrm: 3.37E+03 inrmr: 1.09E-05 inrmu: 2.02E+03 rsn:   0
+  3 fnrm: 2.65E-08 pnrm: 1.17E+02 inrmr: 2.49E-08 inrmu: 1.02E+02 rsn:   0
+  4 fnrm: 1.38E-13 pnrm: 2.42E-01 inrmr: 1.28E-13 inrmu: 2.32E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    144 Time=   2.5365E-01 Dt=   5.0730E-02 [y] snes_conv_reason:   11
+  newton =   4 [     434] linear =    31 [      1952] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           31  /            4
+  --> SNES Residual:   1.384169E-13  1.977384E-15  1.278960E-13
+  --> max chng: dpmx=   1.2232E+04
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    144 Time=   2.0292E-01 Dt=   5.0730E-02 [y] ksp_conv_reason:    2
+ linear =     1 [       144]
+  --> max chng: dcmx=   6.3783E-03 dc/dt=   3.9868E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.80E-04 pnrm: 4.13E+04 inrmr: 2.00E-04 inrmu: 1.53E+04 rsn:   0
+  2 fnrm: 1.13E-05 pnrm: 3.13E+03 inrmr: 8.60E-06 inrmu: 1.48E+03 rsn:   0
+  3 fnrm: 1.98E-08 pnrm: 8.72E+01 inrmr: 1.68E-08 inrmu: 6.09E+01 rsn:   0
+  4 fnrm: 2.83E-13 pnrm: 1.47E-01 inrmr: 9.80E-14 inrmu: 1.19E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    145 Time=   3.1706E-01 Dt=   6.3413E-02 [y] snes_conv_reason:   11
+  newton =   4 [     438] linear =    30 [      1982] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           30  /            4
+  --> SNES Residual:   2.826601E-13  4.038001E-15  9.796157E-14
+  --> max chng: dpmx=   1.3813E+04
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    145 Time=   2.5365E-01 Dt=   6.3413E-02 [y] ksp_conv_reason:    2
+ linear =     1 [       145]
+  --> max chng: dcmx=   2.1566E-03 dc/dt=   1.0784E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.41E-04 pnrm: 4.08E+04 inrmr: 1.20E-04 inrmu: 1.59E+04 rsn:   0
+  2 fnrm: 5.90E-06 pnrm: 4.68E+03 inrmr: 3.67E-06 inrmu: 3.17E+03 rsn:   0
+  3 fnrm: 5.70E-09 pnrm: 1.03E+02 inrmr: 3.32E-09 inrmu: 8.51E+01 rsn:   0
+  4 fnrm: 1.93E-13 pnrm: 1.28E-01 inrmr: 5.55E-14 inrmu: 1.23E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    146 Time=   3.9633E-01 Dt=   7.9266E-02 [y] snes_conv_reason:   11
+  newton =   4 [     442] linear =    31 [      2013] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           31  /            4
+  --> SNES Residual:   1.931242E-13  2.758917E-15  5.545217E-14
+  --> max chng: dpmx=   1.4053E+04
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    146 Time=   3.1706E-01 Dt=   7.9266E-02 [y] ksp_conv_reason:    2
+ linear =     1 [       146]
+  --> max chng: dcmx=   5.3550E-03 dc/dt=   2.1422E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 1.99E-04 pnrm: 3.96E+04 inrmr: 1.29E-04 inrmu: 1.48E+04 rsn:   0
+  2 fnrm: 1.44E-06 pnrm: 3.70E+03 inrmr: 6.72E-07 inrmu: 1.82E+03 rsn:   0
+  3 fnrm: 3.83E-10 pnrm: 5.95E+01 inrmr: 2.64E-10 inrmu: 3.76E+01 rsn: atol
+ update_reason:            1
+
+ FLOW    147 Time=   4.9541E-01 Dt=   9.9083E-02 [y] snes_conv_reason:    2
+  newton =   3 [     445] linear =    23 [      2036] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           23  /            3
+  --> SNES Residual:   3.834313E-10  5.477590E-12  2.637352E-10
+  --> max chng: dpmx=   1.2972E+04
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    147 Time=   3.9633E-01 Dt=   9.9083E-02 [y] ksp_conv_reason:    2
+ linear =     1 [       147]
+  --> max chng: dcmx=   1.3998E-02 dc/dt=   4.4798E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 8.71E-05 pnrm: 3.05E+04 inrmr: 5.16E-05 inrmu: 1.05E+04 rsn:   0
+  2 fnrm: 1.06E-06 pnrm: 2.54E+03 inrmr: 6.35E-07 inrmu: 1.07E+03 rsn:   0
+  3 fnrm: 2.46E-10 pnrm: 2.81E+01 inrmr: 1.34E-10 inrmu: 1.45E+01 rsn: atol
+ update_reason:            1
+
+ FLOW    148 Time=   5.9541E-01 Dt=   1.0000E-01 [y] snes_conv_reason:    2
+  newton =   3 [     448] linear =    21 [      2057] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           21  /            3
+  --> SNES Residual:   2.461997E-10  3.517138E-12  1.340803E-10
+  --> max chng: dpmx=   9.3705E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    148 Time=   4.9541E-01 Dt=   1.0000E-01 [y] ksp_conv_reason:    2
+ linear =     1 [       148]
+  --> max chng: dcmx=   1.5578E-02 dc/dt=   4.9397E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.16E-05 pnrm: 2.38E+04 inrmr: 1.88E-05 inrmu: 7.79E+03 rsn:   0
+  2 fnrm: 2.52E-07 pnrm: 1.70E+03 inrmr: 1.82E-07 inrmu: 6.27E+02 rsn:   0
+  3 fnrm: 3.11E-11 pnrm: 1.19E+01 inrmr: 1.63E-11 inrmu: 5.48E+00 rsn: atol
+ update_reason:            1
+
+ FLOW    149 Time=   6.9541E-01 Dt=   1.0000E-01 [y] snes_conv_reason:    2
+  newton =   3 [     451] linear =    20 [      2077] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           20  /            3
+  --> SNES Residual:   3.113296E-11  4.447566E-13  1.631693E-11
+  --> max chng: dpmx=   7.2235E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    149 Time=   5.9541E-01 Dt=   1.0000E-01 [y] ksp_conv_reason:    2
+ linear =     1 [       149]
+  --> max chng: dcmx=   9.3026E-03 dc/dt=   2.9498E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.04E-05 pnrm: 1.91E+04 inrmr: 1.04E-05 inrmu: 6.44E+03 rsn:   0
+  2 fnrm: 9.72E-08 pnrm: 1.16E+03 inrmr: 4.85E-08 inrmu: 4.24E+02 rsn:   0
+  3 fnrm: 1.08E-11 pnrm: 5.77E+00 inrmr: 4.17E-12 inrmu: 2.19E+00 rsn: atol
+ update_reason:            1
+
+ FLOW    150 Time=   7.9541E-01 Dt=   1.0000E-01 [y] snes_conv_reason:    2
+  newton =   3 [     454] linear =    21 [      2098] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           21  /            3
+  --> SNES Residual:   1.084143E-11  1.548775E-13  4.169909E-12
+  --> max chng: dpmx=   6.0152E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    150 Time=   6.9541E-01 Dt=   1.0000E-01 [y] ksp_conv_reason:    2
+ linear =     1 [       150]
+  --> max chng: dcmx=   5.4392E-03 dc/dt=   1.7248E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 2.25E-05 pnrm: 1.57E+04 inrmr: 1.33E-05 inrmu: 5.33E+03 rsn:   0
+  2 fnrm: 4.12E-07 pnrm: 8.33E+02 inrmr: 2.87E-07 inrmu: 3.18E+02 rsn:   0
+  3 fnrm: 4.18E-11 pnrm: 3.83E+00 inrmr: 3.44E-11 inrmu: 2.08E+00 rsn: atol
+ update_reason:            1
+
+ FLOW    151 Time=   8.9541E-01 Dt=   1.0000E-01 [y] snes_conv_reason:    2
+  newton =   3 [     457] linear =    22 [      2120] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           22  /            3
+  --> SNES Residual:   4.184570E-11  5.977957E-13  3.435287E-11
+  --> max chng: dpmx=   5.0103E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    151 Time=   7.9541E-01 Dt=   1.0000E-01 [y] ksp_conv_reason:    2
+ linear =     1 [       151]
+  --> max chng: dcmx=   4.1266E-03 dc/dt=   1.3085E-09 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 1.32E-05 pnrm: 1.33E+04 inrmr: 6.45E-06 inrmu: 4.40E+03 rsn:   0
+  2 fnrm: 3.45E-08 pnrm: 6.00E+02 inrmr: 1.81E-08 inrmu: 2.35E+02 rsn:   0
+  3 fnrm: 3.17E-12 pnrm: 1.70E+00 inrmr: 1.23E-12 inrmu: 7.72E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    152 Time=   9.9541E-01 Dt=   1.0000E-01 [y] snes_conv_reason:   11
+  newton =   3 [     460] linear =    19 [      2139] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           19  /            3
+  --> SNES Residual:   3.171733E-12  4.531047E-14  1.229667E-12
+  --> max chng: dpmx=   4.1653E+03
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    152 Time=   8.9541E-01 Dt=   1.0000E-01 [y] ksp_conv_reason:    2
+ linear =     1 [       152]
+  --> max chng: dcmx=   3.0551E-03 dc/dt=   9.6877E-10 [mol/s]
+ 
+
+== FLOW ====================================================
+  1 fnrm: 3.01E-07 pnrm: 5.59E+02 inrmr: 1.10E-07 inrmu: 1.81E+02 rsn:   0
+  2 fnrm: 1.14E-12 pnrm: 9.97E-01 inrmr: 4.90E-13 inrmu: 3.86E-01 rsn: itol_upd
+ update_reason:            1
+
+ FLOW    153 Time=   1.0000E+00 Dt=   4.5866E-03 [y] snes_conv_reason:   11
+  newton =   2 [     462] linear =    11 [      2150] cuts =  0 [   0]
+  --> SNES Linear/Non-Linear Iterations =           11  /            2
+  --> SNES Residual:   1.140188E-12  1.628839E-14  4.898720E-13
+  --> max chng: dpmx=   1.8100E+02
+ 
+
+== TRANSPORT (OS) ===========================================
+ TRAN    153 Time=   9.9541E-01 Dt=   4.5866E-03 [y] ksp_conv_reason:    2
+ linear =     1 [       153]
+  --> max chng: dcmx=   1.3478E-02 dc/dt=   9.3182E-08 [mol/s]
+ 
+ --> write tecplot output file: pflotran-003.tec
+ --> write tecplot velocity output file: pflotran-vel-003.tec
+   0.02 Seconds to write to Tecplot file(s)
+
+ FLOW steps =    153 newton =      462 linear =       2150 cuts =      0
+ FLOW SNES time = 1.3 seconds
+
+ TRAN steps =    153 newton =        0 linear =        153 cuts =      0
+ TRAN SNES time = 17.8 seconds
+
+ CPU Time:  2.4652E+01 [sec]   4.1087E-01 [min]   6.8478E-03 [hr]
+
+ Wall Clock Time:  2.4625E+01 [sec]   4.1042E-01 [min]   6.8404E-03 [hr]

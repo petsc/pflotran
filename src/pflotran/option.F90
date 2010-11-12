@@ -178,6 +178,9 @@ module Option_module
     PetscBool :: mimetic
     PetscBool :: ani_relative_permeability
 
+    PetscInt :: chunk_size
+    PetscInt :: chunk_offset
+
   end type option_type
   
   type, public :: output_option_type
@@ -352,6 +355,9 @@ subroutine OptionInitAll(option)
 
   option%mimetic = PETSC_FALSE
   option%ani_relative_permeability = PETSC_FALSE
+
+  option%chunk_size = 8
+  option%chunk_offset = 0
 
   call OptionInitRealization(option)
 

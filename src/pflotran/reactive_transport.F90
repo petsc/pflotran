@@ -1935,7 +1935,17 @@ subroutine RTReactPatch(realization)
   PetscReal, pointer :: tran_xx_p(:)
   PetscReal, pointer :: volume_p(:)
   PetscReal, pointer :: porosity_loc_p(:)
+#ifdef CHUNK
+  PetscInt :: num_iterations(realization%option%chunk_size)
+  PetscInt :: local_start
+  PetscInt :: local_end
+  PetscInt :: ghosted_start
+  PetscInt :: ghosted_end
+  PetscInt :: chunk_size_save
+  PetscInt :: ichunk
+#else
   PetscInt :: num_iterations
+#endif
 #ifdef OS_STATISTICS
   PetscInt :: sum_iterations
   PetscInt :: max_iterations
@@ -1966,13 +1976,61 @@ subroutine RTReactPatch(realization)
   max_iterations = 0
   icount = 0
 #endif
+
+#ifdef CHUNK
+  local_start = 1
+  chunk_size_save = option%chunk_size
+  do
+    ! change chunk size if array is not evenly divisble by chunk_size
+    if (local_start + option%chunk_size - 1 > grid%nlmax) then
+      option%chunk_size = grid%nlmax - local_start + 1
+    endif
+
+    local_end = local_start+option%chunk_size-1
+  
+    ghosted_start = grid%nL2G(local_start)
+    ghosted_end = grid%nL2G(local_end)
+
+    ! We actually need to check all cells for inactives
+    if (patch%imat(ghosted_start) <= 0) cycle
+
+    iend = local_end*reaction%naqcomp
+    istart = iend-reaction%naqcomp*option%chunk_size+1
+
+    ! tran_xx_p passes in total component concentrations
+    !       and returns free ion concentrations
+    call RReactChunk(rt_aux_vars(ghosted_start:ghosted_end), &
+                global_aux_vars(ghosted_start:ghosted_end), &
+                tran_xx_p(istart:iend),volume_p(local_start:local_end), &
+                porosity_loc_p(ghosted_start:ghosted_end), &
+                num_iterations,reaction,option)
+    ! set primary dependent var back to free-ion molality
+    ! NOW THE BELOW IS PERFORMED WITHIN RReactChunk()
+    !tran_xx_p(istart:iend) = rt_aux_vars(ghosted_id)%pri_molal
+#ifdef OS_STATISTICS
+    do ichunk = 1, option%chunk_size
+      if (num_iterations(ichunk) > max_iterations) then
+        max_iterations = num_iterations(ichunk)
+      endif
+      sum_iterations = sum_iterations + num_iterations(ichunk)
+      icount = icount + 1
+    enddo
+#endif
+ 
+   if (local_end >= grid%nlmax) then
+     option%chunk_size = chunk_size_save
+     exit
+   else
+     local_start = local_start + option%chunk_size
+   endif
+ 
+  enddo
+#else
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
     iend = local_id*reaction%naqcomp
     istart = iend-reaction%naqcomp+1
-!    tran_xx_p(istart:iend) = tran_xx_p(istart:iend)/ &
-!      (global_aux_vars(ghosted_id)%den_kg(iphase)*1.d-3)
     call RReact(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                 tran_xx_p(istart:iend),volume_p(local_id), &
                 porosity_loc_p(ghosted_id), &
@@ -1987,6 +2045,7 @@ subroutine RTReactPatch(realization)
     icount = icount + 1
 #endif
   enddo
+#endif  
   
 #ifdef OS_STATISTICS
   patch%aux%RT%rt_parameter%newton_call_count = icount
