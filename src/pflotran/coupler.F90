@@ -774,18 +774,17 @@ function CouplerGetNumBoundConnectionsInListMFD(grid, list, option)
 
   do
     if (.not.associated(coupler)) exit
-	
-	numfaces_set = coupler%numfaces_set
-	do i = 1, numfaces_set
-		iconn = iconn + 1
-		local_face_id = grid%fG2L(coupler%faces_set(i))
-		if (local_face_id<=0) then
-			write(*,*) "local_face_id for boundary face is <=0"
-			call printMsg(option)
-			stop
-		end if
-		grid%fL2B(local_face_id) = iconn
-	enddo
+
+    numfaces_set = coupler%numfaces_set
+    do i = 1, numfaces_set
+       iconn = iconn + 1
+       local_face_id = grid%fG2L(coupler%faces_set(i))
+       if (local_face_id<=0) then
+          write(*,*) "local_face_id for boundary face is <=0"
+!          call printMsg(option)
+       end if
+       grid%fL2B(local_face_id) = iconn
+    enddo
     coupler => coupler%next
   enddo
 #endif

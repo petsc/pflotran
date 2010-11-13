@@ -84,6 +84,7 @@ subroutine GlobalAuxVarInit(aux_var,option)
   type(global_auxvar_type) :: aux_var
   type(option_type) :: option
   
+
   allocate(aux_var%pres(option%nphase))
   aux_var%pres = 0.d0
   allocate(aux_var%temp(ONE_INTEGER))

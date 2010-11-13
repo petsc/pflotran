@@ -284,11 +284,14 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
   if (option%ani_relative_permeability) then
 !     do i=1, 100
 !     global_aux_var%sat(1) = 0.01*i
-     ani_A = 3
-     ani_B = 44.8
-     ani_C = -7.26
+!     ani_A = 3
+!     ani_B = 44.8
+!     ani_C = -7.26
+     ani_A = saturation_function%ani_A  
+     ani_B = saturation_function%ani_B
+     ani_C = saturation_function%ani_C
      fs = ani_A + ani_B*exp(ani_C*global_aux_var%sat(1))
-     ani_n = 25
+     ani_n = 25 
      ani_coef  =  fs/((global_aux_var%sat(1)**ani_n) * (fs -1) + 1)
      aux_var%kvr_z = aux_var%kvr_z * ani_coef
 !    write(*,*) global_aux_var%sat(1), ani_coef
