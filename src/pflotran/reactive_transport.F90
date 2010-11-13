@@ -2001,8 +2001,9 @@ subroutine RTReactPatch(realization)
     !       and returns free ion concentrations
     call RReactChunk(rt_aux_vars(ghosted_start:ghosted_end), &
                 global_aux_vars(ghosted_start:ghosted_end), &
-                tran_xx_p(istart:iend),volume_p(local_start:local_end), &
+                tran_xx_p(istart:iend), &
                 porosity_loc_p(ghosted_start:ghosted_end), &
+                volume_p(local_start:local_end), &
                 num_iterations,reaction,option)
     ! set primary dependent var back to free-ion molality
     ! NOW THE BELOW IS PERFORMED WITHIN RReactChunk()
