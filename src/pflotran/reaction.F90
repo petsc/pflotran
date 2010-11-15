@@ -4522,7 +4522,7 @@ subroutine RTotalSorbEqSurfCplxChunk(rt_auxvar,global_auxvar,reaction,option)
           enddo
 
           dfree_site_conc = res / dres_dfree_site
-          free_site_conc = free_site_conc - dfree_site_conc
+          free_site_conc = free_site_conc + dfree_site_conc
         
           if (dabs(dfree_site_conc/free_site_conc) < tol) then
             one_more = PETSC_TRUE
@@ -4928,7 +4928,7 @@ subroutine RMultiRateSorption(Res,Jac,compute_derivative,rt_auxvar, &
         enddo
 
         dfree_site_conc = residual / dres_dfree_site
-        free_site_conc = free_site_conc - dfree_site_conc
+        free_site_conc = free_site_conc + dfree_site_conc
       
         if (dabs(dfree_site_conc/free_site_conc) < tol) then
           one_more = PETSC_TRUE
