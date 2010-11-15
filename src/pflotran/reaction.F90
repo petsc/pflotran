@@ -2682,7 +2682,7 @@ end subroutine RReact
 ! date: 11/10/10
 !
 ! ************************************************************************** !
-subroutine RReactChunk(rt_auxvar,global_auxvar,total,volume,porosity, &
+subroutine RReactChunk(rt_auxvar,global_auxvar,total,volume,porosity_, &
                        num_iterations_,reaction,option)
 
   use Option_module
@@ -2698,7 +2698,17 @@ subroutine RReactChunk(rt_auxvar,global_auxvar,total,volume,porosity, &
   !              and returns an array of free ion concentrations 
   PetscReal :: total(reaction%ncomp,option%chunk_size)
   PetscReal :: volume(option%chunk_size)
-  PetscReal :: porosity(option%chunk_size)
+
+! ----------------------------------------------------------------------------
+! for some strange reason, gfortran reports an error if "porosity" is used:
+!    In file reaction.F90:2705
+!    
+!      real(kind=selected_real_kind(10)) :: porosity(option%chunk_size)
+!                                                  1
+!    Error: Symbol 'porosity' at (1) already has basic type of INTEGER
+! ----------------------------------------------------------------------------
+  PetscReal :: porosity_(option%chunk_size)
+
   PetscInt :: num_iterations_(option%chunk_size)
   
   PetscReal :: residual(reaction%ncomp,option%chunk_size)
@@ -2736,7 +2746,7 @@ subroutine RReactChunk(rt_auxvar,global_auxvar,total,volume,porosity, &
     rt_auxvar(ichunk)%total(:,iphase) = total(1:reaction%naqcomp,ichunk)
   enddo
   ! still need code to overwrite other phases
-  call RTAccumulationChunk(rt_auxvar,global_auxvar,porosity,volume,reaction, &
+  call RTAccumulationChunk(rt_auxvar,global_auxvar,porosity_,volume,reaction, &
                            option,fixed_accum)
   if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
     call RAccumulationSorbChunk(rt_auxvar,global_auxvar,volume,reaction, &
@@ -2759,7 +2769,7 @@ subroutine RReactChunk(rt_auxvar,global_auxvar,total,volume,porosity, &
     
     ! Accumulation
     ! residual is overwritten in RTAccumulation()
-    call RTAccumulationChunk(rt_auxvar,global_auxvar,porosity,volume,reaction, &
+    call RTAccumulationChunk(rt_auxvar,global_auxvar,porosity_,volume,reaction, &
                              option,residual)
                         
     do ichunk = 1, option%chunk_size
@@ -2767,7 +2777,7 @@ subroutine RReactChunk(rt_auxvar,global_auxvar,total,volume,porosity, &
     enddo
 
     ! J is overwritten in RTAccumulationDerivative()
-    call RTAccumulationDerivativeChunk(rt_auxvar,global_auxvar,porosity,volume, &
+    call RTAccumulationDerivativeChunk(rt_auxvar,global_auxvar,porosity_,volume, &
                                        reaction,option,J)
 
     if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
@@ -2779,7 +2789,7 @@ subroutine RReactChunk(rt_auxvar,global_auxvar,total,volume,porosity, &
 
                          ! derivative
     call RReactionChunk(residual,J,PETSC_TRUE,rt_auxvar,global_auxvar, &
-                        porosity,volume,reaction,option)
+                        porosity_,volume,reaction,option)
     
     ! Manual inlining start
     ! call RSolveChunk(residual,J,rt_auxvar%pri_molal,update,reaction%ncomp,option%chunk_size)
