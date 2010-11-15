@@ -3358,7 +3358,7 @@ subroutine BasisInit(reaction,option)
     write(option%fid_out,90)
   endif
   
-#if 0
+#if 1
   ! output for ASCEM reactions
   if (OptionPrintToFile(option)) then
     open(unit=86,file='reaction.dat')
