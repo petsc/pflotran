@@ -235,6 +235,8 @@ subroutine Flash2SetupPatch(realization)
   
   allocate(patch%aux%Flash2%delx(option%nflowdof, grid%ngmax))
   allocate(patch%aux%Flash2%Resold_AR(grid%nlmax,option%nflowdof))
+  allocate(patch%aux%Flash2%Resold_BC(grid%nlmax,option%nflowdof))
+  ! should be allocated by the number of BC connections, just for debug now
   allocate(patch%aux%Flash2%Resold_FL(ConnectionGetNumberInList(patch%grid%&
            internal_connection_set_list),option%nflowdof))
   
@@ -2013,6 +2015,7 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
 
    Resold_AR=0.D0; ResOld_FL=0.D0; r_p = 0.d0
    patch%aux%Flash2%Resold_AR=0.D0
+   patch%aux%Flash2%Resold_BC=0.D0
    patch%aux%Flash2%ResOld_FL=0.D0
    
 #if 1
@@ -2661,8 +2664,8 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
          distance_gravity,option, &
          v_darcy,Res)
     patch%boundary_velocities(:,sum_connection) = v_darcy(:)
-    patch%aux%Flash2%Resold_AR(local_id,1:option%nflowdof) = &
-    patch%aux%Flash2%ResOld_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
+    patch%aux%Flash2%Resold_BC(local_id,1:option%nflowdof) = &
+    patch%aux%Flash2%ResOld_BC(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
 
     if (option%compute_mass_balance_new) then
         ! contribution to boundary
@@ -2951,6 +2954,7 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
   allocate(delx(option%nflowdof))
 
    patch%aux%Flash2%Resold_AR=0.D0
+   patch%aux%Flash2%Resold_BC=0.D0
    patch%aux%Flash2%ResOld_FL=0.D0
 
 ! Multiphase flash calculation is more expansive, so calculate once per iterration
@@ -3309,7 +3313,7 @@ subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
         (.not.(grid%structured_grid%p_samr_patch.eq.0))) then
          call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
       endif
-      call Flash2JacobianPatch(snes,xx,J,J,flag,realization,ierr)
+      call Flash2JacobianPatch1(snes,xx,J,J,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -3330,7 +3334,7 @@ subroutine Flash2Jacobian(snes,xx,A,B,flag,realization,ierr)
         (.not.(grid%structured_grid%p_samr_patch.eq.0))) then
          call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
       endif
-      call Flash2JacobianPatch(snes,xx,J,J,flag,realization,ierr)
+      call Flash2JacobianPatch2(snes,xx,J,J,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -4024,7 +4028,8 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 #endif
 
  ! print *,'*********** In Jacobian ********************** '
-  call MatZeroEntries(A,ierr)
+ ! MatzeroEntries has been called in Flash2Jacobin ! clu removed on 11/04/2010 
+ !  call MatZeroEntries(A,ierr)
 
   call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
@@ -4143,7 +4148,7 @@ subroutine Flash2JacobianPatch1(snes,xx,A,B,flag,realization,ierr)
      max_dev=0.D0
      do neq=1, option%nflowdof
         do nvar=1, option%nflowdof
-           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Flash2%ResOld_AR(local_id,neq))&
+           ra(neq,nvar)=(ResInc(local_id,neq,nvar)-patch%aux%Flash2%ResOld_BC(local_id,neq))&
               /patch%aux%Flash2%delx(nvar,ghosted_id)
            if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
         enddo

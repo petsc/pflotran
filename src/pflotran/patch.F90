@@ -549,7 +549,10 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
  
   if (patch%grid%itype == STRUCTURED_GRID_MIMETIC) then
 #ifdef DASVYAT
-    temp_int = ConnectionGetNumberInList(patch%grid%boundary_connection_set_list)
+!    temp_int = ConnectionGetNumberInList(patch%grid%boundary_connection_set_list)
+    temp_int = CouplerGetNumBoundConnectionsInListMFD(patch%grid, &
+										patch%boundary_conditions, &
+										option)
 #endif
   else  
     temp_int = CouplerGetNumConnectionsInList(patch%boundary_conditions)
@@ -562,6 +565,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     allocate(patch%boundary_fluxes(option%nphase,option%ntrandof,temp_int))
     patch%boundary_fluxes = 0.d0
   endif
+
 
 end subroutine PatchProcessCouplers
 
@@ -763,8 +767,14 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
     
     ! FLOW
     if (associated(coupler%flow_aux_real_var)) then
-        
+
+
       num_connections = coupler%connection_set%num_connections
+#ifdef DASVYAT      
+      if (option%mimetic) then
+        num_connections = coupler%numfaces_set
+      end if
+#endif
 
       flow_condition => coupler%flow_condition
 

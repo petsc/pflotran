@@ -35,12 +35,12 @@ GriddingAlgorithm{
 StandardTagAndInitialize{
    tagging_method = "REFINE_BOXES"
    RefineBoxes{
-      level_0 = [(0,0,60),(19,19,79)]
-      level_1 = [(0,0,140),(39,39,159)]
-      level_2 = [(0,0,300),(79,79,319)]
-      level_3 = [(0,0,620),(159,159,639)]
-      level_4 = [(0,0,1260),(319,319,1279)]
-      level_5 = [(0,0,2540),(639,639,2559)]
+      level_0 = [(0,0,0),(19,19,19)]
+      level_1 = [(0,0,0),(39,39,19)]
+      level_2 = [(0,0,0),(79,79,19)]
+      level_3 = [(0,0,0),(159,159,19)]
+      level_4 = [(0,0,0),(319,319,19)]
+      level_5 = [(0,0,0),(639,639,19)]
    }
 }
 
@@ -81,7 +81,7 @@ PflotranApplicationStrategy{
 
      pc_solver{
        solver_name                      =  "FAC"
-       max_iterations                   =  30 
+       max_iterations                   =  1 
        max_error                        =  1.0e-12
        print_info_level                 =  1 
        presolve_iterations              =  2
