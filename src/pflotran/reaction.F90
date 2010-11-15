@@ -76,7 +76,7 @@ subroutine ReactionRead(reaction,input,option)
   type(ion_exchange_cation_type), pointer :: cation, prev_cation
   type(general_rxn_type), pointer :: general_rxn, prev_general_rxn
   type(kd_rxn_type), pointer :: kd_rxn, prev_kd_rxn
-  PetscInt :: i
+  PetscInt :: i, tempint
   PetscReal :: tempreal
   PetscInt :: srfcplx_count
   PetscInt :: temp_srfcplx_count
@@ -200,8 +200,8 @@ subroutine ReactionRead(reaction,input,option)
               general_rxn%reaction = trim(adjustl(input%buf))
               ! set flag for error message
               if (len_trim(general_rxn%reaction) < 2) input%ierr = 1
-              call InputErrorMsg(input,option,'reaction','CHEMISTRY, &
-                                 GENERAL_REACTION,REACTION') 
+              call InputErrorMsg(input,option,'reaction', &
+                                 'CHEMISTRY,GENERAL_REACTION,REACTION') 
 ! For now, the reactants are negative stoich, products positive in reaction equation - geh
 #if 0
             case('FORWARD_SPECIES')
@@ -253,12 +253,12 @@ subroutine ReactionRead(reaction,input,option)
 #endif                
             case('FORWARD_RATE')
               call InputReadDouble(input,option,general_rxn%forward_rate)  
-              call InputDefaultMsg(input,option,'CHEMISTRY, &
-                                   GENERAL_REACTION,FORWARD_RATE') 
+              call InputDefaultMsg(input,option, &
+                                   'CHEMISTRY,GENERAL_REACTION,FORWARD_RATE') 
             case('BACKWARD_RATE')
               call InputReadDouble(input,option,general_rxn%backward_rate)  
-              call InputDefaultMsg(input,option,'CHEMISTRY, &
-                                   GENERAL_REACTION,BACKWARD_RATE') 
+              call InputDefaultMsg(input,option, &
+                                   'CHEMISTRY,GENERAL_REACTION,BACKWARD_RATE') 
           end select
         enddo   
         if (.not.associated(reaction%general_rxn_list)) then
@@ -723,9 +723,9 @@ subroutine ReactionRead(reaction,input,option)
       case('CHUNK_SIZE')
         ! for some reason, cannot pass in option%chunk_size...Intel on Win doesn't like it - geh 
         !call InputReadDouble(input,option,option%chunk_size)
-        call InputReadDouble(input,option,tempreal)
+        call InputReadInt(input,option,tempint)
         call InputErrorMsg(input,option,'chunk_size','CHEMISTRY')
-        option%chunk_size = tempreal
+        option%chunk_size = tempint
       case('UPDATE_POROSITY')
         option%update_porosity = PETSC_TRUE
       case('UPDATE_TORTUOSITY')
@@ -3809,12 +3809,15 @@ subroutine RTotalChunk(rt_auxvar,global_auxvar,reaction,option)
   PetscReal :: pressure, temperature, xphico2, muco2, den, m_na, m_cl
   
   PetscInt :: ichunk
+
+#ifdef CHUAN_CO2  
+  PetscReal :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,&
+               yco2,pco2,sat_pressure,lngamco2
+#endif
   
   do ichunk = 1, option%chunk_size
   
 #ifdef CHUAN_CO2  
-  PetscReal :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,&
-               yco2,pco2,sat_pressure,lngamco2
   rt_auxvar(ichunk)%total = 0.d0 !debugging 
 #endif
   
@@ -3948,7 +3951,7 @@ subroutine RTotalChunk(rt_auxvar,global_auxvar,reaction,option)
       endif 
           
       if (reaction%eqgash2oid(ieqgas) > 0) then
-        lnQK = lnQK + reaction%eqgash2ostoich(ieqgas)*rt_auxvar%ln_act_h2o
+        lnQK = lnQK + reaction%eqgash2ostoich(ieqgas)*rt_auxvar(ichunk)%ln_act_h2o
 !       print *,'Ttotal', reaction%eqgash2ostoich(ieqgas), rt_auxvar%ln_act_h2o
       endif
    
@@ -6522,9 +6525,9 @@ subroutine RTAccumulationChunk(rt_aux_var,global_aux_var,por,vol,reaction, &
 ! super critical CO2 phase
     if (iphase == 2) then
       do ichunk = 1, option%chunk_size
-        psv_t(ichunk) = por(ichunk)*global_aux_var(ichunk)%sat(iphase,ichunk)* &
+        psv_t(ichunk) = por(ichunk)*global_aux_var(ichunk)%sat(iphase)* &
                         1000.d0*vol(ichunk)/option%tran_dt 
-        Res(istart:iend,ichunk) = Res(istart:iend,ichunk) + 
+        Res(istart:iend,ichunk) = Res(istart:iend,ichunk) + &
                                 psv_t(ichunk)*rt_aux_var(ichunk)%total(:,iphase) 
       enddo
       ! should sum over gas component only need more implementations
@@ -6704,9 +6707,9 @@ subroutine RTAccumulationDerivativeChunk(rt_aux_var,global_aux_var, &
         if (associated(rt_aux_var(ichunk)%aqueous%dtotal)) then
           psvd_t(ichunk) = por(ichunk)*global_aux_var(ichunk)%sat(iphase)* &
                            1000.d0*vol(ichunk)/option%tran_dt  
-          J(istart:iendaq,istart:iendaq,ichunk) = 
+          J(istart:iendaq,istart:iendaq,ichunk) = &
             J(istart:iendaq,istart:iendaq,ichunk) + &
-            rt_aux_var(ichunk)%aqueous%dtotal(:,:,iphase)*psvd_t
+            rt_aux_var(ichunk)%aqueous%dtotal(:,:,iphase)*psvd_t(ichunk)
         else
           psvd_t(ichunk) = por(ichunk)*global_aux_var(ichunk)%sat(iphase)* &
             global_aux_var(ichunk)%den_kg(iphase)*vol(ichunk)/option%tran_dt ! units of den = kg water/m^3 water

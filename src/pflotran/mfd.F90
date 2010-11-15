@@ -287,7 +287,8 @@ end subroutine MFDAuxGenerateStiffMatrix
 
 !subroutine MFDAuxGenerateRhs(ghosted_cell_id, bc_g, source_f, grid,  PermTensor, aux_var, rich_aux_var, global_aux_var, Accum, &
 !                                       sq_faces, option, rhs)
-subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f,  bc_h, aux_var, rich_aux_var, global_aux_var, Accum, &
+subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f,  bc_h, aux_var, &
+                                       rich_aux_var, global_aux_var, Accum, &
                                        sq_faces, option, rhs)
 
  use Option_module

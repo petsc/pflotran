@@ -2917,9 +2917,9 @@ which in turn requires that $\bi_e\!=\!\boldsymbol 0$. This will be the case if 
 
 \chapter{Multiple Continua}
 
-\section{Dual Continuum Connected Matrix (DCCM)}
+\section{Multi-Region Model}
 
-For a dual continuum model with primary continuum $\a$ and secondary continua denoted by $\b$, and with multirate sorption and mineral precipitation and dissolution the transport equations read
+For a multi-region continuum model with primary continuum $\a$ and secondary continua denoted by $\b$, and with multirate sorption and mineral precipitation and dissolution the transport equations read
 \begin{subequations}
 \EQ\label{acont}
 \frac{\p}{\p t} \varphi_\a\Psi_j^\a + \bnabla\cdot\bOmega_j^\a \eq - \sum_\b\Gamma_{\a\b} \big(\Psi_j^\a - \Psi_j^\b\big) -\sum_{il}\nu_{ji} \frac{\p S_{il}^\a}{\p t} -\sum_m\nu_{jm}I_m^\a,
@@ -2929,7 +2929,7 @@ for the primary continuum, and
 \frac{\p}{\p t} \varphi_\b\Psi_j^\b \eq \Gamma_{\a\b} \big(\Psi_j^\a - \Psi_j^\b\big) -\sum_{il}\nu_{ji} \frac{\p S_{il}^\b}{\p t} -\sum_m\nu_{jm}I_m^\b,
 \EN
 \end{subequations}
-for the secondary continuum. Note that transport is assumed to take place only in continuum $\a$  and not $\b$. These equations are augmented by the kinetic sorption equations for each continuum given by
+for secondary continua. Note that transport is assumed to take place only in the primary continuum $\a$ and not the secondary continua $\b$, each of which are considered to represented by a single compartment. These equations are augmented by the kinetic sorption equations for each continuum given by
 \begin{subequations}
 \EQ\label{bcont}
 \frac{\p S_{il}^\a}{\p t} \eq k_l \big(S_{il}^{\rm eq,\a} - S_{il}^\a\big),

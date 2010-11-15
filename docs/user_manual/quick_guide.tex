@@ -72,6 +72,8 @@
 \renewcommand{\sc}{{\rm sc}}
 \newcommand{\sign}{{\rm{sign}}}
 \newcommand{\p}{{\partial}}
+\newcommand{\im}{{\rm im}}
+\newcommand{\m}{{\rm m}}
 \newcommand{\A}{{\mathcal A}}
 \newcommand{\B}{{\mathcal B}}
 \newcommand{\C}{{\mathcal C}}
@@ -390,19 +392,67 @@ Q_w \eq \sum_i Q_i.
 \EN
 Additional constitutive relations are needed to close the set of governing equations.
 
-\subsection{Reactive Transport (Keyword {\tt CHEMISTRY})}\label{sec:chem}
+\subsection{MODE: Reactive Transport (Keyword {\tt CHEMISTRY})}\label{sec:chem}
 
-The governing mass conservation equation for Pthe geochemical transport mode for a multiphase system written in terms of a set of independent aqueous primary or basis species with the form
+The governing mass conservation equations for the geochemical transport mode for a multiphase system written in terms of a set of independent aqueous primary or basis species with the form
 \BA\label{rteqn}
-&\frac{\p}{\p t}\big(\varphi \sum_\a s_\a \Psi_j^\a\big) +
+\frac{\p}{\p t}\big(\varphi \sum_\a s_\a \Psi_j^\a\big) &+
 \nabla\cdot\sum_\a\big(\bq_\a - \varphi s_\a \bD_\a\bnabla\big)\Psi_j^\a \nonumber\\
 &\qquad\eq Q_j - \sum_m\nu_{jm} I_m -\frac{\p S_j}{\p t},
 \EA
-where the sums over $\a$ are over all fluid phases in the system, and where $\Psi_j^\a$ denotes the total concentration in the $\a$th fluid phase for primary species $\A_j^{\rm pri}$ defined by
+where the sums over $\a$ are over all fluid phases in the system, and where $\Psi_j^\a$ denotes the total concentration of the $j$th primary species $\A_j^{\rm pri}$ in the $\a$th fluid phase defined by
 \EQ
-\Psi_j^\a = \delta_{l\a}^{} C_j^l + \sum_{i=1}^{N_{\rm sec}}\nu_{ji}^{} C_i^\a.
+\Psi_j^\a = \delta_{l\a}^{} C_j^l + \sum_{i=1}^{N_{\rm sec}}\nu_{ji}^{\a} C_i^\a.
 \EN
-In this equation the subscript $l$ represents the aqueous electrolyte phase from which the primary species are chosen.
+In this equation the subscript $l$ represents the aqueous electrolyte phase from which the primary species are chosen. The secondary species concentrations $C_i^\a$ are obtained from mass action equations corresponding to equilibrium conditions of the reactions
+\EQ
+\sum_j\nu_{ji}^\a\A_j^l \arrows \A_i^\a,
+\EN
+yielding
+\EQ
+C_i^\a \eq \frac{K_i^\a}{\gamma_i^\a} \prod_j \Big(\gamma_j^l C_j^l\Big)^{\nu_{ji}^\a},
+\EN
+with equilibrium constant $K_i^\a$, and activity coefficients $\gamma_k^\a$.
+
+The quantity $Q_j$ denotes a source/sink term and $S_j$ represents the sorbed concentration of the $j$th primary species. Diffusion is assumed to be species independent, but may be different for different phases, e.g. an aqueous electrolyte solution or gas phase. Dispersivity currently must be described through a diagonal dispersion tensor. The Darcy velocity $\bq_\a$ for phase $\a$ is given by
+\EQ
+\bq_a \eq -\frac{kk_\a}{\mu_\a} \bnabla \big(p_\a -\rho_\a g z\big),
+\EN
+with bulk permeability of the porous medium $k$ and relative permeability $k_\a$, fluid viscosity $\mu_\a$, pressure $p_\a$, density $\rho_\a$, and acceleration of gravity $g$.
+
+\subsubsection{Sorption}
+
+\paragraph{Ion Exchange}
+
+\paragraph{Surface Complexation}
+
+\subsubsection{Colloid-Facilitated Transport}
+
+Colloid-facilitated transport is implemented into PFLOTRAN based on surface complexation reactions. Competition between mobile and immobile colloids and stationary mineral surfaces is taken into account. Colloid filtration processes are not currently implemented into PFLOTRAN. 
+A colloid is treated as a solid particle suspended in solution or attached to a mineral surface. Colloids may be generated through nucleation of minerals in solution, although this effect is not included currently in the code.
+
+Three separate reactions may take place involving competition between mobile and immobile colloids and mineral surfaces
+\BA
+>\!X_k^\m + \sum_j\nu_{jk}\A_j &\arrows >\!S_k^\m,\\
+>\!X_k^\im + \sum_j\nu_{jk}\A_j &\arrows >\!S_k^\im,\\
+>\!X_k^s + \sum_j\nu_{jk}\A_j &\arrows >\!S_k^s,
+\EA
+with corresponding reaction rates $I_k^\m$, $I_k^\im$, and $I_k^s$, where the superscripts $s$, $m$, and $im$ denote mineral surfaces, and mobile and immobile colloids, respectively. In addition, reaction with minerals $\M_s$ may occur according to the reaction
+\EQ
+\sum_j\nu_{js}\A_j \arrows \M_s.
+\EN
+The transport equations for primary species, mobile and immobile colloids, read
+\BA
+\frac{\p}{\p t} \varphi s_l \Psi_j^l + \bnabla\cdot\bOmega_j^l &\eq -\sum_k\nu_{jk}\big(I_k^\m + I_k^\im + I_k^s\big) - \sum_s \nu_{js} I_s,\\
+\frac{\p}{\p t} S_k^\m + \bnabla\cdot\bq_c S_k^\m & \eq I_k^\m,\\
+\frac{\p}{\p t} S_k^\im & \eq I_k^\im,\\
+\frac{\p}{\p t} S_k^s & \eq I_k^s,
+\EA
+where $\bq_c$ denotes the colloid Darcy velocity which may be greater than the fluid velocity $\bq$.
+For conditions of local equilibrium the sorption reaction rates may be eliminated and replaced by algebraic sorption isotherms to yield
+\EQ
+\frac{\p}{\p t} \varphi s_l \Big[\Psi_j^l + \sum_k \nu_{jk} \big(S_k^\m + S_k^\im + S_k^s\big) \Big] + \bnabla\cdot\Big(\bOmega_j^l + \bq_c \sum_k \nu_{jk} S_k^\m\Big) \eq - \sum_s \nu_{js} I_s.
+\EN
 
 \section{Method of Solution}
 
