@@ -2335,7 +2335,8 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 ! zero out isothermal and inactive cells
 #ifdef ISOTHERMAL
   zero = 0.d0
-  call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,zero,ierr) 
+  call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,zero, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
   do i=1, n_zero_rows
     ii = mod(zero_rows_local(i),option%nflowdof)
     ip1 = zero_rows_local_ghosted(i)
@@ -2358,7 +2359,8 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   if (patch%aux%Immis%inactive_cells_exist) then
     f_up = 1.d0
     call MatZeroRowsLocal(A,patch%aux%Immis%n_zero_rows, &
-                          patch%aux%Immis%zero_rows_local_ghosted,f_up,ierr) 
+                          patch%aux%Immis%zero_rows_local_ghosted,f_up, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
   endif
 
   if (realization%debug%matview_Jacobian) then

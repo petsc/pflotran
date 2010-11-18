@@ -3020,7 +3020,8 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 ! zero out isothermal and inactive cells
 #ifdef ISOTHERMAL
   zero = 0.d0
-  call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,zero,ierr) 
+  call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,zero, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
   do i=1, n_zero_rows
     ii = mod(zero_rows_local(i),option%nflowdof)
     ip1 = zero_rows_local_ghosted(i)
@@ -3043,7 +3044,8 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   if (patch%aux%Mphase%inactive_cells_exist) then
     f_up = 1.d0
     call MatZeroRowsLocal(A,patch%aux%Mphase%n_zero_rows, &
-                          patch%aux%Mphase%zero_rows_local_ghosted,f_up,ierr) 
+                          patch%aux%Mphase%zero_rows_local_ghosted,f_up, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
   endif
 
 end subroutine MphaseJacobianPatch

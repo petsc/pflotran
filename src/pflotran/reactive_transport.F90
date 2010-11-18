@@ -1648,7 +1648,8 @@ subroutine RTCalculateTranMatrixPatch1(realization,T)
   if (patch%aux%RT%inactive_cells_exist) then
     coef = 1.d0
     call MatZeroRowsLocal(T,patch%aux%RT%n_zero_rows, &
-                          patch%aux%RT%zero_rows_local_ghosted,coef,ierr) 
+                          patch%aux%RT%zero_rows_local_ghosted,coef, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
   endif
   
 end subroutine RTCalculateTranMatrixPatch1
@@ -1744,7 +1745,8 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
   if (patch%aux%RT%inactive_cells_exist) then
     coef = 1.d0
     call MatZeroRowsLocal(T,patch%aux%RT%n_zero_rows, &
-                          patch%aux%RT%zero_rows_local_ghosted,coef,ierr) 
+                          patch%aux%RT%zero_rows_local_ghosted,coef, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
   endif
 
   if(option%use_samr) then
@@ -4877,7 +4879,8 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     call PetscLogEventBegin(logging%event_rt_jacobian_zero,ierr)    
     rdum = 1.d0
     call MatZeroRowsLocal(A,patch%aux%RT%n_zero_rows, &
-                          patch%aux%RT%zero_rows_local_ghosted,rdum,ierr) 
+                          patch%aux%RT%zero_rows_local_ghosted,rdum, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
     call PetscLogEventEnd(logging%event_rt_jacobian_zero,ierr)                          
   endif
 
