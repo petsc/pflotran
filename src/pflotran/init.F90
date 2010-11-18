@@ -623,6 +623,10 @@ subroutine Init(simulation)
   if (option%ntrandof > 0) then
     call RTSetup(realization)
 
+#ifdef SUBCONTINUUM_MODEL
+    call STSetup(realization)
+#endif
+
     ! initialize densities and saturations
     if (option%nflowdof == 0) then
       call GlobalSetAuxVarScalar(realization,option%reference_pressure, &

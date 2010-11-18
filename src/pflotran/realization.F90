@@ -48,10 +48,10 @@ private
     
     type(material_property_type), pointer :: material_properties
     type(material_property_ptr_type), pointer :: material_property_array(:)
-#ifdef SUBCONTINUUM_MOFRL
+#ifdef SUBCONTINUUM_MODEL
     type(subcontinuum_property_type), pointer :: subcontinuum_properties
-    type(subcontinuum_property_ptr_type), pointer ::
-    subcontinuum_property_array(:)
+    type(subcontinuum_property_ptr_type), pointer ::  &
+                               subcontinuum_property_array(:)
 #endif
     type(fluid_property_type), pointer :: fluid_properties
     type(fluid_property_type), pointer :: fluid_property_array(:)

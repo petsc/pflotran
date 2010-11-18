@@ -14,7 +14,7 @@ module Subcontinuum_Transport_Aux_module
 
 #include "definitions.h"
  
-  type, public :: subcontinuum_transport_type
+  type, public :: subcontinuum_transport_type2
     PetscInt :: num_aux, num_aux_bc
     PetscInt, pointer :: zero_rows_local(:)
     PetscInt :: n_zero_rows
@@ -23,17 +23,17 @@ module Subcontinuum_Transport_Aux_module
     type(reactive_transport_param_type), pointer :: rt_parameter
     type(reactive_transport_auxvar_type), pointer :: aux_vars(:)
     type(reactive_transport_auxvar_type), pointer :: aux_vars_bc(:)
-  end type subcontinuum_transport_type
+  end type subcontinuum_transport_type2
  
   type, public :: subcontinuum_transport_type1
-    PetscInt :: num_subgrids
-    type(subcontinuum_transport_type), pointer :: st_type(:)
+    PetscInt :: num_subcontinuum
+    type(subcontinuum_transport_type2), pointer :: st_type(:)
   end type subcontinuum_transport_type1
   
-  type, public :: subcontinuum_transport_type2
-    PetscInt :: num_subcontinuum
+  type, public :: subcontinuum_transport_type
+    PetscInt :: num_cells
     type(subcontinuum_transport_type1), pointer :: st_type1(:)
-  end type subcontinuum_transport_type2
+  end type subcontinuum_transport_type
 
   public :: STAuxCreate, STAuxDestroy, &
             STAuxVarInit, STAuxVarCopy, STAuxVarDestroy
@@ -173,6 +173,18 @@ subroutine STAuxDestroy(aux)
 
   type(subcontinuum_transport_type), pointer :: aux
   
+  if (associated(aux%st_type1)) then
+    do iaux=1, aux%num_cells
+      do jaux=1, aux%st_type1(iaux)%num_subcontinuum
+        do kaux=1, aux%st_type1(iaux)%st_type(jaux)%num_aux
+          call RTAuxDestroy(aux%st_type1(iaux)%st_type(jaux)%aux_vars(kaux))
+        enddo
+        nullify(aux%st_type1(iaux)%st_type(jaux)%aux_vars)
+      enddo
+      nullify(aux%st_type1(iaux)%st_type)
+    enddo
+    nullify(aux%st_type1)
+  endif  
   call RTAuxDestroy(aux)
     
 end subroutine STAuxDestroy
