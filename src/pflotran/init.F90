@@ -2287,15 +2287,15 @@ subroutine assignSubcontinuumPropToRegions(realization)
 
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
-  type(discretization_type) :: discretization
-  type(field_type) :: field
-  type(strata_type) :: strata
-  type(patch_type) :: patch
-  type(level_type) :: cur_level
-  type(patch_type) :: cur_patch
+  type(discretization_type), pointer :: discretization
+  type(field_type), pointer :: field
+  type(strata_type), pointer :: strata
+  type(patch_type), pointer :: patch
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
     
-  type(material_property_type), pointer :: material_property,
-  null_material_property
+  type(material_property_type), pointer :: material_property,  &
+                                              null_material_property
   type(region_type), pointer :: region
   PetscBool :: updated_ghosted_subcontinuum_ids
 
@@ -2368,11 +2368,10 @@ subroutine assignSubcontinuumPropToRegions(realization)
     if (.not.associated.(cur_patch)) exit
     grid => cur_patch%grid
     strata => cur_patch%strata%first
-    counter = 0
     do
-      if (.not.associated.(strata)) exit
+      if (.not.associated(strata)) exit
       ! Read in cell by cell subcontunum ids if they exist
-      if (.not.associated.(strata%region) .and. strata%active) then
+      if (.not.associated(strata%region) .and. strata%active) then
         ! readSubcontinuumFromFile(realization, &
         !                        strata%subcontinuum_property_file_name)
         ! TODO: Implement the above function
@@ -2395,6 +2394,8 @@ subroutine assignSubcontinuumPropToRegions(realization)
           else
             local_id = icell
           endif
+          ! Jump to the appropriate offset and save the subcontinuum ids
+          counter = cur_patch%num_subcontinuum_type(local_id,2)
           ! save the subcontinuum id
           do isub=1,strata%material_type%num_subcontinuum_type
             cur_patch%subcontinuum_type_ids(counter) = & 
