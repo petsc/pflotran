@@ -9,21 +9,22 @@ module Subcontinuum_module
   type, public :: subcontinuum_property_type
     PetscInt :: id
     character(len=MAXWORDLENGTH) :: name
+    PetscInt :: num_subgrids
     PetscReal :: radius
     type(subcontinuum_property_type), pointer :: next
   end type subcontinuum_property_type
 
   type, public :: subcontinuum_property_ptr_type
     type(subcontinuum_property_type), pointer :: ptr
-   end type subcontinuum_property_ptr_type
+  end type subcontinuum_property_ptr_type
 
-   public :: SubcontinuumPropertyCreate, &
-             SubcontinuumPropertyDestroy, &
-             SubcontinuumPropertyAddToList, &
-             SubcontinuumPropGetPtrFromList, &
-             SubcontinuumPropGetPtrFromArray, &
-             SubcontinuumPropConvertListToArray, &
-             SubcontinuumPropertyRead
+  public :: SubcontinuumPropertyCreate, &
+            SubcontinuumPropertyDestroy, &
+            SubcontinuumPropertyAddToList, &
+            SubcontinuumPropGetPtrFromList, &
+            SubcontinuumPropGetPtrFromArray, &
+            SubcontinuumPropConvertListToArray, &
+            SubcontinuumPropertyRead
 
 contains
 
@@ -44,6 +45,7 @@ function SubcontinuumPropertyCreate()
   
   allocate(subcontinuum_property)
   subcontinuum_property%id = 0
+  subcontinuum_property%num_subgrids = 0
   subcontinuum_property%name = ''
   subcontinuum_property%radius = 0.d0
   nullify(subcontinuum_property%next)
@@ -99,6 +101,9 @@ subroutine SubcontinuumPropertyRead(subcontinuum_property,input,option)
       case('RADIUS')
         call InputReadDouble(input,option,subcontinuum_property%radius)
         call InuputErrorMsg(input,option,'radius','SUBCONTINUUM_PROPERTY')
+      case('SUBGRID')
+        call InputReadInt(input,option,subcontinuum_property%radius)
+        call InuputErrorMsg(input,option,'num_subgrids','SUBCONTINUUM_PROPERTY')
       case default
         option%io_buffer = 'Keyword ('// trim(keyword) // ') not recognized in
         subcontinuum_property'
@@ -214,7 +219,7 @@ function SubcontinuumPropGetPtrFromList(subcontinuum_property_name, &
     length = len_trim(subcontinuum_property_name)
     if (length == len_trim(subcontinuum_property%name) .and. &
         StringCompare(subcontinuum_property%name,subcontinuum_property_name,length)) then
-      SubcontinuumPropGetPtrFromList => subcotinnuum_property
+      SubcontinuumPropGetPtrFromList => subcontinuum_property
       return
     endif
     subcontinuum_property => subcontinuum_property%next
