@@ -67,6 +67,7 @@ type, public :: Flash2_auxvar_elem_type
      type(Flash2_auxvar_type), pointer :: aux_vars(:)
      type(Flash2_auxvar_type), pointer :: aux_vars_bc(:)
      PetscReal , pointer :: Resold_AR(:,:)
+     PetscReal , pointer :: Resold_BC(:,:)
      PetscReal , pointer :: Resold_FL(:,:)
      PetscReal , pointer :: delx(:,:)
   end type Flash2_type

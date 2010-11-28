@@ -59,6 +59,10 @@ PetscInt, parameter :: TIME_NULL = 0
 PetscInt, parameter :: TIME_T = 1
 PetscInt, parameter :: TIME_TpDT = 2
 
+PetscInt, parameter :: SORPTION_LINEAR = 1
+PetscInt, parameter :: SORPTION_LANGMUIR = 2
+PetscInt, parameter :: SORPTION_FREUNDLICH  = 3
+
 ! Classes
 PetscInt, parameter :: NULL_CLASS = 0
 PetscInt, parameter :: FLOW_CLASS = 1
@@ -131,11 +135,6 @@ PetscInt, parameter :: MINERAL_EQUILIBRIUM = 3
 PetscInt, parameter :: NULL_SURFACE = 0
 PetscInt, parameter :: COLLOID_SURFACE = 1
 PetscInt, parameter :: MINERAL_SURFACE = 2
-
-! KD rxn types
-PetscInt, parameter :: SORPTION_LINEAR = 1
-PetscInt, parameter :: SORPTION_LANGMUIR = 2
-PetscInt, parameter :: SORPTION_FREUNDLICH  = 3
 
 ! coupler types
 PetscInt, parameter :: INITIAL_COUPLER_TYPE = 1

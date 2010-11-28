@@ -26,6 +26,10 @@ module Saturation_Function_module
     PetscReal :: BC_pressure_low
     PetscReal :: BC_pressure_high
     PetscReal :: BC_spline_coefficients(4)
+    PetscReal :: ani_A       ! parameters for anisotropic relative permeability model
+    PetscReal :: ani_B       ! parameters for anisotropic relative permeability model
+	PetscReal :: ani_C       ! parameters for anisotropic relative permeability model
+
     type(saturation_function_type), pointer :: next
   end type saturation_function_type
   
@@ -95,6 +99,9 @@ function SaturationFunctionCreate(option)
   saturation_function%BC_pressure_low = 0.d0
   saturation_function%BC_pressure_high = 0.d0
   saturation_function%BC_spline_coefficients = 0.d0
+  saturation_function%ani_A = 0.d0
+  saturation_function%ani_B = 0.d0
+  saturation_function%ani_C = 0.d0
   nullify(saturation_function%next)
   SaturationFunctionCreate => saturation_function
 
@@ -210,6 +217,15 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
       case('POWER') 
         call InputReadDouble(input,option,saturation_function%power)
         call InputErrorMsg(input,option,'power','SATURATION_FUNCTION')
+      case('ANI_A') 
+        call InputReadDouble(input,option,saturation_function%ani_A)
+        call InputErrorMsg(input,option,'ani_A','SATURATION_FUNCTION')
+      case('ANI_B') 
+        call InputReadDouble(input,option,saturation_function%ani_B)
+        call InputErrorMsg(input,option,'ani_B','SATURATION_FUNCTION')
+      case('ANI_C') 
+        call InputReadDouble(input,option,saturation_function%ani_C)
+        call InputErrorMsg(input,option,'ani_C','SATURATION_FUNCTION')
       case default
         option%io_buffer = 'Keyword: ' // trim(keyword) // &
                            ' not recognized in saturation_function'    

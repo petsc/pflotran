@@ -13,6 +13,7 @@ module Init_module
 #include "finclude/petscsnes.h"
 #include "finclude/petscpc.h"
 
+
   public :: Init, InitReadStochasticCardFromInput, InitReadInputFilenames
 
 contains
@@ -86,7 +87,7 @@ subroutine Init(simulation)
   PetscErrorCode :: ierr
   PCSide:: pcside
   PetscReal :: r1, r2, r3, r4, r5, r6
- 
+
       
   interface
 
@@ -117,6 +118,8 @@ subroutine Init(simulation)
 
   nullify(flow_solver)
   nullify(tran_solver)
+
+
   
   realization%input => InputCreate(IUNIT1,option%input_filename)
 
@@ -1190,6 +1193,7 @@ subroutine InitReadInput(simulation)
                           enddo
                       end select 
                     enddo
+                  case('CHUNK_SIZE')
                   case('JUMPSTART_KINETIC_SORPTION')
                   case('NO_CHECKPOINT_KINETIC_SORPTION')
                   case('NO_RESTART_KINETIC_SORPTION')

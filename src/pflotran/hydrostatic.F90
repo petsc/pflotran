@@ -275,9 +275,9 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   enddo
 
 #ifdef DASVYAT 
-  do iconn = 1, num_faces
-     write(*,*) iconn, coupler%flow_aux_real_var(1,iconn)
-  end do
+!  do iconn = 1, num_faces
+!     write(*,*) iconn, coupler%flow_aux_real_var(1,iconn)
+!  end do
 #endif
  
   if (associated(pressure_array)) deallocate(pressure_array)
