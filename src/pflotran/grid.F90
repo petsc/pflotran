@@ -2094,7 +2094,7 @@ subroutine GridPopulateSubcontinuum(realization)
   implicit none
 
   type(realization_type), pointer :: realization
-  type(grid_type)i, pointer :: grid
+  type(grid_type), pointer :: grid
   type(discretization_type), pointer :: discretization
   type(patch_type), pointer :: patch 
   type(level_type), pointer :: cur_level
@@ -2106,9 +2106,9 @@ subroutine GridPopulateSubcontinuum(realization)
   ! do this only at the last and finest level
   cur_level => realization%level_list%last
   if(.not.associated(cur_level)) exit
-  cur_patch = > cur_level%patch_list%first
+  cur_patch => cur_level%patch_list%first
   do 
-    grid = > cur_patch%grid
+    grid => cur_patch%grid
     ! Allocate storage for subcontinuum_grid_offset
     allocate(cur_patch%grid%subcontinuum_grid_offset(cur_patch%grid%nlmax,2)
     
