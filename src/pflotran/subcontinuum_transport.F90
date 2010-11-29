@@ -116,7 +116,7 @@ subroutine STSetupPatch(realization)
   type(fluid_property_type), pointer :: cur_fluid_property
 
   PetscInt :: ghosted_id, iconn, sum_connection
-  PetscInt :: iphase
+  PetscInt :: iphase, num_grids, offset
   
   option => realization%option
   patch => realization%patch
@@ -127,7 +127,7 @@ subroutine STSetupPatch(realization)
     
   do iaux=1,patch%aux%ST%num_cells
     patch%aux%ST%st_type1(iaux)%num_subcontinuum =  &
-                        patch%num_subcontinuum_type(iaux) 
+                        patch%num_subcontinuum_type(iaux,1) 
     do jaux=1,patch%aux%ST%st_type1(iaux)%num_subcontinuum
       patch%aux%ST%st_type1(iaux)%st_type(jaux) => RTAuxCreate(option)
       patch%aux%ST%st_type1(iaux)%st_type(jaux)%rt_parameter%ncomp = reaction%ncomp
@@ -153,31 +153,36 @@ subroutine STSetupPatch(realization)
 #else  
       option%iflag = 0 ! be sure not to allocate mass_balance array
 #endif
-      allocate(patch%aux%ST%st_type1(iaux)%st_type(jaux)aux_vars(grid%ngmax))
-      do ghosted_id = 1, grid%ngmax
-        call RTAuxVarInit(patch%aux%RT%aux_vars(ghosted_id),reaction,option)
+      offset = grid%subcontinuum_grid_offset(iaux,2)
+      num_subgrids = grid%subcontinuum_grid(offset-1+jaux)
+      allocate(patch%aux%ST%st_type1(iaux)%st_type(jaux)%aux_vars(num_subgrids))
+      do local_id = 1, num_subgrids 
+        call RTAuxVarInit(patch%aux%ST%st_type1(iaux)%st_type(jaux)%aux_vars(local_id),reaction,option)
       enddo
-      patch%aux%RT%num_aux = grid%ngmax
+      patch%aux%ST%st_type1(iaux)%st_type(jaux)%num_aux = num_subgrids 
   
       ! count the number of boundary connections and allocate
       ! aux_var data structures for them
       boundary_condition => patch%boundary_conditions%first
       sum_connection = 0    
-      do 
-        if (.not.associated(boundary_condition)) exit
-        sum_connection = sum_connection + &
-                     boundary_condition%connection_set%num_connections
-        boundary_condition => boundary_condition%next
-      enddo
+      !do 
+      !  if (.not.associated(boundary_condition)) exit
+      !  sum_connection = sum_connection + &
+      !               boundary_condition%connection_set%num_connections
+      !  boundary_condition => boundary_condition%next
+      !enddo
+      ! NOTE (Jitu): Hardcoding num of boundary connections to 2 for
+      ! subcontinuum problem (Revisit this later.) 11/23/2010
+      sum_connection = 2    
   
       if (sum_connection > 0) then
         option%iflag = 1 ! enable allocation of mass_balance array 
-        allocate(patch%aux%RT%aux_vars_bc(sum_connection))
+        allocate(patch%aux%ST%st_type1(iaux)%st_type(jaux)%aux_vars_bc(sum_connection))
         do iconn = 1, sum_connection
-          call RTAuxVarInit(patch%aux%RT%aux_vars_bc(iconn),reaction,option)
+          call RTAuxVarInit(patch%aux%ST%st_type1(iaux)%st_type(jaux)%aux_vars_bc(iconn),reaction,option)
         enddo
       endif
-      patch%aux%RT%num_aux_bc = sum_connection
+      patch%aux%ST%st_type1(iaux)%st_type(jaux)%num_aux_bc = 2 
       option%iflag = 0
 
       ! create zero array for zeroing residual and Jacobian (1 on diagonal)
@@ -189,17 +194,17 @@ subroutine STSetupPatch(realization)
       do 
         if (.not.associated(cur_fluid_property)) exit
         iphase = cur_fluid_property%phase_id
-        patch%aux%RT%rt_parameter%diffusion_coefficient(iphase) = &
+        patch%aux%ST%st_type1(iaux)%st_type(jaux)%rt_parameter%diffusion_coefficient(iphase) = &
           cur_fluid_property%diffusion_coefficient
         cur_fluid_property => cur_fluid_property%next
       enddo
   
       if (associated(realization%material_properties)) then
-        patch%aux%RT%rt_parameter%dispersivity = &
+        patch%aux%ST%st_type1(iaux)%st_type(jaux)%rt_parameter%dispersivity = &
           realization%material_properties%longitudinal_dispersivity
       endif
     enddo
   enddo  
-end subroutine RTSetupPatch
+end subroutine STSetupPatch
 
 

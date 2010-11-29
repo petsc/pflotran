@@ -29,13 +29,14 @@ module Patch_module
 
 #ifdef SUBCONTINUUM_MODEL
     !These arrays will hold the no. of subcontinuum types at each cell 
-    PetscInt, pointer :: num_subcontinuum_type(:)
+    PetscInt, pointer :: num_subcontinuum_type(:,:)
     
     !These arrays will hold the subcontinuum types ids
     PetscInt, pointer :: subcontinuum_type_ids(:)
 
     type(subcontinuum_property_ptr_type), pointer ::  &
                           subcontinuum_property_array(:)
+    type(subcontinuum_field_typep), pointer :: sub_field_patch
 #endif
 
     PetscReal, pointer :: internal_velocities(:,:)

@@ -17,6 +17,29 @@ module Subcontinuum_module
   type, public :: subcontinuum_property_ptr_type
     type(subcontinuum_property_type), pointer :: ptr
   end type subcontinuum_property_ptr_type
+  
+  type, public :: subcontinuum_field_typec
+    ! NOTE (Jitu): Check the required fields again and add/delete as needed
+    PetscInt :: num_subgrids
+    ! Solution vectors (yy = previous solution, xx = current iterate)
+    Vec :: tran_xx, tran_dxx, tran_yy, tran_accum
+    ! Vectors for operator splitting
+    Vec :: tran_rhs, tran_rhs_coef
+
+    Vec :: tran_log_xx
+    Vec :: tran_ts_mass_balance, tran_total_mass_balance
+
+  end type subcontinuum_field_typec
+
+  type, public :: subcontinuum_field_typen
+    PetscInt :: num_continuum
+    type(subcontinuum_field_typec), pointer :: sub_field_continuum
+  end type subcontinuum_field_typen
+
+  type, public :: subcontinuum_field_typep
+    PetscInt :: num_cells
+    type(subcontinuum_field_typen), pointer :: sub_field_node
+  end type subcontinuum_field_typep  
 
   public :: SubcontinuumPropertyCreate, &
             SubcontinuumPropertyDestroy, &
