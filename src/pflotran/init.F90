@@ -546,6 +546,8 @@ subroutine Init(simulation)
 #ifdef SUBCONTINUUM_MODEL
   call RealProcessSubcontinuumProp(realization)
   call assignSubcontinuumPropToRegions(realization)
+  ! NOTE (Jitu): Check again if this is the right place to call this routine  
+  call GridPopulateSubcontinuum(realization)  
 #endif
   call RealizationInitAllCouplerAuxVars(realization)
   if (option%ntrandof > 0) then

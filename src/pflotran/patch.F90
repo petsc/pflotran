@@ -36,7 +36,7 @@ module Patch_module
 
     type(subcontinuum_property_ptr_type), pointer ::  &
                           subcontinuum_property_array(:)
-    type(subcontinuum_field_typep), pointer :: sub_field_patch
+    type(subcontinuum_field_typep), pointer :: subcontinuum_field_patch
 #endif
 
     PetscReal, pointer :: internal_velocities(:,:)
@@ -111,6 +111,7 @@ function PatchCreate()
   nullify(patch%subcontinuum_count)
   nullify(patch%subcontinnuum_ids)
   nullify(patch%subcontinuum_property_array)  
+  nullify(patch%subcontinuum_field_patch)  
 #endif
   nullify(patch%internal_velocities)
   nullify(patch%boundary_velocities)

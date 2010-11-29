@@ -18,7 +18,7 @@ module Subcontinuum_module
     type(subcontinuum_property_type), pointer :: ptr
   end type subcontinuum_property_ptr_type
   
-  type, public :: subcontinuum_field_typec
+  type, public :: subcontinuum_field_types
     ! NOTE (Jitu): Check the required fields again and add/delete as needed
     PetscInt :: num_subgrids
     ! Solution vectors (yy = previous solution, xx = current iterate)
@@ -31,14 +31,14 @@ module Subcontinuum_module
 
   end type subcontinuum_field_typec
 
-  type, public :: subcontinuum_field_typen
+  type, public :: subcontinuum_field_typec
     PetscInt :: num_continuum
-    type(subcontinuum_field_typec), pointer :: sub_field_continuum
-  end type subcontinuum_field_typen
+    type(subcontinuum_field_types), pointer :: subcontinuum_field_continuum
+  end type subcontinuum_field_typec
 
   type, public :: subcontinuum_field_typep
     PetscInt :: num_cells
-    type(subcontinuum_field_typen), pointer :: sub_field_node
+    type(subcontinuum_field_typec), pointer :: subcontinuum_field_cell
   end type subcontinuum_field_typep  
 
   public :: SubcontinuumPropertyCreate, &
@@ -307,6 +307,92 @@ recursive subroutine SubcontinuumPropertyDestroy(subcontinuum_property)
   nullify(subcontinuum_property)
   
 end subroutine SubcontinuumPropertyDestroy
+
+
+! ************************************************************************ !
+!
+! SubcontinuumFieldCreatePatch: Create subcontinuum field at a patch 
+! author: Jitendra Kumar 
+! date: 11/29/2010
+!
+! ************************************************************************ !
+subroutine SubcontinuumFieldCreatePatch(patch)
+  
+  implicit none
+
+  type(patch_type), pointer :: patch
+
+  type(subcontinuum_field_typep), pointer :: subcontinuum_field_patch
+
+  PetscInt :: icell, isub, num_cells, num_continuum, num_subgrids, offset
+
+  subcontinuum_field_patch => patch%subcontinuum_field_patch 
+  
+  ! Save no. of local grid cells in subcontinuum_field_patch object  
+  num_cells = patch%nlmax
+  subcontinuum_field_patch%num_cells = num_cells
+  ! Allocate storage for subcontinuum_field_node pointers for every cell
+  allocate(subcontinuum_field_patch%subcontinuum_field_cell(num_cells))
+  
+  ! Loop over each cell and allocate subcontinuum_field_cell
+  
+  do icell=1,num_cells
+    num_continuum = patch%num_subcontinuum_type(icell,1)
+    subcontinuum_field_patch%subcontinuum_field_cell%num_continuum = &
+                                                         num_continuum
+    allocate(subcontinuum_field_patch%subcontinuum_field_cell(num_continuum)
+    
+    ! Loop over each subcontinuum and allocate the Petsc vectors for the
+    ! based on the subgrid mesh information
+    offset = patch%subcontinuum_grid_offset(icell,2)
+    do isub=1,num_continuum
+      ! Get the num_subgrid associated with the current subcontinuum
+      num_subgrids = patch%subcontinuum_grid(offset+isub-1)
+      ! Allocate Petsc vectors for this subgrid
+      VecCreateSeq(PETSC_COMM_SELF, num_subgrids,  &
+          subcontinuum_field_patch%subcontinuum_field_cell(icell)%subcontinuum_field_continuum(isub)%tran_xx)
+      
+    enddo
+  enddo
+
+end subroutine SubcontinuumFieldCreatePatch
+
+
+! ************************************************************************ !
+!
+! SubcontinuumFieldCreateRealization: Create subcontinuum field for a
+! realization 
+! author: Jitendra Kumar 
+! date: 11/29/2010
+!
+! ************************************************************************ !
+subroutine SubcontinuumFieldCreateRealization(realization)
+  
+  use Realization_module
+  use Patch_module
+  use Subcontinuum_module
+  use Level_module
+
+  implicit none
+
+  type(realization_type), pointer :: realization
+  type(patch_type), pointer :: patch
+  type(level_type), pointer :: level
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+    
+  ! Jump to last/finest level
+  cur_level => realization%level_list%last
+  if(.not.associated(cur_level)) exit
+
+  ! Loop over all patches at this level and create the subcontinuum field
+  cur_patch => cur_level%patch_list%first
+  do 
+    call SubcontinuumFieldCreatePatch(cur_patch)
+    cur_patch => cur_patch%next
+  enddo
+
+end subroutine SubcontinuumFieldCreateRealization
 
 end module Subcontinuum_module
 
