@@ -3886,7 +3886,7 @@ subroutine BasisPrint(reaction,title,option)
       if (.not.associated(cur_mineral)) exit
       write(option%fid_out,100) '  ' // trim(cur_mineral%name)
       write(option%fid_out,110) '    Molar Weight: ', cur_mineral%molar_weight
-      write(option%fid_out,110) '    Molar Volume: ', cur_mineral%molar_volume
+      write(option%fid_out,150) '    Molar Volume: ', cur_mineral%molar_volume
       if (associated(cur_mineral%tstrxn)) then
         write(option%fid_out,100) '    Mineral Reaction: '
         write(option%fid_out,120) '      ', -1.d0, cur_mineral%name
