@@ -4862,7 +4862,7 @@ subroutine OutputHDF5(realization)
   call printMsg(realization%option,'')
   write(realization%option%io_buffer, &
         '("PFLOTRAN must be compiled with HDF5 to &
-        &write HDF5 formatted structured grids.")')
+        &write HDF5 formatted structured grids Darn.")')
   call printErrMsg(realization%option)
 #else
 
@@ -4889,17 +4889,6 @@ subroutine OutputHDF5(realization)
        PetscInt :: component
      end subroutine SAMRCopyVecToVecComponent
 
-#if 0       
-     subroutine SAMRRegisterForViz(ptr,vec,component,dname,dnamec)
-#include "finclude/petscsysdef.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-       PetscFortranAddr :: ptr
-       Vec :: vec
-       PetscInt :: component
-       PetscInt :: dname, dnamec
-     end subroutine SAMRRegisterForViz
-#else
      subroutine SAMRRegisterForViz(ptr,vec,component, namestr)
        use ISO_C_BINDING
 #include "finclude/petscsysdef.h"
@@ -4911,8 +4900,6 @@ subroutine OutputHDF5(realization)
        character(kind=C_CHAR), dimension(*) :: namestr 
        
      end subroutine SAMRRegisterForViz
-
-#endif
        
      subroutine SAMRWritePlotData(ptr, time)
 #include "finclude/petscsysdef.h"
