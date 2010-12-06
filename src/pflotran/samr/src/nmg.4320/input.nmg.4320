@@ -14,7 +14,7 @@ CartesianGeometry{
 
 
 GriddingAlgorithm{
-   max_levels = 1 
+   max_levels = 2 
    largest_patch_size {
       level_0 = 20, 20, 80
       level_1 = 40, 40, 40
