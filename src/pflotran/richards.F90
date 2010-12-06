@@ -3938,7 +3938,7 @@ subroutine RichardsJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       qsrc = 1.d0 ! solely a temporary variable in this conditional
       call MatZeroRowsLocal(A,patch%aux%Richards%n_zero_rows, &
                             patch%aux%Richards%zero_rows_local_ghosted, &
-                            qsrc,ierr) 
+                            qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
     endif
 #ifdef GLENN
   endif
