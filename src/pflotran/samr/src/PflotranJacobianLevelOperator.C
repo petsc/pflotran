@@ -393,7 +393,7 @@ PflotranJacobianLevelOperator::applyBoundaryCondition(const int *var_id,
    t_PflotranJacobianLevelOperator_applyBoundaryCondition->stop();
 }
 
-const int 
+int 
 PflotranJacobianLevelOperator::getStencilType(const int i,
                                               const int j,
                                               const int k)
@@ -422,7 +422,7 @@ PflotranJacobianLevelOperator::getStencilBlock(const int p,
    return stencilBlock;
 }
 
-const int
+int
 PflotranJacobianLevelOperator::getStencilSize(const int i,
                                               const int j,
                                               const int k)
