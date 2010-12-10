@@ -137,9 +137,9 @@ public:
    * \param j
    *        index of second variable
    */
-   const int getStencilSize(const int i=0,
-                            const int j=0,
-                            const int k=0);
+   int getStencilSize(const int i=0,
+		      const int j=0,
+		      const int k=0);
    
    /**
    * Return whether the stencil for block (i,j,k) is a constant stencil or variable coefficient
@@ -150,9 +150,9 @@ public:
    * \param j
    *        index of second variable
    */
-   const int getStencilType(const int i=0,
-                            const int j=0,
-                            const int k=0);
+   int getStencilType(const int i=0,
+		      const int j=0,
+		      const int k=0);
    
    /**
    * Returns a pointer to the stencil block data for block i,j of the stencil.
@@ -186,7 +186,7 @@ public:
    /**
    * Returns the number of primitive variables for the discretization
    */
-   const int getNumberOfVariables(void){ return 1; }
+   int getNumberOfVariables(void){ return 1; }
 
    int getStencilID(void){return d_stencil_id;}
 

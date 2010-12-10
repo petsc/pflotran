@@ -2664,6 +2664,20 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
     maximum_relative_change = maxval(abs((rt_auxvar%pri_molal-prev_molal)/ &
                                          prev_molal))
     if (maximum_relative_change < reaction%reaction_tolerance) exit
+
+    if (num_iterations > 50) then
+      if (num_iterations > 50) then
+        rt_auxvar%pri_molal(:) = (rt_auxvar%pri_molal(:)-prev_molal(:))* &
+                                 0.1d0+prev_molal(:)
+      else if (num_iterations > 100) then
+        rt_auxvar%pri_molal(:) = (rt_auxvar%pri_molal(:)-prev_molal(:))* &
+                                 0.01d0+prev_molal(:)
+      else if (num_iterations > 150) then
+        rt_auxvar%pri_molal(:) = (rt_auxvar%pri_molal(:)-prev_molal(:))* &
+                                 0.001d0+prev_molal(:)
+      endif
+
+    endif
   
   enddo
 

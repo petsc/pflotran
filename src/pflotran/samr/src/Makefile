@@ -48,10 +48,16 @@ ifeq "$(BUILDTYPE)" "x86_64-Linux"
    CXXFLAGS_EXTRA += -DNDIM=$(PDIM)
    CPPFLAGS_EXTRA += -DNDIM=$(PDIM)
 endif
+
 ifeq "$(BUILDTYPE)" "i386-Darwin"
    CXXFLAGS_EXTRA += -DNDIM=$(PDIM) -m32
    CPPFLAGS_EXTRA += -DNDIM=$(PDIM) -m32
    LDFLAGS_EXTRA += -m32
+endif
+
+ifeq "$(BUILDTYPE)" "x86_64-Darwin"
+   CXXFLAGS_EXTRA += -DNDIM=$(PDIM)
+   CPPFLAGS_EXTRA += -DNDIM=$(PDIM)
 endif
 
 ifndef jaguar

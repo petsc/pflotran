@@ -1868,7 +1868,8 @@ subroutine StepperStepTransportDT_OS(realization,stepper,flow_t0,flow_t1, &
     write(*, '(" TRAN ",i6," Time= ",1pe12.4," Dt= ", &
           & 1pe12.4," [",a1,"]"," ksp_conv_reason: ",i4,/," linear = ",i5, &
           & " [",i10,"]")') stepper%steps, &
-        option%tran_time/realization%output_option%tconv, &
+!geh        option%tran_time/realization%output_option%tconv, &
+        final_tran_time/realization%output_option%tconv, &
         option%tran_dt/realization%output_option%tconv, &
         realization%output_option%tunit,ksp_reason,sum_linear_iterations, &
         stepper%cumulative_linear_iterations
@@ -1878,7 +1879,8 @@ subroutine StepperStepTransportDT_OS(realization,stepper,flow_t0,flow_t1, &
     write(option%fid_out, '(" TRAN ",i6," Time= ",1pe12.4," Dt= ", &
           & 1pe12.4," [",a1,"]"," ksp_conv_reason = ",i4,/," linear = ",i5, &
           & " [",i10,"]")') stepper%steps, &
-        option%tran_time/realization%output_option%tconv, &
+!geh        option%tran_time/realization%output_option%tconv, &
+        final_tran_time/realization%output_option%tconv, &
         option%tran_dt/realization%output_option%tconv, &
         realization%output_option%tunit,ksp_reason,sum_linear_iterations, &
         stepper%cumulative_linear_iterations
