@@ -417,15 +417,27 @@ subroutine TFluxCoef(option,area,velocity,diffusion,T_up,T_dn)
   
   q = velocity(iphase)
 
-  !upstream weighting
-  ! units = (m^3 water/m^2 bulk/sec)
-  if (q > 0.d0) then
-    coef_up =  diffusion(iphase)+q
-    coef_dn = -diffusion(iphase)
+  if (option%use_upwinding) then
+    ! upstream weighting
+    ! units = (m^3 water/m^2 bulk/sec)
+    if (q > 0.d0) then
+      coef_up =  diffusion(iphase)+q
+      coef_dn = -diffusion(iphase)
+    else
+      coef_up =  diffusion(iphase)
+      coef_dn = -diffusion(iphase)+q
+    endif
   else
-    coef_up =  diffusion(iphase)
-    coef_dn = -diffusion(iphase)+q
-  endif
+    ! central difference, currently assuming uniform grid spacing
+    ! units = (m^3 water/m^2 bulk/sec)
+    if (q > 0.d0) then
+      coef_up =  diffusion(iphase)+ 0.5d0*q
+      coef_dn = -diffusion(iphase)+ 0.5d0*q
+    else
+      coef_up =  diffusion(iphase)+ 0.5d0*q
+      coef_dn = -diffusion(iphase)+ 0.5d0*q
+    endif
+  endif  
   
   ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)*(1000 L water/m^3 water)
   !       = L water/sec

@@ -177,6 +177,8 @@ module Option_module
   
     PetscBool :: mimetic
     PetscBool :: ani_relative_permeability
+    
+    PetscBool :: use_upwinding
 
     PetscInt :: chunk_size
     PetscInt :: chunk_offset
@@ -355,6 +357,8 @@ subroutine OptionInitAll(option)
 
   option%mimetic = PETSC_FALSE
   option%ani_relative_permeability = PETSC_FALSE
+
+  option%use_upwinding = PETSC_TRUE
 
   option%chunk_size = 8
   option%chunk_offset = 0

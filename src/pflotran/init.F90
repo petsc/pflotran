@@ -1581,6 +1581,9 @@ subroutine InitReadInput(simulation)
                              MAXSTRINGLENGTH,PETSC_TRUE)
         call InputErrorMsg(input,option,'filename','INITIALIZE_TRANSPORT_FROM_FILE') 
 
+      case ('CENTRAL_DIFFERENCE')
+        option%use_upwinding = PETSC_FALSE
+
 !....................
       case ('OBSERVATION')
         observation => ObservationCreate()
