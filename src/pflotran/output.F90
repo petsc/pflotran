@@ -640,6 +640,14 @@ subroutine OutputTecplotBlock(realization)
           endif
         enddo
       endif
+      if (reaction%print_age) then
+        if (reaction%species_idx%tracer_age_id > 0) then
+          call OutputGetVarFromArray(realization,global_vec,AGE, &
+            reaction%species_idx%tracer_age_id,reaction%species_idx%tracer_aq_id)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        endif
+      endif
     endif
   endif
   
@@ -1575,6 +1583,14 @@ subroutine OutputTecplotPoint(realization)
             endif
           enddo        
         endif        
+        if (reaction%print_age) then
+          if (reaction%species_idx%tracer_age_id > 0) then
+            value = RealizGetDatasetValueAtCell(realization,AGE, &
+              reaction%species_idx%tracer_age_id,ghosted_id, &
+              reaction%species_idx%tracer_aq_id)
+            write(IUNIT3,1000,advance='no') value
+          endif
+        endif
       endif
     endif
     
@@ -2902,7 +2918,13 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
             trim(reaction%colloid_names(i)), trim(tot_mol_char), trim(cell_string)
         endif
       enddo
-    endif    
+    endif
+    
+    if (reaction%print_age) then
+      if (reaction%species_idx%tracer_age_id > 0) then
+        write(fid,'('',"Tracer_Age '',a,''"'')',advance="no") trim(cell_string)
+      endif
+    endif
     
   endif
 
@@ -2990,7 +3012,6 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
   PetscInt :: fid, i
   type(realization_type) :: realization
   PetscInt :: local_id
-
   PetscInt :: ghosted_id
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
@@ -3210,7 +3231,16 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
               RealizGetDatasetValueAtCell(realization,COLLOID_IMMOBILE,i,ghosted_id)
           endif
         enddo      
-      endif      
+      endif
+      
+      if (reaction%print_age) then
+        if (reaction%species_idx%tracer_age_id > 0) then
+          write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,AGE, &
+            reaction%species_idx%tracer_age_id,ghosted_id, &
+            reaction%species_idx%tracer_aq_id)
+        endif
+      endif
     endif
   endif
           
@@ -3625,8 +3655,20 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                            region%coordinates(ONE_INTEGER)%z, &
                                            count,ghosted_ids)
           endif
-        enddo      
-      endif      
+        enddo
+      endif
+      if (reaction%print_age) then
+        if (reaction%species_idx%tracer_age_id > 0) then
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,AGE, &
+              reaction%species_idx%tracer_age_id, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids, &
+                                         reaction%species_idx%tracer_aq_id)
+        endif
+      endif
     endif
   endif
     
@@ -4993,7 +5035,7 @@ subroutine OutputHDF5(realization)
      call printMsg(option)
 
 #if !defined(SAMR_HAVE_HDF5)
-       
+     
      if (first) then
 
         ! create a group for the coordinates data set
@@ -5060,7 +5102,7 @@ subroutine OutputHDF5(realization)
      select case(option%iflowmode)
         case(RICHARDS_MODE)
            nviz_flow = 2
-       case(FLASH2_MODE)
+        case(FLASH2_MODE)
            nviz_flow = 7+2*option%nflowspec
         case(MPH_MODE)
            nviz_flow = 7+2*option%nflowspec
@@ -5073,6 +5115,7 @@ subroutine OutputHDF5(realization)
      end select
 
      nviz_tran=0
+     
      if (option%ntrandof > 0) then
         if (associated(reaction)) then
            if (reaction%print_pH .and. associated(reaction%species_idx)) then
@@ -5156,7 +5199,11 @@ subroutine OutputHDF5(realization)
                    nviz_tran=nviz_tran+1
                endif
             end do
-         endif
+          endif
+          
+          if (reaction%print_age) then
+            nviz_tran=nviz_tran+1
+          endif
     
 !!           nviz_tran = nviz_tran+option%ntrandof
         else
@@ -5177,7 +5224,7 @@ subroutine OutputHDF5(realization)
 
      current_component = 0
   endif
-
+   
   ! write out data sets 
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                   option)
@@ -5192,7 +5239,7 @@ subroutine OutputHDF5(realization)
     endif
   endif
 #endif
-      
+
   select case(option%iflowmode)
   
     case(FLASH2_MODE, MPH_MODE,THC_MODE, IMS_MODE,&
@@ -5646,7 +5693,30 @@ subroutine OutputHDF5(realization)
             endif
           endif
         enddo
-      endif      
+      endif
+
+!     Age
+  
+      if (reaction%print_age) then
+        if (reaction%species_idx%tracer_age_id > 0) then
+
+          call OutputGetVarFromArray(realization,global_vec,AGE, &
+            reaction%species_idx%tracer_age_id, &
+            reaction%species_idx%tracer_aq_id)
+            
+          write(string,'(''Tracer_Age'')')
+          
+          if (.not.(option%use_samr)) then
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+          else
+            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+            if(first) then
+               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+            endif
+            current_component=current_component+1
+          endif
+        endif
+      endif
     endif
   endif
   
@@ -6241,7 +6311,7 @@ end subroutine ConvertArrayToNatural
 !
 ! ************************************************************************** !
 function OutputGetVarFromArrayAtCoord(realization,ivar,isubvar,x,y,z, &
-                                      num_cells,ghosted_ids)
+                                      num_cells,ghosted_ids,isubvar1)
 
   use Realization_module
   use Grid_module
@@ -6253,6 +6323,7 @@ function OutputGetVarFromArrayAtCoord(realization,ivar,isubvar,x,y,z, &
   type(realization_type) :: realization
   PetscInt :: ivar
   PetscInt :: isubvar
+  PetscInt, optional :: isubvar1
   PetscReal :: x,y,z
   PetscInt :: num_cells
   PetscInt :: ghosted_ids(num_cells)
@@ -6275,7 +6346,8 @@ function OutputGetVarFromArrayAtCoord(realization,ivar,isubvar,x,y,z, &
     dz = z-grid%z(ghosted_id)
     sum_root = sqrt(dx*dx+dy*dy+dz*dz)
     value = 0.d0
-    value = RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id)
+    value = RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id, &
+      isubvar1)
     if (sum_root < 1.d-40) then ! bail because it is right on this coordinate
       sum_weight = 1.d0
       sum_value = value
@@ -6297,7 +6369,7 @@ end function OutputGetVarFromArrayAtCoord
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar)
+subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar,isubvar1)
 
   use Realization_module
   use Grid_module
@@ -6310,10 +6382,11 @@ subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar)
   Vec :: vec
   PetscInt :: ivar
   PetscInt :: isubvar
+  PetscInt, optional :: isubvar1
 
   call PetscLogEventBegin(logging%event_output_get_var_from_array,ierr) 
                         
-  call RealizationGetDataset(realization,vec,ivar,isubvar)
+  call RealizationGetDataset(realization,vec,ivar,isubvar,isubvar1)
 
   call PetscLogEventEnd(logging%event_output_get_var_from_array,ierr) 
   

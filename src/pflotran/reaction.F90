@@ -2445,6 +2445,8 @@ subroutine ReactionReadOutput(reaction,input,option)
       case('MOLALITY')
         reaction%print_free_conc_type = PRIMARY_MOLALITY
         reaction%print_tot_conc_type = TOTAL_MOLALITY
+      case('AGE')
+        reaction%print_age = PETSC_TRUE
       case default        
         found = PETSC_FALSE
         if (.not.found) then
@@ -6257,7 +6259,7 @@ end subroutine ReactionComputeKd
 ! date: 02/22/10
 !
 ! ************************************************************************** !
-subroutine RAge(rt_aux_var,global_aux_var,vol,option,reaction,Res)
+subroutine RAge(rt_aux_var,global_aux_var,por,vol,option,reaction,Res)
 
   use Option_module
 
@@ -6265,7 +6267,7 @@ subroutine RAge(rt_aux_var,global_aux_var,vol,option,reaction,Res)
 
   type(reactive_transport_auxvar_type) :: rt_aux_var
   type(global_auxvar_type) :: global_aux_var  
-  PetscReal :: vol
+  PetscReal :: por,vol
   type(option_type) :: option
   type(reaction_type) :: reaction
   PetscReal :: Res(reaction%ncomp)
@@ -6273,11 +6275,13 @@ subroutine RAge(rt_aux_var,global_aux_var,vol,option,reaction,Res)
   
   Res(:) = 0.d0
   if (reaction%calculate_water_age) then
-    Res(reaction%species_idx%water_age_id) = vol
+    Res(reaction%species_idx%water_age_id) = por*global_aux_var%sat(iphase)* &
+      1000.d0 * vol
   endif
   if (reaction%calculate_tracer_age) then
     Res(reaction%species_idx%tracer_age_id) = &
-    -rt_aux_var%total(reaction%species_idx%tracer_aq_id,iphase) * vol / 3600.d0
+      -rt_aux_var%total(reaction%species_idx%tracer_aq_id,iphase)* &
+      por*global_aux_var%sat(iphase)*1000.d0*vol
   endif
 end subroutine RAge
 

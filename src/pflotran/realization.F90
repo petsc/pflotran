@@ -1878,7 +1878,7 @@ end subroutine RealizationAddWaypointsToList
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-subroutine RealizationGetDataset(realization,vec,ivar,isubvar)
+subroutine RealizationGetDataset(realization,vec,ivar,isubvar,isubvar1)
 
   use Option_module
 
@@ -1888,6 +1888,7 @@ subroutine RealizationGetDataset(realization,vec,ivar,isubvar)
   Vec :: vec
   PetscInt :: ivar
   PetscInt :: isubvar
+  PetscInt, optional :: isubvar1
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -1899,7 +1900,7 @@ subroutine RealizationGetDataset(realization,vec,ivar,isubvar)
     do
       if (.not.associated(cur_patch)) exit
       call PatchGetDataset(cur_patch,realization%field,realization%option, &
-                           vec,ivar,isubvar)
+                           vec,ivar,isubvar,isubvar1)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -1915,7 +1916,7 @@ end subroutine RealizationGetDataset
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-function RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id)
+function RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id,isubvar1)
 
   use Option_module
 
@@ -1925,6 +1926,7 @@ function RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id)
   type(realization_type) :: realization
   PetscInt :: ivar
   PetscInt :: isubvar
+  PetscInt, optional :: isubvar1
   PetscInt :: ghosted_id
   
   PetscReal :: value
@@ -1939,7 +1941,7 @@ function RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id)
       if (.not.associated(cur_patch)) exit
       value = PatchGetDatasetValueAtCell(cur_patch,realization%field, &
                                          realization%option, &
-                                         ivar,isubvar,ghosted_id)
+                                         ivar,isubvar,ghosted_id,isubvar1)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next

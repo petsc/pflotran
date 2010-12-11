@@ -55,6 +55,7 @@
 #define TOTAL_SORBED_MOBILE  37
 #define COLLOID_MOBILE  38
 #define COLLOID_IMMOBILE  39
+#define AGE  40
 
 extern "C" {
 #include "petsc.h"

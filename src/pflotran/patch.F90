@@ -1108,7 +1108,7 @@ end function PatchAuxVarsUpToDate
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
+subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar,isubvar1)
 
   use Grid_module
   use Option_module
@@ -1131,6 +1131,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
   Vec :: vec
   PetscInt :: ivar
   PetscInt :: isubvar
+  PetscInt, optional :: isubvar1
   PetscInt :: iphase
 
   PetscInt :: local_id, ghosted_id
@@ -1364,7 +1365,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
          SECONDARY_MOLARITY,TOTAL_MOLALITY,TOTAL_MOLARITY, &
          MINERAL_RATE,MINERAL_VOLUME_FRACTION,SURFACE_CMPLX,SURFACE_CMPLX_FREE, &
          PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
-         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE)
+         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE)
          
       select case(ivar)
         case(PH)
@@ -1521,6 +1522,16 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
                 patch%aux%RT%aux_vars(grid%nL2G(local_id))%colloid%conc_imb(isubvar)
             enddo
           endif
+        case(AGE)
+          do local_id=1,grid%nlmax
+            ghosted_id = grid%nL2G(local_id)
+            if (patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar) > &
+                0.d0) then
+              vec_ptr(local_id) = &
+                patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar)/ &
+                patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar1)
+            endif
+          enddo        
       end select
     case(POROSITY)
       call GridVecGetArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
@@ -1554,7 +1565,8 @@ end subroutine PatchGetDataset
 ! date: 02/11/08
 !
 ! ************************************************************************** !
-function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
+function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
+  ghosted_id,isubvar1)
 
   use Grid_module
   use Option_module
@@ -1577,6 +1589,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
   type(patch_type), pointer :: patch  
   PetscInt :: ivar
   PetscInt :: isubvar
+  PetscInt, optional :: isubvar1
   PetscInt :: iphase
   PetscInt :: ghosted_id
 
@@ -1722,7 +1735,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
          MINERAL_VOLUME_FRACTION,MINERAL_RATE, &
          SURFACE_CMPLX,SURFACE_CMPLX_FREE,KIN_SURFACE_CMPLX,KIN_SURFACE_CMPLX_FREE, &
          PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
-         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE)
+         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE)
          
       select case(ivar)
         case(PH)
@@ -1801,6 +1814,12 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
                     patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)*1000.d0
           else
             value = patch%aux%RT%aux_vars(ghosted_id)%colloid%conc_imb(isubvar)
+          endif
+        case(AGE)
+          if (patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar) > &
+              0.d0) then
+            value = patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar) / &
+            patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar1)
           endif
       end select
     case(POROSITY)

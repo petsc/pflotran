@@ -3919,12 +3919,12 @@ subroutine RTResidualPatch2(snes,xx,r,realization,ierr)
       r_p(istartall:iendall) = r_p(istartall:iendall) + Res(1:reaction%ncomp)
       if (reaction%calculate_water_age) then 
         call RAge(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
-                  volume_p(local_id),option,reaction,Res)
+                  porosity_loc_p(ghosted_id),volume_p(local_id),option,reaction,Res)
         r_p(istartall:iendall) = r_p(istartall:iendall) + Res(1:reaction%ncomp)
       endif
       if (reaction%calculate_tracer_age) then 
         call RAge(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
-                  volume_p(local_id),option,reaction,Res)
+                  porosity_loc_p(ghosted_id),volume_p(local_id),option,reaction,Res)
         r_p(istartall:iendall) = r_p(istartall:iendall) + Res(1:reaction%ncomp)
       endif
     enddo
@@ -5598,6 +5598,18 @@ function RTGetTecplotHeader(realization,icolumn)
         string = trim(string) // trim(string2)
       endif
     enddo
+  endif
+  
+  if (reaction%print_age) then
+    if (reaction%species_idx%tracer_age_id > 0) then
+        if (icolumn > -1) then
+          icolumn = icolumn + 1
+          write(string2,'('',"'',i2,''-Tracer_Age"'')') icolumn
+        else
+          write(string2,'('',"Tracer_Age"'')') 
+        endif
+        string = trim(string) // trim(string2)
+    endif
   endif
     
   RTGetTecplotHeader = string
