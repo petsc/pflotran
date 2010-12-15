@@ -369,9 +369,10 @@ subroutine RealizationCreateDiscretization(realization)
       ! set up nG2L, NL2G, etc.
       call UGridMapIndices(grid%unstructured_grid,discretization%dm_1dof%ugdm, &
                            grid%nG2L,grid%nL2G,grid%nL2A,grid%nG2A)
-      call GridComputeCoordinates(grid,discretization%origin,option)
+      call GridComputeCoordinates(grid,discretization%origin,option, & 
+                                   discretization%dm_1dof%ugdm)  !sp 
       ! set up internal connectivity, distance, etc.
-      call GridComputeInternalConnect(grid,option)
+      call GridComputeInternalConnect(grid,option, discretization%dm_1dof%ugdm) !sp 
       call GridComputeVolumes(grid,field%volume,option)
     case(AMR_GRID)
        call AMRGridComputeGeometryInformation(discretization%amrgrid, &

@@ -83,6 +83,7 @@ module Unstructured_Grid_module
             UnstGridComputeInternConnect, &
             UnstGridComputeBoundConnect, &
             UnstructGridGetGhostIdFromHash, &
+            UnstGridCreateNatToGhostedHash, & !sp 
             UnstructuredGridRead, &
             UnstructuredGridDecompose, &
             UGridComputeInternConnect, &
@@ -1011,7 +1012,6 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
       dual_id = vec_ptr(idual + dual_offset + (icell-1)*stride)
       found = PETSC_FALSE
       if (dual_id < 1) exit
-#if 0  
       do icell2 = 1, unstructured_grid%num_cells_local
         if (dual_id == unstructured_grid%cell_ids_petsc(icell2)) then
           vec_ptr(idual + dual_offset + (icell-1)*stride) = icell2
@@ -1019,7 +1019,31 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
           exit
         endif
       enddo
-#endif
+      ! if not found, add it to the list of ghost cells
+       if (.not.found) then
+          !sp  but only if it is not already in the list 
+          found = PETSC_FALSE 
+          do icell2 = 1, ghost_cell_count  
+            if (dual_id == unstructured_grid%ghost_cell_ids_petsc(icell2)) then 
+               vec_ptr(idual + dual_offset + (icell-1)*stride) = -icell2
+               found = PETSC_TRUE
+               exit
+            end if 
+          end do 
+          if( .not. found) then ! if here then not on processor and not in the ghost list  
+           ghost_cell_count = ghost_cell_count + 1
+          ! reallocate the ghost cell array if necessary
+           if (ghost_cell_count > max_ghost_cell_count) then
+            call reallocateIntArray(unstructured_grid%ghost_cell_ids_petsc, &
+                                    max_ghost_cell_count)
+           endif
+          unstructured_grid%ghost_cell_ids_petsc(ghost_cell_count) = dual_id
+          ! flag the id as negative for ghost cell and set to current count
+          vec_ptr(idual + dual_offset + (icell-1)*stride) = -ghost_cell_count
+          end if 
+        endif
+
+#if 0 
                                      ! global_offset is zero-based
       if (dual_id <= unstructured_grid%global_offset .or. &
           dual_id > unstructured_grid%global_offset + &
@@ -1048,6 +1072,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
           vec_ptr(idual + dual_offset + (icell-1)*stride) = -ghost_cell_count
         endif
       endif
+#endif 
     enddo
   enddo
   
@@ -1056,6 +1081,35 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   ! this print statemetn
   call printMsg(option,'Glenn: Add code that adds all ghost cells and removed duplicates')
   call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr)
+
+#if GEH_DEBUG
+  call PetscViewerASCIIOpen(option%mycomm,'elements_petsc_local_unsorted.out',viewer,ierr)
+  call VecView(elements_petsc,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
+
+
+#if 0 
+  allocate(int_array4(ghost_cell_count))
+  do icell = 1, ghost_cell_count 
+    int_array4(icell) = unstructured_grid%ghost_cell_ids_petsc(icell)
+  end do 
+   
+  !sp remove duplicates 
+  count = 1 
+  do icell = 2, ghost_cell_count 
+   found=PETSC_FALSE 
+   do icell2=1, icell-1 
+     if( int_array4(icell) .eq. int_array4(icell2) ) found=PETSC_TRUE 
+     if( found) exit 
+   end do 
+   if( found) cycle 
+   count=count+1
+   int_array4(count) = int_array4(icell) 
+  end do 
+  ghost_cell_count=count 
+#endif 
+
   unstructured_grid%num_ghost_cells = ghost_cell_count
   unstructured_grid%num_cells_ghosted = &
     unstructured_grid%num_cells_local + ghost_cell_count
@@ -1063,15 +1117,21 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   ! sort ghost cell ids
   allocate(int_array(ghost_cell_count))
   allocate(int_array2(ghost_cell_count))
+  allocate(int_array3(ghost_cell_count))
   do icell = 1, ghost_cell_count
-    int_array(icell) = unstructured_grid%ghost_cell_ids_petsc(icell)
-    int_array2(icell) = icell
+   int_array(icell) = unstructured_grid%ghost_cell_ids_petsc(icell)
+   int_array3(icell)=abs(int_array(icell) ) 
+   int_array2(icell) = icell
   enddo
+  !sp end 
+
   ! convert to 0-based
   int_array2 = int_array2-1
-  call PetscSortIntWithPermutation(ghost_cell_count,int_array,int_array2,ierr)
+  call PetscSortIntWithPermutation(ghost_cell_count,int_array3,int_array2,ierr)
   ! convert to 1-based
   int_array2 = int_array2+1
+
+
   ! resize ghost cell array down to ghost_cell_count
   deallocate(unstructured_grid%ghost_cell_ids_petsc)
   allocate(unstructured_grid%ghost_cell_ids_petsc(ghost_cell_count))
@@ -1079,22 +1139,27 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   do icell = 1, ghost_cell_count
     unstructured_grid%ghost_cell_ids_petsc(int_array2(icell)) = int_array(icell)
   enddo
+    
   ! now, rearrange the ghost cell ids of the dual accordingly
   call VecGetArrayF90(elements_petsc,vec_ptr,ierr)
   ! add num_cells_local to get in local numbering
   ! basically, the first num_cells_local are the non-ghosted.  After that
   ! the cells ids are ghosted (at the end of the local vector)
-  int_array2 = int_array2 + unstructured_grid%num_cells_local
+!  int_array2 = int_array2 + unstructured_grid%num_cells_local
   do icell=1, unstructured_grid%num_cells_local
     do idual = 1, max_dual
       dual_id = vec_ptr(idual + dual_offset + (icell-1)*stride)
       if (dual_id < 0) then
-        vec_ptr(idual + dual_offset + (icell-1)*stride) = int_array2(-dual_id)
+        vec_ptr(idual + dual_offset + (icell-1)*stride) = int_array2(-dual_id)  & 
+          + unstructured_grid%num_cells_local
       endif       
     enddo
   enddo
   deallocate(int_array)
   deallocate(int_array2)
+  deallocate(int_array3)
+!  deallocate(int_array4)
+        
   call VecRestoreArrayF90(elements_petsc,vec_ptr,ierr)
 
 #if GEH_DEBUG  
@@ -1118,7 +1183,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
       if (dual_id < 1) exit
       count = count + 1
       ! flag ghosted cells in dual as negative
-      if (dual_id > unstructured_grid%num_cells_local) dual_id = -dual_id
+!sp      if (dual_id > unstructured_grid%num_cells_local) dual_id = -dual_id
       unstructured_grid%cell_neighbors_local_ghosted(idual,icell) = dual_id
     enddo
     ! set the # of duals in for the cell
@@ -1292,7 +1357,6 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   unstructured_grid%num_vertices_local = vertex_count
   allocate(unstructured_grid%vertices(vertex_count))
   do ivertex = 1, vertex_count
-    unstructured_grid%vertices(ivertex)%id = 0
     unstructured_grid%vertices(ivertex)%x = 0.d0
     unstructured_grid%vertices(ivertex)%y = 0.d0
     unstructured_grid%vertices(ivertex)%z = 0.d0
@@ -1328,6 +1392,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
 
   call VecGetArrayF90(vertices_new,vec_ptr,ierr)
   do ivertex = 1, unstructured_grid%num_vertices_local
+    unstructured_grid%vertices(ivertex)%id = needed_vertices_petsc(ivertex) !sp  
     unstructured_grid%vertices(ivertex)%x = vec_ptr((ivertex-1)*3+1)
     unstructured_grid%vertices(ivertex)%y = vec_ptr((ivertex-1)*3+2)
     unstructured_grid%vertices(ivertex)%z = vec_ptr((ivertex-1)*3+3)
@@ -1771,7 +1836,7 @@ end subroutine UnstructuredGridCreateUGDM
 !
 ! ************************************************************************** !
 function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
-                                   option)
+                                   scatter_ltol, option)
 
   use Connection_module
   use Option_module
@@ -1783,6 +1848,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   type(option_type) :: option
   PetscReal :: grid_x(*), grid_y(*), grid_z(*)
   type(unstructured_grid_type) :: unstructured_grid
+  VecScatter :: scatter_ltol 
 
 #ifdef ENABLE_UNSTRUCTURED
   PetscInt :: nconn, iconn
@@ -1818,11 +1884,102 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   type(point_type) :: point1, point2, point3, point4
   type(point_type) :: point_up, point_dn
   type(point_type) :: intercept1, intercept2
-  
-  
+
+
   character(len=MAXSTRINGLENGTH) :: string  
 
   type(connection_set_type), pointer :: connections
+
+
+  !sp 
+  PetscReal, pointer :: vec_p(:) !sp 
+  Vec :: local_vec1 !sp 
+  Vec :: local_vec2 !sp 
+  PetscInt :: ivert 
+  PetscInt :: vert_id  
+  PetscErrorCode :: ierr 
+  PetscInt, pointer :: cell_vertices_0(:,:) 
+  PetscInt :: max_vertex_count
+  PetscInt, allocatable :: ltog(:)  
+  PetscInt, allocatable :: gtol(:)  
+  !sp end 
+  
+
+  !sp extend cell_vertices_0 to include ghosted cells 
+ 
+  allocate( ltog( unstructured_grid%num_vertices_local) )
+  do ivert=1, unstructured_grid%num_vertices_local 
+   ltog(ivert) = unstructured_grid%vertices(ivert)%id 
+  end do 
+
+  call VecCreateSeq(PETSC_COMM_SELF, unstructured_grid%num_cells_local ,   &
+         local_vec1, ierr)
+  call VecCreateSeq(PETSC_COMM_SELF, unstructured_grid%num_cells_ghosted, &
+         local_vec2, ierr)
+
+  max_vertex_count=8 
+  allocate( cell_vertices_0(0:max_vertex_count, unstructured_grid%num_cells_ghosted) ) 
+  cell_vertices_0=-999 
+
+    ! first the number of vertices per cell (ivertex=0)
+    ivertex=0 
+    call VecGetArrayF90(local_vec1,vec_p,ierr)
+    do icell = 1, unstructured_grid%num_cells_local
+     vec_p(icell) =  unstructured_grid%cell_vertices_0(ivertex,icell)  
+    enddo
+    call VecRestoreArrayF90(local_vec1,vec_p,ierr)
+
+    call VecScatterBegin(scatter_ltol,local_vec1,local_vec2,  &
+                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+    call VecScatterEnd(scatter_ltol,local_vec1,local_vec2,    &
+                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+
+    call VecGetArrayF90(local_vec2,vec_p,ierr)
+
+    do icell = 1, unstructured_grid%num_cells_ghosted
+      cell_vertices_0(ivertex,icell)= vec_p(icell)  
+    enddo
+    call VecRestoreArrayF90(local_vec2,vec_p,ierr)
+
+  ! now the cell ids 
+  do ivertex=1, max_vertex_count  
+    call VecGetArrayF90(local_vec1,vec_p,ierr)
+    do icell = 1, unstructured_grid%num_cells_local
+     vert_id = unstructured_grid%cell_vertices_0(ivertex,icell)  + 1 
+     vec_p(icell) = ltog(vert_id)
+    enddo
+    call VecRestoreArrayF90(local_vec1,vec_p,ierr)
+
+    call VecScatterBegin(scatter_ltol,local_vec1,local_vec2,  &
+                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+    call VecScatterEnd(scatter_ltol,local_vec1,local_vec2,    &
+                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+
+    call VecGetArrayF90(local_vec2,vec_p,ierr)
+
+    do icell = 1, unstructured_grid%num_cells_ghosted 
+      do ivert=1, unstructured_grid%num_vertices_local 
+       vert_id=ltog(ivert) 
+       if( vert_id == vec_p(icell) )  exit 
+      end do  
+      if( vert_id .eq. vec_p(icell) ) cell_vertices_0(ivertex,icell)= ivert  - 1  
+    enddo
+    call VecRestoreArrayF90(local_vec2,vec_p,ierr) 
+  end do 
+
+  deallocate( unstructured_grid%cell_vertices_0) 
+  allocate( unstructured_grid%cell_vertices_0(0:max_vertex_count,unstructured_grid%num_cells_ghosted) ) 
+  do icell = 1, unstructured_grid%num_cells_ghosted 
+   do ivertex=0, max_vertex_count  
+      unstructured_grid%cell_vertices_0(ivertex,icell)= cell_vertices_0(ivertex,icell) 
+   end do 
+  end do 
+
+  call VecDestroy(local_vec1,ierr) 
+  call VecDestroy(local_vec2,ierr) 
+
+  !sp end 
+   
 
   ! create mappings of [cells,faces,vertices] to [cells,faces,vertices]
   allocate(face_to_vertex(4,unstructured_grid%num_cells_ghosted*6))
@@ -1834,6 +1991,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   allocate(vertex_to_cell(0:8,unstructured_grid%num_vertices_local))
   vertex_to_cell = 0
 
+  
   face_count = 0
   do icell = 1, unstructured_grid%num_cells_ghosted
     do iface = 1, 6
@@ -1848,12 +2006,16 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
     enddo
   enddo
 
+
+
+   
+
   ! remove duplicate faces
   ! fill face ids
-  do icell = 1, unstructured_grid%num_cells_ghosted
+  do icell = 1, unstructured_grid%num_cells_local !sp   was num_cells_ghosted 
     cell_id = icell
     do icell2 = 1, unstructured_grid%cell_neighbors_local_ghosted(0,icell)
-      cell_id2 = unstructured_grid%cell_neighbors_local_ghosted(icell2,icell)
+      cell_id2 =  unstructured_grid%cell_neighbors_local_ghosted(icell2,icell)
       if (cell_id2 <= cell_id) cycle
       num_match = 0
       do ivertex = 1, unstructured_grid%cell_vertices_0(0,cell_id)
@@ -1903,7 +2065,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
           else
             ! remove duplicate face
             if (face_id2 > face_id) then
-              write(string,*) face_id2, ' -> ', face_id
+              write(string,*) option%myrank, face_id2, ' -> ', face_id
               option%io_buffer = 'Duplicated face removed:' // string
               call printMsg(option)
               cell_to_face(iface2,cell_id2) = face_id
@@ -1911,7 +2073,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
               face_to_cell(1,face_id2) = -face_to_cell(1,face_id2)
               face_to_cell(2,face_id) = cell_id2
             else
-              write(string,*) face_id, ' -> ', face_id2
+              write(string,*) option%myrank, face_id, ' -> ', face_id2
               option%io_buffer = 'Duplicated face removed:' // string
               call printMsg(option)
               cell_to_face(iface,cell_id) = face_id2
@@ -1930,6 +2092,8 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       endif    
     enddo
   enddo
+
+
   
   ! count up the # of faces
   face_count = 0
@@ -1937,7 +2101,6 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
     if (face_to_cell(1,iface) > 0) &
       face_count = face_count + 1
   enddo
-  print *, 'Face count:', face_count
   ! reallocate face_to_vertex
   allocate(temp_int_2d(4,face_count))
   count = 0
@@ -1967,6 +2130,8 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   allocate(face_to_cell(2,face_count))
   face_to_cell = temp_int_2d
   deallocate(temp_int_2d)
+
+
   
   ! remap faces in cells using temp_int from above
   do iface = 1, size(face_to_cell,2)
@@ -1994,13 +2159,17 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   
   
   do icell = 1, unstructured_grid%num_cells_ghosted
+    if( option%myrank .eq. 1) print *, icell, cell_vertices_0(0:8,icell)+1
     do ivertex = 1, unstructured_grid%cell_vertices_0(0,icell)
       vertex_id = unstructured_grid%cell_vertices_0(ivertex,icell)+1
+      if( vertex_id <= 0) cycle 
       count = vertex_to_cell(0,vertex_id) + 1
+      if( count .gt. 8) print *, option%myrank, icell, vertex_id, vertex_to_cell(1:8,vertex_id) 
       vertex_to_cell(count,vertex_id) = icell
       vertex_to_cell(0,vertex_id) = count
     enddo
   enddo
+      
   
   nconn = 0
   do icell = 1, unstructured_grid%num_cells_local
@@ -2008,11 +2177,13 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
       dual_id = unstructured_grid%cell_neighbors_local_ghosted(idual,icell)
       ! count all ghosted connections (dual_id < 0)
       ! only count connection with cells of larger ids to avoid double counts
-      if (dual_id < 0 .or. icell < dual_id) then
+!      if (dual_id < 0 .or. icell < dual_id) then
+      if (dual_id > 0 .and. icell < dual_id) then !sp 
         nconn = nconn + 1
       endif
     enddo
   enddo
+
 
   connections => ConnectionCreate(nconn,option%nphase,INTERNAL_CONNECTION_TYPE)
   
@@ -2024,7 +2195,7 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   do icell = 1, unstructured_grid%num_cells_local
     do idual = 1, unstructured_grid%cell_neighbors_local_ghosted(0,icell)
       dual_icell = unstructured_grid%cell_neighbors_local_ghosted(idual,icell)
-      if (icell < dual_icell) then 
+      if (icell < abs(dual_icell)) then 
         iconn = iconn + 1
         ! find face
         found = PETSC_FALSE
@@ -2042,7 +2213,8 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
         if (found) then
           dual_to_face(iconn) = face_id
         else
-          option%io_buffer = 'face not found in connection loop'
+          write(string,*) option%myrank,icell,dual_icell 
+          option%io_buffer = 'face not found in connection loop' // string 
           call printErrMsg(option)
         endif
         connections%id_up(iconn) = icell
@@ -2188,9 +2360,11 @@ end subroutine UGridGetCellFaceVertices
 ! UGridComputeCoord: Computes coordinates in x,y,z of unstructured grid cells
 ! author: Glenn Hammond
 ! date: 10/30/09
+! 11/2/10 Major rewrite to extend coordinates to ghost cells SP and GEH 
 !
 ! ************************************************************************** !
 subroutine UGridComputeCoord(unstructured_grid,option, &
+                             scatter_ltol, & 
                              grid_x,grid_y,grid_z, &
                              x_min,x_max,y_min,y_max,z_min,z_max)
 
@@ -2200,6 +2374,8 @@ subroutine UGridComputeCoord(unstructured_grid,option, &
 
   type(unstructured_grid_type) :: unstructured_grid
   type(option_type) :: option
+  VecScatter :: scatter_ltol 
+  
   PetscReal :: grid_x(:), grid_y(:), grid_z(:)
   PetscReal :: x_min, x_max, y_min, y_max, z_min, z_max
 
@@ -2208,8 +2384,12 @@ subroutine UGridComputeCoord(unstructured_grid,option, &
   PetscInt :: vertex_id
   type(point_type) :: vertex_8(8)
   PetscReal :: centroid(3)
+  PetscReal, pointer :: vec_p(:) !sp 
+  Vec :: local_vec1 !sp 
+  Vec :: local_vec2 !sp 
+  PetscErrorCode :: ierr 
 
-  do icell = 1, unstructured_grid%num_cells_ghosted
+  do icell = 1, unstructured_grid%num_cells_local 
     do ivertex = 1, 8
       vertex_id = unstructured_grid%cell_vertices_0(ivertex,icell) + 1
       vertex_8(ivertex)%x = &
@@ -2224,6 +2404,69 @@ subroutine UGridComputeCoord(unstructured_grid,option, &
     grid_y(icell) = centroid(2)
     grid_z(icell) = centroid(3)
   enddo
+
+  call VecCreateSeq(PETSC_COMM_SELF, unstructured_grid%num_cells_local,   & 
+         local_vec1, ierr) 
+  call VecCreateSeq(PETSC_COMM_SELF, unstructured_grid%num_cells_ghosted, & 
+         local_vec2, ierr) 
+
+  ! x coordinate
+  call VecGetArrayF90(local_vec1,vec_p,ierr)  
+  do icell = 1, unstructured_grid%num_cells_local
+   vec_p(icell) = grid_x(icell)
+  enddo
+  call VecRestoreArrayF90(local_vec1,vec_p,ierr)
+
+  call VecScatterBegin(scatter_ltol,local_vec1,local_vec2,  & 
+                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(scatter_ltol,local_vec1,local_vec2,    &  
+                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+
+  call VecGetArrayF90(local_vec2,vec_p,ierr)
+  do icell = 1, unstructured_grid%num_cells_ghosted
+   grid_x(icell) = vec_p(icell)
+  enddo
+  call VecRestoreArrayF90(local_vec2,vec_p,ierr)
+
+  ! y coordinate
+  call VecGetArrayF90(local_vec1,vec_p,ierr)  
+  do icell = 1, unstructured_grid%num_cells_local
+   vec_p(icell) = grid_y(icell)
+  enddo
+  call VecRestoreArrayF90(local_vec1,vec_p,ierr)
+
+  call VecScatterBegin(scatter_ltol,local_vec1,local_vec2,  & 
+                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(scatter_ltol,local_vec1,local_vec2,    &  
+                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+
+  call VecGetArrayF90(local_vec2,vec_p,ierr)
+  do icell = 1, unstructured_grid%num_cells_ghosted
+   grid_y(icell) = vec_p(icell)
+  enddo
+  call VecRestoreArrayF90(local_vec2,vec_p,ierr)
+
+  ! z coordinate
+  call VecGetArrayF90(local_vec1,vec_p,ierr)  
+  do icell = 1, unstructured_grid%num_cells_local
+   vec_p(icell) = grid_z(icell)
+  enddo
+  call VecRestoreArrayF90(local_vec1,vec_p,ierr)
+
+  call VecScatterBegin(scatter_ltol,local_vec1,local_vec2,  & 
+                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+  call VecScatterEnd(scatter_ltol,local_vec1,local_vec2,    &  
+                         INSERT_VALUES,SCATTER_FORWARD,ierr)
+
+  call VecGetArrayF90(local_vec2,vec_p,ierr)
+  do icell = 1, unstructured_grid%num_cells_ghosted
+   grid_z(icell) = vec_p(icell)
+  enddo
+  call VecRestoreArrayF90(local_vec2,vec_p,ierr)
+
+
+  call VecDestroy(local_vec1,ierr) 
+  call VecDestroy(local_vec2,ierr) 
 
   do ivertex = 1, unstructured_grid%num_vertices_local
     if (x_max < unstructured_grid%vertices(ivertex)%x) &
@@ -2474,7 +2717,7 @@ subroutine UGDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
   enddo
 
   ndof_local = unstructured_grid%num_cells_local*ugdm%ndof
-  if (option%mycommsize > 1) then
+!  if (option%mycommsize > 1) then
     select case(mat_type)
       case(MATAIJ)
         d_nnz = d_nnz*ugdm%ndof
@@ -2483,33 +2726,33 @@ subroutine UGDMCreateJacobian(unstructured_grid,ugdm,mat_type,J,option)
                              PETSC_DETERMINE,PETSC_DETERMINE, &
                              PETSC_NULL_INTEGER,d_nnz, &
                              PETSC_NULL_INTEGER,o_nnz,J,ierr)
-        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltog,ierr)
-        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltogb,ierr)
+        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltog,ugdm%mapping_ltog,ierr)
+!        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltogb,ierr)
       case(MATBAIJ)
         call MatCreateMPIBAIJ(option%mycomm,ugdm%ndof,ndof_local,ndof_local, &
                              PETSC_DETERMINE,PETSC_DETERMINE, &
                              PETSC_NULL_INTEGER,d_nnz, &
                              PETSC_NULL_INTEGER,o_nnz,J,ierr)
-        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltog,ierr)
-        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltogb,ierr)
+!        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltog,ierr)
+        call MatSetLocalToGlobalMapping(J,ugdm%mapping_ltogb,ugdm%mapping_ltogb,ierr)
       case default
         option%io_buffer = 'MatType not recognized in UGDMCreateJacobian'
         call printErrMsg(option)
     end select
-  else
-    select case(mat_type)
-      case(MATAIJ)
-        d_nnz = d_nnz*ugdm%ndof
-        call MatCreateSeqAIJ(option%mycomm,ndof_local,ndof_local, &
-                             PETSC_NULL_INTEGER,d_nnz,J,ierr)
-      case(MATBAIJ)
-        call MatCreateSeqBAIJ(option%mycomm,ugdm%ndof,ndof_local,ndof_local, &
-                             PETSC_NULL_INTEGER,d_nnz,J,ierr)
-      case default
-        option%io_buffer = 'MatType not recognized in UGDMCreateJacobian'
-        call printErrMsg(option)
-    end select
-  endif
+!  else
+!    select case(mat_type)
+!      case(MATAIJ)
+!        d_nnz = d_nnz*ugdm%ndof
+!        call MatCreateSeqAIJ(option%mycomm,ndof_local,ndof_local, &
+!                             PETSC_NULL_INTEGER,d_nnz,J,ierr)
+!      case(MATBAIJ)
+!        call MatCreateSeqBAIJ(option%mycomm,ugdm%ndof,ndof_local,ndof_local, &
+!                             PETSC_NULL_INTEGER,d_nnz,J,ierr)
+!      case default
+!        option%io_buffer = 'MatType not recognized in UGDMCreateJacobian'
+!        call printErrMsg(option)
+!    end select
+!  endif
 
   deallocate(d_nnz)
   deallocate(o_nnz)

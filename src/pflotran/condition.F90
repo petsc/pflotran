@@ -1432,7 +1432,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
   call InputErrorMsg(input,option,'file or value','CONDITION')
   call StringToLower(word)
   length = len_trim(word)
-  if (StringCompare(word,'file',length)) then
+  if (length==FOUR_INTEGER .and. StringCompare(word,'file',length)) then  !sp 
     input%err_buf2 = trim(keyword) // ', FILE'
     input%err_buf = 'keyword'
     call InputReadNChars(input,option,string2,MAXSTRINGLENGTH,PETSC_TRUE)

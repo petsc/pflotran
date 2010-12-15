@@ -208,8 +208,9 @@ end function GridCreate
 ! author: Glenn Hammond
 ! date: 10/17/07
 !
+! sp modified December 2010 
 ! ************************************************************************** !
-subroutine GridComputeInternalConnect(grid,option)
+subroutine GridComputeInternalConnect(grid,option,ugdm)
 
   use Connection_module
   use Option_module    
@@ -220,6 +221,7 @@ subroutine GridComputeInternalConnect(grid,option)
 
   type(grid_type) :: grid
   type(option_type) :: option
+  type(ugdm_type), optional :: ugdm
   
   type(connection_set_type), pointer :: connection_set, connection_bound_set
   nullify(connection_set); nullify(connection_bound_set)
@@ -228,11 +230,11 @@ subroutine GridComputeInternalConnect(grid,option)
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       connection_set => &
         StructGridComputeInternConnect( grid%structured_grid, grid%x, grid%y, &
-                                  grid%z, option)
+                                    grid%z, option)
     case(UNSTRUCTURED_GRID) 
       connection_set => &
         UGridComputeInternConnect(grid%unstructured_grid,grid%x,grid%y, &
-                                  grid%z,option)
+                                  grid%z,ugdm%scatter_ltol,option)
   end select
   
   allocate(grid%internal_connection_set_list)
@@ -1091,7 +1093,7 @@ end subroutine GridComputeSpacing
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine GridComputeCoordinates(grid,origin_global,option)
+subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
 
   use Option_module
   
@@ -1100,6 +1102,7 @@ subroutine GridComputeCoordinates(grid,origin_global,option)
   type(grid_type) :: grid
   PetscReal :: origin_global(3)
   type(option_type) :: option
+  type(ugdm_type), optional :: ugdm ! sp  
   
   PetscErrorCode :: ierr  
   
@@ -1125,6 +1128,7 @@ subroutine GridComputeCoordinates(grid,origin_global,option)
       allocate(grid%z(grid%ngmax))
       grid%z = 0.d0
       call UGridComputeCoord(grid%unstructured_grid,option, &
+                             ugdm%scatter_ltol, & !sp  
                              grid%x,grid%y,grid%z, &
                              grid%x_min_local,grid%x_max_local, &
                              grid%y_min_local,grid%y_max_local, &
@@ -1488,9 +1492,38 @@ subroutine GridLocalizeRegions(grid,region_list,option)
         endif  
       endif 
     else
+      !sp 
+      select case(grid%itype) 
+      case(UNSTRUCTURED_GRID)
+        allocate(temp_int_array(region%num_cells))
+        temp_int_array = 0
+        local_count=0
+        do count=1,region%num_cells
+           local_id = GridGetLocalIdFromNaturalId( grid, region%cell_ids(count))
+           if( local_id .le. 0) cycle
+           if( local_id .gt. grid%unstructured_grid%num_cells_local) cycle
+           local_count = local_count + 1
+           temp_int_array(local_count) = local_id
+        enddo
+
+      case default
+        option%io_buffer = &
+          'GridLocalizeRegions: define region by list of cells not implemented'
+        call printErrMsg(option)
+      end select
+     !sp end 
+
+      if (local_count /= region%num_cells) then
+        deallocate(region%cell_ids)
+        allocate(region%cell_ids(local_count))
+        region%cell_ids(1:local_count) = temp_int_array(1:local_count)
+        region%num_cells=local_count 
+      endif
+      deallocate(temp_int_array)
+
+!sp following was commented out 
+!sp remove? 
 #if 0
-      allocate(temp_int_array(region%num_cells))
-      temp_int_array = 0
       if ((grid%itype == STRUCTURED_GRID).or.(grid%itype == STRUCTURED_GRID_MIMETIC)) then
         do count=1,region%num_cells
           i = mod(region%cell_ids(count),grid%structured_grid%nx) - &
@@ -1510,28 +1543,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
           endif
         enddo
       else
-        call GridCreateNaturalToGhostedHash(grid,option)
-        do count=1,region%num_cells
-          local_ghosted_id = UnstructGridGetGhostIdFromHash( &
-                                                    grid%unstructured_grid, &
-                                                    region%cell_ids(count))
-          if (local_ghosted_id > -1) then
-            local_id = grid%nG2L(local_ghosted_id)
-            if (local_id > -1) then
-              temp_int_array(local_count) = local_id
-              local_count = local_count + 1
-            endif
-          endif
-        enddo
-        call GridDestroyHashTable(grid)
-      endif
-      if (local_count /= region%num_cells) then
-        deallocate(region%cell_ids)
-        allocate(region%cell_ids(local_count))
-        region%cell_ids(1:local_count) = temp_int_array(1:local_count)
-      endif
-      deallocate(temp_int_array)
-#endif        
+#endif
     endif
     
     if (region%num_cells == 0 .and. associated(region%cell_ids)) then
