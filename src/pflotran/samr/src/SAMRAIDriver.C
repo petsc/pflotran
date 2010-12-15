@@ -86,6 +86,8 @@ int main( int argc, char *argv[] )
    __argv_save = argv;
 
    SAMRAI::tbox::SAMRAI_MPI::init(&argc, &argv);
+#if 0
+
    SAMRAI::tbox::SAMRAIManager::startup();
 
    PETSC_COMM_WORLD = SAMRAI::tbox::SAMRAI_MPI::getCommunicator();
@@ -114,7 +116,6 @@ int main( int argc, char *argv[] )
    pflotran_filename=input_db->getStringWithDefault("pflotran_filename", "pflotran_well.in");
    
    SAMRAI::PflotranApplicationStrategy *pflotranApplication = NULL;
-
    /*
     * Setup the timer manager to trace timing statistics during execution
     * of the code.  The list of timers is given in the tbox::TimerManager
@@ -220,9 +221,10 @@ int main( int argc, char *argv[] )
    f_simulation_destroy_(&p_pflotran_sim);
    
    SAMRAI::tbox::TimerManager::getManager()->print();
-
+   
    //   if(pflotranApplication!=NULL)  delete pflotranApplication;
    if(test_object) delete test_object;
+#endif
    /* 
     * That's all, folks!
     */
