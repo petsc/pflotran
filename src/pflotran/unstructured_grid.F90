@@ -617,6 +617,8 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   PetscInt :: max_ghost_cell_count
   PetscInt :: max_int_count
   PetscInt :: temp_int
+  PetscInt :: num_cells_local_new  !sp 
+  PetscInt :: num_cells_local_old  !sp  
   PetscInt, allocatable :: int_array(:)
   PetscInt, allocatable :: int_array2(:)
   PetscInt, allocatable :: int_array3(:)
@@ -751,14 +753,17 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   ! ISPartitioningCount takes a ISPartitioning and determines the number of  
   ! resulting elements on each (partition) process - petsc
   call ISPartitioningCount(is_new,option%mycommsize,cell_counts,ierr)
-  unstructured_grid%num_cells_local = cell_counts(option%myrank+1)
+  !sp  unstructured_grid%num_cells_local = cell_counts(option%myrank+1)
+  !sp need to distinguish between old and new cell counts  
+  num_cells_local_new=cell_counts(option%myrank+1) !sp 
+  num_cells_local_old=unstructured_grid%num_cells_local  !sp 
   deallocate(cell_counts)
   
   ! create a petsc vec to store all the information for each element
   ! based on the stride calculated above.  
   call VecCreate(option%mycomm,elements_natural,ierr)
   call VecSetSizes(elements_natural, &
-                   stride*unstructured_grid%num_cells_local, &
+                   stride*num_cells_local_new, &    !sp 
                    PETSC_DECIDE,ierr)
   call VecSetFromOptions(elements_natural,ierr)
    
@@ -776,7 +781,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
 
   ! Create a mapping of local indices to global strided
   call ISCreateBlock(option%mycomm,stride, &
-                     unstructured_grid%num_cells_local, &
+                     num_cells_local_old, &   !sp 
                      index_ptr,PETSC_COPY_VALUES,is_scatter,ierr)
   call ISRestoreIndicesF90(is_num,index_ptr,ierr)
   call ISDestroy(is_num,ierr)
@@ -785,7 +790,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   ! create another strided vector with the old cell/element distribution
   call VecCreate(option%mycomm,elements_old,ierr)
   call VecSetSizes(elements_old, &
-                   stride*unstructured_grid%num_cells_local,PETSC_DECIDE,ierr)
+                   stride*num_cells_local_old,PETSC_DECIDE,ierr)  !sp 
   call VecSetFromOptions(elements_old,ierr)
 
 
@@ -795,8 +800,8 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
                       ja_ptr,success,ierr)
 
   if (.not.success .or. &
-      num_rows /= unstructured_grid%num_cells_local) then
-    print *, option%myrank, num_rows, success, unstructured_grid%num_cells_local
+       num_rows /= num_cells_local_old) then  !sp 
+    print *, option%myrank, num_rows, success, num_cells_local_old   !sp 
     option%io_buffer = 'Error getting IJ row indices from dual matrix'
     call printErrMsg(option)
   endif
@@ -804,7 +809,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   call VecGetArrayF90(elements_old,vec_ptr,ierr)
   count = 0
   vertex_count = 0
-  do icell=1, unstructured_grid%num_cells_local
+  do icell=1, num_cells_local_old !sp 
     count = count + 1
     ! set global cell id
     ! negate to indicate cell id with 1-based numbering (-0 = 0)
@@ -876,6 +881,17 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
   call PetscViewerDestroy(viewer,ierr)
 #endif
   
+  
+  !sp 
+  ! num_cells_local may be changed with new partitioning 
+  !  also need to update global_offset 
+  unstructured_grid%num_cells_local = num_cells_local_new  
+  unstructured_grid%global_offset = 0
+  call MPI_Exscan(unstructured_grid%num_cells_local, &
+                  unstructured_grid%global_offset, &
+                  ONE_INTEGER_MPI,MPIU_INTEGER,MPI_SUM,option%mycomm,ierr)
+  !sp end 
+
   unstructured_grid%cell_vertices_0 = 0
   allocate(unstructured_grid%cell_ids_natural(unstructured_grid%num_cells_local))
   unstructured_grid%cell_ids_natural = 0
@@ -890,6 +906,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
 #endif
 
   ! now we unpack the decomposed cell data
+ 
   
   ! store the natural grid cell id for each local cell as read from the grid file
   call VecGetArrayF90(elements_natural,vec_ptr,ierr)
@@ -900,6 +917,7 @@ subroutine UnstructuredGridDecompose(unstructured_grid,option)
 
   ! make a list of petsc ids for each local cell (you simply take the global 
   ! offset and add it to the local contiguous cell ids on each processor
+  print *, option%myrank, unstructured_grid%global_offset 
   allocate(int_array(unstructured_grid%num_cells_local))
   do icell=1, unstructured_grid%num_cells_local
     int_array(icell) = icell+unstructured_grid%global_offset
