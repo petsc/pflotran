@@ -65,65 +65,64 @@ extern "C"{
 #include "CartesianCCellDoubleSum.h"
 #include "fc_interface.h"
 #include "SAMRAIDriver.h"
-/*#include "pims_local_struct.h"*/
+
 /*
  * Ghost cell width for variables that need them.
  */
 
 #define GHOST_CELL_WIDTH (1)
-int __argc_save;
-char **__argv_save;
+//int __argc_save;
+//char **__argv_save;
 
-int main( int argc, char *argv[] ) 
+int main( int argc, char **argv ) 
 {
+  
+  //  __argc_save = argc;
+  //  __argv_save = argv;
+  
+  SAMRAI::tbox::SAMRAI_MPI::init(&argc, &argv);
+  SAMRAI::tbox::SAMRAIManager::startup();
+
+  bool is_from_restart = false;
+  SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy;
   std::string input_file;
-   std::string log_file;
-   bool is_from_restart = false;
-   std::string pflotran_filename;
-   SAMRAI::tbox::Pointer<SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy;
+  std::string log_file;
+  std::string pflotran_filename;
 
-   __argc_save = argc;
-   __argv_save = argv;
-
-   SAMRAI::tbox::SAMRAI_MPI::init(&argc, &argv);
-#if 0
-
-   SAMRAI::tbox::SAMRAIManager::startup();
-
-   PETSC_COMM_WORLD = SAMRAI::tbox::SAMRAI_MPI::getCommunicator();
-
-   int ierr = PetscInitialize(&argc,&argv,PETSC_NULL,PETSC_NULL);
-
-   PetscInitializeFortran();
-
-   /*
-    * Process command line arguments and dump to log file.
-    */
-   processCommandLine(argc, argv, input_file, log_file);
-
-   SAMRAI::tbox::PIO::logOnlyNodeZero(log_file);
-
-   /*
-    * Create input database and parse all data in input file.  This
-    * parsing allows us to subsequently extract individual sections.
-    */
-   SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db = new SAMRAI::tbox::InputDatabase("input_db");
-   SAMRAI::tbox::InputManager::getManager()->parseInputFile(input_file, input_db);
-
-   SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> app_database = input_db->getDatabase("PflotranApplicationStrategy");
-
-   int mode =  app_database->getInteger("DriverMode");
-   pflotran_filename=input_db->getStringWithDefault("pflotran_filename", "pflotran_well.in");
-   
-   SAMRAI::PflotranApplicationStrategy *pflotranApplication = NULL;
-   /*
-    * Setup the timer manager to trace timing statistics during execution
-    * of the code.  The list of timers is given in the tbox::TimerManager
-    * section of the input file.  Timing information is stored in the
-    * restart file.  Timers will automatically be initialized to their
-    * previous state if the run is restarted.  To reset timers to zero,
-    * call the resetAllTimers() function as shown.
-    */
+  PETSC_COMM_WORLD = SAMRAI::tbox::SAMRAI_MPI::getCommunicator();
+  
+  int ierr = PetscInitialize(&argc,&argv,PETSC_NULL,PETSC_NULL);
+  
+  PetscInitializeFortran();
+  
+  /*
+   * Process command line arguments and dump to log file.
+   */
+  processCommandLine(argc, argv, input_file, log_file);
+  
+  SAMRAI::tbox::PIO::logOnlyNodeZero(log_file);
+  
+  /*
+   * Create input database and parse all data in input file.  This
+   * parsing allows us to subsequently extract individual sections.
+   */
+  SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> input_db = new SAMRAI::tbox::InputDatabase("input_db");
+  SAMRAI::tbox::InputManager::getManager()->parseInputFile(input_file, input_db);
+  
+  SAMRAI::tbox::Pointer<SAMRAI::tbox::Database> app_database = input_db->getDatabase("PflotranApplicationStrategy");
+  
+  int mode =  app_database->getInteger("DriverMode");
+  pflotran_filename=input_db->getStringWithDefault("pflotran_filename", "pflotran_well.in");
+  
+  SAMRAI::PflotranApplicationStrategy *pflotranApplication = NULL;
+  /*
+   * Setup the timer manager to trace timing statistics during execution
+   * of the code.  The list of timers is given in the tbox::TimerManager
+   * section of the input file.  Timing information is stored in the
+   * restart file.  Timers will automatically be initialized to their
+   * previous state if the run is restarted.  To reset timers to zero,
+   * call the resetAllTimers() function as shown.
+   */
    SAMRAI::tbox::TimerManager::createManager(input_db->getDatabase("TimerManager"));
    if (is_from_restart) 
    {
@@ -224,11 +223,11 @@ int main( int argc, char *argv[] )
    
    //   if(pflotranApplication!=NULL)  delete pflotranApplication;
    if(test_object) delete test_object;
-#endif
    /* 
     * That's all, folks!
     */
    PetscFinalize();
+
    SAMRAI::tbox::SAMRAIManager::shutdown();
    SAMRAI::tbox::SAMRAI_MPI::finalize();
 
