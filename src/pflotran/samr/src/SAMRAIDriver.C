@@ -208,7 +208,9 @@ int main( int argc, char **argv )
 
    pflotranApplication->setRealization(p_realization);
    pflotranApplication->setSimulation(p_pflotran_sim);
-   
+
+   AMRUtilities::reportGridStatistics( hierarchy, 0, tbox::pout );
+
 #if 1   
    f_stepper_run_(&p_pflotran_sim);
 #endif   
