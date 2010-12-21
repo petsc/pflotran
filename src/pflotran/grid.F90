@@ -120,6 +120,7 @@ module Grid_module
             GridCreateNaturalToGhostedHash, &
             GridDestroyHashTable, &
             GridGetLocalGhostedIdFromHash, &
+            GridVecGetMaskArrayCellF90, &
             GridVecGetArrayF90, &
             GridVecRestoreArrayF90, &
             GridIndexToCellID, &
@@ -1951,6 +1952,33 @@ subroutine GridDestroy(grid)
 
 end subroutine GridDestroy
 
+
+! ************************************************************************** !
+!
+! GridDestroy: Returns pointer to cell-centered vector values
+! author: Bobby Philip
+! date:  12/15/10
+!
+! ************************************************************************** !
+subroutine GridVecGetMaskArrayCellF90(grid, vec, f90ptr, ierr)
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  type(grid_type) :: grid
+  Vec:: vec
+  PetscReal, pointer :: f90ptr(:)
+  PetscErrorCode :: ierr
+
+  if (associated(grid%structured_grid)) then
+     call StructuredGridVecGetMaskArrayCellF90(grid%structured_grid, vec, f90ptr, ierr)
+  endif
+
+end subroutine GridVecGetMaskArrayCellF90
+
+      
 ! ************************************************************************** !
 !
 ! GridDestroy: Returns pointer to cell-centered vector values
@@ -1978,6 +2006,7 @@ subroutine GridVecGetArrayCellF90(grid, vec, f90ptr, ierr)
 
 end subroutine GridVecGetArrayCellF90
 
+      
 ! ************************************************************************** !
 !
 ! GridDestroy: Returns pointer to edge-based vector values?

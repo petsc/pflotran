@@ -232,6 +232,25 @@ void samr_vecgetarraysidef90_(SAMRAI::hier::Patch<NDIM> **patch,
    
 }
 
+void samrvecgetmaskarraycellf90_(SAMRAI::hier::Patch<NDIM> **patch, 
+			     Vec *petscVec,
+			     void **f90wrap)
+
+{
+  SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > sVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(*petscVec);
+  const int cvIndex = sVec->getControlVolumeIndex(0);  
+  SAMRAI::tbox::Pointer< SAMRAI::pdat::CCellData<NDIM, double> > pData = (*patch)->getPatchData(cvIndex);
+  int depth = pData->getDepth();
+  
+  int len = pData->getGhostBox().size();
+  len = len*depth;
+  
+  void *p_data_ptr = pData->getPointer(0);
+  
+  cf90bridge_(p_data_ptr, &len, *f90wrap);
+   
+}
+
 int samr_patch_at_bc_(SAMRAI::hier::Patch<NDIM> **patch, 
                       int *axis, int *side)
 {

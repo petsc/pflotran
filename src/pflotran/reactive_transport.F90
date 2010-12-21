@@ -1919,7 +1919,7 @@ subroutine RTReactPatch(realization)
   use Option_module
   use Field_module  
   use Grid_module  
-
+     
   implicit none
   
   type(realization_type) :: realization
@@ -1937,6 +1937,7 @@ subroutine RTReactPatch(realization)
   PetscReal, pointer :: tran_xx_p(:)
   PetscReal, pointer :: volume_p(:)
   PetscReal, pointer :: porosity_loc_p(:)
+  PetscReal, pointer :: mask_p(:)
 #ifdef CHUNK
   PetscInt :: num_iterations(realization%option%chunk_size)
   PetscInt :: local_start
@@ -1972,6 +1973,10 @@ subroutine RTReactPatch(realization)
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
   call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
 
+  if(option%use_samr) then
+      call GridVecGetMaskArrayCellF90(grid, field%porosity_loc, mask_p, ierr)
+  endif
+      
   iphase = 1
 #ifdef OS_STATISTICS
   sum_iterations = 0
@@ -2031,6 +2036,8 @@ subroutine RTReactPatch(realization)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
+    if(option%use_samr .and. (mask_p(local_id)<=0)) cycle
+      
     iend = local_id*reaction%naqcomp
     istart = iend-reaction%naqcomp+1
     call RReact(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &

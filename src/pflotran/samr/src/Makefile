@@ -50,9 +50,9 @@ ifeq "$(BUILDTYPE)" "x86_64-Linux"
 endif
 
 ifeq "$(BUILDTYPE)" "i386-Darwin"
-   CXXFLAGS_EXTRA += -DNDIM=$(PDIM) -m32
-   CPPFLAGS_EXTRA += -DNDIM=$(PDIM) -m32
-   LDFLAGS_EXTRA += -m32
+   CXXFLAGS_EXTRA += -DNDIM=$(PDIM)
+   CPPFLAGS_EXTRA += -DNDIM=$(PDIM)
+#   LDFLAGS_EXTRA += -arch x86_64 
 endif
 
 ifeq "$(BUILDTYPE)" "x86_64-Darwin"
@@ -114,7 +114,7 @@ else
 FFLAGS += ${HDF5_FFLAGS} 
 endif
 
-PFLOTRAN_LDFLAGS += -L${PFLOTRAN_DIR}
+PFLOTRAN_LDFLAGS += -arch_errors_fatal -L${PFLOTRAN_DIR}
 
 #LDLIBS_EXTRA += ${PFLOTRAN_LDLIBS}
 #LDFLAGS_EXTRA += ${PFLOTRAN_LDFLAGS}
@@ -157,7 +157,7 @@ SAMRAIStartup: SAMRAIStartup.o BogusTagAndInitStrategy.o
 	$(CXX) -g SAMRAIStartup.o BogusTagAndInitStrategy.o ${PFLOTRAN_LDLIBS} ${PFLOTRAN_LDFLAGS} $(LIBSAMRAI3D) $(LIBSAMRAI) ${LDFLAGS} ${LDLIBS} -o $@
 
 clean:
-	$(RM) SAMRAIDriver *.f core *~ *.mod
+	$(RM) SAMRAIDriver *.f core *~ *.mod fortran/3d/*.o
 	$(RM) *.o *.ii *.int.c
 
 veryclean:

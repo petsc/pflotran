@@ -1955,7 +1955,6 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
   
   
   do icell = 1, unstructured_grid%num_cells_ghosted
-    if( option%myrank .eq. 1) print *, icell, cell_vertices_0(0:8,icell)+1
     do ivertex = 1, unstructured_grid%cell_vertices_0(0,icell)
       vertex_id = unstructured_grid%cell_vertices_0(ivertex,icell)+1
       if( vertex_id <= 0) cycle 
