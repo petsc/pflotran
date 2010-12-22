@@ -1,0 +1,345 @@
+:Description: 3D infiltration problem for Markus Flury
+ 
+: == debugging ================================================================
+DEBUG
+:MATVIEW_JACOBIAN
+:VECVIEW_RESIDUAL
+:VECVIEW_SOLUTION
+/
+
+: == mode =====================================================================
+MODE RICHARDS
+
+:================ runtime ==================
+CHECKPOINT 100000
+RESTART restart0.chk 0.d0
+
+: == chemistry ================================================================
+CHEMISTRY
+PRIMARY_SPECIES
+Tracer
+/
+OUTPUT
+All
+/
+/
+
+: == reference variables ======================================================
+REFERENCE_POROSITY 0.25d0
+
+: == time stepping ============================================================
+TIMESTEPPER
+TS_ACCELERATION 8
+/
+
+: == discretization ===========================================================
+GRID
+TYPE structured
+NXYZ 1 1 136
+DXYZ
+1.
+1.
+0.5
+/
+/
+
+: == flow solvers =============================================================
+NEWTON_SOLVER FLOW
+PRECONDITIONER_MATRIX_TYPE AIJ
+RTOL 1.d-8
+ATOL 1.d-8
+STOL 1.d-30
+ITOL_UPDATE 1.d0
+:NO_INFINITY_NORM
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
+
+LINEAR_SOLVER FLOW
+:KSP_TYPE FGMRES
+:KSP_TYPE PREONLY
+:PC_TYPE LU
+/
+
+: == transport solvers ========================================================
+NEWTON_SOLVER TRANSPORT
+PRECONDITIONER_MATRIX_TYPE AIJ
+RTOL 1.d-12
+ATOL 1.d-12
+STOL 1.d-30
+:NO_INFINITY_NORM
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
+
+LINEAR_SOLVER TRANSPORT
+:KSP_TYPE PREONLY
+:PC_TYPE LU
+/
+
+: == fluid properties =========================================================
+FLUID_PROPERTY
+DIFFUSION_COEFFICIENT 1.d-9
+/
+
+: == material properties ======================================================
+MATERIAL_PROPERTY BF
+ID 1
+SATURATION_FUNCTION BF
+POROSITY 0.2585
+TORTUOSITY 1.0
+PERMEABILITY
+PERM_ISO 1.24e-12
+/
+/
+
+MATERIAL_PROPERTY HF
+ID 2
+SATURATION_FUNCTION HF
+POROSITY 0.3586
+TORTUOSITY 1.0
+PERMEABILITY
+PERM_ISO 3.37028e-13
+/
+/
+
+MATERIAL_PROPERTY PP
+ID 3
+SATURATION_FUNCTION PP
+POROSITY 0.4223
+TORTUOSITY 1.0
+PERMEABILITY
+PERM_ISO 3.73463e-14
+/
+/
+
+MATERIAL_PROPERTY URG
+ID 4
+SATURATION_FUNCTION URG
+POROSITY 0.2625
+TORTUOSITY 1.0
+PERMEABILITY
+PERM_ISO 1.4392e-13
+/
+/
+
+MATERIAL_PROPERTY MRG
+ID 5
+SATURATION_FUNCTION MRG
+POROSITY 0.1643
+TORTUOSITY 1.0
+PERMEABILITY
+PERM_ISO 2.00395e-13
+/
+/
+
+: == saturation / permeability functions ======================================
+SATURATION_FUNCTION BF
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.0774
+LAMBDA 0.6585
+ALPHA 1.008d-3
+/
+
+SATURATION_FUNCTION HF
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.08366
+LAMBDA 0.46944
+ALPHA 9.40796e-5
+/
+
+SATURATION_FUNCTION PP
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.25953
+LAMBDA 0.45587
+ALPHA 6.85145e-5
+/
+
+SATURATION_FUNCTION URG
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.21295
+LAMBDA 0.38594
+ALPHA 2.96555e-5
+/
+
+SATURATION_FUNCTION MRG
+SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+RESIDUAL_SATURATION 0.06086
+LAMBDA 0.39215
+ALPHA 6.34015e-5
+/
+
+: == output ===================================================================
+OUTPUT
+:PERIODIC TIMESTEP 1
+:PERIODIC TIME 0.025 y
+times y 1. 10. 100. 
+FORMAT TECPLOT POINT
+FORMAT HDF5
+/
+
+: == times ====================================================================
+TIME
+FINAL_TIME 100. y
+INITIAL_TIMESTEP_SIZE 1.e-6 y
+MAXIMUM_TIMESTEP_SIZE 1.e-1 y
+/
+
+: == regions ==================================================================
+REGION all
+BLOCK 1 1 1 1 1 136
+/
+
+REGION Top
+BLOCK 1 1 1 1 136 136
+FACE TOP
+/
+
+REGION Bottom
+BLOCK 1 1 1 1 1 1
+FACE BOTTOM
+/
+
+REGION BF
+BLOCK 1 1 1 1 105 136
+/
+
+REGION HF
+BLOCK 1 1 1 1 59 104
+/
+
+REGION PP
+BLOCK 1 1 1 1 47 58
+/
+
+REGION URG
+BLOCK 1 1 1 1 41 46
+/
+
+REGION MRG
+BLOCK 1 1 1 1 1 40
+/
+
+REGION Leak
+BLOCK 1 1 1 1 103 103
+/
+
+: == flow conditions ==========================================================
+FLOW_CONDITION Inlet
+TYPE
+FLUX neumann
+/
+:FLUX 0.317098d-7 ! 1 cm/y
+:FLUX 1.5855d-8 ! 5 mm/y
+FLUX 2.53678e-8 ! 8 mm/y
+:FLUX file 200w_recharge_1951-2000_daily.dat
+/
+
+FLOW_CONDITION Initial
+TYPE
+PRESSURE hydrostatic
+/
+DATUM 0.d0 0.d0 6.d0
+PRESSURE 101325.d0
+/
+
+FLOW_CONDITION source
+TYPE
+RATE mass_rate
+/
+INTERPOLATION STEP
+RATE file src.dat ! 8.4e-4 kg/s for 2 weeks (60,000 gallons)
+/
+
+: == transport conditions =====================================================
+TRANSPORT_CONDITION Inlet
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 Inlet
+/
+/
+
+TRANSPORT_CONDITION Initial
+TYPE zero_gradient
+CONSTRAINT_LIST
+0.d0 Initial
+/
+/
+
+TRANSPORT_CONDITION source
+TYPE dirichlet
+CONSTRAINT_LIST
+0.d0 well
+/
+/
+
+: == transport constraints ====================================================
+CONSTRAINT Initial
+CONCENTRATIONS
+Tracer   1.e-10            F
+/
+/
+
+CONSTRAINT Inlet
+CONCENTRATIONS
+Tracer   5.e-1             F
+/
+/
+CONSTRAINT well
+CONCENTRATIONS
+Tracer 1.d0 T
+/
+/
+
+: == couplers =================================================================
+BOUNDARY_CONDITION Inlet
+FLOW_CONDITION Inlet
+TRANSPORT_CONDITION Inlet
+REGION Top
+/
+
+BOUNDARY_CONDITION Outlet
+FLOW_CONDITION Initial
+TRANSPORT_CONDITION Initial
+REGION Bottom
+/
+
+INITIAL_CONDITION Initial
+FLOW_CONDITION Initial
+TRANSPORT_CONDITION Initial
+REGION all
+/
+
+skip
+SOURCE_SINK Source
+FLOW_CONDITION source
+TRANSPORT_CONDITION source
+REGION all
+/
+noskip
+
+: == stratigraphy =============================================================
+STRATA
+MATERIAL BF
+REGION BF
+/
+
+STRATA
+MATERIAL HF
+REGION HF
+/
+
+STRATA
+MATERIAL PP
+REGION PP
+/
+
+STRATA
+MATERIAL URG
+REGION URG
+/
+
+STRATA
+MATERIAL MRG
+REGION MRG
+/
