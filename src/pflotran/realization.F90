@@ -2449,31 +2449,31 @@ subroutine RealizationPrintGridStatistics(realization)
   endif
   if (OptionPrintToScreen(option)) then
     write(*,'(/," Grid Stats:",/, &
-                "                       Global # cells: ",i12,/, &
-                "                Global # active cells: ",i12,/, &
-                "                              # cores: ",i12,/, &
-                "         Processor core decomposition: ",3i6,/, &
-                "               Maximum # cells / core: ",i12,/, &
-                "               Minimum # cells / core: ",i12,/, &
-                "               Average # cells / core: ",1pe12.4,/, &
-                "               Std Dev # cells / core: ",1pe12.4,/, &
-                "        Maximum # active cells / core: ",i12,/, &
-                "        Minimum # active cells / core: ",i12,/, &
-                "        Average # active cells / core: ",1pe12.4,/, &
-                "        Std Dev # active cells / core: ",1pe12.4,/,/, &
-                "        % cores with % active cells =       0%: ",1f7.2,/, &
-                "        % cores with % active cells =  0.1-10%: ",1f7.2,/, &
-                "        % cores with % active cells =   10-20%: ",1f7.2,/, &
-                "        % cores with % active cells =   20-30%: ",1f7.2,/, &
-                "        % cores with % active cells =   30-40%: ",1f7.2,/, &
-                "        % cores with % active cells =   40-50%: ",1f7.2,/, &
-                "        % cores with % active cells =   50-60%: ",1f7.2,/, &
-                "        % cores with % active cells =   60-70%: ",1f7.2,/, &
-                "        % cores with % active cells =   70-80%: ",1f7.2,/, &
-                "        % cores with % active cells =   80-90%: ",1f7.2,/, &
-                "        % cores with % active cells = 90-99.9%: ",1f7.2,/, &
-                "        % cores with % active cells =     100%: ",1f7.2,/, &
-                "                                        Check : ",1f7.2,/)') &
+              & "                       Global # cells: ",i12,/, &
+              & "                Global # active cells: ",i12,/, &
+              & "                              # cores: ",i12,/, &
+              & "         Processor core decomposition: ",3i6,/, &
+              & "               Maximum # cells / core: ",i12,/, &
+              & "               Minimum # cells / core: ",i12,/, &
+              & "               Average # cells / core: ",1pe12.4,/, &
+              & "               Std Dev # cells / core: ",1pe12.4,/, &
+              & "        Maximum # active cells / core: ",i12,/, &
+              & "        Minimum # active cells / core: ",i12,/, &
+              & "        Average # active cells / core: ",1pe12.4,/, &
+              & "        Std Dev # active cells / core: ",1pe12.4,/,/, &
+              & "        % cores with % active cells =       0%: ",1f7.2,/, &
+              & "        % cores with % active cells =  0.1-10%: ",1f7.2,/, &
+              & "        % cores with % active cells =   10-20%: ",1f7.2,/, &
+              & "        % cores with % active cells =   20-30%: ",1f7.2,/, &
+              & "        % cores with % active cells =   30-40%: ",1f7.2,/, &
+              & "        % cores with % active cells =   40-50%: ",1f7.2,/, &
+              & "        % cores with % active cells =   50-60%: ",1f7.2,/, &
+              & "        % cores with % active cells =   60-70%: ",1f7.2,/, &
+              & "        % cores with % active cells =   70-80%: ",1f7.2,/, &
+              & "        % cores with % active cells =   80-90%: ",1f7.2,/, &
+              & "        % cores with % active cells = 90-99.9%: ",1f7.2,/, &
+              & "        % cores with % active cells =     100%: ",1f7.2,/, &
+              & "                                        Check : ",1f7.2,/)') &
            global_total_count, &
            global_active_count, &
            option%mycommsize, &

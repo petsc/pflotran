@@ -28,7 +28,7 @@ module Saturation_Function_module
     PetscReal :: BC_spline_coefficients(4)
     PetscReal :: ani_A       ! parameters for anisotropic relative permeability model
     PetscReal :: ani_B       ! parameters for anisotropic relative permeability model
-	PetscReal :: ani_C       ! parameters for anisotropic relative permeability model
+    PetscReal :: ani_C       ! parameters for anisotropic relative permeability model
 
     type(saturation_function_type), pointer :: next
   end type saturation_function_type
