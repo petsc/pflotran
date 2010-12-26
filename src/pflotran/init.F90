@@ -1220,6 +1220,17 @@ subroutine InitReadInput(simulation)
 !....................
       case ('DEBUG')
         call DebugRead(realization%debug,input,option)
+
+!....................
+      case ('MAX_CHANGE')
+        call InputReadDouble(input,option,option%dpmxe)
+        call InputErrorMsg(input,option,'dpmxe','MAX_CHANGE')
+        call InputReadDouble(input,option,option%dtmpmxe)
+        call InputErrorMsg(input,option,'dtmpmxe','MAX_CHANGE')
+        call InputReadDouble(input,option,option%dsmxe)
+        call InputErrorMsg(input,option,'dsmxe','MAX_CHANGE')
+        call InputReadDouble(input,option,option%dcmxe)
+        call InputErrorMsg(input,option,'dcmxe','MAX_CHANGE')
         
 !....................
       case ('GENERALIZED_GRID')
