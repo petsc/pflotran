@@ -2015,8 +2015,8 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
  
  
-! Multiphase flash calculation is more expansive, so calculate once per iterration
-! print *, 'Mpahse residual patch 1' 
+! Multiphase flash calculation is more expensive, so calculate once per iteration
+! print *, 'Mphase residual patch 1' 
 #if 1
   ! Pertubations for aux terms --------------------------------
   do ng = 1, grid%ngmax
@@ -2133,25 +2133,25 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     !print *, 'RES s/s begin'
     ! check whether enthalpy dof is included
   !  if (source_sink%flow_condition%num_sub_conditions > 3) then
-      enthalpy_flag = PETSC_TRUE
+    enthalpy_flag = PETSC_TRUE
    ! else
    !   enthalpy_flag = PETSC_FALSE
    ! endif
       
     psrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
-!    qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
+!   qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
     tsrc1 = source_sink%flow_condition%temperature%dataset%cur_value(1)
     csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
     if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
-!    hsrc1=0D0
-!    qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
-!    csrc1 = csrc1 / FMWCO2
-!    msrc(1)=qsrc1; msrc(2) =csrc1
-     msrc(:)= psrc(:)
-     msrc(1) =  msrc(1) / FMWH2O
-     msrc(2) =  msrc(2) / FMWCO2
+!   hsrc1=0D0
+!   qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+!   csrc1 = csrc1 / FMWCO2
+!   msrc(1)=qsrc1; msrc(2) =csrc1
+    msrc(:)= psrc(:)
+    msrc(1) =  msrc(1) / FMWH2O
+    msrc(2) =  msrc(2) / FMWCO2
 
-     cur_connection_set => source_sink%connection_set
+    cur_connection_set => source_sink%connection_set
     
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
@@ -2169,9 +2169,9 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       if (enthalpy_flag)then
         r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - Res(option%nflowdof)
         Resold_AR(local_id,option%nflowdof)= Resold_AR(local_id,option%nflowdof) - Res(option%nflowdof)
-       endif 
-  !  else if (qsrc1 < 0.d0) then ! withdrawal
-  !  endif
+      endif 
+  !   else if (qsrc1 < 0.d0) then ! withdrawal
+  !   endif
     enddo
     source_sink => source_sink%next
   enddo
@@ -2216,51 +2216,51 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 
       icap_dn = int(icap_loc_p(ghosted_id))  
 ! Then need fill up increments for BCs
-    do idof =1, option%nflowdof   
-       select case(boundary_condition%flow_condition%itype(idof))
-       case(DIRICHLET_BC)
-          xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
-       case(HYDROSTATIC_BC)
-          xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
-          if(idof>=2)then
-             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
-          endif 
-       case(NEUMANN_BC, ZERO_GRADIENT_BC)
+      do idof =1, option%nflowdof   
+        select case(boundary_condition%flow_condition%itype(idof))
+          case(DIRICHLET_BC)
+            xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
+          case(HYDROSTATIC_BC)
+            xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
+            if(idof>=2)then
+              xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+            endif 
+          case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
-          xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
-          iphase = int(iphase_loc_p(ghosted_id))
-       end select
-    enddo
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+            iphase = int(iphase_loc_p(ghosted_id))
+        end select
+      enddo
 
-    select case(boundary_condition%flow_condition%itype(3))
-    case(DIRICHLET_BC,SEEPAGE_BC)
-       iphase = boundary_condition%flow_aux_int_var(1,iconn)
-    case(NEUMANN_BC,ZERO_GRADIENT_BC,HYDROSTATIC_BC)
-       iphase=int(iphase_loc_p(ghosted_id))                               
-    end select
+      select case(boundary_condition%flow_condition%itype(3))
+        case(DIRICHLET_BC,SEEPAGE_BC)
+          iphase = boundary_condition%flow_aux_int_var(1,iconn)
+        case(NEUMANN_BC,ZERO_GRADIENT_BC,HYDROSTATIC_BC)
+          iphase=int(iphase_loc_p(ghosted_id))                               
+      end select
  
-    call MphaseAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
+      call MphaseAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
             global_aux_vars_bc(sum_connection), iphase,&
             realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
             realization%fluid_properties, option, xphi)
 #if 1
-    if( associated(global_aux_vars_bc))then
-      global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
+      if( associated(global_aux_vars_bc))then
+        global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
                      aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-      global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
-      global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
+        global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
+        global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
       !    global_aux_vars(ghosted_id)%sat_store = 
-      global_aux_vars_bc(sum_connection)%fugacoeff(1)=xphi
-      global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
-      global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
+        global_aux_vars_bc(sum_connection)%fugacoeff(1)=xphi
+        global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
+        global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
-  !   global_aux_vars(ghosted_id)%den_kg_store
-  !   global_aux_vars(ghosted_id)%mass_balance 
-  !   global_aux_vars(ghosted_id)%mass_balance_delta                   
-    endif
+  !     global_aux_vars(ghosted_id)%den_kg_store
+  !     global_aux_vars(ghosted_id)%mass_balance 
+  !     global_aux_vars(ghosted_id)%mass_balance_delta                   
+      endif
 #endif
 
-    call MphaseBCFlux(boundary_condition%flow_condition%itype, &
+      call MphaseBCFlux(boundary_condition%flow_condition%itype, &
          boundary_condition%flow_aux_real_var(:,iconn), &
          aux_vars_bc(sum_connection)%aux_var_elem(0), &
          aux_vars(ghosted_id)%aux_var_elem(0), &
@@ -2271,14 +2271,14 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
          cur_connection_set%area(iconn), &
          distance_gravity,option, &
          v_darcy,Res)
-    patch%boundary_velocities(:,sum_connection) = v_darcy(:)
-    iend = local_id*option%nflowdof
-    istart = iend-option%nflowdof+1
-    r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
-    Resold_AR(local_id,1:option%nflowdof) = ResOld_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
+      patch%boundary_velocities(:,sum_connection) = v_darcy(:)
+      iend = local_id*option%nflowdof
+      istart = iend-option%nflowdof+1
+      r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
+      Resold_AR(local_id,1:option%nflowdof) = ResOld_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
    !  print *, 'REs BC: ',r_p(istart:iend)
-  enddo
-  boundary_condition => boundary_condition%next
+    enddo
+    boundary_condition => boundary_condition%next
  enddo
 #endif
 #if 1
@@ -2383,14 +2383,14 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 
 ! print *,'finished rp vol scale'
   if(option%use_isothermal) then
-     do local_id = 1, grid%nlmax  ! For each local node do...
-        ghosted_id = grid%nL2G(local_id)   ! corresponding ghost index
-        if (associated(patch%imat)) then
-           if (patch%imat(ghosted_id) <= 0) cycle
-        endif
-        istart = 3 + (local_id-1)*option%nflowdof
-        r_p(istart) = 0.D0 ! xx_loc_p(2 + (ng-1)*option%nflowdof) - yy_p(p1-1)
-     enddo
+    do local_id = 1, grid%nlmax  ! For each local node do...
+      ghosted_id = grid%nL2G(local_id)   ! corresponding ghost index
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+      istart = 3 + (local_id-1)*option%nflowdof
+      r_p(istart) = 0.D0 ! xx_loc_p(2 + (ng-1)*option%nflowdof) - yy_p(p1-1)
+    enddo
   endif
   !call GridVecRestoreArrayF90(grid,r, r_p, ierr)
 
