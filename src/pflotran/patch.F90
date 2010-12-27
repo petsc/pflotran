@@ -1108,7 +1108,8 @@ end function PatchAuxVarsUpToDate
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar,isubvar1)
+subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
+  isubvar,isubvar1)
 
   use Grid_module
   use Option_module
@@ -1126,6 +1127,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar,isubvar1)
 #include "finclude/petscvec.h90"
 
   type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
   Vec :: vec
@@ -1528,8 +1530,9 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar,isubvar1)
             if (patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar) > &
                 0.d0) then
               vec_ptr(local_id) = &
-                patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar)/ &
-                patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar1)
+                patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar) / &
+                patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar1) / &
+                output_option%tconv
             endif
           enddo        
       end select
@@ -1565,8 +1568,8 @@ end subroutine PatchGetDataset
 ! date: 02/11/08
 !
 ! ************************************************************************** !
-function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
-  ghosted_id,isubvar1)
+function PatchGetDatasetValueAtCell(patch,field,option,output_option, &
+  ivar,isubvar,ghosted_id,isubvar1)
 
   use Grid_module
   use Option_module
@@ -1585,6 +1588,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
 
   PetscReal :: PatchGetDatasetValueAtCell
   type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
   PetscInt :: ivar
@@ -1819,7 +1823,8 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
           if (patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar) > &
               0.d0) then
             value = patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar) / &
-            patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar1)
+            patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar1) / &
+            output_option%tconv
           endif
       end select
     case(POROSITY)
