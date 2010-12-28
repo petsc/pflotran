@@ -1838,7 +1838,7 @@ end subroutine Flash2Residual
 ! ************************************************************************** !
 !
 ! Flash2ResidualPatch: Computes the residual equation at patch level
-!                      original version
+!                      original version (not used)
 ! author: Chuan Lu
 ! date: 10/10/08
 !
@@ -2953,68 +2953,68 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
 
   allocate(delx(option%nflowdof))
 
-   patch%aux%Flash2%Resold_AR=0.D0
-   patch%aux%Flash2%Resold_BC=0.D0
-   patch%aux%Flash2%ResOld_FL=0.D0
+  patch%aux%Flash2%Resold_AR=0.D0
+  patch%aux%Flash2%Resold_BC=0.D0
+  patch%aux%Flash2%ResOld_FL=0.D0
 
 ! Multiphase flash calculation is more expansive, so calculate once per iterration
 #if 1
   ! Pertubations for aux terms --------------------------------
   do ng = 1, grid%ngmax
-     if(grid%nG2L(ng)<0)cycle
-     if (associated(patch%imat)) then
-        if (patch%imat(ng) <= 0) cycle
-     endif
-     ghosted_id = ng   
-     istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
+    if(grid%nG2L(ng)<0)cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(ng) <= 0) cycle
+    endif
+    ghosted_id = ng   
+    istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
      ! iphase =int(iphase_loc_p(ng))
-     call Flash2AuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
+    call Flash2AuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
           global_aux_vars(ng),&
           realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
           realization%fluid_properties,option, xphi)
 !    print *,'flash ', xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0)%den
 #if 1
-     if( associated(global_aux_vars))then
-       global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
+    if(associated(global_aux_vars)) then
+      global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
                aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-       global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
-       global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
+      global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
+      global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
 !      global_aux_vars(ghosted_id)%sat_store =
-       global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
-       global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
-       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
+      global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
+      global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
+      global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
 !       global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
 !      global_aux_vars(ghosted_id)%pres(:)
 !      global_aux_vars(ghosted_id)%mass_balance 
 !      global_aux_vars(ghosted_id)%mass_balance_delta                   
-     else
-       print *,'Not associated global for Flash2'
-     endif
+    else
+      print *,'Not associated global for Flash2'
+    endif
 #endif
 
-     if (option%numerical_derivatives) then
-        delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
-        delx(2) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
+    if (option%numerical_derivatives) then
+      delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
+      delx(2) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
  
-        if(xx_loc_p((ng-1)*option%nflowdof+3) <=0.9)then
-           delx(3) = dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
-         else
-            delx(3) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
-         endif
-         if( delx(3) < 1D-8 .and.  delx(3)>=0.D0) delx(3) = 1D-8
-         if( delx(3) >-1D-8 .and.  delx(3)<0.D0) delx(3) =-1D-8
+      if(xx_loc_p((ng-1)*option%nflowdof+3) <=0.9) then
+        delx(3) = dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
+      else
+        delx(3) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
+      endif
+      if(delx(3) < 1D-8 .and.  delx(3)>=0.D0) delx(3) = 1D-8
+      if(delx(3) >-1D-8 .and.  delx(3)<0.D0) delx(3) =-1D-8
 
            
-         if(( delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0)then
+      if((delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0) then
             delx(3) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-4
-         endif
-         if(( delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0)then
+      endif
+      if((delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0) then
             delx(3) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-4
-         endif
+      endif
 
-         patch%aux%Flash2%delx(:,ng)=delx(:)
-         call Flash2AuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
+      patch%aux%Flash2%delx(:,ng)=delx(:)
+      call Flash2AuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
             aux_vars(ng)%aux_var_elem(1:option%nflowdof),global_aux_vars(ng),&
             realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
             realization%fluid_properties,option)
@@ -3022,8 +3022,8 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
 !            aux_vars(ng)%aux_var_elem(0)%sat(2)<1D-12)then
 !            print *, 'Flash winc', delx(3,ng)
 !         endif   
-      endif
-   enddo
+    endif
+  enddo
 #endif
   deallocate(delx)
   call GridVecRestoreArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)

@@ -526,14 +526,14 @@
     tmp = factor(1)*co2_prop_spwag(i1,j1,i) + factor(2)*co2_prop_spwag(i2,j1,i) &
          + factor(3)*co2_prop_spwag(i1,j2,i) + factor(4)*co2_prop_spwag(i2,j2,i)
     if (dabs(tmp-p)>1D-10 ) then
-      print *,' Error in intropolate::P',tmp,p,iindex,factor;isucc=0
+      print *,' Error in interpolation::P ',tmp,p,iindex,factor;isucc=0
     endif
    !print *, 'Table: P ',iindex,jindex, factor,i  
     i=i+1
     tmp = factor(1)*co2_prop_spwag(i1,j1,i) + factor(2)*co2_prop_spwag(i2,j1,i) &
          + factor(3)*co2_prop_spwag(i1,j2,i) + factor(4)*co2_prop_spwag(i2,j2,i)
     if (dabs(tmp-t)>1D-10 ) then
-      print *,' Error in intropolate:;T', tmp,t,jindex,factor; isucc=0
+      print *,' Error in interpolation:;T', tmp,t,jindex,factor; isucc=0
     endif
   endif
 
