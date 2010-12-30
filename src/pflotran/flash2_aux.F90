@@ -533,7 +533,8 @@ subroutine Flash2AuxVarCompute_WINC(x, delx, aux_var,global_auxvar,saturation_fu
   do n=1, option%nflowdof
      xx=x;  xx(n)=x(n)+ delx(n)
 ! ***   note: var_node here starts from 1 to option%flowdof ***
-    call  Flash2AuxVarCompute_NINC(xx,aux_var(n),global_auxvar, &saturation_function,fluid_properties, option)
+    call  Flash2AuxVarCompute_NINC(xx,aux_var(n),global_auxvar, &
+      saturation_function,fluid_properties, option)
   enddo
 
 end subroutine Flash2AuxVarCompute_WINC
