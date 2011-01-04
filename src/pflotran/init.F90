@@ -609,6 +609,13 @@ subroutine Init(simulation)
       case(THC_MODE)
         call THCUpdateAuxVars(realization)
       case(RICHARDS_MODE)
+#ifdef DASVYAT
+       if (option%mimetic) then
+        call RichardsInitialPressureReconstruction(realization)
+        write(*,*) "RichardsInitialPressureReconstruction"
+        read(*,*)
+       end if
+#endif 
         call RichardsUpdateAuxVars(realization)
       case(MPH_MODE)
         call MphaseUpdateAuxVars(realization)

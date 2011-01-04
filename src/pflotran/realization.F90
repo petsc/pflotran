@@ -415,6 +415,8 @@ subroutine RealizationCreateDiscretization(realization)
         call DiscretizationDuplicateVector(discretization, field%flow_xx_loc_faces, field%flow_r_loc_faces) 
 
         call DiscretizationDuplicateVector(discretization, field%flow_xx_loc_faces, field%flow_bc_loc_faces)
+   
+        call DiscretizationDuplicateVector(discretization, field%flow_xx_loc_faces, field%work_loc_faces)
 
 !       call VecGetArrayF90(field%volume, real_tmp, ierr)
 !       call VecRestoreArrayF90(field%volume, real_tmp, ierr)
@@ -1335,6 +1337,7 @@ subroutine RealizAssignFlowInitCond(realization)
 #ifdef DASVYAT
   if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
    call DiscretizationGlobalToLocalFaces(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
+
    call VecCopy(field%flow_xx_faces, field%flow_yy_faces, ierr)
    call MFDInitializeMassMatrices(realization%discretization%grid,&
                                       realization%field%volume, &
@@ -2338,7 +2341,7 @@ subroutine RealizationSetUpBC4Faces(realization)
            else if ((bc_type == NEUMANN_BC)) then
                     bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)*conn%area(jface)
            end if 
-                
+           write(*,*) ghost_face_id, boundary_condition%flow_aux_real_var(1,iconn), conn%cntr(3,jface)     
   !            bc_faces_p(ghost_face_id) = conn%cntr(3,jface)*conn%area(jface) 
         end if
       end do
@@ -2350,7 +2353,7 @@ subroutine RealizationSetUpBC4Faces(realization)
   call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
 
   write(*,*) "RealizationSetUpBC4Faces Finished"
-!  stop
+  read(*,*)
 #endif
 
 end subroutine RealizationSetUpBC4Faces

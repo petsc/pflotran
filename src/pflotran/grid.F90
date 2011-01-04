@@ -64,14 +64,12 @@ module Grid_module
     ! nG2L :  not collective, local processor:  ghosted local => local  
     ! nG2A :  collective,  ghosted local => global index , used for   
     !                      matsetvaluesblocked ( not matsetvaluesblockedlocal)  
-#ifdef DASVYAT
 
     PetscInt, pointer :: fL2G(:), fG2L(:), fG2P(:), fL2P(:)
     PetscInt, pointer :: fL2B(:)
     Vec :: e2f     ! global vector to establish connection between global face_id and cell_id
     Vec :: e2n     ! global cell connectivity vector
 
-#endif
     
     PetscReal, pointer :: x(:), y(:), z(:) ! coordinates of ghosted grid cells
 
@@ -85,11 +83,9 @@ module Grid_module
     type(unstructured_grid_type), pointer :: unstructured_grid
     
     type(connection_set_list_type), pointer :: internal_connection_set_list
-#ifdef DASVYAT
     type(connection_set_list_type), pointer :: boundary_connection_set_list
     type(face_type), pointer :: faces(:)
     type(mfd_type), pointer :: MFD
-#endif
 
   end type grid_type
 
@@ -468,7 +464,6 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
         if (local_id_dn>0) then
            aux_var => MFD_aux%aux_vars(local_id_dn)
            call MFDAuxAddFace(aux_var,option, icount)
-           write(*,*) icount, conn%itype
            grid%fG2L(icount)=local_id
            grid%fL2G(local_id) = icount
            local_id = local_id + 1
@@ -492,12 +487,10 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
         if (local_id_dn>0) then
            aux_var => MFD_aux%aux_vars(local_id_dn)
            call MFDAuxAddFace(aux_var,option, icount)
-           write(*,*) icount, conn%itype
         end if
         if (local_id_up>0) then
            aux_var => MFD_aux%aux_vars(local_id_up)
            call MFDAuxAddFace(aux_var,option, icount)
-           write(*,*) icount, conn%itype
         end if
     end if
     

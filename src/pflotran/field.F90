@@ -59,7 +59,7 @@ module Field_module
       
     ! Solution vectors for face unknows
     Vec :: flow_xx_faces, flow_xx_loc_faces, flow_dxx_faces, flow_yy_faces, flow_bc_loc_faces
-   
+    Vec :: work_loc_faces   
 
 
   end type field_type
