@@ -267,7 +267,7 @@ m_\c^{l} \eq \frac{X_\c^l W_\w^{-1}}{1- X_\c^l - \displaystyle\sum_{i\ne \w,\c} 
 \EN
 with the inverse relation
 \EQ
-X_\c^l \eq \frac{m_\c}{ W_\w^{-1} + m_\c + \displaystyle\sum_{i\ne \w,\c}\!\!\! \!\!\! m_i}.
+X_\c^l \eq \frac{m_\c  W_\w}{1 +  W_\w\big(m_\c + \displaystyle\sum_{i\ne \w,\c}\!\!\! \!\!\! m_i\big)}.
 \EN
 
 \subsubsection{Gas Phase: Variables $\{P_g,\,T,\,X_\c^g\}$}
@@ -350,9 +350,9 @@ The variable $z_i$ is a persistent degree of freedom throughout the simulation.
 
 Introducing $z_i$ into the mass conservation equations gives
 \EQ
-\sum_\a \left\{\frac{\p}{\p t} \big(\varphi z_i s_\a\rho_\a\big) + \bnabla\cdot \big[\bq_\a \rho_\a x_i^\a -\varphi s_\a \rho_\a D_\a \bnabla x_i^\a\big]\right\} \eq Q_i.
+\left\{\frac{\p}{\p t} \big(\varphi z_i \sum_\a s_\a\rho_\a\big) + \bnabla\cdot \sum_\a \big[\bq_\a \rho_\a x_i^\a -\varphi s_\a \rho_\a D_\a \bnabla x_i^\a\big]\right\} \eq Q_i.
 \EN
-In this equation $x_i^\a$ is expressed as a nonlinear function of the variables $z_i$. The Jacobian is computed numerically.
+In this equation $s_\a$ and $x_i^\a$ are expressed as nonlinear functions of the variable $z_i$. In the current version of PFLOTRAN the Jacobian is computed numerically.
 
 Following the notation and formulation found in \cite{nghiem-1985} and \cite{michelsen-1-1982}, let $x_i$, $y_i$ be the mole fraction of component $i$ in liquid and vapor phases, respectively. Under conditions of thermodynamic equilibrium these quantities are related by the equilibrium constant $K_i$
 \EQ\label{yi}
@@ -384,8 +384,8 @@ The value of $x_c$ can be found by solving the flash equation (i.e. the Rachford
 \EQ\label{flash}
 F(x_c)=\sum_i(y_i-x_i)=\sum_i \frac {z_i(K_i-1)}{1+(K_i-1)x_c} =0.
 \EN
-Eqn.(\ref{flash}) indicates that the flash method is not able to calculate phase separation for a multiphase system with phase equilibrium distribution coefficients $K_i$ equal to unity, e.g. the water-steam system. Under such situations Eqn.(\ref{flash}) is always satisfied.
- 
+Eqn.(\ref{flash}) indicates that the flash method is not applicable to a multiphase system with phase equilibrium distribution coefficients $K_i$ equal to unity, e.g. the water-steam system. Under such situations Eqn.(\ref{flash}) is trivially satisfied.
+
 Since $F(x_c)$ is a monotonically decreasing function of $x_c$, a meaningful solution $0\leq x_c\leq 1$ can exist only if 
 \begin{subequations}\label{addphase_N3}
 \BA\label{liqbc}
@@ -427,18 +427,18 @@ and phase saturations are given by
  s_w = 0, \ s_{\sc} =1 
 \EA
 \end{subequations}
-For both cases 1 and 2, the density of either aqueous and SC phase can be obtained from the EOS, since $P$, $T$ and $x_i$ have been determined.
+For both cases 1 and 2, the density of either the aqueous or supercritical $\c$ phase can be obtained from the EOS, since $P$, $T$ and $x_i$ are known.
 
 \noindent
 {\bf Case 3:} two phases coexist.
 As stated previously, the coefficients $K_i$ are not functions of the $\c$ concentration. Their values at given $P$ and $T$ given explicitly by
-\begin{subequations}\label{k_value_c}
-\BA
-K_{\c} =\frac{H_{\c}\gamma_{\c}}{P\phi_{\c}},
-\EA
-and
+\begin{subequations}
 \BA
 K_{\w} =\frac{P_{\w}^{\rm sat}(T)}{P}.
+\EA
+and
+\BA\label{k_value_c}
+K_{\c} =\frac{H_{\c}\gamma_{\c}}{P\phi_{\c}},
 \EA
 \end{subequations}
 From these relations the phase composition can be obtained by solving a linear set of equation for the four unknown secondary variables $x_i^\alpha$, ($i$=H$_2$O, CO$_2$) and $\alpha=w$, $\sc$. One has
@@ -464,11 +464,15 @@ s_{\sc} \eq \frac{\rho_{w} (z_{\c} - x_{\c}^w)}
 
 \subsection{Two-Component System}
 
-Currently the FLASH2 mode in PFLOTRAN can only handle systems with two components and two phases, enabling the flash calculation to be carried out in a simplified manner. One important assumption in the implementation in PFLOTRAN is that the activity coefficients in the aqueous phase and the fugacity coefficient in the supercritical phase are not functions of the $\c$ concentration. 
+\begin{comment}
+One important assumption in the implementation in PFLOTRAN is that the activity coefficients in the aqueous phase and the fugacity coefficient in the supercritical phase are not functions of the $\c$ concentration. 
 %I.e. non-ideality is weak in the aqueous and gas mixtures. 
 This assumption is consistent with the solubility equations for $\c$ [\cite {garcia01}, \cite{duan2003}, \cite{duan2008}] adapted in PLOTRAN. With this assumption, the phase distribution parameters $K_i(P,\,T)$ are not functions of the mole fractions $z_i, x_i$ and $y_i$, which greatly simplifies the flash calculation. 
+\end{comment}
 
+Currently the FLASH2 mode in PFLOTRAN can only handle systems with two components and two phases, enabling the flash calculation to be carried out in a simplified manner. 
 For a two-component system the FLASH equations may be solved analytically. In this case
+\begin{subequations}
 \EQ
 x_1+x_2\eq 1,
 \EN
@@ -476,7 +480,9 @@ and
 \EQ
 K_1 x_1 + K_2 x_2 \eq 1,
 \EN
+\end{subequations}
 giving
+\begin{subequations}
 \EQ
 x_1 = \frac{1-K_2}{K_1-K_2}, \ \ \ x_2=1-x_1 \eq \frac{K_1-1}{K_1-K_2},
 \EN
@@ -484,11 +490,41 @@ and
 \EQ
 y_1 = \frac{K_1(1-K_2)}{K_1-K_2}, \ \ \ y_2 \eq \frac{K_2(K_1-1)}{K_1-K_2}.
 \EN
+\end{subequations}
 It then follows that
+\begin{subequations}
 \BA
 x_c &\eq \frac{z_i - x_i}{(K_i-1)x_i}, \ (i=1,\,2),\\
-&\eq \frac{z_1(K_1-K_2)-(1-K_2)}{(K_1-1)(1-K_2)}.
+&\eq \frac{z_1(K_1-K_2)-(1-K_2)}{(K_1-1)(1-K_2)},\\
+&\eq \frac{z_2(K_1-K_2)-(K_1-1)}{(K_1-1)(1-K_2)}.
 \EA
+\end{subequations}
+
+Both $K_1$ and $K_2$ are functions of $P$ and $T$. The quantity $K_2$, however, is also a function of $x_\c$. For the phase transformation for component $\w$ it is assumed that
+\EQ
+K_1 \eq \frac{P_{\rm sat}}{P}.
+\EN
+The phase transformation for the $\c$ component is obtained from the mass action relation
+\EQ
+K_\c^{\rm eq} \eq \frac{\phi_\c y_\c P}{\gamma_\c m_\c}.
+\EN
+Solving for $m_\c$ gives
+\EQ
+m_\c \eq \frac{\phi_\c y_\c P}{K_\c^{\rm eq}\gamma_\c}.
+\EN
+Substituting the relation
+\EQ
+m_\c \eq \frac{x_\c}{W_\w(1-x_\c)},
+\EN
+gives
+\EQ
+y_\c \eq K_2 x_\c,
+\EN
+with
+\EQ
+K_2 \eq \frac{K_\c^{\rm eq}\gamma_\c}{W_\w(1-x_\c)\phi_\c P}.
+\EN
+Thus $K_2$ is a function of $x_\c$ yielding a quadratic equation for $x_\c$. %Note that $\gamma_\c\rightarrow 1$ as $x_\c\rightarrow 0$.
 
 %\EQ
 %F(y)=\sum_{i}^{n_c} y_i (\mu _i(y)-\mu _0) >= 0
@@ -579,6 +615,7 @@ x_i^\a \eq \frac{z_i \lambda_\a^i}{\sum_{i'} z_{i'} \lambda_\a^{i'}}.
 \EN
 Thus the set of variables $\{x_\a,\, x_i^\a\}$ is equivalent to the set $\{z_i,\,\lambda_\a^i\}$. Expressing the equilibrium constraints Eqn.\eqref{chempot} in terms of the latter set then provides a generally nonlinear system of $N_C (N_P\!-\!1)$ equations in an equal number of unknowns.
 
+The mole fraction of phase $\a$ is equal to 
 \BA
 x_\a &\eq \frac{n_\a}{n} \eq \frac{(n_\a/V_\a) (V_\a/V_p)}{\sum_\b (n_\b/ V_\b) (V_\b/V_p)},\nonumber\\
 &\eq \frac{s_\a \rho_\a}{\sum_\b s_\b\rho_\b}.
@@ -600,11 +637,11 @@ implies equality of the chemical potentials
 \EN
 where
 \EQ
-\mu_\c^l \eq \mu_\c^{l\ominus} + \ln a_\c^{},
+\mu_\c^l \eq \mu_\c^{l\ominus} + RT\ln a_\c^{},
 \EN
 and
 \EQ
-\mu_\c^g \eq \mu_\c^{g\ominus} + \ln f_\c^{},
+\mu_\c^g \eq \mu_\c^{g\ominus} + RT\ln f_\c^{},
 \EN
 with standard state chemical potentials $\mu_\c^{\ominus l}$ and $\mu_\c^{\ominus g}$. The activity of $\c$ in an aqueous solution is related to its molality $m_\c$ by
 \EQ
@@ -625,46 +662,71 @@ P_g \eq P_\c^g + P_\w^{\rm sat}(T),
 \EN
 and where $P_\w^{\rm sat}(T)$ denotes the saturation pressure of pure water. 
 
-Introducing the equilibrium constant $K_\c$ defined as
+Introducing the equilibrium constant $K_\c^{\rm eq}$ defined as
 \EQ
-\ln K_\c \eq -\frac{1}{RT}\big(\mu_{\rm CO_2}^{g\ominus} - \mu_{\rm CO_2}^{l\ominus}\big),
+\ln K_\c^{\rm eq} \eq -\frac{1}{RT}\big(\mu_{\rm CO_2}^{g\ominus} - \mu_{\rm CO_2}^{l\ominus}\big),
 \EN
 yields the mass action equation
 \EQ\label{massactco2}
-K_\c^{} \eq \frac{f_\c^{}}{a_\c^{}} \eq \frac{\phi_\c^{} P_\c^g}{a_\c} \eq \frac{\phi_\c^{} X_\c^g P_g^{}}{a_\c^{}}.
+K_\c^{\rm eq} \eq \frac{f_\c^{}}{a_\c^{}} \eq \frac{\phi_\c^{} P_\c^g}{a_\c} \eq \frac{\phi_\c^{} X_\c^g P_g^{}}{a_\c^{}}.
 \EN
 The equilibrium CO$_2$ molality is thus given by
 \EQ
-m_\c^{} \eq \frac{\phi_\c^{} X_\c^g}{\gamma_\c^{}K_\c^{}}  P_g^{}.
+m_\c^{} \eq \frac{\phi_\c^{} X_\c^g}{\gamma_\c^{}K_\c^{\rm eq}}  P_g^{}.
 \EN
 %Of the three quantities: $P_g$, $P_\c^g$, and $T$, two may be specified and the other computed from Eqn.\eqref{totalp}.
-
 Solving Eqn.\eqref{massactco2} for the $\c$ partial pressure gives
 \BA
-P_\c^g &\eq \frac{K_\c}{\phi_\c} a_\c,\\
-&\eq \widetilde K_\c a_\c,
+P_\c^g &\eq \frac{K_\c^{\rm eq}}{\phi_\c} a_\c,\\
+&\eq \widetilde K_\c^{\rm eq} a_\c,
 \EA
 where the effective equilibrium constant $\widetilde K_\c$ is defined as
 \EQ
-\widetilde K_\c \eq \frac{K_\c}{\phi_\c}.
+\widetilde K_\c^{\rm eq} \eq \frac{K_\c^{\rm eq}}{\phi_\c}.
 \EN
-For a two-component system molality is related to the mole fraction by the equation
+
+In the general case molality and mole fraction of solute species $i$ are related by the expressions
+\EQ
+m_i \eq \frac{x_i}{W_w x_w} \eq \frac{x_i}{W_w(1-\sum_{l\ne w} x_l)},
+\EN
+and the inverse relation
+\EQ
+x_i \eq \frac{W_w m_i}{1+W_w \sum_{l\ne w} m_l},
+\EN
+where $x_w$ and $W_w$ denote the mole fraction and formula weight of the solvent, in this case $\w$, respectively, with
+\EQ
+x_w \eq \frac{1}{1+W_w \sum_{l\ne w} m_l}.
+\EN
+
+For a two-component system $\w$, $\c$, molality is related to the mole fraction by the equation
 \begin{subequations}
 \EQ
-x_\c^l \eq\frac{m_\c W_\w}{1+m_\c W_\w},
+x_\c^l \eq\frac{W_\w m_\c}{1 + W_\w m_\c},
 \EN
 and conversely mole fraction is related to molality by the equation
 \EQ
 m_\c \eq \frac{x_\c^l}{W_\w(1-x_\c^l)},
 \EN
 \end{subequations}
-where $W_\w$ denotes the formula weight of water. 
+where $W_\w$ denotes the formula weight of water. Activity coefficients and standard state potentials are related by
+\BA
+\mu_i &\eq \mu_i^m + RT \ln \gamma_i m_i,\\
+&\eq \mu_i^x + RT \ln \lambda_i x_i,
+\EA
+with [see Denbigh (1981), p. 278, Eqns.(9$\cdot$19) and (9$\cdot$20)]
+\EQ
+\gamma_i \eq x_w \lambda_i,
+\EN
+and
+\EQ
+\mu_i^m \eq \mu_i^x + RT \ln W_w.
+\EN
 
 The concentration of $\c$ in the gas phase, $C_\c^g$, is obtained as
 \BA
 C_\c^g &\eq \frac{n_i^g}{V_g} \eq \frac{n_i^g}{N_g}\frac{N_g}{V_g} \eq \rho_\c^{} X_\c^g,\\
 &\eq \rho_\c \frac{f_\c}{\phi_\c P_g},\\
-&\eq \rho_\c K_\c \frac{a_\c}{\phi_\c P_g}.
+&\eq \rho_\c K_\c^{\rm eq} \frac{a_\c}{\phi_\c P_g}.
 \EA
 
 \end{document}
