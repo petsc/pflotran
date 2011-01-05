@@ -815,7 +815,6 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
      darcy_v = darcy_v + ukvr*gr(i)
      
 !     write(*,*) "darcy_v", darcy_v
-!     write(*,*) "Gravity Input", ukvr*gr(i), "phi ", xx(1) - face_pr(i)
 !     write(*,*)
 
 
@@ -824,6 +823,7 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
         if (local_id > 0) then
            bound_id = grid%fL2B(local_id)
            if (bound_id>0) then
+!              write(*,*) "Gravity Input", -ukvr*gr(i), "phi ", -(xx(1) - face_pr(i)), "darcy_v", -darcy_v
               patch%boundary_velocities(option%nphase, bound_id) = -darcy_v
            end if
         end if
@@ -927,7 +927,6 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
     call printErrMsg(option)
   end if
 
-
    N = 0.
    u_parm  = (PermTensor(1,1) + PermTensor(2,2) +PermTensor(3,3))/volume
 
@@ -959,15 +958,15 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
          N(i,j) = dir_norm(j)
      end do
 
-   !   write(*,*) (N(i,j),j=1,3), "     ", (conn%cntr(k, iface), k=1,3)
+!      write(*,*) (N(i,j),j=1,3), "     ", (conn%cntr(k, iface), k=1,3)
 
   end do
 
   !write(*,*) "R"
 
-  do i=1,6
+!  do i=1,6
  !  write(*,*) rx(i), ry(i), rz(i)
-  end do
+!  end do
 
 
 
@@ -1017,9 +1016,9 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
   end do
 
  ! write(*,*) "D"
-  do i=1,6
+!  do i=1,6
  !    write(*,*) D(i,1:3)
-  end do
+!  end do
  ! write(*,*)
 
 
@@ -1037,9 +1036,9 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
   end do
 
  !  write(*,*) "W1"
-   do i=1,6
+ !  do i=1,6
  !    write(*,*) W1(i, 1:6)
-   end do
+ !  end do
  ! write(*,*)
 
 
@@ -1067,19 +1066,21 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
      end do
    end do
 
-
+ ! write(*,*) "vol", volume
  ! write(*,*) "MassMatrix"
-  do i=1,6
+ ! do i=1,6
  !    write(*,*) aux_var%MassMatrixInv(i, 1:6)
-  end do
+ ! end do
  ! write(*,*)
+ ! write(*,*)
+
 
 !  aux_var%MassMatrixInv = 0.
 !
 !  do iface = 1, aux_var%numfaces
 !    aux_var%MassMatrixInv(iface, iface) = (2./volume)*PermTensor(1,1)
 !  end do 
-!  stop
+ ! stop
 end subroutine MFDAuxGenerateMassMatrixInv
 
 

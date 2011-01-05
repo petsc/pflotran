@@ -1975,6 +1975,9 @@ subroutine assignMaterialPropToRegions(realization)
   PetscReal, pointer :: perm_xx_p(:)
   PetscReal, pointer :: perm_yy_p(:)
   PetscReal, pointer :: perm_zz_p(:)
+  PetscReal, pointer :: perm_xz_p(:)
+  PetscReal, pointer :: perm_xy_p(:)
+  PetscReal, pointer :: perm_yz_p(:)
   PetscReal, pointer :: perm_pow_p(:)
   PetscReal, pointer :: vec_p(:)
   
@@ -2115,6 +2118,9 @@ subroutine assignMaterialPropToRegions(realization)
         call GridVecGetArrayF90(grid,field%perm0_xx,perm_xx_p,ierr)
         call GridVecGetArrayF90(grid,field%perm0_yy,perm_yy_p,ierr)
         call GridVecGetArrayF90(grid,field%perm0_zz,perm_zz_p,ierr)
+        call GridVecGetArrayF90(grid,field%perm0_xz,perm_xz_p,ierr)
+        call GridVecGetArrayF90(grid,field%perm0_xy,perm_xy_p,ierr)
+        call GridVecGetArrayF90(grid,field%perm0_yz,perm_yz_p,ierr)
         call GridVecGetArrayF90(grid,field%perm_pow,perm_pow_p,ierr)
       endif
       call GridVecGetArrayF90(grid,field%porosity0,por0_p,ierr)
@@ -2156,6 +2162,9 @@ subroutine assignMaterialPropToRegions(realization)
           perm_xx_p(local_id) = material_property%permeability(1,1)
           perm_yy_p(local_id) = material_property%permeability(2,2)
           perm_zz_p(local_id) = material_property%permeability(3,3)
+          perm_xz_p(local_id) = material_property%permeability(1,3)
+          perm_xy_p(local_id) = material_property%permeability(1,2)
+          perm_yz_p(local_id) = material_property%permeability(2,3)
 !          perm_pow_p(local_id) = ???
         endif
         por0_p(local_id) = material_property%porosity
@@ -2168,6 +2177,9 @@ subroutine assignMaterialPropToRegions(realization)
         call GridVecRestoreArrayF90(grid,field%perm0_xx,perm_xx_p,ierr)
         call GridVecRestoreArrayF90(grid,field%perm0_yy,perm_yy_p,ierr)
         call GridVecRestoreArrayF90(grid,field%perm0_zz,perm_zz_p,ierr)
+        call GridVecRestoreArrayF90(grid,field%perm0_xz,perm_xz_p,ierr)
+        call GridVecRestoreArrayF90(grid,field%perm0_xy,perm_xy_p,ierr)
+        call GridVecRestoreArrayF90(grid,field%perm0_yz,perm_yz_p,ierr)
         call GridVecRestoreArrayF90(grid,field%perm_pow,perm_pow_p,ierr)
       endif
       call GridVecRestoreArrayF90(grid,field%porosity0,por0_p,ierr)
@@ -2231,6 +2243,13 @@ subroutine assignMaterialPropToRegions(realization)
                                      field%perm_yy_loc,ONEDOF)  
     call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
                                      field%perm_zz_loc,ONEDOF)   
+     
+    call DiscretizationGlobalToLocal(discretization,field%perm0_xz, &
+                                     field%perm_xz_loc,ONEDOF)  
+    call DiscretizationGlobalToLocal(discretization,field%perm0_xy, &
+                                     field%perm_xy_loc,ONEDOF)  
+    call DiscretizationGlobalToLocal(discretization,field%perm0_yz, &
+                                     field%perm_yz_loc,ONEDOF)   
      
     call DiscretizationLocalToLocal(discretization,field%icap_loc, &
                                     field%icap_loc,ONEDOF)   

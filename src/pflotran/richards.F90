@@ -2127,6 +2127,8 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
        
         dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1) + gravity
 
+        
+
         if (pressure_bc_type == SEEPAGE_BC .or. &
             pressure_bc_type == CONDUCTANCE_BC) then
               ! flow in         ! boundary cell is <= pref
@@ -2157,6 +2159,8 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
      
         if (ukvr*Dq>floweps) then
           v_darcy = Dq * ukvr * dphi
+!          write(*,*) "gravity ", gravity * Dq * ukvr
+!          write(*,*) "phi", global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)
         endif
       endif 
 
@@ -3308,7 +3312,7 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 !   end do  
 !
    write(*,*) "Boundary faces"
-   do iface = 1, 6 
+   do iface = 1, 10 
       write(*,*) "bound_flux", iface, patch%boundary_velocities(option%nphase, iface)
    end do  
    read(*,*)

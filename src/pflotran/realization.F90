@@ -246,6 +246,12 @@ subroutine RealizationCreateDiscretization(realization)
     call DiscretizationDuplicateVector(discretization,field%porosity0, &
                                        field%perm0_zz)
     call DiscretizationDuplicateVector(discretization,field%porosity0, &
+                                       field%perm0_xz)
+    call DiscretizationDuplicateVector(discretization,field%porosity0, &
+                                       field%perm0_xy)
+    call DiscretizationDuplicateVector(discretization,field%porosity0, &
+                                       field%perm0_yz)
+    call DiscretizationDuplicateVector(discretization,field%porosity0, &
                                        field%perm_pow)
 
     ! 1-dof local
@@ -263,6 +269,12 @@ subroutine RealizationCreateDiscretization(realization)
                                        field%perm_yy_loc)
     call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
                                        field%perm_zz_loc)
+    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                       field%perm_xz_loc)
+    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                       field%perm_xy_loc)
+    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                       field%perm_yz_loc)
 
     ! ndof degrees of freedom, global
     call DiscretizationCreateVector(discretization,NFLOWDOF,field%flow_xx, &
