@@ -661,9 +661,9 @@ subroutine RichardsInitialPressureReconstructionPatch(realization)
 
 
 
-!#ifdef DASVYAT
+#ifdef DASVYAT_DEBUG
   write(*,*) "ENTER RichardsInitialPressureReconstructionPatch"
-!#endif
+#endif
 
 
   discretization => realization%discretization
@@ -751,8 +751,8 @@ subroutine RichardsInitialPressureReconstructionPatch(realization)
 
 
   
-   write(*,*) "DiscretizationGlobalToLocal"
-   read(*,*)
+!   write(*,*) "DiscretizationGlobalToLocal"
+!   read(*,*)
 
 end subroutine RichardsInitialPressureReconstructionPatch
 
@@ -805,9 +805,9 @@ subroutine RichardsUpdateCellPressurePatch(realization)
 
 
 
-!#ifdef DASVYAT
+#ifdef DASVYAT_DEBUG
   write(*,*) "ENTER RichardsUpdateCellPressurePatch"
-!#endif
+#endif
 
 
   option => realization%option
@@ -887,8 +887,8 @@ subroutine RichardsUpdateCellPressurePatch(realization)
 
   enddo
 
-      write(*,*) "RichardsUpdateCellPressurePatch"
-      read(*,*)
+ !     write(*,*) "RichardsUpdateCellPressurePatch"
+ !     read(*,*)
 
  patch%aux%Richards%aux_vars_cell_pressures_up_to_date = PETSC_TRUE 
 
@@ -1101,7 +1101,7 @@ subroutine RichardsUpdateAuxVarsPatchMFD(realization)
   call GridVecRestoreArrayF90(grid,field%volume, volume_p,ierr)  
   call GridVecRestoreArrayF90(grid,field%flow_accum, accum_p,ierr)  
 
-#ifdef DASVYAT
+#ifdef DASVYAT_DEBUG
   write(*,*) "EXIT RichardsUpdateAuxVarsPatchMFD"
   read(*,*)
 #endif
@@ -1166,9 +1166,6 @@ subroutine RichardsUpdateSolution(realization)
  
   if (realization%option%mimetic) then 
      call VecCopy(field%flow_xx_faces, field%flow_yy_faces, ierr)  
-#ifdef DASVYAT
-    write(*,*) "RichardsUpdateSolution"
-#endif  
   end if
 
      call VecCopy(field%flow_xx,field%flow_yy,ierr)   
@@ -2323,7 +2320,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
 call PetscLogEventEnd(logging%event_r_residual,ierr)
 
 
-#ifdef DASVYAT
+#ifdef DASVYAT_DEBUG
    call PetscViewerASCIIOpen(realization%option%mycomm,'Rxx.out', &
                               viewer,ierr)
     call VecView(xx,viewer,ierr)
@@ -2387,8 +2384,8 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
 
 
 
-   write(*,*) "Begin RichardsResidualMFD"
-   read(*,*)
+!   write(*,*) "Begin RichardsResidualMFD"
+!   read(*,*)
  
   ! Communication -----------------------------------------
   ! These 3 must be called before RichardsUpdateAuxVars()
@@ -2396,8 +2393,8 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
    call DiscretizationGlobalToLocalFaces(discretization, r, field%flow_r_loc_faces, NFLOWDOF)
    call DiscretizationGlobalToLocal(discretization, field%flow_xx, field%flow_xx_loc, NFLOWDOF)
 
-  write(*,*) "After DiscretizationGlobalToLocalFaces"
-  read(*,*)
+!  write(*,*) "After DiscretizationGlobalToLocalFaces"
+!  read(*,*)
 
   call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%icap_loc,field%icap_loc,ONEDOF)
@@ -2406,6 +2403,9 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
   call DiscretizationLocalToLocal(discretization,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%perm_xz_loc,field%perm_xz_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%perm_xy_loc,field%perm_xy_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%perm_yz_loc,field%perm_yz_loc,ONEDOF)
 
 
   if (realization%discretization%itype == STRUCTURED_GRID_MIMETIC) then
@@ -2483,23 +2483,25 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
 !     call samrpetscobjectstateincrease(r)
 !  endif
 !   
-!  if (realization%debug%vecview_residual) then
+  if (realization%debug%vecview_residual) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'RresidualMFD.out', &
                               viewer,ierr)
     call VecView(field%flow_r_loc_faces,viewer,ierr)
 !    write(*,*) "VecView error", ierr
     call PetscViewerDestroy(viewer,ierr)
-!  endif
-!  if (realization%debug%vecview_solution) then
+  endif
+  if (realization%debug%vecview_solution) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'RxxMFD.out', &
                               viewer,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
-!  endif
+ endif
+
+#ifdef DASVYAT_DEBUG
    write(*,*) "End RichardsResidualMFD"
    read(*,*) 
 !   stop
-   
+#endif   
 
 #endif
   
@@ -3173,7 +3175,8 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 
   PetscReal, pointer :: r_p(:), porosity_loc_p(:), &
                         perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:),&
-                        volume_p(:), xx_loc_faces_p(:), xx_loc_p(:), work_loc_faces_p(:)
+                        volume_p(:), xx_loc_faces_p(:), xx_loc_p(:), work_loc_faces_p(:), &
+                        perm_xz_loc_p(:), perm_xy_loc_p(:), perm_yz_loc_p(:)
 !  PetscReal, pointer :: icap_loc_p(:)
 
   PetscReal, pointer :: face_fluxes_p(:), bc_faces_p(:)
@@ -3238,6 +3241,9 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%perm_xz_loc, perm_xz_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%perm_xy_loc, perm_xy_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%perm_yz_loc, perm_yz_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
   !print *,' Finished scattering non deriv'
 
@@ -3247,11 +3253,11 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   allocate(face_pr(numfaces))
 !  allocate(Smatrix(numfaces, numfaces))
 
-  write(*,*) "cell centered"
-  write(*,*) (xx_loc_p(icell), icell=1,grid%nlmax)  
-  write(*,*) "face centered"
-  write(*,*) (xx_loc_faces_p(iface), iface=1,grid%nlmax_faces)  
-  read(*,*)
+!  write(*,*) "cell centered"
+!  write(*,*) (xx_loc_p(icell), icell=1,grid%nlmax)  
+!  write(*,*) "face centered"
+!  write(*,*) (xx_loc_faces_p(iface), iface=1,grid%nlmax_faces)  
+!  read(*,*)
   r_p = 0.
 
   do icell = 1, grid%nlmax
@@ -3290,9 +3296,12 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
       PermTensor(1,1) = perm_xx_loc_p(ghosted_id)
       PermTensor(2,2) = perm_yy_loc_p(ghosted_id)
       PermTensor(3,3) = perm_zz_loc_p(ghosted_id)
-!      PermTensor(1,1) = 1 
-!      PermTensor(2,2) = 1
-!      PermTensor(3,3) = 1
+      PermTensor(1,3) = perm_xz_loc_p(ghosted_id)
+      PermTensor(1,2) = perm_xy_loc_p(ghosted_id)
+      PermTensor(2,3) = perm_yz_loc_p(ghosted_id)
+      PermTensor(2,1) = PermTensor(1,2) 
+      PermTensor(3,1) = PermTensor(1,3) 
+      PermTensor(3,2) = PermTensor(2,3) 
 
       call MFDAuxFluxes(patch, grid, ghosted_id, xx_loc_p(icell:icell), face_pr, aux_var, PermTensor, &
                         rich_aux_vars(ghosted_id), global_aux_vars(ghosted_id), &
@@ -3310,12 +3319,14 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 !   do iface = 1, grid%internal_connection_set_list%first%num_connections
 !      write(*,*) "int_flux", iface, patch%internal_velocities(option%nphase, iface) 
 !   end do  
-!
+
+#ifdef DASVYAT_DEBUG
    write(*,*) "Boundary faces"
    do iface = 1, 10 
       write(*,*) "bound_flux", iface, patch%boundary_velocities(option%nphase, iface)
    end do  
    read(*,*)
+#endif
 
   call GridVecRestoreArrayF90(grid,field%flow_xx, xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
@@ -3329,6 +3340,9 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_xz_loc, perm_xz_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_xy_loc, perm_xy_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_yz_loc, perm_yz_loc_p, ierr)
 
   deallocate(sq_faces)
 
@@ -3384,6 +3398,7 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
 
   PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:),  accum_p(:), bc_faces_p(:)
   PetscReal, pointer ::  perm_xx_loc_p(:),  perm_yy_loc_p(:), perm_zz_loc_p(:), flow_xx_p(:)
+  PetscReal, pointer ::  perm_xz_loc_p(:),  perm_xy_loc_p(:), perm_yz_loc_p(:)
   PetscReal, pointer :: xx_loc_faces_p(:)
 
 
@@ -3438,6 +3453,9 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%perm_xz_loc, perm_xz_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%perm_xy_loc, perm_xy_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%perm_yz_loc, perm_yz_loc_p, ierr)
 
 
   
@@ -3519,6 +3537,12 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
         PermTensor(1,1) = perm_xx_loc_p(ghosted_id)
         PermTensor(2,2) = perm_yy_loc_p(ghosted_id)
         PermTensor(3,3) = perm_zz_loc_p(ghosted_id)
+        PermTensor(1,3) = perm_xz_loc_p(ghosted_id)
+        PermTensor(1,2) = perm_xy_loc_p(ghosted_id)
+        PermTensor(2,3) = perm_yz_loc_p(ghosted_id)
+        PermTensor(3,1) = PermTensor(1,3)
+        PermTensor(2,1) = PermTensor(1,2)
+        PermTensor(3,2) = PermTensor(2,3)
 
         call MFDAuxGenerateRhs(grid, ghosted_id, PermTensor, bc_g, source_f, bc_h, aux_var, &
                                  rich_aux_vars(ghosted_id),&
@@ -3573,12 +3597,15 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%flow_accum, accum_p, ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%flow_xx, flow_xx_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%flow_xx, flow_xx_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_xz_loc, perm_xz_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_xy_loc, perm_xy_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_yz_loc, perm_yz_loc_p, ierr)
 
-  write(*,*) "End RichardsResidualPatchMFD2"
+!  write(*,*) "End RichardsResidualPatchMFD2"
 !  read(*,*) 
 
 #endif
@@ -4374,7 +4401,8 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
 #ifdef DASVYAT
 
   PetscReal, pointer :: porosity_loc_p(:), &
-                        perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
+                        perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:), &
+                        perm_xz_loc_p(:), perm_xy_loc_p(:), perm_yz_loc_p(:)
   PetscReal, pointer :: icap_loc_p(:), accum_p(:), xx_p(:)
   PetscInt :: icap
   PetscReal :: dd_up, dd_dn
@@ -4416,7 +4444,7 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
   global_aux_vars => patch%aux%Global%aux_vars
 
 
-  write(*,*) "ENTER MFD JACOBIAN"
+!  write(*,*) "ENTER MFD JACOBIAN"
 
 
   call VecGetArrayF90(field%flow_xx_loc_faces, xx_faces_p, ierr)
@@ -4429,6 +4457,9 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
   call GridVecGetArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%perm_xz_loc, perm_xz_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%perm_xy_loc, perm_xy_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%perm_yz_loc, perm_yz_loc_p, ierr)
 
      numfaces = 6
 
@@ -4438,7 +4469,7 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
      allocate(sq_faces(numfaces))
      allocate(bound_id(numfaces))
 
-  write(*,*) "ENTER MFD JACOBIAN"
+!  write(*,*) "ENTER MFD JACOBIAN"
 
   do local_id = 1, grid%nlmax
      aux_var => grid%MFD%aux_vars(local_id)
@@ -4474,7 +4505,12 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
    PermTensor(1,1) = perm_xx_loc_p(ghosted_id) 
    PermTensor(2,2) = perm_yy_loc_p(ghosted_id) 
    PermTensor(3,3) = perm_zz_loc_p(ghosted_id) 
-   
+   PermTensor(1,3) = perm_xz_loc_p(ghosted_id) 
+   PermTensor(1,2) = perm_xy_loc_p(ghosted_id) 
+   PermTensor(2,3) = perm_yz_loc_p(ghosted_id) 
+   PermTensor(3,1) = PermTensor(1,3)    
+   PermTensor(2,1) = PermTensor(1,2)    
+   PermTensor(3,2) = PermTensor(2,3)    
 
     J = 0.
 
@@ -4544,12 +4580,18 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_xz_loc, perm_xz_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_xy_loc, perm_xy_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_yz_loc, perm_yz_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%flow_accum, accum_p, ierr)
 
 #endif
+
+#ifdef DASVYAT_DEBUG
   write(*,*) "EXIT MFD JACOBIAN"
-  write(*,*) "richard 4014"
+  write(*,*) "richard 4587"
 !  stop
+#endif
 
 end subroutine RichardsJacobianPatchMFD
 

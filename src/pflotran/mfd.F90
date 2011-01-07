@@ -154,14 +154,13 @@ end subroutine MFDCreateJacobian
 
 
 
-subroutine MFDInitializeMassMatrices(grid, volume,  perm_xx_loc, &
-                                                    perm_yy_loc, &
-                                                    perm_zz_loc, &
- mfd_aux, option)
+subroutine MFDInitializeMassMatrices(grid, field, &
+                                             mfd_aux, option)
 
  use Option_module
  use Grid_module
  use MFD_Aux_module
+ use Field_module
 
   implicit none
 
@@ -176,7 +175,7 @@ subroutine MFDInitializeMassMatrices(grid, volume,  perm_xx_loc, &
 #include "finclude/petscviewer.h"
 
   type(grid_type) :: grid
-  Vec :: volume, perm_xx_loc, perm_yy_loc, perm_zz_loc
+  type(field_type) :: field
   type(mfd_type) :: mfd_aux
   type(option_type) :: option
 
@@ -185,11 +184,15 @@ subroutine MFDInitializeMassMatrices(grid, volume,  perm_xx_loc, &
   PetscInt :: ghosted_cell_id, icell, ierr,i,j
   PetscReal :: PermTensor(3,3) 
   PetscReal, pointer :: volume_p(:), perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
+  PetscReal, pointer :: perm_xz_loc_p(:), perm_xy_loc_p(:), perm_yz_loc_p(:)
 
-  call VecGetArrayF90(volume, volume_p, ierr)
-  call VecGetArrayF90(perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(perm_zz_loc, perm_zz_loc_p, ierr)
+  call VecGetArrayF90(field%volume, volume_p, ierr)
+  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
+  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
+  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call VecGetArrayF90(field%perm_xz_loc, perm_xz_loc_p, ierr)
+  call VecGetArrayF90(field%perm_xy_loc, perm_xy_loc_p, ierr)
+  call VecGetArrayF90(field%perm_yz_loc, perm_yz_loc_p, ierr)
 
   
 
@@ -198,9 +201,15 @@ subroutine MFDInitializeMassMatrices(grid, volume,  perm_xx_loc, &
     ghosted_cell_id = grid%nL2G(icell)
 
     PermTensor = 0.
-    PermTensor(1,1) = perm_xx_loc_p(icell)
-    PermTensor(2,2) = perm_yy_loc_p(icell)
-    PermTensor(3,3) = perm_zz_loc_p(icell)
+    PermTensor(1,1) = perm_xx_loc_p(ghosted_cell_id)
+    PermTensor(2,2) = perm_yy_loc_p(ghosted_cell_id)
+    PermTensor(3,3) = perm_zz_loc_p(ghosted_cell_id)
+    PermTensor(1,3) = perm_xz_loc_p(ghosted_cell_id)
+    PermTensor(1,2) = perm_xy_loc_p(ghosted_cell_id)
+    PermTensor(2,3) = perm_yz_loc_p(ghosted_cell_id)
+    PermTensor(2,1) = PermTensor(1,2)
+    PermTensor(3,1) = PermTensor(1,3)
+    PermTensor(3,2) = PermTensor(2,3)
 
 !    write(*,*) icell, volume_p(icell), PermTensor(1,1)
 
@@ -210,10 +219,13 @@ subroutine MFDInitializeMassMatrices(grid, volume,  perm_xx_loc, &
 !    call MFDAuxInitStiffMatrix(aux_var, option)
   end do
 
-  call VecRestoreArrayF90(volume, volume_p, ierr)
-  call VecRestoreArrayF90(perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(perm_zz_loc, perm_zz_loc_p, ierr)
+  call VecRestoreArrayF90(field%volume, volume_p, ierr)
+  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_xz_loc, perm_xz_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_xy_loc, perm_xy_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_yz_loc, perm_yz_loc_p, ierr)
 
 !  do icell = 1, grid%nlmax
 !    write(*,*) "Mass Matrix ", icell
@@ -604,7 +616,6 @@ subroutine MFDAuxReconstruct(face_pr, source_f, aux_var, rich_aux_var, global_au
 
   allocate(MB(aux_var%numfaces))
 
-  write(*,*) "MFDAuxReconstruct"
 
 
   E = 0
@@ -930,7 +941,6 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
    N = 0.
    u_parm  = (PermTensor(1,1) + PermTensor(2,2) +PermTensor(3,3))/volume
 
-!   write(*,*) "N"
 
    do i = 1, aux_var%numfaces
 
@@ -957,11 +967,14 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
      do j=1,3
          N(i,j) = dir_norm(j)
      end do
-
-!      write(*,*) (N(i,j),j=1,3), "     ", (conn%cntr(k, iface), k=1,3)
-
   end do
 
+#ifdef DASVYAT_DEBUG
+      write(*,*) "N"
+    do i=1,6
+      write(*,*) (N(i,j),j=1,3), "     ", (conn%cntr(k, iface), k=1,3)
+    end do
+#endif
   !write(*,*) "R"
 
 !  do i=1,6
@@ -1066,13 +1079,24 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
      end do
    end do
 
- ! write(*,*) "vol", volume
- ! write(*,*) "MassMatrix"
- ! do i=1,6
- !    write(*,*) aux_var%MassMatrixInv(i, 1:6)
- ! end do
- ! write(*,*)
- ! write(*,*)
+#ifdef DASVYAT_DEBUG
+
+  write(*,*)
+  do i=1,3
+     write(*,*) PermTensor(i, 1:3)
+  end do
+
+
+
+  write(*,*) "vol", volume
+  write(*,*) "MassMatrix"
+  do i=1,6
+     write(*,*) aux_var%MassMatrixInv(i, 1:6)
+  end do
+  write(*,*)
+  write(*,*)
+  stop
+#endif
 
 
 !  aux_var%MassMatrixInv = 0.

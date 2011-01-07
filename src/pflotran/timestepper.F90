@@ -1076,7 +1076,8 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
     do
       
       call PetscGetTime(log_start_time, ierr)
-#ifdef DASVYAT
+
+#ifdef DASVYAT_DEBUG
 !    call PetscViewerASCIIOpen(realization%option%mycomm,'timestepp_flow_xx.out', &
 !                              viewer,ierr)
 !    if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
@@ -1099,7 +1100,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
             call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
           end if
 
-#ifdef DASVYAT
+#ifdef DASVYAT_DEBUG
 
 !    call PetscViewerASCIIOpen(realization%option%mycomm,'timestepp_flow_xx.out', &
 !                              viewer,ierr)
@@ -1354,8 +1355,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   end select
 
 
-#ifdef DASVYAT
-
+#ifdef DASVYAT_DEBUG
     write(*,*) "End FLOW" 
     read(*,*)    
 #endif

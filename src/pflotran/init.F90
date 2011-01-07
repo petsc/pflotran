@@ -612,8 +612,8 @@ subroutine Init(simulation)
 #ifdef DASVYAT
        if (option%mimetic) then
         call RichardsInitialPressureReconstruction(realization)
-        write(*,*) "RichardsInitialPressureReconstruction"
-        read(*,*)
+!        write(*,*) "RichardsInitialPressureReconstruction"
+!        read(*,*)
        end if
 #endif 
         call RichardsUpdateAuxVars(realization)

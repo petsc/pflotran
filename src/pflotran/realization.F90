@@ -1352,11 +1352,8 @@ subroutine RealizAssignFlowInitCond(realization)
 
    call VecCopy(field%flow_xx_faces, field%flow_yy_faces, ierr)
    call MFDInitializeMassMatrices(realization%discretization%grid,&
-                                      realization%field%volume, &
-                                      realization%field%perm_xx_loc, &
-                                      realization%field%perm_yy_loc, &
-                                      realization%field%perm_zz_loc, &
-                                      realization%discretization%MFD, realization%option)
+                                  realization%field, &
+                                  realization%discretization%MFD, realization%option)
   end if
 #endif
 !  stop 
@@ -2353,7 +2350,7 @@ subroutine RealizationSetUpBC4Faces(realization)
            else if ((bc_type == NEUMANN_BC)) then
                     bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)*conn%area(jface)
            end if 
-           write(*,*) ghost_face_id, boundary_condition%flow_aux_real_var(1,iconn), conn%cntr(3,jface)     
+  !         write(*,*) ghost_face_id, boundary_condition%flow_aux_real_var(1,iconn), conn%cntr(3,jface)     
   !            bc_faces_p(ghost_face_id) = conn%cntr(3,jface)*conn%area(jface) 
         end if
       end do
@@ -2364,8 +2361,8 @@ subroutine RealizationSetUpBC4Faces(realization)
 
   call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
 
-  write(*,*) "RealizationSetUpBC4Faces Finished"
-  read(*,*)
+!  write(*,*) "RealizationSetUpBC4Faces Finished"
+!  read(*,*)
 #endif
 
 end subroutine RealizationSetUpBC4Faces
