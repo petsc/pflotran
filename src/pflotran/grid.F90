@@ -1493,58 +1493,59 @@ subroutine GridLocalizeRegions(grid,region_list,option)
         endif  
       endif 
     else
-      !sp 
+      !sp start
       select case(grid%itype) 
-      case(UNSTRUCTURED_GRID)
-        allocate(temp_int_array(region%num_cells))
-        temp_int_array = 0
-        local_count=0
-        do count=1,region%num_cells
-           local_id = GridGetLocalIdFromNaturalId( grid, region%cell_ids(count))
-           if( local_id .le. 0) cycle
-           if( local_id .gt. grid%unstructured_grid%num_cells_local) cycle
-           local_count = local_count + 1
-           temp_int_array(local_count) = local_id
-        enddo
+        case(UNSTRUCTURED_GRID)
+          allocate(temp_int_array(region%num_cells))
+          temp_int_array = 0
+          local_count=0
+          do count=1,region%num_cells
+            local_id = GridGetLocalIdFromNaturalId( grid, region%cell_ids(count))
+            if( local_id .le. 0) cycle
+            if( local_id .gt. grid%unstructured_grid%num_cells_local) cycle
+            local_count = local_count + 1
+            temp_int_array(local_count) = local_id
+          enddo
+          if (local_count /= region%num_cells) then
+            deallocate(region%cell_ids)
+            allocate(region%cell_ids(local_count))
+            region%cell_ids(1:local_count) = temp_int_array(1:local_count)
+            region%num_cells=local_count 
+          endif
+          deallocate(temp_int_array)
 
-      case default
-        option%io_buffer = &
-          'GridLocalizeRegions: define region by list of cells not implemented'
-        call printErrMsg(option)
-      end select
-     !sp end 
-
-      if (local_count /= region%num_cells) then
-        deallocate(region%cell_ids)
-        allocate(region%cell_ids(local_count))
-        region%cell_ids(1:local_count) = temp_int_array(1:local_count)
-        region%num_cells=local_count 
-      endif
-      deallocate(temp_int_array)
-
+        case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
 !sp following was commented out 
 !sp remove? 
+!geh: Not for now.  The below maps a list of natural ids to local.  This is now done
+!     in hdf5.F90 for lists of cells from hdf5 files.  If we elect to support ascii
+!     files, we will need this functionality here.
 #if 0
-      if ((grid%itype == STRUCTURED_GRID).or.(grid%itype == STRUCTURED_GRID_MIMETIC)) then
-        do count=1,region%num_cells
-          i = mod(region%cell_ids(count),grid%structured_grid%nx) - &
-                grid%structured_grid%nxs
-          j = mod((region%cell_ids(count)-1)/grid%structured_grid%nx, &
-                  grid%structured_grid%ny)+1 - &
-                grid%structured_grid%nys
-          k = ((region%cell_ids(count)-1)/grid%structured_grid%nxy)+1 - &
-                grid%structured_grid%nzs
-          if (i > 0 .and. i <= grid%structured_grid%nlx .and. &
-              j > 0 .and. j <= grid%structured_grid%nly .and. &
-              k > 0 .and. k <= grid%structured_grid%nlz) then
-            temp_int_array(local_count) = &
-                i + (j-1)*grid%structured_grid%nlx + &
-                (k-1)*grid%structured_grid%nlxy
-            local_count = local_count + 1
-          endif
-        enddo
-      else
+          do count=1,region%num_cells
+            i = mod(region%cell_ids(count),grid%structured_grid%nx) - &
+                  grid%structured_grid%nxs
+            j = mod((region%cell_ids(count)-1)/grid%structured_grid%nx, &
+                    grid%structured_grid%ny)+1 - &
+                  grid%structured_grid%nys
+            k = ((region%cell_ids(count)-1)/grid%structured_grid%nxy)+1 - &
+                  grid%structured_grid%nzs
+            if (i > 0 .and. i <= grid%structured_grid%nlx .and. &
+                j > 0 .and. j <= grid%structured_grid%nly .and. &
+                k > 0 .and. k <= grid%structured_grid%nlz) then
+              temp_int_array(local_count) = &
+                  i + (j-1)*grid%structured_grid%nlx + &
+                  (k-1)*grid%structured_grid%nlxy
+              local_count = local_count + 1
+            endif
+          enddo
 #endif
+        case default
+          option%io_buffer = 'GridLocalizeRegions: define region by list ' // &
+            'of cells not implemented: ' // trim(region%name)
+          call printErrMsg(option)
+      end select
+      !sp end 
+
     endif
     
     if (region%num_cells == 0 .and. associated(region%cell_ids)) then
