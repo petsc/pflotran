@@ -365,7 +365,6 @@ subroutine GridPopulateFaces(grid, option)
        face_id = face_id + 1
        faces(face_id)%conn_set_ptr => cur_connection_set
        faces(face_id)%id = iconn
-!       write(9,*) "Boundary faces ", "face_id=",face_id," iconn=",iconn, cur_connection_set%id_dn(iconn)
      enddo
      cur_connection_set => cur_connection_set%next
    enddo
@@ -993,8 +992,6 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, DOF, option)
     deallocate(ghosted_ids)
     deallocate(strided_indices_local)
     deallocate(strided_indices_ghosted)
-
-   write(*,*) "End of GridComputeGlobalCell2FaceConnectivity"
 
 #endif
 

@@ -686,9 +686,6 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
 
-#ifdef DASVYAT
-  write(*,*) "CreateJacobian", dm_index
-#endif
 
   select case(discretization%itype)
     case(STRUCTURED_GRID)

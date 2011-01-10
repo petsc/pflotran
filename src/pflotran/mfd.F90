@@ -766,7 +766,7 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
   PetscScalar :: ukvr0, den0
    
 
-  PetscInt :: iface, jface, i, j, ghost_face_id, local_id, bound_id
+  PetscInt :: iface, jface, i, j, ghost_face_id, local_face_id, local_id, bound_id, dir
   PetscScalar, pointer :: gr(:)
   PetscScalar :: gravity, darcy_v, dir_norm(3), total_flux
   type(connection_set_type), pointer :: conn
@@ -796,10 +796,17 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
 
 
      ghost_face_id = aux_var%face_id_gh(i)
+     local_face_id = grid%fG2L(ghost_face_id)
      conn => grid%faces(ghost_face_id)%conn_set_ptr
      iface = grid%faces(ghost_face_id)%id
+     if (conn%itype==INTERNAL_CONNECTION_TYPE) local_id = grid%nG2L(conn%id_up(iface)) 
 
-     if (conn%itype/=BOUNDARY_CONNECTION_TYPE.and.conn%id_dn(iface)==ghosted_cell_id) cycle
+     if (conn%itype/=BOUNDARY_CONNECTION_TYPE.and.conn%id_dn(iface)==ghosted_cell_id.and.local_id>0) cycle
+     
+      dir = 1
+
+     if (conn%itype/=BOUNDARY_CONNECTION_TYPE.and.conn%id_dn(iface)==ghosted_cell_id) dir = -1
+       
 
      dir_norm(1) = conn%cntr(1, iface) -  grid%x(ghosted_cell_id)     !direction to define outward normal
      dir_norm(2) = conn%cntr(2, iface) -  grid%y(ghosted_cell_id)
@@ -822,33 +829,28 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
                                            (sq_faces(j)*(xx(1) - face_pr(j)))
      end do
 
-!     write(*,*) "darcy_v", darcy_v
      darcy_v = darcy_v + ukvr*gr(i)
-     
-!     write(*,*) "darcy_v", darcy_v
-!     write(*,*)
-
 
      if (conn%itype == BOUNDARY_CONNECTION_TYPE) then
-        local_id = grid%fG2L(ghost_face_id)
-        if (local_id > 0) then
-           bound_id = grid%fL2B(local_id)
+        if (local_face_id > 0) then
+           bound_id = grid%fL2B(local_face_id)
            if (bound_id>0) then
-!              write(*,*) "Gravity Input", -ukvr*gr(i), "phi ", -(xx(1) - face_pr(i)), "darcy_v", -darcy_v
               patch%boundary_velocities(option%nphase, bound_id) = -darcy_v
            end if
         end if
- !       write(*,*) "bound flux", iface , -darcy_v, conn%cntr(3, iface)
      else if (conn%itype == INTERNAL_CONNECTION_TYPE) then
-       patch%internal_velocities(option%nphase, iface) = darcy_v
-!        write(*,*) "int flux", iface , darcy_v
+       patch%internal_velocities(option%nphase, iface) = darcy_v * dir
      end if
 
   end do
 
   deallocate(gr)
  
-!  write(*,*) "End of MFDAuxFluxes"
+!   if (option%myrank==1) then
+!       write(*,*) "End of MFDAuxFluxes"
+!       write(*,*)
+!   end if
+
 !  stop
  
 end subroutine MFDAuxFluxes
@@ -1081,21 +1083,21 @@ subroutine MFDAuxGenerateMassMatrixInv(grid, ghosted_cell_id,  aux_var, volume, 
 
 #ifdef DASVYAT_DEBUG
 
-  write(*,*)
-  do i=1,3
-     write(*,*) PermTensor(i, 1:3)
-  end do
+!  write(*,*)
+!  do i=1,3
+!     write(*,*) PermTensor(i, 1:3)
+!  end do
 
 
 
-  write(*,*) "vol", volume
-  write(*,*) "MassMatrix"
-  do i=1,6
-     write(*,*) aux_var%MassMatrixInv(i, 1:6)
-  end do
-  write(*,*)
-  write(*,*)
-  stop
+!  write(*,*) "vol", volume
+!  write(*,*) "MassMatrix"
+!  do i=1,6
+!     write(*,*) aux_var%MassMatrixInv(i, 1:6)
+!  end do
+!  write(*,*)
+!  write(*,*)
+!  stop
 #endif
 
 

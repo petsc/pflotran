@@ -2174,7 +2174,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars, &
   end select
 
 #ifdef DASVYAT
-  write(*,*) "bound flux", v_darcy
+!  write(*,*) "bound flux", v_darcy
 #endif
 
   q = v_darcy * area
@@ -2382,6 +2382,14 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
   discretization => realization%discretization
   option => realization%option
 
+  call VecGetArrayF90(field%flow_r_loc_faces, r_p, ierr)
+  r_p = 0.
+  call VecRestoreArrayF90(field%flow_r_loc_faces, r_p, ierr)
+
+  call VecScatterBegin( discretization%MFD%scatter_gtol_faces, field%flow_r_loc_faces, r, &
+                                INSERT_VALUES,SCATTER_REVERSE, ierr)
+  call VecScatterEnd ( discretization%MFD%scatter_gtol_faces, field%flow_r_loc_faces, r,&
+                                INSERT_VALUES,SCATTER_REVERSE, ierr)
 
 
 !   write(*,*) "Begin RichardsResidualMFD"
@@ -2464,9 +2472,9 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
    call VecCopy(field%flow_xx_loc_faces, field%work_loc_faces, ierr)
 
    call VecScatterBegin( discretization%MFD%scatter_gtol_faces, field%flow_r_loc_faces, r, &
-                                INSERT_VALUES,SCATTER_REVERSE, ierr)
+                                ADD_VALUES,SCATTER_REVERSE, ierr)
    call VecScatterEnd ( discretization%MFD%scatter_gtol_faces, field%flow_r_loc_faces, r,&
-                                INSERT_VALUES,SCATTER_REVERSE, ierr)
+                                ADD_VALUES,SCATTER_REVERSE, ierr)
 
 #if 0   
    call DiscretizationGlobalToLocalFaces(discretization, r, field%flow_r_loc_faces, NFLOWDOF)
@@ -2478,16 +2486,11 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
 
   call GridVecRestoreArrayF90(realization%patch%grid, field%flow_r_loc_faces, r_p, ierr)
 #endif  
-!
-!  if (discretization%itype==AMR_GRID) then
-!     call samrpetscobjectstateincrease(r)
-!  endif
-!   
+
   if (realization%debug%vecview_residual) then
     call PetscViewerASCIIOpen(realization%option%mycomm,'RresidualMFD.out', &
                               viewer,ierr)
-    call VecView(field%flow_r_loc_faces,viewer,ierr)
-!    write(*,*) "VecView error", ierr
+    call VecView(r,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   if (realization%debug%vecview_solution) then
@@ -2500,8 +2503,10 @@ subroutine RichardsResidualMFD(snes,xx,r,realization,ierr)
 #ifdef DASVYAT_DEBUG
    write(*,*) "End RichardsResidualMFD"
    read(*,*) 
-!   stop
 #endif   
+!   write(*,*) "End RichardsResidualMFD"
+!   read(*,*) 
+!   stop
 
 #endif
   
@@ -3117,12 +3122,18 @@ subroutine RichardsResidualPatch2(snes,xx,r,realization,ierr)
 
   
 #ifdef DASVYAT
-    call PetscViewerASCIIOpen(realization%option%mycomm,'flow_r.out', &
-                              viewer,ierr)   
-!    call VecView(realization%field%flow_r,viewer,ierr) 
-    call VecView(r,viewer,ierr) 
+      
+!   write(*,*) "Internal faces"
+!   do i = 1, grid%internal_connection_set_list%first%num_connections
+!      write(*,*) "int_flux", option%myrank, i, patch%internal_velocities(option%nphase, i) 
+!   end do  
 
-    call PetscViewerDestroy(viewer,ierr)
+!    call PetscViewerASCIIOpen(realization%option%mycomm,'flow_r.out', &
+!                              viewer,ierr)   
+!    call VecView(realization%field%flow_r,viewer,ierr) 
+!    call VecView(r,viewer,ierr) 
+
+!    call PetscViewerDestroy(viewer,ierr)
 
 #endif
 
@@ -3258,7 +3269,7 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 !  write(*,*) "face centered"
 !  write(*,*) (xx_loc_faces_p(iface), iface=1,grid%nlmax_faces)  
 !  read(*,*)
-  r_p = 0.
+!  r_p = 0.
 
   do icell = 1, grid%nlmax
 
@@ -3317,7 +3328,7 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 
 !   write(*,*) "Internal faces"
 !   do iface = 1, grid%internal_connection_set_list%first%num_connections
-!      write(*,*) "int_flux", iface, patch%internal_velocities(option%nphase, iface) 
+!     if (option%myrank==1) write(*,*) "int_flux", option%myrank, iface, patch%internal_velocities(option%nphase, iface) 
 !   end do  
 
 #ifdef DASVYAT_DEBUG
@@ -3571,16 +3582,17 @@ subroutine RichardsResidualPatchMFD2(snes,xx,r,realization,ierr)
                 r_p(ghost_face_id) = r_p(ghost_face_id) + rhs(iface)
           end if
         end do
-
+!
 !		write(*,*) (rhs(iface),iface=1,6)
 !		write(*,*)
         
   enddo
 
 !  do iface =1,grid%ngmax_faces
-!    write(*,*) "residual_p ", r_p(iface)
+!    write(*,*) "residual_p ", grid%fG2P(iface), r_p(iface)
 !  end do
 
+!  write(*,*)
 
   deallocate(sq_faces)
   deallocate(rhs)
@@ -3741,7 +3753,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
     call printMsg(option) 
   endif
 
-#ifdef DASVYAT
+#if 0
     call PetscViewerASCIIOpen(realization%option%mycomm,'flow_dxx.out', &
                               viewer,ierr)   
     call VecView(realization%field%flow_dxx,viewer,ierr) 
@@ -3840,17 +3852,17 @@ subroutine RichardsJacobianMFD(snes,xx,A,B,flag,realization,ierr)
   enddo
 
 
-!  if (realization%debug%matview_Jacobian) then
-!#if 0  
+  if (realization%debug%matview_Jacobian) then
+#if 0  
     call PetscViewerASCIIOpen(realization%option%mycomm,'Rjacobian.out', &
                               viewer,ierr)
-!#else
-!    call PetscViewerBinaryOpen(realization%option%mycomm,'Rjacobian.bin', &
-!                               FILE_MODE_WRITE,viewer,ierr)
-!#endif    
+#else
+    call PetscViewerBinaryOpen(realization%option%mycomm,'Rjacobian.bin', &
+                               FILE_MODE_WRITE,viewer,ierr)
+#endif    
     call MatView(J,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
-!  endif
+  endif
   if (realization%debug%norm_Jacobian) then
     option => realization%option
     call MatNorm(J,NORM_1,norm,ierr)
