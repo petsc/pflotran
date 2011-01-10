@@ -232,8 +232,15 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
         call printErrMsg(option)
     end select 
   
-  enddo  
-
+  enddo 
+  
+  if (saturation_function%m < 1.d-40 .and. &
+      .not.StringCompare(saturation_function%name,'default',SEVEN_INTEGER)) then
+    option%io_buffer = 'Saturation function parameter "m" not set ' // &
+                       'properly in saturation function "' // &
+                       trim(saturation_function%name) // '".'
+    call printErrMsg(option)
+  endif 
 
 end subroutine SaturationFunctionRead
 
