@@ -3412,7 +3412,7 @@ subroutine RActivityCoefficientsChunk(rt_auxvar,global_auxvar,reaction,option)
 #ifdef TEMP_DEPENDENT_LOGK
     if (.not.option%use_isothermal) then
       call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
-                               global_auxvar%temp(1),reaction%neqcplx)
+                               global_auxvar(ichunk)%temp(1),reaction%neqcplx)
     endif
 #endif  
   
@@ -5279,7 +5279,7 @@ subroutine RKineticMineral(Res,Jac,compute_derivative,rt_auxvar, &
 #ifdef TEMP_DEPENDENT_LOGK
   if (.not.option%use_isothermal) then
     call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
-                               global_auxvar%temp(iphase),reaction%nkinmnrl)
+                                 global_auxvar%temp(iphase),reaction%nkinmnrl)
   endif
 #endif  
 
