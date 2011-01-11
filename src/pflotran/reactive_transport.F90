@@ -5044,23 +5044,26 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
           endif
         case(MASS_RATE_SS)
         case default
+          ! units = kg water/sec
           if (qsrc < 0) then ! extraction
             if (volumetric) then ! qsrc is volumetric; must be converted to mass
+              ! qsrc = m^3 water/sec
+              do idof = istartaq, iendaq
+                ! m^3 water/sec * kg water/m^3 water = kg water/sec
+                Jup(idof,idof) = -qsrc*global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)
+              enddo
+              if (reaction%ncoll > 0) then
+                do idof = istartcoll, iendcoll
+                  Jup(idof,idof) = -qsrc*global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)
+                enddo
+              endif              
+            else ! qsrc is mass -> kg water/sec
               do idof = istartaq, iendaq
                 Jup(idof,idof) = -qsrc
               enddo
               if (reaction%ncoll > 0) then
                 do idof = istartcoll, iendcoll
                   Jup(idof,idof) = -qsrc
-                enddo
-              endif              
-            else ! qsrc is mass
-              do idof = istartaq, iendaq
-                Jup(idof,idof) = -qsrc/global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)
-              enddo
-              if (reaction%ncoll > 0) then
-                do idof = istartcoll, iendcoll
-                  Jup(idof,idof) = -qsrc/global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)
                 enddo
               endif                 
             endif
@@ -5072,6 +5075,8 @@ subroutine RTJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   enddo
   call PetscLogEventEnd(logging%event_rt_jacobian_ss,ierr)  
 #endif
+
+
 #if 1  
 ! Reactions
   if (associated(reaction)) then
