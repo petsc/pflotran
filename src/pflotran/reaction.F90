@@ -2613,6 +2613,12 @@ subroutine RReact(rt_auxvar,global_auxvar,total,volume,porosity, &
   ! rt_auxvar total variables
   ! aqueous
   rt_auxvar%total(:,iphase) = total(1:reaction%naqcomp)
+  
+  if (.not.reaction%use_full_geochemistry) then
+    rt_auxvar%pri_molal(:) = total(:)/global_auxvar%den_kg(iphase)*1.d-3
+    return
+  endif
+  
   ! still need code to overwrite other phases
   call RTAccumulation(rt_auxvar,global_auxvar,porosity,volume,reaction, &
                       option,fixed_accum)
@@ -2761,6 +2767,15 @@ subroutine RReactChunk(rt_auxvar,global_auxvar,total,volume,porosity_, &
   do ichunk = 1, option%chunk_size
     rt_auxvar(ichunk)%total(:,iphase) = total(1:reaction%naqcomp,ichunk)
   enddo
+  
+  if (.not.reaction%use_full_geochemistry) then
+    do ichunk = 1, option%chunk_size
+      rt_auxvar(ichunk)%pri_molal(:) = total(:,ichunk)/ &
+                                    global_auxvar(ichunk)%den_kg(iphase)*1.d-3
+    enddo
+    return
+  endif
+  
   ! still need code to overwrite other phases
   call RTAccumulationChunk(rt_auxvar,global_auxvar,porosity_,volume,reaction, &
                            option,fixed_accum)

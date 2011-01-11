@@ -2286,7 +2286,14 @@ subroutine RTReactPatch(realization)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     if (patch%imat(ghosted_id) <= 0) cycle
-    if(option%use_samr .and. (mask_p(local_id)<=0)) cycle
+    
+!geh: many f90 compilers do not bail out of the condition if the first 
+!     argument is false, but still check the second.  In this case mask_p 
+!     is null for non-amr and must be moved within the conditional
+!geh    if(option%use_samr .and. (mask_p(local_id)<=0)) cycle
+    if (option%use_samr) then
+      if (mask_p(local_id) <= 0) cycle
+    endif    
       
     iend = local_id*reaction%naqcomp
     istart = iend-reaction%naqcomp+1
