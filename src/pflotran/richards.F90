@@ -3186,7 +3186,7 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 
   PetscReal, pointer :: r_p(:), porosity_loc_p(:), &
                         perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:),&
-                        volume_p(:), xx_loc_faces_p(:), xx_loc_p(:), work_loc_faces_p(:), &
+                        volume_p(:), xx_loc_faces_p(:), xx_p(:), work_loc_faces_p(:), &
                         perm_xz_loc_p(:), perm_xy_loc_p(:), perm_yz_loc_p(:)
 !  PetscReal, pointer :: icap_loc_p(:)
 
@@ -3242,20 +3242,20 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 
 
 ! now assign access pointer to local variables
-  call GridVecGetArrayF90(grid,field%flow_xx, xx_loc_p, ierr)
-  call VecGetArrayF90(field%flow_r_loc_faces, r_p, ierr)
+  call GridVecGetArrayF90(grid,field%flow_xx, xx_p, ierr)
+!  call VecGetArrayF90(field%flow_r_loc_faces, r_p, ierr)
   call VecGetArrayF90(field%flow_xx_loc_faces, xx_loc_faces_p, ierr)
-  call VecGetArrayF90(field%work_loc_faces, work_loc_faces_p, ierr)
-  call VecGetArrayF90(grid%e2n, e2n_local, ierr)
-  call VecGetArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
-  call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
+ ! call VecGetArrayF90(field%work_loc_faces, work_loc_faces_p, ierr)
+ ! call VecGetArrayF90(grid%e2n, e2n_local, ierr)
+ ! call VecGetArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
+ ! call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_xz_loc, perm_xz_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_xy_loc, perm_xy_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_yz_loc, perm_yz_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
+!  call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
   !print *,' Finished scattering non deriv'
 
 
@@ -3282,11 +3282,6 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
        jface = grid%faces(ghost_face_id)%id
        sq_faces(j) = conn%area(jface)
  
-!       if ( (e2n_local(j + (icell-1)*numfaces) == -DIRICHLET_BC).or. &
-!                 (e2n_local(j + (icell-1)*numfaces) == -HYDROSTATIC_BC))  then
-!            xx_loc_faces_p(ghost_face_id) = bc_faces_p(ghost_face_id)/sq_faces(j)
-!       end if
-
 
        face_pr(j) = xx_loc_faces_p(ghost_face_id)
 
@@ -3294,7 +3289,6 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
 !       xx_loc_p(icell) = xx_loc_p(icell) + conn%cntr(3,jface)/6.
 !       write(*,*) conn%cntr(3,jface), xx_loc_faces_p(ghost_face_id)
     end do
-!	write(*,*)
 
     ghosted_id = grid%nL2G(icell)
       !geh - Ignore inactive cells with inactive materials
@@ -3314,7 +3308,7 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
       PermTensor(3,1) = PermTensor(1,3) 
       PermTensor(3,2) = PermTensor(2,3) 
 
-      call MFDAuxFluxes(patch, grid, ghosted_id, xx_loc_p(icell:icell), face_pr, aux_var, PermTensor, &
+      call MFDAuxFluxes(patch, grid, ghosted_id, xx_p(icell:icell), face_pr, aux_var, PermTensor, &
                         rich_aux_vars(ghosted_id), global_aux_vars(ghosted_id), &
                         sq_faces, option)
 
@@ -3339,15 +3333,15 @@ subroutine RichardsResidualPatchMFD1(snes,xx,r,realization,ierr)
    read(*,*)
 #endif
 
-  call GridVecRestoreArrayF90(grid,field%flow_xx, xx_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%flow_xx, xx_p, ierr)
+!  call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
 !  call GridVecRestoreArrayF90(grid,r, r_p, ierr)
-  call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
-  call VecRestoreArrayF90(field%flow_r_loc_faces, r_p, ierr)
+!  call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
+!  call VecRestoreArrayF90(field%flow_r_loc_faces, r_p, ierr)
   call VecRestoreArrayF90(field%flow_xx_loc_faces, xx_loc_faces_p, ierr)
-  call VecRestoreArrayF90(field%work_loc_faces, work_loc_faces_p, ierr)
-  call VecRestoreArrayF90(grid%e2n, e2n_local, ierr)
-  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
+!  call VecRestoreArrayF90(field%work_loc_faces, work_loc_faces_p, ierr)
+!  call VecRestoreArrayF90(grid%e2n, e2n_local, ierr)
+!  call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
