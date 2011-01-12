@@ -14,7 +14,8 @@ module String_module
             StringToLower, &
             StringReadQuotedWord, &
             StringStartswithAlpha, &
-            StringAdjustl
+            StringAdjustl, &
+            StringNull
 
 contains
 
@@ -252,5 +253,30 @@ subroutine StringAdjustl(string)
   string = adjustl(string) 
 
 end subroutine StringAdjustl
+
+! ************************************************************************** !
+!
+! StringNull: Returns PETSC_TRUE if a string is blank
+! author: Glenn Hammond
+! date: 10/07/10
+!
+! ************************************************************************** !
+function StringNull(string)
+      
+  implicit none
+
+  character(len=*) :: string
+
+  PetscBool :: StringNull
+  PetscInt :: length
+
+  length = len_trim(adjustl(string))
+  if (length > 1) then
+    StringNull = PETSC_FALSE
+  else
+    StringNull = PETSC_TRUE
+  endif
+
+end function StringNull
 
 end module String_module

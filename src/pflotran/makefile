@@ -114,6 +114,7 @@ common_obj = ${common_src}option.o \
 	${common_src}waypoint.o \
 	${common_src}region.o \
 	${common_src}fluid.o \
+	${common_src}dataset.o \
 	${common_src}saturation_function.o \
 	${common_src}material.o \
 	${common_src}pckr_mod.o \
@@ -265,6 +266,7 @@ hdf5_aux.o : option.o logging.o
 checkpoint.o : realization.o logging.o
 mass_balance.o : realization.o option.o field.o solver.o logging.o thc.o
 database.o : reaction.o input.o option.o utility.o reaction_aux.o string.o
+dataset.o : realization.o material.o init.o
 global.o : realization.o level.o patch.o global_aux.o connection.o grid.o \
 	   option.o coupler.o
 global_aux.o : option.o

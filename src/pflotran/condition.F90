@@ -68,7 +68,7 @@ module Condition_module
     PetscInt :: num_conditions
     type(flow_condition_type), pointer :: first
     type(flow_condition_type), pointer :: last
-    type(condition_ptr_type), pointer :: array(:)    
+    type(flow_condition_type), pointer :: array(:)    
   end type condition_list_type
   
   type, public :: tran_condition_type

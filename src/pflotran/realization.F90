@@ -6,6 +6,7 @@ module Realization_module
   use Condition_module
   use Material_module
   use Saturation_Function_module
+  use Dataset_module
   use Fluid_module
   use Discretization_module
   use Field_module
@@ -48,6 +49,7 @@ private
     type(fluid_property_type), pointer :: fluid_properties
     type(fluid_property_type), pointer :: fluid_property_array(:)
     type(saturation_function_type), pointer :: saturation_functions
+    type(dataset_type), pointer :: datasets
     type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
     
     type(velocity_dataset_type), pointer :: velocity_dataset
@@ -649,9 +651,10 @@ end subroutine RealizationProcessConditions
 ! ************************************************************************** !
 !
 ! RealProcessMatPropAndSatFunc: Sets up linkeage between material properties
-!                               and saturation function and auxilliary arrays
+!                               and saturation function, auxilliary arrays
+!                               and datasets
 ! author: Glenn Hammond
-! date: 01/21/09
+! date: 01/21/09, 01/12/11
 !
 ! ************************************************************************** !
 subroutine RealProcessMatPropAndSatFunc(realization)
@@ -666,7 +669,7 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   PetscInt :: i
   type(option_type), pointer :: option
   type(material_property_type), pointer :: cur_material_property
-  type(saturation_function_type), pointer :: cur_saturation_function
+  character(len=MAXSTRINGLENGTH) :: string
   
   option => realization%option
   
@@ -680,29 +683,34 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   cur_material_property => realization%material_properties                            
   do                                      
     if (.not.associated(cur_material_property)) exit
-    found = PETSC_FALSE
-    cur_saturation_function => realization%saturation_functions
-    do 
-      if (.not.associated(cur_saturation_function)) exit
-      if (StringCompare(cur_material_property%saturation_function_name, &
-                        cur_saturation_function%name,MAXWORDLENGTH)) then
-        found = PETSC_TRUE
-        cur_material_property%saturation_function_id = &
-          cur_saturation_function%id
-        exit
-      endif
-      cur_saturation_function => cur_saturation_function%next
-    enddo
-    if (.not.found) then
-      option%io_buffer = 'Saturation function "' // &
-               trim(cur_material_property%saturation_function_name) // &
-               '" in material property "' // &
-               trim(cur_material_property%name) // &
-               '" not found among available saturation functions.'
-      call printErrMsg(realization%option)    
+
+    ! obtain saturation function id
+    cur_material_property%saturation_function_id = &
+      SaturationFunctionGetID(realization%saturation_functions, &
+                              cur_material_property%saturation_function_name, &
+                              cur_material_property%name,option)
+    
+    ! if named, link dataset to property
+    if (.not.StringNull(cur_material_property%porosity_dataset_name)) then
+      string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
+               '),POROSITY'
+      cur_material_property%porosity_dataset => &
+        DatasetGetPointer(realization%datasets, &
+                          cur_material_property%porosity_dataset_name, &
+                          string,option)
     endif
+    if (.not.StringNull(cur_material_property%porosity_dataset_name)) then
+      string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
+               '),PERMEABILITY'
+      cur_material_property%permeability_dataset => &
+        DatasetGetPointer(realization%datasets, &
+                          cur_material_property%permeability_dataset_name, &
+                          string,option)
+    endif
+    
     cur_material_property => cur_material_property%next
   enddo
+  
   
 end subroutine RealProcessMatPropAndSatFunc
 
@@ -2594,6 +2602,8 @@ subroutine RealizationDestroy(realization)
     deallocate(realization%saturation_function_array)
   nullify(realization%saturation_function_array)
   call SaturationFunctionDestroy(realization%saturation_functions)
+
+  call DatasetDestroy(realization%datasets)
   
   call VelocityDatasetDestroy(realization%velocity_dataset)
   
