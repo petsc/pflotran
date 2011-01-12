@@ -1543,7 +1543,7 @@ subroutine RTCalculateRHS_t1Patch(realization)
 !      endif
       istartall = offset + 1
       iendall = offset + reaction%ncomp
-      rhs_p(istartall:iendall) = rhs_p(istartall:iendall) + Res(1:reaction%ncomp)                                  
+      rhs_p(istartall:iendall) = rhs_p(istartall:iendall) - Res(1:reaction%ncomp)                                  
     enddo
     source_sink => source_sink%next
   enddo
@@ -1574,7 +1574,7 @@ subroutine RTCalculateRHS_t1Patch(realization)
                   iendall = local_id*reaction%ncomp
                   istartall = iendall-reaction%ncomp
                   Res(icomp) = -msrc(2)
-                  rhs_p(istartall+icomp) = rhs_p(istartall+icomp) + Res(icomp)
+                  rhs_p(istartall+icomp) = rhs_p(istartall+icomp) - Res(icomp)
 !                 print *,'RT SC source', ieqgas,icomp, res(icomp)  
                 endif 
               enddo
@@ -1712,7 +1712,6 @@ subroutine RTCalculateTranMatrixPatch1(realization,T)
   type(realization_type) :: realization
   Mat :: T
   
-  type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
@@ -1730,15 +1729,12 @@ subroutine RTCalculateTranMatrixPatch1(realization,T)
   PetscInt :: sum_connection, iconn
   PetscReal :: coef
   PetscReal :: coef_up(1), coef_dn(1)
-  PetscReal :: qsrc
-  PetscBool :: volumetric  
   PetscErrorCode :: ierr
     
   ! Get vectors
   option => realization%option
   field => realization%field
   patch => realization%patch
-  global_aux_vars => patch%aux%Global%aux_vars
   grid => patch%grid
 
   ! Get vectors
@@ -1823,71 +1819,6 @@ subroutine RTCalculateTranMatrixPatch1(realization,T)
     boundary_condition => boundary_condition%next
   enddo
 
-  ! need to add source/sink
-#if 1
-  ! Source/sink terms -------------------------------------
-  source_sink => patch%source_sinks%first 
-  do 
-    if (.not.associated(source_sink)) exit
-    
-    cur_connection_set => source_sink%connection_set
-    
-    if (associated(source_sink%flow_condition) .and. &
-        associated(source_sink%flow_condition%rate)) then
-      qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
-      if (source_sink%flow_condition%rate%itype == &
-          VOLUMETRIC_RATE_SS) then
-        volumetric = PETSC_TRUE
-      else
-        volumetric = PETSC_FALSE
-      endif
-    endif
-      
-    do iconn = 1, cur_connection_set%num_connections      
-      local_id = cur_connection_set%id_dn(iconn)
-      ghosted_id = grid%nL2G(local_id)
-
-      if (patch%imat(ghosted_id) <= 0) cycle
-      
-      select case(source_sink%tran_condition%itype)
-        case(EQUILIBRIUM_SS)
-          ! units should be mol/sec
-          coef_dn(1) = -1.d-6* &
-                porosity_loc_p(ghosted_id)* &
-                volume_p(local_id)* & ! convert m^3 water -> L water
-! keeping only the non-fixed portion for RHS
-                !(source_sink%tran_condition%cur_constraint_coupler% &
-                !rt_auxvar%total(:,iphase) 
-                -1.d0 * & !rt_aux_vars(ghosted_id)%total(:,iphase))* &
-                1000.d0 ! convert kg water/L water -> kg water/m^3 water
-        case(MASS_RATE_SS)
-          ! since specified mass rate is fixed, include only on RHS
-        case default
-          if (qsrc > 0) then ! injection
-            ! all injection, which is fixed (i.e. not a function of the 
-            ! cell concentration is handled on the RHS, not in the transport 
-            ! matrix
-          else ! extraction
-            if (volumetric) then ! qsrc is volumetric; must be converted to mass
-              coef_dn(1) = -qsrc*1000.d0 !rt_aux_vars(ghosted_id)%total(:,iphase)*1000.d0
-            else
-              coef_dn(1) = -qsrc* &
-                    1.d0/ & !rt_aux_vars(ghosted_id)%total(:,iphase)/ &
-                    global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
-                    1000.d0 ! convert kg water/L water -> kg water/m^3 water
-            endif
-          endif
-      end select
-      call MatSetValuesLocal(T,1,ghosted_id-1,1,ghosted_id-1,coef_dn, &
-                             ADD_VALUES,ierr)
-
-    enddo
-    source_sink => source_sink%next
-  enddo
-
-  ! All CO2 source/sinks are handled on the RHS for now
-#endif
-
   ! Restore vectors
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
   call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
@@ -1946,15 +1877,17 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
   PetscReal, pointer :: porosity_loc_p(:)
   PetscReal, pointer :: volume_p(:)
   PetscInt :: local_id, ghosted_id
-  PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
   PetscInt :: iphase
   
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
+  type(coupler_type), pointer :: source_sink  
   PetscInt :: sum_connection, iconn
   PetscReal :: coef
-  PetscReal :: coef_up(1), coef_dn(1)
+  PetscReal :: coef_dn(1)
+  PetscReal :: qsrc
+  PetscBool :: volumetric  
   PetscErrorCode :: ierr
   PetscInt :: flow_pc
     
@@ -1983,7 +1916,72 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
                            ADD_VALUES,ierr)
   enddo
                         
-  ! need to add source/sink
+  ! Source/sink terms -------------------------------------
+  source_sink => patch%source_sinks%first 
+  do 
+    if (.not.associated(source_sink)) exit
+    
+    cur_connection_set => source_sink%connection_set
+    
+    if (associated(source_sink%flow_condition) .and. &
+        associated(source_sink%flow_condition%rate)) then
+      qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
+      if (source_sink%flow_condition%rate%itype == &
+          VOLUMETRIC_RATE_SS) then
+        volumetric = PETSC_TRUE
+      else
+        volumetric = PETSC_FALSE
+      endif
+    endif
+      
+    do iconn = 1, cur_connection_set%num_connections      
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+
+      if (patch%imat(ghosted_id) <= 0) cycle
+      
+      coef_dn(1) = 0.d0
+      select case(source_sink%tran_condition%itype)
+        case(EQUILIBRIUM_SS)
+          ! units should be mol/sec
+          coef_dn(1) = -1.d-6* &
+                porosity_loc_p(ghosted_id)* &
+                volume_p(local_id)* & ! convert m^3 water -> L water
+! keeping only the non-fixed portion for RHS
+                !(source_sink%tran_condition%cur_constraint_coupler% &
+                !rt_auxvar%total(:,iphase) 
+                -1.d0 * & !rt_aux_vars(ghosted_id)%total(:,iphase))* &
+                1000.d0 ! convert kg water/L water -> kg water/m^3 water
+        case(MASS_RATE_SS)
+          ! since specified mass rate is fixed, include only on RHS
+        case default
+          if (qsrc > 0) then ! injection
+            ! all injection, which is fixed (i.e. not a function of the 
+            ! cell concentration is handled on the RHS, not in the transport 
+            ! matrix
+          else ! extraction
+            if (volumetric) then ! qsrc is volumetric; must be converted to mass
+              coef_dn(1) = -qsrc*1000.d0 !rt_aux_vars(ghosted_id)%total(:,iphase)*1000.d0
+            else
+              coef_dn(1) = -qsrc* &
+                    1.d0/ & !rt_aux_vars(ghosted_id)%total(:,iphase)/ &
+                    global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
+                    1000.d0 ! convert kg water/L water -> kg water/m^3 water
+            endif
+          endif
+      end select
+      !geh: do not remove this conditional as otherwise MatSetValuesLocal() 
+      !     will be called for injection too (wasted calls)
+      if (coef_dn(1) > 0.d0) then
+        call MatSetValuesLocal(T,1,ghosted_id-1,1,ghosted_id-1,coef_dn, &
+                               ADD_VALUES,ierr)
+      endif
+
+    enddo
+    source_sink => source_sink%next
+  enddo
+
+  ! All CO2 source/sinks are handled on the RHS for now
 
   ! Restore vectors
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)  
@@ -2532,7 +2530,7 @@ end subroutine RTTransportResidual
 
 ! ************************************************************************** !
 !
-! RTTransportResidualPatch: Calculates the transport residual equation for  
+! RTTransportResidualPatch1: Calculates the transport residual equation for  
 !                           a single chemical component (total component 
 !                           concentration)
 ! author: Glenn Hammond
@@ -2838,23 +2836,28 @@ subroutine RTTransportResidualPatch2(realization,solution_loc,residual,idof)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
+  type(reaction_type), pointer :: reaction
   PetscReal, pointer :: porosity_loc_p(:)
   PetscReal, pointer :: volume_p(:)
   PetscReal, pointer :: solution_loc_p(:)
   PetscReal, pointer :: residual_p(:)
   PetscReal, pointer :: rhs_coef_p(:)
   PetscInt :: local_id, ghosted_id
-  PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
   PetscInt :: iphase
   PetscReal :: res
   
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
+  type(coupler_type), pointer :: source_sink 
   PetscInt :: sum_connection, iconn
   PetscReal :: coef
-  PetscReal :: coef_up(1), coef_dn(1)
+  PetscReal :: qsrc
+  PetscBool :: volumetric
   PetscErrorCode :: ierr
+  
+  PetscInt :: ieqgas, icomp
+  PetscReal :: msrc(2)
     
   ! Get vectors
   option => realization%option
@@ -2864,6 +2867,7 @@ subroutine RTTransportResidualPatch2(realization,solution_loc,residual,idof)
   rt_aux_vars => patch%aux%RT%aux_vars
   rt_aux_vars_bc => patch%aux%RT%aux_vars_bc
   grid => patch%grid
+  reaction => realization%reaction
 
   ! Get vectors
   call GridVecGetArrayF90(grid,solution_loc, solution_loc_p, ierr)  
@@ -2873,8 +2877,6 @@ subroutine RTTransportResidualPatch2(realization,solution_loc,residual,idof)
   call GridVecGetArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)  
   
   iphase = 1
-
-  ! need to add source/sink
 
   ! Accumulation term
   
@@ -2898,6 +2900,175 @@ subroutine RTTransportResidualPatch2(realization,solution_loc,residual,idof)
                            rt_aux_vars(ghosted_id)%total(idof,iphase)
 
   enddo
+
+  ! Source/sink terms -------------------------------------
+  source_sink => patch%source_sinks%first 
+  do 
+    if (.not.associated(source_sink)) exit
+    
+    cur_connection_set => source_sink%connection_set
+    
+    if (associated(source_sink%flow_condition) .and. &
+        associated(source_sink%flow_condition%rate)) then
+      qsrc = source_sink%flow_condition%rate%dataset%cur_value(1)
+      if (source_sink%flow_condition%rate%itype == &
+          VOLUMETRIC_RATE_SS) then
+        volumetric = PETSC_TRUE
+      else
+        volumetric = PETSC_FALSE
+      endif
+    endif
+      
+    do iconn = 1, cur_connection_set%num_connections      
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+
+      if (patch%imat(ghosted_id) <= 0) cycle
+      
+      select case(source_sink%tran_condition%itype)
+        case(EQUILIBRIUM_SS)
+          ! units should be mol/sec
+          res = -1.d-6* &
+                porosity_loc_p(ghosted_id)* &
+                volume_p(local_id)* & ! convert m^3 water -> L water
+                (source_sink%tran_condition%cur_constraint_coupler% &
+                 rt_auxvar%total(idof,iphase) - solution_loc_p(ghosted_id))* &
+                1000.d0 ! convert kg water/L water -> kg water/m^3 water
+! not sure how to handle colloids here - geh
+#if 0  
+          if (reaction%ncoll > 0) then
+            res  =  -1.d-6* &
+              !in this case, conc_mob is in molality 
+              ! units = (m^3 por/m^3 bulk)*(m^3 water/m^3 por)* 
+              !         (m^3 bulk)*(kg water/m^3 water)/(sec)*
+              !         (mol colloid /kg water) = mol colloid/sec
+                porosity_loc_p(ghosted_id)* &
+                volume_p(local_id)* & ! convert m^3 water -> L water
+                (source_sink%tran_condition%cur_constraint_coupler% &
+                 rt_auxvar%colloid%conc_mob(idof) - solution_loc_p(ghosted_id))* &
+                1000.d0 ! convert kg water/L water -> kg water/m^3 water
+          endif
+#endif          
+        case(MASS_RATE_SS)
+          res = -source_sink%tran_condition% &
+                 cur_constraint_coupler%rt_auxvar%total(idof,iphase) ! actually moles/sec
+! not sure how to handle colloids here - geh
+#if 0  
+          if (reaction%ncoll > 0) then
+            option%io_buffer = 'Need to implement MASS_RATE_SS source/sink ' // &
+                               'term correctly for colloids'
+            call printErrMsg(option)
+            res = -source_sink%tran_condition% &
+                 cur_constraint_coupler%rt_auxvar%colloid%conc_mob(idof) ! actually moles/sec
+          endif          
+#endif
+        case default
+          if (qsrc > 0) then ! injection
+            if (volumetric) then ! qsrc is volumetric; must be converted to mass
+              res = -qsrc* & ! m^3 water / sec
+                    source_sink%tran_condition%cur_constraint_coupler% &
+                    rt_auxvar%total(idof,iphase)*1000.d0
+! not sure how to handle colloids here - geh
+#if 0  
+              if (reaction%ncoll > 0) then
+                res = -qsrc* & ! m^3 water / sec
+                    source_sink%tran_condition%cur_constraint_coupler% &
+                    rt_auxvar%colloid%conc_mob(idof)*1000.d0
+              endif                     
+#endif
+            else ! mass
+              res = -qsrc* & ! kg water / sec
+                     source_sink%tran_condition%cur_constraint_coupler% &
+                     rt_auxvar%total(idof,iphase)/ &
+                     global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
+                     1000.d0
+! not sure how to handle colloids here - geh
+#if 0  
+              if (reaction%ncoll > 0) then  ! needs to be moles/sec
+                res = -qsrc* & ! kg water / sec
+                    source_sink%tran_condition%cur_constraint_coupler% &
+                    rt_auxvar%colloid%conc_mob(:)/ &
+                    global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
+                    1000.d0
+              endif 
+#endif                                  
+            endif
+          else ! extraction
+            if (volumetric) then ! qsrc is volumetric; must be converted to mass
+              res = -qsrc*solution_loc_p(ghosted_id)*1000.d0
+! not sure how to handle colloids here - geh
+#if 0  
+              if (reaction%ncoll > 0) then
+                res = -qsrc* & ! m^3 water / sec
+                    solution_loc_p(ghosted_id)*1000.d0
+              endif               
+#endif
+            else
+              res = -qsrc* &
+                    solution_loc_p(ghosted_id)/ &
+                    global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
+                    1000.d0 ! convert kg water/L water -> kg water/m^3 water
+! not sure how to handle colloids here - geh
+#if 0  
+              if (reaction%ncoll > 0) then  ! needs to be moles/sec
+                res = -qsrc* & ! kg water / sec
+                    solution_loc_p(ghosted_id)/ & 
+                    global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
+                    1000.d0 ! convert kg water/L water -> kg water/m^3 water
+              endif                     
+#endif
+            endif
+          endif
+      end select
+      residual_p(local_id) = residual_p(local_id) + res
+    enddo
+    source_sink => source_sink%next
+  enddo
+
+#ifdef CHUAN_CO2
+  select case(option%iflowmode)
+    case(MPH_MODE,IMS_MODE,FLASH2_MODE)
+      
+      !geh: conditional moved outside the do loop to speed things up
+      ! first figure out if the current component (idof) is involved 
+      ! in the src sink
+      
+      do ieqgas = 1, reaction%ngas
+        if(abs(reaction%species_idx%co2_gas_id) == ieqgas) then
+ 
+          icomp = reaction%eqgasspecid(1,ieqgas)
+          if (idof == icomp) then
+      
+            source_sink => patch%source_sinks%first 
+            do 
+              if (.not.associated(source_sink)) exit
+
+              msrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
+              msrc(1) =  msrc(1) / FMWH2O*1D3
+              msrc(2) =  msrc(2) / FMWCO2*1D3
+              ! print *,'RT SC source'
+              do iconn = 1, cur_connection_set%num_connections      
+                local_id = cur_connection_set%id_dn(iconn)
+                ghosted_id = grid%nL2G(local_id)
+                Res=0D0
+                
+                if (patch%imat(ghosted_id) <= 0) cycle
+                
+                select case(source_sink%flow_condition%itype(1))
+                  case(MASS_RATE_SS)
+                    res = -msrc(2)
+                    residual_p(local_id) = residual_p(local_id) + res
+      !                 print *,'RT SC source', ieqgas,icomp, res(icomp)  
+                end select 
+              enddo
+              source_sink => source_sink%next
+            enddo
+          endif ! idof == icomp
+        endif ! co2_gas_id == ieqgas
+      enddo
+  end select
+     
+#endif
 
   ! Restore vectors
   call GridVecRestoreArrayF90(grid,field%tran_rhs_coef,rhs_coef_p,ierr)  
