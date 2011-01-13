@@ -10,7 +10,7 @@ module Reactive_Transport_module
   
   private 
 
-!#define NEW_SRC_SINK
+#define NEW_SRC_SINK
 
 #include "definitions.h"
   
