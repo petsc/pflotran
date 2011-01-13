@@ -2002,7 +2002,7 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
                         global_aux_vars(ghosted_id)%den_kg(option%liquid_phase), &
                         scale,PETSC_TRUE,coef_in,coef_out)
 
-      coef_dn(1) = coef_in
+      coef_dn(1) = -coef_in
 #else      
       coef_dn(1) = 0.d0
       select case(source_sink%tran_condition%itype)

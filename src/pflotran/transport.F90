@@ -505,7 +505,7 @@ subroutine TSrcSinkCoef(option,qsrc,flow_src_sink_type,tran_src_sink_type, &
       
   PetscReal :: rate
   
-  T_in = 0.d0
+  T_in = 0.d0 
   T_out = 0.d0
      
   select case(tran_src_sink_type)
@@ -515,9 +515,9 @@ subroutine TSrcSinkCoef(option,qsrc,flow_src_sink_type,tran_src_sink_type, &
       T_in = rate*por*sat*vol*1000.d0 ! units L water/sec
       T_out = -1.d0*T_in
     case(MASS_RATE_SS)
-      ! in this case, rt_auxvar%total actuall holds the mass rate
-      T_in = 1.d0
-      T_out = 0.d0
+      ! in this case, rt_auxvar_bc%total actually holds the mass rate
+      T_in = 0.d0
+      T_out = -1.d0
     case default
       if (qsrc > 0.d0) then ! injection
         T_in = 0.d0
@@ -535,13 +535,13 @@ subroutine TSrcSinkCoef(option,qsrc,flow_src_sink_type,tran_src_sink_type, &
         T_out = 0.d0
         select case(flow_src_sink_type)
           case(MASS_RATE_SS)
-            T_in = qsrc/den*1000.d0 ! kg water/sec / kg water/m^3 * 1000 L/m^3 -> L/sec
+            T_in = -1.d0*qsrc/den*1000.d0 ! kg water/sec / kg water/m^3 * 1000 L/m^3 -> L/sec
           case(SCALED_MASS_RATE_SS)
-            T_in = qsrc/den*1000.d0*scale ! m^3/sec * 1000 m^3/L -> L/s
+            T_in = -1.d0*qsrc/den*1000.d0*scale ! m^3/sec * 1000 m^3/L -> L/s
           case(VOLUMETRIC_RATE_SS)
-            T_in = qsrc*1000.d0 ! m^3/sec * 1000 m^3/L -> L/s
+            T_in = -1.d0*qsrc*1000.d0 ! m^3/sec * 1000 m^3/L -> L/s
           case(SCALED_VOLUMETRIC_RATE_SS)
-            T_in = qsrc*1000.d0*scale ! m^3/sec * 1000 m^3/L -> L/s
+            T_in = -1.d0*qsrc*1000.d0*scale ! m^3/sec * 1000 m^3/L -> L/s
         end select
       endif
   end select
@@ -549,8 +549,8 @@ subroutine TSrcSinkCoef(option,qsrc,flow_src_sink_type,tran_src_sink_type, &
   ! up to this point, units = L water/sec, which is correct for residual function
   ! for Jacobian, need kg water/sec
   if (kg_per_sec) then
-    T_in = T_in / den
-    T_out = T_out / den
+    T_in = T_in * den / 1000.d0
+    T_out = T_out * den / 1000.d0
   endif
   
 end subroutine TSrcSinkCoef
