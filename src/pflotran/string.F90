@@ -271,7 +271,7 @@ function StringNull(string)
   PetscInt :: length
 
   length = len_trim(adjustl(string))
-  if (length > 1) then
+  if (length > 0) then
     StringNull = PETSC_FALSE
   else
     StringNull = PETSC_TRUE

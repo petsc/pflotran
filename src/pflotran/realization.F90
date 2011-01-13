@@ -90,7 +90,8 @@ private
             RealizationUpdateProperties, &
             RealizationCountCells, &
             RealizationPrintGridStatistics, &
-            RealizationSetUpBC4Faces
+            RealizationSetUpBC4Faces, &
+            RealizatonPassFieldPtrToPatches
             
 contains
   
@@ -162,6 +163,7 @@ function RealizationCreate2(option)
   nullify(realization%fluid_property_array)
   nullify(realization%saturation_functions)
   nullify(realization%saturation_function_array)
+  nullify(realization%datasets)
   nullify(realization%velocity_dataset)
   
   nullify(realization%reaction)
@@ -472,6 +474,38 @@ end subroutine RealizationLocalizeRegions
 
 ! ************************************************************************** !
 !
+! RealizatonPassFieldPtrToPatches: Sets patch%field => realization%field
+! author: Glenn Hammond
+! date: 01/12/11
+!
+! ************************************************************************** !
+subroutine RealizatonPassFieldPtrToPatches(realization)
+
+  use Option_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      cur_patch%field => realization%field
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+  
+end subroutine RealizatonPassFieldPtrToPatches
+
+! ************************************************************************** !
+!
 ! RealizationAddCoupler: Adds a copy of a coupler to a list
 ! author: Glenn Hammond
 ! date: 02/22/08
@@ -675,7 +709,8 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   
   ! organize lists
   call MaterialPropConvertListToArray(realization%material_properties, &
-                                      realization%material_property_array)
+                                      realization%material_property_array, &
+                                      option)
   call SaturatFuncConvertListToArray(realization%saturation_functions, &
                                      realization%saturation_function_array, &
                                      option) 
@@ -1228,9 +1263,9 @@ subroutine RealizAssignFlowInitCond(realization)
 
       ! assign initial conditions values to domain
       if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
-         call GridVecGetArrayF90(grid,field%flow_xx_faces, xx_p, ierr); CHKERRQ(ierr)
+        call GridVecGetArrayF90(grid,field%flow_xx_faces, xx_p, ierr); CHKERRQ(ierr)
       else
-           call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
+        call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
       end if
       call GridVecGetArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
       
@@ -1605,8 +1640,8 @@ subroutine RealizationScaleSourceSink(realization)
   field => realization%field
   patch => realization%patch
 
-  call GridVecGetArrayF90(grid,field%perm0_xx,perm_ptr, ierr)
-  call GridVecGetArrayF90(grid,field%volume,vol_ptr, ierr)
+  call GridVecGetArrayF90(grid,field%perm0_xx,perm_ptr,ierr)
+  call GridVecGetArrayF90(grid,field%volume,vol_ptr,ierr)
 
   cur_level => realization%level_list%first
   do 
@@ -1614,7 +1649,7 @@ subroutine RealizationScaleSourceSink(realization)
     cur_patch => cur_level%patch_list%first
     do
       if (.not.associated(cur_patch)) exit
-      ! BIG-TIME warning here.  I assume that all connections are within 
+      ! BIG-TIME warning here.  I assume that all source/sink cells are within 
       ! a single patch - geh
 
       grid => cur_patch%grid
@@ -1624,7 +1659,7 @@ subroutine RealizationScaleSourceSink(realization)
         if (.not.associated(cur_source_sink)) exit
 
         call VecZeroEntries(field%work,ierr)
-        call GridVecGetArrayF90(grid,field%work,vec_ptr, ierr)
+        call GridVecGetArrayF90(grid,field%work,vec_ptr,ierr)
 
         cur_connection_set => cur_source_sink%connection_set
     
@@ -1643,7 +1678,7 @@ subroutine RealizationScaleSourceSink(realization)
 
         enddo
         
-        call GridVecRestoreArrayF90(grid,field%work,vec_ptr, ierr)
+        call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)
         call VecNorm(field%work,NORM_1,scale,ierr)
         scale = 1.d0/scale
         call VecScale(field%work,scale,ierr)
@@ -1662,7 +1697,7 @@ subroutine RealizationScaleSourceSink(realization)
           end select 
 
         enddo
-        call GridVecRestoreArrayF90(grid,field%work,vec_ptr, ierr)
+        call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)
         
         cur_source_sink => cur_source_sink%next
       enddo

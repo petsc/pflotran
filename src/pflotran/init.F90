@@ -537,6 +537,7 @@ subroutine Init(simulation)
   call readRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  
   call RealizationLocalizeRegions(realization)
+  call RealizatonPassFieldPtrToPatches(realization)
   ! link conditions with regions through couplers and generate connectivity
   call RealizationProcessCouplers(realization)
   call RealizationProcessConditions(realization)

@@ -334,17 +334,24 @@ end subroutine MaterialPropertyAddToList
 ! date: 12/18/07
 !
 ! ************************************************************************** !
-subroutine MaterialPropConvertListToArray(list,array)
+subroutine MaterialPropConvertListToArray(list,array,option)
+
+  use Option_module
+  use String_module
 
   implicit none
   
   type(material_property_type), pointer :: list
   type(material_property_ptr_type), pointer :: array(:)
+  type(option_type) :: option
     
   type(material_property_type), pointer :: cur_material_property
   type(material_property_type), pointer :: prev_material_property
   type(material_property_type), pointer :: next_material_property
-  PetscInt :: i, max_id
+  PetscInt :: i, j, length1,length2, max_id
+  PetscInt, allocatable :: id_count(:)
+  PetscBool :: error_flag
+  character(len=MAXSTRINGLENGTH) :: string
 
 #if 0
 ! don't necessary need right now, but maybe in future
@@ -388,13 +395,64 @@ subroutine MaterialPropConvertListToArray(list,array)
     nullify(array(i)%ptr)
   enddo
   
+  ! use id_count to ensure that an id is not duplicated
+  allocate(id_count(max_id))
+  id_count = 0
+  
   cur_material_property => list
   do 
     if (.not.associated(cur_material_property)) exit
+    id_count(cur_material_property%id) = &
+      id_count(cur_material_property%id) + 1
     array(cur_material_property%id)%ptr => cur_material_property
     cur_material_property => cur_material_property%next
   enddo
+  
+  ! check to ensure that an id is not duplicated
+  error_flag = PETSC_FALSE
+  do i = 1, max_id
+    if (id_count(i) > 1) then
+      write(string,*) i
+      option%io_buffer = 'Material ID ' // trim(adjustl(string)) // &
+        ' is duplicated in input file.'
+      call printMsg(option)
+      error_flag = PETSC_TRUE
+    endif
+  enddo
 
+  deallocate(id_count)
+
+  if (error_flag) then
+    option%io_buffer = 'Duplicate Material IDs.'
+    call printErrMsg(option)
+  endif
+  
+  ! ensure unique material names
+  error_flag = PETSC_FALSE
+  do i = 1, max_id
+    if (associated(array(i)%ptr)) then
+      length1 = len_trim(array(i)%ptr%name)
+      do j = 1, i-1
+        if (associated(array(i)%ptr)) then
+          length2 = len_trim(array(j)%ptr%name)
+          if (length1 /= length2) cycle
+          if (StringCompare(array(i)%ptr%name,array(j)%ptr%name,length1)) then
+            option%io_buffer = 'Material name "' // &
+              trim(adjustl(array(i)%ptr%name)) // &
+              '" is duplicated in input file.'
+            call printMsg(option)
+            error_flag = PETSC_TRUE
+          endif
+        endif
+      enddo
+    endif
+  enddo
+
+  if (error_flag) then
+    option%io_buffer = 'Duplicate Material names.'
+    call printErrMsg(option)
+  endif
+  
 end subroutine MaterialPropConvertListToArray
 
 ! ************************************************************************** !
