@@ -1444,6 +1444,9 @@ subroutine RTCalculateRHS_t1Patch(realization)
 #endif    
     endif
     
+    ! only handle injection on rhs
+    if (qsrc < 0.d0) cycle
+    
     scale = 1.d0  
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
@@ -1584,6 +1587,7 @@ subroutine RTCalculateRHS_t1Patch(realization)
 #endif
       istartall = offset + 1
       iendall = offset + reaction%ncomp
+      ! subtract since the contribution is on the rhs
       rhs_p(istartall:iendall) = rhs_p(istartall:iendall) - Res(1:reaction%ncomp)                                  
     enddo
     source_sink => source_sink%next
@@ -1966,6 +1970,7 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
     
     cur_connection_set => source_sink%connection_set
     
+    qsrc = 0.d0
     flow_src_sink_type = 0
     if (associated(source_sink%flow_condition) .and. &
         associated(source_sink%flow_condition%rate)) then
@@ -1981,6 +1986,9 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
       endif
 #endif    
     endif
+      
+    ! only handle extraction on lhs
+    if (qsrc > 0.d0) cycle
       
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
@@ -2002,7 +2010,7 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
                         global_aux_vars(ghosted_id)%den_kg(option%liquid_phase), &
                         scale,PETSC_TRUE,coef_in,coef_out)
 
-      coef_dn(1) = -coef_in
+      coef_dn(1) = coef_in
 #else      
       coef_dn(1) = 0.d0
       select case(source_sink%tran_condition%itype)
@@ -2025,12 +2033,9 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
             ! matrix
           else ! extraction
             if (volumetric) then ! qsrc is volumetric; must be converted to mass
-              coef_dn(1) = -qsrc*1000.d0 !rt_aux_vars(ghosted_id)%total(:,iphase)*1000.d0
+              coef_dn(1) = -qsrc*global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)
             else
-              coef_dn(1) = -qsrc* &
-                    1.d0/ & !rt_aux_vars(ghosted_id)%total(:,iphase)/ &
-                    global_aux_vars(ghosted_id)%den_kg(option%liquid_phase)* &
-                    1000.d0 ! convert kg water/L water -> kg water/m^3 water
+              coef_dn(1) = -qsrc
             endif
           endif
       end select
