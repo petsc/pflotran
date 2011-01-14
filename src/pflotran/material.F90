@@ -433,7 +433,7 @@ subroutine MaterialPropConvertListToArray(list,array,option)
     if (associated(array(i)%ptr)) then
       length1 = len_trim(array(i)%ptr%name)
       do j = 1, i-1
-        if (associated(array(i)%ptr)) then
+        if (associated(array(j)%ptr)) then
           length2 = len_trim(array(j)%ptr%name)
           if (length1 /= length2) cycle
           if (StringCompare(array(i)%ptr%name,array(j)%ptr%name,length1)) then
