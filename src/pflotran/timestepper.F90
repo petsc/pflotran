@@ -110,7 +110,7 @@ function TimestepperCreate()
   stepper%tfac(13) = 1.0d0
   
   stepper%init_to_steady_state = PETSC_FALSE
-  stepper%steady_state_rel_tol = 1.d-30
+  stepper%steady_state_rel_tol = 1.d-8
   stepper%run_as_steady_state = PETSC_FALSE
   
   nullify(stepper%solver)
@@ -1054,7 +1054,13 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
     call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
                                     field%iphas_loc,ONEDOF)
     
-    if (option%print_screen_flag) write(*,'(/,2("=")," FLOW ",52("="))')
+    if (option%print_screen_flag) then
+      if (step_to_steady_state) then
+        write(*,'(/,2("=")," Initialize FLOW to Steady-State ",25("="))')
+      else
+        write(*,'(/,2("=")," FLOW ",52("="))')
+      endif
+    endif
 
     if (option%ntrandof > 0) then ! store initial saturations for transport
       call GlobalUpdateAuxVars(realization,TIME_T)
@@ -1210,9 +1216,11 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
       call VecStrideNorm(update_vec,ZERO_INTEGER,NORM_INFINITY,inorm,ierr)
       dif_norm = inorm-prev_norm
       rel_norm = dif_norm/prev_norm
-      if ((sum_newton_iterations > 100 .and. &
-           dabs(dif_norm) < stepper%steady_state_rel_tol) .or. &
-          dabs(rel_norm) < stepper%steady_state_rel_tol) then
+      if (sum_newton_iterations > 20 .and. &
+!geh: These norms don't seem to be the best, sticking with inorm
+!           dabs(dif_norm) < stepper%steady_state_rel_tol) .or. &
+!          dabs(rel_norm) < stepper%steady_state_rel_tol) then
+          inorm < stepper%steady_state_rel_tol) then
         if (option%print_file_flag) then
           write(option%fid_out,*) 'Steady state solve converged after ', &
             sum_newton_iterations, ' iterations'
@@ -1248,9 +1256,13 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
       option%flow_dt = option%flow_dt*2.d0
       if (option%print_file_flag) then
         write(option%fid_out,*) 'Dt: ', option%flow_dt
+        write(option%fid_out,*) 'Inf Norm: ', inorm
+        write(option%fid_out,*) 'Relative Norm: ', rel_norm
       endif
       if (option%print_screen_flag) then
         write(*,*) 'Dt: ', option%flow_dt
+        write(*,*) 'Inf Norm: ', inorm
+        write(*,*) 'Relative Norm: ', rel_norm
       endif
     endif
 
