@@ -1333,6 +1333,7 @@ subroutine InitReadInput(simulation)
         call InputReadWord(input,option,dataset%name,PETSC_TRUE)
         call InputDefaultMsg(input,option,'Dataset name') 
         call DatasetRead(dataset,input,option)
+        call DatasetAddToList(dataset,realization%datasets)
         nullify(dataset)
         
 !....................

@@ -1442,6 +1442,7 @@ subroutine RTCalculateRHS_t1Patch(realization)
     
     cur_connection_set => source_sink%connection_set
     
+    qsrc = 0.d0
     flow_src_sink_type = 0
     if (associated(source_sink%flow_condition) .and. &
         associated(source_sink%flow_condition%rate)) then
@@ -1459,7 +1460,10 @@ subroutine RTCalculateRHS_t1Patch(realization)
     endif
     
     ! only handle injection on rhs
-    if (qsrc < 0.d0) cycle
+    if (qsrc < 0.d0) then
+      source_sink => source_sink%next
+      cycle
+    endif
     
     scale = 1.d0  
     do iconn = 1, cur_connection_set%num_connections      
@@ -2002,7 +2006,10 @@ subroutine RTCalculateTranMatrixPatch2(realization,T)
     endif
       
     ! only handle extraction on lhs
-    if (qsrc > 0.d0) cycle
+    if (qsrc > 0.d0) then
+      source_sink => source_sink%next
+      cycle
+    endif
       
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)

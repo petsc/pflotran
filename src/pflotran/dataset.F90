@@ -98,7 +98,8 @@ subroutine DatasetRead(dataset,input,option)
         call InputReadWord(input,option,dataset%name,PETSC_TRUE)
         call InputErrorMsg(input,option,'name','DATASET')
       case('FILENAME') 
-        call InputReadWord(input,option,dataset%name,PETSC_TRUE)
+        call InputReadNChars(input,option,dataset%filename, &
+                             MAXSTRINGLENGTH,PETSC_TRUE)
         call InputErrorMsg(input,option,'name','DATASET')
       case('TYPE') 
         call InputReadWord(input,option,word,PETSC_TRUE)
@@ -189,7 +190,7 @@ function DatasetGetPointer(dataset_list, dataset_name, debug_string, option)
   enddo
   if (.not.found) then
     option%io_buffer = 'Dataset "' // trim(dataset_name) // '" in "' // &
-             trim(debug_string) // '" not found among available dataset.'
+             trim(debug_string) // '" not found among available datasets.'
     call printErrMsg(option)    
   endif
 

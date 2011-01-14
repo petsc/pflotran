@@ -182,7 +182,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
         if (StringCompare(string,'DATASET',SEVEN_INTEGER)) then
           call InputReadNChars(input,option, &
                                material_property%porosity_dataset_name,&
-                               MAXSTRINGLENGTH,PETSC_TRUE)
+                               MAXWORDLENGTH,PETSC_TRUE)
           call InputErrorMsg(input,option,'DATASET,NAME', &
                              'MATERIAL_PROPERTY,POROSITY')   
         else
@@ -264,7 +264,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
             case('DATASET')
               call InputReadNChars(input,option, &
                                    material_property%permeability_dataset_name,&
-                                   MAXSTRINGLENGTH,PETSC_TRUE)
+                                   MAXWORDLENGTH,PETSC_TRUE)
               call InputErrorMsg(input,option,'DATASET,NAME', &
                                  'MATERIAL_PROPERTY,PERMEABILITY')   
             case default

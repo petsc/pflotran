@@ -748,7 +748,7 @@ subroutine RealProcessMatPropAndSatFunc(realization)
                           cur_material_property%porosity_dataset_name, &
                           string,option)
     endif
-    if (.not.StringNull(cur_material_property%porosity_dataset_name)) then
+    if (.not.StringNull(cur_material_property%permeability_dataset_name)) then
       string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
                '),PERMEABILITY'
       cur_material_property%permeability_dataset => &
