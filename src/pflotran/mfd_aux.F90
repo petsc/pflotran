@@ -18,6 +18,10 @@ module MFD_Aux_module
     PetscInt, pointer :: face_id_gh(:)
     PetscReal, pointer :: MassMatrixInv(:,:)
     PetscReal, pointer :: StiffMatrix(:,:)
+    PetscReal :: Rp, dRp_dp
+    PetscReal, pointer :: Rl(:), dRp_dl(:), dRl_dp(:)
+
+
   end type mfd_auxvar_type
   
   type, public :: mfd_type
@@ -40,8 +44,8 @@ module MFD_Aux_module
 
   public :: MFDAuxCreate, MFDAuxDestroy, &
             MFDAuxInit, MFDAuxVarInit, MFDAuxAddFace, & 
-            MFDAuxVarDestroy, MFDAuxGenerateMassMatrixInv, &
-            MFDAuxInitStiffMatrix 
+            MFDAuxVarDestroy,  &
+            MFDAuxInitStiffMatrix, MFDAuxInitResidDerivArrays 
 
 contains
 
@@ -114,6 +118,9 @@ subroutine MFDAuxInit(aux, num_aux, option)
     nullify(aux%aux_vars(i)%face_id_gh)
     nullify(aux%aux_vars(i)%MassMatrixInv)
     nullify(aux%aux_vars(i)%StiffMatrix)
+    nullify(aux%aux_vars(i)%Rl)
+    nullify(aux%aux_vars(i)%dRl_dp)
+    nullify(aux%aux_vars(i)%dRp_dl)
   end do
 
 
@@ -167,19 +174,19 @@ subroutine MFDAuxAddFace(aux_var, option, face_id)
   type(option_type) :: option 
 
   PetscInt :: i
-  logical :: done
+  PetscBool :: done
 
-  done = 0
+  done = PETSC_FALSE
 
   do i = 1, aux_var%numfaces
      if (aux_var%face_id_gh(i) == 0) then
         aux_var%face_id_gh(i) = face_id
-        done = 1
+        done = PETSC_TRUE
         exit
      endif
   enddo
 
-  if (done.eqv..FALSE.) then
+  if (done.eqv.PETSC_FALSE) then
      call printMsg(option, "Imposible to add face to  MFDAuxVar")
      stop
   endif
@@ -211,6 +218,15 @@ subroutine MFDAuxVarDestroy(aux_var)
   if (associated(aux_var%StiffMatrix)) deallocate(aux_var%StiffMatrix)
   nullify(aux_var%StiffMatrix)
 
+  if (associated(aux_var%Rl)) deallocate(aux_var%Rl)
+  nullify(aux_var%Rl)
+
+  if (associated(aux_var%dRp_dl)) deallocate(aux_var%dRp_dl)
+  nullify(aux_var%dRp_dl)
+
+  if (associated(aux_var%dRl_dp)) deallocate(aux_var%dRl_dp)
+  nullify(aux_var%dRl_dp)
+
   
 
 end subroutine MFDAuxVarDestroy
@@ -241,52 +257,27 @@ subroutine MFDAuxDestroy(aux)
     
 end subroutine MFDAuxDestroy
 
-! ************************************************************************** !
-!
-! MFDAuxGenerateMassMatrixInv: Create a mass matrix for cell
-! author: Daniil Svyatskiy
-! date: 05/25/10
-!
-! ************************************************************************** !
-subroutine MFDAuxGenerateMassMatrixInv(aux_var, volume, PermTensor, option)
 
- use Option_module
+
+subroutine MFDAuxInitResidDerivArrays(aux_var, option)
+
+use Option_module
 
   implicit none
 
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-#include "finclude/petscmat.h"
-#include "finclude/petscmat.h90"
-#include "finclude/petscdm.h"
-#include "finclude/petscdm.h90"
-#include "finclude/petscis.h"
-#include "finclude/petscis.h90"
-#include "finclude/petscviewer.h"
 
   type(mfd_auxvar_type), pointer :: aux_var
-  PetscScalar :: PermTensor(3,3)
-  PetscScalar :: volume
   type(option_type) :: option
 
+  allocate(aux_var%Rl(aux_var%numfaces))
+  allocate(aux_var%dRl_dp(aux_var%numfaces))
+  allocate(aux_var%dRp_dl(aux_var%numfaces))
 
-  PetscInt :: iface
+  aux_var%Rl = 0.
+  aux_var%dRl_dp = 0.
+  aux_var%dRp_dl = 0.
 
-  if (volume==0.) then
-    option%io_buffer = 'Cell volume iz zero'
-    call printErrMsg(option)
-  end if
-
-
-  allocate(aux_var%MassMatrixInv(aux_var%numfaces, aux_var%numfaces))
-
-  aux_var%MassMatrixInv = 0.
-
-  do iface = 1, aux_var%numfaces
-    aux_var%MassMatrixInv(iface, iface) = (2./volume)*PermTensor(1,1)
-  end do 
-
-end subroutine MFDAuxGenerateMassMatrixInv
+end subroutine MFDAuxInitResidDerivArrays
 
 
 subroutine MFDAuxInitStiffMatrix(aux_var, option)

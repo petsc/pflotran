@@ -231,6 +231,21 @@ subroutine MaterialPropertyRead(material_property,input,option)
                                    material_property%permeability(3,3))
               call InputErrorMsg(input,option,'z permeability', &
                                  'MATERIAL_PROPERTY,PERMEABILITY')
+            case('PERM_XZ')
+              call InputReadDouble(input,option, &
+                                   material_property%permeability(1,3))
+              call InputErrorMsg(input,option,'xz permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+            case('PERM_XY')
+              call InputReadDouble(input,option, &
+                                   material_property%permeability(1,2))
+              call InputErrorMsg(input,option,'xy permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+            case('PERM_YZ')
+              call InputReadDouble(input,option, &
+                                   material_property%permeability(2,3))
+              call InputErrorMsg(input,option,'yz permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
             case('PERM_ISO')
               call InputReadDouble(input,option, &
                                    material_property%permeability(1,1))
