@@ -255,4 +255,10 @@ PetscInt, parameter :: SIDE_CENTERED = 1
 PetscInt, parameter :: GLOBAL_IMPLICIT = 0
 PetscInt, parameter :: OPERATOR_SPLIT = 1
 
+! dataset types
+PetscInt, parameter :: DATASET_SCALAR = 1
+PetscInt, parameter :: DATASET_VECTOR = 2
+PetscInt, parameter :: DATASET_TENSOR = 3
+PetscInt, parameter :: DATASET_HETEROGENEOUS = 4
+
 #define HASH

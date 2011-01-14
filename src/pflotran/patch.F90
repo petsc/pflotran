@@ -8,6 +8,7 @@ module Patch_module
   use Region_module
   use Reaction_Aux_module
   use Material_module
+  use Field_module
   
   use Auxilliary_module
 
@@ -40,6 +41,9 @@ module Patch_module
     type(coupler_list_type), pointer :: boundary_conditions
     type(coupler_list_type), pointer :: initial_conditions
     type(coupler_list_type), pointer :: source_sinks
+    
+    ! pointer to field object in mother realization object
+    type(field_type), pointer :: field 
 
     type(strata_list_type), pointer :: strata
     type(observation_list_type), pointer :: observation
@@ -113,6 +117,8 @@ function PatchCreate()
   allocate(patch%source_sinks)
   call CouplerInitList(patch%source_sinks)
 
+  nullify(patch%field)
+  
   allocate(patch%observation)
   call ObservationInitList(patch%observation)
 
@@ -269,7 +275,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   
   PetscInt :: temp_int
   
-  call MaterialPropConvertListToArray(material_properties,patch%material_property_array)
+  call MaterialPropConvertListToArray(material_properties, &
+                                      patch%material_property_array, &
+                                      option)
   
   ! boundary conditions
   coupler => patch%boundary_conditions%first
@@ -672,11 +680,26 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
             case default
           end select
       
-        endif
+        endif ! associated(coupler%flow_condition%pressure)
       
-      endif
-      
-    endif
+      else if (coupler%itype == SRC_SINK_COUPLER_TYPE) then
+
+        if (associated(coupler%flow_condition%rate)) then
+
+          select case(coupler%flow_condition%rate%itype)
+            case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
+
+              select case(option%iflowmode)
+                case(RICHARDS_MODE)
+                  allocate(coupler%flow_aux_real_var(1,num_connections))
+                  coupler%flow_aux_real_var = 0.d0
+                  
+              end select
+          end select
+        
+        endif ! associated(coupler%flow_condition%rate)
+      endif ! coupler%itype == SRC_SINK_COUPLER_TYPE
+    endif ! associated(coupler%connection_set)
 
     ! TRANSPORT   
     if (associated(coupler%tran_condition)) then
@@ -778,36 +801,10 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
 
       flow_condition => coupler%flow_condition
 
-      update = PETSC_FALSE
-      select case(option%iflowmode)
-        case(THC_MODE,MPH_MODE, IMS_MODE, FLASH2_MODE)
-          if (force_update_flag .or. &
-              flow_condition%pressure%dataset%is_transient .or. &
-              flow_condition%pressure%gradient%is_transient .or. &
-              flow_condition%pressure%datum%is_transient .or. &
-              flow_condition%temperature%dataset%is_transient .or. &
-              flow_condition%temperature%gradient%is_transient .or. &
-              flow_condition%temperature%datum%is_transient .or. &
-              flow_condition%concentration%dataset%is_transient .or. &
-              flow_condition%concentration%gradient%is_transient .or. &
-              flow_condition%concentration%datum%is_transient) then
-            update = PETSC_TRUE
-          endif
-        case(RICHARDS_MODE)
-          if (force_update_flag .or. &
-              flow_condition%pressure%dataset%is_transient .or. &
-              flow_condition%pressure%gradient%is_transient .or. &
-              flow_condition%pressure%datum%is_transient) then
-            update = PETSC_TRUE
-          endif
-      end select
-
-      
-      if (update) then
+      if (force_update_flag .or. FlowConditionIsTransient(flow_condition)) then
         if (associated(flow_condition%pressure)) then
           select case(flow_condition%pressure%itype)
-            case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE_SS,ZERO_GRADIENT_BC, &
-                 VOLUMETRIC_RATE_SS)
+            case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
 !              do idof = 1, condition%num_sub_conditions
 !                if (associated(condition%sub_condition_ptr(idof)%ptr)) then
 !                  coupler%flow_aux_real_var(idof,1:num_connections) = &
@@ -860,8 +857,14 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
               call HydrostaticUpdateCoupler(coupler,option,patch%grid)
           end select
         endif
+        if (associated(flow_condition%rate)) then
+          select case(flow_condition%rate%itype)
+            case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
+              call PatchScaleSourceSink(patch,option)
+          end select
+        endif
       endif
-     
+      
     endif
       
     ! TRANSPORT
@@ -871,6 +874,106 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   enddo
 
 end subroutine PatchUpdateCouplerAuxVars
+
+! ************************************************************************** !
+!
+! PatchScaleSourceSink: Scales select source/sinks based on perms*volume
+! author: Glenn Hammond
+! date: 01/12/11
+!
+! ************************************************************************** !
+subroutine PatchScaleSourceSink(patch,option)
+
+  use Option_module
+  use Field_module
+  use Coupler_module
+  use Connection_module
+  use Condition_module
+  use Grid_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  
+  type(patch_type) :: patch
+  type(option_type) :: option
+  
+  PetscErrorCode :: ierr
+  
+  type(grid_type), pointer :: grid
+  type(coupler_type), pointer :: cur_source_sink
+  type(connection_set_type), pointer :: cur_connection_set
+  type(field_type), pointer :: field
+  
+  PetscReal, pointer :: vec_ptr(:)
+  PetscReal, pointer :: perm_ptr(:)
+  PetscReal, pointer :: vol_ptr(:)
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: iconn
+  PetscReal :: scale
+  
+  field => patch%field
+  grid => patch%grid
+
+  call GridVecGetArrayF90(grid,field%perm0_xx,perm_ptr,ierr)
+  call GridVecGetArrayF90(grid,field%volume,vol_ptr,ierr)
+
+  grid => patch%grid
+
+  cur_source_sink => patch%source_sinks%first
+  do
+    if (.not.associated(cur_source_sink)) exit
+
+    call VecZeroEntries(field%work,ierr)
+    call GridVecGetArrayF90(grid,field%work,vec_ptr,ierr)
+
+    cur_connection_set => cur_source_sink%connection_set
+
+    do iconn = 1, cur_connection_set%num_connections
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+
+      select case(option%iflowmode)
+        case(RICHARDS_MODE)
+          vec_ptr(local_id) = perm_ptr(local_id)*vol_ptr(ghosted_id)
+        case(THC_MODE)
+        case(MPH_MODE)
+        case(IMS_MODE)
+        case(FLASH2_MODE)
+      end select 
+
+    enddo
+    
+    call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)
+    call VecNorm(field%work,NORM_1,scale,ierr)
+    scale = 1.d0/scale
+    call VecScale(field%work,scale,ierr)
+
+    call GridVecGetArrayF90(grid,field%work,vec_ptr, ierr)
+    do iconn = 1, cur_connection_set%num_connections      
+      local_id = cur_connection_set%id_dn(iconn)
+      select case(option%iflowmode)
+        case(RICHARDS_MODE)
+          cur_source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
+            vec_ptr(local_id)
+        case(THC_MODE)
+        case(MPH_MODE)
+        case(IMS_MODE)
+        case(FLASH2_MODE)
+      end select 
+
+    enddo
+    call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)
+    
+    cur_source_sink => cur_source_sink%next
+  enddo
+
+  call GridVecRestoreArrayF90(grid,field%perm0_xx,perm_ptr, ierr)
+  call GridVecRestoreArrayF90(grid,field%volume,vol_ptr, ierr)
+   
+end subroutine PatchScaleSourceSink
 
 ! ************************************************************************** !
 !
@@ -2490,6 +2593,8 @@ subroutine PatchDestroy(patch)
   call CouplerDestroyList(patch%boundary_conditions)
   call CouplerDestroyList(patch%initial_conditions)
   call CouplerDestroyList(patch%source_sinks)
+  
+  nullify(patch%field)
   
   call ObservationDestroyList(patch%observation)
   call StrataDestroyList(patch%strata)

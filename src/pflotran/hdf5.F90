@@ -1280,7 +1280,7 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type,option, &
   PetscInt :: nx_global, ny_global, nz_global
   PetscInt :: istart_local, jstart_local, kstart_local
 
-  end subroutine HDF5WriteStructuredDataSet
+end subroutine HDF5WriteStructuredDataSet
 
 #else
       
