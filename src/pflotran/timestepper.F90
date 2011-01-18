@@ -302,7 +302,12 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       WaypointSkipToTime(realization%waypoints,option%time)
 
     if (flow_read) then
+      flow_stepper%target_time = option%flow_time
       call StepperUpdateFlowAuxVars(realization)
+    endif
+
+    if (transport_read) then
+      tran_stepper%target_time = option%tran_time
     endif
 
   else if (master_stepper%init_to_steady_state) then
@@ -2538,8 +2543,8 @@ subroutine StepperCheckpoint(realization,flow_stepper,tran_stepper,id)
   PetscInt :: tran_steps, tran_cumulative_newton_iterations, &
               tran_cumulative_time_step_cuts, tran_cumulative_linear_iterations, &
               tran_num_const_time_steps, tran_num_newton_iterations
-  PetscReal :: flow_cumulative_solver_time
-  PetscReal :: tran_cumulative_solver_time
+  PetscReal :: flow_cumulative_solver_time, flow_prev_dt
+  PetscReal :: tran_cumulative_solver_time,tran_prev_dt
   
   option => realization%option
 
@@ -2551,6 +2556,7 @@ subroutine StepperCheckpoint(realization,flow_stepper,tran_stepper,id)
     flow_num_const_time_steps = flow_stepper%num_constant_time_steps
     flow_num_newton_iterations = flow_stepper%num_newton_iterations
     flow_cumulative_solver_time = flow_stepper%cumulative_solver_time
+    flow_prev_dt = flow_stepper%prev_dt
   endif
   if (associated(tran_stepper)) then
     tran_steps = tran_stepper%steps
@@ -2560,17 +2566,18 @@ subroutine StepperCheckpoint(realization,flow_stepper,tran_stepper,id)
     tran_num_const_time_steps = tran_stepper%num_constant_time_steps
     tran_num_newton_iterations = tran_stepper%num_newton_iterations
     tran_cumulative_solver_time = tran_stepper%cumulative_solver_time
+    tran_prev_dt = tran_stepper%prev_dt
   endif
   
   call Checkpoint(realization, &
                   flow_steps,flow_cumulative_newton_iterations, &
                   flow_cumulative_time_step_cuts,flow_cumulative_linear_iterations, &
                   flow_num_const_time_steps,flow_num_newton_iterations, &
-                  flow_cumulative_solver_time, &
+                  flow_cumulative_solver_time,flow_prev_dt, &
                   tran_steps,tran_cumulative_newton_iterations, &
                   tran_cumulative_time_step_cuts,tran_cumulative_linear_iterations, &
                   tran_num_const_time_steps,tran_num_newton_iterations, &
-                  tran_cumulative_solver_time, &
+                  tran_cumulative_solver_time,tran_prev_dt, &
                   id)
                       
 end subroutine StepperCheckpoint
@@ -2603,11 +2610,11 @@ subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
   PetscInt :: flow_steps, flow_cumulative_newton_iterations, &
               flow_cumulative_time_step_cuts, flow_cumulative_linear_iterations ,&
               flow_num_constant_time_steps, flow_num_newton_iterations
-  PetscReal :: flow_cum_solver_time
   PetscInt :: tran_steps, tran_cumulative_newton_iterations,  &
               tran_cumulative_time_step_cuts, tran_cumulative_linear_iterations, &
               tran_num_constant_time_steps, tran_num_newton_iterations
-  PetscReal :: tran_cum_solver_time
+  PetscReal :: flow_cum_solver_time, flow_prev_dt
+  PetscReal :: tran_cum_solver_time, tran_prev_dt
   
   option => realization%option
 
@@ -2615,11 +2622,11 @@ subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
                flow_steps,flow_cumulative_newton_iterations, &
                flow_cumulative_time_step_cuts,flow_cumulative_linear_iterations, &
                flow_num_constant_time_steps,flow_num_newton_iterations, &
-               flow_cum_solver_time, &
+               flow_cum_solver_time,flow_prev_dt, &
                tran_steps,tran_cumulative_newton_iterations, &
                tran_cumulative_time_step_cuts,tran_cumulative_linear_iterations, &
                tran_num_constant_time_steps,tran_num_newton_iterations, &
-               tran_cum_solver_time, &
+               tran_cum_solver_time,tran_prev_dt, &
                flow_read,transport_read,activity_coefs_read)
   if (option%restart_time < -998.d0) then
     option%time = max(option%flow_time,option%tran_time)
@@ -2629,6 +2636,7 @@ subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
       flow_stepper%cumulative_time_step_cuts = flow_cumulative_time_step_cuts
       flow_stepper%cumulative_linear_iterations = flow_cumulative_linear_iterations
       flow_stepper%cumulative_solver_time = flow_cum_solver_time
+      flow_stepper%prev_dt = flow_prev_dt
       if (.not.flow_stepper%run_as_steady_state) then
         flow_stepper%num_constant_time_steps = flow_num_constant_time_steps
         flow_stepper%num_newton_iterations = flow_num_newton_iterations
@@ -2642,6 +2650,7 @@ subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
       tran_stepper%cumulative_solver_time = tran_cum_solver_time
       tran_stepper%num_constant_time_steps = tran_num_constant_time_steps
       tran_stepper%num_newton_iterations = tran_num_newton_iterations
+      tran_stepper%prev_dt = tran_prev_dt
     endif
   else
     option%time = option%restart_time
@@ -2656,6 +2665,7 @@ subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
       flow_stepper%cumulative_solver_time = 0.d0
       flow_stepper%num_constant_time_steps = 0
       flow_stepper%num_newton_iterations = 0
+      flow_stepper%prev_dt = 0.d0
     endif
     if (associated(tran_stepper)) then
       option%tran_dt = tran_stepper%dt_min
@@ -2666,6 +2676,7 @@ subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
       tran_stepper%cumulative_solver_time = 0.d0
       tran_stepper%num_constant_time_steps = 0
       tran_stepper%num_newton_iterations = 0
+      tran_stepper%prev_dt = 0.d0
     endif
     realization%output_option%plot_number = 0
   endif

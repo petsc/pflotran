@@ -1836,7 +1836,7 @@ subroutine InitReadInput(simulation)
                   waypoint%time = temp_real*UnitsConvertToInternal(word,option)
                 else
                   option%io_buffer = 'Keyword under "MAXIMUM_TIMESTEP_SIZE" after ' // &
-                                     'maximum timestep size should be "until".'
+                                     'maximum timestep size should be "at".'
                   call printErrMsg(option)
                 endif
               else
