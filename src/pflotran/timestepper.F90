@@ -1465,11 +1465,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper,flow_t0,flow_t1, &
   ! this must remain here as these weighted values are used by both
   ! RTInitializeTimestep and RTTimeCut (which calls RTInitializeTimestep)
   if (option%nflowdof > 0) then
-    ! option%tran_time is the time at t0
-    option%tran_weight_t0 = (option%tran_time-flow_t0)/ &
-                            (flow_t1-flow_t0)
-    option%tran_weight_t1 = (option%tran_time+option%tran_dt-flow_t0)/ &
-                            (flow_t1-flow_t0)
+    call TimestepperSetTranWeights(option,flow_t0, flow_t1)
     ! set densities and saturations to t
     call GlobalUpdateDenAndSat(realization,option%tran_weight_t0)
   endif
@@ -1597,10 +1593,7 @@ subroutine StepperStepTransportDT_GI(realization,stepper,flow_t0,flow_t1, &
 
       ! recompute weights
       if (option%nflowdof > 0) then
-        option%tran_weight_t0 = (option%tran_time-flow_t0)/ &
-                                (flow_t1-flow_t0)
-        option%tran_weight_t1 = (option%tran_time+option%tran_dt-flow_t0)/ &
-                                (flow_t1-flow_t0)
+        call TimestepperSetTranWeights(option,flow_t0, flow_t1)
       endif
       call RTTimeCut(realization)
 
@@ -1780,10 +1773,7 @@ subroutine StepperStepTransportDT_OS(realization,stepper,flow_t0,flow_t1, &
   call PetscGetTime(log_start_time, ierr)
 
   if (option%nflowdof > 0) then
-    option%tran_weight_t0 = (option%tran_time-option%tran_dt-flow_t0)/ &
-                            (flow_t1-flow_t0)
-    option%tran_weight_t1 = (option%tran_time-flow_t0)/ &
-                            (flow_t1-flow_t0)
+    call TimestepperSetTranWeights(option,flow_t0, flow_t1)
     ! set densities and saturations to t
     call GlobalUpdateDenAndSat(realization,option%tran_weight_t0)
   endif
@@ -2682,6 +2672,31 @@ subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
   endif
     
 end subroutine StepperRestart
+
+! ************************************************************************** !
+!
+! TimestepperGetTranWeight: Sets the weights at t0 or t1 for transport
+! author: Glenn Hammond
+! date: 01/17/11
+!
+! ************************************************************************** !
+subroutine TimestepperSetTranWeights(option,flow_t0, flow_t1)
+
+  use Option_module
+
+  implicit none
+  
+  type(option_type) :: option
+  PetscReal :: flow_t0
+  PetscReal :: flow_t1
+
+  ! option%tran_time is the time at t0
+  option%tran_weight_t0 = (option%tran_time-flow_t0)/ &
+                          (flow_t1-flow_t0)
+  option%tran_weight_t1 = (option%tran_time+option%tran_dt-flow_t0)/ &
+                          (flow_t1-flow_t0)
+
+end subroutine TimestepperSetTranWeights
 
 ! ************************************************************************** !
 !
