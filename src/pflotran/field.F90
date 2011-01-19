@@ -21,7 +21,9 @@ module Field_module
     Vec :: iphas_loc, iphas_old_loc
 
     Vec :: perm_xx_loc, perm_yy_loc, perm_zz_loc
+    Vec :: perm_xz_loc, perm_xy_loc, perm_yz_loc
     Vec :: perm0_xx, perm0_yy, perm0_zz, perm_pow
+    Vec :: perm0_xz, perm0_xy, perm0_yz
     
     Vec :: work, work_loc
 
@@ -59,7 +61,7 @@ module Field_module
       
     ! Solution vectors for face unknows
     Vec :: flow_xx_faces, flow_xx_loc_faces, flow_dxx_faces, flow_yy_faces, flow_bc_loc_faces
-   
+    Vec :: work_loc_faces   
 
 
   end type field_type
@@ -102,6 +104,12 @@ function FieldCreate()
   field%perm0_xx = 0
   field%perm0_yy = 0
   field%perm0_zz = 0
+  field%perm_xz_loc = 0
+  field%perm_xy_loc = 0
+  field%perm_yz_loc = 0
+  field%perm0_xz = 0
+  field%perm0_xy = 0
+  field%perm0_yz = 0
   field%perm_pow = 0
   
   field%work = 0
@@ -171,6 +179,12 @@ subroutine FieldDestroy(field)
   if (field%perm0_xx /= 0) call VecDestroy(field%perm0_xx,ierr)
   if (field%perm0_yy /= 0) call VecDestroy(field%perm0_yy,ierr)
   if (field%perm0_zz /= 0) call VecDestroy(field%perm0_zz,ierr)
+  if (field%perm_xz_loc /= 0) call VecDestroy(field%perm_xz_loc,ierr)
+  if (field%perm_xy_loc /= 0) call VecDestroy(field%perm_xy_loc,ierr)
+  if (field%perm_yz_loc /= 0) call VecDestroy(field%perm_yz_loc,ierr)
+  if (field%perm0_xz /= 0) call VecDestroy(field%perm0_xz,ierr)
+  if (field%perm0_xy /= 0) call VecDestroy(field%perm0_xy,ierr)
+  if (field%perm0_yz /= 0) call VecDestroy(field%perm0_yz,ierr)
   if (field%perm_pow /= 0) call VecDestroy(field%perm_pow,ierr)
   
   if (field%work /= 0) call VecDestroy(field%work,ierr)

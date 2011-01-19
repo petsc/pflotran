@@ -439,7 +439,7 @@ FORMAT HDF5
 
 : == times ====================================================================
 TIME
-FINAL_TIME .1 y 
+FINAL_TIME .1 d
 INITIAL_TIMESTEP_SIZE .1 d
 MAXIMUM_TIMESTEP_SIZE .5 d
 /
@@ -663,4 +663,6 @@ STRATA
 MATERIAL Rwi
 REGION Rwi
 /
+
+
 

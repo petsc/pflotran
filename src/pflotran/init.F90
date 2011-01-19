@@ -537,6 +537,7 @@ subroutine Init(simulation)
   call readRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  
   call RealizationLocalizeRegions(realization)
+  call RealizatonPassFieldPtrToPatches(realization)
   ! link conditions with regions through couplers and generate connectivity
   call RealizationProcessCouplers(realization)
   call RealizationProcessConditions(realization)
@@ -609,6 +610,13 @@ subroutine Init(simulation)
       case(THC_MODE)
         call THCUpdateAuxVars(realization)
       case(RICHARDS_MODE)
+#ifdef DASVYAT
+       if (option%mimetic) then
+        call RichardsInitialPressureReconstruction(realization)
+!        write(*,*) "RichardsInitialPressureReconstruction"
+!        read(*,*)
+       end if
+#endif 
         call RichardsUpdateAuxVars(realization)
       case(MPH_MODE)
         call MphaseUpdateAuxVars(realization)
@@ -985,6 +993,7 @@ subroutine InitReadInput(simulation)
   use Solver_module
   use Material_module
   use Saturation_Function_module  
+  use Dataset_module
   use Fluid_module
   use Realization_module
   use Timestepper_module
@@ -1057,6 +1066,7 @@ subroutine InitReadInput(simulation)
   type(reaction_type), pointer :: reaction
   type(output_option_type), pointer :: output_option
   type(velocity_dataset_type), pointer :: velocity_dataset
+  type(dataset_type), pointer :: dataset
   type(input_type), pointer :: input
   
   
@@ -1316,26 +1326,15 @@ subroutine InitReadInput(simulation)
         call StrataRead(strata,input,option)
         call RealizationAddStrata(realization,strata)
         nullify(strata)
+        
 !.....................
       case ('DATASET') 
-        call InputReadWord(input,option,word,PETSC_TRUE)
-        call InputErrorMsg(input,option,'dataset','name') 
-        call printMsg(option,word)
-        call StringToLower(word)        
-        select case(word)
-          case('permx')
-            call InputReadNChars(input,option,option%permx_filename, &
-                                 MAXSTRINGLENGTH,PETSC_TRUE)
-            call InputErrorMsg(input,option,'dataset','permx_filename') 
-          case('permy')
-            call InputReadNChars(input,option,option%permy_filename, &
-                                 MAXSTRINGLENGTH,PETSC_TRUE)
-            call InputErrorMsg(input,option,'dataset','permy_filename') 
-          case('permz')
-            call InputReadNChars(input,option,option%permz_filename, &
-                                 MAXSTRINGLENGTH,PETSC_TRUE)
-            call InputErrorMsg(input,option,'dataset','permz_filename') 
-        end select          
+        dataset => DatasetCreate()
+        call InputReadWord(input,option,dataset%name,PETSC_TRUE)
+        call InputDefaultMsg(input,option,'Dataset name') 
+        call DatasetRead(dataset,input,option)
+        call DatasetAddToList(dataset,realization%datasets)
+        nullify(dataset)
         
 !....................
 
@@ -1837,7 +1836,7 @@ subroutine InitReadInput(simulation)
                   waypoint%time = temp_real*UnitsConvertToInternal(word,option)
                 else
                   option%io_buffer = 'Keyword under "MAXIMUM_TIMESTEP_SIZE" after ' // &
-                                     'maximum timestep size should be "until".'
+                                     'maximum timestep size should be "at".'
                   call printErrMsg(option)
                 endif
               else
@@ -1968,6 +1967,9 @@ subroutine assignMaterialPropToRegions(realization)
   PetscReal, pointer :: perm_xx_p(:)
   PetscReal, pointer :: perm_yy_p(:)
   PetscReal, pointer :: perm_zz_p(:)
+  PetscReal, pointer :: perm_xz_p(:)
+  PetscReal, pointer :: perm_xy_p(:)
+  PetscReal, pointer :: perm_yz_p(:)
   PetscReal, pointer :: perm_pow_p(:)
   PetscReal, pointer :: vec_p(:)
   
@@ -2108,6 +2110,9 @@ subroutine assignMaterialPropToRegions(realization)
         call GridVecGetArrayF90(grid,field%perm0_xx,perm_xx_p,ierr)
         call GridVecGetArrayF90(grid,field%perm0_yy,perm_yy_p,ierr)
         call GridVecGetArrayF90(grid,field%perm0_zz,perm_zz_p,ierr)
+        call GridVecGetArrayF90(grid,field%perm0_xz,perm_xz_p,ierr)
+        call GridVecGetArrayF90(grid,field%perm0_xy,perm_xy_p,ierr)
+        call GridVecGetArrayF90(grid,field%perm0_yz,perm_yz_p,ierr)
         call GridVecGetArrayF90(grid,field%perm_pow,perm_pow_p,ierr)
       endif
       call GridVecGetArrayF90(grid,field%porosity0,por0_p,ierr)
@@ -2149,6 +2154,9 @@ subroutine assignMaterialPropToRegions(realization)
           perm_xx_p(local_id) = material_property%permeability(1,1)
           perm_yy_p(local_id) = material_property%permeability(2,2)
           perm_zz_p(local_id) = material_property%permeability(3,3)
+          perm_xz_p(local_id) = material_property%permeability(1,3)
+          perm_xy_p(local_id) = material_property%permeability(1,2)
+          perm_yz_p(local_id) = material_property%permeability(2,3)
 !          perm_pow_p(local_id) = ???
         endif
         por0_p(local_id) = material_property%porosity
@@ -2161,40 +2169,30 @@ subroutine assignMaterialPropToRegions(realization)
         call GridVecRestoreArrayF90(grid,field%perm0_xx,perm_xx_p,ierr)
         call GridVecRestoreArrayF90(grid,field%perm0_yy,perm_yy_p,ierr)
         call GridVecRestoreArrayF90(grid,field%perm0_zz,perm_zz_p,ierr)
+        call GridVecRestoreArrayF90(grid,field%perm0_xz,perm_xz_p,ierr)
+        call GridVecRestoreArrayF90(grid,field%perm0_xy,perm_xy_p,ierr)
+        call GridVecRestoreArrayF90(grid,field%perm0_yz,perm_yz_p,ierr)
         call GridVecRestoreArrayF90(grid,field%perm_pow,perm_pow_p,ierr)
       endif
       call GridVecRestoreArrayF90(grid,field%porosity0,por0_p,ierr)
       call GridVecRestoreArrayF90(grid,field%tortuosity0,tor0_p,ierr)
-        
-      ! read in any cell by cell data 
-      if (len_trim(option%permx_filename) > 1) then
-        call readVectorFromFile(realization,field%perm0_xx, &
-                                option%permx_filename,GLOBAL)  
-      endif
-      if (len_trim(option%permy_filename) > 1) then
-        call readVectorFromFile(realization,field%perm0_yy, &
-                                option%permy_filename,GLOBAL)  
-      endif
-      if (len_trim(option%permz_filename) > 1) then
-        call readVectorFromFile(realization,field%perm0_zz, &
-                                option%permz_filename,GLOBAL)
-      endif
         
       ! read in any user-defined property fields
       do material_id = 1, size(realization%material_property_array)
         material_property => &
                realization%material_property_array(material_id)%ptr
         if (associated(material_property)) then
-          if (len_trim(material_property%permeability_filename) > 1) then
+          if (associated(material_property%permeability_dataset)) then
             call readPermeabilitiesFromFile(realization,material_property)
           endif
-          if (len_trim(material_property%porosity_filename) > 1) then
+          if (associated(material_property%porosity_dataset)) then
             group_name = ''
             dataset_name = 'Porosity'
             call HDF5ReadCellIndexedRealArray(realization,field%work, &
-                                       material_property%porosity_filename, &
-                                              group_name, &
-                                              dataset_name,option%id>0)
+                       material_property%porosity_dataset%filename, &
+                       group_name, &
+                       dataset_name, &
+                       material_property%porosity_dataset%realization_dependent)
             call GridVecGetArrayF90(grid,field%work,vec_p,ierr)
             call GridVecGetArrayF90(grid,field%porosity0,por0_p,ierr)
             do local_id = 1, grid%nlmax
@@ -2224,6 +2222,13 @@ subroutine assignMaterialPropToRegions(realization)
                                      field%perm_yy_loc,ONEDOF)  
     call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
                                      field%perm_zz_loc,ONEDOF)   
+     
+    call DiscretizationGlobalToLocal(discretization,field%perm0_xz, &
+                                     field%perm_xz_loc,ONEDOF)  
+    call DiscretizationGlobalToLocal(discretization,field%perm0_xy, &
+                                     field%perm_xy_loc,ONEDOF)  
+    call DiscretizationGlobalToLocal(discretization,field%perm0_yz, &
+                                     field%perm_yz_loc,ONEDOF)   
      
     call DiscretizationLocalToLocal(discretization,field%icap_loc, &
                                     field%icap_loc,ONEDOF)   
@@ -2556,9 +2561,9 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
   call GridVecGetArrayF90(grid,field%perm0_yy,perm_yy_p,ierr)
   call GridVecGetArrayF90(grid,field%perm0_zz,perm_zz_p,ierr)
   
-  if (index(material_property%permeability_filename,'.h5') > 0) then
+  if (index(material_property%permeability_dataset%filename,'.h5') > 0) then
     group_name = ''
-    if (option%id > 0) then
+    if (material_property%permeability_dataset%realization_dependent) then
       append_realization_id = PETSC_TRUE
     else
       append_realization_id = PETSC_FALSE
@@ -2571,9 +2576,8 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
          material_property%vertical_anisotropy_ratio > 0.d0)) then
       dataset_name = 'Permeability'
       call HDF5ReadCellIndexedRealArray(realization,global_vec, &
-                                        material_property%permeability_filename, &
-                                        group_name, &
-                                        dataset_name,append_realization_id)
+                          material_property%permeability_dataset%filename, &
+                          group_name,dataset_name,append_realization_id)
       call GridVecGetArrayF90(grid,global_vec,vec_p,ierr)
       ratio = 1.d0
       if (material_property%vertical_anisotropy_ratio > 0.d0) then
@@ -2606,7 +2610,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
             dataset_name = 'PermeabilityZ'
         end select          
         call HDF5ReadCellIndexedRealArray(realization,global_vec, &
-                                          material_property%permeability_filename, &
+                                          material_property%permeability_dataset%filename, &
                                           group_name, &
                                           dataset_name,append_realization_id)
         call GridVecGetArrayF90(grid,global_vec,vec_p,ierr)
@@ -2638,7 +2642,7 @@ subroutine readPermeabilitiesFromFile(realization,material_property)
 
     call PetscLogEventBegin(logging%event_hash_map,ierr)
     call GridCreateNaturalToGhostedHash(grid,option)
-    input => InputCreate(IUNIT_TEMP,material_property%permeability_filename)
+    input => InputCreate(IUNIT_TEMP,material_property%permeability_dataset%filename)
     do
       call InputReadFlotranString(input,option)
       if (InputError(input)) exit

@@ -120,7 +120,7 @@ subroutine THCSetupPatch(realization)
   type(realization_type) :: realization
 
   type(option_type), pointer :: option
-  type(patch_type),pointer :: patch
+  type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(coupler_type), pointer :: boundary_condition
   type(thc_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
@@ -141,15 +141,20 @@ subroutine THCSetupPatch(realization)
   allocate(patch%aux%THC%thc_parameter%sir(option%nphase, &
                                   size(realization%saturation_function_array)))
   
-  !Jitu, 08/04/2010: Check these allocations. Currently assumes only single value in the array	
-  allocate(patch%aux%THC%thc_parameter%dencpr(1))
-  allocate(patch%aux%THC%thc_parameter%ckwet(1))
-  allocate(patch%aux%THC%thc_parameter%ckdry(1))
+  !Jitu, 08/04/2010: Check these allocations. Currently assumes only single value in the array	<modified pcl 1-13-11>
+  allocate(patch%aux%THC%thc_parameter%dencpr(size(realization%material_property_array)))
+  allocate(patch%aux%THC%thc_parameter%ckwet(size(realization%material_property_array)))
+  allocate(patch%aux%THC%thc_parameter%ckdry(size(realization%material_property_array)))
   
   !Copy the values in the thc_parameter from the global realization 
-  patch%aux%THC%thc_parameter%dencpr(1) = realization%material_properties%rock_density  
-  patch%aux%THC%thc_parameter%ckwet(1) = realization%material_properties%thermal_conductivity_wet  
-  patch%aux%THC%thc_parameter%ckdry(1) = realization%material_properties%thermal_conductivity_dry  
+  do i = 1, size(realization%material_property_array)
+    patch%aux%THC%thc_parameter%dencpr(realization%material_property_array(i)%ptr%id) = &
+      realization%material_property_array(i)%ptr%rock_density  
+    patch%aux%THC%thc_parameter%ckwet(realization%material_property_array(i)%ptr%id) = &
+      realization%material_property_array(i)%ptr%thermal_conductivity_wet  
+    patch%aux%THC%thc_parameter%ckdry(realization%material_property_array(i)%ptr%id) = &
+      realization%material_property_array(i)%ptr%thermal_conductivity_dry
+  enddo 
 !  write(*,*)'Checkpoint2'
   do i = 1, size(realization%saturation_function_array)
     patch%aux%THC%thc_parameter%sir(:,realization%saturation_function_array(i)%ptr%id) = &

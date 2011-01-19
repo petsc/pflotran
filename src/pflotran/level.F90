@@ -279,7 +279,7 @@ end subroutine LevelUpdateAllCouplerAuxVars
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine LevelUpdateCouplerAuxVars(level,force_update_flag,option)
+subroutine LevelUpdateCouplerAuxVars(level,force_update_flag,field,option)
 
   use Option_module
 
@@ -287,6 +287,7 @@ subroutine LevelUpdateCouplerAuxVars(level,force_update_flag,option)
   
   type(level_type) :: level
   PetscBool :: force_update_flag
+  type(field_type) :: field
   type(option_type) :: option
     
   type(patch_type), pointer :: cur_patch
@@ -294,7 +295,7 @@ subroutine LevelUpdateCouplerAuxVars(level,force_update_flag,option)
   cur_patch => level%patch_list%first
   do 
     if (.not.associated(cur_patch)) exit
-    call PatchUpdateCouplerAuxVars(cur_patch,force_update_flag,option)
+    call PatchUpdateCouplerAuxVars(cur_patch,force_update_flag,field,option)
     cur_patch => cur_patch%next
   enddo
  

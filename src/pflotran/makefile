@@ -58,8 +58,11 @@ ifdef dasvyat
   DASVYAT = -DDASVYAT
 endif
 
-MYFLAGS = -I${objdir} $(HDF5_FLAGS) $(DASVYAT)\
-          -DREVISED_TRANSPORT \
+ifdef dasvyat_debug
+  DASVYAT_DEBUG = -DDASVYAT_DEBUG
+endif
+
+MYFLAGS = -I${objdir} $(HDF5_FLAGS) $(DASVYAT) $(DASVYAT_DEBUG)\
           $(COMPILE_BROKEN_FLAGS) $(GLENN_FLAGS) $(UO2_FLAG) $(TEMP_FLAG) $(GPU_FLAGS)\
 				$(CHUAN_FLAG) $(SCOTT_FLAGS) $(COLL_FLAG) $(DENSITY_FLAG)
 
@@ -114,6 +117,7 @@ common_obj = ${common_src}option.o \
 	${common_src}waypoint.o \
 	${common_src}region.o \
 	${common_src}fluid.o \
+	${common_src}dataset.o \
 	${common_src}saturation_function.o \
 	${common_src}material.o \
 	${common_src}pckr_mod.o \
@@ -194,7 +198,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	coupler.o strata.o pckr_mod.o field.o mphase.o flash2.o \
 	richards.o thc.o discretization.o logging.o mass_balance.o \
 	database.o reaction_aux.o string.o units.o stochastic_aux.o \
-	velocity.o
+	velocity.o dataset.o
 unstructured_grid.o : option.o connection.o 
 structured_grid.o : connection.o option.o input.o cf90bridge.o
 general_grid.o : grid.o realization.o hdf5.o logging.o
@@ -205,7 +209,7 @@ grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
 input.o : string.o option.o
 solver.o : option.o field.o input.o string.o
 region.o : input.o utility.o logging.o string.o
-material.o : option.o input.o string.o
+material.o : option.o input.o string.o dataset.o
 fluid.o : option.o input.o string.o
 saturation_function.o : option.o input.o string.o utility.o
 coupler.o : condition.o connection.o region.o input.o grid.o mfd_aux.o
@@ -217,7 +221,7 @@ realization.o : grid.o option.o region.o condition.o coupler.o material.o \
                 strata.o waypoint.o field.o hydrostatic.o debug.o \
 		observation.o velocity.o \
                 patch.o level.o discretization.o reaction.o reaction_aux.o \
-                fluid.o saturation_function.o
+                fluid.o saturation_function.o dataset.o
 level.o : patch.o option.o
 patch.o : option.o grid.o coupler.o observation.o strata.o region.o \
           auxilliary.o reaction.o condition.o connection.o hydrostatic.o \
@@ -265,6 +269,7 @@ hdf5_aux.o : option.o logging.o
 checkpoint.o : realization.o logging.o
 mass_balance.o : realization.o option.o field.o solver.o logging.o thc.o
 database.o : reaction.o input.o option.o utility.o reaction_aux.o string.o
+dataset.o : string.o option.o input.o
 global.o : realization.o level.o patch.o global_aux.o connection.o grid.o \
 	   option.o coupler.o
 global_aux.o : option.o

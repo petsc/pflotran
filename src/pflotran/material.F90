@@ -1,5 +1,6 @@
 module Material_module
  
+  use Dataset_module
 
   implicit none
 
@@ -13,9 +14,11 @@ module Material_module
     PetscReal :: permeability(3,3)
     PetscBool :: isotropic_permeability
     PetscReal :: vertical_anisotropy_ratio ! (vertical / horizontal)
-    character(len=MAXSTRINGLENGTH) :: permeability_filename
+    character(len=MAXWORDLENGTH) :: permeability_dataset_name
+    type(dataset_type), pointer :: permeability_dataset
     PetscReal :: porosity
-    character(len=MAXSTRINGLENGTH) :: porosity_filename
+    character(len=MAXWORDLENGTH) :: porosity_dataset_name
+    type(dataset_type), pointer :: porosity_dataset
     PetscReal :: tortuosity
     PetscInt :: saturation_function_id
     character(len=MAXWORDLENGTH) :: saturation_function_name
@@ -37,7 +40,6 @@ module Material_module
     type(material_property_type), pointer :: ptr
   end type material_property_ptr_type
   
-
   public :: MaterialPropertyCreate, &
             MaterialPropertyDestroy, &
             MaterialPropertyAddToList, &
@@ -70,9 +72,11 @@ function MaterialPropertyCreate()
   material_property%isotropic_permeability = PETSC_TRUE
   material_property%vertical_anisotropy_ratio = 0.d0
   material_property%permeability_pwr = 0.d0
-  material_property%permeability_filename = ''
+  material_property%permeability_dataset_name = ''
+  nullify(material_property%permeability_dataset)
   material_property%porosity = 0.d0
-  material_property%porosity_filename = ''
+  material_property%porosity_dataset_name = ''
+  nullify(material_property%porosity_dataset)
   material_property%tortuosity = 1.d0
   material_property%saturation_function_id = 0
   material_property%saturation_function_name = ''
@@ -113,6 +117,7 @@ subroutine MaterialPropertyRead(material_property,input,option)
   
   character(len=MAXWORDLENGTH) :: keyword, word
   character(len=MAXSTRINGLENGTH) :: string
+  type(dataset_type), pointer :: dataset
 
   PetscInt :: length
 
@@ -174,12 +179,11 @@ subroutine MaterialPropertyRead(material_property,input,option)
         call InputReadNChars(input,option,string,MAXSTRINGLENGTH,PETSC_TRUE)
         call InputErrorMsg(input,option,'porosity','MATERIAL_PROPERTY')
         call StringToUpper(string)
-        length = len_trim('RANDOM_DATASET')
-        if (StringCompare(string,'RANDOM_DATASET',length)) then
-          call InputReadNChars(input,option,&
-                               material_property%porosity_filename,&
-                               MAXSTRINGLENGTH,PETSC_TRUE)
-          call InputErrorMsg(input,option,'RANDOM_DATASET,FILENAME', &
+        if (StringCompare(string,'DATASET',SEVEN_INTEGER)) then
+          call InputReadNChars(input,option, &
+                               material_property%porosity_dataset_name,&
+                               MAXWORDLENGTH,PETSC_TRUE)
+          call InputErrorMsg(input,option,'DATASET,NAME', &
                              'MATERIAL_PROPERTY,POROSITY')   
         else
           call InputReadDouble(string,option,material_property%porosity, &
@@ -227,6 +231,21 @@ subroutine MaterialPropertyRead(material_property,input,option)
                                    material_property%permeability(3,3))
               call InputErrorMsg(input,option,'z permeability', &
                                  'MATERIAL_PROPERTY,PERMEABILITY')
+            case('PERM_XZ')
+              call InputReadDouble(input,option, &
+                                   material_property%permeability(1,3))
+              call InputErrorMsg(input,option,'xz permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+            case('PERM_XY')
+              call InputReadDouble(input,option, &
+                                   material_property%permeability(1,2))
+              call InputErrorMsg(input,option,'xy permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
+            case('PERM_YZ')
+              call InputReadDouble(input,option, &
+                                   material_property%permeability(2,3))
+              call InputErrorMsg(input,option,'yz permeability', &
+                                 'MATERIAL_PROPERTY,PERMEABILITY')
             case('PERM_ISO')
               call InputReadDouble(input,option, &
                                    material_property%permeability(1,1))
@@ -237,10 +256,16 @@ subroutine MaterialPropertyRead(material_property,input,option)
               material_property%permeability(3,3) = &
                 material_property%permeability(1,1)
             case('RANDOM_DATASET')
-              call InputReadNChars(input,option,&
-                                   material_property%permeability_filename,&
-                                   MAXSTRINGLENGTH,PETSC_TRUE)
-              call InputErrorMsg(input,option,'RANDOM_DATASET,FILENAME', &
+              option%io_buffer = 'RANDOM_DATASET is no longer supported.  ' // &
+                'Please use the new DATASET object in the input file and ' // &
+                'reference that dataset through "DATASET name" within ' // &
+                'the PERMEABILITY card.'
+              call printErrMsg(option)
+            case('DATASET')
+              call InputReadNChars(input,option, &
+                                   material_property%permeability_dataset_name,&
+                                   MAXWORDLENGTH,PETSC_TRUE)
+              call InputErrorMsg(input,option,'DATASET,NAME', &
                                  'MATERIAL_PROPERTY,PERMEABILITY')   
             case default
               option%io_buffer = 'Keyword (' // trim(word) // &
@@ -324,17 +349,24 @@ end subroutine MaterialPropertyAddToList
 ! date: 12/18/07
 !
 ! ************************************************************************** !
-subroutine MaterialPropConvertListToArray(list,array)
+subroutine MaterialPropConvertListToArray(list,array,option)
+
+  use Option_module
+  use String_module
 
   implicit none
   
   type(material_property_type), pointer :: list
   type(material_property_ptr_type), pointer :: array(:)
+  type(option_type) :: option
     
   type(material_property_type), pointer :: cur_material_property
   type(material_property_type), pointer :: prev_material_property
   type(material_property_type), pointer :: next_material_property
-  PetscInt :: i, max_id
+  PetscInt :: i, j, length1,length2, max_id
+  PetscInt, allocatable :: id_count(:)
+  PetscBool :: error_flag
+  character(len=MAXSTRINGLENGTH) :: string
 
 #if 0
 ! don't necessary need right now, but maybe in future
@@ -378,13 +410,64 @@ subroutine MaterialPropConvertListToArray(list,array)
     nullify(array(i)%ptr)
   enddo
   
+  ! use id_count to ensure that an id is not duplicated
+  allocate(id_count(max_id))
+  id_count = 0
+  
   cur_material_property => list
   do 
     if (.not.associated(cur_material_property)) exit
+    id_count(cur_material_property%id) = &
+      id_count(cur_material_property%id) + 1
     array(cur_material_property%id)%ptr => cur_material_property
     cur_material_property => cur_material_property%next
   enddo
+  
+  ! check to ensure that an id is not duplicated
+  error_flag = PETSC_FALSE
+  do i = 1, max_id
+    if (id_count(i) > 1) then
+      write(string,*) i
+      option%io_buffer = 'Material ID ' // trim(adjustl(string)) // &
+        ' is duplicated in input file.'
+      call printMsg(option)
+      error_flag = PETSC_TRUE
+    endif
+  enddo
 
+  deallocate(id_count)
+
+  if (error_flag) then
+    option%io_buffer = 'Duplicate Material IDs.'
+    call printErrMsg(option)
+  endif
+  
+  ! ensure unique material names
+  error_flag = PETSC_FALSE
+  do i = 1, max_id
+    if (associated(array(i)%ptr)) then
+      length1 = len_trim(array(i)%ptr%name)
+      do j = 1, i-1
+        if (associated(array(j)%ptr)) then
+          length2 = len_trim(array(j)%ptr%name)
+          if (length1 /= length2) cycle
+          if (StringCompare(array(i)%ptr%name,array(j)%ptr%name,length1)) then
+            option%io_buffer = 'Material name "' // &
+              trim(adjustl(array(i)%ptr%name)) // &
+              '" is duplicated in input file.'
+            call printMsg(option)
+            error_flag = PETSC_TRUE
+          endif
+        endif
+      enddo
+    endif
+  enddo
+
+  if (error_flag) then
+    option%io_buffer = 'Duplicate Material names.'
+    call printErrMsg(option)
+  endif
+  
 end subroutine MaterialPropConvertListToArray
 
 ! ************************************************************************** !
@@ -479,6 +562,10 @@ recursive subroutine MaterialPropertyDestroy(material_property)
   
   call MaterialPropertyDestroy(material_property%next)
   
+  ! simply nullify since the datasets reside in a list within realization
+  nullify(material_property%permeability_dataset)
+  nullify(material_property%porosity_dataset)
+    
   deallocate(material_property)
   nullify(material_property)
   

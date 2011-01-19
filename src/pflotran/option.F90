@@ -164,10 +164,6 @@ module Option_module
     character(len=MAXSTRINGLENGTH) :: initialize_flow_filename
     character(len=MAXSTRINGLENGTH) :: initialize_transport_filename
         
-    character(len=MAXSTRINGLENGTH) :: permx_filename
-    character(len=MAXSTRINGLENGTH) :: permy_filename
-    character(len=MAXSTRINGLENGTH) :: permz_filename
-    
     character(len=MAXWORDLENGTH) :: global_prefix
     character(len=MAXWORDLENGTH) :: group_prefix
     
@@ -495,10 +491,6 @@ subroutine OptionInitRealization(option)
 
   option%initialize_flow_filename = ''
   option%initialize_transport_filename = ''
-  
-  option%permx_filename = ""
-  option%permy_filename = ""
-  option%permz_filename = ""
   
   option%steady_state = PETSC_FALSE
   
