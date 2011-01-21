@@ -371,8 +371,8 @@ subroutine ludcmp_chunk(A,N,INDX,D,chunk_size)
   PetscInt :: N
   PetscInt :: chunk_size
   PetscReal, parameter :: tiny=1.0d-20
-  PetscReal :: A(N,N,chunk_size),VV(N,chunk_size)
-  PetscInt :: INDX(N,chunk_size)
+  PetscReal :: A(chunk_size,N,N),VV(chunk_size,N)
+  PetscInt :: INDX(chunk_size,N)
   PetscInt :: D(chunk_size)
 
   PetscInt :: i, j, k, imax
@@ -388,7 +388,7 @@ subroutine ludcmp_chunk(A,N,INDX,D,chunk_size)
   do i=1,N
     aamax=0
     do j=1,N
-      if (abs(A(i,j,ichunk)).gt.aamax) aamax=abs(A(i,j,ichunk))
+      if (abs(A(ichunk,i,j)).gt.aamax) aamax=abs(A(ichunk,i,j))
     enddo
     if (aamax.eq.0) then
       call MPI_Comm_rank(MPI_COMM_WORLD,rank,ierr)
@@ -397,24 +397,24 @@ subroutine ludcmp_chunk(A,N,INDX,D,chunk_size)
       call MPI_Finalize(ierr)
       stop
     endif
-    VV(i,ichunk)=1./aamax
+    VV(ichunk,i)=1./aamax
   enddo
   do j=1,N
     do i=1,j-1
-      sum=A(i,j,ichunk)
+      sum=A(ichunk,i,j)
       do k=1,i-1
-        sum=sum-A(i,k,ichunk)*A(k,j,ichunk)
+        sum=sum-A(ichunk,i,k)*A(ichunk,k,j)
       enddo
-      A(i,j,ichunk)=sum
+      A(ichunk,i,j)=sum
     enddo
     aamax=0
     do i=j,N
-      sum=A(i,j,ichunk)
+      sum=A(ichunk,i,j)
       do k=1,j-1
-        sum=sum-A(i,k,ichunk)*A(k,j,ichunk)
+        sum=sum-A(ichunk,i,k)*A(ichunk,k,j)
       enddo
-      A(i,j,ichunk)=sum
-      dum=VV(i,ichunk)*abs(sum)
+      A(ichunk,i,j)=sum
+      dum=VV(ichunk,i)*abs(sum)
       if (dum.ge.aamax) then
         imax=i
         aamax=dum
@@ -422,19 +422,19 @@ subroutine ludcmp_chunk(A,N,INDX,D,chunk_size)
     enddo
     if (j.ne.imax) then
       do k=1,N
-        dum=A(imax,k,ichunk)
-        A(imax,k,ichunk)=A(j,k,ichunk)
-        A(j,k,ichunk)=dum
+        dum=A(ichunk,imax,k)
+        A(ichunk,imax,k)=A(ichunk,j,k)
+        A(ichunk,j,k)=dum
       enddo
       D(ichunk)=-D(ichunk)
-      VV(imax,ichunk)=VV(j,ichunk)
+      VV(ichunk,imax)=VV(ichunk,j)
     endif
-    INDX(j,ichunk)=imax
-    if (A(j,j,ichunk).eq.0.) A(j,j,ichunk)=tiny
+    INDX(ichunk,j)=imax
+    if (A(ichunk,j,j).eq.0.) A(ichunk,j,j)=tiny
     if (j.ne.N) then
-      dum=1./A(j,j,ichunk)
+      dum=1./A(ichunk,j,j)
       do i=j+1,N
-        A(i,j,ichunk)=A(i,j,ichunk)*dum
+        A(ichunk,i,j)=A(ichunk,i,j)*dum
       enddo
     endif
   enddo
@@ -455,8 +455,8 @@ subroutine lubksb_chunk(A,N,INDX,B,chunk_size)
 
   PetscInt :: N
   PetscInt :: chunk_size
-  PetscReal :: A(N,N,chunk_size),B(N,chunk_size)
-  PetscInt :: INDX(N,chunk_size)
+  PetscReal :: A(chunk_size,N,N),B(chunk_size,N)
+  PetscInt :: INDX(chunk_size,N)
 
   PetscInt :: i, j, ii, ll
   PetscReal :: sum
@@ -467,26 +467,26 @@ subroutine lubksb_chunk(A,N,INDX,B,chunk_size)
   
   ii=0
   do i=1,N
-    ll=INDX(i,ichunk)
-    sum=B(ll,ichunk)
-    B(ll,ichunk)=B(i,ichunk)
+    ll=INDX(ichunk,i)
+    sum=B(ichunk,ll)
+    B(ichunk,ll)=B(ichunk,i)
     if (ii.ne.0) then
       do j=ii,i-1
-        sum=sum-A(i,j,ichunk)*B(j,ichunk)
+        sum=sum-A(ichunk,i,j)*B(ichunk,j)
       enddo
     else if (sum.ne.0) then
       ii=i
     endif
-    B(i,ichunk)=sum
+    B(ichunk,i)=sum
   enddo
   do i=N,1,-1
-    sum=B(i,ichunk)
+    sum=B(ichunk,i)
     if (i.lt.N) then
       do j=i+1,N
-        sum=sum-A(i,j,ichunk)*B(j,ichunk)
+        sum=sum-A(ichunk,i,j)*B(ichunk,j)
       enddo
     endif
-    B(i,ichunk)=sum/A(i,i,ichunk)
+    B(ichunk,i)=sum/A(ichunk,i,i)
   enddo
   
   enddo ! chunk loop

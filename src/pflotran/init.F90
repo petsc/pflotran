@@ -177,14 +177,6 @@ subroutine Init(simulation)
   call Create_IOGroups(option)
 #endif    
 
-#ifdef VAMSI_HDF5      
-  call Create_IOGroups(option)
-#endif    
-
-#ifdef VAMSI_HDF5      
-  call Create_IOGroups(option)
-#endif    
-
   ! initialize reference density
   if (option%reference_water_density < 1.d-40) then
 #ifndef DONT_USE_WATEOS
