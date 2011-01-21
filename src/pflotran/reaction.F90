@@ -1235,6 +1235,7 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 #ifdef CHUAN_CO2  
   PetscReal :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,&
                yco2,pco2,sat_pressure,lngamco2
+  PetscInt :: iflag
   PetscErrorCode :: ierr
 #endif
     
@@ -1584,8 +1585,9 @@ subroutine ReactionEquilibrateConstraint(rt_auxvar,global_auxvar, &
 !            pres = conc(icomp)*1.D5 + sat_pressure
             yco2 = pco2/pres
              
+            iflag = 1
             call co2_span_wagner(pres*1D-6,tc+273.15D0,dg,dddt,dddp,fg, &
-              dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
+              dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,iflag,option%itable)
 
 !            call co2_span_wagner(pco2*1D-6,tc+273.15D0,dg,dddt,dddp,fg, &
 !              dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)

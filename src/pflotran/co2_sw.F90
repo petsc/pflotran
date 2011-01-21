@@ -45,6 +45,7 @@ module co2_sw_module
         PetscMPIInt myrank
         
         PetscInt i, j
+        PetscInt :: iflag = 1
         
         PetscReal p,t, ts,tmp2, tmp, dum1, dum2
 !       PetscReal dtmp,dddt,dddp
@@ -83,7 +84,7 @@ module co2_sw_module
                 co2_prop_sw_c(i,j,5),co2_prop_sw_c(i,j,6),co2_prop_sw_c(i,j,7),&
                 co2_prop_sw_c(i,j,8),co2_prop_sw_c(i,j,9),co2_prop_sw_c(i,j,10),&
                 co2_prop_sw_c(i,j,11),co2_prop_sw_c(i,j,12),co2_prop_sw_c(i,j,13),&
-                co2_prop_sw_c(i,j,14),co2_prop_sw_c(i,j,15))
+                co2_prop_sw_c(i,j,14),co2_prop_sw_c(i,j,15),iflag)
              
                ts = 1000.D0
                if (p .le.pc .and. t .le.tc) then
@@ -97,7 +98,7 @@ module co2_sw_module
                       co2_prop_sw_c(i,j,5),fgdp,co2_prop_sw_c(i,j,7),&
                       co2_prop_sw_c(i,j,8),engdp,entdp,&
                       co2_prop_sw_c(i,j,11),co2_prop_sw_c(i,j,12),vdp,&
-                      co2_prop_sw_c(i,j,14),co2_prop_sw_c(i,j,15))
+                      co2_prop_sw_c(i,j,14),co2_prop_sw_c(i,j,15),iflag)
 
         
                dtemp = 1.e-6
@@ -106,7 +107,7 @@ module co2_sw_module
                  co2_prop_sw_c(i,j,5),fgdt,co2_prop_sw_c(i,j,7),&
                  co2_prop_sw_c(i,j,8),engdt,entdt,&
                  co2_prop_sw_c(i,j,11),co2_prop_sw_c(i,j,12),vdt,&
-                 co2_prop_sw_c(i,j,14),co2_prop_sw_c(i,j,15))
+                 co2_prop_sw_c(i,j,14),co2_prop_sw_c(i,j,15),iflag)
 
                tmp = co2_prop_sw_c(i,j,3)
                if(j==0) tmp2 = co2_prop_sw_c(i,j,3)
@@ -156,7 +157,7 @@ module co2_sw_module
                 co2_prop_sw_f(i,j,5),co2_prop_sw_f(i,j,6),co2_prop_sw_f(i,j,7),&
                 co2_prop_sw_f(i,j,8),co2_prop_sw_f(i,j,9),co2_prop_sw_f(i,j,10),&
                 co2_prop_sw_f(i,j,11),co2_prop_sw_f(i,j,12),co2_prop_sw_f(i,j,13),&
-                co2_prop_sw_f(i,j,14),co2_prop_sw_f(i,j,15))
+                co2_prop_sw_f(i,j,14),co2_prop_sw_f(i,j,15),iflag)
              
                ts = 1000.D0
                if (p .le.pc .and. t .le.tc) then
@@ -170,7 +171,7 @@ module co2_sw_module
                       co2_prop_sw_f(i,j,5),fgdp,co2_prop_sw_f(i,j,7),&
                       co2_prop_sw_f(i,j,8),engdp,entdp,&
                       co2_prop_sw_f(i,j,11),co2_prop_sw_f(i,j,12),vdp,&
-                      co2_prop_sw_f(i,j,14),co2_prop_sw_f(i,j,15))
+                      co2_prop_sw_f(i,j,14),co2_prop_sw_f(i,j,15),iflag)
 
         
                dtemp = 1.e-6
@@ -179,7 +180,7 @@ module co2_sw_module
                  co2_prop_sw_f(i,j,5),fgdt,co2_prop_sw_f(i,j,7),&
                  co2_prop_sw_f(i,j,8),engdt,entdt,&
                  co2_prop_sw_f(i,j,11),co2_prop_sw_f(i,j,12),vdt,&
-                 co2_prop_sw_f(i,j,14),co2_prop_sw_f(i,j,15))
+                 co2_prop_sw_f(i,j,14),co2_prop_sw_f(i,j,15),iflag)
 
                tmp = co2_prop_sw_f(i,j,3)
                if(j==0) tmp2 = co2_prop_sw_f(i,j,3)
@@ -312,6 +313,7 @@ module co2_sw_module
              
       PetscReal ps, tmp, tmp2, ntab_t, ntab_p, dt_tab, dp_tab, p0_tab, t0_tab 
       PetscInt isucc, i1,i2,j1,j2, icross, i,j
+      PetscInt :: iflag = 1
       
       ifinetable = PETSC_FALSE
       if(x2 <= co2_sw_f_t1_tab .and. x1<= co2_sw_f_p1_tab) then
@@ -461,7 +463,7 @@ module co2_sw_module
       if((icross ==1 .and. ifinetable).or. isucc < 1)then
       ! print *, ' Exit table looking', icross, isucc, ifinetable
        call co2_span_wagner(x1,x2,y(3),y(4),y(5),y(6),y(7),y(8), &
-        y(9),y(10),y(11),y(12),y(13),y(14),y(15),ZERO_INTEGER)
+        y(9),y(10),y(11),y(12),y(13),y(14),y(15),ZERO_INTEGER,iflag)
        
       endif  
     end subroutine 
