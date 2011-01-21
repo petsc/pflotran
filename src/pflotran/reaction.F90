@@ -2720,7 +2720,7 @@ subroutine RReactChunk(rt_auxvar,global_auxvar,total,volume,porosity_, &
   type(global_auxvar_type) :: global_auxvar(option%chunk_size)
   ! total represents an array of total component concentrations coming in
   !              and returns an array of free ion concentrations 
-  PetscReal :: total(reaction%ncomp,option%chunk_size)
+  PetscReal :: total(option%chunk_size*reaction%naqcomp)
   PetscReal :: volume(option%chunk_size)
 
 ! ----------------------------------------------------------------------------
@@ -2735,24 +2735,25 @@ subroutine RReactChunk(rt_auxvar,global_auxvar,total,volume,porosity_, &
 
   PetscInt :: num_iterations_(option%chunk_size)
   
-  PetscReal :: residual(reaction%ncomp,option%chunk_size)
-  PetscReal :: res(reaction%ncomp,option%chunk_size)
-  PetscReal :: J(reaction%ncomp,reaction%ncomp,option%chunk_size)
+  PetscReal :: residual(option%chunk_size,reaction%ncomp)
+  PetscReal :: res(option%chunk_size,reaction%ncomp)
+  PetscReal :: J(option%chunk_size,reaction%ncomp,reaction%ncomp)
   PetscReal :: one_over_dt
-  PetscReal :: prev_molal(reaction%ncomp,option%chunk_size)
-  PetscReal :: update(reaction%ncomp,option%chunk_size)
+  PetscReal :: prev_molal(option%chunk_size,reaction%ncomp)
+  PetscReal :: update(option%chunk_size,reaction%ncomp)
   PetscReal :: maximum_relative_change(option%chunk_size)
   PetscReal :: accumulation_coef
-  PetscReal :: fixed_accum(reaction%ncomp,option%chunk_size)
+  PetscReal :: fixed_accum(option%chunk_size,reaction%ncomp)
   PetscInt :: num_iterations(option%chunk_size)
   PetscInt :: icomp
 
   ! for inlined RSolve() routine
   PetscReal :: norm
-  PetscInt :: indices(reaction%ncomp,option%chunk_size)
-  PetscReal :: rhs(reaction%ncomp,option%chunk_size)
+  PetscInt :: indices(option%chunk_size,reaction%ncomp)
+  PetscReal :: rhs(option%chunk_size,reaction%ncomp)
   
   PetscInt :: ichunk
+  PetscInt :: offset
   PetscInt :: d(option%chunk_size)
   
   PetscInt, parameter :: iphase = 1
@@ -2767,13 +2768,16 @@ subroutine RReactChunk(rt_auxvar,global_auxvar,total,volume,porosity_, &
   ! rt_auxvar total variables
   ! aqueous
   do ichunk = 1, option%chunk_size
-    rt_auxvar(ichunk)%total(:,iphase) = total(1:reaction%naqcomp,ichunk)
+    offset = (ichunk-1)*reaction%naqcomp
+    do icomp = 1, reaction%naqcomp
+      rt_auxvar(ichunk)%total(icomp,iphase) = total(offset+icomp)
+    enddo
   enddo
   
 #if 0  
   if (.not.reaction%use_full_geochemistry) then
     do ichunk = 1, option%chunk_size
-      rt_auxvar(ichunk)%pri_molal(:) = total(:,ichunk)/ &
+      rt_auxvar(ichunk)%pri_molal(:) = total(ichunk,:)/ &
                                     global_auxvar(ichunk)%den_kg(iphase)*1.d-3
     enddo
     return
@@ -2808,7 +2812,7 @@ subroutine RReactChunk(rt_auxvar,global_auxvar,total,volume,porosity_, &
                              option,residual)
                         
     do ichunk = 1, option%chunk_size
-      residual(:,ichunk) = residual(:,ichunk)-fixed_accum(:,ichunk)
+      residual(ichunk,:) = residual(ichunk,:)-fixed_accum(ichunk,:)
     enddo
 
     ! J is overwritten in RTAccumulationDerivative()
@@ -2833,15 +2837,15 @@ subroutine RReactChunk(rt_auxvar,global_auxvar,total,volume,porosity_, &
     do ichunk = 1, option%chunk_size
     
       do icomp = 1, reaction%ncomp
-        norm = max(1.d0,maxval(abs(J(icomp,:,ichunk))))
+        norm = max(1.d0,maxval(abs(J(ichunk,icomp,:))))
         norm = 1.d0/norm
-        rhs(icomp,ichunk) = residual(icomp,ichunk)*norm
-        J(icomp,:,ichunk) = J(icomp,:,ichunk)*norm
+        rhs(ichunk,icomp) = residual(ichunk,icomp)*norm
+        J(ichunk,icomp,:) = J(ichunk,icomp,:)*norm
       enddo
       
       ! for derivatives with respect to ln conc
       do icomp = 1, reaction%ncomp
-        J(:,icomp,ichunk) = J(:,icomp,ichunk)*rt_auxvar(ichunk)%pri_molal(icomp)
+        J(ichunk,:,icomp) = J(ichunk,:,icomp)*rt_auxvar(ichunk)%pri_molal(icomp)
       enddo
 
     enddo
@@ -2855,14 +2859,14 @@ subroutine RReactChunk(rt_auxvar,global_auxvar,total,volume,porosity_, &
 
     do ichunk = 1, option%chunk_size
 
-      update(:,ichunk) = dsign(1.d0,update(:,ichunk))*min(dabs(update(:,ichunk)),5.d0)
+      update(ichunk,:) = dsign(1.d0,update(ichunk,:))*min(dabs(update(ichunk,:)),5.d0)
 
-      prev_molal(:,ichunk) = rt_auxvar(ichunk)%pri_molal(:)
-      rt_auxvar(ichunk)%pri_molal(:) = rt_auxvar(ichunk)%pri_molal(:)*exp(-update(:,ichunk))    
+      prev_molal(ichunk,:) = rt_auxvar(ichunk)%pri_molal(:)
+      rt_auxvar(ichunk)%pri_molal(:) = rt_auxvar(ichunk)%pri_molal(:)*exp(-update(ichunk,:))    
   
       maximum_relative_change(ichunk) = &
-        maxval(abs((rt_auxvar(ichunk)%pri_molal(:)-prev_molal(:,ichunk))/ &
-               prev_molal(:,ichunk)))
+        maxval(abs((rt_auxvar(ichunk)%pri_molal(:)-prev_molal(ichunk,:))/ &
+               prev_molal(ichunk,:)))
     enddo
   
 !    if (maximum_relative_change < reaction%reaction_tolerance) exit
@@ -2875,8 +2879,11 @@ subroutine RReactChunk(rt_auxvar,global_auxvar,total,volume,porosity_, &
 
   do ichunk = 1, option%chunk_size
     num_iterations_(ichunk) = num_iterations(ichunk)
+    offset = (ichunk-1)*reaction%naqcomp
     ! the array 'total' is actually now the free ion concentration
-    total(1:reaction%naqcomp,ichunk) = rt_auxvar(ichunk)%pri_molal(:)
+    do icomp = 1, reaction%naqcomp
+      total(offset+icomp) = rt_auxvar(ichunk)%pri_molal(icomp)
+    enddo
   enddo
   
 end subroutine RReactChunk
@@ -2948,8 +2955,8 @@ subroutine RReactionChunk(Res,Jac,derivative,rt_auxvar,global_auxvar, &
   type(reactive_transport_auxvar_type) :: rt_auxvar(option%chunk_size)
   type(global_auxvar_type) :: global_auxvar(option%chunk_size)
   PetscBool :: derivative
-  PetscReal :: Res(reaction%ncomp,option%chunk_size)
-  PetscReal :: Jac(reaction%ncomp,reaction%ncomp,option%chunk_size)
+  PetscReal :: Res(option%chunk_size,reaction%ncomp)
+  PetscReal :: Jac(option%chunk_size,reaction%ncomp,reaction%ncomp)
   PetscReal :: porosity(option%chunk_size)
   PetscReal :: volume(option%chunk_size)
 
@@ -5504,8 +5511,8 @@ subroutine RKineticMineralChunk(Res,Jac,compute_derivative,rt_auxvar, &
   type(option_type) :: option
   type(reaction_type) :: reaction
   PetscBool :: compute_derivative
-  PetscReal :: Res(reaction%ncomp,option%chunk_size)
-  PetscReal :: Jac(reaction%ncomp,reaction%ncomp,option%chunk_size)
+  PetscReal :: Res(option%chunk_size,reaction%ncomp)
+  PetscReal :: Jac(option%chunk_size,reaction%ncomp,reaction%ncomp)
   PetscReal :: volume(option%chunk_size)
   type(reactive_transport_auxvar_type) :: rt_auxvar(option%chunk_size)
   type(global_auxvar_type) :: global_auxvar(option%chunk_size)
@@ -5635,7 +5642,7 @@ subroutine RKineticMineralChunk(Res,Jac,compute_derivative,rt_auxvar, &
     ncomp = reaction%kinmnrlspecid(0,imnrl)
     do i = 1, ncomp
       icomp = reaction%kinmnrlspecid(i,imnrl)
-      Res(icomp,ichunk) = Res(icomp,ichunk) + reaction%kinmnrlstoich(i,imnrl)*Im
+      Res(ichunk,icomp) = Res(ichunk,icomp) + reaction%kinmnrlstoich(i,imnrl)*Im
     enddo 
     
     if (.not. compute_derivative) cycle   
@@ -5662,7 +5669,7 @@ subroutine RKineticMineralChunk(Res,Jac,compute_derivative,rt_auxvar, &
       do i = 1, ncomp
         icomp = reaction%kinmnrlspecid(i,imnrl)
         ! units = (mol/sec)*(kg water/mol) = kg water/sec
-        Jac(icomp,jcomp,ichunk) = Jac(icomp,jcomp,ichunk) + &
+        Jac(ichunk,icomp,jcomp) = Jac(ichunk,icomp,jcomp) + &
                            reaction%kinmnrlstoich(i,imnrl)*dIm_dQK*dQK_dmj
       enddo
     enddo
@@ -5693,7 +5700,7 @@ subroutine RKineticMineralChunk(Res,Jac,compute_derivative,rt_auxvar, &
                      dprefactor_dcomp_denominator)*global_auxvar(ichunk)%den_kg(iphase)
           do i = 1, ncomp
             icomp = reaction%kinmnrlspecid(i,imnrl)
-            Jac(icomp,jcomp,ichunk) = Jac(icomp,jcomp,ichunk) + &
+            Jac(ichunk,icomp,jcomp) = Jac(ichunk,icomp,jcomp) + &
               reaction%kinmnrlstoich(i,imnrl)*tempreal
           enddo  ! loop over col
         enddo !loop over row
@@ -5720,7 +5727,7 @@ subroutine RKineticMineralChunk(Res,Jac,compute_derivative,rt_auxvar, &
               tempreal2 = reaction%eqcplxstoich(j,kcplx)*exp(ln_sec_act(kcplx)-ln_conc(jcomp)) !dax_dc
               do i = 1, ncomp
                 icomp = reaction%kinmnrlspecid(i,imnrl)
-                Jac(icomp,jcomp,ichunk) = Jac(icomp,jcomp,ichunk) + &
+                Jac(ichunk,icomp,jcomp) = Jac(ichunk,icomp,jcomp) + &
                   reaction%kinmnrlstoich(i,imnrl)*tempreal*tempreal2
               enddo  ! loop over col
             enddo  ! loop over row
@@ -5786,7 +5793,7 @@ subroutine RAccumulationSorbChunk(rt_aux_var,global_aux_var,vol,reaction, &
   type(global_auxvar_type) :: global_aux_var(option%chunk_size)
   PetscReal :: vol(option%chunk_size)
   type(reaction_type) :: reaction
-  PetscReal :: Res(reaction%ncomp,option%chunk_size)
+  PetscReal :: Res(option%chunk_size,reaction%ncomp)
   
   PetscReal :: v_t
   
@@ -5797,7 +5804,7 @@ subroutine RAccumulationSorbChunk(rt_aux_var,global_aux_var,vol,reaction, &
   do ichunk = 1, option%chunk_size
   
   v_t = vol(ichunk)/option%tran_dt
-  Res(1:reaction%naqcomp,ichunk) = Res(1:reaction%naqcomp,ichunk) + &
+  Res(ichunk,1:reaction%naqcomp) = Res(ichunk,1:reaction%naqcomp) + &
     rt_aux_var(ichunk)%total_sorb_eq(:)*v_t
 
   enddo ! chunk loop
@@ -5859,7 +5866,7 @@ subroutine RAccumulationSorbDerivChunk(rt_aux_var,global_aux_var, &
   type(global_auxvar_type) :: global_aux_var(option%chunk_size)
   PetscReal :: vol(option%chunk_size)
   type(reaction_type) :: reaction
-  PetscReal :: J(reaction%ncomp,reaction%ncomp,option%chunk_size)
+  PetscReal :: J(option%chunk_size,reaction%ncomp,reaction%ncomp)
   
   PetscInt :: icomp
   PetscReal :: v_t
@@ -5871,8 +5878,8 @@ subroutine RAccumulationSorbDerivChunk(rt_aux_var,global_aux_var, &
   ! units = (kg water/m^3 bulk)*(m^3 bulk)/(sec) = kg water/sec
   ! all Jacobian entries should be in kg water/sec
   v_t = vol(ichunk)/option%tran_dt
-  J(1:reaction%naqcomp,1:reaction%naqcomp,ichunk) = &
-    J(1:reaction%naqcomp,1:reaction%naqcomp,ichunk) + &
+  J(ichunk,1:reaction%naqcomp,1:reaction%naqcomp) = &
+    J(ichunk,1:reaction%naqcomp,1:reaction%naqcomp) + &
     rt_aux_var(ichunk)%dtotal_sorb_eq(:,:)*v_t
     
   enddo
@@ -6515,7 +6522,7 @@ subroutine RTAccumulationChunk(rt_aux_var,global_aux_var,por,vol,reaction, &
   type(global_auxvar_type) :: global_aux_var(option%chunk_size)
   PetscReal :: por(option%chunk_size), vol(option%chunk_size)
   type(reaction_type) :: reaction
-  PetscReal :: Res(reaction%ncomp,option%chunk_size)
+  PetscReal :: Res(option%chunk_size,reaction%ncomp)
   
   PetscInt :: iphase
   PetscInt :: istart, iend
@@ -6542,14 +6549,14 @@ subroutine RTAccumulationChunk(rt_aux_var,global_aux_var,por,vol,reaction, &
   iend = reaction%naqcomp
   
   do ichunk = 1, option%chunk_size
-    Res(istart:iend,ichunk) = psv_t(ichunk)*rt_aux_var(ichunk)%total(:,iphase) 
+    Res(ichunk,istart:iend) = psv_t(ichunk)*rt_aux_var(ichunk)%total(:,iphase) 
   enddo
   
   if (reaction%ncoll > 0) then
     do ichunk = 1, option%chunk_size
       do icoll = 1, reaction%ncoll
         idof = reaction%offset_coll + icoll
-        Res(idof,ichunk) = psv_t(ichunk)*rt_aux_var(ichunk)%colloid%conc_mob(icoll)
+        Res(ichunk,idof) = psv_t(ichunk)*rt_aux_var(ichunk)%colloid%conc_mob(icoll)
       enddo
     enddo
   endif
@@ -6557,7 +6564,7 @@ subroutine RTAccumulationChunk(rt_aux_var,global_aux_var,por,vol,reaction, &
     do ichunk = 1, option%chunk_size
       do icollcomp = 1, reaction%ncollcomp
         iaqcomp = reaction%coll_spec_to_pri_spec(icollcomp)
-        Res(iaqcomp,ichunk) = Res(iaqcomp,ichunk) + &
+        Res(ichunk,iaqcomp) = Res(ichunk,iaqcomp) + &
           psv_t(ichunk)*rt_aux_var(ichunk)%colloid%total_eq_mob(icollcomp)
       enddo
     enddo
@@ -6574,7 +6581,7 @@ subroutine RTAccumulationChunk(rt_aux_var,global_aux_var,por,vol,reaction, &
       do ichunk = 1, option%chunk_size
         psv_t(ichunk) = por(ichunk)*global_aux_var(ichunk)%sat(iphase)* &
                         1000.d0*vol(ichunk)/option%tran_dt 
-        Res(istart:iend,ichunk) = Res(istart:iend,ichunk) + &
+        Res(ichunk,istart:iend) = Res(ichunk,istart:iend) + &
                                 psv_t(ichunk)*rt_aux_var(ichunk)%total(:,iphase) 
       enddo
       ! should sum over gas component only need more implementations
@@ -6691,7 +6698,7 @@ subroutine RTAccumulationDerivativeChunk(rt_aux_var,global_aux_var, &
   type(global_auxvar_type) :: global_aux_var(option%chunk_size)
   PetscReal :: por(option%chunk_size), vol(option%chunk_size)
   type(reaction_type) :: reaction
-  PetscReal :: J(reaction%ncomp,reaction%ncomp,option%chunk_size)
+  PetscReal :: J(option%chunk_size,reaction%ncomp,reaction%ncomp)
   
   PetscInt :: icomp, iphase
   PetscInt :: istart, iendaq
@@ -6713,13 +6720,13 @@ subroutine RTAccumulationDerivativeChunk(rt_aux_var,global_aux_var, &
     if (associated(rt_aux_var(ichunk)%aqueous%dtotal)) then ! units of dtotal = kg water/L water
       psvd_t(ichunk) = por(ichunk)*global_aux_var(ichunk)%sat(iphase)*1000.d0* &
                        vol(ichunk)/option%tran_dt
-      J(istart:iendaq,istart:iendaq,ichunk) = &
+      J(ichunk,istart:iendaq,istart:iendaq) = &
         rt_aux_var(ichunk)%aqueous%dtotal(:,:,iphase)*psvd_t(ichunk)
     else
       psvd_t(ichunk) = por(ichunk)*global_aux_var(ichunk)%sat(iphase)* &
                global_aux_var(ichunk)%den_kg(iphase)*vol(ichunk)/option%tran_dt ! units of den = kg water/m^3 water
       do icomp=istart,iendaq
-        J(icomp,icomp,ichunk) = psvd_t(ichunk)
+        J(ichunk,icomp,icomp) = psvd_t(ichunk)
       enddo
     endif
   enddo
@@ -6728,13 +6735,13 @@ subroutine RTAccumulationDerivativeChunk(rt_aux_var,global_aux_var, &
     do icoll = 1, reaction%ncoll
       idof = reaction%offset_coll + icoll
       ! shouldn't have to sum a this point
-      J(idof,idof,:) = psvd_t(:)
+      J(:,idof,idof) = psvd_t(:)
     enddo
   endif
   if (reaction%ncollcomp > 0) then
     ! dRj_dCj - mobile
     do ichunk = 1, option%chunk_size
-      J(istart:iendaq,istart:iendaq,ichunk) = J(istart:iendaq,istart:iendaq,ichunk) + &
+      J(ichunk,istart:iendaq,istart:iendaq) = J(ichunk,istart:iendaq,istart:iendaq) + &
         rt_aux_var(ichunk)%colloid%dRj_dCj%dtotal(:,:,1)*psvd_t(ichunk)
     ! need the below
     ! dRj_dSic
@@ -6754,14 +6761,14 @@ subroutine RTAccumulationDerivativeChunk(rt_aux_var,global_aux_var, &
         if (associated(rt_aux_var(ichunk)%aqueous%dtotal)) then
           psvd_t(ichunk) = por(ichunk)*global_aux_var(ichunk)%sat(iphase)* &
                            1000.d0*vol(ichunk)/option%tran_dt  
-          J(istart:iendaq,istart:iendaq,ichunk) = &
-            J(istart:iendaq,istart:iendaq,ichunk) + &
+          J(ichunk,istart:iendaq,istart:iendaq) = &
+            J(ichunk,istart:iendaq,istart:iendaq) + &
             rt_aux_var(ichunk)%aqueous%dtotal(:,:,iphase)*psvd_t(ichunk)
         else
           psvd_t(ichunk) = por(ichunk)*global_aux_var(ichunk)%sat(iphase)* &
             global_aux_var(ichunk)%den_kg(iphase)*vol(ichunk)/option%tran_dt ! units of den = kg water/m^3 water
           do icomp=istart,iendaq
-            J(icomp,icomp,ichunk) = J(icomp,icomp,ichunk) + psvd_t(ichunk)
+            J(ichunk,icomp,icomp) = J(ichunk,icomp,icomp) + psvd_t(ichunk)
           enddo
         endif   
       enddo
