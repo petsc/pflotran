@@ -287,17 +287,13 @@ end subroutine MphaseSetupPatch
   option => realization%option
   cur_level => realization%level_list%first
   ipass = 1
-  do
+  do while(ipass > 0)
     if (.not.associated(cur_level)) exit
     cur_patch => cur_level%patch_list%first
-    do
+    do while(ipass > 0)
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      ipass= MphaseInitGuessCheckPatch(realization)
-      if(ipass<=0)then
-        nullify(cur_level)
-        exit 
-      endif
+      ipass = MphaseInitGuessCheckPatch(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -1026,6 +1022,7 @@ subroutine MphaseSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, &
   PetscReal :: rho, fg, dfgdp, dfgdt, eng, dhdt, dhdp, visc, dvdt, dvdp, xphi
   PetscReal :: ukvr, v_darcy, dq, dphi
   PetscInt  :: np
+  PetscInt :: iflag
   PetscErrorCode :: ierr
   
   Res=0D0
@@ -1060,9 +1057,10 @@ subroutine MphaseSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, &
                   tsrc,rho,dddt,dddp,fg,dfgdp,dfgdt, &
                   eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
               else
+                iflag = 1
                 call co2_span_wagner(aux_var%pres*1.D-6,&
                   tsrc+273.15D0,rho,dddt,dddp,fg,dfgdp,dfgdt, &
-                  eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
+                  eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,iflag,option%itable)
               endif 
             case(3) 
               call sw_prop(tsrc,aux_var%pres*1.D-6,rho, &
@@ -1593,7 +1591,7 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
   if(ierr<0)then
     !ierr = PETSC_ERR_ARG_OUTOFRANGE
     if (option%myrank==0) print *,'table out of range: ',ierr
-    call SNESSetFunctionDomainError() 
+    call SNESSetFunctionDomainError(snes,ierr) 
     return
   endif 
   ! end check ---------------------------------------------------------
@@ -1608,6 +1606,10 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
       call MphaseVarSwitchPatch(xx, realization, ZERO_INTEGER, ichange)
+      if (ichange < 0) then
+        call SNESSetFunctionDomainError(snes,ierr) 
+        return
+      endif
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -1690,6 +1692,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   PetscReal :: lngamco2, m_na, m_cl, m_nacl, Qkco2, mco2, xco2eq, temp
 ! PetscReal :: xla,co2_poyn
   PetscInt :: local_id, ghosted_id, dof_offset
+  PetscInt :: iflag
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -1747,8 +1750,13 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
             call co2_sw_interp(p2*1.D-6,t,dg,dddt,dddp,fg,&
                 dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
           else
+            iflag = 1
             call co2_span_wagner(p2*1.D-6,t+273.15D0,dg,dddt,dddp,fg,&
-                dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
+                dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,iflag,option%itable)
+            if (iflag < 1) then
+              ichange = -1
+              return
+            endif
           endif
           dg= dg / FMWCO2
           fg= fg * 1.D6 

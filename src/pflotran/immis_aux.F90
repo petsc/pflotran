@@ -256,6 +256,7 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
   PetscReal :: visg, dvdp, dvdt
   PetscReal :: h(option%nphase), u(option%nphase), kr(option%nphase)
   PetscReal :: xm_nacl, x_nacl, vphi             
+  PetscInt :: iflag
    
   
   
@@ -304,8 +305,10 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
                 call co2_sw_interp(p2*1.D-6, t,dg,dddt,dddp,fg,&
                      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
              else
+                iflag = 1
                 call co2_span_wagner(p2*1.D-6, t +273.15D0,dg,dddt,dddp,fg,&
-                     dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
+                     dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,iflag, &
+                     option%itable)
              endif
              dg= dg / FMWCO2
              fg= fg * 1.D6 

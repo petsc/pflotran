@@ -54,6 +54,7 @@
        
       PetscInt :: iitable,i,j
       PetscMPIInt :: myrank
+      PetscInt :: iflag = 1
       
       character*3 :: q
       character*1 :: tab
@@ -316,7 +317,7 @@
         co2_prop_spwag(i,j,5),co2_prop_spwag(i,j,6),co2_prop_spwag(i,j,7),&
         co2_prop_spwag(i,j,8),co2_prop_spwag(i,j,9),co2_prop_spwag(i,j,10),&
         co2_prop_spwag(i,j,11),co2_prop_spwag(i,j,12),co2_prop_spwag(i,j,13),&
-        co2_prop_spwag(i,j,14),co2_prop_spwag(i,j,15))
+        co2_prop_spwag(i,j,14),co2_prop_spwag(i,j,15),iflag)
 
 !       p = p + dp
         dpres = 1.e-3
@@ -324,7 +325,7 @@
         co2_prop_spwag(i,j,5),fgdp,co2_prop_spwag(i,j,7),&
         co2_prop_spwag(i,j,8),engdp,entdp,&
         co2_prop_spwag(i,j,11),co2_prop_spwag(i,j,12),vdp,&
-        co2_prop_spwag(i,j,14),co2_prop_spwag(i,j,15))
+        co2_prop_spwag(i,j,14),co2_prop_spwag(i,j,15),iflag)
 
 !       t = t + dt
         dtemp = 1.e-4
@@ -332,7 +333,7 @@
         co2_prop_spwag(i,j,5),fgdt,co2_prop_spwag(i,j,7),&
         co2_prop_spwag(i,j,8),engdt,entdt,&
         co2_prop_spwag(i,j,11),co2_prop_spwag(i,j,12),vdt,&
-        co2_prop_spwag(i,j,14),co2_prop_spwag(i,j,15))
+        co2_prop_spwag(i,j,14),co2_prop_spwag(i,j,15),iflag)
 
 ! compute derivatives numerically: 1-p,2-T,3-d,4-dddt,5-dddp,6-fg,7-dfgdp,8-dfgdt,
 !                 9-energy,10-enthalpy,11-dhdt,12-dhdp,13-visc,14-dvdt,15-dvdp
@@ -445,7 +446,7 @@
   end subroutine initialize_span_wagner
       
   subroutine co2_span_wagner(pl,tl,rho,dddt,dddp,fg,dfgdp,dfgdt, &
-      eng,ent,dhdt,dhdp,visc,dvdt,dvdp,itable)
+      eng,ent,dhdt,dhdp,visc,dvdt,dvdp,iflag,itable)
       
   use co2_sw_rtsafe_module
 
@@ -456,6 +457,7 @@
 !     PetscReal :: vpartial, rho_h2o, Cs, xco2, rho_wco2
       PetscReal :: fg,dfgdp,fg1,dfgdt
       PetscReal :: rho1,rho2
+      PetscInt :: iflag
       
 !     PetscInt :: it
       PetscInt, optional :: itable
@@ -497,7 +499,9 @@
 
   if(iindex > ntab_p .or. iindex < 0.d0 .or. jindex < 0.d0 .or. jindex > ntab_t) then
     print  *,' Out of Table Bounds (Span-Wagner): ', 'p=',p,' t=',t,' i=',iindex,' j=',jindex
-    isucc=0
+!geh    isucc=0
+    iflag = -1
+    return
   endif
 
   if(isucc>0)then

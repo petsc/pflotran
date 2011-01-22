@@ -262,6 +262,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
   PetscReal :: xm_nacl, y_nacl, vphi             
   PetscReal :: tk, xco2, pw_kg, x1, vphi_a1, vphi_a2 
   PetscReal :: Qkco2, mco2,xco2eq
+  PetscInt :: iflag
   
   aux_var%sat = 0.d0
   aux_var%h = 0.d0
@@ -332,8 +333,10 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,global_aux_var,iphase,saturation_f
               call co2_sw_interp(p2*1.D-6, t,dg,dddt,dddp,fg,&
                      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
             else
+              iflag = 1
               call co2_span_wagner(p2*1.D-6, t +273.15D0,dg,dddt,dddp,fg,&
-                     dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
+                     dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,iflag, &
+                     option%itable)
             endif
 
             dg= dg / FMWCO2

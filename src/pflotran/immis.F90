@@ -899,6 +899,7 @@ subroutine ImmisSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fla
   PetscReal :: rho, fg, dfgdp, dfgdt, eng, dhdt, dhdp, visc, dvdt, dvdp, xphi
   PetscReal :: ukvr, v_darcy, dq, dphi
   PetscInt  :: np
+  PetscInt :: iflag
   PetscErrorCode :: ierr
   
   Res=0D0
@@ -931,9 +932,10 @@ subroutine ImmisSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fla
                   tsrc,rho,dddt,dddp,fg,dfgdp,dfgdt, &
                   eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
               else
+              iflag = 1
               call co2_span_wagner(aux_var%pres*1.D-6,&
                   tsrc+273.15D0,rho,dddt,dddp,fg,dfgdp,dfgdt, &
-                  eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
+                  eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,iflag,option%itable)
               endif 
              case(3) 
               call sw_prop(tsrc,aux_var%pres*1.D-6,rho, &
