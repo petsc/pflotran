@@ -747,10 +747,12 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
       if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
       if (dtt > flow_stepper%dt_max) dtt = flow_stepper%dt_max
       ! for restarted simulations, we will give 5 time steps to get caught up
-      if (option%restart_flag .and. flow_stepper%steps <= 5) then
+!geh      if (option%restart_flag .and. flow_stepper%steps <= 5) then
+      if (option%restart_flag .or. flow_stepper%steps <= 5) then
         ! do nothing
       else
-        if (dtt>.25d0*time .and. time>5.d2) dtt=.25d0*time
+!geh        if (dtt>.25d0*time .and. time>5.d2) dtt=.25d0*time
+        if (dtt>.25d0*time) dtt=.25d0*time
       endif
       dt = dtt
 
@@ -808,10 +810,12 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option)
       if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
       if (dtt > tran_stepper%dt_max) dtt = tran_stepper%dt_max
       ! for restarted simulations, we will give 5 time steps to get caught up
-      if (option%restart_flag .and. tran_stepper%steps <= 5) then
+!geh      if (option%restart_flag .and. tran_stepper%steps <= 5) then
+      if (option%restart_flag .or. tran_stepper%steps <= 5) then
         ! do nothing
       else
-        if (dtt>.25d0*time .and. time>5.d2) dtt=.25d0*time
+!geh        if (dtt>.25d0*time .and. time>5.d2) dtt=.25d0*time
+        if (dtt>.25d0*time) dtt=.25d0*time
       endif
       dt = dtt
 
@@ -1013,6 +1017,7 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
   PetscInt :: sum_newton_iterations, sum_linear_iterations
   PetscInt :: num_newton_iterations, num_linear_iterations
   PetscReal :: fnorm, scaled_fnorm, inorm, prev_norm, dif_norm, rel_norm
+  PetscReal :: tempreal
   Vec :: update_vec
   PetscBool :: plot_flag
   PetscBool :: transient_plot_flag
@@ -1253,21 +1258,40 @@ subroutine StepperStepFlowDT(realization,stepper,step_to_steady_state,failure)
 
       ! zero out dt to prevent potential error in mass balance calc while 
       ! updating solution
-      fnorm = option%flow_dt
+      tempreal = option%flow_dt
       option%flow_dt = 0.d0  
       ! take next step at larger dt      
       call StepperUpdateFlowSolution(realization)
-      option%flow_dt = fnorm
-      option%flow_dt = option%flow_dt*2.d0
+      option%flow_dt = tempreal
+      if (num_newton_iterations < 4) then
+        option%flow_dt = option%flow_dt*2.d0
+      else if (num_newton_iterations < 5) then
+        option%flow_dt = option%flow_dt*1.5d0
+      else if (num_newton_iterations < 6) then
+        option%flow_dt = option%flow_dt*1.d0
+      else if (num_newton_iterations < 7) then
+        option%flow_dt = option%flow_dt*0.9d0
+      else if (num_newton_iterations < 8) then
+        option%flow_dt = option%flow_dt*0.8d0
+      else if (num_newton_iterations < 9) then
+        option%flow_dt = option%flow_dt*0.7d0
+      else
+        option%flow_dt = option%flow_dt*0.6d0
+      endif
+
       if (option%print_file_flag) then
         write(option%fid_out,*) 'Dt: ', option%flow_dt
         write(option%fid_out,*) 'Inf Norm: ', inorm
         write(option%fid_out,*) 'Relative Norm: ', rel_norm
+        write(option%fid_out,*) 'Linear its/Newton It: ', &
+          float(num_linear_iterations)/num_newton_iterations
       endif
       if (option%print_screen_flag) then
         write(*,*) 'Dt: ', option%flow_dt
         write(*,*) 'Inf Norm: ', inorm
         write(*,*) 'Relative Norm: ', rel_norm
+        write(*,*) 'Linear its/Newton It: ', &
+          float(num_linear_iterations)/num_newton_iterations
       endif
     endif
 
