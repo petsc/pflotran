@@ -25,6 +25,7 @@ module Simulation_module
   
   public :: SimulationCreate, &
             SimulationDestroy, &
+            SimulationResetTimeSteppers, &
             SimulationCreateProcessorGroups
   
 contains
@@ -123,6 +124,46 @@ subroutine SimulationCreateProcessorGroups(option,num_groups)
   call MPI_Comm_size(option%mycomm,option%mycommsize,ierr)
 
 end subroutine SimulationCreateProcessorGroups
+
+! ************************************************************************** !
+!
+! SimulationResetTimeSteppers: Sets time steppers back to initial settings
+! author: Glenn Hammond
+! date: 01/27/11
+!
+! ************************************************************************** !
+subroutine SimulationResetTimeSteppers(simulation)
+
+  use Timestepper_module
+
+  implicit none
+
+  type(simulation_type) :: simulation
+
+  PetscReal :: dt_min
+  PetscReal :: flow_dt_min = 0.d0
+  PetscReal :: tran_dt_min = 0.d0
+
+  if (associated(simulation%flow_stepper)) &
+    flow_dt_min = simulation%flow_stepper%dt_min
+  if (associated(simulation%tran_stepper)) &
+    tran_dt_min = simulation%tran_stepper%dt_min
+
+  dt_min = max(flow_dt_min,tran_dt_min)
+
+  simulation%realization%option%flow_time = 0.d0
+  simulation%realization%option%flow_dt = dt_min
+  simulation%realization%option%tran_time = 0.d0
+  simulation%realization%option%tran_dt = dt_min
+
+  if (associated(simulation%flow_stepper)) then
+    call TimestepperReset(simulation%flow_stepper,dt_min)
+  endif
+  if (associated(simulation%tran_stepper)) then
+    call TimestepperReset(simulation%tran_stepper,dt_min)
+  endif
+
+end subroutine SimulationResetTimeSteppers
 
 ! ************************************************************************** !
 !
