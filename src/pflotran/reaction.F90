@@ -5122,7 +5122,7 @@ subroutine RKineticSurfCplx(Res,Jac,compute_derivative,rt_auxvar, &
 ! k_b: 1/sec
 ! Res: mol/sec
 
-  dt = option%dt
+  dt = option%tran_dt
   
 ! compute ion activity product and store: units mol/L
   lnQ = 0.d0
