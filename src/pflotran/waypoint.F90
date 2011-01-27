@@ -33,6 +33,7 @@ module Waypoint_module
   public :: WaypointCreate, &
             WaypointListCreate, &
             WaypointInsertInList, &
+            WaypointDeleteFromList, &
             WaypointListFillIn, &
             WaypointListRemoveExtraWaypnts, &
             WaypointConvertTimes, &
@@ -170,6 +171,57 @@ subroutine WaypointInsertInList(new_waypoint,waypoint_list)
   waypoint_list%num_waypoints = waypoint_list%num_waypoints + 1
 
 end subroutine WaypointInsertInList
+
+! ************************************************************************** !
+!
+! WaypointDeleteFromList: Deletes a waypoing in a list
+! author: Gautam Bisht
+! date: 01/20/11
+!
+! ************************************************************************** !
+subroutine WaypointDeleteFromList(obsolete_waypoint,waypoint_list)
+
+  implicit none
+
+  type(waypoint_type), pointer :: obsolete_waypoint
+  type(waypoint_type), pointer :: waypoint, prev_waypoint
+  type(waypoint_list_type)     :: waypoint_list
+
+  waypoint => waypoint_list%first
+
+  if (associated(waypoint)) then ! list exists
+
+    ! Is the waypoint to be deleted is the first waypoint?
+    if (waypoint%time.eq.obsolete_waypoint%time) then
+      waypoint_list%first => waypoint%next
+      call WaypointDestroy(waypoint)
+      return
+    else
+
+      prev_waypoint => waypoint
+      waypoint => waypoint%next
+      do
+        if (associated(waypoint)) then
+          if (dabs(waypoint%time-obsolete_waypoint%time) < 1.d-10) then
+            prev_waypoint%next => waypoint%next
+            call WaypointDestroy(waypoint)
+            return
+          endif
+          prev_waypoint => waypoint
+          waypoint => waypoint%next
+          cycle
+        else
+         ! at the end of the list, didn't find obsolete waypoint
+          return
+        endif
+      enddo
+    endif
+  else
+    ! list does not exists
+    return
+  endif
+  
+end subroutine WaypointDeleteFromList
 
 ! ************************************************************************** !
 !

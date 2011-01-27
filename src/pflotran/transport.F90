@@ -431,9 +431,19 @@ subroutine TFluxCoef(option,area,velocity,diffusion,T_up,T_dn)
   else
     ! central difference, currently assuming uniform grid spacing
     ! units = (m^3 water/m^2 bulk/sec)
+    ! 
+    ! coef_up/coef_dn needs to flip sign of dispersion, but preserve sign of
+    ! of advection.  Since I simply flip the sign of coef_up/coef_dn outside
+    ! in RTResidual and RTJacobian, flipping dispersion without flipping
+    ! advection is not possible, and thus central difference will not work
+    ! for now.
     if (q > 0.d0) then
       coef_up =  diffusion(iphase)+ 0.5d0*q
       coef_dn = -diffusion(iphase)+ 0.5d0*q
+      ! coef_up_dif = diffusion(iphase)
+      ! coef_up_adv = -0.5d0*q
+      ! coef_dn_dif = -diffusion(iphase)
+      ! coef_dn_adv = 0.5d0*q
     else
       coef_up =  diffusion(iphase)+ 0.5d0*q
       coef_dn = -diffusion(iphase)+ 0.5d0*q
