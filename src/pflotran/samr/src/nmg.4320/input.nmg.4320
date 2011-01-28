@@ -14,7 +14,7 @@ CartesianGeometry{
 
 
 GriddingAlgorithm{
-   max_levels = 1 
+   max_levels = 3 
    largest_patch_size {
       level_0 = 20, 20, 80
       level_1 = 40, 40, 40
@@ -154,7 +154,7 @@ PflotranApplicationStrategy{
 
 
 TimerManager{
-   timer_list = "xfer::*::*", "FAC::*::*", "AMRUtilities::*::*", "apps::main::main", "RD2T::*::*", "LevelSolver::*::*"
+   timer_list = "xfer::*::*", "FAC::*::*", "AMRUtilities::*::*", "apps::main::main", "PFlotran::*::*", "LevelSolver::*::*"
 }
 
 
