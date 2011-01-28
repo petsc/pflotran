@@ -2785,6 +2785,11 @@ subroutine RReactChunk(rt_auxvar,global_auxvar,total,volume,porosity_, &
     return
   endif
 #endif
+
+  if (reaction%ncoll > 0) then
+    option%io_buffer = 'Colloids not supported in chunked version of PFLOTRAN.'
+    call printErrMsg(option)
+  endif
   
   ! still need code to overwrite other phases
   call RTAccumulationChunk(rt_auxvar,global_auxvar,porosity_,volume,reaction, &
@@ -4471,11 +4476,13 @@ subroutine RTotalSorbEqSurfCplxChunk(rt_auxvar,global_auxvar,reaction,option)
   PetscInt :: ichunk
 
   do ichunk = 1, option%chunk_size
-  
+
+#ifdef COLLOIDS  
   if (reaction%ncollcomp > 0) then  
     rt_auxvar(ichunk)%colloid%total_eq_mob = 0.d0
     rt_auxvar(ichunk)%colloid%dRj_dCj%dtotal = 0.d0
   endif
+#endif  
   
   ln_conc = log(rt_auxvar(ichunk)%pri_molal)
   ln_act = ln_conc+log(rt_auxvar(ichunk)%pri_act_coef)
@@ -4501,6 +4508,7 @@ subroutine RTotalSorbEqSurfCplxChunk(rt_auxvar,global_auxvar,reaction,option)
 !                       rt_auxvar(ichunk)%mnrl_volfrac(reaction%eqsrfcplx_rxn_to_surf(irxn))
         num_types_of_sites = 1
       case(COLLOID_SURFACE)
+#ifdef COLLOIDS      
         mobile_fraction = reaction%colloid_mobile_fraction(reaction%eqsrfcplx_rxn_to_surf(irxn))
         site_density(1) = (1.d0-mobile_fraction)*reaction%eqsrfcplx_rxn_site_density(irxn)
         site_density(2) = mobile_fraction*reaction%eqsrfcplx_rxn_site_density(irxn)
@@ -4508,6 +4516,7 @@ subroutine RTotalSorbEqSurfCplxChunk(rt_auxvar,global_auxvar,reaction,option)
 !                       rt_auxvar(ichunk)%colloid%total_colloid_conc(reaction%eqsrfcplx_rxn_to_surf(irxn))
         num_types_of_sites = 2 ! two types of sites (mobile and immobile) with separate
                                ! site densities
+#endif                               
       case(NULL_SURFACE)
         site_density(1) = reaction%eqsrfcplx_rxn_site_density(irxn)
         num_types_of_sites = 1
@@ -4630,11 +4639,13 @@ subroutine RTotalSorbEqSurfCplxChunk(rt_auxvar,global_auxvar,reaction,option)
               reaction%eqsrfcplxstoich(i,icplx)*srfcplx_conc(icplx)
           enddo
         else ! mobile sites
+#ifdef COLLOIDS        
           do i = 1, ncomp
             icomp = reaction%pri_spec_to_coll_spec(reaction%eqsrfcplxspecid(i,icplx))
             rt_auxvar(ichunk)%colloid%total_eq_mob(icomp) = rt_auxvar(ichunk)%colloid%total_eq_mob(icomp) + &
               reaction%eqsrfcplxstoich(i,icplx)*srfcplx_conc(icplx)
           enddo
+#endif          
         endif
         
         ! for 2.3-47 which feeds into 2.3-50
@@ -4656,6 +4667,7 @@ subroutine RTotalSorbEqSurfCplxChunk(rt_auxvar,global_auxvar,reaction,option)
                                                    tempreal
             enddo ! i
           else ! mobile sites
+#ifdef COLLOIDS          
             do i = 1, ncomp
               icomp = reaction%eqsrfcplxspecid(i,icplx)
               rt_auxvar(ichunk)%colloid%dRj_dCj%dtotal(icomp,jcomp,1) = &
@@ -4663,6 +4675,7 @@ subroutine RTotalSorbEqSurfCplxChunk(rt_auxvar,global_auxvar,reaction,option)
                                        reaction%eqsrfcplxstoich(i,icplx)* &
                                        tempreal
             enddo ! i
+#endif            
           endif
         enddo ! j
       enddo ! k
@@ -6554,6 +6567,7 @@ subroutine RTAccumulationChunk(rt_aux_var,global_aux_var,por,vol,reaction, &
     Res(ichunk,istart:iend) = psv_t(ichunk)*rt_aux_var(ichunk)%total(:,iphase) 
   enddo
   
+#ifdef COLLOIDS  
   if (reaction%ncoll > 0) then
     do ichunk = 1, option%chunk_size
       do icoll = 1, reaction%ncoll
@@ -6571,6 +6585,7 @@ subroutine RTAccumulationChunk(rt_aux_var,global_aux_var,por,vol,reaction, &
       enddo
     enddo
   endif
+#endif  
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2
@@ -6733,6 +6748,7 @@ subroutine RTAccumulationDerivativeChunk(rt_aux_var,global_aux_var, &
     endif
   enddo
 
+#ifdef COLLOIDS  
   if (reaction%ncoll > 0) then
     do icoll = 1, reaction%ncoll
       idof = reaction%offset_coll + icoll
@@ -6750,6 +6766,7 @@ subroutine RTAccumulationDerivativeChunk(rt_aux_var,global_aux_var, &
     ! dRic_dCj
     enddo                                 
   endif
+#endif
 
 ! Add in multiphase, clu 12/29/08
 #ifdef CHUAN_CO2
