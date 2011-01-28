@@ -97,7 +97,7 @@ module Option_module
       
     PetscReal :: flow_time, tran_time, time  ! The time elapsed in the simulation.
     PetscReal :: tran_weight_t0, tran_weight_t1
-    PetscReal :: flow_dt, tran_dt, dt ! The size of the time step.
+    PetscReal :: flow_dt, tran_dt ! The size of the time step.
     PetscBool :: match_waypoint
   
       ! Basically our target number of newton iterations per time step.

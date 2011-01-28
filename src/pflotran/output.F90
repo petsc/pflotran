@@ -2310,6 +2310,7 @@ subroutine OutputObservationTecplot(realization)
         open_file = PETSC_TRUE
         exit
       endif
+      observation => observation%next
     enddo
   endif
   

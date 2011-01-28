@@ -54,7 +54,7 @@ module Timestepper_module
   end type stepper_type
   
   public :: TimestepperCreate, TimestepperDestroy, StepperRun, &
-            TimestepperRead, TimestepperPrintInfo
+            TimestepperRead, TimestepperPrintInfo, TimestepperReset
 
 contains
 
@@ -122,6 +122,40 @@ function TimestepperCreate()
   TimeStepperCreate => stepper
   
 end function TimestepperCreate 
+
+! ************************************************************************** !
+!
+! TimestepperReset: Resets time stepper back to initial settings
+! author: Glenn Hammond
+! date: 01/27/11
+!
+! ************************************************************************** !
+subroutine TimestepperReset(stepper,dt_min)
+
+  implicit none
+
+  type(stepper_type) :: stepper
+  PetscReal :: dt_min
+
+  stepper%steps = 0
+  stepper%num_newton_iterations = 0
+  stepper%num_linear_iterations = 0
+  stepper%num_constant_time_steps = 0
+
+  stepper%cumulative_newton_iterations = 0
+  stepper%cumulative_linear_iterations = 0
+  stepper%cumulative_time_step_cuts = 0
+  stepper%cumulative_solver_time = 0.d0
+
+  stepper%start_time_step = 0
+  stepper%target_time = 0.d0
+
+  stepper%dt_min = dt_min
+  stepper%prev_dt = 0.d0
+
+  stepper%time_step_cut_flag = PETSC_FALSE
+
+end subroutine TimestepperReset
 
 ! ************************************************************************** !
 !
