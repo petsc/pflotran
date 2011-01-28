@@ -155,11 +155,18 @@ subroutine SimulationResetTimeSteppers(simulation)
   simulation%realization%option%flow_dt = dt_min
   simulation%realization%option%tran_time = 0.d0
   simulation%realization%option%tran_dt = dt_min
+  simulation%realization%option%match_waypoint = PETSC_FALSE
+
+  simulation%realization%output_option%plot_number = 0
 
   if (associated(simulation%flow_stepper)) then
+    simulation%flow_stepper%cur_waypoint => &
+      simulation%realization%waypoints%first
     call TimestepperReset(simulation%flow_stepper,dt_min)
   endif
   if (associated(simulation%tran_stepper)) then
+    simulation%tran_stepper%cur_waypoint => &
+      simulation%realization%waypoints%first
     call TimestepperReset(simulation%tran_stepper,dt_min)
   endif
 
