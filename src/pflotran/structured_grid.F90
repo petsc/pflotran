@@ -75,7 +75,8 @@ module Structured_Grid_module
             StructGridGetIJKFromGhostedID, &
             StructuredGridVecGetMaskArrayCellF90, &
             StructuredGridVecGetArrayF90, &
-            StructGridVecRestoreArrayF90
+            StructGridVecRestoreArrayF90, &
+            StructGridGetGhostedNeighbors
 contains
 
 ! ************************************************************************** !
@@ -913,6 +914,56 @@ subroutine StructGridGetIJKFromGhostedID(structured_grid,ghosted_id,i,j,k)
   i= mod(mod((ghosted_id-1),structured_grid%ngxy),structured_grid%ngx) + 1  
   
 end subroutine StructGridGetIJKFromGhostedID
+
+! ************************************************************************** !
+!
+! StructGridGetLocalIDFromIJK: Finds local_id for grid cell defined by 
+!                              i,j,k indices
+! author: Glenn Hammond
+! date: 01/28/11
+!
+! ************************************************************************** !
+function StructGridGetLocalIDFromIJK(structured_grid,i,j,k)
+
+  use Option_module
+  
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  type(option_type) :: option
+  PetscInt :: i, j, k
+  
+  PetscInt :: StructGridGetLocalIDFromIJK
+  
+  StructGridGetLocalIDFromIJK = &
+    i+(j-1)*structured_grid%nlx+(k-1)*structured_grid%nlxy
+  
+end function StructGridGetLocalIDFromIJK
+
+! ************************************************************************** !
+!
+! StructGridGetGhostedIDFromIJK: Finds ghosted_id for grid cell defined by 
+!                              i,j,k indices
+! author: Glenn Hammond
+! date: 01/28/11
+!
+! ************************************************************************** !
+function StructGridGetGhostedIDFromIJK(structured_grid,i,j,k)
+
+  use Option_module
+  
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  type(option_type) :: option
+  PetscInt :: i, j, k
+  
+  PetscInt :: StructGridGetGhostedIDFromIJK
+  
+  StructGridGetGhostedIDFromIJK = &
+    i+(j-1)*structured_grid%ngx+(k-1)*structured_grid%ngxy
+  
+end function StructGridGetGhostedIDFromIJK
 
 ! ************************************************************************** !
 !
@@ -1899,6 +1950,71 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
   endif
 
 end subroutine StructuredGridMapIndices
+
+! ************************************************************************** !
+!
+! StructGridGetGhostedNeighbors: Returns an array of neighboring cells
+! author: Glenn Hammond
+! date: 01/28/11
+!
+! ************************************************************************** !
+subroutine StructGridGetGhostedNeighbors(structured_grid,ghosted_id, &
+                                         stencil_type, &
+                                         stencil_width_i,stencil_width_j, &
+                                         stencil_width_k,ghosted_neighbors, &
+                                         option)
+
+  use Option_module
+
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  type(option_type) :: option
+  PetscInt :: ghosted_id
+  PetscInt :: stencil_type
+  PetscInt :: stencil_width_i
+  PetscInt :: stencil_width_j
+  PetscInt :: stencil_width_k
+  PetscInt :: ghosted_neighbors(0:27)
+
+  PetscInt :: i, j, k
+  PetscInt :: icount
+  PetscInt :: ii, jj, kk
+
+  call StructGridGetIJKFromGhostedID(structured_grid,ghosted_id,i,j,k)
+  
+  icount = 0
+  select case(stencil_type)
+    case(STAR_STENCIL)
+      do ii = i-stencil_width_i, i+stencil_width_i
+        if (ii /= i) then
+          icount = icount + 1
+          ghosted_neighbors(icount) = &
+            StructGridGetGhostedIDFromIJK(structured_grid,ii,j,k)
+        endif
+      enddo
+      do jj = j-stencil_width_j, j+stencil_width_j
+        if (jj /= j) then
+          icount = icount + 1
+          ghosted_neighbors(icount) = &
+            StructGridGetGhostedIDFromIJK(structured_grid,i,jj,k)
+        endif
+      enddo
+      do kk = k-stencil_width_k, k+stencil_width_k
+        if (kk /= k) then
+          icount = icount + 1
+          ghosted_neighbors(icount) = &
+            StructGridGetGhostedIDFromIJK(structured_grid,i,j,kk)
+        endif
+      enddo
+      ghosted_neighbors(0) = icount
+    case(BOX_STENCIL)
+      option%io_buffer = 'BOX_STENCIL not yet supported in ' // &
+        'StructGridGetNeighbors.'
+      call printErrMsg(option)
+  end select
+
+end subroutine StructGridGetGhostedNeighbors
 
 ! ************************************************************************** !
 !
