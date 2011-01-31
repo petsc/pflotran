@@ -201,7 +201,6 @@ private:
    /*
     * Variables.
     */
-   tbox::Pointer< pdat::CCellVariable<NDIM,double> > d_solution;
    tbox::Pointer< pdat::CCellVariable<NDIM,double> > d_pflotran_weight;
 
    int  d_pflotran_weight_id;
@@ -217,12 +216,9 @@ private:
 
    std::string d_face_coarsen_op_str;
 
-   int d_number_solution_components;
+   int d_number_of_modes;
 
    tbox::Array< tbox::Pointer< hier::Variable<NDIM> > > d_variable_list;
-
-   tbox::Pointer<xfer::RefineOperator<NDIM> >  d_soln_refine_op;
-   tbox::Pointer<xfer::CoarsenOperator<NDIM> > d_soln_coarsen_op;
 
    tbox::Pointer<xfer::CoarsenOperator<NDIM> > d_flux_coarsen_op;
 
