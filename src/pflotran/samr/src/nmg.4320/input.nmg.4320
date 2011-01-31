@@ -4,7 +4,7 @@ PERIODIC  = 2
 MIXED     = 3
 ROBIN     = 4
 
-pflotran_filename="pflotran.15c.in"
+pflotran_filename="pflotran.15c.4320p.in"
 
 CartesianGeometry{
    domain_boxes = [(0,0,0), (19,19,79)]
@@ -14,7 +14,7 @@ CartesianGeometry{
 
 
 GriddingAlgorithm{
-   max_levels = 2 
+   max_levels = 7 
    largest_patch_size {
       level_0 = 20, 20, 80
       level_1 = 40, 40, 40
