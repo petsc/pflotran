@@ -261,4 +261,8 @@ PetscInt, parameter :: DATASET_VECTOR = 2
 PetscInt, parameter :: DATASET_TENSOR = 3
 PetscInt, parameter :: DATASET_HETEROGENEOUS = 4
 
+! stencil type
+PetscInt, parameter :: STAR_STENCIL = 1
+PetscInt, parameter :: BOX_STENCIL = 2
+
 #define HASH

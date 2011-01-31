@@ -121,7 +121,8 @@ module Grid_module
             GridVecRestoreArrayF90, &
             GridIndexToCellID, &
             GridComputeCell2FaceConnectivity, &
-            GridComputeGlobalCell2FaceConnectivity
+            GridComputeGlobalCell2FaceConnectivity, &
+            GridGetGhostedNeighbors
 contains
 
 ! ************************************************************************** !
@@ -1887,6 +1888,46 @@ subroutine GridPrintHashTable(grid)
   close(fid)
 
 end subroutine GridPrintHashTable
+
+! ************************************************************************** !
+!
+! GridGetNeighbors: Returns an array of neighboring cells
+! author: Glenn Hammond
+! date: 01/28/11
+!
+! ************************************************************************** !
+subroutine GridGetGhostedNeighbors(grid,ghosted_id,stencil_type, &
+                                   stencil_width_i,stencil_width_j, &
+                                   stencil_width_k, &
+                                   ghosted_neighbors,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(grid_type) :: grid
+  type(option_type) :: option
+  PetscInt :: ghosted_id
+  PetscInt :: stencil_type
+  PetscInt :: stencil_width_i
+  PetscInt :: stencil_width_j
+  PetscInt :: stencil_width_k
+  PetscInt :: ghosted_neighbors(0:27)
+  
+  select case(grid%itype)
+    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+      call StructGridGetGhostedNeighbors(grid%structured_grid, &
+                                         ghosted_id,stencil_type, &
+                                         stencil_width_i, &
+                                         stencil_width_j,stencil_width_k, &
+                                         ghosted_neighbors,option)
+    case(UNSTRUCTURED_GRID) 
+      option%io_buffer = 'GridGetNeighbors not currently supported for ' // &
+        'unstructured grids.'
+      call printErrMsg(option)
+  end select
+
+end subroutine GridGetGhostedNeighbors
 
 ! ************************************************************************** !
 !
