@@ -242,7 +242,6 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
 
   select case(grid%itype)
     case(STRUCTURED_GRID_MIMETIC)
-!    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
 #ifdef DASVYAT
       connection_bound_set => &
         StructGridComputeBoundConnect(grid%structured_grid, grid%x, grid%y, grid%z, option)
@@ -260,7 +259,6 @@ subroutine GridComputeInternalConnect(grid,option,ugdm)
     call ConnectionInitList(grid%boundary_connection_set_list)
     call ConnectionAddToList(connection_bound_set,grid%boundary_connection_set_list)
   end if
-!  if ((grid%itype==STRUCTURED_GRID).or.(grid%itype==STRUCTURED_GRID_MIMETIC)) then
   if ((grid%itype==STRUCTURED_GRID_MIMETIC)) then
     allocate(grid%fL2G(grid%nlmax_faces))
     allocate(grid%fG2L(grid%ngmax_faces))
@@ -332,12 +330,6 @@ subroutine GridPopulateFaces(grid, option)
    type(face_type), pointer :: faces(:)
    character(len=MAXWORDLENGTH) :: filename
 
-!   if (option%myrank==0) filename = "faces0"
-!   if (option%myrank==1) filename = "faces1"
-!   if (option%myrank==2) filename = "faces2"
-!   if (option%myrank==3) filename = "faces3"
-
-!   open(unit=9, file=filename)
 
    total_faces = grid%ngmax_faces
  
@@ -353,7 +345,6 @@ subroutine GridPopulateFaces(grid, option)
        face_id = face_id + 1
        faces(face_id)%conn_set_ptr => cur_connection_set
        faces(face_id)%id = iconn
-!       write(9,*) "Internal faces ", "face_id=",face_id," iconn=",iconn, cur_connection_set%id_dn(iconn),  cur_connection_set%id_up(iconn)
      enddo
      cur_connection_set => cur_connection_set%next
    enddo
@@ -373,7 +364,6 @@ subroutine GridPopulateFaces(grid, option)
 
    grid%faces => faces
 
-!   Close(UNIT=9)
 #endif
 end subroutine GridPopulateFaces 
 
