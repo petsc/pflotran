@@ -2,6 +2,7 @@ module Reactive_Transport_module
 
   use Transport_module
   use Reaction_module
+  use Reaction_Chunk_module
   use Reactive_Transport_Aux_module
   use Reaction_Aux_module
   use Global_Aux_module
@@ -3905,7 +3906,6 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   type(reactive_transport_param_type), pointer :: rt_parameter
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:), rt_aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
-  PetscReal :: Res(realization%reaction%ncomp)
   
   PetscReal, pointer :: face_fluxes_p(:)
 
@@ -3918,8 +3918,18 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
   PetscInt :: axis, side, nlx, nly, nlz, ngx, ngxy, pstart, pend, flux_id
   PetscInt :: direction, max_x_conn, max_y_conn
   
+#ifdef CENTRAL_DIFFERENCE  
+  PetscReal :: T_11(realization%option%nphase)
+  PetscReal :: T_12(realization%option%nphase)
+  PetscReal :: T_21(realization%option%nphase)
+  PetscReal :: T_22(realization%option%nphase)
+  PetscReal :: Res_1(realization%reaction%ncomp)
+  PetscReal :: Res_2(realization%reaction%ncomp)
+#else
   PetscReal :: coef_up(realization%option%nphase)
   PetscReal :: coef_dn(realization%option%nphase)
+  PetscReal :: Res(realization%reaction%ncomp)
+#endif
 
 #ifdef CHUAN_CO2
   PetscReal :: msrc(1:realization%option%nflowspec)
@@ -4271,6 +4281,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
         ! TFluxCoef will eventually be moved to another routine where it should be
         ! called only once per flux interface at the beginning of a transport
         ! time step.
+#ifndef CENTRAL_DIFFERENCE        
         call TFluxCoef(option,cur_connection_set%area(iconn), &
                        patch%internal_velocities(:,sum_connection), &
                        patch%internal_tran_coefs(:,sum_connection), &
@@ -4303,6 +4314,32 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
           patch%internal_fluxes(iphase,1:reaction%ncomp,iconn) = &
               Res(1:reaction%ncomp)
         endif
+#else
+        call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
+                     patch%internal_velocities(:,sum_connection), &
+                     patch%internal_tran_coefs(:,sum_connection), &
+                     T_11,T_12,T_21,T_22)
+        call TFlux_CD(rt_parameter, &
+                   rt_aux_vars(ghosted_id_up), &
+                   global_aux_vars(ghosted_id_up), &
+                   rt_aux_vars(ghosted_id_dn), &
+                   global_aux_vars(ghosted_id_dn), &
+                   T_11,T_12,T_21,T_22,option,Res_1,Res_2)
+                   
+        if (local_id_up>0) then
+          iend = local_id_up*reaction%ncomp
+          istart = iend-reaction%ncomp+1
+          r_p(istart:iend) = r_p(istart:iend) + Res_1(1:reaction%ncomp)
+        endif
+      
+        if (local_id_dn>0) then
+          iend = local_id_dn*reaction%ncomp
+          istart = iend-reaction%ncomp+1
+          r_p(istart:iend) = r_p(istart:iend) + Res_2(1:reaction%ncomp)
+        endif
+#endif
+
+
       
       enddo
       cur_connection_set => cur_connection_set%next
@@ -4323,6 +4360,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
 
         if (patch%imat(ghosted_id) <= 0) cycle
 
+#ifndef CENTRAL_DIFFERENCE
         ! TFluxCoef accomplishes the same as what TBCCoef would
         call TFluxCoef(option,cur_connection_set%area(iconn), &
                        patch%boundary_velocities(:,sum_connection), &
@@ -4344,7 +4382,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
           patch%boundary_fluxes(iphase,1:reaction%ncomp,sum_connection) = &
              -Res(1:reaction%ncomp)
         endif
-     
+
         if (option%compute_mass_balance_new) then
         ! contribution to boundary 
           rt_aux_vars_bc(sum_connection)%mass_balance_delta(:,iphase) = &
@@ -4353,7 +4391,38 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
 !        rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) = &
 !          rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) + Res
          endif  
+
+#else
+        call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
+                       patch%boundary_velocities(:,sum_connection), &
+                       patch%boundary_tran_coefs(:,sum_connection), &
+                     T_11,T_12,T_21,T_22)
+        call TFlux_CD(rt_parameter, &
+                   rt_aux_vars_bc(sum_connection), &
+                   global_aux_vars_bc(sum_connection), &
+                   rt_aux_vars(ghosted_id), &
+                   global_aux_vars(ghosted_id), &
+                   T_11,T_12,T_21,T_22,option,Res_1,Res_2)
+
+        iend = local_id*reaction%ncomp
+        istart = iend-reaction%ncomp+1
+        r_p(istart:iend)= r_p(istart:iend) + Res_2(1:reaction%ncomp)
+
+        if (option%store_solute_fluxes) then
+          patch%boundary_fluxes(iphase,1:reaction%ncomp,sum_connection) = &
+             Res_2(1:reaction%ncomp)
+        endif
+        if (option%compute_mass_balance_new) then
+        ! contribution to boundary 
+          rt_aux_vars_bc(sum_connection)%mass_balance_delta(:,iphase) = &
+            rt_aux_vars_bc(sum_connection)%mass_balance_delta(:,iphase) - Res_2
+!        ! contribution to internal 
+!        rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) = &
+!          rt_aux_vars(ghosted_id)%mass_balance_delta(:,iphase) + Res
+         endif  
       
+#endif                   
+     
       enddo
       boundary_condition => boundary_condition%next
     enddo
@@ -4904,9 +4973,6 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:), rt_aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
-  PetscReal :: Jup(realization%reaction%ncomp,realization%reaction%ncomp)
-  PetscReal :: Jdn(realization%reaction%ncomp,realization%reaction%ncomp)
-  PetscReal :: Res(realization%reaction%ncomp)  
   
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_list_type), pointer :: connection_set_list
@@ -4915,9 +4981,24 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
   PetscReal :: fraction_upwind, distance, dist_up, dist_dn, rdum
 
+#ifdef CENTRAL_DIFFERENCE
+  PetscReal :: T_11(realization%option%nphase)
+  PetscReal :: T_12(realization%option%nphase)
+  PetscReal :: T_21(realization%option%nphase)
+  PetscReal :: T_22(realization%option%nphase)
+  PetscReal :: J_11(realization%reaction%ncomp,realization%reaction%ncomp)
+  PetscReal :: J_12(realization%reaction%ncomp,realization%reaction%ncomp)
+  PetscReal :: J_21(realization%reaction%ncomp,realization%reaction%ncomp)
+  PetscReal :: J_22(realization%reaction%ncomp,realization%reaction%ncomp)
+  PetscReal :: Res(realization%reaction%ncomp)  
+#else
   PetscReal :: coef_up(realization%option%nphase)
   PetscReal :: coef_dn(realization%option%nphase)
-    
+  PetscReal :: Jup(realization%reaction%ncomp,realization%reaction%ncomp)
+  PetscReal :: Jdn(realization%reaction%ncomp,realization%reaction%ncomp)
+  PetscReal :: Res(realization%reaction%ncomp)  
+#endif
+
   option => realization%option
   field => realization%field
   patch => realization%patch  
@@ -5118,8 +5199,6 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 
   call PetscLogEventBegin(logging%event_rt_jacobian_flux,ierr)
 
-  Jup = 0.d0  
-  Jdn = 0.d0  
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
   sum_connection = 0  
@@ -5137,6 +5216,7 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       if (patch%imat(ghosted_id_up) <= 0 .or.  &
           patch%imat(ghosted_id_dn) <= 0) cycle
 
+#ifndef CENTRAL_DIFFERENCE
       call TFluxCoef(option,cur_connection_set%area(iconn), &
                      patch%internal_velocities(:,sum_connection), &
                      patch%internal_tran_coefs(:,sum_connection), &
@@ -5147,7 +5227,6 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                            rt_aux_vars(ghosted_id_dn), &
                            global_aux_vars(ghosted_id_dn), &
                            coef_up,coef_dn,option,Jup,Jdn)
-
       if (local_id_up>0) then
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
                                       Jup,ADD_VALUES,ierr)
@@ -5164,6 +5243,34 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                                       Jup,ADD_VALUES,ierr)
       endif
 
+#else
+      call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
+                     patch%internal_velocities(:,sum_connection), &
+                     patch%internal_tran_coefs(:,sum_connection), &
+                     T_11,T_12,T_21,T_22)
+      call TFluxDerivative_CD(rt_parameter, &
+                           rt_aux_vars(ghosted_id_up), &
+                           global_aux_vars(ghosted_id_up), &
+                           rt_aux_vars(ghosted_id_dn), &
+                           global_aux_vars(ghosted_id_dn), &
+                           T_11,T_12,T_21,T_22,option, &
+                           J_11,J_12,J_21,J_22)
+      if (local_id_up>0) then
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
+                                      J_11,ADD_VALUES,ierr)
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
+                                      J_12,ADD_VALUES,ierr)        
+      endif
+   
+      if (local_id_dn>0) then
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
+                                      J_22,ADD_VALUES,ierr)
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
+                                      J_21,ADD_VALUES,ierr)
+      endif
+#endif
+
+
     enddo
     cur_connection_set => cur_connection_set%next
   enddo    
@@ -5175,7 +5282,6 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 
   call PetscLogEventBegin(logging%event_rt_jacobian_fluxbc,ierr)
 
-  Jdn = 0.d0
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
@@ -5191,6 +5297,7 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 
       if (patch%imat(ghosted_id) <= 0) cycle
 
+#ifndef CENTRAL_DIFFERENCE
       ! TFluxCoef accomplishes the same as what TBCCoef would
       call TFluxCoef(option,cur_connection_set%area(iconn), &
                      patch%boundary_velocities(:,sum_connection), &
@@ -5208,6 +5315,21 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       Jdn = -Jdn
       
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn,ADD_VALUES,ierr)
+ 
+#else
+      call TFluxCoef_CD(option,cur_connection_set%area(iconn), &
+                     patch%boundary_velocities(:,sum_connection), &
+                     patch%boundary_tran_coefs(:,sum_connection), &
+                     T_11,T_12,T_21,T_22)
+      call TFluxDerivative_CD(rt_parameter, &
+                           rt_aux_vars_bc(sum_connection), &
+                           global_aux_vars_bc(sum_connection), &
+                           rt_aux_vars(ghosted_id), &
+                           global_aux_vars(ghosted_id), &
+                           T_11,T_12,T_21,T_22,option, &
+                           J_11,J_12,J_21,J_22)
+      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,J_22,ADD_VALUES,ierr)
+#endif
  
     enddo
     boundary_condition => boundary_condition%next
