@@ -225,7 +225,7 @@ PflotranFlowPreconditioner::wrapperSetupPreconditioner( PC pcshell)
 int
 PflotranFlowPreconditioner::setupPreconditioner(PreconditionerParameters* parameters)
 {
-   static tbox::Pointer<tbox::Timer> t_setup_pc = tbox::TimerManager::getManager()->getTimer("PflotranFlowPreconditioner::setupPreconditioner");
+   static tbox::Pointer<tbox::Timer> t_setup_pc = tbox::TimerManager::getManager()->getTimer("PFlotran::PflotranFlowPreconditioner::setupPreconditioner");
    t_setup_pc->start();
 
    if(d_pc_solver_op_registered)

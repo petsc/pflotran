@@ -35,7 +35,7 @@ GriddingAlgorithm{
 StandardTagAndInitialize{
    tagging_method = "REFINE_BOXES"
    RefineBoxes{
-      level_0 = [(0,0,0),(9,9,19)], [(11,11,0),(19,19,19)]
+      level_0 = [(0,0,0),(19,19,19)]
       level_1 = [(0,0,0),(39,39,19)]
       level_2 = [(0,0,0),(79,79,19)]
       level_3 = [(0,0,0),(159,159,19)]
@@ -52,9 +52,29 @@ PflotranApplicationStrategy{
    DriverMode                       = 1
    nl_tangential_coarse_fine_scheme = "LINEAR"
    nl_normal_coarse_fine_scheme     = "LINEAR"
-   number_solution_components       = 3
+   number_of_modes       = 3
 
-   PflotranMultilevelOperator{
+   PflotranFlowMultilevelOperator{
+     	       operator_name                   = "PflotranMultilevelOperator"
+	       tangent_interp_scheme           = "LINEAR"
+	       normal_interp_scheme            = "LINEAR"
+	       adjust_cf_coefficients          = FALSE
+	       interpolate_ghost_values        = TRUE
+	       extrapolation_order             = 2
+	       boundary_conditions             = NEUMANN, NEUMANN, NEUMANN, NEUMANN, NEUMANN, DIRICHLET
+	       coarsen_diffusive_fluxes        = TRUE
+	       coarsen_convective_fluxes       = TRUE
+	       print_info_level                = 0
+	       cell_refine_op                  = "CONSTANT_REFINE"
+	       cell_coarsen_op                 = "CONSERVATIVE_COARSEN"
+	       cell_soln_coarsen_op                 = "CONSERVATIVE_COARSEN"
+	       cell_src_coarsen_op                 = "SUM_COARSEN"
+	       face_refine_op                  = "CONSTANT_REFINE"
+	       face_coarsen_op                 = "CONSERVATIVE_COARSEN"
+	       variable_order_interpolation    = FALSE
+	       use_cf_interpolant              = TRUE
+   }
+   PflotranTransportMultilevelOperator{
      	       operator_name                   = "PflotranMultilevelOperator"
 	       tangent_interp_scheme           = "LINEAR"
 	       normal_interp_scheme            = "LINEAR"
@@ -154,7 +174,7 @@ PflotranApplicationStrategy{
 
 
 TimerManager{
-   timer_list = "xfer::*::*", "FAC::*::*", "AMRUtilities::*::*", "apps::main::main", "RD2T::*::*", "LevelSolver::*::*"
+   timer_list = "xfer::*::*", "FAC::*::*", "AMRUtilities::*::*", "apps::main::main", "PFlotran::*::*", "LevelSolver::*::*"
 }
 
 

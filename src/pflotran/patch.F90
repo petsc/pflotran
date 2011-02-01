@@ -907,17 +907,20 @@ subroutine PatchScaleSourceSink(patch,option)
   type(field_type), pointer :: field
   
   PetscReal, pointer :: vec_ptr(:)
-  PetscReal, pointer :: perm_ptr(:)
+  PetscReal, pointer :: perm_loc_ptr(:)
   PetscReal, pointer :: vol_ptr(:)
   PetscInt :: local_id
-  PetscInt :: ghosted_id
+  PetscInt :: ghosted_id, neighbor_ghosted_id
   PetscInt :: iconn
-  PetscReal :: scale
-  
+  PetscReal :: scale, sum
+  PetscInt :: icount
+  PetscInt, parameter :: x_width = 1, y_width = 1, z_width = 0
+  PetscInt :: ghosted_neighbors(0:27)
+    
   field => patch%field
   grid => patch%grid
 
-  call GridVecGetArrayF90(grid,field%perm0_xx,perm_ptr,ierr)
+  call GridVecGetArrayF90(grid,field%perm_xx_loc,perm_loc_ptr,ierr)
   call GridVecGetArrayF90(grid,field%volume,vol_ptr,ierr)
 
   grid => patch%grid
@@ -937,7 +940,39 @@ subroutine PatchScaleSourceSink(patch,option)
 
       select case(option%iflowmode)
         case(RICHARDS_MODE)
-          vec_ptr(local_id) = perm_ptr(local_id)*vol_ptr(ghosted_id)
+           call GridGetGhostedNeighbors(grid,ghosted_id,STAR_STENCIL, &
+                                        x_width,y_width,z_width, &
+                                        ghosted_neighbors,option)
+           ! ghosted neighbors is ordered first in x, then, y, then z
+           icount = 0
+           sum = 0.d0
+           ! x-direction
+           do while (icount < 2*x_width)
+             icount = icount + 1
+             neighbor_ghosted_id = ghosted_neighbors(icount)
+             sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                         grid%structured_grid%dy(neighbor_ghosted_id)* &
+                         grid%structured_grid%dz(neighbor_ghosted_id)
+             
+           enddo
+           ! y-direction
+           do while (icount < 2*(x_width+y_width))
+             icount = icount + 1
+             neighbor_ghosted_id = ghosted_neighbors(icount)                 
+             sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                         grid%structured_grid%dx(neighbor_ghosted_id)* &
+                         grid%structured_grid%dz(neighbor_ghosted_id)
+             
+           enddo
+           ! z-direction
+           do while (icount < 2*(x_width+y_width+z_width))
+             icount = icount + 1
+             neighbor_ghosted_id = ghosted_neighbors(icount)                 
+             sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                         grid%structured_grid%dx(neighbor_ghosted_id)* &
+                         grid%structured_grid%dy(neighbor_ghosted_id)
+           enddo
+           vec_ptr(local_id) = vec_ptr(local_id) + sum
         case(THC_MODE)
         case(MPH_MODE)
         case(IMS_MODE)
@@ -970,7 +1005,7 @@ subroutine PatchScaleSourceSink(patch,option)
     cur_source_sink => cur_source_sink%next
   enddo
 
-  call GridVecRestoreArrayF90(grid,field%perm0_xx,perm_ptr, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_xx_loc,perm_loc_ptr, ierr)
   call GridVecRestoreArrayF90(grid,field%volume,vol_ptr, ierr)
    
 end subroutine PatchScaleSourceSink

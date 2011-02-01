@@ -285,9 +285,21 @@ void samrcreatematrix_(SAMRAI::PflotranApplicationStrategy **application_strateg
                        Mat *pMatrix)    
 {
    tbox::Pointer<tbox::Database> application_db = (*application_strategy)->getDatabase();
-   
+#if 0   
    tbox::Pointer<tbox::Database> operator_db = application_db->getDatabase("PflotranMultilevelOperator");
+#else
+   tbox::Pointer<tbox::Database> operator_db;
+   if(*flowortransport==0)
+     {
+       operator_db = application_db->getDatabase("PflotranFlowMultilevelOperator");
+     }
+   else
+     {
+       operator_db = application_db->getDatabase("PflotranTransportMultilevelOperator");
+     }
 
+#endif
+   
    SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->getHierarchy();
 
    operator_db->putInteger("ndof", *ndof);
