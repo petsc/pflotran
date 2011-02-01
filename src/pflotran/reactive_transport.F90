@@ -2,6 +2,7 @@ module Reactive_Transport_module
 
   use Transport_module
   use Reaction_module
+  use Reaction_Chunk_module
   use Reactive_Transport_Aux_module
   use Reaction_Aux_module
   use Global_Aux_module
