@@ -147,6 +147,7 @@ common_obj = ${common_src}option.o \
 	${common_src}immis.o\
 	${common_src}flash2.o\
 	${common_src}transport.o\
+	${common_src}reaction_chunk.o\
 	${common_src}reaction.o\
 	${common_src}reactive_transport.o\
 	${common_src}thc.o\
@@ -236,12 +237,13 @@ output.o : grid.o structured_grid.o option.o realization.o field.o \
            thc.o richards.o mphase.o flash2.o \
            discretization.o logging.o amrgrid.o
 reaction.o : reactive_transport_aux.o reaction_aux.o option.o string.o
+reaction_chunk.o : reactive_transport_aux.o reaction_aux.o option.o string.o
 reaction_aux.o : option.o string.o
 transport.o : reactive_transport_aux.o option.o matrix_block_aux.o
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
                        reactive_transport_aux.o fluid.o logging.o global_aux.o \
                        amrgrid.o
-reactive_transport_aux.o : option.o reaction_aux.o matrix_block_aux.o
+reactive_transport_aux.o : option.o reaction_aux.o reaction_chunk.o matrix_block_aux.o
 thc.o : thc_aux.o realization.o saturation_function.o
 richards.o : richards_aux.o realization.o saturation_function.o \
              matrix_buffer.o logging.o amrgrid.o
