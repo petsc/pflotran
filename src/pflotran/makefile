@@ -243,7 +243,7 @@ transport.o : reactive_transport_aux.o option.o matrix_block_aux.o
 reactive_transport.o : realization.o reaction.o transport.o matrix_block_aux.o \
                        reactive_transport_aux.o fluid.o logging.o global_aux.o \
                        amrgrid.o
-reactive_transport_aux.o : option.o reaction_aux.o reaction_chunk.o matrix_block_aux.o
+reactive_transport_aux.o : option.o reaction_aux.o matrix_block_aux.o
 thc.o : thc_aux.o realization.o saturation_function.o
 richards.o : richards_aux.o realization.o saturation_function.o \
              matrix_buffer.o logging.o amrgrid.o
