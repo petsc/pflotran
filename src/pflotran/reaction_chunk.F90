@@ -53,9 +53,12 @@ function RTAuxVarChunkCreate(reaction,option)
   allocate(auxvar%por(chunk_size))
   
 #ifdef CHUAN_CO2
-  allocate(auxvar%pres(chunk_size,option%nphase))
-  allocate(auxvar%xmass(chunk_size,option%nphase))
-  allocate(auxvar%fugacoeff(chunk_size,option%nphase))
+  nullify(auxvar%pres)
+  nullify(auxvar%xmass)
+  nullify(auxvar%fugacoeff)
+!  allocate(auxvar%pres(chunk_size,option%nphase))
+!  allocate(auxvar%xmass(chunk_size,option%nphase))
+!  allocate(auxvar%fugacoeff(chunk_size,option%nphase))
 #endif
   
   allocate(auxvar%pri_molal(chunk_size,reaction%naqcomp))
@@ -171,9 +174,11 @@ subroutine RPack(rt_auxvar,global_auxvar,total,rt_auxvar_chunk,volume, &
   rt_auxvar_chunk%por(ichunk) = porosity
 
 #ifdef CHUAN_CO2
-  rt_auxvar_chunk%pres(ichunk,:) = global_auxvar%pres(:)
-  rt_auxvar_chunk%xmass(ichunk,:) = global_auxvar%xmass(:)
-  rt_auxvar_chunk%fugacoeff(ichunk,:) = global_auxvar%fugacoeff(:)
+!  rt_auxvar_chunk%pres(ichunk,:) = global_auxvar%pres(:)
+!  if (associated(global_auxvar%xmass)) &
+!    rt_auxvar_chunk%xmass(ichunk,:) = global_auxvar%xmass(:)
+!  if (associated(global_auxvar%fugacoeff)) &
+!    rt_auxvar_chunk%fugacoeff(ichunk,:) = global_auxvar%fugacoeff(:)
 #endif
   
   rt_auxvar_chunk%pri_molal(ichunk,:) = rt_auxvar%pri_molal(:)
