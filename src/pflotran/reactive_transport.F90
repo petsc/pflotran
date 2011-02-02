@@ -196,6 +196,10 @@ subroutine RTSetupPatch(realization)
   enddo
   patch%aux%RT%num_aux = grid%ngmax
   
+#ifdef CHUNK
+  patch%aux%RT%aux_var_chunk => RTAuxVarChunkCreate(reaction,option)
+#endif   
+  
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them
   boundary_condition => patch%boundary_conditions%first
@@ -2280,20 +2284,20 @@ subroutine RTReactPatch(realization)
   PetscReal, pointer :: mask_p(:)
 #ifdef CHUNK
   PetscInt :: num_iterations(realization%option%chunk_size)
-  PetscInt :: local_start
-  PetscInt :: local_end
-  PetscInt :: ghosted_start
-  PetscInt :: ghosted_end
+  PetscInt :: local_offset
   PetscInt :: chunk_size_save
   PetscInt :: ichunk
+  PetscInt :: id_count
+  PetscInt :: local_ids(realization%option%chunk_size)
+  type(react_tran_auxvar_chunk_type), pointer :: rt_auxvar_chunk
 #else
   PetscInt :: num_iterations
 #endif
 #ifdef OS_STATISTICS
   PetscInt :: sum_iterations
   PetscInt :: max_iterations
-  PetscInt :: icount
 #endif
+  PetscInt :: icount
   PetscErrorCode :: ierr
     
   option => realization%option
@@ -2325,35 +2329,56 @@ subroutine RTReactPatch(realization)
 #endif
 
 #ifdef CHUNK
-  local_start = 1
+  rt_auxvar_chunk => patch%aux%RT%aux_var_chunk
+
+  local_offset = 1
   chunk_size_save = option%chunk_size
   do
-    ! change chunk size if array is not evenly divisble by chunk_size
-    if (local_start + option%chunk_size - 1 > grid%nlmax) then
-      option%chunk_size = grid%nlmax - local_start + 1
-    endif
-
-    local_end = local_start+option%chunk_size-1
   
-    ghosted_start = grid%nL2G(local_start)
-    ghosted_end = grid%nL2G(local_end)
+    ! fill an array of local ids for entries in chunk
+    icount = 0
+    id_count = 0
+    do while(id_count < option%chunk_size)
+      local_id = local_offset + icount
+      if (local_id > grid%nlmax) then
+        option%chunk_size = id_count
+        exit
+      endif
+      ghosted_id = grid%nL2G(local_id)
+      if (patch%imat(ghosted_id) > 0) then
+        id_count = id_count + 1
+        local_ids(id_count) = local_id
+      endif
+      icount = icount + 1
+    enddo
+    
+    do ichunk = 1, option%chunk_size
+      local_id = local_ids(ichunk)
+      ghosted_id = grid%nL2G(local_id)
+      istart = (local_id-1)*reaction%naqcomp+1
+      iend = istart+reaction%naqcomp-1
+      ! tran_xx_p passes in total component concentrations
+      !       and returns free ion concentrations
+      call RPack(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
+                 tran_xx_p(istart:iend), &
+                 rt_auxvar_chunk,volume_p(local_id), &
+                 porosity_loc_p(ghosted_id),ichunk,reaction)
+    enddo
+    
+    call RReactChunk(rt_auxvar_chunk,num_iterations,reaction,option)
 
-    ! We actually need to check all cells for inactives
-    if (patch%imat(ghosted_start) <= 0) cycle
+    do ichunk = 1, option%chunk_size
+      local_id = local_ids(ichunk)
+      ghosted_id = grid%nL2G(local_id)
+      istart = (local_id-1)*reaction%naqcomp+1
+      iend = istart+reaction%naqcomp-1
+      ! tran_xx_p passes in total component concentrations
+      !       and returns free ion concentrations
+      call RUnpack(rt_aux_vars(ghosted_id),tran_xx_p(istart:iend), &
+                   rt_auxvar_chunk,ichunk,reaction)
+!geh      print *, local_id, tran_xx_p(istart:iend)
+    enddo
 
-    iend = local_end*reaction%naqcomp
-    istart = iend-reaction%naqcomp*option%chunk_size+1
-
-    ! tran_xx_p passes in total component concentrations
-    !       and returns free ion concentrations
-    call RReactChunk(rt_aux_vars(ghosted_start:ghosted_end), &
-                global_aux_vars(ghosted_start:ghosted_end), &
-                tran_xx_p(istart:iend),volume_p(local_start:local_end), &
-                porosity_loc_p(ghosted_start:ghosted_end), &
-                num_iterations,reaction,option)
-    ! set primary dependent var back to free-ion molality
-    ! NOW THE BELOW IS PERFORMED WITHIN RReactChunk()
-    !tran_xx_p(istart:iend) = rt_aux_vars(ghosted_id)%pri_molal
 #ifdef OS_STATISTICS
     do ichunk = 1, option%chunk_size
       if (num_iterations(ichunk) > max_iterations) then
@@ -2364,11 +2389,11 @@ subroutine RTReactPatch(realization)
     enddo
 #endif
  
-   if (local_end >= grid%nlmax) then
+   if (local_ids(option%chunk_size) >= grid%nlmax) then
      option%chunk_size = chunk_size_save
      exit
    else
-     local_start = local_start + option%chunk_size
+     local_offset = local_offset + option%chunk_size
    endif
  
   enddo

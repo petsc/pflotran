@@ -10,64 +10,13 @@ module Reaction_Chunk_module
 
 #include "definitions.h"
 
-
-  type, public :: react_tran_auxvar_chunk_type
-  
-    PetscReal, pointer :: den(:,:)
-    PetscReal, pointer :: temp(:,:)
-    PetscReal, pointer :: sat(:,:)
-    PetscReal, pointer :: vol(:)
-    PetscReal, pointer :: por(:)
-    
-#ifdef CHUAN_CO2
-    PetscReal, pointer :: pres1(:,:)
-    PetscReal, pointer :: xmass(:,:)
-    PetscReal, pointer :: fugacoeff(:,:)
-#endif    
-  
-    ! molality
-    PetscReal, pointer :: pri_molal(:,:)     ! mol/kg water
-    PetscReal, pointer :: ln_pri_molal(:,:)
-    
-    ! phase dependent totals
-    PetscReal, pointer :: total(:,:,:)       ! mol solute/L water
-    PetscReal, pointer :: dtotal(:,:,:,:)
-
-    ! sorbed totals
-    PetscReal, pointer :: total_sorb_eq(:,:)    ! mol/m^3 bulk
-    PetscReal, pointer :: dtotal_sorb_eq(:,:,:) ! kg water/m^3 bulk
-    
-    ! aqueous species
-    ! aqueous complexes
-    PetscReal, pointer :: sec_molal(:,:)
-    PetscReal, pointer :: gas_molal(:,:)
-    
-    PetscReal, pointer :: eqsrfcplx_conc(:,:)
-    PetscReal, pointer :: eqsrfcplx_free_site_conc(:,:)
-
-    ! mineral reactions
-!    PetscReal, pointer :: mnrl_volfrac0(:,:)
-    PetscReal, pointer :: mnrl_volfrac(:,:)
-!    PetscReal, pointer :: mnrl_area0(:,:)
-    PetscReal, pointer :: mnrl_area(:,:)
-    PetscReal, pointer :: mnrl_rate(:,:)
-    
-    ! activity coefficients
-!   PetscReal :: act_h2o
-    PetscReal, pointer :: pri_act_coef(:,:)
-    PetscReal, pointer :: sec_act_coef(:,:)
-    
-    PetscReal, pointer :: ln_act_h2o(:)
-
-  end type react_tran_auxvar_chunk_type
-
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
   
   public :: RReactChunk, &
             RPack, &
             RUnpack, &
-            RTAuxVarChunkCreate, &
-            RTAuxVarChunkDestroy
+            RTAuxVarChunkCreate
+
 
 contains
 
@@ -78,7 +27,7 @@ contains
 ! date: 01/31/11
 !
 ! ************************************************************************** !
-function RTAuxVarChunkCreate(chunk_size,reaction,option)
+function RTAuxVarChunkCreate(reaction,option)
 
   use Option_module
 
@@ -86,13 +35,15 @@ function RTAuxVarChunkCreate(chunk_size,reaction,option)
   
   type(reaction_type) :: reaction
   type(option_type) :: option
-  PetscInt :: chunk_size
   
   type(react_tran_auxvar_chunk_type), pointer :: RTAuxVarChunkCreate
   
   type(react_tran_auxvar_chunk_type), pointer :: auxvar
+  PetscInt :: chunk_size
 
   allocate(auxvar)
+  
+  chunk_size = option%chunk_size
   
   ! for global auxvar
   allocate(auxvar%den(chunk_size,option%nphase))
@@ -102,13 +53,15 @@ function RTAuxVarChunkCreate(chunk_size,reaction,option)
   allocate(auxvar%por(chunk_size))
   
 #ifdef CHUAN_CO2
-  allocate(auxvar%pres(chunk_size,option%nphase)
-  allocate(auxvar%xmass(chunk_size,option%nphase)
-  allocate(auxvar%fugacoeff(chunk_size,option%nphase)
+  allocate(auxvar%pres(chunk_size,option%nphase))
+  allocate(auxvar%xmass(chunk_size,option%nphase))
+  allocate(auxvar%fugacoeff(chunk_size,option%nphase))
 #endif
   
   allocate(auxvar%pri_molal(chunk_size,reaction%naqcomp))
   auxvar%pri_molal = 0.d0
+  allocate(auxvar%ln_pri_molal(chunk_size,reaction%naqcomp))
+  auxvar%ln_pri_molal = 0.d0
 
   allocate(auxvar%total(chunk_size,reaction%naqcomp,option%nphase))
   auxvar%total = 0.d0
@@ -186,86 +139,9 @@ function RTAuxVarChunkCreate(chunk_size,reaction,option)
   allocate(auxvar%ln_act_h2o(chunk_size))
   auxvar%ln_act_h2o = 0.d0
   
-  RTAuxVarChunkCreate = auxvar
+  RTAuxVarChunkCreate => auxvar
   
 end function RTAuxVarChunkCreate
-
-! ************************************************************************** !
-!
-! RTAuxVarChunkDestroy: Deallocates a reactive transport auxilliary object
-! author: Glenn Hammond
-! date: 01/31/11
-!
-! ************************************************************************** !
-subroutine RTAuxVarChunkDestroy(auxvar)
-
-  implicit none
-
-  type(react_tran_auxvar_chunk_type) :: auxvar
-  
-    ! for global auxvar
-  if (associated(auxvar%den)) deallocate(auxvar%den)
-  nullify(auxvar%den)
-  if (associated(auxvar%temp)) deallocate(auxvar%temp)
-  nullify(auxvar%temp)
-  if (associated(auxvar%sat)) deallocate(auxvar%sat)
-  nullify(auxvar%sat)
-  if (associated(auxvar%vol)) deallocate(auxvar%vol)
-  nullify(auxvar%vol)
-  if (associated(auxvar%por)) deallocate(auxvar%por)
-  nullify(auxvar%por)
-
-#ifdef CHUAN_CO2
-  if (associated(auxvar%pres)) deallocate(auxvar%pres)
-  nullify(auxvar%pres)
-  if (associated(auxvar%xmass)) deallocate(auxvar%xmass)
-  nullify(auxvar%xmass)
-  if (associated(auxvar%fugacoeff)) deallocate(auxvar%fugacoeff)
-  nullify(auxvar%fugacoeff)
-#endif
-  
-  if (associated(auxvar%pri_molal)) deallocate(auxvar%pri_molal)
-  nullify(auxvar%pri_molal)
-
-  if (associated(auxvar%total)) deallocate(auxvar%total)
-  nullify(auxvar%total)
-
-  if (associated(auxvar%total)) deallocate(auxvar%dtotal)
-  nullify(auxvar%dtotal)
-
-  if (associated(auxvar%sec_molal))deallocate(auxvar%sec_molal)
-  nullify(auxvar%sec_molal)
-  
-  if (associated(auxvar%gas_molal))deallocate(auxvar%gas_molal)
-  nullify(auxvar%gas_molal)
-  
-  if (associated(auxvar%total_sorb_eq)) deallocate(auxvar%total_sorb_eq)
-  nullify(auxvar%total_sorb_eq)
-  if (associated(auxvar%dtotal_sorb_eq))deallocate(auxvar%dtotal_sorb_eq)
-  nullify(auxvar%dtotal_sorb_eq)
-
-  if (associated(auxvar%eqsrfcplx_conc)) deallocate(auxvar%eqsrfcplx_conc)
-  nullify(auxvar%eqsrfcplx_conc)
-  if (associated(auxvar%eqsrfcplx_free_site_conc)) &
-    deallocate(auxvar%eqsrfcplx_free_site_conc)
-  nullify(auxvar%eqsrfcplx_free_site_conc)
-  
-  if (associated(auxvar%mnrl_volfrac))deallocate(auxvar%mnrl_volfrac)
-  nullify(auxvar%mnrl_volfrac)
-  if (associated(auxvar%mnrl_area))deallocate(auxvar%mnrl_area)
-  nullify(auxvar%mnrl_area)
-  if (associated(auxvar%mnrl_rate))deallocate(auxvar%mnrl_rate)
-  nullify(auxvar%mnrl_rate)
-  
-  if (associated(auxvar%pri_act_coef))deallocate(auxvar%pri_act_coef)
-  nullify(auxvar%pri_act_coef)
-  if (associated(auxvar%sec_act_coef))deallocate(auxvar%sec_act_coef)
-  nullify(auxvar%sec_act_coef)
-
-  if (associated(auxvar%ln_act_h2o))deallocate(auxvar%ln_act_h2o)
-  nullify(auxvar%ln_act_h2o)
-
-end subroutine RTAuxVarChunkDestroy
 
 ! ************************************************************************** !
 !
@@ -274,8 +150,8 @@ end subroutine RTAuxVarChunkDestroy
 ! date: 01/31/11
 !
 ! ************************************************************************** !
-subroutine RPack(rt_auxvar,global_auxvar,rt_auxvar_chunk,volume,porosity, &
-                 ichunk,reaction)
+subroutine RPack(rt_auxvar,global_auxvar,total,rt_auxvar_chunk,volume, &
+                 porosity,ichunk,reaction)
 
   implicit none
   
@@ -286,6 +162,7 @@ subroutine RPack(rt_auxvar,global_auxvar,rt_auxvar_chunk,volume,porosity, &
   PetscReal :: porosity
   PetscInt :: ichunk
   type(reaction_type) :: reaction
+  PetscReal :: total(reaction%naqcomp)
   
   rt_auxvar_chunk%den(ichunk,:) = global_auxvar%den_kg(:)
   rt_auxvar_chunk%temp(ichunk,:) = global_auxvar%temp(:)
@@ -294,14 +171,17 @@ subroutine RPack(rt_auxvar,global_auxvar,rt_auxvar_chunk,volume,porosity, &
   rt_auxvar_chunk%por(ichunk) = porosity
 
 #ifdef CHUAN_CO2
-  auxvar%pres(ichunk,:) = global_auxvar%pres(:)
-  auxvar%xmass(ichunk,:) = global_auxvar%xmass(:)
-  auxvar%presfugacoeffichunk,:) = global_auxvar%fugacoeff(:)
+  rt_auxvar_chunk%pres(ichunk,:) = global_auxvar%pres(:)
+  rt_auxvar_chunk%xmass(ichunk,:) = global_auxvar%xmass(:)
+  rt_auxvar_chunk%fugacoeff(ichunk,:) = global_auxvar%fugacoeff(:)
 #endif
   
   rt_auxvar_chunk%pri_molal(ichunk,:) = rt_auxvar%pri_molal(:)
-  rt_auxvar_chunk%ln_pri_molal(ichunk,:) = log(rt_auxvar%pri_molal(:))
-  rt_auxvar_chunk%total(ichunk,:,:) = rt_auxvar%total(:,:)
+  ! Nope
+  !rt_auxvar_chunk%total(ichunk,:,:) = rt_auxvar%total(:,:)
+  ! total(:) is the ichunk portion of tran_xx
+  rt_auxvar_chunk%total(ichunk,:,ONE_INTEGER) = total(:)
+  
   rt_auxvar_chunk%dtotal(ichunk,:,:,:) = rt_auxvar%aqueous%dtotal(:,:,:)
   rt_auxvar_chunk%total_sorb_eq(ichunk,:) = rt_auxvar%total_sorb_eq(:)
   rt_auxvar_chunk%dtotal_sorb_eq(ichunk,:,:) = rt_auxvar%dtotal_sorb_eq(:,:)
@@ -326,7 +206,7 @@ end subroutine RPack
 ! date: 01/31/11
 !
 ! ************************************************************************** !
-subroutine RUnpack(rt_auxvar,rt_auxvar_chunk,ichunk,reaction)
+subroutine RUnpack(rt_auxvar,free_ion,rt_auxvar_chunk,ichunk,reaction)
 
   implicit none
   
@@ -334,8 +214,11 @@ subroutine RUnpack(rt_auxvar,rt_auxvar_chunk,ichunk,reaction)
   type(react_tran_auxvar_chunk_type) :: rt_auxvar_chunk
   PetscInt :: ichunk
   type(reaction_type) :: reaction
+  PetscReal :: free_ion(reaction%naqcomp)
   
   rt_auxvar%pri_molal(:) = rt_auxvar_chunk%pri_molal(ichunk,:)
+  free_ion(:) = rt_auxvar%pri_molal(:)
+
   rt_auxvar%total(:,:) = rt_auxvar_chunk%total(ichunk,:,:)
   rt_auxvar%aqueous%dtotal(:,:,:) = rt_auxvar_chunk%dtotal(ichunk,:,:,:)
   rt_auxvar%total_sorb_eq(:) = rt_auxvar_chunk%total_sorb_eq(ichunk,:)
@@ -363,7 +246,7 @@ end subroutine RUnpack
 ! date: 11/10/10
 !
 ! ************************************************************************** !
-subroutine RReactChunk(auxvar,total,num_iterations_,reaction,option)
+subroutine RReactChunk(auxvar,num_iterations_,reaction,option)
 
   use Option_module
   use Utility_module
@@ -373,7 +256,6 @@ subroutine RReactChunk(auxvar,total,num_iterations_,reaction,option)
   type(reaction_type), pointer :: reaction
   type(option_type) :: option
   type(react_tran_auxvar_chunk_type) :: auxvar
-  PetscReal :: total(option%chunk_size*reaction%naqcomp)
 
   PetscInt :: num_iterations_(option%chunk_size)
   
@@ -409,12 +291,13 @@ subroutine RReactChunk(auxvar,total,num_iterations_,reaction,option)
   ! Since RTAccumulation uses auxvar%total, we must overwrite the 
   ! auxvar total variables
   ! aqueous
-  do ichunk = 1, option%chunk_size
-    offset = (ichunk-1)*reaction%naqcomp
-    do icomp = 1, reaction%naqcomp
-      auxvar%total(ichunk,icomp,iphase) = total(offset+icomp)
-    enddo
-  enddo
+  ! NOTE: This is now performed in RPack()
+!  do ichunk = 1, option%chunk_size
+!    offset = (ichunk-1)*reaction%naqcomp
+!    do icomp = 1, reaction%naqcomp
+!      auxvar%total(ichunk,icomp,iphase) = total(offset+icomp)
+!    enddo
+!  enddo
   
   ! still need code to overwrite other phases
   call RTAccumulationChunk(auxvar,reaction,option,fixed_accum)
@@ -430,6 +313,8 @@ subroutine RReactChunk(auxvar,total,num_iterations_,reaction,option)
   do
   
     num_iterations(:) = num_iterations(:) + 1
+
+    auxvar%ln_pri_molal(:,:) = log(auxvar%pri_molal(:,:))
 
     if (reaction%act_coef_update_frequency == ACT_COEF_FREQUENCY_NEWTON_ITER) then
       call RActivityCoefficientsChunk(auxvar,reaction,option)
@@ -505,11 +390,6 @@ subroutine RReactChunk(auxvar,total,num_iterations_,reaction,option)
 
   do ichunk = 1, option%chunk_size
     num_iterations_(ichunk) = num_iterations(ichunk)
-    offset = (ichunk-1)*reaction%naqcomp
-    ! the array 'total' is actually now the free ion concentration
-    do icomp = 1, reaction%naqcomp
-      total(offset+icomp) = auxvar%pri_molal(ichunk,icomp)
-    enddo
   enddo
   
 end subroutine RReactChunk
@@ -1002,8 +882,8 @@ subroutine RTotalChunk(auxvar,reaction,option)
    ! contribute to %dtotal
    !      tempreal = exp(lnQK+lngamco2)/pressure /xphico2* den 
       tempreal = auxvar%pri_act_coef(ichunk,icomp)*exp(lnQK)/pressure /xphico2* den 
-      auxvar%aqueous%dtotal(ichunk,icomp,icomp,iphase) = &
-        auxvar%aqueous%dtotal(ichunk,icomp,icomp,iphase) + &
+      auxvar%dtotal(ichunk,icomp,icomp,iphase) = &
+        auxvar%dtotal(ichunk,icomp,icomp,iphase) + &
         reaction%eqgasstoich(1,ieqgas)*tempreal
     
     enddo
@@ -1760,7 +1640,7 @@ subroutine RTAccumulationDerivativeChunk(auxvar,reaction,option,J)
                            1000.d0*auxvar%vol(ichunk)/option%tran_dt  
           J(ichunk,istart:iendaq,istart:iendaq) = &
             J(ichunk,istart:iendaq,istart:iendaq) + &
-            auxvar%dtotal(:,:,iphase)*psvd_t(ichunk)
+            auxvar%dtotal(ichunk,:,:,iphase)*psvd_t(ichunk)
         else
           psvd_t(ichunk) = auxvar%por(ichunk)*auxvar%sat(ichunk,iphase)* &
             auxvar%den(ichunk,iphase)*auxvar%vol(ichunk)/option%tran_dt ! units of den = kg water/m^3 water
