@@ -782,8 +782,10 @@ subroutine TFluxCoef_CD(option,area,velocity,diffusion,T_11,T_12,T_21,T_22)
   
     ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)*(1000 L water/m^3 water)
     !       = L water/sec
-      T_up(iphase) = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
-      T_dn(iphase) = coef_dn*area*1000.d0
+      T_11(iphase) = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
+      T_12(iphase) = coef_dn*area*1000.d0
+      T_21(iphase) = -T_11(iphase)
+      T_22(iphase) = -T_12(iphase)      
   
     enddo
   endif
