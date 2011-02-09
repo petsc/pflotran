@@ -63,6 +63,58 @@ module Reactive_Transport_Aux_module
     
   end type reactive_transport_auxvar_type
 
+  ! START CHUNKED!!!!!
+  type, public :: react_tran_auxvar_chunk_type
+  
+    PetscReal, pointer :: den(:,:)
+    PetscReal, pointer :: temp(:,:)
+    PetscReal, pointer :: sat(:,:)
+    PetscReal, pointer :: vol(:)
+    PetscReal, pointer :: por(:)
+    
+#ifdef CHUAN_CO2
+    PetscReal, pointer :: pres(:,:)
+    PetscReal, pointer :: xmass(:,:)
+    PetscReal, pointer :: fugacoeff(:,:)
+#endif    
+  
+    ! molality
+    PetscReal, pointer :: pri_molal(:,:)     ! mol/kg water
+    PetscReal, pointer :: ln_pri_molal(:,:)
+    
+    ! phase dependent totals
+    PetscReal, pointer :: total(:,:,:)       ! mol solute/L water
+    PetscReal, pointer :: dtotal(:,:,:,:)
+
+    ! sorbed totals
+    PetscReal, pointer :: total_sorb_eq(:,:)    ! mol/m^3 bulk
+    PetscReal, pointer :: dtotal_sorb_eq(:,:,:) ! kg water/m^3 bulk
+    
+    ! aqueous species
+    ! aqueous complexes
+    PetscReal, pointer :: sec_molal(:,:)
+    PetscReal, pointer :: gas_molal(:,:)
+    
+    PetscReal, pointer :: eqsrfcplx_conc(:,:)
+    PetscReal, pointer :: eqsrfcplx_free_site_conc(:,:)
+
+    ! mineral reactions
+!    PetscReal, pointer :: mnrl_volfrac0(:,:)
+    PetscReal, pointer :: mnrl_volfrac(:,:)
+!    PetscReal, pointer :: mnrl_area0(:,:)
+    PetscReal, pointer :: mnrl_area(:,:)
+    PetscReal, pointer :: mnrl_rate(:,:)
+    
+    ! activity coefficients
+!   PetscReal :: act_h2o
+    PetscReal, pointer :: pri_act_coef(:,:)
+    PetscReal, pointer :: sec_act_coef(:,:)
+    
+    PetscReal, pointer :: ln_act_h2o(:)
+
+  end type react_tran_auxvar_chunk_type
+  ! END CHUNKED!!!!!
+
   type, public :: reactive_transport_param_type
     PetscInt :: ncomp
     PetscInt :: naqcomp
@@ -114,10 +166,14 @@ module Reactive_Transport_Aux_module
     type(reactive_transport_param_type), pointer :: rt_parameter
     type(reactive_transport_auxvar_type), pointer :: aux_vars(:)
     type(reactive_transport_auxvar_type), pointer :: aux_vars_bc(:)
+#ifdef CHUNK
+    type(react_tran_auxvar_chunk_type), pointer :: aux_var_chunk
+#endif
   end type reactive_transport_type
   
   public :: RTAuxCreate, RTAuxDestroy, &
-            RTAuxVarInit, RTAuxVarCopy, RTAuxVarDestroy
+            RTAuxVarInit, RTAuxVarCopy, RTAuxVarDestroy, &
+            RTAuxVarChunkDestroy
             
 contains
 
@@ -145,6 +201,9 @@ function RTAuxCreate(option)
   aux%num_aux_bc = 0
   nullify(aux%aux_vars)
   nullify(aux%aux_vars_bc)
+#ifdef CHUNK
+  nullify(aux%aux_var_chunk)
+#endif  
   aux%n_zero_rows = 0
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
@@ -451,6 +510,85 @@ subroutine RTAuxVarCopy(aux_var,aux_var2,option)
 
 end subroutine RTAuxVarCopy
 
+! ************************************************************************** !
+!
+! RTAuxVarChunkDestroy: Deallocates a reactive transport auxilliary object
+! author: Glenn Hammond
+! date: 01/31/11
+!
+! ************************************************************************** !
+subroutine RTAuxVarChunkDestroy(auxvar)
+
+  implicit none
+
+  type(react_tran_auxvar_chunk_type), pointer :: auxvar
+  
+    ! for global auxvar
+  if (associated(auxvar%den)) deallocate(auxvar%den)
+  nullify(auxvar%den)
+  if (associated(auxvar%temp)) deallocate(auxvar%temp)
+  nullify(auxvar%temp)
+  if (associated(auxvar%sat)) deallocate(auxvar%sat)
+  nullify(auxvar%sat)
+  if (associated(auxvar%vol)) deallocate(auxvar%vol)
+  nullify(auxvar%vol)
+  if (associated(auxvar%por)) deallocate(auxvar%por)
+  nullify(auxvar%por)
+
+#ifdef CHUAN_CO2
+  if (associated(auxvar%pres)) deallocate(auxvar%pres)
+  nullify(auxvar%pres)
+  if (associated(auxvar%xmass)) deallocate(auxvar%xmass)
+  nullify(auxvar%xmass)
+  if (associated(auxvar%fugacoeff)) deallocate(auxvar%fugacoeff)
+  nullify(auxvar%fugacoeff)
+#endif
+  
+  if (associated(auxvar%pri_molal)) deallocate(auxvar%pri_molal)
+  nullify(auxvar%pri_molal)
+
+  if (associated(auxvar%total)) deallocate(auxvar%total)
+  nullify(auxvar%total)
+
+  if (associated(auxvar%total)) deallocate(auxvar%dtotal)
+  nullify(auxvar%dtotal)
+
+  if (associated(auxvar%sec_molal))deallocate(auxvar%sec_molal)
+  nullify(auxvar%sec_molal)
+  
+  if (associated(auxvar%gas_molal))deallocate(auxvar%gas_molal)
+  nullify(auxvar%gas_molal)
+  
+  if (associated(auxvar%total_sorb_eq)) deallocate(auxvar%total_sorb_eq)
+  nullify(auxvar%total_sorb_eq)
+  if (associated(auxvar%dtotal_sorb_eq))deallocate(auxvar%dtotal_sorb_eq)
+  nullify(auxvar%dtotal_sorb_eq)
+
+  if (associated(auxvar%eqsrfcplx_conc)) deallocate(auxvar%eqsrfcplx_conc)
+  nullify(auxvar%eqsrfcplx_conc)
+  if (associated(auxvar%eqsrfcplx_free_site_conc)) &
+    deallocate(auxvar%eqsrfcplx_free_site_conc)
+  nullify(auxvar%eqsrfcplx_free_site_conc)
+  
+  if (associated(auxvar%mnrl_volfrac))deallocate(auxvar%mnrl_volfrac)
+  nullify(auxvar%mnrl_volfrac)
+  if (associated(auxvar%mnrl_area))deallocate(auxvar%mnrl_area)
+  nullify(auxvar%mnrl_area)
+  if (associated(auxvar%mnrl_rate))deallocate(auxvar%mnrl_rate)
+  nullify(auxvar%mnrl_rate)
+  
+  if (associated(auxvar%pri_act_coef))deallocate(auxvar%pri_act_coef)
+  nullify(auxvar%pri_act_coef)
+  if (associated(auxvar%sec_act_coef))deallocate(auxvar%sec_act_coef)
+  nullify(auxvar%sec_act_coef)
+
+  if (associated(auxvar%ln_act_h2o))deallocate(auxvar%ln_act_h2o)
+  nullify(auxvar%ln_act_h2o)
+  
+  deallocate(auxvar)
+  nullify(auxvar)
+
+end subroutine RTAuxVarChunkDestroy
 
 ! ************************************************************************** !
 !
@@ -581,6 +719,11 @@ subroutine RTAuxDestroy(aux)
     deallocate(aux%aux_vars_bc)
   endif
   nullify(aux%aux_vars_bc)
+#ifdef CHUNK
+  if (associated(aux%aux_var_chunk)) then
+    call RTAuxVarChunkDestroy(aux%aux_var_chunk)
+  endif
+#endif  
   if (associated(aux%zero_rows_local)) deallocate(aux%zero_rows_local)
   nullify(aux%zero_rows_local)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)

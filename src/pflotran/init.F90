@@ -2137,6 +2137,7 @@ subroutine assignMaterialPropToRegions(realization)
           call printErrMsg(option)
         else
           option%io_buffer = 'Something messed up with material ids. ' // &
+            ' Possibly material ids not assigned to all grid cells. ' // &
             ' Contact Glenn!'
           call printErrMsg(option)
         endif

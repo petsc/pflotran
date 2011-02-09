@@ -39,7 +39,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   
   PetscInt :: local_id, ghosted_id, iconn
   PetscInt :: num_iteration, ipressure, idatum, num_pressures
-  PetscReal :: dist_x, dist_y, dist_z, delta_z
+  PetscReal :: dist_x, dist_y, dist_z, delta_z, dist_z_for_pressure
   PetscReal :: dx_conn, dy_conn, dz_conn
   PetscReal :: rho, rho1, rho0, pressure, pressure0, pressure_at_datum 
   PetscReal :: temperature_at_datum, temperature
@@ -115,8 +115,10 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
     rho0 = rho
     do ipressure=idatum+1,num_pressures
       dist_z = dist_z + delta_z
-      if (option%iflowmode /= RICHARDS_MODE) &
-        temperature = temperature + temperature_gradient(Z_DIRECTION)*delta_z
+      select case(option%iflowmode)
+        case(THC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
+          temperature = temperature + temperature_gradient(Z_DIRECTION)*delta_z
+      end select
       call nacl_den(temperature,pressure0*1.d-6,xm_nacl,dw_kg) 
       rho = dw_kg * 1.d3
 
@@ -145,13 +147,18 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 
     ! compute pressures above datum, if any
     pressure0 = pressure_array(idatum)
-    if (option%iflowmode /= RICHARDS_MODE) temperature = temperature_at_datum
+    select case(option%iflowmode)
+      case(THC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
+        temperature = temperature_at_datum
+    end select
     dist_z = 0.d0
     rho0 = density_array(idatum)
     do ipressure=idatum-1,1,-1
       dist_z = dist_z + delta_z
-      if (option%iflowmode /= RICHARDS_MODE) &
-        temperature = temperature - temperature_gradient(Z_DIRECTION)*delta_z
+      select case(option%iflowmode)
+        case(THC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
+          temperature = temperature - temperature_gradient(Z_DIRECTION)*delta_z
+      end select
       call nacl_den(temperature,pressure0*1.d-6,xm_nacl,dw_kg) 
       rho = dw_kg * 1.d3
 
@@ -221,13 +228,13 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
     if (associated(pressure_array)) then
       ipressure = idatum+int(dist_z/delta_z)
       if (grid%itype==STRUCTURED_GRID_MIMETIC) then
-        dist_z = conn_set_ptr%cntr(3,conn_id) - z(ipressure)
+        dist_z_for_pressure = conn_set_ptr%cntr(3,conn_id) - z(ipressure)
       else 
-        dist_z = grid%z(ghosted_id)-dz_conn-z(ipressure)
+        dist_z_for_pressure = grid%z(ghosted_id)-dz_conn-z(ipressure)
       end if
       pressure = pressure_array(ipressure) + &
                  density_array(ipressure)*option%gravity(Z_DIRECTION) * &
-                 dist_z + &
+                 dist_z_for_pressure + &
 !                 (grid%z(ghosted_id)-z(ipressure)) + &
                  pressure_gradient(X_DIRECTION)*dist_x + & ! gradient in Pa/m
                  pressure_gradient(Y_DIRECTION)*dist_y
@@ -256,14 +263,15 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       coupler%flow_aux_real_var(1,iconn) = pressure
     endif
 
-    if (option%iflowmode /= RICHARDS_MODE) then
-      temperature = temperature_at_datum + &
+    select case(option%iflowmode)
+      case(THC_MODE,MPH_MODE,IMS_MODE,FLASH2_MODE)
+        temperature = temperature_at_datum + &
                     temperature_gradient(X_DIRECTION)*dist_x + & ! gradient in K/m
                     temperature_gradient(Y_DIRECTION)*dist_y + &
                     temperature_gradient(Z_DIRECTION)*dist_z 
-      coupler%flow_aux_real_var(2,iconn) = temperature
-      coupler%flow_aux_real_var(3,iconn) = concentration_at_datum
-    endif
+        coupler%flow_aux_real_var(2,iconn) = temperature
+        coupler%flow_aux_real_var(3,iconn) = concentration_at_datum
+    end select
 
     coupler%flow_aux_int_var(1,iconn) = 1
 !    if (structured_pressure(iz) > patm) then
