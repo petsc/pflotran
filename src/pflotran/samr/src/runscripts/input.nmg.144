@@ -52,7 +52,7 @@ PflotranApplicationStrategy{
    DriverMode                       = 1
    nl_tangential_coarse_fine_scheme = "LINEAR"
    nl_normal_coarse_fine_scheme     = "LINEAR"
-   number_solution_components       = 2
+   number_of_modes       = 2
 
    PflotranFlowMultilevelOperator{
      	       operator_name                   = "PflotranMultilevelOperator"
