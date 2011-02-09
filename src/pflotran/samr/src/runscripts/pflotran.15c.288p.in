@@ -434,7 +434,7 @@ OUTPUT
 :PERIODIC TIMESTEP 1
 PERIODIC TIME .05 y
 :FORMAT TECPLOT BLOCK
-FORMAT HDF5
+:FORMAT HDF5
 /
 
 : == times ====================================================================
