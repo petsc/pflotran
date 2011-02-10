@@ -123,7 +123,7 @@ subroutine GeneralSetupPatch(realization)
 
   PetscInt :: ghosted_id, iconn, sum_connection
   PetscInt :: i
-  type(general_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)  
+  type(general_auxvar_type), pointer :: gen_aux_vars(:), gen_aux_vars_bc(:)  
   
   option => realization%option
   patch => realization%patch
@@ -139,11 +139,11 @@ subroutine GeneralSetupPatch(realization)
   enddo
 #endif
   ! allocate aux_var data structures for all grid cells  
-  allocate(rich_aux_vars(grid%ngmax))
+  allocate(gen_aux_vars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
-    call GeneralAuxVarInit(rich_aux_vars(ghosted_id),option)
+    call GeneralAuxVarInit(gen_aux_vars(ghosted_id),option)
   enddo
-  patch%aux%General%aux_vars => rich_aux_vars
+  patch%aux%General%aux_vars => gen_aux_vars
   patch%aux%General%num_aux = grid%ngmax
 
   ! count the number of boundary connections and allocate
@@ -156,11 +156,11 @@ subroutine GeneralSetupPatch(realization)
                      boundary_condition%connection_set%num_connections
     boundary_condition => boundary_condition%next
   enddo
-  allocate(rich_aux_vars_bc(sum_connection))
+  allocate(gen_aux_vars_bc(sum_connection))
   do iconn = 1, sum_connection
-    call GeneralAuxVarInit(rich_aux_vars_bc(iconn),option)
+    call GeneralAuxVarInit(gen_aux_vars_bc(iconn),option)
   enddo
-  patch%aux%General%aux_vars_bc => rich_aux_vars_bc
+  patch%aux%General%aux_vars_bc => gen_aux_vars_bc
   patch%aux%General%num_aux_bc = sum_connection
   
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
@@ -399,7 +399,7 @@ subroutine GeneralUpdateAuxVarsPatch(realization)
   type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
-  type(general_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)  
+  type(general_auxvar_type), pointer :: gen_aux_vars(:), gen_aux_vars_bc(:)  
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)  
 
   PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn
@@ -414,8 +414,8 @@ subroutine GeneralUpdateAuxVarsPatch(realization)
   grid => patch%grid
   field => realization%field
 
-  rich_aux_vars => patch%aux%General%aux_vars
-  rich_aux_vars_bc => patch%aux%General%aux_vars_bc
+  gen_aux_vars => patch%aux%General%aux_vars
+  gen_aux_vars_bc => patch%aux%General%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
     
@@ -432,7 +432,7 @@ subroutine GeneralUpdateAuxVarsPatch(realization)
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
    
-    call GeneralAuxVarCompute(xx_loc_p(ghosted_id:ghosted_id),rich_aux_vars(ghosted_id), &
+    call GeneralAuxVarCompute(xx_loc_p(ghosted_id:ghosted_id),gen_aux_vars(ghosted_id), &
                        global_aux_vars(ghosted_id), &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
@@ -459,7 +459,7 @@ subroutine GeneralUpdateAuxVarsPatch(realization)
           xxbc(1) = xx_loc_p(ghosted_id)
       end select
       
-      call GeneralAuxVarCompute(xxbc(1),rich_aux_vars_bc(sum_connection), &
+      call GeneralAuxVarCompute(xxbc(1),gen_aux_vars_bc(sum_connection), &
                          global_aux_vars_bc(sum_connection), &
                          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                          porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                         
@@ -621,7 +621,7 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
-  type(general_auxvar_type), pointer :: rich_aux_vars(:)
+  type(general_auxvar_type), pointer :: gen_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)
 
   PetscInt :: ghosted_id, local_id
@@ -636,7 +636,7 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
   patch => realization%patch
   grid => patch%grid
 
-  rich_aux_vars => patch%aux%General%aux_vars
+  gen_aux_vars => patch%aux%General%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
     
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
@@ -655,11 +655,11 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
     call GeneralAuxVarCompute(xx_p(local_id:local_id), &
-                   rich_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
+                   gen_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                    realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                    porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                        
                    option)
-    call GeneralAccumulation(rich_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
+    call GeneralAccumulation(gen_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               option,accum_p(local_id:local_id)) 
@@ -780,7 +780,7 @@ end subroutine GeneralNumericalJacTest
 ! date: 01/05/10
 !
 ! ************************************************************************** !
-subroutine GeneralAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
+subroutine GeneralAccumDerivative(gen_aux_var,global_aux_var,por,vol, &
                                    option,sat_func,J)
 
   use Option_module
@@ -788,7 +788,7 @@ subroutine GeneralAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
   
   implicit none
 
-  type(general_auxvar_type) :: rich_aux_var
+  type(general_auxvar_type) :: gen_aux_var
   type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
   PetscReal :: vol, por
@@ -800,28 +800,28 @@ subroutine GeneralAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
   PetscReal :: porXvol
 
   PetscInt :: iphase, ideriv
-  type(general_auxvar_type) :: rich_aux_var_pert
+  type(general_auxvar_type) :: gen_aux_var_pert
   type(global_auxvar_type) :: global_aux_var_pert
   PetscReal :: x(1), x_pert(1), pert, res(1), res_pert(1), J_pert(1,1)
 
   porXvol = por*vol/option%flow_dt
       
   ! accumulation term units = dkmol/dp
-  J(1,1) = (global_aux_var%sat(1)*rich_aux_var%dden_dp+ &
-            rich_aux_var%dsat_dp*global_aux_var%den(1))* &
+  J(1,1) = (global_aux_var%sat(1)*gen_aux_var%dden_dp+ &
+            gen_aux_var%dsat_dp*global_aux_var%den(1))* &
            porXvol
 
   if (option%numerical_derivatives) then
     call GlobalAuxVarInit(global_aux_var_pert,option)  
-    call GeneralAuxVarCopy(rich_aux_var,rich_aux_var_pert,option)
+    call GeneralAuxVarCopy(gen_aux_var,gen_aux_var_pert,option)
     call GlobalAuxVarCopy(global_aux_var,global_aux_var_pert,option)
     x(1) = global_aux_var%pres(1)
-    call GeneralAccumulation(rich_aux_var,global_aux_var,por,vol,option,res)
+    call GeneralAccumulation(gen_aux_var,global_aux_var,por,vol,option,res)
     ideriv = 1
     pert = x(ideriv)*perturbation_tolerance
     x_pert = x
     x_pert(ideriv) = x_pert(ideriv) + pert
-    call GeneralAuxVarCompute(x_pert(1),rich_aux_var_pert,global_aux_var_pert, &
+    call GeneralAuxVarCompute(x_pert(1),gen_aux_var_pert,global_aux_var_pert, &
                                sat_func,0.d0,0.d0,option)
 #if 0      
       select case(ideriv)
@@ -830,10 +830,10 @@ subroutine GeneralAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
 !         print *, 'dkr_dp:', aux_var%dkr_dp, (aux_var_pert%kr-aux_var%kr)/pert(ideriv)
           print *, 'dsat_dp:', aux_var%dsat_dp, (global_aux_var_pert%sat-global_aux_var%sat)/pert
           print *, 'dden_dp:', aux_var%dden_dp, (global_aux_var_pert%den-global_aux_var%den)/pert
-          print *, 'dkvr_dp:', aux_var%dkvr_dp, (rich_aux_var_pert%kvr-rich_aux_var%kvr)/pert
+          print *, 'dkvr_dp:', aux_var%dkvr_dp, (gen_aux_var_pert%kvr-gen_aux_var%kvr)/pert
       end select     
 #endif     
-    call GeneralAccumulation(rich_aux_var_pert,global_aux_var,por,vol, &
+    call GeneralAccumulation(gen_aux_var_pert,global_aux_var,por,vol, &
                               option,res_pert)
     J_pert(1,1) = (res_pert(1)-res(1))/pert
     J = J_pert
@@ -851,14 +851,14 @@ end subroutine GeneralAccumDerivative
 ! date: 01/05/10
 !
 ! ************************************************************************** !  
-subroutine GeneralAccumulation(rich_aux_var,global_aux_var,por,vol, &
+subroutine GeneralAccumulation(gen_aux_var,global_aux_var,por,vol, &
                                 option,Res)
 
   use Option_module
   
   implicit none
 
-  type(general_auxvar_type) :: rich_aux_var
+  type(general_auxvar_type) :: gen_aux_var
   type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
   PetscReal :: Res(1:option%nflowdof) 
@@ -878,9 +878,9 @@ end subroutine GeneralAccumulation
 ! date: 01/05/10
 !
 ! ************************************************************************** ! 
-subroutine GeneralFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
+subroutine GeneralFluxDerivative(gen_aux_var_up,global_aux_var_up,por_up, &
                                   sir_up,dd_up,perm_up, &
-                                  rich_aux_var_dn,global_aux_var_dn,por_dn, &
+                                  gen_aux_var_dn,global_aux_var_dn,por_dn, &
                                   sir_dn,dd_dn,perm_dn, &
                                   area,dist_gravity,upweight, &
                                   option,sat_func_up,sat_func_dn,Jup,Jdn)
@@ -889,7 +889,7 @@ subroutine GeneralFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
   
   implicit none
   
-  type(general_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
+  type(general_auxvar_type) :: gen_aux_var_up, gen_aux_var_dn
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
@@ -914,7 +914,7 @@ subroutine GeneralFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
   PetscReal :: dq_dp_up, dq_dp_dn
 
   PetscInt :: iphase, ideriv
-  type(general_auxvar_type) :: rich_aux_var_pert_up, rich_aux_var_pert_dn
+  type(general_auxvar_type) :: gen_aux_var_pert_up, gen_aux_var_pert_dn
   type(global_auxvar_type) :: global_aux_var_pert_up, global_aux_var_pert_dn
   PetscReal :: x_up(1), x_dn(1), x_pert_up(1), x_pert_dn(1), pert_up, pert_dn, &
             res(1), res_pert_up(1), res_pert_dn(1), J_pert_up(1,1), J_pert_dn(1,1)
@@ -946,8 +946,8 @@ subroutine GeneralFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
     endif
     density_ave = upweight*global_aux_var_up%den(1)+ &
                   (1.D0-upweight)*global_aux_var_dn%den(1)
-    dden_ave_dp_up = upweight*rich_aux_var_up%dden_dp
-    dden_ave_dp_dn = (1.D0-upweight)*rich_aux_var_dn%dden_dp
+    dden_ave_dp_up = upweight*gen_aux_var_up%dden_dp
+    dden_ave_dp_dn = (1.D0-upweight)*gen_aux_var_dn%dden_dp
 
     gravity = (upweight*global_aux_var_up%den(1) + &
               (1.D0-upweight)*global_aux_var_dn%den(1)) &
@@ -956,15 +956,15 @@ subroutine GeneralFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
     dgravity_dden_dn = (1.d0-upweight)*FMWH2O*dist_gravity
 
     dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)  + gravity
-    dphi_dp_up = 1.d0 + dgravity_dden_up*rich_aux_var_up%dden_dp
-    dphi_dp_dn = -1.d0 + dgravity_dden_dn*rich_aux_var_dn%dden_dp
+    dphi_dp_up = 1.d0 + dgravity_dden_up*gen_aux_var_up%dden_dp
+    dphi_dp_dn = -1.d0 + dgravity_dden_dn*gen_aux_var_dn%dden_dp
 
     if (dphi>=0.D0) then
-      ukvr = rich_aux_var_up%kvr
-      dukvr_dp_up = rich_aux_var_up%dkvr_dp
+      ukvr = gen_aux_var_up%kvr
+      dukvr_dp_up = gen_aux_var_up%dkvr_dp
     else
-      ukvr = rich_aux_var_dn%kvr
-      dukvr_dp_dn = rich_aux_var_dn%dkvr_dp
+      ukvr = gen_aux_var_dn%kvr
+      dukvr_dp_dn = gen_aux_var_dn%dkvr_dp
     endif      
    
     if (ukvr>floweps) then
@@ -985,14 +985,14 @@ subroutine GeneralFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
   if (option%numerical_derivatives) then
     call GlobalAuxVarInit(global_aux_var_pert_up,option)
     call GlobalAuxVarInit(global_aux_var_pert_dn,option)  
-    call GeneralAuxVarCopy(rich_aux_var_up,rich_aux_var_pert_up,option)
-    call GeneralAuxVarCopy(rich_aux_var_dn,rich_aux_var_pert_dn,option)
+    call GeneralAuxVarCopy(gen_aux_var_up,gen_aux_var_pert_up,option)
+    call GeneralAuxVarCopy(gen_aux_var_dn,gen_aux_var_pert_dn,option)
     call GlobalAuxVarCopy(global_aux_var_up,global_aux_var_pert_up,option)
     call GlobalAuxVarCopy(global_aux_var_dn,global_aux_var_pert_dn,option)
     x_up(1) = global_aux_var_up%pres(1)
     x_dn(1) = global_aux_var_dn%pres(1)
-    call GeneralFlux(rich_aux_var_up,global_aux_var_up,por_up,sir_up,dd_up,perm_up, &
-                      rich_aux_var_dn,global_aux_var_dn,por_dn,sir_dn,dd_dn,perm_dn, &
+    call GeneralFlux(gen_aux_var_up,global_aux_var_up,por_up,sir_up,dd_up,perm_up, &
+                      gen_aux_var_dn,global_aux_var_dn,por_dn,sir_dn,dd_dn,perm_dn, &
                       area,dist_gravity,upweight, &
                       option,v_darcy,res)
     ideriv = 1
@@ -1002,21 +1002,21 @@ subroutine GeneralFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
     x_pert_dn = x_dn
     x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
     x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
-    call GeneralAuxVarCompute(x_pert_up(1),rich_aux_var_pert_up, &
+    call GeneralAuxVarCompute(x_pert_up(1),gen_aux_var_pert_up, &
                                global_aux_var_pert_up,sat_func_up, &
                                0.d0,0.d0,option)
-    call GeneralAuxVarCompute(x_pert_dn(1),rich_aux_var_pert_dn, &
+    call GeneralAuxVarCompute(x_pert_dn(1),gen_aux_var_pert_dn, &
                                global_aux_var_pert_dn,sat_func_dn, &
                                0.d0,0.d0,option)
-    call GeneralFlux(rich_aux_var_pert_up,global_aux_var_pert_up, &
+    call GeneralFlux(gen_aux_var_pert_up,global_aux_var_pert_up, &
                       por_up,sir_up,dd_up,perm_up, &
-                      rich_aux_var_dn,global_aux_var_dn, &
+                      gen_aux_var_dn,global_aux_var_dn, &
                       por_dn,sir_dn,dd_dn,perm_dn, &
                       area,dist_gravity,upweight, &
                       option,v_darcy,res_pert_up)
-    call GeneralFlux(rich_aux_var_up,global_aux_var_up, &
+    call GeneralFlux(gen_aux_var_up,global_aux_var_up, &
                       por_up,sir_up,dd_up,perm_up, &
-                      rich_aux_var_pert_dn,global_aux_var_pert_dn, &
+                      gen_aux_var_pert_dn,global_aux_var_pert_dn, &
                       por_dn,sir_dn,dd_dn,perm_dn, &
                       area,dist_gravity,upweight, &
                       option,v_darcy,res_pert_dn)
@@ -1038,9 +1038,9 @@ end subroutine GeneralFluxDerivative
 ! date: 01/05/10
 !
 ! ************************************************************************** ! 
-subroutine GeneralFlux(rich_aux_var_up,global_aux_var_up, &
+subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
                         por_up,sir_up,dd_up,perm_up, &
-                        rich_aux_var_dn,global_aux_var_dn, &
+                        gen_aux_var_dn,global_aux_var_dn, &
                         por_dn,sir_dn,dd_dn,perm_dn, &
                         area,dist_gravity,upweight, &
                         option,v_darcy,Res)
@@ -1048,7 +1048,7 @@ subroutine GeneralFlux(rich_aux_var_up,global_aux_var_up, &
   
   implicit none
   
-  type(general_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
+  type(general_auxvar_type) :: gen_aux_var_up, gen_aux_var_dn
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
@@ -1088,9 +1088,9 @@ subroutine GeneralFlux(rich_aux_var_up,global_aux_var_up, &
     dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)  + gravity
 
     if (dphi>=0.D0) then
-      ukvr = rich_aux_var_up%kvr
+      ukvr = gen_aux_var_up%kvr
     else
-      ukvr = rich_aux_var_dn%kvr
+      ukvr = gen_aux_var_dn%kvr
     endif      
    
 
@@ -1119,8 +1119,8 @@ end subroutine GeneralFlux
 !
 ! ************************************************************************** !
 subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
-                                    rich_aux_var_up,global_aux_var_up, &
-                                    rich_aux_var_dn,global_aux_var_dn, &
+                                    gen_aux_var_up,global_aux_var_up, &
+                                    gen_aux_var_dn,global_aux_var_dn, &
                                     por_dn,sir_dn,dd_up,perm_dn, &
                                     area,dist_gravity,option, &
                                     sat_func_dn,Jdn)
@@ -1130,7 +1130,7 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
   implicit none
   
   PetscInt :: ibndtype(:)
-  type(general_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
+  type(general_auxvar_type) :: gen_aux_var_up, gen_aux_var_dn
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
   type(option_type) :: option
   PetscReal :: dd_up, sir_dn
@@ -1156,7 +1156,7 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
   PetscInt :: pressure_bc_type
 
   PetscInt :: iphase, ideriv
-  type(general_auxvar_type) :: rich_aux_var_pert_dn, rich_aux_var_pert_up
+  type(general_auxvar_type) :: gen_aux_var_pert_dn, gen_aux_var_pert_up
   type(global_auxvar_type) :: global_aux_var_pert_dn, global_aux_var_pert_up
   PetscReal :: perturbation
   PetscReal :: x_dn(1), x_up(1), x_pert_dn(1), x_pert_up(1), pert_dn, res(1), &
@@ -1194,7 +1194,7 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
         endif
         
         density_ave = upweight*global_aux_var_up%den(1)+(1.D0-upweight)*global_aux_var_dn%den(1)
-        dden_ave_dp_dn = (1.D0-upweight)*rich_aux_var_dn%dden_dp
+        dden_ave_dp_dn = (1.D0-upweight)*gen_aux_var_dn%dden_dp
 
         gravity = (upweight*global_aux_var_up%den(1) + &
                   (1.D0-upweight)*global_aux_var_dn%den(1)) &
@@ -1202,7 +1202,7 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
         dgravity_dden_dn = (1.d0-upweight)*FMWH2O*dist_gravity
 
         dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1) + gravity
-        dphi_dp_dn = -1.d0 + dgravity_dden_dn*rich_aux_var_dn%dden_dp
+        dphi_dp_dn = -1.d0 + dgravity_dden_dn*gen_aux_var_dn%dden_dp
 
         if (pressure_bc_type == SEEPAGE_BC .or. &
             pressure_bc_type == CONDUCTANCE_BC) then
@@ -1214,10 +1214,10 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
         endif
         
         if (dphi>=0.D0) then
-          ukvr = rich_aux_var_up%kvr
+          ukvr = gen_aux_var_up%kvr
         else
-          ukvr = rich_aux_var_dn%kvr
-          dukvr_dp_dn = rich_aux_var_dn%dkvr_dp
+          ukvr = gen_aux_var_dn%kvr
+          dukvr_dp_dn = gen_aux_var_dn%dkvr_dp
         endif      
      
         if (ukvr*Dq>floweps) then
@@ -1234,7 +1234,7 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
           density_ave = global_aux_var_up%den(1)
         else 
           density_ave = global_aux_var_dn%den(1)
-          dden_ave_dp_dn = rich_aux_var_dn%dden_dp
+          dden_ave_dp_dn = gen_aux_var_dn%dden_dp
         endif 
         q = v_darcy * area
       endif
@@ -1246,8 +1246,8 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
   if (option%numerical_derivatives) then
     call GlobalAuxVarInit(global_aux_var_pert_up,option)
     call GlobalAuxVarInit(global_aux_var_pert_dn,option)  
-    call GeneralAuxVarCopy(rich_aux_var_up,rich_aux_var_pert_up,option)
-    call GeneralAuxVarCopy(rich_aux_var_dn,rich_aux_var_pert_dn,option)
+    call GeneralAuxVarCopy(gen_aux_var_up,gen_aux_var_pert_up,option)
+    call GeneralAuxVarCopy(gen_aux_var_dn,gen_aux_var_pert_dn,option)
     call GlobalAuxVarCopy(global_aux_var_up,global_aux_var_pert_up,option)
     call GlobalAuxVarCopy(global_aux_var_dn,global_aux_var_pert_dn,option)
     x_up(1) = global_aux_var_up%pres(1)
@@ -1257,8 +1257,8 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
       x_up(ideriv) = x_dn(ideriv)
     endif
     call GeneralBCFlux(ibndtype,aux_vars, &
-                        rich_aux_var_up,global_aux_var_up, &
-                        rich_aux_var_dn,global_aux_var_dn, &
+                        gen_aux_var_up,global_aux_var_up, &
+                        gen_aux_var_dn,global_aux_var_dn, &
                         por_dn,sir_dn,dd_up,perm_dn, &
                         area,dist_gravity,option,v_darcy,res)
     if (pressure_bc_type == ZERO_GRADIENT_BC) then
@@ -1272,15 +1272,15 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
     if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
       x_pert_up(ideriv) = x_pert_dn(ideriv)
     endif   
-    call GeneralAuxVarCompute(x_pert_dn(1),rich_aux_var_pert_dn, &
+    call GeneralAuxVarCompute(x_pert_dn(1),gen_aux_var_pert_dn, &
                                global_aux_var_pert_dn,sat_func_dn, &
                                0.d0,0.d0,option)
-    call GeneralAuxVarCompute(x_pert_up(1),rich_aux_var_pert_up, &
+    call GeneralAuxVarCompute(x_pert_up(1),gen_aux_var_pert_up, &
                                global_aux_var_pert_up,sat_func_dn, &
                                0.d0,0.d0,option)
     call GeneralBCFlux(ibndtype,aux_vars, &
-                        rich_aux_var_pert_up,global_aux_var_pert_up, &
-                        rich_aux_var_pert_dn,global_aux_var_pert_dn, &
+                        gen_aux_var_pert_up,global_aux_var_pert_up, &
+                        gen_aux_var_pert_dn,global_aux_var_pert_dn, &
                         por_dn,sir_dn,dd_up,perm_dn, &
                         area,dist_gravity,option,v_darcy,res_pert_dn)
     J_pert_dn(1,ideriv) = (res_pert_dn(1)-res(1))/pert_dn
@@ -1300,8 +1300,8 @@ end subroutine GeneralBCFluxDerivative
 !
 ! ************************************************************************** !
 subroutine GeneralBCFlux(ibndtype,aux_vars, &
-                          rich_aux_var_up,global_aux_var_up, &
-                          rich_aux_var_dn,global_aux_var_dn, &
+                          gen_aux_var_up,global_aux_var_up, &
+                          gen_aux_var_dn,global_aux_var_dn, &
                           por_dn,sir_dn,dd_up,perm_dn, &
                           area,dist_gravity,option,v_darcy,Res)
   use Option_module
@@ -1309,7 +1309,7 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
   implicit none
   
   PetscInt :: ibndtype(:)
-  type(general_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
+  type(general_auxvar_type) :: gen_aux_var_up, gen_aux_var_dn
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
   type(option_type) :: option
   PetscReal :: dd_up, sir_dn
@@ -1368,9 +1368,9 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
         endif
    
         if (dphi>=0.D0) then
-          ukvr = rich_aux_var_up%kvr
+          ukvr = gen_aux_var_up%kvr
         else
-          ukvr = rich_aux_var_dn%kvr
+          ukvr = gen_aux_var_dn%kvr
         endif      
      
         if (ukvr*Dq>floweps) then
@@ -1677,7 +1677,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
   type(general_parameter_type), pointer :: general_parameter
-  type(general_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)
+  type(general_auxvar_type), pointer :: gen_aux_vars(:), gen_aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
@@ -1693,8 +1693,8 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   option => realization%option
   field => realization%field
   general_parameter => patch%aux%General%general_parameter
-  rich_aux_vars => patch%aux%General%aux_vars
-  rich_aux_vars_bc => patch%aux%General%aux_vars_bc
+  gen_aux_vars => patch%aux%General%aux_vars
+  gen_aux_vars_bc => patch%aux%General%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
@@ -1792,12 +1792,12 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
    
-      call GeneralFlux(rich_aux_vars(ghosted_id_up), &
+      call GeneralFlux(gen_aux_vars(ghosted_id_up), &
                         global_aux_vars(ghosted_id_up), &
                           porosity_loc_p(ghosted_id_up), &
                           general_parameter%sir(1,icap_up), &
                           dd_up,perm_up, &
-                        rich_aux_vars(ghosted_id_dn), &
+                        gen_aux_vars(ghosted_id_dn), &
                         global_aux_vars(ghosted_id_dn), &
                           porosity_loc_p(ghosted_id_dn), &
                           general_parameter%sir(1,icap_dn), &
@@ -1887,9 +1887,9 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
 
       call GeneralBCFlux(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
-                                rich_aux_vars_bc(sum_connection), &
+                                gen_aux_vars_bc(sum_connection), &
                                 global_aux_vars_bc(sum_connection), &
-                                rich_aux_vars(ghosted_id), &
+                                gen_aux_vars(ghosted_id), &
                                 global_aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
                                 general_parameter%sir(1,icap_dn), &
@@ -2016,7 +2016,7 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(general_parameter_type), pointer :: general_parameter
-  type(general_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)
+  type(general_auxvar_type), pointer :: gen_aux_vars(:), gen_aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
   type(coupler_type), pointer :: source_sink
   type(connection_set_type), pointer :: cur_connection_set
@@ -2027,8 +2027,8 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
   option => realization%option
   field => realization%field
   general_parameter => patch%aux%General%general_parameter
-  rich_aux_vars => patch%aux%General%aux_vars
-  rich_aux_vars_bc => patch%aux%General%aux_vars_bc
+  gen_aux_vars => patch%aux%General%aux_vars
+  gen_aux_vars_bc => patch%aux%General%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
@@ -2049,7 +2049,7 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-      call GeneralAccumulation(rich_aux_vars(ghosted_id), &
+      call GeneralAccumulation(gen_aux_vars(ghosted_id), &
                                 global_aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
                                 volume_p(local_id), &
@@ -2292,7 +2292,7 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
   type(general_parameter_type), pointer :: general_parameter
-  type(general_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:) 
+  type(general_auxvar_type), pointer :: gen_aux_vars(:), gen_aux_vars_bc(:) 
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
   
   PetscViewer :: viewer
@@ -2302,8 +2302,8 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   option => realization%option
   field => realization%field
   general_parameter => patch%aux%General%general_parameter
-  rich_aux_vars => patch%aux%General%aux_vars
-  rich_aux_vars_bc => patch%aux%General%aux_vars_bc
+  gen_aux_vars => patch%aux%General%aux_vars
+  gen_aux_vars_bc => patch%aux%General%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
@@ -2372,12 +2372,12 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
                               
-      call GeneralFluxDerivative(rich_aux_vars(ghosted_id_up), &
+      call GeneralFluxDerivative(gen_aux_vars(ghosted_id_up), &
                                   global_aux_vars(ghosted_id_up), &
                                     porosity_loc_p(ghosted_id_up), &
                                     general_parameter%sir(1,icap_up), &
                                     dd_up,perm_up, &
-                                  rich_aux_vars(ghosted_id_dn), &
+                                  gen_aux_vars(ghosted_id_dn), &
                                   global_aux_vars(ghosted_id_dn), &
                                     porosity_loc_p(ghosted_id_dn), &
                                     general_parameter%sir(1,icap_dn), &
@@ -2473,9 +2473,9 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 
       call GeneralBCFluxDerivative(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
-                                rich_aux_vars_bc(sum_connection), &
+                                gen_aux_vars_bc(sum_connection), &
                                 global_aux_vars_bc(sum_connection), &
-                                rich_aux_vars(ghosted_id), &
+                                gen_aux_vars(ghosted_id), &
                                 global_aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
                                 general_parameter%sir(1,icap_dn), &
@@ -2584,7 +2584,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
   type(general_parameter_type), pointer :: general_parameter
-  type(general_auxvar_type), pointer :: rich_aux_vars(:)
+  type(general_auxvar_type), pointer :: gen_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)
   PetscInt :: flow_pc
   PetscViewer :: viewer
@@ -2594,7 +2594,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   option => realization%option
   field => realization%field
   general_parameter => patch%aux%General%general_parameter
-  rich_aux_vars => patch%aux%General%aux_vars
+  gen_aux_vars => patch%aux%General%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
 
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
@@ -2611,7 +2611,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
     icap = int(icap_loc_p(ghosted_id))
-    call GeneralAccumDerivative(rich_aux_vars(ghosted_id), &
+    call GeneralAccumDerivative(gen_aux_vars(ghosted_id), &
                               global_aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
@@ -2666,7 +2666,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       select case(source_sink%flow_condition%rate%itype)
         case(MASS_RATE_SS)
         case(VOLUMETRIC_RATE_SS)  ! assume local density for now
-          Jup(1,1) = -qsrc*rich_aux_vars(ghosted_id)%dden_dp*FMWH2O
+          Jup(1,1) = -qsrc*gen_aux_vars(ghosted_id)%dden_dp*FMWH2O
 
       end select
 #ifdef GLENN
