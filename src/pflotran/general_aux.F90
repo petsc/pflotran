@@ -1,9 +1,5 @@
 module General_Aux_module
 
-#ifdef GLENN
-  use Matrix_Buffer_module
-#endif
-
   implicit none
   
   private 
@@ -14,6 +10,10 @@ module General_Aux_module
     PetscReal :: placeholder
   end type general_auxvar_type
   
+  type, public :: general_parameter_type
+    PetscReal, pointer :: sir(:,:)
+  end type general_parameter_type
+  
   type, public :: general_type
     PetscInt :: n_zero_rows
     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
@@ -21,11 +21,9 @@ module General_Aux_module
     PetscBool :: aux_vars_up_to_date
     PetscBool :: inactive_cells_exist
     PetscInt :: num_aux, num_aux_bc
+    type(general_parameter_type), pointer :: general_parameter
     type(general_auxvar_type), pointer :: aux_vars(:)
     type(general_auxvar_type), pointer :: aux_vars_bc(:)
-#ifdef GLENN
-    type(matrix_buffer_type), pointer :: matrix_buffer
-#endif
   end type general_type
 
   public :: GeneralAuxCreate, GeneralAuxDestroy, &
