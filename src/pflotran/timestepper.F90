@@ -2726,6 +2726,7 @@ subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
       tran_stepper%num_newton_iterations = 0
       tran_stepper%prev_dt = 0.d0
     endif
+    option%match_waypoint = PETSC_FALSE
     realization%output_option%plot_number = 0
   endif
     
