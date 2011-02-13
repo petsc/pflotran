@@ -4960,7 +4960,7 @@ The flow and transport equations are solved sequentially, with saturation state 
 \EN
 with fluid density $\rho$, porosity $\varphi$, and liquid saturation $s$. The Darcy velocity $\bq$ is given by
 \EQ
-\bq \eq -\frac{kk_r}{\mu} \bnabla\big(p-\rho g \bz\big),
+\bq \eq -\frac{kk_r(s)}{\mu} \bnabla\big(p-\rho g z\big),
 \EN
 with fluid pressure $p$, viscosity $\mu$, acceleration of gravity $g$, intrinsic permeability $k$, and relative permeability $k_r$ a function of saturation. The Van Genuchten relation is used to relate capillary pressure to liquid saturation and the Burdine correlation is used for relative permeability.
 
@@ -4970,43 +4970,109 @@ Finite volume techniques are used to discretize the flow and transport partial d
 
 The residual equation for flow has the finite volume discretized form
 \EQ\label{richards_ifv}
-R_n^{(k+1)} \eq \frac{(\varphi\rho)_n^{(k+1)} - (\varphi\rho)_n^{(k)}}{\Delta t_{k}} V_n + \sum_{n'} A_{nn'}^{} F_{nn'}^{(k+1)} \eq 0,
+R_n^{(k+1)} \eq \frac{(\varphi s\rho)_n^{(k+1)} - (\varphi s\rho)_n^{(k)}}{\Delta t_{k}} V_n + \sum_{n'} A_{nn'}^{} F_{nn'}^{(k+1)} \eq 0,
 \EN
 for the $k\!+\!1^{\rm st}$ time step with variable time step size $\Delta t_k\!=\!t_{k+1}\!-\!t_k$, where the sum $n'$ is over all control volumes connected to the $n$th node with volume $V_n$ and interfacial area $A_{nn'}$.
 
 The discretized flux $F_{nn'}$ at the interface  $n\!-\!n'$ between nodes $n$ and $n'$ has the following form
 \EQ
-F_{nn'} \eq - \rho_{nn'} \left(\frac{kk_r}{\mu}\right)_{nn'}\left[\frac{P_{n'}-P_n-\rho_{nn'} g z_{nn'}}{d_{n'}+d_n}\right],
+F_{nn'} \eq - \rho_{nn'} \left(\frac{kk_r}{\mu}\right)_{nn'}\left[\frac{P_{n'}-P_n-W\rho_{nn'} g z_{nn'}}{d_{n'}+d_n}\right],
 \EN
 where the interface quantities $(\ )_{nn'}$ are calculated as follows.
-The density $\rho_{nn'}$ at the interface is computed according to the arithmetic mean
+%\begin{comment}
+%The density $\rho_{nn'}$ at the interface is computed according to the arithmetic mean
+%\BA
+%\rho_{nn'} & \eq \frac{M_{n'}+M_n}{V_{n'}+V_n} \eq  \frac{\rho_{n'}V_{n'}+\rho_n V_n}{V_{n'}+V_n},\\
+%&\eq \frac{d_{n'}\rho_{n'}+d_{n}\rho_n}{d_{n'}+d_n}.
+%\EA
+%\end{comment}
+The density $\rho_{nn'}$ at the interface is computed according to the weighted mean
 \BA
-\rho_{nn'} & \eq \frac{M_{n'}+M_n}{V_{n'}+V_n} \eq  \frac{\rho_{n'}V_{n'}+\rho_n V_n}{V_{n'}+V_n},\\
-&\eq \frac{d_n\rho_{n'}+d_{n'}\rho_n}{d_{n'}+d_n}.
+\rho_{nn'} \eq \frac{d_{n'}\rho_{n}+d_{n}\rho_{n'}}{d_{n'}+d_n},
 \EA
+with the property that as $d_n\rightarrow 0$, $\rho_{nn'}\rightarrow \rho_n$.
 The permeability is computed according to the harmonic mean
 \EQ
-k_{nn'} \eq \frac{k_{n'}k_{n}}{d_n k_{n'} + d_{n'} k_{n}} (d_{n'}+d_n).
+k_{nn'} \eq \frac{(d_{n'}+d_n) k_{n'}k_{n}}{d_n k_{n'} + d_{n'} k_{n}}.
 \EN
 The mobility factor $(k_r/\mu)_{nn'}$ at the interface is calculated using upstream weighting
 \EQ
-\left(\frac{k_r}{\mu}\right)_{nn'} \eq \omega_{nn'} \left(\frac{k_r}{\mu}\right)_{n'} + (1-\omega_{nn'}) \left(\frac{k_r}{\mu}\right)_{n},
+\left(\frac{k_r}{\mu}\right)_{nn'} \eq \omega_{nn'} \left(\frac{k_r}{\mu}\right)_{n} + (1-\omega_{nn'}) \left(\frac{k_r}{\mu}\right)_{n'},
 \EN
-where $\omega_{nn'}=0$ if $q_{nn'}>0$, and $\omega_{nn'}=1$ if $q_{nn'}<0$.
+where $\omega_{nn'}=1$ if $q_{nn'}>0$ (node $n$ upstream), and $\omega_{nn'}=0$ if $q_{nn'}<0$ (node $n'$ upstream).
 
 At the Columbia River boundary a conductance boundary condition is imposed to dampen the river stage fluctuations.
 %{\color{black}
 At an exterior face $b$ of the boundary cell $n$, the boundary flux is given by
 \EQ
-F_{nb} \eq -\rho \left(\frac{kk_r}{\mu}\right)\left[\frac{P_{b}-P_n-\rho g z}{d_{nb}}\right],
+F_{nb} \eq -\rho_{nb} \left(\frac{kk_r}{\mu}\right)_{nb} \left[\frac{P_{b}-P_n-W\rho_{nb} g z_{nb}}{d_{nb}}\right],
 \EN
 where $P_b$ and $P_n$ are the pressures at the face and cell center, respectively, and $d_{nb}$ is the distance between the face and cell center.
 The permeability at the river boundary is set to the value
 \EQ
-k \eq C \, d_{nb},
+k_{nb} \eq C \, d_{nb},
 \EN
 where the coefficient $C$ is referred to as the boundary conductance.
 
+\section{Newton-Raphson Equations}
+
+The Newton-Raphson equations have the form
+\EQ
+\bJ \bdelta X \eq -\bR,
+\EN
+with residual function $\bR$ and Jacobian matrix $\bJ$ with unknown $X$ equal to the pressure $p$. In integrated finite volume form
+\EQ
+R_n \eq \Delta_t M_n + \Delta f_{n}.
+\EN
+
+Writing for the accumulation term
+\EQ
+\Delta_t M_n \eq \frac{M_n^{k+1}-M_n^k}{\Delta t} V_n \eq \frac{(\varphi s\rho)_n^{(k+1)} - (\varphi s\rho)_n^{(k)}}{\Delta t} V_n.
+\EN
+with
+\EQ
+M_n^{k+1} \eq \frac{(\varphi s\rho)_n^{(k+1)}}{\Delta t} V_n.
+\EN
+The derivative of the accumulation term is given by
+\BA
+\delta M_n &\eq \frac{V_n}{\Delta t} \varphi (s_n \delta \rho_n + \rho_n \delta s_n),\\
+&\eq \frac{V_n}{\Delta t} \varphi (s_n \rho_{np} + \rho_n s_{np}) \delta p_n.
+\EA
+
+The flux contribution $\Delta f_n$ has the form
+\BA
+\Delta f_{n} \eq \T_{n+1,n} \,\rho_{n+1,n} \,\lambda_{n+1,n} \,\Phi_{n+1} - \T_{n,n-1}\,\rho_{n,n-1} \,\lambda_{n,n-1}\Phi_n,
+\EA
+for the interface between nodes $n$ and $n-1$, with potential
+\EQ
+\Phi_{n+1} \eq P_{n+1}-P_n-W\rho_{n+1,n}\, g\, z_{n+1,n},
+\EN
+mobility
+\EQ
+\lambda_{n,n-1} \eq \omega_{n,n-1}\lambda_{n} + (1-\omega_{n,n-1})\lambda_{n-1},
+\EN
+with weighting factor $\omega_{n,n-1}$ ($\omega=1$ node $n$ upstream, $\omega=0$ node $n$ downstream), and transmissibility
+\EQ
+\T_{nn'} \eq A_{nn'} \frac{k_{n'}k_{n}}{d_n k_{n'} + d_{n'} k_{n}}.
+\EN
+The derivative of the flux has the form
+\BA
+\delta f_n &\eq \T_{n+1,n} \Big( \delta \rho_{n+1,n} \, \lambda_{n+1,n} \, \Phi_{n+1}
++ \rho_{n+1,n} \, \delta \lambda_{n+1,n} \, \Phi_{n+1}
++ \rho_{n+1,n} \, \lambda_{n+1,n} \, \delta \Phi_{n+1}\Big),
+\EA
+with
+\BA
+\delta \rho_{n+1,n} \eq \dfrac{d_{n}}{d_{n+1}+d_n} \rho_{n+1,p} \,\delta p_{n+1} +
+\dfrac{d_{n+1}}{d_{n+1}+d_n}\rho_{np} \,\delta p_n,
+\EA
+\EQ
+\delta\lambda_{n,n-1} \eq \omega_{n,n-1}\delta\lambda_{n} + (1-\omega_{n,n-1})\delta\lambda_{n-1},
+\EN
+and
+\EQ
+\delta\Phi_{n+1} \eq \delta p_{n+1} - \delta p_n - W \delta\rho_{n+1,n} \,g \,\Delta z_{n+1,n}.
+\EN
 
 \section{References}
 
