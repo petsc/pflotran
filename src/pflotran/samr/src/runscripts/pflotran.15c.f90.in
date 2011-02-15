@@ -240,7 +240,7 @@ MAX_STEPS 100000
 
 : == discretization ===========================================================
 GRID
-TYPE amr 
+TYPE structured 
 NXYZ 20 20 80
 DXYZ
 1.
@@ -264,8 +264,8 @@ ITOL_UPDATE 1.d0
 LINEAR_SOLVER FLOW
 KSP_TYPE FGMRES
 :KSP_TYPE PREONLY
-:PC_TYPE LU
-PC_TYPE SHELL
+PC_TYPE LU
+:PC_TYPE SHELL
 /
 
 : == transport solvers ========================================================
@@ -280,10 +280,10 @@ STOL 1.d-30
 /
 
 LINEAR_SOLVER TRANSPORT
-:PC_TYPE LU
+PC_TYPE LU
 :KSP_TYPE PREONLY
 KSP_TYPE FGMRES
-PC_TYPE SHELL 
+:PC_TYPE SHELL 
 /
 
 : == fluid properties =========================================================
@@ -434,13 +434,13 @@ OUTPUT
 :PERIODIC TIMESTEP 1
 PERIODIC TIME .05 y
 :FORMAT TECPLOT BLOCK
-FORMAT HDF5
+:FORMAT HDF5
 /
 
 : == times ====================================================================
 TIME
 FINAL_TIME .1 y 
-INITIAL_TIMESTEP_SIZE .001 d
+INITIAL_TIMESTEP_SIZE .01 d
 MAXIMUM_TIMESTEP_SIZE .5 d
 /
 

@@ -21,6 +21,7 @@ module Solver_module
     PetscReal :: linear_rtol       ! relative tolerance
     PetscReal :: linear_dtol       ! divergence tolerance
     PetscInt :: linear_maxit     ! maximum number of iterations
+    PetscReal :: linear_lu_zero_pivot_tol  ! zero pivot tolerance for LU
     
     PetscReal :: newton_atol       ! absolute tolerance
     PetscReal :: newton_rtol       ! relative tolerance
@@ -106,6 +107,7 @@ function SolverCreate()
   solver%linear_rtol = PETSC_DEFAULT_DOUBLE_PRECISION
   solver%linear_dtol = PETSC_DEFAULT_DOUBLE_PRECISION
   solver%linear_maxit = PETSC_DEFAULT_INTEGER
+  solver%linear_lu_zero_pivot_tol = PETSC_DEFAULT_DOUBLE_PRECISION
   
   solver%newton_atol = PETSC_DEFAULT_DOUBLE_PRECISION
   solver%newton_rtol = PETSC_DEFAULT_DOUBLE_PRECISION
@@ -207,6 +209,11 @@ subroutine SolverSetSNESOptions(solver)
   ! get the ksp_type and pc_type incase of command line override.
   call KSPGetType(solver%ksp,solver%ksp_type,ierr)
   call PCGetType(solver%pc,solver%pc_type,ierr)
+  
+  if (solver%pc_type == PCLU .and. &
+      solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_DOUBLE_PRECISION) then
+    call PCFactorSetZeroPivot(solver%pc,solver%linear_lu_zero_pivot_tol,ierr)
+  endif
 
   ! Set the tolerances for the Newton solver.
   call SNESSetTolerances(solver%snes, solver%newton_atol, solver%newton_rtol, &
@@ -546,6 +553,10 @@ subroutine SolverReadLinear(solver,input,option)
         call InputReadInt(input,option,solver%linear_maxit)
         call InputDefaultMsg(input,option,'linear_maxit')
 
+      case('LU_ZERO_PIVOT_TOL')
+        call InputReadDouble(input,option,solver%linear_lu_zero_pivot_tol)
+        call InputDefaultMsg(input,option,'linear_lu_zero_pivot_tol')
+   
       case default
         option%io_buffer = 'Keyword: ' // trim(keyword) // &
                            ' not recognized in linear solver'    
@@ -711,23 +722,31 @@ subroutine SolverPrintLinearInfo(solver,print_to_screen,print_to_file,fid, &
   if (print_to_screen) then
     write(*,*) 
     write(*,'(a)') trim(header)
-    write(*,'(" solver: ",a)') trim(solver%ksp_type)
-    write(*,'("precond: ",a)') trim(solver%pc_type)
-    write(*,'("   atol:",1pe12.4)') solver%linear_atol
-    write(*,'("   rtol:",1pe12.4)') solver%linear_rtol
-    write(*,'("   dtol:",1pe12.4)') solver%linear_dtol
-    write(*,'("  maxit:",i7)') solver%linear_maxit
+    write(*,'("   solver:  ",a)') trim(solver%ksp_type)
+    write(*,'("  precond:  ",a)') trim(solver%pc_type)
+    write(*,'("     atol:",1pe12.4)') solver%linear_atol
+    write(*,'("     rtol:",1pe12.4)') solver%linear_rtol
+    write(*,'("     dtol:",1pe12.4)') solver%linear_dtol
+    write(*,'("    maxit:",i7)') solver%linear_maxit
+    if (solver%pc_type == PCLU .and. &
+        solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_DOUBLE_PRECISION) then
+      write(*,'("pivot tol:",1pe12.4)') solver%linear_lu_zero_pivot_tol
+    endif
   endif
   
   if (print_to_file) then
     write(fid,*) 
     write(fid,'(a)') trim(header)
-    write(fid,'(" solver: ",a)') trim(solver%ksp_type)
-    write(fid,'("precond: ",a)') trim(solver%pc_type)
-    write(fid,'("   atol:",1pe12.4)') solver%linear_atol
-    write(fid,'("   rtol:",1pe12.4)') solver%linear_rtol
-    write(fid,'("   dtol:",1pe12.4)') solver%linear_dtol
-    write(fid,'("  maxit:",i7)') solver%linear_maxit
+    write(fid,'("   solver:  ",a)') trim(solver%ksp_type)
+    write(fid,'("  precond:  ",a)') trim(solver%pc_type)
+    write(fid,'("     atol:",1pe12.4)') solver%linear_atol
+    write(fid,'("     rtol:",1pe12.4)') solver%linear_rtol
+    write(fid,'("     dtol:",1pe12.4)') solver%linear_dtol
+    write(fid,'("    maxit:",i7)') solver%linear_maxit
+    if (solver%pc_type == PCLU .and. &
+        solver%linear_lu_zero_pivot_tol > PETSC_DEFAULT_DOUBLE_PRECISION) then
+      write(fid,'("pivot tol:",1pe12.4)') solver%linear_lu_zero_pivot_tol
+    endif
   endif
 
 end subroutine SolverPrintLinearInfo

@@ -486,7 +486,7 @@ subroutine RActivityCoefficientsChunk(auxvar,reaction,option)
     ln_conc = log(auxvar%pri_molal(ichunk,:))
     ln_act = ln_conc+log(auxvar%pri_act_coef(ichunk,:))
   
-#ifdef TEMP_DEPENDENT_LOGK
+#if 0
     if (.not.option%use_isothermal) then
       call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
                                    auxvar%temp(ichunk,1),reaction%neqcplx)
@@ -747,7 +747,7 @@ subroutine RTotalChunk(auxvar,reaction,option)
     auxvar%dtotal(ichunk,icomp,icomp,iphase) = 1.d0
   enddo
   
-#ifdef TEMP_DEPENDENT_LOGK
+#if 0
   if (.not.option%use_isothermal .and. reaction%neqcplx > 0) then
     call ReactionInterpolateLogK(reaction%eqcplx_logKcoef,reaction%eqcplx_logK, &
                                  auxvar%temp(ichunk,iphase),reaction%neqcplx)
@@ -807,7 +807,7 @@ subroutine RTotalChunk(auxvar,reaction,option)
 #ifdef CHUAN_CO2
 
   iphase = 2           
-#ifdef TEMP_DEPENDENT_LOGK
+#if 0
   if (.not.option%use_isothermal .and. reaction%ngas > 0) then
     call ReactionInterpolateLogK(reaction%eqgas_logKcoef,reaction%eqgas_logK, &
                                  auxvar%temp(ichunk,1),reaction%ngas)
@@ -990,7 +990,7 @@ subroutine RTotalSorbEqSurfCplxChunk(auxvar,reaction,option)
   ln_conc = log(auxvar%pri_molal(ichunk,:))
   ln_act = ln_conc+log(auxvar%pri_act_coef(ichunk,:))
 
-#ifdef TEMP_DEPENDENT_LOGK
+#if 0
   if (.not.option%use_isothermal) then
     call ReactionInterpolateLogK(reaction%eqsrfcplx_logKcoef,reaction%eqsrfcplx_logK, &
                                auxvar%temp(ichunk,iphase),reaction%neqsrfcplx)
@@ -1217,7 +1217,7 @@ subroutine RKineticMineralChunk(Res,Jac,compute_derivative,auxvar,reaction, &
     ln_sec_act = ln_sec+log(auxvar%sec_act_coef(ichunk,:))
   endif
 
-#ifdef TEMP_DEPENDENT_LOGK
+#if 0
   if (.not.option%use_isothermal) then
     call ReactionInterpolateLogK(reaction%kinmnrl_logKcoef,reaction%kinmnrl_logK, &
                                auxvar%temp(ichunk,iphase),reaction%nkinmnrl)

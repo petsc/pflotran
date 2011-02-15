@@ -4,7 +4,7 @@ PERIODIC  = 2
 MIXED     = 3
 ROBIN     = 4
 
-pflotran_filename="pflotran.15c.4320p.in"
+pflotran_filename="pflotran.15c.24p.in"
 
 CartesianGeometry{
    domain_boxes = [(0,0,0), (19,19,79)]
@@ -14,7 +14,7 @@ CartesianGeometry{
 
 
 GriddingAlgorithm{
-   max_levels = 7 
+   max_levels = 3 
    largest_patch_size {
       level_0 = 20, 20, 80
       level_1 = 40, 40, 40
@@ -52,7 +52,7 @@ PflotranApplicationStrategy{
    DriverMode                       = 1
    nl_tangential_coarse_fine_scheme = "LINEAR"
    nl_normal_coarse_fine_scheme     = "LINEAR"
-   number_of_modes       = 3
+   number_of_modes       = 2
 
    PflotranFlowMultilevelOperator{
      	       operator_name                   = "PflotranMultilevelOperator"
@@ -74,25 +74,26 @@ PflotranApplicationStrategy{
 	       variable_order_interpolation    = FALSE
 	       use_cf_interpolant              = TRUE
    }
+
    PflotranTransportMultilevelOperator{
-     	       operator_name                   = "PflotranMultilevelOperator"
-	       tangent_interp_scheme           = "LINEAR"
-	       normal_interp_scheme            = "LINEAR"
-	       adjust_cf_coefficients          = FALSE
-	       interpolate_ghost_values        = TRUE
-	       extrapolation_order             = 2
-	       boundary_conditions             = NEUMANN, NEUMANN, NEUMANN, NEUMANN, NEUMANN, DIRICHLET
-	       coarsen_diffusive_fluxes        = TRUE
-	       coarsen_convective_fluxes       = TRUE
-	       print_info_level                = 0
-	       cell_refine_op                  = "CONSTANT_REFINE"
-	       cell_coarsen_op                 = "CONSERVATIVE_COARSEN"
-	       cell_soln_coarsen_op                 = "CONSERVATIVE_COARSEN"
-	       cell_src_coarsen_op                 = "SUM_COARSEN"
-	       face_refine_op                  = "CONSTANT_REFINE"
-	       face_coarsen_op                 = "CONSERVATIVE_COARSEN"
-	       variable_order_interpolation    = FALSE
-	       use_cf_interpolant              = TRUE
+               operator_name                   = "PflotranMultilevelOperator"
+               tangent_interp_scheme           = "LINEAR"
+               normal_interp_scheme            = "LINEAR"
+               adjust_cf_coefficients          = FALSE
+               interpolate_ghost_values        = TRUE
+               extrapolation_order             = 2
+               boundary_conditions             = NEUMANN, NEUMANN, NEUMANN, NEUMANN, NEUMANN, DIRICHLET
+               coarsen_diffusive_fluxes        = TRUE
+               coarsen_convective_fluxes       = TRUE
+               print_info_level                = 0
+               cell_refine_op                  = "CONSTANT_REFINE"
+               cell_coarsen_op                 = "CONSERVATIVE_COARSEN"
+               cell_soln_coarsen_op                 = "CONSERVATIVE_COARSEN"
+               cell_src_coarsen_op                 = "SUM_COARSEN"
+               face_refine_op                  = "CONSTANT_REFINE"
+               face_coarsen_op                 = "CONSERVATIVE_COARSEN"
+               variable_order_interpolation    = FALSE
+               use_cf_interpolant              = TRUE
    }
 
    PflotranFlowPreconditioner{

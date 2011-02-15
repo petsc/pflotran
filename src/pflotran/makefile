@@ -46,6 +46,10 @@ ifdef vamsi_hdf5
   HDF5_FLAGS += -DVAMSI_HDF5 -DVAMSI_DEFAULT -DVAMSI_HDF5_READ -DVAMSI_HDF5_WRITE -DVAMSI_STAGE_BARRIER
 endif
 
+ifdef have_hdf5
+  HDF5_FLAGS += -I$(HDF5_INCLUDE) -I$(HDF5_LIB) -DPETSC_HAVE_HDF5
+endif
+
 ifdef samr_hdf5
   HDF5_FLAGS += -I$(HDF5_INCLUDE) -I$(HDF5_LIB) -DSAMR_HAVE_HDF5
 endif
@@ -78,6 +82,10 @@ ifdef petscrel
 else
  include ${PETSC_DIR}/conf/variables
  include ${PETSC_DIR}/conf/rules
+endif
+
+ifdef have_hdf5
+LIBS +=  -L${HDF5_LIB} -lhdf5_fortran -lhdf5 -lz 
 endif
 
 ifdef tau

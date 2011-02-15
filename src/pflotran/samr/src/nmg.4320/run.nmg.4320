@@ -2,7 +2,7 @@
 #PBS -A CSC025GEO3
 #PBS -N  PFLOTRAN-SAMR-PGI 
 #PBS -j oe
-#PBS -l walltime=2:00:00,size=4320
+#PBS -l walltime=6:00:00,size=4320
 
 env
 nodeinfo
