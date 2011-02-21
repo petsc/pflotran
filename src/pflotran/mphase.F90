@@ -1886,7 +1886,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   PetscReal :: k1, k2, z1, z2,xg, vmco2, vmh2o,sg
   PetscReal :: xmol(realization%option%nphase*realization%option%nflowspec),&
                satu(realization%option%nphase)
-  PetscReal :: yh2o_in_co2 = 0.d0, wat_sat_x, co2_sat_x
+  PetscReal :: yh2o_in_co2 = 1.d-2, wat_sat_x, co2_sat_x
   PetscReal :: lngamco2, m_na, m_cl, m_nacl, Qkco2, mco2, xco2eq, temp
 ! PetscReal :: xla,co2_poyn
   PetscInt :: local_id, ghosted_id, dof_offset

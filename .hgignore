@@ -36,3 +36,10 @@ src/pims/build
 src/pims/pims
 src/pims/pims.xcodeproj/*.pbxuser
 src/pims/pims.xcodeproj/*.mode1
+shortcourse/exercises/sx-115/doc/sx115.pdf
+*.toc
+*.aux
+*.log
+*.synctex.gz
+docs/tecnotes/chemistry/chemistry_implementation.pdf
+docs/user_manual/quick_guide.pdf
