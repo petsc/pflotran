@@ -286,6 +286,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 !  do iconn = 1, num_faces
 !     write(*,*) iconn, coupler%flow_aux_real_var(1,iconn)
 !  end do
+!  read(*,*)
 #endif
  
   if (associated(pressure_array)) deallocate(pressure_array)
