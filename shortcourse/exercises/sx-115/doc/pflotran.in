@@ -12,7 +12,7 @@ MODE RICHARDS
 
 :================ runtime ==================
 CHECKPOINT 100000
-RESTART restart0.chk 0.d0
+RESTART restart.chk 0.d0
 
 : == chemistry ================================================================
 CHEMISTRY
@@ -36,10 +36,15 @@ TS_ACCELERATION 8
 GRID
 TYPE structured
 NXYZ 1 1 136
-DXYZ
-1.
-1.
-0.5
+:DXYZ
+:1.
+:1.
+:0.5
+:/
+BOUNDS
+0.d0 1.d0
+0.d0 1.d0
+0.d0 68.d0
 /
 /
 
@@ -187,41 +192,69 @@ MAXIMUM_TIMESTEP_SIZE 1.e-1 y
 
 : == regions ==================================================================
 REGION all
-BLOCK 1 1 1 1 1 136
+:BLOCK 1 1 1 1 1 136
+COORDINATES
+0.d0 0.d0 0.d0
+1.d0 1.d0 68.d0
 /
-
+/
 REGION Top
-BLOCK 1 1 1 1 136 136
+:BLOCK 1 1 1 1 136 136
 FACE TOP
+COORDINATES
+0.d0 0.d0 68.d0
+1.d0 1.d0 68.d0
 /
-
+/
 REGION Bottom
-BLOCK 1 1 1 1 1 1
+:BLOCK 1 1 1 1 1 1
 FACE BOTTOM
+COORDINATES
+0.d0 0.d0 0.d0
+1.d0 1.d0 0.d0
 /
-
+/
 REGION BF
-BLOCK 1 1 1 1 105 136
+:BLOCK 1 1 1 1 105 136
+COORDINATES
+0.d0 0.d0 52.d0
+1.d0 1.d0 68.d0
 /
-
+/
 REGION HF
-BLOCK 1 1 1 1 59 104
+:BLOCK 1 1 1 1 59 104
+COORDINATES
+0.d0 0.d0 29.d0
+1.d0 1.d0 52.d0
 /
-
+/
 REGION PP
-BLOCK 1 1 1 1 47 58
+:BLOCK 1 1 1 1 47 58
+COORDINATES
+0.d0 0.d0 23.d0
+1.d0 1.d0 29.d0
 /
-
+/
 REGION URG
-BLOCK 1 1 1 1 41 46
+:BLOCK 1 1 1 1 41 46
+COORDINATES
+0.d0 0.d0 20.d0
+1.d0 1.d0 23.d0
 /
-
+/
 REGION MRG
-BLOCK 1 1 1 1 1 40
+:BLOCK 1 1 1 1 1 40
+COORDINATES
+0.d0 0.d0 0.d0
+1.d0 1.d0 20.d0
 /
-
+/
 REGION Leak
-BLOCK 1 1 1 1 103 103
+:BLOCK 1 1 1 1 103 103
+COORDINATES
+0.d0 0.d0 51.d0
+1.d0 1.d0 51.d0
+/
 /
 
 : == flow conditions ==========================================================
@@ -229,9 +262,10 @@ FLOW_CONDITION Inlet
 TYPE
 FLUX neumann
 /
-:FLUX 0.317098d-7 ! 1 cm/y
-:FLUX 1.5855d-8 ! 5 mm/y
-FLUX 2.53678e-8 ! 8 mm/y
+:FLUX 3.17098d-10 ! 1 cm/y
+:FLUX 1.5855d-10 ! 5 mm/y
+FLUX 2.53678e-10 ![m/s] (8 mm/y)
+:FLUX 0.d0
 :FLUX file 200w_recharge_1951-2000_daily.dat
 /
 
@@ -243,6 +277,7 @@ DATUM 0.d0 0.d0 6.d0
 PRESSURE 101325.d0
 /
 
+skip
 FLOW_CONDITION source
 TYPE
 RATE mass_rate
@@ -250,6 +285,7 @@ RATE mass_rate
 INTERPOLATION STEP
 RATE file src.dat ! 8.4e-4 kg/s for 2 weeks (60,000 gallons)
 /
+noskip
 
 : == transport conditions =====================================================
 TRANSPORT_CONDITION Inlet
@@ -279,7 +315,6 @@ CONCENTRATIONS
 Tracer   1.e-10            F
 /
 /
-
 CONSTRAINT Inlet
 CONCENTRATIONS
 Tracer   5.e-1             F
@@ -297,48 +332,41 @@ FLOW_CONDITION Inlet
 TRANSPORT_CONDITION Inlet
 REGION Top
 /
-
 BOUNDARY_CONDITION Outlet
 FLOW_CONDITION Initial
 TRANSPORT_CONDITION Initial
 REGION Bottom
 /
-
 INITIAL_CONDITION Initial
 FLOW_CONDITION Initial
 TRANSPORT_CONDITION Initial
 REGION all
 /
-
-skip
+:skip
 SOURCE_SINK Source
 FLOW_CONDITION source
 TRANSPORT_CONDITION source
-REGION all
+REGION Leak
 /
-noskip
+:noskip
 
 : == stratigraphy =============================================================
 STRATA
 MATERIAL BF
 REGION BF
 /
-
 STRATA
 MATERIAL HF
 REGION HF
 /
-
 STRATA
 MATERIAL PP
 REGION PP
 /
-
 STRATA
 MATERIAL URG
 REGION URG
 /
-
 STRATA
 MATERIAL MRG
 REGION MRG

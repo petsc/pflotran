@@ -676,8 +676,6 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
  
 
   !    global_aux_vars(ghosted_id)%den_kg_store
-  !    global_aux_vars(ghosted_id)%mass_balance 
-  !    global_aux_vars(ghosted_id)%mass_balance_delta                   
       endif
 
     enddo
@@ -1975,8 +1973,6 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
 !       global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
 !      global_aux_vars(ghosted_id)%pres(:)
-!      global_aux_vars(ghosted_id)%mass_balance 
-!      global_aux_vars(ghosted_id)%mass_balance_delta                   
      else
        print *,'Not associated global for Flash2'
      endif
@@ -2168,8 +2164,6 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
       global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
   !   global_aux_vars(ghosted_id)%den_kg_store
-  !   global_aux_vars(ghosted_id)%mass_balance 
-  !   global_aux_vars(ghosted_id)%mass_balance_delta                   
     endif
 #endif
 
@@ -2650,8 +2644,6 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
       global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
   !   global_aux_vars(ghosted_id)%den_kg_store
-  !   global_aux_vars(ghosted_id)%mass_balance 
-  !   global_aux_vars(ghosted_id)%mass_balance_delta                   
     endif
 
     call Flash2BCFlux(boundary_condition%flow_condition%itype, &
@@ -2668,15 +2660,6 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
     patch%boundary_velocities(:,sum_connection) = v_darcy(:)
     patch%aux%Flash2%Resold_BC(local_id,1:option%nflowdof) = &
     patch%aux%Flash2%ResOld_BC(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
-
-    if (option%compute_mass_balance_new) then
-        ! contribution to boundary
-       global_aux_vars_bc(sum_connection)%mass_balance_delta(:) = &
-        global_aux_vars_bc(sum_connection)%mass_balance_delta(:) - Res(:)
-        ! contribution to internal 
-!        global_aux_vars(ghosted_id)%mass_balance_delta(1) = &
-!          global_aux_vars(ghosted_id)%mass_balance_delta(1) + Res(1)
-     endif
 
 
       if (option%use_samr) then
@@ -2838,11 +2821,6 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
         fluxes(direction)%flux_p(istart:iend) = Res(1:option%nflowdof)
       endif
       
-#ifdef COMPUTE_INTERNAL_MASS_FLUX
-      global_aux_vars(local_id_up)%mass_balance_delta(1) = &
-        global_aux_vars(local_id_up)%mass_balance_delta(1) - Res(1)
-#endif
-      
       if(.not.option%use_samr) then
         if (local_id_up>0) then
           iend = local_id_up*option%nflowdof
@@ -2988,8 +2966,6 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
 !       global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
 !      global_aux_vars(ghosted_id)%pres(:)
-!      global_aux_vars(ghosted_id)%mass_balance 
-!      global_aux_vars(ghosted_id)%mass_balance_delta                   
     else
       print *,'Not associated global for Flash2'
     endif

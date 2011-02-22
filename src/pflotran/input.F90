@@ -476,6 +476,7 @@ subroutine InputReadFlotranStringSlave(input, option)
   character(len=MAXSTRINGLENGTH) ::  tempstring
   character(len=MAXWORDLENGTH) :: word
   PetscInt :: i
+  PetscInt :: skip_count
 
   input%ierr = 0
 
@@ -497,18 +498,22 @@ subroutine InputReadFlotranStringSlave(input, option)
     call InputReadWord(tempstring,word,PETSC_TRUE,input%ierr)
     call StringToUpper(word)
     if (word(1:4) == 'SKIP') then
+      skip_count = 1
       do 
         read(input%fid,'(a512)',iostat=input%ierr) tempstring
-       if (InputError(input)) then
-         if (OptionPrintToScreen(option)) then
-            print *, 'End of file reached in InputReadFlotranStringSlave.'
-            print *, 'SKIP encountered without matching NOSKIP.'
-          endif
-        return
+        if (InputError(input)) then
+          option%io_buffer = 'End of file reached in ' // &
+              'InputReadFlotranStringSlave.  SKIP encountered ' // &
+              'without a matching NOSKIP.'
+          call printErrMsg(option)              
         endif
         call InputReadWord(tempstring,word,PETSC_FALSE,input%ierr)
         call StringToUpper(word)
-        if (word(1:4) == 'NOSK') exit
+        if (word(1:4) == 'SKIP') skip_count = skip_count + 1
+        if (word(1:4) == 'NOSK') then
+          skip_count = skip_count - 1
+          if (skip_count == 0) exit
+        endif
       enddo
       if (InputError(input)) exit
     else if (word(1:1) /= ' ' .and. word(1:4) /= 'NOSK') then

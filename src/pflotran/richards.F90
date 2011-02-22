@@ -184,7 +184,7 @@ end subroutine RichardsSetupPatch
 
 ! ************************************************************************** !
 !
-! RichardsSetup: 
+! RichardsComputeMassBalance: 
 ! author: Glenn Hammond
 ! date: 02/22/08
 !
@@ -2825,8 +2825,8 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
       endif
       
 #ifdef COMPUTE_INTERNAL_MASS_FLUX
-      global_aux_vars(local_id_up)%mass_balance_delta(1) = &
-        global_aux_vars(local_id_up)%mass_balance_delta(1) - Res(1)
+      global_aux_vars(local_id_up)%mass_balance_delta(1,1) = &
+        global_aux_vars(local_id_up)%mass_balance_delta(1,1) - Res(1)
 #endif
 
       if(.not.option%use_samr) then
@@ -2902,8 +2902,8 @@ subroutine RichardsResidualPatch1(snes,xx,r,realization,ierr)
 
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
-        global_aux_vars_bc(sum_connection)%mass_balance_delta(1) = &
-          global_aux_vars_bc(sum_connection)%mass_balance_delta(1) - Res(1)
+        global_aux_vars_bc(sum_connection)%mass_balance_delta(1,1) = &
+          global_aux_vars_bc(sum_connection)%mass_balance_delta(1,1) - Res(1)
         ! contribution to internal 
 !        global_aux_vars(ghosted_id)%mass_balance_delta(1) = &
 !          global_aux_vars(ghosted_id)%mass_balance_delta(1) + Res(1)

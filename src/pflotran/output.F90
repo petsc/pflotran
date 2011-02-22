@@ -6888,6 +6888,7 @@ subroutine OutputMassBalanceNew(realization)
   use Coupler_module
   
   use Richards_module
+  use Mphase_module
   use Reactive_Transport_module
   
   use Global_Aux_module
@@ -6917,12 +6918,12 @@ subroutine OutputMassBalanceNew(realization)
   PetscInt :: ghosted_id
   PetscInt :: iconn
   PetscInt :: offset
-  PetscInt :: iphase
+  PetscInt :: iphase, ispec
   PetscInt :: icomp
   PetscReal :: sum_area(4)
   PetscReal :: sum_area_global(4)
-  PetscReal :: sum_kg(realization%option%nphase)
-  PetscReal :: sum_kg_global(realization%option%nphase)
+  PetscReal :: sum_kg(realization%option%nflowspec,realization%option%nphase)
+  PetscReal :: sum_kg_global(realization%option%nflowspec,realization%option%nphase)
   PetscReal :: sum_mol(realization%option%ntrandof,realization%option%nphase)
   PetscReal :: sum_mol_global(realization%option%ntrandof,realization%option%nphase)
   PetscBool :: local_first
@@ -6969,6 +6970,19 @@ subroutine OutputMassBalanceNew(realization)
           icol = icol + 1
           write(strcol,'(i3,"-")') icol
           write(fid,'(a)',advance="no") ',"' // trim(strcol) // 'Global Water Mass [kg]"'
+        case(MPH_MODE)
+          icol = icol + 1
+          write(strcol,'(i3,"-")') icol
+          write(fid,'(a)',advance="no") ',"' // trim(strcol) // 'Global Water Mass in Water Phase [mol]"'
+          icol = icol + 1
+          write(strcol,'(i3,"-")') icol
+          write(fid,'(a)',advance="no") ',"' // trim(strcol) // 'Global CO2 Mass in Water Phase [mol]"'
+          icol = icol + 1
+          write(strcol,'(i3,"-")') icol
+          write(fid,'(a)',advance="no") ',"' // trim(strcol) // 'Global Water Mass in CO2 Phase [mol]"'
+          icol = icol + 1
+          write(strcol,'(i3,"-")') icol
+          write(fid,'(a)',advance="no") ',"' // trim(strcol) // 'Global CO2 Mass in CO2 Phase [mol]"'
       end select
       
       if (option%ntrandof > 0) then
@@ -6997,6 +7011,27 @@ subroutine OutputMassBalanceNew(realization)
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
               trim(boundary_condition%name) // ' Water Mass [kg/' // &
               trim(output_option%tunit) // ']"'
+          case(MPH_MODE)
+#if 0
+            icol = icol + 1
+            write(strcol,'(i3,"-")') icol
+            write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
+              trim(boundary_condition%name) // ' Water Mass [mol]"'
+            icol = icol + 1
+            write(strcol,'(i3,"-")') icol
+            write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
+              trim(boundary_condition%name) // ' CO2 Mass [mol]"'
+            icol = icol + 1
+            write(strcol,'(i3,"-")') icol
+            write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
+              trim(boundary_condition%name) // ' Water Mass [mol/' // &
+              trim(output_option%tunit) // ']"'
+            icol = icol + 1
+            write(strcol,'(i3,"-")') icol
+            write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
+              trim(boundary_condition%name) // ' CO2 Mass [mol/' // &
+              trim(output_option%tunit) // ']"'
+#endif
         end select
         
         if (option%ntrandof > 0) then
@@ -7067,14 +7102,23 @@ subroutine OutputMassBalanceNew(realization)
   
   if (option%nflowdof > 0) then
     sum_kg = 0.d0
-    call RichardsComputeMassBalance(realization,sum_kg)
-    int_mpi = option%nphase
+    select case(option%iflowmode)
+      case(RICHARDS_MODE)
+        call RichardsComputeMassBalance(realization,sum_kg(1,:))
+      case(MPH_MODE)
+        call MphaseComputeMassBalance(realization,sum_kg(:,:))
+    end select
+    int_mpi = option%nflowspec*option%nphase
     call MPI_Reduce(sum_kg,sum_kg_global, &
                     int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                     option%io_rank,option%mycomm,ierr)
                         
     if (option%myrank == option%io_rank) then
-      write(fid,110,advance="no") sum_kg_global
+      do iphase = 1, option%nphase
+        do ispec = 1, option%nflowspec
+          write(fid,110,advance="no") sum_kg_global(ispec,iphase)
+        enddo
+      enddo
     endif
   endif
   
@@ -7148,39 +7192,42 @@ subroutine OutputMassBalanceNew(realization)
       endif
 #endif
 
-      ! print out cumulative H2O flux
-      sum_kg = 0.d0
-      do iconn = 1, boundary_condition%connection_set%num_connections
-        sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance
-      enddo
+      select case(option%iflowmode)
+        case(RICHARDS_MODE)
+          ! print out cumulative H2O flux
+          sum_kg = 0.d0
+          do iconn = 1, boundary_condition%connection_set%num_connections
+            sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance
+          enddo
 
-      int_mpi = option%nphase
-      call MPI_Reduce(sum_kg,sum_kg_global, &
-                      int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
-                      option%io_rank,option%mycomm,ierr)
-                          
-      if (option%myrank == option%io_rank) then
-        ! change sign for positive in / negative out
-        write(fid,110,advance="no") -sum_kg_global
-      endif
+          int_mpi = option%nphase
+          call MPI_Reduce(sum_kg,sum_kg_global, &
+                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                          option%io_rank,option%mycomm,ierr)
+                              
+          if (option%myrank == option%io_rank) then
+            ! change sign for positive in / negative out
+            write(fid,110,advance="no") -sum_kg_global
+          endif
 
-      ! print out H2O flux
-      sum_kg = 0.d0
-      do iconn = 1, boundary_condition%connection_set%num_connections
-        sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance_delta
-      enddo
-      ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
-      sum_kg = sum_kg*FMWH2O
+          ! print out H2O flux
+          sum_kg = 0.d0
+          do iconn = 1, boundary_condition%connection_set%num_connections
+            sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance_delta
+          enddo
+          ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
+          sum_kg = sum_kg*FMWH2O
 
-      int_mpi = option%nphase
-      call MPI_Reduce(sum_kg,sum_kg_global, &
-                      int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
-                      option%io_rank,option%mycomm,ierr)
-                          
-      if (option%myrank == option%io_rank) then
-        ! change sign for positive in / negative out
-        write(fid,110,advance="no") -sum_kg_global*output_option%tconv
-      endif
+          int_mpi = option%nphase
+          call MPI_Reduce(sum_kg,sum_kg_global, &
+                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                          option%io_rank,option%mycomm,ierr)
+                              
+          if (option%myrank == option%io_rank) then
+            ! change sign for positive in / negative out
+            write(fid,110,advance="no") -sum_kg_global*output_option%tconv
+          endif
+      end select
     endif
     
     if (option%ntrandof > 0) then
