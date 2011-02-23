@@ -2283,12 +2283,12 @@ subroutine RTReactPatch(realization)
   PetscReal, pointer :: porosity_loc_p(:)
   PetscReal, pointer :: mask_p(:)
 #ifdef CHUNK
-  PetscInt :: num_iterations(realization%option%chunk_size)
-  PetscInt :: local_offset
+  PetscInt :: num_iterations(realization%option%chunk_size,realization%option%num_threads)
   PetscInt :: chunk_size_save
   PetscInt :: ichunk
   PetscInt :: id_count
-  PetscInt :: local_ids(realization%option%chunk_size)
+  PetscInt :: local_ids(realization%option%chunk_size,realization%option%num_threads)
+  PetscInt :: icell
   type(react_tran_auxvar_chunk_type), pointer :: rt_auxvar_chunk
 #else
   PetscInt :: num_iterations
@@ -2331,29 +2331,25 @@ subroutine RTReactPatch(realization)
 #ifdef CHUNK
   rt_auxvar_chunk => patch%aux%RT%aux_var_chunk
 
-  local_offset = 1
-  chunk_size_save = option%chunk_size
-  do
-  
-    ! fill an array of local ids for entries in chunk
-    icount = 0
-    id_count = 0
-    do while(id_count < option%chunk_size)
-      local_id = local_offset + icount
-      if (local_id > grid%nlmax) then
-        option%chunk_size = id_count
-        exit
-      endif
+  !$omp parallel do num_threads(option%num_nthreads) &
+  !$omp private(icell,option%ithread,option%vector_length,local_id, &
+  !$omp         ghosted_id,istart,iend)
+  do icell = 1, grid%nlmax, option%chunk_size
+    !$omp option%ithread = omp_get_thread_num
+    option%vector_length = 0
+    
+    ! fill an array of local ids for entries in chunk and vector
+    do icount = 0, min(option%chunk_size-1,grid%nlmax-icell)
+      local_id = icell + icount
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) > 0) then
-        id_count = id_count + 1
-        local_ids(id_count) = local_id
+        option%vector_length = option%vector_length + 1
+        local_ids(option%vector_length,option%ithread) = local_id
       endif
-      icount = icount + 1
-    enddo
+    enddo !icount
     
-    do ichunk = 1, option%chunk_size
-      local_id = local_ids(ichunk)
+    do ichunk = 1, option%vector_length
+      local_id = local_ids(ichunk,option%ithread)
       ghosted_id = grid%nL2G(local_id)
       istart = (local_id-1)*reaction%naqcomp+1
       iend = istart+reaction%naqcomp-1
@@ -2362,41 +2358,35 @@ subroutine RTReactPatch(realization)
       call RPack(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                  tran_xx_p(istart:iend), &
                  rt_auxvar_chunk,volume_p(local_id), &
-                 porosity_loc_p(ghosted_id),ichunk,reaction)
-    enddo
+                 porosity_loc_p(ghosted_id),ichunk,option%ithread,reaction)
+    enddo !ichunk
     
     call RReactChunk(rt_auxvar_chunk,num_iterations,reaction,option)
 
     do ichunk = 1, option%chunk_size
-      local_id = local_ids(ichunk)
+      local_id = local_ids(ichunk,option%ithread)
       ghosted_id = grid%nL2G(local_id)
       istart = (local_id-1)*reaction%naqcomp+1
       iend = istart+reaction%naqcomp-1
       ! tran_xx_p passes in total component concentrations
       !       and returns free ion concentrations
       call RUnpack(rt_aux_vars(ghosted_id),tran_xx_p(istart:iend), &
-                   rt_auxvar_chunk,ichunk,reaction)
+                   rt_auxvar_chunk,ichunk,option%ithread,reaction)
 !geh      print *, local_id, tran_xx_p(istart:iend)
     enddo
 
 #ifdef OS_STATISTICS
-    do ichunk = 1, option%chunk_size
-      if (num_iterations(ichunk) > max_iterations) then
-        max_iterations = num_iterations(ichunk)
+    do ichunk = 1, option%vector_length
+      if (num_iterations(ichunk,option%ithread) > max_iterations) then
+        max_iterations = num_iterations(ichunk,option%ithread)
       endif
-      sum_iterations = sum_iterations + num_iterations(ichunk)
-      icount = icount + 1
+      sum_iterations = sum_iterations + num_iterations(ichunk,option%ithread)
     enddo
 #endif
  
-   if (local_ids(option%chunk_size) >= grid%nlmax) then
-     option%chunk_size = chunk_size_save
-     exit
-   else
-     local_offset = local_offset + option%chunk_size
-   endif
- 
-  enddo
+  enddo ! icell
+  !%omp end parallel do
+  
 #else
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)

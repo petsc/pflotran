@@ -177,7 +177,9 @@ module Option_module
     PetscBool :: use_upwinding
 
     PetscInt :: chunk_size
-    PetscInt :: chunk_offset
+    PetscInt :: num_threads
+    PetscInt :: vector_length
+    PetscInt :: ithread
 
   end type option_type
   
@@ -357,8 +359,10 @@ subroutine OptionInitAll(option)
   option%use_upwinding = PETSC_TRUE
 
   option%chunk_size = 8
-  option%chunk_offset = 0
-
+  option%vector_length = 1
+  option%num_threads = 1
+  option%ithread = 1
+  
   call OptionInitRealization(option)
 
 end subroutine OptionInitAll
