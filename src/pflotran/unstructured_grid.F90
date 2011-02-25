@@ -2043,8 +2043,9 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
         v2(2) = point1%y-point2%y
         v2(3) = point1%z-point2%z
         n1 = CrossProduct(v1,v2)
-        area1 = 0.5d0*DotProduct(n1,n1)
-        area1 = area1*DotProduct(n1,n_up_dn)
+        !area1 = 0.5d0*DotProduct(n1,n1)
+        !area1 = area1*DotProduct(n1,n_up_dn)
+        area1 = 0.5d0*sqrt(DotProduct(n1,n1))
         
         v1(1) = point1%x-point4%x
         v1(2) = point1%y-point4%y
@@ -2054,8 +2055,9 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
         v2(3) = point3%z-point4%z
         n2 = CrossProduct(v1,v2)
         area2 = 0.5d0*DotProduct(n2,n2)
-        area2 = area2*DotProduct(n2,n_up_dn)
+        !area2 = area2*DotProduct(n2,n_up_dn)
        !area1 = 0.5*|(p2-p1)X(p3-p1)|.
+		area2 = 0.5d0*sqrt(DotProduct(n2,n2))
         !  http://softsurfer.com/Archive/algorithm_0101/algorithm_0101.htm#Triangles
         
         !GetPlaneNormalArea(
@@ -2073,7 +2075,8 @@ function UGridComputeInternConnect(unstructured_grid,grid_x,grid_y,grid_z, &
         connections%dist(-1:3,iconn) = 0.d0
         connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
         connections%dist(0,iconn) = dist_up + dist_dn
-        connections%dist(1:3,iconn) = v1 + v2
+        !connections%dist(1:3,iconn) = v1 + v2
+        connections%dist(1:3,iconn) = (v1 + v2)/sqrt(DotProduct(v1+v2,v1+v2))
         connections%area(iconn) = area1 + area2
        
       endif
@@ -2386,15 +2389,15 @@ function ComputeVolume(cell_type,vertices)
       v(1) = vertices(2)%x-vertices(1)%x
       v(2) = vertices(2)%y-vertices(1)%y
       v(3) = vertices(2)%z-vertices(1)%z
-      l1 = DotProduct(v,v)
+      l1 = sqrt(DotProduct(v,v))
       v(1) = vertices(4)%x-vertices(1)%x
       v(2) = vertices(4)%y-vertices(1)%y
       v(3) = vertices(4)%z-vertices(1)%z
-      l2 = DotProduct(v,v)
+      l2 = sqrt(DotProduct(v,v))
       v(1) = vertices(5)%x-vertices(1)%x
       v(2) = vertices(5)%y-vertices(1)%y
       v(3) = vertices(5)%z-vertices(1)%z
-      l3 = DotProduct(v,v)
+      l3 = sqrt(DotProduct(v,v))
       ComputeVolume = l1*l2*l3
   end select
 

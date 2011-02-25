@@ -1145,6 +1145,24 @@ subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
    endif
  endif
 
+  if (associated(grid%unstructured_grid)) then
+    !if (grid%unstructured_grid%p_samr_patch==0) then
+     ! compute global max/min from the local max/in
+     call MPI_Allreduce(grid%x_min_local,grid%x_min_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+     call MPI_Allreduce(grid%y_min_local,grid%y_min_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+     call MPI_Allreduce(grid%z_min_local,grid%z_min_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+     call MPI_Allreduce(grid%x_max_local,grid%x_max_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+     call MPI_Allreduce(grid%y_max_local,grid%y_max_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+     call MPI_Allreduce(grid%z_max_local,grid%z_max_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+   !endif
+ endif
+
 end subroutine GridComputeCoordinates
 
 ! ************************************************************************** !
