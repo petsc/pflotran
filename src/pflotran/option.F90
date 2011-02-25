@@ -237,7 +237,7 @@ module Option_module
     module procedure printWrnMsg1
     module procedure printWrnMsg2
   end interface
-    
+
   public :: OptionCreate, &
             OutputOptionCreate, &
             OptionCheckCommandLine, &

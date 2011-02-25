@@ -32,6 +32,7 @@ private
     type(patch_type), pointer :: patch
 
     type(option_type), pointer :: option
+
     type(input_type), pointer :: input
     type(field_type), pointer :: field
     type(pflow_debug_type), pointer :: debug

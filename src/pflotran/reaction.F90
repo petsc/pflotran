@@ -720,11 +720,11 @@ subroutine ReactionRead(reaction,input,option)
       case('NO_BDOT')
         reaction%act_coef_use_bdot = PETSC_FALSE
       case('CHUNK_SIZE')
-        ! for some reason, cannot pass in option%chunk_size...Intel on Win doesn't like it - geh 
-        !call InputReadDouble(input,option,option%chunk_size)
-        call InputReadInt(input,option,tempint)
+        call InputReadInt(input,option,option%chunk_size)
         call InputErrorMsg(input,option,'chunk_size','CHEMISTRY')
-        option%chunk_size = tempint
+      case('NUM_THREADS')
+        call InputReadInt(input,option,option%num_threads)
+        call InputErrorMsg(input,option,'num_thread','CHEMISTRY')
       case('UPDATE_POROSITY')
         option%update_porosity = PETSC_TRUE
       case('UPDATE_TORTUOSITY')

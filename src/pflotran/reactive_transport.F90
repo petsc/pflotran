@@ -2263,6 +2263,8 @@ subroutine RTReactPatch(realization)
   use Option_module
   use Field_module  
   use Grid_module  
+  
+  !omp use omp_lib
      
   implicit none
   
@@ -2270,7 +2272,6 @@ subroutine RTReactPatch(realization)
   
   type(global_auxvar_type), pointer :: global_aux_vars(:)
   type(reactive_transport_auxvar_type), pointer :: rt_aux_vars(:)
-  type(option_type), pointer :: option
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
@@ -2283,6 +2284,7 @@ subroutine RTReactPatch(realization)
   PetscReal, pointer :: porosity_loc_p(:)
   PetscReal, pointer :: mask_p(:)
 #ifdef CHUNK
+  type(option_type), pointer, save :: option
   PetscInt :: num_iterations(realization%option%chunk_size,realization%option%num_threads)
   PetscInt :: chunk_size_save
   PetscInt :: ichunk
@@ -2290,7 +2292,9 @@ subroutine RTReactPatch(realization)
   PetscInt :: local_ids(realization%option%chunk_size,realization%option%num_threads)
   PetscInt :: icell
   type(react_tran_auxvar_chunk_type), pointer :: rt_auxvar_chunk
+  !$omp threadprivate(option)
 #else
+  type(option_type), pointer :: option
   PetscInt :: num_iterations
 #endif
 #ifdef OS_STATISTICS
@@ -2299,7 +2303,7 @@ subroutine RTReactPatch(realization)
 #endif
   PetscInt :: icount
   PetscErrorCode :: ierr
-    
+
   option => realization%option
   field => realization%field
   patch => realization%patch
@@ -2330,12 +2334,12 @@ subroutine RTReactPatch(realization)
 
 #ifdef CHUNK
   rt_auxvar_chunk => patch%aux%RT%aux_var_chunk
-
-  !$omp parallel do num_threads(option%num_nthreads) &
-  !$omp private(icell,option%ithread,option%vector_length,local_id, &
-  !$omp         ghosted_id,istart,iend)
+    
+  !$omp parallel do num_threads(option%num_threads) &
+  !$omp             private(icell,local_id,ghosted_id,istart,iend) &
+  !$omp             copyin(option)
   do icell = 1, grid%nlmax, option%chunk_size
-    !$omp option%ithread = omp_get_thread_num
+    !omp option%ithread = omp_get_thread_num() + 1
     option%vector_length = 0
     
     ! fill an array of local ids for entries in chunk and vector
@@ -2347,6 +2351,8 @@ subroutine RTReactPatch(realization)
         local_ids(option%vector_length,option%ithread) = local_id
       endif
     enddo !icount
+    
+    print *, 'geh: ', option%ithread, option%chunk_size, icell
     
     do ichunk = 1, option%vector_length
       local_id = local_ids(ichunk,option%ithread)
@@ -2360,7 +2366,7 @@ subroutine RTReactPatch(realization)
                  rt_auxvar_chunk,volume_p(local_id), &
                  porosity_loc_p(ghosted_id),ichunk,option%ithread,reaction)
     enddo !ichunk
-    
+
     call RReactChunk(rt_auxvar_chunk,num_iterations,reaction,option)
 
     do ichunk = 1, option%chunk_size
@@ -2912,7 +2918,7 @@ end subroutine RTTransportResidualPatch1
 
 ! ************************************************************************** !
 !
-! RTTransportResidualPatch: Calculates the transport residual equation for  
+! RTTransportResidualPatch2: Calculates the transport residual equation for  
 !                           a single chemical component (total component 
 !                           concentration)
 ! author: Glenn Hammond

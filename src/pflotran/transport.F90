@@ -754,10 +754,12 @@ subroutine TFluxCoef_CD(option,area,velocity,diffusion,T_11,T_12,T_21,T_22)
     ! 
     weight = 0.5d0
     tempreal = area*1000.d0
-    T_11(iphase) = (diffusion(iphase) + weight*q)*tempreal
+!    T_11(iphase) = (diffusion(iphase) + weight*q)*tempreal
+    T_11(iphase) = (diffusion(iphase))*tempreal
     T_12(iphase) = (-diffusion(iphase) + weight*q)*tempreal
     T_21(iphase) = -(diffusion(iphase) + weight*q)*tempreal
-    T_22(iphase) = (diffusion(iphase) - weight*q)*tempreal
+!    T_22(iphase) = (diffusion(iphase) - weight*q)*tempreal
+    T_22(iphase) = (diffusion(iphase))*tempreal
   endif  
   
 ! Add in multiphase, clu 12/29/08

@@ -3917,7 +3917,7 @@ subroutine BasisPrint(reaction,title,option)
     enddo
     
     cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
-    if (associated(cur_srfcplx)) then
+    if (associated(cur_srfcplx_rxn)) then
       write(option%fid_out,*)
       write(option%fid_out,*) 'Surface Complexation Reactions:'
     else
