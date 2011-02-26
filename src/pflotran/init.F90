@@ -510,9 +510,11 @@ subroutine Init(simulation)
 
       ! this update check must be in place, otherwise reactive transport is likely
       ! to fail
-      if(.not.(option%use_samr)) then
-         call SNESLineSearchSetPreCheck(tran_solver%snes,RTCheckUpdate, &
-              realization,ierr)
+      if (associated(realization%reaction)) then
+        if (realization%reaction%check_update .and. .not.(option%use_samr)) then
+          call SNESLineSearchSetPreCheck(tran_solver%snes,RTCheckUpdate, &
+                                         realization,ierr)
+        endif
       endif
     endif
     

@@ -694,6 +694,8 @@ subroutine ReactionRead(reaction,input,option)
                            'CHEMISTRY,DATABASE FILENAME')  
       case('LOG_FORMULATION')
         reaction%use_log_formulation = PETSC_TRUE        
+      case('NO_CHECK_UPDATE')
+        reaction%check_update = PETSC_FALSE       
       case('NO_CHECKPOINT_ACT_COEFS')
         reaction%checkpoint_activity_coefs = PETSC_FALSE
       case('ACTIVITY_COEFFICIENTS')

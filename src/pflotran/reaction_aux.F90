@@ -190,6 +190,7 @@ module Reaction_Aux_module
     character(len=MAXSTRINGLENGTH) :: database_filename
     PetscBool :: use_full_geochemistry
     PetscBool :: use_log_formulation ! flag for solving for the change in the log of the concentration
+    PetscBool :: check_update
     PetscBool :: print_all_species
     PetscBool :: print_pH
     PetscBool :: print_kd
@@ -505,6 +506,7 @@ function ReactionCreate()
   reaction%print_colloid = PETSC_FALSE
   reaction%print_act_coefs = PETSC_FALSE
   reaction%use_log_formulation = PETSC_FALSE
+  reaction%check_update = PETSC_TRUE
   reaction%use_full_geochemistry = PETSC_FALSE
   reaction%use_activity_h2o = PETSC_FALSE
   reaction%calculate_tracer_age = PETSC_FALSE
