@@ -702,7 +702,8 @@ end subroutine TFluxCoef
 ! date: 02/22/10
 !
 ! ************************************************************************** !
-subroutine TFluxCoef_CD(option,area,velocity,diffusion,T_11,T_12,T_21,T_22)
+subroutine TFluxCoef_CD(option,area,velocity,diffusion,fraction_upwind, &
+                        T_11,T_12,T_21,T_22)
 
   use Option_module
 
@@ -712,20 +713,56 @@ subroutine TFluxCoef_CD(option,area,velocity,diffusion,T_11,T_12,T_21,T_22)
   PetscReal :: area
   PetscReal :: velocity(*)
   PetscReal :: diffusion(*)
+  PetscReal :: fraction_upwind
   PetscReal :: T_11(*), T_12(*), T_21(*), T_22(*)
 
   PetscInt :: iphase
   PetscReal :: coef_up, coef_dn
   PetscReal :: tempreal
   PetscReal :: weight
+  PetscReal :: advection_upwind(option%nphase)
+  PetscReal :: advection_downwind(option%nphase)
   PetscReal :: q
-  
-  iphase = 1
   
   ! T_11 = diagonal term for upwind cell (row)
   ! T_12 = off diagonal term for upwind cell (row)
   ! T_21 = off diagonal term for downwind cell (row)
   ! T_22 = diagonal term for downwind cell (row)
+
+  ! Advection
+  if (option%use_upwinding) then
+    ! upstream weighting
+    ! units = (m^3 water/m^2 bulk/sec)
+    do iphase = 1, option%nphase
+      if (velocity(iphase) > 0.d0) then
+        advection_upwind(iphase) = velocity(iphase)
+        advection_downwind(iphase) = 0.d0
+      else
+        advection_upwind(iphase) = 0.d0
+        advection_downwind(iphase) = velocity(iphase)
+      endif
+    enddo
+  else
+    ! central difference
+    do iphase = 1, option%nphase
+      advection_upwind(iphase) = (1.d0-fraction_upwind)*velocity(iphase)
+      advection_downwind(iphase) = fraction_upwind*velocity(iphase)
+    enddo
+  endif
+    
+  tempreal = area*1000.d0
+  do iphase = 1, option%nphase
+    T_11(iphase) = (diffusion(iphase) + advection_upwind(iphase))*tempreal
+    T_12(iphase) = (-diffusion(iphase) + advection_downwind(iphase))*tempreal
+!    T_21(iphase) = -(diffusion(iphase) + advection_upwind(iphase))*tempreal
+!    T_22(iphase) = (diffusion(iphase) - advection_downwind(iphase))*tempreal
+    T_21(iphase) = -T_11(iphase)
+    T_22(iphase) = -T_12(iphase)
+  enddo
+
+#if 0  
+
+  iphase = 1
   
   q = velocity(iphase)
 
@@ -789,6 +826,7 @@ subroutine TFluxCoef_CD(option,area,velocity,diffusion,T_11,T_12,T_21,T_22)
   
     enddo
   endif
+#endif
 #endif
 
 end subroutine TFluxCoef_CD

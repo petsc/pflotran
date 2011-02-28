@@ -1,0 +1,182 @@
+:Description: 1D test problem for tracer transport with central difference
+:             approximation for advection
+
+:=========================== flow mode ========================================
+: Uniform velocity (see below). No flow mode specified.
+
+:=========================== useful tranport parameters mode ==================
+UNIFORM_VELOCITY 3.170979d-8 0.d0 0.d0 ! 1. meter/yr
+CENTRAL_DIFFERENCE  ! comment out for upwinding
+REFERENCE_DENSITY 1000.d0  ! uniform density...good for debugging
+
+:=========================== debug settings ===================================
+DEBUG
+:  PRINT_JACOBIAN
+:  PRINT_RESIDUAL
+:  PRINT_SOLUTION
+/
+
+:=========================== chemistry =======================================
+CHEMISTRY
+  PRIMARY_SPECIES
+    Tracer
+  /
+  NO_CHECK_UPDATE  ! prevents truncation of negative concentrations
+:  OPERATOR_SPLIT
+/
+
+:=========================== discretization ===================================
+GRID
+  TYPE structured
+  ORIGIN 0.d0 0.d0 0.d0
+  NXYZ 1000 1 1
+  BOUNDS
+    0.d0 1000.d0
+    0.d0 1.d0
+    0.d0 1.d0
+  /
+END
+
+:=========================== solver options ===================================
+LINEAR_SOLVER TRANSPORT
+  PC_TYPE LU
+  KSP_TYPE PREONLY
+END
+
+NEWTON_SOLVER TRANSPORT
+  MATRIX_TYPE AIJ
+  PRECONDITIONER_MATRIX_TYPE AIJ
+END
+
+:=========================== fluid properties =================================
+FLUID_PROPERTY
+  DIFFUSION_COEFFICIENT 0.d0
+/
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 1.d0
+  TORTUOSITY 1.d0
+  LONGITUDINAL_DISPERSIVITY 0.d0
+  SATURATION_FUNCTION default
+/
+
+:=========================== saturation functions =============================
+SATURATION_FUNCTION default
+/
+
+:=========================== output options ===================================
+OUTPUT
+  TIMES y 250.d0 500.d0 750.d0 1000.d0
+  PERIODIC_OBSERVATION TIMESTEP 1
+  FORMAT TECPLOT POINT
+:  VELOCITIES
+/
+
+:=========================== times ============================================
+TIME
+  FINAL_TIME 1000.d0 y
+  INITIAL_TIMESTEP_SIZE 1.d0 y
+  MAXIMUM_TIMESTEP_SIZE 1.d0 y
+/
+
+:=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    1000.d0 1.d0 1.d0
+  /
+END
+
+REGION west
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 1.d0 1.d0
+  /
+END
+
+REGION east
+  FACE EAST
+  COORDINATES
+    1000.d0 0.d0 0.d0
+    1000.d0 1.d0 1.d0
+  /
+END
+
+REGION middle
+  COORDINATES
+    400.d0 0.d0 0.d0
+    600.d0 1.d0 1.d0
+  /
+END
+
+:=========================== observation points ===============================
+OBSERVATION 
+  REGION east
+:  VELOCITY
+/
+
+:=========================== transport conditions =============================
+TRANSPORT_CONDITION solute
+  TYPE dirichlet
+  CONSTRAINT_LIST
+    0.d0 solute           ! at 0 years, start solute
+    1576800000.d0 initial ! at 50 years, end solute 
+    15768000000.d0 solute ! at 500 years, restart solute 
+  /
+END
+
+TRANSPORT_CONDITION initial
+  TYPE dirichlet_zero_gradient
+  CONSTRAINT_LIST
+    0.d0 initial
+  /
+END
+
+:=========================== constraints ======================================
+CONSTRAINT solute
+  CONCENTRATIONS
+    Tracer 1.d0 T
+  /
+END
+
+CONSTRAINT initial
+  CONCENTRATIONS
+    Tracer 1.d-8 T
+  /
+END
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+  TRANSPORT_CONDITION initial
+  REGION all
+END
+
+skip
+INITIAL_CONDITION
+  TRANSPORT_CONDITION solute
+  REGION middle
+END
+noskip
+
+: west boundary condition
+BOUNDARY_CONDITION
+  TRANSPORT_CONDITION solute
+  REGION west
+END
+
+: east boundary condition
+BOUNDARY_CONDITION
+  TRANSPORT_CONDITION initial
+  REGION east
+END
+
+:=========================== stratigraphy couplers ============================
+STRATA
+  REGION all
+  MATERIAL soil1
+END
+
