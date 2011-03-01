@@ -2264,7 +2264,7 @@ subroutine RTReactPatch(realization)
   use Field_module  
   use Grid_module  
   
-  !omp use omp_lib
+!$ use omp_lib
      
   implicit none
   
@@ -2286,13 +2286,12 @@ subroutine RTReactPatch(realization)
 #ifdef CHUNK
   type(option_type), pointer, save :: option
   PetscInt :: num_iterations(realization%option%chunk_size,realization%option%num_threads)
-  PetscInt :: chunk_size_save
   PetscInt :: ichunk
   PetscInt :: id_count
   PetscInt :: local_ids(realization%option%chunk_size,realization%option%num_threads)
   PetscInt :: icell
   type(react_tran_auxvar_chunk_type), pointer :: rt_auxvar_chunk
-  !$omp threadprivate(option)
+!$omp threadprivate(option)
 #else
   type(option_type), pointer :: option
   PetscInt :: num_iterations
@@ -2338,8 +2337,8 @@ subroutine RTReactPatch(realization)
   !$omp parallel do num_threads(option%num_threads) &
   !$omp             private(icell,local_id,ghosted_id,istart,iend) &
   !$omp             copyin(option)
-  do icell = 1, grid%nlmax, option%chunk_size
-    !omp option%ithread = omp_get_thread_num() + 1
+  do icell = 1, grid%nlmax
+!$  option%ithread = omp_get_thread_num() + 1
     option%vector_length = 0
     
     ! fill an array of local ids for entries in chunk and vector
@@ -2352,7 +2351,7 @@ subroutine RTReactPatch(realization)
       endif
     enddo !icount
     
-    print *, 'geh: ', option%ithread, option%chunk_size, icell
+    print *, 'geh: ', option%ithread, option%vector_length, icell
     
     do ichunk = 1, option%vector_length
       local_id = local_ids(ichunk,option%ithread)
@@ -2369,7 +2368,7 @@ subroutine RTReactPatch(realization)
 
     call RReactChunk(rt_auxvar_chunk,num_iterations,reaction,option)
 
-    do ichunk = 1, option%chunk_size
+    do ichunk = 1, option%vector_length
       local_id = local_ids(ichunk,option%ithread)
       ghosted_id = grid%nL2G(local_id)
       istart = (local_id-1)*reaction%naqcomp+1

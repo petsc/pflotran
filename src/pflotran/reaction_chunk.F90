@@ -266,28 +266,28 @@ subroutine RReactChunk(auxvar,num_iterations_,reaction,option)
   type(option_type) :: option
   type(react_tran_auxvar_chunk_type) :: auxvar
 
-  PetscInt :: num_iterations_(option%chunk_size,option%num_threads)
+  PetscInt :: num_iterations_(option%vector_length,option%num_threads)
   
-  PetscReal :: residual(option%chunk_size,option%num_threads,reaction%ncomp)
-  PetscReal :: res(option%chunk_size,option%num_threads,reaction%ncomp)
-  PetscReal :: J(option%chunk_size,option%num_threads,reaction%ncomp,reaction%ncomp)
+  PetscReal :: residual(option%vector_length,option%num_threads,reaction%ncomp)
+  PetscReal :: res(option%vector_length,option%num_threads,reaction%ncomp)
+  PetscReal :: J(option%vector_length,option%num_threads,reaction%ncomp,reaction%ncomp)
   PetscReal :: one_over_dt
-  PetscReal :: prev_molal(option%chunk_size,option%num_threads,reaction%ncomp)
-  PetscReal :: update(option%chunk_size,option%num_threads,reaction%ncomp)
-  PetscReal :: maximum_relative_change(option%chunk_size,option%num_threads)
+  PetscReal :: prev_molal(option%vector_length,option%num_threads,reaction%ncomp)
+  PetscReal :: update(option%vector_length,option%num_threads,reaction%ncomp)
+  PetscReal :: maximum_relative_change(option%vector_length,option%num_threads)
   PetscReal :: accumulation_coef
-  PetscReal :: fixed_accum(option%chunk_size,option%num_threads,reaction%ncomp)
-  PetscInt :: num_iterations(option%chunk_size,option%num_threads)
+  PetscReal :: fixed_accum(option%vector_length,option%num_threads,reaction%ncomp)
+  PetscInt :: num_iterations(option%vector_length,option%num_threads)
   PetscInt :: icomp
 
   ! for inlined RSolve() routine
   PetscReal :: norm
-  PetscInt :: indices(option%chunk_size,option%num_threads,reaction%ncomp)
-  PetscReal :: rhs(option%chunk_size,option%num_threads,reaction%ncomp)
+  PetscInt :: indices(option%vector_length,option%num_threads,reaction%ncomp)
+  PetscReal :: rhs(option%vector_length,option%num_threads,reaction%ncomp)
   
   PetscInt :: ichunk
   PetscInt :: offset
-  PetscInt :: d(option%chunk_size,option%num_threads)
+  PetscInt :: d(option%vector_length,option%num_threads)
   
   PetscInt, parameter :: iphase = 1
 
@@ -301,7 +301,7 @@ subroutine RReactChunk(auxvar,num_iterations_,reaction,option)
   ! auxvar total variables
   ! aqueous
   ! NOTE: This is now performed in RPack()
-!  do ichunk = 1, option%chunk_size
+!  do ichunk = 1, option%vector_length
 !    offset = (ichunk-1)*reaction%naqcomp
 !    do icomp = 1, reaction%naqcomp
 !      auxvar%total(ichunk,option%ithread,icomp,iphase) = total(offset+icomp)
@@ -334,7 +334,7 @@ subroutine RReactChunk(auxvar,num_iterations_,reaction,option)
     ! residual is overwritten in RTAccumulation()
     call RTAccumulationChunk(auxvar,reaction,option,residual)
                         
-    do ichunk = 1, option%chunk_size
+    do ichunk = 1, option%vector_length
       residual(ichunk,option%ithread,:) = &
         residual(ichunk,option%ithread,:) - &
         fixed_accum(ichunk,option%ithread,:)
@@ -353,10 +353,10 @@ subroutine RReactChunk(auxvar,num_iterations_,reaction,option)
     call RReactionChunk(residual,J,PETSC_TRUE,auxvar,reaction,option)
     
     ! Manual inlining start
-    ! call RSolveChunk(residual,J,auxvar%pri_molal,update,reaction%ncomp,option%chunk_size)
+    ! call RSolveChunk(residual,J,auxvar%pri_molal,update,reaction%ncomp,option%vector_length)
 
     ! scale Jacobian
-    do ichunk = 1, option%chunk_size
+    do ichunk = 1, option%vector_length
     
       do icomp = 1, reaction%ncomp
         norm = max(1.d0,maxval(abs(J(ichunk,option%ithread,icomp,:))))
@@ -373,16 +373,16 @@ subroutine RReactChunk(auxvar,num_iterations_,reaction,option)
 
     enddo
    
-    call ludcmp_chunk(J,reaction%ncomp,indices,d,option%chunk_size, &
+    call ludcmp_chunk(J,reaction%ncomp,indices,d,option%vector_length, &
                       option%num_threads,option%ithread)
-    call lubksb_chunk(J,reaction%ncomp,indices,rhs,option%chunk_size, &
+    call lubksb_chunk(J,reaction%ncomp,indices,rhs,option%vector_length, &
                       option%num_threads,option%ithread)
     
     update(:,option%ithread,:) = rhs(:,option%ithread,:)
 
     ! Manual inlining end
 
-    do ichunk = 1, option%chunk_size
+    do ichunk = 1, option%vector_length
 
       update(ichunk,option%ithread,:) = &
         dsign(1.d0,update(ichunk,option%ithread,:)) * &
@@ -408,7 +408,7 @@ subroutine RReactChunk(auxvar,num_iterations_,reaction,option)
   ! one last update
   call RTAuxVarComputeChunk(auxvar,reaction,option)
 
-  do ichunk = 1, option%chunk_size
+  do ichunk = 1, option%vector_length
     num_iterations_(ichunk,option%ithread) = &
       num_iterations(ichunk,option%ithread)
   enddo
@@ -432,8 +432,8 @@ subroutine RReactionChunk(Res,Jac,derivative,auxvar,reaction,option)
   type(option_type) :: option
   type(react_tran_auxvar_chunk_type) :: auxvar
   PetscBool :: derivative
-  PetscReal :: Res(option%chunk_size,option%num_threads,reaction%ncomp)
-  PetscReal :: Jac(option%chunk_size,option%num_threads,reaction%ncomp,reaction%ncomp)
+  PetscReal :: Res(option%vector_length,option%num_threads,reaction%ncomp)
+  PetscReal :: Jac(option%vector_length,option%num_threads,reaction%ncomp,reaction%ncomp)
 
   if (reaction%nkinmnrl > 0) then
     call RKineticMineralChunk(Res,Jac,derivative,auxvar,reaction,option)
@@ -488,7 +488,7 @@ subroutine RActivityCoefficientsChunk(auxvar,reaction,option)
 
   PetscInt :: ichunk
 
-  do ichunk = 1, option%chunk_size
+  do ichunk = 1, option%vector_length
 
   if (reaction%use_activity_h2o) then
     sum_pri_molal = 0.d0
@@ -740,7 +740,7 @@ subroutine RTotalChunk(auxvar,reaction,option)
                yco2,pco2,sat_pressure,lngamco2
 #endif
   
-  do ichunk = 1, option%chunk_size
+  do ichunk = 1, option%vector_length
   
 #ifdef CHUAN_CO2  
   auxvar%total(ichunk,option%ithread,:,:) = 0.d0 !debugging 
@@ -832,7 +832,7 @@ subroutine RTotalChunk(auxvar,reaction,option)
 
   if(iphase > option%nphase) return 
 
-  do ichunk = 1, option%chunk_size
+  do ichunk = 1, option%vector_length
 
   auxvar%total(ichunk,option%ithread,:,iphase) = 0D0
   auxvar%dtotal(ichunk,option%ithread,:,:,iphase)=0D0
@@ -938,7 +938,7 @@ subroutine RTotalSorbChunk(auxvar,reaction,option)
   
   ! initialize total sorbed concentrations and derivatives
   if (reaction%neqsorb > 0 .and. reaction%kinmr_nrate <= 0) then
-    do ichunk = 1, option%chunk_size
+    do ichunk = 1, option%vector_length
       auxvar%total_sorb_eq(ichunk,option%ithread,:) = 0.d0
       auxvar%dtotal_sorb_eq(ichunk,option%ithread,:,:) = 0.d0  
     enddo
@@ -1001,7 +1001,7 @@ subroutine RTotalSorbEqSurfCplxChunk(auxvar,reaction,option)
 
   PetscInt :: ichunk
 
-  do ichunk = 1, option%chunk_size
+  do ichunk = 1, option%vector_length
 
   ln_conc = log(auxvar%pri_molal(ichunk,option%ithread,:))
   ln_act = ln_conc+log(auxvar%pri_act_coef(ichunk,option%ithread,:))
@@ -1201,8 +1201,8 @@ subroutine RKineticMineralChunk(Res,Jac,compute_derivative,auxvar,reaction, &
   type(option_type) :: option
   type(reaction_type) :: reaction
   PetscBool :: compute_derivative
-  PetscReal :: Res(option%chunk_size,option%num_threads,reaction%ncomp)
-  PetscReal :: Jac(option%chunk_size,option%num_threads,reaction%ncomp,reaction%ncomp)
+  PetscReal :: Res(option%vector_length,option%num_threads,reaction%ncomp)
+  PetscReal :: Jac(option%vector_length,option%num_threads,reaction%ncomp,reaction%ncomp)
   type(react_tran_auxvar_chunk_type) :: auxvar
   
   PetscInt :: i, j, k, imnrl, icomp, jcomp, kcplx, iphase, ncomp, ipref
@@ -1221,7 +1221,7 @@ subroutine RKineticMineralChunk(Res,Jac,compute_derivative,auxvar,reaction, &
 
   PetscInt :: ichunk
 
-  do ichunk = 1, option%chunk_size
+  do ichunk = 1, option%vector_length
 
   iphase = 1                         
 
@@ -1446,7 +1446,7 @@ subroutine RAccumulationSorbChunk(auxvar,reaction,option,Res)
   type(option_type) :: option
   type(react_tran_auxvar_chunk_type) :: auxvar
   type(reaction_type) :: reaction
-  PetscReal :: Res(option%chunk_size,option%num_threads,reaction%ncomp)
+  PetscReal :: Res(option%vector_length,option%num_threads,reaction%ncomp)
   
   PetscReal :: v_t
   
@@ -1454,7 +1454,7 @@ subroutine RAccumulationSorbChunk(auxvar,reaction,option,Res)
   
   ! units = (mol solute/m^3 bulk)*(m^3 bulk)/(sec) = mol/sec
   ! all residual entries should be in mol/sec
-  do ichunk = 1, option%chunk_size
+  do ichunk = 1, option%vector_length
   
   v_t = auxvar%vol(ichunk,option%ithread)/option%tran_dt
   Res(ichunk,option%ithread,1:reaction%naqcomp) = Res(ichunk,option%ithread,1:reaction%naqcomp) + &
@@ -1482,14 +1482,14 @@ subroutine RAccumulationSorbDerivChunk(auxvar,reaction,option,J)
   type(option_type) :: option
   type(react_tran_auxvar_chunk_type) :: auxvar
   type(reaction_type) :: reaction
-  PetscReal :: J(option%chunk_size,option%num_threads,reaction%ncomp,reaction%ncomp)
+  PetscReal :: J(option%vector_length,option%num_threads,reaction%ncomp,reaction%ncomp)
   
   PetscInt :: icomp
   PetscReal :: v_t
   
   PetscInt :: ichunk
   
-  do ichunk = 1, option%chunk_size
+  do ichunk = 1, option%vector_length
   
   ! units = (kg water/m^3 bulk)*(m^3 bulk)/(sec) = kg water/sec
   ! all Jacobian entries should be in kg water/sec
@@ -1548,7 +1548,7 @@ subroutine RTAccumulationChunk(auxvar,reaction,option,Res)
   type(option_type) :: option
   type(react_tran_auxvar_chunk_type) :: auxvar
   type(reaction_type) :: reaction
-  PetscReal :: Res(option%chunk_size,option%num_threads,reaction%ncomp)
+  PetscReal :: Res(option%vector_length,option%num_threads,reaction%ncomp)
   
   PetscInt :: iphase
   PetscInt :: istart, iend
@@ -1556,8 +1556,8 @@ subroutine RTAccumulationChunk(auxvar,reaction,option,Res)
   PetscInt :: icoll
   PetscInt :: icollcomp
   PetscInt :: iaqcomp
-  PetscReal :: psv_t(option%chunk_size,option%num_threads)
-  PetscReal :: v_t(option%chunk_size,option%num_threads)
+  PetscReal :: psv_t(option%vector_length,option%num_threads)
+  PetscReal :: v_t(option%vector_length,option%num_threads)
   
   PetscInt :: ichunk
   
@@ -1569,7 +1569,7 @@ subroutine RTAccumulationChunk(auxvar,reaction,option,Res)
   !         (m^3 bulk)*(1000L water/m^3 water)/(sec) = mol/sec
   ! 1000.d0 converts vol from m^3 -> L
   ! all residual entries should be in mol/sec
-  do ichunk = 1, option%chunk_size
+  do ichunk = 1, option%vector_length
     psv_t(ichunk,option%ithread) = auxvar%por(ichunk,option%ithread)*auxvar%sat(ichunk,option%ithread,iphase)*1000.d0* &
                     auxvar%vol(ichunk,option%ithread)/option%tran_dt  
     Res(ichunk,option%ithread,istart:iend) = psv_t(ichunk,option%ithread)*auxvar%total(ichunk,option%ithread,:,iphase) 
@@ -1583,7 +1583,7 @@ subroutine RTAccumulationChunk(auxvar,reaction,option,Res)
 
 ! super critical CO2 phase
     if (iphase == 2) then
-      do ichunk = 1, option%chunk_size
+      do ichunk = 1, option%vector_length
         psv_t(ichunk,option%ithread) = auxvar%por(ichunk,option%ithread)*auxvar%sat(ichunk,option%ithread,iphase)* &
                         1000.d0*auxvar%vol(ichunk,option%ithread)/option%tran_dt 
         Res(ichunk,option%ithread,istart:iend) = Res(ichunk,option%ithread,istart:iend) + &
@@ -1614,14 +1614,14 @@ subroutine RTAccumulationDerivativeChunk(auxvar,reaction,option,J)
   type(option_type) :: option
   type(react_tran_auxvar_chunk_type) :: auxvar
   type(reaction_type) :: reaction
-  PetscReal :: J(option%chunk_size,option%num_threads,reaction%ncomp,reaction%ncomp)
+  PetscReal :: J(option%vector_length,option%num_threads,reaction%ncomp,reaction%ncomp)
   
   PetscInt :: icomp, iphase
   PetscInt :: istart, iendaq
   PetscInt :: idof
   PetscInt :: icoll
-  PetscReal :: psvd_t(option%chunk_size,option%num_threads)
-  PetscReal :: v_t(option%chunk_size,option%num_threads)
+  PetscReal :: psvd_t(option%vector_length,option%num_threads)
+  PetscReal :: v_t(option%vector_length,option%num_threads)
 
   PetscInt :: ichunk
 
@@ -1632,7 +1632,7 @@ subroutine RTAccumulationDerivativeChunk(auxvar,reaction,option,J)
   !         *(kg water/L water)*(1000L water/m^3 water) = kg water/sec
   ! all Jacobian entries should be in kg water/sec
   J(:,option%ithread,:,:) = 0.d0
-  do ichunk = 1, option%chunk_size
+  do ichunk = 1, option%vector_length
     ! this result of this conditional will be the same for all grid cells
     if (associated(auxvar%dtotal)) then ! units of dtotal = kg water/L water
       psvd_t(ichunk,option%ithread) = auxvar%por(ichunk,option%ithread)*auxvar%sat(ichunk,option%ithread,iphase)*1000.d0* &
@@ -1655,7 +1655,7 @@ subroutine RTAccumulationDerivativeChunk(auxvar,reaction,option,J)
     if (iphase > option%nphase) exit
 ! super critical CO2 phase
     if (iphase == 2) then
-      do ichunk = 1, option%chunk_size
+      do ichunk = 1, option%vector_length
         ! this result of this conditional will be the same for all grid cells
         if (associated(auxvar%dtotal)) then
           psvd_t(ichunk,option%ithread) = auxvar%por(ichunk,option%ithread)*auxvar%sat(ichunk,option%ithread,iphase)* &

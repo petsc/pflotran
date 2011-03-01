@@ -458,8 +458,8 @@ subroutine lubksb_chunk(A,N,INDX,B,chunk_size,num_threads,ithread)
   PetscInt :: N
   PetscInt :: chunk_size
   PetscInt :: num_threads
-  PetscReal :: A(chunk_size,ithread,N,N),B(chunk_size,ithread,N)
-  PetscInt :: INDX(chunk_size,ithread,N)
+  PetscReal :: A(chunk_size,num_threads,N,N),B(chunk_size,num_threads,N)
+  PetscInt :: INDX(chunk_size,num_threads,N)
   PetscInt :: ithread
 
   PetscInt :: i, j, ii, ll
