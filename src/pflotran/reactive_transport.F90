@@ -1425,6 +1425,7 @@ subroutine RTCalculateRHS_t1Patch(realization)
       call TFluxCoef(option,cur_connection_set%area(iconn), &
                      patch%boundary_velocities(:,sum_connection), &
                      patch%boundary_tran_coefs(:,sum_connection), &
+                     0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
                      coef_up,coef_dn)
 
       ! coef_dn not needed 
@@ -1830,6 +1831,7 @@ subroutine RTCalculateTranMatrixPatch1(realization,T)
       call TFluxCoef(option,cur_connection_set%area(iconn), &
                      patch%internal_velocities(:,sum_connection), &
                      patch%internal_tran_coefs(:,sum_connection), &
+                     cur_connection_set%dist(-1,iconn), &
                      coef_up,coef_dn)
 
 !      coef_up = coef_up*global_aux_vars(ghosted_id_up)%den_kg*1.d-3
@@ -1874,6 +1876,7 @@ subroutine RTCalculateTranMatrixPatch1(realization,T)
       call TFluxCoef(option,cur_connection_set%area(iconn), &
                      patch%boundary_velocities(:,sum_connection), &
                      patch%boundary_tran_coefs(:,sum_connection), &
+                     0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
                      coef_up,coef_dn)
 
  !     coef_dn = coef_dn*global_aux_vars(ghosted_id)%den_kg*1.d-3
@@ -2522,6 +2525,7 @@ subroutine RTComputeBCMassBalanceOSPatch(realization)
       call TFluxCoef(option,cur_connection_set%area(iconn), &
                      patch%boundary_velocities(:,sum_connection), &
                      patch%boundary_tran_coefs(:,sum_connection), &
+                     0.5d0, &
                      coef_up,coef_dn)
       ! TFlux accomplishes the same as what TBCFlux would
       call TFlux(rt_parameter, &
@@ -2787,6 +2791,7 @@ subroutine RTTransportResidualPatch1(realization,solution_loc,residual,idof)
       call TFluxCoef(option,cur_connection_set%area(iconn), &
                      patch%internal_velocities(:,sum_connection), &
                      patch%internal_tran_coefs(:,sum_connection), &
+                     cur_connection_set%dist(-1,iconn), &
                      coef_up,coef_dn)
       res = coef_up(iphase)*solution_loc_p(ghosted_id_up) + &
             coef_dn(iphase)*solution_loc_p(ghosted_id_dn)
@@ -2847,6 +2852,7 @@ subroutine RTTransportResidualPatch1(realization,solution_loc,residual,idof)
       call TFluxCoef(option,cur_connection_set%area(iconn), &
                      patch%boundary_velocities(:,sum_connection), &
                      patch%boundary_tran_coefs(:,sum_connection), &
+                     0.5d0, &
                      coef_up,coef_dn)
 
       ! leave off the boundary contribution since it is already inclued in the
@@ -4305,6 +4311,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
         call TFluxCoef(option,cur_connection_set%area(iconn), &
                        patch%internal_velocities(:,sum_connection), &
                        patch%internal_tran_coefs(:,sum_connection), &
+                       cur_connection_set%dist(-1,iconn), &
                        coef_up,coef_dn)
         call TFlux(rt_parameter, &
                    rt_aux_vars(ghosted_id_up), &
@@ -4386,6 +4393,7 @@ subroutine RTResidualPatch1(snes,xx,r,realization,ierr)
         call TFluxCoef(option,cur_connection_set%area(iconn), &
                        patch%boundary_velocities(:,sum_connection), &
                        patch%boundary_tran_coefs(:,sum_connection), &
+                       0.5d0, &
                        coef_up,coef_dn)
         ! TFlux accomplishes the same as what TBCFlux would
         call TFlux(rt_parameter, &
@@ -5242,6 +5250,7 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       call TFluxCoef(option,cur_connection_set%area(iconn), &
                      patch%internal_velocities(:,sum_connection), &
                      patch%internal_tran_coefs(:,sum_connection), &
+                     cur_connection_set%dist(-1,iconn), &
                      coef_up,coef_dn)
       call TFluxDerivative(rt_parameter, &
                            rt_aux_vars(ghosted_id_up), &
@@ -5325,6 +5334,7 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       call TFluxCoef(option,cur_connection_set%area(iconn), &
                      patch%boundary_velocities(:,sum_connection), &
                      patch%boundary_tran_coefs(:,sum_connection), &
+                     0.5d0, & ! fraction upwind (0.d0 upwind, 0.5 central)
                      coef_up,coef_dn)
       ! TFluxDerivative accomplishes the same as what TBCFluxDerivative would
       call TFluxDerivative(rt_parameter, &
