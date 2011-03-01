@@ -5325,7 +5325,6 @@ subroutine RTJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       call TFluxCoef(option,cur_connection_set%area(iconn), &
                      patch%boundary_velocities(:,sum_connection), &
                      patch%boundary_tran_coefs(:,sum_connection), &
-                     0.d0, &
                      coef_up,coef_dn)
       ! TFluxDerivative accomplishes the same as what TBCFluxDerivative would
       call TFluxDerivative(rt_parameter, &
