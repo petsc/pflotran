@@ -2353,7 +2353,7 @@ subroutine RTReactPatch(realization)
       endif
     enddo !icount
     
-    print *, 'geh: ', ithread, vector_length, icell
+   ! print *, 'geh: ', ithread, vector_length, icell
     
     do ichunk = 1, vector_length
       local_id = local_ids(ichunk,ithread)
