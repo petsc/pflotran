@@ -364,7 +364,7 @@ end subroutine lubksb
 !* depending on whether the number of row interchanges was odd or even,
 !* respectively. This routine is used in combination with lubksb to solve
 !* linear equations or invert a matrix.
-subroutine ludcmp_chunk(A,N,INDX,D,chunk_size,num_threads,ithread)
+subroutine ludcmp_chunk(A,N,INDX,D,chunk_size,ithread,num_threads)
 
   implicit none
 
@@ -451,7 +451,7 @@ end subroutine ludcmp_chunk
 !* A but rather as its LU decomposition. INDX is the input as the permutation
 !* vector returned bu ludcmp. B is input as the right-hand side vector B, and
 !* returns with the solution vector X.
-subroutine lubksb_chunk(A,N,INDX,B,chunk_size,num_threads,ithread)
+subroutine lubksb_chunk(A,N,INDX,B,chunk_size,ithread,num_threads)
 
   implicit none
 

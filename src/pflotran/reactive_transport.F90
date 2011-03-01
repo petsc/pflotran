@@ -2276,24 +2276,23 @@ subroutine RTReactPatch(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(reaction_type), pointer :: reaction
+  type(option_type), pointer :: option
   PetscInt :: local_id, ghosted_id
   PetscInt :: istart, iend
   PetscInt :: iphase
+  PetscInt :: ithread, vector_length
   PetscReal, pointer :: tran_xx_p(:)
   PetscReal, pointer :: volume_p(:)
   PetscReal, pointer :: porosity_loc_p(:)
   PetscReal, pointer :: mask_p(:)
 #ifdef CHUNK
-  type(option_type), pointer, save :: option
   PetscInt :: num_iterations(realization%option%chunk_size,realization%option%num_threads)
   PetscInt :: ichunk
   PetscInt :: id_count
   PetscInt :: local_ids(realization%option%chunk_size,realization%option%num_threads)
   PetscInt :: icell
   type(react_tran_auxvar_chunk_type), pointer :: rt_auxvar_chunk
-!$omp threadprivate(option)
 #else
-  type(option_type), pointer :: option
   PetscInt :: num_iterations
 #endif
 #ifdef OS_STATISTICS
@@ -2335,26 +2334,26 @@ subroutine RTReactPatch(realization)
   rt_auxvar_chunk => patch%aux%RT%aux_var_chunk
     
   !$omp parallel do num_threads(option%num_threads) &
-  !$omp             private(icell,local_id,ghosted_id,istart,iend) &
-  !$omp             copyin(option)
-  do icell = 1, grid%nlmax
-!$  option%ithread = omp_get_thread_num() + 1
-    option%vector_length = 0
+  !$omp             private(icell,local_id,ghosted_id,istart,iend, &
+  !$omp                     ithread,vector_length)
+  do icell = 1, grid%nlmax, option%chunk_size
+!$  ithread = omp_get_thread_num() + 1
+    vector_length = 0
     
     ! fill an array of local ids for entries in chunk and vector
     do icount = 0, min(option%chunk_size-1,grid%nlmax-icell)
       local_id = icell + icount
       ghosted_id = grid%nL2G(local_id)
       if (patch%imat(ghosted_id) > 0) then
-        option%vector_length = option%vector_length + 1
-        local_ids(option%vector_length,option%ithread) = local_id
+        vector_length = vector_length + 1
+        local_ids(vector_length,ithread) = local_id
       endif
     enddo !icount
     
-    print *, 'geh: ', option%ithread, option%vector_length, icell
+    print *, 'geh: ', ithread, vector_length, icell
     
-    do ichunk = 1, option%vector_length
-      local_id = local_ids(ichunk,option%ithread)
+    do ichunk = 1, vector_length
+      local_id = local_ids(ichunk,ithread)
       ghosted_id = grid%nL2G(local_id)
       istart = (local_id-1)*reaction%naqcomp+1
       iend = istart+reaction%naqcomp-1
@@ -2363,29 +2362,30 @@ subroutine RTReactPatch(realization)
       call RPack(rt_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                  tran_xx_p(istart:iend), &
                  rt_auxvar_chunk,volume_p(local_id), &
-                 porosity_loc_p(ghosted_id),ichunk,option%ithread,reaction)
+                 porosity_loc_p(ghosted_id),ichunk,ithread,reaction)
     enddo !ichunk
 
-    call RReactChunk(rt_auxvar_chunk,num_iterations,reaction,option)
+    call RReactChunk(rt_auxvar_chunk,num_iterations, &
+                     reaction,vector_length,ithread,option)
 
-    do ichunk = 1, option%vector_length
-      local_id = local_ids(ichunk,option%ithread)
+    do ichunk = 1, vector_length
+      local_id = local_ids(ichunk,ithread)
       ghosted_id = grid%nL2G(local_id)
       istart = (local_id-1)*reaction%naqcomp+1
       iend = istart+reaction%naqcomp-1
       ! tran_xx_p passes in total component concentrations
       !       and returns free ion concentrations
       call RUnpack(rt_aux_vars(ghosted_id),tran_xx_p(istart:iend), &
-                   rt_auxvar_chunk,ichunk,option%ithread,reaction)
+                   rt_auxvar_chunk,ichunk,ithread,reaction)
 !geh      print *, local_id, tran_xx_p(istart:iend)
     enddo
 
 #ifdef OS_STATISTICS
-    do ichunk = 1, option%vector_length
-      if (num_iterations(ichunk,option%ithread) > max_iterations) then
-        max_iterations = num_iterations(ichunk,option%ithread)
+    do ichunk = 1, vector_length
+      if (num_iterations(ichunk,ithread) > max_iterations) then
+        max_iterations = num_iterations(ichunk,ithread)
       endif
-      sum_iterations = sum_iterations + num_iterations(ichunk,option%ithread)
+      sum_iterations = sum_iterations + num_iterations(ichunk,ithread)
     enddo
 #endif
  
