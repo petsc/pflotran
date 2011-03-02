@@ -1705,7 +1705,94 @@ end subroutine HDF5WriteStructuredDataSet
 !GEH - Structured Grid Dependence - End
 
 #endif
-      
+
+#if defined(SAMR_HAVE_HDF5)
+
+! ************************************************************************** !
+!
+! HDF5WriteStructDataSetFromVec: stub for AMR
+! author: Bobby Philip
+! date: 10/04/10
+!
+! ************************************************************************** !
+subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
+
+  use hdf5
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Patch_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  character(len=32) :: name
+  type(realization_type) :: realization
+  Vec :: vec
+  integer(HID_T) :: file_id
+  integer(HID_T) :: data_type
+  
+end subroutine HDF5WriteStructDataSetFromVec
+
+#else
+
+
+! ************************************************************************** !
+!
+! HDF5WriteStructDataSetFromVec: Writes data from a PetscVec to HDF5 file
+! author: Glenn Hammond
+! date: 10/25/07
+!
+! ************************************************************************** !
+subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
+
+  use hdf5
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Patch_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  character(len=32) :: name
+  type(realization_type) :: realization
+  Vec :: vec
+  integer(HID_T) :: file_id
+  integer(HID_T) :: data_type
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch  
+  PetscReal, pointer :: vec_ptr(:)
+  
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  
+  call VecGetArrayF90(vec,vec_ptr,ierr)
+!GEH - Structured Grid Dependence - Begin
+  call HDF5WriteStructuredDataSet(name,vec_ptr,file_id,data_type,option, &
+                                  grid%structured_grid%nx, &
+                                  grid%structured_grid%ny, &
+                                  grid%structured_grid%nz, &
+                                  grid%structured_grid%nlx, &
+                                  grid%structured_grid%nly, &
+                                  grid%structured_grid%nlz, &
+                                  grid%structured_grid%nxs, &
+                                  grid%structured_grid%nys, &
+                                  grid%structured_grid%nzs)
+!GEH - Structured Grid Dependence - End
+  call VecRestoreArrayF90(vec,vec_ptr,ierr)
+  
+end subroutine HDF5WriteStructDataSetFromVec
+
+#endif
+        
 ! ************************************************************************** !
 !
 ! HDF5ReadIndices: Reads cell indices from an hdf5 dataset
@@ -3002,93 +3089,5 @@ subroutine HDF5ReadCellIndexedRealArray(realization,global_vec,filename, &
 end subroutine HDF5ReadCellIndexedRealArray
       
 #endif
-
-      
-#if defined(SAMR_HAVE_HDF5)
-
-! ************************************************************************** !
-!
-! HDF5WriteStructDataSetFromVec: stub for AMR
-! author: Bobby Philip
-! date: 10/04/10
-!
-! ************************************************************************** !
-subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
-
-  use hdf5
-  use Realization_module
-  use Grid_module
-  use Option_module
-  use Patch_module
-  
-  implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-
-  character(len=32) :: name
-  type(realization_type) :: realization
-  Vec :: vec
-  integer(HID_T) :: file_id
-  integer(HID_T) :: data_type
-  
-end subroutine HDF5WriteStructDataSetFromVec
-
-#else
-
-
-! ************************************************************************** !
-!
-! HDF5WriteStructDataSetFromVec: Writes data from a PetscVec to HDF5 file
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
-subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
-
-  use hdf5
-  use Realization_module
-  use Grid_module
-  use Option_module
-  use Patch_module
-  
-  implicit none
-
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-
-  character(len=32) :: name
-  type(realization_type) :: realization
-  Vec :: vec
-  integer(HID_T) :: file_id
-  integer(HID_T) :: data_type
-  
-  type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
-  type(patch_type), pointer :: patch  
-  PetscReal, pointer :: vec_ptr(:)
-  
-  patch => realization%patch
-  grid => patch%grid
-  option => realization%option
-  
-  call VecGetArrayF90(vec,vec_ptr,ierr)
-!GEH - Structured Grid Dependence - Begin
-  call HDF5WriteStructuredDataSet(name,vec_ptr,file_id,data_type,option, &
-                                  grid%structured_grid%nx, &
-                                  grid%structured_grid%ny, &
-                                  grid%structured_grid%nz, &
-                                  grid%structured_grid%nlx, &
-                                  grid%structured_grid%nly, &
-                                  grid%structured_grid%nlz, &
-                                  grid%structured_grid%nxs, &
-                                  grid%structured_grid%nys, &
-                                  grid%structured_grid%nzs)
-!GEH - Structured Grid Dependence - End
-  call VecRestoreArrayF90(vec,vec_ptr,ierr)
-  
-end subroutine HDF5WriteStructDataSetFromVec
-
-#endif
-      
+   
 end module HDF5_module
