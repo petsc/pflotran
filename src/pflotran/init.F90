@@ -53,6 +53,7 @@ subroutine Init(simulation)
   use Immis_module
   use Richards_module
   use THC_module
+  use General_module
   
   use Reactive_Transport_module
   
@@ -238,7 +239,7 @@ subroutine Init(simulation)
   
     if (flow_solver%J_mat_type == MATAIJ) then
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE, IMS_MODE, FLASH2_MODE)
+        case(MPH_MODE,THC_MODE, IMS_MODE, FLASH2_MODE, G_MODE)
           option%io_buffer = 'AIJ matrix not supported for current mode: '// &
                              option%flowmode
           call printErrMsg(option)
@@ -258,7 +259,8 @@ subroutine Init(simulation)
         case(THC_MODE)
           write(*,'(" mode = THC: p, T, s/X")')
         case(RICHARDS_MODE)
-          write(*,'(" mode = Richards: p")')      
+          write(*,'(" mode = Richards: p")')  
+        case(G_MODE)    
       end select
     endif
 
@@ -323,6 +325,11 @@ subroutine Init(simulation)
       case(FLASH2_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,FLASH2Residual, &
                              realization,ierr)
+      case(G_MODE)
+#ifdef GENERAL      
+        call SNESSetFunction(flow_solver%snes,field%flow_r,GeneralResidual, &
+                             realization,ierr)
+#endif
     end select
     
     if (flow_solver%J_mat_type == MATMFFD) then
@@ -353,6 +360,11 @@ subroutine Init(simulation)
       case(FLASH2_MODE)
         call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
                              FLASH2Jacobian,realization,ierr)
+      case(G_MODE)
+#ifdef GENERAL      
+        call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
+                             GeneralJacobian,realization,ierr)
+#endif
     end select
     
     ! by default turn off line search
@@ -589,6 +601,10 @@ subroutine Init(simulation)
         call ImmisSetup(realization)
       case(FLASH2_MODE)
         call Flash2Setup(realization)
+      case(G_MODE)
+#ifdef GENERAL
+        call GeneralSetup(realization)
+#endif
     end select
   
     ! assign initial conditionsRealizAssignFlowInitCond
@@ -618,6 +634,10 @@ subroutine Init(simulation)
         call ImmisUpdateAuxVars(realization)
       case(FLASH2_MODE)
         call Flash2UpdateAuxVars(realization)
+      case(G_MODE)
+#ifdef GENERAL      
+        call GeneralUpdateAuxVars(realization)
+#endif
     end select
   endif
 
@@ -1921,6 +1941,14 @@ subroutine setFlowMode(option)
       option%nflowdof = 3
       option%nflowspec = 2
       option%itable = 2
+    case('GENERAL')
+      option%iflowmode = G_MODE
+      option%nphase = 2
+      option%liquid_phase = 1      
+      option%gas_phase = 2      
+      option%nflowdof = 3
+      option%nflowspec = 1
+      option%use_isothermal = PETSC_FALSE
     case default
       option%io_buffer = 'Mode: '//trim(option%flowmode)//' not recognized.'
       call printErrMsg(option)

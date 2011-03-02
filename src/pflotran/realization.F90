@@ -1274,6 +1274,7 @@ subroutine RealizAssignFlowInitCond(realization)
         case(IMS_MODE)
         case(FLASH2_MODE)
 !            call pflow_mphase_setupini(realization)
+        case(G_MODE)
       end select 
 
       ! assign initial conditions values to domain
@@ -1683,7 +1684,7 @@ subroutine RealizationScaleSourceSink(realization)
           ghosted_id = grid%nL2G(local_id)
 
           select case(option%iflowmode)
-            case(RICHARDS_MODE)
+            case(RICHARDS_MODE,G_MODE)
                call GridGetGhostedNeighbors(grid,ghosted_id,STAR_STENCIL, &
                                             x_width,y_width,z_width, &
                                             ghosted_neighbors,option)
@@ -1734,7 +1735,7 @@ subroutine RealizationScaleSourceSink(realization)
         do iconn = 1, cur_connection_set%num_connections      
           local_id = cur_connection_set%id_dn(iconn)
           select case(option%iflowmode)
-            case(RICHARDS_MODE)
+            case(RICHARDS_MODE,G_MODE)
               cur_source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
                 vec_ptr(local_id)
             case(THC_MODE)

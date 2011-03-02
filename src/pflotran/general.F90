@@ -24,8 +24,8 @@ module General_module
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
 
 #ifdef GENERAL  
-  public GeneralResidual,GeneralJacobian, &
-         GeneralUpdateFixedAccum,GeneralTimeCut,&
+  public GeneralResidual, GeneralJacobian, &
+         GeneralUpdateFixedAccum, GeneralTimeCut,&
          GeneralSetup, GeneralNumericalJacTest, &
          GeneralInitializeTimestep, GeneralUpdateAuxVars, &
          GeneralMaxChange, GeneralUpdateSolution, &
@@ -802,7 +802,7 @@ subroutine GeneralAccumDerivative(gen_aux_var,global_aux_var,por,vol, &
 
   porXvol = por*vol/option%flow_dt
 
-#ifdef GENERAL      
+#ifdef GENERAL2  
   ! accumulation term units = dkmol/dp
   J(1,1) = (global_aux_var%sat(1)*gen_aux_var%dden_dp+ &
             gen_aux_var%dsat_dp*global_aux_var%den(1))* &
@@ -823,11 +823,11 @@ subroutine GeneralAccumDerivative(gen_aux_var,global_aux_var,por,vol, &
 
       select case(ideriv)
         case(1)
-!         print *, 'dvis_dp:', aux_var%dvis_dp, (aux_var_pert%vis-aux_var%vis)/pert(ideriv)
-!         print *, 'dkr_dp:', aux_var%dkr_dp, (aux_var_pert%kr-aux_var%kr)/pert(ideriv)
-          print *, 'dsat_dp:', aux_var%dsat_dp, (global_aux_var_pert%sat-global_aux_var%sat)/pert
-          print *, 'dden_dp:', aux_var%dden_dp, (global_aux_var_pert%den-global_aux_var%den)/pert
-          print *, 'dkvr_dp:', aux_var%dkvr_dp, (gen_aux_var_pert%kvr-gen_aux_var%kvr)/pert
+!         print *, 'dvis_dp:', gen_aux_var%dvis_dp, (aux_var_pert%vis-aux_var%vis)/pert(ideriv)
+!         print *, 'dkr_dp:', gen_aux_var%dkr_dp, (aux_var_pert%kr-aux_var%kr)/pert(ideriv)
+          print *, 'dsat_dp:', gen_aux_var%dsat_dp, (global_aux_var_pert%sat-global_aux_var%sat)/pert
+          print *, 'dden_dp:', gen_aux_var%dden_dp, (global_aux_var_pert%den-global_aux_var%den)/pert
+          print *, 'dkvr_dp:', gen_aux_var%dkvr_dp, (gen_aux_var_pert%kvr-gen_aux_var%kvr)/pert
       end select     
 
     call GeneralAccumulation(gen_aux_var_pert,global_aux_var,por,vol, &
@@ -935,7 +935,7 @@ subroutine GeneralFluxDerivative(gen_aux_var_up,global_aux_var_up,por_up, &
   dq_dp_dn = 0.d0
   
 ! Flow term
-#ifdef GENERAL
+#ifdef GENERAL2
   if (global_aux_var_up%sat(1) > sir_up .or. global_aux_var_dn%sat(1) > sir_dn) then
     if (global_aux_var_up%sat(1) <eps) then 
       upweight=0.d0
@@ -1083,7 +1083,7 @@ subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
 
     dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)  + gravity
 
-#ifdef GENERAL
+#ifdef GENERAL2
     if (dphi>=0.D0) then
       ukvr = gen_aux_var_up%kvr
     else
@@ -1170,7 +1170,7 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
   dq_dp_dn = 0.d0
         
   ! Flow
-#ifdef GENERAL
+#ifdef GENERAL2
   pressure_bc_type = ibndtype(RICHARDS_PRESSURE_DOF)
   select case(pressure_bc_type)
     ! figure out the direction of flow
@@ -1213,7 +1213,7 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
           ukvr = gen_aux_var_up%kvr
         else
           ukvr = gen_aux_var_dn%kvr
-#ifdef GENERAL          
+#ifdef GENERAL2         
           dukvr_dp_dn = gen_aux_var_dn%dkvr_dp
 #endif
         endif      
@@ -1330,7 +1330,7 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
   q = 0.d0
 
   ! Flow  
-#ifdef GENERAL  
+#ifdef GENERAL2 
   pressure_bc_type = ibndtype(RICHARDS_PRESSURE_DOF)
   select case(pressure_bc_type)
     ! figure out the direction of flow
@@ -1679,6 +1679,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn
+  PetscInt :: iphase
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity
@@ -1896,8 +1897,8 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
       patch%boundary_velocities(1,sum_connection) = v_darcy
       if (option%compute_mass_balance_new) then
         ! contribution to boundary
-        global_aux_vars_bc(sum_connection)%mass_balance_delta(1) = &
-          global_aux_vars_bc(sum_connection)%mass_balance_delta(1) - Res(1)
+        global_aux_vars_bc(sum_connection)%mass_balance_delta(1,iphase) = &
+          global_aux_vars_bc(sum_connection)%mass_balance_delta(1,iphase) - Res(1)
         ! contribution to internal 
 !        global_aux_vars(ghosted_id)%mass_balance_delta(1) = &
 !          global_aux_vars(ghosted_id)%mass_balance_delta(1) + Res(1)
@@ -2593,7 +2594,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       select case(source_sink%flow_condition%rate%itype)
         case(MASS_RATE_SS)
         case(VOLUMETRIC_RATE_SS)  ! assume local density for now
-#ifdef GENERAL
+#ifdef GENERAL2
           Jup(1,1) = -qsrc*gen_aux_vars(ghosted_id)%dden_dp*FMWH2O
 #endif
       end select
@@ -2768,7 +2769,7 @@ function GeneralGetTecplotHeader(realization,icolumn)
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
-  
+
   option => realization%option
   field => realization%field
   

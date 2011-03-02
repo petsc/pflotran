@@ -7,7 +7,13 @@ module General_Aux_module
 #include "definitions.h"
 
   type, public :: general_auxvar_type
-    PetscReal :: placeholder
+    PetscReal, pointer :: xmol(:,:)
+    PetscReal, pointer :: dsat_dp(:,:)
+    PetscReal, pointer :: dden_dp(:,:)
+    PetscReal, pointer :: dsat_dt(:)
+    PetscReal, pointer :: dden_dt(:)
+    PetscReal, pointer :: kvr(:)
+    PetscReal, pointer :: dkvr_dp(:)
   end type general_auxvar_type
   
   type, public :: general_parameter_type

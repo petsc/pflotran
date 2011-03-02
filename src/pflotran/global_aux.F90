@@ -122,6 +122,16 @@ select case(option%iflowmode)
     aux_var%reaction_rate_store = 0.d0
   ! allocate(aux_var%reaction_rate_store(option%nflowspec,TWO_INTEGER))
   ! aux_var%reaction_rate_store = 0.d0
+  case (G_MODE)
+    nullify(aux_var%xmass)
+    nullify(aux_var%pres_store)
+    nullify(aux_var%temp_store)
+    nullify(aux_var%fugacoeff)
+    nullify(aux_var%fugacoeff_store)
+    nullify(aux_var%den_store)
+    nullify(aux_var%m_nacl)
+    nullify(aux_var%reaction_rate)
+    nullify(aux_var%reaction_rate_store)  
   case default
     nullify(aux_var%xmass)
     nullify(aux_var%pres_store)

@@ -881,6 +881,8 @@ subroutine FlowConditionRead(condition,input,option)
       condition%itype(TWO_INTEGER) = temperature%itype
       condition%itype(THREE_INTEGER) = concentration%itype
       if (associated(enthalpy)) condition%itype(FOUR_INTEGER) = concentration%itype
+
+    case(G_MODE)
       
     case(RICHARDS_MODE)
       if (.not.associated(pressure) .and. .not.associated(rate)) then
