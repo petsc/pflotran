@@ -260,13 +260,10 @@ subroutine MFDAuxGenerateStiffMatrix(aux_var, rich_aux_var, global_aux_var,  &
 
   PetscInt :: iface, jface, i,j
   PetscScalar :: E
-  PetscScalar :: ukvr, den
   PetscScalar, pointer :: MB(:)
 
   allocate(MB(aux_var%numfaces))
 
-  ukvr = rich_aux_var%kvr_x
-  den = global_aux_var%den(1)
 
 
   E = 0 
@@ -280,7 +277,6 @@ subroutine MFDAuxGenerateStiffMatrix(aux_var, rich_aux_var, global_aux_var,  &
 
   do iface = 1, aux_var%numfaces
     do jface = 1, aux_var%numfaces
-!        aux_var%StiffMatrix(iface,jface) = den*ukvr*sq_faces(iface)*sq_faces(jface)*    &
         aux_var%StiffMatrix(iface,jface) = sq_faces(iface)*sq_faces(jface)*    &
                                         (aux_var%MassMatrixInv(iface,jface) - &
                                         (1./E)*MB(iface)*MB(jface))
@@ -324,7 +320,8 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
   type(option_type) :: option
   PetscScalar, pointer :: bc_g(:), rhs(:), bc_h(:), face_pres(:), bnd(:)
   PetscScalar :: Accum(1:option%nflowdof),source_f(1:option%nflowdof), pres(1:option%nflowdof)
-  PetscScalar :: PermTensor(3,3), sat, dden_dp, dukvr_dp, dbeta_dp
+  PetscScalar :: PermTensor(3,3), sat,  dukvr_dp
+  PetscScalar, pointer :: dden_dp(:), dbeta_dp(:), den(:), beta(:)
   PetscInt :: ghosted_cell_id
 
 
@@ -333,38 +330,43 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
   PetscScalar , pointer :: gr(:), f(:)
   PetscInt :: i, j, ghost_face_id
   type(connection_set_type), pointer :: conn
+  PetscInt, parameter :: numfaces = 6
+
 
 
   PetscInt :: iface, jface
-  PetscScalar :: E, gWB, BWB, BWCl 
-  PetscScalar :: ukvr, den, ds_dp, porosity, volume
-  PetscScalar :: beta, PorVol_dt
-  PetscScalar :: ukvr0, den0, dden_dp0, dukvr_dp0, dbeta_dp0, beta0, norm_len
-  PetscScalar, pointer :: WB(:), Wg(:), CWCl(:)
+  PetscScalar :: E, den_gWB, den_BWB, den_BWCl 
+  PetscScalar :: ukvr, ds_dp, porosity, volume, den_cntr, dden_cntr_dp
+  PetscScalar :: PorVol_dt
+  PetscScalar :: norm_len
+  PetscScalar, pointer :: WB(:), Wg(:), CWCl(:),denB(:)
 
-  allocate(WB(aux_var%numfaces))
-  allocate(Wg(aux_var%numfaces))
-  allocate(CWCl(aux_var%numfaces))
+  allocate(WB(numfaces))
+  allocate(Wg(numfaces))
+  allocate(CWCl(numfaces))
   allocate(f(option%nflowdof))
+  allocate(dden_dp(numfaces))
+  allocate(dbeta_dp(numfaces))
+  allocate(den(numfaces))
+  allocate(beta(numfaces))
+  allocate(denB(numfaces))
+
+  
 
   ukvr = rich_aux_var%kvr_x
-  den = global_aux_var%den(1)
-
   dukvr_dp = rich_aux_var%dkvr_x_dp
-  dden_dp = rich_aux_var%dden_dp 
+  den_cntr = global_aux_var%den(1)
+  dden_cntr_dp =  rich_aux_var%dden_dp 
+  
+
+  do i = 1 , numfaces
+     call MFDComputeDensity(global_aux_var, face_pres(i) + bc_g(i)/sq_faces(i), den(i), dden_dp(i), option)
+     beta(i) = ukvr*den(i)
+     dbeta_dp(i) = dukvr_dp*den(i) + ukvr*dden_dp(i)
+     denB(i) = sq_faces(i)*den(i)
+  end do
 
 
-  ukvr0 = 1123.055414382469
-  den0 = 55.35245650628916  
-  dden_dp0 = 0.
-  dukvr_dp0 = 0. 
-
-  beta0 = ukvr0*den0
-  dbeta_dp0 = dukvr_dp0*den0 + ukvr0*dden_dp0
-
-
-  beta = ukvr*den
-  dbeta_dp =  dukvr_dp*den + ukvr*dden_dp
 
   sat = global_aux_var%sat(1)
   ds_dp = rich_aux_var%dsat_dp
@@ -387,9 +389,9 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
   end do
 
 
-  allocate(gr(aux_var%numfaces))
+  allocate(gr(numfaces))
 
-  do i = 1, aux_var%numfaces
+  do i = 1, numfaces
 
 
      ghost_face_id = aux_var%face_id_gh(i)
@@ -423,8 +425,8 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
   E = 0.
   f(1) = Accum(1) - source_f(1)
 
-  BWB = 0.
-  gWB = 0.
+  den_BWB = 0.
+  den_gWB = 0.
   WB = 0.
   Wg = 0.
 
@@ -432,29 +434,29 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
   WB = matmul(aux_var%MassMatrixInv, sq_faces)
   Wg = matmul(aux_var%MassMatrixInv, bc_g)
 
-  BWB = dot_product(WB, sq_faces)
-  gWB = dot_product(WB, bc_g)
+  den_BWB = dot_product(WB, denB)
+  do i = 1 , numfaces
+     den_gWB = den_gWB + den(i)*WB(i)*bc_g(i)
+  end do
   
-  BWCl = 0
-  do iface = 1, aux_var%numfaces
-     BWCl = BWCl + WB(iface)*(    sq_faces(iface)*face_pres(iface) + bc_g(iface)   )
-!     write(*,*) "pres", pres(1), "lambda", face_pres(iface)
-!     write(*,*) "WB(iface)", WB(iface), "sq_faces(iface)", sq_faces(iface), BWCl
+  den_BWCl = 0
+  do iface = 1, numfaces
+     den_BWCl = den_BWCl + den(iface)*WB(iface)*(    sq_faces(iface)*face_pres(iface) + bc_g(iface)   )
   end do
 
-     aux_var%Rp = beta*BWB*pres(1) - beta*BWCl  + f(1) 
+   aux_var%Rp = ukvr*den_BWB*pres(1) - ukvr*den_BWCl  + f(1) 
  
-   aux_var%dRp_dp = beta*BWB + PorVol_dt*den*ds_dp  & 
-                     - dbeta_dp*BWCl   &         
-                     + dbeta_dp*BWB*pres(1)      &  
-                     + PorVol_dt*sat*dden_dp       
+   aux_var%dRp_dp = ukvr*den_BWB
+   do iface = 1, numfaces
+     aux_var%dRp_dp = aux_var%dRp_dp + dbeta_dp(i)*pres(1)*WB(iface)*sq_faces(iface)
 
-!       write(*,*) "aux_var%Rp", aux_var%Rp, "aux_var%dRp_dp", aux_var%dRp_dp, ukvr
+     aux_var%dRp_dp = aux_var%dRp_dp + dbeta_dp(i)*WB(iface)*(sq_faces(iface)*face_pres(iface) + bc_g(iface)) 
+   end do
+   aux_var%dRp_dp = aux_var%dRp_dp  + PorVol_dt*sat*dden_cntr_dp + PorVol_dt*den_cntr*ds_dp      
 
-!     read(*,*)
 
    do iface = 1, aux_var%numfaces
-          aux_var%dRp_dl(iface) = -beta*sq_faces(iface)*WB(iface)
+          aux_var%dRp_dl(iface) = -beta(iface)*sq_faces(iface)*WB(iface)
    end do
     
 
@@ -476,7 +478,7 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
      aux_var%Rl(iface) = -ukvr*sq_faces(iface)*WB(iface)*pres(1) &       ! TEST
                                    + ukvr*CWCl(iface)  & 
                                    + ukvr*sq_faces(iface)*Wg(iface) & 
-                                   - ukvr*sq_faces(iface)*den*gr(iface)&
+                                   - ukvr*sq_faces(iface)*den(iface)*gr(iface)&
                                    - bc_h(iface)
 
 !     write(*,*) -ukvr*sq_faces(iface)*WB(iface)*pres(1) + ukvr*CWCl(iface) +  ukvr*sq_faces(iface)*Wg(iface), &
@@ -487,7 +489,7 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
                                                                    + dukvr_dp*sq_faces(iface)*Wg(iface) !& ! TEST
 !     if (bc_h(iface)==0) then
           aux_var%dRl_dp(iface) = aux_var%dRl_dp(iface) &
-                           - (den*dukvr_dp + dden_dp*ukvr)*sq_faces(iface)*gr(iface)
+                           - (den(iface)*dukvr_dp + dden_dp(iface)*ukvr)*sq_faces(iface)*gr(iface)
  !                          - (den*dukvr_dp + dden_dp*ukvr)*sq_faces(iface)*gr(iface)
 !     end if 
    end do
@@ -507,12 +509,16 @@ subroutine MFDAuxGenerateRhs(grid, ghosted_cell_id, PermTensor, bc_g, source_f, 
   deallocate(f)
 
   deallocate(CWCl)
+  deallocate(dden_dp)
+  deallocate(dbeta_dp)
+  deallocate(den)
+  deallocate(beta)
+  deallocate(denB)
 
 end subroutine MFDAuxGenerateRhs
 
-subroutine MFDAuxJacobianLocal( grid, ghosted_cell_id, PermTensor,  aux_var, &
+subroutine MFDAuxJacobianLocal( grid, aux_var, &
                                        rich_aux_var, global_aux_var,  &
-                                       porosity, volume, pres, face_pres,&
                                        sq_faces, option, J)
 
  use Option_module
@@ -527,47 +533,18 @@ subroutine MFDAuxJacobianLocal( grid, ghosted_cell_id, PermTensor,  aux_var, &
   type(global_auxvar_type) :: global_aux_var
   PetscScalar, pointer :: sq_faces(:)
   type(option_type) :: option
-  PetscScalar, pointer :: J(:), face_pres(:)
-  PetscScalar :: pres(1:option%nflowdof)
-  PetscScalar :: PermTensor(3,3)
-  PetscInt :: ghosted_cell_id
+  PetscScalar, pointer :: J(:)
 
 
 
-  PetscScalar :: Kg(3), dir_norm(3)
-  PetscScalar , pointer :: gr(:) 
-  PetscInt :: i, ghost_face_id
-  type(connection_set_type), pointer :: conn
 
 
   PetscInt :: iface, jface
-  PetscScalar :: E, gWB, BWB, BWCl, Fp,  dFp_dp
-  PetscScalar :: ukvr, den, ds_dp, porosity, volume
-  PetscScalar :: beta, PorVol_dt, ukvr0, den0
-  PetscScalar, pointer :: WB(:)
+  PetscScalar :: ukvr
 
-  allocate(WB(aux_var%numfaces))
 
   ukvr = rich_aux_var%kvr_x
-  den = global_aux_var%den(1)
 
-  ukvr0 = 1123.055414382469
-  den0  = 55.35245650628916 
-
-  beta = ukvr*den
-  ds_dp = rich_aux_var%dsat_dp
-  PorVol_dt = porosity*volume/option%flow_dt
-
-
-  WB = 0
-
-
-  WB = matmul(aux_var%MassMatrixInv, sq_faces)
-
-
-  
-
-  
   J = 0.
 
    do iface = 1, aux_var%numfaces
@@ -584,11 +561,6 @@ subroutine MFDAuxJacobianLocal( grid, ghosted_cell_id, PermTensor,  aux_var, &
      end do
 !        J(iface + (iface - 1)*aux_var%numfaces) = J(iface + (iface - 1)*aux_var%numfaces) + 1 !ukvr0
    end do
-
-
-
-
-  deallocate(WB)
 
 
 end subroutine MFDAuxJacobianLocal
@@ -659,10 +631,8 @@ subroutine MFDAuxReconstruct(face_pr, source_f, aux_var, rich_aux_var, global_au
 end subroutine MFDAuxReconstruct
 
 
-subroutine  MFDAuxUpdateCellPressure(face_pres, face_DELTA_pres, source_f, mfd_aux_var,&
-                               rich_aux_var,global_aux_var, Accum, &
-                               porosity, volume, &
-                               sq_faces, option, pres)
+subroutine  MFDAuxUpdateCellPressure(face_pres, face_DELTA_pres, mfd_aux_var,&
+                                option, pressure)
 
  use Option_module
  use Richards_Aux_module
@@ -671,46 +641,13 @@ subroutine  MFDAuxUpdateCellPressure(face_pres, face_DELTA_pres, source_f, mfd_a
   implicit none
 
   type(mfd_auxvar_type), pointer :: mfd_aux_var
-  type(richards_auxvar_type) :: rich_aux_var
-  type(global_auxvar_type) :: global_aux_var
-  PetscScalar, pointer :: sq_faces(:)
   type(option_type) :: option
   PetscScalar, pointer ::  face_pres(:), face_DELTA_pres(:)
-  PetscScalar :: Accum(1:option%nflowdof),source_f(1:option%nflowdof), pres(1:option%nflowdof)
-  PetscScalar :: porosity, volume
+  PetscScalar :: pressure(1:option%nflowdof)
+  
+
   PetscScalar :: DELTA_pres
-
-  PetscInt :: i, j
-
-  PetscScalar :: BWB, WB(6), BWCl, ukvr
-
-
-
-  PetscInt :: iface, jface
-
-  ukvr = rich_aux_var%kvr_x
-
-  BWB = 0.
-  WB = 0.
-
-
-  WB = matmul(mfd_aux_var%MassMatrixInv, sq_faces)
-
-  BWB = dot_product(WB, sq_faces)
-
- 
-  BWCl = 0
-
-  do iface = 1, mfd_aux_var%numfaces
-     BWCl = BWCl + WB(iface)*sq_faces(iface)*face_pres(iface)
-!     write(*,*) "WB(iface)", WB(iface), "sq_faces(iface)", sq_faces(iface), BWCl
-  end do
-
-
-
-!  do iface = 1, mfd_aux_var%numfaces
-!    write(*,*) "face_pres", face_pres(iface), "face_DELTA_pres", face_DELTA_pres(iface)
-!  end do
+  PetscInt :: iface
 
 
 
@@ -726,7 +663,7 @@ subroutine  MFDAuxUpdateCellPressure(face_pres, face_DELTA_pres, source_f, mfd_a
 
 ! write(*,*) pres(1), DELTA_pres 
 
-  pres(1) = pres(1) + DELTA_pres  
+  pressure(1) = pressure(1) + DELTA_pres  
 
 !  pres(1) = BWCl/BWB
 
@@ -761,15 +698,20 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
   type(global_auxvar_type) :: global_aux_var
   PetscScalar, pointer :: sq_faces(:), face_pr(:)
   type(option_type) :: option
-  PetscScalar :: xx(1:option%nflowdof), ukvr, den, PermTensor(3,3), Kg(3), real_tmp
+  PetscScalar :: xx(1:option%nflowdof), ukvr, PermTensor(3,3), Kg(3), real_tmp
   PetscInt :: ghosted_cell_id
   PetscScalar :: ukvr0, den0
+  PetscInt, parameter :: numfaces = 6
    
 
   PetscInt :: iface, jface, i, j, ghost_face_id, local_face_id, local_id, bound_id, dir
-  PetscScalar, pointer :: gr(:)
+  PetscScalar :: gr(numfaces), den(numfaces), dden_dp(numfaces) 
   PetscScalar :: gravity, darcy_v, dir_norm(3), total_flux
   type(connection_set_type), pointer :: conn
+
+!  allocate(gr(numfaces))
+!  allocate(den(numfaces))
+!  allocate(dden_dp(numfaces))
 
 
 
@@ -778,6 +720,9 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
 
  ! ukvr = 1123.055414382469
  ! den = 55.35245650628916  
+  do i = 1 , numfaces
+     call MFDComputeDensity(global_aux_var, face_pr(i), den(i), dden_dp(i), option)
+  end do
 
   
 
@@ -785,11 +730,10 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
   Kg = matmul(PermTensor, option%gravity)
 
   do i = 1,3 
-    Kg(i) = Kg(i) * den * FMWH2O
+    Kg(i) = Kg(i) * den(i) * FMWH2O
 !	Kg(i) = 0.
   end do
 
-  allocate(gr(aux_var%numfaces))
 
 
   do i = 1, aux_var%numfaces
@@ -844,7 +788,9 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
 
   end do
 
-  deallocate(gr)
+!  deallocate(gr)
+!  deallocate(den)
+!  deallocate(dden_dp)
  
 !   if (option%myrank==1) then
 !       write(*,*) "End of MFDAuxFluxes"
@@ -855,7 +801,7 @@ subroutine MFDAuxFluxes(patch, grid, ghosted_cell_id, xx, face_pr, aux_var, Perm
  
 end subroutine MFDAuxFluxes
 
-subroutine MFDComputeDensity(global_aux_var, face_pr, option)
+subroutine MFDComputeDensity(global_aux_var, pres, den, dden_dp, option)
 
   use Option_module
   use Global_Aux_module
@@ -864,20 +810,15 @@ subroutine MFDComputeDensity(global_aux_var, face_pr, option)
 
 
   type(global_auxvar_type) :: global_aux_var
-  PetscScalar, pointer :: face_pr(:)
+  PetscScalar :: pres
   type(option_type) :: option
+  PetscReal, parameter :: tol = 1.d-3
 
 
-  PetscInt :: numfaces, i
-  PetscReal :: pres, pc, pw, dw_kg, dw_mol
+  PetscInt :: numfaces, i, ierr
+  PetscReal :: den, dden_dp, pc, pw 
+  PetscReal :: dw_kg, dw_mol, dw_dp, dw_dt, hw, hw_dp, hw_dt
 
-
-  numfaces = 6                 !hex only
-  pres = 0.
-  do i=1,6
-    pres = pres + face_pr(i)
-  end do
-  pres = pres/numfaces
 
   pc = option%reference_pressure - pres
 
@@ -887,12 +828,27 @@ subroutine MFDComputeDensity(global_aux_var, face_pr, option)
     pw = pres
   end if
 
-  call density(option%reference_temperature, pw, dw_kg) 
-
+!  call wateos_noderiv(option%temp,pw,dw_kg,dw_mol,hw,option%scale,ierr)
+#ifndef DONT_USE_WATEOS
+  call wateos(global_aux_var%temp(1),pw,dw_kg,dw_mol,dw_dp,dw_dt,hw, &
+              hw_dp,hw_dt,option%scale,ierr)
+#else
+  call density(global_aux_var%temp(1),pw,dw_kg)
+  pert = tol*pw
+  pw_pert = pw + pert
+  call density(global_aux_var%temp(1),pw_pert,dw_kg_pert)
+  dw_dp = (dw_kg_pert-dw_kg)/pert
+  ! dw_kg = kg/m^3
+  ! dw_mol = kmol/m^3
+  ! FMWH2O = kg/kmol h2o
   dw_mol = dw_kg/FMWH2O
+  dw_dp = dw_dp/FMWH2O
+#endif
 
-  global_aux_var%den = dw_mol
-  global_aux_var%den_kg = dw_kg
+  den = dw_mol
+   
+  dden_dp = dw_dp
+
   
 
 end subroutine MFDComputeDensity

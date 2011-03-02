@@ -877,10 +877,8 @@ subroutine RichardsUpdateCellPressurePatch(realization)
 !        Res(1) = 0.
 !       write(*,*) "Before pres", xx_p(local_id)
 
-        call MFDAuxUpdateCellPressure(faces_pr, faces_DELTA_pr,  source_f, mfd_aux_var,&
-                               rich_aux_vars(ghosted_id),global_aux_vars(ghosted_id), Res, &
-                               porosity_p(local_id), volume_p(local_id), &
-                               sq_faces, option, xx_p(local_id:local_id))
+        call MFDAuxUpdateCellPressure(faces_pr, faces_DELTA_pr, mfd_aux_var,&
+                               option, xx_p(local_id:local_id))
 
    
 !       write(*,*) "After pres", xx_p(local_id)
@@ -4520,9 +4518,8 @@ subroutine RichardsJacobianPatchMFD (snes,xx,A,B,flag,realization,ierr)
 
     J = 0.
 
-   call MFDAuxJacobianLocal( grid, ghosted_id, PermTensor, aux_var, &
+   call MFDAuxJacobianLocal( grid, aux_var, &
                                        rich_aux_vars(ghosted_id), global_aux_vars(ghosted_id), &
-                                       porosity_loc_p(ghosted_id), volume_p(local_id), xx_p(ghosted_id:ghosted_id), face_pres,&
                                        sq_faces, option, J)
 
    do iface = 1, numfaces

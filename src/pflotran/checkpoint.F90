@@ -7,7 +7,7 @@
 
 ! MUST INCREMENT THIS NUMBER EVERYTIME A CHECKPOINT FILE IS MODIFIED TO PREVENT
 ! COMPATIBILITY ISSUES - geh.
-#define REVISION_NUMBER 3
+#define REVISION_NUMBER 4
 
 module Checkpoint_Header_module
   implicit none
@@ -16,6 +16,8 @@ module Checkpoint_Header_module
     integer*8 :: revision_number  ! increment this every time there is a change
     integer*8 :: plot_number      ! in the checkpoint file format
     integer*8 :: match_waypoint_flag
+
+    integer*8 :: grid_discretization_type
 
     integer*8 :: nflowdof
     real*8 :: flow_time
@@ -100,6 +102,7 @@ subroutine Checkpoint(realization, &
   use Option_module
   use Field_module
   use Logging_module
+  use Grid_module
   
   use Flash2_module
   use MPHASE_module
@@ -110,6 +113,7 @@ subroutine Checkpoint(realization, &
   implicit none
 
   type(realization_type) :: realization
+  PetscInt :: grid_discretization_type
   PetscInt :: flow_num_constant_time_steps
   PetscInt :: flow_num_newton_iterations
   PetscInt :: flow_time_steps
@@ -152,6 +156,7 @@ subroutine Checkpoint(realization, &
   
   type(field_type), pointer :: field
   type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
   type(discretization_type), pointer :: discretization
   type(output_option_type), pointer :: output_option
   PetscInt :: i
@@ -163,6 +168,7 @@ subroutine Checkpoint(realization, &
   option => realization%option
   discretization => realization%discretization
   output_option => realization%output_option
+  grid => discretization%grid 
 
   ! Open the checkpoint file.
   call PetscGetTime(tstart,ierr)   
@@ -201,7 +207,13 @@ subroutine Checkpoint(realization, &
   call PetscBagRegisterInt(bag,header%match_waypoint_flag,match_waypoint_flag, &
                            "match_waypoint_flag","match_waypoint_flag",ierr)
 
+  call PetscBagRegisterInt(bag,header%grid_discretization_type, grid%itype,&
+                                "grid_discretization_type", "grid_discretization_type", ierr) 
+
   ! FLOW
+
+  
+
   call PetscBagRegisterInt(bag,header%nflowdof,option%nflowdof, &
                            "nflowdof","Number of flow degrees of freedom",ierr)
   call PetscBagRegisterInt(bag,header%flow_num_newton_iterations, &
@@ -314,6 +326,8 @@ subroutine Checkpoint(realization, &
     ! packed for the SNESSolve().
     call VecView(field%flow_xx, viewer, ierr)
 
+    if (grid%itype == STRUCTURED_GRID_MIMETIC) call VecView(field%flow_xx_faces, viewer, ierr) 
+
     ! If we are running with multiple phases, we need to dump the vector 
     ! that indicates what phases are present, as well as the 'var' vector 
     ! that holds variables derived from the primary ones via the translator.
@@ -338,6 +352,18 @@ subroutine Checkpoint(realization, &
                                      global_vec,ONEDOF)
     call VecView(global_vec,viewer,ierr)
     call DiscretizationLocalToGlobal(discretization,field%perm_zz_loc, &
+                                     global_vec,ONEDOF)
+    call VecView(global_vec,viewer,ierr)
+
+    call DiscretizationLocalToGlobal(discretization,field%perm_xz_loc, &
+                                     global_vec,ONEDOF)
+    call VecView(global_vec,viewer,ierr)
+
+    call DiscretizationLocalToGlobal(discretization,field%perm_xy_loc, &
+                                     global_vec,ONEDOF)
+    call VecView(global_vec,viewer,ierr)
+
+    call DiscretizationLocalToGlobal(discretization,field%perm_yz_loc, &
                                      global_vec,ONEDOF)
     call VecView(global_vec,viewer,ierr)
 
@@ -417,6 +443,7 @@ subroutine Restart(realization, &
   use Option_module
   use Field_module
   use Logging_module
+  use Grid_module
 
   use Flash2_module
   use MPHASE_module
@@ -457,6 +484,7 @@ subroutine Restart(realization, &
   
   type(field_type), pointer :: field
   type(discretization_type), pointer :: discretization
+  type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
 
@@ -466,7 +494,7 @@ subroutine Restart(realization, &
   option => realization%option
   discretization => realization%discretization
   output_option => realization%output_option
-
+  grid => discretization%grid
   
   call PetscGetTime(tstart,ierr)
   option%io_buffer = '--> Open checkpoint file: ' // &
@@ -495,6 +523,19 @@ subroutine Restart(realization, &
   
   output_option%plot_number = header%plot_number
   option%match_waypoint = (header%match_waypoint_flag == ONE_INTEGER)
+
+   if (header%grid_discretization_type /= grid%itype) then
+     write(string,*) header%grid_discretization_type
+     option%io_buffer = 'The discretization of checkpoint file (' // &
+                       trim(option%restart_filename) // ', grid_type=' // &
+                       trim(adjustl(string)) // &
+                       ') does not match the discretization of the current problem' // &
+                       ' grid_type= ('
+    write(string,*) grid%itype
+    option%io_buffer = trim(option%io_buffer) // trim(adjustl(string)) // ').'
+    call printErrMsg(option)
+  endif
+
   
   ! FLOW
   if (option%nflowdof > 0 .and. option%nflowdof == header%nflowdof) then
@@ -543,7 +584,13 @@ subroutine Restart(realization, &
     call VecLoad(field%flow_xx,viewer,ierr)
     call DiscretizationGlobalToLocal(discretization,field%flow_xx, &
                                      field%flow_xx_loc,NFLOWDOF)
-    call VecCopy(field%flow_xx,field%flow_yy,ierr)
+    call VecCopy(field%flow_xx,field%flow_yy,ierr)  
+
+    if (grid%itype == STRUCTURED_GRID_MIMETIC) then
+       call VecLoad(field%flow_xx_faces, viewer,ierr)
+       call DiscretizationGlobalToLocalFaces(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
+       call VecCopy(field%flow_xx_faces,field%flow_yy_faces,ierr) 
+    end if
     
     select case(option%iflowmode)
       case(MPH_MODE,THC_MODE,RICHARDS_MODE, IMS_MODE, FLASH2_MODE)
@@ -579,6 +626,15 @@ subroutine Restart(realization, &
     call DiscretizationGlobalToLocal(discretization,global_vec, &
                                      field%perm_zz_loc,ONEDOF)
     
+    call VecLoad(global_vec,viewer,ierr)
+    call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                     field%perm_xz_loc,ONEDOF)
+    call VecLoad(global_vec,viewer,ierr)
+    call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                     field%perm_xy_loc,ONEDOF)
+    call VecLoad(global_vec,viewer,ierr)
+    call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                     field%perm_yz_loc,ONEDOF)
   endif
   
   if (transport_read) then
