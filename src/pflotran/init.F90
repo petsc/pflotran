@@ -1564,7 +1564,7 @@ subroutine InitReadInput(simulation)
         nullify(saturation_function)   
 
 !....................
-      
+#ifdef SUBCONTINUUM_MODEL 
       case ('SUBCONTINUUM_PROPERTY')
 
         subcontinuum_property => SubcontinuumPropertyCreate()
@@ -1573,7 +1573,7 @@ subroutine InitReadInput(simulation)
         call SubcontinuumPropertyRead(subcontinuum_property,input,option)
         call SubcontinuumPropertyAddToList(subcontinuum_property,realization%subcontinuum_properties)
         nullify(subcontinuum_property)
-
+#endif
 !....................
       
       case ('MATERIAL_PROPERTY')
@@ -2293,13 +2293,13 @@ subroutine assignSubcontinuumPropToRegions(realization)
   implicit none
 
   type(realization_type) :: realization
-
+#ifdef SUBCONTINUUM_MODEL
   PetscReal, pointer :: ssize_p(:)   !subcontinuum sizes
   PetscInt, pointer :: scount_p(:)   !subcontinuum unit count for each type
   PetscInt, pointer :: stype_p(:)    !no. of subcontinuum types
 
   PetscInt :: icell, local_id, ghosted_id, natural_id, material_id &
-              & subcontinuum_id
+              subcontinuum_id
   PetscInt :: istart, iend
   PetscInt :: ssub, scell
   character(len=MAXSTRINGLENGTH) :: group_name
@@ -2429,7 +2429,7 @@ subroutine assignSubcontinuumPropToRegions(realization)
     enddo
     cur_patch => cur_patch%next
   enddo
-
+#endif
                                               
 end subroutine assignSubcontinuumPropToRegions
 

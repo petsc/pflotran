@@ -8,6 +8,7 @@ module Patch_module
   use Region_module
   use Reaction_Aux_module
   use Material_module
+  use Field_module
   
   use Auxilliary_module
 
@@ -54,6 +55,8 @@ module Patch_module
     type(coupler_list_type), pointer :: initial_conditions
     type(coupler_list_type), pointer :: source_sinks
 
+    ! pointer to field object in mother realization object
+    type(field_type), pointer :: field 
     type(strata_list_type), pointer :: strata
     type(observation_list_type), pointer :: observation
 
@@ -132,6 +135,7 @@ function PatchCreate()
   allocate(patch%source_sinks)
   call CouplerInitList(patch%source_sinks)
 
+  nullify(patch%field)
   allocate(patch%observation)
   call ObservationInitList(patch%observation)
 
@@ -265,14 +269,17 @@ end subroutine PatchLocalizeRegions
 ! date: 02/22/08
 !
 ! ************************************************************************** !
+!subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
+!                                material_properties, subcontinuum_properties, option)
 subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
-                                material_properties, subcontinuum_properties, option)
+                                material_properties,option)
 
   use Option_module
   use Material_module
   use Condition_module
   use Connection_module
-#ifdef SUBCONTINUUM_TYPE
+
+#ifdef SUBCONTINUUM_MODEL
   use Subcontinuum_module
 #endif
 
@@ -294,9 +301,9 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   
   PetscInt :: temp_int, isub
   
-  call MaterialPropConvertListToArray(material_properties,patch%material_property_array)
+  call MaterialPropConvertListToArray(material_properties,patch%material_property_array,option)
 #ifdef SUBCONTINUUM_MODEL
-  call SubcontinuumPropConvertListToArray(subcontinuum_properties,patch%subcontinuum_property_array)
+  call SubcontinuumPropConvertListToArray(subcontinuum_properties,patch%subcontinuum_property_array,option)
 #endif
   
   ! boundary conditions
@@ -538,7 +545,6 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     strata => strata%next
   enddo
 
-
   ! connectivity between initial conditions, boundary conditions, srcs/sinks, etc and grid
   call CouplerListComputeConnections(patch%grid,option, &
                                      patch%initial_conditions)
@@ -727,11 +733,26 @@ subroutine PatchInitCouplerAuxVars(coupler_list,reaction,option)
             case default
           end select
       
-        endif
+        endif ! associated(coupler%flow_condition%pressure)
       
-      endif
-      
-    endif
+      else if (coupler%itype == SRC_SINK_COUPLER_TYPE) then
+
+        if (associated(coupler%flow_condition%rate)) then
+
+          select case(coupler%flow_condition%rate%itype)
+            case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
+
+              select case(option%iflowmode)
+                case(RICHARDS_MODE)
+                  allocate(coupler%flow_aux_real_var(1,num_connections))
+                  coupler%flow_aux_real_var = 0.d0
+                  
+              end select
+          end select
+        
+        endif ! associated(coupler%flow_condition%rate)
+      endif ! coupler%itype == SRC_SINK_COUPLER_TYPE
+    endif ! associated(coupler%connection_set)
 
     ! TRANSPORT   
     if (associated(coupler%tran_condition)) then
@@ -833,36 +854,10 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
 
       flow_condition => coupler%flow_condition
 
-      update = PETSC_FALSE
-      select case(option%iflowmode)
-        case(THC_MODE,MPH_MODE, IMS_MODE, FLASH2_MODE)
-          if (force_update_flag .or. &
-              flow_condition%pressure%dataset%is_transient .or. &
-              flow_condition%pressure%gradient%is_transient .or. &
-              flow_condition%pressure%datum%is_transient .or. &
-              flow_condition%temperature%dataset%is_transient .or. &
-              flow_condition%temperature%gradient%is_transient .or. &
-              flow_condition%temperature%datum%is_transient .or. &
-              flow_condition%concentration%dataset%is_transient .or. &
-              flow_condition%concentration%gradient%is_transient .or. &
-              flow_condition%concentration%datum%is_transient) then
-            update = PETSC_TRUE
-          endif
-        case(RICHARDS_MODE)
-          if (force_update_flag .or. &
-              flow_condition%pressure%dataset%is_transient .or. &
-              flow_condition%pressure%gradient%is_transient .or. &
-              flow_condition%pressure%datum%is_transient) then
-            update = PETSC_TRUE
-          endif
-      end select
-
-      
-      if (update) then
+      if (force_update_flag .or. FlowConditionIsTransient(flow_condition)) then
         if (associated(flow_condition%pressure)) then
           select case(flow_condition%pressure%itype)
-            case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE_SS,ZERO_GRADIENT_BC, &
-                 VOLUMETRIC_RATE_SS)
+            case(DIRICHLET_BC,NEUMANN_BC,ZERO_GRADIENT_BC)
 !              do idof = 1, condition%num_sub_conditions
 !                if (associated(condition%sub_condition_ptr(idof)%ptr)) then
 !                  coupler%flow_aux_real_var(idof,1:num_connections) = &
@@ -915,6 +910,12 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
               call HydrostaticUpdateCoupler(coupler,option,patch%grid)
           end select
         endif
+        if (associated(flow_condition%rate)) then
+          select case(flow_condition%rate%itype)
+            case(SCALED_MASS_RATE_SS,SCALED_VOLUMETRIC_RATE_SS)
+              call PatchScaleSourceSink(patch,option)
+          end select
+        endif
       endif
      
     endif
@@ -926,6 +927,141 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   enddo
 
 end subroutine PatchUpdateCouplerAuxVars
+
+! ************************************************************************** !
+!
+! PatchScaleSourceSink: Scales select source/sinks based on perms*volume
+! author: Glenn Hammond
+! date: 01/12/11
+!
+! ************************************************************************** !
+subroutine PatchScaleSourceSink(patch,option)
+
+  use Option_module
+  use Field_module
+  use Coupler_module
+  use Connection_module
+  use Condition_module
+  use Grid_module
+  
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  
+  type(patch_type) :: patch
+  type(option_type) :: option
+  
+  PetscErrorCode :: ierr
+  
+  type(grid_type), pointer :: grid
+  type(coupler_type), pointer :: cur_source_sink
+  type(connection_set_type), pointer :: cur_connection_set
+  type(field_type), pointer :: field
+  
+  PetscReal, pointer :: vec_ptr(:)
+  PetscReal, pointer :: perm_loc_ptr(:)
+  PetscReal, pointer :: vol_ptr(:)
+  PetscInt :: local_id
+  PetscInt :: ghosted_id, neighbor_ghosted_id
+  PetscInt :: iconn
+  PetscReal :: scale, sum
+  PetscInt :: icount
+  PetscInt, parameter :: x_width = 1, y_width = 1, z_width = 0
+  PetscInt :: ghosted_neighbors(0:27)
+    
+  field => patch%field
+  grid => patch%grid
+
+  call GridVecGetArrayF90(grid,field%perm_xx_loc,perm_loc_ptr,ierr)
+  call GridVecGetArrayF90(grid,field%volume,vol_ptr,ierr)
+
+  grid => patch%grid
+
+  cur_source_sink => patch%source_sinks%first
+  do
+    if (.not.associated(cur_source_sink)) exit
+
+    call VecZeroEntries(field%work,ierr)
+    call GridVecGetArrayF90(grid,field%work,vec_ptr,ierr)
+
+    cur_connection_set => cur_source_sink%connection_set
+
+    do iconn = 1, cur_connection_set%num_connections
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+
+      select case(option%iflowmode)
+        case(RICHARDS_MODE)
+           call GridGetGhostedNeighbors(grid,ghosted_id,STAR_STENCIL, &
+                                        x_width,y_width,z_width, &
+                                        ghosted_neighbors,option)
+           ! ghosted neighbors is ordered first in x, then, y, then z
+           icount = 0
+           sum = 0.d0
+           ! x-direction
+           do while (icount < 2*x_width)
+             icount = icount + 1
+             neighbor_ghosted_id = ghosted_neighbors(icount)
+             sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                         grid%structured_grid%dy(neighbor_ghosted_id)* &
+                         grid%structured_grid%dz(neighbor_ghosted_id)
+             
+           enddo
+           ! y-direction
+           do while (icount < 2*(x_width+y_width))
+             icount = icount + 1
+             neighbor_ghosted_id = ghosted_neighbors(icount)                 
+             sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                         grid%structured_grid%dx(neighbor_ghosted_id)* &
+                         grid%structured_grid%dz(neighbor_ghosted_id)
+             
+           enddo
+           ! z-direction
+           do while (icount < 2*(x_width+y_width+z_width))
+             icount = icount + 1
+             neighbor_ghosted_id = ghosted_neighbors(icount)                 
+             sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                         grid%structured_grid%dx(neighbor_ghosted_id)* &
+                         grid%structured_grid%dy(neighbor_ghosted_id)
+           enddo
+           vec_ptr(local_id) = vec_ptr(local_id) + sum
+        case(THC_MODE)
+        case(MPH_MODE)
+        case(IMS_MODE)
+        case(FLASH2_MODE)
+      end select 
+
+    enddo
+    
+    call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)
+    call VecNorm(field%work,NORM_1,scale,ierr)
+    scale = 1.d0/scale
+    call VecScale(field%work,scale,ierr)
+
+    call GridVecGetArrayF90(grid,field%work,vec_ptr, ierr)
+    do iconn = 1, cur_connection_set%num_connections      
+      local_id = cur_connection_set%id_dn(iconn)
+      select case(option%iflowmode)
+        case(RICHARDS_MODE)
+          cur_source_sink%flow_aux_real_var(ONE_INTEGER,iconn) = &
+            vec_ptr(local_id)
+        case(THC_MODE)
+        case(MPH_MODE)
+        case(IMS_MODE)
+        case(FLASH2_MODE)
+      end select 
+
+    enddo
+    call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)
+    
+    cur_source_sink => cur_source_sink%next
+  enddo
+
+  call GridVecRestoreArrayF90(grid,field%perm_xx_loc,perm_loc_ptr, ierr)
+  call GridVecRestoreArrayF90(grid,field%volume,vol_ptr, ierr)
+   
+end subroutine PatchScaleSourceSink
 
 ! ************************************************************************** !
 !
@@ -1163,7 +1299,8 @@ end function PatchAuxVarsUpToDate
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
+subroutine PatchGetDataset(patch,field,option,output_option,vec,ivar, &
+  isubvar,isubvar1)
 
   use Grid_module
   use Option_module
@@ -1181,11 +1318,13 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
 #include "finclude/petscvec.h90"
 
   type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
   Vec :: vec
   PetscInt :: ivar
   PetscInt :: isubvar
+  PetscInt, optional :: isubvar1
   PetscInt :: iphase
 
   PetscInt :: local_id, ghosted_id
@@ -1419,7 +1558,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
          SECONDARY_MOLARITY,TOTAL_MOLALITY,TOTAL_MOLARITY, &
          MINERAL_RATE,MINERAL_VOLUME_FRACTION,SURFACE_CMPLX,SURFACE_CMPLX_FREE, &
          PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
-         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE)
+         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE)
          
       select case(ivar)
         case(PH)
@@ -1576,6 +1715,17 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
                 patch%aux%RT%aux_vars(grid%nL2G(local_id))%colloid%conc_imb(isubvar)
             enddo
           endif
+        case(AGE)
+          do local_id=1,grid%nlmax
+            ghosted_id = grid%nL2G(local_id)
+            if (patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar) > &
+                0.d0) then
+              vec_ptr(local_id) = &
+                patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar) / &
+                patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar1) / &
+                output_option%tconv
+            endif
+          enddo        
       end select
     case(POROSITY)
       call GridVecGetArrayF90(grid,field%porosity_loc,vec_ptr2,ierr)
@@ -1609,7 +1759,8 @@ end subroutine PatchGetDataset
 ! date: 02/11/08
 !
 ! ************************************************************************** !
-function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
+function PatchGetDatasetValueAtCell(patch,field,option,output_option, &
+  ivar,isubvar,ghosted_id,isubvar1)
 
   use Grid_module
   use Option_module
@@ -1628,10 +1779,12 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
 
   PetscReal :: PatchGetDatasetValueAtCell
   type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
   PetscInt :: ivar
   PetscInt :: isubvar
+  PetscInt, optional :: isubvar1
   PetscInt :: iphase
   PetscInt :: ghosted_id
 
@@ -1777,7 +1930,7 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
          MINERAL_VOLUME_FRACTION,MINERAL_RATE, &
          SURFACE_CMPLX,SURFACE_CMPLX_FREE,KIN_SURFACE_CMPLX,KIN_SURFACE_CMPLX_FREE, &
          PRIMARY_ACTIVITY_COEF,SECONDARY_ACTIVITY_COEF,PRIMARY_KD,TOTAL_SORBED, &
-         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE)
+         TOTAL_SORBED_MOBILE,COLLOID_MOBILE,COLLOID_IMMOBILE,AGE)
          
       select case(ivar)
         case(PH)
@@ -1856,6 +2009,13 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar,ghosted_id)
                     patch%aux%Global%aux_vars(ghosted_id)%den_kg(iphase)*1000.d0
           else
             value = patch%aux%RT%aux_vars(ghosted_id)%colloid%conc_imb(isubvar)
+          endif
+        case(AGE)
+          if (patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar) > &
+              0.d0) then
+            value = patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar) / &
+            patch%aux%RT%aux_vars(ghosted_id)%pri_molal(isubvar1) / &
+            output_option%tconv
           endif
       end select
     case(POROSITY)
@@ -2521,6 +2681,8 @@ subroutine PatchDestroy(patch)
   call CouplerDestroyList(patch%boundary_conditions)
   call CouplerDestroyList(patch%initial_conditions)
   call CouplerDestroyList(patch%source_sinks)
+  
+  nullify(patch%field)
   
   call ObservationDestroyList(patch%observation)
   call StrataDestroyList(patch%strata)

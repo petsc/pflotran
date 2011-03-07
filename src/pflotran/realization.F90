@@ -682,8 +682,12 @@ subroutine RealizationProcessCouplers(realization)
       call PatchProcessCouplers(cur_patch,realization%flow_conditions, &
                                 realization%transport_conditions, &
                                 realization%material_properties, &
-                                realization%subcontinuum_properties, &
                                 realization%option)
+!      call PatchProcessCouplers(cur_patch,realization%flow_conditions, &
+!                                realization%transport_conditions, &
+!                                realization%material_properties, &
+!                                realization%subcontinuum_properties, &
+!                                realization%option)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -792,8 +796,8 @@ subroutine RealProcessSubcontinuumProp(realization)
   use String_module
   
   implicit none
-  
   type(realization_type) :: realization
+#ifdef SUBCONTINUUM_MODEL 
   
   PetscBool :: found
   PetscInt :: i
@@ -841,7 +845,7 @@ subroutine RealProcessSubcontinuumProp(realization)
     enddo
     cur_material_property => cur_material_property%next
   enddo
-  
+#endif 
 end subroutine RealProcessSubcontinuumProp
 
 ! ************************************************************************** !

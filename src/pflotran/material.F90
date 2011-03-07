@@ -96,8 +96,10 @@ function MaterialPropertyCreate()
   material_property%mnrl_surf_area_volfrac_pwr = 0.d0
   material_property%mnrl_surf_area_porosity_pwr = 0.d0
   material_property%permeability_pwr = 0.d0
+#ifdef SUBCONTINUUM_MODEL
   nullify(material_property%subcontinuum_type_name)
   nullify(material_property%subcontinuum_type_count)
+#endif
   nullify(material_property%next)
   MaterialPropertyCreate => material_property
 
