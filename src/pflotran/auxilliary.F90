@@ -20,6 +20,9 @@ module Auxilliary_module
   type, public :: auxilliary_type 
     type(global_type), pointer :: Global
     type(reactive_transport_type), pointer :: RT
+#ifdef SUBCONTINUUM_MODEL
+    type(subcontinuum_transport_type), pointer :: ST
+#endif
     type(thc_type), pointer :: THC
     type(richards_type), pointer :: Richards
     type(mphase_type), pointer :: Mphase
@@ -59,6 +62,9 @@ subroutine AuxInit(aux)
   
   nullify(aux%Global)
   nullify(aux%RT)
+#ifdef SUBCONTINUUM_MODEL
+  nullify(aux%ST)
+#endif
   nullify(aux%THC)
   nullify(aux%Richards)
   nullify(aux%Mphase)
@@ -85,6 +91,9 @@ subroutine AuxDestroy(aux)
   
   call GlobalAuxDestroy(aux%Global)
   call RTAuxDestroy(aux%RT)
+#ifdef SUBCONTINUUM_MODEL
+  call STAuxDestroy(aux%ST) 
+#endif
   call THCAuxDestroy(aux%THC)
   call RichardsAuxDestroy(aux%Richards)
   !call MphaseAuxDestroy(aux%Mphase)
@@ -93,6 +102,9 @@ subroutine AuxDestroy(aux)
 #endif
   nullify(aux%Global)
   nullify(aux%RT)
+#ifdef SUBCONTINUUM_MODEL
+  nullify(aux%ST)  
+#endif
   nullify(aux%THC)
   nullify(aux%Richards)
   nullify(aux%Mphase)

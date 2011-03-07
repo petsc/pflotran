@@ -19,6 +19,9 @@ module Strata_module
     PetscInt :: imaterial_property                       ! id of material in material array/list
     PetscInt :: iregion                                  ! id of region in region array/list
     type(material_property_type), pointer :: material_property ! pointer to material in material array/list
+#ifdef SUBCONTINUUM_MODEL
+    type(subcontinuum_property_type), pointer :: subcontinuum_property(:) ! pointer to subcontinuum in subcontinuum array/list
+#endif
     type(region_type), pointer :: region                ! pointer to region in region array/list
     type(strata_type), pointer :: next            ! pointer to next strata
   end type strata_type
@@ -70,6 +73,9 @@ function StrataCreate1()
 
   nullify(strata%region)
   nullify(strata%material_property)
+#ifdef SUBCONTINUUM_MODEL
+  nullify(strata%subcontinuum_property)
+#endif
   nullify(strata%next)
   
   StrataCreate1 => strata
@@ -104,6 +110,11 @@ function StrataCreateFromStrata(strata)
   ! keep these null
   nullify(new_strata%region)
   nullify(new_strata%material_property)
+
+#ifdef SUBCONTINUUM_MODEL
+  nullify(new_strata%subcontinuum_property)
+#endif
+
   nullify(new_strata%next)
   
   StrataCreateFromStrata => new_strata
