@@ -48,7 +48,8 @@ module Mphase_module
          MphaseSetup,MphaseUpdateReason,&
          MphaseMaxChange, MphaseUpdateSolution, &
          MphaseGetTecplotHeader, MphaseInitializeTimestep, &
-         MphaseUpdateAuxVars, init_span_wanger
+         MphaseUpdateAuxVars, init_span_wanger, &
+         MphaseComputeMassBalance
 
 contains
 
@@ -264,6 +265,203 @@ subroutine MphaseSetupPatch(realization)
 end subroutine MphaseSetupPatch
 
 ! ************************************************************************** !
+!
+! MphaseComputeMassBalance: 
+! author: Glenn Hammond
+! date: 02/22/08
+!
+! ************************************************************************** !
+subroutine MphaseComputeMassBalance(realization,mass_balance)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+
+  type(realization_type) :: realization
+  PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  mass_balance = 0.d0
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call MphaseComputeMassBalancePatch(realization,mass_balance)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine MphaseComputeMassBalance
+
+! ************************************************************************** !
+!
+! MphaseComputeMassBalancePatch: Initializes mass balance
+! author: Glenn Hammond
+! date: 12/19/08
+!
+! ************************************************************************** !
+subroutine MphaseComputeMassBalancePatch(realization,mass_balance)
+ 
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Field_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+  PetscReal :: mass_balance(realization%option%nflowspec,realization%option%nphase)
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(field_type), pointer :: field
+  type(grid_type), pointer :: grid
+  type(mphase_auxvar_type), pointer :: mphase_aux_vars(:)
+  PetscReal, pointer :: volume_p(:), porosity_loc_p(:)
+
+  PetscErrorCode :: ierr
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  PetscInt :: iphase
+  PetscInt :: ispec_start, ispec_end, ispec
+
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+  field => realization%field
+
+  mphase_aux_vars => patch%aux%MPhase%aux_vars
+
+  call GridVecGetArrayF90(grid,field%volume,volume_p,ierr)
+  call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
+    ! mass = volume*saturation*density
+    do iphase = 1, option%nphase
+      do ispec = 1, option%nflowspec
+        mass_balance(ispec,iphase) = mass_balance(ispec,iphase) + &
+          mphase_aux_vars(ghosted_id)%aux_var_elem(0)%xmol(ispec+(iphase-1)*option%nflowspec)* &
+          mphase_aux_vars(ghosted_id)%aux_var_elem(0)%den(iphase)* &
+          mphase_aux_vars(ghosted_id)%aux_var_elem(0)%sat(iphase)* &
+          porosity_loc_p(ghosted_id)*volume_p(local_id)
+      enddo
+    enddo
+  enddo
+
+  call GridVecRestoreArrayF90(grid,field%volume,volume_p,ierr)
+  call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
+  
+end subroutine MphaseComputeMassBalancePatch
+
+! ************************************************************************** !
+!
+! MphaseZeroMassBalDeltaPatch: Zeros mass balance delta array
+! author: Glenn Hammond
+! date: 12/19/08
+!
+! ************************************************************************** !
+subroutine MphaseZeroMassBalDeltaPatch(realization)
+ 
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+
+  PetscInt :: iconn
+
+  option => realization%option
+  patch => realization%patch
+
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+  do iconn = 1, patch%aux%Mphase%num_aux
+    patch%aux%Global%aux_vars(iconn)%mass_balance_delta = 0.d0
+  enddo
+#endif
+
+  ! Intel 10.1 on Chinook reports a SEGV if this conditional is not
+  ! placed around the internal do loop - geh
+  if (patch%aux%Mphase%num_aux_bc > 0) then
+    do iconn = 1, patch%aux%Mphase%num_aux_bc
+      global_aux_vars_bc(iconn)%mass_balance_delta = 0.d0
+    enddo
+  endif
+
+end subroutine MphaseZeroMassBalDeltaPatch
+
+! ************************************************************************** !
+!
+! MphaseUpdateMassBalancePatch: Updates mass balance
+! author: Glenn Hammond
+! date: 12/19/08
+!
+! ************************************************************************** !
+subroutine MphaseUpdateMassBalancePatch(realization)
+ 
+  use Realization_module
+  use Option_module
+  use Patch_module
+  use Grid_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
+  type(global_auxvar_type), pointer :: global_aux_vars_bc(:)
+
+  PetscInt :: iconn
+
+  option => realization%option
+  patch => realization%patch
+
+  global_aux_vars_bc => patch%aux%Global%aux_vars_bc
+
+#ifdef COMPUTE_INTERNAL_MASS_FLUX
+  do iconn = 1, patch%aux%Mphase%num_aux
+    patch%aux%Global%aux_vars(iconn)%mass_balance = &
+      patch%aux%Global%aux_vars(iconn)%mass_balance + &
+      patch%aux%Global%aux_vars(iconn)%mass_balance_delta* &
+      option%flow_dt
+  enddo
+#endif
+
+  ! Intel 10.1 on Chinook reports a SEGV if this conditional is not
+  ! placed around the internal do loop - geh
+  if (patch%aux%Mphase%num_aux_bc > 0) then
+    do iconn = 1, patch%aux%Mphase%num_aux_bc
+      global_aux_vars_bc(iconn)%mass_balance = &
+        global_aux_vars_bc(iconn)%mass_balance + &
+        global_aux_vars_bc(iconn)%mass_balance_delta*option%flow_dt
+    enddo
+  endif
+
+end subroutine MphaseUpdateMassBalancePatch
+
+! ************************************************************************** !
 ! Mphaseinitguesscheckpatch: 
 ! author: Chuan Lu
 ! date: 12/10/07
@@ -287,17 +485,13 @@ end subroutine MphaseSetupPatch
   option => realization%option
   cur_level => realization%level_list%first
   ipass = 1
-  do
+  do while(ipass > 0)
     if (.not.associated(cur_level)) exit
     cur_patch => cur_level%patch_list%first
-    do
+    do while(ipass > 0)
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      ipass= MphaseInitGuessCheckPatch(realization)
-      if(ipass<=0)then
-        nullify(cur_level)
-        exit 
-      endif
+      ipass = MphaseInitGuessCheckPatch(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -415,7 +609,7 @@ end subroutine MPhaseUpdateReasonPatch
 ! ************************************************************************** !
 !
 ! MphaseUpdateAuxVars: Updates the auxilliary variables associated with 
-!                        the Richards problem
+!                        the Mphase problem
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
@@ -1026,6 +1220,7 @@ subroutine MphaseSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, &
   PetscReal :: rho, fg, dfgdp, dfgdt, eng, dhdt, dhdp, visc, dvdt, dvdp, xphi
   PetscReal :: ukvr, v_darcy, dq, dphi
   PetscInt  :: np
+  PetscInt :: iflag
   PetscErrorCode :: ierr
   
   Res=0D0
@@ -1060,9 +1255,10 @@ subroutine MphaseSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, &
                   tsrc,rho,dddt,dddp,fg,dfgdp,dfgdt, &
                   eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
               else
+                iflag = 1
                 call co2_span_wagner(aux_var%pres*1.D-6,&
                   tsrc+273.15D0,rho,dddt,dddp,fg,dfgdp,dfgdt, &
-                  eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
+                  eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,iflag,option%itable)
               endif 
             case(3) 
               call sw_prop(tsrc,aux_var%pres*1.D-6,rho, &
@@ -1593,7 +1789,7 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
   if(ierr<0)then
     !ierr = PETSC_ERR_ARG_OUTOFRANGE
     if (option%myrank==0) print *,'table out of range: ',ierr
-    call SNESSetFunctionDomainError() 
+    call SNESSetFunctionDomainError(snes,ierr) 
     return
   endif 
   ! end check ---------------------------------------------------------
@@ -1608,6 +1804,10 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
       call MphaseVarSwitchPatch(xx, realization, ZERO_INTEGER, ichange)
+      if (ichange < 0) then
+        call SNESSetFunctionDomainError(snes,ierr) 
+        return
+      endif
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -1686,10 +1886,11 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
   PetscReal :: k1, k2, z1, z2,xg, vmco2, vmh2o,sg
   PetscReal :: xmol(realization%option%nphase*realization%option%nflowspec),&
                satu(realization%option%nphase)
-  PetscReal :: yh2o_in_co2, wat_sat_x, co2_sat_x
+  PetscReal :: yh2o_in_co2 = 1.d-2, wat_sat_x, co2_sat_x
   PetscReal :: lngamco2, m_na, m_cl, m_nacl, Qkco2, mco2, xco2eq, temp
 ! PetscReal :: xla,co2_poyn
   PetscInt :: local_id, ghosted_id, dof_offset
+  PetscInt :: iflag
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -1747,8 +1948,13 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
             call co2_sw_interp(p2*1.D-6,t,dg,dddt,dddp,fg,&
                 dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
           else
+            iflag = 1
             call co2_span_wagner(p2*1.D-6,t+273.15D0,dg,dddt,dddp,fg,&
-                dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
+                dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,iflag,option%itable)
+            if (iflag < 1) then
+              ichange = -1
+              return
+            endif
           endif
           dg= dg / FMWCO2
           fg= fg * 1.D6 
@@ -2015,8 +2221,8 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   call GridVecGetArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
  
  
-! Multiphase flash calculation is more expansive, so calculate once per iterration
-! print *, 'Mpahse residual patch 1' 
+! Multiphase flash calculation is more expensive, so calculate once per iteration
+! print *, 'Mphase residual patch 1' 
 #if 1
   ! Pertubations for aux terms --------------------------------
   do ng = 1, grid%ngmax
@@ -2133,25 +2339,25 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     !print *, 'RES s/s begin'
     ! check whether enthalpy dof is included
   !  if (source_sink%flow_condition%num_sub_conditions > 3) then
-      enthalpy_flag = PETSC_TRUE
+    enthalpy_flag = PETSC_TRUE
    ! else
    !   enthalpy_flag = PETSC_FALSE
    ! endif
       
     psrc(:) = source_sink%flow_condition%pressure%dataset%cur_value(:)
-!    qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
+!   qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
     tsrc1 = source_sink%flow_condition%temperature%dataset%cur_value(1)
     csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
     if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
-!    hsrc1=0D0
-!    qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
-!    csrc1 = csrc1 / FMWCO2
-!    msrc(1)=qsrc1; msrc(2) =csrc1
-     msrc(:)= psrc(:)
-     msrc(1) =  msrc(1) / FMWH2O
-     msrc(2) =  msrc(2) / FMWCO2
+!   hsrc1=0D0
+!   qsrc1 = qsrc1 / FMWH2O ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+!   csrc1 = csrc1 / FMWCO2
+!   msrc(1)=qsrc1; msrc(2) =csrc1
+    msrc(:)= psrc(:)
+    msrc(1) =  msrc(1) / FMWH2O
+    msrc(2) =  msrc(2) / FMWCO2
 
-     cur_connection_set => source_sink%connection_set
+    cur_connection_set => source_sink%connection_set
     
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
@@ -2169,9 +2375,9 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       if (enthalpy_flag)then
         r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - Res(option%nflowdof)
         Resold_AR(local_id,option%nflowdof)= Resold_AR(local_id,option%nflowdof) - Res(option%nflowdof)
-       endif 
-  !  else if (qsrc1 < 0.d0) then ! withdrawal
-  !  endif
+      endif 
+  !   else if (qsrc1 < 0.d0) then ! withdrawal
+  !   endif
     enddo
     source_sink => source_sink%next
   enddo
@@ -2216,51 +2422,51 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 
       icap_dn = int(icap_loc_p(ghosted_id))  
 ! Then need fill up increments for BCs
-    do idof =1, option%nflowdof   
-       select case(boundary_condition%flow_condition%itype(idof))
-       case(DIRICHLET_BC)
-          xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
-       case(HYDROSTATIC_BC)
-          xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
-          if(idof>=2)then
-             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
-          endif 
-       case(NEUMANN_BC, ZERO_GRADIENT_BC)
+      do idof =1, option%nflowdof   
+        select case(boundary_condition%flow_condition%itype(idof))
+          case(DIRICHLET_BC)
+            xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
+          case(HYDROSTATIC_BC)
+            xxbc(1) = boundary_condition%flow_aux_real_var(1,iconn)
+            if(idof>=2)then
+              xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+            endif 
+          case(NEUMANN_BC, ZERO_GRADIENT_BC)
           ! solve for pb from Darcy's law given qb /= 0
-          xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
-          iphase = int(iphase_loc_p(ghosted_id))
-       end select
-    enddo
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
+            iphase = int(iphase_loc_p(ghosted_id))
+        end select
+      enddo
 
-    select case(boundary_condition%flow_condition%itype(3))
-    case(DIRICHLET_BC,SEEPAGE_BC)
-       iphase = boundary_condition%flow_aux_int_var(1,iconn)
-    case(NEUMANN_BC,ZERO_GRADIENT_BC,HYDROSTATIC_BC)
-       iphase=int(iphase_loc_p(ghosted_id))                               
-    end select
+      select case(boundary_condition%flow_condition%itype(3))
+        case(DIRICHLET_BC,SEEPAGE_BC)
+          iphase = boundary_condition%flow_aux_int_var(1,iconn)
+        case(NEUMANN_BC,ZERO_GRADIENT_BC,HYDROSTATIC_BC)
+          iphase=int(iphase_loc_p(ghosted_id))                               
+      end select
  
-    call MphaseAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
+      call MphaseAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),&
             global_aux_vars_bc(sum_connection), iphase,&
             realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
             realization%fluid_properties, option, xphi)
 #if 1
-    if( associated(global_aux_vars_bc))then
-      global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
+      if( associated(global_aux_vars_bc))then
+        global_aux_vars_bc(sum_connection)%pres(:)= aux_vars_bc(sum_connection)%aux_var_elem(0)%pres -&
                      aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-      global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
-      global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
+        global_aux_vars_bc(sum_connection)%temp(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%temp
+        global_aux_vars_bc(sum_connection)%sat(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%sat(:)
       !    global_aux_vars(ghosted_id)%sat_store = 
-      global_aux_vars_bc(sum_connection)%fugacoeff(1)=xphi
-      global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
-      global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
+        global_aux_vars_bc(sum_connection)%fugacoeff(1)=xphi
+        global_aux_vars_bc(sum_connection)%den(:)=aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:)
+        global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
-  !   global_aux_vars(ghosted_id)%den_kg_store
-  !   global_aux_vars(ghosted_id)%mass_balance 
-  !   global_aux_vars(ghosted_id)%mass_balance_delta                   
-    endif
+  !     global_aux_vars(ghosted_id)%den_kg_store
+  !     global_aux_vars(ghosted_id)%mass_balance 
+  !     global_aux_vars(ghosted_id)%mass_balance_delta                   
+      endif
 #endif
 
-    call MphaseBCFlux(boundary_condition%flow_condition%itype, &
+      call MphaseBCFlux(boundary_condition%flow_condition%itype, &
          boundary_condition%flow_aux_real_var(:,iconn), &
          aux_vars_bc(sum_connection)%aux_var_elem(0), &
          aux_vars(ghosted_id)%aux_var_elem(0), &
@@ -2271,14 +2477,26 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
          cur_connection_set%area(iconn), &
          distance_gravity,option, &
          v_darcy,Res)
-    patch%boundary_velocities(:,sum_connection) = v_darcy(:)
-    iend = local_id*option%nflowdof
-    istart = iend-option%nflowdof+1
-    r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
-    Resold_AR(local_id,1:option%nflowdof) = ResOld_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
+      patch%boundary_velocities(:,sum_connection) = v_darcy(:)
+      iend = local_id*option%nflowdof
+      istart = iend-option%nflowdof+1
+      r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
+      Resold_AR(local_id,1:option%nflowdof) = ResOld_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
    !  print *, 'REs BC: ',r_p(istart:iend)
-  enddo
-  boundary_condition => boundary_condition%next
+
+#if 0
+      if (option%compute_mass_balance_new) then
+        ! contribution to boundary
+        global_aux_vars_bc(sum_connection)%mass_balance_delta(:,:) = &
+          global_aux_vars_bc(sum_connection)%mass_balance_delta(1,:) - Res(:)
+        ! contribution to internal 
+!        global_aux_vars(ghosted_id)%mass_balance_delta(1) = &
+!          global_aux_vars(ghosted_id)%mass_balance_delta(1) + Res(1)
+      endif
+#endif
+
+    enddo
+    boundary_condition => boundary_condition%next
  enddo
 #endif
 #if 1
@@ -2383,14 +2601,14 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 
 ! print *,'finished rp vol scale'
   if(option%use_isothermal) then
-     do local_id = 1, grid%nlmax  ! For each local node do...
-        ghosted_id = grid%nL2G(local_id)   ! corresponding ghost index
-        if (associated(patch%imat)) then
-           if (patch%imat(ghosted_id) <= 0) cycle
-        endif
-        istart = 3 + (local_id-1)*option%nflowdof
-        r_p(istart) = 0.D0 ! xx_loc_p(2 + (ng-1)*option%nflowdof) - yy_p(p1-1)
-     enddo
+    do local_id = 1, grid%nlmax  ! For each local node do...
+      ghosted_id = grid%nL2G(local_id)   ! corresponding ghost index
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+      istart = 3 + (local_id-1)*option%nflowdof
+      r_p(istart) = 0.D0 ! xx_loc_p(2 + (ng-1)*option%nflowdof) - yy_p(p1-1)
+    enddo
   endif
   !call GridVecRestoreArrayF90(grid,r, r_p, ierr)
 
@@ -3054,7 +3272,7 @@ end subroutine MphaseJacobianPatch
 
 ! ************************************************************************** !
 !
-! RichardsCreateZeroArray: Computes the zeroed rows for inactive grid cells
+! MphaseCreateZeroArray: Computes the zeroed rows for inactive grid cells
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
@@ -3291,7 +3509,7 @@ end subroutine MphaseMaxChangePatch
 
 ! ************************************************************************** !
 !
-! RichardsGetTecplotHeader: Returns Richards contribution to 
+! MphaseGetTecplotHeader: Returns Mphase contribution to 
 !                               Tecplot file header
 ! author: Glenn Hammond
 ! date: 02/13/08
@@ -3417,7 +3635,7 @@ end function MphaseGetTecplotHeader
 
 ! ************************************************************************** !
 !
-! RichardsDestroy: Deallocates variables associated with Richard
+! MphaseDestroy: Deallocates variables associated with Richard
 ! author: Glenn Hammond
 ! date: 02/14/08
 !

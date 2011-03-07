@@ -676,8 +676,6 @@ subroutine Flash2UpdateAuxVarsPatch(realization)
  
 
   !    global_aux_vars(ghosted_id)%den_kg_store
-  !    global_aux_vars(ghosted_id)%mass_balance 
-  !    global_aux_vars(ghosted_id)%mass_balance_delta                   
       endif
 
     enddo
@@ -944,6 +942,7 @@ subroutine Flash2SourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fl
   PetscReal :: rho, fg, dfgdp, dfgdt, eng, dhdt, dhdp, visc, dvdt, dvdp, xphi
   PetscReal :: ukvr, v_darcy, dq, dphi
   PetscInt  :: np
+  PetscInt :: iflag
   PetscErrorCode :: ierr
   
   Res=0D0
@@ -976,9 +975,10 @@ subroutine Flash2SourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fl
                   tsrc,rho,dddt,dddp,fg,dfgdp,dfgdt, &
                   eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
               else
+              iflag = 1
               call co2_span_wagner(aux_var%pres*1.D-6,&
                   tsrc+273.15D0,rho,dddt,dddp,fg,dfgdp,dfgdt, &
-                  eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
+                  eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,iflag,option%itable)
               endif 
              case(3) 
               call sw_prop(tsrc,aux_var%pres*1.D-6,rho, &
@@ -1838,7 +1838,7 @@ end subroutine Flash2Residual
 ! ************************************************************************** !
 !
 ! Flash2ResidualPatch: Computes the residual equation at patch level
-!                      original version
+!                      original version (not used)
 ! author: Chuan Lu
 ! date: 10/10/08
 !
@@ -1973,8 +1973,6 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
 !       global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
 !      global_aux_vars(ghosted_id)%pres(:)
-!      global_aux_vars(ghosted_id)%mass_balance 
-!      global_aux_vars(ghosted_id)%mass_balance_delta                   
      else
        print *,'Not associated global for Flash2'
      endif
@@ -2166,8 +2164,6 @@ subroutine Flash2ResidualPatch(snes,xx,r,realization,ierr)
       global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
   !   global_aux_vars(ghosted_id)%den_kg_store
-  !   global_aux_vars(ghosted_id)%mass_balance 
-  !   global_aux_vars(ghosted_id)%mass_balance_delta                   
     endif
 #endif
 
@@ -2648,8 +2644,6 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
       global_aux_vars_bc(sum_connection)%den_kg = aux_vars_bc(sum_connection)%aux_var_elem(0)%den(:) &
                                           * aux_vars_bc(sum_connection)%aux_var_elem(0)%avgmw(:)
   !   global_aux_vars(ghosted_id)%den_kg_store
-  !   global_aux_vars(ghosted_id)%mass_balance 
-  !   global_aux_vars(ghosted_id)%mass_balance_delta                   
     endif
 
     call Flash2BCFlux(boundary_condition%flow_condition%itype, &
@@ -2666,15 +2660,6 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
     patch%boundary_velocities(:,sum_connection) = v_darcy(:)
     patch%aux%Flash2%Resold_BC(local_id,1:option%nflowdof) = &
     patch%aux%Flash2%ResOld_BC(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
-
-    if (option%compute_mass_balance_new) then
-        ! contribution to boundary
-       global_aux_vars_bc(sum_connection)%mass_balance_delta(:) = &
-        global_aux_vars_bc(sum_connection)%mass_balance_delta(:) - Res(:)
-        ! contribution to internal 
-!        global_aux_vars(ghosted_id)%mass_balance_delta(1) = &
-!          global_aux_vars(ghosted_id)%mass_balance_delta(1) + Res(1)
-     endif
 
 
       if (option%use_samr) then
@@ -2836,11 +2821,6 @@ subroutine Flash2ResidualPatch1(snes,xx,r,realization,ierr)
         fluxes(direction)%flux_p(istart:iend) = Res(1:option%nflowdof)
       endif
       
-#ifdef COMPUTE_INTERNAL_MASS_FLUX
-      global_aux_vars(local_id_up)%mass_balance_delta(1) = &
-        global_aux_vars(local_id_up)%mass_balance_delta(1) - Res(1)
-#endif
-      
       if(.not.option%use_samr) then
         if (local_id_up>0) then
           iend = local_id_up*option%nflowdof
@@ -2953,68 +2933,66 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
 
   allocate(delx(option%nflowdof))
 
-   patch%aux%Flash2%Resold_AR=0.D0
-   patch%aux%Flash2%Resold_BC=0.D0
-   patch%aux%Flash2%ResOld_FL=0.D0
+  patch%aux%Flash2%Resold_AR=0.D0
+  patch%aux%Flash2%Resold_BC=0.D0
+  patch%aux%Flash2%ResOld_FL=0.D0
 
 ! Multiphase flash calculation is more expansive, so calculate once per iterration
 #if 1
   ! Pertubations for aux terms --------------------------------
   do ng = 1, grid%ngmax
-     if(grid%nG2L(ng)<0)cycle
-     if (associated(patch%imat)) then
-        if (patch%imat(ng) <= 0) cycle
-     endif
-     ghosted_id = ng   
-     istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
+    if(grid%nG2L(ng)<0)cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(ng) <= 0) cycle
+    endif
+    ghosted_id = ng   
+    istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
      ! iphase =int(iphase_loc_p(ng))
-     call Flash2AuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
+    call Flash2AuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
           global_aux_vars(ng),&
           realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
           realization%fluid_properties,option, xphi)
 !    print *,'flash ', xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0)%den
 #if 1
-     if( associated(global_aux_vars))then
-       global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
+    if(associated(global_aux_vars)) then
+      global_aux_vars(ghosted_id)%pres(:)= aux_vars(ghosted_id)%aux_var_elem(0)%pres -&
                aux_vars(ghosted_id)%aux_var_elem(0)%pc(:)
-       global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
-       global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
+      global_aux_vars(ghosted_id)%temp(:)=aux_vars(ghosted_id)%aux_var_elem(0)%temp
+      global_aux_vars(ghosted_id)%sat(:)=aux_vars(ghosted_id)%aux_var_elem(0)%sat(:)
 !      global_aux_vars(ghosted_id)%sat_store =
-       global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
-       global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
-       global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
+      global_aux_vars(ghosted_id)%fugacoeff(1)=xphi
+      global_aux_vars(ghosted_id)%den(:)=aux_vars(ghosted_id)%aux_var_elem(0)%den(:)
+      global_aux_vars(ghosted_id)%den_kg(:) = aux_vars(ghosted_id)%aux_var_elem(0)%den(:) &
                                           * aux_vars(ghosted_id)%aux_var_elem(0)%avgmw(:)
 !       global_aux_vars(ghosted_id)%reaction_rate(:)=0D0
 !      global_aux_vars(ghosted_id)%pres(:)
-!      global_aux_vars(ghosted_id)%mass_balance 
-!      global_aux_vars(ghosted_id)%mass_balance_delta                   
-     else
-       print *,'Not associated global for Flash2'
-     endif
+    else
+      print *,'Not associated global for Flash2'
+    endif
 #endif
 
-     if (option%numerical_derivatives) then
-        delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
-        delx(2) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
+    if (option%numerical_derivatives) then
+      delx(1) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
+      delx(2) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
  
-        if(xx_loc_p((ng-1)*option%nflowdof+3) <=0.9)then
-           delx(3) = dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
-         else
-            delx(3) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
-         endif
-         if( delx(3) < 1D-8 .and.  delx(3)>=0.D0) delx(3) = 1D-8
-         if( delx(3) >-1D-8 .and.  delx(3)<0.D0) delx(3) =-1D-8
+      if(xx_loc_p((ng-1)*option%nflowdof+3) <=0.9) then
+        delx(3) = dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
+      else
+        delx(3) = -dfac*xx_loc_p((ng-1)*option%nflowdof+3)*1D1 
+      endif
+      if(delx(3) < 1D-8 .and.  delx(3)>=0.D0) delx(3) = 1D-8
+      if(delx(3) >-1D-8 .and.  delx(3)<0.D0) delx(3) =-1D-8
 
            
-         if(( delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0)then
+      if((delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))>1.D0) then
             delx(3) = (1.D0-xx_loc_p((ng-1)*option%nflowdof+3))*1D-4
-         endif
-         if(( delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0)then
+      endif
+      if((delx(3)+xx_loc_p((ng-1)*option%nflowdof+3))<0.D0) then
             delx(3) = xx_loc_p((ng-1)*option%nflowdof+3)*1D-4
-         endif
+      endif
 
-         patch%aux%Flash2%delx(:,ng)=delx(:)
-         call Flash2AuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
+      patch%aux%Flash2%delx(:,ng)=delx(:)
+      call Flash2AuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:),&
             aux_vars(ng)%aux_var_elem(1:option%nflowdof),global_aux_vars(ng),&
             realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
             realization%fluid_properties,option)
@@ -3022,8 +3000,8 @@ subroutine Flash2ResidualPatch0(snes,xx,r,realization,ierr)
 !            aux_vars(ng)%aux_var_elem(0)%sat(2)<1D-12)then
 !            print *, 'Flash winc', delx(3,ng)
 !         endif   
-      endif
-   enddo
+    endif
+  enddo
 #endif
   deallocate(delx)
   call GridVecRestoreArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)

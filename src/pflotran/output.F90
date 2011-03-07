@@ -640,6 +640,14 @@ subroutine OutputTecplotBlock(realization)
           endif
         enddo
       endif
+      if (reaction%print_age) then
+        if (reaction%species_idx%tracer_age_id > 0) then
+          call OutputGetVarFromArray(realization,global_vec,AGE, &
+            reaction%species_idx%tracer_age_id,reaction%species_idx%tracer_aq_id)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+        endif
+      endif
     endif
   endif
   
@@ -1575,6 +1583,14 @@ subroutine OutputTecplotPoint(realization)
             endif
           enddo        
         endif        
+        if (reaction%print_age) then
+          if (reaction%species_idx%tracer_age_id > 0) then
+            value = RealizGetDatasetValueAtCell(realization,AGE, &
+              reaction%species_idx%tracer_age_id,ghosted_id, &
+              reaction%species_idx%tracer_aq_id)
+            write(IUNIT3,1000,advance='no') value
+          endif
+        endif
       endif
     endif
     
@@ -2294,6 +2310,7 @@ subroutine OutputObservationTecplot(realization)
         open_file = PETSC_TRUE
         exit
       endif
+      observation => observation%next
     enddo
   endif
   
@@ -2902,7 +2919,13 @@ subroutine WriteObservationHeaderForCoord(fid,realization,region, &
             trim(reaction%colloid_names(i)), trim(tot_mol_char), trim(cell_string)
         endif
       enddo
-    endif    
+    endif
+    
+    if (reaction%print_age) then
+      if (reaction%species_idx%tracer_age_id > 0) then
+        write(fid,'('',"Tracer_Age '',a,''"'')',advance="no") trim(cell_string)
+      endif
+    endif
     
   endif
 
@@ -2990,7 +3013,6 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
   PetscInt :: fid, i
   type(realization_type) :: realization
   PetscInt :: local_id
-
   PetscInt :: ghosted_id
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
@@ -3210,7 +3232,16 @@ subroutine WriteObservationDataForCell(fid,realization,local_id)
               RealizGetDatasetValueAtCell(realization,COLLOID_IMMOBILE,i,ghosted_id)
           endif
         enddo      
-      endif      
+      endif
+      
+      if (reaction%print_age) then
+        if (reaction%species_idx%tracer_age_id > 0) then
+          write(fid,110,advance="no") &
+            RealizGetDatasetValueAtCell(realization,AGE, &
+            reaction%species_idx%tracer_age_id,ghosted_id, &
+            reaction%species_idx%tracer_aq_id)
+        endif
+      endif
     endif
   endif
           
@@ -3625,8 +3656,20 @@ subroutine WriteObservationDataForCoord(fid,realization,region)
                                            region%coordinates(ONE_INTEGER)%z, &
                                            count,ghosted_ids)
           endif
-        enddo      
-      endif      
+        enddo
+      endif
+      if (reaction%print_age) then
+        if (reaction%species_idx%tracer_age_id > 0) then
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,AGE, &
+              reaction%species_idx%tracer_age_id, &
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids, &
+                                         reaction%species_idx%tracer_aq_id)
+        endif
+      endif
     endif
   endif
     
@@ -4862,7 +4905,7 @@ subroutine OutputHDF5(realization)
   call printMsg(realization%option,'')
   write(realization%option%io_buffer, &
         '("PFLOTRAN must be compiled with HDF5 to &
-        &write HDF5 formatted structured grids.")')
+        &write HDF5 formatted structured grids Darn.")')
   call printErrMsg(realization%option)
 #else
 
@@ -4889,17 +4932,6 @@ subroutine OutputHDF5(realization)
        PetscInt :: component
      end subroutine SAMRCopyVecToVecComponent
 
-#if 0       
-     subroutine SAMRRegisterForViz(ptr,vec,component,dname,dnamec)
-#include "finclude/petscsysdef.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscvec.h90"
-       PetscFortranAddr :: ptr
-       Vec :: vec
-       PetscInt :: component
-       PetscInt :: dname, dnamec
-     end subroutine SAMRRegisterForViz
-#else
      subroutine SAMRRegisterForViz(ptr,vec,component, namestr)
        use ISO_C_BINDING
 #include "finclude/petscsysdef.h"
@@ -4911,8 +4943,6 @@ subroutine OutputHDF5(realization)
        character(kind=C_CHAR), dimension(*) :: namestr 
        
      end subroutine SAMRRegisterForViz
-
-#endif
        
      subroutine SAMRWritePlotData(ptr, time)
 #include "finclude/petscsysdef.h"
@@ -5006,7 +5036,7 @@ subroutine OutputHDF5(realization)
      call printMsg(option)
 
 #if !defined(SAMR_HAVE_HDF5)
-       
+     
      if (first) then
 
         ! create a group for the coordinates data set
@@ -5073,7 +5103,7 @@ subroutine OutputHDF5(realization)
      select case(option%iflowmode)
         case(RICHARDS_MODE)
            nviz_flow = 2
-       case(FLASH2_MODE)
+        case(FLASH2_MODE)
            nviz_flow = 7+2*option%nflowspec
         case(MPH_MODE)
            nviz_flow = 7+2*option%nflowspec
@@ -5086,6 +5116,7 @@ subroutine OutputHDF5(realization)
      end select
 
      nviz_tran=0
+     
      if (option%ntrandof > 0) then
         if (associated(reaction)) then
            if (reaction%print_pH .and. associated(reaction%species_idx)) then
@@ -5169,7 +5200,11 @@ subroutine OutputHDF5(realization)
                    nviz_tran=nviz_tran+1
                endif
             end do
-         endif
+          endif
+          
+          if (reaction%print_age) then
+            nviz_tran=nviz_tran+1
+          endif
     
 !!           nviz_tran = nviz_tran+option%ntrandof
         else
@@ -5190,7 +5225,7 @@ subroutine OutputHDF5(realization)
 
      current_component = 0
   endif
-
+   
   ! write out data sets 
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
                                   option)
@@ -5205,7 +5240,7 @@ subroutine OutputHDF5(realization)
     endif
   endif
 #endif
-      
+
   select case(option%iflowmode)
   
     case(FLASH2_MODE, MPH_MODE,THC_MODE, IMS_MODE,&
@@ -5659,7 +5694,30 @@ subroutine OutputHDF5(realization)
             endif
           endif
         enddo
-      endif      
+      endif
+
+!     Age
+  
+      if (reaction%print_age) then
+        if (reaction%species_idx%tracer_age_id > 0) then
+
+          call OutputGetVarFromArray(realization,global_vec,AGE, &
+            reaction%species_idx%tracer_age_id, &
+            reaction%species_idx%tracer_aq_id)
+            
+          write(string,'(''Tracer_Age'')')
+          
+          if (.not.(option%use_samr)) then
+            call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+          else
+            call SAMRCopyVecToVecComponent(global_vec,field%samr_viz_vec, current_component)
+            if(first) then
+               call SAMRRegisterForViz(app_ptr,field%samr_viz_vec,current_component,trim(string)//C_NULL_CHAR)
+            endif
+            current_component=current_component+1
+          endif
+        endif
+      endif
     endif
   endif
   
@@ -6254,7 +6312,7 @@ end subroutine ConvertArrayToNatural
 !
 ! ************************************************************************** !
 function OutputGetVarFromArrayAtCoord(realization,ivar,isubvar,x,y,z, &
-                                      num_cells,ghosted_ids)
+                                      num_cells,ghosted_ids,isubvar1)
 
   use Realization_module
   use Grid_module
@@ -6266,6 +6324,7 @@ function OutputGetVarFromArrayAtCoord(realization,ivar,isubvar,x,y,z, &
   type(realization_type) :: realization
   PetscInt :: ivar
   PetscInt :: isubvar
+  PetscInt, optional :: isubvar1
   PetscReal :: x,y,z
   PetscInt :: num_cells
   PetscInt :: ghosted_ids(num_cells)
@@ -6288,7 +6347,8 @@ function OutputGetVarFromArrayAtCoord(realization,ivar,isubvar,x,y,z, &
     dz = z-grid%z(ghosted_id)
     sum_root = sqrt(dx*dx+dy*dy+dz*dz)
     value = 0.d0
-    value = RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id)
+    value = RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id, &
+      isubvar1)
     if (sum_root < 1.d-40) then ! bail because it is right on this coordinate
       sum_weight = 1.d0
       sum_value = value
@@ -6310,7 +6370,7 @@ end function OutputGetVarFromArrayAtCoord
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar)
+subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar,isubvar1)
 
   use Realization_module
   use Grid_module
@@ -6323,10 +6383,11 @@ subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar)
   Vec :: vec
   PetscInt :: ivar
   PetscInt :: isubvar
+  PetscInt, optional :: isubvar1
 
   call PetscLogEventBegin(logging%event_output_get_var_from_array,ierr) 
                         
-  call RealizationGetDataset(realization,vec,ivar,isubvar)
+  call RealizationGetDataset(realization,vec,ivar,isubvar,isubvar1)
 
   call PetscLogEventEnd(logging%event_output_get_var_from_array,ierr) 
   
@@ -6827,6 +6888,7 @@ subroutine OutputMassBalanceNew(realization)
   use Coupler_module
   
   use Richards_module
+  use Mphase_module
   use Reactive_Transport_module
   
   use Global_Aux_module
@@ -6856,12 +6918,12 @@ subroutine OutputMassBalanceNew(realization)
   PetscInt :: ghosted_id
   PetscInt :: iconn
   PetscInt :: offset
-  PetscInt :: iphase
+  PetscInt :: iphase, ispec
   PetscInt :: icomp
   PetscReal :: sum_area(4)
   PetscReal :: sum_area_global(4)
-  PetscReal :: sum_kg(realization%option%nphase)
-  PetscReal :: sum_kg_global(realization%option%nphase)
+  PetscReal :: sum_kg(realization%option%nflowspec,realization%option%nphase)
+  PetscReal :: sum_kg_global(realization%option%nflowspec,realization%option%nphase)
   PetscReal :: sum_mol(realization%option%ntrandof,realization%option%nphase)
   PetscReal :: sum_mol_global(realization%option%ntrandof,realization%option%nphase)
   PetscBool :: local_first
@@ -6908,6 +6970,19 @@ subroutine OutputMassBalanceNew(realization)
           icol = icol + 1
           write(strcol,'(i3,"-")') icol
           write(fid,'(a)',advance="no") ',"' // trim(strcol) // 'Global Water Mass [kg]"'
+        case(MPH_MODE)
+          icol = icol + 1
+          write(strcol,'(i3,"-")') icol
+          write(fid,'(a)',advance="no") ',"' // trim(strcol) // 'Global Water Mass in Water Phase [mol]"'
+          icol = icol + 1
+          write(strcol,'(i3,"-")') icol
+          write(fid,'(a)',advance="no") ',"' // trim(strcol) // 'Global CO2 Mass in Water Phase [mol]"'
+          icol = icol + 1
+          write(strcol,'(i3,"-")') icol
+          write(fid,'(a)',advance="no") ',"' // trim(strcol) // 'Global Water Mass in CO2 Phase [mol]"'
+          icol = icol + 1
+          write(strcol,'(i3,"-")') icol
+          write(fid,'(a)',advance="no") ',"' // trim(strcol) // 'Global CO2 Mass in CO2 Phase [mol]"'
       end select
       
       if (option%ntrandof > 0) then
@@ -6936,6 +7011,27 @@ subroutine OutputMassBalanceNew(realization)
             write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
               trim(boundary_condition%name) // ' Water Mass [kg/' // &
               trim(output_option%tunit) // ']"'
+          case(MPH_MODE)
+#if 0
+            icol = icol + 1
+            write(strcol,'(i3,"-")') icol
+            write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
+              trim(boundary_condition%name) // ' Water Mass [mol]"'
+            icol = icol + 1
+            write(strcol,'(i3,"-")') icol
+            write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
+              trim(boundary_condition%name) // ' CO2 Mass [mol]"'
+            icol = icol + 1
+            write(strcol,'(i3,"-")') icol
+            write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
+              trim(boundary_condition%name) // ' Water Mass [mol/' // &
+              trim(output_option%tunit) // ']"'
+            icol = icol + 1
+            write(strcol,'(i3,"-")') icol
+            write(fid,'(a)',advance="no") ',"' // trim(strcol) // &
+              trim(boundary_condition%name) // ' CO2 Mass [mol/' // &
+              trim(output_option%tunit) // ']"'
+#endif
         end select
         
         if (option%ntrandof > 0) then
@@ -7006,14 +7102,23 @@ subroutine OutputMassBalanceNew(realization)
   
   if (option%nflowdof > 0) then
     sum_kg = 0.d0
-    call RichardsComputeMassBalance(realization,sum_kg)
-    int_mpi = option%nphase
+    select case(option%iflowmode)
+      case(RICHARDS_MODE)
+        call RichardsComputeMassBalance(realization,sum_kg(1,:))
+      case(MPH_MODE)
+        call MphaseComputeMassBalance(realization,sum_kg(:,:))
+    end select
+    int_mpi = option%nflowspec*option%nphase
     call MPI_Reduce(sum_kg,sum_kg_global, &
                     int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
                     option%io_rank,option%mycomm,ierr)
                         
     if (option%myrank == option%io_rank) then
-      write(fid,110,advance="no") sum_kg_global
+      do iphase = 1, option%nphase
+        do ispec = 1, option%nflowspec
+          write(fid,110,advance="no") sum_kg_global(ispec,iphase)
+        enddo
+      enddo
     endif
   endif
   
@@ -7087,39 +7192,42 @@ subroutine OutputMassBalanceNew(realization)
       endif
 #endif
 
-      ! print out cumulative H2O flux
-      sum_kg = 0.d0
-      do iconn = 1, boundary_condition%connection_set%num_connections
-        sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance
-      enddo
+      select case(option%iflowmode)
+        case(RICHARDS_MODE)
+          ! print out cumulative H2O flux
+          sum_kg = 0.d0
+          do iconn = 1, boundary_condition%connection_set%num_connections
+            sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance
+          enddo
 
-      int_mpi = option%nphase
-      call MPI_Reduce(sum_kg,sum_kg_global, &
-                      int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
-                      option%io_rank,option%mycomm,ierr)
-                          
-      if (option%myrank == option%io_rank) then
-        ! change sign for positive in / negative out
-        write(fid,110,advance="no") -sum_kg_global
-      endif
+          int_mpi = option%nphase
+          call MPI_Reduce(sum_kg,sum_kg_global, &
+                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                          option%io_rank,option%mycomm,ierr)
+                              
+          if (option%myrank == option%io_rank) then
+            ! change sign for positive in / negative out
+            write(fid,110,advance="no") -sum_kg_global
+          endif
 
-      ! print out H2O flux
-      sum_kg = 0.d0
-      do iconn = 1, boundary_condition%connection_set%num_connections
-        sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance_delta
-      enddo
-      ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
-      sum_kg = sum_kg*FMWH2O
+          ! print out H2O flux
+          sum_kg = 0.d0
+          do iconn = 1, boundary_condition%connection_set%num_connections
+            sum_kg = sum_kg + global_aux_vars_bc(offset+iconn)%mass_balance_delta
+          enddo
+          ! mass_balance_delta units = delta kmol h2o; must convert to delta kg h2o
+          sum_kg = sum_kg*FMWH2O
 
-      int_mpi = option%nphase
-      call MPI_Reduce(sum_kg,sum_kg_global, &
-                      int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
-                      option%io_rank,option%mycomm,ierr)
-                          
-      if (option%myrank == option%io_rank) then
-        ! change sign for positive in / negative out
-        write(fid,110,advance="no") -sum_kg_global*output_option%tconv
-      endif
+          int_mpi = option%nphase
+          call MPI_Reduce(sum_kg,sum_kg_global, &
+                          int_mpi,MPI_DOUBLE_PRECISION,MPI_SUM, &
+                          option%io_rank,option%mycomm,ierr)
+                              
+          if (option%myrank == option%io_rank) then
+            ! change sign for positive in / negative out
+            write(fid,110,advance="no") -sum_kg_global*output_option%tconv
+          endif
+      end select
     endif
     
     if (option%ntrandof > 0) then

@@ -73,8 +73,10 @@ module Structured_Grid_module
             StructGridGetIJKFromCoordinate, &
             StructGridGetIJKFromLocalID, &
             StructGridGetIJKFromGhostedID, &
+            StructuredGridVecGetMaskArrayCellF90, &
             StructuredGridVecGetArrayF90, &
-            StructGridVecRestoreArrayF90
+            StructGridVecRestoreArrayF90, &
+            StructGridGetGhostedNeighbors
 contains
 
 ! ************************************************************************** !
@@ -912,6 +914,56 @@ subroutine StructGridGetIJKFromGhostedID(structured_grid,ghosted_id,i,j,k)
   i= mod(mod((ghosted_id-1),structured_grid%ngxy),structured_grid%ngx) + 1  
   
 end subroutine StructGridGetIJKFromGhostedID
+
+! ************************************************************************** !
+!
+! StructGridGetLocalIDFromIJK: Finds local_id for grid cell defined by 
+!                              i,j,k indices
+! author: Glenn Hammond
+! date: 01/28/11
+!
+! ************************************************************************** !
+function StructGridGetLocalIDFromIJK(structured_grid,i,j,k)
+
+  use Option_module
+  
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  type(option_type) :: option
+  PetscInt :: i, j, k
+  
+  PetscInt :: StructGridGetLocalIDFromIJK
+  
+  StructGridGetLocalIDFromIJK = &
+    i+(j-1)*structured_grid%nlx+(k-1)*structured_grid%nlxy
+  
+end function StructGridGetLocalIDFromIJK
+
+! ************************************************************************** !
+!
+! StructGridGetGhostedIDFromIJK: Finds ghosted_id for grid cell defined by 
+!                              i,j,k indices
+! author: Glenn Hammond
+! date: 01/28/11
+!
+! ************************************************************************** !
+function StructGridGetGhostedIDFromIJK(structured_grid,i,j,k)
+
+  use Option_module
+  
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  type(option_type) :: option
+  PetscInt :: i, j, k
+  
+  PetscInt :: StructGridGetGhostedIDFromIJK
+  
+  StructGridGetGhostedIDFromIJK = &
+    i+(j-1)*structured_grid%ngx+(k-1)*structured_grid%ngxy
+  
+end function StructGridGetGhostedIDFromIJK
 
 ! ************************************************************************** !
 !
@@ -1901,6 +1953,71 @@ end subroutine StructuredGridMapIndices
 
 ! ************************************************************************** !
 !
+! StructGridGetGhostedNeighbors: Returns an array of neighboring cells
+! author: Glenn Hammond
+! date: 01/28/11
+!
+! ************************************************************************** !
+subroutine StructGridGetGhostedNeighbors(structured_grid,ghosted_id, &
+                                         stencil_type, &
+                                         stencil_width_i,stencil_width_j, &
+                                         stencil_width_k,ghosted_neighbors, &
+                                         option)
+
+  use Option_module
+
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  type(option_type) :: option
+  PetscInt :: ghosted_id
+  PetscInt :: stencil_type
+  PetscInt :: stencil_width_i
+  PetscInt :: stencil_width_j
+  PetscInt :: stencil_width_k
+  PetscInt :: ghosted_neighbors(0:27)
+
+  PetscInt :: i, j, k
+  PetscInt :: icount
+  PetscInt :: ii, jj, kk
+
+  call StructGridGetIJKFromGhostedID(structured_grid,ghosted_id,i,j,k)
+  
+  icount = 0
+  select case(stencil_type)
+    case(STAR_STENCIL)
+      do ii = i-stencil_width_i, i+stencil_width_i
+        if (ii /= i) then
+          icount = icount + 1
+          ghosted_neighbors(icount) = &
+            StructGridGetGhostedIDFromIJK(structured_grid,ii,j,k)
+        endif
+      enddo
+      do jj = j-stencil_width_j, j+stencil_width_j
+        if (jj /= j) then
+          icount = icount + 1
+          ghosted_neighbors(icount) = &
+            StructGridGetGhostedIDFromIJK(structured_grid,i,jj,k)
+        endif
+      enddo
+      do kk = k-stencil_width_k, k+stencil_width_k
+        if (kk /= k) then
+          icount = icount + 1
+          ghosted_neighbors(icount) = &
+            StructGridGetGhostedIDFromIJK(structured_grid,i,j,kk)
+        endif
+      enddo
+      ghosted_neighbors(0) = icount
+    case(BOX_STENCIL)
+      option%io_buffer = 'BOX_STENCIL not yet supported in ' // &
+        'StructGridGetNeighbors.'
+      call printErrMsg(option)
+  end select
+
+end subroutine StructGridGetGhostedNeighbors
+
+! ************************************************************************** !
+!
 ! StructuredGridDestroy: Deallocates a structured grid
 ! author: Glenn Hammond
 ! date: 11/01/07
@@ -1942,7 +2059,59 @@ subroutine StructuredGridDestroy(structured_grid)
   nullify(structured_grid)
 
 end subroutine StructuredGridDestroy
+
                           
+! ************************************************************************** !
+!
+! StructuredGridVecGetArrayCellF90: Interface for SAMRAI AMR
+! author: Bobby Philip
+! date: 12/15/10
+!
+! ************************************************************************** !
+subroutine StructuredGridVecGetMaskArrayCellF90(structured_grid, vec, f90ptr, ierr)
+
+ use cf90interface_module
+
+ implicit none 
+
+ interface
+    subroutine samrvecgetmaskarraycellf90(patch, petscvec, f90wrap)
+      implicit none
+#include "finclude/petscsysdef.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+      PetscFortranAddr, intent(inout):: patch
+      Vec:: petscvec
+      PetscFortranAddr :: f90wrap
+    end subroutine samrvecgetmaskarraycellf90
+ end interface
+
+#include "finclude/petscsysdef.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+ type(structured_grid_type) :: structured_grid
+ Vec:: vec
+ PetscReal, pointer :: f90ptr(:)
+ PetscErrorCode :: ierr
+ 
+ type(f90ptrwrap), pointer :: ptr
+ PetscFortranAddr :: cptr
+ 
+ if(structured_grid%p_samr_patch .eq. 0) then
+! we'll have to throw an error here      
+ else
+    ierr=0
+    allocate(ptr)
+    nullify(ptr%f90ptr)
+    call assign_c_array_ptr(cptr, ptr)
+    call samrvecgetmaskarraycellf90(structured_grid%p_samr_patch, vec, cptr)
+    f90ptr => ptr%f90ptr
+    deallocate(ptr)
+ endif
+ 
+end subroutine StructuredGridVecGetMaskArrayCellF90
+      
 ! ************************************************************************** !
 !
 ! StructuredGridVecGetArrayCellF90: Interface for SAMRAI AMR

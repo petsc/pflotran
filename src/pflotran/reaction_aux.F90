@@ -190,6 +190,7 @@ module Reaction_Aux_module
     character(len=MAXSTRINGLENGTH) :: database_filename
     PetscBool :: use_full_geochemistry
     PetscBool :: use_log_formulation ! flag for solving for the change in the log of the concentration
+    PetscBool :: check_update
     PetscBool :: print_all_species
     PetscBool :: print_pH
     PetscBool :: print_kd
@@ -200,6 +201,7 @@ module Reaction_Aux_module
     PetscBool :: print_total_component
     PetscBool :: print_free_ion
     PetscBool :: initialize_with_molality
+    PetscBool :: print_age
     PetscInt :: print_free_conc_type
     PetscInt :: print_tot_conc_type
     PetscInt :: num_dbase_temperatures
@@ -377,6 +379,7 @@ module Reaction_Aux_module
     PetscReal, pointer :: kinmnrl_logKcoef(:,:)
     PetscReal, pointer :: kinmnrl_rate(:,:)
     PetscReal, pointer :: kinmnrl_molar_vol(:)
+    PetscReal, pointer :: kinmnrl_molar_wt(:)
     PetscInt, pointer :: kinmnrl_num_prefactors(:)
     PetscInt, pointer :: kinmnrl_pri_prefactor_id(:,:,:)
     PetscReal, pointer :: kinmnrl_pri_pref_alpha_stoich(:,:,:)
@@ -503,10 +506,12 @@ function ReactionCreate()
   reaction%print_colloid = PETSC_FALSE
   reaction%print_act_coefs = PETSC_FALSE
   reaction%use_log_formulation = PETSC_FALSE
+  reaction%check_update = PETSC_TRUE
   reaction%use_full_geochemistry = PETSC_FALSE
   reaction%use_activity_h2o = PETSC_FALSE
   reaction%calculate_tracer_age = PETSC_FALSE
   reaction%calculate_water_age = PETSC_FALSE
+  reaction%print_age = PETSC_FALSE
   reaction%print_total_component = PETSC_TRUE
   reaction%print_free_ion = PETSC_FALSE
 
@@ -668,6 +673,7 @@ function ReactionCreate()
   nullify(reaction%kinmnrl_affinity_threshold)
   nullify(reaction%kinmnrl_rate)
   nullify(reaction%kinmnrl_molar_vol)
+  nullify(reaction%kinmnrl_molar_wt)
   nullify(reaction%kinmnrl_num_prefactors)
   nullify(reaction%kinmnrl_pri_prefactor_id)
   nullify(reaction%kinmnrl_pri_pref_alpha_stoich)
@@ -2546,6 +2552,9 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%kinmnrl_molar_vol)) &
     deallocate(reaction%kinmnrl_molar_vol)
   nullify(reaction%kinmnrl_molar_vol)  
+   if (associated(reaction%kinmnrl_molar_wt)) &
+    deallocate(reaction%kinmnrl_molar_wt)
+  nullify(reaction%kinmnrl_molar_wt)  
   if (associated(reaction%kinmnrl_num_prefactors)) &
     deallocate(reaction%kinmnrl_num_prefactors)
   nullify(reaction%kinmnrl_num_prefactors)

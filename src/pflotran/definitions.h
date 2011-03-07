@@ -87,6 +87,7 @@ PetscInt, parameter :: RICHARDS_MODE = 3
 PetscInt, parameter :: REACTIVE_TRANSPORT_MODE = 4
 PetscInt, parameter :: IMS_MODE = 5
 PetscInt, parameter :: FLASH2_MODE = 6
+PetscInt, parameter :: G_MODE = 7
 
 ! grid types
 PetscInt, parameter :: STRUCTURED_GRID = 1
@@ -206,6 +207,7 @@ PetscInt, parameter :: TOTAL_SORBED = 36
 PetscInt, parameter :: TOTAL_SORBED_MOBILE = 37
 PetscInt, parameter :: COLLOID_MOBILE = 38
 PetscInt, parameter :: COLLOID_IMMOBILE = 39
+PetscInt, parameter :: AGE = 40
 
 ! activity coefficients
 PetscInt, parameter :: ACT_COEF_FREQUENCY_OFF = 0
@@ -253,5 +255,15 @@ PetscInt, parameter :: SIDE_CENTERED = 1
 ! approaches to coupling reactive transport
 PetscInt, parameter :: GLOBAL_IMPLICIT = 0
 PetscInt, parameter :: OPERATOR_SPLIT = 1
+
+! dataset types
+PetscInt, parameter :: DATASET_SCALAR = 1
+PetscInt, parameter :: DATASET_VECTOR = 2
+PetscInt, parameter :: DATASET_TENSOR = 3
+PetscInt, parameter :: DATASET_HETEROGENEOUS = 4
+
+! stencil type
+PetscInt, parameter :: STAR_STENCIL = 1
+PetscInt, parameter :: BOX_STENCIL = 2
 
 #define HASH

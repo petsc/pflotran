@@ -40,7 +40,7 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
 
    d_object_name                             = "PflotranApplicationStrategy";
    
-   d_number_solution_components              = 0;
+   d_number_of_modes              = 0;
 
    d_cf_interpolant                          = NULL;
 
@@ -56,10 +56,6 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
 
    d_variable_list.resizeArray(0);
 
-   d_soln_refine_op.setNull();
-
-   d_soln_coarsen_op.setNull();
-
    d_flux_coarsen_op.setNull();
 
    d_regrid_refine_scheds.resizeArray(0);
@@ -67,15 +63,6 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
    initialize(params);
 
    hier::VariableDatabase<NDIM>* variable_db = hier::VariableDatabase<NDIM>::getDatabase();
-   
-   if(!variable_db->checkVariableExists("pflotranSolution"))
-   {
-      d_solution                                = new pdat::CCellVariable<NDIM,double>("pflotranSolution", d_number_solution_components);
-   }
-   else
-   {
-      d_solution = variable_db->getVariable("pflotranSolution");
-   }
 
 #if 1
    if(!variable_db->checkVariableExists("pflotranWeight"))
@@ -108,12 +95,6 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
 #endif
 
    d_application_ctx = variable_db->getContext(d_object_name);
-
-   d_soln_refine_op =  d_grid_geometry->lookupRefineOperator(d_solution,
-                                                             "CONSTANT_REFINE");
-
-   d_soln_coarsen_op = d_grid_geometry->lookupCoarsenOperator(d_solution,
-                                                              "CONSERVATIVE_COARSEN");
    
    d_GlobalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
    d_LocalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
@@ -121,17 +102,17 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
    d_FluxCoarsenSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
    
 #ifdef DEBUG_CHECK_ASSERTIONS
-   assert(d_number_solution_components>=1);
+   assert(d_number_of_modes>=1);
 #endif
 
    for(int ln=0;ln<d_hierarchy->getNumberOfLevels(); ln++)
    {
-      d_GlobalToLocalRefineSchedule[ln].resizeArray(d_number_solution_components);
-      d_LocalToLocalRefineSchedule[ln].resizeArray(d_number_solution_components);
-      d_CoarsenSchedule[ln].resizeArray(d_number_solution_components);
-      d_FluxCoarsenSchedule[ln].resizeArray(d_number_solution_components);
+      d_GlobalToLocalRefineSchedule[ln].resizeArray(d_number_of_modes);
+      d_LocalToLocalRefineSchedule[ln].resizeArray(d_number_of_modes);
+      d_CoarsenSchedule[ln].resizeArray(d_number_of_modes);
+      d_FluxCoarsenSchedule[ln].resizeArray(d_number_of_modes);
 
-      for(int i=0;i<d_number_solution_components; i++)
+      for(int i=0;i<d_number_of_modes; i++)
       {
          d_GlobalToLocalRefineSchedule[ln][i].setNull();
          d_LocalToLocalRefineSchedule[ln][i].setNull();
@@ -194,8 +175,8 @@ PflotranApplicationStrategy::getFromInput(tbox::Pointer<tbox::Database> db,
       d_nl_normal_interp_scheme = RefinementBoundaryInterpolation::lookupInterpolationScheme(db->getString("nl_normal_coarse_fine_scheme"));
    }
    
-   if (db->keyExists("number_solution_components")) {
-      d_number_solution_components = db->getInteger("number_solution_components");
+   if (db->keyExists("number_of_modes")) {
+      d_number_of_modes = db->getInteger("number_of_modes");
    }
    
    d_face_coarsen_op_str = db->getStringWithDefault("face_coarsen_op", "SUM_COARSEN");
@@ -397,7 +378,7 @@ PflotranApplicationStrategy::interpolateLocalToLocalVector(tbox::Pointer< solv::
     ghost_cell_fill.registerRefine(dest_id,
 				   src_id,
 				   dest_id,
-				   d_soln_refine_op);
+				   d_grid_geometry->lookupRefineOperator(srcVar, "CONSTANT_REFINE"));
 
     // now refine and set physical boundaries also
     for (int ln = 0; ln < hierarchy->getNumberOfLevels(); ln++ ) 
@@ -452,7 +433,7 @@ PflotranApplicationStrategy::interpolateLocalToLocalVector(tbox::Pointer< solv::
 #if 1
     // should add code to coarsen variables
     xfer::CoarsenAlgorithm<NDIM> cell_coarsen;
-    cell_coarsen.registerCoarsen(dest_id, dest_id, d_soln_coarsen_op);
+    cell_coarsen.registerCoarsen(dest_id, dest_id, d_grid_geometry->lookupCoarsenOperator(srcVar,"CONSERVATIVE_COARSEN"));
 
     for (int ln = hierarchy->getNumberOfLevels()-2; ln>=0; ln-- ) 
     {
@@ -532,7 +513,7 @@ PflotranApplicationStrategy::coarsenVector(tbox::Pointer< solv::SAMRAIVectorReal
     
     // should add code to coarsen variables
     xfer::CoarsenAlgorithm<NDIM> cell_coarsen;
-    cell_coarsen.registerCoarsen(dest_id, dest_id, d_soln_coarsen_op);
+    cell_coarsen.registerCoarsen(dest_id, dest_id, d_grid_geometry->lookupCoarsenOperator(dstVar,"CONSERVATIVE_COARSEN"));
 
     for (int ln = hierarchy->getNumberOfLevels()-2; ln>=0; ln-- ) 
     {
@@ -603,7 +584,7 @@ PflotranApplicationStrategy::interpolateGlobalToLocalVector(tbox::Pointer< solv:
     ghost_cell_fill.registerRefine(dest_id,
 				   src_id,
 				   dest_id,
-				   d_soln_refine_op);
+				   d_grid_geometry->lookupRefineOperator(localVar, "CONSTANT_REFINE"));
 
     int idx=(localDOF==1)?0:1;
     // now refine and set physical boundaries also
@@ -668,7 +649,7 @@ PflotranApplicationStrategy::interpolateGlobalToLocalVector(tbox::Pointer< solv:
 
     // should add code to coarsen variables
     xfer::CoarsenAlgorithm<NDIM> cell_coarsen;
-    cell_coarsen.registerCoarsen(dest_id, dest_id, d_soln_coarsen_op);
+    cell_coarsen.registerCoarsen(dest_id, dest_id, d_grid_geometry->lookupCoarsenOperator(localVar,"CONSERVATIVE_COARSEN"));
 
     for (int ln = hierarchy->getNumberOfLevels()-2; ln>=0; ln-- ) 
     {

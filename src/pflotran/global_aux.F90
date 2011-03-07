@@ -21,8 +21,8 @@ module Global_Aux_module
     PetscReal, pointer :: fugacoeff_store(:,:)
     PetscReal, pointer :: m_nacl(:)
     PetscReal, pointer :: xmass(:)
-    PetscReal, pointer :: mass_balance(:) ! kg
-    PetscReal, pointer :: mass_balance_delta(:) ! kmol
+    PetscReal, pointer :: mass_balance(:,:) ! kg
+    PetscReal, pointer :: mass_balance_delta(:,:) ! kmol
     PetscReal, pointer :: reaction_rate(:)
     PetscReal, pointer :: reaction_rate_store(:)
 !   PetscReal, pointer :: reaction_rate_store(:,:)
@@ -135,9 +135,9 @@ select case(option%iflowmode)
   end select
 
   if (option%iflag /= 0 .and. option%compute_mass_balance_new) then
-    allocate(aux_var%mass_balance(option%nphase))
+    allocate(aux_var%mass_balance(option%nflowspec,option%nphase))
     aux_var%mass_balance = 0.d0
-    allocate(aux_var%mass_balance_delta(option%nphase))
+    allocate(aux_var%mass_balance_delta(option%nflowspec,option%nphase))
     aux_var%mass_balance_delta = 0.d0
   else
     nullify(aux_var%mass_balance)

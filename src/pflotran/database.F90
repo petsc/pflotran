@@ -2240,6 +2240,8 @@ subroutine BasisInit(reaction,option)
     reaction%kinmnrl_rate = 0.d0
     allocate(reaction%kinmnrl_molar_vol(reaction%nkinmnrl))
     reaction%kinmnrl_molar_vol = 0.d0
+    allocate(reaction%kinmnrl_molar_wt(reaction%nkinmnrl))
+    reaction%kinmnrl_molar_wt = 0.d0
     allocate(reaction%kinmnrl_num_prefactors(reaction%nkinmnrl))
     reaction%kinmnrl_num_prefactors = 0
     
@@ -2313,6 +2315,7 @@ subroutine BasisInit(reaction,option)
           cur_mineral%tstrxn%affinity_threshold
         reaction%kinmnrl_rate(1,ikinmnrl) = cur_mineral%tstrxn%rate
         reaction%kinmnrl_molar_vol(ikinmnrl) = cur_mineral%molar_volume
+        reaction%kinmnrl_molar_wt(ikinmnrl) = cur_mineral%molar_weight
         ikinmnrl = ikinmnrl + 1
       endif
 
@@ -3363,7 +3366,7 @@ subroutine BasisInit(reaction,option)
   if (OptionPrintToFile(option)) then
     open(unit=86,file='reaction.dat')
     write(86,'(10i4)') reaction%naqcomp, reaction%neqcplx, reaction%ngeneral_rxn, & 
-                       reaction%neqsrfcplxrxn
+                       reaction%neqsrfcplxrxn, reaction%nkinmnrl
     do icomp = 1, reaction%naqcomp
       write(86,'(a12,f6.2,f6.2)') reaction%primary_species_names(icomp), &
                                   reaction%primary_spec_Z(icomp), &
@@ -3408,7 +3411,19 @@ subroutine BasisInit(reaction,option)
 
       enddo
     enddo
-    close(86)
+    do imnrl = 1, reaction%nkinmrnl
+      write(86,'(a32)') reaction%kinmnrl_names(imnrl)
+      write(86,'(40i4)') reaction%kinmnrlspecid(:,imnrl)
+      write(86,'(40f6.2)') reaction%kinmnrlstoich(:,imnrl)
+      write(86,'(i4)') reaction%kinmnrlh2oid(imnrl)
+      write(86,'(f6.2)') reaction%kinmnrlh2ostoich(imnrl)
+      write(86,'(1es13.5)') reaction%kinmnrl_logK(imnrl)
+      write(86,'(1es13.5)') reaction%kinmnrl_molar_vol(imnrl)
+      write(86,'(1es13.5)') reaction%kinmnrl_molar_wt(imnrl)
+      write(86,'(1es13.5)') reaction%kinmnrl_rate(imnrl)
+      write(86,'(1es13.5)') 1.d0 ! specific surface area 1 cm^2 / cm^3
+    enddo
+        close(86)
   endif
 #endif  
   
@@ -3886,7 +3901,7 @@ subroutine BasisPrint(reaction,title,option)
       if (.not.associated(cur_mineral)) exit
       write(option%fid_out,100) '  ' // trim(cur_mineral%name)
       write(option%fid_out,110) '    Molar Weight: ', cur_mineral%molar_weight
-      write(option%fid_out,110) '    Molar Volume: ', cur_mineral%molar_volume
+      write(option%fid_out,150) '    Molar Volume: ', cur_mineral%molar_volume
       if (associated(cur_mineral%tstrxn)) then
         write(option%fid_out,100) '    Mineral Reaction: '
         write(option%fid_out,120) '      ', -1.d0, cur_mineral%name
@@ -3902,7 +3917,7 @@ subroutine BasisPrint(reaction,title,option)
     enddo
     
     cur_srfcplx_rxn => reaction%surface_complexation_rxn_list
-    if (associated(cur_srfcplx)) then
+    if (associated(cur_srfcplx_rxn)) then
       write(option%fid_out,*)
       write(option%fid_out,*) 'Surface Complexation Reactions:'
     else

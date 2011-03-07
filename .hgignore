@@ -26,6 +26,7 @@ src/pflotran/build
 src/pflotran/pflotran_xcode/build
 src/pflotran/pflotran.xcodeproj/*.pbxuser
 src/pflotran/pflotran.xcodeproj/*.mode1
+src/pflotran/pflotran_xcode/pflotran_xcode.xcodeproj/project.pbxproj
 src/pflotran/pflotran_xcode/pflotran_xcode.xcodeproj/*.pbxuser
 src/pflotran/pflotran_xcode/pflotran_xcode.xcodeproj/*.mode1
 src/pflotran/pflotran_xcode/pflotran_xcode.xcodeproj/*.mode1v3
@@ -35,4 +36,10 @@ src/pims/build
 src/pims/pims
 src/pims/pims.xcodeproj/*.pbxuser
 src/pims/pims.xcodeproj/*.mode1
-
+shortcourse/exercises/sx-115/doc/sx115.pdf
+*.toc
+*.aux
+*.log
+*.synctex.gz
+docs/tecnotes/chemistry/chemistry_implementation.pdf
+docs/user_manual/quick_guide.pdf

@@ -43,6 +43,7 @@ module Richards_Aux_module
     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
 
     PetscBool :: aux_vars_up_to_date
+    PetscBool :: aux_vars_cell_pressures_up_to_date
     PetscBool :: inactive_cells_exist
     PetscInt :: num_aux, num_aux_bc
     type(richards_parameter_type), pointer :: richards_parameter
@@ -79,6 +80,7 @@ function RichardsAuxCreate()
 
   allocate(aux) 
   aux%aux_vars_up_to_date = PETSC_FALSE
+  aux%aux_vars_cell_pressures_up_to_date = PETSC_FALSE
   aux%inactive_cells_exist = PETSC_FALSE
   aux%num_aux = 0
   aux%num_aux_bc = 0
@@ -318,14 +320,29 @@ subroutine RichardsAuxVarCompute(x,aux_var,global_aux_var,&
 
 #ifdef DASVYAT
 
-global_aux_var%den = 55.35245650628916
-aux_var%kvr_x = 1123.055414382469
-aux_var%kvr_y = 1123.055414382469
-aux_var%kvr_z = 1123.055414382469
+!global_aux_var%den = 55.35245650628916
+!aux_var%kvr_x =  1123.055414382469
+!aux_var%kvr_y =  1123.055414382469
+!aux_var%kvr_z =  1123.055414382469
+!
+!aux_var%dden_dp = 0.
+!aux_var%dkvr_x_dp = 0!.01*2*x(1)
+!aux_var%dkvr_y_dp = 0!.01*2*x(1)
+!aux_var%dkvr_z_dp = 0!.01*2*x(1)
 
 
-!rite(*,*) global_aux_vars(ghosted_id)%den, global_aux_vars(ghosted_id)%den_kg
-!rite(*,*) rich_aux_vars(ghosted_id)%kvr_x, rich_aux_vars(ghosted_id)%kvr_y, rich_aux_vars(ghosted_id)%kvr_z
+!aux_var%dsat_dp = 1e-2
+!global_aux_var%sat(1) = 1e-2*global_aux_var%pres(1)
+!aux_var%dsat_dp = 0
+!global_aux_var%sat(1) = 0.5
+
+!write(*,*) global_aux_var%den, global_aux_var%den_kg
+!write(*,*) aux_var%kvr_x 
+!write(*,*) aux_var%dden_dp 
+!write(*,*) aux_var%dkvr_z_dp
+!write(*,*) "pres", global_aux_var%pres(1), "dsdp", aux_var%dsat_dp, "s",global_aux_var%sat(1) &
+!           ,"den", global_aux_var%den, "dd_dp", aux_var%dden_dp
+!write(*,*) "kvr", aux_var%kvr_x, "dk_dp", aux_var%dkvr_x_dp
 !stop
 
 #endif

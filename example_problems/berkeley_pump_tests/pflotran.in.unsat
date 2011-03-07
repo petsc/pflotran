@@ -1,0 +1,162 @@
+:Description: 3D test problem for variably saturated flow and tracer transport
+
+:=========================== flow mode ========================================
+MODE RICHARDS
+
+:=========================== solver options ===================================
+NEWTON_SOLVER FLOW
+  ITOL_UPDATE 1.d0
+/
+
+:=========================== discretization ===================================
+GRID
+  TYPE structured
+  NXYZ 21 21 10
+  BOUNDS
+    0. 100.
+    0. 100.
+    0. 10.
+  /
+END
+
+:=========================== material properties ==============================
+MATERIAL_PROPERTY soil1
+  ID 1
+  POROSITY 0.2d0
+  SATURATION_FUNCTION sf1
+  PERMEABILITY
+:    PERM_ISO 4.221d-11 ! Ringold Unit
+    PERM_ISO 7.387d-9  ! Hanford Unit
+  /
+/
+
+:=========================== saturation functions =============================
+SATURATION_FUNCTION sf1
+  SATURATION_FUNCTION_TYPE VAN_GENUCHTEN
+  RESIDUAL_SATURATION 0.0
+  LAMBDA 0.2648
+  ALPHA 9.534d-4
+/
+
+:=========================== output options ===================================
+OUTPUT
+  PERIODIC TIME 1. h
+  PERIODIC_OBSERVATION TIMESTEP 1
+  FORMAT TECPLOT BLOCK
+  VELOCITIES
+/
+
+:=========================== times ============================================
+TIME
+  FINAL_TIME 1.d0 d
+  INITIAL_TIMESTEP_SIZE 1.d-6 d
+  MAXIMUM_TIMESTEP_SIZE 1.d0 d
+/
+
+:=========================== regions ==========================================
+REGION all
+  COORDINATES
+    0.d0 0.d0 0.d0
+    100.d0 100.d0 10.d0
+  /
+END
+
+REGION west
+  FACE WEST
+  COORDINATES
+    0.d0 0.d0 0.d0
+    0.d0 100.d0 10.d0
+  /
+END
+
+REGION east
+  FACE EAST
+  COORDINATES
+    100.d0 0.d0 0.d0
+    100.d0 100.d0 10.d0
+  /
+END
+
+REGION north
+  FACE NORTH
+  COORDINATES
+    0.d0 100.d0 0.d0
+    100.d0 100.d0 10.d0
+  /
+END
+
+REGION south
+  FACE SOUTH
+  COORDINATES
+    0.d0 0.d0 0.d0
+    100.d0 0.d0 10.d0
+  /
+END
+
+REGION well
+  COORDINATES
+    50.d0 50.d0 0.d0
+    50.d0 50.d0 8.d0
+  /
+END
+  
+:=========================== flow conditions ==================================
+FLOW_CONDITION initial
+  TYPE
+    PRESSURE hydrostatic
+  /
+  DATUM 0.d0 0.d0 10.d0
+  PRESSURE 101325 ! Pa
+/
+
+FLOW_CONDITION well
+  TYPE
+    RATE scaled_volumetric_rate
+  /
+RATE -1.136d-2 ! 380 gpm
+:RATE -2.78d-4 ! 1 m^3/hr
+/
+
+:=========================== condition couplers ===============================
+: initial condition
+INITIAL_CONDITION
+  FLOW_CONDITION initial
+  REGION all
+END
+
+: west boundary condition
+BOUNDARY_CONDITION west
+  FLOW_CONDITION initial
+  REGION west
+END
+
+: east boundary condition
+BOUNDARY_CONDITION east
+  FLOW_CONDITION initial
+  REGION east
+END
+
+: north boundary condition
+BOUNDARY_CONDITION north
+  FLOW_CONDITION initial
+  REGION north
+END
+
+: south boundary condition
+BOUNDARY_CONDITION south
+  FLOW_CONDITION initial
+  REGION south
+END
+
+: well source/sink
+SOURCE_SINK well
+  FLOW_CONDITION well
+  REGION well
+END
+
+:=========================== stratigraphy couplers ============================
+STRATA
+  MATERIAL soil1
+  REGION all
+END
+

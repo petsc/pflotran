@@ -343,7 +343,7 @@ subroutine DiscretizationRead(discretization,input,first_time,option)
           if (option%myrank == option%io_rank .and. &
               option%print_to_screen) &
             write(option%fid_out,'(/," *GRAV",/, &
-              & "  gravity    = "," [m/s^2]",3x,3pe12.4 &
+              & "  gravity    = "," [m/s^2]",3x,1p3e12.4 &
               & )') option%gravity(1:3)
         case ('INVERT_Z')
           if (associated(grid%structured_grid)) then
@@ -686,9 +686,6 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
 
   dm_ptr => DiscretizationGetDMPtrFromIndex(discretization,dm_index)
 
-#ifdef DASVYAT
-  write(*,*) "CreateJacobian", dm_index
-#endif
 
   select case(discretization%itype)
     case(STRUCTURED_GRID)

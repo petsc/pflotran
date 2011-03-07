@@ -46,6 +46,14 @@ subroutine StochasticInit(stochastic,option)
   string = '-num_realizations'
   call InputGetCommandLineInt(string,stochastic%num_realizations,option_found,option)
 
+  ! Realization offset contributed by Xingyuan.  This allows one to specify the
+  ! smallest/lowest realization id (other than zero) in a stochastic simulation
+  string = '-realization_offset'
+  call InputGetCommandLineInt(string,offset,option_found,option)
+  if (.not.option_found) then
+    offset = 0
+  endif
+
   ! error checking
   if (stochastic%num_groups == 0) then
     option%io_buffer = 'Number of stochastic processor groups not ' // &
@@ -67,7 +75,8 @@ subroutine StochasticInit(stochastic,option)
                                       stochastic%num_groups
   remainder = stochastic%num_realizations - stochastic%num_groups * &
                                             stochastic%num_local_realizations
-  offset = 0
+  
+  ! offset is initialized above after check for '-realization_offset'
   do i = 1, option%mygroup_id-1
     delta = stochastic%num_local_realizations
     if (i < remainder) delta = delta + 1

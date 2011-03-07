@@ -68,7 +68,7 @@ module Condition_module
     PetscInt :: num_conditions
     type(flow_condition_type), pointer :: first
     type(flow_condition_type), pointer :: last
-    type(condition_ptr_type), pointer :: array(:)    
+    type(flow_condition_type), pointer :: array(:)    
   end type condition_list_type
   
   type, public :: tran_condition_type
@@ -139,7 +139,8 @@ module Condition_module
             TranConstraintAddToList, TranConstraintInitList, &
             TranConstraintDestroyList, TranConstraintGetPtrFromList, &
             TranConditionRead, TranConstraintRead, &
-            TranConditionUpdate 
+            TranConditionUpdate, &
+            FlowConditionIsTransient
     
 contains
 
@@ -700,7 +701,7 @@ subroutine FlowConditionRead(condition,input,option)
               sub_condition_ptr%itype = SEEPAGE_BC
             case('volumetric','volumetric_rate')
               sub_condition_ptr%itype = VOLUMETRIC_RATE_SS
-            case('scaled_volumetric_rate')
+            case('scaled_volumetric','scaled_volumetric_rate')
               sub_condition_ptr%itype = SCALED_VOLUMETRIC_RATE_SS
             case('equilibrium')
               sub_condition_ptr%itype = EQUILIBRIUM_SS
@@ -1432,7 +1433,7 @@ subroutine FlowConditionReadValues(input,option,keyword,string,dataset,units)
   call InputErrorMsg(input,option,'file or value','CONDITION')
   call StringToLower(word)
   length = len_trim(word)
-  if (StringCompare(word,'file',length)) then
+  if (length==FOUR_INTEGER .and. StringCompare(word,'file',length)) then  !sp 
     input%err_buf2 = trim(keyword) // ', FILE'
     input%err_buf = 'keyword'
     call InputReadNChars(input,option,string2,MAXSTRINGLENGTH,PETSC_TRUE)
@@ -2229,6 +2230,65 @@ function TranConstraintGetPtrFromList(constraint_name,constraint_list)
   enddo
   
 end function TranConstraintGetPtrFromList
+
+! ************************************************************************** !
+!
+! FlowConditionIsTransient: Returns PETSC_TRUE
+! author: Glenn Hammond
+! date: 01/12/11
+!
+! ************************************************************************** !
+function FlowConditionIsTransient(condition)
+
+  implicit none
+  
+  type(flow_condition_type) :: condition
+  
+  PetscBool :: FlowConditionIsTransient
+  
+  FlowConditionIsTransient = PETSC_FALSE
+
+  ! pressure
+  if (associated(condition%pressure)) then
+    if (condition%pressure%dataset%is_transient .or. &
+        condition%pressure%gradient%is_transient .or. &
+        condition%pressure%datum%is_transient) &
+      FlowConditionIsTransient = PETSC_TRUE
+  endif
+  
+  ! temperature
+  if (associated(condition%temperature)) then
+    if (condition%temperature%dataset%is_transient .or. &
+        condition%temperature%gradient%is_transient .or. &
+        condition%temperature%datum%is_transient) &
+      FlowConditionIsTransient = PETSC_TRUE
+  endif
+
+  ! concentration
+  if (associated(condition%concentration)) then
+    if (condition%concentration%dataset%is_transient .or. &
+        condition%concentration%gradient%is_transient .or. &
+        condition%concentration%datum%is_transient) &
+      FlowConditionIsTransient = PETSC_TRUE
+  endif
+
+  ! rate
+  if (associated(condition%rate)) then
+    if (condition%rate%dataset%is_transient .or. &
+        condition%rate%gradient%is_transient .or. &
+        condition%rate%datum%is_transient) &
+      FlowConditionIsTransient = PETSC_TRUE
+  endif
+  
+  ! enthalpy
+  if (associated(condition%enthalpy)) then
+    if (condition%enthalpy%dataset%is_transient .or. &
+        condition%enthalpy%gradient%is_transient .or. &
+        condition%enthalpy%datum%is_transient) &
+      FlowConditionIsTransient = PETSC_TRUE
+  endif
+   
+end function FlowConditionIsTransient
 
 ! ************************************************************************** !
 !

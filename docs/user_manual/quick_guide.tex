@@ -18,6 +18,10 @@
 %\usepackage{ssss}
 \usepackage{fancybox}
 \usepackage{booktabs}
+\usepackage{array}
+\usepackage{colortbl}
+\usepackage{color}
+\usepackage[table]{xcolor}
 %\usepackage{toc_entr}
 \usepackage[debug=false, colorlinks=true, pdfstartview=FitV, linkcolor=blue, citecolor=black, urlcolor=blue]{hyperref}
 
@@ -231,9 +235,8 @@
 ~  & Glenn Hammond (glenn.hammond@pnnl.gov)\\
 ~ & ~\\
 ~ & ~\\
-{\em Contacts:}  & ~\\
-~ & Chuan Lu (clu@egi.utah.edu)\\
-~ & Richard Mills (rmills@ornl.gov)\\
+{\em Contacts:}  & Richard Mills (rmills@ornl.gov)\\
+~ & Chuan Lu (Chuan.Lu@inl.gov)\\
 %~ & %David Moulton (moulton@lanl.gov)\\
 ~ & Bobby Philip (bphilip@lanl.gov)\\
 ~ & Barry Smith (bsmith@anl.gov)\\
@@ -288,7 +291,7 @@ endorse the viewpoint of a publication or guarantee its technical correctness.
 
 \section{Introduction}
 
-PFLOTRAN solves a system of generally nonlinear partial differential equations describing multiphase, multicomponent and multiscale reactive flow and transport in porous materials. The code is designed to run on massively parallel computing architectures as well as workstations and labtops. Parallelization is achieved through domain decomposition using the PETSc (Port\-a\-ble Extensible Toolkit for Scientific Computation) libraries for the parallelization framework  (Balay et al., 1997).
+PFLOTRAN solves a system of generally nonlinear partial differential equations describing multiphase, multicomponent and multiscale reactive flow and transport in porous materials. The code is designed to run on massively parallel computing architectures as well as workstations and labtops (Hammond et al., 2011). Parallelization is achieved through domain decomposition using the PETSc (Port\-a\-ble Extensible Toolkit for Scientific Computation) libraries for the parallelization framework  (Balay et al., 1997).
 
 \section{Governing Equations}
 
@@ -393,7 +396,7 @@ Q_w \eq \sum_i Q_i.
 \EN
 Additional constitutive relations are needed to close the set of governing equations.
 
-\subsection{MODE: Reactive Transport (Keyword {\tt CHEMISTRY})}\label{sec:chem}
+\subsection{Mode: Reactive Transport (Keyword {\tt CHEMISTRY})}\label{sec:chem}
 
 The governing mass conservation equations for the geochemical transport mode for a multiphase system written in terms of a set of independent aqueous primary or basis species with the form
 \BA\label{rteqn}
@@ -423,9 +426,164 @@ with bulk permeability of the porous medium $k$ and relative permeability $k_\a$
 
 \subsubsection{Sorption}
 
+Sorption reactions incorporated into PFLOTRAN consist of ion exchange and surface complexation reactions for both equilibrium and multirate formulations.
+
 \paragraph{Ion Exchange}
 
+Ion exchange reactions may be represented either in terms of bulk- or mineral-specific rock properties.  Changes in bulk sorption properties can be expected as a result of mineral reactions.  However, only the mineral-based formulation enables these effects to be captured in the model.  The bulk rock sorption site concentration $\omega_\a$, in units of moles of sites per bulk sediment volume (mol/dm$^3$), is related to the bulk cation exchange capacity $Q_\a$ (mol/kg) by the expression
+\EQ
+\omega_\a \eq \frac{N_{\rm site}}{V} \eq \frac{N_{\rm site}}{M_s} \frac{M_s}{V_s} \frac{V_s}{V} \eq Q_\a \rho_s (1-\phi).
+\EN
+The cation exchange capacity associated with the $m$th mineral is defined on a molar basis as
+\EQ
+\omega_m^{\rm CEC} \eq \frac{N_m}{V} \eq \frac{N_m}{M_m} \frac{M_m}{V_m} \frac{V_m}{V} \eq Q_m^{\rm CEC} \rho_m \phi_m.
+\EN
+
+Ion exchange reactions are expressed in the form
+\EQ\label{ex1}
+z_i \A_j + z_j X_{z_i}^\a\A_i \arrows z_j \A_i + z_i X_{z_j}^\a\A_j,
+\EN
+with valencies $z_j$, $z_i$ of cations $\A_j$ and $\A_i$, respectively. The reference cation is denoted by the subscript $j$ and the subscript $i\!\ne\! j$ represents all other cations. 
+The corresponding mass action equation is given by
+\EQ\label{ionexmassact}
+K_{ji}^\a \eq \frac{(k_j^\a)^{z_i}}{(k_i^\a)^{z_j}} \eq \left(\frac{X_j^\a}{a_j}\right)^{z_i} \left(\frac{a_i}{X_i^\a}\right)^{z_j}.
+\EN
+Using the Gaines-Thomas convention, the equivalent fractions $X_k^\a$ are defined by
+\EQ
+X_k^\a = \frac{z_k S_k^\a}{\displaystyle\sum_l z_l S_l^\a} = \frac{z_k}{\omega_\a}S_k^\a,
+\EN
+with 
+\EQ
+\sum_k X_k^\a = 1.
+\EN
+The site concentration $\omega_\a$ is defined by
+\EQ
+\omega_\a = \sum_k z_k S_k^\a,
+\EN
+where $\omega_\a$ is related to the cation exchange capacity $Q_\a$ (CEC) by the expression
+\EQ
+\omega_\a = (1-\varphi) \rho_s \, Q_\a,
+\EN
+with solid density $\rho_s$ and porosity $\varphi$. 
+
+For equivalent exchange $(z_j\!=\!z_i\!=\!z)$, an explicit expression exists for the sorbed concentrations given by
+\EQ
+S_j^\a \eq \frac{\omega_\a}{z} \frac{k_j^\a \gamma_j m_j^{}}{\displaystyle\sum_l k_l^\a \gamma_l m_l^{}},
+\EN
+where $m_k$ denotes the $k$th cation molality. This expression follows directly from the mass action equations and conservation of exchange sites.
+
+In the more general case $(z_i\ne z_j)$ it is necessary to solve the nonlinear equation
+\EQ
+X_j^\a + \sum_{i\ne j} X_i^\a \eq 1,
+\EN
+for the reference cation mole fraction $X_j$. 
+From the mass action equation Eqn.\eqref{ionexmassact}
+it follows that
+\EQ
+X_i^\a\eq k_i^\a a_i\left(\frac{X_j^\a}{k_j^\a a_j}\right)^{z_i/z_j}.
+\EN
+Defining the function
+\EQ
+f(X_j^\a) \eq X_j^\a + \sum_{i\ne j}X_i^\a(X_j^\a)-1,
+\EN
+its derivative is given by
+\EQ
+\frac{df}{dX_j^\a} \eq 1 - \frac{1}{z_jX_j^\a}\sum_{i\ne j} z_i k_i^\a a_i \left(\frac{X_j^\a}{k_j^\a a_j}\right)^{z_i/z_j}.
+\EN
+The reference mole fraction is then obtained by Newton-Raphson iteration
+\EQ
+(X_j^\a)^{k+1} \eq (X_j^\a)^k -\dfrac{f[(X_j^\a)^k]}{\dfrac{df[(X_j^\a)^k]}{dX_j^\a}}.
+\EN
+
+The sorbed concentration for the $j$th cation appearing in the accumulation term is given by
+\EQ
+S_j^\a \eq \frac{\omega_\a}{z_j} X_j^\a,
+\EN
+with the derivatives for $j\ne l$
+\begin{subequations}
+\BA
+\dfrac{\p S_j^\a}{\p m_l} &\eq -\frac{\omega_\a}{m_l} \dfrac{X_j^\a X_l^\a}{\displaystyle\sum_l z_l X_l^\a},\\
+&\eq -\frac{1}{m_l} \dfrac{z_jz_lS_j^\a S_l^\a}{\displaystyle\sum_l z_l^2 S_l^\a},
+\EA
+\end{subequations}
+and for $j=l$
+\begin{subequations}
+\BA
+\dfrac{\p S_j^\a}{\p m_j} &\eq \frac{\omega_\a X_j^\a}{z_j m_j} \left(1-\dfrac{z_j X_j^\a}{\displaystyle\sum_{l} z_{l} X_{l}^\a}\right),\\
+&\eq \frac{S_j^\a}{m_j} \left(1-\dfrac{z_j^2 S_j^\a}{\displaystyle\sum_{l} z_{l}^2 S_{l}^\a}\right).
+\EA
+\end{subequations}
+
 \paragraph{Surface Complexation}
+
+Surface complexation reactions are assumed to have the form
+\EQ\label{srfrxn}
+\nu_\a >\!\!\chi_\a + \sum_j\nu_{ji} \A_j \arrows \!>\!\! \S_{i\a},
+\EN
+for the $i$th surface complex $>\!\!\S_{i\a}$ on site $\a$ and empty site $>\!\!\chi_\a$.
+As follows from the corresponding mass action equation the equilibrium sorption concentration $S_{i\a}^{\rm eq}$ is given by
+\EQ
+S_{i\a}^{\rm eq}\eq \frac{\omega_\a K_i Q_i}{1+\sum_l K_lQ_l},
+\EN
+and the empty site concentration by
+\EQ
+S_\a^{\rm eq}\eq\frac{\omega_\a}{1+\sum_l K_lQ_l},
+\EN
+where the ion activity product $Q_i$ is defined by
+\EQ
+Q_i\eq\prod_j\big(\gamma_jC_j\big)^{\nu_{ji}}.
+\EN
+The site concentration $\omega_\a$ satisfies the relation
+\EQ\label{totsite}
+\omega_\a \eq S_\a + \sum_i S_{i\a}.
+\EN
+and is constant.
+The equilibrium sorbed concentration $S_{j\a}^{\rm eq}$ is defined as
+\EQ\label{qeq}
+S_{j\a}^{\rm eq} \eq \sum_i \nu_{ji}^{} S_{i\a}^{\rm eq}\eq \frac{\omega_\a}{1+\sum_l K_lQ_l} \sum_i \nu_{ji}K_i Q_i.
+\EN
+
+\paragraph{Multirate Sorption}
+
+In the multirate model the rates of sorption reactions are described through a kinetic relation given by
+\EQ\label{sorbed}
+\frac{\p S_{i\a}}{\p t} \eq k_\a^{} \big(S_{i\a}^{\rm eq}-S_{i\a}\big),
+\EN
+for surface complexes, and
+\BA\label{fsite}
+\frac{\p S_{\a}}{\p t} &\eq -\sum_i k_\a^{} \big(S_{i\a}^{\rm eq}-S_{i\a}\big),\\
+&\eq k_\a\big(S_\a^{\rm eq}-S_{\a}\big),
+\EA
+for empty sites, where $S_\a^{\rm eq}$ denotes the equilibrium sorbed concentration. For simplicity, in what follows it is assumed that $\nu_\a\!=\!1$. 
+With each site $\a$ is associated a rate constant $k_\a$ and site concentration $\omega_\a$. These quantities are defined through a given distribution of sites $\wp(\a)$, such that
+\EQ
+\int_0^\infty \wp(k_\a)dk_\a \eq 1.
+\EN
+The fraction of sites $f_\a$ belonging to site $\a$ is determined from the relation
+\EQ
+f_\a \eq \int_{k_\a-\Delta k_\a/2}^{k_\a+\Delta k_\a/2} \wp(k_\a)dk_\a \simeq \wp(k_\a)\Delta k_\a,
+\EN
+with the property that
+\EQ
+\sum_\a f_\a =1.
+\EN
+Given that the total site concentration is $\omega$, then the site concentration $\omega_\a$ associated with site $\a$ is equal to
+\EQ
+\omega_\a \eq f_\a \omega.
+\EN
+
+An alternative form of these equations is obtained by introducing the total sorbed concentration for the $j$th primary species for each site defined as
+\EQ
+S_{j\a}\eq\sum_i \nu_{ji}S_{i\a}.
+\EN
+Then the transport equations become
+\EQ
+\frac{\p}{\p t}\left(\varphi \Psi_j + \sum_{\a}S_{j\a}\right) + \bnabla\cdot\bOmega_j \eq  - \sum_m\nu_{jm}I_m.
+\EN
+The total sorbed concentrations are obtained from the equations
+\EQ
+\frac{\p S_{j\a}}{\p t} \eq k_\a^{} \big(S_{j\a}^{\rm eq}-S_{j\a}\big).
+\EN
 
 \subsubsection{Colloid-Facilitated Transport}
 
@@ -455,6 +613,14 @@ For conditions of local equilibrium the sorption reaction rates may be eliminate
 \frac{\p}{\p t} \varphi s_l \Big[\Psi_j^l + \sum_k \nu_{jk} \big(S_k^\m + S_k^\im + S_k^s\big) \Big] + \bnabla\cdot\Big(\bOmega_j^l + \bq_c \sum_k \nu_{jk} S_k^\m\Big) \eq - \sum_s \nu_{js} I_s.
 \EN
 
+\subsection{Solute Age}
+
+PFLOTRAN implements the Eulerian formulation of solute age for a nonreactive tracer following Goode (1996). PFLOTRAN solves the advection-diffusion/dispersion equation for age given by
+\EQ
+\frac{\p}{\p t} \varphi s AC + \bnabla\cdot\Big(\bq AC - \varphi s D \bnabla (AC)\Big) \eq \varphi s C,
+\EN
+where $A$ denotes the mean age of the solute with concentration $C$. Other quantities appearing in the age equation are identical to the solute transport equation for a partially saturated porous medium with saturation state $s$. The age and solute transport equations are solved simultaneously.
+
 \section{Method of Solution}
 
 The flow and heat equations (Modes: RICHARDS, MPHASE, FLASH2, THC, and 2PH) are solved using a fully implicit backward Euler approach based on Newton-Krylov iteration.
@@ -462,11 +628,11 @@ Both fully implicit backward Euler and operator splitting solution methods are s
 
 \subsection{Fully Implicit}
 
-For a fully implicit formulation the nonlinear equations
+In a fully implicit formulation the nonlinear equations for the residual function $\bR$ given by
 \EQ
 \bR(\bx) \eq \bzero,
 \EN
-for the residual function $\bR$ are solved using an iterative solver based on the Newton-Raphson equations
+are solved using an iterative solver based on the Newton-Raphson equations
 \EQ
 \bJ^{(i)} \delta\!\bx^{(i+1)} \eq -\bR^{(i)},
 \EN
@@ -539,6 +705,8 @@ where $C^*$ is the solution to the nonreactive transport equation. Using Eqn.\eq
 C^{t+\Delta t} \eq \frac{1}{R} C^* + \left(1-\frac{1}{R}\right) C^t.
 \EN
 Thus for $R=1$, $C^{t+\Delta t}=C^*$ and the solution advances unretarded.
+
+\newpage
 
 \section{Installation}
 
@@ -1051,6 +1219,8 @@ The estimates will get better the closer one is to the GMRES restart.  (When res
 The default restart frequency is 30.
 \end{comment}
 
+\newpage
+
 \section{Creating the Input File: PFLOTRAN Keywords}
 
 The PFLOTRAN input file construction is based on keywords. Lines beginning with a colon (:) are treated as comments. Each entry to the input file must begin in the first column. Keywords {\tt SKIP} and {\tt NOSKIP} are used to skip over sections of the input file. Blank lines may occur in input file. Alternate keyword spelling is indicated in round brackets (~). Input options are indicated in square brackets [~], as well as default values. Curly brackets \{~\} indicate the result of invoking the corresponding keyword. Always refer to source code when in doubt!
@@ -1108,6 +1278,38 @@ Initial and boundary conditions and material properties are assigned to spatial 
 
 \noindent{\bf Conventions and Notation:} Keywords are in boldface with optional modifying keywords in square brackets [\ldots], and user entries in typewriter font.
 
+Unless otherwise specified, units in the input file are assumed to be as listed in Table~\ref{tunits}.
+
+\begin{table}[h]\centering
+\caption{Units}\label{tunits}
+
+\vspace{3mm}
+
+%\rowcolors{row}{odd-row cyan}{even-row green}
+\rowcolors[]{1}{red!20}{red!10}\rowcolors[]{1}{blue!20}{blue!10}
+\begin{tabular}{ll}
+\toprule[2pt]
+%\hline
+%Quantity & \multicolumn{1}{c}{Units}\\
+Quantity & Units\\
+\midrule[1pt]
+%\hline
+Pressure: & Pascal [Pa] (absolute)\\
+%\rowcolor[rgb]{0.5}
+Temperature: & Celcius [C]\\
+Distance: & meter [m]\\
+Volume: & meter$^3$ [m$^3$]\\
+Time: & second [s]\\
+Velocity: & meter/second [m/s]\\
+Concentration: & molarity [M] or molality [m] (see MOLAL keyword)\\
+Enthalpy: & kilojoule/mole [kJ/mol]\\
+Mass: & kilogram [kg]\\
+Rate: & mass/time [kg/s] or volume/time [m$^3$/s]\\
+\bottomrule[1.5pt]
+%\hline
+\end{tabular}
+\end{table}
+
 \begin{comment}
 \begin{verbatim}
 \protect\hypertarget{target_XXX}{}
@@ -1124,6 +1326,307 @@ Initial and boundary conditions and material properties are assigned to spatial 
 {\noindent\bf Examples:}
 \end{verbatim}
 \end{comment}
+
+\subsection{Example Input File}
+
+\footnotesize
+:colon denotes a comment line
+:Description: 3D infiltration problem with calcite dissolution
+
+\noindent
+: == debugging ================================================================\\
+:\hyperlink{target_dbg}{\bf DEBUG}\\
+:MATVIEW\_JACOBIAN\\
+:VECVIEW\_RESIDUAL\\
+:VECVIEW\_SOLUTION\\
+:/
+
+\noindent
+: == mode =====================================================================\\
+\hyperlink{target_mode}{\bf MODE} RICHARDS
+
+\noindent
+: == chemistry ================================================================\\
+\hyperlink{target_chem}{\bf CHEMISTRY}\\
+OPERATOR\_SPLIT\\
+PRIMARY\_SPECIES\\
+Ca++\\
+H+\\
+CO2(aq)\\
+Tracer\\
+/\\
+SECONDARY\_SPECIES\\
+OH-\\
+HCO3-\\
+CO3--\\
+CaHCO3+\\
+CaCO3(aq)\\
+/\\
+GAS\_SPECIES\\
+CO2(g)\\
+/\\
+MINERALS\\
+Calcite\\
+/\\
+:\\
+MINERAL\_KINETICS\\
+Calcite\\
+RATE\_CONSTANT 1.e-8 ! [mol/cm$^3$/s]\\
+/\\
+/\\
+:\\
+DATABASE /Users/lichtner/flotran/database/hanford.dat\\
+LOG\_FORMULATION\\
+ACTIVITY\_COEFFICIENTS !NEWTON\_ITERATION\\
+MOLAL\\
+OUTPUT\\
+All\\
+/\\
+/
+
+\noindent
+: == reference variables ======================================================\\
+REFERENCE\_POROSITY 0.25d0\\
+
+\noindent
+: == time stepping ============================================================\\
+\hyperlink{target_timestep}{\bf TIMESTEPPER}\\
+TS\_ACCELERATION 8\\
+MAX\_STEPS 100000\\
+/
+
+\noindent
+: == discretization ===========================================================\\
+\hyperlink{target_grid}{\bf GRID}\\
+:TYPE amr ! amr grid\\
+TYPE structured\\
+NXYZ 6 6 6\\
+DXYZ\\
+1.\\
+1.\\
+1.\\
+/\\
+/
+
+\noindent
+: == flow solvers =============================================================\\
+\hyperlink{target_newt}{\bf NEWTON\_SOLVER} FLOW\\
+PRECONDITIONER\_MATRIX\_TYPE AIJ\\
+RTOL 1.d-8\\
+ATOL 1.d-8\\
+STOL 1.d-30\\
+ITOL\_UPDATE 1.d0\\
+:NO\_INFINITY\_NORM\\
+:NO\_PRINT\_CONVERGENCE\\
+:PRINT\_DETAILED\_CONVERGENCE\\
+/
+
+\noindent
+\hyperlink{target_linsolv}{\bf LINEAR\_SOLVER} FLOW\\
+:KSP\_TYPE PREONLY\\
+:PC\_TYPE LU\\
+:KSP\_TYPE FGMRES !samrai\\
+:PC\_TYPE SHELL !samrai\\
+/
+
+\noindent
+: == transport solvers ========================================================\\
+\hyperlink{target_newt}{\bf NEWTON\_SOLVER} TRANSPORT\\
+PRECONDITIONER\_MATRIX\_TYPE AIJ\\
+RTOL 1.d-12\\
+ATOL 1.d-12\\
+STOL 1.d-30\\
+:NO\_INFINITY\_NORM\\
+:NO\_PRINT\_CONVERGENCE\\
+:PRINT\_DETAILED\_CONVERGENCE\\
+/
+
+\noindent
+\hyperlink{target_linsolv}{\bf LINEAR\_SOLVER} TRANSPORT\\
+:PC\_TYPE LU\\
+:KSP\_TYPE PREONLY\\
+:KSP\_TYPE FGMRES ! samrai\\
+:PC\_TYPE SHELL !samrai\\
+/
+
+\noindent
+: == fluid properties =========================================================\\
+FLUID\_PROPERTY\\
+DIFFUSION\_COEFFICIENT 1.d-9\\
+/
+
+\noindent
+: == material properties ======================================================\\
+\hyperlink{target_mat}{\bf MATERIAL\_PROPERTY} HD\\
+ID 1\\
+SATURATION\_FUNCTION HD\\
+POROSITY 0.262\\
+TORTUOSITY 1.0\\
+PERMEABILITY\\
+PERM\_ISO 5.43d-13\\
+/\\
+/
+
+\noindent
+: == saturation / permeability functions ======================================\\
+\hyperlink{target_sat}{\bf SATURATION\_FUNCTION} HD\\
+SATURATION\_FUNCTION\_TYPE VAN\_GENUCHTEN\\
+RESIDUAL\_SATURATION 0.115\\
+LAMBDA 0.286\\
+ALPHA 1.9401d-4\\
+/
+
+\noindent
+: == output ===================================================================\\
+\hyperlink{target_output}{\bf OUTPUT}\\
+:PERIODIC TIMESTEP 1\\
+PERIODIC TIME 0.1 y\\
+FORMAT HDF5\\
+FORMAT TECPLOT BLOCK\\
+VELOCITIES\\
+/
+
+\noindent
+: == times ====================================================================\\
+\hyperlink{target_time}{\bf TIME}\\
+FINAL\_TIME 1.d0 y\\
+INITIAL\ 1.e-6 y\\
+MAXIMUM\_TIMESTEP\_SIZE 1.e-2 y\\
+/
+
+\noindent
+: == regions ==================================================================\\
+\hyperlink{target_region}{\bf REGION} all\\
+COORDINATES\\
+0.d0 0.d0 0.d0\\
+6.d0 6.d0 6.d0\\
+/\\
+/
+
+\noindent
+\hyperlink{target_region}{\bf REGION} Top\\
+FACE TOP\\
+COORDINATES\\
+0.d0 0.d0 6.d0\\
+6.d0 6.d0 6.d0\\
+/\\
+/
+
+\noindent
+\hyperlink{target_region}{\bf REGION} Inlet\\
+FACE TOP\\
+COORDINATES\\
+2.d0 2.d0 6.d0\\
+4.d0 4.d0 6.d0\\
+/\\
+:BLOCK 3 4 3 4 6 6\\
+/
+
+\noindent
+\hyperlink{target_region}{\bf REGION} Bottom\\
+FACE BOTTOM\\
+COORDINATES\\
+0.d0 0.d0 0.d0\\
+6.d0 6.d0 0.d0\\
+/\\
+/
+
+\noindent
+: == flow conditions ==========================================================\\
+\hyperlink{target_flow_cond}{\bf FLOW\_CONDITION} Inlet\\
+TYPE\\
+FLUX neumann\\
+/\\
+FLUX 0.317098d-6 ! 10 m/y\\
+/
+
+\noindent
+\hyperlink{target_flow_cond}{\bf FLOW\_CONDITION} Initial\\
+TYPE\\
+PRESSURE hydrostatic\\
+/\\
+DATUM 0.d0 0.d0 6.d0\\
+PRESSURE 101325.d0\\
+/
+
+\noindent
+: == transport conditions =====================================================\\
+\hyperlink{target_trans_cond}{\bf TRANSPORT\_CONDITION} Inlet\\
+TYPE dirichlet\\
+CONSTRAINT\_LIST\\
+0.d0 Inlet\\
+/\\
+/
+
+\noindent
+\hyperlink{target_trans_cond}{\bf TRANSPORT\_CONDITION} Initial\\
+TYPE dirichlet\\
+CONSTRAINT\_LIST\\
+0.d0 Initial\\
+/\\
+/
+
+\noindent
+\hyperlink{target_trans_cond}{\bf TRANSPORT\_CONDITION} Outlet\\
+TYPE zero\_gradient\\
+CONSTRAINT\_LIST\\
+0.d0 Initial\\
+/\\
+/
+
+\noindent
+: == couplers =================================================================\\
+\hyperlink{target_bcon}{\bf BOUNDARY\_CONDITION} Inlet\\
+\hyperlink{target_flow_cond}{\bf FLOW\_CONDITION} Inlet\\
+\hyperlink{target_trans_cond}{\bf TRANSPORT\_CONDITION} Inlet\\
+\hyperlink{target_region}{\bf REGION} Inlet\\
+/
+
+\noindent
+\hyperlink{target_bcon}{\bf BOUNDARY\_CONDITION} Outlet\\
+\hyperlink{target_flow_cond}{\bf FLOW\_CONDITION} Initial\\
+\hyperlink{target_trans_cond}{\bf TRANSPORT\_CONDITION} Outlet\\
+\hyperlink{target_region}{\bf REGION} Bottom\\
+/
+
+\noindent
+\hyperlink{target_init}{\bf INITIAL\_CONDITION} Initial\\
+\hyperlink{target_flow_cond}{\bf FLOW\_CONDITION} Initial\\
+\hyperlink{target_trans_cond}{\bf TRANSPORT\_CONDITION} Initial\\
+\hyperlink{target_region}{\bf REGION} all\\
+/
+
+\noindent
+: == stratigraphy =============================================================\\
+\hyperlink{target_strata}{\bf STRATA}\\
+MATERIAL HD\\
+REGION all\\
+/
+
+\noindent
+: == transport constraints ======================================================\\
+\hyperlink{target_constraint}{\bf CONSTRAINT} Initial\\
+CONCENTRATIONS\\
+Ca++    1.d-4   M  Calcite\\
+H+      8.0d0  pH\\
+CO2(aq) 1.d-2   G  CO2(g)\\
+Tracer  1.d-8   T\\
+/\\
+MINERALS\\
+Calcite    0.75  1.\\
+/\\
+/
+
+\noindent
+\hyperlink{target_constraint}{\bf CONSTRAINT} Inlet\\
+CONCENTRATIONS\\
+Ca++    1.d-6   T\\
+H+      3.0d0  pH\\
+CO2(aq) 1.d-3   G  CO2(g)\\
+Tracer  1.d-0   T\\
+/\\
+/
+\normalsize
 
 \newpage
 \protect\hypertarget{target_bcon}{}
@@ -1757,9 +2260,52 @@ DIFFUSION_COEFFICIENT 1.d-9
 
 \subsection{Keyword: GRID \hfill Required}
 
-\noindent{\bf Description: this keyword defines a spatial grid.}
+\noindent{\bf Description:} this keyword defines a spatial grid and specifies the geometric options employed in the simulation.
+
+\begin{description}
+\item[GRID]~
+\item[Required Options:]~
+
+\begin{description}
+\item[TYPE <type> <symmetry>:] Grid type (structured, unstructured, amr); symmetry (cartesian [default], cylindrical, spherical
+
+\item[NXYZ <\# \# \#>:] \# of cells in $x$, $y$, $z$ directions (structured only)
+
+\item[FILE <filename>:] Name of file containing grid information (unstructured only)
+\end{description}
+
+\item[Optional Options:] ~
+
+\begin{description}
+
+\item[GRAVITY <\# \# \#>:] Specifies gravity vector
+
+\item[ORIGIN <\# \# \#>:] Coordinate of grid origin (default: 0. 0. 0.)
+
+\item[BOUNDS:] Specifies bounds of structured cartesian grid (see examples below)
+\begin{description}
+\item[<x\_min, x\_max>]~
+\item[<y\_min, y\_max>]~
+\item[<z\_min, z\_max>]~
+\end{description}
+\item[(.,/,END)] ~
+
+\item[DXYZ:] Specifies grid spacing of structured cartesian grid (see examples below)
+\begin{description}
+\item[<{\bf dx}>] ~
+\item[<{\bf dy}>] ~
+\item[<{\bf dz}>] ~
+\end{description}
+\item[(.,/,END)] ~
+
+\item[INVERT\_Z:] Inverts the $z$-axis (positive $z$ is down)
+\end{description}
+\end{description}
+
+\begin{comment}
 
 \noindent{\bf Input:}
+\noindent {\bf Required:}
 \begin{deflist}{000}
 \item[GRID]~
 \begin{deflist}{000}
@@ -1769,10 +2315,13 @@ DIFFUSION_COEFFICIENT 1.d-9
 
 \item[TYPE] {\bf unstructured} \ {\tt file\_name}
 \item[TYPE] {\bf amr}
-
-\item[ORIG, ORIGIN] {\tt X, Y, Z}
 \item[NXYZ] \ {\tt nx ny nz}
-\item[FILE]
+\item[FILE] \ file name: name of file containing grid information (unstructured only)
+\end{deflist}
+
+\noindent {\bf Optional:}
+\begin{deflist}{000}
+\item[ORIG, ORIGIN] {\tt X, Y, Z}
 \item[GRAVITY]
 \item[INVERT\_Z]
 \item[DXYZ]~
@@ -1780,6 +2329,12 @@ DIFFUSION_COEFFICIENT 1.d-9
 \item[{\tt dx}]
 \item[{\tt dy}]
 \item[{\tt dz}]
+\end{deflist}
+\item[BOUNDS]~
+\begin{deflist}{000}
+\item[{\tt x\_min, x\_max}]
+\item[{\tt y\_min, y\_max}]
+\item[{\tt z\_min, z\_max}]
 \end{deflist}
 \item[(., /, END)]~
 
@@ -1830,20 +2385,19 @@ DIFFUSION_COEFFICIENT 1.d-9
 
 \noindent{\bf Explanation:}
 
-\begin{center}
 \begin{tabularx}{\linewidth}{lX}
-GRAVITY <\# \# \#>: &Specifies gravity vector\\
+{\bf GRAVITY} <\# \# \#>: &Specifies gravity vector\\
 
-ORIGIN <\# \# \#>: &Coorindate of grid origin (default: 0. 0. 0.)\\
+{\bf ORIGIN} <\# \# \#>: &Coordinates of grid origin (default: 0. 0. 0.)\\
 
-BOUNDS: &Specifies bounds of structured cartesian grid (see examples below)
-DXYZ: Specifies grid spacing of structured cartesian grid (see examples below)\\
-INVERT\_Z: &Inverts the z axis (positive Z is down)
+{\bf BOUNDS:} &Specifies bounds of structured cartesian grid (see examples below)\\
+{\bf DXYZ:} &Specifies grid spacing of structured cartesian grid (see examples below)\\
+{\bf INVERT\_Z:} &Inverts the z axis (positive Z is down)
 \end{tabularx}
-\end{center}
+\end{comment}
 
 \noindent
-{\bf Example:}
+{\bf Examples:}
 \begin{verbatim}
 GRID
 TYPE structured cylindrical
@@ -2035,41 +2589,69 @@ PERM_Z 1.d-12
 %========================================================================
 
 \newpage
-\protect\hypertarget{target_mode}{}
+\protect\hypertarget{target_max}{}
 
-\subsection{Keyword: MODE}
+\subsection{Keyword: MAX\_CHANGE}
 
-\noindent{\bf Description:} determines the mode of operation: IMMIS (Immisible), MPH, MPHASE, FLASH2 (CO$_2$ + H$_2$O), Richards (vadose-saturated zones), THC (Thermal-Hydrologic-Chemical, in pro\-gress).
+\noindent{\bf Description:}
 
 \noindent{\bf Input:}
 \begin{deflist}{000}
-\item[MODE] ~
-\begin{deflist}{000}
-\item[IMMIS (IMS, THS)]
-\item[MPHASE (MPH)]
-\item[FLASH2]
-\item[RICHARDS]
-\item[THC (\rm in progress)]
-\end{deflist}
+\item[MAX\_CHANGE] \ {\tt DPMAX} \ {\tt DTMAX} \ {\tt DSMAX} \ {\tt DCMAX}
 \end{deflist}
 
 \noindent{\bf Explanation:}
 
+\noindent{\bf Example:}
+\begin{verbatim}
+:          dpmax dtmax dsmax dcmax
+MAX_CHANGE 5.d4    5.  0.02   0.05
+/
+/
+\end{verbatim}
+
+%========================================================================
+
+\newpage
+\protect\hypertarget{target_mode}{}
+
+\subsection{Keyword: MODE}
+
+\noindent{\bf Description:} determines the flow mode: Richards (variably saturated porous media), MPH, MPHASE, FLASH2 (CO$_2$ + H$_2$O), THC (Thermal-Hydrologic-Chemical, in pro\-gress), IMMIS (Immisible).
+
+\begin{comment}
+\noindent{\bf Input:}
+\begin{deflist}{000}
+\item[MODE] <option>
+\item[Options:] ~
+\begin{deflist}{000}
+\item[RICHARDS]
+\item[MPHASE (MPH)]
+\item[FLASH2]
+\item[THC (\rm in progress)]
+\item[IMMIS (IMS, THS)]
+\end{deflist}
+\end{deflist}
+\end{comment}
+
+%\noindent{\bf Explanation:}
+
 \begin{center}
 \begin{tabularx}{\linewidth}{lX}
-\toprule[1.5pt]
-\bf Keyword & \bf Description\\
-\midrule
-\bf THC &Thermo-Hydro-Chemical Coupled groundwater flow, thermal and solute transport\\
-\midrule
+%\toprule[1.5pt]
+\bf MODE <option>\\
+\bf Option & \bf Description\\
+%\midrule
 \bf RICHARDS &Single-phase, isothermal, variable saturated groundwater flow using Richards Equation\\
-\midrule
+%\midrule
 \bf MPHASE (MPH) &Multiphase supercritical CO$_2$-brine-energy based on variable switching for phase changes\\
-\midrule
+%\midrule
 \bf FLASH2 &Multiphase supercritical CO$_2$-brine-energy based on the flash method for phase changes with a persistent set of unknowns---required for AMR\\
-\midrule
+%\midrule
+\bf THC &Thermo-Hydro-Chemical coupled groundwater flow, thermal and solute transport\\
+%\midrule
 \bf IMMIS (IMS, THS) &Immissible CO$_2$-water-energy\\
-\bottomrule[1.5pt]
+%\bottomrule[1.5pt]
 \end{tabularx}
 \end{center}
 
@@ -4391,6 +4973,13 @@ TimerManager{
 \begin{description}
 
 \item Balay S, Eijkhout V, Gropp WD, McInnes LC and Smith BF (1997) Modern Software Tools in Scientific Computing, Eds. Arge E, Bruaset AM and Langtangen HP (Birkha\"user Press), pp. 163--202.
+
+\item Goode, D.J. (1996) Direct simulation of groundwater age, Water Resources Research, 32, 289--296.
+
+\item Hammond, G.E., P.C. Lichtner, C. Lu, and R.T. Mills (2011) PFLOTRAN: Reactive Flow \& Transport Code for Use on Laptops to Leadership-Class Supercomputers, Editors: Zhang, F., G. T. Yeh, and J. C. Parker,
+{\em Ground Water Reactive Transport Models},
+Bentham Science Publishers.
+ISBN 978-1-60805-029-1. 
 
 \end{description}
 

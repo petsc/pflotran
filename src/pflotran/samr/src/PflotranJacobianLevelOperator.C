@@ -15,7 +15,7 @@ namespace SAMRAI{
   PflotranJacobianLevelOperator::PflotranJacobianLevelOperator(LevelOperatorParameters *parameters):LevelOperator(parameters)
 {
    static tbox::Pointer<tbox::Timer> t_create_PflotranJacobianLevelOperator = 
-      tbox::TimerManager::getManager()->getTimer("PflotranJacobianLevelOperator::constructor()");
+      tbox::TimerManager::getManager()->getTimer("PFlotran::PflotranJacobianLevelOperator::constructor()");
    t_create_PflotranJacobianLevelOperator->start();
 
    d_sibling_fill_cached          = false;
@@ -127,7 +127,7 @@ PflotranJacobianLevelOperator::apply(const int *f_id,
                                      const double b)
 {
    static tbox::Pointer<tbox::Timer> t_stencilapply_PflotranJacobianLevelOperator = 
-      tbox::TimerManager::getManager()->getTimer("PflotranJacobianLevelOperator::stencilapply()");
+      tbox::TimerManager::getManager()->getTimer("PFlotran::PflotranJacobianLevelOperator::stencilapply()");
    t_stencilapply_PflotranJacobianLevelOperator->start();
 
    for (hier::PatchLevel<NDIM>::Iterator p(d_level); p; p++) 
@@ -216,7 +216,7 @@ PflotranJacobianLevelOperator::apply(const int flux_id,
                                      const double b)
 {
    static tbox::Pointer<tbox::Timer> t_fluxapply_PflotranJacobianLevelOperator = 
-      tbox::TimerManager::getManager()->getTimer("PflotranJacobianLevelOperator::fluxapply()");
+      tbox::TimerManager::getManager()->getTimer("PFlotran::PflotranJacobianLevelOperator::fluxapply()");
    t_fluxapply_PflotranJacobianLevelOperator->start();
 
 #ifdef DEBUG_CHECK_ASSERTIONS
@@ -285,7 +285,7 @@ PflotranJacobianLevelOperator::setFlux(const int flux_id,
                                        const int *u_idx)
 {
    static tbox::Pointer<tbox::Timer> t_setflux_PflotranJacobianLevelOperator = 
-      tbox::TimerManager::getManager()->getTimer("PflotranJacobianLevelOperator::setflux()");
+      tbox::TimerManager::getManager()->getTimer("PFlotran::PflotranJacobianLevelOperator::setflux()");
    t_setflux_PflotranJacobianLevelOperator->start();
 
    for (hier::PatchLevel<NDIM>::Iterator p(d_level); p; p++) 
@@ -328,7 +328,7 @@ PflotranJacobianLevelOperator::applyBoundaryCondition(const int *var_id,
                                                       const int number_of_variables)
 {
    static tbox::Pointer<tbox::Timer> t_PflotranJacobianLevelOperator_applyBoundaryCondition = 
-      tbox::TimerManager::getManager()->getTimer("PflotranJacobianLevelOperator::applyBoundaryCondition()");
+      tbox::TimerManager::getManager()->getTimer("PFlotran::PflotranJacobianLevelOperator::applyBoundaryCondition()");
    t_PflotranJacobianLevelOperator_applyBoundaryCondition->start();
 
 #ifdef DEBUG_CHECK_ASSERTIONS
@@ -393,7 +393,7 @@ PflotranJacobianLevelOperator::applyBoundaryCondition(const int *var_id,
    t_PflotranJacobianLevelOperator_applyBoundaryCondition->stop();
 }
 
-const int 
+int 
 PflotranJacobianLevelOperator::getStencilType(const int i,
                                               const int j,
                                               const int k)
@@ -422,7 +422,7 @@ PflotranJacobianLevelOperator::getStencilBlock(const int p,
    return stencilBlock;
 }
 
-const int
+int
 PflotranJacobianLevelOperator::getStencilSize(const int i,
                                               const int j,
                                               const int k)

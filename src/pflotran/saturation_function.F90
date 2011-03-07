@@ -28,7 +28,7 @@ module Saturation_Function_module
     PetscReal :: BC_spline_coefficients(4)
     PetscReal :: ani_A       ! parameters for anisotropic relative permeability model
     PetscReal :: ani_B       ! parameters for anisotropic relative permeability model
-	PetscReal :: ani_C       ! parameters for anisotropic relative permeability model
+    PetscReal :: ani_C       ! parameters for anisotropic relative permeability model
 
     type(saturation_function_type), pointer :: next
   end type saturation_function_type
@@ -44,7 +44,8 @@ module Saturation_Function_module
             SaturatFuncConvertListToArray, &
             SaturationFunctionComputeSpline, &
             SaturationFunctionRead, &
-            SaturationFunctionInvert
+            SaturationFunctionInvert, &
+            SaturationFunctionGetID
 
 ! Permeability function defination ************************ 
   PetscInt, parameter :: VAN_GENUCHTEN = 1
@@ -232,8 +233,15 @@ subroutine SaturationFunctionRead(saturation_function,input,option)
         call printErrMsg(option)
     end select 
   
-  enddo  
-
+  enddo 
+  
+  if (saturation_function%m < 1.d-40 .and. &
+      .not.StringCompare(saturation_function%name,'default',SEVEN_INTEGER)) then
+    option%io_buffer = 'Saturation function parameter "m" not set ' // &
+                       'properly in saturation function "' // &
+                       trim(saturation_function%name) // '".'
+    call printErrMsg(option)
+  endif 
 
 end subroutine SaturationFunctionRead
 
@@ -702,6 +710,53 @@ subroutine SaturationFunctionInvert(pressure,saturation, &
   end select
 
 end subroutine SaturationFunctionInvert
+
+! ************************************************************************** !
+!
+! SaturationFunctionGetID: Returns the ID of the saturation function named
+!                          "saturation_function_name"
+! author: Glenn Hammond
+! date: 01/12/11
+!
+! ************************************************************************** !
+function SaturationFunctionGetID(saturation_function_list, &
+                                 saturation_function_name, &
+                                 material_property_name, option)
+
+  use Option_module
+  use String_module
+  
+  type(saturation_function_type), pointer :: saturation_function_list
+  character(len=MAXWORDLENGTH) :: saturation_function_name
+  character(len=MAXWORDLENGTH) :: material_property_name
+  type(option_type) :: option
+
+  PetscInt :: SaturationFunctionGetID
+  PetscBool :: found
+  type(saturation_function_type), pointer :: cur_saturation_function
+
+  found = PETSC_FALSE
+  cur_saturation_function => saturation_function_list
+  do 
+    if (.not.associated(cur_saturation_function)) exit
+    if (StringCompare(saturation_function_name, &
+                      cur_saturation_function%name,MAXWORDLENGTH)) then
+      found = PETSC_TRUE
+      SaturationFunctionGetID = cur_saturation_function%id
+      return
+    endif
+    cur_saturation_function => cur_saturation_function%next
+  enddo
+  if (.not.found) then
+    option%io_buffer = 'Saturation function "' // &
+             trim(saturation_function_name) // &
+             '" in material property "' // &
+             trim(material_property_name) // &
+             '" not found among available saturation functions.'
+    call printErrMsg(option)    
+  endif
+
+end function SaturationFunctionGetID
 
 ! ************************************************************************** !
 !

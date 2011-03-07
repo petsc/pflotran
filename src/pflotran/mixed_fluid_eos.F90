@@ -61,6 +61,7 @@ module mixture_module
     PetscReal :: dif(1:num_spec),henry,pa
     PetscReal :: co2_poyn,xphi
     PetscReal :: dddt,dddp,fg,dfgdp,dfgdt,eng,dhdt,dhdp,dvdt,dvdp
+    PetscInt :: iflag
 
     ierr=0; iitable=0
     if(present(itable)) iitable = itable
@@ -118,8 +119,9 @@ module mixture_module
     if(pa>=5d4)then
       !call ideal_gaseos_noderiv(pa,t,energyscale,dg,hg,ug)
       dg=den(2)*fmwco2
+      iflag = 1
       call co2_span_wagner(p*xga*1.D-6,t+273.15D0,dg,dddt,dddp,fg,&
-      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,iitable)
+      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,iflag,iitable)
       dg= dg / fmwco2
       fg= fg * 1.D6
       hg= hg * fmwco2
@@ -313,6 +315,7 @@ end subroutine mixture_eos_noderiv
     PetscReal :: tmp,tmp2,tmp3,tmp0,tmp4,tmp5
     PetscReal :: co2_poyn,xphi
     PetscReal :: dddt,dddp,fg,dfgdp,dfgdt,eng,dhdt,dhdp,dvdt,dvdp,tmpdg
+    PetscInt :: iflag
 
     ierr=0; iitable=0
     if(present(itable)) iitable =itable
@@ -418,8 +421,9 @@ end subroutine mixture_eos_noderiv
     if(pa>=5.d4)then
       !call ideal_gaseos_noderiv(pa,t,energyscale,dg,hg,ug)
       dg=den(2)*fmwco2
+      iflag = 1
       call co2_span_wagner(p*xga*1.D-6,t+273.15D0,dg,dddt,dddp,fg,&
-      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,iitable)
+      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,iflag,iitable)
       tmpdg = dg 
       dg= dg / fmwco2
       fg= fg * 1.D6
@@ -488,8 +492,9 @@ end subroutine mixture_eos_noderiv
     
     if(pa>=5.d4)then
       dg=tmpdg
+      iflag = 1
       call co2_span_wagner((p+tmp)*xga*1.D-6,t+273.15D0,dg,dddt,dddp,fg,&
-      dfgdp,dfgdt,eng,hg,dhdt,dhdp,tmp4,dvdt,dvdp, iitable)
+      dfgdp,dfgdt,eng,hg,dhdt,dhdp,tmp4,dvdt,dvdp,iflag,iitable)
       dg= dg / fmwco2
       fg= fg * 1.D6
       hg= hg * fmwco2
@@ -527,8 +532,9 @@ end subroutine mixture_eos_noderiv
     pa=p*xga
     if(pa>=5d4)then
       dg=tmpdg
+      iflag = 1
       call co2_span_wagner(p*xga*1.D-6,t+tmp+273.15D0,dg,dddt,dddp,fg,&
-      dfgdp,dfgdt,eng,hg,dhdt,dhdp,tmp4,dvdt,dvdp, iitable)
+      dfgdp,dfgdt,eng,hg,dhdt,dhdp,tmp4,dvdt,dvdp,iflag,iitable)
       dg= dg / fmwco2
       fg= fg * 1.D6
       hg= hg * fmwco2
@@ -572,8 +578,9 @@ end subroutine mixture_eos_noderiv
     pa=p*(xga+tmp)
     if(pa>=5d4)then
       dg=tmpdg
+      iflag = 1
       call co2_span_wagner(p*(tmp+xga)*1.D-6,t+273.15D0,dg,dddt,dddp, &
-      fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,tmp4,dvdt,dvdp,iitable)
+      fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,tmp4,dvdt,dvdp,iflag,iitable)
       dg= dg / fmwco2
       fg= fg * 1.D6
       hg= hg * fmwco2

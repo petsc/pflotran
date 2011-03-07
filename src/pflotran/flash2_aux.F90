@@ -229,8 +229,8 @@ end subroutine Flash2AuxVarCopy
 ! date: 10/12/08
 !
 ! ************************************************************************** !
-subroutine Flash2AuxVarCompute_NINC(x,aux_var, global_aux_var,saturation_function, &
-                                   fluid_properties,option,xphico2)
+subroutine Flash2AuxVarCompute_NINC(x,aux_var,global_aux_var, &
+             saturation_function,fluid_properties,option,xphico2)
 
   use Option_module
   use Global_Aux_module  
@@ -268,6 +268,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var, global_aux_var,saturation_functio
   PetscReal :: tk, xco2, pw_kg, x1, vphi_a1, vphi_a2 
   PetscReal :: Qkco2, mco2,xco2eq
   PetscReal :: tmp 
+  PetscInt :: iflag
 !  PetscReal :: Qkco2, mco2,xco2eq   
   
   
@@ -285,8 +286,8 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var, global_aux_var,saturation_functio
   aux_var%pres = x(1)  
   aux_var%temp = x(2)
 
-  p= aux_var%pres
-  t= aux_var%temp
+  p = aux_var%pres
+  t = aux_var%temp
 
 !  if(x(3)<0.D0)x(3)=0.D0
 !  if(x(3)>1.D0)x(3)=1.D0
@@ -298,50 +299,52 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var, global_aux_var,saturation_functio
     p2 = p
 
     if(p2>=5d4)then
-       if(option%co2eos == EOS_SPAN_WAGNER)then
+      if(option%co2eos == EOS_SPAN_WAGNER)then
 ! ************ Span-Wagner EOS ********************             
-          select case(option%itable)  
+        select case(option%itable)  
           case(0,1,2,4,5)
-             if( option%itable >=4) then
+            if( option%itable >=4) then
                 ! print *,' interp', itable
-                call co2_sw_interp(p2*1.D-6, t,dg,dddt,dddp,fg,&
+              call co2_sw_interp(p2*1.D-6, t,dg,dddt,dddp,fg,&
                      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
-             else
-                call co2_span_wagner(p2*1.D-6, t +273.15D0,dg,dddt,dddp,fg,&
-                     dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
-             endif
-             dg= dg / FMWCO2
-             fg= fg * 1.D6 
-             hg= hg * FMWCO2
-             xphi = fg/p2
+            else
+              iflag = 1
+              call co2_span_wagner(p2*1.D-6, t +273.15D0,dg,dddt,dddp,fg,&
+                     dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,iflag, &
+                     option%itable)
+            endif
+            dg= dg / FMWCO2
+            fg= fg * 1.D6 
+            hg= hg * FMWCO2
+            xphi = fg/p2
 ! ************* Span-Wagner EOS with Bi-Cubic Spline interpolation ********
           case(3) 
-             call sw_prop(t,p2*1D-6,dg,hg, eng, fg)
-             call visco2(t, dg, visg)
-             dg= dg / FMWCO2
-             fg= fg * 1.D6 
-             hg= hg * FMWCO2
-             xphi = fg/p2
-          end select
-       elseif(option%co2eos == EOS_MRK)then
+            call sw_prop(t,p2*1D-6,dg,hg, eng, fg)
+            call visco2(t, dg, visg)
+            dg= dg / FMWCO2
+            fg= fg * 1.D6 
+            hg= hg * FMWCO2
+            xphi = fg/p2
+        end select
+      elseif(option%co2eos == EOS_MRK)then
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]     
-          call CO2(t, p2,  dg,fg, xphi, hg)
-          call visco2( t,dg,visg)
-          dg = dg / FMWCO2
-          hg = hg * FMWCO2 *option%scale
+        call CO2(t, p2,  dg,fg, xphi, hg)
+        call visco2( t,dg,visg)
+        dg = dg / FMWCO2
+        hg = hg * FMWCO2 *option%scale
           !      print *, 'translator', p2, t, dg,hg,visg
-       else
-         call printErrMsg(option,'pflow Flash2 ERROR: Need specify CO2 EOS')
+      else
+        call printErrMsg(option,'pflow Flash2 ERROR: Need specify CO2 EOS')
       endif
-   else      
+    else      
       call ideal_gaseos_noderiv(p2, t,option%scale,dg,hg,eng)
       call visco2(t,dg*FMWCO2,visg)
       fg=p2
       xphi = 1.D0
-   endif
+    endif
  
 !*********** Get Salniity properties ***********************
-   m_na=option%m_nacl; m_cl=m_na; m_nacl=m_na 
+    m_na=option%m_nacl; m_cl=m_na; m_nacl=m_na 
     if (option%ntrandof>0) then
       m_na = global_aux_var%m_nacl(1)
       m_cl = global_aux_var%m_nacl(2)
@@ -397,8 +400,7 @@ subroutine Flash2AuxVarCompute_NINC(x,aux_var, global_aux_var,saturation_functio
       aux_var%xmol(2)= xco2eq
       aux_var%xmol(3)= sat_pressure/p*aux_var%xmol(1) 
       aux_var%xmol(4)= 1D0 - aux_var%xmol(3)
-   endif 
-!   endif
+    endif 
 
 ! **************  Gas pahse properties ********************
     aux_var%avgmw(2)= aux_var%xmol(3)* FMWH2O + aux_var%xmol(4) * FMWCO2
@@ -534,15 +536,15 @@ subroutine Flash2AuxVarCompute_WINC(x, delx, aux_var,global_auxvar,saturation_fu
   do n=1, option%nflowdof
      xx=x;  xx(n)=x(n)+ delx(n)
 ! ***   note: var_node here starts from 1 to option%flowdof ***
-    call  Flash2AuxVarCompute_NINC(xx,aux_var(n),global_auxvar,saturation_function, &
-                                   fluid_properties, option)
+    call  Flash2AuxVarCompute_NINC(xx,aux_var(n),global_auxvar, &
+      saturation_function,fluid_properties, option)
   enddo
 
 end subroutine Flash2AuxVarCompute_WINC
 
 ! ************************************************************************** !
 !
-! AuxVarDestroy: Deallocates a richards auxilliary object
+! AuxVarDestroy: Deallocates a FLASH2 auxilliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
@@ -573,7 +575,7 @@ end subroutine Flash2AuxVarDestroy
 
 ! ************************************************************************** !
 !
-! RichardsAuxDestroy: Deallocates a richards auxilliary object
+! RichardsAuxDestroy: Deallocates a FLASH2 auxilliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !

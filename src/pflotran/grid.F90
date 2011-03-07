@@ -64,14 +64,12 @@ module Grid_module
     ! nG2L :  not collective, local processor:  ghosted local => local  
     ! nG2A :  collective,  ghosted local => global index , used for   
     !                      matsetvaluesblocked ( not matsetvaluesblockedlocal)  
-#ifdef DASVYAT
 
     PetscInt, pointer :: fL2G(:), fG2L(:), fG2P(:), fL2P(:)
     PetscInt, pointer :: fL2B(:)
     Vec :: e2f     ! global vector to establish connection between global face_id and cell_id
     Vec :: e2n     ! global cell connectivity vector
 
-#endif
     
     PetscReal, pointer :: x(:), y(:), z(:) ! coordinates of ghosted grid cells
 
@@ -85,11 +83,9 @@ module Grid_module
     type(unstructured_grid_type), pointer :: unstructured_grid
     
     type(connection_set_list_type), pointer :: internal_connection_set_list
-#ifdef DASVYAT
     type(connection_set_list_type), pointer :: boundary_connection_set_list
     type(face_type), pointer :: faces(:)
     type(mfd_type), pointer :: MFD
-#endif
 
 #ifdef SUBCONTINUUM_MODEL
     ! Save no. of subcontinuum subgrids for all subcontinua patched 
@@ -130,11 +126,13 @@ module Grid_module
             GridCreateNaturalToGhostedHash, &
             GridDestroyHashTable, &
             GridGetLocalGhostedIdFromHash, &
+            GridVecGetMaskArrayCellF90, &
             GridVecGetArrayF90, &
             GridVecRestoreArrayF90, &
             GridIndexToCellID, &
             GridComputeCell2FaceConnectivity, &
-            GridComputeGlobalCell2FaceConnectivity
+            GridComputeGlobalCell2FaceConnectivity, &
+            GridGetGhostedNeighbors
 contains
 
 ! ************************************************************************** !
@@ -218,8 +216,9 @@ end function GridCreate
 ! author: Glenn Hammond
 ! date: 10/17/07
 !
+! sp modified December 2010 
 ! ************************************************************************** !
-subroutine GridComputeInternalConnect(grid,option)
+subroutine GridComputeInternalConnect(grid,option,ugdm)
 
   use Connection_module
   use Option_module    
@@ -230,6 +229,7 @@ subroutine GridComputeInternalConnect(grid,option)
 
   type(grid_type) :: grid
   type(option_type) :: option
+  type(ugdm_type), optional :: ugdm
   
   type(connection_set_type), pointer :: connection_set, connection_bound_set
   nullify(connection_set); nullify(connection_bound_set)
@@ -238,11 +238,11 @@ subroutine GridComputeInternalConnect(grid,option)
     case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
       connection_set => &
         StructGridComputeInternConnect( grid%structured_grid, grid%x, grid%y, &
-                                  grid%z, option)
+                                    grid%z, option)
     case(UNSTRUCTURED_GRID) 
       connection_set => &
         UGridComputeInternConnect(grid%unstructured_grid,grid%x,grid%y, &
-                                  grid%z,option)
+                                  grid%z,ugdm%scatter_ltol,option)
   end select
   
   allocate(grid%internal_connection_set_list)
@@ -376,7 +376,6 @@ subroutine GridPopulateFaces(grid, option)
        face_id = face_id + 1
        faces(face_id)%conn_set_ptr => cur_connection_set
        faces(face_id)%id = iconn
-!       write(9,*) "Boundary faces ", "face_id=",face_id," iconn=",iconn, cur_connection_set%id_dn(iconn)
      enddo
      cur_connection_set => cur_connection_set%next
    enddo
@@ -475,7 +474,6 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
         if (local_id_dn>0) then
            aux_var => MFD_aux%aux_vars(local_id_dn)
            call MFDAuxAddFace(aux_var,option, icount)
-           write(*,*) icount, conn%itype
            grid%fG2L(icount)=local_id
            grid%fL2G(local_id) = icount
            local_id = local_id + 1
@@ -499,12 +497,10 @@ subroutine GridComputeCell2FaceConnectivity(grid, MFD_aux, option)
         if (local_id_dn>0) then
            aux_var => MFD_aux%aux_vars(local_id_dn)
            call MFDAuxAddFace(aux_var,option, icount)
-           write(*,*) icount, conn%itype
         end if
         if (local_id_up>0) then
            aux_var => MFD_aux%aux_vars(local_id_up)
            call MFDAuxAddFace(aux_var,option, icount)
-           write(*,*) icount, conn%itype
         end if
     end if
     
@@ -1008,8 +1004,6 @@ subroutine GridComputeGlobalCell2FaceConnectivity( grid, MFD_aux, DOF, option)
     deallocate(strided_indices_local)
     deallocate(strided_indices_ghosted)
 
-   write(*,*) "End of GridComputeGlobalCell2FaceConnectivity"
-
 #endif
 
    
@@ -1101,7 +1095,7 @@ end subroutine GridComputeSpacing
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine GridComputeCoordinates(grid,origin_global,option)
+subroutine GridComputeCoordinates(grid,origin_global,option,ugdm)
 
   use Option_module
   
@@ -1110,6 +1104,7 @@ subroutine GridComputeCoordinates(grid,origin_global,option)
   type(grid_type) :: grid
   PetscReal :: origin_global(3)
   type(option_type) :: option
+  type(ugdm_type), optional :: ugdm ! sp  
   
   PetscErrorCode :: ierr  
   
@@ -1135,6 +1130,7 @@ subroutine GridComputeCoordinates(grid,origin_global,option)
       allocate(grid%z(grid%ngmax))
       grid%z = 0.d0
       call UGridComputeCoord(grid%unstructured_grid,option, &
+                             ugdm%scatter_ltol, & !sp  
                              grid%x,grid%y,grid%z, &
                              grid%x_min_local,grid%x_max_local, &
                              grid%y_min_local,grid%y_max_local, &
@@ -1157,6 +1153,24 @@ subroutine GridComputeCoordinates(grid,origin_global,option)
      call MPI_Allreduce(grid%z_max_local,grid%z_max_global,ONE_INTEGER_MPI, &
                         MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
    endif
+ endif
+
+  if (associated(grid%unstructured_grid)) then
+    !if (grid%unstructured_grid%p_samr_patch==0) then
+     ! compute global max/min from the local max/in
+     call MPI_Allreduce(grid%x_min_local,grid%x_min_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+     call MPI_Allreduce(grid%y_min_local,grid%y_min_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+     call MPI_Allreduce(grid%z_min_local,grid%z_min_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MIN,option%mycomm,ierr)
+     call MPI_Allreduce(grid%x_max_local,grid%x_max_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+     call MPI_Allreduce(grid%y_max_local,grid%y_max_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+     call MPI_Allreduce(grid%z_max_local,grid%z_max_global,ONE_INTEGER_MPI, &
+                        MPI_DOUBLE_PRECISION,MPI_MAX,option%mycomm,ierr)
+   !endif
  endif
 
 end subroutine GridComputeCoordinates
@@ -1498,50 +1512,59 @@ subroutine GridLocalizeRegions(grid,region_list,option)
         endif  
       endif 
     else
-#if 0
-      allocate(temp_int_array(region%num_cells))
-      temp_int_array = 0
-      if ((grid%itype == STRUCTURED_GRID).or.(grid%itype == STRUCTURED_GRID_MIMETIC)) then
-        do count=1,region%num_cells
-          i = mod(region%cell_ids(count),grid%structured_grid%nx) - &
-                grid%structured_grid%nxs
-          j = mod((region%cell_ids(count)-1)/grid%structured_grid%nx, &
-                  grid%structured_grid%ny)+1 - &
-                grid%structured_grid%nys
-          k = ((region%cell_ids(count)-1)/grid%structured_grid%nxy)+1 - &
-                grid%structured_grid%nzs
-          if (i > 0 .and. i <= grid%structured_grid%nlx .and. &
-              j > 0 .and. j <= grid%structured_grid%nly .and. &
-              k > 0 .and. k <= grid%structured_grid%nlz) then
-            temp_int_array(local_count) = &
-                i + (j-1)*grid%structured_grid%nlx + &
-                (k-1)*grid%structured_grid%nlxy
+      !sp start
+      select case(grid%itype) 
+        case(UNSTRUCTURED_GRID)
+          allocate(temp_int_array(region%num_cells))
+          temp_int_array = 0
+          local_count=0
+          do count=1,region%num_cells
+            local_id = GridGetLocalIdFromNaturalId( grid, region%cell_ids(count))
+            if( local_id .le. 0) cycle
+            if( local_id .gt. grid%unstructured_grid%num_cells_local) cycle
             local_count = local_count + 1
+            temp_int_array(local_count) = local_id
+          enddo
+          if (local_count /= region%num_cells) then
+            deallocate(region%cell_ids)
+            allocate(region%cell_ids(local_count))
+            region%cell_ids(1:local_count) = temp_int_array(1:local_count)
+            region%num_cells=local_count 
           endif
-        enddo
-      else
-        call GridCreateNaturalToGhostedHash(grid,option)
-        do count=1,region%num_cells
-          local_ghosted_id = UnstructGridGetGhostIdFromHash( &
-                                                    grid%unstructured_grid, &
-                                                    region%cell_ids(count))
-          if (local_ghosted_id > -1) then
-            local_id = grid%nG2L(local_ghosted_id)
-            if (local_id > -1) then
-              temp_int_array(local_count) = local_id
+          deallocate(temp_int_array)
+
+        case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+!sp following was commented out 
+!sp remove? 
+!geh: Not for now.  The below maps a list of natural ids to local.  This is now done
+!     in hdf5.F90 for lists of cells from hdf5 files.  If we elect to support ascii
+!     files, we will need this functionality here.
+#if 0
+          do count=1,region%num_cells
+            i = mod(region%cell_ids(count),grid%structured_grid%nx) - &
+                  grid%structured_grid%nxs
+            j = mod((region%cell_ids(count)-1)/grid%structured_grid%nx, &
+                    grid%structured_grid%ny)+1 - &
+                  grid%structured_grid%nys
+            k = ((region%cell_ids(count)-1)/grid%structured_grid%nxy)+1 - &
+                  grid%structured_grid%nzs
+            if (i > 0 .and. i <= grid%structured_grid%nlx .and. &
+                j > 0 .and. j <= grid%structured_grid%nly .and. &
+                k > 0 .and. k <= grid%structured_grid%nlz) then
+              temp_int_array(local_count) = &
+                  i + (j-1)*grid%structured_grid%nlx + &
+                  (k-1)*grid%structured_grid%nlxy
               local_count = local_count + 1
             endif
-          endif
-        enddo
-        call GridDestroyHashTable(grid)
-      endif
-      if (local_count /= region%num_cells) then
-        deallocate(region%cell_ids)
-        allocate(region%cell_ids(local_count))
-        region%cell_ids(1:local_count) = temp_int_array(1:local_count)
-      endif
-      deallocate(temp_int_array)
-#endif        
+          enddo
+#endif
+        case default
+          option%io_buffer = 'GridLocalizeRegions: define region by list ' // &
+            'of cells not implemented: ' // trim(region%name)
+          call printErrMsg(option)
+      end select
+      !sp end 
+
     endif
     
     if (region%num_cells == 0 .and. associated(region%cell_ids)) then
@@ -1896,6 +1919,46 @@ end subroutine GridPrintHashTable
 
 ! ************************************************************************** !
 !
+! GridGetNeighbors: Returns an array of neighboring cells
+! author: Glenn Hammond
+! date: 01/28/11
+!
+! ************************************************************************** !
+subroutine GridGetGhostedNeighbors(grid,ghosted_id,stencil_type, &
+                                   stencil_width_i,stencil_width_j, &
+                                   stencil_width_k, &
+                                   ghosted_neighbors,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(grid_type) :: grid
+  type(option_type) :: option
+  PetscInt :: ghosted_id
+  PetscInt :: stencil_type
+  PetscInt :: stencil_width_i
+  PetscInt :: stencil_width_j
+  PetscInt :: stencil_width_k
+  PetscInt :: ghosted_neighbors(0:27)
+  
+  select case(grid%itype)
+    case(STRUCTURED_GRID,STRUCTURED_GRID_MIMETIC)
+      call StructGridGetGhostedNeighbors(grid%structured_grid, &
+                                         ghosted_id,stencil_type, &
+                                         stencil_width_i, &
+                                         stencil_width_j,stencil_width_k, &
+                                         ghosted_neighbors,option)
+    case(UNSTRUCTURED_GRID) 
+      option%io_buffer = 'GridGetNeighbors not currently supported for ' // &
+        'unstructured grids.'
+      call printErrMsg(option)
+  end select
+
+end subroutine GridGetGhostedNeighbors
+
+! ************************************************************************** !
+!
 ! GridDestroy: Deallocates a grid
 ! author: Glenn Hammond
 ! date: 11/01/07
@@ -1949,6 +2012,33 @@ subroutine GridDestroy(grid)
 
 end subroutine GridDestroy
 
+
+! ************************************************************************** !
+!
+! GridDestroy: Returns pointer to cell-centered vector values
+! author: Bobby Philip
+! date:  12/15/10
+!
+! ************************************************************************** !
+subroutine GridVecGetMaskArrayCellF90(grid, vec, f90ptr, ierr)
+
+  implicit none
+
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+
+  type(grid_type) :: grid
+  Vec:: vec
+  PetscReal, pointer :: f90ptr(:)
+  PetscErrorCode :: ierr
+
+  if (associated(grid%structured_grid)) then
+     call StructuredGridVecGetMaskArrayCellF90(grid%structured_grid, vec, f90ptr, ierr)
+  endif
+
+end subroutine GridVecGetMaskArrayCellF90
+
+      
 ! ************************************************************************** !
 !
 ! GridDestroy: Returns pointer to cell-centered vector values
@@ -1976,6 +2066,7 @@ subroutine GridVecGetArrayCellF90(grid, vec, f90ptr, ierr)
 
 end subroutine GridVecGetArrayCellF90
 
+      
 ! ************************************************************************** !
 !
 ! GridDestroy: Returns pointer to edge-based vector values?

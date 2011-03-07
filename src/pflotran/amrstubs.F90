@@ -153,6 +153,17 @@ implicit none
   PetscFortranAddr :: f90wrap
 end subroutine samr_vecgetarraysidef90
 
+
+subroutine samrvecgetmaskarraycellf90(patch, petscvec, f90wrap)
+implicit none
+#include "finclude/petscsysdef.h"
+#include "finclude/petscvec.h"
+#include "finclude/petscvec.h90"
+  PetscFortranAddr, intent(inout):: patch
+  Vec:: petscvec
+  PetscFortranAddr :: f90wrap
+end subroutine samrvecgetmaskarraycellf90
+      
 subroutine samr_patch_get_spacing(p_samr_patch, dx, dy, dz)
 implicit none
 #include "finclude/petscsysdef.h"
@@ -329,5 +340,6 @@ use Realization_module
 PetscFortranAddr :: p_application
 Mat :: transportMat
 end subroutine SAMRSetPetscTransportMatrix
+
 
 #endif

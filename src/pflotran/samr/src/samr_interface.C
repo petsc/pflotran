@@ -55,6 +55,7 @@
 #define TOTAL_SORBED_MOBILE  37
 #define COLLOID_MOBILE  38
 #define COLLOID_IMMOBILE  39
+#define AGE  40
 
 extern "C" {
 #include "petsc.h"
@@ -231,6 +232,25 @@ void samr_vecgetarraysidef90_(SAMRAI::hier::Patch<NDIM> **patch,
    
 }
 
+void samrvecgetmaskarraycellf90_(SAMRAI::hier::Patch<NDIM> **patch, 
+			     Vec *petscVec,
+			     void **f90wrap)
+
+{
+  SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > sVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(*petscVec);
+  const int cvIndex = sVec->getControlVolumeIndex(0);  
+  SAMRAI::tbox::Pointer< SAMRAI::pdat::CCellData<NDIM, double> > pData = (*patch)->getPatchData(cvIndex);
+  int depth = pData->getDepth();
+  
+  int len = pData->getGhostBox().size();
+  len = len*depth;
+  
+  void *p_data_ptr = pData->getPointer(0);
+  
+  cf90bridge_(p_data_ptr, &len, *f90wrap);
+   
+}
+
 int samr_patch_at_bc_(SAMRAI::hier::Patch<NDIM> **patch, 
                       int *axis, int *side)
 {
@@ -265,9 +285,21 @@ void samrcreatematrix_(SAMRAI::PflotranApplicationStrategy **application_strateg
                        Mat *pMatrix)    
 {
    tbox::Pointer<tbox::Database> application_db = (*application_strategy)->getDatabase();
-   
+#if 0   
    tbox::Pointer<tbox::Database> operator_db = application_db->getDatabase("PflotranMultilevelOperator");
+#else
+   tbox::Pointer<tbox::Database> operator_db;
+   if(*flowortransport==0)
+     {
+       operator_db = application_db->getDatabase("PflotranFlowMultilevelOperator");
+     }
+   else
+     {
+       operator_db = application_db->getDatabase("PflotranTransportMultilevelOperator");
+     }
 
+#endif
+   
    SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->getHierarchy();
 
    operator_db->putInteger("ndof", *ndof);

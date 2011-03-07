@@ -22,7 +22,8 @@ module General_module
   PetscReal, parameter :: eps       = 1.D-8
   PetscReal, parameter :: floweps   = 1.D-24
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
-  
+
+#ifdef GENERAL  
   public GeneralResidual,GeneralJacobian, &
          GeneralUpdateFixedAccum,GeneralTimeCut,&
          GeneralSetup, GeneralNumericalJacTest, &
@@ -123,27 +124,27 @@ subroutine GeneralSetupPatch(realization)
 
   PetscInt :: ghosted_id, iconn, sum_connection
   PetscInt :: i
-  type(general_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)  
+  type(general_auxvar_type), pointer :: gen_aux_vars(:), gen_aux_vars_bc(:)  
   
   option => realization%option
   patch => realization%patch
   grid => patch%grid
 
   patch%aux%General => GeneralAuxCreate()
-#if 0
+
   allocate(patch%aux%General%general_parameter%sir(option%nphase, &
                                   size(realization%saturation_function_array)))
   do i = 1, size(realization%saturation_function_array)
     patch%aux%General%general_parameter%sir(:,realization%saturation_function_array(i)%ptr%id) = &
       realization%saturation_function_array(i)%ptr%Sr(:)
   enddo
-#endif
+
   ! allocate aux_var data structures for all grid cells  
-  allocate(rich_aux_vars(grid%ngmax))
+  allocate(gen_aux_vars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
-    call GeneralAuxVarInit(rich_aux_vars(ghosted_id),option)
+    call GeneralAuxVarInit(gen_aux_vars(ghosted_id),option)
   enddo
-  patch%aux%General%aux_vars => rich_aux_vars
+  patch%aux%General%aux_vars => gen_aux_vars
   patch%aux%General%num_aux = grid%ngmax
 
   ! count the number of boundary connections and allocate
@@ -156,11 +157,11 @@ subroutine GeneralSetupPatch(realization)
                      boundary_condition%connection_set%num_connections
     boundary_condition => boundary_condition%next
   enddo
-  allocate(rich_aux_vars_bc(sum_connection))
+  allocate(gen_aux_vars_bc(sum_connection))
   do iconn = 1, sum_connection
-    call GeneralAuxVarInit(rich_aux_vars_bc(iconn),option)
+    call GeneralAuxVarInit(gen_aux_vars_bc(iconn),option)
   enddo
-  patch%aux%General%aux_vars_bc => rich_aux_vars_bc
+  patch%aux%General%aux_vars_bc => gen_aux_vars_bc
   patch%aux%General%num_aux_bc = sum_connection
   
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
@@ -399,7 +400,7 @@ subroutine GeneralUpdateAuxVarsPatch(realization)
   type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
-  type(general_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)  
+  type(general_auxvar_type), pointer :: gen_aux_vars(:), gen_aux_vars_bc(:)  
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)  
 
   PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn
@@ -414,8 +415,8 @@ subroutine GeneralUpdateAuxVarsPatch(realization)
   grid => patch%grid
   field => realization%field
 
-  rich_aux_vars => patch%aux%General%aux_vars
-  rich_aux_vars_bc => patch%aux%General%aux_vars_bc
+  gen_aux_vars => patch%aux%General%aux_vars
+  gen_aux_vars_bc => patch%aux%General%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
     
@@ -432,7 +433,7 @@ subroutine GeneralUpdateAuxVarsPatch(realization)
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
    
-    call GeneralAuxVarCompute(xx_loc_p(ghosted_id:ghosted_id),rich_aux_vars(ghosted_id), &
+    call GeneralAuxVarCompute(xx_loc_p(ghosted_id:ghosted_id),gen_aux_vars(ghosted_id), &
                        global_aux_vars(ghosted_id), &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
@@ -459,7 +460,7 @@ subroutine GeneralUpdateAuxVarsPatch(realization)
           xxbc(1) = xx_loc_p(ghosted_id)
       end select
       
-      call GeneralAuxVarCompute(xxbc(1),rich_aux_vars_bc(sum_connection), &
+      call GeneralAuxVarCompute(xxbc(1),gen_aux_vars_bc(sum_connection), &
                          global_aux_vars_bc(sum_connection), &
                          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                          porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                         
@@ -621,7 +622,7 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
-  type(general_auxvar_type), pointer :: rich_aux_vars(:)
+  type(general_auxvar_type), pointer :: gen_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)
 
   PetscInt :: ghosted_id, local_id
@@ -636,7 +637,7 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
   patch => realization%patch
   grid => patch%grid
 
-  rich_aux_vars => patch%aux%General%aux_vars
+  gen_aux_vars => patch%aux%General%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
     
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
@@ -655,11 +656,11 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
     call GeneralAuxVarCompute(xx_p(local_id:local_id), &
-                   rich_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
+                   gen_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                    realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                    porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                        
                    option)
-    call GeneralAccumulation(rich_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
+    call GeneralAccumulation(gen_aux_vars(ghosted_id),global_aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               option,accum_p(local_id:local_id)) 
@@ -673,10 +674,6 @@ subroutine GeneralUpdateFixedAccumPatch(realization)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)  
 
   call GridVecRestoreArrayF90(grid,field%flow_accum, accum_p, ierr)
-
-#if 0
-!  call GeneralNumericalJacTest(field%flow_xx,realization)
-#endif
 
 end subroutine GeneralUpdateFixedAccumPatch
 
@@ -780,7 +777,7 @@ end subroutine GeneralNumericalJacTest
 ! date: 01/05/10
 !
 ! ************************************************************************** !
-subroutine GeneralAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
+subroutine GeneralAccumDerivative(gen_aux_var,global_aux_var,por,vol, &
                                    option,sat_func,J)
 
   use Option_module
@@ -788,58 +785,59 @@ subroutine GeneralAccumDerivative(rich_aux_var,global_aux_var,por,vol, &
   
   implicit none
 
-  type(general_auxvar_type) :: rich_aux_var
+  type(general_auxvar_type) :: gen_aux_var
   type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
   PetscReal :: vol, por
   type(saturation_function_type) :: sat_func
   PetscReal :: J(option%nflowdof,option%nflowdof)
      
-#if 0
   PetscInt :: ispec 
   PetscReal :: porXvol
 
   PetscInt :: iphase, ideriv
-  type(general_auxvar_type) :: rich_aux_var_pert
+  type(general_auxvar_type) :: gen_aux_var_pert
   type(global_auxvar_type) :: global_aux_var_pert
   PetscReal :: x(1), x_pert(1), pert, res(1), res_pert(1), J_pert(1,1)
 
   porXvol = por*vol/option%flow_dt
-      
+
+#ifdef GENERAL      
   ! accumulation term units = dkmol/dp
-  J(1,1) = (global_aux_var%sat(1)*rich_aux_var%dden_dp+ &
-            rich_aux_var%dsat_dp*global_aux_var%den(1))* &
+  J(1,1) = (global_aux_var%sat(1)*gen_aux_var%dden_dp+ &
+            gen_aux_var%dsat_dp*global_aux_var%den(1))* &
            porXvol
 
   if (option%numerical_derivatives) then
     call GlobalAuxVarInit(global_aux_var_pert,option)  
-    call GeneralAuxVarCopy(rich_aux_var,rich_aux_var_pert,option)
+    call GeneralAuxVarCopy(gen_aux_var,gen_aux_var_pert,option)
     call GlobalAuxVarCopy(global_aux_var,global_aux_var_pert,option)
     x(1) = global_aux_var%pres(1)
-    call GeneralAccumulation(rich_aux_var,global_aux_var,por,vol,option,res)
+    call GeneralAccumulation(gen_aux_var,global_aux_var,por,vol,option,res)
     ideriv = 1
     pert = x(ideriv)*perturbation_tolerance
     x_pert = x
     x_pert(ideriv) = x_pert(ideriv) + pert
-    call GeneralAuxVarCompute(x_pert(1),rich_aux_var_pert,global_aux_var_pert, &
+    call GeneralAuxVarCompute(x_pert(1),gen_aux_var_pert,global_aux_var_pert, &
                                sat_func,0.d0,0.d0,option)
-#if 0      
+
       select case(ideriv)
         case(1)
 !         print *, 'dvis_dp:', aux_var%dvis_dp, (aux_var_pert%vis-aux_var%vis)/pert(ideriv)
 !         print *, 'dkr_dp:', aux_var%dkr_dp, (aux_var_pert%kr-aux_var%kr)/pert(ideriv)
           print *, 'dsat_dp:', aux_var%dsat_dp, (global_aux_var_pert%sat-global_aux_var%sat)/pert
           print *, 'dden_dp:', aux_var%dden_dp, (global_aux_var_pert%den-global_aux_var%den)/pert
-          print *, 'dkvr_dp:', aux_var%dkvr_dp, (rich_aux_var_pert%kvr-rich_aux_var%kvr)/pert
+          print *, 'dkvr_dp:', aux_var%dkvr_dp, (gen_aux_var_pert%kvr-gen_aux_var%kvr)/pert
       end select     
-#endif     
-    call GeneralAccumulation(rich_aux_var_pert,global_aux_var,por,vol, &
+
+    call GeneralAccumulation(gen_aux_var_pert,global_aux_var,por,vol, &
                               option,res_pert)
     J_pert(1,1) = (res_pert(1)-res(1))/pert
     J = J_pert
     call GlobalAuxVarDestroy(global_aux_var_pert)  
   endif
 #endif
+
    
 end subroutine GeneralAccumDerivative
 
@@ -851,14 +849,14 @@ end subroutine GeneralAccumDerivative
 ! date: 01/05/10
 !
 ! ************************************************************************** !  
-subroutine GeneralAccumulation(rich_aux_var,global_aux_var,por,vol, &
+subroutine GeneralAccumulation(gen_aux_var,global_aux_var,por,vol, &
                                 option,Res)
 
   use Option_module
   
   implicit none
 
-  type(general_auxvar_type) :: rich_aux_var
+  type(general_auxvar_type) :: gen_aux_var
   type(global_auxvar_type) :: global_aux_var
   type(option_type) :: option
   PetscReal :: Res(1:option%nflowdof) 
@@ -878,9 +876,9 @@ end subroutine GeneralAccumulation
 ! date: 01/05/10
 !
 ! ************************************************************************** ! 
-subroutine GeneralFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
+subroutine GeneralFluxDerivative(gen_aux_var_up,global_aux_var_up,por_up, &
                                   sir_up,dd_up,perm_up, &
-                                  rich_aux_var_dn,global_aux_var_dn,por_dn, &
+                                  gen_aux_var_dn,global_aux_var_dn,por_dn, &
                                   sir_dn,dd_dn,perm_dn, &
                                   area,dist_gravity,upweight, &
                                   option,sat_func_up,sat_func_dn,Jup,Jdn)
@@ -889,7 +887,7 @@ subroutine GeneralFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
   
   implicit none
   
-  type(general_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
+  type(general_auxvar_type) :: gen_aux_var_up, gen_aux_var_dn
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
@@ -902,7 +900,6 @@ subroutine GeneralFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
   type(saturation_function_type) :: sat_func_up, sat_func_dn
   PetscReal :: Jup(option%nflowdof,option%nflowdof), Jdn(option%nflowdof,option%nflowdof)
 
-#if 0     
   PetscReal :: q
   PetscReal :: ukvr,Dq
   PetscReal :: density_ave,cond,gravity,dphi
@@ -914,7 +911,7 @@ subroutine GeneralFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
   PetscReal :: dq_dp_up, dq_dp_dn
 
   PetscInt :: iphase, ideriv
-  type(general_auxvar_type) :: rich_aux_var_pert_up, rich_aux_var_pert_dn
+  type(general_auxvar_type) :: gen_aux_var_pert_up, gen_aux_var_pert_dn
   type(global_auxvar_type) :: global_aux_var_pert_up, global_aux_var_pert_dn
   PetscReal :: x_up(1), x_dn(1), x_pert_up(1), x_pert_dn(1), pert_up, pert_dn, &
             res(1), res_pert_up(1), res_pert_dn(1), J_pert_up(1,1), J_pert_dn(1,1)
@@ -938,6 +935,7 @@ subroutine GeneralFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
   dq_dp_dn = 0.d0
   
 ! Flow term
+#ifdef GENERAL
   if (global_aux_var_up%sat(1) > sir_up .or. global_aux_var_dn%sat(1) > sir_dn) then
     if (global_aux_var_up%sat(1) <eps) then 
       upweight=0.d0
@@ -946,8 +944,8 @@ subroutine GeneralFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
     endif
     density_ave = upweight*global_aux_var_up%den(1)+ &
                   (1.D0-upweight)*global_aux_var_dn%den(1)
-    dden_ave_dp_up = upweight*rich_aux_var_up%dden_dp
-    dden_ave_dp_dn = (1.D0-upweight)*rich_aux_var_dn%dden_dp
+    dden_ave_dp_up = upweight*gen_aux_var_up%dden_dp
+    dden_ave_dp_dn = (1.D0-upweight)*gen_aux_var_dn%dden_dp
 
     gravity = (upweight*global_aux_var_up%den(1) + &
               (1.D0-upweight)*global_aux_var_dn%den(1)) &
@@ -956,15 +954,15 @@ subroutine GeneralFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
     dgravity_dden_dn = (1.d0-upweight)*FMWH2O*dist_gravity
 
     dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)  + gravity
-    dphi_dp_up = 1.d0 + dgravity_dden_up*rich_aux_var_up%dden_dp
-    dphi_dp_dn = -1.d0 + dgravity_dden_dn*rich_aux_var_dn%dden_dp
+    dphi_dp_up = 1.d0 + dgravity_dden_up*gen_aux_var_up%dden_dp
+    dphi_dp_dn = -1.d0 + dgravity_dden_dn*gen_aux_var_dn%dden_dp
 
     if (dphi>=0.D0) then
-      ukvr = rich_aux_var_up%kvr
-      dukvr_dp_up = rich_aux_var_up%dkvr_dp
+      ukvr = gen_aux_var_up%kvr
+      dukvr_dp_up = gen_aux_var_up%dkvr_dp
     else
-      ukvr = rich_aux_var_dn%kvr
-      dukvr_dp_dn = rich_aux_var_dn%dkvr_dp
+      ukvr = gen_aux_var_dn%kvr
+      dukvr_dp_dn = gen_aux_var_dn%dkvr_dp
     endif      
    
     if (ukvr>floweps) then
@@ -978,21 +976,21 @@ subroutine GeneralFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
       Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)
     endif
   endif 
-
+#endif
  ! note: Res is the flux contribution, for node up J = J + Jup
  !                                              dn J = J - Jdn  
 
   if (option%numerical_derivatives) then
     call GlobalAuxVarInit(global_aux_var_pert_up,option)
     call GlobalAuxVarInit(global_aux_var_pert_dn,option)  
-    call GeneralAuxVarCopy(rich_aux_var_up,rich_aux_var_pert_up,option)
-    call GeneralAuxVarCopy(rich_aux_var_dn,rich_aux_var_pert_dn,option)
+    call GeneralAuxVarCopy(gen_aux_var_up,gen_aux_var_pert_up,option)
+    call GeneralAuxVarCopy(gen_aux_var_dn,gen_aux_var_pert_dn,option)
     call GlobalAuxVarCopy(global_aux_var_up,global_aux_var_pert_up,option)
     call GlobalAuxVarCopy(global_aux_var_dn,global_aux_var_pert_dn,option)
     x_up(1) = global_aux_var_up%pres(1)
     x_dn(1) = global_aux_var_dn%pres(1)
-    call GeneralFlux(rich_aux_var_up,global_aux_var_up,por_up,sir_up,dd_up,perm_up, &
-                      rich_aux_var_dn,global_aux_var_dn,por_dn,sir_dn,dd_dn,perm_dn, &
+    call GeneralFlux(gen_aux_var_up,global_aux_var_up,por_up,sir_up,dd_up,perm_up, &
+                      gen_aux_var_dn,global_aux_var_dn,por_dn,sir_dn,dd_dn,perm_dn, &
                       area,dist_gravity,upweight, &
                       option,v_darcy,res)
     ideriv = 1
@@ -1002,21 +1000,21 @@ subroutine GeneralFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
     x_pert_dn = x_dn
     x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
     x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
-    call GeneralAuxVarCompute(x_pert_up(1),rich_aux_var_pert_up, &
+    call GeneralAuxVarCompute(x_pert_up(1),gen_aux_var_pert_up, &
                                global_aux_var_pert_up,sat_func_up, &
                                0.d0,0.d0,option)
-    call GeneralAuxVarCompute(x_pert_dn(1),rich_aux_var_pert_dn, &
+    call GeneralAuxVarCompute(x_pert_dn(1),gen_aux_var_pert_dn, &
                                global_aux_var_pert_dn,sat_func_dn, &
                                0.d0,0.d0,option)
-    call GeneralFlux(rich_aux_var_pert_up,global_aux_var_pert_up, &
+    call GeneralFlux(gen_aux_var_pert_up,global_aux_var_pert_up, &
                       por_up,sir_up,dd_up,perm_up, &
-                      rich_aux_var_dn,global_aux_var_dn, &
+                      gen_aux_var_dn,global_aux_var_dn, &
                       por_dn,sir_dn,dd_dn,perm_dn, &
                       area,dist_gravity,upweight, &
                       option,v_darcy,res_pert_up)
-    call GeneralFlux(rich_aux_var_up,global_aux_var_up, &
+    call GeneralFlux(gen_aux_var_up,global_aux_var_up, &
                       por_up,sir_up,dd_up,perm_up, &
-                      rich_aux_var_pert_dn,global_aux_var_pert_dn, &
+                      gen_aux_var_pert_dn,global_aux_var_pert_dn, &
                       por_dn,sir_dn,dd_dn,perm_dn, &
                       area,dist_gravity,upweight, &
                       option,v_darcy,res_pert_dn)
@@ -1027,7 +1025,6 @@ subroutine GeneralFluxDerivative(rich_aux_var_up,global_aux_var_up,por_up, &
     call GlobalAuxVarDestroy(global_aux_var_pert_up)
     call GlobalAuxVarDestroy(global_aux_var_pert_dn)    
   endif
-#endif
 
 end subroutine GeneralFluxDerivative
 
@@ -1038,9 +1035,9 @@ end subroutine GeneralFluxDerivative
 ! date: 01/05/10
 !
 ! ************************************************************************** ! 
-subroutine GeneralFlux(rich_aux_var_up,global_aux_var_up, &
+subroutine GeneralFlux(gen_aux_var_up,global_aux_var_up, &
                         por_up,sir_up,dd_up,perm_up, &
-                        rich_aux_var_dn,global_aux_var_dn, &
+                        gen_aux_var_dn,global_aux_var_dn, &
                         por_dn,sir_dn,dd_dn,perm_dn, &
                         area,dist_gravity,upweight, &
                         option,v_darcy,Res)
@@ -1048,7 +1045,7 @@ subroutine GeneralFlux(rich_aux_var_up,global_aux_var_up, &
   
   implicit none
   
-  type(general_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
+  type(general_auxvar_type) :: gen_aux_var_up, gen_aux_var_dn
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
@@ -1060,7 +1057,6 @@ subroutine GeneralFlux(rich_aux_var_up,global_aux_var_up, &
   PetscReal :: dist_gravity  ! distance along gravity vector
   PetscReal :: upweight
 
-#if 0     
   PetscInt :: ispec
   PetscReal :: fluxm, q
   PetscReal :: ukvr,Dq
@@ -1087,12 +1083,13 @@ subroutine GeneralFlux(rich_aux_var_up,global_aux_var_up, &
 
     dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1)  + gravity
 
+#ifdef GENERAL
     if (dphi>=0.D0) then
-      ukvr = rich_aux_var_up%kvr
+      ukvr = gen_aux_var_up%kvr
     else
-      ukvr = rich_aux_var_dn%kvr
+      ukvr = gen_aux_var_dn%kvr
     endif      
-   
+#endif
 
     if (ukvr>floweps) then
       v_darcy= Dq * ukvr * dphi
@@ -1106,7 +1103,6 @@ subroutine GeneralFlux(rich_aux_var_up,global_aux_var_up, &
   Res(1) = fluxm
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
-#endif
 
 end subroutine GeneralFlux
 
@@ -1119,8 +1115,8 @@ end subroutine GeneralFlux
 !
 ! ************************************************************************** !
 subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
-                                    rich_aux_var_up,global_aux_var_up, &
-                                    rich_aux_var_dn,global_aux_var_dn, &
+                                    gen_aux_var_up,global_aux_var_up, &
+                                    gen_aux_var_dn,global_aux_var_dn, &
                                     por_dn,sir_dn,dd_up,perm_dn, &
                                     area,dist_gravity,option, &
                                     sat_func_dn,Jdn)
@@ -1130,7 +1126,7 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
   implicit none
   
   PetscInt :: ibndtype(:)
-  type(general_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
+  type(general_auxvar_type) :: gen_aux_var_up, gen_aux_var_dn
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
   type(option_type) :: option
   PetscReal :: dd_up, sir_dn
@@ -1142,7 +1138,6 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
 
   PetscReal :: dist_gravity  ! distance along gravity vector
           
-#if 0  
   PetscReal :: v_darcy
   PetscReal :: q,density_ave
   PetscReal :: ukvr,diffdp,Dq
@@ -1156,7 +1151,7 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
   PetscInt :: pressure_bc_type
 
   PetscInt :: iphase, ideriv
-  type(general_auxvar_type) :: rich_aux_var_pert_dn, rich_aux_var_pert_up
+  type(general_auxvar_type) :: gen_aux_var_pert_dn, gen_aux_var_pert_up
   type(global_auxvar_type) :: global_aux_var_pert_dn, global_aux_var_pert_up
   PetscReal :: perturbation
   PetscReal :: x_dn(1), x_up(1), x_pert_dn(1), x_pert_up(1), pert_dn, res(1), &
@@ -1175,6 +1170,7 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
   dq_dp_dn = 0.d0
         
   ! Flow
+#ifdef GENERAL
   pressure_bc_type = ibndtype(RICHARDS_PRESSURE_DOF)
   select case(pressure_bc_type)
     ! figure out the direction of flow
@@ -1194,7 +1190,7 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
         endif
         
         density_ave = upweight*global_aux_var_up%den(1)+(1.D0-upweight)*global_aux_var_dn%den(1)
-        dden_ave_dp_dn = (1.D0-upweight)*rich_aux_var_dn%dden_dp
+        dden_ave_dp_dn = (1.D0-upweight)*gen_aux_var_dn%dden_dp
 
         gravity = (upweight*global_aux_var_up%den(1) + &
                   (1.D0-upweight)*global_aux_var_dn%den(1)) &
@@ -1202,7 +1198,7 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
         dgravity_dden_dn = (1.d0-upweight)*FMWH2O*dist_gravity
 
         dphi = global_aux_var_up%pres(1) - global_aux_var_dn%pres(1) + gravity
-        dphi_dp_dn = -1.d0 + dgravity_dden_dn*rich_aux_var_dn%dden_dp
+        dphi_dp_dn = -1.d0 + dgravity_dden_dn*gen_aux_var_dn%dden_dp
 
         if (pressure_bc_type == SEEPAGE_BC .or. &
             pressure_bc_type == CONDUCTANCE_BC) then
@@ -1214,10 +1210,12 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
         endif
         
         if (dphi>=0.D0) then
-          ukvr = rich_aux_var_up%kvr
+          ukvr = gen_aux_var_up%kvr
         else
-          ukvr = rich_aux_var_dn%kvr
-          dukvr_dp_dn = rich_aux_var_dn%dkvr_dp
+          ukvr = gen_aux_var_dn%kvr
+#ifdef GENERAL          
+          dukvr_dp_dn = gen_aux_var_dn%dkvr_dp
+#endif
         endif      
      
         if (ukvr*Dq>floweps) then
@@ -1234,20 +1232,21 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
           density_ave = global_aux_var_up%den(1)
         else 
           density_ave = global_aux_var_dn%den(1)
-          dden_ave_dp_dn = rich_aux_var_dn%dden_dp
+          dden_ave_dp_dn = gen_aux_var_dn%dden_dp
         endif 
         q = v_darcy * area
       endif
 
   end select
+#endif
 
   Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)
 
   if (option%numerical_derivatives) then
     call GlobalAuxVarInit(global_aux_var_pert_up,option)
     call GlobalAuxVarInit(global_aux_var_pert_dn,option)  
-    call GeneralAuxVarCopy(rich_aux_var_up,rich_aux_var_pert_up,option)
-    call GeneralAuxVarCopy(rich_aux_var_dn,rich_aux_var_pert_dn,option)
+    call GeneralAuxVarCopy(gen_aux_var_up,gen_aux_var_pert_up,option)
+    call GeneralAuxVarCopy(gen_aux_var_dn,gen_aux_var_pert_dn,option)
     call GlobalAuxVarCopy(global_aux_var_up,global_aux_var_pert_up,option)
     call GlobalAuxVarCopy(global_aux_var_dn,global_aux_var_pert_dn,option)
     x_up(1) = global_aux_var_up%pres(1)
@@ -1257,8 +1256,8 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
       x_up(ideriv) = x_dn(ideriv)
     endif
     call GeneralBCFlux(ibndtype,aux_vars, &
-                        rich_aux_var_up,global_aux_var_up, &
-                        rich_aux_var_dn,global_aux_var_dn, &
+                        gen_aux_var_up,global_aux_var_up, &
+                        gen_aux_var_dn,global_aux_var_dn, &
                         por_dn,sir_dn,dd_up,perm_dn, &
                         area,dist_gravity,option,v_darcy,res)
     if (pressure_bc_type == ZERO_GRADIENT_BC) then
@@ -1272,15 +1271,15 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
     if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
       x_pert_up(ideriv) = x_pert_dn(ideriv)
     endif   
-    call GeneralAuxVarCompute(x_pert_dn(1),rich_aux_var_pert_dn, &
+    call GeneralAuxVarCompute(x_pert_dn(1),gen_aux_var_pert_dn, &
                                global_aux_var_pert_dn,sat_func_dn, &
                                0.d0,0.d0,option)
-    call GeneralAuxVarCompute(x_pert_up(1),rich_aux_var_pert_up, &
+    call GeneralAuxVarCompute(x_pert_up(1),gen_aux_var_pert_up, &
                                global_aux_var_pert_up,sat_func_dn, &
                                0.d0,0.d0,option)
     call GeneralBCFlux(ibndtype,aux_vars, &
-                        rich_aux_var_pert_up,global_aux_var_pert_up, &
-                        rich_aux_var_pert_dn,global_aux_var_pert_dn, &
+                        gen_aux_var_pert_up,global_aux_var_pert_up, &
+                        gen_aux_var_pert_dn,global_aux_var_pert_dn, &
                         por_dn,sir_dn,dd_up,perm_dn, &
                         area,dist_gravity,option,v_darcy,res_pert_dn)
     J_pert_dn(1,ideriv) = (res_pert_dn(1)-res(1))/pert_dn
@@ -1288,7 +1287,6 @@ subroutine GeneralBCFluxDerivative(ibndtype,aux_vars, &
     call GlobalAuxVarDestroy(global_aux_var_pert_up)
     call GlobalAuxVarDestroy(global_aux_var_pert_dn)      
   endif
-#endif
 
 end subroutine GeneralBCFluxDerivative
 
@@ -1300,8 +1298,8 @@ end subroutine GeneralBCFluxDerivative
 !
 ! ************************************************************************** !
 subroutine GeneralBCFlux(ibndtype,aux_vars, &
-                          rich_aux_var_up,global_aux_var_up, &
-                          rich_aux_var_dn,global_aux_var_dn, &
+                          gen_aux_var_up,global_aux_var_up, &
+                          gen_aux_var_dn,global_aux_var_dn, &
                           por_dn,sir_dn,dd_up,perm_dn, &
                           area,dist_gravity,option,v_darcy,Res)
   use Option_module
@@ -1309,7 +1307,7 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
   implicit none
   
   PetscInt :: ibndtype(:)
-  type(general_auxvar_type) :: rich_aux_var_up, rich_aux_var_dn
+  type(general_auxvar_type) :: gen_aux_var_up, gen_aux_var_dn
   type(global_auxvar_type) :: global_aux_var_up, global_aux_var_dn
   type(option_type) :: option
   PetscReal :: dd_up, sir_dn
@@ -1320,7 +1318,6 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
   
   PetscReal :: dist_gravity  ! distance along gravity vector
 
-#if 0          
   PetscInt :: ispec
   PetscReal :: fluxm,q,density_ave
   PetscReal :: ukvr,diffdp,Dq
@@ -1333,6 +1330,7 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
   q = 0.d0
 
   ! Flow  
+#ifdef GENERAL  
   pressure_bc_type = ibndtype(RICHARDS_PRESSURE_DOF)
   select case(pressure_bc_type)
     ! figure out the direction of flow
@@ -1368,9 +1366,9 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
         endif
    
         if (dphi>=0.D0) then
-          ukvr = rich_aux_var_up%kvr
+          ukvr = gen_aux_var_up%kvr
         else
-          ukvr = rich_aux_var_dn%kvr
+          ukvr = gen_aux_var_dn%kvr
         endif      
      
         if (ukvr*Dq>floweps) then
@@ -1389,13 +1387,13 @@ subroutine GeneralBCFlux(ibndtype,aux_vars, &
       endif
 
   end select
+#endif
 
   q = v_darcy * area
 
   fluxm = q*density_ave
 
   Res(1)=fluxm
-#endif
 
 end subroutine GeneralBCFlux
 
@@ -1655,7 +1653,6 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
 
   PetscErrorCode :: ierr
 
-#if 0
   PetscInt :: local_id, ghosted_id
   PetscInt :: local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
 
@@ -1677,7 +1674,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
   type(general_parameter_type), pointer :: general_parameter
-  type(general_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)
+  type(general_auxvar_type), pointer :: gen_aux_vars(:), gen_aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
@@ -1693,8 +1690,8 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   option => realization%option
   field => realization%field
   general_parameter => patch%aux%General%general_parameter
-  rich_aux_vars => patch%aux%General%aux_vars
-  rich_aux_vars_bc => patch%aux%General%aux_vars_bc
+  gen_aux_vars => patch%aux%General%aux_vars
+  gen_aux_vars_bc => patch%aux%General%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
@@ -1720,7 +1717,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   endif
 
   r_p = 0.d0
-#if 1
+
   if (option%use_samr) then
     nlx = grid%structured_grid%nlx  
     nly = grid%structured_grid%nly  
@@ -1792,12 +1789,12 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
    
-      call GeneralFlux(rich_aux_vars(ghosted_id_up), &
+      call GeneralFlux(gen_aux_vars(ghosted_id_up), &
                         global_aux_vars(ghosted_id_up), &
                           porosity_loc_p(ghosted_id_up), &
                           general_parameter%sir(1,icap_up), &
                           dd_up,perm_up, &
-                        rich_aux_vars(ghosted_id_dn), &
+                        gen_aux_vars(ghosted_id_dn), &
                         global_aux_vars(ghosted_id_dn), &
                           porosity_loc_p(ghosted_id_dn), &
                           general_parameter%sir(1,icap_dn), &
@@ -1847,8 +1844,7 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
 
     cur_connection_set => cur_connection_set%next
   enddo    
-#endif
-#if 1
+
   ! Boundary Flux Terms -----------------------------------
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
@@ -1887,9 +1883,9 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
 
       call GeneralBCFlux(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
-                                rich_aux_vars_bc(sum_connection), &
+                                gen_aux_vars_bc(sum_connection), &
                                 global_aux_vars_bc(sum_connection), &
-                                rich_aux_vars(ghosted_id), &
+                                gen_aux_vars(ghosted_id), &
                                 global_aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
                                 general_parameter%sir(1,icap_dn), &
@@ -1958,7 +1954,6 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
    enddo
     boundary_condition => boundary_condition%next
   enddo
-#endif  
 
   call GridVecRestoreArrayF90(grid,r, r_p, ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
@@ -1966,7 +1961,6 @@ subroutine GeneralResidualPatch1(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
-#endif
 
 end subroutine GeneralResidualPatch1
 
@@ -1999,7 +1993,6 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
 
   PetscErrorCode :: ierr
 
-#if 0
   PetscInt :: i
   PetscInt :: local_id, ghosted_id
 
@@ -2016,7 +2009,7 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(general_parameter_type), pointer :: general_parameter
-  type(general_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:)
+  type(general_auxvar_type), pointer :: gen_aux_vars(:), gen_aux_vars_bc(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:)
   type(coupler_type), pointer :: source_sink
   type(connection_set_type), pointer :: cur_connection_set
@@ -2027,8 +2020,8 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
   option => realization%option
   field => realization%field
   general_parameter => patch%aux%General%general_parameter
-  rich_aux_vars => patch%aux%General%aux_vars
-  rich_aux_vars_bc => patch%aux%General%aux_vars_bc
+  gen_aux_vars => patch%aux%General%aux_vars
+  gen_aux_vars_bc => patch%aux%General%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
 
@@ -2040,7 +2033,7 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
 
   ! Accumulation terms ------------------------------------
   if (.not.option%steady_state) then
-#if 1
+
     r_p = r_p - accum_p
 
     do local_id = 1, grid%nlmax  ! For each local node do...
@@ -2049,16 +2042,16 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-      call GeneralAccumulation(rich_aux_vars(ghosted_id), &
+      call GeneralAccumulation(gen_aux_vars(ghosted_id), &
                                 global_aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
                                 volume_p(local_id), &
                                 option,Res) 
       r_p(local_id) = r_p(local_id) + Res(1)
     enddo
-#endif
+
   endif
-#if 1
+
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first 
   do 
@@ -2091,7 +2084,6 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
     enddo
     source_sink => source_sink%next
   enddo
-#endif
 
   if (patch%aux%General%inactive_cells_exist) then
     do i=1,patch%aux%General%n_zero_rows
@@ -2103,7 +2095,6 @@ subroutine GeneralResidualPatch2(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%flow_accum, accum_p, ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
-#endif
 
 end subroutine GeneralResidualPatch2
 
@@ -2142,7 +2133,6 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
   MatStructure flag
   PetscErrorCode :: ierr
 
-#if 0  
   Mat :: J
   MatType :: mat_type
   PetscViewer :: viewer
@@ -2231,7 +2221,6 @@ subroutine GeneralJacobian(snes,xx,A,B,flag,realization,ierr)
     write(option%io_buffer,'("inf norm: ",es11.4)') norm
     call printMsg(option) 
   endif
-#endif
 
 end subroutine GeneralJacobian
                 
@@ -2265,7 +2254,6 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 
   PetscErrorCode :: ierr
 
-#if 0
   PetscReal, pointer :: porosity_loc_p(:), &
                         perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
   PetscReal, pointer :: icap_loc_p(:)
@@ -2292,7 +2280,7 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
   type(general_parameter_type), pointer :: general_parameter
-  type(general_auxvar_type), pointer :: rich_aux_vars(:), rich_aux_vars_bc(:) 
+  type(general_auxvar_type), pointer :: gen_aux_vars(:), gen_aux_vars_bc(:) 
   type(global_auxvar_type), pointer :: global_aux_vars(:), global_aux_vars_bc(:) 
   
   PetscViewer :: viewer
@@ -2302,21 +2290,10 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   option => realization%option
   field => realization%field
   general_parameter => patch%aux%General%general_parameter
-  rich_aux_vars => patch%aux%General%aux_vars
-  rich_aux_vars_bc => patch%aux%General%aux_vars_bc
+  gen_aux_vars => patch%aux%General%aux_vars
+  gen_aux_vars_bc => patch%aux%General%aux_vars_bc
   global_aux_vars => patch%aux%Global%aux_vars
   global_aux_vars_bc => patch%aux%Global%aux_vars_bc
-
-#ifdef GLENN
-  if (option%use_matrix_buffer) then
-    if (associated(patch%aux%General%matrix_buffer)) then
-      call MatrixBufferZero(patch%aux%General%matrix_buffer)
-    else
-      patch%aux%General%matrix_buffer => MatrixBufferCreate()
-      call MatrixBufferInit(A,patch%aux%General%matrix_buffer,grid)
-    endif
-  endif
-#endif
 
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
@@ -2324,7 +2301,6 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   call GridVecGetArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
   
-#if 1
   ! Interior Flux Terms -----------------------------------  
   connection_set_list => grid%internal_connection_set_list
   cur_connection_set => connection_set_list%first
@@ -2372,12 +2348,12 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
                               
-      call GeneralFluxDerivative(rich_aux_vars(ghosted_id_up), &
+      call GeneralFluxDerivative(gen_aux_vars(ghosted_id_up), &
                                   global_aux_vars(ghosted_id_up), &
                                     porosity_loc_p(ghosted_id_up), &
                                     general_parameter%sir(1,icap_up), &
                                     dd_up,perm_up, &
-                                  rich_aux_vars(ghosted_id_dn), &
+                                  gen_aux_vars(ghosted_id_dn), &
                                   global_aux_vars(ghosted_id_dn), &
                                     porosity_loc_p(ghosted_id_dn), &
                                     general_parameter%sir(1,icap_dn), &
@@ -2388,45 +2364,23 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                                   realization%saturation_function_array(icap_dn)%ptr,&
                                   Jup,Jdn)
       if (local_id_up > 0) then
-#ifdef GLENN
-        if (option%use_matrix_buffer) then
-          call MatrixBufferAdd(patch%aux%General%matrix_buffer,ghosted_id_up, &
-                               ghosted_id_up,Jup(1,1))
-          call MatrixBufferAdd(patch%aux%General%matrix_buffer,ghosted_id_up, &
-                               ghosted_id_dn,Jdn(1,1))
-        else
-#endif
           call MatSetValuesLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
                                         Jup,ADD_VALUES,ierr)
           call MatSetValuesLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
                                         Jdn,ADD_VALUES,ierr)
-#ifdef GLENN
-        endif
-#endif
       endif
       if (local_id_dn > 0) then
         Jup = -Jup
         Jdn = -Jdn
-#ifdef GLENN
-        if (option%use_matrix_buffer) then
-          call MatrixBufferAdd(patch%aux%General%matrix_buffer,ghosted_id_dn, &
-                               ghosted_id_dn,Jdn(1,1))
-          call MatrixBufferAdd(patch%aux%General%matrix_buffer,ghosted_id_dn, &
-                               ghosted_id_up,Jup(1,1))
-        else
-#endif
           call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
                                         Jdn,ADD_VALUES,ierr)
           call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
                                         Jup,ADD_VALUES,ierr)
-#ifdef GLENN
-        endif
-#endif
       endif
     enddo
     cur_connection_set => cur_connection_set%next
   enddo
-#endif
+
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -2434,7 +2388,7 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
     call MatView(A,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
-#if 1
+
   ! Boundary Flux Terms -----------------------------------
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
@@ -2473,9 +2427,9 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
 
       call GeneralBCFluxDerivative(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
-                                rich_aux_vars_bc(sum_connection), &
+                                gen_aux_vars_bc(sum_connection), &
                                 global_aux_vars_bc(sum_connection), &
-                                rich_aux_vars(ghosted_id), &
+                                gen_aux_vars(ghosted_id), &
                                 global_aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
                                 general_parameter%sir(1,icap_dn), &
@@ -2485,22 +2439,12 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
                                 realization%saturation_function_array(icap_dn)%ptr,&
                                 Jdn)
       Jdn = -Jdn
-#ifdef GLENN
-      if (option%use_matrix_buffer) then
-        call MatrixBufferAdd(patch%aux%General%matrix_buffer,ghosted_id, &
-                             ghosted_id,Jdn(1,1))
-      else
-#endif
         call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn, &
-                               ADD_VALUES,ierr)
-#ifdef GLENN
-      endif
-#endif
- 
+                               ADD_VALUES,ierr) 
     enddo
     boundary_condition => boundary_condition%next
   enddo
-#endif
+
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -2514,7 +2458,6 @@ subroutine GeneralJacobianPatch1(snes,xx,A,B,flag,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%perm_yy_loc, perm_yy_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%perm_zz_loc, perm_zz_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
-#endif
 
 end subroutine GeneralJacobianPatch1
 
@@ -2568,7 +2511,6 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
 
   PetscErrorCode :: ierr
 
-#if 0
   PetscReal, pointer :: porosity_loc_p(:), volume_p(:), icap_loc_p(:)
   PetscReal :: qsrc
   PetscInt :: icap
@@ -2584,7 +2526,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
   type(general_parameter_type), pointer :: general_parameter
-  type(general_auxvar_type), pointer :: rich_aux_vars(:)
+  type(general_auxvar_type), pointer :: gen_aux_vars(:)
   type(global_auxvar_type), pointer :: global_aux_vars(:)
   PetscInt :: flow_pc
   PetscViewer :: viewer
@@ -2594,7 +2536,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   option => realization%option
   field => realization%field
   general_parameter => patch%aux%General%general_parameter
-  rich_aux_vars => patch%aux%General%aux_vars
+  gen_aux_vars => patch%aux%General%aux_vars
   global_aux_vars => patch%aux%Global%aux_vars
 
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
@@ -2602,7 +2544,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
   
   if (.not.option%steady_state) then
-#if 1
+
   ! Accumulation terms ------------------------------------
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
@@ -2611,31 +2553,16 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
     icap = int(icap_loc_p(ghosted_id))
-    call GeneralAccumDerivative(rich_aux_vars(ghosted_id), &
+    call GeneralAccumDerivative(gen_aux_vars(ghosted_id), &
                               global_aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               option, &
                               realization%saturation_function_array(icap)%ptr,&
                               Jup) 
-#ifdef GLENN
-    if (option%use_matrix_buffer) then
-      call MatrixBufferAdd(patch%aux%General%matrix_buffer,ghosted_id, &
-                           ghosted_id,Jup(1,1))
-    else
-#endif
       call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup, &
                              ADD_VALUES,ierr)
-#ifdef GLENN
-    endif
-#endif
-!!$    if(option%use_samr) then
-!!$       flow_pc = 0
-!!$       call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), &
-!!$       realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
-!!$    endif
   enddo
-#endif
   endif
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -2644,7 +2571,7 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
     call MatView(A,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
-#if 1
+
   ! Source/sink terms -------------------------------------
   source_sink => patch%source_sinks%first 
   do 
@@ -2666,29 +2593,16 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
       select case(source_sink%flow_condition%rate%itype)
         case(MASS_RATE_SS)
         case(VOLUMETRIC_RATE_SS)  ! assume local density for now
-          Jup(1,1) = -qsrc*rich_aux_vars(ghosted_id)%dden_dp*FMWH2O
-
+#ifdef GENERAL
+          Jup(1,1) = -qsrc*gen_aux_vars(ghosted_id)%dden_dp*FMWH2O
+#endif
       end select
-#ifdef GLENN
-      if (option%use_matrix_buffer) then
-        call MatrixBufferAdd(patch%aux%General%matrix_buffer,ghosted_id, &
-                             ghosted_id,Jup(1,1))
-      else
-#endif
-        call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)  
-#ifdef GLENN
-      endif
-#endif
+      call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)  
 
-!!$      if(option%use_samr) then
-!!$         flow_pc = 0
-!!$         call SAMRSetJacobianSourceOnPatch(flow_pc, ghosted_id-1, Jup(1,1), &
-!!$         realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
-!!$      endif
     enddo
     source_sink => source_sink%next
   enddo
-#endif
+
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -2701,40 +2615,22 @@ subroutine GeneralJacobianPatch2(snes,xx,A,B,flag,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
   call GridVecRestoreArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
 
-#ifdef GLENN
-  if (option%use_matrix_buffer) then
-    if (patch%aux%General%inactive_cells_exist) then
-      call MatrixBufferZeroRows(patch%aux%General%matrix_buffer, &
-                                patch%aux%General%n_zero_rows, &
-                                patch%aux%General%zero_rows_local_ghosted)
-    endif
-    call MatrixBufferSetValues(A,patch%aux%General%matrix_buffer)
-  endif
-#endif
-
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
 
 ! zero out isothermal and inactive cells
-#ifdef GLENN
-  if (.not.option%use_matrix_buffer) then
-#endif
-    if (patch%aux%General%inactive_cells_exist) then
-      qsrc = 1.d0 ! solely a temporary variable in this conditional
-      call MatZeroRowsLocal(A,patch%aux%General%n_zero_rows, &
-                            patch%aux%General%zero_rows_local_ghosted, &
-                            qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
-    endif
-#ifdef GLENN
+  if (patch%aux%General%inactive_cells_exist) then
+    qsrc = 1.d0 ! solely a temporary variable in this conditional
+    call MatZeroRowsLocal(A,patch%aux%General%n_zero_rows, &
+                          patch%aux%General%zero_rows_local_ghosted, &
+                          qsrc,PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
   endif
-#endif
 
   if(option%use_samr) then
      flow_pc = 0
      call SAMRSetJacobianSrcCoeffsOnPatch(flow_pc, &
           realization%discretization%amrgrid%p_application, grid%structured_grid%p_samr_patch)
   endif
-#endif
 
 end subroutine GeneralJacobianPatch2
 
@@ -2949,5 +2845,5 @@ subroutine GeneralDestroyPatch(realization)
   ! place anything that needs to be freed here.
 
 end subroutine GeneralDestroyPatch
-
+#endif
 end module General_module

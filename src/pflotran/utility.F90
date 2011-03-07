@@ -364,16 +364,18 @@ end subroutine lubksb
 !* depending on whether the number of row interchanges was odd or even,
 !* respectively. This routine is used in combination with lubksb to solve
 !* linear equations or invert a matrix.
-subroutine ludcmp_chunk(A,N,INDX,D,chunk_size)
+subroutine ludcmp_chunk(A,N,INDX,D,chunk_size,ithread,num_threads)
 
   implicit none
 
   PetscInt :: N
   PetscInt :: chunk_size
+  PetscInt :: num_threads
   PetscReal, parameter :: tiny=1.0d-20
-  PetscReal :: A(N,N,chunk_size),VV(N,chunk_size)
-  PetscInt :: INDX(N,chunk_size)
-  PetscInt :: D(chunk_size)
+  PetscReal :: A(chunk_size,num_threads,N,N),VV(chunk_size,num_threads,N)
+  PetscInt :: INDX(chunk_size,num_threads,N)
+  PetscInt :: D(chunk_size,num_threads)
+  PetscInt :: ithread
 
   PetscInt :: i, j, k, imax
   PetscReal :: aamax, sum, dum
@@ -384,37 +386,37 @@ subroutine ludcmp_chunk(A,N,INDX,D,chunk_size)
 
   do ichunk = 1, chunk_size
 
-  D(ichunk)=1
+  D(ichunk,ithread)=1
   do i=1,N
     aamax=0
     do j=1,N
-      if (abs(A(i,j,ichunk)).gt.aamax) aamax=abs(A(i,j,ichunk))
+      if (abs(A(ichunk,ithread,i,j)).gt.aamax) aamax=abs(A(ichunk,ithread,i,j))
     enddo
     if (aamax.eq.0) then
       call MPI_Comm_rank(MPI_COMM_WORLD,rank,ierr)
-      print *, "ERROR: Singular value encountered in ludcmp() on processor", rank, ichunk
+      print *, "ERROR: Singular value encountered in ludcmp() on processor", rank, ichunk,ithread
       call MPI_Abort(MPI_COMM_WORLD,ONE_INTEGER_MPI,ierr)
       call MPI_Finalize(ierr)
       stop
     endif
-    VV(i,ichunk)=1./aamax
+    VV(ichunk,ithread,i)=1./aamax
   enddo
   do j=1,N
     do i=1,j-1
-      sum=A(i,j,ichunk)
+      sum=A(ichunk,ithread,i,j)
       do k=1,i-1
-        sum=sum-A(i,k,ichunk)*A(k,j,ichunk)
+        sum=sum-A(ichunk,ithread,i,k)*A(ichunk,ithread,k,j)
       enddo
-      A(i,j,ichunk)=sum
+      A(ichunk,ithread,i,j)=sum
     enddo
     aamax=0
     do i=j,N
-      sum=A(i,j,ichunk)
+      sum=A(ichunk,ithread,i,j)
       do k=1,j-1
-        sum=sum-A(i,k,ichunk)*A(k,j,ichunk)
+        sum=sum-A(ichunk,ithread,i,k)*A(ichunk,ithread,k,j)
       enddo
-      A(i,j,ichunk)=sum
-      dum=VV(i,ichunk)*abs(sum)
+      A(ichunk,ithread,i,j)=sum
+      dum=VV(ichunk,ithread,i)*abs(sum)
       if (dum.ge.aamax) then
         imax=i
         aamax=dum
@@ -422,19 +424,19 @@ subroutine ludcmp_chunk(A,N,INDX,D,chunk_size)
     enddo
     if (j.ne.imax) then
       do k=1,N
-        dum=A(imax,k,ichunk)
-        A(imax,k,ichunk)=A(j,k,ichunk)
-        A(j,k,ichunk)=dum
+        dum=A(ichunk,ithread,imax,k)
+        A(ichunk,ithread,imax,k)=A(ichunk,ithread,j,k)
+        A(ichunk,ithread,j,k)=dum
       enddo
-      D(ichunk)=-D(ichunk)
-      VV(imax,ichunk)=VV(j,ichunk)
+      D(ichunk,ithread)=-D(ichunk,ithread)
+      VV(ichunk,ithread,imax)=VV(ichunk,ithread,j)
     endif
-    INDX(j,ichunk)=imax
-    if (A(j,j,ichunk).eq.0.) A(j,j,ichunk)=tiny
+    INDX(ichunk,ithread,j)=imax
+    if (A(ichunk,ithread,j,j).eq.0.) A(ichunk,ithread,j,j)=tiny
     if (j.ne.N) then
-      dum=1./A(j,j,ichunk)
+      dum=1./A(ichunk,ithread,j,j)
       do i=j+1,N
-        A(i,j,ichunk)=A(i,j,ichunk)*dum
+        A(ichunk,ithread,i,j)=A(ichunk,ithread,i,j)*dum
       enddo
     endif
   enddo
@@ -449,14 +451,16 @@ end subroutine ludcmp_chunk
 !* A but rather as its LU decomposition. INDX is the input as the permutation
 !* vector returned bu ludcmp. B is input as the right-hand side vector B, and
 !* returns with the solution vector X.
-subroutine lubksb_chunk(A,N,INDX,B,chunk_size)
+subroutine lubksb_chunk(A,N,INDX,B,chunk_size,ithread,num_threads)
 
   implicit none
 
   PetscInt :: N
   PetscInt :: chunk_size
-  PetscReal :: A(N,N,chunk_size),B(N,chunk_size)
-  PetscInt :: INDX(N,chunk_size)
+  PetscInt :: num_threads
+  PetscReal :: A(chunk_size,num_threads,N,N),B(chunk_size,num_threads,N)
+  PetscInt :: INDX(chunk_size,num_threads,N)
+  PetscInt :: ithread
 
   PetscInt :: i, j, ii, ll
   PetscReal :: sum
@@ -467,26 +471,26 @@ subroutine lubksb_chunk(A,N,INDX,B,chunk_size)
   
   ii=0
   do i=1,N
-    ll=INDX(i,ichunk)
-    sum=B(ll,ichunk)
-    B(ll,ichunk)=B(i,ichunk)
+    ll=INDX(ichunk,ithread,i)
+    sum=B(ichunk,ithread,ll)
+    B(ichunk,ithread,ll)=B(ichunk,ithread,i)
     if (ii.ne.0) then
       do j=ii,i-1
-        sum=sum-A(i,j,ichunk)*B(j,ichunk)
+        sum=sum-A(ichunk,ithread,i,j)*B(ichunk,ithread,j)
       enddo
     else if (sum.ne.0) then
       ii=i
     endif
-    B(i,ichunk)=sum
+    B(ichunk,ithread,i)=sum
   enddo
   do i=N,1,-1
-    sum=B(i,ichunk)
+    sum=B(ichunk,ithread,i)
     if (i.lt.N) then
       do j=i+1,N
-        sum=sum-A(i,j,ichunk)*B(j,ichunk)
+        sum=sum-A(ichunk,ithread,i,j)*B(ichunk,ithread,j)
       enddo
     endif
-    B(i,ichunk)=sum/A(i,i,ichunk)
+    B(ichunk,ithread,i)=sum/A(ichunk,ithread,i,i)
   enddo
   
   enddo ! chunk loop

@@ -9,6 +9,7 @@ module Realization_module
   use Subcontinuum_module
 #endif
   use Saturation_Function_module
+  use Dataset_module
   use Fluid_module
   use Discretization_module
   use Field_module
@@ -34,6 +35,7 @@ private
     type(patch_type), pointer :: patch
 
     type(option_type), pointer :: option
+
     type(input_type), pointer :: input
     type(field_type), pointer :: field
     type(pflow_debug_type), pointer :: debug
@@ -56,6 +58,7 @@ private
     type(fluid_property_type), pointer :: fluid_properties
     type(fluid_property_type), pointer :: fluid_property_array(:)
     type(saturation_function_type), pointer :: saturation_functions
+    type(dataset_type), pointer :: datasets
     type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
     
     type(velocity_dataset_type), pointer :: velocity_dataset
@@ -97,7 +100,8 @@ private
             RealizationUpdateProperties, &
             RealizationCountCells, &
             RealizationPrintGridStatistics, &
-            RealizationSetUpBC4Faces
+            RealizationSetUpBC4Faces, &
+            RealizatonPassFieldPtrToPatches
             
 contains
   
@@ -173,6 +177,7 @@ function RealizationCreate2(option)
   nullify(realization%fluid_property_array)
   nullify(realization%saturation_functions)
   nullify(realization%saturation_function_array)
+  nullify(realization%datasets)
   nullify(realization%velocity_dataset)
   
   nullify(realization%reaction)
@@ -259,6 +264,12 @@ subroutine RealizationCreateDiscretization(realization)
     call DiscretizationDuplicateVector(discretization,field%porosity0, &
                                        field%perm0_zz)
     call DiscretizationDuplicateVector(discretization,field%porosity0, &
+                                       field%perm0_xz)
+    call DiscretizationDuplicateVector(discretization,field%porosity0, &
+                                       field%perm0_xy)
+    call DiscretizationDuplicateVector(discretization,field%porosity0, &
+                                       field%perm0_yz)
+    call DiscretizationDuplicateVector(discretization,field%porosity0, &
                                        field%perm_pow)
 
     ! 1-dof local
@@ -276,6 +287,12 @@ subroutine RealizationCreateDiscretization(realization)
                                        field%perm_yy_loc)
     call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
                                        field%perm_zz_loc)
+    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                       field%perm_xz_loc)
+    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                       field%perm_xy_loc)
+    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                       field%perm_yz_loc)
 
     ! ndof degrees of freedom, global
     call DiscretizationCreateVector(discretization,NFLOWDOF,field%flow_xx, &
@@ -382,9 +399,10 @@ subroutine RealizationCreateDiscretization(realization)
       ! set up nG2L, NL2G, etc.
       call UGridMapIndices(grid%unstructured_grid,discretization%dm_1dof%ugdm, &
                            grid%nG2L,grid%nL2G,grid%nL2A,grid%nG2A)
-      call GridComputeCoordinates(grid,discretization%origin,option)
+      call GridComputeCoordinates(grid,discretization%origin,option, & 
+                                   discretization%dm_1dof%ugdm)  !sp 
       ! set up internal connectivity, distance, etc.
-      call GridComputeInternalConnect(grid,option)
+      call GridComputeInternalConnect(grid,option, discretization%dm_1dof%ugdm) !sp 
       call GridComputeVolumes(grid,field%volume,option)
     case(AMR_GRID)
        call AMRGridComputeGeometryInformation(discretization%amrgrid, &
@@ -427,6 +445,8 @@ subroutine RealizationCreateDiscretization(realization)
         call DiscretizationDuplicateVector(discretization, field%flow_xx_loc_faces, field%flow_r_loc_faces) 
 
         call DiscretizationDuplicateVector(discretization, field%flow_xx_loc_faces, field%flow_bc_loc_faces)
+   
+        call DiscretizationDuplicateVector(discretization, field%flow_xx_loc_faces, field%work_loc_faces)
 
 !       call VecGetArrayF90(field%volume, real_tmp, ierr)
 !       call VecRestoreArrayF90(field%volume, real_tmp, ierr)
@@ -479,6 +499,38 @@ subroutine RealizationLocalizeRegions(realization)
   enddo
  
 end subroutine RealizationLocalizeRegions
+
+! ************************************************************************** !
+!
+! RealizatonPassFieldPtrToPatches: Sets patch%field => realization%field
+! author: Glenn Hammond
+! date: 01/12/11
+!
+! ************************************************************************** !
+subroutine RealizatonPassFieldPtrToPatches(realization)
+
+  use Option_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      cur_patch%field => realization%field
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+  
+end subroutine RealizatonPassFieldPtrToPatches
 
 ! ************************************************************************** !
 !
@@ -662,9 +714,10 @@ end subroutine RealizationProcessConditions
 ! ************************************************************************** !
 !
 ! RealProcessMatPropAndSatFunc: Sets up linkeage between material properties
-!                               and saturation function and auxilliary arrays
+!                               and saturation function, auxilliary arrays
+!                               and datasets
 ! author: Glenn Hammond
-! date: 01/21/09
+! date: 01/21/09, 01/12/11
 !
 ! ************************************************************************** !
 subroutine RealProcessMatPropAndSatFunc(realization)
@@ -679,13 +732,14 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   PetscInt :: i
   type(option_type), pointer :: option
   type(material_property_type), pointer :: cur_material_property
-  type(saturation_function_type), pointer :: cur_saturation_function
+  character(len=MAXSTRINGLENGTH) :: string
   
   option => realization%option
   
   ! organize lists
   call MaterialPropConvertListToArray(realization%material_properties, &
-                                      realization%material_property_array)
+                                      realization%material_property_array, &
+                                      option)
   call SaturatFuncConvertListToArray(realization%saturation_functions, &
                                      realization%saturation_function_array, &
                                      option) 
@@ -693,29 +747,34 @@ subroutine RealProcessMatPropAndSatFunc(realization)
   cur_material_property => realization%material_properties                            
   do                                      
     if (.not.associated(cur_material_property)) exit
-    found = PETSC_FALSE
-    cur_saturation_function => realization%saturation_functions
-    do 
-      if (.not.associated(cur_saturation_function)) exit
-      if (StringCompare(cur_material_property%saturation_function_name, &
-                        cur_saturation_function%name,MAXWORDLENGTH)) then
-        found = PETSC_TRUE
-        cur_material_property%saturation_function_id = &
-          cur_saturation_function%id
-        exit
-      endif
-      cur_saturation_function => cur_saturation_function%next
-    enddo
-    if (.not.found) then
-      option%io_buffer = 'Saturation function "' // &
-               trim(cur_material_property%saturation_function_name) // &
-               '" in material property "' // &
-               trim(cur_material_property%name) // &
-               '" not found among available saturation functions.'
-      call printErrMsg(realization%option)    
+
+    ! obtain saturation function id
+    cur_material_property%saturation_function_id = &
+      SaturationFunctionGetID(realization%saturation_functions, &
+                              cur_material_property%saturation_function_name, &
+                              cur_material_property%name,option)
+    
+    ! if named, link dataset to property
+    if (.not.StringNull(cur_material_property%porosity_dataset_name)) then
+      string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
+               '),POROSITY'
+      cur_material_property%porosity_dataset => &
+        DatasetGetPointer(realization%datasets, &
+                          cur_material_property%porosity_dataset_name, &
+                          string,option)
     endif
+    if (.not.StringNull(cur_material_property%permeability_dataset_name)) then
+      string = 'MATERIAL_PROPERTY(' // trim(cur_material_property%name) // &
+               '),PERMEABILITY'
+      cur_material_property%permeability_dataset => &
+        DatasetGetPointer(realization%datasets, &
+                          cur_material_property%permeability_dataset_name, &
+                          string,option)
+    endif
+    
     cur_material_property => cur_material_property%next
   enddo
+  
   
 end subroutine RealProcessMatPropAndSatFunc
 
@@ -1300,9 +1359,9 @@ subroutine RealizAssignFlowInitCond(realization)
 
       ! assign initial conditions values to domain
       if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
-         call GridVecGetArrayF90(grid,field%flow_xx_faces, xx_p, ierr); CHKERRQ(ierr)
+        call GridVecGetArrayF90(grid,field%flow_xx_faces, xx_p, ierr); CHKERRQ(ierr)
       else
-           call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
+        call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
       end if
       call GridVecGetArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
       
@@ -1415,13 +1474,11 @@ subroutine RealizAssignFlowInitCond(realization)
 #ifdef DASVYAT
   if (discretization%itype == STRUCTURED_GRID_MIMETIC) then
    call DiscretizationGlobalToLocalFaces(discretization, field%flow_xx_faces, field%flow_xx_loc_faces, NFLOWDOF)
+
    call VecCopy(field%flow_xx_faces, field%flow_yy_faces, ierr)
    call MFDInitializeMassMatrices(realization%discretization%grid,&
-                                      realization%field%volume, &
-                                      realization%field%perm_xx_loc, &
-                                      realization%field%perm_yy_loc, &
-                                      realization%field%perm_zz_loc, &
-                                      realization%discretization%MFD, realization%option)
+                                  realization%field, &
+                                  realization%discretization%MFD, realization%option)
   end if
 #endif
 !  stop 
@@ -1665,20 +1722,22 @@ subroutine RealizationScaleSourceSink(realization)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   PetscReal, pointer :: vec_ptr(:)
-  PetscReal, pointer :: perm_ptr(:)
-  PetscReal, pointer :: vol_ptr(:)
+  PetscReal, pointer :: perm_loc_ptr(:)
   PetscInt :: local_id
-  PetscInt :: ghosted_id
+  PetscInt :: ghosted_id, neighbor_ghosted_id
   PetscInt :: iconn
-  PetscReal :: scale
+  PetscReal :: scale, sum
+  PetscInt :: icount
+  PetscInt, parameter :: x_width = 1, y_width = 1, z_width = 0
+  
+  PetscInt :: ghosted_neighbors(0:27)
   
   option => realization%option
   discretization => realization%discretization
   field => realization%field
   patch => realization%patch
 
-  call GridVecGetArrayF90(grid,field%perm0_xx,perm_ptr, ierr)
-  call GridVecGetArrayF90(grid,field%volume,vol_ptr, ierr)
+  call GridVecGetArrayF90(grid,field%perm_xx_loc,perm_loc_ptr,ierr)
 
   cur_level => realization%level_list%first
   do 
@@ -1686,7 +1745,7 @@ subroutine RealizationScaleSourceSink(realization)
     cur_patch => cur_level%patch_list%first
     do
       if (.not.associated(cur_patch)) exit
-      ! BIG-TIME warning here.  I assume that all connections are within 
+      ! BIG-TIME warning here.  I assume that all source/sink cells are within 
       ! a single patch - geh
 
       grid => cur_patch%grid
@@ -1696,7 +1755,7 @@ subroutine RealizationScaleSourceSink(realization)
         if (.not.associated(cur_source_sink)) exit
 
         call VecZeroEntries(field%work,ierr)
-        call GridVecGetArrayF90(grid,field%work,vec_ptr, ierr)
+        call GridVecGetArrayF90(grid,field%work,vec_ptr,ierr)
 
         cur_connection_set => cur_source_sink%connection_set
     
@@ -1706,7 +1765,39 @@ subroutine RealizationScaleSourceSink(realization)
 
           select case(option%iflowmode)
             case(RICHARDS_MODE)
-              vec_ptr(local_id) = perm_ptr(local_id)*vol_ptr(ghosted_id)
+               call GridGetGhostedNeighbors(grid,ghosted_id,STAR_STENCIL, &
+                                            x_width,y_width,z_width, &
+                                            ghosted_neighbors,option)
+               ! ghosted neighbors is ordered first in x, then, y, then z
+               icount = 0
+               sum = 0.d0
+               ! x-direction
+               do while (icount < 2*x_width)
+                 icount = icount + 1
+                 neighbor_ghosted_id = ghosted_neighbors(icount)
+                 sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                             grid%structured_grid%dy(neighbor_ghosted_id)* &
+                             grid%structured_grid%dz(neighbor_ghosted_id)
+                 
+               enddo
+               ! y-direction
+               do while (icount < 2*(x_width+y_width))
+                 icount = icount + 1
+                 neighbor_ghosted_id = ghosted_neighbors(icount)                 
+                 sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                             grid%structured_grid%dx(neighbor_ghosted_id)* &
+                             grid%structured_grid%dz(neighbor_ghosted_id)
+                 
+               enddo
+               ! z-direction
+               do while (icount < 2*(x_width+y_width+z_width))
+                 icount = icount + 1
+                 neighbor_ghosted_id = ghosted_neighbors(icount)                 
+                 sum = sum + perm_loc_ptr(neighbor_ghosted_id)* &
+                             grid%structured_grid%dx(neighbor_ghosted_id)* &
+                             grid%structured_grid%dy(neighbor_ghosted_id)
+               enddo
+               vec_ptr(local_id) = vec_ptr(local_id) + sum
             case(THC_MODE)
             case(MPH_MODE)
             case(IMS_MODE)
@@ -1715,7 +1806,7 @@ subroutine RealizationScaleSourceSink(realization)
 
         enddo
         
-        call GridVecRestoreArrayF90(grid,field%work,vec_ptr, ierr)
+        call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)
         call VecNorm(field%work,NORM_1,scale,ierr)
         scale = 1.d0/scale
         call VecScale(field%work,scale,ierr)
@@ -1734,7 +1825,7 @@ subroutine RealizationScaleSourceSink(realization)
           end select 
 
         enddo
-        call GridVecRestoreArrayF90(grid,field%work,vec_ptr, ierr)
+        call GridVecRestoreArrayF90(grid,field%work,vec_ptr,ierr)
         
         cur_source_sink => cur_source_sink%next
       enddo
@@ -1743,8 +1834,7 @@ subroutine RealizationScaleSourceSink(realization)
     cur_level => cur_level%next
   enddo
 
-  call GridVecRestoreArrayF90(grid,field%perm0_xx,perm_ptr, ierr)
-  call GridVecRestoreArrayF90(grid,field%volume,vol_ptr, ierr)
+  call GridVecRestoreArrayF90(grid,field%perm_xx_loc,perm_loc_ptr, ierr)
    
 end subroutine RealizationScaleSourceSink
 
@@ -1959,7 +2049,7 @@ end subroutine RealizationAddWaypointsToList
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-subroutine RealizationGetDataset(realization,vec,ivar,isubvar)
+subroutine RealizationGetDataset(realization,vec,ivar,isubvar,isubvar1)
 
   use Option_module
 
@@ -1969,6 +2059,7 @@ subroutine RealizationGetDataset(realization,vec,ivar,isubvar)
   Vec :: vec
   PetscInt :: ivar
   PetscInt :: isubvar
+  PetscInt, optional :: isubvar1
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
@@ -1980,7 +2071,7 @@ subroutine RealizationGetDataset(realization,vec,ivar,isubvar)
     do
       if (.not.associated(cur_patch)) exit
       call PatchGetDataset(cur_patch,realization%field,realization%option, &
-                           vec,ivar,isubvar)
+         realization%output_option,vec,ivar,isubvar,isubvar1)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -1996,7 +2087,7 @@ end subroutine RealizationGetDataset
 ! date: 09/12/08
 !
 ! ************************************************************************** !
-function RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id)
+function RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id,isubvar1)
 
   use Option_module
 
@@ -2006,6 +2097,7 @@ function RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id)
   type(realization_type) :: realization
   PetscInt :: ivar
   PetscInt :: isubvar
+  PetscInt, optional :: isubvar1
   PetscInt :: ghosted_id
   
   PetscReal :: value
@@ -2019,8 +2111,8 @@ function RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id)
     do
       if (.not.associated(cur_patch)) exit
       value = PatchGetDatasetValueAtCell(cur_patch,realization%field, &
-                                         realization%option, &
-                                         ivar,isubvar,ghosted_id)
+                realization%option,realization%output_option, &
+                ivar,isubvar,ghosted_id,isubvar1)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -2416,7 +2508,7 @@ subroutine RealizationSetUpBC4Faces(realization)
            else if ((bc_type == NEUMANN_BC)) then
                     bc_faces_p(ghost_face_id) = boundary_condition%flow_aux_real_var(1,iconn)*conn%area(jface)
            end if 
-                
+  !         write(*,*) ghost_face_id, boundary_condition%flow_aux_real_var(1,iconn), conn%cntr(3,jface)     
   !            bc_faces_p(ghost_face_id) = conn%cntr(3,jface)*conn%area(jface) 
         end if
       end do
@@ -2427,8 +2519,8 @@ subroutine RealizationSetUpBC4Faces(realization)
 
   call VecRestoreArrayF90(field%flow_bc_loc_faces, bc_faces_p, ierr)
 
-  write(*,*) "RealizationSetUpBC4Faces Finished"
-!  stop
+!  write(*,*) "RealizationSetUpBC4Faces Finished"
+!  read(*,*)
 #endif
 
 end subroutine RealizationSetUpBC4Faces
@@ -2527,31 +2619,31 @@ subroutine RealizationPrintGridStatistics(realization)
   endif
   if (OptionPrintToScreen(option)) then
     write(*,'(/," Grid Stats:",/, &
-                "                       Global # cells: ",i12,/, &
-                "                Global # active cells: ",i12,/, &
-                "                              # cores: ",i12,/, &
-                "         Processor core decomposition: ",3i6,/, &
-                "               Maximum # cells / core: ",i12,/, &
-                "               Minimum # cells / core: ",i12,/, &
-                "               Average # cells / core: ",1pe12.4,/, &
-                "               Std Dev # cells / core: ",1pe12.4,/, &
-                "        Maximum # active cells / core: ",i12,/, &
-                "        Minimum # active cells / core: ",i12,/, &
-                "        Average # active cells / core: ",1pe12.4,/, &
-                "        Std Dev # active cells / core: ",1pe12.4,/,/, &
-                "        % cores with % active cells =       0%: ",1f7.2,/, &
-                "        % cores with % active cells =  0.1-10%: ",1f7.2,/, &
-                "        % cores with % active cells =   10-20%: ",1f7.2,/, &
-                "        % cores with % active cells =   20-30%: ",1f7.2,/, &
-                "        % cores with % active cells =   30-40%: ",1f7.2,/, &
-                "        % cores with % active cells =   40-50%: ",1f7.2,/, &
-                "        % cores with % active cells =   50-60%: ",1f7.2,/, &
-                "        % cores with % active cells =   60-70%: ",1f7.2,/, &
-                "        % cores with % active cells =   70-80%: ",1f7.2,/, &
-                "        % cores with % active cells =   80-90%: ",1f7.2,/, &
-                "        % cores with % active cells = 90-99.9%: ",1f7.2,/, &
-                "        % cores with % active cells =     100%: ",1f7.2,/, &
-                "                                        Check : ",1f7.2,/)') &
+              & "                       Global # cells: ",i12,/, &
+              & "                Global # active cells: ",i12,/, &
+              & "                              # cores: ",i12,/, &
+              & "         Processor core decomposition: ",3i6,/, &
+              & "               Maximum # cells / core: ",i12,/, &
+              & "               Minimum # cells / core: ",i12,/, &
+              & "               Average # cells / core: ",1pe12.4,/, &
+              & "               Std Dev # cells / core: ",1pe12.4,/, &
+              & "        Maximum # active cells / core: ",i12,/, &
+              & "        Minimum # active cells / core: ",i12,/, &
+              & "        Average # active cells / core: ",1pe12.4,/, &
+              & "        Std Dev # active cells / core: ",1pe12.4,/,/, &
+              & "        % cores with % active cells =       0%: ",1f7.2,/, &
+              & "        % cores with % active cells =  0.1-10%: ",1f7.2,/, &
+              & "        % cores with % active cells =   10-20%: ",1f7.2,/, &
+              & "        % cores with % active cells =   20-30%: ",1f7.2,/, &
+              & "        % cores with % active cells =   30-40%: ",1f7.2,/, &
+              & "        % cores with % active cells =   40-50%: ",1f7.2,/, &
+              & "        % cores with % active cells =   50-60%: ",1f7.2,/, &
+              & "        % cores with % active cells =   60-70%: ",1f7.2,/, &
+              & "        % cores with % active cells =   70-80%: ",1f7.2,/, &
+              & "        % cores with % active cells =   80-90%: ",1f7.2,/, &
+              & "        % cores with % active cells = 90-99.9%: ",1f7.2,/, &
+              & "        % cores with % active cells =     100%: ",1f7.2,/, &
+              & "                                        Check : ",1f7.2,/)') &
            global_total_count, &
            global_active_count, &
            option%mycommsize, &
@@ -2672,6 +2764,8 @@ subroutine RealizationDestroy(realization)
     deallocate(realization%saturation_function_array)
   nullify(realization%saturation_function_array)
   call SaturationFunctionDestroy(realization%saturation_functions)
+
+  call DatasetDestroy(realization%datasets)
   
   call VelocityDatasetDestroy(realization%velocity_dataset)
   
