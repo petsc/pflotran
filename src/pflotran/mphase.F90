@@ -1774,7 +1774,7 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
   type(field_type), pointer :: field
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
-  PetscInt :: ichange  
+  PetscInt :: ichange, i  
 
   field => realization%field
   grid => realization%patch%grid
@@ -1804,6 +1804,9 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
       call MphaseVarSwitchPatch(xx, realization, ZERO_INTEGER, ichange)
+      call MPI_Allreduce(ichange,i,ONE_INTEGER_MPI,MPIU_INTEGER, &
+                         MPI_MIN,option%mycomm,ierr)
+      ichange = i 
       if (ichange < 0) then
         call SNESSetFunctionDomainError(snes,ierr) 
         return
